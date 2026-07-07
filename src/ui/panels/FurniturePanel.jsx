@@ -2,6 +2,7 @@ import React from 'react';
 import { BT_AUDIO, FURNITURE_RECIPES, addLifeSkillXp } from '@/data/index.js';
 import { _objectSpread, _slicedToArray } from '@/lib/babelHelpers.js';
 
+import { pushDmgPopup } from '@/game/combatHelpers.js';
 /* ═══ FurniturePanel — furniture crafting workshop ═══ */
 /* v2.3.862: moved verbatim from BroTown.jsx's JSX tree (UI-panel
    decomposition; behavior-frozen). createElement subtree unchanged. 4
@@ -146,13 +147,7 @@ export function FurniturePanel(props) {
             built: Date.now()
           };
           addLifeSkillXp(R2.lifeSkills, 'woodworking', f.wcLvl * 10);
-          stateRef.current.dmgNumbers.push({
-            x: stateRef.current.player.x,
-            y: stateRef.current.player.y - 30,
-            text: f.icon + ' ' + f.name + ' crafted!',
-            color: '#8B6914',
-            ts: Date.now()
-          });
+          pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, f.icon + ' ' + f.name + ' crafted!', '#8B6914');
           BT_AUDIO.collect();
           setRpgState(_objectSpread({}, R2));
           try {

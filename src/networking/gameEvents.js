@@ -17,7 +17,7 @@ import { rollMonsterShard } from '@/data/shards.js';
    its own module scope — the barrel export is the canonical copy. */
 import { BT_API_BASE } from '@/networking/index.js';
 import { pushHudPopup } from '@/ui/XpFlyOverlay.jsx';
-import { enqueuePeerDamage, peerDmgKey, distributeKillXpToBuild, applyMeleeLifesteal, addBuildUse } from '@/game/combatHelpers.js';
+import { enqueuePeerDamage, peerDmgKey, distributeKillXpToBuild, applyMeleeLifesteal, addBuildUse, pushDmgPopup } from '@/game/combatHelpers.js';
 import { handleChatEvent, handleEmoteEvent } from '@/game/chat.js';
 import { _objectSpread, _slicedToArray, _toConsumableArray } from '@/lib/babelHelpers.js';
 
@@ -139,25 +139,13 @@ export function processGameEvent(type, payload, S, deps) {
                 _gR._compStats.totalGambleWon += payload.payout || 0;
                 _gR._compStats.totalGoldEarned += payload.payout || 0;
                 S._gambleResult = { won: true, amount: payload.payout || 0, ts: Date.now() };
-                S.dmgNumbers.push({
-                  x: S.player.x,
-                  y: S.player.y - 30,
-                  text: '+' + (payload.payout || 0) + 'g!',
-                  color: '#3dd497',
-                  ts: Date.now()
-                });
+                pushDmgPopup(S, S.player.x, S.player.y - 30, '+' + (payload.payout || 0) + 'g!', '#3dd497');
                 S.screenShake = 3;
                 BT_AUDIO.collect();
               } else {
                 _gR._compStats.totalGambleLost += payload.wager || 0;
                 S._gambleResult = { won: false, amount: payload.wager || 0, ts: Date.now() };
-                S.dmgNumbers.push({
-                  x: S.player.x,
-                  y: S.player.y - 30,
-                  text: '-' + (payload.wager || 0) + 'g',
-                  color: '#ff5e6c',
-                  ts: Date.now()
-                });
+                pushDmgPopup(S, S.player.x, S.player.y - 30, '-' + (payload.wager || 0) + 'g', '#ff5e6c');
                 BT_AUDIO.beep(150, 0.1, 0.15, 'sawtooth');
               }
               setRpgState(_objectSpread({}, _gR));
@@ -172,13 +160,7 @@ export function processGameEvent(type, payload, S, deps) {
               S._jackpotPool = payload.pool || 0;
               S._jackpotTickets = payload.yourTickets || 0;
               if (payload.deposited) {
-                S.dmgNumbers.push({
-                  x: S.player.x,
-                  y: S.player.y - 30,
-                  text: 'Deposited ' + payload.deposited + 'g to jackpot (' + (payload.yourTickets || 0) + ' 🎟️)',
-                  color: '#f5c542',
-                  ts: Date.now()
-                });
+                pushDmgPopup(S, S.player.x, S.player.y - 30, 'Deposited ' + payload.deposited + 'g to jackpot (' + (payload.yourTickets || 0) + ' 🎟️)', '#f5c542');
               }
               break;
             }
@@ -188,14 +170,7 @@ export function processGameEvent(type, payload, S, deps) {
                  gold rides _creditPlayer (online delivery or inbox). */
               S._jackpotPool = 0;
               S._jackpotTickets = 0;
-              S.dmgNumbers.push({
-                x: S.player.x,
-                y: S.player.y - 44,
-                text: '🎰 ' + (payload.winnerName || 'Someone') + ' won the ' + (payload.amount || 0) + 'g jackpot!',
-                color: '#f5c542',
-                ts: Date.now(),
-                ttl: 5,
-              });
+              pushDmgPopup(S, S.player.x, S.player.y - 44, '🎰 ' + (payload.winnerName || 'Someone') + ' won the ' + (payload.amount || 0) + 'g jackpot!', '#f5c542', { ttl: 5 });
               try { BT_AUDIO.collect(); } catch (e) {}
               break;
             }
@@ -269,14 +244,8 @@ export function processGameEvent(type, payload, S, deps) {
               if (S.channel) {
                 try { S.channel.send({ type: 'broadcast', event: 'move', payload: { x: S.player.x, y: S.player.y, z: S.currentZone, vx: 0, vy: 0 } }); } catch (e) {}
               }
-              S.dmgNumbers.push({
-                x: S.player.x, y: S.player.y - 50,
-                text: _dCfg.name || 'Dungeon', color: '#a070e0', ts: Date.now()
-              });
-              S.dmgNumbers.push({
-                x: S.player.x, y: S.player.y - 35,
-                text: 'Wave 1/' + (_dCfg.waves || 3), color: 'rgba(255,255,255,.5)', ts: Date.now()
-              });
+              pushDmgPopup(S, S.player.x, S.player.y - 50, _dCfg.name || 'Dungeon', '#a070e0');
+              pushDmgPopup(S, S.player.x, S.player.y - 35, 'Wave 1/' + (_dCfg.waves || 3), 'rgba(255,255,255,.5)');
               BT_AUDIO.beep(400, 0.1, 0.12, 'sine');
               break;
             }
@@ -286,11 +255,7 @@ export function processGameEvent(type, payload, S, deps) {
                  arrives via a zone_state re-push right before this. */
               if (!payload || payload.zone !== S._serverDungeon) break;
               S._dungeonWave = (payload.wave || 1) - 1;
-              S.dmgNumbers.push({
-                x: S.player.x, y: S.player.y - 40,
-                text: 'Wave ' + (payload.wave || 1) + '/' + (payload.total || S._dungeonMaxWaves),
-                color: '#ff5e6c', ts: Date.now()
-              });
+              pushDmgPopup(S, S.player.x, S.player.y - 40, 'Wave ' + (payload.wave || 1) + '/' + (payload.total || S._dungeonMaxWaves), '#ff5e6c');
               BT_AUDIO.beep(300, 0.1, 0.15, 'sawtooth');
               S.screenShake = 4;
               break;
@@ -299,10 +264,7 @@ export function processGameEvent(type, payload, S, deps) {
             {
               if (!payload || payload.zone !== S._serverDungeon) break;
               S._dungeonBossSpawned = true;
-              S.dmgNumbers.push({
-                x: S.player.x, y: S.player.y - 50,
-                text: 'BOSS FIGHT!', color: '#ff5e6c', ts: Date.now()
-              });
+              pushDmgPopup(S, S.player.x, S.player.y - 50, 'BOSS FIGHT!', '#ff5e6c');
               BT_AUDIO.beep(100, 0.25, 0.3, 'sawtooth');
               S.screenShake = 8;
               break;
@@ -323,15 +285,8 @@ export function processGameEvent(type, payload, S, deps) {
                 _dcR._compStats.totalGoldEarned += payload.gold || 0;
                 setRpgState(_objectSpread({}, _dcR));
               }
-              S.dmgNumbers.push({
-                x: S.player.x, y: S.player.y - 60,
-                text: 'DUNGEON CLEARED!', color: '#f5c542', ts: Date.now()
-              });
-              S.dmgNumbers.push({
-                x: S.player.x, y: S.player.y - 45,
-                text: '+' + (payload.gold || 0) + 'G +' + (payload.xp || 0) + 'XP',
-                color: '#f5c542', ts: Date.now()
-              });
+              pushDmgPopup(S, S.player.x, S.player.y - 60, 'DUNGEON CLEARED!', '#f5c542');
+              pushDmgPopup(S, S.player.x, S.player.y - 45, '+' + (payload.gold || 0) + 'G +' + (payload.xp || 0) + 'XP', '#f5c542');
               BT_AUDIO.levelUp();
               S.screenShake = 10;
               setTimeout(function () {
@@ -368,11 +323,7 @@ export function processGameEvent(type, payload, S, deps) {
             }
           case 'dungeon_error':
             {
-              S.dmgNumbers.push({
-                x: S.player.x, y: S.player.y - 30,
-                text: (payload && payload.message) || 'Dungeon unavailable',
-                color: '#ff5e6c', ts: Date.now()
-              });
+              pushDmgPopup(S, S.player.x, S.player.y - 30, (payload && payload.message) || 'Dungeon unavailable', '#ff5e6c');
               BT_AUDIO.beep(150, 0.1, 0.15, 'sawtooth');
               break;
             }
@@ -382,11 +333,7 @@ export function processGameEvent(type, payload, S, deps) {
                  (gold already debited server-side; the player_state
                  echo shows it).  Private ack -- just the confirm UI. */
               if (!payload) break;
-              S.dmgNumbers.push({
-                x: S.player.x, y: S.player.y - 30,
-                text: 'Staked ' + (payload.amount || 0) + 'G on ' + (payload.targetName || 'a gladiator'),
-                color: '#f5c542', ts: Date.now()
-              });
+              pushDmgPopup(S, S.player.x, S.player.y - 30, 'Staked ' + (payload.amount || 0) + 'G on ' + (payload.targetName || 'a gladiator'), '#f5c542');
               break;
             }
           case 'arena_stake_result':
@@ -400,29 +347,17 @@ export function processGameEvent(type, payload, S, deps) {
                 if (_stR && _stR._compStats) _stR._compStats.totalGoldEarned += payload.payout || 0;
                 if (!S.stats._betsWon) S.stats._betsWon = 0;
                 S.stats._betsWon++;
-                S.dmgNumbers.push({
-                  x: S.player.x, y: S.player.y - 50,
-                  text: 'SPONSORSHIP PAID! +' + (payload.payout || 0) + 'G',
-                  color: '#3dd497', ts: Date.now()
-                });
+                pushDmgPopup(S, S.player.x, S.player.y - 50, 'SPONSORSHIP PAID! +' + (payload.payout || 0) + 'G', '#3dd497');
                 BT_AUDIO.collect();
               } else {
-                S.dmgNumbers.push({
-                  x: S.player.x, y: S.player.y - 50,
-                  text: 'Stake lost (-' + (payload.amount || 0) + 'G)',
-                  color: '#ff5e6c', ts: Date.now()
-                });
+                pushDmgPopup(S, S.player.x, S.player.y - 50, 'Stake lost (-' + (payload.amount || 0) + 'G)', '#ff5e6c');
               }
               if (_stR) setRpgState(_objectSpread({}, _stR));
               break;
             }
           case 'arena_stake_error':
             {
-              S.dmgNumbers.push({
-                x: S.player.x, y: S.player.y - 30,
-                text: (payload && payload.message) || 'Stake rejected',
-                color: '#ff5e6c', ts: Date.now()
-              });
+              pushDmgPopup(S, S.player.x, S.player.y - 30, (payload && payload.message) || 'Stake rejected', '#ff5e6c');
               BT_AUDIO.beep(150, 0.1, 0.15, 'sawtooth');
               break;
             }
@@ -456,16 +391,8 @@ export function processGameEvent(type, payload, S, deps) {
                 S.stats._guildMasterCount++;
               }
               var _gqG = SKILL_GUILDS[payload.skill] || {};
-              S.dmgNumbers.push({
-                x: S.player.x, y: S.player.y - 40,
-                text: (_gqG.name || 'Guild') + ' quest complete!',
-                color: _gqG.color || '#f5c542', ts: Date.now()
-              });
-              S.dmgNumbers.push({
-                x: S.player.x, y: S.player.y - 25,
-                text: '+' + (payload.gold || 0) + 'G +' + (payload.ap || 0) + 'AP',
-                color: '#f5c542', ts: Date.now()
-              });
+              pushDmgPopup(S, S.player.x, S.player.y - 40, (_gqG.name || 'Guild') + ' quest complete!', _gqG.color || '#f5c542');
+              pushDmgPopup(S, S.player.x, S.player.y - 25, '+' + (payload.gold || 0) + 'G +' + (payload.ap || 0) + 'AP', '#f5c542');
               BT_AUDIO.collect();
               setRpgState(_objectSpread({}, _gqR));
               try {
@@ -475,11 +402,7 @@ export function processGameEvent(type, payload, S, deps) {
             }
           case 'guild_quest_error':
             {
-              S.dmgNumbers.push({
-                x: S.player.x, y: S.player.y - 30,
-                text: (payload && payload.message) || 'Turn-in rejected',
-                color: '#ff5e6c', ts: Date.now()
-              });
+              pushDmgPopup(S, S.player.x, S.player.y - 30, (payload && payload.message) || 'Turn-in rejected', '#ff5e6c');
               BT_AUDIO.beep(150, 0.1, 0.15, 'sawtooth');
               break;
             }
@@ -538,14 +461,7 @@ export function processGameEvent(type, payload, S, deps) {
                 ts: Date.now()
               }]);
               if (setChatLog) setChatLog(_toConsumableArray(S.chatLog));
-              S.dmgNumbers.push({
-                x: S.player.x,
-                y: S.player.y - 55,
-                text: '📢 ' + (_annText.length > 60 ? _annText.slice(0, 57) + '…' : _annText),
-                color: '#f5c542',
-                ts: Date.now(),
-                ttl: 5,
-              });
+              pushDmgPopup(S, S.player.x, S.player.y - 55, '📢 ' + (_annText.length > 60 ? _annText.slice(0, 57) + '…' : _annText), '#f5c542', { ttl: 5 });
               try { BT_AUDIO.beep(660, 0.08, 0.1, 'sine'); } catch (e) {}
               break;
             }
@@ -674,10 +590,7 @@ export function processGameEvent(type, payload, S, deps) {
                        local prediction (unlike swings), so our own thorns
                        hits DO need the popup or the block just silently
                        chips the monster's bar. */
-                    S.dmgNumbers.push({
-                      x: hitM.x || hitM.renderX, y: (hitM.y || hitM.renderY) - 20,
-                      text: '-' + payload.dmg + ' 🌵', color: '#a3e635', ts: Date.now()
-                    });
+                    pushDmgPopup(S, hitM.x || hitM.renderX, (hitM.y || hitM.renderY) - 20, '-' + payload.dmg + ' 🌵', '#a3e635');
                   }
                   /* Hit particles for everyone */
                   for (var hp2 = 0; hp2 < 3; hp2++) {
@@ -873,13 +786,7 @@ export function processGameEvent(type, payload, S, deps) {
                 var rOther = S.others && S.others[payload.targetId];
                 if (rOther && !rOther._isDead) {
                   rOther._hitFlash = Date.now();
-                  S.dmgNumbers.push({
-                    x: rOther.x || 0,
-                    y: (rOther.y || 0) - 20,
-                    text: '-' + (payload.dmg || 0),
-                    color: '#ff5e6c',
-                    ts: Date.now()
-                  });
+                  pushDmgPopup(S, rOther.x || 0, (rOther.y || 0) - 20, '-' + (payload.dmg || 0), '#ff5e6c');
                 }
                 break;
               }
@@ -928,18 +835,11 @@ export function processGameEvent(type, payload, S, deps) {
                  HP-damage path entirely.  Player_state will arrive
                  shortly after to mirror the authoritative stamina value. */
               if (payload.blocked) {
-                S.dmgNumbers.push({
-                  x: S.player.x, y: S.player.y - 20,
-                  text: 'Blocked!', color: '#60a5fa', ts: Date.now()
-                });
+                pushDmgPopup(S, S.player.x, S.player.y - 20, 'Blocked!', '#60a5fa');
                 var _staminaDrainBlock = typeof payload.staminaDrain === 'number' ? payload.staminaDrain : 15;
                 if (_staminaDrainBlock > 0) {
-                  S.dmgNumbers.push({
-                    x: S.player.x + 18, y: S.player.y - 4,
-                    text: '-' + _staminaDrainBlock,
-                    color: '#facc15', /* stamina yellow */
-                    ts: Date.now() + 1
-                  });
+                  /* stamina yellow; ts+1 stacks it under the Blocked! popup */
+                  pushDmgPopup(S, S.player.x + 18, S.player.y - 4, '-' + _staminaDrainBlock, '#facc15', { ts: Date.now() + 1 });
                 }
                 addBuildUse(R2, 'endurance', 3);
                 /* v2.3.1113: DEFENSE LOOP REVIVAL -- awardDefenseXp/
@@ -952,8 +852,7 @@ export function processGameEvent(type, payload, S, deps) {
                    while every monster was pinned to level 1; zone bands
                    are now unpinned (BALANCE-PLAN §7/BF-1). */
                 var _defUpBlk = trainDefense(R2, payload.dmg || 5, 0, atkSrc.level || null, false);
-                if (_defUpBlk) S.dmgNumbers.push({ x: S.player.x, y: S.player.y - 34,
-                  text: '🛡️ Defense Lv ' + _defUpBlk.level, color: '#60a5fa', ts: Date.now() + 2 });
+                if (_defUpBlk) pushDmgPopup(S, S.player.x, S.player.y - 34, '🛡️ Defense Lv ' + _defUpBlk.level, '#60a5fa', { ts: Date.now() + 2 });
                 break;
               }
               var mDmg = payload.dmg || 5;
@@ -1024,8 +923,7 @@ export function processGameEvent(type, payload, S, deps) {
               if (dmgTaken2 > 0) {
                 /* v2.3.1140: ±5 gate live (see block above). */
                 var _defUpTk = trainDefense(R2, 0, Math.ceil(dmgTaken2), atkSrc.level || null, false);
-                if (_defUpTk) S.dmgNumbers.push({ x: S.player.x, y: S.player.y - 34,
-                  text: '🛡️ Defense Lv ' + _defUpTk.level, color: '#60a5fa', ts: Date.now() + 2 });
+                if (_defUpTk) pushDmgPopup(S, S.player.x, S.player.y - 34, '🛡️ Defense Lv ' + _defUpTk.level, '#60a5fa', { ts: Date.now() + 2 });
               }
               if (window.__dmgLog) try {
                 console.log('[dmg] net-monster_attack', {
@@ -1056,23 +954,14 @@ export function processGameEvent(type, payload, S, deps) {
               if (Math.ceil(dmgTaken2) > 0) {
                 S._hitFlash = Date.now();
               }
-              S.dmgNumbers.push({
-                x: S.player.x, y: S.player.y - 20,
-                text: '-' + Math.ceil(dmgTaken2), color: '#ff5e6c',
-                /* v2.3.110: heart glyph alongside "-N" popup so the
-                   loss-of-HP intent reads instantly. */
-                iconKey: 'heart',
-                ts: Date.now()
-              });
+              /* v2.3.110: heart glyph alongside "-N" popup so the
+                 loss-of-HP intent reads instantly. */
+              pushDmgPopup(S, S.player.x, S.player.y - 20, '-' + Math.ceil(dmgTaken2), '#ff5e6c', { iconKey: 'heart' });
               /* v2.3.1137: Second Wind — the worker healed us right after
                  this hit (defense channel, 10s cooldown); green popup.
                  The authoritative hp arrives via player_state as usual. */
               if (payload.secondWind > 0) {
-                S.dmgNumbers.push({
-                  x: S.player.x + 16, y: S.player.y - 38,
-                  text: '+' + payload.secondWind + ' Second Wind',
-                  color: '#4ade80', ts: Date.now() + 2
-                });
+                pushDmgPopup(S, S.player.x + 16, S.player.y - 38, '+' + payload.secondWind + ' Second Wind', '#4ade80', { ts: Date.now() + 2 });
               }
               for (var hp3 = 0; hp3 < 4; hp3++) S.hitParticles.push({
                 x: S.player.x, y: S.player.y,
@@ -1115,14 +1004,8 @@ export function processGameEvent(type, payload, S, deps) {
                   });
                 }
                 S.screenShake = 10;
-                S.dmgNumbers.push({
-                  x: S.player.x, y: S.player.y - 40,
-                  text: 'YOU DIED', color: '#ff5e6c', ts: Date.now()
-                });
-                if (goldLost2 > 0) S.dmgNumbers.push({
-                  x: S.player.x, y: S.player.y - 55,
-                  text: '-' + goldLost2 + 'G', color: '#fbbf24', ts: Date.now()
-                });
+                pushDmgPopup(S, S.player.x, S.player.y - 40, 'YOU DIED', '#ff5e6c');
+                if (goldLost2 > 0) pushDmgPopup(S, S.player.x, S.player.y - 55, '-' + goldLost2 + 'G', '#fbbf24');
                 BT_AUDIO.deathBoom();
                 /* Respawn in town after delay */
                 var respawnDelay = 5000;
@@ -1163,13 +1046,7 @@ export function processGameEvent(type, payload, S, deps) {
               var hurtOther = S.others && S.others[payload.id];
               if (!hurtOther) break;
               hurtOther._hitFlash = Date.now();
-              S.dmgNumbers.push({
-                x: hurtOther.x || 0,
-                y: (hurtOther.y || 0) - 20,
-                text: '-' + (payload.dmg || 0),
-                color: '#ff5e6c',
-                ts: Date.now()
-              });
+              pushDmgPopup(S, hurtOther.x || 0, (hurtOther.y || 0) - 20, '-' + (payload.dmg || 0), '#ff5e6c');
               break;
             }
           case 'monster_dmg_at':
@@ -1218,13 +1095,7 @@ export function processGameEvent(type, payload, S, deps) {
                   size: 2 + Math.random() * 2
                 });
               }
-              S.dmgNumbers.push({
-                x: dthX, y: dthY - 40,
-                text: 'KO',
-                color: '#ff5e6c',
-                ts: Date.now(),
-                ttl: 2.0
-              });
+              pushDmgPopup(S, dthX, dthY - 40, 'KO', '#ff5e6c', { ttl: 2.0 });
               break;
             }
           case 'player_respawned':
@@ -1257,13 +1128,7 @@ export function processGameEvent(type, payload, S, deps) {
                   clanTag: payload.clanTag || '?',
                   ts: Date.now()
                 };
-                S.dmgNumbers.push({
-                  x: S.player.x,
-                  y: S.player.y - 40,
-                  text: '[' + S._pendingClanInvite.clanTag + '] clan invite! (open Clans)',
-                  color: '#a78bfa',
-                  ts: Date.now()
-                });
+                pushDmgPopup(S, S.player.x, S.player.y - 40, '[' + S._pendingClanInvite.clanTag + '] clan invite! (open Clans)', '#a78bfa');
                 BT_AUDIO.beep(600, 0.06, 0.08, 'sine');
               }
               break;
@@ -1282,13 +1147,7 @@ export function processGameEvent(type, payload, S, deps) {
             }
           case 'clan_error':
             {
-              if (payload && payload.text) S.dmgNumbers.push({
-                x: S.player.x,
-                y: S.player.y - 30,
-                text: payload.text,
-                color: '#ff5e6c',
-                ts: Date.now()
-              });
+              if (payload && payload.text) pushDmgPopup(S, S.player.x, S.player.y - 30, payload.text, '#ff5e6c');
               break;
             }
           case 'clan_war_declare':
@@ -1301,20 +1160,8 @@ export function processGameEvent(type, payload, S, deps) {
                 /* We're being challenged! */
                 S._activeClanWar = war;
                 war.defender.members.push(S.myId);
-                S.dmgNumbers.push({
-                  x: S.player.x,
-                  y: S.player.y - 40,
-                  text: '[' + war.challenger.tag + '] declared WAR!',
-                  color: '#ff5e6c',
-                  ts: Date.now()
-                });
-                S.dmgNumbers.push({
-                  x: S.player.x,
-                  y: S.player.y - 25,
-                  text: 'Battle zone: ' + (((_ZONES$war$zone = ZONES[war.zone]) === null || _ZONES$war$zone === void 0 ? void 0 : _ZONES$war$zone.name) || war.zone),
-                  color: 'rgba(255,255,255,.5)',
-                  ts: Date.now()
-                });
+                pushDmgPopup(S, S.player.x, S.player.y - 40, '[' + war.challenger.tag + '] declared WAR!', '#ff5e6c');
+                pushDmgPopup(S, S.player.x, S.player.y - 25, 'Battle zone: ' + (((_ZONES$war$zone = ZONES[war.zone]) === null || _ZONES$war$zone === void 0 ? void 0 : _ZONES$war$zone.name) || war.zone), 'rgba(255,255,255,.5)');
                 BT_AUDIO.beep(200, 0.2, 0.25, 'sawtooth');
                 S.screenShake = 6;
               } else if (war.challenger.tag === S._clanData.tag) {
@@ -1332,13 +1179,7 @@ export function processGameEvent(type, payload, S, deps) {
               if (payload.warId !== _war.id) break;
               _war.killLog.push(payload.kill);
               if (payload.scoreSide === 'challenger') _war.challenger.score += payload.kill.points;else if (payload.scoreSide === 'defender') _war.defender.score += payload.kill.points;
-              S.dmgNumbers.push({
-                x: S.player.x,
-                y: S.player.y - 50,
-                text: payload.kill.killer + ' -> ' + payload.kill.victim,
-                color: 'rgba(255,255,255,.4)',
-                ts: Date.now()
-              });
+              pushDmgPopup(S, S.player.x, S.player.y - 50, payload.kill.killer + ' -> ' + payload.kill.victim, 'rgba(255,255,255,.4)');
               break;
             }
           case 'clan_war_end':
@@ -1358,20 +1199,8 @@ export function processGameEvent(type, payload, S, deps) {
                 S.rpg.achievementPoints = (S.rpg.achievementPoints || 0) + reward.ap;
                 if (S.rpg._compStats) S.rpg._compStats.totalGoldEarned += reward.gold;
               }
-              S.dmgNumbers.push({
-                x: S.player.x,
-                y: S.player.y - 50,
-                text: isWinner ? 'WAR WON!' : 'War lost...',
-                color: isWinner ? '#f5c542' : '#ff5e6c',
-                ts: Date.now()
-              });
-              S.dmgNumbers.push({
-                x: S.player.x,
-                y: S.player.y - 35,
-                text: '+' + reward.gold + 'G +' + reward.ap + 'AP',
-                color: '#f5c542',
-                ts: Date.now()
-              });
+              pushDmgPopup(S, S.player.x, S.player.y - 50, isWinner ? 'WAR WON!' : 'War lost...', isWinner ? '#f5c542' : '#ff5e6c');
+              pushDmgPopup(S, S.player.x, S.player.y - 35, '+' + reward.gold + 'G +' + reward.ap + 'AP', '#f5c542');
               if (isWinner) BT_AUDIO.levelUp();else BT_AUDIO.beep(150, 0.1, 0.15, 'triangle');
               setTimeout(function () {
                 S._activeClanWar = null;
@@ -1438,13 +1267,7 @@ export function processGameEvent(type, payload, S, deps) {
                     _R.inventory[k] = (_R.inventory[k] || 0) + v;
                   });
                 }
-                S.dmgNumbers.push({
-                  x: S.player.x,
-                  y: S.player.y - 40,
-                  text: 'Trade complete!',
-                  color: '#3dd497',
-                  ts: Date.now()
-                });
+                pushDmgPopup(S, S.player.x, S.player.y - 40, 'Trade complete!', '#3dd497');
                 BT_AUDIO.collect();
                 setRpgState(_objectSpread({}, _R));
               }
@@ -1453,13 +1276,7 @@ export function processGameEvent(type, payload, S, deps) {
           case 'trade_reject':
             {
               if (payload.target === S.myId) {
-                S.dmgNumbers.push({
-                  x: S.player.x,
-                  y: S.player.y - 30,
-                  text: 'Trade declined',
-                  color: '#ff5e6c',
-                  ts: Date.now()
-                });
+                pushDmgPopup(S, S.player.x, S.player.y - 30, 'Trade declined', '#ff5e6c');
                 BT_AUDIO.beep(200, 0.05, 0.08, 'square');
               }
               break;
@@ -1472,13 +1289,7 @@ export function processGameEvent(type, payload, S, deps) {
               if (payload.target !== S.myId) {
                 // Not targeted at us — if we're the attacker, show hit confirmation
                 if (payload.attacker === S.myId) {
-                  S.dmgNumbers.push({
-                    x: S.player.x + 20,
-                    y: S.player.y - 20,
-                    text: payload.blocked ? 'Blocked!' : 'Hit!',
-                    color: payload.blocked ? '#888' : '#fbbf24',
-                    ts: Date.now()
-                  });
+                  pushDmgPopup(S, S.player.x + 20, S.player.y - 20, payload.blocked ? 'Blocked!' : 'Hit!', payload.blocked ? '#888' : '#fbbf24');
                 }
                 break;
               }
@@ -1500,29 +1311,13 @@ export function processGameEvent(type, payload, S, deps) {
                  new authoritative value.  Death is driven by the server's
                  player_died event. */
               if (window.__dmgLog) try { console.log('[dmg] net-pvp_hit', { amt: Math.ceil(dmgTaken), attacker: payload.attacker, blocked: payload.blocked }); } catch (e) {}
-              S.dmgNumbers.push({
-                x: S.player.x,
-                y: S.player.y - 20,
-                text: '-' + Math.ceil(dmgTaken),
-                color: payload.blocked ? '#607D8B' : '#ff5e6c',
-                ts: Date.now()
-              });
+              pushDmgPopup(S, S.player.x, S.player.y - 20, '-' + Math.ceil(dmgTaken), payload.blocked ? '#607D8B' : '#ff5e6c');
               /* v2.3.1137: Second Wind fires in PvP too (see server
                  _applyDamage); mirror the green heal popup here. */
               if (payload.secondWind > 0) {
-                S.dmgNumbers.push({
-                  x: S.player.x + 16, y: S.player.y - 38,
-                  text: '+' + payload.secondWind + ' Second Wind',
-                  color: '#4ade80', ts: Date.now() + 2
-                });
+                pushDmgPopup(S, S.player.x + 16, S.player.y - 38, '+' + payload.secondWind + ' Second Wind', '#4ade80', { ts: Date.now() + 2 });
               }
-              if (payload.blocked) S.dmgNumbers.push({
-                x: S.player.x,
-                y: S.player.y - 35,
-                text: 'BLOCKED',
-                color: '#607D8B',
-                ts: Date.now()
-              });
+              if (payload.blocked) pushDmgPopup(S, S.player.x, S.player.y - 35, 'BLOCKED', '#607D8B');
               for (var hp2 = 0; hp2 < 6; hp2++) S.hitParticles.push({
                 x: S.player.x,
                 y: S.player.y,
@@ -1542,13 +1337,7 @@ export function processGameEvent(type, payload, S, deps) {
                  attribution popup is best-effort. */
               var _wouldDiePvp = (_R2.hp - Math.ceil(dmgTaken)) <= 0;
               if (_wouldDiePvp) {
-                S.dmgNumbers.push({
-                  x: S.player.x,
-                  y: S.player.y - 45,
-                  text: 'Killed by ' + (payload.attackerName || '???'),
-                  color: '#ff5e6c',
-                  ts: Date.now()
-                });
+                pushDmgPopup(S, S.player.x, S.player.y - 45, 'Killed by ' + (payload.attackerName || '???'), '#ff5e6c');
                 BT_AUDIO.deathBoom();
               }
               // Send pvp_confirmed back for kill tracking, clan wars, arena
@@ -1577,13 +1366,7 @@ export function processGameEvent(type, payload, S, deps) {
               var isInDuel = ((_S$_activeDuel = S._activeDuel) === null || _S$_activeDuel === void 0 ? void 0 : _S$_activeDuel.partnerId) === payload.id;
               var isLawless = (_ZONES$S$currentZone = ZONES[S.currentZone]) === null || _ZONES$S$currentZone === void 0 ? void 0 : _ZONES$S$currentZone.lawless;
               if (!isInDuel && !isLawless && (_ZONES$S$currentZone2 = ZONES[S.currentZone]) !== null && _ZONES$S$currentZone2 !== void 0 && _ZONES$S$currentZone2.safe) {
-                S.dmgNumbers.push({
-                  x: S.player.x,
-                  y: S.player.y - 30,
-                  text: 'Safe zone!',
-                  color: '#3dd497',
-                  ts: Date.now()
-                });
+                pushDmgPopup(S, S.player.x, S.player.y - 30, 'Safe zone!', '#3dd497');
                 break;
               }
               var _pDef = _R3.endurance * 0.5 + (((_R3$armor = _R3.armor) === null || _R3$armor === void 0 ? void 0 : _R3$armor.tierMult) || 1) * 3 + (((_R3$_shieldBonus = _R3._shieldBonus) === null || _R3$_shieldBonus === void 0 ? void 0 : _R3$_shieldBonus.blockFlat) || 0);
@@ -1596,13 +1379,7 @@ export function processGameEvent(type, payload, S, deps) {
                  the new authoritative value.  Death is driven by the
                  server's player_died event. */
               if (window.__dmgLog) try { console.log('[dmg] net-player_attack', { amt: Math.ceil(_dmgTaken), attacker: payload.id, isCrit: isCrit }); } catch (e) {}
-              S.dmgNumbers.push({
-                x: S.player.x,
-                y: S.player.y - 20,
-                text: '-' + Math.ceil(_dmgTaken),
-                color: '#ff5e6c',
-                ts: Date.now()
-              });
+              pushDmgPopup(S, S.player.x, S.player.y - 20, '-' + Math.ceil(_dmgTaken), '#ff5e6c');
               for (var _hp = 0; _hp < 6; _hp++) S.hitParticles.push({
                 x: S.player.x,
                 y: S.player.y,
@@ -1627,13 +1404,7 @@ export function processGameEvent(type, payload, S, deps) {
                  reflect the hit until player_state arrives). */
               var _wouldDieAtk = (_R3.hp - Math.ceil(_dmgTaken)) <= 0;
               if (_wouldDieAtk) {
-                S.dmgNumbers.push({
-                  x: S.player.x,
-                  y: S.player.y - 45,
-                  text: 'Killed by ' + payload.name,
-                  color: '#ff5e6c',
-                  ts: Date.now()
-                });
+                pushDmgPopup(S, S.player.x, S.player.y - 45, 'Killed by ' + payload.name, '#ff5e6c');
                 BT_AUDIO.deathBoom();
               }
               if (S.channel) S.channel.send({
@@ -1653,21 +1424,9 @@ export function processGameEvent(type, payload, S, deps) {
           case 'pvp_confirmed':
             {
               if (payload.target !== S.myId) break;
-              S.dmgNumbers.push({
-                x: S.player.x + 20,
-                y: S.player.y - 20,
-                text: 'Hit! -' + Math.ceil(payload.dmg),
-                color: '#fbbf24',
-                ts: Date.now()
-              });
+              pushDmgPopup(S, S.player.x + 20, S.player.y - 20, 'Hit! -' + Math.ceil(payload.dmg), '#fbbf24');
               if (payload.died) {
-                S.dmgNumbers.push({
-                  x: S.player.x,
-                  y: S.player.y - 50,
-                  text: 'KILL!',
-                  color: '#3dd497',
-                  ts: Date.now()
-                });
+                pushDmgPopup(S, S.player.x, S.player.y - 50, 'KILL!', '#3dd497');
                 BT_AUDIO.collect();
                 if (!S.rpg._compStats) S.rpg._compStats = createDefaultCompStats();
                 S.rpg._compStats.pvpKills++;
@@ -1698,13 +1457,7 @@ export function processGameEvent(type, payload, S, deps) {
                       scoreSide: isChallenger ? 'challenger' : 'defender'
                     }
                   });
-                  S.dmgNumbers.push({
-                    x: S.player.x,
-                    y: S.player.y - 65,
-                    text: '+' + points + ' war points!',
-                    color: '#ff5e6c',
-                    ts: Date.now()
-                  });
+                  pushDmgPopup(S, S.player.x, S.player.y - 65, '+' + points + ' war points!', '#ff5e6c');
                 }
                 /* §ARENA — Report arena match result if this was an arena fight.
                    v2.3.1126: refereeing workers (caps.arena) observe match
@@ -1743,33 +1496,15 @@ export function processGameEvent(type, payload, S, deps) {
                         if (S.rpg._compStats) S.rpg._compStats.totalGoldEarned += ARENA_CHAMPION_REWARD.gold;
                         if (!S.rpg._titles) S.rpg._titles = [];
                         if (!S.rpg._titles.includes('Gladiator')) S.rpg._titles.push('Gladiator');
-                        S.dmgNumbers.push({
-                          x: S.player.x,
-                          y: S.player.y - 80,
-                          text: 'GLADIATOR CHAMPION!',
-                          color: '#f5c542',
-                          ts: Date.now()
-                        });
-                        S.dmgNumbers.push({
-                          x: S.player.x,
-                          y: S.player.y - 65,
-                          text: '+' + ARENA_CHAMPION_REWARD.gold + 'G +' + ARENA_CHAMPION_REWARD.ap + 'AP',
-                          color: '#f5c542',
-                          ts: Date.now()
-                        });
+                        pushDmgPopup(S, S.player.x, S.player.y - 80, 'GLADIATOR CHAMPION!', '#f5c542');
+                        pushDmgPopup(S, S.player.x, S.player.y - 65, '+' + ARENA_CHAMPION_REWARD.gold + 'G +' + ARENA_CHAMPION_REWARD.ap + 'AP', '#f5c542');
                         BT_AUDIO.levelUp();
                         S.screenShake = 10;
                       } else {
                         var _d$tournament;
                         S.rpg.coins += ARENA_WIN_REWARD.gold;
                         S.rpg.achievementPoints = (S.rpg.achievementPoints || 0) + ARENA_WIN_REWARD.ap;
-                        S.dmgNumbers.push({
-                          x: S.player.x,
-                          y: S.player.y - 80,
-                          text: 'Arena win! Round ' + ((_d$tournament = d.tournament) === null || _d$tournament === void 0 ? void 0 : _d$tournament.round),
-                          color: '#3dd497',
-                          ts: Date.now()
-                        });
+                        pushDmgPopup(S, S.player.x, S.player.y - 80, 'Arena win! Round ' + ((_d$tournament = d.tournament) === null || _d$tournament === void 0 ? void 0 : _d$tournament.round), '#3dd497');
                       }
                       setRpgState(_objectSpread({}, S.rpg));
                       try {
@@ -1787,13 +1522,7 @@ export function processGameEvent(type, payload, S, deps) {
               /* v2.3.1126: the referee paired us -- server-observed
                  arena flow (spec: docs/specs/arena.md).  Damage works
                  via the duel consent pair; healing is server-gated. */
-              S.dmgNumbers.push({
-                x: S.player.x,
-                y: S.player.y - 50,
-                text: '⚔️ ARENA R' + (payload.round || 1) + ': fight ' + (payload.opponentName || '???') + '!',
-                color: '#f5c542',
-                ts: Date.now()
-              });
+              pushDmgPopup(S, S.player.x, S.player.y - 50, '⚔️ ARENA R' + (payload.round || 1) + ': fight ' + (payload.opponentName || '???') + '!', '#f5c542');
               BT_AUDIO.beep(300, 0.15, 0.2, 'sawtooth');
               S.screenShake = 5;
               break;
@@ -1801,22 +1530,10 @@ export function processGameEvent(type, payload, S, deps) {
           case 'arena_match_result':
             {
               if (payload.winner === S.myId) {
-                S.dmgNumbers.push({
-                  x: S.player.x,
-                  y: S.player.y - 60,
-                  text: 'Arena win! (' + (payload.how || 'kill') + ')',
-                  color: '#3dd497',
-                  ts: Date.now()
-                });
+                pushDmgPopup(S, S.player.x, S.player.y - 60, 'Arena win! (' + (payload.how || 'kill') + ')', '#3dd497');
                 BT_AUDIO.collect();
               } else if (payload.loser === S.myId) {
-                S.dmgNumbers.push({
-                  x: S.player.x,
-                  y: S.player.y - 60,
-                  text: 'Eliminated from the arena',
-                  color: '#ff5e6c',
-                  ts: Date.now()
-                });
+                pushDmgPopup(S, S.player.x, S.player.y - 60, 'Eliminated from the arena', '#ff5e6c');
               }
               break;
             }
@@ -1829,24 +1546,12 @@ export function processGameEvent(type, payload, S, deps) {
                    titles aren't server-owned yet (handoff backlog). */
                 if (!S.rpg._titles) S.rpg._titles = [];
                 if (!S.rpg._titles.includes('Gladiator')) S.rpg._titles.push('Gladiator');
-                S.dmgNumbers.push({
-                  x: S.player.x,
-                  y: S.player.y - 80,
-                  text: 'GLADIATOR CHAMPION!',
-                  color: '#f5c542',
-                  ts: Date.now()
-                });
+                pushDmgPopup(S, S.player.x, S.player.y - 80, 'GLADIATOR CHAMPION!', '#f5c542');
                 BT_AUDIO.levelUp();
                 S.screenShake = 10;
                 setRpgState(_objectSpread({}, S.rpg));
               } else if (_champ.playerName) {
-                S.dmgNumbers.push({
-                  x: S.player.x,
-                  y: S.player.y - 50,
-                  text: '🏆 ' + _champ.playerName + ' is the Gladiator champion!',
-                  color: '#f5c542',
-                  ts: Date.now()
-                });
+                pushDmgPopup(S, S.player.x, S.player.y - 50, '🏆 ' + _champ.playerName + ' is the Gladiator champion!', '#f5c542');
               }
               break;
             }
@@ -1866,13 +1571,7 @@ export function processGameEvent(type, payload, S, deps) {
                   partnerId: payload.from,
                   startTs: Date.now()
                 };
-                S.dmgNumbers.push({
-                  x: S.player.x,
-                  y: S.player.y - 40,
-                  text: 'DUEL STARTED!',
-                  color: '#fbbf24',
-                  ts: Date.now()
-                });
+                pushDmgPopup(S, S.player.x, S.player.y - 40, 'DUEL STARTED!', '#fbbf24');
               }
               break;
             }
@@ -1887,27 +1586,14 @@ export function processGameEvent(type, payload, S, deps) {
                 var _won = payload.winner === S.myId;
                 S._activeDuel = null;
                 S._inDuel = null;
-                S.dmgNumbers.push({
-                  x: S.player.x,
-                  y: S.player.y - 40,
-                  text: _won ? ('DUEL WON!' + (payload.wager ? ' +' + payload.wager * 2 + 'g' : ''))
-                    : (payload.how === 'forfeit' ? 'Duel forfeited' : 'Duel lost' + (payload.wager ? ' -' + payload.wager + 'g' : '')),
-                  color: _won ? '#f5c542' : '#ff5e6c',
-                  ts: Date.now()
-                });
+                pushDmgPopup(S, S.player.x, S.player.y - 40, _won ? ('DUEL WON!' + (payload.wager ? ' +' + payload.wager * 2 + 'g' : '')) : (payload.how === 'forfeit' ? 'Duel forfeited' : 'Duel lost' + (payload.wager ? ' -' + payload.wager + 'g' : '')), _won ? '#f5c542' : '#ff5e6c');
                 if (_won) BT_AUDIO.levelUp();else BT_AUDIO.beep(180, 0.1, 0.15, 'triangle');
               }
               break;
             }
           case 'duel_decline':
             {
-              if (payload.target === S.myId) S.dmgNumbers.push({
-                x: S.player.x,
-                y: S.player.y - 30,
-                text: 'Duel declined',
-                color: '#888',
-                ts: Date.now()
-              });
+              if (payload.target === S.myId) pushDmgPopup(S, S.player.x, S.player.y - 30, 'Duel declined', '#888');
               break;
             }
           case 'pvp_threat':
@@ -1940,19 +1626,7 @@ export function processGameEvent(type, payload, S, deps) {
                  "They fled!".  Guard-fine details arrive separately
                  via the private threat_penalty event. */
               if (payload.target === S.myId) {
-                if (payload.action === 'guards') S.dmgNumbers.push({
-                  x: S.player.x,
-                  y: S.player.y - 40,
-                  text: 'They called the guards!',
-                  color: '#ff5e6c',
-                  ts: Date.now()
-                });else S.dmgNumbers.push({
-                  x: S.player.x,
-                  y: S.player.y - 40,
-                  text: 'Threat ignored — they can fight back!',
-                  color: '#fbbf24',
-                  ts: Date.now()
-                });
+                if (payload.action === 'guards') pushDmgPopup(S, S.player.x, S.player.y - 40, 'They called the guards!', '#ff5e6c');else pushDmgPopup(S, S.player.x, S.player.y - 40, 'Threat ignored — they can fight back!', '#fbbf24');
               }
               break;
             }
@@ -1962,20 +1636,8 @@ export function processGameEvent(type, payload, S, deps) {
                  The coins already moved server-side (authoritative
                  player_state echo); this drives the feedback only. */
               if (!payload) break;
-              if (payload.levy > 0) S.dmgNumbers.push({
-                x: S.player.x,
-                y: S.player.y - 55,
-                text: '-' + payload.levy + 'G guard fine!',
-                color: '#ff5e6c',
-                ts: Date.now()
-              });
-              S.dmgNumbers.push({
-                x: S.player.x,
-                y: S.player.y - 40,
-                text: 'Gear locked 30m by the guards!',
-                color: '#ff5e6c',
-                ts: Date.now()
-              });
+              if (payload.levy > 0) pushDmgPopup(S, S.player.x, S.player.y - 55, '-' + payload.levy + 'G guard fine!', '#ff5e6c');
+              pushDmgPopup(S, S.player.x, S.player.y - 40, 'Gear locked 30m by the guards!', '#ff5e6c');
               BT_AUDIO.beep(150, 0.15, 0.2, 'sawtooth');
               break;
             }
@@ -1983,13 +1645,7 @@ export function processGameEvent(type, payload, S, deps) {
             {
               /* v2.3.1129: an unanswered threat countdown ran out --
                  the pair may fight (same as an ignore). */
-              S.dmgNumbers.push({
-                x: S.player.x,
-                y: S.player.y - 40,
-                text: 'Threat expired — fight is on!',
-                color: '#fbbf24',
-                ts: Date.now()
-              });
+              pushDmgPopup(S, S.player.x, S.player.y - 40, 'Threat expired — fight is on!', '#fbbf24');
               break;
             }
           case 'trade2_invite':
@@ -2000,11 +1656,7 @@ export function processGameEvent(type, payload, S, deps) {
                  which completes the mutual open server-side). */
               if (!payload || !payload.from) break;
               if (setTrade2) setTrade2({ invite: true, from: payload.from, fromName: payload.fromName || 'Someone', ts: Date.now() });
-              S.dmgNumbers.push({
-                x: S.player.x, y: S.player.y - 40,
-                text: '🤝 ' + (payload.fromName || 'Someone') + ' wants to trade!',
-                color: '#3dd497', ts: Date.now()
-              });
+              pushDmgPopup(S, S.player.x, S.player.y - 40, '🤝 ' + (payload.fromName || 'Someone') + ' wants to trade!', '#3dd497');
               BT_AUDIO.beep(600, 0.06, 0.08, 'sine');
               break;
             }
@@ -2019,10 +1671,7 @@ export function processGameEvent(type, payload, S, deps) {
                 setTrade2(payload);
               } else if (payload.state === 'done') {
                 setTrade2(null);
-                S.dmgNumbers.push({
-                  x: S.player.x, y: S.player.y - 40,
-                  text: 'Trade complete!', color: '#3dd497', ts: Date.now()
-                });
+                pushDmgPopup(S, S.player.x, S.player.y - 40, 'Trade complete!', '#3dd497');
                 BT_AUDIO.collect();
                 if (S.rpg) setRpgState(_objectSpread({}, S.rpg));
               } else {
@@ -2032,10 +1681,7 @@ export function processGameEvent(type, payload, S, deps) {
                   'expired': 'Trade expired', 'busy': 'They are already trading',
                   'target-gone': 'Player unavailable', 'party-gone': 'Player unavailable',
                 }[payload.reason] || (payload.reason && payload.reason.indexOf('insufficient') === 0 ? 'Trade failed — items no longer available' : 'Trade cancelled');
-                S.dmgNumbers.push({
-                  x: S.player.x, y: S.player.y - 40,
-                  text: _t2Why, color: '#ff5e6c', ts: Date.now()
-                });
+                pushDmgPopup(S, S.player.x, S.player.y - 40, _t2Why, '#ff5e6c');
               }
               break;
             }
@@ -2110,34 +1756,18 @@ export function processGameEvent(type, payload, S, deps) {
                  echo carries both; this event drives the feedback. */
               if (!payload) break;
               if (payload.error) {
-                S.dmgNumbers.push({
-                  x: S.player.x, y: S.player.y - 30,
-                  text: payload.message || 'Cannot harden',
-                  color: '#ff5e6c', ts: Date.now()
-                });
+                pushDmgPopup(S, S.player.x, S.player.y - 30, payload.message || 'Cannot harden', '#ff5e6c');
                 BT_AUDIO.beep(150, 0.1, 0.15, 'sawtooth');
                 break;
               }
               if (payload.success) {
-                S.dmgNumbers.push({
-                  x: S.player.x, y: S.player.y - 45,
-                  text: '⚒️ HARDENED! Now H' + payload.hardness + '/5',
-                  color: '#f5c542', ts: Date.now()
-                });
+                pushDmgPopup(S, S.player.x, S.player.y - 45, '⚒️ HARDENED! Now H' + payload.hardness + '/5', '#f5c542');
                 S.screenShake = 6;
                 BT_AUDIO.collect();
                 setTimeout(function () { return BT_AUDIO.beep(784, 0.12, 0.1, 'sine'); }, 120);
               } else {
-                S.dmgNumbers.push({
-                  x: S.player.x, y: S.player.y - 45,
-                  text: 'Hardening failed! (-' + (payload.cost || 0) + 'G) → H' + payload.hardness,
-                  color: '#ff5e6c', ts: Date.now()
-                });
-                S.dmgNumbers.push({
-                  x: S.player.x, y: S.player.y - 30,
-                  text: 'Temper ' + (payload.temper || 0) + ' (pity softens future resets)',
-                  color: 'rgba(255,255,255,.5)', ts: Date.now()
-                });
+                pushDmgPopup(S, S.player.x, S.player.y - 45, 'Hardening failed! (-' + (payload.cost || 0) + 'G) → H' + payload.hardness, '#ff5e6c');
+                pushDmgPopup(S, S.player.x, S.player.y - 30, 'Temper ' + (payload.temper || 0) + ' (pity softens future resets)', 'rgba(255,255,255,.5)');
                 BT_AUDIO.beep(180, 0.12, 0.18, 'sawtooth');
               }
               if (S.rpg) setRpgState(_objectSpread({}, S.rpg));
@@ -2154,16 +1784,8 @@ export function processGameEvent(type, payload, S, deps) {
               if (payload.captured && payload.pet) {
                 var _pcPet = payload.pet;
                 S.lockedTarget = null;
-                S.dmgNumbers.push({
-                  x: S.player.x, y: S.player.y - 35,
-                  text: 'Captured ' + _pcPet.name + '!',
-                  color: '#3dd497', ts: Date.now()
-                });
-                S.dmgNumbers.push({
-                  x: S.player.x, y: S.player.y - 50,
-                  text: (_pcPet.emoji || '') + ' ' + _pcPet.archetype + ' Lv' + _pcPet.level,
-                  color: _pcPet.color || '#3dd497', ts: Date.now()
-                });
+                pushDmgPopup(S, S.player.x, S.player.y - 35, 'Captured ' + _pcPet.name + '!', '#3dd497');
+                pushDmgPopup(S, S.player.x, S.player.y - 50, (_pcPet.emoji || '') + ' ' + _pcPet.archetype + ' Lv' + _pcPet.level, _pcPet.color || '#3dd497');
                 BT_AUDIO.collect();
                 setTimeout(function () { return BT_AUDIO.beep(523, 0.1, 0.08, 'sine'); }, 100);
                 setTimeout(function () { return BT_AUDIO.beep(659, 0.1, 0.08, 'sine'); }, 200);
@@ -2177,16 +1799,10 @@ export function processGameEvent(type, payload, S, deps) {
                   'no-trap': 'Need a trap! (Vendor sells them)',
                   'not-now': 'Cannot trap right now'
                 }[payload.error] || 'Capture failed';
-                S.dmgNumbers.push({
-                  x: S.player.x, y: S.player.y - 30,
-                  text: _pcMsg, color: '#ff5e6c', ts: Date.now()
-                });
+                pushDmgPopup(S, S.player.x, S.player.y - 30, _pcMsg, '#ff5e6c');
                 BT_AUDIO.beep(200, 0.08, 0.12, 'square');
               } else {
-                S.dmgNumbers.push({
-                  x: S.player.x, y: S.player.y - 30,
-                  text: 'Escaped!', color: '#ff5e6c', ts: Date.now()
-                });
+                pushDmgPopup(S, S.player.x, S.player.y - 30, 'Escaped!', '#ff5e6c');
                 BT_AUDIO.beep(200, 0.08, 0.12, 'square');
               }
               break;
@@ -2197,13 +1813,7 @@ export function processGameEvent(type, payload, S, deps) {
                  gear lock; the player_state echo alongside snaps any
                  local equip mutation back. */
               var _glMin = payload && payload.until ? Math.max(1, Math.ceil((payload.until - Date.now()) / 60000)) : 30;
-              S.dmgNumbers.push({
-                x: S.player.x,
-                y: S.player.y - 40,
-                text: 'Gear locked by guards! (' + _glMin + 'm left)',
-                color: '#ff5e6c',
-                ts: Date.now()
-              });
+              pushDmgPopup(S, S.player.x, S.player.y - 40, 'Gear locked by guards! (' + _glMin + 'm left)', '#ff5e6c');
               BT_AUDIO.beep(150, 0.1, 0.15, 'sawtooth');
               break;
             }

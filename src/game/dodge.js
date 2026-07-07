@@ -10,7 +10,7 @@
    was `var X = function...` in the component; `export var` here keeps the
    bodies byte-identical and the cross-calls resolve within the module. */
 import { BT_AUDIO, ELEMENTS, LUNGE_DAMAGE_MULT, LUNGE_DIRECTION_THRESHOLD, LUNGE_IFRAMES_MS, LUNGE_STAMINA_FRACTION, RETREAT_SHOT_DAMAGE_MULT, RETREAT_SHOT_STAMINA_FRACTION, RETREAT_STAFF_CONE_RAD, applyStatus, calcWeaponDmg, getActiveWeapon } from '@/data/index.js';
-import { addBuildUse } from '@/game/combatHelpers.js';
+import { addBuildUse, pushDmgPopup } from '@/game/combatHelpers.js';
 import { earnCertification as masteryEarnCert } from '@/game/mastery.js';
 
 export var triggerContextualDodge = function (S, R, ang) {
@@ -103,7 +103,7 @@ export var doLunge = function (S, R, ang) {
         var sid = (ELEMENTS[hitEl] || {}).status;
         if (sid) applyStatus(lt, sid, S.player, Date.now());
       }
-      S.dmgNumbers.push({ x: lt.x, y: lt.y - 18, text: String(lDmg), color: '#fffbb0', ts: Date.now() });
+      pushDmgPopup(S, lt.x, lt.y - 18, String(lDmg), '#fffbb0');
       BT_AUDIO.swordHit({ vol: 0.5 });
       /* Combo treats a lunge hit as an auto-attack hit on the lock-on target. */
       if (!S.combo) S.combo = { count: 0, targetId: null, lastHitTs: 0, nextExtended: false, nextExtendedTs: 0 };

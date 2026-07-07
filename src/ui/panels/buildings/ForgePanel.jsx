@@ -2,6 +2,7 @@ import React from 'react';
 import { AMULET_TIERS, BLACKSMITH_TIERS, BT_AUDIO, EQUIP_STAT_MAP, NUGGETS_PER_BAR, REFORGE_BONUSES, SHIELD_EQUIP_STAT, STAT_LABELS, WEAPON_STASH_MAX, WEAPON_TYPES, WOODWORKING_TIERS, addLifeSkillXp, gemExtractCost, getAmuletSalvageReturns, getGearStatReq, getSalvageReturns, hardenChance, recalcDerived, rollReforgeBonus } from '@/data/index.js';
 import { _objectSpread, _slicedToArray } from '@/lib/babelHelpers.js';
 
+import { pushDmgPopup } from '@/game/combatHelpers.js';
 /* === ForgePanel — blacksmith forge (weapon/armor craft, reforge, harden, salvage) === */
 /* v2.3.872: first buildingPanel sub-panel extracted (REBUILD-PLAN UI
    decomposition). Moved verbatim from the buildingPanel === 'forge'
@@ -201,27 +202,9 @@ export function ForgePanel(props) {
         var leveled = addLifeSkillXp(R.lifeSkills, 'blacksmithing', bt.minLvl * 5);
         if (!R._questFlags) R._questFlags = {};
         R._questFlags.forgedWeapon = true;
-        stateRef.current.dmgNumbers.push({
-          x: stateRef.current.player.x,
-          y: stateRef.current.player.y - 30,
-          text: 'Forged ' + bt.label + ' ' + WEAPON_TYPES[wpnType].label + '!',
-          color: '#b0b0b0',
-          ts: Date.now()
-        });
-        if (bt.slots > 0) stateRef.current.dmgNumbers.push({
-          x: stateRef.current.player.x,
-          y: stateRef.current.player.y - 42,
-          text: bt.slots + ' gem slot' + (bt.slots > 1 ? 's' : '') + ' ready!',
-          color: '#a855f7',
-          ts: Date.now()
-        });
-        if (leveled) stateRef.current.dmgNumbers.push({
-          x: stateRef.current.player.x,
-          y: stateRef.current.player.y - 54,
-          text: 'Blacksmithing Lv' + R.lifeSkills.blacksmithing.level + '!',
-          color: '#f5c542',
-          ts: Date.now()
-        });
+        pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'Forged ' + bt.label + ' ' + WEAPON_TYPES[wpnType].label + '!', '#b0b0b0');
+        if (bt.slots > 0) pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 42, bt.slots + ' gem slot' + (bt.slots > 1 ? 's' : '') + ' ready!', '#a855f7');
+        if (leveled) pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 54, 'Blacksmithing Lv' + R.lifeSkills.blacksmithing.level + '!', '#f5c542');
         BT_AUDIO.collect();
         setRpgState(_objectSpread({}, R));
         try {
@@ -325,13 +308,7 @@ export function ForgePanel(props) {
         var R = stateRef.current.rpg;
         if (!R.inventory) R.inventory = {};
         if ((R.inventory[reforgeOreKey] || 0) < reforgeCost || R.coins < reforgeGold) {
-          stateRef.current.dmgNumbers.push({
-            x: stateRef.current.player.x,
-            y: stateRef.current.player.y - 30,
-            text: 'Need ' + reforgeCost + 'x ore + ' + reforgeGold + 'g',
-            color: '#ff5e6c',
-            ts: Date.now()
-          });
+          pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'Need ' + reforgeCost + 'x ore + ' + reforgeGold + 'g', '#ff5e6c');
           return;
         }
         R.inventory[reforgeOreKey] -= reforgeCost;
@@ -340,13 +317,7 @@ export function ForgePanel(props) {
         var bonus = rollReforgeBonus(bt.tierMult);
         R.weapon.reforgeBonus = bonus;
         addLifeSkillXp(R.lifeSkills, 'blacksmithing', Math.ceil(bt.minLvl * 2));
-        stateRef.current.dmgNumbers.push({
-          x: stateRef.current.player.x,
-          y: stateRef.current.player.y - 30,
-          text: 'Reforged! ' + bonus.label + ' +' + bonus.value + bonus.unit,
-          color: '#a78bfa',
-          ts: Date.now()
-        });
+        pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'Reforged! ' + bonus.label + ' +' + bonus.value + bonus.unit, '#a78bfa');
         BT_AUDIO.beep(600, 0.08, 0.1, 'sine');
         setTimeout(function () {
           return BT_AUDIO.beep(800, 0.06, 0.08, 'sine');
@@ -371,34 +342,16 @@ export function ForgePanel(props) {
       onClick: function onClick() {
         var R = stateRef.current.rpg;
         if (R.weapon.hardenBonus) {
-          stateRef.current.dmgNumbers.push({
-            x: stateRef.current.player.x,
-            y: stateRef.current.player.y - 30,
-            text: 'Already hardened!',
-            color: '#ff5e6c',
-            ts: Date.now()
-          });
+          pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'Already hardened!', '#ff5e6c');
           return;
         }
         if (!R.weapon.reforgeBonus) {
-          stateRef.current.dmgNumbers.push({
-            x: stateRef.current.player.x,
-            y: stateRef.current.player.y - 30,
-            text: 'Reforge first!',
-            color: '#ff5e6c',
-            ts: Date.now()
-          });
+          pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'Reforge first!', '#ff5e6c');
           return;
         }
         if (!R.inventory) R.inventory = {};
         if ((R.inventory[reforgeOreKey] || 0) < hardenCost || R.coins < hardenGold) {
-          stateRef.current.dmgNumbers.push({
-            x: stateRef.current.player.x,
-            y: stateRef.current.player.y - 30,
-            text: 'Need ' + hardenCost + 'x ore + ' + hardenGold + 'g',
-            color: '#ff5e6c',
-            ts: Date.now()
-          });
+          pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'Need ' + hardenCost + 'x ore + ' + hardenGold + 'g', '#ff5e6c');
           return;
         }
         R.inventory[reforgeOreKey] -= hardenCost;
@@ -413,13 +366,7 @@ export function ForgePanel(props) {
           }) + 1) % REFORGE_BONUSES.length].id;
           R.weapon.hardenBonus = bonus;
           addLifeSkillXp(R.lifeSkills, 'blacksmithing', Math.ceil(bt.minLvl * 4));
-          stateRef.current.dmgNumbers.push({
-            x: stateRef.current.player.x,
-            y: stateRef.current.player.y - 30,
-            text: 'HARDENED! +' + bonus.label + ' +' + bonus.value + bonus.unit,
-            color: '#f5c542',
-            ts: Date.now()
-          });
+          pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'HARDENED! +' + bonus.label + ' +' + bonus.value + bonus.unit, '#f5c542');
           stateRef.current.screenShake = 4;
           BT_AUDIO.collect();
           setTimeout(function () {
@@ -430,13 +377,7 @@ export function ForgePanel(props) {
           var oldName = R.weapon.name;
           R.weapon.reforgeBonus = null;
           R.weapon.hardenBonus = null;
-          stateRef.current.dmgNumbers.push({
-            x: stateRef.current.player.x,
-            y: stateRef.current.player.y - 30,
-            text: 'BROKE! ' + oldName + ' lost all bonuses',
-            color: '#ff5e6c',
-            ts: Date.now()
-          });
+          pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'BROKE! ' + oldName + ' lost all bonuses', '#ff5e6c');
           stateRef.current.screenShake = 6;
           BT_AUDIO.beep(120, 0.15, 0.2, 'sawtooth');
         }
@@ -489,13 +430,7 @@ export function ForgePanel(props) {
       if ((R.goldNuggets || 0) < NUGGETS_PER_BAR) return;
       R.goldNuggets -= NUGGETS_PER_BAR;
       R.goldBars = (R.goldBars || 0) + 1;
-      stateRef.current.dmgNumbers.push({
-        x: stateRef.current.player.x,
-        y: stateRef.current.player.y - 30,
-        text: 'Smelted Gold Bar!',
-        color: '#f5c542',
-        ts: Date.now()
-      });
+      pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'Smelted Gold Bar!', '#f5c542');
       BT_AUDIO.beep(600, 0.08, 0.1, 'sine');
       setTimeout(function () {
         return BT_AUDIO.beep(800, 0.06, 0.08, 'sine');
@@ -578,13 +513,7 @@ export function ForgePanel(props) {
           name: at.label + ' Gold Amulet'
         };
         addLifeSkillXp(R.lifeSkills, 'blacksmithing', at.minLvl * 3);
-        stateRef.current.dmgNumbers.push({
-          x: stateRef.current.player.x,
-          y: stateRef.current.player.y - 30,
-          text: 'Crafted ' + at.label + ' Amulet!',
-          color: '#f5c542',
-          ts: Date.now()
-        });
+        pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'Crafted ' + at.label + ' Amulet!', '#f5c542');
         BT_AUDIO.collect();
         setTimeout(function () {
           return BT_AUDIO.beep(784, 0.1, 0.08, 'sine');
@@ -707,13 +636,7 @@ export function ForgePanel(props) {
         };
         addLifeSkillXp(R.lifeSkills, 'blacksmithing', bt.minLvl * 3);
         recalcDerived(R);
-        stateRef.current.dmgNumbers.push({
-          x: stateRef.current.player.x,
-          y: stateRef.current.player.y - 30,
-          text: 'Forged ' + bt.label + ' Shield!',
-          color: '#5b52ff',
-          ts: Date.now()
-        });
+        pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'Forged ' + bt.label + ' Shield!', '#5b52ff');
         BT_AUDIO.collect();
         setRpgState(_objectSpread({}, R));
         try {
@@ -774,13 +697,7 @@ export function ForgePanel(props) {
         var R = stateRef.current.rpg;
         if (!R.inventory) R.inventory = {};
         if ((R.inventory[reforgeOreKey] || 0) < reforgeCost || R.coins < reforgeGold) {
-          stateRef.current.dmgNumbers.push({
-            x: stateRef.current.player.x,
-            y: stateRef.current.player.y - 30,
-            text: 'Need materials',
-            color: '#ff5e6c',
-            ts: Date.now()
-          });
+          pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'Need materials', '#ff5e6c');
           return;
         }
         R.inventory[reforgeOreKey] -= reforgeCost;
@@ -788,13 +705,7 @@ export function ForgePanel(props) {
         R.coins -= reforgeGold;
         R.shield.reforgeBonus = rollReforgeBonus(bt.tierMult);
         addLifeSkillXp(R.lifeSkills, 'blacksmithing', Math.ceil(bt.minLvl * 2));
-        stateRef.current.dmgNumbers.push({
-          x: stateRef.current.player.x,
-          y: stateRef.current.player.y - 30,
-          text: R.shield.reforgeBonus.label + ' +' + R.shield.reforgeBonus.value + R.shield.reforgeBonus.unit,
-          color: '#a78bfa',
-          ts: Date.now()
-        });
+        pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, R.shield.reforgeBonus.label + ' +' + R.shield.reforgeBonus.value + R.shield.reforgeBonus.unit, '#a78bfa');
         BT_AUDIO.beep(600, 0.08, 0.1, 'sine');
         setRpgState(_objectSpread({}, R));
         try {
@@ -827,24 +738,12 @@ export function ForgePanel(props) {
             return b.id === bonus.id;
           }) + 1) % REFORGE_BONUSES.length].id;
           R.shield.hardenBonus = bonus;
-          stateRef.current.dmgNumbers.push({
-            x: stateRef.current.player.x,
-            y: stateRef.current.player.y - 30,
-            text: 'HARDENED! +' + bonus.label,
-            color: '#f5c542',
-            ts: Date.now()
-          });
+          pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'HARDENED! +' + bonus.label, '#f5c542');
           BT_AUDIO.collect();
         } else {
           R.shield.reforgeBonus = null;
           R.shield.hardenBonus = null;
-          stateRef.current.dmgNumbers.push({
-            x: stateRef.current.player.x,
-            y: stateRef.current.player.y - 30,
-            text: 'Shield bonuses lost!',
-            color: '#ff5e6c',
-            ts: Date.now()
-          });
+          pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'Shield bonuses lost!', '#ff5e6c');
           BT_AUDIO.beep(120, 0.15, 0.2, 'sawtooth');
         }
         setRpgState(_objectSpread({}, R));
@@ -952,25 +851,13 @@ export function ForgePanel(props) {
           var _AMULET_TIERS$R$amule2;
           var polKey = 'polished_' + R.amulet.gem;
           R.lifeSkills.gems[polKey] = (R.lifeSkills.gems[polKey] || 0) + 1;
-          stateRef.current.dmgNumbers.push({
-            x: stateRef.current.player.x,
-            y: stateRef.current.player.y - 30,
-            text: 'Extracted ' + R.amulet.gem + ' gem',
-            color: '#a78bfa',
-            ts: Date.now()
-          });
+          pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'Extracted ' + R.amulet.gem + ' gem', '#a78bfa');
           R.amulet.gem = null;
           R.amulet.name = (((_AMULET_TIERS$R$amule2 = AMULET_TIERS[R.amulet.tier]) === null || _AMULET_TIERS$R$amule2 === void 0 ? void 0 : _AMULET_TIERS$R$amule2.label) || 'Simple') + ' Gold Amulet';
         } else if (s.key === 'shield' && (_R$shield = R.shield) !== null && _R$shield !== void 0 && _R$shield.gem) {
           var _polKey = 'polished_' + R.shield.gem;
           R.lifeSkills.gems[_polKey] = (R.lifeSkills.gems[_polKey] || 0) + 1;
-          stateRef.current.dmgNumbers.push({
-            x: stateRef.current.player.x,
-            y: stateRef.current.player.y - 30,
-            text: 'Extracted ' + R.shield.gem + ' gem',
-            color: '#a78bfa',
-            ts: Date.now()
-          });
+          pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'Extracted ' + R.shield.gem + ' gem', '#a78bfa');
           R.shield.gem = null;
           var bt = BLACKSMITH_TIERS[R.shield.gearBase];
           R.shield.name = ((bt === null || bt === void 0 ? void 0 : bt.label) || 'Basic') + ' Shield';
@@ -981,24 +868,12 @@ export function ForgePanel(props) {
           if (wpn.element1) {
             var pk = 'polished_' + wpn.element1;
             R.lifeSkills.gems[pk] = (R.lifeSkills.gems[pk] || 0) + 1;
-            stateRef.current.dmgNumbers.push({
-              x: stateRef.current.player.x,
-              y: stateRef.current.player.y - 30,
-              text: 'Extracted ' + wpn.element1 + ' gem',
-              color: '#a78bfa',
-              ts: Date.now()
-            });
+            pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'Extracted ' + wpn.element1 + ' gem', '#a78bfa');
           }
           if (wpn.element2) {
             var _pk = 'polished_' + wpn.element2;
             R.lifeSkills.gems[_pk] = (R.lifeSkills.gems[_pk] || 0) + 1;
-            stateRef.current.dmgNumbers.push({
-              x: stateRef.current.player.x,
-              y: stateRef.current.player.y - 45,
-              text: 'Extracted ' + wpn.element2 + ' gem',
-              color: '#a78bfa',
-              ts: Date.now()
-            });
+            pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 45, 'Extracted ' + wpn.element2 + ' gem', '#a78bfa');
           }
           wpn.element1 = null;
           wpn.element2 = null;
@@ -1050,13 +925,7 @@ export function ForgePanel(props) {
           isVolatile: false
         };else if (s.key === 'rangedWeapon') R.rangedWeapon = null;else if (s.key === 'staffWeapon') R.staffWeapon = null;
         recalcDerived(R);
-        stateRef.current.dmgNumbers.push({
-          x: stateRef.current.player.x,
-          y: stateRef.current.player.y - 30,
-          text: 'Salvaged! ' + returnText,
-          color: '#ff5e6c',
-          ts: Date.now()
-        });
+        pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'Salvaged! ' + returnText, '#ff5e6c');
         BT_AUDIO.beep(200, 0.1, 0.15, 'sawtooth');
         setTimeout(function () {
           return BT_AUDIO.beep(400, 0.06, 0.08, 'sine');
@@ -1165,13 +1034,7 @@ export function ForgePanel(props) {
           if (ret.type === 'gold') R.coins += ret.qty;else if (ret.type === 'goldBars') R.goldBars = (R.goldBars || 0) + ret.qty;else R.inventory[ret.key] = (R.inventory[ret.key] || 0) + ret.qty;
         });
         R.weaponStash.splice(si, 1);
-        stateRef.current.dmgNumbers.push({
-          x: stateRef.current.player.x,
-          y: stateRef.current.player.y - 30,
-          text: 'Salvaged stash item',
-          color: '#ff5e6c',
-          ts: Date.now()
-        });
+        pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'Salvaged stash item', '#ff5e6c');
         BT_AUDIO.beep(200, 0.1, 0.12, 'sawtooth');
         setRpgState(_objectSpread({}, R));
         try {

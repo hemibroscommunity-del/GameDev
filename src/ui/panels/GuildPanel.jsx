@@ -2,6 +2,7 @@ import React from 'react';
 import { BT_AUDIO, GUILD_RANKS, SKILL_GUILDS, getGuildQuest, getGuildRank } from '@/data/index.js';
 import { _objectSpread, _slicedToArray } from '@/lib/babelHelpers.js';
 
+import { pushDmgPopup } from '@/game/combatHelpers.js';
 /* ═══ GuildPanel — skill-guild rank/quest/title screen ═══ */
 /* v2.3.857: moved verbatim from BroTown.jsx's JSX tree (UI-panel
    decomposition; behavior-frozen). createElement subtree unchanged. Props:
@@ -272,20 +273,8 @@ export function GuildPanel(props) {
         if (!R._titles) R._titles = [];
         var titleStr = newRank.title + ' ' + key.replace(/([A-Z])/g, ' $1').trim();
         if (!R._titles.includes(titleStr)) R._titles.push(titleStr);
-        S.dmgNumbers.push({
-          x: S.player.x,
-          y: S.player.y - 40,
-          text: quest.title + ' complete!',
-          color: g.color,
-          ts: Date.now()
-        });
-        S.dmgNumbers.push({
-          x: S.player.x,
-          y: S.player.y - 25,
-          text: '+' + quest.reward.gold + 'G +' + quest.reward.ap + 'AP',
-          color: '#f5c542',
-          ts: Date.now()
-        });
+        pushDmgPopup(S, S.player.x, S.player.y - 40, quest.title + ' complete!', g.color);
+        pushDmgPopup(S, S.player.x, S.player.y - 25, '+' + quest.reward.gold + 'G +' + quest.reward.ap + 'AP', '#f5c542');
         BT_AUDIO.collect();
         setRpgState(_objectSpread({}, R));
         try {

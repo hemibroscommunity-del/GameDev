@@ -2,6 +2,7 @@ import React from 'react';
 import { BT_AUDIO, RESOURCE_TIERS, TILE, ZONES, ZONE_RESOURCES, addLifeSkillXp, generateZoneMap, updateZoneDimensions } from '@/data/index.js';
 import { _objectSpread, _slicedToArray } from '@/lib/babelHelpers.js';
 
+import { pushDmgPopup } from '@/game/combatHelpers.js';
 /* === FarmPanel — buildingPanel === 'farm' sub-panel === */
 /* v2.3.877: extracted verbatim from the buildingPanel === 'farm'
    clause in BroTown.jsx (the farm plot manager: plant/harvest crops,
@@ -61,13 +62,7 @@ export function FarmPanel(props) {
       S2.arrows = [];
       S2._ambientParticles = [];
       S2._zoneWipe = Date.now();
-      S2.dmgNumbers.push({
-        x: P2.x,
-        y: P2.y - 40,
-        text: 'Your Farm',
-        color: '#3dd497',
-        ts: Date.now()
-      });
+      pushDmgPopup(S2, P2.x, P2.y - 40, 'Your Farm', '#3dd497');
       BT_AUDIO.beep(500, 0.08, 0.1, 'sine');
       setBuildingPanel(null);
     }
@@ -151,13 +146,7 @@ export function FarmPanel(props) {
           localStorage.setItem('bt_rpg', JSON.stringify(R));
         } catch (e) {}
         BT_AUDIO.collect();
-        stateRef.current.dmgNumbers.push({
-          x: stateRef.current.player.x,
-          y: stateRef.current.player.y - 30,
-          text: 'Harvested ' + p.name + '!',
-          color: '#3dd497',
-          ts: Date.now()
-        });
+        pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'Harvested ' + p.name + '!', '#3dd497');
       }
     }, "Harvest")) : isGrowing ? /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
       style: {
@@ -280,13 +269,7 @@ export function FarmPanel(props) {
             return !sk.farmPlots[i] && (i < 2 || i < 4 && ((_sk$farming = sk.farming) === null || _sk$farming === void 0 ? void 0 : _sk$farming.level) >= 10 || ((_sk$farming2 = sk.farming) === null || _sk$farming2 === void 0 ? void 0 : _sk$farming2.level) >= 25);
           });
           if (emptyIdx === undefined) {
-            stateRef.current.dmgNumbers.push({
-              x: stateRef.current.player.x,
-              y: stateRef.current.player.y - 30,
-              text: 'No empty plots!',
-              color: '#ff5e6c',
-              ts: Date.now()
-            });
+            pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'No empty plots!', '#ff5e6c');
             return;
           }
           if (!R.inventory) R.inventory = {};
@@ -309,13 +292,7 @@ export function FarmPanel(props) {
             localStorage.setItem('bt_rpg', JSON.stringify(R));
           } catch (e) {}
           BT_AUDIO.beep(400, 0.06, 0.1, 'sine');
-          stateRef.current.dmgNumbers.push({
-            x: stateRef.current.player.x,
-            y: stateRef.current.player.y - 30,
-            text: 'Planted ' + seed.name,
-            color: '#3dd497',
-            ts: Date.now()
-          });
+          pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'Planted ' + seed.name, '#3dd497');
         }
       }, "Plant"));
     });

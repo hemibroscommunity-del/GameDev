@@ -19,6 +19,7 @@ import { BT_AUDIO, EXTRACT_WINDOW_MS, MINIGAME_REWARDS, addLifeSkillXp, computeO
 import { rollHarvestShard, shardByKey } from '@/data/shards.js';
 import { _objectSpread } from '@/lib/babelHelpers.js';
 
+import { pushDmgPopup } from '@/game/combatHelpers.js';
 /* v2.3.849: fly a harvested-resource icon from its world node into the
    bottom-left inventory.  DOM-only (appended to document.body, like the
    resume spinner) so it floats above the canvas/HUD and animates on the
@@ -194,7 +195,7 @@ function applyFishingReward(S, node, result, deps) {
       if (_shardF1) {
         R.inventory[_shardF1] = (R.inventory[_shardF1] || 0) + 1;
         var _shardDesc1 = shardByKey(_shardF1);
-        S.dmgNumbers.push({ x: node.x, y: node.y - 54, text: '+ ' + (_shardDesc1 ? _shardDesc1.label : 'Shard'), color: (_shardDesc1 && _shardDesc1.color) || '#cce6ff', ts: Date.now() });
+        pushDmgPopup(S, node.x, node.y - 54, '+ ' + (_shardDesc1 ? _shardDesc1.label : 'Shard'), (_shardDesc1 && _shardDesc1.color) || '#cce6ff');
       }
     }
     if (R.lifeSkills) migrateLifeSkills(R.lifeSkills);
@@ -204,11 +205,11 @@ function applyFishingReward(S, node, result, deps) {
     R._compStats.fishCaught = (R._compStats.fishCaught || 0) + 1;
     /* Floating numbers near the node (deterministic; safe to predict
        client-side regardless of who owns the state). */
-    S.dmgNumbers.push({ x: node.x, y: node.y - 10, text: reward.label, color: reward.color, ts: Date.now() });
-    S.dmgNumbers.push({ x: node.x, y: node.y - 22, text: baseName + (yieldQty > 1 ? ' x' + yieldQty : ''), color: node.color, ts: Date.now() });
-    S.dmgNumbers.push({ x: node.x, y: node.y - 38, text: '+' + xpAmt + ' Fishing XP', color: '#00d4b8', ts: Date.now() });
+    pushDmgPopup(S, node.x, node.y - 10, reward.label, reward.color);
+    pushDmgPopup(S, node.x, node.y - 22, baseName + (yieldQty > 1 ? ' x' + yieldQty : ''), node.color);
+    pushDmgPopup(S, node.x, node.y - 38, '+' + xpAmt + ' Fishing XP', '#00d4b8');
     if (leveled) {
-      S.dmgNumbers.push({ x: S.player.x, y: S.player.y - 50, text: 'Fishing Level ' + R.lifeSkills.fishing.level + '!', color: '#f5c542', ts: Date.now() });
+      pushDmgPopup(S, S.player.x, S.player.y - 50, 'Fishing Level ' + R.lifeSkills.fishing.level + '!', '#f5c542');
       BT_AUDIO.collect();
     }
     /* v2.3.845: the catch pops out of the pond and flies into the quick-bag.
@@ -273,18 +274,18 @@ function applyWoodReward(S, node, result, deps) {
       if (_shardF2) {
         R.inventory[_shardF2] = (R.inventory[_shardF2] || 0) + 1;
         var _shardDesc2 = shardByKey(_shardF2);
-        S.dmgNumbers.push({ x: node.x, y: node.y - 54, text: '+ ' + (_shardDesc2 ? _shardDesc2.label : 'Shard'), color: (_shardDesc2 && _shardDesc2.color) || '#cce6ff', ts: Date.now() });
+        pushDmgPopup(S, node.x, node.y - 54, '+ ' + (_shardDesc2 ? _shardDesc2.label : 'Shard'), (_shardDesc2 && _shardDesc2.color) || '#cce6ff');
       }
     }
     if (R.lifeSkills) migrateLifeSkills(R.lifeSkills);
     leveled = addLifeSkillXp(R.lifeSkills, 'woodcutting', xpAmt);
     if (!R._compStats) R._compStats = createDefaultCompStats();
     R._compStats.treesFelled = (R._compStats.treesFelled || 0) + 1;
-    S.dmgNumbers.push({ x: node.x, y: node.y - 10, text: reward.label, color: reward.color, ts: Date.now() });
-    S.dmgNumbers.push({ x: node.x, y: node.y - 22, text: baseName + (yieldQty > 1 ? ' x' + yieldQty : ''), color: node.color, ts: Date.now() });
-    S.dmgNumbers.push({ x: node.x, y: node.y - 38, text: '+' + xpAmt + ' Woodcutting XP', color: '#00d4b8', ts: Date.now() });
+    pushDmgPopup(S, node.x, node.y - 10, reward.label, reward.color);
+    pushDmgPopup(S, node.x, node.y - 22, baseName + (yieldQty > 1 ? ' x' + yieldQty : ''), node.color);
+    pushDmgPopup(S, node.x, node.y - 38, '+' + xpAmt + ' Woodcutting XP', '#00d4b8');
     if (leveled) {
-      S.dmgNumbers.push({ x: S.player.x, y: S.player.y - 50, text: 'Woodcutting Level ' + R.lifeSkills.woodcutting.level + '!', color: '#f5c542', ts: Date.now() });
+      pushDmgPopup(S, S.player.x, S.player.y - 50, 'Woodcutting Level ' + R.lifeSkills.woodcutting.level + '!', '#f5c542');
       BT_AUDIO.collect();
     }
     setRpgState(_objectSpread({}, R));
@@ -298,7 +299,7 @@ function applyMiningReward(S, node, result, deps) {
     var accuracy = (result && result.accuracy) || 'good';
     if (accuracy === 'miss') {
       BT_AUDIO.beep(180, 0.04, 0.08, 'sawtooth');
-      S.dmgNumbers.push({ x: node.x, y: node.y - 10, text: 'Miss!', color: '#ef4444', ts: Date.now() });
+      pushDmgPopup(S, node.x, node.y - 10, 'Miss!', '#ef4444');
       return;
     }
     var reward = MINIGAME_REWARDS[accuracy] || MINIGAME_REWARDS.good;
@@ -339,18 +340,18 @@ function applyMiningReward(S, node, result, deps) {
       if (_shardF3) {
         R.inventory[_shardF3] = (R.inventory[_shardF3] || 0) + 1;
         var _shardDesc3 = shardByKey(_shardF3);
-        S.dmgNumbers.push({ x: node.x, y: node.y - 54, text: '+ ' + (_shardDesc3 ? _shardDesc3.label : 'Shard'), color: (_shardDesc3 && _shardDesc3.color) || '#cce6ff', ts: Date.now() });
+        pushDmgPopup(S, node.x, node.y - 54, '+ ' + (_shardDesc3 ? _shardDesc3.label : 'Shard'), (_shardDesc3 && _shardDesc3.color) || '#cce6ff');
       }
     }
     if (R.lifeSkills) migrateLifeSkills(R.lifeSkills);
     leveled = addLifeSkillXp(R.lifeSkills, 'mining', xpAmt);
     if (!R._compStats) R._compStats = createDefaultCompStats();
     R._compStats.oresMined = (R._compStats.oresMined || 0) + 1;
-    S.dmgNumbers.push({ x: node.x, y: node.y - 10, text: reward.label, color: reward.color, ts: Date.now() });
-    S.dmgNumbers.push({ x: node.x, y: node.y - 22, text: baseName + (yieldQty > 1 ? ' x' + yieldQty : ''), color: node.color, ts: Date.now() });
-    S.dmgNumbers.push({ x: node.x, y: node.y - 38, text: '+' + xpAmt + ' Mining XP', color: '#00d4b8', ts: Date.now() });
+    pushDmgPopup(S, node.x, node.y - 10, reward.label, reward.color);
+    pushDmgPopup(S, node.x, node.y - 22, baseName + (yieldQty > 1 ? ' x' + yieldQty : ''), node.color);
+    pushDmgPopup(S, node.x, node.y - 38, '+' + xpAmt + ' Mining XP', '#00d4b8');
     if (leveled) {
-      S.dmgNumbers.push({ x: S.player.x, y: S.player.y - 50, text: 'Mining Level ' + R.lifeSkills.mining.level + '!', color: '#f5c542', ts: Date.now() });
+      pushDmgPopup(S, S.player.x, S.player.y - 50, 'Mining Level ' + R.lifeSkills.mining.level + '!', '#f5c542');
       BT_AUDIO.collect();
     }
     setRpgState(_objectSpread({}, R));
@@ -366,10 +367,10 @@ export function applyCookingResult(S, fishKey, kind, taps, deps) {
        + cooking XP gain go through the server when the channel is open;
        fallback to local apply otherwise (SP / disconnected). */
     if (kind === 'cooked') {
-      S.dmgNumbers.push({ x: S.player.x, y: S.player.y - 30, text: 'Cooked!', color: '#f5c542', ts: Date.now() });
-      S.dmgNumbers.push({ x: S.player.x, y: S.player.y - 46, text: '+8 Cooking XP', color: '#00d4b8', ts: Date.now() });
+      pushDmgPopup(S, S.player.x, S.player.y - 30, 'Cooked!', '#f5c542');
+      pushDmgPopup(S, S.player.x, S.player.y - 46, '+8 Cooking XP', '#00d4b8');
     } else {
-      S.dmgNumbers.push({ x: S.player.x, y: S.player.y - 30, text: 'Burnt!', color: '#ff5e6c', ts: Date.now() });
+      pushDmgPopup(S, S.player.x, S.player.y - 30, 'Burnt!', '#ff5e6c');
     }
     if (S.channel) {
       /* Server-mediated path: cook_request lets the worker validate

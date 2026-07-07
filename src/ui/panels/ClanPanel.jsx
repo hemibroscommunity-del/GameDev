@@ -2,6 +2,7 @@ import React from 'react';
 import { BT_AUDIO, CLAN_COLORS, CLAN_CREATE_COST, CLAN_LOGO_SIZE, CLAN_MAX_MEMBERS, CLAN_NAME_MAX, CLAN_TAG_MAX, CLAN_WAR_ZONES, ELEMENTS, ZONES, createClanWar } from '@/data/index.js';
 import { _objectSpread, _slicedToArray, _toConsumableArray } from '@/lib/babelHelpers.js';
 
+import { pushDmgPopup } from '@/game/combatHelpers.js';
 /* ═══ ClanPanel — clan create/manage/war screen ═══ */
 /* v2.3.859: moved verbatim from BroTown.jsx's JSX tree (UI-panel
    decomposition; behavior-frozen). createElement subtree unchanged. Props:
@@ -111,13 +112,7 @@ export function ClanPanel(props) {
           payload: { inviter: _inv.inviter }
         });
         S._pendingClanInvite = null;
-        S.dmgNumbers.push({
-          x: S.player.x,
-          y: S.player.y - 30,
-          text: 'Joining [' + _inv.clanTag + ']...',
-          color: '#3dd497',
-          ts: Date.now()
-        });
+        pushDmgPopup(S, S.player.x, S.player.y - 30, 'Joining [' + _inv.clanTag + ']...', '#3dd497');
       }
     }, "\u2705 Accept invite: [", _inv.clanTag, "] ", _inv.clanName, " (from ", _inv.fromName, ")");
   })(), /*#__PURE__*/React.createElement("div", {
@@ -211,34 +206,16 @@ export function ClanPanel(props) {
         var name = (_nameRef$current = nameRef.current) === null || _nameRef$current === void 0 || (_nameRef$current = _nameRef$current.value) === null || _nameRef$current === void 0 ? void 0 : _nameRef$current.trim();
         var tag = (_tagRef$current = tagRef.current) === null || _tagRef$current === void 0 || (_tagRef$current = _tagRef$current.value) === null || _tagRef$current === void 0 || (_tagRef$current = _tagRef$current.trim()) === null || _tagRef$current === void 0 ? void 0 : _tagRef$current.toUpperCase();
         if (!name || name.length < 3) {
-          stateRef.current.dmgNumbers.push({
-            x: stateRef.current.player.x,
-            y: stateRef.current.player.y - 30,
-            text: 'Name too short (min 3)',
-            color: '#ff5e6c',
-            ts: Date.now()
-          });
+          pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'Name too short (min 3)', '#ff5e6c');
           return;
         }
         if (!tag || tag.length < 1) {
-          stateRef.current.dmgNumbers.push({
-            x: stateRef.current.player.x,
-            y: stateRef.current.player.y - 30,
-            text: 'Need a clan tag',
-            color: '#ff5e6c',
-            ts: Date.now()
-          });
+          pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'Need a clan tag', '#ff5e6c');
           return;
         }
         var R = stateRef.current.rpg;
         if (R.coins < CLAN_CREATE_COST) {
-          stateRef.current.dmgNumbers.push({
-            x: stateRef.current.player.x,
-            y: stateRef.current.player.y - 30,
-            text: 'Need ' + CLAN_CREATE_COST + 'g',
-            color: '#ff5e6c',
-            ts: Date.now()
-          });
+          pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'Need ' + CLAN_CREATE_COST + 'g', '#ff5e6c');
           return;
         }
         /* v2.3.1125: registry-capable workers own clan creation -- the
@@ -258,13 +235,7 @@ export function ClanPanel(props) {
             }
           });
           setClanCreateMode(false);
-          stateRef.current.dmgNumbers.push({
-            x: stateRef.current.player.x,
-            y: stateRef.current.player.y - 40,
-            text: 'Founding [' + tag + ']...',
-            color: '#a78bfa',
-            ts: Date.now()
-          });
+          pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 40, 'Founding [' + tag + ']...', '#a78bfa');
           return;
         }
         R.coins -= CLAN_CREATE_COST;
@@ -272,13 +243,7 @@ export function ClanPanel(props) {
         setClanData(newClan);
         stateRef.current._clanData = newClan;
         setClanCreateMode(false);
-        stateRef.current.dmgNumbers.push({
-          x: stateRef.current.player.x,
-          y: stateRef.current.player.y - 40,
-          text: 'Clan [' + tag + '] Created!',
-          color: '#a78bfa',
-          ts: Date.now()
-        });
+        pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 40, 'Clan [' + tag + '] Created!', '#a78bfa');
         BT_AUDIO.levelUp();
         setRpgState(_objectSpread({}, R));
         try {
@@ -507,13 +472,7 @@ export function ClanPanel(props) {
       try {
         localStorage.setItem('bt_clan', JSON.stringify(clanData));
       } catch (e) {}
-      stateRef.current.dmgNumbers.push({
-        x: stateRef.current.player.x,
-        y: stateRef.current.player.y - 30,
-        text: 'Logo saved!',
-        color: '#a78bfa',
-        ts: Date.now()
-      });
+      pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'Logo saved!', '#a78bfa');
       BT_AUDIO.collect();
     }
   }, "Save Logo"))), /*#__PURE__*/React.createElement("div", {
@@ -738,13 +697,7 @@ export function ClanPanel(props) {
       var zone = S._warZone || CLAN_WAR_ZONES[0];
       var target = S._warTargetData;
       if (!target) {
-        S.dmgNumbers.push({
-          x: S.player.x,
-          y: S.player.y - 30,
-          text: 'Select a target clan!',
-          color: '#ff5e6c',
-          ts: Date.now()
-        });
+        pushDmgPopup(S, S.player.x, S.player.y - 30, 'Select a target clan!', '#ff5e6c');
         return;
       }
       /* v2.3.1125: referee-capable workers BUILD the war themselves
@@ -778,20 +731,8 @@ export function ClanPanel(props) {
           }
         });
       }
-      S.dmgNumbers.push({
-        x: S.player.x,
-        y: S.player.y - 40,
-        text: 'WAR DECLARED vs [' + target.tag + ']!',
-        color: '#ff5e6c',
-        ts: Date.now()
-      });
-      S.dmgNumbers.push({
-        x: S.player.x,
-        y: S.player.y - 25,
-        text: 'Battle zone: ' + ((_ZONES$zone = ZONES[zone]) === null || _ZONES$zone === void 0 ? void 0 : _ZONES$zone.name),
-        color: 'rgba(255,255,255,.5)',
-        ts: Date.now()
-      });
+      pushDmgPopup(S, S.player.x, S.player.y - 40, 'WAR DECLARED vs [' + target.tag + ']!', '#ff5e6c');
+      pushDmgPopup(S, S.player.x, S.player.y - 25, 'Battle zone: ' + ((_ZONES$zone = ZONES[zone]) === null || _ZONES$zone === void 0 ? void 0 : _ZONES$zone.name), 'rgba(255,255,255,.5)');
       BT_AUDIO.beep(200, 0.15, 0.2, 'sawtooth');
       setTimeout(function () {
         return BT_AUDIO.beep(150, 0.2, 0.25, 'sawtooth');
@@ -828,13 +769,7 @@ export function ClanPanel(props) {
       try {
         localStorage.removeItem('bt_clan');
       } catch (e) {}
-      stateRef.current.dmgNumbers.push({
-        x: stateRef.current.player.x,
-        y: stateRef.current.player.y - 30,
-        text: 'Left clan',
-        color: '#ff5e6c',
-        ts: Date.now()
-      });
+      pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'Left clan', '#ff5e6c');
     }
   }, "Leave Clan"))));
 }

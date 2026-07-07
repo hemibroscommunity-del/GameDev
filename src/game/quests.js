@@ -13,6 +13,7 @@
 import { QUEST_STATUS, QUEST_AP_REWARD, createDefaultCompStats, BT_AUDIO } from '@/data/index.js';
 import { _objectSpread } from '@/lib/babelHelpers.js';
 
+import { pushDmgPopup } from '@/game/combatHelpers.js';
 export function acceptQuest(S, questPanel, deps) {
   var setRpgState = deps.setRpgState,
     setQuestPanel = deps.setQuestPanel;
@@ -36,13 +37,7 @@ export function acceptQuest(S, questPanel, deps) {
   setQuestPanel(_objectSpread(_objectSpread({}, questPanel), {}, {
     status: 'active'
   }));
-  S.dmgNumbers.push({
-    x: S.player.x,
-    y: S.player.y - 40,
-    text: 'Quest Accepted: ' + questPanel.quest.title,
-    color: '#5b52ff',
-    ts: Date.now()
-  });
+  pushDmgPopup(S, S.player.x, S.player.y - 40, 'Quest Accepted: ' + questPanel.quest.title, '#5b52ff');
   BT_AUDIO.collect();
 }
 
@@ -78,13 +73,7 @@ export function turnInQuest(S, questPanel, deps) {
   try {
     localStorage.setItem('bt_rpg', JSON.stringify(R));
   } catch (e) {}
-  S.dmgNumbers.push({
-    x: S.player.x,
-    y: S.player.y - 40,
-    text: 'Quest Complete! +' + questPanel.quest.reward.gold + 'G +' + questPanel.quest.reward.xp + 'XP',
-    color: '#f5c542',
-    ts: Date.now()
-  });
+  pushDmgPopup(S, S.player.x, S.player.y - 40, 'Quest Complete! +' + questPanel.quest.reward.gold + 'G +' + questPanel.quest.reward.xp + 'XP', '#f5c542');
   BT_AUDIO.levelUp();
   setQuestPanel(null);
 }

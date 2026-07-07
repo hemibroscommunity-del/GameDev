@@ -3,6 +3,7 @@ import { BT_AUDIO, SHOP_ITEMS_FOR_SALE, SHOP_PRICES } from '@/data/index.js';
 import { syncRpgToServer } from '@/networking/index.js';
 import { _objectSpread, _slicedToArray } from '@/lib/babelHelpers.js';
 
+import { pushDmgPopup } from '@/game/combatHelpers.js';
 /* ═══ ShopPanel — town shop buy/sell ═══ */
 /* v2.3.866: moved verbatim from BroTown.jsx's JSX tree (UI-panel
    decomposition; behavior-frozen). createElement subtree unchanged. 4
@@ -102,13 +103,7 @@ export function ShopPanel(props) {
         setRpgState(_objectSpread({}, R));
         syncRpgToServer(R);
         BT_AUDIO.beep(500, 0.05, 0.08, 'sine');
-        S.dmgNumbers.push({
-          x: S.player.x,
-          y: S.player.y - 30,
-          text: '+' + price + 'G',
-          color: '#f5c542',
-          ts: Date.now()
-        });
+        pushDmgPopup(S, S.player.x, S.player.y - 30, '+' + price + 'G', '#f5c542');
       }
     }, /*#__PURE__*/React.createElement("div", {
       style: {
@@ -178,13 +173,7 @@ export function ShopPanel(props) {
         R.coins -= item.cost;
         if (item.key === 'potions') {
           R.hp = Math.min(R.maxHp, R.hp + 30);
-          S.dmgNumbers.push({
-            x: S.player.x,
-            y: S.player.y - 30,
-            text: '+30HP',
-            color: '#3dd497',
-            ts: Date.now()
-          });
+          pushDmgPopup(S, S.player.x, S.player.y - 30, '+30HP', '#3dd497');
         }
         setRpgState(_objectSpread({}, R));
         BT_AUDIO.collect();
@@ -220,13 +209,7 @@ export function ShopPanel(props) {
       setRpgState(_objectSpread({}, R));
       if (total > 0) syncRpgToServer(R);
       if (total > 0) {
-        S.dmgNumbers.push({
-          x: S.player.x,
-          y: S.player.y - 30,
-          text: '+' + total + 'G',
-          color: '#f5c542',
-          ts: Date.now()
-        });
+        pushDmgPopup(S, S.player.x, S.player.y - 30, '+' + total + 'G', '#f5c542');
         BT_AUDIO.collect();
       }
     }

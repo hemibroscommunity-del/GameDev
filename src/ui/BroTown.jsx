@@ -99,7 +99,7 @@ import { wireSpriteSheets } from '@/game/spriteSheets.js';
 import { wireSlimeAudio } from '@/game/slimeAudio.js';
 import { wireOrientationSync } from '@/game/orientationSync.js';
 /* v2.3.765: combat helpers extracted behavior-frozen (docs/REBUILD-PLAN.md Phase 0). */
-import { releasePeerDamage, addBuildProg } from '@/game/combatHelpers.js';
+import { releasePeerDamage, addBuildProg, pushDmgPopup } from '@/game/combatHelpers.js';
 /* v2.3.767: chat send + chat/emote handlers extracted behavior-frozen (REBUILD-PLAN Phase 2). */
 import { sendChatMessage } from '@/game/chat.js';
 /* v2.3.787: zone transitions (town exits, tile-9 return, dungeon entrance/exit)
@@ -2928,8 +2928,8 @@ export var BroTown = function BroTown(_ref0) {
           var _defGoldLost = Math.floor((S.rpg.coins || 0) * DEATH_GOLD_PENALTY);
           S.rpg.coins = Math.max(0, (S.rpg.coins || 0) - _defGoldLost);
           /* Popup (skip if a rich handler already pushed one this tick). */
-          S.dmgNumbers.push({ x: P.x, y: P.y - 50, text: 'YOU DIED', color: '#ff5e6c', ts: Date.now() });
-          if (_defGoldLost > 0) S.dmgNumbers.push({ x: P.x, y: P.y - 35, text: '-' + _defGoldLost + 'G', color: '#ff5e6c', ts: Date.now() });
+          pushDmgPopup(S, P.x, P.y - 50, 'YOU DIED', '#ff5e6c');
+          if (_defGoldLost > 0) pushDmgPopup(S, P.x, P.y - 35, '-' + _defGoldLost + 'G', '#ff5e6c');
           S.screenShake = Math.max(S.screenShake || 0, 10);
           S._deathFlash = Date.now();
           try { BT_AUDIO.playerDeath ? BT_AUDIO.playerDeath() : BT_AUDIO.beep(80, 0.3, 0.4, 'sawtooth'); } catch (e) {}
@@ -3136,13 +3136,7 @@ export var BroTown = function BroTown(_ref0) {
             S._sleeping = {
               started: Date.now()
             };
-            S.dmgNumbers.push({
-              x: P.x,
-              y: P.y - 30,
-              text: 'Resting... (3s)',
-              color: '#a0a0ff',
-              ts: Date.now()
-            });
+            pushDmgPopup(S, P.x, P.y - 30, 'Resting... (3s)', '#a0a0ff');
             BT_AUDIO.beep(300, 0.04, 0.06, 'sine');
           } else {
             var sleepElapsed = Date.now() - S._sleeping.started;
@@ -3153,20 +3147,8 @@ export var BroTown = function BroTown(_ref0) {
               R2.stamina = R2.maxStamina;
               R2.mana = R2.maxMana;
               R2._wellRestedUntil = Date.now() + WELL_RESTED_DURATION;
-              S.dmgNumbers.push({
-                x: P.x,
-                y: P.y - 40,
-                text: 'Fully Rested!',
-                color: '#3dd497',
-                ts: Date.now()
-              });
-              S.dmgNumbers.push({
-                x: P.x,
-                y: P.y - 25,
-                text: '+10% XP for 30 min',
-                color: '#f5c542',
-                ts: Date.now()
-              });
+              pushDmgPopup(S, P.x, P.y - 40, 'Fully Rested!', '#3dd497');
+              pushDmgPopup(S, P.x, P.y - 25, '+10% XP for 30 min', '#f5c542');
               BT_AUDIO.collect();
               setTimeout(function () {
                 return BT_AUDIO.beep(600, 0.08, 0.1, 'sine');
@@ -3484,11 +3466,7 @@ export var BroTown = function BroTown(_ref0) {
                 if (S._serverGatherNodes && S.channel) {
                   try { S.channel.send({ type: 'node_strike', payload: { id: _exNode.id, zone: S.currentZone, accuracy: 'miss' } }); } catch (e) {}
                 }
-                S.dmgNumbers.push({
-                  x: _exNode.x, y: _exNode.y - 10,
-                  text: _ex.skill === 'fishing' ? 'Fish escaped' : 'Missed',
-                  color: '#ff5e6c', ts: _exNow,
-                });
+                pushDmgPopup(S, _exNode.x, _exNode.y - 10, _ex.skill === 'fishing' ? 'Fish escaped' : 'Missed', '#ff5e6c', { ts: _exNow });
                 try { BT_AUDIO.beep(200, 0.06, 0.08, 'sawtooth'); } catch (e) {}
                 S._extraction = null;
               }
@@ -3595,33 +3573,15 @@ export var BroTown = function BroTown(_ref0) {
                         if (S.rpg.weaponStash.length < WEAPON_STASH_MAX) S.rpg.weaponStash.push(_objectSpread({}, current));
                       }
                       if (isRanged) S.rpg.rangedWeapon = drop;else S.rpg.weapon = drop;
-                      S.dmgNumbers.push({
-                        x: S._petX,
-                        y: S._petY - 15,
-                        text: 'PET -> ' + drop.name,
-                        color: loot.tierColor || '#fff',
-                        ts: Date.now()
-                      });
+                      pushDmgPopup(S, S._petX, S._petY - 15, 'PET -> ' + drop.name, loot.tierColor || '#fff');
                     } else {
                       if (!S.rpg.weaponStash) S.rpg.weaponStash = [];
                       if (S.rpg.weaponStash.length < WEAPON_STASH_MAX) {
                         S.rpg.weaponStash.push(drop);
-                        S.dmgNumbers.push({
-                          x: S._petX,
-                          y: S._petY - 15,
-                          text: 'PET -> ' + drop.name,
-                          color: '#8890b8',
-                          ts: Date.now()
-                        });
+                        pushDmgPopup(S, S._petX, S._petY - 15, 'PET -> ' + drop.name, '#8890b8');
                       } else {
                         S.rpg.coins += Math.ceil(dropPower * 0.5);
-                        S.dmgNumbers.push({
-                          x: S._petX,
-                          y: S._petY - 15,
-                          text: 'PET -> sold',
-                          color: '#f5c542',
-                          ts: Date.now()
-                        });
+                        pushDmgPopup(S, S._petX, S._petY - 15, 'PET -> sold', '#f5c542');
                       }
                     }
                   } else {
@@ -3634,13 +3594,7 @@ export var BroTown = function BroTown(_ref0) {
                   if (loot.shard && S.rpg.inventory) {
                     S.rpg.inventory[loot.shard] = (S.rpg.inventory[loot.shard] || 0) + 1;
                     var _petShard = shardByKey(loot.shard);
-                    S.dmgNumbers.push({
-                      x: S._petX,
-                      y: S._petY - 28,
-                      text: pet.emoji + ' + ' + (_petShard ? _petShard.label : 'Shard'),
-                      color: (_petShard && _petShard.color) || '#cce6ff',
-                      ts: Date.now()
-                    });
+                    pushDmgPopup(S, S._petX, S._petY - 28, pet.emoji + ' + ' + (_petShard ? _petShard.label : 'Shard'), (_petShard && _petShard.color) || '#cce6ff');
                   }
                   BT_AUDIO.beep(600, 0.03, 0.04, 'sine');
                   if (!S.rpg._questFlags) S.rpg._questFlags = {};
@@ -3674,13 +3628,7 @@ export var BroTown = function BroTown(_ref0) {
                 nearestM.curHp -= petDmg;
                 S._petAtkCd = Date.now() + 1500; /* pet attacks every 1.5s */
                 /* Visual feedback — small damage number from pet */
-                S.dmgNumbers.push({
-                  x: nearestM.x,
-                  y: nearestM.y - 10,
-                  text: pet.emoji + ' -' + petDmg,
-                  color: pet.color || '#3dd497',
-                  ts: Date.now()
-                });
+                pushDmgPopup(S, nearestM.x, nearestM.y - 10, pet.emoji + ' -' + petDmg, pet.color || '#3dd497');
                 /* Pet attack particles */
                 for (var pp = 0; pp < 3; pp++) {
                   S.hitParticles.push({
@@ -3940,29 +3888,11 @@ export var BroTown = function BroTown(_ref0) {
             if (myKills >= totalTeamKills) {
               S.rpg.coins += CLAN_WAR_REWARDS.mvp.gold;
               S.rpg.achievementPoints += CLAN_WAR_REWARDS.mvp.ap;
-              S.dmgNumbers.push({
-                x: P.x,
-                y: P.y - 70,
-                text: 'MVP! +' + CLAN_WAR_REWARDS.mvp.gold + 'G +' + CLAN_WAR_REWARDS.mvp.ap + 'AP',
-                color: '#f5c542',
-                ts: Date.now()
-              });
+              pushDmgPopup(S, P.x, P.y - 70, 'MVP! +' + CLAN_WAR_REWARDS.mvp.gold + 'G +' + CLAN_WAR_REWARDS.mvp.ap + 'AP', '#f5c542');
             }
           }
-          S.dmgNumbers.push({
-            x: P.x,
-            y: P.y - 55,
-            text: cWin === 'tie' ? 'War ended in a TIE!' : isWinner ? 'WAR WON!' : 'War lost...',
-            color: isWinner ? '#f5c542' : '#ff5e6c',
-            ts: Date.now()
-          });
-          S.dmgNumbers.push({
-            x: P.x,
-            y: P.y - 40,
-            text: '+' + reward.gold + 'G +' + reward.ap + 'AP',
-            color: '#f5c542',
-            ts: Date.now()
-          });
+          pushDmgPopup(S, P.x, P.y - 55, cWin === 'tie' ? 'War ended in a TIE!' : isWinner ? 'WAR WON!' : 'War lost...', isWinner ? '#f5c542' : '#ff5e6c');
+          pushDmgPopup(S, P.x, P.y - 40, '+' + reward.gold + 'G +' + reward.ap + 'AP', '#f5c542');
           if (isWinner) BT_AUDIO.levelUp();else BT_AUDIO.beep(150, 0.1, 0.15, 'triangle');
           S.screenShake = 8;
           setTimeout(function () {
@@ -4581,13 +4511,7 @@ export var BroTown = function BroTown(_ref0) {
             if (!S3._arenaNotified || S3._arenaNotified !== d.currentMatch.id) {
               S3._arenaNotified = d.currentMatch.id;
               var opp = d.currentMatch.p1 === S3.myId ? d.currentMatch.p2Name : d.currentMatch.p1Name;
-              S3.dmgNumbers.push({
-                x: S3.player.x,
-                y: S3.player.y - 50,
-                text: 'ARENA MATCH! vs ' + opp,
-                color: '#ff5e6c',
-                ts: Date.now()
-              });
+              pushDmgPopup(S3, S3.player.x, S3.player.y - 50, 'ARENA MATCH! vs ' + opp, '#ff5e6c');
               BT_AUDIO.beep(300, 0.15, 0.2, 'sawtooth');
               setTimeout(function () {
                 return BT_AUDIO.beep(200, 0.12, 0.15, 'sawtooth');
@@ -4623,22 +4547,10 @@ export var BroTown = function BroTown(_ref0) {
                 }
               });
               if (totalWon > 0) {
-                S3.dmgNumbers.push({
-                  x: S3.player.x,
-                  y: S3.player.y - 60,
-                  text: 'BET WON! +' + totalWon + 'G',
-                  color: '#f5c542',
-                  ts: Date.now()
-                });
+                pushDmgPopup(S3, S3.player.x, S3.player.y - 60, 'BET WON! +' + totalWon + 'G', '#f5c542');
                 BT_AUDIO.collect();
               } else {
-                S3.dmgNumbers.push({
-                  x: S3.player.x,
-                  y: S3.player.y - 60,
-                  text: 'Bet lost (-' + totalLost + 'G)',
-                  color: 'rgba(255,255,255,.4)',
-                  ts: Date.now()
-                });
+                pushDmgPopup(S3, S3.player.x, S3.player.y - 60, 'Bet lost (-' + totalLost + 'G)', 'rgba(255,255,255,.4)');
               }
               setRpgState(_objectSpread({}, R3));
               try {
@@ -4797,20 +4709,8 @@ export var BroTown = function BroTown(_ref0) {
     R.stamina = R.maxStamina;
     R.mana = R.maxMana;
     R._wellRestedUntil = Date.now() + 1800000;
-    S2.dmgNumbers.push({
-      x: S2.player.x,
-      y: S2.player.y - 40,
-      text: 'Zzz... Stats restored!',
-      color: '#3dd497',
-      ts: Date.now()
-    });
-    S2.dmgNumbers.push({
-      x: S2.player.x,
-      y: S2.player.y - 25,
-      text: 'Well Rested +10% XP (30min)',
-      color: '#f5c542',
-      ts: Date.now()
-    });
+    pushDmgPopup(S2, S2.player.x, S2.player.y - 40, 'Zzz... Stats restored!', '#3dd497');
+    pushDmgPopup(S2, S2.player.x, S2.player.y - 25, 'Well Rested +10% XP (30min)', '#f5c542');
     BT_AUDIO.beep(400, 0.06, 0.08, 'sine');
     setTimeout(function () {
       return BT_AUDIO.beep(500, 0.05, 0.07, 'sine');
@@ -4833,13 +4733,7 @@ export var BroTown = function BroTown(_ref0) {
     var skillName = node.skill || 'mining';
     var skillLvl = ((_R$lifeSkills = R.lifeSkills) === null || _R$lifeSkills === void 0 || (_R$lifeSkills = _R$lifeSkills[skillName]) === null || _R$lifeSkills === void 0 ? void 0 : _R$lifeSkills.level) || 1;
     if (false) { /* gathering level gate disabled — all resources harvestable at lvl 1 */
-      S.dmgNumbers.push({
-        x: node.x,
-        y: node.y - 15,
-        text: 'Need ' + skillName.charAt(0).toUpperCase() + skillName.slice(1) + ' Lv' + node.gatherLvl,
-        color: '#ff5e6c',
-        ts: Date.now()
-      });
+      pushDmgPopup(S, node.x, node.y - 15, 'Need ' + skillName.charAt(0).toUpperCase() + skillName.slice(1) + ' Lv' + node.gatherLvl, '#ff5e6c');
       BT_AUDIO.beep(200, 0.05, 0.08, 'square');
       return;
     }
@@ -4885,7 +4779,7 @@ export var BroTown = function BroTown(_ref0) {
       return k.indexOf('fish_') === 0 && R.inventory[k] > 0;
     });
     if (!fishKey) {
-      S.dmgNumbers.push({ x: node.x, y: node.y - 24, text: 'Need raw fish', color: '#ff5e6c', ts: Date.now() });
+      pushDmgPopup(S, node.x, node.y - 24, 'Need raw fish', '#ff5e6c');
       try { BT_AUDIO.beep(200, 0.05, 0.08, 'square'); } catch (e) {}
       return;
     }
@@ -4916,7 +4810,7 @@ export var BroTown = function BroTown(_ref0) {
       if (R.inventory[key] <= 0) delete R.inventory[key];
       var now = Date.now();
       S._firemaking = { startedAt: now, doneAt: now + 1500, x: S.player.x, y: S.player.y + 6 };
-      S.dmgNumbers.push({ x: S.player.x, y: S.player.y - 30, text: 'Lighting fire…', color: '#ff8a3c', ts: now });
+      pushDmgPopup(S, S.player.x, S.player.y - 30, 'Lighting fire…', '#ff8a3c', { ts: now });
       try { BT_AUDIO.beep(180, 0.05, 0.12, 'sawtooth'); } catch (e) {}
       setRpgState(_objectSpread({}, R));
       try { localStorage.setItem('bt_rpg', JSON.stringify(R)); } catch (e) {}
@@ -4937,7 +4831,7 @@ export var BroTown = function BroTown(_ref0) {
       if ((R.inventory[key] || 0) <= 0) return;
       var maxHp = R.maxHp || 100;
       if ((R.hp || 0) >= maxHp) {
-        S.dmgNumbers.push({ x: S.player.x, y: S.player.y - 30, text: 'HP full', color: '#8890b8', ts: Date.now() });
+        pushDmgPopup(S, S.player.x, S.player.y - 30, 'HP full', '#8890b8');
         return;
       }
       var HEAL = COOKED_HEAL_BY_KEY[key] != null ? COOKED_HEAL_BY_KEY[key] : COOKED_HEAL_DEFAULT;
@@ -4946,8 +4840,8 @@ export var BroTown = function BroTown(_ref0) {
       var actual = R.hp - before;
       R.inventory[key] -= 1;
       if (R.inventory[key] <= 0) delete R.inventory[key];
-      S.dmgNumbers.push({ x: S.player.x, y: S.player.y - 30, text: '+' + actual + ' HP', color: '#3dd497', ts: Date.now() });
-      S.dmgNumbers.push({ x: S.player.x, y: S.player.y - 46, text: 'Ate cooked fish', color: '#f5c542', ts: Date.now() });
+      pushDmgPopup(S, S.player.x, S.player.y - 30, '+' + actual + ' HP', '#3dd497');
+      pushDmgPopup(S, S.player.x, S.player.y - 46, 'Ate cooked fish', '#f5c542');
       try { BT_AUDIO.beep(620, 0.05, 0.07, 'sine'); } catch (e) {}
       setRpgState(_objectSpread({}, R));
       try { localStorage.setItem('bt_rpg', JSON.stringify(R)); } catch (e) {}
@@ -5006,13 +4900,7 @@ export var BroTown = function BroTown(_ref0) {
     }
     setRpgState(_objectSpread({}, S2.rpg));
     var wpnName = nextSlot === 'melee' ? (_S2$rpg$weapon = S2.rpg.weapon) === null || _S2$rpg$weapon === void 0 ? void 0 : _S2$rpg$weapon.name : nextSlot === 'ranged' ? (_S2$rpg$rangedWeapon = S2.rpg.rangedWeapon) === null || _S2$rpg$rangedWeapon === void 0 ? void 0 : _S2$rpg$rangedWeapon.name : 'Staff';
-    S2.dmgNumbers.push({
-      x: S2.player.x,
-      y: S2.player.y - 40,
-      text: wpnName,
-      color: '#f5c542',
-      ts: Date.now()
-    });
+    pushDmgPopup(S2, S2.player.x, S2.player.y - 40, wpnName, '#f5c542');
     BT_AUDIO.beep(600, 0.06, 0.08, 'sine');
     setTimeout(function () {
       return BT_AUDIO.beep(800, 0.04, 0.06, 'sine');
@@ -5026,13 +4914,7 @@ export var BroTown = function BroTown(_ref0) {
     S2.rpg.activeSlot = slot;
     setRpgState(_objectSpread({}, S2.rpg));
     var wpnName = slot === 'melee' ? (_S2$rpg$weapon2 = S2.rpg.weapon) === null || _S2$rpg$weapon2 === void 0 ? void 0 : _S2$rpg$weapon2.name : slot === 'ranged' ? (_S2$rpg$rangedWeapon2 = S2.rpg.rangedWeapon) === null || _S2$rpg$rangedWeapon2 === void 0 ? void 0 : _S2$rpg$rangedWeapon2.name : 'Staff';
-    S2.dmgNumbers.push({
-      x: S2.player.x,
-      y: S2.player.y - 40,
-      text: wpnName,
-      color: '#f5c542',
-      ts: Date.now()
-    });
+    pushDmgPopup(S2, S2.player.x, S2.player.y - 40, wpnName, '#f5c542');
     BT_AUDIO.beep(600, 0.06, 0.08, 'sine');
   }, []);
   var _desktopSpecialAttack = useCallback(function () {
@@ -7063,13 +6945,7 @@ export var BroTown = function BroTown(_ref0) {
       var S = stateRef.current;
       if (!S._snowmen) S._snowmen = [];
       if (S._snowmen.length >= 3) {
-        S.dmgNumbers.push({
-          x: S.player.x,
-          y: S.player.y - 30,
-          text: 'Max 3 snowmen!',
-          color: '#ff5e6c',
-          ts: Date.now()
-        });
+        pushDmgPopup(S, S.player.x, S.player.y - 30, 'Max 3 snowmen!', '#ff5e6c');
         return;
       }
       S._snowmen.push({
@@ -7078,13 +6954,7 @@ export var BroTown = function BroTown(_ref0) {
         ts: Date.now(),
         hp: 50
       });
-      S.dmgNumbers.push({
-        x: S.player.x,
-        y: S.player.y - 30,
-        text: 'Snowman placed!',
-        color: '#a0d8f0',
-        ts: Date.now()
-      });
+      pushDmgPopup(S, S.player.x, S.player.y - 30, 'Snowman placed!', '#a0d8f0');
       BT_AUDIO.beep(500, 0.06, 0.08, 'sine');
     }
   }, "\u26C4 Snowman"), /*#__PURE__*/React.createElement("button", {
@@ -7114,13 +6984,7 @@ export var BroTown = function BroTown(_ref0) {
         return s + v;
       }, 0);
       if (hasWood < SLED_WOOD_COST) {
-        S.dmgNumbers.push({
-          x: S.player.x,
-          y: S.player.y - 30,
-          text: 'Need ' + SLED_WOOD_COST + ' wood!',
-          color: '#ff5e6c',
-          ts: Date.now()
-        });
+        pushDmgPopup(S, S.player.x, S.player.y - 30, 'Need ' + SLED_WOOD_COST + ' wood!', '#ff5e6c');
         return;
       }
       /* Consume wood */
@@ -7140,13 +7004,7 @@ export var BroTown = function BroTown(_ref0) {
         angle: angle,
         speed: SLED_SPEED_MULT * 2.5
       };
-      S.dmgNumbers.push({
-        x: S.player.x,
-        y: S.player.y - 30,
-        text: 'SLED!',
-        color: '#60a5fa',
-        ts: Date.now()
-      });
+      pushDmgPopup(S, S.player.x, S.player.y - 30, 'SLED!', '#60a5fa');
       BT_AUDIO.beep(400, 0.1, 0.15, 'triangle');
       setRpgState(_objectSpread({}, R));
     }
@@ -7199,13 +7057,7 @@ export var BroTown = function BroTown(_ref0) {
         return s + v;
       }, 0);
       if (hasWood < RAFT_WOOD_COST) {
-        S.dmgNumbers.push({
-          x: S.player.x,
-          y: S.player.y - 30,
-          text: 'Need ' + RAFT_WOOD_COST + ' wood!',
-          color: '#ff5e6c',
-          ts: Date.now()
-        });
+        pushDmgPopup(S, S.player.x, S.player.y - 30, 'Need ' + RAFT_WOOD_COST + ' wood!', '#ff5e6c');
         return;
       }
       var rem = RAFT_WOOD_COST;
@@ -7219,13 +7071,7 @@ export var BroTown = function BroTown(_ref0) {
         if (R.inventory[k] <= 0) delete R.inventory[k];
       });
       S._raft = true;
-      S.dmgNumbers.push({
-        x: S.player.x,
-        y: S.player.y - 30,
-        text: 'Raft built! Sail across water.',
-        color: '#3498DB',
-        ts: Date.now()
-      });
+      pushDmgPopup(S, S.player.x, S.player.y - 30, 'Raft built! Sail across water.', '#3498DB');
       BT_AUDIO.collect();
       setRpgState(_objectSpread({}, R));
     }
@@ -7278,13 +7124,7 @@ export var BroTown = function BroTown(_ref0) {
         return s + v;
       }, 0);
       if (hasWood < TORCH_WOOD_COST) {
-        S.dmgNumbers.push({
-          x: S.player.x,
-          y: S.player.y - 30,
-          text: 'Need ' + TORCH_WOOD_COST + ' wood!',
-          color: '#ff5e6c',
-          ts: Date.now()
-        });
+        pushDmgPopup(S, S.player.x, S.player.y - 30, 'Need ' + TORCH_WOOD_COST + ' wood!', '#ff5e6c');
         return;
       }
       var rem = TORCH_WOOD_COST;
@@ -7301,13 +7141,7 @@ export var BroTown = function BroTown(_ref0) {
         started: Date.now(),
         radius: TORCH_RADIUS_BASE
       };
-      S.dmgNumbers.push({
-        x: S.player.x,
-        y: S.player.y - 30,
-        text: 'Torch lit! (2 min)',
-        color: '#ea580c',
-        ts: Date.now()
-      });
+      pushDmgPopup(S, S.player.x, S.player.y - 30, 'Torch lit! (2 min)', '#ea580c');
       BT_AUDIO.beep(400, 0.08, 0.1, 'triangle');
       setRpgState(_objectSpread({}, R));
     }
@@ -7397,13 +7231,7 @@ export var BroTown = function BroTown(_ref0) {
       /* Snow collected from frost zone sand tiles — stored as inventory */
       var snowCount = ((_R$inventory = R.inventory) === null || _R$inventory === void 0 ? void 0 : _R$inventory.snow) || 0;
       if (snowCount < SNOWMAN_SNOW_COST) {
-        S.dmgNumbers.push({
-          x: S.player.x,
-          y: S.player.y - 30,
-          text: 'Need ' + SNOWMAN_SNOW_COST + ' snow (have ' + snowCount + ')',
-          color: '#a0d8f0',
-          ts: Date.now()
-        });
+        pushDmgPopup(S, S.player.x, S.player.y - 30, 'Need ' + SNOWMAN_SNOW_COST + ' snow (have ' + snowCount + ')', '#a0d8f0');
         return;
       }
       R.inventory.snow -= SNOWMAN_SNOW_COST;
@@ -7415,13 +7243,7 @@ export var BroTown = function BroTown(_ref0) {
         ts: Date.now(),
         hp: 50
       });
-      S.dmgNumbers.push({
-        x: S.player.x,
-        y: S.player.y - 30,
-        text: 'Snowman built!',
-        color: '#a0d8f0',
-        ts: Date.now()
-      });
+      pushDmgPopup(S, S.player.x, S.player.y - 30, 'Snowman built!', '#a0d8f0');
       BT_AUDIO.collect();
       setRpgState(_objectSpread({}, R));
     }
@@ -7458,13 +7280,7 @@ export var BroTown = function BroTown(_ref0) {
           return s + v;
         }, 0);
         if (woodCount < SLED_WOOD_COST) {
-          S.dmgNumbers.push({
-            x: S.player.x,
-            y: S.player.y - 30,
-            text: 'Need ' + SLED_WOOD_COST + ' wood (have ' + woodCount + ')',
-            color: '#a0d8f0',
-            ts: Date.now()
-          });
+          pushDmgPopup(S, S.player.x, S.player.y - 30, 'Need ' + SLED_WOOD_COST + ' wood (have ' + woodCount + ')', '#a0d8f0');
           return;
         }
         var remaining = SLED_WOOD_COST;
@@ -7478,13 +7294,7 @@ export var BroTown = function BroTown(_ref0) {
           if (R.inventory[k] <= 0) delete R.inventory[k];
         });
         S._hasSled = true;
-        S.dmgNumbers.push({
-          x: S.player.x,
-          y: S.player.y - 30,
-          text: 'Sled crafted!',
-          color: '#60a5fa',
-          ts: Date.now()
-        });
+        pushDmgPopup(S, S.player.x, S.player.y - 30, 'Sled crafted!', '#60a5fa');
         BT_AUDIO.collect();
         setRpgState(_objectSpread({}, R));
       } else {
@@ -7495,13 +7305,7 @@ export var BroTown = function BroTown(_ref0) {
           angle: angle,
           speed: SPEED * SLED_SPEED_MULT
         };
-        S.dmgNumbers.push({
-          x: S.player.x,
-          y: S.player.y - 30,
-          text: 'WHOOSH!',
-          color: '#60a5fa',
-          ts: Date.now()
-        });
+        pushDmgPopup(S, S.player.x, S.player.y - 30, 'WHOOSH!', '#60a5fa');
         BT_AUDIO.beep(400, 0.1, 0.15, 'triangle');
       }
     }
@@ -7546,13 +7350,7 @@ export var BroTown = function BroTown(_ref0) {
       var S = stateRef.current,
         R = S.rpg;
       if (S._raft) {
-        S.dmgNumbers.push({
-          x: S.player.x,
-          y: S.player.y - 30,
-          text: 'Already have a raft!',
-          color: '#3498DB',
-          ts: Date.now()
-        });
+        pushDmgPopup(S, S.player.x, S.player.y - 30, 'Already have a raft!', '#3498DB');
         return;
       }
       var woodCount = Object.entries(R.inventory || {}).filter(function (_ref214) {
@@ -7567,13 +7365,7 @@ export var BroTown = function BroTown(_ref0) {
         return s + v;
       }, 0);
       if (woodCount < RAFT_WOOD_COST) {
-        S.dmgNumbers.push({
-          x: S.player.x,
-          y: S.player.y - 30,
-          text: 'Need ' + RAFT_WOOD_COST + ' wood',
-          color: '#ff5e6c',
-          ts: Date.now()
-        });
+        pushDmgPopup(S, S.player.x, S.player.y - 30, 'Need ' + RAFT_WOOD_COST + ' wood', '#ff5e6c');
         return;
       }
       var rem = RAFT_WOOD_COST;
@@ -7587,13 +7379,7 @@ export var BroTown = function BroTown(_ref0) {
         if (R.inventory[k] <= 0) delete R.inventory[k];
       });
       S._raft = true;
-      S.dmgNumbers.push({
-        x: S.player.x,
-        y: S.player.y - 30,
-        text: 'Raft built!',
-        color: '#3498DB',
-        ts: Date.now()
-      });
+      pushDmgPopup(S, S.player.x, S.player.y - 30, 'Raft built!', '#3498DB');
       BT_AUDIO.collect();
       setRpgState(_objectSpread({}, R));
     }
@@ -7641,13 +7427,7 @@ export var BroTown = function BroTown(_ref0) {
       var S = stateRef.current,
         R = S.rpg;
       if (S._torch) {
-        S.dmgNumbers.push({
-          x: S.player.x,
-          y: S.player.y - 30,
-          text: 'Torch already lit!',
-          color: '#ea580c',
-          ts: Date.now()
-        });
+        pushDmgPopup(S, S.player.x, S.player.y - 30, 'Torch already lit!', '#ea580c');
         return;
       }
       var woodCount = Object.entries(R.inventory || {}).filter(function (_ref218) {
@@ -7662,13 +7442,7 @@ export var BroTown = function BroTown(_ref0) {
         return s + v;
       }, 0);
       if (woodCount < TORCH_WOOD_COST) {
-        S.dmgNumbers.push({
-          x: S.player.x,
-          y: S.player.y - 30,
-          text: 'Need ' + TORCH_WOOD_COST + ' wood',
-          color: '#ff5e6c',
-          ts: Date.now()
-        });
+        pushDmgPopup(S, S.player.x, S.player.y - 30, 'Need ' + TORCH_WOOD_COST + ' wood', '#ff5e6c');
         return;
       }
       var rem = TORCH_WOOD_COST;
@@ -7685,13 +7459,7 @@ export var BroTown = function BroTown(_ref0) {
         started: Date.now(),
         radius: TORCH_RADIUS_BASE
       };
-      S.dmgNumbers.push({
-        x: S.player.x,
-        y: S.player.y - 30,
-        text: 'Torch lit!',
-        color: '#ea580c',
-        ts: Date.now()
-      });
+      pushDmgPopup(S, S.player.x, S.player.y - 30, 'Torch lit!', '#ea580c');
       BT_AUDIO.beep(400, 0.06, 0.08, 'triangle');
       setRpgState(_objectSpread({}, R));
     }
@@ -7749,20 +7517,8 @@ export var BroTown = function BroTown(_ref0) {
       R.stamina = R.maxStamina;
       R.mana = R.maxMana;
       R._wellRestedUntil = Date.now() + 1800000; /* 30 min */
-      S2.dmgNumbers.push({
-        x: S2.player.x,
-        y: S2.player.y - 40,
-        text: 'Zzz... Stats restored!',
-        color: '#3dd497',
-        ts: Date.now()
-      });
-      S2.dmgNumbers.push({
-        x: S2.player.x,
-        y: S2.player.y - 25,
-        text: 'Well Rested +10% XP (30min)',
-        color: '#f5c542',
-        ts: Date.now()
-      });
+      pushDmgPopup(S2, S2.player.x, S2.player.y - 40, 'Zzz... Stats restored!', '#3dd497');
+      pushDmgPopup(S2, S2.player.x, S2.player.y - 25, 'Well Rested +10% XP (30min)', '#f5c542');
       BT_AUDIO.beep(400, 0.06, 0.08, 'sine');
       setTimeout(function () {
         return BT_AUDIO.beep(500, 0.05, 0.07, 'sine');
@@ -7874,13 +7630,7 @@ export var BroTown = function BroTown(_ref0) {
       var skillName = node.skill || 'mining';
       var skillLvl = ((_R$lifeSkills3 = R.lifeSkills) === null || _R$lifeSkills3 === void 0 || (_R$lifeSkills3 = _R$lifeSkills3[skillName]) === null || _R$lifeSkills3 === void 0 ? void 0 : _R$lifeSkills3.level) || 1;
       if (false) { /* gathering level gate disabled — all resources harvestable at lvl 1 */
-        S.dmgNumbers.push({
-          x: node.x,
-          y: node.y - 15,
-          text: 'Need ' + skillName.charAt(0).toUpperCase() + skillName.slice(1) + ' Lv' + node.gatherLvl,
-          color: '#ff5e6c',
-          ts: Date.now()
-        });
+        pushDmgPopup(S, node.x, node.y - 15, 'Need ' + skillName.charAt(0).toUpperCase() + skillName.slice(1) + ' Lv' + node.gatherLvl, '#ff5e6c');
         BT_AUDIO.beep(200, 0.05, 0.08, 'square');
         return;
       }
@@ -7901,13 +7651,7 @@ export var BroTown = function BroTown(_ref0) {
       var skillName = node.skill || 'mining';
       var skillLvl = ((_R$lifeSkills4 = R.lifeSkills) === null || _R$lifeSkills4 === void 0 || (_R$lifeSkills4 = _R$lifeSkills4[skillName]) === null || _R$lifeSkills4 === void 0 ? void 0 : _R$lifeSkills4.level) || 1;
       if (false) { /* gathering level gate disabled — all resources harvestable at lvl 1 */
-        S.dmgNumbers.push({
-          x: node.x,
-          y: node.y - 15,
-          text: 'Need ' + skillName.charAt(0).toUpperCase() + skillName.slice(1) + ' Lv' + node.gatherLvl,
-          color: '#ff5e6c',
-          ts: Date.now()
-        });
+        pushDmgPopup(S, node.x, node.y - 15, 'Need ' + skillName.charAt(0).toUpperCase() + skillName.slice(1) + ' Lv' + node.gatherLvl, '#ff5e6c');
         BT_AUDIO.beep(200, 0.05, 0.08, 'square');
         return;
       }
@@ -8015,13 +7759,7 @@ export var BroTown = function BroTown(_ref0) {
           S._manaBuff = Date.now() + dur;
         }
         addLifeSkillXp(R.lifeSkills, 'cooking', best.tier * 25);
-        S.dmgNumbers.push({
-          x: S.player.x,
-          y: S.player.y - 30,
-          text: best.name + '!',
-          color: '#ea580c',
-          ts: Date.now()
-        });
+        pushDmgPopup(S, S.player.x, S.player.y - 30, best.name + '!', '#ea580c');
         BT_AUDIO.collect();
         setRpgState(_objectSpread({}, R));
         try {
@@ -8099,13 +7837,7 @@ export var BroTown = function BroTown(_ref0) {
             ts: Date.now(),
             hp: 50
           });
-          S.dmgNumbers.push({
-            x: S.player.x,
-            y: S.player.y - 30,
-            text: 'Snowman placed!',
-            color: '#a0d8f0',
-            ts: Date.now()
-          });
+          pushDmgPopup(S, S.player.x, S.player.y - 30, 'Snowman placed!', '#a0d8f0');
           BT_AUDIO.collect();
           setRpgState(_objectSpread({}, R));
         }
@@ -8155,13 +7887,7 @@ export var BroTown = function BroTown(_ref0) {
             angle: angle,
             speed: SLED_SPEED_MULT * 2
           };
-          S.dmgNumbers.push({
-            x: S.player.x,
-            y: S.player.y - 30,
-            text: 'SLED!',
-            color: '#60a5fa',
-            ts: Date.now()
-          });
+          pushDmgPopup(S, S.player.x, S.player.y - 30, 'SLED!', '#60a5fa');
           S.screenShake = 3;
           BT_AUDIO.beep(400, 0.1, 0.12, 'triangle');
           setRpgState(_objectSpread({}, R));
@@ -8222,13 +7948,7 @@ export var BroTown = function BroTown(_ref0) {
               if (R.inventory[k] <= 0) delete R.inventory[k];
             });
             S._raft = true;
-            S.dmgNumbers.push({
-              x: S.player.x,
-              y: S.player.y - 30,
-              text: 'Raft built! You can cross water.',
-              color: '#d4a020',
-              ts: Date.now()
-            });
+            pushDmgPopup(S, S.player.x, S.player.y - 30, 'Raft built! You can cross water.', '#d4a020');
             BT_AUDIO.collect();
             setRpgState(_objectSpread({}, R));
           }
@@ -8292,13 +8012,7 @@ export var BroTown = function BroTown(_ref0) {
               started: Date.now(),
               radius: TORCH_RADIUS_BASE
             };
-            S.dmgNumbers.push({
-              x: S.player.x,
-              y: S.player.y - 30,
-              text: 'Torch lit! (2min)',
-              color: '#ea580c',
-              ts: Date.now()
-            });
+            pushDmgPopup(S, S.player.x, S.player.y - 30, 'Torch lit! (2min)', '#ea580c');
             BT_AUDIO.beep(400, 0.08, 0.1, 'triangle');
             setRpgState(_objectSpread({}, R));
           }
@@ -8400,20 +8114,8 @@ export var BroTown = function BroTown(_ref0) {
         S2.arrows = [];
         S2._ambientParticles = [];
         S2._zoneWipe = Date.now();
-        S2.dmgNumbers.push({
-          x: P2.x,
-          y: P2.y - 40,
-          text: 'Shadow Sanctum',
-          color: '#8E44AD',
-          ts: Date.now()
-        });
-        S2.dmgNumbers.push({
-          x: P2.x,
-          y: P2.y - 25,
-          text: 'Lv 81-100',
-          color: 'rgba(255,255,255,.5)',
-          ts: Date.now()
-        });
+        pushDmgPopup(S2, P2.x, P2.y - 40, 'Shadow Sanctum', '#8E44AD');
+        pushDmgPopup(S2, P2.x, P2.y - 25, 'Lv 81-100', 'rgba(255,255,255,.5)');
       },
       onMouseDown: function onMouseDown(e) {
         return e.preventDefault();
@@ -8448,20 +8150,8 @@ export var BroTown = function BroTown(_ref0) {
         S2.arrows = [];
         S2._ambientParticles = [];
         S2._zoneWipe = Date.now();
-        S2.dmgNumbers.push({
-          x: P2.x,
-          y: P2.y - 40,
-          text: 'Radiant Heights',
-          color: '#F1C40F',
-          ts: Date.now()
-        });
-        S2.dmgNumbers.push({
-          x: P2.x,
-          y: P2.y - 25,
-          text: 'Lv 81-100',
-          color: 'rgba(255,255,255,.5)',
-          ts: Date.now()
-        });
+        pushDmgPopup(S2, P2.x, P2.y - 40, 'Radiant Heights', '#F1C40F');
+        pushDmgPopup(S2, P2.x, P2.y - 25, 'Lv 81-100', 'rgba(255,255,255,.5)');
       },
       onMouseDown: function onMouseDown(e) {
         return e.preventDefault();

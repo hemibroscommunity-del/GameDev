@@ -33,6 +33,7 @@ import { getShirtColor } from '@/rendering/traits/shirtColorCatalog.js';
 import { getEquip } from '@/rendering/gearCatalog.js';
 import { pushHudPopup } from '@/ui/XpFlyOverlay.jsx';
 
+import { pushDmgPopup } from '@/game/combatHelpers.js';
 /* Tick arrival timestamps — module-level so the buffer survives
  * WebSocket reconnects and can be sampled by the FPS/NET overlay.
  * performance.now() values, capped at ~5 minutes of history.  Bytes-per-tick
@@ -541,11 +542,7 @@ export function setupWebSocket(ctx) {
               var _rejReason = msg.reason || 'auth';
               if (_rejReason === 'frozen') {
                 S._frozenByAdmin = true; /* suppress reconnect churn */
-                S.dmgNumbers.push({
-                  x: S.player.x, y: S.player.y - 30,
-                  text: '🧊 Account frozen — contact the game owner',
-                  color: '#60a5fa', ts: Date.now(), ttl: 6,
-                });
+                pushDmgPopup(S, S.player.x, S.player.y - 30, '🧊 Account frozen — contact the game owner', '#60a5fa', { ttl: 6 });
                 console.error('[bt] join rejected: account frozen by the operator');
                 break;
               }
@@ -774,11 +771,7 @@ export function setupWebSocket(ctx) {
                  S.myId, which silently dropped every heal); combat_credit
                  (same direct-send path) doesn't gate either. */
               if (msg.payload && msg.payload.refund > 0 && S.dmgNumbers && S.player) {
-                S.dmgNumbers.push({
-                  x: S.player.x, y: S.player.y - 40,
-                  text: '+' + msg.payload.refund + ' HP',
-                  color: '#3dd497', ts: Date.now(),
-                });
+                pushDmgPopup(S, S.player.x, S.player.y - 40, '+' + msg.payload.refund + ' HP', '#3dd497');
               }
               /* v2.3.824: the zero-refund diagnostic floater ('lifesteal:
                  <reason>') was removed at the owner's request -- a melee kill
@@ -798,11 +791,7 @@ export function setupWebSocket(ctx) {
               if (!msg.payload || !S || !S.player) break;
               try { console.log('[loot_pickup_rejected]', msg.payload, 'myId=', S.myId); } catch (e) {}
               if (S.dmgNumbers) {
-                S.dmgNumbers.push({
-                  x: S.player.x, y: S.player.y - 24,
-                  text: 'pickup: ' + (msg.payload.reason || 'unknown'),
-                  color: '#f5c542', ts: Date.now(),
-                });
+                pushDmgPopup(S, S.player.x, S.player.y - 24, 'pickup: ' + (msg.payload.reason || 'unknown'), '#f5c542');
               }
               break;
             }
@@ -1022,14 +1011,8 @@ export function setupWebSocket(ctx) {
                 });
               }
               S.screenShake = 10;
-              S.dmgNumbers.push({
-                x: S.player.x, y: S.player.y - 40,
-                text: 'YOU DIED', color: '#ff5e6c', ts: Date.now()
-              });
-              if (_goldLost3 > 0) S.dmgNumbers.push({
-                x: S.player.x, y: S.player.y - 55,
-                text: '-' + _goldLost3 + 'G', color: '#fbbf24', ts: Date.now()
-              });
+              pushDmgPopup(S, S.player.x, S.player.y - 40, 'YOU DIED', '#ff5e6c');
+              if (_goldLost3 > 0) pushDmgPopup(S, S.player.x, S.player.y - 55, '-' + _goldLost3 + 'G', '#fbbf24');
               BT_AUDIO.deathBoom();
               /* Tell the room we died so remote clients render a dead
                  pose at our last position.  Server already knows. */
@@ -1090,21 +1073,12 @@ export function setupWebSocket(ctx) {
               var hc = msg.payload;
               if (hc.shard) {
                 var _pickedHShard = shardByKey(hc.shard);
-                S.dmgNumbers.push({
-                  x: S.player.x, y: S.player.y - 54,
-                  text: '+ ' + (_pickedHShard ? _pickedHShard.label : 'Shard'),
-                  color: (_pickedHShard && _pickedHShard.color) || '#cce6ff',
-                  ts: Date.now(),
-                });
+                pushDmgPopup(S, S.player.x, S.player.y - 54, '+ ' + (_pickedHShard ? _pickedHShard.label : 'Shard'), (_pickedHShard && _pickedHShard.color) || '#cce6ff');
               }
               if (hc.leveled && hc.skillName) {
                 var _sklEmoji = hc.skillName === 'fishing' ? '🎣' : hc.skillName === 'woodcutting' ? '🪓' : '⛏';
                 var _sklLabel = hc.skillName.charAt(0).toUpperCase() + hc.skillName.slice(1);
-                S.dmgNumbers.push({
-                  x: S.player.x, y: S.player.y - 50,
-                  text: _sklEmoji + ' ' + _sklLabel + ' Level ' + (hc.newLevel || '?') + '!',
-                  color: '#f5c542', ts: Date.now(),
-                });
+                pushDmgPopup(S, S.player.x, S.player.y - 50, _sklEmoji + ' ' + _sklLabel + ' Level ' + (hc.newLevel || '?') + '!', '#f5c542');
                 try { BT_AUDIO.collect(); } catch (e) {}
               }
               break;
@@ -1356,12 +1330,7 @@ export function setupWebSocket(ctx) {
         }
         if (payload.shard) {
           var _pickedShard = shardByKey(payload.shard);
-          S.dmgNumbers.push({
-            x: S.player.x + 12, y: S.player.y - 22,
-            text: '+ ' + (_pickedShard ? _pickedShard.label : 'Shard'),
-            color: (_pickedShard && _pickedShard.color) || '#cce6ff',
-            ts: Date.now(),
-          });
+          pushDmgPopup(S, S.player.x + 12, S.player.y - 22, '+ ' + (_pickedShard ? _pickedShard.label : 'Shard'), (_pickedShard && _pickedShard.color) || '#cce6ff');
         }
         if (payload.skull) {
           /* Local skull-counter tally still tracked client-side --
@@ -1382,19 +1351,9 @@ export function setupWebSocket(ctx) {
           var _wQual = payload.weapon.quality;
           var _wQualTag = (_wQual && _wQual !== 'normal') ? ' [' + String(_wQual).toUpperCase() + ']' : '';
           if (payload.weaponStashed) {
-            S.dmgNumbers.push({
-              x: S.player.x, y: S.player.y - 34,
-              text: 'STASHED: ' + (payload.weapon.name || 'Weapon') + _wQualTag,
-              color: (_wQual && _wQual !== 'normal') ? '#f5c542' : _wColor,
-              ts: Date.now() + 1,
-            });
+            pushDmgPopup(S, S.player.x, S.player.y - 34, 'STASHED: ' + (payload.weapon.name || 'Weapon') + _wQualTag, (_wQual && _wQual !== 'normal') ? '#f5c542' : _wColor, { ts: Date.now() + 1 });
           } else if (payload.weaponSoldFor) {
-            S.dmgNumbers.push({
-              x: S.player.x, y: S.player.y - 34,
-              text: '+' + payload.weaponSoldFor + 'G (sold, stash full)',
-              color: '#f5c542',
-              ts: Date.now() + 1,
-            });
+            pushDmgPopup(S, S.player.x, S.player.y - 34, '+' + payload.weaponSoldFor + 'G (sold, stash full)', '#f5c542', { ts: Date.now() + 1 });
           }
           if (_wQual && _wQual !== 'normal') { try { BT_AUDIO.collect && BT_AUDIO.collect(); } catch (e) {} }
         }
@@ -1406,11 +1365,7 @@ export function setupWebSocket(ctx) {
           var _recovered = 0;
           payload.items.forEach(function (it) { _recovered += (it && it.qty) || 0; });
           if (_recovered > 0) {
-            S.dmgNumbers.push({
-              x: S.player.x, y: S.player.y - 20,
-              text: 'RECOVERED ' + _recovered + ' items!',
-              color: '#3dd497', ts: Date.now(),
-            });
+            pushDmgPopup(S, S.player.x, S.player.y - 20, 'RECOVERED ' + _recovered + ' items!', '#3dd497');
           }
         }
         BT_AUDIO.beep(500, 0.06, 0.1, 'sine');

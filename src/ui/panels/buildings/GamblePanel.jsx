@@ -2,6 +2,7 @@ import React from 'react';
 import { BT_AUDIO, GAMBLE_MIN_BET, GAMBLE_WIN_CHANCE, JACKPOT_MIN_DEPOSIT, createDefaultCompStats } from '@/data/index.js';
 import { _objectSpread } from '@/lib/babelHelpers.js';
 
+import { pushDmgPopup } from '@/game/combatHelpers.js';
 /* === GamblePanel — buildingPanel === 'gamble' sub-panel === */
 /* v2.3.880: extracted verbatim from the buildingPanel === 'gamble'
    clause in BroTown.jsx (the casino: coin-flip bet + jackpot deposit).
@@ -138,13 +139,7 @@ export function GamblePanel(props) {
           amount: winnings,
           ts: Date.now()
         };
-        stateRef.current.dmgNumbers.push({
-          x: stateRef.current.player.x,
-          y: stateRef.current.player.y - 30,
-          text: '+' + winnings + 'g!',
-          color: '#3dd497',
-          ts: Date.now()
-        });
+        pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, '+' + winnings + 'g!', '#3dd497');
         stateRef.current.screenShake = 3;
         BT_AUDIO.collect();
         setTimeout(function () {
@@ -157,13 +152,7 @@ export function GamblePanel(props) {
           amount: wager,
           ts: Date.now()
         };
-        stateRef.current.dmgNumbers.push({
-          x: stateRef.current.player.x,
-          y: stateRef.current.player.y - 30,
-          text: '-' + wager + 'g',
-          color: '#ff5e6c',
-          ts: Date.now()
-        });
+        pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, '-' + wager + 'g', '#ff5e6c');
         BT_AUDIO.beep(150, 0.1, 0.15, 'sawtooth');
       }
       setRpgState(_objectSpread({}, R));
@@ -257,13 +246,7 @@ export function GamblePanel(props) {
         R._compStats.totalGoldSpent += amt;
         /* Legacy local stub -- only reachable against pre-v2.3.1149 workers */
         stateRef.current._jackpotPool = (stateRef.current._jackpotPool || 0) + amt;
-        stateRef.current.dmgNumbers.push({
-          x: stateRef.current.player.x,
-          y: stateRef.current.player.y - 30,
-          text: 'Deposited ' + amt + 'g to jackpot',
-          color: '#f5c542',
-          ts: Date.now()
-        });
+        pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'Deposited ' + amt + 'g to jackpot', '#f5c542');
         BT_AUDIO.beep(500, 0.06, 0.08, 'sine');
         setRpgState(_objectSpread({}, R));
         try {

@@ -2,6 +2,7 @@ import React from 'react';
 import { AMULET_TIERS, BLACKSMITH_TIERS, BT_AUDIO, COLLISION_TABLE, ELEMENTS, MAX_PET_SLOTS, NUGGETS_PER_BAR, PET_LOOT_RADIUS, RARITY_TIERS, WEAPON_STASH_MAX, WEAPON_TYPES, calcWeaponDmg, canEquipItem, discoveredCollisions, getAmuletBonus, getEquipReqLabel, getFishHealAmount, getShieldBonus } from '@/data/index.js';
 import { _objectSpread, _slicedToArray, _toConsumableArray } from '@/lib/babelHelpers.js';
 
+import { pushDmgPopup } from '@/game/combatHelpers.js';
 /* === InventoryPanel — the showInventory modal === */
 /* v2.3.883: extracted verbatim from the showInventory && rpgState JSX
    subtree in BroTown.jsx (the full inventory / equipment screen: equip
@@ -454,13 +455,7 @@ export function InventoryPanel(props) {
           try {
             localStorage.setItem('bt_rpg', JSON.stringify(R));
           } catch (e) {}
-          stateRef.current.dmgNumbers.push({
-            x: stateRef.current.player.x,
-            y: stateRef.current.player.y - 30,
-            text: '+' + healed + ' HP',
-            color: '#3dd497',
-            ts: Date.now()
-          });
+          pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, '+' + healed + ' HP', '#3dd497');
           /* (Eat handler patched to send eat_request -- see block above.) */
           if (stateRef.current._serverMonsters && stateRef.current.channel) {
             try { stateRef.current.channel.send({ type: 'eat_request', payload: { invKey: key } }); } catch (e) {}
@@ -659,13 +654,7 @@ export function InventoryPanel(props) {
         /* Check stat requirement */
         if (!canEquipItem(R, swapWpn, swapWpn.type)) {
           var req = getEquipReqLabel(swapWpn, swapWpn.type);
-          stateRef.current.dmgNumbers.push({
-            x: stateRef.current.player.x,
-            y: stateRef.current.player.y - 30,
-            text: 'Need ' + req.req + ' ' + req.label + ' (have ' + (R[req.stat] || 0) + ')',
-            color: '#ff5e6c',
-            ts: Date.now()
-          });
+          pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'Need ' + req.req + ' ' + req.label + ' (have ' + (R[req.stat] || 0) + ')', '#ff5e6c');
           return;
         }
         var wDef = WEAPON_TYPES[swapWpn.type];
@@ -727,13 +716,7 @@ export function InventoryPanel(props) {
           localStorage.setItem('bt_rpg', JSON.stringify(R));
         } catch (e) {}
         var S = stateRef.current;
-        S.dmgNumbers.push({
-          x: S.player.x,
-          y: S.player.y - 30,
-          text: '+' + sellVal + 'G',
-          color: '#f5c542',
-          ts: Date.now()
-        });
+        pushDmgPopup(S, S.player.x, S.player.y - 30, '+' + sellVal + 'G', '#f5c542');
         BT_AUDIO.beep(400, 0.05, 0.08, 'sine');
       }
     }, "\uD83D\uDCB0 Sell (", Math.ceil((sw.tierMult || 1) * (((_WEAPON_TYPES$sw$type2 = WEAPON_TYPES[sw.type]) === null || _WEAPON_TYPES$sw$type2 === void 0 ? void 0 : _WEAPON_TYPES$sw$type2.base) || 30) * 0.5), "g)")));

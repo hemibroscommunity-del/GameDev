@@ -1,6 +1,7 @@
 import React from 'react';
 import { _objectSpread, _slicedToArray } from '@/lib/babelHelpers.js';
 
+import { pushDmgPopup } from '@/game/combatHelpers.js';
 /* === TradePanel — the showTrade modal === */
 /* v2.3.884: extracted verbatim from the showTrade && tradeTarget &&
    rpgState JSX subtree in BroTown.jsx (the outgoing player-to-player
@@ -185,13 +186,7 @@ export function TradePanel(props) {
             offer: tradeOffer
           }
         });
-        S.dmgNumbers.push({
-          x: S.player.x,
-          y: S.player.y - 30,
-          text: 'Trade sent!',
-          color: '#3dd497',
-          ts: Date.now()
-        });
+        pushDmgPopup(S, S.player.x, S.player.y - 30, 'Trade sent!', '#3dd497');
         setShowTrade(false);
       }
     }

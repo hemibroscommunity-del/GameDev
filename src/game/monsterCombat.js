@@ -38,7 +38,7 @@ import {
 import { MONSTER_VARIANTS, baseArchetypeOf, isFodderLike, isRemnantSkull, maybeTransformMonster, usesClientSideMovement, xpMultFor } from '@/data/monsterVariants.js';
 import { getEquip } from '@/rendering/gearCatalog.js'; /* v2.3.1104: armoured-hit SFX check */
 import { rollMonsterShard } from '@/data/shards.js';
-import { addBuildUse, applyMeleeLifesteal, distributeKillXpToBuild, trackMonsterDamage } from '@/game/combatHelpers.js';
+import { addBuildUse, applyMeleeLifesteal, distributeKillXpToBuild, trackMonsterDamage, pushDmgPopup } from '@/game/combatHelpers.js';
 import { earnCertification as masteryEarnCert } from '@/game/mastery.js';
 import { btRpc, getBtPlayerId, syncRpgToServer } from '@/networking/index.js';
 import { pushHudPopup } from '@/ui/XpFlyOverlay.jsx';
@@ -155,13 +155,7 @@ export function updateMonsterCombat(S, deps) {
                 return ELEMENTS[e].status === dot.statusId;
               });
               var dotColor = dotElem ? ELEMENTS[dotElem].color : '#ff5e6c';
-              S.dmgNumbers.push({
-                x: m.x + (Math.random() - 0.5) * 10,
-                y: m.y - 22,
-                text: dot.amount + '',
-                color: dotColor,
-                ts: Date.now()
-              });
+              pushDmgPopup(S, m.x + (Math.random() - 0.5) * 10, m.y - 22, dot.amount + '', dotColor);
               m._lastDotDmg = null;
             }
             /* Check if DoT killed */
@@ -205,13 +199,7 @@ export function updateMonsterCombat(S, deps) {
                 });
               }
               /* Death feedback */
-              S.dmgNumbers.push({
-                x: m.x,
-                y: m.y - 30,
-                text: 'KO',
-                color: '#ff5e6c',
-                ts: Date.now()
-              });
+              pushDmgPopup(S, m.x, m.y - 30, 'KO', '#ff5e6c');
               var _shardD = rollMonsterShard(S.currentZone);
               S.groundLoot.push({
                 x: m.x,
@@ -468,13 +456,7 @@ export function updateMonsterCombat(S, deps) {
                   var abilities = m._bossAbilities;
                   m._currentAttack = abilities[m._attackPattern % abilities.length];
                   m._attackPattern++;
-                  S.dmgNumbers.push({
-                    x: m.x,
-                    y: m.y - 40,
-                    text: m._currentAttack.toUpperCase() + '!',
-                    color: '#fbbf24',
-                    ts: Date.now()
-                  });
+                  pushDmgPopup(S, m.x, m.y - 40, m._currentAttack.toUpperCase() + '!', '#fbbf24');
                   BT_AUDIO.beep(400, 0.08, 0.1, 'sine');
                   /* Boss glows during telegraph */
                   m.color = '#fbbf24';
@@ -490,13 +472,7 @@ export function updateMonsterCombat(S, deps) {
                     var slamRange = 80;
                     S.screenShake = 10;
                     BT_AUDIO.beep(80, 0.2, 0.25, 'sawtooth');
-                    S.dmgNumbers.push({
-                      x: m.x,
-                      y: m.y - 30,
-                      text: 'SLAM!',
-                      color: '#f5c542',
-                      ts: Date.now()
-                    });
+                    pushDmgPopup(S, m.x, m.y - 30, 'SLAM!', '#f5c542');
                     if (!S._impactRings) S._impactRings = [];
                     S._impactRings.push({
                       x: m.x,
@@ -527,13 +503,7 @@ export function updateMonsterCombat(S, deps) {
                       _R6.hp -= finalDmg;
                       trackMonsterDamage(S, m.id, finalDmg);
                       if (window.__dmgLog) try { console.log('[dmg] boss-slam', { amt: finalDmg, archetype: m.archetype || m.type, blocked: blocked }); } catch (e) {}
-                      S.dmgNumbers.push({
-                        x: P.x,
-                        y: P.y - 20,
-                        text: blocked ? 'BLOCK' : '-' + finalDmg,
-                        color: '#f5c542',
-                        ts: Date.now()
-                      });
+                      pushDmgPopup(S, P.x, P.y - 20, blocked ? 'BLOCK' : '-' + finalDmg, '#f5c542');
                       if (blocked) {
                         try { BT_AUDIO.play('shield-block', { vol: 1.0 }); } catch (e) {}
                       } else {
@@ -545,38 +515,20 @@ export function updateMonsterCombat(S, deps) {
                         S._playerStunUntil = Math.max(S._playerStunUntil || 0, Date.now() + Math.round(250 * poiseStunMult(S.rpg)));
                       }
                     } else if (distToP < slamRange && dodged) {
-                      S.dmgNumbers.push({
-                        x: P.x,
-                        y: P.y - 20,
-                        text: 'Dodged!',
-                        color: '#3dd497',
-                        ts: Date.now()
-                      });
+                      pushDmgPopup(S, P.x, P.y - 20, 'Dodged!', '#3dd497');
                     }
                   }
                   if (ability === 'charge') {
                     m._chargeUntil = Date.now() + 600;
                     m._chargeAngle = bossAngle;
                     m._chargeSpeed = m.spd * 6;
-                    S.dmgNumbers.push({
-                      x: m.x,
-                      y: m.y - 30,
-                      text: 'CHARGE!',
-                      color: '#ea580c',
-                      ts: Date.now()
-                    });
+                    pushDmgPopup(S, m.x, m.y - 30, 'CHARGE!', '#ea580c');
                     BT_AUDIO.beep(200, 0.15, 0.2, 'sawtooth');
                   }
                   if (ability === 'sweep') {
                     /* Wide arc sweep — must dodge or shield */
                     var sweepRange = 70;
-                    S.dmgNumbers.push({
-                      x: m.x,
-                      y: m.y - 30,
-                      text: 'SWEEP!',
-                      color: '#a855f7',
-                      ts: Date.now()
-                    });
+                    pushDmgPopup(S, m.x, m.y - 30, 'SWEEP!', '#a855f7');
                     BT_AUDIO.beep(150, 0.15, 0.2, 'square');
                     S.screenShake = 6;
                     if (!S._impactRings) S._impactRings = [];
@@ -596,13 +548,7 @@ export function updateMonsterCombat(S, deps) {
                       _R6.hp -= _finalDmg;
                       trackMonsterDamage(S, m.id, _finalDmg);
                       if (window.__dmgLog) try { console.log('[dmg] boss-sweep', { amt: _finalDmg, archetype: m.archetype || m.type, blocked: _blocked }); } catch (e) {}
-                      S.dmgNumbers.push({
-                        x: P.x,
-                        y: P.y - 20,
-                        text: _blocked ? 'BLOCK' : '-' + _finalDmg,
-                        color: '#a855f7',
-                        ts: Date.now()
-                      });
+                      pushDmgPopup(S, P.x, P.y - 20, _blocked ? 'BLOCK' : '-' + _finalDmg, '#a855f7');
                       if (_blocked) {
                         try { BT_AUDIO.play('shield-block', { vol: 1.0 }); } catch (e) {}
                       } else {
@@ -632,26 +578,14 @@ export function updateMonsterCombat(S, deps) {
                       minion.maxHp = minion.hp;
                       S.monsters.push(minion);
                     }
-                    S.dmgNumbers.push({
-                      x: m.x,
-                      y: m.y - 30,
-                      text: 'Summon!',
-                      color: '#9333ea',
-                      ts: Date.now()
-                    });
+                    pushDmgPopup(S, m.x, m.y - 30, 'Summon!', '#9333ea');
                     BT_AUDIO.beep(300, 0.1, 0.15, 'square');
                   }
                   if (ability === 'enrage' && m.curHp < m.hp * 0.3 && !m._enraged) {
                     m._enraged = true;
                     m.dmg = Math.ceil(m.dmg * 1.5);
                     m.spd *= 1.4;
-                    S.dmgNumbers.push({
-                      x: m.x,
-                      y: m.y - 30,
-                      text: 'ENRAGED!',
-                      color: '#ff2020',
-                      ts: Date.now()
-                    });
+                    pushDmgPopup(S, m.x, m.y - 30, 'ENRAGED!', '#ff2020');
                     S.screenShake = 6;
                     BT_AUDIO.beep(120, 0.2, 0.3, 'sawtooth');
                   }
@@ -661,13 +595,7 @@ export function updateMonsterCombat(S, deps) {
                   m._phaseTimer = Date.now() + 2000; /* 2s vulnerability window */
                   m._invulnerable = false;
                   m.color = '#3dd497'; /* green = vulnerable */
-                  S.dmgNumbers.push({
-                    x: m.x,
-                    y: m.y - 30,
-                    text: 'EXPOSED!',
-                    color: '#3dd497',
-                    ts: Date.now()
-                  });
+                  pushDmgPopup(S, m.x, m.y - 30, 'EXPOSED!', '#3dd497');
                   BT_AUDIO.beep(600, 0.06, 0.08, 'sine');
                 } else if (m._attackPhase === 'recovery' && Date.now() > m._phaseTimer) {
                   /* Back to idle — invulnerable again */
@@ -692,13 +620,7 @@ export function updateMonsterCombat(S, deps) {
                   _R6.hp -= _finalDmg2;
                   trackMonsterDamage(S, m.id, _finalDmg2);
                   if (window.__dmgLog) try { console.log('[dmg] boss-charge', { amt: _finalDmg2, archetype: m.archetype || m.type, blocked: _blocked2 }); } catch (e) {}
-                  S.dmgNumbers.push({
-                    x: P.x,
-                    y: P.y - 20,
-                    text: _blocked2 ? 'BLOCK' : '-' + _finalDmg2,
-                    color: '#ea580c',
-                    ts: Date.now()
-                  });
+                  pushDmgPopup(S, P.x, P.y - 20, _blocked2 ? 'BLOCK' : '-' + _finalDmg2, '#ea580c');
                   if (_blocked2) {
                     try { BT_AUDIO.play('shield-block', { vol: 1.0 }); } catch (e) {}
                   } else {
@@ -773,10 +695,7 @@ export function updateMonsterCombat(S, deps) {
                   /* v2.3.1154: + Evasion channel pts, shared 30% cap. */
                   var _passiveDodge = !shielded && rollPassiveDodge(_R6.agility, getEvasionPts(_R6));
                   if (_passiveDodge) {
-                    S.dmgNumbers.push({
-                      x: P.x, y: P.y - 18, text: 'Dodge!',
-                      color: '#00d4ff', ts: Date.now(),
-                    });
+                    pushDmgPopup(S, P.x, P.y - 18, 'Dodge!', '#00d4ff');
                   }
                   var dmgTaken = (shielded || _passiveDodge) ? 0 : rawDmg;
                   /* v2.3.1113: Iron Skin (defense channel, -0.5%/pt, cap
@@ -790,8 +709,7 @@ export function updateMonsterCombat(S, deps) {
                      null bypass existed only because every monster was
                      pinned to level 1 (BALANCE-PLAN §7/BF-1). */
                   var _defUpLoc = trainDefense(_R6, shielded ? rawDmg : 0, _passiveDodge ? 0 : dmgTaken, m.level || null, false);
-                  if (_defUpLoc) S.dmgNumbers.push({ x: P.x, y: P.y - 34,
-                    text: '🛡️ Defense Lv ' + _defUpLoc.level, color: '#60a5fa', ts: Date.now() + 2 });
+                  if (_defUpLoc) pushDmgPopup(S, P.x, P.y - 34, '🛡️ Defense Lv ' + _defUpLoc.level, '#60a5fa', { ts: Date.now() + 2 });
                   /* ═══ FODDER SLIMES — RANGED PROJECTILE ATTACK ═══
                      Spawn a slime-orb projectile aimed at the player's
                      position right now. Damage isn't applied here — it
@@ -857,13 +775,7 @@ export function updateMonsterCombat(S, deps) {
                        reads. */
                     if (_localAtkVariant && _localAtkVariant.blockStunMs) {
                       m._stunUntil = Math.max(m._stunUntil || 0, Date.now() + _localAtkVariant.blockStunMs);
-                      S.dmgNumbers.push({
-                        x: m.x,
-                        y: m.y - 30,
-                        text: 'STUNNED!',
-                        color: '#fbbf24',
-                        ts: Date.now()
-                      });
+                      pushDmgPopup(S, m.x, m.y - 30, 'STUNNED!', '#fbbf24');
                     }
                   }
 
@@ -883,13 +795,7 @@ export function updateMonsterCombat(S, deps) {
                       if (S.channel) S.channel.send({ type: 'broadcast', event: 'player_hurt_by_monster', payload: { id: S.myId, dmg: explodeDmg } });
                     }
                     S.screenShake = 8;
-                    S.dmgNumbers.push({
-                      x: m.x,
-                      y: m.y - 20,
-                      text: 'BOOM -' + explodeDmg,
-                      color: '#ea580c',
-                      ts: Date.now()
-                    });
+                    pushDmgPopup(S, m.x, m.y - 20, 'BOOM -' + explodeDmg, '#ea580c');
                     for (var ep = 0; ep < 30; ep++) {
                       S.hitParticles.push({
                         x: m.x,
@@ -934,13 +840,7 @@ export function updateMonsterCombat(S, deps) {
                     if (arch === 'hexer' && !shielded) {
                       /* Hexer: applies curse debuff — reduces player damage for 4s */
                       S._cursedUntil = Date.now() + 4000;
-                      S.dmgNumbers.push({
-                        x: P.x,
-                        y: P.y - 20,
-                        text: 'Cursed!',
-                        color: '#8E44AD',
-                        ts: Date.now()
-                      });
+                      pushDmgPopup(S, P.x, P.y - 20, 'Cursed!', '#8E44AD');
                       /* Purple curse particles */
                       for (var cp = 0; cp < 8; cp++) {
                         S.hitParticles.push({
@@ -975,13 +875,7 @@ export function updateMonsterCombat(S, deps) {
                         _R6.hp -= pierceDmg;
                         trackMonsterDamage(S, m.id, pierceDmg);
                         if (window.__dmgLog) try { console.log('[dmg] sentinel-pierce', pierceDmg); } catch (e) {}
-                        S.dmgNumbers.push({
-                          x: P.x + 10,
-                          y: P.y - 22,
-                          text: 'Pierce -' + pierceDmg,
-                          color: '#e8e8e8',
-                          ts: Date.now()
-                        });
+                        pushDmgPopup(S, P.x + 10, P.y - 22, 'Pierce -' + pierceDmg, '#e8e8e8');
                       }
                     }
                     if (arch === 'stalker' && !shielded) {
@@ -991,13 +885,7 @@ export function updateMonsterCombat(S, deps) {
                         _R6.hp -= critDmg;
                         trackMonsterDamage(S, m.id, critDmg);
                         if (window.__dmgLog) try { console.log('[dmg] stalker-crit', critDmg); } catch (e) {}
-                        S.dmgNumbers.push({
-                          x: P.x,
-                          y: P.y - 40,
-                          text: 'CRIT -' + critDmg,
-                          color: '#ff5e6c',
-                          ts: Date.now()
-                        });
+                        pushDmgPopup(S, P.x, P.y - 40, 'CRIT -' + critDmg, '#ff5e6c');
                         S.screenShake = Math.max(S.screenShake || 0, 4);
                       }
                     }
@@ -1009,13 +897,7 @@ export function updateMonsterCombat(S, deps) {
                          the stun ended, repeat, monster never recovers.
                          Block now only mitigates the incoming damage;
                          the monster continues its normal attack cadence. */
-                      S.dmgNumbers.push({
-                        x: P.x,
-                        y: P.y - 30,
-                        text: 'BLOCK',
-                        color: '#60a5fa',
-                        ts: Date.now()
-                      });
+                      pushDmgPopup(S, P.x, P.y - 30, 'BLOCK', '#60a5fa');
                       /* (block-impact sound is now BT_AUDIO.play('shield-block')
                          fired up at the damage application site, so the legacy
                          square+sine beep duo here is dropped.) */
@@ -1044,14 +926,7 @@ export function updateMonsterCombat(S, deps) {
                         });
                       }
                     } else {
-                      S.dmgNumbers.push({
-                        x: P.x,
-                        y: P.y - 30,
-                        text: '-' + dmgTaken,
-                        color: '#ff5e6c',
-                        iconKey: 'heart',
-                        ts: Date.now()
-                      });
+                      pushDmgPopup(S, P.x, P.y - 30, '-' + dmgTaken, '#ff5e6c', { iconKey: 'heart' });
                     }
                   }
                   if (_R6.hp <= 0) {
@@ -1059,13 +934,7 @@ export function updateMonsterCombat(S, deps) {
                     /* Shield gem: Death Save — chance to survive at 1 HP */
                     if (((_R6$_shieldBonus = _R6._shieldBonus) === null || _R6$_shieldBonus === void 0 ? void 0 : _R6$_shieldBonus.stat) === 'deathResist' && Math.random() < _R6._shieldBonus.value / 100) {
                       _R6.hp = 1;
-                      S.dmgNumbers.push({
-                        x: P.x,
-                        y: P.y - 50,
-                        text: 'DEATH SAVE!',
-                        color: '#5b52ff',
-                        ts: Date.now()
-                      });
+                      pushDmgPopup(S, P.x, P.y - 50, 'DEATH SAVE!', '#5b52ff');
                       S.screenShake = 6;
                       BT_AUDIO.beep(800, 0.1, 0.12, 'sine');
                       setTimeout(function () {
@@ -1184,34 +1053,10 @@ export function updateMonsterCombat(S, deps) {
                     /* Death feedback popups float at the death position
                        (P.x/P.y are still the death coords here — teleport
                        is deferred to the setTimeout below). */
-                    S.dmgNumbers.push({
-                      x: P.x,
-                      y: P.y - 50,
-                      text: 'YOU DIED',
-                      color: '#ff5e6c',
-                      ts: Date.now()
-                    });
-                    S.dmgNumbers.push({
-                      x: P.x,
-                      y: P.y - 35,
-                      text: 'Respawn: ' + (respawnMs / 1000).toFixed(0) + 's',
-                      color: '#f5c542',
-                      ts: Date.now()
-                    });
-                    if (goldLost > 0) S.dmgNumbers.push({
-                      x: P.x,
-                      y: P.y - 20,
-                      text: '-' + goldLost + 'G',
-                      color: '#ff5e6c',
-                      ts: Date.now()
-                    });
-                    if (scatteredItems.length > 0) S.dmgNumbers.push({
-                      x: P.x,
-                      y: P.y - 5,
-                      text: 'Items scattered! ' + Math.ceil(DEATH_SCATTER_RECOVERY / 1000) + 's to recover',
-                      color: '#ea580c',
-                      ts: Date.now()
-                    });
+                    pushDmgPopup(S, P.x, P.y - 50, 'YOU DIED', '#ff5e6c');
+                    pushDmgPopup(S, P.x, P.y - 35, 'Respawn: ' + (respawnMs / 1000).toFixed(0) + 's', '#f5c542');
+                    if (goldLost > 0) pushDmgPopup(S, P.x, P.y - 20, '-' + goldLost + 'G', '#ff5e6c');
+                    if (scatteredItems.length > 0) pushDmgPopup(S, P.x, P.y - 5, 'Items scattered! ' + Math.ceil(DEATH_SCATTER_RECOVERY / 1000) + 's to recover', '#ea580c');
 
                     /* Deferred restore + teleport — runs after the 3.5 s
                        death animation finishes so the player visually
@@ -1528,7 +1373,7 @@ export function updateMonsterCombat(S, deps) {
                       m.statuses[statusId].remaining *= _extMul;
                       m.statuses[statusId].maxDur = Math.max(m.statuses[statusId].maxDur || 0, m.statuses[statusId].remaining);
                       S.combo.nextExtended = false;
-                      S.dmgNumbers.push({ x: m.x, y: m.y - 28, text: 'ext', color: '#f5c542', ts: Date.now() });
+                      pushDmgPopup(S, m.x, m.y - 28, 'ext', '#f5c542');
                     }
                     var elemDef = ELEMENTS[hitElement];
                     /* §Stage 2: "Brief bright pop on first application. Then ambient." */
@@ -1563,23 +1408,11 @@ export function updateMonsterCombat(S, deps) {
                     if (m.element) {
                       var eff = getEffectiveness(hitElement, m.element);
                       if (eff > 1.0) {
-                        S.dmgNumbers.push({
-                          x: m.x + 12,
-                          y: m.y - 10,
-                          text: 'UP',
-                          color: '#3dd497',
-                          ts: Date.now()
-                        });
+                        pushDmgPopup(S, m.x + 12, m.y - 10, 'UP', '#3dd497');
                         if (!_R6._questFlags) _R6._questFlags = {};
                         _R6._questFlags.usedEffectiveness = true;
                       } else if (eff < 1.0) {
-                        S.dmgNumbers.push({
-                          x: m.x + 12,
-                          y: m.y - 10,
-                          text: 'DN',
-                          color: '#ff5e6c',
-                          ts: Date.now()
-                        });
+                        pushDmgPopup(S, m.x + 12, m.y - 10, 'DN', '#ff5e6c');
                       }
                     }
                   }
@@ -1601,13 +1434,7 @@ export function updateMonsterCombat(S, deps) {
                 if (_comboBurst > 1) masteryEarnCert('first-combo-burst');
                 /* Boss invulnerability — can only be damaged during recovery phase */
                 if (m._invulnerable) {
-                  S.dmgNumbers.push({
-                    x: m.x,
-                    y: m.y - 20,
-                    text: 'IMMUNE',
-                    color: '#888',
-                    ts: Date.now()
-                  });
+                  pushDmgPopup(S, m.x, m.y - 20, 'IMMUNE', '#888');
                   BT_AUDIO.beep(200, 0.03, 0.04, 'square');
                   return;
                 }
@@ -1672,7 +1499,7 @@ export function updateMonsterCombat(S, deps) {
                 {
                   var _wlM = awardWeaponXp(_R6, dmg);
                   if (_wlM) {
-                    S.dmgNumbers.push({ x: m.x, y: m.y - 44, text: _wlM.cat.toUpperCase() + ' Lv ' + _wlM.level + ' · +' + _wlM.points + 'pt', color: '#5b52ff', ts: Date.now() });
+                    pushDmgPopup(S, m.x, m.y - 44, _wlM.cat.toUpperCase() + ' Lv ' + _wlM.level + ' · +' + _wlM.points + 'pt', '#5b52ff');
                     try { BT_AUDIO.levelUp(); } catch (e) {}
                   }
                 }
@@ -1763,7 +1590,7 @@ export function updateMonsterCombat(S, deps) {
                         _spTarget.statuses[_spStatusId].remaining = _spRem;
                       }
                       var _spElCol = (ELEMENTS[collisionResult.setupElement] || {}).color || '#fff';
-                      S.dmgNumbers.push({ x: _spTarget.x, y: _spTarget.y - 18, text: 'spread', color: _spElCol, ts: Date.now() });
+                      pushDmgPopup(S, _spTarget.x, _spTarget.y - 18, 'spread', _spElCol);
                     }
                   }
                   /* §5.9.6 Combo "Next" (count 3) — flag the player so the
@@ -1784,13 +1611,7 @@ export function updateMonsterCombat(S, deps) {
                     _bColor = '#fffbb0'; /* near-white shimmer per §5.7.3 */
                   }
                   /* Collision burst damage number */
-                  S.dmgNumbers.push({
-                    x: m.x + 8,
-                    y: m.y - 35,
-                    text: _bPrefix + collisionResult.damage + ' ' + coll.name,
-                    color: _bColor,
-                    ts: Date.now()
-                  });
+                  pushDmgPopup(S, m.x + 8, m.y - 35, _bPrefix + collisionResult.damage + ' ' + coll.name, _bColor);
                   /* §5.7.3 Resonance ring — brighter ground burst when the
                      consumed status was timed inside its resonance window. */
                   if (collisionResult.resonating) {
@@ -1810,13 +1631,7 @@ export function updateMonsterCombat(S, deps) {
                   }
                   /* Mana restore feedback */
                   if (collisionResult.manaRestored > 0) {
-                    S.dmgNumbers.push({
-                      x: P.x,
-                      y: P.y - 45,
-                      text: '+' + collisionResult.manaRestored + ' MP',
-                      color: '#3b82f6',
-                      ts: Date.now()
-                    });
+                    pushDmgPopup(S, P.x, P.y - 45, '+' + collisionResult.manaRestored + ' MP', '#3b82f6');
                   }
                   /* Collision burst particles — element colored */
                   for (var cp = 0; cp < 15; cp++) {
@@ -1834,13 +1649,7 @@ export function updateMonsterCombat(S, deps) {
                   /* Codex discovery */
                   var isNew = discoverCollision(coll.id);
                   if (isNew) {
-                    S.dmgNumbers.push({
-                      x: P.x,
-                      y: P.y - 65,
-                      text: 'NEW: ' + coll.name + '!',
-                      color: '#f5c542',
-                      ts: Date.now()
-                    });
+                    pushDmgPopup(S, P.x, P.y - 65, 'NEW: ' + coll.name + '!', '#f5c542');
                     BT_AUDIO.collect();
                   }
                 }
@@ -1942,35 +1751,11 @@ export function updateMonsterCombat(S, deps) {
                 /* Damage number — scaled by crit/normal in the renderer. */
                 var _isSpecialDmg = !!S._specialAttack;
                 if (isCrit && collisionResult) {
-                  S.dmgNumbers.push({
-                    x: m.x,
-                    y: m.y - 20,
-                    text: 'ZAP ' + dmg,
-                    color: '#f5c542',
-                    iconKey: 'sword',
-                    special: _isSpecialDmg,
-                    ts: Date.now()
-                  });
+                  pushDmgPopup(S, m.x, m.y - 20, 'ZAP ' + dmg, '#f5c542', { iconKey: 'sword', special: _isSpecialDmg });
                 } else if (isCrit) {
-                  S.dmgNumbers.push({
-                    x: m.x,
-                    y: m.y - 20,
-                    text: String(dmg),
-                    color: '#f5c542',
-                    iconKey: 'sword',
-                    special: _isSpecialDmg,
-                    ts: Date.now()
-                  });
+                  pushDmgPopup(S, m.x, m.y - 20, String(dmg), '#f5c542', { iconKey: 'sword', special: _isSpecialDmg });
                 } else {
-                  S.dmgNumbers.push({
-                    x: m.x,
-                    y: m.y - 20,
-                    text: '' + dmg,
-                    color: '#fff',
-                    iconKey: 'sword',
-                    special: _isSpecialDmg,
-                    ts: Date.now()
-                  });
+                  pushDmgPopup(S, m.x, m.y - 20, '' + dmg, '#fff', { iconKey: 'sword', special: _isSpecialDmg });
                 }
                 /* v2.3.254: "block N" mitigation indicator removed
                    alongside the level-diff scaling above. */
@@ -2013,13 +1798,7 @@ export function updateMonsterCombat(S, deps) {
 
                   /* §ENC — Bestiary discovery */
                   if (discoverMonster(m.archetype, S.currentZone)) {
-                    S.dmgNumbers.push({
-                      x: m.x,
-                      y: m.y - 90,
-                      text: 'New Bestiary Entry!',
-                      color: '#00d4b8',
-                      ts: Date.now()
-                    });
+                    pushDmgPopup(S, m.x, m.y - 90, 'New Bestiary Entry!', '#00d4b8');
                   }
 
                   /* ═══ RARE DROP — 0.1% chance on any kill ═══ */
@@ -2027,13 +1806,7 @@ export function updateMonsterCombat(S, deps) {
                     var rareDrop = RARE_DROP_ITEMS[Math.floor(Math.random() * RARE_DROP_ITEMS.length)];
                     _R6.achievementPoints = (_R6.achievementPoints || 0) + rareDrop.points;
                     _R6._compStats.rareDropsFound++;
-                    S.dmgNumbers.push({
-                      x: m.x,
-                      y: m.y - 80,
-                      text: rareDrop.emoji + ' RARE: ' + rareDrop.name + ' (+' + rareDrop.points + ' AP)',
-                      color: '#f5c542',
-                      ts: Date.now()
-                    });
+                    pushDmgPopup(S, m.x, m.y - 80, rareDrop.emoji + ' RARE: ' + rareDrop.name + ' (+' + rareDrop.points + ' AP)', '#f5c542');
                     S.screenShake = 4;
                     BT_AUDIO.beep(800, 0.1, 0.12, 'sine');
                     setTimeout(function () {
@@ -2230,13 +2003,7 @@ export function updateMonsterCombat(S, deps) {
                     });
                   }
                   if (isRare) {
-                    S.dmgNumbers.push({
-                      x: m.x,
-                      y: m.y - 50,
-                      text: 'RARE DROP!',
-                      color: '#f5c542',
-                      ts: Date.now()
-                    });
+                    pushDmgPopup(S, m.x, m.y - 50, 'RARE DROP!', '#f5c542');
                     BT_AUDIO.collect();
                     setTimeout(function () {
                       return BT_AUDIO.collect();
@@ -2333,13 +2100,7 @@ export function updateMonsterCombat(S, deps) {
 
                     /* Drop announcement */
                     var tierLabel = RARITY_TIERS[dropTier].label;
-                    S.dmgNumbers.push({
-                      x: m.x,
-                      y: m.y - 60,
-                      text: tierLabel + ' ' + dropName + '!',
-                      color: tierColor,
-                      ts: Date.now()
-                    });
+                    pushDmgPopup(S, m.x, m.y - 60, tierLabel + ' ' + dropName + '!', tierColor);
                     if (dropTier !== 'common') {
                       BT_AUDIO.collect();
                       if (dropTier === 'fusion' || dropTier === 'shift') setTimeout(function () {
@@ -2358,38 +2119,20 @@ export function updateMonsterCombat(S, deps) {
                     _R6.lifeSkills.gems[gemKey] = (_R6.lifeSkills.gems[gemKey] || 0) + 1;
                     var gemName = ((_ZONE_RESOURCES$killZ = ZONE_RESOURCES[killZoneElem]) === null || _ZONE_RESOURCES$killZ === void 0 ? void 0 : _ZONE_RESOURCES$killZ.gem) || killZoneElem + ' Gem';
                     var gemCol = ((_ZONE_RESOURCES$killZ2 = ZONE_RESOURCES[killZoneElem]) === null || _ZONE_RESOURCES$killZ2 === void 0 ? void 0 : _ZONE_RESOURCES$killZ2.gemColor) || '#fff';
-                    S.dmgNumbers.push({
-                      x: m.x,
-                      y: m.y - 65,
-                      text: 'Raw ' + gemName + '!',
-                      color: gemCol,
-                      ts: Date.now()
-                    });
+                    pushDmgPopup(S, m.x, m.y - 65, 'Raw ' + gemName + '!', gemCol);
                   }
 
                   /* ═══ GOLD NUGGET DROP — rare from monster kills ═══ */
                   if (Math.random() < GOLD_NUGGET_DROP.monsterKill) {
                     _R6.goldNuggets = (_R6.goldNuggets || 0) + 1;
-                    S.dmgNumbers.push({
-                      x: m.x,
-                      y: m.y - 75,
-                      text: 'Gold Nugget!',
-                      color: '#f5c542',
-                      ts: Date.now()
-                    });
+                    pushDmgPopup(S, m.x, m.y - 75, 'Gold Nugget!', '#f5c542');
                     BT_AUDIO.beep(1000, 0.08, 0.1, 'sine');
                     setTimeout(function () {
                       return BT_AUDIO.beep(1200, 0.06, 0.08, 'sine');
                     }, 80);
                   }
                   if (isGrandSlam) {
-                    S.dmgNumbers.push({
-                      x: m.x,
-                      y: m.y - 40,
-                      text: 'Critical hit!',
-                      color: '#fbbf24',
-                      ts: Date.now()
-                    });
+                    pushDmgPopup(S, m.x, m.y - 40, 'Critical hit!', '#fbbf24');
                   }
 
                   /* Use-trained build progression (GDD §1.1, §1.2, §1.4).
@@ -2501,13 +2244,7 @@ export function updateMonsterCombat(S, deps) {
                       size: 1.5 + Math.random() * 2
                     });
                   }
-                  S.dmgNumbers.push({
-                    x: npc.x,
-                    y: npc.y - 20,
-                    text: '' + npcDmg,
-                    color: '#fff',
-                    ts: Date.now()
-                  });
+                  pushDmgPopup(S, npc.x, npc.y - 20, '' + npcDmg, '#fff');
                   S.screenShake = 2;
                   if (npc.hp <= 0) {
                     npc.alive = false;
@@ -2614,13 +2351,7 @@ export function updateMonsterCombat(S, deps) {
                   size: 1.5 + Math.random() * 2
                 });
                 S.screenShake = 3;
-                S.dmgNumbers.push({
-                  x: o.x,
-                  y: o.y - 20,
-                  text: 'HIT',
-                  color: '#fff',
-                  ts: Date.now()
-                });
+                pushDmgPopup(S, o.x, o.y - 20, 'HIT', '#fff');
               }
             });
           }

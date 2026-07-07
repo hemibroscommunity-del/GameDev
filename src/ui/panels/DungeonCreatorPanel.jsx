@@ -2,6 +2,7 @@ import React from 'react';
 import { ARCHETYPES, BT_AUDIO, DUNGEON_MONSTER_PACKS, DUNGEON_TERRAIN_PACKS, ELEMENTS, TILE, createMonster, getDungeonCreatorUnlocks, validateCustomDungeon } from '@/data/index.js';
 import { _defineProperty, _objectSpread, _slicedToArray, _toConsumableArray } from '@/lib/babelHelpers.js';
 
+import { pushDmgPopup } from '@/game/combatHelpers.js';
 /* ═══ DungeonCreatorPanel — custom dungeon builder (workshop) ═══ */
 /* v2.3.863: moved verbatim from BroTown.jsx's JSX tree (UI-panel
    decomposition; behavior-frozen) — the largest panel (~1073 lines).
@@ -595,25 +596,13 @@ export function DungeonCreatorPanel(props) {
       var S = stateRef.current,
         R = S.rpg;
       if (!R || R.coins < cost) {
-        S.dmgNumbers.push({
-          x: S.player.x,
-          y: S.player.y - 30,
-          text: 'Not enough gold!',
-          color: '#ff5e6c',
-          ts: Date.now()
-        });
+        pushDmgPopup(S, S.player.x, S.player.y - 30, 'Not enough gold!', '#ff5e6c');
         return;
       }
       R.coins -= cost;
       if (!R._ownedPacks) R._ownedPacks = [];
       if (!R._ownedPacks.includes(packId)) R._ownedPacks.push(packId);
-      S.dmgNumbers.push({
-        x: S.player.x,
-        y: S.player.y - 30,
-        text: 'Pack purchased!',
-        color: '#3dd497',
-        ts: Date.now()
-      });
+      pushDmgPopup(S, S.player.x, S.player.y - 30, 'Pack purchased!', '#3dd497');
       BT_AUDIO.collect();
       setRpgState(_objectSpread({}, R));
       try {
@@ -790,13 +779,7 @@ export function DungeonCreatorPanel(props) {
       if (!R) return;
       if (!R._customDungeons) R._customDungeons = [];
       if (R._customDungeons.length >= 5) {
-        S.dmgNumbers.push({
-          x: S.player.x,
-          y: S.player.y - 30,
-          text: 'Max 5 saved dungeons!',
-          color: '#ff5e6c',
-          ts: Date.now()
-        });
+        pushDmgPopup(S, S.player.x, S.player.y - 30, 'Max 5 saved dungeons!', '#ff5e6c');
         return;
       }
       R._customDungeons.push(_objectSpread(_objectSpread({}, dc), {}, {
@@ -806,13 +789,7 @@ export function DungeonCreatorPanel(props) {
       try {
         localStorage.setItem('bt_rpg', JSON.stringify(R));
       } catch (e) {}
-      S.dmgNumbers.push({
-        x: S.player.x,
-        y: S.player.y - 30,
-        text: 'Dungeon saved!',
-        color: '#3dd497',
-        ts: Date.now()
-      });
+      pushDmgPopup(S, S.player.x, S.player.y - 30, 'Dungeon saved!', '#3dd497');
       BT_AUDIO.collect();
     };
     var deleteDungeon = function deleteDungeon(idx) {
@@ -841,13 +818,7 @@ export function DungeonCreatorPanel(props) {
         try {
           S.channel.send({ type: 'broadcast', event: 'dungeon_start', payload: { config: config } });
         } catch (e) {}
-        S.dmgNumbers.push({
-          x: P.x,
-          y: P.y - 30,
-          text: 'Entering dungeon...',
-          color: '#a070e0',
-          ts: Date.now()
-        });
+        pushDmgPopup(S, P.x, P.y - 30, 'Entering dungeon...', '#a070e0');
         setShowDungeonCreator(false);
         return;
       }
@@ -931,20 +902,8 @@ export function DungeonCreatorPanel(props) {
       P.x = dMX * TILE;
       P.y = (dH - 3) * TILE;
       S._zoneWipe = Date.now();
-      S.dmgNumbers.push({
-        x: P.x,
-        y: P.y - 50,
-        text: config.name,
-        color: '#a070e0',
-        ts: Date.now()
-      });
-      S.dmgNumbers.push({
-        x: P.x,
-        y: P.y - 35,
-        text: 'Wave 1/' + config.waves,
-        color: 'rgba(255,255,255,.5)',
-        ts: Date.now()
-      });
+      pushDmgPopup(S, P.x, P.y - 50, config.name, '#a070e0');
+      pushDmgPopup(S, P.x, P.y - 35, 'Wave 1/' + config.waves, 'rgba(255,255,255,.5)');
       BT_AUDIO.beep(400, 0.1, 0.12, 'sine');
       setTimeout(function () {
         return BT_AUDIO.beep(600, 0.08, 0.1, 'sine');

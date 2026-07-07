@@ -126,22 +126,10 @@ function pushStatIncreaseNotice(R, stat, beforeMax) {
   /* Small in-world floater (silver as of v2.3.153 -- matches the
      banner color so the two pieces of feedback read as the same
      event). */
-  S.dmgNumbers.push({
-    x: S.player.x,
-    y: S.player.y - 70,
-    text: label + ' level ' + newVal + '!',
-    color: '#c0c0c0',
-    ts: Date.now(),
-  });
+  pushDmgPopup(S, S.player.x, S.player.y - 70, label + ' level ' + newVal + '!', '#c0c0c0');
   /* Benefit (green) — sits just under the title. */
   if (benefit) {
-    S.dmgNumbers.push({
-      x: S.player.x,
-      y: S.player.y - 55,
-      text: benefit,
-      color: '#3dd497',
-      ts: Date.now(),
-    });
+    pushDmgPopup(S, S.player.x, S.player.y - 55, benefit, '#3dd497');
   }
   try { if (typeof BT_AUDIO !== 'undefined' && BT_AUDIO.beep) BT_AUDIO.beep(900, 0.06, 0.10, 'sine'); } catch (e) {}
   /* Fire the big banner with kind=stat so it renders in silver with
@@ -291,7 +279,20 @@ function distributeKillXpToBuild(R, killXp) {
   R._buildUse = { power: 0, vitality: 0, endurance: 0, agility: 0, mind: 0 };
 }
 
+/* v2.3.1177: the ONE way to spawn a floating damage/notice popup.  The
+   ~417 hand-rolled `S.dmgNumbers.push({x,y,text,color,ts})` literals
+   across ~39 files all collapse onto this.  `extra` merges over the
+   defaults, so the handful of non-default sites (ttl, iconKey/special,
+   stacked `ts: Date.now() + n` render-order nudges, precomputed `now`
+   timestamps) pass exactly what they differ by and nothing else. */
+function pushDmgPopup(S, x, y, text, color, extra) {
+  var p = { x: x, y: y, text: text, color: color, ts: Date.now() };
+  if (extra) for (var k in extra) p[k] = extra[k];
+  S.dmgNumbers.push(p);
+}
+
 export {
+  pushDmgPopup,
   BUILD_LABELS,
   BUILD_ICONS,
   peerDmgKey,
