@@ -84,6 +84,30 @@ input-gate interleaving to reason about at all.
 - Commands ride the channelShim PRIORITY_EVENTS lane (no 33ms batch
   delay on invite/accept clicks).
 
+## Party chat — SHIPPED v2.3.1212
+
+A party-scoped chat channel. Per the handoff note it is its **own
+validated relay case** (rule 13), never the default room-wide
+rebroadcast:
+
+| direction | type | payload | notes |
+|---|---|---|---|
+| c→s | `party_chat` | `{text}` | `_handlePartyChat` (party.js): sender must be in a party (else dropped); `text` is control-stripped + clamped to `PARTY.CHAT_MAX` (200) + trimmed; relayed to that party's members only |
+| s→c | `party_chat` | `{from, fromName, text, ts}` | PRIVILEGED; `from`/`fromName` are the SERVER's identity for the sender — a client-supplied `from` is ignored, so the origin can't be forged |
+
+- **Client** (`src/game/chat.js`): typing `/p <msg>` in the normal chat
+  input routes to party chat (a local hint if you're not in a party);
+  incoming lines render in the shared chat log tagged with a 🛡 + party
+  green, honoring the same block/mute lists as room chat. Own messages
+  are echoed optimistically and de-duped on `from === myId`.
+- Rides the `party_*` PRIORITY_EVENTS lane (no batch delay). Gated on
+  its **own narrow `caps.partyChat`** (rule 19 / TRAPS #9), NOT
+  `caps.party`: a worker that has parties (v2.3.1185) but predates
+  party_chat (≤v2.3.1211) would fall through to the **room-wide
+  rebroadcast** and leak the line — so the client sends `/p` only when
+  `caps.partyChat` is advertised, and otherwise keeps the message local
+  with a hint (never leaks it). No storage (ephemeral, rule 11).
+
 ## Successor follow-ups
 
 - Party member map markers / off-screen direction arrows (the vitals
@@ -91,6 +115,7 @@ input-gate interleaving to reason about at all.
   arrow).
 - "Enter dungeon as party" flow: a leader-initiated `dungeon_start`
   that teleports members in together (today everyone walks in).
-- Party chat channel (today: use the room chat).
+- Contribution-role weighting (item D's "optional later"; touching the
+  §7 share math needs its predicates re-run — see the danger note).
 - Contribution-role weighting (item D's "optional later"; touching the
   §7 share math needs its predicates re-run — see the danger note).

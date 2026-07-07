@@ -305,6 +305,7 @@ export const PRIVILEGED_EVENTS = new Set([
   // private invite/error notices.  Forging party_state would paint fake
   // rosters; forging party_invited is popup-spam surface.
   'party_state', 'party_invited', 'party_error',
+  'party_chat', // v2.3.1212: server-relayed party-only chat (party.js)
   // Combat resolution
   'monster_attack', 'monster_hit', 'monster_kill', 'pvp_hit',
   // v2.3.1147: server-emitted since the mummy->skeleton transform moved
@@ -2354,6 +2355,12 @@ export class GameRoom {
         break;
       case 'party_kick':
         if (session.id) this._handlePartyKick(session, msg.payload || msg);
+        break;
+      case 'party_chat':
+        // v2.3.1212: party-scoped chat -- its OWN validated case (rule
+        // 13), never the room-wide rebroadcast branch; the server stamps
+        // the sender + relays only to party members (party.js).
+        if (session.id) this._handlePartyChat(session, msg.payload || msg);
         break;
 
       case 'harden_weapon':

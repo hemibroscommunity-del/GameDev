@@ -1790,7 +1790,7 @@ export function setupWebSocket(ctx) {
     'trade2_open', 'trade2_set', 'trade2_confirm', 'trade2_cancel',
     /* v2.3.1185: party commands -- same server-truth-renderer posture
        as trade2; invite/accept clicks should not sit in a batch. */
-    'party_invite', 'party_accept', 'party_decline', 'party_leave', 'party_kick']);
+    'party_invite', 'party_accept', 'party_decline', 'party_leave', 'party_kick', 'party_chat']);
     var INPUT_BATCH_WINDOW = 33; // ms — match server tick rate for smooth remote movement
     var _inputBuffer = [];
     var _pendingMove = null;

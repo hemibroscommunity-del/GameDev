@@ -24,6 +24,14 @@
  *      expiry removes them via the tick sweep.
  *   9. Forged party_state / party_invited / party_error are not
  *      rebroadcast (deny-list).
+ *
+ * v2.3.1212 (item D follow-up, party chat): a party-scoped, server-
+ * validated relay.  Checks:
+ *   10. Chat relays to party members only (server-stamped sender +
+ *       trimmed), a non-member never receives it, a forged from/name is
+ *       ignored, a partyless sender is dropped, control chars stripped +
+ *       length clamped + empty/non-string dropped, and party_chat is
+ *       never rebroadcast room-wide (its own validated case, rule 13).
  */
 import { GameRoom } from '../src/index.js';
 import { PARTY } from '../src/party.js';
@@ -212,6 +220,62 @@ check("decline notifies the inviter privately ('declined')", lastErr(wss.c) && l
 wss.c.sent.length = 0;
 await cmd(wss.d, 'party_decline', { target: P('c') }); // no live invite now
 check('forged decline (no live invite) sends nothing', msgsOfType(wss.c, 'party_error').length === 0);
+
+// ── 10. v2.3.1212 party chat (item D follow-up): a party-scoped,
+// server-validated relay ──
+{
+  for (const n of ['f', 'g', 'h']) { wss[n] = fakeWs(n); await join(wss[n], P(n), n.toUpperCase()); }
+  const F = P('f'), G = P('g'), H = P('h');
+  await cmd(wss.f, 'party_invite', { target: G });
+  await cmd(wss.g, 'party_accept', { target: F }); // F + G form a party
+  check('a party formed for the chat checks', !!room._partyOf(F) && room._partyOf(F) === room._partyOf(G));
+  { const s = wss.f.sent.find((m) => m.type === 'state_sync'); check('state_sync advertises caps.partyChat (narrow deploy-order gate)', s && s.caps && s.caps.partyChat === true, s && s.caps); }
+  wss.f.sent.length = 0; wss.g.sent.length = 0; wss.h.sent.length = 0;
+
+  // relay to members, server-stamped identity, trimmed
+  await cmd(wss.f, 'party_chat', { text: '  hello team  ' });
+  const gChat = msgsOfType(wss.g, 'party_chat');
+  check('party chat relays to members, server-stamped + trimmed',
+    gChat.length === 1 && gChat[0].payload.from === F && gChat[0].payload.fromName === 'F' && gChat[0].payload.text === 'hello team',
+    gChat.map((m) => m.payload));
+  check('the sender is delivered too (client dedups on from===myId)', msgsOfType(wss.f, 'party_chat').length === 1);
+  check('a non-member never receives party chat', msgsOfType(wss.h, 'party_chat').length === 0);
+
+  // a client-supplied from/name is ignored -- the server stamps identity
+  wss.g.sent.length = 0;
+  await cmd(wss.f, 'party_chat', { text: 'x', from: 'bp_evil', fromName: 'Hacker' });
+  const g2 = msgsOfType(wss.g, 'party_chat');
+  check('a forged from/name is ignored (server stamps the real sender)',
+    g2.length === 1 && g2[0].payload.from === F && g2[0].payload.fromName === 'F', g2.map((m) => m.payload));
+
+  // a partyless sender is dropped (nothing relayed, never rebroadcast)
+  wss.h.sent.length = 0;
+  await cmd(wss.h, 'party_chat', { text: 'anyone?' });
+  check('a partyless sender is dropped', msgsOfType(wss.h, 'party_chat').length === 0);
+
+  // control-char strip + length clamp + empty/non-string drop
+  wss.g.sent.length = 0;
+  await cmd(wss.f, 'party_chat', { text: 'hi' + String.fromCharCode(7, 1) + 'there' });
+  const gc = msgsOfType(wss.g, 'party_chat');
+  var _ctrl = false; var _ct = (gc[0] && gc[0].payload.text) || ''; for (var _i = 0; _i < _ct.length; _i++) if (_ct.charCodeAt(_i) < 32) _ctrl = true;
+  check('control chars are stripped', gc.length === 1 && !_ctrl && _ct.indexOf('there') >= 0, _ct);
+  wss.g.sent.length = 0;
+  await cmd(wss.f, 'party_chat', { text: 'a'.repeat(500) });
+  const gl = msgsOfType(wss.g, 'party_chat');
+  check('length clamps to CHAT_MAX', gl.length === 1 && gl[0].payload.text.length === PARTY.CHAT_MAX, gl[0] && gl[0].payload.text.length);
+  wss.g.sent.length = 0;
+  await cmd(wss.f, 'party_chat', { text: '   ' });
+  await cmd(wss.f, 'party_chat', { text: 42 });
+  await cmd(wss.f, 'party_chat', {});
+  check('whitespace-only / non-string / missing text are all dropped', msgsOfType(wss.g, 'party_chat').length === 0);
+
+  // forged party_chat is handled by the dedicated case, never the
+  // room-wide rebroadcast branch (rule 13)
+  room.eventBuffer.length = 0;
+  await room.webSocketMessage(wss.h, JSON.stringify({ type: 'party_chat', payload: { from: F, text: 'spoof' } }));
+  check('party_chat is never rebroadcast room-wide (dedicated validated case)',
+    room.eventBuffer.filter((e) => e.type === 'party_chat').length === 0, room.eventBuffer.map((e) => e.type));
+}
 
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);
 process.exit(failures === 0 ? 0 : 1);
