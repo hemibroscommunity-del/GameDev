@@ -2094,7 +2094,7 @@ export var BroTown = function BroTown(_ref0) {
       if (S.rpg.goldNuggets === undefined) S.rpg.goldNuggets = 0;
       if (S.rpg.goldBars === undefined) S.rpg.goldBars = 0;
       if (S.rpg.achievementPoints === undefined) S.rpg.achievementPoints = 0;
-      if (!S.rpg._threatState) S.rpg._threatState = null; /* {target, ts, type:'red'|'white', expires} */
+      if (!S.rpg._threatState) S.rpg._threatState = null; /* {target, ts, type:'red'|'white', expires} — v2.3.1193: no longer an orphaned stub; gameEvents.js writes it from the relayed threat handshake (record of MY outgoing threat; the skulls render from S._threatMarks / S._pvpSkull*) */
       if (!S.rpg._threatCooldownUntil) S.rpg._threatCooldownUntil = 0;
       if (!S.rpg._guardConfiscateUntil) S.rpg._guardConfiscateUntil = 0;
       if (!S.rpg.weaponStash) S.rpg.weaponStash = [];

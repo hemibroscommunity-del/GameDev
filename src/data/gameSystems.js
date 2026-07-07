@@ -5108,6 +5108,10 @@ export const PVP_DUEL_TIMEOUT = 30000; /* 30 seconds to accept duel */
 export const PVP_THREAT_BASE_COUNTDOWN = 120000; /* 2 min base countdown for threatened player */
 export const PVP_THREAT_LEVEL_BONUS = 120000; /* +2 min per level difference */
 export const PVP_THREAT_COOLDOWN = 1800000; /* 30 min cooldown after issuing threat */
+/* v2.3.1193: ignored/expired-threat fight window — mirrors the server's
+   THREAT.CONSENT_MS (server/src/threat.js); keep in sync.  Drives the
+   white-skull display window only (consent itself is server-side). */
+export const PVP_THREAT_CONSENT_MS = 600000;
 export const PVP_GUARD_CONFISCATE_TIME = 1800000; /* 30 min gear confiscation */
 export const PVP_GUARD_GOLD_LEVY = 0.10; /* 10% gold levy when guards win */
 export const PVP_THREAT_DURATION = PVP_THREAT_BASE_COUNTDOWN; /* compat */

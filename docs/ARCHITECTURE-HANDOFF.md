@@ -248,9 +248,14 @@ never sent). Countdown 2min + 2min/level-above capped at 10min;
 ignore/expiry grant the consent pair; Call Guards = 10% coin sink +
 30-min gear lock under `gearlock:<pid>` (storage-backed — relog can't
 shed it) gating the four equip mutators (equip/unequip/armor-swap/
-forge). Successor follow-ups: red/white SKULL RENDERING still doesn't
-exist client-side (orphaned state anchors listed in the spec); guards
-fines evaporate — a bounty pool is the natural next step.
+forge). Skull rendering SHIPPED v2.3.1193 (client-only, no wire
+change: `S._threatMarks` + the formerly orphaned `S._pvpSkull*`
+anchors, written in gameEvents.js from the relayed handshake, drive a
+tinted 💀 per player display in entityRenderer on the party-marker
+change-cache budget — red while the countdown runs, white for the
+10-min fight window after ignore/expiry, cleared by guards; see the
+spec's "Skull rendering" section). Successor follow-ups: guards fines
+evaporate — a bounty pool is the natural next step.
 
 ### D. Parties — SHIPPED v2.3.1185
 Built as specced: `server/src/party.js` (roster + invite handshake on

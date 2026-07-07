@@ -10,7 +10,7 @@
    - React setters + the effect-scoped _buildServerPile arrive via `deps`
      (destructured to the original names so the body is untouched).
    S is stateRef.current. */
-import { BT_AUDIO, ZONES, TILE, ARENA_CHAMPION_REWARD, ARENA_WIN_REWARD, CLAN_WAR_REWARDS, createDefaultCompStats, recalcDerived, DEATH_GOLD_PENALTY, updateZoneDimensions, generateZoneMap, trainDefense, getGuildRank, SKILL_GUILDS } from '@/data/index.js';
+import { BT_AUDIO, ZONES, TILE, ARENA_CHAMPION_REWARD, ARENA_WIN_REWARD, CLAN_WAR_REWARDS, createDefaultCompStats, recalcDerived, DEATH_GOLD_PENALTY, PVP_THREAT_CONSENT_MS, updateZoneDimensions, generateZoneMap, trainDefense, getGuildRank, SKILL_GUILDS } from '@/data/index.js';
 import { MONSTER_VARIANTS, maybeTransformMonster, isRemnantSkull, xpMultFor } from '@/data/monsterVariants.js';
 import { rollMonsterShard } from '@/data/shards.js';
 /* BT_API_BASE: same window.BROTOWN_WS_URL-derived value BroTown computes at
@@ -28,6 +28,21 @@ import { _objectSpread, _slicedToArray, _toConsumableArray } from '@/lib/babelHe
    only, so under broadcast latency the body could face one way while the
    swing pointed another.  The next move broadcast (sender's own `f`)
    overwrites this, so it's a between-packets correction, never a fork. */
+/* v2.3.1193: threat-skull marks (docs/specs/threats.md, "Skull
+   rendering").  S._threatMarks[pid] = { type:'red'|'white', until }
+   drives the 💀 entityRenderer draws over OTHER players; the local
+   player's own skull rides the previously ORPHANED S._pvpSkullType /
+   S._pvpSkullUntil anchors (InspectPlayerPanel writes them at
+   threat-issue; the handlers below keep them authoritative).  Pure
+   display state derived from the relayed, server-validated handshake —
+   never sent back to the server, and time-bounded (≤10-min consent
+   window) so reconnects/deploys just let stale marks age out. */
+function _setThreatMark(S, pid, type, until) {
+  if (!pid || typeof pid !== 'string' || pid === S.myId) return;
+  if (!S._threatMarks) S._threatMarks = {};
+  S._threatMarks[pid] = { type: type, until: until };
+}
+
 var _FACING8 = ['east', 'southeast', 'south', 'southwest', 'west', 'northwest', 'north', 'northeast'];
 function _reconcileFacing(other, ang) {
   if (!other || typeof ang !== 'number' || !isFinite(ang)) return;
@@ -1616,6 +1631,26 @@ export function processGameEvent(type, payload, S, deps) {
                   return BT_AUDIO.beep(200, 0.08, 0.12, 'square');
                 }, 150);
               }
+              /* v2.3.1193: skull state for EVERY receiver — the relay is
+                 room-wide, matching the panel copy ("red 💀 above their
+                 head" that anyone can see).  Red over the threatener
+                 while the countdown runs; the renderer flips a lapsed
+                 red mark white for the consent window (expiry == ignore
+                 is the server's own semantics, _tickThreats). */
+              {
+                var _thFrom = payload.from || payload.id;
+                var _thUntil = Date.now() + (payload.countdown || 120000);
+                if (_thFrom === S.myId) {
+                  /* Echo of my own threat — replace InspectPlayerPanel's
+                     optimistic base-countdown anchor with the server's
+                     authoritative (level-scaled) one. */
+                  S._pvpSkullType = 'red';
+                  S._pvpSkullUntil = _thUntil;
+                  if (S.rpg) S.rpg._threatState = { target: payload.target, ts: Date.now(), type: 'red', expires: _thUntil };
+                } else {
+                  _setThreatMark(S, _thFrom, 'red', _thUntil);
+                }
+              }
               break;
             }
           case 'threat_response':
@@ -1628,6 +1663,28 @@ export function processGameEvent(type, payload, S, deps) {
               if (payload.target === S.myId) {
                 if (payload.action === 'guards') pushDmgPopup(S, S.player.x, S.player.y - 40, 'They called the guards!', '#ff5e6c');else pushDmgPopup(S, S.player.x, S.player.y - 40, 'Threat ignored — they can fight back!', '#fbbf24');
               }
+              /* v2.3.1193: skull transitions for EVERY receiver.
+                 payload.target is the original THREATENER: guards clears
+                 their skull (no consent granted), ignore turns it white
+                 for the fight window.  Forged/expired responses are
+                 dropped server-side, so a relayed response is truth. */
+              if (payload.target === S.myId) {
+                if (payload.action === 'guards') {
+                  S._pvpSkullType = null;
+                  S._pvpSkullUntil = 0;
+                  if (S.rpg) S.rpg._threatState = null;
+                } else {
+                  S._pvpSkullType = 'white';
+                  S._pvpSkullUntil = Date.now() + PVP_THREAT_CONSENT_MS;
+                  if (S.rpg) S.rpg._threatState = { target: payload.from || payload.id, ts: Date.now(), type: 'white', expires: S._pvpSkullUntil };
+                }
+              } else if (payload.target) {
+                if (payload.action === 'guards') {
+                  if (S._threatMarks) delete S._threatMarks[payload.target];
+                } else {
+                  _setThreatMark(S, payload.target, 'white', Date.now() + PVP_THREAT_CONSENT_MS);
+                }
+              }
               break;
             }
           case 'threat_penalty':
@@ -1639,6 +1696,13 @@ export function processGameEvent(type, payload, S, deps) {
               if (payload.levy > 0) pushDmgPopup(S, S.player.x, S.player.y - 55, '-' + payload.levy + 'G guard fine!', '#ff5e6c');
               pushDmgPopup(S, S.player.x, S.player.y - 40, 'Gear locked 30m by the guards!', '#ff5e6c');
               BT_AUDIO.beep(150, 0.15, 0.2, 'sawtooth');
+              /* v2.3.1193: guards were called on me — drop my own red
+                 skull.  The threat_response guards branch above does the
+                 same via the relay; this private event is the guaranteed
+                 copy (it only exists when the levy/lock really landed). */
+              S._pvpSkullType = null;
+              S._pvpSkullUntil = 0;
+              if (S.rpg) S.rpg._threatState = null;
               break;
             }
           case 'threat_expired':
@@ -1646,6 +1710,21 @@ export function processGameEvent(type, payload, S, deps) {
               /* v2.3.1129: an unanswered threat countdown ran out --
                  the pair may fight (same as an ignore). */
               pushDmgPopup(S, S.player.x, S.player.y - 40, 'Threat expired — fight is on!', '#fbbf24');
+              /* v2.3.1193: expiry == ignore, so skulls go WHITE for the
+                 fight window.  This event is private to the pair:
+                 payload.from set => I'm the target (whiten THEIR mark);
+                 payload.target set => I'm the threatener (whiten MINE).
+                 Bystanders never get it — their red mark self-whitens in
+                 the renderer when the countdown lapses. */
+              {
+                var _thWhiteUntil = Date.now() + PVP_THREAT_CONSENT_MS;
+                if (payload && payload.from) _setThreatMark(S, payload.from, 'white', _thWhiteUntil);
+                if (payload && payload.target) {
+                  S._pvpSkullType = 'white';
+                  S._pvpSkullUntil = _thWhiteUntil;
+                  if (S.rpg) S.rpg._threatState = { target: payload.target, ts: Date.now(), type: 'white', expires: _thWhiteUntil };
+                }
+              }
               break;
             }
           case 'trade2_invite':
