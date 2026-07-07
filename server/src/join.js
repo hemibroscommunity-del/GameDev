@@ -509,6 +509,7 @@ export const joinMethods = {
     this._duelEscrowSweep();
     this._arenaEntrySweep(); // v2.3.1126: refund entries orphaned by a deploy
     this._arenaStakeSweep(); // v2.3.1128: same contract for sponsorship stakes
+    this._bountySweep();     // v2.3.1211: delete orphaned guard-fine bounties (item C)
     // v2.3.1129: load a surviving guard gear lock -- storage-backed
     // so relogging can't shed the punishment (threat.js).
     {

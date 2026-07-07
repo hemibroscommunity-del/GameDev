@@ -56,6 +56,11 @@ export const THREAT = {
   GEAR_LOCK_MS: 1800000,  // 30-min gear lock
   COOLDOWN_MS: 1800000,   // 30-min per-player threat cooldown (client mirrors)
   CONSENT_MS: 600000,     // ignored/expired threat: fight window (10 min)
+  BOUNTY_STALE_MS: 259200000, // v2.3.1211: orphan-bounty sweep after 3 days
+                              // of no new fine (the griefer went quiet) --
+                              // unclaimable, so it's deleted for storage
+                              // hygiene (tunable; the gold just evaporates,
+                              // exactly the pre-bounty sink behavior).
 };
 
 export const threatMethods = {
@@ -111,12 +116,26 @@ export const threatMethods = {
       const aPs = this.playerState[target];
       let levy = 0;
       if (aPs) {
-        // 10% fine -- pure sink, single mutation on live ps.
+        // v2.3.1129: 10% fine, a single mutation on live ps.
         levy = Math.floor((aPs.coins || 0) * THREAT.LEVY_PCT);
         if (levy > 0) {
           aPs.coins -= levy;
           this._saveRpg(target, aPs);
           this._queuePlayerStateFlush(target);
+          // v2.3.1211 (item C): the fine no longer evaporates -- it
+          // funds a BOUNTY on this threatener's head, paid to whoever
+          // kills them (bounty:<pid>, threats.md).  Escrow-at-placement
+          // (rule 7): accumulate across repeat Call-Guards on the same
+          // head.  Best-effort -- the fine is already taken; a storage
+          // hiccup here degrades to the old sink, never a double-charge.
+          try {
+            const bkey = 'bounty:' + target;
+            const cur = (await this.state.storage.get(bkey)) || { amount: 0, by: fromId, ts: now };
+            cur.amount = (cur.amount || 0) + levy;
+            cur.by = fromId;
+            cur.ts = now;
+            await this.state.storage.put(bkey, cur);
+          } catch (e) { /* fine stands; bounty is best-effort */ }
         }
         // Gear lock -- storage-backed so a reconnect can't shed it.
         const lockUntil = now + THREAT.GEAR_LOCK_MS;
@@ -151,6 +170,65 @@ export const threatMethods = {
       this._threatSend(from, 'threat_expired', { target, attackable: true });
       this._threatSend(target, 'threat_expired', { from, attackable: true });
     }
+  },
+
+  /* v2.3.1211 (item C): pay a killed threatener's guard-fine bounty to
+   * their killer.  Called (fire-and-forget) from _handlePlayerDeath,
+   * beside _warOnDeath, so it is fed ONLY by the server's own PvP
+   * resolution (cause 'pvp:<killerId>') -- the killer can't be forged.
+   * Anti-farm, mirroring the _warOnDeath posture:
+   *   - self can't claim: combat skips self-targets, so 'pvp:<self>'
+   *     never occurs, but we assert killerId !== victimId anyway;
+   *   - monster/environment deaths carry 'monster:'/other, never
+   *     'pvp:', so a griefer dying to a mob pays nobody and keeps the
+   *     bounty on their head;
+   *   - a consensual DUEL kill is excluded (the easiest collusion
+   *     channel -- a griefer could duel a confederate and throw it);
+   *   - a SAME-CLAN kill can't farm the pot.
+   * Any excluded case LEAVES the bounty in place (they respawn, the
+   * bounty stands for a legit hunter).  Paid via _creditPlayer
+   * (offline-safe mail, opId-idempotent on 'bountypay:<victim>:<ts>' so
+   * a double-fired death can't double-pay), then the record is deleted. */
+  async _bountyOnDeath(victimId, cause) {
+    if (typeof cause !== 'string' || !cause.startsWith('pvp:')) return;
+    const killerId = cause.slice(4);
+    if (!killerId || killerId === victimId) return;
+    let rec;
+    try { rec = await this.state.storage.get('bounty:' + victimId); } catch (e) { return; }
+    if (!rec || !(rec.amount > 0)) return;
+    // Consensual duel between these two -> not a bounty hunt.
+    const d = this._duelFor && this._duelFor(killerId);
+    if (d && (d.a === victimId || d.b === victimId)) return;
+    // Same-clan "fed" kill can't collect.
+    const kClan = this._clanOf && this._clanOf(killerId);
+    const vClan = this._clanOf && this._clanOf(victimId);
+    if (kClan && vClan && kClan.id === vClan.id) return;
+    await this._creditPlayer(killerId, {
+      opId: 'bountypay:' + victimId + ':' + rec.ts,
+      source: 'bounty', kind: 'gold', payload: { amount: rec.amount },
+      note: 'bounty claimed',
+    });
+    try { await this.state.storage.delete('bounty:' + victimId); } catch (e) { /* opId stamp already guards double-pay */ }
+  },
+
+  /* v2.3.1211 (item C): orphan-bounty sweep, the _arenaStakeSweep
+   * pattern (rate-limited, kicked from the join path).  A bounty on a
+   * head that has gone quiet past BOUNTY_STALE_MS is unclaimable, so it
+   * is deleted -- the gold evaporates, exactly the pre-item-C sink, so
+   * no worse.  No refund path: the bounty is a FINE, not a returnable
+   * escrow, so there is nothing to pay back and no double-pay risk (the
+   * payout's own opId stamp guards that). */
+  async _bountySweep() {
+    const now = Date.now();
+    if (this._lastBountySweep && now - this._lastBountySweep < 300000) return;
+    this._lastBountySweep = now;
+    try {
+      const bounties = await this.state.storage.list({ prefix: 'bounty:' });
+      for (const [k, rec] of bounties) {
+        if (now - ((rec && rec.ts) || 0) < THREAT.BOUNTY_STALE_MS) continue;
+        await this.state.storage.delete(k);
+      }
+    } catch (e) { /* best-effort */ }
   },
 
   /* Gear-lock gate for the equip-mutating handlers.  Returns true when

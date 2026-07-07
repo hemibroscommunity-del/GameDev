@@ -1449,6 +1449,10 @@ export class GameRoom {
     // v2.3.1125: clan-war scoring rides the same server-resolved death
     // (cause 'pvp:<attacker>'); duel kills are excluded inside the hook.
     this._warOnDeath(playerId, cause);
+    // v2.3.1211 (item C): a killed threatener's guard-fine bounty pays
+    // out to their killer here too (same server-observed 'pvp:' cause;
+    // self / duel / same-clan / non-PvP excluded inside the hook).
+    this._bountyOnDeath(playerId, cause).catch(() => {});
     // v2.3.1116: death ends any remaining threat consent this player
     // was party to -- the survivor can't keep hitting them through the
     // respawn.  (Duel pairs already cleared by the resolution above.)

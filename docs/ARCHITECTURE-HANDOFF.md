@@ -66,6 +66,7 @@ extended.
    | `arena_stake:<tid>:<mid>:<pid>` | escrowed sponsorship stake | sponsorship.md |
    | `guild_claims:<pid>` | `{skillKey: completedCount}` quest-ladder claims | guild-quests.md |
    | `gearlock:<pid>` | guard gear-lock expiry timestamp | threats.md |
+   | `bounty:<pid>` | `{amount, by, ts}` escrowed Call-Guards fine on this head, paid to the killer | threats.md |
    | `harden_ledger:<pid>` | last 50 hardening attempts (§17.5) | hardening.md |
    | `harden_h5_log` | global H5-mint timestamps, 90-day window (INV-27) | hardening.md |
    | `botstat:<playerId>` | anti-bot evidence: counters, hour caps, replay-hash tail, shadow flags | anticheat-botfp.md |
@@ -267,13 +268,18 @@ state_sync section), display-only client, caps-gated. Danger:
 TRAPS #1 — do NOT revive the legacy `arena_bet` relay for this; its
 consumers were proven unsafe in #220's adversarial review.
 
-### C. Threat bounty pool
-Old item C's residue (threats.md "Attach points"): Call-Guards fines
-evaporate — a dead sink. Shape: escrow-at-placement (rule 7) into a
-`bounty:<pid>` storage key — register it in the rule-2 table — paid
-via `_creditPlayer` with a stamped opId on the threatener's death;
-orphan sweep per rules 5–6. Danger: payer ≠ payee — a self-kill (or a
-fed clanmate) must not farm the pot.
+### C. Threat bounty pool — SHIPPED v2.3.1211
+The Call-Guards 10% fine no longer evaporates: it escrows into
+`bounty:<pid>` (registered above) and pays the killer of that
+threatener, via `_bountyOnDeath` hung off the `_handlePlayerDeath`
+choke point (threat.js; threats.md "Bounty board"). Fed only by the
+server's own `pvp:<killerId>` cause, so the killer can't be forged;
+self / non-PvP (monster) / consensual-duel / same-clan kills are all
+excluded (the `_warOnDeath` anti-farm posture), leaving the bounty in
+place for a legit hunter. `_creditPlayer` opId `bountypay:<victim>:<ts>`
+is the double-pay guard; `_bountySweep` (join-path, rate-limited)
+deletes bounties gone stale past `THREAT.BOUNTY_STALE_MS`. No caps flag
+(server-only, the threat-machine posture).
 
 ### D. Party follow-ups
 party.md "Successor follow-ups": same-zone member arrows / map
