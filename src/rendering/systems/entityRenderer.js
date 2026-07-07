@@ -515,6 +515,45 @@ function _maskedBodyFrameInner(bodyTex, worn, dilate, _bt0, _bs) {
       ctx.drawImage(bres, bf.x, bf.y, bf.width, bf.height, 0, 0, 256, 256);
       ctx.restore();
     }
+    /* v2.3.1123: the fishing rod is baked into the fish-pose body sprite, so the
+       gear erase above chops the part of the pole that crosses the (dilated) plate
+       silhouette -- the pole looked cut near the character when armour was worn.
+       Restore the rod from the pre-erase body: its pink/magenta pixels (high R,
+       low G, B > G) appear ONLY on the fish rod, so this is a no-op for every
+       other pose/body.  The rod is drawn back into the body texture; the small
+       segment directly behind the plate is still occluded by the gear on top
+       (natural), but the halo-cut section beyond the plate reappears. */
+    if (origBody) {
+      try {
+        const isRod = (o) => {
+          const r = origBody[o], g = origBody[o + 1], b = origBody[o + 2], a = origBody[o + 3];
+          return a > 60 && r > 140 && g < 115 && b > 60 && b < 195 && (r - g) > 60 && b > g + 22;
+        };
+        const rimg = ctx.getImageData(0, 0, 256, 256);
+        const rd = rimg.data;
+        let restored = false;
+        const put = (o) => { rd[o] = origBody[o]; rd[o + 1] = origBody[o + 1]; rd[o + 2] = origBody[o + 2]; rd[o + 3] = origBody[o + 3]; restored = true; };
+        for (let y = 0; y < 256; y++) {
+          for (let x = 0; x < 256; x++) {
+            const o = (y * 256 + x) * 4;
+            if (!isRod(o)) continue;
+            put(o);
+            /* also restore the rod's dark outline (adjacent opaque non-rod px)
+               so the pole keeps its edge where the erase cut it */
+            for (let dy = -1; dy <= 1; dy++) {
+              for (let dx = -1; dx <= 1; dx++) {
+                const nx = x + dx, ny = y + dy;
+                if (nx < 0 || nx > 255 || ny < 0 || ny > 255) continue;
+                const no = (ny * 256 + nx) * 4;
+                if (origBody[no + 3] > 60 && !isRod(no)
+                    && origBody[no] < 90 && origBody[no + 1] < 90 && origBody[no + 2] < 110) put(no);
+              }
+            }
+          }
+        }
+        if (restored) ctx.putImageData(rimg, 0, 0);
+      } catch (e) { /* best-effort: rod stays cut, body otherwise intact */ }
+    }
     /* Blend the ghost hand: ChatGPT's armour drift leaves the body's bare fist
        poking out below the waist past the gauntlet.  Where the fist sits OVER the
        leg, recolour it to the player's PANTS shade (no transparent hole); where
@@ -1164,6 +1203,61 @@ function _placePickupHead(display, sb, skinId, pantsId, shoesId, pose, dir, fram
   /* v2.3.1120: head sheet is HEAD_DS-downscaled; the 256/_fw ratio brings it up
      to a 256-space figure, then /DISPLAY_DS undoes the DISPLAY_DS factor sb.scale
      now carries (so head matches the body whatever the two downscales are). */
+  hd.scale.x = sb.scale.x * (256 / _fw) / DISPLAY_DS; hd.scale.y = sb.scale.y * (256 / _fh) / DISPLAY_DS;
+  hd.tint = 0xffffff;
+  hd.visible = true;
+}
+/* v2.3.1123: FISH-pose "top" overlay = the head band + the whole fishing rod,
+   baked into a full-frame texture (transparent elsewhere) so BOTH lift above the
+   chest plate.  Gear draws above the body, so an armoured angler had the head hidden
+   behind the plate AND the rod chopped where it crosses the torso (only the head-
+   level rod tip showed).  The head band (top 35%) is kept as-is; below it, only the
+   rod's magenta pixels are kept -- the bare torso/arms stay erased so the plate shows
+   through.  Cached per body frame (uid). */
+const _fishTopCache = new Map();
+function _fishTopFrame(bodyTex) {
+  if (!bodyTex) return null;
+  let bres; try { bres = bodyTex.source && bodyTex.source.resource; } catch (e) { return null; }
+  if (!bres) return null;
+  const key = (bodyTex.uid != null ? bodyTex.uid : '') + '|fishtop';
+  const hit = _fishTopCache.get(key);
+  if (hit) { _fishTopCache.delete(key); _fishTopCache.set(key, hit); return hit; }
+  try {
+    const bf = bodyTex.frame;
+    const W = Math.max(1, Math.round(bf.width)), H = Math.max(1, Math.round(bf.height));
+    const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+    const ctx = cv.getContext('2d');
+    ctx.drawImage(bres, bf.x, bf.y, bf.width, bf.height, 0, 0, W, H);
+    const img = ctx.getImageData(0, 0, W, H); const d = img.data;
+    const headBot = Math.round(H * 0.35);   // keep the whole head band as-is
+    for (let y = headBot + 1; y < H; y++) {
+      for (let x = 0; x < W; x++) {
+        const o = (y * W + x) * 4;
+        const r = d[o], g = d[o + 1], b = d[o + 2], a = d[o + 3];
+        /* below the head band, keep ONLY the rod (magenta: high R, low G, B>G) */
+        const isRod = a > 60 && r > 140 && g < 115 && b > 60 && b < 195 && (r - g) > 60 && b > g + 22;
+        if (!isRod) d[o + 3] = 0;
+      }
+    }
+    ctx.putImageData(img, 0, 0);
+    const tex = new Texture({ source: Texture.from(cv).source });
+    _fishTopCache.set(key, tex);
+    if (_fishTopCache.size > 64) { const oldest = _fishTopCache.keys().next().value; const ot = _fishTopCache.get(oldest); _fishTopCache.delete(oldest); try { ot.destroy(true); } catch (e) {} }
+    return tex;
+  } catch (e) { return null; }
+}
+/* Place the head+rod overlay on the (reused) _bodyHead sprite at the body's exact
+   transform (full-frame, anchor 0.5/0.5 -- same as _placePickupHead).  Lifted above
+   the gear by _orderTraitsAndWeapon.  Only called when a chest plate is worn. */
+function _placeFishHead(display, sb, bodyTex) {
+  const hd = display._bodyHead;
+  if (!hd || !sb || !bodyTex) return;
+  const t = _fishTopFrame(bodyTex);
+  if (!t) return;
+  if (hd.texture !== t) hd.texture = t;
+  hd.x = sb.x; hd.y = sb.y;
+  const _fw = (t.frame && t.frame.width) || 256;
+  const _fh = (t.frame && t.frame.height) || 256;
   hd.scale.x = sb.scale.x * (256 / _fw) / DISPLAY_DS; hd.scale.y = sb.scale.y * (256 / _fh) / DISPLAY_DS;
   hd.tint = 0xffffff;
   hd.visible = true;
@@ -3337,6 +3431,8 @@ export class EntityRenderer {
           try {
             _placePickupHead(display, spriteBody, other.skin, other.pants, other.shoes, pose, dir, frameIdx);
             spriteBody.visible = !(_rfull && !!getPickupHeadFrame(other.skin, other.pants, other.shoes, pose, dir, frameIdx));
+            /* v2.3.1123: lift the angler's head above the fishing chest plate. */
+            if (pose === 'fish' && _rworn.some(w => w.k && w.k.indexOf('chest:') === 0)) _placeFishHead(display, spriteBody, tex);
           } catch (e) { if (display._bodyHead) display._bodyHead.visible = false; spriteBody.visible = true; }
           /* shirt is baked into the body (see getBodyFrame above); no overlay. */
           if (display._shirtSprite) display._shirtSprite.visible = false;
@@ -4084,6 +4180,8 @@ export class EntityRenderer {
         try {
           _placePickupHead(display, spriteBody, getSkin(), getPants(), getShoes(), pose, dir, frameIdx);
           spriteBody.visible = !(pose === 'pickup' && _legsW && _chestW && !!getPickupHeadFrame(getSkin(), getPants(), getShoes(), pose, dir, frameIdx));
+          /* v2.3.1123: lift the angler's head above the fishing chest plate. */
+          if (pose === 'fish' && _chestW) _placeFishHead(display, spriteBody, tex);
         } catch (e) { if (display._bodyHead) display._bodyHead.visible = false; spriteBody.visible = true; }
         body.visible = false;
         if (display._procDrawn) {
