@@ -86,6 +86,29 @@ export const BOSS_ABILITIES = {
   SUMMON_UNLOCK_LVL: 20,  // legacy: cfg.monsterLevel >= 20 adds summon
   SWEEP_UNLOCK_LVL: 40,   // legacy: cfg.monsterLevel >= 40 adds sweep
   MAX_HIT_PCT: 0.5,       // no-oneshot guard: one ability hit <= 50% of victim maxHp
+  /* v2.3.1215 (item I): per-archetype ability kits.  Until now EVERY
+   * boss ran the same slam+charge rotation (+ summon/sweep by level),
+   * so the bossArchetype knob changed only stats, never behaviour.  Now
+   * each archetype starts with its SIGNATURE ability live from level 1
+   * (a swarm summons, a sentinel sweeps, a stalker charges) via its base
+   * kit; the legacy level gates (SUMMON_UNLOCK/SWEEP_UNLOCK) still layer
+   * the fuller kit onto any archetype at depth, so a high-level boss of
+   * any type eventually wields the whole rotation.  All abilities are
+   * the EXISTING kinds (no new wire surface, rule 13) and every hit
+   * still routes through _dungeonBossHitPlayer -> the MAX_HIT_PCT
+   * no-oneshot clamp (authoritative over everything, item I danger).
+   * Unknown archetypes fall back to the brute kit. */
+  KITS: {
+    brute:    ['slam', 'charge'],   // heavy melee -- the legacy default
+    sentinel: ['sweep', 'slam'],    // wide, space-controlling
+    swarm:    ['summon', 'slam'],   // spawner: adds from level 1
+    stalker:  ['charge', 'slam'],   // aggressive lunger
+    hexer:    ['summon', 'sweep'],  // caster: adds + wide control
+    volatile: ['charge', 'slam'],   // explosive rusher
+  },
+  // Archetype-distinct boss glyph (rides the existing monster emoji
+  // wire -- no client code).  Fallback dragon for brute/fodder/snowman.
+  BOSS_EMOJI: { brute: '🐉', sentinel: '🗿', swarm: '🕷', stalker: '🐺', hexer: '🧙', volatile: '☄' },
   SLAM:   { RANGE: 80, DMG_MULT: 1.5 },   // legacy slamRange / m.dmg x1.5
   SWEEP:  { RANGE: 70, DMG_MULT: 1.2 },   // legacy sweepRange / m.dmg x1.2
   // Legacy charge: spd x6 per 60fps FRAME for 600ms; the server ticks
@@ -271,6 +294,19 @@ export const dungeonMethods = {
     }
   },
 
+  // v2.3.1215 (item I): the ability rotation for a boss of `archetype`
+  // at `level` -- its signature kit (BOSS_ABILITIES.KITS) plus the
+  // legacy summon/sweep level gates layered on (deduped), so depth still
+  // grows every archetype toward the full rotation.  Unknown archetypes
+  // fall back to the brute kit.
+  _dungeonBossKit(archetype, level) {
+    const base = BOSS_ABILITIES.KITS[archetype] || BOSS_ABILITIES.KITS.brute;
+    const kit = base.slice();
+    if (level >= BOSS_ABILITIES.SUMMON_UNLOCK_LVL && !kit.includes('summon')) kit.push('summon');
+    if (level >= BOSS_ABILITIES.SWEEP_UNLOCK_LVL && !kit.includes('sweep')) kit.push('sweep');
+    return kit;
+  },
+
   _dungeonSpawnBoss(inst) {
     const list = this.monsters[inst.zone];
     if (!list) return;
@@ -280,7 +316,7 @@ export const dungeonMethods = {
     m.hp = Math.ceil(m.hp * inst.cfg.bossMultiplier * scale);
     m.maxHp = m.hp;
     m.dmg = Math.ceil(m.dmg * 1.5);
-    m.emoji = '🐉';
+    m.emoji = BOSS_ABILITIES.BOSS_EMOJI[inst.cfg.bossArchetype] || '🐉';
     m.color = '#ff5e6c';
     // Center-top, same spot the legacy client boss appeared.
     m.x = Math.floor(inst.cfg.width / 2) * this.TILE;
@@ -292,9 +328,9 @@ export const dungeonMethods = {
     // delta, _dungeonPushZoneState) copies explicit fields, so none of
     // this leaks to clients.
     m._dungeonBoss = true;
-    m._abilities = ['slam', 'charge'];
-    if (inst.cfg.monsterLevel >= BOSS_ABILITIES.SUMMON_UNLOCK_LVL) m._abilities.push('summon');
-    if (inst.cfg.monsterLevel >= BOSS_ABILITIES.SWEEP_UNLOCK_LVL) m._abilities.push('sweep');
+    // v2.3.1215 (item I): archetype signature kit + the legacy level
+    // gates layered on (see BOSS_ABILITIES.KITS).
+    m._abilities = this._dungeonBossKit(inst.cfg.bossArchetype, inst.cfg.monsterLevel);
     m._abilityPattern = 0;   // fixed rotation cursor (legacy _attackPattern)
     m._abilityPhase = null;  // null | 'telegraph'
     m._pendingAbility = null;

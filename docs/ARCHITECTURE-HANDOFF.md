@@ -339,15 +339,21 @@ join-gate-protected player ids v2.3.1202); each carries an inline
 site stops WARNing without churning a safe map). Adding a new plain
 `{}` id-keyed map still WARNs until you fix or mark it.
 
-### I. Boss ability extensions
-Shape: per-archetype kits in `BOSS_ABILITIES`
-(`server/src/dungeon.js`), telegraph variety, maybe standard-zone
-minibosses. Dangers: the MAX_HIT_PCT no-oneshot clamp stays
-authoritative over EVERYTHING (enrage already respects it); one new
-wire event type max — new `ability` kinds on the existing
-`dungeon_boss_ability` event are the cheap extension point (the
-enrage precedent: it reused the PRIVILEGED type instead of minting a
-new one).
+### I. Boss ability extensions — per-archetype kits SHIPPED v2.3.1215
+`BOSS_ABILITIES.KITS` (`server/src/dungeon.js`): each boss archetype
+now leads with a SIGNATURE ability from level 1 (swarm summons,
+sentinel/hexer sweep, stalker charges) via `_dungeonBossKit`; the
+legacy summon/sweep level gates still layer the full rotation on at
+depth, so `bossArchetype` finally changes behaviour, not just stats.
+Archetype-distinct boss glyph too (rides the monster emoji wire, no
+client code). All EXISTING ability kinds — no new wire surface; every
+hit still routes through the MAX_HIT_PCT clamp. Remaining follow-ups:
+telegraph variety (per-ability wind-up), a genuinely NEW ability kind
+(the cheap extension point — a new `ability` string on the existing
+`dungeon_boss_ability` event + a client whitelist entry in
+gameEvents.js `_dbaLabels`; the enrage precedent reused the PRIVILEGED
+type), and standard-zone minibosses. Danger unchanged: MAX_HIT_PCT
+stays authoritative over EVERYTHING.
 
 ### J. Hard zone entry gating + collectibles — owner calls
 Soft gating shipped v2.3.1147 (zone-progression.md); hard gating
