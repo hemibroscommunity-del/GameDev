@@ -286,12 +286,22 @@ deletes bounties gone stale past `THREAT.BOUNTY_STALE_MS`. No caps flag
 **Party chat SHIPPED v2.3.1212** (`_handlePartyChat`, party.js;
 party.md "Party chat") — its own validated `party_chat` case (rule 13,
 NOT the room rebroadcast), server-stamped unforgeable sender, delivered
-to party members only, `/p <msg>` client route. Remaining follow-ups:
-same-zone member arrows / map markers (the vitals echo already carries
-`zone`; x/y could ride it — the client already reads `S._party` per
-frame in the renderer); leader-initiated group dungeon entry (a
-`dungeon_start` that teleports members in together). Danger: do not
-touch the §7 share math (TRAPS #3; party.md's danger note stands).
+to party members only, `/p <msg>` client route. **Group dungeon entry
+SHIPPED v2.3.1218:** a party LEADER starting a dungeon pulls their
+co-located members into the same instance — `_dungeonPullPartyMembers`
+(dungeon.js) re-sends the SAME `dungeon_started` to each connected,
+alive member standing in the leader's zone, so their client runs the
+existing entry path (no new client code, no teleport primitive, no caps
+flag — an old client already enters on `dungeon_started`, so it's
+deploy-order safe both ways). Members in another zone (or their own
+dungeon) are left where they are; a non-leader start pulls nobody.
+Instances were already shared by design (rewards + boss HP scale to
+everyone present), so this just gives parties an entry path. Remaining
+follow-up: same-zone member arrows / map markers (the vitals echo
+carries `zone` at VITALS_MS=2s; x/y could ride it, but 2s cadence suits
+a coarse minimap dot better than a smooth in-world arrow — needs a
+faster position channel or a minimap first). Danger: do not touch the
+§7 share math (TRAPS #3; party.md's danger note stands).
 
 ### E. Trade2 weapon lane — SHIPPED v2.3.1213
 Weapons trade in the two-sided window now (trading.md addendum "Weapon

@@ -250,6 +250,40 @@ export const dungeonMethods = {
     this.monsters[zone] = [];
     this._dungeonSpawnWave(inst);
     this._dungeonSend(session.id, { type: 'dungeon_started', payload: { zone, cfg, wave: 1 } });
+    // v2.3.1218 (item D follow-up): leader-initiated group entry -- if the
+    // starter leads a party, pull their co-located members into the same
+    // instance so a party runs the dungeon together (instances are shared
+    // by design: rewards + boss HP already scale to everyone present).
+    this._dungeonPullPartyMembers(inst, session.id);
+  },
+
+  // v2.3.1218: send the SAME dungeon_started to each eligible party member
+  // so their client runs the identical entry path (gameEvents.js does not
+  // gate on who requested it -- no new client code, no teleport primitive).
+  // Conservative guards: ONLY when the starter is the party LEADER, and
+  // only members who are connected, alive, and standing in the starter's
+  // CURRENT zone (they were together when the run began -- a member off in
+  // another zone or their own dungeon is left where they are).  ps.z is
+  // unchanged here (the owner's client zones in asynchronously on its own
+  // dungeon_started), so it still reads the pre-run zone.  Returns the
+  // number pulled.  No caps flag: an old client already enters on
+  // dungeon_started, so this is deploy-order safe in both directions.
+  _dungeonPullPartyMembers(inst, ownerId) {
+    const p = this._partyOf && this._partyOf(ownerId);
+    if (!p || p.leader !== ownerId) return 0;
+    const ownerPs = this.playerState[ownerId];
+    const fromZone = ownerPs && ownerPs.z;
+    if (!fromZone) return 0;
+    let pulled = 0;
+    for (const pid of p.members) {
+      if (pid === ownerId) continue;
+      const mps = this.playerState[pid];
+      if (!mps || mps.dead || mps.dying || mps.disconnected) continue;
+      if (mps.z !== fromZone) continue;
+      this._dungeonSend(pid, { type: 'dungeon_started', payload: { zone: inst.zone, cfg: inst.cfg, wave: 1 } });
+      pulled++;
+    }
+    return pulled;
   },
 
   // Mirrors _spawnZoneMonsters' stat pipeline exactly (same
