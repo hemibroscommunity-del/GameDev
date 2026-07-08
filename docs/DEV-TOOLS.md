@@ -38,7 +38,7 @@ block). Checks:
 | 3 | version-tag | the tag CLAIMED by the diff (max added `v2.3.N`) ≤ base high-water; older added tags are treated as rule-25 back-references, not gated. Also WARNs with 48h remote-branch activity |
 | 4 | dmg-popup | raw `S.dmgNumbers.push(` in changed client files — use `pushDmgPopup` (v2.3.1188) |
 | 5 | storage-keys | literal `storage.put/get('<prefix>:` in changed server/src files not in the ARCHITECTURE-HANDOFF rule-2 registry (GameRoom only; marketplace/arena/leaderboard/feedback DOs exempt) |
-| 6 | proto-safety | WARN: `= {}` / `: {}` indexed nearby by an id-shaped bracket key — use `Object.create(null)` or `Map` (duel.away v2.3.1175, party meta v2.3.1185, amulet tiers v2.3.1192) |
+| 6 | proto-safety | WARN: `= {}` / `: {}` indexed nearby by an id-shaped bracket key — use `Object.create(null)` or `Map` (duel.away v2.3.1175, party meta v2.3.1185, amulet tiers v2.3.1192). A site triaged SAFE (server-generated key, join-gate-protected player id, or not-a-map) carries an inline `// proto-ok:<reason>` marker and is skipped (v2.3.1214) |
 | 7 | server-tests | `cd server && npm test` when server/ changed (zero-dep, sandbox-safe) |
 
 Known limits: check 5 is literal-only (computed keys aren't extracted —

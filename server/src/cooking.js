@@ -61,7 +61,7 @@ export const cookingMethods = {
     if (!ps) return;
     if (ps.dying || ps.dead || ps.disconnected) return;
     if (ps._arenaMatch) return; // v2.3.1126: no healing during an arena match (GDD §43)
-    if (!ps.inventory) ps.inventory = {};
+    if (!ps.inventory) ps.inventory = {}; // proto-ok: invKey guarded by startsWith cooked_fish_ above
     if ((ps.inventory[invKey] || 0) <= 0) return;
     // v2.3.1154: × HP-grid Recovery (+1%/pt on discrete heals, cap +50%).
     const heal = Math.ceil(this._fishHealAmount(invKey) * this._recoveryMult(ps));
@@ -154,7 +154,7 @@ export const cookingMethods = {
     const ps = this.playerState[session.id];
     if (!ps) return;
     if (ps.dying || ps.dead || ps.disconnected) return;
-    if (!ps.inventory) ps.inventory = {};
+    if (!ps.inventory) ps.inventory = {}; // proto-ok: recipe-index path; inventory keys server-validated
 
     // First-pass dry-run: confirm ALL ingredients are available
     // before consuming any (so we don't half-consume on a failure).

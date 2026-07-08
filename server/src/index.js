@@ -1793,11 +1793,11 @@ export class GameRoom {
       // and client-side recipient gate both flip to free-for-all so
       // anyone in zone may claim (driven by ownerOnlyUntil + isDeathDrop).
       recipients: [playerId],
-      shares: {},
+      shares: {}, // proto-ok: player-keyed; join ids gate-hardened v2.3.1202
       killerName: ownerName,
       ts: Date.now(),
       inventoryClaimed: false,
-      claimedBy: {},
+      claimedBy: {}, // proto-ok: player-keyed; join ids gate-hardened v2.3.1202
       isDeathDrop: true,
       deathItems: items,
       ownerOnlyUntil: Date.now() + this.DEATH_PILE_OWNER_MS,

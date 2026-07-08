@@ -38,9 +38,17 @@ export const questMethods = {
     if (ps.dying || ps.dead || ps.disconnected) return;
     const { questId } = payload || {};
     if (typeof questId !== 'string') return;
-    const reward = this._QUEST_REWARDS_DATA()[questId];
+    const rewards = this._QUEST_REWARDS_DATA();
+    // Own-property check, NOT truthiness: an inherited key like
+    // 'constructor'/'toString'/'__proto__' resolves to a truthy
+    // Object.prototype member, so `rewards[questId]` would sail through
+    // and (in turn-in) hand out the unconditional AP reward on a junk
+    // id while polluting _quests.  The amulet.js tierKey hazard
+    // (v2.3.1192); reject inherited keys at the gate.
+    if (!Object.prototype.hasOwnProperty.call(rewards, questId)) return;
+    const reward = rewards[questId];
     if (!reward) return; // unknown quest
-    if (!ps._quests) ps._quests = {};
+    if (!ps._quests) ps._quests = Object.create(null); // rule 4: client-id-keyed map
     const cur = ps._quests[questId];
     // Allow accepting from 'available' (chain entry granted) or
     // from missing (first quest in chain).  Reject if already
@@ -68,7 +76,7 @@ export const questMethods = {
       const obj = table[qid] && table[qid].objective;
       if (!obj || obj.type !== kind) continue;
       if (kind === 'kill' && obj.arch && obj.arch !== arch) continue;
-      if (!ps._questKills) ps._questKills = {};
+      if (!ps._questKills) ps._questKills = Object.create(null); // rule 4: quest-id-keyed map
       ps._questKills[qid] = Math.min(99999, (ps._questKills[qid] || 0) + 1);
       changed = true;
     }
@@ -82,9 +90,15 @@ export const questMethods = {
     if (ps.dying || ps.dead || ps.disconnected) return;
     const { questId } = payload || {};
     if (typeof questId !== 'string') return;
-    const reward = this._QUEST_REWARDS_DATA()[questId];
+    const rewards = this._QUEST_REWARDS_DATA();
+    // Own-property check (see _handleQuestAccept): an inherited key
+    // ('constructor' etc.) otherwise passes and farms the unconditional
+    // AP reward below (objective/gold/xp are all undefined on it, so
+    // only the AP grant fires).  The amulet.js tierKey hazard.
+    if (!Object.prototype.hasOwnProperty.call(rewards, questId)) return;
+    const reward = rewards[questId];
     if (!reward) return;
-    if (!ps._quests) ps._quests = {};
+    if (!ps._quests) ps._quests = Object.create(null); // rule 4: client-id-keyed map
     // Must be 'active' to turn in.  This is the spam-defeat:
     // a cheater can't reclaim the reward by spamming the event,
     // and can't claim a quest they never accepted.

@@ -324,15 +324,20 @@ player/gear sheets). `find public -name '*.png' -exec sh -c
 Danger: sprites/player + sprites/gear MUST be `-lossless` — the tint
 pipeline (playerSkins.js brightness-ratio retint) reads exact RGB.
 
-### H. Proto-WARN triage
-precheck's proto-safety check WARNs on 17 plain-`{}` sites across 8
-server files (`node tools/dev/precheck.mjs <root-commit>` lists them
-all — the default origin/main base only scans changed files). The
-v2.3.1202 join gate (join.js) protects client-id keys at the source;
-triage each WARN once — `Object.create(null)` where keys are external
-strings, or a comment on why it's safe — until the sweep is quiet.
-Danger: don't blanket-convert monster/zone-keyed maps
-(server-generated keys are safe; churn without benefit).
+### H. Proto-WARN triage — SHIPPED v2.3.1214
+All 16 flagged plain-`{}` sites triaged; the whole-tree sweep
+(`node tools/dev/precheck.mjs <root-commit>`) is now quiet. One was a
+GENUINE hole: `quests.js` validated `questId` with a truthiness lookup
+(`QUEST_REWARDS[questId]`), so an inherited key (`'constructor'`,
+`'toString'`, …) passed and farmed the unconditional AP reward at
+turn-in + polluted `_quests` — fixed with the amulet.js own-property
+guard (`hasOwnProperty.call`) in both quest handlers, `_quests`/
+`_questKills` made null-proto, pinned by quests.test §7. The rest were
+safe (server monster/zone keys, not-a-map payload structs, or
+join-gate-protected player ids v2.3.1202); each carries an inline
+`// proto-ok:<reason>` marker that precheck now honors (so a triaged
+site stops WARNing without churning a safe map). Adding a new plain
+`{}` id-keyed map still WARNs until you fix or mark it.
 
 ### I. Boss ability extensions
 Shape: per-archetype kits in `BOSS_ABILITIES`
