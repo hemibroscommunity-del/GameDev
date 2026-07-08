@@ -103,7 +103,7 @@ export const BOSS_ABILITIES = {
     sentinel: ['sweep', 'slam'],    // wide, space-controlling
     swarm:    ['summon', 'slam'],   // spawner: adds from level 1
     stalker:  ['charge', 'slam'],   // aggressive lunger
-    hexer:    ['summon', 'sweep'],  // caster: adds + wide control
+    hexer:    ['summon', 'sweep', 'siphon'],  // caster: adds + wide control + life-drain (v2.3.1217 signature)
     volatile: ['charge', 'slam'],   // explosive rusher
   },
   // Archetype-distinct boss glyph (rides the existing monster emoji
@@ -111,6 +111,17 @@ export const BOSS_ABILITIES = {
   BOSS_EMOJI: { brute: '🐉', sentinel: '🗿', swarm: '🕷', stalker: '🐺', hexer: '🧙', volatile: '☄' },
   SLAM:   { RANGE: 80, DMG_MULT: 1.5 },   // legacy slamRange / m.dmg x1.5
   SWEEP:  { RANGE: 70, DMG_MULT: 1.2 },   // legacy sweepRange / m.dmg x1.2
+  /* v2.3.1217 (item I follow-up): SIPHON -- the first genuinely NEW
+   * boss ability kind since the v2.3.1194 port.  A single-target
+   * life-drain: the boss hits the nearest player in range for DMG_MULT,
+   * then heals itself HEAL_PCT of its own maxHp -- but ONLY on damage
+   * that actually LANDS, so a well-timed block (full negation) denies
+   * the heal as well as the hit.  Damage still routes through
+   * _dungeonBossHitPlayer -> the MAX_HIT_PCT clamp (authoritative); the
+   * heal clamps to maxHp and rides the normal monster HP tick delta.
+   * Hexer's signature (a caster that sustains); no new wire event --
+   * it reuses dungeon_boss_ability with kind 'siphon'. */
+  SIPHON: { RANGE: 100, DMG_MULT: 1.3, HEAL_PCT: 0.03 },
   // Legacy charge: spd x6 per 60fps FRAME for 600ms; the server ticks
   // at 45Hz, so x8/tick approximates the same px/sec lunge.
   CHARGE: { DURATION_MS: 600, SPEED_MULT: 8, HIT_RANGE: 45, DMG_MULT: 1.5 },
@@ -362,9 +373,11 @@ export const dungeonMethods = {
   // reflect surface stays pinned to the basic swing (one reflect per
   // MONSTER_ATTACK_CD); an AoE that also triggered it would multiply
   // thorns output per cast.
+  // v2.3.1217: returns the HP actually taken (0 on block / dodge / grace /
+  // dead) so a life-drain caller (siphon) can gate its heal on a landed hit.
   _dungeonBossHitPlayer(inst, m, pid, dmgMult) {
     const ps = this.playerState[pid];
-    if (!ps || ps.dead || ps.dying) return;
+    if (!ps || ps.dead || ps.dying) return 0;
     const zone = inst.zone;
     if (ps.blocking) {
       // Block = full negation (v2.3.1110 omni rule), same stamina cost
@@ -384,7 +397,7 @@ export const dungeonMethods = {
           zone, attackerX: m.x, attackerY: m.y,
         },
       });
-      return;
+      return 0;
     }
     // No-oneshot clamp BEFORE _applyDamage so dodge/Iron Skin/Second
     // Wind all see the already-conservative number.
@@ -410,6 +423,7 @@ export const dungeonMethods = {
     if (ps.hp <= 0 && !ps.dying) {
       this._handlePlayerDeath(ps, pid, 'monster:' + m.id);
     }
+    return res.dodged ? 0 : res.dmgTaken;
   },
 
   // v2.3.1194: summon execution.  Minions ride the normal
@@ -579,6 +593,28 @@ export const dungeonMethods = {
         // (per-tick deltas only update entities the client already
         // knows) -- same reason wave spawns re-push.
         if (n > 0) this._dungeonPushZoneState(inst.zone);
+      } else if (ability === 'siphon') {
+        // v2.3.1217: life-drain -- nearest live player in range takes the
+        // hit; the boss heals a slice of maxHp ONLY if the hit landed
+        // (block/dodge/grace deny both the damage AND the heal).  The
+        // heal clamps to maxHp and rides the monster HP tick delta.
+        extra.range = B.SIPHON.RANGE;
+        let tgt = null, best = B.SIPHON.RANGE * B.SIPHON.RANGE;
+        for (const pid of players) {
+          const ps = this.playerState[pid];
+          if (!ps || ps.dead || ps.dying) continue;
+          const d2 = (ps.x - m.x) * (ps.x - m.x) + (ps.y - m.y) * (ps.y - m.y);
+          if (d2 < best) { best = d2; tgt = pid; }
+        }
+        if (tgt) {
+          const dealt = this._dungeonBossHitPlayer(inst, m, tgt, B.SIPHON.DMG_MULT);
+          if (dealt > 0 && m.hp < m.maxHp) {
+            const heal = Math.min(m.maxHp - m.hp, Math.ceil(m.maxHp * B.SIPHON.HEAL_PCT));
+            m.hp += heal;
+            extra.heal = heal;
+            this._markMonsterDirty(inst.zone, m.id);
+          }
+        }
       }
       this._dungeonBossAbilityEvent(inst.zone, players, m, ability, 'execute', extra);
       return;
@@ -610,6 +646,7 @@ export const dungeonMethods = {
     const extra = { ms: B.TELEGRAPH_MS };
     if (ability === 'slam') extra.range = B.SLAM.RANGE;
     if (ability === 'sweep') extra.range = B.SWEEP.RANGE;
+    if (ability === 'siphon') extra.range = B.SIPHON.RANGE;
     this._dungeonBossAbilityEvent(inst.zone, players, m, ability, 'telegraph', extra);
     this._markMonsterDirty(inst.zone, m.id);
   },
