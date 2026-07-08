@@ -56,6 +56,10 @@
  *       archetype leads with its signature ability (swarm summons,
  *       sentinel sweeps, stalker charges) from level 1; level gates
  *       still layer the full rotation on at depth; archetype glyph.
+ *   25. v2.3.1217 (item I follow-up): SIPHON -- the first NEW ability
+ *       kind since the port.  Hexer's signature life-drain: clamped
+ *       single-target hit that heals the boss HEAL_PCT of maxHp on a
+ *       landed hit, and a block denies BOTH the hit and the heal.
  */
 import { GameRoom } from '../src/index.js';
 import { DUNGEONS, BOSS_ABILITIES } from '../src/dungeon.js';
@@ -498,7 +502,7 @@ room._dungeonCleanup(room._dungeons.get(zoneE.slice('dungeon:'.length)));
 check('swarm boss summons from level 1 (signature)', room._dungeonBossKit('swarm', 5).join(',') === 'summon,slam', room._dungeonBossKit('swarm', 5));
 check('sentinel boss sweeps from level 1 (signature)', room._dungeonBossKit('sentinel', 5).join(',') === 'sweep,slam', room._dungeonBossKit('sentinel', 5));
 check('stalker boss leads with charge', room._dungeonBossKit('stalker', 5).join(',') === 'charge,slam', room._dungeonBossKit('stalker', 5));
-check('hexer boss is a caster kit (summon+sweep)', room._dungeonBossKit('hexer', 5).join(',') === 'summon,sweep', room._dungeonBossKit('hexer', 5));
+check('hexer boss is a caster kit (summon+sweep+siphon)', room._dungeonBossKit('hexer', 5).join(',') === 'summon,sweep,siphon', room._dungeonBossKit('hexer', 5));
 check('brute (and unknown) fall back to the legacy slam+charge', room._dungeonBossKit('brute', 5).join(',') === 'slam,charge' && room._dungeonBossKit('nonsense', 5).join(',') === 'slam,charge', room._dungeonBossKit('nonsense', 5));
 check('level gates still layer onto an archetype kit (no dup)', room._dungeonBossKit('swarm', 45).join(',') === 'summon,slam,sweep', room._dungeonBossKit('swarm', 45));
 check('a high-level sentinel converges to the full rotation', room._dungeonBossKit('sentinel', 45).join(',') === 'sweep,slam,summon', room._dungeonBossKit('sentinel', 45));
@@ -513,6 +517,50 @@ const bossK = room.monsters[zoneK].find((m) => m._dungeonBoss);
 check('spawned swarm boss has the summon kit + spider glyph',
   !!bossK && bossK._abilities[0] === 'summon' && bossK.emoji === '🕷', bossK && { ab: bossK._abilities, e: bossK.emoji });
 room._dungeonCleanup(room._dungeons.get(zoneK.slice('dungeon:'.length)));
+
+// ── 25. v2.3.1217 (item I follow-up): SIPHON life-drain ──
+psA.level = 45;
+await start(wsA, { waves: 1, hasBoss: true, monsterLevel: 5, bossArchetype: 'hexer', bossMultiplier: 2, monsters: [{ archetype: 'fodder', count: 1 }] });
+const zoneS = msgsOfType(wsA, 'dungeon_started').slice(-1)[0].payload.zone;
+const instS = room._dungeons.get(zoneS.slice('dungeon:'.length));
+await move(wsA, zoneS);
+killAll(zoneS);
+room._tickDungeons(Date.now());
+const bossS = room.monsters[zoneS].find((m) => m._dungeonBoss);
+check('spawned hexer boss carries siphon in its kit', !!bossS && bossS._abilities.includes('siphon'), bossS && bossS._abilities);
+// Isolate siphon: force the rotation to it, park the player in range,
+// deep-wound the boss so it has full headroom to heal.
+bossS._abilities = ['siphon'];
+bossS._abilityPattern = 0; bossS._nextAbilityAt = 0; bossS._abilityPhase = null;
+bossS.dmg = 99999;                    // force the MAX_HIT_PCT clamp (250 = 50% of 500)
+bossS.hp = bossS.maxHp - 100000;      // deep wound -> heal lands at the full HEAL_PCT
+psA.hp = 500; psA.maxHp = 500; psA.agility = 0; psA.blocking = false; psA._zoneEntryGraceUntil = 0;
+psA.x = bossS.x; psA.y = bossS.y;     // in siphon range
+const tS0 = Date.now() + 100000;
+wsA.sent.length = 0;
+room._tickDungeons(tS0);              // telegraph siphon
+const teleS = msgsOfType(wsA, 'dungeon_boss_ability').filter((e) => e.payload.ability === 'siphon' && e.payload.phase === 'telegraph');
+check('siphon telegraphed with its range',
+  teleS.length === 1 && teleS[0].payload.range === BOSS_ABILITIES.SIPHON.RANGE, teleS.map((e) => e.payload));
+const hpBossBefore = bossS.hp;
+const expHeal = Math.ceil(bossS.maxHp * BOSS_ABILITIES.SIPHON.HEAL_PCT);
+wsA.sent.length = 0;
+room._tickDungeons(tS0 + BOSS_ABILITIES.TELEGRAPH_MS + 10); // execute
+const sipExec = msgsOfType(wsA, 'dungeon_boss_ability').filter((e) => e.payload.ability === 'siphon' && e.payload.phase === 'execute');
+check('siphon hits (clamped) and heals the boss on a landed hit',
+  sipExec.length === 1 && psA.hp === 250 && sipExec[0].payload.heal === expHeal && bossS.hp === hpBossBefore + expHeal,
+  { hp: psA.hp, heal: sipExec[0] && sipExec[0].payload.heal, bossHp: bossS.hp, before: hpBossBefore, expHeal });
+// Block denies BOTH the hit and the heal.
+psA.blocking = true; psA.stamina = 100; psA.hp = 500;
+bossS._abilityPattern = 0; bossS._nextAbilityAt = 0; bossS._abilityPhase = null;
+const hpBossPreBlock = bossS.hp;
+const tS1 = tS0 + 50000;
+room._tickDungeons(tS1);                                    // telegraph
+room._tickDungeons(tS1 + BOSS_ABILITIES.TELEGRAPH_MS + 10); // execute
+check('blocked siphon denies both the hit and the heal',
+  psA.hp === 500 && bossS.hp === hpBossPreBlock, { hp: psA.hp, bossHp: bossS.hp, pre: hpBossPreBlock });
+psA.blocking = false;
+room._dungeonCleanup(instS);
 
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);
 process.exit(failures === 0 ? 0 : 1);

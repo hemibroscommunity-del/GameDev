@@ -362,8 +362,8 @@ export function processGameEvent(type, payload, S, deps) {
                  sole exception is the cosmetic color tint on enrage --
                  display state only, never hp/alive/dmg). */
               if (!payload || payload.zone !== S._serverDungeon) break;
-              var _dbaLabels = { slam: 'SLAM!', charge: 'CHARGE!', summon: 'Summon!', sweep: 'SWEEP!', enrage: 'ENRAGED!' };
-              var _dbaColors = { slam: '#f5c542', charge: '#ea580c', summon: '#9333ea', sweep: '#a855f7', enrage: '#ff2020' };
+              var _dbaLabels = { slam: 'SLAM!', charge: 'CHARGE!', summon: 'Summon!', sweep: 'SWEEP!', enrage: 'ENRAGED!', siphon: 'DRAIN!' };
+              var _dbaColors = { slam: '#f5c542', charge: '#ea580c', summon: '#9333ea', sweep: '#a855f7', enrage: '#ff2020', siphon: '#22c55e' };
               var _dbaLabel = _dbaLabels[payload.ability];
               if (!_dbaLabel) break; /* whitelist -- never render arbitrary wire strings */
               var _dbaX = typeof payload.x === 'number' ? payload.x : S.player.x;
@@ -404,6 +404,15 @@ export function processGameEvent(type, payload, S, deps) {
                 }
                 S.screenShake = 6;
                 BT_AUDIO.beep(120, 0.2, 0.3, 'sawtooth');
+              } else if (payload.ability === 'siphon') {
+                /* v2.3.1217: life-drain.  DISPLAY-ONLY like the rest --
+                   the boss's actual HP gain rides the authoritative
+                   monster tick delta; here we just surface the heal as a
+                   green "+N" over the boss and a rising two-note chime. */
+                if (typeof payload.heal === 'number' && payload.heal > 0) {
+                  pushDmgPopup(S, _dbaX, _dbaY - 45, '+' + payload.heal, '#22c55e');
+                }
+                BT_AUDIO.beep(500, 0.12, 0.18, 'sine');
               } else {
                 /* summon -- the fresh minions arrive via the zone_state
                    re-push that precedes this event. */

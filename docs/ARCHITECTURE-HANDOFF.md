@@ -347,13 +347,19 @@ legacy summon/sweep level gates still layer the full rotation on at
 depth, so `bossArchetype` finally changes behaviour, not just stats.
 Archetype-distinct boss glyph too (rides the monster emoji wire, no
 client code). All EXISTING ability kinds — no new wire surface; every
-hit still routes through the MAX_HIT_PCT clamp. Remaining follow-ups:
-telegraph variety (per-ability wind-up), a genuinely NEW ability kind
-(the cheap extension point — a new `ability` string on the existing
-`dungeon_boss_ability` event + a client whitelist entry in
-gameEvents.js `_dbaLabels`; the enrage precedent reused the PRIVILEGED
-type), and standard-zone minibosses. Danger unchanged: MAX_HIT_PCT
-stays authoritative over EVERYTHING.
+hit still routes through the MAX_HIT_PCT clamp. **New ability kind
+SHIPPED v2.3.1217:** `siphon` (`BOSS_ABILITIES.SIPHON`, dungeon.js) —
+hexer's signature life-drain, a single-target clamped hit that heals
+the boss `HEAL_PCT` of maxHp ONLY on a landed hit (block denies both
+hit and heal); reuses `dungeon_boss_ability` with a new `ability`
+string + a `_dbaLabels`/`_dbaColors` whitelist entry (gameEvents.js,
+graceful-degrades on old clients — no caps flag, like enrage). To add
+the NEXT ability kind, follow the same seam: a new execute branch in
+`_dungeonTickBossAbilities`, a kit entry, and a client whitelist pair.
+`_dungeonBossHitPlayer` now returns the landed damage (0 on
+block/dodge/grace) for drain-style gating. Remaining follow-ups:
+telegraph variety (per-ability wind-up) and standard-zone minibosses.
+Danger unchanged: MAX_HIT_PCT stays authoritative over EVERYTHING.
 
 ### J. Hard zone entry gating + collectibles — owner calls
 Soft gating shipped v2.3.1147 (zone-progression.md); hard gating
