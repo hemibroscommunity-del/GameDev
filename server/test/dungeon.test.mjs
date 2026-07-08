@@ -52,6 +52,10 @@
  *   22. The v2.3.1194 MAX_HIT_PCT no-oneshot clamp stays
  *       authoritative -- enrage inflates dmg BEFORE it, never past it.
  *   23. ENRAGE.ENABLED=false disarms the whole timer (owner knob).
+ *   24. v2.3.1215 (item I): per-archetype boss ability kits -- each
+ *       archetype leads with its signature ability (swarm summons,
+ *       sentinel sweeps, stalker charges) from level 1; level gates
+ *       still layer the full rotation on at depth; archetype glyph.
  */
 import { GameRoom } from '../src/index.js';
 import { DUNGEONS, BOSS_ABILITIES } from '../src/dungeon.js';
@@ -488,6 +492,27 @@ check('ENRAGE.ENABLED=false disarms the whole timer (owner tuning knob)',
   !bossE._combatSince && !bossE._enrageStacks, { since: bossE._combatSince, stacks: bossE._enrageStacks });
 BOSS_ABILITIES.ENRAGE.ENABLED = true;
 room._dungeonCleanup(room._dungeons.get(zoneE.slice('dungeon:'.length)));
+
+// ── 24. v2.3.1215 (item I): per-archetype ability kits ──
+// The kit builder is pure -- unit-test it directly across archetypes.
+check('swarm boss summons from level 1 (signature)', room._dungeonBossKit('swarm', 5).join(',') === 'summon,slam', room._dungeonBossKit('swarm', 5));
+check('sentinel boss sweeps from level 1 (signature)', room._dungeonBossKit('sentinel', 5).join(',') === 'sweep,slam', room._dungeonBossKit('sentinel', 5));
+check('stalker boss leads with charge', room._dungeonBossKit('stalker', 5).join(',') === 'charge,slam', room._dungeonBossKit('stalker', 5));
+check('hexer boss is a caster kit (summon+sweep)', room._dungeonBossKit('hexer', 5).join(',') === 'summon,sweep', room._dungeonBossKit('hexer', 5));
+check('brute (and unknown) fall back to the legacy slam+charge', room._dungeonBossKit('brute', 5).join(',') === 'slam,charge' && room._dungeonBossKit('nonsense', 5).join(',') === 'slam,charge', room._dungeonBossKit('nonsense', 5));
+check('level gates still layer onto an archetype kit (no dup)', room._dungeonBossKit('swarm', 45).join(',') === 'summon,slam,sweep', room._dungeonBossKit('swarm', 45));
+check('a high-level sentinel converges to the full rotation', room._dungeonBossKit('sentinel', 45).join(',') === 'sweep,slam,summon', room._dungeonBossKit('sentinel', 45));
+// Integration: a spawned swarm boss carries the summon kit + its glyph.
+psA.level = 45;
+await start(wsA, { waves: 1, hasBoss: true, monsterLevel: 5, bossArchetype: 'swarm', monsters: [{ archetype: 'fodder', count: 1 }] });
+const zoneK = msgsOfType(wsA, 'dungeon_started').slice(-1)[0].payload.zone;
+await move(wsA, zoneK);
+killAll(zoneK);
+room._tickDungeons(Date.now());
+const bossK = room.monsters[zoneK].find((m) => m._dungeonBoss);
+check('spawned swarm boss has the summon kit + spider glyph',
+  !!bossK && bossK._abilities[0] === 'summon' && bossK.emoji === '🕷', bossK && { ab: bossK._abilities, e: bossK.emoji });
+room._dungeonCleanup(room._dungeons.get(zoneK.slice('dungeon:'.length)));
 
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);
 process.exit(failures === 0 ? 0 : 1);
