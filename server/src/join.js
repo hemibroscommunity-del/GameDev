@@ -14,6 +14,7 @@
  * The switch case now delegates: `await this._handleJoin(...)`. */
 
 import { healLifeSkills } from './migrations.js';
+import { sanitizeAlignment, defaultAlignment } from './alignment.js';
 
 export const joinMethods = {
   /* ═══ v2.3.1116: PERSISTENT IDENTITY (PR1 of the heavy-systems plan) ═══
@@ -227,6 +228,11 @@ export const joinMethods = {
         this.playerState[msg.id]._questFlags = (stored._questFlags && typeof stored._questFlags === 'object') ? { ...stored._questFlags } : {};
         this.playerState[msg.id]._questKills = (stored._questKills && typeof stored._questKills === 'object') ? { ...stored._questKills } : {};
         this.playerState[msg.id].achievementPoints = stored.achievementPoints || 0;
+        // v2.3.1218 (alignment registers): restore the moral-register
+        // counters from the stored (authoritative) blob.  Absent on a
+        // pre-slice record -> sanitizeAlignment returns a fresh all-zero
+        // default, so no migration is needed.
+        this.playerState[msg.id]._alignment = sanitizeAlignment(stored._alignment);
         // Restore the perfect-claim history so the rate-limit
         // window survives reconnects.  Stale entries (>60s old)
         // get pruned on the next _ratedHarvestAccuracy call.
@@ -379,6 +385,11 @@ export const joinMethods = {
         this.playerState[msg.id]._questKills = _qKclean;
         this.playerState[msg.id].achievementPoints = Math.max(0, Math.min(99999,
           (msg.data && typeof msg.data.rpgAchievementPoints === 'number') ? Math.floor(msg.data.rpgAchievementPoints) : 0));
+        // v2.3.1218 (alignment registers): first connect starts clean.  The
+        // registers gate titles/endings, so we deliberately do NOT bootstrap
+        // them from the client join payload -- a fresh player has made no
+        // capstone choice, and the server is the sole writer thereafter.
+        this.playerState[msg.id]._alignment = defaultAlignment();
         this.playerState[msg.id]._perfectHistory = [];
         this.playerState[msg.id]._cookHistory = [];
         // v2.3.1021: weapon/defense skill track -- bootstrap from the join
@@ -595,7 +606,17 @@ export const joinMethods = {
       // the echo (the caps.gems lesson, TRAPS #9).  Absent, the legacy
       // client-local Extract path stays (broken settlement, no
       // regression -- echo-stomped as before).
-      caps: { trade: true, questTrack: true, gamble: true, clans: true, arena: true, dungeon: true, sponsor: true, guilds: true, pets: true, harden: true, trade2: true, weaponDrops: true, botfp: true, jackpot: true, hpEndGrids: true, t2uniform: true, httpAuth: true, party: true, amuletForge: true, gems: true, petLoot: true, gemExtract: true, partyChat: true, trade2Weapons: true, ..._liveFlags },
+      // v2.3.1218: questCapstone -- the client sends quest_turn_in{path}
+      // for a CAPSTONE quest's four-register moral choice (mayor_3) ONLY
+      // when the worker owns the alignment counter (quests.js).  A NARROW
+      // flag, NOT folded into questTrack: an old worker without the
+      // capstone gate ignores the unknown `path`, marks the quest turnedIn
+      // and pays the reward, but records NO register -- and the quest can
+      // never be re-turned-in, so the player's one permanent moral choice
+      // is silently burned (rule 19 / TRAPS #9).  Absent, the client holds
+      // the capstone turn-in back ("check back after the update") instead
+      // of spending the choice on a worker that will drop it.
+      caps: { trade: true, questTrack: true, gamble: true, clans: true, arena: true, dungeon: true, sponsor: true, guilds: true, pets: true, harden: true, trade2: true, weaponDrops: true, botfp: true, jackpot: true, hpEndGrids: true, t2uniform: true, httpAuth: true, party: true, amuletForge: true, gems: true, petLoot: true, gemExtract: true, partyChat: true, trade2Weapons: true, questCapstone: true, ..._liveFlags },
       // v2.3.1178: this session's private economy-endpoint token.
       // state_sync goes to the joining socket ONLY -- never broadcast.
       httpToken: session.httpToken,

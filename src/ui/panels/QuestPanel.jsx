@@ -126,21 +126,75 @@ export function QuestPanel(props) {
       /* v2.3.782: body moved to src/game/quests.js (Phase 3). */
       acceptQuest(stateRef.current, questPanel, { setRpgState: setRpgState, setQuestPanel: setQuestPanel });
     }
-  }, "Accept Quest"), questPanel.status === 'active' && questPanel.quest.check(rpgState, stateRef.current) && /*#__PURE__*/React.createElement("button", {
-    style: {
-      width: '100%',
-      padding: '8px',
-      borderRadius: 8,
-      border: 'none',
-      background: '#3dd497',
-      color: '#000',
-      fontWeight: 700,
-      fontSize: 12,
-      cursor: 'pointer'
-    },
-    onClick: function onClick() {
-      /* v2.3.782: body moved to src/game/quests.js (Phase 3). */
-      turnInQuest(stateRef.current, questPanel, { setRpgState: setRpgState, setQuestPanel: setQuestPanel });
-    }
-  }, "Turn In Quest")));
+  }, "Accept Quest"), questPanel.status === 'active' && questPanel.quest.check(rpgState, stateRef.current) && (
+    /* v2.3.1218: a CAPSTONE quest turns in via a four-register moral
+       choice (mayor_3) instead of a single button — each branch sends its
+       `path` to turnInQuest.  Non-capstone quests keep the single button. */
+    questPanel.quest.capstone ? (
+      /* v2.3.1218 (rule 19 / TRAPS #9): only offer the four-register moral
+         choice when the worker advertises caps.questCapstone — i.e. it owns
+         the alignment counter.  Against an old worker the choice would be
+         silently dropped AND the quest marked turnedIn forever, permanently
+         burning the player's one-per-chain pick.  Hold it back instead. */
+      !(stateRef.current && stateRef.current._serverCaps && stateRef.current._serverCaps.questCapstone) ? /*#__PURE__*/React.createElement("div", {
+        style: {
+          fontSize: 10,
+          color: 'rgba(255,255,255,.5)',
+          lineHeight: 1.5,
+          padding: '8px',
+          borderRadius: 8,
+          background: 'rgba(255,255,255,.04)',
+          textAlign: 'center'
+        }
+      }, "Mayor Bro is still mulling this one over. Check back after the next update.") : /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 10,
+        color: 'rgba(255,255,255,.6)',
+        marginBottom: 6
+      }
+    }, questPanel.quest.capstone.prompt), questPanel.quest.capstone.branches.map(function (br) {
+      return /*#__PURE__*/React.createElement("button", {
+        key: br.path,
+        style: {
+          width: '100%',
+          padding: '8px',
+          borderRadius: 8,
+          border: '1px solid rgba(255,255,255,.12)',
+          background: 'rgba(255,255,255,.05)',
+          color: '#fff',
+          fontWeight: 700,
+          fontSize: 11,
+          cursor: 'pointer',
+          marginBottom: 6,
+          textAlign: 'left'
+        },
+        onClick: function onClick() {
+          turnInQuest(stateRef.current, questPanel, { setRpgState: setRpgState, setQuestPanel: setQuestPanel }, br.path);
+        }
+      }, /*#__PURE__*/React.createElement("span", {
+        style: {
+          color: '#a78bfa',
+          fontSize: 9,
+          fontWeight: 800,
+          marginRight: 6
+        }
+      }, br.register), br.label);
+    }))) : /*#__PURE__*/React.createElement("button", {
+      style: {
+        width: '100%',
+        padding: '8px',
+        borderRadius: 8,
+        border: 'none',
+        background: '#3dd497',
+        color: '#000',
+        fontWeight: 700,
+        fontSize: 12,
+        cursor: 'pointer'
+      },
+      onClick: function onClick() {
+        /* v2.3.782: body moved to src/game/quests.js (Phase 3). */
+        turnInQuest(stateRef.current, questPanel, { setRpgState: setRpgState, setQuestPanel: setQuestPanel });
+      }
+    }, "Turn In Quest")
+  )));
 }

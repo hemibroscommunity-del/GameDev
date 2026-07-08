@@ -1001,6 +1001,12 @@ export function setupWebSocket(ctx) {
               if (msg.payload._quests && typeof msg.payload._quests === 'object') S.rpg._quests = msg.payload._quests;
               if (msg.payload._questFlags && typeof msg.payload._questFlags === 'object') S.rpg._questFlags = msg.payload._questFlags;
               if (msg.payload._questKills && typeof msg.payload._questKills === 'object') S.rpg._questKills = msg.payload._questKills;
+              /* v2.3.1218: alignment-register mirror.  Worker is the sole
+                 writer of the four register counters (they gate titles + the
+                 far-off five endings); adopt the authoritative blob so our
+                 optimistic capstone-choice mirror (game/quests.js) is
+                 reconciled to the trusted counts. */
+              if (msg.payload._alignment && typeof msg.payload._alignment === 'object') S.rpg._alignment = msg.payload._alignment;
               if (typeof msg.payload.achievementPoints === 'number') S.rpg.achievementPoints = msg.payload.achievementPoints;
               /* v2.3.1021: weapon/defense skill track -- worker is now the
                  durable store.  Adopt the echoed values (present-gated) so a

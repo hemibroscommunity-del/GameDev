@@ -4683,6 +4683,27 @@ export const QUEST_CHAINS = {
       start: 'Clear a dungeon to prove your worth.',
       progress: 'Find a dungeon portal in any zone.',
       complete: 'Life skills uncapped past Lv50! Deeper zones beckon.'
+    },
+    /* v2.3.1218: mayor_3 is Mayor Bro's CAPSTONE — the four-register moral
+       fork (gdd.md §25.1).  The `check` above (cleared a dungeon) still
+       gates turn-in; `capstone` adds HOW you cleared it, one register per
+       branch.  DISPLAY MIRROR of server QUEST_REWARDS.mayor_3.capstone — the
+       server is authoritative for the register counter (quests.js); the
+       `path` string MUST equal the server register keys.  Per-branch
+       conditions (no-death / emote / solo) are self-reported flavour for
+       now; enforcing them server-side is future scope. */
+    capstone: {
+      prompt: 'The dungeon’s cleared. How did it go?',
+      branches: [
+        { path: 'responsible', register: 'Responsible', label: 'I brought everyone home.',
+          title: 'Protector', reaction: 'You brought everyone home. That’s leadership.' },
+        { path: 'mischievous', register: 'Mischievous', label: 'I clowned through every boss.',
+          title: 'Jester', reaction: 'I have reports. “The dungeon got less scary once someone started dancing.” I don’t know whether to promote you or write you up.' },
+        { path: 'cool', register: 'Cool', label: 'I cleared it alone. No fuss.',
+          title: 'Uninvolved', reaction: 'Cleared alone. No drama. I respect that.' },
+        { path: 'ruthless', register: 'Ruthless', label: 'I cut the others loose and finished it.',
+          title: 'Lone Wolf', reaction: 'You left them behind. Effective… but cold.' },
+      ],
     }
   },
   /* ═══ TRADER TIX — Economy Gates ═══ */

@@ -154,7 +154,7 @@ import { shardByKey } from '@/data/shards.js';
 const {
   TILE, PLAYER_COLORS, ZONES, ELEMENTS, TOWN_BUILDINGS, TOWN_EXITS,
   BLACKSMITH_TIERS, WOODWORKING_TIERS, WEAPON_TYPES, RARITY_TIERS, BT_AUDIO, BT_ACHIEVEMENTS,
-  BUILDINGS, NPC_DATA, TILE_SOLID, TILE_COLORS,
+  BUILDINGS, NPC_DATA, makeTownNpcs, TILE_SOLID, TILE_COLORS,
   updateZoneDimensions,
   STAT_POINTS_PER_LEVEL, LEVEL_CAP, GEAR_STAT_REQ,
   REFORGE_BONUSES, GEM_CUT_TIERS, COOKING_RECIPES,
@@ -2201,15 +2201,14 @@ export var BroTown = function BroTown(_ref0) {
     /* Monsters spawned with zone map — see S.map init above */
     /* Initialize NPCs — only in town, and only when the Tiled brotown
        map isn't authoring its own town content. */
-    if (!S.npcs && S.currentZone === 'town' && !(S._tiledWalkable && S._tiledWalkable.town)) {
-      /* v2.3.214: NPC spawn disabled -- user is re-introducing NPCs
-         one at a time. To re-enable, filter NPC_DATA to the names
-         you want, e.g.
-           const ACTIVE_NPCS = ['Mayor Bro'];
-           S.npcs = NPC_DATA.filter(n => ACTIVE_NPCS.includes(n.name))
-             .map((npc, i) => _objectSpread(...));
-         NPC_DATA in src/data/gameSystems.js still has all entries. */
-      S.npcs = [];
+    if (!S.npcs && S.currentZone === 'town') {
+      /* v2.3.1218: NPCs re-enabled, one at a time (Mayor Bro first).
+         makeTownNpcs() seeds every runtime field from NPC_DATA
+         (src/data/gameDisplay.js).  Spawns at fixed town coords
+         REGARDLESS of whether a Tiled town mask is loaded -- the old
+         `!(S._tiledWalkable && S._tiledWalkable.town)` guard would
+         silently re-suppress the roster if a Tiled town map ever ships. */
+      S.npcs = makeTownNpcs();
     }
 
     /* Loaded avatar images cache */
@@ -2981,10 +2980,10 @@ export var BroTown = function BroTown(_ref0) {
         }
 
         /* Re-initialize NPCs when entering town (they get nulled on zone transitions) */
-        if (!S.npcs && S.currentZone === 'town' && !(S._tiledWalkable && S._tiledWalkable.town)) {
-          /* v2.3.214: NPC spawn disabled (see init-block comment near
-             line 4467 for the re-enable recipe). */
-          S.npcs = [];
+        if (!S.npcs && S.currentZone === 'town') {
+          /* v2.3.1218: re-enabled — see the init-block spawn near the top
+             of this effect.  Fixed-coord spawn, no Tiled-town guard. */
+          S.npcs = makeTownNpcs();
         }
         /* Active weapon — available to all render/combat sections */
         var activeWpn = S.rpg ? getActiveWeapon(S.rpg) : {

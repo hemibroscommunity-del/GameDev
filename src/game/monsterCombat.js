@@ -2221,7 +2221,9 @@ export function updateMonsterCombat(S, deps) {
             /* Hit NPCs */
             if (S.npcs) {
               S.npcs.forEach(function (npc) {
-                if (!npc.alive || npc._hitThisSwing) return;
+                /* v2.3.1218: invuln town NPCs (quest-givers) ignore melee so
+                   a stray swing can't knock out Mayor Bro in the safe town. */
+                if (!npc.alive || npc._hitThisSwing || npc.invuln) return;
                 var nDist = Math.sqrt(Math.pow(npc.x - P.x, 2) + Math.pow(npc.y - P.y, 2));
                 if (nDist > SWING_RANGE) return;
                 var nAngle = Math.atan2(npc.y - P.y, npc.x - P.x);

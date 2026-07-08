@@ -2242,11 +2242,78 @@ export const BT_ACHIEVEMENTS = [{
   }
 }];
 
-/* NPC_DATA emptied -- placeholder NPCs (Mayor Bro / Trader Tix /
-   Enchantress / Scout / Blacksmith Bron / Healer Luna / Beastmaster Kai /
-   Veteran Ash / The Ferryman) removed per user request.  Rendering,
-   quest, dialog, and follow code intact -- add entries back here one at
-   a time to light each NPC up.  v2.3.788: the ferryman-portal code and
-   the wasteland zone it led to were removed for good (owner decision,
-   2026-06-12) -- don't re-add The Ferryman without rebuilding both. */
-export const NPC_DATA = [];
+/* NPC_DATA — the town NPC roster.  Emptied at v2.3.214; the owner
+   re-introduces NPCs ONE AT A TIME (rendering / quest / dialog / follow
+   code stayed intact the whole time).  v2.3.1218 lights up the FIRST NPC,
+   Mayor Bro, the town's central figure who gates the game's first
+   progression (mayor_1 -> zone exits, mayor_2 -> skill cap, mayor_3 is his
+   CAPSTONE moral choice — the four-register alignment fork; see
+   QUEST_CHAINS.mayor_3 + server QUEST_REWARDS.mayor_3.capstone).
+
+   Authored fields per entry:
+     id        — stable key (entityRenderer keys its display map by npc.id)
+     name      — MUST equal QUEST_CHAINS[*].npc exactly, or getNpcQuest()
+                 silently returns nothing and the NPC has no quest to give
+     avatar    — emoji drawn at the body centre
+     color     — CSS colour of the body circle + name label
+     x, y      — WORLD-PIXEL spawn (tile * TILE=32); town is 48x48 tiles
+     maxHp     — NPCs are damageable + respawn (melee in monsterCombat.js);
+                 town is a safe zone so this rarely matters, but keep it high
+     canFollow / followZones — companion-follow while their quest is active
+     pathRadius — idle wander radius (px) around the spawn point
+     phrases   — idle chat-bubble lines (npcChat)
+
+   The runtime fields (spawnX/Y, alive, hp, renderX/Y, _facing, timers,
+   targetX/Y, chatBubble, _questMarker, respawnAt) are seeded by
+   makeTownNpcs() below — do NOT author them here.
+
+   v2.3.788: the ferryman-portal code and the wasteland zone it led to were
+   removed for good (owner decision, 2026-06-12) — don't re-add The Ferryman
+   without rebuilding both. */
+export const NPC_DATA = [
+  {
+    id: 'mayor_bro',
+    name: 'Mayor Bro',            // matches QUEST_CHAINS mayor_1/2/3
+    avatar: '🎩',
+    color: '#f5c542',
+    x: 24 * 32,                   // town centre-ish, north of the player spawn
+    y: 22 * 32,
+    maxHp: 500,
+    invuln: true,                 // town quest-giver — can't be knocked out by stray swings
+    canFollow: false,
+    followZones: [],
+    pathRadius: 22,
+    phrases: [
+      'Another one washed up. They never last.',
+      'Town\'s quiet. Keep it that way.',
+      'Buildings won\'t explore themselves.',
+      'Trouble past the gates. Always is.',
+    ],
+  },
+];
+
+/* Spawn the live town NPC array from NPC_DATA, seeding every runtime field
+   the update/render/combat loops read.  Shared by both BroTown spawn sites
+   (init + enter-town) so their seeding can't drift apart.  Kept as a plain
+   function (no React) so it's callable from the game loop.  v2.3.1218. */
+export function makeTownNpcs() {
+  return NPC_DATA.map(function (npc) {
+    return {
+      ...npc,
+      spawnX: npc.x,
+      spawnY: npc.y,
+      renderX: npc.x,
+      renderY: npc.y,
+      targetX: npc.x,
+      targetY: npc.y,
+      alive: true,
+      hp: npc.maxHp,
+      _facing: 'down',
+      chatTimer: 4000 + Math.random() * 8000,
+      moveTimer: 2000 + Math.random() * 4000,
+      chatBubble: null,
+      _questMarker: null,
+      respawnAt: 0,
+    };
+  });
+}

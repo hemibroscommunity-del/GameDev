@@ -20,6 +20,7 @@
  * bootstrap stay in index.js -- they belong to the join slice. */
 
 import { RPG_SCHEMA_VERSION, runRpgMigrations, healLifeSkills } from './migrations.js';
+import { sanitizeAlignment } from './alignment.js';
 
 export const persistenceMethods = {
   async _loadRpg(playerId) {
@@ -132,6 +133,11 @@ export const persistenceMethods = {
         _questFlags: ps._questFlags || {},
         _questKills: ps._questKills || {},
         achievementPoints: ps.achievementPoints || 0,
+        // v2.3.1218 (alignment registers): the four moral-register
+        // counters + per-chain choice map + earned titles.  Server is the
+        // sole writer (_handleQuestTurnIn); sanitized on save so a
+        // corrupt/forged blob can't inflate a counter past the cap.
+        _alignment: sanitizeAlignment(ps._alignment),
         // Slice 18 rate-limit history.  Persisted so a cheater
         // can't reset the 60-second window by reconnecting (which
         // would otherwise let them claim 'perfect' indefinitely
@@ -225,6 +231,10 @@ export const persistenceMethods = {
           _questFlags: ps._questFlags || {},
           _questKills: ps._questKills || {},
           achievementPoints: ps.achievementPoints || 0,
+          // v2.3.1218: alignment-register mirror.  Client renders a
+          // read-only alignment readout (revealed only after the first
+          // capstone choice); server stays authoritative for the counts.
+          _alignment: ps._alignment || null,
           // v2.3.1021: weapon/defense skill track echoed so a reconnecting
           // client restores its trained levels / points / channels instead
           // of falling back to the localStorage copy (which a device switch

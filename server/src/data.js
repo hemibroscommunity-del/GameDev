@@ -131,7 +131,22 @@ export const SHOP_ITEMS = {
 export const QUEST_REWARDS = {
       mayor_1:    {gold:50,  xp:30,  next:'mayor_2'},
       mayor_2:    {gold:100, xp:80,  next:'mayor_3', objective:{type:'kill', arch:null, count:5}},
-      mayor_3:    {gold:300, xp:200, next:null},
+      // v2.3.1218: mayor_3 is Mayor Bro's CAPSTONE -- the last quest in his
+      // chain offers four register-flavored completion paths (gdd.md §25.1).
+      // The path is client-chosen (the "no death / emote / solo / abandon"
+      // conditions live client-side, like the dungeon-clear signal itself),
+      // but the server validates the path is legal + not already taken for
+      // this chain (permanent per chain) and is the SOLE writer of the
+      // register counter.  gold/xp are identical across paths -- no path is
+      // mechanically better (design: none ranked); the difference is the
+      // title + which register accrues.  Aura rewards (Protector +party XP,
+      // Lone Wolf +solo XP) are future scope (no aura system wired yet).
+      mayor_3:    {gold:300, xp:200, next:null, capstone:{
+        responsible: {title:'Protector'},
+        mischievous: {title:'Jester'},
+        cool:        {title:'Uninvolved'},
+        ruthless:    {title:'Lone Wolf'},
+      }},
       trader_1:   {gold:25,  xp:20,  next:'trader_2'},
       trader_2:   {gold:75,  xp:50,  next:'trader_3', objective:{type:'gather', count:3}},
       trader_3:   {gold:150, xp:100, next:null},

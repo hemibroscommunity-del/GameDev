@@ -25,6 +25,7 @@
  * QUEST_AP_REWARD in src/data/items.js -- 5 AP per quest.) */
 
 import { QUEST_REWARDS } from './data.js';
+import { isRegister, counterKeyFor, defaultAlignment, REGISTER_COUNT_CAP, TITLES_CAP } from './alignment.js';
 
 export const questMethods = {
   _QUEST_REWARDS_DATA() {
@@ -88,7 +89,7 @@ export const questMethods = {
     const ps = this.playerState[session.id];
     if (!ps) return;
     if (ps.dying || ps.dead || ps.disconnected) return;
-    const { questId } = payload || {};
+    const { questId, path } = payload || {};
     if (typeof questId !== 'string') return;
     const rewards = this._QUEST_REWARDS_DATA();
     // Own-property check (see _handleQuestAccept): an inherited key
@@ -118,6 +119,22 @@ export const questMethods = {
         if (!(ps._questFlags && ps._questFlags[_obj.flag])) return;
       }
     }
+    // v2.3.1218: CAPSTONE gate.  A capstone quest (mayor_3 etc.) can only
+    // be turned in with a legal register `path`, and only once per chain
+    // (permanent choice).  Reject and pay nothing otherwise -- the alignment
+    // mutation (register counter + title) is applied below, after the base
+    // reward, so a rejected capstone leaves the quest active and untouched.
+    const capstone = reward.capstone;
+    if (capstone) {
+      // own-property check on the branch table (same __proto__ hazard as
+      // the rewards lookup above), plus isRegister so only the four
+      // canonical paths pass.
+      if (!isRegister(path) || !Object.prototype.hasOwnProperty.call(capstone, path)) return;
+      if (!ps._alignment) ps._alignment = defaultAlignment();
+      // permanent per chain: a choice already recorded for this quest can't
+      // be re-picked (defeats register farming via turn-in replay).
+      if (Object.prototype.hasOwnProperty.call(ps._alignment.choices, questId)) return;
+    }
     ps._quests[questId] = 'turnedIn';
     ps.coins = (ps.coins || 0) + (reward.gold || 0);
     // XP via _addCombatXp so level-up logic runs (including
@@ -132,6 +149,21 @@ export const questMethods = {
       }
     }
     ps.achievementPoints = (ps.achievementPoints || 0) + this.QUEST_AP_REWARD;
+    // v2.3.1218: apply the capstone register choice.  Validated above, so
+    // by here `path` is a legal, not-yet-chosen register for this chain.
+    // The server is the SOLE writer of these counters (they gate titles +
+    // the far-off five endings); the client keeps an optimistic mirror that
+    // _sendPlayerState clobbers on the next flush.
+    if (capstone) {
+      const a = ps._alignment || (ps._alignment = defaultAlignment());
+      const ck = counterKeyFor(path);
+      a[ck] = Math.min(REGISTER_COUNT_CAP, (a[ck] || 0) + 1);
+      a.choices[questId] = path;
+      const title = capstone[path] && capstone[path].title;
+      if (title && Array.isArray(a.titlesEarned) && !a.titlesEarned.includes(title) && a.titlesEarned.length < TITLES_CAP) {
+        a.titlesEarned.push(title);
+      }
+    }
     // Unlock next quest in chain.
     if (reward.next && !ps._quests[reward.next]) {
       ps._quests[reward.next] = 'available';
