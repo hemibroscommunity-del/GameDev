@@ -15,6 +15,16 @@
  *   7. Cancel notifies both; disconnect cancels; TTL sweep expires
  *      idle sessions; expired invites do not complete.
  *   8. Forged trade2_state / trade2_invite are not rebroadcast.
+ *
+ * v2.3.1213 (item E, weapon lane): weapons use escrow-at-STAGE (storage-
+ * backed, unlike the memory-only item/gold path).  Checks:
+ *   9. Staging escrows a stash weapon into a storage-backed record +
+ *      resets confirms; unstage refunds it; commit swaps escrowed
+ *      weapons to the other side + clears records; cancel/disconnect/
+ *      deploy-orphan-sweep all refund to the owner; the sweep never
+ *      re-refunds a delivered weapon (rule 6); a refund into a full
+ *      stash parks the weapon in the inbox, never destroyed (rule 3);
+ *      caps.trade2Weapons advertised.
  */
 import { GameRoom } from '../src/index.js';
 import { TRADE2 } from '../src/trade2.js';
@@ -158,6 +168,96 @@ room.eventBuffer.length = 0;
 await cmd(wss.c, 'trade2_state', { state: 'done', settled: true });
 await cmd(wss.c, 'trade2_invite', { from: P('c') });
 check('forged trade2_state / trade2_invite dropped by deny-list', room.eventBuffer.filter((e) => e.type === 'trade2_state' || e.type === 'trade2_invite').length === 0, room.eventBuffer.map((e) => e.type));
+
+// ── 9. v2.3.1213 weapon lane (item E): escrow-at-stage custody ──
+{
+  const mkW = (name) => ({ type: 'sword', gearBase: 'iron', tier: 'common', tierMult: 1, name });
+  check('state_sync advertises caps.trade2Weapons', sync.caps.trade2Weapons === true, sync.caps);
+
+  // fresh session; stage/unstage/commit flow
+  psA.weaponStash = [mkW('A-blade')]; psB.weaponStash = [mkW('B-bow')];
+  await cmd(wss.a, 'trade2_open', { target: P('b') });
+  await cmd(wss.b, 'trade2_open', { target: P('a') });
+
+  await cmd(wss.a, 'trade2_confirm'); // confirm first to prove the anti-switch reset
+  await cmd(wss.a, 'trade2_stage_weapon', { stashIdx: 0 });
+  let st9 = lastState(wss.b);
+  const aSeq = st9.weapons[P('a')][0] && st9.weapons[P('a')][0].seq;
+  check('stage escrows the weapon out of the stash',
+    psA.weaponStash.length === 0 && st9.weapons[P('a')].length === 1 && st9.weapons[P('a')][0].weapon.name === 'A-blade',
+    { stash: psA.weaponStash.length, staged: st9.weapons[P('a')] });
+  check('escrow record is storage-backed (survives a deploy)', !!state._store.get('trade2wpn:' + P('a') + ':' + aSeq));
+  check('staging resets both confirms (anti-switch)', st9.confirmed[P('a')] === false && st9.confirmed[P('b')] === false);
+
+  await cmd(wss.a, 'trade2_unstage_weapon', { seq: aSeq });
+  check('unstage refunds to the stash + clears the record',
+    psA.weaponStash.length === 1 && psA.weaponStash[0].name === 'A-blade'
+    && !state._store.get('trade2wpn:' + P('a') + ':' + aSeq) && lastState(wss.a).weapons[P('a')].length === 0,
+    psA.weaponStash.map((w) => w.name));
+
+  // stage BOTH, commit -> weapons swap sides
+  await cmd(wss.a, 'trade2_stage_weapon', { stashIdx: 0 }); // A-blade
+  await cmd(wss.b, 'trade2_stage_weapon', { stashIdx: 0 }); // B-bow
+  const aSeq2 = lastState(wss.a).weapons[P('a')][0].seq;
+  const bSeq2 = lastState(wss.b).weapons[P('b')][0].seq;
+  await cmd(wss.a, 'trade2_confirm');
+  await cmd(wss.b, 'trade2_confirm');
+  check('commit swaps the escrowed weapons to the other side',
+    psB.weaponStash.some((w) => w.name === 'A-blade') && psA.weaponStash.some((w) => w.name === 'B-bow'),
+    { a: psA.weaponStash.map((w) => w.name), b: psB.weaponStash.map((w) => w.name) });
+  check('commit clears both escrow records',
+    !state._store.get('trade2wpn:' + P('a') + ':' + aSeq2) && !state._store.get('trade2wpn:' + P('b') + ':' + bSeq2));
+
+  // cancel refunds the staged weapon
+  psA.weaponStash = [mkW('A2')]; psB.weaponStash = [];
+  await cmd(wss.a, 'trade2_open', { target: P('b') });
+  await cmd(wss.b, 'trade2_open', { target: P('a') });
+  await cmd(wss.a, 'trade2_stage_weapon', { stashIdx: 0 });
+  const cSeq = lastState(wss.a).weapons[P('a')][0].seq;
+  check('weapon staged out of the stash', psA.weaponStash.length === 0);
+  await cmd(wss.a, 'trade2_cancel');
+  await new Promise((r) => setTimeout(r, 10)); // fire-and-forget refund
+  check('cancel refunds the escrowed weapon to the owner',
+    psA.weaponStash.some((w) => w.name === 'A2') && !state._store.get('trade2wpn:' + P('a') + ':' + cSeq),
+    psA.weaponStash.map((w) => w.name));
+
+  // disconnect refunds
+  psA.weaponStash = [mkW('A3')]; psB.weaponStash = [];
+  await cmd(wss.a, 'trade2_open', { target: P('b') });
+  await cmd(wss.b, 'trade2_open', { target: P('a') });
+  await cmd(wss.a, 'trade2_stage_weapon', { stashIdx: 0 });
+  const dSeq = lastState(wss.a).weapons[P('a')][0].seq;
+  room._trade2OnDisconnect(P('a'));
+  await new Promise((r) => setTimeout(r, 10));
+  check('disconnect refunds the escrowed weapon', psA.weaponStash.some((w) => w.name === 'A3') && !state._store.get('trade2wpn:' + P('a') + ':' + dSeq));
+
+  // deploy orphan sweep: an escrow with no live session refunds to the owner
+  psA.weaponStash = [];
+  await state.storage.put('trade2wpn:' + P('a') + ':9999', { pid: P('a'), sid: 'dead', seq: 9999, weapon: mkW('OrphanBlade'), ts: Date.now() });
+  room._lastT2WpnSweep = 0;
+  await room._trade2WpnSweep();
+  check('deploy sweep refunds an orphaned escrow',
+    psA.weaponStash.some((w) => w.name === 'OrphanBlade') && !state._store.get('trade2wpn:' + P('a') + ':9999'));
+
+  // rule 6: sweep never re-refunds a DELIVERED weapon (crash before delete)
+  psA.weaponStash = [];
+  await room._opStamp('trade2:dead2:wpndeliver:' + P('a') + ':8888');
+  await state.storage.put('trade2wpn:' + P('a') + ':8888', { pid: P('a'), sid: 'dead2', seq: 8888, weapon: mkW('DeliveredBlade'), ts: Date.now() });
+  room._lastT2WpnSweep = 0;
+  await room._trade2WpnSweep();
+  check('sweep does NOT re-refund a delivered weapon (rule 6)',
+    !psA.weaponStash.some((w) => w.name === 'DeliveredBlade') && !state._store.get('trade2wpn:' + P('a') + ':8888'));
+
+  // rule 3: a refund into a FULL stash parks the weapon in the inbox, never destroyed
+  psA.weaponStash = [mkW('f1'), mkW('f2'), mkW('f3'), mkW('f4'), mkW('f5'), mkW('f6'), mkW('f7'), mkW('f8')];
+  await state.storage.put('trade2wpn:' + P('a') + ':7777', { pid: P('a'), sid: 'dead3', seq: 7777, weapon: mkW('OverflowBlade'), ts: Date.now() });
+  room._lastT2WpnSweep = 0;
+  await room._trade2WpnSweep();
+  const inboxA = state._store.get('inbox:' + P('a')) || [];
+  check('a refund into a full stash parks the weapon in the inbox (rule 3)',
+    psA.weaponStash.length === 8 && inboxA.some((e) => e.kind === 'weapon' && e.payload && e.payload.weapon && e.payload.weapon.name === 'OverflowBlade'),
+    { stash: psA.weaponStash.length, inbox: inboxA.length });
+}
 
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);
 process.exit(failures === 0 ? 0 : 1);

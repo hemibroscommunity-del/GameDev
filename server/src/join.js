@@ -510,6 +510,7 @@ export const joinMethods = {
     this._arenaEntrySweep(); // v2.3.1126: refund entries orphaned by a deploy
     this._arenaStakeSweep(); // v2.3.1128: same contract for sponsorship stakes
     this._bountySweep();     // v2.3.1211: delete orphaned guard-fine bounties (item C)
+    this._trade2WpnSweep();  // v2.3.1213: refund weapons escrowed in a deploy-voided trade (item E)
     // v2.3.1129: load a surviving guard gear lock -- storage-backed
     // so relogging can't shed the punishment (threat.js).
     {
@@ -594,7 +595,7 @@ export const joinMethods = {
       // the echo (the caps.gems lesson, TRAPS #9).  Absent, the legacy
       // client-local Extract path stays (broken settlement, no
       // regression -- echo-stomped as before).
-      caps: { trade: true, questTrack: true, gamble: true, clans: true, arena: true, dungeon: true, sponsor: true, guilds: true, pets: true, harden: true, trade2: true, weaponDrops: true, botfp: true, jackpot: true, hpEndGrids: true, t2uniform: true, httpAuth: true, party: true, amuletForge: true, gems: true, petLoot: true, gemExtract: true, partyChat: true, ..._liveFlags },
+      caps: { trade: true, questTrack: true, gamble: true, clans: true, arena: true, dungeon: true, sponsor: true, guilds: true, pets: true, harden: true, trade2: true, weaponDrops: true, botfp: true, jackpot: true, hpEndGrids: true, t2uniform: true, httpAuth: true, party: true, amuletForge: true, gems: true, petLoot: true, gemExtract: true, partyChat: true, trade2Weapons: true, ..._liveFlags },
       // v2.3.1178: this session's private economy-endpoint token.
       // state_sync goes to the joining socket ONLY -- never broadcast.
       httpToken: session.httpToken,

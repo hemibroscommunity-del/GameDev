@@ -245,6 +245,13 @@ check('forged threat_penalty / gear_locked dropped by deny-list', room.eventBuff
 
   // integration: the real _handlePlayerDeath choke point routes the payout
   await guardFine(); // fresh bounty (810 -> 81)
+  // This test fires guardFine() sub-millisecond, so the fresh bounty's
+  // ts can equal an EARLIER bounty's on G (Date.now() hasn't advanced),
+  // which would collide the bountypay:<victim>:<ts> opId with the
+  // already-stamped legit-kill payout above and read as a dup.  Force a
+  // distinct ts so the payout opId is unique (in real play, re-bounties
+  // on a head are always many ms apart across kill/respawn cycles).
+  { const _b = state._store.get('bounty:' + G); _b.ts += 100000; state._store.set('bounty:' + G, _b); }
   const bInt = state._store.get('bounty:' + G).amount;
   const hBefore = room.playerState[H].coins;
   room.playerState[G].dying = false; room.playerState[G].dead = false;

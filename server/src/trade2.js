@@ -46,6 +46,7 @@ export const TRADE2 = {
   INVITE_TTL: 60000,    // open-toward-you offer lifetime
   SESSION_TTL: 300000,  // idle session lifetime (any action refreshes)
   MAX_GOLD: 999999,
+  WEAPON_MAX: 4,        // v2.3.1213: max weapons staged per side
 };
 
 export const trade2Methods = {
@@ -64,10 +65,15 @@ export const trade2Methods = {
   },
 
   _t2Wire(s) {
+    // v2.3.1213: staged weapons ride a parallel `weapons` snapshot (per
+    // side, [{seq, weapon}]) -- the escrow-at-stage lane, distinct from
+    // the wholesale `offers` (items/gold).  The client renders both.
+    const wpn = (pid) => (s.weapons && s.weapons[pid]) ? s.weapons[pid].map((w) => ({ seq: w.seq, weapon: w.weapon })) : [];
     return {
       id: s.id, a: s.a, b: s.b,
       aName: s.aName, bName: s.bName,
       offers: s.offers, confirmed: s.confirmed,
+      weapons: { [s.a]: wpn(s.a), [s.b]: wpn(s.b) },
       state: s.state,
     };
   },
@@ -82,6 +88,10 @@ export const trade2Methods = {
     if (!s || s.state !== 'open') return;
     s.state = 'cancelled';
     this._trades2.delete(s.id);
+    // v2.3.1213: return any escrowed weapons to their owners (fire-and-
+    // forget; opId-idempotent + swept as a backstop).  The state guard
+    // above makes _t2Cancel single-shot, so this can't double-refund.
+    this._t2RefundWeapons(s).catch(() => {});
     this._t2Broadcast(s, { reason: why || 'cancelled' });
   },
 
@@ -194,6 +204,25 @@ export const trade2Methods = {
         await this._creditPlayer(side.id, { opId: 'trade2:' + s.id + ':' + side.id + ':' + k, source: 'trade', kind: 'item', payload: { invKey: k, count: v }, note });
       }
     }
+    // v2.3.1213: deliver each weapon the OTHER side escrowed at stage.
+    // The weapon already LEFT its owner's stash at stage-time, so commit
+    // only credits the recipient (cap-safe: _creditPlayer parks it in
+    // the recipient's inbox if their stash is full, rule 3).  Delete the
+    // escrow record AFTER the credit (rule 6, credit-before-delete); the
+    // deliver opId is keyed by OWNER+seq so the sweep can tell a
+    // delivered weapon from a refundable one.
+    if (s.weapons) {
+      for (const side of sides) {
+        const note = 'trade with ' + (side.getsFrom === s.a ? s.aName : s.bName);
+        for (const entry of (s.weapons[side.getsFrom] || [])) {
+          await this._creditPlayer(side.id, {
+            opId: 'trade2:' + s.id + ':wpndeliver:' + side.getsFrom + ':' + entry.seq,
+            source: 'trade', kind: 'weapon', payload: { weapon: entry.weapon }, note,
+          });
+          await this.state.storage.delete('trade2wpn:' + side.getsFrom + ':' + entry.seq);
+        }
+      }
+    }
     this._t2Broadcast(s, { settled: true });
   },
 
@@ -225,5 +254,128 @@ export const trade2Methods = {
         if (now - s.ts > TRADE2.SESSION_TTL) this._t2Cancel(s, 'expired');
       }
     }
+  },
+
+  /* ═══ v2.3.1213: weapon lane (handoff item E) ═══
+   *
+   * v1 traded items + gold via validate-at-commit -- nothing escrowed, a
+   * deploy voids the window harmlessly.  Weapons are opaque blobs at
+   * REST in the stage, so they use escrow-at-stage (rule 7): staging
+   * removes the weapon from the owner's server-held weaponStash into a
+   * storage-backed record (trade2wpn:<pid>:<seq>, rule 11 -- must
+   * survive a deploy/disconnect), commit delivers it to the other side,
+   * and cancel/disconnect/idle-expiry/deploy all refund it.  Custody +
+   * cap-safe delivery + refund mirror the marketplace listing lane
+   * (market.js): _creditPlayer(kind:'weapon') pushes to the stash or
+   * parks it in the inbox when full (rule 3 -- never destroy).  Every
+   * leg is opId-idempotent and the deploy sweep checks the deliver stamp
+   * before refunding (rule 6) so a committed weapon can't also refund. */
+
+  // Escrow a stash weapon into MY side of the live session.
+  async _handleTrade2StageWeapon(session, payload) {
+    const s = this._t2SessionFor(session.id);
+    if (!s) return;
+    const ps = this.playerState[session.id];
+    if (!ps || ps.dying || ps.dead) return;
+    if (!Array.isArray(ps.weaponStash)) ps.weaponStash = [];
+    const idx = payload && payload.stashIdx;
+    if (!Number.isInteger(idx) || idx < 0 || idx >= ps.weaponStash.length) return;
+    // Stale-index guard: the client's stash view can lag a just-staged
+    // weapon's removal, so an optional name check turns a stale tap into
+    // a no-op instead of escrowing the wrong weapon (still take-by-index
+    // from the SERVER's stash, rule 16 -- the name is only a tiebreak).
+    if (typeof (payload && payload.expectName) === 'string'
+      && ps.weaponStash[idx] && ps.weaponStash[idx].name !== payload.expectName) return;
+    if (!s.weapons) s.weapons = { [s.a]: [], [s.b]: [] };
+    const mine = s.weapons[session.id] || (s.weapons[session.id] = []);
+    if (mine.length >= TRADE2.WEAPON_MAX) return; // staged-weapon cap
+    // Take the weapon by INDEX from the SERVER's own stash (rule 16 --
+    // never trust a client-supplied blob), sanitized (quality/hardness/
+    // temper preserved, clamped -- the credit path re-sanitizes the same
+    // way on delivery/refund).
+    const weapon = this._sanitizeWeapon(ps.weaponStash[idx]);
+    if (!weapon) return;
+    ps.weaponStash.splice(idx, 1);
+    const seq = (this._t2WpnSeq = (this._t2WpnSeq || 0) + 1);
+    await this.state.storage.put('trade2wpn:' + session.id + ':' + seq, {
+      pid: session.id, sid: s.id, seq, weapon, ts: Date.now(),
+    });
+    mine.push({ seq, weapon });
+    this._saveRpg(session.id, ps);
+    this._queuePlayerStateFlush(session.id);
+    // Anti-switch: staging is a change -> reset BOTH confirms.
+    s.confirmed[s.a] = false;
+    s.confirmed[s.b] = false;
+    s.ts = Date.now();
+    this._t2Broadcast(s);
+  },
+
+  // Pull one of MY escrowed weapons back out (before commit).
+  async _handleTrade2UnstageWeapon(session, payload) {
+    const s = this._t2SessionFor(session.id);
+    if (!s || !s.weapons) return;
+    const seq = payload && payload.seq;
+    const mine = s.weapons[session.id] || [];
+    const at = mine.findIndex((w) => w.seq === seq);
+    if (at < 0) return;
+    const [entry] = mine.splice(at, 1);
+    await this._creditPlayer(session.id, {
+      opId: 'trade2:' + s.id + ':wpnrefund:' + session.id + ':' + entry.seq,
+      source: 'trade', kind: 'weapon', payload: { weapon: entry.weapon }, note: 'unstaged from trade',
+    });
+    await this.state.storage.delete('trade2wpn:' + session.id + ':' + entry.seq);
+    s.confirmed[s.a] = false;
+    s.confirmed[s.b] = false;
+    s.ts = Date.now();
+    this._t2Broadcast(s);
+  },
+
+  // Refund all escrowed weapons in a (cancelled) session to their owners.
+  async _t2RefundWeapons(s) {
+    if (!s || !s.weapons) return;
+    for (const pid of [s.a, s.b]) {
+      const list = s.weapons[pid] || [];
+      for (const entry of list) {
+        // rule 6: a crash between commit-deliver and record-delete could
+        // leave this entry -- never refund a weapon already delivered.
+        if (await this._opSeen('trade2:' + s.id + ':wpndeliver:' + pid + ':' + entry.seq)) {
+          await this.state.storage.delete('trade2wpn:' + pid + ':' + entry.seq);
+          continue;
+        }
+        await this._creditPlayer(pid, {
+          opId: 'trade2:' + s.id + ':wpnrefund:' + pid + ':' + entry.seq,
+          source: 'trade', kind: 'weapon', payload: { weapon: entry.weapon }, note: 'trade cancelled',
+        });
+        await this.state.storage.delete('trade2wpn:' + pid + ':' + entry.seq);
+      }
+      s.weapons[pid] = [];
+    }
+  },
+
+  // Deploy orphan sweep (join-path, rate-limited -- the _duelEscrowSweep
+  // pattern).  A deploy wipes the in-memory session while escrowed
+  // weapons persist in storage; refund any record with no live session,
+  // skipping ones already delivered (rule 6).
+  async _trade2WpnSweep() {
+    const now = Date.now();
+    if (this._lastT2WpnSweep && now - this._lastT2WpnSweep < 300000) return;
+    this._lastT2WpnSweep = now;
+    try {
+      const recs = await this.state.storage.list({ prefix: 'trade2wpn:' });
+      for (const [k, rec] of recs) {
+        if (!rec || !rec.pid) { await this.state.storage.delete(k); continue; }
+        const live = this._t2SessionFor(rec.pid);
+        if (live && live.id === rec.sid) continue; // still escrowed in a live window
+        if (await this._opSeen('trade2:' + rec.sid + ':wpndeliver:' + rec.pid + ':' + rec.seq)) {
+          await this.state.storage.delete(k); // delivered, crash before delete
+          continue;
+        }
+        await this._creditPlayer(rec.pid, {
+          opId: 'trade2:' + rec.sid + ':wpnrefund:' + rec.pid + ':' + rec.seq,
+          source: 'trade', kind: 'weapon', payload: { weapon: rec.weapon }, note: 'trade voided (server restart)',
+        });
+        await this.state.storage.delete(k);
+      }
+    } catch (e) { /* best-effort */ }
   },
 };

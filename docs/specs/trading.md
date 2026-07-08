@@ -98,13 +98,39 @@ an extension of the gift handshake — implemented in
 as the old-worker fallback). All four commands are client
 PRIORITY_EVENTS (no 33ms batch lag on window clicks).
 
+## Weapon lane — SHIPPED v2.3.1213 (handoff item E)
+
+v1 traded items + gold only (validate-at-commit, memory-only). Weapons
+are opaque blobs at REST in the stage, so they use **escrow-at-stage**
+(rule 7), mirroring the marketplace listing lane's custody:
+
+| Direction | Type | Payload | Behavior |
+|---|---|---|---|
+| c→s | `trade2_stage_weapon` | `{stashIdx, expectName?}` | takes `ps.weaponStash[stashIdx]` by INDEX (rule 16; `expectName` is a stale-tap tiebreak), sanitized, into a **storage-backed** record `trade2wpn:<pid>:<seq>` (rule 11); pushes to `s.weapons[pid]`; resets BOTH confirms (anti-switch); capped at `TRADE2.WEAPON_MAX` (4)/side |
+| c→s | `trade2_unstage_weapon` | `{seq}` | refunds that escrowed weapon to the owner's stash (cap-safe), clears the record, resets confirms |
+| s→c | `trade2_state` | + `weapons: {[a]:[{seq,weapon}], [b]:[...]}` | the escrowed-weapon snapshot the window renders beside `offers` |
+
+- **Commit** delivers each side's escrowed weapons to the OTHER via
+  `_creditPlayer(kind:'weapon')` (stash, or **inbox** if full — rule 3,
+  never destroyed), then deletes the records (credit-before-delete,
+  rule 6). The item/gold path is unchanged.
+- **Refund on cancel / disconnect / idle-expiry** (`_t2RefundWeapons`
+  off `_t2Cancel`) and a **deploy-orphan sweep** (`_trade2WpnSweep`,
+  join-path, rate-limited, the `_duelEscrowSweep` pattern) return
+  escrowed weapons to their owners. Every leg is opId-idempotent
+  (`trade2:<sid>:wpnrefund|wpndeliver:<pid>:<seq>`); the sweep checks
+  the deliver stamp before refunding (rule 6) so a committed weapon
+  can't also refund.
+- **Deploy-order**: gated on its own narrow **`caps.trade2Weapons`**
+  (rule 19 / TRAPS #9), NOT `caps.trade2` — an old worker with trade2
+  but no weapon case would rebroadcast the stage command room-wide, so
+  the client shows the weapon picker + sends the command only under the
+  new flag. The two commands are client PRIORITY_EVENTS.
+
 ## Scope + successor notes
 
-- v1 trades inventory items + gold only. WEAPONS deliberately trade
-  through the marketplace's escrowed listings (opaque-blob custody +
-  stash-cap interactions are already solved there); adding a weapon
-  lane here means escrow-at-stage, not validate-at-commit.
-- Sessions are memory-only (nothing escrowed; a deploy voids open
-  windows harmlessly).
+- Item/gold sessions are memory-only (nothing escrowed; a deploy voids
+  them harmlessly). Only the **weapon** stage is storage-backed, because
+  it holds escrowed value (rule 11).
 - The atomicity argument: both debits run synchronously inside one
   input-gated event BEFORE any credit; credits are opId-idempotent.
