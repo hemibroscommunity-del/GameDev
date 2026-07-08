@@ -141,7 +141,7 @@ export const tickMethods = {
 
       // Batched player positions (only dirty)
       if (hasDirty) {
-        const players = {};
+        const players = {}; // proto-ok: player-keyed outbound payload; join gate v2.3.1202
         for (const id of this.dirtyPlayers) {
           const ps = this.playerState[id];
           if (ps) players[id] = { x: ps.x, y: ps.y, d: ps.d, z: ps.z, vx: ps.vx, vy: ps.vy, f: ps.f, eqc: ps.eqc, eql: ps.eql, eqs: ps.eqs, ex: ps.ex };
@@ -182,7 +182,7 @@ export const tickMethods = {
       if (hasV1) {
         const v1 = { ...delta };
         if (hasMonsters) {
-          const mData = {};
+          const mData = {}; // proto-ok: keyed by server zone names
           for (const zoneId of this.dirtyMonsters) {
             const monsters = this.monsters[zoneId];
             if (!monsters) continue;
@@ -191,7 +191,7 @@ export const tickMethods = {
           v1.monsters = mData;
         }
         if (hasNodes) {
-          const nData = {};
+          const nData = {}; // proto-ok: keyed by server zone names
           for (const zoneId of this.dirtyNodes) {
             const list = this.nodes[zoneId];
             if (!list) continue;
@@ -204,7 +204,7 @@ export const tickMethods = {
       if (hasV2) {
         const v2 = { ...delta };
         if (hasMonsters) {
-          const mData = {};
+          const mData = {}; // proto-ok: keyed by server zone names
           for (const zoneId of this.dirtyMonsters) {
             const monsters = this.monsters[zoneId];
             const ids = this.dirtyMonsterIds[zoneId];
@@ -215,7 +215,7 @@ export const tickMethods = {
           if (Object.keys(mData).length > 0) v2.monsters = mData;
         }
         if (hasNodes) {
-          const nData = {};
+          const nData = {}; // proto-ok: keyed by server zone names
           for (const zoneId of this.dirtyNodes) {
             const list = this.nodes[zoneId];
             const ids = this.dirtyNodeIds[zoneId];

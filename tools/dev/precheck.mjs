@@ -41,7 +41,11 @@
  *                      '__proto__' silently no-ops on a plain object —
  *                      this bit three times in ONE day (duel.away
  *                      v2.3.1175, party meta v2.3.1185, amulet tiers
- *                      v2.3.1192). Use Object.create(null) or Map.
+ *                      v2.3.1192). Use Object.create(null) or Map. A
+ *                      site triaged SAFE (server-generated key,
+ *                      join-gate-protected player id, or not-a-map)
+ *                      carries an inline `proto-ok:<reason>` marker and
+ *                      is skipped (item H, v2.3.1214).
  *   7. server-tests  — if server/ changed, runs `cd server && npm test`
  *                      (zero-dep, sandbox-safe).
  *
@@ -373,6 +377,12 @@ function sanitize(src, { jsxText = false } = {}) {
     const lines = read(f).split('\n');
     for (let li = 0; li < lines.length; li++) {
       if (!/(?:=|:)\s*\{\s*\}/.test(lines[li])) continue;
+      // A site triaged SAFE (server-generated key, join-gate-protected
+      // player id, or not-a-map) carries an inline `proto-ok:<reason>`
+      // marker so the sweep can go quiet without churning a safe map
+      // (item H, v2.3.1214).  Genuinely client-id-keyed maps get
+      // Object.create(null)/Map instead (which this regex won't match).
+      if (/proto-ok\b/.test(lines[li])) continue;
       const lo = Math.max(0, li - 5), hi = Math.min(lines.length, li + 6);
       if (lines.slice(lo, hi).some((l) => idIndex.test(l))) {
         if (!perFile.has(f)) perFile.set(f, []);

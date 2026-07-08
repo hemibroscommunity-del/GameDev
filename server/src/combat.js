@@ -141,7 +141,7 @@ export const combatMethods = {
   // path, not health).  Ephemeral session state -- not persisted.
   _trackMonsterDamage(ps, monsterId, amount) {
     if (!ps || !monsterId || !(amount > 0)) return;
-    if (!ps.dmgFromMonster) ps.dmgFromMonster = {};
+    if (!ps.dmgFromMonster) ps.dmgFromMonster = {};  // proto-ok: keyed by server-minted monster ids
     ps.dmgFromMonster[monsterId] = (ps.dmgFromMonster[monsterId] || 0) + amount;
   },
 
@@ -542,7 +542,7 @@ export const combatMethods = {
       const totalShareDenom = Object.values(contributions).reduce((a, b) => a + b, 0) || 1;
       const xpRecipients = [];
       const goldRecipients = [];
-      const shares = {};
+      const shares = {}; // proto-ok: player-keyed transient; join ids gate-hardened v2.3.1202
       for (const [pid, contributed] of Object.entries(contributions)) {
         const ps = this.playerState[pid];
         if (!ps || ps.dead || ps.disconnected || ps.z !== zone) continue;

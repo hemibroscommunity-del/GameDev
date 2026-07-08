@@ -122,7 +122,7 @@ export const trade2Methods = {
       const s = {
         id: crypto.randomUUID(), a: target, b: session.id,
         aName: (targetPs.name || 'Trader'), bName: (ps.name || 'Trader'),
-        offers: { [target]: {}, [session.id]: {} },
+        offers: { [target]: {}, [session.id]: {} }, // proto-ok: player-keyed (target validated live); join gate v2.3.1202
         confirmed: { [target]: false, [session.id]: false },
         state: 'open', ts: now,
       };

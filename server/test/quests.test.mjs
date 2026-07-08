@@ -12,6 +12,9 @@
  *   5. Quests without an objective stay client-trusted (turn-in works
  *      as before).
  *   6. state_sync advertises caps.questTrack.
+ *   7. v2.3.1214 (item H): an inherited-property questId ('constructor'
+ *      etc.) is rejected by the own-property guard — no free AP, no
+ *      _quests pollution.
  */
 import { GameRoom } from '../src/index.js';
 
@@ -101,6 +104,26 @@ check('replayed turn-in pays nothing', ps.coins === coinsAfter);
 // ── 5. objective-less quests stay client-trusted ──
 await room.webSocketMessage(ws, JSON.stringify({ type: 'quest_turn_in', payload: { questId: 'trader_1' } }));
 check('objective-less quest turns in as before', ps._quests.trader_1 === 'turnedIn' && ps.coins === coinsAfter + 25, { q: ps._quests.trader_1, coins: ps.coins });
+
+// ── 7. v2.3.1214 (item H): an inherited-property questId can't farm the
+// unconditional AP reward or pollute _quests.  Before the own-property
+// guard, QUEST_REWARDS['constructor'] resolved to a truthy Object.proto
+// member, so accept+turn-in on 'constructor'/'toString'/etc. handed out
+// QUEST_AP_REWARD each on a junk id (objective/gold/xp all undefined). ──
+{
+  const apBefore = ps.achievementPoints || 0;
+  const coinsPre = ps.coins;
+  for (const bad of ['constructor', '__proto__', 'toString', 'hasOwnProperty', 'valueOf']) {
+    await room.webSocketMessage(ws, JSON.stringify({ type: 'quest_accept', payload: { questId: bad } }));
+    await room.webSocketMessage(ws, JSON.stringify({ type: 'quest_turn_in', payload: { questId: bad } }));
+  }
+  check('inherited-key questIds are rejected (no AP farm, no coins, no _quests pollution)',
+    (ps.achievementPoints || 0) === apBefore && ps.coins === coinsPre
+    && !Object.prototype.hasOwnProperty.call(ps._quests, 'constructor')
+    && !Object.prototype.hasOwnProperty.call(ps._quests, 'toString')
+    && !Object.prototype.hasOwnProperty.call(ps._quests, 'valueOf'),
+    { ap: ps.achievementPoints, coins: ps.coins });
+}
 
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);
 process.exit(failures === 0 ? 0 : 1);

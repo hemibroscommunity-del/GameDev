@@ -509,7 +509,7 @@ export const dungeonMethods = {
       m._pendingAbility = null;
       // v2.3.1199: cooldown shortens while enraged.
       m._nextAbilityAt = now + this._dungeonBossCooldownMs(m);
-      const extra = {};
+      const extra = {}; // proto-ok: fixed-field payload struct, not an id-keyed map
       if (ability === 'slam' || ability === 'sweep') {
         const cfgA = ability === 'slam' ? B.SLAM : B.SWEEP;
         extra.range = cfgA.RANGE;
