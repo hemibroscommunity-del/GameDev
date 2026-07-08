@@ -60,6 +60,11 @@
  *       kind since the port.  Hexer's signature life-drain: clamped
  *       single-target hit that heals the boss HEAL_PCT of maxHp on a
  *       landed hit, and a block denies BOTH the hit and the heal.
+ *   26. v2.3.1218 (item D follow-up): leader-initiated group entry --
+ *       a party LEADER starting a dungeon pulls co-located members into
+ *       the same instance (same dungeon_started, no new client code);
+ *       members in another zone are left behind, and a non-leader start
+ *       pulls nobody.
  */
 import { GameRoom } from '../src/index.js';
 import { DUNGEONS, BOSS_ABILITIES } from '../src/dungeon.js';
@@ -561,6 +566,40 @@ check('blocked siphon denies both the hit and the heal',
   psA.hp === 500 && bossS.hp === hpBossPreBlock, { hp: psA.hp, bossHp: bossS.hp, pre: hpBossPreBlock });
 psA.blocking = false;
 room._dungeonCleanup(instS);
+
+// ── 26. v2.3.1218 (item D follow-up): leader-initiated group dungeon entry ──
+const wsL = fakeWs('L'); await join(wsL, 'bp_pg_L');   // leader
+const wsM = fakeWs('M'); await join(wsM, 'bp_pg_M');   // co-located member
+const wsN = fakeWs('N'); await join(wsN, 'bp_pg_N');   // member who wanders off
+const psL = room.playerState['bp_pg_L'], psN = room.playerState['bp_pg_N'];
+psL.level = 10;
+// Form a 3-player party (L leader) via the real invite/accept handshake.
+await room.webSocketMessage(wsL, JSON.stringify({ type: 'party_invite', payload: { target: 'bp_pg_M' } }));
+await room.webSocketMessage(wsM, JSON.stringify({ type: 'party_accept', payload: { target: 'bp_pg_L' } }));
+await room.webSocketMessage(wsL, JSON.stringify({ type: 'party_invite', payload: { target: 'bp_pg_N' } }));
+await room.webSocketMessage(wsN, JSON.stringify({ type: 'party_accept', payload: { target: 'bp_pg_L' } }));
+const pg = room._partyOf('bp_pg_L');
+check('party formed with L as leader (3 members)', !!pg && pg.leader === 'bp_pg_L' && pg.members.length === 3, pg && { leader: pg.leader, n: pg.members.length });
+// N wanders to another zone; L + M stay together in town.
+psN.z = 'meadow';
+wsL.sent.length = 0; wsM.sent.length = 0; wsN.sent.length = 0;
+await start(wsL, { waves: 1, hasBoss: false, monsters: [{ archetype: 'fodder', count: 1 }] });
+const zoneG = msgsOfType(wsL, 'dungeon_started').slice(-1)[0].payload.zone;
+const mStarted = msgsOfType(wsM, 'dungeon_started');
+check('co-located member pulled into the leader\'s instance',
+  mStarted.length === 1 && mStarted[0].payload.zone === zoneG && !!mStarted[0].payload.cfg && mStarted[0].payload.wave === 1,
+  mStarted.map((e) => e.payload && e.payload.zone));
+check('member in another zone is NOT pulled', msgsOfType(wsN, 'dungeon_started').length === 0, msgsOfType(wsN, 'dungeon_started').length);
+room._dungeonCleanup(room._dungeons.get(zoneG.slice('dungeon:'.length)));
+// Leader-only: a non-leader (M) starting pulls nobody, even co-located.
+psN.z = 'town';
+wsL.sent.length = 0; wsN.sent.length = 0;
+await start(wsM, { waves: 1, hasBoss: false, monsters: [{ archetype: 'fodder', count: 1 }] });
+const zoneG2 = msgsOfType(wsM, 'dungeon_started').slice(-1)[0].payload.zone;
+check('non-leader start pulls nobody (leader-initiated only)',
+  msgsOfType(wsL, 'dungeon_started').length === 0 && msgsOfType(wsN, 'dungeon_started').length === 0,
+  { L: msgsOfType(wsL, 'dungeon_started').length, N: msgsOfType(wsN, 'dungeon_started').length });
+room._dungeonCleanup(room._dungeons.get(zoneG2.slice('dungeon:'.length)));
 
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);
 process.exit(failures === 0 ? 0 : 1);
