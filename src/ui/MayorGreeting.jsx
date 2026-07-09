@@ -1,10 +1,15 @@
 import React, { useEffect, useRef, useState } from 'react';
 
-/* Mayor Bro welcome greeting (v2.3.1219) — a talking-head dialog card shown
-   ONCE per browser, right after the loading intro fades, when a freshly
-   created player first lands in town. It's the payoff to the "washing
-   ashore" opening beat the loading screen sets up (IntroVideo.jsx): the
-   Mayor greets the newcomer with owner-supplied art + voice.
+/* Mayor Bro welcome greeting (v2.3.1219) — a compact talking-head dialogue
+   window shown ONCE per browser, right after the loading intro fades, when a
+   freshly created player first lands in town. It's the payoff to the "washing
+   ashore" opening beat the loading screen sets up (IntroVideo.jsx): the Mayor
+   greets the newcomer with owner-supplied art + voice.
+
+   v2.3.1219 (owner feedback): a small dialogue window anchored over the
+   DASHBOARD area at the bottom of the screen — not a fullscreen modal — so it
+   reads like an RPG NPC dialogue box and doesn't cover the world. It's
+   non-blocking (no scrim); the player dismisses it with Skip or the ✕.
 
    iPhone Safari (the primary platform) blocks autoplay-WITH-SOUND unless the
    play() call is driven by a user tap, so this is deliberately tap-to-play:
@@ -76,8 +81,7 @@ export const MayorGreeting = ({ onComplete }) => {
 
   return (
     <div className="bt-mayor" role="dialog" aria-label="Mayor Bro welcome">
-      <div className="bt-mayor__scrim" onClick={close} />
-      <div className="bt-mayor__card">
+      <div className="bt-mayor__win">
         <div className="bt-mayor__portrait" onClick={started ? undefined : play}>
           <video
             ref={videoRef}
@@ -90,17 +94,21 @@ export const MayorGreeting = ({ onComplete }) => {
           {!started && (
             <button className="bt-mayor__play" onClick={play} aria-label="Play the Mayor's greeting">
               <span className="bt-mayor__playicon">▶</span>
-              <span className="bt-mayor__playhint">Tap to hear the Mayor</span>
             </button>
           )}
         </div>
-        <div className="bt-mayor__name">Mayor Bro</div>
-        <div className="bt-mayor__bubble">
-          &ldquo;Another one washes ashore. Relax &mdash; everyone starts as driftwood.&rdquo;
+        <div className="bt-mayor__body">
+          <div className="bt-mayor__name">Mayor Bro</div>
+          <div className="bt-mayor__line">
+            &ldquo;Another one washes ashore. Relax &mdash; everyone starts as driftwood.&rdquo;
+          </div>
+          <div className="bt-mayor__actions">
+            {!started && <span className="bt-mayor__hint">Tap the Mayor to hear him</span>}
+            <button className="bt-mayor__continue" onClick={close}>
+              {ended ? 'Enter Bro Town →' : 'Skip →'}
+            </button>
+          </div>
         </div>
-        <button className="bt-mayor__continue" onClick={close}>
-          {ended ? 'Enter Bro Town →' : 'Skip →'}
-        </button>
       </div>
     </div>
   );
