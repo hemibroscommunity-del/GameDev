@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef } from 'react';
 
 /* Mayor Bro welcome greeting (v2.3.1219) — a compact talking-head dialogue
    window shown ONCE per browser, right after the loading intro fades, when a
@@ -6,18 +6,21 @@ import React, { useEffect, useRef, useState } from 'react';
    ashore" opening beat the loading screen sets up (IntroVideo.jsx): the Mayor
    greets the newcomer with owner-supplied art + voice.
 
-   v2.3.1219 (owner feedback): a small dialogue window anchored over the
-   DASHBOARD area at the bottom of the screen — not a fullscreen modal — so it
-   reads like an RPG NPC dialogue box and doesn't cover the world. It's
-   non-blocking (no scrim); the player dismisses it with Skip or the ✕.
-
-   iPhone Safari (the primary platform) blocks autoplay-WITH-SOUND unless the
-   play() call is driven by a user tap, so this is deliberately tap-to-play:
-   the poster frame + caption are on screen immediately, and a tap starts the
-   clip with sound. The caption is ALWAYS visible, so the line lands even if
-   the player skips before (or without) hearing the audio. */
+   Owner feedback:
+   - A small dialogue window anchored over the DASHBOARD area at the bottom of
+     the screen — not a fullscreen modal — so it reads like an RPG NPC dialogue
+     box and doesn't cover the world. Non-blocking (no scrim).
+   - AUTOPLAYS on appear and AUTO-DISMISSES when the ~6 s clip ends; no tap
+     needed. iPhone Safari can block autoplay-WITH-SOUND unless it's driven by
+     a tap — but the window opens seconds after the player taps PLAY to join,
+     so the tap's activation usually still covers it. If Safari refuses sound,
+     we retry MUTED so the clip still plays (and still auto-dismisses) with the
+     caption carrying the line. A safety timer guarantees it disappears even if
+     'ended' never fires (video error / stalled decode). */
 
 const SEEN_KEY = 'bt_mayor_welcome_seen';   // localStorage flag — once per browser
+const SAFETY_MS = 9000;                       // fallback close if 'ended' never fires; generous
+                                              // (> clip's ~6 s) so a slightly delayed start still completes
 
 /* Exported so the join flow can decide whether to queue the greeting after
    the loading intro without duplicating the storage-key string. */
@@ -28,32 +31,8 @@ const markSeen = () => { try { localStorage.setItem(SEEN_KEY, '1'); } catch (e) 
 
 export const MayorGreeting = ({ onComplete }) => {
   const videoRef = useRef(null);
-  const [started, setStarted] = useState(false);   // player tapped play at least once
-  const [ended, setEnded] = useState(false);       // clip finished
   const closedRef = useRef(false);
   const prevZoneRef = useRef('town');
-
-  /* v2.3.1219: the Mayor speaks over SILENCE — fade the zone background music
-     out while the card is up so nothing competes with his voice (his audio
-     rides the <video> element, not BT_AUDIO's Web Audio graph, so it's
-     untouched).  The town music resumes when the card closes.  stopAmbient
-     doesn't clear _currentZoneAmbient, so the resume must null it first or
-     startZoneAmbient early-returns. */
-  useEffect(() => {
-    try {
-      const A = window.BT_AUDIO;
-      if (A) {
-        prevZoneRef.current = A._currentZoneAmbient || 'town';
-        A.stopAmbient(true);
-      }
-    } catch (e) {}
-    return () => {
-      try {
-        const A = window.BT_AUDIO;
-        if (A) { A._currentZoneAmbient = null; A.startZoneAmbient(prevZoneRef.current || 'town'); }
-      } catch (e) {}
-    };
-  }, []);
 
   const close = () => {
     if (closedRef.current) return;
@@ -63,50 +42,61 @@ export const MayorGreeting = ({ onComplete }) => {
     onComplete && onComplete();
   };
 
-  const play = () => {
-    const v = videoRef.current;
-    if (!v) return;
-    setStarted(true);
+  /* Mount: silence the zone music, autoplay the clip, and arm the safety
+     timer. The Mayor speaks over SILENCE — fade the zone background music out
+     so nothing competes with his voice (his audio rides the <video> element,
+     not BT_AUDIO's Web Audio graph, so it's untouched); the town music resumes
+     when the window closes. stopAmbient doesn't clear _currentZoneAmbient, so
+     the resume must null it first or startZoneAmbient early-returns. */
+  useEffect(() => {
     try {
-      v.muted = false;
-      v.currentTime = 0;
-      const p = v.play();
-      /* If iOS still refuses sound, fall back to a muted play so the animation
-         at least runs; the caption already carries the message. */
-      if (p && p.catch) p.catch(() => {
-        try { v.muted = true; v.play(); } catch (e) {}
-      });
+      const A = window.BT_AUDIO;
+      if (A) {
+        prevZoneRef.current = A._currentZoneAmbient || 'town';
+        A.stopAmbient(true);
+      }
     } catch (e) {}
-  };
+
+    const v = videoRef.current;
+    if (v) {
+      try {
+        v.muted = false;
+        v.currentTime = 0;
+        const p = v.play();
+        /* iOS refused sound outside a fresh gesture -> retry muted so it still
+           plays and still auto-dismisses; the caption carries the line. */
+        if (p && p.catch) p.catch(() => { try { v.muted = true; v.play().catch(() => {}); } catch (e) {} });
+      } catch (e) {}
+    }
+
+    const safety = setTimeout(close, SAFETY_MS);
+    return () => {
+      clearTimeout(safety);
+      try {
+        const A = window.BT_AUDIO;
+        if (A) { A._currentZoneAmbient = null; A.startZoneAmbient(prevZoneRef.current || 'town'); }
+      } catch (e) {}
+    };
+  }, []);
 
   return (
     <div className="bt-mayor" role="dialog" aria-label="Mayor Bro welcome">
       <div className="bt-mayor__win">
-        <div className="bt-mayor__portrait" onClick={started ? undefined : play}>
+        <div className="bt-mayor__portrait">
           <video
             ref={videoRef}
             src="/intro/mayor-welcome.mp4"
             poster="/intro/mayor-welcome-poster.jpg"
             playsInline
             preload="auto"
-            onEnded={() => setEnded(true)}
+            onEnded={close}
+            onError={close}
           />
-          {!started && (
-            <button className="bt-mayor__play" onClick={play} aria-label="Play the Mayor's greeting">
-              <span className="bt-mayor__playicon">▶</span>
-            </button>
-          )}
         </div>
         <div className="bt-mayor__body">
           <div className="bt-mayor__name">Mayor Bro</div>
           <div className="bt-mayor__line">
             &ldquo;Another one washes ashore. Relax &mdash; everyone starts as driftwood.&rdquo;
-          </div>
-          <div className="bt-mayor__actions">
-            {!started && <span className="bt-mayor__hint">Tap the Mayor to hear him</span>}
-            <button className="bt-mayor__continue" onClick={close}>
-              {ended ? 'Enter Bro Town →' : 'Skip →'}
-            </button>
           </div>
         </div>
       </div>
