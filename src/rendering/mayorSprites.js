@@ -24,7 +24,7 @@ const FRAME_H = 128;
 /* Bump on every sprite-art re-bake.  Cloudflare Pages' edge cache holds the
    previous PNG by URL, so swapping bytes alone isn't enough — the ?v=… has
    to change while the file keeps its name. */
-export const SPRITE_VERSION = '1.0.0';
+export const SPRITE_VERSION = '1.0.1'; // 1.0.1: re-bake fixes the first<->last frame loop pop
 
 let frames = [];
 let loadPromise = null;
