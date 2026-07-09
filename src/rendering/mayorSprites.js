@@ -2,9 +2,9 @@
  *
  * Mayor Bro is a stationary town quest-giver, so unlike the monsters he
  * needs only ONE facing: a front (south) idle loop.  The art is a single
- * horizontal strip of 256×256 frames at /sprites/npcs/mayor/mayor-s.png,
- * baked from the owner's clip by tools/build_npc_idle_sheet.sh (the same
- * video -> keyed -> stitched pipeline as the monster sheets).  Frame count
+ * horizontal strip of 128×128 frames at /sprites/npcs/mayor/mayor-s.png,
+ * keyed + stitched from the owner's 4×3 grid (white bg flood-filled to
+ * transparent, cells laid out row-major).  Frame count
  * is auto-detected from the loaded texture width, so the art can be
  * re-baked with a different frame count without touching this file.
  *
@@ -16,8 +16,10 @@
 
 import { Assets, Rectangle, Texture } from 'pixi.js';
 
-const FRAME_W = 256;
-const FRAME_H = 256;
+/* Native cell size of the baked strip (mayor-s.png is a 12-frame 128px
+   idle, keyed from the owner's 4×3 grid).  Matches the snowman/slime scale. */
+const FRAME_W = 128;
+const FRAME_H = 128;
 
 /* Bump on every sprite-art re-bake.  Cloudflare Pages' edge cache holds the
    previous PNG by URL, so swapping bytes alone isn't enough — the ?v=… has
