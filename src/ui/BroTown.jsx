@@ -70,6 +70,7 @@ import { MINE_SPOT_R, WORLD_ZOOM, FARM_BED_TILE } from '@/data/constants.js';
    NPC_DATA is empty. */
 import { CLAN_WAR_REWARDS, PET_LOOT_RADIUS, TOWN_W, TOWN_H, calcDisplayHeal } from '@/data/index.js';
 import { IntroVideo } from './IntroVideo.jsx';
+import { MayorGreeting, mayorWelcomeSeen } from './MayorGreeting.jsx';
 import { BUILD_INFO } from './BuildBadge.jsx';
 import { pushHudPopup } from './XpFlyOverlay.jsx';
 
@@ -1123,6 +1124,13 @@ export var BroTown = function BroTown(_ref0) {
     _useState230 = _slicedToArray(_useState229, 2),
     showIntro = _useState230[0],
     setShowIntro = _useState230[1];
+  /* v2.3.1219: Mayor Bro welcome greeting — queued after the loading intro
+     fades, gated to once per browser (MayorGreeting.jsx owns the localStorage
+     flag).  Only ever set from the IntroVideo onComplete below, so it never
+     fires on an auto-rejoin/resume (which shows no intro). */
+  var _useState231 = useState(false),
+    showMayorGreeting = _useState231[0],
+    setShowMayorGreeting = _useState231[1];
   var showLogin = false; /* disabled — no passphrase system */
   var showNameModal = showWelcome;
   var _useState191 = useState(''),
@@ -5919,7 +5927,15 @@ export var BroTown = function BroTown(_ref0) {
   return /*#__PURE__*/React.createElement(React.Fragment, null, showIntro && /*#__PURE__*/React.createElement(IntroVideo, {
     waitFor: introWaitRef.current,
     themeAudio: themeAudioRef,
-    onComplete: function onComplete() { return setShowIntro(false); }
+    /* v2.3.1219: when the loading intro fades, greet a brand-new player with
+       the Mayor's welcome (once per browser).  Returning players — whose
+       localStorage flag is already set — drop straight into town. */
+    onComplete: function onComplete() {
+      setShowIntro(false);
+      try { if (!mayorWelcomeSeen()) setShowMayorGreeting(true); } catch (e) {}
+    }
+  }), showMayorGreeting && /*#__PURE__*/React.createElement(MayorGreeting, {
+    onComplete: function onComplete() { return setShowMayorGreeting(false); }
   }), /*#__PURE__*/React.createElement("div", {
     className: "brotown-wrap",
     ref: wrapRef,

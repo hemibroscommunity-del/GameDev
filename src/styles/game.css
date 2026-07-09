@@ -564,6 +564,26 @@ input{font-family:inherit}
 .bt-intro__fill--indet{position:absolute;top:0;left:-35%;width:35%;animation:bt-intro-indet 1.2s ease-in-out infinite}
 @keyframes bt-intro-indet{0%{left:-35%}100%{left:100%}}
 
+/* v2.3.1219: Mayor Bro welcome greeting — a compact tap-to-play dialogue
+   window anchored over the DASHBOARD area at the bottom (owner feedback),
+   shown once per browser after the loading intro (MayorGreeting.jsx). Not a
+   fullscreen modal: the container is click-through (pointer-events:none) so
+   only the window itself is interactive and the world stays visible. Sits
+   above the dashboard band (z 120 > dash z 30). */
+.bt-mayor{position:fixed;left:0;right:0;bottom:0;z-index:120;display:flex;align-items:flex-end;justify-content:center;
+  pointer-events:none;padding:0 8px calc(env(safe-area-inset-bottom,0px) + 10px);font-family:'Source Sans 3',sans-serif}
+.bt-mayor__win{pointer-events:auto;position:relative;width:min(94vw,460px);display:flex;gap:12px;align-items:stretch;padding:12px 14px;border-radius:14px;
+  background:linear-gradient(180deg,#241a12 0%,#140d08 100%);border:2px solid #d9a441;
+  box-shadow:0 10px 30px rgba(0,0,0,.6),inset 0 0 0 1px rgba(255,221,150,.12);
+  animation:bt-mayor-in .3s cubic-bezier(.2,.9,.3,1.1) both}
+@keyframes bt-mayor-in{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:none}}
+.bt-mayor__portrait{position:relative;flex:0 0 auto;width:92px;height:92px;border-radius:10px;overflow:hidden;background:#000;
+  border:2px solid #b9842f;box-shadow:inset 0 0 0 2px rgba(0,0,0,.3)}
+.bt-mayor__portrait video{display:block;width:100%;height:100%;object-fit:cover}
+.bt-mayor__body{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;justify-content:center;gap:5px}
+.bt-mayor__name{color:#f4c66a;font-size:13px;font-weight:800;letter-spacing:.06em;text-shadow:0 1px 2px rgba(0,0,0,.6)}
+.bt-mayor__line{color:#f3ead6;font-size:13px;line-height:1.34;font-weight:600}
+
 /* Mining minigame — compact panel anchored bottom-centre like the
    woodchop/fishing minigames.  Stage on the left, slider on the right,
    STRIKE button below.  Sized to leave the dashboard accessible. */
