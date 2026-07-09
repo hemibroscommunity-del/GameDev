@@ -1,5 +1,4 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { prewarmProgress } from '../rendering/systems/entityRenderer.js';
 
 /* Bro Town intro overlay — shown once after character creation.
    Plays the intro clip, then fades to reveal the game world.
@@ -9,28 +8,20 @@ import { prewarmProgress } from '../rendering/systems/entityRenderer.js';
    sheets (body, recolored skin, equipped gear for every direction, weapon,
    shield) are fully baked — that lazy-load was the armour->unarmoured flicker
    on first turn.  The clip plays for at least MIN_MS; if assets are still
-   loading past that, the overlay holds (showing a subtle "Loading…") and only
-   fades once they're ready.  Town zone music starts on mount. */
+   loading past that, the overlay holds and only fades once they're ready.
+   Town zone music starts on mount.
+
+   v2.3.1220: swapped to the owner's portrait "washed ashore" beach clip,
+   which bakes its own LOADING caption + progress bar into the art — so the
+   JS-drawn caption/bar (and the prewarmProgress poll that fed it) were
+   removed to avoid a doubled "LOADING". The asset gate above is unchanged;
+   it just holds silently on the clip until the avatar sheets are ready. */
 const MIN_MS = 3000;     // minimum clip display before we even consider fading
 const FADE_MS = 1000;    // opacity fade duration
 
 export const IntroVideo = ({ onComplete, waitFor, themeAudio }) => {
   const [fading, setFading] = useState(false);
   const [waiting, setWaiting] = useState(false);   // assets still loading past MIN_MS
-  /* v2.3.700: real loading bar -- polls the renderer's prewarmProgress
-     (every gear state is baked behind this overlay now, so the player
-     joins with zero asset hitches and SEES why they're waiting). */
-  const [prog, setProg] = useState(0);
-  useEffect(() => {
-    const id = setInterval(() => {
-      const p = prewarmProgress;
-      const next = p.total > 0 ? Math.min(1, p.done / p.total) : 0;
-      /* v2.3.701: monotonic -- the bar may only grow (a late-registered
-         workload must never read as a reset). */
-      setProg((prev) => Math.max(prev, next));
-    }, 150);
-    return () => clearInterval(id);
-  }, []);
   const finishedRef = useRef(false);
   const minDoneRef = useRef(false);
   const readyRef = useRef(false);
@@ -111,8 +102,14 @@ export const IntroVideo = ({ onComplete, waitFor, themeAudio }) => {
            v2.3.854: swapped for the owner's painted island vista (the volcano
            island the town sits on), re-encoded muted/no-audio, 900px wide,
            H.264 yuv420p + faststart (~1 MB, was 14.8 MB) so it loads fast on
-           iPhone Safari.  loading-reef.mp4 stays in git history. */
-        src="/intro/loading-island.mp4"
+           iPhone Safari.  loading-reef.mp4 stays in git history.
+           v2.3.1220: swapped for the owner's portrait "washed ashore" beach
+           clip (400x736, driftwood + shells at sunset), re-encoded muted/
+           no-audio + thumbnail stream stripped, H.264 yuv420p + faststart
+           (~0.6 MB). It carries its OWN LOADING caption + bar in the art, so
+           the JS overlay was dropped.  loading-island.mp4 stays in git
+           history. */
+        src="/intro/loading-ashore.mp4"
         autoPlay
         muted
         playsInline
@@ -120,18 +117,6 @@ export const IntroVideo = ({ onComplete, waitFor, themeAudio }) => {
         preload="auto"
         onError={() => { minDoneRef.current = true; readyRef.current = true; beginTransition(); finish(); }}
       />
-      {/* v2.3.831: persistent LOADING . . . caption + progress bar on the
-          loading screen (owner).  The bar shows real prewarm progress when
-          it's reporting; before that it runs an indeterminate sweep so the
-          screen always reads as actively loading. */}
-      <div className="bt-intro__loadwrap">
-        <div className="bt-intro__loadlabel">LOADING . . .</div>
-        <div className="bt-intro__track">
-          {prog > 0
-            ? <div className="bt-intro__fill" style={{ width: `${Math.round(prog * 100)}%` }} />
-            : <div className="bt-intro__fill bt-intro__fill--indet" />}
-        </div>
-      </div>
     </div>
   );
 };
