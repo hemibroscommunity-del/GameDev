@@ -5363,6 +5363,7 @@ export class EntityRenderer {
         starText.anchor.set(0.5, 0.5);
         starText.y = -14;
         display.addChild(starText);
+        display._star = starText;
 
         /* Name with translucent dark background, just above the head. */
         const nameText = new Text({
@@ -5414,16 +5415,27 @@ export class EntityRenderer {
         const frame = fc > 0 ? getMayorFrame(Math.floor(now / 120) % fc) : null; // ~8fps subtle idle
         if (frame && frame.tex) {
           if (sb.texture !== frame.tex) sb.texture = frame.tex;
-          const s = (npc.spriteScalePx || 60) / MAYOR_FRAME_SIZE;
+          const px = npc.spriteScalePx || 60;
+          const s = px / MAYOR_FRAME_SIZE;
           sb.scale.set(s, s);
           sb.y = (npc.spriteFeetY != null) ? npc.spriteFeetY : 10; // feet ~ circle bottom
           sb.visible = true;
           display._body.visible = false;
           display._avatar.visible = false;
+          /* Lift the name (and quest marker, below) to just above the tall
+             sprite's head instead of across its chest, and drop the ★ — the
+             character sprite makes the interactable dot redundant. */
+          const headY = sb.y - px - 2;
+          display._overheadY = headY;
+          display._nameText.y = headY;
+          if (display._star) display._star.visible = false;
         } else {
           sb.visible = false;
           display._body.visible = true;
           display._avatar.visible = true;
+          display._overheadY = -17;
+          display._nameText.y = -17;
+          if (display._star) display._star.visible = true;
         }
       }
 
@@ -5441,8 +5453,11 @@ export class EntityRenderer {
         }
       }
 
-      /* HP bar (24x3 above the head, color by remaining HP). */
+      /* HP bar (24x3 above the head, color by remaining HP).  Invulnerable
+         town NPCs (e.g. Mayor Bro) are always full — hide the meaningless bar
+         so it doesn't float across the sprite. */
       const hpBar = display._hpBar;
+      hpBar.visible = !npc.invuln;
       const maxHp = npc.maxHp || 1;
       const hp = Math.max(0, npc.hp || 0);
       const hpPct = hp / maxHp;
@@ -5468,7 +5483,10 @@ export class EntityRenderer {
         const targetFill = qmStr === '❗' ? '#f5c542' : '#3dd497';
         if (qm.style.fill !== targetFill) qm.style.fill = targetFill;
         const pulse = Math.sin(now / 300) * 3;
-        qm.y = -36 + pulse;
+        /* sit above the name (which is at _overheadY); falls back to the
+           legacy small-NPC offset when there's no sprite. */
+        const base = (typeof display._overheadY === 'number') ? display._overheadY - 20 : -36;
+        qm.y = base + pulse;
         qm.visible = true;
       } else if (qm.visible) {
         qm.visible = false;

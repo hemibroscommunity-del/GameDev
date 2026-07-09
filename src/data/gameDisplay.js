@@ -2279,6 +2279,7 @@ export const NPC_DATA = [
     color: '#f5c542',
     x: 24 * 32,                   // town centre-ish, north of the player spawn
     y: 22 * 32,
+    spriteScalePx: 120,           // ~2x a standard entity — Mayor Bro reads big
     maxHp: 500,
     invuln: true,                 // town quest-giver — can't be knocked out by stray swings
     canFollow: false,
