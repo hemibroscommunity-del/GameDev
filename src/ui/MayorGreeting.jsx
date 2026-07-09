@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 
 /* Mayor Bro welcome greeting (v2.3.1219) — a talking-head dialog card shown
    ONCE per browser, right after the loading intro fades, when a freshly
@@ -26,6 +26,29 @@ export const MayorGreeting = ({ onComplete }) => {
   const [started, setStarted] = useState(false);   // player tapped play at least once
   const [ended, setEnded] = useState(false);       // clip finished
   const closedRef = useRef(false);
+  const prevZoneRef = useRef('town');
+
+  /* v2.3.1219: the Mayor speaks over SILENCE — fade the zone background music
+     out while the card is up so nothing competes with his voice (his audio
+     rides the <video> element, not BT_AUDIO's Web Audio graph, so it's
+     untouched).  The town music resumes when the card closes.  stopAmbient
+     doesn't clear _currentZoneAmbient, so the resume must null it first or
+     startZoneAmbient early-returns. */
+  useEffect(() => {
+    try {
+      const A = window.BT_AUDIO;
+      if (A) {
+        prevZoneRef.current = A._currentZoneAmbient || 'town';
+        A.stopAmbient(true);
+      }
+    } catch (e) {}
+    return () => {
+      try {
+        const A = window.BT_AUDIO;
+        if (A) { A._currentZoneAmbient = null; A.startZoneAmbient(prevZoneRef.current || 'town'); }
+      } catch (e) {}
+    };
+  }, []);
 
   const close = () => {
     if (closedRef.current) return;
