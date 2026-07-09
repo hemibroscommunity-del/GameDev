@@ -2274,7 +2274,8 @@ export const NPC_DATA = [
   {
     id: 'mayor_bro',
     name: 'Mayor Bro',            // matches QUEST_CHAINS mayor_1/2/3
-    avatar: '🎩',
+    avatar: '🎩',                 // fallback until the sprite strip loads / if unbaked
+    sprite: 'mayor',              // v2.3.1218: animated front-idle strip (mayorSprites.js)
     color: '#f5c542',
     x: 24 * 32,                   // town centre-ish, north of the player spawn
     y: 22 * 32,
@@ -2282,7 +2283,7 @@ export const NPC_DATA = [
     invuln: true,                 // town quest-giver — can't be knocked out by stray swings
     canFollow: false,
     followZones: [],
-    pathRadius: 22,
+    pathRadius: 0,                // pinned: a front-facing idle shouldn't slide around
     phrases: [
       'Another one washed up. They never last.',
       'Town\'s quiet. Keep it that way.',

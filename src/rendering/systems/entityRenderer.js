@@ -20,6 +20,7 @@ import { getShieldFrame } from '../shieldSprites.js';
 import { getFrame as getSlimeFrame, hasState as hasSlimeState, frameCount as slimeFrameCount } from '../slimeSprites.js';
 import { getFrame as getSnowmanFrame, hasFrames as hasSnowmanFrames, frameCount as snowmanFrameCount, getHitFrame as getSnowmanHitFrame, hitFrameCount as snowmanHitFrameCount, getDeathFrame as getSnowmanDeathFrame, deathFrameCount as snowmanDeathFrameCount } from '../snowmanSprites.js';
 import { variantSpritesFor } from '../monsterVariantSprites.js';
+import { loadMayorSprites, getMayorFrame, hasMayorFrames, mayorFrameCount, MAYOR_FRAME_SIZE } from '../mayorSprites.js';
 import { MONSTER_VARIANTS, maybeTransformMonster } from '../../data/monsterVariants.js';
 import { getDeathFrame as getPlayerDeathFrame, hasDeathSprites as hasPlayerDeathSprites, frameForElapsed as playerDeathFrameForElapsed } from '../playerDeathSprites.js';
 import { getWeaponTexture, hasWeapon } from '../weaponSprites.js';
@@ -5337,6 +5338,17 @@ export class EntityRenderer {
         display.addChild(body);
         display._body = body;
 
+        /* v2.3.1218: optional animated sprite body for NPCs that ship one
+           (npc.sprite, e.g. Mayor Bro).  Feet-anchored like the monster
+           spriteBody; drawn just above the procedural circle so the HP bar,
+           name, quest marker and emoji stay on top.  Hidden until the strip
+           loads — the emoji/circle is the fallback. */
+        const spriteBody = new Sprite();
+        spriteBody.anchor.set(0.5, 1.0);
+        spriteBody.visible = false;
+        display.addChild(spriteBody);
+        display._spriteBody = spriteBody;
+
         /* HP bar — Graphics, redrawn each frame the value changes. */
         const hpBar = new Graphics();
         display.addChild(hpBar);
@@ -5390,6 +5402,30 @@ export class EntityRenderer {
 
       display.x = npc.x;
       display.y = npc.y;
+
+      /* v2.3.1218: animated NPC sprite (Mayor Bro).  Front idle strip cycled
+         by wall-clock; feet-anchored.  While it's showing we hide the emoji +
+         circle; until the strip loads (or if it was never baked) they remain
+         as the fallback.  Only NPCs with npc.sprite opt in. */
+      const sb = display._spriteBody;
+      if (npc.sprite === 'mayor') {
+        if (!this._mayorLoadKicked) { this._mayorLoadKicked = true; loadMayorSprites(); }
+        const fc = hasMayorFrames() ? mayorFrameCount() : 0;
+        const frame = fc > 0 ? getMayorFrame(Math.floor(now / 120) % fc) : null; // ~8fps subtle idle
+        if (frame && frame.tex) {
+          if (sb.texture !== frame.tex) sb.texture = frame.tex;
+          const s = (npc.spriteScalePx || 60) / MAYOR_FRAME_SIZE;
+          sb.scale.set(s, s);
+          sb.y = (npc.spriteFeetY != null) ? npc.spriteFeetY : 10; // feet ~ circle bottom
+          sb.visible = true;
+          display._body.visible = false;
+          display._avatar.visible = false;
+        } else {
+          sb.visible = false;
+          display._body.visible = true;
+          display._avatar.visible = true;
+        }
+      }
 
       /* Body — only redraw when color changes (NPCs are static). */
       const body = display._body;
