@@ -28,7 +28,7 @@
 #
 # Example (Mayor Bro, the reason this script exists):
 #   tools/build_npc_idle_sheet.sh \
-#     "assets/monster animations/mayor/mayor-idle-s.mp4" \
+#     "assets/npc animations/mayor/mayor-idle-s.mp4" \
 #     public/sprites/npcs/mayor/mayor-s.png
 #
 # TUNE per clip: sample the clip's corner color for KEY (a generated "clean

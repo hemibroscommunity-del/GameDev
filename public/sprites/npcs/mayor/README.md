@@ -9,7 +9,7 @@ Bake it from the committed source clip with the reusable pipeline script (needs
 
 ```
 tools/build_npc_idle_sheet.sh \
-  "assets/monster animations/mayor/mayor-idle-s.mp4" \
+  "assets/npc animations/mayor/mayor-idle-s.mp4" \
   public/sprites/npcs/mayor/mayor-s.png
 ```
 
