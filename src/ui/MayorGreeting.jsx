@@ -16,7 +16,11 @@ import React, { useEffect, useRef } from 'react';
      so the tap's activation usually still covers it. If Safari refuses sound,
      we retry MUTED so the clip still plays (and still auto-dismisses) with the
      caption carrying the line. A safety timer guarantees it disappears even if
-     'ended' never fires (video error / stalled decode). */
+     'ended' never fires (video error / stalled decode).
+
+   v2.3.1221: swapped mayor-welcome.{mp4,poster.jpg} for the owner's preferred
+   higher-detail Mayor clip (keyed white->black, downscaled to 544, audio
+   loudnorm'd). Asset paths + all behaviour unchanged. */
 
 const SEEN_KEY = 'bt_mayor_welcome_seen';   // localStorage flag — once per browser
 const SAFETY_MS = 9000;                       // fallback close if 'ended' never fires; generous
