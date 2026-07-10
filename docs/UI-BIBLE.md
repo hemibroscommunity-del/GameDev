@@ -2,9 +2,11 @@
 
 The design law for BroTown's interface, plus the master ChatGPT
 image-generation prompt system for producing a consistent icon set.
-This document is CURRENT and trusted (unlike the GDD). If a UI decision
-isn't covered here, follow the priority stack in Part 1 and add the
-ruling here in the same PR.
+This document is CURRENT and trusted. (The GDD is early design
+thinking — largely stale but a good base for design intent; code and
+the owner's word remain authoritative for shipped behavior.) If a UI
+decision isn't covered here, follow the priority stack in Part 1 and
+add the ruling here in the same PR.
 
 Scope: this Bible governs the **UI layer** — panels, HUD, icons,
 chrome. It does not govern world art, sprites, or tilesets (see
@@ -116,35 +118,46 @@ Color communicates. These are the only meanings color may carry:
 These are calibrated for legibility on the light neutrals (≥4.5:1 on
 Parchment). Never introduce a sixth meaning without adding it here.
 
-### Rarity colors (mapped to the game's real tiers)
+### Rarity colors (owner-canonical, 2026-07-10)
 
-Gear rarity — the actual 4-tier system from
-`src/data/gameSystems.js` `RARITY_TIERS`:
+The rarity ladder is **Common → Rare → Legendary → Godly**. In code
+this is the weapon-quality system (`QUALITY_MULTS`,
+`src/data/gameSystems.js:4042`, mirrored in `server/src/gear.js`) whose
+identifiers are `normal / rare / elite / godly` — map display names to
+code ids exactly as below; do not rename the code fields:
 
-| Tier | In-code color | On-light UI color | Note |
+| Display name | Code id | On-light UI color | Note |
 |---|---|---|---|
-| Common | `#8890b8` | `#707A99` | 0 elements |
-| Elemental | `#3b82f6` | `#2B6CB0` | 1 element |
-| Fusion | `#a855f7` | `#7C3AED` | 2 elements |
-| Shift | `#f5c542` | `#B7791F` | adaptive |
+| Common | `normal` | Slate `#68737F` (no special treatment) | the default |
+| Rare | `rare` | `#2B6CB0` | same blue family as the shipped tints |
+| Legendary | `elite` | `#7C3AED` | same violet family as the shipped tints |
+| Godly | `godly` | prismatic — gold base `#B7791F`, highlight `#E8D4A0` | GDD §4.6b "prismatic shimmer"; 1-in-400,000 sacred tier |
 
-The "on-light" column is the same hue pulled darker so it reads on
-Parchment/Bone. Rarity shows as a **2px left edge or thin underline on
-the slot**, never as a full glowing border.
+Rarity shows as a **2px left edge or thin underline on the slot**,
+never as a full glowing border. Godly is the one sanctioned exception:
+it keeps a prismatic tile treatment (the existing `godlyBg` +
+`#E8D4A0` register in `src/ui/mobile/inventoryStyles.js`) — at
+1-in-400k, the loud moment is earned.
+
+NOT rarity: the `RARITY_TIERS` labels Common/Elemental/Fusion/Shift in
+`gameSystems.js` are element-count vocabulary (how many elements a
+weapon carries), kept as descriptive terms with no ladder meaning —
+don't color-code them as rarity.
 
 Resource tiers (the 20-tier gathering ladder,
 `src/data/lifeSkills.js` `RESOURCE_TIERS`) keep their existing color
 cycle (grey → blue → green → purple → gold → red → violet → gold);
 apply the same darken-for-light-surfaces treatment when they appear in
 DOM UI. Pet tiers (Base/Evolved/Ascended/Mythic) and amulet tiers
-(Simple/Ornate/Regal/Mythic) reuse the gear-tier ramp positionally
-(1st→Common grey … 4th→Shift gold).
+(Simple/Ornate/Regal/Mythic) map positionally onto the rarity ramp
+(1st→Common … 4th→Godly prismatic).
 
 ### Element colors & shapes (dual-coded)
 
-Elements are identified by **shape + color together** (colorblind-safe,
-blur-test-safe). Both already exist in `src/data/elements.js` — the
-icon set must honor them:
+There are **ten elements** (owner-canonical; GDD §10.1). Each is
+identified by **shape + color together** — the shape is the PRIMARY
+channel (colorblind-safe, blur-test-safe); color reinforces it. The
+icon set must honor both:
 
 | Element | Shape | Color | Status it inflicts |
 |---|---|---|---|
@@ -155,8 +168,14 @@ icon set must honor them:
 | Storm | star | `#8E44AD` | shock |
 | Stone | square | `#795548` | fracture |
 | Wind | triangle | `#7F8C8D` | slow |
+| Flora | leaf | `#2ECC71` | grow (not yet in `STATUS_DEFS`) |
 | Dark | trefoil | `#2C3E50` | curse |
 | Light | starburst | `#F1C40F` | reveal |
+
+Code note: `src/data/elements.js` currently defines nine of these —
+Flora is design-canon but not yet in the data table (the mobile mock
+data already references `'flora'`). Design all ten now; adding Flora
+to `elements.js` is a future gameplay PR.
 
 ### Spacing, radius, and touch
 
@@ -330,7 +349,7 @@ is written as the **subject line** to drop into the master prompt
 | `cur-xp` | a four-pointed spark |
 | `cur-buildpoint` | a plus sign inside a hexagon |
 
-### Sheet F — Elements (9) — MUST use the shape column from Part 2
+### Sheet F — Elements (10) — MUST use the shape column from Part 2
 
 | File | Subject line |
 |---|---|
@@ -341,6 +360,7 @@ is written as the **subject line** to drop into the master prompt
 | `elem-storm` | a five-pointed star filled with a lightning motif, violet |
 | `elem-stone` | a square filled with a cracked-rock motif, earth brown |
 | `elem-wind` | a triangle filled with a swirl motif, grey |
+| `elem-flora` | a leaf shape filled with a sprouting-vine motif, fresh green |
 | `elem-dark` | a trefoil filled with a void motif, near-black navy |
 | `elem-light` | a starburst filled with a radiant motif, warm yellow |
 
@@ -367,7 +387,7 @@ jagged alert triangle), mail (sealed envelope), dungeon (portcullis
 gate), pets (a paw print with a heart pad), sponsorship (a coin over
 crossed swords). Files: `evt-<name>`.
 
-**Total: ~87 icons across 9 sheets.** Zone shards already exist
+**Total: ~88 icons across 9 sheets.** Zone shards already exist
 (`public/icons/shards/`) — regenerate only if they clash with the new
 set.
 
@@ -376,7 +396,7 @@ set.
 ## Part 5 — The ChatGPT master prompt system
 
 The consistency problem: every ChatGPT image generation starts from
-scratch, so 87 separate "draw me an icon" requests produce 87 styles.
+scratch, so 88 separate "draw me an icon" requests produce 88 styles.
 The fix is a three-layer prompt where **only one line ever changes**,
 plus a reference-image anchor.
 
@@ -445,8 +465,9 @@ each silhouette must be identifiable when shrunk to 32x32 pixels.
 ```
 
 For sheets with fewer or more subjects, change "3x3 grid of nine" to
-"3x2 grid of six" (Sheet A/E) or "4x3 grid of twelve" (Sheet H), adjust
-the numbered list, and leave everything else untouched.
+"3x2 grid of six" (Sheet A/E), "5x2 grid of ten" (Sheet F), or "4x3
+grid of twelve" (Sheet C/H), adjust the numbered list, and leave
+everything else untouched.
 
 ### Ready-to-paste subject grids
 
@@ -481,9 +502,10 @@ lantern — spares that stay on-style):**
 12. a lantern
 ```
 
-**Sheet F — Elements (3x3 grid of nine).** Add this line to the STYLE
-block for this sheet only, after the brass sentence: *"Each icon's
-container shape and dominant color are specified and mandatory."* Then:
+**Sheet F — Elements (change the grid line to "5x2 grid of ten").**
+Add this line to the STYLE block for this sheet only, after the brass
+sentence: *"Each icon's container shape and dominant color are
+specified and mandatory."* Then:
 
 ```
 1. a diamond shape filled with a flame motif, deep red #C0392B
@@ -493,8 +515,9 @@ container shape and dominant color are specified and mandatory."* Then:
 5. a five-pointed star filled with a lightning motif, violet #8E44AD
 6. a square filled with a cracked-rock motif, earth brown #795548
 7. a triangle filled with a swirl motif, grey #7F8C8D
-8. a trefoil filled with a void motif, near-black navy #2C3E50
-9. a starburst filled with a radiant motif, warm yellow #F1C40F
+8. a leaf shape filled with a sprouting-vine motif, fresh green #2ECC71
+9. a trefoil filled with a void motif, near-black navy #2C3E50
+10. a starburst filled with a radiant motif, warm yellow #F1C40F
 ```
 
 Remaining sheets (B, D, E, G, H, I): take the subject lines straight
