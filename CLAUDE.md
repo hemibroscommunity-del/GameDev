@@ -35,6 +35,7 @@ remnant to migrate server-side, not a mode to preserve.
   missing many that were. NEVER use them as a blueprint to change,
   "fix", or "restore" game behavior. Code is the source of truth.
   Current, trustworthy docs: `docs/ARCHITECTURE-HANDOFF.md`,
+  `docs/UI-BIBLE.md` (UI design law + icon-generation prompts, v2.3.1222),
   `docs/specs/*.md`, `docs/WIRE-PROTOCOL.md`, `docs/BALANCE-PLAN.md`,
   `docs/OPTIMIZATION-ROADMAP.md`, `docs/REBUILD-PLAN.md` (client
   decomposition), `docs/STATE-SCHEMA.md` (client S object; pre-dates
