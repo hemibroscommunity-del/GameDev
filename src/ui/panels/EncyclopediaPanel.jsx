@@ -10,6 +10,63 @@ import { _slicedToArray, _toConsumableArray } from '@/lib/babelHelpers.js';
    visitedZones selectors. 3 props (encyclopediaTab + setter +
    setShowEncyclopedia). Data + babel imports verified real exports.
    `_key$split2` babel temp hoisted to BroTown top; declared locally. */
+/* v2.3.1232: Lantern Slate restyle (docs/LANTERN-SLATE-SPEC.md) —
+   presentation only: same tabs, same discovery reads, same conditionals.
+   Segmented 36px tabs, 11/600 uppercase section headers, recessed wells
+   for the collision/recipe lists, pill chips for discovery tags; the old
+   teal accent maps to the semantic positive green, data-driven content
+   colors (elements/tiers/archetypes) are kept as content color. */
+
+/* v2.3.1232: Lantern Slate style tokens — local, no shared module. */
+var LS_CARD = {
+  background: '#202C32',
+  border: '1px solid rgba(238,242,235,.14)',
+  borderRadius: 14,
+  boxShadow: '0 14px 30px rgba(4,7,9,.38)'
+};
+var LS_HEADER = {
+  fontSize: 11,
+  fontWeight: 600,
+  textTransform: 'uppercase',
+  letterSpacing: '.12em',
+  color: '#96A2A0'
+};
+var LS_WELL = {
+  background: '#121B20',
+  borderRadius: 10,
+  boxShadow: 'inset 0 2px 4px rgba(0,0,0,.44), inset 0 1px 0 rgba(255,255,255,.035)'
+};
+var LS_DIVIDER = '1px solid rgba(238,242,235,.10)';
+/* discovery pill chips: found = quiet raised tag w/ content color, unfound = ghost */
+var lsChip = function lsChip(found, color) {
+  return {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: 4,
+    minHeight: 28,
+    boxSizing: 'border-box',
+    padding: '3px 10px',
+    borderRadius: 999,
+    fontSize: 11,
+    fontWeight: 600,
+    fontVariantNumeric: 'tabular-nums',
+    background: found ? '#19252A' : 'transparent',
+    border: '1px solid ' + (found ? color + '45' : 'rgba(238,242,235,.08)'),
+    color: found ? color : '#687575'
+  };
+};
+/* v2.3.1232: UI-Bible icon with emoji fallback (onError replaceWith
+   pattern from src/ui/mobile/dash/SkillsPanel.jsx) */
+var lsIcon = function lsIcon(src, emoji, size) {
+  return React.createElement('img', {
+    src: src,
+    alt: '',
+    draggable: false,
+    style: { width: size || 18, height: size || 18, objectFit: 'contain', flex: 'none' },
+    onError: function (e) { e.currentTarget.replaceWith(document.createTextNode(emoji)); }
+  });
+};
+
 export function EncyclopediaPanel(props) {
   var encyclopediaTab = props.encyclopediaTab,
     setEncyclopediaTab = props.setEncyclopediaTab,
@@ -25,43 +82,52 @@ export function EncyclopediaPanel(props) {
     onClick: function onClick(e) {
       return e.stopPropagation();
     },
-    style: {
+    style: Object.assign({}, LS_CARD, {
       width: 340,
       maxHeight: '85vh',
       overflowY: 'auto',
       padding: 16,
       textAlign: 'left'
-    }
+    })
   }, /*#__PURE__*/React.createElement("button", {
     className: "bt-inspect-close",
     onClick: function onClick() {
       return setShowEncyclopedia(false);
     }
-  }, "\u2715"), /*#__PURE__*/React.createElement("div", {
+  }, "✕"), /*#__PURE__*/React.createElement("div", {
     style: {
-      fontSize: 15,
-      fontWeight: 800,
-      color: '#00d4b8',
-      marginBottom: 2,
-      textAlign: 'center'
+      display: 'flex',
+      alignItems: 'center',
+      gap: 8,
+      marginBottom: 4,
+      minHeight: 24
     }
-  }, "\uD83D\uDCD6 Encyclopedia"), /*#__PURE__*/React.createElement("div", {
+  }, lsIcon('/icons/ui/panel-encyclopedia.webp?v=2.3.1232', '📖', 20), /*#__PURE__*/React.createElement("span", {
     style: {
-      fontSize: 8,
-      color: 'rgba(255,255,255,.35)',
-      textAlign: 'center',
-      marginBottom: 8
+      fontSize: 13,
+      fontWeight: 700,
+      textTransform: 'uppercase',
+      letterSpacing: '.10em',
+      color: '#F7F2E7'
+    }
+  }, "Encyclopedia")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: '#96A2A0',
+      marginBottom: 10,
+      fontVariantNumeric: 'tabular-nums'
     }
   }, discoveredMonsters.size, " creatures \xB7 ", discoveredCollisions.size, " collisions \xB7 ", discoveredMaterials.size, " materials \xB7 ", visitedZones.size, " zones"), /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
-      gap: 2,
-      marginBottom: 10,
-      borderRadius: 8,
-      overflow: 'hidden',
-      border: '1px solid rgba(255,255,255,.1)'
+      gap: 3,
+      marginBottom: 14,
+      borderRadius: 10,
+      padding: 3,
+      background: '#121B20',
+      boxShadow: 'inset 0 2px 4px rgba(0,0,0,.44)'
     }
-  }, [['bestiary', '🐉 Bestiary'], ['codex', '⚗️ Codex'], ['materials', '⛏️ Materials'], ['zones', '🗺️ Zones']].map(function (_ref44) {
+  }, [['bestiary', 'Bestiary'], ['codex', 'Codex'], ['materials', 'Materials'], ['zones', 'Zones']].map(function (_ref44) {
     var _ref45 = _slicedToArray(_ref44, 2),
       id = _ref45[0],
       label = _ref45[1];
@@ -72,22 +138,26 @@ export function EncyclopediaPanel(props) {
       },
       style: {
         flex: 1,
-        padding: '6px 2px',
-        fontSize: 9,
-        fontWeight: 700,
+        height: 36,
+        padding: '0 2px',
+        fontSize: 12,
+        fontWeight: 600,
         border: 'none',
+        borderRadius: 8,
         cursor: 'pointer',
-        background: encyclopediaTab === id ? 'rgba(0,212,184,.2)' : 'rgba(255,255,255,.03)',
-        color: encyclopediaTab === id ? '#00d4b8' : 'rgba(255,255,255,.4)',
+        background: encyclopediaTab === id ? '#2B3940' : 'transparent',
+        boxShadow: encyclopediaTab === id ? 'inset 0 -2px 0 #D8A85F' : 'none',
+        color: encyclopediaTab === id ? '#F7F2E7' : '#96A2A0',
         fontFamily: 'inherit',
-        transition: 'all .15s'
+        transition: 'all 140ms cubic-bezier(.2,.8,.2,1)'
       }
     }, label);
   })), encyclopediaTab === 'bestiary' && /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
     style: {
-      fontSize: 9,
-      color: 'rgba(255,255,255,.3)',
-      marginBottom: 6
+      fontSize: 12,
+      color: '#96A2A0',
+      marginBottom: 10,
+      fontVariantNumeric: 'tabular-nums'
     }
   }, "Kill monsters to discover entries. ", discoveredMonsters.size, "/", function () {
     var t = 0;
@@ -98,18 +168,15 @@ export function EncyclopediaPanel(props) {
     });
     return t;
   }()), /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 9,
-      fontWeight: 700,
-      color: '#D8A94D',
-      marginBottom: 4
-    }
+    style: Object.assign({}, LS_HEADER, {
+      marginBottom: 6
+    })
   }, "Archetypes"), /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
       flexWrap: 'wrap',
-      gap: 3,
-      marginBottom: 8
+      gap: 4,
+      marginBottom: 14
     }
   }, Object.entries(ARCHETYPES).map(function (_ref46) {
     var _ref47 = _slicedToArray(_ref46, 2),
@@ -120,20 +187,12 @@ export function EncyclopediaPanel(props) {
     });
     return /*#__PURE__*/React.createElement("div", {
       key: key,
-      style: {
-        padding: '3px 6px',
-        borderRadius: 4,
-        fontSize: 8,
-        fontWeight: 700,
-        background: anyDiscovered ? 'rgba(255,255,255,.06)' : 'rgba(255,255,255,.02)',
-        border: '1px solid ' + (anyDiscovered ? a.color + '60' : 'rgba(255,255,255,.06)'),
-        color: anyDiscovered ? a.color : 'rgba(255,255,255,.15)'
-      }
+      style: lsChip(anyDiscovered, a.color)
     }, anyDiscovered ? a.emoji : '❓', " ", anyDiscovered ? key : '???', anyDiscovered && /*#__PURE__*/React.createElement("span", {
       style: {
-        fontSize: 7,
-        color: 'rgba(255,255,255,.25)',
-        marginLeft: 3
+        fontSize: 10,
+        color: '#96A2A0',
+        marginLeft: 2
       }
     }, "HP\xD7", a.hpMult, " DMG\xD7", a.dmgMult, " SPD\xD7", a.spdMult));
   })), Object.values(ZONES).filter(function (z) {
@@ -147,18 +206,15 @@ export function EncyclopediaPanel(props) {
     return /*#__PURE__*/React.createElement("div", {
       key: zone.id,
       style: {
-        marginBottom: 8,
-        padding: 6,
-        borderRadius: 6,
-        background: 'rgba(255,255,255,.02)',
-        border: '1px solid rgba(255,255,255,.06)'
+        marginBottom: 14
       }
     }, /*#__PURE__*/React.createElement("div", {
       style: {
         display: 'flex',
         alignItems: 'center',
-        gap: 4,
-        marginBottom: 4
+        gap: 6,
+        minHeight: 24,
+        marginBottom: 6
       }
     }, zone.element && /*#__PURE__*/React.createElement("span", {
       style: {
@@ -166,30 +222,34 @@ export function EncyclopediaPanel(props) {
         height: 8,
         borderRadius: 4,
         background: (_ELEMENTS$zone$elemen = ELEMENTS[zone.element]) === null || _ELEMENTS$zone$elemen === void 0 ? void 0 : _ELEMENTS$zone$elemen.color,
-        display: 'inline-block'
+        display: 'inline-block',
+        flex: 'none'
       }
     }), /*#__PURE__*/React.createElement("span", {
       style: {
-        fontSize: 10,
-        fontWeight: 700,
-        color: zone.element ? ELEMENTS[zone.element].color : '#fff'
+        fontSize: 13,
+        fontWeight: 600,
+        color: zone.element ? ELEMENTS[zone.element].color : '#F7F2E7'
       }
     }, zone.name), /*#__PURE__*/React.createElement("span", {
       style: {
-        fontSize: 7,
-        color: 'rgba(255,255,255,.25)'
+        fontSize: 10,
+        fontWeight: 600,
+        color: '#96A2A0'
       }
     }, "Lv", zone.level[0], "-", zone.level[1]), /*#__PURE__*/React.createElement("span", {
       style: {
-        fontSize: 7,
-        color: 'rgba(255,255,255,.2)',
-        marginLeft: 'auto'
+        fontSize: 10,
+        fontWeight: 600,
+        color: '#96A2A0',
+        marginLeft: 'auto',
+        fontVariantNumeric: 'tabular-nums'
       }
     }, zoneDiscovered.length, "/", zone.spawns.length)), /*#__PURE__*/React.createElement("div", {
       style: {
         display: 'flex',
         flexWrap: 'wrap',
-        gap: 3
+        gap: 4
       }
     }, zone.spawns.map(function (s, i) {
       var found = discoveredMonsters.has(s.arch + ':' + zone.id);
@@ -197,35 +257,25 @@ export function EncyclopediaPanel(props) {
       var emoji = zoneEmojis[s.arch] || (arch === null || arch === void 0 ? void 0 : arch.emoji) || '❓';
       return /*#__PURE__*/React.createElement("div", {
         key: i,
-        style: {
-          padding: '2px 5px',
-          borderRadius: 3,
-          fontSize: 8,
-          background: found ? 'rgba(255,255,255,.05)' : 'rgba(255,255,255,.01)',
-          border: '1px solid ' + (found ? ((arch === null || arch === void 0 ? void 0 : arch.color) || '#666') + '40' : 'rgba(255,255,255,.04)'),
-          color: found ? (arch === null || arch === void 0 ? void 0 : arch.color) || '#aaa' : 'rgba(255,255,255,.12)'
-        }
+        style: lsChip(found, (arch === null || arch === void 0 ? void 0 : arch.color) || '#B9C1BF')
       }, found ? emoji : '❓', " ", found ? s.arch : '???', found && /*#__PURE__*/React.createElement("span", {
         style: {
-          fontSize: 7,
-          color: 'rgba(255,255,255,.2)',
+          fontSize: 10,
+          color: '#96A2A0',
           marginLeft: 2
         }
       }, "\xD7", s.count));
     })));
   })), encyclopediaTab === 'codex' && /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 9,
-      fontWeight: 700,
-      color: '#D8A94D',
-      marginBottom: 4
-    }
+    style: Object.assign({}, LS_HEADER, {
+      marginBottom: 6
+    })
   }, "Elements"), /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
       flexWrap: 'wrap',
-      gap: 3,
-      marginBottom: 10
+      gap: 4,
+      marginBottom: 14
     }
   }, Object.entries(ELEMENTS).map(function (_ref48) {
     var _ref49 = _slicedToArray(_ref48, 2),
@@ -233,47 +283,28 @@ export function EncyclopediaPanel(props) {
       el = _ref49[1];
     return /*#__PURE__*/React.createElement("div", {
       key: key,
+      style: lsChip(true, el.color)
+    }, /* v2.3.1232: elem-*.webp icon replaces the bare color dot; the '●'
+         fallback inherits the chip's element color */
+    lsIcon('/icons/ui/elem-' + key + '.webp?v=2.3.1232', '●', 14), key, /*#__PURE__*/React.createElement("span", {
       style: {
-        padding: '3px 7px',
-        borderRadius: 4,
-        fontSize: 8,
-        fontWeight: 700,
-        background: el.color + '18',
-        border: '1px solid ' + el.color + '40',
-        color: el.color,
-        display: 'flex',
-        alignItems: 'center',
-        gap: 3
+        fontSize: 10,
+        color: '#96A2A0'
       }
-    }, /*#__PURE__*/React.createElement("span", {
-      style: {
-        width: 6,
-        height: 6,
-        borderRadius: 3,
-        background: el.color,
-        display: 'inline-block'
-      }
-    }), key, /*#__PURE__*/React.createElement("span", {
-      style: {
-        fontSize: 7,
-        color: 'rgba(255,255,255,.3)'
-      }
-    }, "\u2192", el.status));
+    }, "→", el.status));
   })), /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 9,
-      fontWeight: 700,
-      color: '#D8A94D',
-      marginBottom: 4
-    }
+    style: Object.assign({}, LS_HEADER, {
+      marginBottom: 6
+    })
   }, "Effectiveness Circle"), /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
       flexWrap: 'wrap',
-      gap: 2,
-      marginBottom: 10,
-      fontSize: 8,
-      color: 'rgba(255,255,255,.5)'
+      gap: 4,
+      marginBottom: 14,
+      fontSize: 11,
+      fontWeight: 600,
+      color: '#B9C1BF'
     }
   }, EFFECTIVENESS.map(function (_ref50, i) {
     var _ELEMENTS$a, _ELEMENTS$b;
@@ -283,10 +314,14 @@ export function EncyclopediaPanel(props) {
     return /*#__PURE__*/React.createElement("span", {
       key: i,
       style: {
-        padding: '1px 4px',
-        borderRadius: 3,
-        background: 'rgba(255,255,255,.03)',
-        border: '1px solid rgba(255,255,255,.06)'
+        display: 'inline-flex',
+        alignItems: 'center',
+        minHeight: 28,
+        boxSizing: 'border-box',
+        padding: '3px 10px',
+        borderRadius: 999,
+        background: '#19252A',
+        border: '1px solid rgba(238,242,235,.08)'
       }
     }, /*#__PURE__*/React.createElement("span", {
       style: {
@@ -294,33 +329,31 @@ export function EncyclopediaPanel(props) {
       }
     }, a), /*#__PURE__*/React.createElement("span", {
       style: {
-        color: 'rgba(255,255,255,.2)'
+        color: '#96A2A0'
       }
-    }, " \u2192 "), /*#__PURE__*/React.createElement("span", {
+    }, " → "), /*#__PURE__*/React.createElement("span", {
       style: {
         color: (_ELEMENTS$b = ELEMENTS[b]) === null || _ELEMENTS$b === void 0 ? void 0 : _ELEMENTS$b.color
       }
     }, b));
   })), /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 9,
-      fontWeight: 700,
-      color: '#D8A94D',
+    style: Object.assign({}, LS_HEADER, {
       marginBottom: 4
-    }
+    })
   }, "Collisions (", discoveredCollisions.size, "/", Object.keys(COLLISION_TABLE).length, ")"), /*#__PURE__*/React.createElement("div", {
     style: {
-      fontSize: 8,
-      color: 'rgba(255,255,255,.3)',
-      marginBottom: 6
+      fontSize: 12,
+      color: '#96A2A0',
+      marginBottom: 8,
+      lineHeight: 1.4
     }
   }, "Apply two different elements to trigger a collision reaction"), /*#__PURE__*/React.createElement("div", {
-    style: {
+    style: Object.assign({}, LS_WELL, {
       display: 'flex',
       flexDirection: 'column',
-      gap: 2
-    }
-  }, Object.entries(COLLISION_TABLE).map(function (_ref52) {
+      padding: 4
+    })
+  }, Object.entries(COLLISION_TABLE).map(function (_ref52, _ci) {
     var _ELEMENTS$e, _ELEMENTS$e2;
     var _ref53 = _slicedToArray(_ref52, 2),
       key = _ref53[0],
@@ -335,179 +368,147 @@ export function EncyclopediaPanel(props) {
       style: {
         display: 'flex',
         alignItems: 'center',
-        gap: 4,
-        padding: '3px 6px',
-        borderRadius: 4,
-        background: found ? 'rgba(0,212,184,.06)' : 'rgba(255,255,255,.01)',
-        border: '1px solid ' + (found ? 'rgba(0,212,184,.15)' : 'rgba(255,255,255,.04)')
+        gap: 6,
+        minHeight: 44,
+        padding: '4px 8px',
+        borderBottom: _ci < Object.keys(COLLISION_TABLE).length - 1 ? LS_DIVIDER : 'none'
       }
     }, /*#__PURE__*/React.createElement("span", {
       style: {
-        width: 6,
-        height: 6,
-        borderRadius: 3,
-        background: found ? ((_ELEMENTS$e = ELEMENTS[e1]) === null || _ELEMENTS$e === void 0 ? void 0 : _ELEMENTS$e.color) || '#666' : 'rgba(255,255,255,.1)',
-        display: 'inline-block'
+        width: 8,
+        height: 8,
+        borderRadius: 4,
+        background: found ? ((_ELEMENTS$e = ELEMENTS[e1]) === null || _ELEMENTS$e === void 0 ? void 0 : _ELEMENTS$e.color) || '#687575' : 'rgba(238,242,235,.10)',
+        display: 'inline-block',
+        flex: 'none'
       }
     }), /*#__PURE__*/React.createElement("span", {
       style: {
-        fontSize: 7,
-        color: found ? 'rgba(255,255,255,.4)' : 'rgba(255,255,255,.1)',
-        minWidth: 28
+        fontSize: 11,
+        fontWeight: 600,
+        color: found ? '#B9C1BF' : '#687575',
+        minWidth: 34
       }
     }, found ? e1 : '??'), /*#__PURE__*/React.createElement("span", {
       style: {
-        fontSize: 7,
-        color: 'rgba(255,255,255,.15)'
+        fontSize: 11,
+        color: '#96A2A0'
       }
     }, "+"), /*#__PURE__*/React.createElement("span", {
       style: {
-        width: 6,
-        height: 6,
-        borderRadius: 3,
-        background: found ? ((_ELEMENTS$e2 = ELEMENTS[e2]) === null || _ELEMENTS$e2 === void 0 ? void 0 : _ELEMENTS$e2.color) || '#666' : 'rgba(255,255,255,.1)',
-        display: 'inline-block'
+        width: 8,
+        height: 8,
+        borderRadius: 4,
+        background: found ? ((_ELEMENTS$e2 = ELEMENTS[e2]) === null || _ELEMENTS$e2 === void 0 ? void 0 : _ELEMENTS$e2.color) || '#687575' : 'rgba(238,242,235,.10)',
+        display: 'inline-block',
+        flex: 'none'
       }
     }), /*#__PURE__*/React.createElement("span", {
       style: {
-        fontSize: 7,
-        color: found ? 'rgba(255,255,255,.4)' : 'rgba(255,255,255,.1)',
-        minWidth: 28
+        fontSize: 11,
+        fontWeight: 600,
+        color: found ? '#B9C1BF' : '#687575',
+        minWidth: 34
       }
     }, found ? e2 : '??'), /*#__PURE__*/React.createElement("span", {
       style: {
-        fontSize: 7,
-        color: 'rgba(255,255,255,.15)',
+        fontSize: 11,
+        color: '#96A2A0',
         margin: '0 2px'
       }
     }, "="), /*#__PURE__*/React.createElement("span", {
       style: {
-        fontSize: 8,
+        fontSize: 12,
         fontWeight: 700,
-        color: found ? '#00d4b8' : 'rgba(255,255,255,.1)',
+        color: found ? '#59BF91' : '#687575',
         flex: 1
       }
     }, found ? coll.name : '???'), found && /*#__PURE__*/React.createElement("span", {
       style: {
-        fontSize: 6,
-        color: 'rgba(255,255,255,.2)'
+        fontSize: 10,
+        fontWeight: 600,
+        color: '#96A2A0'
       }
     }, coll.type));
   }))), encyclopediaTab === 'materials' && /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 9,
-      fontWeight: 700,
-      color: '#795548',
-      marginBottom: 4
-    }
-  }, "\u26CF\uFE0F Mining Ores"), /*#__PURE__*/React.createElement("div", {
+    style: Object.assign({}, LS_HEADER, {
+      marginBottom: 6
+    })
+  }, "⛏️ Mining Ores"), /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
       flexWrap: 'wrap',
-      gap: 2,
-      marginBottom: 8
+      gap: 4,
+      marginBottom: 14
     }
   }, MINING_TIERS.map(function (t, i) {
     var found = discoveredMaterials.has('mining:' + t.name);
     return /*#__PURE__*/React.createElement("div", {
       key: i,
-      style: {
-        padding: '2px 5px',
-        borderRadius: 3,
-        fontSize: 7,
-        fontWeight: 700,
-        background: found ? t.streakColor + '18' : 'rgba(255,255,255,.02)',
-        border: '1px solid ' + (found ? t.streakColor + '40' : 'rgba(255,255,255,.05)'),
-        color: found ? t.streakColor : 'rgba(255,255,255,.12)'
-      }
+      style: lsChip(found, t.streakColor)
     }, found ? '⛏️' : '❓', " ", found ? t.name : '???', found && /*#__PURE__*/React.createElement("span", {
       style: {
-        fontSize: 6,
-        color: 'rgba(255,255,255,.2)',
+        fontSize: 10,
+        color: '#96A2A0',
         marginLeft: 2
       }
     }, "Lv", t.lvl));
   })), /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 9,
-      fontWeight: 700,
-      color: '#6b4226',
-      marginBottom: 4
-    }
-  }, "\uD83E\uDE93 Woodcutting"), /*#__PURE__*/React.createElement("div", {
+    style: Object.assign({}, LS_HEADER, {
+      marginBottom: 6
+    })
+  }, "🪓 Woodcutting"), /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
       flexWrap: 'wrap',
-      gap: 2,
-      marginBottom: 8
+      gap: 4,
+      marginBottom: 14
     }
   }, WOODCUTTING_TIERS.map(function (t, i) {
     var found = discoveredMaterials.has('woodcutting:' + t.name);
     return /*#__PURE__*/React.createElement("div", {
       key: i,
-      style: {
-        padding: '2px 5px',
-        borderRadius: 3,
-        fontSize: 7,
-        fontWeight: 700,
-        background: found ? t.canopyColor + '18' : 'rgba(255,255,255,.02)',
-        border: '1px solid ' + (found ? t.canopyColor + '40' : 'rgba(255,255,255,.05)'),
-        color: found ? t.canopyColor : 'rgba(255,255,255,.12)'
-      }
+      style: lsChip(found, t.canopyColor)
     }, found ? '🪓' : '❓', " ", found ? t.name : '???', found && /*#__PURE__*/React.createElement("span", {
       style: {
-        fontSize: 6,
-        color: 'rgba(255,255,255,.2)',
+        fontSize: 10,
+        color: '#96A2A0',
         marginLeft: 2
       }
     }, "Lv", t.lvl));
   })), /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 9,
-      fontWeight: 700,
-      color: '#3498DB',
-      marginBottom: 4
-    }
-  }, "\uD83C\uDFA3 Fishing"), /*#__PURE__*/React.createElement("div", {
+    style: Object.assign({}, LS_HEADER, {
+      marginBottom: 6
+    })
+  }, "🎣 Fishing"), /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
       flexWrap: 'wrap',
-      gap: 2,
-      marginBottom: 8
+      gap: 4,
+      marginBottom: 14
     }
   }, FISHING_TIERS.map(function (t, i) {
     var found = discoveredMaterials.has('fishing:' + t.name);
     return /*#__PURE__*/React.createElement("div", {
       key: i,
-      style: {
-        padding: '2px 5px',
-        borderRadius: 3,
-        fontSize: 7,
-        fontWeight: 700,
-        background: found ? 'rgba(52,152,219,.15)' : 'rgba(255,255,255,.02)',
-        border: '1px solid ' + (found ? 'rgba(52,152,219,.3)' : 'rgba(255,255,255,.05)'),
-        color: found ? '#3498DB' : 'rgba(255,255,255,.12)'
-      }
+      style: lsChip(found, '#5D93D2')
     }, found ? '🎣' : '❓', " ", found ? t.name : '???', found && /*#__PURE__*/React.createElement("span", {
       style: {
-        fontSize: 6,
-        color: 'rgba(255,255,255,.2)',
+        fontSize: 10,
+        color: '#96A2A0',
         marginLeft: 2
       }
     }, "Lv", t.lvl));
   })), /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 9,
-      fontWeight: 700,
-      color: '#c0c0c8',
-      marginBottom: 4
-    }
-  }, "\uD83D\uDD28 Blacksmith Metals"), /*#__PURE__*/React.createElement("div", {
+    style: Object.assign({}, LS_HEADER, {
+      marginBottom: 6
+    })
+  }, "🔨 Blacksmith Metals"), /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
       flexWrap: 'wrap',
-      gap: 2,
-      marginBottom: 8
+      gap: 4,
+      marginBottom: 14
     }
   }, Object.entries(BLACKSMITH_TIERS).map(function (_ref54) {
     var _ref55 = _slicedToArray(_ref54, 2),
@@ -515,35 +516,24 @@ export function EncyclopediaPanel(props) {
       t = _ref55[1];
     return /*#__PURE__*/React.createElement("div", {
       key: key,
-      style: {
-        padding: '2px 5px',
-        borderRadius: 3,
-        fontSize: 7,
-        fontWeight: 700,
-        background: t.color + '18',
-        border: '1px solid ' + t.color + '40',
-        color: t.color
-      }
+      style: lsChip(true, t.color)
     }, t.label, /*#__PURE__*/React.createElement("span", {
       style: {
-        fontSize: 6,
-        color: 'rgba(255,255,255,.2)',
+        fontSize: 10,
+        color: '#96A2A0',
         marginLeft: 2
       }
     }, "Lv", t.minLvl));
   })), /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 9,
-      fontWeight: 700,
-      color: '#a08050',
-      marginBottom: 4
-    }
-  }, "\uD83E\uDEB5 Woodworking"), /*#__PURE__*/React.createElement("div", {
+    style: Object.assign({}, LS_HEADER, {
+      marginBottom: 6
+    })
+  }, "🪵 Woodworking"), /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
       flexWrap: 'wrap',
-      gap: 2,
-      marginBottom: 8
+      gap: 4,
+      marginBottom: 14
     }
   }, Object.entries(WOODWORKING_TIERS).map(function (_ref56) {
     var _ref57 = _slicedToArray(_ref56, 2),
@@ -551,71 +541,62 @@ export function EncyclopediaPanel(props) {
       t = _ref57[1];
     return /*#__PURE__*/React.createElement("div", {
       key: key,
-      style: {
-        padding: '2px 5px',
-        borderRadius: 3,
-        fontSize: 7,
-        fontWeight: 700,
-        background: t.color + '18',
-        border: '1px solid ' + t.color + '40',
-        color: t.color
-      }
+      style: lsChip(true, t.color)
     }, t.label, /*#__PURE__*/React.createElement("span", {
       style: {
-        fontSize: 6,
-        color: 'rgba(255,255,255,.2)',
+        fontSize: 10,
+        color: '#96A2A0',
         marginLeft: 2
       }
     }, "Lv", t.minLvl));
   })), /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 9,
-      fontWeight: 700,
-      color: '#ea580c',
-      marginBottom: 4
-    }
-  }, "\uD83D\uDD25 Cooking Recipes"), /*#__PURE__*/React.createElement("div", {
-    style: {
+    style: Object.assign({}, LS_HEADER, {
+      marginBottom: 6
+    })
+  }, "🔥 Cooking Recipes"), /*#__PURE__*/React.createElement("div", {
+    style: Object.assign({}, LS_WELL, {
       display: 'flex',
       flexDirection: 'column',
-      gap: 2
-    }
+      padding: 4
+    })
   }, COOKING_RECIPES.map(function (r, i) {
     return /*#__PURE__*/React.createElement("div", {
       key: i,
       style: {
         display: 'flex',
         alignItems: 'center',
-        gap: 4,
-        padding: '2px 6px',
-        borderRadius: 3,
-        background: 'rgba(234,88,12,.05)',
-        border: '1px solid rgba(234,88,12,.15)',
-        fontSize: 8
+        gap: 6,
+        minHeight: 44,
+        padding: '4px 8px',
+        borderBottom: i < COOKING_RECIPES.length - 1 ? LS_DIVIDER : 'none',
+        fontSize: 12
       }
     }, /*#__PURE__*/React.createElement("span", {
       style: {
-        fontWeight: 700,
-        color: '#ea580c',
-        minWidth: 70
+        fontWeight: 600,
+        color: '#F7F2E7',
+        minWidth: 90
       }
     }, r.name), /*#__PURE__*/React.createElement("span", {
       style: {
-        fontSize: 7,
-        color: 'rgba(255,255,255,.3)'
+        fontSize: 10,
+        fontWeight: 600,
+        color: '#96A2A0'
       }
     }, "Lv", r.cookLvl), /*#__PURE__*/React.createElement("span", {
       style: {
-        fontSize: 7,
-        color: 'rgba(255,255,255,.2)',
-        marginLeft: 'auto'
+        fontSize: 11,
+        color: '#B9C1BF',
+        marginLeft: 'auto',
+        fontVariantNumeric: 'tabular-nums'
       }
     }, r.buff === 'heal' ? '❤️ +' + r.power + ' HP' : r.buff === 'regen' ? '💚 Regen' : r.buff === 'resist' ? '🛡️ Resist' : r.buff === 'damage' ? '⚔️ DMG' : r.buff === 'all' ? '✨ All' : '🍖', r.duration ? ' (' + r.duration + 's)' : ''));
   }))), encyclopediaTab === 'zones' && /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
     style: {
-      fontSize: 9,
-      color: 'rgba(255,255,255,.3)',
-      marginBottom: 6
+      fontSize: 12,
+      color: '#96A2A0',
+      marginBottom: 10,
+      fontVariantNumeric: 'tabular-nums'
     }
   }, "Visited ", visitedZones.size, "/", Object.values(ZONES).filter(function (z) {
     /* v2.3.1127: hide transient server-dungeon instance entries */
@@ -629,18 +610,16 @@ export function EncyclopediaPanel(props) {
     return /*#__PURE__*/React.createElement("div", {
       key: zone.id,
       style: {
-        padding: 8,
-        borderRadius: 6,
-        marginBottom: 4,
-        background: visited ? 'rgba(255,255,255,.03)' : 'rgba(255,255,255,.01)',
-        border: '1px solid ' + (visited ? ((elem === null || elem === void 0 ? void 0 : elem.color) || '#D8A85F') + '30' : 'rgba(255,255,255,.04)')
+        minHeight: 44,
+        padding: '8px 0',
+        borderBottom: LS_DIVIDER
       }
     }, /*#__PURE__*/React.createElement("div", {
       style: {
         display: 'flex',
         alignItems: 'center',
-        gap: 4,
-        marginBottom: 2
+        gap: 6,
+        marginBottom: 4
       }
     }, elem && /*#__PURE__*/React.createElement("span", {
       style: {
@@ -648,77 +627,84 @@ export function EncyclopediaPanel(props) {
         height: 8,
         borderRadius: 4,
         background: elem.color,
-        display: 'inline-block'
+        display: 'inline-block',
+        flex: 'none',
+        opacity: visited ? 1 : 0.35
       }
     }), /*#__PURE__*/React.createElement("span", {
       style: {
-        fontSize: 10,
-        fontWeight: 800,
-        color: visited ? (elem === null || elem === void 0 ? void 0 : elem.color) || '#fff' : 'rgba(255,255,255,.12)'
+        fontSize: 13,
+        fontWeight: 600,
+        color: visited ? (elem === null || elem === void 0 ? void 0 : elem.color) || '#F7F2E7' : '#687575'
       }
     }, visited ? zone.name : '???'), visited && /*#__PURE__*/React.createElement("span", {
       style: {
-        fontSize: 7,
-        color: 'rgba(255,255,255,.25)',
-        marginLeft: 'auto'
+        fontSize: 10,
+        fontWeight: 600,
+        color: '#96A2A0',
+        marginLeft: 'auto',
+        fontVariantNumeric: 'tabular-nums'
       }
     }, "Lv", zone.level[0], "-", zone.level[1])), visited && /*#__PURE__*/React.createElement("div", {
       style: {
         display: 'flex',
         gap: 4,
         flexWrap: 'wrap',
-        fontSize: 7
+        fontSize: 10,
+        fontWeight: 600
       }
     }, zone.element && /*#__PURE__*/React.createElement("span", {
       style: {
         color: elem === null || elem === void 0 ? void 0 : elem.color,
-        padding: '1px 4px',
-        borderRadius: 2,
-        background: (elem === null || elem === void 0 ? void 0 : elem.color) + '15'
+        padding: '2px 8px',
+        borderRadius: 999,
+        background: '#19252A'
       }
     }, zone.element), zone.secondary && /*#__PURE__*/React.createElement("span", {
       style: {
         color: sec === null || sec === void 0 ? void 0 : sec.color,
-        padding: '1px 4px',
-        borderRadius: 2,
-        background: (sec === null || sec === void 0 ? void 0 : sec.color) + '15'
+        padding: '2px 8px',
+        borderRadius: 999,
+        background: '#19252A'
       }
     }, "+", zone.secondary), zone.safe && /*#__PURE__*/React.createElement("span", {
       style: {
         color: '#59BF91',
-        padding: '1px 4px',
-        borderRadius: 2,
-        background: 'rgba(89,191,145,.1)'
+        padding: '2px 8px',
+        borderRadius: 999,
+        background: '#19252A'
       }
     }, "Safe"), zone.lawless && /*#__PURE__*/React.createElement("span", {
       style: {
         color: '#D95C54',
-        padding: '1px 4px',
-        borderRadius: 2,
-        background: 'rgba(217,92,84,.1)'
+        padding: '2px 8px',
+        borderRadius: 999,
+        background: '#19252A'
       }
     }, "PvP"), zone.endgame && /*#__PURE__*/React.createElement("span", {
       style: {
         color: '#D8A94D',
-        padding: '1px 4px',
-        borderRadius: 2,
-        background: 'rgba(216,169,77,.1)'
+        padding: '2px 8px',
+        borderRadius: 999,
+        background: '#19252A'
       }
     }, "Endgame"), zone.personal && /*#__PURE__*/React.createElement("span", {
       style: {
         color: '#59BF91',
-        padding: '1px 4px',
-        borderRadius: 2,
-        background: 'rgba(89,191,145,.1)'
+        padding: '2px 8px',
+        borderRadius: 999,
+        background: '#19252A'
       }
     }, "Personal"), zone.spawns && zone.spawns.length > 0 && /*#__PURE__*/React.createElement("span", {
       style: {
-        color: 'rgba(255,255,255,.2)'
+        color: '#96A2A0',
+        padding: '2px 0',
+        fontVariantNumeric: 'tabular-nums'
       }
     }, zone.spawns.length, " enemy types")), !visited && /*#__PURE__*/React.createElement("div", {
       style: {
-        fontSize: 7,
-        color: 'rgba(255,255,255,.1)',
+        fontSize: 11,
+        color: '#687575',
         fontStyle: 'italic'
       }
     }, "Travel here to discover"));

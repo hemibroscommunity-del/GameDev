@@ -14,6 +14,36 @@ import { pushDmgPopup } from '@/game/combatHelpers.js';
    setTradeOffer/setTradeTarget (setters). Data imports verified real
    exports; slice/spread-array babel helpers imported; the hoisted
    optional-chaining temp set declared locally. */
+/* v2.3.1232: Lantern Slate restyle (docs/LANTERN-SLATE-SPEC.md) —
+   presentation only: every social/trade/duel/threat handler and every
+   caps gate is unchanged. Equipment/stats/record become header+well
+   groups instead of outlined boxes; Trade is the region's single brass
+   primary; Threat/Block speak the destructive language; the old indigo
+   (#a78bfa) and amber (#fbbf24) accents map to the spec magic/stamina
+   colors. Player/clan/reputation colors stay — they are content color. */
+
+/* v2.3.1232: Lantern Slate style tokens — local, no shared module. */
+var LS_HEADER = {
+  fontSize: 11,
+  fontWeight: 600,
+  textTransform: 'uppercase',
+  letterSpacing: '.12em',
+  color: '#96A2A0'
+};
+var LS_DIVIDER = '1px solid rgba(238,242,235,.10)';
+/* full-width secondary action button */
+var LS_SECONDARY = {
+  minHeight: 44,
+  padding: '0 12px',
+  borderRadius: 11,
+  border: '1px solid rgba(238,242,235,.14)',
+  background: 'linear-gradient(180deg, #304047 0%, #2B3940 100%)',
+  color: '#F7F2E7',
+  fontSize: 12,
+  fontWeight: 700,
+  cursor: 'pointer'
+};
+
 export function InspectPlayerPanel(props) {
   var stateRef = props.stateRef,
     inspectPlayer = props.inspectPlayer,
@@ -42,14 +72,18 @@ export function InspectPlayerPanel(props) {
     style: {
       width: 300,
       maxHeight: '85vh',
-      overflowY: 'auto'
+      overflowY: 'auto',
+      background: '#202C32',
+      border: '1px solid rgba(238,242,235,.14)',
+      borderRadius: 14,
+      boxShadow: '0 14px 30px rgba(4,7,9,.38)'
     }
   }, /*#__PURE__*/React.createElement("button", {
     className: "bt-inspect-close",
     onClick: function onClick() {
       return setInspectPlayer(null);
     }
-  }, "\u2715"), inspectPlayer.avatar ? /*#__PURE__*/React.createElement("img", {
+  }, "✕"), inspectPlayer.avatar ? /*#__PURE__*/React.createElement("img", {
     className: "bt-inspect-av",
     src: inspectPlayer.avatar,
     alt: "",
@@ -67,8 +101,8 @@ export function InspectPlayerPanel(props) {
       alignItems: 'center',
       justifyContent: 'center',
       fontSize: 24,
-      fontWeight: 800,
-      color: '#fff',
+      fontWeight: 700,
+      color: '#F7F2E7',
       border: '2.5px solid ' + inspectPlayer.color
     }
   }, inspectPlayer.name.charAt(0).toUpperCase()), /*#__PURE__*/React.createElement("div", {
@@ -78,26 +112,28 @@ export function InspectPlayerPanel(props) {
     }
   }, inspectPlayer.clanTag && /*#__PURE__*/React.createElement("span", {
     style: {
-      color: inspectPlayer.clanColor1 || '#a78bfa'
+      color: inspectPlayer.clanColor1 || '#9A76D3'
     }
   }, "[", inspectPlayer.clanTag, "] "), inspectPlayer.name), /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
       justifyContent: 'center',
+      alignItems: 'center',
       gap: 8,
-      marginBottom: 8
+      marginBottom: 10
     }
   }, inspectPlayer.rpgLv && /*#__PURE__*/React.createElement("div", {
     style: {
-      fontSize: 11,
+      fontSize: 12,
       fontWeight: 700,
+      fontVariantNumeric: 'tabular-nums',
       color: '#D8A94D'
     }
   }, "Lv ", inspectPlayer.rpgLv), inspectPlayer.rep && inspectPlayer.rep !== 'neutral' && /*#__PURE__*/React.createElement("div", {
     style: {
-      fontSize: 11,
+      fontSize: 12,
       fontWeight: 700,
-      color: ((_REPUTATION$inspectPl = REPUTATION[inspectPlayer.rep]) === null || _REPUTATION$inspectPl === void 0 ? void 0 : _REPUTATION$inspectPl.color) || '#888'
+      color: ((_REPUTATION$inspectPl = REPUTATION[inspectPlayer.rep]) === null || _REPUTATION$inspectPl === void 0 ? void 0 : _REPUTATION$inspectPl.color) || '#96A2A0'
     }
   }, ((_REPUTATION$inspectPl2 = REPUTATION[inspectPlayer.rep]) === null || _REPUTATION$inspectPl2 === void 0 ? void 0 : _REPUTATION$inspectPl2.label) || inspectPlayer.rep), inspectPlayer.pet && /*#__PURE__*/React.createElement("div", {
     style: {
@@ -107,62 +143,58 @@ export function InspectPlayerPanel(props) {
     var d = inspectPlayer.rpgData;
     return /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
       style: {
-        padding: 8,
-        borderRadius: 8,
-        background: 'rgba(255,255,255,.03)',
-        border: '1px solid rgba(255,255,255,.08)',
-        marginBottom: 6
+        textAlign: 'left',
+        borderTop: LS_DIVIDER,
+        paddingTop: 10,
+        marginBottom: 10
       }
     }, /*#__PURE__*/React.createElement("div", {
-      style: {
-        fontSize: 9,
-        fontWeight: 700,
-        color: '#B9C1BF',
-        marginBottom: 4
-      }
+      style: Object.assign({}, LS_HEADER, {
+        marginBottom: 6
+      })
     }, "Equipment"), /*#__PURE__*/React.createElement("div", {
       style: {
         display: 'grid',
         gridTemplateColumns: '1fr 1fr',
-        gap: '2px 8px',
-        fontSize: 8,
-        color: 'rgba(255,255,255,.5)'
+        gap: '5px 10px',
+        fontSize: 12,
+        color: '#96A2A0'
       }
-    }, /*#__PURE__*/React.createElement("span", null, "\u2694\uFE0F Weapon"), /*#__PURE__*/React.createElement("span", {
+    }, /*#__PURE__*/React.createElement("span", null, "⚔️ Weapon"), /*#__PURE__*/React.createElement("span", {
       style: {
-        color: '#fff',
+        color: '#F7F2E7',
+        fontWeight: 600,
         textAlign: 'right'
       }
-    }, d.weapon), /*#__PURE__*/React.createElement("span", null, "\uD83D\uDEE1\uFE0F Armor"), /*#__PURE__*/React.createElement("span", {
+    }, d.weapon), /*#__PURE__*/React.createElement("span", null, "🛡️ Armor"), /*#__PURE__*/React.createElement("span", {
       style: {
-        color: '#fff',
+        color: '#F7F2E7',
+        fontWeight: 600,
         textAlign: 'right'
       }
-    }, d.armor), d.shield && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("span", null, "\uD83D\uDEE1\uFE0F Shield"), /*#__PURE__*/React.createElement("span", {
+    }, d.armor), d.shield && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("span", null, "🛡️ Shield"), /*#__PURE__*/React.createElement("span", {
       style: {
-        color: '#D8A85F',
+        color: '#F7F2E7',
+        fontWeight: 600,
         textAlign: 'right'
       }
-    }, d.shield)), d.amulet && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("span", null, "\uD83D\uDCFF Amulet"), /*#__PURE__*/React.createElement("span", {
+    }, d.shield)), d.amulet && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("span", null, "📿 Amulet"), /*#__PURE__*/React.createElement("span", {
       style: {
-        color: '#D8A94D',
+        color: '#F7F2E7',
+        fontWeight: 600,
         textAlign: 'right'
       }
     }, d.amulet)))), /*#__PURE__*/React.createElement("div", {
       style: {
-        padding: 8,
-        borderRadius: 8,
-        background: 'rgba(255,255,255,.03)',
-        border: '1px solid rgba(255,255,255,.08)',
-        marginBottom: 6
+        textAlign: 'left',
+        borderTop: LS_DIVIDER,
+        paddingTop: 10,
+        marginBottom: 10
       }
     }, /*#__PURE__*/React.createElement("div", {
-      style: {
-        fontSize: 9,
-        fontWeight: 700,
-        color: '#B9C1BF',
-        marginBottom: 4
-      }
+      style: Object.assign({}, LS_HEADER, {
+        marginBottom: 6
+      })
     }, "Tier 1 Stats"), /*#__PURE__*/React.createElement("div", {
       style: {
         display: 'flex',
@@ -170,7 +202,9 @@ export function InspectPlayerPanel(props) {
         justifyContent: 'center',
         flexWrap: 'wrap'
       }
-    }, [['POW', d.power, '#D95C54'], ['VIT', d.vitality, '#59BF91'], ['END', d.endurance, '#D8A94D'], ['AGI', d.agility, '#38bdf8'], ['MND', d.mind, '#a78bfa']].map(function (_ref194) {
+    }, /* v2.3.1232: stat accents mapped onto the semantic set (info
+         replaces the old sky, magic replaces indigo) */
+    [['POW', d.power, '#D95C54'], ['VIT', d.vitality, '#59BF91'], ['END', d.endurance, '#D8A94D'], ['AGI', d.agility, '#5D93D2'], ['MND', d.mind, '#9A76D3']].map(function (_ref194) {
       var _ref195 = _slicedToArray(_ref194, 3),
         l = _ref195[0],
         v = _ref195[1],
@@ -178,41 +212,39 @@ export function InspectPlayerPanel(props) {
       return /*#__PURE__*/React.createElement("div", {
         key: l,
         style: {
-          padding: '3px 6px',
-          borderRadius: 4,
-          background: c + '15',
-          border: '1px solid ' + c + '30',
+          padding: '5px 6px',
+          borderRadius: 8,
+          background: '#19252A',
+          border: '1px solid rgba(238,242,235,.08)',
           textAlign: 'center',
-          minWidth: 40
+          minWidth: 44
         }
       }, /*#__PURE__*/React.createElement("div", {
         style: {
-          fontSize: 7,
+          fontSize: 10,
           color: c,
-          fontWeight: 700
+          fontWeight: 600,
+          letterSpacing: '.08em'
         }
       }, l), /*#__PURE__*/React.createElement("div", {
         style: {
-          fontSize: 11,
-          fontWeight: 800,
-          color: '#fff'
+          fontSize: 14,
+          fontWeight: 700,
+          fontVariantNumeric: 'tabular-nums',
+          color: '#F7F2E7'
         }
       }, v));
     }))), /*#__PURE__*/React.createElement("div", {
       style: {
-        padding: 8,
-        borderRadius: 8,
-        background: 'rgba(255,255,255,.03)',
-        border: '1px solid rgba(255,255,255,.08)',
-        marginBottom: 6
+        textAlign: 'left',
+        borderTop: LS_DIVIDER,
+        paddingTop: 10,
+        marginBottom: 10
       }
     }, /*#__PURE__*/React.createElement("div", {
-      style: {
-        fontSize: 9,
-        fontWeight: 700,
-        color: '#B9C1BF',
-        marginBottom: 4
-      }
+      style: Object.assign({}, LS_HEADER, {
+        marginBottom: 6
+      })
     }, "Record"), /*#__PURE__*/React.createElement("div", {
       style: {
         display: 'grid',
@@ -228,40 +260,46 @@ export function InspectPlayerPanel(props) {
       return /*#__PURE__*/React.createElement("div", {
         key: label,
         style: {
-          padding: '3px 0'
+          padding: '6px 0',
+          borderRadius: 8,
+          background: '#19252A'
         }
       }, /*#__PURE__*/React.createElement("div", {
         style: {
-          fontSize: 12
+          fontSize: 13
         }
       }, icon), /*#__PURE__*/React.createElement("div", {
         style: {
-          fontSize: 10,
-          fontWeight: 800,
-          color: '#fff'
+          fontSize: 14,
+          fontWeight: 700,
+          fontVariantNumeric: 'tabular-nums',
+          color: '#F7F2E7'
         }
       }, val), /*#__PURE__*/React.createElement("div", {
         style: {
-          fontSize: 6,
-          color: 'rgba(255,255,255,.35)'
+          fontSize: 10,
+          fontWeight: 600,
+          color: '#96A2A0'
         }
       }, label));
     }))), d.clanName && /*#__PURE__*/React.createElement("div", {
       style: {
-        padding: 6,
-        borderRadius: 6,
-        background: 'rgba(167,139,250,.08)',
-        border: '1px solid rgba(167,139,250,.2)',
-        marginBottom: 6,
+        minHeight: 32,
+        boxSizing: 'border-box',
+        padding: '6px 10px',
+        borderRadius: 999,
+        background: '#19252A',
+        border: '1px solid rgba(238,242,235,.08)',
+        marginBottom: 10,
         textAlign: 'center'
       }
     }, /*#__PURE__*/React.createElement("span", {
       style: {
-        fontSize: 9,
+        fontSize: 11,
         fontWeight: 700,
-        color: '#a78bfa'
+        color: '#9A76D3'
       }
-    }, "\uD83C\uDFF0 [", d.clanTag, "] ", d.clanName)));
+    }, "🏰 [", d.clanTag, "] ", d.clanName)));
   }(), inspectPlayer.bro && /*#__PURE__*/React.createElement("div", {
     className: "bt-inspect-stat"
   }, /*#__PURE__*/React.createElement("div", {
@@ -280,12 +318,21 @@ export function InspectPlayerPanel(props) {
     style: {
       display: 'flex',
       gap: 6,
-      marginTop: 8
+      marginTop: 10
     }
   }, /*#__PURE__*/React.createElement("button", {
     className: "bt-inspect-tp",
     style: {
-      flex: 1
+      flex: 1,
+      marginTop: 0,
+      minHeight: 44,
+      padding: '0 4px',
+      borderRadius: 11,
+      fontSize: 12,
+      fontWeight: 700,
+      border: '1px solid rgba(238,242,235,.14)',
+      background: 'linear-gradient(180deg, #304047 0%, #2B3940 100%)',
+      color: '#F7F2E7'
     },
     onClick: function onClick() {
       var S = stateRef.current;
@@ -293,11 +340,19 @@ export function InspectPlayerPanel(props) {
       S.player.y = inspectPlayer.y + 40;
       setInspectPlayer(null);
     }
-  }, "\uD83D\uDCCD TP"), /*#__PURE__*/React.createElement("button", {
+  }, "📍 TP"), /*#__PURE__*/React.createElement("button", {
     className: "bt-inspect-tp",
     style: {
       flex: 1,
-      background: '#59BF91'
+      marginTop: 0,
+      minHeight: 44,
+      padding: '0 4px',
+      borderRadius: 11,
+      fontSize: 12,
+      fontWeight: 700,
+      border: 'none',
+      background: '#D8A85F',
+      color: '#20170D'
     },
     onClick: function onClick() {
       /* v2.3.1132: two-sided trade window when the worker supports it
@@ -320,11 +375,19 @@ export function InspectPlayerPanel(props) {
       setShowTrade(true);
       setInspectPlayer(null);
     }
-  }, "\uD83E\uDD1D Trade"), /*#__PURE__*/React.createElement("button", {
+  }, "🤝 Trade"), /*#__PURE__*/React.createElement("button", {
     className: "bt-inspect-tp",
     style: {
       flex: 1,
-      background: '#a78bfa'
+      marginTop: 0,
+      minHeight: 44,
+      padding: '0 4px',
+      borderRadius: 11,
+      fontSize: 12,
+      fontWeight: 700,
+      border: '1px solid rgba(238,242,235,.14)',
+      background: 'linear-gradient(180deg, #304047 0%, #2B3940 100%)',
+      color: '#9A76D3'
     },
     onClick: function onClick() {
       var S = stateRef.current;
@@ -341,11 +404,19 @@ export function InspectPlayerPanel(props) {
       pushDmgPopup(S, S.player.x, S.player.y - 30, 'Duel sent', '#a78bfa');
       setInspectPlayer(null);
     }
-  }, "\u2694\uFE0F Duel"), /*#__PURE__*/React.createElement("button", {
+  }, "⚔️ Duel"), /*#__PURE__*/React.createElement("button", {
     className: "bt-inspect-tp",
     style: {
       flex: 1,
-      background: '#D95C54'
+      marginTop: 0,
+      minHeight: 44,
+      padding: '0 4px',
+      borderRadius: 11,
+      fontSize: 12,
+      fontWeight: 700,
+      border: '1px solid #C7655F',
+      background: '#7C3431',
+      color: '#FFF1EE'
     },
     onClick: function onClick() {
       var _S$rpg26;
@@ -378,23 +449,16 @@ export function InspectPlayerPanel(props) {
       BT_AUDIO.beep(150, 0.15, 0.2, 'sawtooth');
       setInspectPlayer(null);
     }
-  }, "\uD83D\uDC80 Threat")), /* v2.3.1185: party invite -- caps-gated (an old worker would
+  }, "💀 Threat")), /* v2.3.1185: party invite -- caps-gated (an old worker would
      rebroadcast party_invite as an unknown type instead of validating
      it).  Server answers with party_invited to the target and
      party_state echoes once they accept (see PartyHUD.jsx). */
   stateRef.current && stateRef.current._serverCaps && stateRef.current._serverCaps.party && /*#__PURE__*/React.createElement("button", {
-    style: {
+    style: Object.assign({}, LS_SECONDARY, {
       width: '100%',
       marginTop: 6,
-      padding: '6px',
-      borderRadius: 6,
-      border: '1px solid rgba(251,191,36,.3)',
-      background: 'rgba(251,191,36,.1)',
-      color: '#fbbf24',
-      fontSize: 9,
-      fontWeight: 700,
-      cursor: 'pointer'
-    },
+      color: '#D8A94D'
+    }),
     onClick: function onClick() {
       var S = stateRef.current;
       if (S.channel) S.channel.send({
@@ -407,19 +471,12 @@ export function InspectPlayerPanel(props) {
       pushDmgPopup(S, S.player.x, S.player.y - 30, 'Party invite sent', '#fbbf24');
       setInspectPlayer(null);
     }
-  }, "\uD83C\uDF9F\uFE0F Invite to Party"), clanData && !((_inspectPlayer$rpgDat = inspectPlayer.rpgData) !== null && _inspectPlayer$rpgDat !== void 0 && _inspectPlayer$rpgDat.clanTag) && /*#__PURE__*/React.createElement("button", {
-    style: {
+  }, "🎟️ Invite to Party"), clanData && !((_inspectPlayer$rpgDat = inspectPlayer.rpgData) !== null && _inspectPlayer$rpgDat !== void 0 && _inspectPlayer$rpgDat.clanTag) && /*#__PURE__*/React.createElement("button", {
+    style: Object.assign({}, LS_SECONDARY, {
       width: '100%',
       marginTop: 6,
-      padding: '6px',
-      borderRadius: 6,
-      border: '1px solid rgba(167,139,250,.3)',
-      background: 'rgba(167,139,250,.1)',
-      color: '#a78bfa',
-      fontSize: 9,
-      fontWeight: 700,
-      cursor: 'pointer'
-    },
+      color: '#9A76D3'
+    }),
     onClick: function onClick() {
       var S = stateRef.current;
       if (S.channel) S.channel.send({
@@ -436,10 +493,10 @@ export function InspectPlayerPanel(props) {
       pushDmgPopup(S, S.player.x, S.player.y - 30, 'Clan invite sent', '#a78bfa');
       setInspectPlayer(null);
     }
-  }, "\uD83C\uDFF0 Invite to [", clanData.tag, "]"), /*#__PURE__*/React.createElement("div", {
+  }, "🏰 Invite to [", clanData.tag, "]"), /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
-      gap: 4,
+      gap: 6,
       marginTop: 6
     }
   }, function () {
@@ -449,14 +506,15 @@ export function InspectPlayerPanel(props) {
     return /*#__PURE__*/React.createElement("button", {
       style: {
         flex: 1,
-        padding: '5px',
-        borderRadius: 5,
-        fontSize: 8,
+        minHeight: 44,
+        padding: '0 4px',
+        borderRadius: 11,
+        fontSize: 11,
         fontWeight: 700,
         cursor: 'pointer',
-        border: isFriend ? '1px solid rgba(61,220,151,.3)' : '1px solid rgba(255,255,255,.15)',
-        background: isFriend ? 'rgba(61,220,151,.1)' : 'rgba(255,255,255,.04)',
-        color: isFriend ? '#59BF91' : 'rgba(255,255,255,.5)'
+        border: '1px solid rgba(238,242,235,.14)',
+        background: 'linear-gradient(180deg, #304047 0%, #2B3940 100%)',
+        color: isFriend ? '#59BF91' : '#B9C1BF'
       },
       onClick: function onClick() {
         if (isFriend) {
@@ -489,14 +547,15 @@ export function InspectPlayerPanel(props) {
     return /*#__PURE__*/React.createElement("button", {
       style: {
         flex: 0.7,
-        padding: '5px',
-        borderRadius: 5,
-        fontSize: 8,
+        minHeight: 44,
+        padding: '0 4px',
+        borderRadius: 11,
+        fontSize: 11,
         fontWeight: 700,
         cursor: 'pointer',
-        border: '1px solid rgba(255,255,255,.1)',
-        background: isMuted ? 'rgba(216,169,77,.1)' : 'rgba(255,255,255,.04)',
-        color: isMuted ? '#D8A94D' : 'rgba(255,255,255,.4)'
+        border: '1px solid rgba(238,242,235,.14)',
+        background: 'linear-gradient(180deg, #304047 0%, #2B3940 100%)',
+        color: isMuted ? '#D8A94D' : '#B9C1BF'
       },
       onClick: function onClick() {
         if (isMuted) {
@@ -524,14 +583,15 @@ export function InspectPlayerPanel(props) {
     return /*#__PURE__*/React.createElement("button", {
       style: {
         flex: 0.7,
-        padding: '5px',
-        borderRadius: 5,
-        fontSize: 8,
+        minHeight: 44,
+        padding: '0 4px',
+        borderRadius: 11,
+        fontSize: 11,
         fontWeight: 700,
         cursor: 'pointer',
-        border: '1px solid rgba(217,92,84,.2)',
-        background: isBlocked ? 'rgba(217,92,84,.15)' : 'rgba(255,255,255,.04)',
-        color: isBlocked ? '#D95C54' : 'rgba(255,255,255,.4)',
+        border: '1px solid ' + (isBlocked ? '#C7655F' : 'rgba(238,242,235,.14)'),
+        background: isBlocked ? '#7C3431' : 'linear-gradient(180deg, #304047 0%, #2B3940 100%)',
+        color: isBlocked ? '#FFF1EE' : '#B9C1BF',
         opacity: !isBlocked && isLawless ? 0.3 : 1
       },
       onClick: function onClick() {

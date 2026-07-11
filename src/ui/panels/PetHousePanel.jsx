@@ -11,6 +11,46 @@ import { pushDmgPopup } from '@/game/combatHelpers.js';
    `_rpgState$lifeSkills{3,4,5,6,8,9}` babel optional-chaining temps were
    hoisted to BroTown's top-level var list (not declared in the panel);
    declared locally here (reassigned before each read, byte-equivalent). */
+/* v2.3.1232: Lantern Slate restyle (docs/LANTERN-SLATE-SPEC.md) —
+   presentation only: activate/evolve/enchant handlers, index math and
+   localStorage writes are unchanged. Segmented 36px tabs, raised
+   actionable pet cards with brass-fill active state, #121B20 preview
+   well, one brass Evolve primary; the old orange (#ea580c) accent is
+   retired (brass = selection, semantic colors elsewhere). Pet/element
+   colors stay — they are content color. */
+
+/* v2.3.1232: Lantern Slate style tokens — local, no shared module. */
+var LS_CARD = {
+  background: '#202C32',
+  border: '1px solid rgba(238,242,235,.14)',
+  borderRadius: 14,
+  boxShadow: '0 14px 30px rgba(4,7,9,.38)'
+};
+var LS_HEADER = {
+  fontSize: 11,
+  fontWeight: 600,
+  textTransform: 'uppercase',
+  letterSpacing: '.12em',
+  color: '#96A2A0'
+};
+var LS_WELL = {
+  background: '#121B20',
+  borderRadius: 10,
+  boxShadow: 'inset 0 2px 4px rgba(0,0,0,.44), inset 0 1px 0 rgba(255,255,255,.035)'
+};
+var LS_DIVIDER = '1px solid rgba(238,242,235,.10)';
+/* v2.3.1232: UI-Bible icon with emoji fallback (onError replaceWith
+   pattern from src/ui/mobile/dash/SkillsPanel.jsx) */
+var lsIcon = function lsIcon(src, emoji, size) {
+  return React.createElement('img', {
+    src: src,
+    alt: '',
+    draggable: false,
+    style: { width: size || 18, height: size || 18, objectFit: 'contain', flex: 'none' },
+    onError: function (e) { e.currentTarget.replaceWith(document.createTextNode(emoji)); }
+  });
+};
+
 export function PetHousePanel(props) {
   var rpgState = props.rpgState,
     stateRef = props.stateRef,
@@ -33,43 +73,52 @@ export function PetHousePanel(props) {
     onClick: function onClick(e) {
       return e.stopPropagation();
     },
-    style: {
+    style: Object.assign({}, LS_CARD, {
       width: 340,
       maxHeight: '85vh',
       overflowY: 'auto',
       padding: 16,
       textAlign: 'left'
-    }
+    })
   }, /*#__PURE__*/React.createElement("button", {
     className: "bt-inspect-close",
     onClick: function onClick() {
       return setShowPetHouse(false);
     }
-  }, "\u2715"), /*#__PURE__*/React.createElement("div", {
+  }, "✕"), /*#__PURE__*/React.createElement("div", {
     style: {
-      fontSize: 15,
-      fontWeight: 800,
-      color: '#ea580c',
-      marginBottom: 2,
-      textAlign: 'center'
+      display: 'flex',
+      alignItems: 'center',
+      gap: 8,
+      marginBottom: 4,
+      minHeight: 24
     }
-  }, "\uD83D\uDC3E Pet House"), /*#__PURE__*/React.createElement("div", {
+  }, lsIcon('/icons/ui/evt-pets.webp?v=2.3.1232', '🐾', 20), /*#__PURE__*/React.createElement("span", {
     style: {
-      fontSize: 8,
-      color: 'rgba(255,255,255,.35)',
-      textAlign: 'center',
-      marginBottom: 8
+      fontSize: 13,
+      fontWeight: 700,
+      textTransform: 'uppercase',
+      letterSpacing: '.10em',
+      color: '#F7F2E7'
+    }
+  }, "Pet House")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: '#96A2A0',
+      marginBottom: 10,
+      fontVariantNumeric: 'tabular-nums'
     }
   }, (((_rpgState$lifeSkills3 = rpgState.lifeSkills) === null || _rpgState$lifeSkills3 === void 0 ? void 0 : _rpgState$lifeSkills3.pets) || []).length, "/", MAX_PET_SLOTS, " pets \xB7 Trapping Lv", ((_rpgState$lifeSkills4 = rpgState.lifeSkills) === null || _rpgState$lifeSkills4 === void 0 || (_rpgState$lifeSkills4 = _rpgState$lifeSkills4.trapping) === null || _rpgState$lifeSkills4 === void 0 ? void 0 : _rpgState$lifeSkills4.level) || 1), /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
-      gap: 2,
-      marginBottom: 10,
-      borderRadius: 8,
-      overflow: 'hidden',
-      border: '1px solid rgba(255,255,255,.1)'
+      gap: 3,
+      marginBottom: 14,
+      borderRadius: 10,
+      padding: 3,
+      background: '#121B20',
+      boxShadow: 'inset 0 2px 4px rgba(0,0,0,.44)'
     }
-  }, [['pets', '🐾 Pets'], ['evolve', '🧬 Evolve'], ['enchant', '✨ Enchant']].map(function (_ref58) {
+  }, [['pets', 'Pets'], ['evolve', 'Evolve'], ['enchant', 'Enchant']].map(function (_ref58) {
     var _ref59 = _slicedToArray(_ref58, 2),
       id = _ref59[0],
       label = _ref59[1];
@@ -80,29 +129,33 @@ export function PetHousePanel(props) {
       },
       style: {
         flex: 1,
-        padding: '6px 2px',
-        fontSize: 9,
-        fontWeight: 700,
+        height: 36,
+        padding: '0 2px',
+        fontSize: 12,
+        fontWeight: 600,
         border: 'none',
+        borderRadius: 8,
         cursor: 'pointer',
-        background: petHouseTab === id ? 'rgba(234,88,12,.2)' : 'rgba(255,255,255,.03)',
-        color: petHouseTab === id ? '#ea580c' : 'rgba(255,255,255,.4)',
-        fontFamily: 'inherit'
+        background: petHouseTab === id ? '#2B3940' : 'transparent',
+        boxShadow: petHouseTab === id ? 'inset 0 -2px 0 #D8A85F' : 'none',
+        color: petHouseTab === id ? '#F7F2E7' : '#96A2A0',
+        fontFamily: 'inherit',
+        transition: 'all 140ms cubic-bezier(.2,.8,.2,1)'
       }
     }, label);
   })), petHouseTab === 'pets' && /*#__PURE__*/React.createElement("div", null, (((_rpgState$lifeSkills5 = rpgState.lifeSkills) === null || _rpgState$lifeSkills5 === void 0 ? void 0 : _rpgState$lifeSkills5.pets) || []).length === 0 && /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 9,
-      color: 'rgba(255,255,255,.2)',
-      fontStyle: 'italic',
-      padding: 8,
-      textAlign: 'center'
-    }
-  }, "No pets yet. Weaken monsters to <20% HP and tap \uD83E\uDEA4!"), /*#__PURE__*/React.createElement("div", {
+    style: Object.assign({}, LS_WELL, {
+      fontSize: 12,
+      color: '#96A2A0',
+      padding: '18px 10px',
+      textAlign: 'center',
+      lineHeight: 1.4
+    })
+  }, "No pets yet. Weaken monsters to <20% HP and tap 🪤!"), /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'grid',
       gridTemplateColumns: 'repeat(2,1fr)',
-      gap: 4
+      gap: 6
     }
   }, (((_rpgState$lifeSkills6 = rpgState.lifeSkills) === null || _rpgState$lifeSkills6 === void 0 ? void 0 : _rpgState$lifeSkills6.pets) || []).map(function (pet, pi) {
     var _rpgState$lifeSkills7, _ELEMENTS$pet$element;
@@ -111,11 +164,13 @@ export function PetHousePanel(props) {
     return /*#__PURE__*/React.createElement("div", {
       key: pet.id,
       style: {
-        padding: 8,
-        borderRadius: 8,
+        padding: 10,
+        borderRadius: 10,
         textAlign: 'center',
-        background: isActive ? 'rgba(216,169,77,.1)' : 'rgba(255,255,255,.03)',
-        border: '1.5px solid ' + (isActive ? 'rgba(216,169,77,.4)' : 'rgba(255,255,255,.08)'),
+        minHeight: 44,
+        background: isActive ? '#3B3427' : 'linear-gradient(180deg, #304047 0%, #2B3940 100%)',
+        border: '1px solid ' + (isActive ? '#D8A85F' : 'rgba(238,242,235,.14)'),
+        boxShadow: 'inset 0 1px 0 rgba(255,255,255,.08), 0 6px 14px rgba(5,8,10,.18)',
         cursor: 'pointer'
       },
       onClick: function onClick() {
@@ -129,99 +184,104 @@ export function PetHousePanel(props) {
       }
     }, /*#__PURE__*/React.createElement("div", {
       style: {
-        fontSize: 22
+        fontSize: 24
       }
     }, pet.emoji), /*#__PURE__*/React.createElement("div", {
       style: {
-        fontSize: 9,
-        fontWeight: 800,
+        fontSize: 13,
+        fontWeight: 700,
         color: pet.color
       }
     }, pet.name), /*#__PURE__*/React.createElement("div", {
       style: {
-        fontSize: 7,
-        color: 'rgba(255,255,255,.3)'
+        fontSize: 11,
+        color: '#96A2A0',
+        fontVariantNumeric: 'tabular-nums'
       }
     }, "Lv", pet.level, " ", pet.archetype), pet.element && /*#__PURE__*/React.createElement("div", {
       style: {
-        fontSize: 7,
+        fontSize: 11,
+        fontWeight: 600,
         color: (_ELEMENTS$pet$element = ELEMENTS[pet.element]) === null || _ELEMENTS$pet$element === void 0 ? void 0 : _ELEMENTS$pet$element.color
       }
     }, pet.element), /*#__PURE__*/React.createElement("div", {
       style: {
-        fontSize: 7,
-        color: pet.evolutionTier >= 2 ? '#D8A94D' : pet.evolutionTier >= 1 ? '#a855f7' : 'rgba(255,255,255,.25)'
+        fontSize: 11,
+        fontWeight: 600,
+        color: pet.evolutionTier >= 2 ? '#D8A94D' : pet.evolutionTier >= 1 ? '#9A76D3' : '#96A2A0'
       }
     }, tier), pet._enchants && pet._enchants.length > 0 && /*#__PURE__*/React.createElement("div", {
       style: {
-        fontSize: 7,
+        fontSize: 11,
         display: 'flex',
-        gap: 2,
+        gap: 3,
         justifyContent: 'center',
-        marginTop: 2
+        marginTop: 3
       }
     }, pet._enchants.map(function (e, i) {
       var _ELEMENTS$e$element;
       return /*#__PURE__*/React.createElement("span", {
         key: i,
         style: {
-          width: 6,
-          height: 6,
-          borderRadius: 3,
-          background: ((_ELEMENTS$e$element = ELEMENTS[e.element]) === null || _ELEMENTS$e$element === void 0 ? void 0 : _ELEMENTS$e$element.color) || '#888',
+          width: 7,
+          height: 7,
+          borderRadius: 4,
+          background: ((_ELEMENTS$e$element = ELEMENTS[e.element]) === null || _ELEMENTS$e$element === void 0 ? void 0 : _ELEMENTS$e$element.color) || '#96A2A0',
           display: 'inline-block'
         }
       });
     })), pet.combatPower && /*#__PURE__*/React.createElement("div", {
       style: {
-        fontSize: 7,
-        color: 'rgba(255,255,255,.2)'
+        fontSize: 11,
+        color: '#96A2A0',
+        fontVariantNumeric: 'tabular-nums'
       }
-    }, "\u2694\uFE0F", pet.combatPower), isActive && /*#__PURE__*/React.createElement("div", {
+    }, "⚔️", pet.combatPower), isActive && /*#__PURE__*/React.createElement("div", {
       style: {
-        fontSize: 7,
-        fontWeight: 800,
-        color: '#D8A94D',
-        marginTop: 2
+        fontSize: 10,
+        fontWeight: 700,
+        letterSpacing: '.12em',
+        color: '#D8A85F',
+        marginTop: 4
       }
     }, "ACTIVE"));
   })), /*#__PURE__*/React.createElement("div", {
     style: {
-      fontSize: 7,
-      color: 'rgba(255,255,255,.2)',
-      marginTop: 6
+      fontSize: 11,
+      color: '#96A2A0',
+      marginTop: 8,
+      lineHeight: 1.4
     }
   }, "Tap to set active. Active pet follows and auto-loots.")), petHouseTab === 'evolve' && function (_rpgState$lifeSkills8) {
     var pets = ((_rpgState$lifeSkills8 = rpgState.lifeSkills) === null || _rpgState$lifeSkills8 === void 0 ? void 0 : _rpgState$lifeSkills8.pets) || [];
     var canEvolve = petEvolve1 !== null && petEvolve2 !== null && petEvolve1 !== petEvolve2 && pets[petEvolve1] && pets[petEvolve2];
     return /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
       style: {
-        fontSize: 9,
-        color: 'rgba(255,255,255,.35)',
-        marginBottom: 6
+        fontSize: 12,
+        color: '#96A2A0',
+        marginBottom: 10,
+        lineHeight: 1.4
       }
     }, "Select two pets to merge. Both are consumed. The evolved pet inherits the best traits."), /*#__PURE__*/React.createElement("div", {
       style: {
         display: 'flex',
-        gap: 8,
-        marginBottom: 8
+        gap: 10,
+        marginBottom: 12
       }
     }, /*#__PURE__*/React.createElement("div", {
       style: {
         flex: 1
       }
     }, /*#__PURE__*/React.createElement("div", {
-      style: {
-        fontSize: 8,
-        fontWeight: 700,
-        color: '#D8A94D',
-        marginBottom: 3
-      }
+      style: Object.assign({}, LS_HEADER, {
+        fontSize: 10,
+        marginBottom: 4
+      })
     }, "Pet 1"), /*#__PURE__*/React.createElement("div", {
       style: {
         display: 'flex',
         flexWrap: 'wrap',
-        gap: 2
+        gap: 4
       }
     }, pets.map(function (p, i) {
       return /*#__PURE__*/React.createElement("button", {
@@ -230,12 +290,15 @@ export function PetHousePanel(props) {
           return setPetEvolve1(petEvolve1 === i ? null : i);
         },
         style: {
-          padding: '3px 6px',
-          borderRadius: 4,
-          fontSize: 8,
-          border: '1.5px solid ' + (petEvolve1 === i ? '#ea580c' : 'rgba(255,255,255,.08)'),
-          background: petEvolve1 === i ? 'rgba(234,88,12,.15)' : 'rgba(255,255,255,.02)',
-          color: petEvolve1 === i ? '#fff' : p.color,
+          minHeight: 32,
+          boxSizing: 'border-box',
+          padding: '4px 10px',
+          borderRadius: 999,
+          fontSize: 11,
+          fontWeight: 600,
+          border: '1px solid ' + (petEvolve1 === i ? '#D8A85F' : 'rgba(238,242,235,.08)'),
+          background: petEvolve1 === i ? '#3B3427' : 'transparent',
+          color: petEvolve1 === i ? '#D8A85F' : p.color,
           cursor: 'pointer',
           opacity: petEvolve2 === i ? 0.3 : 1
         }
@@ -245,17 +308,15 @@ export function PetHousePanel(props) {
         flex: 1
       }
     }, /*#__PURE__*/React.createElement("div", {
-      style: {
-        fontSize: 8,
-        fontWeight: 700,
-        color: '#D8A94D',
-        marginBottom: 3
-      }
+      style: Object.assign({}, LS_HEADER, {
+        fontSize: 10,
+        marginBottom: 4
+      })
     }, "Pet 2"), /*#__PURE__*/React.createElement("div", {
       style: {
         display: 'flex',
         flexWrap: 'wrap',
-        gap: 2
+        gap: 4
       }
     }, pets.map(function (p, i) {
       return /*#__PURE__*/React.createElement("button", {
@@ -264,45 +325,44 @@ export function PetHousePanel(props) {
           return setPetEvolve2(petEvolve2 === i ? null : i);
         },
         style: {
-          padding: '3px 6px',
-          borderRadius: 4,
-          fontSize: 8,
-          border: '1.5px solid ' + (petEvolve2 === i ? '#ea580c' : 'rgba(255,255,255,.08)'),
-          background: petEvolve2 === i ? 'rgba(234,88,12,.15)' : 'rgba(255,255,255,.02)',
-          color: petEvolve2 === i ? '#fff' : p.color,
+          minHeight: 32,
+          boxSizing: 'border-box',
+          padding: '4px 10px',
+          borderRadius: 999,
+          fontSize: 11,
+          fontWeight: 600,
+          border: '1px solid ' + (petEvolve2 === i ? '#D8A85F' : 'rgba(238,242,235,.08)'),
+          background: petEvolve2 === i ? '#3B3427' : 'transparent',
+          color: petEvolve2 === i ? '#D8A85F' : p.color,
           cursor: 'pointer',
           opacity: petEvolve1 === i ? 0.3 : 1
         }
       }, p.emoji, " ", p.name);
     })))), canEvolve && /*#__PURE__*/React.createElement("div", {
-      style: {
-        padding: 8,
-        borderRadius: 6,
-        background: 'rgba(234,88,12,.08)',
-        border: '1px solid rgba(234,88,12,.2)',
-        marginBottom: 6,
+      style: Object.assign({}, LS_WELL, {
+        padding: 10,
+        marginBottom: 10,
         textAlign: 'center'
-      }
+      })
     }, /*#__PURE__*/React.createElement("div", {
-      style: {
-        fontSize: 8,
-        fontWeight: 700,
-        color: '#ea580c',
-        marginBottom: 2
-      }
-    }, "\uD83E\uDDEC Evolution Preview"), /*#__PURE__*/React.createElement("div", {
-      style: {
+      style: Object.assign({}, LS_HEADER, {
         fontSize: 10,
-        fontWeight: 800,
-        color: '#fff'
+        marginBottom: 4
+      })
+    }, "🧬 Evolution Preview"), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 13,
+        fontWeight: 700,
+        color: '#F7F2E7'
       }
     }, pets[petEvolve1].emoji, " ", pets[petEvolve1].name, " + ", pets[petEvolve2].emoji, " ", pets[petEvolve2].name), /*#__PURE__*/React.createElement("div", {
       style: {
-        fontSize: 8,
-        color: 'rgba(255,255,255,.4)',
-        marginTop: 2
+        fontSize: 12,
+        color: '#B9C1BF',
+        marginTop: 3,
+        fontVariantNumeric: 'tabular-nums'
       }
-    }, "\u2192 ", PET_EVOLUTION_TIERS[Math.min((pets[petEvolve1].evolutionTier || 0) + 1, 3)], " form \xB7 Lv", Math.max(pets[petEvolve1].level, pets[petEvolve2].level) + 2)), /*#__PURE__*/React.createElement("button", {
+    }, "→ ", PET_EVOLUTION_TIERS[Math.min((pets[petEvolve1].evolutionTier || 0) + 1, 3)], " form \xB7 Lv", Math.max(pets[petEvolve1].level, pets[petEvolve2].level) + 2)), /*#__PURE__*/React.createElement("button", {
       disabled: !canEvolve,
       onClick: function onClick() {
         if (!canEvolve) return;
@@ -338,30 +398,34 @@ export function PetHousePanel(props) {
       },
       style: {
         width: '100%',
-        padding: '8px 0',
-        borderRadius: 6,
-        fontSize: 11,
-        fontWeight: 800,
-        border: '1.5px solid ' + (canEvolve ? 'rgba(234,88,12,.4)' : 'rgba(255,255,255,.06)'),
-        background: canEvolve ? 'rgba(234,88,12,.15)' : 'rgba(255,255,255,.02)',
-        color: canEvolve ? '#ea580c' : 'rgba(255,255,255,.15)',
+        minHeight: 44,
+        padding: '0 12px',
+        borderRadius: 11,
+        fontSize: 13,
+        fontWeight: 700,
+        border: 'none',
+        background: canEvolve ? '#D8A85F' : '#2B3940',
+        color: canEvolve ? '#20170D' : '#687575',
         cursor: canEvolve ? 'pointer' : 'not-allowed'
       }
-    }, "\uD83E\uDDEC Evolve Pets"));
+    }, "🧬 Evolve Pets"));
   }(), petHouseTab === 'enchant' && function (_rpgState$lifeSkills9) {
     var pets = ((_rpgState$lifeSkills9 = rpgState.lifeSkills) === null || _rpgState$lifeSkills9 === void 0 ? void 0 : _rpgState$lifeSkills9.pets) || [];
     return /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
       style: {
-        fontSize: 9,
-        color: 'rgba(255,255,255,.35)',
-        marginBottom: 6
+        fontSize: 12,
+        color: '#96A2A0',
+        marginBottom: 10,
+        lineHeight: 1.4
       }
     }, "Slot elements onto pets for elemental attacks. Evolved pets have more slots."), pets.length === 0 && /*#__PURE__*/React.createElement("div", {
-      style: {
-        fontSize: 8,
-        color: 'rgba(255,255,255,.15)',
-        fontStyle: 'italic'
-      }
+      style: Object.assign({}, LS_WELL, {
+        fontSize: 12,
+        color: '#96A2A0',
+        padding: '18px 10px',
+        textAlign: 'center',
+        lineHeight: 1.4
+      })
     }, "No pets to enchant"), pets.map(function (pet, pi) {
       var maxSlots = pet.enchantSlots || 1;
       var usedSlots = (pet._enchants || []).length;
@@ -369,59 +433,60 @@ export function PetHousePanel(props) {
       return /*#__PURE__*/React.createElement("div", {
         key: pet.id,
         style: {
-          padding: 8,
-          borderRadius: 6,
-          background: 'rgba(255,255,255,.02)',
-          border: '1px solid rgba(255,255,255,.06)',
-          marginBottom: 4
+          padding: '10px 0',
+          borderBottom: LS_DIVIDER
         }
       }, /*#__PURE__*/React.createElement("div", {
         style: {
           display: 'flex',
           alignItems: 'center',
-          gap: 6,
-          marginBottom: 4
+          gap: 8,
+          minHeight: 28,
+          marginBottom: 6
         }
       }, /*#__PURE__*/React.createElement("span", {
         style: {
-          fontSize: 16
+          fontSize: 18
         }
       }, pet.emoji), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
         style: {
-          fontSize: 9,
-          fontWeight: 700,
+          fontSize: 13,
+          fontWeight: 600,
           color: pet.color
         }
       }, pet.name), /*#__PURE__*/React.createElement("div", {
         style: {
-          fontSize: 7,
-          color: 'rgba(255,255,255,.3)'
+          fontSize: 11,
+          color: '#96A2A0',
+          fontVariantNumeric: 'tabular-nums'
         }
       }, "Slots: ", usedSlots, "/", maxSlots, " \xB7 ", PET_EVOLUTION_TIERS[pet.evolutionTier || 0]))), (pet._enchants || []).length > 0 && /*#__PURE__*/React.createElement("div", {
         style: {
           display: 'flex',
-          gap: 2,
-          marginBottom: 4
+          gap: 4,
+          marginBottom: 6,
+          flexWrap: 'wrap'
         }
       }, pet._enchants.map(function (e, i) {
         var _ELEMENTS$e$element2, _ELEMENTS$e$element3, _ELEMENTS$e$element4;
         return /*#__PURE__*/React.createElement("span", {
           key: i,
           style: {
-            padding: '2px 5px',
-            borderRadius: 3,
-            fontSize: 7,
-            fontWeight: 700,
+            padding: '3px 9px',
+            borderRadius: 999,
+            fontSize: 11,
+            fontWeight: 600,
+            fontVariantNumeric: 'tabular-nums',
             background: ((_ELEMENTS$e$element2 = ELEMENTS[e.element]) === null || _ELEMENTS$e$element2 === void 0 ? void 0 : _ELEMENTS$e$element2.color) + '20',
             border: '1px solid ' + ((_ELEMENTS$e$element3 = ELEMENTS[e.element]) === null || _ELEMENTS$e$element3 === void 0 ? void 0 : _ELEMENTS$e$element3.color) + '40',
             color: (_ELEMENTS$e$element4 = ELEMENTS[e.element]) === null || _ELEMENTS$e$element4 === void 0 ? void 0 : _ELEMENTS$e$element4.color
           }
-        }, e.element, " \u2694\uFE0F", e.power);
+        }, e.element, " ⚔️", e.power);
       })), canEnchant && /*#__PURE__*/React.createElement("div", {
         style: {
           display: 'flex',
           flexWrap: 'wrap',
-          gap: 2
+          gap: 4
         }
       }, Object.entries(ELEMENTS).filter(function (_ref60) {
         var _ref61 = _slicedToArray(_ref60, 2),
@@ -452,16 +517,23 @@ export function PetHousePanel(props) {
             } catch (_unused28) {}
           },
           style: {
-            padding: '2px 5px',
-            borderRadius: 3,
-            fontSize: 7,
-            fontWeight: 700,
+            minHeight: 32,
+            boxSizing: 'border-box',
+            padding: '4px 10px',
+            borderRadius: 999,
+            fontSize: 11,
+            fontWeight: 600,
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 4,
             border: '1px solid ' + el.color + '40',
-            background: el.color + '10',
+            background: '#19252A',
             color: el.color,
             cursor: 'pointer'
           }
-        }, key, " (50G)");
+        }, /* v2.3.1232: elem-*.webp icon; the '●' fallback inherits the
+             chip's element color */
+        lsIcon('/icons/ui/elem-' + key + '.webp?v=2.3.1232', '●', 13), key, " (50G)");
       })));
     }));
   }()));

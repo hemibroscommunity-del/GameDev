@@ -19,6 +19,100 @@ import { pushDmgPopup } from '@/game/combatHelpers.js';
    code path is unreachable / never actually calls it). A named ESM import
    would hard-fail rollup, so it's declared as an undefined local to mirror
    the original behavior byte-for-byte. */
+/* v2.3.1232: Lantern Slate restyle (docs/LANTERN-SLATE-SPEC.md) —
+   presentation only: every clan op (create / accept invite / paint /
+   save / declare war / leave) keeps its exact handler and conditionals.
+   Create Clan is the region's one brass primary; Declare War / Leave
+   Clan use the destructive language; war-zone + target chips follow the
+   32px pill spec (brass-fill selection instead of per-element colors);
+   inputs move onto #121B20 wells. */
+
+/* v2.3.1232: Lantern Slate style tokens — local, no shared module. */
+var LS_CARD = {
+  background: '#202C32',
+  border: '1px solid rgba(238,242,235,.14)',
+  borderRadius: 14,
+  boxShadow: '0 14px 30px rgba(4,7,9,.38)',
+  textAlign: 'left'
+};
+var LS_HEADER = {
+  fontSize: 11,
+  fontWeight: 600,
+  textTransform: 'uppercase',
+  letterSpacing: '.12em',
+  color: '#96A2A0'
+};
+var LS_DIVIDER = '1px solid rgba(238,242,235,.10)';
+var LS_PRIMARY = {
+  width: '100%',
+  minHeight: 44,
+  padding: '0 12px',
+  borderRadius: 11,
+  border: 'none',
+  fontSize: 13,
+  fontWeight: 700,
+  background: '#D8A85F',
+  color: '#20170D',
+  cursor: 'pointer'
+};
+var LS_SECONDARY = {
+  minHeight: 44,
+  padding: '0 12px',
+  borderRadius: 11,
+  border: '1px solid rgba(238,242,235,.14)',
+  background: 'linear-gradient(180deg, #304047 0%, #2B3940 100%)',
+  color: '#F7F2E7',
+  fontSize: 13,
+  fontWeight: 700,
+  cursor: 'pointer'
+};
+var LS_INPUT = {
+  width: '100%',
+  height: 44,
+  padding: '0 12px',
+  borderRadius: 11,
+  border: '1px solid rgba(238,242,235,.14)',
+  background: '#121B20',
+  color: '#F7F2E7',
+  fontSize: 14,
+  outline: 'none',
+  boxSizing: 'border-box',
+  caretColor: '#F0C878'
+};
+/* selectable 32px pill chip (spec: selected = #3B3427 fill + brass label) */
+var lsChip = function lsChip(sel) {
+  return {
+    minHeight: 32,
+    boxSizing: 'border-box',
+    padding: '4px 10px',
+    borderRadius: 999,
+    fontSize: 11,
+    fontWeight: 600,
+    border: '1px solid ' + (sel ? '#D8A85F' : 'rgba(238,242,235,.08)'),
+    background: sel ? '#3B3427' : 'transparent',
+    color: sel ? '#D8A85F' : '#96A2A0',
+    cursor: 'pointer'
+  };
+};
+/* v2.3.1232: UI-Bible icon with emoji fallback (onError replaceWith
+   pattern from src/ui/mobile/dash/SkillsPanel.jsx) */
+var lsIcon = function lsIcon(src, emoji, size) {
+  return React.createElement('img', {
+    src: src,
+    alt: '',
+    draggable: false,
+    style: { width: size || 18, height: size || 18, objectFit: 'contain', flex: 'none' },
+    onError: function (e) { e.currentTarget.replaceWith(document.createTextNode(emoji)); }
+  });
+};
+var lsTitleRow = function lsTitleRow(label) {
+  return React.createElement('div', {
+    style: { display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12, minHeight: 24 }
+  }, lsIcon('/icons/ui/panel-clan.webp?v=2.3.1232', '🏰', 20), React.createElement('span', {
+    style: { fontSize: 13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.10em', color: '#F7F2E7' }
+  }, label));
+};
+
 export function ClanPanel(props) {
   var rpgState = props.rpgState,
     clanCreateMode = props.clanCreateMode,
@@ -41,48 +135,33 @@ export function ClanPanel(props) {
     onClick: function onClick(e) {
       return e.stopPropagation();
     },
-    style: {
+    style: Object.assign({}, LS_CARD, {
       width: 320,
       maxHeight: '80vh',
-      overflowY: 'auto'
-    }
+      overflowY: 'auto',
+      padding: 16
+    })
   }, /*#__PURE__*/React.createElement("button", {
     className: "bt-inspect-close",
     onClick: function onClick() {
       setShowClanPanel(false);
       setClanCreateMode(false);
     }
-  }, "\u2715"), !clanData && !clanCreateMode && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
+  }, "✕"), !clanData && !clanCreateMode && /*#__PURE__*/React.createElement(React.Fragment, null, lsTitleRow("Clans"), /*#__PURE__*/React.createElement("div", {
     style: {
-      fontSize: 16,
-      fontWeight: 800,
-      color: '#a78bfa',
-      marginBottom: 8
-    }
-  }, "\uD83C\uDFF0 Clans"), /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 10,
-      color: 'rgba(255,255,255,.5)',
-      marginBottom: 12,
+      fontSize: 13.5,
+      color: '#B9C1BF',
+      marginBottom: 14,
       lineHeight: 1.5
     }
   }, "Clans are groups of up to ", CLAN_MAX_MEMBERS, " players. Create one with a custom name, tag, and pixel logo that shows above your head."), /*#__PURE__*/React.createElement("button", {
-    style: {
-      width: '100%',
-      padding: '10px',
-      borderRadius: 8,
-      border: 'none',
-      fontSize: 12,
-      fontWeight: 800,
-      background: '#a78bfa',
-      color: '#fff',
-      cursor: 'pointer',
+    style: Object.assign({}, LS_PRIMARY, {
       marginBottom: 8
-    },
+    }),
     onClick: function onClick() {
       return setClanCreateMode(true);
     }
-  }, "\uD83C\uDFF0 Create Clan (", CLAN_CREATE_COST, "g)"), (function () {
+  }, "Create Clan (", CLAN_CREATE_COST, "g)"), (function () {
     /* v2.3.1125: incoming invite acceptance.  clan_invite broadcasts
        used to go nowhere -- no client handler existed, so joining a
        clan was impossible.  gameEvents now parks the invite on
@@ -92,18 +171,11 @@ export function ClanPanel(props) {
     var _inv = stateRef.current._pendingClanInvite;
     if (!_inv || Date.now() - _inv.ts > 120000) return null;
     return /*#__PURE__*/React.createElement("button", {
-      style: {
+      style: Object.assign({}, LS_SECONDARY, {
         width: '100%',
-        padding: '10px',
-        borderRadius: 8,
-        border: '1px solid #59BF91',
-        fontSize: 12,
-        fontWeight: 800,
-        background: 'rgba(89,191,145,.15)',
         color: '#59BF91',
-        cursor: 'pointer',
         marginBottom: 8
-      },
+      }),
       onClick: function onClick() {
         var S = stateRef.current;
         if (S.channel) S.channel.send({
@@ -114,75 +186,44 @@ export function ClanPanel(props) {
         S._pendingClanInvite = null;
         pushDmgPopup(S, S.player.x, S.player.y - 30, 'Joining [' + _inv.clanTag + ']...', '#59BF91');
       }
-    }, "\u2705 Accept invite: [", _inv.clanTag, "] ", _inv.clanName, " (from ", _inv.fromName, ")");
+    }, "✅ Accept invite: [", _inv.clanTag, "] ", _inv.clanName, " (from ", _inv.fromName, ")");
   })(), /*#__PURE__*/React.createElement("div", {
     style: {
-      fontSize: 8,
-      color: 'rgba(255,255,255,.3)'
+      fontSize: 11,
+      color: '#96A2A0',
+      lineHeight: 1.4
     }
   }, "To join a clan, have a clan member invite you by tapping your character.")), !clanData && clanCreateMode && function () {
     var nameRef = React.createRef();
     var tagRef = React.createRef();
-    return /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
+    return /*#__PURE__*/React.createElement(React.Fragment, null, lsTitleRow("Create Clan"), /*#__PURE__*/React.createElement("div", {
       style: {
-        fontSize: 16,
-        fontWeight: 800,
-        color: '#a78bfa',
-        marginBottom: 8
-      }
-    }, "\uD83C\uDFF0 Create Clan"), /*#__PURE__*/React.createElement("div", {
-      style: {
-        marginBottom: 8
+        marginBottom: 12
       }
     }, /*#__PURE__*/React.createElement("div", {
-      style: {
-        fontSize: 9,
-        fontWeight: 700,
-        color: 'rgba(255,255,255,.5)',
-        marginBottom: 3
-      }
+      style: Object.assign({}, LS_HEADER, {
+        marginBottom: 6
+      })
     }, "Clan Name"), /*#__PURE__*/React.createElement("input", {
       ref: nameRef,
       maxLength: CLAN_NAME_MAX,
       placeholder: "My Awesome Clan",
-      style: {
-        width: '100%',
-        padding: '6px 8px',
-        borderRadius: 6,
-        border: '1px solid rgba(255,255,255,.15)',
-        background: 'rgba(255,255,255,.06)',
-        color: '#fff',
-        fontSize: 11,
-        outline: 'none',
-        boxSizing: 'border-box'
-      }
+      style: LS_INPUT
     })), /*#__PURE__*/React.createElement("div", {
       style: {
-        marginBottom: 8
+        marginBottom: 12
       }
     }, /*#__PURE__*/React.createElement("div", {
-      style: {
-        fontSize: 9,
-        fontWeight: 700,
-        color: 'rgba(255,255,255,.5)',
-        marginBottom: 3
-      }
+      style: Object.assign({}, LS_HEADER, {
+        marginBottom: 6
+      })
     }, "Clan Tag (max ", CLAN_TAG_MAX, " chars)"), /*#__PURE__*/React.createElement("input", {
       ref: tagRef,
       maxLength: CLAN_TAG_MAX,
       placeholder: "CLAN",
-      style: {
-        width: '100%',
-        padding: '6px 8px',
-        borderRadius: 6,
-        border: '1px solid rgba(255,255,255,.15)',
-        background: 'rgba(255,255,255,.06)',
-        color: '#fff',
-        fontSize: 11,
-        outline: 'none',
-        boxSizing: 'border-box',
+      style: Object.assign({}, LS_INPUT, {
         textTransform: 'uppercase'
-      }
+      })
     })), /*#__PURE__*/React.createElement("div", {
       style: {
         display: 'flex',
@@ -192,13 +233,14 @@ export function ClanPanel(props) {
     }, /*#__PURE__*/React.createElement("button", {
       style: {
         flex: 1,
-        padding: '10px',
-        borderRadius: 8,
+        minHeight: 44,
+        padding: '0 12px',
+        borderRadius: 11,
         border: 'none',
-        fontSize: 11,
-        fontWeight: 800,
-        background: rpgState.coins >= CLAN_CREATE_COST ? '#a78bfa' : 'rgba(255,255,255,.08)',
-        color: rpgState.coins >= CLAN_CREATE_COST ? '#fff' : 'rgba(255,255,255,.3)',
+        fontSize: 13,
+        fontWeight: 700,
+        background: rpgState.coins >= CLAN_CREATE_COST ? '#D8A85F' : '#2B3940',
+        color: rpgState.coins >= CLAN_CREATE_COST ? '#20170D' : '#687575',
         cursor: 'pointer'
       },
       onClick: function onClick() {
@@ -251,17 +293,10 @@ export function ClanPanel(props) {
         } catch (e) {}
       }
     }, "Create (", CLAN_CREATE_COST, "g)"), /*#__PURE__*/React.createElement("button", {
-      style: {
+      style: Object.assign({}, LS_SECONDARY, {
         flex: 0.5,
-        padding: '10px',
-        borderRadius: 8,
-        border: '1px solid rgba(255,255,255,.15)',
-        background: 'rgba(255,255,255,.06)',
-        color: 'rgba(255,255,255,.6)',
-        fontSize: 11,
-        fontWeight: 600,
-        cursor: 'pointer'
-      },
+        color: '#B9C1BF'
+      }),
       onClick: function onClick() {
         return setClanCreateMode(false);
       }
@@ -270,17 +305,19 @@ export function ClanPanel(props) {
     style: {
       display: 'flex',
       alignItems: 'center',
-      gap: 8,
-      marginBottom: 8
+      gap: 10,
+      minHeight: 44,
+      marginBottom: 12
     }
   }, /*#__PURE__*/React.createElement("div", {
     style: {
       width: 40,
       height: 40,
-      border: '1px solid rgba(255,255,255,.15)',
-      borderRadius: 4,
+      flex: 'none',
+      border: '1px solid rgba(238,242,235,.14)',
+      borderRadius: 8,
       overflow: 'hidden',
-      background: 'rgba(0,0,0,.3)',
+      background: '#121B20',
       position: 'relative'
     }
   }, clanData.logo && function () {
@@ -304,40 +341,42 @@ export function ClanPanel(props) {
   }()), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 14,
-      fontWeight: 800,
-      color: '#a78bfa'
+      fontWeight: 700,
+      color: '#F7F2E7'
     }
-  }, "[", clanData.tag, "] ", clanData.name), /*#__PURE__*/React.createElement("div", {
+  }, /*#__PURE__*/React.createElement("span", {
     style: {
-      fontSize: 8,
-      color: 'rgba(255,255,255,.4)'
+      color: '#9A76D3'
+    }
+  }, "[", clanData.tag, "] "), clanData.name), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      color: '#96A2A0',
+      fontVariantNumeric: 'tabular-nums'
     }
   }, ((_clanData$members = clanData.members) === null || _clanData$members === void 0 ? void 0 : _clanData$members.length) || 1, "/", CLAN_MAX_MEMBERS, " members \xB7 Lv", clanData.clanLevel || 1))), /*#__PURE__*/React.createElement("div", {
     style: {
-      marginBottom: 8
+      marginBottom: 12
     }
   }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 10,
-      fontWeight: 700,
-      color: 'rgba(255,255,255,.5)',
-      marginBottom: 4
-    }
-  }, "\uD83C\uDFA8 Logo Editor"), /*#__PURE__*/React.createElement("div", {
+    style: Object.assign({}, LS_HEADER, {
+      marginBottom: 6
+    })
+  }, "Logo Editor"), /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
-      gap: 2,
-      marginBottom: 4,
+      gap: 4,
+      marginBottom: 6,
       flexWrap: 'wrap'
     }
   }, /*#__PURE__*/React.createElement("div", {
     key: "eraser",
     style: {
-      width: 16,
-      height: 16,
-      borderRadius: 3,
+      width: 20,
+      height: 20,
+      borderRadius: 4,
       cursor: 'pointer',
-      border: stateRef.current._clanPaintColor === -1 ? '2px solid #fff' : '1px solid rgba(255,255,255,.2)',
+      border: stateRef.current._clanPaintColor === -1 ? '2px solid #F0C878' : '1px solid rgba(238,242,235,.14)',
       background: 'repeating-conic-gradient(rgba(255,255,255,.1) 0% 25%, transparent 0% 50%) 50% / 8px 8px'
     },
     onClick: function onClick() {
@@ -348,12 +387,12 @@ export function ClanPanel(props) {
     return /*#__PURE__*/React.createElement("div", {
       key: i,
       style: {
-        width: 16,
-        height: 16,
-        borderRadius: 3,
+        width: 20,
+        height: 20,
+        borderRadius: 4,
         background: c,
         cursor: 'pointer',
-        border: stateRef.current._clanPaintColor === i ? '2px solid #fff' : '1px solid rgba(255,255,255,.15)'
+        border: stateRef.current._clanPaintColor === i ? '2px solid #F0C878' : '1px solid rgba(238,242,235,.14)'
       },
       onClick: function onClick() {
         stateRef.current._clanPaintColor = i;
@@ -365,9 +404,10 @@ export function ClanPanel(props) {
       display: 'inline-grid',
       gridTemplateColumns: "repeat(".concat(CLAN_LOGO_SIZE, ",1fr)"),
       gap: 1,
-      background: 'rgba(255,255,255,.08)',
-      padding: 2,
-      borderRadius: 4
+      background: '#121B20',
+      padding: 4,
+      borderRadius: 10,
+      boxShadow: 'inset 0 2px 4px rgba(0,0,0,.44), inset 0 1px 0 rgba(255,255,255,.035)'
     }
   }, clanData.logo.map(function (row, ri) {
     return row.map(function (ci, ci2) {
@@ -377,9 +417,9 @@ export function ClanPanel(props) {
           width: 24,
           height: 24,
           cursor: 'pointer',
-          borderRadius: 1,
-          background: ci >= 0 ? CLAN_COLORS[ci] || '#fff' : 'rgba(255,255,255,.03)',
-          border: '1px solid rgba(255,255,255,.06)'
+          borderRadius: 2,
+          background: ci >= 0 ? CLAN_COLORS[ci] || '#fff' : '#19252A',
+          border: '1px solid rgba(238,242,235,.08)'
         },
         onClick: function onClick() {
           var _stateRef$current$_cl;
@@ -431,18 +471,19 @@ export function ClanPanel(props) {
   }), /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
-      gap: 4,
-      marginTop: 4
+      gap: 6,
+      marginTop: 8
     }
   }, /*#__PURE__*/React.createElement("button", {
     style: {
-      padding: '3px 8px',
-      borderRadius: 4,
-      fontSize: 7,
+      minHeight: 32,
+      padding: '0 12px',
+      borderRadius: 999,
+      fontSize: 11,
       fontWeight: 700,
       cursor: 'pointer',
-      border: '1px solid rgba(217,92,84,.3)',
-      background: 'rgba(217,92,84,.1)',
+      border: '1px solid #C7655F',
+      background: 'transparent',
       color: '#D95C54'
     },
     onClick: function onClick() {
@@ -459,14 +500,15 @@ export function ClanPanel(props) {
     }
   }, "Clear Logo"), /*#__PURE__*/React.createElement("button", {
     style: {
-      padding: '3px 8px',
-      borderRadius: 4,
-      fontSize: 7,
+      minHeight: 32,
+      padding: '0 12px',
+      borderRadius: 999,
+      fontSize: 11,
       fontWeight: 700,
       cursor: 'pointer',
-      border: '1px solid rgba(61,220,151,.3)',
-      background: 'rgba(61,220,151,.1)',
-      color: '#59BF91'
+      border: '1px solid rgba(238,242,235,.14)',
+      background: 'linear-gradient(180deg, #304047 0%, #2B3940 100%)',
+      color: '#F7F2E7'
     },
     onClick: function onClick() {
       try {
@@ -476,44 +518,37 @@ export function ClanPanel(props) {
       BT_AUDIO.collect();
     }
   }, "Save Logo"))), /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 9,
-      fontWeight: 700,
-      color: 'rgba(255,255,255,.5)',
-      marginBottom: 3
-    }
+    style: Object.assign({}, LS_HEADER, {
+      marginBottom: 4
+    })
   }, "Members (", ((_clanData$members2 = clanData.members) === null || _clanData$members2 === void 0 ? void 0 : _clanData$members2.length) || 1, ")"), /*#__PURE__*/React.createElement("div", {
     style: {
-      fontSize: 8,
-      color: 'rgba(255,255,255,.4)',
-      marginBottom: 8
+      fontSize: 12.5,
+      color: '#B9C1BF',
+      marginBottom: 12
     }
   }, (clanData.members || []).map(function (m, i) {
     var _stateRef$current29;
     return /*#__PURE__*/React.createElement("div", {
       key: i,
       style: {
-        padding: '2px 0',
-        borderBottom: '1px solid rgba(255,255,255,.05)'
+        minHeight: 44,
+        display: 'flex',
+        alignItems: 'center',
+        borderBottom: LS_DIVIDER
       }
     }, m === ((_stateRef$current29 = stateRef.current) === null || _stateRef$current29 === void 0 ? void 0 : _stateRef$current29.myId) ? '⭐ You (Founder)' : m);
   })), /*#__PURE__*/React.createElement("div", {
     style: {
-      marginTop: 8,
-      marginBottom: 8,
-      padding: 8,
-      borderRadius: 8,
-      background: 'rgba(217,92,84,.05)',
-      border: '1px solid rgba(217,92,84,.15)'
+      borderTop: LS_DIVIDER,
+      paddingTop: 12,
+      marginBottom: 12
     }
   }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 10,
-      fontWeight: 800,
-      color: '#D95C54',
-      marginBottom: 4
-    }
-  }, "\u2694\uFE0F Clan Wars"), stateRef.current._activeClanWar ? function (_ZONES$war$zone4, _ZONES$war$zone5) {
+    style: Object.assign({}, LS_HEADER, {
+      marginBottom: 8
+    })
+  }, "⚔️ Clan Wars"), stateRef.current._activeClanWar ? function (_ZONES$war$zone4, _ZONES$war$zone5) {
     var war = stateRef.current._activeClanWar;
     var timeLeft = Math.max(0, Math.ceil((war.endTime - Date.now()) / 60000));
     var isChallenger = war.challenger.tag === clanData.tag;
@@ -524,8 +559,8 @@ export function ClanPanel(props) {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        gap: 6,
-        marginBottom: 4
+        gap: 14,
+        marginBottom: 6
       }
     }, /*#__PURE__*/React.createElement("div", {
       style: {
@@ -533,83 +568,88 @@ export function ClanPanel(props) {
       }
     }, /*#__PURE__*/React.createElement("div", {
       style: {
-        fontSize: 10,
-        fontWeight: 800,
-        color: us.color || '#D8A85F'
+        fontSize: 11,
+        fontWeight: 700,
+        color: us.color || '#B9C1BF'
       }
     }, "[", us.tag, "]"), /*#__PURE__*/React.createElement("div", {
       style: {
-        fontSize: 18,
-        fontWeight: 900,
-        color: '#fff'
+        fontSize: 20,
+        fontWeight: 700,
+        fontVariantNumeric: 'tabular-nums',
+        color: '#F7F2E7'
       }
     }, us.score)), /*#__PURE__*/React.createElement("div", {
       style: {
-        fontSize: 10,
-        color: 'rgba(255,255,255,.3)',
-        fontWeight: 700
+        fontSize: 11,
+        color: '#96A2A0',
+        fontWeight: 600,
+        textTransform: 'uppercase',
+        letterSpacing: '.12em'
       }
-    }, "VS"), /*#__PURE__*/React.createElement("div", {
+    }, "vs"), /*#__PURE__*/React.createElement("div", {
       style: {
         textAlign: 'center'
       }
     }, /*#__PURE__*/React.createElement("div", {
       style: {
-        fontSize: 10,
-        fontWeight: 800,
+        fontSize: 11,
+        fontWeight: 700,
         color: them.color || '#D95C54'
       }
     }, "[", them.tag, "]"), /*#__PURE__*/React.createElement("div", {
       style: {
-        fontSize: 18,
-        fontWeight: 900,
-        color: '#fff'
+        fontSize: 20,
+        fontWeight: 700,
+        fontVariantNumeric: 'tabular-nums',
+        color: '#F7F2E7'
       }
     }, them.score))), /*#__PURE__*/React.createElement("div", {
       style: {
-        fontSize: 8,
-        color: 'rgba(255,255,255,.3)',
-        textAlign: 'center'
+        fontSize: 11,
+        color: '#96A2A0',
+        textAlign: 'center',
+        fontVariantNumeric: 'tabular-nums'
       }
     }, ((_ZONES$war$zone4 = ZONES[war.zone]) === null || _ZONES$war$zone4 === void 0 ? void 0 : _ZONES$war$zone4.name) || war.zone, " \xB7 ", timeLeft, "m remaining \xB7 ", war.killLog.length, " kills"), /*#__PURE__*/React.createElement("div", {
       style: {
-        fontSize: 7,
-        color: 'rgba(255,255,255,.2)',
+        fontSize: 10,
+        color: '#96A2A0',
         textAlign: 'center',
-        marginTop: 2
+        marginTop: 3
       }
     }, "Travel to ", (_ZONES$war$zone5 = ZONES[war.zone]) === null || _ZONES$war$zone5 === void 0 ? void 0 : _ZONES$war$zone5.name, " to fight! PvP kills score points."), war.killLog.slice(-3).reverse().map(function (k, i) {
       return /*#__PURE__*/React.createElement("div", {
         key: i,
         style: {
-          fontSize: 7,
-          color: 'rgba(255,255,255,.2)',
-          textAlign: 'center'
+          fontSize: 10,
+          color: '#96A2A0',
+          textAlign: 'center',
+          fontVariantNumeric: 'tabular-nums'
         }
       }, k.killer, " defeated ", k.victim, " (+", k.points, "pts)");
     }));
   }() : /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
     style: {
-      fontSize: 8,
-      color: 'rgba(255,255,255,.3)',
-      marginBottom: 4
+      fontSize: 12,
+      color: '#96A2A0',
+      marginBottom: 8,
+      lineHeight: 1.4
     }
   }, "Challenge another clan to a 30-minute PvP battle in a zone. Most kills wins!"), /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 8,
-      fontWeight: 700,
-      color: 'rgba(255,255,255,.4)',
-      marginBottom: 2
-    }
+    style: Object.assign({}, LS_HEADER, {
+      fontSize: 10,
+      marginBottom: 4
+    })
   }, "Battle Zone"), /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
       flexWrap: 'wrap',
-      gap: 2,
-      marginBottom: 6
+      gap: 4,
+      marginBottom: 10
     }
   }, CLAN_WAR_ZONES.map(function (zId) {
-    var _ELEMENTS$z$element, _ELEMENTS$z$element2, _ELEMENTS$z$element3;
+    var _ELEMENTS$z$element;
     var z = ZONES[zId];
     var sel = stateRef.current._warZone === zId;
     return /*#__PURE__*/React.createElement("button", {
@@ -618,30 +658,34 @@ export function ClanPanel(props) {
         stateRef.current._warZone = zId;
         setRpgState(_objectSpread({}, rpgState));
       },
+      style: Object.assign({}, lsChip(sel), {
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: 5
+      })
+    }, /* v2.3.1232: element identity kept as a content-color dot; selection
+         itself is the spec brass pill */
+    /*#__PURE__*/React.createElement("span", {
       style: {
-        padding: '2px 5px',
-        borderRadius: 3,
-        fontSize: 7,
-        fontWeight: 700,
-        border: '1px solid ' + (sel ? (((_ELEMENTS$z$element = ELEMENTS[z.element]) === null || _ELEMENTS$z$element === void 0 ? void 0 : _ELEMENTS$z$element.color) || '#D8A85F') + '60' : 'rgba(255,255,255,.06)'),
-        background: sel ? (((_ELEMENTS$z$element2 = ELEMENTS[z.element]) === null || _ELEMENTS$z$element2 === void 0 ? void 0 : _ELEMENTS$z$element2.color) || '#D8A85F') + '15' : 'transparent',
-        color: sel ? ((_ELEMENTS$z$element3 = ELEMENTS[z.element]) === null || _ELEMENTS$z$element3 === void 0 ? void 0 : _ELEMENTS$z$element3.color) || '#D8A85F' : 'rgba(255,255,255,.25)',
-        cursor: 'pointer'
+        width: 7,
+        height: 7,
+        borderRadius: 4,
+        flex: 'none',
+        display: 'inline-block',
+        background: ((_ELEMENTS$z$element = ELEMENTS[z.element]) === null || _ELEMENTS$z$element === void 0 ? void 0 : _ELEMENTS$z$element.color) || '#96A2A0'
       }
-    }, z.name);
+    }), z.name);
   })), /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 8,
-      fontWeight: 700,
-      color: 'rgba(255,255,255,.4)',
-      marginBottom: 2
-    }
+    style: Object.assign({}, LS_HEADER, {
+      fontSize: 10,
+      marginBottom: 4
+    })
   }, "Target Clan"), /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
       flexWrap: 'wrap',
-      gap: 2,
-      marginBottom: 6
+      gap: 4,
+      marginBottom: 10
     }
   }, function () {
     var S = stateRef.current;
@@ -664,9 +708,10 @@ export function ClanPanel(props) {
     var clans = Object.values(otherClans);
     if (clans.length === 0) return /*#__PURE__*/React.createElement("div", {
       style: {
-        fontSize: 7,
-        color: 'rgba(255,255,255,.15)',
-        fontStyle: 'italic'
+        fontSize: 11,
+        color: '#687575',
+        fontStyle: 'italic',
+        padding: '4px 0'
       }
     }, "No other clans online");
     return clans.map(function (c) {
@@ -678,16 +723,7 @@ export function ClanPanel(props) {
           S._warTargetData = c;
           setRpgState(_objectSpread({}, rpgState));
         },
-        style: {
-          padding: '3px 6px',
-          borderRadius: 4,
-          fontSize: 8,
-          fontWeight: 700,
-          border: '1.5px solid ' + (sel ? '#D95C54' : 'rgba(255,255,255,.08)'),
-          background: sel ? 'rgba(217,92,84,.12)' : 'rgba(255,255,255,.02)',
-          color: sel ? '#D95C54' : 'rgba(255,255,255,.4)',
-          cursor: 'pointer'
-        }
+        style: lsChip(sel)
       }, "[", c.tag, "] ", c.name);
     });
   }()), /*#__PURE__*/React.createElement("button", {
@@ -742,25 +778,27 @@ export function ClanPanel(props) {
     },
     style: {
       width: '100%',
-      padding: '8px 0',
-      borderRadius: 6,
-      fontSize: 10,
-      fontWeight: 800,
-      border: '1.5px solid rgba(217,92,84,.4)',
-      background: 'rgba(217,92,84,.15)',
-      color: '#D95C54',
+      minHeight: 44,
+      padding: '0 12px',
+      borderRadius: 11,
+      fontSize: 13,
+      fontWeight: 700,
+      border: '1px solid #C7655F',
+      background: '#7C3431',
+      color: '#FFF1EE',
       cursor: 'pointer'
     }
-  }, "\u2694\uFE0F Declare War"))), /*#__PURE__*/React.createElement("button", {
+  }, "⚔️ Declare War"))), /*#__PURE__*/React.createElement("button", {
     style: {
       width: '100%',
-      padding: '6px',
-      borderRadius: 6,
-      fontSize: 9,
+      minHeight: 44,
+      padding: '0 12px',
+      borderRadius: 11,
+      fontSize: 13,
       fontWeight: 700,
       cursor: 'pointer',
-      border: '1px solid rgba(217,92,84,.3)',
-      background: 'rgba(217,92,84,.08)',
+      border: '1px solid #C7655F',
+      background: 'transparent',
       color: '#D95C54'
     },
     onClick: function onClick() {
