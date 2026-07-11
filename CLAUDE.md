@@ -36,6 +36,8 @@ remnant to migrate server-side, not a mode to preserve.
   "fix", or "restore" game behavior. Code is the source of truth.
   Current, trustworthy docs: `docs/ARCHITECTURE-HANDOFF.md`,
   `docs/UI-BIBLE.md` (UI design law + icon-generation prompts, v2.3.1222),
+  `docs/LANTERN-SLATE-SPEC.md` (the UI visual system — colors, depth,
+  components; supersedes UI-BIBLE Part 2, v2.3.1227),
   `docs/specs/*.md`, `docs/WIRE-PROTOCOL.md`, `docs/BALANCE-PLAN.md`,
   `docs/OPTIMIZATION-ROADMAP.md`, `docs/REBUILD-PLAN.md` (client
   decomposition), `docs/STATE-SCHEMA.md` (client S object; pre-dates

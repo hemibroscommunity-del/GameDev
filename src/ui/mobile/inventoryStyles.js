@@ -1,37 +1,41 @@
 ﻿// Inventory color and typography canon (spec §8).
+// v2.3.1227: Lantern Slate (docs/LANTERN-SLATE-SPEC.md) — charcoal
+// surfaces, warm-white text, brass primary, thin rarity edges.
 
 export const INV = {
-  bg:        '#1A1A1A',
-  tabBar:    '#1A1A1A',
-  tabBorder: 'rgba(255, 255, 255, 0.1)',
-  tileFill:  'rgba(255, 255, 255, 0.04)',
-  tileBorder:'rgba(255, 255, 255, 0.15)',
-  tileBannerGrad: 'linear-gradient(180deg, transparent 0%, rgba(0, 0, 0, 0.78) 55%)',
-  chipActive:   'rgba(255, 255, 255, 0.18)',
-  chipInactive: 'rgba(255, 255, 255, 0.06)',
-  newBadge:  '#D4594A',
-  shortcutBadgeBg:    'rgba(0, 0, 0, 0.6)',
-  shortcutBadgeColor: '#E8D4A0',
-  textPrimary:  '#F0F0F0',
-  textMuted:    'rgba(255, 255, 255, 0.55)',
-  textVeryMuted:'rgba(255, 255, 255, 0.35)',
-  positive: '#9CCC6B',
-  negative: '#DC8060',
-  primaryBtn:    '#4A9ACC',
-  destructive:   '#E89080',
-  destructiveBg: 'rgba(200, 80, 60, 0.1)',
-  destructiveBorder: 'rgba(200, 80, 60, 0.25)',
-  marketAccent:    '#E8D4A0',
-  marketBg:        'rgba(212, 162, 74, 0.06)',
-  marketBorder:    'rgba(212, 162, 74, 0.2)',
+  bg:        '#202C32',
+  tabBar:    '#182227',
+  tabBorder: 'rgba(238, 242, 235, 0.14)',
+  tileFill:  '#19252A',
+  tileBorder:'rgba(238, 242, 235, 0.08)',
+  /* dark label scrim over item ART — stays dark by design. */
+  tileBannerGrad: 'linear-gradient(180deg, transparent 0%, rgba(9, 14, 17, 0.78) 55%)',
+  chipActive:   '#3B3427',
+  chipInactive: 'rgba(238, 242, 235, 0.06)',
+  newBadge:  '#D95C54',
+  shortcutBadgeBg:    'rgba(9, 14, 17, 0.72)',
+  shortcutBadgeColor: '#D8A85F',
+  textPrimary:  '#F7F2E7',
+  textMuted:    '#B9C1BF',
+  textVeryMuted:'#96A2A0',
+  positive: '#59BF91',
+  negative: '#D95C54',
+  primaryBtn:    '#D8A85F',                // brass; pair with onAccent text
+  onPrimaryBtn:  '#20170D',
+  destructive:   '#C7655F',
+  destructiveBg: '#7C3431',
+  destructiveBorder: '#C7655F',
+  marketAccent:    '#D8A85F',
+  marketBg:        '#3B3427',
+  marketBorder:    'rgba(216, 168, 95, 0.45)',
   godlyBg:    '#0F0715',
-  newAccentBorder: 'rgba(212, 162, 74, 0.6)',
-  newAccentFill:   'rgba(212, 162, 74, 0.12)',
+  newAccentBorder: 'rgba(216, 168, 95, 0.75)',
+  newAccentFill:   '#3B3427',
   // Equipped slot tints
-  slotWeaponBorder: 'rgba(80, 140, 200, 0.55)',
-  slotArmorBorder:  'rgba(140, 110, 80, 0.4)',
-  slotPetBorder:    'rgba(100, 140, 90, 0.4)',
-  slotToolBorder:   'rgba(255, 255, 255, 0.2)',
+  slotWeaponBorder: 'rgba(91, 153, 222, 0.55)',
+  slotArmorBorder:  'rgba(160, 130, 95, 0.50)',
+  slotPetBorder:    'rgba(89, 191, 145, 0.50)',
+  slotToolBorder:   'rgba(238, 242, 235, 0.20)',
   silhouetteSkin:    '#D4B090',
   silhouetteCloth:   '#6A7A8A',
   silhouetteGradient:'rgba(80, 120, 160, 0.08)',
@@ -43,18 +47,18 @@ export const FONT = {
   mono:  '"Source Sans 3", sans-serif',
 };
 
-// Quality / rarity tints (Elite + Godly tile borders).
+// Quality / rarity tints — Lantern Slate §11: thin edges + faint fill.
 export const RARITY_BORDER = {
-  normal: INV.tileBorder,
-  rare:   'rgba(80, 140, 200, 0.55)',
-  elite:  'rgba(180, 130, 220, 0.6)',
-  godly:  'rgba(232, 212, 160, 0.85)',
+  normal: 'rgba(139, 150, 149, 0.55)',
+  rare:   '#5B99DE',
+  elite:  '#A477DF',
+  godly:  '#F0C45F',
 };
 export const RARITY_FILL = {
   normal: INV.tileFill,
-  rare:   'rgba(80, 140, 200, 0.08)',
-  elite:  'rgba(180, 130, 220, 0.10)',
-  godly:  'rgba(232, 212, 160, 0.10)',
+  rare:   'rgba(91, 153, 222, 0.08)',
+  elite:  'rgba(164, 119, 223, 0.10)',
+  godly:  'rgba(240, 196, 95, 0.12)',
 };
 
 export const POTION_TINT = {

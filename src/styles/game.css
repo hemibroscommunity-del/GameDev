@@ -21,6 +21,46 @@
   --red:      #ff5e6c;
   --gold:     #f5c542;
   --green:    #3ddc97;
+
+  /* v2.3.1227: Lantern Slate tokens (docs/LANTERN-SLATE-SPEC.md) --
+     dark mineral charcoal, warm-white text, lantern-brass accent.
+     Replaces the v2.3.1226 light&airy set; mirrored in
+     src/ui/mobile/dash/common.js COL / inventoryStyles.js INV.  The
+     legacy --ink/--line/--pop set above still drives the old panels
+     and flips in the legacy-panel sweep, not before. */
+  --ui-band-top: #253239;
+  --ui-band-mid: #202C32;
+  --ui-band-bottom: #172126;
+  --ui-panel: #202C32;
+  --ui-panel-strong: #182227;
+  --ui-raised: #2B3940;
+  --ui-raised-high: #34444B;
+  --ui-well: #121B20;
+  --ui-well-soft: #19252A;
+  --ui-slot: #243137;
+  --ui-toolbar: #10181D;
+  --ui-world-overlay: rgba(17,25,29,.94);
+  --ui-modal-scrim: rgba(8,16,20,.56);
+  --ui-text-1: #F7F2E7;
+  --ui-text-2: #B9C1BF;
+  --ui-text-3: #96A2A0;
+  --ui-disabled: #687575;
+  --ui-text-on-accent: #20170D;
+  --ui-border: rgba(238,242,235,.14);
+  --ui-border-strong: rgba(238,242,235,.24);
+  --ui-divider: rgba(238,242,235,.10);
+  --ui-edge-warm: rgba(229,202,157,.28);
+  --ui-accent: #D8A85F;
+  --ui-accent-pressed: #B88643;
+  --ui-accent-fill: #3B3427;
+  --ui-focus: #F0C878;
+  --ui-hp: #D95C54;
+  --ui-mana: #4D86D5;
+  --ui-stamina: #D8A94D;
+  --ui-xp: #61B06B;
+  --ui-positive: #59BF91;
+  --ui-info: #5D93D2;
+  --ui-magic: #9A76D3;
 }
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%;overflow:hidden;background:#0d0b18;touch-action:none;overscroll-behavior:none;position:fixed;width:100%;top:0;left:0}

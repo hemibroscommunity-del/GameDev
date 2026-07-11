@@ -74,8 +74,14 @@ UI does the communicating.
 
 ## Part 2 — Design tokens
 
-These are the values CSS should use. Name them as CSS custom properties
-when the client adopts them (e.g. `--ui-parchment`).
+> **SUPERSEDED (v2.3.1227):** the palette below (the "light & airy"
+> direction) was built, previewed, and REJECTED by the owner. The
+> governing visual system is now **`docs/LANTERN-SLATE-SPEC.md`**
+> (dark mineral charcoal, warm-white text, lantern-brass accent) —
+> use ITS tokens for any UI work. This section is kept for the
+> non-color rules that still stand (spacing, radius philosophy,
+> touch targets, semantic-color LAW if not the exact hex values) and
+> as design history. Parts 1, 4, 5 of this Bible remain in force.
 
 ### Core neutrals (light & airy)
 
@@ -567,9 +573,14 @@ The replacement targets, in rough priority order:
    image-failure fallbacks. The SkillsPanel roster was also corrected
    to the canonical 10 LIFE_SKILLS (it had listed alchemy/tailoring/
    taming, which don't exist).
-2. **Token adoption:** introduce the Part 2 palette as CSS custom
-   properties in `src/styles/game.css`, restyle the dashboard band and
-   one panel (Inventory) as the proof, then sweep the rest.
+2. **Token adoption** — STARTED v2.3.1226: Part 2 palette added as
+   `--ui-*` custom properties in `src/styles/game.css`; the dashboard
+   band, ALL dash panels (via `dash/common.js` COL), and the whole
+   inventory family (`inventoryStyles.js` INV, tiles, tooltips, detail
+   popup, equipped tab) flipped to Parchment/Ink/Brass. World-floating
+   chrome (top-right player card, tooltips over the world) deliberately
+   stays translucent Ink per Part 3. Legacy `src/ui/panels/*` still run
+   the old dark `--ink/--line` vars — that sweep is step 3.
 3. **Component sweep:** slots, headers, buttons, meters per Part 3.
 
 One system per PR, per repo protocol. Keep both UI generations

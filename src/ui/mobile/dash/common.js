@@ -1,28 +1,42 @@
 ﻿// Shared style + helper module for the in-dashboard panels.
 
+/* v2.3.1227: Lantern Slate (docs/LANTERN-SLATE-SPEC.md) — dark
+   mineral charcoal shelf, warm-white text, lantern-brass accent.
+   Replaces the v2.3.1226 light&airy set (owner rejected the beige). */
 export const COL = {
-  bg:        'rgba(13, 14, 22, 0.92)',
-  border:    'rgba(255, 255, 255, 0.10)',
-  divider:   'rgba(255, 255, 255, 0.06)',
-  text:      '#E8EAF8',
-  muted:     '#8890b8',
-  accent:    '#5b52ff',
-  hp:        '#ff5e6c',
-  stam:      '#f5c542',
-  mp:        '#3b82f6',
-  xp:        '#3ddc97',
-  gold:      '#f5c542',
-  tile:      'rgba(255, 255, 255, 0.04)',
-  tileBor:   'rgba(255, 255, 255, 0.10)',
+  bg:        '#202C32',                    // panel / band-mid
+  bgStrong:  '#182227',                    // header strips
+  raised:    '#2B3940',                    // actionable card / button
+  well:      '#121B20',                    // tray / track
+  wellSoft:  '#19252A',                    // empty slot / quiet cell
+  slot:      '#243137',                    // occupied slot base
+  border:    'rgba(238, 242, 235, 0.14)',
+  divider:   'rgba(238, 242, 235, 0.10)',
+  edgeWarm:  'rgba(229, 202, 157, 0.28)',
+  text:      '#F7F2E7',
+  text2:     '#B9C1BF',
+  muted:     '#96A2A0',
+  accent:    '#D8A85F',                    // lantern brass
+  accentFill:'#3B3427',
+  focus:     '#F0C878',
+  onAccent:  '#20170D',
+  hp:        '#D95C54',
+  stam:      '#D8A94D',
+  mp:        '#4D86D5',
+  xp:        '#61B06B',
+  gold:      '#D8A85F',
+  tile:      '#19252A',
+  tileBor:   'rgba(238, 242, 235, 0.08)',
 };
 
+/* v2.3.1227: Lantern Slate rarity — thin edge language, never fills. */
 export const TIER_COLOR = {
-  common:    '#9ca3af',
-  uncommon:  '#3ddc97',
-  rare:      '#3b82f6',
-  epic:      '#a855f7',
-  legendary: '#f59e0b',
-  godly:     '#ef4444',
+  common:    '#8B9695',
+  uncommon:  '#59BF91',
+  rare:      '#5B99DE',
+  epic:      '#9A76D3',
+  legendary: '#A477DF',
+  godly:     '#F0C45F',
 };
 
 export const getState = () => (typeof window !== 'undefined') && window._gameState && window._gameState.current;

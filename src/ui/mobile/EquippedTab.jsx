@@ -14,14 +14,14 @@ const SlotPicker = ({ slot, onPick, onCancel }) => {
   return (
     <div onClick={onCancel} style={{
       position: 'fixed', inset: 0, zIndex: 100050,
-      background: 'rgba(0,0,0,.55)', display: 'flex', alignItems: 'flex-end',
+      background: 'rgba(8, 16, 20, .56)', display: 'flex', alignItems: 'flex-end',
     }}>
       <div onClick={e => e.stopPropagation()} style={{
         width: '100%', background: INV.bg, padding: 16,
         borderTopLeftRadius: 14, borderTopRightRadius: 14,
         maxHeight: '70vh', overflowY: 'auto',
       }}>
-        <div style={{ width: 32, height: 4, background: 'rgba(255,255,255,.2)', borderRadius: 2, margin: '0 auto 14px' }} />
+        <div style={{ width: 32, height: 4, background: 'rgba(238, 242, 235, .2)', borderRadius: 2, margin: '0 auto 14px' }} />
         <div style={{
           color: INV.textMuted, fontFamily: FONT.sans, fontSize: 11,
           letterSpacing: 0.4, textTransform: 'uppercase', marginBottom: 12,
@@ -34,8 +34,8 @@ const SlotPicker = ({ slot, onPick, onCancel }) => {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6 }}>
           {items.map(it => (
             <div key={it.id} onClick={() => onPick(it)} style={{
-              padding: 8, background: 'rgba(255,255,255,.04)', borderRadius: 8,
-              border: '0.5px solid rgba(255,255,255,.15)', cursor: 'pointer',
+              padding: 8, background: 'rgba(238, 242, 235, .04)', borderRadius: 8,
+              border: '0.5px solid rgba(238, 242, 235, .15)', cursor: 'pointer',
               display: 'flex', flexDirection: 'column', alignItems: 'center',
             }}>
               <ItemArt item={it} size={42} />
@@ -57,21 +57,26 @@ const Slot = ({ slot, item, label, borderColor, onTap }) => {
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
       <div onClick={onTap} style={{
         width: 52, height: 52, borderRadius: 10,
-        background: empty ? 'rgba(255,255,255,0.02)' : `${borderColor.replace(/[\d.]+\)/, '0.12)')}`,
+        /* v2.3.1226: string-op tint (was a regex .replace) -- the regex
+           literal's escaped paren false-positived precheck's
+           brace-balance scan the first time this file entered the
+           changed set. */
+        background: empty ? 'rgba(238, 242, 235, 0.02)'
+          : borderColor.slice(0, borderColor.lastIndexOf(',')) + ', 0.12)',
         border: empty
-          ? '1.5px dashed rgba(255,255,255,0.2)'
+          ? '1.5px dashed rgba(238, 242, 235, 0.22)'
           : `1.5px solid ${borderColor}`,
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         cursor: 'pointer', userSelect: 'none', touchAction: 'manipulation',
       }}>
         {empty
-          ? <div style={{ color: 'rgba(255,255,255,0.3)', fontSize: 22, fontWeight: 300 }}>+</div>
+          ? <div style={{ color: 'rgba(238, 242, 235, 0.32)', fontSize: 22, fontWeight: 300 }}>+</div>
           : <ItemArt item={item} size={36} />
         }
       </div>
       <div style={{
         marginTop: 4, fontSize: 9, letterSpacing: 0.3,
-        color: empty ? 'rgba(255,255,255,0.35)' : 'rgba(255,255,255,0.55)',
+        color: empty ? 'rgba(238, 242, 235, 0.40)' : 'rgba(238, 242, 235, 0.62)',
         fontFamily: FONT.sans,
       }}>{label}</div>
     </div>
@@ -83,16 +88,16 @@ const ShortcutSlot = ({ idx, item, onTap }) => {
   return (
     <div onClick={() => onTap(idx)} style={{
       width: 48, height: 48, borderRadius: 10,
-      background: empty ? 'rgba(255,255,255,0.03)' : 'rgba(80, 140, 200, 0.15)',
+      background: empty ? 'rgba(238, 242, 235, 0.03)' : 'rgba(80, 140, 200, 0.15)',
       border: empty
-        ? '1.5px dashed rgba(255,255,255,0.15)'
+        ? '1.5px dashed rgba(238, 242, 235, 0.16)'
         : '1.5px solid rgba(80, 140, 200, 0.55)',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       cursor: 'pointer', userSelect: 'none', touchAction: 'manipulation',
       position: 'relative',
     }}>
       {empty
-        ? <div style={{ color: 'rgba(255,255,255,0.3)', fontSize: 14 }}>+</div>
+        ? <div style={{ color: 'rgba(238, 242, 235, 0.32)', fontSize: 14 }}>+</div>
         : <ItemArt item={item} size={28} />
       }
       {item && item.count != null && item.count > 0 && (
@@ -112,14 +117,14 @@ const ShortcutPickerSheet = ({ slotIdx, onPick, onCancel }) => {
   return (
     <div onClick={onCancel} style={{
       position: 'fixed', inset: 0, zIndex: 100050,
-      background: 'rgba(0,0,0,.55)', display: 'flex', alignItems: 'flex-end',
+      background: 'rgba(8, 16, 20, .56)', display: 'flex', alignItems: 'flex-end',
     }}>
       <div onClick={e => e.stopPropagation()} style={{
         width: '100%', background: INV.bg, padding: 16,
         borderTopLeftRadius: 14, borderTopRightRadius: 14,
         maxHeight: '70vh', overflowY: 'auto',
       }}>
-        <div style={{ width: 32, height: 4, background: 'rgba(255,255,255,.2)', borderRadius: 2, margin: '0 auto 14px' }} />
+        <div style={{ width: 32, height: 4, background: 'rgba(238, 242, 235, .2)', borderRadius: 2, margin: '0 auto 14px' }} />
         <div style={{
           color: INV.textMuted, fontFamily: FONT.sans, fontSize: 11,
           letterSpacing: 0.4, textTransform: 'uppercase', marginBottom: 12,
@@ -127,8 +132,8 @@ const ShortcutPickerSheet = ({ slotIdx, onPick, onCancel }) => {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 6 }}>
           {items.map(it => (
             <div key={it.id} onClick={() => onPick(it.id)} style={{
-              padding: 6, background: 'rgba(255,255,255,.04)', borderRadius: 8,
-              border: '0.5px solid rgba(255,255,255,.15)', cursor: 'pointer',
+              padding: 6, background: 'rgba(238, 242, 235, .04)', borderRadius: 8,
+              border: '0.5px solid rgba(238, 242, 235, .15)', cursor: 'pointer',
               display: 'flex', flexDirection: 'column', alignItems: 'center',
             }}>
               <ItemArt item={it} size={32} />
@@ -147,16 +152,16 @@ const ShortcutPickerSheet = ({ slotIdx, onPick, onCancel }) => {
 const ShortcutActionSheet = ({ slotIdx, onClose }) => (
   <div onClick={onClose} style={{
     position: 'fixed', inset: 0, zIndex: 100050,
-    background: 'rgba(0,0,0,.55)', display: 'flex', alignItems: 'flex-end',
+    background: 'rgba(8, 16, 20, .56)', display: 'flex', alignItems: 'flex-end',
   }}>
     <div onClick={e => e.stopPropagation()} style={{
       width: '100%', background: INV.bg, padding: 16,
       borderTopLeftRadius: 14, borderTopRightRadius: 14,
     }}>
-      <div style={{ width: 32, height: 4, background: 'rgba(255,255,255,.2)', borderRadius: 2, margin: '0 auto 14px' }} />
+      <div style={{ width: 32, height: 4, background: 'rgba(238, 242, 235, .2)', borderRadius: 2, margin: '0 auto 14px' }} />
       <div onClick={() => { inventoryBus.clearShortcut(slotIdx); onClose(); }} style={{
         padding: 14, color: INV.destructive, fontFamily: FONT.sans, fontSize: 14,
-        textAlign: 'center', borderBottom: '0.5px solid rgba(255,255,255,.1)', cursor: 'pointer',
+        textAlign: 'center', borderBottom: '0.5px solid rgba(238, 242, 235, .1)', cursor: 'pointer',
       }}>Remove shortcut</div>
       <div onClick={onClose} style={{
         padding: 14, color: INV.textPrimary, fontFamily: FONT.sans, fontSize: 14,
@@ -230,10 +235,10 @@ export const EquippedTab = ({ onItemTap }) => {
       }}>
         <div style={{
           fontSize: 12, fontWeight: 500, letterSpacing: 0.4,
-          color: 'rgba(255,255,255,0.75)', fontFamily: FONT.sans,
+          color: 'rgba(238, 242, 235, 0.78)', fontFamily: FONT.sans,
         }}>SHORTCUTS</div>
         <div style={{
-          fontSize: 10, color: 'rgba(255,255,255,0.4)', fontFamily: FONT.sans,
+          fontSize: 10, color: 'rgba(238, 242, 235, 0.45)', fontFamily: FONT.sans,
         }}>Tap a slot to set</div>
       </div>
       <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-start' }}>

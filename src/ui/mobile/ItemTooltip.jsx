@@ -65,10 +65,10 @@ export const SalvageToast = () => {
       <div onClick={() => { t.undos.forEach(u => u && u()); toastQueue.shift(); emitToast(); }}
         style={{
           margin: '0 0 22px', padding: '10px 16px',
-          background: '#1A1A1A', border: '0.5px solid rgba(255,255,255,0.2)',
+          background: '#2B3940', border: '1px solid rgba(238, 242, 235, 0.24)',
           borderRadius: 10, color: INV.textPrimary, fontFamily: FONT.sans, fontSize: 13,
           pointerEvents: 'auto', cursor: 'pointer',
-          boxShadow: '0 4px 14px rgba(0,0,0,.5)',
+          boxShadow: '0 4px 14px rgba(4,7,9,.38)',
         }}>{label}</div>
     </ToastHost>
   );
@@ -115,7 +115,7 @@ const Comparison = ({ item, layer2 }) => {
 
   return (
     <div style={{
-      background: 'rgba(255, 255, 255, 0.04)', borderRadius: 8,
+      background: 'rgba(238, 242, 235, 0.05)', borderRadius: 8,
       padding: 10, marginBottom: 10,
     }}>
       <div style={{
@@ -146,11 +146,11 @@ const GemsBlock = ({ item }) => {
   const filled = (item.gems || []).length;
   return (
     <div style={{
-      background: 'rgba(255, 255, 255, 0.025)', borderRadius: 8,
+      background: 'rgba(238, 242, 235, 0.025)', borderRadius: 8,
       padding: '10px 12px', marginBottom: 12,
     }}>
       <div style={{
-        fontSize: 10, color: 'rgba(255,255,255,0.45)', letterSpacing: 0.4,
+        fontSize: 10, color: 'rgba(238, 242, 235, 0.50)', letterSpacing: 0.4,
         fontFamily: FONT.sans, marginBottom: 4, textTransform: 'uppercase',
       }}>GEMS</div>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -195,9 +195,9 @@ const MarketBlock = ({ item, layer3 }) => {
 
 const ActionButton = ({ label, primary, destructive, onClick, ghost }) => {
   if (!label) return <div />;
-  const bg = primary ? INV.primaryBtn : destructive ? INV.destructiveBg : 'rgba(255,255,255,0.06)';
-  const border = primary ? 'transparent' : destructive ? INV.destructiveBorder : 'rgba(255,255,255,0.12)';
-  const color = primary ? '#fff' : destructive ? INV.destructive : 'rgba(255,255,255,0.85)';
+  const bg = primary ? INV.primaryBtn : destructive ? INV.destructiveBg : 'rgba(238, 242, 235, 0.10)';
+  const border = primary ? 'transparent' : destructive ? INV.destructiveBorder : 'rgba(238, 242, 235, 0.15)';
+  const color = primary ? INV.onPrimaryBtn : destructive ? INV.destructive : 'rgba(238, 242, 235, 0.85)';
   return (
     <div onClick={onClick} style={{
       flex: 1, padding: '14px 10px', textAlign: 'center', borderRadius: 10,
@@ -232,7 +232,7 @@ const ShortcutPicker = ({ onPick, onCancel }) => (
       width: '100%', background: INV.bg, padding: 16,
       borderTopLeftRadius: 14, borderTopRightRadius: 14,
     }}>
-      <div style={{ width: 32, height: 4, background: 'rgba(255,255,255,.2)', borderRadius: 2, margin: '0 auto 14px' }} />
+      <div style={{ width: 32, height: 4, background: 'rgba(238, 242, 235, .2)', borderRadius: 2, margin: '0 auto 14px' }} />
       <div style={{ color: INV.textPrimary, fontFamily: FONT.sans, fontSize: 13, marginBottom: 12 }}>
         Pick a shortcut slot to assign:
       </div>
@@ -240,13 +240,13 @@ const ShortcutPicker = ({ onPick, onCancel }) => (
         {[0, 1].map(i => (
           <div key={i} onClick={() => onPick(i)} style={{
             width: 100, height: 80, borderRadius: 10,
-            border: '1.5px dashed rgba(255,255,255,.25)',
-            background: 'rgba(255,255,255,.03)',
+            border: '1.5px dashed rgba(238, 242, 235, .25)',
+            background: 'rgba(238, 242, 235, .03)',
             display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
             cursor: 'pointer',
           }}>
             <div style={{ fontSize: 11, color: INV.textMuted, fontFamily: FONT.sans }}>SLOT {i + 1}</div>
-            <div style={{ fontSize: 22, color: 'rgba(255,255,255,.4)' }}>+</div>
+            <div style={{ fontSize: 22, color: 'rgba(238, 242, 235, .4)' }}>+</div>
           </div>
         ))}
       </div>
@@ -325,7 +325,7 @@ export const ItemTooltip = ({ item, isEquipped, onClose }) => {
       <div onTouchStart={drag.onTouchStart} onTouchMove={drag.onTouchMove} onTouchEnd={drag.onTouchEnd}
         style={{
           position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 100031,
-          background: INV.bg, borderTop: '0.5px solid rgba(255,255,255,0.15)',
+          background: INV.bg, borderTop: '0.5px solid rgba(238, 242, 235, 0.16)',
           borderTopLeftRadius: 14, borderTopRightRadius: 14,
           padding: '8px 14px 18px', boxSizing: 'border-box',
           color: INV.textPrimary, fontFamily: FONT.sans,
@@ -333,7 +333,7 @@ export const ItemTooltip = ({ item, isEquipped, onClose }) => {
           transform: `translateY(${drag.drag}px)`,
           animation: 'inv-sheet-up 200ms ease-out',
         }}>
-        <div style={{ width: 32, height: 4, background: 'rgba(255,255,255,.2)', borderRadius: 2, margin: '0 auto 12px' }} />
+        <div style={{ width: 32, height: 4, background: 'rgba(238, 242, 235, .2)', borderRadius: 2, margin: '0 auto 12px' }} />
 
         {/* Hero */}
         <div style={{ display: 'flex', gap: 14, alignItems: 'center', marginBottom: 14 }}>
@@ -347,7 +347,7 @@ export const ItemTooltip = ({ item, isEquipped, onClose }) => {
             <div style={{ fontFamily: FONT.serif, fontSize: 17, fontWeight: 500, color: INV.textPrimary }}>
               {item.name || '(unnamed)'}
             </div>
-            <div style={{ fontFamily: FONT.mono, fontSize: 12, color: 'rgba(255,255,255,.55)', marginTop: 3 }}>
+            <div style={{ fontFamily: FONT.mono, fontSize: 12, color: 'rgba(238, 242, 235, .55)', marginTop: 3 }}>
               {subtitle}
             </div>
             {layer3 && item.crafter && (

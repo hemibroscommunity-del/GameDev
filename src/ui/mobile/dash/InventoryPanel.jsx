@@ -146,7 +146,7 @@ export const ItemTile = ({ ikey, count, style: styleOverride }) => {
         <span style={{
           position: 'absolute', bottom: 1, right: 3,
           fontSize: 15, color: COL.text,
-          textShadow: '0 0 2px #000',
+          textShadow: '0 1px 2px rgba(0,0,0,.8)',
         }}>{count}</span>
       )}
       {locked && (
@@ -157,7 +157,7 @@ export const ItemTile = ({ ikey, count, style: styleOverride }) => {
         <span style={{
           position: 'absolute', top: 1, right: 1,
           width: 14, height: 14,
-          background: 'rgba(15,17,26,0.92)',
+          background: 'rgba(9, 14, 17, 0.85)',
           border: '1px solid #f5c542',
           borderRadius: 3,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -283,7 +283,7 @@ export const InventoryPanel = () => {
               <div key={`empty-${i}`} aria-hidden="true" style={{
                 width: '100%', aspectRatio: '1 / 1',
                 background: 'rgba(0,0,0,0.28)',
-                border: '1px solid rgba(255,255,255,0.22)',
+                border: '1px solid rgba(238, 242, 235, 0.24)',
                 borderRadius: 6,
               }} />
             ))}
@@ -366,7 +366,7 @@ const StashTile = ({ kind, obj, index }) => {
         <span style={{
           position: 'absolute', top: 1, right: 1,
           width: 14, height: 14,
-          background: 'rgba(15,17,26,0.92)',
+          background: 'rgba(9, 14, 17, 0.85)',
           border: '1px solid #f5c542',
           borderRadius: 3,
           display: 'flex', alignItems: 'center', justifyContent: 'center',

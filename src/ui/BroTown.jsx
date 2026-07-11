@@ -5949,36 +5949,10 @@ export var BroTown = function BroTown(_ref0) {
       display: 'flex',
       flexDirection: 'column'
     }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      position: 'fixed',
-      /* v2.3.821: was top:6 right:6 z-999 -- sat directly ON TOP of the
-         top-right character card (which is z-30 under it), reading as a
-         mystery box "behind" the HUD.  Moved down to stack BELOW the card
-         + its new XP bar (card height ~= 6 + ~111), and dropped under the
-         card's z so it can never overlap it again. */
-      top: 'calc(env(safe-area-inset-top, 0px) + 120px)',
-      right: 'calc(env(safe-area-inset-right, 0px) + 6px)',
-      zIndex: 28,
-      padding: '3px 8px',
-      borderRadius: 6,
-      background: 'rgba(0,0,0,.7)',
-      fontSize: 9,
-      fontWeight: 700,
-      color: '#fff',
-      display: 'flex',
-      alignItems: 'center',
-      gap: 4,
-      border: '1px solid rgba(255,255,255,.1)'
-    }
-  }, /*#__PURE__*/React.createElement("span", {
-    style: {
-      width: 6,
-      height: 6,
-      borderRadius: '50%',
-      background: stateRef.current._realtimeStatus === 'connected' ? '#3dd497' : '#ef4444'
-    }
-  }), playerCount, " online"), /*#__PURE__*/React.createElement("div", {
+  }, /* v2.3.1227: the hanging "N online" pill under the player card is
+     removed per Lantern Slate §10 -- presence is now the dot on the
+     compact card's portrait; the count will move to a Friends badge. */
+  null, /*#__PURE__*/React.createElement("div", {
     style: {
       flex: 1,
       position: 'relative',
