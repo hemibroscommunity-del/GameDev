@@ -1,21 +1,23 @@
 import React, { useEffect, useState } from 'react';
 import { COL, panelStyle, getState } from './common.js';
 
-/* v2.3.1224: iconSrc = UI Bible skill icons where one exists; alchemy /
-   tailoring / taming keep emoji (not in the canonical LIFE_SKILLS set,
-   so no icons were generated for them).  Roster left as-is on purpose —
-   this change is icons only. */
+/* v2.3.1224: roster corrected to the canonical 10 LIFE_SKILLS (owner
+   directive) — the panel previously listed alchemy / tailoring / taming,
+   which don't exist in src/data/lifeSkills.js, and was missing
+   woodcutting / enchanting / trapping.  Order matches the dashboard's
+   LIFE_SKILLS list.  iconSrc = UI Bible skill icons; emoji is the
+   image-failure fallback. */
 const SKILL_DEFS = [
   { key: 'cooking',       icon: '🍳', iconSrc: '/icons/ui/skill-cooking.webp?v=2.3.1224',       name: 'Cooking',       color: '#f59e0b' },
   { key: 'fishing',       icon: '🎣', iconSrc: '/icons/ui/skill-fishing.webp?v=2.3.1224',       name: 'Fishing',       color: '#3b82f6' },
+  { key: 'mining',        icon: '⛏',  iconSrc: '/icons/ui/skill-mining.webp?v=2.3.1224',        name: 'Mining',        color: '#8a8a8a' },
+  { key: 'woodcutting',   icon: '🪓', iconSrc: '/icons/ui/skill-woodcutting.webp?v=2.3.1224',   name: 'Woodcutting',   color: '#92400e' },
   { key: 'farming',       icon: '🌾', iconSrc: '/icons/ui/skill-farming.webp?v=2.3.1224',       name: 'Farming',       color: '#84cc16' },
   { key: 'blacksmithing', icon: '🔨', iconSrc: '/icons/ui/skill-blacksmithing.webp?v=2.3.1224', name: 'Smithing',      color: '#a3a3a3' },
+  { key: 'woodworking',   icon: '🛠',  iconSrc: '/icons/ui/skill-woodworking.webp?v=2.3.1224',   name: 'Woodworking',   color: '#b45309' },
   { key: 'gemCutting',    icon: '💎', iconSrc: '/icons/ui/skill-gemcutting.webp?v=2.3.1224',    name: 'Gem cutting',   color: '#a855f7' },
-  { key: 'alchemy',       icon: '⚗',  name: 'Alchemy',       color: '#22d3ee' },
-  { key: 'woodworking',   icon: '🪓', iconSrc: '/icons/ui/skill-woodworking.webp?v=2.3.1224',   name: 'Woodworking',   color: '#92400e' },
-  { key: 'tailoring',     icon: '🧵', name: 'Tailoring',     color: '#ec4899' },
-  { key: 'taming',        icon: '🐾', name: 'Taming',        color: '#10b981' },
-  { key: 'mining',        icon: '⛏',  iconSrc: '/icons/ui/skill-mining.webp?v=2.3.1224',        name: 'Mining',        color: '#8a8a8a' },
+  { key: 'enchanting',    icon: '✨', iconSrc: '/icons/ui/skill-enchanting.webp?v=2.3.1224',    name: 'Enchanting',    color: '#22d3ee' },
+  { key: 'trapping',      icon: '🪤', iconSrc: '/icons/ui/skill-trapping.webp?v=2.3.1224',      name: 'Trapping',      color: '#10b981' },
 ];
 
 const xpForLevel = (lvl) => Math.floor(50 + lvl * lvl * 25);
