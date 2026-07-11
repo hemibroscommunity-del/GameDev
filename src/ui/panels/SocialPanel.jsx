@@ -6,6 +6,10 @@ import React from 'react';
    Purely presentational over component state — no data-layer or babel
    imports. 8 props (the three social lists + their setters +
    setShowSocialPanel + stateRef); localStorage is the browser global. */
+/* v2.3.1232: Lantern Slate restyle — panel surface, nav-friends title
+   icon, 11/600 uppercase section headers, recessed well per list, 44px
+   rows with 32px secondary/destructive actions, real empty states.
+   Handlers untouched. */
 export function SocialPanel(props) {
   var blockedList = props.blockedList,
     friendsList = props.friendsList,
@@ -15,6 +19,27 @@ export function SocialPanel(props) {
     setMutedList = props.setMutedList,
     setShowSocialPanel = props.setShowSocialPanel,
     stateRef = props.stateRef;
+  /* v2.3.1232: shared well style for the three lists */
+  var wellStyle = {
+    padding: 6,
+    borderRadius: 10,
+    background: '#121B20',
+    boxShadow: 'inset 0 2px 4px rgba(0,0,0,.44), inset 0 1px 0 rgba(255,255,255,.035)'
+  };
+  var sectionHeadStyle = {
+    fontSize: 11,
+    fontWeight: 600,
+    textTransform: 'uppercase',
+    letterSpacing: '.12em',
+    color: '#96A2A0',
+    marginBottom: 6
+  };
+  var emptyStyle = {
+    fontSize: 12.5,
+    color: '#96A2A0',
+    textAlign: 'center',
+    padding: '12px 8px'
+  };
   return React.createElement("div", {
     className: "bt-inspect",
     onClick: function onClick() {
@@ -28,36 +53,60 @@ export function SocialPanel(props) {
     style: {
       width: 300,
       maxHeight: '80vh',
-      overflowY: 'auto'
+      overflowY: 'auto',
+      /* v2.3.1232: override legacy navy card with Lantern panel surface */
+      background: '#202C32',
+      border: '1px solid rgba(238,242,235,.14)',
+      borderRadius: 14,
+      boxShadow: '0 14px 30px rgba(4,7,9,.38)',
+      padding: 16,
+      textAlign: 'left'
     }
   }, /*#__PURE__*/React.createElement("button", {
     className: "bt-inspect-close",
     onClick: function onClick() {
       return setShowSocialPanel(false);
     }
-  }, "\u2715"), /*#__PURE__*/React.createElement("div", {
+  }, "✕"), /*#__PURE__*/React.createElement("div", {
+    /* v2.3.1232: panel title row — icon + 13/700 uppercase title */
     style: {
-      fontSize: 16,
-      fontWeight: 800,
-      color: '#59BF91',
-      marginBottom: 8
+      display: 'flex',
+      alignItems: 'center',
+      gap: 8,
+      marginBottom: 12,
+      paddingBottom: 8,
+      borderBottom: '1px solid rgba(238,242,235,.10)'
     }
-  }, "\uD83D\uDC65 Social"), /*#__PURE__*/React.createElement("div", {
+  }, /*#__PURE__*/React.createElement("img", {
+    src: "/icons/ui/nav-friends.webp",
+    alt: "",
+    draggable: false,
     style: {
-      marginBottom: 10
+      width: 24,
+      height: 24,
+      objectFit: 'contain'
+    },
+    onError: function onError(e) {
+      e.currentTarget.replaceWith(document.createTextNode('👥'));
+    }
+  }), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 13,
+      fontWeight: 700,
+      textTransform: 'uppercase',
+      letterSpacing: '.10em',
+      color: '#F7F2E7'
+    }
+  }, "Social")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginBottom: 14
     }
   }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 10,
-      fontWeight: 700,
-      color: '#59BF91',
-      marginBottom: 4
-    }
-  }, "\uD83D\uDC9A Friends (", friendsList.length, ")"), friendsList.length === 0 && /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 8,
-      color: 'rgba(255,255,255,.3)'
-    }
+    style: sectionHeadStyle
+  }, "Friends (", friendsList.length, ")"), /*#__PURE__*/React.createElement("div", {
+    style: wellStyle
+  }, friendsList.length === 0 && /*#__PURE__*/React.createElement("div", {
+    style: emptyStyle
   }, "No friends yet. Tap a player and add them!"), friendsList.map(function (f) {
     var _stateRef$current26, _f$name;
     var online = (_stateRef$current26 = stateRef.current) === null || _stateRef$current26 === void 0 || (_stateRef$current26 = _stateRef$current26.others) === null || _stateRef$current26 === void 0 ? void 0 : _stateRef$current26[f.id];
@@ -66,74 +115,85 @@ export function SocialPanel(props) {
       style: {
         display: 'flex',
         alignItems: 'center',
-        gap: 6,
+        gap: 8,
         padding: '4px 6px',
-        marginBottom: 2,
-        borderRadius: 6,
-        background: 'rgba(255,255,255,.03)',
-        border: '1px solid rgba(255,255,255,.06)'
+        minHeight: 44,
+        borderBottom: '1px solid rgba(238,242,235,.10)'
       }
     }, /*#__PURE__*/React.createElement("div", {
       style: {
-        width: 6,
-        height: 6,
+        width: 7,
+        height: 7,
         borderRadius: '50%',
-        background: online ? '#59BF91' : '#555'
+        background: online ? '#59BF91' : '#687575',
+        flexShrink: 0
       }
     }), /*#__PURE__*/React.createElement("div", {
       style: {
-        width: 20,
-        height: 20,
+        width: 28,
+        height: 28,
         borderRadius: '50%',
         background: f.color || '#888',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        fontSize: 9,
+        fontSize: 12,
         fontWeight: 800,
-        color: '#fff'
+        color: '#F7F2E7',
+        flexShrink: 0
       }
     }, ((_f$name = f.name) === null || _f$name === void 0 ? void 0 : _f$name.charAt(0)) || '?'), /*#__PURE__*/React.createElement("div", {
       style: {
-        flex: 1
+        flex: 1,
+        minWidth: 0
       }
     }, /*#__PURE__*/React.createElement("div", {
       style: {
-        fontSize: 9,
-        fontWeight: 700,
-        color: f.color || '#fff'
+        fontSize: 13.5,
+        fontWeight: 600,
+        color: f.color || '#F7F2E7',
+        whiteSpace: 'nowrap',
+        overflow: 'hidden',
+        textOverflow: 'ellipsis'
       }
     }, f.name), /*#__PURE__*/React.createElement("div", {
       style: {
-        fontSize: 7,
-        color: 'rgba(255,255,255,.3)'
+        fontSize: 11,
+        color: '#96A2A0'
       }
     }, online ? 'Online · ' + online.zone : 'Offline')), online && /*#__PURE__*/React.createElement("button", {
       style: {
-        padding: '2px 5px',
-        borderRadius: 3,
-        fontSize: 7,
+        /* v2.3.1232: secondary raised chip */
+        minHeight: 32,
+        padding: '4px 10px',
+        borderRadius: 999,
+        fontSize: 11,
         fontWeight: 700,
         cursor: 'pointer',
-        border: '1px solid rgba(216,168,95,.3)',
-        background: 'rgba(216,168,95,.1)',
-        color: '#a78bfa'
+        border: '1px solid rgba(238,242,235,.14)',
+        background: '#2B3940',
+        color: '#F7F2E7',
+        flexShrink: 0
       },
       onClick: function onClick() {
         stateRef.current.player.x = online.x + 40;
         stateRef.current.player.y = online.y + 40;
         setShowSocialPanel(false);
       }
-    }, "\uD83D\uDCCD TP"), /*#__PURE__*/React.createElement("button", {
+    }, "📍 TP"), /*#__PURE__*/React.createElement("button", {
       style: {
-        padding: '2px 5px',
-        borderRadius: 3,
-        fontSize: 7,
+        /* v2.3.1232: destructive remove */
+        width: 32,
+        height: 32,
+        borderRadius: 8,
+        fontSize: 12,
         fontWeight: 700,
         cursor: 'pointer',
-        border: '1px solid rgba(217,92,84,.3)',
-        background: 'rgba(217,92,84,.08)',
-        color: '#D95C54'
+        border: '1px solid #C7655F',
+        background: '#7C3431',
+        color: '#FFF1EE',
+        flexShrink: 0,
+        padding: 0
       },
       onClick: function onClick() {
         var updated = friendsList.filter(function (fr) {
@@ -144,29 +204,23 @@ export function SocialPanel(props) {
           localStorage.setItem('bt_friends', JSON.stringify(updated));
         } catch (e) {}
       }
-    }, "\u2715"));
-  })), /*#__PURE__*/React.createElement("div", {
+    }, "✕"));
+  }))), /*#__PURE__*/React.createElement("div", {
     style: {
-      marginBottom: 10
+      marginBottom: 14
     }
   }, /*#__PURE__*/React.createElement("div", {
+    style: sectionHeadStyle
+  }, "Blocked (", blockedList.length, ")"), /*#__PURE__*/React.createElement("div", {
     style: {
-      fontSize: 10,
-      fontWeight: 700,
-      color: '#D95C54',
-      marginBottom: 4
+      fontSize: 11,
+      color: '#96A2A0',
+      marginBottom: 6
     }
-  }, "\uD83D\uDEAB Blocked (", blockedList.length, ")"), /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 7,
-      color: 'rgba(255,255,255,.25)',
-      marginBottom: 4
-    }
-  }, "Blocked players can't chat, attack, trade, or duel you."), blockedList.length === 0 && /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 8,
-      color: 'rgba(255,255,255,.3)'
-    }
+  }, "Blocked players can't chat, attack, trade, or duel you."), /*#__PURE__*/React.createElement("div", {
+    style: wellStyle
+  }, blockedList.length === 0 && /*#__PURE__*/React.createElement("div", {
+    style: emptyStyle
   }, "Nobody blocked."), blockedList.map(function (bid) {
     var _stateRef$current27;
     var o = (_stateRef$current27 = stateRef.current) === null || _stateRef$current27 === void 0 || (_stateRef$current27 = _stateRef$current27.others) === null || _stateRef$current27 === void 0 ? void 0 : _stateRef$current27[bid];
@@ -176,29 +230,32 @@ export function SocialPanel(props) {
       style: {
         display: 'flex',
         alignItems: 'center',
-        gap: 6,
-        padding: '3px 6px',
-        marginBottom: 2,
-        borderRadius: 4,
-        background: 'rgba(217,92,84,.05)',
-        border: '1px solid rgba(217,92,84,.1)'
+        gap: 8,
+        padding: '4px 6px',
+        minHeight: 44,
+        borderBottom: '1px solid rgba(238,242,235,.10)'
       }
     }, /*#__PURE__*/React.createElement("div", {
       style: {
         flex: 1,
-        fontSize: 8,
-        color: '#D95C54'
+        fontSize: 13,
+        color: '#B9C1BF',
+        whiteSpace: 'nowrap',
+        overflow: 'hidden',
+        textOverflow: 'ellipsis'
       }
     }, name), /*#__PURE__*/React.createElement("button", {
       style: {
-        padding: '2px 5px',
-        borderRadius: 3,
-        fontSize: 7,
+        minHeight: 32,
+        padding: '4px 12px',
+        borderRadius: 999,
+        fontSize: 11,
         fontWeight: 700,
         cursor: 'pointer',
-        border: '1px solid rgba(61,220,151,.3)',
-        background: 'rgba(61,220,151,.08)',
-        color: '#59BF91'
+        border: '1px solid rgba(238,242,235,.14)',
+        background: '#2B3940',
+        color: '#F7F2E7',
+        flexShrink: 0
       },
       onClick: function onClick() {
         var updated = blockedList.filter(function (b) {
@@ -210,24 +267,18 @@ export function SocialPanel(props) {
         } catch (e) {}
       }
     }, "Unblock"));
-  })), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+  }))), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    style: sectionHeadStyle
+  }, "Muted (", mutedList.length, ")"), /*#__PURE__*/React.createElement("div", {
     style: {
-      fontSize: 10,
-      fontWeight: 700,
-      color: '#D8A94D',
-      marginBottom: 4
+      fontSize: 11,
+      color: '#96A2A0',
+      marginBottom: 6
     }
-  }, "\uD83D\uDD07 Muted (", mutedList.length, ")"), /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 7,
-      color: 'rgba(255,255,255,.25)',
-      marginBottom: 4
-    }
-  }, "Muted players' chat appears as [muted]. They can still interact with you."), mutedList.length === 0 && /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 8,
-      color: 'rgba(255,255,255,.3)'
-    }
+  }, "Muted players' chat appears as [muted]. They can still interact with you."), /*#__PURE__*/React.createElement("div", {
+    style: wellStyle
+  }, mutedList.length === 0 && /*#__PURE__*/React.createElement("div", {
+    style: emptyStyle
   }, "Nobody muted."), mutedList.map(function (mid) {
     var _stateRef$current28;
     var o = (_stateRef$current28 = stateRef.current) === null || _stateRef$current28 === void 0 || (_stateRef$current28 = _stateRef$current28.others) === null || _stateRef$current28 === void 0 ? void 0 : _stateRef$current28[mid];
@@ -237,29 +288,32 @@ export function SocialPanel(props) {
       style: {
         display: 'flex',
         alignItems: 'center',
-        gap: 6,
-        padding: '3px 6px',
-        marginBottom: 2,
-        borderRadius: 4,
-        background: 'rgba(216,169,77,.05)',
-        border: '1px solid rgba(216,169,77,.1)'
+        gap: 8,
+        padding: '4px 6px',
+        minHeight: 44,
+        borderBottom: '1px solid rgba(238,242,235,.10)'
       }
     }, /*#__PURE__*/React.createElement("div", {
       style: {
         flex: 1,
-        fontSize: 8,
-        color: '#D8A94D'
+        fontSize: 13,
+        color: '#B9C1BF',
+        whiteSpace: 'nowrap',
+        overflow: 'hidden',
+        textOverflow: 'ellipsis'
       }
     }, name), /*#__PURE__*/React.createElement("button", {
       style: {
-        padding: '2px 5px',
-        borderRadius: 3,
-        fontSize: 7,
+        minHeight: 32,
+        padding: '4px 12px',
+        borderRadius: 999,
+        fontSize: 11,
         fontWeight: 700,
         cursor: 'pointer',
-        border: '1px solid rgba(61,220,151,.3)',
-        background: 'rgba(61,220,151,.08)',
-        color: '#59BF91'
+        border: '1px solid rgba(238,242,235,.14)',
+        background: '#2B3940',
+        color: '#F7F2E7',
+        flexShrink: 0
       },
       onClick: function onClick() {
         var updated = mutedList.filter(function (m) {
@@ -271,5 +325,5 @@ export function SocialPanel(props) {
         } catch (e) {}
       }
     }, "Unmute"));
-  }))));
+  })))));
 }

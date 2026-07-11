@@ -7,13 +7,22 @@ import { EMOTES, TEXT_EMOTES } from '@/data/index.js';
    decomposition; the `showEmotes &&` gate stays in BroTown. 1 prop:
    sendEmote (a BroTown useCallback). EMOTES / TEXT_EMOTES verified real
    exports; no babel helpers or hoisted temps. */
+/* v2.3.1232: Lantern Slate restyle — inline override of the legacy
+   .bt-emote-bar blur/black chrome (spec hard lock: no backdrop-filter);
+   text quick-chats become 32px pill chips. Handlers untouched. */
 export function EmotePanel(props) {
   var sendEmote = props.sendEmote;
   return React.createElement("div", {
     className: "bt-emote-bar",
     style: {
       flexWrap: 'wrap',
-      maxWidth: 320
+      maxWidth: 320,
+      background: 'rgba(17,25,29,.94)',
+      backdropFilter: 'none',
+      WebkitBackdropFilter: 'none',
+      border: '1px solid rgba(238,242,235,.24)',
+      borderRadius: 12,
+      boxShadow: '0 14px 30px rgba(4,7,9,.38)'
     }
   }, EMOTES.map(function (e) {
     return /*#__PURE__*/React.createElement("button", {
@@ -32,12 +41,14 @@ export function EmotePanel(props) {
     return /*#__PURE__*/React.createElement("button", {
       key: t,
       style: {
-        padding: '4px 8px',
-        borderRadius: 6,
-        border: '1px solid rgba(255,255,255,.15)',
-        background: 'rgba(255,255,255,.08)',
-        color: '#fff',
-        fontSize: 10,
+        /* v2.3.1232: 32px raised pill chip */
+        minHeight: 32,
+        padding: '4px 12px',
+        borderRadius: 999,
+        border: '1px solid rgba(238,242,235,.14)',
+        background: '#2B3940',
+        color: '#F7F2E7',
+        fontSize: 12,
         fontWeight: 700,
         cursor: 'pointer',
         fontFamily: 'Source Sans 3,sans-serif',

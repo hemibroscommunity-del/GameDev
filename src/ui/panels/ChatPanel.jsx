@@ -9,6 +9,8 @@ import React from 'react';
    passed through so they keep pointing at the live input), sendChat (a
    useCallback), setChatInput, setChatOpen. No data imports or hoisted
    temps. */
+/* v2.3.1232: Lantern Slate restyle — world-overlay card, 44px input
+   trough + brass Send primary. Handlers/refs untouched. */
 export function ChatPanel(props) {
   var chatInput = props.chatInput,
     chatInputRef = props.chatInputRef,
@@ -25,12 +27,12 @@ export function ChatPanel(props) {
       zIndex: 9000,
       display: 'flex',
       alignItems: 'center',
-      gap: 4,
-      padding: '5px 8px',
-      background: 'rgba(16,24,29,.95)',
-      borderRadius: 10,
-      border: '1px solid rgba(255,255,255,.2)',
-      boxShadow: '0 4px 24px rgba(0,0,0,.7)'
+      gap: 6,
+      padding: 8,
+      background: 'rgba(17,25,29,.94)',
+      borderRadius: 12,
+      border: '1px solid rgba(238,242,235,.24)',
+      boxShadow: '0 14px 30px rgba(4,7,9,.38)'
     }
   }, /*#__PURE__*/React.createElement("button", {
     onTouchStart: function onTouchStart(e) {
@@ -45,23 +47,24 @@ export function ChatPanel(props) {
       chatInputValRef.current = '';
     },
     style: {
-      width: 28,
-      height: 28,
-      borderRadius: 6,
-      border: 'none',
+      /* v2.3.1232: secondary raised close, larger touch target */
+      width: 36,
+      height: 36,
+      borderRadius: 8,
+      border: '1px solid rgba(238,242,235,.14)',
       flexShrink: 0,
-      background: 'rgba(255,255,255,.1)',
+      background: '#2B3940',
       cursor: 'pointer',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
       fontSize: 13,
       padding: 0,
-      color: '#fff'
+      color: '#B9C1BF'
     }
-  }, "\u2715"), /*#__PURE__*/React.createElement("input", {
+  }, "✕"), /*#__PURE__*/React.createElement("input", {
     ref: chatInputRef,
-    placeholder: "Tap to type\u2026",
+    placeholder: "Tap to type…",
     value: chatInput,
     onChange: function onChange(e) {
       setChatInput(e.target.value);
@@ -88,16 +91,27 @@ export function ChatPanel(props) {
     maxLength: 200,
     style: {
       flex: 1,
-      padding: '8px 10px',
+      height: 44,
+      padding: '0 12px',
+      boxSizing: 'border-box',
       /* Opaque white BG + black text so the input stays readable
          regardless of iOS / Android default input styling overrides
          (some platforms force white BG even when CSS asks for
          translucent — that combined with our prior color:#fff was
          showing as white-on-white). */
-      background: '#ffffff',
-      border: '1px solid rgba(255,255,255,.15)',
-      borderRadius: 6,
-      color: '#000',
+      /* v2.3.1232: Lantern input trough. OPAQUE #121B20 keeps the
+         property that fixed the incident above (translucency was the
+         trigger), and WebkitAppearance:'none' disables the platform
+         default styling that forced the white BG in the first place. */
+      background: '#121B20',
+      WebkitAppearance: 'none',
+      appearance: 'none',
+      border: '1px solid rgba(238,242,235,.14)',
+      borderRadius: 8,
+      color: '#F7F2E7',
+      caretColor: '#F0C878',
+      /* 16px: keep — smaller font sizes make iOS Safari zoom the page
+         on focus. */
       fontSize: 16,
       outline: 'none',
       minWidth: 0
@@ -113,12 +127,14 @@ export function ChatPanel(props) {
       sendChat();
     },
     style: {
-      padding: '8px 14px',
-      background: 'var(--pop)',
-      color: '#fff',
+      /* v2.3.1232: brass primary send (44px, text-on-accent) */
+      minHeight: 44,
+      padding: '0 16px',
+      background: '#D8A85F',
+      color: '#20170D',
       border: 'none',
-      borderRadius: 6,
-      fontSize: 12,
+      borderRadius: 11,
+      fontSize: 13,
       fontWeight: 700,
       cursor: 'pointer',
       flexShrink: 0,
