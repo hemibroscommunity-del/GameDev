@@ -367,7 +367,7 @@ export function ExchangePanel(props) {
       background: '#121B20',
       boxShadow: 'inset 0 2px 4px rgba(0,0,0,.44)',
       color: '#D8A85F',
-      fontSize: 14,
+      fontSize: 16 /* v2.3.1233b: iOS zoom guard */,
       fontWeight: 700,
       fontVariantNumeric: 'tabular-nums',
       fontFamily: 'Source Sans 3,sans-serif',

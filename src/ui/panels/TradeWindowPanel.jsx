@@ -270,7 +270,7 @@ export function TradeWindowPanel(props) {
               if (g > 0) next._gold = g; else delete next._gold;
               pushStage(next);
             }}
-            style={{ width: 76, padding: '6px 8px', borderRadius: 8, border: '1px solid rgba(238,242,235,.14)', background: '#121B20', color: '#D8A85F', fontSize: 14, fontWeight: 700, fontVariantNumeric: 'tabular-nums', textAlign: 'right', outline: 'none' }}
+            style={{ width: 76, padding: '6px 8px', borderRadius: 8, border: '1px solid rgba(238,242,235,.14)', background: '#121B20', color: '#D8A85F', fontSize: 16 /* v2.3.1233b: iOS zoom guard */, fontWeight: 700, fontVariantNumeric: 'tabular-nums', textAlign: 'right', outline: 'none' }}
           />
           <span style={{ fontSize: 11, color: '#96A2A0', fontVariantNumeric: 'tabular-nums' }}>of {coins}</span>
         </div>

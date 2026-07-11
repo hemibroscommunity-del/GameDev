@@ -498,8 +498,8 @@ export const ItemDetailPopup = () => {
       }}>
         <div style={{ flex: '0 0 auto', display: 'flex', alignItems: 'center', gap: 7, minWidth: 0 }}>
           {r.iconSrc
-            ? <img src={r.iconSrc} alt={r.name} draggable={false} style={{ width: 32, height: 32, objectFit: 'contain', imageRendering: 'pixelated', filter: r.on ? 'none' : 'grayscale(1) brightness(.7)', userSelect: 'none', flex: '0 0 auto' }} />
-            : <span style={{ width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 19, opacity: r.on ? 1 : 0.6, flex: '0 0 auto', userSelect: 'none' }}>{r.glyph || '▫'}</span>}
+            ? <img src={r.iconSrc} alt={r.name} draggable={false} style={{ width: P ? 24 : 32, height: P ? 24 : 32, objectFit: 'contain', imageRendering: 'pixelated', filter: r.on ? 'none' : 'grayscale(1) brightness(.7)', userSelect: 'none', flex: '0 0 auto' }} />
+            : <span style={{ width: P ? 24 : 32, height: P ? 24 : 32, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 19, opacity: r.on ? 1 : 0.6, flex: '0 0 auto', userSelect: 'none' }}>{r.glyph || '▫'}</span>}
           <div style={{ flex: 1, minWidth: 0, fontSize: 12, fontWeight: 700, color: '#F7F2E7', lineHeight: 1.15, overflowWrap: 'anywhere' }}>{r.name}</div>
         </div>
         {r.sub
@@ -507,7 +507,14 @@ export const ItemDetailPopup = () => {
           : <div style={{ flex: '1 1 auto' }} />}
         <button type="button" onPointerUp={(e) => { e.stopPropagation(); r.toggle(); }}
           style={{
-            flex: '0 0 auto', width: '100%', minHeight: 44, padding: '5px 0', fontSize: 12, fontWeight: 700, borderRadius: 11,
+            /* v2.3.1233b: audit fix — in panel mode the row is height:100%
+               of the BUILD-column card with overflow:hidden; the v2.3.1232
+               44px button + 32px icon pushed fixed content to ~98px while
+               small iPhones give the row ~75-91px, clipping the button to a
+               sliver.  Panel mode returns to the compact pre-restyle fit
+               (24px icon, 30px button = full row width, still an easy
+               target); the anchored mode keeps the spec 44pt. */
+            flex: '0 0 auto', width: '100%', minHeight: P ? 30 : 44, padding: '5px 0', fontSize: 12, fontWeight: 700, borderRadius: 11,
             border: r.on ? '1px solid #C7655F' : 'none',
             background: r.on ? '#7C3431' : '#D8A85F', /* Unequip = destructive, Equip = brass primary */
             color: r.on ? '#FFF1EE' : '#20170D',

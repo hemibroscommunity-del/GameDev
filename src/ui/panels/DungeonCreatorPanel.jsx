@@ -193,7 +193,7 @@ export function DungeonCreatorPanel(props) {
         boxShadow: 'inset 0 2px 4px rgba(0,0,0,.44)',
         color: '#F7F2E7',
         caretColor: '#F0C878',
-        fontSize: 13.5,
+        fontSize: 16 /* v2.3.1233b: iOS zoom guard */,
         fontFamily: 'inherit',
         marginBottom: 10,
         outline: 'none'

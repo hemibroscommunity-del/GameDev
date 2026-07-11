@@ -162,6 +162,10 @@ input{font-family:inherit}
 .bt-plist-sub{font-size:8px;color:rgba(255,255,255,.4)}
 .bt-inspect{position:absolute;inset:0;z-index:30;display:flex;align-items:center;justify-content:center;
   background:rgba(0,0,0,.6);-webkit-tap-highlight-color:transparent}
+/* v2.3.1233b: LOAD-BEARING padding — all 11 building panels
+   (src/ui/panels/buildings/*) bleed a full-panel #202C32 surface into
+   this 20px padding via margin:-20 roots (Lantern Slate sweep).
+   Changing this padding misaligns every building interior. */
 .bt-inspect-card{background:#1a1428;border:1px solid rgba(255,255,255,.15);border-radius:14px;
   width:240px;padding:20px;text-align:center;position:relative}
 .bt-inspect-close{position:absolute;top:8px;right:8px;width:28px;height:28px;border-radius:50%;

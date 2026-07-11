@@ -696,7 +696,7 @@ export function PartyPanel(props) {
       border: '1px solid rgba(238,242,235,.14)',
       background: '#121B20',
       color: '#D8A85F',
-      fontSize: 12,
+      fontSize: 16 /* v2.3.1233b: iOS zoom guard */,
       fontWeight: 700,
       fontFamily: 'Source Sans 3,sans-serif',
       fontVariantNumeric: 'tabular-nums',
@@ -753,10 +753,11 @@ export function PartyPanel(props) {
       borderRadius: 11,
       fontSize: 13,
       fontWeight: 700,
-      border: '1px solid ' + (arenaBetTarget ? '#D8A85F' : 'rgba(238,242,235,.14)'),
-      background: arenaBetTarget ? '#D8A85F' : '#2B3940',
-      color: arenaBetTarget ? '#20170D' : '#687575',
-      cursor: arenaBetTarget ? 'pointer' : 'not-allowed'
+      /* v2.3.1233b: audit fix — visual now mirrors the FULL disabled gate (target AND coins); it previously keyed on target only, rendering a solid-brass primary that silently swallowed taps when broke. Style-only. */
+      border: '1px solid ' + ((arenaBetTarget && rpgState.coins >= arenaBetAmount) ? '#D8A85F' : 'rgba(238,242,235,.14)'),
+      background: (arenaBetTarget && rpgState.coins >= arenaBetAmount) ? '#D8A85F' : '#2B3940',
+      color: (arenaBetTarget && rpgState.coins >= arenaBetAmount) ? '#20170D' : '#687575',
+      cursor: (arenaBetTarget && rpgState.coins >= arenaBetAmount) ? 'pointer' : 'not-allowed'
     }
   }, "\uD83C\uDFB2 Place Bet (", arenaBetAmount, "G)"), arenaBets.filter(function (b) {
     return b.tournamentId === (arenaTournament === null || arenaTournament === void 0 ? void 0 : arenaTournament.id);
@@ -874,7 +875,7 @@ export function PartyPanel(props) {
       border: '1px solid rgba(238,242,235,.14)',
       background: '#121B20',
       color: '#D8A85F',
-      fontSize: 12,
+      fontSize: 16 /* v2.3.1233b: iOS zoom guard */,
       fontWeight: 700,
       fontFamily: 'Source Sans 3,sans-serif',
       fontVariantNumeric: 'tabular-nums',
@@ -944,10 +945,11 @@ export function PartyPanel(props) {
       borderRadius: 11,
       fontSize: 13,
       fontWeight: 700,
-      border: '1px solid ' + (arenaBetTarget ? '#D8A85F' : 'rgba(238,242,235,.14)'),
-      background: arenaBetTarget ? '#D8A85F' : '#2B3940',
-      color: arenaBetTarget ? '#20170D' : '#687575',
-      cursor: arenaBetTarget ? 'pointer' : 'not-allowed'
+      /* v2.3.1233b: audit fix — visual now mirrors the FULL disabled gate (target AND coins); it previously keyed on target only, rendering a solid-brass primary that silently swallowed taps when broke. Style-only. */
+      border: '1px solid ' + ((arenaBetTarget && rpgState.coins >= arenaBetAmount) ? '#D8A85F' : 'rgba(238,242,235,.14)'),
+      background: (arenaBetTarget && rpgState.coins >= arenaBetAmount) ? '#D8A85F' : '#2B3940',
+      color: (arenaBetTarget && rpgState.coins >= arenaBetAmount) ? '#20170D' : '#687575',
+      cursor: (arenaBetTarget && rpgState.coins >= arenaBetAmount) ? 'pointer' : 'not-allowed'
     }
   }, "\uD83C\uDFB2 Place Bet ", arenaBetTarget ? '(' + arenaBetAmount + 'G on ' + (((_arenaTournament$play5 = arenaTournament.players.find(function (p) {
     return p.id === arenaBetTarget;
@@ -1107,7 +1109,7 @@ export function PartyPanel(props) {
       border: '1px solid rgba(238,242,235,.14)',
       background: '#121B20',
       color: '#D8A85F',
-      fontSize: 12,
+      fontSize: 16 /* v2.3.1233b: iOS zoom guard */,
       fontWeight: 700,
       fontFamily: 'Source Sans 3,sans-serif',
       fontVariantNumeric: 'tabular-nums',
@@ -1328,7 +1330,7 @@ export function PartyPanel(props) {
         border: '1px solid rgba(238,242,235,.14)',
         background: '#121B20',
         color: '#D8A85F',
-        fontSize: 12,
+        fontSize: 16 /* v2.3.1233b: iOS zoom guard */,
         fontWeight: 700,
         fontVariantNumeric: 'tabular-nums',
         textAlign: 'right',
@@ -1393,10 +1395,11 @@ export function PartyPanel(props) {
         borderRadius: 11,
         fontSize: 13,
         fontWeight: 700,
-        border: '1px solid ' + (arenaBetTarget ? '#D8A85F' : 'rgba(238,242,235,.14)'),
-        background: arenaBetTarget ? '#D8A85F' : '#2B3940',
-        color: arenaBetTarget ? '#20170D' : '#687575',
-        cursor: arenaBetTarget ? 'pointer' : 'not-allowed'
+      /* v2.3.1233b: audit fix — visual now mirrors the FULL disabled gate (target AND coins); it previously keyed on target only, rendering a solid-brass primary that silently swallowed taps when broke. Style-only. */
+        border: '1px solid ' + ((arenaBetTarget && rpgState.coins >= arenaBetAmount) ? '#D8A85F' : 'rgba(238,242,235,.14)'),
+        background: (arenaBetTarget && rpgState.coins >= arenaBetAmount) ? '#D8A85F' : '#2B3940',
+        color: (arenaBetTarget && rpgState.coins >= arenaBetAmount) ? '#20170D' : '#687575',
+        cursor: (arenaBetTarget && rpgState.coins >= arenaBetAmount) ? 'pointer' : 'not-allowed'
       }
     }, "\uD83C\uDFB2 Place Bet")));
   }(), function () {

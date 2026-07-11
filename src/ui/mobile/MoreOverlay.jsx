@@ -73,6 +73,9 @@ export const MoreOverlay = () => {
         boxShadow: '0 -10px 24px rgba(6,10,12,.22)',
         padding: '14px 14px 24px', boxSizing: 'border-box',
         maxHeight: '70vh', overflowY: 'auto',
+        /* v2.3.1233b: audit — html/body set touch-action:none; scrolling
+           regions must opt back in (same rule as panelStyle). */
+        touchAction: 'pan-y',
         animation: 'more-up 220ms ease-out',
       }}>
         <style>{`@keyframes more-up { from { transform: translateY(100%); } to { transform: translateY(0); } }`}</style>

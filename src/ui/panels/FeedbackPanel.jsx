@@ -555,7 +555,7 @@ export function FeedbackPanel(props) {
       background: '#121B20',
       color: '#F7F2E7',
       caretColor: '#F0C878',
-      fontSize: 14,
+      fontSize: 16 /* v2.3.1233b: iOS zoom guard */,
       fontFamily: 'inherit',
       resize: 'none',
       outline: 'none',
