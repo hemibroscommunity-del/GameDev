@@ -3149,7 +3149,10 @@ export function getEvasionPts(rpg) {
 export const RARITY_TIERS = {
   common: {
     mult: 1.00,
-    color: '#8890b8',
+    /* v2.3.1233: was #8890b8 — the old navy palette's neutral, which
+       reads as RARE-blue on Lantern Slate surfaces (QA caught "Common"
+       rendered blue in the Enchanter). Lantern common grey instead. */
+    color: '#8B9695',
     label: 'Common',
     elements: 0
   },
