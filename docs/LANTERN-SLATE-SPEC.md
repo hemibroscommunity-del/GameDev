@@ -238,8 +238,12 @@ pointerdown. prefers-reduced-motion removes shimmer/overshoot/nudge.
    icon drop-shadow, NEW brass dot, equipped brass corner notch.
    Cooldown / drag / invalid-drop states deferred — no runtime
    surface exists for them yet.
-3. ☐ Panel header 44px + tabs/chips/rows sweep; world-HUD toast +
-   joystick opacity ladder.
+3. ◐ v2.3.1229: panel header 44px; toolbar now PERSISTENT in panel
+   mode with the active destination lit (brass plate + top line;
+   tapping the lit icon toggles home — no extra "dashboard" icon
+   needed); red-leather removed from the FULL bag panel (the sweep
+   had only caught the preview grid). Remaining: tabs/chips/rows
+   sweep, toast + joystick opacity ladder.
 4. ☐ Device/contrast/perf QA pass; remove unused legacy CSS.
 
 ## Do-not-drift list

@@ -754,10 +754,12 @@ export const BottomDashboard = () => {
     >
       {active ? (
         <>
-          {/* Header strip — back-chip (only on drilled child), title, ×. */}
+          {/* Header strip — back-chip (only on drilled child), title, ×.
+              v2.3.1229: 44px minimum so back/close meet the 44pt touch
+              rule (Lantern Slate §9). */}
           <div style={{
-            height: 38,
-            flex: '0 0 38px',
+            height: 44,
+            flex: '0 0 44px',
             display: 'flex',
             alignItems: 'center',
             padding: '0 8px',
@@ -775,9 +777,9 @@ export const BottomDashboard = () => {
                 panel title — BAG, MAP, etc. — reads consistently. */}
             <div style={{
               flex: 1,
-              fontSize: 14,
+              fontSize: 13,
               fontWeight: 700,
-              letterSpacing: '.08em',
+              letterSpacing: '.10em',
               textTransform: 'uppercase',
               textAlign: 'center',
               color: COL.text,
@@ -790,7 +792,12 @@ export const BottomDashboard = () => {
               style={chipStyle}
             >×</button>
           </div>
-          {Active && <Active />}
+          {/* v2.3.1229: panels render in a flex body ABOVE the persistent
+              toolbar (spec §9: the toolbar stays visible in panel mode;
+              its lit item identifies the panel; tapping it again = home). */}
+          <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+            {Active && <Active />}
+          </div>
         </>
       ) : (
         <>
@@ -1465,23 +1472,35 @@ export const BottomDashboard = () => {
             </div>
           </div>
 
-          {/* Icon row — bottom 30% of dashboard.  v2.3.1227: separate
-              darkest navigation shelf (Lantern Slate §9). */}
+        </>
+      )}
+
+      {/* Icon row — bottom 30% of dashboard.  v2.3.1227: separate
+          darkest navigation shelf (Lantern Slate §9).  v2.3.1229: now
+          PERSISTENT — it renders in panel mode too, with the active
+          destination lit (brass plate + top line); tapping the lit icon
+          toggles back to the dashboard.  rootId (stack[0]) keeps More
+          lit while one of its children (Settings, Stats, ...) is open. */}
+      {(() => {
+        const rootId = stack.length ? stack[0] : null;
+        const moreLit = !!rootId && !['inventory', 'social', 'encyclopedia', 'journey'].includes(rootId);
+        return (
           <div style={{
             height: '30%',
             minHeight: 56,
+            flex: '0 0 auto',
             borderTop: `1px solid ${COL.divider}`,
             background: 'linear-gradient(180deg, #131D22 0%, #10181D 100%)',
             display: 'flex',
             alignItems: 'stretch',
           }}>
-            <IconButton glyph="inventory" label="Bag"
+            <IconButton glyph="inventory" label="Bag" active={rootId === 'inventory'}
               onClick={() => dashboardPanelBus.toggle('inventory')} />
-            <IconButton glyph="friends"   label="Friends"
+            <IconButton glyph="friends"   label="Friends" active={rootId === 'social'}
               onClick={() => dashboardPanelBus.toggle('social')} />
-            <IconButton glyph="codex"     label="Codex"
+            <IconButton glyph="codex"     label="Codex" active={rootId === 'encyclopedia'}
               onClick={() => dashboardPanelBus.toggle('encyclopedia')} />
-            <IconButton glyph="journey"   label="Journey"
+            <IconButton glyph="journey"   label="Journey" active={rootId === 'journey'}
               onClick={() => dashboardPanelBus.toggle('journey')} />
             {/* v2.3.1015: Chat replaces Map in the toolbar — TOGGLES the
                 over-head chat bubble (ChatBubble.jsx): tap to open, tap again
@@ -1489,11 +1508,11 @@ export const BottomDashboard = () => {
                 placeholder inline SVG. */}
             <IconButton glyph="chat" label="Chat" tut="dash-chat"
               onClick={() => chatBubbleBus.toggle()} />
-            <IconButton glyph="more"      label="More" tut="dash-more"
+            <IconButton glyph="more"      label="More" tut="dash-more" active={moreLit}
               onClick={() => dashboardPanelBus.toggle('more')} />
           </div>
-        </>
-      )}
+        );
+      })()}
     </div>
     </>
   );

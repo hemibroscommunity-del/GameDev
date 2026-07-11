@@ -242,14 +242,15 @@ export const InventoryPanel = () => {
         <span style={{ fontSize: 11 }}>{Math.min(usedTiles, SLOTS)} / {SLOTS}</span>
       </div>
 
-      {/* v2.3.761: leather backdrop (owner art) behind the bag's cell grid;
-          stretched to 100%/100% so its ornate border frames the container.
-          v2.3.762: flex:1 so the leather fills the panel's FULL height in
-          the expanded view (it used to stop at the last tile row). */}
+      {/* v2.3.1229: Lantern Slate recessed tray replaces the red leather
+          here too (spec hard lock: leather removed EVERYWHERE — the
+          v2.3.1227 sweep caught the preview grid but missed this one,
+          owner-reported with a screenshot). */}
       <div style={{
-        backgroundImage: 'url(/icons/ui/bag-bg.webp?v=2.3.761)',
-        backgroundSize: '100% 100%',
-        borderRadius: 8,
+        background: COL.well,
+        border: `1px solid ${COL.tileBor}`,
+        boxShadow: 'inset 0 2px 4px rgba(0,0,0,.44), inset 0 1px 0 rgba(255,255,255,.035)',
+        borderRadius: 10,
         padding: 8,
         flex: 1,
         minHeight: 0,
