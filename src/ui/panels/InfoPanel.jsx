@@ -20,7 +20,7 @@ export function InfoPanel(props) {
       zIndex: 40,
       padding: '10px 16px',
       borderRadius: 10,
-      background: 'rgba(10,8,20,.95)',
+      background: 'rgba(16,24,29,.95)',
       border: '1px solid rgba(255,255,255,.12)',
       backdropFilter: 'blur(8px)',
       WebkitBackdropFilter: 'blur(8px)',
@@ -39,12 +39,12 @@ export function InfoPanel(props) {
     style: {
       fontSize: 11,
       fontWeight: 700,
-      color: '#3dd497'
+      color: '#59BF91'
     }
   }, playerCount, " online"), /*#__PURE__*/React.createElement("span", {
     style: {
       fontSize: 8,
-      color: stateRef.current._realtimeStatus === 'connected' ? '#3dd497' : '#ef4444',
+      color: stateRef.current._realtimeStatus === 'connected' ? '#59BF91' : '#ef4444',
       marginLeft: 4
     }
   }, stateRef.current._realtimeStatus === 'connected' ? '●' : '○')), /*#__PURE__*/React.createElement("button", {

@@ -43,7 +43,7 @@ export function StatScreenPanel(props) {
     style: {
       fontSize: 16,
       fontWeight: 800,
-      color: '#f5c542',
+      color: '#D8A94D',
       marginBottom: 2
     }
   }, "\u2694\uFE0F Level ", rpgState.level), /*#__PURE__*/React.createElement("div", {
@@ -58,7 +58,7 @@ export function StatScreenPanel(props) {
       gap: 4,
       marginBottom: 8
     }
-  }, [['HP', rpgState.hp, rpgState.maxHp, '#ff5e6c'], ['STA', Math.floor(rpgState.stamina || 0), rpgState.maxStamina || 100, '#f5c542'], ['MP', Math.floor(rpgState.mana || 0), rpgState.maxMana || 100, '#3b82f6']].map(function (_ref78) {
+  }, [['HP', rpgState.hp, rpgState.maxHp, '#D95C54'], ['STA', Math.floor(rpgState.stamina || 0), rpgState.maxStamina || 100, '#D8A94D'], ['MP', Math.floor(rpgState.mana || 0), rpgState.maxMana || 100, '#3b82f6']].map(function (_ref78) {
     var _ref79 = _slicedToArray(_ref78, 4),
       l = _ref79[0],
       v = _ref79[1],
@@ -105,7 +105,7 @@ export function StatScreenPanel(props) {
       fontSize: 7,
       color: 'rgba(255,255,255,.3)'
     }
-  }, "permanent")), [['Power', 'power', '⚔️', 'Base damage', '#ff5e6c'], ['Vitality', 'vitality', '❤️', 'Health pool', '#3dd497'], ['Endurance', 'endurance', '🛡️', 'Stamina pool', '#f5c542'], ['Agility', 'agility', '💨', 'Speed & dodge', '#60a5fa'], ['Mind', 'mind', '💎', 'Mana pool', '#a78bfa']].map(function (_ref80) {
+  }, "permanent")), [['Power', 'power', '⚔️', 'Base damage', '#D95C54'], ['Vitality', 'vitality', '❤️', 'Health pool', '#59BF91'], ['Endurance', 'endurance', '🛡️', 'Stamina pool', '#D8A94D'], ['Agility', 'agility', '💨', 'Speed & dodge', '#60a5fa'], ['Mind', 'mind', '💎', 'Mana pool', '#a78bfa']].map(function (_ref80) {
     var _ref81 = _slicedToArray(_ref80, 5),
       label = _ref81[0],
       key = _ref81[1],

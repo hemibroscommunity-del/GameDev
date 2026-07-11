@@ -101,7 +101,7 @@ export function EncyclopediaPanel(props) {
     style: {
       fontSize: 9,
       fontWeight: 700,
-      color: '#f5c542',
+      color: '#D8A94D',
       marginBottom: 4
     }
   }, "Archetypes"), /*#__PURE__*/React.createElement("div", {
@@ -217,7 +217,7 @@ export function EncyclopediaPanel(props) {
     style: {
       fontSize: 9,
       fontWeight: 700,
-      color: '#f5c542',
+      color: '#D8A94D',
       marginBottom: 4
     }
   }, "Elements"), /*#__PURE__*/React.createElement("div", {
@@ -263,7 +263,7 @@ export function EncyclopediaPanel(props) {
     style: {
       fontSize: 9,
       fontWeight: 700,
-      color: '#f5c542',
+      color: '#D8A94D',
       marginBottom: 4
     }
   }, "Effectiveness Circle"), /*#__PURE__*/React.createElement("div", {
@@ -305,7 +305,7 @@ export function EncyclopediaPanel(props) {
     style: {
       fontSize: 9,
       fontWeight: 700,
-      color: '#f5c542',
+      color: '#D8A94D',
       marginBottom: 4
     }
   }, "Collisions (", discoveredCollisions.size, "/", Object.keys(COLLISION_TABLE).length, ")"), /*#__PURE__*/React.createElement("div", {
@@ -633,7 +633,7 @@ export function EncyclopediaPanel(props) {
         borderRadius: 6,
         marginBottom: 4,
         background: visited ? 'rgba(255,255,255,.03)' : 'rgba(255,255,255,.01)',
-        border: '1px solid ' + (visited ? ((elem === null || elem === void 0 ? void 0 : elem.color) || '#5b52ff') + '30' : 'rgba(255,255,255,.04)')
+        border: '1px solid ' + (visited ? ((elem === null || elem === void 0 ? void 0 : elem.color) || '#D8A85F') + '30' : 'rgba(255,255,255,.04)')
       }
     }, /*#__PURE__*/React.createElement("div", {
       style: {
@@ -685,31 +685,31 @@ export function EncyclopediaPanel(props) {
       }
     }, "+", zone.secondary), zone.safe && /*#__PURE__*/React.createElement("span", {
       style: {
-        color: '#3dd497',
+        color: '#59BF91',
         padding: '1px 4px',
         borderRadius: 2,
-        background: 'rgba(61,212,151,.1)'
+        background: 'rgba(89,191,145,.1)'
       }
     }, "Safe"), zone.lawless && /*#__PURE__*/React.createElement("span", {
       style: {
-        color: '#ff5e6c',
+        color: '#D95C54',
         padding: '1px 4px',
         borderRadius: 2,
-        background: 'rgba(255,94,108,.1)'
+        background: 'rgba(217,92,84,.1)'
       }
     }, "PvP"), zone.endgame && /*#__PURE__*/React.createElement("span", {
       style: {
-        color: '#f5c542',
+        color: '#D8A94D',
         padding: '1px 4px',
         borderRadius: 2,
-        background: 'rgba(245,197,66,.1)'
+        background: 'rgba(216,169,77,.1)'
       }
     }, "Endgame"), zone.personal && /*#__PURE__*/React.createElement("span", {
       style: {
-        color: '#3dd497',
+        color: '#59BF91',
         padding: '1px 4px',
         borderRadius: 2,
-        background: 'rgba(61,212,151,.1)'
+        background: 'rgba(89,191,145,.1)'
       }
     }, "Personal"), zone.spawns && zone.spawns.length > 0 && /*#__PURE__*/React.createElement("span", {
       style: {

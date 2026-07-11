@@ -86,8 +86,8 @@ export function FurniturePanel(props) {
           padding: '6px 8px',
           borderRadius: 6,
           marginBottom: 3,
-          background: isOwned ? 'rgba(61,212,151,.06)' : 'rgba(255,255,255,.02)',
-          border: '1px solid ' + (isOwned ? 'rgba(61,212,151,.2)' : 'rgba(255,255,255,.06)'),
+          background: isOwned ? 'rgba(89,191,145,.06)' : 'rgba(255,255,255,.02)',
+          border: '1px solid ' + (isOwned ? 'rgba(89,191,145,.2)' : 'rgba(255,255,255,.06)'),
           opacity: !isOwned && wcLvl < f.wcLvl ? 0.4 : 1
         }
       }, /*#__PURE__*/React.createElement("span", {
@@ -102,7 +102,7 @@ export function FurniturePanel(props) {
         style: {
           fontSize: 9,
           fontWeight: 700,
-          color: isOwned ? '#3dd497' : '#fff'
+          color: isOwned ? '#59BF91' : '#fff'
         }
       }, f.name, " ", isOwned && '✓'), /*#__PURE__*/React.createElement("div", {
         style: {
@@ -121,7 +121,7 @@ export function FurniturePanel(props) {
         return /*#__PURE__*/React.createElement("span", {
           key: k,
           style: {
-            color: '#f5c542',
+            color: '#D8A94D',
             marginLeft: 4
           }
         }, "+", typeof v === 'number' && v < 1 ? '-' + Math.round((1 - v) * 100) + '% cost' : typeof v === 'number' && v > 1 ? '+' + Math.round((v - 1) * 100) + '%' : v);

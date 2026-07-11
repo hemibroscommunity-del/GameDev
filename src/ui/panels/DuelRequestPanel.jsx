@@ -44,7 +44,7 @@ export function DuelRequestPanel(props) {
     style: {
       fontSize: 12,
       fontWeight: 800,
-      color: '#f5c542',
+      color: '#D8A94D',
       marginBottom: 8
     }
   }, "\uD83D\uDCB0 Wager: ", duelRequest.wager, "g (winner takes all)"), /*#__PURE__*/React.createElement("div", {
@@ -64,7 +64,7 @@ export function DuelRequestPanel(props) {
       padding: '8px',
       borderRadius: 8,
       border: 'none',
-      background: '#3dd497',
+      background: '#59BF91',
       color: '#000',
       fontWeight: 700,
       fontSize: 12,

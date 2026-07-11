@@ -175,13 +175,13 @@ export function GuildPanel(props) {
     }, "Next: ", nextRank.title, " (Lv", nextRank.minLvl, ")"), !nextRank && /*#__PURE__*/React.createElement("div", {
       style: {
         fontSize: 7,
-        color: '#f5c542'
+        color: '#D8A94D'
       }
     }, "MAX RANK"))), /*#__PURE__*/React.createElement("div", {
       style: {
         fontSize: 9,
         fontWeight: 700,
-        color: '#f5c542',
+        color: '#D8A94D',
         marginBottom: 3
       }
     }, "Guild Ranks"), /*#__PURE__*/React.createElement("div", {
@@ -215,15 +215,15 @@ export function GuildPanel(props) {
       style: {
         padding: 8,
         borderRadius: 6,
-        background: quest.complete ? 'rgba(61,212,151,.08)' : 'rgba(255,255,255,.03)',
-        border: '1px solid ' + (quest.complete ? 'rgba(61,212,151,.2)' : 'rgba(255,255,255,.08)'),
+        background: quest.complete ? 'rgba(89,191,145,.08)' : 'rgba(255,255,255,.03)',
+        border: '1px solid ' + (quest.complete ? 'rgba(89,191,145,.2)' : 'rgba(255,255,255,.08)'),
         marginBottom: 6
       }
     }, /*#__PURE__*/React.createElement("div", {
       style: {
         fontSize: 9,
         fontWeight: 700,
-        color: quest.complete ? '#3dd497' : '#f5c542',
+        color: quest.complete ? '#59BF91' : '#D8A94D',
         marginBottom: 2
       }
     }, quest.complete ? '✅' : '📋', " ", quest.title), /*#__PURE__*/React.createElement("div", {
@@ -274,7 +274,7 @@ export function GuildPanel(props) {
         var titleStr = newRank.title + ' ' + key.replace(/([A-Z])/g, ' $1').trim();
         if (!R._titles.includes(titleStr)) R._titles.push(titleStr);
         pushDmgPopup(S, S.player.x, S.player.y - 40, quest.title + ' complete!', g.color);
-        pushDmgPopup(S, S.player.x, S.player.y - 25, '+' + quest.reward.gold + 'G +' + quest.reward.ap + 'AP', '#f5c542');
+        pushDmgPopup(S, S.player.x, S.player.y - 25, '+' + quest.reward.gold + 'G +' + quest.reward.ap + 'AP', '#D8A94D');
         BT_AUDIO.collect();
         setRpgState(_objectSpread({}, R));
         try {
@@ -288,9 +288,9 @@ export function GuildPanel(props) {
         borderRadius: 5,
         fontSize: 9,
         fontWeight: 800,
-        border: '1.5px solid rgba(61,212,151,.4)',
-        background: 'rgba(61,212,151,.15)',
-        color: '#3dd497',
+        border: '1.5px solid rgba(89,191,145,.4)',
+        background: 'rgba(89,191,145,.15)',
+        color: '#59BF91',
         cursor: 'pointer'
       }
     }, "\uD83C\uDFDB\uFE0F Claim Reward")), !quest && /*#__PURE__*/React.createElement("div", {

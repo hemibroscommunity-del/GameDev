@@ -96,8 +96,8 @@ export function CookPanel(props) {
         width: greenW,
         height: '100%',
         background: 'rgba(61,220,151,.25)',
-        borderLeft: '2px solid #3dd497',
-        borderRight: '2px solid #3dd497'
+        borderLeft: '2px solid #59BF91',
+        borderRight: '2px solid #59BF91'
       }
     }), /*#__PURE__*/React.createElement("div", {
       style: {
@@ -106,9 +106,9 @@ export function CookPanel(props) {
         top: 0,
         width: 4,
         height: '100%',
-        background: inZone ? '#3dd497' : '#ff5e6c',
+        background: inZone ? '#59BF91' : '#D95C54',
         borderRadius: 2,
-        boxShadow: inZone ? '0 0 8px #3dd497' : '0 0 8px #ff5e6c',
+        boxShadow: inZone ? '0 0 8px #59BF91' : '0 0 8px #D95C54',
         transition: 'left 0.05s linear'
       }
     })), /*#__PURE__*/React.createElement("button", {
@@ -119,7 +119,7 @@ export function CookPanel(props) {
         border: 'none',
         fontSize: 11,
         fontWeight: 800,
-        background: inZone ? '#3dd497' : '#ea580c',
+        background: inZone ? '#59BF91' : '#ea580c',
         color: '#fff',
         cursor: 'pointer',
         letterSpacing: '.05em'
@@ -137,8 +137,8 @@ export function CookPanel(props) {
           R._questFlags.cookedRecipe = true;
           if (!R._compStats) R._compStats = createDefaultCompStats();
           R._compStats.cookSuccess++;
-          pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'Cooked ' + cookMinigame.fishName + '!', '#3dd497');
-          if (leveled) pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 45, 'Cooking Lv' + sk.cooking.level + '!', '#f5c542');
+          pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'Cooked ' + cookMinigame.fishName + '!', '#59BF91');
+          if (leveled) pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 45, 'Cooking Lv' + sk.cooking.level + '!', '#D8A94D');
           BT_AUDIO.collect();
           setCookMinigame(_objectSpread(_objectSpread({}, cookMinigame), {}, {
             result: 'success'
@@ -148,7 +148,7 @@ export function CookPanel(props) {
           addLifeSkillXp(sk, 'cooking', 1);
           if (!R._compStats) R._compStats = createDefaultCompStats();
           R._compStats.cookBurns++;
-          pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'Burnt! Fish wasted.', '#ff5e6c');
+          pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'Burnt! Fish wasted.', '#D95C54');
           BT_AUDIO.beep(150, 0.1, 0.15, 'sawtooth');
           setCookMinigame(_objectSpread(_objectSpread({}, cookMinigame), {}, {
             result: 'burnt'
@@ -172,9 +172,9 @@ export function CookPanel(props) {
       textAlign: 'center',
       fontSize: 12,
       fontWeight: 800,
-      background: cookMinigame.result === 'success' ? 'rgba(61,220,151,.15)' : 'rgba(255,94,108,.15)',
-      border: cookMinigame.result === 'success' ? '1px solid rgba(61,220,151,.3)' : '1px solid rgba(255,94,108,.3)',
-      color: cookMinigame.result === 'success' ? '#3dd497' : '#ff5e6c'
+      background: cookMinigame.result === 'success' ? 'rgba(61,220,151,.15)' : 'rgba(217,92,84,.15)',
+      border: cookMinigame.result === 'success' ? '1px solid rgba(61,220,151,.3)' : '1px solid rgba(217,92,84,.3)',
+      color: cookMinigame.result === 'success' ? '#59BF91' : '#D95C54'
     }
   }, cookMinigame.result === 'success' ? '✅ Perfectly cooked!' : '🔥 Burnt to a crisp!'), !cookMinigame && function () {
     var inv = rpgState.inventory || {};
@@ -288,7 +288,7 @@ export function CookPanel(props) {
       style: {
         fontSize: 10,
         fontWeight: 700,
-        color: '#3dd497',
+        color: '#59BF91',
         marginTop: 6,
         marginBottom: 4
       }
@@ -325,7 +325,7 @@ export function CookPanel(props) {
         style: {
           fontSize: 9,
           fontWeight: 700,
-          color: '#3dd497',
+          color: '#59BF91',
           textTransform: 'capitalize'
         }
       }, fishName, " ", /*#__PURE__*/React.createElement("span", {
@@ -344,7 +344,7 @@ export function CookPanel(props) {
           border: 'none',
           fontSize: 8,
           fontWeight: 700,
-          background: atFull ? 'rgba(255,255,255,.08)' : '#3dd497',
+          background: atFull ? 'rgba(255,255,255,.08)' : '#59BF91',
           color: atFull ? 'rgba(255,255,255,.3)' : '#000',
           cursor: 'pointer'
         },
@@ -368,7 +368,7 @@ export function CookPanel(props) {
           try {
             localStorage.setItem('bt_rpg', JSON.stringify(R));
           } catch (e) {}
-          pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, '+' + healed + ' HP', '#3dd497');
+          pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, '+' + healed + ' HP', '#59BF91');
           BT_AUDIO.beep(500, 0.06, 0.08, 'sine');
         }
       }, "Eat"));
@@ -514,7 +514,7 @@ export function CookPanel(props) {
         if (!R._questFlags) R._questFlags = {};
         R._questFlags.cookedRecipe = true;
         pushDmgPopup(S, S.player.x, S.player.y - 30, recipe.name + '!', '#ea580c');
-        if (leveled) pushDmgPopup(S, S.player.x, S.player.y - 50, 'Cooking Lv' + sk.cooking.level + '!', '#f5c542');
+        if (leveled) pushDmgPopup(S, S.player.x, S.player.y - 50, 'Cooking Lv' + sk.cooking.level + '!', '#D8A94D');
         setRpgState(_objectSpread({}, R));
         try {
           localStorage.setItem('bt_rpg', JSON.stringify(R));

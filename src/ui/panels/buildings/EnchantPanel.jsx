@@ -90,7 +90,7 @@ export function EnchantPanel(props) {
       }
     }, "\u25C6 ", wpn.element2), (wpn === null || wpn === void 0 ? void 0 : wpn.isVolatile) && /*#__PURE__*/React.createElement("span", {
       style: {
-        color: '#ff5e6c',
+        color: '#D95C54',
         fontSize: 8
       }
     }, "\u26A1VOLATILE")), /*#__PURE__*/React.createElement("div", {
@@ -156,7 +156,7 @@ export function EnchantPanel(props) {
         title: blockedVolatile ? 'Volatile combo requires Fusion-Compatible gear base' : '',
         onClick: function onClick() {
           if (blockedVolatile) {
-            pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'Needs Fusion-Compatible gear!', '#ff5e6c');
+            pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'Needs Fusion-Compatible gear!', '#D95C54');
             return;
           }
           var R = stateRef.current.rpg;
@@ -189,7 +189,7 @@ export function EnchantPanel(props) {
           R._questFlags.enchantedWeapon = true;
           R._questFlags.slottedGem = true;
           pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, elem + ' enchanted!', edef.color);
-          if (leveled) pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 50, 'Enchanting Lv' + sk.enchanting.level + '!', '#f5c542');
+          if (leveled) pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 50, 'Enchanting Lv' + sk.enchanting.level + '!', '#D8A94D');
           BT_AUDIO.collect();
           setRpgState(_objectSpread({}, R));
           try {
@@ -208,14 +208,14 @@ export function EnchantPanel(props) {
       marginTop: 10,
       padding: 8,
       borderRadius: 8,
-      background: 'rgba(245,197,66,.06)',
-      border: '1px solid rgba(245,197,66,.15)'
+      background: 'rgba(216,169,77,.06)',
+      border: '1px solid rgba(216,169,77,.15)'
     }
   }, /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 10,
       fontWeight: 700,
-      color: '#f5c542',
+      color: '#D8A94D',
       marginBottom: 4
     }
   }, "\uD83D\uDCFF Amulet: ", rpgState.amulet.name, rpgState.amulet.gem && function (_ELEMENTS$rpgState$am) {
@@ -318,14 +318,14 @@ export function EnchantPanel(props) {
       marginTop: 10,
       padding: 8,
       borderRadius: 8,
-      background: 'rgba(91,82,255,.06)',
-      border: '1px solid rgba(91,82,255,.15)'
+      background: 'rgba(216,168,95,.06)',
+      border: '1px solid rgba(216,168,95,.15)'
     }
   }, /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 10,
       fontWeight: 700,
-      color: '#5b52ff',
+      color: '#D8A85F',
       marginBottom: 4
     }
   }, "\uD83D\uDEE1\uFE0F Shield: ", rpgState.shield.name, rpgState.shield.gem && function (_ELEMENTS$rpgState$sh) {

@@ -114,8 +114,8 @@ export function PetHousePanel(props) {
         padding: 8,
         borderRadius: 8,
         textAlign: 'center',
-        background: isActive ? 'rgba(245,197,66,.1)' : 'rgba(255,255,255,.03)',
-        border: '1.5px solid ' + (isActive ? 'rgba(245,197,66,.4)' : 'rgba(255,255,255,.08)'),
+        background: isActive ? 'rgba(216,169,77,.1)' : 'rgba(255,255,255,.03)',
+        border: '1.5px solid ' + (isActive ? 'rgba(216,169,77,.4)' : 'rgba(255,255,255,.08)'),
         cursor: 'pointer'
       },
       onClick: function onClick() {
@@ -150,7 +150,7 @@ export function PetHousePanel(props) {
     }, pet.element), /*#__PURE__*/React.createElement("div", {
       style: {
         fontSize: 7,
-        color: pet.evolutionTier >= 2 ? '#f5c542' : pet.evolutionTier >= 1 ? '#a855f7' : 'rgba(255,255,255,.25)'
+        color: pet.evolutionTier >= 2 ? '#D8A94D' : pet.evolutionTier >= 1 ? '#a855f7' : 'rgba(255,255,255,.25)'
       }
     }, tier), pet._enchants && pet._enchants.length > 0 && /*#__PURE__*/React.createElement("div", {
       style: {
@@ -181,7 +181,7 @@ export function PetHousePanel(props) {
       style: {
         fontSize: 7,
         fontWeight: 800,
-        color: '#f5c542',
+        color: '#D8A94D',
         marginTop: 2
       }
     }, "ACTIVE"));
@@ -214,7 +214,7 @@ export function PetHousePanel(props) {
       style: {
         fontSize: 8,
         fontWeight: 700,
-        color: '#f5c542',
+        color: '#D8A94D',
         marginBottom: 3
       }
     }, "Pet 1"), /*#__PURE__*/React.createElement("div", {
@@ -248,7 +248,7 @@ export function PetHousePanel(props) {
       style: {
         fontSize: 8,
         fontWeight: 700,
-        color: '#f5c542',
+        color: '#D8A94D',
         marginBottom: 3
       }
     }, "Pet 2"), /*#__PURE__*/React.createElement("div", {
@@ -439,7 +439,7 @@ export function PetHousePanel(props) {
             var p = R.lifeSkills.pets[pi];
             if (!p) return;
             if (R.coins < 50) {
-              pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'Need 50G!', '#ff5e6c');
+              pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'Need 50G!', '#D95C54');
               return;
             }
             R.coins -= 50;

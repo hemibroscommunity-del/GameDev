@@ -22,7 +22,7 @@ export function FarmPanel(props) {
     style: {
       fontSize: 16,
       fontWeight: 800,
-      color: '#3dd497',
+      color: '#59BF91',
       marginBottom: 4
     }
   }, "\uD83C\uDF3E Farm"), /*#__PURE__*/React.createElement("div", {
@@ -38,7 +38,7 @@ export function FarmPanel(props) {
       borderRadius: 8,
       border: '1px solid rgba(61,220,151,.3)',
       background: 'rgba(61,220,151,.1)',
-      color: '#3dd497',
+      color: '#59BF91',
       fontWeight: 700,
       fontSize: 11,
       cursor: 'pointer',
@@ -62,7 +62,7 @@ export function FarmPanel(props) {
       S2.arrows = [];
       S2._ambientParticles = [];
       S2._zoneWipe = Date.now();
-      pushDmgPopup(S2, P2.x, P2.y - 40, 'Your Farm', '#3dd497');
+      pushDmgPopup(S2, P2.x, P2.y - 40, 'Your Farm', '#59BF91');
       BT_AUDIO.beep(500, 0.08, 0.1, 'sine');
       setBuildingPanel(null);
     }
@@ -74,7 +74,7 @@ export function FarmPanel(props) {
     }
   }, "Your farm has a house where you can sleep to fully restore HP, Mana, Stamina and gain a 30-min Well Rested buff (+10% XP).", ((_stateRef$current7 = stateRef.current) === null || _stateRef$current7 === void 0 || (_stateRef$current7 = _stateRef$current7.rpg) === null || _stateRef$current7 === void 0 ? void 0 : _stateRef$current7._wellRestedUntil) && Date.now() < stateRef.current.rpg._wellRestedUntil && /*#__PURE__*/React.createElement("span", {
     style: {
-      color: '#3dd497'
+      color: '#59BF91'
     }
   }, " \xB7 \uD83D\uDE34 Well Rested active!")), /*#__PURE__*/React.createElement("div", {
     style: {
@@ -98,8 +98,8 @@ export function FarmPanel(props) {
         borderRadius: 8,
         textAlign: 'center',
         minHeight: 70,
-        background: isReady ? 'rgba(61,220,151,.1)' : isGrowing ? 'rgba(245,197,66,.06)' : 'rgba(255,255,255,.03)',
-        border: "1px solid ".concat(isReady ? 'rgba(61,220,151,.3)' : isGrowing ? 'rgba(245,197,66,.2)' : 'rgba(255,255,255,.08)'),
+        background: isReady ? 'rgba(61,220,151,.1)' : isGrowing ? 'rgba(216,169,77,.06)' : 'rgba(255,255,255,.03)',
+        border: "1px solid ".concat(isReady ? 'rgba(61,220,151,.3)' : isGrowing ? 'rgba(216,169,77,.2)' : 'rgba(255,255,255,.08)'),
         opacity: plotUnlocked ? 1 : 0.4
       }
     }, !plotUnlocked ? /*#__PURE__*/React.createElement("div", {
@@ -116,7 +116,7 @@ export function FarmPanel(props) {
       style: {
         fontSize: 8,
         fontWeight: 700,
-        color: '#3dd497'
+        color: '#59BF91'
       }
     }, "Ready!"), /*#__PURE__*/React.createElement("button", {
       style: {
@@ -126,7 +126,7 @@ export function FarmPanel(props) {
         border: 'none',
         fontSize: 8,
         fontWeight: 700,
-        background: '#3dd497',
+        background: '#59BF91',
         color: '#000',
         cursor: 'pointer'
       },
@@ -146,7 +146,7 @@ export function FarmPanel(props) {
           localStorage.setItem('bt_rpg', JSON.stringify(R));
         } catch (e) {}
         BT_AUDIO.collect();
-        pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'Harvested ' + p.name + '!', '#3dd497');
+        pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'Harvested ' + p.name + '!', '#59BF91');
       }
     }, "Harvest")) : isGrowing ? /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
       style: {
@@ -155,7 +155,7 @@ export function FarmPanel(props) {
     }, plot.emoji || '🌱'), /*#__PURE__*/React.createElement("div", {
       style: {
         fontSize: 7,
-        color: '#f5c542',
+        color: '#D8A94D',
         marginTop: 2
       }
     }, plot.name), /*#__PURE__*/React.createElement("div", {
@@ -170,7 +170,7 @@ export function FarmPanel(props) {
       style: {
         width: progress * 100 + '%',
         height: '100%',
-        background: '#f5c542',
+        background: '#D8A94D',
         borderRadius: 2
       }
     })), /*#__PURE__*/React.createElement("div", {
@@ -255,7 +255,7 @@ export function FarmPanel(props) {
           border: 'none',
           fontSize: 7,
           fontWeight: 700,
-          background: '#3dd497',
+          background: '#59BF91',
           color: '#000',
           cursor: 'pointer'
         },
@@ -269,7 +269,7 @@ export function FarmPanel(props) {
             return !sk.farmPlots[i] && (i < 2 || i < 4 && ((_sk$farming = sk.farming) === null || _sk$farming === void 0 ? void 0 : _sk$farming.level) >= 10 || ((_sk$farming2 = sk.farming) === null || _sk$farming2 === void 0 ? void 0 : _sk$farming2.level) >= 25);
           });
           if (emptyIdx === undefined) {
-            pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'No empty plots!', '#ff5e6c');
+            pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'No empty plots!', '#D95C54');
             return;
           }
           if (!R.inventory) R.inventory = {};
@@ -292,7 +292,7 @@ export function FarmPanel(props) {
             localStorage.setItem('bt_rpg', JSON.stringify(R));
           } catch (e) {}
           BT_AUDIO.beep(400, 0.06, 0.1, 'sine');
-          pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'Planted ' + seed.name, '#3dd497');
+          pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'Planted ' + seed.name, '#59BF91');
         }
       }, "Plant"));
     });

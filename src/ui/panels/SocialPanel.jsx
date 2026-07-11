@@ -39,7 +39,7 @@ export function SocialPanel(props) {
     style: {
       fontSize: 16,
       fontWeight: 800,
-      color: '#3dd497',
+      color: '#59BF91',
       marginBottom: 8
     }
   }, "\uD83D\uDC65 Social"), /*#__PURE__*/React.createElement("div", {
@@ -50,7 +50,7 @@ export function SocialPanel(props) {
     style: {
       fontSize: 10,
       fontWeight: 700,
-      color: '#3dd497',
+      color: '#59BF91',
       marginBottom: 4
     }
   }, "\uD83D\uDC9A Friends (", friendsList.length, ")"), friendsList.length === 0 && /*#__PURE__*/React.createElement("div", {
@@ -78,7 +78,7 @@ export function SocialPanel(props) {
         width: 6,
         height: 6,
         borderRadius: '50%',
-        background: online ? '#3dd497' : '#555'
+        background: online ? '#59BF91' : '#555'
       }
     }), /*#__PURE__*/React.createElement("div", {
       style: {
@@ -115,8 +115,8 @@ export function SocialPanel(props) {
         fontSize: 7,
         fontWeight: 700,
         cursor: 'pointer',
-        border: '1px solid rgba(91,82,255,.3)',
-        background: 'rgba(91,82,255,.1)',
+        border: '1px solid rgba(216,168,95,.3)',
+        background: 'rgba(216,168,95,.1)',
         color: '#a78bfa'
       },
       onClick: function onClick() {
@@ -131,9 +131,9 @@ export function SocialPanel(props) {
         fontSize: 7,
         fontWeight: 700,
         cursor: 'pointer',
-        border: '1px solid rgba(255,94,108,.3)',
-        background: 'rgba(255,94,108,.08)',
-        color: '#ff5e6c'
+        border: '1px solid rgba(217,92,84,.3)',
+        background: 'rgba(217,92,84,.08)',
+        color: '#D95C54'
       },
       onClick: function onClick() {
         var updated = friendsList.filter(function (fr) {
@@ -153,7 +153,7 @@ export function SocialPanel(props) {
     style: {
       fontSize: 10,
       fontWeight: 700,
-      color: '#ff5e6c',
+      color: '#D95C54',
       marginBottom: 4
     }
   }, "\uD83D\uDEAB Blocked (", blockedList.length, ")"), /*#__PURE__*/React.createElement("div", {
@@ -180,14 +180,14 @@ export function SocialPanel(props) {
         padding: '3px 6px',
         marginBottom: 2,
         borderRadius: 4,
-        background: 'rgba(255,94,108,.05)',
-        border: '1px solid rgba(255,94,108,.1)'
+        background: 'rgba(217,92,84,.05)',
+        border: '1px solid rgba(217,92,84,.1)'
       }
     }, /*#__PURE__*/React.createElement("div", {
       style: {
         flex: 1,
         fontSize: 8,
-        color: '#ff5e6c'
+        color: '#D95C54'
       }
     }, name), /*#__PURE__*/React.createElement("button", {
       style: {
@@ -198,7 +198,7 @@ export function SocialPanel(props) {
         cursor: 'pointer',
         border: '1px solid rgba(61,220,151,.3)',
         background: 'rgba(61,220,151,.08)',
-        color: '#3dd497'
+        color: '#59BF91'
       },
       onClick: function onClick() {
         var updated = blockedList.filter(function (b) {
@@ -214,7 +214,7 @@ export function SocialPanel(props) {
     style: {
       fontSize: 10,
       fontWeight: 700,
-      color: '#f5c542',
+      color: '#D8A94D',
       marginBottom: 4
     }
   }, "\uD83D\uDD07 Muted (", mutedList.length, ")"), /*#__PURE__*/React.createElement("div", {
@@ -241,14 +241,14 @@ export function SocialPanel(props) {
         padding: '3px 6px',
         marginBottom: 2,
         borderRadius: 4,
-        background: 'rgba(245,197,66,.05)',
-        border: '1px solid rgba(245,197,66,.1)'
+        background: 'rgba(216,169,77,.05)',
+        border: '1px solid rgba(216,169,77,.1)'
       }
     }, /*#__PURE__*/React.createElement("div", {
       style: {
         flex: 1,
         fontSize: 8,
-        color: '#f5c542'
+        color: '#D8A94D'
       }
     }, name), /*#__PURE__*/React.createElement("button", {
       style: {
@@ -259,7 +259,7 @@ export function SocialPanel(props) {
         cursor: 'pointer',
         border: '1px solid rgba(61,220,151,.3)',
         background: 'rgba(61,220,151,.08)',
-        color: '#3dd497'
+        color: '#59BF91'
       },
       onClick: function onClick() {
         var updated = mutedList.filter(function (m) {

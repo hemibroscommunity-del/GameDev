@@ -179,7 +179,7 @@ export function WoodworkPanel(props) {
         R._questFlags.craftedWoodWeapon = true;
         pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'Crafted ' + wt.label + ' ' + WEAPON_TYPES[wpnType].label + '!', '#8B6914');
         if (wt.slots > 0) pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 42, wt.slots + ' gem slot' + (wt.slots > 1 ? 's' : '') + ' ready!', '#a855f7');
-        if (leveled) pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 54, 'Woodworking Lv' + R.lifeSkills.woodworking.level + '!', '#f5c542');
+        if (leveled) pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 54, 'Woodworking Lv' + R.lifeSkills.woodworking.level + '!', '#D8A94D');
         BT_AUDIO.collect();
         setRpgState(_objectSpread({}, R));
         try {
@@ -204,17 +204,17 @@ export function WoodworkPanel(props) {
     var hTemper = hw.temper || 0;
     var hAfford = (rpgState.coins || 0) >= hCost;
     return /*#__PURE__*/React.createElement("div", {
-      style: { marginTop: 8, padding: 8, borderRadius: 8, background: 'rgba(245,197,66,.06)', border: '1px solid rgba(245,197,66,.18)' }
+      style: { marginTop: 8, padding: 8, borderRadius: 8, background: 'rgba(216,169,77,.06)', border: '1px solid rgba(216,169,77,.18)' }
     }, /*#__PURE__*/React.createElement("div", {
-      style: { fontSize: 10, fontWeight: 700, color: '#f5c542', marginBottom: 3 }
+      style: { fontSize: 10, fontWeight: 700, color: '#D8A94D', marginBottom: 3 }
     }, "\u2692\uFE0F Hardening: ", hw.name, " \u2014 H", hLvl, "/5"), /*#__PURE__*/React.createElement("div", {
       style: { fontSize: 8, color: 'rgba(255,255,255,.4)', marginBottom: 4 }
     }, hMaxed ? 'Maximum hardness reached!' : "+1.04 base dmg per level \xB7 Success " + hOdds + "% \xB7 Fail resets hardness (Temper " + hTemper + " softens it) \xB7 Gated on Blacksmithing"), !hMaxed && /*#__PURE__*/React.createElement("button", {
       style: {
         width: '100%', padding: '5px 0', borderRadius: 5, fontSize: 9, fontWeight: 800,
-        border: '1px solid rgba(245,197,66,.3)',
-        background: hAfford ? 'rgba(245,197,66,.12)' : 'rgba(255,255,255,.02)',
-        color: hAfford ? '#f5c542' : 'rgba(255,255,255,.2)',
+        border: '1px solid rgba(216,169,77,.3)',
+        background: hAfford ? 'rgba(216,169,77,.12)' : 'rgba(255,255,255,.02)',
+        color: hAfford ? '#D8A94D' : 'rgba(255,255,255,.2)',
         cursor: hAfford ? 'pointer' : 'not-allowed'
       },
       onClick: function onClick() {
@@ -284,7 +284,7 @@ export function WoodworkPanel(props) {
         var R = stateRef.current.rpg;
         if (!R.inventory) R.inventory = {};
         if ((R.inventory[reforgeWoodKey] || 0) < reforgeCost || R.coins < reforgeGold) {
-          pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'Need ' + reforgeCost + 'x wood + ' + reforgeGold + 'g', '#ff5e6c');
+          pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'Need ' + reforgeCost + 'x wood + ' + reforgeGold + 'g', '#D95C54');
           return;
         }
         R.inventory[reforgeWoodKey] -= reforgeCost;
@@ -305,9 +305,9 @@ export function WoodworkPanel(props) {
         flex: 1,
         padding: '4px 0',
         borderRadius: 5,
-        border: wpn.hardenBonus ? '1px solid rgba(255,255,255,.1)' : '1px solid rgba(245,197,66,.3)',
-        background: wpn.hardenBonus ? 'rgba(255,255,255,.04)' : 'rgba(245,197,66,.1)',
-        color: wpn.hardenBonus ? 'rgba(255,255,255,.3)' : '#f5c542',
+        border: wpn.hardenBonus ? '1px solid rgba(255,255,255,.1)' : '1px solid rgba(216,169,77,.3)',
+        background: wpn.hardenBonus ? 'rgba(255,255,255,.04)' : 'rgba(216,169,77,.1)',
+        color: wpn.hardenBonus ? 'rgba(255,255,255,.3)' : '#D8A94D',
         fontSize: 8,
         fontWeight: 700,
         cursor: 'pointer'
@@ -315,16 +315,16 @@ export function WoodworkPanel(props) {
       onClick: function onClick() {
         var R = stateRef.current.rpg;
         if (R[wpnKey].hardenBonus) {
-          pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'Already hardened!', '#ff5e6c');
+          pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'Already hardened!', '#D95C54');
           return;
         }
         if (!R[wpnKey].reforgeBonus) {
-          pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'Reforge first!', '#ff5e6c');
+          pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'Reforge first!', '#D95C54');
           return;
         }
         if (!R.inventory) R.inventory = {};
         if ((R.inventory[reforgeWoodKey] || 0) < hardenCost || R.coins < hardenGold) {
-          pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'Need ' + hardenCost + 'x wood + ' + hardenGold + 'g', '#ff5e6c');
+          pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'Need ' + hardenCost + 'x wood + ' + hardenGold + 'g', '#D95C54');
           return;
         }
         R.inventory[reforgeWoodKey] -= hardenCost;
@@ -337,14 +337,14 @@ export function WoodworkPanel(props) {
           }) + 1) % REFORGE_BONUSES.length].id;
           R[wpnKey].hardenBonus = bonus;
           addLifeSkillXp(R.lifeSkills, 'woodworking', Math.ceil(wt.minLvl * 4));
-          pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'HARDENED! +' + bonus.label + ' +' + bonus.value + bonus.unit, '#f5c542');
+          pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'HARDENED! +' + bonus.label + ' +' + bonus.value + bonus.unit, '#D8A94D');
           stateRef.current.screenShake = 4;
           BT_AUDIO.collect();
         } else {
           var oldName = R[wpnKey].name;
           R[wpnKey].reforgeBonus = null;
           R[wpnKey].hardenBonus = null;
-          pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'BROKE! ' + oldName + ' lost all bonuses', '#ff5e6c');
+          pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'BROKE! ' + oldName + ' lost all bonuses', '#D95C54');
           stateRef.current.screenShake = 6;
           BT_AUDIO.beep(120, 0.15, 0.2, 'sawtooth');
         }

@@ -40,7 +40,7 @@ export function TradePanel(props) {
     style: {
       fontSize: 14,
       fontWeight: 800,
-      color: '#3dd497',
+      color: '#59BF91',
       marginBottom: 4
     }
   }, "\uD83E\uDD1D Trade with ", tradeTarget.name), /*#__PURE__*/React.createElement("div", {
@@ -85,8 +85,8 @@ export function TradePanel(props) {
       style: {
         padding: '4px 2px',
         borderRadius: 6,
-        border: offered > 0 ? '2px solid #3dd497' : '1px solid rgba(255,255,255,.1)',
-        background: offered > 0 ? 'rgba(61,212,151,.15)' : 'rgba(255,255,255,.04)',
+        border: offered > 0 ? '2px solid #59BF91' : '1px solid rgba(255,255,255,.1)',
+        background: offered > 0 ? 'rgba(89,191,145,.15)' : 'rgba(255,255,255,.04)',
         textAlign: 'center',
         cursor: 'pointer',
         position: 'relative'
@@ -116,7 +116,7 @@ export function TradePanel(props) {
         fontSize: 8,
         fontWeight: 900,
         color: '#fff',
-        background: '#3dd497',
+        background: '#59BF91',
         borderRadius: 6,
         padding: '0 3px',
         minWidth: 12
@@ -167,7 +167,7 @@ export function TradePanel(props) {
       padding: '8px',
       borderRadius: 8,
       border: 'none',
-      background: '#3dd497',
+      background: '#59BF91',
       color: '#fff',
       fontSize: 12,
       fontWeight: 700,
@@ -186,7 +186,7 @@ export function TradePanel(props) {
             offer: tradeOffer
           }
         });
-        pushDmgPopup(S, S.player.x, S.player.y - 30, 'Trade sent!', '#3dd497');
+        pushDmgPopup(S, S.player.x, S.player.y - 30, 'Trade sent!', '#59BF91');
         setShowTrade(false);
       }
     }

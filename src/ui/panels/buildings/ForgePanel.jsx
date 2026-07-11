@@ -148,7 +148,7 @@ export function ForgePanel(props) {
       var met = playerVal >= bt.statReq;
       return /*#__PURE__*/React.createElement("span", {
         style: {
-          color: met ? '#3dd497' : '#ff5e6c'
+          color: met ? '#59BF91' : '#D95C54'
         }
       }, " \xB7 ", bt.statReq, " ", reqStat, " ", met ? '✓' : '✗');
     }())), /*#__PURE__*/React.createElement("button", {
@@ -204,7 +204,7 @@ export function ForgePanel(props) {
         R._questFlags.forgedWeapon = true;
         pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'Forged ' + bt.label + ' ' + WEAPON_TYPES[wpnType].label + '!', '#b0b0b0');
         if (bt.slots > 0) pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 42, bt.slots + ' gem slot' + (bt.slots > 1 ? 's' : '') + ' ready!', '#a855f7');
-        if (leveled) pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 54, 'Blacksmithing Lv' + R.lifeSkills.blacksmithing.level + '!', '#f5c542');
+        if (leveled) pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 54, 'Blacksmithing Lv' + R.lifeSkills.blacksmithing.level + '!', '#D8A94D');
         BT_AUDIO.collect();
         setRpgState(_objectSpread({}, R));
         try {
@@ -231,17 +231,17 @@ export function ForgePanel(props) {
     var hTemper = hw.temper || 0;
     var hAfford = (rpgState.coins || 0) >= hCost;
     return /*#__PURE__*/React.createElement("div", {
-      style: { marginTop: 8, padding: 8, borderRadius: 8, background: 'rgba(245,197,66,.06)', border: '1px solid rgba(245,197,66,.18)' }
+      style: { marginTop: 8, padding: 8, borderRadius: 8, background: 'rgba(216,169,77,.06)', border: '1px solid rgba(216,169,77,.18)' }
     }, /*#__PURE__*/React.createElement("div", {
-      style: { fontSize: 10, fontWeight: 700, color: '#f5c542', marginBottom: 3 }
+      style: { fontSize: 10, fontWeight: 700, color: '#D8A94D', marginBottom: 3 }
     }, "\u2692\uFE0F Hardening: ", hw.name, " \u2014 H", hLvl, "/5"), /*#__PURE__*/React.createElement("div", {
       style: { fontSize: 8, color: 'rgba(255,255,255,.4)', marginBottom: 4 }
     }, hMaxed ? 'Maximum hardness reached!' : "+1.04 base dmg per level \xB7 Success " + hOdds + "% \xB7 Fail resets hardness (Temper " + hTemper + " softens it)"), !hMaxed && /*#__PURE__*/React.createElement("button", {
       style: {
         width: '100%', padding: '5px 0', borderRadius: 5, fontSize: 9, fontWeight: 800,
-        border: '1px solid rgba(245,197,66,.3)',
-        background: hAfford ? 'rgba(245,197,66,.12)' : 'rgba(255,255,255,.02)',
-        color: hAfford ? '#f5c542' : 'rgba(255,255,255,.2)',
+        border: '1px solid rgba(216,169,77,.3)',
+        background: hAfford ? 'rgba(216,169,77,.12)' : 'rgba(255,255,255,.02)',
+        color: hAfford ? '#D8A94D' : 'rgba(255,255,255,.2)',
         cursor: hAfford ? 'pointer' : 'not-allowed'
       },
       onClick: function onClick() {
@@ -297,8 +297,8 @@ export function ForgePanel(props) {
         flex: 1,
         padding: '4px 0',
         borderRadius: 5,
-        border: '1px solid rgba(91,82,255,.3)',
-        background: 'rgba(91,82,255,.12)',
+        border: '1px solid rgba(216,168,95,.3)',
+        background: 'rgba(216,168,95,.12)',
         color: '#a78bfa',
         fontSize: 8,
         fontWeight: 700,
@@ -308,7 +308,7 @@ export function ForgePanel(props) {
         var R = stateRef.current.rpg;
         if (!R.inventory) R.inventory = {};
         if ((R.inventory[reforgeOreKey] || 0) < reforgeCost || R.coins < reforgeGold) {
-          pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'Need ' + reforgeCost + 'x ore + ' + reforgeGold + 'g', '#ff5e6c');
+          pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'Need ' + reforgeCost + 'x ore + ' + reforgeGold + 'g', '#D95C54');
           return;
         }
         R.inventory[reforgeOreKey] -= reforgeCost;
@@ -332,9 +332,9 @@ export function ForgePanel(props) {
         flex: 1,
         padding: '4px 0',
         borderRadius: 5,
-        border: wpn.hardenBonus ? '1px solid rgba(255,255,255,.1)' : '1px solid rgba(245,197,66,.3)',
-        background: wpn.hardenBonus ? 'rgba(255,255,255,.04)' : 'rgba(245,197,66,.1)',
-        color: wpn.hardenBonus ? 'rgba(255,255,255,.3)' : '#f5c542',
+        border: wpn.hardenBonus ? '1px solid rgba(255,255,255,.1)' : '1px solid rgba(216,169,77,.3)',
+        background: wpn.hardenBonus ? 'rgba(255,255,255,.04)' : 'rgba(216,169,77,.1)',
+        color: wpn.hardenBonus ? 'rgba(255,255,255,.3)' : '#D8A94D',
         fontSize: 8,
         fontWeight: 700,
         cursor: 'pointer'
@@ -342,16 +342,16 @@ export function ForgePanel(props) {
       onClick: function onClick() {
         var R = stateRef.current.rpg;
         if (R.weapon.hardenBonus) {
-          pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'Already hardened!', '#ff5e6c');
+          pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'Already hardened!', '#D95C54');
           return;
         }
         if (!R.weapon.reforgeBonus) {
-          pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'Reforge first!', '#ff5e6c');
+          pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'Reforge first!', '#D95C54');
           return;
         }
         if (!R.inventory) R.inventory = {};
         if ((R.inventory[reforgeOreKey] || 0) < hardenCost || R.coins < hardenGold) {
-          pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'Need ' + hardenCost + 'x ore + ' + hardenGold + 'g', '#ff5e6c');
+          pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'Need ' + hardenCost + 'x ore + ' + hardenGold + 'g', '#D95C54');
           return;
         }
         R.inventory[reforgeOreKey] -= hardenCost;
@@ -366,7 +366,7 @@ export function ForgePanel(props) {
           }) + 1) % REFORGE_BONUSES.length].id;
           R.weapon.hardenBonus = bonus;
           addLifeSkillXp(R.lifeSkills, 'blacksmithing', Math.ceil(bt.minLvl * 4));
-          pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'HARDENED! +' + bonus.label + ' +' + bonus.value + bonus.unit, '#f5c542');
+          pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'HARDENED! +' + bonus.label + ' +' + bonus.value + bonus.unit, '#D8A94D');
           stateRef.current.screenShake = 4;
           BT_AUDIO.collect();
           setTimeout(function () {
@@ -377,7 +377,7 @@ export function ForgePanel(props) {
           var oldName = R.weapon.name;
           R.weapon.reforgeBonus = null;
           R.weapon.hardenBonus = null;
-          pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'BROKE! ' + oldName + ' lost all bonuses', '#ff5e6c');
+          pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'BROKE! ' + oldName + ' lost all bonuses', '#D95C54');
           stateRef.current.screenShake = 6;
           BT_AUDIO.beep(120, 0.15, 0.2, 'sawtooth');
         }
@@ -392,14 +392,14 @@ export function ForgePanel(props) {
       marginTop: 10,
       padding: 8,
       borderRadius: 8,
-      background: 'rgba(245,197,66,.06)',
-      border: '1px solid rgba(245,197,66,.15)'
+      background: 'rgba(216,169,77,.06)',
+      border: '1px solid rgba(216,169,77,.15)'
     }
   }, /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 10,
       fontWeight: 700,
-      color: '#f5c542',
+      color: '#D8A94D',
       marginBottom: 4
     }
   }, "\uD83D\uDCFF Amulet Crafting"), /*#__PURE__*/React.createElement("div", {
@@ -410,7 +410,7 @@ export function ForgePanel(props) {
     }
   }, "Gold Nuggets: ", rpgState.goldNuggets || 0, " \xB7 Gold Bars: ", rpgState.goldBars || 0, (rpgState.goldNuggets || 0) >= NUGGETS_PER_BAR && /*#__PURE__*/React.createElement("span", {
     style: {
-      color: '#f5c542'
+      color: '#D8A94D'
     }
   }, " \xB7 Can smelt!")), /*#__PURE__*/React.createElement("button", {
     style: {
@@ -418,12 +418,12 @@ export function ForgePanel(props) {
       padding: '4px 0',
       borderRadius: 5,
       marginBottom: 6,
-      border: '1px solid rgba(245,197,66,.3)',
+      border: '1px solid rgba(216,169,77,.3)',
       fontSize: 8,
       fontWeight: 700,
       cursor: 'pointer',
-      background: (rpgState.goldNuggets || 0) >= NUGGETS_PER_BAR ? 'rgba(245,197,66,.15)' : 'rgba(255,255,255,.04)',
-      color: (rpgState.goldNuggets || 0) >= NUGGETS_PER_BAR ? '#f5c542' : 'rgba(255,255,255,.25)'
+      background: (rpgState.goldNuggets || 0) >= NUGGETS_PER_BAR ? 'rgba(216,169,77,.15)' : 'rgba(255,255,255,.04)',
+      color: (rpgState.goldNuggets || 0) >= NUGGETS_PER_BAR ? '#D8A94D' : 'rgba(255,255,255,.25)'
     },
     onClick: function onClick() {
       var R = stateRef.current.rpg;
@@ -442,7 +442,7 @@ export function ForgePanel(props) {
       }
       R.goldNuggets -= NUGGETS_PER_BAR;
       R.goldBars = (R.goldBars || 0) + 1;
-      pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'Smelted Gold Bar!', '#f5c542');
+      pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'Smelted Gold Bar!', '#D8A94D');
       BT_AUDIO.beep(600, 0.08, 0.1, 'sine');
       setTimeout(function () {
         return BT_AUDIO.beep(800, 0.06, 0.08, 'sine');
@@ -486,7 +486,7 @@ export function ForgePanel(props) {
       style: {
         fontSize: 9,
         fontWeight: 700,
-        color: canCraft ? '#f5c542' : '#666'
+        color: canCraft ? '#D8A94D' : '#666'
       }
     }, at.label, " Amulet ", /*#__PURE__*/React.createElement("span", {
       style: {
@@ -510,7 +510,7 @@ export function ForgePanel(props) {
         border: 'none',
         fontSize: 8,
         fontWeight: 700,
-        background: canCraft && hasBars && hasGold ? '#f5c542' : 'rgba(255,255,255,.08)',
+        background: canCraft && hasBars && hasGold ? '#D8A94D' : 'rgba(255,255,255,.08)',
         color: canCraft && hasBars && hasGold ? '#000' : 'rgba(255,255,255,.3)',
         cursor: 'pointer'
       },
@@ -539,7 +539,7 @@ export function ForgePanel(props) {
           name: at.label + ' Gold Amulet'
         };
         addLifeSkillXp(R.lifeSkills, 'blacksmithing', at.minLvl * 3);
-        pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'Crafted ' + at.label + ' Amulet!', '#f5c542');
+        pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'Crafted ' + at.label + ' Amulet!', '#D8A94D');
         BT_AUDIO.collect();
         setTimeout(function () {
           return BT_AUDIO.beep(784, 0.1, 0.08, 'sine');
@@ -555,14 +555,14 @@ export function ForgePanel(props) {
       marginTop: 10,
       padding: 8,
       borderRadius: 8,
-      background: 'rgba(91,82,255,.06)',
-      border: '1px solid rgba(91,82,255,.15)'
+      background: 'rgba(216,168,95,.06)',
+      border: '1px solid rgba(216,168,95,.15)'
     }
   }, /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 10,
       fontWeight: 700,
-      color: '#5b52ff',
+      color: '#D8A85F',
       marginBottom: 4
     }
   }, "\uD83D\uDEE1\uFE0F Shield Crafting"), /*#__PURE__*/React.createElement("div", {
@@ -573,7 +573,7 @@ export function ForgePanel(props) {
     }
   }, "Forge a shield from ore. Same tiers as melee weapons. Slot a gem at the Enchanter for defensive bonuses.", rpgState.shield && /*#__PURE__*/React.createElement("span", {
     style: {
-      color: '#5b52ff'
+      color: '#D8A85F'
     }
   }, " \xB7 Equipped: ", rpgState.shield.name)), Object.entries(BLACKSMITH_TIERS).filter(function (_ref135) {
     var _rpgState$lifeSkills26;
@@ -633,7 +633,7 @@ export function ForgePanel(props) {
       }
     }, bt.oreCost, "\xD7 ", bt.oreName, " ore + ", bt.goldCost, "g", bt.statReq > 0 && /*#__PURE__*/React.createElement("span", {
       style: {
-        color: shieldMeetsStat ? 'rgba(255,255,255,.3)' : '#ff5e6c'
+        color: shieldMeetsStat ? 'rgba(255,255,255,.3)' : '#D95C54'
       }
     }, " \xB7 ", SHIELD_EQUIP_STAT.charAt(0).toUpperCase() + SHIELD_EQUIP_STAT.slice(1), " ", bt.statReq, shieldMeetsStat ? '✓' : ''))), /*#__PURE__*/React.createElement("button", {
       style: {
@@ -642,7 +642,7 @@ export function ForgePanel(props) {
         border: 'none',
         fontSize: 7,
         fontWeight: 700,
-        background: canForge && hasOre && hasGold && shieldMeetsStat ? '#5b52ff' : 'rgba(255,255,255,.08)',
+        background: canForge && hasOre && hasGold && shieldMeetsStat ? '#D8A85F' : 'rgba(255,255,255,.08)',
         color: canForge && hasOre && hasGold && shieldMeetsStat ? '#fff' : 'rgba(255,255,255,.3)',
         cursor: 'pointer'
       },
@@ -662,7 +662,7 @@ export function ForgePanel(props) {
         };
         addLifeSkillXp(R.lifeSkills, 'blacksmithing', bt.minLvl * 3);
         recalcDerived(R);
-        pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'Forged ' + bt.label + ' Shield!', '#5b52ff');
+        pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'Forged ' + bt.label + ' Shield!', '#D8A85F');
         BT_AUDIO.collect();
         setRpgState(_objectSpread({}, R));
         try {
@@ -686,14 +686,14 @@ export function ForgePanel(props) {
         marginTop: 6,
         padding: 6,
         borderRadius: 6,
-        background: 'rgba(91,82,255,.04)',
-        border: '1px solid rgba(91,82,255,.1)'
+        background: 'rgba(216,168,95,.04)',
+        border: '1px solid rgba(216,168,95,.1)'
       }
     }, /*#__PURE__*/React.createElement("div", {
       style: {
         fontSize: 9,
         fontWeight: 700,
-        color: '#5b52ff',
+        color: '#D8A85F',
         marginBottom: 3
       }
     }, "\uD83D\uDD27 ", sh.name), /*#__PURE__*/React.createElement("div", {
@@ -712,8 +712,8 @@ export function ForgePanel(props) {
         flex: 1,
         padding: '3px 0',
         borderRadius: 4,
-        border: '1px solid rgba(91,82,255,.25)',
-        background: 'rgba(91,82,255,.1)',
+        border: '1px solid rgba(216,168,95,.25)',
+        background: 'rgba(216,168,95,.1)',
         color: '#a78bfa',
         fontSize: 7,
         fontWeight: 700,
@@ -723,7 +723,7 @@ export function ForgePanel(props) {
         var R = stateRef.current.rpg;
         if (!R.inventory) R.inventory = {};
         if ((R.inventory[reforgeOreKey] || 0) < reforgeCost || R.coins < reforgeGold) {
-          pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'Need materials', '#ff5e6c');
+          pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'Need materials', '#D95C54');
           return;
         }
         R.inventory[reforgeOreKey] -= reforgeCost;
@@ -743,9 +743,9 @@ export function ForgePanel(props) {
         flex: 1,
         padding: '3px 0',
         borderRadius: 4,
-        border: sh.hardenBonus ? '1px solid rgba(255,255,255,.08)' : '1px solid rgba(245,197,66,.25)',
-        background: sh.hardenBonus ? 'rgba(255,255,255,.03)' : 'rgba(245,197,66,.08)',
-        color: sh.hardenBonus ? 'rgba(255,255,255,.25)' : '#f5c542',
+        border: sh.hardenBonus ? '1px solid rgba(255,255,255,.08)' : '1px solid rgba(216,169,77,.25)',
+        background: sh.hardenBonus ? 'rgba(255,255,255,.03)' : 'rgba(216,169,77,.08)',
+        color: sh.hardenBonus ? 'rgba(255,255,255,.25)' : '#D8A94D',
         fontSize: 7,
         fontWeight: 700,
         cursor: 'pointer'
@@ -764,12 +764,12 @@ export function ForgePanel(props) {
             return b.id === bonus.id;
           }) + 1) % REFORGE_BONUSES.length].id;
           R.shield.hardenBonus = bonus;
-          pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'HARDENED! +' + bonus.label, '#f5c542');
+          pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'HARDENED! +' + bonus.label, '#D8A94D');
           BT_AUDIO.collect();
         } else {
           R.shield.reforgeBonus = null;
           R.shield.hardenBonus = null;
-          pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'Shield bonuses lost!', '#ff5e6c');
+          pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'Shield bonuses lost!', '#D95C54');
           BT_AUDIO.beep(120, 0.15, 0.2, 'sawtooth');
         }
         setRpgState(_objectSpread({}, R));
@@ -783,14 +783,14 @@ export function ForgePanel(props) {
       marginTop: 10,
       padding: 8,
       borderRadius: 8,
-      background: 'rgba(255,94,108,.06)',
-      border: '1px solid rgba(255,94,108,.15)'
+      background: 'rgba(217,92,84,.06)',
+      border: '1px solid rgba(217,92,84,.15)'
     }
   }, /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 10,
       fontWeight: 700,
-      color: '#ff5e6c',
+      color: '#D95C54',
       marginBottom: 4
     }
   }, "\u267B\uFE0F Salvage Station"), /*#__PURE__*/React.createElement("div", {
@@ -937,9 +937,9 @@ export function ForgePanel(props) {
         fontSize: 7,
         fontWeight: 700,
         cursor: 'pointer',
-        border: '1px solid rgba(255,94,108,.3)',
-        background: 'rgba(255,94,108,.12)',
-        color: '#ff5e6c'
+        border: '1px solid rgba(217,92,84,.3)',
+        background: 'rgba(217,92,84,.12)',
+        color: '#D95C54'
       },
       onClick: function onClick() {
         var R = stateRef.current.rpg;
@@ -962,7 +962,7 @@ export function ForgePanel(props) {
           isVolatile: false
         };else if (s.key === 'rangedWeapon') R.rangedWeapon = null;else if (s.key === 'staffWeapon') R.staffWeapon = null;
         recalcDerived(R);
-        pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'Salvaged! ' + returnText, '#ff5e6c');
+        pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'Salvaged! ' + returnText, '#D95C54');
         BT_AUDIO.beep(200, 0.1, 0.15, 'sawtooth');
         setTimeout(function () {
           return BT_AUDIO.beep(400, 0.06, 0.08, 'sine');
@@ -1070,9 +1070,9 @@ export function ForgePanel(props) {
         fontSize: 6,
         fontWeight: 700,
         cursor: 'pointer',
-        border: '1px solid rgba(255,94,108,.3)',
-        background: 'rgba(255,94,108,.1)',
-        color: '#ff5e6c'
+        border: '1px solid rgba(217,92,84,.3)',
+        background: 'rgba(217,92,84,.1)',
+        color: '#D95C54'
       },
       onClick: function onClick() {
         var R = stateRef.current.rpg;
@@ -1081,7 +1081,7 @@ export function ForgePanel(props) {
           if (ret.type === 'gold') R.coins += ret.qty;else if (ret.type === 'goldBars') R.goldBars = (R.goldBars || 0) + ret.qty;else R.inventory[ret.key] = (R.inventory[ret.key] || 0) + ret.qty;
         });
         R.weaponStash.splice(si, 1);
-        pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'Salvaged stash item', '#ff5e6c');
+        pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'Salvaged stash item', '#D95C54');
         BT_AUDIO.beep(200, 0.1, 0.12, 'sawtooth');
         setRpgState(_objectSpread({}, R));
         try {

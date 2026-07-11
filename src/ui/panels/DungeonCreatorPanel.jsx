@@ -95,7 +95,7 @@ export function DungeonCreatorPanel(props) {
       style: {
         fontSize: 9,
         fontWeight: 700,
-        color: '#f5c542',
+        color: '#D8A94D',
         marginBottom: 3
       }
     }, "Dungeon Name"), /*#__PURE__*/React.createElement("input", {
@@ -122,7 +122,7 @@ export function DungeonCreatorPanel(props) {
       style: {
         fontSize: 9,
         fontWeight: 700,
-        color: '#f5c542',
+        color: '#D8A94D',
         marginBottom: 3
       }
     }, "Terrain Theme"), /*#__PURE__*/React.createElement("div", {
@@ -175,7 +175,7 @@ export function DungeonCreatorPanel(props) {
       style: {
         fontSize: 9,
         fontWeight: 700,
-        color: '#f5c542',
+        color: '#D8A94D',
         marginBottom: 2
       }
     }, "Width"), /*#__PURE__*/React.createElement("input", {
@@ -205,7 +205,7 @@ export function DungeonCreatorPanel(props) {
       style: {
         fontSize: 9,
         fontWeight: 700,
-        color: '#f5c542',
+        color: '#D8A94D',
         marginBottom: 2
       }
     }, "Height"), /*#__PURE__*/React.createElement("input", {
@@ -241,7 +241,7 @@ export function DungeonCreatorPanel(props) {
       style: {
         fontSize: 9,
         fontWeight: 700,
-        color: '#f5c542',
+        color: '#D8A94D',
         marginBottom: 2
       }
     }, "Waves (max ", unlocks.maxWaves, ")"), /*#__PURE__*/React.createElement("input", {
@@ -271,7 +271,7 @@ export function DungeonCreatorPanel(props) {
       style: {
         fontSize: 9,
         fontWeight: 700,
-        color: '#f5c542',
+        color: '#D8A94D',
         marginBottom: 2
       }
     }, "Monster Level (max ", unlocks.maxLevel, ")"), /*#__PURE__*/React.createElement("input", {
@@ -297,7 +297,7 @@ export function DungeonCreatorPanel(props) {
       style: {
         fontSize: 9,
         fontWeight: 700,
-        color: '#f5c542',
+        color: '#D8A94D',
         marginBottom: 3
       }
     }, "Dungeon Element (optional)"), /*#__PURE__*/React.createElement("div", {
@@ -393,9 +393,9 @@ export function DungeonCreatorPanel(props) {
         borderRadius: 5,
         fontSize: 9,
         fontWeight: 700,
-        border: '1.5px solid ' + (dc.hasBoss ? '#ff5e6c' : 'rgba(255,255,255,.1)'),
-        background: dc.hasBoss ? 'rgba(255,94,108,.15)' : 'rgba(255,255,255,.03)',
-        color: dc.hasBoss ? '#ff5e6c' : 'rgba(255,255,255,.5)',
+        border: '1.5px solid ' + (dc.hasBoss ? '#D95C54' : 'rgba(255,255,255,.1)'),
+        background: dc.hasBoss ? 'rgba(217,92,84,.15)' : 'rgba(255,255,255,.03)',
+        color: dc.hasBoss ? '#D95C54' : 'rgba(255,255,255,.5)',
         cursor: 'pointer'
       }
     }, "\uD83D\uDC09 ", dc.hasBoss ? 'Boss Enabled' : 'No Boss'), dc.hasBoss && /*#__PURE__*/React.createElement("span", {
@@ -521,8 +521,8 @@ export function DungeonCreatorPanel(props) {
           height: 20,
           borderRadius: 4,
           border: 'none',
-          background: 'rgba(255,94,108,.2)',
-          color: '#ff5e6c',
+          background: 'rgba(217,92,84,.2)',
+          color: '#D95C54',
           fontSize: 10,
           cursor: 'pointer',
           display: 'flex',
@@ -534,7 +534,7 @@ export function DungeonCreatorPanel(props) {
       style: {
         fontSize: 9,
         fontWeight: 700,
-        color: '#f5c542',
+        color: '#D8A94D',
         marginTop: 6,
         marginBottom: 3
       }
@@ -596,13 +596,13 @@ export function DungeonCreatorPanel(props) {
       var S = stateRef.current,
         R = S.rpg;
       if (!R || R.coins < cost) {
-        pushDmgPopup(S, S.player.x, S.player.y - 30, 'Not enough gold!', '#ff5e6c');
+        pushDmgPopup(S, S.player.x, S.player.y - 30, 'Not enough gold!', '#D95C54');
         return;
       }
       R.coins -= cost;
       if (!R._ownedPacks) R._ownedPacks = [];
       if (!R._ownedPacks.includes(packId)) R._ownedPacks.push(packId);
-      pushDmgPopup(S, S.player.x, S.player.y - 30, 'Pack purchased!', '#3dd497');
+      pushDmgPopup(S, S.player.x, S.player.y - 30, 'Pack purchased!', '#59BF91');
       BT_AUDIO.collect();
       setRpgState(_objectSpread({}, R));
       try {
@@ -652,7 +652,7 @@ export function DungeonCreatorPanel(props) {
         style: {
           fontSize: 9,
           fontWeight: 700,
-          color: owned ? '#3dd497' : '#fff'
+          color: owned ? '#59BF91' : '#fff'
         }
       }, p.name, " ", owned && '✓'), /*#__PURE__*/React.createElement("div", {
         style: {
@@ -662,7 +662,7 @@ export function DungeonCreatorPanel(props) {
       }, p.desc), bossReq && !bossBeaten && /*#__PURE__*/React.createElement("div", {
         style: {
           fontSize: 7,
-          color: '#ff5e6c'
+          color: '#D95C54'
         }
       }, "\uD83D\uDD12 Defeat ", bossReq, " zone boss first")), !owned && bossBeaten && /*#__PURE__*/React.createElement("button", {
         onClick: function onClick() {
@@ -673,16 +673,16 @@ export function DungeonCreatorPanel(props) {
           borderRadius: 4,
           fontSize: 8,
           fontWeight: 700,
-          border: '1px solid rgba(245,197,66,.3)',
-          background: 'rgba(245,197,66,.1)',
-          color: '#f5c542',
+          border: '1px solid rgba(216,169,77,.3)',
+          background: 'rgba(216,169,77,.1)',
+          color: '#D8A94D',
           cursor: 'pointer',
           whiteSpace: 'nowrap'
         }
       }, "\uD83D\uDCB0 ", p.cost, "G"), owned && /*#__PURE__*/React.createElement("span", {
         style: {
           fontSize: 8,
-          color: '#3dd497',
+          color: '#59BF91',
           fontWeight: 700
         }
       }, "Owned"));
@@ -724,7 +724,7 @@ export function DungeonCreatorPanel(props) {
         style: {
           fontSize: 9,
           fontWeight: 700,
-          color: owned ? '#3dd497' : '#fff'
+          color: owned ? '#59BF91' : '#fff'
         }
       }, p.name, " ", owned && '✓'), /*#__PURE__*/React.createElement("div", {
         style: {
@@ -734,7 +734,7 @@ export function DungeonCreatorPanel(props) {
       }, p.desc), bossReq && !bossBeaten && /*#__PURE__*/React.createElement("div", {
         style: {
           fontSize: 7,
-          color: '#ff5e6c'
+          color: '#D95C54'
         }
       }, "\uD83D\uDD12 Defeat ", bossReq, " zone boss first")), !owned && bossBeaten && /*#__PURE__*/React.createElement("button", {
         onClick: function onClick() {
@@ -745,16 +745,16 @@ export function DungeonCreatorPanel(props) {
           borderRadius: 4,
           fontSize: 8,
           fontWeight: 700,
-          border: '1px solid rgba(245,197,66,.3)',
-          background: 'rgba(245,197,66,.1)',
-          color: '#f5c542',
+          border: '1px solid rgba(216,169,77,.3)',
+          background: 'rgba(216,169,77,.1)',
+          color: '#D8A94D',
           cursor: 'pointer',
           whiteSpace: 'nowrap'
         }
       }, "\uD83D\uDCB0 ", p.cost, "G"), owned && /*#__PURE__*/React.createElement("span", {
         style: {
           fontSize: 8,
-          color: '#3dd497',
+          color: '#59BF91',
           fontWeight: 700
         }
       }, "Owned"));
@@ -763,8 +763,8 @@ export function DungeonCreatorPanel(props) {
         marginTop: 8,
         padding: 6,
         borderRadius: 5,
-        background: 'rgba(61,212,151,.05)',
-        border: '1px solid rgba(61,212,151,.1)',
+        background: 'rgba(89,191,145,.05)',
+        border: '1px solid rgba(89,191,145,.1)',
         fontSize: 8,
         color: 'rgba(255,255,255,.4)'
       }
@@ -779,7 +779,7 @@ export function DungeonCreatorPanel(props) {
       if (!R) return;
       if (!R._customDungeons) R._customDungeons = [];
       if (R._customDungeons.length >= 5) {
-        pushDmgPopup(S, S.player.x, S.player.y - 30, 'Max 5 saved dungeons!', '#ff5e6c');
+        pushDmgPopup(S, S.player.x, S.player.y - 30, 'Max 5 saved dungeons!', '#D95C54');
         return;
       }
       R._customDungeons.push(_objectSpread(_objectSpread({}, dc), {}, {
@@ -789,7 +789,7 @@ export function DungeonCreatorPanel(props) {
       try {
         localStorage.setItem('bt_rpg', JSON.stringify(R));
       } catch (e) {}
-      pushDmgPopup(S, S.player.x, S.player.y - 30, 'Dungeon saved!', '#3dd497');
+      pushDmgPopup(S, S.player.x, S.player.y - 30, 'Dungeon saved!', '#59BF91');
       BT_AUDIO.collect();
     };
     var deleteDungeon = function deleteDungeon(idx) {
@@ -918,7 +918,7 @@ export function DungeonCreatorPanel(props) {
       style: {
         fontSize: 9,
         fontWeight: 700,
-        color: '#ff5e6c',
+        color: '#D95C54',
         marginBottom: 3
       }
     }, "\u26A0\uFE0F Issues"), errors.map(function (err, i) {
@@ -926,7 +926,7 @@ export function DungeonCreatorPanel(props) {
         key: i,
         style: {
           fontSize: 8,
-          color: '#ff5e6c',
+          color: '#D95C54',
           padding: '2px 0'
         }
       }, "\u2022 ", err);
@@ -935,14 +935,14 @@ export function DungeonCreatorPanel(props) {
         marginBottom: 8,
         padding: 6,
         borderRadius: 5,
-        background: 'rgba(61,212,151,.08)',
-        border: '1px solid rgba(61,212,151,.15)'
+        background: 'rgba(89,191,145,.08)',
+        border: '1px solid rgba(89,191,145,.15)'
       }
     }, /*#__PURE__*/React.createElement("div", {
       style: {
         fontSize: 9,
         fontWeight: 700,
-        color: '#3dd497'
+        color: '#59BF91'
       }
     }, "\u2705 Ready to play!"), /*#__PURE__*/React.createElement("div", {
       style: {
@@ -964,9 +964,9 @@ export function DungeonCreatorPanel(props) {
         borderRadius: 6,
         fontSize: 10,
         fontWeight: 700,
-        border: '1px solid rgba(245,197,66,.3)',
-        background: 'rgba(245,197,66,.1)',
-        color: '#f5c542',
+        border: '1px solid rgba(216,169,77,.3)',
+        background: 'rgba(216,169,77,.1)',
+        color: '#D8A94D',
         cursor: 'pointer'
       }
     }, "\uD83D\uDCBE Save Design"), /*#__PURE__*/React.createElement("button", {
@@ -980,9 +980,9 @@ export function DungeonCreatorPanel(props) {
         borderRadius: 6,
         fontSize: 10,
         fontWeight: 700,
-        border: '1px solid ' + (errors.length ? 'rgba(255,255,255,.06)' : 'rgba(61,212,151,.4)'),
-        background: errors.length ? 'rgba(255,255,255,.02)' : 'rgba(61,212,151,.15)',
-        color: errors.length ? 'rgba(255,255,255,.15)' : '#3dd497',
+        border: '1px solid ' + (errors.length ? 'rgba(255,255,255,.06)' : 'rgba(89,191,145,.4)'),
+        background: errors.length ? 'rgba(255,255,255,.02)' : 'rgba(89,191,145,.15)',
+        color: errors.length ? 'rgba(255,255,255,.15)' : '#59BF91',
         cursor: errors.length ? 'not-allowed' : 'pointer'
       }
     }, "\u25B6\uFE0F Play Now")), /*#__PURE__*/React.createElement("div", {
@@ -1051,9 +1051,9 @@ export function DungeonCreatorPanel(props) {
           borderRadius: 3,
           fontSize: 7,
           fontWeight: 700,
-          border: '1px solid ' + (sdErrors.length ? 'rgba(255,255,255,.06)' : 'rgba(61,212,151,.3)'),
-          background: sdErrors.length ? 'rgba(255,255,255,.02)' : 'rgba(61,212,151,.1)',
-          color: sdErrors.length ? 'rgba(255,255,255,.15)' : '#3dd497',
+          border: '1px solid ' + (sdErrors.length ? 'rgba(255,255,255,.06)' : 'rgba(89,191,145,.3)'),
+          background: sdErrors.length ? 'rgba(255,255,255,.02)' : 'rgba(89,191,145,.1)',
+          color: sdErrors.length ? 'rgba(255,255,255,.15)' : '#59BF91',
           cursor: sdErrors.length ? 'not-allowed' : 'pointer'
         }
       }, "\u25B6\uFE0F"), /*#__PURE__*/React.createElement("button", {
@@ -1065,9 +1065,9 @@ export function DungeonCreatorPanel(props) {
           borderRadius: 3,
           fontSize: 7,
           fontWeight: 700,
-          border: '1px solid rgba(255,94,108,.2)',
-          background: 'rgba(255,94,108,.08)',
-          color: '#ff5e6c',
+          border: '1px solid rgba(217,92,84,.2)',
+          background: 'rgba(217,92,84,.08)',
+          color: '#D95C54',
           cursor: 'pointer'
         }
       }, "\uD83D\uDDD1\uFE0F"));

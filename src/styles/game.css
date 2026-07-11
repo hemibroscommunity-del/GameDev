@@ -5,29 +5,33 @@
   /* Bottom dashboard band height.  Single source of truth — JS-side
      code (BroTown.jsx DASH_FRAC) must be kept in sync if changed. */
   --dash-h:   28vh;
-  --ink:      #0b0c14;
-  --ink2:     #12141f;
-  --ink3:     #1a1d2e;
-  --ink4:     #222639;
-  --line:     #2d3251;
-  --line2:    #3d4470;
-  --pop:      #5b52ff;
-  --pop-soft: rgba(91,82,255,.14);
-  --pop-glow: rgba(91,82,255,.35);
-  --teal:     #00d4b8;
-  --txt:      #e8eaf8;
-  --txt2:     #8890b8;
-  --txt3:     #4d5580;
-  --red:      #ff5e6c;
-  --gold:     #f5c542;
-  --green:    #3ddc97;
+  /* v2.3.1230: the legacy variable set now feeds Lantern Slate values
+     (docs/LANTERN-SLATE-SPEC.md) — this single remap flips every
+     legacy panel (src/ui/panels/*) off the old navy/indigo look.
+     Names kept so the old selectors don't need touching. */
+  --ink:      #121B20;
+  --ink2:     #182227;
+  --ink3:     #202C32;
+  --ink4:     #2B3940;
+  --line:     #37444B;
+  --line2:    #4A5960;
+  --pop:      #D8A85F;
+  --pop-soft: rgba(216,168,95,.14);
+  --pop-glow: rgba(216,168,95,.35);
+  --teal:     #59BF91;
+  --txt:      #F7F2E7;
+  --txt2:     #B9C1BF;
+  --txt3:     #687575;
+  --red:      #D95C54;
+  --gold:     #D8A85F;
+  --green:    #59BF91;
 
   /* v2.3.1227: Lantern Slate tokens (docs/LANTERN-SLATE-SPEC.md) --
      dark mineral charcoal, warm-white text, lantern-brass accent.
      Replaces the v2.3.1226 light&airy set; mirrored in
      src/ui/mobile/dash/common.js COL / inventoryStyles.js INV.  The
-     legacy --ink/--line/--pop set above still drives the old panels
-     and flips in the legacy-panel sweep, not before. */
+     legacy --ink/--line/--pop set above ALSO carries Lantern values
+     since the v2.3.1230 legacy sweep. */
   --ui-band-top: #253239;
   --ui-band-mid: #202C32;
   --ui-band-bottom: #172126;
@@ -63,7 +67,7 @@
   --ui-magic: #9A76D3;
 }
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-html,body{height:100%;overflow:hidden;background:#0d0b18;touch-action:none;overscroll-behavior:none;position:fixed;width:100%;top:0;left:0}
+html,body{height:100%;overflow:hidden;background:#10181D;touch-action:none;overscroll-behavior:none;position:fixed;width:100%;top:0;left:0}
 body{font-family:'Source Sans 3',system-ui,sans-serif;color:var(--txt);font-size:14px;-webkit-font-smoothing:antialiased}
 ::-webkit-scrollbar{width:3px;height:3px}
 ::-webkit-scrollbar-track{background:transparent}
@@ -81,20 +85,20 @@ input{font-family:inherit}
   text-decoration: none; backdrop-filter: blur(4px);
   -webkit-backdrop-filter: blur(4px);
 }
-.back-to-site:active { background: rgba(91,82,255,.4); }
+.back-to-site:active { background: rgba(216,168,95,.4); }
 
 /* ═══════════════════════════════════════════
    GAME — BroTown styles
 ═══════════════════════════════════════════ */
 .brotown-wrap:fullscreen,.brotown-wrap:-webkit-full-screen{width:100vw!important;height:100vh!important}
-.brotown-wrap{position:relative;width:100%;height:100%;overflow:hidden;background:#0d0b18;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent;display:flex;flex-direction:column}
+.brotown-wrap{position:relative;width:100%;height:100%;overflow:hidden;background:#10181D;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent;display:flex;flex-direction:column}
 .brotown-canvas{display:block;image-rendering:pixelated;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent;touch-action:none}
 .brotown-hud{position:absolute;top:46px;right:12px;pointer-events:none;z-index:10;display:flex;align-items:flex-start}
 .brotown-hud>*{pointer-events:auto}
-.bt-player-count{display:flex;align-items:center;gap:5px;padding:4px 10px;background:rgba(0,0,0,.65);border-radius:8px;font-size:11px;font-weight:700;color:#3dd497;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
-.bt-player-dot{width:6px;height:6px;border-radius:50%;background:#3dd497;animation:pulse-dot 2s ease-in-out infinite}
+.bt-player-count{display:flex;align-items:center;gap:5px;padding:4px 10px;background:rgba(0,0,0,.65);border-radius:8px;font-size:11px;font-weight:700;color:#59BF91;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
+.bt-player-dot{width:6px;height:6px;border-radius:50%;background:#59BF91;animation:pulse-dot 2s ease-in-out infinite}
 .bt-chat-bar{flex-shrink:0;display:flex;gap:6px;padding:6px 10px;
-  background:#0d0b18;border-bottom:1px solid rgba(255,255,255,.12);
+  background:#10181D;border-bottom:1px solid rgba(255,255,255,.12);
   align-items:center;z-index:25;
   padding-top:max(6px,env(safe-area-inset-top));
   touch-action:auto;-webkit-touch-callout:default;-webkit-user-select:text;user-select:text}
@@ -108,7 +112,7 @@ input{font-family:inherit}
 .bt-emote-btn{width:38px;height:38px;border-radius:10px;background:rgba(255,255,255,.08);border:none;
   font-size:20px;display:flex;align-items:center;justify-content:center;cursor:pointer;
   -webkit-tap-highlight-color:transparent}
-.bt-emote-btn:active{background:rgba(91,82,255,.4);transform:scale(.9)}
+.bt-emote-btn:active{background:rgba(216,168,95,.4);transform:scale(.9)}
 .bt-interact-prompt{position:fixed;left:calc(50% + 10px);bottom:calc(var(--dash-h) + 24px);transform:translateX(-50%);z-index:35;
   padding:8px 18px;background:rgba(0,0,0,.7);border:1.5px solid var(--pop);border-radius:10px;
   color:#fff;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;
@@ -119,14 +123,14 @@ input{font-family:inherit}
 /* v2.3.911: build-skill dashboard cell pulses while it has an unspent Tier-2
    point waiting to be allocated.  Brightness pulse reads even where the cell's
    overflow clips a glow; the purple box-shadow adds the halo where it shows. */
-@keyframes bt-build-flash{0%,100%{filter:brightness(1);box-shadow:0 0 0 0 rgba(91,82,255,0)}50%{filter:brightness(1.5);box-shadow:0 0 8px 2px rgba(91,82,255,.7)}}
+@keyframes bt-build-flash{0%,100%{filter:brightness(1);box-shadow:0 0 0 0 rgba(216,168,95,0)}50%{filter:brightness(1.5);box-shadow:0 0 8px 2px rgba(216,168,95,.7)}}
 .bt-build-flash{animation:bt-build-flash 1.2s ease-in-out infinite}
 .bt-players-btn{position:absolute;top:8px;left:52px;z-index:20;height:30px;padding:0 10px;
   border-radius:8px;background:rgba(0,0,0,.45);border:1.5px solid rgba(255,255,255,.15);
   display:flex;align-items:center;gap:5px;cursor:pointer;
   backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);color:rgba(255,255,255,.8);
   font-size:10px;font-weight:700;-webkit-tap-highlight-color:transparent}
-.bt-players-btn:active{background:rgba(91,82,255,.4)}
+.bt-players-btn:active{background:rgba(216,168,95,.4)}
 .bt-chatlog{position:absolute;bottom:70px;right:16px;z-index:25;width:220px;max-height:200px;
   background:rgba(0,0,0,.8);border:1px solid rgba(255,255,255,.12);border-radius:10px;
   overflow-y:auto;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
@@ -141,15 +145,15 @@ input{font-family:inherit}
   background:rgba(0,0,0,.4);border:1.5px solid rgba(255,255,255,.15);
   backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);
   -webkit-tap-highlight-color:transparent;touch-action:manipulation;position:relative}
-.bt-chatlog-btn:active{background:rgba(91,82,255,.4)}
+.bt-chatlog-btn:active{background:rgba(216,168,95,.4)}
 .bt-chatlog-badge{position:absolute;top:-2px;right:-2px;width:8px;height:8px;border-radius:50%;
-  background:#ff5e6c;border:1px solid rgba(0,0,0,.3)}
+  background:#D95C54;border:1px solid rgba(0,0,0,.3)}
 .bt-plist{position:absolute;top:46px;left:8px;z-index:25;width:200px;max-height:260px;
   background:rgba(0,0,0,.8);border:1px solid rgba(255,255,255,.15);border-radius:10px;
   overflow-y:auto;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
 .bt-plist-item{display:flex;align-items:center;gap:8px;padding:8px 10px;cursor:pointer;
   border-bottom:1px solid rgba(255,255,255,.06);transition:background .1s}
-.bt-plist-item:active{background:rgba(91,82,255,.25)}
+.bt-plist-item:active{background:rgba(216,168,95,.25)}
 .bt-plist-item:last-child{border-bottom:none}
 .bt-plist-av{width:28px;height:28px;border-radius:50%;object-fit:cover;border:1.5px solid rgba(255,255,255,.2);flex-shrink:0}
 .bt-plist-dot{width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;
@@ -163,7 +167,7 @@ input{font-family:inherit}
 .bt-inspect-close{position:absolute;top:8px;right:8px;width:28px;height:28px;border-radius:50%;
   background:rgba(255,255,255,.1);border:none;color:rgba(255,255,255,.6);font-size:14px;
   display:flex;align-items:center;justify-content:center;cursor:pointer}
-.bt-inspect-close:active{background:rgba(255,94,108,.4)}
+.bt-inspect-close:active{background:rgba(217,92,84,.4)}
 .bt-inspect-av{width:64px;height:64px;border-radius:50%;object-fit:cover;margin:0 auto 8px;
   display:block;border:2.5px solid var(--pop)}
 .bt-inspect-name{font-size:16px;font-weight:800;color:#fff;margin-bottom:2px}
@@ -178,7 +182,7 @@ input{font-family:inherit}
   display:flex;align-items:center;justify-content:center;cursor:pointer;
   backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);color:rgba(255,255,255,.8);
   -webkit-tap-highlight-color:transparent}
-.bt-exit-fab:active{background:rgba(255,94,108,.5)}
+.bt-exit-fab:active{background:rgba(217,92,84,.5)}
 /* v2.3.785/786: reload indicator shown when the exit arrow tears the app
    down (full page navigation).  Full-screen dim so it reads over the frozen
    game frame Safari keeps painted until the new document's first paint;
@@ -211,10 +215,10 @@ input{font-family:inherit}
   display:flex;align-items:center;justify-content:center;cursor:pointer;
   backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);
   -webkit-tap-highlight-color:transparent;touch-action:manipulation}
-.bt-chat-fab.send{background:rgba(61,212,151,.7);border:1.5px solid rgba(61,212,151,.4)}
-.bt-chat-fab.send:active{background:rgba(61,212,151,1)}
-.bt-chat-fab.close{background:rgba(255,94,108,.5);border:1.5px solid rgba(255,94,108,.3)}
-.bt-chat-fab.close:active{background:rgba(255,94,108,.8)}
+.bt-chat-fab.send{background:rgba(89,191,145,.7);border:1.5px solid rgba(89,191,145,.4)}
+.bt-chat-fab.send:active{background:rgba(89,191,145,1)}
+.bt-chat-fab.close{background:rgba(217,92,84,.5);border:1.5px solid rgba(217,92,84,.3)}
+.bt-chat-fab.close:active{background:rgba(217,92,84,.8)}
 @media(min-width:769px){.bt-fab-group{display:none}}
 .bt-chat-input{flex:1;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.15);
   border-radius:8px;padding:8px 12px;color:#fff;font-size:16px;outline:none;font-family:inherit;
@@ -252,12 +256,12 @@ input{font-family:inherit}
 }
 .bt-coin-glimmer{
   background-image: linear-gradient(100deg,
-    #f5c542 0%, #f5c542 38%, #fff6cf 50%, #f5c542 62%, #f5c542 100%);
+    #D8A94D 0%, #D8A94D 38%, #fff6cf 50%, #D8A94D 62%, #D8A94D 100%);
   background-size: 200% 100%;
   -webkit-background-clip: text;
           background-clip: text;
   -webkit-text-fill-color: transparent;
-  color: #f5c542;
+  color: #D8A94D;
   animation: bt-coin-glimmer 2.8s linear infinite;
 }
 /* Left-joystick centre — beveled blue button matching the right joystick,
@@ -409,7 +413,7 @@ input{font-family:inherit}
    so the backing purple peeked out around the painted shape (owner). */
 .bt-cc-play:active{transform:translateY(2px);filter:brightness(1.12)}
 .bt-cc-rand{border:1.5px solid #8a6d1f!important;color:var(--gold)!important}
-.bt-cc-rand:active{background:rgba(245,197,66,.12)!important}
+.bt-cc-rand:active{background:rgba(216,169,77,.12)!important}
 /* v2.3.718: name input on the owner's parchment scroll (3-slice border-
    image: rolled end caps stay fixed, the parchment middle stretches).
    Ink-dark text + placeholder; the quill img is an absolutely-positioned
@@ -518,9 +522,9 @@ input{font-family:inherit}
 .bt-cc-tabs{flex:0 0 auto;display:flex;flex-direction:row;flex-wrap:wrap;gap:6px;padding:6px;align-items:stretch;background:rgba(12,9,26,0.45);border-bottom:1px solid #3a3163}
 .bt-cc-tab{flex:0 0 calc((100% - 18px)/4);min-height:38px;display:flex;flex-direction:row;align-items:center;justify-content:center;gap:5px;padding:4px 4px;background:rgba(58,49,99,0.30);border:1.5px solid #3a3163;border-radius:9px;cursor:pointer;color:#b9b2d8;font-size:12px;font-weight:700;letter-spacing:.02em;font-family:'Baloo 2','Source Sans 3',sans-serif;text-shadow:0 1px 2px rgba(0,0,0,.55)}
 .bt-cc-tab:active{transform:translateY(1px)}
-.bt-cc-tab--on{background:rgba(91,82,255,0.28);color:#fff;border-color:var(--gold);box-shadow:0 0 0 1px var(--gold),0 0 10px rgba(245,197,66,.30)}
+.bt-cc-tab--on{background:rgba(216,168,95,0.28);color:#fff;border-color:var(--gold);box-shadow:0 0 0 1px var(--gold),0 0 10px rgba(216,169,77,.30)}
 .bt-cc-tab-icon{width:22px;height:22px;object-fit:contain;opacity:.92;pointer-events:none}
-.bt-cc-tab--on .bt-cc-tab-icon{opacity:1;filter:drop-shadow(0 0 3px rgba(245,197,66,.55))}
+.bt-cc-tab--on .bt-cc-tab-icon{opacity:1;filter:drop-shadow(0 0 3px rgba(216,169,77,.55))}
 .bt-cc-tab-label{font-size:12px;line-height:1}
 /* v2.3.829: colors moved to the RIGHT of the objects (owner) — drawer is
    ROW again: items fill the left and scroll horizontally, the colors
@@ -600,7 +604,7 @@ input{font-family:inherit}
 .bt-intro__loadwrap{position:absolute;left:18%;right:18%;bottom:34px;text-align:center;pointer-events:none}
 .bt-intro__loadlabel{font-family:'Source Sans 3',sans-serif;font-size:13px;font-weight:700;letter-spacing:.22em;color:rgba(232,234,248,.92);text-shadow:0 1px 3px #000;margin-bottom:9px}
 .bt-intro__track{position:relative;height:6px;border-radius:3px;background:rgba(255,255,255,.16);overflow:hidden}
-.bt-intro__fill{height:100%;border-radius:3px;background:#5b52ff;transition:width .15s linear}
+.bt-intro__fill{height:100%;border-radius:3px;background:#D8A85F;transition:width .15s linear}
 .bt-intro__fill--indet{position:absolute;top:0;left:-35%;width:35%;animation:bt-intro-indet 1.2s ease-in-out infinite}
 @keyframes bt-intro-indet{0%{left:-35%}100%{left:100%}}
 
@@ -632,7 +636,7 @@ input{font-family:inherit}
 .bt-mining-stage{position:relative;border:2px solid #6b6b6b;border-radius:6px;overflow:hidden;background:#1a1a1a;flex-shrink:0}
 .bt-mining-stage video,.bt-mining-stage img{display:block}
 .bt-mining-slider{position:relative;background:rgba(0,0,0,.65);border:2px solid #4a4a4a;border-radius:4px;overflow:hidden;flex-shrink:0}
-.bt-mining-band{position:absolute;left:0;right:0;background:rgba(60,210,90,.45);border-top:1px solid #3dd497;border-bottom:1px solid #3dd497;display:flex;align-items:center;justify-content:center}
+.bt-mining-band{position:absolute;left:0;right:0;background:rgba(60,210,90,.45);border-top:1px solid #59BF91;border-bottom:1px solid #59BF91;display:flex;align-items:center;justify-content:center}
 .bt-mining-band img{width:90%;height:90%;object-fit:contain;image-rendering:pixelated;opacity:.95;filter:drop-shadow(0 1px 2px rgba(0,0,0,.6))}
 .bt-mining-indicator{position:absolute;top:0;left:-4px;right:-4px;height:3px;background:#ffe066;box-shadow:0 0 6px #ffe066;border-radius:2px;pointer-events:none;will-change:transform}
 .bt-mining-controls{display:flex;justify-content:center;align-items:center;gap:8px;margin-top:8px}

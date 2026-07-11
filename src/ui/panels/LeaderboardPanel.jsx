@@ -44,7 +44,7 @@ export function LeaderboardPanel(props) {
     style: {
       fontSize: 15,
       fontWeight: 800,
-      color: '#f5c542',
+      color: '#D8A94D',
       marginBottom: 2,
       textAlign: 'center'
     }
@@ -81,8 +81,8 @@ export function LeaderboardPanel(props) {
         fontWeight: 700,
         border: 'none',
         cursor: 'pointer',
-        background: leaderboardTab === id ? 'rgba(245,197,66,.2)' : 'rgba(255,255,255,.03)',
-        color: leaderboardTab === id ? '#f5c542' : 'rgba(255,255,255,.4)',
+        background: leaderboardTab === id ? 'rgba(216,169,77,.2)' : 'rgba(255,255,255,.03)',
+        color: leaderboardTab === id ? '#D8A94D' : 'rgba(255,255,255,.4)',
         fontFamily: 'inherit',
         transition: 'all .15s',
         minWidth: 40
@@ -231,8 +231,8 @@ export function LeaderboardPanel(props) {
           padding: '6px 8px',
           borderRadius: 6,
           marginBottom: 2,
-          background: e.isMe ? 'rgba(245,197,66,.08)' : 'rgba(255,255,255,.02)',
-          border: '1px solid ' + (e.isMe ? 'rgba(245,197,66,.2)' : 'rgba(255,255,255,.04)')
+          background: e.isMe ? 'rgba(216,169,77,.08)' : 'rgba(255,255,255,.02)',
+          border: '1px solid ' + (e.isMe ? 'rgba(216,169,77,.2)' : 'rgba(255,255,255,.04)')
         }
       }, /*#__PURE__*/React.createElement("div", {
         style: {
@@ -240,14 +240,14 @@ export function LeaderboardPanel(props) {
           textAlign: 'center',
           fontSize: i < 3 ? 14 : 10,
           fontWeight: 800,
-          color: i < 3 ? '#f5c542' : 'rgba(255,255,255,.3)'
+          color: i < 3 ? '#D8A94D' : 'rgba(255,255,255,.3)'
         }
       }, i < 3 ? medals[i] : i + 1), /*#__PURE__*/React.createElement("div", {
         style: {
           width: 24,
           height: 24,
           borderRadius: 12,
-          background: e.color || '#5b52ff',
+          background: e.color || '#D8A85F',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
@@ -255,7 +255,7 @@ export function LeaderboardPanel(props) {
           fontWeight: 800,
           color: '#fff',
           flexShrink: 0,
-          border: e.isMe ? '2px solid #f5c542' : '2px solid rgba(255,255,255,.1)'
+          border: e.isMe ? '2px solid #D8A94D' : '2px solid rgba(255,255,255,.1)'
         }
       }, (e.name || '?').charAt(0).toUpperCase()), /*#__PURE__*/React.createElement("div", {
         style: {
@@ -266,7 +266,7 @@ export function LeaderboardPanel(props) {
         style: {
           fontSize: 10,
           fontWeight: 700,
-          color: e.isMe ? '#f5c542' : '#fff',
+          color: e.isMe ? '#D8A94D' : '#fff',
           whiteSpace: 'nowrap',
           overflow: 'hidden',
           textOverflow: 'ellipsis'
@@ -291,7 +291,7 @@ export function LeaderboardPanel(props) {
         style: {
           fontSize: 12,
           fontWeight: 900,
-          color: i === 0 ? '#f5c542' : i < 3 ? '#c0a0e0' : 'rgba(255,255,255,.6)',
+          color: i === 0 ? '#D8A94D' : i < 3 ? '#c0a0e0' : 'rgba(255,255,255,.6)',
           textAlign: 'right',
           minWidth: 40
         }
