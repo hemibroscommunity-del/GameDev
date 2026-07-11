@@ -73,16 +73,18 @@ const BAR_IMG = {
   xp:   '/icons/ui/bar-xp.webp?v=2.3.115',
 };
 
-// Toolbar icon source.  Each glyph is a separate PNG sliced from the
-// user-supplied mockup screenshots by tools/slice_toolbar_icons.py
-// (first batch) and tools/slice_more_icons.py (second batch).
+// Toolbar icon source.  v2.3.1224: swapped to the UI Bible icon set
+// (docs/UI-BIBLE.md Part 4; generated per the Part 5 master prompt and
+// sliced by tools/process_icon_sheets.py).  The old mockup-sliced
+// bag/friends/... webps stay in public/icons/ui/ untouched so any
+// stale-cached bundle keeps working.
 const ICON_SRC = {
-  inventory: '/icons/ui/bag.webp?v=2.3.115',
-  friends:   '/icons/ui/friends.webp?v=2.3.115',
-  codex:     '/icons/ui/codex.webp?v=2.3.115',
-  journey:   '/icons/ui/journey.webp?v=2.3.115',
-  map:       '/icons/ui/map.webp?v=2.3.115',
-  more:      '/icons/ui/more.webp?v=2.3.115',
+  inventory: '/icons/ui/nav-inventory.webp?v=2.3.1224',
+  friends:   '/icons/ui/nav-friends.webp?v=2.3.1224',
+  codex:     '/icons/ui/nav-codex.webp?v=2.3.1224',
+  journey:   '/icons/ui/nav-journey.webp?v=2.3.1224',
+  map:       '/icons/ui/nav-map.webp?v=2.3.1224',
+  more:      '/icons/ui/nav-more.webp?v=2.3.1224',
 };
 
 // Character build stats shown in the middle dashboard column, ordered for a
@@ -90,20 +92,19 @@ const ICON_SRC = {
 // Mind), BOTTOM row = combat resources (Vitality / Endurance / Defense).
 // Defense is the Tier-2 trained skill (rpg.defenseSkill); the others are
 // Tier-1 capacity stats.  Tooltip phrasing per GDD §1.2.
+/* v2.3.1224: stat icons swapped to the UI Bible set (combat-* for the
+   three weapon-category damage stats, stat-* for the resource stats).
+   The old popups/*.webp icons stay for damage popups. */
 const CHAR_STATS = [
-  { key: 'power',     label: 'Melee',     short: 'MEL', iconSrc: '/icons/popups/sword.webp?v=2.3.109',                pixelated: false, iconScale: 1.0, tip: 'Melee — melee weapon damage scaling. Trains by landing damage with sword / greatsword.' },
-  { key: 'agility',   label: 'Bow',       short: 'BOW', iconSrc: '/icons/popups/arrow.webp?v=2.3.109',                pixelated: false, iconScale: 1.0, tip: 'Bow — bow damage + move speed, dodge distance, attack speed. Trains by successful dodges and ranged hits.' },
-  { key: 'mind',      label: 'Magic',     short: 'MAG', iconSrc: '/icons/popups/spell.webp?v=2.3.109',                pixelated: false, iconScale: 1.0, tip: 'Magic — staff (magic) damage + mana pool size. Trains by spending mana on staff bolts.' },
-  /* v2.3.112 heart iconScale history dropped; cell centers the value
-     regardless of icon size. */
-  { key: 'vitality',  label: 'HP',        short: 'HP',  iconSrc: '/icons/popups/heart.webp?v=2.3.112',                pixelated: true,  iconScale: 1.0, tip: 'HP — health pool size. Trains by taking damage and surviving the fight.' },
+  { key: 'power',     label: 'Melee',     short: 'MEL', iconSrc: '/icons/ui/combat-melee.webp?v=2.3.1224',   pixelated: false, iconScale: 1.0, tip: 'Melee — melee weapon damage scaling. Trains by landing damage with sword / greatsword.' },
+  { key: 'agility',   label: 'Bow',       short: 'BOW', iconSrc: '/icons/ui/combat-bow.webp?v=2.3.1224',     pixelated: false, iconScale: 1.0, tip: 'Bow — bow damage + move speed, dodge distance, attack speed. Trains by successful dodges and ranged hits.' },
+  { key: 'mind',      label: 'Magic',     short: 'MAG', iconSrc: '/icons/ui/combat-magic.webp?v=2.3.1224',   pixelated: false, iconScale: 1.0, tip: 'Magic — staff (magic) damage + mana pool size. Trains by spending mana on staff bolts.' },
+  { key: 'vitality',  label: 'HP',        short: 'HP',  iconSrc: '/icons/ui/stat-vitality.webp?v=2.3.1224',  pixelated: false, iconScale: 1.0, tip: 'HP — health pool size. Trains by taking damage and surviving the fight.' },
   /* Defense = Tier-2 trained skill (rpg.defenseSkill.level); tapping opens the
-     DEF spend tab in the T2 panel (wired in v2.3.693).  v2.3.695: dedicated
-     shield-crest icon (user-supplied); Endurance moved to the energy bolt so
-     the two no longer share shield imagery.  v2.3.696: DEF and END swapped --
-     bottom row reads Vitality · Defense · Endurance per user. */
-  { key: 'defense',   label: 'Defense',   short: 'DEF', iconSrc: '/icons/popups/shield-defense.webp?v=2.3.695',       pixelated: false, iconScale: 1.0, t2: true, tip: 'Defense — block strength + damage reduction. Trains by blocking and mitigating hits; spend points in the DEF tab.' },
-  { key: 'endurance', label: 'Endurance', short: 'END', iconSrc: '/icons/popups/energy.webp?v=2.3.695',               pixelated: false, iconScale: 1.0, tip: 'Endurance — stamina pool size. Trains by spending stamina on dodge, block, or sprint.' },
+     DEF spend tab in the T2 panel (wired in v2.3.693).  v2.3.696: DEF and END
+     swapped -- bottom row reads Vitality · Defense · Endurance per user. */
+  { key: 'defense',   label: 'Defense',   short: 'DEF', iconSrc: '/icons/ui/stat-defense.webp?v=2.3.1224',   pixelated: false, iconScale: 1.0, t2: true, tip: 'Defense — block strength + damage reduction. Trains by blocking and mitigating hits; spend points in the DEF tab.' },
+  { key: 'endurance', label: 'Endurance', short: 'END', iconSrc: '/icons/ui/stat-endurance.webp?v=2.3.1224', pixelated: false, iconScale: 1.0, tip: 'Endurance — stamina pool size. Trains by spending stamina on dodge, block, or sprint.' },
 ];
 
 /* Dashboard now focuses on the build/combat stats; the life-skills grid is
@@ -114,16 +115,18 @@ const SHOW_LIFE_SKILLS = false;
 // (Woodcutting, Fishing, Mining, Cooking, Blacksmithing, Woodworking,
 // Gem Cutting, Enchanting, Farming, Trapping).
 const LIFE_SKILLS = [
-  { key: 'cooking',       icon: '🍳', label: 'Cooking',       tip: 'Cooking — turn raw ingredients into stat-boosting food.' },
-  { key: 'fishing',       icon: '🎣', label: 'Fishing',       tip: 'Fishing — catch fish from water tiles for cooking + alchemy.' },
-  { key: 'mining',        icon: '⛏',  label: 'Mining',        tip: 'Mining — break ore + zone gems with a pickaxe.' },
-  { key: 'woodcutting',   icon: '🪓', label: 'Woodcutting',   tip: 'Woodcutting — chop trees for logs and twigs.' },
-  { key: 'farming',       icon: '🌾', label: 'Farming',       tip: 'Farming — plant + harvest crops on owned plots.' },
-  { key: 'blacksmithing', icon: '🔨', label: 'Blacksmithing', tip: 'Blacksmithing — forge weapons, armor, tools.' },
-  { key: 'woodworking',   icon: '🛠',  label: 'Woodworking',   tip: 'Woodworking — craft bows, staves, furniture from logs.' },
-  { key: 'gemCutting',    icon: '💎', label: 'Gem Cutting',   tip: 'Gem Cutting — refine raw gems into polished sockets.' },
-  { key: 'enchanting',    icon: '✨', label: 'Enchanting',    tip: 'Enchanting — infuse equipment with elemental effects.' },
-  { key: 'trapping',      icon: '🪤', label: 'Trapping',      tip: 'Trapping — hunt animals + monsters with set traps.' },
+  /* v2.3.1224: iconSrc = UI Bible skill icons; emoji kept as the render
+     fallback if an image ever 404s. */
+  { key: 'cooking',       icon: '🍳', iconSrc: '/icons/ui/skill-cooking.webp?v=2.3.1224',       label: 'Cooking',       tip: 'Cooking — turn raw ingredients into stat-boosting food.' },
+  { key: 'fishing',       icon: '🎣', iconSrc: '/icons/ui/skill-fishing.webp?v=2.3.1224',       label: 'Fishing',       tip: 'Fishing — catch fish from water tiles for cooking + alchemy.' },
+  { key: 'mining',        icon: '⛏',  iconSrc: '/icons/ui/skill-mining.webp?v=2.3.1224',        label: 'Mining',        tip: 'Mining — break ore + zone gems with a pickaxe.' },
+  { key: 'woodcutting',   icon: '🪓', iconSrc: '/icons/ui/skill-woodcutting.webp?v=2.3.1224',   label: 'Woodcutting',   tip: 'Woodcutting — chop trees for logs and twigs.' },
+  { key: 'farming',       icon: '🌾', iconSrc: '/icons/ui/skill-farming.webp?v=2.3.1224',       label: 'Farming',       tip: 'Farming — plant + harvest crops on owned plots.' },
+  { key: 'blacksmithing', icon: '🔨', iconSrc: '/icons/ui/skill-blacksmithing.webp?v=2.3.1224', label: 'Blacksmithing', tip: 'Blacksmithing — forge weapons, armor, tools.' },
+  { key: 'woodworking',   icon: '🛠',  iconSrc: '/icons/ui/skill-woodworking.webp?v=2.3.1224',   label: 'Woodworking',   tip: 'Woodworking — craft bows, staves, furniture from logs.' },
+  { key: 'gemCutting',    icon: '💎', iconSrc: '/icons/ui/skill-gemcutting.webp?v=2.3.1224',    label: 'Gem Cutting',   tip: 'Gem Cutting — refine raw gems into polished sockets.' },
+  { key: 'enchanting',    icon: '✨', iconSrc: '/icons/ui/skill-enchanting.webp?v=2.3.1224',    label: 'Enchanting',    tip: 'Enchanting — infuse equipment with elemental effects.' },
+  { key: 'trapping',      icon: '🪤', iconSrc: '/icons/ui/skill-trapping.webp?v=2.3.1224',      label: 'Trapping',      tip: 'Trapping — hunt animals + monsters with set traps.' },
 ];
 
 // Tiny column-header used at the top of each of the three dashboard
@@ -1395,7 +1398,12 @@ export const BottomDashboard = () => {
                           touchAction: 'none',
                           overflow: 'hidden',
                         }}>
-                        <span style={{ fontSize: 13, lineHeight: 1, flexShrink: 0 }}>{sk.icon}</span>
+                        {/* v2.3.1224: UI Bible icon with emoji fallback */}
+                        {sk.iconSrc
+                          ? <img src={sk.iconSrc} alt="" draggable={false}
+                              style={{ width: 14, height: 14, flexShrink: 0, objectFit: 'contain' }}
+                              onError={(e) => { e.currentTarget.replaceWith(document.createTextNode(sk.icon)); }} />
+                          : <span style={{ fontSize: 13, lineHeight: 1, flexShrink: 0 }}>{sk.icon}</span>}
                         {/* v2.3.126: matches Build cell — flex:1 + center
                             so the level number stays centered regardless
                             of glyph width variance between emoji. */}

@@ -3,23 +3,25 @@ import { dashboardPanelBus } from '../dashboardPanelBus.js';
 import { controlsTutorialBus } from '../controlsTutorialBus.js';
 import { COL, panelStyle } from './common.js';
 
-// Sliced from public/icons/ui/dashboard-mockup-new0.webp via
-// tools/slice_more_icons.py.  Falls back to glyph if the image fails.
+// v2.3.1224: swapped to the UI Bible icon set (docs/UI-BIBLE.md Part 4,
+// sliced by tools/process_icon_sheets.py); every tile has a real icon
+// now (stats/t2/account/controls previously had only glyphs).  Falls
+// back to glyph if the image fails.
 const TILES = [
-  { id: 'self',        src: '/icons/ui/playercard.webp',  label: 'Self',     glyph: '🪪' },
-  { id: 'stats',       src: null,                        label: 'Stats',    glyph: '📊' },
+  { id: 'self',        src: '/icons/ui/panel-self.webp?v=2.3.1224',        label: 'Self',     glyph: '🪪' },
+  { id: 'stats',       src: '/icons/ui/panel-stats.webp?v=2.3.1224',       label: 'Stats',    glyph: '📊' },
   /* v2.3.609: per-weapon-category build allocation (replaces generic specs). */
-  { id: 't2',          src: null,                        label: 'Weapons',  glyph: '⚔️' },
-  { id: 'leaderboard', src: '/icons/ui/leaderboard.webp', label: 'Ranks',    glyph: '🏆' },
-  { id: 'clan',        src: '/icons/ui/clan.webp',        label: 'Clan',     glyph: '🛡' },
-  { id: 'guild',       src: '/icons/ui/guild.webp',       label: 'Guild',    glyph: '⚒' },
-  { id: 'feedback',    src: '/icons/ui/feedback.webp',    label: 'Feedback', glyph: '💬' },
+  { id: 't2',          src: '/icons/ui/panel-weapons.webp?v=2.3.1224',     label: 'Weapons',  glyph: '⚔️' },
+  { id: 'leaderboard', src: '/icons/ui/panel-leaderboard.webp?v=2.3.1224', label: 'Ranks',    glyph: '🏆' },
+  { id: 'clan',        src: '/icons/ui/panel-clan.webp?v=2.3.1224',        label: 'Clan',     glyph: '🛡' },
+  { id: 'guild',       src: '/icons/ui/panel-guild.webp?v=2.3.1224',       label: 'Guild',    glyph: '⚒' },
+  { id: 'feedback',    src: '/icons/ui/panel-feedback.webp?v=2.3.1224',    label: 'Feedback', glyph: '💬' },
   /* v2.3.1143: account panel -- Login Key display + device transfer. */
-  { id: 'account',     src: null,                        label: 'Account',  glyph: '🔑' },
-  { id: 'settings',    src: '/icons/ui/settings.webp',    label: 'Settings', glyph: '⚙' },
+  { id: 'account',     src: '/icons/ui/panel-account.webp?v=2.3.1224',     label: 'Account',  glyph: '🔑' },
+  { id: 'settings',    src: '/icons/ui/panel-settings.webp?v=2.3.1224',    label: 'Settings', glyph: '⚙' },
   /* v2.3.225: opens the annotated controls tutorial via its bus
      instead of pushing a dashboard panel. */
-  { id: 'controls',    src: null,                        label: 'Controls', glyph: '?' },
+  { id: 'controls',    src: '/icons/ui/panel-controls.webp?v=2.3.1224',    label: 'Controls', glyph: '?' },
 ];
 
 export const MorePanel = () => (

@@ -13,19 +13,21 @@ const COL = {
   pressed:  '#2C2C2A',
 };
 
+/* v2.3.1224: src = UI Bible icons (docs/UI-BIBLE.md Part 4); the emoji
+   stays as the render fallback if an image fails to load. */
 const ITEMS = [
   /* v2.3.224: Controls at the top so the help entry is always
      visible in short preview windows. */
-  { e: '?',  label: 'Controls',     bus: 'controlsTutorial' },
-  { e: '⚔️', label: 'Stats',        legacy: 'stats' },
-  { e: '📊', label: 'Skills',       legacy: 'skills' },
-  { e: '📖', label: 'Encyclopedia', legacy: 'encyclopedia' },
-  { e: '🏛️', label: 'Guild',        legacy: 'guild' },
-  { e: '🏆', label: 'Leaderboard',  legacy: 'leaderboard' },
-  { e: '🏰', label: 'Clan',         legacy: 'clan' },
-  { e: '👥', label: 'Friends',      legacy: 'social' },
-  { e: '📝', label: 'Feedback',     legacy: 'feedback' },
-  { e: '💬', label: 'Chat',         legacy: 'chat' },
+  { e: '?',  src: '/icons/ui/panel-controls.webp?v=2.3.1224',     label: 'Controls',     bus: 'controlsTutorial' },
+  { e: '⚔️', src: '/icons/ui/panel-stats.webp?v=2.3.1224',        label: 'Stats',        legacy: 'stats' },
+  { e: '📊', src: '/icons/ui/panel-skills.webp?v=2.3.1224',       label: 'Skills',       legacy: 'skills' },
+  { e: '📖', src: '/icons/ui/panel-encyclopedia.webp?v=2.3.1224', label: 'Encyclopedia', legacy: 'encyclopedia' },
+  { e: '🏛️', src: '/icons/ui/panel-guild.webp?v=2.3.1224',        label: 'Guild',        legacy: 'guild' },
+  { e: '🏆', src: '/icons/ui/panel-leaderboard.webp?v=2.3.1224',  label: 'Leaderboard',  legacy: 'leaderboard' },
+  { e: '🏰', src: '/icons/ui/panel-clan.webp?v=2.3.1224',         label: 'Clan',         legacy: 'clan' },
+  { e: '👥', src: '/icons/ui/nav-friends.webp?v=2.3.1224',        label: 'Friends',      legacy: 'social' },
+  { e: '📝', src: '/icons/ui/panel-feedback.webp?v=2.3.1224',     label: 'Feedback',     legacy: 'feedback' },
+  { e: '💬', src: '/icons/ui/panel-chat.webp?v=2.3.1224',         label: 'Chat',         legacy: 'chat' },
 ];
 
 let _open = false;
@@ -79,7 +81,12 @@ export const MoreOverlay = () => {
               display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6,
               userSelect: 'none', touchAction: 'manipulation',
             }}>
-              <div style={{ fontSize: 24, lineHeight: 1 }}>{it.e}</div>
+              {/* v2.3.1224: UI Bible icon with emoji fallback */}
+              {it.src
+                ? <img src={it.src} alt="" draggable={false}
+                    style={{ width: 28, height: 28, objectFit: 'contain' }}
+                    onError={(e) => { e.currentTarget.replaceWith(document.createTextNode(it.e)); }} />
+                : <div style={{ fontSize: 24, lineHeight: 1 }}>{it.e}</div>}
               <div style={{ fontFamily: 'system-ui, sans-serif', fontSize: 11, color: COL.text }}>
                 {it.label}
               </div>
