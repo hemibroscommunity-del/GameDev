@@ -6,14 +6,17 @@ import { isLocked as itemIsLocked } from './inventoryLocks.js';
 import { reconcileGearStash } from '../../../rendering/gearCatalog.js';
 import { getBagEntries } from './bagModel.js';
 
-// Category filter chips — icon-only.  "All" comes first so the player
-// always opens the bag with everything visible.
+// Category filter chips.  "All" comes first so the player always opens
+// the bag with everything visible.  v2.3.1231: UI Bible icons replace
+// the legacy emoji glyphs (owner request); glyph kept as the
+// image-failure fallback.  No potion icon exists in the 90-icon set,
+// so Potion borrows the soak droplets until one is generated.
 export const CATEGORIES = [
-  { id: 'all',      glyph: '◎', label: 'All' },
-  { id: 'weapon',   glyph: '⚔', label: 'Weapon' },
-  { id: 'armor',    glyph: '🛡', label: 'Armor' },
-  { id: 'potion',   glyph: '🧪', label: 'Potion' },
-  { id: 'crafting', glyph: '⚒', label: 'Crafting' },
+  { id: 'all',      glyph: '◎', iconSrc: '/icons/ui/nav-inventory.webp?v=2.3.1231',       label: 'All' },
+  { id: 'weapon',   glyph: '⚔', iconSrc: '/icons/ui/combat-melee.webp?v=2.3.1231',        label: 'Weapon' },
+  { id: 'armor',    glyph: '🛡', iconSrc: '/icons/ui/combat-defense.webp?v=2.3.1231',      label: 'Armor' },
+  { id: 'potion',   glyph: '🧪', iconSrc: '/icons/ui/status-soak.webp?v=2.3.1231',         label: 'Potion' },
+  { id: 'crafting', glyph: '⚒', iconSrc: '/icons/ui/skill-blacksmithing.webp?v=2.3.1231', label: 'Crafting' },
 ];
 
 // Light heuristic — classify an inventory key into one of the four
@@ -229,7 +232,11 @@ export const InventoryPanel = () => {
                 cursor: 'pointer',
               }}
             >
-              <span style={{ fontSize: 14, lineHeight: 1 }}>{c.glyph}</span>
+              {c.iconSrc
+                ? <img src={c.iconSrc} alt="" draggable={false}
+                    style={{ width: 18, height: 18, objectFit: 'contain' }}
+                    onError={(e) => { e.currentTarget.replaceWith(document.createTextNode(c.glyph)); }} />
+                : <span style={{ fontSize: 14, lineHeight: 1 }}>{c.glyph}</span>}
               <span style={{ fontSize: 8.5, fontWeight: 700, letterSpacing: '.02em' }}>{c.label}</span>
             </button>
           );
