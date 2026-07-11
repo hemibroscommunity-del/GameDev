@@ -232,8 +232,12 @@ pointerdown. prefers-reduced-motion removes shimmer/overshoot/nudge.
    (gradient, warm top edge, dividers), Bag tray / Loadout lift /
    Build cells, toolbar shelf + icon plates, compact player card,
    red-leather removal.
-2. ☐ Slot state matrix + rarity edges + Godly conic sheen (with
-   reduced-motion fallback).
+2. ✅ v2.3.1228: rarity edge system (1px common / 2px rare+ / conic
+   Godly ring `.ls-slot--godly` in game.css, @property-animated with
+   static fallback + reduced-motion off), occupied radial mist fill,
+   icon drop-shadow, NEW brass dot, equipped brass corner notch.
+   Cooldown / drag / invalid-drop states deferred — no runtime
+   surface exists for them yet.
 3. ☐ Panel header 44px + tabs/chips/rows sweep; world-HUD toast +
    joystick opacity ladder.
 4. ☐ Device/contrast/perf QA pass; remove unused legacy CSS.

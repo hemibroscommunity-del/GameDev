@@ -7,7 +7,7 @@ import { ChatBubble } from './mobile/ChatBubble.jsx';
 import { XpFlyOverlay } from './XpFlyOverlay.jsx';
 import { InventorySurface } from './mobile/InventorySurface.jsx';
 import { inventoryBus } from './mobile/inventoryBus.js';
-import { generateMockInventory, generateMockEquipped, makeItem } from './mobile/mockItems.js';
+import { generateMockInventory, generateMockEquipped, generateShowcaseItems, makeItem } from './mobile/mockItems.js';
 import { InspectCard } from './mobile/InspectCard.jsx';
 import { inspectCardBus } from './mobile/inspectCardBus.js';
 import { generateMockProfile } from './mobile/mockProfile.js';
@@ -207,9 +207,11 @@ export const GameApp = () => {
     });
     // First load: seed a mock inventory so the surface has things to test with
     // (weapons/potions + extra armor in each slot that maps to real gear art).
+    // v2.3.1228: prepend the rarity showcase set (one guaranteed item per
+    // quality) so the Lantern Slate slot system is always demonstrable.
     if (!inventoryBus.state.items.length) {
       const equippedIds = new Set(Object.values(inventoryBus.state.equipped).filter(Boolean).map(i => i.id));
-      const mock = generateMockInventory(24);
+      const mock = [...generateShowcaseItems(), ...generateMockInventory(20)];
       const extraArmor = [
         makeItem('armor', { name: 'Steel Plate',    slot: 'chest', gearId: 'steelplate' }),
         makeItem('armor', { name: 'Steel Greaves',  slot: 'legs',  gearId: 'steelgreaves' }),
