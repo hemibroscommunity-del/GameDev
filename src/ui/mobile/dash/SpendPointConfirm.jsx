@@ -131,7 +131,7 @@ export const SpendPointConfirm = () => {
           <button
             onPointerUp={(e) => { e.stopPropagation(); spendConfirmBus.close(); }}
             style={{
-              flex: 1, padding: '10px 0', background: 'rgba(34, 48, 60, 0.10)', color: COL.text,
+              flex: 1, padding: '10px 0', background: 'rgba(238, 242, 235, 0.10)', color: COL.text,
               border: '1px solid ' + COL.border, borderRadius: 6, fontWeight: 700, fontSize: 13,
               cursor: 'pointer', touchAction: 'manipulation',
             }}

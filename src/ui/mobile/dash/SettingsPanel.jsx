@@ -16,7 +16,7 @@ const Toggle = ({ label, value, onChange }) => (
       style={{
         width: 36, height: 18,
         borderRadius: 9,
-        background: value ? COL.accent : 'rgba(34, 48, 60, 0.14)',
+        background: value ? COL.accent : 'rgba(238, 242, 235, 0.14)',
         border: 'none',
         position: 'relative',
         cursor: 'pointer',

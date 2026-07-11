@@ -43,27 +43,36 @@ import { SpendPointConfirm }   from './dash/SpendPointConfirm.jsx';
 // taps any toolbar icon, the dashboard swaps in a panel component that
 // occupies the full 25vh band and the icon row hides.
 
-/* v2.3.1226: light & airy palette per docs/UI-BIBLE.md Part 2 — the
-   band flips to Parchment/Ink/Brass.  overlay* tokens are for chrome
-   floating OVER the game world (top-right player card, tooltips):
-   those stay translucent Ink per the Bible's world-overlap rule so
-   they read against bright grass and dark caves alike. */
+/* v2.3.1227: Lantern Slate (docs/LANTERN-SLATE-SPEC.md) — dark
+   mineral charcoal shelf, warm-white text, one lantern-brass accent.
+   overlay* tokens are for chrome floating OVER the game world
+   (player card, tooltips): same language at world-card opacity. */
 const COL = {
-  bg:        '#F7F2E8',              // Parchment
-  border:    'rgba(34,48,60,0.16)',  // Hairline
-  divider:   'rgba(34,48,60,0.10)',
-  text:      '#22303C',              // Ink
-  muted:     '#68737F',              // Slate
-  hp:        '#C0392B',
-  stam:      '#B7791F',
-  mp:        '#2B6CB0',
-  xp:        '#2F855A',
-  gold:      '#B7791F',
-  brass:     '#B08D57',
-  brassText: '#8A6A3B',              // brass darkened for text on light
-  overlayBg:     'rgba(34,48,60,0.82)',
-  overlayBorder: 'rgba(253,251,245,0.16)',
-  overlayText:   '#FDFBF5',
+  bg:        '#202C32',                    // band-mid / panel
+  raised:    '#2B3940',
+  well:      '#121B20',
+  wellSoft:  '#19252A',
+  slot:      '#243137',
+  toolbar:   '#10181D',
+  border:    'rgba(238,242,235,0.14)',
+  divider:   'rgba(238,242,235,0.10)',
+  edgeWarm:  'rgba(229,202,157,0.28)',
+  text:      '#F7F2E7',
+  text2:     '#B9C1BF',
+  muted:     '#96A2A0',
+  hp:        '#D95C54',
+  stam:      '#D8A94D',
+  mp:        '#4D86D5',
+  xp:        '#61B06B',
+  gold:      '#D8A85F',
+  brass:     '#D8A85F',
+  brassFill: '#3B3427',
+  brassText: '#D8A85F',
+  onAccent:  '#20170D',
+  tileBor:   'rgba(238,242,235,0.08)',
+  overlayBg:     'linear-gradient(180deg, rgba(35,48,57,.94), rgba(17,25,29,.94))',
+  overlayBorder: 'rgba(238,242,235,0.24)',
+  overlayText:   '#F7F2E7',
 };
 
 // Bar artwork sliced from the user-supplied mockup screenshot.  Each
@@ -151,9 +160,11 @@ const LIFE_SKILLS = [
 const ColHeader = ({ children }) => (
   <div style={{
     /* v2.3.114: -1 fontSize + white text per "everything white". */
-    fontSize: 14,
-    color: COL.text,
-    letterSpacing: '.08em',
+    /* v2.3.1227: 11/600 module header (Lantern Slate type ladder) */
+    fontSize: 11,
+    fontWeight: 600,
+    color: COL.text2,
+    letterSpacing: '.12em',
     textTransform: 'uppercase',
     padding: '0 2px 2px',
     textAlign: 'center',
@@ -287,56 +298,71 @@ const IconButton = ({ glyph, label, active, onClick, node, tut }) => {
   // prevents the event reaching the dashboard's outer pointerdown
   // handler (which only stops further bubbling, not local).
   const fire = (e) => { e.stopPropagation(); onClick && onClick(); };
+  /* v2.3.1227: Lantern Slate icon plates (§9) — each icon sits on a
+     38×38 stone-grey squircle so the warm-navy icon outlines stay
+     crisp on the dark shelf; active = warm brass plate + 3px brass
+     line at the shelf top. */
+  const plate = active
+    ? 'linear-gradient(180deg, #D8C69F, #BDA16E)'
+    : 'linear-gradient(180deg, #A2AAA5, #7F8A89)';
   return (
     <button
       onPointerUp={fire}
       data-tut={tut}
       style={{
         flex: 1,
+        position: 'relative',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
-        gap: 2,
+        gap: 3,
         padding: '4px 0',
-        background: active ? 'rgba(176,141,87,0.22)' : 'transparent',
+        background: 'transparent',
         border: 'none',
-        borderRight: `1px solid ${COL.divider}`,
         color: COL.text,
         cursor: 'pointer',
         fontFamily: 'Source Sans 3, sans-serif',
-        opacity: active ? 1 : 0.95,
         touchAction: 'none',
       }}
     >
-      {/* v2.3.1013: glyphs without a PNG (e.g. Chat) pass an inline `node`
-          rendered in the 38×38 icon slot instead of an <img>. */}
-      {node ? (
+      {active && (
         <span style={{
-          width: 38,
-          height: 38,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}>{node}</span>
-      ) : (
-        <img
-          src={src}
-          alt={label}
-          draggable={false}
-          style={{
-            width: 38,
-            height: 38,
-            objectFit: 'contain',
-            imageRendering: 'auto',
-          }}
-        />
+          position: 'absolute', top: 0, left: '18%', right: '18%',
+          height: 3, background: COL.brass, borderRadius: '0 0 3px 3px',
+          pointerEvents: 'none',
+        }} />
       )}
       <span style={{
-        /* v2.3.114: -1 fontSize + inactive labels white. */
-        fontSize: 14,
-        color: active ? COL.brassText : COL.text,
-        letterSpacing: '.04em',
+        width: 38,
+        height: 38,
+        borderRadius: 10,
+        background: plate,
+        boxShadow: 'inset 0 1px 0 rgba(255,255,255,.25), 0 1px 2px rgba(0,0,0,.3)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}>
+        {node ? node : (
+          <img
+            src={src}
+            alt={label}
+            draggable={false}
+            style={{
+              width: 32,
+              height: 32,
+              objectFit: 'contain',
+              imageRendering: 'auto',
+            }}
+          />
+        )}
+      </span>
+      <span style={{
+        /* v2.3.1227: 11.5/600 toolbar label (Lantern Slate ladder). */
+        fontSize: 11.5,
+        fontWeight: 600,
+        color: active ? COL.text : COL.text2,
+        letterSpacing: '.02em',
       }}>{label}</span>
     </button>
   );
@@ -396,12 +422,13 @@ const InventoryPreview = () => {
         display: 'flex',
         flexDirection: 'column',
         cursor: 'pointer',
-        /* v2.3.761: leather backdrop (owner art) behind the quick-bag tiles;
-           a touch of padding so the texture's border reads as the frame. */
-        backgroundImage: 'url(/icons/ui/bag-bg.webp?v=2.3.761)',
-        backgroundSize: '100% 100%',
-        borderRadius: 6,
-        padding: 3,
+        /* v2.3.1227: Lantern Slate recessed tray replaces the red
+           leather (spec hard lock: leather removed everywhere). */
+        background: COL.well,
+        border: `1px solid ${COL.tileBor}`,
+        boxShadow: 'inset 0 2px 4px rgba(0,0,0,.44), inset 0 1px 0 rgba(255,255,255,.035)',
+        borderRadius: 10,
+        padding: 4,
       }}
       title="Tap to open Bag"
     >
@@ -431,10 +458,10 @@ const InventoryPreview = () => {
         {Array.from({ length: Math.max(0, 9 - tiles.length) }).map((_, i) => (
           <div key={`pe-${i}`} aria-hidden="true" style={{
             aspectRatio: '1 / 1',
-            background: '#EFE7D6',
-            border: '1px solid rgba(34,48,60,0.16)',
-            boxShadow: 'inset 0 1px 3px rgba(34,48,60,0.10)',
-            borderRadius: 6,
+            background: COL.wellSoft,
+            border: `1px solid ${COL.tileBor}`,
+            boxShadow: 'inset 0 2px 4px rgba(0,0,0,.44)',
+            borderRadius: 8,
           }} />
         ))}
       </div>
@@ -602,46 +629,35 @@ export const BottomDashboard = () => {
           character card (beneath the gold row) at the owner's request --
           see the card below. */}
 
-      {/* Upper-right player card — portrait, name + level, gold.
-          Name plate moved here from above the player's head so the
-          new HP heart has unobstructed space right above the head. */}
+      {/* Upper-right player card — v2.3.1227: Lantern Slate compact
+          132×58 horizontal card (§10): portrait left with presence dot,
+          name / Lv + gold right, 3px XP strip flush to the inner bottom.
+          Replaces the tall vertical stack; the separate "N online" pill
+          is gone (presence = the dot; count moves to Friends later). */}
       <div
         onPointerDown={(e) => e.stopPropagation()}
         style={{
           position: 'fixed',
-          top: 'calc(env(safe-area-inset-top, 0px) + 6px)',
-          right: 'calc(env(safe-area-inset-right, 0px) + 6px)',
+          top: 'calc(env(safe-area-inset-top, 0px) + 8px)',
+          right: 'calc(env(safe-area-inset-right, 0px) + 8px)',
           zIndex: 30,
+          width: 132,
+          height: 58,
           background: COL.overlayBg,
           border: `1px solid ${COL.overlayBorder}`,
-          borderRadius: 8,
-          boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.06), inset 0 -1px 0 rgba(0,0,0,0.25)',
-          padding: '4px 6px',
+          borderRadius: 12,
+          boxShadow: '0 14px 30px rgba(4,7,9,.38)',
           display: 'flex',
-          flexDirection: 'column',
           alignItems: 'center',
-          gap: 3,
+          gap: 7,
+          padding: '0 8px 0 6px',
+          boxSizing: 'border-box',
+          overflow: 'hidden',
           touchAction: 'none',
         }}>
-        {/* Portrait frame — 40x40, centered. */}
-        <div style={{
-          width: 40,
-          height: 40,
-          background: 'rgba(0,0,0,0.25)',
-          border: '1px solid rgba(255,255,255,0.08)',
-          borderRadius: 6,
-          padding: 2,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}>
+        {/* Portrait 40×40 with presence dot. */}
+        <div style={{ position: 'relative', width: 40, height: 40, flexShrink: 0 }}>
           <img
-            /* Show the player's customized login-picker character first (it
-               matches the in-game body); fall back to an NFT avatar, then the
-               static icon.  Previously S.myAvatar (a stale/pool NFT pick) took
-               priority and showed e.g. a monkey even though the in-game
-               character is the cosmetic bro (the NFT is suppressed in-world
-               when worn armour hides the body). */
             src={profilePortrait || (S && S.myAvatar) || '/icons/ui/profile.webp?v=2.3.128'}
             alt="Portrait"
             draggable={false}
@@ -650,71 +666,59 @@ export const BottomDashboard = () => {
               height: '100%',
               objectFit: 'cover',
               imageRendering: 'pixelated',
-              borderRadius: 4,
+              borderRadius: 8,
               userSelect: 'none',
               pointerEvents: 'none',
             }}
           />
+          <span style={{
+            position: 'absolute', right: -2, bottom: -2,
+            width: 7, height: 7, borderRadius: '50%',
+            background: (S && S._realtimeStatus === 'connected') ? '#59BF91' : '#D95C54',
+            border: '2px solid #202C32',
+          }} />
         </div>
-        {/* Name + level row, centered under the portrait. */}
-        <div style={{
-          color: '#e8eaf8',
-          fontFamily: 'Source Sans 3, sans-serif',
-          fontSize: 12,
-          fontWeight: 700,
-          letterSpacing: '.02em',
-          textAlign: 'center',
-          lineHeight: 1.15,
-          maxWidth: 96,
-          textShadow: '0 1px 2px rgba(0,0,0,.85)',
-        }}>
+        {/* Name / level + gold. */}
+        <div style={{ flex: 1, minWidth: 0, paddingBottom: 3 }}>
           <div style={{
+            color: COL.overlayText,
+            fontFamily: 'Source Sans 3, sans-serif',
+            fontSize: 13,
+            fontWeight: 700,
+            lineHeight: '15px',
             overflow: 'hidden',
             textOverflow: 'ellipsis',
             whiteSpace: 'nowrap',
           }}>{(S && S.myName) || 'Anon'}</div>
-          <div style={{ color: '#a0a8c0', fontSize: 11 }}>Lv {level}</div>
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+            fontFamily: 'Source Sans 3, sans-serif',
+            lineHeight: '15px',
+          }}>
+            <span style={{ color: COL.text2, fontSize: 10, fontWeight: 600 }}>Lv {level}</span>
+            <span style={{
+              display: 'inline-flex', alignItems: 'center', gap: 3,
+              color: COL.gold, fontSize: 13, fontWeight: 700,
+              fontVariantNumeric: 'tabular-nums',
+              minWidth: 0, overflow: 'hidden',
+            }}>
+              <img src="/icons/popups/gold.webp" alt=""
+                style={{ width: 13, height: 13, imageRendering: 'pixelated', display: 'block' }} />
+              <span className="bt-coin-glimmer">{Number(displayGold).toLocaleString()}</span>
+            </span>
+          </div>
         </div>
-        {/* Gold row — icon + value, centered under the portrait. */}
+        {/* XP strip flush to the card's inner bottom. */}
         <div style={{
-          color: '#f5c542',
-          fontFamily: 'Source Sans 3, sans-serif',
-          fontSize: 16,
-          fontWeight: 700,
-          letterSpacing: '.04em',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          gap: 4,
-        }}>
-          <img
-            src="/icons/popups/gold.webp"
-            alt=""
-            style={{
-              width: 16,
-              height: 16,
-              imageRendering: 'pixelated',
-              display: 'block',
-            }}
-          />
-          {/* v2.3.821: animated gold-sheen glimmer on the coin count. */}
-          <span className="bt-coin-glimmer">{Number(displayGold).toLocaleString()}</span>
-        </div>
-        {/* v2.3.821: XP progress — moved here, beneath the character card. */}
-        <div style={{
-          alignSelf: 'stretch',
-          height: 6,
-          marginTop: 1,
-          background: 'rgba(0,0,0,0.5)',
-          border: '1px solid rgba(255,255,255,0.08)',
-          borderRadius: 4,
-          overflow: 'hidden',
-          boxShadow: 'inset 0 -1px 2px rgba(0,0,0,0.35)',
+          position: 'absolute', left: 0, right: 0, bottom: 0,
+          height: 3, background: '#0B1216',
         }}>
           <div style={{
             width: xpPct + '%',
             height: '100%',
-            background: 'linear-gradient(90deg, #3ddc97, #5be3aa)',
+            background: COL.xp,
             transition: 'width .4s ease-out',
           }} />
         </div>
@@ -727,13 +731,11 @@ export const BottomDashboard = () => {
         position: 'fixed',
         left: 0, right: 0, bottom: 0,
         height: 'var(--dash-h)',
-        /* v2.3.122: vertical gradient behind the three column panels so
-           the sections pop against a slightly lifted backdrop.
-           v2.3.1226b: the dark navy gradient was the one band literal
-           the light-palette sweep missed -- the band shipped dark with
-           Ink text on it (unreadable).  Now Chalk-to-Parchment. */
-        background: 'linear-gradient(180deg, #FDFBF5 0%, #F7F2E8 55%, #EFE7D6 100%)',
-        borderTop: `1px solid ${COL.border}`,
+        /* v2.3.1227: Lantern Slate band — charcoal gradient, warm top
+           edge (the "lantern" cue), soft up-shadow. */
+        background: 'linear-gradient(180deg, #253239 0%, #202C32 46%, #172126 100%)',
+        borderTop: `1px solid ${COL.edgeWarm}`,
+        boxShadow: '0 -10px 24px rgba(6,10,12,.22)',
         color: COL.text,
         fontFamily: 'Source Sans 3, sans-serif',
         zIndex: 30,
@@ -821,10 +823,8 @@ export const BottomDashboard = () => {
                 flexDirection: 'column',
                 minWidth: 0,
                 padding: 4,
-                borderRadius: 6,
-                border: `1px solid ${COL.border}`,
-                background: 'rgba(255,100,100,0.04)',
-                boxShadow: 'inset 0 1px 3px rgba(34,48,60,0.06)',
+                /* v2.3.1227: no card chrome — the band is the container
+                   (Lantern Slate §8); Bag is the quiet/deep module. */
                 /* v2.3.129: clip overflow so the Kills row (and any other
                    session-summary row) doesn't bleed past the column's
                    bottom border at narrow heights. */
@@ -910,8 +910,8 @@ export const BottomDashboard = () => {
                           title={c.tip}
                           style={{
                             ...rowStyle,
-                            background: 'rgba(34,48,60,0.05)',
-                            border: '1px solid rgba(34,48,60,0.10)',
+                            background: COL.wellSoft,
+                            border: `1px solid ${COL.tileBor}`,
                             borderRadius: 3,
                             padding: '1px 6px',
                           }}>
@@ -927,7 +927,7 @@ export const BottomDashboard = () => {
                       {/* Derived stats — Crit + Block.  Block % pairs
                          offense/defense with Crit and rises when the
                          player equips a shield or trains Fortification. */}
-                      <div style={{ borderTop: '1px solid rgba(34,48,60,0.10)', paddingTop: 2 }}>
+                      <div style={{ borderTop: `1px solid ${COL.divider}`, paddingTop: 2 }}>
                         <div
                           onPointerUp={(e) => { e.stopPropagation(); setTooltip(`Crit chance — Power baseline plus the equipped weapon's crit channel (${getWeaponCritStat(R)}).  Allocate it under Weapons.`); }}
                           title="Crit chance from Power + weapon crit channel"
@@ -944,7 +944,7 @@ export const BottomDashboard = () => {
                         </div>
                       </div>
                       {/* Session summary — Zone / Kills / Playtime. */}
-                      <div style={{ borderTop: '1px solid rgba(34,48,60,0.10)', paddingTop: 2, flex: 1, minHeight: 0 }}>
+                      <div style={{ borderTop: `1px solid ${COL.divider}`, paddingTop: 2, flex: 1, minHeight: 0 }}>
                         <div
                           onPointerUp={(e) => { e.stopPropagation(); setTooltip(`Current zone: ${zoneName} (${zoneId}).`); }}
                           title={`Current zone: ${zoneName}`}
@@ -986,10 +986,12 @@ export const BottomDashboard = () => {
                 flexDirection: 'column',
                 minWidth: 0,
                 padding: 4,
-                borderRadius: 6,
-                border: `1px solid ${COL.border}`,
-                background: 'rgba(120,110,255,0.04)',
-                boxShadow: 'inset 0 1px 3px rgba(34,48,60,0.06)',
+                /* v2.3.1227: Loadout is the subtly RAISED focal center —
+                   value lift + top highlight, no thick frame (§8). */
+                borderLeft: `1px solid ${COL.divider}`,
+                borderRight: `1px solid ${COL.divider}`,
+                background: 'linear-gradient(180deg, rgba(255,255,255,.035), rgba(255,255,255,.015))',
+                boxShadow: 'inset 0 1px 0 rgba(255,255,255,.055)',
               }}>
                 <ColHeader>Loadout</ColHeader>
                 {(() => {
@@ -1067,8 +1069,8 @@ export const BottomDashboard = () => {
                         alignItems: 'center',
                         justifyContent: 'center',
                         borderRadius: 4,
-                        background: active ? 'rgba(176,141,87,0.18)' : 'rgba(34,48,60,0.05)',
-                        border: active ? '1px solid rgba(176,141,87,0.70)' : '1px solid rgba(34,48,60,0.12)',
+                        background: active ? COL.brassFill : COL.wellSoft,
+                        border: active ? `1px solid rgba(216,168,95,.7)` : `1px solid ${COL.tileBor}`,
                         boxShadow: active ? 'inset 0 0 6px rgba(245,199,70,0.3)' : 'none',
                         cursor: onTap ? 'pointer' : 'default',
                         touchAction: 'none',
@@ -1260,10 +1262,7 @@ export const BottomDashboard = () => {
                 flexDirection: 'column',
                 minWidth: 0,
                 padding: 4,
-                borderRadius: 6,
-                border: `1px solid ${COL.border}`,
-                background: 'rgba(80,200,130,0.04)',
-                boxShadow: 'inset 0 1px 3px rgba(34,48,60,0.06)',
+                /* v2.3.1227: Build is the flat quiet readout (§8). */
               }}>
                 <ColHeader>{SHOW_LIFE_SKILLS ? 'Stats · Skills' : 'Build'}</ColHeader>
                 <div style={{
@@ -1344,8 +1343,8 @@ export const BottomDashboard = () => {
                           gap: 1,
                           padding: '2px 4px',
                           borderRadius: 3,
-                          background: 'rgba(176,141,87,0.10)',
-                          border: '1px solid rgba(176,141,87,0.35)',
+                          background: COL.wellSoft,
+                          border: `1px solid ${COL.tileBor}`,
                           overflow: 'hidden',
                           cursor: 'pointer',
                           touchAction: 'none',
@@ -1354,7 +1353,7 @@ export const BottomDashboard = () => {
                         {unspentPts > 0 && (
                           <span style={{
                             position: 'absolute', top: 1, right: 2,
-                            background: '#B08D57', color: '#fff',
+                            background: '#D8A85F', color: '#20170D',
                             fontSize: 9, fontWeight: 900,
                             borderRadius: 7, padding: '0px 4px', lineHeight: 1.4,
                             pointerEvents: 'none', zIndex: 1,
@@ -1383,13 +1382,13 @@ export const BottomDashboard = () => {
                           position: 'absolute',
                           left: 0, right: 0, bottom: 0,
                           height: 2,
-                          background: 'rgba(34,48,60,0.10)',
+                          background: '#0B1216',
                           pointerEvents: 'none',
                         }}>
                           <div style={{
                             width: pct + '%',
                             height: '100%',
-                            background: '#B08D57',
+                            background: '#D8A85F',
                             transition: 'width .15s linear',
                           }} />
                         </div>
@@ -1413,8 +1412,8 @@ export const BottomDashboard = () => {
                           gap: 3,
                           padding: '0 4px',
                           borderRadius: 3,
-                          background: 'rgba(34,48,60,0.05)',
-                          border: '1px solid rgba(34,48,60,0.10)',
+                          background: COL.wellSoft,
+                          border: `1px solid ${COL.tileBor}`,
                           fontSize: 11,
                           minHeight: 0,
                           cursor: 'pointer',
@@ -1435,7 +1434,7 @@ export const BottomDashboard = () => {
                           position: 'absolute',
                           left: 0, right: 0, bottom: 0,
                           height: 2,
-                          background: 'rgba(34,48,60,0.10)',
+                          background: '#0B1216',
                           pointerEvents: 'none',
                         }}>
                           <div style={{
@@ -1453,11 +1452,13 @@ export const BottomDashboard = () => {
             </div>
           </div>
 
-          {/* Icon row — bottom 30% of dashboard. */}
+          {/* Icon row — bottom 30% of dashboard.  v2.3.1227: separate
+              darkest navigation shelf (Lantern Slate §9). */}
           <div style={{
             height: '30%',
             minHeight: 56,
             borderTop: `1px solid ${COL.divider}`,
+            background: 'linear-gradient(180deg, #131D22 0%, #10181D 100%)',
             display: 'flex',
             alignItems: 'stretch',
           }}>

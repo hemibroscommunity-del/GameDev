@@ -11,7 +11,7 @@ import { AccountLoginForm } from '../../account/AccountLoginForm.jsx';
 export const AccountPanel = () => (
   <div style={panelStyle}>
     <AccountKeyCard />
-    <div style={{ height: 1, background: 'rgba(34, 48, 60, 0.12)', margin: '14px 0' }} />
+    <div style={{ height: 1, background: 'rgba(238, 242, 235, 0.12)', margin: '14px 0' }} />
     <AccountLoginForm />
   </div>
 );

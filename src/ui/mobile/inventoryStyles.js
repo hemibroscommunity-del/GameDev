@@ -1,43 +1,41 @@
 ﻿// Inventory color and typography canon (spec §8).
-// v2.3.1226: flipped to the light & airy palette (docs/UI-BIBLE.md
-// Part 2): Parchment surfaces, Bone wells, Ink text, hairline borders,
-// brass accents.  godlyBg stays dark — the Godly tile is the Bible's
-// one sanctioned loud exception (1-in-400k prismatic).
+// v2.3.1227: Lantern Slate (docs/LANTERN-SLATE-SPEC.md) — charcoal
+// surfaces, warm-white text, brass primary, thin rarity edges.
 
 export const INV = {
-  bg:        '#F7F2E8',                    // Parchment
-  tabBar:    '#F7F2E8',
-  tabBorder: 'rgba(34, 48, 60, 0.16)',     // Hairline
-  tileFill:  '#EFE7D6',                    // Bone well
-  tileBorder:'rgba(34, 48, 60, 0.16)',
-  /* keeps the dark label scrim — it sits over item ART, not the panel,
-     so light-on-dark stays the right call for legibility. */
-  tileBannerGrad: 'linear-gradient(180deg, transparent 0%, rgba(34, 48, 60, 0.72) 55%)',
-  chipActive:   'rgba(34, 48, 60, 0.14)',
-  chipInactive: 'rgba(34, 48, 60, 0.05)',
-  newBadge:  '#C0392B',
-  shortcutBadgeBg:    'rgba(34, 48, 60, 0.72)',
-  shortcutBadgeColor: '#E8D4A0',
-  textPrimary:  '#22303C',                 // Ink
-  textMuted:    'rgba(34, 48, 60, 0.62)',
-  textVeryMuted:'rgba(34, 48, 60, 0.40)',
-  positive: '#2F855A',
-  negative: '#C0392B',
-  primaryBtn:    '#22303C',                // Ink fill (Bible primary button)
-  destructive:   '#C0392B',
-  destructiveBg: 'rgba(192, 57, 43, 0.08)',
-  destructiveBorder: 'rgba(192, 57, 43, 0.30)',
-  marketAccent:    '#8A6A3B',              // brass darkened for light bg
-  marketBg:        'rgba(176, 141, 87, 0.10)',
-  marketBorder:    'rgba(176, 141, 87, 0.35)',
+  bg:        '#202C32',
+  tabBar:    '#182227',
+  tabBorder: 'rgba(238, 242, 235, 0.14)',
+  tileFill:  '#19252A',
+  tileBorder:'rgba(238, 242, 235, 0.08)',
+  /* dark label scrim over item ART — stays dark by design. */
+  tileBannerGrad: 'linear-gradient(180deg, transparent 0%, rgba(9, 14, 17, 0.78) 55%)',
+  chipActive:   '#3B3427',
+  chipInactive: 'rgba(238, 242, 235, 0.06)',
+  newBadge:  '#D95C54',
+  shortcutBadgeBg:    'rgba(9, 14, 17, 0.72)',
+  shortcutBadgeColor: '#D8A85F',
+  textPrimary:  '#F7F2E7',
+  textMuted:    '#B9C1BF',
+  textVeryMuted:'#96A2A0',
+  positive: '#59BF91',
+  negative: '#D95C54',
+  primaryBtn:    '#D8A85F',                // brass; pair with onAccent text
+  onPrimaryBtn:  '#20170D',
+  destructive:   '#C7655F',
+  destructiveBg: '#7C3431',
+  destructiveBorder: '#C7655F',
+  marketAccent:    '#D8A85F',
+  marketBg:        '#3B3427',
+  marketBorder:    'rgba(216, 168, 95, 0.45)',
   godlyBg:    '#0F0715',
-  newAccentBorder: 'rgba(176, 141, 87, 0.75)',
-  newAccentFill:   'rgba(176, 141, 87, 0.14)',
+  newAccentBorder: 'rgba(216, 168, 95, 0.75)',
+  newAccentFill:   '#3B3427',
   // Equipped slot tints
-  slotWeaponBorder: 'rgba(43, 108, 176, 0.55)',
-  slotArmorBorder:  'rgba(140, 110, 80, 0.50)',
-  slotPetBorder:    'rgba(47, 133, 90, 0.50)',
-  slotToolBorder:   'rgba(34, 48, 60, 0.30)',
+  slotWeaponBorder: 'rgba(91, 153, 222, 0.55)',
+  slotArmorBorder:  'rgba(160, 130, 95, 0.50)',
+  slotPetBorder:    'rgba(89, 191, 145, 0.50)',
+  slotToolBorder:   'rgba(238, 242, 235, 0.20)',
   silhouetteSkin:    '#D4B090',
   silhouetteCloth:   '#6A7A8A',
   silhouetteGradient:'rgba(80, 120, 160, 0.08)',
@@ -49,20 +47,18 @@ export const FONT = {
   mono:  '"Source Sans 3", sans-serif',
 };
 
-// Quality / rarity tints (Elite + Godly tile borders).
-// v2.3.1226: hues pulled darker for the light theme (UI-BIBLE rarity
-// table: Rare blue, Legendary/elite violet, Godly prismatic gold).
+// Quality / rarity tints — Lantern Slate §11: thin edges + faint fill.
 export const RARITY_BORDER = {
-  normal: INV.tileBorder,
-  rare:   'rgba(43, 108, 176, 0.60)',
-  elite:  'rgba(124, 58, 237, 0.55)',
-  godly:  'rgba(176, 141, 87, 0.90)',
+  normal: 'rgba(139, 150, 149, 0.55)',
+  rare:   '#5B99DE',
+  elite:  '#A477DF',
+  godly:  '#F0C45F',
 };
 export const RARITY_FILL = {
   normal: INV.tileFill,
-  rare:   'rgba(43, 108, 176, 0.08)',
-  elite:  'rgba(124, 58, 237, 0.08)',
-  godly:  'rgba(176, 141, 87, 0.12)',
+  rare:   'rgba(91, 153, 222, 0.08)',
+  elite:  'rgba(164, 119, 223, 0.10)',
+  godly:  'rgba(240, 196, 95, 0.12)',
 };
 
 export const POTION_TINT = {

@@ -1,33 +1,42 @@
 ﻿// Shared style + helper module for the in-dashboard panels.
 
-/* v2.3.1226: light & airy palette per docs/UI-BIBLE.md Part 2 —
-   Parchment surfaces, Ink text, Slate secondary, Brass accent,
-   hairline ink-alpha borders.  Every dash panel inherits this. */
+/* v2.3.1227: Lantern Slate (docs/LANTERN-SLATE-SPEC.md) — dark
+   mineral charcoal shelf, warm-white text, lantern-brass accent.
+   Replaces the v2.3.1226 light&airy set (owner rejected the beige). */
 export const COL = {
-  bg:        'rgba(247, 242, 232, 0.96)',  // Parchment
-  border:    'rgba(34, 48, 60, 0.16)',     // Hairline
-  divider:   'rgba(34, 48, 60, 0.10)',
-  text:      '#22303C',                    // Ink
-  muted:     '#68737F',                    // Slate
-  accent:    '#B08D57',                    // Brass
-  hp:        '#C0392B',
-  stam:      '#B7791F',
-  mp:        '#2B6CB0',
-  xp:        '#2F855A',
-  gold:      '#B7791F',
-  tile:      'rgba(34, 48, 60, 0.05)',     // Bone-ish well
-  tileBor:   'rgba(34, 48, 60, 0.14)',
+  bg:        '#202C32',                    // panel / band-mid
+  bgStrong:  '#182227',                    // header strips
+  raised:    '#2B3940',                    // actionable card / button
+  well:      '#121B20',                    // tray / track
+  wellSoft:  '#19252A',                    // empty slot / quiet cell
+  slot:      '#243137',                    // occupied slot base
+  border:    'rgba(238, 242, 235, 0.14)',
+  divider:   'rgba(238, 242, 235, 0.10)',
+  edgeWarm:  'rgba(229, 202, 157, 0.28)',
+  text:      '#F7F2E7',
+  text2:     '#B9C1BF',
+  muted:     '#96A2A0',
+  accent:    '#D8A85F',                    // lantern brass
+  accentFill:'#3B3427',
+  focus:     '#F0C878',
+  onAccent:  '#20170D',
+  hp:        '#D95C54',
+  stam:      '#D8A94D',
+  mp:        '#4D86D5',
+  xp:        '#61B06B',
+  gold:      '#D8A85F',
+  tile:      '#19252A',
+  tileBor:   'rgba(238, 242, 235, 0.08)',
 };
 
-/* v2.3.1226: recalibrated darker for light surfaces (UI-BIBLE Part 2
-   rarity table).  Godly = gold base of the prismatic treatment. */
+/* v2.3.1227: Lantern Slate rarity — thin edge language, never fills. */
 export const TIER_COLOR = {
-  common:    '#68737F',
-  uncommon:  '#2F855A',
-  rare:      '#2B6CB0',
-  epic:      '#7C3AED',
-  legendary: '#B7791F',
-  godly:     '#8A6A3B',
+  common:    '#8B9695',
+  uncommon:  '#59BF91',
+  rare:      '#5B99DE',
+  epic:      '#9A76D3',
+  legendary: '#A477DF',
+  godly:     '#F0C45F',
 };
 
 export const getState = () => (typeof window !== 'undefined') && window._gameState && window._gameState.current;

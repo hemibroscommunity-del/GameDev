@@ -245,14 +245,14 @@ export const T2Panel = () => {
             {/* v2.3.1207: cap is WEAPON_LEVEL_CAP (100 since v2.3.1156) — the stale 99 literal showed "(Max)" one level early. */}
             {(sk.level || 0) >= WEAPON_LEVEL_CAP ? ' (Max)' : ` · ${Math.round(xpPct)}% to next`}
           </div>
-          <div style={{ height: 4, background: 'rgba(34, 48, 60, 0.12)', borderRadius: 3, overflow: 'hidden' }}>
+          <div style={{ height: 4, background: 'rgba(238, 242, 235, 0.12)', borderRadius: 3, overflow: 'hidden' }}>
             <div style={{ width: xpPct + '%', height: '100%', background: 'rgba(91,82,255,0.85)', transition: 'width .15s linear' }} />
           </div>
         </div>
         <div style={{
           fontSize: 12, fontWeight: 700,
           color: unspent > 0 ? COL.accent : COL.muted,
-          background: 'rgba(34, 48, 60, 0.05)',
+          background: 'rgba(238, 242, 235, 0.05)',
           padding: '5px 10px', borderRadius: 6,
           border: '1px solid ' + COL.border,
           whiteSpace: 'nowrap',
@@ -304,7 +304,7 @@ export const T2Panel = () => {
                   disabled={!canAdd}
                   style={{
                     width: 28, height: 28,
-                    background: canAdd ? COL.accent : 'rgba(34, 48, 60, 0.10)',
+                    background: canAdd ? COL.accent : 'rgba(238, 242, 235, 0.10)',
                     color: canAdd ? '#fff' : COL.muted,
                     border: '1px solid ' + COL.border,
                     borderRadius: 6,

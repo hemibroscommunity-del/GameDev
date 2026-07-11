@@ -74,8 +74,14 @@ UI does the communicating.
 
 ## Part 2 — Design tokens
 
-These are the values CSS should use. Name them as CSS custom properties
-when the client adopts them (e.g. `--ui-parchment`).
+> **SUPERSEDED (v2.3.1227):** the palette below (the "light & airy"
+> direction) was built, previewed, and REJECTED by the owner. The
+> governing visual system is now **`docs/LANTERN-SLATE-SPEC.md`**
+> (dark mineral charcoal, warm-white text, lantern-brass accent) —
+> use ITS tokens for any UI work. This section is kept for the
+> non-color rules that still stand (spacing, radius philosophy,
+> touch targets, semantic-color LAW if not the exact hex values) and
+> as design history. Parts 1, 4, 5 of this Bible remain in force.
 
 ### Core neutrals (light & airy)
 

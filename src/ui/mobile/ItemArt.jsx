@@ -9,10 +9,10 @@ import { ELEMENT_COLOR } from './inventoryStyles.js';
 /* v2.3.1226: tints flipped for the light theme (UI-BIBLE Part 2) --
    pale rarity-hued plates with darker strokes replace the dark plates. */
 const RARITY_TINT = {
-  normal: { fill: '#EFE7D6', stroke: '#68737F' },
-  rare:   { fill: '#E1EAF5', stroke: '#2B6CB0' },
-  elite:  { fill: '#ECE4F9', stroke: '#7C3AED' },
-  godly:  { fill: '#F4E9D2', stroke: '#8A6A3B' },
+  normal: { fill: '#243137', stroke: '#8B9695' },
+  rare:   { fill: '#20303F', stroke: '#5B99DE' },
+  elite:  { fill: '#2A2740', stroke: '#A477DF' },
+  godly:  { fill: '#3A2F16', stroke: '#F0C45F' },
 };
 
 const Sword = ({ tint }) => (

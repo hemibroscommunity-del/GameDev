@@ -66,7 +66,7 @@ export const InventoryTile = ({ item, onTap, layer3 }) => {
           position: 'absolute', top: 4, right: 4,
           width: 14, height: 14, borderRadius: 7,
           background: INV.shortcutBadgeBg,
-          border: '0.5px solid rgba(34, 48, 60, 0.32)',
+          border: '0.5px solid rgba(238, 242, 235, 0.32)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
         }}>
           <div style={{
@@ -89,7 +89,7 @@ export const InventoryTile = ({ item, onTap, layer3 }) => {
           fontFamily: FONT.sans, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
         }}>{item.name || '(item)'}</div>
         <div style={{
-          flexShrink: 0, fontSize: 9, color: 'rgba(34, 48, 60, 0.65)',
+          flexShrink: 0, fontSize: 9, color: 'rgba(238, 242, 235, 0.65)',
           fontFamily: FONT.mono,
         }}>{labelRight}</div>
       </div>
