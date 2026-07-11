@@ -10,8 +10,8 @@ export const LIFE_SKILLS = ['woodcutting', 'fishing', 'mining', 'farming', 'cook
 
 /* §18.2 Resource tiers by zone depth */
 export const RESOURCE_TIERS = {
-  1:  { gatherLvl: 1,  label: 'Rough',         color: '#8890b8' },
-  2:  { gatherLvl: 6,  label: 'Common',        color: '#8890b8' },
+  1:  { gatherLvl: 1,  label: 'Rough',         color: '#8B9695' },
+  2:  { gatherLvl: 6,  label: 'Common',        color: '#8B9695' },
   3:  { gatherLvl: 11, label: 'Refined',       color: '#3b82f6' },
   4:  { gatherLvl: 16, label: 'Quality',       color: '#3b82f6' },
   5:  { gatherLvl: 21, label: 'Fine',          color: '#22c55e' },

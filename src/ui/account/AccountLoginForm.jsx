@@ -100,7 +100,7 @@ export const AccountLoginForm = () => {
 
   return (
     <div>
-      <div style={{ fontSize: 13, letterSpacing: '.06em', color: '#8890b8', marginBottom: 4 }}>
+      <div style={{ fontSize: 13, letterSpacing: '.06em', color: '#96A2A0' /* v2.3.1233: Lantern text-2 (was navy #8890b8) */, marginBottom: 4 }}>
         CONTINUE A CHARACTER FROM ANOTHER DEVICE
       </div>
       <div style={{ display: 'flex', gap: 6 }}>

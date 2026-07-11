@@ -14,7 +14,7 @@ export const AccountKeyCard = () => {
 
   if (!phrase) {
     return (
-      <div style={{ fontSize: 15, color: '#8890b8', padding: '6px 0' }}>
+      <div style={{ fontSize: 15, color: '#96A2A0' /* v2.3.1233: Lantern text-2 (was navy #8890b8) */, padding: '6px 0' }}>
         Guest session — this tab has no Login Key. Play in a normal tab
         to get a character that can be continued on other devices.
       </div>
@@ -43,7 +43,7 @@ export const AccountKeyCard = () => {
 
   return (
     <div>
-      <div style={{ fontSize: 13, letterSpacing: '.06em', color: '#8890b8', marginBottom: 4 }}>
+      <div style={{ fontSize: 13, letterSpacing: '.06em', color: '#96A2A0' /* v2.3.1233: Lantern text-2 (was navy #8890b8) */, marginBottom: 4 }}>
         YOUR LOGIN KEY
       </div>
       <div style={{ display: 'flex', gap: 6, alignItems: 'stretch' }}>

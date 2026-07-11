@@ -1366,7 +1366,7 @@ export function setupWebSocket(ctx) {
           weaponTier: p.weaponTier || null,
           weaponType: p.weaponType || null,
           weaponName: p.weaponName || null,
-          weaponTierColor: (p.weaponTier && RARITY_TIERS[p.weaponTier] && RARITY_TIERS[p.weaponTier].color) || '#8890b8',
+          weaponTierColor: (p.weaponTier && RARITY_TIERS[p.weaponTier] && RARITY_TIERS[p.weaponTier].color) || '#8B9695' /* v2.3.1233: Lantern common grey (was navy-palette #8890b8) */,
           /* Death-drop fields -- effectsRenderer renders aura/timer
              when isDeathDrop is set; expiry drives the urgency pulse.
              ownerOnlyUntil = wall-clock ms; after that the pile flips
@@ -1435,7 +1435,7 @@ export function setupWebSocket(ctx) {
            R.weaponStash here. */
         if (payload.weapon) {
           var _wTier = payload.weapon.tier;
-          var _wColor = (RARITY_TIERS[_wTier] && RARITY_TIERS[_wTier].color) || '#8890b8';
+          var _wColor = (RARITY_TIERS[_wTier] && RARITY_TIERS[_wTier].color) || '#8B9695' /* v2.3.1233: Lantern common grey (was navy-palette #8890b8) */;
           var _wQual = payload.weapon.quality;
           var _wQualTag = (_wQual && _wQual !== 'normal') ? ' [' + String(_wQual).toUpperCase() + ']' : '';
           if (payload.weaponStashed) {

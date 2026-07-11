@@ -2049,7 +2049,7 @@ export class EffectsRenderer {
          Quality is unknown here by design -- it reveals in the picker's
          private loot_credit (§4.6b.ii mystery), hence the "?". */
       if (l.hasWeapon) {
-        const wColor = cssToHex(l.weaponTierColor || '#8890b8');
+        const wColor = cssToHex(l.weaponTierColor || '#8B9695' /* v2.3.1233: Lantern common grey (was navy-palette #8890b8) */);
         const wPulse = 0.3 + Math.sin(age * 4) * 0.15;
         gfx.circle(l.x, l.y + bob, 14);
         gfx.fill({ color: wColor, alpha: wPulse * alpha });
@@ -2062,7 +2062,7 @@ export class EffectsRenderer {
         }
         const wStr = (l.weaponName || 'Weapon') + ' ?';
         if (l._pixiWpnLabel.text !== wStr) l._pixiWpnLabel.text = wStr;
-        l._pixiWpnLabel.style.fill = l.weaponTierColor || '#8890b8';
+        l._pixiWpnLabel.style.fill = l.weaponTierColor || '#8B9695' /* v2.3.1233: Lantern common grey (was navy-palette #8890b8) */;
         l._pixiWpnLabel.x = l.x;
         l._pixiWpnLabel.y = l.y + 38 + bob;
         l._pixiWpnLabel.alpha = alpha;
@@ -2074,7 +2074,7 @@ export class EffectsRenderer {
 
       if (l.isWeapon && l.weapon) {
         /* Tier-colored aura + ring + emoji + name label. */
-        const tierColor = cssToHex(l.tierColor || '#8890b8');
+        const tierColor = cssToHex(l.tierColor || '#8B9695' /* v2.3.1233: Lantern common grey (was navy-palette #8890b8) */);
         const auraPulse = 0.3 + Math.sin(age * 4) * 0.15;
         gfx.circle(l.x, l.y + bob, 14);
         gfx.fill({ color: tierColor, alpha: auraPulse * alpha });
@@ -2101,7 +2101,7 @@ export class EffectsRenderer {
           this.lootLayer.addChild(l._pixiLabel);
         }
         if (l._pixiLabel.text !== (l.weapon.name || '')) l._pixiLabel.text = l.weapon.name || '';
-        l._pixiLabel.style.fill = l.tierColor || '#8890b8';
+        l._pixiLabel.style.fill = l.tierColor || '#8B9695' /* v2.3.1233: Lantern common grey (was navy-palette #8890b8) */;
         l._pixiLabel.x = l.x;
         l._pixiLabel.y = l.y + 38 + bob;
         l._pixiLabel.alpha = alpha;
@@ -2444,7 +2444,7 @@ export class EffectsRenderer {
       /* Tier badge — small dot to the upper-right with the gatherLvl
          number on top.  Always visible so the player can see which
          resources are higher level at a glance. */
-      const tierColor = '#8890b8';   // RESOURCE_TIERS lookup happens in BroTown.jsx; default ok
+      const tierColor = '#8B9695' /* v2.3.1233: Lantern common grey (was navy-palette #8890b8) */;   // RESOURCE_TIERS lookup happens in BroTown.jsx; default ok
       gfx.circle(node.x + 10 + tierStep * 2, node.y - 8, 4);
       gfx.fill({ color: cssToHex(tierColor), alpha: 0.9 });
       if (!node._pixiTier || node._pixiTier.destroyed) {
