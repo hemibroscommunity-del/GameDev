@@ -21,6 +21,11 @@ import { ZONES } from '@/data/index.js';
    top-center, the well-rested badge owns top-right, chat bubbles and
    touch controls own the bottom.  iPhone-Safari-first: every tap
    target ≥24px. */
+/* v2.3.1232: Lantern Slate restyle (docs/LANTERN-SLATE-SPEC.md §10) —
+   world-card gradient + strong border on both cards (backdrop-filter
+   removed: iOS hard lock), evt-party invite header, brass replaces
+   the off-palette #fbbf24 amber, 44pt Join/Decline. Styles + static
+   JSX only; every party_* send and the placement/z stack unchanged. */
 
 var _btnBase = {
   border: 'none', borderRadius: 6, fontWeight: 800, cursor: 'pointer',
@@ -44,20 +49,29 @@ export function PartyHUD(props) {
     return /*#__PURE__*/React.createElement("div", {
       style: {
         position: 'absolute', top: 90, left: '50%', transform: 'translateX(-50%)',
-        zIndex: 30, background: 'rgba(16,24,29,.92)', border: '1.5px solid rgba(251,191,36,.4)',
-        borderRadius: 12, padding: '10px 14px', textAlign: 'center', minWidth: 200,
-        backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)',
-        boxShadow: '0 4px 16px rgba(0,0,0,.4)'
+        zIndex: 30,
+        /* v2.3.1232: world card, left-aligned; blur removed */
+        background: 'linear-gradient(180deg, rgba(35,48,57,.94), rgba(17,25,29,.94))',
+        border: '1px solid rgba(238,242,235,.24)',
+        borderRadius: 12, padding: '10px 14px', textAlign: 'left', width: 240,
+        boxShadow: '0 14px 30px rgba(4,7,9,.38)'
       }
     }, /*#__PURE__*/React.createElement("div", {
-      style: { fontSize: 12, fontWeight: 800, color: '#fbbf24', marginBottom: 2 }
-    }, "🎟️ Party Invite"), /*#__PURE__*/React.createElement("div", {
-      style: { fontSize: 10, color: 'rgba(255,255,255,.85)', marginBottom: 8 }
+      style: { display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, fontWeight: 700, color: '#F7F2E7', marginBottom: 2 }
+    }, /* v2.3.1232: UI Bible event icon with emoji fallback */
+    /*#__PURE__*/React.createElement("img", {
+      src: "/icons/ui/evt-party.webp", alt: "", draggable: false,
+      style: { width: 24, height: 24, objectFit: 'contain' },
+      onError: function onError(e) { e.currentTarget.replaceWith(document.createTextNode('🎟️')); }
+    }), /*#__PURE__*/React.createElement("span", null, "Party Invite")), /*#__PURE__*/React.createElement("div", {
+      style: { fontSize: 12, color: '#B9C1BF', marginBottom: 8 }
     }, party.fromName, " invites you", party.partySize > 1 ? ' (' + party.partySize + ' in party)' : ''), /*#__PURE__*/React.createElement("div", {
       style: { display: 'flex', gap: 6 }
     }, /*#__PURE__*/React.createElement("button", {
       style: Object.assign({}, _btnBase, {
-        flex: 1, padding: '8px 0', fontSize: 11, background: '#59BF91', color: '#08130d'
+        /* v2.3.1232: brass accept, 44pt */
+        flex: 1, padding: '8px 0', minHeight: 44, borderRadius: 11,
+        fontSize: 13, fontWeight: 700, background: '#D8A85F', color: '#20170D'
       }),
       onClick: function onClick() {
         send('party_accept', { target: party.from });
@@ -68,9 +82,11 @@ export function PartyHUD(props) {
       }
     }, "Join"), /*#__PURE__*/React.createElement("button", {
       style: Object.assign({}, _btnBase, {
-        flex: 1, padding: '8px 0', fontSize: 11,
-        background: 'rgba(255,255,255,.08)', color: 'rgba(255,255,255,.7)',
-        border: '1px solid rgba(255,255,255,.15)'
+        /* v2.3.1232: raised secondary decline */
+        flex: 1, padding: '8px 0', minHeight: 44, borderRadius: 11,
+        fontSize: 13, fontWeight: 700,
+        background: '#2B3940', color: '#F7F2E7',
+        border: '1px solid rgba(238,242,235,.14)'
       }),
       onClick: function onClick() {
         send('party_decline', { target: party.from });
@@ -90,10 +106,12 @@ export function PartyHUD(props) {
      under both and stays clear of the bottom-anchored touch controls. */
   return /*#__PURE__*/React.createElement("div", {
     style: {
-      position: 'absolute', top: 92, left: 8, zIndex: 16, width: 150,
-      background: 'rgba(16,24,29,.78)', border: '1px solid rgba(251,191,36,.25)',
-      borderRadius: 10, padding: '5px 6px 6px',
-      backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)'
+      position: 'absolute', top: 92, left: 8, zIndex: 16, width: 164,
+      /* v2.3.1232: world card; blur removed */
+      background: 'linear-gradient(180deg, rgba(35,48,57,.94), rgba(17,25,29,.94))',
+      border: '1px solid rgba(238,242,235,.24)',
+      borderRadius: 12, padding: '5px 6px 6px',
+      boxShadow: '0 14px 30px rgba(4,7,9,.38)'
     }
   }, /*#__PURE__*/React.createElement("div", {
     style: {
@@ -101,17 +119,19 @@ export function PartyHUD(props) {
       marginBottom: 3
     }
   }, /*#__PURE__*/React.createElement("div", {
-    style: { fontSize: 8, fontWeight: 800, letterSpacing: '.08em', color: '#fbbf24' }
+    style: { fontSize: 11, fontWeight: 600, letterSpacing: '.12em', color: '#D8A85F', fontVariantNumeric: 'tabular-nums' }
   }, "🎟️ PARTY ", party.members.length, "/4"), /*#__PURE__*/React.createElement("button", {
     title: "Leave party",
     style: Object.assign({}, _btnBase, {
-      width: 24, height: 20, fontSize: 9, lineHeight: '20px', padding: 0,
+      width: 24, height: 24, fontSize: 10, lineHeight: '24px', padding: 0,
+      borderRadius: 8,
       background: 'rgba(217,92,84,.12)', color: '#D95C54'
     }),
     onClick: function onClick() { send('party_leave'); }
   }, "✖")), party.members.map(function (m) {
     var frac = m.maxHp > 0 ? Math.max(0, Math.min(1, m.hp / m.maxHp)) : 0;
-    var barColor = frac > 0.5 ? '#59BF91' : frac > 0.25 ? '#fbbf24' : '#D95C54';
+    /* v2.3.1232: mid tier remapped off-palette #fbbf24 → stamina #D8A94D */
+    var barColor = frac > 0.5 ? '#59BF91' : frac > 0.25 ? '#D8A94D' : '#D95C54';
     var zoneName = m.zone && m.zone !== myZone ? ((ZONES[m.zone] && ZONES[m.zone].name) || m.zone) : null;
     return /*#__PURE__*/React.createElement("div", {
       key: m.id,
@@ -120,30 +140,36 @@ export function PartyHUD(props) {
       style: { display: 'flex', alignItems: 'center', gap: 3 }
     }, /*#__PURE__*/React.createElement("span", {
       style: {
-        flex: 1, fontSize: 9, fontWeight: 700, color: m.id === myId ? '#fff' : 'rgba(255,255,255,.85)',
+        flex: 1, fontSize: 11, fontWeight: 700, color: m.id === myId ? '#F7F2E7' : '#B9C1BF',
         whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'
       }
     }, m.id === party.leader ? '👑 ' : '', m.dead ? '💀 ' : '', m.name), /*#__PURE__*/React.createElement("span", {
-      style: { fontSize: 8, color: 'rgba(255,255,255,.5)' }
+      style: { fontSize: 10, color: '#96A2A0', fontVariantNumeric: 'tabular-nums' }
     }, "Lv", m.level), iAmLeader && m.id !== myId && /*#__PURE__*/React.createElement("button", {
       title: "Kick",
       style: Object.assign({}, _btnBase, {
-        width: 20, height: 18, fontSize: 8, lineHeight: '18px', padding: 0,
-        background: 'rgba(255,255,255,.06)', color: 'rgba(255,255,255,.45)'
+        width: 24, height: 24, fontSize: 9, lineHeight: '24px', padding: 0,
+        borderRadius: 8,
+        background: '#2B3940', color: '#96A2A0',
+        border: '1px solid rgba(238,242,235,.14)'
       }),
       onClick: function onClick() { send('party_kick', { target: m.id }); }
     }, "✕")), /*#__PURE__*/React.createElement("div", {
       style: {
-        height: 4, borderRadius: 2, background: 'rgba(255,255,255,.12)',
+        /* v2.3.1232: spec bar track */
+        height: 4, borderRadius: 999, background: '#0B1216',
+        boxShadow: 'inset 0 1px 2px rgba(0,0,0,.55)',
         overflow: 'hidden', marginTop: 1
       }
     }, /*#__PURE__*/React.createElement("div", {
       style: {
         width: (frac * 100) + '%', height: '100%', background: barColor,
+        backgroundImage: 'linear-gradient(180deg, rgba(255,255,255,.20), transparent 55%)',
+        borderRadius: 999,
         transition: 'width .4s ease'
       }
     })), (m.away || zoneName) && /*#__PURE__*/React.createElement("div", {
-      style: { fontSize: 7, color: 'rgba(255,255,255,.45)', marginTop: 1 }
+      style: { fontSize: 10, color: '#96A2A0', marginTop: 1 }
     }, m.away ? 'away — reconnecting…' : '📍 ' + zoneName));
   }));
 }
