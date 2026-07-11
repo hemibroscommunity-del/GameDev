@@ -7604,7 +7604,20 @@ export var BroTown = function BroTown(_ref0) {
       fontSize: 10,
       marginRight: 4
     }
-  }, "E"), BUILDINGS[nearBuilding].icon, " Enter ", BUILDINGS[nearBuilding].label), ((_stateRef$current52 = stateRef.current) === null || _stateRef$current52 === void 0 ? void 0 : _stateRef$current52._nearHouse) && /*#__PURE__*/React.createElement("button", {
+  }, "E"), BUILDINGS[nearBuilding].iconSrc ? /*#__PURE__*/React.createElement("img", {
+    /* v2.3.1224: UI Bible building icon (bldg-*) in the enter prompt;
+       falls back to the emoji when iconSrc is absent. */
+    src: BUILDINGS[nearBuilding].iconSrc,
+    alt: "",
+    draggable: false,
+    style: {
+      width: 16,
+      height: 16,
+      objectFit: 'contain',
+      verticalAlign: '-3px',
+      marginRight: 3
+    }
+  }) : BUILDINGS[nearBuilding].icon, " Enter ", BUILDINGS[nearBuilding].label), ((_stateRef$current52 = stateRef.current) === null || _stateRef$current52 === void 0 ? void 0 : _stateRef$current52._nearHouse) && /*#__PURE__*/React.createElement("button", {
     className: "bt-interact-prompt",
     style: {
       bottom: 140,

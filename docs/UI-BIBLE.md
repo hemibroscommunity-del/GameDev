@@ -559,9 +559,13 @@ refuses to overwrite existing icons).
 Migrating the client to this document is future PRs.
 The replacement targets, in rough priority order:
 
-1. **Emoji → icon files** in `src/ui/mobile/BottomDashboard.jsx`
-   (toolbar, CHAR_STATS, LIFE_SKILLS labels), `src/ui/mobile/MoreOverlay.jsx`,
-   and `src/data/buildings.js` — mechanical swap once Sheets A–E exist.
+1. **Emoji → icon files** — DONE v2.3.1224: toolbar + CHAR_STATS +
+   LIFE_SKILLS (`BottomDashboard.jsx`), `MoreOverlay.jsx`,
+   `dash/MorePanel.jsx`, `dash/SkillsPanel.jsx`,
+   `dash/InventoryPanel.jsx` empty state, and the building enter-prompt
+   (`buildings.js` iconSrc + `BroTown.jsx`). Emoji remain only as
+   image-failure fallbacks and for the three non-canonical
+   SkillsPanel rows (alchemy/tailoring/taming).
 2. **Token adoption:** introduce the Part 2 palette as CSS custom
    properties in `src/styles/game.css`, restyle the dashboard band and
    one panel (Inventory) as the proof, then sweep the rest.

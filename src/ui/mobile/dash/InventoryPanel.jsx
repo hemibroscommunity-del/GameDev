@@ -254,7 +254,8 @@ export const InventoryPanel = () => {
       {usedTiles === 0
         ? (
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '20px 8px', textAlign: 'center', color: COL.muted }}>
-            <img src="/icons/ui/bag.webp?v=2.3.115" alt="" draggable={false}
+            {/* v2.3.1224: UI Bible satchel icon */}
+            <img src="/icons/ui/nav-inventory.webp?v=2.3.1224" alt="" draggable={false}
               style={{ width: 46, height: 46, opacity: 0.4, filter: 'grayscale(1)' }} />
             <div style={{ fontSize: 13, fontWeight: 700 }}>
               {filter === 'all' ? 'Your bag is empty.' : `No ${(CATEGORIES.find(c => c.id === filter)?.label || 'matching').toLowerCase()} items yet.`}
