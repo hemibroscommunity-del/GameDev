@@ -5039,6 +5039,12 @@ export var BroTown = function BroTown(_ref0) {
   var handleJoystickMove = useCallback(function (clientX, clientY) {
     var base = joystickRef.current;
     if (!base) return;
+    /* v2.3.1233: LANTERN-SLATE-SPEC §10 ENGAGED step — base brightens
+       to .92 while the finger is down (fires on touchstart + every
+       move; handleJoystickEnd restores the .5 rest value).  The base
+       already carries transition:opacity .12s, so this reads as a
+       smooth lift, not a blink. */
+    base.style.opacity = '0.92';
     var rect = base.getBoundingClientRect();
     /* v2.3.949: docked joystick.  The base sits in its left corner at 50%
        opacity and no longer follows the finger; deflection is measured from the
@@ -5103,6 +5109,8 @@ export var BroTown = function BroTown(_ref0) {
   var handleRJoyMove = useCallback(function (clientX, clientY) {
     var base = rJoyRef.current;
     if (!base) return;
+    /* v2.3.1233: §10 ENGAGED step, same as the left stick above. */
+    base.style.opacity = '0.92';
     var rect = base.getBoundingClientRect();
     /* v2.3.949: docked combat joystick -- deflection measured from the touch
        ORIGIN (relative drag from anywhere in the right zone), not the docked

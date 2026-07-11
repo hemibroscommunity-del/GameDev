@@ -245,9 +245,10 @@ pointerdown. prefers-reduced-motion removes shimmer/overshoot/nudge.
    primaries, destructive treatments, empty states, icon identities.
    v2.3.1233: floating widgets (chat bubble/launcher, inspect card,
    mastery toasts, controls tutorial, More sheet) on the world-card
-   language + joystick rest-opacity ladder. Deferred: the joystick
-   .92 ENGAGED opacity step needs a BroTown.jsx touch-handler hook
-   (logic-frozen during the sweep) — small follow-up.
+   language + joystick rest-opacity ladder. The joystick .92 ENGAGED
+   opacity step shipped in the v2.3.1233 follow-up: the move handlers
+   in BroTown.jsx stamp base opacity .92 on touch, and the existing
+   end handlers restore the .5 rest value.
 4. ✅ v2.3.1230 (legacy sweep): the legacy CSS variable set
    (--ink/--line/--pop/--txt/--gold/...) in game.css now carries
    Lantern Slate values, flipping every legacy panel

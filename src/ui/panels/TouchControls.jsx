@@ -54,8 +54,8 @@ export function TouchControls(props) {
       /* v2.3.1233b: audit fix — the §10 ladder was stacked here as
          container opacity 0.62, which MULTIPLIED with the sprites' own
          0.5 base (and BroTown's 0.85 drag re-stamp) for a 31% effective
-         rest opacity. Removed; the ladder belongs in BroTown's handler
-         values (deferred, see LANTERN-SLATE-SPEC delivery list). */
+         rest opacity. Removed; the ladder lives in BroTown's handlers
+         (rest .5, ENGAGED .92 stamped by the move handlers). */
             width: isLandscape ? 98 : 83,
       height: isLandscape ? 98 : 83
     }
