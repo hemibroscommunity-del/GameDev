@@ -92,9 +92,9 @@ export const MasteryNotification = () => {
 
   /* Tier crossing — two-line, slightly larger, opt-in hint italicised. */
   if (shown.kind === 'tier') {
+    /* v2.3.1233: spec toast — max 286px, radius 12, left-aligned,
+       panel shadow, Source Sans 3. */
     return (
-      {/* v2.3.1233: spec toast — max 286px, radius 12, left-aligned,
-          panel shadow, Source Sans 3. */}
       <div onClick={dismiss} style={{
         position: 'fixed', top: 14, left: 14, zIndex: 9300,
         maxWidth: 286, padding: '10px 12px',
