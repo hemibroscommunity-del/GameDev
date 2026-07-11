@@ -97,7 +97,11 @@ input{font-family:inherit}
 /* v2.3.1205: was bottom:80px / z-index:20 — inside + under the opaque
    28vh dashboard band, so the emote picker never showed (see
    src/ui/zLayers.js for the ladder + rules). */
-.bt-emote-bar{position:absolute;bottom:calc(var(--dash-h) + 12px);left:50%;transform:translateX(-50%);z-index:34;
+/* v2.3.1234: bottom +12 → +64 — the bar sat in the same band as
+   .bt-interact-prompt (+24, z35), which painted OVER the emote buttons
+   whenever both were up (near any gather node). Slots: prompt +24,
+   emotes +64, tutorial banner +104 (see zLayers.js). */
+.bt-emote-bar{position:absolute;bottom:calc(var(--dash-h) + 64px);left:50%;transform:translateX(-50%);z-index:34;
   display:flex;gap:6px;padding:5px 10px;background:rgba(17,25,29,.9);border-radius:12px;
   -webkit-touch-callout:none;touch-action:manipulation;border:1px solid rgba(255,255,255,.1)}
 .bt-emote-btn{width:38px;height:38px;border-radius:10px;background:rgba(255,255,255,.08);border:none;
@@ -127,14 +131,21 @@ input{font-family:inherit}
   font-size:11px;font-weight:800;flex-shrink:0}
 .bt-plist-name{font-size:11px;color:#fff;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .bt-plist-sub{font-size:8px;color:rgba(255,255,255,.4)}
-.bt-inspect{position:absolute;inset:0;z-index:30;display:flex;align-items:center;justify-content:center;
+/* v2.3.1234: z 30 → 32 — decision modals shared rung 30 with the
+   joystick visuals + dashboard, and DOM order painted the JOYSTICKS on
+   top of every open panel (visible in QA screenshots). Modals must beat
+   chrome (zLayers.js rule 1); 32 stays under Z_ABOVE_DASH_PROMPT (34). */
+.bt-inspect{position:absolute;inset:0;z-index:32;display:flex;align-items:center;justify-content:center;
   background:rgba(0,0,0,.6);-webkit-tap-highlight-color:transparent}
 /* v2.3.1233b: LOAD-BEARING padding — all 11 building panels
    (src/ui/panels/buildings/*) bleed a full-panel #202C32 surface into
    this 20px padding via margin:-20 roots (Lantern Slate sweep).
    Changing this padding misaligns every building interior. */
 .bt-inspect-card{background:#1a1428;border:1px solid rgba(255,255,255,.15);border-radius:14px;
-  width:240px;padding:20px;text-align:center;position:relative}
+  /* v2.3.1234: was 240px fixed — phones left ~75px of dead margin per
+     side. Panels override inline; this default now fills small screens
+     without ever overflowing them. */
+  width:min(340px,calc(100vw - 28px));padding:20px;text-align:center;position:relative}
 .bt-inspect-close{position:absolute;top:8px;right:8px;width:28px;height:28px;border-radius:50%;
   background:rgba(255,255,255,.1);border:none;color:rgba(255,255,255,.6);font-size:14px;
   display:flex;align-items:center;justify-content:center;cursor:pointer}

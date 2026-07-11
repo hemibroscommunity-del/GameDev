@@ -70,7 +70,7 @@ export function InspectPlayerPanel(props) {
       return e.stopPropagation();
     },
     style: {
-      width: 300,
+      width: 'min(360px, calc(100vw - 24px))', /* v2.3.1234: was 300 fixed — fill narrow phones, never overflow */
       maxHeight: '85vh',
       overflowY: 'auto',
       background: '#202C32',

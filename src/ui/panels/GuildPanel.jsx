@@ -33,7 +33,7 @@ export function GuildPanel(props) {
       return e.stopPropagation();
     },
     style: {
-      width: 340,
+      width: 'min(360px, calc(100vw - 24px))', /* v2.3.1234: was 340 fixed — fill narrow phones, never overflow */
       maxHeight: '85vh',
       overflowY: 'auto',
       padding: 16,

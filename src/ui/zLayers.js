@@ -31,12 +31,26 @@
       25      topbar / chat strip
       28      ping readout; EndedWarBanner (pre-v2.3.1205)
       30      DASHBOARD (BottomDashboard, joystick visuals,
-              .bt-inspect decision modals, top-right player card)
-      31      special charge pie (SpecialChargePie)
+              top-right player card)
+      31      special charge pie (SpecialChargePie); onboarding tutorial
+              banner (v2.3.1234: was 34 — must yield to modals)
+      32      .bt-inspect decision modals + building panels (v2.3.1234:
+              was 30 — shared the rung with joystick visuals and DOM
+              order painted the joysticks OVER open panels)
       34      Z_ABOVE_DASH_PROMPT — prompts/banners that must beat the
               dashboard but stay under .bt-interact-prompt
       35-36   contextual prompts (.bt-interact-prompt, ChatLauncher,
               dashboard Tooltip)
+
+   BOTTOM-BAND SLOTS (v2.3.1234) — centered, bottom-anchored elements
+   above the dashboard band each own a vertical slot so they never
+   stack on one another:
+       +24    .bt-interact-prompt (z35)
+       +64    .bt-emote-bar (z34; was +12, under the prompt)
+   The onboarding tutorial banner LEFT this band entirely (was +16,
+   fighting the prompt and the joystick ring tops): it now sits
+   top-center at top:128 — below the zone title (~26) and the
+   top-right player card (~10-125), a strip owned by nothing else.
       40      InfoPanel
       50-60   popups (ItemDetailPopup 50, SpendPointConfirm 60)
       90      XP fly overlay

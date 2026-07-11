@@ -33,7 +33,7 @@ export function FurniturePanel(props) {
     },
     style: {
       /* v2.3.1232: floating world card */
-      width: 320,
+      width: 'min(360px, calc(100vw - 24px))', /* v2.3.1234: was 320 fixed — fill narrow phones, never overflow */
       maxHeight: '85vh',
       overflowY: 'auto',
       padding: 16,

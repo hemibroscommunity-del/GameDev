@@ -51,7 +51,7 @@ export function SocialPanel(props) {
       return e.stopPropagation();
     },
     style: {
-      width: 300,
+      width: 'min(360px, calc(100vw - 24px))', /* v2.3.1234: was 300 fixed — fill narrow phones, never overflow */
       maxHeight: '80vh',
       overflowY: 'auto',
       /* v2.3.1232: override legacy navy card with Lantern panel surface */

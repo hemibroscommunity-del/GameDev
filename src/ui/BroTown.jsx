@@ -6377,8 +6377,11 @@ export var BroTown = function BroTown(_ref0) {
       return e.stopPropagation();
     },
     style: {
-      width: 300,
-      maxHeight: '80vh',
+      /* v2.3.1234: was 300 fixed — dead margins on phones; the 11
+         building interiors get the full width they were designed to
+         bleed into (margin:-20 roots). Cap keeps it off tablet-huge. */
+      width: 'min(360px, calc(100vw - 24px))',
+      maxHeight: '84vh',
       overflowY: 'auto'
     }
   }, /*#__PURE__*/React.createElement("button", {
@@ -6605,10 +6608,19 @@ export var BroTown = function BroTown(_ref0) {
          dashboard band (28vh ≈ 225px on iPhone) and BELOW it (z 30),
          so new players never saw the tutorial (2026-07-07 owner
          report).  Offset off the band + registry z per zLayers.js. */
-      bottom: 'calc(var(--dash-h) + 16px)',
+      /* v2.3.1234: moved to TOP-center (below the zone title and the
+         top-right player card) and z 34 → 31 — bottom-center is a
+         contested band (.bt-interact-prompt +24 z35, emote bar +64,
+         joystick ring tops at the edges), so any bottom slot overlapped
+         SOMETHING; top-center below y≈128 is owned by nobody. The old
+         z (34) also painted the banner OVER every open decision modal
+         (QA screenshots showed it covering panel content); 31 beats
+         chrome (30) but yields to the .bt-inspect modals (32). See
+         zLayers.js. */
+      top: 128,
       left: '50%',
       transform: 'translateX(-50%)',
-      zIndex: Z_ABOVE_DASH_PROMPT,
+      zIndex: 31,
       textAlign: 'center',
       maxWidth: 280
     }

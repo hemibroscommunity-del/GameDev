@@ -106,7 +106,7 @@ export function TradeWindowPanel(props) {
   if (trade2.invite) {
     return (
       <div className="bt-inspect" onClick={() => setTrade2(null)}>
-        <div className="bt-inspect-card" onClick={(e) => e.stopPropagation()} style={{ ...cardStyle, width: 286 }}>
+        <div className="bt-inspect-card" onClick={(e) => e.stopPropagation()} style={{ ...cardStyle, width: 'min(360px, calc(100vw - 24px))' /* v2.3.1234: was 286 fixed — fill narrow phones, never overflow */ }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, fontWeight: 700, color: '#F7F2E7', marginBottom: 10 }}>
             <TradeIcon /> {trade2.fromName} wants to trade
           </div>

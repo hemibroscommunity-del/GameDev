@@ -119,7 +119,7 @@ export function SkillsPanel(props) {
       return e.stopPropagation();
     },
     style: Object.assign({}, LS_CARD, {
-      width: 320,
+      width: 'min(360px, calc(100vw - 24px))', /* v2.3.1234: was 320 fixed — fill narrow phones, never overflow */
       maxHeight: '80vh',
       overflowY: 'auto',
       padding: 16

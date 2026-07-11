@@ -38,7 +38,7 @@ export function ShopPanel(props) {
       return e.stopPropagation();
     },
     style: {
-      width: 280,
+      width: 'min(360px, calc(100vw - 24px))', /* v2.3.1234: was 280 fixed — fill narrow phones, never overflow */
       /* v2.3.1232: override legacy navy card with Lantern panel surface */
       background: '#202C32',
       border: '1px solid rgba(238,242,235,.14)',

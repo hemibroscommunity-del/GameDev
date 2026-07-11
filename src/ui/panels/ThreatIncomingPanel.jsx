@@ -30,7 +30,7 @@ export function ThreatIncomingPanel(props) {
     },
     style: {
       /* v2.3.1232: floating world card; danger gets the #C7655F border */
-      width: 300,
+      width: 'min(360px, calc(100vw - 24px))', /* v2.3.1234: was 300 fixed — fill narrow phones, never overflow */
       background: 'linear-gradient(180deg, rgba(35,48,57,.94), rgba(17,25,29,.94))',
       border: '1px solid #C7655F',
       borderRadius: 12,

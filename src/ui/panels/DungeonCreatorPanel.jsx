@@ -97,7 +97,7 @@ export function DungeonCreatorPanel(props) {
       return e.stopPropagation();
     },
     style: Object.assign({}, LS_CARD, {
-      width: 360,
+      width: 'min(360px, calc(100vw - 24px))', /* v2.3.1234: was 360 fixed — fill narrow phones, never overflow */
       maxHeight: '85vh',
       overflowY: 'auto',
       padding: 16,
