@@ -6271,10 +6271,7 @@ export var BroTown = function BroTown(_ref0) {
       zIndex: 22,
       padding: '12px 24px',
       borderRadius: 14,
-      background: 'rgba(216,168,95,.9)',
-      backdropFilter: 'blur(8px)',
-      WebkitBackdropFilter: 'blur(8px)',
-      border: '2px solid rgba(255,255,255,.3)',
+      background: 'rgba(216,168,95,.9)',      border: '2px solid rgba(255,255,255,.3)',
       textAlign: 'center',
       animation: 'scoreReveal .4s cubic-bezier(.22,1,.36,1)',
       boxShadow: '0 4px 20px rgba(216,168,95,.5)'
@@ -6308,10 +6305,7 @@ export var BroTown = function BroTown(_ref0) {
       zIndex: 20,
       padding: '10px 20px',
       borderRadius: 12,
-      background: 'rgba(0,0,0,.75)',
-      backdropFilter: 'blur(6px)',
-      WebkitBackdropFilter: 'blur(6px)',
-      border: '1.5px solid rgba(216,169,77,.4)',
+      background: 'rgba(17,25,29,.94)' /* v2.3.1233: spec world-overlay ink; blur removed */,      border: '1.5px solid rgba(216,169,77,.4)',
       textAlign: 'center',
       animation: 'scoreReveal .35s cubic-bezier(.22,1,.36,1)'
     }
@@ -6393,11 +6387,8 @@ export var BroTown = function BroTown(_ref0) {
       zIndex: 20,
       padding: '4px 14px',
       borderRadius: 8,
-      background: 'rgba(61,220,151,.15)',
-      border: '1px solid rgba(61,220,151,.3)',
-      backdropFilter: 'blur(4px)',
-      WebkitBackdropFilter: 'blur(4px)',
-      textAlign: 'center'
+      background: 'rgba(17,25,29,.85)' /* v2.3.1233: was green .15+blur — tint lives in border/text now */,
+      border: '1px solid rgba(61,220,151,.3)',      textAlign: 'center'
     }
   }, /*#__PURE__*/React.createElement("div", {
     style: {
@@ -6419,11 +6410,8 @@ export var BroTown = function BroTown(_ref0) {
       zIndex: 20,
       padding: '4px 14px',
       borderRadius: 8,
-      background: 'rgba(100,100,200,.2)',
-      border: '1px solid rgba(100,100,200,.3)',
-      backdropFilter: 'blur(4px)',
-      WebkitBackdropFilter: 'blur(4px)',
-      textAlign: 'center',
+      background: 'rgba(17,25,29,.85)' /* v2.3.1233: was indigo .2+blur — tint lives in border/text now */,
+      border: '1px solid rgba(100,100,200,.3)',      textAlign: 'center',
       minWidth: 200
     }
   }, /*#__PURE__*/React.createElement("div", {
@@ -6457,11 +6445,8 @@ export var BroTown = function BroTown(_ref0) {
       zIndex: 20,
       padding: '4px 14px',
       borderRadius: 8,
-      background: 'rgba(61,220,151,.15)',
-      border: '1px solid rgba(61,220,151,.3)',
-      backdropFilter: 'blur(4px)',
-      WebkitBackdropFilter: 'blur(4px)',
-      textAlign: 'center'
+      background: 'rgba(17,25,29,.85)' /* v2.3.1233: was green .15+blur — tint lives in border/text now */,
+      border: '1px solid rgba(61,220,151,.3)',      textAlign: 'center'
     }
   }, /*#__PURE__*/React.createElement("div", {
     style: {
@@ -6479,11 +6464,8 @@ export var BroTown = function BroTown(_ref0) {
       zIndex: 20,
       padding: '4px 14px',
       borderRadius: 8,
-      background: 'rgba(100,100,200,.2)',
-      border: '1px solid rgba(100,100,200,.4)',
-      backdropFilter: 'blur(4px)',
-      WebkitBackdropFilter: 'blur(4px)',
-      textAlign: 'center',
+      background: 'rgba(17,25,29,.85)' /* v2.3.1233: was indigo .2+blur — tint lives in border/text now */,
+      border: '1px solid rgba(100,100,200,.4)',      textAlign: 'center',
       minWidth: 200
     }
   }, /*#__PURE__*/React.createElement("div", {
@@ -6624,10 +6606,7 @@ export var BroTown = function BroTown(_ref0) {
     }
   }, /*#__PURE__*/React.createElement("div", {
     style: {
-      background: 'rgba(0,0,0,.75)',
-      backdropFilter: 'blur(6px)',
-      WebkitBackdropFilter: 'blur(6px)',
-      padding: '8px 16px',
+      background: 'rgba(17,25,29,.94)' /* v2.3.1233: spec world-overlay ink; blur removed */,      padding: '8px 16px',
       borderRadius: 10,
       border: '1px solid rgba(255,255,255,.12)',
       position: 'relative'
@@ -6861,10 +6840,7 @@ export var BroTown = function BroTown(_ref0) {
         top: 56,
         left: 8,
         zIndex: 17,
-        background: 'rgba(0,0,0,.6)',
-        backdropFilter: 'blur(4px)',
-        WebkitBackdropFilter: 'blur(4px)',
-        padding: '4px 10px',
+        background: 'rgba(17,25,29,.85)' /* v2.3.1233: was rgba(0,0,0,.6)+blur */,        padding: '4px 10px',
         borderRadius: 6,
         border: "1px solid ".concat(done ? 'rgba(61,220,151,.3)' : 'rgba(255,255,255,.1)'),
         maxWidth: 200
@@ -6936,14 +6912,11 @@ export var BroTown = function BroTown(_ref0) {
         fontSize: 9,
         fontWeight: 700,
         fontFamily: 'Source Sans 3,sans-serif',
-        background: 'rgba(234,88,12,.25)',
+        background: 'rgba(17,25,29,.85)' /* v2.3.1233: was orange .25+blur — tint lives in border/text now */,
         padding: '3px 12px',
         borderRadius: 6,
         border: '1px solid rgba(234,88,12,.5)',
-        color: '#ea580c',
-        backdropFilter: 'blur(4px)',
-        WebkitBackdropFilter: 'blur(4px)',
-        animation: timeLeft < 10 ? 'promptPulse 0.5s ease-in-out infinite' : 'none'
+        color: '#ea580c',        animation: timeLeft < 10 ? 'promptPulse 0.5s ease-in-out infinite' : 'none'
       }
     }, "\uD83D\uDC80 ", itemCount, " items scattered in ", ((_ZONES$nearest$zone = ZONES[nearest.zone]) === null || _ZONES$nearest$zone === void 0 ? void 0 : _ZONES$nearest$zone.name) || nearest.zone, " \u2014 ", timeLeft, "s to recover!");
   }(), showPlayerList && /*#__PURE__*/React.createElement(PlayerListPanel, { playerList: playerList, setInspectPlayer: setInspectPlayer, setShowPlayerList: setShowPlayerList }), inspectPlayer && /*#__PURE__*/React.createElement(InspectPlayerPanel, { stateRef: stateRef, inspectPlayer: inspectPlayer, blockedList: blockedList, clanData: clanData, friendsList: friendsList, mutedList: mutedList, setBlockedList: setBlockedList, setFriendsList: setFriendsList, setInspectPlayer: setInspectPlayer, setMutedList: setMutedList, setShowTrade: setShowTrade, setTradeOffer: setTradeOffer, setTradeTarget: setTradeTarget }), false && ((_stateRef$current40 = stateRef.current) === null || _stateRef$current40 === void 0 ? void 0 : _stateRef$current40.currentZone) === 'frost' && rpgState && /*#__PURE__*/React.createElement("div", {
@@ -6959,11 +6932,8 @@ export var BroTown = function BroTown(_ref0) {
       display: 'flex',
       gap: 4,
       padding: '4px 8px',
-      background: 'rgba(0,0,0,.55)',
-      borderRadius: 10,
-      backdropFilter: 'blur(4px)',
-      WebkitBackdropFilter: 'blur(4px)',
-      border: '1px solid rgba(160,216,240,.2)'
+      background: 'rgba(17,25,29,.85)' /* v2.3.1233: was rgba(0,0,0,.55)+blur — spec bans backdrop-filter */,
+      borderRadius: 10,      border: '1px solid rgba(160,216,240,.2)'
     }
   }, /*#__PURE__*/React.createElement("button", {
     style: {
@@ -7082,11 +7052,8 @@ export var BroTown = function BroTown(_ref0) {
       display: 'flex',
       gap: 4,
       padding: '4px 8px',
-      background: 'rgba(0,0,0,.55)',
-      borderRadius: 10,
-      backdropFilter: 'blur(4px)',
-      WebkitBackdropFilter: 'blur(4px)',
-      border: '1px solid rgba(52,152,219,.2)'
+      background: 'rgba(17,25,29,.85)' /* v2.3.1233: was rgba(0,0,0,.55)+blur — spec bans backdrop-filter */,
+      borderRadius: 10,      border: '1px solid rgba(52,152,219,.2)'
     }
   }, /*#__PURE__*/React.createElement("div", {
     style: {
@@ -7159,11 +7126,8 @@ export var BroTown = function BroTown(_ref0) {
       display: 'flex',
       gap: 4,
       padding: '4px 8px',
-      background: 'rgba(0,0,0,.55)',
-      borderRadius: 10,
-      backdropFilter: 'blur(4px)',
-      WebkitBackdropFilter: 'blur(4px)',
-      border: '1px solid rgba(234,88,12,.2)'
+      background: 'rgba(17,25,29,.85)' /* v2.3.1233: was rgba(0,0,0,.55)+blur — spec bans backdrop-filter */,
+      borderRadius: 10,      border: '1px solid rgba(234,88,12,.2)'
     }
   }, !((_stateRef$current47 = stateRef.current) !== null && _stateRef$current47 !== void 0 && _stateRef$current47._torch) ? /*#__PURE__*/React.createElement("button", {
     style: {
@@ -7239,11 +7203,8 @@ export var BroTown = function BroTown(_ref0) {
       display: 'flex',
       gap: 4,
       padding: '4px 8px',
-      background: 'rgba(0,0,0,.55)',
-      borderRadius: 10,
-      backdropFilter: 'blur(4px)',
-      WebkitBackdropFilter: 'blur(4px)',
-      border: '1px solid rgba(140,180,220,.2)'
+      background: 'rgba(17,25,29,.85)' /* v2.3.1233: was rgba(0,0,0,.55)+blur — spec bans backdrop-filter */,
+      borderRadius: 10,      border: '1px solid rgba(140,180,220,.2)'
     }
   }, /*#__PURE__*/React.createElement("button", {
     style: {
@@ -7392,11 +7353,8 @@ export var BroTown = function BroTown(_ref0) {
       display: 'flex',
       gap: 4,
       padding: '4px 8px',
-      background: 'rgba(0,0,0,.55)',
-      borderRadius: 10,
-      backdropFilter: 'blur(4px)',
-      WebkitBackdropFilter: 'blur(4px)',
-      border: '1px solid rgba(52,152,219,.2)'
+      background: 'rgba(17,25,29,.85)' /* v2.3.1233: was rgba(0,0,0,.55)+blur — spec bans backdrop-filter */,
+      borderRadius: 10,      border: '1px solid rgba(52,152,219,.2)'
     }
   }, /*#__PURE__*/React.createElement("div", {
     style: {
@@ -7469,11 +7427,8 @@ export var BroTown = function BroTown(_ref0) {
       display: 'flex',
       gap: 4,
       padding: '4px 8px',
-      background: 'rgba(0,0,0,.55)',
-      borderRadius: 10,
-      backdropFilter: 'blur(4px)',
-      WebkitBackdropFilter: 'blur(4px)',
-      border: '1px solid rgba(121,85,72,.2)'
+      background: 'rgba(17,25,29,.85)' /* v2.3.1233: was rgba(0,0,0,.55)+blur — spec bans backdrop-filter */,
+      borderRadius: 10,      border: '1px solid rgba(121,85,72,.2)'
     }
   }, stateRef.current._torch && function () {
     var pct = Math.max(0, 1 - (Date.now() - stateRef.current._torch.started) / TORCH_DURATION);
@@ -8149,11 +8104,8 @@ export var BroTown = function BroTown(_ref0) {
         display: 'flex',
         gap: 4,
         padding: '4px 8px',
-        background: 'rgba(0,0,0,.5)',
-        borderRadius: 10,
-        backdropFilter: 'blur(4px)',
-        WebkitBackdropFilter: 'blur(4px)',
-        border: '1px solid rgba(255,255,255,.08)'
+        background: 'rgba(17,25,29,.85)' /* v2.3.1233: was rgba(0,0,0,.5)+blur */,
+        borderRadius: 10,        border: '1px solid rgba(255,255,255,.08)'
       }
     }].concat(buttons));
   }(), function (_R$_questFlags) {

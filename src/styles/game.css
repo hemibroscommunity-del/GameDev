@@ -76,16 +76,14 @@ img{display:block}
 button{cursor:pointer;font-family:inherit}
 input{font-family:inherit}
 
-/* Back to site link */
-.back-to-site {
-  position: fixed; top: 8px; right: 8px; z-index: 100;
-  padding: 6px 14px; border-radius: 8px;
-  background: rgba(0,0,0,.5); border: 1px solid rgba(255,255,255,.15);
-  color: rgba(255,255,255,.6); font-size: 11px; font-weight: 600;
-  text-decoration: none; backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
-}
-.back-to-site:active { background: rgba(216,168,95,.4); }
+/* v2.3.1233: dead-CSS sweep — .back-to-site, .bt-player-count,
+   .bt-players-btn, .bt-chatlog*, .bt-combat-bar/btn, .bt-chat-fab/bar/
+   input, .bt-fab-group removed (zero consumers; verified by tree-wide
+   grep incl. index.html).  Surviving world-chrome classes lost their
+   backdrop-filter per docs/LANTERN-SLATE-SPEC.md (hard lock: blur
+   compositing over the WebGL canvas is an iOS risk — see the
+   charge-pie history in CLAUDE.md); translucent fills bumped to the
+   spec world-overlay ink to compensate for the lost blur legibility. */
 
 /* ═══════════════════════════════════════════
    GAME — BroTown styles
@@ -95,28 +93,20 @@ input{font-family:inherit}
 .brotown-canvas{display:block;image-rendering:pixelated;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent;touch-action:none}
 .brotown-hud{position:absolute;top:46px;right:12px;pointer-events:none;z-index:10;display:flex;align-items:flex-start}
 .brotown-hud>*{pointer-events:auto}
-.bt-player-count{display:flex;align-items:center;gap:5px;padding:4px 10px;background:rgba(0,0,0,.65);border-radius:8px;font-size:11px;font-weight:700;color:#59BF91;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
 .bt-player-dot{width:6px;height:6px;border-radius:50%;background:#59BF91;animation:pulse-dot 2s ease-in-out infinite}
-.bt-chat-bar{flex-shrink:0;display:flex;gap:6px;padding:6px 10px;
-  background:#10181D;border-bottom:1px solid rgba(255,255,255,.12);
-  align-items:center;z-index:25;
-  padding-top:max(6px,env(safe-area-inset-top));
-  touch-action:auto;-webkit-touch-callout:default;-webkit-user-select:text;user-select:text}
 /* v2.3.1205: was bottom:80px / z-index:20 — inside + under the opaque
    28vh dashboard band, so the emote picker never showed (see
    src/ui/zLayers.js for the ladder + rules). */
 .bt-emote-bar{position:absolute;bottom:calc(var(--dash-h) + 12px);left:50%;transform:translateX(-50%);z-index:34;
-  display:flex;gap:6px;padding:5px 10px;background:rgba(0,0,0,.55);border-radius:12px;
-  backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
+  display:flex;gap:6px;padding:5px 10px;background:rgba(17,25,29,.9);border-radius:12px;
   -webkit-touch-callout:none;touch-action:manipulation;border:1px solid rgba(255,255,255,.1)}
 .bt-emote-btn{width:38px;height:38px;border-radius:10px;background:rgba(255,255,255,.08);border:none;
   font-size:20px;display:flex;align-items:center;justify-content:center;cursor:pointer;
   -webkit-tap-highlight-color:transparent}
 .bt-emote-btn:active{background:rgba(216,168,95,.4);transform:scale(.9)}
 .bt-interact-prompt{position:fixed;left:calc(50% + 10px);bottom:calc(var(--dash-h) + 24px);transform:translateX(-50%);z-index:35;
-  padding:8px 18px;background:rgba(0,0,0,.7);border:1.5px solid var(--pop);border-radius:10px;
+  padding:8px 18px;background:rgba(17,25,29,.94);border:1.5px solid var(--pop);border-radius:10px;
   color:#fff;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;
-  backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
   animation:promptPulse 1.5s ease-in-out infinite;
   -webkit-tap-highlight-color:transparent;touch-action:manipulation}
 @keyframes promptPulse{0%,100%{opacity:.9;transform:translateX(-50%) scale(1)}50%{opacity:1;transform:translateX(-50%) scale(1.04)}}
@@ -125,32 +115,9 @@ input{font-family:inherit}
    overflow clips a glow; the purple box-shadow adds the halo where it shows. */
 @keyframes bt-build-flash{0%,100%{filter:brightness(1);box-shadow:0 0 0 0 rgba(216,168,95,0)}50%{filter:brightness(1.5);box-shadow:0 0 8px 2px rgba(216,168,95,.7)}}
 .bt-build-flash{animation:bt-build-flash 1.2s ease-in-out infinite}
-.bt-players-btn{position:absolute;top:8px;left:52px;z-index:20;height:30px;padding:0 10px;
-  border-radius:8px;background:rgba(0,0,0,.45);border:1.5px solid rgba(255,255,255,.15);
-  display:flex;align-items:center;gap:5px;cursor:pointer;
-  backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);color:rgba(255,255,255,.8);
-  font-size:10px;font-weight:700;-webkit-tap-highlight-color:transparent}
-.bt-players-btn:active{background:rgba(216,168,95,.4)}
-.bt-chatlog{position:absolute;bottom:70px;right:16px;z-index:25;width:220px;max-height:200px;
-  background:rgba(0,0,0,.8);border:1px solid rgba(255,255,255,.12);border-radius:10px;
-  overflow-y:auto;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
-  display:flex;flex-direction:column}
-.bt-chatlog-msg{padding:5px 8px;border-bottom:1px solid rgba(255,255,255,.05);font-size:10px;line-height:1.3}
-.bt-chatlog-msg:last-child{border-bottom:none}
-.bt-chatlog-name{font-weight:700;margin-right:4px}
-.bt-chatlog-text{color:rgba(255,255,255,.7)}
-.bt-chatlog-sys{color:rgba(255,255,255,.35);font-style:italic;font-size:9px;padding:3px 8px}
-.bt-chatlog-btn{width:36px;height:36px;border-radius:50%;border:none;
-  display:flex;align-items:center;justify-content:center;cursor:pointer;
-  background:rgba(0,0,0,.4);border:1.5px solid rgba(255,255,255,.15);
-  backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);
-  -webkit-tap-highlight-color:transparent;touch-action:manipulation;position:relative}
-.bt-chatlog-btn:active{background:rgba(216,168,95,.4)}
-.bt-chatlog-badge{position:absolute;top:-2px;right:-2px;width:8px;height:8px;border-radius:50%;
-  background:#D95C54;border:1px solid rgba(0,0,0,.3)}
 .bt-plist{position:absolute;top:46px;left:8px;z-index:25;width:200px;max-height:260px;
-  background:rgba(0,0,0,.8);border:1px solid rgba(255,255,255,.15);border-radius:10px;
-  overflow-y:auto;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+  background:rgba(17,25,29,.94);border:1px solid rgba(255,255,255,.15);border-radius:10px;
+  overflow-y:auto}
 .bt-plist-item{display:flex;align-items:center;gap:8px;padding:8px 10px;cursor:pointer;
   border-bottom:1px solid rgba(255,255,255,.06);transition:background .1s}
 .bt-plist-item:active{background:rgba(216,168,95,.25)}
@@ -182,9 +149,9 @@ input{font-family:inherit}
   border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;width:100%}
 .bt-inspect-tp:active{opacity:.8}
 .bt-exit-fab{position:absolute;top:8px;left:8px;z-index:20;width:36px;height:36px;
-  border-radius:50%;background:rgba(0,0,0,.45);border:1.5px solid rgba(255,255,255,.15);
+  border-radius:50%;background:rgba(17,25,29,.85);border:1.5px solid rgba(255,255,255,.15);
   display:flex;align-items:center;justify-content:center;cursor:pointer;
-  backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);color:rgba(255,255,255,.8);
+  color:rgba(255,255,255,.8);
   -webkit-tap-highlight-color:transparent}
 .bt-exit-fab:active{background:rgba(217,92,84,.5)}
 /* v2.3.785/786: reload indicator shown when the exit arrow tears the app
@@ -194,7 +161,7 @@ input{font-family:inherit}
    main-thread teardown stutter. */
 .bt-exit-dim{position:fixed;inset:0;z-index:99999;background:rgba(5,6,12,.78);
   display:flex;flex-direction:column;align-items:center;justify-content:center;
-  gap:14px;pointer-events:none;backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px)}
+  gap:14px;pointer-events:none}
 .bt-exit-loading{width:36px;height:36px;border-radius:50%;
   border:3px solid rgba(255,255,255,.2);border-top-color:rgba(255,255,255,.9);
   animation:bt-exit-spin .8s linear infinite}
@@ -205,28 +172,9 @@ input{font-family:inherit}
    so it sits on the very top layer, beside (not over) the exit arrow.  The
    spinner + label are pseudo-elements and the spin is compositor-driven, so
    it keeps turning while the rejoin's asset bake hammers the main thread. */
-.bt-rejoin-loading{position:fixed;top:max(10px,env(safe-area-inset-top));left:52px;z-index:100000;display:flex;align-items:center;gap:8px;padding:6px 11px;border-radius:10px;background:rgba(5,6,12,.6);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);pointer-events:none}
+.bt-rejoin-loading{position:fixed;top:max(10px,env(safe-area-inset-top));left:52px;z-index:100000;display:flex;align-items:center;gap:8px;padding:6px 11px;border-radius:10px;background:rgba(17,25,29,.85);pointer-events:none}
 .bt-rejoin-loading::before{content:'';width:18px;height:18px;border-radius:50%;border:2.5px solid rgba(255,255,255,.25);border-top-color:rgba(255,255,255,.92);animation:bt-exit-spin .8s linear infinite}
 .bt-rejoin-loading::after{content:'Loading\2026';font-size:11px;font-weight:700;letter-spacing:.06em;color:rgba(255,255,255,.85);font-family:'Source Sans 3',sans-serif}
-.bt-fab-group{position:absolute;bottom:16px;right:16px;z-index:20;display:flex;flex-direction:column;gap:10px}
-.bt-combat-bar{position:absolute;bottom:70px;left:50%;transform:translateX(-50%);z-index:20;
-  display:flex;gap:8px;padding:6px 10px;background:rgba(0,0,0,.5);border-radius:14px;
-  border:1px solid rgba(255,255,255,.1);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
-.bt-combat-btn{width:44px;height:44px;border-radius:10px;border:none;display:flex;align-items:center;
-  justify-content:center;cursor:pointer;-webkit-tap-highlight-color:transparent;position:relative}
-.bt-combat-btn:active{transform:scale(.92)}
-.bt-chat-fab{width:48px;height:48px;border-radius:50%;border:none;
-  display:flex;align-items:center;justify-content:center;cursor:pointer;
-  backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);
-  -webkit-tap-highlight-color:transparent;touch-action:manipulation}
-.bt-chat-fab.send{background:rgba(89,191,145,.7);border:1.5px solid rgba(89,191,145,.4)}
-.bt-chat-fab.send:active{background:rgba(89,191,145,1)}
-.bt-chat-fab.close{background:rgba(217,92,84,.5);border:1.5px solid rgba(217,92,84,.3)}
-.bt-chat-fab.close:active{background:rgba(217,92,84,.8)}
-@media(min-width:769px){.bt-fab-group{display:none}}
-.bt-chat-input{flex:1;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.15);
-  border-radius:8px;padding:8px 12px;color:#fff;font-size:16px;outline:none;font-family:inherit;
-  -webkit-touch-callout:default;-webkit-user-select:text;user-select:text;touch-action:auto}
 .bt-chat-input::placeholder{color:rgba(255,255,255,.3)}
 .bt-chat-input:focus{border-color:var(--pop)}
 .bt-joystick-zone{z-index:30;display:block;
@@ -659,7 +607,7 @@ input{font-family:inherit}
 .bt-kb-hints:hover{opacity:1;pointer-events:auto}
 .bt-kb-key{display:inline-flex;align-items:center;gap:3px;padding:2px 6px;background:rgba(0,0,0,.6);
   border:1px solid rgba(255,255,255,.15);border-radius:4px;font-size:9px;font-weight:700;color:rgba(255,255,255,.7);
-  font-family:'Source Sans 3',sans-serif;white-space:nowrap;backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)}
+  font-family:'Source Sans 3',sans-serif;white-space:nowrap}
 .bt-kb-key kbd{display:inline-block;padding:1px 4px;background:rgba(255,255,255,.12);border-radius:2px;
   font-size:8px;font-weight:800;color:#fff;min-width:14px;text-align:center}
 .bt-crosshair-cursor{cursor:crosshair !important}

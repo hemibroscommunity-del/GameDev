@@ -255,9 +255,16 @@ pointerdown. prefers-reduced-motion removes shimmer/overshoot/nudge.
    hardcoded accent literals (indigo→brass, old green/gold/red→the
    semantic set, old light text→warm-white) mechanically remapped
    across the legacy panels and BroTown.jsx; page/wrap base
-   #0d0b18→#10181D. Remaining for a later pass: device/contrast/perf
-   QA; backdrop-filter removal from legacy classes; deleting unused
-   legacy CSS.
+   #0d0b18→#10181D. v2.3.1233 (blur + dead-CSS sweep): every remaining
+   backdrop-filter removed tree-wide — game.css world chrome
+   (.bt-interact-prompt/.bt-plist/.bt-exit-fab/.bt-exit-dim/
+   .bt-rejoin-loading/.bt-kb-key/.bt-emote-bar), 16 BroTown.jsx inline
+   world toasts/badges, ItemTooltip scrim — with translucent fills
+   bumped to the world-overlay ink to compensate; nine zero-consumer
+   legacy class families deleted (.back-to-site, .bt-player-count,
+   .bt-players-btn, .bt-chatlog*, .bt-combat-bar/btn,
+   .bt-chat-fab/bar/input, .bt-fab-group). Remaining for a later
+   pass: device/contrast/perf QA.
 
 ## Do-not-drift list
 
