@@ -21,19 +21,19 @@ const SortSheet = ({ current, onPick, onCancel }) => {
   return (
     <div onClick={onCancel} style={{
       position: 'fixed', inset: 0, zIndex: 100040,
-      background: 'rgba(0,0,0,.55)', display: 'flex', alignItems: 'flex-end',
+      background: 'rgba(34,48,60,.45)', display: 'flex', alignItems: 'flex-end',
     }}>
       <div onClick={e => e.stopPropagation()} style={{
         width: '100%', background: INV.bg, padding: 16,
         borderTopLeftRadius: 14, borderTopRightRadius: 14,
       }}>
-        <div style={{ width: 32, height: 4, background: 'rgba(255,255,255,.2)', borderRadius: 2, margin: '0 auto 14px' }} />
+        <div style={{ width: 32, height: 4, background: 'rgba(34, 48, 60, .2)', borderRadius: 2, margin: '0 auto 14px' }} />
         {opts.map(([k, label]) => (
           <div key={k} onClick={() => onPick(k)} style={{
             padding: 14, fontFamily: FONT.sans, fontSize: 14,
             color: k === current ? '#fff' : INV.textPrimary,
             fontWeight: k === current ? 500 : 400,
-            borderBottom: '0.5px solid rgba(255,255,255,.05)',
+            borderBottom: '0.5px solid rgba(34, 48, 60, .05)',
             cursor: 'pointer',
           }}>{label}</div>
         ))}
@@ -92,7 +92,7 @@ const InventoryTab = ({ onItemTap }) => {
               {c.label}
               {(layer1 || c.id === 'all') && count > 0 && (
                 <span style={{ marginLeft: 6, fontFamily: FONT.mono, fontSize: 10,
-                  color: active ? 'rgba(255,255,255,0.55)' : 'rgba(255,255,255,0.4)' }}>{count}</span>
+                  color: active ? 'rgba(34, 48, 60, 0.62)' : 'rgba(34, 48, 60, 0.45)' }}>{count}</span>
               )}
             </div>
           );
@@ -105,9 +105,9 @@ const InventoryTab = ({ onItemTap }) => {
           height: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'center',
           padding: '0 14px 4px', fontFamily: FONT.sans,
         }}>
-          <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.45)' }}>{sortLabel}</span>
+          <span style={{ fontSize: 10, color: 'rgba(34, 48, 60, 0.50)' }}>{sortLabel}</span>
           <span onClick={() => setSortOpen(true)}
-            style={{ fontSize: 11, color: 'rgba(255,255,255,0.6)', cursor: 'pointer' }}>Sort ▾</span>
+            style={{ fontSize: 11, color: 'rgba(34, 48, 60, 0.65)', cursor: 'pointer' }}>Sort ▾</span>
         </div>
       )}
 
@@ -134,10 +134,10 @@ const InventoryTab = ({ onItemTap }) => {
         {/* Search bar pinned at bottom of scroll */}
         <div style={{
           marginTop: 14, padding: '9px 12px',
-          background: 'rgba(255,255,255,0.05)', border: '0.5px solid rgba(255,255,255,0.08)',
+          background: 'rgba(34, 48, 60, 0.07)', border: '0.5px solid rgba(34, 48, 60, 0.12)',
           borderRadius: 8, display: 'flex', alignItems: 'center', gap: 8,
         }}>
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth="2">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="rgba(34, 48, 60, 0.45)" strokeWidth="2">
             <circle cx="10" cy="10" r="6" />
             <line x1="14.5" y1="14.5" x2="20" y2="20" />
           </svg>
@@ -229,12 +229,12 @@ export const InventorySurface = () => {
               <div key={t} onClick={() => inventoryBus.setTab(t)} style={{
                 display: 'flex', alignItems: 'center', padding: '0 16px',
                 position: 'relative', cursor: 'pointer', gap: 6,
-                color: active ? '#fff' : 'rgba(255,255,255,0.55)',
+                color: active ? '#fff' : 'rgba(34, 48, 60, 0.62)',
                 fontFamily: FONT.sans, fontSize: 14, fontWeight: active ? 500 : 400,
               }}>
                 {t === 'inventory' ? 'Inventory' : 'Equipped'}
                 {t === 'inventory' && (
-                  <span style={{ fontFamily: FONT.mono, fontSize: 12, color: 'rgba(255,255,255,0.5)' }}>{totalCount}</span>
+                  <span style={{ fontFamily: FONT.mono, fontSize: 12, color: 'rgba(34, 48, 60, 0.55)' }}>{totalCount}</span>
                 )}
                 {active && (
                   <div style={{ position: 'absolute', left: 16, right: 16, bottom: 0, height: 2, background: '#fff' }} />
@@ -245,7 +245,7 @@ export const InventorySurface = () => {
           <div style={{ flex: 1 }} />
           <div onClick={() => inventoryBus.setOpen(false)} style={{
             display: 'flex', alignItems: 'center', padding: '0 8px',
-            color: 'rgba(255,255,255,0.55)', fontSize: 22, cursor: 'pointer',
+            color: 'rgba(34, 48, 60, 0.62)', fontSize: 22, cursor: 'pointer',
             fontFamily: FONT.sans, fontWeight: 300, lineHeight: 1,
           }}>×</div>
         </div>

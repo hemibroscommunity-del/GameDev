@@ -567,9 +567,14 @@ The replacement targets, in rough priority order:
    image-failure fallbacks. The SkillsPanel roster was also corrected
    to the canonical 10 LIFE_SKILLS (it had listed alchemy/tailoring/
    taming, which don't exist).
-2. **Token adoption:** introduce the Part 2 palette as CSS custom
-   properties in `src/styles/game.css`, restyle the dashboard band and
-   one panel (Inventory) as the proof, then sweep the rest.
+2. **Token adoption** — STARTED v2.3.1226: Part 2 palette added as
+   `--ui-*` custom properties in `src/styles/game.css`; the dashboard
+   band, ALL dash panels (via `dash/common.js` COL), and the whole
+   inventory family (`inventoryStyles.js` INV, tiles, tooltips, detail
+   popup, equipped tab) flipped to Parchment/Ink/Brass. World-floating
+   chrome (top-right player card, tooltips over the world) deliberately
+   stays translucent Ink per Part 3. Legacy `src/ui/panels/*` still run
+   the old dark `--ink/--line` vars — that sweep is step 3.
 3. **Component sweep:** slots, headers, buttons, meters per Part 3.
 
 One system per PR, per repo protocol. Keep both UI generations

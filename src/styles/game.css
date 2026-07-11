@@ -21,6 +21,26 @@
   --red:      #ff5e6c;
   --gold:     #f5c542;
   --green:    #3ddc97;
+
+  /* v2.3.1226: UI Bible light & airy tokens (docs/UI-BIBLE.md Part 2).
+     The mobile dashboard + dash panels use these values (mirrored in
+     src/ui/mobile/dash/common.js COL / inventoryStyles.js INV).  The
+     legacy --ink/--line/--pop set above still drives the old panels
+     and flips in the legacy-panel sweep, not before. */
+  --ui-chalk:      #FDFBF5;
+  --ui-parchment:  #F7F2E8;
+  --ui-bone:       #EFE7D6;
+  --ui-ink:        #22303C;
+  --ui-slate:      #68737F;
+  --ui-hairline:   rgba(34,48,60,0.16);
+  --ui-brass:      #B08D57;
+  --ui-brass-text: #8A6A3B;
+  --ui-scrim:      rgba(34,48,60,0.35);
+  --ui-info:       #2B6CB0;
+  --ui-positive:   #2F855A;
+  --ui-progress:   #B7791F;
+  --ui-danger:     #C0392B;
+  --ui-magic:      #6B46C1;
 }
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%;overflow:hidden;background:#0d0b18;touch-action:none;overscroll-behavior:none;position:fixed;width:100%;top:0;left:0}

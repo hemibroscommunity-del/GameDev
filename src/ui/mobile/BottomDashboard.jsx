@@ -43,17 +43,27 @@ import { SpendPointConfirm }   from './dash/SpendPointConfirm.jsx';
 // taps any toolbar icon, the dashboard swaps in a panel component that
 // occupies the full 25vh band and the icon row hides.
 
+/* v2.3.1226: light & airy palette per docs/UI-BIBLE.md Part 2 — the
+   band flips to Parchment/Ink/Brass.  overlay* tokens are for chrome
+   floating OVER the game world (top-right player card, tooltips):
+   those stay translucent Ink per the Bible's world-overlap rule so
+   they read against bright grass and dark caves alike. */
 const COL = {
-  bg:        'rgba(13, 14, 22, 1)',
-  border:    'rgba(255, 255, 255, 0.10)',
-  divider:   'rgba(255, 255, 255, 0.06)',
-  text:      '#E8EAF8',
-  muted:     '#8890b8',
-  hp:        '#ff5e6c',
-  stam:      '#f5c542',
-  mp:        '#3b82f6',
-  xp:        '#3ddc97',
-  gold:      '#f5c542',
+  bg:        '#F7F2E8',              // Parchment
+  border:    'rgba(34,48,60,0.16)',  // Hairline
+  divider:   'rgba(34,48,60,0.10)',
+  text:      '#22303C',              // Ink
+  muted:     '#68737F',              // Slate
+  hp:        '#C0392B',
+  stam:      '#B7791F',
+  mp:        '#2B6CB0',
+  xp:        '#2F855A',
+  gold:      '#B7791F',
+  brass:     '#B08D57',
+  brassText: '#8A6A3B',              // brass darkened for text on light
+  overlayBg:     'rgba(34,48,60,0.82)',
+  overlayBorder: 'rgba(253,251,245,0.16)',
+  overlayText:   '#FDFBF5',
 };
 
 // Bar artwork sliced from the user-supplied mockup screenshot.  Each
@@ -142,12 +152,12 @@ const ColHeader = ({ children }) => (
   <div style={{
     /* v2.3.114: -1 fontSize + white text per "everything white". */
     fontSize: 14,
-    color: '#E8EAF8',
+    color: COL.text,
     letterSpacing: '.08em',
     textTransform: 'uppercase',
     padding: '0 2px 2px',
     textAlign: 'center',
-    borderBottom: '1px solid rgba(255,255,255,0.06)',
+    borderBottom: `1px solid ${COL.divider}`,
     marginBottom: 3,
     whiteSpace: 'nowrap',
     overflow: 'hidden',
@@ -175,10 +185,10 @@ const Tooltip = ({ text, onClose }) => {
         transform: 'translateX(-50%)',
         maxWidth: '88vw',
         padding: '8px 12px',
-        background: 'rgba(15, 17, 26, 0.96)',
-        border: '1px solid rgba(255,255,255,0.16)',
+        background: COL.overlayBg,
+        border: `1px solid ${COL.overlayBorder}`,
         borderRadius: 8,
-        color: '#E8EAF8',
+        color: COL.overlayText,
         fontFamily: 'Source Sans 3, sans-serif',
         fontSize: 15,
         lineHeight: 1.3,
@@ -289,7 +299,7 @@ const IconButton = ({ glyph, label, active, onClick, node, tut }) => {
         justifyContent: 'center',
         gap: 2,
         padding: '4px 0',
-        background: active ? 'rgba(91,82,255,0.18)' : 'transparent',
+        background: active ? 'rgba(176,141,87,0.22)' : 'transparent',
         border: 'none',
         borderRight: `1px solid ${COL.divider}`,
         color: COL.text,
@@ -325,7 +335,7 @@ const IconButton = ({ glyph, label, active, onClick, node, tut }) => {
       <span style={{
         /* v2.3.114: -1 fontSize + inactive labels white. */
         fontSize: 14,
-        color: active ? '#a8a4ff' : COL.text,
+        color: active ? COL.brassText : COL.text,
         letterSpacing: '.04em',
       }}>{label}</span>
     </button>
@@ -421,8 +431,9 @@ const InventoryPreview = () => {
         {Array.from({ length: Math.max(0, 9 - tiles.length) }).map((_, i) => (
           <div key={`pe-${i}`} aria-hidden="true" style={{
             aspectRatio: '1 / 1',
-            background: 'rgba(0,0,0,0.28)',
-            border: '1px solid rgba(255,255,255,0.22)',
+            background: '#EFE7D6',
+            border: '1px solid rgba(34,48,60,0.16)',
+            boxShadow: 'inset 0 1px 3px rgba(34,48,60,0.10)',
             borderRadius: 6,
           }} />
         ))}
@@ -601,8 +612,8 @@ export const BottomDashboard = () => {
           top: 'calc(env(safe-area-inset-top, 0px) + 6px)',
           right: 'calc(env(safe-area-inset-right, 0px) + 6px)',
           zIndex: 30,
-          background: COL.bg,
-          border: `1px solid ${COL.border}`,
+          background: COL.overlayBg,
+          border: `1px solid ${COL.overlayBorder}`,
           borderRadius: 8,
           boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.06), inset 0 -1px 0 rgba(0,0,0,0.25)',
           padding: '4px 6px',
@@ -765,7 +776,7 @@ export const BottomDashboard = () => {
               letterSpacing: '.08em',
               textTransform: 'uppercase',
               textAlign: 'center',
-              color: '#E8EAF8',
+              color: COL.text,
               whiteSpace: 'nowrap',
               overflow: 'hidden',
               textOverflow: 'ellipsis',
@@ -809,9 +820,9 @@ export const BottomDashboard = () => {
                 minWidth: 0,
                 padding: 4,
                 borderRadius: 6,
-                border: '1px solid rgba(255,255,255,0.14)',
+                border: `1px solid ${COL.border}`,
                 background: 'rgba(255,100,100,0.04)',
-                boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.06), inset 0 -1px 0 rgba(0,0,0,0.25)',
+                boxShadow: 'inset 0 1px 3px rgba(34,48,60,0.06)',
                 /* v2.3.129: clip overflow so the Kills row (and any other
                    session-summary row) doesn't bleed past the column's
                    bottom border at narrow heights. */
@@ -897,8 +908,8 @@ export const BottomDashboard = () => {
                           title={c.tip}
                           style={{
                             ...rowStyle,
-                            background: 'rgba(255,255,255,0.04)',
-                            border: '1px solid rgba(255,255,255,0.06)',
+                            background: 'rgba(34,48,60,0.05)',
+                            border: '1px solid rgba(34,48,60,0.10)',
                             borderRadius: 3,
                             padding: '1px 6px',
                           }}>
@@ -914,7 +925,7 @@ export const BottomDashboard = () => {
                       {/* Derived stats — Crit + Block.  Block % pairs
                          offense/defense with Crit and rises when the
                          player equips a shield or trains Fortification. */}
-                      <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: 2 }}>
+                      <div style={{ borderTop: '1px solid rgba(34,48,60,0.10)', paddingTop: 2 }}>
                         <div
                           onPointerUp={(e) => { e.stopPropagation(); setTooltip(`Crit chance — Power baseline plus the equipped weapon's crit channel (${getWeaponCritStat(R)}).  Allocate it under Weapons.`); }}
                           title="Crit chance from Power + weapon crit channel"
@@ -931,7 +942,7 @@ export const BottomDashboard = () => {
                         </div>
                       </div>
                       {/* Session summary — Zone / Kills / Playtime. */}
-                      <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: 2, flex: 1, minHeight: 0 }}>
+                      <div style={{ borderTop: '1px solid rgba(34,48,60,0.10)', paddingTop: 2, flex: 1, minHeight: 0 }}>
                         <div
                           onPointerUp={(e) => { e.stopPropagation(); setTooltip(`Current zone: ${zoneName} (${zoneId}).`); }}
                           title={`Current zone: ${zoneName}`}
@@ -974,9 +985,9 @@ export const BottomDashboard = () => {
                 minWidth: 0,
                 padding: 4,
                 borderRadius: 6,
-                border: '1px solid rgba(255,255,255,0.14)',
+                border: `1px solid ${COL.border}`,
                 background: 'rgba(120,110,255,0.04)',
-                boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.06), inset 0 -1px 0 rgba(0,0,0,0.25)',
+                boxShadow: 'inset 0 1px 3px rgba(34,48,60,0.06)',
               }}>
                 <ColHeader>Loadout</ColHeader>
                 {(() => {
@@ -1054,8 +1065,8 @@ export const BottomDashboard = () => {
                         alignItems: 'center',
                         justifyContent: 'center',
                         borderRadius: 4,
-                        background: active ? 'rgba(245,199,70,0.15)' : 'rgba(255,255,255,0.04)',
-                        border: active ? '1px solid rgba(245,199,70,0.7)' : '1px solid rgba(255,255,255,0.08)',
+                        background: active ? 'rgba(176,141,87,0.18)' : 'rgba(34,48,60,0.05)',
+                        border: active ? '1px solid rgba(176,141,87,0.70)' : '1px solid rgba(34,48,60,0.12)',
                         boxShadow: active ? 'inset 0 0 6px rgba(245,199,70,0.3)' : 'none',
                         cursor: onTap ? 'pointer' : 'default',
                         touchAction: 'none',
@@ -1248,9 +1259,9 @@ export const BottomDashboard = () => {
                 minWidth: 0,
                 padding: 4,
                 borderRadius: 6,
-                border: '1px solid rgba(255,255,255,0.14)',
+                border: `1px solid ${COL.border}`,
                 background: 'rgba(80,200,130,0.04)',
-                boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.06), inset 0 -1px 0 rgba(0,0,0,0.25)',
+                boxShadow: 'inset 0 1px 3px rgba(34,48,60,0.06)',
               }}>
                 <ColHeader>{SHOW_LIFE_SKILLS ? 'Stats · Skills' : 'Build'}</ColHeader>
                 <div style={{
@@ -1331,8 +1342,8 @@ export const BottomDashboard = () => {
                           gap: 1,
                           padding: '2px 4px',
                           borderRadius: 3,
-                          background: 'rgba(91,82,255,0.06)',
-                          border: '1px solid rgba(91,82,255,0.18)',
+                          background: 'rgba(176,141,87,0.10)',
+                          border: '1px solid rgba(176,141,87,0.35)',
                           overflow: 'hidden',
                           cursor: 'pointer',
                           touchAction: 'none',
@@ -1341,7 +1352,7 @@ export const BottomDashboard = () => {
                         {unspentPts > 0 && (
                           <span style={{
                             position: 'absolute', top: 1, right: 2,
-                            background: '#5b52ff', color: '#fff',
+                            background: '#B08D57', color: '#fff',
                             fontSize: 9, fontWeight: 900,
                             borderRadius: 7, padding: '0px 4px', lineHeight: 1.4,
                             pointerEvents: 'none', zIndex: 1,
@@ -1370,13 +1381,13 @@ export const BottomDashboard = () => {
                           position: 'absolute',
                           left: 0, right: 0, bottom: 0,
                           height: 2,
-                          background: 'rgba(255,255,255,0.06)',
+                          background: 'rgba(34,48,60,0.10)',
                           pointerEvents: 'none',
                         }}>
                           <div style={{
                             width: pct + '%',
                             height: '100%',
-                            background: 'rgba(91,82,255,0.85)',
+                            background: '#B08D57',
                             transition: 'width .15s linear',
                           }} />
                         </div>
@@ -1400,8 +1411,8 @@ export const BottomDashboard = () => {
                           gap: 3,
                           padding: '0 4px',
                           borderRadius: 3,
-                          background: 'rgba(255,255,255,0.04)',
-                          border: '1px solid rgba(255,255,255,0.06)',
+                          background: 'rgba(34,48,60,0.05)',
+                          border: '1px solid rgba(34,48,60,0.10)',
                           fontSize: 11,
                           minHeight: 0,
                           cursor: 'pointer',
@@ -1422,7 +1433,7 @@ export const BottomDashboard = () => {
                           position: 'absolute',
                           left: 0, right: 0, bottom: 0,
                           height: 2,
-                          background: 'rgba(255,255,255,0.06)',
+                          background: 'rgba(34,48,60,0.10)',
                           pointerEvents: 'none',
                         }}>
                           <div style={{

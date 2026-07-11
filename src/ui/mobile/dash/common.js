@@ -1,28 +1,33 @@
 ﻿// Shared style + helper module for the in-dashboard panels.
 
+/* v2.3.1226: light & airy palette per docs/UI-BIBLE.md Part 2 —
+   Parchment surfaces, Ink text, Slate secondary, Brass accent,
+   hairline ink-alpha borders.  Every dash panel inherits this. */
 export const COL = {
-  bg:        'rgba(13, 14, 22, 0.92)',
-  border:    'rgba(255, 255, 255, 0.10)',
-  divider:   'rgba(255, 255, 255, 0.06)',
-  text:      '#E8EAF8',
-  muted:     '#8890b8',
-  accent:    '#5b52ff',
-  hp:        '#ff5e6c',
-  stam:      '#f5c542',
-  mp:        '#3b82f6',
-  xp:        '#3ddc97',
-  gold:      '#f5c542',
-  tile:      'rgba(255, 255, 255, 0.04)',
-  tileBor:   'rgba(255, 255, 255, 0.10)',
+  bg:        'rgba(247, 242, 232, 0.96)',  // Parchment
+  border:    'rgba(34, 48, 60, 0.16)',     // Hairline
+  divider:   'rgba(34, 48, 60, 0.10)',
+  text:      '#22303C',                    // Ink
+  muted:     '#68737F',                    // Slate
+  accent:    '#B08D57',                    // Brass
+  hp:        '#C0392B',
+  stam:      '#B7791F',
+  mp:        '#2B6CB0',
+  xp:        '#2F855A',
+  gold:      '#B7791F',
+  tile:      'rgba(34, 48, 60, 0.05)',     // Bone-ish well
+  tileBor:   'rgba(34, 48, 60, 0.14)',
 };
 
+/* v2.3.1226: recalibrated darker for light surfaces (UI-BIBLE Part 2
+   rarity table).  Godly = gold base of the prismatic treatment. */
 export const TIER_COLOR = {
-  common:    '#9ca3af',
-  uncommon:  '#3ddc97',
-  rare:      '#3b82f6',
-  epic:      '#a855f7',
-  legendary: '#f59e0b',
-  godly:     '#ef4444',
+  common:    '#68737F',
+  uncommon:  '#2F855A',
+  rare:      '#2B6CB0',
+  epic:      '#7C3AED',
+  legendary: '#B7791F',
+  godly:     '#8A6A3B',
 };
 
 export const getState = () => (typeof window !== 'undefined') && window._gameState && window._gameState.current;

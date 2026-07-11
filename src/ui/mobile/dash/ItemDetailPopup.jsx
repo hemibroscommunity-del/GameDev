@@ -262,7 +262,7 @@ const buttonStyle = (variant) => ({
   padding: '8px 0',
   background: variant === 'primary' ? COL.accent
              : variant === 'danger'  ? '#a73a3a'
-             :                         'rgba(255,255,255,0.06)',
+             :                         'rgba(34, 48, 60, 0.10)',
   color: COL.text,
   border: '1px solid ' + COL.border,
   borderRadius: 6,
@@ -479,8 +479,8 @@ export const ItemDetailPopup = () => {
       <div key={r.key} style={{
         flex: '0 0 auto', height: P ? '100%' : undefined, scrollSnapAlign: 'start',
         display: 'flex', flexDirection: 'column', gap: 4, padding: '7px 8px', borderRadius: 9,
-        background: r.on ? 'rgba(125,255,192,.12)' : 'rgba(255,255,255,.06)',
-        border: `1px solid ${r.on ? 'rgba(125,255,192,.45)' : 'rgba(255,255,255,.18)'}`,
+        background: r.on ? 'rgba(125,255,192,.12)' : 'rgba(34, 48, 60, .06)',
+        border: `1px solid ${r.on ? 'rgba(125,255,192,.45)' : 'rgba(34, 48, 60, .18)'}`,
         boxSizing: 'border-box', overflow: 'hidden',
       }}>
         <div style={{ flex: '0 0 auto', display: 'flex', alignItems: 'center', gap: 7, minWidth: 0 }}>
@@ -510,7 +510,7 @@ export const ItemDetailPopup = () => {
     const cardCommon = {
       background: 'linear-gradient(155deg, #2f63dd 0%, #234aa8 48%, #16245e 100%)',
       border: '1px solid rgba(140,178,255,0.6)',
-      borderRadius: 12, padding: 8, boxShadow: '0 8px 28px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.12)',
+      borderRadius: 12, padding: 8, boxShadow: '0 8px 28px rgba(34,48,60,0.28)',
       display: 'flex', flexDirection: 'column', boxSizing: 'border-box', overflow: 'hidden', zIndex: 51,
     };
     const cardStyle = P
@@ -521,12 +521,12 @@ export const ItemDetailPopup = () => {
         style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 'var(--dash-h)', background: 'transparent', zIndex: 50, pointerEvents: 'auto' }}>
         <div ref={cardRef} onPointerDown={(e) => e.stopPropagation()} style={cardStyle}>
           <div style={{ flex: '0 0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6, marginBottom: 5 }}>
-            <span style={{ fontSize: 9.5, fontWeight: 800, color: 'rgba(255,255,255,.85)', letterSpacing: 0.6 }}>{title}</span>
+            <span style={{ fontSize: 9.5, fontWeight: 800, color: 'rgba(34, 48, 60, .85)', letterSpacing: 0.6 }}>{title}</span>
             <button type="button" aria-label="Close" onPointerUp={(e) => { e.stopPropagation(); itemDetailBus.close(); }}
               style={{
                 flex: '0 0 auto', width: 20, height: 20, lineHeight: '18px', textAlign: 'center', padding: 0,
-                fontSize: 13, fontWeight: 800, borderRadius: 6, border: '1px solid rgba(255,255,255,.3)',
-                background: 'rgba(255,255,255,.12)', color: '#fff', cursor: 'pointer',
+                fontSize: 13, fontWeight: 800, borderRadius: 6, border: '1px solid rgba(34, 48, 60, .3)',
+                background: 'rgba(34, 48, 60, .12)', color: '#fff', cursor: 'pointer',
                 WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation',
               }}>✕</button>
           </div>
@@ -582,24 +582,24 @@ export const ItemDetailPopup = () => {
       <div key={key} style={{
         display: 'flex', alignItems: 'center', gap: 6,
         padding: '5px 6px', borderRadius: 8,
-        background: on ? 'rgba(61,212,151,.07)' : 'rgba(255,255,255,.03)',
-        border: `1px solid ${on ? 'rgba(61,212,151,.3)' : 'rgba(255,255,255,.08)'}`,
+        background: on ? 'rgba(61,212,151,.07)' : 'rgba(34, 48, 60, .03)',
+        border: `1px solid ${on ? 'rgba(61,212,151,.3)' : 'rgba(34, 48, 60, .08)'}`,
       }}>
         <img src={iconSrc} alt={name} draggable={false}
           style={{ width: 24, height: 24, imageRendering: 'pixelated',
             filter: on ? 'none' : 'grayscale(1) brightness(.6)', userSelect: 'none' }} />
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: 10, fontWeight: 700, color: on ? '#3dd497' : COL.muted, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{name}</div>
-          <div style={{ fontSize: 7.5, color: 'rgba(255,255,255,.35)' }}>{sub}</div>
+          <div style={{ fontSize: 7.5, color: 'rgba(34, 48, 60, .35)' }}>{sub}</div>
         </div>
         <button type="button"
           onPointerUp={(e) => { e.stopPropagation(); if (on || canEquip) onToggle(); }}
           disabled={!on && !canEquip}
           style={{
             padding: '4px 8px', fontSize: 8.5, fontWeight: 700, borderRadius: 6,
-            border: '1px solid rgba(255,255,255,.2)',
-            background: on ? 'rgba(255,94,108,.25)' : (canEquip ? 'rgba(61,212,151,.25)' : 'rgba(255,255,255,.06)'),
-            color: (on || canEquip) ? '#fff' : 'rgba(255,255,255,.3)',
+            border: '1px solid rgba(34, 48, 60, .2)',
+            background: on ? 'rgba(255,94,108,.25)' : (canEquip ? 'rgba(61,212,151,.25)' : 'rgba(34, 48, 60, .06)'),
+            color: (on || canEquip) ? '#fff' : 'rgba(34, 48, 60, .3)',
             cursor: (on || canEquip) ? 'pointer' : 'default',
             WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation',
           }}>{on ? 'Unequip' : 'Equip'}</button>
@@ -614,13 +614,13 @@ export const ItemDetailPopup = () => {
             left: pos ? pos.left : -9999,
             top: pos ? pos.top : -9999,
             width: 200,
-            background: 'rgba(20,22,32,0.98)',
-            border: '1px solid rgba(255,255,255,0.14)',
+            background: '#FDFBF5',
+            border: '1px solid rgba(34, 48, 60, 0.14)',
             borderRadius: 10,
             padding: 8,
-            boxShadow: '0 8px 28px rgba(0,0,0,0.5)',
+            boxShadow: '0 8px 28px rgba(34,48,60,0.28)',
           }}>
-          <div style={{ fontSize: 9, fontWeight: 800, color: 'rgba(255,255,255,.55)', letterSpacing: 0.5, marginBottom: 5 }}>
+          <div style={{ fontSize: 9, fontWeight: 800, color: 'rgba(34, 48, 60, .55)', letterSpacing: 0.5, marginBottom: 5 }}>
             CHEST — LAYERS
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
@@ -670,33 +670,33 @@ export const ItemDetailPopup = () => {
             left: pos ? pos.left : -9999,
             top: pos ? pos.top : -9999,
             width: 200,
-            background: 'rgba(20,22,32,0.98)',
-            border: '1px solid rgba(255,255,255,0.14)',
+            background: '#FDFBF5',
+            border: '1px solid rgba(34, 48, 60, 0.14)',
             borderRadius: 10,
             padding: 8,
-            boxShadow: '0 8px 28px rgba(0,0,0,0.5)',
+            boxShadow: '0 8px 28px rgba(34,48,60,0.28)',
           }}>
-          <div style={{ fontSize: 9, fontWeight: 800, color: 'rgba(255,255,255,.55)', letterSpacing: 0.5, marginBottom: 5 }}>
+          <div style={{ fontSize: 9, fontWeight: 800, color: 'rgba(34, 48, 60, .55)', letterSpacing: 0.5, marginBottom: 5 }}>
             LEGS
           </div>
           <div style={{
             display: 'flex', alignItems: 'center', gap: 6,
             padding: '5px 6px', borderRadius: 8,
-            background: on ? 'rgba(61,212,151,.07)' : 'rgba(255,255,255,.03)',
-            border: `1px solid ${on ? 'rgba(61,212,151,.3)' : 'rgba(255,255,255,.08)'}`,
+            background: on ? 'rgba(61,212,151,.07)' : 'rgba(34, 48, 60, .03)',
+            border: `1px solid ${on ? 'rgba(61,212,151,.3)' : 'rgba(34, 48, 60, .08)'}`,
           }}>
             <img src="/sprites/gear/icons/steelgreaves.webp?v=2.3.685" alt="Steel Greaves" draggable={false}
               style={{ width: 24, height: 24, imageRendering: 'pixelated',
                 filter: on ? 'none' : 'grayscale(1) brightness(.6)', userSelect: 'none' }} />
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontSize: 10, fontWeight: 700, color: on ? '#3dd497' : COL.muted, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{on ? gearName('legs', legsId) : 'Steel Greaves'}</div>
-              <div style={{ fontSize: 7.5, color: 'rgba(255,255,255,.35)' }}>Armor · legs</div>
+              <div style={{ fontSize: 7.5, color: 'rgba(34, 48, 60, .35)' }}>Armor · legs</div>
             </div>
             <button type="button"
               onPointerUp={(e) => { e.stopPropagation(); toggleLegs(); }}
               style={{
                 padding: '4px 8px', fontSize: 8.5, fontWeight: 700, borderRadius: 6,
-                border: '1px solid rgba(255,255,255,.2)',
+                border: '1px solid rgba(34, 48, 60, .2)',
                 background: on ? 'rgba(255,94,108,.25)' : 'rgba(61,212,151,.25)',
                 color: '#fff', cursor: 'pointer',
                 WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation',
@@ -926,21 +926,21 @@ export const ItemDetailPopup = () => {
           top:  pos ? pos.top  : -9999,
           width: 240,
           maxHeight: '60vh',
-          background: 'rgba(20,22,32,0.98)',
+          background: '#FDFBF5',
           border: '1px solid ' + COL.border,
           borderRadius: 8,
           padding: 10,
           display: 'flex', flexDirection: 'column', gap: 6,
           color: COL.text,
           fontFamily: 'Source Sans 3, sans-serif',
-          boxShadow: '0 4px 14px rgba(0,0,0,0.55)',
+          boxShadow: '0 4px 14px rgba(34,48,60,0.25)',
           opacity: pos ? 1 : 0,
         }}
       >
         <div style={{ position: 'relative', width: 80, height: 80, alignSelf: 'center' }}>
           <div style={{
             width: '100%', height: '100%',
-            background: 'rgba(255,255,255,0.04)',
+            background: 'rgba(34, 48, 60, 0.05)',
             border: '1px solid ' + COL.border,
             borderRadius: 6,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -957,7 +957,7 @@ export const ItemDetailPopup = () => {
             <div style={{
               position: 'absolute', top: 2, right: 2,
               width: 18, height: 18,
-              background: 'rgba(15,17,26,0.92)',
+              background: 'rgba(34,48,60,0.85)',
               border: '1px solid #f5c542',
               borderRadius: 4,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -977,7 +977,7 @@ export const ItemDetailPopup = () => {
             fontSize: 11, color: COL.text,
             textAlign: 'center',
             padding: '4px 0',
-            background: 'rgba(255,255,255,0.03)',
+            background: 'rgba(34, 48, 60, 0.03)',
             borderRadius: 5,
           }}>{info}</div>
         )}

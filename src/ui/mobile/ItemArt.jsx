@@ -6,11 +6,13 @@ import { ELEMENT_COLOR } from './inventoryStyles.js';
 // vary by item type, tier, quality, and equipped gems — enough visual
 // signal that two tiles for different items don't look identical.
 
+/* v2.3.1226: tints flipped for the light theme (UI-BIBLE Part 2) --
+   pale rarity-hued plates with darker strokes replace the dark plates. */
 const RARITY_TINT = {
-  normal: { fill: '#3a3833', stroke: '#857d6a' },
-  rare:   { fill: '#2c4a6a', stroke: '#7aaecf' },
-  elite:  { fill: '#3a2a52', stroke: '#b88dd4' },
-  godly:  { fill: '#3a2c0a', stroke: '#e8d4a0' },
+  normal: { fill: '#EFE7D6', stroke: '#68737F' },
+  rare:   { fill: '#E1EAF5', stroke: '#2B6CB0' },
+  elite:  { fill: '#ECE4F9', stroke: '#7C3AED' },
+  godly:  { fill: '#F4E9D2', stroke: '#8A6A3B' },
 };
 
 const Sword = ({ tint }) => (

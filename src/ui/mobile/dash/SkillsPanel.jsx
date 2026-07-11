@@ -57,7 +57,7 @@ export const SkillsPanel = () => {
             </div>
             <div style={{
               height: 4,
-              background: 'rgba(255,255,255,.06)',
+              background: 'rgba(34, 48, 60, .06)',
               borderRadius: 2,
               overflow: 'hidden',
             }}>
