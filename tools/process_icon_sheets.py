@@ -32,6 +32,22 @@ BG = 225
 OUT_SIZE = 256
 MARGIN = 0.12  # fraction of final canvas left empty around the icon
 
+# v2.3.1225: icons whose outlines seal off pockets of background (the
+# space inside the bow + string, the gear's center hole, ...) so the
+# border flood fill can't reach them.  For these, a second pass clears
+# any remaining near-white ENCLOSED region larger than the given
+# fraction of the tile -- the size floor protects small legitimate
+# whites (glints, blade facets).  Icons with real white fills (chat
+# bubble, snowflake, book pages) are deliberately NOT in this list.
+INTERIOR_KNOCKOUT = {
+    'combat-bow':     0.005,
+    'stat-endurance': 0.005,
+    'panel-settings': 0.005,
+    'panel-account':  0.005,
+    'bldg-exchange':  0.003,
+    'evt-duel':       0.0035,
+}
+
 # Sheet manifest: rows, cols, row-major icon names (docs/UI-BIBLE.md Part 4).
 SHEETS = {
     'sheet-a.png': (2, 3, [
@@ -178,6 +194,38 @@ def knock_out(tile):
         q.append((x, y - 1))
 
 
+def knock_out_interior(tile, min_frac):
+    """Clear enclosed near-white regions >= min_frac of the tile area.
+    Runs AFTER knock_out, so only outline-sealed pockets remain."""
+    w, h = tile.size
+    pix = tile.load()
+    seen = bytearray(w * h)
+
+    def is_white(x, y):
+        r, g, b, a = pix[x, y]
+        return a > 0 and r >= BG and g >= BG and b >= BG
+
+    for sx in range(w):
+        for sy in range(h):
+            if seen[sy * w + sx] or not is_white(sx, sy):
+                continue
+            region = []
+            q = deque([(sx, sy)])
+            seen[sy * w + sx] = 1
+            while q:
+                x, y = q.popleft()
+                region.append((x, y))
+                for nx, ny in ((x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)):
+                    if 0 <= nx < w and 0 <= ny < h \
+                            and not seen[ny * w + nx] and is_white(nx, ny):
+                        seen[ny * w + nx] = 1
+                        q.append((nx, ny))
+            if len(region) >= min_frac * w * h:
+                for x, y in region:
+                    px = pix[x, y]
+                    pix[x, y] = (px[0], px[1], px[2], 0)
+
+
 def process_sheet(fname, rows, cols, names):
     im = Image.open(os.path.join(SRC_DIR, fname)).convert('RGB')
     boxes = icon_boxes(im, rows, cols)
@@ -188,8 +236,16 @@ def process_sheet(fname, rows, cols, names):
         cx0, cy0 = max(0, x0 - pad), max(0, y0 - pad)
         cx1 = min(im.size[0], x1 + 1 + pad)
         cy1 = min(im.size[1], y1 + 1 + pad)
+        out_path = os.path.join(OUT_DIR, name + '.webp')
+        if os.path.exists(out_path):
+            # v2.3.1225: skip-not-abort, so deleting specific icons and
+            # re-running regenerates only those (never overwrites).
+            print(f'  {name}.webp  SKIP (exists)')
+            continue
         tile = im.crop((cx0, cy0, cx1, cy1)).convert('RGBA')
         knock_out(tile)
+        if name in INTERIOR_KNOCKOUT:
+            knock_out_interior(tile, INTERIOR_KNOCKOUT[name])
         # Square canvas around the content, sized for a 12% margin.
         cw, ch = tile.size
         side = max(cw, ch)
@@ -198,10 +254,6 @@ def process_sheet(fname, rows, cols, names):
         canvas.paste(tile, ((canvas_side - cw) // 2, (canvas_side - ch) // 2),
                      tile)
         out = canvas.resize((OUT_SIZE, OUT_SIZE), Image.LANCZOS)
-        out_path = os.path.join(OUT_DIR, name + '.webp')
-        if os.path.exists(out_path):
-            raise SystemExit(f'ABORT: {out_path} already exists -- refusing '
-                             'to overwrite. Delete it first if regenerating.')
         out.save(out_path, 'WEBP', quality=92, method=6)
         print(f'  {name}.webp  <- cell ({x0},{y0})-({x1},{y1})')
 
