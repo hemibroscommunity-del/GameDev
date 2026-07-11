@@ -57,9 +57,23 @@ export const makeItem = (type, opts = {}) => {
     element: type === 'gem' ? pick(ELEMENTS) : null,
     potionKind: type === 'potion' ? pick(['hp', 'mana', 'other']) : null,
     stats,
-    isNew: Math.random() < 0.15,
+    /* v2.3.1228: opts.isNew override so showcase seeds can pin the
+       NEW-dot state deterministically. */
+    isNew: opts.isNew ?? Math.random() < 0.15,
   };
 };
+
+/* v2.3.1228: one guaranteed item per rarity state so the Lantern Slate
+   slot system (docs/LANTERN-SLATE-SPEC.md §11) is always visible in a
+   fresh mock bag: godly conic ring, elite/rare edges + auras, common,
+   and the NEW brass dot.  Recent acquiredAt so recency sorts surface
+   them first. */
+export const generateShowcaseItems = () => [
+  Object.assign(makeItem('weapon', { name: 'Oathkeeper', tier: 9, quality: 'godly', isNew: false }), { acquiredAt: Date.now() }),
+  Object.assign(makeItem('weapon', { name: 'Thornstaff', tier: 6, quality: 'elite', isNew: false }), { acquiredAt: Date.now() - 1 }),
+  Object.assign(makeItem('weapon', { name: 'Ember Bow', tier: 5, quality: 'rare', isNew: true }), { acquiredAt: Date.now() - 2 }),
+  Object.assign(makeItem('armor', { name: 'Steel Mail', tier: 4, quality: 'normal', isNew: false, slot: 'chest', gearId: 'steelplate' }), { acquiredAt: Date.now() - 3 }),
+];
 
 export const generateMockInventory = (n = 30) => {
   const items = [];
