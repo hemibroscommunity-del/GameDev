@@ -85,6 +85,9 @@ const ICON_SRC = {
   journey:   '/icons/ui/nav-journey.webp?v=2.3.1224',
   map:       '/icons/ui/nav-map.webp?v=2.3.1224',
   more:      '/icons/ui/nav-more.webp?v=2.3.1224',
+  /* v2.3.1225: chat finally gets a real icon (was an inline SVG since
+     v2.3.1015, the one toolbar glyph the v2.3.1224 swap missed). */
+  chat:      '/icons/ui/panel-chat.webp?v=2.3.1225',
 };
 
 // Character build stats shown in the middle dashboard column, ordered for a
@@ -94,17 +97,21 @@ const ICON_SRC = {
 // Tier-1 capacity stats.  Tooltip phrasing per GDD §1.2.
 /* v2.3.1224: stat icons swapped to the UI Bible set (combat-* for the
    three weapon-category damage stats, stat-* for the resource stats).
-   The old popups/*.webp icons stay for damage popups. */
+   The old popups/*.webp icons stay for damage popups.
+   v2.3.1225: iconScale 1.5 across the grid — the Bible icons carry a
+   12% built-in margin, so at 1.0 they rendered visibly smaller than
+   the full-bleed popups icons they replaced (owner report).  Bow +
+   endurance re-sliced with interior background knockout. */
 const CHAR_STATS = [
-  { key: 'power',     label: 'Melee',     short: 'MEL', iconSrc: '/icons/ui/combat-melee.webp?v=2.3.1224',   pixelated: false, iconScale: 1.0, tip: 'Melee — melee weapon damage scaling. Trains by landing damage with sword / greatsword.' },
-  { key: 'agility',   label: 'Bow',       short: 'BOW', iconSrc: '/icons/ui/combat-bow.webp?v=2.3.1224',     pixelated: false, iconScale: 1.0, tip: 'Bow — bow damage + move speed, dodge distance, attack speed. Trains by successful dodges and ranged hits.' },
-  { key: 'mind',      label: 'Magic',     short: 'MAG', iconSrc: '/icons/ui/combat-magic.webp?v=2.3.1224',   pixelated: false, iconScale: 1.0, tip: 'Magic — staff (magic) damage + mana pool size. Trains by spending mana on staff bolts.' },
-  { key: 'vitality',  label: 'HP',        short: 'HP',  iconSrc: '/icons/ui/stat-vitality.webp?v=2.3.1224',  pixelated: false, iconScale: 1.0, tip: 'HP — health pool size. Trains by taking damage and surviving the fight.' },
+  { key: 'power',     label: 'Melee',     short: 'MEL', iconSrc: '/icons/ui/combat-melee.webp?v=2.3.1224',   pixelated: false, iconScale: 1.5, tip: 'Melee — melee weapon damage scaling. Trains by landing damage with sword / greatsword.' },
+  { key: 'agility',   label: 'Bow',       short: 'BOW', iconSrc: '/icons/ui/combat-bow.webp?v=2.3.1225',     pixelated: false, iconScale: 1.5, tip: 'Bow — bow damage + move speed, dodge distance, attack speed. Trains by successful dodges and ranged hits.' },
+  { key: 'mind',      label: 'Magic',     short: 'MAG', iconSrc: '/icons/ui/combat-magic.webp?v=2.3.1224',   pixelated: false, iconScale: 1.5, tip: 'Magic — staff (magic) damage + mana pool size. Trains by spending mana on staff bolts.' },
+  { key: 'vitality',  label: 'HP',        short: 'HP',  iconSrc: '/icons/ui/stat-vitality.webp?v=2.3.1224',  pixelated: false, iconScale: 1.5, tip: 'HP — health pool size. Trains by taking damage and surviving the fight.' },
   /* Defense = Tier-2 trained skill (rpg.defenseSkill.level); tapping opens the
      DEF spend tab in the T2 panel (wired in v2.3.693).  v2.3.696: DEF and END
      swapped -- bottom row reads Vitality · Defense · Endurance per user. */
-  { key: 'defense',   label: 'Defense',   short: 'DEF', iconSrc: '/icons/ui/stat-defense.webp?v=2.3.1224',   pixelated: false, iconScale: 1.0, t2: true, tip: 'Defense — block strength + damage reduction. Trains by blocking and mitigating hits; spend points in the DEF tab.' },
-  { key: 'endurance', label: 'Endurance', short: 'END', iconSrc: '/icons/ui/stat-endurance.webp?v=2.3.1224', pixelated: false, iconScale: 1.0, tip: 'Endurance — stamina pool size. Trains by spending stamina on dodge, block, or sprint.' },
+  { key: 'defense',   label: 'Defense',   short: 'DEF', iconSrc: '/icons/ui/stat-defense.webp?v=2.3.1224',   pixelated: false, iconScale: 1.5, t2: true, tip: 'Defense — block strength + damage reduction. Trains by blocking and mitigating hits; spend points in the DEF tab.' },
+  { key: 'endurance', label: 'Endurance', short: 'END', iconSrc: '/icons/ui/stat-endurance.webp?v=2.3.1225', pixelated: false, iconScale: 1.5, tip: 'Endurance — stamina pool size. Trains by spending stamina on dodge, block, or sprint.' },
 ];
 
 /* Dashboard now focuses on the build/combat stats; the life-skills grid is
@@ -1351,7 +1358,10 @@ export const BottomDashboard = () => {
                             imageRendering: s.pixelated ? 'pixelated' : 'auto',
                             pointerEvents: 'none',
                             userSelect: 'none',
-                            flexShrink: 0,
+                            /* v2.3.1225: shrink-allowed so the 1.5x icon is a
+                               ceiling, not a clip risk in short cells
+                               (overflow:hidden on the cell). */
+                            flexShrink: 1,
                             minHeight: 0,
                           }}
                         />
@@ -1448,17 +1458,10 @@ export const BottomDashboard = () => {
               onClick={() => dashboardPanelBus.toggle('journey')} />
             {/* v2.3.1015: Chat replaces Map in the toolbar — TOGGLES the
                 over-head chat bubble (ChatBubble.jsx): tap to open, tap again
-                to close.  No chat PNG asset, so the glyph is the speech-bubble
-                SVG inherited from ChatLauncher. */}
-            <IconButton label="Chat" tut="dash-chat"
-              onClick={() => chatBubbleBus.toggle()}
-              node={(
-                <svg width="34" height="34" viewBox="0 0 24 24" fill="none"
-                  stroke="currentColor" strokeWidth="1.6"
-                  strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M21 12a8 8 0 0 1-12 6.93L4 20l1.07-5A8 8 0 1 1 21 12z" />
-                </svg>
-              )} />
+                to close.  v2.3.1225: UI Bible panel-chat icon replaces the
+                placeholder inline SVG. */}
+            <IconButton glyph="chat" label="Chat" tut="dash-chat"
+              onClick={() => chatBubbleBus.toggle()} />
             <IconButton glyph="more"      label="More" tut="dash-more"
               onClick={() => dashboardPanelBus.toggle('more')} />
           </div>
