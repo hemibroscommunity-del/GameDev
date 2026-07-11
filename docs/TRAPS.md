@@ -114,3 +114,19 @@ overlapping version tags; the consolidation had to three-way merge doc
 conflicts and renumber tags (commits a9f8f51b, bd31c60c). Edit only
 the lines your change makes true, tagged with your version.
 **Receipt:** the 2026-07-07 post-mortem (`docs/DEV-TOOLS.md`).
+
+## 11. Styling or demoing the wheel-gated inventory surface
+
+**Tempting:** `src/ui/mobile/InventorySurface.jsx` / `EquippedTab.jsx`
+/ `InventoryTile.jsx` + `inventoryBus`/`mockItems` look like THE
+inventory — they're polished, mock-seeded, and wired in GameApp.
+**Wrong:** their only entry points are the utility wheel
+(`wheelBus.onActivate('inventory')`) and the debug console (`inv
+open`), and the wheel trigger is not rendered anywhere — dead code,
+owner-confirmed 2026-07-11. Players use the DASHBOARD Bag panel
+(`dash/InventoryPanel.jsx`) and Loadout slots. On v2.3.1228 the
+Lantern Slate rarity system initially landed on the unreachable
+surface and had to be re-applied to the live loadout weapon slot.
+Check reachability (who renders the trigger?) before styling or
+demoing any surface. **Receipt:** PR #259; `src/ui/GameApp.jsx`
+wheelBus wiring.
