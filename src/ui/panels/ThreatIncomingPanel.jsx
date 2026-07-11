@@ -36,7 +36,7 @@ export function ThreatIncomingPanel(props) {
     style: {
       fontSize: 14,
       fontWeight: 800,
-      color: '#ff5e6c',
+      color: '#D95C54',
       marginBottom: 4
     }
   }, "KILL THREAT"), /*#__PURE__*/React.createElement("div", {
@@ -62,7 +62,7 @@ export function ThreatIncomingPanel(props) {
       style: {
         fontSize: 18,
         fontWeight: 900,
-        color: '#f5c542',
+        color: '#D8A94D',
         marginBottom: 4
       }
     }, mins, ":", secR.toString().padStart(2, '0')), /*#__PURE__*/React.createElement("div", {
@@ -77,7 +77,7 @@ export function ThreatIncomingPanel(props) {
       style: {
         height: '100%',
         borderRadius: 3,
-        background: pct > 50 ? '#f5c542' : pct > 20 ? '#ea580c' : '#ff5e6c',
+        background: pct > 50 ? '#D8A94D' : pct > 20 ? '#ea580c' : '#D95C54',
         width: pct + '%',
         transition: 'width 1s linear'
       }
@@ -94,7 +94,7 @@ export function ThreatIncomingPanel(props) {
       borderRadius: 8,
       border: 'none',
       background: 'rgba(255,255,255,.1)',
-      color: '#8890b8',
+      color: '#B9C1BF',
       fontWeight: 700,
       fontSize: 11,
       cursor: 'pointer'
@@ -114,7 +114,7 @@ export function ThreatIncomingPanel(props) {
       setThreatIncoming(_objectSpread(_objectSpread({}, threatIncoming), {}, {
         responded: true
       }));
-      pushDmgPopup(S2, S2.player.x, S2.player.y - 30, 'Threat ignored. They can still be attacked.', '#8890b8');
+      pushDmgPopup(S2, S2.player.x, S2.player.y - 30, 'Threat ignored. They can still be attacked.', '#B9C1BF');
     }
   }, "\uD83D\uDEB6 Ignore"), /*#__PURE__*/React.createElement("button", {
     style: {
@@ -122,7 +122,7 @@ export function ThreatIncomingPanel(props) {
       padding: '8px',
       borderRadius: 8,
       border: 'none',
-      background: '#ff5e6c',
+      background: '#D95C54',
       color: '#fff',
       fontWeight: 700,
       fontSize: 11,
@@ -143,7 +143,7 @@ export function ThreatIncomingPanel(props) {
       setThreatIncoming(_objectSpread(_objectSpread({}, threatIncoming), {}, {
         responded: true
       }));
-      pushDmgPopup(S2, S2.player.x, S2.player.y - 30, 'Guards dispatched!', '#3dd497');
+      pushDmgPopup(S2, S2.player.x, S2.player.y - 30, 'Guards dispatched!', '#59BF91');
       BT_AUDIO.beep(500, 0.1, 0.12, 'sine');
     }
   }, "\u2694\uFE0F Call Guards")), /*#__PURE__*/React.createElement("div", {

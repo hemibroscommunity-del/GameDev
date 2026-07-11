@@ -130,11 +130,11 @@ export function GemcutPanel(props) {
           pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'Polished ' + gemName + '!', gemCol);
           BT_AUDIO.collect();
         } else {
-          pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'Gem shattered!', '#ff5e6c');
+          pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'Gem shattered!', '#D95C54');
           BT_AUDIO.beep(200, 0.06, 0.1, 'square');
         }
         var leveled = addLifeSkillXp(sk, 'gemCutting', 15);
-        if (leveled) pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 50, 'Gem Cutting Lv' + sk.gemCutting.level + '!', '#f5c542');
+        if (leveled) pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 50, 'Gem Cutting Lv' + sk.gemCutting.level + '!', '#D8A94D');
         setRpgState(_objectSpread({}, R));
         try {
           localStorage.setItem('bt_rpg', JSON.stringify(R));

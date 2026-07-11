@@ -58,7 +58,7 @@ export function MenuBar(props) {
       // Hidden in v14.x; kept in tree to avoid surgery on a 33k-line file
       // and because some buttons drive functions not yet relocated.
       display: 'none',
-      background: 'rgba(10,8,20,.95)',
+      background: 'rgba(16,24,29,.95)',
       borderTop: '1px solid rgba(255,255,255,.08)',
       alignItems: 'center',
       gap: 3,
@@ -103,7 +103,7 @@ export function MenuBar(props) {
     style: {
       fontSize: 9,
       fontWeight: 800,
-      color: '#f5c542'
+      color: '#D8A94D'
     }
   }, "\uD83D\uDCB0", rpgState.coins)), function (_stateRef$current59) {
     var closeAll = function closeAll() {
@@ -210,12 +210,12 @@ export function MenuBar(props) {
         var S = stateRef.current;
         var R = S.rpg;
         if (!R || !S.lockedTarget || S.lockedTarget.type !== 'monster') {
-          pushDmgPopup(S, S.player.x, S.player.y - 30, 'Lock a weak monster first!', '#ff5e6c');
+          pushDmgPopup(S, S.player.x, S.player.y - 30, 'Lock a weak monster first!', '#D95C54');
           return;
         }
         var m = S.lockedTarget.ref;
         if (!m.alive) {
-          pushDmgPopup(S, S.player.x, S.player.y - 30, 'Target is dead!', '#ff5e6c');
+          pushDmgPopup(S, S.player.x, S.player.y - 30, 'Target is dead!', '#D95C54');
           return;
         }
         /* v2.3.1130: server-validated capture.  The worker checks ITS
@@ -233,13 +233,13 @@ export function MenuBar(props) {
         }
         var hpPct = m.curHp / m.hp;
         if (hpPct > TRAP_HP_THRESHOLD) {
-          pushDmgPopup(S, m.x, m.y - 25, 'Too healthy! (<20% HP)', '#ff5e6c');
+          pushDmgPopup(S, m.x, m.y - 25, 'Too healthy! (<20% HP)', '#D95C54');
           return;
         }
         var sk = R.lifeSkills;
         if (!sk.pets) sk.pets = [];
         if (sk.pets.length >= MAX_PET_SLOTS) {
-          pushDmgPopup(S, S.player.x, S.player.y - 30, 'Pet slots full! (' + MAX_PET_SLOTS + ')', '#ff5e6c');
+          pushDmgPopup(S, S.player.x, S.player.y - 30, 'Pet slots full! (' + MAX_PET_SLOTS + ')', '#D95C54');
           return;
         }
         var trapLvl = ((_sk$trapping = sk.trapping) === null || _sk$trapping === void 0 ? void 0 : _sk$trapping.level) || 1;
@@ -250,7 +250,7 @@ export function MenuBar(props) {
         var levelPenalty = Math.max(0, (m.level || 1) - R.level) * 0.05;
         var chance = Math.max(0.1, Math.min(0.95, baseChance - levelPenalty));
         if (Math.random() > chance) {
-          pushDmgPopup(S, m.x, m.y - 25, 'Escaped!', '#ff5e6c');
+          pushDmgPopup(S, m.x, m.y - 25, 'Escaped!', '#D95C54');
           addLifeSkillXp(sk, 'trapping', 5);
           BT_AUDIO.beep(200, 0.08, 0.12, 'square');
           return;
@@ -261,9 +261,9 @@ export function MenuBar(props) {
         m.alive = false;
         m.respawnAt = Date.now() + 60000;
         var leveled = addLifeSkillXp(sk, 'trapping', 15 + (m.level || 1) * 2);
-        pushDmgPopup(S, m.x, m.y - 20, 'Captured ' + pet.name + '!', '#3dd497');
+        pushDmgPopup(S, m.x, m.y - 20, 'Captured ' + pet.name + '!', '#59BF91');
         pushDmgPopup(S, m.x, m.y - 35, pet.emoji + ' ' + pet.archetype + ' Lv' + (m.level || 1), pet.color);
-        if (leveled) pushDmgPopup(S, S.player.x, S.player.y - 50, 'Trapping Lv' + sk.trapping.level + '!', '#f5c542');
+        if (leveled) pushDmgPopup(S, S.player.x, S.player.y - 50, 'Trapping Lv' + sk.trapping.level + '!', '#D8A94D');
         S.lockedTarget = null;
         BT_AUDIO.collect();
         setTimeout(function () {
@@ -434,7 +434,7 @@ export function MenuBar(props) {
           fontSize: 7,
           fontWeight: 900,
           color: '#fff',
-          background: '#5b52ff',
+          background: '#D8A85F',
           borderRadius: 6,
           padding: '0 3px',
           minWidth: 10,

@@ -46,7 +46,7 @@ export function InventoryPanel(props) {
     style: {
       fontSize: 16,
       fontWeight: 800,
-      color: '#f5c542',
+      color: '#D8A94D',
       marginBottom: 8
     }
   }, "\uD83C\uDF92 Equipment"), /*#__PURE__*/React.createElement("div", {
@@ -84,8 +84,8 @@ export function InventoryPanel(props) {
         marginBottom: 8,
         padding: 10,
         borderRadius: 10,
-        background: isActive ? 'rgba(245,197,66,.08)' : 'rgba(255,255,255,.03)',
-        border: "1.5px solid ".concat(isActive ? 'rgba(245,197,66,.3)' : 'rgba(255,255,255,.08)'),
+        background: isActive ? 'rgba(216,169,77,.08)' : 'rgba(255,255,255,.03)',
+        border: "1.5px solid ".concat(isActive ? 'rgba(216,169,77,.3)' : 'rgba(255,255,255,.08)'),
         position: 'relative'
       }
     }, isActive && /*#__PURE__*/React.createElement("div", {
@@ -95,7 +95,7 @@ export function InventoryPanel(props) {
         right: 8,
         fontSize: 7,
         fontWeight: 700,
-        color: '#f5c542'
+        color: '#D8A94D'
       }
     }, "ACTIVE"), /*#__PURE__*/React.createElement("div", {
       style: {
@@ -168,9 +168,9 @@ export function InventoryPanel(props) {
         fontSize: 7,
         padding: '1px 4px',
         borderRadius: 3,
-        background: 'rgba(255,94,108,.2)',
-        color: '#ff5e6c',
-        border: '1px solid rgba(255,94,108,.3)'
+        background: 'rgba(217,92,84,.2)',
+        color: '#D95C54',
+        border: '1px solid rgba(217,92,84,.3)'
       }
     }, "\u26A1VOLATILE +30%"), !wpn.element1 && /*#__PURE__*/React.createElement("span", {
       style: {
@@ -202,8 +202,8 @@ export function InventoryPanel(props) {
         flex: 1,
         padding: 8,
         borderRadius: 10,
-        background: on ? 'rgba(61,212,151,.07)' : 'rgba(255,255,255,.03)',
-        border: "1.5px solid ".concat(on ? 'rgba(61,212,151,.35)' : 'rgba(255,255,255,.08)'),
+        background: on ? 'rgba(89,191,145,.07)' : 'rgba(255,255,255,.03)',
+        border: "1.5px solid ".concat(on ? 'rgba(89,191,145,.35)' : 'rgba(255,255,255,.08)'),
         textAlign: 'center'
       }
     }, /*#__PURE__*/React.createElement("img", {
@@ -221,7 +221,7 @@ export function InventoryPanel(props) {
       style: {
         fontSize: 10,
         fontWeight: 700,
-        color: on ? '#3dd497' : 'rgba(255,255,255,.55)'
+        color: on ? '#59BF91' : 'rgba(255,255,255,.55)'
       }
     }, it.name), /*#__PURE__*/React.createElement("div", {
       style: {
@@ -239,7 +239,7 @@ export function InventoryPanel(props) {
         fontWeight: 700,
         borderRadius: 7,
         border: '1px solid rgba(255,255,255,.2)',
-        background: on ? 'rgba(255,94,108,.25)' : 'rgba(61,212,151,.25)',
+        background: on ? 'rgba(217,92,84,.25)' : 'rgba(89,191,145,.25)',
         color: '#fff',
         cursor: 'pointer',
         WebkitTapHighlightColor: 'transparent',
@@ -280,8 +280,8 @@ export function InventoryPanel(props) {
       marginBottom: 8,
       padding: 10,
       borderRadius: 10,
-      background: rpgState.amulet ? 'rgba(245,197,66,.05)' : 'rgba(255,255,255,.03)',
-      border: rpgState.amulet ? '1px solid rgba(245,197,66,.2)' : '1px solid rgba(255,255,255,.08)'
+      background: rpgState.amulet ? 'rgba(216,169,77,.05)' : 'rgba(255,255,255,.03)',
+      border: rpgState.amulet ? '1px solid rgba(216,169,77,.2)' : '1px solid rgba(255,255,255,.08)'
     }
   }, /*#__PURE__*/React.createElement("div", {
     style: {
@@ -301,7 +301,7 @@ export function InventoryPanel(props) {
     style: {
       fontSize: 11,
       fontWeight: 700,
-      color: '#f5c542'
+      color: '#D8A94D'
     }
   }, rpgState.amulet.name), /*#__PURE__*/React.createElement("div", {
     style: {
@@ -351,8 +351,8 @@ export function InventoryPanel(props) {
       marginBottom: 8,
       padding: 10,
       borderRadius: 10,
-      background: rpgState.shield ? 'rgba(91,82,255,.05)' : 'rgba(255,255,255,.03)',
-      border: rpgState.shield ? '1px solid rgba(91,82,255,.2)' : '1px solid rgba(255,255,255,.08)'
+      background: rpgState.shield ? 'rgba(216,168,95,.05)' : 'rgba(255,255,255,.03)',
+      border: rpgState.shield ? '1px solid rgba(216,168,95,.2)' : '1px solid rgba(255,255,255,.08)'
     }
   }, /*#__PURE__*/React.createElement("div", {
     style: {
@@ -372,7 +372,7 @@ export function InventoryPanel(props) {
     style: {
       fontSize: 11,
       fontWeight: 700,
-      color: '#5b52ff'
+      color: '#D8A85F'
     }
   }, rpgState.shield.name), /*#__PURE__*/React.createElement("div", {
     style: {
@@ -415,7 +415,7 @@ export function InventoryPanel(props) {
       style: {
         fontSize: 10,
         fontWeight: 700,
-        color: '#3dd497',
+        color: '#59BF91',
         marginTop: 4,
         marginBottom: 4
       }
@@ -449,7 +449,7 @@ export function InventoryPanel(props) {
           cursor: 'pointer',
           background: atFull ? 'rgba(255,255,255,.04)' : 'rgba(61,220,151,.1)',
           border: atFull ? '1px solid rgba(255,255,255,.08)' : '1px solid rgba(61,220,151,.2)',
-          color: atFull ? 'rgba(255,255,255,.3)' : '#3dd497',
+          color: atFull ? 'rgba(255,255,255,.3)' : '#59BF91',
           fontWeight: 700,
           textTransform: 'capitalize'
         },
@@ -465,7 +465,7 @@ export function InventoryPanel(props) {
           try {
             localStorage.setItem('bt_rpg', JSON.stringify(R));
           } catch (e) {}
-          pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, '+' + healed + ' HP', '#3dd497');
+          pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, '+' + healed + ' HP', '#59BF91');
           /* (Eat handler patched to send eat_request -- see block above.) */
           if (stateRef.current._serverMonsters && stateRef.current.channel) {
             try { stateRef.current.channel.send({ type: 'eat_request', payload: { invKey: key } }); } catch (e) {}
@@ -580,7 +580,7 @@ export function InventoryPanel(props) {
       }
     }, stashDmg), dmgDiff !== 0 && /*#__PURE__*/React.createElement("span", {
       style: {
-        color: dmgDiff > 0 ? '#3dd497' : '#ff5e6c',
+        color: dmgDiff > 0 ? '#59BF91' : '#D95C54',
         marginLeft: 2,
         fontSize: 7
       }
@@ -594,7 +594,7 @@ export function InventoryPanel(props) {
       }
     }, stashSpd), spdDiff !== 0 && /*#__PURE__*/React.createElement("span", {
       style: {
-        color: spdDiff > 0 ? '#3dd497' : '#ff5e6c',
+        color: spdDiff > 0 ? '#59BF91' : '#D95C54',
         marginLeft: 2,
         fontSize: 7
       }
@@ -608,7 +608,7 @@ export function InventoryPanel(props) {
       }
     }, stashDps), dpsDiff !== 0 && /*#__PURE__*/React.createElement("span", {
       style: {
-        color: dpsDiff > 0 ? '#3dd497' : '#ff5e6c',
+        color: dpsDiff > 0 ? '#59BF91' : '#D95C54',
         marginLeft: 2,
         fontSize: 7
       }
@@ -640,7 +640,7 @@ export function InventoryPanel(props) {
     }, sw.element2), sw.isVolatile && /*#__PURE__*/React.createElement("span", {
       style: {
         fontSize: 6,
-        color: '#ff5e6c'
+        color: '#D95C54'
       }
     }, "\u26A1VOL"), !sw.element1 && /*#__PURE__*/React.createElement("span", {
       style: {
@@ -654,7 +654,7 @@ export function InventoryPanel(props) {
       return /*#__PURE__*/React.createElement("span", {
         style: {
           fontSize: 6,
-          color: met ? '#3dd497' : '#ff5e6c',
+          color: met ? '#59BF91' : '#D95C54',
           marginLeft: 4
         }
       }, req.label, " ", rpgState[req.stat] || 0, "/", req.req, " ", met ? '✓' : '✗');
@@ -668,8 +668,8 @@ export function InventoryPanel(props) {
         flex: 1,
         padding: '3px 0',
         borderRadius: 5,
-        border: '1px solid rgba(91,82,255,.4)',
-        background: 'rgba(91,82,255,.15)',
+        border: '1px solid rgba(216,168,95,.4)',
+        background: 'rgba(216,168,95,.15)',
         color: '#a78bfa',
         fontSize: 8,
         fontWeight: 700,
@@ -682,7 +682,7 @@ export function InventoryPanel(props) {
         /* Check stat requirement */
         if (!canEquipItem(R, swapWpn, swapWpn.type)) {
           var req = getEquipReqLabel(swapWpn, swapWpn.type);
-          pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'Need ' + req.req + ' ' + req.label + ' (have ' + (R[req.stat] || 0) + ')', '#ff5e6c');
+          pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'Need ' + req.req + ' ' + req.label + ' (have ' + (R[req.stat] || 0) + ')', '#D95C54');
           return;
         }
         var wDef = WEAPON_TYPES[swapWpn.type];
@@ -712,9 +712,9 @@ export function InventoryPanel(props) {
         flex: 1,
         padding: '3px 0',
         borderRadius: 5,
-        border: '1px solid rgba(245,197,66,.3)',
-        background: 'rgba(245,197,66,.1)',
-        color: '#f5c542',
+        border: '1px solid rgba(216,169,77,.3)',
+        background: 'rgba(216,169,77,.1)',
+        color: '#D8A94D',
         fontSize: 8,
         fontWeight: 700,
         cursor: 'pointer'
@@ -744,7 +744,7 @@ export function InventoryPanel(props) {
           localStorage.setItem('bt_rpg', JSON.stringify(R));
         } catch (e) {}
         var S = stateRef.current;
-        pushDmgPopup(S, S.player.x, S.player.y - 30, '+' + sellVal + 'G', '#f5c542');
+        pushDmgPopup(S, S.player.x, S.player.y - 30, '+' + sellVal + 'G', '#D8A94D');
         BT_AUDIO.beep(400, 0.05, 0.08, 'sine');
       }
     }, "\uD83D\uDCB0 Sell (", Math.ceil((sw.tierMult || 1) * (((_WEAPON_TYPES$sw$type2 = WEAPON_TYPES[sw.type]) === null || _WEAPON_TYPES$sw$type2 === void 0 ? void 0 : _WEAPON_TYPES$sw$type2.base) || 30) * 0.5), "g)")));
@@ -813,8 +813,8 @@ export function InventoryPanel(props) {
         padding: 6,
         borderRadius: 8,
         textAlign: 'center',
-        background: isActive ? 'rgba(245,197,66,.1)' : 'rgba(255,255,255,.03)',
-        border: "1px solid ".concat(isActive ? 'rgba(245,197,66,.3)' : 'rgba(255,255,255,.08)'),
+        background: isActive ? 'rgba(216,169,77,.1)' : 'rgba(255,255,255,.03)',
+        border: "1px solid ".concat(isActive ? 'rgba(216,169,77,.3)' : 'rgba(255,255,255,.08)'),
         cursor: 'pointer'
       },
       onClick: function onClick() {
@@ -850,7 +850,7 @@ export function InventoryPanel(props) {
       style: {
         fontSize: 6,
         fontWeight: 700,
-        color: '#f5c542'
+        color: '#D8A94D'
       }
     }, "ACTIVE"));
   })), (((_rpgState$lifeSkills42 = rpgState.lifeSkills) === null || _rpgState$lifeSkills42 === void 0 ? void 0 : _rpgState$lifeSkills42.pets) || []).length > 0 && /*#__PURE__*/React.createElement("div", {

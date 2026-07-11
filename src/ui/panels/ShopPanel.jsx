@@ -37,7 +37,7 @@ export function ShopPanel(props) {
     style: {
       fontSize: 16,
       fontWeight: 800,
-      color: '#f5c542',
+      color: '#D8A94D',
       marginBottom: 2
     }
   }, "\uD83C\uDFEA Market"), /*#__PURE__*/React.createElement("div", {
@@ -50,7 +50,7 @@ export function ShopPanel(props) {
     style: {
       fontSize: 11,
       fontWeight: 700,
-      color: '#ff5e6c',
+      color: '#D95C54',
       marginBottom: 4
     }
   }, "Sell Items"), /*#__PURE__*/React.createElement("div", {
@@ -103,7 +103,7 @@ export function ShopPanel(props) {
         setRpgState(_objectSpread({}, R));
         syncRpgToServer(R);
         BT_AUDIO.beep(500, 0.05, 0.08, 'sine');
-        pushDmgPopup(S, S.player.x, S.player.y - 30, '+' + price + 'G', '#f5c542');
+        pushDmgPopup(S, S.player.x, S.player.y - 30, '+' + price + 'G', '#D8A94D');
       }
     }, /*#__PURE__*/React.createElement("div", {
       style: {
@@ -112,7 +112,7 @@ export function ShopPanel(props) {
     }, emojis[key] || '📦'), /*#__PURE__*/React.createElement("div", {
       style: {
         fontSize: 8,
-        color: '#f5c542'
+        color: '#D8A94D'
       }
     }, price, "G"), /*#__PURE__*/React.createElement("div", {
       style: {
@@ -124,7 +124,7 @@ export function ShopPanel(props) {
     style: {
       fontSize: 11,
       fontWeight: 700,
-      color: '#3dd497',
+      color: '#59BF91',
       marginBottom: 4
     }
   }, "Buy Items"), SHOP_ITEMS_FOR_SALE.map(function (item) {
@@ -160,7 +160,7 @@ export function ShopPanel(props) {
         padding: '4px 10px',
         borderRadius: 6,
         border: 'none',
-        background: rpgState.coins >= item.cost ? '#3dd497' : 'rgba(60,60,60,.5)',
+        background: rpgState.coins >= item.cost ? '#59BF91' : 'rgba(60,60,60,.5)',
         color: '#fff',
         fontSize: 10,
         fontWeight: 700,
@@ -173,7 +173,7 @@ export function ShopPanel(props) {
         R.coins -= item.cost;
         if (item.key === 'potions') {
           R.hp = Math.min(R.maxHp, R.hp + 30);
-          pushDmgPopup(S, S.player.x, S.player.y - 30, '+30HP', '#3dd497');
+          pushDmgPopup(S, S.player.x, S.player.y - 30, '+30HP', '#59BF91');
         }
         setRpgState(_objectSpread({}, R));
         BT_AUDIO.collect();
@@ -187,7 +187,7 @@ export function ShopPanel(props) {
       borderRadius: 8,
       border: '1px solid rgba(255,92,108,.3)',
       background: 'rgba(255,92,108,.15)',
-      color: '#ff5e6c',
+      color: '#D95C54',
       fontSize: 11,
       fontWeight: 700,
       cursor: 'pointer'
@@ -209,7 +209,7 @@ export function ShopPanel(props) {
       setRpgState(_objectSpread({}, R));
       if (total > 0) syncRpgToServer(R);
       if (total > 0) {
-        pushDmgPopup(S, S.player.x, S.player.y - 30, '+' + total + 'G', '#f5c542');
+        pushDmgPopup(S, S.player.x, S.player.y - 30, '+' + total + 'G', '#D8A94D');
         BT_AUDIO.collect();
       }
     }

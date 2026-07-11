@@ -51,7 +51,7 @@ export function ExchangePanel(props) {
     style: {
       fontSize: 16,
       fontWeight: 800,
-      color: '#5b52ff',
+      color: '#D8A85F',
       marginBottom: 2
     }
   }, "\uD83C\uDFEA Marketplace"), /*#__PURE__*/React.createElement("div", {
@@ -85,7 +85,7 @@ export function ExchangePanel(props) {
         fontWeight: 700,
         border: 'none',
         cursor: 'pointer',
-        background: mktMode === id ? 'rgba(91,82,255,.2)' : 'rgba(255,255,255,.03)',
+        background: mktMode === id ? 'rgba(216,168,95,.2)' : 'rgba(255,255,255,.03)',
         color: mktMode === id ? '#8880ff' : 'rgba(255,255,255,.4)',
         fontFamily: 'inherit'
       }
@@ -94,7 +94,7 @@ export function ExchangePanel(props) {
     style: {
       fontSize: 8,
       fontWeight: 700,
-      color: '#f5c542',
+      color: '#D8A94D',
       marginBottom: 2
     }
   }, "Category"), /*#__PURE__*/React.createElement("div", {
@@ -119,8 +119,8 @@ export function ExchangePanel(props) {
         borderRadius: 4,
         fontSize: 8,
         fontWeight: 700,
-        border: '1px solid ' + (mktCategory === k ? 'rgba(91,82,255,.4)' : 'rgba(255,255,255,.08)'),
-        background: mktCategory === k ? 'rgba(91,82,255,.12)' : 'rgba(255,255,255,.02)',
+        border: '1px solid ' + (mktCategory === k ? 'rgba(216,168,95,.4)' : 'rgba(255,255,255,.08)'),
+        background: mktCategory === k ? 'rgba(216,168,95,.12)' : 'rgba(255,255,255,.02)',
         color: mktCategory === k ? '#a0a0ff' : 'rgba(255,255,255,.4)',
         cursor: 'pointer'
       }
@@ -129,7 +129,7 @@ export function ExchangePanel(props) {
     style: {
       fontSize: 8,
       fontWeight: 700,
-      color: '#f5c542',
+      color: '#D8A94D',
       marginBottom: 2
     }
   }, "Type"), /*#__PURE__*/React.createElement("div", {
@@ -151,8 +151,8 @@ export function ExchangePanel(props) {
         borderRadius: 4,
         fontSize: 8,
         fontWeight: 600,
-        border: '1px solid ' + (mktSubtype === st ? 'rgba(91,82,255,.3)' : 'rgba(255,255,255,.06)'),
-        background: mktSubtype === st ? 'rgba(91,82,255,.1)' : 'transparent',
+        border: '1px solid ' + (mktSubtype === st ? 'rgba(216,168,95,.3)' : 'rgba(255,255,255,.06)'),
+        background: mktSubtype === st ? 'rgba(216,168,95,.1)' : 'transparent',
         color: mktSubtype === st ? '#c0c0ff' : 'rgba(255,255,255,.35)',
         cursor: 'pointer'
       }
@@ -161,7 +161,7 @@ export function ExchangePanel(props) {
     style: {
       fontSize: 8,
       fontWeight: 700,
-      color: '#f5c542',
+      color: '#D8A94D',
       marginBottom: 2
     }
   }, "Material Tier"), /*#__PURE__*/React.createElement("div", {
@@ -195,7 +195,7 @@ export function ExchangePanel(props) {
     style: {
       fontSize: 8,
       fontWeight: 700,
-      color: '#f5c542',
+      color: '#D8A94D',
       marginBottom: 2
     }
   }, "Element (optional)"), /*#__PURE__*/React.createElement("div", {
@@ -215,8 +215,8 @@ export function ExchangePanel(props) {
       borderRadius: 3,
       fontSize: 7,
       fontWeight: 700,
-      border: '1px solid ' + (mktElement1 === null ? 'rgba(91,82,255,.3)' : 'rgba(255,255,255,.06)'),
-      background: mktElement1 === null ? 'rgba(91,82,255,.1)' : 'transparent',
+      border: '1px solid ' + (mktElement1 === null ? 'rgba(216,168,95,.3)' : 'rgba(255,255,255,.06)'),
+      background: mktElement1 === null ? 'rgba(216,168,95,.1)' : 'transparent',
       color: mktElement1 === null ? '#a0a0ff' : 'rgba(255,255,255,.25)',
       cursor: 'pointer'
     }
@@ -256,7 +256,7 @@ export function ExchangePanel(props) {
     style: {
       fontSize: 8,
       fontWeight: 700,
-      color: '#f5c542'
+      color: '#D8A94D'
     }
   }, mktMode === 'buy' ? 'Max Bid' : 'Ask Price'), /*#__PURE__*/React.createElement("input", {
     type: "number",
@@ -272,7 +272,7 @@ export function ExchangePanel(props) {
       borderRadius: 4,
       border: '1px solid rgba(255,255,255,.15)',
       background: 'rgba(255,255,255,.05)',
-      color: '#f5c542',
+      color: '#D8A94D',
       fontSize: 11,
       fontWeight: 800,
       fontFamily: 'Source Sans 3,sans-serif',
@@ -294,7 +294,7 @@ export function ExchangePanel(props) {
     style: {
       fontSize: 8,
       fontWeight: 700,
-      color: '#f5c542',
+      color: '#D8A94D',
       marginBottom: 2
     }
   }, "Select Item from Stash"), /*#__PURE__*/React.createElement("div", {
@@ -322,8 +322,8 @@ export function ExchangePanel(props) {
         borderRadius: 4,
         fontSize: 7,
         fontWeight: 700,
-        border: '1.5px solid ' + (sel ? '#5b52ff' : 'rgba(255,255,255,.08)'),
-        background: sel ? 'rgba(91,82,255,.12)' : 'rgba(255,255,255,.02)',
+        border: '1.5px solid ' + (sel ? '#D8A85F' : 'rgba(255,255,255,.08)'),
+        background: sel ? 'rgba(216,168,95,.12)' : 'rgba(255,255,255,.02)',
         color: sel ? '#fff' : 'rgba(255,255,255,.5)',
         cursor: 'pointer'
       }
@@ -355,7 +355,7 @@ export function ExchangePanel(props) {
               _context0.n = 2;
               break;
             }
-            pushDmgPopup(S, S.player.x, S.player.y - 30, 'Not enough gold!', '#ff5e6c');
+            pushDmgPopup(S, S.player.x, S.player.y - 30, 'Not enough gold!', '#D95C54');
             return _context0.a(2);
           case 2:
             _context0.n = 4;
@@ -369,7 +369,7 @@ export function ExchangePanel(props) {
               _context0.n = 4;
               break;
             }
-            pushDmgPopup(S, S.player.x, S.player.y - 30, 'Select an item first!', '#ff5e6c');
+            pushDmgPopup(S, S.player.x, S.player.y - 30, 'Select an item first!', '#D95C54');
             return _context0.a(2);
           case 4:
             sellItem = mktMode === 'sell' ? R.weaponStash[mktSellItem] : null;
@@ -416,7 +416,7 @@ export function ExchangePanel(props) {
               _context0.n = 8;
               break;
             }
-            pushDmgPopup(S, S.player.x, S.player.y - 30, data.error || 'Failed!', '#ff5e6c');
+            pushDmgPopup(S, S.player.x, S.player.y - 30, data.error || 'Failed!', '#D95C54');
             return _context0.a(2);
           case 8:
             /* v2.3.1118: settlement is SERVER-SIDE when the worker sends
@@ -465,10 +465,10 @@ export function ExchangePanel(props) {
             if (mktMode === 'sell' && mktSellItem !== null) setMktSellItem(null);
             if (data.matched) {
               execPrice = data.execPrice;
-              pushDmgPopup(S, S.player.x, S.player.y - 30, (mktMode === 'buy' ? 'Bought for ' : 'Sold for ') + execPrice + 'G!', '#3dd497');
+              pushDmgPopup(S, S.player.x, S.player.y - 30, (mktMode === 'buy' ? 'Bought for ' : 'Sold for ') + execPrice + 'G!', '#59BF91');
               BT_AUDIO.collect();
             } else {
-              pushDmgPopup(S, S.player.x, S.player.y - 30, mktMode === 'buy' ? 'Buy order placed!' : 'Listed for sale!', '#5b52ff');
+              pushDmgPopup(S, S.player.x, S.player.y - 30, mktMode === 'buy' ? 'Buy order placed!' : 'Listed for sale!', '#D8A85F');
               BT_AUDIO.beep(500, 0.05, 0.08, 'sine');
             }
             /* Refresh order book from server */
@@ -493,7 +493,7 @@ export function ExchangePanel(props) {
           case 14:
             _context0.p = 14;
             _t0 = _context0.v;
-            pushDmgPopup(S, S.player.x, S.player.y - 30, 'Server error!', '#ff5e6c');
+            pushDmgPopup(S, S.player.x, S.player.y - 30, 'Server error!', '#D95C54');
           case 15:
             return _context0.a(2);
         }
@@ -505,9 +505,9 @@ export function ExchangePanel(props) {
       borderRadius: 6,
       fontSize: 11,
       fontWeight: 800,
-      border: '1.5px solid ' + (mktMode === 'buy' ? 'rgba(91,82,255,.4)' : 'rgba(245,197,66,.4)'),
-      background: mktMode === 'buy' ? 'rgba(91,82,255,.15)' : 'rgba(245,197,66,.15)',
-      color: mktMode === 'buy' ? '#a0a0ff' : '#f5c542',
+      border: '1.5px solid ' + (mktMode === 'buy' ? 'rgba(216,168,95,.4)' : 'rgba(216,169,77,.4)'),
+      background: mktMode === 'buy' ? 'rgba(216,168,95,.15)' : 'rgba(216,169,77,.15)',
+      color: mktMode === 'buy' ? '#a0a0ff' : '#D8A94D',
       cursor: 'pointer',
       marginBottom: 8
     }
@@ -552,7 +552,7 @@ export function ExchangePanel(props) {
       style: {
         fontSize: 9,
         fontWeight: 700,
-        color: '#3dd497',
+        color: '#59BF91',
         flex: 1
       }
     }, "\uD83D\uDCCA Order Book \u2014 ", ((_BLACKSMITH_TIERS$mkt2 = BLACKSMITH_TIERS[mktTier]) === null || _BLACKSMITH_TIERS$mkt2 === void 0 ? void 0 : _BLACKSMITH_TIERS$mkt2.label) || ((_WOODWORKING_TIERS$mk2 = WOODWORKING_TIERS[mktTier === null || mktTier === void 0 ? void 0 : mktTier.replace('ww_', '')]) === null || _WOODWORKING_TIERS$mk2 === void 0 ? void 0 : _WOODWORKING_TIERS$mk2.label) || mktTier, " ", ((_WEAPON_TYPES$mktSubt = WEAPON_TYPES[mktSubtype]) === null || _WEAPON_TYPES$mktSubt === void 0 ? void 0 : _WEAPON_TYPES$mktSubt.label) || mktSubtype), /*#__PURE__*/React.createElement("button", {
@@ -578,7 +578,7 @@ export function ExchangePanel(props) {
       style: {
         fontSize: 7,
         fontWeight: 700,
-        color: 'rgba(255,94,108,.6)',
+        color: 'rgba(217,92,84,.6)',
         marginBottom: 2
       }
     }, "SELL ORDERS (lowest first)"), sells.slice(0, 8).map(function (o) {
@@ -590,14 +590,14 @@ export function ExchangePanel(props) {
           gap: 4,
           padding: '3px 6px',
           borderRadius: 4,
-          background: 'rgba(255,94,108,.05)',
-          border: '1px solid rgba(255,94,108,.1)',
+          background: 'rgba(217,92,84,.05)',
+          border: '1px solid rgba(217,92,84,.1)',
           marginBottom: 2,
           fontSize: 8
         }
       }, /*#__PURE__*/React.createElement("span", {
         style: {
-          color: '#ff5e6c',
+          color: '#D95C54',
           fontWeight: 700
         }
       }, o.price, "G"), /*#__PURE__*/React.createElement("span", {
@@ -613,14 +613,14 @@ export function ExchangePanel(props) {
       }, o.playerName), o.playerId === S.myId && /*#__PURE__*/React.createElement("span", {
         style: {
           fontSize: 6,
-          color: '#5b52ff'
+          color: '#D8A85F'
         }
       }, "(you)"));
     }), buys.length > 0 && /*#__PURE__*/React.createElement("div", {
       style: {
         fontSize: 7,
         fontWeight: 700,
-        color: 'rgba(61,212,151,.6)',
+        color: 'rgba(89,191,145,.6)',
         marginTop: 4,
         marginBottom: 2
       }
@@ -633,14 +633,14 @@ export function ExchangePanel(props) {
           gap: 4,
           padding: '3px 6px',
           borderRadius: 4,
-          background: 'rgba(61,212,151,.05)',
-          border: '1px solid rgba(61,212,151,.1)',
+          background: 'rgba(89,191,145,.05)',
+          border: '1px solid rgba(89,191,145,.1)',
           marginBottom: 2,
           fontSize: 8
         }
       }, /*#__PURE__*/React.createElement("span", {
         style: {
-          color: '#3dd497',
+          color: '#59BF91',
           fontWeight: 700
         }
       }, o.price, "G"), /*#__PURE__*/React.createElement("span", {
@@ -656,7 +656,7 @@ export function ExchangePanel(props) {
       }, o.playerName), o.playerId === S.myId && /*#__PURE__*/React.createElement("span", {
         style: {
           fontSize: 6,
-          color: '#5b52ff'
+          color: '#D8A85F'
         }
       }, "(you)"));
     }), sells.length === 0 && buys.length === 0 && /*#__PURE__*/React.createElement("div", {
@@ -678,7 +678,7 @@ export function ExchangePanel(props) {
       style: {
         fontSize: 9,
         fontWeight: 700,
-        color: '#5b52ff',
+        color: '#D8A85F',
         flex: 1
       }
     }, "Your Active Orders (", filtered.length, ")"), /*#__PURE__*/React.createElement("button", {
@@ -725,7 +725,7 @@ export function ExchangePanel(props) {
         style: {
           fontSize: 8,
           fontWeight: 700,
-          color: o.type === 'buy' ? '#3dd497' : '#ff5e6c'
+          color: o.type === 'buy' ? '#59BF91' : '#D95C54'
         }
       }, o.type === 'buy' ? 'BUY' : 'SELL'), /*#__PURE__*/React.createElement("div", {
         style: {
@@ -750,7 +750,7 @@ export function ExchangePanel(props) {
         style: {
           fontSize: 10,
           fontWeight: 800,
-          color: '#f5c542'
+          color: '#D8A94D'
         }
       }, o.price, "G"), /*#__PURE__*/React.createElement("button", {
         onClick: /*#__PURE__*/_asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee1() {
@@ -804,7 +804,7 @@ export function ExchangePanel(props) {
               case 3:
                 _context1.p = 3;
                 _t1 = _context1.v;
-                pushDmgPopup(S, S.player.x, S.player.y - 30, 'Cancel failed', '#ff5e6c');
+                pushDmgPopup(S, S.player.x, S.player.y - 30, 'Cancel failed', '#D95C54');
               case 4:
                 return _context1.a(2);
             }
@@ -815,9 +815,9 @@ export function ExchangePanel(props) {
           borderRadius: 3,
           fontSize: 7,
           fontWeight: 700,
-          border: '1px solid rgba(255,94,108,.2)',
-          background: 'rgba(255,94,108,.08)',
-          color: '#ff5e6c',
+          border: '1px solid rgba(217,92,84,.2)',
+          background: 'rgba(217,92,84,.08)',
+          color: '#D95C54',
           cursor: 'pointer'
         }
       }, "\u2715"));

@@ -69,7 +69,7 @@ export function QuestPanel(props) {
     style: {
       fontSize: 13,
       fontWeight: 700,
-      color: '#f5c542',
+      color: '#D8A94D',
       marginBottom: 4
     }
   }, questPanel.quest.title), /*#__PURE__*/React.createElement("div", {
@@ -101,7 +101,7 @@ export function QuestPanel(props) {
     style: {
       fontSize: 9,
       fontWeight: 700,
-      color: '#3dd497',
+      color: '#59BF91',
       marginTop: 4
     }
   }, "\u2713 Complete!")), /*#__PURE__*/React.createElement("div", {
@@ -116,7 +116,7 @@ export function QuestPanel(props) {
       padding: '8px',
       borderRadius: 8,
       border: 'none',
-      background: '#5b52ff',
+      background: '#D8A85F',
       color: '#fff',
       fontWeight: 700,
       fontSize: 12,
@@ -132,7 +132,7 @@ export function QuestPanel(props) {
       padding: '8px',
       borderRadius: 8,
       border: 'none',
-      background: '#3dd497',
+      background: '#59BF91',
       color: '#000',
       fontWeight: 700,
       fontSize: 12,

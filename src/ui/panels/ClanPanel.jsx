@@ -96,11 +96,11 @@ export function ClanPanel(props) {
         width: '100%',
         padding: '10px',
         borderRadius: 8,
-        border: '1px solid #3dd497',
+        border: '1px solid #59BF91',
         fontSize: 12,
         fontWeight: 800,
-        background: 'rgba(61,212,151,.15)',
-        color: '#3dd497',
+        background: 'rgba(89,191,145,.15)',
+        color: '#59BF91',
         cursor: 'pointer',
         marginBottom: 8
       },
@@ -112,7 +112,7 @@ export function ClanPanel(props) {
           payload: { inviter: _inv.inviter }
         });
         S._pendingClanInvite = null;
-        pushDmgPopup(S, S.player.x, S.player.y - 30, 'Joining [' + _inv.clanTag + ']...', '#3dd497');
+        pushDmgPopup(S, S.player.x, S.player.y - 30, 'Joining [' + _inv.clanTag + ']...', '#59BF91');
       }
     }, "\u2705 Accept invite: [", _inv.clanTag, "] ", _inv.clanName, " (from ", _inv.fromName, ")");
   })(), /*#__PURE__*/React.createElement("div", {
@@ -206,16 +206,16 @@ export function ClanPanel(props) {
         var name = (_nameRef$current = nameRef.current) === null || _nameRef$current === void 0 || (_nameRef$current = _nameRef$current.value) === null || _nameRef$current === void 0 ? void 0 : _nameRef$current.trim();
         var tag = (_tagRef$current = tagRef.current) === null || _tagRef$current === void 0 || (_tagRef$current = _tagRef$current.value) === null || _tagRef$current === void 0 || (_tagRef$current = _tagRef$current.trim()) === null || _tagRef$current === void 0 ? void 0 : _tagRef$current.toUpperCase();
         if (!name || name.length < 3) {
-          pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'Name too short (min 3)', '#ff5e6c');
+          pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'Name too short (min 3)', '#D95C54');
           return;
         }
         if (!tag || tag.length < 1) {
-          pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'Need a clan tag', '#ff5e6c');
+          pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'Need a clan tag', '#D95C54');
           return;
         }
         var R = stateRef.current.rpg;
         if (R.coins < CLAN_CREATE_COST) {
-          pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'Need ' + CLAN_CREATE_COST + 'g', '#ff5e6c');
+          pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'Need ' + CLAN_CREATE_COST + 'g', '#D95C54');
           return;
         }
         /* v2.3.1125: registry-capable workers own clan creation -- the
@@ -441,9 +441,9 @@ export function ClanPanel(props) {
       fontSize: 7,
       fontWeight: 700,
       cursor: 'pointer',
-      border: '1px solid rgba(255,94,108,.3)',
-      background: 'rgba(255,94,108,.1)',
-      color: '#ff5e6c'
+      border: '1px solid rgba(217,92,84,.3)',
+      background: 'rgba(217,92,84,.1)',
+      color: '#D95C54'
     },
     onClick: function onClick() {
       var cleared = _objectSpread(_objectSpread({}, clanData), {}, {
@@ -466,7 +466,7 @@ export function ClanPanel(props) {
       cursor: 'pointer',
       border: '1px solid rgba(61,220,151,.3)',
       background: 'rgba(61,220,151,.1)',
-      color: '#3dd497'
+      color: '#59BF91'
     },
     onClick: function onClick() {
       try {
@@ -503,14 +503,14 @@ export function ClanPanel(props) {
       marginBottom: 8,
       padding: 8,
       borderRadius: 8,
-      background: 'rgba(255,94,108,.05)',
-      border: '1px solid rgba(255,94,108,.15)'
+      background: 'rgba(217,92,84,.05)',
+      border: '1px solid rgba(217,92,84,.15)'
     }
   }, /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 10,
       fontWeight: 800,
-      color: '#ff5e6c',
+      color: '#D95C54',
       marginBottom: 4
     }
   }, "\u2694\uFE0F Clan Wars"), stateRef.current._activeClanWar ? function (_ZONES$war$zone4, _ZONES$war$zone5) {
@@ -535,7 +535,7 @@ export function ClanPanel(props) {
       style: {
         fontSize: 10,
         fontWeight: 800,
-        color: us.color || '#5b52ff'
+        color: us.color || '#D8A85F'
       }
     }, "[", us.tag, "]"), /*#__PURE__*/React.createElement("div", {
       style: {
@@ -557,7 +557,7 @@ export function ClanPanel(props) {
       style: {
         fontSize: 10,
         fontWeight: 800,
-        color: them.color || '#ff5e6c'
+        color: them.color || '#D95C54'
       }
     }, "[", them.tag, "]"), /*#__PURE__*/React.createElement("div", {
       style: {
@@ -623,9 +623,9 @@ export function ClanPanel(props) {
         borderRadius: 3,
         fontSize: 7,
         fontWeight: 700,
-        border: '1px solid ' + (sel ? (((_ELEMENTS$z$element = ELEMENTS[z.element]) === null || _ELEMENTS$z$element === void 0 ? void 0 : _ELEMENTS$z$element.color) || '#5b52ff') + '60' : 'rgba(255,255,255,.06)'),
-        background: sel ? (((_ELEMENTS$z$element2 = ELEMENTS[z.element]) === null || _ELEMENTS$z$element2 === void 0 ? void 0 : _ELEMENTS$z$element2.color) || '#5b52ff') + '15' : 'transparent',
-        color: sel ? ((_ELEMENTS$z$element3 = ELEMENTS[z.element]) === null || _ELEMENTS$z$element3 === void 0 ? void 0 : _ELEMENTS$z$element3.color) || '#5b52ff' : 'rgba(255,255,255,.25)',
+        border: '1px solid ' + (sel ? (((_ELEMENTS$z$element = ELEMENTS[z.element]) === null || _ELEMENTS$z$element === void 0 ? void 0 : _ELEMENTS$z$element.color) || '#D8A85F') + '60' : 'rgba(255,255,255,.06)'),
+        background: sel ? (((_ELEMENTS$z$element2 = ELEMENTS[z.element]) === null || _ELEMENTS$z$element2 === void 0 ? void 0 : _ELEMENTS$z$element2.color) || '#D8A85F') + '15' : 'transparent',
+        color: sel ? ((_ELEMENTS$z$element3 = ELEMENTS[z.element]) === null || _ELEMENTS$z$element3 === void 0 ? void 0 : _ELEMENTS$z$element3.color) || '#D8A85F' : 'rgba(255,255,255,.25)',
         cursor: 'pointer'
       }
     }, z.name);
@@ -683,9 +683,9 @@ export function ClanPanel(props) {
           borderRadius: 4,
           fontSize: 8,
           fontWeight: 700,
-          border: '1.5px solid ' + (sel ? '#ff5e6c' : 'rgba(255,255,255,.08)'),
-          background: sel ? 'rgba(255,94,108,.12)' : 'rgba(255,255,255,.02)',
-          color: sel ? '#ff5e6c' : 'rgba(255,255,255,.4)',
+          border: '1.5px solid ' + (sel ? '#D95C54' : 'rgba(255,255,255,.08)'),
+          background: sel ? 'rgba(217,92,84,.12)' : 'rgba(255,255,255,.02)',
+          color: sel ? '#D95C54' : 'rgba(255,255,255,.4)',
           cursor: 'pointer'
         }
       }, "[", c.tag, "] ", c.name);
@@ -697,7 +697,7 @@ export function ClanPanel(props) {
       var zone = S._warZone || CLAN_WAR_ZONES[0];
       var target = S._warTargetData;
       if (!target) {
-        pushDmgPopup(S, S.player.x, S.player.y - 30, 'Select a target clan!', '#ff5e6c');
+        pushDmgPopup(S, S.player.x, S.player.y - 30, 'Select a target clan!', '#D95C54');
         return;
       }
       /* v2.3.1125: referee-capable workers BUILD the war themselves
@@ -731,7 +731,7 @@ export function ClanPanel(props) {
           }
         });
       }
-      pushDmgPopup(S, S.player.x, S.player.y - 40, 'WAR DECLARED vs [' + target.tag + ']!', '#ff5e6c');
+      pushDmgPopup(S, S.player.x, S.player.y - 40, 'WAR DECLARED vs [' + target.tag + ']!', '#D95C54');
       pushDmgPopup(S, S.player.x, S.player.y - 25, 'Battle zone: ' + ((_ZONES$zone = ZONES[zone]) === null || _ZONES$zone === void 0 ? void 0 : _ZONES$zone.name), 'rgba(255,255,255,.5)');
       BT_AUDIO.beep(200, 0.15, 0.2, 'sawtooth');
       setTimeout(function () {
@@ -746,9 +746,9 @@ export function ClanPanel(props) {
       borderRadius: 6,
       fontSize: 10,
       fontWeight: 800,
-      border: '1.5px solid rgba(255,94,108,.4)',
-      background: 'rgba(255,94,108,.15)',
-      color: '#ff5e6c',
+      border: '1.5px solid rgba(217,92,84,.4)',
+      background: 'rgba(217,92,84,.15)',
+      color: '#D95C54',
       cursor: 'pointer'
     }
   }, "\u2694\uFE0F Declare War"))), /*#__PURE__*/React.createElement("button", {
@@ -759,9 +759,9 @@ export function ClanPanel(props) {
       fontSize: 9,
       fontWeight: 700,
       cursor: 'pointer',
-      border: '1px solid rgba(255,94,108,.3)',
-      background: 'rgba(255,94,108,.08)',
-      color: '#ff5e6c'
+      border: '1px solid rgba(217,92,84,.3)',
+      background: 'rgba(217,92,84,.08)',
+      color: '#D95C54'
     },
     onClick: function onClick() {
       setClanData(null);
@@ -769,7 +769,7 @@ export function ClanPanel(props) {
       try {
         localStorage.removeItem('bt_clan');
       } catch (e) {}
-      pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'Left clan', '#ff5e6c');
+      pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'Left clan', '#D95C54');
     }
   }, "Leave Clan"))));
 }

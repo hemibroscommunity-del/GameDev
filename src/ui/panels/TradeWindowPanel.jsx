@@ -36,7 +36,7 @@ function OfferChips({ offer, empty }) {
         </span>
       ))}
       {gold > 0 && (
-        <span style={{ fontSize: 9, padding: '2px 5px', borderRadius: 4, background: 'rgba(245,197,66,.1)', border: '1px solid rgba(245,197,66,.25)', color: '#f5c542' }}>
+        <span style={{ fontSize: 9, padding: '2px 5px', borderRadius: 4, background: 'rgba(216,169,77,.1)', border: '1px solid rgba(216,169,77,.25)', color: '#D8A94D' }}>
           💰 {gold}G
         </span>
       )}
@@ -71,16 +71,16 @@ export function TradeWindowPanel(props) {
     return (
       <div className="bt-inspect" onClick={() => setTrade2(null)}>
         <div className="bt-inspect-card" onClick={(e) => e.stopPropagation()} style={{ width: 240 }}>
-          <div style={{ fontSize: 13, fontWeight: 800, color: '#3dd497', marginBottom: 6 }}>
+          <div style={{ fontSize: 13, fontWeight: 800, color: '#59BF91', marginBottom: 6 }}>
             🤝 {trade2.fromName} wants to trade
           </div>
           <div style={{ display: 'flex', gap: 6 }}>
             <button
-              style={{ flex: 1, padding: '7px 0', borderRadius: 6, fontSize: 10, fontWeight: 800, border: '1px solid rgba(61,212,151,.4)', background: 'rgba(61,212,151,.15)', color: '#3dd497', cursor: 'pointer' }}
+              style={{ flex: 1, padding: '7px 0', borderRadius: 6, fontSize: 10, fontWeight: 800, border: '1px solid rgba(89,191,145,.4)', background: 'rgba(89,191,145,.15)', color: '#59BF91', cursor: 'pointer' }}
               onClick={() => send('trade2_open', { target: trade2.from })}
             >Open trade</button>
             <button
-              style={{ flex: 1, padding: '7px 0', borderRadius: 6, fontSize: 10, fontWeight: 800, border: '1px solid rgba(255,94,108,.3)', background: 'rgba(255,94,108,.08)', color: '#ff5e6c', cursor: 'pointer' }}
+              style={{ flex: 1, padding: '7px 0', borderRadius: 6, fontSize: 10, fontWeight: 800, border: '1px solid rgba(217,92,84,.3)', background: 'rgba(217,92,84,.08)', color: '#D95C54', cursor: 'pointer' }}
               onClick={() => { send('trade2_cancel'); setTrade2(null); }}
             >Decline</button>
           </div>
@@ -140,11 +140,11 @@ export function TradeWindowPanel(props) {
     <div className="bt-inspect" onClick={() => send('trade2_cancel')}>
       <div className="bt-inspect-card" onClick={(e) => e.stopPropagation()} style={{ width: 320 }}>
         <button className="bt-inspect-close" onClick={() => send('trade2_cancel')}>✕</button>
-        <div style={{ fontSize: 14, fontWeight: 800, color: '#3dd497', marginBottom: 6 }}>
+        <div style={{ fontSize: 14, fontWeight: 800, color: '#59BF91', marginBottom: 6 }}>
           🤝 Trading with {otherName}
         </div>
 
-        <div style={{ fontSize: 9, fontWeight: 700, color: theyConfirmed ? '#3dd497' : 'rgba(255,255,255,.4)', marginBottom: 2 }}>
+        <div style={{ fontSize: 9, fontWeight: 700, color: theyConfirmed ? '#59BF91' : 'rgba(255,255,255,.4)', marginBottom: 2 }}>
           {otherName} offers {theyConfirmed ? '· ✅ CONFIRMED' : ''}
         </div>
         <div style={{ borderRadius: 6, background: 'rgba(255,255,255,.03)', border: '1px solid rgba(255,255,255,.08)', padding: '2px 6px', marginBottom: 8 }}>
@@ -158,10 +158,10 @@ export function TradeWindowPanel(props) {
           )}
         </div>
 
-        <div style={{ fontSize: 9, fontWeight: 700, color: iConfirmed ? '#3dd497' : 'rgba(255,255,255,.4)', marginBottom: 2 }}>
+        <div style={{ fontSize: 9, fontWeight: 700, color: iConfirmed ? '#59BF91' : 'rgba(255,255,255,.4)', marginBottom: 2 }}>
           You offer {iConfirmed ? '· ✅ CONFIRMED' : '· tap items to stage'}
         </div>
-        <div style={{ borderRadius: 6, background: 'rgba(61,212,151,.04)', border: '1px solid rgba(61,212,151,.15)', padding: '2px 6px', marginBottom: 6 }}>
+        <div style={{ borderRadius: 6, background: 'rgba(89,191,145,.04)', border: '1px solid rgba(89,191,145,.15)', padding: '2px 6px', marginBottom: 6 }}>
           <OfferChips offer={stage} empty={myWpn.length ? '' : 'Nothing staged — tap items below'} />
           {myWpn.length > 0 && (
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3, padding: '0 0 4px' }}>
@@ -179,9 +179,9 @@ export function TradeWindowPanel(props) {
               onClick={() => cycleItem(k, v)}
               style={{
                 padding: '4px 2px', borderRadius: 5, fontSize: 9, cursor: 'pointer',
-                border: '1px solid ' + (stage[k] ? 'rgba(61,212,151,.5)' : 'rgba(255,255,255,.08)'),
-                background: stage[k] ? 'rgba(61,212,151,.12)' : 'rgba(255,255,255,.03)',
-                color: stage[k] ? '#3dd497' : 'rgba(255,255,255,.6)',
+                border: '1px solid ' + (stage[k] ? 'rgba(89,191,145,.5)' : 'rgba(255,255,255,.08)'),
+                background: stage[k] ? 'rgba(89,191,145,.12)' : 'rgba(255,255,255,.03)',
+                color: stage[k] ? '#59BF91' : 'rgba(255,255,255,.6)',
               }}
             >
               <div style={{ fontSize: 13 }}>{emojiFor(k)}</div>
@@ -215,7 +215,7 @@ export function TradeWindowPanel(props) {
         )}
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 8 }}>
-          <span style={{ fontSize: 9, fontWeight: 700, color: '#f5c542' }}>💰 Gold:</span>
+          <span style={{ fontSize: 9, fontWeight: 700, color: '#D8A94D' }}>💰 Gold:</span>
           <input
             type="number" min="0" max={coins}
             value={stage._gold || 0}
@@ -225,7 +225,7 @@ export function TradeWindowPanel(props) {
               if (g > 0) next._gold = g; else delete next._gold;
               pushStage(next);
             }}
-            style={{ width: 70, padding: '3px 5px', borderRadius: 4, border: '1px solid rgba(255,255,255,.15)', background: 'rgba(255,255,255,.05)', color: '#f5c542', fontSize: 10, fontWeight: 800, textAlign: 'right', outline: 'none' }}
+            style={{ width: 70, padding: '3px 5px', borderRadius: 4, border: '1px solid rgba(255,255,255,.15)', background: 'rgba(255,255,255,.05)', color: '#D8A94D', fontSize: 10, fontWeight: 800, textAlign: 'right', outline: 'none' }}
           />
           <span style={{ fontSize: 8, color: 'rgba(255,255,255,.3)' }}>of {coins}G</span>
         </div>
@@ -234,14 +234,14 @@ export function TradeWindowPanel(props) {
           <button
             style={{
               flex: 2, padding: '8px 0', borderRadius: 6, fontSize: 11, fontWeight: 800, cursor: 'pointer',
-              border: '1px solid ' + (iConfirmed ? 'rgba(255,255,255,.15)' : 'rgba(61,212,151,.5)'),
-              background: iConfirmed ? 'rgba(255,255,255,.05)' : 'rgba(61,212,151,.18)',
-              color: iConfirmed ? 'rgba(255,255,255,.4)' : '#3dd497',
+              border: '1px solid ' + (iConfirmed ? 'rgba(255,255,255,.15)' : 'rgba(89,191,145,.5)'),
+              background: iConfirmed ? 'rgba(255,255,255,.05)' : 'rgba(89,191,145,.18)',
+              color: iConfirmed ? 'rgba(255,255,255,.4)' : '#59BF91',
             }}
             onClick={() => { if (!iConfirmed) send('trade2_confirm'); }}
           >{iConfirmed ? (theyConfirmed ? 'Swapping…' : 'Waiting for ' + otherName + '…') : '✅ Confirm trade'}</button>
           <button
-            style={{ flex: 1, padding: '8px 0', borderRadius: 6, fontSize: 10, fontWeight: 700, border: '1px solid rgba(255,94,108,.3)', background: 'rgba(255,94,108,.08)', color: '#ff5e6c', cursor: 'pointer' }}
+            style={{ flex: 1, padding: '8px 0', borderRadius: 6, fontSize: 10, fontWeight: 700, border: '1px solid rgba(217,92,84,.3)', background: 'rgba(217,92,84,.08)', color: '#D95C54', cursor: 'pointer' }}
             onClick={() => send('trade2_cancel')}
           >Cancel</button>
         </div>

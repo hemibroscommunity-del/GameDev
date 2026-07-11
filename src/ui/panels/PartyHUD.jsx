@@ -44,7 +44,7 @@ export function PartyHUD(props) {
     return /*#__PURE__*/React.createElement("div", {
       style: {
         position: 'absolute', top: 90, left: '50%', transform: 'translateX(-50%)',
-        zIndex: 30, background: 'rgba(10,10,18,.92)', border: '1.5px solid rgba(251,191,36,.4)',
+        zIndex: 30, background: 'rgba(16,24,29,.92)', border: '1.5px solid rgba(251,191,36,.4)',
         borderRadius: 12, padding: '10px 14px', textAlign: 'center', minWidth: 200,
         backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)',
         boxShadow: '0 4px 16px rgba(0,0,0,.4)'
@@ -57,7 +57,7 @@ export function PartyHUD(props) {
       style: { display: 'flex', gap: 6 }
     }, /*#__PURE__*/React.createElement("button", {
       style: Object.assign({}, _btnBase, {
-        flex: 1, padding: '8px 0', fontSize: 11, background: '#3dd497', color: '#08130d'
+        flex: 1, padding: '8px 0', fontSize: 11, background: '#59BF91', color: '#08130d'
       }),
       onClick: function onClick() {
         send('party_accept', { target: party.from });
@@ -91,7 +91,7 @@ export function PartyHUD(props) {
   return /*#__PURE__*/React.createElement("div", {
     style: {
       position: 'absolute', top: 92, left: 8, zIndex: 16, width: 150,
-      background: 'rgba(10,10,18,.78)', border: '1px solid rgba(251,191,36,.25)',
+      background: 'rgba(16,24,29,.78)', border: '1px solid rgba(251,191,36,.25)',
       borderRadius: 10, padding: '5px 6px 6px',
       backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)'
     }
@@ -106,12 +106,12 @@ export function PartyHUD(props) {
     title: "Leave party",
     style: Object.assign({}, _btnBase, {
       width: 24, height: 20, fontSize: 9, lineHeight: '20px', padding: 0,
-      background: 'rgba(255,94,108,.12)', color: '#ff5e6c'
+      background: 'rgba(217,92,84,.12)', color: '#D95C54'
     }),
     onClick: function onClick() { send('party_leave'); }
   }, "✖")), party.members.map(function (m) {
     var frac = m.maxHp > 0 ? Math.max(0, Math.min(1, m.hp / m.maxHp)) : 0;
-    var barColor = frac > 0.5 ? '#3dd497' : frac > 0.25 ? '#fbbf24' : '#ff5e6c';
+    var barColor = frac > 0.5 ? '#59BF91' : frac > 0.25 ? '#fbbf24' : '#D95C54';
     var zoneName = m.zone && m.zone !== myZone ? ((ZONES[m.zone] && ZONES[m.zone].name) || m.zone) : null;
     return /*#__PURE__*/React.createElement("div", {
       key: m.id,

@@ -244,7 +244,16 @@ pointerdown. prefers-reduced-motion removes shimmer/overshoot/nudge.
    needed); red-leather removed from the FULL bag panel (the sweep
    had only caught the preview grid). Remaining: tabs/chips/rows
    sweep, toast + joystick opacity ladder.
-4. ☐ Device/contrast/perf QA pass; remove unused legacy CSS.
+4. ✅ v2.3.1230 (legacy sweep): the legacy CSS variable set
+   (--ink/--line/--pop/--txt/--gold/...) in game.css now carries
+   Lantern Slate values, flipping every legacy panel
+   (src/ui/panels/* + buildings) off navy/indigo in one move; ~760
+   hardcoded accent literals (indigo→brass, old green/gold/red→the
+   semantic set, old light text→warm-white) mechanically remapped
+   across the legacy panels and BroTown.jsx; page/wrap base
+   #0d0b18→#10181D. Remaining for a later pass: device/contrast/perf
+   QA; backdrop-filter removal from legacy classes; deleting unused
+   legacy CSS.
 
 ## Do-not-drift list
 

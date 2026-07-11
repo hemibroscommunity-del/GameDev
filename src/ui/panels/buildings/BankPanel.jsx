@@ -13,7 +13,7 @@ export function BankPanel(props) {
     style: {
       fontSize: 16,
       fontWeight: 800,
-      color: '#f5c542',
+      color: '#D8A94D',
       marginBottom: 8
     }
   }, "\uD83C\uDFE6 Bank"), /*#__PURE__*/React.createElement("div", {
@@ -27,15 +27,15 @@ export function BankPanel(props) {
     style: {
       padding: 12,
       borderRadius: 10,
-      background: 'rgba(245,197,66,.08)',
-      border: '1px solid rgba(245,197,66,.2)',
+      background: 'rgba(216,169,77,.08)',
+      border: '1px solid rgba(216,169,77,.2)',
       marginBottom: 8
     }
   }, /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 12,
       fontWeight: 700,
-      color: '#f5c542',
+      color: '#D8A94D',
       marginBottom: 4
     }
   }, "\uD83D\uDCB0 Gold: ", rpgState.coins), /*#__PURE__*/React.createElement("div", {
@@ -47,14 +47,14 @@ export function BankPanel(props) {
     style: {
       padding: 12,
       borderRadius: 10,
-      background: 'rgba(91,82,255,.08)',
-      border: '1px solid rgba(91,82,255,.2)'
+      background: 'rgba(216,168,95,.08)',
+      border: '1px solid rgba(216,168,95,.2)'
     }
   }, /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 12,
       fontWeight: 700,
-      color: '#5b52ff',
+      color: '#D8A85F',
       marginBottom: 4
     }
   }, "\uD83D\uDDE1\uFE0F Equipment"), /*#__PURE__*/React.createElement("div", {

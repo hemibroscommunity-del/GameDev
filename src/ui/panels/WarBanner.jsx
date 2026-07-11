@@ -40,10 +40,10 @@ export function ActiveWarBanner(props) {
         borderRadius: 10,
         overflow: 'hidden',
         background: 'rgba(0,0,0,.75)',
-        border: '1.5px solid rgba(255,94,108,.3)',
+        border: '1.5px solid rgba(217,92,84,.3)',
         backdropFilter: 'blur(8px)',
         WebkitBackdropFilter: 'blur(8px)',
-        boxShadow: '0 2px 12px rgba(255,94,108,.15)',
+        boxShadow: '0 2px 12px rgba(217,92,84,.15)',
         minWidth: 200
       }
     }, /*#__PURE__*/React.createElement("div", {
@@ -51,13 +51,13 @@ export function ActiveWarBanner(props) {
         padding: '6px 10px',
         textAlign: 'center',
         minWidth: 60,
-        background: us.score > them.score ? 'rgba(61,212,151,.1)' : 'transparent'
+        background: us.score > them.score ? 'rgba(89,191,145,.1)' : 'transparent'
       }
     }, /*#__PURE__*/React.createElement("div", {
       style: {
         fontSize: 8,
         fontWeight: 800,
-        color: us.color || '#5b52ff',
+        color: us.color || '#D8A85F',
         letterSpacing: '.05em'
       }
     }, "[", us.tag, "]"), /*#__PURE__*/React.createElement("div", {
@@ -85,7 +85,7 @@ export function ActiveWarBanner(props) {
       style: {
         fontSize: 10,
         fontWeight: 800,
-        color: timeLeft < 120 ? '#ff5e6c' : 'rgba(255,255,255,.5)',
+        color: timeLeft < 120 ? '#D95C54' : 'rgba(255,255,255,.5)',
         fontFamily: 'Source Sans 3,sans-serif'
       }
     }, mins, ":", secs < 10 ? '0' + secs : secs), !inWarZone && /*#__PURE__*/React.createElement("div", {
@@ -96,7 +96,7 @@ export function ActiveWarBanner(props) {
     }, "Go to ", (_ZONES$war$zone2 = ZONES[war.zone]) === null || _ZONES$war$zone2 === void 0 ? void 0 : _ZONES$war$zone2.name), inWarZone && /*#__PURE__*/React.createElement("div", {
       style: {
         fontSize: 6,
-        color: '#ff5e6c',
+        color: '#D95C54',
         fontWeight: 700
       }
     }, "\u2694\uFE0F FIGHT!")), /*#__PURE__*/React.createElement("div", {
@@ -104,13 +104,13 @@ export function ActiveWarBanner(props) {
         padding: '6px 10px',
         textAlign: 'center',
         minWidth: 60,
-        background: them.score > us.score ? 'rgba(255,94,108,.1)' : 'transparent'
+        background: them.score > us.score ? 'rgba(217,92,84,.1)' : 'transparent'
       }
     }, /*#__PURE__*/React.createElement("div", {
       style: {
         fontSize: 8,
         fontWeight: 800,
-        color: them.color || '#ff5e6c',
+        color: them.color || '#D95C54',
         letterSpacing: '.05em'
       }
     }, "[", them.tag, "]"), /*#__PURE__*/React.createElement("div", {
@@ -164,7 +164,7 @@ export function EndedWarBanner(props) {
       style: {
         fontSize: 22,
         fontWeight: 900,
-        color: isTie ? 'rgba(255,255,255,.5)' : isWinner ? '#f5c542' : '#ff5e6c',
+        color: isTie ? 'rgba(255,255,255,.5)' : isWinner ? '#D8A94D' : '#D95C54',
         marginBottom: 4
       }
     }, isTie ? 'DRAW!' : isWinner ? 'VICTORY!' : 'DEFEAT'), /*#__PURE__*/React.createElement("div", {
@@ -183,7 +183,7 @@ export function EndedWarBanner(props) {
       style: {
         fontSize: 12,
         fontWeight: 800,
-        color: us.color || '#5b52ff'
+        color: us.color || '#D8A85F'
       }
     }, "[", us.tag, "]"), /*#__PURE__*/React.createElement("div", {
       style: {
@@ -205,7 +205,7 @@ export function EndedWarBanner(props) {
       style: {
         fontSize: 12,
         fontWeight: 800,
-        color: them.color || '#ff5e6c'
+        color: them.color || '#D95C54'
       }
     }, "[", them.tag, "]"), /*#__PURE__*/React.createElement("div", {
       style: {

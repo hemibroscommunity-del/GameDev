@@ -37,7 +37,7 @@ export function PartyPanel(props) {
     style: {
       fontSize: 16,
       fontWeight: 800,
-      color: '#ff5e6c',
+      color: '#D95C54',
       marginBottom: 2
     }
   }, "\uD83C\uDFDF\uFE0F Gladiator Arena"), /*#__PURE__*/React.createElement("div", {
@@ -84,7 +84,7 @@ export function PartyPanel(props) {
               _context8.n = 1;
               break;
             }
-            pushDmgPopup(S, S.player.x, S.player.y - 30, 'Need ' + ARENA_ENTRY_FEE + 'G!', '#ff5e6c');
+            pushDmgPopup(S, S.player.x, S.player.y - 30, 'Need ' + ARENA_ENTRY_FEE + 'G!', '#D95C54');
             return _context8.a(2);
           case 1:
             /* v2.3.1126: arena-capable workers escrow the entry fee
@@ -125,7 +125,7 @@ export function PartyPanel(props) {
               break;
             }
             if (!(S._serverCaps && S._serverCaps.arena)) R.coins += ARENA_ENTRY_FEE;
-            pushDmgPopup(S, S.player.x, S.player.y - 30, data.error || 'Failed', '#ff5e6c');
+            pushDmgPopup(S, S.player.x, S.player.y - 30, data.error || 'Failed', '#D95C54');
             return _context8.a(2);
           case 5:
             setArenaStatus({
@@ -135,7 +135,7 @@ export function PartyPanel(props) {
               queueSize: data.queueSize || 1
             });
             if (data.started && data.tournament) setArenaTournament(data.tournament);
-            pushDmgPopup(S, S.player.x, S.player.y - 30, 'Entered arena queue!', '#ff5e6c');
+            pushDmgPopup(S, S.player.x, S.player.y - 30, 'Entered arena queue!', '#D95C54');
             BT_AUDIO.beep(500, 0.08, 0.1, 'sine');
             _context8.n = 7;
             break;
@@ -143,7 +143,7 @@ export function PartyPanel(props) {
             _context8.p = 6;
             _t7 = _context8.v;
             if (!(S._serverCaps && S._serverCaps.arena)) R.coins += ARENA_ENTRY_FEE;
-            pushDmgPopup(S, S.player.x, S.player.y - 30, 'Server error', '#ff5e6c');
+            pushDmgPopup(S, S.player.x, S.player.y - 30, 'Server error', '#D95C54');
           case 7:
             setRpgState(_objectSpread({}, R));
             try {
@@ -160,9 +160,9 @@ export function PartyPanel(props) {
       borderRadius: 8,
       fontSize: 12,
       fontWeight: 800,
-      border: '2px solid rgba(255,94,108,.5)',
-      background: 'rgba(255,94,108,.15)',
-      color: '#ff5e6c',
+      border: '2px solid rgba(217,92,84,.5)',
+      background: 'rgba(217,92,84,.15)',
+      color: '#D95C54',
       cursor: 'pointer',
       marginBottom: 8
     }
@@ -170,8 +170,8 @@ export function PartyPanel(props) {
     style: {
       padding: 10,
       borderRadius: 8,
-      background: 'rgba(245,197,66,.08)',
-      border: '1px solid rgba(245,197,66,.2)',
+      background: 'rgba(216,169,77,.08)',
+      border: '1px solid rgba(216,169,77,.2)',
       marginBottom: 8,
       textAlign: 'center'
     }
@@ -179,7 +179,7 @@ export function PartyPanel(props) {
     style: {
       fontSize: 11,
       fontWeight: 800,
-      color: '#f5c542',
+      color: '#D8A94D',
       marginBottom: 4
     }
   }, "\u23F3 In Queue"), /*#__PURE__*/React.createElement("div", {
@@ -241,17 +241,17 @@ export function PartyPanel(props) {
       borderRadius: 4,
       fontSize: 8,
       fontWeight: 700,
-      border: '1px solid rgba(255,94,108,.2)',
-      background: 'rgba(255,94,108,.08)',
-      color: '#ff5e6c',
+      border: '1px solid rgba(217,92,84,.2)',
+      background: 'rgba(217,92,84,.08)',
+      color: '#D95C54',
       cursor: 'pointer'
     }
   }, "Leave Queue (refund ", ARENA_ENTRY_FEE, "G)")), (arenaStatus === null || arenaStatus === void 0 ? void 0 : arenaStatus.status) === 'fighting' && arenaStatus.currentMatch && /*#__PURE__*/React.createElement("div", {
     style: {
       padding: 10,
       borderRadius: 8,
-      background: 'rgba(255,94,108,.1)',
-      border: '2px solid rgba(255,94,108,.4)',
+      background: 'rgba(217,92,84,.1)',
+      border: '2px solid rgba(217,92,84,.4)',
       marginBottom: 8,
       textAlign: 'center'
     }
@@ -259,7 +259,7 @@ export function PartyPanel(props) {
     style: {
       fontSize: 12,
       fontWeight: 900,
-      color: '#ff5e6c',
+      color: '#D95C54',
       marginBottom: 4
     }
   }, "\u2694\uFE0F FIGHT! Round ", arenaStatus.round), /*#__PURE__*/React.createElement("div", {
@@ -278,7 +278,7 @@ export function PartyPanel(props) {
       width: 32,
       height: 32,
       borderRadius: 16,
-      background: arenaStatus.currentMatch.p1Color || '#5b52ff',
+      background: arenaStatus.currentMatch.p1Color || '#D8A85F',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
@@ -314,7 +314,7 @@ export function PartyPanel(props) {
       width: 32,
       height: 32,
       borderRadius: 16,
-      background: arenaStatus.currentMatch.p2Color || '#ff5e6c',
+      background: arenaStatus.currentMatch.p2Color || '#D95C54',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
@@ -381,7 +381,7 @@ export function PartyPanel(props) {
     style: {
       fontSize: 10,
       fontWeight: 800,
-      color: '#ff5e6c',
+      color: '#D95C54',
       marginBottom: 4
     }
   }, "\uD83C\uDFDF\uFE0F Tournament \u2014 Round ", arenaTournament.round, "/", arenaTournament.maxRounds, /*#__PURE__*/React.createElement("span", {
@@ -405,8 +405,8 @@ export function PartyPanel(props) {
         borderRadius: 3,
         fontSize: 7,
         fontWeight: 700,
-        background: p.eliminated ? 'rgba(255,255,255,.01)' : 'rgba(61,212,151,.08)',
-        border: '1px solid ' + (p.eliminated ? 'rgba(255,255,255,.04)' : 'rgba(61,212,151,.2)'),
+        background: p.eliminated ? 'rgba(255,255,255,.01)' : 'rgba(89,191,145,.08)',
+        border: '1px solid ' + (p.eliminated ? 'rgba(255,255,255,.04)' : 'rgba(89,191,145,.2)'),
         color: p.eliminated ? 'rgba(255,255,255,.15)' : p.color || '#fff',
         textDecoration: p.eliminated ? 'line-through' : 'none',
         opacity: p.eliminated ? 0.4 : 1
@@ -428,14 +428,14 @@ export function PartyPanel(props) {
         gap: 4,
         padding: '3px 6px',
         borderRadius: 4,
-        background: m.resolved ? 'rgba(255,255,255,.02)' : 'rgba(255,94,108,.05)',
-        border: '1px solid ' + (m.resolved ? 'rgba(255,255,255,.04)' : 'rgba(255,94,108,.15)'),
+        background: m.resolved ? 'rgba(255,255,255,.02)' : 'rgba(217,92,84,.05)',
+        border: '1px solid ' + (m.resolved ? 'rgba(255,255,255,.04)' : 'rgba(217,92,84,.15)'),
         marginBottom: 2,
         fontSize: 8
       }
     }, /*#__PURE__*/React.createElement("span", {
       style: {
-        color: m.p1Color || '#5b52ff',
+        color: m.p1Color || '#D8A85F',
         fontWeight: 700
       }
     }, m.p1Name), /*#__PURE__*/React.createElement("span", {
@@ -444,20 +444,20 @@ export function PartyPanel(props) {
       }
     }, "vs"), /*#__PURE__*/React.createElement("span", {
       style: {
-        color: m.p2Color || '#ff5e6c',
+        color: m.p2Color || '#D95C54',
         fontWeight: 700
       }
     }, m.p2Name), m.resolved && /*#__PURE__*/React.createElement("span", {
       style: {
         marginLeft: 'auto',
         fontSize: 7,
-        color: '#3dd497'
+        color: '#59BF91'
       }
     }, "Winner: ", m.winnerId === m.p1 ? m.p1Name : m.p2Name), !m.resolved && /*#__PURE__*/React.createElement("span", {
       style: {
         marginLeft: 'auto',
         fontSize: 7,
-        color: '#f5c542'
+        color: '#D8A94D'
       }
     }, "\u2694\uFE0F Fighting"));
   })), function () {
@@ -474,17 +474,17 @@ export function PartyPanel(props) {
       var _pot = (b.aTotal || 0) + (b.bTotal || 0);
       return /*#__PURE__*/React.createElement("div", {
         key: b.matchId,
-        style: { display: 'flex', alignItems: 'center', gap: 4, padding: '3px 6px', borderRadius: 4, background: 'rgba(245,197,66,.05)', border: '1px solid rgba(245,197,66,.15)', marginBottom: 2, fontSize: 8 }
+        style: { display: 'flex', alignItems: 'center', gap: 4, padding: '3px 6px', borderRadius: 4, background: 'rgba(216,169,77,.05)', border: '1px solid rgba(216,169,77,.15)', marginBottom: 2, fontSize: 8 }
       }, /*#__PURE__*/React.createElement("span", {
-        style: { color: '#5b52ff', fontWeight: 700 }
+        style: { color: '#D8A85F', fontWeight: 700 }
       }, b.aName || '?'), /*#__PURE__*/React.createElement("span", {
-        style: { color: '#f5c542', fontWeight: 800 }
+        style: { color: '#D8A94D', fontWeight: 800 }
       }, (b.aTotal || 0) + 'G', b.aBackers ? ' \xB7' + b.aBackers : ''), /*#__PURE__*/React.createElement("span", {
         style: { color: 'rgba(255,255,255,.2)' }
       }, "vs"), /*#__PURE__*/React.createElement("span", {
-        style: { color: '#ff5e6c', fontWeight: 700 }
+        style: { color: '#D95C54', fontWeight: 700 }
       }, b.bName || '?'), /*#__PURE__*/React.createElement("span", {
-        style: { color: '#f5c542', fontWeight: 800 }
+        style: { color: '#D8A94D', fontWeight: 800 }
       }, (b.bTotal || 0) + 'G', b.bBackers ? ' \xB7' + b.bBackers : ''), /*#__PURE__*/React.createElement("span", {
         style: { marginLeft: 'auto', fontSize: 7, color: 'rgba(255,255,255,.35)' }
       }, _pot + 'G pot'));
@@ -493,8 +493,8 @@ export function PartyPanel(props) {
     style: {
       padding: 12,
       borderRadius: 8,
-      background: 'rgba(245,197,66,.1)',
-      border: '2px solid rgba(245,197,66,.4)',
+      background: 'rgba(216,169,77,.1)',
+      border: '2px solid rgba(216,169,77,.4)',
       textAlign: 'center',
       marginTop: 6
     }
@@ -506,7 +506,7 @@ export function PartyPanel(props) {
     style: {
       fontSize: 14,
       fontWeight: 900,
-      color: '#f5c542'
+      color: '#D8A94D'
     }
   }, "GLADIATOR CHAMPION"), /*#__PURE__*/React.createElement("div", {
     style: {
@@ -523,7 +523,7 @@ export function PartyPanel(props) {
   }, arenaTournament.champion.wins, " wins \xB7 Lv", arenaTournament.champion.level), /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 8,
-      color: '#f5c542',
+      color: '#D8A94D',
       marginTop: 4
     }
   }, "+", ARENA_CHAMPION_REWARD.gold, "G +", ARENA_CHAMPION_REWARD.ap, "AP + \"Gladiator\" title")), arenaTournament.recentMatches.length > 0 && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
@@ -553,14 +553,14 @@ export function PartyPanel(props) {
       marginTop: 8,
       padding: 8,
       borderRadius: 8,
-      background: 'rgba(245,197,66,.05)',
-      border: '1px solid rgba(245,197,66,.15)'
+      background: 'rgba(216,169,77,.05)',
+      border: '1px solid rgba(216,169,77,.15)'
     }
   }, /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 10,
       fontWeight: 800,
-      color: '#f5c542',
+      color: '#D8A94D',
       marginBottom: 4
     }
   }, "\uD83C\uDFB2 Spectator Betting"), /*#__PURE__*/React.createElement("div", {
@@ -597,9 +597,9 @@ export function PartyPanel(props) {
         borderRadius: 4,
         fontSize: 8,
         fontWeight: 700,
-        border: '1.5px solid ' + (sel ? '#f5c542' : 'rgba(255,255,255,.08)'),
-        background: sel ? 'rgba(245,197,66,.15)' : 'rgba(255,255,255,.02)',
-        color: sel ? '#f5c542' : p.color || 'rgba(255,255,255,.5)',
+        border: '1.5px solid ' + (sel ? '#D8A94D' : 'rgba(255,255,255,.08)'),
+        background: sel ? 'rgba(216,169,77,.15)' : 'rgba(255,255,255,.02)',
+        color: sel ? '#D8A94D' : p.color || 'rgba(255,255,255,.5)',
         cursor: 'pointer'
       }
     }, p.name, " (Lv", p.level, ")");
@@ -614,7 +614,7 @@ export function PartyPanel(props) {
     style: {
       fontSize: 8,
       fontWeight: 700,
-      color: '#f5c542'
+      color: '#D8A94D'
     }
   }, "Amount:"), /*#__PURE__*/React.createElement("input", {
     type: "number",
@@ -630,7 +630,7 @@ export function PartyPanel(props) {
       borderRadius: 4,
       border: '1px solid rgba(255,255,255,.15)',
       background: 'rgba(255,255,255,.05)',
-      color: '#f5c542',
+      color: '#D8A94D',
       fontSize: 11,
       fontWeight: 800,
       fontFamily: 'Source Sans 3,sans-serif',
@@ -667,7 +667,7 @@ export function PartyPanel(props) {
       var targetName = ((_arenaTournament$play3 = arenaTournament.players.find(function (p) {
         return p.id === arenaBetTarget;
       })) === null || _arenaTournament$play3 === void 0 ? void 0 : _arenaTournament$play3.name) || '???';
-      pushDmgPopup(S, S.player.x, S.player.y - 30, 'Bet ' + arenaBetAmount + 'G on ' + targetName + '!', '#f5c542');
+      pushDmgPopup(S, S.player.x, S.player.y - 30, 'Bet ' + arenaBetAmount + 'G on ' + targetName + '!', '#D8A94D');
       BT_AUDIO.beep(500, 0.06, 0.08, 'sine');
       setRpgState(_objectSpread({}, R));
       try {
@@ -686,9 +686,9 @@ export function PartyPanel(props) {
       borderRadius: 5,
       fontSize: 10,
       fontWeight: 800,
-      border: '1.5px solid ' + (arenaBetTarget ? 'rgba(245,197,66,.4)' : 'rgba(255,255,255,.06)'),
-      background: arenaBetTarget ? 'rgba(245,197,66,.15)' : 'rgba(255,255,255,.02)',
-      color: arenaBetTarget ? '#f5c542' : 'rgba(255,255,255,.15)',
+      border: '1.5px solid ' + (arenaBetTarget ? 'rgba(216,169,77,.4)' : 'rgba(255,255,255,.06)'),
+      background: arenaBetTarget ? 'rgba(216,169,77,.15)' : 'rgba(255,255,255,.02)',
+      color: arenaBetTarget ? '#D8A94D' : 'rgba(255,255,255,.15)',
       cursor: arenaBetTarget ? 'pointer' : 'not-allowed'
     }
   }, "\uD83C\uDFB2 Place Bet (", arenaBetAmount, "G)"), arenaBets.filter(function (b) {
@@ -722,14 +722,14 @@ export function PartyPanel(props) {
       marginTop: 8,
       padding: 8,
       borderRadius: 8,
-      background: 'rgba(245,197,66,.06)',
-      border: '1px solid rgba(245,197,66,.15)'
+      background: 'rgba(216,169,77,.06)',
+      border: '1px solid rgba(216,169,77,.15)'
     }
   }, /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 10,
       fontWeight: 800,
-      color: '#f5c542',
+      color: '#D8A94D',
       marginBottom: 4
     }
   }, "\uD83C\uDFB2 Place a Bet"), /*#__PURE__*/React.createElement("div", {
@@ -767,9 +767,9 @@ export function PartyPanel(props) {
         borderRadius: 4,
         fontSize: 8,
         fontWeight: 700,
-        border: '1.5px solid ' + (sel ? '#f5c542' : 'rgba(255,255,255,.08)'),
-        background: sel ? 'rgba(245,197,66,.15)' : 'rgba(255,255,255,.02)',
-        color: sel ? '#f5c542' : isMe ? 'rgba(255,255,255,.15)' : p.color || 'rgba(255,255,255,.4)',
+        border: '1.5px solid ' + (sel ? '#D8A94D' : 'rgba(255,255,255,.08)'),
+        background: sel ? 'rgba(216,169,77,.15)' : 'rgba(255,255,255,.02)',
+        color: sel ? '#D8A94D' : isMe ? 'rgba(255,255,255,.15)' : p.color || 'rgba(255,255,255,.4)',
         cursor: isMe ? 'not-allowed' : 'pointer',
         opacity: isMe ? 0.3 : 1
       }
@@ -785,7 +785,7 @@ export function PartyPanel(props) {
     style: {
       fontSize: 8,
       fontWeight: 700,
-      color: '#f5c542'
+      color: '#D8A94D'
     }
   }, "Bet:"), /*#__PURE__*/React.createElement("input", {
     type: "number",
@@ -799,9 +799,9 @@ export function PartyPanel(props) {
       width: 60,
       padding: '3px 6px',
       borderRadius: 4,
-      border: '1px solid rgba(245,197,66,.3)',
+      border: '1px solid rgba(216,169,77,.3)',
       background: 'rgba(255,255,255,.05)',
-      color: '#f5c542',
+      color: '#D8A94D',
       fontSize: 10,
       fontWeight: 800,
       fontFamily: 'Source Sans 3,sans-serif',
@@ -830,7 +830,7 @@ export function PartyPanel(props) {
       if (arenaBets.find(function (b) {
         return b.tournamentId === arenaTournament.id && b.playerId === S.myId;
       })) {
-        pushDmgPopup(S, S.player.x, S.player.y - 30, 'Already bet on this tournament!', '#ff5e6c');
+        pushDmgPopup(S, S.player.x, S.player.y - 30, 'Already bet on this tournament!', '#D95C54');
         return;
       }
       R.coins -= arenaBetAmount;
@@ -857,7 +857,7 @@ export function PartyPanel(props) {
       });
       if (!S.stats._betsMade) S.stats._betsMade = 0;
       S.stats._betsMade++;
-      pushDmgPopup(S, S.player.x, S.player.y - 30, 'Bet ' + arenaBetAmount + 'G on ' + bet.targetName + '!', '#f5c542');
+      pushDmgPopup(S, S.player.x, S.player.y - 30, 'Bet ' + arenaBetAmount + 'G on ' + bet.targetName + '!', '#D8A94D');
       BT_AUDIO.beep(500, 0.06, 0.08, 'sine');
       setRpgState(_objectSpread({}, R));
       try {
@@ -870,9 +870,9 @@ export function PartyPanel(props) {
       borderRadius: 5,
       fontSize: 9,
       fontWeight: 800,
-      border: '1.5px solid ' + (arenaBetTarget ? 'rgba(245,197,66,.4)' : 'rgba(255,255,255,.06)'),
-      background: arenaBetTarget ? 'rgba(245,197,66,.12)' : 'rgba(255,255,255,.02)',
-      color: arenaBetTarget ? '#f5c542' : 'rgba(255,255,255,.15)',
+      border: '1.5px solid ' + (arenaBetTarget ? 'rgba(216,169,77,.4)' : 'rgba(255,255,255,.06)'),
+      background: arenaBetTarget ? 'rgba(216,169,77,.12)' : 'rgba(255,255,255,.02)',
+      color: arenaBetTarget ? '#D8A94D' : 'rgba(255,255,255,.15)',
       cursor: arenaBetTarget ? 'pointer' : 'not-allowed'
     }
   }, "\uD83C\uDFB2 Place Bet ", arenaBetTarget ? '(' + arenaBetAmount + 'G on ' + (((_arenaTournament$play5 = arenaTournament.players.find(function (p) {
@@ -933,10 +933,10 @@ export function PartyPanel(props) {
         if (S.rpg._compStats) S.rpg._compStats.totalGoldEarned += payout;
         if (!S.stats._betsWon) S.stats._betsWon = 0;
         S.stats._betsWon++;
-        pushDmgPopup(S, S.player.x, S.player.y - 60, 'Bet WON! +' + payout + 'G', '#f5c542');
+        pushDmgPopup(S, S.player.x, S.player.y - 60, 'Bet WON! +' + payout + 'G', '#D8A94D');
         BT_AUDIO.collect();
       } else {
-        pushDmgPopup(S, S.player.x, S.player.y - 60, 'Bet lost (-' + bet.amount + 'G)', '#ff5e6c');
+        pushDmgPopup(S, S.player.x, S.player.y - 60, 'Bet lost (-' + bet.amount + 'G)', '#D95C54');
       }
     });
     if (myBets.length > 0) {
@@ -951,14 +951,14 @@ export function PartyPanel(props) {
       marginTop: 6,
       padding: 8,
       borderRadius: 6,
-      background: 'rgba(245,197,66,.06)',
-      border: '1px solid rgba(245,197,66,.15)'
+      background: 'rgba(216,169,77,.06)',
+      border: '1px solid rgba(216,169,77,.15)'
     }
   }, /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 9,
       fontWeight: 700,
-      color: '#f5c542',
+      color: '#D8A94D',
       marginBottom: 4
     }
   }, "\uD83C\uDFB2 Spectator Betting"), /*#__PURE__*/React.createElement("div", {
@@ -994,9 +994,9 @@ export function PartyPanel(props) {
         borderRadius: 3,
         fontSize: 7,
         fontWeight: 700,
-        border: '1.5px solid ' + (arenaBetTarget === p.id ? '#f5c542' : 'rgba(255,255,255,.08)'),
-        background: arenaBetTarget === p.id ? 'rgba(245,197,66,.12)' : 'rgba(255,255,255,.02)',
-        color: arenaBetTarget === p.id ? '#f5c542' : p.color || 'rgba(255,255,255,.4)',
+        border: '1.5px solid ' + (arenaBetTarget === p.id ? '#D8A94D' : 'rgba(255,255,255,.08)'),
+        background: arenaBetTarget === p.id ? 'rgba(216,169,77,.12)' : 'rgba(255,255,255,.02)',
+        color: arenaBetTarget === p.id ? '#D8A94D' : p.color || 'rgba(255,255,255,.4)',
         cursor: 'pointer'
       }
     }, p.name, " (Lv", p.level, ")");
@@ -1027,7 +1027,7 @@ export function PartyPanel(props) {
       borderRadius: 3,
       border: '1px solid rgba(255,255,255,.15)',
       background: 'rgba(255,255,255,.05)',
-      color: '#f5c542',
+      color: '#D8A94D',
       fontSize: 10,
       fontWeight: 800,
       fontFamily: 'Source Sans 3,sans-serif',
@@ -1045,18 +1045,18 @@ export function PartyPanel(props) {
       var S = stateRef.current,
         R = S.rpg;
       if (!R || !arenaBetTarget) {
-        pushDmgPopup(S, S.player.x, S.player.y - 30, 'Pick a player!', '#ff5e6c');
+        pushDmgPopup(S, S.player.x, S.player.y - 30, 'Pick a player!', '#D95C54');
         return;
       }
       if (R.coins < arenaBetAmount) {
-        pushDmgPopup(S, S.player.x, S.player.y - 30, 'Not enough gold!', '#ff5e6c');
+        pushDmgPopup(S, S.player.x, S.player.y - 30, 'Not enough gold!', '#D95C54');
         return;
       }
       /* Check if already bet on this tournament */
       if (arenaBets.find(function (b) {
         return b.tournamentId === arenaTournament.id && b.playerId === S.myId;
       })) {
-        pushDmgPopup(S, S.player.x, S.player.y - 30, 'Already placed a bet!', '#ff5e6c');
+        pushDmgPopup(S, S.player.x, S.player.y - 30, 'Already placed a bet!', '#D95C54');
         return;
       }
       R.coins -= arenaBetAmount;
@@ -1083,7 +1083,7 @@ export function PartyPanel(props) {
       /* Track stats */
       if (!S.stats._betsMade) S.stats._betsMade = 0;
       S.stats._betsMade++;
-      pushDmgPopup(S, S.player.x, S.player.y - 30, 'Bet ' + arenaBetAmount + 'G on ' + bet.targetName, '#f5c542');
+      pushDmgPopup(S, S.player.x, S.player.y - 30, 'Bet ' + arenaBetAmount + 'G on ' + bet.targetName, '#D8A94D');
       BT_AUDIO.beep(500, 0.06, 0.08, 'sine');
       setRpgState(_objectSpread({}, R));
       try {
@@ -1096,9 +1096,9 @@ export function PartyPanel(props) {
       borderRadius: 4,
       fontSize: 9,
       fontWeight: 800,
-      border: '1px solid rgba(245,197,66,.3)',
-      background: 'rgba(245,197,66,.1)',
-      color: '#f5c542',
+      border: '1px solid rgba(216,169,77,.3)',
+      background: 'rgba(216,169,77,.1)',
+      color: '#D8A94D',
       cursor: 'pointer'
     }
   }, "\uD83C\uDFB2 Place Bet (", arenaBetAmount, "G)"), arenaBets.filter(function (b) {
@@ -1143,14 +1143,14 @@ export function PartyPanel(props) {
         if (S.rpg._compStats) S.rpg._compStats.totalGoldEarned += payout;
         if (!S.stats._betsWon) S.stats._betsWon = 0;
         S.stats._betsWon++;
-        pushDmgPopup(S, S.player.x, S.player.y - 60, 'BET WON! +' + payout + 'G', '#f5c542');
+        pushDmgPopup(S, S.player.x, S.player.y - 60, 'BET WON! +' + payout + 'G', '#D8A94D');
         BT_AUDIO.levelUp();
         setRpgState(_objectSpread({}, S.rpg));
         try {
           localStorage.setItem('bt_rpg', JSON.stringify(S.rpg));
         } catch (_unused38) {}
       } else if (myBet) {
-        pushDmgPopup(S, S.player.x, S.player.y - 60, 'Bet lost (-' + myBet.amount + 'G)', '#ff5e6c');
+        pushDmgPopup(S, S.player.x, S.player.y - 60, 'Bet lost (-' + myBet.amount + 'G)', '#D95C54');
       }
     }
     return null;
@@ -1167,14 +1167,14 @@ export function PartyPanel(props) {
         marginTop: 6,
         padding: 8,
         borderRadius: 8,
-        background: 'rgba(245,197,66,.06)',
-        border: '1px solid rgba(245,197,66,.15)'
+        background: 'rgba(216,169,77,.06)',
+        border: '1px solid rgba(216,169,77,.15)'
       }
     }, /*#__PURE__*/React.createElement("div", {
       style: {
         fontSize: 10,
         fontWeight: 800,
-        color: '#f5c542',
+        color: '#D8A94D',
         marginBottom: 4
       }
     }, "\uD83C\uDFB2 Spectator Betting"), myBet ? /*#__PURE__*/React.createElement("div", {
@@ -1208,9 +1208,9 @@ export function PartyPanel(props) {
           borderRadius: 4,
           fontSize: 8,
           fontWeight: 700,
-          border: '1.5px solid ' + (arenaBetTarget === p.id ? '#f5c542' : 'rgba(255,255,255,.08)'),
-          background: arenaBetTarget === p.id ? 'rgba(245,197,66,.12)' : 'rgba(255,255,255,.02)',
-          color: arenaBetTarget === p.id ? '#f5c542' : p.color || '#fff',
+          border: '1.5px solid ' + (arenaBetTarget === p.id ? '#D8A94D' : 'rgba(255,255,255,.08)'),
+          background: arenaBetTarget === p.id ? 'rgba(216,169,77,.12)' : 'rgba(255,255,255,.02)',
+          color: arenaBetTarget === p.id ? '#D8A94D' : p.color || '#fff',
           cursor: 'pointer'
         }
       }, p.name, " (Lv", p.level, ")");
@@ -1225,7 +1225,7 @@ export function PartyPanel(props) {
       style: {
         fontSize: 8,
         fontWeight: 700,
-        color: '#f5c542'
+        color: '#D8A94D'
       }
     }, "Bet:"), /*#__PURE__*/React.createElement("input", {
       type: "number",
@@ -1241,7 +1241,7 @@ export function PartyPanel(props) {
         borderRadius: 4,
         border: '1px solid rgba(255,255,255,.15)',
         background: 'rgba(255,255,255,.05)',
-        color: '#f5c542',
+        color: '#D8A94D',
         fontSize: 10,
         fontWeight: 800,
         textAlign: 'right',
@@ -1292,7 +1292,7 @@ export function PartyPanel(props) {
         });
         if (!S2.stats._betsMade) S2.stats._betsMade = 0;
         S2.stats._betsMade++;
-        pushDmgPopup(S2, S2.player.x, S2.player.y - 30, 'Bet ' + arenaBetAmount + 'G on ' + ((_remaining$find2 = remaining.find(function (p) { return p.id === arenaBetTarget; })) === null || _remaining$find2 === void 0 ? void 0 : _remaining$find2.name), '#f5c542');
+        pushDmgPopup(S2, S2.player.x, S2.player.y - 30, 'Bet ' + arenaBetAmount + 'G on ' + ((_remaining$find2 = remaining.find(function (p) { return p.id === arenaBetTarget; })) === null || _remaining$find2 === void 0 ? void 0 : _remaining$find2.name), '#D8A94D');
         BT_AUDIO.beep(600, 0.05, 0.08, 'sine');
         setRpgState(_objectSpread({}, R));
         try {
@@ -1305,9 +1305,9 @@ export function PartyPanel(props) {
         borderRadius: 5,
         fontSize: 9,
         fontWeight: 800,
-        border: '1.5px solid ' + (arenaBetTarget ? 'rgba(245,197,66,.4)' : 'rgba(255,255,255,.06)'),
-        background: arenaBetTarget ? 'rgba(245,197,66,.12)' : 'rgba(255,255,255,.02)',
-        color: arenaBetTarget ? '#f5c542' : 'rgba(255,255,255,.15)',
+        border: '1.5px solid ' + (arenaBetTarget ? 'rgba(216,169,77,.4)' : 'rgba(255,255,255,.06)'),
+        background: arenaBetTarget ? 'rgba(216,169,77,.12)' : 'rgba(255,255,255,.02)',
+        color: arenaBetTarget ? '#D8A94D' : 'rgba(255,255,255,.15)',
         cursor: arenaBetTarget ? 'pointer' : 'not-allowed'
       }
     }, "\uD83C\uDFB2 Place Bet")));
@@ -1334,10 +1334,10 @@ export function PartyPanel(props) {
             if (S.rpg._compStats) S.rpg._compStats.totalGoldEarned += payout;
             if (!S.stats._betsWon) S.stats._betsWon = 0;
             S.stats._betsWon++;
-            pushDmgPopup(S, S.player.x, S.player.y - 50, 'BET WON! +' + payout + 'G', '#3dd497');
+            pushDmgPopup(S, S.player.x, S.player.y - 50, 'BET WON! +' + payout + 'G', '#59BF91');
             BT_AUDIO.collect();
           } else {
-            pushDmgPopup(S, S.player.x, S.player.y - 50, 'Bet lost (-' + lastBet.amount + 'G)', '#ff5e6c');
+            pushDmgPopup(S, S.player.x, S.player.y - 50, 'Bet lost (-' + lastBet.amount + 'G)', '#D95C54');
           }
           setRpgState(_objectSpread({}, S.rpg));
           try {
@@ -1365,7 +1365,7 @@ export function PartyPanel(props) {
       style: {
         fontSize: 9,
         fontWeight: 700,
-        color: '#f5c542',
+        color: '#D8A94D',
         marginBottom: 3
       }
     }, "\uD83C\uDFC6 Hall of Fame"), arenaHistory.slice(0, 10).map(function (c, i) {
@@ -1377,8 +1377,8 @@ export function PartyPanel(props) {
           gap: 4,
           padding: '3px 6px',
           borderRadius: 4,
-          background: 'rgba(245,197,66,.04)',
-          border: '1px solid rgba(245,197,66,.1)',
+          background: 'rgba(216,169,77,.04)',
+          border: '1px solid rgba(216,169,77,.1)',
           marginBottom: 2,
           fontSize: 8
         }
@@ -1389,7 +1389,7 @@ export function PartyPanel(props) {
       }, i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : '🏅'), /*#__PURE__*/React.createElement("span", {
         style: {
           fontWeight: 700,
-          color: '#f5c542'
+          color: '#D8A94D'
         }
       }, c.championName), /*#__PURE__*/React.createElement("span", {
         style: {
@@ -1417,14 +1417,14 @@ export function PartyPanel(props) {
         marginTop: 8,
         padding: 8,
         borderRadius: 8,
-        background: 'rgba(245,197,66,.05)',
-        border: '1px solid rgba(245,197,66,.15)'
+        background: 'rgba(216,169,77,.05)',
+        border: '1px solid rgba(216,169,77,.15)'
       }
     }, /*#__PURE__*/React.createElement("div", {
       style: {
         fontSize: 10,
         fontWeight: 800,
-        color: '#f5c542',
+        color: '#D8A94D',
         marginBottom: 4
       }
     }, "\uD83C\uDFB2 Spectator Betting"), /*#__PURE__*/React.createElement("div", {
@@ -1458,9 +1458,9 @@ export function PartyPanel(props) {
           borderRadius: 4,
           fontSize: 8,
           fontWeight: 700,
-          border: '1.5px solid ' + (arenaBetTarget === p.id ? '#f5c542' : 'rgba(255,255,255,.08)'),
-          background: arenaBetTarget === p.id ? 'rgba(245,197,66,.12)' : 'rgba(255,255,255,.02)',
-          color: arenaBetTarget === p.id ? '#f5c542' : p.color || 'rgba(255,255,255,.4)',
+          border: '1.5px solid ' + (arenaBetTarget === p.id ? '#D8A94D' : 'rgba(255,255,255,.08)'),
+          background: arenaBetTarget === p.id ? 'rgba(216,169,77,.12)' : 'rgba(255,255,255,.02)',
+          color: arenaBetTarget === p.id ? '#D8A94D' : p.color || 'rgba(255,255,255,.4)',
           cursor: 'pointer'
         }
       }, p.name, " (Lv", p.level, ")");
@@ -1491,7 +1491,7 @@ export function PartyPanel(props) {
         borderRadius: 4,
         border: '1px solid rgba(255,255,255,.15)',
         background: 'rgba(255,255,255,.05)',
-        color: '#f5c542',
+        color: '#D8A94D',
         fontSize: 10,
         fontWeight: 800,
         fontFamily: 'Source Sans 3,sans-serif',
@@ -1527,11 +1527,11 @@ export function PartyPanel(props) {
         if (!R || !arenaBetTarget) return;
         var amt = Math.min(arenaBetAmount, R.coins, ARENA_BET_MAX);
         if (amt < ARENA_BET_MIN) {
-          pushDmgPopup(stateRef.current, S.player.x, S.player.y - 30, 'Min bet ' + ARENA_BET_MIN + 'G', '#ff5e6c');
+          pushDmgPopup(stateRef.current, S.player.x, S.player.y - 30, 'Min bet ' + ARENA_BET_MIN + 'G', '#D95C54');
           return;
         }
         if (R.coins < amt) {
-          pushDmgPopup(stateRef.current, S.player.x, S.player.y - 30, 'Not enough gold!', '#ff5e6c');
+          pushDmgPopup(stateRef.current, S.player.x, S.player.y - 30, 'Not enough gold!', '#D95C54');
           return;
         }
         R.coins -= amt;
@@ -1560,7 +1560,7 @@ export function PartyPanel(props) {
           event: 'arena_bet',
           payload: bet
         });
-        pushDmgPopup(stateRef.current, S.player.x, S.player.y - 30, 'Bet ' + amt + 'G on ' + bet.targetName, '#f5c542');
+        pushDmgPopup(stateRef.current, S.player.x, S.player.y - 30, 'Bet ' + amt + 'G on ' + bet.targetName, '#D8A94D');
         BT_AUDIO.beep(500, 0.06, 0.08, 'sine');
         setRpgState(_objectSpread({}, R));
         try {
@@ -1574,9 +1574,9 @@ export function PartyPanel(props) {
         borderRadius: 5,
         fontSize: 9,
         fontWeight: 800,
-        border: '1.5px solid ' + (arenaBetTarget ? 'rgba(245,197,66,.4)' : 'rgba(255,255,255,.06)'),
-        background: arenaBetTarget ? 'rgba(245,197,66,.12)' : 'rgba(255,255,255,.02)',
-        color: arenaBetTarget ? '#f5c542' : 'rgba(255,255,255,.15)',
+        border: '1.5px solid ' + (arenaBetTarget ? 'rgba(216,169,77,.4)' : 'rgba(255,255,255,.06)'),
+        background: arenaBetTarget ? 'rgba(216,169,77,.12)' : 'rgba(255,255,255,.02)',
+        color: arenaBetTarget ? '#D8A94D' : 'rgba(255,255,255,.15)',
         cursor: arenaBetTarget ? 'pointer' : 'not-allowed'
       }
     }, "\uD83C\uDFB2 Place Bet (", arenaBetAmount, "G)"), myBets.length > 0 && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {

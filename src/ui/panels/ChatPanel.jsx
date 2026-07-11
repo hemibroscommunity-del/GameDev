@@ -27,7 +27,7 @@ export function ChatPanel(props) {
       alignItems: 'center',
       gap: 4,
       padding: '5px 8px',
-      background: 'rgba(10,8,20,.95)',
+      background: 'rgba(16,24,29,.95)',
       borderRadius: 10,
       border: '1px solid rgba(255,255,255,.2)',
       boxShadow: '0 4px 24px rgba(0,0,0,.7)'

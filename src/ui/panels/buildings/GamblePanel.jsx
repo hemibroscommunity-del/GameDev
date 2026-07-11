@@ -21,7 +21,7 @@ export function GamblePanel(props) {
     style: {
       fontSize: 16,
       fontWeight: 800,
-      color: '#ff5e6c',
+      color: '#D95C54',
       marginBottom: 4
     }
   }, "\uD83C\uDFB0 Gambling Den"), /*#__PURE__*/React.createElement("div", {
@@ -34,15 +34,15 @@ export function GamblePanel(props) {
     style: {
       padding: 8,
       borderRadius: 8,
-      background: 'rgba(255,94,108,.06)',
-      border: '1px solid rgba(255,94,108,.2)',
+      background: 'rgba(217,92,84,.06)',
+      border: '1px solid rgba(217,92,84,.2)',
       marginBottom: 8
     }
   }, /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 11,
       fontWeight: 700,
-      color: '#ff5e6c',
+      color: '#D95C54',
       marginBottom: 4
     }
   }, "\uD83C\uDFB2 Double or Nothing"), /*#__PURE__*/React.createElement("div", {
@@ -69,9 +69,9 @@ export function GamblePanel(props) {
         fontSize: 8,
         fontWeight: 700,
         cursor: 'pointer',
-        background: stateRef.current._gambleWager === amt ? 'rgba(255,94,108,.3)' : 'rgba(255,255,255,.06)',
-        border: stateRef.current._gambleWager === amt ? '1px solid rgba(255,94,108,.5)' : '1px solid rgba(255,255,255,.08)',
-        color: stateRef.current._gambleWager === amt ? '#ff5e6c' : 'rgba(255,255,255,.5)'
+        background: stateRef.current._gambleWager === amt ? 'rgba(217,92,84,.3)' : 'rgba(255,255,255,.06)',
+        border: stateRef.current._gambleWager === amt ? '1px solid rgba(217,92,84,.5)' : '1px solid rgba(255,255,255,.08)',
+        color: stateRef.current._gambleWager === amt ? '#D95C54' : 'rgba(255,255,255,.5)'
       },
       onClick: function onClick() {
         stateRef.current._gambleWager = amt;
@@ -86,9 +86,9 @@ export function GamblePanel(props) {
       textAlign: 'center',
       fontSize: 14,
       fontWeight: 900,
-      background: stateRef.current._gambleResult.won ? 'rgba(61,220,151,.15)' : 'rgba(255,94,108,.15)',
-      border: stateRef.current._gambleResult.won ? '1px solid rgba(61,220,151,.3)' : '1px solid rgba(255,94,108,.3)',
-      color: stateRef.current._gambleResult.won ? '#3dd497' : '#ff5e6c'
+      background: stateRef.current._gambleResult.won ? 'rgba(61,220,151,.15)' : 'rgba(217,92,84,.15)',
+      border: stateRef.current._gambleResult.won ? '1px solid rgba(61,220,151,.3)' : '1px solid rgba(217,92,84,.3)',
+      color: stateRef.current._gambleResult.won ? '#59BF91' : '#D95C54'
     }
   }, stateRef.current._gambleResult.won ? '🎉 WON! +' + stateRef.current._gambleResult.amount + 'g' : '💸 LOST! -' + stateRef.current._gambleResult.amount + 'g'), /*#__PURE__*/React.createElement("button", {
     style: {
@@ -100,7 +100,7 @@ export function GamblePanel(props) {
       fontWeight: 800,
       letterSpacing: '.03em',
       cursor: 'pointer',
-      background: stateRef.current._gambleWager && rpgState.coins >= stateRef.current._gambleWager ? '#ff5e6c' : 'rgba(255,255,255,.08)',
+      background: stateRef.current._gambleWager && rpgState.coins >= stateRef.current._gambleWager ? '#D95C54' : 'rgba(255,255,255,.08)',
       color: stateRef.current._gambleWager && rpgState.coins >= stateRef.current._gambleWager ? '#fff' : 'rgba(255,255,255,.3)'
     },
     onClick: function onClick() {
@@ -139,7 +139,7 @@ export function GamblePanel(props) {
           amount: winnings,
           ts: Date.now()
         };
-        pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, '+' + winnings + 'g!', '#3dd497');
+        pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, '+' + winnings + 'g!', '#59BF91');
         stateRef.current.screenShake = 3;
         BT_AUDIO.collect();
         setTimeout(function () {
@@ -152,7 +152,7 @@ export function GamblePanel(props) {
           amount: wager,
           ts: Date.now()
         };
-        pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, '-' + wager + 'g', '#ff5e6c');
+        pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, '-' + wager + 'g', '#D95C54');
         BT_AUDIO.beep(150, 0.1, 0.15, 'sawtooth');
       }
       setRpgState(_objectSpread({}, R));
@@ -164,15 +164,15 @@ export function GamblePanel(props) {
     style: {
       padding: 8,
       borderRadius: 8,
-      background: 'rgba(245,197,66,.06)',
-      border: '1px solid rgba(245,197,66,.2)',
+      background: 'rgba(216,169,77,.06)',
+      border: '1px solid rgba(216,169,77,.2)',
       marginBottom: 8
     }
   }, /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 11,
       fontWeight: 700,
-      color: '#f5c542',
+      color: '#D8A94D',
       marginBottom: 4
     }
   }, "\uD83C\uDFC6 Weekly Jackpot"), /*#__PURE__*/React.createElement("div", {
@@ -185,7 +185,7 @@ export function GamblePanel(props) {
     style: {
       fontSize: 14,
       fontWeight: 900,
-      color: '#f5c542',
+      color: '#D8A94D',
       textAlign: 'center',
       marginBottom: 6
     }
@@ -213,9 +213,9 @@ export function GamblePanel(props) {
         fontSize: 8,
         fontWeight: 700,
         cursor: 'pointer',
-        border: '1px solid rgba(245,197,66,.3)',
-        background: 'rgba(245,197,66,.1)',
-        color: '#f5c542'
+        border: '1px solid rgba(216,169,77,.3)',
+        background: 'rgba(216,169,77,.1)',
+        color: '#D8A94D'
       },
       onClick: function onClick() {
         var R = stateRef.current.rpg;
@@ -246,7 +246,7 @@ export function GamblePanel(props) {
         R._compStats.totalGoldSpent += amt;
         /* Legacy local stub -- only reachable against pre-v2.3.1149 workers */
         stateRef.current._jackpotPool = (stateRef.current._jackpotPool || 0) + amt;
-        pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'Deposited ' + amt + 'g to jackpot', '#f5c542');
+        pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'Deposited ' + amt + 'g to jackpot', '#D8A94D');
         BT_AUDIO.beep(500, 0.06, 0.08, 'sine');
         setRpgState(_objectSpread({}, R));
         try {
@@ -265,7 +265,7 @@ export function GamblePanel(props) {
     style: {
       fontSize: 10,
       fontWeight: 700,
-      color: '#8890b8',
+      color: '#B9C1BF',
       marginBottom: 4
     }
   }, "\uD83D\uDCCA Gambling Stats"), /*#__PURE__*/React.createElement("div", {
@@ -283,17 +283,17 @@ export function GamblePanel(props) {
     }
   }, ((_rpgState$_compStats2 = rpgState._compStats) === null || _rpgState$_compStats2 === void 0 ? void 0 : _rpgState$_compStats2.totalGambled) || 0, "g"), /*#__PURE__*/React.createElement("span", null, "Total won:"), /*#__PURE__*/React.createElement("span", {
     style: {
-      color: '#3dd497',
+      color: '#59BF91',
       textAlign: 'right'
     }
   }, ((_rpgState$_compStats3 = rpgState._compStats) === null || _rpgState$_compStats3 === void 0 ? void 0 : _rpgState$_compStats3.totalGambleWon) || 0, "g"), /*#__PURE__*/React.createElement("span", null, "Total lost:"), /*#__PURE__*/React.createElement("span", {
     style: {
-      color: '#ff5e6c',
+      color: '#D95C54',
       textAlign: 'right'
     }
   }, ((_rpgState$_compStats4 = rpgState._compStats) === null || _rpgState$_compStats4 === void 0 ? void 0 : _rpgState$_compStats4.totalGambleLost) || 0, "g"), /*#__PURE__*/React.createElement("span", null, "Net:"), /*#__PURE__*/React.createElement("span", {
     style: {
-      color: (((_rpgState$_compStats5 = rpgState._compStats) === null || _rpgState$_compStats5 === void 0 ? void 0 : _rpgState$_compStats5.totalGambleWon) || 0) - (((_rpgState$_compStats6 = rpgState._compStats) === null || _rpgState$_compStats6 === void 0 ? void 0 : _rpgState$_compStats6.totalGambleLost) || 0) >= 0 ? '#3dd497' : '#ff5e6c',
+      color: (((_rpgState$_compStats5 = rpgState._compStats) === null || _rpgState$_compStats5 === void 0 ? void 0 : _rpgState$_compStats5.totalGambleWon) || 0) - (((_rpgState$_compStats6 = rpgState._compStats) === null || _rpgState$_compStats6 === void 0 ? void 0 : _rpgState$_compStats6.totalGambleLost) || 0) >= 0 ? '#59BF91' : '#D95C54',
       textAlign: 'right'
     }
   }, (((_rpgState$_compStats7 = rpgState._compStats) === null || _rpgState$_compStats7 === void 0 ? void 0 : _rpgState$_compStats7.totalGambleWon) || 0) - (((_rpgState$_compStats8 = rpgState._compStats) === null || _rpgState$_compStats8 === void 0 ? void 0 : _rpgState$_compStats8.totalGambleLost) || 0), "g"))));

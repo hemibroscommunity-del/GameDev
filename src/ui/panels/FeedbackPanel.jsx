@@ -56,7 +56,7 @@ export function FeedbackPanel(props) {
     style: {
       fontSize: 15,
       fontWeight: 800,
-      color: '#5b52ff',
+      color: '#D8A85F',
       marginBottom: 2,
       textAlign: 'center'
     }
@@ -92,7 +92,7 @@ export function FeedbackPanel(props) {
         fontWeight: 700,
         border: 'none',
         cursor: 'pointer',
-        background: feedbackTab === id ? 'rgba(91,82,255,.2)' : 'rgba(255,255,255,.03)',
+        background: feedbackTab === id ? 'rgba(216,168,95,.2)' : 'rgba(255,255,255,.03)',
         color: feedbackTab === id ? '#8880ff' : 'rgba(255,255,255,.4)',
         fontFamily: 'inherit'
       }
@@ -138,8 +138,8 @@ export function FeedbackPanel(props) {
           borderRadius: 4,
           fontSize: 8,
           fontWeight: 700,
-          border: '1px solid ' + (feedbackSort === id ? 'rgba(91,82,255,.3)' : 'rgba(255,255,255,.06)'),
-          background: feedbackSort === id ? 'rgba(91,82,255,.1)' : 'transparent',
+          border: '1px solid ' + (feedbackSort === id ? 'rgba(216,168,95,.3)' : 'rgba(255,255,255,.06)'),
+          background: feedbackSort === id ? 'rgba(216,168,95,.1)' : 'transparent',
           color: feedbackSort === id ? '#8880ff' : 'rgba(255,255,255,.3)',
           cursor: 'pointer'
         }
@@ -161,8 +161,8 @@ export function FeedbackPanel(props) {
         borderRadius: 3,
         fontSize: 7,
         fontWeight: 700,
-        border: '1px solid ' + (feedbackTopic === null ? 'rgba(91,82,255,.3)' : 'rgba(255,255,255,.06)'),
-        background: feedbackTopic === null ? 'rgba(91,82,255,.08)' : 'transparent',
+        border: '1px solid ' + (feedbackTopic === null ? 'rgba(216,168,95,.3)' : 'rgba(255,255,255,.06)'),
+        background: feedbackTopic === null ? 'rgba(216,168,95,.08)' : 'transparent',
         color: feedbackTopic === null ? '#8880ff' : 'rgba(255,255,255,.2)',
         cursor: 'pointer'
       }
@@ -178,8 +178,8 @@ export function FeedbackPanel(props) {
           borderRadius: 3,
           fontSize: 7,
           fontWeight: 600,
-          border: '1px solid ' + (feedbackTopic === t.id ? 'rgba(91,82,255,.3)' : 'rgba(255,255,255,.04)'),
-          background: feedbackTopic === t.id ? 'rgba(91,82,255,.08)' : 'transparent',
+          border: '1px solid ' + (feedbackTopic === t.id ? 'rgba(216,168,95,.3)' : 'rgba(255,255,255,.04)'),
+          background: feedbackTopic === t.id ? 'rgba(216,168,95,.08)' : 'transparent',
           color: feedbackTopic === t.id ? '#8880ff' : 'rgba(255,255,255,.18)',
           cursor: 'pointer'
         }
@@ -309,14 +309,14 @@ export function FeedbackPanel(props) {
           cursor: 'pointer',
           fontSize: 12,
           lineHeight: 1,
-          color: score > 0 ? '#3dd497' : 'rgba(255,255,255,.2)',
+          color: score > 0 ? '#59BF91' : 'rgba(255,255,255,.2)',
           padding: 0
         }
       }, "\u25B2"), /*#__PURE__*/React.createElement("span", {
         style: {
           fontSize: 10,
           fontWeight: 900,
-          color: score > 0 ? '#3dd497' : score < 0 ? '#ff5e6c' : 'rgba(255,255,255,.3)'
+          color: score > 0 ? '#59BF91' : score < 0 ? '#D95C54' : 'rgba(255,255,255,.3)'
         }
       }, score), /*#__PURE__*/React.createElement("button", {
         onClick: /*#__PURE__*/_asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee6() {
@@ -367,7 +367,7 @@ export function FeedbackPanel(props) {
           cursor: 'pointer',
           fontSize: 12,
           lineHeight: 1,
-          color: score < 0 ? '#ff5e6c' : 'rgba(255,255,255,.2)',
+          color: score < 0 ? '#D95C54' : 'rgba(255,255,255,.2)',
           padding: 0
         }
       }, "\u25BC")), /*#__PURE__*/React.createElement("div", {
@@ -439,7 +439,7 @@ export function FeedbackPanel(props) {
     style: {
       fontSize: 9,
       fontWeight: 700,
-      color: '#f5c542',
+      color: '#D8A94D',
       marginBottom: 3
     }
   }, "Topic"), /*#__PURE__*/React.createElement("div", {
@@ -460,8 +460,8 @@ export function FeedbackPanel(props) {
         borderRadius: 4,
         fontSize: 7,
         fontWeight: 700,
-        border: '1.5px solid ' + (feedbackSubmitTopic === t.id ? 'rgba(91,82,255,.4)' : 'rgba(255,255,255,.06)'),
-        background: feedbackSubmitTopic === t.id ? 'rgba(91,82,255,.12)' : 'rgba(255,255,255,.02)',
+        border: '1.5px solid ' + (feedbackSubmitTopic === t.id ? 'rgba(216,168,95,.4)' : 'rgba(255,255,255,.06)'),
+        background: feedbackSubmitTopic === t.id ? 'rgba(216,168,95,.12)' : 'rgba(255,255,255,.02)',
         color: feedbackSubmitTopic === t.id ? '#8880ff' : 'rgba(255,255,255,.3)',
         cursor: 'pointer'
       }
@@ -470,7 +470,7 @@ export function FeedbackPanel(props) {
     style: {
       fontSize: 9,
       fontWeight: 700,
-      color: '#f5c542',
+      color: '#D8A94D',
       marginBottom: 3
     }
   }, "Category"), /*#__PURE__*/React.createElement("div", {
@@ -508,7 +508,7 @@ export function FeedbackPanel(props) {
     style: {
       fontSize: 9,
       fontWeight: 700,
-      color: '#f5c542',
+      color: '#D8A94D',
       marginBottom: 3
     }
   }, "Description (", feedbackText.length, "/100)"), /*#__PURE__*/React.createElement("textarea", {
@@ -544,7 +544,7 @@ export function FeedbackPanel(props) {
               _context7.n = 1;
               break;
             }
-            pushDmgPopup(S, S.player.x, S.player.y - 30, 'Write something first!', '#ff5e6c');
+            pushDmgPopup(S, S.player.x, S.player.y - 30, 'Write something first!', '#D95C54');
             return _context7.a(2);
           case 1:
             _context7.p = 1;
@@ -572,10 +572,10 @@ export function FeedbackPanel(props) {
               _context7.n = 4;
               break;
             }
-            pushDmgPopup(S, S.player.x, S.player.y - 30, d.error || 'Failed', '#ff5e6c');
+            pushDmgPopup(S, S.player.x, S.player.y - 30, d.error || 'Failed', '#D95C54');
             return _context7.a(2);
           case 4:
-            pushDmgPopup(S, S.player.x, S.player.y - 30, 'Feedback submitted!', '#5b52ff');
+            pushDmgPopup(S, S.player.x, S.player.y - 30, 'Feedback submitted!', '#D8A85F');
             BT_AUDIO.beep(500, 0.06, 0.08, 'sine');
             setFeedbackText('');
             setFeedbackTab('browse');
@@ -585,7 +585,7 @@ export function FeedbackPanel(props) {
           case 5:
             _context7.p = 5;
             _t6 = _context7.v;
-            pushDmgPopup(S, S.player.x, S.player.y - 30, 'Server error', '#ff5e6c');
+            pushDmgPopup(S, S.player.x, S.player.y - 30, 'Server error', '#D95C54');
           case 6:
             return _context7.a(2);
         }
@@ -598,8 +598,8 @@ export function FeedbackPanel(props) {
       borderRadius: 6,
       fontSize: 11,
       fontWeight: 800,
-      border: '1.5px solid ' + (feedbackText.trim() ? 'rgba(91,82,255,.4)' : 'rgba(255,255,255,.06)'),
-      background: feedbackText.trim() ? 'rgba(91,82,255,.15)' : 'rgba(255,255,255,.02)',
+      border: '1.5px solid ' + (feedbackText.trim() ? 'rgba(216,168,95,.4)' : 'rgba(255,255,255,.06)'),
+      background: feedbackText.trim() ? 'rgba(216,168,95,.15)' : 'rgba(255,255,255,.02)',
       color: feedbackText.trim() ? '#8880ff' : 'rgba(255,255,255,.15)',
       cursor: feedbackText.trim() ? 'pointer' : 'not-allowed'
     }

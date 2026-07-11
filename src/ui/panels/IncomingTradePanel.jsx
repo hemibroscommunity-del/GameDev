@@ -40,7 +40,7 @@ export function IncomingTradePanel(props) {
     style: {
       fontSize: 14,
       fontWeight: 800,
-      color: '#f5c542',
+      color: '#D8A94D',
       marginBottom: 4
     }
   }, "\uD83D\uDCE8 Trade from ", incomingTrade.fromName), /*#__PURE__*/React.createElement("div", {
@@ -89,11 +89,11 @@ export function IncomingTradePanel(props) {
     }, emojis[key] || key, " \xD7", qty);
   }), (((_incomingTrade$offer = incomingTrade.offer) === null || _incomingTrade$offer === void 0 ? void 0 : _incomingTrade$offer._gold) || 0) > 0 && /*#__PURE__*/React.createElement("span", {
     style: {
-      background: 'rgba(245,197,66,.15)',
+      background: 'rgba(216,169,77,.15)',
       padding: '3px 8px',
       borderRadius: 6,
       fontSize: 11,
-      color: '#f5c542'
+      color: '#D8A94D'
     }
   }, "\uD83D\uDCB0 ", incomingTrade.offer._gold, "G")), /*#__PURE__*/React.createElement("div", {
     style: {
@@ -106,7 +106,7 @@ export function IncomingTradePanel(props) {
       padding: '8px',
       borderRadius: 8,
       border: 'none',
-      background: '#3dd497',
+      background: '#59BF91',
       color: '#fff',
       fontSize: 12,
       fontWeight: 700,
@@ -141,7 +141,7 @@ export function IncomingTradePanel(props) {
           offer: incomingTrade.offer
         }
       });
-      pushDmgPopup(S, S.player.x, S.player.y - 30, 'Trade accepted!', '#3dd497');
+      pushDmgPopup(S, S.player.x, S.player.y - 30, 'Trade accepted!', '#59BF91');
       BT_AUDIO.collect();
       setIncomingTrade(null);
     }

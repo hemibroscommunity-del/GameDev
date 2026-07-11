@@ -91,7 +91,7 @@ export function InspectPlayerPanel(props) {
     style: {
       fontSize: 11,
       fontWeight: 700,
-      color: '#f5c542'
+      color: '#D8A94D'
     }
   }, "Lv ", inspectPlayer.rpgLv), inspectPlayer.rep && inspectPlayer.rep !== 'neutral' && /*#__PURE__*/React.createElement("div", {
     style: {
@@ -117,7 +117,7 @@ export function InspectPlayerPanel(props) {
       style: {
         fontSize: 9,
         fontWeight: 700,
-        color: '#8890b8',
+        color: '#B9C1BF',
         marginBottom: 4
       }
     }, "Equipment"), /*#__PURE__*/React.createElement("div", {
@@ -140,12 +140,12 @@ export function InspectPlayerPanel(props) {
       }
     }, d.armor), d.shield && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("span", null, "\uD83D\uDEE1\uFE0F Shield"), /*#__PURE__*/React.createElement("span", {
       style: {
-        color: '#5b52ff',
+        color: '#D8A85F',
         textAlign: 'right'
       }
     }, d.shield)), d.amulet && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("span", null, "\uD83D\uDCFF Amulet"), /*#__PURE__*/React.createElement("span", {
       style: {
-        color: '#f5c542',
+        color: '#D8A94D',
         textAlign: 'right'
       }
     }, d.amulet)))), /*#__PURE__*/React.createElement("div", {
@@ -160,7 +160,7 @@ export function InspectPlayerPanel(props) {
       style: {
         fontSize: 9,
         fontWeight: 700,
-        color: '#8890b8',
+        color: '#B9C1BF',
         marginBottom: 4
       }
     }, "Tier 1 Stats"), /*#__PURE__*/React.createElement("div", {
@@ -170,7 +170,7 @@ export function InspectPlayerPanel(props) {
         justifyContent: 'center',
         flexWrap: 'wrap'
       }
-    }, [['POW', d.power, '#ff5e6c'], ['VIT', d.vitality, '#3dd497'], ['END', d.endurance, '#f5c542'], ['AGI', d.agility, '#38bdf8'], ['MND', d.mind, '#a78bfa']].map(function (_ref194) {
+    }, [['POW', d.power, '#D95C54'], ['VIT', d.vitality, '#59BF91'], ['END', d.endurance, '#D8A94D'], ['AGI', d.agility, '#38bdf8'], ['MND', d.mind, '#a78bfa']].map(function (_ref194) {
       var _ref195 = _slicedToArray(_ref194, 3),
         l = _ref195[0],
         v = _ref195[1],
@@ -210,7 +210,7 @@ export function InspectPlayerPanel(props) {
       style: {
         fontSize: 9,
         fontWeight: 700,
-        color: '#8890b8',
+        color: '#B9C1BF',
         marginBottom: 4
       }
     }, "Record"), /*#__PURE__*/React.createElement("div", {
@@ -297,7 +297,7 @@ export function InspectPlayerPanel(props) {
     className: "bt-inspect-tp",
     style: {
       flex: 1,
-      background: '#3dd497'
+      background: '#59BF91'
     },
     onClick: function onClick() {
       /* v2.3.1132: two-sided trade window when the worker supports it
@@ -345,13 +345,13 @@ export function InspectPlayerPanel(props) {
     className: "bt-inspect-tp",
     style: {
       flex: 1,
-      background: '#ff5e6c'
+      background: '#D95C54'
     },
     onClick: function onClick() {
       var _S$rpg26;
       var S = stateRef.current;
       if (S._pvpThreatCdUntil && Date.now() < S._pvpThreatCdUntil) {
-        pushDmgPopup(S, S.player.x, S.player.y - 30, 'Threat on cooldown', '#ff5e6c');
+        pushDmgPopup(S, S.player.x, S.player.y - 30, 'Threat on cooldown', '#D95C54');
         setInspectPlayer(null);
         return;
       }
@@ -374,7 +374,7 @@ export function InspectPlayerPanel(props) {
       S._pvpSkullType = 'red';
       S._pvpSkullUntil = Date.now() + PVP_THREAT_BASE_COUNTDOWN;
       S._pvpThreatCdUntil = Date.now() + PVP_THREAT_COOLDOWN;
-      pushDmgPopup(S, S.player.x, S.player.y - 30, 'Threat issued!', '#ff5e6c');
+      pushDmgPopup(S, S.player.x, S.player.y - 30, 'Threat issued!', '#D95C54');
       BT_AUDIO.beep(150, 0.15, 0.2, 'sawtooth');
       setInspectPlayer(null);
     }
@@ -456,7 +456,7 @@ export function InspectPlayerPanel(props) {
         cursor: 'pointer',
         border: isFriend ? '1px solid rgba(61,220,151,.3)' : '1px solid rgba(255,255,255,.15)',
         background: isFriend ? 'rgba(61,220,151,.1)' : 'rgba(255,255,255,.04)',
-        color: isFriend ? '#3dd497' : 'rgba(255,255,255,.5)'
+        color: isFriend ? '#59BF91' : 'rgba(255,255,255,.5)'
       },
       onClick: function onClick() {
         if (isFriend) {
@@ -467,7 +467,7 @@ export function InspectPlayerPanel(props) {
           try {
             localStorage.setItem('bt_friends', JSON.stringify(updated));
           } catch (e) {}
-          pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'Removed friend', '#ff5e6c');
+          pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'Removed friend', '#D95C54');
         } else {
           var _updated = [].concat(_toConsumableArray(friendsList), [{
             id: inspectPlayer.id,
@@ -479,7 +479,7 @@ export function InspectPlayerPanel(props) {
           try {
             localStorage.setItem('bt_friends', JSON.stringify(_updated));
           } catch (e) {}
-          pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'Added friend!', '#3dd497');
+          pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'Added friend!', '#59BF91');
           BT_AUDIO.beep(600, 0.06, 0.08, 'sine');
         }
       }
@@ -495,8 +495,8 @@ export function InspectPlayerPanel(props) {
         fontWeight: 700,
         cursor: 'pointer',
         border: '1px solid rgba(255,255,255,.1)',
-        background: isMuted ? 'rgba(245,197,66,.1)' : 'rgba(255,255,255,.04)',
-        color: isMuted ? '#f5c542' : 'rgba(255,255,255,.4)'
+        background: isMuted ? 'rgba(216,169,77,.1)' : 'rgba(255,255,255,.04)',
+        color: isMuted ? '#D8A94D' : 'rgba(255,255,255,.4)'
       },
       onClick: function onClick() {
         if (isMuted) {
@@ -507,14 +507,14 @@ export function InspectPlayerPanel(props) {
           try {
             localStorage.setItem('bt_muted', JSON.stringify(updated));
           } catch (e) {}
-          pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'Unmuted', '#f5c542');
+          pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'Unmuted', '#D8A94D');
         } else {
           var _updated2 = [].concat(_toConsumableArray(mutedList), [inspectPlayer.id]);
           setMutedList(_updated2);
           try {
             localStorage.setItem('bt_muted', JSON.stringify(_updated2));
           } catch (e) {}
-          pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'Muted', '#f5c542');
+          pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'Muted', '#D8A94D');
         }
       }
     }, isMuted ? '🔇 Muted' : '🔇 Mute');
@@ -529,9 +529,9 @@ export function InspectPlayerPanel(props) {
         fontSize: 8,
         fontWeight: 700,
         cursor: 'pointer',
-        border: '1px solid rgba(255,94,108,.2)',
-        background: isBlocked ? 'rgba(255,94,108,.15)' : 'rgba(255,255,255,.04)',
-        color: isBlocked ? '#ff5e6c' : 'rgba(255,255,255,.4)',
+        border: '1px solid rgba(217,92,84,.2)',
+        background: isBlocked ? 'rgba(217,92,84,.15)' : 'rgba(255,255,255,.04)',
+        color: isBlocked ? '#D95C54' : 'rgba(255,255,255,.4)',
         opacity: !isBlocked && isLawless ? 0.3 : 1
       },
       onClick: function onClick() {
@@ -543,10 +543,10 @@ export function InspectPlayerPanel(props) {
           try {
             localStorage.setItem('bt_blocked', JSON.stringify(updated));
           } catch (e) {}
-          pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'Unblocked', '#3dd497');
+          pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'Unblocked', '#59BF91');
         } else {
           if (isLawless) {
-            pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'Can\'t block in lawless zone!', '#ff5e6c');
+            pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'Can\'t block in lawless zone!', '#D95C54');
             return;
           }
           var _updated3 = [].concat(_toConsumableArray(blockedList), [inspectPlayer.id]);
@@ -554,7 +554,7 @@ export function InspectPlayerPanel(props) {
           try {
             localStorage.setItem('bt_blocked', JSON.stringify(_updated3));
           } catch (e) {}
-          pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'Blocked - no interactions', '#ff5e6c');
+          pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'Blocked - no interactions', '#D95C54');
         }
       }
     }, isBlocked ? '🚫 Blocked' : '🚫 Block');

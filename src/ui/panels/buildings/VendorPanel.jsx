@@ -20,7 +20,7 @@ export function VendorPanel(props) {
     style: {
       fontSize: 16,
       fontWeight: 800,
-      color: '#3dd497',
+      color: '#59BF91',
       marginBottom: 4
     }
   }, "\uD83D\uDED2 Vendor"), /*#__PURE__*/React.createElement("div", {
@@ -110,7 +110,7 @@ export function VendorPanel(props) {
         border: 'none',
         fontSize: 9,
         fontWeight: 700,
-        background: rpgState.coins >= item.cost ? '#3dd497' : 'rgba(255,255,255,.1)',
+        background: rpgState.coins >= item.cost ? '#59BF91' : 'rgba(255,255,255,.1)',
         color: rpgState.coins >= item.cost ? '#000' : 'rgba(255,255,255,.3)',
         cursor: 'pointer'
       },
@@ -149,7 +149,7 @@ export function VendorPanel(props) {
           localStorage.setItem('bt_rpg', JSON.stringify(R));
         } catch (e) {}
         BT_AUDIO.collect();
-        pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, item.icon + ' Used!', '#3dd497');
+        pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, item.icon + ' Used!', '#59BF91');
       }
     }, item.cost, "g"));
   }));

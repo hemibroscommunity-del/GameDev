@@ -38,7 +38,7 @@ export function SkillsPanel(props) {
     style: {
       fontSize: 16,
       fontWeight: 800,
-      color: '#f5c542',
+      color: '#D8A94D',
       marginBottom: 8
     }
   }, "\uD83D\uDCCA Life Skills"), /*#__PURE__*/React.createElement("div", {
@@ -225,13 +225,13 @@ export function SkillsPanel(props) {
     name: 'Farming',
     key: 'farming',
     icon: '🌾',
-    color: '#3dd497',
+    color: '#59BF91',
     desc: 'Grow ingredients at the farm'
   }, {
     name: 'Trapping',
     key: 'trapping',
     icon: '🪤',
-    color: '#f5c542',
+    color: '#D8A94D',
     desc: 'Capture weakened monsters as pets'
   }].map(function (sk) {
     var _rpgState$lifeSkills45;
@@ -350,7 +350,7 @@ export function SkillsPanel(props) {
     style: {
       fontSize: 10,
       fontWeight: 700,
-      color: '#5b52ff',
+      color: '#D8A85F',
       marginBottom: 4
     }
   }, "\uD83D\uDCDC Active Quests"), function () {
@@ -386,7 +386,7 @@ export function SkillsPanel(props) {
       }, /*#__PURE__*/React.createElement("span", {
         style: {
           fontSize: 10,
-          color: done ? '#3dd497' : '#f5c542'
+          color: done ? '#59BF91' : '#D8A94D'
         }
       }, done ? '✓' : '○'), /*#__PURE__*/React.createElement("div", {
         style: {
@@ -421,14 +421,14 @@ export function SkillsPanel(props) {
     style: {
       fontSize: 10,
       fontWeight: 700,
-      color: '#f5c542',
+      color: '#D8A94D',
       marginBottom: 4
     }
   }, "\u2B50 Achievement Points: ", rpgState.achievementPoints || 0), /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 10,
       fontWeight: 700,
-      color: '#8890b8',
+      color: '#B9C1BF',
       marginBottom: 4
     }
   }, "\uD83D\uDCCA Player Stats"), function () {
@@ -437,7 +437,7 @@ export function SkillsPanel(props) {
     var playmins = Math.floor(((cs.playtimeSeconds || 0) + (Date.now() - (cs._sessionStart || Date.now())) / 1000) / 60);
     var sections = [{
       label: 'Combat',
-      color: '#ff5e6c',
+      color: '#D95C54',
       stats: [['Monsters Killed', cs.monstersKilled], ['Deaths', cs.deaths], ['Grand Slams', cs.grandSlams], ['Bosses Killed', cs.bossesKilled], ['Highest Kill Lv', cs.highestMonsterKill], ['Crits Landed', cs.critLanded], ['Collisions', cs.collisionsTriggered]]
     }, {
       label: 'PvP',
@@ -445,15 +445,15 @@ export function SkillsPanel(props) {
       stats: [['PvP Kills', cs.pvpKills], ['PvP Deaths', cs.pvpDeaths], ['Duels Won', cs.duelsWon], ['Duels Lost', cs.duelsLost]]
     }, {
       label: 'Life Skills',
-      color: '#3dd497',
+      color: '#59BF91',
       stats: [['Fish Caught', cs.fishCaught], ['Trees Felled', cs.treesFelled], ['Ores Mined', cs.oresMined], ['Items Crafted', cs.itemsCrafted], ['Items Salvaged', cs.itemsSalvaged], ['Cook Success', cs.cookSuccess], ['Cook Burns', cs.cookBurns], ['Reforges', cs.reforgeAttempts], ['Harden OK', cs.hardenSuccess], ['Harden Fail', cs.hardenFails]]
     }, {
       label: 'Economy',
-      color: '#f5c542',
+      color: '#D8A94D',
       stats: [['Gold Earned', cs.totalGoldEarned], ['Gold Spent', cs.totalGoldSpent], ['Gold Lost (death)', cs.goldLostToDeath], ['Total Gambled', cs.totalGambled], ['Gamble Won', cs.totalGambleWon], ['Gamble Lost', cs.totalGambleLost]]
     }, {
       label: 'Progress',
-      color: '#5b52ff',
+      color: '#D8A85F',
       stats: [['Quests Done', cs.questsCompleted], ['Rare Drops', cs.rareDropsFound], ['Zones Explored', cs.zonesExplored], ['Dungeons Cleared', cs.dungeonsCleared], ['Pets Captured', cs.petsCapured], ['Playtime', playmins + 'min']]
     }];
     return sections.map(function (sec) {
@@ -586,6 +586,6 @@ export function SkillsPanel(props) {
         }, k.replace(/^(fish|wood|ore|herb|gear)_/, '').replace(/_/g, ' ') + ' ×' + v);
       })));
     };
-    return React.createElement(React.Fragment, null, renderGroup('Fish', '🎣', '#3498DB', fish), renderGroup('Wood', '🪓', '#8B6914', wood), renderGroup('Ore', '⛏️', '#8a8a8a', ore), renderGroup('Herbs', '🌿', '#3dd497', herbs), renderGroup('Gear', '🔨', '#b0b0b0', gear), other.length > 0 && renderGroup('Other', '📦', '#00d4b8', other));
+    return React.createElement(React.Fragment, null, renderGroup('Fish', '🎣', '#3498DB', fish), renderGroup('Wood', '🪓', '#8B6914', wood), renderGroup('Ore', '⛏️', '#8a8a8a', ore), renderGroup('Herbs', '🌿', '#59BF91', herbs), renderGroup('Gear', '🔨', '#b0b0b0', gear), other.length > 0 && renderGroup('Other', '📦', '#00d4b8', other));
   }())));
 }
