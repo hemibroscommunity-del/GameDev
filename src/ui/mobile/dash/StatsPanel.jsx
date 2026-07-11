@@ -1,16 +1,75 @@
 import React, { useEffect, useState } from 'react';
 import { COL, panelStyle, getState } from './common.js';
 
+/* v2.3.1232: Lantern Slate pass (docs/LANTERN-SLATE-SPEC.md) — the flat
+   label:value dump becomes a real readout: VITALS as spec meters
+   (#0B1216 track, flat semantic fill + light overlay), ATTRIBUTES as
+   quiet #19252A stat cells with the stat-*.webp icons (Build-column
+   language), RECORD as divider rows.  Same data reads, same 400ms
+   refresh interval; percentages are display-only derivation. */
+const secHdr = {
+  fontSize: 11, fontWeight: 600, textTransform: 'uppercase',
+  letterSpacing: '.12em', color: COL.muted, margin: '10px 8px 4px',
+};
+
+/* Spec bar: track #0B1216 / radius 999 / flat semantic fill + vertical
+   light overlay.  10px = the panel-meter size from the spec ladder. */
+const Meter = ({ label, cur, max, color }) => {
+  const pct = Math.max(0, Math.min(100, (cur / Math.max(1, max)) * 100));
+  return (
+    <div style={{ padding: '4px 8px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 3 }}>
+        <span style={{ fontSize: 10, fontWeight: 600, letterSpacing: '.08em', textTransform: 'uppercase', color: COL.muted }}>
+          {label}
+        </span>
+        <span style={{ fontSize: 14, fontWeight: 700, color: COL.text, fontVariantNumeric: 'tabular-nums' }}>
+          {cur} / {max}
+        </span>
+      </div>
+      <div style={{
+        height: 10, background: '#0B1216', borderRadius: 999,
+        boxShadow: 'inset 0 1px 2px rgba(0,0,0,.55)', overflow: 'hidden',
+      }}>
+        <div style={{
+          width: pct + '%', height: '100%', borderRadius: 999,
+          backgroundColor: color,
+          backgroundImage: 'linear-gradient(180deg, rgba(255,255,255,.20), transparent 55%)',
+        }} />
+      </div>
+    </div>
+  );
+};
+
+/* Quiet stat cell — icon over 14/700 tabular value, caption label. */
+const StatCell = ({ label, iconSrc, glyph, value }) => (
+  <div style={{
+    background: COL.wellSoft,
+    border: `1px solid ${COL.tileBor}`,
+    borderRadius: 8,
+    padding: '6px 2px 5px',
+    textAlign: 'center',
+    minWidth: 0,
+  }}>
+    <img src={iconSrc} alt="" draggable={false}
+      style={{ width: 26, height: 26, objectFit: 'contain', display: 'block', margin: '0 auto' }}
+      onError={(e) => { e.currentTarget.replaceWith(document.createTextNode(glyph)); }} />
+    <div style={{ fontSize: 14, fontWeight: 700, color: COL.text, fontVariantNumeric: 'tabular-nums' }}>{value}</div>
+    <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '.08em', color: COL.muted }}>{label}</div>
+  </div>
+);
+
 const Row = ({ label, value }) => (
   <div style={{
     display: 'flex',
+    alignItems: 'center',
     justifyContent: 'space-between',
-    padding: '3px 0',
+    gap: 8,
+    minHeight: 36,
+    padding: '0 8px',
     borderBottom: `1px solid ${COL.divider}`,
-    fontSize: 15,
   }}>
-    <span style={{ color: COL.muted }}>{label}</span>
-    <span style={{ color: COL.text }}>{value}</span>
+    <span style={{ fontSize: 13.5, color: COL.text2 }}>{label}</span>
+    <span style={{ fontSize: 14, fontWeight: 700, color: COL.text, fontVariantNumeric: 'tabular-nums' }}>{value}</span>
   </div>
 );
 
@@ -27,25 +86,26 @@ export const StatsPanel = () => {
 
   return (
     <div style={panelStyle}>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 14px' }}>
-        <div>
-          <Row label="Level"     value={R.level ?? 1} />
-          <Row label="HP"        value={`${R.hp ?? 0} / ${R.maxHp ?? 1}`} />
-          <Row label="MP"        value={`${R.mana ?? 0} / ${R.maxMana ?? 1}`} />
-          <Row label="Stamina"   value={`${R.stamina ?? 0} / ${R.maxStamina ?? 1}`} />
-          <Row label="XP"        value={R.xp ?? 0} />
-        </div>
-        <div>
-          <Row label="Power"     value={R.power ?? 0} />
-          <Row label="Vitality"  value={R.vitality ?? 0} />
-          <Row label="Endurance" value={R.endurance ?? 0} />
-          <Row label="Agility"   value={R.agility ?? 0} />
-          <Row label="Mind"      value={R.mind ?? 0} />
-        </div>
+      <div style={secHdr}>Vitals</div>
+      <Meter label="HP"      cur={R.hp ?? 0}      max={R.maxHp ?? 1}      color={COL.hp} />
+      <Meter label="MP"      cur={R.mana ?? 0}    max={R.maxMana ?? 1}    color={COL.mp} />
+      <Meter label="Stamina" cur={R.stamina ?? 0} max={R.maxStamina ?? 1} color={COL.stam} />
+
+      <div style={secHdr}>Attributes</div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 4, padding: '0 8px' }}>
+        <StatCell label="POW" iconSrc="/icons/ui/stat-power.webp"     glyph="⚔" value={R.power ?? 0} />
+        <StatCell label="VIT" iconSrc="/icons/ui/stat-vitality.webp"  glyph="♥" value={R.vitality ?? 0} />
+        <StatCell label="END" iconSrc="/icons/ui/stat-endurance.webp" glyph="🛡" value={R.endurance ?? 0} />
+        <StatCell label="AGI" iconSrc="/icons/ui/stat-agility.webp"   glyph="🏃" value={R.agility ?? 0} />
+        <StatCell label="MND" iconSrc="/icons/ui/stat-mind.webp"      glyph="✨" value={R.mind ?? 0} />
       </div>
-      <div style={{ marginTop: 8, fontSize: 15, color: COL.muted }}>
-        Kills {cs.kills ?? 0} · Deaths {cs.deaths ?? 0} · Gold earned {(cs.totalGoldEarned ?? 0).toLocaleString()}
-      </div>
+
+      <div style={secHdr}>Record</div>
+      <Row label="Level"       value={R.level ?? 1} />
+      <Row label="XP"          value={R.xp ?? 0} />
+      <Row label="Kills"       value={cs.kills ?? 0} />
+      <Row label="Deaths"      value={cs.deaths ?? 0} />
+      <Row label="Gold earned" value={(cs.totalGoldEarned ?? 0).toLocaleString()} />
     </div>
   );
 };

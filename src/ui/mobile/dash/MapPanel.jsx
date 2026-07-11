@@ -3,6 +3,18 @@ import { COL, panelStyle, getState } from './common.js';
 
 const MINI_W = 110, MINI_H = 110;
 
+/* v2.3.1232: Lantern Slate pass (docs/LANTERN-SLATE-SPEC.md) — the
+   minimap sits in a #121B20 well tray (bag-tray language: recessed =
+   stored/passive content), zone name moves to the 12/600 zone style,
+   and the Discovered list gets a module header with the current zone
+   marked in brass (brass = the active selection, the one accent in
+   this region).  The canvas painting effect — tile colors included —
+   is world content, not chrome, and is untouched. */
+const secHdr = {
+  fontSize: 11, fontWeight: 600, textTransform: 'uppercase',
+  letterSpacing: '.12em', color: COL.muted, marginBottom: 4,
+};
+
 export const MapPanel = () => {
   const cv = useRef(null);
   const [, force] = useState(0);
@@ -64,30 +76,43 @@ export const MapPanel = () => {
   const curZone = S?.currentZone;
 
   return (
-    <div style={{ ...panelStyle, display: 'flex', gap: 10 }}>
+    <div style={{ ...panelStyle, display: 'flex', gap: 12 }}>
       <div style={{ flex: '0 0 auto' }}>
-        <canvas ref={cv} width={MINI_W} height={MINI_H} style={{
-          display: 'block',
-          background: '#1a1d2e',
-          border: `1px solid ${COL.tileBor}`,
-          borderRadius: 4,
-          imageRendering: 'pixelated',
-        }} />
-        <div style={{ fontSize: 15, color: COL.muted, marginTop: 3, textAlign: 'center' }}>
+        <div style={{
+          background: COL.well,
+          borderRadius: 10,
+          padding: 4,
+          boxShadow: 'inset 0 2px 4px rgba(0,0,0,.44), inset 0 1px 0 rgba(255,255,255,.035)',
+        }}>
+          <canvas ref={cv} width={MINI_W} height={MINI_H} style={{
+            display: 'block',
+            background: '#1a1d2e',
+            borderRadius: 8,
+            imageRendering: 'pixelated',
+          }} />
+        </div>
+        <div style={{ fontSize: 12, fontWeight: 600, color: COL.text, marginTop: 5, textAlign: 'center' }}>
           {curZone || '–'}
         </div>
       </div>
       <div style={{ flex: 1, minWidth: 0, overflow: 'auto' }}>
-        <div style={{ fontSize: 15, color: COL.muted, marginBottom: 4 }}>Discovered</div>
+        <div style={secHdr}>Discovered</div>
         {visited.length === 0 ? (
-          <div style={{ fontSize: 15, color: COL.muted }}>Nothing yet.</div>
+          <div style={{ fontSize: 13, color: COL.muted }}>Nothing yet.</div>
         ) : visited.map((z, i) => (
           <div key={i} style={{
-            fontSize: 15,
-            padding: '2px 0',
-            color: z === curZone ? COL.text : COL.muted,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+            minHeight: 28,
+            fontSize: 13.5,
+            color: z === curZone ? COL.text : COL.text2,
+            fontWeight: z === curZone ? 700 : 400,
           }}>
-            {z === curZone ? '▸ ' : '  '}{z}
+            <span style={{ width: 10, flex: '0 0 auto', color: COL.accent }}>
+              {z === curZone ? '▸' : ''}
+            </span>
+            <span style={{ minWidth: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{z}</span>
           </div>
         ))}
       </div>
