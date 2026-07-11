@@ -32,7 +32,7 @@ export const GuildPanel = () => {
       <div style={panelStyle}>
         <div style={{ textAlign: 'center', padding: '20px 0' }}>
           <img src="/icons/ui/panel-guild.webp" alt="" draggable={false}
-            style={{ width: 44, height: 44, objectFit: 'contain', opacity: 0.4 }}
+            style={{ width: 44, height: 44, objectFit: 'contain', opacity: 0.4, margin: '0 auto' /* v2.3.1233: img{display:block} in game.css defeats textAlign centering */ }}
             onError={(e) => { e.currentTarget.replaceWith(document.createTextNode('⚒')); }} />
           <div style={{ fontSize: 13, color: COL.muted, marginTop: 6 }}>
             You haven't joined a guild yet.
