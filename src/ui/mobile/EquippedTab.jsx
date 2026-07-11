@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { inventoryBus } from './inventoryBus.js';
-import { INV, FONT } from './inventoryStyles.js';
+import { INV, FONT, RARITY_BORDER } from './inventoryStyles.js';
 import { ItemArt } from './ItemArt.jsx';
 
 const SlotPicker = ({ slot, onPick, onCancel }) => {
@@ -51,28 +51,48 @@ const SlotPicker = ({ slot, onPick, onCancel }) => {
   );
 };
 
-const Slot = ({ slot, item, label, borderColor, onTap }) => {
+/* v2.3.1228: Lantern Slate §11 — the equipped slot edge shows RARITY
+   (thin edge language; Godly gets the conic ring class), the fill is
+   the occupied radial mist, and equipped state is a small brass corner
+   notch at top-right.  The old per-type border tints retired. */
+const SLOT_MIST =
+  'radial-gradient(circle at 48% 42%, rgba(238,240,225,.16) 0%, rgba(238,240,225,.05) 48%, rgba(238,240,225,0) 76%), #243137';
+const SLOT_RARITY_CLASS = {
+  rare: 'ls-slot--rare', elite: 'ls-slot--legendary', godly: 'ls-slot--godly',
+};
+
+const Slot = ({ slot, item, label, onTap }) => {
   const empty = !item;
+  const q = item && item.quality;
+  const edge = q === 'godly' ? 'transparent'
+    : (q && RARITY_BORDER[q]) || RARITY_BORDER.normal;
+  const edgeWidth = (q === 'rare' || q === 'elite' || q === 'godly') ? 2 : 1;
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-      <div onClick={onTap} style={{
+      <div onClick={onTap} className={(q && SLOT_RARITY_CLASS[q]) || ''} style={{
         width: 52, height: 52, borderRadius: 10,
-        /* v2.3.1226: string-op tint (was a regex .replace) -- the regex
-           literal's escaped paren false-positived precheck's
-           brace-balance scan the first time this file entered the
-           changed set. */
-        background: empty ? 'rgba(238, 242, 235, 0.02)'
-          : borderColor.slice(0, borderColor.lastIndexOf(',')) + ', 0.12)',
+        position: 'relative', overflow: 'hidden',
+        background: empty ? 'rgba(238, 242, 235, 0.02)' : SLOT_MIST,
         border: empty
           ? '1.5px dashed rgba(238, 242, 235, 0.22)'
-          : `1.5px solid ${borderColor}`,
+          : `${edgeWidth}px solid ${edge}`,
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         cursor: 'pointer', userSelect: 'none', touchAction: 'manipulation',
       }}>
         {empty
-          ? <div style={{ color: 'rgba(238, 242, 235, 0.32)', fontSize: 22, fontWeight: 300 }}>+</div>
+          ? <div style={{ color: 'rgba(238, 242, 235, 0.28)', fontSize: 24, fontWeight: 300 }}>+</div>
           : <ItemArt item={item} size={36} />
         }
+        {!empty && (
+          /* brass corner notch = "equipped" (§11 state matrix) */
+          <span style={{
+            position: 'absolute', top: 0, right: 0,
+            width: 0, height: 0,
+            borderTop: '7px solid #D8A85F',
+            borderLeft: '7px solid transparent',
+            pointerEvents: 'none',
+          }} />
+        )}
       </div>
       <div style={{
         marginTop: 4, fontSize: 9, letterSpacing: 0.3,

@@ -1,26 +1,36 @@
 import React from 'react';
-import { INV, FONT, RARITY_BORDER, RARITY_FILL, POTION_TINT } from './inventoryStyles.js';
+import { INV, FONT, RARITY_BORDER, POTION_TINT } from './inventoryStyles.js';
 import { ItemArt } from './ItemArt.jsx';
 import { inventoryBus } from './inventoryBus.js';
+
+/* v2.3.1228: Lantern Slate §11 slot system — occupied slots use the
+   radial "mist" fill over --ui-slot; rarity is a thin EDGE language
+   (1px common @55%, 2px rare+, Godly = animated conic ring via the
+   .ls-slot--godly class in game.css) and never changes the fill. */
+const MIST_FILL =
+  'radial-gradient(circle at 48% 42%, rgba(238,240,225,.16) 0%, rgba(238,240,225,.05) 48%, rgba(238,240,225,0) 76%), #243137';
+const RARITY_CLASS = {
+  rare: 'ls-slot--rare',
+  elite: 'ls-slot--legendary',
+  godly: 'ls-slot--godly',
+};
 
 export const InventoryTile = ({ item, onTap, layer3 }) => {
   const isInShortcut = inventoryBus.state.shortcuts.includes(item.id);
 
-  let fill = RARITY_FILL[item.quality] || INV.tileFill;
-  let border = RARITY_BORDER[item.quality] || INV.tileBorder;
-  let borderWidth = '0.5px';
+  const fill = MIST_FILL;
+  let border = RARITY_BORDER[item.quality] || RARITY_BORDER.normal;
+  let borderWidth = item.quality === 'rare' || item.quality === 'elite' ? '2px' : '1px';
 
-  if (item.type === 'potion') {
+  if (item.type === 'potion' && (!item.quality || item.quality === 'normal')) {
+    /* potion-kind tint only where rarity wouldn't own the edge */
     const tint = POTION_TINT[item.potionKind] || POTION_TINT.other;
-    fill = tint.fill; border = tint.border;
-  }
-  if (item.isNew) {
-    border = INV.newAccentBorder;
-    fill = INV.newAccentFill;
-    borderWidth = '2px';
+    border = tint.border;
   }
   if (item.quality === 'godly') {
-    fill = INV.godlyBg;
+    /* the conic ::after ring replaces the border exactly (2px pad) */
+    border = 'transparent';
+    borderWidth = '2px';
   }
 
   const labelRight = item.count
@@ -28,18 +38,19 @@ export const InventoryTile = ({ item, onTap, layer3 }) => {
     : (item.tier ? `T${item.tier}` : '');
 
   return (
-    <div onClick={onTap} style={{
+    <div onClick={onTap} className={RARITY_CLASS[item.quality] || ''} style={{
       position: 'relative', width: '100%', aspectRatio: '1',
       background: fill, border: `${borderWidth} solid ${border}`, borderRadius: 8,
       overflow: 'hidden', cursor: 'pointer', userSelect: 'none', touchAction: 'manipulation',
     }}>
-      {/* Object render */}
+      {/* Object render — ~80% optical box + the §5 icon shadow */}
       <div style={{
         position: 'absolute', inset: 0,
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         paddingBottom: '20%',
+        filter: 'drop-shadow(0 1px 0 rgba(255,255,255,.18)) drop-shadow(0 2px 3px rgba(0,0,0,.22))',
       }}>
-        <ItemArt item={item} size="68%" />
+        <ItemArt item={item} size="74%" />
       </div>
 
       {/* Layer 3: small crafter mark in bottom-left */}
@@ -50,14 +61,16 @@ export const InventoryTile = ({ item, onTap, layer3 }) => {
         }}>{item.crafter[0].toUpperCase()}</div>
       )}
 
-      {/* NEW pill, top-left */}
+      {/* v2.3.1228: NEW = 6px brass dot with a 2px dark keyline (§11
+          state matrix) — replaces the text pill; no pulse. */}
       {item.isNew && (
         <div style={{
           position: 'absolute', top: 4, left: 4,
-          background: INV.newBadge, color: '#fff',
-          fontSize: 9, fontWeight: 500, fontFamily: FONT.sans,
-          padding: '1px 6px', borderRadius: 9,
-        }}>NEW</div>
+          width: 6, height: 6, borderRadius: '50%',
+          background: '#D8A85F',
+          border: '2px solid #10181D',
+          boxSizing: 'content-box',
+        }} />
       )}
 
       {/* Shortcut badge, top-right */}

@@ -667,3 +667,46 @@ input{font-family:inherit}
   .bt-ds-fill{height:100%;border-radius:3px;transition:width .15s ease}
   .bt-ds-val{font-size:8px;font-weight:800;color:rgba(255,255,255,.7);min-width:28px;text-align:right;font-family:'Source Sans 3',sans-serif}
 }
+
+/* ═══════════════════════════════════════════
+   LANTERN SLATE — slot rarity system (v2.3.1228)
+   docs/LANTERN-SLATE-SPEC.md §11: rarity is a thin EDGE language with
+   a small static aura — never a tile fill.  Godly is the single
+   sanctioned perpetual animation: a rotating prismatic conic ring.
+═══════════════════════════════════════════ */
+.ls-slot--rare      { box-shadow: 0 0 4px 0 rgba(91,153,222,.08); }
+.ls-slot--legendary { box-shadow: 0 0 6px 0 rgba(164,119,223,.10); }
+.ls-slot--godly     { box-shadow: 0 0 10px 0 rgba(240,196,95,.18); }
+
+/* Animatable conic angle (iOS 16.4+); browsers without @property show
+   the ring statically — a graceful, spec-approved fallback. */
+@property --ls-godly-angle {
+  syntax: '<angle>';
+  initial-value: 20deg;
+  inherits: false;
+}
+/* Ring drawn INSIDE the tile (inset 0 + 2px masked padding) because
+   tiles clip overflow for their name banner; pair with a transparent
+   2px border on the element so the ring replaces it exactly. */
+.ls-slot--godly::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  padding: 2px;
+  border-radius: inherit;
+  background: conic-gradient(from var(--ls-godly-angle),
+    #F0C45F 0deg, #FFF1A8 58deg, #B580E8 134deg,
+    #74D9D2 210deg, #FFF1A8 286deg, #F0C45F 360deg);
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask-composite: exclude;
+  animation: ls-godly-sheen 3.2s linear infinite;
+  pointer-events: none;
+}
+@keyframes ls-godly-sheen {
+  to { --ls-godly-angle: 380deg; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ls-slot--godly::after { animation: none; }
+}
