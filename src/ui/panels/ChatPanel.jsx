@@ -106,9 +106,18 @@ export function ChatPanel(props) {
       background: '#121B20',
       WebkitAppearance: 'none',
       appearance: 'none',
+      /* v2.3.1233b: audit hardening — if a UA still force-paints the
+         field white despite appearance:none (the incident class the
+         comment above records; autofill styling also repaints bg
+         independently), warm-white text would be invisible. The inset
+         box-shadow paints the interior dark ON TOP of any UA
+         background, making white-on-white impossible. */
+      WebkitBoxShadow: 'inset 0 0 0 100px #121B20',
+      boxShadow: 'inset 0 0 0 100px #121B20',
       border: '1px solid rgba(238,242,235,.14)',
       borderRadius: 8,
       color: '#F7F2E7',
+      WebkitTextFillColor: '#F7F2E7',
       caretColor: '#F0C878',
       /* 16px: keep — smaller font sizes make iOS Safari zoom the page
          on focus. */

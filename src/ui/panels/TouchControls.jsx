@@ -51,12 +51,12 @@ export function TouchControls(props) {
       /* v2.3.816: visuals only -- touches are handled by lZoneRef beneath,
          so this corner box must not intercept them. */
       pointerEvents: 'none',
-      /* v2.3.1233: Lantern Slate §10 opacity ladder applied at the
-         CONTAINER (the visuals inside are sprite art we must not touch,
-         and BroTown's handlers re-stamp the base's own opacity).  .62
-         rest; the .92 engaged step needs a handler hook — deferred. */
-      opacity: 0.62,
-      width: isLandscape ? 98 : 83,
+      /* v2.3.1233b: audit fix — the §10 ladder was stacked here as
+         container opacity 0.62, which MULTIPLIED with the sprites' own
+         0.5 base (and BroTown's 0.85 drag re-stamp) for a 31% effective
+         rest opacity. Removed; the ladder belongs in BroTown's handler
+         values (deferred, see LANTERN-SLATE-SPEC delivery list). */
+            width: isLandscape ? 98 : 83,
       height: isLandscape ? 98 : 83
     }
   }, /*#__PURE__*/React.createElement("div", {
@@ -159,10 +159,7 @@ export function TouchControls(props) {
       zIndex: 30,
       /* v2.3.816: visuals only -- touches handled by rZoneRef beneath. */
       pointerEvents: 'none',
-      /* v2.3.1233: §10 opacity ladder at the container — see the left
-         joystick's matching note. */
-      opacity: 0.62,
-      width: isLandscape ? 98 : 83,
+                  width: isLandscape ? 98 : 83,
       height: isLandscape ? 98 : 83
     }
   }, /*#__PURE__*/React.createElement("div", {
