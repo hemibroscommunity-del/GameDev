@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { COL, TIER_COLOR, panelStyle, getState } from './common.js';
+import { COL, panelStyle, getState } from './common.js';
 import { eatBus } from '../eatBus.js';
 import { itemDetailBus } from './itemDetailBus.js';
 import { isLocked as itemIsLocked } from './inventoryLocks.js';
@@ -100,8 +100,11 @@ export const iconFor = (key) => {
 };
 
 export const ItemTile = ({ ikey, count, style: styleOverride }) => {
-  const cat = classify(ikey);
-  const color = TIER_COLOR[cat === 'weapon' ? 'rare' : cat === 'armor' ? 'uncommon' : 'common'] || COL.muted;
+  /* v2.3.1228: owner correction — the bag showed category colors
+     (weapons blue, armor green) that read as fake rarity and clashed
+     with the popup's honest grey.  Materials/keys carry no quality, so
+     every plain inventory tile gets the quiet common edge (§11). */
+  const color = 'rgba(139, 150, 149, 0.55)';
   /* v2.3.177 (F3): every tile opens the ItemDetailPopup -- cook /
      eat / lock all flow through the popup's action buttons now,
      so the inline tap handlers for fish are deprecated. The popup
@@ -122,7 +125,7 @@ export const ItemTile = ({ ikey, count, style: styleOverride }) => {
     <div onPointerUp={handleTap} style={{
       width: '100%', aspectRatio: '1 / 1',
       background: COL.tile,
-      border: `1.5px solid ${color}`,
+      border: `1px solid ${color}`,
       borderRadius: 6,
       display: 'flex',
       alignItems: 'center',
@@ -342,16 +345,27 @@ const StashTile = ({ kind, obj, index }) => {
     : obj && obj.type === 'staff' ? `/sprites/weapons/staffs/Wizard%20Staff2.webp?v=${v}`
     : obj && obj.gearBase === 'wood' ? `/sprites/weapons/swords/steel-sword-east.webp?v=2.3.1070` /* v2.3.1070: mini steel-sword icon, not bamboo */
     : `/sprites/weapons/swords/Sword1.webp?v=${v}`;
-  const color = TIER_COLOR.rare;
+  /* v2.3.1228: edge from the item's REAL quality (weapons carry
+     server-rolled quality; shields/armor have none -> common grey).
+     Godly gets the conic ring class instead of a border color. */
+  const q = obj && obj.quality;
+  const color = q === 'rare' ? '#5B99DE'
+    : q === 'elite' ? '#A477DF'
+    : q === 'godly' ? 'transparent'
+    : 'rgba(139, 150, 149, 0.55)';
+  const edgeWidth = (q === 'rare' || q === 'elite' || q === 'godly') ? 2 : 1;
+  const rarityClass = q === 'rare' ? 'ls-slot--rare'
+    : q === 'elite' ? 'ls-slot--legendary'
+    : q === 'godly' ? 'ls-slot--godly' : '';
   const fallbackGlyph = kind === 'stashShield' ? '\u{1F6E1}'
                       : kind === 'stashArmor'  ? '\u{1F9BA}'
                       : kind === 'stashGear'   ? (obj && obj.slot === 'legs' ? '\u{1F456}' : '\u{1F9BA}')
                       :                          '⚔';
   return (
-    <div onPointerUp={handleTap} style={{
+    <div onPointerUp={handleTap} className={rarityClass} style={{
       width: '100%', aspectRatio: '1 / 1',
       background: COL.tile,
-      border: `1.5px solid ${color}`,
+      border: `${edgeWidth}px solid ${color}`,
       borderRadius: 6,
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       position: 'relative',
