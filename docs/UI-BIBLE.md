@@ -548,7 +548,15 @@ from the Part 4 tables into the same template, anchor image attached.
 
 ## Part 6 — Adoption notes
 
-This document ships alone; migrating the client to it is future PRs.
+**v2.3.1223: the icon set EXISTS.** All 9 sheets were generated
+(ChatGPT, per Part 5) and sliced into 90 transparent 256×256 webp icons
+in `public/icons/ui/` (prefixes: `nav- panel- skill- spare- combat-
+stat- cur- elem- status- bldg- evt-`). Raw sheets:
+`assets/icons-source/sheet-<a-i>.png`. Slicer:
+`tools/process_icon_sheets.py` (re-run only for regenerated sheets; it
+refuses to overwrite existing icons).
+
+Migrating the client to this document is future PRs.
 The replacement targets, in rough priority order:
 
 1. **Emoji → icon files** in `src/ui/mobile/BottomDashboard.jsx`
