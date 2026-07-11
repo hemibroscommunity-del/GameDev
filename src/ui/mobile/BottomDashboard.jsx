@@ -503,6 +503,8 @@ export const BottomDashboard = () => {
     return () => clearInterval(id);
   }, []);
   useEffect(() => dashboardPanelBus.subscribe(() => force(v => v + 1)), []);
+  /* v2.3.1229b: chat-bubble state lights the Chat toolbar icon. */
+  useEffect(() => chatBubbleBus.subscribe(() => force(v => v + 1)), []);
   /* Player-card portrait: a head-and-shoulders render of the player's
      chosen cosmetics (skin / hair / hair color / beard / hat).  Generated
      on mount (captures the login picker) and regenerated if a cosmetic
@@ -730,7 +732,12 @@ export const BottomDashboard = () => {
       style={{
         position: 'fixed',
         left: 0, right: 0, bottom: 0,
-        height: 'var(--dash-h)',
+        /* v2.3.1229b: panel mode grows the band (owner: panels were too
+           small in the leftover strip once the toolbar persisted) —
+           bottom-sheet pattern; the world stays visible above.  220ms =
+           the spec's panel motion token. */
+        height: active ? '56vh' : 'var(--dash-h)',
+        transition: 'height 220ms cubic-bezier(.2,.8,.2,1)',
         /* v2.3.1227: Lantern Slate band — charcoal gradient, warm top
            edge (the "lantern" cue), soft up-shadow. */
         background: 'linear-gradient(180deg, #253239 0%, #202C32 46%, #172126 100%)',
@@ -1486,7 +1493,10 @@ export const BottomDashboard = () => {
         const moreLit = !!rootId && !['inventory', 'social', 'encyclopedia', 'journey'].includes(rootId);
         return (
           <div style={{
-            height: '30%',
+            /* v2.3.1229b: fixed 68px shelf in panel mode (30% of the
+               grown band would balloon); 30% of the resting 28vh band
+               ≈ the same 68px, so the shelf never visibly jumps. */
+            height: active ? 68 : '30%',
             minHeight: 56,
             flex: '0 0 auto',
             borderTop: `1px solid ${COL.divider}`,
@@ -1507,6 +1517,7 @@ export const BottomDashboard = () => {
                 to close.  v2.3.1225: UI Bible panel-chat icon replaces the
                 placeholder inline SVG. */}
             <IconButton glyph="chat" label="Chat" tut="dash-chat"
+              active={chatBubbleBus.open}
               onClick={() => chatBubbleBus.toggle()} />
             <IconButton glyph="more"      label="More" tut="dash-more" active={moreLit}
               onClick={() => dashboardPanelBus.toggle('more')} />
