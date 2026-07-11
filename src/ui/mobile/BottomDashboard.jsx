@@ -1051,8 +1051,18 @@ export const BottomDashboard = () => {
                   /* Plain function (not a React component) so React doesn't
                      see a fresh component-type identity on every render and
                      remount the cells.  Called as slotCell({...}) below. */
-                  const slotCell = ({ k, label, iconSrc, onTap, active, equipped, equippedGlyph }) => (
+                  /* v2.3.1228: `quality` (weapons only — the one item class
+                     with server-rolled quality, §4.6b) draws the Lantern
+                     Slate rarity edge on the LIVE loadout slot: 2px blue
+                     rare / violet elite, godly = the conic ring class.
+                     Rarity edge outranks the generic occupied-brass edge. */
+                  const slotCell = ({ k, label, iconSrc, onTap, active, equipped, equippedGlyph, quality }) => {
+                    const rarityEdge = quality === 'rare' ? '#5B99DE'
+                      : quality === 'elite' ? '#A477DF' : null;
+                    const godly = quality === 'godly';
+                    return (
                     <div key={k}
+                      className={godly ? 'ls-slot--godly' : (quality === 'rare' ? 'ls-slot--rare' : quality === 'elite' ? 'ls-slot--legendary' : '')}
                       onPointerUp={onTap ? (e) => {
                         e.stopPropagation();
                         let anchor = null;
@@ -1070,8 +1080,10 @@ export const BottomDashboard = () => {
                         justifyContent: 'center',
                         borderRadius: 4,
                         background: active ? COL.brassFill : COL.wellSoft,
-                        border: active ? `1px solid rgba(216,168,95,.7)` : `1px solid ${COL.tileBor}`,
-                        boxShadow: active ? 'inset 0 0 6px rgba(245,199,70,0.3)' : 'none',
+                        border: godly ? '2px solid transparent'
+                          : rarityEdge ? `2px solid ${rarityEdge}`
+                          : active ? `1px solid rgba(216,168,95,.7)` : `1px solid ${COL.tileBor}`,
+                        boxShadow: active && !rarityEdge && !godly ? 'inset 0 0 6px rgba(245,199,70,0.3)' : 'none',
                         cursor: onTap ? 'pointer' : 'default',
                         touchAction: 'none',
                         minWidth: 0,
@@ -1113,6 +1125,7 @@ export const BottomDashboard = () => {
                       )}
                     </div>
                   );
+                  };
                   /* v2.3.210: tapping the weapon slot now opens the
                      ItemDetailPopup for the currently-active weapon
                      instead of cycling melee/ranged/staff. */
@@ -1231,7 +1244,7 @@ export const BottomDashboard = () => {
                           onTap: onTapChestLayers,
                         })}
                         {/* v2.3.1025: label is always WEAPON (melee/ranged/staff all live here). */}
-                        {slotCell({ k: 'weapon', label: 'WEAPON', iconSrc: slotIconSrc, active: !!wpn, onTap: onTapWeapon })}
+                        {slotCell({ k: 'weapon', label: 'WEAPON', iconSrc: slotIconSrc, active: !!wpn, onTap: onTapWeapon, quality: wpn && wpn.quality })}
                         {slotCell({ k: 'shield', label: 'SHIELD', iconSrc: shieldSrc, active: !!R.shield, equipped: !!R.shield, onTap: onTapShield })}
                         {slotCell({
                           k: 'legs',
