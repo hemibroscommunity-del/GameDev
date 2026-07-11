@@ -90,49 +90,62 @@ export const SpendPointConfirm = () => {
     spendConfirmBus.close();
   };
 
+  /* v2.3.1232: Lantern Slate structure pass — modal scrim, world-card
+     dialog (strong border, radius 12), recessed comparison well with
+     semantic-green "After" line, brass confirm / raised cancel at 44pt. */
   return (
     <div
       onPointerUp={(e) => { e.stopPropagation(); spendConfirmBus.close(); }}
       style={{
         position: 'fixed', inset: 0, zIndex: 60,
-        background: 'rgba(0,0,0,0.45)',
+        background: 'rgba(8,16,20,.56)',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
       }}
     >
       <div
         onPointerUp={(e) => e.stopPropagation()}
         style={{
-          background: COL.bg, border: '1px solid ' + COL.border, borderRadius: 10,
+          background: 'linear-gradient(180deg, rgba(35,48,57,.94), rgba(17,25,29,.94))',
+          border: '1px solid rgba(238,242,235,.24)', borderRadius: 12,
           padding: 16, width: 280, maxWidth: '86vw',
-          boxShadow: '0 8px 28px rgba(0,0,0,0.5)',
+          boxShadow: '0 14px 30px rgba(4,7,9,.38)',
           fontFamily: 'Source Sans 3, sans-serif', color: COL.text,
         }}
       >
-        <div style={{ fontSize: 14, fontWeight: 800, marginBottom: 2 }}>Apply 1 point?</div>
-        <div style={{ fontSize: 12, color: COL.muted, marginBottom: 10 }}>
+        <div style={{ fontSize: 15, fontWeight: 700, color: COL.text, marginBottom: 3 }}>Apply 1 point?</div>
+        <div style={{
+          fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.12em',
+          color: COL.muted, marginBottom: 10,
+        }}>
           {t.skillLabel ? t.skillLabel + ' · ' : ''}{ch.label}
         </div>
         <div style={{
-          background: COL.tile, border: '1px solid ' + COL.tileBor, borderRadius: 6,
-          padding: '8px 10px', marginBottom: 12, fontSize: 12,
+          background: COL.well, border: '1px solid ' + COL.divider, borderRadius: 8,
+          boxShadow: 'inset 0 2px 4px rgba(0,0,0,.44), inset 0 1px 0 rgba(255,255,255,.035)',
+          padding: '8px 10px', marginBottom: 12, fontSize: 12, fontVariantNumeric: 'tabular-nums',
         }}>
-          <div style={{ color: COL.muted }}>Now: {before}</div>
-          <div style={{ color: COL.accent, fontWeight: 700, marginTop: 2 }}>After: {after}</div>
+          <div style={{ color: COL.text2 }}>Now: {before}</div>
+          {/* v2.3.1232: improvement reads semantic green + the number, never color alone */}
+          <div style={{ color: '#59BF91', fontWeight: 700, marginTop: 2 }}>After: {after}</div>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
           <button
             onPointerUp={(e) => { e.stopPropagation(); onConfirm(); }}
             style={{
-              flex: 1, padding: '10px 0', background: COL.accent, color: '#fff',
-              border: 'none', borderRadius: 6, fontWeight: 800, fontSize: 13,
+              flex: 1, minHeight: 44, padding: '10px 0', background: COL.accent, color: COL.onAccent,
+              border: 'none', borderRadius: 11, fontWeight: 700, fontSize: 13,
+              fontFamily: 'inherit',
               cursor: 'pointer', touchAction: 'manipulation',
             }}
           >Confirm</button>
           <button
             onPointerUp={(e) => { e.stopPropagation(); spendConfirmBus.close(); }}
             style={{
-              flex: 1, padding: '10px 0', background: 'rgba(238, 242, 235, 0.10)', color: COL.text,
-              border: '1px solid ' + COL.border, borderRadius: 6, fontWeight: 700, fontSize: 13,
+              flex: 1, minHeight: 44, padding: '10px 0',
+              background: 'linear-gradient(180deg, #304047 0%, #2B3940 100%)', color: COL.text,
+              border: '1px solid ' + COL.border, borderRadius: 11, fontWeight: 700, fontSize: 13,
+              fontFamily: 'inherit',
+              boxShadow: 'inset 0 1px 0 rgba(255,255,255,.08), 0 6px 14px rgba(5,8,10,.18)',
               cursor: 'pointer', touchAction: 'manipulation',
             }}
           >Cancel</button>
