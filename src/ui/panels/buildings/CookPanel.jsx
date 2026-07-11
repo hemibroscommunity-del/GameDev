@@ -13,6 +13,12 @@ import { pushDmgPopup } from '@/game/combatHelpers.js';
    @/data barrel); spread/slice babel helpers imported; the hoisted
    optional-chaining temp set declared locally. setTimeout is a browser
    global. */
+/* v2.3.1232: Lantern Slate restyle (docs/LANTERN-SLATE-SPEC.md) — the
+   color remap left the old dense layout behind.  Now: #202C32 panel
+   surface, 11/600 uppercase section headers, 44px rows inside recessed
+   #121B20 wells, secondary #2B3940 row actions; brass is reserved for
+   the in-zone COOK moment (the one primary action of the minigame).
+   Styles + JSX grouping only — every handler is byte-identical. */
 export function CookPanel(props) {
   var rpgState = props.rpgState,
     stateRef = props.stateRef,
@@ -20,52 +26,94 @@ export function CookPanel(props) {
     cookMinigame = props.cookMinigame,
     setCookMinigame = props.setCookMinigame;
   var _rpgState$lifeSkills14, _rpgState$lifeSkills15, _rpgState$lifeSkills16, _rpgState$lifeSkills17;
-  return React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
+  /* v2.3.1232: shared Lantern Slate style fragments (styles only). */
+  var LS_HEAD = {
+    fontSize: 11,
+    fontWeight: 600,
+    textTransform: 'uppercase',
+    letterSpacing: '.12em',
+    color: '#96A2A0',
+    marginBottom: 4
+  };
+  var LS_WELL = {
+    background: '#121B20',
+    borderRadius: 10,
+    padding: 4,
+    boxShadow: 'inset 0 2px 4px rgba(0,0,0,.44), inset 0 1px 0 rgba(255,255,255,.035)',
+    marginBottom: 10
+  };
+  var LS_DIV = '1px solid rgba(238,242,235,.10)';
+  return React.createElement("div", {
     style: {
-      fontSize: 16,
-      fontWeight: 800,
-      color: '#ea580c',
-      marginBottom: 4
-    }
-  }, "\uD83C\uDF73 Kitchen"), /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 9,
-      color: 'rgba(255,255,255,.4)',
-      marginBottom: 6
-    }
-  }, "Cooking Lv", ((_rpgState$lifeSkills14 = rpgState.lifeSkills) === null || _rpgState$lifeSkills14 === void 0 || (_rpgState$lifeSkills14 = _rpgState$lifeSkills14.cooking) === null || _rpgState$lifeSkills14 === void 0 ? void 0 : _rpgState$lifeSkills14.level) || 1, " \xB7 Cook fish for healing. Prepare herb recipes for combat buffs."), /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 10,
-      fontWeight: 700,
-      color: '#3498DB',
-      marginBottom: 4
-    }
-  }, "\uD83D\uDC1F Cook Fish (Healing)"), /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 8,
-      color: 'rgba(255,255,255,.3)',
-      marginBottom: 4
-    }
-  }, "Raw fish \u2192 Cook (timing minigame) \u2192 Cooked fish you can eat to heal."), cookMinigame && !cookMinigame.result && /*#__PURE__*/React.createElement("div", {
-    style: {
-      padding: 8,
-      borderRadius: 8,
-      background: 'rgba(234,88,12,.1)',
-      border: '1px solid rgba(234,88,12,.3)',
-      marginBottom: 8
+      margin: -20,
+      padding: '16px 14px',
+      background: '#202C32',
+      borderRadius: 13,
+      textAlign: 'left',
+      fontFamily: "'Source Sans 3',sans-serif"
     }
   }, /*#__PURE__*/React.createElement("div", {
     style: {
-      fontSize: 10,
+      display: 'flex',
+      alignItems: 'center',
+      gap: 8,
+      marginBottom: 2,
+      paddingRight: 24
+    }
+  }, /*#__PURE__*/React.createElement("img", {
+    src: "/icons/ui/bldg-cook.webp",
+    alt: "",
+    draggable: false,
+    style: {
+      width: 26,
+      height: 26,
+      objectFit: 'contain'
+    },
+    onError: function onError(e) {
+      e.currentTarget.replaceWith(document.createTextNode('🍳'));
+    }
+  }), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 13,
       fontWeight: 700,
-      color: '#ea580c',
+      textTransform: 'uppercase',
+      letterSpacing: '.10em',
+      color: '#F7F2E7'
+    }
+  }, "Kitchen")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      color: '#96A2A0',
+      marginBottom: 12
+    }
+  }, "Cooking Lv", ((_rpgState$lifeSkills14 = rpgState.lifeSkills) === null || _rpgState$lifeSkills14 === void 0 || (_rpgState$lifeSkills14 = _rpgState$lifeSkills14.cooking) === null || _rpgState$lifeSkills14 === void 0 ? void 0 : _rpgState$lifeSkills14.level) || 1, " \xB7 Cook fish for healing. Prepare herb recipes for combat buffs."), /*#__PURE__*/React.createElement("div", {
+    style: LS_HEAD
+  }, "Cook Fish — Healing"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      color: '#96A2A0',
+      marginBottom: 8
+    }
+  }, "Raw fish → Cook (timing minigame) → Cooked fish you can eat to heal."), cookMinigame && !cookMinigame.result && /*#__PURE__*/React.createElement("div", {
+    style: {
+      padding: 10,
+      borderRadius: 10,
+      background: '#182227',
+      border: '1px solid rgba(238,242,235,.14)',
+      marginBottom: 10
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 13,
+      fontWeight: 700,
+      color: '#F7F2E7',
       marginBottom: 4
     }
-  }, "\uD83D\uDD25 Cooking: ", cookMinigame.fishName, " (Heals ", cookMinigame.healAmt, " HP)"), /*#__PURE__*/React.createElement("div", {
+  }, "🔥 Cooking: ", cookMinigame.fishName, " (Heals ", cookMinigame.healAmt, " HP)"), /*#__PURE__*/React.createElement("div", {
     style: {
-      fontSize: 8,
-      color: 'rgba(255,255,255,.4)',
-      marginBottom: 6
+      fontSize: 11,
+      color: '#96A2A0',
+      marginBottom: 8
     }
   }, "Tap COOK when the marker is in the green zone!"), function () {
     var spot = cookMinigame.sweetSpot;
@@ -82,11 +130,12 @@ export function CookPanel(props) {
       style: {
         position: 'relative',
         width: barW,
-        height: 24,
-        background: 'rgba(255,255,255,.08)',
-        borderRadius: 4,
+        height: 26,
+        background: '#121B20',
+        boxShadow: 'inset 0 2px 4px rgba(0,0,0,.44)',
+        borderRadius: 8,
         overflow: 'hidden',
-        margin: '0 auto 6px'
+        margin: '0 auto 8px'
       }
     }, /*#__PURE__*/React.createElement("div", {
       style: {
@@ -114,14 +163,16 @@ export function CookPanel(props) {
     })), /*#__PURE__*/React.createElement("button", {
       style: {
         width: '100%',
-        padding: '6px 0',
-        borderRadius: 6,
-        border: 'none',
-        fontSize: 11,
-        fontWeight: 800,
-        background: inZone ? '#59BF91' : '#ea580c',
-        color: '#fff',
+        minHeight: 44,
+        padding: '0 12px',
+        borderRadius: 11,
+        border: inZone ? 'none' : '1px solid rgba(238,242,235,.14)',
+        fontSize: 13,
+        fontWeight: 700,
+        background: inZone ? '#D8A85F' : '#2B3940',
+        color: inZone ? '#20170D' : '#B9C1BF',
         cursor: 'pointer',
+        fontFamily: 'inherit',
         letterSpacing: '.05em'
       },
       onClick: function onClick() {
@@ -163,15 +214,15 @@ export function CookPanel(props) {
           return setCookMinigame(null);
         }, 1500);
       }
-    }, "\uD83C\uDF73 COOK!"));
+    }, "🍳 COOK!"));
   }()), (cookMinigame === null || cookMinigame === void 0 ? void 0 : cookMinigame.result) && /*#__PURE__*/React.createElement("div", {
     style: {
-      padding: 8,
-      borderRadius: 8,
-      marginBottom: 8,
+      padding: 10,
+      borderRadius: 10,
+      marginBottom: 10,
       textAlign: 'center',
-      fontSize: 12,
-      fontWeight: 800,
+      fontSize: 13,
+      fontWeight: 700,
       background: cookMinigame.result === 'success' ? 'rgba(61,220,151,.15)' : 'rgba(217,92,84,.15)',
       border: cookMinigame.result === 'success' ? '1px solid rgba(61,220,151,.3)' : '1px solid rgba(217,92,84,.3)',
       color: cookMinigame.result === 'success' ? '#59BF91' : '#D95C54'
@@ -186,12 +237,17 @@ export function CookPanel(props) {
     });
     if (rawFish.length === 0) return /*#__PURE__*/React.createElement("div", {
       style: {
-        fontSize: 8,
-        color: 'rgba(255,255,255,.25)',
-        marginBottom: 8
+        fontSize: 12,
+        color: '#96A2A0',
+        fontStyle: 'italic',
+        padding: '4px 0',
+        marginBottom: 10
       }
     }, "No raw fish. Catch some at fishing spots in combat zones!");
-    return rawFish.map(function (_ref99) {
+    /* v2.3.1232: rows live in one recessed well, divided by hairlines. */
+    return /*#__PURE__*/React.createElement("div", {
+      style: LS_WELL
+    }, rawFish.map(function (_ref99, _ri) {
       var _rpgState$lifeSkills15;
       var _ref100 = _slicedToArray(_ref99, 2),
         key = _ref100[0],
@@ -212,47 +268,50 @@ export function CookPanel(props) {
         style: {
           display: 'flex',
           alignItems: 'center',
-          gap: 6,
-          marginBottom: 4,
-          padding: '4px 6px',
-          borderRadius: 6,
-          background: 'rgba(52,152,219,.06)',
-          border: '1px solid rgba(52,152,219,.15)'
+          gap: 8,
+          minHeight: 44,
+          padding: '4px 8px',
+          borderTop: _ri > 0 ? LS_DIV : 'none'
         }
       }, /*#__PURE__*/React.createElement("span", {
         style: {
-          fontSize: 14
+          fontSize: 18
         }
-      }, "\uD83D\uDC1F"), /*#__PURE__*/React.createElement("div", {
+      }, "🐟"), /*#__PURE__*/React.createElement("div", {
         style: {
-          flex: 1
+          flex: 1,
+          minWidth: 0
         }
       }, /*#__PURE__*/React.createElement("div", {
         style: {
-          fontSize: 9,
-          fontWeight: 700,
-          color: '#3498DB',
+          fontSize: 13,
+          fontWeight: 600,
+          color: '#F7F2E7',
           textTransform: 'capitalize'
         }
       }, fishName, " ", /*#__PURE__*/React.createElement("span", {
         style: {
-          color: 'rgba(255,255,255,.3)'
+          color: '#96A2A0',
+          fontVariantNumeric: 'tabular-nums'
         }
       }, "\xD7", qty)), /*#__PURE__*/React.createElement("div", {
         style: {
-          fontSize: 7,
-          color: 'rgba(255,255,255,.4)'
+          fontSize: 11,
+          color: '#96A2A0'
         }
       }, "Heals ", healAmt, " HP \xB7 Sweet spot: ", Math.round(spot.width * 100), "%")), /*#__PURE__*/React.createElement("button", {
         style: {
-          padding: '3px 8px',
-          borderRadius: 5,
-          border: 'none',
-          fontSize: 8,
+          minHeight: 34,
+          padding: '0 14px',
+          borderRadius: 11,
+          border: '1px solid rgba(238,242,235,.14)',
+          fontSize: 13,
           fontWeight: 700,
-          background: '#ea580c',
-          color: '#fff',
-          cursor: 'pointer'
+          background: '#2B3940',
+          color: '#F7F2E7',
+          cursor: 'pointer',
+          fontFamily: 'inherit',
+          flexShrink: 0
         },
         onClick: function onClick() {
           var _rpgState$lifeSkills16;
@@ -274,7 +333,7 @@ export function CookPanel(props) {
           BT_AUDIO.beep(400, 0.06, 0.08, 'sine');
         }
       }, "Cook"));
-    });
+    }));
   }(), !cookMinigame && function () {
     var inv = rpgState.inventory || {};
     var cookedFish = Object.entries(inv).filter(function (_ref101) {
@@ -285,14 +344,12 @@ export function CookPanel(props) {
     });
     if (cookedFish.length === 0) return null;
     return /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
-      style: {
-        fontSize: 10,
-        fontWeight: 700,
-        color: '#59BF91',
-        marginTop: 6,
-        marginBottom: 4
-      }
-    }, "\uD83C\uDF7D\uFE0F Cooked Fish (Ready to Eat)"), cookedFish.map(function (_ref103) {
+      style: _objectSpread(_objectSpread({}, LS_HEAD), {}, {
+        marginTop: 4
+      })
+    }, "Cooked — Ready to Eat"), /*#__PURE__*/React.createElement("div", {
+      style: LS_WELL
+    }, cookedFish.map(function (_ref103, _ri) {
       var _ref104 = _slicedToArray(_ref103, 2),
         key = _ref104[0],
         qty = _ref104[1];
@@ -306,47 +363,50 @@ export function CookPanel(props) {
         style: {
           display: 'flex',
           alignItems: 'center',
-          gap: 6,
-          marginBottom: 4,
-          padding: '4px 6px',
-          borderRadius: 6,
-          background: 'rgba(61,220,151,.06)',
-          border: '1px solid rgba(61,220,151,.15)'
+          gap: 8,
+          minHeight: 44,
+          padding: '4px 8px',
+          borderTop: _ri > 0 ? LS_DIV : 'none'
         }
       }, /*#__PURE__*/React.createElement("span", {
         style: {
-          fontSize: 14
+          fontSize: 18
         }
-      }, "\uD83C\uDF7D\uFE0F"), /*#__PURE__*/React.createElement("div", {
+      }, "🍽️"), /*#__PURE__*/React.createElement("div", {
         style: {
-          flex: 1
+          flex: 1,
+          minWidth: 0
         }
       }, /*#__PURE__*/React.createElement("div", {
         style: {
-          fontSize: 9,
-          fontWeight: 700,
-          color: '#59BF91',
+          fontSize: 13,
+          fontWeight: 600,
+          color: '#F7F2E7',
           textTransform: 'capitalize'
         }
       }, fishName, " ", /*#__PURE__*/React.createElement("span", {
         style: {
-          color: 'rgba(255,255,255,.3)'
+          color: '#96A2A0',
+          fontVariantNumeric: 'tabular-nums'
         }
       }, "\xD7", qty)), /*#__PURE__*/React.createElement("div", {
         style: {
-          fontSize: 7,
-          color: 'rgba(255,255,255,.4)'
+          fontSize: 11,
+          color: '#96A2A0'
         }
       }, "Heals ", healAmt, " HP")), /*#__PURE__*/React.createElement("button", {
         style: {
-          padding: '3px 8px',
-          borderRadius: 5,
-          border: 'none',
-          fontSize: 8,
+          minHeight: 34,
+          padding: '0 14px',
+          borderRadius: 11,
+          border: atFull ? '1px solid rgba(238,242,235,.08)' : '1px solid rgba(238,242,235,.14)',
+          fontSize: 13,
           fontWeight: 700,
-          background: atFull ? 'rgba(255,255,255,.08)' : '#59BF91',
-          color: atFull ? 'rgba(255,255,255,.3)' : '#000',
-          cursor: 'pointer'
+          background: atFull ? '#19252A' : '#2B3940',
+          color: atFull ? '#687575' : '#F7F2E7',
+          cursor: 'pointer',
+          fontFamily: 'inherit',
+          flexShrink: 0
         },
         onClick: function onClick() {
           if (atFull) return;
@@ -372,22 +432,20 @@ export function CookPanel(props) {
           BT_AUDIO.beep(500, 0.06, 0.08, 'sine');
         }
       }, "Eat"));
-    }));
+    })));
   }(), /*#__PURE__*/React.createElement("div", {
+    style: _objectSpread(_objectSpread({}, LS_HEAD), {}, {
+      marginTop: 6
+    })
+  }, "Buff Recipes — Herbs"), /*#__PURE__*/React.createElement("div", {
     style: {
-      fontSize: 10,
-      fontWeight: 700,
-      color: '#ea580c',
-      marginTop: 10,
-      marginBottom: 4
+      fontSize: 11,
+      color: '#96A2A0',
+      marginBottom: 8
     }
-  }, "\uD83C\uDF3F Buff Recipes (Herbs)"), /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 8,
-      color: 'rgba(255,255,255,.3)',
-      marginBottom: 4
-    }
-  }, "Combine farmed herbs into combat buff meals. No timing needed \u2014 just ingredients."), COOKING_RECIPES.map(function (recipe, ri) {
+  }, "Combine farmed herbs into combat buff meals. No timing needed — just ingredients."), /*#__PURE__*/React.createElement("div", {
+    style: LS_WELL
+  }, COOKING_RECIPES.map(function (recipe, ri) {
     var _rpgState$lifeSkills17;
     var cookLvl = ((_rpgState$lifeSkills17 = rpgState.lifeSkills) === null || _rpgState$lifeSkills17 === void 0 || (_rpgState$lifeSkills17 = _rpgState$lifeSkills17.cooking) === null || _rpgState$lifeSkills17 === void 0 ? void 0 : _rpgState$lifeSkills17.level) || 1;
     var canCook = cookLvl >= recipe.cookLvl;
@@ -415,42 +473,42 @@ export function CookPanel(props) {
       style: {
         display: 'flex',
         alignItems: 'center',
-        gap: 6,
-        marginBottom: 5,
+        gap: 8,
+        minHeight: 44,
         padding: '6px 8px',
-        borderRadius: 8,
-        background: 'rgba(255,255,255,.03)',
-        border: '1px solid rgba(255,255,255,.06)',
+        borderTop: ri > 0 ? LS_DIV : 'none',
         opacity: canCook ? 1 : 0.5
       }
     }, /*#__PURE__*/React.createElement("span", {
       style: {
-        fontSize: 16
+        fontSize: 18
       }
-    }, "\uD83C\uDF72"), /*#__PURE__*/React.createElement("div", {
+    }, "🍲"), /*#__PURE__*/React.createElement("div", {
       style: {
-        flex: 1
+        flex: 1,
+        minWidth: 0
       }
     }, /*#__PURE__*/React.createElement("div", {
       style: {
-        fontSize: 10,
-        fontWeight: 700,
-        color: canCook ? '#fff' : '#666'
+        fontSize: 13,
+        fontWeight: 600,
+        color: canCook ? '#F7F2E7' : '#687575'
       }
     }, recipe.name, " ", /*#__PURE__*/React.createElement("span", {
       style: {
-        fontSize: 7,
-        color: 'rgba(255,255,255,.3)'
+        fontSize: 10,
+        fontWeight: 600,
+        color: '#96A2A0'
       }
     }, "T", recipe.tier)), /*#__PURE__*/React.createElement("div", {
       style: {
-        fontSize: 7,
-        color: 'rgba(255,255,255,.4)'
+        fontSize: 11,
+        color: '#96A2A0'
       }
     }, buffDesc, recipe.duration ? " \xB7 ".concat(Math.round(recipe.duration / 60), "min") : ''), /*#__PURE__*/React.createElement("div", {
       style: {
-        fontSize: 7,
-        color: 'rgba(255,255,255,.3)'
+        fontSize: 11,
+        color: '#96A2A0'
       }
     }, "Needs: ", Object.entries(recipe.ingredients).map(function (_ref111) {
       var _ref112 = _slicedToArray(_ref111, 2),
@@ -459,14 +517,17 @@ export function CookPanel(props) {
       return c + '× ' + t.replace(/_/g, ' ');
     }).join(', '), !canCook && " \xB7 Req Cooking Lv".concat(recipe.cookLvl))), /*#__PURE__*/React.createElement("button", {
       style: {
-        padding: '3px 8px',
-        borderRadius: 5,
-        border: 'none',
-        fontSize: 8,
+        minHeight: 34,
+        padding: '0 14px',
+        borderRadius: 11,
+        border: canCook && hasIngredients ? '1px solid rgba(238,242,235,.14)' : '1px solid rgba(238,242,235,.08)',
+        fontSize: 13,
         fontWeight: 700,
-        background: canCook && hasIngredients ? '#ea580c' : 'rgba(255,255,255,.08)',
-        color: canCook && hasIngredients ? '#fff' : 'rgba(255,255,255,.3)',
-        cursor: 'pointer'
+        background: canCook && hasIngredients ? '#2B3940' : '#19252A',
+        color: canCook && hasIngredients ? '#F7F2E7' : '#687575',
+        cursor: 'pointer',
+        fontFamily: 'inherit',
+        flexShrink: 0
       },
       onClick: function onClick() {
         if (!canCook || !hasIngredients) return;
@@ -522,5 +583,5 @@ export function CookPanel(props) {
         BT_AUDIO.collect();
       }
     }, "Cook"));
-  }));
+  })));
 }
