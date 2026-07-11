@@ -2,26 +2,29 @@
 import { inspectCardBus } from './inspectCardBus.js';
 import { ItemArt } from './ItemArt.jsx';
 
-// Color canon — spec §"Color palette summary (both surfaces)".
+/* v2.3.1233: Lantern Slate flip (docs/LANTERN-SLATE-SPEC.md) — the card
+   was still on the pre-Lantern light-parchment palette.  Keys kept so
+   every usage below is untouched; values remapped to spec tokens
+   (well-soft tiles, warm-white text ladder, semantic stat colors). */
 const C = {
-  bg:        '#F1EFE8',
-  cardBg:    '#FFFFFF',
-  divider:   '#E2DCC8',
-  divider2:  '#D3D1C7',
-  text:      '#2C2C2A',
-  muted:     '#5F5E5A',
-  muted2:    '#888780',
-  veryMuted: '#B4B2A9',
-  badgeRed:  '#E24B4A',
-  navBg:     '#1E3328',
-  navText:   '#FFFFFF',
-  navMuted:  '#9DA89B',
-  // Stat colors (canonical §"Stat colors").
-  power:     '#378ADD',
-  vitality:  '#E24B4A',
-  endurance: '#639922',
-  agility:   '#EF9F27',
-  mind:      '#7F77DD',
+  bg:        '#19252A',
+  cardBg:    'linear-gradient(180deg, rgba(35,48,57,.94), rgba(17,25,29,.94))',
+  divider:   'rgba(238,242,235,.14)',
+  divider2:  'rgba(238,242,235,.18)',
+  text:      '#F7F2E7',
+  muted:     '#B9C1BF',
+  muted2:    '#96A2A0',
+  veryMuted: '#687575',
+  badgeRed:  '#D95C54',
+  navBg:     '#182227',
+  navText:   '#F7F2E7',
+  navMuted:  '#96A2A0',
+  // Stat colors — remapped onto the spec's semantic set.
+  power:     '#4D86D5',
+  vitality:  '#D95C54',
+  endurance: '#61B06B',
+  agility:   '#D8A94D',
+  mind:      '#9A76D3',
 };
 
 const POLE_HALO = {
@@ -288,7 +291,8 @@ const SKILL_LABEL = {
 
 const SkillTile = ({ skill, rank }) => (
   <div style={{
-    background: '#FFFFFF', border: `1px solid ${C.divider2}`, borderRadius: 6,
+    /* v2.3.1233: quiet readout cell — well-soft, not white. */
+    background: '#19252A', border: `1px solid ${C.divider2}`, borderRadius: 6,
     height: 32, padding: '0 6px',
     display: 'flex', justifyContent: 'space-between', alignItems: 'center',
   }}>
@@ -347,7 +351,8 @@ const HistorySection = ({ s }) => {
             {h.displayedTitle || <span style={{ fontStyle: 'italic', color: C.muted }}>(no titles yet)</span>}
           </span>
           {h.ascendant && (
-            <span style={{ color: '#D4A050', fontSize: 14 }}>★</span>
+            /* v2.3.1233: brass — premium marker, spec-sanctioned use. */
+            <span style={{ color: '#D8A85F', fontSize: 14 }}>★</span>
           )}
         </div>
         {(h.capstones || []).length > 0 && (
@@ -435,14 +440,18 @@ export const InspectCard = () => {
       `}</style>
       <div onClick={() => inspectCardBus.close()} style={{
         position: 'fixed', inset: 0, zIndex: 99800,
-        background: 'rgba(30, 51, 40, 0.55)',
+        /* v2.3.1233: spec modal scrim. */
+        background: 'rgba(8,16,20,.56)',
         display: 'flex', alignItems: 'flex-start', justifyContent: 'center',
         padding: '20px 0', overflowY: 'auto',
       }}>
+        {/* v2.3.1233: world-floating card — gradient fill, strong border,
+            radius 12, panel shadow (no backdrop-filter). */}
         <div onClick={e => e.stopPropagation()} style={{
           width: 340, maxWidth: '92vw',
-          background: C.cardBg, borderRadius: 10,
-          boxShadow: '0 6px 28px rgba(0,0,0,.4)',
+          background: C.cardBg, borderRadius: 12,
+          border: '1px solid rgba(238,242,235,.24)',
+          boxShadow: '0 14px 30px rgba(4,7,9,.38)',
           color: C.text, fontFamily: FONT.sans,
           animation: 'inspect-in 220ms ease-out',
           marginBottom: 20,

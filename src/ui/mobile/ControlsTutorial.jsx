@@ -37,12 +37,14 @@ const CALLOUTS = [
     label: 'More',    desc: 'Map, guild, settings…' },
 ];
 
+/* v2.3.1233: Lantern Slate tokens (docs/LANTERN-SLATE-SPEC.md) — world
+   overlay fill, strong border, brass highlight, warm-white text ladder. */
 const COL = {
-  card:    'rgba(15,17,26,0.92)',
-  border:  'rgba(255,255,255,0.18)',
-  accent:  '#f5c542',
-  text:    '#f0ece0',
-  muted:   '#9a978c',
+  card:    'rgba(17,25,29,.94)',
+  border:  'rgba(238,242,235,.24)',
+  accent:  '#D8A85F',
+  text:    '#F7F2E7',
+  muted:   '#B9C1BF',
 };
 
 /* Measure every callout's live element.  Missing / zero-size elements
@@ -190,21 +192,23 @@ export const ControlsTutorial = () => {
           width: 'min(92vw, 420px)',
           background: COL.card,
           border: `1px solid ${COL.border}`,
-          borderRadius: 10,
+          /* v2.3.1233: world-floating card — radius 12 + panel shadow. */
+          borderRadius: 12,
           padding: '8px 10px',
           color: COL.text,
-          boxShadow: '0 10px 30px rgba(0,0,0,0.6)',
+          boxShadow: '0 14px 30px rgba(4,7,9,.38)',
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div style={{ fontSize: 15, fontWeight: 800, letterSpacing: '0.02em' }}>Controls</div>
           <button
             onClick={onClose}
+            /* v2.3.1233: secondary button — raised surface + hairline. */
             style={{
-              background: 'rgba(255,255,255,0.08)',
-              border: `1px solid ${COL.border}`,
+              background: '#2B3940',
+              border: '1px solid rgba(238,242,235,.14)',
               color: COL.text,
-              borderRadius: 6,
+              borderRadius: 11,
               padding: '3px 10px',
               fontSize: 12, fontWeight: 700,
               cursor: 'pointer',

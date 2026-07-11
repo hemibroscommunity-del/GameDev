@@ -89,7 +89,9 @@ const HudPopup = ({ pop, stackIdx }) => {
         ...base,
         transform: transformVal,
         opacity: phase === 1 ? 0 : 1,
-        color: pop.color || (isGold ? '#f5c542' : '#3ddc97'),
+        /* v2.3.1233: Lantern Slate semantic fallbacks — coin gold #D8A94D
+           (matches .bt-coin-glimmer base), XP green #61B06B. */
+        color: pop.color || (isGold ? '#D8A94D' : '#61B06B'),
         fontFamily: 'Source Sans 3, sans-serif',
         fontWeight: 700,
         fontSize: 20,

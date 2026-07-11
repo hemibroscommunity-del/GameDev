@@ -238,12 +238,16 @@ pointerdown. prefers-reduced-motion removes shimmer/overshoot/nudge.
    icon drop-shadow, NEW brass dot, equipped brass corner notch.
    Cooldown / drag / invalid-drop states deferred — no runtime
    surface exists for them yet.
-3. ◐ v2.3.1229: panel header 44px; toolbar now PERSISTENT in panel
-   mode with the active destination lit (brass plate + top line;
-   tapping the lit icon toggles home — no extra "dashboard" icon
-   needed); red-leather removed from the FULL bag panel (the sweep
-   had only caught the preview grid). Remaining: tabs/chips/rows
-   sweep, toast + joystick opacity ladder.
+3. ✅ v2.3.1229–1233: panel header 44px; persistent lit toolbar
+   (tapping the lit icon toggles home); red leather fully removed.
+   v2.3.1232 (the ~55-file craftsmanship sweep): EVERY panel rebuilt
+   on the §9/§12 kit — 44px rows, segmented tabs, chips, wells, brass
+   primaries, destructive treatments, empty states, icon identities.
+   v2.3.1233: floating widgets (chat bubble/launcher, inspect card,
+   mastery toasts, controls tutorial, More sheet) on the world-card
+   language + joystick rest-opacity ladder. Deferred: the joystick
+   .92 ENGAGED opacity step needs a BroTown.jsx touch-handler hook
+   (logic-frozen during the sweep) — small follow-up.
 4. ✅ v2.3.1230 (legacy sweep): the legacy CSS variable set
    (--ink/--line/--pop/--txt/--gold/...) in game.css now carries
    Lantern Slate values, flipping every legacy panel

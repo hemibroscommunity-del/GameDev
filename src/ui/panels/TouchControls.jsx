@@ -51,6 +51,11 @@ export function TouchControls(props) {
       /* v2.3.816: visuals only -- touches are handled by lZoneRef beneath,
          so this corner box must not intercept them. */
       pointerEvents: 'none',
+      /* v2.3.1233: Lantern Slate §10 opacity ladder applied at the
+         CONTAINER (the visuals inside are sprite art we must not touch,
+         and BroTown's handlers re-stamp the base's own opacity).  .62
+         rest; the .92 engaged step needs a handler hook — deferred. */
+      opacity: 0.62,
       width: isLandscape ? 98 : 83,
       height: isLandscape ? 98 : 83
     }
@@ -154,6 +159,9 @@ export function TouchControls(props) {
       zIndex: 30,
       /* v2.3.816: visuals only -- touches handled by rZoneRef beneath. */
       pointerEvents: 'none',
+      /* v2.3.1233: §10 opacity ladder at the container — see the left
+         joystick's matching note. */
+      opacity: 0.62,
       width: isLandscape ? 98 : 83,
       height: isLandscape ? 98 : 83
     }
@@ -193,8 +201,9 @@ export function TouchControls(props) {
       position: 'absolute',
       inset: 0,
       borderRadius: '50%',
-      border: '2px solid rgba(255,80,80,0.85)',
-      boxShadow: '0 0 12px rgba(255,80,80,0.55)',
+      /* v2.3.1233: ring chrome onto the spec's HP red (#D95C54). */
+      border: '2px solid rgba(217,92,84,0.85)',
+      boxShadow: '0 0 12px rgba(217,92,84,0.55)',
       pointerEvents: 'none',
       zIndex: 2,
     }
