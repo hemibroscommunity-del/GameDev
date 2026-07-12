@@ -27,6 +27,24 @@ import { pushDmgPopup } from '@/game/combatHelpers.js';
    icons with emoji fallback (SkillsPanel pattern). ZERO logic changes:
    every handler, channel message, fetch, conditional and popup is
    untouched. */
+/* v2.3.1235: batch-3 rollout — correction-pass compliance
+   (docs/LANTERN-SLATE-SPEC.md + game.css :root). Presentation only,
+   every handler/fetch/legacy-settlement branch byte-identical.
+   v2.3.1232 tokens remapped onto the approved set (sheet #1E2E34,
+   well #111E23, raised #293B41, card #24363C, text ladder
+   #F4F0E7/#B6C1BE/#8D9B98/#667875, lines rgba(229,237,233,.11/.20),
+   brass #D8AA58 / gradient primary on #172126 ink, positive #55B98A,
+   danger #D8635D, stamina #DFAE4E); match/stake/hall-of-fame rows move
+   off per-row cards into recessed wells with hairline dividers; the
+   green-tint alive-chips and red-tint match rows lose their off-token
+   screen-specific fills; Leave Queue becomes a danger OUTLINE (filled
+   red retired); chrome emoji dropped from headers/buttons/labels
+   (🏟️/⏳/⚔️/💀/🎲/💰/🏆/✅/❌ → text; player-chosen colors and the
+   gold/evt icon imgs stay); chips/inputs/buttons hit the 44px hitbox
+   floor. Bet-confirm primaries keep the gold recipe in each betting
+   region; the duplicated legacy betting regions are frozen logic, so
+   more than one gold confirm can still co-render (noted, not fixable
+   style-side). */
 export function PartyPanel(props) {
   var rpgState = props.rpgState,
     stateRef = props.stateRef,
@@ -49,9 +67,11 @@ export function PartyPanel(props) {
        -20px margin counters the legacy .bt-inspect-card padding */
     style: {
       margin: -20,
-      padding: '16px 14px',
-      background: '#202C32',
-      borderRadius: 13,
+      /* v2.3.1235: batch-3 rollout — sheet token, 14px panel radius, and
+         the Checkpoint-B 16px scroll tail. */
+      padding: '16px 14px 32px',
+      background: '#1E2E34',
+      borderRadius: 14,
       textAlign: 'left',
       fontFamily: "'Source Sans 3',sans-serif"
     }
@@ -84,9 +104,10 @@ export function PartyPanel(props) {
       color: '#F7F2E7'
     }
   }, "Gladiator Arena")), /*#__PURE__*/React.createElement("div", {
-    /* v2.3.1232: LS caption meta row; gold icon + 14/700 tabular brass amount */
+    /* v2.3.1235: batch-3 rollout — 11px floor on the meta row; the gold
+       amount is a key number (16/700 tabular brass). */
     style: {
-      fontSize: 10,
+      fontSize: 11,
       fontWeight: 600,
       color: '#96A2A0',
       marginBottom: 6,
@@ -95,7 +116,7 @@ export function PartyPanel(props) {
       flexWrap: 'wrap',
       gap: 4
     }
-  }, /*#__PURE__*/React.createElement("img", { src: "/icons/popups/gold.webp", alt: "", draggable: false, style: { width: 16, height: 16, objectFit: 'contain', verticalAlign: '-3px' }, onError: function (e) { e.currentTarget.replaceWith(document.createTextNode('\uD83D\uDCB0')); } }), /*#__PURE__*/React.createElement("span", { style: { fontSize: 14, fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: '#D8A85F' } }, rpgState.coins, "G"), "\xB7 Entry fee: ", ARENA_ENTRY_FEE, "G \xB7 10 rounds \xB7 Single elimination \xB7 No healing"), function () {
+  }, /*#__PURE__*/React.createElement("img", { src: "/icons/popups/gold.webp", alt: "", draggable: false, style: { width: 16, height: 16, objectFit: 'contain', verticalAlign: '-3px' }, onError: function (e) { e.currentTarget.replaceWith(document.createTextNode('\uD83D\uDCB0')); } }), /*#__PURE__*/React.createElement("span", { style: { fontSize: 16 /* v2.3.1235: batch-3 rollout — key-number size */, fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: '#D8AA58' } }, rpgState.coins, "G"), "\xB7 Entry fee: ", ARENA_ENTRY_FEE, "G \xB7 10 rounds \xB7 Single elimination \xB7 No healing"), function () {
     var S = stateRef.current;
     /* Poll arena status periodically */
     if (!S._arenaLastPoll || Date.now() - S._arenaLastPoll > ARENA_POLL_INTERVAL) {
@@ -203,39 +224,43 @@ export function PartyPanel(props) {
         }
       }, _callee8, null, [[2, 6]]);
     })),
-    /* v2.3.1232: LS region primary -- brass 44px */
+    /* v2.3.1235: batch-3 rollout \u2014 the region's gold primary adopts the
+       committed gradient recipe (#EAC675 edge, #172126 ink, radius 10);
+       button-label emoji dropped. */
     style: {
       width: '100%',
       minHeight: 44,
       padding: '12px 0',
-      borderRadius: 11,
+      borderRadius: 10,
       fontSize: 13,
       fontWeight: 700,
-      border: 'none',
-      background: '#D8A85F',
-      color: '#20170D',
+      border: '1px solid #EAC675',
+      background: 'linear-gradient(180deg,#E2B765,#D2A14D)',
+      color: '#172126',
       cursor: 'pointer',
       marginBottom: 8
     }
-  }, "\uD83C\uDFDF\uFE0F Enter Arena (", ARENA_ENTRY_FEE, "G)")), (arenaStatus === null || arenaStatus === void 0 ? void 0 : arenaStatus.status) === 'queued' && /*#__PURE__*/React.createElement("div", {
+  }, "Enter Arena (", ARENA_ENTRY_FEE, "G)")), (arenaStatus === null || arenaStatus === void 0 ? void 0 : arenaStatus.status) === 'queued' && /*#__PURE__*/React.createElement("div", {
     style: {
       padding: 10,
       borderRadius: 8,
-      background: '#182227',
-      border: '1px solid rgba(238,242,235,.14)',
+      /* v2.3.1235: batch-3 rollout \u2014 card token + hairline; header
+         emoji dropped (chrome). */
+      background: '#24363C',
+      border: '1px solid rgba(229,237,233,.11)',
       marginBottom: 8,
       textAlign: 'center'
     }
   }, /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 11,
-      fontWeight: 600,
+      fontWeight: 700 /* v2.3.1235: batch-3 rollout \u2014 11/700 .14em muted headers */,
       textTransform: 'uppercase',
-      letterSpacing: '.12em',
-      color: '#B9C1BF',
+      letterSpacing: '.14em',
+      color: '#8D9B98',
       marginBottom: 4
     }
-  }, "\u23F3 In Queue"), /*#__PURE__*/React.createElement("div", {
+  }, "In Queue"), /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 11,
       color: '#96A2A0'
@@ -288,17 +313,18 @@ export function PartyPanel(props) {
         }
       }, _callee9, null, [[1, 3]]);
     })),
-    /* v2.3.1232: LS destructive */
+    /* v2.3.1235: batch-3 rollout — danger is OUTLINE only (filled red
+       retired); 44px hitbox floor. */
     style: {
       marginTop: 6,
-      minHeight: 32,
+      minHeight: 44,
       padding: '6px 14px',
       borderRadius: 8,
       fontSize: 11,
       fontWeight: 700,
-      border: '1px solid #C7655F',
-      background: '#7C3431',
-      color: '#FFF1EE',
+      border: '1px solid #D8635D',
+      background: 'transparent',
+      color: '#D8635D',
       cursor: 'pointer'
     }
   }, "Leave Queue (refund ", ARENA_ENTRY_FEE, "G)")), (arenaStatus === null || arenaStatus === void 0 ? void 0 : arenaStatus.status) === 'fighting' && arenaStatus.currentMatch && /*#__PURE__*/React.createElement("div", {
@@ -708,7 +734,7 @@ export function PartyPanel(props) {
       fontSize: 11,
       color: '#96A2A0'
     }
-  }, "G (", /*#__PURE__*/React.createElement("img", { src: "/icons/popups/gold.webp", alt: "", draggable: false, style: { width: 16, height: 16, objectFit: 'contain', verticalAlign: '-3px' }, onError: function (e) { e.currentTarget.replaceWith(document.createTextNode('\uD83D\uDCB0')); } }), /*#__PURE__*/React.createElement("span", { style: { fontSize: 14, fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: '#D8A85F' } }, rpgState.coins, "G"), ")")), /*#__PURE__*/React.createElement("button", {
+  }, "G (", /*#__PURE__*/React.createElement("img", { src: "/icons/popups/gold.webp", alt: "", draggable: false, style: { width: 16, height: 16, objectFit: 'contain', verticalAlign: '-3px' }, onError: function (e) { e.currentTarget.replaceWith(document.createTextNode('\uD83D\uDCB0')); } }), /*#__PURE__*/React.createElement("span", { style: { fontSize: 16 /* v2.3.1235: batch-3 rollout — key-number size */, fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: '#D8AA58' } }, rpgState.coins, "G"), ")")), /*#__PURE__*/React.createElement("button", {
     disabled: !arenaBetTarget || rpgState.coins < arenaBetAmount,
     onClick: function onClick() {
       var _arenaTournament$play3;
@@ -893,7 +919,7 @@ export function PartyPanel(props) {
       color: '#687575',
       marginLeft: 'auto'
     }
-  }, /*#__PURE__*/React.createElement("img", { src: "/icons/popups/gold.webp", alt: "", draggable: false, style: { width: 16, height: 16, objectFit: 'contain', verticalAlign: '-3px' }, onError: function (e) { e.currentTarget.replaceWith(document.createTextNode('\uD83D\uDCB0')); } }), /*#__PURE__*/React.createElement("span", { style: { fontSize: 14, fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: '#D8A85F' } }, rpgState.coins, "G"))), /*#__PURE__*/React.createElement("button", {
+  }, /*#__PURE__*/React.createElement("img", { src: "/icons/popups/gold.webp", alt: "", draggable: false, style: { width: 16, height: 16, objectFit: 'contain', verticalAlign: '-3px' }, onError: function (e) { e.currentTarget.replaceWith(document.createTextNode('\uD83D\uDCB0')); } }), /*#__PURE__*/React.createElement("span", { style: { fontSize: 16 /* v2.3.1235: batch-3 rollout — key-number size */, fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: '#D8AA58' } }, rpgState.coins, "G"))), /*#__PURE__*/React.createElement("button", {
     disabled: !arenaBetTarget || rpgState.coins < arenaBetAmount,
     onClick: function onClick() {
       var _arenaTournament$play4;
@@ -1121,7 +1147,7 @@ export function PartyPanel(props) {
       fontSize: 10,
       color: '#96A2A0'
     }
-  }, "G (", /*#__PURE__*/React.createElement("img", { src: "/icons/popups/gold.webp", alt: "", draggable: false, style: { width: 16, height: 16, objectFit: 'contain', verticalAlign: '-3px' }, onError: function (e) { e.currentTarget.replaceWith(document.createTextNode('\uD83D\uDCB0')); } }), /*#__PURE__*/React.createElement("span", { style: { fontSize: 14, fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: '#D8A85F' } }, rpgState.coins, "G"), ")")), /*#__PURE__*/React.createElement("button", {
+  }, "G (", /*#__PURE__*/React.createElement("img", { src: "/icons/popups/gold.webp", alt: "", draggable: false, style: { width: 16, height: 16, objectFit: 'contain', verticalAlign: '-3px' }, onError: function (e) { e.currentTarget.replaceWith(document.createTextNode('\uD83D\uDCB0')); } }), /*#__PURE__*/React.createElement("span", { style: { fontSize: 16 /* v2.3.1235: batch-3 rollout — key-number size */, fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: '#D8AA58' } }, rpgState.coins, "G"), ")")), /*#__PURE__*/React.createElement("button", {
     onClick: function onClick() {
       var _arenaTournament$play6;
       var S = stateRef.current,
@@ -1530,7 +1556,7 @@ export function PartyPanel(props) {
         color: '#96A2A0',
         marginBottom: 6
       }
-    }, "Blind bet on who wins the tournament. Payout: pot \xF7 winners. ", /*#__PURE__*/React.createElement("img", { src: "/icons/popups/gold.webp", alt: "", draggable: false, style: { width: 16, height: 16, objectFit: 'contain', verticalAlign: '-3px' }, onError: function (e) { e.currentTarget.replaceWith(document.createTextNode('\uD83D\uDCB0')); } }), /*#__PURE__*/React.createElement("span", { style: { fontSize: 14, fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: '#D8A85F' } }, rpgState.coins, "G")), /*#__PURE__*/React.createElement("div", {
+    }, "Blind bet on who wins the tournament. Payout: pot \xF7 winners. ", /*#__PURE__*/React.createElement("img", { src: "/icons/popups/gold.webp", alt: "", draggable: false, style: { width: 16, height: 16, objectFit: 'contain', verticalAlign: '-3px' }, onError: function (e) { e.currentTarget.replaceWith(document.createTextNode('\uD83D\uDCB0')); } }), /*#__PURE__*/React.createElement("span", { style: { fontSize: 16 /* v2.3.1235: batch-3 rollout — key-number size */, fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: '#D8AA58' } }, rpgState.coins, "G")), /*#__PURE__*/React.createElement("div", {
       style: {
         fontSize: 11,
         fontWeight: 700,
