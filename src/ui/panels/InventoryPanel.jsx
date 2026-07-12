@@ -436,7 +436,7 @@ export function InventoryPanel(props) {
     if (!bonus) return null;
     return /*#__PURE__*/React.createElement("span", {
       style: {
-        color: ((_ELEMENTS$rpgState$am3 = ELEMENTS[rpgState.amulet.gem]) === null || _ELEMENTS$rpgState$am3 === void 0 ? void 0 : _ELEMENTS$rpgState$am3.color) || '#F7F2E7'
+        color: ((_ELEMENTS$rpgState$am3 = ELEMENTS[rpgState.amulet.gem]) === null || _ELEMENTS$rpgState$am3 === void 0 ? void 0 : _ELEMENTS$rpgState$am3.color) || 'var(--ui-text)'
       }
     }, " \xB7 ", bonus.label, " +", bonus.value, bonus.unit);
   }()), rpgState.amulet.gem && /*#__PURE__*/React.createElement("div", {

@@ -297,7 +297,7 @@ export function SkillsPanel(props) {
       var parts = k.split('_'); /* raw_flame, polished_frost, etc */
       var qual = parts[0];
       var elem = parts[1];
-      var gc = ((_ZONE_RESOURCES$elem3 = ZONE_RESOURCES[elem]) === null || _ZONE_RESOURCES$elem3 === void 0 ? void 0 : _ZONE_RESOURCES$elem3.gemColor) || '#9A76D3';
+      var gc = ((_ZONE_RESOURCES$elem3 = ZONE_RESOURCES[elem]) === null || _ZONE_RESOURCES$elem3 === void 0 ? void 0 : _ZONE_RESOURCES$elem3.gemColor) || '#9A78D0'; /* v2.3.1235: batch-2 rollout — fallback onto the approved magic token */
       return /*#__PURE__*/React.createElement("span", {
         key: k,
         style: {
