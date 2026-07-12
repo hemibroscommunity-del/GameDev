@@ -1841,21 +1841,93 @@ export function processGameEvent(type, payload, S, deps) {
                  goods from a settled swap arrive via the authoritative
                  player_state echo (coins + inventory adopted). */
               if (!payload || !setTrade2) break;
+              /* v2.3.1235: trade-completion receipt — any newer session
+                 snapshot supersedes a pending done-reveal watcher (guards
+                 a hyper-fast re-open racing the ≤1.5s echo wait below). */
+              if (S._t2DoneWatch && payload.state !== 'done') {
+                try { clearInterval(S._t2DoneWatch); } catch (e) {}
+                S._t2DoneWatch = null;
+              }
               if (payload.state === 'open' || payload.state === 'invited') {
                 setTrade2(payload);
               } else if (payload.state === 'done') {
-                setTrade2(null);
-                pushDmgPopup(S, S.player.x, S.player.y - 40, 'Trade complete!', '#3dd497');
-                BT_AUDIO.collect();
-                if (S.rpg) setRpgState(_objectSpread({}, S.rpg));
+                /* v2.3.1235: trade-completion receipt — HOLD the window
+                   open and drop the old floating "Trade complete!" world
+                   popup (it rendered before the wallet echo and the modal
+                   just vanished).  Receipt = the final session snapshot
+                   (my offers = what I sent, theirs = what I received;
+                   the v2.3.1213 weapon lanes ride alongside).  The
+                   swapped goods/gold arrive ONLY via the authoritative
+                   player_state echo, which trade2.js QUEUES before this
+                   broadcast but flushes on the next tick — so 'done'
+                   normally lands first, and revealing now would show a
+                   stale balance.  player_state is applied in
+                   wsClient.js's own switch case (it never reaches this
+                   dispatcher), so we chain off its OBSERVABLE effects
+                   instead of the message: wsClient overwrites R.coins
+                   (number) and replaces R.inventory (fresh object
+                   identity) whenever the echo carries them — either
+                   differing from the pre-'done' snapshot means the echo
+                   has been APPLIED.  A 1500ms fallback reveals anyway so
+                   a dropped (or delta-elided no-change) echo can't wedge
+                   the modal.  One-shot: the watcher clears itself. */
+                var _t2OtherId = payload.a === S.myId ? payload.b : payload.a;
+                var _t2Receipt = {
+                  sent: (payload.offers && payload.offers[S.myId]) || {},
+                  received: (payload.offers && payload.offers[_t2OtherId]) || {},
+                  sentWeapons: (payload.weapons && payload.weapons[S.myId]) || [],
+                  receivedWeapons: (payload.weapons && payload.weapons[_t2OtherId]) || [],
+                  otherName: payload.a === S.myId ? (payload.bName || 'Trader') : (payload.aName || 'Trader'),
+                };
+                var _t2PreCoins = S.rpg ? S.rpg.coins : null;      /* pre-trade coins */
+                var _t2PreInv = S.rpg ? S.rpg.inventory : null;    /* pre-trade inventory ref */
+                if (S._t2DoneWatch) { try { clearInterval(S._t2DoneWatch); } catch (e) {} }
+                var _t2Deadline = Date.now() + 1500;
+                S._t2DoneWatch = setInterval(function () {
+                  var _t2Echoed = !!(S.rpg && (S.rpg.coins !== _t2PreCoins || S.rpg.inventory !== _t2PreInv));
+                  if (!_t2Echoed && Date.now() < _t2Deadline) return;
+                  try { clearInterval(S._t2DoneWatch); } catch (e) {}
+                  S._t2DoneWatch = null;
+                  /* Only NOW may "Trade complete" render — the receipt's
+                     Balance line reads the server-echoed wallet.  The
+                     panel auto-closes itself (~2800ms) via the existing
+                     setTrade2(null); no after-close toast (the only
+                     toast mechanism is the salvage-undo queue in
+                     ItemTooltip.jsx — item/undo-specific, not suitable —
+                     and the floating world text is deliberately gone). */
+                  setTrade2({ state: 'done', receipt: _t2Receipt, ts: Date.now() });
+                  BT_AUDIO.collect();
+                  if (S.rpg) setRpgState(_objectSpread({}, S.rpg));
+                }, 80);
               } else {
-                setTrade2(null);
-                var _t2Why = {
-                  'declined': 'Trade declined', 'disconnected': 'They disconnected',
-                  'expired': 'Trade expired', 'busy': 'They are already trading',
-                  'target-gone': 'Player unavailable', 'party-gone': 'Player unavailable',
-                }[payload.reason] || (payload.reason && payload.reason.indexOf('insufficient') === 0 ? 'Trade failed — items no longer available' : 'Trade cancelled');
-                pushDmgPopup(S, S.player.x, S.player.y - 40, _t2Why, '#ff5e6c');
+                /* v2.3.1235: trade-completion receipt — settlement
+                   failure is a CANCEL: trade2.js _handleTrade2Confirm
+                   validates at commit and calls _t2Cancel(s,
+                   'insufficient:<pid>') when a side spent its staged
+                   goods, deleting the session.  The session is DEAD
+                   server-side, so "return to Editing with the same
+                   session" would be a lie — instead the panel keeps its
+                   shell up briefly with an honest in-modal notice
+                   ("Trade failed — nothing was exchanged", state
+                   'failed', auto-closes ~2200ms).  Inventory/gold are
+                   never touched locally on any trade path — a failed
+                   commit sends no credit and no player_state mutation.
+                   True retry-in-place would need a server change (the
+                   session surviving a failed commit) — out of scope.
+                   Every other cancel reason keeps the legacy
+                   clear-window + world-popup behavior. */
+                var _t2SettleFail = !!(payload.reason && String(payload.reason).indexOf('insufficient') === 0);
+                if (_t2SettleFail) {
+                  setTrade2({ state: 'failed', reason: payload.reason, ts: Date.now() });
+                } else {
+                  setTrade2(null);
+                  var _t2Why = {
+                    'declined': 'Trade declined', 'disconnected': 'They disconnected',
+                    'expired': 'Trade expired', 'busy': 'They are already trading',
+                    'target-gone': 'Player unavailable', 'party-gone': 'Player unavailable',
+                  }[payload.reason] || 'Trade cancelled';
+                  pushDmgPopup(S, S.player.x, S.player.y - 40, _t2Why, '#ff5e6c');
+                }
               }
               break;
             }

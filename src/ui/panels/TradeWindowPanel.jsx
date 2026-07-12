@@ -45,15 +45,21 @@ import { RARITY_TIERS } from '@/data/index.js';
      this same session had a confirm set; the new echo has both cleared
      while still 'open') — pure display of relayed state, no client
      guess, and it can never appear before the server's echo arrives.
-   - Completion: trade2_state {state:'done', settled:true}.  The
-     gameEvents.js switch consumes it BEFORE this panel renders it
-     (setTrade2(null) + "Trade complete!" world popup; the swapped
-     goods arrive only via the authoritative player_state echo), so
-     'done' never reaches this component — there is deliberately NO
-     in-panel completion summary and the window is never held open
-     waiting for one.
-   - Cancels: trade2_state {state:'cancelled', reason} — likewise
-     consumed by gameEvents.js (reason-mapped popup, window cleared). */
+   - Completion: trade2_state {state:'done', settled:true}.
+     v2.3.1235: trade-completion receipt — gameEvents.js no longer
+     clears the window on the wire 'done'; it captures a receipt from
+     that final snapshot and only sets trade2 = {state:'done', receipt}
+     AFTER the authoritative player_state echo has been APPLIED (or a
+     1500ms fallback for a dropped/no-change echo).  This panel renders
+     that receipt in the same modal shell and auto-closes ~2800ms later
+     — "Trade complete" can therefore never show a pre-echo balance.
+   - Cancels: trade2_state {state:'cancelled', reason} — consumed by
+     gameEvents.js.  v2.3.1235: trade-completion receipt — a commit-time
+     settlement failure (reason 'insufficient:*'; the server CANCELS the
+     dead session, see trade2.js) becomes trade2 = {state:'failed'},
+     rendered below as a brief in-modal notice (~2200ms) instead of a
+     world popup; every other reason keeps the reason-mapped popup +
+     immediate clear. */
 
 const ITEM_EMOJI = {
   fish_minnow: '🐟', fish_clownfish: '🐠', fish_trout: '🎣',
@@ -116,7 +122,10 @@ function StagedRow({ glyph, name, qty, rarityLabel, rarityColor, onRemove }) {
    from the server snapshot (or my local staging mirror of it); if the
    list outgrows the well only IT scrolls (overflow-y auto +
    ls-scrollbody, game.css). */
-function OfferRows({ offer, weapons, empty, onRemoveItem, onRemoveWeapon }) {
+/* v2.3.1235: trade-completion receipt — optional goldSuffix ("G") lets
+   the receipt render its gold rows as "25G"; live-trade wells pass
+   nothing and are byte-identical. */
+function OfferRows({ offer, weapons, empty, onRemoveItem, onRemoveWeapon, goldSuffix }) {
   const entries = Object.entries(offer || {}).filter(([k, v]) => k !== '_gold' && v > 0);
   const gold = (offer && offer._gold) || 0;
   const wpns = weapons || [];
@@ -141,7 +150,7 @@ function OfferRows({ offer, weapons, empty, onRemoveItem, onRemoveWeapon }) {
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, minHeight: 36, padding: '2px 0' }}>
           <div style={{ width: 32, height: 32, flex: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#16262C', border: '1px solid rgba(229,237,233,.08)', borderRadius: 8 }}><GoldIcon /></div>
           <div style={{ flex: 1, fontSize: 12, color: '#B6C1BE' }}>Gold</div>
-          <div style={{ fontSize: 14, fontWeight: 700, color: '#D8AA58', fontVariantNumeric: 'tabular-nums' }}>{gold}</div>
+          <div style={{ fontSize: 14, fontWeight: 700, color: '#D8AA58', fontVariantNumeric: 'tabular-nums' }}>{gold}{goldSuffix || ''}</div>
         </div>
       )}
     </div>
@@ -198,6 +207,21 @@ export function TradeWindowPanel(props) {
     else if (cur.any || (prev && prev.id !== cur.id)) setOfferChanged(false);
   }, [trade2]);
 
+  /* v2.3.1235: trade-completion receipt — the receipt ('done') and the
+     settlement-failure notice ('failed') are transient READ-ONLY states:
+     no buttons, timed auto-close via the existing setTrade2(null)
+     (~2800ms receipt / ~2200ms failure).  No after-close toast: the only
+     toast mechanism in the codebase is the salvage-undo queue
+     (ItemTooltip.jsx queueSalvageToast — item+undo specific), so per the
+     owner spec the toast is skipped rather than re-adding the floating
+     world text over the character. */
+  const terminalState = trade2 && trade2.state;
+  useEffect(() => {
+    if (terminalState !== 'done' && terminalState !== 'failed') return undefined;
+    const t = setTimeout(() => setTrade2(null), terminalState === 'done' ? 2800 : 2200);
+    return () => clearTimeout(t);
+  }, [terminalState]);
+
   if (!trade2) return null;
 
   /* v2.3.1232: shared Lantern Slate surfaces for this panel's cards */
@@ -222,6 +246,75 @@ export function TradeWindowPanel(props) {
     border: '1px solid rgba(229,237,233,.20)',
     background: '#293B41', color: '#F4F0E7', fontSize: 13, fontWeight: 700, cursor: 'pointer',
   };
+  /* v2.3.1232: module header — 11/600 uppercase per spec typography */
+  /* v2.3.1235: batch-4 rollout — corrected section-header ramp 11/700
+     .14em; muted #8D9B98, confirmed = corrected positive #55B98A (the
+     ✅ emoji was chrome — dropped). */
+  /* v2.3.1235: trade-completion receipt — laneHeader + wellStyle hoisted
+     above the state renders (values unchanged) so the receipt reuses the
+     exact live-window section-header and recessed-well recipes. */
+  const laneHeader = { fontSize: 11, fontWeight: 700, letterSpacing: '.14em', textTransform: 'uppercase', marginBottom: 3 };
+  /* v2.3.1235: batch-4 state-correction §3 — recessed offer well */
+  const wellStyle = { borderRadius: 8, background: '#111E23', border: '1px solid rgba(229,237,233,.11)', boxShadow: 'inset 0 2px 4px rgba(0,0,0,.44)', padding: '2px 6px', marginBottom: 8 };
+
+  /* v2.3.1235: trade-completion receipt — state==='done' renders the
+     receipt INSIDE the same modal shell.  gameEvents.js only ever sets
+     this state AFTER the authoritative player_state echo was applied
+     (or its 1500ms dropped-echo fallback), so the Balance line below is
+     always the SERVER's wallet, never a pre-echo value.  Read-only: no
+     buttons, no celebration; the effect above auto-closes it (~2800ms).
+     A scrim tap dismisses early (pure local close — the session is
+     already settled and gone server-side, so there is nothing to send). */
+  if (trade2.state === 'done' && trade2.receipt) {
+    const r = trade2.receipt;
+    const liveCoins = (rpgState && rpgState.coins) || 0; /* live rpg wallet = server-echoed value */
+    return (
+      <div className="bt-inspect" style={{ background: 'rgba(4,9,12,0.52)' }} onClick={() => setTrade2(null)}>
+        <div className="bt-inspect-card" onClick={(e) => e.stopPropagation()} style={{ ...cardStyle, width: 320 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, fontWeight: 700, color: '#55B98A', marginBottom: 8 }}>
+            <TradeIcon /> Trade complete ✓
+          </div>
+          <div style={{ ...laneHeader, color: '#8D9B98' }}>You sent</div>
+          <div style={wellStyle}>
+            <OfferRows offer={r.sent} weapons={r.sentWeapons} empty="Nothing" goldSuffix="G" />
+          </div>
+          <div style={{ ...laneHeader, color: '#8D9B98' }}>You received</div>
+          <div style={wellStyle}>
+            <OfferRows offer={r.received} weapons={r.receivedWeapons} empty="Nothing" goldSuffix="G" />
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
+            <span style={{ ...laneHeader, marginBottom: 0, color: '#8D9B98' }}>Balance</span>
+            <GoldIcon />
+            <span style={{ fontSize: 14, fontWeight: 700, color: '#F4F0E7', fontVariantNumeric: 'tabular-nums' }}>{liveCoins}G</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  /* v2.3.1235: trade-completion receipt §failure — the server cancelled
+     the session at commit ('insufficient:*' → the session is DEAD
+     server-side, trade2.js _t2Cancel), so returning to Editing with the
+     same session would be a lie.  Honest brief notice in the same modal
+     shell — danger-OUTLINE treatment (never filled red) — auto-closed
+     ~2200ms by the effect above.  Inventory/gold were never touched
+     locally (a failed commit sends no credits and no wallet mutation).
+     True retry-in-place would need a server change (session survives a
+     failed commit) — out of scope. */
+  if (trade2.state === 'failed') {
+    return (
+      <div className="bt-inspect" style={{ background: 'rgba(4,9,12,0.52)' }} onClick={() => setTrade2(null)}>
+        <div className="bt-inspect-card" onClick={(e) => e.stopPropagation()} style={{ ...cardStyle, width: 320 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, fontWeight: 700, color: '#F4F0E7', marginBottom: 8 }}>
+            <TradeIcon /> Trade
+          </div>
+          <div style={{ borderRadius: 10, border: '1px solid #D8635D', background: 'transparent', color: '#D8635D', fontSize: 12, fontWeight: 700, padding: '10px 12px' }}>
+            Trade failed — nothing was exchanged
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // ── Incoming invite stub ──
   if (trade2.invite) {
@@ -329,18 +422,14 @@ export function TradeWindowPanel(props) {
 
   /* v2.3.1232: weapon chip style — magic violet from the semantic set
      (was the off-palette #a78bfa). */
-  /* v2.3.1232: module header — 11/600 uppercase per spec typography */
-  /* v2.3.1235: batch-4 rollout — corrected section-header ramp 11/700
-     .14em; muted #8D9B98, confirmed = corrected positive #55B98A (the
-     ✅ emoji was chrome — dropped). */
-  const laneHeader = { fontSize: 11, fontWeight: 700, letterSpacing: '.14em', textTransform: 'uppercase', marginBottom: 3 };
+  /* v2.3.1235: trade-completion receipt — laneHeader + wellStyle moved
+     up beside cardStyle (shared with the receipt render); values are
+     unchanged. */
   /* v2.3.1235: batch-4 state-correction §6 — lane headers become a
      flex row: lane title left, live status right.  Both statuses are
      direct reads of server state (`confirmed` flags from the last
      trade2_state echo). */
   const laneHeaderRow = { ...laneHeader, display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 6 };
-  /* v2.3.1235: batch-4 state-correction §3 — recessed offer well */
-  const wellStyle = { borderRadius: 8, background: '#111E23', border: '1px solid rgba(229,237,233,.11)', boxShadow: 'inset 0 2px 4px rgba(0,0,0,.44)', padding: '2px 6px', marginBottom: 8 };
 
   return (
     <div className="bt-inspect" style={{ background: 'rgba(4,9,12,0.52)' /* v2.3.1235: batch-4 rollout — trade-confirm strong scrim */ }} onClick={requestLeave /* v2.3.1235: batch-4 state-correction §7 — scrim taps route through the leave guard (same trade2_cancel send when nothing is staged) */}>
