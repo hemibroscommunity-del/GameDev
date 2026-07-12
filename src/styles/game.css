@@ -209,6 +209,13 @@ input{font-family:inherit}
    (reachability is signalled by the sticky bottom fade instead). */
 .ls-scrollbody{scrollbar-width:none;-ms-overflow-style:none}
 .ls-scrollbody::-webkit-scrollbar{display:none}
+/* v2.3.1235: state-correction — shared 15px padlock for locked craft rows
+   (no lock exists in the icon set; a CSS mask + currentColor needs no
+   asset and inherits the row's text token). Usage: <span class="ls-lock"/>
+   next to the requirement text. */
+.ls-lock{display:inline-block;width:15px;height:15px;vertical-align:-2px;flex:none;background:currentColor;
+  -webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M5 7V5a3 3 0 0 1 6 0v2h1a1 1 0 0 1 1 1v5a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V8a1 1 0 0 1 1-1h1zm1.5 0h3V5a1.5 1.5 0 0 0-3 0v2z'/%3E%3C/svg%3E") center/contain no-repeat;
+  mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M5 7V5a3 3 0 0 1 6 0v2h1a1 1 0 0 1 1 1v5a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V8a1 1 0 0 1 1-1h1zm1.5 0h3V5a1.5 1.5 0 0 0-3 0v2z'/%3E%3C/svg%3E") center/contain no-repeat}
 /* v2.3.1233b: LOAD-BEARING padding — all 11 building panels
    (src/ui/panels/buildings/*) bleed a full-panel #202C32 surface into
    this 20px padding via margin:-20 roots (Lantern Slate sweep).

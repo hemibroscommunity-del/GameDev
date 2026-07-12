@@ -72,8 +72,11 @@ export function BankPanel(props) {
   return React.createElement("div", { style: LS_WRAP },
     lsHeader('bank', '🏦', "Bank", "Vault & equipment"),
     React.createElement("div", { style: LS_BODY },
+      /* v2.3.1235: state-correction — the old copy claimed gold is "always
+         safe", contradicting the actual death rule (monsterCombat.js:
+         DEATH_GOLD_PENALTY = 10% of carried coins). Copy now matches code. */
       React.createElement("div", { style: { fontSize: 12, color: LS.txt2, marginBottom: 12, lineHeight: 1.5 } },
-        "Your gold and equipped items are always safe. The bank protects additional items from death scatter."),
+        "Equipped items are always safe. The bank protects additional items from death scatter."),
       React.createElement("div", { style: LS_MOD }, "Gold on hand"),
       React.createElement("div", {
         style: {
@@ -84,7 +87,7 @@ export function BankPanel(props) {
       }, React.createElement("span", { style: { fontSize: 13 /* v2.3.1235: batch-3 rollout — body 13, no half-sizes */, color: LS.txt2 } }, "Gold"),
       lsGold(rpgState.coins, 18)),
       React.createElement("div", { style: { fontSize: 11, color: LS.txt3, marginBottom: 12 } },
-        "Gold is never lost on death (only 10% penalty)"),
+        "Only 10% of carried gold is lost on death."),
       React.createElement("div", { style: LS_MOD }, "Equipped"),
       React.createElement("div", {
         style: { borderRadius: 8, background: LS.wellSoft, border: '1px solid ' + LS.wellBorder }

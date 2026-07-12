@@ -127,7 +127,7 @@ export function PartyPanel(props) {
       flexWrap: 'wrap',
       gap: 4
     }
-  }, /*#__PURE__*/React.createElement("img", { src: "/icons/popups/gold.webp", alt: "", draggable: false, style: { width: 16, height: 16, objectFit: 'contain', verticalAlign: '-3px' }, onError: function (e) { e.currentTarget.replaceWith(document.createTextNode('\uD83D\uDCB0')); } }), /*#__PURE__*/React.createElement("span", { style: { fontSize: 16 /* v2.3.1235: batch-3 rollout — key-number size */, fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: '#D8AA58' } }, rpgState.coins, "G"), "\xB7 Entry fee: ", ARENA_ENTRY_FEE, "G \xB7 10 rounds \xB7 Single elimination \xB7 No healing"), function () {
+  }, /* v2.3.1235: state-correction: the bare balance beside a 100G fee was mistakable for the fee; label it. */ "Your gold: ", /*#__PURE__*/React.createElement("img", { src: "/icons/popups/gold.webp", alt: "", draggable: false, style: { width: 16, height: 16, objectFit: 'contain', verticalAlign: '-3px' }, onError: function (e) { e.currentTarget.replaceWith(document.createTextNode('\uD83D\uDCB0')); } }), /*#__PURE__*/React.createElement("span", { style: { fontSize: 16 /* v2.3.1235: batch-3 rollout — key-number size */, fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: '#D8AA58' } }, rpgState.coins, "G"), "\xB7 ", ARENA_ENTRY_FEE, "G entry \xB7 10 rounds \xB7 Single elimination \xB7 No healing"), function () {
     var S = stateRef.current;
     /* Poll arena status periodically */
     if (!S._arenaLastPoll || Date.now() - S._arenaLastPoll > ARENA_POLL_INTERVAL) {
@@ -147,7 +147,15 @@ export function PartyPanel(props) {
       }).catch(function () {});
     }
     return null;
-  }(), (!arenaStatus || arenaStatus.status === 'none') && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
+  }(), /* v2.3.1235: state-correction §8 — the settled GameRoom /status
+     route (server/src/gladiator.js) returns {ok,settled,queueSize,...}
+     with NO `status` field, but this gate required status==='none' —
+     so on every settled worker the ENTIRE arena UI went dark (QA found
+     the building a dead end; reproduced against the live wire shape).
+     A missing status now means "not in a tournament" = the Enter
+     region. Old Arena-DO workers always sent an explicit status, so
+     their queued/fighting/eliminated flows are unchanged. */
+  (!arenaStatus || !arenaStatus.status || arenaStatus.status === 'none') && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 11,
       color: '#8D9B98',
@@ -238,7 +246,12 @@ export function PartyPanel(props) {
     /* v2.3.1235: batch-3 rollout \u2014 the region's gold primary adopts the
        committed gradient recipe (#EAC675 edge, #172126 ink, radius 10);
        button-label emoji dropped. */
-    style: {
+    /* v2.3.1235: state-correction §8 — explicit unaffordable state: the
+       action stays visible but reads as a disabled secondary with a
+       plain-language shortfall line beneath (the handler's own coin
+       guard also still holds). */
+    disabled: rpgState.coins < ARENA_ENTRY_FEE,
+    style: rpgState.coins >= ARENA_ENTRY_FEE ? {
       width: '100%',
       minHeight: 44,
       padding: '12px 0',
@@ -250,8 +263,27 @@ export function PartyPanel(props) {
       color: '#172126',
       cursor: 'pointer',
       marginBottom: 8
+    } : {
+      width: '100%',
+      minHeight: 44,
+      padding: '12px 0',
+      borderRadius: 10,
+      fontSize: 13,
+      fontWeight: 700,
+      border: '1px solid rgba(229,237,233,.11)',
+      background: '#1A292F',
+      color: '#8D9B98',
+      cursor: 'default',
+      marginBottom: 8
     }
-  }, "Enter Arena (", ARENA_ENTRY_FEE, "G)")), (arenaStatus === null || arenaStatus === void 0 ? void 0 : arenaStatus.status) === 'queued' && /*#__PURE__*/React.createElement("div", {
+  }, "Enter Arena \xB7 ", ARENA_ENTRY_FEE, "G"), rpgState.coins < ARENA_ENTRY_FEE && /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: '#D8635D',
+      textAlign: 'center',
+      marginBottom: 8
+    }
+  }, "Need ", ARENA_ENTRY_FEE - rpgState.coins, "G more")), (arenaStatus === null || arenaStatus === void 0 ? void 0 : arenaStatus.status) === 'queued' && /*#__PURE__*/React.createElement("div", {
     style: {
       padding: 10,
       borderRadius: 8,
