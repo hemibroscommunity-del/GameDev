@@ -790,9 +790,9 @@ export function ExchangePanel(props) {
     }, /*#__PURE__*/React.createElement("div", {
       style: {
         fontSize: 11,
-        fontWeight: 600,
+        fontWeight: 700 /* v2.3.1235: batch-3 rollout — 11/700 .14em muted headers */,
         textTransform: 'uppercase',
-        letterSpacing: '.12em',
+        letterSpacing: '.14em',
         color: '#8D9B98',
         flex: 1
       }
@@ -971,9 +971,9 @@ export function ExchangePanel(props) {
     }, /*#__PURE__*/React.createElement("div", {
       style: {
         fontSize: 11,
-        fontWeight: 600,
+        fontWeight: 700 /* v2.3.1235: batch-3 rollout — 11/700 .14em muted headers */,
         textTransform: 'uppercase',
-        letterSpacing: '.12em',
+        letterSpacing: '.14em',
         color: '#8D9B98',
         flex: 1
       }

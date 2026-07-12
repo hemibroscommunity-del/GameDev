@@ -62,6 +62,17 @@ export function PartyPanel(props) {
     setArenaStatus = props.setArenaStatus,
     setArenaTournament = props.setArenaTournament;
   var _activePlayers$find, _arenaStatus$currentM, _arenaStatus$currentM2, _arenaTournament$cham, _arenaTournament$play, _arenaTournament$play2, _arenaTournament$play3, _arenaTournament$play4, _arenaTournament$play5, _arenaTournament$play6, _arenaTournament$rece, _remaining$find, _remaining$find2;
+  /* v2.3.1235: batch-3 rollout — shared list-well fragments (styles
+     only): match/stake/hall-of-fame rows sit in ONE recessed well with
+     hairline dividers instead of per-row cards. */
+  var LS_WELL235 = {
+    background: '#111E23',
+    borderRadius: 10,
+    padding: 4,
+    boxShadow: 'inset 0 2px 5px rgba(0,0,0,0.32), inset 0 1px 0 rgba(255,255,255,0.025)',
+    marginBottom: 6
+  };
+  var LS_DIV235 = '1px solid rgba(229,237,233,.11)';
   return React.createElement("div", {
     /* v2.3.1232: LS shared buildings kit -- full-bleed panel surface;
        -20px margin counters the legacy .bt-inspect-card padding */
@@ -101,7 +112,7 @@ export function PartyPanel(props) {
       fontWeight: 700,
       textTransform: 'uppercase',
       letterSpacing: '.10em',
-      color: '#F7F2E7'
+      color: '#F4F0E7'
     }
   }, "Gladiator Arena")), /*#__PURE__*/React.createElement("div", {
     /* v2.3.1235: batch-3 rollout — 11px floor on the meta row; the gold
@@ -109,7 +120,7 @@ export function PartyPanel(props) {
     style: {
       fontSize: 11,
       fontWeight: 600,
-      color: '#96A2A0',
+      color: '#8D9B98',
       marginBottom: 6,
       display: 'flex',
       alignItems: 'center',
@@ -139,7 +150,7 @@ export function PartyPanel(props) {
   }(), (!arenaStatus || arenaStatus.status === 'none') && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 11,
-      color: '#96A2A0',
+      color: '#8D9B98',
       marginBottom: 8,
       lineHeight: 1.5
     }
@@ -263,12 +274,12 @@ export function PartyPanel(props) {
   }, "In Queue"), /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 11,
-      color: '#96A2A0'
+      color: '#8D9B98'
     }
   }, "Position: ", arenaStatus.position, "/", arenaStatus.queueSize, " \xB7 Waiting for ", arenaStatus.queueSize < 4 ? '4' : '16', " players..."), /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 11,
-      color: '#96A2A0',
+      color: '#8D9B98',
       marginTop: 4
     }
   }, "You can close this panel \u2014 you'll be notified when matched!"), /*#__PURE__*/React.createElement("button", {
@@ -367,26 +378,26 @@ export function PartyPanel(props) {
       justifyContent: 'center',
       fontSize: 14,
       fontWeight: 700,
-      color: '#F7F2E7',
+      color: '#F4F0E7',
       margin: '0 auto'
     }
   }, ((_arenaStatus$currentM = arenaStatus.currentMatch.p1Name) === null || _arenaStatus$currentM === void 0 ? void 0 : _arenaStatus$currentM.charAt(0)) || '?'), /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 11,
       fontWeight: 700,
-      color: '#F7F2E7',
+      color: '#F4F0E7',
       marginTop: 2
     }
   }, arenaStatus.currentMatch.p1Name), /*#__PURE__*/React.createElement("div", {
     style: {
-      fontSize: 10,
-      color: '#96A2A0'
+      fontSize: 11 /* v2.3.1235: batch-3 rollout — 11px text floor */,
+      color: '#8D9B98'
     }
   }, "Lv", arenaStatus.currentMatch.p1Level)), /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 14,
       fontWeight: 700,
-      color: '#96A2A0'
+      color: '#8D9B98'
     }
   }, "VS"), /*#__PURE__*/React.createElement("div", {
     style: {
@@ -403,31 +414,31 @@ export function PartyPanel(props) {
       justifyContent: 'center',
       fontSize: 14,
       fontWeight: 700,
-      color: '#F7F2E7',
+      color: '#F4F0E7',
       margin: '0 auto'
     }
   }, ((_arenaStatus$currentM2 = arenaStatus.currentMatch.p2Name) === null || _arenaStatus$currentM2 === void 0 ? void 0 : _arenaStatus$currentM2.charAt(0)) || '?'), /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 11,
       fontWeight: 700,
-      color: '#F7F2E7',
+      color: '#F4F0E7',
       marginTop: 2
     }
   }, arenaStatus.currentMatch.p2Name), /*#__PURE__*/React.createElement("div", {
     style: {
-      fontSize: 10,
-      color: '#96A2A0'
+      fontSize: 11 /* v2.3.1235: batch-3 rollout — 11px text floor */,
+      color: '#8D9B98'
     }
   }, "Lv", arenaStatus.currentMatch.p2Level))), /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 11,
-      color: '#96A2A0',
+      color: '#8D9B98',
       marginTop: 6
     }
   }, "Find and defeat your opponent! PvP in any zone counts."), /*#__PURE__*/React.createElement("div", {
     style: {
-      fontSize: 10,
-      color: '#687575',
+      fontSize: 11 /* v2.3.1235: batch-3 rollout — 11px text floor */,
+      color: '#667875',
       marginTop: 4
     }
   }, "If opponent doesn't show within 2 min, win is auto-awarded.")), (arenaStatus === null || arenaStatus === void 0 ? void 0 : arenaStatus.status) === 'eliminated' && /*#__PURE__*/React.createElement("div", {
@@ -445,12 +456,12 @@ export function PartyPanel(props) {
     style: {
       fontSize: 12,
       fontWeight: 700,
-      color: '#B9C1BF'
+      color: '#B6C1BE'
     }
   }, "Eliminated \u2014 Round ", arenaStatus.round), /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 11,
-      color: '#96A2A0',
+      color: '#8D9B98',
       marginTop: 2
     }
   }, arenaStatus.wins, " wins \xB7 You can spectate the rest!")), arenaTournament && /*#__PURE__*/React.createElement("div", {
@@ -471,7 +482,7 @@ export function PartyPanel(props) {
   }, /*#__PURE__*/React.createElement("img", { src: "/icons/ui/evt-party.webp", alt: "", draggable: false, style: { width: 16, height: 16, objectFit: 'contain', verticalAlign: '-3px', marginRight: 6 }, onError: function (e) { e.currentTarget.replaceWith(document.createTextNode('\uD83C\uDFDF\uFE0F')); } }), "Tournament \u2014 Round ", arenaTournament.round, "/", arenaTournament.maxRounds, /*#__PURE__*/React.createElement("span", {
     style: {
       fontSize: 11,
-      color: '#96A2A0',
+      color: '#8D9B98',
       marginLeft: 4
     }
   }, arenaTournament.remaining, "/", arenaTournament.playerCount, " remaining")), /*#__PURE__*/React.createElement("div", {
@@ -505,10 +516,15 @@ export function PartyPanel(props) {
     style: {
       fontSize: 11,
       fontWeight: 700,
-      color: '#96A2A0',
+      color: '#8D9B98',
       marginBottom: 2
     }
-  }, "Current Matches"), arenaTournament.currentMatches.map(function (m) {
+    /* v2.3.1235: batch-3 rollout — match rows move into one well with
+       dividers; the red live-match tint was an off-token screen fill
+       (the brass "Fighting" tag carries the live state). */
+  }, "Current Matches"), /*#__PURE__*/React.createElement("div", {
+    style: LS_WELL235
+  }, arenaTournament.currentMatches.map(function (m, _mi) {
     return /*#__PURE__*/React.createElement("div", {
       key: m.id,
       style: {
@@ -517,40 +533,37 @@ export function PartyPanel(props) {
         gap: 4,
         minHeight: 44,
         padding: '6px 10px',
-        borderRadius: 8,
-        background: m.resolved ? '#19252A' : 'rgba(217,92,84,.05)',
-        border: '1px solid ' + (m.resolved ? 'rgba(238,242,235,.10)' : 'rgba(217,92,84,.15)'),
-        marginBottom: 2,
+        borderTop: _mi > 0 ? LS_DIV235 : 'none',
         fontSize: 11
       }
     }, /*#__PURE__*/React.createElement("span", {
       style: {
-        color: m.p1Color || '#D8A85F',
+        color: m.p1Color || '#D8AA58',
         fontWeight: 700
       }
     }, m.p1Name), /*#__PURE__*/React.createElement("span", {
       style: {
-        color: '#687575'
+        color: '#667875'
       }
     }, "vs"), /*#__PURE__*/React.createElement("span", {
       style: {
-        color: m.p2Color || '#D95C54',
+        color: m.p2Color || '#D8635D' /* v2.3.1235: danger token fallback */,
         fontWeight: 700
       }
     }, m.p2Name), m.resolved && /*#__PURE__*/React.createElement("span", {
       style: {
         marginLeft: 'auto',
-        fontSize: 10,
-        color: '#59BF91'
+        fontSize: 11 /* v2.3.1235: batch-3 rollout \u2014 11px floor */,
+        color: '#55B98A' /* v2.3.1235: positive token */
       }
     }, "Winner: ", m.winnerId === m.p1 ? m.p1Name : m.p2Name), !m.resolved && /*#__PURE__*/React.createElement("span", {
       style: {
         marginLeft: 'auto',
-        fontSize: 10,
-        color: '#D8A85F'
+        fontSize: 11 /* v2.3.1235: batch-3 rollout \u2014 11px floor */,
+        color: '#D8AA58' /* v2.3.1235: brass token; status emoji dropped */
       }
-    }, "\u2694\uFE0F Fighting"));
-  })), function () {
+    }, "Fighting"));
+  }))), function () {
     /* v2.3.1210: spectator stake board -- server-summed totals per open
        match (arena_stake_board, gameEvents.js).  Display only; shows
        where the sponsorship money is without leaking who staked what.
@@ -559,68 +572,72 @@ export function PartyPanel(props) {
     var _board = (stateRef.current && stateRef.current._arenaStakeBoard) || [];
     if (!_board.length) return null;
     return /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
-      style: { fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.12em', color: '#96A2A0', marginTop: 4, marginBottom: 2 }
-    }, "\uD83D\uDCB0 Spectator Stakes"), _board.map(function (b) {
+      /* v2.3.1235: batch-3 rollout \u2014 11/700 .14em muted header, emoji
+         dropped; stake rows move into one well with dividers; the two
+         match sides keep the order-book brass/danger semantics. */
+      style: { fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.14em', color: '#8D9B98', marginTop: 4, marginBottom: 2 }
+    }, "Spectator Stakes"), /*#__PURE__*/React.createElement("div", {
+      style: LS_WELL235
+    }, _board.map(function (b, _bi) {
       var _pot = (b.aTotal || 0) + (b.bTotal || 0);
       return /*#__PURE__*/React.createElement("div", {
         key: b.matchId,
-        style: { display: 'flex', alignItems: 'center', gap: 4, minHeight: 44, padding: '6px 10px', borderRadius: 8, background: '#19252A', border: '1px solid rgba(238,242,235,.10)', marginBottom: 2, fontSize: 11 }
+        style: { display: 'flex', alignItems: 'center', gap: 4, minHeight: 44, padding: '6px 10px', borderTop: _bi > 0 ? LS_DIV235 : 'none', fontSize: 11 }
       }, /*#__PURE__*/React.createElement("span", {
-        style: { color: '#D8A85F', fontWeight: 700 }
+        style: { color: '#D8AA58', fontWeight: 700 }
       }, b.aName || '?'), /*#__PURE__*/React.createElement("span", {
-        style: { color: '#D8A85F', fontWeight: 700 }
+        style: { color: '#D8AA58', fontWeight: 700 }
       }, (b.aTotal || 0) + 'G', b.aBackers ? ' \xB7' + b.aBackers : ''), /*#__PURE__*/React.createElement("span", {
-        style: { color: '#687575' }
+        style: { color: '#667875' }
       }, "vs"), /*#__PURE__*/React.createElement("span", {
-        style: { color: '#D95C54', fontWeight: 700 }
+        style: { color: '#D8635D', fontWeight: 700 }
       }, b.bName || '?'), /*#__PURE__*/React.createElement("span", {
-        style: { color: '#D8A85F', fontWeight: 700 }
+        style: { color: '#D8AA58', fontWeight: 700 }
       }, (b.bTotal || 0) + 'G', b.bBackers ? ' \xB7' + b.bBackers : ''), /*#__PURE__*/React.createElement("span", {
-        style: { marginLeft: 'auto', fontSize: 10, color: '#96A2A0' }
+        style: { marginLeft: 'auto', fontSize: 11, color: '#8D9B98' }
       }, _pot + 'G pot'));
-    }));
+    })));
   }(), arenaTournament.status === 'complete' && arenaTournament.champion && /*#__PURE__*/React.createElement("div", {
     style: {
       padding: 12,
       borderRadius: 8,
-      background: '#182227',
-      border: '1px solid #D8A85F',
+      /* v2.3.1235: batch-3 rollout \u2014 card token; the brass edge stays
+         (champion = the premium moment brass is reserved for); \uD83C\uDFC6
+         chrome glyph dropped. */
+      background: '#24363C',
+      border: '1px solid #D8AA58',
       textAlign: 'center',
       marginTop: 6
     }
   }, /*#__PURE__*/React.createElement("div", {
     style: {
-      fontSize: 28
-    }
-  }, "\uD83C\uDFC6"), /*#__PURE__*/React.createElement("div", {
-    style: {
       fontSize: 14,
       fontWeight: 700,
-      color: '#D8A85F'
+      color: '#D8AA58'
     }
   }, "GLADIATOR CHAMPION"), /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 12,
       fontWeight: 700,
-      color: '#F7F2E7',
+      color: '#F4F0E7',
       marginTop: 2
     }
   }, arenaTournament.champion.name), /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 11,
-      color: '#96A2A0'
+      color: '#8D9B98'
     }
   }, arenaTournament.champion.wins, " wins \xB7 Lv", arenaTournament.champion.level), /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 11,
-      color: '#D8A85F',
+      color: '#D8AA58' /* v2.3.1235: brass token */,
       marginTop: 4
     }
   }, "+", ARENA_CHAMPION_REWARD.gold, "G +", ARENA_CHAMPION_REWARD.ap, "AP + \"Gladiator\" title")), arenaTournament.recentMatches.length > 0 && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 11,
       fontWeight: 700,
-      color: '#96A2A0',
+      color: '#8D9B98',
       marginTop: 6,
       marginBottom: 2
     }
@@ -629,44 +646,46 @@ export function PartyPanel(props) {
     return /*#__PURE__*/React.createElement("div", {
       key: i,
       style: {
-        fontSize: 10,
-        color: '#687575',
+        fontSize: 11 /* v2.3.1235: batch-3 rollout — 11px floor */,
+        color: '#667875',
         padding: '1px 0'
       }
-    }, "R", m.round, ": ", m.winnerId === m.p1 ? '✅' : '❌', " ", ((_arenaTournament$play = arenaTournament.players.find(function (p) {
+      /* v2.3.1235: batch-3 rollout — result marks become text glyphs
+         (✅/❌ emoji are chrome) */
+    }, "R", m.round, ": ", m.winnerId === m.p1 ? '✓' : '✗', " ", ((_arenaTournament$play = arenaTournament.players.find(function (p) {
       return p.id === m.p1;
     })) === null || _arenaTournament$play === void 0 ? void 0 : _arenaTournament$play.name) || '?', " vs ", ((_arenaTournament$play2 = arenaTournament.players.find(function (p) {
       return p.id === m.p2;
-    })) === null || _arenaTournament$play2 === void 0 ? void 0 : _arenaTournament$play2.name) || '?', " ", m.winnerId === m.p2 ? '✅' : '❌');
+    })) === null || _arenaTournament$play2 === void 0 ? void 0 : _arenaTournament$play2.name) || '?', " ", m.winnerId === m.p2 ? '✓' : '✗');
   }))), arenaTournament && arenaTournament.status === 'active' && (!arenaStatus || arenaStatus.status === 'none' || arenaStatus.status === 'eliminated') && /*#__PURE__*/React.createElement("div", {
     style: {
       marginTop: 8,
       padding: 10,
       borderRadius: 10,
-      background: '#121B20',
-      boxShadow: 'inset 0 2px 4px rgba(0,0,0,.44), inset 0 1px 0 rgba(255,255,255,.035)',
-      border: '1px solid rgba(238,242,235,.10)'
+      background: '#111E23' /* v2.3.1235: batch-3 rollout — well token + shared .ui-well recipe */,
+      boxShadow: 'inset 0 2px 5px rgba(0,0,0,0.32), inset 0 1px 0 rgba(255,255,255,0.025)',
+      border: '1px solid rgba(229,237,233,.11)'
     }
   }, /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 11,
-      fontWeight: 600,
+      fontWeight: 700 /* v2.3.1235: batch-3 rollout — 11/700 .14em muted headers */,
       textTransform: 'uppercase',
-      letterSpacing: '.12em',
-      color: '#B9C1BF',
+      letterSpacing: '.14em',
+      color: '#8D9B98',
       marginBottom: 4
     }
   }, /*#__PURE__*/React.createElement("img", { src: "/icons/ui/evt-sponsorship.webp", alt: "", draggable: false, style: { width: 16, height: 16, objectFit: 'contain', verticalAlign: '-3px', marginRight: 6 }, onError: function (e) { e.currentTarget.replaceWith(document.createTextNode('\uD83C\uDFB2')); } }), "Spectator Betting"), /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 11,
-      color: '#96A2A0',
+      color: '#8D9B98',
       marginBottom: 6
     }
   }, "Bet on who wins the tournament. Blind \u2014 you can't see others' bets. Winner takes the pot!"), /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 11,
       fontWeight: 700,
-      color: '#96A2A0',
+      color: '#8D9B98',
       marginBottom: 2
     }
   }, "Bet on:"), /*#__PURE__*/React.createElement("div", {
@@ -686,14 +705,14 @@ export function PartyPanel(props) {
         return setArenaBetTarget(sel ? null : p.id);
       },
       style: {
-        minHeight: 32,
+        minHeight: 44 /* v2.3.1235: batch-3 rollout — 44px hitbox floor on pick chips */,
         padding: '6px 12px',
         borderRadius: 999,
         fontSize: 11,
         fontWeight: 600,
-        border: '1px solid ' + (sel ? '#D8A85F' : 'rgba(238,242,235,.14)'),
-        background: sel ? '#3B3427' : '#19252A',
-        color: sel ? '#D8A85F' : p.color || '#B9C1BF',
+        border: '1px solid ' + (sel ? '#D8AA58' : 'rgba(229,237,233,.20)'),
+        background: sel ? 'rgba(216,170,88,.15)' : 'transparent' /* v2.3.1235: batch-3 rollout — brass-soft selected chip, transparent idle */,
+        color: sel ? '#D8AA58' : p.color || '#B6C1BE',
         cursor: 'pointer'
       }
     }, p.name, " (Lv", p.level, ")");
@@ -708,7 +727,7 @@ export function PartyPanel(props) {
     style: {
       fontSize: 11,
       fontWeight: 700,
-      color: '#D8A85F'
+      color: '#D8AA58'
     }
   }, "Amount:"), /*#__PURE__*/React.createElement("input", {
     type: "number",
@@ -720,12 +739,12 @@ export function PartyPanel(props) {
     },
     style: {
       width: 76,
-      minHeight: 32,
+      minHeight: 44 /* v2.3.1235: batch-3 rollout — 44px input height */,
       padding: '4px 8px',
       borderRadius: 8,
-      border: '1px solid rgba(238,242,235,.14)',
-      background: '#121B20',
-      color: '#D8A85F',
+      border: '1px solid rgba(229,237,233,.20)',
+      background: '#111E23',
+      color: '#D8AA58',
       fontSize: 16 /* v2.3.1233b: iOS zoom guard */,
       fontWeight: 700,
       fontFamily: 'Source Sans 3,sans-serif',
@@ -736,7 +755,7 @@ export function PartyPanel(props) {
   }), /*#__PURE__*/React.createElement("span", {
     style: {
       fontSize: 11,
-      color: '#96A2A0'
+      color: '#8D9B98'
     }
   }, "G (", /*#__PURE__*/React.createElement("img", { src: "/icons/popups/gold.webp", alt: "", draggable: false, style: { width: 16, height: 16, objectFit: 'contain', verticalAlign: '-3px' }, onError: function (e) { e.currentTarget.replaceWith(document.createTextNode('\uD83D\uDCB0')); } }), /*#__PURE__*/React.createElement("span", { style: { fontSize: 16 /* v2.3.1235: batch-3 rollout — key-number size */, fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: '#D8AA58' } }, rpgState.coins, "G"), ")")), /*#__PURE__*/React.createElement("button", {
     disabled: !arenaBetTarget || rpgState.coins < arenaBetAmount,
@@ -780,16 +799,18 @@ export function PartyPanel(props) {
       width: '100%',
       minHeight: 44,
       padding: '10px 0',
-      borderRadius: 11,
+      borderRadius: 10 /* v2.3.1235: batch-3 rollout — 10px button radius (11 off the approved set) */,
       fontSize: 13,
       fontWeight: 700,
       /* v2.3.1233b: audit fix — visual now mirrors the FULL disabled gate (target AND coins); it previously keyed on target only, rendering a solid-brass primary that silently swallowed taps when broke. Style-only. */
-      border: '1px solid ' + ((arenaBetTarget && rpgState.coins >= arenaBetAmount) ? '#D8A85F' : 'rgba(238,242,235,.14)'),
-      background: (arenaBetTarget && rpgState.coins >= arenaBetAmount) ? '#D8A85F' : '#2B3940',
-      color: (arenaBetTarget && rpgState.coins >= arenaBetAmount) ? '#20170D' : '#687575',
+      /* v2.3.1235: batch-3 rollout — the bet confirm adopts the committed
+         gold-gradient primary recipe when armed; disabled = secondary. */
+      border: '1px solid ' + ((arenaBetTarget && rpgState.coins >= arenaBetAmount) ? '#EAC675' : 'rgba(229,237,233,.20)'),
+      background: (arenaBetTarget && rpgState.coins >= arenaBetAmount) ? 'linear-gradient(180deg,#E2B765,#D2A14D)' : '#293B41',
+      color: (arenaBetTarget && rpgState.coins >= arenaBetAmount) ? '#172126' : '#667875',
       cursor: (arenaBetTarget && rpgState.coins >= arenaBetAmount) ? 'pointer' : 'not-allowed'
     }
-  }, "\uD83C\uDFB2 Place Bet (", arenaBetAmount, "G)"), arenaBets.filter(function (b) {
+  }, "Place Bet (", arenaBetAmount, "G)"), arenaBets.filter(function (b) {
     return b.tournamentId === (arenaTournament === null || arenaTournament === void 0 ? void 0 : arenaTournament.id);
   }).length > 0 && /*#__PURE__*/React.createElement("div", {
     style: {
@@ -797,9 +818,9 @@ export function PartyPanel(props) {
     }
   }, /*#__PURE__*/React.createElement("div", {
     style: {
-      fontSize: 10,
+      fontSize: 11 /* v2.3.1235: batch-3 rollout — 11px text floor */,
       fontWeight: 700,
-      color: '#96A2A0'
+      color: '#8D9B98'
     }
   }, "Your Bets:"), arenaBets.filter(function (b) {
     return b.tournamentId === (arenaTournament === null || arenaTournament === void 0 ? void 0 : arenaTournament.id);
@@ -810,40 +831,40 @@ export function PartyPanel(props) {
     return /*#__PURE__*/React.createElement("div", {
       key: i,
       style: {
-        fontSize: 10,
-        color: '#96A2A0',
+        fontSize: 11 /* v2.3.1235: batch-3 rollout — 11px text floor */,
+        color: '#8D9B98',
         padding: '1px 0'
       }
-    }, b.amount, "G on ", (target === null || target === void 0 ? void 0 : target.name) || '???', " ", target !== null && target !== void 0 && target.eliminated ? '💀 (eliminated)' : '⚔️');
+    }, b.amount, "G on ", (target === null || target === void 0 ? void 0 : target.name) || '???', " ", target !== null && target !== void 0 && target.eliminated ? '(eliminated)' : '' /* v2.3.1235: batch-3 rollout — status emoji dropped (chrome) */);
   }))), arenaTournament && arenaTournament.status === 'active' && /*#__PURE__*/React.createElement("div", {
     style: {
       marginTop: 8,
       padding: 10,
       borderRadius: 10,
-      background: '#121B20',
-      boxShadow: 'inset 0 2px 4px rgba(0,0,0,.44), inset 0 1px 0 rgba(255,255,255,.035)',
-      border: '1px solid rgba(238,242,235,.10)'
+      background: '#111E23' /* v2.3.1235: batch-3 rollout — well token + shared .ui-well recipe */,
+      boxShadow: 'inset 0 2px 5px rgba(0,0,0,0.32), inset 0 1px 0 rgba(255,255,255,0.025)',
+      border: '1px solid rgba(229,237,233,.11)'
     }
   }, /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 11,
-      fontWeight: 600,
+      fontWeight: 700 /* v2.3.1235: batch-3 rollout — 11/700 .14em muted headers */,
       textTransform: 'uppercase',
-      letterSpacing: '.12em',
-      color: '#B9C1BF',
+      letterSpacing: '.14em',
+      color: '#8D9B98',
       marginBottom: 4
     }
   }, /*#__PURE__*/React.createElement("img", { src: "/icons/ui/evt-sponsorship.webp", alt: "", draggable: false, style: { width: 16, height: 16, objectFit: 'contain', verticalAlign: '-3px', marginRight: 6 }, onError: function (e) { e.currentTarget.replaceWith(document.createTextNode('\uD83C\uDFB2')); } }), "Place a Bet"), /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 11,
-      color: '#96A2A0',
+      color: '#8D9B98',
       marginBottom: 6
     }
   }, "Blind bet on who wins the tournament. Payout: pot split among winners. Min ", ARENA_BET_MIN, "G, Max ", ARENA_BET_MAX, "G."), /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 11,
       fontWeight: 700,
-      color: '#96A2A0',
+      color: '#8D9B98',
       marginBottom: 2
     }
   }, "Pick a Fighter"), /*#__PURE__*/React.createElement("div", {
@@ -864,16 +885,16 @@ export function PartyPanel(props) {
         return !isMe && setArenaBetTarget(sel ? null : p.id);
       },
       style: {
-        minHeight: 32,
+        minHeight: 44 /* v2.3.1235: batch-3 rollout — 44px hitbox floor on pick chips */,
         padding: '6px 12px',
         borderRadius: 999,
         fontSize: 11,
         fontWeight: 600,
-        border: '1px solid ' + (sel ? '#D8A85F' : 'rgba(238,242,235,.14)'),
-        background: sel ? '#3B3427' : '#19252A',
-        color: sel ? '#D8A85F' : isMe ? '#687575' : p.color || '#96A2A0',
+        border: '1px solid ' + (sel ? '#D8AA58' : 'rgba(229,237,233,.20)'),
+        background: sel ? 'rgba(216,170,88,.15)' : 'transparent' /* v2.3.1235: batch-3 rollout — brass-soft selected chip, transparent idle */,
+        color: sel ? '#D8AA58' : isMe ? '#667875' : p.color || '#8D9B98',
         cursor: isMe ? 'not-allowed' : 'pointer',
-        opacity: isMe ? 0.3 : 1
+        opacity: isMe ? 0.55 : 1 /* v2.3.1235: batch-3 rollout — .55 readability floor */
       }
     }, p.name, " ", p.wins > 0 && '(' + p.wins + 'W)', isMe && ' (you)');
   })), /*#__PURE__*/React.createElement("div", {
@@ -887,7 +908,7 @@ export function PartyPanel(props) {
     style: {
       fontSize: 11,
       fontWeight: 700,
-      color: '#D8A85F'
+      color: '#D8AA58'
     }
   }, "Bet:"), /*#__PURE__*/React.createElement("input", {
     type: "number",
@@ -899,12 +920,12 @@ export function PartyPanel(props) {
     },
     style: {
       width: 76,
-      minHeight: 32,
+      minHeight: 44 /* v2.3.1235: batch-3 rollout — 44px input height */,
       padding: '4px 8px',
       borderRadius: 8,
-      border: '1px solid rgba(238,242,235,.14)',
-      background: '#121B20',
-      color: '#D8A85F',
+      border: '1px solid rgba(229,237,233,.20)',
+      background: '#111E23',
+      color: '#D8AA58',
       fontSize: 16 /* v2.3.1233b: iOS zoom guard */,
       fontWeight: 700,
       fontFamily: 'Source Sans 3,sans-serif',
@@ -915,12 +936,12 @@ export function PartyPanel(props) {
   }), /*#__PURE__*/React.createElement("span", {
     style: {
       fontSize: 11,
-      color: '#96A2A0'
+      color: '#8D9B98'
     }
   }, "gold"), /*#__PURE__*/React.createElement("span", {
     style: {
-      fontSize: 10,
-      color: '#687575',
+      fontSize: 11 /* v2.3.1235: batch-3 rollout — 11px text floor */,
+      color: '#667875',
       marginLeft: 'auto'
     }
   }, /*#__PURE__*/React.createElement("img", { src: "/icons/popups/gold.webp", alt: "", draggable: false, style: { width: 16, height: 16, objectFit: 'contain', verticalAlign: '-3px' }, onError: function (e) { e.currentTarget.replaceWith(document.createTextNode('\uD83D\uDCB0')); } }), /*#__PURE__*/React.createElement("span", { style: { fontSize: 16 /* v2.3.1235: batch-3 rollout — key-number size */, fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: '#D8AA58' } }, rpgState.coins, "G"))), /*#__PURE__*/React.createElement("button", {
@@ -972,16 +993,18 @@ export function PartyPanel(props) {
       width: '100%',
       minHeight: 44,
       padding: '10px 0',
-      borderRadius: 11,
+      borderRadius: 10 /* v2.3.1235: batch-3 rollout — 10px button radius (11 off the approved set) */,
       fontSize: 13,
       fontWeight: 700,
       /* v2.3.1233b: audit fix — visual now mirrors the FULL disabled gate (target AND coins); it previously keyed on target only, rendering a solid-brass primary that silently swallowed taps when broke. Style-only. */
-      border: '1px solid ' + ((arenaBetTarget && rpgState.coins >= arenaBetAmount) ? '#D8A85F' : 'rgba(238,242,235,.14)'),
-      background: (arenaBetTarget && rpgState.coins >= arenaBetAmount) ? '#D8A85F' : '#2B3940',
-      color: (arenaBetTarget && rpgState.coins >= arenaBetAmount) ? '#20170D' : '#687575',
+      /* v2.3.1235: batch-3 rollout — the bet confirm adopts the committed
+         gold-gradient primary recipe when armed; disabled = secondary. */
+      border: '1px solid ' + ((arenaBetTarget && rpgState.coins >= arenaBetAmount) ? '#EAC675' : 'rgba(229,237,233,.20)'),
+      background: (arenaBetTarget && rpgState.coins >= arenaBetAmount) ? 'linear-gradient(180deg,#E2B765,#D2A14D)' : '#293B41',
+      color: (arenaBetTarget && rpgState.coins >= arenaBetAmount) ? '#172126' : '#667875',
       cursor: (arenaBetTarget && rpgState.coins >= arenaBetAmount) ? 'pointer' : 'not-allowed'
     }
-  }, "\uD83C\uDFB2 Place Bet ", arenaBetTarget ? '(' + arenaBetAmount + 'G on ' + (((_arenaTournament$play5 = arenaTournament.players.find(function (p) {
+  }, "Place Bet ", arenaBetTarget ? '(' + arenaBetAmount + 'G on ' + (((_arenaTournament$play5 = arenaTournament.players.find(function (p) {
     return p.id === arenaBetTarget;
   })) === null || _arenaTournament$play5 === void 0 ? void 0 : _arenaTournament$play5.name) || '???') + ')' : ''), arenaBets.filter(function (b) {
     return b.tournamentId === (arenaTournament === null || arenaTournament === void 0 ? void 0 : arenaTournament.id);
@@ -991,9 +1014,9 @@ export function PartyPanel(props) {
     }
   }, /*#__PURE__*/React.createElement("div", {
     style: {
-      fontSize: 10,
+      fontSize: 11 /* v2.3.1235: batch-3 rollout — 11px text floor */,
       fontWeight: 700,
-      color: '#96A2A0',
+      color: '#8D9B98',
       marginBottom: 2
     }
   }, "Active Bets"), arenaBets.filter(function (b) {
@@ -1002,8 +1025,8 @@ export function PartyPanel(props) {
     return /*#__PURE__*/React.createElement("div", {
       key: i,
       style: {
-        fontSize: 10,
-        color: '#96A2A0',
+        fontSize: 11 /* v2.3.1235: batch-3 rollout — 11px text floor */,
+        color: '#8D9B98',
         padding: '1px 0'
       }
     }, b.playerName, " bet ", b.amount, "G on ", b.targetName);
@@ -1057,30 +1080,30 @@ export function PartyPanel(props) {
       marginTop: 6,
       padding: 10,
       borderRadius: 10,
-      background: '#121B20',
-      boxShadow: 'inset 0 2px 4px rgba(0,0,0,.44), inset 0 1px 0 rgba(255,255,255,.035)',
-      border: '1px solid rgba(238,242,235,.10)'
+      background: '#111E23' /* v2.3.1235: batch-3 rollout — well token + shared .ui-well recipe */,
+      boxShadow: 'inset 0 2px 5px rgba(0,0,0,0.32), inset 0 1px 0 rgba(255,255,255,0.025)',
+      border: '1px solid rgba(229,237,233,.11)'
     }
   }, /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 11,
-      fontWeight: 600,
+      fontWeight: 700 /* v2.3.1235: batch-3 rollout — 11/700 .14em muted headers */,
       textTransform: 'uppercase',
-      letterSpacing: '.12em',
-      color: '#B9C1BF',
+      letterSpacing: '.14em',
+      color: '#8D9B98',
       marginBottom: 4
     }
   }, /*#__PURE__*/React.createElement("img", { src: "/icons/ui/evt-sponsorship.webp", alt: "", draggable: false, style: { width: 16, height: 16, objectFit: 'contain', verticalAlign: '-3px', marginRight: 6 }, onError: function (e) { e.currentTarget.replaceWith(document.createTextNode('\uD83C\uDFB2')); } }), "Spectator Betting"), /*#__PURE__*/React.createElement("div", {
     style: {
-      fontSize: 10,
-      color: '#96A2A0',
+      fontSize: 11 /* v2.3.1235: batch-3 rollout — 11px text floor */,
+      color: '#8D9B98',
       marginBottom: 4
     }
   }, "Bet blind on who wins! Gold paid out proportionally if your pick wins the tournament."), /*#__PURE__*/React.createElement("div", {
     style: {
-      fontSize: 10,
+      fontSize: 11 /* v2.3.1235: batch-3 rollout — 11px text floor */,
       fontWeight: 700,
-      color: '#96A2A0',
+      color: '#8D9B98',
       marginBottom: 2
     }
   }, "Pick Winner"), /*#__PURE__*/React.createElement("div", {
@@ -1099,14 +1122,14 @@ export function PartyPanel(props) {
         return setArenaBetTarget(p.id);
       },
       style: {
-        minHeight: 32,
+        minHeight: 44 /* v2.3.1235: batch-3 rollout — 44px hitbox floor on pick chips */,
         padding: '6px 12px',
         borderRadius: 999,
         fontSize: 11,
         fontWeight: 600,
-        border: '1px solid ' + (arenaBetTarget === p.id ? '#D8A85F' : 'rgba(238,242,235,.14)'),
-        background: arenaBetTarget === p.id ? '#3B3427' : '#19252A',
-        color: arenaBetTarget === p.id ? '#D8A85F' : p.color || '#96A2A0',
+        border: '1px solid ' + (arenaBetTarget === p.id ? '#D8AA58' : 'rgba(229,237,233,.20)'),
+        background: arenaBetTarget === p.id ? 'rgba(216,170,88,.15)' : 'transparent' /* v2.3.1235: batch-3 rollout — brass-soft selected chip, transparent idle */,
+        color: arenaBetTarget === p.id ? '#D8AA58' : p.color || '#8D9B98',
         cursor: 'pointer'
       }
     }, p.name, " (Lv", p.level, ")");
@@ -1119,9 +1142,9 @@ export function PartyPanel(props) {
     }
   }, /*#__PURE__*/React.createElement("span", {
     style: {
-      fontSize: 10,
+      fontSize: 11 /* v2.3.1235: batch-3 rollout — 11px text floor */,
       fontWeight: 700,
-      color: '#96A2A0'
+      color: '#8D9B98'
     }
   }, "Amount:"), /*#__PURE__*/React.createElement("input", {
     type: "number",
@@ -1133,12 +1156,12 @@ export function PartyPanel(props) {
     },
     style: {
       width: 76,
-      minHeight: 32,
+      minHeight: 44 /* v2.3.1235: batch-3 rollout — 44px input height */,
       padding: '4px 8px',
       borderRadius: 8,
-      border: '1px solid rgba(238,242,235,.14)',
-      background: '#121B20',
-      color: '#D8A85F',
+      border: '1px solid rgba(229,237,233,.20)',
+      background: '#111E23',
+      color: '#D8AA58',
       fontSize: 16 /* v2.3.1233b: iOS zoom guard */,
       fontWeight: 700,
       fontFamily: 'Source Sans 3,sans-serif',
@@ -1148,8 +1171,8 @@ export function PartyPanel(props) {
     }
   }), /*#__PURE__*/React.createElement("span", {
     style: {
-      fontSize: 10,
-      color: '#96A2A0'
+      fontSize: 11 /* v2.3.1235: batch-3 rollout — 11px text floor */,
+      color: '#8D9B98'
     }
   }, "G (", /*#__PURE__*/React.createElement("img", { src: "/icons/popups/gold.webp", alt: "", draggable: false, style: { width: 16, height: 16, objectFit: 'contain', verticalAlign: '-3px' }, onError: function (e) { e.currentTarget.replaceWith(document.createTextNode('\uD83D\uDCB0')); } }), /*#__PURE__*/React.createElement("span", { style: { fontSize: 16 /* v2.3.1235: batch-3 rollout — key-number size */, fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: '#D8AA58' } }, rpgState.coins, "G"), ")")), /*#__PURE__*/React.createElement("button", {
     onClick: function onClick() {
@@ -1206,15 +1229,17 @@ export function PartyPanel(props) {
       width: '100%',
       minHeight: 44,
       padding: '10px 0',
-      borderRadius: 11,
+      borderRadius: 10 /* v2.3.1235: batch-3 rollout — 10px button radius (11 off the approved set) */,
       fontSize: 13,
       fontWeight: 700,
-      border: 'none', /* v2.3.1232: LS brass primary */
-      background: '#D8A85F',
-      color: '#20170D',
+      /* v2.3.1235: batch-3 rollout — committed gold-gradient primary
+         recipe (#EAC675 edge, #172126 ink). */
+      border: '1px solid #EAC675',
+      background: 'linear-gradient(180deg,#E2B765,#D2A14D)',
+      color: '#172126',
       cursor: 'pointer'
     }
-  }, "\uD83C\uDFB2 Place Bet (", arenaBetAmount, "G)"), arenaBets.filter(function (b) {
+  }, "Place Bet (", arenaBetAmount, "G)"), arenaBets.filter(function (b) {
     return b.tournamentId === (arenaTournament === null || arenaTournament === void 0 ? void 0 : arenaTournament.id);
   }).length > 0 && /*#__PURE__*/React.createElement("div", {
     style: {
@@ -1222,9 +1247,9 @@ export function PartyPanel(props) {
     }
   }, /*#__PURE__*/React.createElement("div", {
     style: {
-      fontSize: 10,
+      fontSize: 11 /* v2.3.1235: batch-3 rollout — 11px text floor */,
       fontWeight: 700,
-      color: '#96A2A0',
+      color: '#8D9B98',
       marginBottom: 2
     }
   }, "Active Bets"), arenaBets.filter(function (b) {
@@ -1233,8 +1258,8 @@ export function PartyPanel(props) {
     return /*#__PURE__*/React.createElement("div", {
       key: i,
       style: {
-        fontSize: 10,
-        color: '#96A2A0',
+        fontSize: 11 /* v2.3.1235: batch-3 rollout — 11px text floor */,
+        color: '#8D9B98',
         padding: '1px 0'
       }
     }, b.playerId === stateRef.current.myId ? 'You' : b.playerId.slice(0, 4), " \u2192 ", b.targetName, ": ", b.amount, "G");
@@ -1280,30 +1305,30 @@ export function PartyPanel(props) {
         marginTop: 6,
         padding: 10,
         borderRadius: 10,
-        background: '#121B20',
-        boxShadow: 'inset 0 2px 4px rgba(0,0,0,.44), inset 0 1px 0 rgba(255,255,255,.035)',
-        border: '1px solid rgba(238,242,235,.10)'
+        background: '#111E23' /* v2.3.1235: batch-3 rollout — well token + shared .ui-well recipe */,
+        boxShadow: 'inset 0 2px 5px rgba(0,0,0,0.32), inset 0 1px 0 rgba(255,255,255,0.025)',
+        border: '1px solid rgba(229,237,233,.11)'
       }
     }, /*#__PURE__*/React.createElement("div", {
       style: {
         fontSize: 11,
-        fontWeight: 600,
+        fontWeight: 700 /* v2.3.1235: batch-3 rollout — 11/700 .14em muted headers */,
         textTransform: 'uppercase',
-        letterSpacing: '.12em',
-        color: '#B9C1BF',
+        letterSpacing: '.14em',
+        color: '#8D9B98',
         marginBottom: 4
       }
     }, /*#__PURE__*/React.createElement("img", { src: "/icons/ui/evt-sponsorship.webp", alt: "", draggable: false, style: { width: 16, height: 16, objectFit: 'contain', verticalAlign: '-3px', marginRight: 6 }, onError: function (e) { e.currentTarget.replaceWith(document.createTextNode('\uD83C\uDFB2')); } }), "Spectator Betting"), myBet ? /*#__PURE__*/React.createElement("div", {
       style: {
         fontSize: 11,
-        color: '#96A2A0'
+        color: '#8D9B98'
       }
     }, "Bet placed: ", myBet.amount, "G on ", ((_remaining$find = remaining.find(function (p) {
       return p.id === myBet.targetPlayerId;
     })) === null || _remaining$find === void 0 ? void 0 : _remaining$find.name) || '???', /*#__PURE__*/React.createElement("br", null), "Round ", arenaTournament.round, " \u2014 waiting for results...") : /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
       style: {
         fontSize: 11,
-        color: '#96A2A0',
+        color: '#8D9B98',
         marginBottom: 4
       }
     }, "Blind bet \u2014 pick who you think will win this round. ", remaining.length, " players left."), /*#__PURE__*/React.createElement("div", {
@@ -1320,14 +1345,14 @@ export function PartyPanel(props) {
           return setArenaBetTarget(arenaBetTarget === p.id ? null : p.id);
         },
         style: {
-          minHeight: 32,
+          minHeight: 44 /* v2.3.1235: batch-3 rollout — 44px hitbox floor on pick chips */,
           padding: '6px 12px',
           borderRadius: 999,
           fontSize: 11,
           fontWeight: 600,
-          border: '1px solid ' + (arenaBetTarget === p.id ? '#D8A85F' : 'rgba(238,242,235,.14)'),
-          background: arenaBetTarget === p.id ? '#3B3427' : '#19252A',
-          color: arenaBetTarget === p.id ? '#D8A85F' : p.color || '#F7F2E7',
+          border: '1px solid ' + (arenaBetTarget === p.id ? '#D8AA58' : 'rgba(229,237,233,.20)'),
+          background: arenaBetTarget === p.id ? 'rgba(216,170,88,.15)' : 'transparent' /* v2.3.1235: batch-3 rollout — brass-soft selected chip, transparent idle */,
+          color: arenaBetTarget === p.id ? '#D8AA58' : p.color || '#F4F0E7',
           cursor: 'pointer'
         }
       }, p.name, " (Lv", p.level, ")");
@@ -1342,7 +1367,7 @@ export function PartyPanel(props) {
       style: {
         fontSize: 11,
         fontWeight: 700,
-        color: '#D8A85F'
+        color: '#D8AA58'
       }
     }, "Bet:"), /*#__PURE__*/React.createElement("input", {
       type: "number",
@@ -1354,12 +1379,12 @@ export function PartyPanel(props) {
       },
       style: {
         width: 76,
-        minHeight: 32,
+        minHeight: 44 /* v2.3.1235: batch-3 rollout — 44px input height */,
         padding: '4px 8px',
         borderRadius: 8,
-        border: '1px solid rgba(238,242,235,.14)',
-        background: '#121B20',
-        color: '#D8A85F',
+        border: '1px solid rgba(229,237,233,.20)',
+        background: '#111E23',
+        color: '#D8AA58',
         fontSize: 16 /* v2.3.1233b: iOS zoom guard */,
         fontWeight: 700,
         fontVariantNumeric: 'tabular-nums',
@@ -1369,7 +1394,7 @@ export function PartyPanel(props) {
     }), /*#__PURE__*/React.createElement("span", {
       style: {
         fontSize: 11,
-        color: '#96A2A0'
+        color: '#8D9B98'
       }
     }, "G (max ", Math.min(ARENA_BET_MAX, rpgState.coins), ")")), /*#__PURE__*/React.createElement("button", {
       disabled: !arenaBetTarget || rpgState.coins < arenaBetAmount,
@@ -1422,16 +1447,18 @@ export function PartyPanel(props) {
         width: '100%',
         minHeight: 44,
         padding: '10px 0',
-        borderRadius: 11,
+        borderRadius: 10 /* v2.3.1235: batch-3 rollout — 10px button radius (11 off the approved set) */,
         fontSize: 13,
         fontWeight: 700,
       /* v2.3.1233b: audit fix — visual now mirrors the FULL disabled gate (target AND coins); it previously keyed on target only, rendering a solid-brass primary that silently swallowed taps when broke. Style-only. */
-        border: '1px solid ' + ((arenaBetTarget && rpgState.coins >= arenaBetAmount) ? '#D8A85F' : 'rgba(238,242,235,.14)'),
-        background: (arenaBetTarget && rpgState.coins >= arenaBetAmount) ? '#D8A85F' : '#2B3940',
-        color: (arenaBetTarget && rpgState.coins >= arenaBetAmount) ? '#20170D' : '#687575',
+        /* v2.3.1235: batch-3 rollout — gold-gradient primary when armed;
+           disabled = secondary (see the confirm above). */
+        border: '1px solid ' + ((arenaBetTarget && rpgState.coins >= arenaBetAmount) ? '#EAC675' : 'rgba(229,237,233,.20)'),
+        background: (arenaBetTarget && rpgState.coins >= arenaBetAmount) ? 'linear-gradient(180deg,#E2B765,#D2A14D)' : '#293B41',
+        color: (arenaBetTarget && rpgState.coins >= arenaBetAmount) ? '#172126' : '#667875',
         cursor: (arenaBetTarget && rpgState.coins >= arenaBetAmount) ? 'pointer' : 'not-allowed'
       }
-    }, "\uD83C\uDFB2 Place Bet")));
+    }, "Place Bet")));
   }(), function () {
     var S = stateRef.current;
     /* v2.3.1128: server-settled sponsorship -- the 1.8x self-mint
@@ -1485,13 +1512,17 @@ export function PartyPanel(props) {
     }, /*#__PURE__*/React.createElement("div", {
       style: {
         fontSize: 11,
-        fontWeight: 600,
+        fontWeight: 700 /* v2.3.1235: batch-3 rollout \u2014 11/700 .14em muted headers */,
         textTransform: 'uppercase',
-        letterSpacing: '.12em',
-        color: '#B9C1BF',
+        letterSpacing: '.14em',
+        color: '#8D9B98',
         marginBottom: 3
       }
-    }, "\uD83C\uDFC6 Hall of Fame"), arenaHistory.slice(0, 10).map(function (c, i) {
+      /* v2.3.1235: batch-3 rollout \u2014 header emoji dropped; rows move
+         into one well with dividers below. */
+    }, "Hall of Fame"), /*#__PURE__*/React.createElement("div", {
+      style: LS_WELL235
+    }, arenaHistory.slice(0, 10).map(function (c, i) {
       return /*#__PURE__*/React.createElement("div", {
         key: i,
         style: {
@@ -1500,28 +1531,30 @@ export function PartyPanel(props) {
           gap: 4,
           minHeight: 44,
           padding: '6px 10px',
-          borderRadius: 8,
-          background: '#19252A',
-          border: '1px solid rgba(238,242,235,.10)',
-          marginBottom: 2,
+          borderTop: i > 0 ? LS_DIV235 : 'none' /* v2.3.1235: divider rows */,
           fontSize: 11
         }
+        /* v2.3.1235: batch-3 rollout — medal emoji chrome becomes a
+           tabular rank number. */
       }, /*#__PURE__*/React.createElement("span", {
         style: {
-          fontSize: 12
+          fontSize: 12,
+          fontWeight: 700,
+          fontVariantNumeric: 'tabular-nums',
+          color: '#8D9B98'
         }
-      }, i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : '🏅'), /*#__PURE__*/React.createElement("span", {
+      }, i + 1, "."), /*#__PURE__*/React.createElement("span", {
         style: {
           fontWeight: 700,
-          color: '#D8A85F'
+          color: '#D8AA58'
         }
       }, c.championName), /*#__PURE__*/React.createElement("span", {
         style: {
-          color: '#96A2A0',
+          color: '#8D9B98',
           marginLeft: 'auto'
         }
       }, c.wins, "W \xB7 ", c.totalPlayers, "P"));
-    })) : null;
+    })) /* v2.3.1235: batch-3 rollout — closes the hall-of-fame well */) : null;
   }(), arenaTournament && arenaTournament.status === 'active' && function () {
     var S = stateRef.current;
     var myPlayer = arenaTournament.players.find(function (p) {
@@ -1541,30 +1574,30 @@ export function PartyPanel(props) {
         marginTop: 8,
         padding: 10,
         borderRadius: 10,
-        background: '#121B20',
-        boxShadow: 'inset 0 2px 4px rgba(0,0,0,.44), inset 0 1px 0 rgba(255,255,255,.035)',
-        border: '1px solid rgba(238,242,235,.10)'
+        background: '#111E23' /* v2.3.1235: batch-3 rollout — well token + shared .ui-well recipe */,
+        boxShadow: 'inset 0 2px 5px rgba(0,0,0,0.32), inset 0 1px 0 rgba(255,255,255,0.025)',
+        border: '1px solid rgba(229,237,233,.11)'
       }
     }, /*#__PURE__*/React.createElement("div", {
       style: {
         fontSize: 11,
-        fontWeight: 600,
+        fontWeight: 700 /* v2.3.1235: batch-3 rollout — 11/700 .14em muted headers */,
         textTransform: 'uppercase',
-        letterSpacing: '.12em',
-        color: '#B9C1BF',
+        letterSpacing: '.14em',
+        color: '#8D9B98',
         marginBottom: 4
       }
     }, /*#__PURE__*/React.createElement("img", { src: "/icons/ui/evt-sponsorship.webp", alt: "", draggable: false, style: { width: 16, height: 16, objectFit: 'contain', verticalAlign: '-3px', marginRight: 6 }, onError: function (e) { e.currentTarget.replaceWith(document.createTextNode('\uD83C\uDFB2')); } }), "Spectator Betting"), /*#__PURE__*/React.createElement("div", {
       style: {
         fontSize: 11,
-        color: '#96A2A0',
+        color: '#8D9B98',
         marginBottom: 6
       }
     }, "Blind bet on who wins the tournament. Payout: pot \xF7 winners. ", /*#__PURE__*/React.createElement("img", { src: "/icons/popups/gold.webp", alt: "", draggable: false, style: { width: 16, height: 16, objectFit: 'contain', verticalAlign: '-3px' }, onError: function (e) { e.currentTarget.replaceWith(document.createTextNode('\uD83D\uDCB0')); } }), /*#__PURE__*/React.createElement("span", { style: { fontSize: 16 /* v2.3.1235: batch-3 rollout — key-number size */, fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: '#D8AA58' } }, rpgState.coins, "G")), /*#__PURE__*/React.createElement("div", {
       style: {
         fontSize: 11,
         fontWeight: 700,
-        color: '#96A2A0',
+        color: '#8D9B98',
         marginBottom: 2
       }
     }, "Bet on Champion"), /*#__PURE__*/React.createElement("div", {
@@ -1581,14 +1614,14 @@ export function PartyPanel(props) {
           return setArenaBetTarget(p.id);
         },
         style: {
-          minHeight: 32,
+          minHeight: 44 /* v2.3.1235: batch-3 rollout — 44px hitbox floor on pick chips */,
           padding: '6px 12px',
           borderRadius: 999,
           fontSize: 11,
           fontWeight: 600,
-          border: '1px solid ' + (arenaBetTarget === p.id ? '#D8A85F' : 'rgba(238,242,235,.14)'),
-          background: arenaBetTarget === p.id ? '#3B3427' : '#19252A',
-          color: arenaBetTarget === p.id ? '#D8A85F' : p.color || '#96A2A0',
+          border: '1px solid ' + (arenaBetTarget === p.id ? '#D8AA58' : 'rgba(229,237,233,.20)'),
+          background: arenaBetTarget === p.id ? 'rgba(216,170,88,.15)' : 'transparent' /* v2.3.1235: batch-3 rollout — brass-soft selected chip, transparent idle */,
+          color: arenaBetTarget === p.id ? '#D8AA58' : p.color || '#8D9B98',
           cursor: 'pointer'
         }
       }, p.name, " (Lv", p.level, ")");
@@ -1603,7 +1636,7 @@ export function PartyPanel(props) {
       style: {
         fontSize: 11,
         fontWeight: 700,
-        color: '#96A2A0'
+        color: '#8D9B98'
       }
     }, "Amount:"), /*#__PURE__*/React.createElement("input", {
       type: "number",
@@ -1615,13 +1648,13 @@ export function PartyPanel(props) {
       },
       style: {
         width: 76,
-        minHeight: 32,
+        minHeight: 44 /* v2.3.1235: batch-3 rollout — 44px input height */,
         padding: '4px 8px',
         borderRadius: 8,
-        border: '1px solid rgba(238,242,235,.14)',
-        background: '#121B20',
-        color: '#D8A85F',
-        fontSize: 12,
+        border: '1px solid rgba(229,237,233,.20)',
+        background: '#111E23',
+        color: '#D8AA58',
+        fontSize: 16 /* v2.3.1235: batch-3 rollout — iOS zoom guard, matching every other bet input (v2.3.1233b) */,
         fontWeight: 700,
         fontFamily: 'Source Sans 3,sans-serif',
         fontVariantNumeric: 'tabular-nums',
@@ -1631,7 +1664,7 @@ export function PartyPanel(props) {
     }), /*#__PURE__*/React.createElement("span", {
       style: {
         fontSize: 11,
-        color: '#687575'
+        color: '#667875'
       }
     }, "G"), [50, 100, 500].map(function (v) {
       return /*#__PURE__*/React.createElement("button", {
@@ -1640,14 +1673,14 @@ export function PartyPanel(props) {
           return setArenaBetAmount(Math.min(v, rpgState.coins));
         },
         style: {
-          minHeight: 32,
+          minHeight: 44 /* v2.3.1235: batch-3 rollout — 44px hitbox floor on quick-amount chips */,
           padding: '4px 12px',
           borderRadius: 999,
           fontSize: 11,
           fontWeight: 600,
-          border: '1px solid rgba(238,242,235,.14)',
-          background: '#2B3940',
-          color: '#B9C1BF',
+          border: '1px solid rgba(229,237,233,.20)',
+          background: '#293B41',
+          color: '#B6C1BE',
           cursor: 'pointer'
         }
       }, v, "G");
@@ -1703,19 +1736,21 @@ export function PartyPanel(props) {
         width: '100%',
         minHeight: 44,
         padding: '10px 0',
-        borderRadius: 11,
+        borderRadius: 10 /* v2.3.1235: batch-3 rollout — 10px button radius (11 off the approved set) */,
         fontSize: 13,
         fontWeight: 700,
-        border: '1px solid ' + (arenaBetTarget ? '#D8A85F' : 'rgba(238,242,235,.14)'),
-        background: arenaBetTarget ? '#D8A85F' : '#2B3940',
-        color: arenaBetTarget ? '#20170D' : '#687575',
+        /* v2.3.1235: batch-3 rollout — gold-gradient primary when armed;
+           disabled = secondary. */
+        border: '1px solid ' + (arenaBetTarget ? '#EAC675' : 'rgba(229,237,233,.20)'),
+        background: arenaBetTarget ? 'linear-gradient(180deg,#E2B765,#D2A14D)' : '#293B41',
+        color: arenaBetTarget ? '#172126' : '#667875',
         cursor: arenaBetTarget ? 'pointer' : 'not-allowed'
       }
-    }, "\uD83C\uDFB2 Place Bet (", arenaBetAmount, "G)"), myBets.length > 0 && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
+    }, "Place Bet (", arenaBetAmount, "G)"), myBets.length > 0 && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
       style: {
         fontSize: 11,
         fontWeight: 700,
-        color: '#96A2A0',
+        color: '#8D9B98',
         marginTop: 6,
         marginBottom: 2
       }
@@ -1724,14 +1759,14 @@ export function PartyPanel(props) {
         key: i,
         style: {
           fontSize: 11,
-          color: '#96A2A0',
+          color: '#8D9B98',
           padding: '2px 0'
         }
       }, b.amount, "G on ", b.targetName);
     }), /*#__PURE__*/React.createElement("div", {
       style: {
-        fontSize: 10,
-        color: '#687575',
+        fontSize: 11 /* v2.3.1235: batch-3 rollout — 11px text floor */,
+        color: '#667875',
         marginTop: 2
       }
     }, "Total wagered: ", myBets.reduce(function (s, b) {
