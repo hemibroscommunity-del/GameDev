@@ -55,16 +55,24 @@ export const AccountLoginForm = () => {
     const created = found && found.preview && found.preview.createdAt
       ? new Date(found.preview.createdAt).toLocaleDateString() : null;
     const curKey = getBtPassphrase();
+    /* v2.3.1235: batch-1 rollout — confirm view still wore the retired
+       navy theme (#3ddc97 filled-green Continue, white-alpha Cancel,
+       #ffb84d amber, a ✓ glyph in chrome).  Now on the locked sheet:
+       Continue is THE one gold primary on this surface (it commits the
+       device switch), Cancel is the standard secondary, the found line
+       uses the approved positive token as text only, and the sign-out
+       warning is 12px secondary copy.  All three handlers + the state
+       machine are byte-identical. */
     return (
       <div>
-        <div style={{ fontSize: 16, color: '#3ddc97', fontWeight: 700, marginBottom: 6 }}>
-          ✓ Found it!
+        <div style={{ fontSize: 16, color: '#55B98A', fontWeight: 700, marginBottom: 6 }}>
+          Found it!
         </div>
-        <div style={{ fontSize: 15, lineHeight: 1.45, marginBottom: 8 }}>
+        <div style={{ fontSize: 13, color: 'var(--ui-text)', lineHeight: 1.45, marginBottom: 8 }}>
           Continue as your <b>Lv {lvl}</b> character{created ? ` (created ${created})` : ''}?
         </div>
         {curKey && curKey !== (found && found.key) && (
-          <div style={{ fontSize: 14, color: '#ffb84d', lineHeight: 1.4, marginBottom: 10 }}>
+          <div style={{ fontSize: 12, color: 'var(--ui-text-secondary)', lineHeight: 1.4, marginBottom: 10 }}>
             The character currently on this device will be signed out.
             Its Login Key is <span style={{ fontFamily: 'ui-monospace, Menlo, monospace', fontWeight: 700 }}>{curKey}</span> —
             save it first if you ever want to come back to it.
@@ -74,10 +82,10 @@ export const AccountLoginForm = () => {
           <button
             onClick={confirm}
             disabled={phase === 'switching'}
+            className="button-primary"
             style={{
-              flex: 1, padding: '11px 0', fontSize: 16, fontWeight: 700,
-              background: '#3ddc97', color: '#0d0e16', border: 'none',
-              borderRadius: 8, cursor: 'pointer', opacity: phase === 'switching' ? 0.6 : 1,
+              flex: 1, minHeight: 44, padding: '11px 0', fontSize: 15,
+              opacity: phase === 'switching' ? 0.6 : 1,
             }}
           >
             {phase === 'switching' ? 'Switching…' : 'Continue'}
@@ -85,10 +93,9 @@ export const AccountLoginForm = () => {
           <button
             onClick={() => { setPhase('idle'); setFound(null); }}
             disabled={phase === 'switching'}
+            className="button-secondary"
             style={{
-              flex: 1, padding: '11px 0', fontSize: 16, fontWeight: 700,
-              background: 'rgba(255,255,255,0.08)', color: '#E8EAF8',
-              border: '1px solid rgba(255,255,255,0.15)', borderRadius: 8, cursor: 'pointer',
+              flex: 1, minHeight: 44, padding: '11px 0', fontSize: 15,
             }}
           >
             Cancel
@@ -98,10 +105,19 @@ export const AccountLoginForm = () => {
     );
   }
 
+  /* v2.3.1235: batch-1 rollout — idle view off the retired navy theme
+     (#5b52ff Log in, #E8EAF8/#ff5e6c text): 11/700 uppercase module
+     header, key input in a well trough (16px stays — iOS zoom floor),
+     Log in as a 44px secondary button (the gold primary of this flow
+     is Continue on the confirm step — one gold per surface), errors in
+     the approved danger token as text only.  Handlers byte-identical. */
   return (
     <div>
-      <div style={{ fontSize: 13, letterSpacing: '.06em', color: '#96A2A0' /* v2.3.1233: Lantern text-2 (was navy #8890b8) */, marginBottom: 4 }}>
-        CONTINUE A CHARACTER FROM ANOTHER DEVICE
+      <div style={{
+        fontSize: 11, fontWeight: 700, textTransform: 'uppercase',
+        letterSpacing: '.14em', color: 'var(--ui-text-muted)', marginBottom: 4,
+      }}>
+        Continue a character from another device
       </div>
       <div style={{ display: 'flex', gap: 6 }}>
         <input
@@ -118,20 +134,21 @@ export const AccountLoginForm = () => {
             /* 16px floor: iOS Safari auto-zooms inputs with smaller fonts. */
             fontSize: 16,
             fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
-            color: '#E8EAF8',
-            background: 'rgba(0,0,0,0.35)',
-            border: '1px solid rgba(255,255,255,0.15)',
+            color: 'var(--ui-text)',
+            background: 'var(--ui-well)',
+            border: '1px solid var(--ui-line-strong)',
             borderRadius: 8,
             padding: '10px 10px',
+            minHeight: 44,
           }}
         />
         <button
           onClick={submit}
           disabled={phase === 'checking'}
+          className="button-secondary"
           style={{
-            flexShrink: 0,
-            background: '#5b52ff', color: '#fff', border: 'none', borderRadius: 8,
-            fontSize: 15, fontWeight: 700, cursor: 'pointer', padding: '0 14px',
+            flexShrink: 0, minHeight: 44,
+            fontSize: 15, padding: '0 14px',
             opacity: phase === 'checking' ? 0.6 : 1,
           }}
         >
@@ -139,7 +156,7 @@ export const AccountLoginForm = () => {
         </button>
       </div>
       {error && (
-        <div style={{ fontSize: 14, color: '#ff5e6c', marginTop: 6, lineHeight: 1.4 }}>
+        <div style={{ fontSize: 12, color: '#D8635D', marginTop: 6, lineHeight: 1.4 }}>
           {error}
         </div>
       )}
