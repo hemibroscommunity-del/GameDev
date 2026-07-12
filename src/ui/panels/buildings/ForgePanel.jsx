@@ -370,7 +370,10 @@ export function ForgePanel(props) {
           localStorage.setItem('bt_rpg', JSON.stringify(R));
         } catch (e) {}
       }
-    }, "Forge (", ((_stateRef$current12 = stateRef.current) === null || _stateRef$current12 === void 0 ? void 0 : _stateRef$current12._bsType) === 'sword' ? 'Sword' : 'Greatsword', ")"));
+    }, /* v2.3.1235: state-correction — action label states: locked rows say
+          "Locked"; missing-materials rows name the binding shortage from the
+          same reads the guard uses; only state 1 keeps the Forge label. */
+    !(canForge && meetsStat) ? "Locked" : !hasOre ? "Need ".concat(bt.oreCost - ((rpgState.inventory || {})[oreKey] || 0), " ").concat(bt.oreName) : !hasGold ? "Need ".concat(bt.goldCost - (rpgState.coins || 0), "G more") : /*#__PURE__*/React.createElement("span", null, "Forge (", ((_stateRef$current12 = stateRef.current) === null || _stateRef$current12 === void 0 ? void 0 : _stateRef$current12._bsType) === 'sword' ? 'Sword' : 'Greatsword', ")")));
   })), function () {
     /* v2.3.1131: SS4.6c HARDENING -- the server-rolled H0->H5 ladder
        (harden_weapon -> hardening.js).  DISTINCT from the legacy
@@ -402,11 +405,16 @@ export function ForgePanel(props) {
     }, hw.name, " \u2014 H", hLvl, "/5"), /*#__PURE__*/React.createElement("div", {
       style: { fontSize: 11, color: '#8D9B98', marginBottom: 8 }
     }, hMaxed ? 'Maximum hardness reached!' : "+1.04 base dmg per level \xB7 Success " + hOdds + "% \xB7 Fail resets hardness (Temper " + hTemper + " softens it)"), !hMaxed && /*#__PURE__*/React.createElement("button", {
+      /* v2.3.1235: state-correction — real disabled prop + approved
+         disabled recipe (#1A292F fill, #8D9B98 label, .11 hairline, full
+         opacity) when coins are short; handler untouched. */
+      disabled: !hAfford,
       style: {
         width: '100%', minHeight: 44, padding: '0 12px', borderRadius: 10, fontSize: 13, fontWeight: 700,
         border: hAfford ? '1px solid #EAC675' : '1px solid rgba(229,237,233,.11)',
-        background: hAfford ? 'linear-gradient(180deg,#E2B765,#D2A14D)' : '#24363C',
-        color: hAfford ? '#172126' : '#667875',
+        background: hAfford ? 'linear-gradient(180deg,#E2B765,#D2A14D)' : '#1A292F',
+        color: hAfford ? '#172126' : '#8D9B98',
+        opacity: 1,
         cursor: hAfford ? 'pointer' : 'not-allowed',
         fontFamily: 'inherit'
       },
@@ -414,7 +422,10 @@ export function ForgePanel(props) {
         if (!hAfford) return;
         try { _Sh.channel.send({ type: 'broadcast', event: 'harden_weapon', payload: { slot: 'weapon' } }); } catch (e) {}
       }
-    }, "Attempt H", hLvl + 1, " (", hCost, "G \xB7 ", hOdds, "%)"));
+    }, /* v2.3.1235: state-correction — short-coins label states the gold
+          deficit (fee - coins, same values the hAfford guard reads)
+          instead of an enabled-looking attempt label. */
+    hAfford ? /*#__PURE__*/React.createElement("span", null, "Attempt H", hLvl + 1, " (", hCost, "G \xB7 ", hOdds, "%)") : "Need ".concat(hCost - (rpgState.coins || 0), "G more")));
   }(), function (_rpgState$lifeSkills24) {
     var wpn = rpgState.weapon;
     if (!(wpn !== null && wpn !== void 0 && wpn.gearBase)) return /*#__PURE__*/React.createElement("div", {
@@ -651,9 +662,9 @@ export function ForgePanel(props) {
         gap: 8,
         minHeight: 44,
         padding: '6px 8px',
-        borderTop: _ai > 0 ? LS_DIV : 'none',
-        /* v2.3.1235: batch-3 rollout — .55 locked-row readability floor */
-        opacity: canCraft ? 1 : 0.55
+        borderTop: _ai > 0 ? LS_DIV : 'none'
+        /* v2.3.1235: state-correction — whole-row opacity dimming removed;
+           locked state is carried by text tokens + ls-lock glyph instead. */
       }
     }, /*#__PURE__*/React.createElement("span", {
       style: {
@@ -667,7 +678,9 @@ export function ForgePanel(props) {
       style: {
         fontSize: 13,
         fontWeight: 600,
-        color: canCraft ? '#F4F0E7' : '#667875'
+        /* v2.3.1235: state-correction — locked titles #B6C1BE (state 3);
+           missing-materials rows keep full title brightness (state 2). */
+        color: canCraft ? '#F4F0E7' : '#B6C1BE'
       }
     }, at.label, " Amulet ", /*#__PURE__*/React.createElement("span", {
       style: {
@@ -684,9 +697,27 @@ export function ForgePanel(props) {
         fontSize: 11,
         color: '#8D9B98'
       }
-    }, at.bars, " bar", at.bars > 1 ? 's' : '', " + ", at.goldCost, "g", !canCraft && " \xB7 Req Lv".concat(at.minLvl))), /*#__PURE__*/React.createElement("button", {
-      /* v2.3.1235: batch-3 rollout — 44px hitbox floor; secondary vs
-         quiet-card disabled treatment on the approved tokens. */
+    }, /* v2.3.1235: state-correction — state-2 rows show live have/need
+          counts from the same goldBars/coin reads the disable logic uses;
+          state-3 rows keep the static cost + ls-lock glyph + requirement. */
+    canCraft && /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement("span", {
+      style: {
+        color: hasBars ? '#55B98A' : '#D8635D'
+      }
+    }, "Bars ", rpgState.goldBars || 0, "/", at.bars), " \xB7 ", /*#__PURE__*/React.createElement("span", {
+      style: {
+        color: hasGold ? '#55B98A' : '#D8635D'
+      }
+    }, "Gold ", rpgState.coins || 0, "/", at.goldCost)), !canCraft && /*#__PURE__*/React.createElement("span", null, at.bars, " bar", at.bars > 1 ? 's' : '', " + ", at.goldCost, "g \xB7 ", /*#__PURE__*/React.createElement("span", {
+      className: "ls-lock",
+      style: {
+        marginRight: 3
+      }
+    }), "Blacksmith Lv".concat(at.minLvl)))), /*#__PURE__*/React.createElement("button", {
+      /* v2.3.1235: state-correction — disabled recipe is #1A292F fill +
+         #8D9B98 label + .11 hairline at full opacity (was #24363C/#667875);
+         real disabled prop added around the untouched handler. */
+      disabled: !(canCraft && hasBars && hasGold),
       style: {
         minHeight: 44,
         padding: '0 14px',
@@ -694,9 +725,10 @@ export function ForgePanel(props) {
         border: canCraft && hasBars && hasGold ? '1px solid rgba(229,237,233,.20)' : '1px solid rgba(229,237,233,.11)',
         fontSize: 12,
         fontWeight: 700,
-        background: canCraft && hasBars && hasGold ? '#293B41' : '#24363C',
-        color: canCraft && hasBars && hasGold ? '#F4F0E7' : '#667875',
-        cursor: 'pointer',
+        background: canCraft && hasBars && hasGold ? '#293B41' : '#1A292F',
+        color: canCraft && hasBars && hasGold ? '#F4F0E7' : '#8D9B98',
+        opacity: 1,
+        cursor: canCraft && hasBars && hasGold ? 'pointer' : 'default',
         fontFamily: 'inherit',
         flexShrink: 0
       },
@@ -735,7 +767,9 @@ export function ForgePanel(props) {
           localStorage.setItem('bt_rpg', JSON.stringify(R));
         } catch (e) {}
       }
-    }, "Craft"));
+    }, /* v2.3.1235: state-correction — action label states: "Locked" for
+          skill locks, the binding shortage for missing materials. */
+    !canCraft ? "Locked" : !hasBars ? "Need ".concat(at.bars - (rpgState.goldBars || 0), " bar").concat(at.bars - (rpgState.goldBars || 0) > 1 ? 's' : '') : !hasGold ? "Need ".concat(at.goldCost - (rpgState.coins || 0), "G more") : "Craft"));
   }))), /*#__PURE__*/React.createElement("div", {
     /* v2.3.1232: nested module card */
     style: LS_CARD
@@ -784,9 +818,9 @@ export function ForgePanel(props) {
         gap: 8,
         minHeight: 44,
         padding: '6px 8px',
-        borderTop: _fi2 > 0 ? LS_DIV : 'none',
-        /* v2.3.1235: batch-3 rollout — .55 locked-row readability floor */
-        opacity: canForge && shieldMeetsStat ? 1 : 0.55
+        borderTop: _fi2 > 0 ? LS_DIV : 'none'
+        /* v2.3.1235: state-correction — whole-row opacity dimming removed;
+           locked state is carried by text tokens + ls-lock glyph instead. */
       }
     }, /*#__PURE__*/React.createElement("span", {
       style: {
@@ -800,7 +834,9 @@ export function ForgePanel(props) {
       style: {
         fontSize: 13,
         fontWeight: 600,
-        color: canForge && shieldMeetsStat ? '#F4F0E7' : '#667875'
+        /* v2.3.1235: state-correction — locked titles #B6C1BE (state 3);
+           missing-materials rows keep full title brightness (state 2). */
+        color: canForge && shieldMeetsStat ? '#F4F0E7' : '#B6C1BE'
       }
     }, bt.label, " Shield ", /*#__PURE__*/React.createElement("span", {
       style: {
@@ -812,14 +848,33 @@ export function ForgePanel(props) {
         fontSize: 11,
         color: '#8D9B98'
       }
-    }, bt.oreCost, "\xD7 ", bt.oreName, " ore + ", bt.goldCost, "g", bt.statReq > 0 && /*#__PURE__*/React.createElement("span", {
+    }, /* v2.3.1235: state-correction — state-2 rows show live have/need
+          counts from the same inventory/coin reads the disable logic uses
+          (met = positive green, short = danger); state-3 rows keep the
+          static cost and carry the requirement next to an ls-lock glyph. */
+    (canForge && shieldMeetsStat) && /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement("span", {
+      style: {
+        color: hasOre ? '#55B98A' : '#D8635D'
+      }
+    }, bt.oreName.charAt(0).toUpperCase() + bt.oreName.slice(1), " ", ((rpgState.inventory || {})[oreKey] || 0), "/", bt.oreCost), " \xB7 ", /*#__PURE__*/React.createElement("span", {
+      style: {
+        color: hasGold ? '#55B98A' : '#D8635D'
+      }
+    }, "Gold ", rpgState.coins || 0, "/", bt.goldCost), bt.statReq > 0 && /*#__PURE__*/React.createElement("span", {
       style: {
         /* v2.3.1235: batch-3 rollout — muted/danger tokens */
         color: shieldMeetsStat ? '#8D9B98' : '#D8635D'
       }
-    }, " \xB7 ", SHIELD_EQUIP_STAT.charAt(0).toUpperCase() + SHIELD_EQUIP_STAT.slice(1), " ", bt.statReq, shieldMeetsStat ? '✓' : ''))), /*#__PURE__*/React.createElement("button", {
-      /* v2.3.1235: batch-3 rollout — 44px hitbox floor; secondary vs
-         quiet-card disabled treatment on the approved tokens. */
+    }, " \xB7 ", SHIELD_EQUIP_STAT.charAt(0).toUpperCase() + SHIELD_EQUIP_STAT.slice(1), " ", bt.statReq, shieldMeetsStat ? '✓' : '')), !(canForge && shieldMeetsStat) && /*#__PURE__*/React.createElement("span", null, bt.oreCost, "\xD7 ", bt.oreName, " ore + ", bt.goldCost, "g \xB7 ", /*#__PURE__*/React.createElement("span", {
+      className: "ls-lock",
+      style: {
+        marginRight: 3
+      }
+    }), (!canForge ? "Blacksmith Lv" + bt.minLvl : "") + (!canForge && !shieldMeetsStat ? " \xB7 " : "") + (!shieldMeetsStat ? SHIELD_EQUIP_STAT.charAt(0).toUpperCase() + SHIELD_EQUIP_STAT.slice(1) + " " + bt.statReq : "")))), /*#__PURE__*/React.createElement("button", {
+      /* v2.3.1235: state-correction — disabled recipe is #1A292F fill +
+         #8D9B98 label + .11 hairline at full opacity (was #24363C/#667875);
+         real disabled prop added around the untouched handler. */
+      disabled: !(canForge && hasOre && hasGold && shieldMeetsStat),
       style: {
         minHeight: 44,
         padding: '0 14px',
@@ -827,9 +882,10 @@ export function ForgePanel(props) {
         border: canForge && hasOre && hasGold && shieldMeetsStat ? '1px solid rgba(229,237,233,.20)' : '1px solid rgba(229,237,233,.11)',
         fontSize: 12,
         fontWeight: 700,
-        background: canForge && hasOre && hasGold && shieldMeetsStat ? '#293B41' : '#24363C',
-        color: canForge && hasOre && hasGold && shieldMeetsStat ? '#F4F0E7' : '#667875',
-        cursor: 'pointer',
+        background: canForge && hasOre && hasGold && shieldMeetsStat ? '#293B41' : '#1A292F',
+        color: canForge && hasOre && hasGold && shieldMeetsStat ? '#F4F0E7' : '#8D9B98',
+        opacity: 1,
+        cursor: canForge && hasOre && hasGold && shieldMeetsStat ? 'pointer' : 'default',
         fontFamily: 'inherit',
         flexShrink: 0
       },
@@ -856,7 +912,9 @@ export function ForgePanel(props) {
           localStorage.setItem('bt_rpg', JSON.stringify(R));
         } catch (e) {}
       }
-    }, "Forge"));
+    }, /* v2.3.1235: state-correction — action label states: "Locked" for
+          level/stat locks, the binding shortage for missing materials. */
+    !(canForge && shieldMeetsStat) ? "Locked" : !hasOre ? "Need ".concat(bt.oreCost - ((rpgState.inventory || {})[oreKey] || 0), " ").concat(bt.oreName) : !hasGold ? "Need ".concat(bt.goldCost - (rpgState.coins || 0), "G more") : "Forge"));
   })), function (_rpgState$lifeSkills28) {
     var sh = rpgState.shield;
     if (!(sh !== null && sh !== void 0 && sh.gearBase)) return null;
