@@ -235,8 +235,8 @@ export const T2Panel = () => {
                    the locked token sheet; unselected tabs now sit flat on
                    the sheet with a standard 1px line, selected keeps the
                    raised surface + brass bottom edge.  Lv/badge text
-                   raised to the 11px readability floor.  onPointerUp
-                   body byte-identical. */
+                   raised to the 11px readability floor.  Pointer
+                   handler byte-identical. */
                 flex: 1,
                 position: 'relative',
                 minHeight: 44,
@@ -337,7 +337,7 @@ export const T2Panel = () => {
            not (the old '#687575' literal was a transposed-digit typo off
            the token sheet); (3) SOON/Max/blurb text raised to the 11px
            label / 12px copy floors.  Locked rows keep opacity .55 —
-           readable, reduced.  onPointerUp body byte-identical. */
+           readable, reduced.  Pointer handler byte-identical. */
         return (
           <div key={ch.key} style={{
             display: 'flex',

@@ -12,7 +12,7 @@ import { COL, panelStyle } from './common.js';
    pill is a nested visual span; (2) toggle states follow the contract
    exactly — ON = brass-soft fill + brass border + brass knob (a full
    brass fill would compete with the surface's single gold action),
-   OFF = raised/neutral with a muted knob.  onClick body unchanged. */
+   OFF = raised/neutral with a muted knob.  Click handler unchanged. */
 const Toggle = ({ label, value, onChange }) => (
   <div style={{
     display: 'flex',
