@@ -163,6 +163,11 @@ export function GamblePanel(props) {
            instead of a flat brass fill; 10px radius (11 is off the
            approved set). Disabled state stays readable on the well. */
         className: stateRef.current._gambleWager && rpgState.coins >= stateRef.current._gambleWager ? 'button-primary' : undefined,
+        /* v2.3.1235: state-correction §7 — real disabled prop (the
+           onClick guards are unchanged underneath) + the approved
+           disabled recipe (#1A292F fill, #8D9B98 text, .11 hairline,
+           opacity 1, 44px) while no wager chip is selected. */
+        disabled: !(stateRef.current._gambleWager && rpgState.coins >= stateRef.current._gambleWager),
         style: {
           width: '100%',
           minHeight: 44,
@@ -173,9 +178,10 @@ export function GamblePanel(props) {
           fontWeight: 700,
           letterSpacing: '.03em',
           fontVariantNumeric: 'tabular-nums',
-          cursor: 'pointer',
-          background: stateRef.current._gambleWager && rpgState.coins >= stateRef.current._gambleWager ? undefined : LS.well,
-          color: stateRef.current._gambleWager && rpgState.coins >= stateRef.current._gambleWager ? undefined : LS.dis
+          cursor: stateRef.current._gambleWager && rpgState.coins >= stateRef.current._gambleWager ? 'pointer' : 'default',
+          background: stateRef.current._gambleWager && rpgState.coins >= stateRef.current._gambleWager ? undefined : '#1A292F',
+          color: stateRef.current._gambleWager && rpgState.coins >= stateRef.current._gambleWager ? undefined : '#8D9B98',
+          opacity: 1
         },
         onClick: function onClick() {
           var wager = stateRef.current._gambleWager;
@@ -234,7 +240,7 @@ export function GamblePanel(props) {
             localStorage.setItem('bt_rpg', JSON.stringify(R));
           } catch (e) {}
         }
-      }, "ROLL! (", stateRef.current._gambleWager || '—', "g)") /* v2.3.1235: batch-3 rollout — 🎲 dropped, no emoji in chrome */,
+      }, stateRef.current._gambleWager ? "Roll \xB7 " + stateRef.current._gambleWager + "G" : "Select a wager") /* v2.3.1235: state-correction §7 — never a "—g" placeholder: "Select a wager" until a chip is picked, then "Roll · 10G" */,
       React.createElement("div", { style: LS_DIV }),
       React.createElement("div", { style: LS_MOD }, "Weekly Jackpot"),
       React.createElement("div", {
@@ -306,8 +312,16 @@ export function GamblePanel(props) {
               localStorage.setItem('bt_rpg', JSON.stringify(R));
             } catch (e) {}
           }
-        }, amt, "g");
+        }, "Deposit ", amt, "G" /* v2.3.1235: state-correction §7 — verb + amount ("Deposit 50G", not a bare "50g") */);
       })),
+      rpgState.coins < JACKPOT_MIN_DEPOSIT && React.createElement("div", {
+        /* v2.3.1235: state-correction §7 — when no deposit chip is
+           affordable the affordability filter above leaves the row
+           empty; state WHY in a 12px danger line instead of silence.
+           Same read (coins vs the JACKPOT_MIN_DEPOSIT floor = the
+           smallest chip) the filter and the handler guard use. */
+        style: { fontSize: 12, color: '#D8635D', textAlign: 'center', fontVariantNumeric: 'tabular-nums' }
+      }, "Need ", JACKPOT_MIN_DEPOSIT, "G"),
       React.createElement("div", { style: LS_DIV }),
       React.createElement("div", { style: LS_MOD }, "Gambling Stats"),
       React.createElement("div", {
@@ -345,5 +359,13 @@ export function GamblePanel(props) {
           fontWeight: 700,
           textAlign: 'right'
         }
-      }, (((_rpgState$_compStats7 = rpgState._compStats) === null || _rpgState$_compStats7 === void 0 ? void 0 : _rpgState$_compStats7.totalGambleWon) || 0) - (((_rpgState$_compStats8 = rpgState._compStats) === null || _rpgState$_compStats8 === void 0 ? void 0 : _rpgState$_compStats8.totalGambleLost) || 0), "g")))));
+      }, (((_rpgState$_compStats7 = rpgState._compStats) === null || _rpgState$_compStats7 === void 0 ? void 0 : _rpgState$_compStats7.totalGambleWon) || 0) - (((_rpgState$_compStats8 = rpgState._compStats) === null || _rpgState$_compStats8 === void 0 ? void 0 : _rpgState$_compStats8.totalGambleLost) || 0), "g"))),
+      React.createElement("div", {
+        /* v2.3.1235: state-correction §10 — sticky 24px bottom fade
+           (last child of the scroll body); the gradient resolves to
+           the sheet #1E2E34 this body sits on. Visible only while
+           content remains below the fold (showFade). */
+        "aria-hidden": true,
+        style: { position: 'sticky', bottom: 0, height: 24, marginTop: -24, flexShrink: 0, background: 'linear-gradient(180deg, rgba(30,46,52,0), #1E2E34)', opacity: showFade ? 1 : 0, transition: 'opacity 160ms ease', pointerEvents: 'none' }
+      })));
 }
