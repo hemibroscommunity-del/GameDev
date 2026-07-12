@@ -5,66 +5,117 @@
   /* Bottom dashboard band height.  Single source of truth — JS-side
      code (BroTown.jsx DASH_FRAC) must be kept in sync if changed. */
   --dash-h:   28vh;
-  /* v2.3.1230: the legacy variable set now feeds Lantern Slate values
-     (docs/LANTERN-SLATE-SPEC.md) — this single remap flips every
-     legacy panel (src/ui/panels/*) off the old navy/indigo look.
-     Names kept so the old selectors don't need touching. */
-  --ink:      #121B20;
-  --ink2:     #182227;
-  --ink3:     #202C32;
-  --ink4:     #2B3940;
-  --line:     #37444B;
-  --line2:    #4A5960;
-  --pop:      #D8A85F;
-  --pop-soft: rgba(216,168,95,.14);
-  --pop-glow: rgba(216,168,95,.35);
-  --teal:     #59BF91;
-  --txt:      #F7F2E7;
-  --txt2:     #B9C1BF;
-  --txt3:     #687575;
-  --red:      #D95C54;
-  --gold:     #D8A85F;
-  --green:    #59BF91;
+  /* v2.3.1235: Lantern Slate CORRECTION PASS (owner-approved ChatGPT
+     review of the v2.3.1234 screenshots).  Slightly brighter, greener
+     slate; four depth roles only (sheet / raised / well / well-deep);
+     hierarchy comes from these shared roles — do NOT mint per-screen
+     grays.  The v2.3.1227 token NAMES are kept below as aliases so
+     every existing consumer shifts palette without edits. */
+  --ui-world-chrome: rgba(13, 22, 27, 0.88);
+  --ui-band-top: #26383E;
+  --ui-band-bottom: #1A292F;
+  --ui-sheet: #1E2E34;
+  --ui-header: #27393F;
+  --ui-card: #24363C;
+  --ui-well-deep: #0B161B;
+  --ui-text: #F4F0E7;
+  --ui-text-secondary: #B6C1BE;
+  --ui-text-muted: #8D9B98;
+  --ui-text-disabled: #667875;
+  --ui-line: rgba(229, 237, 233, 0.11);
+  --ui-line-strong: rgba(229, 237, 233, 0.20);
+  --ui-brass: #D8AA58;
+  --ui-brass-highlight: #EAC675;
+  --ui-brass-soft: rgba(216, 170, 88, 0.15);
+  --ui-danger: #D8635D;
+  --ui-modal-scrim-strong: rgba(4, 9, 12, 0.52);
 
-  /* v2.3.1227: Lantern Slate tokens (docs/LANTERN-SLATE-SPEC.md) --
-     dark mineral charcoal, warm-white text, lantern-brass accent.
-     Replaces the v2.3.1226 light&airy set; mirrored in
-     src/ui/mobile/dash/common.js COL / inventoryStyles.js INV.  The
-     legacy --ink/--line/--pop set above ALSO carries Lantern values
-     since the v2.3.1230 legacy sweep. */
-  --ui-band-top: #253239;
-  --ui-band-mid: #202C32;
-  --ui-band-bottom: #172126;
-  --ui-panel: #202C32;
-  --ui-panel-strong: #182227;
-  --ui-raised: #2B3940;
-  --ui-raised-high: #34444B;
-  --ui-well: #121B20;
-  --ui-well-soft: #19252A;
-  --ui-slot: #243137;
-  --ui-toolbar: #10181D;
-  --ui-world-overlay: rgba(17,25,29,.94);
-  --ui-modal-scrim: rgba(8,16,20,.56);
-  --ui-text-1: #F7F2E7;
-  --ui-text-2: #B9C1BF;
-  --ui-text-3: #96A2A0;
-  --ui-disabled: #687575;
-  --ui-text-on-accent: #20170D;
-  --ui-border: rgba(238,242,235,.14);
-  --ui-border-strong: rgba(238,242,235,.24);
-  --ui-divider: rgba(238,242,235,.10);
-  --ui-edge-warm: rgba(229,202,157,.28);
-  --ui-accent: #D8A85F;
-  --ui-accent-pressed: #B88643;
-  --ui-accent-fill: #3B3427;
-  --ui-focus: #F0C878;
-  --ui-hp: #D95C54;
-  --ui-mana: #4D86D5;
-  --ui-stamina: #D8A94D;
-  --ui-xp: #61B06B;
-  --ui-positive: #59BF91;
-  --ui-info: #5D93D2;
-  --ui-magic: #9A76D3;
+  /* v2.3.1230 legacy remap, re-pointed at the v2.3.1235 values — this
+     single block re-tints every legacy panel (src/ui/panels/*). */
+  --ink:      #111E23;
+  --ink2:     #1A292F;
+  --ink3:     #1E2E34;
+  --ink4:     #293B41;
+  --line:     #36464C;
+  --line2:    #4A5B61;
+  --pop:      #D8AA58;
+  --pop-soft: rgba(216,170,88,.15);
+  --pop-glow: rgba(216,170,88,.35);
+  --teal:     #55B98A;
+  --txt:      #F4F0E7;
+  --txt2:     #B6C1BE;
+  --txt3:     #667875;
+  --red:      #D8635D;
+  --gold:     #D8AA58;
+  --green:    #55B98A;
+
+  /* v2.3.1227 token names → v2.3.1235 values (aliases; keep using
+     either name, they are the same role). */
+  --ui-band-mid: #20333A;
+  --ui-panel: var(--ui-sheet);
+  --ui-panel-strong: #1A292F;
+  --ui-raised: #293B41;
+  --ui-raised-high: #32454C;
+  --ui-well: #111E23;
+  --ui-well-soft: #16262C;
+  --ui-slot: var(--ui-card);
+  --ui-toolbar: #0E191E;
+  --ui-world-overlay: var(--ui-world-chrome);
+  --ui-modal-scrim: rgba(4, 9, 12, 0.38);
+  --ui-text-1: var(--ui-text);
+  --ui-text-2: var(--ui-text-secondary);
+  --ui-text-3: var(--ui-text-muted);
+  --ui-disabled: var(--ui-text-disabled);
+  --ui-text-on-accent: #172126;
+  --ui-border: var(--ui-line);
+  --ui-border-strong: var(--ui-line-strong);
+  --ui-divider: var(--ui-line);
+  --ui-edge-warm: rgba(216,170,88,.42);
+  --ui-accent: var(--ui-brass);
+  --ui-accent-pressed: #C2924A;
+  --ui-accent-fill: var(--ui-brass-soft);
+  --ui-focus: var(--ui-brass-highlight);
+  --ui-hp: #E35D5B;
+  --ui-mana: #4F8FDE;
+  --ui-stamina: #DFAE4E;
+  --ui-xp: #58B97B;
+  --ui-positive: #55B98A;
+  --ui-info: #599FE5;
+  --ui-magic: #9A78D0;
+}
+/* ═══ v2.3.1235 shared primitives (correction pass §2/§8) — the four
+   depth levels + the two button roles.  New/updated surfaces should
+   use these classes (or copy the exact recipes inline) instead of
+   inventing per-screen boxes. ═══ */
+.ui-panel{
+  background:var(--ui-sheet);
+  border:1px solid var(--ui-line-strong);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,0.045),0 14px 36px rgba(3,8,10,0.30);
+}
+.ui-raised{
+  background:linear-gradient(180deg,#2B3E44,var(--ui-raised));
+  border:1px solid var(--ui-line);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,0.05);
+}
+.ui-well{
+  background:linear-gradient(180deg,#132329,var(--ui-well));
+  border:1px solid var(--ui-line);
+  box-shadow:inset 0 2px 5px rgba(0,0,0,0.32),inset 0 1px 0 rgba(255,255,255,0.025);
+}
+.button-primary{
+  color:#172126;
+  background:linear-gradient(180deg,#E2B765,#D2A14D);
+  border:1px solid #EAC675;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,0.25),0 2px 6px rgba(0,0,0,0.22);
+  border-radius:10px;font-weight:700;cursor:pointer;
+  font-family:'Source Sans 3',sans-serif;
+}
+.button-secondary{
+  color:var(--ui-text);
+  background:var(--ui-raised);
+  border:1px solid var(--ui-line-strong);
+  border-radius:10px;font-weight:700;cursor:pointer;
+  font-family:'Source Sans 3',sans-serif;
 }
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%;overflow:hidden;background:#10181D;touch-action:none;overscroll-behavior:none;position:fixed;width:100%;top:0;left:0}
