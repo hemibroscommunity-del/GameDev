@@ -1001,21 +1001,27 @@ export function InventoryPanel(props) {
       color: 'var(--ui-text-muted)'
     }
   }, " \xB7 Trapping Lv", rpgState.lifeSkills.trapping.level)), (((_rpgState$lifeSkills39 = rpgState.lifeSkills) === null || _rpgState$lifeSkills39 === void 0 ? void 0 : _rpgState$lifeSkills39.pets) || []).length === 0 && /*#__PURE__*/React.createElement("div", {
+    /* v2.3.1235: batch-2 rollout \u2014 descriptive copy to the 12px floor
+       (the \uD83E\uDEA4 in the sentence names the in-game capture button, so it
+       is game data, not chrome) */
     style: {
-      fontSize: 10,
-      color: '#96A2A0',
+      fontSize: 12,
+      color: 'var(--ui-text-muted)',
       marginBottom: 4
     }
   }, "No pets. Weaken a monster to <20% HP then tap \uD83E\uDEA4 to capture!"), /*#__PURE__*/React.createElement("div", {
     /* v2.3.1232: recessed #121B20 tray behind the pet grid (well shadow) */
+    /* v2.3.1235: batch-2 rollout \u2014 tray onto the shared .ui-well recipe
+       (correction-pass tokens) */
     style: {
       display: 'grid',
       gridTemplateColumns: 'repeat(3,1fr)',
       gap: 4,
-      background: '#121B20',
+      background: 'linear-gradient(180deg, #132329, #111E23)',
+      border: '1px solid var(--ui-line)',
       borderRadius: 10,
       padding: 4,
-      boxShadow: 'inset 0 2px 4px rgba(0,0,0,.44), inset 0 1px 0 rgba(255,255,255,.035)',
+      boxShadow: 'inset 0 2px 5px rgba(0,0,0,0.32), inset 0 1px 0 rgba(255,255,255,0.025)',
       marginBottom: 6
     }
   }, (((_rpgState$lifeSkills40 = rpgState.lifeSkills) === null || _rpgState$lifeSkills40 === void 0 ? void 0 : _rpgState$lifeSkills40.pets) || []).map(function (pet, pi) {
@@ -1028,8 +1034,11 @@ export function InventoryPanel(props) {
         borderRadius: 8,
         textAlign: 'center',
         /* v2.3.1232: occupied-slot mist; active pet = accent-fill + brass edge */
-        background: isActive ? 'radial-gradient(circle at 48% 42%, rgba(238,240,225,.16) 0%, rgba(238,240,225,.05) 48%, transparent 76%) #3B3427' : 'radial-gradient(circle at 48% 42%, rgba(238,240,225,.16) 0%, rgba(238,240,225,.05) 48%, transparent 76%) #243137',
-        border: "1px solid ".concat(isActive ? '#D8A85F' : 'rgba(238,242,235,.08)'),
+        /* v2.3.1235: batch-2 rollout — the solid #3B3427 accent-fill is
+           retired: active = brass-soft tint layered over the misted
+           card base + brass edge; idle = mist over --ui-card + line. */
+        background: isActive ? 'linear-gradient(rgba(216,170,88,.15), rgba(216,170,88,.15)), radial-gradient(circle at 48% 42%, rgba(238,240,225,.16) 0%, rgba(238,240,225,.05) 48%, transparent 76%) #24363C' : 'radial-gradient(circle at 48% 42%, rgba(238,240,225,.16) 0%, rgba(238,240,225,.05) 48%, transparent 76%) #24363C',
+        border: "1px solid ".concat(isActive ? '#D8AA58' : 'rgba(229,237,233,.11)'),
         cursor: 'pointer'
       },
       onClick: function onClick() {
@@ -1046,34 +1055,39 @@ export function InventoryPanel(props) {
         fontSize: 18
       }
     }, pet.emoji), /*#__PURE__*/React.createElement("div", {
+      /* v2.3.1235: batch-2 rollout — 6-8px pet metadata to the 11px
+         floor (pet name/element colors are game data) */
       style: {
-        fontSize: 8,
+        fontSize: 11,
         fontWeight: 700,
         color: pet.color
       }
     }, pet.name), /*#__PURE__*/React.createElement("div", {
       style: {
-        fontSize: 7,
-        color: '#96A2A0'
+        fontSize: 11,
+        color: 'var(--ui-text-muted)'
       }
     }, "Lv", pet.level, " ", pet.archetype), pet.element && /*#__PURE__*/React.createElement("div", {
       style: {
-        fontSize: 6,
-        color: ((_ELEMENTS$pet$element2 = ELEMENTS[pet.element]) === null || _ELEMENTS$pet$element2 === void 0 ? void 0 : _ELEMENTS$pet$element2.color) || '#96A2A0'
+        fontSize: 11,
+        color: ((_ELEMENTS$pet$element2 = ELEMENTS[pet.element]) === null || _ELEMENTS$pet$element2 === void 0 ? void 0 : _ELEMENTS$pet$element2.color) || 'var(--ui-text-muted)'
       }
     }, pet.element), isActive && /*#__PURE__*/React.createElement("div", {
+      /* v2.3.1235: batch-2 rollout — badge to the 11px floor; focus
+         gold #F0C878 → --ui-brass-highlight */
       style: {
-        fontSize: 8,
+        fontSize: 11,
         fontWeight: 700,
         letterSpacing: '.08em',
-        color: '#F0C878'
+        color: 'var(--ui-brass-highlight)'
       }
     }, "ACTIVE"));
   })), (((_rpgState$lifeSkills42 = rpgState.lifeSkills) === null || _rpgState$lifeSkills42 === void 0 ? void 0 : _rpgState$lifeSkills42.pets) || []).length > 0 && /*#__PURE__*/React.createElement("div", {
     /* v2.3.1232: caption size floor */
+    /* v2.3.1235: batch-2 rollout — descriptive copy to the 12px floor */
     style: {
-      fontSize: 10,
-      color: '#96A2A0'
+      fontSize: 12,
+      color: 'var(--ui-text-muted)'
     }
   }, "Tap a pet to set active. Active pet follows you and auto-collects loot within ", PET_LOOT_RADIUS, "px.")));
 }
