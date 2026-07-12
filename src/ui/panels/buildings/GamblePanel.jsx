@@ -25,6 +25,15 @@ import { pushDmgPopup } from '@/game/combatHelpers.js';
    wellSoft folds into the well, and the off-token .08/.14 hairlines
    fold into the approved .11 line (.20 borderStrong added for
    secondary buttons). Header strip adopts the #27393F header token. */
+/* v2.3.1235: state-correction — §7 wager/jackpot states + §10 scroll.
+   The ROLL primary reads "Select a wager" (approved disabled recipe,
+   real disabled prop) until a chip is picked, then "Roll · 10G" — the
+   "ROLL! (—g)" placeholder is gone; the top balance is labelled "Your
+   gold: NG"; deposit chips read "Deposit 50G" and an unaffordable
+   jackpot states "Need 50G" in a 12px danger line. Panel root becomes
+   a flex column (fixed header + ls-scrollbody body + sticky 24px
+   bottom fade on the sheet #1E2E34) so the Gambling Stats rows are
+   always reachable by scrolling. Handlers byte-identical. */
 var LS = {
   txt1: '#F4F0E7', txt2: '#B6C1BE', txt3: '#8D9B98', dis: '#667875',
   panel: '#1E2E34', strip: '#27393F', raised: '#293B41', well: '#111E23', wellSoft: '#111E23',
