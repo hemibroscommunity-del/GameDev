@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { COL, panelStyle, rowStyle } from './common.js';
+/* v2.3.1235: batch-1 rollout — rowStyle dropped from the import: the
+   channel cards it styled became divider rows (see the channel map). */
+import { COL, panelStyle } from './common.js';
 import { spendConfirmBus } from './spendConfirmBus.js';
 import {
   WEAPON_CATEGORIES,
@@ -325,27 +327,32 @@ export const T2Panel = () => {
         const v = catSpecs[ch.key] || 0;
         const atCap = v >= channelCap;
         const canAdd = ch.active && unspent > 0 && !atCap;
-        /* v2.3.1232: channel = quiet recessed stat cell (#19252A, radius 8);
-           value 14/700 tabular; the spend button is a 44pt target that goes
-           brass (#D8A85F on #20170D) only when the point is affordable. */
+        /* v2.3.1235: batch-1 rollout — three corrections to the locked
+           sheet: (1) per-channel cards (off-token COL.tile fills) become
+           divider-separated rows directly on the sheet — one outer panel,
+           dividers between rows; (2) a brass-FILLED + on every affordable
+           row broke the one-gold-action-per-surface rule, so the stepper
+           is now the standard secondary button with a brass + glyph when
+           affordable (brass as accent, not fill) and faint #667875 when
+           not (the old '#687575' literal was a transposed-digit typo off
+           the token sheet); (3) SOON/Max/blurb text raised to the 11px
+           label / 12px copy floors.  Locked rows keep opacity .55 —
+           readable, reduced.  onPointerUp body byte-identical. */
         return (
           <div key={ch.key} style={{
-            ...rowStyle,
-            background: COL.tile,
-            border: '1px solid ' + COL.tileBor,
-            borderRadius: 8,
-            padding: '8px 10px',
-            marginBottom: 6,
+            display: 'flex',
             flexDirection: 'column',
             alignItems: 'stretch',
             gap: 3,
+            padding: '8px 2px',
+            borderBottom: '1px solid ' + COL.divider,
             opacity: ch.active ? 1 : 0.55,
           }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
               <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, minWidth: 0 }}>
                 <span style={{ fontSize: 13, fontWeight: 700, color: COL.text }}>{ch.label}</span>
                 {!ch.active && (
-                  <span style={{ fontSize: 10, fontWeight: 700, color: COL.gold, letterSpacing: '0.08em' }}>SOON</span>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: COL.gold, letterSpacing: '0.08em' }}>SOON</span>
                 )}
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -359,10 +366,10 @@ export const T2Panel = () => {
                   disabled={!canAdd}
                   style={{
                     width: 44, height: 44,
-                    background: canAdd ? COL.accent : COL.raised,
-                    color: canAdd ? COL.onAccent : '#687575',
-                    border: canAdd ? 'none' : '1px solid ' + COL.border,
-                    borderRadius: 11,
+                    background: COL.raised,
+                    color: canAdd ? COL.accent : COL.disabled,
+                    border: '1px solid ' + (canAdd ? COL.borderStrong : COL.border),
+                    borderRadius: 10,
                     fontSize: 18, fontWeight: 700,
                     cursor: canAdd ? 'pointer' : 'default',
                     touchAction: 'manipulation',
@@ -372,12 +379,12 @@ export const T2Panel = () => {
                 >+</button>
               </div>
             </div>
-            <div style={{ fontSize: 11, color: COL.muted }}>{ch.blurb}</div>
+            <div style={{ fontSize: 12, color: COL.muted }}>{ch.blurb}</div>
             {ch.active && (
               <div style={{ fontSize: 11, color: COL.text, fontVariantNumeric: 'tabular-nums' }}>{ch.derive(v)}</div>
             )}
             {atCap && (
-              <div style={{ fontSize: 10, fontWeight: 600, color: COL.gold }}>Max ({channelCap}).</div>
+              <div style={{ fontSize: 11, fontWeight: 600, color: COL.gold }}>Max ({channelCap}).</div>
             )}
           </div>
         );
