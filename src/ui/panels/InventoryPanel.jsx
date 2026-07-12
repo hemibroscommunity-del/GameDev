@@ -983,20 +983,22 @@ export function InventoryPanel(props) {
     }, coll.name) : null;
   })), /*#__PURE__*/React.createElement("div", {
     /* v2.3.1232: module header \u2014 11/600 uppercase .12em */
+    /* v2.3.1235: batch-2 rollout \u2014 locked 11/700 .14em muted rung;
+       the \uD83E\uDEA4 prefix was decorative emoji in chrome */
     style: {
       fontSize: 11,
-      fontWeight: 600,
+      fontWeight: 700,
       textTransform: 'uppercase',
-      letterSpacing: '.12em',
-      color: '#96A2A0',
+      letterSpacing: '.14em',
+      color: 'var(--ui-text-muted)',
       fontVariantNumeric: 'tabular-nums',
       marginTop: 8,
       marginBottom: 4
     }
-  }, "\uD83E\uDEA4 Pets: ", ((_rpgState$lifeSkills37 = rpgState.lifeSkills) === null || _rpgState$lifeSkills37 === void 0 || (_rpgState$lifeSkills37 = _rpgState$lifeSkills37.pets) === null || _rpgState$lifeSkills37 === void 0 ? void 0 : _rpgState$lifeSkills37.length) || 0, "/", MAX_PET_SLOTS, ((_rpgState$lifeSkills38 = rpgState.lifeSkills) === null || _rpgState$lifeSkills38 === void 0 ? void 0 : _rpgState$lifeSkills38.trapping) && /*#__PURE__*/React.createElement("span", {
+  }, "Pets: ", ((_rpgState$lifeSkills37 = rpgState.lifeSkills) === null || _rpgState$lifeSkills37 === void 0 || (_rpgState$lifeSkills37 = _rpgState$lifeSkills37.pets) === null || _rpgState$lifeSkills37 === void 0 ? void 0 : _rpgState$lifeSkills37.length) || 0, "/", MAX_PET_SLOTS, ((_rpgState$lifeSkills38 = rpgState.lifeSkills) === null || _rpgState$lifeSkills38 === void 0 ? void 0 : _rpgState$lifeSkills38.trapping) && /*#__PURE__*/React.createElement("span", {
     style: {
-      fontSize: 8,
-      color: '#96A2A0'
+      fontSize: 11,
+      color: 'var(--ui-text-muted)'
     }
   }, " \xB7 Trapping Lv", rpgState.lifeSkills.trapping.level)), (((_rpgState$lifeSkills39 = rpgState.lifeSkills) === null || _rpgState$lifeSkills39 === void 0 ? void 0 : _rpgState$lifeSkills39.pets) || []).length === 0 && /*#__PURE__*/React.createElement("div", {
     style: {
