@@ -15,6 +15,12 @@ import React, { useState, useEffect } from 'react';
    confirm, gold icon amounts, magic-violet weapon lane. Styles +
    static JSX only; every trade2_* send and the staging mirror are
    unchanged. */
+/* v2.3.1235: batch-4 rollout — corrected tokens per the Checkpoint-B
+   IncomingTradePanel recipe: sheet #1E2E34 card at radius 14 over the
+   strong trade-confirm scrim, gold-gradient confirm as the ONE primary,
+   #293B41 secondaries, well #111E23 trays, chips at radius 999, ✅
+   emoji dropped from lane headers (chrome). Styles + static JSX only;
+   every trade2_* send and the staging mirror are byte-identical. */
 
 const ITEM_EMOJI = {
   fish_minnow: '🐟', fish_clownfish: '🐠', fish_trout: '🎣',
@@ -44,17 +50,20 @@ function OfferChips({ offer, empty }) {
   const entries = Object.entries(offer || {}).filter(([k, v]) => k !== '_gold' && v > 0);
   const gold = (offer && offer._gold) || 0;
   if (!entries.length && !gold) {
-    return <div style={{ fontSize: 11, color: '#96A2A0', padding: '6px 0' }}>{empty}</div>;
+    return <div style={{ fontSize: 11, color: '#8D9B98', padding: '6px 0' }}>{empty}</div>;
   }
+  /* v2.3.1235: batch-4 rollout — offer chips onto the Checkpoint-B
+     IncomingTradePanel chip recipe (raised #293B41 pill at radius 999,
+     .11 hairline, 12px text; gold amount 14/700 tabular brass). */
   return (
     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3, padding: '4px 0' }}>
       {entries.map(([k, v]) => (
-        <span key={k} style={{ fontSize: 11, color: '#B9C1BF', padding: '2px 6px', borderRadius: 8, background: '#19252A', border: '1px solid rgba(238,242,235,.08)' }}>
+        <span key={k} style={{ fontSize: 12, color: '#B6C1BE', padding: '2px 8px', borderRadius: 999, background: '#293B41', border: '1px solid rgba(229,237,233,.11)', fontVariantNumeric: 'tabular-nums' }}>
           {emojiFor(k)} {labelFor(k)} ×{v}
         </span>
       ))}
       {gold > 0 && (
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 6px', borderRadius: 8, background: '#19252A', border: '1px solid rgba(238,242,235,.08)', color: '#D8A85F', fontSize: 14, fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 8px', borderRadius: 999, background: '#293B41', border: '1px solid rgba(229,237,233,.11)', color: '#D8AA58', fontSize: 14, fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>
           <GoldIcon /> {gold}
         </span>
       )}
@@ -85,29 +94,34 @@ export function TradeWindowPanel(props) {
   if (!trade2) return null;
 
   /* v2.3.1232: shared Lantern Slate surfaces for this panel's cards */
+  /* v2.3.1235: batch-4 rollout — decision-surface card = sheet token at
+     radius 14 + strong hairline (matches the corrected incoming-trade
+     banner); primary = committed gold-gradient recipe (#EAC675 edge,
+     #172126 ink, radius 10); secondary = raised #293B41 + strong
+     hairline. */
   const cardStyle = {
-    background: 'linear-gradient(180deg, rgba(35,48,57,.94), rgba(17,25,29,.94))',
-    border: '1px solid rgba(238,242,235,.24)',
-    borderRadius: 12,
+    background: '#1E2E34',
+    border: '1px solid rgba(229,237,233,.20)',
+    borderRadius: 14,
     boxShadow: '0 14px 30px rgba(4,7,9,.38)',
     textAlign: 'left',
   };
   const primaryBtn = {
-    minHeight: 44, borderRadius: 11, border: 'none',
-    background: '#D8A85F', color: '#20170D', fontSize: 13, fontWeight: 700, cursor: 'pointer',
+    minHeight: 44, borderRadius: 10, border: '1px solid #EAC675',
+    background: 'linear-gradient(180deg,#E2B765,#D2A14D)', color: '#172126', fontSize: 13, fontWeight: 700, cursor: 'pointer',
   };
   const secondaryBtn = {
-    minHeight: 44, borderRadius: 11,
-    border: '1px solid rgba(238,242,235,.14)',
-    background: '#2B3940', color: '#F7F2E7', fontSize: 13, fontWeight: 700, cursor: 'pointer',
+    minHeight: 44, borderRadius: 10,
+    border: '1px solid rgba(229,237,233,.20)',
+    background: '#293B41', color: '#F4F0E7', fontSize: 13, fontWeight: 700, cursor: 'pointer',
   };
 
   // ── Incoming invite stub ──
   if (trade2.invite) {
     return (
-      <div className="bt-inspect" onClick={() => setTrade2(null)}>
+      <div className="bt-inspect" style={{ background: 'rgba(4,9,12,0.52)' /* v2.3.1235: batch-4 rollout — trade decisions take the strong confirm scrim */ }} onClick={() => setTrade2(null)}>
         <div className="bt-inspect-card" onClick={(e) => e.stopPropagation()} style={{ ...cardStyle, width: 'min(360px, calc(100vw - 24px))' /* v2.3.1234: was 286 fixed — fill narrow phones, never overflow */ }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, fontWeight: 700, color: '#F7F2E7', marginBottom: 10 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, fontWeight: 700, color: '#F4F0E7', marginBottom: 10 }}>
             <TradeIcon /> {trade2.fromName} wants to trade
           </div>
           <div style={{ display: 'flex', gap: 6 }}>
@@ -130,7 +144,9 @@ export function TradeWindowPanel(props) {
     return (
       <div className="bt-inspect" onClick={() => { send('trade2_cancel'); setTrade2(null); }}>
         <div className="bt-inspect-card" onClick={(e) => e.stopPropagation()} style={{ ...cardStyle, width: 240 }}>
-          <div style={{ fontSize: 12, color: '#B9C1BF' }}>Trade request sent — waiting…</div>
+          {/* v2.3.1235: batch-4 rollout — waiting state stays readable
+              secondary text (text-2 token). */}
+          <div style={{ fontSize: 12, color: '#B6C1BE' }}>Trade request sent — waiting…</div>
           <button
             style={{ ...secondaryBtn, marginTop: 10, width: '100%', padding: '6px 0' }}
             onClick={() => { send('trade2_cancel'); setTrade2(null); }}
@@ -176,20 +192,25 @@ export function TradeWindowPanel(props) {
      (was the off-palette #a78bfa). */
   const wpnChip = { fontSize: 11, padding: '2px 6px', borderRadius: 8, background: 'rgba(154,118,211,.12)', border: '1px solid rgba(154,118,211,.35)', color: '#9A76D3' };
   /* v2.3.1232: module header — 11/600 uppercase per spec typography */
-  const laneHeader = { fontSize: 11, fontWeight: 600, letterSpacing: '.12em', textTransform: 'uppercase', marginBottom: 3 };
+  /* v2.3.1235: batch-4 rollout — corrected section-header ramp 11/700
+     .14em; muted #8D9B98, confirmed = corrected positive #55B98A (the
+     ✅ emoji was chrome — dropped). */
+  const laneHeader = { fontSize: 11, fontWeight: 700, letterSpacing: '.14em', textTransform: 'uppercase', marginBottom: 3 };
 
   return (
-    <div className="bt-inspect" onClick={() => send('trade2_cancel')}>
+    <div className="bt-inspect" style={{ background: 'rgba(4,9,12,0.52)' /* v2.3.1235: batch-4 rollout — trade-confirm strong scrim */ }} onClick={() => send('trade2_cancel')}>
       <div className="bt-inspect-card" onClick={(e) => e.stopPropagation()} style={{ ...cardStyle, width: 320 }}>
         <button className="bt-inspect-close" onClick={() => send('trade2_cancel')}>✕</button>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, fontWeight: 700, color: '#F7F2E7', marginBottom: 8 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, fontWeight: 700, color: '#F4F0E7', marginBottom: 8 }}>
           <TradeIcon /> Trading with {otherName}
         </div>
 
-        <div style={{ ...laneHeader, color: theyConfirmed ? '#59BF91' : '#96A2A0' }}>
-          {otherName} offers {theyConfirmed ? '· ✅ CONFIRMED' : ''}
+        <div style={{ ...laneHeader, color: theyConfirmed ? '#55B98A' : '#8D9B98' }}>
+          {otherName} offers {theyConfirmed ? '· CONFIRMED' : ''}
         </div>
-        <div style={{ borderRadius: 8, background: '#121B20', border: '1px solid rgba(238,242,235,.08)', boxShadow: 'inset 0 2px 4px rgba(0,0,0,.44)', padding: '2px 6px', marginBottom: 8 }}>
+        {/* v2.3.1235: batch-4 rollout — offer wells onto the corrected well
+            token #111E23 + .11 hairline (×3 below, incl. the item tray). */}
+        <div style={{ borderRadius: 8, background: '#111E23', border: '1px solid rgba(229,237,233,.11)', boxShadow: 'inset 0 2px 4px rgba(0,0,0,.44)', padding: '2px 6px', marginBottom: 8 }}>
           <OfferChips offer={trade2.offers[otherId]} empty={otherWpn.length ? '' : 'Nothing staged yet'} />
           {otherWpn.length > 0 && (
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3, padding: '0 0 4px' }}>
@@ -200,10 +221,10 @@ export function TradeWindowPanel(props) {
           )}
         </div>
 
-        <div style={{ ...laneHeader, color: iConfirmed ? '#59BF91' : '#96A2A0' }}>
-          You offer {iConfirmed ? '· ✅ CONFIRMED' : '· tap items to stage'}
+        <div style={{ ...laneHeader, color: iConfirmed ? '#55B98A' : '#8D9B98' }}>
+          You offer {iConfirmed ? '· CONFIRMED' : '· tap items to stage'}
         </div>
-        <div style={{ borderRadius: 8, background: '#121B20', border: '1px solid rgba(238,242,235,.08)', boxShadow: 'inset 0 2px 4px rgba(0,0,0,.44)', padding: '2px 6px', marginBottom: 6 }}>
+        <div style={{ borderRadius: 8, background: '#111E23', border: '1px solid rgba(229,237,233,.11)', boxShadow: 'inset 0 2px 4px rgba(0,0,0,.44)', padding: '2px 6px', marginBottom: 6 }}>
           <OfferChips offer={stage} empty={myWpn.length ? '' : 'Nothing staged — tap items below'} />
           {myWpn.length > 0 && (
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3, padding: '0 0 4px' }}>
@@ -214,7 +235,7 @@ export function TradeWindowPanel(props) {
           )}
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 4, marginBottom: 6, maxHeight: 120, overflowY: 'auto', background: '#121B20', borderRadius: 8, padding: 4, boxShadow: 'inset 0 2px 4px rgba(0,0,0,.44)' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 4, marginBottom: 6, maxHeight: 120, overflowY: 'auto', background: '#111E23', borderRadius: 8, padding: 4, boxShadow: 'inset 0 2px 4px rgba(0,0,0,.44)' }}>
           {Object.entries(inv).filter(([k, v]) => v > 0 && k !== 'potions').map(([k, v]) => (
             <button
               key={k}
@@ -223,9 +244,13 @@ export function TradeWindowPanel(props) {
                 padding: '4px 2px', borderRadius: 8, fontSize: 10, cursor: 'pointer',
                 fontVariantNumeric: 'tabular-nums',
                 /* v2.3.1232: well-soft cell; brass = staged selection */
-                border: stage[k] ? '2px solid #D8A85F' : '1px solid rgba(238,242,235,.08)',
-                background: stage[k] ? '#243137' : '#19252A',
-                color: stage[k] ? '#F7F2E7' : '#96A2A0',
+                /* v2.3.1235: batch-4 rollout — corrected cell tokens: brass
+                   #D8AA58 selection edge on card #24363C; resting cell =
+                   corrected well-soft #16262C (INV.tileFill) + .08 tile
+                   hairline. */
+                border: stage[k] ? '2px solid #D8AA58' : '1px solid rgba(229,237,233,.08)',
+                background: stage[k] ? '#24363C' : '#16262C',
+                color: stage[k] ? '#F4F0E7' : '#8D9B98',
               }}
             >
               <div style={{ fontSize: 13 }}>{emojiFor(k)}</div>
@@ -236,7 +261,7 @@ export function TradeWindowPanel(props) {
 
         {weaponLane && stash.length > 0 && (
           <div style={{ marginBottom: 8 }}>
-            <div style={{ ...laneHeader, color: '#96A2A0' }}>
+            <div style={{ ...laneHeader, color: '#8D9B98' }}>
               Your weapons (tap to add) {myWpn.length >= T2_WPN_MAX ? '· max ' + T2_WPN_MAX : ''}
             </div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, maxHeight: 88, overflowY: 'auto' }}>
@@ -250,7 +275,8 @@ export function TradeWindowPanel(props) {
                     cursor: myWpn.length >= T2_WPN_MAX ? 'not-allowed' : 'pointer',
                     border: '1px solid rgba(154,118,211,.35)',
                     background: 'rgba(154,118,211,.10)',
-                    color: myWpn.length >= T2_WPN_MAX ? '#687575' : '#9A76D3',
+                    /* v2.3.1235: batch-4 rollout — corrected disabled token. */
+                    color: myWpn.length >= T2_WPN_MAX ? '#667875' : '#9A76D3',
                   }}
                 >⚔️ {w.name || 'Weapon'}</button>
               ))}
@@ -260,7 +286,9 @@ export function TradeWindowPanel(props) {
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10 }}>
           <GoldIcon />
-          <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: '.12em', textTransform: 'uppercase', color: '#B9C1BF' }}>Gold</span>
+          {/* v2.3.1235: batch-4 rollout — section-header ramp 11/700 .14em
+              muted. */}
+          <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.14em', textTransform: 'uppercase', color: '#8D9B98' }}>Gold</span>
           <input
             type="number" min="0" max={coins}
             value={stage._gold || 0}
@@ -270,28 +298,32 @@ export function TradeWindowPanel(props) {
               if (g > 0) next._gold = g; else delete next._gold;
               pushStage(next);
             }}
-            style={{ width: 76, padding: '6px 8px', borderRadius: 8, border: '1px solid rgba(238,242,235,.14)', background: '#121B20', color: '#D8A85F', fontSize: 16 /* v2.3.1233b: iOS zoom guard */, fontWeight: 700, fontVariantNumeric: 'tabular-nums', textAlign: 'right', outline: 'none' }}
+            style={{ width: 76, padding: '6px 8px', borderRadius: 8, border: '1px solid rgba(229,237,233,.11)' /* v2.3.1235: batch-4 rollout — well trough + brass tokens */, background: '#111E23', color: '#D8AA58', fontSize: 16 /* v2.3.1233b: iOS zoom guard */, fontWeight: 700, fontVariantNumeric: 'tabular-nums', textAlign: 'right', outline: 'none' }}
           />
-          <span style={{ fontSize: 11, color: '#96A2A0', fontVariantNumeric: 'tabular-nums' }}>of {coins}</span>
+          <span style={{ fontSize: 11, color: '#8D9B98', fontVariantNumeric: 'tabular-nums' }}>of {coins}</span>
         </div>
 
         <div style={{ display: 'flex', gap: 6 }}>
           <button
             style={{
               /* v2.3.1232: brass confirm; secondary "waiting" look once locked */
-              flex: 2, padding: '8px 0', minHeight: 44, borderRadius: 11, fontSize: 13, fontWeight: 700, cursor: 'pointer',
-              border: iConfirmed ? '1px solid rgba(238,242,235,.14)' : 'none',
-              background: iConfirmed ? '#2B3940' : '#D8A85F',
-              color: iConfirmed ? '#B9C1BF' : '#20170D',
+              /* v2.3.1235: batch-4 rollout — Confirm is the surface's ONE
+                 gold-gradient primary; once locked it drops to the raised
+                 secondary with readable text-2 "waiting" label. Cancel
+                 stays neutral secondary (never filled red). */
+              flex: 2, padding: '8px 0', minHeight: 44, borderRadius: 10, fontSize: 13, fontWeight: 700, cursor: 'pointer',
+              border: iConfirmed ? '1px solid rgba(229,237,233,.20)' : '1px solid #EAC675',
+              background: iConfirmed ? '#293B41' : 'linear-gradient(180deg,#E2B765,#D2A14D)',
+              color: iConfirmed ? '#B6C1BE' : '#172126',
             }}
             onClick={() => { if (!iConfirmed) send('trade2_confirm'); }}
           >{iConfirmed ? (theyConfirmed ? 'Swapping…' : 'Waiting for ' + otherName + '…') : 'Confirm trade'}</button>
           <button
-            style={{ flex: 1, padding: '8px 0', minHeight: 44, borderRadius: 11, fontSize: 13, fontWeight: 700, border: '1px solid rgba(238,242,235,.14)', background: '#2B3940', color: '#F7F2E7', cursor: 'pointer' }}
+            style={{ flex: 1, padding: '8px 0', minHeight: 44, borderRadius: 10, fontSize: 13, fontWeight: 700, border: '1px solid rgba(229,237,233,.20)', background: '#293B41', color: '#F4F0E7', cursor: 'pointer' }}
             onClick={() => send('trade2_cancel')}
           >Cancel</button>
         </div>
-        <div style={{ fontSize: 10, color: '#96A2A0', marginTop: 6 }}>
+        <div style={{ fontSize: 10, color: '#8D9B98', marginTop: 6 }}>
           Changing either side resets both confirmations. The server swaps both sides at once — no scams possible.
         </div>
       </div>

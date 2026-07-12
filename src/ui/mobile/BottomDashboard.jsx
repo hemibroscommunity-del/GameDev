@@ -212,13 +212,16 @@ const Tooltip = ({ text, onClose }) => {
         padding: '8px 12px',
         background: COL.overlayBg,
         border: `1px solid ${COL.overlayBorder}`,
-        borderRadius: 8,
+        /* v2.3.1235: batch-4 rollout — tooltip radius 10 per the corrected
+           transient-surface rule; off-recipe rgba(0,0,0,.5) shadow → the
+           committed panel-shadow recipe (no new shadows). */
+        borderRadius: 10,
         color: COL.overlayText,
         fontFamily: 'Source Sans 3, sans-serif',
         fontSize: 15,
         lineHeight: 1.3,
         zIndex: 36,
-        boxShadow: '0 4px 14px rgba(0,0,0,0.5)',
+        boxShadow: '0 14px 30px rgba(4,7,9,.38)',
       }}
     >
       {text}

@@ -65,7 +65,9 @@ export const SalvageToast = () => {
       <div onClick={() => { t.undos.forEach(u => u && u()); toastQueue.shift(); emitToast(); }}
         style={{
           margin: '0 0 22px', padding: '10px 16px',
-          background: '#2B3940', border: '1px solid rgba(238, 242, 235, 0.24)',
+          /* v2.3.1235: batch-4 rollout — corrected raised token + strong
+             hairline (toast is a transient world surface). */
+          background: '#293B41', border: '1px solid rgba(229,237,233,.20)',
           borderRadius: 10, color: INV.textPrimary, fontFamily: FONT.sans, fontSize: 13,
           pointerEvents: 'auto', cursor: 'pointer',
           boxShadow: '0 4px 14px rgba(4,7,9,.38)',
@@ -115,11 +117,14 @@ const Comparison = ({ item, layer2 }) => {
 
   return (
     <div style={{
-      background: 'rgba(238, 242, 235, 0.05)', borderRadius: 8,
+      /* v2.3.1235: batch-4 rollout — translucent-white fill was
+         off-token; nested module rides the card token. */
+      background: '#24363C', borderRadius: 8,
       padding: 10, marginBottom: 10,
     }}>
       <div style={{
-        fontSize: 10, color: INV.textMuted, letterSpacing: 0.3,
+        /* v2.3.1235: batch-4 rollout — section header 11/700 .14em muted. */
+        fontSize: 11, fontWeight: 700, color: INV.textVeryMuted, letterSpacing: '.14em',
         fontFamily: FONT.sans, textTransform: 'uppercase', marginBottom: 6,
       }}>
         {layer2 && comparedTo ? `VS YOUR ${(comparedTo.name || 'GEAR').toUpperCase()}` : 'COMPARED TO WHAT YOU\'RE WEARING'}
@@ -146,11 +151,13 @@ const GemsBlock = ({ item }) => {
   const filled = (item.gems || []).length;
   return (
     <div style={{
-      background: 'rgba(238, 242, 235, 0.025)', borderRadius: 8,
+      /* v2.3.1235: batch-4 rollout — off-token translucent fill → card
+         token; header to the 11/700 .14em muted section recipe. */
+      background: '#24363C', borderRadius: 8,
       padding: '10px 12px', marginBottom: 12,
     }}>
       <div style={{
-        fontSize: 10, color: 'rgba(238, 242, 235, 0.50)', letterSpacing: 0.4,
+        fontSize: 11, fontWeight: 700, color: INV.textVeryMuted, letterSpacing: '.14em',
         fontFamily: FONT.sans, marginBottom: 4, textTransform: 'uppercase',
       }}>GEMS</div>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -173,36 +180,46 @@ const GemsBlock = ({ item }) => {
 const getElementColor = (el) => ({
   flame: '#E8704A', frost: '#5AA8E8', flora: '#7BC25A', stone: '#9C8B6A',
   wind: '#A6D9D2', light: '#E8D29B', dark: '#7E5BA3', volt: '#E0D85C',
-}[el] || '#888');
+  /* v2.3.1235: batch-4 rollout — unknown-element fallback was off-token
+     #888; muted text-3 token (element tints themselves are game data). */
+}[el] || '#8D9B98');
 
 const MarketBlock = ({ item, layer3 }) => {
   if (!layer3) return null;
   const range = item.tier ? `${item.tier * 30}-${item.tier * 70}g recently` : '— recently';
   return (
     <div style={{
-      background: INV.marketBg, border: `0.5px solid ${INV.marketBorder}`,
+      /* v2.3.1235: batch-4 rollout — 0.5px sub-pixel border → 1px hairline
+         (only 1px hairlines in the system); header/link were off-token
+         warm-gold rgba's → brass token, header to 11/700 .14em. */
+      background: INV.marketBg, border: `1px solid ${INV.marketBorder}`,
       borderRadius: 8, padding: '8px 10px', marginBottom: 12,
       display: 'flex', justifyContent: 'space-between', alignItems: 'center',
     }}>
       <div>
-        <div style={{ fontSize: 10, color: 'rgba(230,200,140,0.65)', letterSpacing: 0.3, fontFamily: FONT.sans }}>MARKET</div>
+        <div style={{ fontSize: 11, fontWeight: 700, color: INV.marketAccent, letterSpacing: '.14em', fontFamily: FONT.sans }}>MARKET</div>
         <div style={{ fontSize: 12, fontFamily: FONT.mono, color: INV.marketAccent }}>{range}</div>
       </div>
-      <div style={{ fontSize: 11, color: 'rgba(230,200,140,0.8)', cursor: 'pointer' }}>List ↗</div>
+      <div style={{ fontSize: 11, color: INV.marketAccent, cursor: 'pointer' }}>List ↗</div>
     </div>
   );
 };
 
 const ActionButton = ({ label, primary, destructive, onClick, ghost }) => {
   if (!label) return <div />;
-  const bg = primary ? INV.primaryBtn : destructive ? INV.destructiveBg : 'rgba(238, 242, 235, 0.10)';
-  const border = primary ? 'transparent' : destructive ? INV.destructiveBorder : 'rgba(238, 242, 235, 0.15)';
-  const color = primary ? INV.onPrimaryBtn : destructive ? INV.destructive : 'rgba(238, 242, 235, 0.85)';
+  /* v2.3.1235: batch-4 rollout — button trio onto the corrected recipes:
+     primary = committed gold gradient (#EAC675 edge, #172126 ink);
+     destructive = OUTLINE only (filled-red #7C3431 is banned — danger
+     never fills); default = secondary #293B41 + strong hairline. All
+     labels 13/700 (button type ramp); 0.5px borders → 1px. */
+  const bg = primary ? 'linear-gradient(180deg,#E2B765,#D2A14D)' : destructive ? 'transparent' : '#293B41';
+  const border = primary ? '#EAC675' : destructive ? '#D8635D' : 'rgba(229,237,233,.20)';
+  const color = primary ? INV.onPrimaryBtn : destructive ? '#D8635D' : INV.textPrimary;
   return (
     <div onClick={onClick} style={{
       flex: 1, padding: '14px 10px', textAlign: 'center', borderRadius: 10,
-      background: bg, border: `0.5px solid ${border}`, color,
-      fontFamily: FONT.sans, fontSize: primary ? 15 : 13, fontWeight: primary ? 500 : 400,
+      background: bg, border: `1px solid ${border}`, color,
+      fontFamily: FONT.sans, fontSize: 13, fontWeight: 700,
       cursor: 'pointer', userSelect: 'none', touchAction: 'manipulation',
     }}>{label}</div>
   );
@@ -226,13 +243,17 @@ const actionsFor = (item, isEquipped) => {
 const ShortcutPicker = ({ onPick, onCancel }) => (
   <div onClick={onCancel} style={{
     position: 'fixed', inset: 0, zIndex: 100050,
-    background: 'rgba(0,0,0,.55)', display: 'flex', alignItems: 'flex-end',
+    /* v2.3.1235: batch-4 rollout — pure-black scrim → strong scrim token
+       (this picker stacks over the sheet, so it takes the .52 rung). */
+    background: 'rgba(4,9,12,.52)', display: 'flex', alignItems: 'flex-end',
   }}>
     <div onClick={e => e.stopPropagation()} style={{
       width: '100%', background: INV.bg, padding: 16,
       borderTopLeftRadius: 14, borderTopRightRadius: 14,
     }}>
-      <div style={{ width: 32, height: 4, background: 'rgba(238, 242, 235, .2)', borderRadius: 2, margin: '0 auto 14px' }} />
+      {/* v2.3.1235: batch-4 rollout — grab handle / slot chrome onto the
+          corrected hairline + well-soft tokens (empty slot = well-soft). */}
+      <div style={{ width: 32, height: 4, background: 'rgba(229,237,233,.20)', borderRadius: 2, margin: '0 auto 14px' }} />
       <div style={{ color: INV.textPrimary, fontFamily: FONT.sans, fontSize: 13, marginBottom: 12 }}>
         Pick a shortcut slot to assign:
       </div>
@@ -240,13 +261,13 @@ const ShortcutPicker = ({ onPick, onCancel }) => (
         {[0, 1].map(i => (
           <div key={i} onClick={() => onPick(i)} style={{
             width: 100, height: 80, borderRadius: 10,
-            border: '1.5px dashed rgba(238, 242, 235, .25)',
-            background: 'rgba(238, 242, 235, .03)',
+            border: '1.5px dashed rgba(229,237,233,.20)',
+            background: INV.tileFill,
             display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
             cursor: 'pointer',
           }}>
             <div style={{ fontSize: 11, color: INV.textMuted, fontFamily: FONT.sans }}>SLOT {i + 1}</div>
-            <div style={{ fontSize: 22, color: 'rgba(238, 242, 235, .4)' }}>+</div>
+            <div style={{ fontSize: 22, color: INV.textVeryMuted }}>+</div>
           </div>
         ))}
       </div>
@@ -321,12 +342,17 @@ export const ItemTooltip = ({ item, isEquipped, onClose }) => {
       <div onClick={onClose} style={{
         position: 'fixed', inset: 0, zIndex: 100030,
         /* v2.3.1233: spec modal scrim; blur removed (no backdrop-filter) */
-        background: 'rgba(8,16,20,.56)',
+        /* v2.3.1235: batch-4 rollout — off-token rgba(8,16,20,.56) →
+           strong scrim token (the sheet holds a destructive Salvage
+           decision, so it keeps the .52 rung). */
+        background: 'rgba(4,9,12,.52)',
       }} />
       <div onTouchStart={drag.onTouchStart} onTouchMove={drag.onTouchMove} onTouchEnd={drag.onTouchEnd}
         style={{
           position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 100031,
-          background: INV.bg, borderTop: '0.5px solid rgba(238, 242, 235, 0.16)',
+          /* v2.3.1235: batch-4 rollout — 0.5px off-token top edge → 1px
+             strong hairline (floating-sheet edge). */
+          background: INV.bg, borderTop: '1px solid rgba(229,237,233,.20)',
           borderTopLeftRadius: 14, borderTopRightRadius: 14,
           padding: '8px 14px 18px', boxSizing: 'border-box',
           color: INV.textPrimary, fontFamily: FONT.sans,
@@ -334,26 +360,34 @@ export const ItemTooltip = ({ item, isEquipped, onClose }) => {
           transform: `translateY(${drag.drag}px)`,
           animation: 'inv-sheet-up 200ms ease-out',
         }}>
-        <div style={{ width: 32, height: 4, background: 'rgba(238, 242, 235, .2)', borderRadius: 2, margin: '0 auto 12px' }} />
+        {/* v2.3.1235: batch-4 rollout — handle onto the corrected strong
+            hairline token. */}
+        <div style={{ width: 32, height: 4, background: 'rgba(229,237,233,.20)', borderRadius: 2, margin: '0 auto 12px' }} />
 
         {/* Hero */}
         <div style={{ display: 'flex', gap: 14, alignItems: 'center', marginBottom: 14 }}>
           <div style={{
             width: 68, height: 68, borderRadius: 10,
-            background: 'rgba(212,162,74,0.10)',
-            border: `1.5px solid ${RARITY_BORDER[item.quality] || 'rgba(212,162,74,0.6)'}`,
+            /* v2.3.1235: batch-4 rollout — off-token warm-gold rgba's →
+               brass-soft plate; unknown-quality edge falls back to the
+               Common rarity edge (rarity edges are game data). */
+            background: 'rgba(216,170,88,.15)',
+            border: `1.5px solid ${RARITY_BORDER[item.quality] || RARITY_BORDER.normal}`,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
           }}><ItemArt item={item} size={48} /></div>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontFamily: FONT.serif, fontSize: 17, fontWeight: 500, color: INV.textPrimary }}>
               {item.name || '(unnamed)'}
             </div>
-            <div style={{ fontFamily: FONT.mono, fontSize: 12, color: 'rgba(238, 242, 235, .55)', marginTop: 3 }}>
+            {/* v2.3.1235: batch-4 rollout — metadata line onto text-3;
+                crafter credit onto the brass token (was off-token warm
+                rgba's). */}
+            <div style={{ fontFamily: FONT.mono, fontSize: 12, color: INV.textVeryMuted, marginTop: 3 }}>
               {subtitle}
             </div>
             {layer3 && item.crafter && (
               <div style={{ fontFamily: FONT.serif, fontStyle: 'italic', fontSize: 11,
-                color: 'rgba(230,200,140,0.7)', marginTop: 3 }}>
+                color: INV.marketAccent, marginTop: 3 }}>
                 forged by {item.crafter}{item.acquiredAt ? ` · ${dayLabel(item.acquiredAt)}` : ''}
               </div>
             )}

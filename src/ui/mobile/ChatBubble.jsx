@@ -91,11 +91,14 @@ export const ChatBubble = () => {
           /* v2.3.1233: Lantern Slate — world-floating card (gradient fill,
              strong border, radius 12, panel shadow; docs/LANTERN-SLATE-SPEC.md
              §10).  No backdrop-filter: fill is opaque enough on its own. */
-          background: 'linear-gradient(180deg, rgba(35,48,57,.94), rgba(17,25,29,.94))',
-          border: '1px solid rgba(238,242,235,.24)',
-          borderRadius: 12,
+          /* v2.3.1235: batch-4 rollout — corrected world-chrome recipe
+             (flat rgba(13,22,27,.88) + strong hairline, radius 10; the
+             composer is an anchored surface over the world). */
+          background: 'rgba(13,22,27,.88)',
+          border: '1px solid rgba(229,237,233,.20)',
+          borderRadius: 10,
           boxShadow: '0 14px 30px rgba(4,7,9,.38)',
-          color: '#F7F2E7',
+          color: '#F4F0E7',
           fontFamily: 'Source Sans 3, sans-serif',
         }}
       >
@@ -114,16 +117,19 @@ export const ChatBubble = () => {
             maxLength={120}
             /* v2.3.1233: spec input — #121B20 well, 44px tall, brass caret;
                fontSize stays 16 (iOS Safari zooms inputs below 16px). */
+            /* v2.3.1235: batch-4 rollout — corrected tokens: well #111E23
+               trough, hairline .11, warm-white #F4F0E7, brass-highlight
+               caret. */
             style={{
               flex: 1,
               minWidth: 0,
               height: 44,
               padding: '0 10px',
-              background: '#121B20',
-              border: '1px solid rgba(238,242,235,.14)',
+              background: '#111E23',
+              border: '1px solid rgba(229,237,233,.11)',
               borderRadius: 8,
-              color: '#F7F2E7',
-              caretColor: '#F0C878',
+              color: '#F4F0E7',
+              caretColor: '#EAC675',
               fontFamily: 'inherit',
               fontSize: 16,
               outline: 'none',
@@ -135,16 +141,20 @@ export const ChatBubble = () => {
             aria-label="Send"
             /* v2.3.1233: primary-action brass when there's text to send
                (#D8A85F bg + #20170D label); quiet raised surface when empty. */
+            /* v2.3.1235: batch-4 rollout — committed gold-gradient primary
+               (#EAC675 edge, #172126 ink, radius 10, button 13/700) when
+               armed; corrected secondary (#293B41 + strong hairline,
+               disabled #667875 label) when empty. ONE primary per surface. */
             style={{
               flex: '0 0 auto',
               height: 44,
               padding: '0 14px',
-              background: val.trim() ? '#D8A85F' : '#2B3940',
-              border: '1px solid rgba(238,242,235,.14)',
-              borderRadius: 11,
-              color: val.trim() ? '#20170D' : '#687575',
+              background: val.trim() ? 'linear-gradient(180deg,#E2B765,#D2A14D)' : '#293B41',
+              border: val.trim() ? '1px solid #EAC675' : '1px solid rgba(229,237,233,.20)',
+              borderRadius: 10,
+              color: val.trim() ? '#172126' : '#667875',
               fontFamily: 'inherit',
-              fontSize: 14,
+              fontSize: 13,
               fontWeight: 700,
               cursor: 'pointer',
             }}
@@ -163,7 +173,10 @@ export const ChatBubble = () => {
           borderLeft: '8px solid transparent',
           borderRight: '8px solid transparent',
           /* v2.3.1233: tail matches the card gradient's bottom stop. */
-          borderTop: '8px solid rgba(17,25,29,.94)',
+          /* v2.3.1235: batch-4 rollout — tail re-matched to the corrected
+             flat world-chrome fill above (a mismatched tail reads as a
+             seam). */
+          borderTop: '8px solid rgba(13,22,27,.88)',
         }} />
       </div>
     </>

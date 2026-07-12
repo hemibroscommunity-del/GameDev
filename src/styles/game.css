@@ -222,6 +222,10 @@ input{font-family:inherit}
   background:rgba(255,255,255,.1);border:none;color:rgba(255,255,255,.6);font-size:14px;
   display:flex;align-items:center;justify-content:center;cursor:pointer}
 .bt-inspect-close:active{background:rgba(217,92,84,.4)}
+/* v2.3.1235: batch-4 QA — the 28px ✕ visual is approved everywhere, but
+   28px is under the 44pt touch floor; an invisible inset:-8px pseudo
+   grows the TAP target to 44px with zero visual change. */
+.bt-inspect-close::after{content:'';position:absolute;inset:-8px}
 .bt-inspect-av{width:64px;height:64px;border-radius:50%;object-fit:cover;margin:0 auto 8px;
   display:block;border:2.5px solid var(--pop)}
 .bt-inspect-name{font-size:16px;font-weight:800;color:#fff;margin-bottom:2px}
