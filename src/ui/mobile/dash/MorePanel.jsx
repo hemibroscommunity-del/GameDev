@@ -69,7 +69,7 @@ export const MorePanel = () => (
               src={t.src}
               alt={t.label}
               draggable={false}
-              style={{ width: 30, height: 30, objectFit: 'contain' }}
+              style={{ width: 28, height: 28, objectFit: 'contain' }}
             />
           ) : (
             <span style={{ fontSize: 20 }}>{t.glyph}</span>

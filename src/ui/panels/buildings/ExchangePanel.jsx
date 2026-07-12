@@ -71,7 +71,9 @@ export function ExchangePanel(props) {
   return React.createElement("div", {
     style: {
       margin: -20,
-      padding: '16px 14px',
+      /* v2.3.1235: Checkpoint B — +16px bottom breathing room so the last
+         order-book row never ends flush against the modal edge. */
+      padding: '16px 14px 32px',
       background: '#202C32',
       borderRadius: 13,
       textAlign: 'left',
@@ -133,7 +135,7 @@ export function ExchangePanel(props) {
     }
   }, rpgState.coins), /*#__PURE__*/React.createElement("span", {
     style: {
-      fontSize: 11,
+      fontSize: 12, /* v2.3.1235: Checkpoint B — hint copy floor 12px */
       color: '#96A2A0'
     }
   }, "Buy & sell \xB7 Listings last 24h, refunds by mail")), /*#__PURE__*/React.createElement("div", {
@@ -487,7 +489,7 @@ export function ExchangePanel(props) {
     }
   }), /*#__PURE__*/React.createElement("span", {
     style: {
-      fontSize: 11,
+      fontSize: 12, /* v2.3.1235: Checkpoint B — meta copy floor 12px */
       color: '#96A2A0',
       fontVariantNumeric: 'tabular-nums',
       marginLeft: 'auto'
@@ -846,7 +848,7 @@ export function ExchangePanel(props) {
         }
       }, o.tierLabel, " ", o.element1 || ''), /*#__PURE__*/React.createElement("span", {
         style: {
-          fontSize: 11,
+          fontSize: 12, /* v2.3.1235: Checkpoint B — row meta floor 12px */
           color: '#96A2A0'
         }
       }, o.playerName), o.playerId === S.myId && /*#__PURE__*/React.createElement("span", {
@@ -912,7 +914,7 @@ export function ExchangePanel(props) {
         }
       }, o.tierLabel, " ", o.element1 || ''), /*#__PURE__*/React.createElement("span", {
         style: {
-          fontSize: 11,
+          fontSize: 12, /* v2.3.1235: Checkpoint B — row meta floor 12px */
           color: '#96A2A0'
         }
       }, o.playerName), o.playerId === S.myId && /*#__PURE__*/React.createElement("span", {
@@ -1012,7 +1014,7 @@ export function ExchangePanel(props) {
         }
       }, o.tierLabel, " ", ((_WEAPON_TYPES$o$subty = WEAPON_TYPES[o.subtype]) === null || _WEAPON_TYPES$o$subty === void 0 ? void 0 : _WEAPON_TYPES$o$subty.label) || o.subtype, " ", o.element1 ? '(' + o.element1 + ')' : ''), /*#__PURE__*/React.createElement("div", {
         style: {
-          fontSize: 11,
+          fontSize: 12, /* v2.3.1235: Checkpoint B — row meta floor 12px */
           color: '#96A2A0',
           fontVariantNumeric: 'tabular-nums'
         }

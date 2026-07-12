@@ -263,7 +263,7 @@ export const InventoryPanel = () => {
           <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '24px 8px', textAlign: 'center', color: COL.muted }}>
             {/* v2.3.1224: UI Bible satchel icon */}
             <img src="/icons/ui/nav-inventory.webp?v=2.3.1224" alt="" draggable={false}
-              style={{ width: 46, height: 46, opacity: 0.4, filter: 'grayscale(1)' }} />
+              style={{ width: 40, height: 40, opacity: 0.4, filter: 'grayscale(1)' }} />
             <div style={{ fontSize: 13, fontWeight: 700, color: COL.text2 }}>
               {filter === 'all' ? 'Your bag is empty.' : `No ${(CATEGORIES.find(c => c.id === filter)?.label || 'matching').toLowerCase()} items yet.`}
             </div>

@@ -89,6 +89,7 @@ import { pushHudPopup } from './XpFlyOverlay.jsx';
 import { firemakingBus } from './mobile/firemakingBus.js';
 import { eatBus } from './mobile/eatBus.js';
 import { blockRingBus } from './mobile/blockRingBus.js';
+import { controlsTutorialBus } from './mobile/controlsTutorialBus.js';
 /* Renderer: PixiJS (WebGL) with Canvas 2D fallback */
 import { initPixiRenderer, preloadPlayerAssets } from '@/rendering/pixiRenderer.js';
 import { IMAGE_ZONE_MAPS } from '@/rendering/tiledMaps.js';
@@ -957,6 +958,10 @@ export var BroTown = function BroTown(_ref0) {
     setTutorialStep = _useState124[1];
   /* Keep tutorialStep on stateRef so the game loop (which doesn't re-mount on state change) reads the live value */
   stateRef.current._tutorialStep = tutorialStep;
+  /* v2.3.1235: Checkpoint B §7 — the onboarding banner must also yield to
+     the controls-tutorial coach (it was showing through the spotlight at
+     both test widths). Live subscription so the banner resumes on close. */
+  var ctOpen = React.useSyncExternalStore(controlsTutorialBus.subscribe, controlsTutorialBus.isOpen);
   var _useState125 = useState(false),
     _useState126 = _slicedToArray(_useState125, 2),
     showInventory = _useState126[0],
@@ -6608,7 +6613,7 @@ export var BroTown = function BroTown(_ref0) {
   /* v2.3.1235: §6 — the banner yields to every blocking decision
      surface (QA caught it rendering beside the duel prompt and behind
      the tutorial coach). It resumes when the modal closes. */
-  tutorialStep >= 0 && tutorialStep < 7 && !buildingPanel && !duelRequest && !incomingTrade && !trade2 && !inspectPlayer && !questPanel && !showTrade && !threatIncoming && /*#__PURE__*/React.createElement("div", {
+  tutorialStep >= 0 && tutorialStep < 7 && !ctOpen && !buildingPanel && !duelRequest && !incomingTrade && !trade2 && !inspectPlayer && !questPanel && !showTrade && !threatIncoming && /*#__PURE__*/React.createElement("div", {
     style: {
       position: 'absolute',
       /* v2.3.1205: was bottom:180 / zIndex:20 — INSIDE the opaque

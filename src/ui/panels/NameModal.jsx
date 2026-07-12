@@ -419,7 +419,8 @@ export function NameModal(props) {
          44pt-wide target now fits — the scroll cap that clipped long
          names (v2.3.722) is gone; the input's 56px side padding clears it.
          top:50% (the old -3px offset compensated the parchment tail). */
-      style: { position: 'absolute', right: 4, top: '50%', transform: 'translateY(-50%)', minWidth: 44, height: 40, borderRadius: 8, cursor: 'pointer',
+      /* v2.3.1235: Checkpoint B — Roll bumped to the 44pt touch floor. */
+      style: { position: 'absolute', right: 4, top: '50%', transform: 'translateY(-50%)', minWidth: 44, minHeight: 44, borderRadius: 8, cursor: 'pointer',
         background: '#293B41', border: '1px solid rgba(229,237,233,0.20)', color: '#F4F0E7',
         fontFamily: 'Source Sans 3, sans-serif', fontSize: 12, fontWeight: 700, letterSpacing: '.02em', padding: '0 8px', lineHeight: 1 }
     }, "Roll")), /*#__PURE__*/React.createElement("div", {
@@ -473,14 +474,14 @@ export function NameModal(props) {
       /* v2.3.800: slimmed with the rest of the vertical rhythm. */
       /* v2.3.1235: ornate treatment dropped — Randomize is the standard
          SECONDARY button (raised fill, strong hairline via .bt-cc-rand,
-         Source Sans 3); the one gold element on this screen is PLAY.
-         The fate-orb icon stays: it's the action's identity, not chrome. */
+         Source Sans 3); the one gold element on this screen is PLAY. */
+      /* v2.3.1235: Checkpoint B — the fate-orb medallion is removed too:
+         no dice/reroll asset exists, so Randomize is text-only. */
       style: { width: '100%', padding: '8px', minHeight: 44, cursor: 'pointer', borderRadius: 10,
-        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
         background: '#293B41', color: '#F4F0E7',
         fontSize: 14, fontWeight: 700, letterSpacing: '.02em', fontFamily: "'Source Sans 3',sans-serif" }
-    }, /*#__PURE__*/React.createElement("img", { src: '/ui/welcome/fate-orb.webp', alt: '', style: { width: 22, height: 22, flex: '0 0 auto' } }),
-    /*#__PURE__*/React.createElement("span", null, "Randomize")), /*#__PURE__*/React.createElement("button", {
+    }, /*#__PURE__*/React.createElement("span", null, "Randomize")), /*#__PURE__*/React.createElement("button", {
       onClick: joinTown,
       /* v2.3.725→v2.3.1235: the painted PLAY art is retired; the button is
          the screen's ONE primary gold button (recipe + :active press live
@@ -501,20 +502,22 @@ export function NameModal(props) {
          has a character and just needs to enter their Login Key. */
       type: 'button',
       onClick: function () { setShowAccount(true); },
+      /* v2.3.1235: Checkpoint B — footer link at 12px secondary (#B6C1BE)
+         with tightened copy; same setShowAccount handler. */
       style: {
         marginTop: 4,
         background: 'none',
         border: 'none',
-        color: 'var(--txt2)',
+        color: '#B6C1BE',
         fontFamily: 'Source Sans 3, sans-serif',
-        fontSize: 14,
+        fontSize: 12,
         textDecoration: 'underline',
         cursor: 'pointer',
         padding: '6px 0',
         /* v2.3.1232: quiet-button 44pt target */
         minHeight: 44
       }
-    }, "Already have a character? Log in with your Login Key"), /*#__PURE__*/React.createElement("div", {
+    }, "Have a character? Enter your Login Key"), /*#__PURE__*/React.createElement("div", {
       /* v2.3.797: build tag moved out of the header to the scroll's tail
          end (header px now belongs to the drawer).
          v2.3.1235: 9px → 11px (type floor: no text under 11px). */

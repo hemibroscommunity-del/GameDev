@@ -161,11 +161,16 @@ export const ControlsTutorial = () => {
   return (
     <div
       /* v2.3.1235: backdrop tap no longer closes — buttons drive the
-         tour.  The overlay still swallows all pointer input. */
+         tour.  The overlay still swallows all pointer input.
+         v2.3.1235: Checkpoint B — pointerEvents 'auto' made EXPLICIT:
+         this root is the shield that blocks taps from reaching the game
+         beneath; the SVG dim stays pointerEvents 'none' so only the
+         card's buttons are interactive. */
       style={{
         position: 'fixed', inset: 0, zIndex: 9300,
         fontFamily: 'Source Sans 3, system-ui, sans-serif',
         touchAction: 'none',
+        pointerEvents: 'auto',
       }}
     >
       {/* Dim backdrop with ONE spotlight cutout (SVG mask) + a single
@@ -214,12 +219,14 @@ export const ControlsTutorial = () => {
           top: cardTop,
           left: '50%',
           transform: cardTransform,
-          width: 'min(88vw, 300px)',
-          maxWidth: 300,
+          /* v2.3.1235: Checkpoint B — content-driven height, exactly
+             16px padding all around, maxWidth 336 (was 300). */
+          width: 'min(88vw, 336px)',
+          maxWidth: 336,
           background: COL.card,
           border: `1px solid ${COL.border}`,
           borderRadius: 14,
-          padding: '14px 16px 12px',
+          padding: 16,
           color: COL.text,
           boxShadow: '0 14px 36px rgba(3,8,10,0.30)',
         }}
@@ -252,12 +259,16 @@ export const ControlsTutorial = () => {
           fontSize: 13, color: COL.text,
           marginTop: 6, lineHeight: 1.4,
         }}>{cur.body}</div>
-        <div style={{
-          fontSize: 11, color: COL.muted,
-          marginTop: 8,
-        }}>{`Step ${idx + 1} of ${total}`}</div>
 
-        <div style={{ display: 'flex', gap: 10, marginTop: 12, justifyContent: 'flex-end' }}>
+        {/* v2.3.1235: Checkpoint B — ONE footer flex row:
+            [Step text] [spacer] [Back?] [Next].  Progress text sits
+            bottom-left; the gold Next/Done is bottom-right at exactly
+            88×44; Back (secondary) appears left of Next. */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 12 }}>
+          <div style={{
+            fontSize: 11, color: COL.muted, whiteSpace: 'nowrap',
+          }}>{`Step ${idx + 1} of ${total}`}</div>
+          <div style={{ flex: 1 }} />
           {!isFirst && (
             <button
               onClick={() => setStep(s => Math.max(0, s - 1))}
@@ -273,6 +284,10 @@ export const ControlsTutorial = () => {
             onClick={() => (isLast ? onClose() : setStep(s => Math.min(total - 1, s + 1)))}
             style={{
               ...btnBase,
+              width: 88,
+              height: 44,
+              padding: 0,
+              flexShrink: 0,
               background: COL.goldBg,
               border: `1px solid ${COL.goldEdge}`,
               color: COL.goldText,

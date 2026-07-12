@@ -757,7 +757,11 @@ export const BottomDashboard = () => {
            small in the leftover strip once the toolbar persisted) —
            bottom-sheet pattern; the world stays visible above.  220ms =
            the spec's panel motion token. */
-        height: active ? '56vh' : 'var(--dash-h)',
+        /* v2.3.1235: Checkpoint B §3 — More is a LAUNCHER, not a content
+           panel: 56vh left it a giant empty sheet, so it sizes to its
+           content (header + 5×2 grid + toolbar ≈ 260px). Every other
+           panel keeps the 56vh bottom sheet. */
+        height: active ? (activeId === 'more' ? 'auto' : '56vh') : 'var(--dash-h)',
         transition: 'height 220ms cubic-bezier(.2,.8,.2,1)',
         /* v2.3.1227: Lantern Slate band — charcoal gradient, warm top
            edge (the "lantern" cue), soft up-shadow. */
@@ -835,7 +839,11 @@ export const BottomDashboard = () => {
           {/* 3-column body with section headers; gold moved to the Bag. */}
           <div style={{
             flex: 1,
-            padding: '4px 12px 6px',
+            /* v2.3.1235: Checkpoint B §2 — top padding 4→9 so the Loadout
+               column's 5px translateY lift paints instead of being clipped
+               by this overflow:hidden body (the previous marginTop:-5 lift
+               was invisible for exactly this reason). */
+            padding: '9px 12px 6px',
             overflow: 'hidden',
             display: 'flex',
             flexDirection: 'column',
@@ -1028,12 +1036,17 @@ export const BottomDashboard = () => {
                 padding: 4,
                 position: 'relative',
                 zIndex: 1,
-                marginTop: -5,
+                /* v2.3.1235: Checkpoint B §2 — the lift is a transform (not
+                   a negative top margin) so it can't be eaten by flex
+                   stretch; marginBottom:-5 reclaims the layout slot and the
+                   parent body's paddingTop:9 gives the paint headroom. */
+                transform: 'translateY(-5px)',
+                marginBottom: -5,
                 background: 'linear-gradient(180deg, #2B3E44, var(--ui-raised))',
-                border: `1px solid ${COL.border}`,
+                border: '1px solid rgba(229,237,233,.16)',
                 borderBottom: 'none',
                 borderRadius: '10px 10px 0 0',
-                boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.05), 0 -4px 12px rgba(3,8,10,0.25)',
+                boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.05), 0 -5px 14px rgba(3,8,10,.20)',
               }}>
                 <ColHeader icon="/icons/ui/combat-melee.webp?v=2.3.1225">Loadout</ColHeader>
                 {(() => {
@@ -1164,12 +1177,14 @@ export const BottomDashboard = () => {
                           /* v2.3.1233: QA — "AMULET" spilled out of its old
                              ~35px square; 6.5px was the fit then.
                              v2.3.1235: Loadout is now the 38% column, so the
-                             slots grew ~20% — 9px fits and clears the QA
-                             "unreadable micro-text" flag (11px floor waived
+                             slots grew ~20% — but checkpoint review caught
+                             "AMULE" clipped at 390×844 at 9px. 8.5px with a
+                             hair of negative tracking fits the full word on
+                             the narrowest supported phone (11px floor waived
                              for these placeholder tags; clip is the
                              backstop). */
-                          fontSize: 9,
-                          letterSpacing: 0,
+                          fontSize: 8.5,
+                          letterSpacing: '-0.02em',
                           maxWidth: '100%',
                           overflow: 'hidden',
                           whiteSpace: 'nowrap',
@@ -1266,23 +1281,24 @@ export const BottomDashboard = () => {
                         justifyContent: 'center',
                         gap: 2,
                       }}>
+                        {/* v2.3.1235: Checkpoint B §2 — the combat summary was
+                           micro-text (9px one-liner). Restructured to the key-
+                           number ladder: line 1 is the headline DMG range at
+                           12/700 tabular, line 2 is DPS · DEF at 11/600. The
+                           old single-line clipping problem goes away because
+                           the widest value now lives on its own line. */}
                         <div
                           onPointerUp={(e) => { e.stopPropagation(); setTooltip(`${slotLabel} weapon — tap the weapon slot to cycle melee → ranged → staff.`); }}
                           title={`${slotLabel} · DMG ${dmgText} · DPS ${dpsText}`}
-                          style={{ /* v2.3.1233: QA — 11px overflowed the ~110px
-                             rest-band module (clipped to "MG 8-13 · DPS 17.").
-                             v2.3.1234: 9.5px fit the STARTER values with zero
-                             headroom — a godly roll ("DMG 23-38 · DPS 50.8")
-                             clipped again. 9px holds realistic value widths. */
-                            fontSize: 9, color: COL.text, letterSpacing: 0, textAlign: 'center', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', cursor: 'pointer', touchAction: 'none' }}>
-                          <span style={{ color: COL.muted }}>DMG </span>{dmgText}
-                          <span style={{ color: COL.muted }}>  ·  DPS </span>{dpsText}
+                          style={{ fontSize: 12, fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: COL.text, letterSpacing: 0, textAlign: 'center', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', cursor: 'pointer', touchAction: 'none' }}>
+                          <span style={{ color: COL.muted, fontWeight: 600 }}>DMG </span>{dmgText}
                         </div>
                         <div
                           onPointerUp={(e) => { e.stopPropagation(); setTooltip('Defense from worn armor (chest + legs). Placeholder for now — armor does not yet reduce damage.'); }}
                           title="Defense from worn armor"
-                          style={{ fontSize: 10, color: COL.text, letterSpacing: '.02em', textAlign: 'center', whiteSpace: 'nowrap', cursor: 'pointer', touchAction: 'none' }}>
-                          <span style={{ color: COL.muted }}>DEF </span>+{armorDef}
+                          style={{ fontSize: 11, fontWeight: 600, fontVariantNumeric: 'tabular-nums', color: COL.text, letterSpacing: 0, textAlign: 'center', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', cursor: 'pointer', touchAction: 'none' }}>
+                          <span style={{ color: COL.muted }}>DPS </span>{dpsText}
+                          <span style={{ color: COL.muted }}>  ·  DEF </span>+{armorDef}
                         </div>
                       </div>
                       {/* Rows 2-3 — the six equipment slots (Chest·Weapon·Shield

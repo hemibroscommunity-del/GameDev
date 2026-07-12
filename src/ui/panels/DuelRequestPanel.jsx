@@ -25,6 +25,12 @@ export function DuelRequestPanel(props) {
   return React.createElement("div", {
     className: "bt-inspect",
     style: {
+      /* v2.3.1235: Checkpoint B — fixed full-viewport scrim: .bt-inspect is
+         position:absolute in its stacking context, which can leave the
+         dashboard band undimmed; fixed inset-0 dims the whole screen (the
+         dashboard stays visible beneath but non-interactive). */
+      position: 'fixed',
+      inset: 0,
       background: 'rgba(4,9,12,0.52)' /* v2.3.1235: duel-confirmation scrim */
     },
     onClick: function onClick() {
@@ -105,8 +111,11 @@ export function DuelRequestPanel(props) {
     }
   }), /*#__PURE__*/React.createElement("span", null, "Wager: ", duelRequest.wager, "g (winner takes all)")), /*#__PURE__*/React.createElement("div", {
     style: {
-      fontSize: 11, /* v2.3.1235: consent/rules line ≥11px muted */
-      color: '#8D9B98',
+      /* v2.3.1235: Checkpoint B — consent/rules line 11px muted → 12px
+         secondary with readable leading. */
+      fontSize: 12,
+      lineHeight: 1.35,
+      color: '#B6C1BE',
       marginBottom: 10
     }
   }, "Duels are consensual. No reputation penalty. Loser pays wager (if any). No item loss."), /*#__PURE__*/React.createElement("div", {
