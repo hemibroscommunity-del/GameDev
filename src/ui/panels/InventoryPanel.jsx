@@ -621,20 +621,23 @@ export function InventoryPanel(props) {
     })));
   }(), /*#__PURE__*/React.createElement("div", {
     /* v2.3.1232: module header \u2014 11/600 uppercase .12em */
+    /* v2.3.1235: batch-2 rollout \u2014 locked 11/700 .14em muted rung;
+       the \uD83D\uDCE6 prefix was decorative emoji in chrome */
     style: {
       fontSize: 11,
-      fontWeight: 600,
+      fontWeight: 700,
       textTransform: 'uppercase',
-      letterSpacing: '.12em',
-      color: '#96A2A0',
+      letterSpacing: '.14em',
+      color: 'var(--ui-text-muted)',
       fontVariantNumeric: 'tabular-nums',
       marginTop: 4,
       marginBottom: 4
     }
-  }, "\uD83D\uDCE6 Weapon Stash (", (rpgState.weaponStash || []).length, "/", WEAPON_STASH_MAX, ")"), (rpgState.weaponStash || []).length === 0 && /*#__PURE__*/React.createElement("div", {
+  }, "Weapon Stash (", (rpgState.weaponStash || []).length, "/", WEAPON_STASH_MAX, ")"), (rpgState.weaponStash || []).length === 0 && /*#__PURE__*/React.createElement("div", {
+    /* v2.3.1235: batch-2 rollout \u2014 descriptive copy to the 12px floor */
     style: {
-      fontSize: 10,
-      color: '#96A2A0',
+      fontSize: 12,
+      color: 'var(--ui-text-muted)',
       marginBottom: 6
     }
   }, "Empty. Weapon drops are auto-stashed here for comparison."), (rpgState.weaponStash || []).length > 0 && /*#__PURE__*/React.createElement("div", {
@@ -682,8 +685,10 @@ export function InventoryPanel(props) {
       style: {
         padding: 8,
         borderRadius: 8,
-        background: '#19252A',
-        border: '1px solid rgba(238,242,235,.08)',
+        /* v2.3.1235: batch-2 rollout — stashed items are occupied
+           cells: --ui-card + line (was the retired #19252A) */
+        background: 'var(--ui-card)',
+        border: '1px solid var(--ui-line)',
         position: 'relative'
       }
     }, /*#__PURE__*/React.createElement("div", {
@@ -702,67 +707,71 @@ export function InventoryPanel(props) {
         flex: 1
       }
     }, /*#__PURE__*/React.createElement("div", {
+      /* v2.3.1235: batch-2 rollout — 10px/7px metadata to the 11px
+         floor (rarity name color is game data) */
       style: {
-        fontSize: 10,
+        fontSize: 11,
         fontWeight: 700,
-        color: (srt === null || srt === void 0 ? void 0 : srt.color) || '#96A2A0'
+        color: (srt === null || srt === void 0 ? void 0 : srt.color) || 'var(--ui-text-muted)'
       }
     }, sw.name), /*#__PURE__*/React.createElement("div", {
       style: {
-        fontSize: 7,
-        color: '#96A2A0'
+        fontSize: 11,
+        color: 'var(--ui-text-muted)'
       }
     }, srt === null || srt === void 0 ? void 0 : srt.label, " ", swt === null || swt === void 0 ? void 0 : swt.label, " \xB7 ", sw.tierMult, "\xD7 \xB7 ", isRanged ? 'Ranged' : 'Melee'))), /*#__PURE__*/React.createElement("div", {
+      /* v2.3.1235: batch-2 rollout — compare strip to the 11px floor;
+         diff arrows onto the approved positive/danger tokens */
       style: {
         display: 'flex',
         gap: 6,
-        fontSize: 8,
+        fontSize: 11,
         marginBottom: 4
       }
     }, /*#__PURE__*/React.createElement("span", {
       style: {
-        color: '#96A2A0'
+        color: 'var(--ui-text-muted)'
       }
     }, "DMG: ", /*#__PURE__*/React.createElement("b", {
       style: {
-        color: '#F7F2E7',
+        color: 'var(--ui-text)',
         fontVariantNumeric: 'tabular-nums'
       }
     }, stashDmg), dmgDiff !== 0 && /*#__PURE__*/React.createElement("span", {
       style: {
-        color: dmgDiff > 0 ? '#59BF91' : '#D95C54',
+        color: dmgDiff > 0 ? '#55B98A' : '#D8635D',
         marginLeft: 2,
-        fontSize: 7
+        fontSize: 11
       }
     }, dmgDiff > 0 ? '▲' : '▼', Math.abs(dmgDiff))), /*#__PURE__*/React.createElement("span", {
       style: {
-        color: '#96A2A0'
+        color: 'var(--ui-text-muted)'
       }
     }, "SPD: ", /*#__PURE__*/React.createElement("b", {
       style: {
-        color: '#F7F2E7',
+        color: 'var(--ui-text)',
         fontVariantNumeric: 'tabular-nums'
       }
     }, stashSpd), spdDiff !== 0 && /*#__PURE__*/React.createElement("span", {
       style: {
-        color: spdDiff > 0 ? '#59BF91' : '#D95C54',
+        color: spdDiff > 0 ? '#55B98A' : '#D8635D',
         marginLeft: 2,
-        fontSize: 7
+        fontSize: 11
       }
     }, spdDiff > 0 ? '▲' : '▼', Math.abs(spdDiff).toFixed(1))), /*#__PURE__*/React.createElement("span", {
       style: {
-        color: '#96A2A0'
+        color: 'var(--ui-text-muted)'
       }
     }, "DPS: ", /*#__PURE__*/React.createElement("b", {
       style: {
-        color: '#F7F2E7',
+        color: 'var(--ui-text)',
         fontVariantNumeric: 'tabular-nums'
       }
     }, stashDps), dpsDiff !== 0 && /*#__PURE__*/React.createElement("span", {
       style: {
-        color: dpsDiff > 0 ? '#59BF91' : '#D95C54',
+        color: dpsDiff > 0 ? '#55B98A' : '#D8635D',
         marginLeft: 2,
-        fontSize: 7
+        fontSize: 11
       }
     }, dpsDiff > 0 ? '▲' : '▼', Math.abs(dpsDiff)))), /*#__PURE__*/React.createElement("div", {
       style: {
@@ -772,8 +781,9 @@ export function InventoryPanel(props) {
         marginBottom: 4
       }
     }, sw.element1 && /*#__PURE__*/React.createElement("span", {
+      /* v2.3.1235: batch-2 rollout — element chips to the 11px floor */
       style: {
-        fontSize: 7,
+        fontSize: 11,
         padding: '1px 4px',
         borderRadius: 3,
         background: ((_ELEMENTS$sw$element = ELEMENTS[sw.element1]) === null || _ELEMENTS$sw$element === void 0 ? void 0 : _ELEMENTS$sw$element.color) + '22',
