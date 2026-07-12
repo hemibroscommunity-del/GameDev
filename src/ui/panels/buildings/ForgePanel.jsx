@@ -1063,20 +1063,21 @@ export function ForgePanel(props) {
           localStorage.setItem('bt_rpg', JSON.stringify(R));
         } catch (e) {}
       }
-    }, "\uD83D\uDC8E Extract Gem (", extractCost, "g)"), canSalvage && /*#__PURE__*/React.createElement("button", {
-      /* v2.3.1232: destructive action — #7C3431 / #FFF1EE */
+    }, "Extract Gem (", extractCost, "g)"), canSalvage && /*#__PURE__*/React.createElement("button", {
+      /* v2.3.1235: batch-3 rollout — danger is OUTLINE only (filled red
+         retired); 44px hitbox floor; button-label emoji dropped. */
       style: {
         width: '100%',
-        minHeight: 36,
+        minHeight: 44,
         padding: '0 10px',
-        borderRadius: 11,
+        borderRadius: 10,
         fontSize: 12,
         fontWeight: 700,
         cursor: 'pointer',
         fontFamily: 'inherit',
-        border: '1px solid #C7655F',
-        background: '#7C3431',
-        color: '#FFF1EE'
+        border: '1px solid #D8635D',
+        background: 'transparent',
+        color: '#D8635D'
       },
       onClick: function onClick() {
         var R = stateRef.current.rpg;
@@ -1133,22 +1134,24 @@ export function ForgePanel(props) {
       color: '#96A2A0',
       marginBottom: 4
     }
-  }, "Stashed weapons"), (rpgState.weaponStash || []).map(function (sw, si) {
+  }, "Stashed weapons"), /*#__PURE__*/React.createElement("div", {
+    /* v2.3.1235: batch-3 rollout — stash rows move off per-row cards
+       into one recessed well with hairline dividers (contract:
+       dividers over row cards); handlers untouched. */
+    style: LS_WELL
+  }, (rpgState.weaponStash || []).map(function (sw, si) {
     if (!sw.gearBase) return null;
     var hasGem = !!(sw.element1 || sw.element2);
     var salvReturns = !hasGem ? getSalvageReturns(sw) : null;
     return /*#__PURE__*/React.createElement("div", {
       key: si,
-      /* v2.3.1232: 40px stash row on well-soft */
       style: {
         display: 'flex',
         alignItems: 'center',
         gap: 6,
-        minHeight: 40,
-        marginBottom: 4,
+        minHeight: 44,
         padding: '4px 8px',
-        borderRadius: 8,
-        background: '#19252A'
+        borderTop: si > 0 ? LS_DIV : 'none'
       }
     }, /*#__PURE__*/React.createElement("div", {
       style: {
