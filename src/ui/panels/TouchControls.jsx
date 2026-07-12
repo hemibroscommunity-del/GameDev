@@ -51,7 +51,12 @@ export function TouchControls(props) {
       /* v2.3.816: visuals only -- touches are handled by lZoneRef beneath,
          so this corner box must not intercept them. */
       pointerEvents: 'none',
-      width: isLandscape ? 98 : 83,
+      /* v2.3.1233b: audit fix — the §10 ladder was stacked here as
+         container opacity 0.62, which MULTIPLIED with the sprites' own
+         0.5 base (and BroTown's 0.85 drag re-stamp) for a 31% effective
+         rest opacity. Removed; the ladder lives in BroTown's handlers
+         (rest .5, ENGAGED .92 stamped by the move handlers). */
+            width: isLandscape ? 98 : 83,
       height: isLandscape ? 98 : 83
     }
   }, /*#__PURE__*/React.createElement("div", {
@@ -154,7 +159,7 @@ export function TouchControls(props) {
       zIndex: 30,
       /* v2.3.816: visuals only -- touches handled by rZoneRef beneath. */
       pointerEvents: 'none',
-      width: isLandscape ? 98 : 83,
+                  width: isLandscape ? 98 : 83,
       height: isLandscape ? 98 : 83
     }
   }, /*#__PURE__*/React.createElement("div", {
@@ -193,8 +198,9 @@ export function TouchControls(props) {
       position: 'absolute',
       inset: 0,
       borderRadius: '50%',
-      border: '2px solid rgba(255,80,80,0.85)',
-      boxShadow: '0 0 12px rgba(255,80,80,0.55)',
+      /* v2.3.1233: ring chrome onto the spec's HP red (#D95C54). */
+      border: '2px solid rgba(217,92,84,0.85)',
+      boxShadow: '0 0 12px rgba(217,92,84,0.55)',
       pointerEvents: 'none',
       zIndex: 2,
     }

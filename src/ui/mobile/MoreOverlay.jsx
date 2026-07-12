@@ -5,12 +5,15 @@ import { controlsTutorialBus } from './controlsTutorialBus.js';
 // legacy panel that doesn't have a dedicated wheel slot, so hiding the
 // bottom toolbar doesn't lose access to anything.
 
+/* v2.3.1233: Lantern Slate flip (docs/LANTERN-SLATE-SPEC.md) — this sheet
+   was still on the pre-Lantern light-parchment palette.  Panel surface,
+   strong border, warm-white text ladder, raised tiles like MorePanel's. */
 const COL = {
-  bg:       '#F1EFE8',
-  border:   '#E2DCC8',
-  text:     '#2C2C2A',
-  muted:    '#888780',
-  pressed:  '#2C2C2A',
+  bg:       '#202C32',
+  border:   'rgba(238,242,235,.24)',
+  text:     '#F7F2E7',
+  muted:    '#96A2A0',
+  pressed:  '#B88643',
 };
 
 /* v2.3.1224: src = UI Bible icons (docs/UI-BIBLE.md Part 4); the emoji
@@ -57,27 +60,40 @@ export const MoreOverlay = () => {
   return (
     <div onClick={() => moreOverlay.close()} style={{
       position: 'fixed', inset: 0, zIndex: 9200,
-      background: 'rgba(30, 51, 40, 0.55)',
+      /* v2.3.1233: spec modal scrim. */
+      background: 'rgba(8,16,20,.56)',
       display: 'flex', alignItems: 'flex-end',
     }}>
+      {/* v2.3.1233: bottom sheet on the panel surface — strong top border,
+          band shadow, radius 14 (panel radius); no backdrop-filter. */}
       <div onClick={e => e.stopPropagation()} style={{
         width: '100%', background: COL.bg,
+        borderTop: `1px solid ${COL.border}`,
         borderTopLeftRadius: 14, borderTopRightRadius: 14,
+        boxShadow: '0 -10px 24px rgba(6,10,12,.22)',
         padding: '14px 14px 24px', boxSizing: 'border-box',
         maxHeight: '70vh', overflowY: 'auto',
+        /* v2.3.1233b: audit — html/body set touch-action:none; scrolling
+           regions must opt back in (same rule as panelStyle). */
+        touchAction: 'pan-y',
         animation: 'more-up 220ms ease-out',
       }}>
         <style>{`@keyframes more-up { from { transform: translateY(100%); } to { transform: translateY(0); } }`}</style>
-        <div style={{ width: 32, height: 4, background: COL.muted, borderRadius: 2, margin: '0 auto 12px' }} />
+        <div style={{ width: 32, height: 4, background: COL.border, borderRadius: 2, margin: '0 auto 12px' }} />
+        {/* v2.3.1233: module header — 11/600 uppercase, Source Sans 3. */}
         <div style={{
-          fontFamily: 'system-ui, sans-serif', fontSize: 11, letterSpacing: '0.12em',
+          fontFamily: 'Source Sans 3, sans-serif', fontSize: 11, fontWeight: 600,
+          letterSpacing: '0.12em',
           color: COL.muted, textTransform: 'uppercase', marginBottom: 12, textAlign: 'center',
         }}>MORE TOOLS</div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10 }}>
           {ITEMS.map(it => (
+            /* v2.3.1233: raised tap-target tile (#2B3940, hairline,
+               inset top highlight) — matches dash/MorePanel.jsx. */
             <div key={it.label} onClick={() => tap(it)} style={{
-              padding: 12, borderRadius: 10, background: '#fff',
-              border: `1px solid ${COL.border}`, cursor: 'pointer',
+              padding: 12, borderRadius: 10, background: '#2B3940',
+              border: '1px solid rgba(238,242,235,.14)', cursor: 'pointer',
+              boxShadow: 'inset 0 1px 0 rgba(255,255,255,.08)',
               display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6,
               userSelect: 'none', touchAction: 'manipulation',
             }}>
@@ -87,7 +103,8 @@ export const MoreOverlay = () => {
                     style={{ width: 28, height: 28, objectFit: 'contain' }}
                     onError={(e) => { e.currentTarget.replaceWith(document.createTextNode(it.e)); }} />
                 : <div style={{ fontSize: 24, lineHeight: 1 }}>{it.e}</div>}
-              <div style={{ fontFamily: 'system-ui, sans-serif', fontSize: 11, color: COL.text }}>
+              {/* v2.3.1233: 11/600 caption in text-2 — icon stays the identity. */}
+              <div style={{ fontFamily: 'Source Sans 3, sans-serif', fontSize: 11, fontWeight: 600, color: '#B9C1BF' }}>
                 {it.label}
               </div>
             </div>

@@ -11,6 +11,10 @@ import { pushDmgPopup } from '@/game/combatHelpers.js';
    props: rpgState, stateRef, tradeTarget, tradeOffer (state) and
    setShowTrade, setTradeOffer (setters). No data-table imports; only
    the spread/slice babel helpers; no hoisted temps. */
+/* v2.3.1232: Lantern Slate restyle (docs/LANTERN-SLATE-SPEC.md §10) —
+   world-card surface, recessed item tray, brass selection + primary
+   action, gold icon amounts. Styles + static JSX only; every handler
+   and payload is unchanged. */
 export function TradePanel(props) {
   var rpgState = props.rpgState,
     stateRef = props.stateRef,
@@ -29,28 +33,55 @@ export function TradePanel(props) {
       return e.stopPropagation();
     },
     style: {
-      width: 280
+      /* v2.3.1232: floating world card — gradient, strong border, panel shadow */
+      width: 'min(360px, calc(100vw - 24px))', /* v2.3.1234: was 300 fixed — fill narrow phones, never overflow */
+      background: 'linear-gradient(180deg, rgba(35,48,57,.94), rgba(17,25,29,.94))',
+      border: '1px solid rgba(238,242,235,.24)',
+      borderRadius: 12,
+      boxShadow: '0 14px 30px rgba(4,7,9,.38)',
+      textAlign: 'left'
     }
   }, /*#__PURE__*/React.createElement("button", {
     className: "bt-inspect-close",
     onClick: function onClick() {
       return setShowTrade(false);
     }
-  }, "\u2715"), /*#__PURE__*/React.createElement("div", {
+  }, "✕"), /*#__PURE__*/React.createElement("div", {
     style: {
-      fontSize: 14,
-      fontWeight: 800,
-      color: '#59BF91',
+      display: 'flex',
+      alignItems: 'center',
+      gap: 8,
+      fontSize: 13,
+      fontWeight: 700,
+      color: '#F7F2E7',
       marginBottom: 4
     }
-  }, "\uD83E\uDD1D Trade with ", tradeTarget.name), /*#__PURE__*/React.createElement("div", {
+  }, /* v2.3.1232: UI Bible event icon with emoji fallback */
+  /*#__PURE__*/React.createElement("img", {
+    src: "/icons/ui/evt-trade.webp",
+    alt: "",
+    draggable: false,
     style: {
-      fontSize: 10,
-      color: 'rgba(255,255,255,.4)',
+      width: 24,
+      height: 24,
+      objectFit: 'contain'
+    },
+    onError: function onError(e) {
+      e.currentTarget.replaceWith(document.createTextNode('🤝'));
+    }
+  }), /*#__PURE__*/React.createElement("span", null, "Trade with ", tradeTarget.name)), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: '#B9C1BF',
       marginBottom: 8
     }
   }, "Select items to offer:"), /*#__PURE__*/React.createElement("div", {
     style: {
+      /* v2.3.1232: recessed well tray behind the item grid */
+      background: '#121B20',
+      borderRadius: 8,
+      padding: 4,
+      boxShadow: 'inset 0 2px 4px rgba(0,0,0,.44), inset 0 1px 0 rgba(255,255,255,.035)',
       display: 'grid',
       gridTemplateColumns: 'repeat(4,1fr)',
       gap: 4,
@@ -83,10 +114,11 @@ export function TradePanel(props) {
     return /*#__PURE__*/React.createElement("button", {
       key: key,
       style: {
+        /* v2.3.1232: well-soft cell; brass = selection (spec: accent, not green) */
         padding: '4px 2px',
-        borderRadius: 6,
-        border: offered > 0 ? '2px solid #59BF91' : '1px solid rgba(255,255,255,.1)',
-        background: offered > 0 ? 'rgba(89,191,145,.15)' : 'rgba(255,255,255,.04)',
+        borderRadius: 8,
+        border: offered > 0 ? '2px solid #D8A85F' : '1px solid rgba(238,242,235,.08)',
+        background: offered > 0 ? '#243137' : '#19252A',
         textAlign: 'center',
         cursor: 'pointer',
         position: 'relative'
@@ -105,21 +137,23 @@ export function TradePanel(props) {
       }
     }, emojis[key] || '📦'), /*#__PURE__*/React.createElement("div", {
       style: {
-        fontSize: 7,
-        color: 'rgba(255,255,255,.4)'
+        fontSize: 10,
+        color: '#96A2A0',
+        fontVariantNumeric: 'tabular-nums'
       }
     }, qty), offered > 0 && /*#__PURE__*/React.createElement("div", {
       style: {
         position: 'absolute',
         top: -2,
         right: -2,
-        fontSize: 8,
-        fontWeight: 900,
-        color: '#fff',
-        background: '#59BF91',
+        fontSize: 10,
+        fontWeight: 700,
+        color: '#20170D',
+        background: '#D8A85F',
         borderRadius: 6,
         padding: '0 3px',
-        minWidth: 12
+        minWidth: 12,
+        fontVariantNumeric: 'tabular-nums'
       }
     }, offered));
   })), /*#__PURE__*/React.createElement("div", {
@@ -127,14 +161,30 @@ export function TradePanel(props) {
       display: 'flex',
       alignItems: 'center',
       gap: 6,
-      marginBottom: 8
+      marginBottom: 10
     }
-  }, /*#__PURE__*/React.createElement("span", {
+  }, /* v2.3.1232: gold icon + label replaces the 💰 emoji label */
+  /*#__PURE__*/React.createElement("img", {
+    src: "/icons/popups/gold.webp",
+    alt: "",
+    draggable: false,
     style: {
-      fontSize: 10,
-      color: 'rgba(255,255,255,.5)'
+      width: 16,
+      height: 16,
+      objectFit: 'contain'
+    },
+    onError: function onError(e) {
+      e.currentTarget.replaceWith(document.createTextNode('💰'));
     }
-  }, "\uD83D\uDCB0 Gold:"), /*#__PURE__*/React.createElement("input", {
+  }), /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 11,
+      fontWeight: 600,
+      letterSpacing: '.12em',
+      textTransform: 'uppercase',
+      color: '#B9C1BF'
+    }
+  }, "Gold"), /*#__PURE__*/React.createElement("input", {
     type: "number",
     min: "0",
     max: rpgState.coins || 0,
@@ -147,29 +197,34 @@ export function TradePanel(props) {
       });
     },
     style: {
-      width: 60,
-      background: 'rgba(255,255,255,.08)',
-      border: '1px solid rgba(255,255,255,.15)',
-      borderRadius: 4,
-      color: '#fff',
-      fontSize: 11,
-      padding: '3px 6px',
-      textAlign: 'center'
+      width: 76,
+      background: '#121B20',
+      border: '1px solid rgba(238,242,235,.14)',
+      borderRadius: 8,
+      color: '#D8A85F',
+      fontSize: 14,
+      fontWeight: 700,
+      fontVariantNumeric: 'tabular-nums',
+      padding: '6px 8px',
+      textAlign: 'right'
     }
   }), /*#__PURE__*/React.createElement("span", {
     style: {
-      fontSize: 9,
-      color: 'rgba(255,255,255,.3)'
+      fontSize: 11,
+      color: '#96A2A0',
+      fontVariantNumeric: 'tabular-nums'
     }
   }, "/ ", rpgState.coins)), /*#__PURE__*/React.createElement("button", {
     style: {
+      /* v2.3.1232: brass primary action, 44pt */
       width: '100%',
+      minHeight: 44,
       padding: '8px',
-      borderRadius: 8,
+      borderRadius: 11,
       border: 'none',
-      background: '#59BF91',
-      color: '#fff',
-      fontSize: 12,
+      background: '#D8A85F',
+      color: '#20170D',
+      fontSize: 13,
       fontWeight: 700,
       cursor: 'pointer'
     },
@@ -190,5 +245,5 @@ export function TradePanel(props) {
         setShowTrade(false);
       }
     }
-  }, "\uD83D\uDCE8 Send Trade Offer")));
+  }, "Send Trade Offer")));
 }

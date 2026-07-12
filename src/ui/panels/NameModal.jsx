@@ -29,6 +29,12 @@ import { SHIRT_COLOR_CATALOG, setShirtColor } from '@/rendering/traits/shirtColo
    (joinTown, randomizeWithFlair, rollRandomName, rotatePreview,
    markObjPicked, _swatchTile, _thumbTile, _dragRotX). LONG_HAIR_COLORS
    is a frozen literal redeclared locally. */
+/* v2.3.1232: Lantern Slate touch-up — world-circle rotate buttons
+   (rgba(17,25,29,.88) + strong border, 44pt), brass caret on the name
+   input, Randomize moved off the old navy onto the raised secondary
+   surface.  The parchment scroll, painted PLAY art and all bt-cc-*
+   class-driven chrome are owner art and stay; inline overrides only.
+   Zero logic changes — tab structure and every handler byte-identical. */
 export function NameModal(props) {
   var _dragRotX = props._dragRotX,
     _swatchTile = props._swatchTile,
@@ -349,14 +355,16 @@ export function NameModal(props) {
          +1 walks the dir list clockwise, but on screen that reads as the
          character turning the other way. */
       type: 'button', title: 'Rotate left', onClick: function () { rotatePreview(1); },
-      style: { position: 'absolute', left: 6, bottom: 6, width: 40, height: 40, borderRadius: '50%', cursor: 'pointer',
-        background: 'rgba(18,20,31,0.78)', border: '1.5px solid var(--line)', color: 'var(--txt)',
+      /* v2.3.1232: spec §10 world circle — rgba(17,25,29,.88) + strong border, 44pt */
+      style: { position: 'absolute', left: 6, bottom: 6, width: 44, height: 44, borderRadius: '50%', cursor: 'pointer',
+        background: 'rgba(17,25,29,.88)', border: '1px solid rgba(238,242,235,.24)', color: 'var(--txt)',
         display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }
     }, /*#__PURE__*/React.createElement("span", { style: { fontSize: 21, fontWeight: 700, lineHeight: 1, transform: 'translateY(-1px)' } }, "↺")),
     /*#__PURE__*/React.createElement("button", {
       type: 'button', title: 'Rotate right', onClick: function () { rotatePreview(-1); },
-      style: { position: 'absolute', right: 6, bottom: 6, width: 40, height: 40, borderRadius: '50%', cursor: 'pointer',
-        background: 'rgba(18,20,31,0.78)', border: '1.5px solid var(--line)', color: 'var(--txt)',
+      /* v2.3.1232: spec §10 world circle — rgba(17,25,29,.88) + strong border, 44pt */
+      style: { position: 'absolute', right: 6, bottom: 6, width: 44, height: 44, borderRadius: '50%', cursor: 'pointer',
+        background: 'rgba(17,25,29,.88)', border: '1px solid rgba(238,242,235,.24)', color: 'var(--txt)',
         display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }
     }, /*#__PURE__*/React.createElement("span", { style: { fontSize: 21, fontWeight: 700, lineHeight: 1, transform: 'translateY(-1px)' } }, "↻"))), /*#__PURE__*/React.createElement("div", {
       /* Name row — DIRECTLY beneath the showcase (v2.3.800: negative
@@ -395,7 +403,13 @@ export function NameModal(props) {
         fontWeight: 700,
         outline: 'none',
         textAlign: 'center',
-        boxSizing: 'border-box'
+        boxSizing: 'border-box',
+        /* v2.3.1232: brass caret + 44px min target.  The #121B20 input
+           trough does NOT apply here: .bt-cc-name's parchment border-image
+           uses `fill`, which paints over any background override — the
+           scroll skin is the owner-art exception, kept as-is. */
+        caretColor: '#F0C878',
+        minHeight: 44
       }
     }), /*#__PURE__*/React.createElement("img", {
       /* v2.3.718: owner-generated quill — the "sign here" cue before the
@@ -407,8 +421,10 @@ export function NameModal(props) {
       type: 'button', title: 'Random name', onClick: rollRandomName,
       /* v2.3.722: pushed onto the scroll cap — at right:25 it clipped the
          end of longer names. */
+      /* v2.3.1232: same world-circle ink as the rotate buttons (32px stays —
+         a 44px dice clips longer names against the scroll cap, see v2.3.722) */
       style: { position: 'absolute', right: 12, top: 'calc(50% - 3px)', transform: 'translateY(-50%)', width: 32, height: 32, borderRadius: 8, cursor: 'pointer',
-        background: 'rgba(18,20,31,0.82)', border: '1.5px solid var(--line)', fontSize: 15, padding: 0, lineHeight: 1 }
+        background: 'rgba(17,25,29,.88)', border: '1px solid rgba(238,242,235,.24)', fontSize: 15, padding: 0, lineHeight: 1 }
     }, "🎲")), /*#__PURE__*/React.createElement("div", {
       /* Tabs + drawer share one wrapper so the card's gap can't split
          them — they must read as a single component (spec §5).  The
@@ -458,9 +474,11 @@ export function NameModal(props) {
          rerolls just the name. */
       type: 'button', onClick: randomizeWithFlair, className: "bt-cc-rand",
       /* v2.3.800: slimmed with the rest of the vertical rhythm. */
+      /* v2.3.1232: navy fill → raised secondary surface (#2B3940); the
+         .bt-cc-rand class keeps its brass border/label via !important */
       style: { width: '100%', padding: '8px', minHeight: 44, cursor: 'pointer', borderRadius: 10,
         display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-        background: 'rgba(20,16,40,0.93)', color: 'var(--txt)',
+        background: '#2B3940', color: 'var(--txt)',
         fontSize: 17, fontWeight: 700, letterSpacing: '.02em', fontFamily: "'Baloo 2','Source Sans 3',sans-serif",
         textShadow: '0 1px 2px rgba(0,0,0,.55)' }
     }, /*#__PURE__*/React.createElement("img", { src: '/ui/welcome/fate-orb.webp', alt: '', style: { width: 26, height: 26, flex: '0 0 auto' } }),
@@ -494,7 +512,9 @@ export function NameModal(props) {
         fontSize: 14,
         textDecoration: 'underline',
         cursor: 'pointer',
-        padding: '6px 0'
+        padding: '6px 0',
+        /* v2.3.1232: quiet-button 44pt target */
+        minHeight: 44
       }
     }, "Already have a character? Log in with your Login Key"), /*#__PURE__*/React.createElement("div", {
       /* v2.3.797: build tag moved out of the header to the scroll's tail

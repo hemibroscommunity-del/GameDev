@@ -7,6 +7,9 @@ import { BT_AUDIO } from '@/data/index.js';
    the component reads playerCount / setPlayerCount / setShowInfo / stateRef
    via props (the same component-scope values it closed over inline).
    BT_AUDIO is a module import. */
+/* v2.3.1232: Lantern Slate restyle — world-card surface, backdrop-filter
+   REMOVED (spec hard lock: no blur on iOS Safari), 44px mute row, quiet
+   close. Handlers untouched. */
 export function InfoPanel(props) {
   var playerCount = props.playerCount,
     setPlayerCount = props.setPlayerCount,
@@ -18,33 +21,35 @@ export function InfoPanel(props) {
       bottom: 'calc(var(--dash-h) + 70px)',
       right: 10,
       zIndex: 40,
-      padding: '10px 16px',
-      borderRadius: 10,
-      background: 'rgba(16,24,29,.95)',
-      border: '1px solid rgba(255,255,255,.12)',
-      backdropFilter: 'blur(8px)',
-      WebkitBackdropFilter: 'blur(8px)',
-      minWidth: 120
+      padding: '12px 14px',
+      borderRadius: 12,
+      background: 'rgba(17,25,29,.94)',
+      border: '1px solid rgba(238,242,235,.24)',
+      boxShadow: '0 14px 30px rgba(4,7,9,.38)',
+      minWidth: 140
     }
   }, /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
       alignItems: 'center',
       gap: 8,
-      marginBottom: 8
+      marginBottom: 10,
+      paddingBottom: 8,
+      borderBottom: '1px solid rgba(238,242,235,.10)'
     }
   }, /*#__PURE__*/React.createElement("span", {
     className: "bt-player-dot"
   }), " ", /*#__PURE__*/React.createElement("span", {
     style: {
-      fontSize: 11,
+      fontSize: 13,
       fontWeight: 700,
-      color: '#59BF91'
+      fontVariantNumeric: 'tabular-nums',
+      color: '#F7F2E7'
     }
   }, playerCount, " online"), /*#__PURE__*/React.createElement("span", {
     style: {
-      fontSize: 8,
-      color: stateRef.current._realtimeStatus === 'connected' ? '#59BF91' : '#ef4444',
+      fontSize: 9,
+      color: stateRef.current._realtimeStatus === 'connected' ? '#59BF91' : '#D95C54',
       marginLeft: 4
     }
   }, stateRef.current._realtimeStatus === 'connected' ? '●' : '○')), /*#__PURE__*/React.createElement("button", {
@@ -55,12 +60,15 @@ export function InfoPanel(props) {
       });
     },
     style: {
-      padding: '6px 12px',
-      borderRadius: 6,
-      background: 'rgba(255,255,255,.08)',
-      border: '1px solid rgba(255,255,255,.12)',
-      color: '#fff',
-      fontSize: 11,
+      /* v2.3.1232: secondary raised button, 44px touch target */
+      minHeight: 44,
+      padding: '8px 12px',
+      borderRadius: 11,
+      background: '#2B3940',
+      border: '1px solid rgba(238,242,235,.14)',
+      color: '#F7F2E7',
+      fontSize: 13,
+      fontWeight: 700,
       cursor: 'pointer',
       width: '100%'
     }
@@ -69,13 +77,15 @@ export function InfoPanel(props) {
       return setShowInfo(false);
     },
     style: {
+      /* v2.3.1232: quiet button */
       marginTop: 6,
-      padding: '4px 10px',
-      borderRadius: 5,
-      background: 'rgba(255,255,255,.04)',
+      padding: '8px 10px',
+      borderRadius: 8,
+      background: 'transparent',
       border: 'none',
-      color: 'rgba(255,255,255,.4)',
-      fontSize: 9,
+      color: '#96A2A0',
+      fontSize: 12,
+      fontWeight: 600,
       cursor: 'pointer',
       width: '100%'
     }

@@ -20,15 +20,18 @@ export const ChatLauncher = () => {
         // the weapon-swap bar (which now occupies the old bottom-centre slot).
         right: 16,
         bottom: 'calc(var(--dash-h) + 16px)',
-        width: 40,
-        height: 40,
+        /* v2.3.1233: Lantern Slate world-HUD circle button — 44×44 (spec §10
+           back/zone button), rgba(17,25,29,.88) fill + strong border, and the
+           §10 opacity ladder (.62 rest / .92 engaged) instead of .45/.95. */
+        width: 44,
+        height: 44,
         padding: 0,
-        background: 'rgba(20, 22, 32, 0.55)',
-        border: '1px solid rgba(255,255,255,0.18)',
+        background: 'rgba(17,25,29,.88)',
+        border: '1px solid rgba(238,242,235,.24)',
         borderRadius: '50%',
         // Grayed out when closed, full-strength when the bubble is open.
-        opacity: open ? 0.95 : 0.45,
-        color: '#cfd2e0',
+        opacity: open ? 0.92 : 0.62,
+        color: '#B9C1BF',
         cursor: 'pointer',
         zIndex: 35,
         display: 'flex',

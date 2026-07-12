@@ -1133,8 +1133,16 @@ export const BottomDashboard = () => {
                         <span style={{
                           color: COL.muted,
                           fontWeight: 700,
-                          fontSize: 9,
-                          letterSpacing: '.06em',
+                          /* v2.3.1233: QA — 9px/.06em "AMULET" (~40px) spilled
+                             out of its ~35px square into the CAPE cell; sized
+                             down empirically (8px → "AMULI", 7px → "AMULE")
+                             until the 6-char labels fit: 6.5px, zero tracking,
+                             full cell width.  Clip (no bleed) is the backstop. */
+                          fontSize: 6.5,
+                          letterSpacing: 0,
+                          maxWidth: '100%',
+                          overflow: 'hidden',
+                          whiteSpace: 'nowrap',
                         }}>{label}</span>
                       )}
                     </div>
@@ -1231,14 +1239,19 @@ export const BottomDashboard = () => {
                         <div
                           onPointerUp={(e) => { e.stopPropagation(); setTooltip(`${slotLabel} weapon — tap the weapon slot to cycle melee → ranged → staff.`); }}
                           title={`${slotLabel} · DMG ${dmgText} · DPS ${dpsText}`}
-                          style={{ fontSize: 11, color: COL.text, letterSpacing: '.02em', textAlign: 'center', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', cursor: 'pointer', touchAction: 'none' }}>
+                          style={{ /* v2.3.1233: QA — 11px overflowed the ~110px
+                             rest-band module (clipped to "MG 8-13 · DPS 17.").
+                             v2.3.1234: 9.5px fit the STARTER values with zero
+                             headroom — a godly roll ("DMG 23-38 · DPS 50.8")
+                             clipped again. 9px holds realistic value widths. */
+                            fontSize: 9, color: COL.text, letterSpacing: 0, textAlign: 'center', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', cursor: 'pointer', touchAction: 'none' }}>
                           <span style={{ color: COL.muted }}>DMG </span>{dmgText}
                           <span style={{ color: COL.muted }}>  ·  DPS </span>{dpsText}
                         </div>
                         <div
                           onPointerUp={(e) => { e.stopPropagation(); setTooltip('Defense from worn armor (chest + legs). Placeholder for now — armor does not yet reduce damage.'); }}
                           title="Defense from worn armor"
-                          style={{ fontSize: 11, color: COL.text, letterSpacing: '.02em', textAlign: 'center', whiteSpace: 'nowrap', cursor: 'pointer', touchAction: 'none' }}>
+                          style={{ fontSize: 10, color: COL.text, letterSpacing: '.02em', textAlign: 'center', whiteSpace: 'nowrap', cursor: 'pointer', touchAction: 'none' }}>
                           <span style={{ color: COL.muted }}>DEF </span>+{armorDef}
                         </div>
                       </div>

@@ -238,12 +238,17 @@ pointerdown. prefers-reduced-motion removes shimmer/overshoot/nudge.
    icon drop-shadow, NEW brass dot, equipped brass corner notch.
    Cooldown / drag / invalid-drop states deferred — no runtime
    surface exists for them yet.
-3. ◐ v2.3.1229: panel header 44px; toolbar now PERSISTENT in panel
-   mode with the active destination lit (brass plate + top line;
-   tapping the lit icon toggles home — no extra "dashboard" icon
-   needed); red-leather removed from the FULL bag panel (the sweep
-   had only caught the preview grid). Remaining: tabs/chips/rows
-   sweep, toast + joystick opacity ladder.
+3. ✅ v2.3.1229–1233: panel header 44px; persistent lit toolbar
+   (tapping the lit icon toggles home); red leather fully removed.
+   v2.3.1232 (the ~55-file craftsmanship sweep): EVERY panel rebuilt
+   on the §9/§12 kit — 44px rows, segmented tabs, chips, wells, brass
+   primaries, destructive treatments, empty states, icon identities.
+   v2.3.1233: floating widgets (chat bubble/launcher, inspect card,
+   mastery toasts, controls tutorial, More sheet) on the world-card
+   language + joystick rest-opacity ladder. The joystick .92 ENGAGED
+   opacity step shipped in the v2.3.1233 follow-up: the move handlers
+   in BroTown.jsx stamp base opacity .92 on touch, and the existing
+   end handlers restore the .5 rest value.
 4. ✅ v2.3.1230 (legacy sweep): the legacy CSS variable set
    (--ink/--line/--pop/--txt/--gold/...) in game.css now carries
    Lantern Slate values, flipping every legacy panel
@@ -251,9 +256,16 @@ pointerdown. prefers-reduced-motion removes shimmer/overshoot/nudge.
    hardcoded accent literals (indigo→brass, old green/gold/red→the
    semantic set, old light text→warm-white) mechanically remapped
    across the legacy panels and BroTown.jsx; page/wrap base
-   #0d0b18→#10181D. Remaining for a later pass: device/contrast/perf
-   QA; backdrop-filter removal from legacy classes; deleting unused
-   legacy CSS.
+   #0d0b18→#10181D. v2.3.1233 (blur + dead-CSS sweep): every remaining
+   backdrop-filter removed tree-wide — game.css world chrome
+   (.bt-interact-prompt/.bt-plist/.bt-exit-fab/.bt-exit-dim/
+   .bt-rejoin-loading/.bt-kb-key/.bt-emote-bar), 16 BroTown.jsx inline
+   world toasts/badges, ItemTooltip scrim — with translucent fills
+   bumped to the world-overlay ink to compensate; nine zero-consumer
+   legacy class families deleted (.back-to-site, .bt-player-count,
+   .bt-players-btn, .bt-chatlog*, .bt-combat-bar/btn,
+   .bt-chat-fab/bar/input, .bt-fab-group). Remaining for a later
+   pass: device/contrast/perf QA.
 
 ## Do-not-drift list
 

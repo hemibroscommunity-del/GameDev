@@ -11,6 +11,60 @@ import { pushDmgPopup } from '@/game/combatHelpers.js';
    feedback-* useState values + setters arrive via props; FEEDBACK_*
    data, BT_API_BASE, BT_AUDIO, and the babel async/spread helpers are
    module imports; fetch / URLSearchParams are browser globals. */
+/* v2.3.1232: Lantern Slate restyle (docs/LANTERN-SLATE-SPEC.md) —
+   presentation only: the ticket fetch/vote/submit flows, filter-key
+   cache and every handler are unchanged. Segmented 36px tabs, 32px
+   filter pills with brass-fill selection (kills the stray #8880ff
+   accent), 44px ticket rows with a proper vote rail, #121B20 input
+   well, and a single brass Submit primary. */
+
+/* v2.3.1232: Lantern Slate style tokens — local, no shared module. */
+var LS_CARD = {
+  background: '#202C32',
+  border: '1px solid rgba(238,242,235,.14)',
+  borderRadius: 14,
+  boxShadow: '0 14px 30px rgba(4,7,9,.38)'
+};
+var LS_HEADER = {
+  fontSize: 11,
+  fontWeight: 600,
+  textTransform: 'uppercase',
+  letterSpacing: '.12em',
+  color: '#96A2A0'
+};
+var LS_WELL = {
+  background: '#121B20',
+  borderRadius: 10,
+  boxShadow: 'inset 0 2px 4px rgba(0,0,0,.44), inset 0 1px 0 rgba(255,255,255,.035)'
+};
+var LS_DIVIDER = '1px solid rgba(238,242,235,.10)';
+/* selectable 32px pill chip (spec: selected = #3B3427 fill + brass label) */
+var lsChip = function lsChip(sel) {
+  return {
+    minHeight: 32,
+    boxSizing: 'border-box',
+    padding: '4px 10px',
+    borderRadius: 999,
+    fontSize: 11,
+    fontWeight: 600,
+    border: '1px solid ' + (sel ? '#D8A85F' : 'rgba(238,242,235,.08)'),
+    background: sel ? '#3B3427' : 'transparent',
+    color: sel ? '#D8A85F' : '#96A2A0',
+    cursor: 'pointer'
+  };
+};
+/* v2.3.1232: UI-Bible icon with emoji fallback (onError replaceWith
+   pattern from src/ui/mobile/dash/SkillsPanel.jsx) */
+var lsIcon = function lsIcon(src, emoji, size) {
+  return React.createElement('img', {
+    src: src,
+    alt: '',
+    draggable: false,
+    style: { width: size || 18, height: size || 18, objectFit: 'contain', flex: 'none' },
+    onError: function (e) { e.currentTarget.replaceWith(document.createTextNode(emoji)); }
+  });
+};
+
 export function FeedbackPanel(props) {
   var stateRef = props.stateRef,
     feedbackTab = props.feedbackTab,
@@ -40,43 +94,51 @@ export function FeedbackPanel(props) {
     onClick: function onClick(e) {
       return e.stopPropagation();
     },
-    style: {
-      width: 340,
+    style: Object.assign({}, LS_CARD, {
+      width: 'min(360px, calc(100vw - 24px))', /* v2.3.1234: was 340 fixed — fill narrow phones, never overflow */
       maxHeight: '85vh',
       overflowY: 'auto',
       padding: 16,
       textAlign: 'left'
-    }
+    })
   }, /*#__PURE__*/React.createElement("button", {
     className: "bt-inspect-close",
     onClick: function onClick() {
       return setShowFeedback(false);
     }
-  }, "\u2715"), /*#__PURE__*/React.createElement("div", {
+  }, "✕"), /*#__PURE__*/React.createElement("div", {
     style: {
-      fontSize: 15,
-      fontWeight: 800,
-      color: '#D8A85F',
-      marginBottom: 2,
-      textAlign: 'center'
+      display: 'flex',
+      alignItems: 'center',
+      gap: 8,
+      marginBottom: 4,
+      minHeight: 24
     }
-  }, "\uD83D\uDCDD Community Feedback"), /*#__PURE__*/React.createElement("div", {
+  }, lsIcon('/icons/ui/panel-feedback.webp?v=2.3.1232', '📝', 20), /*#__PURE__*/React.createElement("span", {
     style: {
-      fontSize: 8,
-      color: 'rgba(255,255,255,.35)',
-      textAlign: 'center',
-      marginBottom: 8
+      fontSize: 13,
+      fontWeight: 700,
+      textTransform: 'uppercase',
+      letterSpacing: '.10em',
+      color: '#F7F2E7'
+    }
+  }, "Community Feedback")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: '#96A2A0',
+      marginBottom: 10
     }
   }, "Report bugs, suggest features, vote on priorities"), /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
-      gap: 2,
-      marginBottom: 10,
-      borderRadius: 8,
-      overflow: 'hidden',
-      border: '1px solid rgba(255,255,255,.1)'
+      gap: 3,
+      marginBottom: 14,
+      borderRadius: 10,
+      padding: 3,
+      background: '#121B20',
+      boxShadow: 'inset 0 2px 4px rgba(0,0,0,.44)'
     }
-  }, [['browse', '📋 Browse'], ['submit', '✏️ Submit']].map(function (_ref33) {
+  }, [['browse', 'Browse'], ['submit', 'Submit']].map(function (_ref33) {
     var _ref34 = _slicedToArray(_ref33, 2),
       id = _ref34[0],
       label = _ref34[1];
@@ -87,14 +149,18 @@ export function FeedbackPanel(props) {
       },
       style: {
         flex: 1,
-        padding: '6px 2px',
-        fontSize: 10,
-        fontWeight: 700,
+        height: 36,
+        padding: '0 2px',
+        fontSize: 12,
+        fontWeight: 600,
         border: 'none',
+        borderRadius: 8,
         cursor: 'pointer',
-        background: feedbackTab === id ? 'rgba(216,168,95,.2)' : 'rgba(255,255,255,.03)',
-        color: feedbackTab === id ? '#8880ff' : 'rgba(255,255,255,.4)',
-        fontFamily: 'inherit'
+        background: feedbackTab === id ? '#2B3940' : 'transparent',
+        boxShadow: feedbackTab === id ? 'inset 0 -2px 0 #D8A85F' : 'none',
+        color: feedbackTab === id ? '#F7F2E7' : '#96A2A0',
+        fontFamily: 'inherit',
+        transition: 'all 140ms cubic-bezier(.2,.8,.2,1)'
       }
     }, label);
   })), feedbackTab === 'browse' && function () {
@@ -119,8 +185,8 @@ export function FeedbackPanel(props) {
     return /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
       style: {
         display: 'flex',
-        gap: 2,
-        marginBottom: 6
+        gap: 4,
+        marginBottom: 8
       }
     }, [['top', '🔥 Top'], ['trending', '📈 Trending'], ['new', '🆕 New']].map(function (_ref35) {
       var _ref36 = _slicedToArray(_ref35, 2),
@@ -132,40 +198,23 @@ export function FeedbackPanel(props) {
           setFeedbackSort(id);
           S._fbLastFilter = null;
         },
-        style: {
-          flex: 1,
-          padding: '4px 2px',
-          borderRadius: 4,
-          fontSize: 8,
-          fontWeight: 700,
-          border: '1px solid ' + (feedbackSort === id ? 'rgba(216,168,95,.3)' : 'rgba(255,255,255,.06)'),
-          background: feedbackSort === id ? 'rgba(216,168,95,.1)' : 'transparent',
-          color: feedbackSort === id ? '#8880ff' : 'rgba(255,255,255,.3)',
-          cursor: 'pointer'
-        }
+        style: Object.assign({}, lsChip(feedbackSort === id), {
+          flex: 1
+        })
       }, label);
     })), /*#__PURE__*/React.createElement("div", {
       style: {
         display: 'flex',
         flexWrap: 'wrap',
-        gap: 2,
-        marginBottom: 6
+        gap: 4,
+        marginBottom: 8
       }
     }, /*#__PURE__*/React.createElement("button", {
       onClick: function onClick() {
         setFeedbackTopic(null);
         S._fbLastFilter = null;
       },
-      style: {
-        padding: '2px 5px',
-        borderRadius: 3,
-        fontSize: 7,
-        fontWeight: 700,
-        border: '1px solid ' + (feedbackTopic === null ? 'rgba(216,168,95,.3)' : 'rgba(255,255,255,.06)'),
-        background: feedbackTopic === null ? 'rgba(216,168,95,.08)' : 'transparent',
-        color: feedbackTopic === null ? '#8880ff' : 'rgba(255,255,255,.2)',
-        cursor: 'pointer'
-      }
+      style: lsChip(feedbackTopic === null)
     }, "All"), FEEDBACK_TOPICS.map(function (t) {
       return /*#__PURE__*/React.createElement("button", {
         key: t.id,
@@ -173,38 +222,21 @@ export function FeedbackPanel(props) {
           setFeedbackTopic(feedbackTopic === t.id ? null : t.id);
           S._fbLastFilter = null;
         },
-        style: {
-          padding: '2px 5px',
-          borderRadius: 3,
-          fontSize: 7,
-          fontWeight: 600,
-          border: '1px solid ' + (feedbackTopic === t.id ? 'rgba(216,168,95,.3)' : 'rgba(255,255,255,.04)'),
-          background: feedbackTopic === t.id ? 'rgba(216,168,95,.08)' : 'transparent',
-          color: feedbackTopic === t.id ? '#8880ff' : 'rgba(255,255,255,.18)',
-          cursor: 'pointer'
-        }
+        style: lsChip(feedbackTopic === t.id)
       }, t.label);
     })), /*#__PURE__*/React.createElement("div", {
       style: {
         display: 'flex',
-        gap: 2,
-        marginBottom: 8
+        flexWrap: 'wrap',
+        gap: 4,
+        marginBottom: 10
       }
     }, /*#__PURE__*/React.createElement("button", {
       onClick: function onClick() {
         setFeedbackCategory(null);
         S._fbLastFilter = null;
       },
-      style: {
-        padding: '2px 5px',
-        borderRadius: 3,
-        fontSize: 7,
-        fontWeight: 700,
-        border: '1px solid ' + (feedbackCategory === null ? 'rgba(255,255,255,.15)' : 'rgba(255,255,255,.06)'),
-        background: feedbackCategory === null ? 'rgba(255,255,255,.05)' : 'transparent',
-        color: feedbackCategory === null ? 'rgba(255,255,255,.5)' : 'rgba(255,255,255,.18)',
-        cursor: 'pointer'
-      }
+      style: lsChip(feedbackCategory === null)
     }, "All"), FEEDBACK_CATEGORIES.map(function (c) {
       return /*#__PURE__*/React.createElement("button", {
         key: c.id,
@@ -212,26 +244,32 @@ export function FeedbackPanel(props) {
           setFeedbackCategory(feedbackCategory === c.id ? null : c.id);
           S._fbLastFilter = null;
         },
+        style: Object.assign({}, lsChip(feedbackCategory === c.id), {
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 5
+        })
+      }, /* v2.3.1232: category identity kept as a content-color dot;
+           selection itself is the spec brass pill */
+      /*#__PURE__*/React.createElement("span", {
         style: {
-          padding: '2px 5px',
-          borderRadius: 3,
-          fontSize: 7,
-          fontWeight: 700,
-          border: '1px solid ' + (feedbackCategory === c.id ? c.color + '50' : 'rgba(255,255,255,.04)'),
-          background: feedbackCategory === c.id ? c.color + '15' : 'transparent',
-          color: feedbackCategory === c.id ? c.color : 'rgba(255,255,255,.18)',
-          cursor: 'pointer'
+          width: 7,
+          height: 7,
+          borderRadius: 4,
+          flex: 'none',
+          display: 'inline-block',
+          background: c.color
         }
-      }, c.label);
+      }), c.label);
     })), feedbackTickets.length === 0 && /*#__PURE__*/React.createElement("div", {
-      style: {
-        fontSize: 9,
-        color: 'rgba(255,255,255,.15)',
-        fontStyle: 'italic',
+      style: Object.assign({}, LS_WELL, {
+        fontSize: 12,
+        color: '#96A2A0',
         textAlign: 'center',
-        padding: 12
-      }
-    }, "No feedback yet. Be the first to submit!"), feedbackTickets.map(function (t) {
+        padding: '18px 10px',
+        lineHeight: 1.4
+      })
+    }, "No feedback yet. Be the first to submit!"), feedbackTickets.map(function (t, _ti) {
       var cat = FEEDBACK_CATEGORIES.find(function (c) {
         return c.id === t.category;
       });
@@ -245,12 +283,10 @@ export function FeedbackPanel(props) {
         key: t.id,
         style: {
           display: 'flex',
-          gap: 6,
-          padding: '6px 8px',
-          borderRadius: 6,
-          marginBottom: 3,
-          background: 'rgba(255,255,255,.02)',
-          border: '1px solid rgba(255,255,255,.05)'
+          gap: 10,
+          minHeight: 44,
+          padding: '8px 2px',
+          borderBottom: _ti < feedbackTickets.length - 1 ? LS_DIVIDER : 'none'
         }
       }, /*#__PURE__*/React.createElement("div", {
         style: {
@@ -258,7 +294,8 @@ export function FeedbackPanel(props) {
           flexDirection: 'column',
           alignItems: 'center',
           gap: 1,
-          minWidth: 28
+          minWidth: 30,
+          flex: 'none'
         }
       }, /*#__PURE__*/React.createElement("button", {
         onClick: /*#__PURE__*/_asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee5() {
@@ -307,16 +344,17 @@ export function FeedbackPanel(props) {
           background: 'none',
           border: 'none',
           cursor: 'pointer',
-          fontSize: 12,
+          fontSize: 14,
           lineHeight: 1,
-          color: score > 0 ? '#59BF91' : 'rgba(255,255,255,.2)',
-          padding: 0
+          color: score > 0 ? '#59BF91' : '#96A2A0',
+          padding: '2px 6px'
         }
-      }, "\u25B2"), /*#__PURE__*/React.createElement("span", {
+      }, "▲"), /*#__PURE__*/React.createElement("span", {
         style: {
-          fontSize: 10,
-          fontWeight: 900,
-          color: score > 0 ? '#59BF91' : score < 0 ? '#D95C54' : 'rgba(255,255,255,.3)'
+          fontSize: 13,
+          fontWeight: 700,
+          fontVariantNumeric: 'tabular-nums',
+          color: score > 0 ? '#59BF91' : score < 0 ? '#D95C54' : '#96A2A0'
         }
       }, score), /*#__PURE__*/React.createElement("button", {
         onClick: /*#__PURE__*/_asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee6() {
@@ -365,12 +403,12 @@ export function FeedbackPanel(props) {
           background: 'none',
           border: 'none',
           cursor: 'pointer',
-          fontSize: 12,
+          fontSize: 14,
           lineHeight: 1,
-          color: score < 0 ? '#D95C54' : 'rgba(255,255,255,.2)',
-          padding: 0
+          color: score < 0 ? '#D95C54' : '#96A2A0',
+          padding: '2px 6px'
         }
-      }, "\u25BC")), /*#__PURE__*/React.createElement("div", {
+      }, "▼")), /*#__PURE__*/React.createElement("div", {
         style: {
           flex: 1,
           minWidth: 0
@@ -379,44 +417,47 @@ export function FeedbackPanel(props) {
         style: {
           display: 'flex',
           alignItems: 'center',
-          gap: 3,
-          marginBottom: 2
+          gap: 5,
+          marginBottom: 3
         }
       }, /*#__PURE__*/React.createElement("span", {
         style: {
-          padding: '1px 4px',
-          borderRadius: 2,
-          fontSize: 6,
-          fontWeight: 800,
+          padding: '1px 7px',
+          borderRadius: 999,
+          fontSize: 10,
+          fontWeight: 700,
           background: (cat === null || cat === void 0 ? void 0 : cat.color) + '20',
           color: cat === null || cat === void 0 ? void 0 : cat.color,
           border: '1px solid ' + (cat === null || cat === void 0 ? void 0 : cat.color) + '30'
         }
       }, (cat === null || cat === void 0 ? void 0 : cat.label) || t.category), /*#__PURE__*/React.createElement("span", {
         style: {
-          fontSize: 6,
-          color: 'rgba(255,255,255,.2)'
+          fontSize: 10,
+          fontWeight: 600,
+          color: '#96A2A0'
         }
       }, (top === null || top === void 0 ? void 0 : top.label) || t.topic), /*#__PURE__*/React.createElement("span", {
         style: {
-          fontSize: 6,
-          color: 'rgba(255,255,255,.12)',
-          marginLeft: 'auto'
+          fontSize: 10,
+          color: '#96A2A0',
+          marginLeft: 'auto',
+          fontVariantNumeric: 'tabular-nums'
         }
       }, ageStr)), /*#__PURE__*/React.createElement("div", {
         style: {
-          fontSize: 9,
-          color: 'rgba(255,255,255,.7)',
-          lineHeight: 1.3,
+          fontSize: 12.5,
+          color: '#B9C1BF',
+          lineHeight: 1.4,
           wordBreak: 'break-word'
         }
       }, t.text), /*#__PURE__*/React.createElement("div", {
         style: {
-          fontSize: 6,
-          color: 'rgba(255,255,255,.15)',
-          marginTop: 2
+          fontSize: 10,
+          color: '#96A2A0',
+          marginTop: 3,
+          fontVariantNumeric: 'tabular-nums'
         }
-      }, "by ", t.playerName, " \xB7 \uD83D\uDC4D", t.up, " \uD83D\uDC4E", t.down)));
+      }, "by ", t.playerName, " \xB7 👍", t.up, " 👎", t.down)));
     }), /*#__PURE__*/React.createElement("button", {
       onClick: function onClick() {
         stateRef.current._fbLastFilter = null;
@@ -424,30 +465,28 @@ export function FeedbackPanel(props) {
       },
       style: {
         width: '100%',
-        marginTop: 4,
-        padding: '4px 0',
-        borderRadius: 4,
-        fontSize: 8,
+        marginTop: 10,
+        minHeight: 36,
+        padding: '0 12px',
+        borderRadius: 11,
+        fontSize: 12,
         fontWeight: 700,
-        border: '1px solid rgba(255,255,255,.08)',
-        background: 'rgba(255,255,255,.03)',
-        color: 'rgba(255,255,255,.3)',
+        border: '1px solid rgba(238,242,235,.14)',
+        background: 'linear-gradient(180deg, #304047 0%, #2B3940 100%)',
+        color: '#B9C1BF',
         cursor: 'pointer'
       }
-    }, "\uD83D\uDD04 Refresh"));
+    }, "🔄 Refresh"));
   }(), feedbackTab === 'submit' && /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 9,
-      fontWeight: 700,
-      color: '#D8A94D',
-      marginBottom: 3
-    }
+    style: Object.assign({}, LS_HEADER, {
+      marginBottom: 6
+    })
   }, "Topic"), /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
       flexWrap: 'wrap',
-      gap: 2,
-      marginBottom: 8
+      gap: 4,
+      marginBottom: 12
     }
   }, FEEDBACK_TOPICS.map(function (t) {
     return /*#__PURE__*/React.createElement("button", {
@@ -455,30 +494,18 @@ export function FeedbackPanel(props) {
       onClick: function onClick() {
         return setFeedbackSubmitTopic(t.id);
       },
-      style: {
-        padding: '3px 6px',
-        borderRadius: 4,
-        fontSize: 7,
-        fontWeight: 700,
-        border: '1.5px solid ' + (feedbackSubmitTopic === t.id ? 'rgba(216,168,95,.4)' : 'rgba(255,255,255,.06)'),
-        background: feedbackSubmitTopic === t.id ? 'rgba(216,168,95,.12)' : 'rgba(255,255,255,.02)',
-        color: feedbackSubmitTopic === t.id ? '#8880ff' : 'rgba(255,255,255,.3)',
-        cursor: 'pointer'
-      }
+      style: lsChip(feedbackSubmitTopic === t.id)
     }, t.label);
   })), /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 9,
-      fontWeight: 700,
-      color: '#D8A94D',
-      marginBottom: 3
-    }
+    style: Object.assign({}, LS_HEADER, {
+      marginBottom: 6
+    })
   }, "Category"), /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
       flexWrap: 'wrap',
-      gap: 3,
-      marginBottom: 8
+      gap: 6,
+      marginBottom: 12
     }
   }, FEEDBACK_CATEGORIES.map(function (c) {
     return /*#__PURE__*/React.createElement("button", {
@@ -487,30 +514,31 @@ export function FeedbackPanel(props) {
         return setFeedbackSubmitCategory(c.id);
       },
       style: {
-        padding: '4px 8px',
-        borderRadius: 5,
-        fontSize: 8,
+        minHeight: 44,
+        boxSizing: 'border-box',
+        padding: '6px 12px',
+        borderRadius: 10,
+        fontSize: 12,
         fontWeight: 700,
-        border: '1.5px solid ' + (feedbackSubmitCategory === c.id ? c.color + '60' : 'rgba(255,255,255,.08)'),
-        background: feedbackSubmitCategory === c.id ? c.color + '18' : 'rgba(255,255,255,.02)',
-        color: feedbackSubmitCategory === c.id ? c.color : 'rgba(255,255,255,.3)',
+        textAlign: 'left',
+        border: '1px solid ' + (feedbackSubmitCategory === c.id ? '#D8A85F' : 'rgba(238,242,235,.08)'),
+        background: feedbackSubmitCategory === c.id ? '#3B3427' : '#19252A',
+        color: feedbackSubmitCategory === c.id ? '#D8A85F' : '#B9C1BF',
         cursor: 'pointer'
       }
     }, c.label, /*#__PURE__*/React.createElement("div", {
       style: {
-        fontSize: 6,
+        fontSize: 10,
         fontWeight: 400,
-        color: 'rgba(255,255,255,.2)',
-        marginTop: 1
+        color: '#96A2A0',
+        marginTop: 2
       }
     }, c.desc));
   })), /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 9,
-      fontWeight: 700,
-      color: '#D8A94D',
-      marginBottom: 3
-    }
+    style: Object.assign({}, LS_HEADER, {
+      marginBottom: 6,
+      fontVariantNumeric: 'tabular-nums'
+    })
   }, "Description (", feedbackText.length, "/100)"), /*#__PURE__*/React.createElement("textarea", {
     value: feedbackText,
     onChange: function onChange(e) {
@@ -521,17 +549,18 @@ export function FeedbackPanel(props) {
     placeholder: "Brief description...",
     style: {
       width: '100%',
-      padding: '8px',
-      borderRadius: 6,
-      border: '1px solid rgba(255,255,255,.15)',
-      background: 'rgba(255,255,255,.05)',
-      color: '#fff',
-      fontSize: 11,
+      padding: 10,
+      borderRadius: 11,
+      border: '1px solid rgba(238,242,235,.14)',
+      background: '#121B20',
+      color: '#F7F2E7',
+      caretColor: '#F0C878',
+      fontSize: 16 /* v2.3.1233b: iOS zoom guard */,
       fontFamily: 'inherit',
       resize: 'none',
       outline: 'none',
       boxSizing: 'border-box',
-      marginBottom: 8
+      marginBottom: 12
     }
   }), /*#__PURE__*/React.createElement("button", {
     onClick: /*#__PURE__*/_asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee7() {
@@ -594,14 +623,15 @@ export function FeedbackPanel(props) {
     disabled: !feedbackText.trim(),
     style: {
       width: '100%',
-      padding: '10px 0',
-      borderRadius: 6,
-      fontSize: 11,
-      fontWeight: 800,
-      border: '1.5px solid ' + (feedbackText.trim() ? 'rgba(216,168,95,.4)' : 'rgba(255,255,255,.06)'),
-      background: feedbackText.trim() ? 'rgba(216,168,95,.15)' : 'rgba(255,255,255,.02)',
-      color: feedbackText.trim() ? '#8880ff' : 'rgba(255,255,255,.15)',
+      minHeight: 44,
+      padding: '0 12px',
+      borderRadius: 11,
+      fontSize: 13,
+      fontWeight: 700,
+      border: 'none',
+      background: feedbackText.trim() ? '#D8A85F' : '#2B3940',
+      color: feedbackText.trim() ? '#20170D' : '#687575',
       cursor: feedbackText.trim() ? 'pointer' : 'not-allowed'
     }
-  }, "\uD83D\uDCDD Submit Feedback"))));
+  }, "Submit Feedback"))));
 }

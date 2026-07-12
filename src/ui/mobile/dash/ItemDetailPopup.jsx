@@ -257,15 +257,24 @@ function prettyName(key) {
     .replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
+/* v2.3.1232: Lantern Slate button ladder — brass primary (#D8A85F on
+   #20170D; the ONE brass action per popup state), raised secondary
+   (gradient + hairline + text-1), destructive #7C3431/#FFF1EE with the
+   #C7655F edge.  44pt targets, radius 11 per the spec. */
 const buttonStyle = (variant) => ({
   flex: 1,
+  minHeight: 44,
   padding: '8px 0',
   background: variant === 'primary' ? COL.accent
-             : variant === 'danger'  ? '#a73a3a'
-             :                         'rgba(238, 242, 235, 0.10)',
-  color: COL.text,
-  border: '1px solid ' + COL.border,
-  borderRadius: 6,
+             : variant === 'danger'  ? '#7C3431'
+             :                         'linear-gradient(180deg, #304047 0%, #2B3940 100%)',
+  color: variant === 'primary' ? COL.onAccent
+       : variant === 'danger'  ? '#FFF1EE'
+       :                         COL.text,
+  border: variant === 'primary' ? 'none'
+        : variant === 'danger'  ? '1px solid #C7655F'
+        :                         '1px solid ' + COL.border,
+  borderRadius: 11,
   fontSize: 12,
   fontWeight: 700,
   cursor: 'pointer',
@@ -475,28 +484,42 @@ export const ItemDetailPopup = () => {
        math), the whole card border shows at rest, and a swipe snaps to the next
        item.  Name + Equip/Unequip pinned; description fills the middle. */
     const P = target.panel;
+    /* v2.3.1232: Lantern Slate row — equipped reads as the occupied slot
+       surface (#243137) with the 1px brass equipped edge; unequipped is
+       the quiet well-soft cell.  Equip = the one brass primary of this
+       popup state; Unequip = destructive #7C3431/#FFF1EE.  44pt buttons. */
     const row = (r) => (
       <div key={r.key} style={{
         flex: '0 0 auto', height: P ? '100%' : undefined, scrollSnapAlign: 'start',
-        display: 'flex', flexDirection: 'column', gap: 4, padding: '7px 8px', borderRadius: 9,
-        background: r.on ? 'rgba(125,255,192,.12)' : 'rgba(238, 242, 235, .06)',
-        border: `1px solid ${r.on ? 'rgba(125,255,192,.45)' : 'rgba(238, 242, 235, .18)'}`,
+        display: 'flex', flexDirection: 'column', gap: 4, padding: '7px 8px', borderRadius: 8,
+        background: r.on ? '#243137' : '#19252A',
+        border: `1px solid ${r.on ? '#D8A85F' : 'rgba(238, 242, 235, .14)'}`,
         boxSizing: 'border-box', overflow: 'hidden',
       }}>
         <div style={{ flex: '0 0 auto', display: 'flex', alignItems: 'center', gap: 7, minWidth: 0 }}>
           {r.iconSrc
-            ? <img src={r.iconSrc} alt={r.name} draggable={false} style={{ width: 32, height: 32, objectFit: 'contain', imageRendering: 'pixelated', filter: r.on ? 'none' : 'grayscale(1) brightness(.7)', userSelect: 'none', flex: '0 0 auto' }} />
-            : <span style={{ width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 19, opacity: r.on ? 1 : 0.6, flex: '0 0 auto', userSelect: 'none' }}>{r.glyph || '▫'}</span>}
-          <div style={{ flex: 1, minWidth: 0, fontSize: 11, fontWeight: 800, color: r.on ? '#7dffc0' : '#eaf0ff', lineHeight: 1.15, overflowWrap: 'anywhere' }}>{r.name}</div>
+            ? <img src={r.iconSrc} alt={r.name} draggable={false} style={{ width: P ? 24 : 32, height: P ? 24 : 32, objectFit: 'contain', imageRendering: 'pixelated', filter: r.on ? 'none' : 'grayscale(1) brightness(.7)', userSelect: 'none', flex: '0 0 auto' }} />
+            : <span style={{ width: P ? 24 : 32, height: P ? 24 : 32, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 19, opacity: r.on ? 1 : 0.6, flex: '0 0 auto', userSelect: 'none' }}>{r.glyph || '▫'}</span>}
+          <div style={{ flex: 1, minWidth: 0, fontSize: 12, fontWeight: 700, color: '#F7F2E7', lineHeight: 1.15, overflowWrap: 'anywhere' }}>{r.name}</div>
         </div>
         {r.sub
-          ? <div style={{ flex: '1 1 auto', minHeight: 0, overflow: 'hidden', fontSize: 9, lineHeight: 1.3, color: 'rgba(230,238,255,.8)', overflowWrap: 'anywhere' }}>{r.sub}</div>
+          ? <div style={{ flex: '1 1 auto', minHeight: 0, overflow: 'hidden', fontSize: 10, lineHeight: 1.3, color: '#96A2A0', fontVariantNumeric: 'tabular-nums', overflowWrap: 'anywhere' }}>{r.sub}</div>
           : <div style={{ flex: '1 1 auto' }} />}
         <button type="button" onPointerUp={(e) => { e.stopPropagation(); r.toggle(); }}
           style={{
-            flex: '0 0 auto', width: '100%', padding: '5px 0', fontSize: 9.5, fontWeight: 800, borderRadius: 6, border: 'none',
-            background: r.on ? '#d83b4e' : '#1f9d57', /* Unequip = red, Equip = green */
-            color: '#fff', cursor: 'pointer', WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation',
+            /* v2.3.1233b: audit fix — in panel mode the row is height:100%
+               of the BUILD-column card with overflow:hidden; the v2.3.1232
+               44px button + 32px icon pushed fixed content to ~98px while
+               small iPhones give the row ~75-91px, clipping the button to a
+               sliver.  Panel mode returns to the compact pre-restyle fit
+               (24px icon, 30px button = full row width, still an easy
+               target); the anchored mode keeps the spec 44pt. */
+            flex: '0 0 auto', width: '100%', minHeight: P ? 30 : 44, padding: '5px 0', fontSize: 12, fontWeight: 700, borderRadius: 11,
+            border: r.on ? '1px solid #C7655F' : 'none',
+            background: r.on ? '#7C3431' : '#D8A85F', /* Unequip = destructive, Equip = brass primary */
+            color: r.on ? '#FFF1EE' : '#20170D',
+            fontFamily: 'inherit',
+            cursor: 'pointer', WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation',
           }}>{r.on ? 'Unequip' : 'Equip'}</button>
       </div>
     );
@@ -507,10 +530,13 @@ export const ItemDetailPopup = () => {
        row list scrolls internally.  The dismiss layer stops ABOVE the dashboard
        so the loadout cells stay tappable: tapping another cell switches the
        picker's slot in place; tapping the play area closes it. */
+    /* v2.3.1232: Lantern Slate world card (was the legacy indigo gradient) —
+       rgba(17,25,29,.94) card gradient, strong border, radius 12. */
     const cardCommon = {
-      background: 'linear-gradient(155deg, #2f63dd 0%, #234aa8 48%, #16245e 100%)',
-      border: '1px solid rgba(140,178,255,0.6)',
-      borderRadius: 12, padding: 8, boxShadow: '0 8px 28px rgba(4,7,9,.38)',
+      background: 'linear-gradient(180deg, rgba(35,48,57,.94), rgba(17,25,29,.94))',
+      border: '1px solid rgba(238,242,235,.24)',
+      borderRadius: 12, padding: 8, boxShadow: '0 14px 30px rgba(4,7,9,.38)',
+      fontFamily: 'Source Sans 3, sans-serif',
       display: 'flex', flexDirection: 'column', boxSizing: 'border-box', overflow: 'hidden', zIndex: 51,
     };
     const cardStyle = P
@@ -520,23 +546,25 @@ export const ItemDetailPopup = () => {
       <div onPointerDown={() => itemDetailBus.close()}
         style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 'var(--dash-h)', background: 'transparent', zIndex: 50, pointerEvents: 'auto' }}>
         <div ref={cardRef} onPointerDown={(e) => e.stopPropagation()} style={cardStyle}>
+          {/* v2.3.1232: 11/600 uppercase section header + raised hairline close chip */}
           <div style={{ flex: '0 0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6, marginBottom: 5 }}>
-            <span style={{ fontSize: 9.5, fontWeight: 800, color: 'rgba(238, 242, 235, .85)', letterSpacing: 0.6 }}>{title}</span>
+            <span style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.12em', color: '#96A2A0' }}>{title}</span>
             <button type="button" aria-label="Close" onPointerUp={(e) => { e.stopPropagation(); itemDetailBus.close(); }}
               style={{
-                flex: '0 0 auto', width: 20, height: 20, lineHeight: '18px', textAlign: 'center', padding: 0,
-                fontSize: 13, fontWeight: 800, borderRadius: 6, border: '1px solid rgba(238, 242, 235, .3)',
-                background: 'rgba(238, 242, 235, .12)', color: '#fff', cursor: 'pointer',
+                flex: '0 0 auto', width: 28, height: 28, lineHeight: '26px', textAlign: 'center', padding: 0,
+                fontSize: 13, fontWeight: 700, borderRadius: 8, border: '1px solid rgba(238, 242, 235, .14)',
+                background: 'linear-gradient(180deg, #304047 0%, #2B3940 100%)', color: '#F7F2E7', cursor: 'pointer',
+                fontFamily: 'inherit',
                 WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation',
               }}>✕</button>
           </div>
           {rows.length === 0
-            ? <div style={{ fontSize: 9, color: 'rgba(230,238,255,.7)', padding: '4px 2px' }}>Nothing to equip here.</div>
+            ? <div style={{ fontSize: 11, color: '#96A2A0', padding: '4px 2px' }}>Nothing to equip here.</div>
             : <div style={{ flex: '1 1 auto', minHeight: 0, display: 'flex', flexDirection: 'column', gap: 6, overflowY: 'auto', overflowX: 'hidden', WebkitOverflowScrolling: 'touch', scrollSnapType: 'y mandatory' }}>
                 {rows.map(row)}
               </div>}
           {rows.length > 1 && (
-            <div style={{ flex: '0 0 auto', marginTop: 4, textAlign: 'center', fontSize: 8.5, fontWeight: 700, letterSpacing: 0.4, color: 'rgba(230,238,255,.6)', pointerEvents: 'none', userSelect: 'none' }}>⌄ swipe · {rows.length} items</div>
+            <div style={{ flex: '0 0 auto', marginTop: 4, textAlign: 'center', fontSize: 10, fontWeight: 600, letterSpacing: 0.4, color: '#96A2A0', pointerEvents: 'none', userSelect: 'none' }}>⌄ swipe · {rows.length} items</div>
           )}
         </div>
       </div>
@@ -578,28 +606,32 @@ export const ItemDetailPopup = () => {
     };
     const armorOn = chestId !== 'none';
     const shirtOn = shirtId !== 'none';
+    /* v2.3.1232: Lantern Slate layer row — 44pt action row; equipped =
+       occupied-slot surface + 1px brass edge; Equip = brass primary,
+       Unequip = destructive, disabled = raised + #687575. */
     const layerRow = (key, iconSrc, name, sub, on, canEquip, onToggle) => (
       <div key={key} style={{
-        display: 'flex', alignItems: 'center', gap: 6,
+        display: 'flex', alignItems: 'center', gap: 6, minHeight: 44,
         padding: '5px 6px', borderRadius: 8,
-        background: on ? 'rgba(61,212,151,.07)' : 'rgba(238, 242, 235, .03)',
-        border: `1px solid ${on ? 'rgba(61,212,151,.3)' : 'rgba(238, 242, 235, .08)'}`,
+        background: on ? '#243137' : '#19252A',
+        border: `1px solid ${on ? '#D8A85F' : 'rgba(238, 242, 235, .14)'}`,
       }}>
         <img src={iconSrc} alt={name} draggable={false}
           style={{ width: 24, height: 24, imageRendering: 'pixelated',
             filter: on ? 'none' : 'grayscale(1) brightness(.6)', userSelect: 'none' }} />
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 10, fontWeight: 700, color: on ? '#3dd497' : COL.muted, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{name}</div>
-          <div style={{ fontSize: 7.5, color: 'rgba(238, 242, 235, .35)' }}>{sub}</div>
+          <div style={{ fontSize: 11, fontWeight: 700, color: on ? '#F7F2E7' : '#B9C1BF', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{name}</div>
+          <div style={{ fontSize: 9, color: '#96A2A0' }}>{sub}</div>
         </div>
         <button type="button"
           onPointerUp={(e) => { e.stopPropagation(); if (on || canEquip) onToggle(); }}
           disabled={!on && !canEquip}
           style={{
-            padding: '4px 8px', fontSize: 8.5, fontWeight: 700, borderRadius: 6,
-            border: '1px solid rgba(238, 242, 235, .2)',
-            background: on ? 'rgba(255,94,108,.25)' : (canEquip ? 'rgba(61,212,151,.25)' : 'rgba(238, 242, 235, .06)'),
-            color: (on || canEquip) ? '#fff' : 'rgba(238, 242, 235, .3)',
+            minHeight: 44, padding: '4px 10px', fontSize: 11, fontWeight: 700, borderRadius: 11,
+            border: on ? '1px solid #C7655F' : (canEquip ? 'none' : '1px solid rgba(238, 242, 235, .14)'),
+            background: on ? '#7C3431' : (canEquip ? '#D8A85F' : '#2B3940'),
+            color: on ? '#FFF1EE' : (canEquip ? '#20170D' : '#687575'),
+            fontFamily: 'inherit',
             cursor: (on || canEquip) ? 'pointer' : 'default',
             WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation',
           }}>{on ? 'Unequip' : 'Equip'}</button>
@@ -618,10 +650,12 @@ export const ItemDetailPopup = () => {
             border: '1px solid rgba(238, 242, 235, 0.14)',
             borderRadius: 10,
             padding: 8,
-            boxShadow: '0 8px 28px rgba(4,7,9,.38)',
+            fontFamily: 'Source Sans 3, sans-serif',
+            boxShadow: '0 14px 30px rgba(4,7,9,.38)',
           }}>
-          <div style={{ fontSize: 9, fontWeight: 800, color: 'rgba(238, 242, 235, .55)', letterSpacing: 0.5, marginBottom: 5 }}>
-            CHEST — LAYERS
+          {/* v2.3.1232: 11/600 uppercase section header */}
+          <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.12em', color: '#96A2A0', marginBottom: 5 }}>
+            Chest — Layers
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
             {layerRow('armor', '/sprites/gear/icons/steelplate.webp?v=2.3.685',
@@ -674,31 +708,37 @@ export const ItemDetailPopup = () => {
             border: '1px solid rgba(238, 242, 235, 0.14)',
             borderRadius: 10,
             padding: 8,
-            boxShadow: '0 8px 28px rgba(4,7,9,.38)',
+            fontFamily: 'Source Sans 3, sans-serif',
+            boxShadow: '0 14px 30px rgba(4,7,9,.38)',
           }}>
-          <div style={{ fontSize: 9, fontWeight: 800, color: 'rgba(238, 242, 235, .55)', letterSpacing: 0.5, marginBottom: 5 }}>
-            LEGS
+          {/* v2.3.1232: 11/600 uppercase section header */}
+          <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.12em', color: '#96A2A0', marginBottom: 5 }}>
+            Legs
           </div>
+          {/* v2.3.1232: same Lantern row language as the chest-layers picker —
+              44pt action row, brass Equip / destructive Unequip. */}
           <div style={{
-            display: 'flex', alignItems: 'center', gap: 6,
+            display: 'flex', alignItems: 'center', gap: 6, minHeight: 44,
             padding: '5px 6px', borderRadius: 8,
-            background: on ? 'rgba(61,212,151,.07)' : 'rgba(238, 242, 235, .03)',
-            border: `1px solid ${on ? 'rgba(61,212,151,.3)' : 'rgba(238, 242, 235, .08)'}`,
+            background: on ? '#243137' : '#19252A',
+            border: `1px solid ${on ? '#D8A85F' : 'rgba(238, 242, 235, .14)'}`,
           }}>
             <img src="/sprites/gear/icons/steelgreaves.webp?v=2.3.685" alt="Steel Greaves" draggable={false}
               style={{ width: 24, height: 24, imageRendering: 'pixelated',
                 filter: on ? 'none' : 'grayscale(1) brightness(.6)', userSelect: 'none' }} />
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 10, fontWeight: 700, color: on ? '#3dd497' : COL.muted, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{on ? gearName('legs', legsId) : 'Steel Greaves'}</div>
-              <div style={{ fontSize: 7.5, color: 'rgba(238, 242, 235, .35)' }}>Armor · legs</div>
+              <div style={{ fontSize: 11, fontWeight: 700, color: on ? '#F7F2E7' : '#B9C1BF', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{on ? gearName('legs', legsId) : 'Steel Greaves'}</div>
+              <div style={{ fontSize: 9, color: '#96A2A0' }}>Armor · legs</div>
             </div>
             <button type="button"
               onPointerUp={(e) => { e.stopPropagation(); toggleLegs(); }}
               style={{
-                padding: '4px 8px', fontSize: 8.5, fontWeight: 700, borderRadius: 6,
-                border: '1px solid rgba(238, 242, 235, .2)',
-                background: on ? 'rgba(255,94,108,.25)' : 'rgba(61,212,151,.25)',
-                color: '#fff', cursor: 'pointer',
+                minHeight: 44, padding: '4px 10px', fontSize: 11, fontWeight: 700, borderRadius: 11,
+                border: on ? '1px solid #C7655F' : 'none',
+                background: on ? '#7C3431' : '#D8A85F',
+                color: on ? '#FFF1EE' : '#20170D',
+                fontFamily: 'inherit',
+                cursor: 'pointer',
                 WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation',
               }}>{on ? 'Unequip' : 'Equip'}</button>
           </div>
@@ -928,21 +968,23 @@ export const ItemDetailPopup = () => {
           maxHeight: '60vh',
           background: '#2B3940',
           border: '1px solid ' + COL.border,
-          borderRadius: 8,
+          borderRadius: 10, /* v2.3.1232: card radius per Lantern Slate */
           padding: 10,
           display: 'flex', flexDirection: 'column', gap: 6,
           color: COL.text,
           fontFamily: 'Source Sans 3, sans-serif',
-          boxShadow: '0 4px 14px rgba(4,7,9,.38)',
+          boxShadow: '0 14px 30px rgba(4,7,9,.38)',
           opacity: pos ? 1 : 0,
         }}
       >
         <div style={{ position: 'relative', width: 80, height: 80, alignSelf: 'center' }}>
+          {/* v2.3.1232: portrait sits in a recessed well (#121B20, slot radius) */}
           <div style={{
             width: '100%', height: '100%',
-            background: 'rgba(238, 242, 235, 0.05)',
-            border: '1px solid ' + COL.border,
-            borderRadius: 6,
+            background: '#121B20',
+            border: '1px solid ' + COL.divider,
+            borderRadius: 8,
+            boxShadow: 'inset 0 2px 4px rgba(0,0,0,.44), inset 0 1px 0 rgba(255,255,255,.035)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             fontSize: 40,
           }}>
@@ -958,7 +1000,7 @@ export const ItemDetailPopup = () => {
               position: 'absolute', top: 2, right: 2,
               width: 18, height: 18,
               background: 'rgba(9, 14, 17, 0.85)',
-              border: '1px solid #f5c542',
+              border: '1px solid #F0C878', /* v2.3.1232: focus ring token (was legacy #f5c542) */
               borderRadius: 4,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               fontSize: 12, lineHeight: 1,
@@ -966,30 +1008,36 @@ export const ItemDetailPopup = () => {
           )}
         </div>
 
+        {/* v2.3.1232: item name 15/700 warm-white per Lantern Slate */}
         <div style={{
-          fontSize: 14, fontWeight: 800,
+          fontSize: 15, fontWeight: 700, color: '#F7F2E7',
           textAlign: 'center',
           letterSpacing: '.02em',
         }}>{name}</div>
 
+        {/* v2.3.1232: stat line lives in a recessed well-soft cell, tabular numerals */}
         {info && (
           <div style={{
-            fontSize: 11, color: COL.text,
+            fontSize: 12, color: COL.text, fontVariantNumeric: 'tabular-nums',
             textAlign: 'center',
-            padding: '4px 0',
-            background: 'rgba(238, 242, 235, 0.03)',
-            borderRadius: 5,
+            padding: '5px 0',
+            background: '#19252A',
+            border: '1px solid ' + COL.divider,
+            boxShadow: 'inset 0 2px 4px rgba(0,0,0,.44), inset 0 1px 0 rgba(255,255,255,.035)',
+            borderRadius: 8,
           }}>{info}</div>
         )}
 
+        {/* v2.3.1232: category caption — 10/600 uppercase metadata */}
         {desc && (
           <div style={{
-            fontSize: 10, color: COL.muted,
+            fontSize: 10, fontWeight: 600, color: COL.muted,
+            textTransform: 'uppercase', letterSpacing: '0.08em',
             textAlign: 'center',
           }}>{desc}</div>
         )}
 
-        <div style={{ display: 'flex', gap: 5, marginTop: 2 }}>
+        <div style={{ display: 'flex', gap: 6, marginTop: 2 }}>
           {actions.light    && <button onClick={onLight}   style={buttonStyle('primary')}>Light fire</button>}
           {actions.eat      && <button onClick={onEat}     style={buttonStyle('primary')}>Eat</button>}
           {actions.equip    && <button onClick={onEquip}   style={buttonStyle('primary')}>Equip</button>}

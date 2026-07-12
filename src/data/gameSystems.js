@@ -731,7 +731,7 @@ export const MINING_ORE_TIERS = {
 
 /* Resource tier names */
 export const RESOURCE_TIER_NAMES = ['', 'Rough', 'Refined', 'Pure', 'Resonant', 'Elemental Heart'];
-export const RESOURCE_TIER_COLORS = ['', '#8890b8', '#3b82f6', '#a855f7', '#f5c542', '#ff5e6c'];
+export const RESOURCE_TIER_COLORS = ['', '#8B9695', '#3b82f6', '#a855f7', '#f5c542', '#ff5e6c'];
 
 /* §18.2 Gathering node definition — placed in combat zones */
 export function createGatheringNodes(zoneId, map) {
@@ -1338,13 +1338,13 @@ export const GUILD_RANKS = [{
   title: 'Novice',
   minLvl: 1,
   ap: 0,
-  color: '#8890b8'
+  color: '#8B9695'
 }, {
   rank: 1,
   title: 'Apprentice',
   minLvl: 10,
   ap: 25,
-  color: '#8890b8'
+  color: '#8B9695'
 }, {
   rank: 2,
   title: 'Journeyman',
@@ -1513,7 +1513,7 @@ export const FEEDBACK_CATEGORIES = [{
 }, {
   id: 'remove',
   label: '🗑️ Remove',
-  color: '#8890b8',
+  color: '#8B9695',
   desc: 'Take this out'
 }, {
   id: 'add',
@@ -1806,7 +1806,7 @@ export const MINIGAME_REWARDS = {
     xpMult: 1.0,
     yieldMult: 1,
     label: 'OK',
-    color: '#8890b8'
+    color: '#8B9695'
   },
   miss: {
     xpMult: 0.3,
@@ -3149,7 +3149,10 @@ export function getEvasionPts(rpg) {
 export const RARITY_TIERS = {
   common: {
     mult: 1.00,
-    color: '#8890b8',
+    /* v2.3.1233: was #8B9695 — the old navy palette's neutral, which
+       reads as RARE-blue on Lantern Slate surfaces (QA caught "Common"
+       rendered blue in the Enchanter). Lantern common grey instead. */
+    color: '#8B9695',
     label: 'Common',
     elements: 0
   },
@@ -5199,7 +5202,7 @@ export const REPUTATION = {
   },
   neutral: {
     label: 'Neutral',
-    color: '#8890b8',
+    color: '#8B9695',
     pvpPenalty: 0
   },
   suspect: {

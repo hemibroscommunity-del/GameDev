@@ -18,6 +18,12 @@ import { pushDmgPopup } from '@/game/combatHelpers.js';
    id/passphrase helpers and syncRpgToServer from @/networking);
    async/regenerator + spread/slice babel helpers imported; 7 hoisted
    temps declared locally. */
+/* v2.3.1232: Lantern Slate restyle — quiet-button treatment (transparent
+   at rest, 44pt targets, 5% white tap highlight), single top divider on
+   the darkest shelf, XP fill → spec green, gold value → gold.webp +
+   tabular #D8A85F, badge → brass w/ text-on-accent.  Styles only; the
+   strip stays display:none (legacy, see below) and every handler body
+   is byte-identical. */
 export function MenuBar(props) {
   var stateRef = props.stateRef,
     rpgState = props.rpgState,
@@ -58,11 +64,12 @@ export function MenuBar(props) {
       // Hidden in v14.x; kept in tree to avoid surgery on a 33k-line file
       // and because some buttons drive functions not yet relocated.
       display: 'none',
-      background: 'rgba(16,24,29,.95)',
-      borderTop: '1px solid rgba(255,255,255,.08)',
+      /* v2.3.1232: toolbar shelf — darkest surface, ONE divider on top */
+      background: '#10181D',
+      borderTop: '1px solid rgba(238,242,235,.10)',
       alignItems: 'center',
-      gap: 3,
-      padding: '3px 6px',
+      gap: 2,
+      padding: '0 6px',
       flexShrink: 0,
       height: 44,
       overflowX: 'auto',
@@ -79,16 +86,18 @@ export function MenuBar(props) {
     }
   }, /*#__PURE__*/React.createElement("span", {
     style: {
-      fontSize: 10,
-      fontWeight: 800,
-      color: '#fff'
+      fontSize: 11,
+      fontWeight: 700,
+      color: '#F7F2E7',
+      fontVariantNumeric: 'tabular-nums'
     }
   }, "Lv", rpgState.level), /*#__PURE__*/React.createElement("div", {
     style: {
       width: 32,
       height: 4,
-      background: 'rgba(255,255,255,.1)',
-      borderRadius: 2,
+      /* v2.3.1232: spec bar track */
+      background: '#0B1216',
+      borderRadius: 999,
       overflow: 'hidden'
     },
     title: 'XP: ' + rpgState.xp + '/' + xpRequired(rpgState.level)
@@ -96,16 +105,34 @@ export function MenuBar(props) {
     style: {
       width: Math.min(100, rpgState.xp / xpRequired(rpgState.level) * 100) + '%',
       height: '100%',
-      background: '#a78bfa',
-      borderRadius: 2
+      /* v2.3.1232: XP semantic green + spec light overlay */
+      background: 'linear-gradient(180deg, rgba(255,255,255,.20), transparent 55%) #61B06B',
+      borderRadius: 999
     }
   })), /*#__PURE__*/React.createElement("span", {
+    /* v2.3.1232: gold value = gold.webp + tabular brass */
     style: {
-      fontSize: 9,
-      fontWeight: 800,
-      color: '#D8A94D'
+      fontSize: 11,
+      fontWeight: 700,
+      color: '#D8A85F',
+      fontVariantNumeric: 'tabular-nums',
+      display: 'inline-flex',
+      alignItems: 'center',
+      gap: 2
     }
-  }, "\uD83D\uDCB0", rpgState.coins)), function (_stateRef$current59) {
+  }, /*#__PURE__*/React.createElement("img", {
+    src: "/icons/popups/gold.webp",
+    alt: "",
+    draggable: false,
+    style: {
+      width: 12,
+      height: 12,
+      objectFit: 'contain'
+    },
+    onError: function onError(e) {
+      e.currentTarget.replaceWith(document.createTextNode('\uD83D\uDCB0'));
+    }
+  }), rpgState.coins)), function (_stateRef$current59) {
     var closeAll = function closeAll() {
       setShowStatScreen(false);
       setShowInventory(false);
@@ -411,35 +438,44 @@ export function MenuBar(props) {
       return /*#__PURE__*/React.createElement("button", {
         key: i,
         onClick: b.fn,
+        /* v2.3.1232: quiet button — transparent at rest (b.bg keeps the
+           special/logout semantic tints), 44pt target, 5% white pressed
+           overlay via the tap highlight, no box around every icon */
         style: {
-          width: 28,
-          height: 28,
-          borderRadius: 6,
+          width: 44,
+          height: 44,
+          borderRadius: 11,
           border: 'none',
           flexShrink: 0,
-          background: b.bg || 'rgba(255,255,255,.06)',
+          background: b.bg || 'transparent',
+          color: '#B9C1BF',
           cursor: 'pointer',
           position: 'relative',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          fontSize: 14,
-          padding: 0
+          fontSize: 18,
+          padding: 0,
+          WebkitTapHighlightColor: 'rgba(255,255,255,.05)',
+          touchAction: 'manipulation'
         }
       }, b.e, b.badge > 0 && /*#__PURE__*/React.createElement("span", {
+        /* v2.3.1232: badge — 10/700 text-on-accent on the brass pill,
+           tucked inside the 44pt hit area */
         style: {
           position: 'absolute',
-          top: -3,
-          right: -3,
-          fontSize: 7,
-          fontWeight: 900,
-          color: '#fff',
+          top: 3,
+          right: 3,
+          fontSize: 10,
+          fontWeight: 700,
+          color: '#20170D',
           background: '#D8A85F',
-          borderRadius: 6,
-          padding: '0 3px',
-          minWidth: 10,
+          borderRadius: 999,
+          padding: '0 4px',
+          minWidth: 14,
           textAlign: 'center',
-          lineHeight: '12px'
+          lineHeight: '14px',
+          fontVariantNumeric: 'tabular-nums'
         }
       }, b.badge));
     });

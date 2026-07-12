@@ -51,6 +51,19 @@ const GRID_TABS = {
   },
 };
 
+/* v2.3.1232: Lantern Slate structure pass — category identity is the
+   UI-Bible icon (emoji stays as the onError fallback, the SkillsPanel
+   replaceWith pattern).  Keyed by tab id: weapon categories + defense +
+   the HP/Endurance grid tabs. */
+const T2_TAB_ICONS = {
+  sword:     '/icons/ui/combat-melee.webp?v=2.3.1232',
+  bow:       '/icons/ui/combat-bow.webp?v=2.3.1232',
+  staff:     '/icons/ui/combat-magic.webp?v=2.3.1232',
+  defense:   '/icons/ui/combat-defense.webp?v=2.3.1232',
+  hp:        '/icons/ui/stat-vitality.webp?v=2.3.1232',
+  endurance: '/icons/ui/stat-endurance.webp?v=2.3.1232',
+};
+
 function persist(R) {
   try {
     if (typeof window !== 'undefined') {
@@ -168,12 +181,13 @@ export const T2Panel = () => {
         marginBottom: 8,
       }}>
         <div>
-          <div style={{ fontSize: 13, fontWeight: 800, letterSpacing: '0.02em', display: 'flex', alignItems: 'baseline', gap: 8 }}>
+          {/* v2.3.1232: panel title 13/700 uppercase per Lantern Slate */}
+          <div style={{ fontSize: 13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.10em', color: COL.text, display: 'flex', alignItems: 'baseline', gap: 8 }}>
             Builds
             {/* v2.3.1157: the combat build meter — a character finishes
                 at 1000 allocated points (1/3 of the 3000-slot grid). */}
             {t2uniform && (
-              <span style={{ fontSize: 10, fontWeight: 700, color: atCeiling ? COL.gold : COL.muted }}>
+              <span style={{ fontSize: 11, fontWeight: 700, fontVariantNumeric: 'tabular-nums', letterSpacing: 0, textTransform: 'none', color: atCeiling ? COL.gold : COL.muted }}>
                 {buildTotal}/{COMBAT_BUILD_CEILING}{atCeiling ? ' · complete' : ''}
               </span>
             )}
@@ -201,6 +215,11 @@ export const T2Panel = () => {
           const lvl = cGrid ? (R[cGrid.stat] || 0) : cIsDef ? ((R.defenseSkill && R.defenseSkill.level) || 0) : ((skills[c] && skills[c].level) || 0);
           const p = cGrid ? (R[cGrid.poolKey] || 0) : cIsDef ? (R.defenseUnspent || 0) : (pools[c] || 0);
           const sel = c === activeCat;
+          /* v2.3.1232: Lantern Slate segmented-tab language — active tab is
+             the raised surface with a 2px brass bottom edge (no indigo
+             fill); identity is the icon with the emoji as onError
+             fallback; unspent badge text sits on brass in #20170D. */
+          const iconSrc = T2_TAB_ICONS[c];
           return (
             <button
               key={c}
@@ -208,25 +227,32 @@ export const T2Panel = () => {
               style={{
                 flex: 1,
                 position: 'relative',
-                background: sel ? 'rgba(91,82,255,0.18)' : COL.tile,
-                border: '1px solid ' + (sel ? COL.accent : COL.tileBor),
-                borderRadius: 7,
+                minHeight: 44,
+                background: sel ? COL.raised : COL.tile,
+                border: '1px solid ' + (sel ? COL.border : COL.tileBor),
+                boxShadow: sel ? 'inset 0 -2px 0 ' + COL.accent : 'none',
+                borderRadius: 8,
                 padding: '6px 4px',
-                color: sel ? COL.text : COL.muted,
+                color: sel ? COL.text : COL.text2,
+                fontFamily: 'inherit',
                 cursor: 'pointer',
                 touchAction: 'manipulation',
                 display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1,
               }}
             >
-              <span style={{ fontSize: 16, lineHeight: 1 }}>{meta.emoji}</span>
-              <span style={{ fontSize: 11, fontWeight: 700 }}>{meta.label}</span>
-              <span style={{ fontSize: 9, color: sel ? COL.accent : COL.muted }}>Lv {lvl}</span>
+              {iconSrc
+                ? <img src={iconSrc} alt="" draggable={false}
+                    style={{ width: 18, height: 18, objectFit: 'contain' }}
+                    onError={(e) => { e.currentTarget.replaceWith(document.createTextNode(meta.emoji)); }} />
+                : <span style={{ fontSize: 16, lineHeight: 1 }}>{meta.emoji}</span>}
+              <span style={{ fontSize: 11, fontWeight: 600 }}>{meta.label}</span>
+              <span style={{ fontSize: 10, fontWeight: 600, fontVariantNumeric: 'tabular-nums', color: sel ? COL.accent : COL.muted }}>Lv {lvl}</span>
               {p > 0 && (
                 <span style={{
                   position: 'absolute', top: -5, right: -4,
-                  background: COL.accent, color: '#fff',
-                  fontSize: 9, fontWeight: 900,
-                  borderRadius: 8, padding: '1px 5px', lineHeight: 1.3,
+                  background: COL.accent, color: COL.onAccent,
+                  fontSize: 10, fontWeight: 700, fontVariantNumeric: 'tabular-nums',
+                  borderRadius: 999, padding: '1px 5px', lineHeight: 1.3,
                 }}>{p}</span>
               )}
             </button>
@@ -240,21 +266,26 @@ export const T2Panel = () => {
         gap: 8, marginBottom: 8,
       }}>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 11, color: COL.muted, marginBottom: 3 }}>
+          <div style={{ fontSize: 11, color: COL.muted, marginBottom: 3, fontVariantNumeric: 'tabular-nums' }}>
             {(gridTab || (isDef ? DEF_META : (WEAPON_CATEGORY_META[activeCat] || {}))).label} skill · Lv {sk.level || 0}
             {/* v2.3.1207: cap is WEAPON_LEVEL_CAP (100 since v2.3.1156) — the stale 99 literal showed "(Max)" one level early. */}
             {(sk.level || 0) >= WEAPON_LEVEL_CAP ? ' (Max)' : ` · ${Math.round(xpPct)}% to next`}
           </div>
-          <div style={{ height: 4, background: 'rgba(238, 242, 235, 0.12)', borderRadius: 3, overflow: 'hidden' }}>
-            <div style={{ width: xpPct + '%', height: '100%', background: 'rgba(91,82,255,0.85)', transition: 'width .15s linear' }} />
+          {/* v2.3.1232: Lantern Slate bar — #0B1216 track, pill radius, XP-green
+              fill with the standard vertical light overlay (was indigo). */}
+          <div style={{ height: 4, background: '#0B1216', borderRadius: 999, overflow: 'hidden', boxShadow: 'inset 0 1px 2px rgba(0,0,0,.55)' }}>
+            <div style={{ width: xpPct + '%', height: '100%', background: COL.xp, backgroundImage: 'linear-gradient(180deg, rgba(255,255,255,.20), transparent 55%)', transition: 'width .15s linear' }} />
           </div>
         </div>
+        {/* v2.3.1232: pool readout is a recessed well; value 14/700 tabular,
+            brass only while there are points to spend. */}
         <div style={{
-          fontSize: 12, fontWeight: 700,
+          fontSize: 14, fontWeight: 700, fontVariantNumeric: 'tabular-nums',
           color: unspent > 0 ? COL.accent : COL.muted,
-          background: 'rgba(238, 242, 235, 0.05)',
-          padding: '5px 10px', borderRadius: 6,
-          border: '1px solid ' + COL.border,
+          background: COL.well,
+          boxShadow: 'inset 0 2px 4px rgba(0,0,0,.44), inset 0 1px 0 rgba(255,255,255,.035)',
+          padding: '5px 10px', borderRadius: 8,
+          border: '1px solid ' + COL.divider,
           whiteSpace: 'nowrap',
         }}>
           {unspent} pts
@@ -270,15 +301,24 @@ export const T2Panel = () => {
       )}
 
       {/* Channels */}
+      {/* v2.3.1232: 11/600 uppercase module header over the channel list */}
+      <div style={{
+        fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.12em',
+        color: COL.muted, margin: '2px 2px 6px',
+      }}>Channels</div>
       {channels.map((ch) => {
         const v = catSpecs[ch.key] || 0;
         const atCap = v >= channelCap;
         const canAdd = ch.active && unspent > 0 && !atCap;
+        /* v2.3.1232: channel = quiet recessed stat cell (#19252A, radius 8);
+           value 14/700 tabular; the spend button is a 44pt target that goes
+           brass (#D8A85F on #20170D) only when the point is affordable. */
         return (
           <div key={ch.key} style={{
             ...rowStyle,
             background: COL.tile,
             border: '1px solid ' + COL.tileBor,
+            borderRadius: 8,
             padding: '8px 10px',
             marginBottom: 6,
             flexDirection: 'column',
@@ -288,27 +328,27 @@ export const T2Panel = () => {
           }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
               <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, minWidth: 0 }}>
-                <span style={{ fontSize: 13, fontWeight: 700 }}>{ch.label}</span>
+                <span style={{ fontSize: 13, fontWeight: 700, color: COL.text }}>{ch.label}</span>
                 {!ch.active && (
-                  <span style={{ fontSize: 9, color: COL.gold, letterSpacing: '0.08em' }}>SOON</span>
+                  <span style={{ fontSize: 10, fontWeight: 700, color: COL.gold, letterSpacing: '0.08em' }}>SOON</span>
                 )}
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <span style={{
-                  fontSize: 13, fontWeight: 800,
-                  color: v > 0 ? COL.text : COL.muted,
+                  fontSize: 14, fontWeight: 700, fontVariantNumeric: 'tabular-nums',
+                  color: v > 0 ? COL.text : COL.text2,
                   minWidth: 26, textAlign: 'right',
                 }}>{v}</span>
                 <button
                   onPointerUp={(e) => { e.stopPropagation(); if (canAdd) addPoint(ch.key, ch.active); }}
                   disabled={!canAdd}
                   style={{
-                    width: 28, height: 28,
-                    background: canAdd ? COL.accent : 'rgba(238, 242, 235, 0.10)',
-                    color: canAdd ? '#fff' : COL.muted,
-                    border: '1px solid ' + COL.border,
-                    borderRadius: 6,
-                    fontSize: 16, fontWeight: 900,
+                    width: 44, height: 44,
+                    background: canAdd ? COL.accent : COL.raised,
+                    color: canAdd ? COL.onAccent : '#687575',
+                    border: canAdd ? 'none' : '1px solid ' + COL.border,
+                    borderRadius: 11,
+                    fontSize: 18, fontWeight: 700,
                     cursor: canAdd ? 'pointer' : 'default',
                     touchAction: 'manipulation',
                     padding: 0,
@@ -319,10 +359,10 @@ export const T2Panel = () => {
             </div>
             <div style={{ fontSize: 11, color: COL.muted }}>{ch.blurb}</div>
             {ch.active && (
-              <div style={{ fontSize: 11, color: COL.text }}>{ch.derive(v)}</div>
+              <div style={{ fontSize: 11, color: COL.text, fontVariantNumeric: 'tabular-nums' }}>{ch.derive(v)}</div>
             )}
             {atCap && (
-              <div style={{ fontSize: 10, color: COL.gold }}>Max ({channelCap}).</div>
+              <div style={{ fontSize: 10, fontWeight: 600, color: COL.gold }}>Max ({channelCap}).</div>
             )}
           </div>
         );

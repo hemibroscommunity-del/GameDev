@@ -14,6 +14,13 @@ import { pushDmgPopup } from '@/game/combatHelpers.js';
    value) and toggleGearSlot (a useCallback). All 18 data/helper imports
    verified real exports; spread/slice/spread-array babel helpers
    imported; the hoisted optional-chaining temp set declared locally. */
+/* v2.3.1232: Lantern Slate restyle — panel surface override on the
+   legacy navy card, 11/600 uppercase module headers, occupied slots get
+   the radial mist over #243137 (empty = #19252A + .08 hairline),
+   recessed #121B20 tray behind the pet grid, 44px stash action rows
+   (Equip = the brass primary, Sell = raised secondary), gold values as
+   gold.webp + tabular #D8A85F. Styles/structure only; every handler
+   body is byte-identical. */
 export function InventoryPanel(props) {
   var rpgState = props.rpgState,
     stateRef = props.stateRef,
@@ -33,9 +40,16 @@ export function InventoryPanel(props) {
       return e.stopPropagation();
     },
     style: {
-      width: 300,
+      width: 'min(360px, calc(100vw - 24px))', /* v2.3.1234: was 300 fixed — fill narrow phones, never overflow */
       maxHeight: '80vh',
-      overflowY: 'auto'
+      overflowY: 'auto',
+      /* v2.3.1232: override legacy navy card with Lantern panel surface */
+      background: '#202C32',
+      border: '1px solid rgba(238,242,235,.14)',
+      borderRadius: 14,
+      boxShadow: '0 14px 30px rgba(4,7,9,.38)',
+      padding: 16,
+      textAlign: 'left'
     }
   }, /*#__PURE__*/React.createElement("button", {
     className: "bt-inspect-close",
@@ -43,19 +57,63 @@ export function InventoryPanel(props) {
       return setShowInventory(false);
     }
   }, "\u2715"), /*#__PURE__*/React.createElement("div", {
+    /* v2.3.1232: panel title row \u2014 icon + 13/700 uppercase title */
     style: {
-      fontSize: 16,
-      fontWeight: 800,
-      color: '#D8A94D',
+      display: 'flex',
+      alignItems: 'center',
+      gap: 8,
+      marginBottom: 6
+    }
+  }, /*#__PURE__*/React.createElement("img", {
+    src: "/icons/ui/nav-inventory.webp",
+    alt: "",
+    draggable: false,
+    style: {
+      width: 24,
+      height: 24,
+      objectFit: 'contain'
+    },
+    onError: function onError(e) {
+      e.currentTarget.replaceWith(document.createTextNode('\uD83C\uDF92'));
+    }
+  }), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 13,
+      fontWeight: 700,
+      textTransform: 'uppercase',
+      letterSpacing: '.10em',
+      color: '#F7F2E7'
+    }
+  }, "Equipment")), /*#__PURE__*/React.createElement("div", {
+    /* v2.3.1232: caption row; gold value = gold.webp + tabular brass */
+    style: {
+      display: 'flex',
+      alignItems: 'center',
+      gap: 4,
+      fontSize: 11,
+      color: '#96A2A0',
       marginBottom: 8
     }
-  }, "\uD83C\uDF92 Equipment"), /*#__PURE__*/React.createElement("div", {
+  }, "Active: ", rpgState.activeSlot === 'ranged' ? 'Ranged' : 'Melee', " \xB7 ", /*#__PURE__*/React.createElement("img", {
+    src: "/icons/popups/gold.webp",
+    alt: "",
+    draggable: false,
     style: {
-      fontSize: 9,
-      color: 'rgba(255,255,255,.4)',
-      marginBottom: 8
+      width: 14,
+      height: 14,
+      objectFit: 'contain'
+    },
+    onError: function onError(e) {
+      e.currentTarget.replaceWith(document.createTextNode('\uD83D\uDCB0'));
     }
-  }, "Active: ", rpgState.activeSlot === 'ranged' ? 'Ranged' : 'Melee', " \xB7 \uD83D\uDCB0 ", rpgState.coins, "g"), [{
+  }), /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 12,
+      fontWeight: 700,
+      fontVariantNumeric: 'tabular-nums',
+      color: '#D8A85F'
+    }
+  }, rpgState.coins, "g")), [{
     label: 'Melee Weapon',
     wpn: rpgState.weapon,
     slot: 'melee'
@@ -84,8 +142,10 @@ export function InventoryPanel(props) {
         marginBottom: 8,
         padding: 10,
         borderRadius: 10,
-        background: isActive ? 'rgba(216,169,77,.08)' : 'rgba(255,255,255,.03)',
-        border: "1.5px solid ".concat(isActive ? 'rgba(216,169,77,.3)' : 'rgba(255,255,255,.08)'),
+        /* v2.3.1232: active weapon = brass accent-fill + brass edge (selection);
+           idle = quiet cell + hairline */
+        background: isActive ? '#3B3427' : '#19252A',
+        border: "1.5px solid ".concat(isActive ? '#D8A85F' : 'rgba(238,242,235,.08)'),
         position: 'relative'
       }
     }, isActive && /*#__PURE__*/React.createElement("div", {
@@ -93,9 +153,10 @@ export function InventoryPanel(props) {
         position: 'absolute',
         top: 4,
         right: 8,
-        fontSize: 7,
+        fontSize: 8,
         fontWeight: 700,
-        color: '#D8A94D'
+        letterSpacing: '.08em',
+        color: '#F0C878'
       }
     }, "ACTIVE"), /*#__PURE__*/React.createElement("div", {
       style: {
@@ -112,32 +173,35 @@ export function InventoryPanel(props) {
       style: {
         fontSize: 11,
         fontWeight: 700,
-        color: (rt === null || rt === void 0 ? void 0 : rt.color) || '#888'
+        color: (rt === null || rt === void 0 ? void 0 : rt.color) || '#96A2A0'
       }
     }, wpn.name), /*#__PURE__*/React.createElement("div", {
       style: {
         fontSize: 8,
-        color: 'rgba(255,255,255,.4)'
+        color: '#96A2A0'
       }
     }, rt === null || rt === void 0 ? void 0 : rt.label, " ", wt === null || wt === void 0 ? void 0 : wt.label, " \xB7 ", wpn.tierMult, "\xD7 mult", wpn.quality && wpn.quality !== 'normal' ? ' \xB7 ' + wpn.quality.toUpperCase() + (wpn.quality === 'godly' ? ' \u2728' : wpn.quality === 'elite' ? ' \u2B50' : '') : '', wpn.hardness ? ' \xB7 H' + wpn.hardness : ''))), /*#__PURE__*/React.createElement("div", {
       style: {
         display: 'flex',
         gap: 8,
         fontSize: 8,
-        color: 'rgba(255,255,255,.5)',
+        color: '#96A2A0',
         marginBottom: 4
       }
     }, /*#__PURE__*/React.createElement("span", null, "DMG: ", /*#__PURE__*/React.createElement("b", {
       style: {
-        color: '#fff'
+        color: '#F7F2E7',
+        fontVariantNumeric: 'tabular-nums'
       }
     }, dmg)), /*#__PURE__*/React.createElement("span", null, "SPD: ", /*#__PURE__*/React.createElement("b", {
       style: {
-        color: '#fff'
+        color: '#F7F2E7',
+        fontVariantNumeric: 'tabular-nums'
       }
     }, (wt === null || wt === void 0 ? void 0 : wt.speed) || 1)), /*#__PURE__*/React.createElement("span", null, "RNG: ", /*#__PURE__*/React.createElement("b", {
       style: {
-        color: '#fff'
+        color: '#F7F2E7',
+        fontVariantNumeric: 'tabular-nums'
       }
     }, (wt === null || wt === void 0 ? void 0 : wt.range) || 0))), /*#__PURE__*/React.createElement("div", {
       style: {
@@ -175,16 +239,18 @@ export function InventoryPanel(props) {
     }, "\u26A1VOLATILE +30%"), !wpn.element1 && /*#__PURE__*/React.createElement("span", {
       style: {
         fontSize: 8,
-        color: 'rgba(255,255,255,.3)'
+        color: '#96A2A0'
       }
     }, "No elements")));
   }), /*#__PURE__*/React.createElement("div", {
+    /* v2.3.1232: module header — 11/600 uppercase .12em */
     style: {
-      fontSize: 10,
-      fontWeight: 800,
-      color: 'rgba(255,255,255,.55)',
-      margin: '10px 0 6px',
-      letterSpacing: 0.5
+      fontSize: 11,
+      fontWeight: 600,
+      textTransform: 'uppercase',
+      letterSpacing: '.12em',
+      color: '#96A2A0',
+      margin: '10px 0 6px'
     }
   }, "WORN ARMOR"), /*#__PURE__*/React.createElement("div", {
     style: { display: 'flex', gap: 8, marginBottom: 8 }
@@ -201,9 +267,10 @@ export function InventoryPanel(props) {
       style: {
         flex: 1,
         padding: 8,
-        borderRadius: 10,
-        background: on ? 'rgba(89,191,145,.07)' : 'rgba(255,255,255,.03)',
-        border: "1.5px solid ".concat(on ? 'rgba(89,191,145,.35)' : 'rgba(255,255,255,.08)'),
+        borderRadius: 8,
+        /* v2.3.1232: worn = occupied-slot mist over #243137; off = empty cell */
+        background: on ? 'radial-gradient(circle at 48% 42%, rgba(238,240,225,.16) 0%, rgba(238,240,225,.05) 48%, transparent 76%) #243137' : '#19252A',
+        border: "1.5px solid ".concat(on ? 'rgba(89,191,145,.35)' : 'rgba(238,242,235,.08)'),
         textAlign: 'center'
       }
     }, /*#__PURE__*/React.createElement("img", {
@@ -221,12 +288,12 @@ export function InventoryPanel(props) {
       style: {
         fontSize: 10,
         fontWeight: 700,
-        color: on ? '#59BF91' : 'rgba(255,255,255,.55)'
+        color: on ? '#59BF91' : '#B9C1BF'
       }
     }, it.name), /*#__PURE__*/React.createElement("div", {
       style: {
         fontSize: 8,
-        color: 'rgba(255,255,255,.35)',
+        color: '#96A2A0',
         marginBottom: 5
       }
     }, it.sub), /*#__PURE__*/React.createElement("button", {
@@ -235,12 +302,14 @@ export function InventoryPanel(props) {
       style: {
         width: '100%',
         padding: '4px 0',
-        fontSize: 9,
+        /* v2.3.1232: readable per-cell toggle — bigger touch target + hairline */
+        minHeight: 36,
+        fontSize: 11,
         fontWeight: 700,
-        borderRadius: 7,
-        border: '1px solid rgba(255,255,255,.2)',
+        borderRadius: 8,
+        border: '1px solid rgba(238,242,235,.14)',
         background: on ? 'rgba(217,92,84,.25)' : 'rgba(89,191,145,.25)',
-        color: '#fff',
+        color: '#F7F2E7',
         cursor: 'pointer',
         WebkitTapHighlightColor: 'transparent',
         touchAction: 'manipulation'
@@ -251,8 +320,8 @@ export function InventoryPanel(props) {
       marginBottom: 8,
       padding: 10,
       borderRadius: 10,
-      background: 'rgba(255,255,255,.03)',
-      border: '1px solid rgba(255,255,255,.08)'
+      background: '#19252A',
+      border: '1px solid rgba(238,242,235,.08)'
     }
   }, /*#__PURE__*/React.createElement("div", {
     style: {
@@ -268,20 +337,21 @@ export function InventoryPanel(props) {
     style: {
       fontSize: 11,
       fontWeight: 700,
-      color: ((_RARITY_TIERS$rpgStat = RARITY_TIERS[(_rpgState$armor2 = rpgState.armor) === null || _rpgState$armor2 === void 0 ? void 0 : _rpgState$armor2.tier]) === null || _RARITY_TIERS$rpgStat === void 0 ? void 0 : _RARITY_TIERS$rpgStat.color) || '#888'
+      color: ((_RARITY_TIERS$rpgStat = RARITY_TIERS[(_rpgState$armor2 = rpgState.armor) === null || _rpgState$armor2 === void 0 ? void 0 : _rpgState$armor2.tier]) === null || _RARITY_TIERS$rpgStat === void 0 ? void 0 : _RARITY_TIERS$rpgStat.color) || '#96A2A0'
     }
   }, ((_rpgState$armor3 = rpgState.armor) === null || _rpgState$armor3 === void 0 ? void 0 : _rpgState$armor3.name) || 'No Armor'), /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 8,
-      color: 'rgba(255,255,255,.4)'
+      color: '#96A2A0'
     }
   }, (_rpgState$armor4 = rpgState.armor) !== null && _rpgState$armor4 !== void 0 && _rpgState$armor4.attunement ? "Attuned: ".concat(rpgState.armor.attunement) : 'No attunement')))), /*#__PURE__*/React.createElement("div", {
     style: {
       marginBottom: 8,
       padding: 10,
       borderRadius: 10,
-      background: rpgState.amulet ? 'rgba(216,169,77,.05)' : 'rgba(255,255,255,.03)',
-      border: rpgState.amulet ? '1px solid rgba(216,169,77,.2)' : '1px solid rgba(255,255,255,.08)'
+      /* v2.3.1232: occupied slot = mist over #243137 + .18 hairline; empty = quiet cell */
+      background: rpgState.amulet ? 'radial-gradient(circle at 48% 42%, rgba(238,240,225,.16) 0%, rgba(238,240,225,.05) 48%, transparent 76%) #243137' : '#19252A',
+      border: rpgState.amulet ? '1px solid rgba(238,242,235,.18)' : '1px solid rgba(238,242,235,.08)'
     }
   }, /*#__PURE__*/React.createElement("div", {
     style: {
@@ -301,19 +371,19 @@ export function InventoryPanel(props) {
     style: {
       fontSize: 11,
       fontWeight: 700,
-      color: '#D8A94D'
+      color: '#F7F2E7'
     }
   }, rpgState.amulet.name), /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 8,
-      color: 'rgba(255,255,255,.4)'
+      color: '#96A2A0'
     }
   }, ((_AMULET_TIERS$rpgStat = AMULET_TIERS[rpgState.amulet.tier]) === null || _AMULET_TIERS$rpgStat === void 0 ? void 0 : _AMULET_TIERS$rpgStat.label) || 'Simple', " Amulet", rpgState.amulet.gem && function (_ELEMENTS$rpgState$am3) {
     var bonus = getAmuletBonus(rpgState.amulet);
     if (!bonus) return null;
     return /*#__PURE__*/React.createElement("span", {
       style: {
-        color: ((_ELEMENTS$rpgState$am3 = ELEMENTS[rpgState.amulet.gem]) === null || _ELEMENTS$rpgState$am3 === void 0 ? void 0 : _ELEMENTS$rpgState$am3.color) || '#fff'
+        color: ((_ELEMENTS$rpgState$am3 = ELEMENTS[rpgState.amulet.gem]) === null || _ELEMENTS$rpgState$am3 === void 0 ? void 0 : _ELEMENTS$rpgState$am3.color) || '#F7F2E7'
       }
     }, " \xB7 ", bonus.label, " +", bonus.value, bonus.unit);
   }()), rpgState.amulet.gem && /*#__PURE__*/React.createElement("div", {
@@ -332,27 +402,28 @@ export function InventoryPanel(props) {
   }, rpgState.amulet.gem, " gem")), !rpgState.amulet.gem && /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 7,
-      color: 'rgba(255,255,255,.3)',
+      color: '#96A2A0',
       marginTop: 2
     }
   }, "No gem \u2014 visit the Enchanter to slot one")) : /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 11,
       fontWeight: 700,
-      color: '#888'
+      color: '#96A2A0'
     }
   }, "No Amulet"), /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 8,
-      color: 'rgba(255,255,255,.3)'
+      color: '#96A2A0'
     }
   }, "Craft at Blacksmith from gold bars (nuggets: ", rpgState.goldNuggets || 0, "/", NUGGETS_PER_BAR, ", bars: ", rpgState.goldBars || 0, ")"))))), /*#__PURE__*/React.createElement("div", {
     style: {
       marginBottom: 8,
       padding: 10,
       borderRadius: 10,
-      background: rpgState.shield ? 'rgba(216,168,95,.05)' : 'rgba(255,255,255,.03)',
-      border: rpgState.shield ? '1px solid rgba(216,168,95,.2)' : '1px solid rgba(255,255,255,.08)'
+      /* v2.3.1232: occupied slot = mist over #243137 + .18 hairline; empty = quiet cell */
+      background: rpgState.shield ? 'radial-gradient(circle at 48% 42%, rgba(238,240,225,.16) 0%, rgba(238,240,225,.05) 48%, transparent 76%) #243137' : '#19252A',
+      border: rpgState.shield ? '1px solid rgba(238,242,235,.18)' : '1px solid rgba(238,242,235,.08)'
     }
   }, /*#__PURE__*/React.createElement("div", {
     style: {
@@ -372,12 +443,12 @@ export function InventoryPanel(props) {
     style: {
       fontSize: 11,
       fontWeight: 700,
-      color: '#D8A85F'
+      color: '#F7F2E7'
     }
   }, rpgState.shield.name), /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 8,
-      color: 'rgba(255,255,255,.4)'
+      color: '#96A2A0'
     }
   }, ((_BLACKSMITH_TIERS$rpg = BLACKSMITH_TIERS[rpgState.shield.gearBase]) === null || _BLACKSMITH_TIERS$rpg === void 0 ? void 0 : _BLACKSMITH_TIERS$rpg.label) || 'Basic', " \xB7 ", ((_BLACKSMITH_TIERS$rpg2 = BLACKSMITH_TIERS[rpgState.shield.gearBase]) === null || _BLACKSMITH_TIERS$rpg2 === void 0 ? void 0 : _BLACKSMITH_TIERS$rpg2.tierMult) || 1, "\xD7", rpgState.shield.gem && function (_ELEMENTS$rpgState$sh3) {
     var bonus = getShieldBonus(rpgState.shield);
@@ -389,18 +460,18 @@ export function InventoryPanel(props) {
   }()), /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 7,
-      color: 'rgba(255,255,255,.35)'
+      color: '#96A2A0'
     }
   }, rpgState.shield.reforgeBonus ? rpgState.shield.reforgeBonus.label + ' +' + rpgState.shield.reforgeBonus.value + rpgState.shield.reforgeBonus.unit : '', rpgState.shield.hardenBonus ? ' · ' + rpgState.shield.hardenBonus.label + ' +' + rpgState.shield.hardenBonus.value + rpgState.shield.hardenBonus.unit : '', !rpgState.shield.reforgeBonus && !rpgState.shield.gem && 'No bonuses yet')) : /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 11,
       fontWeight: 700,
-      color: '#888'
+      color: '#96A2A0'
     }
   }, "No Shield"), /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 8,
-      color: 'rgba(255,255,255,.3)'
+      color: '#96A2A0'
     }
   }, "Craft at the Blacksmith from ore"))))), function () {
     var inv = rpgState.inventory || {};
@@ -412,10 +483,14 @@ export function InventoryPanel(props) {
     });
     if (cookedFish.length === 0) return null;
     return /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
+      /* v2.3.1232: module header \u2014 11/600 uppercase .12em */
       style: {
-        fontSize: 10,
-        fontWeight: 700,
-        color: '#59BF91',
+        fontSize: 11,
+        fontWeight: 600,
+        textTransform: 'uppercase',
+        letterSpacing: '.12em',
+        color: '#96A2A0',
+        fontVariantNumeric: 'tabular-nums',
         marginTop: 4,
         marginBottom: 4
       }
@@ -442,16 +517,20 @@ export function InventoryPanel(props) {
       var atFull = rpgState.hp >= rpgState.maxHp;
       return /*#__PURE__*/React.createElement("button", {
         key: key,
+        /* v2.3.1232: 32px eat chips (pill radius); at-full = quiet cell +
+           disabled ink, else the spec positive green */
         style: {
-          padding: '3px 6px',
-          borderRadius: 5,
-          fontSize: 8,
+          padding: '0 10px',
+          minHeight: 32,
+          borderRadius: 999,
+          fontSize: 11,
           cursor: 'pointer',
-          background: atFull ? 'rgba(255,255,255,.04)' : 'rgba(61,220,151,.1)',
-          border: atFull ? '1px solid rgba(255,255,255,.08)' : '1px solid rgba(61,220,151,.2)',
-          color: atFull ? 'rgba(255,255,255,.3)' : '#59BF91',
+          background: atFull ? '#19252A' : 'rgba(89,191,145,.12)',
+          border: atFull ? '1px solid rgba(238,242,235,.08)' : '1px solid rgba(89,191,145,.3)',
+          color: atFull ? '#687575' : '#59BF91',
           fontWeight: 700,
-          textTransform: 'capitalize'
+          textTransform: 'capitalize',
+          fontVariantNumeric: 'tabular-nums'
         },
         onClick: function onClick() {
           if (atFull) return;
@@ -475,17 +554,21 @@ export function InventoryPanel(props) {
       }, "\uD83D\uDC1F ", fishName, " \xD7", qty, " (+", healAmt, "HP)");
     })));
   }(), /*#__PURE__*/React.createElement("div", {
+    /* v2.3.1232: module header \u2014 11/600 uppercase .12em */
     style: {
-      fontSize: 10,
-      fontWeight: 700,
-      color: '#a78bfa',
+      fontSize: 11,
+      fontWeight: 600,
+      textTransform: 'uppercase',
+      letterSpacing: '.12em',
+      color: '#96A2A0',
+      fontVariantNumeric: 'tabular-nums',
       marginTop: 4,
       marginBottom: 4
     }
   }, "\uD83D\uDCE6 Weapon Stash (", (rpgState.weaponStash || []).length, "/", WEAPON_STASH_MAX, ")"), (rpgState.weaponStash || []).length === 0 && /*#__PURE__*/React.createElement("div", {
     style: {
-      fontSize: 8,
-      color: 'rgba(255,255,255,.3)',
+      fontSize: 10,
+      color: '#96A2A0',
       marginBottom: 6
     }
   }, "Empty. Weapon drops are auto-stashed here for comparison."), (rpgState.weaponStash || []).length > 0 && /*#__PURE__*/React.createElement("div", {
@@ -533,8 +616,8 @@ export function InventoryPanel(props) {
       style: {
         padding: 8,
         borderRadius: 8,
-        background: 'rgba(255,255,255,.03)',
-        border: '1px solid rgba(255,255,255,.08)',
+        background: '#19252A',
+        border: '1px solid rgba(238,242,235,.08)',
         position: 'relative'
       }
     }, /*#__PURE__*/React.createElement("div", {
@@ -556,12 +639,12 @@ export function InventoryPanel(props) {
       style: {
         fontSize: 10,
         fontWeight: 700,
-        color: (srt === null || srt === void 0 ? void 0 : srt.color) || '#888'
+        color: (srt === null || srt === void 0 ? void 0 : srt.color) || '#96A2A0'
       }
     }, sw.name), /*#__PURE__*/React.createElement("div", {
       style: {
         fontSize: 7,
-        color: 'rgba(255,255,255,.4)'
+        color: '#96A2A0'
       }
     }, srt === null || srt === void 0 ? void 0 : srt.label, " ", swt === null || swt === void 0 ? void 0 : swt.label, " \xB7 ", sw.tierMult, "\xD7 \xB7 ", isRanged ? 'Ranged' : 'Melee'))), /*#__PURE__*/React.createElement("div", {
       style: {
@@ -572,11 +655,12 @@ export function InventoryPanel(props) {
       }
     }, /*#__PURE__*/React.createElement("span", {
       style: {
-        color: 'rgba(255,255,255,.5)'
+        color: '#96A2A0'
       }
     }, "DMG: ", /*#__PURE__*/React.createElement("b", {
       style: {
-        color: '#fff'
+        color: '#F7F2E7',
+        fontVariantNumeric: 'tabular-nums'
       }
     }, stashDmg), dmgDiff !== 0 && /*#__PURE__*/React.createElement("span", {
       style: {
@@ -586,11 +670,12 @@ export function InventoryPanel(props) {
       }
     }, dmgDiff > 0 ? '▲' : '▼', Math.abs(dmgDiff))), /*#__PURE__*/React.createElement("span", {
       style: {
-        color: 'rgba(255,255,255,.5)'
+        color: '#96A2A0'
       }
     }, "SPD: ", /*#__PURE__*/React.createElement("b", {
       style: {
-        color: '#fff'
+        color: '#F7F2E7',
+        fontVariantNumeric: 'tabular-nums'
       }
     }, stashSpd), spdDiff !== 0 && /*#__PURE__*/React.createElement("span", {
       style: {
@@ -600,11 +685,12 @@ export function InventoryPanel(props) {
       }
     }, spdDiff > 0 ? '▲' : '▼', Math.abs(spdDiff).toFixed(1))), /*#__PURE__*/React.createElement("span", {
       style: {
-        color: 'rgba(255,255,255,.5)'
+        color: '#96A2A0'
       }
     }, "DPS: ", /*#__PURE__*/React.createElement("b", {
       style: {
-        color: '#fff'
+        color: '#F7F2E7',
+        fontVariantNumeric: 'tabular-nums'
       }
     }, stashDps), dpsDiff !== 0 && /*#__PURE__*/React.createElement("span", {
       style: {
@@ -645,7 +731,7 @@ export function InventoryPanel(props) {
     }, "\u26A1VOL"), !sw.element1 && /*#__PURE__*/React.createElement("span", {
       style: {
         fontSize: 7,
-        color: 'rgba(255,255,255,.25)'
+        color: '#96A2A0'
       }
     }, "No elements"), function () {
       var req = getEquipReqLabel(sw, sw.type);
@@ -664,14 +750,16 @@ export function InventoryPanel(props) {
         gap: 4
       }
     }, /*#__PURE__*/React.createElement("button", {
+      /* v2.3.1232: 44px action row — Equip is the one brass primary */
       style: {
         flex: 1,
         padding: '3px 0',
-        borderRadius: 5,
-        border: '1px solid rgba(216,168,95,.4)',
-        background: 'rgba(216,168,95,.15)',
-        color: '#a78bfa',
-        fontSize: 8,
+        minHeight: 44,
+        borderRadius: 11,
+        border: 'none',
+        background: '#D8A85F',
+        color: '#20170D',
+        fontSize: 12,
         fontWeight: 700,
         cursor: 'pointer'
       },
@@ -708,16 +796,19 @@ export function InventoryPanel(props) {
         BT_AUDIO.collect();
       }
     }, "\u2694\uFE0F Equip"), /*#__PURE__*/React.createElement("button", {
+      /* v2.3.1232: 44px action row — Sell is the raised secondary */
       style: {
         flex: 1,
         padding: '3px 0',
-        borderRadius: 5,
-        border: '1px solid rgba(216,169,77,.3)',
-        background: 'rgba(216,169,77,.1)',
-        color: '#D8A94D',
-        fontSize: 8,
+        minHeight: 44,
+        borderRadius: 11,
+        border: '1px solid rgba(238,242,235,.14)',
+        background: '#2B3940',
+        color: '#F7F2E7',
+        fontSize: 12,
         fontWeight: 700,
-        cursor: 'pointer'
+        cursor: 'pointer',
+        fontVariantNumeric: 'tabular-nums'
       },
       onClick: function onClick() {
         var _WEAPON_TYPES$sold$ty2;
@@ -747,12 +838,31 @@ export function InventoryPanel(props) {
         pushDmgPopup(S, S.player.x, S.player.y - 30, '+' + sellVal + 'G', '#D8A94D');
         BT_AUDIO.beep(400, 0.05, 0.08, 'sine');
       }
-    }, "\uD83D\uDCB0 Sell (", Math.ceil((sw.tierMult || 1) * (((_WEAPON_TYPES$sw$type2 = WEAPON_TYPES[sw.type]) === null || _WEAPON_TYPES$sw$type2 === void 0 ? void 0 : _WEAPON_TYPES$sw$type2.base) || 30) * 0.5), "g)")));
+    }, /*#__PURE__*/React.createElement("img", {
+      /* v2.3.1232: gold value icon (emoji fallback) */
+      src: "/icons/popups/gold.webp",
+      alt: "",
+      draggable: false,
+      style: {
+        width: 14,
+        height: 14,
+        objectFit: 'contain',
+        verticalAlign: -2,
+        marginRight: 3
+      },
+      onError: function onError(e) {
+        e.currentTarget.replaceWith(document.createTextNode('\uD83D\uDCB0'));
+      }
+    }), "Sell (", Math.ceil((sw.tierMult || 1) * (((_WEAPON_TYPES$sw$type2 = WEAPON_TYPES[sw.type]) === null || _WEAPON_TYPES$sw$type2 === void 0 ? void 0 : _WEAPON_TYPES$sw$type2.base) || 30) * 0.5), "g)")));
   })), /*#__PURE__*/React.createElement("div", {
+    /* v2.3.1232: module header \u2014 11/600 uppercase .12em */
     style: {
-      fontSize: 10,
-      fontWeight: 700,
-      color: '#00d4b8',
+      fontSize: 11,
+      fontWeight: 600,
+      textTransform: 'uppercase',
+      letterSpacing: '.12em',
+      color: '#96A2A0',
+      fontVariantNumeric: 'tabular-nums',
       marginTop: 4,
       marginBottom: 4
     }
@@ -769,39 +879,49 @@ export function InventoryPanel(props) {
     });
     return coll ? /*#__PURE__*/React.createElement("span", {
       key: cid,
+      /* v2.3.1232: off-palette teal → spec info blue */
       style: {
-        fontSize: 7,
-        padding: '1px 4px',
-        borderRadius: 3,
-        background: 'rgba(0,212,184,.1)',
-        color: '#00d4b8',
-        border: '1px solid rgba(0,212,184,.2)'
+        fontSize: 9,
+        padding: '2px 6px',
+        borderRadius: 4,
+        background: 'rgba(93,147,210,.12)',
+        color: '#5D93D2',
+        border: '1px solid rgba(93,147,210,.3)'
       }
     }, coll.name) : null;
   })), /*#__PURE__*/React.createElement("div", {
+    /* v2.3.1232: module header \u2014 11/600 uppercase .12em */
     style: {
-      fontSize: 10,
-      fontWeight: 700,
-      color: '#ea580c',
+      fontSize: 11,
+      fontWeight: 600,
+      textTransform: 'uppercase',
+      letterSpacing: '.12em',
+      color: '#96A2A0',
+      fontVariantNumeric: 'tabular-nums',
       marginTop: 8,
       marginBottom: 4
     }
   }, "\uD83E\uDEA4 Pets: ", ((_rpgState$lifeSkills37 = rpgState.lifeSkills) === null || _rpgState$lifeSkills37 === void 0 || (_rpgState$lifeSkills37 = _rpgState$lifeSkills37.pets) === null || _rpgState$lifeSkills37 === void 0 ? void 0 : _rpgState$lifeSkills37.length) || 0, "/", MAX_PET_SLOTS, ((_rpgState$lifeSkills38 = rpgState.lifeSkills) === null || _rpgState$lifeSkills38 === void 0 ? void 0 : _rpgState$lifeSkills38.trapping) && /*#__PURE__*/React.createElement("span", {
     style: {
       fontSize: 8,
-      color: 'rgba(255,255,255,.3)'
+      color: '#96A2A0'
     }
   }, " \xB7 Trapping Lv", rpgState.lifeSkills.trapping.level)), (((_rpgState$lifeSkills39 = rpgState.lifeSkills) === null || _rpgState$lifeSkills39 === void 0 ? void 0 : _rpgState$lifeSkills39.pets) || []).length === 0 && /*#__PURE__*/React.createElement("div", {
     style: {
-      fontSize: 8,
-      color: 'rgba(255,255,255,.3)',
+      fontSize: 10,
+      color: '#96A2A0',
       marginBottom: 4
     }
   }, "No pets. Weaken a monster to <20% HP then tap \uD83E\uDEA4 to capture!"), /*#__PURE__*/React.createElement("div", {
+    /* v2.3.1232: recessed #121B20 tray behind the pet grid (well shadow) */
     style: {
       display: 'grid',
       gridTemplateColumns: 'repeat(3,1fr)',
       gap: 4,
+      background: '#121B20',
+      borderRadius: 10,
+      padding: 4,
+      boxShadow: 'inset 0 2px 4px rgba(0,0,0,.44), inset 0 1px 0 rgba(255,255,255,.035)',
       marginBottom: 6
     }
   }, (((_rpgState$lifeSkills40 = rpgState.lifeSkills) === null || _rpgState$lifeSkills40 === void 0 ? void 0 : _rpgState$lifeSkills40.pets) || []).map(function (pet, pi) {
@@ -813,8 +933,9 @@ export function InventoryPanel(props) {
         padding: 6,
         borderRadius: 8,
         textAlign: 'center',
-        background: isActive ? 'rgba(216,169,77,.1)' : 'rgba(255,255,255,.03)',
-        border: "1px solid ".concat(isActive ? 'rgba(216,169,77,.3)' : 'rgba(255,255,255,.08)'),
+        /* v2.3.1232: occupied-slot mist; active pet = accent-fill + brass edge */
+        background: isActive ? 'radial-gradient(circle at 48% 42%, rgba(238,240,225,.16) 0%, rgba(238,240,225,.05) 48%, transparent 76%) #3B3427' : 'radial-gradient(circle at 48% 42%, rgba(238,240,225,.16) 0%, rgba(238,240,225,.05) 48%, transparent 76%) #243137',
+        border: "1px solid ".concat(isActive ? '#D8A85F' : 'rgba(238,242,235,.08)'),
         cursor: 'pointer'
       },
       onClick: function onClick() {
@@ -839,24 +960,26 @@ export function InventoryPanel(props) {
     }, pet.name), /*#__PURE__*/React.createElement("div", {
       style: {
         fontSize: 7,
-        color: 'rgba(255,255,255,.3)'
+        color: '#96A2A0'
       }
     }, "Lv", pet.level, " ", pet.archetype), pet.element && /*#__PURE__*/React.createElement("div", {
       style: {
         fontSize: 6,
-        color: ((_ELEMENTS$pet$element2 = ELEMENTS[pet.element]) === null || _ELEMENTS$pet$element2 === void 0 ? void 0 : _ELEMENTS$pet$element2.color) || '#888'
+        color: ((_ELEMENTS$pet$element2 = ELEMENTS[pet.element]) === null || _ELEMENTS$pet$element2 === void 0 ? void 0 : _ELEMENTS$pet$element2.color) || '#96A2A0'
       }
     }, pet.element), isActive && /*#__PURE__*/React.createElement("div", {
       style: {
-        fontSize: 6,
+        fontSize: 8,
         fontWeight: 700,
-        color: '#D8A94D'
+        letterSpacing: '.08em',
+        color: '#F0C878'
       }
     }, "ACTIVE"));
   })), (((_rpgState$lifeSkills42 = rpgState.lifeSkills) === null || _rpgState$lifeSkills42 === void 0 ? void 0 : _rpgState$lifeSkills42.pets) || []).length > 0 && /*#__PURE__*/React.createElement("div", {
+    /* v2.3.1232: caption size floor */
     style: {
-      fontSize: 7,
-      color: 'rgba(255,255,255,.25)'
+      fontSize: 10,
+      color: '#96A2A0'
     }
   }, "Tap a pet to set active. Active pet follows you and auto-collects loot within ", PET_LOOT_RADIUS, "px.")));
 }

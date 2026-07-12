@@ -39,17 +39,24 @@ export const MorePanel = () => (
             if (t.id === 'controls') controlsTutorialBus.open();
             else dashboardPanelBus.push(t.id);
           }}
+          /* v2.3.1232: Lantern Slate — tiles are tap targets, so they
+             sit on the RAISED surface (#2B3940, card radius 10) instead
+             of the quiet #19252A cell meant for passive readouts; label
+             drops to the 11/600 caption size so the icon stays the
+             identity (docs/LANTERN-SLATE-SPEC.md). */
           style={{
-            background: COL.tile,
-            border: `1px solid ${COL.tileBor}`,
-            borderRadius: 6,
-            padding: '6px 4px',
+            background: COL.raised,
+            border: `1px solid ${COL.border}`,
+            borderRadius: 10,
+            boxShadow: 'inset 0 1px 0 rgba(255,255,255,.08)',
+            padding: '8px 4px 6px',
+            minHeight: 44,
             color: COL.text,
             fontFamily: 'Source Sans 3, sans-serif',
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
-            gap: 3,
+            gap: 4,
             cursor: 'pointer',
             touchAction: 'manipulation',
           }}
@@ -64,7 +71,7 @@ export const MorePanel = () => (
           ) : (
             <span style={{ fontSize: 20 }}>{t.glyph}</span>
           )}
-          <span style={{ fontSize: 15, color: COL.muted }}>{t.label}</span>
+          <span style={{ fontSize: 11, fontWeight: 600, color: COL.text2 }}>{t.label}</span>
         </button>
       ))}
     </div>

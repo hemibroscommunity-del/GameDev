@@ -9,6 +9,11 @@ import { _objectSpread, _slicedToArray } from '@/lib/babelHelpers.js';
    derived-stat helpers, getActiveWeapon, getWeaponCritStat, xpRequired,
    BT_AUDIO, and babel helpers are imported (all verified real exports).
    confirm and localStorage are browser globals. */
+/* v2.3.1232: Lantern Slate restyle — panel surface, 11/600 section
+   headers, 44px stat rows with 32px lock targets, spec bar tracks,
+   derived stats in a recessed well. Legacy teal/tailwind accents
+   remapped to the semantic set (MP #4D86D5, agility→info, mind→magic).
+   Handlers and all derived-stat math untouched. */
 export function StatScreenPanel(props) {
   var rpgState = props.rpgState,
     stateRef = props.stateRef,
@@ -30,35 +35,65 @@ export function StatScreenPanel(props) {
       return e.stopPropagation();
     },
     style: {
-      width: 300,
+      width: 'min(360px, calc(100vw - 24px))', /* v2.3.1234: was 300 fixed — fill narrow phones, never overflow */
       maxHeight: '80vh',
-      overflowY: 'auto'
+      overflowY: 'auto',
+      /* v2.3.1232: override legacy navy card with Lantern panel surface */
+      background: '#202C32',
+      border: '1px solid rgba(238,242,235,.14)',
+      borderRadius: 14,
+      boxShadow: '0 14px 30px rgba(4,7,9,.38)',
+      padding: 16,
+      textAlign: 'left'
     }
   }, /*#__PURE__*/React.createElement("button", {
     className: "bt-inspect-close",
     onClick: function onClick() {
       return setShowStatScreen(false);
     }
-  }, "\u2715"), /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 16,
-      fontWeight: 800,
-      color: '#D8A94D',
-      marginBottom: 2
-    }
-  }, "\u2694\uFE0F Level ", rpgState.level), /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 9,
-      color: 'rgba(255,255,255,.4)',
-      marginBottom: 4
-    }
-  }, "XP: ", rpgState.xp, "/", xpRequired(rpgState.level), " \xB7 \uD83D\uDCB0 ", rpgState.coins), /*#__PURE__*/React.createElement("div", {
+  }, "✕"), /*#__PURE__*/React.createElement("div", {
+    /* v2.3.1232: panel title row — icon + 13/700 uppercase title */
     style: {
       display: 'flex',
-      gap: 4,
-      marginBottom: 8
+      alignItems: 'center',
+      gap: 8,
+      marginBottom: 4
     }
-  }, [['HP', rpgState.hp, rpgState.maxHp, '#D95C54'], ['STA', Math.floor(rpgState.stamina || 0), rpgState.maxStamina || 100, '#D8A94D'], ['MP', Math.floor(rpgState.mana || 0), rpgState.maxMana || 100, '#3b82f6']].map(function (_ref78) {
+  }, /*#__PURE__*/React.createElement("img", {
+    src: "/icons/ui/panel-stats.webp",
+    alt: "",
+    draggable: false,
+    style: {
+      width: 24,
+      height: 24,
+      objectFit: 'contain'
+    },
+    onError: function onError(e) {
+      e.currentTarget.replaceWith(document.createTextNode('⚔️'));
+    }
+  }), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 13,
+      fontWeight: 700,
+      textTransform: 'uppercase',
+      letterSpacing: '.10em',
+      fontVariantNumeric: 'tabular-nums',
+      color: '#F7F2E7'
+    }
+  }, "Level ", rpgState.level)), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      fontVariantNumeric: 'tabular-nums',
+      color: '#96A2A0',
+      marginBottom: 10
+    }
+  }, "XP: ", rpgState.xp, "/", xpRequired(rpgState.level), " \xB7 💰 ", rpgState.coins), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'flex',
+      gap: 8,
+      marginBottom: 12
+    }
+  }, [['HP', rpgState.hp, rpgState.maxHp, '#D95C54'], ['STA', Math.floor(rpgState.stamina || 0), rpgState.maxStamina || 100, '#D8A94D'], ['MP', Math.floor(rpgState.mana || 0), rpgState.maxMana || 100, '#4D86D5']].map(function (_ref78) {
     var _ref79 = _slicedToArray(_ref78, 4),
       l = _ref79[0],
       v = _ref79[1],
@@ -72,16 +107,19 @@ export function StatScreenPanel(props) {
       }
     }, /*#__PURE__*/React.createElement("div", {
       style: {
-        fontSize: 7,
-        fontWeight: 700,
+        fontSize: 10,
+        fontWeight: 600,
+        fontVariantNumeric: 'tabular-nums',
         color: c,
-        marginBottom: 1
+        marginBottom: 3
       }
     }, l, " ", v, "/", mx), /*#__PURE__*/React.createElement("div", {
       style: {
-        height: 4,
-        background: 'rgba(255,255,255,.1)',
-        borderRadius: 2,
+        /* v2.3.1232: spec bar track */
+        height: 6,
+        background: '#0B1216',
+        borderRadius: 999,
+        boxShadow: 'inset 0 1px 2px rgba(0,0,0,.55)',
         overflow: 'hidden'
       }
     }, /*#__PURE__*/React.createElement("div", {
@@ -89,23 +127,32 @@ export function StatScreenPanel(props) {
         width: Math.max(1, v / mx * 100) + '%',
         height: '100%',
         background: c,
-        borderRadius: 2
+        borderRadius: 999
       }
     })));
   })), /*#__PURE__*/React.createElement("div", {
     style: {
-      fontSize: 9,
-      fontWeight: 700,
-      color: '#00d4b8',
-      marginBottom: 3,
+      fontSize: 11,
+      fontWeight: 600,
+      textTransform: 'uppercase',
+      letterSpacing: '.12em',
+      color: '#96A2A0',
+      marginBottom: 6,
       marginTop: 4
     }
-  }, "TIER 1 \u2014 CAPACITY ", rpgState.unspentT1 > 0 ? "(".concat(rpgState.unspentT1, " pts)") : '', " ", /*#__PURE__*/React.createElement("span", {
+  }, "Tier 1 — Capacity ", rpgState.unspentT1 > 0 ? /*#__PURE__*/React.createElement("span", {
     style: {
-      fontSize: 7,
-      color: 'rgba(255,255,255,.3)'
+      color: '#D8A85F'
     }
-  }, "permanent")), [['Power', 'power', '⚔️', 'Base damage', '#D95C54'], ['Vitality', 'vitality', '❤️', 'Health pool', '#59BF91'], ['Endurance', 'endurance', '🛡️', 'Stamina pool', '#D8A94D'], ['Agility', 'agility', '💨', 'Speed & dodge', '#60a5fa'], ['Mind', 'mind', '💎', 'Mana pool', '#a78bfa']].map(function (_ref80) {
+  }, "(".concat(rpgState.unspentT1, " pts)")) : '', " ", /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 10,
+      fontWeight: 600,
+      letterSpacing: '.04em',
+      textTransform: 'none',
+      color: '#687575'
+    }
+  }, "permanent")), [['Power', 'power', '⚔️', 'Base damage', '#D95C54'], ['Vitality', 'vitality', '❤️', 'Health pool', '#59BF91'], ['Endurance', 'endurance', '🛡️', 'Stamina pool', '#D8A94D'], ['Agility', 'agility', '💨', 'Speed & dodge', '#5D93D2'], ['Mind', 'mind', '💎', 'Mana pool', '#9A76D3']].map(function (_ref80) {
     var _ref81 = _slicedToArray(_ref80, 5),
       label = _ref81[0],
       key = _ref81[1],
@@ -117,26 +164,30 @@ export function StatScreenPanel(props) {
       style: {
         display: 'flex',
         alignItems: 'center',
-        gap: 4,
-        marginBottom: 3
+        gap: 8,
+        minHeight: 44,
+        borderBottom: '1px solid rgba(238,242,235,.10)'
       }
     }, /*#__PURE__*/React.createElement("div", {
       style: {
-        width: 65,
-        fontSize: 9,
-        fontWeight: 700,
+        width: 92,
+        fontSize: 12,
+        fontWeight: 600,
         color: col
       }
     }, icon, " ", label, " ", /*#__PURE__*/React.createElement("span", {
       style: {
-        color: '#fff'
+        color: '#F7F2E7',
+        fontWeight: 700,
+        fontVariantNumeric: 'tabular-nums'
       }
     }, rpgState[key] || 0)), /*#__PURE__*/React.createElement("div", {
       style: {
         flex: 1,
-        height: 5,
-        background: 'rgba(255,255,255,.08)',
-        borderRadius: 3,
+        height: 6,
+        background: '#0B1216',
+        borderRadius: 999,
+        boxShadow: 'inset 0 1px 2px rgba(0,0,0,.55)',
         overflow: 'hidden'
       }
     }, /*#__PURE__*/React.createElement("div", {
@@ -144,25 +195,27 @@ export function StatScreenPanel(props) {
         width: Math.min(100, (rpgState[key] || 0) / 4) + '%',
         height: '100%',
         background: col,
-        borderRadius: 3,
+        borderRadius: 999,
         transition: 'width .2s'
       }
     })), /*#__PURE__*/React.createElement("button", {
       title: (rpgState._statLocks && rpgState._statLocks[key]) ? 'Locked — XP that would train ' + label + ' is burned. Click to unlock.' : 'Lock ' + label + ' at ' + (rpgState[key] || 0) + ' to commit to a pure build. XP that would train it will be burned.',
       style: {
-        width: 18,
-        height: 18,
-        borderRadius: 4,
-        background: (rpgState._statLocks && rpgState._statLocks[key]) ? col : 'rgba(255,255,255,.08)',
-        border: (rpgState._statLocks && rpgState._statLocks[key]) ? 'none' : '1px solid rgba(255,255,255,.18)',
-        color: (rpgState._statLocks && rpgState._statLocks[key]) ? '#fff' : 'rgba(255,255,255,.5)',
-        fontSize: 10,
+        /* v2.3.1232: 32px touch target (was 18px) */
+        width: 32,
+        height: 32,
+        borderRadius: 8,
+        background: (rpgState._statLocks && rpgState._statLocks[key]) ? col : '#2B3940',
+        border: (rpgState._statLocks && rpgState._statLocks[key]) ? 'none' : '1px solid rgba(238,242,235,.14)',
+        color: (rpgState._statLocks && rpgState._statLocks[key]) ? '#F7F2E7' : '#96A2A0',
+        fontSize: 13,
         cursor: 'pointer',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
         lineHeight: 1,
-        padding: 0
+        padding: 0,
+        flexShrink: 0
       },
       onClick: function onClick() {
         var S = stateRef.current;
@@ -176,17 +229,23 @@ export function StatScreenPanel(props) {
         BT_AUDIO.beep(R._statLocks[key] ? 500 : 700, 0.05, 0.08, 'sine');
       }
     }, (rpgState._statLocks && rpgState._statLocks[key]) ? '🔒' : '🔓'));
-  /* v2.3.1155: the "TIER 2 \u2014 TECHNIQUE" block (Ferocity / Elem Mastery /
-     Fortification / Restoration / Influence) is GONE \u2014 the five generic
+  /* v2.3.1155: the "TIER 2 — TECHNIQUE" block (Ferocity / Elem Mastery /
+     Fortification / Restoration / Influence) is GONE — the five generic
      stats were pinned 0 since v2.3.910 and are now deleted from the
      save/wire (stat_allocate rejects them server-side).  Their successors
      are the channel grids on the Builds panel. */
   }), /*#__PURE__*/React.createElement("div", {
+    /* v2.3.1232: derived stats readout in a recessed well */
     style: {
-      fontSize: 7,
-      color: 'rgba(255,255,255,.35)',
-      marginTop: 8,
-      lineHeight: 1.6
+      fontSize: 12,
+      color: '#B9C1BF',
+      fontVariantNumeric: 'tabular-nums',
+      marginTop: 12,
+      lineHeight: 1.7,
+      padding: 10,
+      borderRadius: 8,
+      background: '#121B20',
+      boxShadow: 'inset 0 2px 4px rgba(0,0,0,.44), inset 0 1px 0 rgba(255,255,255,.035)'
     }
   }, "DMG: ", /* v2.3.1207: deterministic range via the shared display
      helper -- was a single RANDOM calcWeaponDmg roll off the stale

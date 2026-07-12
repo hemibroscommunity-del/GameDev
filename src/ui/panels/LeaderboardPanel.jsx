@@ -12,6 +12,10 @@ import { _objectSpread, _slicedToArray } from '@/lib/babelHelpers.js';
    setLeaderboardTab, setRpgState, setShowLeaderboard) are now props;
    LIFE_SKILLS / BT_API_BASE / babel helpers are module imports; fetch is
    the browser global. */
+/* v2.3.1232: Lantern Slate restyle — panel surface, segmented tabs on a
+   #121B20 track with brass bottom edge, rows in a recessed well at 44px
+   with tabular values, isMe row = accent-fill selection. The fetch/merge/
+   sort IIFE is byte-identical; styles + row markup only. */
 export function LeaderboardPanel(props) {
   var stateRef = props.stateRef,
     leaderboardTab = props.leaderboardTab,
@@ -29,40 +33,70 @@ export function LeaderboardPanel(props) {
       return e.stopPropagation();
     },
     style: {
-      width: 320,
+      width: 'min(360px, calc(100vw - 24px))', /* v2.3.1234: was 320 fixed — fill narrow phones, never overflow */
       maxHeight: '85vh',
       overflowY: 'auto',
       padding: 16,
-      textAlign: 'left'
+      textAlign: 'left',
+      /* v2.3.1232: override legacy navy card with Lantern panel surface */
+      background: '#202C32',
+      border: '1px solid rgba(238,242,235,.14)',
+      borderRadius: 14,
+      boxShadow: '0 14px 30px rgba(4,7,9,.38)'
     }
   }, /*#__PURE__*/React.createElement("button", {
     className: "bt-inspect-close",
     onClick: function onClick() {
       return setShowLeaderboard(false);
     }
-  }, "\u2715"), /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 15,
-      fontWeight: 800,
-      color: '#D8A94D',
-      marginBottom: 2,
-      textAlign: 'center'
-    }
-  }, "\uD83C\uDFC6 Leaderboards"), /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 8,
-      color: 'rgba(255,255,255,.35)',
-      textAlign: 'center',
-      marginBottom: 8
-    }
-  }, Object.keys(stateRef.current.others).length + 1, " players online"), /*#__PURE__*/React.createElement("div", {
+  }, "✕"), /*#__PURE__*/React.createElement("div", {
+    /* v2.3.1232: panel title row — icon + 13/700 uppercase title */
     style: {
       display: 'flex',
-      gap: 1,
-      marginBottom: 10,
-      borderRadius: 8,
-      overflow: 'hidden',
-      border: '1px solid rgba(255,255,255,.1)',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 8,
+      marginBottom: 2
+    }
+  }, /*#__PURE__*/React.createElement("img", {
+    src: "/icons/ui/panel-leaderboard.webp",
+    alt: "",
+    draggable: false,
+    style: {
+      width: 24,
+      height: 24,
+      objectFit: 'contain'
+    },
+    onError: function onError(e) {
+      e.currentTarget.replaceWith(document.createTextNode('🏆'));
+    }
+  }), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 13,
+      fontWeight: 700,
+      textTransform: 'uppercase',
+      letterSpacing: '.10em',
+      color: '#F7F2E7'
+    }
+  }, "Leaderboards")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      fontVariantNumeric: 'tabular-nums',
+      color: '#96A2A0',
+      textAlign: 'center',
+      marginBottom: 10
+    }
+  }, Object.keys(stateRef.current.others).length + 1, " players online"), /*#__PURE__*/React.createElement("div", {
+    /* v2.3.1232: segmented tabs on a well track (wraps into two rows on
+       narrow cards) */
+    style: {
+      display: 'flex',
+      gap: 2,
+      marginBottom: 12,
+      borderRadius: 10,
+      padding: 2,
+      background: '#121B20',
+      boxShadow: 'inset 0 2px 4px rgba(0,0,0,.44), inset 0 1px 0 rgba(255,255,255,.035)',
       flexWrap: 'wrap'
     }
   }, [['level', '⚔️ Level'], ['lifeskills', '⛏️ Skills'], ['ap', '🏆 AP'], ['kills', '💀 Kills'], ['dungeons', '🐉 Dungeons'], ['gold', '💰 Gold'], ['playtime', '⏱️ Time']].map(function (_ref40) {
@@ -76,13 +110,16 @@ export function LeaderboardPanel(props) {
       },
       style: {
         flex: '1 0 auto',
-        padding: '5px 4px',
-        fontSize: 8,
-        fontWeight: 700,
+        minHeight: 36,
+        padding: '5px 6px',
+        fontSize: 11,
+        fontWeight: 600,
         border: 'none',
+        borderRadius: 8,
         cursor: 'pointer',
-        background: leaderboardTab === id ? 'rgba(216,169,77,.2)' : 'rgba(255,255,255,.03)',
-        color: leaderboardTab === id ? '#D8A94D' : 'rgba(255,255,255,.4)',
+        background: leaderboardTab === id ? '#2B3940' : 'transparent',
+        boxShadow: leaderboardTab === id ? 'inset 0 -2px 0 #D8A85F' : 'none',
+        color: leaderboardTab === id ? '#F7F2E7' : '#96A2A0',
         fontFamily: 'inherit',
         transition: 'all .15s',
         minWidth: 40
@@ -216,46 +253,60 @@ export function LeaderboardPanel(props) {
     }[leaderboardTab];
     return /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
       style: {
-        fontSize: 9,
-        fontWeight: 700,
-        color: 'rgba(255,255,255,.3)',
-        marginBottom: 4
+        fontSize: 11,
+        fontWeight: 600,
+        textTransform: 'uppercase',
+        letterSpacing: '.12em',
+        color: '#96A2A0',
+        marginBottom: 6
       }
-    }, tabLabel), entries.map(function (e, i) {
+    }, tabLabel), /*#__PURE__*/React.createElement("div", {
+      /* v2.3.1232: ranking rows sit in a recessed well */
+      style: {
+        padding: 6,
+        borderRadius: 10,
+        background: '#121B20',
+        boxShadow: 'inset 0 2px 4px rgba(0,0,0,.44), inset 0 1px 0 rgba(255,255,255,.035)'
+      }
+    }, entries.map(function (e, i) {
       return /*#__PURE__*/React.createElement("div", {
         key: e.id,
         style: {
           display: 'flex',
           alignItems: 'center',
-          gap: 6,
+          gap: 8,
           padding: '6px 8px',
-          borderRadius: 6,
+          minHeight: 44,
+          borderRadius: 8,
           marginBottom: 2,
-          background: e.isMe ? 'rgba(216,169,77,.08)' : 'rgba(255,255,255,.02)',
-          border: '1px solid ' + (e.isMe ? 'rgba(216,169,77,.2)' : 'rgba(255,255,255,.04)')
+          /* v2.3.1232: isMe = brass accent-fill selection; others flat */
+          background: e.isMe ? '#3B3427' : 'transparent',
+          borderBottom: e.isMe ? '1px solid transparent' : '1px solid rgba(238,242,235,.10)'
         }
       }, /*#__PURE__*/React.createElement("div", {
         style: {
-          width: 20,
+          width: 22,
           textAlign: 'center',
-          fontSize: i < 3 ? 14 : 10,
-          fontWeight: 800,
-          color: i < 3 ? '#D8A94D' : 'rgba(255,255,255,.3)'
+          fontSize: i < 3 ? 15 : 12,
+          fontWeight: 700,
+          fontVariantNumeric: 'tabular-nums',
+          color: i < 3 ? '#D8A85F' : '#96A2A0',
+          flexShrink: 0
         }
       }, i < 3 ? medals[i] : i + 1), /*#__PURE__*/React.createElement("div", {
         style: {
-          width: 24,
-          height: 24,
-          borderRadius: 12,
+          width: 26,
+          height: 26,
+          borderRadius: 13,
           background: e.color || '#D8A85F',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          fontSize: 10,
+          fontSize: 11,
           fontWeight: 800,
-          color: '#fff',
+          color: '#F7F2E7',
           flexShrink: 0,
-          border: e.isMe ? '2px solid #D8A94D' : '2px solid rgba(255,255,255,.1)'
+          border: e.isMe ? '2px solid #F0C878' : '2px solid rgba(238,242,235,.14)'
         }
       }, (e.name || '?').charAt(0).toUpperCase()), /*#__PURE__*/React.createElement("div", {
         style: {
@@ -264,46 +315,47 @@ export function LeaderboardPanel(props) {
         }
       }, /*#__PURE__*/React.createElement("div", {
         style: {
-          fontSize: 10,
-          fontWeight: 700,
-          color: e.isMe ? '#D8A94D' : '#fff',
+          fontSize: 13.5,
+          fontWeight: 600,
+          color: e.isMe ? '#D8A85F' : '#F7F2E7',
           whiteSpace: 'nowrap',
           overflow: 'hidden',
           textOverflow: 'ellipsis'
         }
       }, e.clanTag && /*#__PURE__*/React.createElement("span", {
         style: {
-          fontSize: 7,
-          color: 'rgba(255,255,255,.3)',
+          fontSize: 10,
+          color: '#96A2A0',
           marginRight: 3
         }
       }, "[", e.clanTag, "]"), e.name, " ", e.isMe && /*#__PURE__*/React.createElement("span", {
         style: {
-          fontSize: 7,
-          color: 'rgba(255,255,255,.3)'
+          fontSize: 10,
+          color: '#96A2A0'
         }
       }, "(you)")), /*#__PURE__*/React.createElement("div", {
         style: {
-          fontSize: 7,
-          color: 'rgba(255,255,255,.2)'
+          fontSize: 11,
+          fontVariantNumeric: 'tabular-nums',
+          color: '#96A2A0'
         }
       }, "Lv ", e.level)), /*#__PURE__*/React.createElement("div", {
         style: {
-          fontSize: 12,
-          fontWeight: 900,
-          color: i === 0 ? '#D8A94D' : i < 3 ? '#c0a0e0' : 'rgba(255,255,255,.6)',
+          fontSize: 14,
+          fontWeight: 700,
+          fontVariantNumeric: 'tabular-nums',
+          color: i === 0 ? '#D8A85F' : i < 3 ? '#F7F2E7' : '#B9C1BF',
           textAlign: 'right',
           minWidth: 40
         }
       }, formatVal(e[sortKey], leaderboardTab)));
     }), entries.length <= 1 && /*#__PURE__*/React.createElement("div", {
       style: {
-        fontSize: 9,
-        color: 'rgba(255,255,255,.2)',
-        fontStyle: 'italic',
+        fontSize: 12.5,
+        color: '#96A2A0',
         textAlign: 'center',
-        padding: 12
+        padding: 14
       }
-    }, "Connect with more players to see rankings!"));
+    }, "Connect with more players to see rankings!")));
   }()));
 }

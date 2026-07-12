@@ -5,12 +5,14 @@ import { subscribeMastery } from '../../game/mastery.js';
    Acknowledgment, not celebration. Upper-left, 4 seconds, dismissible.
    Silent. Queues during combat and drains when combat ends. */
 
+/* v2.3.1233: Lantern Slate toast tokens (docs/LANTERN-SLATE-SPEC.md §10)
+   — was still on the pre-Lantern light-parchment palette. */
 const COL = {
-  bg:        '#F1EFE8',
-  border:    '#E2DCC8',
-  text:      '#2C2C2A',
-  muted:     '#888780',
-  certBg:    '#FBFAF6',
+  bg:        'rgba(17,25,29,.94)',
+  border:    'rgba(238,242,235,.24)',
+  text:      '#F7F2E7',
+  muted:     '#96A2A0',
+  certBg:    'rgba(17,25,29,.94)',
 };
 
 const TIER_DURATION_MS = 4000;
@@ -90,15 +92,19 @@ export const MasteryNotification = () => {
 
   /* Tier crossing — two-line, slightly larger, opt-in hint italicised. */
   if (shown.kind === 'tier') {
+    /* v2.3.1233: spec toast — max 286px, radius 12, left-aligned,
+       panel shadow, Source Sans 3. */
     return (
       <div onClick={dismiss} style={{
         position: 'fixed', top: 14, left: 14, zIndex: 9300,
-        maxWidth: 320, padding: '10px 12px',
+        maxWidth: 286, padding: '10px 12px',
         background: COL.bg,
-        border: `1px solid ${COL.border}`, borderRadius: 8,
+        border: `1px solid ${COL.border}`, borderRadius: 12,
+        boxShadow: '0 14px 30px rgba(4,7,9,.38)',
+        textAlign: 'left',
         cursor: 'pointer', userSelect: 'none', touchAction: 'manipulation',
         animation: 'mastery-fade-in 240ms ease-out',
-        fontFamily: 'system-ui, sans-serif',
+        fontFamily: 'Source Sans 3, sans-serif',
       }}>
         <style>{`@keyframes mastery-fade-in { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }`}</style>
         <div style={{ fontSize: 13, color: COL.text, lineHeight: 1.35 }}>
@@ -115,14 +121,17 @@ export const MasteryNotification = () => {
 
   /* Certification — single-line, smaller, no hint. */
   return (
+    /* v2.3.1233: same spec toast treatment as the tier card above. */
     <div onClick={dismiss} style={{
       position: 'fixed', top: 14, left: 14, zIndex: 9300,
-      maxWidth: 320, padding: '8px 11px',
+      maxWidth: 286, padding: '8px 11px',
       background: COL.certBg,
-      border: `1px solid ${COL.border}`, borderRadius: 8,
+      border: `1px solid ${COL.border}`, borderRadius: 12,
+      boxShadow: '0 14px 30px rgba(4,7,9,.38)',
+      textAlign: 'left',
       cursor: 'pointer', userSelect: 'none', touchAction: 'manipulation',
       animation: 'mastery-fade-in 240ms ease-out',
-      fontFamily: 'system-ui, sans-serif',
+      fontFamily: 'Source Sans 3, sans-serif',
     }}>
       <style>{`@keyframes mastery-fade-in { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }`}</style>
       <div style={{ fontSize: 12, color: COL.text, lineHeight: 1.35 }}>

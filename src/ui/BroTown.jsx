@@ -5039,6 +5039,12 @@ export var BroTown = function BroTown(_ref0) {
   var handleJoystickMove = useCallback(function (clientX, clientY) {
     var base = joystickRef.current;
     if (!base) return;
+    /* v2.3.1233: LANTERN-SLATE-SPEC §10 ENGAGED step — base brightens
+       to .92 while the finger is down (fires on touchstart + every
+       move; handleJoystickEnd restores the .5 rest value).  The base
+       already carries transition:opacity .12s, so this reads as a
+       smooth lift, not a blink. */
+    base.style.opacity = '0.92';
     var rect = base.getBoundingClientRect();
     /* v2.3.949: docked joystick.  The base sits in its left corner at 50%
        opacity and no longer follows the finger; deflection is measured from the
@@ -5103,6 +5109,8 @@ export var BroTown = function BroTown(_ref0) {
   var handleRJoyMove = useCallback(function (clientX, clientY) {
     var base = rJoyRef.current;
     if (!base) return;
+    /* v2.3.1233: §10 ENGAGED step, same as the left stick above. */
+    base.style.opacity = '0.92';
     var rect = base.getBoundingClientRect();
     /* v2.3.949: docked combat joystick -- deflection measured from the touch
        ORIGIN (relative drag from anywhere in the right zone), not the docked
@@ -6271,10 +6279,7 @@ export var BroTown = function BroTown(_ref0) {
       zIndex: 22,
       padding: '12px 24px',
       borderRadius: 14,
-      background: 'rgba(216,168,95,.9)',
-      backdropFilter: 'blur(8px)',
-      WebkitBackdropFilter: 'blur(8px)',
-      border: '2px solid rgba(255,255,255,.3)',
+      background: 'rgba(216,168,95,.9)',      border: '2px solid rgba(255,255,255,.3)',
       textAlign: 'center',
       animation: 'scoreReveal .4s cubic-bezier(.22,1,.36,1)',
       boxShadow: '0 4px 20px rgba(216,168,95,.5)'
@@ -6308,10 +6313,7 @@ export var BroTown = function BroTown(_ref0) {
       zIndex: 20,
       padding: '10px 20px',
       borderRadius: 12,
-      background: 'rgba(0,0,0,.75)',
-      backdropFilter: 'blur(6px)',
-      WebkitBackdropFilter: 'blur(6px)',
-      border: '1.5px solid rgba(216,169,77,.4)',
+      background: 'rgba(17,25,29,.94)' /* v2.3.1233: spec world-overlay ink; blur removed */,      border: '1.5px solid rgba(216,169,77,.4)',
       textAlign: 'center',
       animation: 'scoreReveal .35s cubic-bezier(.22,1,.36,1)'
     }
@@ -6375,8 +6377,11 @@ export var BroTown = function BroTown(_ref0) {
       return e.stopPropagation();
     },
     style: {
-      width: 300,
-      maxHeight: '80vh',
+      /* v2.3.1234: was 300 fixed — dead margins on phones; the 11
+         building interiors get the full width they were designed to
+         bleed into (margin:-20 roots). Cap keeps it off tablet-huge. */
+      width: 'min(360px, calc(100vw - 24px))',
+      maxHeight: '84vh',
       overflowY: 'auto'
     }
   }, /*#__PURE__*/React.createElement("button", {
@@ -6393,11 +6398,8 @@ export var BroTown = function BroTown(_ref0) {
       zIndex: 20,
       padding: '4px 14px',
       borderRadius: 8,
-      background: 'rgba(61,220,151,.15)',
-      border: '1px solid rgba(61,220,151,.3)',
-      backdropFilter: 'blur(4px)',
-      WebkitBackdropFilter: 'blur(4px)',
-      textAlign: 'center'
+      background: 'rgba(17,25,29,.85)' /* v2.3.1233: was green .15+blur — tint lives in border/text now */,
+      border: '1px solid rgba(61,220,151,.3)',      textAlign: 'center'
     }
   }, /*#__PURE__*/React.createElement("div", {
     style: {
@@ -6419,11 +6421,8 @@ export var BroTown = function BroTown(_ref0) {
       zIndex: 20,
       padding: '4px 14px',
       borderRadius: 8,
-      background: 'rgba(100,100,200,.2)',
-      border: '1px solid rgba(100,100,200,.3)',
-      backdropFilter: 'blur(4px)',
-      WebkitBackdropFilter: 'blur(4px)',
-      textAlign: 'center',
+      background: 'rgba(17,25,29,.85)' /* v2.3.1233: was indigo .2+blur — tint lives in border/text now */,
+      border: '1px solid rgba(100,100,200,.3)',      textAlign: 'center',
       minWidth: 200
     }
   }, /*#__PURE__*/React.createElement("div", {
@@ -6457,11 +6456,8 @@ export var BroTown = function BroTown(_ref0) {
       zIndex: 20,
       padding: '4px 14px',
       borderRadius: 8,
-      background: 'rgba(61,220,151,.15)',
-      border: '1px solid rgba(61,220,151,.3)',
-      backdropFilter: 'blur(4px)',
-      WebkitBackdropFilter: 'blur(4px)',
-      textAlign: 'center'
+      background: 'rgba(17,25,29,.85)' /* v2.3.1233: was green .15+blur — tint lives in border/text now */,
+      border: '1px solid rgba(61,220,151,.3)',      textAlign: 'center'
     }
   }, /*#__PURE__*/React.createElement("div", {
     style: {
@@ -6479,11 +6475,8 @@ export var BroTown = function BroTown(_ref0) {
       zIndex: 20,
       padding: '4px 14px',
       borderRadius: 8,
-      background: 'rgba(100,100,200,.2)',
-      border: '1px solid rgba(100,100,200,.4)',
-      backdropFilter: 'blur(4px)',
-      WebkitBackdropFilter: 'blur(4px)',
-      textAlign: 'center',
+      background: 'rgba(17,25,29,.85)' /* v2.3.1233: was indigo .2+blur — tint lives in border/text now */,
+      border: '1px solid rgba(100,100,200,.4)',      textAlign: 'center',
       minWidth: 200
     }
   }, /*#__PURE__*/React.createElement("div", {
@@ -6615,19 +6608,25 @@ export var BroTown = function BroTown(_ref0) {
          dashboard band (28vh ≈ 225px on iPhone) and BELOW it (z 30),
          so new players never saw the tutorial (2026-07-07 owner
          report).  Offset off the band + registry z per zLayers.js. */
-      bottom: 'calc(var(--dash-h) + 16px)',
+      /* v2.3.1234: moved to TOP-center (below the zone title and the
+         top-right player card) and z 34 → 31 — bottom-center is a
+         contested band (.bt-interact-prompt +24 z35, emote bar +64,
+         joystick ring tops at the edges), so any bottom slot overlapped
+         SOMETHING; top-center below y≈128 is owned by nobody. The old
+         z (34) also painted the banner OVER every open decision modal
+         (QA screenshots showed it covering panel content); 31 beats
+         chrome (30) but yields to the .bt-inspect modals (32). See
+         zLayers.js. */
+      top: 128,
       left: '50%',
       transform: 'translateX(-50%)',
-      zIndex: Z_ABOVE_DASH_PROMPT,
+      zIndex: 31,
       textAlign: 'center',
       maxWidth: 280
     }
   }, /*#__PURE__*/React.createElement("div", {
     style: {
-      background: 'rgba(0,0,0,.75)',
-      backdropFilter: 'blur(6px)',
-      WebkitBackdropFilter: 'blur(6px)',
-      padding: '8px 16px',
+      background: 'rgba(17,25,29,.94)' /* v2.3.1233: spec world-overlay ink; blur removed */,      padding: '8px 16px',
       borderRadius: 10,
       border: '1px solid rgba(255,255,255,.12)',
       position: 'relative'
@@ -6861,10 +6860,7 @@ export var BroTown = function BroTown(_ref0) {
         top: 56,
         left: 8,
         zIndex: 17,
-        background: 'rgba(0,0,0,.6)',
-        backdropFilter: 'blur(4px)',
-        WebkitBackdropFilter: 'blur(4px)',
-        padding: '4px 10px',
+        background: 'rgba(17,25,29,.85)' /* v2.3.1233: was rgba(0,0,0,.6)+blur */,        padding: '4px 10px',
         borderRadius: 6,
         border: "1px solid ".concat(done ? 'rgba(61,220,151,.3)' : 'rgba(255,255,255,.1)'),
         maxWidth: 200
@@ -6936,14 +6932,11 @@ export var BroTown = function BroTown(_ref0) {
         fontSize: 9,
         fontWeight: 700,
         fontFamily: 'Source Sans 3,sans-serif',
-        background: 'rgba(234,88,12,.25)',
+        background: 'rgba(17,25,29,.85)' /* v2.3.1233: was orange .25+blur — tint lives in border/text now */,
         padding: '3px 12px',
         borderRadius: 6,
         border: '1px solid rgba(234,88,12,.5)',
-        color: '#ea580c',
-        backdropFilter: 'blur(4px)',
-        WebkitBackdropFilter: 'blur(4px)',
-        animation: timeLeft < 10 ? 'promptPulse 0.5s ease-in-out infinite' : 'none'
+        color: '#ea580c',        animation: timeLeft < 10 ? 'promptPulse 0.5s ease-in-out infinite' : 'none'
       }
     }, "\uD83D\uDC80 ", itemCount, " items scattered in ", ((_ZONES$nearest$zone = ZONES[nearest.zone]) === null || _ZONES$nearest$zone === void 0 ? void 0 : _ZONES$nearest$zone.name) || nearest.zone, " \u2014 ", timeLeft, "s to recover!");
   }(), showPlayerList && /*#__PURE__*/React.createElement(PlayerListPanel, { playerList: playerList, setInspectPlayer: setInspectPlayer, setShowPlayerList: setShowPlayerList }), inspectPlayer && /*#__PURE__*/React.createElement(InspectPlayerPanel, { stateRef: stateRef, inspectPlayer: inspectPlayer, blockedList: blockedList, clanData: clanData, friendsList: friendsList, mutedList: mutedList, setBlockedList: setBlockedList, setFriendsList: setFriendsList, setInspectPlayer: setInspectPlayer, setMutedList: setMutedList, setShowTrade: setShowTrade, setTradeOffer: setTradeOffer, setTradeTarget: setTradeTarget }), false && ((_stateRef$current40 = stateRef.current) === null || _stateRef$current40 === void 0 ? void 0 : _stateRef$current40.currentZone) === 'frost' && rpgState && /*#__PURE__*/React.createElement("div", {
@@ -6959,11 +6952,8 @@ export var BroTown = function BroTown(_ref0) {
       display: 'flex',
       gap: 4,
       padding: '4px 8px',
-      background: 'rgba(0,0,0,.55)',
-      borderRadius: 10,
-      backdropFilter: 'blur(4px)',
-      WebkitBackdropFilter: 'blur(4px)',
-      border: '1px solid rgba(160,216,240,.2)'
+      background: 'rgba(17,25,29,.85)' /* v2.3.1233: was rgba(0,0,0,.55)+blur — spec bans backdrop-filter */,
+      borderRadius: 10,      border: '1px solid rgba(160,216,240,.2)'
     }
   }, /*#__PURE__*/React.createElement("button", {
     style: {
@@ -7082,11 +7072,8 @@ export var BroTown = function BroTown(_ref0) {
       display: 'flex',
       gap: 4,
       padding: '4px 8px',
-      background: 'rgba(0,0,0,.55)',
-      borderRadius: 10,
-      backdropFilter: 'blur(4px)',
-      WebkitBackdropFilter: 'blur(4px)',
-      border: '1px solid rgba(52,152,219,.2)'
+      background: 'rgba(17,25,29,.85)' /* v2.3.1233: was rgba(0,0,0,.55)+blur — spec bans backdrop-filter */,
+      borderRadius: 10,      border: '1px solid rgba(52,152,219,.2)'
     }
   }, /*#__PURE__*/React.createElement("div", {
     style: {
@@ -7159,11 +7146,8 @@ export var BroTown = function BroTown(_ref0) {
       display: 'flex',
       gap: 4,
       padding: '4px 8px',
-      background: 'rgba(0,0,0,.55)',
-      borderRadius: 10,
-      backdropFilter: 'blur(4px)',
-      WebkitBackdropFilter: 'blur(4px)',
-      border: '1px solid rgba(234,88,12,.2)'
+      background: 'rgba(17,25,29,.85)' /* v2.3.1233: was rgba(0,0,0,.55)+blur — spec bans backdrop-filter */,
+      borderRadius: 10,      border: '1px solid rgba(234,88,12,.2)'
     }
   }, !((_stateRef$current47 = stateRef.current) !== null && _stateRef$current47 !== void 0 && _stateRef$current47._torch) ? /*#__PURE__*/React.createElement("button", {
     style: {
@@ -7239,11 +7223,8 @@ export var BroTown = function BroTown(_ref0) {
       display: 'flex',
       gap: 4,
       padding: '4px 8px',
-      background: 'rgba(0,0,0,.55)',
-      borderRadius: 10,
-      backdropFilter: 'blur(4px)',
-      WebkitBackdropFilter: 'blur(4px)',
-      border: '1px solid rgba(140,180,220,.2)'
+      background: 'rgba(17,25,29,.85)' /* v2.3.1233: was rgba(0,0,0,.55)+blur — spec bans backdrop-filter */,
+      borderRadius: 10,      border: '1px solid rgba(140,180,220,.2)'
     }
   }, /*#__PURE__*/React.createElement("button", {
     style: {
@@ -7392,11 +7373,8 @@ export var BroTown = function BroTown(_ref0) {
       display: 'flex',
       gap: 4,
       padding: '4px 8px',
-      background: 'rgba(0,0,0,.55)',
-      borderRadius: 10,
-      backdropFilter: 'blur(4px)',
-      WebkitBackdropFilter: 'blur(4px)',
-      border: '1px solid rgba(52,152,219,.2)'
+      background: 'rgba(17,25,29,.85)' /* v2.3.1233: was rgba(0,0,0,.55)+blur — spec bans backdrop-filter */,
+      borderRadius: 10,      border: '1px solid rgba(52,152,219,.2)'
     }
   }, /*#__PURE__*/React.createElement("div", {
     style: {
@@ -7469,11 +7447,8 @@ export var BroTown = function BroTown(_ref0) {
       display: 'flex',
       gap: 4,
       padding: '4px 8px',
-      background: 'rgba(0,0,0,.55)',
-      borderRadius: 10,
-      backdropFilter: 'blur(4px)',
-      WebkitBackdropFilter: 'blur(4px)',
-      border: '1px solid rgba(121,85,72,.2)'
+      background: 'rgba(17,25,29,.85)' /* v2.3.1233: was rgba(0,0,0,.55)+blur — spec bans backdrop-filter */,
+      borderRadius: 10,      border: '1px solid rgba(121,85,72,.2)'
     }
   }, stateRef.current._torch && function () {
     var pct = Math.max(0, 1 - (Date.now() - stateRef.current._torch.started) / TORCH_DURATION);
@@ -8149,11 +8124,8 @@ export var BroTown = function BroTown(_ref0) {
         display: 'flex',
         gap: 4,
         padding: '4px 8px',
-        background: 'rgba(0,0,0,.5)',
-        borderRadius: 10,
-        backdropFilter: 'blur(4px)',
-        WebkitBackdropFilter: 'blur(4px)',
-        border: '1px solid rgba(255,255,255,.08)'
+        background: 'rgba(17,25,29,.85)' /* v2.3.1233: was rgba(0,0,0,.5)+blur */,
+        borderRadius: 10,        border: '1px solid rgba(255,255,255,.08)'
       }
     }].concat(buttons));
   }(), function (_R$_questFlags) {

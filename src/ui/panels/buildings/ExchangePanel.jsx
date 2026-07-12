@@ -47,32 +47,95 @@ export function ExchangePanel(props) {
       return 'brotown-1';
     }
   };
-  return React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
+  /* v2.3.1232: Lantern Slate restyle (docs/LANTERN-SLATE-SPEC.md) \u2014
+     panel surface + icon header, segmented buy/sell/orders tabs on a
+     #121B20 track with the brass bottom edge, 32px/999 filter chips
+     (brass-fill when selected), gold-icon prices, and ONE brass primary
+     (the place-order button).  Styles + JSX grouping only \u2014 every
+     handler, fetch, and settled/legacy branch is byte-identical. */
+  return React.createElement("div", {
     style: {
-      fontSize: 16,
-      fontWeight: 800,
-      color: '#D8A85F',
-      marginBottom: 2
+      margin: -20,
+      padding: '16px 14px',
+      background: '#202C32',
+      borderRadius: 13,
+      textAlign: 'left',
+      fontFamily: "'Source Sans 3',sans-serif"
     }
-  }, "\uD83C\uDFEA Marketplace"), /*#__PURE__*/React.createElement("div", {
+  }, /*#__PURE__*/React.createElement("div", {
     style: {
-      fontSize: 8,
-      color: 'rgba(255,255,255,.35)',
-      marginBottom: 6
+      display: 'flex',
+      alignItems: 'center',
+      gap: 8,
+      marginBottom: 4,
+      paddingRight: 24
     }
-  }, "\uD83D\uDCB0 ", rpgState.coins, "G \xB7 Buy & sell \xB7 Listings last 24h, refunds by mail"), /*#__PURE__*/React.createElement("div", {
+  }, /*#__PURE__*/React.createElement("img", {
+    src: "/icons/ui/bldg-exchange.webp",
+    alt: "",
+    draggable: false,
+    style: {
+      width: 26,
+      height: 26,
+      objectFit: 'contain'
+    },
+    onError: function onError(e) {
+      e.currentTarget.replaceWith(document.createTextNode('\uD83C\uDFEA'));
+    }
+  }), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 13,
+      fontWeight: 700,
+      textTransform: 'uppercase',
+      letterSpacing: '.10em',
+      color: '#F7F2E7'
+    }
+  }, "Marketplace")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'flex',
+      alignItems: 'center',
+      gap: 5,
+      marginBottom: 10
+    }
+  }, /*#__PURE__*/React.createElement("img", {
+    src: "/icons/popups/gold.webp",
+    alt: "",
+    draggable: false,
+    style: {
+      width: 16,
+      height: 16,
+      objectFit: 'contain'
+    },
+    onError: function onError(e) {
+      e.currentTarget.replaceWith(document.createTextNode('\uD83D\uDCB0'));
+    }
+  }), /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 14,
+      fontWeight: 700,
+      fontVariantNumeric: 'tabular-nums',
+      color: '#D8A85F'
+    }
+  }, rpgState.coins), /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 11,
+      color: '#96A2A0'
+    }
+  }, "Buy & sell \xB7 Listings last 24h, refunds by mail")), /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
       gap: 2,
-      marginBottom: 8,
-      borderRadius: 6,
-      overflow: 'hidden',
-      border: '1px solid rgba(255,255,255,.1)'
+      marginBottom: 10,
+      padding: 2,
+      borderRadius: 8,
+      background: '#121B20',
+      boxShadow: 'inset 0 2px 4px rgba(0,0,0,.44), inset 0 1px 0 rgba(255,255,255,.035)'
     }
-  }, [['buy', '🛒 Want to Buy'], ['sell', '💰 Want to Sell'], ['orders', '📋 My Orders']].map(function (_ref119) {
+  },[['buy', 'Buy'], ['sell', 'Sell'], ['orders', 'My Orders']].map(function (_ref119) {
     var _ref120 = _slicedToArray(_ref119, 2),
       id = _ref120[0],
       label = _ref120[1];
+    /* v2.3.1232: segmented tab — active #2B3940 + 2px brass bottom edge */
     return /*#__PURE__*/React.createElement("button", {
       key: id,
       onClick: function onClick() {
@@ -80,28 +143,33 @@ export function ExchangePanel(props) {
       },
       style: {
         flex: 1,
-        padding: '5px 2px',
-        fontSize: 8,
+        minHeight: 32,
+        padding: '0 2px',
+        fontSize: 12,
         fontWeight: 700,
         border: 'none',
+        borderRadius: 6,
         cursor: 'pointer',
-        background: mktMode === id ? 'rgba(216,168,95,.2)' : 'rgba(255,255,255,.03)',
-        color: mktMode === id ? '#8880ff' : 'rgba(255,255,255,.4)',
+        background: mktMode === id ? '#2B3940' : 'transparent',
+        boxShadow: mktMode === id ? 'inset 0 -2px 0 #D8A85F' : 'none',
+        color: mktMode === id ? '#F7F2E7' : '#96A2A0',
         fontFamily: 'inherit'
       }
     }, label);
   })), mktMode !== 'orders' && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
     style: {
-      fontSize: 8,
-      fontWeight: 700,
-      color: '#D8A94D',
-      marginBottom: 2
+      fontSize: 11,
+      fontWeight: 600,
+      textTransform: 'uppercase',
+      letterSpacing: '.12em',
+      color: '#96A2A0',
+      marginBottom: 4
     }
   }, "Category"), /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
-      gap: 2,
-      marginBottom: 6
+      gap: 4,
+      marginBottom: 8
     }
   }, Object.entries(MKT_CATEGORIES).map(function (_ref121) {
     var _ref122 = _slicedToArray(_ref121, 2),
@@ -113,30 +181,35 @@ export function ExchangePanel(props) {
         setMktCategory(k);
         setMktSubtype(c.subtypes[0]);
       },
+      /* v2.3.1232: filter chip — 32px/999, selected brass-fill + brass text */
       style: {
         flex: 1,
-        padding: '4px 2px',
-        borderRadius: 4,
-        fontSize: 8,
-        fontWeight: 700,
-        border: '1px solid ' + (mktCategory === k ? 'rgba(216,168,95,.4)' : 'rgba(255,255,255,.08)'),
-        background: mktCategory === k ? 'rgba(216,168,95,.12)' : 'rgba(255,255,255,.02)',
-        color: mktCategory === k ? '#a0a0ff' : 'rgba(255,255,255,.4)',
-        cursor: 'pointer'
+        minHeight: 32,
+        padding: '0 8px',
+        borderRadius: 999,
+        fontSize: 12,
+        fontWeight: 600,
+        border: '1px solid ' + (mktCategory === k ? 'rgba(216,168,95,.4)' : 'rgba(238,242,235,.14)'),
+        background: mktCategory === k ? '#3B3427' : 'transparent',
+        color: mktCategory === k ? '#D8A85F' : '#96A2A0',
+        cursor: 'pointer',
+        fontFamily: 'inherit'
       }
     }, c.icon, " ", c.label);
   })), ((_MKT_CATEGORIES$mktCa = MKT_CATEGORIES[mktCategory]) === null || _MKT_CATEGORIES$mktCa === void 0 ? void 0 : _MKT_CATEGORIES$mktCa.subtypes.length) > 1 && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
     style: {
-      fontSize: 8,
-      fontWeight: 700,
-      color: '#D8A94D',
-      marginBottom: 2
+      fontSize: 11,
+      fontWeight: 600,
+      textTransform: 'uppercase',
+      letterSpacing: '.12em',
+      color: '#96A2A0',
+      marginBottom: 4
     }
   }, "Type"), /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
-      gap: 2,
-      marginBottom: 6
+      gap: 4,
+      marginBottom: 8
     }
   }, MKT_CATEGORIES[mktCategory].subtypes.map(function (st) {
     var _WEAPON_TYPES$st, _WEAPON_TYPES$st2;
@@ -145,32 +218,37 @@ export function ExchangePanel(props) {
       onClick: function onClick() {
         return setMktSubtype(st);
       },
+      /* v2.3.1232: filter chip (see category chips) */
       style: {
         flex: 1,
-        padding: '3px 2px',
-        borderRadius: 4,
-        fontSize: 8,
+        minHeight: 32,
+        padding: '0 8px',
+        borderRadius: 999,
+        fontSize: 12,
         fontWeight: 600,
-        border: '1px solid ' + (mktSubtype === st ? 'rgba(216,168,95,.3)' : 'rgba(255,255,255,.06)'),
-        background: mktSubtype === st ? 'rgba(216,168,95,.1)' : 'transparent',
-        color: mktSubtype === st ? '#c0c0ff' : 'rgba(255,255,255,.35)',
-        cursor: 'pointer'
+        border: '1px solid ' + (mktSubtype === st ? 'rgba(216,168,95,.4)' : 'rgba(238,242,235,.14)'),
+        background: mktSubtype === st ? '#3B3427' : 'transparent',
+        color: mktSubtype === st ? '#D8A85F' : '#96A2A0',
+        cursor: 'pointer',
+        fontFamily: 'inherit'
       }
     }, ((_WEAPON_TYPES$st = WEAPON_TYPES[st]) === null || _WEAPON_TYPES$st === void 0 ? void 0 : _WEAPON_TYPES$st.emoji) || '🛡️', " ", ((_WEAPON_TYPES$st2 = WEAPON_TYPES[st]) === null || _WEAPON_TYPES$st2 === void 0 ? void 0 : _WEAPON_TYPES$st2.label) || st);
   }))), /*#__PURE__*/React.createElement("div", {
     style: {
-      fontSize: 8,
-      fontWeight: 700,
-      color: '#D8A94D',
-      marginBottom: 2
+      fontSize: 11,
+      fontWeight: 600,
+      textTransform: 'uppercase',
+      letterSpacing: '.12em',
+      color: '#96A2A0',
+      marginBottom: 4
     }
   }, "Material Tier"), /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
       flexWrap: 'wrap',
-      gap: 2,
-      marginBottom: 6,
-      maxHeight: 80,
+      gap: 4,
+      marginBottom: 8,
+      maxHeight: 112,
       overflowY: 'auto'
     }
   }, (mktCategory === 'weapon' && (mktSubtype === 'bow' || mktSubtype === 'staff') ? MKT_WOOD_TIERS : MKT_TIERS).map(function (t) {
@@ -180,45 +258,53 @@ export function ExchangePanel(props) {
         setMktTier(t.id);
         setMktPrice(estimateMktPrice(t.id, mktSubtype));
       },
+      /* v2.3.1232: filter chip (see category chips) */
       style: {
-        padding: '2px 5px',
-        borderRadius: 3,
-        fontSize: 7,
-        fontWeight: 700,
-        border: '1px solid ' + (mktTier === t.id ? t.color + '80' : t.color + '20'),
-        background: mktTier === t.id ? t.color + '20' : 'transparent',
-        color: mktTier === t.id ? t.color : 'rgba(255,255,255,.25)',
-        cursor: 'pointer'
+        minHeight: 32,
+        padding: '0 12px',
+        borderRadius: 999,
+        fontSize: 12,
+        fontWeight: 600,
+        border: '1px solid ' + (mktTier === t.id ? 'rgba(216,168,95,.4)' : 'rgba(238,242,235,.14)'),
+        background: mktTier === t.id ? '#3B3427' : 'transparent',
+        color: mktTier === t.id ? '#D8A85F' : '#96A2A0',
+        cursor: 'pointer',
+        fontFamily: 'inherit'
       }
     }, t.label);
   })), /*#__PURE__*/React.createElement("div", {
     style: {
-      fontSize: 8,
-      fontWeight: 700,
-      color: '#D8A94D',
-      marginBottom: 2
+      fontSize: 11,
+      fontWeight: 600,
+      textTransform: 'uppercase',
+      letterSpacing: '.12em',
+      color: '#96A2A0',
+      marginBottom: 4
     }
   }, "Element (optional)"), /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
       flexWrap: 'wrap',
-      gap: 2,
-      marginBottom: 6
+      gap: 4,
+      marginBottom: 8
     }
   }, /*#__PURE__*/React.createElement("button", {
     onClick: function onClick() {
       setMktElement1(null);
       setMktElement2(null);
     },
+    /* v2.3.1232: filter chip (see category chips) */
     style: {
-      padding: '2px 5px',
-      borderRadius: 3,
-      fontSize: 7,
-      fontWeight: 700,
-      border: '1px solid ' + (mktElement1 === null ? 'rgba(216,168,95,.3)' : 'rgba(255,255,255,.06)'),
-      background: mktElement1 === null ? 'rgba(216,168,95,.1)' : 'transparent',
-      color: mktElement1 === null ? '#a0a0ff' : 'rgba(255,255,255,.25)',
-      cursor: 'pointer'
+      minHeight: 32,
+      padding: '0 12px',
+      borderRadius: 999,
+      fontSize: 12,
+      fontWeight: 600,
+      border: '1px solid ' + (mktElement1 === null ? 'rgba(216,168,95,.4)' : 'rgba(238,242,235,.14)'),
+      background: mktElement1 === null ? '#3B3427' : 'transparent',
+      color: mktElement1 === null ? '#D8A85F' : '#96A2A0',
+      cursor: 'pointer',
+      fontFamily: 'inherit'
     }
   }, "Any"), Object.entries(ELEMENTS).filter(function (_ref123) {
     var _ref124 = _slicedToArray(_ref123, 2),
@@ -234,15 +320,18 @@ export function ExchangePanel(props) {
       onClick: function onClick() {
         return setMktElement1(mktElement1 === k ? null : k);
       },
+      /* v2.3.1232: filter chip (see category chips) */
       style: {
-        padding: '2px 5px',
-        borderRadius: 3,
-        fontSize: 7,
-        fontWeight: 700,
-        border: '1px solid ' + (mktElement1 === k ? e.color + '60' : 'rgba(255,255,255,.06)'),
-        background: mktElement1 === k ? e.color + '15' : 'transparent',
-        color: mktElement1 === k ? e.color : 'rgba(255,255,255,.25)',
-        cursor: 'pointer'
+        minHeight: 32,
+        padding: '0 12px',
+        borderRadius: 999,
+        fontSize: 12,
+        fontWeight: 600,
+        border: '1px solid ' + (mktElement1 === k ? 'rgba(216,168,95,.4)' : 'rgba(238,242,235,.14)'),
+        background: mktElement1 === k ? '#3B3427' : 'transparent',
+        color: mktElement1 === k ? '#D8A85F' : '#96A2A0',
+        cursor: 'pointer',
+        fontFamily: 'inherit'
       }
     }, k);
   })), /*#__PURE__*/React.createElement("div", {
@@ -254,9 +343,11 @@ export function ExchangePanel(props) {
     }
   }, /*#__PURE__*/React.createElement("div", {
     style: {
-      fontSize: 8,
-      fontWeight: 700,
-      color: '#D8A94D'
+      fontSize: 11,
+      fontWeight: 600,
+      textTransform: 'uppercase',
+      letterSpacing: '.12em',
+      color: '#96A2A0'
     }
   }, mktMode === 'buy' ? 'Max Bid' : 'Ask Price'), /*#__PURE__*/React.createElement("input", {
     type: "number",
@@ -266,36 +357,51 @@ export function ExchangePanel(props) {
     onChange: function onChange(e) {
       return setMktPrice(Math.max(1, +e.target.value || 1));
     },
+    /* v2.3.1232: input trough — #121B20 well, tabular brass value */
     style: {
-      width: 70,
-      padding: '4px 6px',
-      borderRadius: 4,
-      border: '1px solid rgba(255,255,255,.15)',
-      background: 'rgba(255,255,255,.05)',
-      color: '#D8A94D',
-      fontSize: 11,
-      fontWeight: 800,
+      width: 84,
+      height: 40,
+      padding: '0 10px',
+      borderRadius: 8,
+      border: '1px solid rgba(238,242,235,.14)',
+      background: '#121B20',
+      boxShadow: 'inset 0 2px 4px rgba(0,0,0,.44)',
+      color: '#D8A85F',
+      fontSize: 16 /* v2.3.1233b: iOS zoom guard */,
+      fontWeight: 700,
+      fontVariantNumeric: 'tabular-nums',
       fontFamily: 'Source Sans 3,sans-serif',
       textAlign: 'right',
-      outline: 'none'
+      outline: 'none',
+      caretColor: '#F0C878'
+    }
+  }), /*#__PURE__*/React.createElement("img", {
+    src: "/icons/popups/gold.webp",
+    alt: "gold",
+    draggable: false,
+    style: {
+      width: 16,
+      height: 16,
+      objectFit: 'contain'
+    },
+    onError: function onError(e) {
+      e.currentTarget.replaceWith(document.createTextNode('🪙'));
     }
   }), /*#__PURE__*/React.createElement("span", {
     style: {
-      fontSize: 8,
-      color: 'rgba(255,255,255,.3)'
-    }
-  }, "gold"), /*#__PURE__*/React.createElement("span", {
-    style: {
-      fontSize: 7,
-      color: 'rgba(255,255,255,.15)',
+      fontSize: 11,
+      color: '#96A2A0',
+      fontVariantNumeric: 'tabular-nums',
       marginLeft: 'auto'
     }
   }, "Est: ~", estimateMktPrice(mktTier, mktSubtype), "G")), mktMode === 'sell' && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
     style: {
-      fontSize: 8,
-      fontWeight: 700,
-      color: '#D8A94D',
-      marginBottom: 2
+      fontSize: 11,
+      fontWeight: 600,
+      textTransform: 'uppercase',
+      letterSpacing: '.12em',
+      color: '#96A2A0',
+      marginBottom: 4
     }
   }, "Select Item from Stash"), /*#__PURE__*/React.createElement("div", {
     style: {
@@ -317,21 +423,24 @@ export function ExchangePanel(props) {
         setMktElement1(sw.element1 || null);
         setMktElement2(sw.element2 || null);
       },
+      /* v2.3.1232: selectable slot — raised when selected, brass edge = selection */
       style: {
-        padding: '3px 6px',
-        borderRadius: 4,
-        fontSize: 7,
-        fontWeight: 700,
-        border: '1.5px solid ' + (sel ? '#D8A85F' : 'rgba(255,255,255,.08)'),
-        background: sel ? 'rgba(216,168,95,.12)' : 'rgba(255,255,255,.02)',
-        color: sel ? '#fff' : 'rgba(255,255,255,.5)',
-        cursor: 'pointer'
+        minHeight: 32,
+        padding: '4px 10px',
+        borderRadius: 8,
+        fontSize: 12,
+        fontWeight: 600,
+        border: '1px solid ' + (sel ? '#D8A85F' : 'rgba(238,242,235,.14)'),
+        background: sel ? '#2B3940' : '#19252A',
+        color: sel ? '#F7F2E7' : '#B9C1BF',
+        cursor: 'pointer',
+        fontFamily: 'inherit'
       }
     }, ((_WEAPON_TYPES$sw$type = WEAPON_TYPES[sw.type]) === null || _WEAPON_TYPES$sw$type === void 0 ? void 0 : _WEAPON_TYPES$sw$type.emoji) || '⚔️', " ", sw.name);
   }), (!rpgState.weaponStash || rpgState.weaponStash.length === 0) && /*#__PURE__*/React.createElement("div", {
     style: {
-      fontSize: 8,
-      color: 'rgba(255,255,255,.2)',
+      fontSize: 12,
+      color: '#96A2A0',
       fontStyle: 'italic'
     }
   }, "No items in stash to sell"))), /*#__PURE__*/React.createElement("button", {
@@ -499,17 +608,20 @@ export function ExchangePanel(props) {
         }
       }, _callee0, null, [[9, 12], [5, 14]]);
     })),
+    /* v2.3.1232: THE brass primary of the panel — 44px, #D8A85F on #20170D */
     style: {
       width: '100%',
-      padding: '8px 0',
-      borderRadius: 6,
-      fontSize: 11,
-      fontWeight: 800,
-      border: '1.5px solid ' + (mktMode === 'buy' ? 'rgba(216,168,95,.4)' : 'rgba(216,169,77,.4)'),
-      background: mktMode === 'buy' ? 'rgba(216,168,95,.15)' : 'rgba(216,169,77,.15)',
-      color: mktMode === 'buy' ? '#a0a0ff' : '#D8A94D',
+      minHeight: 44,
+      padding: '0 12px',
+      borderRadius: 11,
+      fontSize: 13,
+      fontWeight: 700,
+      border: 'none',
+      background: '#D8A85F',
+      color: '#20170D',
       cursor: 'pointer',
-      marginBottom: 8
+      marginBottom: 10,
+      fontFamily: 'inherit'
     }
   }, mktMode === 'buy' ? '🛒 Place Buy Order (' + mktPrice + 'G)' : '💰 List for Sale (' + mktPrice + 'G)')), function (_BLACKSMITH_TIERS$mkt2, _WOODWORKING_TIERS$mk2, _WEAPON_TYPES$mktSubt) {
     var S = stateRef.current;
@@ -550,12 +662,14 @@ export function ExchangePanel(props) {
       }
     }, /*#__PURE__*/React.createElement("div", {
       style: {
-        fontSize: 9,
-        fontWeight: 700,
-        color: '#59BF91',
+        fontSize: 11,
+        fontWeight: 600,
+        textTransform: 'uppercase',
+        letterSpacing: '.12em',
+        color: '#96A2A0',
         flex: 1
       }
-    }, "\uD83D\uDCCA Order Book \u2014 ", ((_BLACKSMITH_TIERS$mkt2 = BLACKSMITH_TIERS[mktTier]) === null || _BLACKSMITH_TIERS$mkt2 === void 0 ? void 0 : _BLACKSMITH_TIERS$mkt2.label) || ((_WOODWORKING_TIERS$mk2 = WOODWORKING_TIERS[mktTier === null || mktTier === void 0 ? void 0 : mktTier.replace('ww_', '')]) === null || _WOODWORKING_TIERS$mk2 === void 0 ? void 0 : _WOODWORKING_TIERS$mk2.label) || mktTier, " ", ((_WEAPON_TYPES$mktSubt = WEAPON_TYPES[mktSubtype]) === null || _WEAPON_TYPES$mktSubt === void 0 ? void 0 : _WEAPON_TYPES$mktSubt.label) || mktSubtype), /*#__PURE__*/React.createElement("button", {
+    }, "Order Book \u2014 ", ((_BLACKSMITH_TIERS$mkt2 = BLACKSMITH_TIERS[mktTier]) === null || _BLACKSMITH_TIERS$mkt2 === void 0 ? void 0 : _BLACKSMITH_TIERS$mkt2.label) || ((_WOODWORKING_TIERS$mk2 = WOODWORKING_TIERS[mktTier === null || mktTier === void 0 ? void 0 : mktTier.replace('ww_', '')]) === null || _WOODWORKING_TIERS$mk2 === void 0 ? void 0 : _WOODWORKING_TIERS$mk2.label) || mktTier, " ", ((_WEAPON_TYPES$mktSubt = WEAPON_TYPES[mktSubtype]) === null || _WEAPON_TYPES$mktSubt === void 0 ? void 0 : _WEAPON_TYPES$mktSubt.label) || mktSubtype), /*#__PURE__*/React.createElement("button", {
       onClick: function onClick() {
         S._mktLastRefresh = null; /* force refresh */
         fetch(BT_API_BASE + '/api/market/orders?category=' + mktCategory + '&subtype=' + mktSubtype + '&tier=' + mktTier + '&room=' + _mktRoom()).then(function (r) {
@@ -564,108 +678,157 @@ export function ExchangePanel(props) {
           if (d.ok) setMktOrders(d.orders);
         }).catch(function () {});
       },
+      /* v2.3.1232: secondary icon button \u2014 raised + hairline */
       style: {
-        padding: '2px 6px',
-        borderRadius: 3,
-        fontSize: 7,
+        width: 32,
+        height: 32,
+        borderRadius: 8,
+        fontSize: 13,
         fontWeight: 700,
-        border: '1px solid rgba(255,255,255,.1)',
-        background: 'rgba(255,255,255,.04)',
-        color: 'rgba(255,255,255,.4)',
+        border: '1px solid rgba(238,242,235,.14)',
+        background: '#2B3940',
+        color: '#B9C1BF',
         cursor: 'pointer'
       }
     }, "\uD83D\uDD04")), sells.length > 0 && /*#__PURE__*/React.createElement("div", {
       style: {
-        fontSize: 7,
-        fontWeight: 700,
+        fontSize: 11,
+        fontWeight: 600,
+        letterSpacing: '.12em',
         color: 'rgba(217,92,84,.6)',
-        marginBottom: 2
+        margin: '6px 0 4px'
       }
     }, "SELL ORDERS (lowest first)"), sells.slice(0, 8).map(function (o) {
       return /*#__PURE__*/React.createElement("div", {
         key: o.id,
+        /* v2.3.1232: 40px list row on well-soft, gold-icon tabular price */
         style: {
           display: 'flex',
           alignItems: 'center',
-          gap: 4,
-          padding: '3px 6px',
-          borderRadius: 4,
-          background: 'rgba(217,92,84,.05)',
-          border: '1px solid rgba(217,92,84,.1)',
-          marginBottom: 2,
-          fontSize: 8
+          gap: 8,
+          minHeight: 40,
+          padding: '4px 8px',
+          borderRadius: 8,
+          background: '#19252A',
+          marginBottom: 3,
+          fontSize: 12
         }
       }, /*#__PURE__*/React.createElement("span", {
         style: {
-          color: '#D95C54',
-          fontWeight: 700
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 3,
+          color: '#D8A85F',
+          fontSize: 14,
+          fontWeight: 700,
+          fontVariantNumeric: 'tabular-nums'
         }
-      }, o.price, "G"), /*#__PURE__*/React.createElement("span", {
+      }, /*#__PURE__*/React.createElement("img", {
+        src: "/icons/popups/gold.webp",
+        alt: "",
+        draggable: false,
         style: {
-          color: 'rgba(255,255,255,.3)',
-          flex: 1
+          width: 16,
+          height: 16,
+          objectFit: 'contain'
+        },
+        onError: function onError(e) {
+          e.currentTarget.replaceWith(document.createTextNode('🪙'));
+        }
+      }), o.price), /*#__PURE__*/React.createElement("span", {
+        style: {
+          color: '#B9C1BF',
+          flex: 1,
+          minWidth: 0,
+          whiteSpace: 'nowrap',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis'
         }
       }, o.tierLabel, " ", o.element1 || ''), /*#__PURE__*/React.createElement("span", {
         style: {
-          fontSize: 7,
-          color: 'rgba(255,255,255,.2)'
+          fontSize: 11,
+          color: '#96A2A0'
         }
       }, o.playerName), o.playerId === S.myId && /*#__PURE__*/React.createElement("span", {
         style: {
-          fontSize: 6,
+          fontSize: 10,
+          fontWeight: 700,
           color: '#D8A85F'
         }
       }, "(you)"));
     }), buys.length > 0 && /*#__PURE__*/React.createElement("div", {
       style: {
-        fontSize: 7,
-        fontWeight: 700,
+        fontSize: 11,
+        fontWeight: 600,
+        letterSpacing: '.12em',
         color: 'rgba(89,191,145,.6)',
-        marginTop: 4,
-        marginBottom: 2
+        margin: '8px 0 4px'
       }
     }, "BUY ORDERS (highest first)"), buys.slice(0, 8).map(function (o) {
       return /*#__PURE__*/React.createElement("div", {
         key: o.id,
+        /* v2.3.1232: 40px list row on well-soft, gold-icon tabular price */
         style: {
           display: 'flex',
           alignItems: 'center',
-          gap: 4,
-          padding: '3px 6px',
-          borderRadius: 4,
-          background: 'rgba(89,191,145,.05)',
-          border: '1px solid rgba(89,191,145,.1)',
-          marginBottom: 2,
-          fontSize: 8
+          gap: 8,
+          minHeight: 40,
+          padding: '4px 8px',
+          borderRadius: 8,
+          background: '#19252A',
+          marginBottom: 3,
+          fontSize: 12
         }
       }, /*#__PURE__*/React.createElement("span", {
         style: {
-          color: '#59BF91',
-          fontWeight: 700
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 3,
+          color: '#D8A85F',
+          fontSize: 14,
+          fontWeight: 700,
+          fontVariantNumeric: 'tabular-nums'
         }
-      }, o.price, "G"), /*#__PURE__*/React.createElement("span", {
+      }, /*#__PURE__*/React.createElement("img", {
+        src: "/icons/popups/gold.webp",
+        alt: "",
+        draggable: false,
         style: {
-          color: 'rgba(255,255,255,.3)',
-          flex: 1
+          width: 16,
+          height: 16,
+          objectFit: 'contain'
+        },
+        onError: function onError(e) {
+          e.currentTarget.replaceWith(document.createTextNode('🪙'));
+        }
+      }), o.price), /*#__PURE__*/React.createElement("span", {
+        style: {
+          color: '#B9C1BF',
+          flex: 1,
+          minWidth: 0,
+          whiteSpace: 'nowrap',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis'
         }
       }, o.tierLabel, " ", o.element1 || ''), /*#__PURE__*/React.createElement("span", {
         style: {
-          fontSize: 7,
-          color: 'rgba(255,255,255,.2)'
+          fontSize: 11,
+          color: '#96A2A0'
         }
       }, o.playerName), o.playerId === S.myId && /*#__PURE__*/React.createElement("span", {
         style: {
-          fontSize: 6,
+          fontSize: 10,
+          fontWeight: 700,
           color: '#D8A85F'
         }
       }, "(you)"));
     }), sells.length === 0 && buys.length === 0 && /*#__PURE__*/React.createElement("div", {
       style: {
-        fontSize: 8,
-        color: 'rgba(255,255,255,.2)',
+        fontSize: 12,
+        color: '#96A2A0',
         fontStyle: 'italic',
         textAlign: 'center',
-        padding: 8
+        padding: 10
       }
     }, "No orders yet. Be the first!")), mktMode === 'orders' && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
       style: {
@@ -676,9 +839,11 @@ export function ExchangePanel(props) {
       }
     }, /*#__PURE__*/React.createElement("div", {
       style: {
-        fontSize: 9,
-        fontWeight: 700,
-        color: '#D8A85F',
+        fontSize: 11,
+        fontWeight: 600,
+        textTransform: 'uppercase',
+        letterSpacing: '.12em',
+        color: '#96A2A0',
         flex: 1
       }
     }, "Your Active Orders (", filtered.length, ")"), /*#__PURE__*/React.createElement("button", {
@@ -690,20 +855,22 @@ export function ExchangePanel(props) {
           if (d.ok) setMktOrders(d.orders);
         }).catch(function () {});
       },
+      /* v2.3.1232: secondary icon button \u2014 raised + hairline */
       style: {
-        padding: '2px 6px',
-        borderRadius: 3,
-        fontSize: 7,
+        width: 32,
+        height: 32,
+        borderRadius: 8,
+        fontSize: 13,
         fontWeight: 700,
-        border: '1px solid rgba(255,255,255,.1)',
-        background: 'rgba(255,255,255,.04)',
-        color: 'rgba(255,255,255,.4)',
+        border: '1px solid rgba(238,242,235,.14)',
+        background: '#2B3940',
+        color: '#B9C1BF',
         cursor: 'pointer'
       }
     }, "\uD83D\uDD04")), filtered.length === 0 && /*#__PURE__*/React.createElement("div", {
       style: {
-        fontSize: 8,
-        color: 'rgba(255,255,255,.15)',
+        fontSize: 12,
+        color: '#96A2A0',
         fontStyle: 'italic'
       }
     }, "No active orders"), filtered.map(function (o) {
@@ -711,20 +878,22 @@ export function ExchangePanel(props) {
       var timeLeft = Math.max(0, Math.ceil((o.expires - Date.now()) / 60000));
       return /*#__PURE__*/React.createElement("div", {
         key: o.id,
+        /* v2.3.1232: 44px order row on well-soft */
         style: {
           display: 'flex',
           alignItems: 'center',
-          gap: 4,
-          padding: '5px 6px',
-          borderRadius: 5,
-          background: 'rgba(255,255,255,.02)',
-          border: '1px solid rgba(255,255,255,.06)',
-          marginBottom: 3
+          gap: 8,
+          minHeight: 44,
+          padding: '6px 8px',
+          borderRadius: 8,
+          background: '#19252A',
+          marginBottom: 4
         }
       }, /*#__PURE__*/React.createElement("span", {
         style: {
-          fontSize: 8,
+          fontSize: 10,
           fontWeight: 700,
+          letterSpacing: '.08em',
           color: o.type === 'buy' ? '#59BF91' : '#D95C54'
         }
       }, o.type === 'buy' ? 'BUY' : 'SELL'), /*#__PURE__*/React.createElement("div", {
@@ -734,25 +903,43 @@ export function ExchangePanel(props) {
         }
       }, /*#__PURE__*/React.createElement("div", {
         style: {
-          fontSize: 8,
-          fontWeight: 700,
-          color: '#fff',
+          fontSize: 12.5,
+          fontWeight: 600,
+          color: '#F7F2E7',
           whiteSpace: 'nowrap',
           overflow: 'hidden',
           textOverflow: 'ellipsis'
         }
       }, o.tierLabel, " ", ((_WEAPON_TYPES$o$subty = WEAPON_TYPES[o.subtype]) === null || _WEAPON_TYPES$o$subty === void 0 ? void 0 : _WEAPON_TYPES$o$subty.label) || o.subtype, " ", o.element1 ? '(' + o.element1 + ')' : ''), /*#__PURE__*/React.createElement("div", {
         style: {
-          fontSize: 7,
-          color: 'rgba(255,255,255,.25)'
+          fontSize: 11,
+          color: '#96A2A0',
+          fontVariantNumeric: 'tabular-nums'
         }
       }, timeLeft, "m left")), /*#__PURE__*/React.createElement("span", {
+        /* v2.3.1232: gold-icon tabular price */
         style: {
-          fontSize: 10,
-          fontWeight: 800,
-          color: '#D8A94D'
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 3,
+          fontSize: 14,
+          fontWeight: 700,
+          fontVariantNumeric: 'tabular-nums',
+          color: '#D8A85F'
         }
-      }, o.price, "G"), /*#__PURE__*/React.createElement("button", {
+      }, /*#__PURE__*/React.createElement("img", {
+        src: "/icons/popups/gold.webp",
+        alt: "",
+        draggable: false,
+        style: {
+          width: 16,
+          height: 16,
+          objectFit: 'contain'
+        },
+        onError: function onError(e) {
+          e.currentTarget.replaceWith(document.createTextNode('🪙'));
+        }
+      }), o.price),/*#__PURE__*/React.createElement("button", {
         onClick: /*#__PURE__*/_asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee1() {
           var res, data, _data$cancelled, _data$cancelled2, R2, _t1;
           return _regenerator().w(function (_context1) {
@@ -810,15 +997,18 @@ export function ExchangePanel(props) {
             }
           }, _callee1, null, [[0, 3]]);
         })),
+        /* v2.3.1232: destructive cancel \u2014 #7C3431 / #FFF1EE */
         style: {
-          padding: '2px 6px',
-          borderRadius: 3,
-          fontSize: 7,
+          width: 32,
+          height: 32,
+          borderRadius: 8,
+          fontSize: 13,
           fontWeight: 700,
-          border: '1px solid rgba(217,92,84,.2)',
-          background: 'rgba(217,92,84,.08)',
-          color: '#D95C54',
-          cursor: 'pointer'
+          border: '1px solid #C7655F',
+          background: '#7C3431',
+          color: '#FFF1EE',
+          cursor: 'pointer',
+          flexShrink: 0
         }
       }, "\u2715"));
     })));

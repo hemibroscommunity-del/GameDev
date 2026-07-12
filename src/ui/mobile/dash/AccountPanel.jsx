@@ -1,5 +1,5 @@
 import React from 'react';
-import { panelStyle } from './common.js';
+import { COL, panelStyle } from './common.js';
 import { AccountKeyCard } from '../../account/AccountKeyCard.jsx';
 import { AccountLoginForm } from '../../account/AccountLoginForm.jsx';
 
@@ -8,10 +8,16 @@ import { AccountLoginForm } from '../../account/AccountLoginForm.jsx';
    another device to continue that character here.  All the actual
    logic lives in the shared account components + the networking
    helpers (see docs/specs/account-login.md). */
+/* v2.3.1232: Lantern Slate pass — the two flows read as separate
+   modules via spacing + the spec divider token, not cards
+   (docs/LANTERN-SLATE-SPEC.md: no full cards around groupable
+   content).  The shared account components own their own copy. */
 export const AccountPanel = () => (
   <div style={panelStyle}>
-    <AccountKeyCard />
-    <div style={{ height: 1, background: 'rgba(238, 242, 235, 0.12)', margin: '14px 0' }} />
+    <div style={{ paddingTop: 4 }}>
+      <AccountKeyCard />
+    </div>
+    <div style={{ height: 1, background: COL.divider, margin: '16px 0' }} />
     <AccountLoginForm />
   </div>
 );

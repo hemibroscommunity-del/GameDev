@@ -189,7 +189,7 @@ export function updateGroundLootPickup(S, deps) {
                   if (!S.rpg.weaponStash) S.rpg.weaponStash = [];
                   if (S.rpg.weaponStash.length < WEAPON_STASH_MAX) {
                     S.rpg.weaponStash.push(drop);
-                    pushDmgPopup(S, loot.x, loot.y - 20, 'STASHED: ' + drop.name, '#8890b8');
+                    pushDmgPopup(S, loot.x, loot.y - 20, 'STASHED: ' + drop.name, '#8B9695');
                   } else {
                     /* Stash full — auto-sell */
                     var sellValue = Math.ceil(dropPower * 0.5);

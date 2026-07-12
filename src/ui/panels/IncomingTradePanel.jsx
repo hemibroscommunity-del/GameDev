@@ -12,6 +12,10 @@ import { pushDmgPopup } from '@/game/combatHelpers.js';
    (setters) — rpgState itself is only read in the gate, not the
    subtree. BT_AUDIO verified real export; spread/slice babel helpers
    imported; the one hoisted optional-chaining temp declared locally. */
+/* v2.3.1232: Lantern Slate restyle (docs/LANTERN-SLATE-SPEC.md §10) —
+   world-card surface, well tray for the offer chips, brass accept /
+   raised decline at 44pt. Styles + static JSX only; the legacy-worker
+   local-mint gate and both broadcasts are unchanged. */
 export function IncomingTradePanel(props) {
   var stateRef = props.stateRef,
     incomingTrade = props.incomingTrade,
@@ -29,32 +33,59 @@ export function IncomingTradePanel(props) {
       return e.stopPropagation();
     },
     style: {
-      width: 260
+      /* v2.3.1232: floating world card */
+      width: 'min(360px, calc(100vw - 24px))', /* v2.3.1234: was 300 fixed — fill narrow phones, never overflow */
+      background: 'linear-gradient(180deg, rgba(35,48,57,.94), rgba(17,25,29,.94))',
+      border: '1px solid rgba(238,242,235,.24)',
+      borderRadius: 12,
+      boxShadow: '0 14px 30px rgba(4,7,9,.38)',
+      textAlign: 'left'
     }
   }, /*#__PURE__*/React.createElement("button", {
     className: "bt-inspect-close",
     onClick: function onClick() {
       return setIncomingTrade(null);
     }
-  }, "\u2715"), /*#__PURE__*/React.createElement("div", {
+  }, "✕"), /*#__PURE__*/React.createElement("div", {
     style: {
-      fontSize: 14,
-      fontWeight: 800,
-      color: '#D8A94D',
+      display: 'flex',
+      alignItems: 'center',
+      gap: 8,
+      fontSize: 13,
+      fontWeight: 700,
+      color: '#F7F2E7',
       marginBottom: 4
     }
-  }, "\uD83D\uDCE8 Trade from ", incomingTrade.fromName), /*#__PURE__*/React.createElement("div", {
+  }, /* v2.3.1232: UI Bible event icon with emoji fallback */
+  /*#__PURE__*/React.createElement("img", {
+    src: "/icons/ui/evt-trade.webp",
+    alt: "",
+    draggable: false,
     style: {
-      fontSize: 10,
-      color: 'rgba(255,255,255,.5)',
+      width: 24,
+      height: 24,
+      objectFit: 'contain'
+    },
+    onError: function onError(e) {
+      e.currentTarget.replaceWith(document.createTextNode('📨'));
+    }
+  }), /*#__PURE__*/React.createElement("span", null, "Trade from ", incomingTrade.fromName)), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: '#B9C1BF',
       marginBottom: 6
     }
   }, "They offer:"), /*#__PURE__*/React.createElement("div", {
     style: {
+      /* v2.3.1232: recessed well tray behind the offer chips */
       display: 'flex',
       flexWrap: 'wrap',
       gap: 4,
-      marginBottom: 8
+      marginBottom: 10,
+      background: '#121B20',
+      borderRadius: 8,
+      padding: 6,
+      boxShadow: 'inset 0 2px 4px rgba(0,0,0,.44), inset 0 1px 0 rgba(255,255,255,.035)'
     }
   }, Object.entries(incomingTrade.offer || {}).filter(function (_ref153) {
     var _ref154 = _slicedToArray(_ref153, 1),
@@ -81,34 +112,58 @@ export function IncomingTradePanel(props) {
     return /*#__PURE__*/React.createElement("span", {
       key: key,
       style: {
-        background: 'rgba(255,255,255,.08)',
+        background: '#19252A',
+        border: '1px solid rgba(238,242,235,.08)',
         padding: '3px 8px',
-        borderRadius: 6,
-        fontSize: 11
+        borderRadius: 8,
+        fontSize: 12,
+        color: '#B9C1BF',
+        fontVariantNumeric: 'tabular-nums'
       }
-    }, emojis[key] || key, " \xD7", qty);
+    }, emojis[key] || key, " ×", qty);
   }), (((_incomingTrade$offer = incomingTrade.offer) === null || _incomingTrade$offer === void 0 ? void 0 : _incomingTrade$offer._gold) || 0) > 0 && /*#__PURE__*/React.createElement("span", {
     style: {
-      background: 'rgba(216,169,77,.15)',
+      /* v2.3.1232: gold amount = icon + 14/700 tabular brass */
+      display: 'inline-flex',
+      alignItems: 'center',
+      gap: 4,
+      background: '#19252A',
+      border: '1px solid rgba(238,242,235,.08)',
       padding: '3px 8px',
-      borderRadius: 6,
-      fontSize: 11,
-      color: '#D8A94D'
+      borderRadius: 8,
+      fontSize: 14,
+      fontWeight: 700,
+      fontVariantNumeric: 'tabular-nums',
+      color: '#D8A85F'
     }
-  }, "\uD83D\uDCB0 ", incomingTrade.offer._gold, "G")), /*#__PURE__*/React.createElement("div", {
+  }, /*#__PURE__*/React.createElement("img", {
+    src: "/icons/popups/gold.webp",
+    alt: "",
+    draggable: false,
+    style: {
+      width: 16,
+      height: 16,
+      objectFit: 'contain'
+    },
+    onError: function onError(e) {
+      e.currentTarget.replaceWith(document.createTextNode('💰'));
+    }
+  }), incomingTrade.offer._gold)), /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
       gap: 6
     }
   }, /*#__PURE__*/React.createElement("button", {
     style: {
+      /* v2.3.1232: brass accept, 44pt */
       flex: 1,
       padding: '8px',
-      borderRadius: 8,
+      minHeight: 44,
+      borderRadius: 11,
       border: 'none',
-      background: '#59BF91',
-      color: '#fff',
-      fontSize: 12,
+      background: '#D8A85F',
+      color: '#20170D',
+      fontSize: 13,
       fontWeight: 700,
       cursor: 'pointer'
     },
@@ -145,15 +200,17 @@ export function IncomingTradePanel(props) {
       BT_AUDIO.collect();
       setIncomingTrade(null);
     }
-  }, "\u2705 Accept"), /*#__PURE__*/React.createElement("button", {
+  }, "Accept"), /*#__PURE__*/React.createElement("button", {
     style: {
+      /* v2.3.1232: raised secondary decline */
       flex: 1,
       padding: '8px',
-      borderRadius: 8,
-      border: 'none',
-      background: 'rgba(255,255,255,.15)',
-      color: '#fff',
-      fontSize: 12,
+      minHeight: 44,
+      borderRadius: 11,
+      border: '1px solid rgba(238,242,235,.14)',
+      background: '#2B3940',
+      color: '#F7F2E7',
+      fontSize: 13,
       fontWeight: 700,
       cursor: 'pointer'
     },
@@ -169,5 +226,5 @@ export function IncomingTradePanel(props) {
       });
       setIncomingTrade(null);
     }
-  }, "\u274C Decline"))));
+  }, "Decline"))));
 }

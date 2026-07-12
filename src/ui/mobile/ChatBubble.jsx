@@ -88,11 +88,14 @@ export const ChatBubble = () => {
           minWidth: 220,
           maxWidth: '70vw',
           padding: '8px 10px',
-          background: 'rgba(20, 22, 32, 0.92)',
-          border: '1px solid rgba(255,255,255,0.18)',
-          borderRadius: 10,
-          boxShadow: '0 6px 20px rgba(0,0,0,0.4)',
-          color: '#fff',
+          /* v2.3.1233: Lantern Slate — world-floating card (gradient fill,
+             strong border, radius 12, panel shadow; docs/LANTERN-SLATE-SPEC.md
+             §10).  No backdrop-filter: fill is opaque enough on its own. */
+          background: 'linear-gradient(180deg, rgba(35,48,57,.94), rgba(17,25,29,.94))',
+          border: '1px solid rgba(238,242,235,.24)',
+          borderRadius: 12,
+          boxShadow: '0 14px 30px rgba(4,7,9,.38)',
+          color: '#F7F2E7',
           fontFamily: 'Source Sans 3, sans-serif',
         }}
       >
@@ -109,14 +112,18 @@ export const ChatBubble = () => {
             }}
             placeholder="Say something…"
             maxLength={120}
+            /* v2.3.1233: spec input — #121B20 well, 44px tall, brass caret;
+               fontSize stays 16 (iOS Safari zooms inputs below 16px). */
             style={{
               flex: 1,
               minWidth: 0,
-              padding: '6px 8px',
-              background: 'rgba(0,0,0,0.35)',
-              border: '1px solid rgba(255,255,255,0.18)',
-              borderRadius: 6,
-              color: '#fff',
+              height: 44,
+              padding: '0 10px',
+              background: '#121B20',
+              border: '1px solid rgba(238,242,235,.14)',
+              borderRadius: 8,
+              color: '#F7F2E7',
+              caretColor: '#F0C878',
               fontFamily: 'inherit',
               fontSize: 16,
               outline: 'none',
@@ -126,14 +133,16 @@ export const ChatBubble = () => {
           <button
             onClick={submit}
             aria-label="Send"
+            /* v2.3.1233: primary-action brass when there's text to send
+               (#D8A85F bg + #20170D label); quiet raised surface when empty. */
             style={{
               flex: '0 0 auto',
-              height: 32,
+              height: 44,
               padding: '0 14px',
-              background: val.trim() ? '#3b82f6' : 'rgba(255,255,255,0.10)',
-              border: '1px solid rgba(255,255,255,0.15)',
-              borderRadius: 6,
-              color: val.trim() ? '#fff' : '#8890b8',
+              background: val.trim() ? '#D8A85F' : '#2B3940',
+              border: '1px solid rgba(238,242,235,.14)',
+              borderRadius: 11,
+              color: val.trim() ? '#20170D' : '#687575',
               fontFamily: 'inherit',
               fontSize: 14,
               fontWeight: 700,
@@ -153,7 +162,8 @@ export const ChatBubble = () => {
           transform: 'translateX(-50%)',
           borderLeft: '8px solid transparent',
           borderRight: '8px solid transparent',
-          borderTop: '8px solid rgba(20, 22, 32, 0.92)',
+          /* v2.3.1233: tail matches the card gradient's bottom stop. */
+          borderTop: '8px solid rgba(17,25,29,.94)',
         }} />
       </div>
     </>

@@ -320,7 +320,8 @@ export const ItemTooltip = ({ item, isEquipped, onClose }) => {
     <>
       <div onClick={onClose} style={{
         position: 'fixed', inset: 0, zIndex: 100030,
-        background: 'rgba(0,0,0,.35)', backdropFilter: 'blur(2px)',
+        /* v2.3.1233: spec modal scrim; blur removed (no backdrop-filter) */
+        background: 'rgba(8,16,20,.56)',
       }} />
       <div onTouchStart={drag.onTouchStart} onTouchMove={drag.onTouchMove} onTouchEnd={drag.onTouchEnd}
         style={{

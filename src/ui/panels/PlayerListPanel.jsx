@@ -7,6 +7,9 @@ import React from 'react';
    in BroTown. 3 props: playerList (state), setInspectPlayer,
    setShowPlayerList (setters). No data/babel imports; no hoisted
    temps. */
+/* v2.3.1232: Lantern Slate touch-up — empty state onto the spec caption
+   ink (the bt-plist* chrome itself lives in game.css and already rides
+   the v2.3.1230 token flip).  Style only; handlers byte-identical. */
 export function PlayerListPanel(props) {
   var playerList = props.playerList,
     setInspectPlayer = props.setInspectPlayer,
@@ -17,8 +20,8 @@ export function PlayerListPanel(props) {
     style: {
       padding: '16px 10px',
       textAlign: 'center',
-      fontSize: 11,
-      color: 'rgba(255,255,255,.4)'
+      fontSize: 12,
+      color: '#96A2A0'
     }
   }, "No other players nearby"), playerList.map(function (p) {
     return /*#__PURE__*/React.createElement("div", {
