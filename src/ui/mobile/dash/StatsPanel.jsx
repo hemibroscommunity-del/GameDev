@@ -7,9 +7,11 @@ import { COL, panelStyle, getState } from './common.js';
    quiet #19252A stat cells with the stat-*.webp icons (Build-column
    language), RECORD as divider rows.  Same data reads, same 400ms
    refresh interval; percentages are display-only derivation. */
+/* v2.3.1235: batch-1 rollout — section headers are 11/700 uppercase
+   .14em muted on the locked contract ladder (was 600/.12em). */
 const secHdr = {
-  fontSize: 11, fontWeight: 600, textTransform: 'uppercase',
-  letterSpacing: '.12em', color: COL.muted, margin: '10px 8px 4px',
+  fontSize: 11, fontWeight: 700, textTransform: 'uppercase',
+  letterSpacing: '.14em', color: COL.muted, margin: '10px 8px 4px',
 };
 
 /* Spec bar: track #0B1216 / radius 999 / flat semantic fill + vertical
@@ -19,15 +21,21 @@ const Meter = ({ label, cur, max, color }) => {
   return (
     <div style={{ padding: '4px 8px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 3 }}>
-        <span style={{ fontSize: 10, fontWeight: 600, letterSpacing: '.08em', textTransform: 'uppercase', color: COL.muted }}>
+        {/* v2.3.1235: batch-1 rollout — 10px label was below the 11px
+            readability floor; vitals values are the panel's key numbers,
+            so they move to 16/700 tabular per the contract ladder. */}
+        <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: '.08em', textTransform: 'uppercase', color: COL.muted }}>
           {label}
         </span>
-        <span style={{ fontSize: 14, fontWeight: 700, color: COL.text, fontVariantNumeric: 'tabular-nums' }}>
+        <span style={{ fontSize: 16, fontWeight: 700, color: COL.text, fontVariantNumeric: 'tabular-nums' }}>
           {cur} / {max}
         </span>
       </div>
       <div style={{
-        height: 10, background: '#0B1216', borderRadius: 999,
+        /* v2.3.1235: batch-1 rollout — #0B1216 was an off-token literal;
+           the bar track sits on well-deep (#0B161B) from the approved
+           surface set. */
+        height: 10, background: COL.wellDeep, borderRadius: 999,
         boxShadow: 'inset 0 1px 2px rgba(0,0,0,.55)', overflow: 'hidden',
       }}>
         <div style={{
@@ -43,8 +51,11 @@ const Meter = ({ label, cur, max, color }) => {
 /* Quiet stat cell — icon over 14/700 tabular value, caption label. */
 const StatCell = ({ label, iconSrc, glyph, value }) => (
   <div style={{
-    background: COL.wellSoft,
-    border: `1px solid ${COL.tileBor}`,
+    /* v2.3.1235: batch-1 rollout — wellSoft/tileBor are off the approved
+       correction-pass token list; quiet cells sit on the well surface
+       with the standard 1px line. */
+    background: COL.well,
+    border: `1px solid ${COL.border}`,
     borderRadius: 8,
     padding: '6px 2px 5px',
     textAlign: 'center',
@@ -54,7 +65,9 @@ const StatCell = ({ label, iconSrc, glyph, value }) => (
       style={{ width: 26, height: 26, objectFit: 'contain', display: 'block', margin: '0 auto' }}
       onError={(e) => { e.currentTarget.replaceWith(document.createTextNode(glyph)); }} />
     <div style={{ fontSize: 14, fontWeight: 700, color: COL.text, fontVariantNumeric: 'tabular-nums' }}>{value}</div>
-    <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '.08em', color: COL.muted }}>{label}</div>
+    {/* v2.3.1235: batch-1 rollout — 10px caption was below the 11px
+        readability floor in the locked contract. */}
+    <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '.08em', color: COL.muted }}>{label}</div>
   </div>
 );
 
@@ -68,7 +81,8 @@ const Row = ({ label, value }) => (
     padding: '0 8px',
     borderBottom: `1px solid ${COL.divider}`,
   }}>
-    <span style={{ fontSize: 13.5, color: COL.text2 }}>{label}</span>
+    {/* v2.3.1235: batch-1 rollout — 13px body per contract ladder. */}
+    <span style={{ fontSize: 13, color: COL.text2 }}>{label}</span>
     <span style={{ fontSize: 14, fontWeight: 700, color: COL.text, fontVariantNumeric: 'tabular-nums' }}>{value}</span>
   </div>
 );
