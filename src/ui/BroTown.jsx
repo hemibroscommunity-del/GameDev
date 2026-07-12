@@ -6392,7 +6392,14 @@ export var BroTown = function BroTown(_ref0) {
          paints over in-wrap modals, see game.css). */
       width: 'min(360px, calc(100vw - 24px))',
       maxHeight: '100%',
-      overflowY: 'auto'
+      overflowY: 'auto',
+      /* v2.3.1235: batch-3 QA — 18px bottom scroll-edge fade (same recipe
+         as the destination sheets/leaderboard): at 390 the Woodworker's
+         hardening button was hard-cut in half at the card fold with no
+         cue. Inline on the BUILDING card only — the inspect card pins its
+         action row at the bottom and must not fade. */
+      WebkitMaskImage: 'linear-gradient(180deg, #000 calc(100% - 18px), transparent)',
+      maskImage: 'linear-gradient(180deg, #000 calc(100% - 18px), transparent)'
     }
   }, /*#__PURE__*/React.createElement("button", {
     className: "bt-inspect-close",
