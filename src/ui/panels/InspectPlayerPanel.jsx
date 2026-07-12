@@ -145,7 +145,12 @@ export function InspectPlayerPanel(props) {
          clipped under the old card-level maxHeight+scroll. */
       width: 'calc(100% - 24px)',
       maxWidth: 408,
-      maxHeight: 'calc(72dvh - 24px)',
+      /* v2.3.1235: Checkpoint B round 3 — ALSO cap at 100% of the
+         .bt-inspect content box (which reserves the HUD chip strip and
+         the dashboard band): at 390×844 the 72dvh cap exceeded the box
+         and the flex-centered card overflowed BOTH ends — ✕ under the
+         chip, action row flush against the band. */
+      maxHeight: 'min(calc(72dvh - 24px), 100%)',
       overflowY: 'hidden',
       display: 'grid',
       gridTemplateRows: 'auto minmax(0, 1fr) auto',
