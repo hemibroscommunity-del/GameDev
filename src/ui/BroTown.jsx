@@ -7769,7 +7769,11 @@ export var BroTown = function BroTown(_ref0) {
   }()), /*#__PURE__*/React.createElement(ExtractionSwipeLayer, {
     stateRef: stateRef,
     onSuccess: _succeedExtraction
-  }), "e.preventDefault();", function (_R$lifeSkills5, _R$lifeSkills6) {
+  }), /* v2.3.1235: removed a literal "e.preventDefault();" STRING child —
+     leaked into the JSX as visible text by a botched v2.3.1162 edit and
+     rendered into the world overlay ever since (caught by a DOM-text QA
+     probe; it sat right after the zone label in innerText). */
+  function (_R$lifeSkills5, _R$lifeSkills6) {
     var S = stateRef.current;
     var R = S === null || S === void 0 ? void 0 : S.rpg;
     if (!R || (S === null || S === void 0 ? void 0 : S.currentZone) === 'town') return null;
