@@ -205,6 +205,10 @@ input{font-family:inherit}
    excludes the HUD-chip strip (padding-top) and the dashboard band
    (padding-bottom) — the two clamps can't drift apart. */
 .bt-inspect .bt-inspect-card{max-height:100%;overflow-y:auto}
+/* v2.3.1235: rollout micro-fix — modal scroll bodies hide their scrollbar
+   (reachability is signalled by the sticky bottom fade instead). */
+.ls-scrollbody{scrollbar-width:none;-ms-overflow-style:none}
+.ls-scrollbody::-webkit-scrollbar{display:none}
 /* v2.3.1233b: LOAD-BEARING padding — all 11 building panels
    (src/ui/panels/buildings/*) bleed a full-panel #202C32 surface into
    this 20px padding via margin:-20 roots (Lantern Slate sweep).

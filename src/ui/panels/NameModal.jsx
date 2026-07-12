@@ -476,12 +476,21 @@ export function NameModal(props) {
          SECONDARY button (raised fill, strong hairline via .bt-cc-rand,
          Source Sans 3); the one gold element on this screen is PLAY. */
       /* v2.3.1235: Checkpoint B — the fate-orb medallion is removed too:
-         no dice/reroll asset exists, so Randomize is text-only. */
+         no dice/reroll asset exists, so Randomize is text-only.
+         Rollout micro-fix §2: a 20px inline-SVG die (currentColor — no
+         new hex, no emoji, no asset) leads the label; the purple
+         medallion stays gone. */
       style: { width: '100%', padding: '8px', minHeight: 44, cursor: 'pointer', borderRadius: 10,
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
         background: '#293B41', color: '#F4F0E7',
         fontSize: 14, fontWeight: 700, letterSpacing: '.02em', fontFamily: "'Source Sans 3',sans-serif" }
-    }, /*#__PURE__*/React.createElement("span", null, "Randomize")), /*#__PURE__*/React.createElement("button", {
+    }, /*#__PURE__*/React.createElement("svg", {
+      width: 20, height: 20, viewBox: "0 0 20 20", "aria-hidden": true,
+      style: { display: 'block', flexShrink: 0 }
+    }, /*#__PURE__*/React.createElement("rect", {
+      x: 2.5, y: 2.5, width: 15, height: 15, rx: 3.5,
+      fill: 'none', stroke: 'currentColor', strokeWidth: 1.6
+    }), /*#__PURE__*/React.createElement("circle", { cx: 6.8, cy: 6.8, r: 1.5, fill: 'currentColor' }), /*#__PURE__*/React.createElement("circle", { cx: 13.2, cy: 6.8, r: 1.5, fill: 'currentColor' }), /*#__PURE__*/React.createElement("circle", { cx: 10, cy: 10, r: 1.5, fill: 'currentColor' }), /*#__PURE__*/React.createElement("circle", { cx: 6.8, cy: 13.2, r: 1.5, fill: 'currentColor' }), /*#__PURE__*/React.createElement("circle", { cx: 13.2, cy: 13.2, r: 1.5, fill: 'currentColor' })), /*#__PURE__*/React.createElement("span", null, "Randomize")), /*#__PURE__*/React.createElement("button", {
       onClick: joinTown,
       /* v2.3.725→v2.3.1235: the painted PLAY art is retired; the button is
          the screen's ONE primary gold button (recipe + :active press live

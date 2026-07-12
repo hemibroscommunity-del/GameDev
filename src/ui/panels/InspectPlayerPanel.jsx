@@ -121,6 +121,22 @@ export function InspectPlayerPanel(props) {
       alive = false;
     };
   }, [inspectPlayer]);
+  /* v2.3.1235: rollout micro-fix §1 — the scrollable body hides its
+     scrollbar (no permanent scrollbar on the modal) and shows a 24px
+     bottom fade above the sticky action row ONLY while more content
+     exists below the fold, so short-phone users know Add Friend / Mute /
+     Block are reachable by scrolling. */
+  var _sf = React.useState(false);
+  var showFade = _sf[0],
+    setShowFade = _sf[1];
+  var scrollBodyRef = React.useRef(null);
+  var measureFade = React.useCallback(function () {
+    var el = scrollBodyRef.current;
+    if (el) setShowFade(el.scrollHeight - el.scrollTop - el.clientHeight > 4);
+  }, []);
+  React.useEffect(function () {
+    measureFade();
+  }, [inspectPlayer, genPortrait, measureFade]);
   var _REPUTATION$inspectPl, _REPUTATION$inspectPl2, _S$rpg26, _ZONES$stateRef$curre, _inspectPlayer$bro$di, _inspectPlayer$rpgDat, _stateRef$current39;
   return React.createElement("div", {
     className: "bt-inspect",
@@ -272,6 +288,9 @@ export function InspectPlayerPanel(props) {
     Threat action row) is pinned OUTSIDE this wrapper so it can never be
     scrolled away. */
   /*#__PURE__*/React.createElement("div", {
+    ref: scrollBodyRef,
+    onScroll: measureFade,
+    className: "ls-scrollbody" /* v2.3.1235: hides the scrollbar (game.css) */,
     style: {
       overflowY: 'auto',
       paddingBottom: 16,
@@ -625,7 +644,24 @@ export function InspectPlayerPanel(props) {
         }
       }
     }, isBlocked ? '🚫 Blocked' : '🚫 Block');
-  }())), /* v2.3.1235: Checkpoint B — row 3 (auto, PINNED): the TP/Trade/
+  }()), /* v2.3.1235: rollout micro-fix §1 — sticky 24px fade pinned to the
+    visible bottom of the scroll body; visible only while content remains
+    below (showFade), so reachability is signalled without a scrollbar.
+    pointerEvents none — purely a visual cue. */
+  /*#__PURE__*/React.createElement("div", {
+    "aria-hidden": true,
+    style: {
+      position: 'sticky',
+      bottom: 0,
+      height: 24,
+      marginTop: -24,
+      flexShrink: 0,
+      background: 'linear-gradient(180deg, rgba(30,46,52,0), #1E2E34)',
+      opacity: showFade ? 1 : 0,
+      transition: 'opacity 160ms ease',
+      pointerEvents: 'none'
+    }
+  })), /* v2.3.1235: Checkpoint B — row 3 (auto, PINNED): the TP/Trade/
     Duel/Threat action row sits outside the scroll body so it is always
     visible.  All four handlers byte-identical (moved, not edited). */
   /*#__PURE__*/React.createElement("div", {
