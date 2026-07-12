@@ -188,8 +188,13 @@ input{font-family:inherit}
    chrome (zLayers.js rule 1); 32 stays under Z_ABOVE_DASH_PROMPT (34). */
 .bt-inspect{position:absolute;inset:0;z-index:32;display:flex;align-items:center;justify-content:center;
   /* v2.3.1235: §6 — ordinary modal scrim token (trade/duel confirms use
-     the stronger --ui-modal-scrim-strong in their own components). */
-  background:var(--ui-modal-scrim);-webkit-tap-highlight-color:transparent}
+     the stronger --ui-modal-scrim-strong in their own components).
+     padding-bottom reserves the dashboard band + 12px: modal content
+     must never continue behind the fixed band (QA found the
+     Marketplace order book and the Inspect action rows swallowed). */
+  background:var(--ui-modal-scrim);-webkit-tap-highlight-color:transparent;
+  padding-bottom:calc(var(--dash-h) + 12px);box-sizing:border-box}
+.bt-inspect .bt-inspect-card{max-height:calc(100dvh - var(--dash-h) - 36px);overflow-y:auto}
 /* v2.3.1233b: LOAD-BEARING padding — all 11 building panels
    (src/ui/panels/buildings/*) bleed a full-panel #202C32 surface into
    this 20px padding via margin:-20 roots (Lantern Slate sweep).

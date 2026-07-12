@@ -6380,8 +6380,11 @@ export var BroTown = function BroTown(_ref0) {
       /* v2.3.1234: was 300 fixed — dead margins on phones; the 11
          building interiors get the full width they were designed to
          bleed into (margin:-20 roots). Cap keeps it off tablet-huge. */
+      /* v2.3.1235: §6 — height capped so building content never
+         continues behind the dashboard band (the .bt-inspect wrapper
+         reserves the band; this cap keeps the two rules in sync). */
       width: 'min(360px, calc(100vw - 24px))',
-      maxHeight: '84vh',
+      maxHeight: 'calc(100dvh - var(--dash-h) - 36px)',
       overflowY: 'auto'
     }
   }, /*#__PURE__*/React.createElement("button", {
@@ -6601,7 +6604,11 @@ export var BroTown = function BroTown(_ref0) {
     }
   }, "Cancel"))), questPanel && rpgState && /*#__PURE__*/React.createElement(QuestPanel, { rpgState: rpgState, stateRef: stateRef, questPanel: questPanel, setQuestPanel: setQuestPanel, setRpgState: setRpgState }), duelRequest && /*#__PURE__*/React.createElement(DuelRequestPanel, { stateRef: stateRef, duelRequest: duelRequest, setDuelRequest: setDuelRequest }), threatIncoming && !threatIncoming.responded && /*#__PURE__*/React.createElement(ThreatIncomingPanel, { stateRef: stateRef, threatIncoming: threatIncoming, setThreatIncoming: setThreatIncoming }), showTrade && tradeTarget && rpgState && /*#__PURE__*/React.createElement(TradePanel, { rpgState: rpgState, stateRef: stateRef, tradeTarget: tradeTarget, tradeOffer: tradeOffer, setShowTrade: setShowTrade, setTradeOffer: setTradeOffer }), incomingTrade && rpgState && /*#__PURE__*/React.createElement(IncomingTradePanel, { stateRef: stateRef, incomingTrade: incomingTrade, setIncomingTrade: setIncomingTrade, setRpgState: setRpgState }), trade2 && rpgState && /*#__PURE__*/React.createElement(TradeWindowPanel, { rpgState: rpgState, stateRef: stateRef, trade2: trade2, setTrade2: setTrade2 }), party && /*#__PURE__*/React.createElement(PartyHUD, { party: party, setParty: setParty, stateRef: stateRef }),showInventory && rpgState && /*#__PURE__*/React.createElement(InventoryPanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState, setShowInventory: setShowInventory, gearWorn: gearWorn, toggleGearSlot: toggleGearSlot }), showSkills && rpgState && /*#__PURE__*/React.createElement(SkillsPanel, { rpgState: rpgState, stateRef: stateRef, setShowSkills: setShowSkills }), /* v2.3.1147: tutorial banner RE-ENABLED (was `false &&` since the
    prototype era -- the step machine ran all along, only the display was
-   gated, so veterans' bt_tutorial already reads 7/10 and never see it) */ tutorialStep >= 0 && tutorialStep < 7 && /*#__PURE__*/React.createElement("div", {
+   gated, so veterans' bt_tutorial already reads 7/10 and never see it) */
+  /* v2.3.1235: §6 — the banner yields to every blocking decision
+     surface (QA caught it rendering beside the duel prompt and behind
+     the tutorial coach). It resumes when the modal closes. */
+  tutorialStep >= 0 && tutorialStep < 7 && !buildingPanel && !duelRequest && !incomingTrade && !trade2 && !inspectPlayer && !questPanel && !showTrade && !threatIncoming && /*#__PURE__*/React.createElement("div", {
     style: {
       position: 'absolute',
       /* v2.3.1205: was bottom:180 / zIndex:20 — INSIDE the opaque
@@ -6639,30 +6646,38 @@ export var BroTown = function BroTown(_ref0) {
       } catch (e) {}
     },
     style: {
+      /* v2.3.1235: QA \u2014 the \u2715 was a ~14px target; 32px box (44 incl.
+         the card padding around the corner) + brighter glyph. */
       position: 'absolute',
-      top: 4,
-      right: 8,
+      top: 0,
+      right: 0,
+      width: 32,
+      height: 32,
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
       background: 'none',
       border: 'none',
-      color: 'rgba(255,255,255,.4)',
+      color: 'rgba(255,255,255,.55)',
       fontSize: 14,
       cursor: 'pointer',
-      padding: '0 2px',
+      padding: 0,
       lineHeight: 1
     }
   }, "\u2715"), /*#__PURE__*/React.createElement("div", {
     style: {
-      fontSize: 11,
+      fontSize: 12,
       fontWeight: 700,
       color: '#fff',
       fontFamily: 'Source Sans 3,sans-serif',
       letterSpacing: '.03em',
-      paddingRight: 16
+      paddingRight: 22
     }
-  }, tutorialStep === 0 && '👋 Welcome! Use the LEFT STICK to move around.', tutorialStep === 1 && '💨 Nice! Now SWIPE the screen to dodge roll!', tutorialStep === 2 && '⚔️ Great dodge! Hold the RIGHT STICK to attack enemies.', tutorialStep === 3 && '💀 First kill! Head to the edge of town to explore the wild.', tutorialStep === 4 && '🗺️ Explore! Walk to the edge of town to enter a combat zone.', tutorialStep === 5 && '⚡ Out in the wild! Monsters here are tougher. Reach Level 3 to prove yourself.', tutorialStep === 6 && '🎉 Tutorial complete! The world is yours — explore every zone!' /* v2.3.1205: was "Discover all 36 collisions!" — prototype-era copy; there are no "collisions" and ZONES has never had 36 entries */), /*#__PURE__*/React.createElement("div", {
+  }, tutorialStep === 0 && 'Welcome! Use the LEFT STICK to move around.', tutorialStep === 1 && 'Nice! Now SWIPE the screen to dodge roll!', tutorialStep === 2 && 'Great dodge! Hold the RIGHT STICK to attack enemies.', tutorialStep === 3 && 'First kill! Head to the edge of town to explore the wild.', tutorialStep === 4 && 'Explore! Walk to the edge of town to enter a combat zone.', tutorialStep === 5 && 'Out in the wild! Monsters here are tougher. Reach Level 3 to prove yourself.', tutorialStep === 6 && 'Tutorial complete! The world is yours — explore every zone!' /* v2.3.1205: was "Discover all 36 collisions!" — prototype-era copy; there are no "collisions" and ZONES has never had 36 entries */), /*#__PURE__*/React.createElement("div", {
     style: {
-      fontSize: 8,
-      color: 'rgba(255,255,255,.3)',
+      /* v2.3.1235: QA — 8px was under the 11px floor. */
+      fontSize: 11,
+      color: 'rgba(255,255,255,.45)',
       marginTop: 3
     }
   }, "Step ", Math.min(tutorialStep + 1, 7), "/7"))), levelUpMsg && Date.now() - levelUpMsg.ts < 4000 && /*#__PURE__*/React.createElement("div", {

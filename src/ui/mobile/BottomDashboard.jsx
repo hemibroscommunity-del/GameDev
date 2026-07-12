@@ -47,32 +47,36 @@ import { SpendPointConfirm }   from './dash/SpendPointConfirm.jsx';
    mineral charcoal shelf, warm-white text, one lantern-brass accent.
    overlay* tokens are for chrome floating OVER the game world
    (player card, tooltips): same language at world-card opacity. */
+/* v2.3.1235: correction-pass palette — this local block had gone stale
+   (the QA reviewer sampled the band's "brass" top edge as gray-green:
+   the old .28-alpha straw).  Values MUST stay in sync with game.css
+   :root tokens and dash/common.js COL. */
 const COL = {
-  bg:        '#202C32',                    // band-mid / panel
-  raised:    '#2B3940',
-  well:      '#121B20',
-  wellSoft:  '#19252A',
-  slot:      '#243137',
-  toolbar:   '#10181D',
-  border:    'rgba(238,242,235,0.14)',
-  divider:   'rgba(238,242,235,0.10)',
-  edgeWarm:  'rgba(229,202,157,0.28)',
-  text:      '#F7F2E7',
-  text2:     '#B9C1BF',
-  muted:     '#96A2A0',
-  hp:        '#D95C54',
-  stam:      '#D8A94D',
-  mp:        '#4D86D5',
-  xp:        '#61B06B',
-  gold:      '#D8A85F',
-  brass:     '#D8A85F',
-  brassFill: '#3B3427',
-  brassText: '#D8A85F',
-  onAccent:  '#20170D',
-  tileBor:   'rgba(238,242,235,0.08)',
-  overlayBg:     'linear-gradient(180deg, rgba(35,48,57,.94), rgba(17,25,29,.94))',
-  overlayBorder: 'rgba(238,242,235,0.24)',
-  overlayText:   '#F7F2E7',
+  bg:        '#1E2E34',                    // sheet
+  raised:    '#293B41',
+  well:      '#111E23',
+  wellSoft:  '#16262C',
+  slot:      '#24363C',
+  toolbar:   '#0E191E',
+  border:    'rgba(229,237,233,0.11)',
+  divider:   'rgba(229,237,233,0.11)',
+  edgeWarm:  'rgba(216,170,88,0.42)',
+  text:      '#F4F0E7',
+  text2:     '#B6C1BE',
+  muted:     '#8D9B98',
+  hp:        '#E35D5B',
+  stam:      '#DFAE4E',
+  mp:        '#4F8FDE',
+  xp:        '#58B97B',
+  gold:      '#D8AA58',
+  brass:     '#D8AA58',
+  brassFill: 'rgba(216,170,88,0.15)',
+  brassText: '#D8AA58',
+  onAccent:  '#172126',
+  tileBor:   'rgba(229,237,233,0.08)',
+  overlayBg:     'rgba(13,22,27,0.88)',
+  overlayBorder: 'rgba(229,237,233,0.20)',
+  overlayText:   '#F4F0E7',
 };
 
 // Bar artwork sliced from the user-supplied mockup screenshot.  Each
@@ -1157,12 +1161,14 @@ export const BottomDashboard = () => {
                         <span style={{
                           color: COL.muted,
                           fontWeight: 700,
-                          /* v2.3.1233: QA — 9px/.06em "AMULET" (~40px) spilled
-                             out of its ~35px square into the CAPE cell; sized
-                             down empirically (8px → "AMULI", 7px → "AMULE")
-                             until the 6-char labels fit: 6.5px, zero tracking,
-                             full cell width.  Clip (no bleed) is the backstop. */
-                          fontSize: 6.5,
+                          /* v2.3.1233: QA — "AMULET" spilled out of its old
+                             ~35px square; 6.5px was the fit then.
+                             v2.3.1235: Loadout is now the 38% column, so the
+                             slots grew ~20% — 9px fits and clears the QA
+                             "unreadable micro-text" flag (11px floor waived
+                             for these placeholder tags; clip is the
+                             backstop). */
+                          fontSize: 9,
                           letterSpacing: 0,
                           maxWidth: '100%',
                           overflow: 'hidden',

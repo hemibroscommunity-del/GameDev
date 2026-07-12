@@ -501,7 +501,9 @@ export const ItemDetailPopup = () => {
           : <span style={{ width: 30, height: 30, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 19, opacity: r.on ? 1 : 0.6, flex: '0 0 auto', userSelect: 'none' }}>{r.glyph || '▫'}</span>}
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--ui-text)', lineHeight: 1.15, overflowWrap: 'anywhere' }}>{r.name}</div>
-          {r.sub && <div style={{ fontSize: 11, lineHeight: 1.3, color: 'var(--ui-text-muted)', fontVariantNumeric: 'tabular-nums', overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>{r.sub}</div>}
+          {/* v2.3.1235: QA — hyphens swapped for non-breaking hyphens so a
+              damage range ("8-13") can never wrap mid-number. */}
+          {r.sub && <div style={{ fontSize: 11, lineHeight: 1.3, color: 'var(--ui-text-muted)', fontVariantNumeric: 'tabular-nums', overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>{String(r.sub).replace(/-/g, '‑')}</div>}
         </div>
         <button type="button" onPointerUp={(e) => { e.stopPropagation(); r.toggle(); }}
           style={{
