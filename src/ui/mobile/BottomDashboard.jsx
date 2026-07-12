@@ -125,16 +125,21 @@ const ICON_SRC = {
    12% built-in margin, so at 1.0 they rendered visibly smaller than
    the full-bleed popups icons they replaced (owner report).  Bow +
    endurance re-sliced with interior background knockout. */
+/* v2.3.1235: batch-4 state-correction §2 — the old `tip` prose paragraphs
+   are gone; each stat now carries `train`, the one-sentence training line
+   rendered as the tooltip's explanation row (the quantified benefit line
+   is derived live in the render loop from the same formulas the cells
+   already display). */
 const CHAR_STATS = [
-  { key: 'power',     label: 'Melee',     short: 'MEL', iconSrc: '/icons/ui/combat-melee.webp?v=2.3.1224',   pixelated: false, iconScale: 1.5, tip: 'Melee — melee weapon damage scaling. Trains by landing damage with sword / greatsword.' },
-  { key: 'agility',   label: 'Bow',       short: 'BOW', iconSrc: '/icons/ui/combat-bow.webp?v=2.3.1225',     pixelated: false, iconScale: 1.5, tip: 'Bow — bow damage + move speed, dodge distance, attack speed. Trains by successful dodges and ranged hits.' },
-  { key: 'mind',      label: 'Magic',     short: 'MAG', iconSrc: '/icons/ui/combat-magic.webp?v=2.3.1224',   pixelated: false, iconScale: 1.5, tip: 'Magic — staff (magic) damage + mana pool size. Trains by spending mana on staff bolts.' },
-  { key: 'vitality',  label: 'HP',        short: 'HP',  iconSrc: '/icons/ui/stat-vitality.webp?v=2.3.1224',  pixelated: false, iconScale: 1.5, tip: 'HP — health pool size. Trains by taking damage and surviving the fight.' },
+  { key: 'power',     label: 'Melee',     short: 'MEL', iconSrc: '/icons/ui/combat-melee.webp?v=2.3.1224',   pixelated: false, iconScale: 1.5, train: 'Improves when sword or greatsword attacks land.' },
+  { key: 'agility',   label: 'Bow',       short: 'BOW', iconSrc: '/icons/ui/combat-bow.webp?v=2.3.1225',     pixelated: false, iconScale: 1.5, train: 'Also boosts move speed and dodge; improves when dodges succeed or bow shots land.' },
+  { key: 'mind',      label: 'Magic',     short: 'MAG', iconSrc: '/icons/ui/combat-magic.webp?v=2.3.1224',   pixelated: false, iconScale: 1.5, train: 'Also grows the mana pool; improves when you spend mana on staff bolts.' },
+  { key: 'vitality',  label: 'HP',        short: 'HP',  iconSrc: '/icons/ui/stat-vitality.webp?v=2.3.1224',  pixelated: false, iconScale: 1.5, train: 'Improves when you take damage and survive the fight.' },
   /* Defense = Tier-2 trained skill (rpg.defenseSkill.level); tapping opens the
      DEF spend tab in the T2 panel (wired in v2.3.693).  v2.3.696: DEF and END
      swapped -- bottom row reads Vitality · Defense · Endurance per user. */
-  { key: 'defense',   label: 'Defense',   short: 'DEF', iconSrc: '/icons/ui/stat-defense.webp?v=2.3.1224',   pixelated: false, iconScale: 1.5, t2: true, tip: 'Defense — block strength + damage reduction. Trains by blocking and mitigating hits; spend points in the DEF tab.' },
-  { key: 'endurance', label: 'Endurance', short: 'END', iconSrc: '/icons/ui/stat-endurance.webp?v=2.3.1225', pixelated: false, iconScale: 1.5, tip: 'Endurance — stamina pool size. Trains by spending stamina on dodge, block, or sprint.' },
+  { key: 'defense',   label: 'Defense',   short: 'DEF', iconSrc: '/icons/ui/stat-defense.webp?v=2.3.1224',   pixelated: false, iconScale: 1.5, t2: true, train: 'Improves when you block and mitigate hits; spend points in the DEF tab.' },
+  { key: 'endurance', label: 'Endurance', short: 'END', iconSrc: '/icons/ui/stat-endurance.webp?v=2.3.1225', pixelated: false, iconScale: 1.5, train: 'Improves when you spend stamina on dodge, block, or sprint.' },
 ];
 
 /* Dashboard now focuses on the build/combat stats; the life-skills grid is
@@ -193,38 +198,97 @@ const ColHeader = ({ children, icon }) => (
 // Tooltip popup module — taps on stat / skill rows show a short
 // description above the dashboard.  One active tooltip at a time;
 // auto-dismisses after 3s or on next tap.
-const Tooltip = ({ text, onClose }) => {
+/* v2.3.1235: batch-4 state-correction §2 — Build/stat tooltips upgraded
+   from a single prose toast to a three-part anchored card: title line
+   ("Melee 12", 13/700), quantified benefit line (15/700), and a short
+   training sentence (12/1.35), with an 8px caret pointing at the tapped
+   cell and x-clamping (12px margins) so the card never leaves the
+   screen.  Callers that still pass a plain string (bars, player-card
+   readouts, life skills) keep the legacy centered toast unchanged.
+   Radius 10 + committed panel-shadow recipe per the earlier batch-4
+   rollout (was off-recipe rgba(0,0,0,.5)). */
+const Tooltip = ({ tip, onClose }) => {
   useEffect(() => {
-    if (!text) return;
+    if (!tip) return;
     const id = setTimeout(onClose, 3000);
     return () => clearTimeout(id);
-  }, [text]);
-  if (!text) return null;
+  }, [tip]);
+  if (!tip) return null;
+  const surface = {
+    background: COL.overlayBg,
+    border: `1px solid ${COL.overlayBorder}`,
+    borderRadius: 10,
+    color: COL.overlayText,
+    fontFamily: 'Source Sans 3, sans-serif',
+    zIndex: 36,
+    boxShadow: '0 14px 30px rgba(4,7,9,.38)',
+  };
+  if (typeof tip === 'string') {
+    // Legacy path — centered prose toast above the dashboard band.
+    return (
+      <div
+        onPointerDown={(e) => { e.stopPropagation(); onClose(); }}
+        style={{
+          ...surface,
+          position: 'fixed',
+          left: '50%',
+          bottom: 'calc(var(--dash-h) + 12px)',
+          transform: 'translateX(-50%)',
+          maxWidth: '88vw',
+          padding: '8px 12px',
+          fontSize: 15,
+          lineHeight: 1.3,
+        }}
+      >
+        {tip}
+      </div>
+    );
+  }
+  const { title, benefit, body, anchor } = tip;
+  const vw = window.innerWidth;
+  const vh = window.innerHeight;
+  const w = Math.min(280, vw - 24);
+  const cx = anchor ? anchor.left + anchor.width / 2 : vw / 2;
+  const left = Math.max(12, Math.min(cx - w / 2, vw - 12 - w));
+  /* Prefer ABOVE the tapped cell (caret pointing down at it) so the
+     card sits over the world, never under the dashboard band; flip
+     below with the caret up only when the cell hugs the top edge. */
+  const above = !anchor || anchor.top > 160;
+  /* Caret offsets along the clamped card so it keeps pointing at the
+     cell; 19px floor keeps the triangle clear of the 10px corners. */
+  const caretX = Math.max(19, Math.min(cx - left, w - 19));
+  const pos = !anchor
+    ? { left, bottom: 'calc(var(--dash-h) + 12px)' }
+    : above
+      ? { left, bottom: vh - anchor.top + 10 }
+      : { left, top: anchor.bottom + 10 };
+  /* Two-triangle bordered caret: outer 9px in the border color, inner
+     8px in the surface color, hanging off the edge nearest the cell. */
+  const tri = (size, color) => ({
+    position: 'absolute',
+    [above ? 'top' : 'bottom']: '100%',
+    left: caretX - size,
+    width: 0,
+    height: 0,
+    borderLeft: `${size}px solid transparent`,
+    borderRight: `${size}px solid transparent`,
+    [above ? 'borderTop' : 'borderBottom']: `${size}px solid ${color}`,
+    pointerEvents: 'none',
+  });
   return (
     <div
       onPointerDown={(e) => { e.stopPropagation(); onClose(); }}
-      style={{
-        position: 'fixed',
-        left: '50%',
-        bottom: 'calc(var(--dash-h) + 12px)',
-        transform: 'translateX(-50%)',
-        maxWidth: '88vw',
-        padding: '8px 12px',
-        background: COL.overlayBg,
-        border: `1px solid ${COL.overlayBorder}`,
-        /* v2.3.1235: batch-4 rollout — tooltip radius 10 per the corrected
-           transient-surface rule; off-recipe rgba(0,0,0,.5) shadow → the
-           committed panel-shadow recipe (no new shadows). */
-        borderRadius: 10,
-        color: COL.overlayText,
-        fontFamily: 'Source Sans 3, sans-serif',
-        fontSize: 15,
-        lineHeight: 1.3,
-        zIndex: 36,
-        boxShadow: '0 14px 30px rgba(4,7,9,.38)',
-      }}
+      style={{ ...surface, position: 'fixed', width: w, padding: '12px 14px', ...pos }}
     >
-      {text}
+      <div style={{ fontSize: 13, fontWeight: 700, lineHeight: 1.2, color: COL.text2 }}>{title}</div>
+      {benefit && (
+        <div style={{ fontSize: 15, fontWeight: 700, lineHeight: 1.25, color: '#F4F0E7', marginTop: 2 }}>{benefit}</div>
+      )}
+      {body && (
+        <div style={{ fontSize: 12, lineHeight: 1.35, color: '#B6C1BE', marginTop: 4 }}>{body}</div>
+      )}
+      {anchor && <div style={tri(9, COL.overlayBorder)} />}
+      {anchor && <div style={tri(8, COL.overlayBg)} />}
     </div>
   );
 };
@@ -526,7 +590,10 @@ export const BottomDashboard = () => {
     const id = setInterval(() => force(v => v + 1), 200);
     return () => clearInterval(id);
   }, []);
-  useEffect(() => dashboardPanelBus.subscribe(() => force(v => v + 1)), []);
+  /* v2.3.1235: batch-4 state-correction §2 — an anchored stat tooltip
+     must not linger over a freshly opened panel: clear it on every
+     panel-bus event (it did NOT clear before; only the 3s timer did). */
+  useEffect(() => dashboardPanelBus.subscribe(() => { setTooltip(''); force(v => v + 1); }), []);
   /* v2.3.1229b: chat-bubble state lights the Chat toolbar icon. */
   useEffect(() => chatBubbleBus.subscribe(() => force(v => v + 1)), []);
   /* Player-card portrait: a head-and-shoulders render of the player's
@@ -649,7 +716,7 @@ export const BottomDashboard = () => {
       {/* v2.3.911: build-skill point-spend confirmation window (floats above
           the dashboard at zIndex 60, over the Builds menu). */}
       <SpendPointConfirm />
-      <Tooltip text={tooltip} onClose={() => setTooltip('')} />
+      <Tooltip tip={tooltip} onClose={() => setTooltip('')} />
 
       {/* v2.3.821: the XP bar moved off the bottom trim into the top-right
           character card (beneath the gold row) at the owner's request --
@@ -1292,13 +1359,29 @@ export const BottomDashboard = () => {
                            old single-line clipping problem goes away because
                            the widest value now lives on its own line. */}
                         <div
-                          onPointerUp={(e) => { e.stopPropagation(); setTooltip(`${slotLabel} weapon — tap the weapon slot to cycle melee → ranged → staff.`); }}
+                          /* v2.3.1235: batch-4 state-correction §2 — structured
+                             anchored tooltip; live DMG/DPS numbers are the same
+                             calcDisplayDmgRange/Dps values the cell prints. */
+                          onPointerUp={(e) => { e.stopPropagation(); setTooltip({
+                            title: `DMG ${dmgText}`,
+                            benefit: `${dpsText} damage per second (${slotLabel.toLowerCase()})`,
+                            body: 'Tap the weapon slot to cycle melee → ranged → staff.',
+                            anchor: e.currentTarget.getBoundingClientRect(),
+                          }); }}
                           title={`${slotLabel} · DMG ${dmgText} · DPS ${dpsText}`}
                           style={{ fontSize: 12, fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: COL.text, letterSpacing: 0, textAlign: 'center', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', cursor: 'pointer', touchAction: 'none' }}>
                           <span style={{ color: COL.muted, fontWeight: 600 }}>DMG </span>{dmgText}
                         </div>
                         <div
-                          onPointerUp={(e) => { e.stopPropagation(); setTooltip('Defense from worn armor (chest + legs). Placeholder for now — armor does not yet reduce damage.'); }}
+                          /* v2.3.1235: batch-4 state-correction §2 — structured
+                             anchored tooltip; armorDef is the same live number
+                             the readout prints (chest + legs ×5 placeholder). */
+                          onPointerUp={(e) => { e.stopPropagation(); setTooltip({
+                            title: `DEF +${armorDef}`,
+                            benefit: `+${armorDef} defense from worn armor`,
+                            body: 'Counts chest + legs pieces; armor damage mitigation is not wired up yet.',
+                            anchor: e.currentTarget.getBoundingClientRect(),
+                          }); }}
                           title="Defense from worn armor"
                           style={{ fontSize: 11, fontWeight: 600, fontVariantNumeric: 'tabular-nums', color: COL.text, letterSpacing: 0, textAlign: 'center', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', cursor: 'pointer', touchAction: 'none' }}>
                           <span style={{ color: COL.muted }}>DPS </span>{dpsText}
@@ -1386,7 +1469,7 @@ export const BottomDashboard = () => {
                        xpRequired(combat level), i.e. the stat SUM. */
                     const statThresh = Math.max(200, Math.floor(xpRequired(val)));
                     const pct = Math.max(0, Math.min(100, (prog / statThresh) * 100));
-                    let bonusTxt = '';
+                    let benefit = '';
                     /* v2.3.1207: vitality reads R.maxHp (the recalc/echo
                        product — includes armor HP + the Vigor mult) like
                        the endurance sibling, instead of re-deriving a
@@ -1397,13 +1480,19 @@ export const BottomDashboard = () => {
                        retired pre-v2.3.912 rate, already fixed in the
                        loadout copy but missed here and in the
                        combatHelpers level-up floater. */
-                    if (s.key === 'vitality')       bonusTxt = `${R.maxHp || calcMaxHp(R.level || 1, val)} HP`;
-                    else if (s.key === 'endurance') bonusTxt = `${R.maxStamina || calcMaxStam(val)} STA`;
-                    else if (s.key === 'power')     bonusTxt = `+${(val * 0.1667).toFixed(1)} melee base dmg`;
-                    else if (s.key === 'agility')   bonusTxt = `+${(val * 0.1667).toFixed(1)} bow base dmg`;
-                    else if (s.key === 'mind')      bonusTxt = `+${(val * 0.1667).toFixed(1)} magic base dmg`;
-                    else if (s.key === 'defense')   bonusTxt = `Lv ${val} — block + damage cut`;
-                    const tipFull = `${s.label} ${val} → ${bonusTxt}. ${s.tip}`;
+                    /* v2.3.1235: batch-4 state-correction §2 — bonusTxt/
+                       tipFull prose replaced by the structured tooltip's
+                       three parts: title `${label} ${val}`, this benefit
+                       line (same live formulas as before), and the short
+                       s.train sentence.  Defense has no live coefficient
+                       to print, so it gets the effect phrase, no number. */
+                    if (s.key === 'vitality')       benefit = `${R.maxHp || calcMaxHp(R.level || 1, val)} max HP`;
+                    else if (s.key === 'endurance') benefit = `${R.maxStamina || calcMaxStam(val)} max stamina`;
+                    else if (s.key === 'power')     benefit = `+${(val * 0.1667).toFixed(1)} base melee damage`;
+                    else if (s.key === 'agility')   benefit = `+${(val * 0.1667).toFixed(1)} base bow damage`;
+                    else if (s.key === 'mind')      benefit = `+${(val * 0.1667).toFixed(1)} base magic damage`;
+                    else if (s.key === 'defense')   benefit = 'Stronger blocks + damage reduction';
+                    const tipTitle = `${s.label} ${val}`;
                     /* v2.3.911: unspent Tier-2 points for this build skill.
                        When > 0 the cell pulses + shows a badge, and tapping it
                        opens the Builds menu jumped to that skill's tab instead
@@ -1419,10 +1508,17 @@ export const BottomDashboard = () => {
                             requestT2Category(openT2Cat);
                             dashboardPanelBus.push('t2');
                           } else {
-                            setTooltip(tipFull);
+                            /* v2.3.1235: batch-4 state-correction §2 —
+                               structured tooltip anchored to this cell. */
+                            setTooltip({
+                              title: tipTitle,
+                              benefit,
+                              body: s.train,
+                              anchor: e.currentTarget.getBoundingClientRect(),
+                            });
                           }
                         }}
-                        title={tipFull}
+                        title={`${tipTitle} — ${benefit}. ${s.train}`}
                         style={{
                           position: 'relative',
                           display: 'flex',
