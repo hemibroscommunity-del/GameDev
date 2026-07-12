@@ -35,6 +35,13 @@ import { SHIRT_COLOR_CATALOG, setShirtColor } from '@/rendering/traits/shirtColo
    surface.  The parchment scroll, painted PLAY art and all bt-cc-*
    class-driven chrome are owner art and stay; inline overrides only.
    Zero logic changes — tab structure and every handler byte-identical. */
+/* v2.3.1235: Lantern Slate correction pass (owner-approved) — the ornate
+   chrome around the owner art is retired: parchment name scroll → dark
+   recessed well, purple gem frame → plain sheet card (both in game.css),
+   painted PLAY art → the standard primary gold button, Randomize → plain
+   secondary, dice emoji → text "Roll", quill img removed.  The sky/stage/
+   logo art is untouched — the logo is the screen's only ornate element.
+   Handlers, validation and the join call are byte-identical. */
 export function NameModal(props) {
   var _dragRotX = props._dragRotX,
     _swatchTile = props._swatchTile,
@@ -383,19 +390,16 @@ export function NameModal(props) {
       placeholder: "Name…",
       maxLength: 20,
       autoFocus: true,
-      /* v2.3.718: parchment scroll skin + ink colors live in .bt-cc-name
-         (::placeholder needs a stylesheet). */
+      /* v2.3.1235: parchment retired — .bt-cc-name is now the standard
+         recessed well (recipe + ::placeholder in game.css); the quill
+         "sign here" img went with the scroll art. */
       className: "bt-cc-name",
       style: {
         width: '100%',
-        /* v2.3.711: symmetric side padding clears the quill (left) and dice
-           (right) while keeping the centered text centered.  Note the 20px
-           scroll border caps also eat into the border-box width — keep
-           padding modest or the text area collapses.
-           v2.3.721: asymmetric top/bottom — the scroll art's bottom-left
-           tail drops its visual center above the input's geometric center,
-           so the text rides a few px high to sit on the parchment band. */
-        padding: '9px 30px 15px',
+        /* v2.3.1235: symmetric side padding clears the Roll button on the
+           right while keeping the centered text centered (no scroll caps
+           to dodge anymore). */
+        padding: '0 56px',
         /* v2.3.710: 16px floor — iOS Safari auto-zooms inputs with a smaller
            font on focus, leaving visualViewport.scale > 1, which trips the
            joinTown pinch-zoom gate. */
@@ -404,28 +408,21 @@ export function NameModal(props) {
         outline: 'none',
         textAlign: 'center',
         boxSizing: 'border-box',
-        /* v2.3.1232: brass caret + 44px min target.  The #121B20 input
-           trough does NOT apply here: .bt-cc-name's parchment border-image
-           uses `fill`, which paints over any background override — the
-           scroll skin is the owner-art exception, kept as-is. */
-        caretColor: '#F0C878',
+        /* v2.3.1235: brass-highlight caret on the dark well. */
+        caretColor: '#EAC675',
         minHeight: 44
       }
-    }), /*#__PURE__*/React.createElement("img", {
-      /* v2.3.718: owner-generated quill — the "sign here" cue before the
-         name (from the mockup).  Decorative; never intercepts taps. */
-      src: '/ui/welcome/quill.webp',
-      alt: '',
-      style: { position: 'absolute', left: 30, top: 'calc(50% - 3px)', transform: 'translateY(-50%)', height: 22, width: 'auto', pointerEvents: 'none' }
     }), /*#__PURE__*/React.createElement("button", {
       type: 'button', title: 'Random name', onClick: rollRandomName,
-      /* v2.3.722: pushed onto the scroll cap — at right:25 it clipped the
-         end of longer names. */
-      /* v2.3.1232: same world-circle ink as the rotate buttons (32px stays —
-         a 44px dice clips longer names against the scroll cap, see v2.3.722) */
-      style: { position: 'absolute', right: 12, top: 'calc(50% - 3px)', transform: 'translateY(-50%)', width: 32, height: 32, borderRadius: 8, cursor: 'pointer',
-        background: 'rgba(17,25,29,.88)', border: '1px solid rgba(238,242,235,.24)', fontSize: 15, padding: 0, lineHeight: 1 }
-    }, "🎲")), /*#__PURE__*/React.createElement("div", {
+      /* v2.3.1235: dice emoji → plain-text "Roll" secondary button (hard
+         rule: no platform emoji; no die icon exists in /icons/ui yet).
+         44pt-wide target now fits — the scroll cap that clipped long
+         names (v2.3.722) is gone; the input's 56px side padding clears it.
+         top:50% (the old -3px offset compensated the parchment tail). */
+      style: { position: 'absolute', right: 4, top: '50%', transform: 'translateY(-50%)', minWidth: 44, height: 40, borderRadius: 8, cursor: 'pointer',
+        background: '#293B41', border: '1px solid rgba(229,237,233,0.20)', color: '#F4F0E7',
+        fontFamily: 'Source Sans 3, sans-serif', fontSize: 12, fontWeight: 700, letterSpacing: '.02em', padding: '0 8px', lineHeight: 1 }
+    }, "Roll")), /*#__PURE__*/React.createElement("div", {
       /* Tabs + drawer share one wrapper so the card's gap can't split
          them — they must read as a single component (spec §5).  The
          wrapper is also the card's ONE flexing child: the drawer absorbs
@@ -474,18 +471,21 @@ export function NameModal(props) {
          rerolls just the name. */
       type: 'button', onClick: randomizeWithFlair, className: "bt-cc-rand",
       /* v2.3.800: slimmed with the rest of the vertical rhythm. */
-      /* v2.3.1232: navy fill → raised secondary surface (#2B3940); the
-         .bt-cc-rand class keeps its brass border/label via !important */
+      /* v2.3.1235: ornate treatment dropped — Randomize is the standard
+         SECONDARY button (raised fill, strong hairline via .bt-cc-rand,
+         Source Sans 3); the one gold element on this screen is PLAY.
+         The fate-orb icon stays: it's the action's identity, not chrome. */
       style: { width: '100%', padding: '8px', minHeight: 44, cursor: 'pointer', borderRadius: 10,
         display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-        background: '#2B3940', color: 'var(--txt)',
-        fontSize: 17, fontWeight: 700, letterSpacing: '.02em', fontFamily: "'Baloo 2','Source Sans 3',sans-serif",
-        textShadow: '0 1px 2px rgba(0,0,0,.55)' }
-    }, /*#__PURE__*/React.createElement("img", { src: '/ui/welcome/fate-orb.webp', alt: '', style: { width: 26, height: 26, flex: '0 0 auto' } }),
+        background: '#293B41', color: '#F4F0E7',
+        fontSize: 14, fontWeight: 700, letterSpacing: '.02em', fontFamily: "'Source Sans 3',sans-serif" }
+    }, /*#__PURE__*/React.createElement("img", { src: '/ui/welcome/fate-orb.webp', alt: '', style: { width: 22, height: 22, flex: '0 0 auto' } }),
     /*#__PURE__*/React.createElement("span", null, "Randomize")), /*#__PURE__*/React.createElement("button", {
       onClick: joinTown,
-      /* v2.3.725: the owner's painted PLAY art (label baked in); the img is
-         the button.  :active press lives in .bt-cc-play.
+      /* v2.3.725→v2.3.1235: the painted PLAY art is retired; the button is
+         the screen's ONE primary gold button (recipe + :active press live
+         in .bt-cc-play, game.css) with a real text label — no invisible-
+         button mode if an asset fails (v2.3.740 incident).
          v2.3.797: flow endpoint — the final action once the character is
          ready (spec §8); the locked layout keeps it on screen. */
       className: "bt-cc-play",
@@ -493,11 +493,9 @@ export function NameModal(props) {
       style: {
         marginTop: 6,
         width: '100%',
-        aspectRatio: '560 / 157',
-        borderRadius: 12,
         cursor: 'pointer'
       }
-    }), /*#__PURE__*/React.createElement("button", {
+    }, "Play"), /*#__PURE__*/React.createElement("button", {
       /* v2.3.1143: returning-player door.  Text link under PLAY -- the
          quiet counterpart to the big CTA, for the player who already
          has a character and just needs to enter their Login Key. */
@@ -518,9 +516,10 @@ export function NameModal(props) {
       }
     }, "Already have a character? Log in with your Login Key"), /*#__PURE__*/React.createElement("div", {
       /* v2.3.797: build tag moved out of the header to the scroll's tail
-         end (header px now belongs to the drawer). */
+         end (header px now belongs to the drawer).
+         v2.3.1235: 9px → 11px (type floor: no text under 11px). */
       style: {
-        fontSize: 9,
+        fontSize: 11,
         color: 'var(--txt2)',
         fontFamily: 'Source Sans 3, sans-serif',
         letterSpacing: '.06em',

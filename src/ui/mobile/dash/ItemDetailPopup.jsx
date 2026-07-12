@@ -483,41 +483,33 @@ export const ItemDetailPopup = () => {
        one viewport tall regardless of the title/cue size (no fragile pixel
        math), the whole card border shows at rest, and a swipe snaps to the next
        item.  Name + Equip/Unequip pinned; description fills the middle. */
-    const P = target.panel;
-    /* v2.3.1232: Lantern Slate row — equipped reads as the occupied slot
-       surface (#243137) with the 1px brass equipped edge; unequipped is
-       the quiet well-soft cell.  Equip = the one brass primary of this
-       popup state; Unequip = destructive #7C3431/#FFF1EE.  44pt buttons. */
+    /* v2.3.1235: correction pass §7 — the narrow BUILD-column dock
+       truncated its contents.  Each row is now HORIZONTAL: icon + name
+       + stats on the left, the action on the right.  Unequip is a
+       routine action → compact secondary button (was destructive red);
+       Equip stays the gold primary. */
     const row = (r) => (
       <div key={r.key} style={{
-        flex: '0 0 auto', height: P ? '100%' : undefined, scrollSnapAlign: 'start',
-        display: 'flex', flexDirection: 'column', gap: 4, padding: '7px 8px', borderRadius: 8,
-        background: r.on ? '#243137' : '#19252A',
-        border: `1px solid ${r.on ? '#D8A85F' : 'rgba(238, 242, 235, .14)'}`,
+        flex: '0 0 auto',
+        display: 'flex', alignItems: 'center', gap: 8, padding: '7px 8px', borderRadius: 8,
+        background: r.on ? 'var(--ui-card)' : 'var(--ui-well-soft)',
+        border: `1px solid ${r.on ? 'var(--ui-brass)' : 'var(--ui-line)'}`,
         boxSizing: 'border-box', overflow: 'hidden',
       }}>
-        <div style={{ flex: '0 0 auto', display: 'flex', alignItems: 'center', gap: 7, minWidth: 0 }}>
-          {r.iconSrc
-            ? <img src={r.iconSrc} alt={r.name} draggable={false} style={{ width: P ? 24 : 32, height: P ? 24 : 32, objectFit: 'contain', imageRendering: 'pixelated', filter: r.on ? 'none' : 'grayscale(1) brightness(.7)', userSelect: 'none', flex: '0 0 auto' }} />
-            : <span style={{ width: P ? 24 : 32, height: P ? 24 : 32, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 19, opacity: r.on ? 1 : 0.6, flex: '0 0 auto', userSelect: 'none' }}>{r.glyph || '▫'}</span>}
-          <div style={{ flex: 1, minWidth: 0, fontSize: 12, fontWeight: 700, color: '#F7F2E7', lineHeight: 1.15, overflowWrap: 'anywhere' }}>{r.name}</div>
+        {r.iconSrc
+          ? <img src={r.iconSrc} alt={r.name} draggable={false} style={{ width: 30, height: 30, objectFit: 'contain', imageRendering: 'pixelated', filter: r.on ? 'none' : 'grayscale(1) brightness(.7)', userSelect: 'none', flex: '0 0 auto' }} />
+          : <span style={{ width: 30, height: 30, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 19, opacity: r.on ? 1 : 0.6, flex: '0 0 auto', userSelect: 'none' }}>{r.glyph || '▫'}</span>}
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--ui-text)', lineHeight: 1.15, overflowWrap: 'anywhere' }}>{r.name}</div>
+          {r.sub && <div style={{ fontSize: 11, lineHeight: 1.3, color: 'var(--ui-text-muted)', fontVariantNumeric: 'tabular-nums', overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>{r.sub}</div>}
         </div>
-        {r.sub
-          ? <div style={{ flex: '1 1 auto', minHeight: 0, overflow: 'hidden', fontSize: 10, lineHeight: 1.3, color: '#96A2A0', fontVariantNumeric: 'tabular-nums', overflowWrap: 'anywhere' }}>{r.sub}</div>
-          : <div style={{ flex: '1 1 auto' }} />}
         <button type="button" onPointerUp={(e) => { e.stopPropagation(); r.toggle(); }}
           style={{
-            /* v2.3.1233b: audit fix — in panel mode the row is height:100%
-               of the BUILD-column card with overflow:hidden; the v2.3.1232
-               44px button + 32px icon pushed fixed content to ~98px while
-               small iPhones give the row ~75-91px, clipping the button to a
-               sliver.  Panel mode returns to the compact pre-restyle fit
-               (24px icon, 30px button = full row width, still an easy
-               target); the anchored mode keeps the spec 44pt. */
-            flex: '0 0 auto', width: '100%', minHeight: P ? 30 : 44, padding: '5px 0', fontSize: 12, fontWeight: 700, borderRadius: 11,
-            border: r.on ? '1px solid #C7655F' : 'none',
-            background: r.on ? '#7C3431' : '#D8A85F', /* Unequip = destructive, Equip = brass primary */
-            color: r.on ? '#FFF1EE' : '#20170D',
+            flex: '0 0 auto', minWidth: 76, minHeight: 44, padding: '0 10px', fontSize: 12, fontWeight: 700, borderRadius: 10,
+            border: r.on ? '1px solid var(--ui-line-strong)' : '1px solid #EAC675',
+            background: r.on ? 'var(--ui-raised)' : 'linear-gradient(180deg, #E2B765, #D2A14D)',
+            color: r.on ? 'var(--ui-text)' : '#172126',
+            boxShadow: r.on ? 'none' : 'inset 0 1px 0 rgba(255,255,255,0.25), 0 2px 6px rgba(0,0,0,0.22)',
             fontFamily: 'inherit',
             cursor: 'pointer', WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation',
           }}>{r.on ? 'Unequip' : 'Equip'}</button>
@@ -533,15 +525,27 @@ export const ItemDetailPopup = () => {
     /* v2.3.1232: Lantern Slate world card (was the legacy indigo gradient) —
        rgba(17,25,29,.94) card gradient, strong border, radius 12. */
     const cardCommon = {
-      background: 'linear-gradient(180deg, rgba(35,48,57,.94), rgba(17,25,29,.94))',
-      border: '1px solid rgba(238,242,235,.24)',
-      borderRadius: 12, padding: 8, boxShadow: '0 14px 30px rgba(4,7,9,.38)',
+      background: 'var(--ui-sheet)',
+      border: '1px solid var(--ui-line-strong)',
+      borderRadius: 12, padding: 8,
+      boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.045), 0 14px 36px rgba(3,8,10,0.30)',
       fontFamily: 'Source Sans 3, sans-serif',
       display: 'flex', flexDirection: 'column', boxSizing: 'border-box', overflow: 'hidden', zIndex: 51,
     };
-    const cardStyle = P
-      ? { position: 'fixed', left: P.left, top: P.top, width: P.width, height: P.height, ...cardCommon }
-      : { position: 'absolute', left: pos ? pos.left : -9999, top: pos ? pos.top : -9999, width: 210, maxHeight: '46vh', ...cardCommon };
+    /* v2.3.1235: §7 — a 320px-max horizontal popover centered 8px above
+       the dashboard (replaces the BUILD-column dock whose narrow column
+       truncated names and clipped buttons on small phones).  The
+       dismiss layer still stops at the band so loadout cells stay
+       tappable to switch slots. */
+    const cardStyle = {
+      position: 'fixed',
+      left: '50%',
+      transform: 'translateX(-50%)',
+      bottom: 'calc(var(--dash-h) + 8px)',
+      width: 'min(320px, calc(100vw - 24px))',
+      maxHeight: '36vh',
+      ...cardCommon,
+    };
     return (
       <div onPointerDown={() => itemDetailBus.close()}
         style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 'var(--dash-h)', background: 'transparent', zIndex: 50, pointerEvents: 'auto' }}>

@@ -21,6 +21,13 @@ import { pushDmgPopup } from '@/game/combatHelpers.js';
    primary; Threat/Block speak the destructive language; the old indigo
    (#a78bfa) and amber (#fbbf24) accents map to the spec magic/stamina
    colors. Player/clan/reputation colors stay — they are content color. */
+/* v2.3.1235: owner-approved design correction (§7) — presentation only,
+   every handler/state read/send byte-identical. Real pixel portrait at
+   56px (letter tile only as fallback), compressed header row, Trade is
+   the single gold primary, TP/Duel secondaries, Threat becomes a danger
+   OUTLINE (never a filled red block), sections keep label+divider
+   grouping with quieter cells. Committed tokens: sheet #1E2E34, raised
+   #293B41, lines rgba(229,237,233,.11/.20), brass #D8AA58. */
 
 /* v2.3.1232: Lantern Slate style tokens — local, no shared module. */
 var LS_HEADER = {
@@ -28,17 +35,17 @@ var LS_HEADER = {
   fontWeight: 600,
   textTransform: 'uppercase',
   letterSpacing: '.12em',
-  color: '#96A2A0'
+  color: '#8D9B98' /* v2.3.1235: muted token */
 };
-var LS_DIVIDER = '1px solid rgba(238,242,235,.10)';
+var LS_DIVIDER = '1px solid rgba(229,237,233,0.11)'; /* v2.3.1235: hairline token */
 /* full-width secondary action button */
 var LS_SECONDARY = {
   minHeight: 44,
   padding: '0 12px',
-  borderRadius: 11,
-  border: '1px solid rgba(238,242,235,.14)',
-  background: 'linear-gradient(180deg, #304047 0%, #2B3940 100%)',
-  color: '#F7F2E7',
+  borderRadius: 10, /* v2.3.1235: card radius */
+  border: '1px solid rgba(229,237,233,0.20)', /* v2.3.1235: strong hairline */
+  background: '#293B41', /* v2.3.1235: raised */
+  color: '#F4F0E7',
   fontSize: 12,
   fontWeight: 700,
   cursor: 'pointer'
@@ -61,6 +68,9 @@ export function InspectPlayerPanel(props) {
   var _REPUTATION$inspectPl, _REPUTATION$inspectPl2, _S$rpg26, _ZONES$stateRef$curre, _inspectPlayer$bro$di, _inspectPlayer$rpgDat, _stateRef$current39;
   return React.createElement("div", {
     className: "bt-inspect",
+    style: {
+      background: 'rgba(4,9,12,0.38)' /* v2.3.1235: ordinary modal scrim */
+    },
     onClick: function onClick() {
       return setInspectPlayer(null);
     }
@@ -73,8 +83,8 @@ export function InspectPlayerPanel(props) {
       width: 'min(360px, calc(100vw - 24px))', /* v2.3.1234: was 300 fixed — fill narrow phones, never overflow */
       maxHeight: '85vh',
       overflowY: 'auto',
-      background: '#202C32',
-      border: '1px solid rgba(238,242,235,.14)',
+      background: '#1E2E34', /* v2.3.1235: sheet surface */
+      border: '1px solid rgba(229,237,233,0.20)',
       borderRadius: 14,
       boxShadow: '0 14px 30px rgba(4,7,9,.38)'
     }
@@ -83,32 +93,66 @@ export function InspectPlayerPanel(props) {
     onClick: function onClick() {
       return setInspectPlayer(null);
     }
-  }, "✕"), inspectPlayer.avatar ? /*#__PURE__*/React.createElement("img", {
-    className: "bt-inspect-av",
+  }, "✕"), /* v2.3.1235: compressed header — real 56px pixel portrait
+    (inspectPlayer.avatar, same field the plist rows / dashboard card
+    render) with the letter tile demoted to fallback; name + Lv stack to
+    its right; the old centered 64px circle + oversized padding is gone.
+    The divider below comes from the first section's borderTop. */
+  /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'flex',
+      alignItems: 'center',
+      gap: 10,
+      textAlign: 'left',
+      paddingRight: 24,
+      marginBottom: 10
+    }
+  }, inspectPlayer.avatar ? /*#__PURE__*/React.createElement("img", {
     src: inspectPlayer.avatar,
     alt: "",
+    draggable: false,
     style: {
-      borderColor: inspectPlayer.color
+      width: 56,
+      height: 56,
+      borderRadius: 10,
+      objectFit: 'cover',
+      flexShrink: 0,
+      border: '1px solid rgba(229,237,233,0.20)',
+      background: '#111E23'
+    },
+    onError: function onError(e) {
+      /* v2.3.1235: broken avatar URL → swap in the letter tile */
+      var el = document.createElement('div');
+      el.style.cssText = 'width:56px;height:56px;border-radius:10px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:700;color:#F4F0E7;background:' + (inspectPlayer.color || '#293B41');
+      el.textContent = inspectPlayer.name.charAt(0).toUpperCase();
+      e.currentTarget.replaceWith(el);
     }
   }) : /*#__PURE__*/React.createElement("div", {
     style: {
-      width: 64,
-      height: 64,
-      borderRadius: '50%',
+      width: 56,
+      height: 56,
+      borderRadius: 10,
       background: inspectPlayer.color,
-      margin: '0 auto 8px',
+      flexShrink: 0,
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      fontSize: 24,
+      fontSize: 22,
       fontWeight: 700,
-      color: '#F7F2E7',
-      border: '2.5px solid ' + inspectPlayer.color
+      color: '#F4F0E7'
     }
   }, inspectPlayer.name.charAt(0).toUpperCase()), /*#__PURE__*/React.createElement("div", {
-    className: "bt-inspect-name",
     style: {
-      color: inspectPlayer.color
+      minWidth: 0
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 15,
+      fontWeight: 700,
+      color: inspectPlayer.color,
+      overflow: 'hidden',
+      textOverflow: 'ellipsis',
+      whiteSpace: 'nowrap'
     }
   }, inspectPlayer.clanTag && /*#__PURE__*/React.createElement("span", {
     style: {
@@ -117,29 +161,27 @@ export function InspectPlayerPanel(props) {
   }, "[", inspectPlayer.clanTag, "] "), inspectPlayer.name), /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
-      justifyContent: 'center',
       alignItems: 'center',
       gap: 8,
-      marginBottom: 10
-    }
-  }, inspectPlayer.rpgLv && /*#__PURE__*/React.createElement("div", {
-    style: {
+      marginTop: 2,
       fontSize: 12,
-      fontWeight: 700,
-      fontVariantNumeric: 'tabular-nums',
-      color: '#D8A94D'
+      color: '#8D9B98'
     }
-  }, "Lv ", inspectPlayer.rpgLv), inspectPlayer.rep && inspectPlayer.rep !== 'neutral' && /*#__PURE__*/React.createElement("div", {
+  }, inspectPlayer.rpgLv && /*#__PURE__*/React.createElement("span", {
     style: {
-      fontSize: 12,
       fontWeight: 700,
-      color: ((_REPUTATION$inspectPl = REPUTATION[inspectPlayer.rep]) === null || _REPUTATION$inspectPl === void 0 ? void 0 : _REPUTATION$inspectPl.color) || '#96A2A0'
+      fontVariantNumeric: 'tabular-nums'
     }
-  }, ((_REPUTATION$inspectPl2 = REPUTATION[inspectPlayer.rep]) === null || _REPUTATION$inspectPl2 === void 0 ? void 0 : _REPUTATION$inspectPl2.label) || inspectPlayer.rep), inspectPlayer.pet && /*#__PURE__*/React.createElement("div", {
+  }, "Lv ", inspectPlayer.rpgLv), inspectPlayer.rep && inspectPlayer.rep !== 'neutral' && /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontWeight: 700,
+      color: ((_REPUTATION$inspectPl = REPUTATION[inspectPlayer.rep]) === null || _REPUTATION$inspectPl === void 0 ? void 0 : _REPUTATION$inspectPl.color) || '#8D9B98'
+    }
+  }, ((_REPUTATION$inspectPl2 = REPUTATION[inspectPlayer.rep]) === null || _REPUTATION$inspectPl2 === void 0 ? void 0 : _REPUTATION$inspectPl2.label) || inspectPlayer.rep), inspectPlayer.pet && /*#__PURE__*/React.createElement("span", {
     style: {
       fontSize: 14
     }
-  }, inspectPlayer.pet)), inspectPlayer.rpgData && function () {
+  }, inspectPlayer.pet)))), inspectPlayer.rpgData && function () {
     var d = inspectPlayer.rpgData;
     return /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
       style: {
@@ -214,8 +256,8 @@ export function InspectPlayerPanel(props) {
         style: {
           padding: '5px 6px',
           borderRadius: 8,
-          background: '#19252A',
-          border: '1px solid rgba(238,242,235,.08)',
+          background: '#293B41', /* v2.3.1235: quiet raised cell */
+          border: '1px solid rgba(229,237,233,0.11)',
           textAlign: 'center',
           minWidth: 44
         }
@@ -260,9 +302,8 @@ export function InspectPlayerPanel(props) {
       return /*#__PURE__*/React.createElement("div", {
         key: label,
         style: {
-          padding: '6px 0',
-          borderRadius: 8,
-          background: '#19252A'
+          padding: '6px 0' /* v2.3.1235: unboxed — plain cells under the
+            section label instead of nested filled tiles */
         }
       }, /*#__PURE__*/React.createElement("div", {
         style: {
@@ -288,8 +329,8 @@ export function InspectPlayerPanel(props) {
         boxSizing: 'border-box',
         padding: '6px 10px',
         borderRadius: 999,
-        background: '#19252A',
-        border: '1px solid rgba(238,242,235,.08)',
+        background: '#293B41', /* v2.3.1235: raised chip */
+        border: '1px solid rgba(229,237,233,0.11)',
         marginBottom: 10,
         textAlign: 'center'
       }
@@ -320,19 +361,23 @@ export function InspectPlayerPanel(props) {
       gap: 6,
       marginTop: 10
     }
-  }, /*#__PURE__*/React.createElement("button", {
+  }, /* v2.3.1235: action row correction — Trade is the surface's single
+    gold primary (flex 1.4); TP/Duel are secondaries; Threat is a danger
+    OUTLINE, not a filled red block. Labels drop emoji per the design
+    correction; all four handlers are byte-identical. */
+  /*#__PURE__*/React.createElement("button", {
     className: "bt-inspect-tp",
     style: {
       flex: 1,
       marginTop: 0,
       minHeight: 44,
       padding: '0 4px',
-      borderRadius: 11,
+      borderRadius: 10,
       fontSize: 12,
       fontWeight: 700,
-      border: '1px solid rgba(238,242,235,.14)',
-      background: 'linear-gradient(180deg, #304047 0%, #2B3940 100%)',
-      color: '#F7F2E7'
+      border: '1px solid rgba(229,237,233,0.20)',
+      background: '#293B41',
+      color: '#F4F0E7'
     },
     onClick: function onClick() {
       var S = stateRef.current;
@@ -340,19 +385,19 @@ export function InspectPlayerPanel(props) {
       S.player.y = inspectPlayer.y + 40;
       setInspectPlayer(null);
     }
-  }, "📍 TP"), /*#__PURE__*/React.createElement("button", {
+  }, "TP"), /*#__PURE__*/React.createElement("button", {
     className: "bt-inspect-tp",
     style: {
-      flex: 1,
+      flex: 1.4,
       marginTop: 0,
       minHeight: 44,
       padding: '0 4px',
-      borderRadius: 11,
+      borderRadius: 10,
       fontSize: 12,
       fontWeight: 700,
-      border: 'none',
-      background: '#D8A85F',
-      color: '#20170D'
+      border: '1px solid #EAC675',
+      background: 'linear-gradient(180deg, #E2B765, #D2A14D)',
+      color: '#172126'
     },
     onClick: function onClick() {
       /* v2.3.1132: two-sided trade window when the worker supports it
@@ -375,19 +420,19 @@ export function InspectPlayerPanel(props) {
       setShowTrade(true);
       setInspectPlayer(null);
     }
-  }, "🤝 Trade"), /*#__PURE__*/React.createElement("button", {
+  }, "Trade"), /*#__PURE__*/React.createElement("button", {
     className: "bt-inspect-tp",
     style: {
       flex: 1,
       marginTop: 0,
       minHeight: 44,
       padding: '0 4px',
-      borderRadius: 11,
+      borderRadius: 10,
       fontSize: 12,
       fontWeight: 700,
-      border: '1px solid rgba(238,242,235,.14)',
-      background: 'linear-gradient(180deg, #304047 0%, #2B3940 100%)',
-      color: '#9A76D3'
+      border: '1px solid rgba(229,237,233,0.20)',
+      background: '#293B41',
+      color: '#F4F0E7'
     },
     onClick: function onClick() {
       var S = stateRef.current;
@@ -404,19 +449,19 @@ export function InspectPlayerPanel(props) {
       pushDmgPopup(S, S.player.x, S.player.y - 30, 'Duel sent', '#a78bfa');
       setInspectPlayer(null);
     }
-  }, "⚔️ Duel"), /*#__PURE__*/React.createElement("button", {
+  }, "Duel"), /*#__PURE__*/React.createElement("button", {
     className: "bt-inspect-tp",
     style: {
       flex: 1,
       marginTop: 0,
       minHeight: 44,
       padding: '0 4px',
-      borderRadius: 11,
+      borderRadius: 10,
       fontSize: 12,
       fontWeight: 700,
-      border: '1px solid #C7655F',
-      background: '#7C3431',
-      color: '#FFF1EE'
+      border: '1px solid #D8635D', /* v2.3.1235: danger outline */
+      background: 'transparent',
+      color: '#D8635D'
     },
     onClick: function onClick() {
       var _S$rpg26;
@@ -449,7 +494,7 @@ export function InspectPlayerPanel(props) {
       BT_AUDIO.beep(150, 0.15, 0.2, 'sawtooth');
       setInspectPlayer(null);
     }
-  }, "💀 Threat")), /* v2.3.1185: party invite -- caps-gated (an old worker would
+  }, "Threat")), /* v2.3.1185: party invite -- caps-gated (an old worker would
      rebroadcast party_invite as an unknown type instead of validating
      it).  Server answers with party_invited to the target and
      party_state echoes once they accept (see PartyHUD.jsx). */
@@ -508,13 +553,13 @@ export function InspectPlayerPanel(props) {
         flex: 1,
         minHeight: 44,
         padding: '0 4px',
-        borderRadius: 11,
+        borderRadius: 10, /* v2.3.1235: secondary tokens */
         fontSize: 11,
         fontWeight: 700,
         cursor: 'pointer',
-        border: '1px solid rgba(238,242,235,.14)',
-        background: 'linear-gradient(180deg, #304047 0%, #2B3940 100%)',
-        color: isFriend ? '#59BF91' : '#B9C1BF'
+        border: '1px solid rgba(229,237,233,0.20)',
+        background: '#293B41',
+        color: isFriend ? '#59BF91' : '#B6C1BE'
       },
       onClick: function onClick() {
         if (isFriend) {
@@ -549,13 +594,13 @@ export function InspectPlayerPanel(props) {
         flex: 0.7,
         minHeight: 44,
         padding: '0 4px',
-        borderRadius: 11,
+        borderRadius: 10, /* v2.3.1235: secondary tokens */
         fontSize: 11,
         fontWeight: 700,
         cursor: 'pointer',
-        border: '1px solid rgba(238,242,235,.14)',
-        background: 'linear-gradient(180deg, #304047 0%, #2B3940 100%)',
-        color: isMuted ? '#D8A94D' : '#B9C1BF'
+        border: '1px solid rgba(229,237,233,0.20)',
+        background: '#293B41',
+        color: isMuted ? '#D8AA58' : '#B6C1BE'
       },
       onClick: function onClick() {
         if (isMuted) {
@@ -585,13 +630,13 @@ export function InspectPlayerPanel(props) {
         flex: 0.7,
         minHeight: 44,
         padding: '0 4px',
-        borderRadius: 11,
+        borderRadius: 10, /* v2.3.1235: danger is an OUTLINE, never a fill */
         fontSize: 11,
         fontWeight: 700,
         cursor: 'pointer',
-        border: '1px solid ' + (isBlocked ? '#C7655F' : 'rgba(238,242,235,.14)'),
-        background: isBlocked ? '#7C3431' : 'linear-gradient(180deg, #304047 0%, #2B3940 100%)',
-        color: isBlocked ? '#FFF1EE' : '#B9C1BF',
+        border: '1px solid ' + (isBlocked ? '#D8635D' : 'rgba(229,237,233,0.20)'),
+        background: isBlocked ? 'transparent' : '#293B41',
+        color: isBlocked ? '#D8635D' : '#B6C1BE',
         opacity: !isBlocked && isLawless ? 0.3 : 1
       },
       onClick: function onClick() {

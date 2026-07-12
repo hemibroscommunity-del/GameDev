@@ -16,6 +16,11 @@ import { pushDmgPopup } from '@/game/combatHelpers.js';
    world-card surface, well tray for the offer chips, brass accept /
    raised decline at 44pt. Styles + static JSX only; the legacy-worker
    local-mint gate and both broadcasts are unchanged. */
+/* v2.3.1235: owner-approved design correction — compact decision banner:
+   sheet surface (#1E2E34) at radius 14, max-width 340, uppercase 15/700
+   title + "wants to trade" line, gold-gradient "Open trade" primary /
+   raised secondary Decline, heavier confirmation scrim rgba(4,9,12,0.52).
+   Styles + static JSX only; handlers byte-identical. */
 export function IncomingTradePanel(props) {
   var stateRef = props.stateRef,
     incomingTrade = props.incomingTrade,
@@ -24,6 +29,9 @@ export function IncomingTradePanel(props) {
   var _incomingTrade$offer;
   return React.createElement("div", {
     className: "bt-inspect",
+    style: {
+      background: 'rgba(4,9,12,0.52)' /* v2.3.1235: trade-confirmation scrim */
+    },
     onClick: function onClick() {
       return setIncomingTrade(null);
     }
@@ -34,10 +42,10 @@ export function IncomingTradePanel(props) {
     },
     style: {
       /* v2.3.1232: floating world card */
-      width: 'min(360px, calc(100vw - 24px))', /* v2.3.1234: was 300 fixed — fill narrow phones, never overflow */
-      background: 'linear-gradient(180deg, rgba(35,48,57,.94), rgba(17,25,29,.94))',
-      border: '1px solid rgba(238,242,235,.24)',
-      borderRadius: 12,
+      width: 'min(340px, calc(100vw - 24px))', /* v2.3.1235: banner max-width 340 */
+      background: '#1E2E34', /* v2.3.1235: sheet surface, modal radius 14 */
+      border: '1px solid rgba(229,237,233,0.20)',
+      borderRadius: 14,
       boxShadow: '0 14px 30px rgba(4,7,9,.38)',
       textAlign: 'left'
     }
@@ -51,10 +59,13 @@ export function IncomingTradePanel(props) {
       display: 'flex',
       alignItems: 'center',
       gap: 8,
-      fontSize: 13,
+      fontSize: 15, /* v2.3.1235: title row 15/700 uppercase */
       fontWeight: 700,
-      color: '#F7F2E7',
-      marginBottom: 4
+      textTransform: 'uppercase',
+      letterSpacing: '.04em',
+      color: '#F4F0E7',
+      marginBottom: 4,
+      paddingRight: 24
     }
   }, /* v2.3.1232: UI Bible event icon with emoji fallback */
   /*#__PURE__*/React.createElement("img", {
@@ -69,20 +80,24 @@ export function IncomingTradePanel(props) {
     onError: function onError(e) {
       e.currentTarget.replaceWith(document.createTextNode('📨'));
     }
-  }), /*#__PURE__*/React.createElement("span", null, "Trade from ", incomingTrade.fromName)), /*#__PURE__*/React.createElement("div", {
+  }), /*#__PURE__*/React.createElement("span", null, "Incoming Trade")), /*#__PURE__*/React.createElement("div", {
     style: {
-      fontSize: 12,
-      color: '#B9C1BF',
+      fontSize: 13, /* v2.3.1235: "wants to trade" line */
+      color: '#B6C1BE',
       marginBottom: 6
     }
-  }, "They offer:"), /*#__PURE__*/React.createElement("div", {
+  }, /*#__PURE__*/React.createElement("b", {
+    style: {
+      color: '#F4F0E7'
+    }
+  }, incomingTrade.fromName), " wants to trade. They offer:"), /*#__PURE__*/React.createElement("div", {
     style: {
       /* v2.3.1232: recessed well tray behind the offer chips */
       display: 'flex',
       flexWrap: 'wrap',
       gap: 4,
       marginBottom: 10,
-      background: '#121B20',
+      background: '#111E23', /* v2.3.1235: well token */
       borderRadius: 8,
       padding: 6,
       boxShadow: 'inset 0 2px 4px rgba(0,0,0,.44), inset 0 1px 0 rgba(255,255,255,.035)'
@@ -112,12 +127,12 @@ export function IncomingTradePanel(props) {
     return /*#__PURE__*/React.createElement("span", {
       key: key,
       style: {
-        background: '#19252A',
-        border: '1px solid rgba(238,242,235,.08)',
+        background: '#293B41', /* v2.3.1235: raised chip, radius 999 */
+        border: '1px solid rgba(229,237,233,0.11)',
         padding: '3px 8px',
-        borderRadius: 8,
+        borderRadius: 999,
         fontSize: 12,
-        color: '#B9C1BF',
+        color: '#B6C1BE',
         fontVariantNumeric: 'tabular-nums'
       }
     }, emojis[key] || key, " ×", qty);
@@ -127,14 +142,14 @@ export function IncomingTradePanel(props) {
       display: 'inline-flex',
       alignItems: 'center',
       gap: 4,
-      background: '#19252A',
-      border: '1px solid rgba(238,242,235,.08)',
+      background: '#293B41', /* v2.3.1235: raised chip, radius 999 */
+      border: '1px solid rgba(229,237,233,0.11)',
       padding: '3px 8px',
-      borderRadius: 8,
+      borderRadius: 999,
       fontSize: 14,
       fontWeight: 700,
       fontVariantNumeric: 'tabular-nums',
-      color: '#D8A85F'
+      color: '#D8AA58' /* v2.3.1235: brass token */
     }
   }, /*#__PURE__*/React.createElement("img", {
     src: "/icons/popups/gold.webp",
@@ -155,14 +170,14 @@ export function IncomingTradePanel(props) {
     }
   }, /*#__PURE__*/React.createElement("button", {
     style: {
-      /* v2.3.1232: brass accept, 44pt */
+      /* v2.3.1235: primary gold gradient, 44pt */
       flex: 1,
       padding: '8px',
       minHeight: 44,
-      borderRadius: 11,
-      border: 'none',
-      background: '#D8A85F',
-      color: '#20170D',
+      borderRadius: 10,
+      border: '1px solid #EAC675',
+      background: 'linear-gradient(180deg, #E2B765, #D2A14D)',
+      color: '#172126',
       fontSize: 13,
       fontWeight: 700,
       cursor: 'pointer'
@@ -200,16 +215,16 @@ export function IncomingTradePanel(props) {
       BT_AUDIO.collect();
       setIncomingTrade(null);
     }
-  }, "Accept"), /*#__PURE__*/React.createElement("button", {
+  }, "Open trade"), /*#__PURE__*/React.createElement("button", {
     style: {
-      /* v2.3.1232: raised secondary decline */
+      /* v2.3.1235: raised secondary decline, strong hairline */
       flex: 1,
       padding: '8px',
       minHeight: 44,
-      borderRadius: 11,
-      border: '1px solid rgba(238,242,235,.14)',
-      background: '#2B3940',
-      color: '#F7F2E7',
+      borderRadius: 10,
+      border: '1px solid rgba(229,237,233,0.20)',
+      background: '#293B41',
+      color: '#F4F0E7',
       fontSize: 13,
       fontWeight: 700,
       cursor: 'pointer'

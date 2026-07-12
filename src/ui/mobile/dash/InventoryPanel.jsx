@@ -212,8 +212,12 @@ export const InventoryPanel = () => {
   return (
     <div style={{ ...panelStyle, display: 'flex', flexDirection: 'column' }}>
 
-      {/* Filter strip — labeled category chips (glyph + name). */}
-      <div style={{ display: 'flex', gap: 4, marginBottom: 6 }}>
+      {/* Filter strip — labeled category chips (glyph + name).
+          v2.3.1235: row scrolls horizontally (nowrap + pan-x) so chips
+          never squash as categories grow; labels lifted to the 11px type
+          floor; active state is the brass-soft TINT + brass hairline per
+          the correction-pass palette (solid accent fills retired). */}
+      <div style={{ display: 'flex', gap: 4, marginBottom: 6, flexWrap: 'nowrap', overflowX: 'auto', touchAction: 'pan-x', WebkitOverflowScrolling: 'touch' }}>
         {CATEGORIES.map(c => {
           const active = c.id === filter;
           return (
@@ -221,12 +225,12 @@ export const InventoryPanel = () => {
               onClick={() => setFilter(c.id)}
               title={c.label}
               style={{
-                flex: 1, minWidth: 0,
+                flex: '1 0 auto', minWidth: 56,
                 display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 1,
-                padding: '4px 0',
-                background: active ? COL.accent : 'transparent',
-                color: active ? '#fff' : COL.muted,
-                border: `1px solid ${active ? COL.accent : COL.tileBor}`,
+                padding: '4px 8px',
+                background: active ? COL.accentFill : 'transparent',
+                color: active ? COL.text : COL.muted,
+                border: `1px solid ${active ? COL.accent : COL.border}`,
                 borderRadius: 5,
                 fontFamily: 'inherit',
                 cursor: 'pointer',
@@ -237,7 +241,7 @@ export const InventoryPanel = () => {
                     style={{ width: 18, height: 18, objectFit: 'contain' }}
                     onError={(e) => { e.currentTarget.replaceWith(document.createTextNode(c.glyph)); }} />
                 : <span style={{ fontSize: 14, lineHeight: 1 }}>{c.glyph}</span>}
-              <span style={{ fontSize: 8.5, fontWeight: 700, letterSpacing: '.02em' }}>{c.label}</span>
+              <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: '.02em' }}>{c.label}</span>
             </button>
           );
         })}
@@ -249,36 +253,43 @@ export const InventoryPanel = () => {
         <span style={{ fontSize: 11 }}>{Math.min(usedTiles, SLOTS)} / {SLOTS}</span>
       </div>
 
-      {/* v2.3.1229: Lantern Slate recessed tray replaces the red leather
-          here too (spec hard lock: leather removed EVERYWHERE — the
-          v2.3.1227 sweep caught the preview grid but missed this one,
-          owner-reported with a screenshot). */}
-      <div style={{
-        background: COL.well,
-        border: `1px solid ${COL.tileBor}`,
-        boxShadow: 'inset 0 2px 4px rgba(0,0,0,.44), inset 0 1px 0 rgba(255,255,255,.035)',
-        borderRadius: 10,
-        padding: 8,
-        flex: 1,
-        minHeight: 0,
-      }}>
+      {/* v2.3.1235: the empty bag no longer renders the recessed tray —
+          an enormous bordered rectangle around one small message read as
+          a broken screen (owner correction).  Zero items = icon + message
+          centered directly on the sheet; the tray/grid below is unchanged
+          and only mounts once there is something to hold. */}
       {usedTiles === 0
         ? (
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '20px 8px', textAlign: 'center', color: COL.muted }}>
+          <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '24px 8px', textAlign: 'center', color: COL.muted }}>
             {/* v2.3.1224: UI Bible satchel icon */}
             <img src="/icons/ui/nav-inventory.webp?v=2.3.1224" alt="" draggable={false}
               style={{ width: 46, height: 46, opacity: 0.4, filter: 'grayscale(1)' }} />
-            <div style={{ fontSize: 13, fontWeight: 700 }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: COL.text2 }}>
               {filter === 'all' ? 'Your bag is empty.' : `No ${(CATEGORIES.find(c => c.id === filter)?.label || 'matching').toLowerCase()} items yet.`}
             </div>
             {filter === 'all' && (
-              <div style={{ fontSize: 10.5, color: 'rgba(136,144,184,0.78)', maxWidth: 220 }}>
+              /* v2.3.1235: 10.5px lavender-gray → 12px palette muted (type
+                 floor + no off-palette grays). */
+              <div style={{ fontSize: 12, color: COL.muted, maxWidth: 220 }}>
                 Defeat monsters and gather materials to fill it up.
               </div>
             )}
           </div>
         )
         : (
+          /* v2.3.1229: Lantern Slate recessed tray replaces the red leather
+             here too (spec hard lock: leather removed EVERYWHERE — the
+             v2.3.1227 sweep caught the preview grid but missed this one,
+             owner-reported with a screenshot). */
+          <div style={{
+            background: COL.well,
+            border: `1px solid ${COL.tileBor}`,
+            boxShadow: 'inset 0 2px 4px rgba(0,0,0,.44), inset 0 1px 0 rgba(255,255,255,.035)',
+            borderRadius: 10,
+            padding: 8,
+            flex: 1,
+            minHeight: 0,
+          }}>
           <div style={{
             display: 'grid',
             gridTemplateColumns: 'repeat(8, 1fr)',
@@ -299,8 +310,8 @@ export const InventoryPanel = () => {
               }} />
             ))}
           </div>
+          </div>
         )}
-      </div>
     </div>
   );
 };
