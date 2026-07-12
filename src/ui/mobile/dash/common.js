@@ -63,6 +63,14 @@ export const panelStyle = {
   color: COL.text,
   fontFamily: 'Source Sans 3, sans-serif',
   fontSize: 15,
+  /* v2.3.1235: batch-1 QA — bottom scroll-edge fade (pure CSS, no JS):
+     any row crossing the sheet's fold fades out over the last 18px,
+     signalling more content below; at scroll end the fade zone holds
+     only the panels' bottom padding so nothing visibly dims. QA caught
+     the Weapons channel list ending EXACTLY at the fold at 390×844 with
+     no cue that a third row existed. */
+  WebkitMaskImage: 'linear-gradient(180deg, #000 calc(100% - 18px), transparent)',
+  maskImage: 'linear-gradient(180deg, #000 calc(100% - 18px), transparent)',
 };
 
 export const rowStyle = {
