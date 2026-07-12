@@ -579,15 +579,19 @@ export function InventoryPanel(props) {
         key: key,
         /* v2.3.1232: 32px eat chips (pill radius); at-full = quiet cell +
            disabled ink, else the spec positive green */
+        /* v2.3.1235: batch-2 rollout — 32px was below the 44px hitbox
+           floor; the green fill broke the locked button rule (eating
+           is a routine action — neutral secondary, never a colored
+           fill); at-full stays a readable disabled well cell. */
         style: {
           padding: '0 10px',
-          minHeight: 32,
+          minHeight: 44,
           borderRadius: 999,
           fontSize: 11,
           cursor: 'pointer',
-          background: atFull ? '#19252A' : 'rgba(89,191,145,.12)',
-          border: atFull ? '1px solid rgba(238,242,235,.08)' : '1px solid rgba(89,191,145,.3)',
-          color: atFull ? '#687575' : '#59BF91',
+          background: atFull ? 'var(--ui-well)' : 'var(--ui-raised)',
+          border: atFull ? '1px solid var(--ui-line)' : '1px solid var(--ui-line-strong)',
+          color: atFull ? 'var(--ui-text-disabled)' : 'var(--ui-text)',
           fontWeight: 700,
           textTransform: 'capitalize',
           fontVariantNumeric: 'tabular-nums'
@@ -611,7 +615,9 @@ export function InventoryPanel(props) {
           }
           BT_AUDIO.beep(500, 0.06, 0.08, 'sine');
         }
-      }, "\uD83D\uDC1F ", fishName, " \xD7", qty, " (+", healAmt, "HP)");
+        /* v2.3.1235: batch-2 rollout \u2014 the \uD83D\uDC1F prefix was decorative
+           emoji in button chrome (the fish name carries the meaning) */
+      }, fishName, " \xD7", qty, " (+", healAmt, "HP)");
     })));
   }(), /*#__PURE__*/React.createElement("div", {
     /* v2.3.1232: module header \u2014 11/600 uppercase .12em */
