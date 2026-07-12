@@ -883,14 +883,16 @@ export function InventoryPanel(props) {
     }, "Equip" /* v2.3.1235: batch-2 rollout \u2014 the sword emoji prefix was
       decorative emoji in button chrome */), /*#__PURE__*/React.createElement("button", {
       /* v2.3.1232: 44px action row — Sell is the raised secondary */
+      /* v2.3.1235: batch-2 rollout — secondary onto the correction-pass
+         tokens; radius 11 → 10 (locked button radius) */
       style: {
         flex: 1,
         padding: '3px 0',
         minHeight: 44,
-        borderRadius: 11,
-        border: '1px solid rgba(238,242,235,.14)',
-        background: '#2B3940',
-        color: '#F7F2E7',
+        borderRadius: 10,
+        border: '1px solid var(--ui-line-strong)',
+        background: 'var(--ui-raised)',
+        color: 'var(--ui-text)',
         fontSize: 12,
         fontWeight: 700,
         cursor: 'pointer',
@@ -942,17 +944,19 @@ export function InventoryPanel(props) {
     }), "Sell (", Math.ceil((sw.tierMult || 1) * (((_WEAPON_TYPES$sw$type2 = WEAPON_TYPES[sw.type]) === null || _WEAPON_TYPES$sw$type2 === void 0 ? void 0 : _WEAPON_TYPES$sw$type2.base) || 30) * 0.5), "g)")));
   })), /*#__PURE__*/React.createElement("div", {
     /* v2.3.1232: module header \u2014 11/600 uppercase .12em */
+    /* v2.3.1235: batch-2 rollout \u2014 locked 11/700 .14em muted rung;
+       the \uD83D\uDCD6 prefix was decorative emoji in chrome */
     style: {
       fontSize: 11,
-      fontWeight: 600,
+      fontWeight: 700,
       textTransform: 'uppercase',
-      letterSpacing: '.12em',
-      color: '#96A2A0',
+      letterSpacing: '.14em',
+      color: 'var(--ui-text-muted)',
       fontVariantNumeric: 'tabular-nums',
       marginTop: 4,
       marginBottom: 4
     }
-  }, "\uD83D\uDCD6 Codex: ", discoveredCollisions.size, " collisions discovered"), discoveredCollisions.size > 0 && /*#__PURE__*/React.createElement("div", {
+  }, "Codex: ", discoveredCollisions.size, " collisions discovered"), discoveredCollisions.size > 0 && /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
       gap: 3,
@@ -966,13 +970,15 @@ export function InventoryPanel(props) {
     return coll ? /*#__PURE__*/React.createElement("span", {
       key: cid,
       /* v2.3.1232: off-palette teal → spec info blue */
+      /* v2.3.1235: batch-2 rollout — info #5D93D2 → #599FE5 (approved
+         correction-pass token); 9px to the 11px floor */
       style: {
-        fontSize: 9,
+        fontSize: 11,
         padding: '2px 6px',
         borderRadius: 4,
-        background: 'rgba(93,147,210,.12)',
-        color: '#5D93D2',
-        border: '1px solid rgba(93,147,210,.3)'
+        background: 'rgba(89,159,229,.12)',
+        color: '#599FE5',
+        border: '1px solid rgba(89,159,229,.3)'
       }
     }, coll.name) : null;
   })), /*#__PURE__*/React.createElement("div", {
