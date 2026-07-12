@@ -15,6 +15,22 @@ export function ForgePanel(props) {
     stateRef = props.stateRef,
     setRpgState = props.setRpgState;
   var _rpgState$lifeSkills21;
+  /* v2.3.1235: state-correction §10 — scroll-fade plumbing (pattern:
+     InspectPlayerPanel ~128-139): the panel body scrolls internally and
+     a sticky 24px bottom fade shows only while content remains below
+     the fold, so the Hardening/Amulet/Salvage actions are never
+     silently unreachable on short phones. Display-only state. */
+  var _sf = React.useState(false);
+  var showFade = _sf[0],
+    setShowFade = _sf[1];
+  var scrollBodyRef = React.useRef(null);
+  var measureFade = React.useCallback(function () {
+    var el = scrollBodyRef.current;
+    if (el) setShowFade(el.scrollHeight - el.scrollTop - el.clientHeight > 4);
+  }, []);
+  React.useEffect(function () {
+    measureFade();
+  }, [rpgState, measureFade]);
   /* v2.3.1232: Lantern Slate restyle (docs/LANTERN-SLATE-SPEC.md) \u2014
      the color remap left the old dense layout behind.  Now: #202C32
      panel surface + icon header, segmented weapon-type tabs on a
@@ -66,13 +82,16 @@ export function ForgePanel(props) {
   return React.createElement("div", {
     style: {
       margin: -20,
-      /* v2.3.1235: batch-3 rollout — sheet token, 14px panel radius, and
-         the Checkpoint-B 16px scroll tail. */
-      padding: '16px 14px 32px',
+      /* v2.3.1235: state-correction §10 — flex-column root (fixed header
+         row + internal overflow-y body below); the root padding moved
+         onto header/body so the scroll region owns the full width. */
       background: '#1E2E34',
       borderRadius: 14,
       textAlign: 'left',
-      fontFamily: "'Source Sans 3',sans-serif"
+      fontFamily: "'Source Sans 3',sans-serif",
+      display: 'flex',
+      flexDirection: 'column',
+      maxHeight: '100%'
     }
   }, /*#__PURE__*/React.createElement("div", {
     style: {
@@ -80,7 +99,10 @@ export function ForgePanel(props) {
       alignItems: 'center',
       gap: 8,
       marginBottom: 2,
-      paddingRight: 24
+      /* v2.3.1235: state-correction §10 — header row is the fixed
+         (flex:none) part; absorbs the old root 16/14 padding. */
+      flex: 'none',
+      padding: '16px 38px 0 14px'
     }
   }, /*#__PURE__*/React.createElement("img", {
     src: "/icons/ui/bldg-forge.webp",
@@ -103,6 +125,20 @@ export function ForgePanel(props) {
       color: '#F4F0E7'
     }
   }, "Blacksmith")), /*#__PURE__*/React.createElement("div", {
+    /* v2.3.1235: state-correction §10 — internal scroll body: everything
+       below the header row scrolls; sticky bottom fade is its last child.
+       Scrollbar hidden by .ls-scrollbody (game.css). */
+    className: "ls-scrollbody",
+    ref: scrollBodyRef,
+    onScroll: measureFade,
+    style: {
+      overflowY: 'auto',
+      touchAction: 'pan-y',
+      flex: '1 1 auto',
+      minHeight: 0,
+      padding: '0 14px 12px'
+    }
+  }, /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 11,
       color: '#8D9B98',
@@ -203,10 +239,9 @@ export function ForgePanel(props) {
         gap: 8,
         minHeight: 44,
         padding: '6px 8px',
-        borderTop: _fi > 0 ? LS_DIV : 'none',
-        /* v2.3.1235: batch-3 rollout — locked rows must stay readable
-           (contract floor .55; the requirement is stated in-row). */
-        opacity: canForge && meetsStat ? 1 : 0.55
+        borderTop: _fi > 0 ? LS_DIV : 'none'
+        /* v2.3.1235: state-correction — whole-row opacity dimming removed;
+           locked state is carried by text tokens + ls-lock glyph instead. */
       }
     }, /*#__PURE__*/React.createElement("span", {
       style: {
@@ -220,7 +255,9 @@ export function ForgePanel(props) {
       style: {
         fontSize: 13,
         fontWeight: 600,
-        color: canForge && meetsStat ? '#F4F0E7' : '#667875'
+        /* v2.3.1235: state-correction — locked titles use #B6C1BE (state 3);
+           missing-materials rows keep full title brightness (state 2). */
+        color: canForge && meetsStat ? '#F4F0E7' : '#B6C1BE'
       }
     }, bt.label, " ", /*#__PURE__*/React.createElement("span", {
       style: {
@@ -237,7 +274,24 @@ export function ForgePanel(props) {
         fontSize: 11,
         color: '#8D9B98'
       }
-    }, bt.oreCost, "\xD7 ", bt.oreName, " ore + ", bt.goldCost, "g", !canForgeSkill && " \xB7 Req BS Lv".concat(bt.minLvl), canForgeSkill && !meetsStat && " \xB7 Req ".concat(STAT_LABELS[statReq.stat] || statReq.stat, " ").concat(statReq.value), bt.statReq > 0 && function (_stateRef$current11) {
+    }, /* v2.3.1235: state-correction — state-2 rows show live have/need
+          counts from the same inventory/coin reads the disable logic uses
+          (met = positive green, short = danger); state-3 rows keep the
+          static cost and carry the requirement next to an ls-lock glyph. */
+    (canForge && meetsStat) && /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement("span", {
+      style: {
+        color: hasOre ? '#55B98A' : '#D8635D'
+      }
+    }, bt.oreName.charAt(0).toUpperCase() + bt.oreName.slice(1), " ", ((rpgState.inventory || {})[oreKey] || 0), "/", bt.oreCost), " \xB7 ", /*#__PURE__*/React.createElement("span", {
+      style: {
+        color: hasGold ? '#55B98A' : '#D8635D'
+      }
+    }, "Gold ", rpgState.coins || 0, "/", bt.goldCost)), !(canForge && meetsStat) && /*#__PURE__*/React.createElement("span", null, bt.oreCost, "\xD7 ", bt.oreName, " ore + ", bt.goldCost, "g \xB7 ", /*#__PURE__*/React.createElement("span", {
+      className: "ls-lock",
+      style: {
+        marginRight: 3
+      }
+    }), !canForgeSkill ? "Blacksmith Lv".concat(bt.minLvl).concat(bt.statReq > 0 ? " \xB7 " + reqStat.charAt(0).toUpperCase() + reqStat.slice(1) + " " + bt.statReq : "") : "".concat(statReq.stat.charAt(0).toUpperCase() + statReq.stat.slice(1), " ").concat(statReq.value)), bt.statReq > 0 && function (_stateRef$current11) {
       var bsType = ((_stateRef$current11 = stateRef.current) === null || _stateRef$current11 === void 0 ? void 0 : _stateRef$current11._bsType) || 'greatsword';
       var reqStat = bsType === 'shield' ? SHIELD_EQUIP_STAT : EQUIP_STAT_MAP[bsType] || 'power';
       var playerVal = rpgState[reqStat] || 0;
@@ -249,8 +303,10 @@ export function ForgePanel(props) {
         }
       }, " \xB7 ", bt.statReq, " ", reqStat, " ", met ? '✓' : '✗');
     }())), /*#__PURE__*/React.createElement("button", {
-      /* v2.3.1235: batch-3 rollout — 44px hitbox floor; secondary =
-         raised + strong hairline, disabled = quiet card fill. */
+      /* v2.3.1235: state-correction — disabled recipe is #1A292F fill +
+         #8D9B98 label + .11 hairline at full opacity (was #24363C/#667875);
+         real disabled prop added around the untouched handler. */
+      disabled: !(canForge && hasOre && hasGold && meetsStat),
       style: {
         minHeight: 44,
         padding: '0 12px',
@@ -258,9 +314,10 @@ export function ForgePanel(props) {
         border: canForge && hasOre && hasGold && meetsStat ? '1px solid rgba(229,237,233,.20)' : '1px solid rgba(229,237,233,.11)',
         fontSize: 12,
         fontWeight: 700,
-        background: canForge && hasOre && hasGold && meetsStat ? '#293B41' : '#24363C',
-        color: canForge && hasOre && hasGold && meetsStat ? '#F4F0E7' : '#667875',
-        cursor: 'pointer',
+        background: canForge && hasOre && hasGold && meetsStat ? '#293B41' : '#1A292F',
+        color: canForge && hasOre && hasGold && meetsStat ? '#F4F0E7' : '#8D9B98',
+        opacity: 1,
+        cursor: canForge && hasOre && hasGold && meetsStat ? 'pointer' : 'default',
         fontFamily: 'inherit',
         flexShrink: 0
       },
@@ -1252,5 +1309,21 @@ export function ForgePanel(props) {
         color: '#667875'
       }
     }, "No base"));
-  })) /* v2.3.1235: batch-3 rollout \u2014 closes the stash list well */)));
+  })) /* v2.3.1235: batch-3 rollout \u2014 closes the stash list well */)), /*#__PURE__*/React.createElement("div", {
+    /* v2.3.1235: state-correction \u00a710 \u2014 sticky bottom fade (matches the
+       #1E2E34 sheet behind it); visible only while more content exists
+       below the fold, gone at scroll end via measureFade. */
+    "aria-hidden": true,
+    style: {
+      position: 'sticky',
+      bottom: 0,
+      height: 24,
+      marginTop: -24,
+      flexShrink: 0,
+      background: 'linear-gradient(180deg, rgba(30,46,52,0), #1E2E34)',
+      opacity: showFade ? 1 : 0,
+      transition: 'opacity 160ms ease',
+      pointerEvents: 'none'
+    }
+  })));
 }

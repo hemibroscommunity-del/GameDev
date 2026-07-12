@@ -30,6 +30,14 @@ import { pushDmgPopup } from '@/game/combatHelpers.js';
    and recipe glyphs are game data and stay); row buttons hit the 44px
    hitbox floor; locked recipe rows lift to the .55 readability floor;
    needle glow shadow dropped (not in the approved shadow kit). */
+/* v2.3.1235: state-correction — four-state row model on the herb
+   recipes: row-level opacity removed (state is per-element, never a
+   whole-row dim); missing-material rows (state 2) keep normal title
+   brightness + danger "Firebloom 0/1" shortage + "Need herb" button;
+   level-locked rows (state 3) get #B6C1BE title, ls-lock glyph +
+   "Unlocks at Cooking LvN" + "LvN" button; disabled buttons adopt the
+   approved recipe (#1A292F/#8D9B98/.11 line, opacity 1) with a real
+   disabled prop. Handlers byte-identical. */
 export function CookPanel(props) {
   var rpgState = props.rpgState,
     stateRef = props.stateRef,
@@ -423,18 +431,21 @@ export function CookPanel(props) {
           color: '#8D9B98'
         }
       }, "Heals ", healAmt, " HP")), /*#__PURE__*/React.createElement("button", {
+        /* v2.3.1235: state-correction — real disabled prop (the onClick
+           atFull guard is unchanged underneath) + the approved disabled
+           recipe (#1A292F fill, #8D9B98 text, .11 hairline, opacity 1). */
+        disabled: atFull,
         style: {
-          /* v2.3.1235: batch-3 rollout — 44px hitbox floor; disabled =
-             quiet card fill + faint text (well-soft is retired). */
           minHeight: 44,
           padding: '0 14px',
           borderRadius: 10,
           border: atFull ? '1px solid rgba(229,237,233,.11)' : '1px solid rgba(229,237,233,.20)',
           fontSize: 13,
           fontWeight: 700,
-          background: atFull ? '#24363C' : '#293B41',
-          color: atFull ? '#667875' : '#F4F0E7',
-          cursor: 'pointer',
+          background: atFull ? '#1A292F' : '#293B41',
+          color: atFull ? '#8D9B98' : '#F4F0E7',
+          opacity: 1,
+          cursor: atFull ? 'default' : 'pointer',
           fontFamily: 'inherit',
           flexShrink: 0
         },
@@ -497,6 +508,30 @@ export function CookPanel(props) {
       }, 0);
       return total >= count;
     });
+    /* v2.3.1235: state-correction — per-ingredient have/need derived
+       from the SAME inventory reads the hasIngredients disable logic
+       uses (k.includes(type) sum), so the danger shortage line
+       ("Firebloom 0/1") and the "Need herb" button label can never
+       disagree with the disabled state. Display derivation only. */
+    var ingStatus = Object.entries(recipe.ingredients).map(function (_refIng) {
+      var _refIng2 = _slicedToArray(_refIng, 2),
+        type = _refIng2[0],
+        count = _refIng2[1];
+      var have = Object.entries(inv).filter(function (_refIng3) {
+        var _refIng4 = _slicedToArray(_refIng3, 2),
+          k = _refIng4[0],
+          v = _refIng4[1];
+        return k.includes(type) && v > 0;
+      }).reduce(function (sum, _refIng5) {
+        var _refIng6 = _slicedToArray(_refIng5, 2),
+          v = _refIng6[1];
+        return sum + v;
+      }, 0);
+      return { type: type, need: count, have: have };
+    });
+    var firstMissing = ingStatus.find(function (s) {
+      return s.have < s.need;
+    });
     var buffDesc = recipe.desc || (recipe.buff === 'heal' ? "Heals ".concat(recipe.power, " HP") : recipe.buff === 'all' ? "+".concat(Math.round(recipe.power * 100), "% all stats") : recipe.buff === 'regen' ? "+".concat(Math.round(recipe.power * 100), "% regen") : recipe.buff === 'resist' ? "+".concat(Math.round(recipe.power * 100), "% resist") : "+".concat(Math.round(recipe.power * 100), "% ").concat(recipe.buff));
     return /*#__PURE__*/React.createElement("div", {
       key: ri,
@@ -506,10 +541,11 @@ export function CookPanel(props) {
         gap: 8,
         minHeight: 44,
         padding: '6px 8px',
-        borderTop: ri > 0 ? LS_DIV : 'none',
-        /* v2.3.1235: batch-3 rollout — locked rows must stay readable
-           (contract floor .55; the Lv requirement is stated in-row). */
-        opacity: canCook ? 1 : 0.55
+        borderTop: ri > 0 ? LS_DIV : 'none'
+        /* v2.3.1235: state-correction — NO row-level opacity ever
+           (four-state row model): state is carried per-element (title
+           token, requirement line, button treatment), never by dimming
+           the whole row. Recipe names must never look absent. */
       }
     }, /*#__PURE__*/React.createElement("span", {
       style: {
@@ -524,7 +560,11 @@ export function CookPanel(props) {
       style: {
         fontSize: 13,
         fontWeight: 600,
-        color: canCook ? '#F4F0E7' : '#667875'
+        /* v2.3.1235: state-correction — state 2 (missing materials)
+           keeps the NORMAL title brightness; only a level lock (state
+           3) mutes the title, and to #B6C1BE (not the near-invisible
+           #667875 — names must never look absent). */
+        color: canCook ? '#F4F0E7' : '#B6C1BE'
       }
     }, recipe.name, " ", /*#__PURE__*/React.createElement("span", {
       style: {
@@ -542,24 +582,52 @@ export function CookPanel(props) {
         fontSize: 11,
         color: '#8D9B98'
       }
-    }, "Needs: ", Object.entries(recipe.ingredients).map(function (_ref111) {
-      var _ref112 = _slicedToArray(_ref111, 2),
-        t = _ref112[0],
-        c = _ref112[1];
-      return c + '× ' + t.replace(/_/g, ' ');
-    }).join(', '), !canCook && " \xB7 Req Cooking Lv".concat(recipe.cookLvl))), /*#__PURE__*/React.createElement("button", {
+    }, "Needs: ", ingStatus.map(function (s, si) {
+      /* v2.3.1235: state-correction — state 2 shows the shortage in
+         danger text as "Firebloom 0/1"; satisfied ingredients (and all
+         ingredients on level-locked rows, where the lock is the story)
+         keep the plain cost format. */
+      var short = canCook && s.have < s.need;
+      return /*#__PURE__*/React.createElement(React.Fragment, {
+        key: s.type
+      }, si > 0 ? ', ' : '', short ? /*#__PURE__*/React.createElement("span", {
+        style: {
+          color: '#D8635D',
+          textTransform: 'capitalize',
+          fontVariantNumeric: 'tabular-nums'
+        }
+      }, s.type.replace(/^[a-z]+_/, '').replace(/_/g, ' '), " ", s.have, "/", s.need) : s.need + '× ' + s.type.replace(/_/g, ' '));
+    })), !canCook && /*#__PURE__*/React.createElement("div", {
+      /* v2.3.1235: state-correction — state 3 (level lock) gets a
+         plain-language requirement line with the shared ls-lock glyph
+         (game.css CSS-mask padlock, inherits currentColor). */
       style: {
-        /* v2.3.1235: batch-3 rollout — 44px hitbox floor; secondary vs
-           quiet-card disabled treatment on the approved tokens. */
+        fontSize: 11,
+        color: '#B6C1BE',
+        display: 'flex',
+        alignItems: 'center',
+        gap: 4,
+        marginTop: 2
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      className: "ls-lock",
+      "aria-hidden": true
+    }), "Unlocks at Cooking Lv", recipe.cookLvl)), /*#__PURE__*/React.createElement("button", {
+      /* v2.3.1235: state-correction — real disabled prop (the onClick
+         guard is unchanged underneath) + the approved disabled recipe
+         (#1A292F fill, #8D9B98 text, .11 hairline, opacity 1, 44px). */
+      disabled: !canCook || !hasIngredients,
+      style: {
         minHeight: 44,
         padding: '0 14px',
         borderRadius: 10,
         border: canCook && hasIngredients ? '1px solid rgba(229,237,233,.20)' : '1px solid rgba(229,237,233,.11)',
         fontSize: 13,
         fontWeight: 700,
-        background: canCook && hasIngredients ? '#293B41' : '#24363C',
-        color: canCook && hasIngredients ? '#F4F0E7' : '#667875',
-        cursor: 'pointer',
+        background: canCook && hasIngredients ? '#293B41' : '#1A292F',
+        color: canCook && hasIngredients ? '#F4F0E7' : '#8D9B98',
+        opacity: 1,
+        cursor: canCook && hasIngredients ? 'pointer' : 'default',
         fontFamily: 'inherit',
         flexShrink: 0
       },
@@ -616,6 +684,6 @@ export function CookPanel(props) {
         } catch (e) {}
         BT_AUDIO.collect();
       }
-    }, "Cook"));
+    }, canCook ? hasIngredients ? "Cook" : "Need " + (firstMissing ? firstMissing.type.split('_')[0] : 'items') : "Lv" + recipe.cookLvl /* v2.3.1235: state-correction — disabled action states its reason: "Need herb" (state 2) / "Lv3" (state 3) */));
   })));
 }

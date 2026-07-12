@@ -24,6 +24,11 @@ import { pushDmgPopup } from '@/game/combatHelpers.js';
    wellSoft folds into the well, and the off-token .08/.14 hairlines
    fold into the approved .11 line (.20 borderStrong added for
    secondary buttons). Header strip adopts the #27393F header token. */
+/* v2.3.1235: state-correction — locked plot tiles lose the parent
+   opacity and gain a 16px ls-lock glyph + "Unlocks at Farming Lv10/25"
+   in #8D9B98; empty-USABLE plots read "Empty · No seeds" when nothing
+   is plantable, so empty-usable never looks like locked. Handlers
+   byte-identical. */
 var LS = {
   txt1: '#F4F0E7', txt2: '#B6C1BE', txt3: '#8D9B98', dis: '#667875',
   panel: '#1E2E34', strip: '#27393F', raised: '#293B41', well: '#111E23', wellSoft: '#111E23',
@@ -53,6 +58,26 @@ export function FarmPanel(props) {
     setRpgState = props.setRpgState,
     setBuildingPanel = props.setBuildingPanel;
   var _rpgState$lifeSkills18, _stateRef$current7;
+  /* v2.3.1235: state-correction — "do I own any plantable seed?"
+     derived from the SAME ZONE_RESOURCES × rType × tier enumeration
+     the Plant-seeds list below uses, so the empty-plot caption can
+     never disagree with the list. Display derivation only. */
+  var hasPlantableSeeds = function () {
+    var inv = rpgState.inventory || {};
+    var found = false;
+    Object.entries(ZONE_RESOURCES).forEach(function (_refSeed) {
+      var res = _slicedToArray(_refSeed, 2)[1];
+      ['crystal', 'ore', 'herb'].forEach(function (rType) {
+        [1, 2, 3, 4, 5].forEach(function (tier) {
+          var _RESOURCE_TIERS$seed;
+          var tierLabel = ((_RESOURCE_TIERS$seed = RESOURCE_TIERS[tier]) === null || _RESOURCE_TIERS$seed === void 0 ? void 0 : _RESOURCE_TIERS$seed.label) || 'Rough';
+          var key = rType + '_' + (tierLabel + ' ' + res[rType]).replace(/\s+/g, '_').toLowerCase();
+          if ((inv[key] || 0) > 0) found = true;
+        });
+      });
+    });
+    return found;
+  }();
   return React.createElement("div", { style: LS_WRAP },
     lsHeader('farm', '🌾', "Farm", "Farming Lv" + (((_rpgState$lifeSkills18 = rpgState.lifeSkills) === null || _rpgState$lifeSkills18 === void 0 || (_rpgState$lifeSkills18 = _rpgState$lifeSkills18.farming) === null || _rpgState$lifeSkills18 === void 0 ? void 0 : _rpgState$lifeSkills18.level) || 1)),
     React.createElement("div", { style: LS_BODY },
@@ -131,16 +156,32 @@ export function FarmPanel(props) {
                state is a thin edge language, never a tile fill; locked
                plots meet the .55 readability floor (was .4). */
             background: LS.wellSoft,
-            border: '1px solid ' + (isReady ? '#55B98A' : isGrowing ? '#DFAE4E' : LS.wellBorder),
-            opacity: plotUnlocked ? 1 : 0.55
+            border: '1px solid ' + (isReady ? '#55B98A' : isGrowing ? '#DFAE4E' : LS.wellBorder)
+            /* v2.3.1235: state-correction — NO parent opacity on locked
+               tiles (four-state row model): the lock glyph + plain-
+               language requirement carry the state instead of a dim. */
           }
         }, !plotUnlocked ? /*#__PURE__*/React.createElement("div", {
+          /* v2.3.1235: state-correction — 16px ls-lock glyph (game.css
+             CSS-mask padlock, inherits currentColor) + "Unlocks at
+             Farming LvN" in #8D9B98. */
           style: {
             fontSize: 11,
             color: LS.txt3,
-            marginTop: 16
+            marginTop: 10
           }
-        }, "Locked \xB7 Farm Lv", plotIdx < 4 ? 10 : 25) /* v2.3.1235: batch-3 rollout — text lock indication + requirement, 🔒 dropped (no emoji in chrome) */ : isReady ? /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+        }, /*#__PURE__*/React.createElement("span", {
+          className: "ls-lock",
+          "aria-hidden": true,
+          style: {
+            width: 16,
+            height: 16
+          }
+        }), /*#__PURE__*/React.createElement("div", {
+          style: {
+            marginTop: 2
+          }
+        }, "Unlocks at Farming Lv", plotIdx < 4 ? 10 : 25)) : isReady ? /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
           style: {
             fontSize: 18
           }
@@ -236,7 +277,7 @@ export function FarmPanel(props) {
             color: LS.dis,
             marginTop: 16
           }
-        }, "Empty plot"));
+        }, hasPlantableSeeds ? "Empty plot" : "Empty \xB7 No seeds" /* v2.3.1235: state-correction — empty-usable reads differently from locked; no seeds states why nothing can be planted */));
       })),
       React.createElement("div", { style: LS_MOD }, "Plant seeds"),
       function () {

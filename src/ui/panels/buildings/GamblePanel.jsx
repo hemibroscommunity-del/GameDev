@@ -39,7 +39,7 @@ var LS_MOD = { fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letter
 var LS_DIV = { borderTop: '1px solid rgba(229,237,233,.11)', margin: '12px 0' }; /* v2.3.1235: batch-3 rollout — approved .11 hairline */
 function lsHeader(icon, emoji, title, subtitle) {
   return React.createElement("div", {
-    style: { display: 'flex', alignItems: 'center', gap: 10, padding: '12px 40px 12px 16px', background: LS.strip, borderBottom: '1px solid ' + LS.border }
+    style: { display: 'flex', alignItems: 'center', gap: 10, padding: '12px 40px 12px 16px', background: LS.strip, borderBottom: '1px solid ' + LS.border, flex: 'none' /* v2.3.1235: state-correction §10 — header row stays fixed above the scroll body */ }
   }, /* v2.3.1224 pattern: UI Bible icon with emoji fallback */
   React.createElement("img", {
     src: '/icons/ui/bldg-' + icon + '.webp', alt: '', draggable: false,
@@ -63,12 +63,37 @@ export function GamblePanel(props) {
     stateRef = props.stateRef,
     setRpgState = props.setRpgState;
   var _rpgState$_compStats, _rpgState$_compStats2, _rpgState$_compStats3, _rpgState$_compStats4, _rpgState$_compStats5, _rpgState$_compStats6, _rpgState$_compStats7, _rpgState$_compStats8;
-  return React.createElement("div", { style: LS_WRAP },
+  /* v2.3.1235: state-correction §10 — bottom-fade scroll affordance
+     (the InspectPlayerPanel pattern): the fade shows ONLY while more
+     content exists below the fold, so the Gambling Stats rows are
+     visibly reachable by scrolling on short phones. */
+  var _sf = React.useState(false);
+  var showFade = _sf[0],
+    setShowFade = _sf[1];
+  var scrollBodyRef = React.useRef(null);
+  var measureFade = React.useCallback(function () {
+    var el = scrollBodyRef.current;
+    if (el) setShowFade(el.scrollHeight - el.scrollTop - el.clientHeight > 4);
+  }, []);
+  React.useEffect(function () {
+    measureFade();
+  }, [rpgState, measureFade]);
+  return React.createElement("div", { style: _objectSpread(_objectSpread({}, LS_WRAP), {}, { display: 'flex', flexDirection: 'column', maxHeight: '100%' }) /* v2.3.1235: state-correction §10 — flex column: fixed header + ONE scroll body */ },
     lsHeader('gamble', '🎰', "Gambling Den", "Coin flips & the weekly jackpot"),
-    React.createElement("div", { style: LS_BODY },
+    React.createElement("div", {
+      ref: scrollBodyRef,
+      onScroll: measureFade,
+      className: "ls-scrollbody" /* v2.3.1235: state-correction §10 — hides the scrollbar (game.css); reachability is signalled by the sticky fade */,
+      style: _objectSpread(_objectSpread({}, LS_BODY), {}, { overflowY: 'auto', touchAction: 'pan-y', flex: '1 1 auto', minHeight: 0, paddingBottom: 12 })
+    },
       React.createElement("div", {
         style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 12 }
-      }, lsGold(rpgState.coins, 16) /* v2.3.1235: batch-3 rollout — key numbers are 16-18/700 tabular */,
+      }, React.createElement("span", {
+        /* v2.3.1235: state-correction §7 — the top balance is labelled
+           ("Your gold: 75G"), never a bare unexplained number. */
+        style: { display: 'inline-flex', alignItems: 'center', gap: 6 }
+      }, React.createElement("span", { style: { fontSize: 12, color: LS.txt2 } }, "Your gold:"),
+      lsGold(rpgState.coins + 'G', 16) /* v2.3.1235: batch-3 rollout — key numbers are 16-18/700 tabular */),
       React.createElement("span", { style: { fontSize: 12, color: LS.txt2, fontVariantNumeric: 'tabular-nums' } },
         rpgState.achievementPoints || 0, " AP") /* v2.3.1235: batch-3 rollout — ⭐ dropped, no emoji in chrome */),
       React.createElement("div", { style: LS_MOD }, "Double or Nothing"),
