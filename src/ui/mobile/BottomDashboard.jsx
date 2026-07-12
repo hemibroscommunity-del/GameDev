@@ -166,12 +166,12 @@ const LIFE_SKILLS = [
 
 // Tiny column-header used at the top of each of the three dashboard
 // columns.  Centered above its column.
-const ColHeader = ({ children, icon }) => (
+const ColHeader = ({ children }) => (
   <div style={{
-    /* v2.3.1235: correction pass §3 — 11/700 uppercase .14em section
-       label with a 16px icon beside it (icons carry identity; the
-       heading stays small). */
-    fontSize: 11,
+    /* v2.3.1236: owner dashboard feedback §1 — the 16px icon is gone;
+       the freed space goes to a larger title (11 -> 13/700, same
+       uppercase + .14em tracking, underline kept). */
+    fontSize: 13,
     fontWeight: 700,
     color: COL.text2,
     letterSpacing: '.14em',
@@ -180,17 +180,11 @@ const ColHeader = ({ children, icon }) => (
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 5,
     borderBottom: `1px solid ${COL.divider}`,
     marginBottom: 3,
     whiteSpace: 'nowrap',
     overflow: 'hidden',
   }}>
-    {icon && (
-      <img src={icon} alt="" draggable={false}
-        style={{ width: 16, height: 16, objectFit: 'contain', flex: 'none' }}
-        onError={(e) => { e.currentTarget.style.display = 'none'; }} />
-    )}
     <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{children}</span>
   </div>
 );
@@ -503,13 +497,11 @@ const InventoryPreview = () => {
         display: 'flex',
         flexDirection: 'column',
         cursor: 'pointer',
-        /* v2.3.1227: Lantern Slate recessed tray replaces the red
-           leather (spec hard lock: leather removed everywhere). */
-        background: COL.well,
-        border: `1px solid ${COL.tileBor}`,
-        boxShadow: 'inset 0 2px 4px rgba(0,0,0,.44), inset 0 1px 0 rgba(255,255,255,.035)',
-        borderRadius: 10,
-        padding: 4,
+        /* v2.3.1236: owner dashboard feedback §2 — recessed tray chrome
+           removed (was the v2.3.1227 well background/border/inset
+           shadow); only the item slots' own borders remain, and the
+           freed padding enlarges the slots. */
+        padding: 2,
       }}
       title="Tap to open Bag"
     >
@@ -528,14 +520,12 @@ const InventoryPreview = () => {
         gridTemplateColumns: 'repeat(3, 1fr)',
         gridAutoRows: 'min-content',
         alignContent: 'center',
-        gap: 3,
-        /* v2.3.1235: §4 — the Bag is the dashboard's DEEPEST area: one
-           recessed well-deep tray holding the nine slots. */
-        padding: 4,
-        borderRadius: 8,
-        background: 'linear-gradient(180deg, #101D23, var(--ui-well-deep))',
-        border: `1px solid ${COL.border}`,
-        boxShadow: 'inset 0 2px 5px rgba(0,0,0,0.32), inset 0 1px 0 rgba(255,255,255,0.025)',
+        /* v2.3.1236: owner dashboard feedback §2 — the v2.3.1235
+           well-deep gradient tray (background/border/inset shadow/
+           padding) is gone; the slots grow into the freed space and
+           the gap bumps 3 -> 4 to keep them breathing. */
+        gap: 4,
+        padding: 0,
       }}>
         {tiles.map((e, i) => (
           <BagTile
@@ -653,10 +643,8 @@ export const BottomDashboard = () => {
   const R = (S && S.rpg) || {};
 
   const level = R.level || 1;
-  const xp = R.xp || 0;
-  // Use the canonical xpRequired curve so the dashboard's bar agrees
-  // with the game-loop level-up threshold.
-  const xpNeeded = xpRequired(level);
+  /* v2.3.1236: owner dashboard feedback §6 — `xp`/`xpNeeded` removed
+     with the player-card XP strip below; nothing else read them. */
   /* v2.3.1207: `buildThresh` (xpRequired(combat level)) removed — the
      build-cell progress strips now divide by the STAT'S OWN threshold,
      xpRequired(R[stat]), computed per cell below.  Since v2.3.910 the
@@ -697,15 +685,10 @@ export const BottomDashboard = () => {
 
   const Active = active?.Component;
 
-  /* v2.3.114: thin XP strip pinned across the screen flush above the
-     bottom dashboard. v2.3.152: repurposed to show build-points-to-
-     next-level since combat level is now a pure function of BP (A1).
-     Bar fills 0 -> 100% as buildPointsThisLvl goes 0 -> 5; resets on
-     level-up. The original xpPct path is kept commented as a quick
-     revert path if BP-progress turns out to feel wrong. */
-  // const xpPct = xpNeeded > 0 ? Math.max(0, Math.min(100, (xp / xpNeeded) * 100)) : 0;
-  const bp = R._buildPointsThisLvl || 0;
-  const xpPct = Math.max(0, Math.min(100, (bp / 5) * 100));
+  /* v2.3.1236: owner dashboard feedback §6 — the build-points XP strip
+     (v2.3.114 bottom trim -> v2.3.152 BP progress -> v2.3.821/v2.3.1227
+     player-card bottom strip) is REMOVED along with its xpPct/bp calc;
+     the per-cell Build strips are now the progress readout. */
 
   return (
     <>
@@ -724,7 +707,8 @@ export const BottomDashboard = () => {
 
       {/* Upper-right player card — v2.3.1227: Lantern Slate compact
           132×58 horizontal card (§10): portrait left with presence dot,
-          name / Lv + gold right, 3px XP strip flush to the inner bottom.
+          name / Lv + gold right (v2.3.1236: the 3px XP strip that was
+          flush to the inner bottom is gone — owner feedback §6).
           Replaces the tall vertical stack; the separate "N online" pill
           is gone (presence = the dot; count moves to Friends later). */}
       <div
@@ -803,18 +787,8 @@ export const BottomDashboard = () => {
             </span>
           </div>
         </div>
-        {/* XP strip flush to the card's inner bottom. */}
-        <div style={{
-          position: 'absolute', left: 0, right: 0, bottom: 0,
-          height: 3, background: '#0B1216',
-        }}>
-          <div style={{
-            width: xpPct + '%',
-            height: '100%',
-            background: COL.xp,
-            transition: 'width .4s ease-out',
-          }} />
-        </div>
+        {/* v2.3.1236: owner dashboard feedback §6 — the 3px XP strip that
+            sat flush to the card's inner bottom is removed. */}
       </div>
 
     <div
@@ -909,11 +883,10 @@ export const BottomDashboard = () => {
           {/* 3-column body with section headers; gold moved to the Bag. */}
           <div style={{
             flex: 1,
-            /* v2.3.1235: Checkpoint B §2 — top padding 4→9 so the Loadout
-               column's 5px translateY lift paints instead of being clipped
-               by this overflow:hidden body (the previous marginTop:-5 lift
-               was invisible for exactly this reason). */
-            padding: '9px 12px 6px',
+            /* v2.3.1236: owner dashboard feedback §3 — back to 4px top
+               padding; the 9px existed only to give the retired Loadout
+               lift paint headroom. */
+            padding: '4px 12px 6px',
             overflow: 'hidden',
             display: 'flex',
             flexDirection: 'column',
@@ -946,7 +919,8 @@ export const BottomDashboard = () => {
                 {/* v2.3.1065: BAG title matching the Loadout/Build ColHeaders
                     (sits on the red container tint; the leather-backed grid
                     renders below). */}
-                <ColHeader icon="/icons/ui/nav-inventory.webp?v=2.3.1224">Bag</ColHeader>
+                {/* v2.3.1236: owner dashboard feedback §1 — icon prop removed. */}
+                <ColHeader>Bag</ColHeader>
                 {/* v2.3.155: hybrid HP/MP/END card replaced with a
                     compact inventory preview. The derived stats it used
                     to show (Crit / Block / Zone / Kills / Time) are
@@ -1094,11 +1068,11 @@ export const BottomDashboard = () => {
                   v2.3.1057: flex 1.35 -> 1 so Bag / Loadout / Build are all
                   equal width. */}
               <div data-tut="dash-loadout" style={{
-                /* v2.3.1235: §4 — Loadout is the dashboard's raised center
-                   ANCHOR: 38% width, lifted 5px above its siblings, a
-                   subtly brighter raised surface with rounded TOP corners
-                   and a restrained shadow.  The full-height divider lines
-                   are gone — depth separates the columns now. */
+                /* v2.3.1236: owner dashboard feedback §3 — the v2.3.1235
+                   raised-anchor treatment (5px translateY lift +
+                   marginBottom:-5, raised gradient, border, top radii,
+                   shadow) is removed at the owner's request: Loadout is
+                   a plain flex column like Build, still 38% wide. */
                 flex: '38 1 0',
                 display: 'flex',
                 flexDirection: 'column',
@@ -1106,19 +1080,8 @@ export const BottomDashboard = () => {
                 padding: 4,
                 position: 'relative',
                 zIndex: 1,
-                /* v2.3.1235: Checkpoint B §2 — the lift is a transform (not
-                   a negative top margin) so it can't be eaten by flex
-                   stretch; marginBottom:-5 reclaims the layout slot and the
-                   parent body's paddingTop:9 gives the paint headroom. */
-                transform: 'translateY(-5px)',
-                marginBottom: -5,
-                background: 'linear-gradient(180deg, #2B3E44, var(--ui-raised))',
-                border: '1px solid rgba(229,237,233,.16)',
-                borderBottom: 'none',
-                borderRadius: '10px 10px 0 0',
-                boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.05), 0 -5px 14px rgba(3,8,10,.20)',
               }}>
-                <ColHeader icon="/icons/ui/combat-melee.webp?v=2.3.1225">Loadout</ColHeader>
+                <ColHeader>Loadout</ColHeader>
                 {(() => {
                   /* DMG/DPS calc — mirrors WeaponSwapBar.readState() so the
                      numbers match what combat actually rolls.  Stat driver
@@ -1437,7 +1400,7 @@ export const BottomDashboard = () => {
                 minWidth: 0,
                 padding: 4,
               }}>
-                <ColHeader icon="/icons/ui/panel-stats.webp?v=2.3.1224">{SHOW_LIFE_SKILLS ? 'Stats · Skills' : 'Build'}</ColHeader>
+                <ColHeader>{SHOW_LIFE_SKILLS ? 'Stats · Skills' : 'Build'}</ColHeader>
                 <div style={{
                   flex: 1,
                   display: 'grid',
@@ -1574,7 +1537,9 @@ export const BottomDashboard = () => {
                         <div style={{
                           position: 'absolute',
                           left: 0, right: 0, bottom: 0,
-                          height: 2,
+                          /* v2.3.1236: owner dashboard feedback §5 — XP
+                             strip 2 -> 4px so progress is noticeable. */
+                          height: 4,
                           background: '#0B1216',
                           pointerEvents: 'none',
                         }}>
@@ -1626,7 +1591,9 @@ export const BottomDashboard = () => {
                         <div style={{
                           position: 'absolute',
                           left: 0, right: 0, bottom: 0,
-                          height: 2,
+                          /* v2.3.1236: owner dashboard feedback §5 — XP
+                             strip 2 -> 4px so progress is noticeable. */
+                          height: 4,
                           background: '#0B1216',
                           pointerEvents: 'none',
                         }}>
