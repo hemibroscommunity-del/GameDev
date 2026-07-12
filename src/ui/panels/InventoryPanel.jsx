@@ -792,7 +792,7 @@ export function InventoryPanel(props) {
       }
     }, sw.element1), sw.element2 && /*#__PURE__*/React.createElement("span", {
       style: {
-        fontSize: 7,
+        fontSize: 11,
         padding: '1px 4px',
         borderRadius: 3,
         background: ((_ELEMENTS$sw$element4 = ELEMENTS[sw.element2]) === null || _ELEMENTS$sw$element4 === void 0 ? void 0 : _ELEMENTS$sw$element4.color) + '22',
@@ -800,14 +800,16 @@ export function InventoryPanel(props) {
         border: '1px solid ' + ((_ELEMENTS$sw$element6 = ELEMENTS[sw.element2]) === null || _ELEMENTS$sw$element6 === void 0 ? void 0 : _ELEMENTS$sw$element6.color) + '44'
       }
     }, sw.element2), sw.isVolatile && /*#__PURE__*/React.createElement("span", {
+      /* v2.3.1235: batch-2 rollout \u2014 6px badge to the 11px floor,
+         danger token; \u26A1 was decorative emoji in chrome */
       style: {
-        fontSize: 6,
-        color: '#D95C54'
+        fontSize: 11,
+        color: 'var(--ui-danger)'
       }
-    }, "\u26A1VOL"), !sw.element1 && /*#__PURE__*/React.createElement("span", {
+    }, "VOL"), !sw.element1 && /*#__PURE__*/React.createElement("span", {
       style: {
-        fontSize: 7,
-        color: '#96A2A0'
+        fontSize: 11,
+        color: 'var(--ui-text-muted)'
       }
     }, "No elements"), function () {
       var req = getEquipReqLabel(sw, sw.type);
