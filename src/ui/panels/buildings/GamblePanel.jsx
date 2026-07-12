@@ -19,18 +19,24 @@ import { pushDmgPopup } from '@/game/combatHelpers.js';
    Style/JSX only; gamble_request / jackpot_deposit handlers and the
    legacy local rolls are byte-identical. LS token block duplicated per
    building panel to keep the decomposed files dependency-free. */
+/* v2.3.1235: batch-3 rollout — correction-pass token remap (game.css
+   :root). The v2.3.1232 literals were the superseded v2.3.1227
+   palette; same roles, approved values. Four depth roles only, so
+   wellSoft folds into the well, and the off-token .08/.14 hairlines
+   fold into the approved .11 line (.20 borderStrong added for
+   secondary buttons). Header strip adopts the #27393F header token. */
 var LS = {
-  txt1: '#F7F2E7', txt2: '#B9C1BF', txt3: '#96A2A0', dis: '#687575',
-  panel: '#202C32', strip: '#182227', raised: '#2B3940', well: '#121B20', wellSoft: '#19252A',
-  border: 'rgba(238,242,235,.14)', divider: 'rgba(238,242,235,.10)', wellBorder: 'rgba(238,242,235,.08)',
-  brass: '#D8A85F', brassFill: '#3B3427', onBrass: '#20170D'
+  txt1: '#F4F0E7', txt2: '#B6C1BE', txt3: '#8D9B98', dis: '#667875',
+  panel: '#1E2E34', strip: '#27393F', raised: '#293B41', well: '#111E23', wellSoft: '#111E23',
+  border: 'rgba(229,237,233,.11)', borderStrong: 'rgba(229,237,233,.20)', divider: 'rgba(229,237,233,.11)', wellBorder: 'rgba(229,237,233,.11)',
+  brass: '#D8AA58', brassFill: 'rgba(216,170,88,.15)', onBrass: '#172126'
 };
 /* v2.3.1232: -20 margin counters .bt-inspect-card's 20px padding so the
    panel owns its full surface (header strip flush to the card edge). */
 var LS_WRAP = { margin: -20, background: LS.panel, borderRadius: 14, overflow: 'hidden', textAlign: 'left' };
 var LS_BODY = { padding: '12px 14px 14px' };
-var LS_MOD = { fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.12em', color: LS.txt3, margin: '0 0 6px' };
-var LS_DIV = { borderTop: '1px solid rgba(238,242,235,.10)', margin: '12px 0' };
+var LS_MOD = { fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.14em', color: LS.txt3, margin: '0 0 6px' }; /* v2.3.1235: batch-3 rollout — section headers are 11/700 .14em muted per the locked contract */
+var LS_DIV = { borderTop: '1px solid rgba(229,237,233,.11)', margin: '12px 0' }; /* v2.3.1235: batch-3 rollout — approved .11 hairline */
 function lsHeader(icon, emoji, title, subtitle) {
   return React.createElement("div", {
     style: { display: 'flex', alignItems: 'center', gap: 10, padding: '12px 40px 12px 16px', background: LS.strip, borderBottom: '1px solid ' + LS.border }
@@ -62,9 +68,9 @@ export function GamblePanel(props) {
     React.createElement("div", { style: LS_BODY },
       React.createElement("div", {
         style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 12 }
-      }, lsGold(rpgState.coins),
+      }, lsGold(rpgState.coins, 16) /* v2.3.1235: batch-3 rollout — key numbers are 16-18/700 tabular */,
       React.createElement("span", { style: { fontSize: 12, color: LS.txt2, fontVariantNumeric: 'tabular-nums' } },
-        "⭐ ", rpgState.achievementPoints || 0, " AP")),
+        rpgState.achievementPoints || 0, " AP") /* v2.3.1235: batch-3 rollout — ⭐ dropped, no emoji in chrome */),
       React.createElement("div", { style: LS_MOD }, "Double or Nothing"),
       React.createElement("div", {
         style: { fontSize: 11, color: LS.txt3, marginBottom: 8, lineHeight: 1.5 }
@@ -74,25 +80,41 @@ export function GamblePanel(props) {
       }, [10, 50, 100, 500, 1000, 5000].filter(function (v) {
         return v <= rpgState.coins;
       }).map(function (amt) {
+        /* v2.3.1235: batch-3 rollout — 44px transparent hit wrapper
+           around the 32px chip visual (contract hitbox floor; the
+           established chipHit pattern). Selected fill is the approved
+           brass-soft token via LS.brassFill. */
         return /*#__PURE__*/React.createElement("button", {
           key: amt,
           style: {
+            minHeight: 44,
+            padding: 0,
+            margin: 0,
+            background: 'transparent',
+            border: 'none',
+            cursor: 'pointer',
+            display: 'inline-flex',
+            alignItems: 'center'
+          },
+          onClick: function onClick() {
+            stateRef.current._gambleWager = amt;
+            setRpgState(_objectSpread({}, stateRef.current.rpg));
+          }
+        }, /*#__PURE__*/React.createElement("span", {
+          style: {
+            display: 'inline-flex',
+            alignItems: 'center',
             padding: '6px 12px',
             minHeight: 32,
             borderRadius: 999,
             fontSize: 12,
             fontWeight: 700,
             fontVariantNumeric: 'tabular-nums',
-            cursor: 'pointer',
             background: stateRef.current._gambleWager === amt ? LS.brassFill : LS.raised,
             border: stateRef.current._gambleWager === amt ? '1px solid ' + LS.brass : '1px solid ' + LS.border,
             color: stateRef.current._gambleWager === amt ? LS.brass : LS.txt2
-          },
-          onClick: function onClick() {
-            stateRef.current._gambleWager = amt;
-            setRpgState(_objectSpread({}, stateRef.current.rpg));
           }
-        }, amt, "g");
+        }, amt, "g"));
       })), stateRef.current._gambleResult && Date.now() - stateRef.current._gambleResult.ts < 3000 && /*#__PURE__*/React.createElement("div", {
         style: {
           padding: 8,
@@ -102,24 +124,33 @@ export function GamblePanel(props) {
           fontSize: 14,
           fontWeight: 700,
           fontVariantNumeric: 'tabular-nums',
-          background: stateRef.current._gambleResult.won ? 'rgba(89,191,145,.12)' : 'rgba(217,92,84,.12)',
-          border: stateRef.current._gambleResult.won ? '1px solid rgba(89,191,145,.35)' : '1px solid rgba(217,92,84,.35)',
-          color: stateRef.current._gambleResult.won ? '#59BF91' : '#D95C54'
+          /* v2.3.1235: batch-3 rollout — result banner moves off the
+             unapproved rgba tints onto a well + semantic OUTLINE
+             (positive #55B98A / danger #D8635D, danger fills are never
+             chrome); 🎉/💸 dropped, no emoji in chrome. */
+          background: LS.well,
+          border: stateRef.current._gambleResult.won ? '1px solid #55B98A' : '1px solid #D8635D',
+          color: stateRef.current._gambleResult.won ? '#55B98A' : '#D8635D'
         }
-      }, stateRef.current._gambleResult.won ? '🎉 WON! +' + stateRef.current._gambleResult.amount + 'g' : '💸 LOST! -' + stateRef.current._gambleResult.amount + 'g'), /*#__PURE__*/React.createElement("button", {
+      }, stateRef.current._gambleResult.won ? 'WON! +' + stateRef.current._gambleResult.amount + 'g' : 'LOST! -' + stateRef.current._gambleResult.amount + 'g'), /*#__PURE__*/React.createElement("button", {
+        /* v2.3.1235: batch-3 rollout — the surface's single gold
+           primary adopts the shared .button-primary recipe (game.css)
+           instead of a flat brass fill; 10px radius (11 is off the
+           approved set). Disabled state stays readable on the well. */
+        className: stateRef.current._gambleWager && rpgState.coins >= stateRef.current._gambleWager ? 'button-primary' : undefined,
         style: {
           width: '100%',
           minHeight: 44,
           padding: '10px 0',
-          borderRadius: 11,
-          border: 'none',
+          borderRadius: 10,
+          border: stateRef.current._gambleWager && rpgState.coins >= stateRef.current._gambleWager ? undefined : '1px solid ' + LS.border,
           fontSize: 13,
           fontWeight: 700,
           letterSpacing: '.03em',
           fontVariantNumeric: 'tabular-nums',
           cursor: 'pointer',
-          background: stateRef.current._gambleWager && rpgState.coins >= stateRef.current._gambleWager ? LS.brass : LS.well,
-          color: stateRef.current._gambleWager && rpgState.coins >= stateRef.current._gambleWager ? LS.onBrass : LS.dis
+          background: stateRef.current._gambleWager && rpgState.coins >= stateRef.current._gambleWager ? undefined : LS.well,
+          color: stateRef.current._gambleWager && rpgState.coins >= stateRef.current._gambleWager ? undefined : LS.dis
         },
         onClick: function onClick() {
           var wager = stateRef.current._gambleWager;
@@ -178,7 +209,7 @@ export function GamblePanel(props) {
             localStorage.setItem('bt_rpg', JSON.stringify(R));
           } catch (e) {}
         }
-      }, "🎲 ROLL! (", stateRef.current._gambleWager || '—', "g)"),
+      }, "ROLL! (", stateRef.current._gambleWager || '—', "g)") /* v2.3.1235: batch-3 rollout — 🎲 dropped, no emoji in chrome */,
       React.createElement("div", { style: LS_DIV }),
       React.createElement("div", { style: LS_MOD }, "Weekly Jackpot"),
       React.createElement("div", {
@@ -186,7 +217,7 @@ export function GamblePanel(props) {
       }, "Server-wide pool. All deposits collected. One random winner each week. 10% house cut."),
       React.createElement("div", {
         style: { fontSize: 18, fontWeight: 700, color: LS.brass, textAlign: 'center', marginBottom: 4, fontVariantNumeric: 'tabular-nums' }
-      }, "🏆 ", stateRef.current._jackpotPool || '???', "g"),
+      }, stateRef.current._jackpotPool || '???', "g") /* v2.3.1235: batch-3 rollout — 🏆 dropped, no emoji in chrome */,
       React.createElement("div", {
         style: { fontSize: 11, color: LS.txt3, textAlign: 'center', marginBottom: 8, fontVariantNumeric: 'tabular-nums' }
       }, "Your deposits this week: ", ((_rpgState$_compStats = rpgState._compStats) === null || _rpgState$_compStats === void 0 ? void 0 : _rpgState$_compStats.jackpotDeposited) || 0, "g \xB7 Min deposit: ", JACKPOT_MIN_DEPOSIT, "g"),
@@ -197,16 +228,20 @@ export function GamblePanel(props) {
       }).map(function (amt) {
         return /*#__PURE__*/React.createElement("button", {
           key: amt,
+          /* v2.3.1235: batch-3 rollout — secondary recipe (raised +
+             strong hairline, 10px radius — 11 is off the approved set)
+             and the 44px hitbox floor (was 36); deposit amounts keep
+             the brass gold-value color. */
           style: {
             flex: 1,
-            minHeight: 36,
+            minHeight: 44,
             padding: '6px 0',
-            borderRadius: 11,
+            borderRadius: 10,
             fontSize: 12,
             fontWeight: 700,
             fontVariantNumeric: 'tabular-nums',
             cursor: 'pointer',
-            border: '1px solid ' + LS.border,
+            border: '1px solid ' + LS.borderStrong,
             background: LS.raised,
             color: LS.brass
           },
@@ -269,19 +304,19 @@ export function GamblePanel(props) {
         }
       }, ((_rpgState$_compStats2 = rpgState._compStats) === null || _rpgState$_compStats2 === void 0 ? void 0 : _rpgState$_compStats2.totalGambled) || 0, "g"), /*#__PURE__*/React.createElement("span", null, "Total won:"), /*#__PURE__*/React.createElement("span", {
         style: {
-          color: '#59BF91',
+          color: '#55B98A' /* v2.3.1235: batch-3 rollout — approved positive token */,
           fontWeight: 700,
           textAlign: 'right'
         }
       }, ((_rpgState$_compStats3 = rpgState._compStats) === null || _rpgState$_compStats3 === void 0 ? void 0 : _rpgState$_compStats3.totalGambleWon) || 0, "g"), /*#__PURE__*/React.createElement("span", null, "Total lost:"), /*#__PURE__*/React.createElement("span", {
         style: {
-          color: '#D95C54',
+          color: '#D8635D' /* v2.3.1235: batch-3 rollout — approved danger token */,
           fontWeight: 700,
           textAlign: 'right'
         }
       }, ((_rpgState$_compStats4 = rpgState._compStats) === null || _rpgState$_compStats4 === void 0 ? void 0 : _rpgState$_compStats4.totalGambleLost) || 0, "g"), /*#__PURE__*/React.createElement("span", null, "Net:"), /*#__PURE__*/React.createElement("span", {
         style: {
-          color: (((_rpgState$_compStats5 = rpgState._compStats) === null || _rpgState$_compStats5 === void 0 ? void 0 : _rpgState$_compStats5.totalGambleWon) || 0) - (((_rpgState$_compStats6 = rpgState._compStats) === null || _rpgState$_compStats6 === void 0 ? void 0 : _rpgState$_compStats6.totalGambleLost) || 0) >= 0 ? '#59BF91' : '#D95C54',
+          color: (((_rpgState$_compStats5 = rpgState._compStats) === null || _rpgState$_compStats5 === void 0 ? void 0 : _rpgState$_compStats5.totalGambleWon) || 0) - (((_rpgState$_compStats6 = rpgState._compStats) === null || _rpgState$_compStats6 === void 0 ? void 0 : _rpgState$_compStats6.totalGambleLost) || 0) >= 0 ? '#55B98A' : '#D8635D' /* v2.3.1235: batch-3 rollout — approved positive/danger tokens */,
           fontWeight: 700,
           textAlign: 'right'
         }

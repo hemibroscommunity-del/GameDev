@@ -18,17 +18,23 @@ import { pushDmgPopup } from '@/game/combatHelpers.js';
    list as 44px well rows. Style/JSX only; visit/plant/harvest handlers
    are byte-identical. LS token block duplicated per building panel to
    keep the decomposed files dependency-free. */
+/* v2.3.1235: batch-3 rollout — correction-pass token remap (game.css
+   :root). The v2.3.1232 literals were the superseded v2.3.1227
+   palette; same roles, approved values. Four depth roles only, so
+   wellSoft folds into the well, and the off-token .08/.14 hairlines
+   fold into the approved .11 line (.20 borderStrong added for
+   secondary buttons). Header strip adopts the #27393F header token. */
 var LS = {
-  txt1: '#F7F2E7', txt2: '#B9C1BF', txt3: '#96A2A0', dis: '#687575',
-  panel: '#202C32', strip: '#182227', raised: '#2B3940', well: '#121B20', wellSoft: '#19252A',
-  border: 'rgba(238,242,235,.14)', divider: 'rgba(238,242,235,.10)', wellBorder: 'rgba(238,242,235,.08)',
-  brass: '#D8A85F', brassFill: '#3B3427', onBrass: '#20170D'
+  txt1: '#F4F0E7', txt2: '#B6C1BE', txt3: '#8D9B98', dis: '#667875',
+  panel: '#1E2E34', strip: '#27393F', raised: '#293B41', well: '#111E23', wellSoft: '#111E23',
+  border: 'rgba(229,237,233,.11)', borderStrong: 'rgba(229,237,233,.20)', divider: 'rgba(229,237,233,.11)', wellBorder: 'rgba(229,237,233,.11)',
+  brass: '#D8AA58', brassFill: 'rgba(216,170,88,.15)', onBrass: '#172126'
 };
 /* v2.3.1232: -20 margin counters .bt-inspect-card's 20px padding so the
    panel owns its full surface (header strip flush to the card edge). */
 var LS_WRAP = { margin: -20, background: LS.panel, borderRadius: 14, overflow: 'hidden', textAlign: 'left' };
 var LS_BODY = { padding: '12px 14px 14px' };
-var LS_MOD = { fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.12em', color: LS.txt3, margin: '0 0 6px' };
+var LS_MOD = { fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.14em', color: LS.txt3, margin: '0 0 6px' }; /* v2.3.1235: batch-3 rollout — section headers are 11/700 .14em muted per the locked contract */
 function lsHeader(icon, emoji, title, subtitle) {
   return React.createElement("div", {
     style: { display: 'flex', alignItems: 'center', gap: 10, padding: '12px 40px 12px 16px', background: LS.strip, borderBottom: '1px solid ' + LS.border }
@@ -53,15 +59,15 @@ export function FarmPanel(props) {
       React.createElement("div", { style: { fontSize: 12, color: LS.txt2, marginBottom: 10, lineHeight: 1.5 } },
         "Plant seeds from zones, harvest when grown."),
       /*#__PURE__*/React.createElement("button", {
+        /* v2.3.1235: batch-3 rollout — the panel's single gold primary
+           adopts the shared .button-primary recipe (game.css) instead
+           of a flat brass fill (the class carries the approved 10px
+           radius; 11 is off the approved set). */
+        className: "button-primary",
         style: {
           width: '100%',
           minHeight: 44,
           padding: '10px 12px',
-          borderRadius: 11,
-          border: 'none',
-          background: LS.brass,
-          color: LS.onBrass,
-          fontWeight: 700,
           fontSize: 13,
           cursor: 'pointer',
           marginBottom: 8
@@ -88,14 +94,14 @@ export function FarmPanel(props) {
           BT_AUDIO.beep(500, 0.08, 0.1, 'sine');
           setBuildingPanel(null);
         }
-      }, "🏡 Visit Your Farm"),
+      }, "Visit Your Farm") /* v2.3.1235: batch-3 rollout — 🏡 dropped, no emoji in chrome */,
       React.createElement("div", {
         style: { fontSize: 11, color: LS.txt3, marginBottom: 12, lineHeight: 1.5 }
       }, "Your farm has a house where you can sleep to fully restore HP, Mana, Stamina and gain a 30-min Well Rested buff (+10% XP).", ((_stateRef$current7 = stateRef.current) === null || _stateRef$current7 === void 0 || (_stateRef$current7 = _stateRef$current7.rpg) === null || _stateRef$current7 === void 0 ? void 0 : _stateRef$current7._wellRestedUntil) && Date.now() < stateRef.current.rpg._wellRestedUntil && /*#__PURE__*/React.createElement("span", {
         style: {
-          color: '#59BF91'
+          color: '#55B98A' /* v2.3.1235: batch-3 rollout — approved positive token */
         }
-      }, " \xB7 😴 Well Rested active!")),
+      }, " \xB7 Well Rested active!" /* v2.3.1235: batch-3 rollout — 😴 dropped, no emoji in chrome */)),
       React.createElement("div", { style: LS_MOD }, "Plots"),
       React.createElement("div", {
         style: {
@@ -119,9 +125,14 @@ export function FarmPanel(props) {
             borderRadius: 8,
             textAlign: 'center',
             minHeight: 70,
-            background: isReady ? 'rgba(89,191,145,.10)' : LS.wellSoft,
-            border: '1px solid ' + (isReady ? 'rgba(89,191,145,.45)' : isGrowing ? 'rgba(216,169,77,.35)' : LS.wellBorder),
-            opacity: plotUnlocked ? 1 : 0.4
+            /* v2.3.1235: batch-3 rollout — plot state moves off the
+               unapproved rgba tints: quiet well cell + semantic EDGE
+               (positive #55B98A ready / stamina #DFAE4E growing) so
+               state is a thin edge language, never a tile fill; locked
+               plots meet the .55 readability floor (was .4). */
+            background: LS.wellSoft,
+            border: '1px solid ' + (isReady ? '#55B98A' : isGrowing ? '#DFAE4E' : LS.wellBorder),
+            opacity: plotUnlocked ? 1 : 0.55
           }
         }, !plotUnlocked ? /*#__PURE__*/React.createElement("div", {
           style: {
@@ -129,7 +140,7 @@ export function FarmPanel(props) {
             color: LS.txt3,
             marginTop: 16
           }
-        }, "🔒 Farm Lv", plotIdx < 4 ? 10 : 25) : isReady ? /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+        }, "Locked \xB7 Farm Lv", plotIdx < 4 ? 10 : 25) /* v2.3.1235: batch-3 rollout — text lock indication + requirement, 🔒 dropped (no emoji in chrome) */ : isReady ? /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
           style: {
             fontSize: 18
           }
@@ -137,19 +148,22 @@ export function FarmPanel(props) {
           style: {
             fontSize: 11,
             fontWeight: 700,
-            color: '#59BF91'
+            color: '#55B98A' /* v2.3.1235: batch-3 rollout — approved positive token */
           }
         }, "Ready!"), /*#__PURE__*/React.createElement("button", {
+          /* v2.3.1235: batch-3 rollout — 44px transparent hit wrapper
+             around the 32px pill visual (contract hitbox floor; the
+             established chipHit pattern) — the bare pill was ~26px. */
           style: {
-            marginTop: 4,
-            padding: '4px 12px',
-            borderRadius: 999,
-            border: '1px solid rgba(89,191,145,.45)',
-            fontSize: 11,
-            fontWeight: 700,
-            background: LS.raised,
-            color: '#59BF91',
-            cursor: 'pointer'
+            minHeight: 44,
+            padding: 0,
+            margin: 0,
+            background: 'transparent',
+            border: 'none',
+            cursor: 'pointer',
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center'
           },
           onClick: function onClick() {
             var R = stateRef.current.rpg;
@@ -169,13 +183,28 @@ export function FarmPanel(props) {
             BT_AUDIO.collect();
             pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'Harvested ' + p.name + '!', '#59BF91');
           }
-        }, "Harvest")) : isGrowing ? /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+        }, /*#__PURE__*/React.createElement("span", {
+          /* v2.3.1235: batch-3 rollout — pill visual inside the hit
+             wrapper; approved positive token replaces the rgba edge. */
+          style: {
+            display: 'inline-flex',
+            alignItems: 'center',
+            minHeight: 32,
+            padding: '4px 12px',
+            borderRadius: 999,
+            border: '1px solid #55B98A',
+            fontSize: 11,
+            fontWeight: 700,
+            background: LS.raised,
+            color: '#55B98A'
+          }
+        }, "Harvest"))) : isGrowing ? /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
           style: {
             fontSize: 14
           }
         }, plot.emoji || '🌱'), /*#__PURE__*/React.createElement("div", {
           style: {
-            fontSize: 10,
+            fontSize: 11 /* v2.3.1235: batch-3 rollout — 11px text floor (was 10) */,
             color: LS.txt2,
             marginTop: 2
           }
@@ -191,12 +220,12 @@ export function FarmPanel(props) {
           style: {
             width: progress * 100 + '%',
             height: '100%',
-            background: '#D8A94D',
+            background: '#DFAE4E' /* v2.3.1235: batch-3 rollout — approved stamina token for the growth bar */,
             borderRadius: 999
           }
         })), /*#__PURE__*/React.createElement("div", {
           style: {
-            fontSize: 10,
+            fontSize: 11 /* v2.3.1235: batch-3 rollout — 11px text floor (was 10) */,
             color: LS.txt3,
             marginTop: 2,
             fontVariantNumeric: 'tabular-nums'
@@ -246,16 +275,17 @@ export function FarmPanel(props) {
         return seeds.slice(0, 8).map(function (seed) {
           return /*#__PURE__*/React.createElement("div", {
             key: seed.key,
+            /* v2.3.1235: batch-3 rollout — divided list rows replace
+               the per-row well cards (contract: dividers over per-row
+               cards); the first row's top hairline doubles as the rule
+               under the module header. Seed glyphs are game data. */
             style: {
               display: 'flex',
               alignItems: 'center',
               gap: 8,
-              marginBottom: 4,
-              padding: '6px 10px',
+              padding: '6px 2px',
               minHeight: 44,
-              borderRadius: 8,
-              background: LS.wellSoft,
-              border: '1px solid ' + LS.wellBorder
+              borderTop: '1px solid ' + LS.divider
             }
           }, /*#__PURE__*/React.createElement("span", {
             style: {
@@ -270,11 +300,14 @@ export function FarmPanel(props) {
               fontVariantNumeric: 'tabular-nums'
             }
           }, seed.name, " \xD7", seed.count), /*#__PURE__*/React.createElement("button", {
+            /* v2.3.1235: batch-3 rollout — Plant becomes a standard
+               secondary (raised + strong hairline, 10px radius) at the
+               44px hitbox floor (was a 32px pill). */
             style: {
-              padding: '6px 12px',
-              minHeight: 32,
-              borderRadius: 999,
-              border: '1px solid ' + LS.border,
+              padding: '6px 14px',
+              minHeight: 44,
+              borderRadius: 10,
+              border: '1px solid ' + LS.borderStrong,
               fontSize: 12,
               fontWeight: 700,
               background: LS.raised,

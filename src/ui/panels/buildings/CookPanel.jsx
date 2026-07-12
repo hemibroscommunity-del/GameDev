@@ -19,6 +19,17 @@ import { pushDmgPopup } from '@/game/combatHelpers.js';
    #121B20 wells, secondary #2B3940 row actions; brass is reserved for
    the in-zone COOK moment (the one primary action of the minigame).
    Styles + JSX grouping only — every handler is byte-identical. */
+/* v2.3.1235: batch-3 rollout — correction-pass compliance
+   (docs/LANTERN-SLATE-SPEC.md + game.css :root). Presentation only,
+   every handler byte-identical. v2.3.1232 tokens remapped onto the
+   approved v2.3.1235 set (sheet #1E2E34, well #111E23, well-deep
+   #0B161B for the bar track, card #24363C, raised #293B41, text
+   #F4F0E7/#B6C1BE/#8D9B98/#667875, lines rgba(229,237,233,.11/.20),
+   brass gradient primary on #172126 ink); section headers 11/700
+   uppercase .14em; chrome emoji dropped (🔥/🍳/✅ — the 🐟/🍽️/🍲 item
+   and recipe glyphs are game data and stay); row buttons hit the 44px
+   hitbox floor; locked recipe rows lift to the .55 readability floor;
+   needle glow shadow dropped (not in the approved shadow kit). */
 export function CookPanel(props) {
   var rpgState = props.rpgState,
     stateRef = props.stateRef,
@@ -29,26 +40,29 @@ export function CookPanel(props) {
   /* v2.3.1232: shared Lantern Slate style fragments (styles only). */
   var LS_HEAD = {
     fontSize: 11,
-    fontWeight: 600,
+    fontWeight: 700 /* v2.3.1235: batch-3 rollout — headers are 11/700 .14em muted */,
     textTransform: 'uppercase',
-    letterSpacing: '.12em',
-    color: '#96A2A0',
+    letterSpacing: '.14em',
+    color: '#8D9B98',
     marginBottom: 4
   };
   var LS_WELL = {
-    background: '#121B20',
+    background: '#111E23' /* v2.3.1235: batch-3 rollout — approved well token */,
     borderRadius: 10,
     padding: 4,
-    boxShadow: 'inset 0 2px 4px rgba(0,0,0,.44), inset 0 1px 0 rgba(255,255,255,.035)',
+    boxShadow: 'inset 0 2px 5px rgba(0,0,0,0.32), inset 0 1px 0 rgba(255,255,255,0.025)' /* v2.3.1235: shared .ui-well recipe */,
     marginBottom: 10
   };
-  var LS_DIV = '1px solid rgba(238,242,235,.10)';
+  var LS_DIV = '1px solid rgba(229,237,233,.11)'; /* v2.3.1235: batch-3 rollout — hairline token */
   return React.createElement("div", {
     style: {
       margin: -20,
-      padding: '16px 14px',
-      background: '#202C32',
-      borderRadius: 13,
+      /* v2.3.1235: batch-3 rollout — sheet token, 14px panel radius, and
+         the Checkpoint-B 16px scroll tail so the last row never ends
+         flush against the modal edge. */
+      padding: '16px 14px 32px',
+      background: '#1E2E34',
+      borderRadius: 14,
       textAlign: 'left',
       fontFamily: "'Source Sans 3',sans-serif"
     }
@@ -78,12 +92,12 @@ export function CookPanel(props) {
       fontWeight: 700,
       textTransform: 'uppercase',
       letterSpacing: '.10em',
-      color: '#F7F2E7'
+      color: '#F4F0E7'
     }
   }, "Kitchen")), /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 11,
-      color: '#96A2A0',
+      color: '#8D9B98',
       marginBottom: 12
     }
   }, "Cooking Lv", ((_rpgState$lifeSkills14 = rpgState.lifeSkills) === null || _rpgState$lifeSkills14 === void 0 || (_rpgState$lifeSkills14 = _rpgState$lifeSkills14.cooking) === null || _rpgState$lifeSkills14 === void 0 ? void 0 : _rpgState$lifeSkills14.level) || 1, " \xB7 Cook fish for healing. Prepare herb recipes for combat buffs."), /*#__PURE__*/React.createElement("div", {
@@ -91,28 +105,30 @@ export function CookPanel(props) {
   }, "Cook Fish — Healing"), /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 11,
-      color: '#96A2A0',
+      color: '#8D9B98',
       marginBottom: 8
     }
   }, "Raw fish → Cook (timing minigame) → Cooked fish you can eat to heal."), cookMinigame && !cookMinigame.result && /*#__PURE__*/React.createElement("div", {
     style: {
       padding: 10,
       borderRadius: 10,
-      background: '#182227',
-      border: '1px solid rgba(238,242,235,.14)',
+      /* v2.3.1235: batch-3 rollout — card token + hairline; chrome
+         emoji dropped from the banner title. */
+      background: '#24363C',
+      border: '1px solid rgba(229,237,233,.11)',
       marginBottom: 10
     }
   }, /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 13,
       fontWeight: 700,
-      color: '#F7F2E7',
+      color: '#F4F0E7',
       marginBottom: 4
     }
-  }, "🔥 Cooking: ", cookMinigame.fishName, " (Heals ", cookMinigame.healAmt, " HP)"), /*#__PURE__*/React.createElement("div", {
+  }, "Cooking: ", cookMinigame.fishName, " (Heals ", cookMinigame.healAmt, " HP)"), /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 11,
-      color: '#96A2A0',
+      color: '#8D9B98',
       marginBottom: 8
     }
   }, "Tap COOK when the marker is in the green zone!"), function () {
@@ -131,8 +147,10 @@ export function CookPanel(props) {
         position: 'relative',
         width: barW,
         height: 26,
-        background: '#121B20',
-        boxShadow: 'inset 0 2px 4px rgba(0,0,0,.44)',
+        /* v2.3.1235: batch-3 rollout — bar tracks sit on well-deep with
+           the shared well recess (no per-screen shadow recipes). */
+        background: '#0B161B',
+        boxShadow: 'inset 0 2px 5px rgba(0,0,0,0.32), inset 0 1px 0 rgba(255,255,255,0.025)',
         borderRadius: 8,
         overflow: 'hidden',
         margin: '0 auto 8px'
@@ -144,9 +162,10 @@ export function CookPanel(props) {
         top: 0,
         width: greenW,
         height: '100%',
-        background: 'rgba(61,220,151,.25)',
-        borderLeft: '2px solid #59BF91',
-        borderRight: '2px solid #59BF91'
+        /* v2.3.1235: batch-3 rollout — positive token (#55B98A) tint */
+        background: 'rgba(85,185,138,.25)',
+        borderLeft: '2px solid #55B98A',
+        borderRight: '2px solid #55B98A'
       }
     }), /*#__PURE__*/React.createElement("div", {
       style: {
@@ -155,9 +174,11 @@ export function CookPanel(props) {
         top: 0,
         width: 4,
         height: '100%',
-        background: inZone ? '#59BF91' : '#D95C54',
-        borderRadius: 2,
-        boxShadow: inZone ? '0 0 8px #59BF91' : '0 0 8px #D95C54',
+        /* v2.3.1235: batch-3 rollout — positive/danger tokens; pill
+           radius (2px is off the approved radius set) and the glow
+           dropped (not in the approved shadow kit). */
+        background: inZone ? '#55B98A' : '#D8635D',
+        borderRadius: 999,
         transition: 'left 0.05s linear'
       }
     })), /*#__PURE__*/React.createElement("button", {
@@ -165,12 +186,15 @@ export function CookPanel(props) {
         width: '100%',
         minHeight: 44,
         padding: '0 12px',
-        borderRadius: 11,
-        border: inZone ? 'none' : '1px solid rgba(238,242,235,.14)',
+        borderRadius: 10,
+        /* v2.3.1235: batch-3 rollout — the surface's ONE primary uses
+           the committed gold-gradient recipe (#EAC675 edge, #172126
+           ink); out-of-zone falls back to the secondary recipe. */
+        border: inZone ? '1px solid #EAC675' : '1px solid rgba(229,237,233,.20)',
         fontSize: 13,
         fontWeight: 700,
-        background: inZone ? '#D8A85F' : '#2B3940',
-        color: inZone ? '#20170D' : '#B9C1BF',
+        background: inZone ? 'linear-gradient(180deg,#E2B765,#D2A14D)' : '#293B41',
+        color: inZone ? '#172126' : '#B6C1BE',
         cursor: 'pointer',
         fontFamily: 'inherit',
         letterSpacing: '.05em'
@@ -214,7 +238,7 @@ export function CookPanel(props) {
           return setCookMinigame(null);
         }, 1500);
       }
-    }, "🍳 COOK!"));
+    }, "COOK!"));
   }()), (cookMinigame === null || cookMinigame === void 0 ? void 0 : cookMinigame.result) && /*#__PURE__*/React.createElement("div", {
     style: {
       padding: 10,
@@ -223,11 +247,13 @@ export function CookPanel(props) {
       textAlign: 'center',
       fontSize: 13,
       fontWeight: 700,
-      background: cookMinigame.result === 'success' ? 'rgba(61,220,151,.15)' : 'rgba(217,92,84,.15)',
-      border: cookMinigame.result === 'success' ? '1px solid rgba(61,220,151,.3)' : '1px solid rgba(217,92,84,.3)',
-      color: cookMinigame.result === 'success' ? '#59BF91' : '#D95C54'
+      /* v2.3.1235: batch-3 rollout — positive/danger token tints; chrome
+         emoji dropped from the status strings. */
+      background: cookMinigame.result === 'success' ? 'rgba(85,185,138,.15)' : 'rgba(216,99,93,.15)',
+      border: cookMinigame.result === 'success' ? '1px solid rgba(85,185,138,.3)' : '1px solid rgba(216,99,93,.3)',
+      color: cookMinigame.result === 'success' ? '#55B98A' : '#D8635D'
     }
-  }, cookMinigame.result === 'success' ? '✅ Perfectly cooked!' : '🔥 Burnt to a crisp!'), !cookMinigame && function () {
+  }, cookMinigame.result === 'success' ? 'Perfectly cooked!' : 'Burnt to a crisp!'), !cookMinigame && function () {
     var inv = rpgState.inventory || {};
     var rawFish = Object.entries(inv).filter(function (_ref97) {
       var _ref98 = _slicedToArray(_ref97, 2),
@@ -238,7 +264,7 @@ export function CookPanel(props) {
     if (rawFish.length === 0) return /*#__PURE__*/React.createElement("div", {
       style: {
         fontSize: 12,
-        color: '#96A2A0',
+        color: '#8D9B98',
         fontStyle: 'italic',
         padding: '4px 0',
         marginBottom: 10
@@ -286,29 +312,31 @@ export function CookPanel(props) {
         style: {
           fontSize: 13,
           fontWeight: 600,
-          color: '#F7F2E7',
+          color: '#F4F0E7',
           textTransform: 'capitalize'
         }
       }, fishName, " ", /*#__PURE__*/React.createElement("span", {
         style: {
-          color: '#96A2A0',
+          color: '#8D9B98',
           fontVariantNumeric: 'tabular-nums'
         }
       }, "\xD7", qty)), /*#__PURE__*/React.createElement("div", {
         style: {
           fontSize: 11,
-          color: '#96A2A0'
+          color: '#8D9B98'
         }
       }, "Heals ", healAmt, " HP \xB7 Sweet spot: ", Math.round(spot.width * 100), "%")), /*#__PURE__*/React.createElement("button", {
         style: {
-          minHeight: 34,
+          /* v2.3.1235: batch-3 rollout — 44px hitbox floor; secondary =
+             raised + strong hairline, 10px button radius. */
+          minHeight: 44,
           padding: '0 14px',
-          borderRadius: 11,
-          border: '1px solid rgba(238,242,235,.14)',
+          borderRadius: 10,
+          border: '1px solid rgba(229,237,233,.20)',
           fontSize: 13,
           fontWeight: 700,
-          background: '#2B3940',
-          color: '#F7F2E7',
+          background: '#293B41',
+          color: '#F4F0E7',
           cursor: 'pointer',
           fontFamily: 'inherit',
           flexShrink: 0
@@ -357,7 +385,7 @@ export function CookPanel(props) {
       /* v2.3.1207: recovery-folded display heal — see the raw-fish list
          note above. */
       var healAmt = calcDisplayHeal((stateRef.current && stateRef.current.rpg) || rpgState, key);
-      var atFull = rpgState.hp >= rpgState.maxHp;
+      var atFull = rpgState.hp >= rpgState.maxHp; /* v2.3.1235: batch-3 rollout — style consumers below retinted only */
       return /*#__PURE__*/React.createElement("div", {
         key: key,
         style: {
@@ -381,29 +409,31 @@ export function CookPanel(props) {
         style: {
           fontSize: 13,
           fontWeight: 600,
-          color: '#F7F2E7',
+          color: '#F4F0E7',
           textTransform: 'capitalize'
         }
       }, fishName, " ", /*#__PURE__*/React.createElement("span", {
         style: {
-          color: '#96A2A0',
+          color: '#8D9B98',
           fontVariantNumeric: 'tabular-nums'
         }
       }, "\xD7", qty)), /*#__PURE__*/React.createElement("div", {
         style: {
           fontSize: 11,
-          color: '#96A2A0'
+          color: '#8D9B98'
         }
       }, "Heals ", healAmt, " HP")), /*#__PURE__*/React.createElement("button", {
         style: {
-          minHeight: 34,
+          /* v2.3.1235: batch-3 rollout — 44px hitbox floor; disabled =
+             quiet card fill + faint text (well-soft is retired). */
+          minHeight: 44,
           padding: '0 14px',
-          borderRadius: 11,
-          border: atFull ? '1px solid rgba(238,242,235,.08)' : '1px solid rgba(238,242,235,.14)',
+          borderRadius: 10,
+          border: atFull ? '1px solid rgba(229,237,233,.11)' : '1px solid rgba(229,237,233,.20)',
           fontSize: 13,
           fontWeight: 700,
-          background: atFull ? '#19252A' : '#2B3940',
-          color: atFull ? '#687575' : '#F7F2E7',
+          background: atFull ? '#24363C' : '#293B41',
+          color: atFull ? '#667875' : '#F4F0E7',
           cursor: 'pointer',
           fontFamily: 'inherit',
           flexShrink: 0
@@ -440,7 +470,7 @@ export function CookPanel(props) {
   }, "Buff Recipes — Herbs"), /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 11,
-      color: '#96A2A0',
+      color: '#8D9B98',
       marginBottom: 8
     }
   }, "Combine farmed herbs into combat buff meals. No timing needed — just ingredients."), /*#__PURE__*/React.createElement("div", {
@@ -477,7 +507,9 @@ export function CookPanel(props) {
         minHeight: 44,
         padding: '6px 8px',
         borderTop: ri > 0 ? LS_DIV : 'none',
-        opacity: canCook ? 1 : 0.5
+        /* v2.3.1235: batch-3 rollout — locked rows must stay readable
+           (contract floor .55; the Lv requirement is stated in-row). */
+        opacity: canCook ? 1 : 0.55
       }
     }, /*#__PURE__*/React.createElement("span", {
       style: {
@@ -492,23 +524,23 @@ export function CookPanel(props) {
       style: {
         fontSize: 13,
         fontWeight: 600,
-        color: canCook ? '#F7F2E7' : '#687575'
+        color: canCook ? '#F4F0E7' : '#667875'
       }
     }, recipe.name, " ", /*#__PURE__*/React.createElement("span", {
       style: {
-        fontSize: 10,
+        fontSize: 11 /* v2.3.1235: batch-3 rollout — 11px text floor */,
         fontWeight: 600,
-        color: '#96A2A0'
+        color: '#8D9B98'
       }
     }, "T", recipe.tier)), /*#__PURE__*/React.createElement("div", {
       style: {
         fontSize: 11,
-        color: '#96A2A0'
+        color: '#8D9B98'
       }
     }, buffDesc, recipe.duration ? " \xB7 ".concat(Math.round(recipe.duration / 60), "min") : ''), /*#__PURE__*/React.createElement("div", {
       style: {
         fontSize: 11,
-        color: '#96A2A0'
+        color: '#8D9B98'
       }
     }, "Needs: ", Object.entries(recipe.ingredients).map(function (_ref111) {
       var _ref112 = _slicedToArray(_ref111, 2),
@@ -517,14 +549,16 @@ export function CookPanel(props) {
       return c + '× ' + t.replace(/_/g, ' ');
     }).join(', '), !canCook && " \xB7 Req Cooking Lv".concat(recipe.cookLvl))), /*#__PURE__*/React.createElement("button", {
       style: {
-        minHeight: 34,
+        /* v2.3.1235: batch-3 rollout — 44px hitbox floor; secondary vs
+           quiet-card disabled treatment on the approved tokens. */
+        minHeight: 44,
         padding: '0 14px',
-        borderRadius: 11,
-        border: canCook && hasIngredients ? '1px solid rgba(238,242,235,.14)' : '1px solid rgba(238,242,235,.08)',
+        borderRadius: 10,
+        border: canCook && hasIngredients ? '1px solid rgba(229,237,233,.20)' : '1px solid rgba(229,237,233,.11)',
         fontSize: 13,
         fontWeight: 700,
-        background: canCook && hasIngredients ? '#2B3940' : '#19252A',
-        color: canCook && hasIngredients ? '#F7F2E7' : '#687575',
+        background: canCook && hasIngredients ? '#293B41' : '#24363C',
+        color: canCook && hasIngredients ? '#F4F0E7' : '#667875',
         cursor: 'pointer',
         fontFamily: 'inherit',
         flexShrink: 0

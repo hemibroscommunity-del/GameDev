@@ -15,17 +15,23 @@ import { pushDmgPopup } from '@/game/combatHelpers.js';
    Style/JSX only; forge_weapon / harden_weapon / reforge handlers are
    byte-identical. LS token block duplicated per building panel to keep
    the decomposed files dependency-free. */
+/* v2.3.1235: batch-3 rollout — correction-pass token remap (game.css
+   :root). The v2.3.1232 literals were the superseded v2.3.1227
+   palette; same roles, approved values. Four depth roles only, so
+   wellSoft folds into the well, and the off-token .08/.14 hairlines
+   fold into the approved .11 line (.20 borderStrong added for
+   secondary buttons). Header strip adopts the #27393F header token. */
 var LS = {
-  txt1: '#F7F2E7', txt2: '#B9C1BF', txt3: '#96A2A0', dis: '#687575',
-  panel: '#202C32', strip: '#182227', raised: '#2B3940', well: '#121B20', wellSoft: '#19252A',
-  border: 'rgba(238,242,235,.14)', divider: 'rgba(238,242,235,.10)', wellBorder: 'rgba(238,242,235,.08)',
-  brass: '#D8A85F', brassFill: '#3B3427', onBrass: '#20170D'
+  txt1: '#F4F0E7', txt2: '#B6C1BE', txt3: '#8D9B98', dis: '#667875',
+  panel: '#1E2E34', strip: '#27393F', raised: '#293B41', well: '#111E23', wellSoft: '#111E23',
+  border: 'rgba(229,237,233,.11)', borderStrong: 'rgba(229,237,233,.20)', divider: 'rgba(229,237,233,.11)', wellBorder: 'rgba(229,237,233,.11)',
+  brass: '#D8AA58', brassFill: 'rgba(216,170,88,.15)', onBrass: '#172126'
 };
 /* v2.3.1232: -20 margin counters .bt-inspect-card's 20px padding so the
    panel owns its full surface (header strip flush to the card edge). */
 var LS_WRAP = { margin: -20, background: LS.panel, borderRadius: 14, overflow: 'hidden', textAlign: 'left' };
 var LS_BODY = { padding: '12px 14px 14px' };
-var LS_MOD = { fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.12em', color: LS.txt3, margin: '0 0 6px' };
+var LS_MOD = { fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.14em', color: LS.txt3, margin: '0 0 6px' }; /* v2.3.1235: batch-3 rollout — section headers are 11/700 .14em muted per the locked contract */
 function lsHeader(icon, emoji, title, subtitle) {
   return React.createElement("div", {
     style: { display: 'flex', alignItems: 'center', gap: 10, padding: '12px 40px 12px 16px', background: LS.strip, borderBottom: '1px solid ' + LS.border }
@@ -41,7 +47,7 @@ function lsHeader(icon, emoji, title, subtitle) {
 function lsGoldImg(dim) {
   return React.createElement("img", {
     src: '/icons/popups/gold.webp', alt: '', draggable: false,
-    style: { width: 16, height: 16, objectFit: 'contain', opacity: dim ? 0.4 : 1 },
+    style: { width: 16, height: 16, objectFit: 'contain', opacity: dim ? 0.55 : 1 /* v2.3.1235: batch-3 rollout — unaffordable rows stay readable, .55 opacity floor */ },
     onError: function onError(e) { e.currentTarget.replaceWith(document.createTextNode('🪙')); }
   });
 }
@@ -64,11 +70,11 @@ export function WoodworkPanel(props) {
         }
       }, [{
         type: 'bow',
-        label: '🏹 Bow',
+        label: 'Bow' /* v2.3.1235: batch-3 rollout — 🏹 dropped, no emoji in chrome (label only feeds the toggle button) */,
         desc: 'Ranged single-target'
       }, {
         type: 'staff',
-        label: '🪄 Staff',
+        label: 'Staff' /* v2.3.1235: batch-3 rollout — 🪄 dropped, no emoji in chrome */,
         desc: 'Ranged AOE swipe'
       }].map(function (wt) {
         var _stateRef$current13, _stateRef$current14, _stateRef$current15;
@@ -78,7 +84,7 @@ export function WoodworkPanel(props) {
             flex: 1,
             padding: '8px 10px',
             minHeight: 44,
-            borderRadius: 11,
+            borderRadius: 10 /* v2.3.1235: batch-3 rollout — 11 is off the approved radii set */,
             fontSize: 13,
             fontWeight: 700,
             cursor: 'pointer',
@@ -92,7 +98,7 @@ export function WoodworkPanel(props) {
           }
         }, wt.label, /*#__PURE__*/React.createElement("div", {
           style: {
-            fontSize: 10,
+            fontSize: 11 /* v2.3.1235: batch-3 rollout — 11px text floor (was 10) */,
             fontWeight: 400,
             color: LS.txt3,
             marginTop: 2
@@ -124,17 +130,19 @@ export function WoodworkPanel(props) {
         var canCraft = canCraftSkill && wwMeetsStat;
         return /*#__PURE__*/React.createElement("div", {
           key: key,
+          /* v2.3.1235: batch-3 rollout — divided list rows replace the
+             per-row well cards (contract: dividers over per-row cards);
+             the first row's top hairline doubles as the rule under the
+             module header. Locked rows meet the .55 readability floor
+             (was .45); slot/wood glyphs are game data and stay. */
           style: {
             display: 'flex',
             alignItems: 'center',
             gap: 10,
-            marginBottom: 6,
-            padding: '8px 10px',
+            padding: '8px 2px',
             minHeight: 44,
-            borderRadius: 8,
-            background: LS.wellSoft,
-            border: '1px solid ' + LS.wellBorder,
-            opacity: canCraft ? 1 : 0.45
+            borderTop: '1px solid ' + LS.divider,
+            opacity: canCraft ? 1 : 0.55
           }
         }, /*#__PURE__*/React.createElement("span", {
           style: {
@@ -154,34 +162,40 @@ export function WoodworkPanel(props) {
           }
         }, wt.label, " ", craftType === 'bow' ? 'Bow' : 'Staff', " ", /*#__PURE__*/React.createElement("span", {
           style: {
-            fontSize: 10,
+            fontSize: 11 /* v2.3.1235: batch-3 rollout — 11px text floor (was 10) */,
             fontWeight: 400,
             color: LS.txt3
           }
         }, "Lv", wt.minLvl, "+ \xB7 ", wt.tierMult, "\xD7")), /*#__PURE__*/React.createElement("div", {
           style: {
-            fontSize: 10.5,
+            fontSize: 11 /* v2.3.1235: batch-3 rollout — 11px text floor (was 10.5) */,
             color: LS.txt3
           }
         }, wt.desc, " ", wt.slots > 0 ? "\xB7 ".concat(wt.slots, " gem slot").concat(wt.slots > 1 ? 's' : '') : ''), /*#__PURE__*/React.createElement("div", {
           style: {
-            fontSize: 10.5,
+            fontSize: 11 /* v2.3.1235: batch-3 rollout — 11px text floor (was 10.5) */,
             color: LS.txt3,
             fontVariantNumeric: 'tabular-nums'
           }
-        }, wt.woodCost, "\xD7 ", wt.wood.replace(/_/g, ' '), !canCraftSkill && " \xB7 Req WW Lv".concat(wt.minLvl), canCraftSkill && !wwMeetsStat && " \xB7 Req ".concat(STAT_LABELS[wwStatReq.stat] || wwStatReq.stat, " ").concat(wwStatReq.value))), /*#__PURE__*/React.createElement("button", {
+        }, wt.woodCost, "\xD7 ", wt.wood.replace(/_/g, ' '), !canCraftSkill && " \xB7 Locked \xB7 Req WW Lv".concat(wt.minLvl), canCraftSkill && !wwMeetsStat && " \xB7 Locked \xB7 Req ".concat(STAT_LABELS[wwStatReq.stat] || wwStatReq.stat, " ").concat(wwStatReq.value)) /* v2.3.1235: batch-3 rollout — explicit text lock indication next to the requirement */), /*#__PURE__*/React.createElement("button", {
+          /* v2.3.1235: batch-3 rollout — secondary recipe (raised +
+             strong hairline, 10px radius — 11 is off the approved set)
+             at the 44px hitbox floor (was 36); 13px button label (no
+             half-sizes). Blocked state stays readable: quiet outline +
+             disabled text; cost and the row's Locked/Req line carry
+             the requirement. */
           style: {
             display: 'inline-flex',
             alignItems: 'center',
             gap: 5,
             padding: '8px 10px',
-            minHeight: 36,
-            borderRadius: 11,
-            fontSize: 12.5,
+            minHeight: 44,
+            borderRadius: 10,
+            fontSize: 13,
             fontWeight: 700,
             fontVariantNumeric: 'tabular-nums',
-            background: canCraft && hasWood && hasGold ? LS.raised : LS.well,
-            border: '1px solid ' + (canCraft && hasWood && hasGold ? LS.border : LS.wellBorder),
+            background: canCraft && hasWood && hasGold ? LS.raised : 'transparent',
+            border: '1px solid ' + (canCraft && hasWood && hasGold ? LS.borderStrong : LS.border),
             color: canCraft && hasWood && hasGold ? LS.brass : LS.dis,
             cursor: 'pointer'
           },
@@ -250,16 +264,23 @@ export function WoodworkPanel(props) {
         return /*#__PURE__*/React.createElement("div", {
           style: { marginTop: 12, padding: 10, borderRadius: 10, background: LS.wellSoft, border: '1px solid ' + LS.wellBorder }
         }, /*#__PURE__*/React.createElement("div", {
-          style: { fontSize: 12.5, fontWeight: 700, color: LS.txt1, marginBottom: 3 }
-        }, "⚒️ Hardening: ", hw.name, " — H", hLvl, "/5"), /*#__PURE__*/React.createElement("div", {
+          style: { fontSize: 13 /* v2.3.1235: batch-3 rollout — body 13, no half-sizes */, fontWeight: 700, color: LS.txt1, marginBottom: 3 }
+        }, "Hardening: ", hw.name, " — H", hLvl, "/5") /* v2.3.1235: batch-3 rollout — ⚒️ dropped, no emoji in chrome */, /*#__PURE__*/React.createElement("div", {
           style: { fontSize: 11, color: LS.txt3, marginBottom: 8, lineHeight: 1.5 }
         }, hMaxed ? 'Maximum hardness reached!' : "+1.04 base dmg per level \xB7 Success " + hOdds + "% \xB7 Fail resets hardness (Temper " + hTemper + " softens it) \xB7 Gated on Blacksmithing"), !hMaxed && /*#__PURE__*/React.createElement("button", {
+          /* v2.3.1235: batch-3 rollout — the surface's single gold
+             primary adopts the shared .button-primary recipe (game.css)
+             instead of a flat brass fill; 44px hitbox floor (was 40),
+             10px radius (11 is off the approved set), 13px label.
+             Unaffordable state stays readable on the well; the cost in
+             the label is the requirement. */
+          className: hAfford ? 'button-primary' : undefined,
           style: {
-            width: '100%', minHeight: 40, padding: '8px 0', borderRadius: 11, fontSize: 12.5, fontWeight: 700,
+            width: '100%', minHeight: 44, padding: '8px 0', borderRadius: 10, fontSize: 13, fontWeight: 700,
             fontVariantNumeric: 'tabular-nums',
-            border: 'none',
-            background: hAfford ? LS.brass : LS.well,
-            color: hAfford ? LS.onBrass : LS.dis,
+            border: hAfford ? undefined : '1px solid ' + LS.border,
+            background: hAfford ? undefined : LS.well,
+            color: hAfford ? undefined : LS.dis,
             cursor: hAfford ? 'pointer' : 'not-allowed'
           },
           onClick: function onClick() {
@@ -297,12 +318,12 @@ export function WoodworkPanel(props) {
           }
         }, /*#__PURE__*/React.createElement("div", {
           style: {
-            fontSize: 12.5,
+            fontSize: 13 /* v2.3.1235: batch-3 rollout — body 13, no half-sizes */,
             fontWeight: 700,
             color: LS.txt1,
             marginBottom: 4
           }
-        }, "🔧 Reforge & Harden: ", wpn.name), /*#__PURE__*/React.createElement("div", {
+        }, "Reforge & Harden: ", wpn.name) /* v2.3.1235: batch-3 rollout — 🔧 dropped, no emoji in chrome */, /*#__PURE__*/React.createElement("div", {
           style: {
             fontSize: 11,
             color: LS.txt3,
@@ -314,12 +335,15 @@ export function WoodworkPanel(props) {
             gap: 6
           }
         }, /*#__PURE__*/React.createElement("button", {
+          /* v2.3.1235: batch-3 rollout — secondary recipe (raised +
+             strong hairline, 10px radius — 11 is off the approved set)
+             at the 44px hitbox floor (was 40). */
           style: {
             flex: 1,
-            minHeight: 40,
+            minHeight: 44,
             padding: '6px 4px',
-            borderRadius: 11,
-            border: '1px solid ' + LS.border,
+            borderRadius: 10,
+            border: '1px solid ' + LS.borderStrong,
             background: LS.raised,
             color: LS.txt1,
             fontSize: 11,
@@ -347,15 +371,19 @@ export function WoodworkPanel(props) {
               localStorage.setItem('bt_rpg', JSON.stringify(R));
             } catch (e) {}
           }
-        }, "🔧 Reforge (", reforgeCost, " wood + ", /*#__PURE__*/React.createElement("span", {
+        }, "Reforge (" /* v2.3.1235: batch-3 rollout — 🔧 dropped, no emoji in chrome */, reforgeCost, " wood + ", /*#__PURE__*/React.createElement("span", {
           style: { color: LS.brass }
         }, reforgeGold, "g"), ")"), /*#__PURE__*/React.createElement("button", {
+          /* v2.3.1235: batch-3 rollout — secondary recipe (raised +
+             strong hairline, 10px radius — 11 is off the approved set)
+             at the 44px hitbox floor (was 40); the already-hardened
+             state keeps a readable quiet outline + disabled text. */
           style: {
             flex: 1,
-            minHeight: 40,
+            minHeight: 44,
             padding: '6px 4px',
-            borderRadius: 11,
-            border: wpn.hardenBonus ? '1px solid ' + LS.wellBorder : '1px solid ' + LS.border,
+            borderRadius: 10,
+            border: wpn.hardenBonus ? '1px solid ' + LS.border : '1px solid ' + LS.borderStrong,
             background: wpn.hardenBonus ? LS.well : LS.raised,
             color: wpn.hardenBonus ? LS.dis : LS.txt1,
             fontSize: 11,
@@ -404,7 +432,7 @@ export function WoodworkPanel(props) {
               localStorage.setItem('bt_rpg', JSON.stringify(R));
             } catch (e) {}
           }
-        }, "⚒️ Harden (", Math.round(hChance * 100), "% \xB7 ", hardenCost, " wood + ", /*#__PURE__*/React.createElement("span", {
+        }, "Harden (" /* v2.3.1235: batch-3 rollout — ⚒️ dropped, no emoji in chrome */, Math.round(hChance * 100), "% \xB7 ", hardenCost, " wood + ", /*#__PURE__*/React.createElement("span", {
           style: { color: wpn.hardenBonus ? LS.dis : LS.brass }
         }, hardenGold, "g"), ")")));
       }()));
