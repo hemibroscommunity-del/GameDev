@@ -1240,9 +1240,11 @@ export const BottomDashboard = () => {
                           onPointerUp={(e) => { e.stopPropagation(); setTooltip(`${slotLabel} weapon — tap the weapon slot to cycle melee → ranged → staff.`); }}
                           title={`${slotLabel} · DMG ${dmgText} · DPS ${dpsText}`}
                           style={{ /* v2.3.1233: QA — 11px overflowed the ~110px
-                             rest-band module (clipped to "MG 8-13 · DPS 17.");
-                             the 700-weight values need 9.5px/zero-tracking. */
-                            fontSize: 9.5, color: COL.text, letterSpacing: 0, textAlign: 'center', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', cursor: 'pointer', touchAction: 'none' }}>
+                             rest-band module (clipped to "MG 8-13 · DPS 17.").
+                             v2.3.1234: 9.5px fit the STARTER values with zero
+                             headroom — a godly roll ("DMG 23-38 · DPS 50.8")
+                             clipped again. 9px holds realistic value widths. */
+                            fontSize: 9, color: COL.text, letterSpacing: 0, textAlign: 'center', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', cursor: 'pointer', touchAction: 'none' }}>
                           <span style={{ color: COL.muted }}>DMG </span>{dmgText}
                           <span style={{ color: COL.muted }}>  ·  DPS </span>{dpsText}
                         </div>
