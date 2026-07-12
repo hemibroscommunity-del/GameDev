@@ -11,6 +11,11 @@ import React from 'react';
    temps. */
 /* v2.3.1232: Lantern Slate restyle — world-overlay card, 44px input
    trough + brass Send primary. Handlers/refs untouched. */
+/* v2.3.1235: batch-4 rollout — corrected tokens: world-chrome overlay
+   rgba(13,22,27,.88) + strong hairline, well #111E23 input trough,
+   gold-gradient Send primary (#EAC675 edge, #172126 ink, radius 10),
+   close bumped to the 44pt hitbox floor. Styles only; every handler
+   body byte-identical. */
 export function ChatPanel(props) {
   var chatInput = props.chatInput,
     chatInputRef = props.chatInputRef,
@@ -29,9 +34,12 @@ export function ChatPanel(props) {
       alignItems: 'center',
       gap: 6,
       padding: 8,
-      background: 'rgba(17,25,29,.94)',
-      borderRadius: 12,
-      border: '1px solid rgba(238,242,235,.24)',
+      /* v2.3.1235: batch-4 rollout — established world-chrome recipe
+         (anchored surface over the world) + strong hairline; radius 10
+         (12 is off the approved radii set). */
+      background: 'rgba(13,22,27,.88)',
+      borderRadius: 10,
+      border: '1px solid rgba(229,237,233,.20)',
       boxShadow: '0 14px 30px rgba(4,7,9,.38)'
     }
   }, /*#__PURE__*/React.createElement("button", {
@@ -48,19 +56,21 @@ export function ChatPanel(props) {
     },
     style: {
       /* v2.3.1232: secondary raised close, larger touch target */
-      width: 36,
-      height: 36,
+      /* v2.3.1235: batch-4 rollout — 44pt hitbox floor + corrected
+         secondary recipe (raised #293B41, strong hairline). */
+      width: 44,
+      height: 44,
       borderRadius: 8,
-      border: '1px solid rgba(238,242,235,.14)',
+      border: '1px solid rgba(229,237,233,.20)',
       flexShrink: 0,
-      background: '#2B3940',
+      background: '#293B41',
       cursor: 'pointer',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
       fontSize: 13,
       padding: 0,
-      color: '#B9C1BF'
+      color: '#B6C1BE'
     }
   }, "✕"), /*#__PURE__*/React.createElement("input", {
     ref: chatInputRef,
@@ -103,7 +113,10 @@ export function ChatPanel(props) {
          property that fixed the incident above (translucency was the
          trigger), and WebkitAppearance:'none' disables the platform
          default styling that forced the white BG in the first place. */
-      background: '#121B20',
+      /* v2.3.1235: batch-4 rollout — corrected well token #111E23
+         (same opacity property; the white-on-white guard below keeps
+         its shape, only the token changes). */
+      background: '#111E23',
       WebkitAppearance: 'none',
       appearance: 'none',
       /* v2.3.1233b: audit hardening — if a UA still force-paints the
@@ -112,13 +125,13 @@ export function ChatPanel(props) {
          independently), warm-white text would be invisible. The inset
          box-shadow paints the interior dark ON TOP of any UA
          background, making white-on-white impossible. */
-      WebkitBoxShadow: 'inset 0 0 0 100px #121B20',
-      boxShadow: 'inset 0 0 0 100px #121B20',
-      border: '1px solid rgba(238,242,235,.14)',
+      WebkitBoxShadow: 'inset 0 0 0 100px #111E23',
+      boxShadow: 'inset 0 0 0 100px #111E23',
+      border: '1px solid rgba(229,237,233,.11)',
       borderRadius: 8,
-      color: '#F7F2E7',
-      WebkitTextFillColor: '#F7F2E7',
-      caretColor: '#F0C878',
+      color: '#F4F0E7',
+      WebkitTextFillColor: '#F4F0E7',
+      caretColor: '#EAC675',
       /* 16px: keep — smaller font sizes make iOS Safari zoom the page
          on focus. */
       fontSize: 16,
@@ -137,12 +150,15 @@ export function ChatPanel(props) {
     },
     style: {
       /* v2.3.1232: brass primary send (44px, text-on-accent) */
+      /* v2.3.1235: batch-4 rollout — Send adopts the committed
+         gold-gradient primary recipe (#EAC675 edge, #172126 ink,
+         radius 10); it is this surface's ONE primary. */
       minHeight: 44,
       padding: '0 16px',
-      background: '#D8A85F',
-      color: '#20170D',
-      border: 'none',
-      borderRadius: 11,
+      background: 'linear-gradient(180deg,#E2B765,#D2A14D)',
+      color: '#172126',
+      border: '1px solid #EAC675',
+      borderRadius: 10,
       fontSize: 13,
       fontWeight: 700,
       cursor: 'pointer',

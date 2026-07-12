@@ -89,6 +89,7 @@ import { pushHudPopup } from './XpFlyOverlay.jsx';
 import { firemakingBus } from './mobile/firemakingBus.js';
 import { eatBus } from './mobile/eatBus.js';
 import { blockRingBus } from './mobile/blockRingBus.js';
+import { controlsTutorialBus } from './mobile/controlsTutorialBus.js';
 /* Renderer: PixiJS (WebGL) with Canvas 2D fallback */
 import { initPixiRenderer, preloadPlayerAssets } from '@/rendering/pixiRenderer.js';
 import { IMAGE_ZONE_MAPS } from '@/rendering/tiledMaps.js';
@@ -957,6 +958,10 @@ export var BroTown = function BroTown(_ref0) {
     setTutorialStep = _useState124[1];
   /* Keep tutorialStep on stateRef so the game loop (which doesn't re-mount on state change) reads the live value */
   stateRef.current._tutorialStep = tutorialStep;
+  /* v2.3.1235: Checkpoint B §7 — the onboarding banner must also yield to
+     the controls-tutorial coach (it was showing through the spotlight at
+     both test widths). Live subscription so the banner resumes on close. */
+  var ctOpen = React.useSyncExternalStore(controlsTutorialBus.subscribe, controlsTutorialBus.isOpen);
   var _useState125 = useState(false),
     _useState126 = _slicedToArray(_useState125, 2),
     showInventory = _useState126[0],
@@ -6380,9 +6385,21 @@ export var BroTown = function BroTown(_ref0) {
       /* v2.3.1234: was 300 fixed — dead margins on phones; the 11
          building interiors get the full width they were designed to
          bleed into (margin:-20 roots). Cap keeps it off tablet-huge. */
+      /* v2.3.1235: §6 — height capped so building content never
+         continues behind the dashboard band. Checkpoint B: 100% = the
+         .bt-inspect content box, which now reserves BOTH the band
+         (padding-bottom) and the HUD chip strip (padding-top — the chip
+         paints over in-wrap modals, see game.css). */
       width: 'min(360px, calc(100vw - 24px))',
-      maxHeight: '84vh',
-      overflowY: 'auto'
+      maxHeight: '100%',
+      overflowY: 'auto',
+      /* v2.3.1235: batch-3 QA — 18px bottom scroll-edge fade (same recipe
+         as the destination sheets/leaderboard): at 390 the Woodworker's
+         hardening button was hard-cut in half at the card fold with no
+         cue. Inline on the BUILDING card only — the inspect card pins its
+         action row at the bottom and must not fade. */
+      WebkitMaskImage: 'linear-gradient(180deg, #000 calc(100% - 18px), transparent)',
+      maskImage: 'linear-gradient(180deg, #000 calc(100% - 18px), transparent)'
     }
   }, /*#__PURE__*/React.createElement("button", {
     className: "bt-inspect-close",
@@ -6601,7 +6618,11 @@ export var BroTown = function BroTown(_ref0) {
     }
   }, "Cancel"))), questPanel && rpgState && /*#__PURE__*/React.createElement(QuestPanel, { rpgState: rpgState, stateRef: stateRef, questPanel: questPanel, setQuestPanel: setQuestPanel, setRpgState: setRpgState }), duelRequest && /*#__PURE__*/React.createElement(DuelRequestPanel, { stateRef: stateRef, duelRequest: duelRequest, setDuelRequest: setDuelRequest }), threatIncoming && !threatIncoming.responded && /*#__PURE__*/React.createElement(ThreatIncomingPanel, { stateRef: stateRef, threatIncoming: threatIncoming, setThreatIncoming: setThreatIncoming }), showTrade && tradeTarget && rpgState && /*#__PURE__*/React.createElement(TradePanel, { rpgState: rpgState, stateRef: stateRef, tradeTarget: tradeTarget, tradeOffer: tradeOffer, setShowTrade: setShowTrade, setTradeOffer: setTradeOffer }), incomingTrade && rpgState && /*#__PURE__*/React.createElement(IncomingTradePanel, { stateRef: stateRef, incomingTrade: incomingTrade, setIncomingTrade: setIncomingTrade, setRpgState: setRpgState }), trade2 && rpgState && /*#__PURE__*/React.createElement(TradeWindowPanel, { rpgState: rpgState, stateRef: stateRef, trade2: trade2, setTrade2: setTrade2 }), party && /*#__PURE__*/React.createElement(PartyHUD, { party: party, setParty: setParty, stateRef: stateRef }),showInventory && rpgState && /*#__PURE__*/React.createElement(InventoryPanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState, setShowInventory: setShowInventory, gearWorn: gearWorn, toggleGearSlot: toggleGearSlot }), showSkills && rpgState && /*#__PURE__*/React.createElement(SkillsPanel, { rpgState: rpgState, stateRef: stateRef, setShowSkills: setShowSkills }), /* v2.3.1147: tutorial banner RE-ENABLED (was `false &&` since the
    prototype era -- the step machine ran all along, only the display was
-   gated, so veterans' bt_tutorial already reads 7/10 and never see it) */ tutorialStep >= 0 && tutorialStep < 7 && /*#__PURE__*/React.createElement("div", {
+   gated, so veterans' bt_tutorial already reads 7/10 and never see it) */
+  /* v2.3.1235: §6 — the banner yields to every blocking decision
+     surface (QA caught it rendering beside the duel prompt and behind
+     the tutorial coach). It resumes when the modal closes. */
+  tutorialStep >= 0 && tutorialStep < 7 && !ctOpen && !buildingPanel && !duelRequest && !incomingTrade && !trade2 && !inspectPlayer && !questPanel && !showTrade && !threatIncoming && /*#__PURE__*/React.createElement("div", {
     style: {
       position: 'absolute',
       /* v2.3.1205: was bottom:180 / zIndex:20 — INSIDE the opaque
@@ -6639,30 +6660,38 @@ export var BroTown = function BroTown(_ref0) {
       } catch (e) {}
     },
     style: {
+      /* v2.3.1235: QA \u2014 the \u2715 was a ~14px target; 32px box (44 incl.
+         the card padding around the corner) + brighter glyph. */
       position: 'absolute',
-      top: 4,
-      right: 8,
+      top: 0,
+      right: 0,
+      width: 32,
+      height: 32,
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
       background: 'none',
       border: 'none',
-      color: 'rgba(255,255,255,.4)',
+      color: 'rgba(255,255,255,.55)',
       fontSize: 14,
       cursor: 'pointer',
-      padding: '0 2px',
+      padding: 0,
       lineHeight: 1
     }
   }, "\u2715"), /*#__PURE__*/React.createElement("div", {
     style: {
-      fontSize: 11,
+      fontSize: 12,
       fontWeight: 700,
       color: '#fff',
       fontFamily: 'Source Sans 3,sans-serif',
       letterSpacing: '.03em',
-      paddingRight: 16
+      paddingRight: 22
     }
-  }, tutorialStep === 0 && '👋 Welcome! Use the LEFT STICK to move around.', tutorialStep === 1 && '💨 Nice! Now SWIPE the screen to dodge roll!', tutorialStep === 2 && '⚔️ Great dodge! Hold the RIGHT STICK to attack enemies.', tutorialStep === 3 && '💀 First kill! Head to the edge of town to explore the wild.', tutorialStep === 4 && '🗺️ Explore! Walk to the edge of town to enter a combat zone.', tutorialStep === 5 && '⚡ Out in the wild! Monsters here are tougher. Reach Level 3 to prove yourself.', tutorialStep === 6 && '🎉 Tutorial complete! The world is yours — explore every zone!' /* v2.3.1205: was "Discover all 36 collisions!" — prototype-era copy; there are no "collisions" and ZONES has never had 36 entries */), /*#__PURE__*/React.createElement("div", {
+  }, tutorialStep === 0 && 'Welcome! Use the LEFT STICK to move around.', tutorialStep === 1 && 'Nice! Now SWIPE the screen to dodge roll!', tutorialStep === 2 && 'Great dodge! Hold the RIGHT STICK to attack enemies.', tutorialStep === 3 && 'First kill! Head to the edge of town to explore the wild.', tutorialStep === 4 && 'Explore! Walk to the edge of town to enter a combat zone.', tutorialStep === 5 && 'Out in the wild! Monsters here are tougher. Reach Level 3 to prove yourself.', tutorialStep === 6 && 'Tutorial complete! The world is yours — explore every zone!' /* v2.3.1205: was "Discover all 36 collisions!" — prototype-era copy; there are no "collisions" and ZONES has never had 36 entries */), /*#__PURE__*/React.createElement("div", {
     style: {
-      fontSize: 8,
-      color: 'rgba(255,255,255,.3)',
+      /* v2.3.1235: QA — 8px was under the 11px floor. */
+      fontSize: 11,
+      color: 'rgba(255,255,255,.45)',
       marginTop: 3
     }
   }, "Step ", Math.min(tutorialStep + 1, 7), "/7"))), levelUpMsg && Date.now() - levelUpMsg.ts < 4000 && /*#__PURE__*/React.createElement("div", {
@@ -7747,7 +7776,11 @@ export var BroTown = function BroTown(_ref0) {
   }()), /*#__PURE__*/React.createElement(ExtractionSwipeLayer, {
     stateRef: stateRef,
     onSuccess: _succeedExtraction
-  }), "e.preventDefault();", function (_R$lifeSkills5, _R$lifeSkills6) {
+  }), /* v2.3.1235: removed a literal "e.preventDefault();" STRING child —
+     leaked into the JSX as visible text by a botched v2.3.1162 edit and
+     rendered into the world overlay ever since (caught by a DOM-text QA
+     probe; it sat right after the zone label in innerText). */
+  function (_R$lifeSkills5, _R$lifeSkills6) {
     var S = stateRef.current;
     var R = S === null || S === void 0 ? void 0 : S.rpg;
     if (!R || (S === null || S === void 0 ? void 0 : S.currentZone) === 'town') return null;

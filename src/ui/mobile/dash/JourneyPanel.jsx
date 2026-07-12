@@ -28,10 +28,12 @@ export const JourneyPanel = () => {
   if (!entries.length) {
     return <div style={panelStyle}>
       <div style={{ textAlign: 'center', padding: '20px 0' }}>
+        {/* v2.3.1235: batch-1 rollout — empty-state spec: icon ≤40px,
+            message 13/700 secondary. */}
         <img src="/icons/ui/nav-journey.webp" alt="" draggable={false}
-          style={{ width: 44, height: 44, objectFit: 'contain', opacity: 0.4, margin: '0 auto' /* v2.3.1233: img{display:block} in game.css defeats textAlign centering */ }}
+          style={{ width: 40, height: 40, objectFit: 'contain', opacity: 0.4, margin: '0 auto' /* v2.3.1233: img{display:block} in game.css defeats textAlign centering */ }}
           onError={(e) => { e.currentTarget.replaceWith(document.createTextNode('🧭')); }} />
-        <div style={{ fontSize: 13, color: COL.muted, marginTop: 6 }}>
+        <div style={{ fontSize: 13, fontWeight: 700, color: COL.text2, marginTop: 6 }}>
           Your journey is just beginning.
         </div>
       </div>
@@ -52,7 +54,9 @@ export const JourneyPanel = () => {
             padding: '0 8px',
             borderBottom: i < entries.length - 1 ? `1px solid ${COL.divider}` : 'none',
           }}>
-            <span style={{ flex: 1, minWidth: 0, fontSize: 13.5, color: COL.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            {/* v2.3.1235: batch-1 rollout — body copy is 13px on the
+                locked contract ladder (13.5 was the older spec value). */}
+            <span style={{ flex: 1, minWidth: 0, fontSize: 13, color: COL.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
               {text}
             </span>
             {ts && <span style={{ fontSize: 11, fontWeight: 600, color: COL.muted, fontVariantNumeric: 'tabular-nums', flex: '0 0 auto' }}>{fmtAge(ts)}</span>}

@@ -15,6 +15,22 @@ export function ForgePanel(props) {
     stateRef = props.stateRef,
     setRpgState = props.setRpgState;
   var _rpgState$lifeSkills21;
+  /* v2.3.1235: state-correction §10 — scroll-fade plumbing (pattern:
+     InspectPlayerPanel ~128-139): the panel body scrolls internally and
+     a sticky 24px bottom fade shows only while content remains below
+     the fold, so the Hardening/Amulet/Salvage actions are never
+     silently unreachable on short phones. Display-only state. */
+  var _sf = React.useState(false);
+  var showFade = _sf[0],
+    setShowFade = _sf[1];
+  var scrollBodyRef = React.useRef(null);
+  var measureFade = React.useCallback(function () {
+    var el = scrollBodyRef.current;
+    if (el) setShowFade(el.scrollHeight - el.scrollTop - el.clientHeight > 4);
+  }, []);
+  React.useEffect(function () {
+    measureFade();
+  }, [rpgState, measureFade]);
   /* v2.3.1232: Lantern Slate restyle (docs/LANTERN-SLATE-SPEC.md) \u2014
      the color remap left the old dense layout behind.  Now: #202C32
      panel surface + icon header, segmented weapon-type tabs on a
@@ -23,37 +39,59 @@ export function ForgePanel(props) {
      #2B3940 row actions, destructive #7C3431 salvage.  Shared style
      fragments below are styles only \u2014 every handler (forge/harden/
      reforge/amulet/salvage sends + local predictions) is byte-identical. */
+  /* v2.3.1235: batch-3 rollout — correction-pass compliance
+     (docs/LANTERN-SLATE-SPEC.md + game.css :root). Presentation only,
+     every handler byte-identical. v2.3.1232 tokens remapped onto the
+     approved set (sheet #1E2E34, well #111E23, raised #293B41, card
+     #24363C, text #F4F0E7/#B6C1BE/#8D9B98/#667875, lines
+     rgba(229,237,233,.11/.20), brass #D8AA58 / gradient primary on
+     #172126 ink, magic #9A78D0, stamina #DFAE4E); the nested #182227
+     module CARDS become divider-separated flat sections (contract: one
+     outer surface + one nested level max — their inner wells stay);
+     salvage/shield sub-groups and stash rows drop per-row card fills
+     for hairline dividers; ONE gold primary per surface (the Hardening
+     attempt keeps it, Smelt demotes to secondary); salvage becomes a
+     danger OUTLINE (filled red retired); chrome emoji dropped from
+     headers/buttons/tabs (💠/🔨/📿/🛡️ row glyphs are item identity and
+     stay); all row actions hit the 44px hitbox floor; locked rows lift
+     to the .55 readability floor. */
   var LS_HEAD = {
     fontSize: 11,
-    fontWeight: 600,
+    fontWeight: 700 /* v2.3.1235: batch-3 rollout — headers are 11/700 .14em muted */,
     textTransform: 'uppercase',
-    letterSpacing: '.12em',
-    color: '#96A2A0',
+    letterSpacing: '.14em',
+    color: '#8D9B98',
     marginBottom: 4
   };
   var LS_WELL = {
-    background: '#121B20',
+    background: '#111E23' /* v2.3.1235: batch-3 rollout — approved well token */,
     borderRadius: 10,
     padding: 4,
-    boxShadow: 'inset 0 2px 4px rgba(0,0,0,.44), inset 0 1px 0 rgba(255,255,255,.035)',
+    boxShadow: 'inset 0 2px 5px rgba(0,0,0,0.32), inset 0 1px 0 rgba(255,255,255,0.025)' /* v2.3.1235: shared .ui-well recipe */,
     marginBottom: 10
   };
-  var LS_DIV = '1px solid rgba(238,242,235,.10)';
+  var LS_DIV = '1px solid rgba(229,237,233,.11)'; /* v2.3.1235: batch-3 rollout — hairline token */
+  /* v2.3.1235: batch-3 rollout — the old nested #182227 card is now a
+     flat divider-separated section (one outer surface + one nested
+     level max); the name is kept so every consumer flips in one move. */
   var LS_CARD = {
-    marginTop: 10,
-    padding: 10,
-    borderRadius: 10,
-    background: '#182227',
-    border: '1px solid rgba(238,242,235,.14)'
+    marginTop: 12,
+    paddingTop: 10,
+    borderTop: '1px solid rgba(229,237,233,.11)'
   };
   return React.createElement("div", {
     style: {
       margin: -20,
-      padding: '16px 14px',
-      background: '#202C32',
-      borderRadius: 13,
+      /* v2.3.1235: state-correction §10 — flex-column root (fixed header
+         row + internal overflow-y body below); the root padding moved
+         onto header/body so the scroll region owns the full width. */
+      background: '#1E2E34',
+      borderRadius: 14,
       textAlign: 'left',
-      fontFamily: "'Source Sans 3',sans-serif"
+      fontFamily: "'Source Sans 3',sans-serif",
+      display: 'flex',
+      flexDirection: 'column',
+      maxHeight: '100%'
     }
   }, /*#__PURE__*/React.createElement("div", {
     style: {
@@ -61,7 +99,10 @@ export function ForgePanel(props) {
       alignItems: 'center',
       gap: 8,
       marginBottom: 2,
-      paddingRight: 24
+      /* v2.3.1235: state-correction §10 — header row is the fixed
+         (flex:none) part; absorbs the old root 16/14 padding. */
+      flex: 'none',
+      padding: '16px 38px 0 14px'
     }
   }, /*#__PURE__*/React.createElement("img", {
     src: "/icons/ui/bldg-forge.webp",
@@ -81,36 +122,51 @@ export function ForgePanel(props) {
       fontWeight: 700,
       textTransform: 'uppercase',
       letterSpacing: '.10em',
-      color: '#F7F2E7'
+      color: '#F4F0E7'
     }
   }, "Blacksmith")), /*#__PURE__*/React.createElement("div", {
+    /* v2.3.1235: state-correction §10 — internal scroll body: everything
+       below the header row scrolls; sticky bottom fade is its last child.
+       Scrollbar hidden by .ls-scrollbody (game.css). */
+    className: "ls-scrollbody",
+    ref: scrollBodyRef,
+    onScroll: measureFade,
+    style: {
+      overflowY: 'auto',
+      touchAction: 'pan-y',
+      flex: '1 1 auto',
+      minHeight: 0,
+      padding: '0 14px 12px'
+    }
+  }, /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 11,
-      color: '#96A2A0',
+      color: '#8D9B98',
       marginBottom: 12
     }
   }, "Blacksmithing Lv", ((_rpgState$lifeSkills21 = rpgState.lifeSkills) === null || _rpgState$lifeSkills21 === void 0 || (_rpgState$lifeSkills21 = _rpgState$lifeSkills21.blacksmithing) === null || _rpgState$lifeSkills21 === void 0 ? void 0 : _rpgState$lifeSkills21.level) || 1, " \xB7 Forge melee weapons from ore. Higher levels unlock gem slots."), /*#__PURE__*/React.createElement("div", {
-    /* v2.3.1232: segmented weapon-type tabs on a #121B20 track */
+    /* v2.3.1235: batch-3 rollout — well token + shared .ui-well recipe;
+       tab-label emoji dropped (no emoji in tab chrome). */
     style: {
       display: 'flex',
       gap: 2,
       marginBottom: 10,
       padding: 2,
       borderRadius: 8,
-      background: '#121B20',
-      boxShadow: 'inset 0 2px 4px rgba(0,0,0,.44), inset 0 1px 0 rgba(255,255,255,.035)'
+      background: '#111E23',
+      boxShadow: 'inset 0 2px 5px rgba(0,0,0,0.32), inset 0 1px 0 rgba(255,255,255,0.025)'
     }
   }, [{
     type: 'greatsword',
-    label: '⚔️ Greatsword',
+    label: 'Greatsword',
     desc: 'Slow, heavy hitter'
   }, {
     type: 'sword',
-    label: '🗡️ Sword',
+    label: 'Sword',
     desc: 'Fast, status pressure'
   }, {
     type: 'shield',
-    label: '🛡️ Shield',
+    label: 'Shield',
     desc: 'Defensive gear'
   }].map(function (wt) {
     var _stateRef$current8, _stateRef$current9, _stateRef$current0;
@@ -127,9 +183,10 @@ export function ForgePanel(props) {
         fontWeight: 700,
         cursor: 'pointer',
         fontFamily: 'inherit',
-        background: (((_stateRef$current8 = stateRef.current) === null || _stateRef$current8 === void 0 ? void 0 : _stateRef$current8._bsType) || 'greatsword') === wt.type ? '#2B3940' : 'transparent',
-        boxShadow: (((_stateRef$current9 = stateRef.current) === null || _stateRef$current9 === void 0 ? void 0 : _stateRef$current9._bsType) || 'greatsword') === wt.type ? 'inset 0 -2px 0 #D8A85F' : 'none',
-        color: (((_stateRef$current0 = stateRef.current) === null || _stateRef$current0 === void 0 ? void 0 : _stateRef$current0._bsType) || 'greatsword') === wt.type ? '#F7F2E7' : '#96A2A0'
+        /* v2.3.1235: batch-3 rollout — raised/brass/text tokens */
+        background: (((_stateRef$current8 = stateRef.current) === null || _stateRef$current8 === void 0 ? void 0 : _stateRef$current8._bsType) || 'greatsword') === wt.type ? '#293B41' : 'transparent',
+        boxShadow: (((_stateRef$current9 = stateRef.current) === null || _stateRef$current9 === void 0 ? void 0 : _stateRef$current9._bsType) || 'greatsword') === wt.type ? 'inset 0 -2px 0 #D8AA58' : 'none',
+        color: (((_stateRef$current0 = stateRef.current) === null || _stateRef$current0 === void 0 ? void 0 : _stateRef$current0._bsType) || 'greatsword') === wt.type ? '#F4F0E7' : '#8D9B98'
       },
       onClick: function onClick() {
         stateRef.current._bsType = wt.type;
@@ -137,9 +194,9 @@ export function ForgePanel(props) {
       }
     }, wt.label, /*#__PURE__*/React.createElement("div", {
       style: {
-        fontSize: 10,
+        fontSize: 11 /* v2.3.1235: batch-3 rollout — 11px text floor */,
         fontWeight: 400,
-        color: '#96A2A0'
+        color: '#8D9B98'
       }
     }, wt.desc));
   })), /*#__PURE__*/React.createElement("div", {
@@ -182,8 +239,9 @@ export function ForgePanel(props) {
         gap: 8,
         minHeight: 44,
         padding: '6px 8px',
-        borderTop: _fi > 0 ? LS_DIV : 'none',
-        opacity: canForge && meetsStat ? 1 : 0.4
+        borderTop: _fi > 0 ? LS_DIV : 'none'
+        /* v2.3.1235: state-correction — whole-row opacity dimming removed;
+           locked state is carried by text tokens + ls-lock glyph instead. */
       }
     }, /*#__PURE__*/React.createElement("span", {
       style: {
@@ -197,45 +255,69 @@ export function ForgePanel(props) {
       style: {
         fontSize: 13,
         fontWeight: 600,
-        color: canForge && meetsStat ? '#F7F2E7' : '#687575'
+        /* v2.3.1235: state-correction — locked titles use #B6C1BE (state 3);
+           missing-materials rows keep full title brightness (state 2). */
+        color: canForge && meetsStat ? '#F4F0E7' : '#B6C1BE'
       }
     }, bt.label, " ", /*#__PURE__*/React.createElement("span", {
       style: {
         fontSize: 11,
-        color: '#96A2A0'
+        color: '#8D9B98'
       }
     }, "Lv", bt.minLvl, "+ \xB7 ", bt.tierMult, "\xD7")), /*#__PURE__*/React.createElement("div", {
       style: {
         fontSize: 11,
-        color: '#96A2A0'
+        color: '#8D9B98'
       }
     }, bt.desc, " ", bt.slots > 0 ? "\xB7 ".concat(bt.slots, " gem slot").concat(bt.slots > 1 ? 's' : '') : ''), /*#__PURE__*/React.createElement("div", {
       style: {
         fontSize: 11,
-        color: '#96A2A0'
+        color: '#8D9B98'
       }
-    }, bt.oreCost, "\xD7 ", bt.oreName, " ore + ", bt.goldCost, "g", !canForgeSkill && " \xB7 Req BS Lv".concat(bt.minLvl), canForgeSkill && !meetsStat && " \xB7 Req ".concat(STAT_LABELS[statReq.stat] || statReq.stat, " ").concat(statReq.value), bt.statReq > 0 && function (_stateRef$current11) {
+    }, /* v2.3.1235: state-correction — state-2 rows show live have/need
+          counts from the same inventory/coin reads the disable logic uses
+          (met = positive green, short = danger); state-3 rows keep the
+          static cost and carry the requirement next to an ls-lock glyph. */
+    (canForge && meetsStat) && /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement("span", {
+      style: {
+        color: hasOre ? '#55B98A' : '#D8635D'
+      }
+    }, bt.oreName.charAt(0).toUpperCase() + bt.oreName.slice(1), " ", ((rpgState.inventory || {})[oreKey] || 0), "/", bt.oreCost), " \xB7 ", /*#__PURE__*/React.createElement("span", {
+      style: {
+        color: hasGold ? '#55B98A' : '#D8635D'
+      }
+    }, "Gold ", rpgState.coins || 0, "/", bt.goldCost)), !(canForge && meetsStat) && /*#__PURE__*/React.createElement("span", null, bt.oreCost, "\xD7 ", bt.oreName, " ore + ", bt.goldCost, "g \xB7 ", /*#__PURE__*/React.createElement("span", {
+      className: "ls-lock",
+      style: {
+        marginRight: 3
+      }
+    }), !canForgeSkill ? "Blacksmith Lv".concat(bt.minLvl).concat(bt.statReq > 0 ? " \xB7 " + reqStat.charAt(0).toUpperCase() + reqStat.slice(1) + " " + bt.statReq : "") : "".concat(statReq.stat.charAt(0).toUpperCase() + statReq.stat.slice(1), " ").concat(statReq.value)), bt.statReq > 0 && function (_stateRef$current11) {
       var bsType = ((_stateRef$current11 = stateRef.current) === null || _stateRef$current11 === void 0 ? void 0 : _stateRef$current11._bsType) || 'greatsword';
       var reqStat = bsType === 'shield' ? SHIELD_EQUIP_STAT : EQUIP_STAT_MAP[bsType] || 'power';
       var playerVal = rpgState[reqStat] || 0;
       var met = playerVal >= bt.statReq;
       return /*#__PURE__*/React.createElement("span", {
         style: {
-          color: met ? '#59BF91' : '#D95C54'
+          /* v2.3.1235: batch-3 rollout — positive/danger tokens */
+          color: met ? '#55B98A' : '#D8635D'
         }
       }, " \xB7 ", bt.statReq, " ", reqStat, " ", met ? '✓' : '✗');
     }())), /*#__PURE__*/React.createElement("button", {
-      /* v2.3.1232: secondary row action — raised #2B3940 when actionable */
+      /* v2.3.1235: state-correction — disabled recipe is #1A292F fill +
+         #8D9B98 label + .11 hairline at full opacity (was #24363C/#667875);
+         real disabled prop added around the untouched handler. */
+      disabled: !(canForge && hasOre && hasGold && meetsStat),
       style: {
-        minHeight: 34,
+        minHeight: 44,
         padding: '0 12px',
-        borderRadius: 11,
-        border: canForge && hasOre && hasGold && meetsStat ? '1px solid rgba(238,242,235,.14)' : '1px solid rgba(238,242,235,.08)',
+        borderRadius: 10,
+        border: canForge && hasOre && hasGold && meetsStat ? '1px solid rgba(229,237,233,.20)' : '1px solid rgba(229,237,233,.11)',
         fontSize: 12,
         fontWeight: 700,
-        background: canForge && hasOre && hasGold && meetsStat ? '#2B3940' : '#19252A',
-        color: canForge && hasOre && hasGold && meetsStat ? '#F7F2E7' : '#687575',
-        cursor: 'pointer',
+        background: canForge && hasOre && hasGold && meetsStat ? '#293B41' : '#1A292F',
+        color: canForge && hasOre && hasGold && meetsStat ? '#F4F0E7' : '#8D9B98',
+        opacity: 1,
+        cursor: canForge && hasOre && hasGold && meetsStat ? 'pointer' : 'default',
         fontFamily: 'inherit',
         flexShrink: 0
       },
@@ -288,7 +370,10 @@ export function ForgePanel(props) {
           localStorage.setItem('bt_rpg', JSON.stringify(R));
         } catch (e) {}
       }
-    }, "Forge (", ((_stateRef$current12 = stateRef.current) === null || _stateRef$current12 === void 0 ? void 0 : _stateRef$current12._bsType) === 'sword' ? 'Sword' : 'Greatsword', ")"));
+    }, /* v2.3.1235: state-correction — action label states: locked rows say
+          "Locked"; missing-materials rows name the binding shortage from the
+          same reads the guard uses; only state 1 keeps the Forge label. */
+    !(canForge && meetsStat) ? "Locked" : !hasOre ? "Need ".concat(bt.oreCost - ((rpgState.inventory || {})[oreKey] || 0), " ").concat(bt.oreName) : !hasGold ? "Need ".concat(bt.goldCost - (rpgState.coins || 0), "G more") : /*#__PURE__*/React.createElement("span", null, "Forge (", ((_stateRef$current12 = stateRef.current) === null || _stateRef$current12 === void 0 ? void 0 : _stateRef$current12._bsType) === 'sword' ? 'Sword' : 'Greatsword', ")")));
   })), function () {
     /* v2.3.1131: SS4.6c HARDENING -- the server-rolled H0->H5 ladder
        (harden_weapon -> hardening.js).  DISTINCT from the legacy
@@ -307,22 +392,29 @@ export function ForgePanel(props) {
     var hCost = 500 * Math.pow(4, hLvl);
     var hTemper = hw.temper || 0;
     var hAfford = (rpgState.coins || 0) >= hCost;
-    /* v2.3.1232: nested module card; the attempt button is this card's
-       one brass primary (44px #D8A85F). */
+    /* v2.3.1235: batch-3 rollout \u2014 flat divider-separated section (was a
+       nested card; one nested level max); the attempt button is THE gold
+       primary of this surface (gradient recipe on #172126 ink); chrome
+       emoji dropped from the item line. */
     return /*#__PURE__*/React.createElement("div", {
-      style: { marginTop: 10, padding: 10, borderRadius: 10, background: '#182227', border: '1px solid rgba(238,242,235,.14)' }
+      style: LS_CARD
     }, /*#__PURE__*/React.createElement("div", {
-      style: { fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.12em', color: '#96A2A0', marginBottom: 4 }
+      style: { fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.14em', color: '#8D9B98', marginBottom: 4 }
     }, "Hardening"), /*#__PURE__*/React.createElement("div", {
-      style: { fontSize: 13, fontWeight: 600, color: '#F7F2E7', marginBottom: 2 }
-    }, "\u2692\uFE0F ", hw.name, " \u2014 H", hLvl, "/5"), /*#__PURE__*/React.createElement("div", {
-      style: { fontSize: 11, color: '#96A2A0', marginBottom: 8 }
+      style: { fontSize: 13, fontWeight: 600, color: '#F4F0E7', marginBottom: 2 }
+    }, hw.name, " \u2014 H", hLvl, "/5"), /*#__PURE__*/React.createElement("div", {
+      style: { fontSize: 11, color: '#8D9B98', marginBottom: 8 }
     }, hMaxed ? 'Maximum hardness reached!' : "+1.04 base dmg per level \xB7 Success " + hOdds + "% \xB7 Fail resets hardness (Temper " + hTemper + " softens it)"), !hMaxed && /*#__PURE__*/React.createElement("button", {
+      /* v2.3.1235: state-correction — real disabled prop + approved
+         disabled recipe (#1A292F fill, #8D9B98 label, .11 hairline, full
+         opacity) when coins are short; handler untouched. */
+      disabled: !hAfford,
       style: {
-        width: '100%', minHeight: 44, padding: '0 12px', borderRadius: 11, fontSize: 13, fontWeight: 700,
-        border: hAfford ? 'none' : '1px solid rgba(238,242,235,.08)',
-        background: hAfford ? '#D8A85F' : '#19252A',
-        color: hAfford ? '#20170D' : '#687575',
+        width: '100%', minHeight: 44, padding: '0 12px', borderRadius: 10, fontSize: 13, fontWeight: 700,
+        border: hAfford ? '1px solid #EAC675' : '1px solid rgba(229,237,233,.11)',
+        background: hAfford ? 'linear-gradient(180deg,#E2B765,#D2A14D)' : '#1A292F',
+        color: hAfford ? '#172126' : '#8D9B98',
+        opacity: 1,
         cursor: hAfford ? 'pointer' : 'not-allowed',
         fontFamily: 'inherit'
       },
@@ -330,13 +422,16 @@ export function ForgePanel(props) {
         if (!hAfford) return;
         try { _Sh.channel.send({ type: 'broadcast', event: 'harden_weapon', payload: { slot: 'weapon' } }); } catch (e) {}
       }
-    }, "Attempt H", hLvl + 1, " (", hCost, "G \xB7 ", hOdds, "%)"));
+    }, /* v2.3.1235: state-correction — short-coins label states the gold
+          deficit (fee - coins, same values the hAfford guard reads)
+          instead of an enabled-looking attempt label. */
+    hAfford ? /*#__PURE__*/React.createElement("span", null, "Attempt H", hLvl + 1, " (", hCost, "G \xB7 ", hOdds, "%)") : "Need ".concat(hCost - (rpgState.coins || 0), "G more")));
   }(), function (_rpgState$lifeSkills24) {
     var wpn = rpgState.weapon;
     if (!(wpn !== null && wpn !== void 0 && wpn.gearBase)) return /*#__PURE__*/React.createElement("div", {
       style: {
         fontSize: 12,
-        color: '#96A2A0',
+        color: '#8D9B98',
         fontStyle: 'italic',
         marginTop: 8
       }
@@ -350,34 +445,29 @@ export function ForgePanel(props) {
     var hardenGold = Math.ceil(bt.goldCost * 0.5);
     var hChance = hardenChance(bt.tierMult, ((_rpgState$lifeSkills24 = rpgState.lifeSkills) === null || _rpgState$lifeSkills24 === void 0 || (_rpgState$lifeSkills24 = _rpgState$lifeSkills24.blacksmithing) === null || _rpgState$lifeSkills24 === void 0 ? void 0 : _rpgState$lifeSkills24.level) || 1);
     return /*#__PURE__*/React.createElement("div", {
-      /* v2.3.1232: nested module card */
-      style: {
-        marginTop: 10,
-        padding: 10,
-        borderRadius: 10,
-        background: '#182227',
-        border: '1px solid rgba(238,242,235,.14)'
-      }
+      /* v2.3.1235: batch-3 rollout \u2014 flat divider-separated section (was
+         a nested card); header 11/700 .14em; chrome emoji dropped. */
+      style: LS_CARD
     }, /*#__PURE__*/React.createElement("div", {
       style: {
         fontSize: 11,
-        fontWeight: 600,
+        fontWeight: 700,
         textTransform: 'uppercase',
-        letterSpacing: '.12em',
-        color: '#96A2A0',
+        letterSpacing: '.14em',
+        color: '#8D9B98',
         marginBottom: 4
       }
     }, "Reforge & Harden"), /*#__PURE__*/React.createElement("div", {
       style: {
         fontSize: 13,
         fontWeight: 600,
-        color: '#F7F2E7',
+        color: '#F4F0E7',
         marginBottom: 2
       }
-    }, "\uD83D\uDD27 ", wpn.name), /*#__PURE__*/React.createElement("div", {
+    }, wpn.name), /*#__PURE__*/React.createElement("div", {
       style: {
         fontSize: 11,
-        color: '#96A2A0',
+        color: '#8D9B98',
         marginBottom: 8
       }
     }, "Current: ", wpn.reforgeBonus ? "".concat(wpn.reforgeBonus.label, " +").concat(wpn.reforgeBonus.value).concat(wpn.reforgeBonus.unit) : 'No bonus', wpn.hardenBonus ? " \xB7 ".concat(wpn.hardenBonus.label, " +").concat(wpn.hardenBonus.value).concat(wpn.hardenBonus.unit) : ''), /*#__PURE__*/React.createElement("div", {
@@ -386,15 +476,16 @@ export function ForgePanel(props) {
         gap: 4
       }
     }, /*#__PURE__*/React.createElement("button", {
-      /* v2.3.1232: secondary action — raised + hairline */
+      /* v2.3.1235: batch-3 rollout — 44px hitbox floor; secondary =
+         raised + strong hairline; button-label emoji dropped. */
       style: {
         flex: 1,
-        minHeight: 40,
+        minHeight: 44,
         padding: '0 6px',
-        borderRadius: 11,
-        border: '1px solid rgba(238,242,235,.14)',
-        background: '#2B3940',
-        color: '#F7F2E7',
+        borderRadius: 10,
+        border: '1px solid rgba(229,237,233,.20)',
+        background: '#293B41',
+        color: '#F4F0E7',
         fontSize: 11.5,
         fontWeight: 700,
         cursor: 'pointer',
@@ -423,16 +514,17 @@ export function ForgePanel(props) {
           localStorage.setItem('bt_rpg', JSON.stringify(R));
         } catch (e) {}
       }
-    }, "\uD83D\uDD27 Reforge (", reforgeCost, " ore + ", reforgeGold, "g)"), /*#__PURE__*/React.createElement("button", {
-      /* v2.3.1232: secondary action, muted once hardened */
+    }, "Reforge (", reforgeCost, " ore + ", reforgeGold, "g)"), /*#__PURE__*/React.createElement("button", {
+      /* v2.3.1235: batch-3 rollout \u2014 44px hitbox floor; muted-once-
+         hardened = quiet card fill; button-label emoji dropped. */
       style: {
         flex: 1,
-        minHeight: 40,
+        minHeight: 44,
         padding: '0 6px',
-        borderRadius: 11,
-        border: wpn.hardenBonus ? '1px solid rgba(238,242,235,.08)' : '1px solid rgba(238,242,235,.14)',
-        background: wpn.hardenBonus ? '#19252A' : '#2B3940',
-        color: wpn.hardenBonus ? '#687575' : '#F7F2E7',
+        borderRadius: 10,
+        border: wpn.hardenBonus ? '1px solid rgba(229,237,233,.11)' : '1px solid rgba(229,237,233,.20)',
+        background: wpn.hardenBonus ? '#24363C' : '#293B41',
+        color: wpn.hardenBonus ? '#667875' : '#F4F0E7',
         fontSize: 11.5,
         fontWeight: 700,
         cursor: 'pointer',
@@ -485,38 +577,41 @@ export function ForgePanel(props) {
           localStorage.setItem('bt_rpg', JSON.stringify(R));
         } catch (e) {}
       }
-    }, "\u2692\uFE0F Harden (", Math.round(hChance * 100), "% \xB7 ", hardenCost, " ore + ", hardenGold, "g)")));
+    }, "Harden (", Math.round(hChance * 100), "% \xB7 ", hardenCost, " ore + ", hardenGold, "g)")));
   }(), /*#__PURE__*/React.createElement("div", {
     /* v2.3.1232: nested module card */
     style: LS_CARD
   }, /*#__PURE__*/React.createElement("div", {
     style: LS_HEAD
-  }, "\uD83D\uDCFF Amulet Crafting"), /*#__PURE__*/React.createElement("div", {
+    /* v2.3.1235: batch-3 rollout \u2014 header emoji dropped (chrome) */
+  }, "Amulet Crafting"), /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 12,
-      color: '#B9C1BF',
+      color: '#B6C1BE',
       fontVariantNumeric: 'tabular-nums',
       marginBottom: 6
     }
   }, "Gold Nuggets: ", rpgState.goldNuggets || 0, " \xB7 Gold Bars: ", rpgState.goldBars || 0, (rpgState.goldNuggets || 0) >= NUGGETS_PER_BAR && /*#__PURE__*/React.createElement("span", {
     style: {
-      color: '#D8A94D'
+      color: '#DFAE4E' /* v2.3.1235: batch-3 rollout — stamina-gold token */
     }
   }, " \xB7 Can smelt!")), /*#__PURE__*/React.createElement("button", {
-    /* v2.3.1232: card's one brass primary when smeltable */
+    /* v2.3.1235: batch-3 rollout — demoted from gold to SECONDARY: one
+       primary per surface, and the Hardening attempt above holds it;
+       button-label emoji dropped; 44px hitbox floor. */
     style: {
       width: '100%',
-      minHeight: 40,
+      minHeight: 44,
       padding: '0 12px',
-      borderRadius: 11,
+      borderRadius: 10,
       marginBottom: 8,
-      border: (rpgState.goldNuggets || 0) >= NUGGETS_PER_BAR ? 'none' : '1px solid rgba(238,242,235,.08)',
-      fontSize: 12.5,
+      border: (rpgState.goldNuggets || 0) >= NUGGETS_PER_BAR ? '1px solid rgba(229,237,233,.20)' : '1px solid rgba(229,237,233,.11)',
+      fontSize: 13,
       fontWeight: 700,
       cursor: 'pointer',
       fontFamily: 'inherit',
-      background: (rpgState.goldNuggets || 0) >= NUGGETS_PER_BAR ? '#D8A85F' : '#19252A',
-      color: (rpgState.goldNuggets || 0) >= NUGGETS_PER_BAR ? '#20170D' : '#687575'
+      background: (rpgState.goldNuggets || 0) >= NUGGETS_PER_BAR ? '#293B41' : '#24363C',
+      color: (rpgState.goldNuggets || 0) >= NUGGETS_PER_BAR ? '#F4F0E7' : '#667875'
     },
     onClick: function onClick() {
       var R = stateRef.current.rpg;
@@ -545,7 +640,7 @@ export function ForgePanel(props) {
         localStorage.setItem('bt_rpg', JSON.stringify(R));
       } catch (e) {}
     }
-  }, "\uD83E\uDE99 Smelt ", NUGGETS_PER_BAR, " Nuggets \u2192 1 Gold Bar"), /*#__PURE__*/React.createElement("div", {
+  }, "Smelt ", NUGGETS_PER_BAR, " Nuggets \u2192 1 Gold Bar"), /*#__PURE__*/React.createElement("div", {
     style: _objectSpread(_objectSpread({}, LS_WELL), {}, {
       marginBottom: 0
     })
@@ -567,8 +662,9 @@ export function ForgePanel(props) {
         gap: 8,
         minHeight: 44,
         padding: '6px 8px',
-        borderTop: _ai > 0 ? LS_DIV : 'none',
-        opacity: canCraft ? 1 : 0.4
+        borderTop: _ai > 0 ? LS_DIV : 'none'
+        /* v2.3.1235: state-correction — whole-row opacity dimming removed;
+           locked state is carried by text tokens + ls-lock glyph instead. */
       }
     }, /*#__PURE__*/React.createElement("span", {
       style: {
@@ -582,35 +678,57 @@ export function ForgePanel(props) {
       style: {
         fontSize: 13,
         fontWeight: 600,
-        color: canCraft ? '#F7F2E7' : '#687575'
+        /* v2.3.1235: state-correction — locked titles #B6C1BE (state 3);
+           missing-materials rows keep full title brightness (state 2). */
+        color: canCraft ? '#F4F0E7' : '#B6C1BE'
       }
     }, at.label, " Amulet ", /*#__PURE__*/React.createElement("span", {
       style: {
         fontSize: 11,
-        color: '#96A2A0'
+        color: '#8D9B98'
       }
     }, "Lv", at.minLvl, "+ \xB7 ", at.basePower, "\xD7 gem power")), /*#__PURE__*/React.createElement("div", {
       style: {
         fontSize: 11,
-        color: '#96A2A0'
+        color: '#8D9B98'
       }
     }, at.desc), /*#__PURE__*/React.createElement("div", {
       style: {
         fontSize: 11,
-        color: '#96A2A0'
+        color: '#8D9B98'
       }
-    }, at.bars, " bar", at.bars > 1 ? 's' : '', " + ", at.goldCost, "g", !canCraft && " \xB7 Req Lv".concat(at.minLvl))), /*#__PURE__*/React.createElement("button", {
-      /* v2.3.1232: secondary row action — raised #2B3940 when actionable */
+    }, /* v2.3.1235: state-correction — state-2 rows show live have/need
+          counts from the same goldBars/coin reads the disable logic uses;
+          state-3 rows keep the static cost + ls-lock glyph + requirement. */
+    canCraft && /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement("span", {
       style: {
-        minHeight: 34,
+        color: hasBars ? '#55B98A' : '#D8635D'
+      }
+    }, "Bars ", rpgState.goldBars || 0, "/", at.bars), " \xB7 ", /*#__PURE__*/React.createElement("span", {
+      style: {
+        color: hasGold ? '#55B98A' : '#D8635D'
+      }
+    }, "Gold ", rpgState.coins || 0, "/", at.goldCost)), !canCraft && /*#__PURE__*/React.createElement("span", null, at.bars, " bar", at.bars > 1 ? 's' : '', " + ", at.goldCost, "g \xB7 ", /*#__PURE__*/React.createElement("span", {
+      className: "ls-lock",
+      style: {
+        marginRight: 3
+      }
+    }), "Blacksmith Lv".concat(at.minLvl)))), /*#__PURE__*/React.createElement("button", {
+      /* v2.3.1235: state-correction — disabled recipe is #1A292F fill +
+         #8D9B98 label + .11 hairline at full opacity (was #24363C/#667875);
+         real disabled prop added around the untouched handler. */
+      disabled: !(canCraft && hasBars && hasGold),
+      style: {
+        minHeight: 44,
         padding: '0 14px',
-        borderRadius: 11,
-        border: canCraft && hasBars && hasGold ? '1px solid rgba(238,242,235,.14)' : '1px solid rgba(238,242,235,.08)',
+        borderRadius: 10,
+        border: canCraft && hasBars && hasGold ? '1px solid rgba(229,237,233,.20)' : '1px solid rgba(229,237,233,.11)',
         fontSize: 12,
         fontWeight: 700,
-        background: canCraft && hasBars && hasGold ? '#2B3940' : '#19252A',
-        color: canCraft && hasBars && hasGold ? '#F7F2E7' : '#687575',
-        cursor: 'pointer',
+        background: canCraft && hasBars && hasGold ? '#293B41' : '#1A292F',
+        color: canCraft && hasBars && hasGold ? '#F4F0E7' : '#8D9B98',
+        opacity: 1,
+        cursor: canCraft && hasBars && hasGold ? 'pointer' : 'default',
         fontFamily: 'inherit',
         flexShrink: 0
       },
@@ -649,21 +767,24 @@ export function ForgePanel(props) {
           localStorage.setItem('bt_rpg', JSON.stringify(R));
         } catch (e) {}
       }
-    }, "Craft"));
+    }, /* v2.3.1235: state-correction — action label states: "Locked" for
+          skill locks, the binding shortage for missing materials. */
+    !canCraft ? "Locked" : !hasBars ? "Need ".concat(at.bars - (rpgState.goldBars || 0), " bar").concat(at.bars - (rpgState.goldBars || 0) > 1 ? 's' : '') : !hasGold ? "Need ".concat(at.goldCost - (rpgState.coins || 0), "G more") : "Craft"));
   }))), /*#__PURE__*/React.createElement("div", {
     /* v2.3.1232: nested module card */
     style: LS_CARD
   }, /*#__PURE__*/React.createElement("div", {
     style: LS_HEAD
-  }, "\uD83D\uDEE1\uFE0F Shield Crafting"), /*#__PURE__*/React.createElement("div", {
+    /* v2.3.1235: batch-3 rollout \u2014 header emoji dropped (chrome) */
+  }, "Shield Crafting"), /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 11,
-      color: '#96A2A0',
+      color: '#8D9B98',
       marginBottom: 6
     }
   }, "Forge a shield from ore. Same tiers as melee weapons. Slot a gem at the Enchanter for defensive bonuses.", rpgState.shield && /*#__PURE__*/React.createElement("span", {
     style: {
-      color: '#D8A85F'
+      color: '#D8AA58' /* v2.3.1235: batch-3 rollout — brass token */
     }
   }, " \xB7 Equipped: ", rpgState.shield.name)), /*#__PURE__*/React.createElement("div", {
     style: _objectSpread(_objectSpread({}, LS_WELL), {}, {
@@ -697,8 +818,9 @@ export function ForgePanel(props) {
         gap: 8,
         minHeight: 44,
         padding: '6px 8px',
-        borderTop: _fi2 > 0 ? LS_DIV : 'none',
-        opacity: canForge && shieldMeetsStat ? 1 : 0.4
+        borderTop: _fi2 > 0 ? LS_DIV : 'none'
+        /* v2.3.1235: state-correction — whole-row opacity dimming removed;
+           locked state is carried by text tokens + ls-lock glyph instead. */
       }
     }, /*#__PURE__*/React.createElement("span", {
       style: {
@@ -712,34 +834,58 @@ export function ForgePanel(props) {
       style: {
         fontSize: 13,
         fontWeight: 600,
-        color: canForge && shieldMeetsStat ? '#F7F2E7' : '#687575'
+        /* v2.3.1235: state-correction — locked titles #B6C1BE (state 3);
+           missing-materials rows keep full title brightness (state 2). */
+        color: canForge && shieldMeetsStat ? '#F4F0E7' : '#B6C1BE'
       }
     }, bt.label, " Shield ", /*#__PURE__*/React.createElement("span", {
       style: {
         fontSize: 11,
-        color: '#96A2A0'
+        color: '#8D9B98'
       }
     }, "Lv", bt.minLvl, "+ \xB7 ", bt.tierMult, "\xD7")), /*#__PURE__*/React.createElement("div", {
       style: {
         fontSize: 11,
-        color: '#96A2A0'
+        color: '#8D9B98'
       }
-    }, bt.oreCost, "\xD7 ", bt.oreName, " ore + ", bt.goldCost, "g", bt.statReq > 0 && /*#__PURE__*/React.createElement("span", {
+    }, /* v2.3.1235: state-correction — state-2 rows show live have/need
+          counts from the same inventory/coin reads the disable logic uses
+          (met = positive green, short = danger); state-3 rows keep the
+          static cost and carry the requirement next to an ls-lock glyph. */
+    (canForge && shieldMeetsStat) && /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement("span", {
       style: {
-        color: shieldMeetsStat ? '#96A2A0' : '#D95C54'
+        color: hasOre ? '#55B98A' : '#D8635D'
       }
-    }, " \xB7 ", SHIELD_EQUIP_STAT.charAt(0).toUpperCase() + SHIELD_EQUIP_STAT.slice(1), " ", bt.statReq, shieldMeetsStat ? '✓' : ''))), /*#__PURE__*/React.createElement("button", {
-      /* v2.3.1232: secondary row action — raised #2B3940 when actionable */
+    }, bt.oreName.charAt(0).toUpperCase() + bt.oreName.slice(1), " ", ((rpgState.inventory || {})[oreKey] || 0), "/", bt.oreCost), " \xB7 ", /*#__PURE__*/React.createElement("span", {
       style: {
-        minHeight: 34,
+        color: hasGold ? '#55B98A' : '#D8635D'
+      }
+    }, "Gold ", rpgState.coins || 0, "/", bt.goldCost), bt.statReq > 0 && /*#__PURE__*/React.createElement("span", {
+      style: {
+        /* v2.3.1235: batch-3 rollout — muted/danger tokens */
+        color: shieldMeetsStat ? '#8D9B98' : '#D8635D'
+      }
+    }, " \xB7 ", SHIELD_EQUIP_STAT.charAt(0).toUpperCase() + SHIELD_EQUIP_STAT.slice(1), " ", bt.statReq, shieldMeetsStat ? '✓' : '')), !(canForge && shieldMeetsStat) && /*#__PURE__*/React.createElement("span", null, bt.oreCost, "\xD7 ", bt.oreName, " ore + ", bt.goldCost, "g \xB7 ", /*#__PURE__*/React.createElement("span", {
+      className: "ls-lock",
+      style: {
+        marginRight: 3
+      }
+    }), (!canForge ? "Blacksmith Lv" + bt.minLvl : "") + (!canForge && !shieldMeetsStat ? " \xB7 " : "") + (!shieldMeetsStat ? SHIELD_EQUIP_STAT.charAt(0).toUpperCase() + SHIELD_EQUIP_STAT.slice(1) + " " + bt.statReq : "")))), /*#__PURE__*/React.createElement("button", {
+      /* v2.3.1235: state-correction — disabled recipe is #1A292F fill +
+         #8D9B98 label + .11 hairline at full opacity (was #24363C/#667875);
+         real disabled prop added around the untouched handler. */
+      disabled: !(canForge && hasOre && hasGold && shieldMeetsStat),
+      style: {
+        minHeight: 44,
         padding: '0 14px',
-        borderRadius: 11,
-        border: canForge && hasOre && hasGold && shieldMeetsStat ? '1px solid rgba(238,242,235,.14)' : '1px solid rgba(238,242,235,.08)',
+        borderRadius: 10,
+        border: canForge && hasOre && hasGold && shieldMeetsStat ? '1px solid rgba(229,237,233,.20)' : '1px solid rgba(229,237,233,.11)',
         fontSize: 12,
         fontWeight: 700,
-        background: canForge && hasOre && hasGold && shieldMeetsStat ? '#2B3940' : '#19252A',
-        color: canForge && hasOre && hasGold && shieldMeetsStat ? '#F7F2E7' : '#687575',
-        cursor: 'pointer',
+        background: canForge && hasOre && hasGold && shieldMeetsStat ? '#293B41' : '#1A292F',
+        color: canForge && hasOre && hasGold && shieldMeetsStat ? '#F4F0E7' : '#8D9B98',
+        opacity: 1,
+        cursor: canForge && hasOre && hasGold && shieldMeetsStat ? 'pointer' : 'default',
         fontFamily: 'inherit',
         flexShrink: 0
       },
@@ -766,7 +912,9 @@ export function ForgePanel(props) {
           localStorage.setItem('bt_rpg', JSON.stringify(R));
         } catch (e) {}
       }
-    }, "Forge"));
+    }, /* v2.3.1235: state-correction — action label states: "Locked" for
+          level/stat locks, the binding shortage for missing materials. */
+    !(canForge && shieldMeetsStat) ? "Locked" : !hasOre ? "Need ".concat(bt.oreCost - ((rpgState.inventory || {})[oreKey] || 0), " ").concat(bt.oreName) : !hasGold ? "Need ".concat(bt.goldCost - (rpgState.coins || 0), "G more") : "Forge"));
   })), function (_rpgState$lifeSkills28) {
     var sh = rpgState.shield;
     if (!(sh !== null && sh !== void 0 && sh.gearBase)) return null;
@@ -779,24 +927,25 @@ export function ForgePanel(props) {
     var hardenGold = Math.ceil(bt.goldCost * 0.5);
     var hChance = hardenChance(bt.tierMult, ((_rpgState$lifeSkills28 = rpgState.lifeSkills) === null || _rpgState$lifeSkills28 === void 0 || (_rpgState$lifeSkills28 = _rpgState$lifeSkills28.blacksmithing) === null || _rpgState$lifeSkills28 === void 0 ? void 0 : _rpgState$lifeSkills28.level) || 1);
     return /*#__PURE__*/React.createElement("div", {
-      /* v2.3.1232: quiet sub-group on well-soft */
+      /* v2.3.1235: batch-3 rollout \u2014 the well-soft sub-card becomes a
+         hairline-divided group (dividers over cards; well-soft retired);
+         chrome emoji dropped from the item line. */
       style: {
         marginTop: 8,
-        padding: 8,
-        borderRadius: 8,
-        background: '#19252A'
+        paddingTop: 8,
+        borderTop: LS_DIV
       }
     }, /*#__PURE__*/React.createElement("div", {
       style: {
         fontSize: 13,
         fontWeight: 600,
-        color: '#F7F2E7',
+        color: '#F4F0E7',
         marginBottom: 2
       }
-    }, "\uD83D\uDD27 ", sh.name),/*#__PURE__*/React.createElement("div", {
+    }, sh.name),/*#__PURE__*/React.createElement("div", {
       style: {
         fontSize: 11,
-        color: '#96A2A0',
+        color: '#8D9B98',
         marginBottom: 3
       }
     }, sh.reforgeBonus ? "".concat(sh.reforgeBonus.label, " +").concat(sh.reforgeBonus.value).concat(sh.reforgeBonus.unit) : 'No bonus', sh.hardenBonus ? " \xB7 ".concat(sh.hardenBonus.label, " +").concat(sh.hardenBonus.value).concat(sh.hardenBonus.unit) : ''), /*#__PURE__*/React.createElement("div", {
@@ -805,15 +954,16 @@ export function ForgePanel(props) {
         gap: 3
       }
     }, /*#__PURE__*/React.createElement("button", {
-      /* v2.3.1232: secondary action — raised + hairline */
+      /* v2.3.1235: batch-3 rollout — 44px hitbox floor; secondary =
+         raised + strong hairline; button-label emoji dropped. */
       style: {
         flex: 1,
-        minHeight: 36,
+        minHeight: 44,
         padding: '0 6px',
-        borderRadius: 11,
-        border: '1px solid rgba(238,242,235,.14)',
-        background: '#2B3940',
-        color: '#F7F2E7',
+        borderRadius: 10,
+        border: '1px solid rgba(229,237,233,.20)',
+        background: '#293B41',
+        color: '#F4F0E7',
         fontSize: 11.5,
         fontWeight: 700,
         cursor: 'pointer',
@@ -838,16 +988,17 @@ export function ForgePanel(props) {
           localStorage.setItem('bt_rpg', JSON.stringify(R));
         } catch (e) {}
       }
-    }, "\uD83D\uDD27 Reforge"), /*#__PURE__*/React.createElement("button", {
-      /* v2.3.1232: secondary action, muted once hardened */
+    }, "Reforge"), /*#__PURE__*/React.createElement("button", {
+      /* v2.3.1235: batch-3 rollout \u2014 44px hitbox floor; muted-once-
+         hardened = quiet card fill; button-label emoji dropped. */
       style: {
         flex: 1,
-        minHeight: 36,
+        minHeight: 44,
         padding: '0 6px',
-        borderRadius: 11,
-        border: sh.hardenBonus ? '1px solid rgba(238,242,235,.08)' : '1px solid rgba(238,242,235,.14)',
-        background: sh.hardenBonus ? '#19252A' : '#2B3940',
-        color: sh.hardenBonus ? '#687575' : '#F7F2E7',
+        borderRadius: 10,
+        border: sh.hardenBonus ? '1px solid rgba(229,237,233,.11)' : '1px solid rgba(229,237,233,.20)',
+        background: sh.hardenBonus ? '#24363C' : '#293B41',
+        color: sh.hardenBonus ? '#667875' : '#F4F0E7',
         fontSize: 11.5,
         fontWeight: 700,
         cursor: 'pointer',
@@ -880,16 +1031,17 @@ export function ForgePanel(props) {
           localStorage.setItem('bt_rpg', JSON.stringify(R));
         } catch (e) {}
       }
-    }, "\u2692\uFE0F Harden (", Math.round(hChance * 100), "%)")));
+    }, "Harden (", Math.round(hChance * 100), "%)")));
   }()), /*#__PURE__*/React.createElement("div", {
     /* v2.3.1232: nested module card */
     style: LS_CARD
   }, /*#__PURE__*/React.createElement("div", {
     style: LS_HEAD
-  }, "\u267B\uFE0F Salvage Station"), /*#__PURE__*/React.createElement("div", {
+    /* v2.3.1235: batch-3 rollout \u2014 header emoji dropped (chrome) */
+  }, "Salvage Station"), /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 11,
-      color: '#96A2A0',
+      color: '#8D9B98',
       marginBottom: 8
     }
   }, "Extract gems first, then salvage items for ~60% materials back. Reforge bonuses are lost."), [{
@@ -928,41 +1080,41 @@ export function ForgePanel(props) {
     var canAffordExtract = rpgState.coins >= extractCost;
     return /*#__PURE__*/React.createElement("div", {
       key: s.key,
-      /* v2.3.1232: quiet item group on well-soft */
+      /* v2.3.1235: batch-3 rollout — well-soft item cards become
+         hairline-divided groups (dividers over cards). */
       style: {
-        padding: 8,
-        borderRadius: 8,
-        marginBottom: 6,
-        background: '#19252A'
+        padding: '8px 0 6px',
+        borderTop: LS_DIV
       }
     }, /*#__PURE__*/React.createElement("div", {
       style: {
         fontSize: 13,
         fontWeight: 600,
-        color: '#F7F2E7',
+        color: '#F4F0E7',
         marginBottom: 6
       }
     }, s.label, ": ", s.item.name || 'Unknown', hasGem && /*#__PURE__*/React.createElement("span", {
       style: {
         fontSize: 11,
         fontWeight: 400,
-        color: '#9A76D3'
+        color: '#9A78D0' /* v2.3.1235: batch-3 rollout — magic token */
       }
     }, " \xB7 Has gem(s)")), hasGem && /*#__PURE__*/React.createElement("button", {
-      /* v2.3.1232: secondary action; magic-tint label for gem work */
+      /* v2.3.1235: batch-3 rollout — 44px hitbox floor; secondary with
+         the approved magic-token label; button-label emoji dropped. */
       style: {
         width: '100%',
-        minHeight: 36,
+        minHeight: 44,
         padding: '0 10px',
-        borderRadius: 11,
+        borderRadius: 10,
         marginBottom: 4,
         fontSize: 12,
         fontWeight: 700,
         cursor: 'pointer',
         fontFamily: 'inherit',
-        border: canAffordExtract ? '1px solid rgba(238,242,235,.14)' : '1px solid rgba(238,242,235,.08)',
-        background: canAffordExtract ? '#2B3940' : '#19252A',
-        color: canAffordExtract ? '#9A76D3' : '#687575'
+        border: canAffordExtract ? '1px solid rgba(229,237,233,.20)' : '1px solid rgba(229,237,233,.11)',
+        background: canAffordExtract ? '#293B41' : '#24363C',
+        color: canAffordExtract ? '#9A78D0' : '#667875'
       },
       onClick: function onClick() {
         var _R$amulet, _R$shield;
@@ -1026,20 +1178,21 @@ export function ForgePanel(props) {
           localStorage.setItem('bt_rpg', JSON.stringify(R));
         } catch (e) {}
       }
-    }, "\uD83D\uDC8E Extract Gem (", extractCost, "g)"), canSalvage && /*#__PURE__*/React.createElement("button", {
-      /* v2.3.1232: destructive action — #7C3431 / #FFF1EE */
+    }, "Extract Gem (", extractCost, "g)"), canSalvage && /*#__PURE__*/React.createElement("button", {
+      /* v2.3.1235: batch-3 rollout — danger is OUTLINE only (filled red
+         retired); 44px hitbox floor; button-label emoji dropped. */
       style: {
         width: '100%',
-        minHeight: 36,
+        minHeight: 44,
         padding: '0 10px',
-        borderRadius: 11,
+        borderRadius: 10,
         fontSize: 12,
         fontWeight: 700,
         cursor: 'pointer',
         fontFamily: 'inherit',
-        border: '1px solid #C7655F',
-        background: '#7C3431',
-        color: '#FFF1EE'
+        border: '1px solid #D8635D',
+        background: 'transparent',
+        color: '#D8635D'
       },
       onClick: function onClick() {
         var R = stateRef.current.rpg;
@@ -1072,12 +1225,12 @@ export function ForgePanel(props) {
           localStorage.setItem('bt_rpg', JSON.stringify(R));
         } catch (e) {}
       }
-    }, "\u267B\uFE0F Salvage \u2192 ", salvReturns.map(function (r) {
+    }, "Salvage \u2192 ", salvReturns.map(function (r) {
       return r.qty + '× ' + r.label;
     }).join(' + ')), !hasGem && !canSalvage && /*#__PURE__*/React.createElement("div", {
       style: {
         fontSize: 11,
-        color: '#96A2A0',
+        color: '#8D9B98',
         fontStyle: 'italic'
       }
     }, "Cannot salvage (no crafting base)"));
@@ -1090,43 +1243,46 @@ export function ForgePanel(props) {
   }, /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 11,
-      fontWeight: 600,
+      fontWeight: 700 /* v2.3.1235: batch-3 rollout — 11/700 .14em muted headers */,
       textTransform: 'uppercase',
-      letterSpacing: '.12em',
-      color: '#96A2A0',
+      letterSpacing: '.14em',
+      color: '#8D9B98',
       marginBottom: 4
     }
-  }, "Stashed weapons"), (rpgState.weaponStash || []).map(function (sw, si) {
+  }, "Stashed weapons"), /*#__PURE__*/React.createElement("div", {
+    /* v2.3.1235: batch-3 rollout — stash rows move off per-row cards
+       into one recessed well with hairline dividers (contract:
+       dividers over row cards); handlers untouched. */
+    style: LS_WELL
+  }, (rpgState.weaponStash || []).map(function (sw, si) {
     if (!sw.gearBase) return null;
     var hasGem = !!(sw.element1 || sw.element2);
     var salvReturns = !hasGem ? getSalvageReturns(sw) : null;
     return /*#__PURE__*/React.createElement("div", {
       key: si,
-      /* v2.3.1232: 40px stash row on well-soft */
       style: {
         display: 'flex',
         alignItems: 'center',
         gap: 6,
-        minHeight: 40,
-        marginBottom: 4,
+        minHeight: 44,
         padding: '4px 8px',
-        borderRadius: 8,
-        background: '#19252A'
+        borderTop: si > 0 ? LS_DIV : 'none'
       }
     }, /*#__PURE__*/React.createElement("div", {
       style: {
         flex: 1,
         minWidth: 0,
         fontSize: 12,
-        color: '#B9C1BF',
+        color: '#B6C1BE',
         whiteSpace: 'nowrap',
         overflow: 'hidden',
         textOverflow: 'ellipsis'
       }
     }, sw.name), hasGem && /*#__PURE__*/React.createElement("button", {
-      /* v2.3.1232: compact secondary action; magic-tint label */
+      /* v2.3.1235: batch-3 rollout — 44px hitbox floor; secondary with
+         the approved magic-token label; button-label emoji dropped. */
       style: {
-        minHeight: 30,
+        minHeight: 44,
         padding: '0 10px',
         borderRadius: 8,
         fontSize: 11,
@@ -1134,9 +1290,9 @@ export function ForgePanel(props) {
         cursor: 'pointer',
         fontFamily: 'inherit',
         flexShrink: 0,
-        border: '1px solid rgba(238,242,235,.14)',
-        background: '#2B3940',
-        color: '#9A76D3'
+        border: '1px solid rgba(229,237,233,.20)',
+        background: '#293B41',
+        color: '#9A78D0'
       },
       onClick: function onClick() {
         var _sw$gearBase;
@@ -1175,10 +1331,11 @@ export function ForgePanel(props) {
           localStorage.setItem('bt_rpg', JSON.stringify(R));
         } catch (e) {}
       }
-    }, "\uD83D\uDC8E Extract (", gemExtractCost(sw), "g)"), salvReturns && /*#__PURE__*/React.createElement("button", {
-      /* v2.3.1232: compact destructive action */
+    }, "Extract (", gemExtractCost(sw), "g)"), salvReturns && /*#__PURE__*/React.createElement("button", {
+      /* v2.3.1235: batch-3 rollout — danger OUTLINE (filled red
+         retired); 44px hitbox floor. */
       style: {
-        minHeight: 30,
+        minHeight: 44,
         padding: '0 10px',
         borderRadius: 8,
         fontSize: 11,
@@ -1186,9 +1343,9 @@ export function ForgePanel(props) {
         cursor: 'pointer',
         fontFamily: 'inherit',
         flexShrink: 0,
-        border: '1px solid #C7655F',
-        background: '#7C3431',
-        color: '#FFF1EE'
+        border: '1px solid #D8635D',
+        background: 'transparent',
+        color: '#D8635D'
       },
       onClick: function onClick() {
         var R = stateRef.current.rpg;
@@ -1204,11 +1361,27 @@ export function ForgePanel(props) {
           localStorage.setItem('bt_rpg', JSON.stringify(R));
         } catch (e) {}
       }
-    }, "\u267B\uFE0F Salvage"), !hasGem && !salvReturns && /*#__PURE__*/React.createElement("span", {
+    }, "Salvage"), !hasGem && !salvReturns && /*#__PURE__*/React.createElement("span", {
       style: {
-        fontSize: 10,
-        color: '#687575'
+        fontSize: 11 /* v2.3.1235: batch-3 rollout \u2014 11px text floor */,
+        color: '#667875'
       }
     }, "No base"));
-  }))));
+  })) /* v2.3.1235: batch-3 rollout \u2014 closes the stash list well */)), /*#__PURE__*/React.createElement("div", {
+    /* v2.3.1235: state-correction \u00a710 \u2014 sticky bottom fade (matches the
+       #1E2E34 sheet behind it); visible only while more content exists
+       below the fold, gone at scroll end via measureFade. */
+    "aria-hidden": true,
+    style: {
+      position: 'sticky',
+      bottom: 0,
+      height: 24,
+      marginTop: -24,
+      flexShrink: 0,
+      background: 'linear-gradient(180deg, rgba(30,46,52,0), #1E2E34)',
+      opacity: showFade ? 1 : 0,
+      transition: 'opacity 160ms ease',
+      pointerEvents: 'none'
+    }
+  })));
 }

@@ -15,6 +15,12 @@ import { pushDmgPopup } from '@/game/combatHelpers.js';
    world-card surface, recessed item tray, brass selection + primary
    action, gold icon amounts. Styles + static JSX only; every handler
    and payload is unchanged. */
+/* v2.3.1235: batch-4 rollout — corrected tokens per the Checkpoint-B
+   trade recipe: sheet #1E2E34 card at radius 14 over the strong
+   trade-confirm scrim, well #111E23 tray, brass #D8AA58 selection,
+   gold-gradient Send primary; gold input to 16px (iOS zoom-guard
+   parity with TradeWindowPanel v2.3.1233b). Styles + static JSX only;
+   every handler body byte-identical. */
 export function TradePanel(props) {
   var rpgState = props.rpgState,
     stateRef = props.stateRef,
@@ -24,6 +30,9 @@ export function TradePanel(props) {
     setTradeOffer = props.setTradeOffer;
   return React.createElement("div", {
     className: "bt-inspect",
+    style: {
+      background: 'rgba(4,9,12,0.52)' /* v2.3.1235: batch-4 rollout — sending goods is a trade decision → strong confirm scrim */
+    },
     onClick: function onClick() {
       return setShowTrade(false);
     }
@@ -34,10 +43,13 @@ export function TradePanel(props) {
     },
     style: {
       /* v2.3.1232: floating world card — gradient, strong border, panel shadow */
+      /* v2.3.1235: batch-4 rollout — decision-surface card = sheet token
+         at radius 14 + strong hairline (matches the corrected
+         incoming-trade banner). */
       width: 'min(360px, calc(100vw - 24px))', /* v2.3.1234: was 300 fixed — fill narrow phones, never overflow */
-      background: 'linear-gradient(180deg, rgba(35,48,57,.94), rgba(17,25,29,.94))',
-      border: '1px solid rgba(238,242,235,.24)',
-      borderRadius: 12,
+      background: '#1E2E34',
+      border: '1px solid rgba(229,237,233,.20)',
+      borderRadius: 14,
       boxShadow: '0 14px 30px rgba(4,7,9,.38)',
       textAlign: 'left'
     }
@@ -53,7 +65,7 @@ export function TradePanel(props) {
       gap: 8,
       fontSize: 13,
       fontWeight: 700,
-      color: '#F7F2E7',
+      color: '#F4F0E7', /* v2.3.1235: batch-4 rollout — corrected text-1 */
       marginBottom: 4
     }
   }, /* v2.3.1232: UI Bible event icon with emoji fallback */
@@ -72,13 +84,14 @@ export function TradePanel(props) {
   }), /*#__PURE__*/React.createElement("span", null, "Trade with ", tradeTarget.name)), /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 12,
-      color: '#B9C1BF',
+      color: '#B6C1BE', /* v2.3.1235: batch-4 rollout — corrected text-2 */
       marginBottom: 8
     }
   }, "Select items to offer:"), /*#__PURE__*/React.createElement("div", {
     style: {
       /* v2.3.1232: recessed well tray behind the item grid */
-      background: '#121B20',
+      /* v2.3.1235: batch-4 rollout — corrected well token */
+      background: '#111E23',
       borderRadius: 8,
       padding: 4,
       boxShadow: 'inset 0 2px 4px rgba(0,0,0,.44), inset 0 1px 0 rgba(255,255,255,.035)',
@@ -115,10 +128,13 @@ export function TradePanel(props) {
       key: key,
       style: {
         /* v2.3.1232: well-soft cell; brass = selection (spec: accent, not green) */
+        /* v2.3.1235: batch-4 rollout — corrected cell tokens: brass
+           #D8AA58 selection edge on card #24363C; resting cell =
+           corrected well-soft #16262C + .08 tile hairline. */
         padding: '4px 2px',
         borderRadius: 8,
-        border: offered > 0 ? '2px solid #D8A85F' : '1px solid rgba(238,242,235,.08)',
-        background: offered > 0 ? '#243137' : '#19252A',
+        border: offered > 0 ? '2px solid #D8AA58' : '1px solid rgba(229,237,233,.08)',
+        background: offered > 0 ? '#24363C' : '#16262C',
         textAlign: 'center',
         cursor: 'pointer',
         position: 'relative'
@@ -138,7 +154,7 @@ export function TradePanel(props) {
     }, emojis[key] || '📦'), /*#__PURE__*/React.createElement("div", {
       style: {
         fontSize: 10,
-        color: '#96A2A0',
+        color: '#8D9B98', /* v2.3.1235: batch-4 rollout — corrected text-3 */
         fontVariantNumeric: 'tabular-nums'
       }
     }, qty), offered > 0 && /*#__PURE__*/React.createElement("div", {
@@ -146,10 +162,11 @@ export function TradePanel(props) {
         position: 'absolute',
         top: -2,
         right: -2,
+        /* v2.3.1235: batch-4 rollout — corrected brass + on-accent ink */
         fontSize: 10,
         fontWeight: 700,
-        color: '#20170D',
-        background: '#D8A85F',
+        color: '#172126',
+        background: '#D8AA58',
         borderRadius: 6,
         padding: '0 3px',
         minWidth: 12,
@@ -178,11 +195,13 @@ export function TradePanel(props) {
     }
   }), /*#__PURE__*/React.createElement("span", {
     style: {
+      /* v2.3.1235: batch-4 rollout — section-header ramp 11/700 .14em
+         muted. */
       fontSize: 11,
-      fontWeight: 600,
-      letterSpacing: '.12em',
+      fontWeight: 700,
+      letterSpacing: '.14em',
       textTransform: 'uppercase',
-      color: '#B9C1BF'
+      color: '#8D9B98'
     }
   }, "Gold"), /*#__PURE__*/React.createElement("input", {
     type: "number",
@@ -197,12 +216,15 @@ export function TradePanel(props) {
       });
     },
     style: {
+      /* v2.3.1235: batch-4 rollout — well trough + brass tokens; 16px so
+         iOS Safari doesn't zoom the field on focus (parity with the
+         TradeWindowPanel gold input, v2.3.1233b). */
       width: 76,
-      background: '#121B20',
-      border: '1px solid rgba(238,242,235,.14)',
+      background: '#111E23',
+      border: '1px solid rgba(229,237,233,.11)',
       borderRadius: 8,
-      color: '#D8A85F',
-      fontSize: 14,
+      color: '#D8AA58',
+      fontSize: 16,
       fontWeight: 700,
       fontVariantNumeric: 'tabular-nums',
       padding: '6px 8px',
@@ -211,19 +233,22 @@ export function TradePanel(props) {
   }), /*#__PURE__*/React.createElement("span", {
     style: {
       fontSize: 11,
-      color: '#96A2A0',
+      color: '#8D9B98', /* v2.3.1235: batch-4 rollout — corrected text-3 */
       fontVariantNumeric: 'tabular-nums'
     }
   }, "/ ", rpgState.coins)), /*#__PURE__*/React.createElement("button", {
     style: {
       /* v2.3.1232: brass primary action, 44pt */
+      /* v2.3.1235: batch-4 rollout — Send adopts the committed
+         gold-gradient primary recipe (#EAC675 edge, #172126 ink,
+         radius 10); it is this surface's ONE primary. */
       width: '100%',
       minHeight: 44,
       padding: '8px',
-      borderRadius: 11,
-      border: 'none',
-      background: '#D8A85F',
-      color: '#20170D',
+      borderRadius: 10,
+      border: '1px solid #EAC675',
+      background: 'linear-gradient(180deg,#E2B765,#D2A14D)',
+      color: '#172126',
       fontSize: 13,
       fontWeight: 700,
       cursor: 'pointer'

@@ -2,82 +2,111 @@ import React, { useEffect, useState } from 'react';
 import { controlsTutorialBus } from './controlsTutorialBus.js';
 import { dashboardPanelBus } from './dashboardPanelBus.js';
 
-/* v2.3.1205: REBUILT as live DOM-anchored annotations.  The previous
-   version dimmed the screen over a frozen screenshot
-   (public/ui/controls-screenshot.webp, callout coordinates eyeballed
-   at v2.3.221) — every HUD change since silently made it lie.  Now,
-   on open, we getBoundingClientRect() the REAL controls (joystick
-   visuals, the dashboard's Bag/Loadout/Build columns + Chat/More
-   toolbar buttons via data-tut anchors added in BottomDashboard.jsx)
-   and draw a dim backdrop with a highlight cutout + labelled bubble
-   per target.  Targets that aren't in the DOM are skipped, so future
-   HUD changes degrade to fewer callouts instead of wrong ones.  The
-   screenshot was deleted (git-recoverable).
+/* v2.3.1205: REBUILT as live DOM-anchored annotations (previously a
+   frozen screenshot with eyeballed coordinates that every HUD change
+   silently made lie).  We getBoundingClientRect() the REAL controls
+   via class/data-tut anchors; targets not in the DOM are skipped, so
+   HUD changes degrade to fewer callouts instead of wrong ones.
+
+   v2.3.1235: REWORKED from seven simultaneous callouts (an overlapping
+   "callout explosion" on small screens) to a FIVE-STEP guided tour —
+   one spotlight + one coach card at a time, Back/Next driven (owner
+   design correction, §7 Controls tutorial).  Tapping the dim backdrop
+   no longer closes it; the card's ✕ or Done does.
 
    Bus API unchanged: controlsTutorialBus.open()/close(); overlay z
    stays 9300 (see src/ui/zLayers.js ladder). */
 
-/* Callout registry — sel is a live-DOM selector.  shape 'circle'
-   rings round controls; default is a rounded-rect cutout.  anchor
-   'T' puts the bubble above the target, 'B' below. */
-const CALLOUTS = [
-  { sel: '.bt-joystick-zone',        shape: 'circle', anchor: 'T',
-    label: 'Move',    desc: 'Drag the left stick' },
-  { sel: '.bt-rjoy-base',            shape: 'circle', anchor: 'T',
-    label: 'Attack',  desc: 'Drag the right stick — hold for special' },
-  { sel: '[data-tut="dash-bag"]',    anchor: 'T',
-    label: 'Bag',     desc: 'Recent pickups — tap to open the full bag' },
-  { sel: '[data-tut="dash-loadout"]', anchor: 'T',
-    label: 'Loadout', desc: 'Tap a slot to equip / unequip' },
-  { sel: '[data-tut="dash-build"]',  anchor: 'T',
-    label: 'Build',   desc: 'Your stats — tap a cell for details' },
-  { sel: '[data-tut="dash-chat"]',   anchor: 'T',
-    label: 'Chat',    desc: 'Toggle the chat bubble' },
-  { sel: '[data-tut="dash-more"]',   anchor: 'T',
-    label: 'More',    desc: 'Map, guild, settings…' },
+/* v2.3.1235: Step registry — sels are live-DOM selectors.  A step with
+   multiple sels highlights the UNION of their rects (rounded rect);
+   shape 'circle' rings a single round control.  sels: null is a
+   target-less step (coach card centered mid-screen).  A step whose
+   sels all fail to measure is dropped for this open, so navigation
+   simply advances past it. */
+const STEPS = [
+  { key: 'move', shape: 'circle', sels: ['.bt-joystick-zone'],
+    label: 'Move', body: 'Drag the left stick to move.' },
+  { key: 'attack', shape: 'circle', sels: ['.bt-rjoy-base'],
+    label: 'Attack', body: 'Drag the right stick — hold for special.' },
+  { key: 'dashboard', shape: 'rect',
+    sels: ['[data-tut="dash-bag"]', '[data-tut="dash-loadout"]', '[data-tut="dash-build"]'],
+    label: 'Dashboard', body: 'Your bag, loadout and build live here. Tap anything for details.' },
+  { key: 'toolbar', shape: 'rect',
+    sels: ['[data-tut="dash-chat"]', '[data-tut="dash-more"]'],
+    label: 'Toolbar', body: 'Menus live down here.' },
+  { key: 'dodge', shape: null, sels: null,
+    label: 'Swipe / Dodge', body: 'Swipe anywhere in the world to dodge-roll.' },
 ];
 
-/* v2.3.1233: Lantern Slate tokens (docs/LANTERN-SLATE-SPEC.md) — world
-   overlay fill, strong border, brass highlight, warm-white text ladder. */
+/* v2.3.1235: Lantern Slate tokens (docs/LANTERN-SLATE-SPEC.md) — sheet
+   surface, hairline border, brass accent, warm-white text ladder. */
 const COL = {
-  card:    'rgba(17,25,29,.94)',
-  border:  'rgba(238,242,235,.24)',
-  accent:  '#D8A85F',
-  text:    '#F7F2E7',
-  muted:   '#B9C1BF',
+  dim:      'rgba(4,9,12,0.52)',
+  ring:     '#D8AA58',
+  card:     '#1E2E34',
+  border:   'rgba(229,237,233,0.20)',
+  accent:   '#D8AA58',
+  text:     '#F4F0E7',
+  muted:    '#8D9B98',
+  btnSurf:  '#293B41',
+  goldText: '#172126',
+  goldBg:   'linear-gradient(180deg,#E2B765,#D2A14D)',
+  goldEdge: '#EAC675',
 };
 
-/* Measure every callout's live element.  Missing / zero-size elements
-   (e.g. joysticks on desktop, or a mid-transition dashboard) are
-   skipped — never guessed at. */
-function measureTargets() {
+/* Measure one element; null for missing / zero-size (e.g. joysticks on
+   desktop, or a mid-transition dashboard) — never guessed at. */
+function measureEl(sel) {
+  let el = null;
+  try { el = document.querySelector(sel); } catch (_e) {}
+  if (!el) return null;
+  const r = el.getBoundingClientRect();
+  if (!r || r.width < 2 || r.height < 2) return null;
+  return { left: r.left, top: r.top, width: r.width, height: r.height };
+}
+
+/* v2.3.1235: Measure every step.  Multi-sel steps get the union of
+   whichever anchors are present; a step with no live anchor at all is
+   dropped (target-less steps always survive with rect: null). */
+function measureSteps() {
   const out = [];
-  for (const c of CALLOUTS) {
-    let el = null;
-    try { el = document.querySelector(c.sel); } catch (_e) {}
-    if (!el) continue;
-    const r = el.getBoundingClientRect();
-    if (!r || r.width < 2 || r.height < 2) continue;
-    out.push({ ...c, rect: { left: r.left, top: r.top, width: r.width, height: r.height } });
+  for (const s of STEPS) {
+    if (!s.sels) { out.push({ ...s, rect: null }); continue; }
+    let u = null;
+    for (const sel of s.sels) {
+      const r = measureEl(sel);
+      if (!r) continue;
+      if (!u) { u = { ...r }; continue; }
+      const right = Math.max(u.left + u.width, r.left + r.width);
+      const bottom = Math.max(u.top + u.height, r.top + r.height);
+      u.left = Math.min(u.left, r.left);
+      u.top = Math.min(u.top, r.top);
+      u.width = right - u.left;
+      u.height = bottom - u.top;
+    }
+    if (!u) continue;
+    out.push({ ...s, rect: u });
   }
   return out;
 }
 
 export const ControlsTutorial = () => {
   const [, setV] = useState(0);
-  const [targets, setTargets] = useState([]);
+  const [steps, setSteps] = useState([]);
+  const [step, setStep] = useState(0); /* v2.3.1235: current step index */
   useEffect(() => controlsTutorialBus.subscribe(() => setV(v => v + 1)), []);
   const open = controlsTutorialBus.isOpen();
 
-  /* On open: pop the dashboard back to its idle 3-column view (the
-     tutorial is launched from the More panel, which unmounts the
-     columns it needs to annotate), then measure on the next frame +
-     two settle retries.  Re-measure on resize / orientationchange;
-     all listeners cleaned up on close/unmount. */
+  /* On open: reset to step 1, pop the dashboard back to its idle
+     3-column view (the tutorial is launched from the More panel, which
+     unmounts the columns it needs to highlight), then measure on the
+     next frame + two settle retries.  Re-measure on resize /
+     orientationchange; all listeners cleaned up on close/unmount. */
   useEffect(() => {
     if (!open) return undefined;
+    setStep(0); /* v2.3.1235: every (re)open starts the tour over */
     try { dashboardPanelBus.clear(); } catch (_e) {}
-    const measure = () => setTargets(measureTargets());
+    const measure = () => setSteps(measureSteps());
     const raf = requestAnimationFrame(measure);
     const t1 = setTimeout(measure, 120);
     const t2 = setTimeout(measure, 400);
@@ -92,133 +121,178 @@ export const ControlsTutorial = () => {
     };
   }, [open]);
 
-  if (!open) return null;
+  if (!open || steps.length === 0) return null;
 
   const onClose = () => controlsTutorialBus.close();
-  const vw = window.innerWidth || 1;
-  const PAD = 5; // breathing room between element edge and cutout
+  const total = steps.length;
+  const idx = Math.max(0, Math.min(step, total - 1));
+  const cur = steps[idx];
+  const isFirst = idx === 0;
+  const isLast = idx === total - 1;
+  const vh = window.innerHeight || 1;
+  const PAD = 6; // breathing room between element edge and cutout
+
+  /* v2.3.1235: coach card sits opposite the spotlight — target in the
+     bottom half → card at ~20% height; top half → ~60%; target-less
+     step → dead center. */
+  let cardTop, cardTransform;
+  if (!cur.rect) {
+    cardTop = '50%';
+    cardTransform = 'translate(-50%, -50%)';
+  } else if (cur.rect.top + cur.rect.height / 2 > vh / 2) {
+    cardTop = '20%';
+    cardTransform = 'translateX(-50%)';
+  } else {
+    cardTop = '60%';
+    cardTransform = 'translateX(-50%)';
+  }
+
+  const btnBase = {
+    minHeight: 44,
+    padding: '0 18px',
+    borderRadius: 10,
+    fontSize: 13,
+    fontWeight: 700,
+    fontFamily: 'Source Sans 3, system-ui, sans-serif',
+    cursor: 'pointer',
+    touchAction: 'manipulation',
+  };
 
   return (
     <div
-      onPointerDown={onClose}
+      /* v2.3.1235: backdrop tap no longer closes — buttons drive the
+         tour.  The overlay still swallows all pointer input.
+         v2.3.1235: Checkpoint B — pointerEvents 'auto' made EXPLICIT:
+         this root is the shield that blocks taps from reaching the game
+         beneath; the SVG dim stays pointerEvents 'none' so only the
+         card's buttons are interactive. */
       style={{
         position: 'fixed', inset: 0, zIndex: 9300,
         fontFamily: 'Source Sans 3, system-ui, sans-serif',
         touchAction: 'none',
+        pointerEvents: 'auto',
       }}
     >
-      {/* Dim backdrop with a cutout per live target (SVG mask), plus an
-          accent ring so each highlighted control pops. */}
+      {/* Dim backdrop with ONE spotlight cutout (SVG mask) + a single
+          brass ring so the current control pops. */}
       <svg
         style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none' }}
       >
         <defs>
           <mask id="bt-tut-cutouts">
             <rect x="0" y="0" width="100%" height="100%" fill="#fff" />
-            {targets.map((t, i) => t.shape === 'circle' ? (
-              <circle key={i}
-                cx={t.rect.left + t.rect.width / 2}
-                cy={t.rect.top + t.rect.height / 2}
-                r={Math.max(t.rect.width, t.rect.height) / 2 + PAD}
+            {cur.rect && (cur.shape === 'circle' ? (
+              <circle
+                cx={cur.rect.left + cur.rect.width / 2}
+                cy={cur.rect.top + cur.rect.height / 2}
+                r={Math.max(cur.rect.width, cur.rect.height) / 2 + PAD}
                 fill="#000" />
             ) : (
-              <rect key={i}
-                x={t.rect.left - PAD} y={t.rect.top - PAD}
-                width={t.rect.width + PAD * 2} height={t.rect.height + PAD * 2}
-                rx={8} fill="#000" />
+              <rect
+                x={cur.rect.left - PAD} y={cur.rect.top - PAD}
+                width={cur.rect.width + PAD * 2} height={cur.rect.height + PAD * 2}
+                rx={10} fill="#000" />
             ))}
           </mask>
         </defs>
         <rect x="0" y="0" width="100%" height="100%"
-          fill="rgba(0,0,0,0.72)" mask="url(#bt-tut-cutouts)" />
-        {targets.map((t, i) => t.shape === 'circle' ? (
-          <circle key={'r' + i}
-            cx={t.rect.left + t.rect.width / 2}
-            cy={t.rect.top + t.rect.height / 2}
-            r={Math.max(t.rect.width, t.rect.height) / 2 + PAD}
-            fill="none" stroke={COL.accent} strokeWidth="1.5" />
+          fill={COL.dim} mask="url(#bt-tut-cutouts)" />
+        {cur.rect && (cur.shape === 'circle' ? (
+          <circle
+            cx={cur.rect.left + cur.rect.width / 2}
+            cy={cur.rect.top + cur.rect.height / 2}
+            r={Math.max(cur.rect.width, cur.rect.height) / 2 + PAD}
+            fill="none" stroke={COL.ring} strokeWidth="2" />
         ) : (
-          <rect key={'r' + i}
-            x={t.rect.left - PAD} y={t.rect.top - PAD}
-            width={t.rect.width + PAD * 2} height={t.rect.height + PAD * 2}
-            rx={8} fill="none" stroke={COL.accent} strokeWidth="1.5" />
+          <rect
+            x={cur.rect.left - PAD} y={cur.rect.top - PAD}
+            width={cur.rect.width + PAD * 2} height={cur.rect.height + PAD * 2}
+            rx={10} fill="none" stroke={COL.ring} strokeWidth="2" />
         ))}
       </svg>
 
-      {/* Callout bubbles — same styling as the old screenshot bubbles,
-          but positioned off the measured rects.  Bubble centre x is
-          clamped so edge targets (e.g. More, far right) stay on
-          screen. */}
-      {targets.map((t, i) => {
-        const cx = Math.max(64, Math.min(vw - 64, t.rect.left + t.rect.width / 2));
-        const above = t.anchor !== 'B';
-        const y = above ? t.rect.top - PAD - 6 : t.rect.top + t.rect.height + PAD + 6;
-        return (
-          <div key={'b' + i} style={{
-            position: 'absolute',
-            left: cx, top: y,
-            transform: `translate(-50%, ${above ? '-100%' : '0'})`,
-            background: COL.card,
-            border: `1px solid ${COL.accent}`,
-            borderRadius: 5,
-            padding: '3px 6px',
-            minWidth: 56, maxWidth: 150,
-            textAlign: 'center',
-            pointerEvents: 'none',
-            boxShadow: '0 2px 6px rgba(0,0,0,0.5)',
-          }}>
-            <div style={{
-              fontSize: 10, fontWeight: 800,
-              color: COL.accent, letterSpacing: '0.04em',
-              textTransform: 'uppercase', lineHeight: 1.1,
-            }}>{t.label}</div>
-            <div style={{
-              fontSize: 9, color: COL.text,
-              marginTop: 1, lineHeight: 1.15,
-            }}>{t.desc}</div>
-          </div>
-        );
-      })}
-
-      {/* Header card — title, close, and the combat tips that don't
-          map to a single control. */}
+      {/* Coach card — one per step, positioned opposite the spotlight. */}
       <div
         onPointerDown={(e) => e.stopPropagation()}
         style={{
           position: 'absolute',
-          top: 'calc(env(safe-area-inset-top, 0px) + 10px)',
+          top: cardTop,
           left: '50%',
-          transform: 'translateX(-50%)',
-          width: 'min(92vw, 420px)',
+          transform: cardTransform,
+          /* v2.3.1235: Checkpoint B — content-driven height, exactly
+             16px padding all around, maxWidth 336 (was 300). */
+          width: 'min(88vw, 336px)',
+          maxWidth: 336,
           background: COL.card,
           border: `1px solid ${COL.border}`,
-          /* v2.3.1233: world-floating card — radius 12 + panel shadow. */
-          borderRadius: 12,
-          padding: '8px 10px',
+          borderRadius: 14,
+          padding: 16,
           color: COL.text,
-          boxShadow: '0 14px 30px rgba(4,7,9,.38)',
+          boxShadow: '0 14px 36px rgba(3,8,10,0.30)',
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div style={{ fontSize: 15, fontWeight: 800, letterSpacing: '0.02em' }}>Controls</div>
+        {/* ✕ close — 44px touch target, top-right of the card. */}
+        <button
+          onClick={onClose}
+          aria-label="Close tutorial"
+          style={{
+            position: 'absolute',
+            top: 0, right: 0,
+            width: 44, height: 44,
+            background: 'transparent',
+            border: 'none',
+            color: COL.muted,
+            fontSize: 15,
+            fontFamily: 'Source Sans 3, system-ui, sans-serif',
+            cursor: 'pointer',
+            touchAction: 'manipulation',
+          }}
+        >✕</button>
+
+        <div style={{
+          fontSize: 11, fontWeight: 700,
+          color: COL.accent, letterSpacing: '0.14em',
+          textTransform: 'uppercase', lineHeight: 1.2,
+          paddingRight: 32,
+        }}>{cur.label}</div>
+        <div style={{
+          fontSize: 13, color: COL.text,
+          marginTop: 6, lineHeight: 1.4,
+        }}>{cur.body}</div>
+
+        {/* v2.3.1235: Checkpoint B — ONE footer flex row:
+            [Step text] [spacer] [Back?] [Next].  Progress text sits
+            bottom-left; the gold Next/Done is bottom-right at exactly
+            88×44; Back (secondary) appears left of Next. */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 12 }}>
+          <div style={{
+            fontSize: 11, color: COL.muted, whiteSpace: 'nowrap',
+          }}>{`Step ${idx + 1} of ${total}`}</div>
+          <div style={{ flex: 1 }} />
+          {!isFirst && (
+            <button
+              onClick={() => setStep(s => Math.max(0, s - 1))}
+              style={{
+                ...btnBase,
+                background: COL.btnSurf,
+                border: `1px solid ${COL.border}`,
+                color: COL.text,
+              }}
+            >Back</button>
+          )}
           <button
-            onClick={onClose}
-            /* v2.3.1233: secondary button — raised surface + hairline. */
+            onClick={() => (isLast ? onClose() : setStep(s => Math.min(total - 1, s + 1)))}
             style={{
-              background: '#2B3940',
-              border: '1px solid rgba(238,242,235,.14)',
-              color: COL.text,
-              borderRadius: 11,
-              padding: '3px 10px',
-              fontSize: 12, fontWeight: 700,
-              cursor: 'pointer',
-              touchAction: 'manipulation',
+              ...btnBase,
+              width: 88,
+              height: 44,
+              padding: 0,
+              flexShrink: 0,
+              background: COL.goldBg,
+              border: `1px solid ${COL.goldEdge}`,
+              color: COL.goldText,
             }}
-          >Close</button>
-        </div>
-        <div style={{ fontSize: 10, color: COL.muted, lineHeight: 1.4, marginTop: 4 }}>
-          Swipe the screen during combat to dodge, lunge, or fire a retreat shot.
-          Special attack drains one MP segment.  Tap anywhere to dismiss.
+          >{isLast ? 'Done' : 'Next'}</button>
         </div>
       </div>
     </div>

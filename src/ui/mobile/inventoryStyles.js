@@ -2,32 +2,34 @@
 // v2.3.1227: Lantern Slate (docs/LANTERN-SLATE-SPEC.md) — charcoal
 // surfaces, warm-white text, brass primary, thin rarity edges.
 
+/* v2.3.1235: correction-pass palette — keep in sync with game.css
+   :root tokens and dash/common.js COL. */
 export const INV = {
-  bg:        '#202C32',
-  tabBar:    '#182227',
-  tabBorder: 'rgba(238, 242, 235, 0.14)',
-  tileFill:  '#19252A',
-  tileBorder:'rgba(238, 242, 235, 0.08)',
+  bg:        '#1E2E34',
+  tabBar:    '#27393F',
+  tabBorder: 'rgba(229, 237, 233, 0.11)',
+  tileFill:  '#16262C',
+  tileBorder:'rgba(229, 237, 233, 0.08)',
   /* dark label scrim over item ART — stays dark by design. */
   tileBannerGrad: 'linear-gradient(180deg, transparent 0%, rgba(9, 14, 17, 0.78) 55%)',
-  chipActive:   '#3B3427',
-  chipInactive: 'rgba(238, 242, 235, 0.06)',
-  newBadge:  '#D95C54',
+  chipActive:   'rgba(216, 170, 88, 0.15)',
+  chipInactive: 'rgba(229, 237, 233, 0.06)',
+  newBadge:  '#D8635D',
   shortcutBadgeBg:    'rgba(9, 14, 17, 0.72)',
-  shortcutBadgeColor: '#D8A85F',
-  textPrimary:  '#F7F2E7',
-  textMuted:    '#B9C1BF',
-  textVeryMuted:'#96A2A0',
-  positive: '#59BF91',
-  negative: '#D95C54',
-  primaryBtn:    '#D8A85F',                // brass; pair with onAccent text
-  onPrimaryBtn:  '#20170D',
+  shortcutBadgeColor: '#D8AA58',
+  textPrimary:  '#F4F0E7',
+  textMuted:    '#B6C1BE',
+  textVeryMuted:'#8D9B98',
+  positive: '#55B98A',
+  negative: '#D8635D',
+  primaryBtn:    '#D8AA58',                // brass; pair with onAccent text
+  onPrimaryBtn:  '#172126',
   destructive:   '#C7655F',
   destructiveBg: '#7C3431',
   destructiveBorder: '#C7655F',
-  marketAccent:    '#D8A85F',
-  marketBg:        '#3B3427',
-  marketBorder:    'rgba(216, 168, 95, 0.45)',
+  marketAccent:    '#D8AA58',
+  marketBg:        'rgba(216, 170, 88, 0.15)',
+  marketBorder:    'rgba(216, 170, 88, 0.45)',
   godlyBg:    '#0F0715',
   newAccentBorder: 'rgba(216, 168, 95, 0.75)',
   newAccentFill:   '#3B3427',

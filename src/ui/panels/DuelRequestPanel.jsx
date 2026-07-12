@@ -1,4 +1,5 @@
 import React from 'react';
+import { createPortal } from 'react-dom';
 import { BT_AUDIO } from '@/data/index.js';
 
 import { pushDmgPopup } from '@/game/combatHelpers.js';
@@ -13,12 +14,30 @@ import { pushDmgPopup } from '@/game/combatHelpers.js';
    world-card surface, evt-duel header icon, gold-icon wager, brass
    accept / raised decline at 44pt. Styles + static JSX only; the
    duel_accept/_inDuel/duel_decline handlers are unchanged. */
+/* v2.3.1235: owner-approved design correction — compact decision banner:
+   sheet surface (#1E2E34) at radius 14, max-width 340, uppercase 15/700
+   title, muted 11px consent line, gold-gradient Accept / raised
+   secondary Decline, heavier confirmation scrim rgba(4,9,12,0.52).
+   Styles + static JSX only; handlers byte-identical. */
 export function DuelRequestPanel(props) {
   var stateRef = props.stateRef,
     duelRequest = props.duelRequest,
     setDuelRequest = props.setDuelRequest;
-  return React.createElement("div", {
+  return createPortal(React.createElement("div", {
     className: "bt-inspect",
+    style: {
+      /* v2.3.1235: Checkpoint B — fixed full-viewport scrim, PORTALED to
+         document.body: .brotown-wrap is position:fixed and therefore its
+         own stacking context in Chrome, so anything inside it — whatever
+         its z-index — paints BELOW the dashboard band / HUD chip (fixed,
+         z 30, outside the wrap). Luminance-measured: the band was pixel-
+         identical dimmed vs undimmed. The portal escapes the wrap; z 40
+         puts the dim over world + band + chip (under the intro at 100). */
+      position: 'fixed',
+      inset: 0,
+      zIndex: 40,
+      background: 'rgba(4,9,12,0.52)' /* v2.3.1235: duel-confirmation scrim */
+    },
     onClick: function onClick() {
       return setDuelRequest(null);
     }
@@ -29,10 +48,10 @@ export function DuelRequestPanel(props) {
     },
     style: {
       /* v2.3.1232: floating world card, left-aligned per world-HUD language */
-      width: 'min(360px, calc(100vw - 24px))', /* v2.3.1234: was 300 fixed — fill narrow phones, never overflow */
-      background: 'linear-gradient(180deg, rgba(35,48,57,.94), rgba(17,25,29,.94))',
-      border: '1px solid rgba(238,242,235,.24)',
-      borderRadius: 12,
+      width: 'min(340px, calc(100vw - 24px))', /* v2.3.1235: banner max-width 340 */
+      background: '#1E2E34', /* v2.3.1235: sheet surface, modal radius 14 */
+      border: '1px solid rgba(229,237,233,0.20)',
+      borderRadius: 14,
       boxShadow: '0 14px 30px rgba(4,7,9,.38)',
       textAlign: 'left'
     }
@@ -41,9 +60,11 @@ export function DuelRequestPanel(props) {
       display: 'flex',
       alignItems: 'center',
       gap: 8,
-      fontSize: 13,
+      fontSize: 15, /* v2.3.1235: title row 15/700 uppercase */
       fontWeight: 700,
-      color: '#F7F2E7',
+      textTransform: 'uppercase',
+      letterSpacing: '.04em',
+      color: '#F4F0E7',
       marginBottom: 4
     }
   }, /* v2.3.1232: UI Bible event icon with emoji fallback */
@@ -59,15 +80,15 @@ export function DuelRequestPanel(props) {
     onError: function onError(e) {
       e.currentTarget.replaceWith(document.createTextNode('⚔️'));
     }
-  }), /*#__PURE__*/React.createElement("span", null, "Duel Challenge!")), /*#__PURE__*/React.createElement("div", {
+  }), /*#__PURE__*/React.createElement("span", null, "Duel Challenge")), /*#__PURE__*/React.createElement("div", {
     style: {
-      fontSize: 13,
-      color: '#B9C1BF',
+      fontSize: 13, /* v2.3.1235: challenger line */
+      color: '#B6C1BE',
       marginBottom: 4
     }
   }, /*#__PURE__*/React.createElement("b", {
     style: {
-      color: '#F7F2E7'
+      color: '#F4F0E7'
     }
   }, duelRequest.fromName), " challenges you!"), duelRequest.wager > 0 && /*#__PURE__*/React.createElement("div", {
     style: {
@@ -78,7 +99,7 @@ export function DuelRequestPanel(props) {
       fontSize: 14,
       fontWeight: 700,
       fontVariantNumeric: 'tabular-nums',
-      color: '#D8A85F',
+      color: '#D8AA58', /* v2.3.1235: brass token */
       marginBottom: 8
     }
   }, /*#__PURE__*/React.createElement("img", {
@@ -95,8 +116,11 @@ export function DuelRequestPanel(props) {
     }
   }), /*#__PURE__*/React.createElement("span", null, "Wager: ", duelRequest.wager, "g (winner takes all)")), /*#__PURE__*/React.createElement("div", {
     style: {
-      fontSize: 10,
-      color: '#96A2A0',
+      /* v2.3.1235: Checkpoint B — consent/rules line 11px muted → 12px
+         secondary with readable leading. */
+      fontSize: 12,
+      lineHeight: 1.35,
+      color: '#B6C1BE',
       marginBottom: 10
     }
   }, "Duels are consensual. No reputation penalty. Loser pays wager (if any). No item loss."), /*#__PURE__*/React.createElement("div", {
@@ -106,14 +130,14 @@ export function DuelRequestPanel(props) {
     }
   }, /*#__PURE__*/React.createElement("button", {
     style: {
-      /* v2.3.1232: brass accept, 44pt */
+      /* v2.3.1235: primary gold gradient, 44pt */
       flex: 1,
       padding: '8px',
       minHeight: 44,
-      borderRadius: 11,
-      border: 'none',
-      background: '#D8A85F',
-      color: '#20170D',
+      borderRadius: 10,
+      border: '1px solid #EAC675',
+      background: 'linear-gradient(180deg, #E2B765, #D2A14D)',
+      color: '#172126',
       fontWeight: 700,
       fontSize: 13,
       cursor: 'pointer'
@@ -142,14 +166,14 @@ export function DuelRequestPanel(props) {
     }
   }, "Accept", duelRequest.wager > 0 ? ' (' + duelRequest.wager + 'g)' : ''), /*#__PURE__*/React.createElement("button", {
     style: {
-      /* v2.3.1232: raised secondary decline */
+      /* v2.3.1235: raised secondary decline, strong hairline */
       flex: 0.6,
       padding: '8px',
       minHeight: 44,
-      borderRadius: 11,
-      border: '1px solid rgba(238,242,235,.14)',
-      background: '#2B3940',
-      color: '#F7F2E7',
+      borderRadius: 10,
+      border: '1px solid rgba(229,237,233,0.20)',
+      background: '#293B41',
+      color: '#F4F0E7',
       fontWeight: 700,
       fontSize: 13,
       cursor: 'pointer'
@@ -166,5 +190,5 @@ export function DuelRequestPanel(props) {
       });
       setDuelRequest(null);
     }
-  }, "Decline"))));
+  }, "Decline")))), document.body);
 }

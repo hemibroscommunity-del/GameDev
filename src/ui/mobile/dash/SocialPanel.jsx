@@ -10,7 +10,9 @@ import { COL, panelStyle, getState } from './common.js';
    presence lookups and the 1s refresh interval are unchanged. */
 const seg = (active) => ({
   flex: 1,
-  height: 36,
+  /* v2.3.1235: batch-1 rollout — 36px segment was under the contract's
+     44px minimum hitbox for tappable controls. */
+  minHeight: 44,
   background: active ? COL.raised : 'transparent',
   color: active ? COL.text : COL.text2,
   border: 'none',
@@ -26,10 +28,12 @@ const seg = (active) => ({
 
 const Empty = ({ line }) => (
   <div style={{ textAlign: 'center', padding: '16px 0' }}>
+    {/* v2.3.1235: batch-1 rollout — empty-state spec: icon ≤40px,
+        message 13/700 secondary. */}
     <img src="/icons/ui/nav-friends.webp" alt="" draggable={false}
-      style={{ width: 44, height: 44, objectFit: 'contain', opacity: 0.4, margin: '0 auto' /* v2.3.1233: img{display:block} in game.css defeats textAlign centering */ }}
+      style={{ width: 40, height: 40, objectFit: 'contain', opacity: 0.4, margin: '0 auto' /* v2.3.1233: img{display:block} in game.css defeats textAlign centering */ }}
       onError={(e) => { e.currentTarget.replaceWith(document.createTextNode('👥')); }} />
-    <div style={{ fontSize: 13, color: COL.muted, marginTop: 6 }}>{line}</div>
+    <div style={{ fontSize: 13, fontWeight: 700, color: COL.text2, marginTop: 6 }}>{line}</div>
   </div>
 );
 
@@ -51,7 +55,9 @@ export const SocialPanel = () => {
       <div style={{
         display: 'flex', gap: 2, marginBottom: 8,
         background: COL.well, borderRadius: 10, padding: 2,
-        border: `1px solid ${COL.tileBor}`,
+        /* v2.3.1235: batch-1 rollout — tileBor (.08) is off the approved
+           line tokens; standard 1px --ui-line. */
+        border: `1px solid ${COL.border}`,
       }}>
         <button onClick={() => setShowBlocked(false)} style={seg(!showBlocked)}>
           Friends ({friends.length})
@@ -76,11 +82,17 @@ export const SocialPanel = () => {
             }}>
               <span style={{
                 width: 8, height: 8, borderRadius: '50%',
-                background: online ? '#59BF91' : '#687575',
+                /* v2.3.1235: batch-1 rollout — presence dots move to the
+                   correction-pass tokens: positive #55B98A / faint
+                   #667875 (the v2.3.1232 #59BF91/#687575 pair belonged
+                   to the superseded palette). */
+                background: online ? '#55B98A' : '#667875',
                 flex: '0 0 auto',
               }} />
+              {/* v2.3.1235: batch-1 rollout — body copy is 13px on the
+                  locked contract ladder. */}
               <span style={{
-                flex: 1, minWidth: 0, fontSize: 13.5, color: COL.text,
+                flex: 1, minWidth: 0, fontSize: 13, color: COL.text,
                 whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
               }}>{f.name || fid}</span>
               <span style={{ fontSize: 11, fontWeight: 600, color: COL.muted }}>
@@ -97,7 +109,8 @@ export const SocialPanel = () => {
             display: 'flex', alignItems: 'center',
             minHeight: 44,
             padding: '0 8px',
-            fontSize: 13.5, color: COL.text,
+            /* v2.3.1235: batch-1 rollout — 13px body per contract ladder. */
+            fontSize: 13, color: COL.text,
             borderBottom: i < blocked.length - 1 ? `1px solid ${COL.divider}` : 'none',
           }}>{b.name || b}</div>
         ))

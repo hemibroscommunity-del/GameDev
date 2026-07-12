@@ -16,6 +16,15 @@ import { _objectSpread, _slicedToArray } from '@/lib/babelHelpers.js';
    #121B20 track with brass bottom edge, rows in a recessed well at 44px
    with tabular values, isMe row = accent-fill selection. The fetch/merge/
    sort IIFE is byte-identical; styles + row markup only. */
+/* v2.3.1235: batch-2 rollout — correction-pass compliance
+   (docs/LANTERN-SLATE-SPEC.md + game.css :root). Presentation only,
+   every handler and the fetch/merge/sort logic byte-identical.
+   v2.3.1232 tokens remapped onto the approved set (sheet #1E2E34,
+   raised #293B41, well #111E23, brass #D8AA58, brass-soft, lines
+   rgba(229,237,233,.11/.20)); tab labels drop their emoji (no emoji in
+   chrome) and grow to 44px hitboxes; medal emoji ranks become 16/700
+   tabular key numbers with brass TEXT for top-3 only (never filled-gold
+   rows); maxHeight caps at the .bt-inspect content box. */
 export function LeaderboardPanel(props) {
   var stateRef = props.stateRef,
     leaderboardTab = props.leaderboardTab,
@@ -34,15 +43,25 @@ export function LeaderboardPanel(props) {
     },
     style: {
       width: 'min(360px, calc(100vw - 24px))', /* v2.3.1234: was 320 fixed — fill narrow phones, never overflow */
-      maxHeight: '85vh',
+      /* v2.3.1235: batch-2 rollout — also cap at 100% of the .bt-inspect
+         content box (it reserves dashboard clearance); a bare 85vh can
+         exceed the box on short phones and slide under the band. */
+      maxHeight: 'min(85vh, 100%)',
       overflowY: 'auto',
+      /* v2.3.1235: batch-2 QA — 18px bottom scroll-edge fade (same recipe
+         as the destination sheets): at 390 the only cue that rank 8+
+         existed was a hairline sliver. Rows crossing the fold now fade;
+         at scroll end the zone holds only the card's bottom padding. */
+      WebkitMaskImage: 'linear-gradient(180deg, #000 calc(100% - 18px), transparent)',
+      maskImage: 'linear-gradient(180deg, #000 calc(100% - 18px), transparent)',
       padding: 16,
       textAlign: 'left',
-      /* v2.3.1232: override legacy navy card with Lantern panel surface */
-      background: '#202C32',
-      border: '1px solid rgba(238,242,235,.14)',
+      /* v2.3.1235: batch-2 rollout — corrected sheet surface + strong
+         hairline + shared .ui-panel shadow (floating modal card). */
+      background: '#1E2E34',
+      border: '1px solid rgba(229,237,233,.20)',
       borderRadius: 14,
-      boxShadow: '0 14px 30px rgba(4,7,9,.38)'
+      boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.045), 0 14px 36px rgba(3,8,10,0.30)'
     }
   }, /*#__PURE__*/React.createElement("button", {
     className: "bt-inspect-close",
@@ -76,30 +95,39 @@ export function LeaderboardPanel(props) {
       fontWeight: 700,
       textTransform: 'uppercase',
       letterSpacing: '.10em',
-      color: '#F7F2E7'
+      color: '#F4F0E7'
     }
   }, "Leaderboards")), /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 11,
       fontVariantNumeric: 'tabular-nums',
-      color: '#96A2A0',
+      color: '#8D9B98',
       textAlign: 'center',
       marginBottom: 10
     }
   }, Object.keys(stateRef.current.others).length + 1, " players online"), /*#__PURE__*/React.createElement("div", {
     /* v2.3.1232: segmented tabs on a well track (wraps into two rows on
        narrow cards) */
+    /* v2.3.1235: batch-2 rollout — corrected well token + shared .ui-well
+       shadow recipe; tab labels drop their emoji (no emoji in chrome). */
+    /* v2.3.1235: batch-2 QA — wrap made "Time" orphan onto its own
+       centered row with a dead band under it (both test widths). The
+       track is now ONE horizontally-scrollable row (scrollbar hidden via
+       .ls-scrollbody; the 7 tabs overhang ~1 tab at 390 and fit at 430). */
+    className: "ls-scrollbody",
     style: {
       display: 'flex',
       gap: 2,
       marginBottom: 12,
       borderRadius: 10,
       padding: 2,
-      background: '#121B20',
-      boxShadow: 'inset 0 2px 4px rgba(0,0,0,.44), inset 0 1px 0 rgba(255,255,255,.035)',
-      flexWrap: 'wrap'
+      background: '#111E23',
+      boxShadow: 'inset 0 2px 5px rgba(0,0,0,0.32), inset 0 1px 0 rgba(255,255,255,0.025)',
+      flexWrap: 'nowrap',
+      overflowX: 'auto',
+      touchAction: 'pan-x'
     }
-  }, [['level', '⚔️ Level'], ['lifeskills', '⛏️ Skills'], ['ap', '🏆 AP'], ['kills', '💀 Kills'], ['dungeons', '🐉 Dungeons'], ['gold', '💰 Gold'], ['playtime', '⏱️ Time']].map(function (_ref40) {
+  }, [['level', 'Level'], ['lifeskills', 'Skills'], ['ap', 'AP'], ['kills', 'Kills'], ['dungeons', 'Dungeons'], ['gold', 'Gold'], ['playtime', 'Time']].map(function (_ref40) {
     var _ref41 = _slicedToArray(_ref40, 2),
       id = _ref41[0],
       label = _ref41[1];
@@ -110,19 +138,21 @@ export function LeaderboardPanel(props) {
       },
       style: {
         flex: '1 0 auto',
-        minHeight: 36,
+        minHeight: 44 /* v2.3.1235: batch-2 rollout — tabs meet the ≥44px hitbox floor */,
         padding: '5px 6px',
         fontSize: 11,
         fontWeight: 600,
         border: 'none',
         borderRadius: 8,
         cursor: 'pointer',
-        background: leaderboardTab === id ? '#2B3940' : 'transparent',
-        boxShadow: leaderboardTab === id ? 'inset 0 -2px 0 #D8A85F' : 'none',
-        color: leaderboardTab === id ? '#F7F2E7' : '#96A2A0',
+        /* v2.3.1235: batch-2 rollout — corrected raised/brass/text tokens */
+        background: leaderboardTab === id ? '#293B41' : 'transparent',
+        boxShadow: leaderboardTab === id ? 'inset 0 -2px 0 #D8AA58' : 'none',
+        color: leaderboardTab === id ? '#F4F0E7' : '#8D9B98',
         fontFamily: 'inherit',
         transition: 'all .15s',
-        minWidth: 40
+        minWidth: 40,
+        whiteSpace: 'nowrap' /* v2.3.1235: batch-2 QA — single-row track */
       }
     }, label);
   })), function () {
@@ -236,7 +266,9 @@ export function LeaderboardPanel(props) {
     entries.sort(function (a, b) {
       return b[sortKey] - a[sortKey];
     });
-    var medals = ['🥇', '🥈', '🥉'];
+    /* v2.3.1235: batch-2 rollout — medal emoji removed: ranks render as
+       16/700 tabular key numbers, brass TEXT for top-3 only (locked
+       leaderboard rule; emoji is not chrome). */
     var formatVal = function formatVal(val, tab) {
       if (tab === 'playtime') return val >= 60 ? Math.floor(val / 60) + 'h ' + val % 60 + 'm' : val + 'm';
       if (tab === 'gold') return val >= 1000 ? (val / 1000).toFixed(1) + 'k' : val;
@@ -253,20 +285,23 @@ export function LeaderboardPanel(props) {
     }[leaderboardTab];
     return /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
       style: {
+        /* v2.3.1235: batch-2 rollout — section header 11/700 .14em muted */
         fontSize: 11,
-        fontWeight: 600,
+        fontWeight: 700,
         textTransform: 'uppercase',
-        letterSpacing: '.12em',
-        color: '#96A2A0',
+        letterSpacing: '.14em',
+        color: '#8D9B98',
         marginBottom: 6
       }
     }, tabLabel), /*#__PURE__*/React.createElement("div", {
       /* v2.3.1232: ranking rows sit in a recessed well */
+      /* v2.3.1235: batch-2 rollout — corrected well token + shared
+         .ui-well shadow recipe */
       style: {
         padding: 6,
         borderRadius: 10,
-        background: '#121B20',
-        boxShadow: 'inset 0 2px 4px rgba(0,0,0,.44), inset 0 1px 0 rgba(255,255,255,.035)'
+        background: '#111E23',
+        boxShadow: 'inset 0 2px 5px rgba(0,0,0,0.32), inset 0 1px 0 rgba(255,255,255,0.025)'
       }
     }, entries.map(function (e, i) {
       return /*#__PURE__*/React.createElement("div", {
@@ -279,34 +314,38 @@ export function LeaderboardPanel(props) {
           minHeight: 44,
           borderRadius: 8,
           marginBottom: 2,
-          /* v2.3.1232: isMe = brass accent-fill selection; others flat */
-          background: e.isMe ? '#3B3427' : 'transparent',
-          borderBottom: e.isMe ? '1px solid transparent' : '1px solid rgba(238,242,235,.10)'
+          /* v2.3.1235: batch-2 rollout — isMe = brass-SOFT selection fill
+             (never a filled-gold row); divider hairline on the rest */
+          background: e.isMe ? 'rgba(216,170,88,.15)' : 'transparent',
+          borderBottom: e.isMe ? '1px solid transparent' : '1px solid rgba(229,237,233,.11)'
         }
       }, /*#__PURE__*/React.createElement("div", {
         style: {
-          width: 22,
+          /* v2.3.1235: batch-2 rollout — rank is a 16/700 tabular key
+             number for every row; brass TEXT marks the top-3 (medal
+             emoji removed — not chrome) */
+          width: 24,
           textAlign: 'center',
-          fontSize: i < 3 ? 15 : 12,
+          fontSize: 16,
           fontWeight: 700,
           fontVariantNumeric: 'tabular-nums',
-          color: i < 3 ? '#D8A85F' : '#96A2A0',
+          color: i < 3 ? '#D8AA58' : '#8D9B98',
           flexShrink: 0
         }
-      }, i < 3 ? medals[i] : i + 1), /*#__PURE__*/React.createElement("div", {
+      }, i + 1), /*#__PURE__*/React.createElement("div", {
         style: {
           width: 26,
           height: 26,
           borderRadius: 13,
-          background: e.color || '#D8A85F',
+          background: e.color || '#293B41' /* v2.3.1235: batch-2 rollout — raised-token fallback (gold fallback read as a rank accent) */,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
           fontSize: 11,
-          fontWeight: 800,
-          color: '#F7F2E7',
+          fontWeight: 700 /* v2.3.1235: batch-2 rollout — 400/600/700 only */,
+          color: '#F4F0E7',
           flexShrink: 0,
-          border: e.isMe ? '2px solid #F0C878' : '2px solid rgba(238,242,235,.14)'
+          border: e.isMe ? '2px solid #EAC675' : '2px solid rgba(229,237,233,.20)'
         }
       }, (e.name || '?').charAt(0).toUpperCase()), /*#__PURE__*/React.createElement("div", {
         style: {
@@ -315,44 +354,49 @@ export function LeaderboardPanel(props) {
         }
       }, /*#__PURE__*/React.createElement("div", {
         style: {
-          fontSize: 13.5,
+          fontSize: 13 /* v2.3.1235: batch-2 rollout — body 13, no half-sizes */,
           fontWeight: 600,
-          color: e.isMe ? '#D8A85F' : '#F7F2E7',
+          color: e.isMe ? '#D8AA58' : '#F4F0E7',
           whiteSpace: 'nowrap',
           overflow: 'hidden',
           textOverflow: 'ellipsis'
         }
       }, e.clanTag && /*#__PURE__*/React.createElement("span", {
         style: {
-          fontSize: 10,
-          color: '#96A2A0',
+          fontSize: 11 /* v2.3.1235: batch-2 rollout — text floor is 11 */,
+          color: '#8D9B98',
           marginRight: 3
         }
       }, "[", e.clanTag, "]"), e.name, " ", e.isMe && /*#__PURE__*/React.createElement("span", {
         style: {
-          fontSize: 10,
-          color: '#96A2A0'
+          fontSize: 11 /* v2.3.1235: batch-2 rollout — text floor is 11 */,
+          color: '#8D9B98'
         }
       }, "(you)")), /*#__PURE__*/React.createElement("div", {
         style: {
           fontSize: 11,
           fontVariantNumeric: 'tabular-nums',
-          color: '#96A2A0'
+          color: '#8D9B98'
         }
       }, "Lv ", e.level)), /*#__PURE__*/React.createElement("div", {
         style: {
-          fontSize: 14,
+          /* v2.3.1235: batch-2 rollout — key number 16/700 tabular;
+             brass TEXT for top-3 only */
+          fontSize: 16,
           fontWeight: 700,
           fontVariantNumeric: 'tabular-nums',
-          color: i === 0 ? '#D8A85F' : i < 3 ? '#F7F2E7' : '#B9C1BF',
+          color: i < 3 ? '#D8AA58' : '#F4F0E7',
           textAlign: 'right',
           minWidth: 40
         }
       }, formatVal(e[sortKey], leaderboardTab)));
     }), entries.length <= 1 && /*#__PURE__*/React.createElement("div", {
       style: {
-        fontSize: 12.5,
-        color: '#96A2A0',
+        /* v2.3.1235: batch-2 rollout — empty state = 13/700 secondary
+           directly on the surface */
+        fontSize: 13,
+        fontWeight: 700,
+        color: '#B6C1BE',
         textAlign: 'center',
         padding: 14
       }

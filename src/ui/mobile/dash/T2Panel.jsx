@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { COL, panelStyle, rowStyle } from './common.js';
+/* v2.3.1235: batch-1 rollout — rowStyle dropped from the import: the
+   channel cards it styled became divider rows (see the channel map). */
+import { COL, panelStyle } from './common.js';
 import { spendConfirmBus } from './spendConfirmBus.js';
 import {
   WEAPON_CATEGORIES,
@@ -97,7 +99,9 @@ export const T2Panel = () => {
   if (!R) {
     return (
       <div style={panelStyle}>
-        <div style={{ color: COL.muted, textAlign: 'center', padding: '14px 0' }}>
+        {/* v2.3.1235: batch-1 rollout — empty state per the locked sheet:
+            13/700 secondary, directly on the sheet, no container. */}
+        <div style={{ fontSize: 13, fontWeight: 700, color: COL.text2, textAlign: 'center', padding: '14px 0' }}>
           No character loaded.
         </div>
       </div>
@@ -172,7 +176,11 @@ export const T2Panel = () => {
   };
 
   return (
-    <div style={panelStyle}>
+    /* v2.3.1235: batch-1 QA — 20px scroll tail (panelStyle's 10px let the
+       last channel row sit sliced against the toolbar edge, reading as
+       clipped rather than scrollable; worse at 430 where more content
+       fits). */
+    <div style={{ ...panelStyle, paddingBottom: 20 }}>
       {/* Header */}
       <div style={{
         display: 'flex', justifyContent: 'space-between', alignItems: 'center',
@@ -181,8 +189,12 @@ export const T2Panel = () => {
         marginBottom: 8,
       }}>
         <div>
-          {/* v2.3.1232: panel title 13/700 uppercase per Lantern Slate */}
-          <div style={{ fontSize: 13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.10em', color: COL.text, display: 'flex', alignItems: 'baseline', gap: 8 }}>
+          {/* v2.3.1232: panel title 13/700 uppercase per Lantern Slate.
+              v2.3.1235: batch-1 QA — the sheet header already titles this
+              destination WEAPONS, so "Builds" is a SECTION header and takes
+              the ladder's 11/700 .14em muted treatment (it read as an
+              off-system bold-white heading next to CHANNELS). */}
+          <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.14em', color: COL.muted, display: 'flex', alignItems: 'baseline', gap: 8 }}>
             Builds
             {/* v2.3.1157: the combat build meter — a character finishes
                 at 1000 allocated points (1/3 of the 3000-slot grid). */}
@@ -192,7 +204,9 @@ export const T2Panel = () => {
               </span>
             )}
           </div>
-          <div style={{ fontSize: 11, color: COL.muted, marginTop: 2 }}>
+          {/* v2.3.1235: batch-1 rollout — descriptive copy floor is 12px
+              on the locked type ladder (11 is reserved for labels). */}
+          <div style={{ fontSize: 12, color: COL.muted, marginTop: 2 }}>
             {/* v2.3.1133: label caught up with v2.3.910's 1-pt-per-level change */}
             {gridTab
               ? (gridTab.stat === 'vitality'
@@ -225,11 +239,17 @@ export const T2Panel = () => {
               key={c}
               onPointerUp={(e) => { e.stopPropagation(); setCat(c); }}
               style={{
+                /* v2.3.1235: batch-1 rollout — COL.tile/#16262C is not on
+                   the locked token sheet; unselected tabs now sit flat on
+                   the sheet with a standard 1px line, selected keeps the
+                   raised surface + brass bottom edge.  Lv/badge text
+                   raised to the 11px readability floor.  Pointer
+                   handler byte-identical. */
                 flex: 1,
                 position: 'relative',
                 minHeight: 44,
-                background: sel ? COL.raised : COL.tile,
-                border: '1px solid ' + (sel ? COL.border : COL.tileBor),
+                background: sel ? COL.raised : 'transparent',
+                border: '1px solid ' + (sel ? COL.borderStrong : COL.border),
                 boxShadow: sel ? 'inset 0 -2px 0 ' + COL.accent : 'none',
                 borderRadius: 8,
                 padding: '6px 4px',
@@ -246,12 +266,12 @@ export const T2Panel = () => {
                     onError={(e) => { e.currentTarget.replaceWith(document.createTextNode(meta.emoji)); }} />
                 : <span style={{ fontSize: 16, lineHeight: 1 }}>{meta.emoji}</span>}
               <span style={{ fontSize: 11, fontWeight: 600 }}>{meta.label}</span>
-              <span style={{ fontSize: 10, fontWeight: 600, fontVariantNumeric: 'tabular-nums', color: sel ? COL.accent : COL.muted }}>Lv {lvl}</span>
+              <span style={{ fontSize: 11, fontWeight: 600, fontVariantNumeric: 'tabular-nums', color: sel ? COL.accent : COL.muted }}>Lv {lvl}</span>
               {p > 0 && (
                 <span style={{
                   position: 'absolute', top: -5, right: -4,
                   background: COL.accent, color: COL.onAccent,
-                  fontSize: 10, fontWeight: 700, fontVariantNumeric: 'tabular-nums',
+                  fontSize: 11, fontWeight: 700, fontVariantNumeric: 'tabular-nums',
                   borderRadius: 999, padding: '1px 5px', lineHeight: 1.3,
                 }}>{p}</span>
               )}
@@ -271,9 +291,11 @@ export const T2Panel = () => {
             {/* v2.3.1207: cap is WEAPON_LEVEL_CAP (100 since v2.3.1156) — the stale 99 literal showed "(Max)" one level early. */}
             {(sk.level || 0) >= WEAPON_LEVEL_CAP ? ' (Max)' : ` · ${Math.round(xpPct)}% to next`}
           </div>
-          {/* v2.3.1232: Lantern Slate bar — #0B1216 track, pill radius, XP-green
-              fill with the standard vertical light overlay (was indigo). */}
-          <div style={{ height: 4, background: '#0B1216', borderRadius: 999, overflow: 'hidden', boxShadow: 'inset 0 1px 2px rgba(0,0,0,.55)' }}>
+          {/* v2.3.1232: Lantern Slate bar — pill radius, XP-green fill with
+              the standard vertical light overlay (was indigo). */}
+          {/* v2.3.1235: batch-1 rollout — track literal #0B1216 was a typo
+              off the locked token sheet; well-deep #0B161B is the track. */}
+          <div style={{ height: 4, background: COL.wellDeep, borderRadius: 999, overflow: 'hidden', boxShadow: 'inset 0 1px 2px rgba(0,0,0,.55)' }}>
             <div style={{ width: xpPct + '%', height: '100%', background: COL.xp, backgroundImage: 'linear-gradient(180deg, rgba(255,255,255,.20), transparent 55%)', transition: 'width .15s linear' }} />
           </div>
         </div>
@@ -294,43 +316,51 @@ export const T2Panel = () => {
 
       {/* v2.3.1154: old-worker notice — grid channels render as "Soon"
           until the connected worker advertises caps.hpEndGrids. */}
+      {/* v2.3.1235: batch-1 rollout — descriptive copy floor is 12px. */}
       {gridTab && !gridsLive && (
-        <div style={{ fontSize: 11, color: COL.gold, marginBottom: 8 }}>
+        <div style={{ fontSize: 12, color: COL.gold, marginBottom: 8 }}>
           Unlocking with the next server update — your points are safe.
         </div>
       )}
 
       {/* Channels */}
-      {/* v2.3.1232: 11/600 uppercase module header over the channel list */}
+      {/* v2.3.1232: uppercase module header over the channel list */}
+      {/* v2.3.1235: batch-1 rollout — section headers are 11/700 .14em
+          muted on the locked type ladder (was 600/.12em). */}
       <div style={{
-        fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.12em',
+        fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.14em',
         color: COL.muted, margin: '2px 2px 6px',
       }}>Channels</div>
       {channels.map((ch) => {
         const v = catSpecs[ch.key] || 0;
         const atCap = v >= channelCap;
         const canAdd = ch.active && unspent > 0 && !atCap;
-        /* v2.3.1232: channel = quiet recessed stat cell (#19252A, radius 8);
-           value 14/700 tabular; the spend button is a 44pt target that goes
-           brass (#D8A85F on #20170D) only when the point is affordable. */
+        /* v2.3.1235: batch-1 rollout — three corrections to the locked
+           sheet: (1) per-channel cards (off-token COL.tile fills) become
+           divider-separated rows directly on the sheet — one outer panel,
+           dividers between rows; (2) a brass-FILLED + on every affordable
+           row broke the one-gold-action-per-surface rule, so the stepper
+           is now the standard secondary button with a brass + glyph when
+           affordable (brass as accent, not fill) and faint #667875 when
+           not (the old '#687575' literal was a transposed-digit typo off
+           the token sheet); (3) SOON/Max/blurb text raised to the 11px
+           label / 12px copy floors.  Locked rows keep opacity .55 —
+           readable, reduced.  Pointer handler byte-identical. */
         return (
           <div key={ch.key} style={{
-            ...rowStyle,
-            background: COL.tile,
-            border: '1px solid ' + COL.tileBor,
-            borderRadius: 8,
-            padding: '8px 10px',
-            marginBottom: 6,
+            display: 'flex',
             flexDirection: 'column',
             alignItems: 'stretch',
             gap: 3,
+            padding: '8px 2px',
+            borderBottom: '1px solid ' + COL.divider,
             opacity: ch.active ? 1 : 0.55,
           }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
               <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, minWidth: 0 }}>
                 <span style={{ fontSize: 13, fontWeight: 700, color: COL.text }}>{ch.label}</span>
                 {!ch.active && (
-                  <span style={{ fontSize: 10, fontWeight: 700, color: COL.gold, letterSpacing: '0.08em' }}>SOON</span>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: COL.gold, letterSpacing: '0.08em' }}>SOON</span>
                 )}
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -344,10 +374,10 @@ export const T2Panel = () => {
                   disabled={!canAdd}
                   style={{
                     width: 44, height: 44,
-                    background: canAdd ? COL.accent : COL.raised,
-                    color: canAdd ? COL.onAccent : '#687575',
-                    border: canAdd ? 'none' : '1px solid ' + COL.border,
-                    borderRadius: 11,
+                    background: COL.raised,
+                    color: canAdd ? COL.accent : COL.disabled,
+                    border: '1px solid ' + (canAdd ? COL.borderStrong : COL.border),
+                    borderRadius: 10,
                     fontSize: 18, fontWeight: 700,
                     cursor: canAdd ? 'pointer' : 'default',
                     touchAction: 'manipulation',
@@ -357,12 +387,12 @@ export const T2Panel = () => {
                 >+</button>
               </div>
             </div>
-            <div style={{ fontSize: 11, color: COL.muted }}>{ch.blurb}</div>
+            <div style={{ fontSize: 12, color: COL.muted }}>{ch.blurb}</div>
             {ch.active && (
               <div style={{ fontSize: 11, color: COL.text, fontVariantNumeric: 'tabular-nums' }}>{ch.derive(v)}</div>
             )}
             {atCap && (
-              <div style={{ fontSize: 10, fontWeight: 600, color: COL.gold }}>Max ({channelCap}).</div>
+              <div style={{ fontSize: 11, fontWeight: 600, color: COL.gold }}>Max ({channelCap}).</div>
             )}
           </div>
         );

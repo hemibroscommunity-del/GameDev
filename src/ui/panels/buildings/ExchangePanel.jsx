@@ -47,18 +47,55 @@ export function ExchangePanel(props) {
       return 'brotown-1';
     }
   };
+  /* v2.3.1235: owner design correction §7 (Marketplace) — the Material
+     Tier + Element chip walls are collapsed behind one "Filters" summary
+     row.  Open/closed is pure LOCAL UI state (the filter VALUES stay in
+     the lifted mkt* props from BroTown, untouched). */
+  var _React$useState = React.useState(false),
+    _React$useState2 = _slicedToArray(_React$useState, 2),
+    mktFiltersOpen = _React$useState2[0],
+    setMktFiltersOpen = _React$useState2[1];
+  /* v2.3.1235: summary strings for the collapsed Filters row, built from
+     the live mktTier / mktElement1 / mktElement2 props (same tier-label
+     fallback chain the order-book heading uses). */
+  var _mktTierBS = BLACKSMITH_TIERS[mktTier];
+  var _mktTierWW = WOODWORKING_TIERS[mktTier === null || mktTier === void 0 ? void 0 : mktTier.replace('ww_', '')];
+  var mktTierSummary = (_mktTierBS === null || _mktTierBS === void 0 ? void 0 : _mktTierBS.label) || (_mktTierWW === null || _mktTierWW === void 0 ? void 0 : _mktTierWW.label) || mktTier;
+  var mktElemSummary = mktElement1 === null ? 'Any element' : mktElement1 + (mktElement2 ? ' + ' + mktElement2 : '');
   /* v2.3.1232: Lantern Slate restyle (docs/LANTERN-SLATE-SPEC.md) \u2014
      panel surface + icon header, segmented buy/sell/orders tabs on a
      #121B20 track with the brass bottom edge, 32px/999 filter chips
      (brass-fill when selected), gold-icon prices, and ONE brass primary
      (the place-order button).  Styles + JSX grouping only \u2014 every
      handler, fetch, and settled/legacy branch is byte-identical. */
+  /* v2.3.1235: batch-3 rollout — correction-pass compliance
+     (docs/LANTERN-SLATE-SPEC.md + game.css :root). Presentation only,
+     every handler/fetch byte-identical. Remaining v2.3.1232 tokens
+     remapped onto the approved set (sheet #1E2E34, well #111E23,
+     raised #293B41, card #24363C, text #F4F0E7/#B6C1BE/#8D9B98/#667875,
+     lines rgba(229,237,233,.11/.20), brass #D8AA58); order-book and
+     my-order rows move off per-row cards into one recessed well with
+     hairline dividers (contract: dividers over row cards); cancel
+     becomes a danger OUTLINE (filled red is never used); refresh 🔄
+     emoji chrome becomes a text glyph; refresh/cancel hit the 44px
+     hitbox floor. The Checkpoint-B §6 fixes (filters summary row +
+     sheet, 16px scroll tail, 12px copy) are preserved untouched. */
+  var LS_WELL235 = {
+    background: '#111E23',
+    borderRadius: 10,
+    padding: 4,
+    boxShadow: 'inset 0 2px 5px rgba(0,0,0,0.32), inset 0 1px 0 rgba(255,255,255,0.025)',
+    marginBottom: 4
+  };
+  var LS_DIV235 = '1px solid rgba(229,237,233,.11)';
   return React.createElement("div", {
     style: {
       margin: -20,
-      padding: '16px 14px',
-      background: '#202C32',
-      borderRadius: 13,
+      /* v2.3.1235: Checkpoint B — +16px bottom breathing room so the last
+         order-book row never ends flush against the modal edge. */
+      padding: '16px 14px 32px',
+      background: '#1E2E34' /* v2.3.1235: batch-3 rollout — sheet token */,
+      borderRadius: 14,
       textAlign: 'left',
       fontFamily: "'Source Sans 3',sans-serif"
     }
@@ -88,7 +125,7 @@ export function ExchangePanel(props) {
       fontWeight: 700,
       textTransform: 'uppercase',
       letterSpacing: '.10em',
-      color: '#F7F2E7'
+      color: '#F4F0E7'
     }
   }, "Marketplace")), /*#__PURE__*/React.createElement("div", {
     style: {
@@ -111,15 +148,15 @@ export function ExchangePanel(props) {
     }
   }), /*#__PURE__*/React.createElement("span", {
     style: {
-      fontSize: 14,
+      fontSize: 16 /* v2.3.1235: batch-3 rollout — wallet is a key number (16-18/700 tabular) */,
       fontWeight: 700,
       fontVariantNumeric: 'tabular-nums',
-      color: '#D8A85F'
+      color: '#D8AA58'
     }
   }, rpgState.coins), /*#__PURE__*/React.createElement("span", {
     style: {
-      fontSize: 11,
-      color: '#96A2A0'
+      fontSize: 12, /* v2.3.1235: Checkpoint B — hint copy floor 12px */
+      color: '#8D9B98'
     }
   }, "Buy & sell \xB7 Listings last 24h, refunds by mail")), /*#__PURE__*/React.createElement("div", {
     style: {
@@ -128,8 +165,9 @@ export function ExchangePanel(props) {
       marginBottom: 10,
       padding: 2,
       borderRadius: 8,
-      background: '#121B20',
-      boxShadow: 'inset 0 2px 4px rgba(0,0,0,.44), inset 0 1px 0 rgba(255,255,255,.035)'
+      /* v2.3.1235: batch-3 rollout — well token + shared .ui-well recipe */
+      background: '#111E23',
+      boxShadow: 'inset 0 2px 5px rgba(0,0,0,0.32), inset 0 1px 0 rgba(255,255,255,0.025)'
     }
   },[['buy', 'Buy'], ['sell', 'Sell'], ['orders', 'My Orders']].map(function (_ref119) {
     var _ref120 = _slicedToArray(_ref119, 2),
@@ -143,26 +181,27 @@ export function ExchangePanel(props) {
       },
       style: {
         flex: 1,
-        minHeight: 32,
+        minHeight: 44 /* v2.3.1235: batch-3 rollout — 44px hitbox floor on tab segments */,
         padding: '0 2px',
         fontSize: 12,
         fontWeight: 700,
         border: 'none',
         borderRadius: 6,
         cursor: 'pointer',
-        background: mktMode === id ? '#2B3940' : 'transparent',
-        boxShadow: mktMode === id ? 'inset 0 -2px 0 #D8A85F' : 'none',
-        color: mktMode === id ? '#F7F2E7' : '#96A2A0',
+        /* v2.3.1235: batch-3 rollout — raised/brass/text tokens */
+        background: mktMode === id ? '#293B41' : 'transparent',
+        boxShadow: mktMode === id ? 'inset 0 -2px 0 #D8AA58' : 'none',
+        color: mktMode === id ? '#F4F0E7' : '#8D9B98',
         fontFamily: 'inherit'
       }
     }, label);
   })), mktMode !== 'orders' && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 11,
-      fontWeight: 600,
+      fontWeight: 700 /* v2.3.1235: batch-3 rollout — 11/700 .14em muted headers */,
       textTransform: 'uppercase',
-      letterSpacing: '.12em',
-      color: '#96A2A0',
+      letterSpacing: '.14em',
+      color: '#8D9B98',
       marginBottom: 4
     }
   }, "Category"), /*#__PURE__*/React.createElement("div", {
@@ -181,28 +220,31 @@ export function ExchangePanel(props) {
         setMktCategory(k);
         setMktSubtype(c.subtypes[0]);
       },
-      /* v2.3.1232: filter chip — 32px/999, selected brass-fill + brass text */
+      /* v2.3.1235: filter chip restyle (design correction §7) — 44px
+         touch target, active = brass-soft fill + brass text + brass
+         hairline, inactive = line border + secondary text; emoji icon
+         dropped from the label (text only). */
       style: {
         flex: 1,
-        minHeight: 32,
+        minHeight: 44,
         padding: '0 8px',
         borderRadius: 999,
         fontSize: 12,
         fontWeight: 600,
-        border: '1px solid ' + (mktCategory === k ? 'rgba(216,168,95,.4)' : 'rgba(238,242,235,.14)'),
-        background: mktCategory === k ? '#3B3427' : 'transparent',
-        color: mktCategory === k ? '#D8A85F' : '#96A2A0',
+        border: '1px solid ' + (mktCategory === k ? '#D8AA58' : 'rgba(229,237,233,0.20)'),
+        background: mktCategory === k ? 'rgba(216,170,88,0.15)' : 'transparent',
+        color: mktCategory === k ? '#D8AA58' : '#B6C1BE',
         cursor: 'pointer',
         fontFamily: 'inherit'
       }
-    }, c.icon, " ", c.label);
+    }, c.label);
   })), ((_MKT_CATEGORIES$mktCa = MKT_CATEGORIES[mktCategory]) === null || _MKT_CATEGORIES$mktCa === void 0 ? void 0 : _MKT_CATEGORIES$mktCa.subtypes.length) > 1 && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 11,
-      fontWeight: 600,
+      fontWeight: 700 /* v2.3.1235: batch-3 rollout — 11/700 .14em muted headers */,
       textTransform: 'uppercase',
-      letterSpacing: '.12em',
-      color: '#96A2A0',
+      letterSpacing: '.14em',
+      color: '#8D9B98',
       marginBottom: 4
     }
   }, "Type"), /*#__PURE__*/React.createElement("div", {
@@ -212,34 +254,97 @@ export function ExchangePanel(props) {
       marginBottom: 8
     }
   }, MKT_CATEGORIES[mktCategory].subtypes.map(function (st) {
-    var _WEAPON_TYPES$st, _WEAPON_TYPES$st2;
+    var _WEAPON_TYPES$st2;
     return /*#__PURE__*/React.createElement("button", {
       key: st,
       onClick: function onClick() {
         return setMktSubtype(st);
       },
-      /* v2.3.1232: filter chip (see category chips) */
+      /* v2.3.1235: filter chip restyle (see category chips); weapon
+         emoji dropped from the label (design correction §7). */
       style: {
         flex: 1,
-        minHeight: 32,
+        minHeight: 44,
         padding: '0 8px',
         borderRadius: 999,
         fontSize: 12,
         fontWeight: 600,
-        border: '1px solid ' + (mktSubtype === st ? 'rgba(216,168,95,.4)' : 'rgba(238,242,235,.14)'),
-        background: mktSubtype === st ? '#3B3427' : 'transparent',
-        color: mktSubtype === st ? '#D8A85F' : '#96A2A0',
+        border: '1px solid ' + (mktSubtype === st ? '#D8AA58' : 'rgba(229,237,233,0.20)'),
+        background: mktSubtype === st ? 'rgba(216,170,88,0.15)' : 'transparent',
+        color: mktSubtype === st ? '#D8AA58' : '#B6C1BE',
         cursor: 'pointer',
         fontFamily: 'inherit'
       }
-    }, ((_WEAPON_TYPES$st = WEAPON_TYPES[st]) === null || _WEAPON_TYPES$st === void 0 ? void 0 : _WEAPON_TYPES$st.emoji) || '🛡️', " ", ((_WEAPON_TYPES$st2 = WEAPON_TYPES[st]) === null || _WEAPON_TYPES$st2 === void 0 ? void 0 : _WEAPON_TYPES$st2.label) || st);
-  }))), /*#__PURE__*/React.createElement("div", {
+    }, ((_WEAPON_TYPES$st2 = WEAPON_TYPES[st]) === null || _WEAPON_TYPES$st2 === void 0 ? void 0 : _WEAPON_TYPES$st2.label) || st);
+  }))), /* v2.3.1235: Filters disclosure row (design correction §7) — the
+     Material Tier + Element chip walls collapse behind this single
+     44px raised row so Max Bid + the primary stay above the fold.
+     Summary is built from the live mktTier/mktElement1/mktElement2
+     selections; text chevron, no emoji. */
+  /*#__PURE__*/React.createElement("button", {
+    onClick: function onClick() {
+      return setMktFiltersOpen(!mktFiltersOpen);
+    },
+    style: {
+      display: 'flex',
+      alignItems: 'center',
+      gap: 8,
+      width: '100%',
+      minHeight: 44,
+      padding: '0 12px',
+      marginBottom: 8,
+      borderRadius: 10,
+      border: '1px solid rgba(229,237,233,0.20)',
+      background: '#293B41',
+      color: '#F4F0E7',
+      fontSize: 12,
+      fontWeight: 600,
+      cursor: 'pointer',
+      textAlign: 'left',
+      fontFamily: 'inherit'
+    }
+  }, /*#__PURE__*/React.createElement("span", {
     style: {
       fontSize: 11,
       fontWeight: 600,
       textTransform: 'uppercase',
       letterSpacing: '.12em',
-      color: '#96A2A0',
+      color: '#B6C1BE'
+    }
+  }, "Filters:"), /*#__PURE__*/React.createElement("span", {
+    style: {
+      flex: 1,
+      minWidth: 0,
+      whiteSpace: 'nowrap',
+      overflow: 'hidden',
+      textOverflow: 'ellipsis'
+    }
+  }, mktTierSummary, " \xB7 ", mktElemSummary), /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 16,
+      fontWeight: 700,
+      color: '#D8AA58',
+      transform: mktFiltersOpen ? 'rotate(90deg)' : 'none',
+      transition: 'transform .15s ease'
+    }
+  }, "›")), mktFiltersOpen && /*#__PURE__*/React.createElement("div", {
+    /* v2.3.1235: inline secondary filter sheet — sheet surface holding
+       the MOVED tier/element chip groups (tap handlers byte-identical
+       to the pre-collapse chips) plus a Done secondary. */
+    style: {
+      padding: '10px 10px 12px',
+      marginBottom: 8,
+      borderRadius: 10,
+      border: '1px solid rgba(229,237,233,0.11)',
+      background: '#1E2E34'
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      fontWeight: 700 /* v2.3.1235: batch-3 rollout — 11/700 .14em muted headers */,
+      textTransform: 'uppercase',
+      letterSpacing: '.14em',
+      color: '#8D9B98',
       marginBottom: 4
     }
   }, "Material Tier"), /*#__PURE__*/React.createElement("div", {
@@ -248,7 +353,7 @@ export function ExchangePanel(props) {
       flexWrap: 'wrap',
       gap: 4,
       marginBottom: 8,
-      maxHeight: 112,
+      maxHeight: 152,
       overflowY: 'auto'
     }
   }, (mktCategory === 'weapon' && (mktSubtype === 'bow' || mktSubtype === 'staff') ? MKT_WOOD_TIERS : MKT_TIERS).map(function (t) {
@@ -258,16 +363,16 @@ export function ExchangePanel(props) {
         setMktTier(t.id);
         setMktPrice(estimateMktPrice(t.id, mktSubtype));
       },
-      /* v2.3.1232: filter chip (see category chips) */
+      /* v2.3.1235: filter chip restyle (see category chips) */
       style: {
-        minHeight: 32,
+        minHeight: 44,
         padding: '0 12px',
         borderRadius: 999,
         fontSize: 12,
         fontWeight: 600,
-        border: '1px solid ' + (mktTier === t.id ? 'rgba(216,168,95,.4)' : 'rgba(238,242,235,.14)'),
-        background: mktTier === t.id ? '#3B3427' : 'transparent',
-        color: mktTier === t.id ? '#D8A85F' : '#96A2A0',
+        border: '1px solid ' + (mktTier === t.id ? '#D8AA58' : 'rgba(229,237,233,0.20)'),
+        background: mktTier === t.id ? 'rgba(216,170,88,0.15)' : 'transparent',
+        color: mktTier === t.id ? '#D8AA58' : '#B6C1BE',
         cursor: 'pointer',
         fontFamily: 'inherit'
       }
@@ -275,10 +380,10 @@ export function ExchangePanel(props) {
   })), /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 11,
-      fontWeight: 600,
+      fontWeight: 700 /* v2.3.1235: batch-3 rollout — 11/700 .14em muted headers */,
       textTransform: 'uppercase',
-      letterSpacing: '.12em',
-      color: '#96A2A0',
+      letterSpacing: '.14em',
+      color: '#8D9B98',
       marginBottom: 4
     }
   }, "Element (optional)"), /*#__PURE__*/React.createElement("div", {
@@ -286,23 +391,23 @@ export function ExchangePanel(props) {
       display: 'flex',
       flexWrap: 'wrap',
       gap: 4,
-      marginBottom: 8
+      marginBottom: 10
     }
   }, /*#__PURE__*/React.createElement("button", {
     onClick: function onClick() {
       setMktElement1(null);
       setMktElement2(null);
     },
-    /* v2.3.1232: filter chip (see category chips) */
+    /* v2.3.1235: filter chip restyle (see category chips) */
     style: {
-      minHeight: 32,
+      minHeight: 44,
       padding: '0 12px',
       borderRadius: 999,
       fontSize: 12,
       fontWeight: 600,
-      border: '1px solid ' + (mktElement1 === null ? 'rgba(216,168,95,.4)' : 'rgba(238,242,235,.14)'),
-      background: mktElement1 === null ? '#3B3427' : 'transparent',
-      color: mktElement1 === null ? '#D8A85F' : '#96A2A0',
+      border: '1px solid ' + (mktElement1 === null ? '#D8AA58' : 'rgba(229,237,233,0.20)'),
+      background: mktElement1 === null ? 'rgba(216,170,88,0.15)' : 'transparent',
+      color: mktElement1 === null ? '#D8AA58' : '#B6C1BE',
       cursor: 'pointer',
       fontFamily: 'inherit'
     }
@@ -320,21 +425,38 @@ export function ExchangePanel(props) {
       onClick: function onClick() {
         return setMktElement1(mktElement1 === k ? null : k);
       },
-      /* v2.3.1232: filter chip (see category chips) */
+      /* v2.3.1235: filter chip restyle (see category chips) */
       style: {
-        minHeight: 32,
+        minHeight: 44,
         padding: '0 12px',
         borderRadius: 999,
         fontSize: 12,
         fontWeight: 600,
-        border: '1px solid ' + (mktElement1 === k ? 'rgba(216,168,95,.4)' : 'rgba(238,242,235,.14)'),
-        background: mktElement1 === k ? '#3B3427' : 'transparent',
-        color: mktElement1 === k ? '#D8A85F' : '#96A2A0',
+        border: '1px solid ' + (mktElement1 === k ? '#D8AA58' : 'rgba(229,237,233,0.20)'),
+        background: mktElement1 === k ? 'rgba(216,170,88,0.15)' : 'transparent',
+        color: mktElement1 === k ? '#D8AA58' : '#B6C1BE',
         cursor: 'pointer',
         fontFamily: 'inherit'
       }
     }, k);
-  })), /*#__PURE__*/React.createElement("div", {
+  })), /*#__PURE__*/React.createElement("button", {
+    onClick: function onClick() {
+      return setMktFiltersOpen(false);
+    },
+    /* v2.3.1235: Done — secondary button closes the inline filter sheet */
+    style: {
+      width: '100%',
+      minHeight: 44,
+      borderRadius: 10,
+      fontSize: 13,
+      fontWeight: 700,
+      border: '1px solid rgba(229,237,233,0.20)',
+      background: '#293B41',
+      color: '#F4F0E7',
+      cursor: 'pointer',
+      fontFamily: 'inherit'
+    }
+  }, "Done")), /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
       alignItems: 'center',
@@ -344,10 +466,10 @@ export function ExchangePanel(props) {
   }, /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 11,
-      fontWeight: 600,
+      fontWeight: 700 /* v2.3.1235: batch-3 rollout — 11/700 .14em muted headers */,
       textTransform: 'uppercase',
-      letterSpacing: '.12em',
-      color: '#96A2A0'
+      letterSpacing: '.14em',
+      color: '#8D9B98'
     }
   }, mktMode === 'buy' ? 'Max Bid' : 'Ask Price'), /*#__PURE__*/React.createElement("input", {
     type: "number",
@@ -357,23 +479,24 @@ export function ExchangePanel(props) {
     onChange: function onChange(e) {
       return setMktPrice(Math.max(1, +e.target.value || 1));
     },
-    /* v2.3.1232: input trough — #121B20 well, tabular brass value */
+    /* v2.3.1235: batch-3 rollout — input trough on the approved well
+       token with the strong hairline, 44px input height, brass value,
+       brass-highlight caret (shared LS_INPUT recipe). */
     style: {
       width: 84,
-      height: 40,
+      height: 44,
       padding: '0 10px',
       borderRadius: 8,
-      border: '1px solid rgba(238,242,235,.14)',
-      background: '#121B20',
-      boxShadow: 'inset 0 2px 4px rgba(0,0,0,.44)',
-      color: '#D8A85F',
+      border: '1px solid rgba(229,237,233,.20)',
+      background: '#111E23',
+      color: '#D8AA58',
       fontSize: 16 /* v2.3.1233b: iOS zoom guard */,
       fontWeight: 700,
       fontVariantNumeric: 'tabular-nums',
       fontFamily: 'Source Sans 3,sans-serif',
       textAlign: 'right',
       outline: 'none',
-      caretColor: '#F0C878'
+      caretColor: '#EAC675'
     }
   }), /*#__PURE__*/React.createElement("img", {
     src: "/icons/popups/gold.webp",
@@ -389,18 +512,18 @@ export function ExchangePanel(props) {
     }
   }), /*#__PURE__*/React.createElement("span", {
     style: {
-      fontSize: 11,
-      color: '#96A2A0',
+      fontSize: 12, /* v2.3.1235: Checkpoint B — meta copy floor 12px */
+      color: '#8D9B98',
       fontVariantNumeric: 'tabular-nums',
       marginLeft: 'auto'
     }
   }, "Est: ~", estimateMktPrice(mktTier, mktSubtype), "G")), mktMode === 'sell' && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 11,
-      fontWeight: 600,
+      fontWeight: 700 /* v2.3.1235: batch-3 rollout — 11/700 .14em muted headers */,
       textTransform: 'uppercase',
-      letterSpacing: '.12em',
-      color: '#96A2A0',
+      letterSpacing: '.14em',
+      color: '#8D9B98',
       marginBottom: 4
     }
   }, "Select Item from Stash"), /*#__PURE__*/React.createElement("div", {
@@ -423,16 +546,18 @@ export function ExchangePanel(props) {
         setMktElement1(sw.element1 || null);
         setMktElement2(sw.element2 || null);
       },
-      /* v2.3.1232: selectable slot — raised when selected, brass edge = selection */
+      /* v2.3.1235: batch-3 rollout — stash chips adopt the corrected
+         chip recipe (brass-soft fill + brass edge when selected, line
+         border + secondary text idle) and the 44px hitbox floor. */
       style: {
-        minHeight: 32,
+        minHeight: 44,
         padding: '4px 10px',
         borderRadius: 8,
         fontSize: 12,
         fontWeight: 600,
-        border: '1px solid ' + (sel ? '#D8A85F' : 'rgba(238,242,235,.14)'),
-        background: sel ? '#2B3940' : '#19252A',
-        color: sel ? '#F7F2E7' : '#B9C1BF',
+        border: '1px solid ' + (sel ? '#D8AA58' : 'rgba(229,237,233,.20)'),
+        background: sel ? 'rgba(216,170,88,.15)' : 'transparent',
+        color: sel ? '#D8AA58' : '#B6C1BE',
         cursor: 'pointer',
         fontFamily: 'inherit'
       }
@@ -440,7 +565,7 @@ export function ExchangePanel(props) {
   }), (!rpgState.weaponStash || rpgState.weaponStash.length === 0) && /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 12,
-      color: '#96A2A0',
+      color: '#8D9B98',
       fontStyle: 'italic'
     }
   }, "No items in stash to sell"))), /*#__PURE__*/React.createElement("button", {
@@ -608,22 +733,24 @@ export function ExchangePanel(props) {
         }
       }, _callee0, null, [[9, 12], [5, 14]]);
     })),
-    /* v2.3.1232: THE brass primary of the panel — 44px, #D8A85F on #20170D */
+    /* v2.3.1235: THE filled-gold primary of the surface — gradient
+       brass on #172126 ink, #EAC675 edge, radius 10 (exact committed
+       tokens, design correction §7); label emoji dropped. */
     style: {
       width: '100%',
       minHeight: 44,
       padding: '0 12px',
-      borderRadius: 11,
+      borderRadius: 10,
       fontSize: 13,
       fontWeight: 700,
-      border: 'none',
-      background: '#D8A85F',
-      color: '#20170D',
+      border: '1px solid #EAC675',
+      background: 'linear-gradient(180deg,#E2B765,#D2A14D)',
+      color: '#172126',
       cursor: 'pointer',
       marginBottom: 10,
       fontFamily: 'inherit'
     }
-  }, mktMode === 'buy' ? '🛒 Place Buy Order (' + mktPrice + 'G)' : '💰 List for Sale (' + mktPrice + 'G)')), function (_BLACKSMITH_TIERS$mkt2, _WOODWORKING_TIERS$mk2, _WEAPON_TYPES$mktSubt) {
+  }, mktMode === 'buy' ? 'Place Buy Order (' + mktPrice + 'G)' : 'List for Sale (' + mktPrice + 'G)')), function (_BLACKSMITH_TIERS$mkt2, _WOODWORKING_TIERS$mk2, _WEAPON_TYPES$mktSubt) {
     var S = stateRef.current;
     var orders = mktOrders || [];
     var filtered = mktMode === 'orders' ? orders.filter(function (o) {
@@ -663,10 +790,10 @@ export function ExchangePanel(props) {
     }, /*#__PURE__*/React.createElement("div", {
       style: {
         fontSize: 11,
-        fontWeight: 600,
+        fontWeight: 700 /* v2.3.1235: batch-3 rollout — 11/700 .14em muted headers */,
         textTransform: 'uppercase',
-        letterSpacing: '.12em',
-        color: '#96A2A0',
+        letterSpacing: '.14em',
+        color: '#8D9B98',
         flex: 1
       }
     }, "Order Book \u2014 ", ((_BLACKSMITH_TIERS$mkt2 = BLACKSMITH_TIERS[mktTier]) === null || _BLACKSMITH_TIERS$mkt2 === void 0 ? void 0 : _BLACKSMITH_TIERS$mkt2.label) || ((_WOODWORKING_TIERS$mk2 = WOODWORKING_TIERS[mktTier === null || mktTier === void 0 ? void 0 : mktTier.replace('ww_', '')]) === null || _WOODWORKING_TIERS$mk2 === void 0 ? void 0 : _WOODWORKING_TIERS$mk2.label) || mktTier, " ", ((_WEAPON_TYPES$mktSubt = WEAPON_TYPES[mktSubtype]) === null || _WEAPON_TYPES$mktSubt === void 0 ? void 0 : _WEAPON_TYPES$mktSubt.label) || mktSubtype), /*#__PURE__*/React.createElement("button", {
@@ -678,39 +805,43 @@ export function ExchangePanel(props) {
           if (d.ok) setMktOrders(d.orders);
         }).catch(function () {});
       },
-      /* v2.3.1232: secondary icon button \u2014 raised + hairline */
+      /* v2.3.1235: batch-3 rollout \u2014 44px hitbox floor, strong hairline
+         secondary on the raised token; \uD83D\uDD04 emoji chrome replaced with a
+         text glyph (no emoji in button chrome). */
       style: {
-        width: 32,
-        height: 32,
+        width: 44,
+        height: 44,
         borderRadius: 8,
-        fontSize: 13,
+        fontSize: 16,
         fontWeight: 700,
-        border: '1px solid rgba(238,242,235,.14)',
-        background: '#2B3940',
-        color: '#B9C1BF',
+        border: '1px solid rgba(229,237,233,.20)',
+        background: '#293B41',
+        color: '#B6C1BE',
         cursor: 'pointer'
       }
-    }, "\uD83D\uDD04")), sells.length > 0 && /*#__PURE__*/React.createElement("div", {
+    }, "\u21BB")), sells.length > 0 && /*#__PURE__*/React.createElement("div", {
       style: {
         fontSize: 11,
-        fontWeight: 600,
-        letterSpacing: '.12em',
-        color: 'rgba(217,92,84,.6)',
+        fontWeight: 700 /* v2.3.1235: batch-3 rollout — header weight floor */,
+        letterSpacing: '.14em',
+        color: 'rgba(216,99,93,.6)' /* v2.3.1235: danger-token SELL tint (order-book semantic red) */,
         margin: '6px 0 4px'
       }
-    }, "SELL ORDERS (lowest first)"), sells.slice(0, 8).map(function (o) {
+      /* v2.3.1235: batch-3 rollout — order rows move off per-row cards
+         into ONE recessed well with hairline dividers (contract:
+         dividers over row cards); handlers untouched (rows have none). */
+    }, "SELL ORDERS (lowest first)"), sells.length > 0 && /*#__PURE__*/React.createElement("div", {
+      style: LS_WELL235
+    }, sells.slice(0, 8).map(function (o, _ri) {
       return /*#__PURE__*/React.createElement("div", {
         key: o.id,
-        /* v2.3.1232: 40px list row on well-soft, gold-icon tabular price */
         style: {
           display: 'flex',
           alignItems: 'center',
           gap: 8,
-          minHeight: 40,
+          minHeight: 44,
           padding: '4px 8px',
-          borderRadius: 8,
-          background: '#19252A',
-          marginBottom: 3,
+          borderTop: _ri > 0 ? LS_DIV235 : 'none',
           fontSize: 12
         }
       }, /*#__PURE__*/React.createElement("span", {
@@ -718,7 +849,7 @@ export function ExchangePanel(props) {
           display: 'inline-flex',
           alignItems: 'center',
           gap: 3,
-          color: '#D8A85F',
+          color: '#D8AA58' /* v2.3.1235: batch-3 rollout — brass token */,
           fontSize: 14,
           fontWeight: 700,
           fontVariantNumeric: 'tabular-nums'
@@ -737,7 +868,7 @@ export function ExchangePanel(props) {
         }
       }), o.price), /*#__PURE__*/React.createElement("span", {
         style: {
-          color: '#B9C1BF',
+          color: '#B6C1BE',
           flex: 1,
           minWidth: 0,
           whiteSpace: 'nowrap',
@@ -746,37 +877,37 @@ export function ExchangePanel(props) {
         }
       }, o.tierLabel, " ", o.element1 || ''), /*#__PURE__*/React.createElement("span", {
         style: {
-          fontSize: 11,
-          color: '#96A2A0'
+          fontSize: 12, /* v2.3.1235: Checkpoint B — row meta floor 12px */
+          color: '#8D9B98'
         }
       }, o.playerName), o.playerId === S.myId && /*#__PURE__*/React.createElement("span", {
         style: {
-          fontSize: 10,
+          fontSize: 11 /* v2.3.1235: batch-3 rollout — 11px text floor */,
           fontWeight: 700,
-          color: '#D8A85F'
+          color: '#D8AA58'
         }
       }, "(you)"));
-    }), buys.length > 0 && /*#__PURE__*/React.createElement("div", {
+    })) /* v2.3.1235: batch-3 rollout — closes the sells list well */, buys.length > 0 && /*#__PURE__*/React.createElement("div", {
       style: {
         fontSize: 11,
-        fontWeight: 600,
-        letterSpacing: '.12em',
-        color: 'rgba(89,191,145,.6)',
+        fontWeight: 700 /* v2.3.1235: batch-3 rollout — header weight floor */,
+        letterSpacing: '.14em',
+        color: 'rgba(85,185,138,.6)' /* v2.3.1235: positive-token BUY tint (order-book semantic green) */,
         margin: '8px 0 4px'
       }
-    }, "BUY ORDERS (highest first)"), buys.slice(0, 8).map(function (o) {
+      /* v2.3.1235: batch-3 rollout — one well + dividers (see sells) */
+    }, "BUY ORDERS (highest first)"), buys.length > 0 && /*#__PURE__*/React.createElement("div", {
+      style: LS_WELL235
+    }, buys.slice(0, 8).map(function (o, _ri) {
       return /*#__PURE__*/React.createElement("div", {
         key: o.id,
-        /* v2.3.1232: 40px list row on well-soft, gold-icon tabular price */
         style: {
           display: 'flex',
           alignItems: 'center',
           gap: 8,
-          minHeight: 40,
+          minHeight: 44,
           padding: '4px 8px',
-          borderRadius: 8,
-          background: '#19252A',
-          marginBottom: 3,
+          borderTop: _ri > 0 ? LS_DIV235 : 'none',
           fontSize: 12
         }
       }, /*#__PURE__*/React.createElement("span", {
@@ -784,7 +915,7 @@ export function ExchangePanel(props) {
           display: 'inline-flex',
           alignItems: 'center',
           gap: 3,
-          color: '#D8A85F',
+          color: '#D8AA58' /* v2.3.1235: batch-3 rollout — brass token */,
           fontSize: 14,
           fontWeight: 700,
           fontVariantNumeric: 'tabular-nums'
@@ -803,7 +934,7 @@ export function ExchangePanel(props) {
         }
       }), o.price), /*#__PURE__*/React.createElement("span", {
         style: {
-          color: '#B9C1BF',
+          color: '#B6C1BE',
           flex: 1,
           minWidth: 0,
           whiteSpace: 'nowrap',
@@ -812,20 +943,20 @@ export function ExchangePanel(props) {
         }
       }, o.tierLabel, " ", o.element1 || ''), /*#__PURE__*/React.createElement("span", {
         style: {
-          fontSize: 11,
-          color: '#96A2A0'
+          fontSize: 12, /* v2.3.1235: Checkpoint B — row meta floor 12px */
+          color: '#8D9B98'
         }
       }, o.playerName), o.playerId === S.myId && /*#__PURE__*/React.createElement("span", {
         style: {
-          fontSize: 10,
+          fontSize: 11 /* v2.3.1235: batch-3 rollout — 11px text floor */,
           fontWeight: 700,
-          color: '#D8A85F'
+          color: '#D8AA58'
         }
       }, "(you)"));
-    }), sells.length === 0 && buys.length === 0 && /*#__PURE__*/React.createElement("div", {
+    })) /* v2.3.1235: batch-3 rollout — closes the buys list well */, sells.length === 0 && buys.length === 0 && /*#__PURE__*/React.createElement("div", {
       style: {
         fontSize: 12,
-        color: '#96A2A0',
+        color: '#8D9B98',
         fontStyle: 'italic',
         textAlign: 'center',
         padding: 10
@@ -840,10 +971,10 @@ export function ExchangePanel(props) {
     }, /*#__PURE__*/React.createElement("div", {
       style: {
         fontSize: 11,
-        fontWeight: 600,
+        fontWeight: 700 /* v2.3.1235: batch-3 rollout — 11/700 .14em muted headers */,
         textTransform: 'uppercase',
-        letterSpacing: '.12em',
-        color: '#96A2A0',
+        letterSpacing: '.14em',
+        color: '#8D9B98',
         flex: 1
       }
     }, "Your Active Orders (", filtered.length, ")"), /*#__PURE__*/React.createElement("button", {
@@ -855,46 +986,52 @@ export function ExchangePanel(props) {
           if (d.ok) setMktOrders(d.orders);
         }).catch(function () {});
       },
-      /* v2.3.1232: secondary icon button \u2014 raised + hairline */
+      /* v2.3.1235: batch-3 rollout \u2014 44px hitbox floor, strong hairline
+         secondary on the raised token; \uD83D\uDD04 emoji chrome replaced with a
+         text glyph (no emoji in button chrome). */
       style: {
-        width: 32,
-        height: 32,
+        width: 44,
+        height: 44,
         borderRadius: 8,
-        fontSize: 13,
+        fontSize: 16,
         fontWeight: 700,
-        border: '1px solid rgba(238,242,235,.14)',
-        background: '#2B3940',
-        color: '#B9C1BF',
+        border: '1px solid rgba(229,237,233,.20)',
+        background: '#293B41',
+        color: '#B6C1BE',
         cursor: 'pointer'
       }
-    }, "\uD83D\uDD04")), filtered.length === 0 && /*#__PURE__*/React.createElement("div", {
+    }, "\u21BB")), filtered.length === 0 && /*#__PURE__*/React.createElement("div", {
       style: {
         fontSize: 12,
-        color: '#96A2A0',
+        color: '#8D9B98',
         fontStyle: 'italic'
       }
-    }, "No active orders"), filtered.map(function (o) {
+      /* v2.3.1235: batch-3 rollout — my-order rows join the one-well +
+         dividers pattern (contract: dividers over row cards); the
+         cancel handler inside is byte-identical. */
+    }, "No active orders"), filtered.length > 0 && /*#__PURE__*/React.createElement("div", {
+      style: LS_WELL235
+    }, filtered.map(function (o, _oi) {
       var _WEAPON_TYPES$o$subty;
       var timeLeft = Math.max(0, Math.ceil((o.expires - Date.now()) / 60000));
       return /*#__PURE__*/React.createElement("div", {
         key: o.id,
-        /* v2.3.1232: 44px order row on well-soft */
         style: {
           display: 'flex',
           alignItems: 'center',
           gap: 8,
           minHeight: 44,
           padding: '6px 8px',
-          borderRadius: 8,
-          background: '#19252A',
-          marginBottom: 4
+          borderTop: _oi > 0 ? LS_DIV235 : 'none'
         }
       }, /*#__PURE__*/React.createElement("span", {
         style: {
-          fontSize: 10,
+          fontSize: 11 /* v2.3.1235: batch-3 rollout — 11px floor */,
           fontWeight: 700,
           letterSpacing: '.08em',
-          color: o.type === 'buy' ? '#59BF91' : '#D95C54'
+          /* v2.3.1235: BUY/SELL order-book semantics on the approved
+             positive/danger tokens */
+          color: o.type === 'buy' ? '#55B98A' : '#D8635D'
         }
       }, o.type === 'buy' ? 'BUY' : 'SELL'), /*#__PURE__*/React.createElement("div", {
         style: {
@@ -903,17 +1040,17 @@ export function ExchangePanel(props) {
         }
       }, /*#__PURE__*/React.createElement("div", {
         style: {
-          fontSize: 12.5,
+          fontSize: 13 /* v2.3.1235: batch-3 rollout — body size (12.5 off-scale) */,
           fontWeight: 600,
-          color: '#F7F2E7',
+          color: '#F4F0E7',
           whiteSpace: 'nowrap',
           overflow: 'hidden',
           textOverflow: 'ellipsis'
         }
       }, o.tierLabel, " ", ((_WEAPON_TYPES$o$subty = WEAPON_TYPES[o.subtype]) === null || _WEAPON_TYPES$o$subty === void 0 ? void 0 : _WEAPON_TYPES$o$subty.label) || o.subtype, " ", o.element1 ? '(' + o.element1 + ')' : ''), /*#__PURE__*/React.createElement("div", {
         style: {
-          fontSize: 11,
-          color: '#96A2A0',
+          fontSize: 12, /* v2.3.1235: Checkpoint B — row meta floor 12px */
+          color: '#8D9B98',
           fontVariantNumeric: 'tabular-nums'
         }
       }, timeLeft, "m left")), /*#__PURE__*/React.createElement("span", {
@@ -925,7 +1062,7 @@ export function ExchangePanel(props) {
           fontSize: 14,
           fontWeight: 700,
           fontVariantNumeric: 'tabular-nums',
-          color: '#D8A85F'
+          color: '#D8AA58' /* v2.3.1235: batch-3 rollout — brass token */
         }
       }, /*#__PURE__*/React.createElement("img", {
         src: "/icons/popups/gold.webp",
@@ -997,20 +1134,21 @@ export function ExchangePanel(props) {
             }
           }, _callee1, null, [[0, 3]]);
         })),
-        /* v2.3.1232: destructive cancel \u2014 #7C3431 / #FFF1EE */
+        /* v2.3.1235: batch-3 rollout \u2014 danger is OUTLINE only (filled
+           red retired by the correction pass); 44px hitbox floor. */
         style: {
-          width: 32,
-          height: 32,
+          width: 44,
+          height: 44,
           borderRadius: 8,
           fontSize: 13,
           fontWeight: 700,
-          border: '1px solid #C7655F',
-          background: '#7C3431',
-          color: '#FFF1EE',
+          border: '1px solid #D8635D',
+          background: 'transparent',
+          color: '#D8635D',
           cursor: 'pointer',
           flexShrink: 0
         }
       }, "\u2715"));
-    })));
+    })) /* v2.3.1235: batch-3 rollout \u2014 closes the my-orders well */));
   }());
 }

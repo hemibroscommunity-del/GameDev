@@ -47,32 +47,36 @@ import { SpendPointConfirm }   from './dash/SpendPointConfirm.jsx';
    mineral charcoal shelf, warm-white text, one lantern-brass accent.
    overlay* tokens are for chrome floating OVER the game world
    (player card, tooltips): same language at world-card opacity. */
+/* v2.3.1235: correction-pass palette — this local block had gone stale
+   (the QA reviewer sampled the band's "brass" top edge as gray-green:
+   the old .28-alpha straw).  Values MUST stay in sync with game.css
+   :root tokens and dash/common.js COL. */
 const COL = {
-  bg:        '#202C32',                    // band-mid / panel
-  raised:    '#2B3940',
-  well:      '#121B20',
-  wellSoft:  '#19252A',
-  slot:      '#243137',
-  toolbar:   '#10181D',
-  border:    'rgba(238,242,235,0.14)',
-  divider:   'rgba(238,242,235,0.10)',
-  edgeWarm:  'rgba(229,202,157,0.28)',
-  text:      '#F7F2E7',
-  text2:     '#B9C1BF',
-  muted:     '#96A2A0',
-  hp:        '#D95C54',
-  stam:      '#D8A94D',
-  mp:        '#4D86D5',
-  xp:        '#61B06B',
-  gold:      '#D8A85F',
-  brass:     '#D8A85F',
-  brassFill: '#3B3427',
-  brassText: '#D8A85F',
-  onAccent:  '#20170D',
-  tileBor:   'rgba(238,242,235,0.08)',
-  overlayBg:     'linear-gradient(180deg, rgba(35,48,57,.94), rgba(17,25,29,.94))',
-  overlayBorder: 'rgba(238,242,235,0.24)',
-  overlayText:   '#F7F2E7',
+  bg:        '#1E2E34',                    // sheet
+  raised:    '#293B41',
+  well:      '#111E23',
+  wellSoft:  '#16262C',
+  slot:      '#24363C',
+  toolbar:   '#0E191E',
+  border:    'rgba(229,237,233,0.11)',
+  divider:   'rgba(229,237,233,0.11)',
+  edgeWarm:  'rgba(216,170,88,0.42)',
+  text:      '#F4F0E7',
+  text2:     '#B6C1BE',
+  muted:     '#8D9B98',
+  hp:        '#E35D5B',
+  stam:      '#DFAE4E',
+  mp:        '#4F8FDE',
+  xp:        '#58B97B',
+  gold:      '#D8AA58',
+  brass:     '#D8AA58',
+  brassFill: 'rgba(216,170,88,0.15)',
+  brassText: '#D8AA58',
+  onAccent:  '#172126',
+  tileBor:   'rgba(229,237,233,0.08)',
+  overlayBg:     'rgba(13,22,27,0.88)',
+  overlayBorder: 'rgba(229,237,233,0.20)',
+  overlayText:   '#F4F0E7',
 };
 
 // Bar artwork sliced from the user-supplied mockup screenshot.  Each
@@ -121,16 +125,21 @@ const ICON_SRC = {
    12% built-in margin, so at 1.0 they rendered visibly smaller than
    the full-bleed popups icons they replaced (owner report).  Bow +
    endurance re-sliced with interior background knockout. */
+/* v2.3.1235: batch-4 state-correction §2 — the old `tip` prose paragraphs
+   are gone; each stat now carries `train`, the one-sentence training line
+   rendered as the tooltip's explanation row (the quantified benefit line
+   is derived live in the render loop from the same formulas the cells
+   already display). */
 const CHAR_STATS = [
-  { key: 'power',     label: 'Melee',     short: 'MEL', iconSrc: '/icons/ui/combat-melee.webp?v=2.3.1224',   pixelated: false, iconScale: 1.5, tip: 'Melee — melee weapon damage scaling. Trains by landing damage with sword / greatsword.' },
-  { key: 'agility',   label: 'Bow',       short: 'BOW', iconSrc: '/icons/ui/combat-bow.webp?v=2.3.1225',     pixelated: false, iconScale: 1.5, tip: 'Bow — bow damage + move speed, dodge distance, attack speed. Trains by successful dodges and ranged hits.' },
-  { key: 'mind',      label: 'Magic',     short: 'MAG', iconSrc: '/icons/ui/combat-magic.webp?v=2.3.1224',   pixelated: false, iconScale: 1.5, tip: 'Magic — staff (magic) damage + mana pool size. Trains by spending mana on staff bolts.' },
-  { key: 'vitality',  label: 'HP',        short: 'HP',  iconSrc: '/icons/ui/stat-vitality.webp?v=2.3.1224',  pixelated: false, iconScale: 1.5, tip: 'HP — health pool size. Trains by taking damage and surviving the fight.' },
+  { key: 'power',     label: 'Melee',     short: 'MEL', iconSrc: '/icons/ui/combat-melee.webp?v=2.3.1224',   pixelated: false, iconScale: 1.5, train: 'Improves when sword or greatsword attacks land.' },
+  { key: 'agility',   label: 'Bow',       short: 'BOW', iconSrc: '/icons/ui/combat-bow.webp?v=2.3.1225',     pixelated: false, iconScale: 1.5, train: 'Also boosts move speed and dodge; improves when dodges succeed or bow shots land.' },
+  { key: 'mind',      label: 'Magic',     short: 'MAG', iconSrc: '/icons/ui/combat-magic.webp?v=2.3.1224',   pixelated: false, iconScale: 1.5, train: 'Also grows the mana pool; improves when you spend mana on staff bolts.' },
+  { key: 'vitality',  label: 'HP',        short: 'HP',  iconSrc: '/icons/ui/stat-vitality.webp?v=2.3.1224',  pixelated: false, iconScale: 1.5, train: 'Improves when you take damage and survive the fight.' },
   /* Defense = Tier-2 trained skill (rpg.defenseSkill.level); tapping opens the
      DEF spend tab in the T2 panel (wired in v2.3.693).  v2.3.696: DEF and END
      swapped -- bottom row reads Vitality · Defense · Endurance per user. */
-  { key: 'defense',   label: 'Defense',   short: 'DEF', iconSrc: '/icons/ui/stat-defense.webp?v=2.3.1224',   pixelated: false, iconScale: 1.5, t2: true, tip: 'Defense — block strength + damage reduction. Trains by blocking and mitigating hits; spend points in the DEF tab.' },
-  { key: 'endurance', label: 'Endurance', short: 'END', iconSrc: '/icons/ui/stat-endurance.webp?v=2.3.1225', pixelated: false, iconScale: 1.5, tip: 'Endurance — stamina pool size. Trains by spending stamina on dodge, block, or sprint.' },
+  { key: 'defense',   label: 'Defense',   short: 'DEF', iconSrc: '/icons/ui/stat-defense.webp?v=2.3.1224',   pixelated: false, iconScale: 1.5, t2: true, train: 'Improves when you block and mitigate hits; spend points in the DEF tab.' },
+  { key: 'endurance', label: 'Endurance', short: 'END', iconSrc: '/icons/ui/stat-endurance.webp?v=2.3.1225', pixelated: false, iconScale: 1.5, train: 'Improves when you spend stamina on dodge, block, or sprint.' },
 ];
 
 /* Dashboard now focuses on the build/combat stats; the life-skills grid is
@@ -157,57 +166,129 @@ const LIFE_SKILLS = [
 
 // Tiny column-header used at the top of each of the three dashboard
 // columns.  Centered above its column.
-const ColHeader = ({ children }) => (
+const ColHeader = ({ children, icon }) => (
   <div style={{
-    /* v2.3.114: -1 fontSize + white text per "everything white". */
-    /* v2.3.1227: 11/600 module header (Lantern Slate type ladder) */
+    /* v2.3.1235: correction pass §3 — 11/700 uppercase .14em section
+       label with a 16px icon beside it (icons carry identity; the
+       heading stays small). */
     fontSize: 11,
-    fontWeight: 600,
+    fontWeight: 700,
     color: COL.text2,
-    letterSpacing: '.12em',
+    letterSpacing: '.14em',
     textTransform: 'uppercase',
     padding: '0 2px 2px',
-    textAlign: 'center',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 5,
     borderBottom: `1px solid ${COL.divider}`,
     marginBottom: 3,
     whiteSpace: 'nowrap',
     overflow: 'hidden',
-    textOverflow: 'ellipsis',
-  }}>{children}</div>
+  }}>
+    {icon && (
+      <img src={icon} alt="" draggable={false}
+        style={{ width: 16, height: 16, objectFit: 'contain', flex: 'none' }}
+        onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+    )}
+    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{children}</span>
+  </div>
 );
 
 // Tooltip popup module — taps on stat / skill rows show a short
 // description above the dashboard.  One active tooltip at a time;
 // auto-dismisses after 3s or on next tap.
-const Tooltip = ({ text, onClose }) => {
+/* v2.3.1235: batch-4 state-correction §2 — Build/stat tooltips upgraded
+   from a single prose toast to a three-part anchored card: title line
+   ("Melee 12", 13/700), quantified benefit line (15/700), and a short
+   training sentence (12/1.35), with an 8px caret pointing at the tapped
+   cell and x-clamping (12px margins) so the card never leaves the
+   screen.  Callers that still pass a plain string (bars, player-card
+   readouts, life skills) keep the legacy centered toast unchanged.
+   Radius 10 + committed panel-shadow recipe per the earlier batch-4
+   rollout (was off-recipe rgba(0,0,0,.5)). */
+const Tooltip = ({ tip, onClose }) => {
   useEffect(() => {
-    if (!text) return;
+    if (!tip) return;
     const id = setTimeout(onClose, 3000);
     return () => clearTimeout(id);
-  }, [text]);
-  if (!text) return null;
+  }, [tip]);
+  if (!tip) return null;
+  const surface = {
+    background: COL.overlayBg,
+    border: `1px solid ${COL.overlayBorder}`,
+    borderRadius: 10,
+    color: COL.overlayText,
+    fontFamily: 'Source Sans 3, sans-serif',
+    zIndex: 36,
+    boxShadow: '0 14px 30px rgba(4,7,9,.38)',
+  };
+  if (typeof tip === 'string') {
+    // Legacy path — centered prose toast above the dashboard band.
+    return (
+      <div
+        onPointerDown={(e) => { e.stopPropagation(); onClose(); }}
+        style={{
+          ...surface,
+          position: 'fixed',
+          left: '50%',
+          bottom: 'calc(var(--dash-h) + 12px)',
+          transform: 'translateX(-50%)',
+          maxWidth: '88vw',
+          padding: '8px 12px',
+          fontSize: 15,
+          lineHeight: 1.3,
+        }}
+      >
+        {tip}
+      </div>
+    );
+  }
+  const { title, benefit, body, anchor } = tip;
+  const vw = window.innerWidth;
+  const vh = window.innerHeight;
+  const w = Math.min(280, vw - 24);
+  const cx = anchor ? anchor.left + anchor.width / 2 : vw / 2;
+  const left = Math.max(12, Math.min(cx - w / 2, vw - 12 - w));
+  /* Prefer ABOVE the tapped cell (caret pointing down at it) so the
+     card sits over the world, never under the dashboard band; flip
+     below with the caret up only when the cell hugs the top edge. */
+  const above = !anchor || anchor.top > 160;
+  /* Caret offsets along the clamped card so it keeps pointing at the
+     cell; 19px floor keeps the triangle clear of the 10px corners. */
+  const caretX = Math.max(19, Math.min(cx - left, w - 19));
+  const pos = !anchor
+    ? { left, bottom: 'calc(var(--dash-h) + 12px)' }
+    : above
+      ? { left, bottom: vh - anchor.top + 10 }
+      : { left, top: anchor.bottom + 10 };
+  /* Two-triangle bordered caret: outer 9px in the border color, inner
+     8px in the surface color, hanging off the edge nearest the cell. */
+  const tri = (size, color) => ({
+    position: 'absolute',
+    [above ? 'top' : 'bottom']: '100%',
+    left: caretX - size,
+    width: 0,
+    height: 0,
+    borderLeft: `${size}px solid transparent`,
+    borderRight: `${size}px solid transparent`,
+    [above ? 'borderTop' : 'borderBottom']: `${size}px solid ${color}`,
+    pointerEvents: 'none',
+  });
   return (
     <div
       onPointerDown={(e) => { e.stopPropagation(); onClose(); }}
-      style={{
-        position: 'fixed',
-        left: '50%',
-        bottom: 'calc(var(--dash-h) + 12px)',
-        transform: 'translateX(-50%)',
-        maxWidth: '88vw',
-        padding: '8px 12px',
-        background: COL.overlayBg,
-        border: `1px solid ${COL.overlayBorder}`,
-        borderRadius: 8,
-        color: COL.overlayText,
-        fontFamily: 'Source Sans 3, sans-serif',
-        fontSize: 15,
-        lineHeight: 1.3,
-        zIndex: 36,
-        boxShadow: '0 4px 14px rgba(0,0,0,0.5)',
-      }}
+      style={{ ...surface, position: 'fixed', width: w, padding: '12px 14px', ...pos }}
     >
-      {text}
+      <div style={{ fontSize: 13, fontWeight: 700, lineHeight: 1.2, color: COL.text2 }}>{title}</div>
+      {benefit && (
+        <div style={{ fontSize: 15, fontWeight: 700, lineHeight: 1.25, color: '#F4F0E7', marginTop: 2 }}>{benefit}</div>
+      )}
+      {body && (
+        <div style={{ fontSize: 12, lineHeight: 1.35, color: '#B6C1BE', marginTop: 4 }}>{body}</div>
+      )}
+      {anchor && <div style={tri(9, COL.overlayBorder)} />}
+      {anchor && <div style={tri(8, COL.overlayBg)} />}
     </div>
   );
 };
@@ -298,13 +379,12 @@ const IconButton = ({ glyph, label, active, onClick, node, tut }) => {
   // prevents the event reaching the dashboard's outer pointerdown
   // handler (which only stops further bubbling, not local).
   const fire = (e) => { e.stopPropagation(); onClick && onClick(); };
-  /* v2.3.1227: Lantern Slate icon plates (§9) — each icon sits on a
-     38×38 stone-grey squircle so the warm-navy icon outlines stay
-     crisp on the dark shelf; active = warm brass plate + 3px brass
-     line at the shelf top. */
-  const plate = active
-    ? 'linear-gradient(180deg, #D8C69F, #BDA16E)'
-    : 'linear-gradient(180deg, #A2AAA5, #7F8A89)';
+  /* v2.3.1235: correction pass §5 — the permanent stone plates made
+     the toolbar read as an app launcher competing with the world.
+     Inactive buttons are now BARE (transparent shell, muted label);
+     only the ACTIVE destination gets a shell: brass-soft fill, subtle
+     brass border, and a 24×3px brass indicator centered at the shelf
+     top.  Never a solid gold fill. */
   return (
     <button
       onPointerUp={fire}
@@ -316,7 +396,7 @@ const IconButton = ({ glyph, label, active, onClick, node, tut }) => {
         flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
-        gap: 3,
+        gap: 2,
         padding: '4px 0',
         background: 'transparent',
         border: 'none',
@@ -324,21 +404,23 @@ const IconButton = ({ glyph, label, active, onClick, node, tut }) => {
         cursor: 'pointer',
         fontFamily: 'Source Sans 3, sans-serif',
         touchAction: 'none',
+        minHeight: 44,
       }}
     >
       {active && (
         <span style={{
-          position: 'absolute', top: 0, left: '18%', right: '18%',
-          height: 3, background: COL.brass, borderRadius: '0 0 3px 3px',
+          position: 'absolute', top: 0, left: '50%',
+          width: 24, height: 3, transform: 'translateX(-50%)',
+          background: 'var(--ui-brass)', borderRadius: '0 0 3px 3px',
           pointerEvents: 'none',
         }} />
       )}
       <span style={{
-        width: 38,
-        height: 38,
+        width: 40,
+        height: 40,
         borderRadius: 10,
-        background: plate,
-        boxShadow: 'inset 0 1px 0 rgba(255,255,255,.25), 0 1px 2px rgba(0,0,0,.3)',
+        background: active ? 'var(--ui-brass-soft)' : 'transparent',
+        border: active ? '1px solid rgba(216,170,88,.45)' : '1px solid transparent',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -358,10 +440,9 @@ const IconButton = ({ glyph, label, active, onClick, node, tut }) => {
         )}
       </span>
       <span style={{
-        /* v2.3.1227: 11.5/600 toolbar label (Lantern Slate ladder). */
-        fontSize: 11.5,
+        fontSize: 11,
         fontWeight: 600,
-        color: active ? COL.text : COL.text2,
+        color: active ? 'var(--ui-text)' : 'var(--ui-text-muted)',
         letterSpacing: '.02em',
       }}>{label}</span>
     </button>
@@ -448,6 +529,13 @@ const InventoryPreview = () => {
         gridAutoRows: 'min-content',
         alignContent: 'center',
         gap: 3,
+        /* v2.3.1235: §4 — the Bag is the dashboard's DEEPEST area: one
+           recessed well-deep tray holding the nine slots. */
+        padding: 4,
+        borderRadius: 8,
+        background: 'linear-gradient(180deg, #101D23, var(--ui-well-deep))',
+        border: `1px solid ${COL.border}`,
+        boxShadow: 'inset 0 2px 5px rgba(0,0,0,0.32), inset 0 1px 0 rgba(255,255,255,0.025)',
       }}>
         {tiles.map((e, i) => (
           <BagTile
@@ -502,7 +590,10 @@ export const BottomDashboard = () => {
     const id = setInterval(() => force(v => v + 1), 200);
     return () => clearInterval(id);
   }, []);
-  useEffect(() => dashboardPanelBus.subscribe(() => force(v => v + 1)), []);
+  /* v2.3.1235: batch-4 state-correction §2 — an anchored stat tooltip
+     must not linger over a freshly opened panel: clear it on every
+     panel-bus event (it did NOT clear before; only the 3s timer did). */
+  useEffect(() => dashboardPanelBus.subscribe(() => { setTooltip(''); force(v => v + 1); }), []);
   /* v2.3.1229b: chat-bubble state lights the Chat toolbar icon. */
   useEffect(() => chatBubbleBus.subscribe(() => force(v => v + 1)), []);
   /* Player-card portrait: a head-and-shoulders render of the player's
@@ -625,7 +716,7 @@ export const BottomDashboard = () => {
       {/* v2.3.911: build-skill point-spend confirmation window (floats above
           the dashboard at zIndex 60, over the Builds menu). */}
       <SpendPointConfirm />
-      <Tooltip text={tooltip} onClose={() => setTooltip('')} />
+      <Tooltip tip={tooltip} onClose={() => setTooltip('')} />
 
       {/* v2.3.821: the XP bar moved off the bottom trim into the top-right
           character card (beneath the gold row) at the owner's request --
@@ -736,11 +827,18 @@ export const BottomDashboard = () => {
            small in the leftover strip once the toolbar persisted) —
            bottom-sheet pattern; the world stays visible above.  220ms =
            the spec's panel motion token. */
-        height: active ? '56vh' : 'var(--dash-h)',
+        /* v2.3.1235: Checkpoint B §3 — More is a LAUNCHER, not a content
+           panel: 56vh left it a giant empty sheet, so it sizes to its
+           content (header + 5×2 grid + toolbar ≈ 260px). Every other
+           panel keeps the 56vh bottom sheet. */
+        height: active ? (activeId === 'more' ? 'auto' : '56vh') : 'var(--dash-h)',
         transition: 'height 220ms cubic-bezier(.2,.8,.2,1)',
         /* v2.3.1227: Lantern Slate band — charcoal gradient, warm top
            edge (the "lantern" cue), soft up-shadow. */
-        background: 'linear-gradient(180deg, #253239 0%, #202C32 46%, #172126 100%)',
+        /* v2.3.1235: §4 — ONE continuous band-top→band-bottom gradient
+           (no mid stop) + the quiet brass top edge (edge-warm token is
+           now rgba(216,170,88,.42)). */
+        background: 'linear-gradient(180deg, var(--ui-band-top) 0%, var(--ui-band-bottom) 100%)',
         borderTop: `1px solid ${COL.edgeWarm}`,
         boxShadow: '0 -10px 24px rgba(6,10,12,.22)',
         color: COL.text,
@@ -811,7 +909,11 @@ export const BottomDashboard = () => {
           {/* 3-column body with section headers; gold moved to the Bag. */}
           <div style={{
             flex: 1,
-            padding: '4px 12px 6px',
+            /* v2.3.1235: Checkpoint B §2 — top padding 4→9 so the Loadout
+               column's 5px translateY lift paints instead of being clipped
+               by this overflow:hidden body (the previous marginTop:-5 lift
+               was invisible for exactly this reason). */
+            padding: '9px 12px 6px',
             overflow: 'hidden',
             display: 'flex',
             flexDirection: 'column',
@@ -827,12 +929,9 @@ export const BottomDashboard = () => {
                   live-DOM ControlsTutorial measures these instead of the
                   retired frozen screenshot. */}
               <div data-tut="dash-bag" style={{
-                /* v2.3.1057: all three columns (Bag / Loadout / Build) are
-                   now equal width (flex 1 each) so the quick-bag squares,
-                   the loadout slots, and the build cells all line up at the
-                   same size -- the bag and loadout both being 3-col grids
-                   with the same gap means their squares come out identical. */
-                flex: 1,
+                /* v2.3.1235: §4 widths — Bag 31% / Loadout 38% / Build 31%
+                   (flex-grow ratios; Loadout is the wider center anchor). */
+                flex: '31 1 0',
                 display: 'flex',
                 flexDirection: 'column',
                 minWidth: 0,
@@ -847,7 +946,7 @@ export const BottomDashboard = () => {
                 {/* v2.3.1065: BAG title matching the Loadout/Build ColHeaders
                     (sits on the red container tint; the leather-backed grid
                     renders below). */}
-                <ColHeader>Bag</ColHeader>
+                <ColHeader icon="/icons/ui/nav-inventory.webp?v=2.3.1224">Bag</ColHeader>
                 {/* v2.3.155: hybrid HP/MP/END card replaced with a
                     compact inventory preview. The derived stats it used
                     to show (Crit / Block / Zone / Kills / Time) are
@@ -995,19 +1094,31 @@ export const BottomDashboard = () => {
                   v2.3.1057: flex 1.35 -> 1 so Bag / Loadout / Build are all
                   equal width. */}
               <div data-tut="dash-loadout" style={{
-                flex: 1,
+                /* v2.3.1235: §4 — Loadout is the dashboard's raised center
+                   ANCHOR: 38% width, lifted 5px above its siblings, a
+                   subtly brighter raised surface with rounded TOP corners
+                   and a restrained shadow.  The full-height divider lines
+                   are gone — depth separates the columns now. */
+                flex: '38 1 0',
                 display: 'flex',
                 flexDirection: 'column',
                 minWidth: 0,
                 padding: 4,
-                /* v2.3.1227: Loadout is the subtly RAISED focal center —
-                   value lift + top highlight, no thick frame (§8). */
-                borderLeft: `1px solid ${COL.divider}`,
-                borderRight: `1px solid ${COL.divider}`,
-                background: 'linear-gradient(180deg, rgba(255,255,255,.035), rgba(255,255,255,.015))',
-                boxShadow: 'inset 0 1px 0 rgba(255,255,255,.055)',
+                position: 'relative',
+                zIndex: 1,
+                /* v2.3.1235: Checkpoint B §2 — the lift is a transform (not
+                   a negative top margin) so it can't be eaten by flex
+                   stretch; marginBottom:-5 reclaims the layout slot and the
+                   parent body's paddingTop:9 gives the paint headroom. */
+                transform: 'translateY(-5px)',
+                marginBottom: -5,
+                background: 'linear-gradient(180deg, #2B3E44, var(--ui-raised))',
+                border: '1px solid rgba(229,237,233,.16)',
+                borderBottom: 'none',
+                borderRadius: '10px 10px 0 0',
+                boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.05), 0 -5px 14px rgba(3,8,10,.20)',
               }}>
-                <ColHeader>Loadout</ColHeader>
+                <ColHeader icon="/icons/ui/combat-melee.webp?v=2.3.1225">Loadout</ColHeader>
                 {(() => {
                   /* DMG/DPS calc — mirrors WeaponSwapBar.readState() so the
                      numbers match what combat actually rolls.  Stat driver
@@ -1133,13 +1244,18 @@ export const BottomDashboard = () => {
                         <span style={{
                           color: COL.muted,
                           fontWeight: 700,
-                          /* v2.3.1233: QA — 9px/.06em "AMULET" (~40px) spilled
-                             out of its ~35px square into the CAPE cell; sized
-                             down empirically (8px → "AMULI", 7px → "AMULE")
-                             until the 6-char labels fit: 6.5px, zero tracking,
-                             full cell width.  Clip (no bleed) is the backstop. */
-                          fontSize: 6.5,
-                          letterSpacing: 0,
+                          /* v2.3.1233: QA — "AMULET" spilled out of its old
+                             ~35px square; 6.5px was the fit then.
+                             v2.3.1235: Loadout is now the 38% column, so the
+                             slots grew ~20% — but checkpoint review caught
+                             "AMULE" clipped at 390×844 at 9px, and the T's
+                             crossbar was STILL half-cut at 8.5px (verified
+                             at 8× zoom). 8px + tight tracking finally fits
+                             the full word on the narrowest supported phone
+                             (11px floor waived for these placeholder tags;
+                             clip is the backstop). */
+                          fontSize: 8,
+                          letterSpacing: '-0.02em',
                           maxWidth: '100%',
                           overflow: 'hidden',
                           whiteSpace: 'nowrap',
@@ -1236,23 +1352,40 @@ export const BottomDashboard = () => {
                         justifyContent: 'center',
                         gap: 2,
                       }}>
+                        {/* v2.3.1235: Checkpoint B §2 — the combat summary was
+                           micro-text (9px one-liner). Restructured to the key-
+                           number ladder: line 1 is the headline DMG range at
+                           12/700 tabular, line 2 is DPS · DEF at 11/600. The
+                           old single-line clipping problem goes away because
+                           the widest value now lives on its own line. */}
                         <div
-                          onPointerUp={(e) => { e.stopPropagation(); setTooltip(`${slotLabel} weapon — tap the weapon slot to cycle melee → ranged → staff.`); }}
+                          /* v2.3.1235: batch-4 state-correction §2 — structured
+                             anchored tooltip; live DMG/DPS numbers are the same
+                             calcDisplayDmgRange/Dps values the cell prints. */
+                          onPointerUp={(e) => { e.stopPropagation(); setTooltip({
+                            title: `DMG ${dmgText}`,
+                            benefit: `${dpsText} damage per second (${slotLabel.toLowerCase()})`,
+                            body: 'Tap the weapon slot to cycle melee → ranged → staff.',
+                            anchor: e.currentTarget.getBoundingClientRect(),
+                          }); }}
                           title={`${slotLabel} · DMG ${dmgText} · DPS ${dpsText}`}
-                          style={{ /* v2.3.1233: QA — 11px overflowed the ~110px
-                             rest-band module (clipped to "MG 8-13 · DPS 17.").
-                             v2.3.1234: 9.5px fit the STARTER values with zero
-                             headroom — a godly roll ("DMG 23-38 · DPS 50.8")
-                             clipped again. 9px holds realistic value widths. */
-                            fontSize: 9, color: COL.text, letterSpacing: 0, textAlign: 'center', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', cursor: 'pointer', touchAction: 'none' }}>
-                          <span style={{ color: COL.muted }}>DMG </span>{dmgText}
-                          <span style={{ color: COL.muted }}>  ·  DPS </span>{dpsText}
+                          style={{ fontSize: 12, fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: COL.text, letterSpacing: 0, textAlign: 'center', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', cursor: 'pointer', touchAction: 'none' }}>
+                          <span style={{ color: COL.muted, fontWeight: 600 }}>DMG </span>{dmgText}
                         </div>
                         <div
-                          onPointerUp={(e) => { e.stopPropagation(); setTooltip('Defense from worn armor (chest + legs). Placeholder for now — armor does not yet reduce damage.'); }}
+                          /* v2.3.1235: batch-4 state-correction §2 — structured
+                             anchored tooltip; armorDef is the same live number
+                             the readout prints (chest + legs ×5 placeholder). */
+                          onPointerUp={(e) => { e.stopPropagation(); setTooltip({
+                            title: `DEF +${armorDef}`,
+                            benefit: `+${armorDef} defense from worn armor`,
+                            body: 'Counts chest + legs pieces; armor damage mitigation is not wired up yet.',
+                            anchor: e.currentTarget.getBoundingClientRect(),
+                          }); }}
                           title="Defense from worn armor"
-                          style={{ fontSize: 10, color: COL.text, letterSpacing: '.02em', textAlign: 'center', whiteSpace: 'nowrap', cursor: 'pointer', touchAction: 'none' }}>
-                          <span style={{ color: COL.muted }}>DEF </span>+{armorDef}
+                          style={{ fontSize: 11, fontWeight: 600, fontVariantNumeric: 'tabular-nums', color: COL.text, letterSpacing: 0, textAlign: 'center', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', cursor: 'pointer', touchAction: 'none' }}>
+                          <span style={{ color: COL.muted }}>DPS </span>{dpsText}
+                          <span style={{ color: COL.muted }}>  ·  DEF </span>+{armorDef}
                         </div>
                       </div>
                       {/* Rows 2-3 — the six equipment slots (Chest·Weapon·Shield
@@ -1297,14 +1430,14 @@ export const BottomDashboard = () => {
                   occupies sub-col 1; Life Skills fills sub-cols 2 and 3
                   (5 rows of 2 skills each).  Per-cell XP strip preserved. */}
               <div ref={buildColRef} data-tut="dash-build" style={{
-                flex: 1,
+                /* v2.3.1235: §4 widths — Build 31%, flat quiet readout. */
+                flex: '31 1 0',
                 display: 'flex',
                 flexDirection: 'column',
                 minWidth: 0,
                 padding: 4,
-                /* v2.3.1227: Build is the flat quiet readout (§8). */
               }}>
-                <ColHeader>{SHOW_LIFE_SKILLS ? 'Stats · Skills' : 'Build'}</ColHeader>
+                <ColHeader icon="/icons/ui/panel-stats.webp?v=2.3.1224">{SHOW_LIFE_SKILLS ? 'Stats · Skills' : 'Build'}</ColHeader>
                 <div style={{
                   flex: 1,
                   display: 'grid',
@@ -1314,11 +1447,13 @@ export const BottomDashboard = () => {
                      column-flow layout (Build in sub-col 1, skills in 2-3). */
                   gridTemplateColumns: 'repeat(3, 1fr)',
                   gridTemplateRows: SHOW_LIFE_SKILLS ? 'repeat(5, 1fr)' : 'repeat(2, 1fr)',
-                  gap: 2,
+                  /* v2.3.1235: §4 — open grid: no gap, cells share faint
+                     dividers instead of six individual dark cards. */
+                  gap: SHOW_LIFE_SKILLS ? 2 : 0,
                   gridAutoFlow: SHOW_LIFE_SKILLS ? 'column' : 'row',
                   minHeight: 0,
                 }}>
-                  {CHAR_STATS.map(s => {
+                  {CHAR_STATS.map((s, bi) => {
                     /* Defense is a Tier-2 skill (level on rpg.defenseSkill);
                        the rest are Tier-1 capacity stats read straight off R.
                        defenseSkill is absent until v2.3.693 wires it -> 0. */
@@ -1334,7 +1469,7 @@ export const BottomDashboard = () => {
                        xpRequired(combat level), i.e. the stat SUM. */
                     const statThresh = Math.max(200, Math.floor(xpRequired(val)));
                     const pct = Math.max(0, Math.min(100, (prog / statThresh) * 100));
-                    let bonusTxt = '';
+                    let benefit = '';
                     /* v2.3.1207: vitality reads R.maxHp (the recalc/echo
                        product — includes armor HP + the Vigor mult) like
                        the endurance sibling, instead of re-deriving a
@@ -1345,13 +1480,19 @@ export const BottomDashboard = () => {
                        retired pre-v2.3.912 rate, already fixed in the
                        loadout copy but missed here and in the
                        combatHelpers level-up floater. */
-                    if (s.key === 'vitality')       bonusTxt = `${R.maxHp || calcMaxHp(R.level || 1, val)} HP`;
-                    else if (s.key === 'endurance') bonusTxt = `${R.maxStamina || calcMaxStam(val)} STA`;
-                    else if (s.key === 'power')     bonusTxt = `+${(val * 0.1667).toFixed(1)} melee base dmg`;
-                    else if (s.key === 'agility')   bonusTxt = `+${(val * 0.1667).toFixed(1)} bow base dmg`;
-                    else if (s.key === 'mind')      bonusTxt = `+${(val * 0.1667).toFixed(1)} magic base dmg`;
-                    else if (s.key === 'defense')   bonusTxt = `Lv ${val} — block + damage cut`;
-                    const tipFull = `${s.label} ${val} → ${bonusTxt}. ${s.tip}`;
+                    /* v2.3.1235: batch-4 state-correction §2 — bonusTxt/
+                       tipFull prose replaced by the structured tooltip's
+                       three parts: title `${label} ${val}`, this benefit
+                       line (same live formulas as before), and the short
+                       s.train sentence.  Defense has no live coefficient
+                       to print, so it gets the effect phrase, no number. */
+                    if (s.key === 'vitality')       benefit = `${R.maxHp || calcMaxHp(R.level || 1, val)} max HP`;
+                    else if (s.key === 'endurance') benefit = `${R.maxStamina || calcMaxStam(val)} max stamina`;
+                    else if (s.key === 'power')     benefit = `+${(val * 0.1667).toFixed(1)} base melee damage`;
+                    else if (s.key === 'agility')   benefit = `+${(val * 0.1667).toFixed(1)} base bow damage`;
+                    else if (s.key === 'mind')      benefit = `+${(val * 0.1667).toFixed(1)} base magic damage`;
+                    else if (s.key === 'defense')   benefit = 'Stronger blocks + damage reduction';
+                    const tipTitle = `${s.label} ${val}`;
                     /* v2.3.911: unspent Tier-2 points for this build skill.
                        When > 0 the cell pulses + shows a badge, and tapping it
                        opens the Builds menu jumped to that skill's tab instead
@@ -1367,10 +1508,17 @@ export const BottomDashboard = () => {
                             requestT2Category(openT2Cat);
                             dashboardPanelBus.push('t2');
                           } else {
-                            setTooltip(tipFull);
+                            /* v2.3.1235: batch-4 state-correction §2 —
+                               structured tooltip anchored to this cell. */
+                            setTooltip({
+                              title: tipTitle,
+                              benefit,
+                              body: s.train,
+                              anchor: e.currentTarget.getBoundingClientRect(),
+                            });
                           }
                         }}
-                        title={tipFull}
+                        title={`${tipTitle} — ${benefit}. ${s.train}`}
                         style={{
                           position: 'relative',
                           display: 'flex',
@@ -1382,9 +1530,13 @@ export const BottomDashboard = () => {
                           justifyContent: 'center',
                           gap: 1,
                           padding: '2px 4px',
-                          borderRadius: 3,
-                          background: COL.wellSoft,
-                          border: `1px solid ${COL.tileBor}`,
+                          /* v2.3.1235: §4 — OPEN cells: no fill, no card
+                             border; faint shared dividers between cells
+                             (right edge on cols 1-2, bottom edge on row 1
+                             of the 3x2 build grid). */
+                          background: 'transparent',
+                          borderRight: (!SHOW_LIFE_SKILLS && bi % 3 !== 2) ? `1px solid ${COL.divider}` : 'none',
+                          borderBottom: (!SHOW_LIFE_SKILLS && bi < 3) ? `1px solid ${COL.divider}` : 'none',
                           overflow: 'hidden',
                           cursor: 'pointer',
                           touchAction: 'none',
@@ -1417,7 +1569,8 @@ export const BottomDashboard = () => {
                             minHeight: 0,
                           }}
                         />
-                        <span style={{ color: COL.text, fontWeight: 700, fontSize: 14, lineHeight: 1 }}>{val}</span>
+                        {/* v2.3.1235: §3 key numbers — 16/700 tabular. */}
+                        <span style={{ color: COL.text, fontWeight: 700, fontSize: 16, lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>{val}</span>
                         <div style={{
                           position: 'absolute',
                           left: 0, right: 0, bottom: 0,
@@ -1513,7 +1666,8 @@ export const BottomDashboard = () => {
             minHeight: 56,
             flex: '0 0 auto',
             borderTop: `1px solid ${COL.divider}`,
-            background: 'linear-gradient(180deg, #131D22 0%, #10181D 100%)',
+            /* v2.3.1235: §5 — flat darkest toolbar shelf. */
+            background: 'var(--ui-toolbar)',
             display: 'flex',
             alignItems: 'stretch',
           }}>
@@ -1531,7 +1685,15 @@ export const BottomDashboard = () => {
                 placeholder inline SVG. */}
             <IconButton glyph="chat" label="Chat" tut="dash-chat"
               active={chatBubbleBus.open}
-              onClick={() => chatBubbleBus.toggle()} />
+              onClick={() => {
+                /* v2.3.1235: §7 Chat state fix — opening Chat dismisses
+                   any open destination sheet so the composer shows over
+                   the world/HUD with only Chat marked active (it used
+                   to open ON TOP of e.g. the Journey panel). */
+                const opening = !chatBubbleBus.open;
+                chatBubbleBus.toggle();
+                if (opening) dashboardPanelBus.clear();
+              }} />
             <IconButton glyph="more"      label="More" tut="dash-more" active={moreLit}
               onClick={() => dashboardPanelBus.toggle('more')} />
           </div>

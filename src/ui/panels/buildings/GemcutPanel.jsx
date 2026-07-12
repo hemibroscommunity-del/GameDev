@@ -14,17 +14,23 @@ import { pushDmgPopup } from '@/game/combatHelpers.js';
    handler is byte-identical (v2.3.1198 server-settled gem_cut_request
    path preserved). LS token block duplicated per building panel to
    keep the decomposed files dependency-free. */
+/* v2.3.1235: batch-3 rollout — correction-pass token remap (game.css
+   :root). The v2.3.1232 literals were the superseded v2.3.1227
+   palette; same roles, approved values. Four depth roles only, so
+   wellSoft folds into the well, and the off-token .08/.14 hairlines
+   fold into the approved .11 line (.20 borderStrong added for
+   secondary buttons). Header strip adopts the #27393F header token. */
 var LS = {
-  txt1: '#F7F2E7', txt2: '#B9C1BF', txt3: '#96A2A0', dis: '#687575',
-  panel: '#202C32', strip: '#182227', raised: '#2B3940', well: '#121B20', wellSoft: '#19252A',
-  border: 'rgba(238,242,235,.14)', divider: 'rgba(238,242,235,.10)', wellBorder: 'rgba(238,242,235,.08)',
-  brass: '#D8A85F', brassFill: '#3B3427', onBrass: '#20170D'
+  txt1: '#F4F0E7', txt2: '#B6C1BE', txt3: '#8D9B98', dis: '#667875',
+  panel: '#1E2E34', strip: '#27393F', raised: '#293B41', well: '#111E23', wellSoft: '#111E23',
+  border: 'rgba(229,237,233,.11)', borderStrong: 'rgba(229,237,233,.20)', divider: 'rgba(229,237,233,.11)', wellBorder: 'rgba(229,237,233,.11)',
+  brass: '#D8AA58', brassFill: 'rgba(216,170,88,.15)', onBrass: '#172126'
 };
 /* v2.3.1232: -20 margin counters .bt-inspect-card's 20px padding so the
    panel owns its full surface (header strip flush to the card edge). */
 var LS_WRAP = { margin: -20, background: LS.panel, borderRadius: 14, overflow: 'hidden', textAlign: 'left' };
 var LS_BODY = { padding: '12px 14px 14px' };
-var LS_MOD = { fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.12em', color: LS.txt3, margin: '0 0 6px' };
+var LS_MOD = { fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.14em', color: LS.txt3, margin: '0 0 6px' }; /* v2.3.1235: batch-3 rollout — section headers are 11/700 .14em muted per the locked contract */
 function lsHeader(icon, emoji, title, subtitle) {
   return React.createElement("div", {
     style: { display: 'flex', alignItems: 'center', gap: 10, padding: '12px 40px 12px 16px', background: LS.strip, borderBottom: '1px solid ' + LS.border }
@@ -73,16 +79,17 @@ export function GemcutPanel(props) {
         var gemCol = ((_ZONE_RESOURCES$elem2 = ZONE_RESOURCES[elem]) === null || _ZONE_RESOURCES$elem2 === void 0 ? void 0 : _ZONE_RESOURCES$elem2.gemColor) || edef.color;
         return /*#__PURE__*/React.createElement("div", {
           key: elem,
+          /* v2.3.1235: batch-3 rollout — divided list rows replace the
+             per-row well cards (contract: dividers over per-row cards);
+             the first row's top hairline doubles as the rule under the
+             module header. */
           style: {
             display: 'flex',
             alignItems: 'center',
             gap: 10,
-            marginBottom: 6,
-            padding: '8px 10px',
+            padding: '8px 2px',
             minHeight: 44,
-            borderRadius: 8,
-            background: LS.wellSoft,
-            border: '1px solid ' + LS.wellBorder
+            borderTop: '1px solid ' + LS.divider
           }
         }, /*#__PURE__*/React.createElement("div", {
           style: {
@@ -104,19 +111,24 @@ export function GemcutPanel(props) {
           }
         }, "◇ Raw: ", rawCount, " \xB7 ◆ Polished: ", polCount), /*#__PURE__*/React.createElement("div", {
           style: {
-            fontSize: 10.5,
+            fontSize: 11 /* v2.3.1235: batch-3 rollout — 11px text floor (was 10.5) */,
             color: LS.txt3,
             fontVariantNumeric: 'tabular-nums'
           }
         }, "Success: ", Math.round(successRate * 100), "%")), /*#__PURE__*/React.createElement("button", {
+          /* v2.3.1235: batch-3 rollout — secondary recipe (raised +
+             strong hairline, 10px radius — 11 is off the approved
+             set) and the 44px hitbox floor (was 36). No-raw state
+             stays readable: quiet outline, disabled text, and the
+             row's "Raw: 0" count is the requirement. */
           style: {
             padding: '8px 14px',
-            minHeight: 36,
-            borderRadius: 11,
+            minHeight: 44,
+            borderRadius: 10,
             fontSize: 13,
             fontWeight: 700,
-            background: rawCount > 0 ? LS.raised : LS.well,
-            border: '1px solid ' + (rawCount > 0 ? LS.border : LS.wellBorder),
+            background: rawCount > 0 ? LS.raised : 'transparent',
+            border: '1px solid ' + (rawCount > 0 ? LS.borderStrong : LS.border),
             color: rawCount > 0 ? LS.txt1 : LS.dis,
             cursor: 'pointer'
           },

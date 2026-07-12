@@ -18,26 +18,34 @@ import { _slicedToArray } from '@/lib/babelHelpers.js';
 
 /* v2.3.1232: Lantern Slate style tokens — local so this legacy panel needs
    no new shared module (parallel-session safety). */
+/* v2.3.1235: batch-2 rollout — correction-pass retint: the v2.3.1227
+   literals (#202C32 / #121B20 / rgba(238,242,235,…)) are off the
+   owner-approved token list; surfaces now read the :root --ui-* vars
+   (game.css) so this panel shifts with any future palette pass, and
+   the card/well copy the shared .ui-panel/.ui-well shadow recipes
+   instead of the retired v2.3.1227 ones.  Headers move to the locked
+   11/700 .14em ladder (were 11/600 .12em). */
 var LS_CARD = {
-  background: '#202C32',
-  border: '1px solid rgba(238,242,235,.14)',
+  background: 'var(--ui-sheet)',
+  border: '1px solid var(--ui-line-strong)',
   borderRadius: 14,
-  boxShadow: '0 14px 30px rgba(4,7,9,.38)',
+  boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.045), 0 14px 36px rgba(3,8,10,0.30)',
   textAlign: 'left'
 };
 var LS_HEADER = {
   fontSize: 11,
-  fontWeight: 600,
+  fontWeight: 700,
   textTransform: 'uppercase',
-  letterSpacing: '.12em',
-  color: '#96A2A0'
+  letterSpacing: '.14em',
+  color: 'var(--ui-text-muted)'
 };
 var LS_WELL = {
-  background: '#121B20',
+  background: 'linear-gradient(180deg, #132329, #111E23)',
+  border: '1px solid var(--ui-line)',
   borderRadius: 10,
-  boxShadow: 'inset 0 2px 4px rgba(0,0,0,.44), inset 0 1px 0 rgba(255,255,255,.035)'
+  boxShadow: 'inset 0 2px 5px rgba(0,0,0,0.32), inset 0 1px 0 rgba(255,255,255,0.025)'
 };
-var LS_DIVIDER = '1px solid rgba(238,242,235,.10)';
+var LS_DIVIDER = '1px solid var(--ui-line)';
 var LS_SECTION = { borderTop: LS_DIVIDER, paddingTop: 12, marginTop: 12 };
 
 /* v2.3.1232: UI-Bible icon with emoji fallback (onError replaceWith
@@ -52,13 +60,16 @@ var lsIcon = function lsIcon(src, emoji, size) {
   });
 };
 
-/* v2.3.1232: spec XP bar — #0B1216 track (radius 999, inner shadow) +
-   flat #61B06B fill under a white .20→transparent 55% vertical overlay. */
+/* v2.3.1232: spec XP bar — well-deep track (radius 999, inner shadow) +
+   flat XP-green fill under a white .20→transparent 55% vertical overlay. */
+/* v2.3.1235: batch-2 rollout — track #0B1216→well-deep #0B161B and
+   fill #61B06B→#58B97B (--ui-xp): the old pair pre-dates the approved
+   correction-pass tokens. */
 var lsXpBar = function lsXpBar(pct) {
   return React.createElement('div', {
     style: {
       height: 6,
-      background: '#0B1216',
+      background: 'var(--ui-well-deep)',
       borderRadius: 999,
       overflow: 'hidden',
       boxShadow: 'inset 0 1px 2px rgba(0,0,0,.55)'
@@ -68,7 +79,7 @@ var lsXpBar = function lsXpBar(pct) {
       width: pct + '%',
       height: '100%',
       borderRadius: 999,
-      background: 'linear-gradient(180deg, rgba(255,255,255,.20), rgba(255,255,255,0) 55%) #61B06B',
+      background: 'linear-gradient(180deg, rgba(255,255,255,.20), rgba(255,255,255,0) 55%) #58B97B',
       transition: 'width 180ms cubic-bezier(.2,.8,.2,1)'
     }
   }));
@@ -82,11 +93,13 @@ var lsSkillRow = function lsSkillRow(sk, skill, xpNeeded, xpPct) {
   }, React.createElement('div', {
     style: { display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }
   }, sk.iconSrc ? lsIcon(sk.iconSrc, sk.icon, 20) : React.createElement('span', { style: { fontSize: 16 } }, sk.icon), React.createElement('span', {
-    style: { flex: 1, fontSize: 13.5, fontWeight: 600, color: '#F7F2E7' }
+    style: { flex: 1, fontSize: 13.5, fontWeight: 600, color: 'var(--ui-text)' }
   }, sk.name), React.createElement('span', {
-    style: { fontSize: 14, fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: '#F7F2E7' }
+    style: { fontSize: 14, fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: 'var(--ui-text)' }
   }, 'Lv ', skill.level)), lsXpBar(xpPct), React.createElement('div', {
-    style: { fontSize: 10, fontWeight: 600, color: '#96A2A0', marginTop: 3, fontVariantNumeric: 'tabular-nums' }
+    /* v2.3.1235: batch-2 rollout — 10px caption was below the locked
+       11px text floor. */
+    style: { fontSize: 11, fontWeight: 600, color: 'var(--ui-text-muted)', marginTop: 3, fontVariantNumeric: 'tabular-nums' }
   }, skill.xp, '/', xpNeeded, ' XP \xB7 ', sk.desc));
 };
 
@@ -95,7 +108,7 @@ var lsEmpty = function lsEmpty(text) {
   return React.createElement('div', {
     style: Object.assign({}, LS_WELL, {
       fontSize: 12,
-      color: '#96A2A0',
+      color: 'var(--ui-text-muted)',
       textAlign: 'center',
       padding: '14px 10px',
       lineHeight: 1.4
@@ -120,12 +133,20 @@ export function SkillsPanel(props) {
     },
     style: Object.assign({}, LS_CARD, {
       width: 'min(360px, calc(100vw - 24px))', /* v2.3.1234: was 320 fixed — fill narrow phones, never overflow */
-      maxHeight: '80vh',
+      /* v2.3.1235: batch-2 rollout — 80vh could exceed the .bt-inspect
+         content box (which reserves the HUD strip + dashboard band);
+         100% defers to the wrapper's clearance so nothing scrolls
+         beneath the band. */
+      maxHeight: '100%',
       overflowY: 'auto',
       padding: 16
     })
   }, /*#__PURE__*/React.createElement("button", {
     className: "bt-inspect-close",
+    /* v2.3.1235: batch-2 rollout — the shared class is 28×28, below the
+       locked 44px hitbox floor; inline override on this modal only
+       (game.css is shared with concurrent sessions). */
+    style: { width: 44, height: 44 },
     onClick: function onClick() {
       return setShowSkills(false);
     }
@@ -143,7 +164,7 @@ export function SkillsPanel(props) {
       fontWeight: 700,
       textTransform: 'uppercase',
       letterSpacing: '.10em',
-      color: '#F7F2E7'
+      color: 'var(--ui-text)'
     }
   }, "Life Skills")), /*#__PURE__*/React.createElement("div", {
     style: Object.assign({}, LS_HEADER, {
@@ -276,7 +297,7 @@ export function SkillsPanel(props) {
       var parts = k.split('_'); /* raw_flame, polished_frost, etc */
       var qual = parts[0];
       var elem = parts[1];
-      var gc = ((_ZONE_RESOURCES$elem3 = ZONE_RESOURCES[elem]) === null || _ZONE_RESOURCES$elem3 === void 0 ? void 0 : _ZONE_RESOURCES$elem3.gemColor) || '#9A76D3';
+      var gc = ((_ZONE_RESOURCES$elem3 = ZONE_RESOURCES[elem]) === null || _ZONE_RESOURCES$elem3 === void 0 ? void 0 : _ZONE_RESOURCES$elem3.gemColor) || '#9A78D0'; /* v2.3.1235: batch-2 rollout — fallback onto the approved magic token */
       return /*#__PURE__*/React.createElement("span", {
         key: k,
         style: {
@@ -289,7 +310,10 @@ export function SkillsPanel(props) {
           boxSizing: 'border-box',
           padding: '3px 10px',
           borderRadius: 999,
-          background: '#19252A',
+          /* v2.3.1235: batch-2 rollout — chip base #19252A (retired
+             well-soft) → card token: occupied cells sit on --ui-card
+             per the correction pass; gem tint border is game data. */
+          background: 'var(--ui-card)',
           color: gc,
           border: '1px solid ' + gc + '30',
           fontVariantNumeric: 'tabular-nums'
@@ -336,7 +360,9 @@ export function SkillsPanel(props) {
           width: 18,
           textAlign: 'center',
           flex: 'none',
-          color: done ? '#59BF91' : '#96A2A0'
+          /* v2.3.1235: batch-2 rollout — positive #59BF91 → #55B98A
+             (approved correction-pass token). */
+          color: done ? '#55B98A' : 'var(--ui-text-muted)'
         }
       }, done ? '✓' : '○'), /*#__PURE__*/React.createElement("div", {
         style: {
@@ -347,19 +373,20 @@ export function SkillsPanel(props) {
         style: {
           fontSize: 13,
           fontWeight: 600,
-          color: '#F7F2E7'
+          color: 'var(--ui-text)'
         }
       }, q.title), /*#__PURE__*/React.createElement("div", {
         style: {
           fontSize: 11,
-          color: '#96A2A0',
+          color: 'var(--ui-text-muted)',
           lineHeight: 1.35
         }
       }, q.desc)), /*#__PURE__*/React.createElement("span", {
+        /* v2.3.1235: batch-2 rollout — 10px was below the 11px floor */
         style: {
-          fontSize: 10,
+          fontSize: 11,
           fontWeight: 600,
-          color: '#96A2A0',
+          color: 'var(--ui-text-muted)',
           flex: 'none'
         }
       }, q.npc));
@@ -377,11 +404,13 @@ export function SkillsPanel(props) {
   }, /*#__PURE__*/React.createElement("span", {
     style: LS_HEADER
   }, "Achievement Points"), /*#__PURE__*/React.createElement("span", {
+    /* v2.3.1235: batch-2 rollout — the section's one key number moves
+       onto the locked 16-18/700 tabular rung (was 14). */
     style: {
-      fontSize: 14,
+      fontSize: 16,
       fontWeight: 700,
       fontVariantNumeric: 'tabular-nums',
-      color: '#F7F2E7'
+      color: 'var(--ui-text)'
     }
   }, rpgState.achievementPoints || 0)), /*#__PURE__*/React.createElement("div", {
     style: Object.assign({}, LS_HEADER, {
@@ -391,28 +420,24 @@ export function SkillsPanel(props) {
     var cs = rpgState._compStats || createDefaultCompStats();
     /* Update playtime */
     var playmins = Math.floor(((cs.playtimeSeconds || 0) + (Date.now() - (cs._sessionStart || Date.now())) / 1000) / 60);
-    /* v2.3.1232: section accents remapped onto the Lantern Slate
-       semantic set (magic replaces the old indigo, info replaces brass
-       — brass is reserved for primary actions). */
+    /* v2.3.1235: batch-2 rollout — the per-section accent colors
+       (v2.3.1232) were decorative: the locked contract pins section
+       headers to 11/700 uppercase .14em muted, and semantic colors are
+       reserved for bars/state, so the color field is gone. */
     var sections = [{
       label: 'Combat',
-      color: '#D95C54',
       stats: [['Monsters Killed', cs.monstersKilled], ['Deaths', cs.deaths], ['Grand Slams', cs.grandSlams], ['Bosses Killed', cs.bossesKilled], ['Highest Kill Lv', cs.highestMonsterKill], ['Crits Landed', cs.critLanded], ['Collisions', cs.collisionsTriggered]]
     }, {
       label: 'PvP',
-      color: '#9A76D3',
       stats: [['PvP Kills', cs.pvpKills], ['PvP Deaths', cs.pvpDeaths], ['Duels Won', cs.duelsWon], ['Duels Lost', cs.duelsLost]]
     }, {
       label: 'Life Skills',
-      color: '#59BF91',
       stats: [['Fish Caught', cs.fishCaught], ['Trees Felled', cs.treesFelled], ['Ores Mined', cs.oresMined], ['Items Crafted', cs.itemsCrafted], ['Items Salvaged', cs.itemsSalvaged], ['Cook Success', cs.cookSuccess], ['Cook Burns', cs.cookBurns], ['Reforges', cs.reforgeAttempts], ['Harden OK', cs.hardenSuccess], ['Harden Fail', cs.hardenFails]]
     }, {
       label: 'Economy',
-      color: '#D8A94D',
       stats: [['Gold Earned', cs.totalGoldEarned], ['Gold Spent', cs.totalGoldSpent], ['Gold Lost (death)', cs.goldLostToDeath], ['Total Gambled', cs.totalGambled], ['Gamble Won', cs.totalGambleWon], ['Gamble Lost', cs.totalGambleLost]]
     }, {
       label: 'Progress',
-      color: '#5D93D2',
       stats: [['Quests Done', cs.questsCompleted], ['Rare Drops', cs.rareDropsFound], ['Zones Explored', cs.zonesExplored], ['Dungeons Cleared', cs.dungeonsCleared], ['Pets Captured', cs.petsCapured], ['Playtime', playmins + 'min']]
     }];
     return sections.map(function (sec) {
@@ -422,21 +447,16 @@ export function SkillsPanel(props) {
           marginBottom: 10
         }
       }, /*#__PURE__*/React.createElement("div", {
-        style: {
-          fontSize: 10,
-          fontWeight: 600,
-          textTransform: 'uppercase',
-          letterSpacing: '.12em',
-          color: sec.color,
+        style: Object.assign({}, LS_HEADER, {
           marginBottom: 4
-        }
+        })
       }, sec.label), /*#__PURE__*/React.createElement("div", {
         style: {
           display: 'grid',
           gridTemplateColumns: '1fr 1fr',
           gap: '3px 12px',
           fontSize: 12,
-          color: '#96A2A0'
+          color: 'var(--ui-text-muted)'
         }
       }, sec.stats.map(function (_ref172) {
         var _ref173 = _slicedToArray(_ref172, 2),
@@ -449,7 +469,7 @@ export function SkillsPanel(props) {
             textAlign: 'right',
             fontWeight: 600,
             fontVariantNumeric: 'tabular-nums',
-            color: '#F7F2E7'
+            color: 'var(--ui-text)'
           }
         }, v || 0));
       })));
@@ -500,7 +520,13 @@ export function SkillsPanel(props) {
         k = _ref187[0];
       return !k.startsWith('fish_') && !k.startsWith('wood_') && !k.startsWith('ore_') && !k.startsWith('herb_') && !k.startsWith('gear_');
     });
-    var renderGroup = function renderGroup(label, emoji, color, arr) {
+    /* v2.3.1235: batch-2 rollout — group headers lose their emoji
+       prefixes (decorative emoji in chrome are banned by the locked
+       contract; the now-unused emoji/color args are dropped with them)
+       and move onto the shared LS_HEADER rung; chips retint from the
+       retired #19252A/rgba(238,242,235,…) pair to the approved
+       card + line tokens. */
+    var renderGroup = function renderGroup(label, arr) {
       if (arr.length === 0) return null;
       return React.createElement('div', {
         key: label,
@@ -508,15 +534,10 @@ export function SkillsPanel(props) {
           marginBottom: 10
         }
       }, React.createElement('div', {
-        style: {
-          fontSize: 10,
-          fontWeight: 600,
-          textTransform: 'uppercase',
-          letterSpacing: '.12em',
-          color: '#96A2A0',
+        style: Object.assign({}, LS_HEADER, {
           marginBottom: 4
-        }
-      }, emoji + ' ' + label), React.createElement('div', {
+        })
+      }, label), React.createElement('div', {
         style: {
           display: 'flex',
           gap: 4,
@@ -537,14 +558,14 @@ export function SkillsPanel(props) {
             alignItems: 'center',
             padding: '3px 10px',
             borderRadius: 999,
-            background: '#19252A',
-            color: '#B9C1BF',
-            border: '1px solid rgba(238,242,235,.08)',
+            background: 'var(--ui-card)',
+            color: 'var(--ui-text-secondary)',
+            border: '1px solid var(--ui-line)',
             fontVariantNumeric: 'tabular-nums'
           }
         }, k.replace(/^(fish|wood|ore|herb|gear)_/, '').replace(/_/g, ' ') + ' ×' + v);
       })));
     };
-    return React.createElement(React.Fragment, null, renderGroup('Fish', '🎣', '#3498DB', fish), renderGroup('Wood', '🪓', '#8B6914', wood), renderGroup('Ore', '⛏️', '#8a8a8a', ore), renderGroup('Herbs', '🌿', '#59BF91', herbs), renderGroup('Gear', '🔨', '#b0b0b0', gear), other.length > 0 && renderGroup('Other', '📦', '#00d4b8', other));
+    return React.createElement(React.Fragment, null, renderGroup('Fish', fish), renderGroup('Wood', wood), renderGroup('Ore', ore), renderGroup('Herbs', herbs), renderGroup('Gear', gear), other.length > 0 && renderGroup('Other', other));
   }())));
 }

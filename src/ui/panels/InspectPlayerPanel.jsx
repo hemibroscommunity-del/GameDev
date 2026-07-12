@@ -3,6 +3,14 @@ import { BT_AUDIO, PVP_THREAT_BASE_COUNTDOWN, PVP_THREAT_COOLDOWN, REPUTATION, Z
 import { _slicedToArray, _toConsumableArray } from '@/lib/babelHelpers.js';
 
 import { pushDmgPopup } from '@/game/combatHelpers.js';
+/* v2.3.1235: Checkpoint B — real pixel-portrait generator + the color-id →
+   RGB target transforms it expects (same set the BottomDashboard player
+   card uses). */
+import { portraitDataUrl } from '../../rendering/characterPortrait.js';
+import { hairColorTarget } from '../../rendering/traits/hairColorCatalog.js';
+import { hatColorTarget } from '../../rendering/traits/hatColorCatalog.js';
+import { facialHairColorTarget } from '../../rendering/traits/facialHairColorCatalog.js';
+import { shirtColorTarget } from '../../rendering/traits/shirtColorCatalog.js';
 /* === InspectPlayerPanel — the inspectPlayer modal === */
 /* v2.3.887: extracted verbatim from the inspectPlayer JSX subtree in
    BroTown.jsx (the player-inspect / social-actions popup: view another
@@ -21,6 +29,13 @@ import { pushDmgPopup } from '@/game/combatHelpers.js';
    primary; Threat/Block speak the destructive language; the old indigo
    (#a78bfa) and amber (#fbbf24) accents map to the spec magic/stamina
    colors. Player/clan/reputation colors stay — they are content color. */
+/* v2.3.1235: owner-approved design correction (§7) — presentation only,
+   every handler/state read/send byte-identical. Real pixel portrait at
+   56px (letter tile only as fallback), compressed header row, Trade is
+   the single gold primary, TP/Duel secondaries, Threat becomes a danger
+   OUTLINE (never a filled red block), sections keep label+divider
+   grouping with quieter cells. Committed tokens: sheet #1E2E34, raised
+   #293B41, lines rgba(229,237,233,.11/.20), brass #D8AA58. */
 
 /* v2.3.1232: Lantern Slate style tokens — local, no shared module. */
 var LS_HEADER = {
@@ -28,17 +43,17 @@ var LS_HEADER = {
   fontWeight: 600,
   textTransform: 'uppercase',
   letterSpacing: '.12em',
-  color: '#96A2A0'
+  color: '#8D9B98' /* v2.3.1235: muted token */
 };
-var LS_DIVIDER = '1px solid rgba(238,242,235,.10)';
+var LS_DIVIDER = '1px solid rgba(229,237,233,0.11)'; /* v2.3.1235: hairline token */
 /* full-width secondary action button */
 var LS_SECONDARY = {
   minHeight: 44,
   padding: '0 12px',
-  borderRadius: 11,
-  border: '1px solid rgba(238,242,235,.14)',
-  background: 'linear-gradient(180deg, #304047 0%, #2B3940 100%)',
-  color: '#F7F2E7',
+  borderRadius: 10, /* v2.3.1235: card radius */
+  border: '1px solid rgba(229,237,233,0.20)', /* v2.3.1235: strong hairline */
+  background: '#293B41', /* v2.3.1235: raised */
+  color: '#F4F0E7',
   fontSize: 12,
   fontWeight: 700,
   cursor: 'pointer'
@@ -58,9 +73,76 @@ export function InspectPlayerPanel(props) {
     setShowTrade = props.setShowTrade,
     setTradeOffer = props.setTradeOffer,
     setTradeTarget = props.setTradeTarget;
+  /* v2.3.1235: Checkpoint B — generate the game's REAL pixel portrait of
+     the inspected player.  NOTE: inspectPlayer.bro is NFT metadata
+     (ID/diScore/rank), NOT appearance — the inspected player's live
+     cosmetics are the flat fields on stateRef.current.others[id]
+     (skin/hair/hairColor/facialhair/facialHairColor/headwear/hatColor/
+     shirt/shirtColor/pants/shoes, filled at player_join/state_sync from
+     the wire's sk/hr/hc/fh/fhc/hw/htc/st/stc/pt/sh).  These are the SAME
+     fields entityRenderer draws, so the portrait matches the in-game
+     figure.  portraitDataUrl is ASYNC (Promise of a data URL); color ids
+     go through the *Target() transforms exactly like the BottomDashboard
+     player-card portrait (~line 537).  Fallback chain when the others
+     entry is gone (player left / placeholder peer) or generation fails:
+     inspectPlayer.avatar img → 56px letter tile. */
+  var _pp = React.useState(null);
+  var genPortrait = _pp[0],
+    setGenPortrait = _pp[1];
+  React.useEffect(function () {
+    var alive = true;
+    setGenPortrait(null);
+    var o = null;
+    try {
+      o = inspectPlayer && stateRef.current && stateRef.current.others ? stateRef.current.others[inspectPlayer.id] : null;
+    } catch (e) {}
+    /* tick-created placeholder peers carry all-null cosmetics — skip so
+       the avatar / letter-tile fallbacks show instead of a default body */
+    if (o && (o.skin || o.hair || o.shirt || o.headwear || o.facialhair || o.pants)) {
+      try {
+        portraitDataUrl({
+          skin: o.skin,
+          pants: o.pants,
+          shoes: o.shoes,
+          hair: o.hair,
+          hairColor: hairColorTarget(o.hairColor),
+          facialHair: o.facialhair,
+          facialHairColor: facialHairColorTarget(o.facialHairColor),
+          headwear: o.headwear,
+          hatColor: hatColorTarget(o.hatColor),
+          shirt: o.shirt,
+          shirtColor: shirtColorTarget(o.shirtColor)
+        }, true).then(function (url) {
+          if (alive && url) setGenPortrait(url);
+        }).catch(function () {});
+      } catch (e) {}
+    }
+    return function () {
+      alive = false;
+    };
+  }, [inspectPlayer]);
+  /* v2.3.1235: rollout micro-fix §1 — the scrollable body hides its
+     scrollbar (no permanent scrollbar on the modal) and shows a 24px
+     bottom fade above the sticky action row ONLY while more content
+     exists below the fold, so short-phone users know Add Friend / Mute /
+     Block are reachable by scrolling. */
+  var _sf = React.useState(false);
+  var showFade = _sf[0],
+    setShowFade = _sf[1];
+  var scrollBodyRef = React.useRef(null);
+  var measureFade = React.useCallback(function () {
+    var el = scrollBodyRef.current;
+    if (el) setShowFade(el.scrollHeight - el.scrollTop - el.clientHeight > 4);
+  }, []);
+  React.useEffect(function () {
+    measureFade();
+  }, [inspectPlayer, genPortrait, measureFade]);
   var _REPUTATION$inspectPl, _REPUTATION$inspectPl2, _S$rpg26, _ZONES$stateRef$curre, _inspectPlayer$bro$di, _inspectPlayer$rpgDat, _stateRef$current39;
   return React.createElement("div", {
     className: "bt-inspect",
+    style: {
+      background: 'rgba(4,9,12,0.38)' /* v2.3.1235: ordinary modal scrim */
+    },
     onClick: function onClick() {
       return setInspectPlayer(null);
     }
@@ -70,11 +152,26 @@ export function InspectPlayerPanel(props) {
       return e.stopPropagation();
     },
     style: {
-      width: 'min(360px, calc(100vw - 24px))', /* v2.3.1234: was 300 fixed — fill narrow phones, never overflow */
-      maxHeight: '85vh',
-      overflowY: 'auto',
-      background: '#202C32',
-      border: '1px solid rgba(238,242,235,.14)',
+      /* v2.3.1235: Checkpoint B — ONE responsive layout at every width.
+         Grid rows: header (auto) / scrollable body (minmax(0,1fr)) /
+         PINNED TP-Trade-Duel-Threat row (auto, never scrolled away).
+         The card itself no longer scrolls (overflowY hidden overrides
+         the .bt-inspect-card CSS auto); the body row does.  QA saw
+         "different content at different widths" because lower rows
+         clipped under the old card-level maxHeight+scroll. */
+      width: 'calc(100% - 24px)',
+      maxWidth: 408,
+      /* v2.3.1235: Checkpoint B round 3 — ALSO cap at 100% of the
+         .bt-inspect content box (which reserves the HUD chip strip and
+         the dashboard band): at 390×844 the 72dvh cap exceeded the box
+         and the flex-centered card overflowed BOTH ends — ✕ under the
+         chip, action row flush against the band. */
+      maxHeight: 'min(calc(72dvh - 24px), 100%)',
+      overflowY: 'hidden',
+      display: 'grid',
+      gridTemplateRows: 'auto minmax(0, 1fr) auto',
+      background: '#1E2E34', /* v2.3.1235: sheet surface */
+      border: '1px solid rgba(229,237,233,0.20)',
       borderRadius: 14,
       boxShadow: '0 14px 30px rgba(4,7,9,.38)'
     }
@@ -83,32 +180,81 @@ export function InspectPlayerPanel(props) {
     onClick: function onClick() {
       return setInspectPlayer(null);
     }
-  }, "✕"), inspectPlayer.avatar ? /*#__PURE__*/React.createElement("img", {
-    className: "bt-inspect-av",
+  }, "✕"), /* v2.3.1235: compressed header — real 56px pixel portrait
+    (inspectPlayer.avatar, same field the plist rows / dashboard card
+    render) with the letter tile demoted to fallback; name + Lv stack to
+    its right; the old centered 64px circle + oversized padding is gone.
+    The divider below comes from the first section's borderTop. */
+  /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'flex',
+      alignItems: 'center',
+      gap: 10,
+      textAlign: 'left',
+      paddingRight: 24,
+      marginBottom: 10
+    }
+  }, /* v2.3.1235: Checkpoint B — portrait chain: generated pixel
+    portrait → inspectPlayer.avatar img → 56px letter tile. */
+  genPortrait ? /*#__PURE__*/React.createElement("img", {
+    src: genPortrait,
+    alt: "",
+    draggable: false,
+    style: {
+      width: 56,
+      height: 56,
+      borderRadius: 10,
+      objectFit: 'cover',
+      flexShrink: 0,
+      border: '1px solid rgba(229,237,233,0.20)',
+      background: '#111E23'
+    }
+  }) : inspectPlayer.avatar ? /*#__PURE__*/React.createElement("img", {
     src: inspectPlayer.avatar,
     alt: "",
+    draggable: false,
     style: {
-      borderColor: inspectPlayer.color
+      width: 56,
+      height: 56,
+      borderRadius: 10,
+      objectFit: 'cover',
+      flexShrink: 0,
+      border: '1px solid rgba(229,237,233,0.20)',
+      background: '#111E23'
+    },
+    onError: function onError(e) {
+      /* v2.3.1235: broken avatar URL → swap in the letter tile */
+      var el = document.createElement('div');
+      el.style.cssText = 'width:56px;height:56px;border-radius:10px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:700;color:#F4F0E7;background:' + (inspectPlayer.color || '#293B41');
+      el.textContent = inspectPlayer.name.charAt(0).toUpperCase();
+      e.currentTarget.replaceWith(el);
     }
   }) : /*#__PURE__*/React.createElement("div", {
     style: {
-      width: 64,
-      height: 64,
-      borderRadius: '50%',
+      width: 56,
+      height: 56,
+      borderRadius: 10,
       background: inspectPlayer.color,
-      margin: '0 auto 8px',
+      flexShrink: 0,
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      fontSize: 24,
+      fontSize: 22,
       fontWeight: 700,
-      color: '#F7F2E7',
-      border: '2.5px solid ' + inspectPlayer.color
+      color: '#F4F0E7'
     }
   }, inspectPlayer.name.charAt(0).toUpperCase()), /*#__PURE__*/React.createElement("div", {
-    className: "bt-inspect-name",
     style: {
-      color: inspectPlayer.color
+      minWidth: 0
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 15,
+      fontWeight: 700,
+      color: '#F4F0E7', /* v2.3.1235: Checkpoint B — text token always, never a per-player tint */
+      overflow: 'hidden',
+      textOverflow: 'ellipsis',
+      whiteSpace: 'nowrap'
     }
   }, inspectPlayer.clanTag && /*#__PURE__*/React.createElement("span", {
     style: {
@@ -117,29 +263,41 @@ export function InspectPlayerPanel(props) {
   }, "[", inspectPlayer.clanTag, "] "), inspectPlayer.name), /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
-      justifyContent: 'center',
       alignItems: 'center',
       gap: 8,
-      marginBottom: 10
-    }
-  }, inspectPlayer.rpgLv && /*#__PURE__*/React.createElement("div", {
-    style: {
+      marginTop: 2,
       fontSize: 12,
-      fontWeight: 700,
-      fontVariantNumeric: 'tabular-nums',
-      color: '#D8A94D'
+      color: '#8D9B98'
     }
-  }, "Lv ", inspectPlayer.rpgLv), inspectPlayer.rep && inspectPlayer.rep !== 'neutral' && /*#__PURE__*/React.createElement("div", {
+  }, inspectPlayer.rpgLv && /*#__PURE__*/React.createElement("span", {
     style: {
-      fontSize: 12,
       fontWeight: 700,
-      color: ((_REPUTATION$inspectPl = REPUTATION[inspectPlayer.rep]) === null || _REPUTATION$inspectPl === void 0 ? void 0 : _REPUTATION$inspectPl.color) || '#96A2A0'
+      fontVariantNumeric: 'tabular-nums'
     }
-  }, ((_REPUTATION$inspectPl2 = REPUTATION[inspectPlayer.rep]) === null || _REPUTATION$inspectPl2 === void 0 ? void 0 : _REPUTATION$inspectPl2.label) || inspectPlayer.rep), inspectPlayer.pet && /*#__PURE__*/React.createElement("div", {
+  }, "Lv ", inspectPlayer.rpgLv), inspectPlayer.rep && inspectPlayer.rep !== 'neutral' && /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontWeight: 700,
+      color: ((_REPUTATION$inspectPl = REPUTATION[inspectPlayer.rep]) === null || _REPUTATION$inspectPl === void 0 ? void 0 : _REPUTATION$inspectPl.color) || '#8D9B98'
+    }
+  }, ((_REPUTATION$inspectPl2 = REPUTATION[inspectPlayer.rep]) === null || _REPUTATION$inspectPl2 === void 0 ? void 0 : _REPUTATION$inspectPl2.label) || inspectPlayer.rep), inspectPlayer.pet && /*#__PURE__*/React.createElement("span", {
     style: {
       fontSize: 14
     }
-  }, inspectPlayer.pet)), inspectPlayer.rpgData && function () {
+  }, inspectPlayer.pet)))), /* v2.3.1235: Checkpoint B — row 2: the ONE
+    scrollable body (sections + social rows).  Row 3 (the TP/Trade/Duel/
+    Threat action row) is pinned OUTSIDE this wrapper so it can never be
+    scrolled away. */
+  /*#__PURE__*/React.createElement("div", {
+    ref: scrollBodyRef,
+    onScroll: measureFade,
+    className: "ls-scrollbody" /* v2.3.1235: hides the scrollbar (game.css) */,
+    style: {
+      overflowY: 'auto',
+      paddingBottom: 16,
+      touchAction: 'pan-y',
+      minHeight: 0
+    }
+  }, inspectPlayer.rpgData && function () {
     var d = inspectPlayer.rpgData;
     return /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
       style: {
@@ -214,8 +372,8 @@ export function InspectPlayerPanel(props) {
         style: {
           padding: '5px 6px',
           borderRadius: 8,
-          background: '#19252A',
-          border: '1px solid rgba(238,242,235,.08)',
+          background: '#293B41', /* v2.3.1235: quiet raised cell */
+          border: '1px solid rgba(229,237,233,0.11)',
           textAlign: 'center',
           minWidth: 44
         }
@@ -260,9 +418,8 @@ export function InspectPlayerPanel(props) {
       return /*#__PURE__*/React.createElement("div", {
         key: label,
         style: {
-          padding: '6px 0',
-          borderRadius: 8,
-          background: '#19252A'
+          padding: '6px 0' /* v2.3.1235: unboxed — plain cells under the
+            section label instead of nested filled tiles */
         }
       }, /*#__PURE__*/React.createElement("div", {
         style: {
@@ -288,8 +445,8 @@ export function InspectPlayerPanel(props) {
         boxSizing: 'border-box',
         padding: '6px 10px',
         borderRadius: 999,
-        background: '#19252A',
-        border: '1px solid rgba(238,242,235,.08)',
+        background: '#293B41', /* v2.3.1235: raised chip */
+        border: '1px solid rgba(229,237,233,0.11)',
         marginBottom: 10,
         textAlign: 'center'
       }
@@ -314,142 +471,11 @@ export function InspectPlayerPanel(props) {
     style: {
       color: 'var(--pop)'
     }
-  }, "Rank #", inspectPlayer.bro.rank)), /*#__PURE__*/React.createElement("div", {
-    style: {
-      display: 'flex',
-      gap: 6,
-      marginTop: 10
-    }
-  }, /*#__PURE__*/React.createElement("button", {
-    className: "bt-inspect-tp",
-    style: {
-      flex: 1,
-      marginTop: 0,
-      minHeight: 44,
-      padding: '0 4px',
-      borderRadius: 11,
-      fontSize: 12,
-      fontWeight: 700,
-      border: '1px solid rgba(238,242,235,.14)',
-      background: 'linear-gradient(180deg, #304047 0%, #2B3940 100%)',
-      color: '#F7F2E7'
-    },
-    onClick: function onClick() {
-      var S = stateRef.current;
-      S.player.x = inspectPlayer.x + 40;
-      S.player.y = inspectPlayer.y + 40;
-      setInspectPlayer(null);
-    }
-  }, "📍 TP"), /*#__PURE__*/React.createElement("button", {
-    className: "bt-inspect-tp",
-    style: {
-      flex: 1,
-      marginTop: 0,
-      minHeight: 44,
-      padding: '0 4px',
-      borderRadius: 11,
-      fontSize: 12,
-      fontWeight: 700,
-      border: 'none',
-      background: '#D8A85F',
-      color: '#20170D'
-    },
-    onClick: function onClick() {
-      /* v2.3.1132: two-sided trade window when the worker supports it
-         (trade2_open handshake; both stage, both confirm, server swaps
-         atomically).  The one-directional gift panel stays for old
-         workers. */
-      var _St2 = stateRef.current;
-      if (_St2._serverCaps && _St2._serverCaps.trade2 && _St2.channel) {
-        try {
-          _St2.channel.send({ type: 'broadcast', event: 'trade2_open', payload: { target: inspectPlayer.id } });
-        } catch (e) {}
-        setInspectPlayer(null);
-        return;
-      }
-      setTradeTarget({
-        id: inspectPlayer.id,
-        name: inspectPlayer.name
-      });
-      setTradeOffer({});
-      setShowTrade(true);
-      setInspectPlayer(null);
-    }
-  }, "🤝 Trade"), /*#__PURE__*/React.createElement("button", {
-    className: "bt-inspect-tp",
-    style: {
-      flex: 1,
-      marginTop: 0,
-      minHeight: 44,
-      padding: '0 4px',
-      borderRadius: 11,
-      fontSize: 12,
-      fontWeight: 700,
-      border: '1px solid rgba(238,242,235,.14)',
-      background: 'linear-gradient(180deg, #304047 0%, #2B3940 100%)',
-      color: '#9A76D3'
-    },
-    onClick: function onClick() {
-      var S = stateRef.current;
-      if (S.channel) S.channel.send({
-        type: 'broadcast',
-        event: 'duel_wager_request',
-        payload: {
-          target: inspectPlayer.id,
-          from: S.myId,
-          fromName: S.myName,
-          wager: 0
-        }
-      });
-      pushDmgPopup(S, S.player.x, S.player.y - 30, 'Duel sent', '#a78bfa');
-      setInspectPlayer(null);
-    }
-  }, "⚔️ Duel"), /*#__PURE__*/React.createElement("button", {
-    className: "bt-inspect-tp",
-    style: {
-      flex: 1,
-      marginTop: 0,
-      minHeight: 44,
-      padding: '0 4px',
-      borderRadius: 11,
-      fontSize: 12,
-      fontWeight: 700,
-      border: '1px solid #C7655F',
-      background: '#7C3431',
-      color: '#FFF1EE'
-    },
-    onClick: function onClick() {
-      var _S$rpg26;
-      var S = stateRef.current;
-      if (S._pvpThreatCdUntil && Date.now() < S._pvpThreatCdUntil) {
-        pushDmgPopup(S, S.player.x, S.player.y - 30, 'Threat on cooldown', '#D95C54');
-        setInspectPlayer(null);
-        return;
-      }
-      if (S.channel) S.channel.send({
-        type: 'broadcast',
-        event: 'pvp_threat',
-        payload: {
-          target: inspectPlayer.id,
-          from: S.myId,
-          fromName: S.myName,
-          fromLevel: ((_S$rpg26 = S.rpg) === null || _S$rpg26 === void 0 ? void 0 : _S$rpg26.level) || 1
-        }
-      });
-      /* v2.3.1193: no longer orphaned — entityRenderer draws my own red
-         skull from these anchors.  This write is OPTIMISTIC (base
-         countdown, instant feedback); the relayed pvp_threat echo
-         replaces it with the server's authoritative level-scaled
-         countdown, or — if the server drops the threat (cooldown/
-         forged) — nothing arrives and the base window just ages out. */
-      S._pvpSkullType = 'red';
-      S._pvpSkullUntil = Date.now() + PVP_THREAT_BASE_COUNTDOWN;
-      S._pvpThreatCdUntil = Date.now() + PVP_THREAT_COOLDOWN;
-      pushDmgPopup(S, S.player.x, S.player.y - 30, 'Threat issued!', '#D95C54');
-      BT_AUDIO.beep(150, 0.15, 0.2, 'sawtooth');
-      setInspectPlayer(null);
-    }
-  }, "💀 Threat")), /* v2.3.1185: party invite -- caps-gated (an old worker would
+  }, "Rank #", inspectPlayer.bro.rank)), /* v2.3.1235: Checkpoint B — the
+     TP/Trade/Duel/Threat action row moved OUT of the scroll body to the
+     pinned grid row 3 (end of the card).  Everything below stays in the
+     scrollable body. */
+  /* v2.3.1185: party invite -- caps-gated (an old worker would
      rebroadcast party_invite as an unknown type instead of validating
      it).  Server answers with party_invited to the target and
      party_state echoes once they accept (see PartyHUD.jsx). */
@@ -508,13 +534,13 @@ export function InspectPlayerPanel(props) {
         flex: 1,
         minHeight: 44,
         padding: '0 4px',
-        borderRadius: 11,
+        borderRadius: 10, /* v2.3.1235: secondary tokens */
         fontSize: 11,
         fontWeight: 700,
         cursor: 'pointer',
-        border: '1px solid rgba(238,242,235,.14)',
-        background: 'linear-gradient(180deg, #304047 0%, #2B3940 100%)',
-        color: isFriend ? '#59BF91' : '#B9C1BF'
+        border: '1px solid rgba(229,237,233,0.20)',
+        background: '#293B41',
+        color: isFriend ? '#59BF91' : '#B6C1BE'
       },
       onClick: function onClick() {
         if (isFriend) {
@@ -549,13 +575,13 @@ export function InspectPlayerPanel(props) {
         flex: 0.7,
         minHeight: 44,
         padding: '0 4px',
-        borderRadius: 11,
+        borderRadius: 10, /* v2.3.1235: secondary tokens */
         fontSize: 11,
         fontWeight: 700,
         cursor: 'pointer',
-        border: '1px solid rgba(238,242,235,.14)',
-        background: 'linear-gradient(180deg, #304047 0%, #2B3940 100%)',
-        color: isMuted ? '#D8A94D' : '#B9C1BF'
+        border: '1px solid rgba(229,237,233,0.20)',
+        background: '#293B41',
+        color: isMuted ? '#D8AA58' : '#B6C1BE'
       },
       onClick: function onClick() {
         if (isMuted) {
@@ -585,13 +611,13 @@ export function InspectPlayerPanel(props) {
         flex: 0.7,
         minHeight: 44,
         padding: '0 4px',
-        borderRadius: 11,
+        borderRadius: 10, /* v2.3.1235: danger is an OUTLINE, never a fill */
         fontSize: 11,
         fontWeight: 700,
         cursor: 'pointer',
-        border: '1px solid ' + (isBlocked ? '#C7655F' : 'rgba(238,242,235,.14)'),
-        background: isBlocked ? '#7C3431' : 'linear-gradient(180deg, #304047 0%, #2B3940 100%)',
-        color: isBlocked ? '#FFF1EE' : '#B9C1BF',
+        border: '1px solid ' + (isBlocked ? '#D8635D' : 'rgba(229,237,233,0.20)'),
+        background: isBlocked ? 'transparent' : '#293B41',
+        color: isBlocked ? '#D8635D' : '#B6C1BE',
         opacity: !isBlocked && isLawless ? 0.3 : 1
       },
       onClick: function onClick() {
@@ -618,5 +644,164 @@ export function InspectPlayerPanel(props) {
         }
       }
     }, isBlocked ? '🚫 Blocked' : '🚫 Block');
-  }())));
+  }()), /* v2.3.1235: rollout micro-fix §1 — sticky 24px fade pinned to the
+    visible bottom of the scroll body; visible only while content remains
+    below (showFade), so reachability is signalled without a scrollbar.
+    pointerEvents none — purely a visual cue. */
+  /*#__PURE__*/React.createElement("div", {
+    "aria-hidden": true,
+    style: {
+      position: 'sticky',
+      bottom: 0,
+      height: 24,
+      marginTop: -24,
+      flexShrink: 0,
+      background: 'linear-gradient(180deg, rgba(30,46,52,0), #1E2E34)',
+      opacity: showFade ? 1 : 0,
+      transition: 'opacity 160ms ease',
+      pointerEvents: 'none'
+    }
+  })), /* v2.3.1235: Checkpoint B — row 3 (auto, PINNED): the TP/Trade/
+    Duel/Threat action row sits outside the scroll body so it is always
+    visible.  All four handlers byte-identical (moved, not edited). */
+  /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'flex',
+      gap: 6,
+      marginTop: 10
+    }
+  }, /* v2.3.1235: action row correction — Trade is the surface's single
+    gold primary (flex 1.4); TP/Duel are secondaries; Threat is a danger
+    OUTLINE, not a filled red block. Labels drop emoji per the design
+    correction; all four handlers are byte-identical. */
+  /*#__PURE__*/React.createElement("button", {
+    className: "bt-inspect-tp",
+    style: {
+      flex: 1,
+      marginTop: 0,
+      minHeight: 44,
+      padding: '0 4px',
+      borderRadius: 10,
+      fontSize: 12,
+      fontWeight: 700,
+      border: '1px solid rgba(229,237,233,0.20)',
+      background: '#293B41',
+      color: '#F4F0E7'
+    },
+    onClick: function onClick() {
+      var S = stateRef.current;
+      S.player.x = inspectPlayer.x + 40;
+      S.player.y = inspectPlayer.y + 40;
+      setInspectPlayer(null);
+    }
+  }, "TP"), /*#__PURE__*/React.createElement("button", {
+    className: "bt-inspect-tp",
+    style: {
+      flex: 1.4,
+      marginTop: 0,
+      minHeight: 44,
+      padding: '0 4px',
+      borderRadius: 10,
+      fontSize: 12,
+      fontWeight: 700,
+      border: '1px solid #EAC675',
+      background: 'linear-gradient(180deg, #E2B765, #D2A14D)',
+      color: '#172126'
+    },
+    onClick: function onClick() {
+      /* v2.3.1132: two-sided trade window when the worker supports it
+         (trade2_open handshake; both stage, both confirm, server swaps
+         atomically).  The one-directional gift panel stays for old
+         workers. */
+      var _St2 = stateRef.current;
+      if (_St2._serverCaps && _St2._serverCaps.trade2 && _St2.channel) {
+        try {
+          _St2.channel.send({ type: 'broadcast', event: 'trade2_open', payload: { target: inspectPlayer.id } });
+        } catch (e) {}
+        setInspectPlayer(null);
+        return;
+      }
+      setTradeTarget({
+        id: inspectPlayer.id,
+        name: inspectPlayer.name
+      });
+      setTradeOffer({});
+      setShowTrade(true);
+      setInspectPlayer(null);
+    }
+  }, "Trade"), /*#__PURE__*/React.createElement("button", {
+    className: "bt-inspect-tp",
+    style: {
+      flex: 1,
+      marginTop: 0,
+      minHeight: 44,
+      padding: '0 4px',
+      borderRadius: 10,
+      fontSize: 12,
+      fontWeight: 700,
+      border: '1px solid rgba(229,237,233,0.20)',
+      background: '#293B41',
+      color: '#F4F0E7'
+    },
+    onClick: function onClick() {
+      var S = stateRef.current;
+      if (S.channel) S.channel.send({
+        type: 'broadcast',
+        event: 'duel_wager_request',
+        payload: {
+          target: inspectPlayer.id,
+          from: S.myId,
+          fromName: S.myName,
+          wager: 0
+        }
+      });
+      pushDmgPopup(S, S.player.x, S.player.y - 30, 'Duel sent', '#a78bfa');
+      setInspectPlayer(null);
+    }
+  }, "Duel"), /*#__PURE__*/React.createElement("button", {
+    className: "bt-inspect-tp",
+    style: {
+      flex: 1,
+      marginTop: 0,
+      minHeight: 44,
+      padding: '0 4px',
+      borderRadius: 10,
+      fontSize: 12,
+      fontWeight: 700,
+      border: '1px solid #D8635D', /* v2.3.1235: danger outline */
+      background: 'transparent',
+      color: '#D8635D'
+    },
+    onClick: function onClick() {
+      var _S$rpg26;
+      var S = stateRef.current;
+      if (S._pvpThreatCdUntil && Date.now() < S._pvpThreatCdUntil) {
+        pushDmgPopup(S, S.player.x, S.player.y - 30, 'Threat on cooldown', '#D95C54');
+        setInspectPlayer(null);
+        return;
+      }
+      if (S.channel) S.channel.send({
+        type: 'broadcast',
+        event: 'pvp_threat',
+        payload: {
+          target: inspectPlayer.id,
+          from: S.myId,
+          fromName: S.myName,
+          fromLevel: ((_S$rpg26 = S.rpg) === null || _S$rpg26 === void 0 ? void 0 : _S$rpg26.level) || 1
+        }
+      });
+      /* v2.3.1193: no longer orphaned — entityRenderer draws my own red
+         skull from these anchors.  This write is OPTIMISTIC (base
+         countdown, instant feedback); the relayed pvp_threat echo
+         replaces it with the server's authoritative level-scaled
+         countdown, or — if the server drops the threat (cooldown/
+         forged) — nothing arrives and the base window just ages out. */
+      S._pvpSkullType = 'red';
+      S._pvpSkullUntil = Date.now() + PVP_THREAT_BASE_COUNTDOWN;
+      S._pvpThreatCdUntil = Date.now() + PVP_THREAT_COOLDOWN;
+      pushDmgPopup(S, S.player.x, S.player.y - 30, 'Threat issued!', '#D95C54');
+      BT_AUDIO.beep(150, 0.15, 0.2, 'sawtooth');
+      setInspectPlayer(null);
+    }
+  }, "Threat"))));
 }

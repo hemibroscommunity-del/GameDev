@@ -5,66 +5,117 @@
   /* Bottom dashboard band height.  Single source of truth — JS-side
      code (BroTown.jsx DASH_FRAC) must be kept in sync if changed. */
   --dash-h:   28vh;
-  /* v2.3.1230: the legacy variable set now feeds Lantern Slate values
-     (docs/LANTERN-SLATE-SPEC.md) — this single remap flips every
-     legacy panel (src/ui/panels/*) off the old navy/indigo look.
-     Names kept so the old selectors don't need touching. */
-  --ink:      #121B20;
-  --ink2:     #182227;
-  --ink3:     #202C32;
-  --ink4:     #2B3940;
-  --line:     #37444B;
-  --line2:    #4A5960;
-  --pop:      #D8A85F;
-  --pop-soft: rgba(216,168,95,.14);
-  --pop-glow: rgba(216,168,95,.35);
-  --teal:     #59BF91;
-  --txt:      #F7F2E7;
-  --txt2:     #B9C1BF;
-  --txt3:     #687575;
-  --red:      #D95C54;
-  --gold:     #D8A85F;
-  --green:    #59BF91;
+  /* v2.3.1235: Lantern Slate CORRECTION PASS (owner-approved ChatGPT
+     review of the v2.3.1234 screenshots).  Slightly brighter, greener
+     slate; four depth roles only (sheet / raised / well / well-deep);
+     hierarchy comes from these shared roles — do NOT mint per-screen
+     grays.  The v2.3.1227 token NAMES are kept below as aliases so
+     every existing consumer shifts palette without edits. */
+  --ui-world-chrome: rgba(13, 22, 27, 0.88);
+  --ui-band-top: #26383E;
+  --ui-band-bottom: #1A292F;
+  --ui-sheet: #1E2E34;
+  --ui-header: #27393F;
+  --ui-card: #24363C;
+  --ui-well-deep: #0B161B;
+  --ui-text: #F4F0E7;
+  --ui-text-secondary: #B6C1BE;
+  --ui-text-muted: #8D9B98;
+  --ui-text-disabled: #667875;
+  --ui-line: rgba(229, 237, 233, 0.11);
+  --ui-line-strong: rgba(229, 237, 233, 0.20);
+  --ui-brass: #D8AA58;
+  --ui-brass-highlight: #EAC675;
+  --ui-brass-soft: rgba(216, 170, 88, 0.15);
+  --ui-danger: #D8635D;
+  --ui-modal-scrim-strong: rgba(4, 9, 12, 0.52);
 
-  /* v2.3.1227: Lantern Slate tokens (docs/LANTERN-SLATE-SPEC.md) --
-     dark mineral charcoal, warm-white text, lantern-brass accent.
-     Replaces the v2.3.1226 light&airy set; mirrored in
-     src/ui/mobile/dash/common.js COL / inventoryStyles.js INV.  The
-     legacy --ink/--line/--pop set above ALSO carries Lantern values
-     since the v2.3.1230 legacy sweep. */
-  --ui-band-top: #253239;
-  --ui-band-mid: #202C32;
-  --ui-band-bottom: #172126;
-  --ui-panel: #202C32;
-  --ui-panel-strong: #182227;
-  --ui-raised: #2B3940;
-  --ui-raised-high: #34444B;
-  --ui-well: #121B20;
-  --ui-well-soft: #19252A;
-  --ui-slot: #243137;
-  --ui-toolbar: #10181D;
-  --ui-world-overlay: rgba(17,25,29,.94);
-  --ui-modal-scrim: rgba(8,16,20,.56);
-  --ui-text-1: #F7F2E7;
-  --ui-text-2: #B9C1BF;
-  --ui-text-3: #96A2A0;
-  --ui-disabled: #687575;
-  --ui-text-on-accent: #20170D;
-  --ui-border: rgba(238,242,235,.14);
-  --ui-border-strong: rgba(238,242,235,.24);
-  --ui-divider: rgba(238,242,235,.10);
-  --ui-edge-warm: rgba(229,202,157,.28);
-  --ui-accent: #D8A85F;
-  --ui-accent-pressed: #B88643;
-  --ui-accent-fill: #3B3427;
-  --ui-focus: #F0C878;
-  --ui-hp: #D95C54;
-  --ui-mana: #4D86D5;
-  --ui-stamina: #D8A94D;
-  --ui-xp: #61B06B;
-  --ui-positive: #59BF91;
-  --ui-info: #5D93D2;
-  --ui-magic: #9A76D3;
+  /* v2.3.1230 legacy remap, re-pointed at the v2.3.1235 values — this
+     single block re-tints every legacy panel (src/ui/panels/*). */
+  --ink:      #111E23;
+  --ink2:     #1A292F;
+  --ink3:     #1E2E34;
+  --ink4:     #293B41;
+  --line:     #36464C;
+  --line2:    #4A5B61;
+  --pop:      #D8AA58;
+  --pop-soft: rgba(216,170,88,.15);
+  --pop-glow: rgba(216,170,88,.35);
+  --teal:     #55B98A;
+  --txt:      #F4F0E7;
+  --txt2:     #B6C1BE;
+  --txt3:     #667875;
+  --red:      #D8635D;
+  --gold:     #D8AA58;
+  --green:    #55B98A;
+
+  /* v2.3.1227 token names → v2.3.1235 values (aliases; keep using
+     either name, they are the same role). */
+  --ui-band-mid: #20333A;
+  --ui-panel: var(--ui-sheet);
+  --ui-panel-strong: #1A292F;
+  --ui-raised: #293B41;
+  --ui-raised-high: #32454C;
+  --ui-well: #111E23;
+  --ui-well-soft: #16262C;
+  --ui-slot: var(--ui-card);
+  --ui-toolbar: #0E191E;
+  --ui-world-overlay: var(--ui-world-chrome);
+  --ui-modal-scrim: rgba(4, 9, 12, 0.38);
+  --ui-text-1: var(--ui-text);
+  --ui-text-2: var(--ui-text-secondary);
+  --ui-text-3: var(--ui-text-muted);
+  --ui-disabled: var(--ui-text-disabled);
+  --ui-text-on-accent: #172126;
+  --ui-border: var(--ui-line);
+  --ui-border-strong: var(--ui-line-strong);
+  --ui-divider: var(--ui-line);
+  --ui-edge-warm: rgba(216,170,88,.42);
+  --ui-accent: var(--ui-brass);
+  --ui-accent-pressed: #C2924A;
+  --ui-accent-fill: var(--ui-brass-soft);
+  --ui-focus: var(--ui-brass-highlight);
+  --ui-hp: #E35D5B;
+  --ui-mana: #4F8FDE;
+  --ui-stamina: #DFAE4E;
+  --ui-xp: #58B97B;
+  --ui-positive: #55B98A;
+  --ui-info: #599FE5;
+  --ui-magic: #9A78D0;
+}
+/* ═══ v2.3.1235 shared primitives (correction pass §2/§8) — the four
+   depth levels + the two button roles.  New/updated surfaces should
+   use these classes (or copy the exact recipes inline) instead of
+   inventing per-screen boxes. ═══ */
+.ui-panel{
+  background:var(--ui-sheet);
+  border:1px solid var(--ui-line-strong);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,0.045),0 14px 36px rgba(3,8,10,0.30);
+}
+.ui-raised{
+  background:linear-gradient(180deg,#2B3E44,var(--ui-raised));
+  border:1px solid var(--ui-line);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,0.05);
+}
+.ui-well{
+  background:linear-gradient(180deg,#132329,var(--ui-well));
+  border:1px solid var(--ui-line);
+  box-shadow:inset 0 2px 5px rgba(0,0,0,0.32),inset 0 1px 0 rgba(255,255,255,0.025);
+}
+.button-primary{
+  color:#172126;
+  background:linear-gradient(180deg,#E2B765,#D2A14D);
+  border:1px solid #EAC675;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,0.25),0 2px 6px rgba(0,0,0,0.22);
+  border-radius:10px;font-weight:700;cursor:pointer;
+  font-family:'Source Sans 3',sans-serif;
+}
+.button-secondary{
+  color:var(--ui-text);
+  background:var(--ui-raised);
+  border:1px solid var(--ui-line-strong);
+  border-radius:10px;font-weight:700;cursor:pointer;
+  font-family:'Source Sans 3',sans-serif;
 }
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%;overflow:hidden;background:#10181D;touch-action:none;overscroll-behavior:none;position:fixed;width:100%;top:0;left:0}
@@ -136,7 +187,35 @@ input{font-family:inherit}
    top of every open panel (visible in QA screenshots). Modals must beat
    chrome (zLayers.js rule 1); 32 stays under Z_ABOVE_DASH_PROMPT (34). */
 .bt-inspect{position:absolute;inset:0;z-index:32;display:flex;align-items:center;justify-content:center;
-  background:rgba(0,0,0,.6);-webkit-tap-highlight-color:transparent}
+  /* v2.3.1235: §6 — ordinary modal scrim token (trade/duel confirms use
+     the stronger --ui-modal-scrim-strong in their own components).
+     padding-bottom reserves the dashboard band + 12px: modal content
+     must never continue behind the fixed band (QA found the
+     Marketplace order book and the Inspect action rows swallowed). */
+  background:var(--ui-modal-scrim);-webkit-tap-highlight-color:transparent;
+  /* v2.3.1235: Checkpoint B — padding-top reserves the 58px HUD player
+     chip (+8px offset, +8px gap): the chip is position:fixed OUTSIDE
+     .brotown-wrap, and the wrap (position:fixed) is its own stacking
+     context in Chrome, so the chip paints over ANY in-wrap modal no
+     matter its z-index — at 390×844 it sat on the Marketplace ✕.
+     Geometric clearance is the fix; the z-ladder can't reach it. */
+  padding-top:calc(env(safe-area-inset-top, 0px) + 74px);
+  padding-bottom:calc(var(--dash-h) + 12px);box-sizing:border-box}
+/* v2.3.1235: max-height 100% = the .bt-inspect content box, which already
+   excludes the HUD-chip strip (padding-top) and the dashboard band
+   (padding-bottom) — the two clamps can't drift apart. */
+.bt-inspect .bt-inspect-card{max-height:100%;overflow-y:auto}
+/* v2.3.1235: rollout micro-fix — modal scroll bodies hide their scrollbar
+   (reachability is signalled by the sticky bottom fade instead). */
+.ls-scrollbody{scrollbar-width:none;-ms-overflow-style:none}
+.ls-scrollbody::-webkit-scrollbar{display:none}
+/* v2.3.1235: state-correction — shared 15px padlock for locked craft rows
+   (no lock exists in the icon set; a CSS mask + currentColor needs no
+   asset and inherits the row's text token). Usage: <span class="ls-lock"/>
+   next to the requirement text. */
+.ls-lock{display:inline-block;width:15px;height:15px;vertical-align:-2px;flex:none;background:currentColor;
+  -webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M5 7V5a3 3 0 0 1 6 0v2h1a1 1 0 0 1 1 1v5a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V8a1 1 0 0 1 1-1h1zm1.5 0h3V5a1.5 1.5 0 0 0-3 0v2z'/%3E%3C/svg%3E") center/contain no-repeat;
+  mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M5 7V5a3 3 0 0 1 6 0v2h1a1 1 0 0 1 1 1v5a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V8a1 1 0 0 1 1-1h1zm1.5 0h3V5a1.5 1.5 0 0 0-3 0v2z'/%3E%3C/svg%3E") center/contain no-repeat}
 /* v2.3.1233b: LOAD-BEARING padding — all 11 building panels
    (src/ui/panels/buildings/*) bleed a full-panel #202C32 surface into
    this 20px padding via margin:-20 roots (Lantern Slate sweep).
@@ -150,6 +229,10 @@ input{font-family:inherit}
   background:rgba(255,255,255,.1);border:none;color:rgba(255,255,255,.6);font-size:14px;
   display:flex;align-items:center;justify-content:center;cursor:pointer}
 .bt-inspect-close:active{background:rgba(217,92,84,.4)}
+/* v2.3.1235: batch-4 QA — the 28px ✕ visual is approved everywhere, but
+   28px is under the 44pt touch floor; an invisible inset:-8px pseudo
+   grows the TAP target to 44px with zero visual change. */
+.bt-inspect-close::after{content:'';position:absolute;inset:-8px}
 .bt-inspect-av{width:64px;height:64px;border-radius:50%;object-fit:cover;margin:0 auto 8px;
   display:block;border:2.5px solid var(--pop)}
 .bt-inspect-name{font-size:16px;font-weight:800;color:#fff;margin-bottom:2px}
@@ -328,7 +411,12 @@ input{font-family:inherit}
 /* v2.3.1013: menu is now content-sized (its grid is bounded to one 2-row page
    by the pager), so the leftover viewport height goes to the bigger character
    preview above it instead of an overflowing drawer. */
-.bt-name-box.bt-cc-box>.bt-cc-menu{flex:0 0 auto;display:flex;flex-direction:column;border:14px solid transparent;border-image:url('/ui/welcome/frame.webp') 96 fill / 14px stretch;background:#05050c}
+/* v2.3.1235: purple gem frame (frame.webp border-image over #05050c)
+   retired — owner-approved correction pass: the logo is the ONLY ornate
+   element on this screen.  The customization card is now a plain
+   Lantern Slate sheet with a hairline border; overflow:hidden keeps the
+   tab header strip inside the radius. */
+.bt-name-box.bt-cc-box>.bt-cc-menu{flex:0 0 auto;display:flex;flex-direction:column;background:var(--ui-sheet);border:1px solid var(--ui-line);border-radius:10px;overflow:hidden}
 @media (max-height:720px){
   .bt-cc-cta{display:none}
 }
@@ -371,12 +459,19 @@ input{font-family:inherit}
    (owner screenshot).  320px keeps it the clear final action without
    competing for the drawer's room.
    v2.3.801: 300 -> 230 (owner: shrink it). */
-.bt-cc-play{background:url('/ui/welcome/play-btn.webp') center/100% 100% no-repeat;border:none;min-height:44px;max-width:230px;margin-left:auto;margin-right:auto}
-/* v2.3.741: solid-color fallback removed — the art has transparent corners,
-   so the backing purple peeked out around the painted shape (owner). */
-.bt-cc-play:active{transform:translateY(2px);filter:brightness(1.12)}
-.bt-cc-rand{border:1.5px solid #8a6d1f!important;color:var(--gold)!important}
-.bt-cc-rand:active{background:rgba(216,169,77,.12)!important}
+/* v2.3.1235: painted play-btn.webp art retired (owner-approved
+   correction pass) — PLAY is the screen's ONE filled-gold primary
+   button, built from the standard recipe.  The 230px cap stays so it
+   can't balloon on wide cards (the v2.3.798 Pro Max lesson); the label
+   is now real text in NameModal.jsx, so no invisible-button failure
+   mode when an image 404s (the v2.3.740 incident). */
+.bt-cc-play{background:linear-gradient(180deg,#E2B765,#D2A14D);border:1px solid var(--ui-brass-highlight);border-radius:10px;box-shadow:inset 0 1px 0 rgba(255,255,255,.25),0 2px 6px rgba(0,0,0,.22);color:#172126;min-height:48px;max-width:230px;margin-left:auto;margin-right:auto;font-family:'Source Sans 3',sans-serif;font-size:16px;font-weight:700;letter-spacing:.08em;text-transform:uppercase}
+.bt-cc-play:active{transform:translateY(1px);filter:brightness(1.05)}
+/* v2.3.1235: ornate gold-border treatment dropped — Randomize is a plain
+   secondary button (fill/text inline in NameModal.jsx); :active needs
+   !important only to outrank that inline background. */
+.bt-cc-rand{border:1px solid var(--ui-line-strong)}
+.bt-cc-rand:active{background:var(--ui-raised-high)!important}
 /* v2.3.718: name input on the owner's parchment scroll (3-slice border-
    image: rolled end caps stay fixed, the parchment middle stretches).
    Ink-dark text + placeholder; the quill img is an absolutely-positioned
@@ -463,8 +558,12 @@ input{font-family:inherit}
    static field (the opposed layers kept total brightness ~constant). */
 @keyframes bt-cc-tw{from{opacity:.05}to{opacity:1}}
 
-.bt-cc-name{border:0 solid transparent;border-width:0 26px;border-image:url('/ui/welcome/scroll2.webp') 0 64 fill/0 26px stretch;background:none;color:#3a2a14;height:58px}
-.bt-cc-name::placeholder{color:#8a7350;opacity:1}
+/* v2.3.1235: parchment scroll (scroll2.webp border-image + ink text)
+   retired — the name field is a standard Lantern Slate recessed well
+   (spec recipe) so it matches every other input in the game.  16px font
+   floor still lives inline in NameModal.jsx (iOS zoom gate, v2.3.710). */
+.bt-cc-name{background:linear-gradient(180deg,#132329,#111E23);border:1px solid var(--ui-line);border-radius:10px;box-shadow:inset 0 2px 5px rgba(0,0,0,.32),inset 0 1px 0 rgba(255,255,255,.025);color:var(--ui-text);height:48px;font-family:'Source Sans 3',sans-serif}
+.bt-cc-name::placeholder{color:#B6C1BE;opacity:1} /* v2.3.1235: Checkpoint B — placeholder muted → secondary (too faint on the dark well) */
 /* v2.3.797: the two-pane grid (.bt-cc-main/.bt-cc-left/.bt-cc-rail*) is
    retired with the rail.  Text-only category TABS fused to ONE drawer
    replace the pill stack (spec §5: the active tab and the panel read as
@@ -482,12 +581,16 @@ input{font-family:inherit}
    the rail/panel separator and a light rail tint remain. */
 /* v2.3.1012: horizontal category tabs (replaces the narrow vertical rail) --
    big thumb targets (>=56px), icon over label, wrap 4+3 across the panel. */
-.bt-cc-tabs{flex:0 0 auto;display:flex;flex-direction:row;flex-wrap:wrap;gap:6px;padding:6px;align-items:stretch;background:rgba(12,9,26,0.45);border-bottom:1px solid #3a3163}
-.bt-cc-tab{flex:0 0 calc((100% - 18px)/4);min-height:38px;display:flex;flex-direction:row;align-items:center;justify-content:center;gap:5px;padding:4px 4px;background:rgba(58,49,99,0.30);border:1.5px solid #3a3163;border-radius:9px;cursor:pointer;color:#b9b2d8;font-size:12px;font-weight:700;letter-spacing:.02em;font-family:'Baloo 2','Source Sans 3',sans-serif;text-shadow:0 1px 2px rgba(0,0,0,.55)}
+/* v2.3.1235: purple tab chrome → Lantern Slate.  Tabs sit on the card's
+   header strip; the ACTIVE tab is a brass-soft tint + brass hairline
+   (never a solid gold fill — PLAY is this surface's one gold element).
+   Baloo/text-shadow dropped: Source Sans 3 only. */
+.bt-cc-tabs{flex:0 0 auto;display:flex;flex-direction:row;flex-wrap:wrap;gap:6px;padding:6px;align-items:stretch;background:var(--ui-header);border-bottom:1px solid var(--ui-line)}
+.bt-cc-tab{flex:0 0 calc((100% - 18px)/4);min-height:38px;display:flex;flex-direction:row;align-items:center;justify-content:center;gap:5px;padding:4px 4px;background:transparent;border:1px solid transparent;border-radius:8px;cursor:pointer;color:var(--ui-text-secondary);font-size:12px;font-weight:700;letter-spacing:.02em;font-family:'Source Sans 3',sans-serif}
 .bt-cc-tab:active{transform:translateY(1px)}
-.bt-cc-tab--on{background:rgba(216,168,95,0.28);color:#fff;border-color:var(--gold);box-shadow:0 0 0 1px var(--gold),0 0 10px rgba(216,169,77,.30)}
+.bt-cc-tab--on{background:var(--ui-brass-soft);color:var(--ui-text);border-color:var(--ui-brass)}
 .bt-cc-tab-icon{width:22px;height:22px;object-fit:contain;opacity:.92;pointer-events:none}
-.bt-cc-tab--on .bt-cc-tab-icon{opacity:1;filter:drop-shadow(0 0 3px rgba(216,169,77,.55))}
+.bt-cc-tab--on .bt-cc-tab-icon{opacity:1}
 .bt-cc-tab-label{font-size:12px;line-height:1}
 /* v2.3.829: colors moved to the RIGHT of the objects (owner) — drawer is
    ROW again: items fill the left and scroll horizontally, the colors
@@ -499,7 +602,9 @@ input{font-family:inherit}
 .bt-cc-drawer{flex:1 1 auto;min-width:0;min-height:0;display:flex;flex-direction:column;gap:8px;padding:8px;box-sizing:border-box}
 .bt-cc-drawer-items{flex:1 1 auto;min-width:0;min-height:0;display:flex;flex-direction:column;gap:6px}
 /* v2.3.1015: "‹ Change Hat" — returns from the colors step to the item grid. */
-.bt-cc-back{align-self:center;display:inline-flex;align-items:center;gap:4px;padding:3px 12px;border-radius:8px;background:rgba(58,49,99,0.40);border:1.5px solid #4a4080;color:#e7e2ff;font-size:12px;font-weight:700;letter-spacing:.02em;font-family:'Baloo 2','Source Sans 3',sans-serif;cursor:pointer}
+/* v2.3.1235: purple → secondary-button slate (geometry untouched — the
+   locked creator layout is overflow-sensitive, see the v2.3.796 revert). */
+.bt-cc-back{align-self:center;display:inline-flex;align-items:center;gap:4px;padding:3px 12px;border-radius:8px;background:var(--ui-raised);border:1px solid var(--ui-line-strong);color:var(--ui-text);font-size:12px;font-weight:700;letter-spacing:.02em;font-family:'Source Sans 3',sans-serif;cursor:pointer}
 .bt-cc-back:active{transform:translateY(1px)}
 /* v2.3.1016: the color step uses the same 10-track left-aligned row as items. */
 /* Item strip: column-wrap fills the available height (1-2 tile rows
@@ -530,11 +635,13 @@ input{font-family:inherit}
 .bt-cc-drawer-items>.bt-cc-drawer-grid>*{flex:0 0 auto!important;width:clamp(44px,12vw,52px)!important;height:clamp(44px,12vw,52px)!important}
 /* v2.3.804/816: the owner's gold divider art (divider.webp) is the
    vertical separator on the colors column's left edge (rotated 90°). */
-.bt-cc-drawer-colors{flex:0 0 auto;max-width:122px;display:flex;flex-direction:column;gap:4px;border-left:1.5px solid #4a4080;padding-left:9px}
+.bt-cc-drawer-colors{flex:0 0 auto;max-width:122px;display:flex;flex-direction:column;gap:4px;border-left:1px solid var(--ui-line);padding-left:9px} /* v2.3.1235: purple divider → hairline */
 .bt-cc-drawer-colors>.bt-cc-drawer-grid{flex:1 1 auto;min-height:0;display:flex;flex-wrap:wrap;align-content:flex-start;gap:8px;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;touch-action:pan-y}
-.bt-cc-drawer-head{width:100%;flex:0 0 auto;text-align:center;font-size:11px;font-weight:700;color:#9090a8;letter-spacing:.08em;font-family:'Baloo 2','Source Sans 3',sans-serif}
-/* v2.3.1013: CUSTOMIZE section header above the tabs (gold, matches mockup). */
-.bt-cc-cust-head{flex:0 0 auto;text-align:center;padding:5px 0 3px;font-size:12px;font-weight:800;letter-spacing:.10em;color:var(--gold);text-shadow:0 1px 2px rgba(0,0,0,.6);font-family:'Baloo 2','Source Sans 3',sans-serif}
+.bt-cc-drawer-head{width:100%;flex:0 0 auto;text-align:center;font-size:11px;font-weight:700;color:var(--ui-text-muted);letter-spacing:.14em;font-family:'Source Sans 3',sans-serif} /* v2.3.1235: section-label spec */
+/* v2.3.1013: CUSTOMIZE section header above the tabs.
+   v2.3.1235: gold Baloo display cap → the standard 11/700 .14em section
+   label in muted slate; brass/gold on this screen belongs to PLAY only. */
+.bt-cc-cust-head{flex:0 0 auto;text-align:center;padding:5px 0 3px;font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--ui-text-muted);font-family:'Source Sans 3',sans-serif}
 /* v2.3.1013: item-grid pager — ‹ › arrows flanking one dot per page, the
    active dot gold.  Sits under the grid, replacing the old vertical scroll. */
 /* v2.3.1016: fixed min-height so the (empty) single-page pager still reserves
@@ -543,11 +650,13 @@ input{font-family:inherit}
 .bt-cc-pager--empty{pointer-events:none}
 /* v2.3.1018: wider page buttons (owner) — easier tap targets than the old
    26px squares. */
-.bt-cc-pager-arrow{display:flex;align-items:center;justify-content:center;width:54px;height:26px;padding:0;border-radius:7px;background:rgba(58,49,99,0.40);border:1.5px solid #4a4080;color:#e7e2ff;font-size:17px;line-height:1;cursor:pointer}
+/* v2.3.1235: purple → secondary-button slate (54x26 geometry kept — the
+   pager row's 32px budget is part of the locked-viewport height math). */
+.bt-cc-pager-arrow{display:flex;align-items:center;justify-content:center;width:54px;height:26px;padding:0;border-radius:7px;background:var(--ui-raised);border:1px solid var(--ui-line-strong);color:var(--ui-text);font-size:17px;line-height:1;cursor:pointer}
 .bt-cc-pager-arrow:active{transform:translateY(1px)}
 .bt-cc-pager-arrow:disabled{opacity:.32;cursor:default;pointer-events:none}
 /* v2.3.1016: page count as "1/3" shorthand (owner) — replaces the dot row. */
-.bt-cc-pager-count{min-width:34px;text-align:center;font-size:13px;font-weight:700;letter-spacing:.04em;color:var(--gold);font-family:'Baloo 2','Source Sans 3',sans-serif;font-variant-numeric:tabular-nums}
+.bt-cc-pager-count{min-width:34px;text-align:center;font-size:13px;font-weight:700;letter-spacing:.04em;color:var(--ui-text-secondary);font-family:'Source Sans 3',sans-serif;font-variant-numeric:tabular-nums} /* v2.3.1235: gold → secondary text (metadata, not an accent) */
 .bt-avatar-pick{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin:12px 0}
 .bt-avatar-opt{width:56px;height:56px;border-radius:10px;border:2px solid var(--line);cursor:pointer;overflow:hidden;transition:border-color .15s,transform .15s}
 .bt-avatar-opt.sel{border-color:var(--pop);transform:scale(1.1)}

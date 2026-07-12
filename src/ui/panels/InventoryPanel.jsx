@@ -21,6 +21,20 @@ import { pushDmgPopup } from '@/game/combatHelpers.js';
    (Equip = the brass primary, Sell = raised secondary), gold values as
    gold.webp + tabular #D8A85F. Styles/structure only; every handler
    body is byte-identical. */
+/* v2.3.1235: batch-2 rollout — correction-pass compliance: (1) all
+   v2.3.1227 literals move onto the :root --ui-* tokens / approved bar
+   + semantic colors; (2) decorative emoji leave the chrome (section
+   headers, Equip label, eat-chip prefix — item/pet emoji stay, they
+   ARE the game data); (3) the per-row brass Equip primaries demote to
+   neutral secondaries — the locked contract allows at most ONE gold
+   primary per surface and stash rows repeat; (4) the red/green worn-
+   armor toggles and green eat chips become neutral secondaries
+   (reversible actions are never colored fills); (5) the 6-10px
+   metadata sizes lift to the 11px floor (12 for sentences); (6) eat
+   chips + worn toggles reach the 44px hitbox floor; (7) inline
+   maxHeight 80vh → 100% so the .bt-inspect wrapper's HUD/dashboard
+   clearance always wins. Styles + static JSX only; every handler body
+   is byte-identical. */
 export function InventoryPanel(props) {
   var rpgState = props.rpgState,
     stateRef = props.stateRef,
@@ -41,18 +55,26 @@ export function InventoryPanel(props) {
     },
     style: {
       width: 'min(360px, calc(100vw - 24px))', /* v2.3.1234: was 300 fixed — fill narrow phones, never overflow */
-      maxHeight: '80vh',
+      /* v2.3.1235: batch-2 rollout — 80vh could exceed the .bt-inspect
+         content box (which reserves the HUD strip + dashboard band);
+         100% defers to the wrapper's clearance. */
+      maxHeight: '100%',
       overflowY: 'auto',
       /* v2.3.1232: override legacy navy card with Lantern panel surface */
-      background: '#202C32',
-      border: '1px solid rgba(238,242,235,.14)',
+      /* v2.3.1235: batch-2 rollout — surface onto the correction-pass
+         tokens + the shared .ui-panel shadow recipe. */
+      background: 'var(--ui-sheet)',
+      border: '1px solid var(--ui-line-strong)',
       borderRadius: 14,
-      boxShadow: '0 14px 30px rgba(4,7,9,.38)',
+      boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.045), 0 14px 36px rgba(3,8,10,0.30)',
       padding: 16,
       textAlign: 'left'
     }
   }, /*#__PURE__*/React.createElement("button", {
     className: "bt-inspect-close",
+    /* v2.3.1235: batch-2 rollout \u2014 shared class is 28\u00d728, below the
+       44px hitbox floor; inline override on this modal only. */
+    style: { width: 44, height: 44 },
     onClick: function onClick() {
       return setShowInventory(false);
     }
@@ -82,7 +104,7 @@ export function InventoryPanel(props) {
       fontWeight: 700,
       textTransform: 'uppercase',
       letterSpacing: '.10em',
-      color: '#F7F2E7'
+      color: 'var(--ui-text)'
     }
   }, "Equipment")), /*#__PURE__*/React.createElement("div", {
     /* v2.3.1232: caption row; gold value = gold.webp + tabular brass */
@@ -91,7 +113,7 @@ export function InventoryPanel(props) {
       alignItems: 'center',
       gap: 4,
       fontSize: 11,
-      color: '#96A2A0',
+      color: 'var(--ui-text-muted)',
       marginBottom: 8
     }
   }, "Active: ", rpgState.activeSlot === 'ranged' ? 'Ranged' : 'Melee', " \xB7 ", /*#__PURE__*/React.createElement("img", {
@@ -107,11 +129,12 @@ export function InventoryPanel(props) {
       e.currentTarget.replaceWith(document.createTextNode('\uD83D\uDCB0'));
     }
   }), /*#__PURE__*/React.createElement("span", {
+    /* v2.3.1235: batch-2 rollout — brass #D8A85F → --ui-brass */
     style: {
       fontSize: 12,
       fontWeight: 700,
       fontVariantNumeric: 'tabular-nums',
-      color: '#D8A85F'
+      color: 'var(--ui-brass)'
     }
   }, rpgState.coins, "g")), [{
     label: 'Melee Weapon',
@@ -144,19 +167,25 @@ export function InventoryPanel(props) {
         borderRadius: 10,
         /* v2.3.1232: active weapon = brass accent-fill + brass edge (selection);
            idle = quiet cell + hairline */
-        background: isActive ? '#3B3427' : '#19252A',
-        border: "1.5px solid ".concat(isActive ? '#D8A85F' : 'rgba(238,242,235,.08)'),
+        /* v2.3.1235: batch-2 rollout — the solid #3B3427 accent-fill is
+           retired: selection is now the translucent brass-soft tint
+           over the card base (correction-pass rule), idle cards sit on
+           --ui-card with the standard line. */
+        background: isActive ? 'linear-gradient(rgba(216,170,88,.15), rgba(216,170,88,.15)), #24363C' : 'var(--ui-card)',
+        border: "1.5px solid ".concat(isActive ? '#D8AA58' : 'rgba(229,237,233,.11)'),
         position: 'relative'
       }
     }, isActive && /*#__PURE__*/React.createElement("div", {
+      /* v2.3.1235: batch-2 rollout — badge to the 11px floor; focus
+         gold #F0C878 → --ui-brass-highlight */
       style: {
         position: 'absolute',
         top: 4,
         right: 8,
-        fontSize: 8,
+        fontSize: 11,
         fontWeight: 700,
         letterSpacing: '.08em',
-        color: '#F0C878'
+        color: 'var(--ui-brass-highlight)'
       }
     }, "ACTIVE"), /*#__PURE__*/React.createElement("div", {
       style: {
@@ -173,34 +202,37 @@ export function InventoryPanel(props) {
       style: {
         fontSize: 11,
         fontWeight: 700,
-        color: (rt === null || rt === void 0 ? void 0 : rt.color) || '#96A2A0'
+        color: (rt === null || rt === void 0 ? void 0 : rt.color) || 'var(--ui-text-muted)'
       }
     }, wpn.name), /*#__PURE__*/React.createElement("div", {
+      /* v2.3.1235: batch-2 rollout — 8px metadata was far below the
+         11px floor */
       style: {
-        fontSize: 8,
-        color: '#96A2A0'
+        fontSize: 11,
+        color: 'var(--ui-text-muted)'
       }
     }, rt === null || rt === void 0 ? void 0 : rt.label, " ", wt === null || wt === void 0 ? void 0 : wt.label, " \xB7 ", wpn.tierMult, "\xD7 mult", wpn.quality && wpn.quality !== 'normal' ? ' \xB7 ' + wpn.quality.toUpperCase() + (wpn.quality === 'godly' ? ' \u2728' : wpn.quality === 'elite' ? ' \u2B50' : '') : '', wpn.hardness ? ' \xB7 H' + wpn.hardness : ''))), /*#__PURE__*/React.createElement("div", {
+      /* v2.3.1235: batch-2 rollout — stat strip to the 11px floor */
       style: {
         display: 'flex',
         gap: 8,
-        fontSize: 8,
-        color: '#96A2A0',
+        fontSize: 11,
+        color: 'var(--ui-text-muted)',
         marginBottom: 4
       }
     }, /*#__PURE__*/React.createElement("span", null, "DMG: ", /*#__PURE__*/React.createElement("b", {
       style: {
-        color: '#F7F2E7',
+        color: 'var(--ui-text)',
         fontVariantNumeric: 'tabular-nums'
       }
     }, dmg)), /*#__PURE__*/React.createElement("span", null, "SPD: ", /*#__PURE__*/React.createElement("b", {
       style: {
-        color: '#F7F2E7',
+        color: 'var(--ui-text)',
         fontVariantNumeric: 'tabular-nums'
       }
     }, (wt === null || wt === void 0 ? void 0 : wt.speed) || 1)), /*#__PURE__*/React.createElement("span", null, "RNG: ", /*#__PURE__*/React.createElement("b", {
       style: {
-        color: '#F7F2E7',
+        color: 'var(--ui-text)',
         fontVariantNumeric: 'tabular-nums'
       }
     }, (wt === null || wt === void 0 ? void 0 : wt.range) || 0))), /*#__PURE__*/React.createElement("div", {
@@ -210,8 +242,10 @@ export function InventoryPanel(props) {
         alignItems: 'center'
       }
     }, wpn.element1 && /*#__PURE__*/React.createElement("span", {
+      /* v2.3.1235: batch-2 rollout — element chips to the 11px floor
+         (element tints are game data and stay) */
       style: {
-        fontSize: 8,
+        fontSize: 11,
         padding: '2px 6px',
         borderRadius: 4,
         background: ((_ELEMENTS$wpn$element5 = ELEMENTS[wpn.element1]) === null || _ELEMENTS$wpn$element5 === void 0 ? void 0 : _ELEMENTS$wpn$element5.color) + '22',
@@ -220,7 +254,7 @@ export function InventoryPanel(props) {
       }
     }, "E1: ", wpn.element1, " (", (_ELEMENTS$wpn$element8 = ELEMENTS[wpn.element1]) === null || _ELEMENTS$wpn$element8 === void 0 ? void 0 : _ELEMENTS$wpn$element8.status, ")"), wpn.element2 && /*#__PURE__*/React.createElement("span", {
       style: {
-        fontSize: 8,
+        fontSize: 11,
         padding: '2px 6px',
         borderRadius: 4,
         background: ((_ELEMENTS$wpn$element9 = ELEMENTS[wpn.element2]) === null || _ELEMENTS$wpn$element9 === void 0 ? void 0 : _ELEMENTS$wpn$element9.color) + '22',
@@ -228,28 +262,33 @@ export function InventoryPanel(props) {
         border: '1px solid ' + ((_ELEMENTS$wpn$element1 = ELEMENTS[wpn.element2]) === null || _ELEMENTS$wpn$element1 === void 0 ? void 0 : _ELEMENTS$wpn$element1.color) + '44'
       }
     }, "E2: ", wpn.element2, " (", (_ELEMENTS$wpn$element10 = ELEMENTS[wpn.element2]) === null || _ELEMENTS$wpn$element10 === void 0 ? void 0 : _ELEMENTS$wpn$element10.status, ")"), wpn.isVolatile && /*#__PURE__*/React.createElement("span", {
+      /* v2.3.1235: batch-2 rollout \u2014 badge to the 11px floor, danger
+         tint onto the approved --ui-danger; the \u26A1 prefix was
+         decorative emoji in chrome. */
       style: {
-        fontSize: 7,
+        fontSize: 11,
         padding: '1px 4px',
         borderRadius: 3,
-        background: 'rgba(217,92,84,.2)',
-        color: '#D95C54',
-        border: '1px solid rgba(217,92,84,.3)'
+        background: 'rgba(216,99,93,.15)',
+        color: 'var(--ui-danger)',
+        border: '1px solid rgba(216,99,93,.3)'
       }
-    }, "\u26A1VOLATILE +30%"), !wpn.element1 && /*#__PURE__*/React.createElement("span", {
+    }, "VOLATILE +30%"), !wpn.element1 && /*#__PURE__*/React.createElement("span", {
       style: {
-        fontSize: 8,
-        color: '#96A2A0'
+        fontSize: 11,
+        color: 'var(--ui-text-muted)'
       }
     }, "No elements")));
   }), /*#__PURE__*/React.createElement("div", {
     /* v2.3.1232: module header — 11/600 uppercase .12em */
+    /* v2.3.1235: batch-2 rollout — headers onto the locked 11/700
+       .14em muted rung */
     style: {
       fontSize: 11,
-      fontWeight: 600,
+      fontWeight: 700,
       textTransform: 'uppercase',
-      letterSpacing: '.12em',
-      color: '#96A2A0',
+      letterSpacing: '.14em',
+      color: 'var(--ui-text-muted)',
       margin: '10px 0 6px'
     }
   }, "WORN ARMOR"), /*#__PURE__*/React.createElement("div", {
@@ -269,8 +308,12 @@ export function InventoryPanel(props) {
         padding: 8,
         borderRadius: 8,
         /* v2.3.1232: worn = occupied-slot mist over #243137; off = empty cell */
-        background: on ? 'radial-gradient(circle at 48% 42%, rgba(238,240,225,.16) 0%, rgba(238,240,225,.05) 48%, transparent 76%) #243137' : '#19252A',
-        border: "1.5px solid ".concat(on ? 'rgba(89,191,145,.35)' : 'rgba(238,242,235,.08)'),
+        /* v2.3.1235: batch-2 rollout — slot base onto --ui-card /
+           --ui-well; the green worn-state border was a decorative
+           colored edge (edges are for rarity only) — worn now reads
+           as occupied (mist + strong line), off as an empty well cell. */
+        background: on ? 'radial-gradient(circle at 48% 42%, rgba(238,240,225,.16) 0%, rgba(238,240,225,.05) 48%, transparent 76%) #24363C' : 'var(--ui-well)',
+        border: "1.5px solid ".concat(on ? 'rgba(229,237,233,.20)' : 'rgba(229,237,233,.11)'),
         textAlign: 'center'
       }
     }, /*#__PURE__*/React.createElement("img", {
@@ -285,15 +328,18 @@ export function InventoryPanel(props) {
         userSelect: 'none'
       }
     }), /*#__PURE__*/React.createElement("div", {
+      /* v2.3.1235: batch-2 rollout — 10px name to the 11px floor; the
+         green worn-name is the one semantic state cue kept (positive
+         token), off-cells read secondary. */
       style: {
-        fontSize: 10,
+        fontSize: 11,
         fontWeight: 700,
-        color: on ? '#59BF91' : '#B9C1BF'
+        color: on ? '#55B98A' : 'var(--ui-text-secondary)'
       }
     }, it.name), /*#__PURE__*/React.createElement("div", {
       style: {
-        fontSize: 8,
-        color: '#96A2A0',
+        fontSize: 11,
+        color: 'var(--ui-text-muted)',
         marginBottom: 5
       }
     }, it.sub), /*#__PURE__*/React.createElement("button", {
@@ -303,13 +349,17 @@ export function InventoryPanel(props) {
         width: '100%',
         padding: '4px 0',
         /* v2.3.1232: readable per-cell toggle — bigger touch target + hairline */
-        minHeight: 36,
+        /* v2.3.1235: batch-2 rollout — 36px was below the 44px hitbox
+           floor, and the red/green fills broke the locked button rule
+           (Equip/Unequip are reversible — NEUTRAL secondaries, never
+           colored fills; the cell + name already show worn state). */
+        minHeight: 44,
         fontSize: 11,
         fontWeight: 700,
-        borderRadius: 8,
-        border: '1px solid rgba(238,242,235,.14)',
-        background: on ? 'rgba(217,92,84,.25)' : 'rgba(89,191,145,.25)',
-        color: '#F7F2E7',
+        borderRadius: 10,
+        border: '1px solid var(--ui-line-strong)',
+        background: 'var(--ui-raised)',
+        color: 'var(--ui-text)',
         cursor: 'pointer',
         WebkitTapHighlightColor: 'transparent',
         touchAction: 'manipulation'
@@ -320,8 +370,9 @@ export function InventoryPanel(props) {
       marginBottom: 8,
       padding: 10,
       borderRadius: 10,
-      background: '#19252A',
-      border: '1px solid rgba(238,242,235,.08)'
+      /* v2.3.1235: batch-2 rollout — quiet cell onto --ui-well + line */
+      background: 'var(--ui-well)',
+      border: '1px solid var(--ui-line)'
     }
   }, /*#__PURE__*/React.createElement("div", {
     style: {
@@ -337,12 +388,12 @@ export function InventoryPanel(props) {
     style: {
       fontSize: 11,
       fontWeight: 700,
-      color: ((_RARITY_TIERS$rpgStat = RARITY_TIERS[(_rpgState$armor2 = rpgState.armor) === null || _rpgState$armor2 === void 0 ? void 0 : _rpgState$armor2.tier]) === null || _RARITY_TIERS$rpgStat === void 0 ? void 0 : _RARITY_TIERS$rpgStat.color) || '#96A2A0'
+      color: ((_RARITY_TIERS$rpgStat = RARITY_TIERS[(_rpgState$armor2 = rpgState.armor) === null || _rpgState$armor2 === void 0 ? void 0 : _rpgState$armor2.tier]) === null || _RARITY_TIERS$rpgStat === void 0 ? void 0 : _RARITY_TIERS$rpgStat.color) || 'var(--ui-text-muted)'
     }
   }, ((_rpgState$armor3 = rpgState.armor) === null || _rpgState$armor3 === void 0 ? void 0 : _rpgState$armor3.name) || 'No Armor'), /*#__PURE__*/React.createElement("div", {
     style: {
-      fontSize: 8,
-      color: '#96A2A0'
+      fontSize: 11,
+      color: 'var(--ui-text-muted)'
     }
   }, (_rpgState$armor4 = rpgState.armor) !== null && _rpgState$armor4 !== void 0 && _rpgState$armor4.attunement ? "Attuned: ".concat(rpgState.armor.attunement) : 'No attunement')))), /*#__PURE__*/React.createElement("div", {
     style: {
@@ -350,8 +401,10 @@ export function InventoryPanel(props) {
       padding: 10,
       borderRadius: 10,
       /* v2.3.1232: occupied slot = mist over #243137 + .18 hairline; empty = quiet cell */
-      background: rpgState.amulet ? 'radial-gradient(circle at 48% 42%, rgba(238,240,225,.16) 0%, rgba(238,240,225,.05) 48%, transparent 76%) #243137' : '#19252A',
-      border: rpgState.amulet ? '1px solid rgba(238,242,235,.18)' : '1px solid rgba(238,242,235,.08)'
+      /* v2.3.1235: batch-2 rollout — occupied base onto --ui-card +
+         strong line; empty onto --ui-well + line */
+      background: rpgState.amulet ? 'radial-gradient(circle at 48% 42%, rgba(238,240,225,.16) 0%, rgba(238,240,225,.05) 48%, transparent 76%) #24363C' : 'var(--ui-well)',
+      border: rpgState.amulet ? '1px solid var(--ui-line-strong)' : '1px solid var(--ui-line)'
     }
   }, /*#__PURE__*/React.createElement("div", {
     style: {
@@ -371,24 +424,25 @@ export function InventoryPanel(props) {
     style: {
       fontSize: 11,
       fontWeight: 700,
-      color: '#F7F2E7'
+      color: 'var(--ui-text)'
     }
   }, rpgState.amulet.name), /*#__PURE__*/React.createElement("div", {
     style: {
-      fontSize: 8,
-      color: '#96A2A0'
+      fontSize: 11,
+      color: 'var(--ui-text-muted)'
     }
   }, ((_AMULET_TIERS$rpgStat = AMULET_TIERS[rpgState.amulet.tier]) === null || _AMULET_TIERS$rpgStat === void 0 ? void 0 : _AMULET_TIERS$rpgStat.label) || 'Simple', " Amulet", rpgState.amulet.gem && function (_ELEMENTS$rpgState$am3) {
     var bonus = getAmuletBonus(rpgState.amulet);
     if (!bonus) return null;
     return /*#__PURE__*/React.createElement("span", {
       style: {
-        color: ((_ELEMENTS$rpgState$am3 = ELEMENTS[rpgState.amulet.gem]) === null || _ELEMENTS$rpgState$am3 === void 0 ? void 0 : _ELEMENTS$rpgState$am3.color) || '#F7F2E7'
+        color: ((_ELEMENTS$rpgState$am3 = ELEMENTS[rpgState.amulet.gem]) === null || _ELEMENTS$rpgState$am3 === void 0 ? void 0 : _ELEMENTS$rpgState$am3.color) || 'var(--ui-text)'
       }
     }, " \xB7 ", bonus.label, " +", bonus.value, bonus.unit);
   }()), rpgState.amulet.gem && /*#__PURE__*/React.createElement("div", {
+    /* v2.3.1235: batch-2 rollout — 7px was far below the 11px floor */
     style: {
-      fontSize: 7,
+      fontSize: 11,
       marginTop: 2
     }
   }, /*#__PURE__*/React.createElement("span", {
@@ -400,21 +454,22 @@ export function InventoryPanel(props) {
       border: '1px solid ' + ((_ELEMENTS$rpgState$am6 = ELEMENTS[rpgState.amulet.gem]) === null || _ELEMENTS$rpgState$am6 === void 0 ? void 0 : _ELEMENTS$rpgState$am6.color) + '44'
     }
   }, rpgState.amulet.gem, " gem")), !rpgState.amulet.gem && /*#__PURE__*/React.createElement("div", {
+    /* v2.3.1235: batch-2 rollout \u2014 descriptive copy to the 12px floor */
     style: {
-      fontSize: 7,
-      color: '#96A2A0',
+      fontSize: 12,
+      color: 'var(--ui-text-muted)',
       marginTop: 2
     }
   }, "No gem \u2014 visit the Enchanter to slot one")) : /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 11,
       fontWeight: 700,
-      color: '#96A2A0'
+      color: 'var(--ui-text-muted)'
     }
   }, "No Amulet"), /*#__PURE__*/React.createElement("div", {
     style: {
-      fontSize: 8,
-      color: '#96A2A0'
+      fontSize: 12,
+      color: 'var(--ui-text-muted)'
     }
   }, "Craft at Blacksmith from gold bars (nuggets: ", rpgState.goldNuggets || 0, "/", NUGGETS_PER_BAR, ", bars: ", rpgState.goldBars || 0, ")"))))), /*#__PURE__*/React.createElement("div", {
     style: {
@@ -422,8 +477,10 @@ export function InventoryPanel(props) {
       padding: 10,
       borderRadius: 10,
       /* v2.3.1232: occupied slot = mist over #243137 + .18 hairline; empty = quiet cell */
-      background: rpgState.shield ? 'radial-gradient(circle at 48% 42%, rgba(238,240,225,.16) 0%, rgba(238,240,225,.05) 48%, transparent 76%) #243137' : '#19252A',
-      border: rpgState.shield ? '1px solid rgba(238,242,235,.18)' : '1px solid rgba(238,242,235,.08)'
+      /* v2.3.1235: batch-2 rollout — occupied base onto --ui-card +
+         strong line; empty onto --ui-well + line */
+      background: rpgState.shield ? 'radial-gradient(circle at 48% 42%, rgba(238,240,225,.16) 0%, rgba(238,240,225,.05) 48%, transparent 76%) #24363C' : 'var(--ui-well)',
+      border: rpgState.shield ? '1px solid var(--ui-line-strong)' : '1px solid var(--ui-line)'
     }
   }, /*#__PURE__*/React.createElement("div", {
     style: {
@@ -443,12 +500,12 @@ export function InventoryPanel(props) {
     style: {
       fontSize: 11,
       fontWeight: 700,
-      color: '#F7F2E7'
+      color: 'var(--ui-text)'
     }
   }, rpgState.shield.name), /*#__PURE__*/React.createElement("div", {
     style: {
-      fontSize: 8,
-      color: '#96A2A0'
+      fontSize: 11,
+      color: 'var(--ui-text-muted)'
     }
   }, ((_BLACKSMITH_TIERS$rpg = BLACKSMITH_TIERS[rpgState.shield.gearBase]) === null || _BLACKSMITH_TIERS$rpg === void 0 ? void 0 : _BLACKSMITH_TIERS$rpg.label) || 'Basic', " \xB7 ", ((_BLACKSMITH_TIERS$rpg2 = BLACKSMITH_TIERS[rpgState.shield.gearBase]) === null || _BLACKSMITH_TIERS$rpg2 === void 0 ? void 0 : _BLACKSMITH_TIERS$rpg2.tierMult) || 1, "\xD7", rpgState.shield.gem && function (_ELEMENTS$rpgState$sh3) {
     var bonus = getShieldBonus(rpgState.shield);
@@ -458,20 +515,21 @@ export function InventoryPanel(props) {
       }
     }, " \xB7 ", bonus.label, " +", bonus.value, bonus.unit) : null;
   }()), /*#__PURE__*/React.createElement("div", {
+    /* v2.3.1235: batch-2 rollout — 7px was far below the 11px floor */
     style: {
-      fontSize: 7,
-      color: '#96A2A0'
+      fontSize: 11,
+      color: 'var(--ui-text-muted)'
     }
   }, rpgState.shield.reforgeBonus ? rpgState.shield.reforgeBonus.label + ' +' + rpgState.shield.reforgeBonus.value + rpgState.shield.reforgeBonus.unit : '', rpgState.shield.hardenBonus ? ' · ' + rpgState.shield.hardenBonus.label + ' +' + rpgState.shield.hardenBonus.value + rpgState.shield.hardenBonus.unit : '', !rpgState.shield.reforgeBonus && !rpgState.shield.gem && 'No bonuses yet')) : /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 11,
       fontWeight: 700,
-      color: '#96A2A0'
+      color: 'var(--ui-text-muted)'
     }
   }, "No Shield"), /*#__PURE__*/React.createElement("div", {
     style: {
-      fontSize: 8,
-      color: '#96A2A0'
+      fontSize: 12,
+      color: 'var(--ui-text-muted)'
     }
   }, "Craft at the Blacksmith from ore"))))), function () {
     var inv = rpgState.inventory || {};
@@ -484,17 +542,19 @@ export function InventoryPanel(props) {
     if (cookedFish.length === 0) return null;
     return /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
       /* v2.3.1232: module header \u2014 11/600 uppercase .12em */
+      /* v2.3.1235: batch-2 rollout \u2014 locked 11/700 .14em muted rung;
+         the \uD83C\uDF7D\uFE0F prefix was decorative emoji in chrome */
       style: {
         fontSize: 11,
-        fontWeight: 600,
+        fontWeight: 700,
         textTransform: 'uppercase',
-        letterSpacing: '.12em',
-        color: '#96A2A0',
+        letterSpacing: '.14em',
+        color: 'var(--ui-text-muted)',
         fontVariantNumeric: 'tabular-nums',
         marginTop: 4,
         marginBottom: 4
       }
-    }, "\uD83C\uDF7D\uFE0F Food (", cookedFish.reduce(function (s, e) {
+    }, "Food (", cookedFish.reduce(function (s, e) {
       return s + e[1];
     }, 0), ")"), /*#__PURE__*/React.createElement("div", {
       style: {
@@ -519,15 +579,19 @@ export function InventoryPanel(props) {
         key: key,
         /* v2.3.1232: 32px eat chips (pill radius); at-full = quiet cell +
            disabled ink, else the spec positive green */
+        /* v2.3.1235: batch-2 rollout — 32px was below the 44px hitbox
+           floor; the green fill broke the locked button rule (eating
+           is a routine action — neutral secondary, never a colored
+           fill); at-full stays a readable disabled well cell. */
         style: {
           padding: '0 10px',
-          minHeight: 32,
+          minHeight: 44,
           borderRadius: 999,
           fontSize: 11,
           cursor: 'pointer',
-          background: atFull ? '#19252A' : 'rgba(89,191,145,.12)',
-          border: atFull ? '1px solid rgba(238,242,235,.08)' : '1px solid rgba(89,191,145,.3)',
-          color: atFull ? '#687575' : '#59BF91',
+          background: atFull ? 'var(--ui-well)' : 'var(--ui-raised)',
+          border: atFull ? '1px solid var(--ui-line)' : '1px solid var(--ui-line-strong)',
+          color: atFull ? 'var(--ui-text-disabled)' : 'var(--ui-text)',
           fontWeight: 700,
           textTransform: 'capitalize',
           fontVariantNumeric: 'tabular-nums'
@@ -551,24 +615,29 @@ export function InventoryPanel(props) {
           }
           BT_AUDIO.beep(500, 0.06, 0.08, 'sine');
         }
-      }, "\uD83D\uDC1F ", fishName, " \xD7", qty, " (+", healAmt, "HP)");
+        /* v2.3.1235: batch-2 rollout \u2014 the \uD83D\uDC1F prefix was decorative
+           emoji in button chrome (the fish name carries the meaning) */
+      }, fishName, " \xD7", qty, " (+", healAmt, "HP)");
     })));
   }(), /*#__PURE__*/React.createElement("div", {
     /* v2.3.1232: module header \u2014 11/600 uppercase .12em */
+    /* v2.3.1235: batch-2 rollout \u2014 locked 11/700 .14em muted rung;
+       the \uD83D\uDCE6 prefix was decorative emoji in chrome */
     style: {
       fontSize: 11,
-      fontWeight: 600,
+      fontWeight: 700,
       textTransform: 'uppercase',
-      letterSpacing: '.12em',
-      color: '#96A2A0',
+      letterSpacing: '.14em',
+      color: 'var(--ui-text-muted)',
       fontVariantNumeric: 'tabular-nums',
       marginTop: 4,
       marginBottom: 4
     }
-  }, "\uD83D\uDCE6 Weapon Stash (", (rpgState.weaponStash || []).length, "/", WEAPON_STASH_MAX, ")"), (rpgState.weaponStash || []).length === 0 && /*#__PURE__*/React.createElement("div", {
+  }, "Weapon Stash (", (rpgState.weaponStash || []).length, "/", WEAPON_STASH_MAX, ")"), (rpgState.weaponStash || []).length === 0 && /*#__PURE__*/React.createElement("div", {
+    /* v2.3.1235: batch-2 rollout \u2014 descriptive copy to the 12px floor */
     style: {
-      fontSize: 10,
-      color: '#96A2A0',
+      fontSize: 12,
+      color: 'var(--ui-text-muted)',
       marginBottom: 6
     }
   }, "Empty. Weapon drops are auto-stashed here for comparison."), (rpgState.weaponStash || []).length > 0 && /*#__PURE__*/React.createElement("div", {
@@ -616,8 +685,10 @@ export function InventoryPanel(props) {
       style: {
         padding: 8,
         borderRadius: 8,
-        background: '#19252A',
-        border: '1px solid rgba(238,242,235,.08)',
+        /* v2.3.1235: batch-2 rollout — stashed items are occupied
+           cells: --ui-card + line (was the retired #19252A) */
+        background: 'var(--ui-card)',
+        border: '1px solid var(--ui-line)',
         position: 'relative'
       }
     }, /*#__PURE__*/React.createElement("div", {
@@ -636,67 +707,71 @@ export function InventoryPanel(props) {
         flex: 1
       }
     }, /*#__PURE__*/React.createElement("div", {
+      /* v2.3.1235: batch-2 rollout — 10px/7px metadata to the 11px
+         floor (rarity name color is game data) */
       style: {
-        fontSize: 10,
+        fontSize: 11,
         fontWeight: 700,
-        color: (srt === null || srt === void 0 ? void 0 : srt.color) || '#96A2A0'
+        color: (srt === null || srt === void 0 ? void 0 : srt.color) || 'var(--ui-text-muted)'
       }
     }, sw.name), /*#__PURE__*/React.createElement("div", {
       style: {
-        fontSize: 7,
-        color: '#96A2A0'
+        fontSize: 11,
+        color: 'var(--ui-text-muted)'
       }
     }, srt === null || srt === void 0 ? void 0 : srt.label, " ", swt === null || swt === void 0 ? void 0 : swt.label, " \xB7 ", sw.tierMult, "\xD7 \xB7 ", isRanged ? 'Ranged' : 'Melee'))), /*#__PURE__*/React.createElement("div", {
+      /* v2.3.1235: batch-2 rollout — compare strip to the 11px floor;
+         diff arrows onto the approved positive/danger tokens */
       style: {
         display: 'flex',
         gap: 6,
-        fontSize: 8,
+        fontSize: 11,
         marginBottom: 4
       }
     }, /*#__PURE__*/React.createElement("span", {
       style: {
-        color: '#96A2A0'
+        color: 'var(--ui-text-muted)'
       }
     }, "DMG: ", /*#__PURE__*/React.createElement("b", {
       style: {
-        color: '#F7F2E7',
+        color: 'var(--ui-text)',
         fontVariantNumeric: 'tabular-nums'
       }
     }, stashDmg), dmgDiff !== 0 && /*#__PURE__*/React.createElement("span", {
       style: {
-        color: dmgDiff > 0 ? '#59BF91' : '#D95C54',
+        color: dmgDiff > 0 ? '#55B98A' : '#D8635D',
         marginLeft: 2,
-        fontSize: 7
+        fontSize: 11
       }
     }, dmgDiff > 0 ? '▲' : '▼', Math.abs(dmgDiff))), /*#__PURE__*/React.createElement("span", {
       style: {
-        color: '#96A2A0'
+        color: 'var(--ui-text-muted)'
       }
     }, "SPD: ", /*#__PURE__*/React.createElement("b", {
       style: {
-        color: '#F7F2E7',
+        color: 'var(--ui-text)',
         fontVariantNumeric: 'tabular-nums'
       }
     }, stashSpd), spdDiff !== 0 && /*#__PURE__*/React.createElement("span", {
       style: {
-        color: spdDiff > 0 ? '#59BF91' : '#D95C54',
+        color: spdDiff > 0 ? '#55B98A' : '#D8635D',
         marginLeft: 2,
-        fontSize: 7
+        fontSize: 11
       }
     }, spdDiff > 0 ? '▲' : '▼', Math.abs(spdDiff).toFixed(1))), /*#__PURE__*/React.createElement("span", {
       style: {
-        color: '#96A2A0'
+        color: 'var(--ui-text-muted)'
       }
     }, "DPS: ", /*#__PURE__*/React.createElement("b", {
       style: {
-        color: '#F7F2E7',
+        color: 'var(--ui-text)',
         fontVariantNumeric: 'tabular-nums'
       }
     }, stashDps), dpsDiff !== 0 && /*#__PURE__*/React.createElement("span", {
       style: {
-        color: dpsDiff > 0 ? '#59BF91' : '#D95C54',
+        color: dpsDiff > 0 ? '#55B98A' : '#D8635D',
         marginLeft: 2,
-        fontSize: 7
+        fontSize: 11
       }
     }, dpsDiff > 0 ? '▲' : '▼', Math.abs(dpsDiff)))), /*#__PURE__*/React.createElement("div", {
       style: {
@@ -706,8 +781,9 @@ export function InventoryPanel(props) {
         marginBottom: 4
       }
     }, sw.element1 && /*#__PURE__*/React.createElement("span", {
+      /* v2.3.1235: batch-2 rollout — element chips to the 11px floor */
       style: {
-        fontSize: 7,
+        fontSize: 11,
         padding: '1px 4px',
         borderRadius: 3,
         background: ((_ELEMENTS$sw$element = ELEMENTS[sw.element1]) === null || _ELEMENTS$sw$element === void 0 ? void 0 : _ELEMENTS$sw$element.color) + '22',
@@ -716,7 +792,7 @@ export function InventoryPanel(props) {
       }
     }, sw.element1), sw.element2 && /*#__PURE__*/React.createElement("span", {
       style: {
-        fontSize: 7,
+        fontSize: 11,
         padding: '1px 4px',
         borderRadius: 3,
         background: ((_ELEMENTS$sw$element4 = ELEMENTS[sw.element2]) === null || _ELEMENTS$sw$element4 === void 0 ? void 0 : _ELEMENTS$sw$element4.color) + '22',
@@ -724,23 +800,28 @@ export function InventoryPanel(props) {
         border: '1px solid ' + ((_ELEMENTS$sw$element6 = ELEMENTS[sw.element2]) === null || _ELEMENTS$sw$element6 === void 0 ? void 0 : _ELEMENTS$sw$element6.color) + '44'
       }
     }, sw.element2), sw.isVolatile && /*#__PURE__*/React.createElement("span", {
+      /* v2.3.1235: batch-2 rollout \u2014 6px badge to the 11px floor,
+         danger token; \u26A1 was decorative emoji in chrome */
       style: {
-        fontSize: 6,
-        color: '#D95C54'
+        fontSize: 11,
+        color: 'var(--ui-danger)'
       }
-    }, "\u26A1VOL"), !sw.element1 && /*#__PURE__*/React.createElement("span", {
+    }, "VOL"), !sw.element1 && /*#__PURE__*/React.createElement("span", {
       style: {
-        fontSize: 7,
-        color: '#96A2A0'
+        fontSize: 11,
+        color: 'var(--ui-text-muted)'
       }
     }, "No elements"), function () {
       var req = getEquipReqLabel(sw, sw.type);
       if (!req) return null;
       var met = (rpgState[req.stat] || 0) >= req.req;
       return /*#__PURE__*/React.createElement("span", {
+        /* v2.3.1235: batch-2 rollout — the stat requirement is the
+           "show the requirement" line the locked contract protects:
+           6px was unreadable, now 11px on the positive/danger tokens */
         style: {
-          fontSize: 6,
-          color: met ? '#59BF91' : '#D95C54',
+          fontSize: 11,
+          color: met ? '#55B98A' : '#D8635D',
           marginLeft: 4
         }
       }, req.label, " ", rpgState[req.stat] || 0, "/", req.req, " ", met ? '✓' : '✗');
@@ -751,14 +832,18 @@ export function InventoryPanel(props) {
       }
     }, /*#__PURE__*/React.createElement("button", {
       /* v2.3.1232: 44px action row — Equip is the one brass primary */
+      /* v2.3.1235: batch-2 rollout — demoted to a neutral secondary:
+         the locked contract allows ONE gold primary per surface and
+         this button repeats per stash row (N rows = N primaries).
+         Radius 11 → 10 (locked button radius). */
       style: {
         flex: 1,
         padding: '3px 0',
         minHeight: 44,
-        borderRadius: 11,
-        border: 'none',
-        background: '#D8A85F',
-        color: '#20170D',
+        borderRadius: 10,
+        border: '1px solid var(--ui-line-strong)',
+        background: 'var(--ui-raised)',
+        color: 'var(--ui-text)',
         fontSize: 12,
         fontWeight: 700,
         cursor: 'pointer'
@@ -795,16 +880,19 @@ export function InventoryPanel(props) {
         } catch (e) {}
         BT_AUDIO.collect();
       }
-    }, "\u2694\uFE0F Equip"), /*#__PURE__*/React.createElement("button", {
+    }, "Equip" /* v2.3.1235: batch-2 rollout \u2014 the sword emoji prefix was
+      decorative emoji in button chrome */), /*#__PURE__*/React.createElement("button", {
       /* v2.3.1232: 44px action row — Sell is the raised secondary */
+      /* v2.3.1235: batch-2 rollout — secondary onto the correction-pass
+         tokens; radius 11 → 10 (locked button radius) */
       style: {
         flex: 1,
         padding: '3px 0',
         minHeight: 44,
-        borderRadius: 11,
-        border: '1px solid rgba(238,242,235,.14)',
-        background: '#2B3940',
-        color: '#F7F2E7',
+        borderRadius: 10,
+        border: '1px solid var(--ui-line-strong)',
+        background: 'var(--ui-raised)',
+        color: 'var(--ui-text)',
         fontSize: 12,
         fontWeight: 700,
         cursor: 'pointer',
@@ -856,17 +944,19 @@ export function InventoryPanel(props) {
     }), "Sell (", Math.ceil((sw.tierMult || 1) * (((_WEAPON_TYPES$sw$type2 = WEAPON_TYPES[sw.type]) === null || _WEAPON_TYPES$sw$type2 === void 0 ? void 0 : _WEAPON_TYPES$sw$type2.base) || 30) * 0.5), "g)")));
   })), /*#__PURE__*/React.createElement("div", {
     /* v2.3.1232: module header \u2014 11/600 uppercase .12em */
+    /* v2.3.1235: batch-2 rollout \u2014 locked 11/700 .14em muted rung;
+       the \uD83D\uDCD6 prefix was decorative emoji in chrome */
     style: {
       fontSize: 11,
-      fontWeight: 600,
+      fontWeight: 700,
       textTransform: 'uppercase',
-      letterSpacing: '.12em',
-      color: '#96A2A0',
+      letterSpacing: '.14em',
+      color: 'var(--ui-text-muted)',
       fontVariantNumeric: 'tabular-nums',
       marginTop: 4,
       marginBottom: 4
     }
-  }, "\uD83D\uDCD6 Codex: ", discoveredCollisions.size, " collisions discovered"), discoveredCollisions.size > 0 && /*#__PURE__*/React.createElement("div", {
+  }, "Codex: ", discoveredCollisions.size, " collisions discovered"), discoveredCollisions.size > 0 && /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
       gap: 3,
@@ -880,48 +970,58 @@ export function InventoryPanel(props) {
     return coll ? /*#__PURE__*/React.createElement("span", {
       key: cid,
       /* v2.3.1232: off-palette teal → spec info blue */
+      /* v2.3.1235: batch-2 rollout — info #5D93D2 → #599FE5 (approved
+         correction-pass token); 9px to the 11px floor */
       style: {
-        fontSize: 9,
+        fontSize: 11,
         padding: '2px 6px',
         borderRadius: 4,
-        background: 'rgba(93,147,210,.12)',
-        color: '#5D93D2',
-        border: '1px solid rgba(93,147,210,.3)'
+        background: 'rgba(89,159,229,.12)',
+        color: '#599FE5',
+        border: '1px solid rgba(89,159,229,.3)'
       }
     }, coll.name) : null;
   })), /*#__PURE__*/React.createElement("div", {
     /* v2.3.1232: module header \u2014 11/600 uppercase .12em */
+    /* v2.3.1235: batch-2 rollout \u2014 locked 11/700 .14em muted rung;
+       the \uD83E\uDEA4 prefix was decorative emoji in chrome */
     style: {
       fontSize: 11,
-      fontWeight: 600,
+      fontWeight: 700,
       textTransform: 'uppercase',
-      letterSpacing: '.12em',
-      color: '#96A2A0',
+      letterSpacing: '.14em',
+      color: 'var(--ui-text-muted)',
       fontVariantNumeric: 'tabular-nums',
       marginTop: 8,
       marginBottom: 4
     }
-  }, "\uD83E\uDEA4 Pets: ", ((_rpgState$lifeSkills37 = rpgState.lifeSkills) === null || _rpgState$lifeSkills37 === void 0 || (_rpgState$lifeSkills37 = _rpgState$lifeSkills37.pets) === null || _rpgState$lifeSkills37 === void 0 ? void 0 : _rpgState$lifeSkills37.length) || 0, "/", MAX_PET_SLOTS, ((_rpgState$lifeSkills38 = rpgState.lifeSkills) === null || _rpgState$lifeSkills38 === void 0 ? void 0 : _rpgState$lifeSkills38.trapping) && /*#__PURE__*/React.createElement("span", {
+  }, "Pets: ", ((_rpgState$lifeSkills37 = rpgState.lifeSkills) === null || _rpgState$lifeSkills37 === void 0 || (_rpgState$lifeSkills37 = _rpgState$lifeSkills37.pets) === null || _rpgState$lifeSkills37 === void 0 ? void 0 : _rpgState$lifeSkills37.length) || 0, "/", MAX_PET_SLOTS, ((_rpgState$lifeSkills38 = rpgState.lifeSkills) === null || _rpgState$lifeSkills38 === void 0 ? void 0 : _rpgState$lifeSkills38.trapping) && /*#__PURE__*/React.createElement("span", {
     style: {
-      fontSize: 8,
-      color: '#96A2A0'
+      fontSize: 11,
+      color: 'var(--ui-text-muted)'
     }
   }, " \xB7 Trapping Lv", rpgState.lifeSkills.trapping.level)), (((_rpgState$lifeSkills39 = rpgState.lifeSkills) === null || _rpgState$lifeSkills39 === void 0 ? void 0 : _rpgState$lifeSkills39.pets) || []).length === 0 && /*#__PURE__*/React.createElement("div", {
+    /* v2.3.1235: batch-2 rollout \u2014 descriptive copy to the 12px floor
+       (the \uD83E\uDEA4 in the sentence names the in-game capture button, so it
+       is game data, not chrome) */
     style: {
-      fontSize: 10,
-      color: '#96A2A0',
+      fontSize: 12,
+      color: 'var(--ui-text-muted)',
       marginBottom: 4
     }
   }, "No pets. Weaken a monster to <20% HP then tap \uD83E\uDEA4 to capture!"), /*#__PURE__*/React.createElement("div", {
     /* v2.3.1232: recessed #121B20 tray behind the pet grid (well shadow) */
+    /* v2.3.1235: batch-2 rollout \u2014 tray onto the shared .ui-well recipe
+       (correction-pass tokens) */
     style: {
       display: 'grid',
       gridTemplateColumns: 'repeat(3,1fr)',
       gap: 4,
-      background: '#121B20',
+      background: 'linear-gradient(180deg, #132329, #111E23)',
+      border: '1px solid var(--ui-line)',
       borderRadius: 10,
       padding: 4,
-      boxShadow: 'inset 0 2px 4px rgba(0,0,0,.44), inset 0 1px 0 rgba(255,255,255,.035)',
+      boxShadow: 'inset 0 2px 5px rgba(0,0,0,0.32), inset 0 1px 0 rgba(255,255,255,0.025)',
       marginBottom: 6
     }
   }, (((_rpgState$lifeSkills40 = rpgState.lifeSkills) === null || _rpgState$lifeSkills40 === void 0 ? void 0 : _rpgState$lifeSkills40.pets) || []).map(function (pet, pi) {
@@ -934,8 +1034,11 @@ export function InventoryPanel(props) {
         borderRadius: 8,
         textAlign: 'center',
         /* v2.3.1232: occupied-slot mist; active pet = accent-fill + brass edge */
-        background: isActive ? 'radial-gradient(circle at 48% 42%, rgba(238,240,225,.16) 0%, rgba(238,240,225,.05) 48%, transparent 76%) #3B3427' : 'radial-gradient(circle at 48% 42%, rgba(238,240,225,.16) 0%, rgba(238,240,225,.05) 48%, transparent 76%) #243137',
-        border: "1px solid ".concat(isActive ? '#D8A85F' : 'rgba(238,242,235,.08)'),
+        /* v2.3.1235: batch-2 rollout — the solid #3B3427 accent-fill is
+           retired: active = brass-soft tint layered over the misted
+           card base + brass edge; idle = mist over --ui-card + line. */
+        background: isActive ? 'linear-gradient(rgba(216,170,88,.15), rgba(216,170,88,.15)), radial-gradient(circle at 48% 42%, rgba(238,240,225,.16) 0%, rgba(238,240,225,.05) 48%, transparent 76%) #24363C' : 'radial-gradient(circle at 48% 42%, rgba(238,240,225,.16) 0%, rgba(238,240,225,.05) 48%, transparent 76%) #24363C',
+        border: "1px solid ".concat(isActive ? '#D8AA58' : 'rgba(229,237,233,.11)'),
         cursor: 'pointer'
       },
       onClick: function onClick() {
@@ -952,34 +1055,39 @@ export function InventoryPanel(props) {
         fontSize: 18
       }
     }, pet.emoji), /*#__PURE__*/React.createElement("div", {
+      /* v2.3.1235: batch-2 rollout — 6-8px pet metadata to the 11px
+         floor (pet name/element colors are game data) */
       style: {
-        fontSize: 8,
+        fontSize: 11,
         fontWeight: 700,
         color: pet.color
       }
     }, pet.name), /*#__PURE__*/React.createElement("div", {
       style: {
-        fontSize: 7,
-        color: '#96A2A0'
+        fontSize: 11,
+        color: 'var(--ui-text-muted)'
       }
     }, "Lv", pet.level, " ", pet.archetype), pet.element && /*#__PURE__*/React.createElement("div", {
       style: {
-        fontSize: 6,
-        color: ((_ELEMENTS$pet$element2 = ELEMENTS[pet.element]) === null || _ELEMENTS$pet$element2 === void 0 ? void 0 : _ELEMENTS$pet$element2.color) || '#96A2A0'
+        fontSize: 11,
+        color: ((_ELEMENTS$pet$element2 = ELEMENTS[pet.element]) === null || _ELEMENTS$pet$element2 === void 0 ? void 0 : _ELEMENTS$pet$element2.color) || 'var(--ui-text-muted)'
       }
     }, pet.element), isActive && /*#__PURE__*/React.createElement("div", {
+      /* v2.3.1235: batch-2 rollout — badge to the 11px floor; focus
+         gold #F0C878 → --ui-brass-highlight */
       style: {
-        fontSize: 8,
+        fontSize: 11,
         fontWeight: 700,
         letterSpacing: '.08em',
-        color: '#F0C878'
+        color: 'var(--ui-brass-highlight)'
       }
     }, "ACTIVE"));
   })), (((_rpgState$lifeSkills42 = rpgState.lifeSkills) === null || _rpgState$lifeSkills42 === void 0 ? void 0 : _rpgState$lifeSkills42.pets) || []).length > 0 && /*#__PURE__*/React.createElement("div", {
     /* v2.3.1232: caption size floor */
+    /* v2.3.1235: batch-2 rollout — descriptive copy to the 12px floor */
     style: {
-      fontSize: 10,
-      color: '#96A2A0'
+      fontSize: 12,
+      color: 'var(--ui-text-muted)'
     }
   }, "Tap a pet to set active. Active pet follows you and auto-collects loot within ", PET_LOOT_RADIUS, "px.")));
 }

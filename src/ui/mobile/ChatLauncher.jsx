@@ -23,15 +23,17 @@ export const ChatLauncher = () => {
         /* v2.3.1233: Lantern Slate world-HUD circle button — 44×44 (spec §10
            back/zone button), rgba(17,25,29,.88) fill + strong border, and the
            §10 opacity ladder (.62 rest / .92 engaged) instead of .45/.95. */
+        /* v2.3.1235: batch-4 rollout — corrected world-chrome tokens
+           (rgba(13,22,27,.88) fill, strong hairline, text-2 glyph). */
         width: 44,
         height: 44,
         padding: 0,
-        background: 'rgba(17,25,29,.88)',
-        border: '1px solid rgba(238,242,235,.24)',
+        background: 'rgba(13,22,27,.88)',
+        border: '1px solid rgba(229,237,233,.20)',
         borderRadius: '50%',
         // Grayed out when closed, full-strength when the bubble is open.
         opacity: open ? 0.92 : 0.62,
-        color: '#B9C1BF',
+        color: '#B6C1BE',
         cursor: 'pointer',
         zIndex: 35,
         display: 'flex',

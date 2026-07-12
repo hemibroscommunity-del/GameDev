@@ -24,12 +24,20 @@ var LS = {
 };
 /* v2.3.1232: -20 margin counters .bt-inspect-card's 20px padding so the
    panel owns its full surface (header strip flush to the card edge). */
-var LS_WRAP = { margin: -20, background: LS.panel, borderRadius: 14, overflow: 'hidden', textAlign: 'left' };
-var LS_BODY = { padding: '12px 14px 14px' };
+/* v2.3.1235: state-correction §10 — flex-column wrap (fixed header strip,
+   internal overflow-y body) so the Shield section at the tail is always
+   reachable by scroll on short phones (390px). */
+var LS_WRAP = { margin: -20, background: LS.panel, borderRadius: 14, overflow: 'hidden', textAlign: 'left', display: 'flex', flexDirection: 'column', maxHeight: '100%' };
+var LS_BODY = { padding: '12px 14px 12px', overflowY: 'auto', touchAction: 'pan-y', flex: '1 1 auto', minHeight: 0 };
+/* v2.3.1235: state-correction §6 — approved disabled-control recipe
+   (#1A292F fill, #8D9B98 label, .11 hairline, full opacity, 44px floor)
+   for the explicit "No polished gems" / "No open gem slot" / "Locked"
+   states, so no gem-slot instruction ever leads to blank space. */
+var LS_DISBTN = { minHeight: 44, padding: '0 12px', borderRadius: 10, fontSize: 12, fontWeight: 700, border: '1px solid rgba(229,237,233,.11)', background: '#1A292F', color: '#8D9B98', opacity: 1, cursor: 'default', fontFamily: 'inherit' };
 var LS_MOD = { fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.12em', color: LS.txt3, margin: '0 0 6px' };
 function lsHeader(icon, emoji, title, subtitle) {
   return React.createElement("div", {
-    style: { display: 'flex', alignItems: 'center', gap: 10, padding: '12px 40px 12px 16px', background: LS.strip, borderBottom: '1px solid ' + LS.border }
+    style: { display: 'flex', alignItems: 'center', gap: 10, padding: '12px 40px 12px 16px', background: LS.strip, borderBottom: '1px solid ' + LS.border, flex: 'none' /* v2.3.1235: state-correction §10 — header strip stays fixed above the scroll body */ }
   }, /* v2.3.1224 pattern: UI Bible icon with emoji fallback */
   React.createElement("img", {
     src: '/icons/ui/bldg-' + icon + '.webp', alt: '', draggable: false,
@@ -44,9 +52,36 @@ export function EnchantPanel(props) {
     stateRef = props.stateRef,
     setRpgState = props.setRpgState;
   var _ELEMENTS$rpgState$am, _ELEMENTS$rpgState$am2, _ELEMENTS$rpgState$sh, _ELEMENTS$rpgState$sh2, _rpgState$lifeSkills1;
+  /* v2.3.1235: state-correction §10 — scroll-fade plumbing (pattern:
+     InspectPlayerPanel ~128-139): sticky 24px bottom fade shows only
+     while content remains below the fold. Display-only state. */
+  var _sf = React.useState(false);
+  var showFade = _sf[0],
+    setShowFade = _sf[1];
+  var scrollBodyRef = React.useRef(null);
+  var measureFade = React.useCallback(function () {
+    var el = scrollBodyRef.current;
+    if (el) setShowFade(el.scrollHeight - el.scrollTop - el.clientHeight > 4);
+  }, []);
+  React.useEffect(function () {
+    measureFade();
+  }, [rpgState, measureFade]);
+  /* v2.3.1235: state-correction §6 — one shared read of the polished-gem
+     pouch (same lifeSkills.gems source every slotting pill reads) so each
+     section can render an explicit control when the pickers would
+     otherwise render nothing. */
+  var gemsOwned = (rpgState.lifeSkills && rpgState.lifeSkills.gems) || {};
   return React.createElement("div", { style: LS_WRAP },
     lsHeader('enchant', '✨', "Enchanter", "Enchanting Lv" + (((_rpgState$lifeSkills1 = rpgState.lifeSkills) === null || _rpgState$lifeSkills1 === void 0 || (_rpgState$lifeSkills1 = _rpgState$lifeSkills1.enchanting) === null || _rpgState$lifeSkills1 === void 0 ? void 0 : _rpgState$lifeSkills1.level) || 1)),
-    React.createElement("div", { style: LS_BODY },
+    React.createElement("div", {
+      /* v2.3.1235: state-correction §10 — internal scroll body; scrollbar
+         hidden by .ls-scrollbody (game.css), reachability signalled by
+         the sticky bottom fade (last child). */
+      className: "ls-scrollbody",
+      ref: scrollBodyRef,
+      onScroll: measureFade,
+      style: LS_BODY
+    },
       React.createElement("div", { style: { fontSize: 12, color: LS.txt2, marginBottom: 12, lineHeight: 1.5 } },
         "Slot polished gems into gear with open gem slots."),
       [{
@@ -75,6 +110,16 @@ export function EnchantPanel(props) {
         var enchLvl = ((_rpgState$lifeSkills10 = rpgState.lifeSkills) === null || _rpgState$lifeSkills10 === void 0 || (_rpgState$lifeSkills10 = _rpgState$lifeSkills10.enchanting) === null || _rpgState$lifeSkills10 === void 0 ? void 0 : _rpgState$lifeSkills10.level) || 1;
         var canAddSecond = enchLvl >= 20 && maxSlots >= 2;
         var isFusionReady = (wpn === null || wpn === void 0 ? void 0 : wpn.gearBase) === 'worldbreaker' || (wpn === null || wpn === void 0 ? void 0 : wpn.gearBase) === 'ww_worldbreaker';
+        /* v2.3.1235: state-correction §6 — derived display state only:
+           hasAnyPolished mirrors the picker's own polCount>0 filter
+           (minus the already-slotted element), slotPickable is the
+           picker's exact render condition. Every section ends in exactly
+           one explicit control — picker / "No polished gems" /
+           "No open gem slot" / "Locked" (2nd slot behind Ench Lv20). */
+        var hasAnyPolished = Object.keys(ELEMENTS).some(function (e) {
+          return e !== (wpn === null || wpn === void 0 ? void 0 : wpn.element1) && (gemsOwned['polished_' + e] || 0) > 0;
+        });
+        var slotPickable = !!(wpn && openSlots > 0 && (!wpn.element1 || wpn.element1 && !wpn.element2 && canAddSecond));
         return /*#__PURE__*/React.createElement("div", {
           key: label,
           style: {
@@ -122,19 +167,22 @@ export function EnchantPanel(props) {
             color: LS.txt3,
             marginBottom: 6
           }
-        }, "Gem slots: ", usedSlots, "/", maxSlots, " used", maxSlots === 0 && ' · Craft slotted gear at the Blacksmith or Woodworker first', (wpn === null || wpn === void 0 ? void 0 : wpn.element1) && !(wpn !== null && wpn !== void 0 && wpn.element2) && maxSlots >= 2 && !canAddSecond && ' · Req Enchanting Lv20 for 2nd slot'), wpn && openSlots > 0 && !wpn.element1 && /*#__PURE__*/React.createElement("div", {
+        }, "Gem slots: ", usedSlots, "/", maxSlots, " used", maxSlots === 0 && ' · Craft slotted gear at the Blacksmith or Woodworker first', (wpn === null || wpn === void 0 ? void 0 : wpn.element1) && !(wpn !== null && wpn !== void 0 && wpn.element2) && maxSlots >= 2 && !canAddSecond && ' · Req Enchanting Lv20 for 2nd slot'), /* v2.3.1235: state-correction §6 — the "Choose…" instructions only
+           render when the picker below them will actually show pills; an
+           instruction must never lead to blank space. */
+        hasAnyPolished && wpn && openSlots > 0 && !wpn.element1 && /*#__PURE__*/React.createElement("div", {
           style: {
             fontSize: 11,
             color: LS.txt2,
             marginBottom: 6
           }
-        }, "Choose a polished gem for Slot 1:"), wpn && wpn.element1 && !wpn.element2 && openSlots > 0 && canAddSecond && /*#__PURE__*/React.createElement("div", {
+        }, "Choose a polished gem for Slot 1:"), hasAnyPolished && wpn && wpn.element1 && !wpn.element2 && openSlots > 0 && canAddSecond && /*#__PURE__*/React.createElement("div", {
           style: {
             fontSize: 11,
             color: LS.txt2,
             marginBottom: 6
           }
-        }, "Choose a polished gem for Slot 2 (Fusion):"), wpn && openSlots > 0 && (!wpn.element1 || wpn.element1 && !wpn.element2 && canAddSecond) && /*#__PURE__*/React.createElement("div", {
+        }, "Choose a polished gem for Slot 2 (Fusion):"), hasAnyPolished && wpn && openSlots > 0 && (!wpn.element1 || wpn.element1 && !wpn.element2 && canAddSecond) && /*#__PURE__*/React.createElement("div", {
           style: {
             display: 'flex',
             gap: 6,
@@ -222,12 +270,19 @@ export function EnchantPanel(props) {
               } catch (e) {}
             }
           }, blockedVolatile ? '⚡' : '◆', " ", elem, " (", polCount, ")");
-        })), usedSlots >= maxSlots && maxSlots > 0 && /*#__PURE__*/React.createElement("div", {
-          style: {
-            fontSize: 11,
-            color: LS.txt3
-          }
-        }, "All gem slots filled"));
+        })), /* v2.3.1235: state-correction §6 — explicit controls for the
+           states where the picker renders nothing: open slot but empty gem
+           pouch → disabled "No polished gems"; 2nd slot gated behind
+           Enchanting Lv20 (the slots line above names the requirement) →
+           disabled "Locked"; no item / no slots / all slots filled →
+           disabled "No open gem slot". */
+        slotPickable && !hasAnyPolished && /*#__PURE__*/React.createElement("button", {
+          disabled: true,
+          style: LS_DISBTN
+        }, "No polished gems"), !slotPickable && /*#__PURE__*/React.createElement("button", {
+          disabled: true,
+          style: LS_DISBTN
+        }, wpn && openSlots > 0 ? "Locked" : "No open gem slot"));
       }), rpgState.amulet && /*#__PURE__*/React.createElement("div", {
         style: {
           marginBottom: 12,
@@ -333,7 +388,15 @@ export function EnchantPanel(props) {
             } catch (e) {}
           }
         }, "💎", elem, " (", polCount, ") +", previewVal, gemStat.unit);
-      }))), !rpgState.amulet && /*#__PURE__*/React.createElement("div", {
+      })), /* v2.3.1235: state-correction §6 — explicit control when the
+         amulet pill picker would render nothing (empty polished-gem
+         pouch for the amulet-slottable elements). */
+      !Object.keys(ELEMENTS).some(function (e) {
+        return AMULET_GEM_STATS[e] && (gemsOwned['polished_' + e] || 0) > 0;
+      }) && /*#__PURE__*/React.createElement("button", {
+        disabled: true,
+        style: LS_DISBTN
+      }, "No polished gems")), !rpgState.amulet && /*#__PURE__*/React.createElement("div", {
         style: {
           fontSize: 11,
           color: LS.txt3,
@@ -424,10 +487,35 @@ export function EnchantPanel(props) {
             } catch (e) {}
           }
         }, "💎", elem, " (", polCount, ") +", previewVal, gemStat.unit);
-      }))), !rpgState.shield && /*#__PURE__*/React.createElement("div", {
+      })), /* v2.3.1235: state-correction §6 — explicit control when the
+         shield pill picker would render nothing (empty polished-gem
+         pouch for the shield-slottable elements). */
+      !Object.keys(ELEMENTS).some(function (e) {
+        return SHIELD_GEM_STATS[e] && (gemsOwned['polished_' + e] || 0) > 0;
+      }) && /*#__PURE__*/React.createElement("button", {
+        disabled: true,
+        style: LS_DISBTN
+      }, "No polished gems")), !rpgState.shield && /*#__PURE__*/React.createElement("div", {
         style: {
           fontSize: 11,
           color: LS.txt3
         }
-      }, "🛡️ Forge a shield at the Blacksmith to slot defensive gems here.")));
+      }, "🛡️ Forge a shield at the Blacksmith to slot defensive gems here."), /*#__PURE__*/React.createElement("div", {
+        /* v2.3.1235: state-correction §10 — sticky bottom fade (matches
+           this panel's #202C32 sheet, not the shared #1E2E34); visible
+           only while more content exists below the fold, gone at scroll
+           end via measureFade. */
+        "aria-hidden": true,
+        style: {
+          position: 'sticky',
+          bottom: 0,
+          height: 24,
+          marginTop: -24,
+          flexShrink: 0,
+          background: 'linear-gradient(180deg, rgba(32,44,50,0), #202C32)',
+          opacity: showFade ? 1 : 0,
+          transition: 'opacity 160ms ease',
+          pointerEvents: 'none'
+        }
+      })));
 }

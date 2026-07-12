@@ -10,6 +10,16 @@ import React from 'react';
    icon, 11/600 uppercase section headers, recessed well per list, 44px
    rows with 32px secondary/destructive actions, real empty states.
    Handlers untouched. */
+/* v2.3.1235: batch-2 rollout — correction-pass compliance
+   (docs/LANTERN-SLATE-SPEC.md + game.css :root). Presentation only,
+   every handler byte-identical. v2.3.1232 tokens remapped onto the
+   approved v2.3.1235 set (sheet #1E2E34, raised #293B41, well #111E23,
+   text #F4F0E7/#B6C1BE/#8D9B98, lines rgba(229,237,233,.11/.20), brass
+   #D8AA58, danger #D8635D); row actions grow to 44px hitboxes; the
+   remove ✕ becomes a danger OUTLINE (filled red is reserved — never a
+   routine action); "📍 TP" drops its emoji (no emoji in chrome);
+   maxHeight caps at the .bt-inspect content box so the card never
+   slides under the dashboard band. */
 export function SocialPanel(props) {
   var blockedList = props.blockedList,
     friendsList = props.friendsList,
@@ -20,23 +30,30 @@ export function SocialPanel(props) {
     setShowSocialPanel = props.setShowSocialPanel,
     stateRef = props.stateRef;
   /* v2.3.1232: shared well style for the three lists */
+  /* v2.3.1235: batch-2 rollout — well + shadow from the shared .ui-well
+     recipe (game.css); do not mint per-screen grays. */
   var wellStyle = {
     padding: 6,
     borderRadius: 10,
-    background: '#121B20',
-    boxShadow: 'inset 0 2px 4px rgba(0,0,0,.44), inset 0 1px 0 rgba(255,255,255,.035)'
+    background: '#111E23',
+    boxShadow: 'inset 0 2px 5px rgba(0,0,0,0.32), inset 0 1px 0 rgba(255,255,255,0.025)'
   };
+  /* v2.3.1235: batch-2 rollout — section headers are 11/700 uppercase
+     .14em muted per the locked contract. */
   var sectionHeadStyle = {
     fontSize: 11,
-    fontWeight: 600,
+    fontWeight: 700,
     textTransform: 'uppercase',
-    letterSpacing: '.12em',
-    color: '#96A2A0',
+    letterSpacing: '.14em',
+    color: '#8D9B98',
     marginBottom: 6
   };
+  /* v2.3.1235: batch-2 rollout — empty states read 13/700 secondary
+     directly on the surface (no boxes, no odd half-sizes). */
   var emptyStyle = {
-    fontSize: 12.5,
-    color: '#96A2A0',
+    fontSize: 13,
+    fontWeight: 700,
+    color: '#B6C1BE',
     textAlign: 'center',
     padding: '12px 8px'
   };
@@ -52,13 +69,17 @@ export function SocialPanel(props) {
     },
     style: {
       width: 'min(360px, calc(100vw - 24px))', /* v2.3.1234: was 300 fixed — fill narrow phones, never overflow */
-      maxHeight: '80vh',
+      /* v2.3.1235: batch-2 rollout — also cap at 100% of the .bt-inspect
+         content box (it reserves dashboard clearance); a bare 80vh can
+         exceed the box on short phones and slide under the band. */
+      maxHeight: 'min(80vh, 100%)',
       overflowY: 'auto',
-      /* v2.3.1232: override legacy navy card with Lantern panel surface */
-      background: '#202C32',
-      border: '1px solid rgba(238,242,235,.14)',
+      /* v2.3.1235: batch-2 rollout — corrected sheet surface + strong
+         hairline + shared .ui-panel shadow (floating modal card). */
+      background: '#1E2E34',
+      border: '1px solid rgba(229,237,233,.20)',
       borderRadius: 14,
-      boxShadow: '0 14px 30px rgba(4,7,9,.38)',
+      boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.045), 0 14px 36px rgba(3,8,10,0.30)',
       padding: 16,
       textAlign: 'left'
     }
@@ -75,7 +96,7 @@ export function SocialPanel(props) {
       gap: 8,
       marginBottom: 12,
       paddingBottom: 8,
-      borderBottom: '1px solid rgba(238,242,235,.10)'
+      borderBottom: '1px solid rgba(229,237,233,.11)'
     }
   }, /*#__PURE__*/React.createElement("img", {
     src: "/icons/ui/nav-friends.webp",
@@ -95,7 +116,7 @@ export function SocialPanel(props) {
       fontWeight: 700,
       textTransform: 'uppercase',
       letterSpacing: '.10em',
-      color: '#F7F2E7'
+      color: '#F4F0E7'
     }
   }, "Social")), /*#__PURE__*/React.createElement("div", {
     style: {
@@ -118,14 +139,14 @@ export function SocialPanel(props) {
         gap: 8,
         padding: '4px 6px',
         minHeight: 44,
-        borderBottom: '1px solid rgba(238,242,235,.10)'
+        borderBottom: '1px solid rgba(229,237,233,.11)'
       }
     }, /*#__PURE__*/React.createElement("div", {
       style: {
         width: 7,
         height: 7,
         borderRadius: '50%',
-        background: online ? '#59BF91' : '#687575',
+        background: online ? '#55B98A' : '#667875',
         flexShrink: 0
       }
     }), /*#__PURE__*/React.createElement("div", {
@@ -133,13 +154,13 @@ export function SocialPanel(props) {
         width: 28,
         height: 28,
         borderRadius: '50%',
-        background: f.color || '#888',
+        background: f.color || '#293B41' /* v2.3.1235: batch-2 rollout — raised-token fallback, no off-token gray (player color itself is game data) */,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
         fontSize: 12,
-        fontWeight: 800,
-        color: '#F7F2E7',
+        fontWeight: 700 /* v2.3.1235: batch-2 rollout — 400/600/700 are the only loaded weights */,
+        color: '#F4F0E7',
         flexShrink: 0
       }
     }, ((_f$name = f.name) === null || _f$name === void 0 ? void 0 : _f$name.charAt(0)) || '?'), /*#__PURE__*/React.createElement("div", {
@@ -149,9 +170,9 @@ export function SocialPanel(props) {
       }
     }, /*#__PURE__*/React.createElement("div", {
       style: {
-        fontSize: 13.5,
+        fontSize: 13 /* v2.3.1235: batch-2 rollout — body is 13, no half-sizes */,
         fontWeight: 600,
-        color: f.color || '#F7F2E7',
+        color: f.color || '#F4F0E7',
         whiteSpace: 'nowrap',
         overflow: 'hidden',
         textOverflow: 'ellipsis'
@@ -159,20 +180,22 @@ export function SocialPanel(props) {
     }, f.name), /*#__PURE__*/React.createElement("div", {
       style: {
         fontSize: 11,
-        color: '#96A2A0'
+        color: '#8D9B98'
       }
     }, online ? 'Online · ' + online.zone : 'Offline')), online && /*#__PURE__*/React.createElement("button", {
       style: {
-        /* v2.3.1232: secondary raised chip */
-        minHeight: 32,
-        padding: '4px 10px',
-        borderRadius: 999,
+        /* v2.3.1235: batch-2 rollout — 44px secondary button (raised fill
+           + strong hairline, 10px button radius); 32px pills failed the
+           ≥44×44 hitbox rule */
+        minHeight: 44,
+        padding: '4px 12px',
+        borderRadius: 10,
         fontSize: 11,
         fontWeight: 700,
         cursor: 'pointer',
-        border: '1px solid rgba(238,242,235,.14)',
-        background: '#2B3940',
-        color: '#F7F2E7',
+        border: '1px solid rgba(229,237,233,.20)',
+        background: '#293B41',
+        color: '#F4F0E7',
         flexShrink: 0
       },
       onClick: function onClick() {
@@ -180,18 +203,21 @@ export function SocialPanel(props) {
         stateRef.current.player.y = online.y + 40;
         setShowSocialPanel(false);
       }
-    }, "📍 TP"), /*#__PURE__*/React.createElement("button", {
+    }, "TP"), /*#__PURE__*/React.createElement("button", {
       style: {
-        /* v2.3.1232: destructive remove */
-        width: 32,
-        height: 32,
-        borderRadius: 8,
+        /* v2.3.1235: batch-2 rollout — remove-friend is a routine
+           destructive action: danger OUTLINE (border+text #D8635D on
+           transparent), never a filled red block; grown to the 44px
+           hitbox floor */
+        width: 44,
+        height: 44,
+        borderRadius: 10,
         fontSize: 12,
         fontWeight: 700,
         cursor: 'pointer',
-        border: '1px solid #C7655F',
-        background: '#7C3431',
-        color: '#FFF1EE',
+        border: '1px solid #D8635D',
+        background: 'transparent',
+        color: '#D8635D',
         flexShrink: 0,
         padding: 0
       },
@@ -213,8 +239,8 @@ export function SocialPanel(props) {
     style: sectionHeadStyle
   }, "Blocked (", blockedList.length, ")"), /*#__PURE__*/React.createElement("div", {
     style: {
-      fontSize: 11,
-      color: '#96A2A0',
+      fontSize: 12 /* v2.3.1235: batch-2 rollout — descriptive copy floor is 12 */,
+      color: '#8D9B98',
       marginBottom: 6
     }
   }, "Blocked players can't chat, attack, trade, or duel you."), /*#__PURE__*/React.createElement("div", {
@@ -233,28 +259,30 @@ export function SocialPanel(props) {
         gap: 8,
         padding: '4px 6px',
         minHeight: 44,
-        borderBottom: '1px solid rgba(238,242,235,.10)'
+        borderBottom: '1px solid rgba(229,237,233,.11)'
       }
     }, /*#__PURE__*/React.createElement("div", {
       style: {
         flex: 1,
         fontSize: 13,
-        color: '#B9C1BF',
+        color: '#B6C1BE',
         whiteSpace: 'nowrap',
         overflow: 'hidden',
         textOverflow: 'ellipsis'
       }
     }, name), /*#__PURE__*/React.createElement("button", {
       style: {
-        minHeight: 32,
+        /* v2.3.1235: batch-2 rollout — 44px secondary button (raised fill
+           + strong hairline, 10px button radius) per the hitbox floor */
+        minHeight: 44,
         padding: '4px 12px',
-        borderRadius: 999,
+        borderRadius: 10,
         fontSize: 11,
         fontWeight: 700,
         cursor: 'pointer',
-        border: '1px solid rgba(238,242,235,.14)',
-        background: '#2B3940',
-        color: '#F7F2E7',
+        border: '1px solid rgba(229,237,233,.20)',
+        background: '#293B41',
+        color: '#F4F0E7',
         flexShrink: 0
       },
       onClick: function onClick() {
@@ -271,8 +299,8 @@ export function SocialPanel(props) {
     style: sectionHeadStyle
   }, "Muted (", mutedList.length, ")"), /*#__PURE__*/React.createElement("div", {
     style: {
-      fontSize: 11,
-      color: '#96A2A0',
+      fontSize: 12 /* v2.3.1235: batch-2 rollout — descriptive copy floor is 12 */,
+      color: '#8D9B98',
       marginBottom: 6
     }
   }, "Muted players' chat appears as [muted]. They can still interact with you."), /*#__PURE__*/React.createElement("div", {
@@ -291,28 +319,30 @@ export function SocialPanel(props) {
         gap: 8,
         padding: '4px 6px',
         minHeight: 44,
-        borderBottom: '1px solid rgba(238,242,235,.10)'
+        borderBottom: '1px solid rgba(229,237,233,.11)'
       }
     }, /*#__PURE__*/React.createElement("div", {
       style: {
         flex: 1,
         fontSize: 13,
-        color: '#B9C1BF',
+        color: '#B6C1BE',
         whiteSpace: 'nowrap',
         overflow: 'hidden',
         textOverflow: 'ellipsis'
       }
     }, name), /*#__PURE__*/React.createElement("button", {
       style: {
-        minHeight: 32,
+        /* v2.3.1235: batch-2 rollout — 44px secondary button (raised fill
+           + strong hairline, 10px button radius) per the hitbox floor */
+        minHeight: 44,
         padding: '4px 12px',
-        borderRadius: 999,
+        borderRadius: 10,
         fontSize: 11,
         fontWeight: 700,
         cursor: 'pointer',
-        border: '1px solid rgba(238,242,235,.14)',
-        background: '#2B3940',
-        color: '#F7F2E7',
+        border: '1px solid rgba(229,237,233,.20)',
+        background: '#293B41',
+        color: '#F4F0E7',
         flexShrink: 0
       },
       onClick: function onClick() {

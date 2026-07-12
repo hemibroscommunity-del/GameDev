@@ -6,9 +6,11 @@ import { COL, panelStyle, getState } from './common.js';
    with the guild icon, module header + 44px rows with right-aligned
    tabular values for guild skills.  Data reads and the 800ms refresh
    interval are unchanged. */
+/* v2.3.1235: batch-1 rollout — section-header ladder locked at
+   11/700 uppercase .14em muted (was 600/.12em). */
 const secHdr = {
-  fontSize: 11, fontWeight: 600, textTransform: 'uppercase',
-  letterSpacing: '.12em', color: COL.muted, margin: '12px 8px 4px',
+  fontSize: 11, fontWeight: 700, textTransform: 'uppercase',
+  letterSpacing: '.14em', color: COL.muted, margin: '12px 8px 4px',
 };
 const row = {
   display: 'flex', alignItems: 'center', gap: 8,
@@ -31,10 +33,12 @@ export const GuildPanel = () => {
     return (
       <div style={panelStyle}>
         <div style={{ textAlign: 'center', padding: '20px 0' }}>
+          {/* v2.3.1235: batch-1 rollout — empty-state contract: icon ≤40px,
+              message 13/700 secondary (was 44px icon + 13/400 muted). */}
           <img src="/icons/ui/panel-guild.webp" alt="" draggable={false}
-            style={{ width: 44, height: 44, objectFit: 'contain', opacity: 0.4, margin: '0 auto' /* v2.3.1233: img{display:block} in game.css defeats textAlign centering */ }}
+            style={{ width: 40, height: 40, objectFit: 'contain', opacity: 0.4, margin: '0 auto' /* v2.3.1233: img{display:block} in game.css defeats textAlign centering */ }}
             onError={(e) => { e.currentTarget.replaceWith(document.createTextNode('⚒')); }} />
-          <div style={{ fontSize: 13, color: COL.muted, marginTop: 6 }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: COL.text2, marginTop: 6 }}>
             You haven't joined a guild yet.
           </div>
         </div>
@@ -62,10 +66,12 @@ export const GuildPanel = () => {
       {guild.skills && <div style={secHdr}>Guild skills</div>}
       {guild.skills && Object.entries(guild.skills).map(([k, v]) => (
         <div key={k} style={row}>
-          <span style={{ flex: 1, minWidth: 0, fontSize: 13.5, color: COL.text2, textTransform: 'capitalize' }}>
+          {/* v2.3.1235: batch-1 rollout — type ladder: body 13 (was 13.5),
+              row key number 16/700 tabular (was 14/700). */}
+          <span style={{ flex: 1, minWidth: 0, fontSize: 13, color: COL.text2, textTransform: 'capitalize' }}>
             {k}
           </span>
-          <span style={{ fontSize: 14, fontWeight: 700, color: COL.text, fontVariantNumeric: 'tabular-nums' }}>
+          <span style={{ fontSize: 16, fontWeight: 700, color: COL.text, fontVariantNumeric: 'tabular-nums' }}>
             Lv {v.level || 0}
           </span>
         </div>

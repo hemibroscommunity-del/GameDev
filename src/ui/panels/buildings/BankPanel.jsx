@@ -11,17 +11,23 @@ import React from 'react';
    a divided passive list. Style/JSX only; all data reads unchanged.
    The LS token block + header/gold builders are duplicated per
    building panel to keep the decomposed files dependency-free. */
+/* v2.3.1235: batch-3 rollout — correction-pass token remap (game.css
+   :root). The v2.3.1232 literals were the superseded v2.3.1227
+   palette; same roles, approved values. Four depth roles only, so
+   wellSoft folds into the well, and the off-token .08/.14 hairlines
+   fold into the approved .11 line (.20 borderStrong added for
+   secondary buttons). Header strip adopts the #27393F header token. */
 var LS = {
-  txt1: '#F7F2E7', txt2: '#B9C1BF', txt3: '#96A2A0', dis: '#687575',
-  panel: '#202C32', strip: '#182227', raised: '#2B3940', well: '#121B20', wellSoft: '#19252A',
-  border: 'rgba(238,242,235,.14)', divider: 'rgba(238,242,235,.10)', wellBorder: 'rgba(238,242,235,.08)',
-  brass: '#D8A85F', brassFill: '#3B3427', onBrass: '#20170D'
+  txt1: '#F4F0E7', txt2: '#B6C1BE', txt3: '#8D9B98', dis: '#667875',
+  panel: '#1E2E34', strip: '#27393F', raised: '#293B41', well: '#111E23', wellSoft: '#111E23',
+  border: 'rgba(229,237,233,.11)', borderStrong: 'rgba(229,237,233,.20)', divider: 'rgba(229,237,233,.11)', wellBorder: 'rgba(229,237,233,.11)',
+  brass: '#D8AA58', brassFill: 'rgba(216,170,88,.15)', onBrass: '#172126'
 };
 /* v2.3.1232: -20 margin counters .bt-inspect-card's 20px padding so the
    panel owns its full surface (header strip flush to the card edge). */
 var LS_WRAP = { margin: -20, background: LS.panel, borderRadius: 14, overflow: 'hidden', textAlign: 'left' };
 var LS_BODY = { padding: '12px 14px 14px' };
-var LS_MOD = { fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.12em', color: LS.txt3, margin: '0 0 6px' };
+var LS_MOD = { fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.14em', color: LS.txt3, margin: '0 0 6px' }; /* v2.3.1235: batch-3 rollout — section headers are 11/700 .14em muted per the locked contract */
 function lsHeader(icon, emoji, title, subtitle) {
   return React.createElement("div", {
     style: { display: 'flex', alignItems: 'center', gap: 10, padding: '12px 40px 12px 16px', background: LS.strip, borderBottom: '1px solid ' + LS.border }
@@ -60,14 +66,17 @@ export function BankPanel(props) {
       }
     }, React.createElement("span", { style: { fontSize: 12, color: LS.txt3 } }, label),
     React.createElement("span", {
-      style: { fontSize: 13.5, fontWeight: 600, textAlign: 'right', color: value === 'None' ? LS.dis : LS.txt1 }
+      style: { fontSize: 13 /* v2.3.1235: batch-3 rollout — body 13, no half-sizes */, fontWeight: 600, textAlign: 'right', color: value === 'None' ? LS.dis : LS.txt1 }
     }, value));
   };
   return React.createElement("div", { style: LS_WRAP },
     lsHeader('bank', '🏦', "Bank", "Vault & equipment"),
     React.createElement("div", { style: LS_BODY },
+      /* v2.3.1235: state-correction — the old copy claimed gold is "always
+         safe", contradicting the actual death rule (monsterCombat.js:
+         DEATH_GOLD_PENALTY = 10% of carried coins). Copy now matches code. */
       React.createElement("div", { style: { fontSize: 12, color: LS.txt2, marginBottom: 12, lineHeight: 1.5 } },
-        "Your gold and equipped items are always safe. The bank protects additional items from death scatter."),
+        "Equipped items are always safe. The bank protects additional items from death scatter."),
       React.createElement("div", { style: LS_MOD }, "Gold on hand"),
       React.createElement("div", {
         style: {
@@ -75,10 +84,10 @@ export function BankPanel(props) {
           minHeight: 44, padding: '8px 12px', borderRadius: 8,
           background: LS.wellSoft, border: '1px solid ' + LS.wellBorder, marginBottom: 4
         }
-      }, React.createElement("span", { style: { fontSize: 13.5, color: LS.txt2 } }, "Gold"),
+      }, React.createElement("span", { style: { fontSize: 13 /* v2.3.1235: batch-3 rollout — body 13, no half-sizes */, color: LS.txt2 } }, "Gold"),
       lsGold(rpgState.coins, 18)),
       React.createElement("div", { style: { fontSize: 11, color: LS.txt3, marginBottom: 12 } },
-        "Gold is never lost on death (only 10% penalty)"),
+        "Only 10% of carried gold is lost on death."),
       React.createElement("div", { style: LS_MOD }, "Equipped"),
       React.createElement("div", {
         style: { borderRadius: 8, background: LS.wellSoft, border: '1px solid ' + LS.wellBorder }

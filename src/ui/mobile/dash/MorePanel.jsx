@@ -26,10 +26,14 @@ const TILES = [
 
 export const MorePanel = () => (
   <div style={panelStyle}>
+    {/* v2.3.1235: owner-approved correction — 4-across outlined tiles read
+        as ten noisy boxes; the launcher is now a balanced 5×2 grid of BARE
+        icon+label buttons (no permanent outline/fill — the icon is the
+        identity), gaps on the 8px grid. Every id/handler/src unchanged. */}
     <div style={{
       display: 'grid',
-      gridTemplateColumns: 'repeat(4, 1fr)',
-      gap: 6,
+      gridTemplateColumns: 'repeat(5, 1fr)',
+      gap: 8,
     }}>
       {TILES.map(t => (
         <button
@@ -39,24 +43,23 @@ export const MorePanel = () => (
             if (t.id === 'controls') controlsTutorialBus.open();
             else dashboardPanelBus.push(t.id);
           }}
-          /* v2.3.1232: Lantern Slate — tiles are tap targets, so they
-             sit on the RAISED surface (#2B3940, card radius 10) instead
-             of the quiet #19252A cell meant for passive readouts; label
-             drops to the 11/600 caption size so the icon stays the
-             identity (docs/LANTERN-SLATE-SPEC.md). */
+          /* v2.3.1235: bare button — no outline/fill/shadow (the raised
+             boxes are gone per the correction pass); radius kept so any
+             future :active tint has a shape, ≥44pt column stays tappable. */
           style={{
-            background: COL.raised,
-            border: `1px solid ${COL.border}`,
+            background: 'transparent',
+            border: 'none',
             borderRadius: 10,
-            boxShadow: 'inset 0 1px 0 rgba(255,255,255,.08)',
-            padding: '8px 4px 6px',
-            minHeight: 44,
+            padding: '8px 2px',
+            minHeight: 60,
+            minWidth: 44,
             color: COL.text,
             fontFamily: 'Source Sans 3, sans-serif',
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
-            gap: 4,
+            justifyContent: 'center',
+            gap: 6,
             cursor: 'pointer',
             touchAction: 'manipulation',
           }}
@@ -66,7 +69,7 @@ export const MorePanel = () => (
               src={t.src}
               alt={t.label}
               draggable={false}
-              style={{ width: 36, height: 36, objectFit: 'contain' }}
+              style={{ width: 28, height: 28, objectFit: 'contain' }}
             />
           ) : (
             <span style={{ fontSize: 20 }}>{t.glyph}</span>
