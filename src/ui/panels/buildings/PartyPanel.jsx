@@ -331,8 +331,10 @@ export function PartyPanel(props) {
     style: {
       padding: 10,
       borderRadius: 10,
-      background: '#182227', /* v2.3.1232: LS nested surface */
-      border: '1px solid rgba(217,92,84,.4)',
+      /* v2.3.1235: batch-3 rollout \u2014 card token; the red-tint border was
+         an off-token decorative border (danger stays on the text). */
+      background: '#24363C',
+      border: '1px solid rgba(229,237,233,.20)',
       marginBottom: 8,
       textAlign: 'center'
     }
@@ -340,10 +342,10 @@ export function PartyPanel(props) {
     style: {
       fontSize: 12,
       fontWeight: 700,
-      color: '#D95C54',
+      color: '#D8635D' /* v2.3.1235: danger token */,
       marginBottom: 4
     }
-  }, "\u2694\uFE0F FIGHT! Round ", arenaStatus.round), /*#__PURE__*/React.createElement("div", {
+  }, "FIGHT! Round ", arenaStatus.round), /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
       alignItems: 'center',
@@ -358,8 +360,8 @@ export function PartyPanel(props) {
     style: {
       width: 32,
       height: 32,
-      borderRadius: 16,
-      background: arenaStatus.currentMatch.p1Color || '#D8A85F',
+      borderRadius: 999 /* v2.3.1235: batch-3 rollout — pill radius (16 off the approved set) */,
+      background: arenaStatus.currentMatch.p1Color || '#D8AA58' /* player color is game data; fallback → brass token */,
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
@@ -394,8 +396,8 @@ export function PartyPanel(props) {
     style: {
       width: 32,
       height: 32,
-      borderRadius: 16,
-      background: arenaStatus.currentMatch.p2Color || '#D95C54',
+      borderRadius: 999 /* v2.3.1235: batch-3 rollout — pill radius */,
+      background: arenaStatus.currentMatch.p2Color || '#D8635D' /* player color is game data; fallback → danger token */,
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
@@ -432,17 +434,14 @@ export function PartyPanel(props) {
     style: {
       padding: 10,
       borderRadius: 8,
-      background: '#19252A',
-      border: '1px solid rgba(238,242,235,.14)',
+      /* v2.3.1235: batch-3 rollout \u2014 card token + hairline (well-soft
+         retired); the \uD83D\uDC80 chrome glyph is dropped. */
+      background: '#24363C',
+      border: '1px solid rgba(229,237,233,.11)',
       marginBottom: 8,
       textAlign: 'center'
     }
   }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 14,
-      marginBottom: 4
-    }
-  }, "\uD83D\uDC80"), /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 12,
       fontWeight: 700,
@@ -460,13 +459,13 @@ export function PartyPanel(props) {
     }
   }, /*#__PURE__*/React.createElement("div", {
     style: {
-      /* v2.3.1232: LS module header */
+      /* v2.3.1235: batch-3 rollout — 11/700 .14em muted headers */
       fontSize: 11,
-      fontWeight: 600,
+      fontWeight: 700,
       textTransform: 'uppercase',
-      letterSpacing: '.12em',
+      letterSpacing: '.14em',
       fontVariantNumeric: 'tabular-nums',
-      color: '#B9C1BF',
+      color: '#8D9B98',
       marginBottom: 4
     }
   }, /*#__PURE__*/React.createElement("img", { src: "/icons/ui/evt-party.webp", alt: "", draggable: false, style: { width: 16, height: 16, objectFit: 'contain', verticalAlign: '-3px', marginRight: 6 }, onError: function (e) { e.currentTarget.replaceWith(document.createTextNode('\uD83C\uDFDF\uFE0F')); } }), "Tournament \u2014 Round ", arenaTournament.round, "/", arenaTournament.maxRounds, /*#__PURE__*/React.createElement("span", {
@@ -488,15 +487,20 @@ export function PartyPanel(props) {
       style: {
         padding: '4px 10px',
         borderRadius: 999,
-        fontSize: 10,
+        fontSize: 11 /* v2.3.1235: batch-3 rollout — 11px floor */,
         fontWeight: 600,
-        background: p.eliminated ? '#121B20' : 'rgba(89,191,145,.08)',
-        border: '1px solid ' + (p.eliminated ? 'rgba(238,242,235,.10)' : 'rgba(89,191,145,.2)'),
-        color: p.eliminated ? '#687575' : p.color || '#F7F2E7',
+        /* v2.3.1235: batch-3 rollout — the green alive-tint was an
+           off-token screen-specific fill; alive = plain line-bordered
+           pill (player color is game data), eliminated = well fill at
+           the .55 readability floor; status emoji dropped (chrome —
+           line-through already encodes eliminated). */
+        background: p.eliminated ? '#111E23' : 'transparent',
+        border: '1px solid ' + (p.eliminated ? 'rgba(229,237,233,.11)' : 'rgba(229,237,233,.20)'),
+        color: p.eliminated ? '#667875' : p.color || '#F4F0E7',
         textDecoration: p.eliminated ? 'line-through' : 'none',
-        opacity: p.eliminated ? 0.4 : 1
+        opacity: p.eliminated ? 0.55 : 1
       }
-    }, p.eliminated ? '💀' : '⚔️', " ", p.name, " ", p.wins > 0 && '(' + p.wins + 'W)');
+    }, p.name, " ", p.wins > 0 && '(' + p.wins + 'W)');
   })), arenaTournament.currentMatches.length > 0 && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 11,
