@@ -100,12 +100,12 @@ export function ForgePanel(props) {
       fontWeight: 700,
       textTransform: 'uppercase',
       letterSpacing: '.10em',
-      color: '#F7F2E7'
+      color: '#F4F0E7'
     }
   }, "Blacksmith")), /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 11,
-      color: '#96A2A0',
+      color: '#8D9B98',
       marginBottom: 12
     }
   }, "Blacksmithing Lv", ((_rpgState$lifeSkills21 = rpgState.lifeSkills) === null || _rpgState$lifeSkills21 === void 0 || (_rpgState$lifeSkills21 = _rpgState$lifeSkills21.blacksmithing) === null || _rpgState$lifeSkills21 === void 0 ? void 0 : _rpgState$lifeSkills21.level) || 1, " \xB7 Forge melee weapons from ore. Higher levels unlock gem slots."), /*#__PURE__*/React.createElement("div", {
@@ -220,22 +220,22 @@ export function ForgePanel(props) {
       style: {
         fontSize: 13,
         fontWeight: 600,
-        color: canForge && meetsStat ? '#F7F2E7' : '#687575'
+        color: canForge && meetsStat ? '#F4F0E7' : '#667875'
       }
     }, bt.label, " ", /*#__PURE__*/React.createElement("span", {
       style: {
         fontSize: 11,
-        color: '#96A2A0'
+        color: '#8D9B98'
       }
     }, "Lv", bt.minLvl, "+ \xB7 ", bt.tierMult, "\xD7")), /*#__PURE__*/React.createElement("div", {
       style: {
         fontSize: 11,
-        color: '#96A2A0'
+        color: '#8D9B98'
       }
     }, bt.desc, " ", bt.slots > 0 ? "\xB7 ".concat(bt.slots, " gem slot").concat(bt.slots > 1 ? 's' : '') : ''), /*#__PURE__*/React.createElement("div", {
       style: {
         fontSize: 11,
-        color: '#96A2A0'
+        color: '#8D9B98'
       }
     }, bt.oreCost, "\xD7 ", bt.oreName, " ore + ", bt.goldCost, "g", !canForgeSkill && " \xB7 Req BS Lv".concat(bt.minLvl), canForgeSkill && !meetsStat && " \xB7 Req ".concat(STAT_LABELS[statReq.stat] || statReq.stat, " ").concat(statReq.value), bt.statReq > 0 && function (_stateRef$current11) {
       var bsType = ((_stateRef$current11 = stateRef.current) === null || _stateRef$current11 === void 0 ? void 0 : _stateRef$current11._bsType) || 'greatsword';
@@ -363,7 +363,7 @@ export function ForgePanel(props) {
     if (!(wpn !== null && wpn !== void 0 && wpn.gearBase)) return /*#__PURE__*/React.createElement("div", {
       style: {
         fontSize: 12,
-        color: '#96A2A0',
+        color: '#8D9B98',
         fontStyle: 'italic',
         marginTop: 8
       }
@@ -393,13 +393,13 @@ export function ForgePanel(props) {
       style: {
         fontSize: 13,
         fontWeight: 600,
-        color: '#F7F2E7',
+        color: '#F4F0E7',
         marginBottom: 2
       }
     }, wpn.name), /*#__PURE__*/React.createElement("div", {
       style: {
         fontSize: 11,
-        color: '#96A2A0',
+        color: '#8D9B98',
         marginBottom: 8
       }
     }, "Current: ", wpn.reforgeBonus ? "".concat(wpn.reforgeBonus.label, " +").concat(wpn.reforgeBonus.value).concat(wpn.reforgeBonus.unit) : 'No bonus', wpn.hardenBonus ? " \xB7 ".concat(wpn.hardenBonus.label, " +").concat(wpn.hardenBonus.value).concat(wpn.hardenBonus.unit) : ''), /*#__PURE__*/React.createElement("div", {
@@ -519,7 +519,7 @@ export function ForgePanel(props) {
   }, "Amulet Crafting"), /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 12,
-      color: '#B9C1BF',
+      color: '#B6C1BE',
       fontVariantNumeric: 'tabular-nums',
       marginBottom: 6
     }
@@ -610,22 +610,22 @@ export function ForgePanel(props) {
       style: {
         fontSize: 13,
         fontWeight: 600,
-        color: canCraft ? '#F7F2E7' : '#687575'
+        color: canCraft ? '#F4F0E7' : '#667875'
       }
     }, at.label, " Amulet ", /*#__PURE__*/React.createElement("span", {
       style: {
         fontSize: 11,
-        color: '#96A2A0'
+        color: '#8D9B98'
       }
     }, "Lv", at.minLvl, "+ \xB7 ", at.basePower, "\xD7 gem power")), /*#__PURE__*/React.createElement("div", {
       style: {
         fontSize: 11,
-        color: '#96A2A0'
+        color: '#8D9B98'
       }
     }, at.desc), /*#__PURE__*/React.createElement("div", {
       style: {
         fontSize: 11,
-        color: '#96A2A0'
+        color: '#8D9B98'
       }
     }, at.bars, " bar", at.bars > 1 ? 's' : '', " + ", at.goldCost, "g", !canCraft && " \xB7 Req Lv".concat(at.minLvl))), /*#__PURE__*/React.createElement("button", {
       /* v2.3.1235: batch-3 rollout — 44px hitbox floor; secondary vs
@@ -688,7 +688,7 @@ export function ForgePanel(props) {
   }, "Shield Crafting"), /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 11,
-      color: '#96A2A0',
+      color: '#8D9B98',
       marginBottom: 6
     }
   }, "Forge a shield from ore. Same tiers as melee weapons. Slot a gem at the Enchanter for defensive bonuses.", rpgState.shield && /*#__PURE__*/React.createElement("span", {
@@ -743,17 +743,17 @@ export function ForgePanel(props) {
       style: {
         fontSize: 13,
         fontWeight: 600,
-        color: canForge && shieldMeetsStat ? '#F7F2E7' : '#687575'
+        color: canForge && shieldMeetsStat ? '#F4F0E7' : '#667875'
       }
     }, bt.label, " Shield ", /*#__PURE__*/React.createElement("span", {
       style: {
         fontSize: 11,
-        color: '#96A2A0'
+        color: '#8D9B98'
       }
     }, "Lv", bt.minLvl, "+ \xB7 ", bt.tierMult, "\xD7")), /*#__PURE__*/React.createElement("div", {
       style: {
         fontSize: 11,
-        color: '#96A2A0'
+        color: '#8D9B98'
       }
     }, bt.oreCost, "\xD7 ", bt.oreName, " ore + ", bt.goldCost, "g", bt.statReq > 0 && /*#__PURE__*/React.createElement("span", {
       style: {
@@ -824,13 +824,13 @@ export function ForgePanel(props) {
       style: {
         fontSize: 13,
         fontWeight: 600,
-        color: '#F7F2E7',
+        color: '#F4F0E7',
         marginBottom: 2
       }
     }, sh.name),/*#__PURE__*/React.createElement("div", {
       style: {
         fontSize: 11,
-        color: '#96A2A0',
+        color: '#8D9B98',
         marginBottom: 3
       }
     }, sh.reforgeBonus ? "".concat(sh.reforgeBonus.label, " +").concat(sh.reforgeBonus.value).concat(sh.reforgeBonus.unit) : 'No bonus', sh.hardenBonus ? " \xB7 ".concat(sh.hardenBonus.label, " +").concat(sh.hardenBonus.value).concat(sh.hardenBonus.unit) : ''), /*#__PURE__*/React.createElement("div", {
@@ -926,7 +926,7 @@ export function ForgePanel(props) {
   }, "Salvage Station"), /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 11,
-      color: '#96A2A0',
+      color: '#8D9B98',
       marginBottom: 8
     }
   }, "Extract gems first, then salvage items for ~60% materials back. Reforge bonuses are lost."), [{
@@ -975,7 +975,7 @@ export function ForgePanel(props) {
       style: {
         fontSize: 13,
         fontWeight: 600,
-        color: '#F7F2E7',
+        color: '#F4F0E7',
         marginBottom: 6
       }
     }, s.label, ": ", s.item.name || 'Unknown', hasGem && /*#__PURE__*/React.createElement("span", {
@@ -1115,7 +1115,7 @@ export function ForgePanel(props) {
     }).join(' + ')), !hasGem && !canSalvage && /*#__PURE__*/React.createElement("div", {
       style: {
         fontSize: 11,
-        color: '#96A2A0',
+        color: '#8D9B98',
         fontStyle: 'italic'
       }
     }, "Cannot salvage (no crafting base)"));
@@ -1131,7 +1131,7 @@ export function ForgePanel(props) {
       fontWeight: 600,
       textTransform: 'uppercase',
       letterSpacing: '.12em',
-      color: '#96A2A0',
+      color: '#8D9B98',
       marginBottom: 4
     }
   }, "Stashed weapons"), /*#__PURE__*/React.createElement("div", {
@@ -1158,15 +1158,16 @@ export function ForgePanel(props) {
         flex: 1,
         minWidth: 0,
         fontSize: 12,
-        color: '#B9C1BF',
+        color: '#B6C1BE',
         whiteSpace: 'nowrap',
         overflow: 'hidden',
         textOverflow: 'ellipsis'
       }
     }, sw.name), hasGem && /*#__PURE__*/React.createElement("button", {
-      /* v2.3.1232: compact secondary action; magic-tint label */
+      /* v2.3.1235: batch-3 rollout — 44px hitbox floor; secondary with
+         the approved magic-token label; button-label emoji dropped. */
       style: {
-        minHeight: 30,
+        minHeight: 44,
         padding: '0 10px',
         borderRadius: 8,
         fontSize: 11,
@@ -1174,9 +1175,9 @@ export function ForgePanel(props) {
         cursor: 'pointer',
         fontFamily: 'inherit',
         flexShrink: 0,
-        border: '1px solid rgba(238,242,235,.14)',
-        background: '#2B3940',
-        color: '#9A76D3'
+        border: '1px solid rgba(229,237,233,.20)',
+        background: '#293B41',
+        color: '#9A78D0'
       },
       onClick: function onClick() {
         var _sw$gearBase;
@@ -1215,10 +1216,11 @@ export function ForgePanel(props) {
           localStorage.setItem('bt_rpg', JSON.stringify(R));
         } catch (e) {}
       }
-    }, "\uD83D\uDC8E Extract (", gemExtractCost(sw), "g)"), salvReturns && /*#__PURE__*/React.createElement("button", {
-      /* v2.3.1232: compact destructive action */
+    }, "Extract (", gemExtractCost(sw), "g)"), salvReturns && /*#__PURE__*/React.createElement("button", {
+      /* v2.3.1235: batch-3 rollout — danger OUTLINE (filled red
+         retired); 44px hitbox floor. */
       style: {
-        minHeight: 30,
+        minHeight: 44,
         padding: '0 10px',
         borderRadius: 8,
         fontSize: 11,
@@ -1226,9 +1228,9 @@ export function ForgePanel(props) {
         cursor: 'pointer',
         fontFamily: 'inherit',
         flexShrink: 0,
-        border: '1px solid #C7655F',
-        background: '#7C3431',
-        color: '#FFF1EE'
+        border: '1px solid #D8635D',
+        background: 'transparent',
+        color: '#D8635D'
       },
       onClick: function onClick() {
         var R = stateRef.current.rpg;
@@ -1244,11 +1246,11 @@ export function ForgePanel(props) {
           localStorage.setItem('bt_rpg', JSON.stringify(R));
         } catch (e) {}
       }
-    }, "\u267B\uFE0F Salvage"), !hasGem && !salvReturns && /*#__PURE__*/React.createElement("span", {
+    }, "Salvage"), !hasGem && !salvReturns && /*#__PURE__*/React.createElement("span", {
       style: {
-        fontSize: 10,
-        color: '#687575'
+        fontSize: 11 /* v2.3.1235: batch-3 rollout \u2014 11px text floor */,
+        color: '#667875'
       }
     }, "No base"));
-  }))));
+  })) /* v2.3.1235: batch-3 rollout \u2014 closes the stash list well */)));
 }
