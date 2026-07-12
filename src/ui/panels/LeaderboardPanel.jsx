@@ -48,6 +48,12 @@ export function LeaderboardPanel(props) {
          exceed the box on short phones and slide under the band. */
       maxHeight: 'min(85vh, 100%)',
       overflowY: 'auto',
+      /* v2.3.1235: batch-2 QA — 18px bottom scroll-edge fade (same recipe
+         as the destination sheets): at 390 the only cue that rank 8+
+         existed was a hairline sliver. Rows crossing the fold now fade;
+         at scroll end the zone holds only the card's bottom padding. */
+      WebkitMaskImage: 'linear-gradient(180deg, #000 calc(100% - 18px), transparent)',
+      maskImage: 'linear-gradient(180deg, #000 calc(100% - 18px), transparent)',
       padding: 16,
       textAlign: 'left',
       /* v2.3.1235: batch-2 rollout — corrected sheet surface + strong
@@ -104,6 +110,11 @@ export function LeaderboardPanel(props) {
        narrow cards) */
     /* v2.3.1235: batch-2 rollout — corrected well token + shared .ui-well
        shadow recipe; tab labels drop their emoji (no emoji in chrome). */
+    /* v2.3.1235: batch-2 QA — wrap made "Time" orphan onto its own
+       centered row with a dead band under it (both test widths). The
+       track is now ONE horizontally-scrollable row (scrollbar hidden via
+       .ls-scrollbody; the 7 tabs overhang ~1 tab at 390 and fit at 430). */
+    className: "ls-scrollbody",
     style: {
       display: 'flex',
       gap: 2,
@@ -112,7 +123,9 @@ export function LeaderboardPanel(props) {
       padding: 2,
       background: '#111E23',
       boxShadow: 'inset 0 2px 5px rgba(0,0,0,0.32), inset 0 1px 0 rgba(255,255,255,0.025)',
-      flexWrap: 'wrap'
+      flexWrap: 'nowrap',
+      overflowX: 'auto',
+      touchAction: 'pan-x'
     }
   }, [['level', 'Level'], ['lifeskills', 'Skills'], ['ap', 'AP'], ['kills', 'Kills'], ['dungeons', 'Dungeons'], ['gold', 'Gold'], ['playtime', 'Time']].map(function (_ref40) {
     var _ref41 = _slicedToArray(_ref40, 2),
@@ -138,7 +151,8 @@ export function LeaderboardPanel(props) {
         color: leaderboardTab === id ? '#F4F0E7' : '#8D9B98',
         fontFamily: 'inherit',
         transition: 'all .15s',
-        minWidth: 40
+        minWidth: 40,
+        whiteSpace: 'nowrap' /* v2.3.1235: batch-2 QA — single-row track */
       }
     }, label);
   })), function () {

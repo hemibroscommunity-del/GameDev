@@ -221,7 +221,12 @@ export function StatScreenPanel(props) {
       }
     }, /*#__PURE__*/React.createElement("div", {
       style: {
-        width: 104,
+        /* v2.3.1235: batch-2 QA — was a fixed width:104, which "Endurance"
+           + its value overflowed, so the flex:1 bar painted OVER the digit
+           (both test widths). Natural width with a 104px floor: the longest
+           row now pushes the bar right instead of colliding with it. */
+        minWidth: 104,
+        whiteSpace: 'nowrap',
         fontSize: 13,
         fontWeight: 600,
         color: col,
