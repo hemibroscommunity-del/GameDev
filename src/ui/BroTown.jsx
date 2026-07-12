@@ -6386,10 +6386,12 @@ export var BroTown = function BroTown(_ref0) {
          building interiors get the full width they were designed to
          bleed into (margin:-20 roots). Cap keeps it off tablet-huge. */
       /* v2.3.1235: §6 — height capped so building content never
-         continues behind the dashboard band (the .bt-inspect wrapper
-         reserves the band; this cap keeps the two rules in sync). */
+         continues behind the dashboard band. Checkpoint B: 100% = the
+         .bt-inspect content box, which now reserves BOTH the band
+         (padding-bottom) and the HUD chip strip (padding-top — the chip
+         paints over in-wrap modals, see game.css). */
       width: 'min(360px, calc(100vw - 24px))',
-      maxHeight: 'calc(100dvh - var(--dash-h) - 36px)',
+      maxHeight: '100%',
       overflowY: 'auto'
     }
   }, /*#__PURE__*/React.createElement("button", {

@@ -1,4 +1,5 @@
 import React from 'react';
+import { createPortal } from 'react-dom';
 import { BT_AUDIO } from '@/data/index.js';
 
 import { pushDmgPopup } from '@/game/combatHelpers.js';
@@ -22,15 +23,19 @@ export function DuelRequestPanel(props) {
   var stateRef = props.stateRef,
     duelRequest = props.duelRequest,
     setDuelRequest = props.setDuelRequest;
-  return React.createElement("div", {
+  return createPortal(React.createElement("div", {
     className: "bt-inspect",
     style: {
-      /* v2.3.1235: Checkpoint B — fixed full-viewport scrim: .bt-inspect is
-         position:absolute in its stacking context, which can leave the
-         dashboard band undimmed; fixed inset-0 dims the whole screen (the
-         dashboard stays visible beneath but non-interactive). */
+      /* v2.3.1235: Checkpoint B — fixed full-viewport scrim, PORTALED to
+         document.body: .brotown-wrap is position:fixed and therefore its
+         own stacking context in Chrome, so anything inside it — whatever
+         its z-index — paints BELOW the dashboard band / HUD chip (fixed,
+         z 30, outside the wrap). Luminance-measured: the band was pixel-
+         identical dimmed vs undimmed. The portal escapes the wrap; z 40
+         puts the dim over world + band + chip (under the intro at 100). */
       position: 'fixed',
       inset: 0,
+      zIndex: 40,
       background: 'rgba(4,9,12,0.52)' /* v2.3.1235: duel-confirmation scrim */
     },
     onClick: function onClick() {
@@ -185,5 +190,5 @@ export function DuelRequestPanel(props) {
       });
       setDuelRequest(null);
     }
-  }, "Decline"))));
+  }, "Decline")))), document.body);
 }

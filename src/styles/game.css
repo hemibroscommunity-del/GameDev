@@ -193,8 +193,18 @@ input{font-family:inherit}
      must never continue behind the fixed band (QA found the
      Marketplace order book and the Inspect action rows swallowed). */
   background:var(--ui-modal-scrim);-webkit-tap-highlight-color:transparent;
+  /* v2.3.1235: Checkpoint B — padding-top reserves the 58px HUD player
+     chip (+8px offset, +8px gap): the chip is position:fixed OUTSIDE
+     .brotown-wrap, and the wrap (position:fixed) is its own stacking
+     context in Chrome, so the chip paints over ANY in-wrap modal no
+     matter its z-index — at 390×844 it sat on the Marketplace ✕.
+     Geometric clearance is the fix; the z-ladder can't reach it. */
+  padding-top:calc(env(safe-area-inset-top, 0px) + 74px);
   padding-bottom:calc(var(--dash-h) + 12px);box-sizing:border-box}
-.bt-inspect .bt-inspect-card{max-height:calc(100dvh - var(--dash-h) - 36px);overflow-y:auto}
+/* v2.3.1235: max-height 100% = the .bt-inspect content box, which already
+   excludes the HUD-chip strip (padding-top) and the dashboard band
+   (padding-bottom) — the two clamps can't drift apart. */
+.bt-inspect .bt-inspect-card{max-height:100%;overflow-y:auto}
 /* v2.3.1233b: LOAD-BEARING padding — all 11 building panels
    (src/ui/panels/buildings/*) bleed a full-panel #202C32 surface into
    this 20px padding via margin:-20 roots (Lantern Slate sweep).

@@ -1178,12 +1178,13 @@ export const BottomDashboard = () => {
                              ~35px square; 6.5px was the fit then.
                              v2.3.1235: Loadout is now the 38% column, so the
                              slots grew ~20% — but checkpoint review caught
-                             "AMULE" clipped at 390×844 at 9px. 8.5px with a
-                             hair of negative tracking fits the full word on
-                             the narrowest supported phone (11px floor waived
-                             for these placeholder tags; clip is the
-                             backstop). */
-                          fontSize: 8.5,
+                             "AMULE" clipped at 390×844 at 9px, and the T's
+                             crossbar was STILL half-cut at 8.5px (verified
+                             at 8× zoom). 8px + tight tracking finally fits
+                             the full word on the narrowest supported phone
+                             (11px floor waived for these placeholder tags;
+                             clip is the backstop). */
+                          fontSize: 8,
                           letterSpacing: '-0.02em',
                           maxWidth: '100%',
                           overflow: 'hidden',
