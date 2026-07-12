@@ -816,9 +816,12 @@ export function InventoryPanel(props) {
       if (!req) return null;
       var met = (rpgState[req.stat] || 0) >= req.req;
       return /*#__PURE__*/React.createElement("span", {
+        /* v2.3.1235: batch-2 rollout — the stat requirement is the
+           "show the requirement" line the locked contract protects:
+           6px was unreadable, now 11px on the positive/danger tokens */
         style: {
-          fontSize: 6,
-          color: met ? '#59BF91' : '#D95C54',
+          fontSize: 11,
+          color: met ? '#55B98A' : '#D8635D',
           marginLeft: 4
         }
       }, req.label, " ", rpgState[req.stat] || 0, "/", req.req, " ", met ? '✓' : '✗');
@@ -829,14 +832,18 @@ export function InventoryPanel(props) {
       }
     }, /*#__PURE__*/React.createElement("button", {
       /* v2.3.1232: 44px action row — Equip is the one brass primary */
+      /* v2.3.1235: batch-2 rollout — demoted to a neutral secondary:
+         the locked contract allows ONE gold primary per surface and
+         this button repeats per stash row (N rows = N primaries).
+         Radius 11 → 10 (locked button radius). */
       style: {
         flex: 1,
         padding: '3px 0',
         minHeight: 44,
-        borderRadius: 11,
-        border: 'none',
-        background: '#D8A85F',
-        color: '#20170D',
+        borderRadius: 10,
+        border: '1px solid var(--ui-line-strong)',
+        background: 'var(--ui-raised)',
+        color: 'var(--ui-text)',
         fontSize: 12,
         fontWeight: 700,
         cursor: 'pointer'
@@ -873,7 +880,8 @@ export function InventoryPanel(props) {
         } catch (e) {}
         BT_AUDIO.collect();
       }
-    }, "\u2694\uFE0F Equip"), /*#__PURE__*/React.createElement("button", {
+    }, "Equip" /* v2.3.1235: batch-2 rollout \u2014 the sword emoji prefix was
+      decorative emoji in button chrome */), /*#__PURE__*/React.createElement("button", {
       /* v2.3.1232: 44px action row — Sell is the raised secondary */
       style: {
         flex: 1,
