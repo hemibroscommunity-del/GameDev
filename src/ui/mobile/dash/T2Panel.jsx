@@ -176,7 +176,11 @@ export const T2Panel = () => {
   };
 
   return (
-    <div style={panelStyle}>
+    /* v2.3.1235: batch-1 QA — 20px scroll tail (panelStyle's 10px let the
+       last channel row sit sliced against the toolbar edge, reading as
+       clipped rather than scrollable; worse at 430 where more content
+       fits). */
+    <div style={{ ...panelStyle, paddingBottom: 20 }}>
       {/* Header */}
       <div style={{
         display: 'flex', justifyContent: 'space-between', alignItems: 'center',
@@ -185,8 +189,12 @@ export const T2Panel = () => {
         marginBottom: 8,
       }}>
         <div>
-          {/* v2.3.1232: panel title 13/700 uppercase per Lantern Slate */}
-          <div style={{ fontSize: 13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.10em', color: COL.text, display: 'flex', alignItems: 'baseline', gap: 8 }}>
+          {/* v2.3.1232: panel title 13/700 uppercase per Lantern Slate.
+              v2.3.1235: batch-1 QA — the sheet header already titles this
+              destination WEAPONS, so "Builds" is a SECTION header and takes
+              the ladder's 11/700 .14em muted treatment (it read as an
+              off-system bold-white heading next to CHANNELS). */}
+          <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.14em', color: COL.muted, display: 'flex', alignItems: 'baseline', gap: 8 }}>
             Builds
             {/* v2.3.1157: the combat build meter — a character finishes
                 at 1000 allocated points (1/3 of the 3000-slot grid). */}
