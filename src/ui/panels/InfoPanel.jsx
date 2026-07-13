@@ -48,7 +48,7 @@ export function InfoPanel(props) {
     }
   }, playerCount, " online"), /*#__PURE__*/React.createElement("span", {
     style: {
-      fontSize: 9,
+      fontSize: 10, // v2.3.1239: 10px font floor (was 9)
       color: stateRef.current._realtimeStatus === 'connected' ? '#59BF91' : '#D95C54',
       marginLeft: 4
     }

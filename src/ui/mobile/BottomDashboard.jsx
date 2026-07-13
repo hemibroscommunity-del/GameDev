@@ -1285,6 +1285,16 @@ export const BottomDashboard = () => {
                              same ratio (8 -> 7) so AMULET's T keeps its
                              crossbar at 390px.  overflow:hidden remains
                              the backstop. */
+                          /* v2.3.1239: 10px font floor waived HERE only — this
+                             is the shared style for every empty loadout slot, and
+                             the longest labels ("SHIELD"/"WEAPON", 6 chars) need
+                             ~45px at 10px while the equal-third slot is only ~33px
+                             (rig: scrollWidth 45 > clientWidth 33).  7px is the
+                             measured ceiling that fits a 6-char tag; overflow is
+                             the backstop for anything longer.
+                             v2.3.1242: the last real eyesore ("AMULET") was the
+                             owner-approved relabel to "NECK" (4 chars) so it now
+                             matches its CAPE neighbour exactly at this size. */
                           fontSize: 7,
                           letterSpacing: '-0.02em',
                           maxWidth: '100%',
@@ -1416,7 +1426,13 @@ export const BottomDashboard = () => {
                           active: gearLegsId !== 'none',
                           onTap: onTapLegsArmor,
                         })}
-                        {slotCell({ k: 'amulet', label: 'AMULET', iconSrc: null, active: !!R.amulet, equipped: !!R.amulet })}
+                        {/* v2.3.1242: owner directive — the amulet slot must
+                            match its neighbour (CAPE), which renders as a word,
+                            not an icon.  "AMULET" (6 chars) was the sole holdout
+                            below the 10px floor because it clipped the ~33px
+                            slot; "NECK" (4 chars) matches CAPE exactly, so both
+                            bottom-row placeholders read identically. */}
+                        {slotCell({ k: 'amulet', label: 'NECK', iconSrc: null, active: !!R.amulet, equipped: !!R.amulet })}
                         {/* Cape: new back-layer slot (v2.3.692).  Render + equip
                             flow land in Phase 2; cell shows as empty for now. */}
                         {slotCell({ k: 'cape', label: 'CAPE', iconSrc: null, active: false })}
@@ -1501,7 +1517,8 @@ export const BottomDashboard = () => {
                               borderLeft: ci > 0 ? '1px solid var(--ui-line)' : 'none',
                               overflow: 'hidden',
                             }}>
-                            <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '.08em', color: 'var(--ui-dashboard-text-secondary)' }}>{hdr}</span>
+                            {/* v2.3.1242: reconcile onto the merged #269 dashboard — approved dashboard-text color + the #268 10px font floor. */}
+                            <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.08em', color: 'var(--ui-dashboard-text-secondary)' }}>{hdr}</span>
                             <span style={{ fontSize: 11, fontWeight: 600, fontVariantNumeric: 'tabular-nums', color: '#F4F0E7', whiteSpace: 'nowrap' }}>{val}</span>
                           </div>
                         ))}
@@ -1669,7 +1686,7 @@ export const BottomDashboard = () => {
                           <span style={{
                             position: 'absolute', top: 1, right: 2,
                             background: '#D8A85F', color: '#20170D',
-                            fontSize: 9, fontWeight: 900,
+                            fontSize: 10, fontWeight: 900, /* v2.3.1239: 10px font floor (was 9) */
                             borderRadius: 7, padding: '0px 4px', lineHeight: 1.4,
                             pointerEvents: 'none', zIndex: 1,
                           }}>{unspentPts}</span>

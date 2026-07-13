@@ -19,7 +19,7 @@
  */
 
 import { Rectangle, Texture } from 'pixi.js';
-import { getFrame, SPRITE_VERSION } from './playerSprites.js';
+import { getFrame, SPRITE_VERSION, stripDetachedComponents } from './playerSprites.js';
 import { upscaleToFrameHeight, bakeDisplayCanvas, DISPLAY_DS } from './spriteScale.js'; /* v2.3.1108: normalize downscaled sheets to the 256px frame before recolour; v2.3.1120: downscale the final DISPLAY texture for VRAM; v2.3.1237: bakeDisplayCanvas smooths nearest-upscaled sheets at DISPLAY_DS=1 (jog-shimmer fix) */
 import { loadWebpOrPng } from './webpImage.js'; /* v2.3.1122: prefer lossless WebP, fall back to PNG */
 
@@ -513,7 +513,14 @@ function buildBodySheet(sheetKey, pose, dir, skinT, pantsT, shoesT, shirtT) {
        bakeDisplayCanvas restores the anti-aliasing the DS=2 'high' downscale
        (v2.3.1121) used to give the FINAL display texture.  At DS>1 it defers to
        downscaleByFactor unchanged; native 256px sheets pass through sharp. */
-    const cv = bakeDisplayCanvas(full, img.naturalHeight || img.height || 0);
+    let cv = bakeDisplayCanvas(full, img.naturalHeight || img.height || 0);
+    /* v2.3.1239: same jog-NE marker-scrub cleanup the base loader applies
+       (playerSprites.stripDetachedComponents) -- the recolor only retints
+       existing pixels, so the detached specks off the head crown survive into
+       this custom-skin bake too; strip them here so a recolored player jogging
+       NE/NW has no trailing outline either.  Topology-only (keep the largest
+       opaque blob per frame) -> the recolored body + outline are untouched. */
+    if (pose === 'jog' && dir === 'northeast') cv = stripDetachedComponents(cv, frames);
     const src = Texture.from(cv).source;
     src.scaleMode = 'linear';
     /* v2.3.1121: mipmaps ON -- the downscaled body still renders ~1.2x minified;

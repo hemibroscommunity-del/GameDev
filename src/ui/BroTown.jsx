@@ -958,6 +958,32 @@ export var BroTown = function BroTown(_ref0) {
     setTutorialStep = _useState124[1];
   /* Keep tutorialStep on stateRef so the game loop (which doesn't re-mount on state change) reads the live value */
   stateRef.current._tutorialStep = tutorialStep;
+  /* v2.3.1239: owner feedback — onboarding is now OPT-IN.  Instead of the
+     step banners auto-appearing on first join, a brand-new player (no
+     bt_tutorial flag yet) sees ONE small dismissible prompt.  The
+     teach-by-doing step machine AND its banners only run once the player
+     taps "Start tour" (tourStarted).  "No thanks"/✕ writes the same
+     bt_tutorial='10' completion flag the finished tutorial sets, so it
+     never nags again.  Veterans (flag already set — including anyone
+     mid-tutorial under the old auto model) get neither the prompt nor the
+     banners, exactly as before. */
+  var _tourPromptInit = (function () {
+    try {
+      return localStorage.getItem('bt_tutorial') == null;
+    } catch (_unusedTour) {
+      return false;
+    }
+  })();
+  var _useStateTourP = useState(_tourPromptInit),
+    _useStateTourP2 = _slicedToArray(_useStateTourP, 2),
+    showTourPrompt = _useStateTourP2[0],
+    setShowTourPrompt = _useStateTourP2[1];
+  var _useStateTourS = useState(false),
+    _useStateTourS2 = _slicedToArray(_useStateTourS, 2),
+    tourStarted = _useStateTourS2[0],
+    setTourStarted = _useStateTourS2[1];
+  /* Mirror onto stateRef so the game loop's step machine can gate on it. */
+  stateRef.current._tourStarted = tourStarted;
   /* v2.3.1235: Checkpoint B §7 — the onboarding banner must also yield to
      the controls-tutorial coach (it was showing through the spotlight at
      both test widths). Live subscription so the banner resumes on close. */
@@ -3965,7 +3991,10 @@ export var BroTown = function BroTown(_ref0) {
         }
 
         /* §15 Tutorial progression — teach by doing */
-        if (S._tutorialStep >= 0 && S._tutorialStep < 8) {
+        /* v2.3.1239: owner feedback — only advance (and write bt_tutorial)
+           once the player has opted in via the "Start tour" prompt; a
+           player who declined (or hasn't chosen yet) is left untouched. */
+        if (S._tourStarted && S._tutorialStep >= 0 && S._tutorialStep < 8) {
           var _S$monsters, _S$rpg12;
           var moved = Math.abs(dx) > 0.01 || Math.abs(dy) > 0.01;
           if (S._tutorialStep === 0 && moved) {
@@ -5949,7 +5978,119 @@ export var BroTown = function BroTown(_ref0) {
     }
   }), showMayorGreeting && /*#__PURE__*/React.createElement(MayorGreeting, {
     onComplete: function onComplete() { return setShowMayorGreeting(false); }
-  }), /*#__PURE__*/React.createElement("div", {
+  }),
+  /* v2.3.1239: owner feedback — first-join tutorial OPT-IN prompt.  One small
+     unobtrusive Lantern Slate card above the dashboard, shown only to a
+     brand-new player once the loading intro + Mayor greeting have cleared.
+     "Start tour" begins the EXISTING teach-by-doing flow (tourStarted +
+     tutorialStep 0 → the step banners run); "No thanks"/✕ suppresses it and
+     writes the same bt_tutorial='10' completion flag the finished tutorial
+     sets, so it never reappears. */
+  showTourPrompt && !showIntro && !showMayorGreeting && /*#__PURE__*/React.createElement("div", {
+    onPointerDown: function onPointerDown(e) { e.stopPropagation(); },
+    style: {
+      position: 'fixed',
+      left: '50%',
+      bottom: 'calc(var(--dash-h) + 12px)',
+      transform: 'translateX(-50%)',
+      zIndex: 31,
+      width: 'min(92vw, 320px)',
+      pointerEvents: 'auto',
+      fontFamily: 'Source Sans 3, sans-serif'
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      position: 'relative',
+      background: 'rgba(13,22,27,0.92)',
+      border: '1px solid rgba(229,237,233,0.20)',
+      borderRadius: 12,
+      boxShadow: '0 14px 30px rgba(4,7,9,.38)',
+      color: '#F4F0E7',
+      padding: '12px 14px'
+    }
+  }, /*#__PURE__*/React.createElement("button", {
+    type: "button",
+    "aria-label": "Dismiss tour prompt",
+    onClick: function onClick() {
+      setShowTourPrompt(false);
+      setTutorialStep(10);
+      try {
+        localStorage.setItem('bt_tutorial', '10');
+      } catch (e) {}
+    },
+    style: {
+      position: 'absolute',
+      top: 0,
+      right: 0,
+      width: 44,
+      height: 44,
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      background: 'none',
+      border: 'none',
+      color: 'rgba(244,240,231,.6)',
+      fontSize: 15,
+      lineHeight: 1,
+      cursor: 'pointer',
+      padding: 0
+    }
+  }, "✕"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 14,
+      fontWeight: 700,
+      lineHeight: 1.3,
+      paddingRight: 30
+    }
+  }, "New here? Want a quick tour?"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'flex',
+      gap: 8,
+      marginTop: 10
+    }
+  }, /*#__PURE__*/React.createElement("button", {
+    type: "button",
+    onClick: function onClick() {
+      setShowTourPrompt(false);
+      setTourStarted(true);
+      setTutorialStep(0);
+    },
+    style: {
+      flex: 1,
+      minHeight: 44,
+      background: '#D8AA58',
+      color: '#172126',
+      border: 'none',
+      borderRadius: 10,
+      fontSize: 13,
+      fontWeight: 800,
+      letterSpacing: '.03em',
+      cursor: 'pointer',
+      fontFamily: 'Source Sans 3, sans-serif'
+    }
+  }, "Start tour"), /*#__PURE__*/React.createElement("button", {
+    type: "button",
+    onClick: function onClick() {
+      setShowTourPrompt(false);
+      setTutorialStep(10);
+      try {
+        localStorage.setItem('bt_tutorial', '10');
+      } catch (e) {}
+    },
+    style: {
+      flex: 1,
+      minHeight: 44,
+      background: '#293B41',
+      color: '#F4F0E7',
+      border: '1px solid rgba(229,237,233,0.20)',
+      borderRadius: 10,
+      fontSize: 13,
+      fontWeight: 700,
+      letterSpacing: '.03em',
+      cursor: 'pointer',
+      fontFamily: 'Source Sans 3, sans-serif'
+    }
+  }, "No thanks")))), /*#__PURE__*/React.createElement("div", {
     className: "brotown-wrap",
     ref: wrapRef,
     style: {
@@ -6622,7 +6763,9 @@ export var BroTown = function BroTown(_ref0) {
   /* v2.3.1235: §6 — the banner yields to every blocking decision
      surface (QA caught it rendering beside the duel prompt and behind
      the tutorial coach). It resumes when the modal closes. */
-  tutorialStep >= 0 && tutorialStep < 7 && !ctOpen && !buildingPanel && !duelRequest && !incomingTrade && !trade2 && !inspectPlayer && !questPanel && !showTrade && !threatIncoming && /*#__PURE__*/React.createElement("div", {
+  /* v2.3.1239: gated behind tourStarted — the step banners only show once
+     the player opts in via the first-join prompt (see below). */
+  tourStarted && tutorialStep >= 0 && tutorialStep < 7 && !ctOpen && !buildingPanel && !duelRequest && !incomingTrade && !trade2 && !inspectPlayer && !questPanel && !showTrade && !threatIncoming && /*#__PURE__*/React.createElement("div", {
     style: {
       position: 'absolute',
       /* v2.3.1205: was bottom:180 / zIndex:20 — INSIDE the opaque

@@ -57,7 +57,7 @@ export const InventoryTile = ({ item, onTap, layer3 }) => {
       {layer3 && item.crafter && (
         <div style={{
           position: 'absolute', left: 4, bottom: 26,
-          fontSize: 8, color: 'rgba(232,212,160,0.7)', fontFamily: FONT.mono,
+          fontSize: 10, color: 'rgba(232,212,160,0.7)', fontFamily: FONT.mono, /* v2.3.1239: 10px font floor (was 8) */
         }}>{item.crafter[0].toUpperCase()}</div>
       )}
 
@@ -102,7 +102,7 @@ export const InventoryTile = ({ item, onTap, layer3 }) => {
           fontFamily: FONT.sans, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
         }}>{item.name || '(item)'}</div>
         <div style={{
-          flexShrink: 0, fontSize: 9, color: 'rgba(238, 242, 235, 0.65)',
+          flexShrink: 0, fontSize: 10, color: 'rgba(238, 242, 235, 0.65)', /* v2.3.1239: 10px font floor (was 9) */
           fontFamily: FONT.mono,
         }}>{labelRight}</div>
       </div>

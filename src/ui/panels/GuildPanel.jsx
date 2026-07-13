@@ -122,7 +122,7 @@ export function GuildPanel(props) {
       }
     }, g.icon, " ", key.replace(/([A-Z])/g, ' $1').trim(), /*#__PURE__*/React.createElement("span", {
       style: {
-        fontSize: 9,
+        fontSize: 10, // v2.3.1239: 10px font floor (was 9)
         color: rank.color
       }
     }, rank.title.charAt(0)));
@@ -250,7 +250,7 @@ export function GuildPanel(props) {
         }
       }, achieved ? '✅' : '🔒', " ", r.title, " (Lv", r.minLvl, ")", achieved && r.ap > 0 && /*#__PURE__*/React.createElement("span", {
         style: {
-          fontSize: 9,
+          fontSize: 10, // v2.3.1239: 10px font floor (was 9)
           color: '#96A2A0',
           marginLeft: 2
         }

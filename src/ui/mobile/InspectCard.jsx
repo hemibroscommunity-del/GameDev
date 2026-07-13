@@ -160,7 +160,7 @@ const StatTile = ({ stat, value, expanded, tier2 }) => {
         {value || 0}
       </div>
       {expanded && tier2 && (
-        <div style={{ fontFamily: FONT.mono, fontSize: 9, color: C.muted, marginTop: 1 }}>
+        <div style={{ fontFamily: FONT.mono, fontSize: 10, color: C.muted, marginTop: 1 }}>{/* v2.3.1239: 10px font floor (was 9) */}
           {tier2}
         </div>
       )}
@@ -258,7 +258,7 @@ const EquipTile = ({ item, label, size = 80 }) => (
         <span style={{ color: C.veryMuted, fontSize: 22 }}>—</span>
       )}
     </div>
-    <span style={{ fontFamily: FONT.sans, fontSize: 9, color: C.muted2,
+    <span style={{ fontFamily: FONT.sans, fontSize: 10, color: C.muted2, /* v2.3.1239: 10px font floor (was 9) */
       letterSpacing: '0.12em', textTransform: 'uppercase' }}>{label}</span>
   </div>
 );
@@ -360,7 +360,7 @@ const HistorySection = ({ s }) => {
             {h.capstones.slice(0, 4).map((c, i) => (
               <span key={i} style={{
                 padding: '2px 8px', borderRadius: 9, background: C.divider,
-                fontFamily: FONT.sans, fontSize: 9, color: C.text,
+                fontFamily: FONT.sans, fontSize: 10, color: C.text, /* v2.3.1239: 10px font floor (was 9) */
               }}>{c}</span>
             ))}
           </div>
@@ -406,7 +406,7 @@ const JourneySection = ({ s }) => {
           <div style={{ marginTop: 8, paddingTop: 8, borderTop: `1px dashed ${C.divider}` }}>
             {(j.entries || []).slice(0, 20).map((e, i) => (
               <div key={i} style={{ marginBottom: 8 }}>
-                <span style={{ fontFamily: FONT.mono, fontSize: 9, color: C.muted2, marginRight: 6 }}>
+                <span style={{ fontFamily: FONT.mono, fontSize: 10, color: C.muted2, marginRight: 6 }}>{/* v2.3.1239: 10px font floor (was 9) */}
                   Day {e.day || i + 1}
                 </span>
                 <span style={{ fontFamily: FONT.serif, fontStyle: 'italic', fontSize: 11, color: C.text }}>
