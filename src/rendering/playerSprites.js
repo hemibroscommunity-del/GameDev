@@ -19,7 +19,7 @@
  */
 
 import { Assets, Rectangle, Texture } from 'pixi.js';
-import { upscaleToFrameHeight, downscaleByFactor, DISPLAY_DS } from './spriteScale.js'; /* v2.3.1108: upscale downscaled-on-disk sheets back to the 256px logical frame; v2.3.1120: downscale the final DISPLAY texture for VRAM */
+import { upscaleToFrameHeight, bakeDisplayCanvas, DISPLAY_DS } from './spriteScale.js'; /* v2.3.1108: upscale downscaled-on-disk sheets back to the 256px logical frame; v2.3.1120: downscale the final DISPLAY texture for VRAM; v2.3.1237: bakeDisplayCanvas smooths nearest-upscaled sheets at DISPLAY_DS=1 (jog-shimmer fix) */
 import { loadWebpOrPng } from './webpImage.js'; /* v2.3.1122: prefer lossless WebP, fall back to PNG */
 
 /* v2.3.166: bumped from 128 to 256 per user request.  256 source +
@@ -169,8 +169,12 @@ async function loadSheet(pose, dir) {
        v2.3.1121: mipmaps back ON.  The 128px frame still renders ~1.2x minified
        and, while JOGGING, the sub-pixel motion made the thin shoe outline crawl
        ("chewed up") without a mip chain.  Mipmaps on the small texture cost ~33%
-       of an already 4x-smaller texture -- worth it to kill the jog shimmer. */
-    const small = downscaleByFactor(normalized, DISPLAY_DS);
+       of an already 4x-smaller texture -- worth it to kill the jog shimmer.
+       v2.3.1237: owner feedback — jog-shimmer at DISPLAY_DS=1: bakeDisplayCanvas
+       gives 128px-on-disk sheets the anti-aliasing resample the DS=2 'high'
+       downscale (v2.3.1121) used to provide; at DS>1 it defers to
+       downscaleByFactor unchanged, and native 256px sheets pass through sharp. */
+    const small = bakeDisplayCanvas(normalized, img.naturalHeight || img.height || 0);
     const source = Texture.from(small).source;
     source.scaleMode = 'linear';
     source.autoGenerateMipmaps = true;
