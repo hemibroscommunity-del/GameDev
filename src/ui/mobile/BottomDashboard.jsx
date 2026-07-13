@@ -181,7 +181,10 @@ const ColHeader = ({ children }) => (
        the old title underline duplicated that boundary and looked dated. */
     fontSize: 12,
     fontWeight: 700,
-    color: COL.text2,
+    /* v2.3.1240: the approved mockup uses a near-white, crisp header;
+       COL.text2 made the built version read noticeably gray. */
+    color: 'var(--ui-dashboard-text)',
+    textShadow: '0 1px 0 rgba(0,0,0,.72)',
     letterSpacing: '.14em',
     textTransform: 'uppercase',
     padding: '0 2px 2px',
@@ -1261,7 +1264,9 @@ export const BottomDashboard = () => {
                         }}>{equippedGlyph}</span>
                       ) : (
                         <span style={{
-                          color: COL.muted,
+                          /* v2.3.1240: placeholder identity is secondary,
+                             but no longer disabled-gray in the dashboard. */
+                          color: 'var(--ui-dashboard-text-secondary)',
                           fontWeight: 700,
                           /* v2.3.1233: QA — "AMULET" spilled out of its old
                              ~35px square; 6.5px was the fit then.
@@ -1496,7 +1501,7 @@ export const BottomDashboard = () => {
                               borderLeft: ci > 0 ? '1px solid var(--ui-line)' : 'none',
                               overflow: 'hidden',
                             }}>
-                            <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '.08em', color: '#8D9B98' }}>{hdr}</span>
+                            <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '.08em', color: 'var(--ui-dashboard-text-secondary)' }}>{hdr}</span>
                             <span style={{ fontSize: 11, fontWeight: 600, fontVariantNumeric: 'tabular-nums', color: '#F4F0E7', whiteSpace: 'nowrap' }}>{val}</span>
                           </div>
                         ))}

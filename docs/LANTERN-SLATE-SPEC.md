@@ -45,7 +45,10 @@ brass accent.
 | dashboard tray | `#2E4754` | lighter shared field behind the three modules |
 | dashboard panel | `#10222A` | Bag / Loadout / Build functional wells |
 | dashboard ribbon | `#10232A` | inset navigation ribbon |
-| dashboard button | `#1D323A` | quiet beveled toolbar target |
+| dashboard button | `#1A2D36` | quiet beveled toolbar target |
+| dashboard button active | `#162A33` | pressed/selected toolbar target |
+| dashboard text | `#F2F3EF` | crisp dashboard titles and navigation labels |
+| dashboard text secondary | `#DDE3E1` | slot and metric labels |
 
 ## Text / edges / interaction
 
@@ -112,8 +115,9 @@ top edge and a tight, crisp contact shadow against the world. Its idle
 body contains three equal `#10222A` functional wells, separated by 6px
 gutters. The wells—not rules, title underlines, textures, or accent
 colors—make Bag, Loadout, and Build legible as three different
-functions. Each well has a 10px radius, a quiet 1px neutral boundary,
-and a one-pixel inset edge. There are no vertical dividers.
+functions. Each well has a 10px radius and a quiet 1px blue-slate
+bridge boundary that blends into the tray instead of forming a dark
+double rim. There are no vertical dividers.
 
 - **Bag (equal third, deepest/quietest):** one dark well with a quiet
   inset edge and 4px content padding; 3×3 cells — empty `#19252A` + 1px
@@ -134,13 +138,13 @@ and a one-pixel inset edge. There are no vertical dividers.
 ## Toolbar (§9)
 
 The toolbar is visually separate from the dashboard modules: a single
-inset `#10232A` ribbon on the lighter slate tray, with a 12px radius and
-a tight two-pixel contact shadow. Inside are six equal `#1D323A`
-targets. Each target gets a restrained one-pixel micro-bevel and 9px
+inset `#10232A` ribbon on the lighter slate tray, with a 10px radius and
+a tight one-pixel contact shadow. Inside are six equal `#1A2D36`
+targets. Each target gets a restrained vertical one-pixel micro-bevel and 8px
 radius so it reads immediately as a button without competing with the
 world. Pressed: reverse the bevel and scale .97 for 90ms. Selected:
-`#192D36` fill plus one-pixel brass edge and reversed bevel—never a
-solid accent fill. Labels are 10.5/600 warm gray at rest.
+`#162A33` fill plus one-pixel brass edge and reversed bevel—never a
+solid accent fill. Labels are 10.5/600 near-white at rest.
 
 The default always-on dashboard is home, not a toolbar destination, so
 all six targets are unselected in that state. The first destination is
@@ -208,8 +212,9 @@ pointerdown. prefers-reduced-motion removes shimmer/overshoot/nudge.
   --ui-well: #121B20;  --ui-well-soft: #19252A;  --ui-slot: #243137;
   --ui-toolbar: #10181D;
   --ui-dashboard-tray: #2E4754;  --ui-dashboard-panel: #10222A;
-  --ui-dashboard-ribbon: #10232A;  --ui-dashboard-button: #1D323A;
-  --ui-dashboard-button-active: #192D36;
+  --ui-dashboard-ribbon: #10232A;  --ui-dashboard-button: #1A2D36;
+  --ui-dashboard-button-active: #162A33;
+  --ui-dashboard-text: #F2F3EF;  --ui-dashboard-text-secondary: #DDE3E1;
   --ui-world-overlay: rgba(17,25,29,.94);
   --ui-modal-scrim: rgba(8,16,20,.56);
   --ui-band: linear-gradient(180deg, #253239 0%, #202C32 46%, #172126 100%);
@@ -291,6 +296,10 @@ pointerdown. prefers-reduced-motion removes shimmer/overshoot/nudge.
    and six quiet micro-beveled buttons. Default dashboard has no active
    navigation state; Bag remains the quick view and Inventory names the
    deeper destination.
+6. ✅ v2.3.1240: screenshot-parity polish — brighter near-white dashboard
+   type, blue-slate bridge borders without a dark double rim, stronger
+   crisp world seam, and darker toolbar buttons with a single contour
+   plus vertical-only micro-bevel.
 
 ## Do-not-drift list
 

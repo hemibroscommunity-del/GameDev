@@ -66,8 +66,10 @@
   --ui-dashboard-tray: #2E4754;
   --ui-dashboard-panel: #10222A;
   --ui-dashboard-ribbon: #10232A;
-  --ui-dashboard-button: #1D323A;
-  --ui-dashboard-button-active: #192D36;
+  --ui-dashboard-button: #1A2D36;
+  --ui-dashboard-button-active: #162A33;
+  --ui-dashboard-text: #F2F3EF;
+  --ui-dashboard-text-secondary: #DDE3E1;
   --ui-world-overlay: var(--ui-world-chrome);
   --ui-modal-scrim: rgba(4, 9, 12, 0.38);
   --ui-text-1: var(--ui-text);
@@ -132,17 +134,21 @@
    hit areas are obvious without turning the ribbon into six loud cards. */
 .bt-dashboard{
   background:var(--ui-dashboard-tray);
-  border-top:1px solid rgba(229,237,233,.24);
+  /* v2.3.1240: blue-slate hairline + zero-blur contact shadow sampled
+     from the approved mockup.  The seam stays crisp, never glowy. */
+  border-top:1px solid rgba(132,176,188,.64);
   border-radius:14px 14px 0 0;
-  box-shadow:0 -3px 0 rgba(5,12,16,.28);
+  box-shadow:
+    0 -3px 0 rgba(5,12,16,.30),
+    inset 0 1px 0 rgba(238,247,247,.035);
 }
 .bt-dashboard-module{
   background:var(--ui-dashboard-panel);
-  border:1px solid rgba(229,237,233,.10);
+  /* v2.3.1240: a blue-slate bridge tone softens the transition from
+     the lighter tray to the deep well; no dark double rim. */
+  border:1px solid rgba(133,164,174,.24);
   border-radius:10px;
-  box-shadow:
-    inset 0 1px 0 rgba(255,255,255,.055),
-    inset 0 -1px 0 rgba(0,0,0,.34);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.025);
 }
 .bt-dashboard-toolbar-frame{
   padding:4px 8px 7px;
@@ -156,11 +162,11 @@
   gap:4px;
   padding:4px;
   background:var(--ui-dashboard-ribbon);
-  border:1px solid rgba(229,237,233,.10);
-  border-radius:12px;
+  border:1px solid rgba(133,164,174,.18);
+  border-radius:10px;
   box-shadow:
-    inset 0 1px 0 rgba(255,255,255,.06),
-    0 2px 0 rgba(4,10,13,.30);
+    inset 0 1px 0 rgba(255,255,255,.035),
+    0 1px 0 rgba(4,10,13,.48);
 }
 .bt-dashboard-nav-button{
   flex:1 1 0;
@@ -173,13 +179,16 @@
   justify-content:center;
   gap:1px;
   padding:2px 0;
-  color:var(--ui-text-secondary);
+  color:var(--ui-dashboard-text);
   background:var(--ui-dashboard-button);
-  border:1px solid rgba(229,237,233,.10);
-  border-radius:9px;
+  /* v2.3.1240: one clean contour and vertical-only micro-bevel.  The
+     old diagonal inset doubled the side edges at phone pixel density. */
+  border:1px solid rgba(151,180,188,.36);
+  border-radius:8px;
   box-shadow:
-    inset 1px 1px 0 rgba(255,255,255,.08),
-    inset -1px -1px 0 rgba(0,0,0,.32);
+    inset 0 1px 0 rgba(255,255,255,.09),
+    inset 0 -1px 0 rgba(0,0,0,.48),
+    0 1px 0 rgba(0,0,0,.36);
   font-family:'Source Sans 3',sans-serif;
   cursor:pointer;
   touch-action:none;
@@ -194,16 +203,16 @@
   transform:scale(.97);
   background:var(--ui-dashboard-button-active);
   box-shadow:
-    inset 1px 1px 0 rgba(0,0,0,.46),
-    inset -1px -1px 0 rgba(255,255,255,.055);
+    inset 0 1px 0 rgba(0,0,0,.48),
+    inset 0 -1px 0 rgba(255,255,255,.05);
 }
 .bt-dashboard-nav-button[aria-pressed='true']{
   color:var(--ui-text);
   background:var(--ui-dashboard-button-active);
   border-color:rgba(234,198,117,.82);
   box-shadow:
-    inset 1px 1px 0 rgba(0,0,0,.46),
-    inset -1px -1px 0 rgba(255,255,255,.055);
+    inset 0 1px 0 rgba(0,0,0,.48),
+    inset 0 -1px 0 rgba(255,255,255,.05);
 }
 .bt-dashboard-nav-button:focus-visible{
   outline:2px solid var(--ui-brass-highlight);
@@ -216,7 +225,7 @@
   align-items:center;
   justify-content:center;
   flex:0 0 auto;
-  opacity:.84;
+  opacity:.90;
 }
 .bt-dashboard-nav-icon img{
   width:30px!important;
@@ -233,7 +242,8 @@
   line-height:12px;
   letter-spacing:.01em;
   color:currentColor;
-  opacity:.86;
+  opacity:.94;
+  text-shadow:0 1px 0 rgba(0,0,0,.72);
 }
 .bt-dashboard-nav-button[aria-pressed='true'] .bt-dashboard-nav-icon,
 .bt-dashboard-nav-button[aria-pressed='true'] .bt-dashboard-nav-label{
