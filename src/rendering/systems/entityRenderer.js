@@ -1129,27 +1129,20 @@ export async function prewarmAltWornSets(opts) {
     await new Promise((r) => setTimeout(r, 5000));
     if (seq !== _altPrewarmSeq) return;
   }
-  /* v2.3.1118: prewarm ONLY the actually-worn loadout.  The old version baked
-     THREE masked-armour families up front (full + chest-only + legs-only) and,
-     worse, defaulted to steelplate/steelgreaves for an UNARMOURED player -- so it
-     forced ~115MB of speculative masked frames into the iPhone's ~100-200MB WebGL
-     budget for gear the player isn't even wearing.  That memory pressure is a
-     prime cause of the general slowdown + WebGL context loss.  Skip entirely when
-     nothing is worn; otherwise bake just the worn pieces.  The chest-only /
-     legs-only transitional families bake lazily on the first equip change --
-     _schedulePrewarm (frame-budgeted) + the lazy first-sighting bake already cover
-     that, at the cost of a small one-time hitch on that first swap. */
-  const chestId = getEquip('chest') !== 'none' ? getEquip('chest') : null;
-  const legsId = getEquip('legs') !== 'none' ? getEquip('legs') : null;
-  if (!chestId && !legsId) return;               // nothing worn -> nothing to warm
+  /* v2.3.1118: prewarmed ONLY the actually-worn loadout -- the speculative
+     3-family bake (~115MB of masked frames at the full 256 bake) pressured
+     the iPhone's WebGL budget and was a prime cause of slowdown + context
+     loss, and it wrongly defaulted to steelplate for unarmoured players.
+     v2.3.1236: REVERSED per owner directive -- prewarm EVERY catalog gear
+     state behind the post-Play loading screen so a first equip/unequip never
+     pays the lazy masked-body bake hitch.  _catalogWornSets() documents the
+     memory trade-off and is the knob to shrink if context loss returns. */
   /* v2.3.756: baked shirt retired -- only the shirtless body sheets exist
      now, so there is a single variant to warm. */
   try { await preloadBodyVariant(null, 'none'); } catch (e) { /* best-effort */ }
   if (seq !== _altPrewarmSeq) return;            // superseded by a newer kick
-  const _wornNow = [];
-  if (chestId) _wornNow.push(['chest', chestId]);
-  if (legsId) _wornNow.push(['legs', legsId]);
-  const SETS = [{ worn: _wornNow, full: !!(chestId && legsId) }];
+  const SETS = _catalogWornSets().map((worn) => ({ worn }));
+  if (!SETS.length) return;
   const DIRS = ['south', 'east', 'north', 'northeast', 'southwest'];
   let sinceYield = 0;
   for (const set of SETS) {

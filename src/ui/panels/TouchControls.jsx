@@ -86,7 +86,15 @@ export function TouchControls(props) {
       backgroundSize: '100% 100%',
       backgroundRepeat: 'no-repeat',
       backgroundPosition: 'center',
-      filter: 'drop-shadow(0 0 1.2px #000) drop-shadow(0 0 1.2px #000)',
+      /* v2.3.1236: drop-shadow filter REMOVED (here + the five siblings
+         below).  A CSS drop-shadow/filter on a DOM overlay compositing over
+         the WebGL canvas produces grainy "static" on iOS -- the documented
+         next suspect in CLAUDE.md's charge-pie history, and the same fix
+         SpecialChargePie itself got in v2.3.948.  These joystick sprites sit
+         directly under/around the special-charge counter and re-composite
+         every frame while aiming, which is exactly when the owner saw static
+         over the counter (v2.3.1236 report).  The sprite art carries its own
+         rim; no replacement shadow. */
     }
   }, /*#__PURE__*/React.createElement("div", {
     /* Analog "stick" — anchored at joystick centre, grows toward the
