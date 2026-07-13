@@ -148,12 +148,13 @@ export const ItemTile = ({ ikey, count, style: styleOverride }) => {
               style={{ width: '85%', height: '85%', objectFit: 'contain', imageRendering: 'auto' }} />
           : <span>{iconFor(ikey)}</span>;
       })()}
+      {/* v2.3.1249: owner-approved — the big uncontained 15px count becomes
+          a compact contained badge (bottom-right, bare number, 2-digit max;
+          recipe in game.css .bt-item-qty).  Shared by the quick Bag preview
+          and the full Inventory panel since both render this tile.  The
+          anchor badge (top-right) is untouched and cannot collide. */}
       {count > 1 && (
-        <span style={{
-          position: 'absolute', bottom: 1, right: 3,
-          fontSize: 15, color: COL.text,
-          textShadow: '0 1px 2px rgba(0,0,0,.8)',
-        }}>{count}</span>
+        <span className="bt-item-qty">{count}</span>
       )}
       {locked && (
         /* v2.3.177: anchor glyph in the upper-right corner of anchored

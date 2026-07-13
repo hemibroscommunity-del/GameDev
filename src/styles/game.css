@@ -174,6 +174,47 @@
   border-radius:9px;
   box-shadow:none;
 }
+/* v2.3.1249: panel-header TEXTURES (owner-approved scope: textures only,
+   zero layout change — the flow-neutral offsets live inline in
+   ColHeader).  Each cap is a raster texture cropped from the owner's
+   approved mockup image (real leather / scratched green / circuitry;
+   title text patched out by mirror-composition), 480x72 ≈ native DPR3,
+   stretched to the cap.  The background-color is the pre-load fallback,
+   sampled from each texture. */
+.bt-dashboard-panel-header{
+  border-radius:8px 8px 0 0;
+  background-repeat:no-repeat;
+  background-position:center;
+  background-size:100% 100%;
+}
+.bt-dashboard-panel-header--bag{
+  background-color:#63322D;
+  background-image:url('/ui/dashboard/header-leather.webp');
+}
+.bt-dashboard-panel-header--loadout{
+  background-color:#394934;
+  background-image:url('/ui/dashboard/header-scratches.webp');
+}
+.bt-dashboard-panel-header--build{
+  background-color:#213E5A;
+  background-image:url('/ui/dashboard/header-circuit.webp');
+}
+/* v2.3.1249: compact item-quantity badge (bottom-right of ItemTile) —
+   replaces the big uncontained 15px count.  Bare number, no "x", shown
+   only when count > 1, sized for the 2-digit stack max.  pointer-events
+   none so tile taps pass through unchanged. */
+.bt-item-qty{
+  position:absolute;right:2px;bottom:2px;
+  min-width:16px;height:14px;padding:0 3px;
+  display:flex;align-items:center;justify-content:center;
+  background:rgba(8,17,22,.92);
+  border:var(--ui-hairline) solid #40545E;
+  border-radius:7px;
+  color:#F2F3EF;font-size:10px;font-weight:700;line-height:1;
+  font-variant-numeric:tabular-nums;
+  text-shadow:none;box-shadow:none;
+  pointer-events:none;
+}
 .bt-dashboard-toolbar-frame{
   padding:4px 8px 7px;
   background:var(--ui-dashboard-tray);
