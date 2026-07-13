@@ -1442,55 +1442,49 @@ export const BottomDashboard = () => {
                             hidden + nowrap is the clip backstop.  The two
                             anchored tooltips are the r2 footer's own,
                             handler bodies byte-identical to c4a427b1. */}
-                        <div style={{
-                          gridRow: 3,
-                          gridColumn: '1 / -1',
-                          minWidth: 0,
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          gap: 3,
-                          fontSize: 11,
-                          fontVariantNumeric: 'tabular-nums',
-                          lineHeight: 1.3,
-                          whiteSpace: 'nowrap',
-                          overflow: 'hidden',
-                        }}>
-                          <span
-                            /* v2.3.1235: batch-4 state-correction §2 — structured
-                               anchored tooltip; live DMG/DPS numbers are the same
-                               calcDisplayDmgRange/Dps values the line prints. */
-                            onPointerUp={(e) => { e.stopPropagation(); setTooltip({
+                        {/* v2.3.1236: owner feedback r5 — the r4 one-liner
+                            clipped on the owner's phone; his fix: reuse the
+                            three slot columns as a mini stat table — DMG /
+                            DPS / DEF headers with the values beneath, 1px
+                            separators between the cells.  Same two anchored
+                            tooltips (weapon tooltip on the DMG and DPS
+                            cells, defense on DEF), bodies unchanged. */}
+                        {[
+                          ['DMG', dmgText, 'weapon'],
+                          ['DPS', dpsText, 'weapon'],
+                          ['DEF', `+${armorDef}`, 'def'],
+                        ].map(([hdr, val, kind], ci) => (
+                          <div key={hdr}
+                            onPointerUp={(e) => { e.stopPropagation(); setTooltip(kind === 'weapon' ? {
                                 title: `DMG ${dmgText}`,
                                 benefit: `${dpsText} damage per second (${slotLabel.toLowerCase()})`,
                                 body: 'Tap the weapon slot to cycle melee → ranged → staff.',
                                 anchor: e.currentTarget.getBoundingClientRect(),
-                              }); }}
-                            title={`${slotLabel} · DMG ${dmgText} · DPS ${dpsText}`}
-                            style={{ display: 'inline-flex', alignItems: 'center', gap: 2, cursor: 'pointer', touchAction: 'none' }}>
-                            <img src="/icons/popups/sword.webp" alt="Damage" draggable={false}
-                              style={{ width: 13, height: 13, objectFit: 'contain', display: 'block', pointerEvents: 'none' }} />
-                            <span style={{ color: '#F4F0E7', fontWeight: 600 }}>{dmgText}</span>
-                            <span style={{ color: '#8D9B98', fontWeight: 600, fontSize: 9 }}> DPS </span>
-                            <span style={{ color: '#F4F0E7', fontWeight: 600 }}>{dpsText}</span>
-                          </span>
-                          <span
-                            /* v2.3.1235: batch-4 state-correction §2 — structured
-                               anchored tooltip; armorDef is the same live number
-                               the line prints (chest + legs ×5 placeholder). */
-                            onPointerUp={(e) => { e.stopPropagation(); setTooltip({
+                              } : {
                                 title: `DEF +${armorDef}`,
                                 benefit: `+${armorDef} defense from worn armor`,
                                 body: 'Counts chest + legs pieces; armor damage mitigation is not wired up yet.',
                                 anchor: e.currentTarget.getBoundingClientRect(),
                               }); }}
-                            title="Defense from worn armor"
-                            style={{ display: 'inline-flex', alignItems: 'center', gap: 2, cursor: 'pointer', touchAction: 'none' }}>
-                            <img src="/icons/popups/shield-defense.webp" alt="Defense" draggable={false}
-                              style={{ width: 13, height: 13, objectFit: 'contain', display: 'block', pointerEvents: 'none' }} />
-                            <span style={{ color: '#F4F0E7', fontWeight: 600 }}>+{armorDef}</span>
-                          </span>
-                        </div>
+                            title={kind === 'weapon' ? `${slotLabel} · DMG ${dmgText} · DPS ${dpsText}` : 'Defense from worn armor'}
+                            style={{
+                              gridRow: 3,
+                              gridColumn: ci + 1,
+                              minWidth: 0,
+                              display: 'flex',
+                              flexDirection: 'column',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              gap: 2,
+                              cursor: 'pointer',
+                              touchAction: 'none',
+                              borderLeft: ci > 0 ? '1px solid var(--ui-line)' : 'none',
+                              overflow: 'hidden',
+                            }}>
+                            <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '.08em', color: '#8D9B98' }}>{hdr}</span>
+                            <span style={{ fontSize: 11, fontWeight: 600, fontVariantNumeric: 'tabular-nums', color: '#F4F0E7', whiteSpace: 'nowrap' }}>{val}</span>
+                          </div>
+                        ))}
                       </div>
                   );
                 })()}
