@@ -1806,7 +1806,11 @@ export const BottomDashboard = () => {
             /* v2.3.1229b: fixed 68px shelf in panel mode (30% of the
                grown band would balloon); 30% of the resting 28vh band
                ≈ the same 68px, so the shelf never visibly jumps. */
-            height: active ? 68 : '30%',
+            /* v2.3.1241: edge-parity — the RESTING shelf is now a fixed 68
+               (was '30%' of the fractional band), so the ribbon frame never
+               lands on a sub-pixel vertical coord that would resample its
+               contour on Retina.  Panel mode was already 68. */
+            height: 68,
             minHeight: 56,
             flex: '0 0 auto',
             display: 'flex',

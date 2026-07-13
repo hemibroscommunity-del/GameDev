@@ -70,6 +70,9 @@
   --ui-dashboard-button-active: #162A33;
   --ui-dashboard-text: #F2F3EF;
   --ui-dashboard-text-secondary: #DDE3E1;
+  /* v2.3.1241: edge-parity — base hairline; scaled to one physical pixel
+     per DPR in the @media rules just below the :root block. */
+  --ui-hairline: 1px;
   --ui-world-overlay: var(--ui-world-chrome);
   --ui-modal-scrim: rgba(4, 9, 12, 0.38);
   --ui-text-1: var(--ui-text);
@@ -93,6 +96,21 @@
   --ui-info: #599FE5;
   --ui-magic: #9A78D0;
 }
+/* v2.3.1241: edge-parity — pixel-snap the band height.  A fractional 28vh
+   puts the dashboard's TOP coord on a sub-pixel boundary, so every seam and
+   panel edge above it resamples into a soft 1–2px band on Retina.  round()
+   snaps the height to a whole CSS px (28vh uses the stable large-viewport
+   height on iOS, so this does NOT jump when the address bar shows/hides).
+   CSS-only + graceful: any engine without round() keeps plain 28vh. */
+@supports (height: round(nearest, 28vh, 1px)) {
+  :root { --dash-h: round(nearest, 28vh, 1px); }
+}
+/* v2.3.1241: edge-parity — device-pixel hairlines.  A "1px" contour is 2–3
+   physical pixels on Retina; that thickness (stacked with borders/shadows)
+   is what fattened the old edges.  Scale the token so one contour renders
+   as one physical pixel at each density. */
+@media (min-resolution:2dppx){ :root{ --ui-hairline:0.5px; } }
+@media (min-resolution:3dppx){ :root{ --ui-hairline:0.333333px; } }
 /* ═══ v2.3.1235 shared primitives (correction pass §2/§8) — the four
    depth levels + the two button roles.  New/updated surfaces should
    use these classes (or copy the exact recipes inline) instead of
@@ -134,21 +152,27 @@
    hit areas are obvious without turning the ribbon into six loud cards. */
 .bt-dashboard{
   background:var(--ui-dashboard-tray);
-  /* v2.3.1240: blue-slate hairline + zero-blur contact shadow sampled
-     from the approved mockup.  The seam stays crisp, never glowy. */
-  border-top:1px solid rgba(132,176,188,.64);
   border-radius:14px 14px 0 0;
+  /* v2.3.1241: edge-parity — the world/dashboard seam is EXACTLY two
+     physical-pixel lines that hug the 14px top corners: a dark contact
+     line on the world side (outer, above the edge) and a subdued
+     blue-slate contour on the dashboard side (inset, at the top edge).
+     Both are 0-blur box-shadows so they follow the rounded corners and
+     stay individually crisp.  The old border-top + 0/-3px shadow + inset
+     highlight combined into a fuzzy multi-row band after Retina
+     resampling — removed. */
   box-shadow:
-    0 -3px 0 rgba(5,12,16,.30),
-    inset 0 1px 0 rgba(238,247,247,.035);
+    0 calc(-1 * var(--ui-hairline)) 0 0 #0A1419,
+    inset 0 var(--ui-hairline) 0 0 #66838E;
 }
 .bt-dashboard-module{
   background:var(--ui-dashboard-panel);
-  /* v2.3.1240: a blue-slate bridge tone softens the transition from
-     the lighter tray to the deep well; no dark double rim. */
-  border:1px solid rgba(133,164,174,.24);
-  border-radius:10px;
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.025);
+  /* v2.3.1241: edge-parity — exactly ONE device-pixel contour; no inset
+     highlight, no external shadow.  Defines the three functions without
+     glowing.  (radius 10 -> 9 per the mockup.) */
+  border:var(--ui-hairline) solid #29414B;
+  border-radius:9px;
+  box-shadow:none;
 }
 .bt-dashboard-toolbar-frame{
   padding:4px 8px 7px;
@@ -162,11 +186,12 @@
   gap:4px;
   padding:4px;
   background:var(--ui-dashboard-ribbon);
-  border:1px solid rgba(133,164,174,.18);
-  border-radius:10px;
-  box-shadow:
-    inset 0 1px 0 rgba(255,255,255,.035),
-    0 1px 0 rgba(4,10,13,.48);
+  /* v2.3.1241: edge-parity — one device-pixel contour only.  The recess
+     reads through the darker fill, not a heavy border/inset/bottom shadow.
+     (radius 10 -> 9 per the mockup.) */
+  border:var(--ui-hairline) solid #293F49;
+  border-radius:9px;
+  box-shadow:none;
 }
 .bt-dashboard-nav-button{
   flex:1 1 0;
@@ -180,39 +205,62 @@
   gap:1px;
   padding:2px 0;
   color:var(--ui-dashboard-text);
-  background:var(--ui-dashboard-button);
-  /* v2.3.1240: one clean contour and vertical-only micro-bevel.  The
-     old diagonal inset doubled the side edges at phone pixel density. */
-  border:1px solid rgba(151,180,188,.36);
-  border-radius:8px;
-  box-shadow:
-    inset 0 1px 0 rgba(255,255,255,.09),
-    inset 0 -1px 0 rgba(0,0,0,.48),
-    0 1px 0 rgba(0,0,0,.36);
+  /* v2.3.1241: edge-parity — ONE device-pixel contour, NO external drop
+     shadow, NO second outer contour.  The restrained internal bevel is
+     painted as two physical-pixel horizontal lines INSIDE the fill
+     gradient (top highlight, bottom shade) so it never touches the side
+     edges and never overlaps the contour — replaces the old stacked
+     box-shadow bevel that fattened the edges on Retina. */
+  background:
+    linear-gradient(180deg,
+      rgba(255,255,255,.045) 0,
+      rgba(255,255,255,.045) var(--ui-hairline),
+      transparent var(--ui-hairline),
+      transparent calc(100% - var(--ui-hairline)),
+      rgba(0,0,0,.28) calc(100% - var(--ui-hairline)),
+      rgba(0,0,0,.28) 100%),
+    var(--ui-dashboard-button);
+  border:var(--ui-hairline) solid #3E5059;
+  border-radius:7px;
+  box-shadow:none;
   font-family:'Source Sans 3',sans-serif;
   cursor:pointer;
   touch-action:none;
   -webkit-tap-highlight-color:transparent;
   transition:
     transform 90ms cubic-bezier(.2,.8,.2,1),
-    background-color 90ms cubic-bezier(.2,.8,.2,1),
-    border-color 90ms cubic-bezier(.2,.8,.2,1),
-    box-shadow 90ms cubic-bezier(.2,.8,.2,1);
+    border-color 90ms cubic-bezier(.2,.8,.2,1);
 }
 .bt-dashboard-nav-button[data-pressed='true']{
   transform:scale(.97);
-  background:var(--ui-dashboard-button-active);
-  box-shadow:
-    inset 0 1px 0 rgba(0,0,0,.48),
-    inset 0 -1px 0 rgba(255,255,255,.05);
+  /* v2.3.1241: edge-parity — reverse ONLY the internal bevel (shade on
+     top, highlight on bottom); fill + contour unchanged, keep .97 scale. */
+  background:
+    linear-gradient(180deg,
+      rgba(0,0,0,.28) 0,
+      rgba(0,0,0,.28) var(--ui-hairline),
+      transparent var(--ui-hairline),
+      transparent calc(100% - var(--ui-hairline)),
+      rgba(255,255,255,.045) calc(100% - var(--ui-hairline)),
+      rgba(255,255,255,.045) 100%),
+    var(--ui-dashboard-button);
 }
 .bt-dashboard-nav-button[aria-pressed='true']{
   color:var(--ui-text);
-  background:var(--ui-dashboard-button-active);
+  /* v2.3.1241: edge-parity — active = darker fill + a single physical-
+     pixel brass contour; keep the resting bevel; NO filled-gold bg, NO
+     second contour. */
+  background:
+    linear-gradient(180deg,
+      rgba(255,255,255,.045) 0,
+      rgba(255,255,255,.045) var(--ui-hairline),
+      transparent var(--ui-hairline),
+      transparent calc(100% - var(--ui-hairline)),
+      rgba(0,0,0,.28) calc(100% - var(--ui-hairline)),
+      rgba(0,0,0,.28) 100%),
+    var(--ui-dashboard-button-active);
   border-color:rgba(234,198,117,.82);
-  box-shadow:
-    inset 0 1px 0 rgba(0,0,0,.48),
-    inset 0 -1px 0 rgba(255,255,255,.05);
+  box-shadow:none;
 }
 .bt-dashboard-nav-button:focus-visible{
   outline:2px solid var(--ui-brass-highlight);
@@ -241,9 +289,10 @@
   font-weight:600;
   line-height:12px;
   letter-spacing:.01em;
-  color:currentColor;
+  /* v2.3.1241: edge-parity — fixed legible tone; drop shadow removed (it
+     was softening the glyph edges over the dark ribbon). */
+  color:#E4E9E8;
   opacity:.94;
-  text-shadow:0 1px 0 rgba(0,0,0,.72);
 }
 .bt-dashboard-nav-button[aria-pressed='true'] .bt-dashboard-nav-icon,
 .bt-dashboard-nav-button[aria-pressed='true'] .bt-dashboard-nav-label{
