@@ -1440,10 +1440,12 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
     var two = (this._footToggle++ & 1);
     var off = two ? 0.57 : 0.0;
     var dur = two ? 0.18 : 0.22;
+    /* v2.3.1237: owner feedback — footstep volume halved (armored
+       0.34→0.17 base, bare 0.26→0.13; jitter halved in step). */
     if (armored) {
-      this.play('footstep-v2', { offset: off, duration: dur, vol: 0.34 + Math.random() * 0.06, rate: 0.96 + (Math.random() - 0.5) * 0.08 });
+      this.play('footstep-v2', { offset: off, duration: dur, vol: 0.17 + Math.random() * 0.03, rate: 0.96 + (Math.random() - 0.5) * 0.08 });
     } else {
-      this.play('footstep-v2', { offset: off, duration: dur, vol: 0.26 + Math.random() * 0.05, rate: 1.06 + (Math.random() - 0.5) * 0.10 });
+      this.play('footstep-v2', { offset: off, duration: dur, vol: 0.13 + Math.random() * 0.025, rate: 1.06 + (Math.random() - 0.5) * 0.10 });
     }
   },
   enterBuilding: function enterBuilding() {
