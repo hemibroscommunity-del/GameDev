@@ -249,7 +249,9 @@ title plaque.
 - **Secondary:** Chalk fill, Ink text, Hairline border.
 - **Destructive:** Blood Red fill, only on confirm steps.
 - **Quiet:** bare icon, 44pt hit area — the default for toolbars.
-No gradients, no bevels, no embossed text.
+No gradients, no bevels, no embossed text. The approved bottom-dashboard
+navigation ribbon is the sole micro-bevel exception; see Lantern Slate
+§9 (v2.3.1240), which supersedes this older visual rule.
 
 ### Meters (HP / MP / Stamina / XP)
 
@@ -261,10 +263,12 @@ unless the segments MEAN something (e.g. build points).
 ### The bottom dashboard
 
 The dashboard band stays as architected (`BottomDashboard.jsx`): three
-idle columns (Bag / Loadout / Build) + 6-icon toolbar. Restyle rules:
-Parchment band, Hairline top edge, active toolbar icon gets a Brass
-underline dot — not a glowing box. Panels slide over the band as
-Parchment sheets with 12px top radius and a drag handle.
+idle functions (Bag / Loadout / Build) + 6-icon toolbar. Its current
+visual treatment is defined by Lantern Slate §8–9 (v2.3.1240): a lighter
+slate tray, three dark functional wells, and a separate inset navigation
+ribbon. The dashboard is the neutral home state; no toolbar button is
+selected until its deeper destination is open. The first destination is
+Inventory, while Bag remains the always-on quick preview.
 
 ### World-overlap surfaces (chat bubbles, damage popups, wheel, block ring)
 

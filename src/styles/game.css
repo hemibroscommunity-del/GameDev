@@ -60,6 +60,14 @@
   --ui-well-soft: #16262C;
   --ui-slot: var(--ui-card);
   --ui-toolbar: #0E191E;
+  /* v2.3.1240: owner-approved always-on dashboard mockup.  These roles
+     are intentionally local to BottomDashboard; they do not retint the
+     deeper sheets or legacy panels. */
+  --ui-dashboard-tray: #2E4754;
+  --ui-dashboard-panel: #10222A;
+  --ui-dashboard-ribbon: #10232A;
+  --ui-dashboard-button: #1D323A;
+  --ui-dashboard-button-active: #192D36;
   --ui-world-overlay: var(--ui-world-chrome);
   --ui-modal-scrim: rgba(4, 9, 12, 0.38);
   --ui-text-1: var(--ui-text);
@@ -116,6 +124,127 @@
   border:1px solid var(--ui-line-strong);
   border-radius:10px;font-weight:700;cursor:pointer;
   font-family:'Source Sans 3',sans-serif;
+}
+/* ═══ v2.3.1240 dashboard mockup parity ═══════════════════════════
+   The painterly world remains dominant.  A lighter mineral tray groups
+   three equal dark functional wells; a separate inset ribbon owns the
+   global navigation.  Toolbar buttons use a one-pixel micro-bevel so the
+   hit areas are obvious without turning the ribbon into six loud cards. */
+.bt-dashboard{
+  background:var(--ui-dashboard-tray);
+  border-top:1px solid rgba(229,237,233,.24);
+  border-radius:14px 14px 0 0;
+  box-shadow:0 -3px 0 rgba(5,12,16,.28);
+}
+.bt-dashboard-module{
+  background:var(--ui-dashboard-panel);
+  border:1px solid rgba(229,237,233,.10);
+  border-radius:10px;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.055),
+    inset 0 -1px 0 rgba(0,0,0,.34);
+}
+.bt-dashboard-toolbar-frame{
+  padding:4px 8px 7px;
+  background:var(--ui-dashboard-tray);
+}
+.bt-dashboard-toolbar-ribbon{
+  flex:1;
+  min-width:0;
+  display:flex;
+  align-items:stretch;
+  gap:4px;
+  padding:4px;
+  background:var(--ui-dashboard-ribbon);
+  border:1px solid rgba(229,237,233,.10);
+  border-radius:12px;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.06),
+    0 2px 0 rgba(4,10,13,.30);
+}
+.bt-dashboard-nav-button{
+  flex:1 1 0;
+  min-width:0;
+  min-height:44px;
+  position:relative;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:1px;
+  padding:2px 0;
+  color:var(--ui-text-secondary);
+  background:var(--ui-dashboard-button);
+  border:1px solid rgba(229,237,233,.10);
+  border-radius:9px;
+  box-shadow:
+    inset 1px 1px 0 rgba(255,255,255,.08),
+    inset -1px -1px 0 rgba(0,0,0,.32);
+  font-family:'Source Sans 3',sans-serif;
+  cursor:pointer;
+  touch-action:none;
+  -webkit-tap-highlight-color:transparent;
+  transition:
+    transform 90ms cubic-bezier(.2,.8,.2,1),
+    background-color 90ms cubic-bezier(.2,.8,.2,1),
+    border-color 90ms cubic-bezier(.2,.8,.2,1),
+    box-shadow 90ms cubic-bezier(.2,.8,.2,1);
+}
+.bt-dashboard-nav-button[data-pressed='true']{
+  transform:scale(.97);
+  background:var(--ui-dashboard-button-active);
+  box-shadow:
+    inset 1px 1px 0 rgba(0,0,0,.46),
+    inset -1px -1px 0 rgba(255,255,255,.055);
+}
+.bt-dashboard-nav-button[aria-pressed='true']{
+  color:var(--ui-text);
+  background:var(--ui-dashboard-button-active);
+  border-color:rgba(234,198,117,.82);
+  box-shadow:
+    inset 1px 1px 0 rgba(0,0,0,.46),
+    inset -1px -1px 0 rgba(255,255,255,.055);
+}
+.bt-dashboard-nav-button:focus-visible{
+  outline:2px solid var(--ui-brass-highlight);
+  outline-offset:-2px;
+}
+.bt-dashboard-nav-icon{
+  width:30px;
+  height:30px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  flex:0 0 auto;
+  opacity:.84;
+}
+.bt-dashboard-nav-icon img{
+  width:30px!important;
+  height:30px!important;
+  object-fit:contain;
+}
+.bt-dashboard-nav-label{
+  max-width:100%;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  font-size:10.5px;
+  font-weight:600;
+  line-height:12px;
+  letter-spacing:.01em;
+  color:currentColor;
+  opacity:.86;
+}
+.bt-dashboard-nav-button[aria-pressed='true'] .bt-dashboard-nav-icon,
+.bt-dashboard-nav-button[aria-pressed='true'] .bt-dashboard-nav-label{
+  opacity:1;
+}
+@media (max-height:720px){
+  .bt-dashboard-toolbar-frame{padding-top:3px;padding-bottom:5px}
+  .bt-dashboard-toolbar-ribbon{padding:3px}
+  .bt-dashboard-nav-icon,
+  .bt-dashboard-nav-icon img{width:26px!important;height:26px!important}
+  .bt-dashboard-nav-label{font-size:10px;line-height:11px}
 }
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%;overflow:hidden;background:#10181D;touch-action:none;overscroll-behavior:none;position:fixed;width:100%;top:0;left:0}

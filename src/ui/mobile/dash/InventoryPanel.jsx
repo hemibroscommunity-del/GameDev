@@ -218,8 +218,9 @@ export const InventoryPanel = () => {
           floor; active state is the brass-soft TINT + brass hairline per
           the correction-pass palette (solid accent fills retired).
           v2.3.1236: owner feedback — "the inventory menu says 'bag'
-          multiple times": the panel's own "BAG" label row is gone (the
-          sheet's band header already titles this panel BAG).  The
+          multiple times": the panel's own "BAG" label row is gone.
+          v2.3.1240: the sheet header now says INVENTORY, distinguishing
+          this deeper destination from the always-on quick Bag.  The
           "N / 32" counter it carried now sits at the right end of this
           row, OUTSIDE the scrollable chip strip so it never scrolls
           away; the freed row height goes to larger slot tiles below. */}
