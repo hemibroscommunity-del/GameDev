@@ -216,8 +216,15 @@ export const InventoryPanel = () => {
           v2.3.1235: row scrolls horizontally (nowrap + pan-x) so chips
           never squash as categories grow; labels lifted to the 11px type
           floor; active state is the brass-soft TINT + brass hairline per
-          the correction-pass palette (solid accent fills retired). */}
-      <div style={{ display: 'flex', gap: 4, marginBottom: 6, flexWrap: 'nowrap', overflowX: 'auto', touchAction: 'pan-x', WebkitOverflowScrolling: 'touch' }}>
+          the correction-pass palette (solid accent fills retired).
+          v2.3.1236: owner feedback — "the inventory menu says 'bag'
+          multiple times": the panel's own "BAG" label row is gone (the
+          sheet's band header already titles this panel BAG).  The
+          "N / 32" counter it carried now sits at the right end of this
+          row, OUTSIDE the scrollable chip strip so it never scrolls
+          away; the freed row height goes to larger slot tiles below. */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+      <div style={{ flex: 1, minWidth: 0, display: 'flex', gap: 4, flexWrap: 'nowrap', overflowX: 'auto', touchAction: 'pan-x', WebkitOverflowScrolling: 'touch' }}>
         {CATEGORIES.map(c => {
           const active = c.id === filter;
           return (
@@ -246,11 +253,10 @@ export const InventoryPanel = () => {
           );
         })}
       </div>
-
-      {/* Slot count. */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', margin: '0 2px 5px', color: COL.muted }}>
-        <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: '.08em' }}>BAG</span>
-        <span style={{ fontSize: 11 }}>{Math.min(usedTiles, SLOTS)} / {SLOTS}</span>
+      {/* v2.3.1236: slot counter (kept from the removed BAG row). */}
+      <span style={{ flex: 'none', fontSize: 11, color: COL.muted, paddingRight: 2 }}>
+        {Math.min(usedTiles, SLOTS)} / {SLOTS}
+      </span>
       </div>
 
       {/* v2.3.1235: the empty bag no longer renders the recessed tray —
@@ -286,14 +292,21 @@ export const InventoryPanel = () => {
             border: `1px solid ${COL.tileBor}`,
             boxShadow: 'inset 0 2px 4px rgba(0,0,0,.44), inset 0 1px 0 rgba(255,255,255,.035)',
             borderRadius: 10,
-            padding: 8,
+            /* v2.3.1236: owner feedback — LARGER slots, same 32 capacity.
+               32 is display-only (no server or pickup enforcement — see
+               PR notes), but capacity is a game-balance call for the
+               owner, so instead of a 5th row the tiles grow: tray
+               padding 8→6 and grid gap 6→4 hand each of the 8 columns
+               ~2.3px more width (tiles are square, so height follows),
+               and the removed BAG label row absorbs the taller rows. */
+            padding: 6,
             flex: 1,
             minHeight: 0,
           }}>
           <div style={{
             display: 'grid',
             gridTemplateColumns: 'repeat(8, 1fr)',
-            gap: 6,
+            gap: 4,
           }}>
             {shownItems.map((e, i) => (
               <BagTile key={e.kind === 'item' ? `i-${e.key}` : `${e.kind}-${e.index}-${i}`} entry={e} />

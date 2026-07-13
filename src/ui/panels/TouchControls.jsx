@@ -27,7 +27,9 @@ export function TouchControls(props) {
     rKnobRef = props.rKnobRef,
     rJoyPreviewRef = props.rJoyPreviewRef,
     shieldJoyRef = props.shieldJoyRef,
-    autoAttack = props.autoAttack,
+    /* v2.3.1236: owner feedback — props.autoAttack no longer read here;
+       the red auto-attack ring it toggled is gone (see below). BroTown
+       still passes the prop; harmless. */
     isLandscape = props.isLandscape,
     shieldUp = props.shieldUp;
   var _stateRef$current65, _stateRef$current69, _stateRef$current70;
@@ -176,35 +178,31 @@ export function TouchControls(props) {
       top: '50%',
       transform: 'translate(-50%,-50%)',
       opacity: 0.5,
+      /* v2.3.1236: owner feedback — right base now mirrors the LEFT
+         base's exact idle treatment (faint 0.5 rest, 0.92 while a
+         finger is down, same 0.12s opacity transition — the ladder is
+         stamped by BroTown's handleRJoyMove/handleRJoyEnd, unchanged).
+         pointerEvents 'none' added to match the left base; the legacy
+         borderRadius/touchAction pair is gone — touches have been
+         handled by rZoneRef since v2.3.816, so this element takes no
+         hit-tests and needs no circular hit shape. */
+      pointerEvents: 'none',
       transition: 'opacity 0.12s ease',
-      /* v2.3.99: sprite-backed base.  The previous rgba bg + dynamic
-         autoAttack border/shadow are gone; auto-attack signal is now a
-         separate red-ring overlay rendered below.  borderRadius kept
-         so the hit-test shape stays circular. */
-      borderRadius: '50%',
       backgroundImage: 'url(/sprites/joystick/base.webp?v=2.3.102)',
       backgroundSize: '100% 100%',
       backgroundRepeat: 'no-repeat',
       backgroundPosition: 'center',
-      touchAction: 'none',
       filter: 'drop-shadow(0 0 1.2px #000) drop-shadow(0 0 1.2px #000)',
     }
-  }, autoAttack && /*#__PURE__*/React.createElement("div", {
-    /* v2.3.99: auto-attack indicator.  Replaces the dynamic
-       border/box-shadow recoloring we used to do on .bt-rjoy-base
-       (which we can't do anymore now that the base is a fixed sprite).
-       Thin red ring sits flush on top of the base sprite. */
-    style: {
-      position: 'absolute',
-      inset: 0,
-      borderRadius: '50%',
-      /* v2.3.1233: ring chrome onto the spec's HP red (#D95C54). */
-      border: '2px solid rgba(217,92,84,0.85)',
-      boxShadow: '0 0 12px rgba(217,92,84,0.55)',
-      pointerEvents: 'none',
-      zIndex: 2,
-    }
-  }), /*#__PURE__*/React.createElement("svg", {
+  }, /* v2.3.1236: owner feedback — the auto-attack red ring (2px
+        #D95C54 border + 0 0 12px red box-shadow, v2.3.99/v2.3.1233)
+        REMOVED.  It mounted the instant any right-half touch began
+        (rS sets autoAttack on touchstart), so the whole right stick
+        read as a "strange reddish blurriness" — the 12px-blurred red
+        glow over the semi-transparent base sprite.  The left stick has
+        no such overlay; removing it gives the two sticks identical
+        clean sprite chrome in both idle and engaged states. */
+  /*#__PURE__*/React.createElement("svg", {
     style: {
       position: 'absolute',
       inset: 0,
