@@ -73,3 +73,48 @@ export function downscaleByFactor(src, ds = DISPLAY_DS) {
   ctx.drawImage(src, 0, 0, cv.width, cv.height);
   return cv;
 }
+
+/* v2.3.1237: owner feedback — jog-shimmer at DISPLAY_DS=1 ("the lines on the
+   character are shaky when it's animated"; regression from the v2.3.1236
+   2 -> 1 flip).  At DS=2 every body display bake passed through
+   downscaleByFactor's imageSmoothingQuality 'high' resample — v2.3.1121's fix
+   for the "chewed up"/crawling thin outlines — which anti-aliased the hard
+   stair-step edges the nearest-neighbour 128->256 upscale (v2.3.1108) leaves.
+   At DS=1 downscaleByFactor is a no-op, so the display texture became the RAW
+   nearest-upscaled art: binary hard edges rendered near 1:1, where every
+   sub-pixel of motion flips the bilinear blend along each stair-step — the
+   shimmer.  Mipmaps can't fix it: the GPU's box-filtered mip level 1 of a
+   constant-2x2-block image is bit-identical to the raw hard-edged 128px art,
+   so NO level of the chain contains anti-aliased edges.
+   Fix: when (and only when) the sheet was nearest-upscaled from
+   smaller-on-disk art, resample the FINAL display canvas down to the on-disk
+   height and smoothly back up ('high' both ways).  The down step reconstructs
+   the true on-disk texels (every 2x2 block is constant, so nothing real is
+   lost); the up step lays the ~1px anti-aliased edge gradients the DS=2
+   Lanczos bake used to provide, at the full 256px display size the owner
+   asked for.  Native full-res sheets (srcH >= bake height, e.g.
+   stand-south.png) pass through untouched and stay pixel-sharp.  The recolour
+   pipeline runs BEFORE this on the exact-palette nearest upscale, so its RGB
+   classification is unaffected.  Rollback: DISPLAY_DS=2 in this file — this
+   helper then defers to downscaleByFactor, byte-identical to v2.3.1235. */
+export function bakeDisplayCanvas(full, srcH) {
+  if (DISPLAY_DS > 1) return downscaleByFactor(full, DISPLAY_DS);
+  const w = full.naturalWidth || full.width || 0;
+  const h = full.naturalHeight || full.height || 0;
+  if (!w || !h || !srcH || srcH >= h) return full;  // native-res art: keep sharp
+  const mid = document.createElement('canvas');
+  mid.width = Math.max(1, Math.round(w * (srcH / h)));
+  mid.height = srcH;
+  const mctx = mid.getContext('2d');
+  mctx.imageSmoothingEnabled = true;
+  mctx.imageSmoothingQuality = 'high';
+  mctx.drawImage(full, 0, 0, mid.width, mid.height);
+  const out = document.createElement('canvas');
+  out.width = w;
+  out.height = h;
+  const octx = out.getContext('2d');
+  octx.imageSmoothingEnabled = true;
+  octx.imageSmoothingQuality = 'high';
+  octx.drawImage(mid, 0, 0, w, h);
+  return out;
+}

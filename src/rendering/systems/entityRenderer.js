@@ -871,7 +871,14 @@ function _maskedBodyFrameInner(bodyTex, worn, dilate, _bt0, _bs) {
   /* v2.3.1120: the bake runs entirely at 256 internally (all the tuned neck /
      dilation / ghost-hand math untouched); only the FINAL composited texture is
      downscaled to the DISPLAY size, matching the bare body + gear so sb.scale's
-     DISPLAY_DS factor lands it correctly. */
+     DISPLAY_DS factor lands it correctly.
+     v2.3.1237: owner feedback — jog-shimmer at DISPLAY_DS=1: no smoothing pass
+     needed HERE.  The body pixels this bake copies (bres, line above) now come
+     from a display canvas that playerSkins/playerSprites already anti-aliased
+     via bakeDisplayCanvas (the treatment the DS=2 'high' downscale, v2.3.1121,
+     used to apply), so the visible bare-skin/shoe edges in the composite are
+     smooth; the gear sheets were never display-downscaled in either era, so
+     their edges are unchanged by the DS flip and stay as-is. */
   const t = Texture.from(downscaleByFactor(cv, DISPLAY_DS));
   /* v2.3.1121: mipmaps on the masked (armoured) body too, so the shoe outline /
      bare-skin edges don't crawl while jogging in armour (same fix as the bare

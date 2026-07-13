@@ -20,7 +20,7 @@
 
 import { Rectangle, Texture } from 'pixi.js';
 import { getFrame, SPRITE_VERSION } from './playerSprites.js';
-import { upscaleToFrameHeight, downscaleByFactor, DISPLAY_DS } from './spriteScale.js'; /* v2.3.1108: normalize downscaled sheets to the 256px frame before recolour; v2.3.1120: downscale the final DISPLAY texture for VRAM */
+import { upscaleToFrameHeight, bakeDisplayCanvas, DISPLAY_DS } from './spriteScale.js'; /* v2.3.1108: normalize downscaled sheets to the 256px frame before recolour; v2.3.1120: downscale the final DISPLAY texture for VRAM; v2.3.1237: bakeDisplayCanvas smooths nearest-upscaled sheets at DISPLAY_DS=1 (jog-shimmer fix) */
 import { loadWebpOrPng } from './webpImage.js'; /* v2.3.1122: prefer lossless WebP, fall back to PNG */
 
 /* ── Catalogs ── `target` = the LIT color for that choice; null = native. */
@@ -507,7 +507,13 @@ function buildBodySheet(sheetKey, pose, dir, skinT, pantsT, shoesT, shirtT) {
        texture to 256/DISPLAY_DS px (the figure shows ~100px on a phone).  Mipmaps
        off -- renders ~1:1 post-downscale, so the mip chain is wasted VRAM. */
     const frames = Math.max(1, Math.floor(full.width / FRAME_W));
-    const cv = downscaleByFactor(full, DISPLAY_DS);
+    /* v2.3.1237: owner feedback — jog-shimmer at DISPLAY_DS=1: the recolour above
+       ran on the exact-palette nearest upscale (required), so its output keeps
+       the hard 2x stair-step edges when the sheet ships 128px on disk;
+       bakeDisplayCanvas restores the anti-aliasing the DS=2 'high' downscale
+       (v2.3.1121) used to give the FINAL display texture.  At DS>1 it defers to
+       downscaleByFactor unchanged; native 256px sheets pass through sharp. */
+    const cv = bakeDisplayCanvas(full, img.naturalHeight || img.height || 0);
     const src = Texture.from(cv).source;
     src.scaleMode = 'linear';
     /* v2.3.1121: mipmaps ON -- the downscaled body still renders ~1.2x minified;
