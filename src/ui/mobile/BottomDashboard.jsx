@@ -1449,10 +1449,14 @@ export const BottomDashboard = () => {
                             separators between the cells.  Same two anchored
                             tooltips (weapon tooltip on the DMG and DPS
                             cells, defense on DEF), bodies unchanged. */}
+                        {/* v2.3.1237: owner feedback r6 — each stat sits under
+                            the slot column it describes: DEF under column 1
+                            (CHEST/LEGS armor), DPS under column 2 (WEAPON).
+                            The damage range is dropped ("not necessary");
+                            column 3 stays blank. */}
                         {[
-                          ['DMG', dmgText, 'weapon'],
-                          ['DPS', dpsText, 'weapon'],
                           ['DEF', `+${armorDef}`, 'def'],
+                          ['DPS', dpsText, 'weapon'],
                         ].map(([hdr, val, kind], ci) => (
                           <div key={hdr}
                             onPointerUp={(e) => { e.stopPropagation(); setTooltip(kind === 'weapon' ? {
