@@ -120,7 +120,8 @@ export function TouchControls(props) {
       opacity: 0,
       pointerEvents: 'none',
       zIndex: 0,
-      filter: 'drop-shadow(0 0 1.2px #000) drop-shadow(0 0 1.2px #000)',
+      /* v2.3.1236: drop-shadow removed (iOS WebGL static -- see the
+         joystick-base note above). */
     }
   }), /*#__PURE__*/React.createElement("div", {
     className: "bt-joystick-knob",
@@ -136,7 +137,8 @@ export function TouchControls(props) {
       backgroundSize: '100% 100%',
       backgroundRepeat: 'no-repeat',
       backgroundPosition: 'center',
-      filter: 'drop-shadow(0 0 1.2px #000) drop-shadow(0 0 1.2px #000)',
+      /* v2.3.1236: drop-shadow removed (iOS WebGL static -- see the
+         joystick-base note above). */
     }
   }), /*#__PURE__*/React.createElement("div", {
     /* Left-joystick weapon-swap preview overlay (v2.3.97).  Hidden by
@@ -200,7 +202,8 @@ export function TouchControls(props) {
       backgroundSize: '100% 100%',
       backgroundRepeat: 'no-repeat',
       backgroundPosition: 'center',
-      filter: 'drop-shadow(0 0 1.2px #000) drop-shadow(0 0 1.2px #000)',
+      /* v2.3.1236: drop-shadow removed (iOS WebGL static -- see the
+         joystick-base note above). */
     }
   }, /* v2.3.1236: owner feedback — the auto-attack red ring (2px
         #D95C54 border + 0 0 12px red box-shadow, v2.3.99/v2.3.1233)
@@ -259,7 +262,8 @@ export function TouchControls(props) {
       opacity: 0,
       pointerEvents: 'none',
       zIndex: 0,
-      filter: 'drop-shadow(0 0 1.2px #000) drop-shadow(0 0 1.2px #000)',
+      /* v2.3.1236: drop-shadow removed (iOS WebGL static -- see the
+         joystick-base note above). */
     }
   }), /*#__PURE__*/React.createElement("div", {
     ref: rKnobRef,
@@ -279,7 +283,8 @@ export function TouchControls(props) {
       backgroundRepeat: 'no-repeat',
       backgroundPosition: 'center',
       pointerEvents: 'none',
-      filter: 'drop-shadow(0 0 1.2px #000) drop-shadow(0 0 1.2px #000)',
+      /* v2.3.1236: drop-shadow removed (iOS WebGL static -- see the
+         joystick-base note above). */
     }
   }, /* Knob left blank — active weapon is shown in WeaponSwapBar instead. */ null), /*#__PURE__*/React.createElement("div", {
     /* Right-joystick shield preview overlay (v2.3.97).  Hidden by
