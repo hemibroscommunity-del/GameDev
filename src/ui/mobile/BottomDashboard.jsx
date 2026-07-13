@@ -1528,7 +1528,13 @@ export const BottomDashboard = () => {
                      With life skills shown, fall back to the old 3-col x 5-row
                      column-flow layout (Build in sub-col 1, skills in 2-3). */
                   gridTemplateColumns: 'repeat(3, 1fr)',
-                  gridTemplateRows: SHOW_LIFE_SKILLS ? 'repeat(5, 1fr)' : 'repeat(2, 1fr)',
+                  /* v2.3.1236: owner feedback r5b — 1fr rows stretched this
+                     grid over the full column height, so its cell content
+                     floated LOWER than the top-packed Bag/Loadout rows.
+                     min-content rows + alignContent start pack the two rows
+                     at the top, level with the neighbors' first rows. */
+                  gridTemplateRows: SHOW_LIFE_SKILLS ? 'repeat(5, 1fr)' : 'repeat(2, min-content)',
+                  alignContent: SHOW_LIFE_SKILLS ? 'stretch' : 'start',
                   /* v2.3.1235: §4 — open grid: no gap, cells share faint
                      dividers instead of six individual dark cards. */
                   gap: SHOW_LIFE_SKILLS ? 2 : 0,
