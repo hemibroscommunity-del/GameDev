@@ -186,11 +186,19 @@ export function StatScreenPanel(props) {
       marginBottom: 6,
       marginTop: 4
     }
-  }, "Tier 1 — Capacity ", rpgState.unspentT1 > 0 ? /*#__PURE__*/React.createElement("span", {
-    style: {
-      color: 'var(--ui-brass)'
-    }
-  }, "(".concat(rpgState.unspentT1, " pts)")) : '', " ", /*#__PURE__*/React.createElement("span", {
+  }, "Tier 1 — Capacity ", /* v2.3.1236: owner feedback — the brass
+     "(N pts)" unspentT1 badge is GONE: it was the screen's last
+     allocation affordance and the counter is unspendable dead data.
+     unspentT1 is only ever SET by the old-save migration (BroTown.jsx
+     ~2015) and summed into unspentPts; nothing decrements it, no client
+     code sends stat_allocate (only the wsClient passthrough exists), and
+     the server's _handleStatAllocate spends unspentT2 — pinned 0 since
+     the T2 retirement.  T1 stats train by USE (addBuildProg); points are
+     assigned only in the per-build channel grids (T2Panel).  The lock
+     buttons below are NOT allocation and stay: addBuildProg consults
+     R._statLocks (combatHelpers.js:151, :279) to burn a locked stat's
+     training share — live gameplay. */
+  /*#__PURE__*/React.createElement("span", {
     style: {
       fontSize: 11,
       fontWeight: 600,
@@ -198,7 +206,15 @@ export function StatScreenPanel(props) {
       textTransform: 'none',
       color: 'var(--ui-text-disabled)'
     }
-  }, "permanent")), [/* v2.3.1235: batch-2 rollout — stat identity via the UI-Bible
+  }, "permanent")), /* v2.3.1236: owner feedback — one-line pointer to the
+     real point-assignment destination (12px muted, copy floor). */
+  /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: 'var(--ui-text-muted)',
+      marginBottom: 6
+    }
+  }, "Stats grow with use. Points are assigned per weapon build — see Weapons."), [/* v2.3.1235: batch-2 rollout — stat identity via the UI-Bible
         stat-*.webp icons (emoji in chrome is banned; the old emoji stays
         only as the image-failure fallback), row colors onto the approved
         semantic tokens (hp/positive/stamina/info/magic). */
