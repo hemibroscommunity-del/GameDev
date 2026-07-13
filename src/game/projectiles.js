@@ -251,10 +251,33 @@ export function updateArrows(S, deps) {
                        null, so bow/staff builds had no server elemental). */
                     monsterId: m.id, zone: S.currentZone, element: projElem || null,
                     /* Arrow path = ranged; worker uses this to deny the
-                       melee-only lifesteal even if activeSlot drifted.
-                       Ranged shots are never "special" (swipe is melee),
-                       so special:false.  Server rolls the damage. */
-                    slot: isStaffProj ? 'staff' : 'ranged', special: false
+                       melee-only lifesteal even if activeSlot drifted
+                       (that gate is slot-keyed, so special can't leak it).
+                       Server rolls the damage.
+                       v2.3.1238: ranged specials declare special:true.
+                       This was hardcoded false ("ranged shots are never
+                       special") -- wrong: the bow heavy and the staff
+                       3-bolt cone are BOTH projectiles spawned with
+                       isSpecial:true (playerActions.js).  The worker's
+                       hit-cadence floor (server/src/combat.js v2.3.1134)
+                       was built with a special lane (<=3 hits/1200ms per
+                       monster) EXPLICITLY so the staff cone can land all
+                       3 bolts on one target -- but with special:false
+                       those bolts fell into the normal 335ms lane and
+                       bolts 2-3 were silently dropped, and every ranged
+                       special forfeited the server's Mind-scaled 2x
+                       special roll (_computeAttackDamage).  Net effect:
+                       authoritative ranged-special damage came in far
+                       under the client's predicted popups ("kills slowed
+                       down after bow/staff specials").  Trust model
+                       unchanged: melee has always declared client-side
+                       special (monsterCombat.js:1551) and a forged
+                       special:true is bounded by the same existing lane
+                       cap + _maxDmgForAttacker special headroom.  The
+                       special lane shipped v2.3.1134 (on main, deployed)
+                       so no caps gate is needed; old clients keep
+                       sending special:false and keep the old lane. */
+                    slot: isStaffProj ? 'staff' : 'ranged', special: !!a.isSpecial
                   }});
                 }
                 if (arrowCollision) {

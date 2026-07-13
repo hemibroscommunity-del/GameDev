@@ -441,6 +441,85 @@ for (const m of meadowMonsters) m._wanderPausedUntil = Date.now() + 600000;
     room.eventBuffer.length);
 }
 
+// ── 6h. v2.3.1238: ranged specials declare special:true (client parity) ──
+// The client's projectile hit send (src/game/projectiles.js) hardcoded
+// special:false on ALL ranged/staff hits ("ranged shots are never
+// special") even though the bow heavy and the staff 3-bolt cone spawn
+// projectiles with isSpecial:true (playerActions.js).  The server was
+// BUILT for the declaration -- the v2.3.1134 special lane above exists
+// explicitly because the staff cone lands 3 bolts on one target -- so
+// with special:false cone bolts 2-3 fell into the 335ms normal lane and
+// were silently dropped, and every ranged special forfeited the
+// Mind-scaled 2x special roll ("kills slowed down after bow/staff
+// specials").  NO server logic changed for the fix; these cases pin the
+// contract the fixed client now relies on:
+//   (a) three staff-cone special hits inside 1200ms on one monster ALL
+//       land through the special lane;
+//   (b) _computeAttackDamage's 2x special multiplier + Mind scaling are
+//       slot-agnostic (not melee-conditioned);
+//   (c) a NORMAL (special:false) rapid second ranged hit inside 335ms
+//       is still dropped -- old clients keep the existing lane.
+// Trust model unchanged: melee has declared client-side special since
+// server-computed damage shipped; a forged ranged special:true is
+// bounded by the same lane cap + _maxDmgForAttacker special headroom.
+{
+  psA.z = 'meadow'; psA.dead = false; psA.dying = false;
+  psA.weapon = null;
+  psA.staffWeapon = { type: 'staff', tierMult: 1 };
+  psA.rangedWeapon = { type: 'bow', tierMult: 1 };
+  psA.power = 0; psA.mind = 0; psA.agility = 0; psA.weaponSpecs = {};
+  if (psA._monHitCad) psA._monHitCad.clear();
+  const rs = meadowMonsters[7];
+  rs.alive = true; rs.hp = rs.maxHp = 100000; rs.dmgByPlayer = {}; rs.statuses = undefined;
+
+  // (a) staff cone: 3 special bolts back-to-back (same monster, well
+  // inside 1200ms) all land -- none stolen by the 335ms normal lane.
+  room.eventBuffer.length = 0;
+  for (let i = 0; i < 3; i++) {
+    await room.webSocketMessage(wsA, JSON.stringify({ type: 'monster_damage', payload: { monsterId: rs.id, zone: 'meadow', slot: 'staff', special: true } }));
+  }
+  check('ranged special: staff cone lands all 3 bolts on one monster inside 1200ms',
+    room.eventBuffer.filter((e) => e.type === 'monster_hit' && e.payload.monsterId === rs.id).length === 3,
+    room.eventBuffer.length);
+
+  // (c) the normal ranged lane is untouched: two rapid special:false
+  // bow hits on the same monster -> second dropped (old-client shape).
+  if (psA._monHitCad) psA._monHitCad.clear();
+  room.eventBuffer.length = 0;
+  await room.webSocketMessage(wsA, JSON.stringify({ type: 'monster_damage', payload: { monsterId: rs.id, zone: 'meadow', slot: 'ranged', special: false } }));
+  await room.webSocketMessage(wsA, JSON.stringify({ type: 'monster_damage', payload: { monsterId: rs.id, zone: 'meadow', slot: 'ranged', special: false } }));
+  check('ranged normal: rapid second special:false hit inside 335ms still dropped',
+    room.eventBuffer.filter((e) => e.type === 'monster_hit' && e.payload.monsterId === rs.id).length === 1,
+    room.eventBuffer.length);
+
+  // (b) the special roll is slot-agnostic.  Pin variance (0.5 -> staff
+  // v=1.0, bow v=0.7) and no crit (power 0); mind=200 keeps the numbers
+  // big enough that rounding can't fake the ratio.
+  const origRandom = Math.random;
+  Math.random = () => 0.5;
+  const ps = { power: 0, mind: 200, agility: 0, activeSlot: 'staff', weaponSpecs: {},
+    weapon: null, staffWeapon: { type: 'staff', tierMult: 1 }, rangedWeapon: { type: 'bow', tierMult: 1 } };
+  const staffNorm = room._computeAttackDamage(ps, 'staff', false);
+  const staffSpec = room._computeAttackDamage(ps, 'staff', true);
+  check('ranged special: staff special roll carries the 2x multiplier',
+    Math.abs(staffSpec.dmg / staffNorm.dmg - 2.0) < 0.05, { norm: staffNorm.dmg, spec: staffSpec.dmg });
+  // Bow special scales on Mind (all specials do), exactly the formula:
+  // (effBase + mind*0.1667) * v(0.7) * 2.0.
+  const bowExpect = Math.round((room._weaponEffBase('bow', ps.rangedWeapon) + 200 * 0.1667) * 0.7 * 2.0);
+  const bowSpec = room._computeAttackDamage(ps, 'ranged', true);
+  check('ranged special: bow special = Mind-scaled 2x formula',
+    Math.abs(bowSpec.dmg - bowExpect) <= 1, { got: bowSpec.dmg, expect: bowExpect });
+  // Agility must NOT leak into the special roll (specials are Mind-only).
+  ps.agility = 999;
+  const bowSpecAgi = room._computeAttackDamage(ps, 'ranged', true);
+  check('ranged special: Agility does not leak into the special roll',
+    bowSpecAgi.dmg === bowSpec.dmg, { withAgi: bowSpecAgi.dmg, without: bowSpec.dmg });
+  // And the 2x cap headroom covers the special roll (anti-cheat parity).
+  check('ranged special: special roll clears _maxDmgForAttacker special headroom',
+    bowSpec.dmg <= room._maxDmgForAttacker(ps, true), { roll: bowSpec.dmg, cap: room._maxDmgForAttacker(ps, true) });
+  Math.random = origRandom;
+}
+
 // ── 6d. v2.3.1133: crit-DMG channel reaches the authoritative crit roll ──
 // Executioner/Headshot/Arcane Focus feed the crit MULTIPLIER at +0.008/pt
 // (mirror of client calcCritMult); the anti-cheat ceiling assumes the
