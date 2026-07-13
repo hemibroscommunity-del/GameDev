@@ -1,4 +1,4 @@
-# Lantern Slate — UI Design System (v2.3.1227)
+# Lantern Slate — UI Design System (v2.3.1240)
 
 The owner-approved UI direction, authored via ChatGPT from the full UI
 spec + screenshots of both prior themes (dark navy "legacy" and the
@@ -15,7 +15,7 @@ brass accent.
 ## Hard locks
 
 - The painterly world stays the brightest, most saturated thing on
-  screen. The band is a dark neutral shelf beneath it.
+  screen. The band is a neutral slate tray with deep, quiet wells.
 - Band stays exactly 28dvh; toolbar stays inside it.
 - The 90-icon set is retained unchanged (no repaint/recolor).
 - All chrome is CSS. No baked panel art, carved wood, leather,
@@ -40,8 +40,15 @@ brass accent.
 | well-soft | `#19252A` | empty slot, quiet stat cell |
 | slot (occupied) | `#243137` | filled item/equipment slot base |
 | toolbar | `#10181D` | separate darkest lower shelf |
-| icon plate | `#A2AAA5` → `#7F8A89` | 38×38 squircle behind toolbar icons |
-| icon plate active | `#D8C69F` → `#BDA16E` | active toolbar plate |
+| icon plate | `#A2AAA5` → `#7F8A89` | legacy token; not used by the approved ribbon |
+| icon plate active | `#D8C69F` → `#BDA16E` | legacy token; replaced by a brass edge |
+| dashboard tray | `#2E4754` | lighter shared field behind the three modules |
+| dashboard panel | `#10222A` | Bag / Loadout / Build functional wells |
+| dashboard ribbon | `#10232A` | inset navigation ribbon |
+| dashboard button | `#1A2D36` | quiet beveled toolbar target |
+| dashboard button active | `#162A33` | pressed/selected toolbar target |
+| dashboard text | `#F2F3EF` | crisp dashboard titles and navigation labels |
+| dashboard text secondary | `#DDE3E1` | slot and metric labels |
 
 ## Text / edges / interaction
 
@@ -76,7 +83,7 @@ ring so a selected Rare still reads Rare.
 
 ## Depth & shape
 
-Radii: band 0 · panel 14 · card/module 10 · slot/stat cell 8 · icon
+Radii: band top 14 · panel 14 · card/module 10 · slot/stat cell 8 · icon
 plate 10 · button 11 · pill 999. Shadows:
 
 ```css
@@ -95,42 +102,55 @@ icons, slots, world cards, or bars.
 ## Typography (Source Sans 3; load 400/600/700 only)
 
 Panel title 13/700 uppercase .10em · module header 11/600 uppercase
-.12em · zone 12/600 · toolbar label 11.5/600 (title case) · body
+.12em · zone 12/600 · toolbar label 10.5/600 (title case) · body
 13.5/400 · compact 12/400 · primary value 14/700 tabular · large value
 18/700 · caption 10/600 · badge 10/700 · button 13/700. Tabular
 numerals on every changing value. Uppercase only for titles/headers/
 short category labels.
 
-## Dashboard (§8 — structural change)
+## Dashboard (§8 — v2.3.1240 approved structure)
 
-Remove the three outlined column cards: the band IS the container,
-with two 1px dividers and a 32/36/32 column grid.
+The 28dvh band is a lighter `#2E4754` slate tray with a 14px rounded
+top edge and a tight, crisp contact shadow against the world. Its idle
+body contains three equal `#10222A` functional wells, separated by 6px
+gutters. The wells—not rules, title underlines, textures, or accent
+colors—make Bag, Loadout, and Build legible as three different
+functions. Each well has a 10px radius and a quiet 1px blue-slate
+bridge boundary that blends into the tray instead of forming a dark
+double rim. There are no vertical dividers.
 
-- **Bag (32%, deepest/quietest):** one `#121B20` tray (10px radius,
-  4px pad, well shadow); 3×3 cells — empty `#19252A` + 1px
+- **Bag (equal third, deepest/quietest):** one dark well with a quiet
+  inset edge and 4px content padding; 3×3 cells — empty `#19252A` + 1px
   `rgba(238,242,235,.08)`, NO bright centers; filled cells get a
   radial "mist" (`rgba(238,240,225,.16)` center → transparent 76%)
   over `#243137`. The whole module is one tap target → opens
   Inventory. Stack counts 10/700 bottom-right, dark 2px text shadow.
-- **Loadout (36%, subtly raised focal center):** 3.5%→1.5% white
-  overlay gradient + inset top highlight — value lift, no thick frame.
+- **Loadout (equal third):** the common well and slot states supply
+  hierarchy; there is no extra lift, accent fill, or thick frame.
   Metric strip DMG/DPS/DEF: 14/700 values, 9/600 labels. SIX slots in
   2×3 (chest, weapon, shield, legs, amulet, cape); empty = 24px ghost
   glyph at 28% opacity, NOT text placeholders; equipped edge shows
   rarity; inspected slot adds the inner focus ring.
-- **Build (32%, flat readout):** six cells `#19252A`, icon 28–30px
+- **Build (equal third, flat readout):** six cells `#19252A`, icon 28–30px
   over 14/700 tabular value; zeros visible in `#B9C1BF`; no outer
   card, no blue frame.
 
 ## Toolbar (§9)
 
-Separate darkest shelf: 68px (62px under 720px height), gradient
-`#131D22 → #10181D`, single top divider. Six equal targets. Each icon
-sits on a 38×38 **icon plate** squircle (10px radius, plate gradient
-above) so the warm-navy icon outlines stay crisp on the dark shelf.
-Active: plate `#D8C69F→#BDA16E`, label `#F7F2E7`, 3px brass line at
-the shelf top over that item. Pressed: scale .96, 90ms. Labels
-11.5/600 `#B9C1BF` at rest.
+The toolbar is visually separate from the dashboard modules: a single
+inset `#10232A` ribbon on the lighter slate tray, with a 10px radius and
+a tight one-pixel contact shadow. Inside are six equal `#1A2D36`
+targets. Each target gets a restrained vertical one-pixel micro-bevel and 8px
+radius so it reads immediately as a button without competing with the
+world. Pressed: reverse the bevel and scale .97 for 90ms. Selected:
+`#162A33` fill plus one-pixel brass edge and reversed bevel—never a
+solid accent fill. Labels are 10.5/600 near-white at rest.
+
+The default always-on dashboard is home, not a toolbar destination, so
+all six targets are unselected in that state. The first destination is
+named **Inventory**; **Bag** names only the dashboard's quick preview.
+Opening Inventory, Friends, Codex, Journey, Chat, or More selects that
+button; tapping an already-selected sheet destination returns home.
 
 Panels open inside the ribbon (toolbar stays visible): header 44px
 (back 44pt / centered 13/700 uppercase title / close 44pt), panel bg
@@ -191,6 +211,10 @@ pointerdown. prefers-reduced-motion removes shimmer/overshoot/nudge.
   --ui-raised: #2B3940;  --ui-raised-high: #34444B;
   --ui-well: #121B20;  --ui-well-soft: #19252A;  --ui-slot: #243137;
   --ui-toolbar: #10181D;
+  --ui-dashboard-tray: #2E4754;  --ui-dashboard-panel: #10222A;
+  --ui-dashboard-ribbon: #10232A;  --ui-dashboard-button: #1A2D36;
+  --ui-dashboard-button-active: #162A33;
+  --ui-dashboard-text: #F2F3EF;  --ui-dashboard-text-secondary: #DDE3E1;
   --ui-world-overlay: rgba(17,25,29,.94);
   --ui-modal-scrim: rgba(8,16,20,.56);
   --ui-band: linear-gradient(180deg, #253239 0%, #202C32 46%, #172126 100%);
@@ -266,9 +290,22 @@ pointerdown. prefers-reduced-motion removes shimmer/overshoot/nudge.
    .bt-players-btn, .bt-chatlog*, .bt-combat-bar/btn,
    .bt-chat-fab/bar/input, .bt-fab-group). Remaining for a later
    pass: device/contrast/perf QA.
+5. ✅ v2.3.1240: approved dashboard mockup parity — lighter slate tray,
+   three equal dark functional wells with gutters (no divider rules or
+   title underlines), rounded crisp world edge, inset navigation ribbon,
+   and six quiet micro-beveled buttons. Default dashboard has no active
+   navigation state; Bag remains the quick view and Inventory names the
+   deeper destination.
+6. ✅ v2.3.1240: screenshot-parity polish — brighter near-white dashboard
+   type, blue-slate bridge borders without a dark double rim, stronger
+   crisp world seam, and darker toolbar buttons with a single contour
+   plus vertical-only micro-bevel.
 
 ## Do-not-drift list
 
-No new accent colors; no new radii; no full cards around groupable
+No new accent colors; no ornamental or nested cards around groupable
 content; no generated panel art; no always-on animation; no text label
-as primary identity where an icon exists.
+as primary identity where an icon exists. The three dashboard wells and
+toolbar micro-bevels are deliberate structural exceptions documented in
+§8–9; do not replace them with dividers, textures, or accent-colored
+modules.

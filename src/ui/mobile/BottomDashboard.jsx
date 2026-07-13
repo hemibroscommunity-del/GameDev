@@ -43,9 +43,9 @@ import { T2Panel, requestT2Category } from './dash/T2Panel.jsx';
 import { SpendPointConfirm }   from './dash/SpendPointConfirm.jsx';
 
 // Bottom-of-screen dashboard.  Replaces the radial UtilityWheel.
-// When idle it renders character stats + a 7-icon row.  When the user
-// taps any toolbar icon, the dashboard swaps in a panel component that
-// occupies the full 25vh band and the icon row hides.
+// When idle it renders the Bag / Loadout / Build overview above a
+// persistent 6-destination navigation ribbon.  Opening a destination
+// grows the band into a sheet while the ribbon remains available.
 
 /* v2.3.1227: Lantern Slate (docs/LANTERN-SLATE-SPEC.md) — dark
    mineral charcoal shelf, warm-white text, one lantern-brass accent.
@@ -174,20 +174,24 @@ const ColHeader = ({ children }) => (
   <div style={{
     /* v2.3.1236: owner dashboard feedback §1 — the 16px icon is gone;
        the freed space goes to a larger title (11 -> 13/700, same
-       uppercase + .14em tracking, underline kept). */
+       uppercase + .14em tracking). */
     /* v2.3.1236: owner feedback r2 §3 — 13 was a notch too loud next to
        the slot grids; 12/700 keeps the hierarchy without shouting. */
+    /* v2.3.1240: the mockup groups each function with its own dark well;
+       the old title underline duplicated that boundary and looked dated. */
     fontSize: 12,
     fontWeight: 700,
-    color: COL.text2,
+    /* v2.3.1240: the approved mockup uses a near-white, crisp header;
+       COL.text2 made the built version read noticeably gray. */
+    color: 'var(--ui-dashboard-text)',
+    textShadow: '0 1px 0 rgba(0,0,0,.72)',
     letterSpacing: '.14em',
     textTransform: 'uppercase',
     padding: '0 2px 2px',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    borderBottom: `1px solid ${COL.divider}`,
-    marginBottom: 3,
+    marginBottom: 4,
     whiteSpace: 'nowrap',
     overflow: 'hidden',
   }}>
@@ -374,57 +378,35 @@ const Bar = ({ label, cur, max, kind, tip, onTip }) => {
    ControlsTutorial can getBoundingClientRect() the real button. */
 const IconButton = ({ glyph, label, active, onClick, node, tut }) => {
   const src = ICON_SRC[glyph];
+  const [pressed, setPressed] = useState(false);
   // Use onPointerUp instead of onClick so iOS fires it even when
   // another finger is mid-drag on a joystick.  stopPropagation
   // prevents the event reaching the dashboard's outer pointerdown
   // handler (which only stops further bubbling, not local).
-  const fire = (e) => { e.stopPropagation(); onClick && onClick(); };
-  /* v2.3.1235: correction pass §5 — the permanent stone plates made
-     the toolbar read as an app launcher competing with the world.
-     Inactive buttons are now BARE (transparent shell, muted label);
-     only the ACTIVE destination gets a shell: brass-soft fill, subtle
-     brass border, and a 24×3px brass indicator centered at the shelf
-     top.  Never a solid gold fill. */
+  const fire = (e) => {
+    e.stopPropagation();
+    setPressed(false);
+    onClick && onClick();
+  };
+  /* v2.3.1240: the toolbar is one dark navigation ribbon, but every
+     destination gets a one-pixel micro-bevel so its hit area reads as a
+     button.  The selected destination reverses that bevel (pressed) and
+     gains the focus-ring edge.  The default dashboard has no selected
+     toolbar destination. */
   return (
     <button
+      type="button"
       onPointerUp={fire}
+      onPointerDown={(e) => { e.stopPropagation(); setPressed(true); }}
+      onPointerCancel={() => setPressed(false)}
+      onPointerLeave={() => setPressed(false)}
       data-tut={tut}
-      style={{
-        flex: 1,
-        position: 'relative',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: 2,
-        padding: '4px 0',
-        background: 'transparent',
-        border: 'none',
-        color: COL.text,
-        cursor: 'pointer',
-        fontFamily: 'Source Sans 3, sans-serif',
-        touchAction: 'none',
-        minHeight: 44,
-      }}
+      aria-label={label}
+      aria-pressed={active}
+      data-pressed={pressed ? 'true' : 'false'}
+      className="bt-dashboard-nav-button"
     >
-      {active && (
-        <span style={{
-          position: 'absolute', top: 0, left: '50%',
-          width: 24, height: 3, transform: 'translateX(-50%)',
-          background: 'var(--ui-brass)', borderRadius: '0 0 3px 3px',
-          pointerEvents: 'none',
-        }} />
-      )}
-      <span style={{
-        width: 40,
-        height: 40,
-        borderRadius: 10,
-        background: active ? 'var(--ui-brass-soft)' : 'transparent',
-        border: active ? '1px solid rgba(216,170,88,.45)' : '1px solid transparent',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-      }}>
+      <span className="bt-dashboard-nav-icon">
         {node ? node : (
           <img
             src={src}
@@ -439,12 +421,7 @@ const IconButton = ({ glyph, label, active, onClick, node, tut }) => {
           />
         )}
       </span>
-      <span style={{
-        fontSize: 11,
-        fontWeight: 600,
-        color: active ? 'var(--ui-text)' : 'var(--ui-text-muted)',
-        letterSpacing: '.02em',
-      }}>{label}</span>
+      <span className="bt-dashboard-nav-label">{label}</span>
     </button>
   );
 };
@@ -455,7 +432,7 @@ const IconButton = ({ glyph, label, active, onClick, node, tut }) => {
 /* v2.3.155: compact inventory preview that lives in the bottom-left
    column of the dashboard (replacing the HP/MP/END chip card). Shows
    the N most-recent inventory items in a small grid; tap empty space
-   anywhere in the card to open the full Bag panel. Tile interactions
+   anywhere in the card to open the full Inventory panel. Tile interactions
    (cook raw fish, eat cooked fish) still work via the shared ItemTile.
    Recents-tracking mirrors InventoryPanel.jsx so the same item ordering
    logic shows up here. */
@@ -530,7 +507,7 @@ const InventoryPreview = () => {
            loadout/Build grids (§4).  The freed width goes to the cells. */
         padding: 0,
       }}
-      title="Tap to open Bag"
+      title="Tap to open Inventory"
     >
       {/* v2.3.1057: 3-col x 3-row slot grid mirroring the Loadout column's
           square grid (same 3 columns, same gap — 4 as of v2.3.1236 owner
@@ -596,7 +573,9 @@ const InventoryPreview = () => {
 };
 
 const PANELS = {
-  inventory:    { title: 'Bag',         Component: InventoryPanel },
+  /* v2.3.1240: Bag is the always-on quick preview; Inventory is the
+     deeper toolbar destination that opens the full item surface. */
+  inventory:    { title: 'Inventory',   Component: InventoryPanel },
   self:         { title: 'Self',        Component: SelfPanel },
   journey:      { title: 'Journey',     Component: JourneyPanel },
   map:          { title: 'Map',         Component: MapPanel },
@@ -844,6 +823,7 @@ export const BottomDashboard = () => {
 
     <div
       ref={dashRef}
+      className="bt-dashboard"
       onPointerDown={(e) => e.stopPropagation()}
       style={{
         position: 'fixed',
@@ -858,21 +838,9 @@ export const BottomDashboard = () => {
            panel keeps the 56vh bottom sheet. */
         height: active ? (activeId === 'more' ? 'auto' : '56vh') : 'var(--dash-h)',
         transition: 'height 220ms cubic-bezier(.2,.8,.2,1)',
-        /* v2.3.1227: Lantern Slate band — charcoal gradient, warm top
-           edge (the "lantern" cue), soft up-shadow. */
-        /* v2.3.1235: §4 — ONE continuous band-top→band-bottom gradient
-           (no mid stop) + the quiet brass top edge (edge-warm token is
-           now rgba(216,170,88,.42)). */
-        background: 'linear-gradient(180deg, var(--ui-band-top) 0%, var(--ui-band-bottom) 100%)',
-        borderTop: `1px solid ${COL.edgeWarm}`,
-        /* v2.3.1238: owner feedback §1 — the spec's up-shadow
-           (--shadow-band, '0 -10px 24px rgba(6,10,12,.22)') is REMOVED:
-           its -10px offset put the densest part of the shadow ~10px
-           ABOVE the band edge, which over bright terrain read as a
-           detached "faint bar above the dashboard" (owner initially
-           took it for the retired v2.3.114 XP strip; pixel-probed and
-           confirmed by toggling the shadow).  The 1px edge-warm top
-           border stays — that lantern cue is intentional. */
+        /* v2.3.1240: surface, rounded top edge, and crisp contact shadow
+           live in .bt-dashboard so the mockup recipe stays testable in
+           CSS instead of being split across inline declarations. */
         color: COL.text,
         fontFamily: 'Source Sans 3, sans-serif',
         zIndex: 30,
@@ -911,7 +879,7 @@ export const BottomDashboard = () => {
             )}
             {/* v2.3.692: match the LOADOUT / BUILD ColHeader treatment
                 (14px, .08em tracking, uppercase, centered) so every open
-                panel title — BAG, MAP, etc. — reads consistently. */}
+                panel title reads consistently. */}
             <div style={{
               flex: 1,
               fontSize: 13,
@@ -944,17 +912,16 @@ export const BottomDashboard = () => {
             /* v2.3.1236: owner dashboard feedback §3 — back to 4px top
                padding; the 9px existed only to give the retired Loadout
                lift paint headroom. */
-            padding: '4px 12px 6px',
+            padding: '6px 8px 5px',
             overflow: 'hidden',
             display: 'flex',
             flexDirection: 'column',
             minHeight: 0,
           }}>
-            {/* v2.3.1236: owner feedback r2 §1 — 1px var(--ui-line) divider
-                divs between the three columns, full column height; row gap
-                8 -> 4 so each divider sits centered in ~the same 9px of
-                total inter-column space as before. */}
-            <div style={{ flex: 1, display: 'flex', gap: 4, minHeight: 0 }}>
+            {/* v2.3.1240: three equal dark wells on the lighter tray use
+                common-region grouping and 6px gutters; divider rules are
+                intentionally gone. */}
+            <div style={{ flex: 1, display: 'flex', gap: 6, minHeight: 0 }}>
               {/* ── Left column — hybrid card: HP/MP/END chip row +
                   Crit/Move derived stats + session summary (Zone, Kills,
                   Playtime).  v2.3.126: portrait migrated to the top-right
@@ -963,7 +930,7 @@ export const BottomDashboard = () => {
               {/* v2.3.1205: data-tut anchors on the three columns — the
                   live-DOM ControlsTutorial measures these instead of the
                   retired frozen screenshot. */}
-              <div data-tut="dash-bag" style={{
+              <div data-tut="dash-bag" className="bt-dashboard-module" style={{
                 /* v2.3.1235: §4 widths — Bag 31% / Loadout 38% / Build 31%
                    (flex-grow ratios; Loadout is the wider center anchor). */
                 /* v2.3.1236: owner feedback r2 §2 — back to equal thirds so
@@ -980,17 +947,15 @@ export const BottomDashboard = () => {
                    grids now pad 0), so the cells absorb the freed width.
                    Vertical stays 4 — the shared bottom-padding number the
                    §4 bottom alignment is built on. */
-                padding: '4px 2px',
-                /* v2.3.1227: no card chrome — the band is the container
-                   (Lantern Slate §8); Bag is the quiet/deep module. */
+                padding: '4px 4px 6px',
+                /* v2.3.1240: this shared dark functional well is the only
+                   outer chrome; Bag remains the quiet/deep module. */
                 /* v2.3.129: clip overflow so the Kills row (and any other
                    session-summary row) doesn't bleed past the column's
                    bottom border at narrow heights. */
                 overflow: 'hidden',
               }}>
-                {/* v2.3.1065: BAG title matching the Loadout/Build ColHeaders
-                    (sits on the red container tint; the leather-backed grid
-                    renders below). */}
+                {/* v2.3.1065: BAG title matching the Loadout/Build ColHeaders. */}
                 {/* v2.3.1236: owner dashboard feedback §1 — icon prop removed. */}
                 <ColHeader>Bag</ColHeader>
                 {/* v2.3.155: hybrid HP/MP/END card replaced with a
@@ -1131,9 +1096,6 @@ export const BottomDashboard = () => {
                 })()}
               </div>
 
-              {/* v2.3.1236: owner feedback r2 §1 — full-height column divider. */}
-              <div aria-hidden="true" style={{ flex: 'none', width: 1, alignSelf: 'stretch', background: 'var(--ui-line)' }} />
-
               {/* ── Middle column — Loadout.
                   v2.3.125 introduced the DMG/DPS line + 3-then-2 equip
                   grid.  v2.3.126 widened to flex 1.35 (was 1) using the
@@ -1142,12 +1104,14 @@ export const BottomDashboard = () => {
                   floating WeaponSwapBar was unmounted in v2.3.125).
                   v2.3.1057: flex 1.35 -> 1 so Bag / Loadout / Build are all
                   equal width. */}
-              <div data-tut="dash-loadout" style={{
+              <div data-tut="dash-loadout" className="bt-dashboard-module" style={{
                 /* v2.3.1236: owner dashboard feedback §3 — the v2.3.1235
                    raised-anchor treatment (5px translateY lift +
                    marginBottom:-5, raised gradient, border, top radii,
                    shadow) is removed at the owner's request: Loadout is
                    a plain flex column like Build, still 38% wide. */
+                /* v2.3.1240: all three columns now share the same quiet
+                   functional-well surface; Loadout gets no extra lift. */
                 /* v2.3.1236: owner feedback r2 §2 — 38% -> equal third; the
                    DMG/DPS/DEF readout moved to a footer line (§4) so the
                    six slots match the bag cells' size exactly.
@@ -1163,7 +1127,7 @@ export const BottomDashboard = () => {
                 /* v2.3.1236: owner feedback r3 §2 — symmetric minimal 2px
                    horizontal inset (matches Bag/Build); 4px vertical kept
                    as the shared bottom-padding for the §4 alignment. */
-                padding: '4px 2px',
+                padding: '4px 4px 6px',
                 position: 'relative',
                 zIndex: 1,
               }}>
@@ -1300,7 +1264,9 @@ export const BottomDashboard = () => {
                         }}>{equippedGlyph}</span>
                       ) : (
                         <span style={{
-                          color: COL.muted,
+                          /* v2.3.1240: placeholder identity is secondary,
+                             but no longer disabled-gray in the dashboard. */
+                          color: 'var(--ui-dashboard-text-secondary)',
                           fontWeight: 700,
                           /* v2.3.1233: QA — "AMULET" spilled out of its old
                              ~35px square; 6.5px was the fit then.
@@ -1535,7 +1501,7 @@ export const BottomDashboard = () => {
                               borderLeft: ci > 0 ? '1px solid var(--ui-line)' : 'none',
                               overflow: 'hidden',
                             }}>
-                            <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '.08em', color: '#8D9B98' }}>{hdr}</span>
+                            <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '.08em', color: 'var(--ui-dashboard-text-secondary)' }}>{hdr}</span>
                             <span style={{ fontSize: 11, fontWeight: 600, fontVariantNumeric: 'tabular-nums', color: '#F4F0E7', whiteSpace: 'nowrap' }}>{val}</span>
                           </div>
                         ))}
@@ -1544,15 +1510,12 @@ export const BottomDashboard = () => {
                 })()}
               </div>
 
-              {/* v2.3.1236: owner feedback r2 §1 — full-height column divider. */}
-              <div aria-hidden="true" style={{ flex: 'none', width: 1, alignSelf: 'stretch', background: 'var(--ui-line)' }} />
-
               {/* ── Right column — Stats + Life Skills merged.
                   v2.3.125: Build (5 char stats) and Life Skills (10) now
                   share one column as a 3-sub-col x 5-row grid.  Build
                   occupies sub-col 1; Life Skills fills sub-cols 2 and 3
                   (5 rows of 2 skills each).  Per-cell XP strip preserved. */}
-              <div ref={buildColRef} data-tut="dash-build" style={{
+              <div ref={buildColRef} data-tut="dash-build" className="bt-dashboard-module" style={{
                 /* v2.3.1235: §4 widths — Build 31%, flat quiet readout. */
                 /* v2.3.1236: owner feedback r2 §2 — equal third (this column
                    actually WIDENS, 31% -> 33.3%, so its 3x2 text cells gain
@@ -1564,7 +1527,7 @@ export const BottomDashboard = () => {
                 /* v2.3.1236: owner feedback r3 §2 — symmetric minimal 2px
                    horizontal inset (matches Bag/Loadout); 4px vertical kept
                    as the shared bottom-padding for the §4 alignment. */
-                padding: '4px 2px',
+                padding: '4px 4px 6px',
               }}>
                 <ColHeader>{SHOW_LIFE_SKILLS ? 'Stats · Skills' : 'Build'}</ColHeader>
                 {/* v2.3.1236: owner feedback r3 §4 — no alignment change
@@ -1829,54 +1792,57 @@ export const BottomDashboard = () => {
         </>
       )}
 
-      {/* Icon row — bottom 30% of dashboard.  v2.3.1227: separate
-          darkest navigation shelf (Lantern Slate §9).  v2.3.1229: now
-          PERSISTENT — it renders in panel mode too, with the active
-          destination lit (brass plate + top line); tapping the lit icon
-          toggles back to the dashboard.  rootId (stack[0]) keeps More
-          lit while one of its children (Settings, Stats, ...) is open. */}
+      {/* Navigation ribbon — bottom 30% of dashboard.  v2.3.1229: it is
+          PERSISTENT in panel mode; tapping the selected destination again
+          returns home.  v2.3.1240: default/home intentionally selects
+          nothing, while an open destination gets a restrained brass edge.
+          rootId (stack[0]) keeps More selected while one of its children
+          (Settings, Stats, ...) is open. */}
       {(() => {
         const rootId = stack.length ? stack[0] : null;
         const moreLit = !!rootId && !['inventory', 'social', 'encyclopedia', 'journey'].includes(rootId);
         return (
-          <div style={{
+          <div className="bt-dashboard-toolbar-frame" style={{
             /* v2.3.1229b: fixed 68px shelf in panel mode (30% of the
                grown band would balloon); 30% of the resting 28vh band
                ≈ the same 68px, so the shelf never visibly jumps. */
-            height: active ? 68 : '30%',
+            /* v2.3.1241: edge-parity — the RESTING shelf is now a fixed 68
+               (was '30%' of the fractional band), so the ribbon frame never
+               lands on a sub-pixel vertical coord that would resample its
+               contour on Retina.  Panel mode was already 68. */
+            height: 68,
             minHeight: 56,
             flex: '0 0 auto',
-            borderTop: `1px solid ${COL.divider}`,
-            /* v2.3.1235: §5 — flat darkest toolbar shelf. */
-            background: 'var(--ui-toolbar)',
             display: 'flex',
             alignItems: 'stretch',
           }}>
-            <IconButton glyph="inventory" label="Bag" active={rootId === 'inventory'}
-              onClick={() => dashboardPanelBus.toggle('inventory')} />
-            <IconButton glyph="friends"   label="Friends" active={rootId === 'social'}
-              onClick={() => dashboardPanelBus.toggle('social')} />
-            <IconButton glyph="codex"     label="Codex" active={rootId === 'encyclopedia'}
-              onClick={() => dashboardPanelBus.toggle('encyclopedia')} />
-            <IconButton glyph="journey"   label="Journey" active={rootId === 'journey'}
-              onClick={() => dashboardPanelBus.toggle('journey')} />
-            {/* v2.3.1015: Chat replaces Map in the toolbar — TOGGLES the
-                over-head chat bubble (ChatBubble.jsx): tap to open, tap again
-                to close.  v2.3.1225: UI Bible panel-chat icon replaces the
-                placeholder inline SVG. */}
-            <IconButton glyph="chat" label="Chat" tut="dash-chat"
-              active={chatBubbleBus.open}
-              onClick={() => {
-                /* v2.3.1235: §7 Chat state fix — opening Chat dismisses
-                   any open destination sheet so the composer shows over
-                   the world/HUD with only Chat marked active (it used
-                   to open ON TOP of e.g. the Journey panel). */
-                const opening = !chatBubbleBus.open;
-                chatBubbleBus.toggle();
-                if (opening) dashboardPanelBus.clear();
-              }} />
-            <IconButton glyph="more"      label="More" tut="dash-more" active={moreLit}
-              onClick={() => dashboardPanelBus.toggle('more')} />
+            <div className="bt-dashboard-toolbar-ribbon">
+              <IconButton glyph="inventory" label="Inventory" active={rootId === 'inventory'}
+                onClick={() => dashboardPanelBus.toggle('inventory')} />
+              <IconButton glyph="friends"   label="Friends" active={rootId === 'social'}
+                onClick={() => dashboardPanelBus.toggle('social')} />
+              <IconButton glyph="codex"     label="Codex" active={rootId === 'encyclopedia'}
+                onClick={() => dashboardPanelBus.toggle('encyclopedia')} />
+              <IconButton glyph="journey"   label="Journey" active={rootId === 'journey'}
+                onClick={() => dashboardPanelBus.toggle('journey')} />
+              {/* v2.3.1015: Chat replaces Map in the toolbar — TOGGLES the
+                  over-head chat bubble (ChatBubble.jsx): tap to open, tap again
+                  to close.  v2.3.1225: UI Bible panel-chat icon replaces the
+                  placeholder inline SVG. */}
+              <IconButton glyph="chat" label="Chat" tut="dash-chat"
+                active={chatBubbleBus.open}
+                onClick={() => {
+                  /* v2.3.1235: §7 Chat state fix — opening Chat dismisses
+                     any open destination sheet so the composer shows over
+                     the world/HUD with only Chat marked active (it used
+                     to open ON TOP of e.g. the Journey panel). */
+                  const opening = !chatBubbleBus.open;
+                  chatBubbleBus.toggle();
+                  if (opening) dashboardPanelBus.clear();
+                }} />
+              <IconButton glyph="more"      label="More" tut="dash-more" active={moreLit}
+                onClick={() => dashboardPanelBus.toggle('more')} />
+            </div>
           </div>
         );
       })()}

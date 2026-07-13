@@ -60,6 +60,19 @@
   --ui-well-soft: #16262C;
   --ui-slot: var(--ui-card);
   --ui-toolbar: #0E191E;
+  /* v2.3.1240: owner-approved always-on dashboard mockup.  These roles
+     are intentionally local to BottomDashboard; they do not retint the
+     deeper sheets or legacy panels. */
+  --ui-dashboard-tray: #2E4754;
+  --ui-dashboard-panel: #10222A;
+  --ui-dashboard-ribbon: #10232A;
+  --ui-dashboard-button: #1A2D36;
+  --ui-dashboard-button-active: #162A33;
+  --ui-dashboard-text: #F2F3EF;
+  --ui-dashboard-text-secondary: #DDE3E1;
+  /* v2.3.1241: edge-parity — base hairline; scaled to one physical pixel
+     per DPR in the @media rules just below the :root block. */
+  --ui-hairline: 1px;
   --ui-world-overlay: var(--ui-world-chrome);
   --ui-modal-scrim: rgba(4, 9, 12, 0.38);
   --ui-text-1: var(--ui-text);
@@ -83,6 +96,21 @@
   --ui-info: #599FE5;
   --ui-magic: #9A78D0;
 }
+/* v2.3.1241: edge-parity — pixel-snap the band height.  A fractional 28vh
+   puts the dashboard's TOP coord on a sub-pixel boundary, so every seam and
+   panel edge above it resamples into a soft 1–2px band on Retina.  round()
+   snaps the height to a whole CSS px (28vh uses the stable large-viewport
+   height on iOS, so this does NOT jump when the address bar shows/hides).
+   CSS-only + graceful: any engine without round() keeps plain 28vh. */
+@supports (height: round(nearest, 28vh, 1px)) {
+  :root { --dash-h: round(nearest, 28vh, 1px); }
+}
+/* v2.3.1241: edge-parity — device-pixel hairlines.  A "1px" contour is 2–3
+   physical pixels on Retina; that thickness (stacked with borders/shadows)
+   is what fattened the old edges.  Scale the token so one contour renders
+   as one physical pixel at each density. */
+@media (min-resolution:2dppx){ :root{ --ui-hairline:0.5px; } }
+@media (min-resolution:3dppx){ :root{ --ui-hairline:0.333333px; } }
 /* ═══ v2.3.1235 shared primitives (correction pass §2/§8) — the four
    depth levels + the two button roles.  New/updated surfaces should
    use these classes (or copy the exact recipes inline) instead of
@@ -116,6 +144,166 @@
   border:1px solid var(--ui-line-strong);
   border-radius:10px;font-weight:700;cursor:pointer;
   font-family:'Source Sans 3',sans-serif;
+}
+/* ═══ v2.3.1240 dashboard mockup parity ═══════════════════════════
+   The painterly world remains dominant.  A lighter mineral tray groups
+   three equal dark functional wells; a separate inset ribbon owns the
+   global navigation.  Toolbar buttons use a one-pixel micro-bevel so the
+   hit areas are obvious without turning the ribbon into six loud cards. */
+.bt-dashboard{
+  background:var(--ui-dashboard-tray);
+  border-radius:14px 14px 0 0;
+  /* v2.3.1241: edge-parity — the world/dashboard seam is EXACTLY two
+     physical-pixel lines that hug the 14px top corners: a dark contact
+     line on the world side (outer, above the edge) and a subdued
+     blue-slate contour on the dashboard side (inset, at the top edge).
+     Both are 0-blur box-shadows so they follow the rounded corners and
+     stay individually crisp.  The old border-top + 0/-3px shadow + inset
+     highlight combined into a fuzzy multi-row band after Retina
+     resampling — removed. */
+  box-shadow:
+    0 calc(-1 * var(--ui-hairline)) 0 0 #0A1419,
+    inset 0 var(--ui-hairline) 0 0 #66838E;
+}
+.bt-dashboard-module{
+  background:var(--ui-dashboard-panel);
+  /* v2.3.1241: edge-parity — exactly ONE device-pixel contour; no inset
+     highlight, no external shadow.  Defines the three functions without
+     glowing.  (radius 10 -> 9 per the mockup.) */
+  border:var(--ui-hairline) solid #29414B;
+  border-radius:9px;
+  box-shadow:none;
+}
+.bt-dashboard-toolbar-frame{
+  padding:4px 8px 7px;
+  background:var(--ui-dashboard-tray);
+}
+.bt-dashboard-toolbar-ribbon{
+  flex:1;
+  min-width:0;
+  display:flex;
+  align-items:stretch;
+  gap:4px;
+  padding:4px;
+  background:var(--ui-dashboard-ribbon);
+  /* v2.3.1241: edge-parity — one device-pixel contour only.  The recess
+     reads through the darker fill, not a heavy border/inset/bottom shadow.
+     (radius 10 -> 9 per the mockup.) */
+  border:var(--ui-hairline) solid #293F49;
+  border-radius:9px;
+  box-shadow:none;
+}
+.bt-dashboard-nav-button{
+  flex:1 1 0;
+  min-width:0;
+  min-height:44px;
+  position:relative;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:1px;
+  padding:2px 0;
+  color:var(--ui-dashboard-text);
+  /* v2.3.1241: edge-parity — ONE device-pixel contour, NO external drop
+     shadow, NO second outer contour.  The restrained internal bevel is
+     painted as two physical-pixel horizontal lines INSIDE the fill
+     gradient (top highlight, bottom shade) so it never touches the side
+     edges and never overlaps the contour — replaces the old stacked
+     box-shadow bevel that fattened the edges on Retina. */
+  background:
+    linear-gradient(180deg,
+      rgba(255,255,255,.045) 0,
+      rgba(255,255,255,.045) var(--ui-hairline),
+      transparent var(--ui-hairline),
+      transparent calc(100% - var(--ui-hairline)),
+      rgba(0,0,0,.28) calc(100% - var(--ui-hairline)),
+      rgba(0,0,0,.28) 100%),
+    var(--ui-dashboard-button);
+  border:var(--ui-hairline) solid #3E5059;
+  border-radius:7px;
+  box-shadow:none;
+  font-family:'Source Sans 3',sans-serif;
+  cursor:pointer;
+  touch-action:none;
+  -webkit-tap-highlight-color:transparent;
+  transition:
+    transform 90ms cubic-bezier(.2,.8,.2,1),
+    border-color 90ms cubic-bezier(.2,.8,.2,1);
+}
+.bt-dashboard-nav-button[data-pressed='true']{
+  transform:scale(.97);
+  /* v2.3.1241: edge-parity — reverse ONLY the internal bevel (shade on
+     top, highlight on bottom); fill + contour unchanged, keep .97 scale. */
+  background:
+    linear-gradient(180deg,
+      rgba(0,0,0,.28) 0,
+      rgba(0,0,0,.28) var(--ui-hairline),
+      transparent var(--ui-hairline),
+      transparent calc(100% - var(--ui-hairline)),
+      rgba(255,255,255,.045) calc(100% - var(--ui-hairline)),
+      rgba(255,255,255,.045) 100%),
+    var(--ui-dashboard-button);
+}
+.bt-dashboard-nav-button[aria-pressed='true']{
+  color:var(--ui-text);
+  /* v2.3.1241: edge-parity — active = darker fill + a single physical-
+     pixel brass contour; keep the resting bevel; NO filled-gold bg, NO
+     second contour. */
+  background:
+    linear-gradient(180deg,
+      rgba(255,255,255,.045) 0,
+      rgba(255,255,255,.045) var(--ui-hairline),
+      transparent var(--ui-hairline),
+      transparent calc(100% - var(--ui-hairline)),
+      rgba(0,0,0,.28) calc(100% - var(--ui-hairline)),
+      rgba(0,0,0,.28) 100%),
+    var(--ui-dashboard-button-active);
+  border-color:rgba(234,198,117,.82);
+  box-shadow:none;
+}
+.bt-dashboard-nav-button:focus-visible{
+  outline:2px solid var(--ui-brass-highlight);
+  outline-offset:-2px;
+}
+.bt-dashboard-nav-icon{
+  width:30px;
+  height:30px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  flex:0 0 auto;
+  opacity:.90;
+}
+.bt-dashboard-nav-icon img{
+  width:30px!important;
+  height:30px!important;
+  object-fit:contain;
+}
+.bt-dashboard-nav-label{
+  max-width:100%;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  font-size:10.5px;
+  font-weight:600;
+  line-height:12px;
+  letter-spacing:.01em;
+  /* v2.3.1241: edge-parity — fixed legible tone; drop shadow removed (it
+     was softening the glyph edges over the dark ribbon). */
+  color:#E4E9E8;
+  opacity:.94;
+}
+.bt-dashboard-nav-button[aria-pressed='true'] .bt-dashboard-nav-icon,
+.bt-dashboard-nav-button[aria-pressed='true'] .bt-dashboard-nav-label{
+  opacity:1;
+}
+@media (max-height:720px){
+  .bt-dashboard-toolbar-frame{padding-top:3px;padding-bottom:5px}
+  .bt-dashboard-toolbar-ribbon{padding:3px}
+  .bt-dashboard-nav-icon,
+  .bt-dashboard-nav-icon img{width:26px!important;height:26px!important}
+  .bt-dashboard-nav-label{font-size:10px;line-height:11px}
 }
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%;overflow:hidden;background:#10181D;touch-action:none;overscroll-behavior:none;position:fixed;width:100%;top:0;left:0}

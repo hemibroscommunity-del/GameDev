@@ -15,8 +15,8 @@ export const dashboardPanelBus = {
     return s.length ? s[s.length - 1] : null;
   },
 
-  // Toggle the icon-row buttons use: tap the same icon to collapse,
-  // tap a different one to switch.
+  // Toggle the navigation-ribbon buttons use: tap the same destination
+  // to return to the neutral dashboard, or tap a different one to switch.
   toggle(id) {
     const cur = this.current();
     if (cur === id) {
