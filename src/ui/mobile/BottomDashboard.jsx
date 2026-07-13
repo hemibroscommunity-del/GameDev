@@ -1019,7 +1019,7 @@ export const BottomDashboard = () => {
                          player equips a shield or trains Fortification. */}
                       <div style={{ borderTop: `1px solid ${COL.divider}`, paddingTop: 2 }}>
                         <div
-                          onPointerUp={(e) => { e.stopPropagation(); setTooltip(`Crit chance — Power baseline plus the equipped weapon's crit channel (${getWeaponCritStat(R)}).  Allocate it under Weapons.`); }}
+                          onPointerUp={(e) => { e.stopPropagation(); setTooltip(`Crit chance — Power baseline plus the equipped weapon's crit channel (${getWeaponCritStat(R)}).  Allocate it under Build.`); }}
                           title="Crit chance from Power + weapon crit channel"
                           style={rowStyle}>
                           <span style={rowLabel}>Crit</span>
