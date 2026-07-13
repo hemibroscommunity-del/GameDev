@@ -1821,7 +1821,8 @@ export var BroTown = function BroTown(_ref0) {
     /* DASH_FRAC must stay in sync with the --dash-h CSS variable in
        src/styles/game.css.  Both express the bottom-dashboard fraction
        of the viewport. */
-    var DASH_FRAC = 0.28;
+    /* v2.3.1251: 0.28 -> 0.33 with --dash-h (taller dashboard pass). */
+    var DASH_FRAC = 0.33;
     function resize() {
       var dpr = window.devicePixelRatio || 1;
       var vw = vv ? vv.width : window.innerWidth;

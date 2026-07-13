@@ -4,7 +4,12 @@
 :root {
   /* Bottom dashboard band height.  Single source of truth — JS-side
      code (BroTown.jsx DASH_FRAC) must be kept in sync if changed. */
-  --dash-h:   28vh;
+  /* v2.3.1251: 28vh -> 33vh (owner + ChatGPT: the dashboard felt
+     compressed; ~+45px on real phones, capped at one-third of the
+     viewport so the world stays dominant).  The v2.3.1238 height-aware
+     tile formula turns the extra height into larger slots and looser
+     Build/DEF/DPS rows automatically. */
+  --dash-h:   33vh;
   /* v2.3.1235: Lantern Slate CORRECTION PASS (owner-approved ChatGPT
      review of the v2.3.1234 screenshots).  Slightly brighter, greener
      slate; four depth roles only (sheet / raised / well / well-deep);
@@ -102,8 +107,8 @@
    snaps the height to a whole CSS px (28vh uses the stable large-viewport
    height on iOS, so this does NOT jump when the address bar shows/hides).
    CSS-only + graceful: any engine without round() keeps plain 28vh. */
-@supports (height: round(nearest, 28vh, 1px)) {
-  :root { --dash-h: round(nearest, 28vh, 1px); }
+@supports (height: round(nearest, 33vh, 1px)) {
+  :root { --dash-h: round(nearest, 33vh, 1px); }
 }
 /* v2.3.1241: edge-parity — device-pixel hairlines.  A "1px" contour is 2–3
    physical pixels on Retina; that thickness (stacked with borders/shadows)
@@ -218,7 +223,9 @@
   pointer-events:none;
 }
 .bt-dashboard-toolbar-frame{
-  padding:4px 8px 7px;
+  /* v2.3.1251: +4px breathing room between the panels and the nav row
+     (part of the taller-dashboard pass). */
+  padding:8px 8px 7px;
   background:var(--ui-dashboard-tray);
 }
 .bt-dashboard-toolbar-ribbon{

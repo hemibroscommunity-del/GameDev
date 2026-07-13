@@ -463,7 +463,11 @@ const IconButton = ({ glyph, label, active, onClick, node, tut }) => {
    are unsupported the min() is dropped and behavior degrades to the
    previous width-driven sizing. */
 const FIT_GRID_CONTAIN = { containerType: 'size' };
-const FIT_TILE_W = 'min(100%, calc((100cqh - 8px) / 3))';
+/* v2.3.1251: owner — 2-column slot grids (bigger slots, extra rows in the
+   taller 33vh band): bag 2x4, loadout 2x3 + metric row.  Both grids are
+   FOUR rows tall (3 x 4px gaps), so the height budget divides by 4; the
+   100% cap now bites at half the column width, i.e. much larger tiles. */
+const FIT_TILE_W = 'min(100%, calc((100cqh - 12px) / 4))';
 
 const InventoryPreview = () => {
   const [, force] = useState(0);
@@ -484,7 +488,9 @@ const InventoryPreview = () => {
      the Loadout slots; a third row fits cleanly when the block is anchored
      to the top of the column. Items fill first, then faint empty slots pad
      out to 9 so it always reads as an inventory grid. */
-  const tiles = entries.slice(0, 9);
+  /* v2.3.1251: 2-col x 4-row grid (8 tiles) — owner: two wide columns of
+     larger slots, using the taller band's extra rows. */
+  const tiles = entries.slice(0, 8);
   const openFullBag = (e) => {
     if (e) e.stopPropagation();
     dashboardPanelBus.toggle('inventory');
@@ -543,7 +549,8 @@ const InventoryPreview = () => {
         flex: 1,
         minHeight: 0,
         display: 'grid',
-        gridTemplateColumns: 'repeat(3, 1fr)',
+        /* v2.3.1251: 3 -> 2 columns (owner: bigger slots, more rows). */
+        gridTemplateColumns: 'repeat(2, 1fr)',
         gridAutoRows: 'min-content',
         alignContent: 'start',
         /* v2.3.1236: owner dashboard feedback §2 — the v2.3.1235
@@ -567,7 +574,7 @@ const InventoryPreview = () => {
             <BagTile entry={e} />
           </div>
         ))}
-        {Array.from({ length: Math.max(0, 9 - tiles.length) }).map((_, i) => (
+        {Array.from({ length: Math.max(0, 8 - tiles.length) }).map((_, i) => (
           <div key={`pe-${i}`} aria-hidden="true" style={{
             aspectRatio: '1 / 1',
             /* v2.3.1238: owner feedback §2 — same height-aware cap as
@@ -1308,7 +1315,11 @@ export const BottomDashboard = () => {
                              v2.3.1242: the last real eyesore ("AMULET") was the
                              owner-approved relabel to "NECK" (4 chars) so it now
                              matches its CAPE neighbour exactly at this size. */
-                          fontSize: 7,
+                          /* v2.3.1251: 7 -> 10 — the 2-column loadout slots
+                             are ~40-47px wide, so the 10px floor finally
+                             fits the label set (verified on the rig at 390;
+                             overflow:hidden stays as the backstop). */
+                          fontSize: 10,
                           letterSpacing: '-0.02em',
                           maxWidth: '100%',
                           overflow: 'hidden',
@@ -1400,7 +1411,10 @@ export const BottomDashboard = () => {
                       flex: 1,
                       minHeight: 0,
                       display: 'grid',
-                      gridTemplateColumns: 'repeat(3, 1fr)',
+                      /* v2.3.1251: 3 -> 2 columns (owner) — six slots flow as
+                         chest·weapon / shield·legs / neck·cape; the DEF/DPS
+                         table moves to row 4. */
+                      gridTemplateColumns: 'repeat(2, 1fr)',
                       gridAutoRows: 'min-content',
                       alignContent: 'start',
                       gap: 4,
@@ -1458,7 +1472,7 @@ export const BottomDashboard = () => {
                             the bag's third row — so the line's band is
                             level with it by construction. */}
                         <div aria-hidden="true" style={{
-                          gridRow: 3,
+                          gridRow: 4, /* v2.3.1251: below the 2x3 slot rows */
                           gridColumn: 1,
                           aspectRatio: '1 / 1',
                           minWidth: 0,
@@ -1517,7 +1531,7 @@ export const BottomDashboard = () => {
                               }); }}
                             title={kind === 'weapon' ? `${slotLabel} · DMG ${dmgText} · DPS ${dpsText}` : 'Defense from worn armor'}
                             style={{
-                              gridRow: 3,
+                              gridRow: 4, /* v2.3.1251: 2-col grid — row 4 */
                               gridColumn: ci + 1,
                               minWidth: 0,
                               display: 'flex',
@@ -1576,18 +1590,22 @@ export const BottomDashboard = () => {
                      ROW-major (damage stats top, combat resources bottom).
                      With life skills shown, fall back to the old 3-col x 5-row
                      column-flow layout (Build in sub-col 1, skills in 2-3). */
-                  gridTemplateColumns: 'repeat(3, 1fr)',
+                  /* v2.3.1251: owner — 2-column build grid.  Column flow
+                     with 3 rows gives a semantic split: column 1 = the three
+                     damage stats (melee/bow/magic), column 2 = the three
+                     resource stats (HP/defense/endurance). */
+                  gridTemplateColumns: SHOW_LIFE_SKILLS ? 'repeat(3, 1fr)' : 'repeat(2, 1fr)',
                   /* v2.3.1236: owner feedback r5b — 1fr rows stretched this
                      grid over the full column height, so its cell content
                      floated LOWER than the top-packed Bag/Loadout rows.
-                     min-content rows + alignContent start pack the two rows
+                     min-content rows + alignContent start pack the rows
                      at the top, level with the neighbors' first rows. */
-                  gridTemplateRows: SHOW_LIFE_SKILLS ? 'repeat(5, 1fr)' : 'repeat(2, min-content)',
+                  gridTemplateRows: SHOW_LIFE_SKILLS ? 'repeat(5, 1fr)' : 'repeat(3, min-content)',
                   alignContent: SHOW_LIFE_SKILLS ? 'stretch' : 'start',
                   /* v2.3.1235: §4 — open grid: no gap, cells share faint
                      dividers instead of six individual dark cards. */
                   gap: SHOW_LIFE_SKILLS ? 2 : 0,
-                  gridAutoFlow: SHOW_LIFE_SKILLS ? 'column' : 'row',
+                  gridAutoFlow: 'column',
                   minHeight: 0,
                   /* v2.3.1238: owner feedback §3 — size container so the
                      stat cells (grown 6px by the reserved pill padding
@@ -1684,14 +1702,19 @@ export const BottomDashboard = () => {
                              overflow short viewports; the icon is the
                              shrink absorber (flexShrink 1, v2.3.1225).
                              -1px absorbs the row-1 cells' bottom border. */
-                          maxHeight: SHOW_LIFE_SKILLS ? undefined : 'calc(50cqh - 1px)',
+                          /* v2.3.1251: three rows now — cap at a third. */
+                          maxHeight: SHOW_LIFE_SKILLS ? undefined : 'calc(100cqh / 3 - 1px)',
                           /* v2.3.1235: §4 — OPEN cells: no fill, no card
                              border; faint shared dividers between cells
                              (right edge on cols 1-2, bottom edge on row 1
                              of the 3x2 build grid). */
                           background: 'transparent',
-                          borderRight: (!SHOW_LIFE_SKILLS && bi % 3 !== 2) ? `1px solid ${COL.divider}` : 'none',
-                          borderBottom: (!SHOW_LIFE_SKILLS && bi < 3) ? `1px solid ${COL.divider}` : 'none',
+                          /* v2.3.1251: column-flow 2x3 — one vertical divider
+                             between the columns (right edge of column 1 =
+                             indices 0-2), horizontal dividers under rows 1-2
+                             (row = bi % 3). */
+                          borderRight: (!SHOW_LIFE_SKILLS && bi < 3) ? `1px solid ${COL.divider}` : 'none',
+                          borderBottom: (!SHOW_LIFE_SKILLS && bi % 3 !== 2) ? `1px solid ${COL.divider}` : 'none',
                           overflow: 'hidden',
                           cursor: 'pointer',
                           touchAction: 'none',
@@ -1842,7 +1865,14 @@ export const BottomDashboard = () => {
                (was '30%' of the fractional band), so the ribbon frame never
                lands on a sub-pixel vertical coord that would resample its
                contour on Retina.  Panel mode was already 68. */
-            height: 68,
+            /* v2.3.1251: 68 -> 72 — the taller-dashboard pass adds 4px of
+               breathing room between the panels and the nav row via the
+               frame's top padding; the shelf grows by the same 4 so the
+               ribbon (and the buttons' rendered height) stay EXACTLY as
+               before.  A fixed +4 inside the fixed shelf would instead
+               squeeze the buttons to their 44px floor and clip the labels
+               (caught on the rig). */
+            height: 72,
             minHeight: 56,
             flex: '0 0 auto',
             display: 'flex',
