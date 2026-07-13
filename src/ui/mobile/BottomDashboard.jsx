@@ -1,8 +1,9 @@
 ﻿import React, { useEffect, useRef, useState } from 'react';
-/* v2.3.1236: owner feedback r3 §1 — WEAPON_TYPES / calcDisplayDmgRange /
-   calcDisplayDps dropped from this import: their only consumer was the
-   Loadout DMG/DPS/DEF footer line, removed this round. */
-import { xpRequired, calcMaxHp, calcMaxStam, calcMaxMana, calcCritChance, calcBlockReduction, getDefenseBlockBonus, getActiveWeapon, getWeaponCritStat, buildSkillUnspent, STAT_TO_WEAPON_CAT } from '../../data/gameSystems.js';
+/* v2.3.1236: owner feedback r4 §2 — WEAPON_TYPES / calcDisplayDmgRange /
+   calcDisplayDps return to this import (r3 §1 had dropped them with the
+   DMG/DPS/DEF footer): the readout is reinstated as the icon-based line
+   in the Loadout column's freed third row. */
+import { xpRequired, calcMaxHp, calcMaxStam, calcMaxMana, calcCritChance, calcBlockReduction, getDefenseBlockBonus, WEAPON_TYPES, getActiveWeapon, getWeaponCritStat, buildSkillUnspent, STAT_TO_WEAPON_CAT, calcDisplayDmgRange, calcDisplayDps } from '../../data/gameSystems.js';
 import { skillXpRequired } from '../../data/items.js';
 import { ZONES } from '../../data/zones.js';
 import { portraitDataUrl } from '../../rendering/characterPortrait.js';
@@ -526,13 +527,19 @@ const InventoryPreview = () => {
           the 3x3 block bottom-anchors in the column so its bottom row
           lines up with the loadout and Build grids' bottom rows (all
           three columns share height and 4px bottom padding). */}
+      {/* v2.3.1236: owner feedback r4 §1 — 'end' -> 'start': the grids
+          now TOP-anchor instead, so the loadout's two slot rows sit
+          level with THIS grid's first two rows (identical geometry:
+          3 equal columns, gap 4, padding 0, square min-content rows,
+          same ColHeader above, same 4px column top padding).  The
+          loadout's freed third row hosts its reinstated damage line. */}
       <div style={{
         flex: 1,
         minHeight: 0,
         display: 'grid',
         gridTemplateColumns: 'repeat(3, 1fr)',
         gridAutoRows: 'min-content',
-        alignContent: 'end',
+        alignContent: 'start',
         /* v2.3.1236: owner dashboard feedback §2 — the v2.3.1235
            well-deep gradient tray (background/border/inset shadow/
            padding) is gone; the slots grow into the freed space and
@@ -1110,7 +1117,10 @@ export const BottomDashboard = () => {
                    DMG/DPS/DEF readout moved to a footer line (§4) so the
                    six slots match the bag cells' size exactly.
                    r3 §1: that footer is now removed outright — the info
-                   lives in the item picker and stat screen. */
+                   lives in the item picker and stat screen.
+                   r4 §2: ...and it's back, by owner request, as a compact
+                   icon-based line occupying the grid's third row (level
+                   with the bag's third row now that both grids top-align). */
                 flex: '1 1 0',
                 display: 'flex',
                 flexDirection: 'column',
@@ -1131,11 +1141,31 @@ export const BottomDashboard = () => {
                      mirror calcWeaponDmg in gameLoop.js. */
                   const slot = R.activeSlot || 'melee';
                   const wpn = (S && R) ? getActiveWeapon(R) : null;
-                  /* v2.3.1236: owner feedback r3 §1 — wType/slotLabel and the
-                     calcDisplayDmgRange/Dps readout fed ONLY the footer line
-                     (removed below); dropped with it so eslint stays clean.
-                     The same numbers still live in the item picker popup and
-                     the stat screen. */
+                  /* v2.3.1236: owner feedback r4 §2 — wType/slotLabel and the
+                     calcDisplayDmgRange/Dps readout return (r3 §1 removed
+                     them with the footer): the readout is reinstated as the
+                     compact icon line in the grid's freed third row below,
+                     restored verbatim from the r2 (c4a427b1) derivations. */
+                  const wType = wpn && WEAPON_TYPES[wpn.type];
+                  /* v2.3.227: uppercased to match the other loadout
+                     labels (SHIELD / AMULET / CHEST / LEGS). */
+                  const slotLabel = slot === 'ranged' ? 'RANGED'
+                                   : slot === 'staff' ? 'STAFF' : 'MELEE';
+                  /* v2.3.1206: inline math (v2.3.912 stat driver +
+                     v2.3.1131 quality/hardness + v2.3.1133 crit-channel
+                     fold) extracted VERBATIM into gameSystems'
+                     calcDisplayDmgRange/calcDisplayDps so the popup +
+                     inventory readouts share it — this readout was the
+                     one correct copy; the helpers key stat/variance off
+                     wpn.type instead of activeSlot, identical whenever
+                     the slot holds its own weapon type (guaranteed by
+                     the v2.3.1159 slot repair). Numbers must not move. */
+                  let dmgText = '0', dpsText = '0.0';
+                  if (wType) {
+                    const range = calcDisplayDmgRange(R, wpn);
+                    dmgText = range.text;
+                    dpsText = calcDisplayDps(R, wpn).toFixed(1);
+                  }
                   /* v2.3.129: loadout slot uses the real in-world weapon
                      sprite (same artwork the player sees swinging) instead
                      of the small popup-icon placeholder.  URLs mirror
@@ -1307,6 +1337,15 @@ export const BottomDashboard = () => {
                      either layer can be re-equipped from here. */
                   const onTapChestLayers = openLoadout('chest');
                   const onTapLegsArmor = openLoadout('legs');
+                  /* v2.3.1069: worn-equipment defense readout.  NOTE: armor is
+                     currently cosmetic -- the only def value is the placeholder
+                     `def:5` per piece in gearCatalog; actual damage mitigation
+                     is server-authoritative and not yet wired to chest/legs.
+                     This line just surfaces what's equipped (chest + legs ×5)
+                     so the loadout shows an "effect" number; the real mechanic
+                     is a follow-up (see chat).  (v2.3.1236 r4 §2: restored
+                     with the reinstated readout line.) */
+                  const armorDef = (gearChestId !== 'none' ? 5 : 0) + (gearLegsId !== 'none' ? 5 : 0);
                   return (
                     /* v2.3.1069: the loadout is now ONE 3-row grid that mirrors
                        the quick-bag's 3x3 (same 3 columns, gridAutoRows:min-content
@@ -1315,22 +1354,27 @@ export const BottomDashboard = () => {
                     /* v2.3.1236: owner feedback r2 §2+§4 — the row-1 data cell
                        felt awkward and kept the slots smaller than the bag
                        cells; the grid is the clean 3-col x 2-row slot block. */
-                    /* v2.3.1236: owner feedback r3 §4 — geometry is now
+                    /* v2.3.1236: owner feedback r3 §4 — geometry is
                        IDENTICAL to the bag grid by the numbers: 3 equal
                        columns, gap 4, padding 0 (each column carries the
                        2px horizontal inset), so at equal column widths a
-                       loadout slot === a bag cell.  alignContent 'end'
-                       bottom-anchors the 3x2 block: with the same column
-                       height and the same 4px column bottom padding as the
-                       bag/Build columns, the bottom row of all three grids
-                       lands on the same y by construction. */
+                       loadout slot === a bag cell. */
+                    /* v2.3.1236: owner feedback r4 §1+§2 — alignContent
+                       'end' -> 'start' (both grids TOP-anchor now), and the
+                       grid grows an explicit THIRD row that mirrors the
+                       bag's: an invisible aspect-1/1 spacer cell sizes row 3
+                       to exactly one slot height, so rows 1-3 here match the
+                       bag's rows 1-3 by construction (same columns, gap,
+                       padding, row-sizing rule).  The reinstated damage
+                       readout spans that row, vertically centered — i.e.
+                       level with the bag's third row. */
                     <div style={{
                       flex: 1,
                       minHeight: 0,
                       display: 'grid',
                       gridTemplateColumns: 'repeat(3, 1fr)',
                       gridAutoRows: 'min-content',
-                      alignContent: 'end',
+                      alignContent: 'start',
                       gap: 4,
                       padding: 0,
                     }}>
@@ -1365,17 +1409,90 @@ export const BottomDashboard = () => {
                         {/* Cape: new back-layer slot (v2.3.692).  Render + equip
                             flow land in Phase 2; cell shows as empty for now. */}
                         {slotCell({ k: 'cape', label: 'CAPE', iconSrc: null, active: false })}
+                        {/* v2.3.1236: owner feedback r4 §2 — the damage
+                            readout returns (r3 §1 removed the r2 text
+                            footer; owner asked for a compact ICON line in
+                            the freed third row).  Invisible square spacer
+                            first: with gridAutoRows min-content it sizes
+                            row 3 to one slot height — the exact height of
+                            the bag's third row — so the line's band is
+                            level with it by construction. */}
+                        <div aria-hidden="true" style={{
+                          gridRow: 3,
+                          gridColumn: 1,
+                          aspectRatio: '1 / 1',
+                          minWidth: 0,
+                          minHeight: 0,
+                          pointerEvents: 'none',
+                        }} />
+                        {/* One centered line spanning row 3:
+                              [sword] 8-13  DPS 17.5  [shield] +10
+                            The sword is the SAME asset melee damage popups
+                            stamp on monsters (monsterCombat pushDmgPopup
+                            iconKey:'sword' -> /icons/popups/sword.webp);
+                            the shield is the popups-set partner (the
+                            pre-v2.3.1224 Build DEF icon — full-bleed,
+                            unlike the Bible combat-defense.webp with its
+                            12% built-in margin).  Icons 13px (spec "~14"),
+                            values 11/600 tabular #F4F0E7, tiny 9px muted
+                            "DPS" text label (no icon exists for DPS).  The
+                            "·" separators from the owner's sketch are
+                            dropped to 3px gaps — the fit allowance he gave
+                            for the ~112px inner column at 390px.  overflow
+                            hidden + nowrap is the clip backstop.  The two
+                            anchored tooltips are the r2 footer's own,
+                            handler bodies byte-identical to c4a427b1. */}
+                        <div style={{
+                          gridRow: 3,
+                          gridColumn: '1 / -1',
+                          minWidth: 0,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: 3,
+                          fontSize: 11,
+                          fontVariantNumeric: 'tabular-nums',
+                          lineHeight: 1.3,
+                          whiteSpace: 'nowrap',
+                          overflow: 'hidden',
+                        }}>
+                          <span
+                            /* v2.3.1235: batch-4 state-correction §2 — structured
+                               anchored tooltip; live DMG/DPS numbers are the same
+                               calcDisplayDmgRange/Dps values the line prints. */
+                            onPointerUp={(e) => { e.stopPropagation(); setTooltip({
+                                title: `DMG ${dmgText}`,
+                                benefit: `${dpsText} damage per second (${slotLabel.toLowerCase()})`,
+                                body: 'Tap the weapon slot to cycle melee → ranged → staff.',
+                                anchor: e.currentTarget.getBoundingClientRect(),
+                              }); }}
+                            title={`${slotLabel} · DMG ${dmgText} · DPS ${dpsText}`}
+                            style={{ display: 'inline-flex', alignItems: 'center', gap: 2, cursor: 'pointer', touchAction: 'none' }}>
+                            <img src="/icons/popups/sword.webp" alt="Damage" draggable={false}
+                              style={{ width: 13, height: 13, objectFit: 'contain', display: 'block', pointerEvents: 'none' }} />
+                            <span style={{ color: '#F4F0E7', fontWeight: 600 }}>{dmgText}</span>
+                            <span style={{ color: '#8D9B98', fontWeight: 600, fontSize: 9 }}> DPS </span>
+                            <span style={{ color: '#F4F0E7', fontWeight: 600 }}>{dpsText}</span>
+                          </span>
+                          <span
+                            /* v2.3.1235: batch-4 state-correction §2 — structured
+                               anchored tooltip; armorDef is the same live number
+                               the line prints (chest + legs ×5 placeholder). */
+                            onPointerUp={(e) => { e.stopPropagation(); setTooltip({
+                                title: `DEF +${armorDef}`,
+                                benefit: `+${armorDef} defense from worn armor`,
+                                body: 'Counts chest + legs pieces; armor damage mitigation is not wired up yet.',
+                                anchor: e.currentTarget.getBoundingClientRect(),
+                              }); }}
+                            title="Defense from worn armor"
+                            style={{ display: 'inline-flex', alignItems: 'center', gap: 2, cursor: 'pointer', touchAction: 'none' }}>
+                            <img src="/icons/popups/shield-defense.webp" alt="Defense" draggable={false}
+                              style={{ width: 13, height: 13, objectFit: 'contain', display: 'block', pointerEvents: 'none' }} />
+                            <span style={{ color: '#F4F0E7', fontWeight: 600 }}>+{armorDef}</span>
+                          </span>
+                        </div>
                       </div>
                   );
-                  /* v2.3.1236: owner feedback r3 §1 — the r2 DMG/DPS/DEF
-                     footer line that followed the grid here is REMOVED
-                     entirely (owner: useful info, not enough room; it
-                     already lives in the item picker popup and the stat
-                     screen).  Its two anchored-tooltip onPointerUp handlers
-                     (the weapon DMG·DPS span tooltip and the DEF span
-                     tooltip) were the footer's own and are dropped with it —
-                     no other dashboard element showed that info, so nothing
-                     to rehome. */
                 })()}
               </div>
 
@@ -1403,11 +1520,12 @@ export const BottomDashboard = () => {
               }}>
                 <ColHeader>{SHOW_LIFE_SKILLS ? 'Stats · Skills' : 'Build'}</ColHeader>
                 {/* v2.3.1236: owner feedback r3 §4 — no alignment change
-                    needed HERE for the bottom line-up: flex:1 + 1fr rows
-                    mean this grid already fills the column's content area,
-                    so its bottom edge sits on the column's 4px bottom
-                    padding — the same y the bag/loadout grids now
-                    bottom-anchor to via alignContent:'end'. */}
+                    needed HERE for the line-up: flex:1 + 1fr rows mean this
+                    grid fills the column's content area top-to-bottom, so
+                    its top edge already sits where the bag/loadout grids
+                    now START (r4 §1 flipped them to alignContent:'start')
+                    and its bottom stays on the shared 4px column padding —
+                    the band keeps one coherent top AND bottom edge. */}
                 <div style={{
                   flex: 1,
                   display: 'grid',
