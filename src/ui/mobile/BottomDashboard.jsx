@@ -170,8 +170,19 @@ const LIFE_SKILLS = [
 
 // Tiny column-header used at the top of each of the three dashboard
 // columns.  Centered above its column.
-const ColHeader = ({ children }) => (
-  <div style={{
+/* v2.3.1249: owner — panel-header TEXTURES only, with everything else
+   (spacing, alignment, type) untouched.  `variant` paints a raster
+   texture cap (real material cropped from the owner's approved mockup;
+   classes in game.css) behind the existing title.  FLOW-NEUTRAL by
+   construction: the negative margins are exactly cancelled by added
+   padding (top −4+4, sides −4+(2+4), bottom unchanged), so the title
+   glyphs and every sibling stay at the same pixel; the cap just paints
+   edge-to-edge through the column's 4px inset.  Verified by pixel-diff
+   against the pre-change build. */
+const ColHeader = ({ variant, children }) => (
+  <div
+    className={variant ? `bt-dashboard-panel-header bt-dashboard-panel-header--${variant}` : undefined}
+    style={{
     /* v2.3.1236: owner dashboard feedback §1 — the 16px icon is gone;
        the freed space goes to a larger title (11 -> 13/700, same
        uppercase + .14em tracking). */
@@ -194,6 +205,8 @@ const ColHeader = ({ children }) => (
     marginBottom: 4,
     whiteSpace: 'nowrap',
     overflow: 'hidden',
+    /* v2.3.1249: flow-neutral cap offsets (see the note above). */
+    ...(variant ? { margin: '-4px -4px 4px', padding: '4px 6px 2px' } : null),
   }}>
     <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{children}</span>
   </div>
@@ -957,7 +970,7 @@ export const BottomDashboard = () => {
               }}>
                 {/* v2.3.1065: BAG title matching the Loadout/Build ColHeaders. */}
                 {/* v2.3.1236: owner dashboard feedback §1 — icon prop removed. */}
-                <ColHeader>Bag</ColHeader>
+                <ColHeader variant="bag">Bag</ColHeader>
                 {/* v2.3.155: hybrid HP/MP/END card replaced with a
                     compact inventory preview. The derived stats it used
                     to show (Crit / Block / Zone / Kills / Time) are
@@ -1131,7 +1144,7 @@ export const BottomDashboard = () => {
                 position: 'relative',
                 zIndex: 1,
               }}>
-                <ColHeader>Loadout</ColHeader>
+                <ColHeader variant="loadout">Loadout</ColHeader>
                 {(() => {
                   /* DMG/DPS calc — mirrors WeaponSwapBar.readState() so the
                      numbers match what combat actually rolls.  Stat driver
@@ -1519,7 +1532,9 @@ export const BottomDashboard = () => {
                             }}>
                             {/* v2.3.1242: reconcile onto the merged #269 dashboard — approved dashboard-text color + the #268 10px font floor. */}
                             <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.08em', color: 'var(--ui-dashboard-text-secondary)' }}>{hdr}</span>
-                            <span style={{ fontSize: 11, fontWeight: 600, fontVariantNumeric: 'tabular-nums', color: '#F4F0E7', whiteSpace: 'nowrap' }}>{val}</span>
+                            {/* v2.3.1250: owner — DEF reads cyan, DPS reads green
+                                (was uniform #F4F0E7 warm white). */}
+                            <span style={{ fontSize: 11, fontWeight: 600, fontVariantNumeric: 'tabular-nums', color: kind === 'def' ? '#6FCBD6' : '#7BCD84', whiteSpace: 'nowrap' }}>{val}</span>
                           </div>
                         ))}
                       </div>
@@ -1546,7 +1561,7 @@ export const BottomDashboard = () => {
                    as the shared bottom-padding for the §4 alignment. */
                 padding: '4px 4px 6px',
               }}>
-                <ColHeader>{SHOW_LIFE_SKILLS ? 'Stats · Skills' : 'Build'}</ColHeader>
+                <ColHeader variant="build">{SHOW_LIFE_SKILLS ? 'Stats · Skills' : 'Build'}</ColHeader>
                 {/* v2.3.1236: owner feedback r3 §4 — no alignment change
                     needed HERE for the line-up: flex:1 + 1fr rows mean this
                     grid fills the column's content area top-to-bottom, so
