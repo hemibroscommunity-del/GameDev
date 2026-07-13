@@ -171,7 +171,9 @@ const ColHeader = ({ children }) => (
     /* v2.3.1236: owner dashboard feedback §1 — the 16px icon is gone;
        the freed space goes to a larger title (11 -> 13/700, same
        uppercase + .14em tracking, underline kept). */
-    fontSize: 13,
+    /* v2.3.1236: owner feedback r2 §3 — 13 was a notch too loud next to
+       the slot grids; 12/700 keeps the hierarchy without shouting. */
+    fontSize: 12,
     fontWeight: 700,
     color: COL.text2,
     letterSpacing: '.14em',
@@ -506,7 +508,8 @@ const InventoryPreview = () => {
       title="Tap to open Bag"
     >
       {/* v2.3.1057: 3-col x 3-row slot grid mirroring the Loadout column's
-          square grid (same 3 columns, same gap:3).  With all three columns
+          square grid (same 3 columns, same gap — 4 as of v2.3.1236 owner
+          feedback r2 §2).  With all three columns
           equal width, each square comes out the exact loadout square size.
           Tiles stay square (ItemTile's default aspectRatio 1/1); the block
           is centered vertically (alignContent:center) under the BAG title so
@@ -895,7 +898,11 @@ export const BottomDashboard = () => {
             flexDirection: 'column',
             minHeight: 0,
           }}>
-            <div style={{ flex: 1, display: 'flex', gap: 8, minHeight: 0 }}>
+            {/* v2.3.1236: owner feedback r2 §1 — 1px var(--ui-line) divider
+                divs between the three columns, full column height; row gap
+                8 -> 4 so each divider sits centered in ~the same 9px of
+                total inter-column space as before. */}
+            <div style={{ flex: 1, display: 'flex', gap: 4, minHeight: 0 }}>
               {/* ── Left column — hybrid card: HP/MP/END chip row +
                   Crit/Move derived stats + session summary (Zone, Kills,
                   Playtime).  v2.3.126: portrait migrated to the top-right
@@ -907,7 +914,10 @@ export const BottomDashboard = () => {
               <div data-tut="dash-bag" style={{
                 /* v2.3.1235: §4 widths — Bag 31% / Loadout 38% / Build 31%
                    (flex-grow ratios; Loadout is the wider center anchor). */
-                flex: '31 1 0',
+                /* v2.3.1236: owner feedback r2 §2 — back to equal thirds so
+                   a bag cell and a loadout slot render the same size (both
+                   grids: 3 equal columns, gap 4, 2px inner inset). */
+                flex: '1 1 0',
                 display: 'flex',
                 flexDirection: 'column',
                 minWidth: 0,
@@ -1062,6 +1072,9 @@ export const BottomDashboard = () => {
                 })()}
               </div>
 
+              {/* v2.3.1236: owner feedback r2 §1 — full-height column divider. */}
+              <div aria-hidden="true" style={{ flex: 'none', width: 1, alignSelf: 'stretch', background: 'var(--ui-line)' }} />
+
               {/* ── Middle column — Loadout.
                   v2.3.125 introduced the DMG/DPS line + 3-then-2 equip
                   grid.  v2.3.126 widened to flex 1.35 (was 1) using the
@@ -1076,7 +1089,10 @@ export const BottomDashboard = () => {
                    marginBottom:-5, raised gradient, border, top radii,
                    shadow) is removed at the owner's request: Loadout is
                    a plain flex column like Build, still 38% wide. */
-                flex: '38 1 0',
+                /* v2.3.1236: owner feedback r2 §2 — 38% -> equal third; the
+                   DMG/DPS/DEF readout moved to a footer line (§4) so the
+                   six slots match the bag cells' size exactly. */
+                flex: '1 1 0',
                 display: 'flex',
                 flexDirection: 'column',
                 minWidth: 0,
@@ -1220,7 +1236,14 @@ export const BottomDashboard = () => {
                              the full word on the narrowest supported phone
                              (11px floor waived for these placeholder tags;
                              clip is the backstop). */
-                          fontSize: 8,
+                          /* v2.3.1236: owner feedback r2 §2 — Loadout back
+                             to an equal third, so the slots are ~15%
+                             narrower than the 38%-column squares that 8px
+                             was measured against; scale the tag down the
+                             same ratio (8 -> 7) so AMULET's T keeps its
+                             crossbar at 390px.  overflow:hidden remains
+                             the backstop. */
+                          fontSize: 7,
                           letterSpacing: '-0.02em',
                           maxWidth: '100%',
                           overflow: 'hidden',
@@ -1288,12 +1311,16 @@ export const BottomDashboard = () => {
                   return (
                     /* v2.3.1069: the loadout is now ONE 3-row grid that mirrors
                        the quick-bag's 3x3 (same 3 columns, gridAutoRows:min-content
-                       square cells, alignContent:center, gap:3, padding:3) so the
-                       two panels share row geometry.  Row 1 is a full-width data
-                       cell sized to ~one square tall (aspectRatio) holding the
-                       DMG/DPS + DEF readouts; rows 2-3 are the six equipment slots
-                       -- which therefore line up EXACTLY with the bag's bottom two
-                       rows of squares. */
+                       square cells, alignContent:center) so the two panels share
+                       row geometry. */
+                    /* v2.3.1236: owner feedback r2 §2+§4 — the row-1 data cell
+                       felt awkward and kept the slots smaller than the bag
+                       cells; it moved to a compact footer line under the grid.
+                       The grid is now the clean 2x3 slot block, with geometry
+                       matched to the quick-bag (gap 3 -> 4, padding 3 -> 2 =
+                       the bag's InventoryPreview padding:2 + grid padding:0)
+                       so, at equal column widths, a slot === a bag cell. */
+                    <>
                     <div style={{
                       flex: 1,
                       minHeight: 0,
@@ -1301,60 +1328,10 @@ export const BottomDashboard = () => {
                       gridTemplateColumns: 'repeat(3, 1fr)',
                       gridAutoRows: 'min-content',
                       alignContent: 'center',
-                      gap: 3,
-                      padding: 3,
+                      gap: 4,
+                      padding: 2,
                     }}>
-                      {/* Row 1 — data cell spanning all three columns, ~one
-                          square tall so the grid reads as 3 rows (aspectRatio
-                          ≈ full-width / square; tune if a hair off). */}
-                      <div style={{
-                        gridColumn: '1 / -1',
-                        aspectRatio: '3.18 / 1',
-                        minHeight: 0,
-                        overflow: 'hidden',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: 2,
-                      }}>
-                        {/* v2.3.1235: Checkpoint B §2 — the combat summary was
-                           micro-text (9px one-liner). Restructured to the key-
-                           number ladder: line 1 is the headline DMG range at
-                           12/700 tabular, line 2 is DPS · DEF at 11/600. The
-                           old single-line clipping problem goes away because
-                           the widest value now lives on its own line. */}
-                        <div
-                          /* v2.3.1235: batch-4 state-correction §2 — structured
-                             anchored tooltip; live DMG/DPS numbers are the same
-                             calcDisplayDmgRange/Dps values the cell prints. */
-                          onPointerUp={(e) => { e.stopPropagation(); setTooltip({
-                            title: `DMG ${dmgText}`,
-                            benefit: `${dpsText} damage per second (${slotLabel.toLowerCase()})`,
-                            body: 'Tap the weapon slot to cycle melee → ranged → staff.',
-                            anchor: e.currentTarget.getBoundingClientRect(),
-                          }); }}
-                          title={`${slotLabel} · DMG ${dmgText} · DPS ${dpsText}`}
-                          style={{ fontSize: 12, fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: COL.text, letterSpacing: 0, textAlign: 'center', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', cursor: 'pointer', touchAction: 'none' }}>
-                          <span style={{ color: COL.muted, fontWeight: 600 }}>DMG </span>{dmgText}
-                        </div>
-                        <div
-                          /* v2.3.1235: batch-4 state-correction §2 — structured
-                             anchored tooltip; armorDef is the same live number
-                             the readout prints (chest + legs ×5 placeholder). */
-                          onPointerUp={(e) => { e.stopPropagation(); setTooltip({
-                            title: `DEF +${armorDef}`,
-                            benefit: `+${armorDef} defense from worn armor`,
-                            body: 'Counts chest + legs pieces; armor damage mitigation is not wired up yet.',
-                            anchor: e.currentTarget.getBoundingClientRect(),
-                          }); }}
-                          title="Defense from worn armor"
-                          style={{ fontSize: 11, fontWeight: 600, fontVariantNumeric: 'tabular-nums', color: COL.text, letterSpacing: 0, textAlign: 'center', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', cursor: 'pointer', touchAction: 'none' }}>
-                          <span style={{ color: COL.muted }}>DPS </span>{dpsText}
-                          <span style={{ color: COL.muted }}>  ·  DEF </span>+{armorDef}
-                        </div>
-                      </div>
-                      {/* Rows 2-3 — the six equipment slots (Chest·Weapon·Shield
+                      {/* The six equipment slots (Chest·Weapon·Shield
                           / Legs·Amulet·Cape). */}
                       {slotCell({
                           k: 'chest',
@@ -1386,9 +1363,68 @@ export const BottomDashboard = () => {
                             flow land in Phase 2; cell shows as empty for now. */}
                         {slotCell({ k: 'cape', label: 'CAPE', iconSrc: null, active: false })}
                       </div>
+                    {/* v2.3.1236: owner feedback r2 §4 — the DMG/DPS/DEF
+                        readout relocated from the grid's row-1 data cell to
+                        ONE compact centered footer line under the slots:
+                        11px tabular, muted labels / 600-weight values.  The
+                        two tooltip handlers moved host-for-host (weapon
+                        tooltip wraps the DMG·DPS span, defense tooltip wraps
+                        the DEF span); handler bodies unchanged.  flex:'none'
+                        so any vertical squeeze comes out of the grid's
+                        alignContent centering slack, never the slot size
+                        (slots are width-driven squares). */}
+                    <div style={{
+                      flex: 'none',
+                      marginTop: 2,
+                      padding: '0 2px',
+                      fontSize: 11,
+                      fontVariantNumeric: 'tabular-nums',
+                      lineHeight: 1.3,
+                      textAlign: 'center',
+                      whiteSpace: 'nowrap',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                    }}>
+                      <span
+                        /* v2.3.1235: batch-4 state-correction §2 — structured
+                           anchored tooltip; live DMG/DPS numbers are the same
+                           calcDisplayDmgRange/Dps values the line prints. */
+                        onPointerUp={(e) => { e.stopPropagation(); setTooltip({
+                            title: `DMG ${dmgText}`,
+                            benefit: `${dpsText} damage per second (${slotLabel.toLowerCase()})`,
+                            body: 'Tap the weapon slot to cycle melee → ranged → staff.',
+                            anchor: e.currentTarget.getBoundingClientRect(),
+                          }); }}
+                        title={`${slotLabel} · DMG ${dmgText} · DPS ${dpsText}`}
+                        style={{ cursor: 'pointer', touchAction: 'none' }}>
+                        <span style={{ color: '#8D9B98' }}>DMG </span>
+                        <span style={{ color: '#F4F0E7', fontWeight: 600 }}>{dmgText}</span>
+                        <span style={{ color: '#8D9B98' }}> · DPS </span>
+                        <span style={{ color: '#F4F0E7', fontWeight: 600 }}>{dpsText}</span>
+                      </span>
+                      <span
+                        /* v2.3.1235: batch-4 state-correction §2 — structured
+                           anchored tooltip; armorDef is the same live number
+                           the line prints (chest + legs ×5 placeholder). */
+                        onPointerUp={(e) => { e.stopPropagation(); setTooltip({
+                            title: `DEF +${armorDef}`,
+                            benefit: `+${armorDef} defense from worn armor`,
+                            body: 'Counts chest + legs pieces; armor damage mitigation is not wired up yet.',
+                            anchor: e.currentTarget.getBoundingClientRect(),
+                          }); }}
+                        title="Defense from worn armor"
+                        style={{ cursor: 'pointer', touchAction: 'none' }}>
+                        <span style={{ color: '#8D9B98' }}> · DEF </span>
+                        <span style={{ color: '#F4F0E7', fontWeight: 600 }}>+{armorDef}</span>
+                      </span>
+                    </div>
+                    </>
                   );
                 })()}
               </div>
+
+              {/* v2.3.1236: owner feedback r2 §1 — full-height column divider. */}
+              <div aria-hidden="true" style={{ flex: 'none', width: 1, alignSelf: 'stretch', background: 'var(--ui-line)' }} />
 
               {/* ── Right column — Stats + Life Skills merged.
                   v2.3.125: Build (5 char stats) and Life Skills (10) now
@@ -1397,7 +1433,10 @@ export const BottomDashboard = () => {
                   (5 rows of 2 skills each).  Per-cell XP strip preserved. */}
               <div ref={buildColRef} data-tut="dash-build" style={{
                 /* v2.3.1235: §4 widths — Build 31%, flat quiet readout. */
-                flex: '31 1 0',
+                /* v2.3.1236: owner feedback r2 §2 — equal third (this column
+                   actually WIDENS, 31% -> 33.3%, so its 3x2 text cells gain
+                   room; no inner-padding change needed). */
+                flex: '1 1 0',
                 display: 'flex',
                 flexDirection: 'column',
                 minWidth: 0,
