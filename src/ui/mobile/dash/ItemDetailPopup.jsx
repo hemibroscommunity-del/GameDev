@@ -627,7 +627,7 @@ export const ItemDetailPopup = () => {
             filter: on ? 'none' : 'grayscale(1) brightness(.6)', userSelect: 'none' }} />
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: 11, fontWeight: 700, color: on ? '#F7F2E7' : '#B9C1BF', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{name}</div>
-          <div style={{ fontSize: 9, color: '#96A2A0' }}>{sub}</div>
+          <div style={{ fontSize: 10, color: '#96A2A0' }}>{sub}</div>{/* v2.3.1239: 10px font floor (was 9) */}
         </div>
         <button type="button"
           onPointerUp={(e) => { e.stopPropagation(); if (on || canEquip) onToggle(); }}
@@ -734,7 +734,7 @@ export const ItemDetailPopup = () => {
                 filter: on ? 'none' : 'grayscale(1) brightness(.6)', userSelect: 'none' }} />
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontSize: 11, fontWeight: 700, color: on ? '#F7F2E7' : '#B9C1BF', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{on ? gearName('legs', legsId) : 'Steel Greaves'}</div>
-              <div style={{ fontSize: 9, color: '#96A2A0' }}>Armor · legs</div>
+              <div style={{ fontSize: 10, color: '#96A2A0' }}>Armor · legs</div>{/* v2.3.1239: 10px font floor (was 9) */}
             </div>
             <button type="button"
               onPointerUp={(e) => { e.stopPropagation(); toggleLegs(); }}

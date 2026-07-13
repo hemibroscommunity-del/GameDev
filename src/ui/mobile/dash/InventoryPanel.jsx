@@ -167,7 +167,7 @@ export const ItemTile = ({ ikey, count, style: styleOverride }) => {
           border: '1px solid #f5c542',
           borderRadius: 3,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: 9, lineHeight: 1,
+          fontSize: 10, lineHeight: 1, /* v2.3.1239: 10px font floor (was 9) */
         }}>⚓</span>
       )}
     </div>
@@ -417,7 +417,7 @@ const StashTile = ({ kind, obj, index }) => {
           border: '1px solid #f5c542',
           borderRadius: 3,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: 9, lineHeight: 1,
+          fontSize: 10, lineHeight: 1, /* v2.3.1239: 10px font floor (was 9) */
         }}>⚓</span>
       )}
     </div>

@@ -369,7 +369,8 @@ input{font-family:inherit}
 .bt-plist-dot{width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;
   font-size:11px;font-weight:800;flex-shrink:0}
 .bt-plist-name{font-size:11px;color:#fff;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.bt-plist-sub{font-size:8px;color:rgba(255,255,255,.4)}
+/* v2.3.1239: owner feedback — 10px font floor across menus (was 8px) */
+.bt-plist-sub{font-size:10px;color:rgba(255,255,255,.4)}
 /* v2.3.1234: z 30 → 32 — decision modals shared rung 30 with the
    joystick visuals + dashboard, and DOM order painted the JOYSTICKS on
    top of every open panel (visible in QA screenshots). Modals must beat
@@ -874,9 +875,15 @@ input{font-family:inherit}
    fullscreen modal: the container is click-through (pointer-events:none) so
    only the window itself is interactive and the world stays visible. Sits
    above the dashboard band (z 120 > dash z 30). */
+/* v2.3.1239: owner feedback — the card was min(94vw,460px) and centered, so
+   it read slightly NARROWER than the full-width dashboard band it sits over.
+   Match the band's inner content box exactly: the band is full-width
+   (left:0/right:0) with a 12px horizontal inner inset (BottomDashboard body
+   padding '4px 12px 6px'), so the card gets 12px side insets and stretches
+   to fill (width:100%, no 460px cap). */
 .bt-mayor{position:fixed;left:0;right:0;bottom:0;z-index:120;display:flex;align-items:flex-end;justify-content:center;
-  pointer-events:none;padding:0 8px calc(env(safe-area-inset-bottom,0px) + 10px);font-family:'Source Sans 3',sans-serif}
-.bt-mayor__win{pointer-events:auto;position:relative;width:min(94vw,460px);display:flex;gap:12px;align-items:stretch;padding:12px 14px;border-radius:14px;
+  pointer-events:none;padding:0 12px calc(env(safe-area-inset-bottom,0px) + 10px);font-family:'Source Sans 3',sans-serif}
+.bt-mayor__win{pointer-events:auto;position:relative;width:100%;max-width:none;display:flex;gap:12px;align-items:stretch;padding:12px 14px;border-radius:14px;
   background:linear-gradient(180deg,#241a12 0%,#140d08 100%);border:2px solid #d9a441;
   box-shadow:0 10px 30px rgba(0,0,0,.6),inset 0 0 0 1px rgba(255,221,150,.12);
   animation:bt-mayor-in .3s cubic-bezier(.2,.9,.3,1.1) both}
@@ -887,6 +894,13 @@ input{font-family:inherit}
 .bt-mayor__body{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;justify-content:center;gap:5px}
 .bt-mayor__name{color:#f4c66a;font-size:13px;font-weight:800;letter-spacing:.06em;text-shadow:0 1px 2px rgba(0,0,0,.6)}
 .bt-mayor__line{color:#f3ead6;font-size:13px;line-height:1.34;font-weight:600}
+/* v2.3.1239: owner feedback — a clearly-visible SKIP button so the intro is
+   never forced.  Secondary Lantern Slate treatment (#293B41 fill,
+   rgba(229,237,233,.20) border, #F4F0E7 text), ≥44px touch target. */
+.bt-mayor__skip{pointer-events:auto;flex:0 0 auto;align-self:center;min-width:64px;min-height:44px;padding:0 16px;border-radius:10px;
+  background:#293B41;border:1px solid rgba(229,237,233,.20);color:#F4F0E7;font-size:13px;font-weight:700;
+  letter-spacing:.06em;text-transform:uppercase;cursor:pointer;font-family:'Source Sans 3',sans-serif}
+.bt-mayor__skip:active{background:#31474e}
 
 /* Mining minigame — compact panel anchored bottom-centre like the
    woodchop/fishing minigames.  Stage on the left, slider on the right,
@@ -914,10 +928,12 @@ input{font-family:inherit}
   pointer-events:none;opacity:.4;transition:opacity .3s}
 .bt-kb-hints:hover{opacity:1;pointer-events:auto}
 .bt-kb-key{display:inline-flex;align-items:center;gap:3px;padding:2px 6px;background:rgba(0,0,0,.6);
-  border:1px solid rgba(255,255,255,.15);border-radius:4px;font-size:9px;font-weight:700;color:rgba(255,255,255,.7);
+  /* v2.3.1239: owner feedback — 10px font floor (was 9px); desktop-only kb hint */
+  border:1px solid rgba(255,255,255,.15);border-radius:4px;font-size:10px;font-weight:700;color:rgba(255,255,255,.7);
   font-family:'Source Sans 3',sans-serif;white-space:nowrap}
 .bt-kb-key kbd{display:inline-block;padding:1px 4px;background:rgba(255,255,255,.12);border-radius:2px;
-  font-size:8px;font-weight:800;color:#fff;min-width:14px;text-align:center}
+  /* v2.3.1239: owner feedback — 10px font floor (was 8px); desktop-only kb hint */
+  font-size:10px;font-weight:800;color:#fff;min-width:14px;text-align:center}
 .bt-crosshair-cursor{cursor:crosshair !important}
 
 /* ═══ DESKTOP STAT HUD — replaces joystick donuts on pointer:fine ═══ */
@@ -929,7 +945,8 @@ input{font-family:inherit}
   .bt-ds-icon{width:14px;text-align:center;font-size:10px;flex-shrink:0}
   .bt-ds-track{flex:1;height:6px;border-radius:3px;background:rgba(0,0,0,.5);border:1px solid rgba(255,255,255,.08);overflow:hidden;position:relative}
   .bt-ds-fill{height:100%;border-radius:3px;transition:width .15s ease}
-  .bt-ds-val{font-size:8px;font-weight:800;color:rgba(255,255,255,.7);min-width:28px;text-align:right;font-family:'Source Sans 3',sans-serif}
+  /* v2.3.1239: owner feedback — 10px font floor (was 8px); desktop-only stat HUD */
+  .bt-ds-val{font-size:10px;font-weight:800;color:rgba(255,255,255,.7);min-width:28px;text-align:right;font-family:'Source Sans 3',sans-serif}
 }
 
 /* ═══════════════════════════════════════════

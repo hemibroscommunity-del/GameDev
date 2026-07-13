@@ -95,7 +95,7 @@ const Slot = ({ slot, item, label, onTap }) => {
         )}
       </div>
       <div style={{
-        marginTop: 4, fontSize: 9, letterSpacing: 0.3,
+        marginTop: 4, fontSize: 10, letterSpacing: 0.3, /* v2.3.1239: 10px font floor (was 9) */
         color: empty ? 'rgba(238, 242, 235, 0.40)' : 'rgba(238, 242, 235, 0.62)',
         fontFamily: FONT.sans,
       }}>{label}</div>
@@ -157,7 +157,7 @@ const ShortcutPickerSheet = ({ slotIdx, onPick, onCancel }) => {
               display: 'flex', flexDirection: 'column', alignItems: 'center',
             }}>
               <ItemArt item={it} size={32} />
-              <div style={{ fontSize: 9, color: INV.textPrimary, fontFamily: FONT.sans, marginTop: 2,
+              <div style={{ fontSize: 10, color: INV.textPrimary, fontFamily: FONT.sans, marginTop: 2, /* v2.3.1239: 10px font floor (was 9) */
                 whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%' }}>
                 {it.name}
               </div>

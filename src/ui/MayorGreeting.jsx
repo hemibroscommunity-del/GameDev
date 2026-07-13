@@ -103,6 +103,18 @@ export const MayorGreeting = ({ onComplete }) => {
             &ldquo;Another one washes ashore. Relax &mdash; everyone starts as driftwood.&rdquo;
           </div>
         </div>
+        {/* v2.3.1239: owner feedback — SKIP dismisses the whole greeting
+            immediately.  It calls the same close() the 'ended'/safety-timer
+            path uses, so it marks the once-per-browser seen flag, restores
+            the zone music, and fires onComplete — nothing downstream breaks. */}
+        <button
+          type="button"
+          className="bt-mayor__skip"
+          onClick={close}
+          aria-label="Skip Mayor intro"
+        >
+          Skip
+        </button>
       </div>
     </div>
   );

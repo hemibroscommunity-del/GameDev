@@ -1113,8 +1113,16 @@ export class EffectsRenderer {
       if (zone.atmosphere.vignette) {
         gfx.rect(0, 0, viewW, 30);
         gfx.fill({ color: 0x000000, alpha: 0.1 });
-        gfx.rect(0, viewH - 30, viewW, 30);
-        gfx.fill({ color: 0x000000, alpha: 0.1 });
+        /* v2.3.1239: owner feedback — the BOTTOM vignette strip is removed.
+           The atmosphere layer is screen-space and the world canvas ends at
+           bottom:var(--dash-h) (butted against the BottomDashboard), so this
+           30px-tall 10%-black band sat directly on the dashboard's top edge
+           and read as a faint gray "phantom XP bar" hovering above the band —
+           the SECOND source of the bar the v2.3.1238 boxShadow removal killed
+           in town (it only reappeared in zones with atmosphere.vignette, i.e.
+           outside town; pixel-probed and confirmed by isolating this layer).
+           The TOP vignette stays: it darkens the real top screen edge (sky
+           framing) and is nowhere near the dashboard. */
       }
     }
     if (S._dayNightCache?.nightAlpha > 0) {

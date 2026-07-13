@@ -411,14 +411,14 @@ export function TouchControls(props) {
       }
     }, React.createElement('div', {
       style: {
-        fontSize: 5,
+        fontSize: 10, // v2.3.1239: 10px font floor (was 5); fits 60px shield button
         fontWeight: 700,
         color: 'rgba(255,255,255,.5)',
         letterSpacing: '.3px'
       }
     }, 'ENERGY'), React.createElement('div', {
       style: {
-        fontSize: 8,
+        fontSize: 10, // v2.3.1239: 10px font floor (was 8); stamina value on shield button
         fontWeight: 900,
         color: '#fff',
         textShadow: '0 1px 2px rgba(0,0,0,.8)'
