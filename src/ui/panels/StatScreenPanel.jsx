@@ -1,5 +1,5 @@
 import React from 'react';
-import { BT_AUDIO, calcBlockReduction, calcCritChance, calcCritMult, calcDisplayDmgRange, calcMoveSpeed, getActiveWeapon, getDefenseBlockBonus, getWeaponCritDmgStat, getWeaponCritStat, xpRequired } from '@/data/index.js';
+import { BT_AUDIO, calcBlockReduction, calcCritChance, calcCritMult, calcDisplayDmgRange, calcMoveSpeed, getActiveWeapon, getDefenseBlockBonus, getWeaponCritDmgStat, getWeaponCritStat, weaponXpRequired, xpRequired } from '@/data/index.js';
 import { _objectSpread, _slicedToArray } from '@/lib/babelHelpers.js';
 
 /* === StatScreenPanel — character stats / allocation === */
@@ -23,6 +23,17 @@ import { _objectSpread, _slicedToArray } from '@/lib/babelHelpers.js';
    (locked hitbox floor) and the locked state reads as a brass-soft
    selection instead of a filled stat-color button. Styles + static
    JSX only; every handler body is byte-identical. */
+/* v2.3.1236: owner feedback — stat screen shows the six combat skills;
+   Weapons menu renamed Build.  The five tier-1 stat rows (Power/
+   Vitality/Agility/Mind/Endurance) were STALE presentation — the game's
+   only combat skills are Melee / Bow / Magic / Defense / HP / Endurance
+   (the Build panel's tabs).  Rows now read the exact data T2Panel
+   derives (its sk/need): weapon skills off R.weaponSkills on the
+   weaponXpRequired curve, Defense off R.defenseSkill, HP/Endurance off
+   the use-trained vitality/endurance stat level + R._buildProg on the
+   grid curve.  The lock buttons (live gameplay — combatHelpers reads
+   R._statLocks) re-home onto their underlying stat key; handler bodies
+   byte-identical. */
 export function StatScreenPanel(props) {
   var rpgState = props.rpgState,
     stateRef = props.stateRef,
@@ -33,6 +44,22 @@ export function StatScreenPanel(props) {
      (the v2.3.1206 InventoryPanel convention). */
   var liveRpg = (stateRef.current && stateRef.current.rpg) || rpgState || {};
   var _dmgRange = calcDisplayDmgRange(liveRpg, getActiveWeapon(liveRpg));
+  /* v2.3.1236: owner feedback — combat-skill row data, the exact
+     derivations T2Panel reads: weapon skills live in R.weaponSkills
+     (sword/bow/staff, {level, xp}) on the weaponXpRequired curve;
+     Defense in R.defenseSkill; HP/Endurance have no separate skill
+     track — the STAT is the level (vitality/endurance) with _buildProg
+     progress on the grid curve (max(200, floor(xpRequired(level)))).
+     Read off liveRpg (the v2.3.1207 convention) so in-place S.rpg
+     training is fresh when the modal opens. */
+  var _wSkills = liveRpg.weaponSkills || {};
+  var _swSk = _wSkills.sword || { level: 0, xp: 0 };
+  var _bwSk = _wSkills.bow || { level: 0, xp: 0 };
+  var _stSk = _wSkills.staff || { level: 0, xp: 0 };
+  var _dfSk = liveRpg.defenseSkill || { level: 0, xp: 0 };
+  var _bProg = liveRpg._buildProg || {};
+  var _hpLvl = liveRpg.vitality || 0;
+  var _enLvl = liveRpg.endurance || 0;
   return React.createElement("div", {
     className: "bt-inspect",
     onClick: function onClick() {
@@ -186,32 +213,53 @@ export function StatScreenPanel(props) {
       marginBottom: 6,
       marginTop: 4
     }
-  }, "Tier 1 — Capacity ", rpgState.unspentT1 > 0 ? /*#__PURE__*/React.createElement("span", {
+  }, "Combat Skills" /* v2.3.1236: owner feedback — header was "Tier 1 —
+     Capacity (permanent)": the five tier-1 stat rows it captioned were
+     stale presentation, replaced below by the six real combat skills.
+     Kept history — the brass
+     "(N pts)" unspentT1 badge is GONE: it was the screen's last
+     allocation affordance and the counter is unspendable dead data.
+     unspentT1 is only ever SET by the old-save migration (BroTown.jsx
+     ~2015) and summed into unspentPts; nothing decrements it, no client
+     code sends stat_allocate (only the wsClient passthrough exists), and
+     the server's _handleStatAllocate spends unspentT2 — pinned 0 since
+     the T2 retirement.  Skills train by USE (addBuildProg); points are
+     assigned only in the per-build channel grids (T2Panel).  The lock
+     buttons below are NOT allocation and stay: addBuildProg consults
+     R._statLocks (combatHelpers.js:151, :279) to burn a locked stat's
+     training share — live gameplay. */), /* v2.3.1236: owner feedback — one-line pointer to the
+     real point-assignment destination (12px muted, copy floor). */
+  /*#__PURE__*/React.createElement("div", {
     style: {
-      color: 'var(--ui-brass)'
+      fontSize: 12,
+      color: 'var(--ui-text-muted)',
+      marginBottom: 6
     }
-  }, "(".concat(rpgState.unspentT1, " pts)")) : '', " ", /*#__PURE__*/React.createElement("span", {
-    style: {
-      fontSize: 11,
-      fontWeight: 600,
-      letterSpacing: '.04em',
-      textTransform: 'none',
-      color: 'var(--ui-text-disabled)'
-    }
-  }, "permanent")), [/* v2.3.1235: batch-2 rollout — stat identity via the UI-Bible
-        stat-*.webp icons (emoji in chrome is banned; the old emoji stays
-        only as the image-failure fallback), row colors onto the approved
-        semantic tokens (hp/positive/stamina/info/magic). */
-  ['Power', 'power', '⚔️', '/icons/ui/stat-power.webp', 'Base damage', '#E35D5B'], ['Vitality', 'vitality', '❤️', '/icons/ui/stat-vitality.webp', 'Health pool', '#55B98A'], ['Endurance', 'endurance', '🛡️', '/icons/ui/stat-endurance.webp', 'Stamina pool', '#DFAE4E'], ['Agility', 'agility', '💨', '/icons/ui/stat-agility.webp', 'Speed & dodge', '#599FE5'], ['Mind', 'mind', '💎', '/icons/ui/stat-mind.webp', 'Mana pool', '#9A78D0']].map(function (_ref80) {
-    var _ref81 = _slicedToArray(_ref80, 6),
-      label = _ref81[0],
-      key = _ref81[1],
-      icon = _ref81[2],
-      iconSrc = _ref81[3],
-      desc = _ref81[4],
-      col = _ref81[5];
+  }, "Skills grow with use. Points are assigned per skill — see Build."), [/* v2.3.1236: owner feedback — SIX rows for the real combat skills
+        (replacing the five stale tier-1 stat rows).  Row tuples are
+        [id, label, lockKey, emoji-fallback, icon, color, level, xp,
+        xpNeed] — level/xp/need derived above off liveRpg, identical to
+        T2Panel's sk/need.  Icons are the T2Panel tab set; the v2.3.1235
+        rules stay (icon-with-emoji-fallback — emoji in chrome is banned;
+        approved semantic bar colors, Defense takes the mana blue).
+        lockKey is the T1 stat the row's lock freezes (Melee→power,
+        Bow→agility, Magic→mind, HP→vitality, Endurance→endurance);
+        _statLocks has no defense key, so the Defense row renders a
+        spacer instead of a lock. */
+  ['melee', 'Melee', 'power', '⚔️', '/icons/ui/combat-melee.webp?v=2.3.1232', '#E35D5B', _swSk.level || 0, _swSk.xp || 0, weaponXpRequired(_swSk.level || 0)], ['bow', 'Bow', 'agility', '🏹', '/icons/ui/combat-bow.webp?v=2.3.1232', '#599FE5', _bwSk.level || 0, _bwSk.xp || 0, weaponXpRequired(_bwSk.level || 0)], ['magic', 'Magic', 'mind', '✨', '/icons/ui/combat-magic.webp?v=2.3.1232', '#9A78D0', _stSk.level || 0, _stSk.xp || 0, weaponXpRequired(_stSk.level || 0)], ['defense', 'Defense', null, '🛡️', '/icons/ui/combat-defense.webp?v=2.3.1232', '#4F8FDE', _dfSk.level || 0, _dfSk.xp || 0, weaponXpRequired(_dfSk.level || 0)], ['hp', 'HP', 'vitality', '❤️', '/icons/ui/stat-vitality.webp?v=2.3.1232', '#55B98A', _hpLvl, _bProg.vitality || 0, Math.max(200, Math.floor(xpRequired(_hpLvl)))], ['endurance', 'Endurance', 'endurance', '⚡', '/icons/ui/stat-endurance.webp?v=2.3.1232', '#DFAE4E', _enLvl, _bProg.endurance || 0, Math.max(200, Math.floor(xpRequired(_enLvl)))]].map(function (_ref80) {
+    var _ref81 = _slicedToArray(_ref80, 9),
+      id = _ref81[0],
+      label = _ref81[1],
+      key = _ref81[2],
+      icon = _ref81[3],
+      iconSrc = _ref81[4],
+      col = _ref81[5],
+      lvl = _ref81[6],
+      xp = _ref81[7],
+      need = _ref81[8];
+    var xpPct = need > 0 ? Math.max(0, Math.min(100, xp / need * 100)) : 0;
     return /*#__PURE__*/React.createElement("div", {
-      key: key,
+      key: id,
       style: {
         display: 'flex',
         alignItems: 'center',
@@ -254,7 +302,7 @@ export function StatScreenPanel(props) {
         fontWeight: 700,
         fontVariantNumeric: 'tabular-nums'
       }
-    }, rpgState[key] || 0)), /*#__PURE__*/React.createElement("div", {
+    }, lvl)), /*#__PURE__*/React.createElement("div", {
       style: {
         flex: 1,
         height: 6,
@@ -265,14 +313,16 @@ export function StatScreenPanel(props) {
       }
     }, /*#__PURE__*/React.createElement("div", {
       style: {
-        width: Math.min(100, (rpgState[key] || 0) / 4) + '%',
+        /* v2.3.1236: owner feedback — bar is skill XP toward next level
+           (T2Panel's xpPct), not the old stat-value/4 fill. */
+        width: xpPct + '%',
         height: '100%',
         background: col,
         borderRadius: 999,
         transition: 'width .2s'
       }
-    })), /*#__PURE__*/React.createElement("button", {
-      title: (rpgState._statLocks && rpgState._statLocks[key]) ? 'Locked — XP that would train ' + label + ' is burned. Click to unlock.' : 'Lock ' + label + ' at ' + (rpgState[key] || 0) + ' to commit to a pure build. XP that would train it will be burned.',
+    })), key ? /*#__PURE__*/React.createElement("button", {
+      title: (rpgState._statLocks && rpgState._statLocks[key]) ? 'Locked — XP that would train ' + label + ' is burned. Click to unlock.' : 'Lock ' + label + ' at ' + lvl + ' to commit to a pure build. XP that would train it will be burned.',
       style: {
         /* v2.3.1232: 32px touch target (was 18px) */
         /* v2.3.1235: batch-2 rollout — 32px was still below the locked
@@ -306,7 +356,18 @@ export function StatScreenPanel(props) {
         } catch (e) {}
         BT_AUDIO.beep(R._statLocks[key] ? 500 : 700, 0.05, 0.08, 'sine');
       }
-    }, (rpgState._statLocks && rpgState._statLocks[key]) ? '🔒' : '🔓'));
+    }, (rpgState._statLocks && rpgState._statLocks[key]) ? '🔒' : '🔓') : /*#__PURE__*/React.createElement("div", {
+      /* v2.3.1236: owner feedback — _statLocks has no defense key
+         (power/vitality/endurance/agility/mind only — gameSystems.js
+         defaults, BroTown.jsx migration), so the Defense row gets no
+         lock; a 44×44 spacer keeps its bar column aligned with the
+         lockable rows. */
+      style: {
+        width: 44,
+        height: 44,
+        flexShrink: 0
+      }
+    }));
   /* v2.3.1155: the "TIER 2 — TECHNIQUE" block (Ferocity / Elem Mastery /
      Fortification / Restoration / Influence) is GONE — the five generic
      stats were pinned 0 since v2.3.910 and are now deleted from the

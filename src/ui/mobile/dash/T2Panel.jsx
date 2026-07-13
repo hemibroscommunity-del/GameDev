@@ -176,52 +176,30 @@ export const T2Panel = () => {
   };
 
   return (
-    /* v2.3.1235: batch-1 QA — 20px scroll tail (panelStyle's 10px let the
-       last channel row sit sliced against the toolbar edge, reading as
-       clipped rather than scrollable; worse at 430 where more content
-       fits). */
-    <div style={{ ...panelStyle, paddingBottom: 20 }}>
-      {/* Header */}
-      <div style={{
-        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-        padding: '4px 2px 8px',
-        borderBottom: '1px solid ' + COL.divider,
-        marginBottom: 8,
-      }}>
-        <div>
-          {/* v2.3.1232: panel title 13/700 uppercase per Lantern Slate.
-              v2.3.1235: batch-1 QA — the sheet header already titles this
-              destination WEAPONS, so "Builds" is a SECTION header and takes
-              the ladder's 11/700 .14em muted treatment (it read as an
-              off-system bold-white heading next to CHANNELS). */}
-          <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.14em', color: COL.muted, display: 'flex', alignItems: 'baseline', gap: 8 }}>
-            Builds
-            {/* v2.3.1157: the combat build meter — a character finishes
-                at 1000 allocated points (1/3 of the 3000-slot grid). */}
-            {t2uniform && (
-              <span style={{ fontSize: 11, fontWeight: 700, fontVariantNumeric: 'tabular-nums', letterSpacing: 0, textTransform: 'none', color: atCeiling ? COL.gold : COL.muted }}>
-                {buildTotal}/{COMBAT_BUILD_CEILING}{atCeiling ? ' · complete' : ''}
-              </span>
-            )}
-          </div>
-          {/* v2.3.1235: batch-1 rollout — descriptive copy floor is 12px
-              on the locked type ladder (11 is reserved for labels). */}
-          <div style={{ fontSize: 12, color: COL.muted, marginTop: 2 }}>
-            {/* v2.3.1133: label caught up with v2.3.910's 1-pt-per-level change */}
-            {gridTab
-              ? (gridTab.stat === 'vitality'
-                ? 'Taking part in combat trains Vitality. Each level = +1 point.'
-                : 'Sprinting, blocking & rolling train Endurance. Each level = +1 point.')
-              : isDef
-                ? 'Block & mitigate hits to level Defense. Each level = +1 point.'
-                : 'Deal damage to level a weapon. Each level = +1 point.'}
-          </div>
-        </div>
-      </div>
-
+    /* v2.3.1236: owner feedback — the Weapons sheet was "cumbersome":
+       every tab has 4-5 channels but the old layout (68px Builds header,
+       ~67px three-line channel cards) always scrolled.  The REAL body
+       under the 56vh sheet at 390×844 is ~360px, not ~430: 472.6 (56vh)
+       − 44 (sheet header) − 68 (persistent toolbar) − 1 (band border).
+       No-scroll budget: 6 top pad + 52 tabs (48px + 4) + 28 skill bar +
+       pool (24px + 4) + 19 hint/meter line (15px + 4) + 5×45 channel
+       rows + 4 tail = 334px ≤ 360, ending 25px above the fold so
+       panelStyle's 18px scroll-fade never dims a live row.  To get
+       there: the Builds header block is GONE (the sheet header already
+       says BUILD — the Weapons menu was renamed Build on this same
+       v2.3.1236 pass; the 1000-pt meter moves onto the hint line), the
+       training copy compresses to one 12px line, CHANNELS header +
+       standalone grid notice + per-row Max line fold into the hint line
+       / row badges, and channel rows become fixed two-line rows (label +
+       SOON/MAX badge, then derive · blurb inline-truncated at 11px)
+       sized by their 44×44 + button.  All four row states kept
+       (affordable / no-points / MAX / SOON at .55 opacity); tab and +
+       hitboxes stay at the 44px floor; every handler body is
+       byte-identical. */
+    <div style={{ ...panelStyle, padding: '6px 12px 4px' }}>
       {/* Category tabs — weapon categories + Defense (v2.3.693) + the
           HP/Endurance grids (v2.3.1154). */}
-      <div style={{ display: 'flex', gap: 6, marginBottom: 10 }}>
+      <div style={{ display: 'flex', gap: 6, marginBottom: 4 }}>
         {[...WEAPON_CATEGORIES, DEF_TAB, ...Object.keys(GRID_TABS)].map((c) => {
           const cIsDef = c === DEF_TAB;
           const cGrid = GRID_TABS[c] || null;
@@ -245,6 +223,10 @@ export const T2Panel = () => {
                    raised surface + brass bottom edge.  Lv/badge text
                    raised to the 11px readability floor.  Pointer
                    handler byte-identical. */
+                /* v2.3.1236: owner feedback — tab compressed to 48px for
+                   the no-scroll budget (icon 18→16, 3px pad, lineHeight-1
+                   text): 3+16+1+11+1+11+3+2px border = 48, still over the
+                   44px hitbox floor.  Pointer handler byte-identical. */
                 flex: 1,
                 position: 'relative',
                 minHeight: 44,
@@ -252,7 +234,7 @@ export const T2Panel = () => {
                 border: '1px solid ' + (sel ? COL.borderStrong : COL.border),
                 boxShadow: sel ? 'inset 0 -2px 0 ' + COL.accent : 'none',
                 borderRadius: 8,
-                padding: '6px 4px',
+                padding: '3px 2px',
                 color: sel ? COL.text : COL.text2,
                 fontFamily: 'inherit',
                 cursor: 'pointer',
@@ -262,11 +244,11 @@ export const T2Panel = () => {
             >
               {iconSrc
                 ? <img src={iconSrc} alt="" draggable={false}
-                    style={{ width: 18, height: 18, objectFit: 'contain' }}
+                    style={{ width: 16, height: 16, objectFit: 'contain' }}
                     onError={(e) => { e.currentTarget.replaceWith(document.createTextNode(meta.emoji)); }} />
-                : <span style={{ fontSize: 16, lineHeight: 1 }}>{meta.emoji}</span>}
-              <span style={{ fontSize: 11, fontWeight: 600 }}>{meta.label}</span>
-              <span style={{ fontSize: 11, fontWeight: 600, fontVariantNumeric: 'tabular-nums', color: sel ? COL.accent : COL.muted }}>Lv {lvl}</span>
+                : <span style={{ fontSize: 15, lineHeight: 1 }}>{meta.emoji}</span>}
+              <span style={{ fontSize: 11, fontWeight: 600, lineHeight: 1 }}>{meta.label}</span>
+              <span style={{ fontSize: 11, fontWeight: 600, lineHeight: 1, fontVariantNumeric: 'tabular-nums', color: sel ? COL.accent : COL.muted }}>Lv {lvl}</span>
               {p > 0 && (
                 <span style={{
                   position: 'absolute', top: -5, right: -4,
@@ -281,12 +263,14 @@ export const T2Panel = () => {
       </div>
 
       {/* Selected category skill bar + pool */}
+      {/* v2.3.1236: owner feedback — compressed to one 24px row (11px
+          lineHeight-1 label, 4px bar, pool chip padding 5→3px). */}
       <div style={{
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        gap: 8, marginBottom: 8,
+        gap: 8, marginBottom: 4,
       }}>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 11, color: COL.muted, marginBottom: 3, fontVariantNumeric: 'tabular-nums' }}>
+          <div style={{ fontSize: 11, lineHeight: 1, color: COL.muted, marginBottom: 3, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
             {(gridTab || (isDef ? DEF_META : (WEAPON_CATEGORY_META[activeCat] || {}))).label} skill · Lv {sk.level || 0}
             {/* v2.3.1207: cap is WEAPON_LEVEL_CAP (100 since v2.3.1156) — the stale 99 literal showed "(Max)" one level early. */}
             {(sk.level || 0) >= WEAPON_LEVEL_CAP ? ' (Max)' : ` · ${Math.round(xpPct)}% to next`}
@@ -302,11 +286,11 @@ export const T2Panel = () => {
         {/* v2.3.1232: pool readout is a recessed well; value 14/700 tabular,
             brass only while there are points to spend. */}
         <div style={{
-          fontSize: 14, fontWeight: 700, fontVariantNumeric: 'tabular-nums',
+          fontSize: 14, fontWeight: 700, lineHeight: 1, fontVariantNumeric: 'tabular-nums',
           color: unspent > 0 ? COL.accent : COL.muted,
           background: COL.well,
           boxShadow: 'inset 0 2px 4px rgba(0,0,0,.44), inset 0 1px 0 rgba(255,255,255,.035)',
-          padding: '5px 10px', borderRadius: 8,
+          padding: '4px 8px', borderRadius: 8,
           border: '1px solid ' + COL.divider,
           whiteSpace: 'nowrap',
         }}>
@@ -314,86 +298,105 @@ export const T2Panel = () => {
         </div>
       </div>
 
-      {/* v2.3.1154: old-worker notice — grid channels render as "Soon"
-          until the connected worker advertises caps.hpEndGrids. */}
-      {/* v2.3.1235: batch-1 rollout — descriptive copy floor is 12px. */}
-      {gridTab && !gridsLive && (
-        <div style={{ fontSize: 12, color: COL.gold, marginBottom: 8 }}>
-          Unlocking with the next server update — your points are safe.
-        </div>
-      )}
-
-      {/* Channels */}
-      {/* v2.3.1232: uppercase module header over the channel list */}
-      {/* v2.3.1235: batch-1 rollout — section headers are 11/700 .14em
-          muted on the locked type ladder (was 600/.12em). */}
+      {/* v2.3.1236: owner feedback — ONE 12px line replaces the header
+          block's training copy, the standalone old-worker grid notice
+          (v2.3.1154: grid channels render as "Soon" until the worker
+          advertises caps.hpEndGrids — that notice takes the line over in
+          gold when it applies) and the CHANNELS section header.  The
+          v2.3.1157 1000-pt combat build meter sits right-aligned on the
+          same line (was in the Builds header). */}
       <div style={{
-        fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.14em',
-        color: COL.muted, margin: '2px 2px 6px',
-      }}>Channels</div>
+        display: 'flex', alignItems: 'baseline', justifyContent: 'space-between',
+        gap: 8, marginBottom: 4,
+      }}>
+        {gridTab && !gridsLive ? (
+          <span style={{ fontSize: 12, lineHeight: 1.25, color: COL.gold, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            Unlocks with next server update — points safe.
+          </span>
+        ) : (
+          <span style={{ fontSize: 12, lineHeight: 1.25, color: COL.muted, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            {/* v2.3.1133: label caught up with v2.3.910's 1-pt-per-level change */}
+            {gridTab
+              ? (gridTab.stat === 'vitality'
+                ? 'Combat trains Vitality · +1 pt per level'
+                : 'Sprint, block & roll to train · +1 pt per level')
+              : isDef
+                ? 'Block & mitigate to train · +1 pt per level'
+                : 'Deal damage to train · +1 pt per level'}
+          </span>
+        )}
+        {t2uniform && (
+          <span style={{ fontSize: 11, fontWeight: 700, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', color: atCeiling ? COL.gold : COL.muted }}>
+            {buildTotal}/{COMBAT_BUILD_CEILING}{atCeiling ? ' · complete' : ''}
+          </span>
+        )}
+      </div>
       {channels.map((ch) => {
         const v = catSpecs[ch.key] || 0;
         const atCap = v >= channelCap;
         const canAdd = ch.active && unspent > 0 && !atCap;
-        /* v2.3.1235: batch-1 rollout — three corrections to the locked
-           sheet: (1) per-channel cards (off-token COL.tile fills) become
-           divider-separated rows directly on the sheet — one outer panel,
-           dividers between rows; (2) a brass-FILLED + on every affordable
-           row broke the one-gold-action-per-surface rule, so the stepper
-           is now the standard secondary button with a brass + glyph when
-           affordable (brass as accent, not fill) and faint #667875 when
-           not (the old '#687575' literal was a transposed-digit typo off
-           the token sheet); (3) SOON/Max/blurb text raised to the 11px
-           label / 12px copy floors.  Locked rows keep opacity .55 —
-           readable, reduced.  Pointer handler byte-identical. */
+        /* v2.3.1235: batch-1 rollout — divider-separated rows directly on
+           the sheet (no COL.tile cards); the stepper is the standard
+           secondary button with a brass + glyph when affordable (brass as
+           accent, not fill — one-gold-action rule) and COL.disabled when
+           not.  Locked rows keep opacity .55.  Pointer handler
+           byte-identical. */
+        /* v2.3.1236: owner feedback — fixed two-line 45px row so all 4-5
+           channels fit the sheet without scrolling: line 1 = label +
+           SOON/MAX badge (the v2.3.1235 "Max (100)." line becomes the MAX
+           badge), line 2 = live derive · blurb inline at 11px, nowrap +
+           ellipsis (the blurb dropped from 12px WITH the owner's explicit
+           sign-off on this pass — density beats the 12px copy floor
+           here).  Row height = the 44×44 + button + 1px divider; the
+           two-line text column (~32px) centers beside it. */
         return (
           <div key={ch.key} style={{
             display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'stretch',
-            gap: 3,
-            padding: '8px 2px',
+            alignItems: 'center',
+            gap: 8,
+            minHeight: 44,
             borderBottom: '1px solid ' + COL.divider,
             opacity: ch.active ? 1 : 0.55,
           }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, minWidth: 0 }}>
-                <span style={{ fontSize: 13, fontWeight: 700, color: COL.text }}>{ch.label}</span>
+                <span style={{ fontSize: 13, fontWeight: 700, lineHeight: 1.25, color: COL.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{ch.label}</span>
                 {!ch.active && (
                   <span style={{ fontSize: 11, fontWeight: 700, color: COL.gold, letterSpacing: '0.08em' }}>SOON</span>
                 )}
+                {atCap && (
+                  <span style={{ fontSize: 11, fontWeight: 700, color: COL.gold, letterSpacing: '0.08em' }}>MAX</span>
+                )}
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span style={{
-                  fontSize: 14, fontWeight: 700, fontVariantNumeric: 'tabular-nums',
-                  color: v > 0 ? COL.text : COL.text2,
-                  minWidth: 26, textAlign: 'right',
-                }}>{v}</span>
-                <button
-                  onPointerUp={(e) => { e.stopPropagation(); if (canAdd) addPoint(ch.key, ch.active); }}
-                  disabled={!canAdd}
-                  style={{
-                    width: 44, height: 44,
-                    background: COL.raised,
-                    color: canAdd ? COL.accent : COL.disabled,
-                    border: '1px solid ' + (canAdd ? COL.borderStrong : COL.border),
-                    borderRadius: 10,
-                    fontSize: 18, fontWeight: 700,
-                    cursor: canAdd ? 'pointer' : 'default',
-                    touchAction: 'manipulation',
-                    padding: 0,
-                    lineHeight: 1,
-                  }}
-                >+</button>
+              <div style={{ fontSize: 11, lineHeight: 1.25, marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                {ch.active && (
+                  <span style={{ color: COL.text, fontVariantNumeric: 'tabular-nums' }}>{ch.derive(v)}{' · '}</span>
+                )}
+                <span style={{ color: COL.muted }}>{ch.blurb}</span>
               </div>
             </div>
-            <div style={{ fontSize: 12, color: COL.muted }}>{ch.blurb}</div>
-            {ch.active && (
-              <div style={{ fontSize: 11, color: COL.text, fontVariantNumeric: 'tabular-nums' }}>{ch.derive(v)}</div>
-            )}
-            {atCap && (
-              <div style={{ fontSize: 11, fontWeight: 600, color: COL.gold }}>Max ({channelCap}).</div>
-            )}
+            <span style={{
+              fontSize: 14, fontWeight: 700, fontVariantNumeric: 'tabular-nums',
+              color: v > 0 ? COL.text : COL.text2,
+              minWidth: 26, textAlign: 'right', flexShrink: 0,
+            }}>{v}</span>
+            <button
+              onPointerUp={(e) => { e.stopPropagation(); if (canAdd) addPoint(ch.key, ch.active); }}
+              disabled={!canAdd}
+              style={{
+                width: 44, height: 44,
+                flexShrink: 0,
+                background: COL.raised,
+                color: canAdd ? COL.accent : COL.disabled,
+                border: '1px solid ' + (canAdd ? COL.borderStrong : COL.border),
+                borderRadius: 10,
+                fontSize: 18, fontWeight: 700,
+                cursor: canAdd ? 'pointer' : 'default',
+                touchAction: 'manipulation',
+                padding: 0,
+                lineHeight: 1,
+              }}
+            >+</button>
           </div>
         );
       })}

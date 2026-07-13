@@ -40,7 +40,15 @@ export function upscaleToFrameHeight(img, frameH = 256) {
    texture shrinks (the pickup-head HEAD_DS pattern, generalised). Every consumer
    that uses the body sprite's scale divides 256-space offsets by DISPLAY_DS in
    lockstep, so DISPLAY_DS=1 is an exact no-op + instant rollback. */
-export const DISPLAY_DS = 2;
+/* v2.3.1236: 2 -> 1 (owner: character sprite quality visibly declined at the
+   half-resolution display bake; restore the full 256px display textures,
+   accepting the longer bake/upload behind the loading screen and the ~4x
+   texture VRAM that v2.3.1120 traded away).  DISPLAY_DS=2 remains the
+   documented instant rollback if iPhone memory pressure / WebGL context loss
+   returns.  NOTE: many body-sheet PNGs ship 128px-on-disk since the download
+   downscale (v2.3.1108, upscaled back nearest-neighbour here) -- this
+   constant governs the BAKE/display resolution, not the source art. */
+export const DISPLAY_DS = 1;
 
 /** Downscale an image/canvas to 1/ds in both dimensions onto a new canvas
  *  (bilinear). Returns the source unchanged when ds <= 1 (the DISPLAY_DS=1

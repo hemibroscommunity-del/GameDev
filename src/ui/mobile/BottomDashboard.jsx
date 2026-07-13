@@ -1,4 +1,8 @@
 ﻿import React, { useEffect, useRef, useState } from 'react';
+/* v2.3.1236: owner feedback r4 §2 — WEAPON_TYPES / calcDisplayDmgRange /
+   calcDisplayDps return to this import (r3 §1 had dropped them with the
+   DMG/DPS/DEF footer): the readout is reinstated as the icon-based line
+   in the Loadout column's freed third row. */
 import { xpRequired, calcMaxHp, calcMaxStam, calcMaxMana, calcCritChance, calcBlockReduction, getDefenseBlockBonus, WEAPON_TYPES, getActiveWeapon, getWeaponCritStat, buildSkillUnspent, STAT_TO_WEAPON_CAT, calcDisplayDmgRange, calcDisplayDps } from '../../data/gameSystems.js';
 import { skillXpRequired } from '../../data/items.js';
 import { ZONES } from '../../data/zones.js';
@@ -166,12 +170,14 @@ const LIFE_SKILLS = [
 
 // Tiny column-header used at the top of each of the three dashboard
 // columns.  Centered above its column.
-const ColHeader = ({ children, icon }) => (
+const ColHeader = ({ children }) => (
   <div style={{
-    /* v2.3.1235: correction pass §3 — 11/700 uppercase .14em section
-       label with a 16px icon beside it (icons carry identity; the
-       heading stays small). */
-    fontSize: 11,
+    /* v2.3.1236: owner dashboard feedback §1 — the 16px icon is gone;
+       the freed space goes to a larger title (11 -> 13/700, same
+       uppercase + .14em tracking, underline kept). */
+    /* v2.3.1236: owner feedback r2 §3 — 13 was a notch too loud next to
+       the slot grids; 12/700 keeps the hierarchy without shouting. */
+    fontSize: 12,
     fontWeight: 700,
     color: COL.text2,
     letterSpacing: '.14em',
@@ -180,17 +186,11 @@ const ColHeader = ({ children, icon }) => (
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 5,
     borderBottom: `1px solid ${COL.divider}`,
     marginBottom: 3,
     whiteSpace: 'nowrap',
     overflow: 'hidden',
   }}>
-    {icon && (
-      <img src={icon} alt="" draggable={false}
-        style={{ width: 16, height: 16, objectFit: 'contain', flex: 'none' }}
-        onError={(e) => { e.currentTarget.style.display = 'none'; }} />
-    )}
     <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{children}</span>
   </div>
 );
@@ -503,39 +503,49 @@ const InventoryPreview = () => {
         display: 'flex',
         flexDirection: 'column',
         cursor: 'pointer',
-        /* v2.3.1227: Lantern Slate recessed tray replaces the red
-           leather (spec hard lock: leather removed everywhere). */
-        background: COL.well,
-        border: `1px solid ${COL.tileBor}`,
-        boxShadow: 'inset 0 2px 4px rgba(0,0,0,.44), inset 0 1px 0 rgba(255,255,255,.035)',
-        borderRadius: 10,
-        padding: 4,
+        /* v2.3.1236: owner dashboard feedback §2 — recessed tray chrome
+           removed (was the v2.3.1227 well background/border/inset
+           shadow); only the item slots' own borders remain, and the
+           freed padding enlarges the slots. */
+        /* v2.3.1236: owner feedback r3 §2 — wrapper padding 2 -> 0: the
+           column now carries the (symmetric, minimal) 2px horizontal
+           inset for ALL three panels, and zeroing the wrapper's bottom
+           padding puts the bag grid's bottom edge on the same y as the
+           loadout/Build grids (§4).  The freed width goes to the cells. */
+        padding: 0,
       }}
       title="Tap to open Bag"
     >
       {/* v2.3.1057: 3-col x 3-row slot grid mirroring the Loadout column's
-          square grid (same 3 columns, same gap:3).  With all three columns
+          square grid (same 3 columns, same gap — 4 as of v2.3.1236 owner
+          feedback r2 §2).  With all three columns
           equal width, each square comes out the exact loadout square size.
-          Tiles stay square (ItemTile's default aspectRatio 1/1); the block
-          is centered vertically (alignContent:center) under the BAG title so
-          the leftover column height splits evenly above/below the 3x3 block
-          instead of pooling beneath it.  Items first, then faint empty slots
-          fill to 9 so it always reads as an inventory grid. */}
+          Tiles stay square (ItemTile's default aspectRatio 1/1).  Items
+          first, then faint empty slots fill to 9 so it always reads as an
+          inventory grid. */}
+      {/* v2.3.1236: owner feedback r3 §4 — alignContent center -> 'end':
+          the 3x3 block bottom-anchors in the column so its bottom row
+          lines up with the loadout and Build grids' bottom rows (all
+          three columns share height and 4px bottom padding). */}
+      {/* v2.3.1236: owner feedback r4 §1 — 'end' -> 'start': the grids
+          now TOP-anchor instead, so the loadout's two slot rows sit
+          level with THIS grid's first two rows (identical geometry:
+          3 equal columns, gap 4, padding 0, square min-content rows,
+          same ColHeader above, same 4px column top padding).  The
+          loadout's freed third row hosts its reinstated damage line. */}
       <div style={{
         flex: 1,
         minHeight: 0,
         display: 'grid',
         gridTemplateColumns: 'repeat(3, 1fr)',
         gridAutoRows: 'min-content',
-        alignContent: 'center',
-        gap: 3,
-        /* v2.3.1235: §4 — the Bag is the dashboard's DEEPEST area: one
-           recessed well-deep tray holding the nine slots. */
-        padding: 4,
-        borderRadius: 8,
-        background: 'linear-gradient(180deg, #101D23, var(--ui-well-deep))',
-        border: `1px solid ${COL.border}`,
-        boxShadow: 'inset 0 2px 5px rgba(0,0,0,0.32), inset 0 1px 0 rgba(255,255,255,0.025)',
+        alignContent: 'start',
+        /* v2.3.1236: owner dashboard feedback §2 — the v2.3.1235
+           well-deep gradient tray (background/border/inset shadow/
+           padding) is gone; the slots grow into the freed space and
+           the gap bumps 3 -> 4 to keep them breathing. */
+        gap: 4,
+        padding: 0,
       }}>
         {tiles.map((e, i) => (
           <BagTile
@@ -575,7 +585,10 @@ const PANELS = {
   /* v2.3.1143: Login Key display + device transfer. */
   account:      { title: 'Account',     Component: AccountPanel },
   /* v2.3.235 (Phase 5): Tier 2 spec allocation panel. */
-  t2:           { title: 'Weapons',     Component: T2Panel },
+  /* v2.3.1236: owner feedback — stat screen shows the six combat skills;
+     Weapons menu renamed Build (display string only; the t2 id and
+     WEAPON_* internals keep their names). */
+  t2:           { title: 'Build',       Component: T2Panel },
 };
 
 export const BottomDashboard = () => {
@@ -653,10 +666,8 @@ export const BottomDashboard = () => {
   const R = (S && S.rpg) || {};
 
   const level = R.level || 1;
-  const xp = R.xp || 0;
-  // Use the canonical xpRequired curve so the dashboard's bar agrees
-  // with the game-loop level-up threshold.
-  const xpNeeded = xpRequired(level);
+  /* v2.3.1236: owner dashboard feedback §6 — `xp`/`xpNeeded` removed
+     with the player-card XP strip below; nothing else read them. */
   /* v2.3.1207: `buildThresh` (xpRequired(combat level)) removed — the
      build-cell progress strips now divide by the STAT'S OWN threshold,
      xpRequired(R[stat]), computed per cell below.  Since v2.3.910 the
@@ -697,15 +708,10 @@ export const BottomDashboard = () => {
 
   const Active = active?.Component;
 
-  /* v2.3.114: thin XP strip pinned across the screen flush above the
-     bottom dashboard. v2.3.152: repurposed to show build-points-to-
-     next-level since combat level is now a pure function of BP (A1).
-     Bar fills 0 -> 100% as buildPointsThisLvl goes 0 -> 5; resets on
-     level-up. The original xpPct path is kept commented as a quick
-     revert path if BP-progress turns out to feel wrong. */
-  // const xpPct = xpNeeded > 0 ? Math.max(0, Math.min(100, (xp / xpNeeded) * 100)) : 0;
-  const bp = R._buildPointsThisLvl || 0;
-  const xpPct = Math.max(0, Math.min(100, (bp / 5) * 100));
+  /* v2.3.1236: owner dashboard feedback §6 — the build-points XP strip
+     (v2.3.114 bottom trim -> v2.3.152 BP progress -> v2.3.821/v2.3.1227
+     player-card bottom strip) is REMOVED along with its xpPct/bp calc;
+     the per-cell Build strips are now the progress readout. */
 
   return (
     <>
@@ -724,7 +730,8 @@ export const BottomDashboard = () => {
 
       {/* Upper-right player card — v2.3.1227: Lantern Slate compact
           132×58 horizontal card (§10): portrait left with presence dot,
-          name / Lv + gold right, 3px XP strip flush to the inner bottom.
+          name / Lv + gold right (v2.3.1236: the 3px XP strip that was
+          flush to the inner bottom is gone — owner feedback §6).
           Replaces the tall vertical stack; the separate "N online" pill
           is gone (presence = the dot; count moves to Friends later). */}
       <div
@@ -803,18 +810,8 @@ export const BottomDashboard = () => {
             </span>
           </div>
         </div>
-        {/* XP strip flush to the card's inner bottom. */}
-        <div style={{
-          position: 'absolute', left: 0, right: 0, bottom: 0,
-          height: 3, background: '#0B1216',
-        }}>
-          <div style={{
-            width: xpPct + '%',
-            height: '100%',
-            background: COL.xp,
-            transition: 'width .4s ease-out',
-          }} />
-        </div>
+        {/* v2.3.1236: owner dashboard feedback §6 — the 3px XP strip that
+            sat flush to the card's inner bottom is removed. */}
       </div>
 
     <div
@@ -909,17 +906,20 @@ export const BottomDashboard = () => {
           {/* 3-column body with section headers; gold moved to the Bag. */}
           <div style={{
             flex: 1,
-            /* v2.3.1235: Checkpoint B §2 — top padding 4→9 so the Loadout
-               column's 5px translateY lift paints instead of being clipped
-               by this overflow:hidden body (the previous marginTop:-5 lift
-               was invisible for exactly this reason). */
-            padding: '9px 12px 6px',
+            /* v2.3.1236: owner dashboard feedback §3 — back to 4px top
+               padding; the 9px existed only to give the retired Loadout
+               lift paint headroom. */
+            padding: '4px 12px 6px',
             overflow: 'hidden',
             display: 'flex',
             flexDirection: 'column',
             minHeight: 0,
           }}>
-            <div style={{ flex: 1, display: 'flex', gap: 8, minHeight: 0 }}>
+            {/* v2.3.1236: owner feedback r2 §1 — 1px var(--ui-line) divider
+                divs between the three columns, full column height; row gap
+                8 -> 4 so each divider sits centered in ~the same 9px of
+                total inter-column space as before. */}
+            <div style={{ flex: 1, display: 'flex', gap: 4, minHeight: 0 }}>
               {/* ── Left column — hybrid card: HP/MP/END chip row +
                   Crit/Move derived stats + session summary (Zone, Kills,
                   Playtime).  v2.3.126: portrait migrated to the top-right
@@ -931,11 +931,21 @@ export const BottomDashboard = () => {
               <div data-tut="dash-bag" style={{
                 /* v2.3.1235: §4 widths — Bag 31% / Loadout 38% / Build 31%
                    (flex-grow ratios; Loadout is the wider center anchor). */
-                flex: '31 1 0',
+                /* v2.3.1236: owner feedback r2 §2 — back to equal thirds so
+                   a bag cell and a loadout slot render the same size (both
+                   grids: 3 equal columns, gap 4, 2px inner inset). */
+                flex: '1 1 0',
                 display: 'flex',
                 flexDirection: 'column',
                 minWidth: 0,
-                padding: 4,
+                /* v2.3.1236: owner feedback r3 §2 — owner saw excess left
+                   padding on the bag grid: 4px column + 2px wrapper stacked
+                   to a 6px inset each side.  All three columns drop to a
+                   symmetric minimal 2px horizontal inset (inner wrappers/
+                   grids now pad 0), so the cells absorb the freed width.
+                   Vertical stays 4 — the shared bottom-padding number the
+                   §4 bottom alignment is built on. */
+                padding: '4px 2px',
                 /* v2.3.1227: no card chrome — the band is the container
                    (Lantern Slate §8); Bag is the quiet/deep module. */
                 /* v2.3.129: clip overflow so the Kills row (and any other
@@ -946,7 +956,8 @@ export const BottomDashboard = () => {
                 {/* v2.3.1065: BAG title matching the Loadout/Build ColHeaders
                     (sits on the red container tint; the leather-backed grid
                     renders below). */}
-                <ColHeader icon="/icons/ui/nav-inventory.webp?v=2.3.1224">Bag</ColHeader>
+                {/* v2.3.1236: owner dashboard feedback §1 — icon prop removed. */}
+                <ColHeader>Bag</ColHeader>
                 {/* v2.3.155: hybrid HP/MP/END card replaced with a
                     compact inventory preview. The derived stats it used
                     to show (Crit / Block / Zone / Kills / Time) are
@@ -1042,7 +1053,7 @@ export const BottomDashboard = () => {
                          player equips a shield or trains Fortification. */}
                       <div style={{ borderTop: `1px solid ${COL.divider}`, paddingTop: 2 }}>
                         <div
-                          onPointerUp={(e) => { e.stopPropagation(); setTooltip(`Crit chance — Power baseline plus the equipped weapon's crit channel (${getWeaponCritStat(R)}).  Allocate it under Weapons.`); }}
+                          onPointerUp={(e) => { e.stopPropagation(); setTooltip(`Crit chance — Power baseline plus the equipped weapon's crit channel (${getWeaponCritStat(R)}).  Allocate it under Build.`); }}
                           title="Crit chance from Power + weapon crit channel"
                           style={rowStyle}>
                           <span style={rowLabel}>Crit</span>
@@ -1085,6 +1096,9 @@ export const BottomDashboard = () => {
                 })()}
               </div>
 
+              {/* v2.3.1236: owner feedback r2 §1 — full-height column divider. */}
+              <div aria-hidden="true" style={{ flex: 'none', width: 1, alignSelf: 'stretch', background: 'var(--ui-line)' }} />
+
               {/* ── Middle column — Loadout.
                   v2.3.125 introduced the DMG/DPS line + 3-then-2 equip
                   grid.  v2.3.126 widened to flex 1.35 (was 1) using the
@@ -1094,31 +1108,31 @@ export const BottomDashboard = () => {
                   v2.3.1057: flex 1.35 -> 1 so Bag / Loadout / Build are all
                   equal width. */}
               <div data-tut="dash-loadout" style={{
-                /* v2.3.1235: §4 — Loadout is the dashboard's raised center
-                   ANCHOR: 38% width, lifted 5px above its siblings, a
-                   subtly brighter raised surface with rounded TOP corners
-                   and a restrained shadow.  The full-height divider lines
-                   are gone — depth separates the columns now. */
-                flex: '38 1 0',
+                /* v2.3.1236: owner dashboard feedback §3 — the v2.3.1235
+                   raised-anchor treatment (5px translateY lift +
+                   marginBottom:-5, raised gradient, border, top radii,
+                   shadow) is removed at the owner's request: Loadout is
+                   a plain flex column like Build, still 38% wide. */
+                /* v2.3.1236: owner feedback r2 §2 — 38% -> equal third; the
+                   DMG/DPS/DEF readout moved to a footer line (§4) so the
+                   six slots match the bag cells' size exactly.
+                   r3 §1: that footer is now removed outright — the info
+                   lives in the item picker and stat screen.
+                   r4 §2: ...and it's back, by owner request, as a compact
+                   icon-based line occupying the grid's third row (level
+                   with the bag's third row now that both grids top-align). */
+                flex: '1 1 0',
                 display: 'flex',
                 flexDirection: 'column',
                 minWidth: 0,
-                padding: 4,
+                /* v2.3.1236: owner feedback r3 §2 — symmetric minimal 2px
+                   horizontal inset (matches Bag/Build); 4px vertical kept
+                   as the shared bottom-padding for the §4 alignment. */
+                padding: '4px 2px',
                 position: 'relative',
                 zIndex: 1,
-                /* v2.3.1235: Checkpoint B §2 — the lift is a transform (not
-                   a negative top margin) so it can't be eaten by flex
-                   stretch; marginBottom:-5 reclaims the layout slot and the
-                   parent body's paddingTop:9 gives the paint headroom. */
-                transform: 'translateY(-5px)',
-                marginBottom: -5,
-                background: 'linear-gradient(180deg, #2B3E44, var(--ui-raised))',
-                border: '1px solid rgba(229,237,233,.16)',
-                borderBottom: 'none',
-                borderRadius: '10px 10px 0 0',
-                boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.05), 0 -5px 14px rgba(3,8,10,.20)',
               }}>
-                <ColHeader icon="/icons/ui/combat-melee.webp?v=2.3.1225">Loadout</ColHeader>
+                <ColHeader>Loadout</ColHeader>
                 {(() => {
                   /* DMG/DPS calc — mirrors WeaponSwapBar.readState() so the
                      numbers match what combat actually rolls.  Stat driver
@@ -1127,11 +1141,31 @@ export const BottomDashboard = () => {
                      mirror calcWeaponDmg in gameLoop.js. */
                   const slot = R.activeSlot || 'melee';
                   const wpn = (S && R) ? getActiveWeapon(R) : null;
+                  /* v2.3.1236: owner feedback r4 §2 — wType/slotLabel and the
+                     calcDisplayDmgRange/Dps readout return (r3 §1 removed
+                     them with the footer): the readout is reinstated as the
+                     compact icon line in the grid's freed third row below,
+                     restored verbatim from the r2 (c4a427b1) derivations. */
                   const wType = wpn && WEAPON_TYPES[wpn.type];
                   /* v2.3.227: uppercased to match the other loadout
                      labels (SHIELD / AMULET / CHEST / LEGS). */
                   const slotLabel = slot === 'ranged' ? 'RANGED'
                                    : slot === 'staff' ? 'STAFF' : 'MELEE';
+                  /* v2.3.1206: inline math (v2.3.912 stat driver +
+                     v2.3.1131 quality/hardness + v2.3.1133 crit-channel
+                     fold) extracted VERBATIM into gameSystems'
+                     calcDisplayDmgRange/calcDisplayDps so the popup +
+                     inventory readouts share it — this readout was the
+                     one correct copy; the helpers key stat/variance off
+                     wpn.type instead of activeSlot, identical whenever
+                     the slot holds its own weapon type (guaranteed by
+                     the v2.3.1159 slot repair). Numbers must not move. */
+                  let dmgText = '0', dpsText = '0.0';
+                  if (wType) {
+                    const range = calcDisplayDmgRange(R, wpn);
+                    dmgText = range.text;
+                    dpsText = calcDisplayDps(R, wpn).toFixed(1);
+                  }
                   /* v2.3.129: loadout slot uses the real in-world weapon
                      sprite (same artwork the player sees swinging) instead
                      of the small popup-icon placeholder.  URLs mirror
@@ -1150,21 +1184,6 @@ export const BottomDashboard = () => {
                                      : slot === 'staff' ? '/sprites/weapons/staffs/Wizard%20Staff2.webp?v=2.3.173'
                                      : isWoodSword     ? '/sprites/weapons/swords/steel-sword-east.webp?v=2.3.1070' /* v2.3.1070: mini steel-sword icon, not bamboo */
                                      :                    '/sprites/weapons/swords/Sword1.webp?v=2.3.173';
-                  /* v2.3.1206: inline math (v2.3.912 stat driver +
-                     v2.3.1131 quality/hardness + v2.3.1133 crit-channel
-                     fold) extracted VERBATIM into gameSystems'
-                     calcDisplayDmgRange/calcDisplayDps so the popup +
-                     inventory readouts share it — this readout was the
-                     one correct copy; the helpers key stat/variance off
-                     wpn.type instead of activeSlot, identical whenever
-                     the slot holds its own weapon type (guaranteed by
-                     the v2.3.1159 slot repair). Numbers must not move. */
-                  let dmgText = '0', dpsText = '0.0';
-                  if (wType) {
-                    const range = calcDisplayDmgRange(R, wpn);
-                    dmgText = range.text;
-                    dpsText = calcDisplayDps(R, wpn).toFixed(1);
-                  }
                   /* Equip slot list — order matches the user's wireframe.
                      v2.3.127 reorder: Row 1 reads Shield · Amulet · Weapon
                      so the active weapon sits at the natural thumb-reach
@@ -1254,7 +1273,14 @@ export const BottomDashboard = () => {
                              the full word on the narrowest supported phone
                              (11px floor waived for these placeholder tags;
                              clip is the backstop). */
-                          fontSize: 8,
+                          /* v2.3.1236: owner feedback r2 §2 — Loadout back
+                             to an equal third, so the slots are ~15%
+                             narrower than the 38%-column squares that 8px
+                             was measured against; scale the tag down the
+                             same ratio (8 -> 7) so AMULET's T keeps its
+                             crossbar at 390px.  overflow:hidden remains
+                             the backstop. */
+                          fontSize: 7,
                           letterSpacing: '-0.02em',
                           maxWidth: '100%',
                           overflow: 'hidden',
@@ -1317,78 +1343,42 @@ export const BottomDashboard = () => {
                      is server-authoritative and not yet wired to chest/legs.
                      This line just surfaces what's equipped (chest + legs ×5)
                      so the loadout shows an "effect" number; the real mechanic
-                     is a follow-up (see chat). */
+                     is a follow-up (see chat).  (v2.3.1236 r4 §2: restored
+                     with the reinstated readout line.) */
                   const armorDef = (gearChestId !== 'none' ? 5 : 0) + (gearLegsId !== 'none' ? 5 : 0);
                   return (
                     /* v2.3.1069: the loadout is now ONE 3-row grid that mirrors
                        the quick-bag's 3x3 (same 3 columns, gridAutoRows:min-content
-                       square cells, alignContent:center, gap:3, padding:3) so the
-                       two panels share row geometry.  Row 1 is a full-width data
-                       cell sized to ~one square tall (aspectRatio) holding the
-                       DMG/DPS + DEF readouts; rows 2-3 are the six equipment slots
-                       -- which therefore line up EXACTLY with the bag's bottom two
-                       rows of squares. */
+                       square cells, alignContent:center) so the two panels share
+                       row geometry. */
+                    /* v2.3.1236: owner feedback r2 §2+§4 — the row-1 data cell
+                       felt awkward and kept the slots smaller than the bag
+                       cells; the grid is the clean 3-col x 2-row slot block. */
+                    /* v2.3.1236: owner feedback r3 §4 — geometry is
+                       IDENTICAL to the bag grid by the numbers: 3 equal
+                       columns, gap 4, padding 0 (each column carries the
+                       2px horizontal inset), so at equal column widths a
+                       loadout slot === a bag cell. */
+                    /* v2.3.1236: owner feedback r4 §1+§2 — alignContent
+                       'end' -> 'start' (both grids TOP-anchor now), and the
+                       grid grows an explicit THIRD row that mirrors the
+                       bag's: an invisible aspect-1/1 spacer cell sizes row 3
+                       to exactly one slot height, so rows 1-3 here match the
+                       bag's rows 1-3 by construction (same columns, gap,
+                       padding, row-sizing rule).  The reinstated damage
+                       readout spans that row, vertically centered — i.e.
+                       level with the bag's third row. */
                     <div style={{
                       flex: 1,
                       minHeight: 0,
                       display: 'grid',
                       gridTemplateColumns: 'repeat(3, 1fr)',
                       gridAutoRows: 'min-content',
-                      alignContent: 'center',
-                      gap: 3,
-                      padding: 3,
+                      alignContent: 'start',
+                      gap: 4,
+                      padding: 0,
                     }}>
-                      {/* Row 1 — data cell spanning all three columns, ~one
-                          square tall so the grid reads as 3 rows (aspectRatio
-                          ≈ full-width / square; tune if a hair off). */}
-                      <div style={{
-                        gridColumn: '1 / -1',
-                        aspectRatio: '3.18 / 1',
-                        minHeight: 0,
-                        overflow: 'hidden',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: 2,
-                      }}>
-                        {/* v2.3.1235: Checkpoint B §2 — the combat summary was
-                           micro-text (9px one-liner). Restructured to the key-
-                           number ladder: line 1 is the headline DMG range at
-                           12/700 tabular, line 2 is DPS · DEF at 11/600. The
-                           old single-line clipping problem goes away because
-                           the widest value now lives on its own line. */}
-                        <div
-                          /* v2.3.1235: batch-4 state-correction §2 — structured
-                             anchored tooltip; live DMG/DPS numbers are the same
-                             calcDisplayDmgRange/Dps values the cell prints. */
-                          onPointerUp={(e) => { e.stopPropagation(); setTooltip({
-                            title: `DMG ${dmgText}`,
-                            benefit: `${dpsText} damage per second (${slotLabel.toLowerCase()})`,
-                            body: 'Tap the weapon slot to cycle melee → ranged → staff.',
-                            anchor: e.currentTarget.getBoundingClientRect(),
-                          }); }}
-                          title={`${slotLabel} · DMG ${dmgText} · DPS ${dpsText}`}
-                          style={{ fontSize: 12, fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: COL.text, letterSpacing: 0, textAlign: 'center', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', cursor: 'pointer', touchAction: 'none' }}>
-                          <span style={{ color: COL.muted, fontWeight: 600 }}>DMG </span>{dmgText}
-                        </div>
-                        <div
-                          /* v2.3.1235: batch-4 state-correction §2 — structured
-                             anchored tooltip; armorDef is the same live number
-                             the readout prints (chest + legs ×5 placeholder). */
-                          onPointerUp={(e) => { e.stopPropagation(); setTooltip({
-                            title: `DEF +${armorDef}`,
-                            benefit: `+${armorDef} defense from worn armor`,
-                            body: 'Counts chest + legs pieces; armor damage mitigation is not wired up yet.',
-                            anchor: e.currentTarget.getBoundingClientRect(),
-                          }); }}
-                          title="Defense from worn armor"
-                          style={{ fontSize: 11, fontWeight: 600, fontVariantNumeric: 'tabular-nums', color: COL.text, letterSpacing: 0, textAlign: 'center', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', cursor: 'pointer', touchAction: 'none' }}>
-                          <span style={{ color: COL.muted }}>DPS </span>{dpsText}
-                          <span style={{ color: COL.muted }}>  ·  DEF </span>+{armorDef}
-                        </div>
-                      </div>
-                      {/* Rows 2-3 — the six equipment slots (Chest·Weapon·Shield
+                      {/* The six equipment slots (Chest·Weapon·Shield
                           / Legs·Amulet·Cape). */}
                       {slotCell({
                           k: 'chest',
@@ -1419,10 +1409,89 @@ export const BottomDashboard = () => {
                         {/* Cape: new back-layer slot (v2.3.692).  Render + equip
                             flow land in Phase 2; cell shows as empty for now. */}
                         {slotCell({ k: 'cape', label: 'CAPE', iconSrc: null, active: false })}
+                        {/* v2.3.1236: owner feedback r4 §2 — the damage
+                            readout returns (r3 §1 removed the r2 text
+                            footer; owner asked for a compact ICON line in
+                            the freed third row).  Invisible square spacer
+                            first: with gridAutoRows min-content it sizes
+                            row 3 to one slot height — the exact height of
+                            the bag's third row — so the line's band is
+                            level with it by construction. */}
+                        <div aria-hidden="true" style={{
+                          gridRow: 3,
+                          gridColumn: 1,
+                          aspectRatio: '1 / 1',
+                          minWidth: 0,
+                          minHeight: 0,
+                          pointerEvents: 'none',
+                        }} />
+                        {/* One centered line spanning row 3:
+                              [sword] 8-13  DPS 17.5  [shield] +10
+                            The sword is the SAME asset melee damage popups
+                            stamp on monsters (monsterCombat pushDmgPopup
+                            iconKey:'sword' -> /icons/popups/sword.webp);
+                            the shield is the popups-set partner (the
+                            pre-v2.3.1224 Build DEF icon — full-bleed,
+                            unlike the Bible combat-defense.webp with its
+                            12% built-in margin).  Icons 13px (spec "~14"),
+                            values 11/600 tabular #F4F0E7, tiny 9px muted
+                            "DPS" text label (no icon exists for DPS).  The
+                            "·" separators from the owner's sketch are
+                            dropped to 3px gaps — the fit allowance he gave
+                            for the ~112px inner column at 390px.  overflow
+                            hidden + nowrap is the clip backstop.  The two
+                            anchored tooltips are the r2 footer's own,
+                            handler bodies byte-identical to c4a427b1. */}
+                        {/* v2.3.1236: owner feedback r5 — the r4 one-liner
+                            clipped on the owner's phone; his fix: reuse the
+                            three slot columns as a mini stat table — DMG /
+                            DPS / DEF headers with the values beneath, 1px
+                            separators between the cells.  Same two anchored
+                            tooltips (weapon tooltip on the DMG and DPS
+                            cells, defense on DEF), bodies unchanged. */}
+                        {[
+                          ['DMG', dmgText, 'weapon'],
+                          ['DPS', dpsText, 'weapon'],
+                          ['DEF', `+${armorDef}`, 'def'],
+                        ].map(([hdr, val, kind], ci) => (
+                          <div key={hdr}
+                            onPointerUp={(e) => { e.stopPropagation(); setTooltip(kind === 'weapon' ? {
+                                title: `DMG ${dmgText}`,
+                                benefit: `${dpsText} damage per second (${slotLabel.toLowerCase()})`,
+                                body: 'Tap the weapon slot to cycle melee → ranged → staff.',
+                                anchor: e.currentTarget.getBoundingClientRect(),
+                              } : {
+                                title: `DEF +${armorDef}`,
+                                benefit: `+${armorDef} defense from worn armor`,
+                                body: 'Counts chest + legs pieces; armor damage mitigation is not wired up yet.',
+                                anchor: e.currentTarget.getBoundingClientRect(),
+                              }); }}
+                            title={kind === 'weapon' ? `${slotLabel} · DMG ${dmgText} · DPS ${dpsText}` : 'Defense from worn armor'}
+                            style={{
+                              gridRow: 3,
+                              gridColumn: ci + 1,
+                              minWidth: 0,
+                              display: 'flex',
+                              flexDirection: 'column',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              gap: 2,
+                              cursor: 'pointer',
+                              touchAction: 'none',
+                              borderLeft: ci > 0 ? '1px solid var(--ui-line)' : 'none',
+                              overflow: 'hidden',
+                            }}>
+                            <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '.08em', color: '#8D9B98' }}>{hdr}</span>
+                            <span style={{ fontSize: 11, fontWeight: 600, fontVariantNumeric: 'tabular-nums', color: '#F4F0E7', whiteSpace: 'nowrap' }}>{val}</span>
+                          </div>
+                        ))}
                       </div>
                   );
                 })()}
               </div>
+
+              {/* v2.3.1236: owner feedback r2 §1 — full-height column divider. */}
+              <div aria-hidden="true" style={{ flex: 'none', width: 1, alignSelf: 'stretch', background: 'var(--ui-line)' }} />
 
               {/* ── Right column — Stats + Life Skills merged.
                   v2.3.125: Build (5 char stats) and Life Skills (10) now
@@ -1431,13 +1500,26 @@ export const BottomDashboard = () => {
                   (5 rows of 2 skills each).  Per-cell XP strip preserved. */}
               <div ref={buildColRef} data-tut="dash-build" style={{
                 /* v2.3.1235: §4 widths — Build 31%, flat quiet readout. */
-                flex: '31 1 0',
+                /* v2.3.1236: owner feedback r2 §2 — equal third (this column
+                   actually WIDENS, 31% -> 33.3%, so its 3x2 text cells gain
+                   room; no inner-padding change needed). */
+                flex: '1 1 0',
                 display: 'flex',
                 flexDirection: 'column',
                 minWidth: 0,
-                padding: 4,
+                /* v2.3.1236: owner feedback r3 §2 — symmetric minimal 2px
+                   horizontal inset (matches Bag/Loadout); 4px vertical kept
+                   as the shared bottom-padding for the §4 alignment. */
+                padding: '4px 2px',
               }}>
-                <ColHeader icon="/icons/ui/panel-stats.webp?v=2.3.1224">{SHOW_LIFE_SKILLS ? 'Stats · Skills' : 'Build'}</ColHeader>
+                <ColHeader>{SHOW_LIFE_SKILLS ? 'Stats · Skills' : 'Build'}</ColHeader>
+                {/* v2.3.1236: owner feedback r3 §4 — no alignment change
+                    needed HERE for the line-up: flex:1 + 1fr rows mean this
+                    grid fills the column's content area top-to-bottom, so
+                    its top edge already sits where the bag/loadout grids
+                    now START (r4 §1 flipped them to alignContent:'start')
+                    and its bottom stays on the shared 4px column padding —
+                    the band keeps one coherent top AND bottom edge. */}
                 <div style={{
                   flex: 1,
                   display: 'grid',
@@ -1446,7 +1528,13 @@ export const BottomDashboard = () => {
                      With life skills shown, fall back to the old 3-col x 5-row
                      column-flow layout (Build in sub-col 1, skills in 2-3). */
                   gridTemplateColumns: 'repeat(3, 1fr)',
-                  gridTemplateRows: SHOW_LIFE_SKILLS ? 'repeat(5, 1fr)' : 'repeat(2, 1fr)',
+                  /* v2.3.1236: owner feedback r5b — 1fr rows stretched this
+                     grid over the full column height, so its cell content
+                     floated LOWER than the top-packed Bag/Loadout rows.
+                     min-content rows + alignContent start pack the two rows
+                     at the top, level with the neighbors' first rows. */
+                  gridTemplateRows: SHOW_LIFE_SKILLS ? 'repeat(5, 1fr)' : 'repeat(2, min-content)',
+                  alignContent: SHOW_LIFE_SKILLS ? 'stretch' : 'start',
                   /* v2.3.1235: §4 — open grid: no gap, cells share faint
                      dividers instead of six individual dark cards. */
                   gap: SHOW_LIFE_SKILLS ? 2 : 0,
@@ -1573,14 +1661,25 @@ export const BottomDashboard = () => {
                         <span style={{ color: COL.text, fontWeight: 700, fontSize: 16, lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>{val}</span>
                         <div style={{
                           position: 'absolute',
-                          left: 0, right: 0, bottom: 0,
-                          height: 2,
+                          /* v2.3.1236: owner feedback r3 §3 — the strip ran
+                             edge-to-edge and read as cut off.  Now a
+                             contained pill: inset 15% each side (~70% width,
+                             centered), lifted 2px off the cell bottom,
+                             borderRadius 999 + overflow hidden so the fill
+                             clips to the pill's rounded ends. */
+                          left: '15%', right: '15%', bottom: 2,
+                          /* v2.3.1236: owner dashboard feedback §5 — XP
+                             strip 2 -> 4px so progress is noticeable. */
+                          height: 4,
+                          borderRadius: 999,
+                          overflow: 'hidden',
                           background: '#0B1216',
                           pointerEvents: 'none',
                         }}>
                           <div style={{
                             width: pct + '%',
                             height: '100%',
+                            borderRadius: 999,
                             background: '#D8A85F',
                             transition: 'width .15s linear',
                           }} />
@@ -1625,14 +1724,24 @@ export const BottomDashboard = () => {
                         <span style={{ flex: 1, textAlign: 'center', color: COL.text, fontWeight: 700, fontSize: 13 }}>{lvl}</span>
                         <div style={{
                           position: 'absolute',
-                          left: 0, right: 0, bottom: 0,
-                          height: 2,
+                          /* v2.3.1236: owner feedback r3 §3 — same contained
+                             pill as the Build strips (this branch is dormant
+                             while SHOW_LIFE_SKILLS is false; kept in step so
+                             flipping the flag doesn't resurrect the old
+                             edge-to-edge look). */
+                          left: '15%', right: '15%', bottom: 2,
+                          /* v2.3.1236: owner dashboard feedback §5 — XP
+                             strip 2 -> 4px so progress is noticeable. */
+                          height: 4,
+                          borderRadius: 999,
+                          overflow: 'hidden',
                           background: '#0B1216',
                           pointerEvents: 'none',
                         }}>
                           <div style={{
                             width: sPct + '%',
                             height: '100%',
+                            borderRadius: 999,
                             background: 'rgba(61,220,151,0.85)',
                             transition: 'width .15s linear',
                           }} />

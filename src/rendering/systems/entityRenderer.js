@@ -37,7 +37,7 @@ import { getShirt } from '../traits/shirtCatalog.js';
 import { getShirtColor, shirtFill } from '../traits/shirtColorCatalog.js';
 import { getGearFrame, getLoadedGearSources } from '../gearSheets.js';
 import { combatGearUrls } from '../combatGear.js';
-import { getEquip, onEquipChange } from '../gearCatalog.js';
+import { getEquip, onEquipChange, GEAR_CATALOG } from '../gearCatalog.js'; /* v2.3.1236: GEAR_CATALOG drives the all-states loading-screen prewarm */
 
 /* §9.2.1 Collision-opportunity weapon edge glow — proximity radius (≈20u). */
 const COLLISION_GLOW_RANGE_PX = 80;
@@ -952,10 +952,39 @@ export function planPrewarmProgress() {
     for (const dir of DIRS) per += playerFrameCount(pose, dir) || 1;
   }
   const anyWorn = ['chest', 'legs'].some((sl) => { const it = getEquip(sl); return it && it !== 'none'; });
-  /* v2.3.1118: the alt-worn pass now bakes only the WORN loadout (1 set), not 3
-     speculative families.  So the planned work is the masked pass + that one set,
-     both gated on actually wearing armour (an unarmoured player bakes neither). */
-  prewarmProgress.total = per * (anyWorn ? 2 : 0);   // masked pass + worn-set alt pass
+  /* v2.3.1118: the alt-worn pass bakes speculative families no longer.
+     v2.3.1236: reversed per owner directive ("preload EVERYTHING on the
+     loading screen") -- the alt pass now bakes every catalog gear state
+     (see _catalogWornSets), so plan: masked worn pass (armoured only) +
+     one full pass per catalog family. */
+  const families = _catalogWornSets().length;
+  prewarmProgress.total = per * ((anyWorn ? 1 : 0) + families);
+}
+
+/* v2.3.1236: every masked-armour family reachable from the gear catalog --
+   the full set plus each single piece, for every catalog chest/legs item.
+   The post-Play loading screen prewarms ALL of them so the first
+   equip/unequip after joining never pays the lazy masked-body bake (owner:
+   hitches when armor is first worn).  Ownership isn't knowable at intro time
+   (server inventory arrives post-join), so the catalog is the practical
+   superset; it holds exactly one armour set today, so this is 3 families
+   (~432 frames), which fits the 520-entry masked cache cap.  This reverses
+   the v2.3.1118 worn-only cut: the speculative-family VRAM cost returns
+   (~27MB at DISPLAY_DS=2, ~108MB at DISPLAY_DS=1) -- if iPhone WebGL context
+   loss reappears, shrink HERE first.  Currently-worn combination sorts first
+   so the spawn loadout is warm earliest behind the loading bar. */
+function _catalogWornSets() {
+  const chestIds = (GEAR_CATALOG.chest || []).map((c) => c && c.id).filter((id) => id && id !== 'none');
+  const legsIds = (GEAR_CATALOG.legs || []).map((c) => c && c.id).filter((id) => id && id !== 'none');
+  const sets = [];
+  for (const c of chestIds) for (const l of legsIds) sets.push([['chest', c], ['legs', l]]);
+  for (const c of chestIds) sets.push([['chest', c]]);
+  for (const l of legsIds) sets.push([['legs', l]]);
+  const wc = getEquip('chest'), wl = getEquip('legs');
+  const wornCount = (wc && wc !== 'none' ? 1 : 0) + (wl && wl !== 'none' ? 1 : 0);
+  const isWorn = (s) => s.length === wornCount && s.every(([sl, id]) => getEquip(sl) === id);
+  sets.sort((a, b) => (isWorn(b) ? 1 : 0) - (isWorn(a) ? 1 : 0));
+  return sets;
 }
 
 /* v2.3.701: force-upload the baked masked-body textures to the GPU while the
@@ -1100,27 +1129,20 @@ export async function prewarmAltWornSets(opts) {
     await new Promise((r) => setTimeout(r, 5000));
     if (seq !== _altPrewarmSeq) return;
   }
-  /* v2.3.1118: prewarm ONLY the actually-worn loadout.  The old version baked
-     THREE masked-armour families up front (full + chest-only + legs-only) and,
-     worse, defaulted to steelplate/steelgreaves for an UNARMOURED player -- so it
-     forced ~115MB of speculative masked frames into the iPhone's ~100-200MB WebGL
-     budget for gear the player isn't even wearing.  That memory pressure is a
-     prime cause of the general slowdown + WebGL context loss.  Skip entirely when
-     nothing is worn; otherwise bake just the worn pieces.  The chest-only /
-     legs-only transitional families bake lazily on the first equip change --
-     _schedulePrewarm (frame-budgeted) + the lazy first-sighting bake already cover
-     that, at the cost of a small one-time hitch on that first swap. */
-  const chestId = getEquip('chest') !== 'none' ? getEquip('chest') : null;
-  const legsId = getEquip('legs') !== 'none' ? getEquip('legs') : null;
-  if (!chestId && !legsId) return;               // nothing worn -> nothing to warm
+  /* v2.3.1118: prewarmed ONLY the actually-worn loadout -- the speculative
+     3-family bake (~115MB of masked frames at the full 256 bake) pressured
+     the iPhone's WebGL budget and was a prime cause of slowdown + context
+     loss, and it wrongly defaulted to steelplate for unarmoured players.
+     v2.3.1236: REVERSED per owner directive -- prewarm EVERY catalog gear
+     state behind the post-Play loading screen so a first equip/unequip never
+     pays the lazy masked-body bake hitch.  _catalogWornSets() documents the
+     memory trade-off and is the knob to shrink if context loss returns. */
   /* v2.3.756: baked shirt retired -- only the shirtless body sheets exist
      now, so there is a single variant to warm. */
   try { await preloadBodyVariant(null, 'none'); } catch (e) { /* best-effort */ }
   if (seq !== _altPrewarmSeq) return;            // superseded by a newer kick
-  const _wornNow = [];
-  if (chestId) _wornNow.push(['chest', chestId]);
-  if (legsId) _wornNow.push(['legs', legsId]);
-  const SETS = [{ worn: _wornNow, full: !!(chestId && legsId) }];
+  const SETS = _catalogWornSets().map((worn) => ({ worn }));
+  if (!SETS.length) return;
   const DIRS = ['south', 'east', 'north', 'northeast', 'southwest'];
   let sinceYield = 0;
   for (const set of SETS) {
