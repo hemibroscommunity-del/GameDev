@@ -186,7 +186,8 @@ export const T2Panel = () => {
        rows + 4 tail = 334px ≤ 360, ending 25px above the fold so
        panelStyle's 18px scroll-fade never dims a live row.  To get
        there: the Builds header block is GONE (the sheet header already
-       says WEAPONS; the 1000-pt meter moves onto the hint line), the
+       says BUILD — the Weapons menu was renamed Build on this same
+       v2.3.1236 pass; the 1000-pt meter moves onto the hint line), the
        training copy compresses to one 12px line, CHANNELS header +
        standalone grid notice + per-row Max line fold into the hint line
        / row badges, and channel rows become fixed two-line rows (label +

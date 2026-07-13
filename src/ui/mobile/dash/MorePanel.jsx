@@ -11,7 +11,9 @@ const TILES = [
   { id: 'self',        src: '/icons/ui/panel-self.webp?v=2.3.1224',        label: 'Self',     glyph: '🪪' },
   { id: 'stats',       src: '/icons/ui/panel-stats.webp?v=2.3.1224',       label: 'Stats',    glyph: '📊' },
   /* v2.3.609: per-weapon-category build allocation (replaces generic specs). */
-  { id: 't2',          src: '/icons/ui/panel-weapons.webp?v=2.3.1224',     label: 'Weapons',  glyph: '⚔️' },
+  /* v2.3.1236: owner feedback — Weapons menu renamed Build (label only;
+     the t2 id and the panel-weapons icon asset keep their names). */
+  { id: 't2',          src: '/icons/ui/panel-weapons.webp?v=2.3.1224',     label: 'Build',    glyph: '⚔️' },
   { id: 'leaderboard', src: '/icons/ui/panel-leaderboard.webp?v=2.3.1224', label: 'Ranks',    glyph: '🏆' },
   { id: 'clan',        src: '/icons/ui/panel-clan.webp?v=2.3.1224',        label: 'Clan',     glyph: '🛡' },
   { id: 'guild',       src: '/icons/ui/panel-guild.webp?v=2.3.1224',       label: 'Guild',    glyph: '⚒' },

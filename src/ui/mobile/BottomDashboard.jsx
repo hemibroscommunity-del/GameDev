@@ -565,7 +565,10 @@ const PANELS = {
   /* v2.3.1143: Login Key display + device transfer. */
   account:      { title: 'Account',     Component: AccountPanel },
   /* v2.3.235 (Phase 5): Tier 2 spec allocation panel. */
-  t2:           { title: 'Weapons',     Component: T2Panel },
+  /* v2.3.1236: owner feedback — stat screen shows the six combat skills;
+     Weapons menu renamed Build (display string only; the t2 id and
+     WEAPON_* internals keep their names). */
+  t2:           { title: 'Build',       Component: T2Panel },
 };
 
 export const BottomDashboard = () => {
