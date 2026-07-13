@@ -459,6 +459,22 @@ const IconButton = ({ glyph, label, active, onClick, node, tut }) => {
    (cook raw fish, eat cooked fish) still work via the shared ItemTile.
    Recents-tracking mirrors InventoryPanel.jsx so the same item ordering
    logic shows up here. */
+/* v2.3.1238: owner feedback §2 — the quick-bag / loadout cells were
+   width-driven squares (aspect-ratio on 1fr columns, min-content rows),
+   so once they grew (v2.3.1236 r3) the THIRD row could exceed the
+   column's content height on short viewports (and on iPhones, where
+   env(safe-area-inset-bottom) eats ~34px of the band) and got clipped.
+   Fix: both grids become size containers and every square cell caps its
+   width at one third of the grid's HEIGHT budget (3 rows + 2×4px gaps),
+   so cells stay width-driven on tall phones (min() picks 100%) and
+   shrink to fit the height on short ones.  Same formula in both grids
+   keeps the owner-mandated bag/loadout cell-size parity (both grids
+   share the exact same content-box height).  If container-query units
+   are unsupported the min() is dropped and behavior degrades to the
+   previous width-driven sizing. */
+const FIT_GRID_CONTAIN = { containerType: 'size' };
+const FIT_TILE_W = 'min(100%, calc((100cqh - 8px) / 3))';
+
 const InventoryPreview = () => {
   const [, force] = useState(0);
   useEffect(() => {
@@ -546,16 +562,28 @@ const InventoryPreview = () => {
            the gap bumps 3 -> 4 to keep them breathing. */
         gap: 4,
         padding: 0,
+        /* v2.3.1238: owner feedback §2 — height-aware square cells
+           (see FIT_TILE_W above). */
+        ...FIT_GRID_CONTAIN,
       }}>
         {tiles.map((e, i) => (
-          <BagTile
+          /* v2.3.1238: owner feedback §2 — sizing wrapper caps the tile
+             at the height budget (BagTile/ItemTile roots are width:100%
+             aspect 1/1, so they follow the wrapper's width). */
+          <div
             key={e.kind === 'item' ? `i-${e.key}` : `${e.kind}-${e.index}-${i}`}
-            entry={e}
-          />
+            style={{ width: FIT_TILE_W, justifySelf: 'center', minWidth: 0 }}
+          >
+            <BagTile entry={e} />
+          </div>
         ))}
         {Array.from({ length: Math.max(0, 9 - tiles.length) }).map((_, i) => (
           <div key={`pe-${i}`} aria-hidden="true" style={{
             aspectRatio: '1 / 1',
+            /* v2.3.1238: owner feedback §2 — same height-aware cap as
+               the item tiles above. */
+            width: FIT_TILE_W,
+            justifySelf: 'center',
             background: COL.wellSoft,
             border: `1px solid ${COL.tileBor}`,
             boxShadow: 'inset 0 2px 4px rgba(0,0,0,.44)',
@@ -837,7 +865,14 @@ export const BottomDashboard = () => {
            now rgba(216,170,88,.42)). */
         background: 'linear-gradient(180deg, var(--ui-band-top) 0%, var(--ui-band-bottom) 100%)',
         borderTop: `1px solid ${COL.edgeWarm}`,
-        boxShadow: '0 -10px 24px rgba(6,10,12,.22)',
+        /* v2.3.1238: owner feedback §1 — the spec's up-shadow
+           (--shadow-band, '0 -10px 24px rgba(6,10,12,.22)') is REMOVED:
+           its -10px offset put the densest part of the shadow ~10px
+           ABOVE the band edge, which over bright terrain read as a
+           detached "faint bar above the dashboard" (owner initially
+           took it for the retired v2.3.114 XP strip; pixel-probed and
+           confirmed by toggling the shadow).  The 1px edge-warm top
+           border stays — that lantern cue is intentional. */
         color: COL.text,
         fontFamily: 'Source Sans 3, sans-serif',
         zIndex: 30,
@@ -1233,6 +1268,10 @@ export const BottomDashboard = () => {
                         minWidth: 0,
                         minHeight: 0,
                         aspectRatio: '1 / 1',
+                        /* v2.3.1238: owner feedback §2 — height-aware cap
+                           (matches the bag tiles; see FIT_TILE_W). */
+                        width: FIT_TILE_W,
+                        justifySelf: 'center',
                       }}>
                       {iconSrc ? (
                         <img
@@ -1377,6 +1416,12 @@ export const BottomDashboard = () => {
                       alignContent: 'start',
                       gap: 4,
                       padding: 0,
+                      /* v2.3.1238: owner feedback §2 — same height-aware
+                         square-cell treatment as the bag grid (identical
+                         formula + identical grid height = cell-size
+                         parity by construction; the row-3 spacer keeps
+                         the stat table inside the same 3-row budget). */
+                      ...FIT_GRID_CONTAIN,
                     }}>
                       {/* The six equipment slots (Chest·Weapon·Shield
                           / Legs·Amulet·Cape). */}
@@ -1424,6 +1469,11 @@ export const BottomDashboard = () => {
                           minWidth: 0,
                           minHeight: 0,
                           pointerEvents: 'none',
+                          /* v2.3.1238: owner feedback §2 — the spacer that
+                             sizes row 3 shrinks with the cells so all
+                             three rows fit the height budget. */
+                          width: FIT_TILE_W,
+                          justifySelf: 'center',
                         }} />
                         {/* One centered line spanning row 3:
                               [sword] 8-13  DPS 17.5  [shield] +10
@@ -1544,6 +1594,11 @@ export const BottomDashboard = () => {
                   gap: SHOW_LIFE_SKILLS ? 2 : 0,
                   gridAutoFlow: SHOW_LIFE_SKILLS ? 'column' : 'row',
                   minHeight: 0,
+                  /* v2.3.1238: owner feedback §3 — size container so the
+                     stat cells (grown 6px by the reserved pill padding
+                     below) can cap themselves at half the grid height on
+                     short viewports instead of overflowing the band. */
+                  ...(SHOW_LIFE_SKILLS ? {} : FIT_GRID_CONTAIN),
                 }}>
                   {CHAR_STATS.map((s, bi) => {
                     /* Defense is a Tier-2 skill (level on rpg.defenseSkill);
@@ -1621,7 +1676,20 @@ export const BottomDashboard = () => {
                           alignItems: 'center',
                           justifyContent: 'center',
                           gap: 1,
-                          padding: '2px 4px',
+                          /* v2.3.1238: owner feedback §3 — the value text
+                             sat on padding-bottom 2 while the 4px XP pill
+                             floats absolute at bottom 2..6, so the digits'
+                             descender box dipped ~1px INTO the pill.
+                             Reserve the pill's zone instead: 8px bottom
+                             padding = pill (2+4) + 2px clearance, so text
+                             and pill can never overlap. */
+                          padding: '2px 4px 8px',
+                          /* v2.3.1238: owner feedback §3 — cap at half the
+                             (gap-0) 2-row grid so the 6px growth doesn't
+                             overflow short viewports; the icon is the
+                             shrink absorber (flexShrink 1, v2.3.1225).
+                             -1px absorbs the row-1 cells' bottom border. */
+                          maxHeight: SHOW_LIFE_SKILLS ? undefined : 'calc(50cqh - 1px)',
                           /* v2.3.1235: §4 — OPEN cells: no fill, no card
                              border; faint shared dividers between cells
                              (right edge on cols 1-2, bottom edge on row 1
