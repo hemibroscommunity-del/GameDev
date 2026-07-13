@@ -167,10 +167,12 @@
 }
 .bt-dashboard-module{
   background:var(--ui-dashboard-panel);
-  /* v2.3.1241: edge-parity — exactly ONE device-pixel contour; no inset
-     highlight, no external shadow.  Defines the three functions without
-     glowing.  (radius 10 -> 9 per the mockup.) */
-  border:var(--ui-hairline) solid #29414B;
+  /* v2.3.1241: edge-parity — exactly ONE contour; no inset highlight, no
+     external shadow.  (radius 10 -> 9 per the mockup.) */
+  /* v2.3.1250: owner — the panels blended into the tray; the device
+     hairline of #29414B was invisible on-screen.  A thin discernible
+     gray contour marks where each panel area exists. */
+  border:1px solid #4A565E;
   border-radius:9px;
   box-shadow:none;
 }

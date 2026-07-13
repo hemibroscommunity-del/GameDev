@@ -1532,7 +1532,9 @@ export const BottomDashboard = () => {
                             }}>
                             {/* v2.3.1242: reconcile onto the merged #269 dashboard — approved dashboard-text color + the #268 10px font floor. */}
                             <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.08em', color: 'var(--ui-dashboard-text-secondary)' }}>{hdr}</span>
-                            <span style={{ fontSize: 11, fontWeight: 600, fontVariantNumeric: 'tabular-nums', color: '#F4F0E7', whiteSpace: 'nowrap' }}>{val}</span>
+                            {/* v2.3.1250: owner — DEF reads cyan, DPS reads green
+                                (was uniform #F4F0E7 warm white). */}
+                            <span style={{ fontSize: 11, fontWeight: 600, fontVariantNumeric: 'tabular-nums', color: kind === 'def' ? '#6FCBD6' : '#7BCD84', whiteSpace: 'nowrap' }}>{val}</span>
                           </div>
                         ))}
                       </div>
