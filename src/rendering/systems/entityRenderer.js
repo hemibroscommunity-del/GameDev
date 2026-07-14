@@ -77,7 +77,7 @@ function _ensureHudBarTextures() {
      tint by HP tier (red asset can't be tinted to green/yellow because
      tint multiplies). */
   Assets.load(`/icons/popups/heart-white.webp?v=${HUD_BAR_VER}`).then(t => { _hudBarTex.heartWhite = t; }).catch(() => {});
-  /* v2.3.1273: owner's health-bar art (sheet sliced to TWO sprites —
+  /* v2.3.1276: owner's health-bar art (sheet sliced to TWO sprites —
      empty frame + full red fill; the fill is CROPPED at runtime to the
      hp fraction, the standard smooth-bar technique).  Replaces the
      monster heart and the player HP ring visuals; the v2.3.458 ghost-
@@ -86,7 +86,7 @@ function _ensureHudBarTextures() {
   Assets.load('/ui/bars/hp-full.png?v=2.3.1273').then(t => { _hudBarTex.barFull = t; }).catch(() => {});
 }
 
-/* v2.3.1273: shared geometry for the owner's bar art.  The red fill
+/* v2.3.1276: shared geometry for the owner's bar art.  The red fill
    occupies an inset region of the sprite box (measured on the sheet):
    x 5%..95%, y 21%..79% — ghost/flash rectangles use these fractions. */
 const HPBAR_ASPECT = 104 / 363;
@@ -2228,7 +2228,7 @@ function createPlayerDisplay() {
   hudStamTextEmpty.anchor.set(0.5, 0.5); hudStamTextEmpty.alpha = 0; container.addChild(hudStamTextEmpty);
 
   /* Above-head HP indicator: v2.3.458 quartile RING, replaced visually in
-     v2.3.1273 by the owner's BAR art (frame + cropped fill sprites below);
+     v2.3.1276 by the owner's BAR art (frame + cropped fill sprites below);
      the ring Graphics is retained as the ghost-trail + damage-flash layer,
      and all the v2.3.458 gating/drain logic is unchanged. */
   const hudHpBarFrame = new Sprite();
@@ -2554,7 +2554,7 @@ export class EntityRenderer {
                cleanly on the first damage tick. */
             if (display._hpHeart && !display._hpHeart.destroyed) display._hpHeart.alpha = 0;
             if (display._hpText && !display._hpText.destroyed) display._hpText.alpha = 0;
-            /* v2.3.1273: the bar art added fill + fx layers — clear them
+            /* v2.3.1276: the bar art added fill + fx layers — clear them
                too, or the red fill and white ghost chunk float over the
                corpse for the whole death animation (owner report). */
             if (display._hpBarFill && !display._hpBarFill.destroyed) display._hpBarFill.alpha = 0;
@@ -3104,7 +3104,7 @@ export class EntityRenderer {
       const maxHpDenom = m.maxHp || m.hp || 1;
       const hpPct = Math.max(0, Math.min(1, curHp / maxHpDenom));
       _ensureHudBarTextures();
-      /* v2.3.1273: the black heart becomes the owner's BAR art — the
+      /* v2.3.1276: the black heart becomes the owner's BAR art — the
          existing _hpHeart sprite is reused as the FRAME layer (tint
          reset from the heart's 0x000000), a display-owned cropped fill
          sprite shows curHp smoothly, and a small Graphics carries the
@@ -5711,16 +5711,16 @@ export class EntityRenderer {
       ring.alpha = hpNewAlpha;
       heartText.alpha = hpNewAlpha;
       maxText.alpha = hpNewAlpha;
-      /* v2.3.1273: bar sprites share the fade (alphas finalized below). */
+      /* v2.3.1276: bar sprites share the fade (alphas finalized below). */
 
       const hpFrac = hpCur / hpMax;
-      /* v2.3.1273: the quartile tier tint is retired with the ring — the
+      /* v2.3.1276: the quartile tier tint is retired with the ring — the
          owner's bar art is fixed red (classic ARPG read).  The <10%
          urgency pulse survives as an alpha throb on the fill. */
 
       /* White damage trail: ghostFrac lags hpFrac on damage and drains
          toward it (v2.3.458 logic, unchanged).  Snaps up on heal.
-         v2.3.1273 adds a brief white FLASH over the remaining fill. */
+         v2.3.1276 adds a brief white FLASH over the remaining fill. */
       if (ring._ghostFrac == null) ring._ghostFrac = hpFrac;
       const tookDamage = (ring._lastHpFrac != null) && (hpFrac < ring._lastHpFrac - 0.0005);
       if (tookDamage) ring._flashUntil = now + HPBAR_FLASH_MS;

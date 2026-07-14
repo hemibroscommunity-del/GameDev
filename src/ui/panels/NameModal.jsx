@@ -64,7 +64,7 @@ import { SHIRT_COLOR_CATALOG, setShirtColor } from '@/rendering/traits/shirtColo
    agreed floors: 10px text, ~35px taps, 16px input font for the iOS
    zoom gate).  Tiles go 5-at-rest → 7, swatches 6 → 8; the flex stage
    absorbs the freed height, so the character grows substantially. */
-/* v2.3.1273: owner round 7 — GROUND-UP RETHINK (owner picked the
+/* v2.3.1276: owner round 7 — GROUND-UP RETHINK (owner picked the
    slide-up drawer from three offered models).  The always-visible
    sheet is retired: at REST the screen is a hero (huge character,
    name well, Customize + Random actions, gold ENTER); the pickers
@@ -223,7 +223,7 @@ export function NameModal(props) {
   React.useEffect(function () { _measureMore(); }, [_def.sel]);
   /* v2.3.1143: Login Key overlay toggle (self-contained -- no BroTown prop). */
   var _acS = React.useState(false), showAccount = _acS[0], setShowAccount = _acS[1];
-  /* v2.3.1273: Customize drawer toggle (view-only, like showAccount). */
+  /* v2.3.1276: Customize drawer toggle (view-only, like showAccount). */
   var _dwS = React.useState(false), drawerOpen = _dwS[0], setDrawerOpen = _dwS[1];
   /* v2.3.1235 rollout micro-fix §2's inline-SVG die (currentColor — no
      new hex, no emoji, no asset), shared by the name dice + Randomize. */
@@ -305,7 +305,7 @@ export function NameModal(props) {
       /* v2.3.799: SQUARE canvas sized by stage HEIGHT, bottom-center
          anchored so the boots plant on the pedestal's top face.
          v2.3.1251: 88% → 97% (+10%); bottom 14.5% → 13.5%.
-         v2.3.1273b: 97% → 48.5% (owner: half-size character on the
+         v2.3.1276b: 97% → 48.5% (owner: half-size character on the
          hero screen).  The platform contact line lives at ≈24.2% of
          stage (13.5 + 0.11×97, boots ≈11% up the bitmap); solving the
          same line for the half canvas gives bottom = 24.2 − 0.11×48.5
@@ -322,7 +322,7 @@ export function NameModal(props) {
       touchAction: 'none',
       cursor: 'grab',
       /* v2.3.744/745: per-angle drop — SW/E source frames sit higher in
-         their 256 box than the others.  v2.3.1273b: px offsets halve
+         their 256 box than the others.  v2.3.1276b: px offsets halve
          with the bitmap's on-screen scale. */
       transform: 'translateX(-50%) translateY(' + ({ southwest: 8, southeast: 8, east: 5, west: 5, northeast: 3, northwest: 3 }[previewDir] || 0) + 'px)',
       /* v2.3.717: transparent — trait sprites carry white extraction
@@ -350,7 +350,7 @@ export function NameModal(props) {
       boxShadow: 'inset 0 1px 0 rgba(255,255,255,.10), inset 0 -2px 3px rgba(0,0,0,.38), 0 2px 6px rgba(3,8,12,.30)',
       display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }
   }, /*#__PURE__*/React.createElement("span", { style: { fontSize: 23, fontWeight: 700, lineHeight: 1, transform: 'translateY(-1px)' } }, "↻"))),
-  /* v2.3.1273: the always-visible sheet (.bt-cc-menu) is retired — the
+  /* v2.3.1276: the always-visible sheet (.bt-cc-menu) is retired — the
      hero screen shows only the control cluster below; the pickers live
      in the slide-up drawer after the box. */
   /*#__PURE__*/React.createElement("div", {
@@ -401,7 +401,7 @@ export function NameModal(props) {
     style: { position: 'absolute', right: 2, top: '50%', transform: 'translateY(-50%)', width: 40, height: 40, borderRadius: 8, cursor: 'pointer',
       display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }
   }, _dieSvg(18))), /*#__PURE__*/React.createElement("div", {
-    /* v2.3.1273: hero action row — Customize slides the drawer up;
+    /* v2.3.1276: hero action row — Customize slides the drawer up;
        Random rerolls the whole look (same randomizeWithFlair the
        drawer's die cell uses). */
     className: "bt-cc-actions"
@@ -455,12 +455,12 @@ export function NameModal(props) {
       textAlign: 'center'
     }
   }, "v" + BUILD_INFO.version + " \u00b7 " + BUILD_INFO.sha)), drawerOpen && /*#__PURE__*/React.createElement("div", {
-    /* v2.3.1273: light tap-to-close scrim under the drawer — the world
+    /* v2.3.1276: light tap-to-close scrim under the drawer — the world
        stays visible; tapping it is the "put the drawer away" gesture. */
     className: "bt-cc-drawer-scrim",
     onClick: function () { setDrawerOpen(false); }
   }), /*#__PURE__*/React.createElement("div", {
-    /* v2.3.1273: the Customize DRAWER — always mounted (the strip refs
+    /* v2.3.1276: the Customize DRAWER — always mounted (the strip refs
        and scroll positions persist), slid off-screen + pointer-inert
        when closed (transform, not display: layout stays measurable for
        _measureMore).  Absolute overlay: nothing in here can move the
@@ -535,7 +535,7 @@ export function NameModal(props) {
   }, _colors || /*#__PURE__*/React.createElement("div", null)), /*#__PURE__*/React.createElement("span", {
     className: "bt-cc-more" + (scrollMore.colors ? " bt-cc-more--on" : ""), "aria-hidden": true
   }, "›"))), /*#__PURE__*/React.createElement("button", {
-    /* v2.3.1273: closes the drawer; the hero screen (with ENTER) is
+    /* v2.3.1276: closes the drawer; the hero screen (with ENTER) is
        right behind it. */
     type: 'button', className: "bt-cc-btn bt-cc-done",
     onClick: function () { setDrawerOpen(false); }

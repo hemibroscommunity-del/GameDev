@@ -710,7 +710,7 @@ input{font-family:inherit}
    AREA at full width, floors held at 10px text / ~35px tap targets /
    16px input font for the iOS zoom gate).  The flex stage absorbs all
    the height the sheet gives up, so the character grows accordingly. */
-/* v2.3.1273: GROUND-UP RETHINK (owner) — the always-visible sheet
+/* v2.3.1276: GROUND-UP RETHINK (owner) — the always-visible sheet
    (.bt-cc-menu, v2.3.1251-1272) is retired.  The hero screen keeps only
    the bottom control cluster; the pickers live in .bt-cc-drawer (below,
    after the base picker rules), an absolute slide-up overlay that can
@@ -995,7 +995,7 @@ input{font-family:inherit}
 /* v2.3.1272: back up to comfortable targets — 6 tiles at rest (~50px
    at 390) and 7 swatches (~42px); constants: fixed base 62 + gaps
    (tiles 5×5=25, swatches 6×6=36). */
-/* v2.3.1273: strips live in the DRAWER now (inset 20 + border 2 +
+/* v2.3.1276: strips live in the DRAWER now (inset 20 + border 2 +
    padding 20 + row pad 2 = 44 fixed): the biggest targets of any
    version — ~64px tiles (5 at rest) and ~53px swatches (6 at rest) on
    a 390 screen. */
@@ -1024,7 +1024,7 @@ input{font-family:inherit}
 .bt-cc-scroll{position:relative;flex:0 0 auto;min-width:0}
 .bt-cc-more{position:absolute;top:0;right:0;bottom:0;width:26px;display:flex;align-items:center;justify-content:flex-end;padding-right:2px;pointer-events:none;opacity:0;transition:opacity 160ms ease;background:linear-gradient(to right,rgba(30,46,52,0),var(--ui-sheet) 80%);color:var(--ui-text-secondary);font-size:15px;font-weight:700;line-height:1}
 .bt-cc-more--on{opacity:1}
-/* v2.3.1273: the Customize DRAWER — floating bottom card holding tabs /
+/* v2.3.1276: the Customize DRAWER — floating bottom card holding tabs /
    subtype chips / tiles / colors / Done.  Always mounted; closed =
    slid past the bottom edge + pointer-inert (transform keeps layout
    measurable for the scroll-affordance probe).  Height is content-

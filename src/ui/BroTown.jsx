@@ -230,7 +230,7 @@ const {
 } = DATA;
 
 import { _regenerator, _regeneratorDefine2, _asyncToGenerator, _typeof, _slicedToArray, _toConsumableArray, _objectSpread, _defineProperty, _toPropertyKey, _toPrimitive, ownKeys, _arrayWithHoles, _iterableToArrayLimit, _unsupportedIterableToArray, _arrayLikeToArray, _nonIterableRest, _arrayWithoutHoles, _iterableToArray, _nonIterableSpread, _createForOfIteratorHelper, asyncGeneratorStep } from '@/lib/babelHelpers.js';
-import { SpriteHpBar } from './SpriteHpBar.jsx'; /* v2.3.1273: owner's HP-bar art (desktop HUD row) */
+import { SpriteHpBar } from './SpriteHpBar.jsx'; /* v2.3.1276: owner's HP-bar art (desktop HUD row) */
 
 /* Expose all exports as globals for the pre-transpiled code.
    The original index.html had everything in one scope; this bridges the gap. */
@@ -8430,7 +8430,7 @@ export var BroTown = function BroTown(_ref0) {
       className: 'bt-ds-icon'
     }, '❤️'), React.createElement('div', {
       className: 'bt-ds-track',
-      /* v2.3.1273: owner's bar art replaces the flat track+fill for HP
+      /* v2.3.1276: owner's bar art replaces the flat track+fill for HP
          (mana/stamina keep the flat style).  The track's own chrome is
          hidden so only the sprite frame shows. */
       style: { background: 'transparent', border: 'none', height: 14, borderRadius: 0, overflow: 'visible' }
