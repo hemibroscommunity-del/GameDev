@@ -493,7 +493,12 @@ const FIT_GRID_CONTAIN = { containerType: 'size' };
    cells get 8px side margins too — gap == edge == 8 everywhere; the
    remaining vertical slack pools quietly below the slot block. */
 const SLOT_GAP = 8;
-const FIT_TRACK = 'min(calc((100cqw - 24px) / 2), calc((100cqh - 20px) / 3))';
+/* v2.3.1260: owner — the slot-to-PANEL-EDGE distance must ALSO be 8px.
+   The column carries a 4px horizontal inset the old 24px reserve ignored
+   (grid-edge margin 8 + column 4 = 12 visual).  Reserving 16px instead
+   (2 gaps + 2x4px margins) makes: in-grid side margin 4 + column 4 = 8
+   == the inter-slot gap.  Cells grow ~4px in the bargain. */
+const FIT_TRACK = 'min(calc((100cqw - 16px) / 2), calc((100cqh - 20px) / 3))';
 
 const InventoryPreview = () => {
   const [, force] = useState(0);
