@@ -9,7 +9,10 @@
      viewport so the world stays dominant).  The v2.3.1238 height-aware
      tile formula turns the extra height into larger slots and looser
      Build/DEF/DPS rows automatically. */
-  --dash-h:   33vh;
+  /* v2.3.1256: +26px — the panel SUBHEADER strip (22px + 4px margin).
+     The band grows by exactly the strip's cost so the slot grids keep
+     their previous pixel budget untouched (owner: don't move the slots). */
+  --dash-h:   calc(33vh + 26px);
   /* v2.3.1235: Lantern Slate CORRECTION PASS (owner-approved ChatGPT
      review of the v2.3.1234 screenshots).  Slightly brighter, greener
      slate; four depth roles only (sheet / raised / well / well-deep);
@@ -108,7 +111,7 @@
    height on iOS, so this does NOT jump when the address bar shows/hides).
    CSS-only + graceful: any engine without round() keeps plain 28vh. */
 @supports (height: round(nearest, 33vh, 1px)) {
-  :root { --dash-h: round(nearest, 33vh, 1px); }
+  :root { --dash-h: calc(round(nearest, 33vh, 1px) + 26px); }
 }
 /* v2.3.1241: edge-parity — device-pixel hairlines.  A "1px" contour is 2–3
    physical pixels on Retina; that thickness (stacked with borders/shadows)
@@ -206,6 +209,27 @@
   background-color:#213E5A;
   background-image:url('/ui/dashboard/header-circuit.webp');
 }
+/* v2.3.1256: panel SUBHEADER — a quiet 22px info strip directly under the
+   textured cap (owner: DEF/DPS for Loadout, slots-left for Bag, level +
+   unspent points for Build).  Full-bleed like the cap; hairline base rule;
+   data text only — never buttons or slots.  The band grew by exactly this
+   strip's height so the slot grids below are untouched. */
+.bt-dashboard-panel-subheader{
+  flex:0 0 22px;
+  height:22px;
+  margin:0 -4px 4px;
+  display:flex;align-items:center;justify-content:center;gap:5px;
+  background:rgba(6,14,18,.45);
+  border-bottom:var(--ui-hairline) solid #29414B;
+  font-size:10px;font-weight:700;letter-spacing:.06em;
+  color:var(--ui-dashboard-text-secondary);
+  white-space:nowrap;overflow:hidden;
+  pointer-events:none;
+}
+.bt-dashboard-panel-subheader .sub-label{color:#93A2A2}
+.bt-dashboard-panel-subheader .sub-def{color:#6FCBD6;font-variant-numeric:tabular-nums}
+.bt-dashboard-panel-subheader .sub-dps{color:#7BCD84;font-variant-numeric:tabular-nums}
+.bt-dashboard-panel-subheader .sub-num{font-variant-numeric:tabular-nums}
 /* v2.3.1249: compact item-quantity badge (bottom-right of ItemTile) —
    replaces the big uncontained 15px count.  Bare number, no "x", shown
    only when count > 1, sized for the 2-digit stack max.  pointer-events
