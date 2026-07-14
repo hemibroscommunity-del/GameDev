@@ -428,7 +428,7 @@ export function NameModal(props) {
     className: "bt-cc-colors-row", ref: _colorRowRef, onScroll: _measureMore, role: _colors ? 'radiogroup' : undefined, "aria-label": _colors ? _def.label + ' colors' : undefined
   }, _colors || /*#__PURE__*/React.createElement("div", null)), /*#__PURE__*/React.createElement("span", {
     className: "bt-cc-more" + (scrollMore.colors ? " bt-cc-more--on" : ""), "aria-hidden": true
-  }, "›")))), /*#__PURE__*/React.createElement("button", {
+  }, "›"))), /*#__PURE__*/React.createElement("button", {
     /* Appearance RANDOMIZE — visually secondary (handoff), inside the
        sheet, right under what it acts on.  v2.3.1254: chrome moved to
        .bt-cc-btn (micro-bevel); inline styles are layout-only. */
