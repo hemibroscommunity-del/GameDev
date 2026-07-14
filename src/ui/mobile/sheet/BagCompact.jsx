@@ -22,6 +22,12 @@ import { prefersReducedMotion } from './motion.js';
 
 const CELL_GAP = 8;
 
+/* v2.3.1293 (ChatGPT round-3 §4 Bag): unread pickups.  The brief
+   arrival pulse stays, but a pickup you haven't LOOKED at keeps a
+   small brass dot until its detail card is opened — session-scoped
+   module state (a marker, not a save file). */
+const UNSEEN = new Set();
+
 export const BagCompact = () => {
   const [, force] = useState(0);
   useEffect(() => {
@@ -54,13 +60,27 @@ export const BagCompact = () => {
   /* Arrival pulse: a key that wasn't in the previous render's set gets
      one brief highlight (no persistent animation — spec §Motion). */
   const prevKeys = useRef(new Set());
+  /* v2.3.1293: `seeded` replaces the old prevKeys.size guard — an EMPTY
+     bag is still a valid baseline, so the first-ever pickup gets its
+     marker too (the size guard silently skipped it). */
+  const seeded = useRef(false);
   const newKeys = new Set();
   const keyOf = (e) => e.kind === 'item' ? `i-${e.key}` : `${e.kind}-${e.index}`;
   for (const e of entries) {
     const k = keyOf(e);
-    if (prevKeys.current.size && !prevKeys.current.has(k)) newKeys.add(k);
+    if (seeded.current && !prevKeys.current.has(k)) { newKeys.add(k); UNSEEN.add(k); }
   }
-  useEffect(() => { prevKeys.current = new Set(entries.map(keyOf)); });
+  useEffect(() => { prevKeys.current = new Set(entries.map(keyOf)); seeded.current = true; });
+  /* v2.3.1293: opening any detail card marks that entry seen (item
+     tiles open kind:'inventory'; stash tiles open kind:'stash*' with
+     the same index keyOf uses). */
+  useEffect(() => itemDetailBus.subscribe(() => {
+    const t = itemDetailBus.state.open && itemDetailBus.state.target;
+    if (!t) return;
+    if (t.kind === 'inventory' && t.key) UNSEEN.delete(`i-${t.key}`);
+    else if (typeof t.kind === 'string' && t.kind.startsWith('stash')) UNSEEN.delete(`${t.kind}-${t.index}`);
+    force(v => v + 1);
+  }), []);
 
   const openPicker = (pickerSlot) => (anchor) => {
     const st = itemDetailBus.state;
@@ -118,8 +138,19 @@ export const BagCompact = () => {
         return (
           <div key={k}
             className={newKeys.has(k) && !prefersReducedMotion() ? 'bt-arrive-pulse' : undefined}
-            style={{ minWidth: 0, minHeight: 0 }}>
+            style={{ minWidth: 0, minHeight: 0, position: 'relative' }}>
             <BagTile entry={e} />
+            {/* v2.3.1293: unread marker — stays until inspected (the
+                pulse alone vanished before the player looked). */}
+            {UNSEEN.has(k) && (
+              <span aria-hidden="true" style={{
+                position: 'absolute', top: 3, left: 3,
+                width: 7, height: 7, borderRadius: '50%',
+                background: COL.accent,
+                border: '1px solid rgba(0,0,0,.45)',
+                pointerEvents: 'none', zIndex: 1,
+              }} />
+            )}
           </div>
         );
       })}

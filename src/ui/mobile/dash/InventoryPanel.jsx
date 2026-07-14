@@ -177,9 +177,15 @@ export const ItemTile = ({ ikey, count, style: styleOverride }) => {
   );
 };
 
+/* v2.3.1293 (ChatGPT round-3 §6): the selected filter survives leaving
+   the destination — module-scoped, session-only.  Switching to Hero
+   and back should not silently reset a Weapon filter to All. */
+let _lastFilter = 'all';
+
 export const InventoryPanel = () => {
   const [, force] = useState(0);
-  const [filter, setFilter] = useState('all');
+  const [filter, setFilterState] = useState(_lastFilter);
+  const setFilter = (f) => { _lastFilter = f; setFilterState(f); };
 
   useEffect(() => {
     const id = setInterval(() => force(v => v + 1), 400);

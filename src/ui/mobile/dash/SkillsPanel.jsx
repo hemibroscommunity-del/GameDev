@@ -65,7 +65,8 @@ export const SkillsPanel = () => {
               }}>
                 <div style={{ width: pct + '%', height: '100%', borderRadius: 999, background: COL.xp }} />
               </div>
-              <span style={{ fontSize: 9.5, color: COL.muted, fontVariantNumeric: 'tabular-nums' }}>
+              {/* v2.3.1293: 10px floor (round-3 §5) */}
+              <span style={{ fontSize: 10, color: COL.muted, fontVariantNumeric: 'tabular-nums' }}>
                 {Math.floor(sk.xp || 0)} / {need}
               </span>
             </div>

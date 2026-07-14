@@ -807,15 +807,19 @@ export const BottomDashboard = () => {
           hidden in bar mode (nothing to drag — the resting band is all
           toolbar; destinations open by tap). */}
       {mode !== 'bar' && (
+        /* v2.3.1293 (round-3 §5): bigger visible handle (44x5) — the
+           drag itself works anywhere on non-scrolling chrome, so the
+           whole top strip already exceeds a 44px hit area; the visual
+           just needed to look grabbable. */
         <div aria-hidden="true" style={{
           position: 'absolute',
           top: 4,
           left: '50%',
           transform: 'translateX(-50%)',
-          width: 32,
-          height: 4,
-          borderRadius: 2,
-          background: 'rgba(229,237,233,.22)',
+          width: 44,
+          height: 5,
+          borderRadius: 3,
+          background: 'rgba(229,237,233,.28)',
           pointerEvents: 'none',
         }} />
       )}
