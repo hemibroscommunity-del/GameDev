@@ -1442,8 +1442,8 @@ export const BottomDashboard = () => {
                       gap: 0,
                       padding: 0,
                     }}>
-                      {/* The six equipment slots (Chest·Weapon·Shield
-                          / Legs·Amulet·Cape). */}
+                      {/* The six equipment slots.  v2.3.1255 owner order:
+                          chest·weapon / legs·shield / cape·neck. */}
                       {slotCell({
                           k: 'chest',
                           label: 'CHEST',
@@ -1459,7 +1459,6 @@ export const BottomDashboard = () => {
                         })}
                         {/* v2.3.1025: label is always WEAPON (melee/ranged/staff all live here). */}
                         {slotCell({ k: 'weapon', label: 'WEAPON', iconSrc: slotIconSrc, active: !!wpn, onTap: onTapWeapon, quality: wpn && wpn.quality })}
-                        {slotCell({ k: 'shield', label: 'SHIELD', iconSrc: shieldSrc, active: !!R.shield, equipped: !!R.shield, onTap: onTapShield })}
                         {slotCell({
                           k: 'legs',
                           label: 'LEGS',
@@ -1469,6 +1468,10 @@ export const BottomDashboard = () => {
                           active: gearLegsId !== 'none',
                           onTap: onTapLegsArmor,
                         })}
+                        {slotCell({ k: 'shield', label: 'SHIELD', iconSrc: shieldSrc, active: !!R.shield, equipped: !!R.shield, onTap: onTapShield })}
+                        {/* Cape: new back-layer slot (v2.3.692).  Render + equip
+                            flow land in Phase 2; cell shows as empty for now. */}
+                        {slotCell({ k: 'cape', label: 'CAPE', iconSrc: null, active: false })}
                         {/* v2.3.1242: owner directive — the amulet slot must
                             match its neighbour (CAPE), which renders as a word,
                             not an icon.  "AMULET" (6 chars) was the sole holdout
@@ -1476,9 +1479,6 @@ export const BottomDashboard = () => {
                             slot; "NECK" (4 chars) matches CAPE exactly, so both
                             bottom-row placeholders read identically. */}
                         {slotCell({ k: 'amulet', label: 'NECK', iconSrc: null, active: !!R.amulet, equipped: !!R.amulet })}
-                        {/* Cape: new back-layer slot (v2.3.692).  Render + equip
-                            flow land in Phase 2; cell shows as empty for now. */}
-                        {slotCell({ k: 'cape', label: 'CAPE', iconSrc: null, active: false })}
                         {/* v2.3.1236: owner feedback r4 §2 — the damage
                             readout returns (r3 §1 removed the r2 text
                             footer; owner asked for a compact ICON line in
