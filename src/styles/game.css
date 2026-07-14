@@ -457,6 +457,12 @@ input{font-family:inherit}
    point waiting to be allocated.  Brightness pulse reads even where the cell's
    overflow clips a glow; the purple box-shadow adds the halo where it shows. */
 @keyframes bt-build-flash{0%,100%{filter:brightness(1);box-shadow:0 0 0 0 rgba(216,168,95,0)}50%{filter:brightness(1.5);box-shadow:0 0 8px 2px rgba(216,168,95,.7)}}
+/* v2.3.1285: one-shot arrival pulse for a fresh pickup landing in the
+   Bag compact recent row (spec: brief, subtle, then settle — no
+   continuous animation).  Class is dropped after the first render
+   cycle; reduced-motion callers never attach it. */
+@keyframes bt-arrive-pulse{0%{box-shadow:0 0 0 0 rgba(216,168,95,.75);filter:brightness(1.45)}100%{box-shadow:0 0 0 6px rgba(216,168,95,0);filter:brightness(1)}}
+.bt-arrive-pulse{animation:bt-arrive-pulse 480ms ease-out 1;border-radius:8px}
 .bt-build-flash{animation:bt-build-flash 1.2s ease-in-out infinite}
 .bt-plist{position:absolute;top:46px;left:8px;z-index:25;width:200px;max-height:260px;
   background:rgba(17,25,29,.94);border:1px solid rgba(255,255,255,.15);border-radius:10px;

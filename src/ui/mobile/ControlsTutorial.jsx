@@ -28,9 +28,11 @@ const STEPS = [
     label: 'Move', body: 'Drag the left stick to move.' },
   { key: 'attack', shape: 'circle', sels: ['.bt-rjoy-base'],
     label: 'Attack', body: 'Drag the right stick — hold for special.' },
+  /* v2.3.1285: the 3-panel row is retired — the home view is the Bag
+     compact grid (equipped row over recent items). */
   { key: 'dashboard', shape: 'rect',
-    sels: ['[data-tut="dash-bag"]', '[data-tut="dash-loadout"]', '[data-tut="dash-build"]'],
-    label: 'Dashboard', body: 'Your bag, loadout and build live here. Tap anything for details.' },
+    sels: ['[data-tut="dash-bag"]'],
+    label: 'Bag', body: 'Your gear on top, latest loot below. Tap anything for details — swipe up for the full bag.' },
   { key: 'toolbar', shape: 'rect',
     sels: ['[data-tut="dash-chat"]', '[data-tut="dash-more"]'],
     label: 'Toolbar', body: 'Menus live down here.' },
