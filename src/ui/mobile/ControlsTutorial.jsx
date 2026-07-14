@@ -31,7 +31,9 @@ const STEPS = [
   /* v2.3.1285: the 3-panel row is retired — the home view is the Bag
      compact grid (equipped row over recent items). */
   { key: 'dashboard', shape: 'rect',
-    sels: ['[data-tut="dash-bag"]'],
+    /* v2.3.1290: the home grid only exists in compact mode now — fall
+       back to the toolbar Bag button so the step never goes dark. */
+    sels: ['[data-tut="dash-bag"]', '.bt-dashboard-nav-button[aria-label="Bag"]'],
     label: 'Bag', body: 'Your gear on top, latest loot below. Tap anything for details — swipe up for the full bag.' },
   /* v2.3.1287: Chat left the toolbar — the composer opens by tapping
      your own character; the step teaches that instead. */

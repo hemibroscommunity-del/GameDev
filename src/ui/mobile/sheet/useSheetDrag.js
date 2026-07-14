@@ -13,10 +13,14 @@ import { sheetTransition } from './motion.js';
    Recognition: candidate until |dy| > 12px AND |dy| > |dx|; then the
    hook takes over — transition is disabled and the band height tracks
    the finger directly (same-panel-growing feel, not a page swap).
-   Settle: velocity >= 0.5 px/ms wins in its direction; otherwise the
-   nearest snap past the midpoint.  The final mode lands on the bus so
-   toolbar state stays truthful. */
-export function useSheetDrag(dashRef, getCompactPx, getExpandedPx) {
+
+   v2.3.1290 (three-state nav): THREE snaps — bar / compact / expanded.
+   Drags are disabled while resting in bar mode (the band is all
+   toolbar buttons there; destinations open by tap).  Settle: a flick
+   (|v| >= 0.5 px/ms) moves ONE snap in its direction from the mode the
+   drag started in; otherwise the nearest of the three snaps wins.  The
+   final mode lands on the bus so toolbar state stays truthful. */
+export function useSheetDrag(dashRef, getBarPx, getCompactPx, getExpandedPx) {
   useEffect(() => {
     const el = dashRef.current;
     if (!el) return;
@@ -25,6 +29,7 @@ export function useSheetDrag(dashRef, getCompactPx, getExpandedPx) {
     let startY = 0, startX = 0, lastY = 0, lastT = 0, vel = 0;
     let dragging = false;        /* recognition passed */
     let startHeight = 0;
+    let startMode = 'compact';
     let allowCollapseFromScroller = false;
 
     const scrollerUnder = (target) => {
@@ -41,10 +46,24 @@ export function useSheetDrag(dashRef, getCompactPx, getExpandedPx) {
 
     const onStart = (e) => {
       if (touchId != null) return;
+      /* v2.3.1290: no drags from the bar — the resting band is just the
+         toolbar; a vertical swipe there is almost always a mis-aimed
+         world touch, and eating it would also delay button taps. */
+      if (dashboardPanelBus.state.mode === 'bar') return;
       const t = e.changedTouches[0];
       /* Toolbar buttons keep their own tap handling — a drag starting
          there would eat the click synthesis. */
       if (t.target.closest && t.target.closest('.bt-dashboard-nav-button')) return;
+      /* v2.3.1290: a touch inside a HORIZONTAL scroller (the Bag filter
+         chip strip) is a chip scroll, never a sheet drag. */
+      let hn = t.target;
+      while (hn && hn !== el && hn.nodeType === 1) {
+        try {
+          const cs = window.getComputedStyle(hn);
+          if ((cs.overflowX === 'auto' || cs.overflowX === 'scroll') && hn.scrollWidth > hn.clientWidth) return;
+        } catch (_) {}
+        hn = hn.parentNode;
+      }
       const scroller = scrollerUnder(t.target);
       if (scroller) {
         /* Inside a scroller: only a pull-down from the very top may
@@ -61,6 +80,7 @@ export function useSheetDrag(dashRef, getCompactPx, getExpandedPx) {
       vel = 0;
       dragging = false;
       startHeight = el.getBoundingClientRect().height;
+      startMode = dashboardPanelBus.state.mode;
     };
 
     const findTouch = (e) => {
@@ -80,9 +100,9 @@ export function useSheetDrag(dashRef, getCompactPx, getExpandedPx) {
         dragging = true;
         el.style.transition = 'none';
       }
-      const compactPx = getCompactPx();
+      const barPx = getBarPx();
       const expandedPx = getExpandedPx();
-      const h = Math.max(compactPx, Math.min(expandedPx, startHeight - dy));
+      const h = Math.max(barPx, Math.min(expandedPx, startHeight - dy));
       el.style.height = h + 'px';
       const dt = Math.max(1, e.timeStamp - lastT);
       vel = (t.clientY - lastY) / dt; /* +down / -up, px per ms */
@@ -99,19 +119,28 @@ export function useSheetDrag(dashRef, getCompactPx, getExpandedPx) {
       touchId = null;
       dragging = false;
       if (!wasDragging) return;
-      const compactPx = getCompactPx();
-      const expandedPx = getExpandedPx();
+      const snaps = [
+        { mode: 'bar', px: getBarPx() },
+        { mode: 'compact', px: getCompactPx() },
+        { mode: 'expanded', px: getExpandedPx() },
+      ];
       const h = el.getBoundingClientRect().height;
-      let expand;
-      if (Math.abs(vel) >= 0.5) expand = vel < 0;               /* flick */
-      else expand = h > (compactPx + expandedPx) / 2;            /* midpoint */
+      let target;
+      if (Math.abs(vel) >= 0.5) {
+        /* Flick: one snap in the flick's direction from the start mode. */
+        const idx = snaps.findIndex(s => s.mode === startMode);
+        target = snaps[Math.max(0, Math.min(snaps.length - 1, idx + (vel < 0 ? 1 : -1)))];
+      } else {
+        /* Nearest snap to the released height. */
+        target = snaps.reduce((a, b) => (Math.abs(b.px - h) < Math.abs(a.px - h) ? b : a));
+      }
       el.style.transition = sheetTransition();
       /* Settle to the explicit snap px: when the mode DIDN'T change the
          bus won't emit and React won't re-render, so an emptied inline
          height would leave the band collapsed to auto.  The next React
          render re-asserts the style prop anyway. */
-      el.style.height = (expand ? expandedPx : compactPx) + 'px';
-      if (expand) dashboardPanelBus.expand(); else dashboardPanelBus.collapse();
+      el.style.height = target.px + 'px';
+      dashboardPanelBus.settle(target.mode);
     };
 
     el.addEventListener('touchstart', onStart, { passive: true });

@@ -232,7 +232,7 @@ const {
 
 import { _regenerator, _regeneratorDefine2, _asyncToGenerator, _typeof, _slicedToArray, _toConsumableArray, _objectSpread, _defineProperty, _toPropertyKey, _toPrimitive, ownKeys, _arrayWithHoles, _iterableToArrayLimit, _unsupportedIterableToArray, _arrayLikeToArray, _nonIterableRest, _arrayWithoutHoles, _iterableToArray, _nonIterableSpread, _createForOfIteratorHelper, asyncGeneratorStep } from '@/lib/babelHelpers.js';
 import { SpriteHpBar } from './SpriteHpBar.jsx'; /* v2.3.1273: owner's HP-bar art (desktop HUD row) */
-import { compactDashHeight, DASH_OVERLAP } from './mobile/sheet/sheetGeometry.js'; /* v2.3.1283 */
+import { BAR_H, DASH_OVERLAP } from './mobile/sheet/sheetGeometry.js'; /* v2.3.1283; v2.3.1290 bar-height canvas */
 
 /* Expose all exports as globals for the pre-transpiled code.
    The original index.html had everything in one scope; this bridges the gap. */
@@ -1815,8 +1815,9 @@ export var BroTown = function BroTown(_ref0) {
     /* v2.3.1283: geometry constants now come from sheetGeometry.js —
        the shared source BottomDashboard also imports — instead of the
        comment-enforced mirror of --dash-h that lived here through
-       v2.3.1280.  The canvas keys off the COMPACT band height in all
-       modes; the expanded sheet overlays the world without resizing
+       v2.3.1280.  v2.3.1290: the canvas keys off the BAR height (toolbar-
+       only resting state) in all modes; compact and expanded sheets
+       overlay the world without resizing
        the canvas (see sheetGeometry's invariant note). */
     function resize() {
       var dpr = window.devicePixelRatio || 1;
@@ -1829,7 +1830,7 @@ export var BroTown = function BroTown(_ref0) {
          then floats over the canvas like an overlay instead of
          shifting the scene up and exposing a black bar at the bottom. */
       if (vv && window.innerHeight - vhFull > 100) return;
-      var vh = Math.max(120, Math.round(vhFull - compactDashHeight(vw)) + DASH_OVERLAP);
+      var vh = Math.max(120, Math.round(vhFull - BAR_H) + DASH_OVERLAP); /* v2.3.1290: bar is the resting band */
       /* v2.3.1283: short-circuit when nothing changed — the
          ResizeObserver below re-fires during layout churn (e.g. the
          sheet's height animation), and assigning canvas.width even to
@@ -5314,7 +5315,7 @@ export var BroTown = function BroTown(_ref0) {
     var openSelfChat = function () {
       try {
         var _busC = window.__broDashPanelBus;
-        if (_busC && _busC.state.mode === 'expanded') _busC.collapse();
+        if (_busC && _busC.state.mode !== 'bar') _busC.toBar(); /* v2.3.1290 */
       } catch (_e3) {}
       try { chatBubbleBus.setOpen(true); } catch (_e4) {}
     };
@@ -5358,7 +5359,7 @@ export var BroTown = function BroTown(_ref0) {
          is world-intent. */
       try {
         var _bus = window.__broDashPanelBus;
-        if (_bus && _bus.state.mode === 'expanded') _bus.collapse();
+        if (_bus && _bus.state.mode !== 'bar') _bus.toBar(); /* v2.3.1290: straight to bar */
       } catch (_e2) {}
       var nowMs = Date.now();
       var lts = lTapState.current;
@@ -5488,7 +5489,7 @@ export var BroTown = function BroTown(_ref0) {
          same rule as the movement zone (see lS). */
       try {
         var _busR = window.__broDashPanelBus;
-        if (_busR && _busR.state.mode === 'expanded') _busR.collapse();
+        if (_busR && _busR.state.mode !== 'bar') _busR.toBar(); /* v2.3.1290: straight to bar */
       } catch (_e2) {}
       var nowMs = Date.now();
       var rts = rTapState.current;

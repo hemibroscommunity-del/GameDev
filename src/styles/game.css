@@ -27,14 +27,15 @@
      keeps cells width-bound (gap == edge == 8 exactly; the 2px pools
      invisibly).  ~202px at 430w vs 227 (v2.3.1277) / 303 (v2.3.1271).
      JS mirror: BroTown.jsx DASH_W_FRAC/DASH_BASE. */
-  /* v2.3.1283: nav-system compact band — derived from the Bag 6x2
-     grid: slot (100vw-56)/6, 2 rows + gap + 16 pad + 72 toolbar =
-     33.3333vw + 78px (~221px at 430w).  JS source of truth:
-     src/ui/mobile/sheet/sheetGeometry.js (compactDashHeight) — keep
-     this CSS var equal to it.  --dash-h stays the COMPACT height in
-     all modes; the expanded sheet overlays taller without moving any
-     var(--dash-h) consumer (canvas, joystick zones, world HUD). */
-  --dash-h:   calc(33.3333vw + 78px);
+  /* v2.3.1283: nav-system band.  v2.3.1290 (owner: three-state nav) —
+     --dash-h is now the BAR height: the toolbar-only resting state, the
+     game's default with maximum world visibility.  Compact (glance) and
+     expanded (detail) are taller overlays managed by BottomDashboard;
+     they never move any var(--dash-h) consumer (canvas, joystick zones,
+     world HUD).  JS source of truth: sheetGeometry.js BAR_H — keep this
+     var equal to it.  A whole px, so the v2.3.1241 round() pixel-snap
+     variant below is retired. */
+  --dash-h:   72px;
   /* v2.3.1235: Lantern Slate CORRECTION PASS (owner-approved ChatGPT
      review of the v2.3.1234 screenshots).  Slightly brighter, greener
      slate; four depth roles only (sheet / raised / well / well-deep);
@@ -126,15 +127,8 @@
   --ui-info: #599FE5;
   --ui-magic: #9A78D0;
 }
-/* v2.3.1241: edge-parity — pixel-snap the band height.  A fractional 28vh
-   puts the dashboard's TOP coord on a sub-pixel boundary, so every seam and
-   panel edge above it resamples into a soft 1–2px band on Retina.  round()
-   snaps the height to a whole CSS px (28vh uses the stable large-viewport
-   height on iOS, so this does NOT jump when the address bar shows/hides).
-   CSS-only + graceful: any engine without round() keeps plain 28vh. */
-@supports (height: round(nearest, 33.3333vw, 1px)) {
-  :root { --dash-h: calc(round(nearest, 33.3333vw, 1px) + 78px); } /* v2.3.1283 */
-}
+/* v2.3.1290: the v2.3.1241 round() pixel-snap block is retired — the
+   bar-height --dash-h is a whole CSS px by construction. */
 /* v2.3.1241: edge-parity — device-pixel hairlines.  A "1px" contour is 2–3
    physical pixels on Retina; that thickness (stacked with borders/shadows)
    is what fattened the old edges.  Scale the token so one contour renders
@@ -586,20 +580,26 @@ input{font-family:inherit}
 .bt-chat-input:focus{border-color:var(--pop)}
 .bt-joystick-zone{z-index:30;display:block;
   -webkit-touch-callout:none;-webkit-user-select:none;user-select:none;touch-action:none}
-/* v2.3.1288 (nav-system PR B): while the sheet is EXPANDED the floating
+/* v2.3.1288 (nav-system PR B): while a sheet is OPEN the floating
    combat chrome — both joystick discs and the special-charge pie — dims
-   to ghost opacity so it reads as parked, not tappable, where it pokes
-   past the sheet's top edge.  BottomDashboard stamps data-bt-sheet on
-   <html> from the panel bus, so this is pure CSS with no dependency on
-   the overlays re-rendering.  The dim rides the CONTAINERS: BroTown's
-   engagement ladder stamps opacity on the base elements inside (rest .5
-   / engaged .92, v2.3.1233b), which multiplies instead of fighting —
-   and a joystick touch collapses the sheet instantly (v2.3.1283
-   interlock), so "engaged while expanded" never persists. */
+   to ghost opacity so it reads as parked, not tappable, under/over the
+   sheet.  BottomDashboard stamps data-bt-sheet on <html> from the panel
+   bus, so this is pure CSS with no dependency on the overlays
+   re-rendering.  The dim rides the CONTAINERS: BroTown's engagement
+   ladder stamps opacity on the base elements inside (rest .5 / engaged
+   .92, v2.3.1233b), which multiplies instead of fighting — and a
+   joystick touch drops the sheet to the bar instantly (v2.3.1283
+   interlock), so "engaged while open" never persists.
+   v2.3.1290: with the bar as resting state the discs anchor just above
+   the toolbar, INSIDE the compact sheet's footprint — so the dim now
+   applies in BOTH open modes, and full opacity is bar-mode only. */
 .bt-joystick-zone,.bt-rjoy-zone,.bt-charge-pie{transition:opacity .22s ease}
 @media (prefers-reduced-motion: reduce){
   .bt-joystick-zone,.bt-rjoy-zone,.bt-charge-pie{transition:none}
 }
+:root[data-bt-sheet="compact"] .bt-joystick-zone,
+:root[data-bt-sheet="compact"] .bt-rjoy-zone,
+:root[data-bt-sheet="compact"] .bt-charge-pie,
 :root[data-bt-sheet="expanded"] .bt-joystick-zone,
 :root[data-bt-sheet="expanded"] .bt-rjoy-zone,
 :root[data-bt-sheet="expanded"] .bt-charge-pie{opacity:.15}

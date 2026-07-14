@@ -41,10 +41,19 @@ function _flyResourceToInventory(S, wx, wy, iconUrl) {
     img.style.marginLeft = '-17px';  // centre the 34px icon on the point
     img.style.marginTop = '-17px';
     document.body.appendChild(img);
-    /* Target: bottom-left, just inside the dashboard where the inventory
-       preview lives (--dash-h is ~28vh). */
-    var dashH = Math.round(window.innerHeight * 0.28);
-    var tx = 46, ty = window.innerHeight - dashH + 18;
+    /* Target: the toolbar's Bag button — the item visibly flies "into
+       the bag".  v2.3.1290 (three-state nav): the resting band is
+       toolbar-only, so the button rect IS the bag's home; fall back to
+       just above the 72px bar if the toolbar isn't mounted. */
+    var tx = 46, ty = window.innerHeight - 72 + 18;
+    try {
+      var bagBtn = document.querySelector('.bt-dashboard-nav-button[aria-label="Bag"]');
+      if (bagBtn) {
+        var br = bagBtn.getBoundingClientRect();
+        tx = br.left + br.width / 2;
+        ty = br.top + br.height / 2;
+      }
+    } catch (e2) {}
     requestAnimationFrame(function () {
       requestAnimationFrame(function () {
         img.style.transform = 'translate(' + tx + 'px,' + ty + 'px) scale(0.55)';

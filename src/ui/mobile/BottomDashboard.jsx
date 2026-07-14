@@ -18,7 +18,7 @@ import { getShirt, onShirtChange } from '../../rendering/traits/shirtCatalog.js'
 import { getShirtColor, shirtColorTarget, onShirtColorChange } from '../../rendering/traits/shirtColorCatalog.js';
 import { getEquip } from '../../rendering/gearCatalog.js';
 import { dashboardPanelBus } from './dashboardPanelBus.js';
-import { compactDashHeight, expandedSheetHeight } from './sheet/sheetGeometry.js'; /* v2.3.1283 */
+import { BAR_H, compactDashHeight, expandedSheetHeight } from './sheet/sheetGeometry.js'; /* v2.3.1283; v2.3.1290 three-state */
 import { sheetTransition } from './sheet/motion.js';            /* v2.3.1283 */
 import { useSheetDrag } from './sheet/useSheetDrag.js';         /* v2.3.1283 */
 import { BagCompact } from './sheet/BagCompact.jsx';            /* v2.3.1285 */
@@ -204,7 +204,10 @@ const Tooltip = ({ tip, onClose }) => {
           ...surface,
           position: 'fixed',
           left: '50%',
-          bottom: 'calc(var(--dash-h) + 12px)',
+          /* v2.3.1290: toast docks above the OPEN sheet (--sheet-h is
+             the live snap height stamped by the dashboard), not the
+             resting bar — tips fire from panel content. */
+          bottom: 'calc(var(--sheet-h, var(--dash-h)) + 12px)',
           transform: 'translateX(-50%)',
           maxWidth: '88vw',
           padding: '8px 12px',
@@ -230,7 +233,7 @@ const Tooltip = ({ tip, onClose }) => {
      cell; 19px floor keeps the triangle clear of the 10px corners. */
   const caretX = Math.max(19, Math.min(cx - left, w - 19));
   const pos = !anchor
-    ? { left, bottom: 'calc(var(--dash-h) + 12px)' }
+    ? { left, bottom: 'calc(var(--sheet-h, var(--dash-h)) + 12px)' } /* v2.3.1290 */
     : above
       ? { left, bottom: vh - anchor.top + 10 }
       : { left, top: anchor.bottom + 10 };
@@ -489,29 +492,46 @@ export const BottomDashboard = () => {
      panel-bus event (it did NOT clear before; only the 3s timer did). */
   useEffect(() => dashboardPanelBus.subscribe(() => { setTooltip(''); force(v => v + 1); }), []);
   /* v2.3.1288: PR B — stamp the snap mode on <html> so pure CSS can dim
-     the floating combat chrome (joystick discs + charge pie) while the
-     sheet is expanded; rules live in game.css next to .bt-joystick-zone.
-     CSS-driven so the dim never depends on those overlays re-rendering. */
+     the floating combat chrome (joystick discs + charge pie) while a
+     sheet is open; rules live in game.css next to .bt-joystick-zone.
+     CSS-driven so the dim never depends on those overlays re-rendering.
+     v2.3.1290: also stamp --sheet-h (the sheet's CURRENT snap height in
+     px) — overlays that dock above the OPEN sheet (the legacy tooltip
+     toast) anchor to it, while world chrome keeps var(--dash-h). */
   useEffect(() => {
-    const stamp = () => { document.documentElement.dataset.btSheet = dashboardPanelBus.state.mode; };
+    const stamp = () => {
+      const mode = dashboardPanelBus.state.mode;
+      document.documentElement.dataset.btSheet = mode;
+      const px = mode === 'expanded' ? snapPxRef.current.expanded
+        : mode === 'compact' ? snapPxRef.current.compact
+        : BAR_H;
+      document.documentElement.style.setProperty('--sheet-h', px + 'px');
+    };
     stamp();
     const unsub = dashboardPanelBus.subscribe(stamp);
-    return () => { delete document.documentElement.dataset.btSheet; unsub(); };
+    return () => {
+      delete document.documentElement.dataset.btSheet;
+      document.documentElement.style.removeProperty('--sheet-h');
+      unsub();
+    };
   }, []);
-  /* v2.3.1283: expanded snap height — ~half the viewport with the sheet
-     top stopping below the player's feet (sheetGeometry).  Recomputed on
+  /* v2.3.1283: snap heights — compact and expanded recomputed on
      viewport changes with the same iOS-keyboard guard the canvas resize
      uses: when the keyboard shrinks visualViewport, HOLD the last value
-     so the sheet doesn't jump under the chat composer. */
-  const [expandedPx, setExpandedPx] = useState(() =>
-    expandedSheetHeight(window.innerWidth, window.innerHeight));
+     so the sheet doesn't jump under the chat composer.  v2.3.1290:
+     compact joins expanded as React state (it's an overlay snap now,
+     not the resting --dash-h). */
+  const [snapPx, setSnapPx] = useState(() => ({
+    compact: compactDashHeight(window.innerWidth),
+    expanded: expandedSheetHeight(window.innerWidth, window.innerHeight),
+  }));
   useEffect(() => {
     const vv = window.visualViewport;
     const recompute = () => {
       const vw = vv ? vv.width : window.innerWidth;
       const vh = vv ? vv.height : window.innerHeight;
       if (vv && window.innerHeight - vh > 100) return; /* keyboard up */
-      setExpandedPx(expandedSheetHeight(vw, vh));
+      setSnapPx({ compact: compactDashHeight(vw), expanded: expandedSheetHeight(vw, vh) });
     };
     recompute();
     window.addEventListener('resize', recompute);
@@ -521,14 +541,15 @@ export const BottomDashboard = () => {
       if (vv) vv.removeEventListener('resize', recompute);
     };
   }, []);
-  /* v2.3.1283: swipe up = expand, swipe down = collapse (spec §Direct
-     manipulation).  Getters read live viewport so a drag mid-rotation
-     still clamps correctly. */
-  const expandedPxRef = useRef(0);
-  expandedPxRef.current = expandedPx;
+  /* v2.3.1283: swipe gestures between snaps (spec §Direct manipulation);
+     v2.3.1290: three snaps.  Getters read the ref so a drag
+     mid-rotation still clamps correctly. */
+  const snapPxRef = useRef(snapPx);
+  snapPxRef.current = snapPx;
   useSheetDrag(dashRef,
-    () => compactDashHeight((window.visualViewport && window.visualViewport.width) || window.innerWidth),
-    () => expandedPxRef.current);
+    () => BAR_H,
+    () => snapPxRef.current.compact,
+    () => snapPxRef.current.expanded);
   /* Player-card portrait: a head-and-shoulders render of the player's
      chosen cosmetics (skin / hair / hair color / beard / hat).  Generated
      on mount (captures the login picker) and regenerated if a cosmetic
@@ -747,13 +768,14 @@ export const BottomDashboard = () => {
       style={{
         position: 'fixed',
         left: 0, right: 0, bottom: 0,
-        /* v2.3.1283: ONE bottom sheet, two snap points (nav-system spec).
-           Compact = var(--dash-h) (the resting band; canvas/zones/HUD all
-           key off it).  Expanded = expandedSheetHeight() — ~half the
-           viewport, character stays visible.  The v2.3.1235 More 'auto'
-           special case dies: every destination uses the same snaps.
-           220ms token; reduced-motion drops the transition. */
-        height: mode === 'expanded' ? expandedPx + 'px' : 'var(--dash-h)',
+        /* v2.3.1283: ONE bottom sheet.  v2.3.1290 (owner): THREE snap
+           points — bar (var(--dash-h) = the 72px toolbar shelf, the
+           resting default; canvas/zones/HUD all key off it), compact
+           (glance), expanded (detail).  Every destination uses the same
+           snaps.  220ms token; reduced-motion drops the transition. */
+        height: mode === 'expanded' ? snapPx.expanded + 'px'
+          : mode === 'compact' ? snapPx.compact + 'px'
+          : 'var(--dash-h)',
         transition: sheetTransition(),
         /* v2.3.1240: surface, rounded top edge, and crisp contact shadow
            live in .bt-dashboard so the mockup recipe stays testable in
@@ -776,18 +798,22 @@ export const BottomDashboard = () => {
     >
       {/* v2.3.1283: drag affordance (spec: subtle, must not consume
           content height) — absolutely positioned over the band's top
-          edge so the compact height budget is untouched. */}
-      <div aria-hidden="true" style={{
-        position: 'absolute',
-        top: 4,
-        left: '50%',
-        transform: 'translateX(-50%)',
-        width: 32,
-        height: 4,
-        borderRadius: 2,
-        background: 'rgba(229,237,233,.22)',
-        pointerEvents: 'none',
-      }} />
+          edge so the compact height budget is untouched.  v2.3.1290:
+          hidden in bar mode (nothing to drag — the resting band is all
+          toolbar; destinations open by tap). */}
+      {mode !== 'bar' && (
+        <div aria-hidden="true" style={{
+          position: 'absolute',
+          top: 4,
+          left: '50%',
+          transform: 'translateX(-50%)',
+          width: 32,
+          height: 4,
+          borderRadius: 2,
+          background: 'rgba(229,237,233,.22)',
+          pointerEvents: 'none',
+        }} />
+      )}
       {active ? (
         <>
           {/* Header strip — back-chip (only on drilled child), title, ×.
@@ -823,13 +849,21 @@ export const BottomDashboard = () => {
               overflow: 'hidden',
               textOverflow: 'ellipsis',
             }}>{active.title}</div>
-            {/* v2.3.1283: × collapses to the destination's compact view
-                (home/Bag for compactless roots) — there is no "nothing
-                open" state in the sheet model. */}
+            {/* v2.3.1290 (ChatGPT round-3 §5): the header chip is a
+                DOWN CHEVRON, not an × — this control steps the sheet
+                down to the destination's compact view, it doesn't
+                dismiss anything.  × stays reserved for true popovers
+                (item card, inspect). */}
             <button
-              onPointerUp={(e) => { e.stopPropagation(); dashboardPanelBus.collapse(); }}
+              aria-label="Collapse"
+              onPointerUp={(e) => { e.stopPropagation(); dashboardPanelBus.stepDown(); }}
               style={chipStyle}
-            >×</button>
+            >
+              <svg viewBox="0 0 12 12" width="14" height="14" aria-hidden="true">
+                <path d="M2.5 4.5 L6 8 L9.5 4.5" stroke="currentColor" strokeWidth="1.8"
+                  fill="none" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </button>
           </div>
           {/* v2.3.1229: panels render in a flex body ABOVE the persistent
               toolbar (spec §9: the toolbar stays visible in panel mode;
@@ -838,13 +872,12 @@ export const BottomDashboard = () => {
             {Active && <Active />}
           </div>
         </>
-      ) : (
-        /* v2.3.1285: the home view is Bag compact (nav-system spec
-           §Default State) — equipped + recent replaced the
-           v2.3.1236..1281 three-panel row.  v2.3.1288 (PR B): all six
-           destinations render from the COMPACT_VIEWS registry. */
+      ) : mode === 'compact' ? (
+        /* v2.3.1288 (PR B): all six destinations render their compact
+           view from the COMPACT_VIEWS registry. */
         (() => { const CompactView = COMPACT_VIEWS[rootId] || BagCompact; return <CompactView />; })()
-      )}
+      ) : null /* v2.3.1290: bar mode — toolbar only, the game's resting
+           default (owner: maximum world visibility). */}
 
       {/* Navigation ribbon.  v2.3.1229: PERSISTENT in both modes.
           v2.3.1283 (nav-system): SIX destinations, each always one of
@@ -857,7 +890,11 @@ export const BottomDashboard = () => {
           (Settings, T2, ...) is open. */}
       {(() => {
         const knownRoots = DESTINATIONS.map(d => d.id);
-        const litId = knownRoots.includes(rootId) ? rootId
+        /* v2.3.1290: bar mode = NOTHING lit — the resting state has no
+           open destination (the remembered root only matters for
+           resume, not for display). */
+        const litId = mode === 'bar' ? null
+          : knownRoots.includes(rootId) ? rootId
           /* legacy drill roots (inventory push, tutorial ids...) light More */
           : (rootId ? 'more' : 'bag');
         return (
