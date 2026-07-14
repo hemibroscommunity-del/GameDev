@@ -145,7 +145,9 @@ const CHAR_STATS = [
   /* Defense = Tier-2 trained skill (rpg.defenseSkill.level); tapping opens the
      DEF spend tab in the T2 panel (wired in v2.3.693).  v2.3.696: DEF and END
      swapped -- bottom row reads Vitality · Defense · Endurance per user. */
-  { key: 'defense',   label: 'Defense',   short: 'DEF', iconSrc: '/icons/ui/stat-defense.webp?v=2.3.1224',   pixelated: false, iconScale: 1.5, t2: true, train: 'Improves when you block and mitigate hits; spend points in the DEF tab.' },
+  /* v2.3.1282: owner — the stat-defense art is "an awkward double
+     shield"; the single round combat-defense shield replaces it. */
+  { key: 'defense',   label: 'Defense',   short: 'DEF', iconSrc: '/icons/ui/combat-defense.webp?v=2.3.1224', pixelated: false, iconScale: 1.5, t2: true, train: 'Improves when you block and mitigate hits; spend points in the DEF tab.' },
   { key: 'endurance', label: 'Endurance', short: 'END', iconSrc: '/icons/ui/stat-endurance.webp?v=2.3.1225', pixelated: false, iconScale: 1.5, train: 'Improves when you spend stamina on dodge, block, or sprint.' },
 ];
 
