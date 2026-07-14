@@ -64,7 +64,7 @@ const SKULL_RED_TINT = 0xff5e6c;
    the DOM dashboard also uses -- reuse the same `?v=` cache key so
    the browser hits the warm cache instead of issuing a fresh request. */
 const HUD_BAR_VER = '2.3.68';
-const _hudBarTex = { hp: null, mp: null, stam: null, heart: null, heartWhite: null };
+const _hudBarTex = { hp: null, mp: null, stam: null, heart: null, heartWhite: null, barFrame: null, barFull: null };
 let _hudBarLoadStarted = false;
 function _ensureHudBarTextures() {
   if (_hudBarLoadStarted) return;
@@ -77,6 +77,48 @@ function _ensureHudBarTextures() {
      tint by HP tier (red asset can't be tinted to green/yellow because
      tint multiplies). */
   Assets.load(`/icons/popups/heart-white.webp?v=${HUD_BAR_VER}`).then(t => { _hudBarTex.heartWhite = t; }).catch(() => {});
+  /* v2.3.1273: owner's health-bar art (sheet sliced to TWO sprites —
+     empty frame + full red fill; the fill is CROPPED at runtime to the
+     hp fraction, the standard smooth-bar technique).  Replaces the
+     monster heart and the player HP ring visuals; the v2.3.458 ghost-
+     drain logic is reused unchanged. */
+  Assets.load('/ui/bars/hp-frame.png?v=2.3.1273').then(t => { _hudBarTex.barFrame = t; }).catch(() => {});
+  Assets.load('/ui/bars/hp-full.png?v=2.3.1273').then(t => { _hudBarTex.barFull = t; }).catch(() => {});
+}
+
+/* v2.3.1273: shared geometry for the owner's bar art.  The red fill
+   occupies an inset region of the sprite box (measured on the sheet):
+   x 5%..95%, y 21%..79% — ghost/flash rectangles use these fractions. */
+const HPBAR_ASPECT = 104 / 363;
+const HPBAR_IN_X = 0.05, HPBAR_IN_W = 0.90, HPBAR_IN_Y = 0.21, HPBAR_IN_H = 0.58;
+const MONSTER_HPBAR_W = 44;
+const MONSTER_HPBAR_H = Math.round(MONSTER_HPBAR_W * HPBAR_ASPECT); /* 13 */
+const PLAYER_HPBAR_W = 76;
+const PLAYER_HPBAR_H = Math.round(PLAYER_HPBAR_W * HPBAR_ASPECT);   /* 22 */
+const HPBAR_FLASH_MS = 160;   /* white flash on damage */
+/* Build (or return) a display-owned cropped view of the full-bar texture.
+   The Texture is RECREATED when the crop width changes (integer source
+   px, so at most one realloc per hp change): Pixi 8's Sprite.width
+   setter scales against texture.orig — mutating only .frame +
+   updateUvs() leaves orig at the full sheet width and the quad/scale
+   math disagrees, rendering the full art at the wrong width.  A fresh
+   Texture sets orig = frame and everything stays consistent; it is a
+   tiny view object over the SHARED source, not a GPU upload. */
+function _hpFillTexFor(holder, frac) {
+  const base = _hudBarTex.barFull;
+  if (!base) return null;
+  const f = Math.max(0.001, Math.min(1, frac));
+  const w = Math.max(1, Math.round(base.width * f));
+  if (!holder._hpFillTex || holder._hpFillTexW !== w) {
+    const old = holder._hpFillTex;
+    holder._hpFillTex = new Texture({
+      source: base.source,
+      frame: new Rectangle(0, 0, w, base.height),
+    });
+    holder._hpFillTexW = w;
+    if (old) old.destroy(false);
+  }
+  return holder._hpFillTex;
 }
 
 /* v2.3.261 (Bro-NFT Phase 4): trait textures for the local player's
@@ -2177,9 +2219,18 @@ function createPlayerDisplay() {
   hudStamTextFull.anchor.set(0.5, 0.5);  hudStamTextFull.alpha = 0;  container.addChild(hudStamTextFull);
   hudStamTextEmpty.anchor.set(0.5, 0.5); hudStamTextEmpty.alpha = 0; container.addChild(hudStamTextEmpty);
 
-  /* Above-head HP indicator: quartile-colored progress RING with a muted
-     gray center holding the current HP over a small muted max (v2.3.458,
-     replaces the heart icon — see HP_RING_* constants). */
+  /* Above-head HP indicator: v2.3.458 quartile RING, replaced visually in
+     v2.3.1273 by the owner's BAR art (frame + cropped fill sprites below);
+     the ring Graphics is retained as the ghost-trail + damage-flash layer,
+     and all the v2.3.458 gating/drain logic is unchanged. */
+  const hudHpBarFrame = new Sprite();
+  hudHpBarFrame.anchor.set(0.5, 0.5);
+  hudHpBarFrame.alpha = 0;
+  container.addChild(hudHpBarFrame);
+  const hudHpBarFill = new Sprite();
+  hudHpBarFill.anchor.set(0, 0.5);
+  hudHpBarFill.alpha = 0;
+  container.addChild(hudHpBarFill);
   const hudHpRing = new Graphics();
   hudHpRing.alpha = 0;
   container.addChild(hudHpRing);
@@ -2216,6 +2267,8 @@ function createPlayerDisplay() {
   container._nameText = nameText;
   container._skullText = skullText; /* v2.3.1193: threat skull */
   container._lastSkull = null;
+  container._hudHpBarFrame = hudHpBarFrame;
+  container._hudHpBarFill = hudHpBarFill;
   container._hudHpRing = hudHpRing;
   container._hudHpText = hudHpText;
   container._hudHpMaxText = hudHpMaxText;
@@ -3031,9 +3084,25 @@ export class EntityRenderer {
       const maxHpDenom = m.maxHp || m.hp || 1;
       const hpPct = Math.max(0, Math.min(1, curHp / maxHpDenom));
       _ensureHudBarTextures();
-      const heartTex = _hudBarTex.heart;
+      /* v2.3.1273: the black heart becomes the owner's BAR art — the
+         existing _hpHeart sprite is reused as the FRAME layer (tint
+         reset from the heart's 0x000000), a display-owned cropped fill
+         sprite shows curHp smoothly, and a small Graphics carries the
+         white damage flash + the lagging ghost trail (same v2.3.458
+         drain constants as the player widget). */
+      const heartTex = _hudBarTex.barFrame;
       if (heartTex && display._hpHeart.texture !== heartTex) {
         display._hpHeart.texture = heartTex;
+        display._hpHeart.tint = 0xffffff;
+        /* fill + fx layers insert UNDER the hp number text. */
+        const txtIdx = display.getChildIndex(display._hpText);
+        const fill = new Sprite();
+        fill.anchor.set(0, 0.5);
+        display.addChildAt(fill, txtIdx);
+        display._hpBarFill = fill;
+        const fx = new Graphics();
+        display.addChildAt(fx, txtIdx + 1);
+        display._hpBarFx = fx;
       }
       if (heartTex && heartTex.width > 0) {
         const spriteVisible = display._spriteBody && display._spriteBody.visible;
@@ -3053,24 +3122,63 @@ export class EntityRenderer {
            (sprite top or lvl text band) with a 2 px gap. */
         const lvlTopY = -size - 22;
         const topY = Math.min(visualTopY, lvlTopY);
-        const heartY = topY - 2 - MONSTER_HEART_SIZE / 2;
-        display._hpHeart.width = MONSTER_HEART_SIZE;
-        display._hpHeart.height = MONSTER_HEART_SIZE;
-        display._hpHeart.x = 0;
-        display._hpHeart.y = heartY;
-        /* Heart asset tapers to a V at the bottom; the widest section
-           sits ~12% above the geometric center.  Shift the number up
-           by that fraction so it lands in the meaty part instead of
-           riding the V. */
+        const barY = topY - 2 - MONSTER_HPBAR_H / 2;
+        display._hpHeart.width = MONSTER_HPBAR_W;
+        display._hpHeart.height = MONSTER_HPBAR_H;
+        display._hpHeart.x = 0;  /* anchor already centered at creation */
+        display._hpHeart.y = barY;
+        /* fill — cropped view of the full-bar art. */
+        const fill = display._hpBarFill;
+        const fillTex = _hpFillTexFor(display, hpPct);
+        if (fill && fillTex) {
+          if (fill.texture !== fillTex) fill.texture = fillTex;
+          fill.width = Math.max(1, MONSTER_HPBAR_W * hpPct);
+          fill.height = MONSTER_HPBAR_H;
+          fill.x = -MONSTER_HPBAR_W / 2;
+          fill.y = barY;
+        }
+        /* ghost trail + white damage flash (v2.3.458 constants). */
+        if (display._mGhost == null) display._mGhost = hpPct;
+        const tookDmg = (display._mLastFrac != null) && (hpPct < display._mLastFrac - 0.0005);
+        if (tookDmg) {
+          display._mGhostDrainAt = now + HP_GHOST_HOLD_MS;
+          display._mFlashUntil = now + HPBAR_FLASH_MS;
+        }
+        if (hpPct >= display._mGhost) display._mGhost = hpPct;
+        else if (now >= (display._mGhostDrainAt || 0)) {
+          display._mGhost = Math.max(hpPct, display._mGhost - HP_GHOST_DRAIN);
+        }
+        display._mLastFrac = hpPct;
+        const fx = display._hpBarFx;
+        if (fx) {
+          fx.clear();
+          const inL = -MONSTER_HPBAR_W / 2 + MONSTER_HPBAR_W * HPBAR_IN_X;
+          const inW = MONSTER_HPBAR_W * HPBAR_IN_W;
+          const inT = barY - MONSTER_HPBAR_H / 2 + MONSTER_HPBAR_H * HPBAR_IN_Y;
+          const inH = MONSTER_HPBAR_H * HPBAR_IN_H;
+          if (display._mGhost > hpPct + 0.001) {
+            fx.rect(inL + inW * hpPct, inT, inW * (display._mGhost - hpPct), inH);
+            fx.fill({ color: HP_GHOST_WHITE, alpha: 0.92 });
+          }
+          const fl = (display._mFlashUntil || 0) - now;
+          if (fl > 0 && hpPct > 0) {
+            fx.rect(inL, inT, inW * hpPct, inH);
+            fx.fill({ color: 0xffffff, alpha: 0.85 * (fl / HPBAR_FLASH_MS) });
+          }
+        }
         display._hpText.x = 0;
-        display._hpText.y = heartY - MONSTER_HEART_SIZE * 0.12;
+        display._hpText.y = barY;
       }
       if (hpPct >= 0.999) {
         display._hpHeart.alpha = 0;
         display._hpText.alpha = 0;
+        if (display._hpBarFill) display._hpBarFill.alpha = 0;
+        if (display._hpBarFx) { display._hpBarFx.clear(); display._hpBarFx.alpha = 0; }
       } else {
         display._hpHeart.alpha = 1;
         display._hpText.alpha = 1;
+        if (display._hpBarFill) display._hpBarFill.alpha = 1;
+        if (display._hpBarFx) display._hpBarFx.alpha = 1;
         const hpStr = String(Math.max(0, Math.ceil(curHp)));
         if (display._hpText.text !== hpStr) display._hpText.text = hpStr;
       }
@@ -5583,31 +5691,19 @@ export class EntityRenderer {
       ring.alpha = hpNewAlpha;
       heartText.alpha = hpNewAlpha;
       maxText.alpha = hpNewAlpha;
+      /* v2.3.1273: bar sprites share the fade (alphas finalized below). */
 
-      /* Quartile tier color (gaps land on these thresholds): >=75% green,
-         50-74% yellow, 25-49% orange, <25% red.  <10% pulses toward a
-         brighter highlight so the player notices. */
       const hpFrac = hpCur / hpMax;
-      let hpTint;
-      if (hpFrac >= 0.75)      hpTint = HP_TIER_GREEN;
-      else if (hpFrac >= 0.50) hpTint = HP_TIER_YELLOW;
-      else if (hpFrac >= 0.25) hpTint = HP_TIER_ORANGE;
-      else                     hpTint = HP_TIER_RED;
-      if (hpFrac <= 0.10 && hpFrac > 0) {
-        const pulse = 0.5 + 0.5 * Math.sin(now / 1000 * Math.PI * 4);
-        const hi = 0xff8a8a;
-        const lerp = (a, b, t) => Math.round(a + (b - a) * t);
-        const r = lerp((hpTint >> 16) & 0xff, (hi >> 16) & 0xff, pulse);
-        const g = lerp((hpTint >> 8)  & 0xff, (hi >> 8)  & 0xff, pulse);
-        const b2 = lerp(hpTint & 0xff,        hi & 0xff,        pulse);
-        hpTint = (r << 16) | (g << 8) | b2;
-      }
+      /* v2.3.1273: the quartile tier tint is retired with the ring — the
+         owner's bar art is fixed red (classic ARPG read).  The <10%
+         urgency pulse survives as an alpha throb on the fill. */
 
       /* White damage trail: ghostFrac lags hpFrac on damage and drains
-         clockwise toward it, so the size + speed of the white wedge show how
-         much / how fast HP dropped.  Snaps up instantly on heal. */
+         toward it (v2.3.458 logic, unchanged).  Snaps up on heal.
+         v2.3.1273 adds a brief white FLASH over the remaining fill. */
       if (ring._ghostFrac == null) ring._ghostFrac = hpFrac;
       const tookDamage = (ring._lastHpFrac != null) && (hpFrac < ring._lastHpFrac - 0.0005);
+      if (tookDamage) ring._flashUntil = now + HPBAR_FLASH_MS;
       if (hpFrac >= ring._ghostFrac) {
         ring._ghostFrac = hpFrac;
       } else {
@@ -5620,41 +5716,52 @@ export class EntityRenderer {
 
       const cx = 0;
       const cy = -(HP_RING_OUTER_R + 49); /* ~-73: above the head, lifted 15px (v2.3.459) */
-      /* Redraw only while visible (hidden at full HP, so this is cheap). */
-      ring.clear();
-      if (hpNewAlpha > 0.02) {
-        ring.circle(cx, cy, HP_RING_CENTER_R);
-        ring.fill({ color: HP_RING_CENTER_FILL, alpha: 0.92 });
-        const TOP = -Math.PI / 2;  /* 12 o'clock */
-        const Q = Math.PI / 2;     /* quadrant span */
-        const halfGap = (HP_RING_GAP_PX / HP_RING_STROKE_R) / 2;
-        /* Deplete CLOCKWISE: empty wedge grows from 12 o'clock clockwise.
-           fillStart = current HP boundary; ghostStart = lagging (higher) HP,
-           so the white trail occupies [ghostStart, fillStart]. */
-        const clampF = (f) => Math.max(0, Math.min(1, f));
-        const fillStart  = TOP + (1 - clampF(hpFrac)) * Math.PI * 2;
-        const ghostStart = TOP + (1 - clampF(ring._ghostFrac)) * Math.PI * 2;
-        /* moveTo before each arc so Pixi doesn't connect arcs with a stray
-           line (the vertical line that hung below the ring). */
-        const arcSeg = (a0, a1, color, alpha, width) => {
-          ring.moveTo(cx + HP_RING_STROKE_R * Math.cos(a0), cy + HP_RING_STROKE_R * Math.sin(a0));
-          ring.arc(cx, cy, HP_RING_STROKE_R, a0, a1);
-          ring.stroke({ color, width, cap: 'butt', alpha });
-        };
-        for (let k = 0; k < 4; k++) {
-          const qs = TOP + k * Q + halfGap;
-          const qe = TOP + (k + 1) * Q - halfGap;
-          if (qe <= qs) continue;
-          arcSeg(qs, qe, HP_RING_OUTLINE, 0.9, HP_RING_BAND + 2.5); /* dark frame (under) */
-          arcSeg(qs, qe, HP_RING_TRACK, 0.9, HP_RING_BAND);         /* drained track */
-          const ws = Math.max(qs, ghostStart), we = Math.min(qe, fillStart);
-          if (ws < we) arcSeg(ws, we, HP_GHOST_WHITE, 0.92, HP_RING_BAND); /* white trail */
-          const cs = Math.max(qs, fillStart);                      /* lit current fill */
-          if (cs < qe) arcSeg(cs, qe, hpTint, 1, HP_RING_BAND);
+      const frameSp = d._hudHpBarFrame;
+      const fillSp = d._hudHpBarFill;
+      _ensureHudBarTextures();
+      if (frameSp && _hudBarTex.barFrame && frameSp.texture !== _hudBarTex.barFrame) {
+        frameSp.texture = _hudBarTex.barFrame;
+      }
+      if (frameSp) {
+        frameSp.alpha = _hudBarTex.barFrame ? hpNewAlpha : 0;
+        frameSp.width = PLAYER_HPBAR_W;
+        frameSp.height = PLAYER_HPBAR_H;
+        frameSp.x = cx; frameSp.y = cy;
+      }
+      if (fillSp && _hudBarTex.barFull) {
+        const fillTex = _hpFillTexFor(d, hpFrac);
+        if (fillTex) {
+          if (fillSp.texture !== fillTex) fillSp.texture = fillTex;
+          fillSp.width = Math.max(1, PLAYER_HPBAR_W * Math.max(0, Math.min(1, hpFrac)));
+          fillSp.height = PLAYER_HPBAR_H;
+          fillSp.x = cx - PLAYER_HPBAR_W / 2;
+          fillSp.y = cy;
+          let fillA = hpNewAlpha;
+          if (hpFrac <= 0.10 && hpFrac > 0) {
+            fillA *= 0.7 + 0.3 * Math.sin(now / 1000 * Math.PI * 4);
+          }
+          fillSp.alpha = fillA;
         }
       }
-      heartText.x = cx; heartText.y = cy - 5;
-      maxText.x = cx;   maxText.y = cy + 8;
+      /* ghost + flash rectangles over the fill's inset region. */
+      ring.clear();
+      if (hpNewAlpha > 0.02) {
+        const inL = cx - PLAYER_HPBAR_W / 2 + PLAYER_HPBAR_W * HPBAR_IN_X;
+        const inW = PLAYER_HPBAR_W * HPBAR_IN_W;
+        const inT = cy - PLAYER_HPBAR_H / 2 + PLAYER_HPBAR_H * HPBAR_IN_Y;
+        const inH = PLAYER_HPBAR_H * HPBAR_IN_H;
+        if (ring._ghostFrac > hpFrac + 0.001) {
+          ring.rect(inL + inW * hpFrac, inT, inW * (ring._ghostFrac - hpFrac), inH);
+          ring.fill({ color: HP_GHOST_WHITE, alpha: 0.92 * hpNewAlpha });
+        }
+        const fl = (ring._flashUntil || 0) - now;
+        if (fl > 0 && hpFrac > 0) {
+          ring.rect(inL, inT, inW * hpFrac, inH);
+          ring.fill({ color: 0xffffff, alpha: 0.85 * (fl / HPBAR_FLASH_MS) * hpNewAlpha });
+        }
+      }
+      heartText.x = cx; heartText.y = cy;
+      maxText.x = cx;   maxText.y = cy + PLAYER_HPBAR_H / 2 + 7;
       const hpStr = String(Math.ceil(hpCur));
       const maxStr = String(Math.ceil(hpMax));
       if (heartText.text !== hpStr) heartText.text = hpStr;
