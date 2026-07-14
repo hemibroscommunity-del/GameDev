@@ -465,9 +465,14 @@ const IconButton = ({ glyph, label, active, onClick, node, tut }) => {
 const FIT_GRID_CONTAIN = { containerType: 'size' };
 /* v2.3.1251: owner — 2-column slot grids (bigger slots, extra rows in the
    taller 33vh band): bag 2x4, loadout 2x3 + metric row.  Both grids are
-   FOUR rows tall (3 x 4px gaps), so the height budget divides by 4; the
-   100% cap now bites at half the column width, i.e. much larger tiles. */
-const FIT_TILE_W = 'min(100%, calc((100cqh - 12px) / 4))';
+   FOUR rows tall (3 x 4px gaps), so the height budget divides by 4. */
+/* v2.3.1252: owner — "spacing of the grid is weird, I want it uniform."
+   Height-capped cells centered in 1fr tracks left ~19px between columns
+   vs the 4px row gap.  Fix: the TRACKS themselves take the cell size
+   (width budget vs height budget, whichever binds) and the grid centers
+   as a block, so every cell-to-cell gap — horizontal and vertical — is
+   the same 4px.  Cells fill their track (width 100%). */
+const FIT_TRACK = 'min(calc((100cqw - 4px) / 2), calc((100cqh - 12px) / 4))';
 
 const InventoryPreview = () => {
   const [, force] = useState(0);
@@ -525,6 +530,12 @@ const InventoryPreview = () => {
            padding puts the bag grid's bottom edge on the same y as the
            loadout/Build grids (§4).  The freed width goes to the cells. */
         padding: 0,
+        /* v2.3.1252b: the OUTER wrapper is the size container — cq units in
+           the grid's own track list resolve against the nearest ancestor
+           container, never the grid itself (they fell back to the viewport
+           and the cells exploded; caught on the rig).  Height == the grid's
+           (the grid is this wrapper's only flex child). */
+        ...FIT_GRID_CONTAIN,
       }}
       title="Tap to open Inventory"
     >
@@ -550,7 +561,9 @@ const InventoryPreview = () => {
         minHeight: 0,
         display: 'grid',
         /* v2.3.1251: 3 -> 2 columns (owner: bigger slots, more rows). */
-        gridTemplateColumns: 'repeat(2, 1fr)',
+        /* v2.3.1252: cell-sized tracks + centered block = uniform 4px gaps. */
+        gridTemplateColumns: `repeat(2, ${FIT_TRACK})`,
+        justifyContent: 'center',
         gridAutoRows: 'min-content',
         alignContent: 'start',
         /* v2.3.1236: owner dashboard feedback §2 — the v2.3.1235
@@ -559,9 +572,6 @@ const InventoryPreview = () => {
            the gap bumps 3 -> 4 to keep them breathing. */
         gap: 4,
         padding: 0,
-        /* v2.3.1238: owner feedback §2 — height-aware square cells
-           (see FIT_TILE_W above). */
-        ...FIT_GRID_CONTAIN,
       }}>
         {tiles.map((e, i) => (
           /* v2.3.1238: owner feedback §2 — sizing wrapper caps the tile
@@ -569,7 +579,7 @@ const InventoryPreview = () => {
              aspect 1/1, so they follow the wrapper's width). */
           <div
             key={e.kind === 'item' ? `i-${e.key}` : `${e.kind}-${e.index}-${i}`}
-            style={{ width: FIT_TILE_W, justifySelf: 'center', minWidth: 0 }}
+            style={{ width: '100%', minWidth: 0 }}
           >
             <BagTile entry={e} />
           </div>
@@ -577,10 +587,8 @@ const InventoryPreview = () => {
         {Array.from({ length: Math.max(0, 8 - tiles.length) }).map((_, i) => (
           <div key={`pe-${i}`} aria-hidden="true" style={{
             aspectRatio: '1 / 1',
-            /* v2.3.1238: owner feedback §2 — same height-aware cap as
-               the item tiles above. */
-            width: FIT_TILE_W,
-            justifySelf: 'center',
+            /* v2.3.1252: tracks are cell-sized now; fill the track. */
+            width: '100%',
             background: COL.wellSoft,
             border: `1px solid ${COL.tileBor}`,
             boxShadow: 'inset 0 2px 4px rgba(0,0,0,.44)',
@@ -1252,10 +1260,8 @@ export const BottomDashboard = () => {
                         minWidth: 0,
                         minHeight: 0,
                         aspectRatio: '1 / 1',
-                        /* v2.3.1238: owner feedback §2 — height-aware cap
-                           (matches the bag tiles; see FIT_TILE_W). */
-                        width: FIT_TILE_W,
-                        justifySelf: 'center',
+                        /* v2.3.1252: tracks are cell-sized; fill the track. */
+                        width: '100%',
                       }}>
                       {iconSrc ? (
                         <img
@@ -1407,6 +1413,13 @@ export const BottomDashboard = () => {
                        padding, row-sizing rule).  The reinstated damage
                        readout spans that row, vertically centered — i.e.
                        level with the bag's third row. */
+                    /* v2.3.1252b: cq units in a grid's OWN track list resolve
+                       against the nearest ANCESTOR container (a container
+                       cannot query itself) — without this wrapper they fell
+                       back to the viewport and the cells exploded (caught on
+                       the rig).  The wrapper is sized exactly like the grid
+                       used to be; the grid fills it. */
+                    <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', ...FIT_GRID_CONTAIN }}>
                     <div style={{
                       flex: 1,
                       minHeight: 0,
@@ -1414,17 +1427,14 @@ export const BottomDashboard = () => {
                       /* v2.3.1251: 3 -> 2 columns (owner) — six slots flow as
                          chest·weapon / shield·legs / neck·cape; the DEF/DPS
                          table moves to row 4. */
-                      gridTemplateColumns: 'repeat(2, 1fr)',
+                      /* v2.3.1252: cell-sized tracks + centered block =
+                         uniform 4px gaps (matches the bag grid exactly). */
+                      gridTemplateColumns: `repeat(2, ${FIT_TRACK})`,
+                      justifyContent: 'center',
                       gridAutoRows: 'min-content',
                       alignContent: 'start',
                       gap: 4,
                       padding: 0,
-                      /* v2.3.1238: owner feedback §2 — same height-aware
-                         square-cell treatment as the bag grid (identical
-                         formula + identical grid height = cell-size
-                         parity by construction; the row-3 spacer keeps
-                         the stat table inside the same 3-row budget). */
-                      ...FIT_GRID_CONTAIN,
                     }}>
                       {/* The six equipment slots (Chest·Weapon·Shield
                           / Legs·Amulet·Cape). */}
@@ -1478,11 +1488,8 @@ export const BottomDashboard = () => {
                           minWidth: 0,
                           minHeight: 0,
                           pointerEvents: 'none',
-                          /* v2.3.1238: owner feedback §2 — the spacer that
-                             sizes row 3 shrinks with the cells so all
-                             three rows fit the height budget. */
-                          width: FIT_TILE_W,
-                          justifySelf: 'center',
+                          /* v2.3.1252: tracks are cell-sized; fill the track. */
+                          width: '100%',
                         }} />
                         {/* One centered line spanning row 3:
                               [sword] 8-13  DPS 17.5  [shield] +10
@@ -1552,6 +1559,7 @@ export const BottomDashboard = () => {
                           </div>
                         ))}
                       </div>
+                    </div>
                   );
                 })()}
               </div>
