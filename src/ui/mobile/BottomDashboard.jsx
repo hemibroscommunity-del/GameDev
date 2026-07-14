@@ -472,7 +472,12 @@ const FIT_GRID_CONTAIN = { containerType: 'size' };
    (width budget vs height budget, whichever binds) and the grid centers
    as a block, so every cell-to-cell gap — horizontal and vertical — is
    the same 4px.  Cells fill their track (width 100%). */
-const FIT_TRACK = 'min(calc((100cqw - 4px) / 2), calc((100cqh - 12px) / 4))';
+/* v2.3.1253: owner — "space out the slots more so it's uniform padding."
+   Fixed 4px gaps left a tight cluster with big side margins.  Now the
+   grids distribute ALL leftover space evenly per axis (space-evenly:
+   edge margin == inter-cell spacing), and the cell formula reserves
+   ~24px horizontal / ~20px vertical for that breathing room. */
+const FIT_TRACK = 'min(calc((100cqw - 24px) / 2), calc((100cqh - 20px) / 4))';
 
 const InventoryPreview = () => {
   const [, force] = useState(0);
@@ -561,16 +566,13 @@ const InventoryPreview = () => {
         minHeight: 0,
         display: 'grid',
         /* v2.3.1251: 3 -> 2 columns (owner: bigger slots, more rows). */
-        /* v2.3.1252: cell-sized tracks + centered block = uniform 4px gaps. */
+        /* v2.3.1252: cell-sized tracks.  v2.3.1253: space-evenly on BOTH
+           axes — edge padding equals inter-cell spacing, per axis. */
         gridTemplateColumns: `repeat(2, ${FIT_TRACK})`,
-        justifyContent: 'center',
+        justifyContent: 'space-evenly',
         gridAutoRows: 'min-content',
-        alignContent: 'start',
-        /* v2.3.1236: owner dashboard feedback §2 — the v2.3.1235
-           well-deep gradient tray (background/border/inset shadow/
-           padding) is gone; the slots grow into the freed space and
-           the gap bumps 3 -> 4 to keep them breathing. */
-        gap: 4,
+        alignContent: 'space-evenly',
+        gap: 0,
         padding: 0,
       }}>
         {tiles.map((e, i) => (
@@ -1427,13 +1429,13 @@ export const BottomDashboard = () => {
                       /* v2.3.1251: 3 -> 2 columns (owner) — six slots flow as
                          chest·weapon / shield·legs / neck·cape; the DEF/DPS
                          table moves to row 4. */
-                      /* v2.3.1252: cell-sized tracks + centered block =
-                         uniform 4px gaps (matches the bag grid exactly). */
+                      /* v2.3.1252: cell-sized tracks.  v2.3.1253: space-evenly
+                         on BOTH axes, matching the bag grid exactly. */
                       gridTemplateColumns: `repeat(2, ${FIT_TRACK})`,
-                      justifyContent: 'center',
+                      justifyContent: 'space-evenly',
                       gridAutoRows: 'min-content',
-                      alignContent: 'start',
-                      gap: 4,
+                      alignContent: 'space-evenly',
+                      gap: 0,
                       padding: 0,
                     }}>
                       {/* The six equipment slots (Chest·Weapon·Shield
