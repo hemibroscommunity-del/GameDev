@@ -231,6 +231,7 @@ const {
 
 import { _regenerator, _regeneratorDefine2, _asyncToGenerator, _typeof, _slicedToArray, _toConsumableArray, _objectSpread, _defineProperty, _toPropertyKey, _toPrimitive, ownKeys, _arrayWithHoles, _iterableToArrayLimit, _unsupportedIterableToArray, _arrayLikeToArray, _nonIterableRest, _arrayWithoutHoles, _iterableToArray, _nonIterableSpread, _createForOfIteratorHelper, asyncGeneratorStep } from '@/lib/babelHelpers.js';
 import { SpriteHpBar } from './SpriteHpBar.jsx'; /* v2.3.1273: owner's HP-bar art (desktop HUD row) */
+import { compactDashHeight, DASH_OVERLAP } from './mobile/sheet/sheetGeometry.js'; /* v2.3.1283 */
 
 /* Expose all exports as globals for the pre-transpiled code.
    The original index.html had everything in one scope; this bridges the gap. */
@@ -1810,19 +1811,12 @@ export var BroTown = function BroTown(_ref0) {
        player, so a shorter canvas just means less peripheral world is
        visible — the player stays centered. */
     var vv = window.visualViewport;
-    /* DASH_FRAC must stay in sync with the --dash-h CSS variable in
-       src/styles/game.css.  Both express the bottom-dashboard fraction
-       of the viewport. */
-    /* v2.3.1258/1256 history: 0.33 + 26px.  v2.3.1268: --dash-h is now
-       WIDTH-derived (calc(50vw + 104px) — the band hugs the slot block;
-       see game.css).  Mirror exactly. */
-    var DASH_W_FRAC = 0.333333; /* v2.3.1280: 2x2 square-panel band (see game.css) */
-    var DASH_BASE = 76;
-    /* v2.3.1271: owner — the band's 14px rounded top corners cut out to
-       the page background (a black spot at each shoulder).  The canvas
-       now runs 14px UNDER the band, so the corner notches show live
-       world instead.  (Owner prefers world over squaring the corners.) */
-    var DASH_OVERLAP = 14;
+    /* v2.3.1283: geometry constants now come from sheetGeometry.js —
+       the shared source BottomDashboard also imports — instead of the
+       comment-enforced mirror of --dash-h that lived here through
+       v2.3.1280.  The canvas keys off the COMPACT band height in all
+       modes; the expanded sheet overlays the world without resizing
+       the canvas (see sheetGeometry's invariant note). */
     function resize() {
       var dpr = window.devicePixelRatio || 1;
       var vw = vv ? vv.width : window.innerWidth;
@@ -1834,9 +1828,15 @@ export var BroTown = function BroTown(_ref0) {
          then floats over the canvas like an overlay instead of
          shifting the scene up and exposing a black bar at the bottom. */
       if (vv && window.innerHeight - vhFull > 100) return;
-      var vh = Math.max(120, Math.round(vhFull - (vw * DASH_W_FRAC + DASH_BASE)) + DASH_OVERLAP);
-      canvas.width = vw * dpr;
-      canvas.height = vh * dpr;
+      var vh = Math.max(120, Math.round(vhFull - compactDashHeight(vw)) + DASH_OVERLAP);
+      /* v2.3.1283: short-circuit when nothing changed — the
+         ResizeObserver below re-fires during layout churn (e.g. the
+         sheet's height animation), and assigning canvas.width even to
+         the SAME value reallocates the WebGL drawing buffer. */
+      var tw = Math.round(vw * dpr), th = Math.round(vh * dpr);
+      if (canvas.width === tw && canvas.height === th) return;
+      canvas.width = tw;
+      canvas.height = th;
       canvas.style.width = vw + 'px';
       canvas.style.height = vh + 'px';
     }

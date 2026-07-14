@@ -18,7 +18,8 @@ import { getShirt, onShirtChange } from '../../rendering/traits/shirtCatalog.js'
 import { getShirtColor, shirtColorTarget, onShirtColorChange } from '../../rendering/traits/shirtColorCatalog.js';
 import { getEquip } from '../../rendering/gearCatalog.js';
 import { dashboardPanelBus } from './dashboardPanelBus.js';
-import { chatBubbleBus } from './chatBubbleBus.js';
+import { expandedSheetHeight } from './sheet/sheetGeometry.js'; /* v2.3.1283 */
+import { sheetTransition } from './sheet/motion.js';            /* v2.3.1283 */
 import { InventoryPanel, BagTile }     from './dash/InventoryPanel.jsx';
 import { ItemDetailPopup }             from './dash/ItemDetailPopup.jsx';
 import { itemDetailBus }               from './dash/itemDetailBus.js';
@@ -405,8 +406,10 @@ const Bar = ({ label, cur, max, kind, tip, onTip }) => {
 
 /* v2.3.1205: `tut` = optional data-tut anchor id so the live-DOM
    ControlsTutorial can getBoundingClientRect() the real button. */
-const IconButton = ({ glyph, label, active, onClick, node, tut }) => {
-  const src = ICON_SRC[glyph];
+const IconButton = ({ glyph, src: srcProp, label, active, onClick, node, tut }) => {
+  /* v2.3.1283: destinations pass an explicit `src`; `glyph` (ICON_SRC
+     lookup) stays for any legacy caller. */
+  const src = srcProp || ICON_SRC[glyph];
   const [pressed, setPressed] = useState(false);
   // Use onPointerUp instead of onClick so iOS fires it even when
   // another finger is mid-drag on a joystick.  stopPropagation
@@ -547,7 +550,10 @@ const InventoryPreview = () => {
   const tiles = entries.slice(0, 4);
   const openFullBag = (e) => {
     if (e) e.stopPropagation();
-    dashboardPanelBus.toggle('inventory');
+    /* v2.3.1283: opens the full inventory as a drill child of the Bag
+       root (back-chip returns to Bag) — the retired toggle's "close on
+       second tap" no longer applies to a preview tap. */
+    dashboardPanelBus.push('inventory');
   };
   return (
     <div
@@ -673,7 +679,27 @@ const PANELS = {
      Weapons menu renamed Build (display string only; the t2 id and
      WEAPON_* internals keep their names). */
   t2:           { title: 'Build',       Component: T2Panel },
+  /* v2.3.1283: nav-system destination roots.  bag/hero expanded views
+     are interim aliases (InventoryPanel / StatsPanel) until the
+     dedicated sheet components land later in this PR. */
+  bag:          { title: 'Bag',         Component: InventoryPanel },
+  hero:         { title: 'Hero',        Component: StatsPanel },
 };
+
+/* v2.3.1283: the six toolbar destinations (nav-system spec).  Chat left
+   the toolbar (owner) — the composer opens by tapping your own
+   character in the world (BroTown self-tap gate).  `compact:false`
+   destinations promote to expanded until PR B gives them compact views;
+   the bus routes their collapses home to Bag. */
+const DESTINATIONS = [
+  { id: 'bag',    label: 'Bag',     icon: '/icons/ui/nav-inventory.webp?v=2.3.1224', compact: true },
+  { id: 'hero',   label: 'Hero',    icon: '/icons/ui/panel-self.webp?v=2.3.1224',    compact: true },
+  { id: 'skills', label: 'Skills',  icon: '/icons/ui/panel-skills.webp?v=2.3.1224',  compact: true },
+  { id: 'social', label: 'Friends', icon: '/icons/ui/nav-friends.webp?v=2.3.1224',   compact: false },
+  { id: 'quests', label: 'Quests',  icon: '/icons/ui/panel-quests.webp?v=2.3.1224',  compact: false },
+  { id: 'more',   label: 'More',    icon: '/icons/ui/nav-more.webp?v=2.3.1224',      compact: false },
+];
+dashboardPanelBus.compactless = new Set(DESTINATIONS.filter(d => !d.compact).map(d => d.id));
 
 export const BottomDashboard = () => {
   const [, force] = useState(0);
@@ -691,8 +717,29 @@ export const BottomDashboard = () => {
      must not linger over a freshly opened panel: clear it on every
      panel-bus event (it did NOT clear before; only the 3s timer did). */
   useEffect(() => dashboardPanelBus.subscribe(() => { setTooltip(''); force(v => v + 1); }), []);
-  /* v2.3.1229b: chat-bubble state lights the Chat toolbar icon. */
-  useEffect(() => chatBubbleBus.subscribe(() => force(v => v + 1)), []);
+  /* v2.3.1283: expanded snap height — ~half the viewport with the sheet
+     top stopping below the player's feet (sheetGeometry).  Recomputed on
+     viewport changes with the same iOS-keyboard guard the canvas resize
+     uses: when the keyboard shrinks visualViewport, HOLD the last value
+     so the sheet doesn't jump under the chat composer. */
+  const [expandedPx, setExpandedPx] = useState(() =>
+    expandedSheetHeight(window.innerWidth, window.innerHeight));
+  useEffect(() => {
+    const vv = window.visualViewport;
+    const recompute = () => {
+      const vw = vv ? vv.width : window.innerWidth;
+      const vh = vv ? vv.height : window.innerHeight;
+      if (vv && window.innerHeight - vh > 100) return; /* keyboard up */
+      setExpandedPx(expandedSheetHeight(vw, vh));
+    };
+    recompute();
+    window.addEventListener('resize', recompute);
+    if (vv) vv.addEventListener('resize', recompute);
+    return () => {
+      window.removeEventListener('resize', recompute);
+      if (vv) vv.removeEventListener('resize', recompute);
+    };
+  }, []);
   /* Player-card portrait: a head-and-shoulders render of the player's
      chosen cosmetics (skin / hair / hair color / beard / hat).  Generated
      on mount (captures the login picker) and regenerated if a cosmetic
@@ -743,8 +790,14 @@ export const BottomDashboard = () => {
   }, []);
 
   const stack = dashboardPanelBus.state.stack;
+  /* v2.3.1283: two snap points.  `active` (the expanded panel) is only
+     truthy in expanded mode — compact renders the destination's compact
+     view with no header chrome (spec: compact views are glanceable,
+     label-free). */
+  const mode = dashboardPanelBus.state.mode;
+  const rootId = dashboardPanelBus.root();
   const activeId = stack.length ? stack[stack.length - 1] : null;
-  const active = activeId ? PANELS[activeId] : null;
+  const active = mode === 'expanded' ? (PANELS[activeId] || PANELS[rootId] || PANELS.bag) : null;
 
   const S = (typeof window !== 'undefined') && window._gameState && window._gameState.current;
   const R = (S && S.rpg) || {};
@@ -905,16 +958,14 @@ export const BottomDashboard = () => {
       style={{
         position: 'fixed',
         left: 0, right: 0, bottom: 0,
-        /* v2.3.1229b: panel mode grows the band (owner: panels were too
-           small in the leftover strip once the toolbar persisted) —
-           bottom-sheet pattern; the world stays visible above.  220ms =
-           the spec's panel motion token. */
-        /* v2.3.1235: Checkpoint B §3 — More is a LAUNCHER, not a content
-           panel: 56vh left it a giant empty sheet, so it sizes to its
-           content (header + 5×2 grid + toolbar ≈ 260px). Every other
-           panel keeps the 56vh bottom sheet. */
-        height: active ? (activeId === 'more' ? 'auto' : '56vh') : 'var(--dash-h)',
-        transition: 'height 220ms cubic-bezier(.2,.8,.2,1)',
+        /* v2.3.1283: ONE bottom sheet, two snap points (nav-system spec).
+           Compact = var(--dash-h) (the resting band; canvas/zones/HUD all
+           key off it).  Expanded = expandedSheetHeight() — ~half the
+           viewport, character stays visible.  The v2.3.1235 More 'auto'
+           special case dies: every destination uses the same snaps.
+           220ms token; reduced-motion drops the transition. */
+        height: mode === 'expanded' ? expandedPx + 'px' : 'var(--dash-h)',
+        transition: sheetTransition(),
         /* v2.3.1240: surface, rounded top edge, and crisp contact shadow
            live in .bt-dashboard so the mockup recipe stays testable in
            CSS instead of being split across inline declarations. */
@@ -969,8 +1020,11 @@ export const BottomDashboard = () => {
               overflow: 'hidden',
               textOverflow: 'ellipsis',
             }}>{active.title}</div>
+            {/* v2.3.1283: × collapses to the destination's compact view
+                (home/Bag for compactless roots) — there is no "nothing
+                open" state in the sheet model. */}
             <button
-              onPointerUp={(e) => { e.stopPropagation(); dashboardPanelBus.clear(); }}
+              onPointerUp={(e) => { e.stopPropagation(); dashboardPanelBus.collapse(); }}
               style={chipStyle}
             >×</button>
           </div>
@@ -981,6 +1035,18 @@ export const BottomDashboard = () => {
             {Active && <Active />}
           </div>
         </>
+      ) : rootId === 'hero' ? (
+        /* v2.3.1283: interim Hero compact stub — replaced by HeroCompact
+           later in this PR. */
+        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: COL.text2, fontSize: 13 }}>
+          Hero
+        </div>
+      ) : rootId === 'skills' ? (
+        /* v2.3.1283: interim Skills compact stub — replaced by
+           SkillsCompact later in this PR. */
+        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: COL.text2, fontSize: 13 }}>
+          Skills
+        </div>
       ) : (
         <>
           {/* 3-column body with section headers; gold moved to the Bag. */}
@@ -2020,16 +2086,20 @@ export const BottomDashboard = () => {
         </>
       )}
 
-      {/* Navigation ribbon — bottom 30% of dashboard.  v2.3.1229: it is
-          PERSISTENT in panel mode; tapping the selected destination again
-          returns home.  v2.3.1240: default/home intentionally selects
-          nothing, while an open destination gets a restrained brass edge.
-          rootId (stack[0]) keeps More selected while one of its children
-          (Settings, Stats, ...) is open. */}
+      {/* Navigation ribbon.  v2.3.1229: PERSISTENT in both modes.
+          v2.3.1283 (nav-system): SIX destinations, each always one of
+          the DESTINATIONS roots; the active root carries the brass edge
+          in BOTH snap modes (Bag is selected at rest — there is no
+          "nothing selected" state anymore).  Tap semantics live in
+          dashboardPanelBus.tapDestination: inactive -> compact, active
+          -> expanded/compact toggle.  rootId (stack[0]) keeps a
+          destination selected while one of its drill children
+          (Settings, T2, ...) is open. */}
       {(() => {
-        const rootId = stack.length ? stack[0] : null;
-        /* v2.3.1265: Codex + Journey moved under More, so they light it. */
-        const moreLit = !!rootId && !['inventory', 'social', 'quests'].includes(rootId);
+        const knownRoots = DESTINATIONS.map(d => d.id);
+        const litId = knownRoots.includes(rootId) ? rootId
+          /* legacy drill roots (inventory push, tutorial ids...) light More */
+          : (rootId ? 'more' : 'bag');
         return (
           <div className="bt-dashboard-toolbar-frame" style={{
             /* v2.3.1229b: fixed 68px shelf in panel mode (30% of the
@@ -2052,29 +2122,19 @@ export const BottomDashboard = () => {
             display: 'flex',
             alignItems: 'stretch',
           }}>
-            {/* v2.3.1265: owner — FIVE buttons (Inventory · Chat · Friends ·
-                Quests · More).  Codex and Journey moved into the More menu;
-                each button is ~20% wider. */}
+            {/* v2.3.1283: owner — SIX buttons (Bag · Hero · Skills ·
+                Friends · Quests · More).  Chat left the toolbar: the
+                composer opens by tapping your own character (the
+                over-head bubble flow is otherwise unchanged).  Hero and
+                Skills reuse panel-self/panel-skills art until dedicated
+                nav-* icons are generated. */}
             <div className="bt-dashboard-toolbar-ribbon">
-              <IconButton glyph="inventory" label="Inventory" active={rootId === 'inventory'}
-                onClick={() => dashboardPanelBus.toggle('inventory')} />
-              {/* v2.3.1015: Chat TOGGLES the over-head chat bubble
-                  (ChatBubble.jsx).  v2.3.1235 §7: opening Chat dismisses any
-                  open destination sheet so the composer shows over the
-                  world/HUD with only Chat marked active. */}
-              <IconButton glyph="chat" label="Chat" tut="dash-chat"
-                active={chatBubbleBus.open}
-                onClick={() => {
-                  const opening = !chatBubbleBus.open;
-                  chatBubbleBus.toggle();
-                  if (opening) dashboardPanelBus.clear();
-                }} />
-              <IconButton glyph="friends"   label="Friends" active={rootId === 'social'}
-                onClick={() => dashboardPanelBus.toggle('social')} />
-              <IconButton glyph="quests"    label="Quests" active={rootId === 'quests'}
-                onClick={() => dashboardPanelBus.toggle('quests')} />
-              <IconButton glyph="more"      label="More" tut="dash-more" active={moreLit}
-                onClick={() => dashboardPanelBus.toggle('more')} />
+              {DESTINATIONS.map(d => (
+                <IconButton key={d.id} src={d.icon} label={d.label}
+                  tut={d.id === 'more' ? 'dash-more' : undefined}
+                  active={litId === d.id}
+                  onClick={() => dashboardPanelBus.tapDestination(d.id)} />
+              ))}
             </div>
           </div>
         );
