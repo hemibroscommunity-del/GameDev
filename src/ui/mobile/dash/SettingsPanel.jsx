@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { COL, panelStyle } from './common.js';
+import { dashboardPanelBus } from '../dashboardPanelBus.js';
+import { controlsTutorialBus } from '../controlsTutorialBus.js';
 
 /* v2.3.1232: Lantern Slate pass (docs/LANTERN-SLATE-SPEC.md) — 44px
    setting rows, and the switch grows to a 46×26 touchable pill: track
@@ -90,9 +92,46 @@ export const SettingsPanel = () => {
     <div style={panelStyle}>
       <Toggle label="Audio" value={audio} onChange={toggleAudio} />
       <Toggle label="Debug overlay (D)" value={debug} onChange={toggleDebug} />
+      {/* v2.3.1291 (ChatGPT round-3 §1): Account, Controls and Feedback
+          fold in here as drill rows — they left the More launcher.  The
+          panels themselves are unchanged (PANELS registry push). */}
+      <LinkRow label="Account — login key & device transfer"
+        onTap={() => dashboardPanelBus.push('account')} />
+      <LinkRow label="Controls — replay the tutorial"
+        onTap={() => controlsTutorialBus.open()} />
+      <LinkRow label="Feedback — message the developers"
+        onTap={() => dashboardPanelBus.push('feedback')} />
       <div style={{ marginTop: 10, padding: '0 8px', fontSize: 13, color: COL.muted, lineHeight: 1.4 }}>
         Tap the floating <b>D</b> button for the full devtools console.
       </div>
     </div>
   );
 };
+
+/* v2.3.1291: 44px drill row — label left, ▸ affordance right. */
+const LinkRow = ({ label, onTap }) => (
+  <button
+    onPointerUp={(e) => { e.stopPropagation(); onTap(); }}
+    style={{
+      display: 'flex',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      gap: 8,
+      width: '100%',
+      minHeight: 44,
+      padding: '0 8px',
+      background: 'transparent',
+      border: 'none',
+      borderBottom: `1px solid ${COL.divider}`,
+      color: COL.text,
+      fontFamily: 'inherit',
+      fontSize: 13.5,
+      textAlign: 'left',
+      cursor: 'pointer',
+      touchAction: 'manipulation',
+    }}
+  >
+    <span style={{ flex: 1, minWidth: 0 }}>{label}</span>
+    <span aria-hidden="true" style={{ color: COL.muted, fontSize: 15 }}>▸</span>
+  </button>
+);

@@ -426,7 +426,10 @@ const PANELS = {
   /* v2.3.1265: Quests toolbar destination — read-only quest log. */
   quests:       { title: 'Quests',      Component: QuestsPanel },
   map:          { title: 'Map',         Component: MapPanel },
-  social:       { title: 'Social',      Component: SocialPanel },
+  /* v2.3.1291 (ChatGPT round-3 §1): the tab says Friends, so the header
+     says Friends — one name everywhere (the panel id stays 'social' on
+     the wire-free client side; renaming ids resets nothing). */
+  social:       { title: 'Friends',     Component: SocialPanel },
   more:         { title: 'More',        Component: MorePanel },
   stats:        { title: 'Stats',       Component: StatsPanel },
   skills:       { title: 'Skills',      Component: SkillsPanel },
@@ -444,8 +447,10 @@ const PANELS = {
      WEAPON_* internals keep their names). */
   t2:           { title: 'Build',       Component: T2Panel },
   /* v2.3.1283: nav-system destination roots.  v2.3.1286: Hero gets its
-     dedicated expanded sheet (Self/Stats stay reachable via More for
-     one release, then retire on owner sign-off). */
+     dedicated expanded sheet.  v2.3.1291 (ChatGPT round-3 §1): Hero
+     OWNS identity/stats/build now — the Self and Stats tiles left the
+     More launcher; their PANELS entries stay only so stale drill ids
+     in old sessions don't render a blank sheet. */
   bag:          { title: 'Bag',         Component: InventoryPanel },
   hero:         { title: 'Hero',        Component: HeroExpanded },
 };

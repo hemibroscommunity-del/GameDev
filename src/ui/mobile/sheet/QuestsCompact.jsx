@@ -20,10 +20,12 @@ export const QuestsCompact = () => {
 
   const { active, upcoming, done } = deriveQuestLog(getState());
 
-  /* One flat glance list: READY → IN PROGRESS → AVAILABLE. */
+  /* One flat glance list: READY → ACTIVE → AVAILABLE.  v2.3.1291
+     (ChatGPT round-3 §1): one canonical status set everywhere —
+     Ready / Active / Available / Completed ("in progress" retired). */
   const rows = [
     ...active.filter(a => a.ready).map(a => ({ quest: a.quest, badge: 'READY', color: '#59BF91' })),
-    ...active.filter(a => !a.ready).map(a => ({ quest: a.quest, badge: 'IN PROGRESS', color: '#D8A85F' })),
+    ...active.filter(a => !a.ready).map(a => ({ quest: a.quest, badge: 'ACTIVE', color: '#D8A85F' })),
     ...upcoming.map(quest => ({ quest, badge: 'AVAILABLE', color: COL.muted })),
   ];
   const overflow = rows.length - ROW_CAP;
@@ -60,7 +62,9 @@ export const QuestsCompact = () => {
         padding: '2px 0 2px',
         flex: '0 0 auto',
       }}>
-        {active.length} active{done.length ? ` · ${done.length} done` : ''}
+        {/* v2.3.1291 (round-3 §4): a USEFUL summary — "0 active" alone
+            hid the 8 waiting pickups. */}
+        {active.length} active · {upcoming.length} available{done.length ? ` · ${done.length} done` : ''}
       </div>
       {rows.slice(0, ROW_CAP).map(({ quest, badge, color }) => (
         <div key={quest.id} style={{

@@ -69,11 +69,14 @@ export const QuestsPanel = () => {
             fontSize: 10, fontWeight: 700, letterSpacing: '.06em',
             color: ready ? '#59BF91' : '#D8A85F',
             whiteSpace: 'nowrap',
-          }}>{ready ? 'READY — SEE ' + quest.npc.split(' ')[0].toUpperCase() : 'IN PROGRESS'}</span>
+          }}>{/* v2.3.1291: canonical statuses — 'in progress' retired */}
+            {ready ? 'READY — SEE ' + quest.npc.split(' ')[0].toUpperCase() : 'ACTIVE'}</span>
         </div>
       ))}
 
-      {upcoming.length > 0 && <div style={secHdr}>Next up</div>}
+      {/* v2.3.1291: section renamed to match the row badge (canonical
+          status set: Ready / Active / Available / Completed). */}
+      {upcoming.length > 0 && <div style={secHdr}>Available</div>}
       {upcoming.map((quest) => (
         <div key={quest.id} style={rowBox}>
           <div style={{ flex: 1, minWidth: 0 }}>

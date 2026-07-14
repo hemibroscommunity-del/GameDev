@@ -21,13 +21,18 @@ export const FriendsCompact = () => {
   const friends = S?.friends || S?._friends || [];
   const onlinePlayers = S?.players || {};
 
-  const rows = friends
+  const all = friends
     .map(f => {
       const fid = f.id || f;
       return { fid, name: f.name || fid, online: !!onlinePlayers[fid] };
     })
     .sort((a, b) => (b.online ? 1 : 0) - (a.online ? 1 : 0));
-  const onlineCount = rows.filter(r => r.online).length;
+  const onlineCount = all.filter(r => r.online).length;
+  /* v2.3.1291 (ChatGPT round-3 §4): the glance question is "who's on
+     RIGHT NOW" — with nobody online, three offline names are noise;
+     show the answer as a sentence instead.  With people online, only
+     online rows earn glance space. */
+  const rows = onlineCount > 0 ? all.filter(r => r.online) : [];
   const overflow = rows.length - ROW_CAP;
 
   if (rows.length === 0) {
@@ -60,8 +65,15 @@ export const FriendsCompact = () => {
         padding: '2px 0 2px',
         flex: '0 0 auto',
       }}>
-        {onlineCount} online · {rows.length} friend{rows.length === 1 ? '' : 's'}
+        {onlineCount} online · {all.length} friend{all.length === 1 ? '' : 's'}
       </div>
+      {onlineCount === 0 && (
+        <div style={{
+          flex: 1, minHeight: 0,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontSize: 13, fontWeight: 600, color: COL.text2,
+        }}>No friends online right now — expand for your full list.</div>
+      )}
       {rows.slice(0, ROW_CAP).map(r => (
         <div key={r.fid} style={{
           flex: '1 1 0', minHeight: 0,
