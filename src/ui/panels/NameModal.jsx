@@ -38,6 +38,11 @@ import { SHIRT_COLOR_CATALOG, setShirtColor } from '@/rendering/traits/shirtColo
    every catalog entry, and every handler survive — this is a
    presentation reshuffle only; selection state still lives in BroTown
    (activeCat now always holds a TYPE key; the group is derived). */
+/* v2.3.1252: owner feedback round — first group renamed Hair → Head;
+   the subtabs and colors rows are ALWAYS reserved (invisible ghosts
+   when unused) so the sheet height is constant and the flex stage
+   never resizes the character between categories; the color row's
+   'default' tile shows the catalog swatch, not the item icon again. */
 export function NameModal(props) {
   var _dragRotX = props._dragRotX,
     _swatchTile = props._swatchTile,
@@ -105,9 +110,12 @@ export function NameModal(props) {
   };
   /* v2.3.1251: five primary groups (approved mockup).  Icons reuse the
      existing painted category art in /ui/welcome/cat/ — no emoji, no new
-     assets.  A group with one type shows no secondary tabs. */
+     assets.  A group with one type shows no secondary tabs.
+     v2.3.1252: first group renamed Hair → HEAD (owner) — it holds both
+     Hair and Hats, so the group name matches the body part like the
+     other four. */
   var _GROUPS = [
-    { key: 'hair', label: 'Hair', icon: 'hair', types: ['hair', 'hat'] },
+    { key: 'head', label: 'Head', icon: 'hair', types: ['hair', 'hat'] },
     { key: 'face', label: 'Face', icon: 'skin', types: ['skin', 'beard'] },
     { key: 'top', label: 'Top', icon: 'shirt', types: ['shirt'] },
     { key: 'bottom', label: 'Bottom', icon: 'pants', types: ['pants'] },
@@ -134,12 +142,15 @@ export function NameModal(props) {
       ? _thumbTile(_def.spriteCat, o, _def.sel, _onPick, 44)
       : _swatchTile(o, _def.sel, _onPick, 40);
   });
-  /* Colors sit DIRECTLY below the options (handoff) and hide when the
-     type has none or the pick is 'none'.  The 'default' tile shows the
-     picked item's own thumbnail (original colors) — same cue as ever. */
+  /* Colors sit DIRECTLY below the options (handoff) and go blank when
+     the type has none or the pick is 'none'.  v2.3.1252: the 'default'
+     tile no longer repeats the picked item's thumbnail (owner: don't
+     show the same icon again in the color row) — with no thumbCat arg,
+     _swatchTile falls back to the catalog's own 'default' swatch hex,
+     which every color catalog carries. */
   var _colors = (_def.colors && _def.sel !== 'none')
     ? _def.colors.map(function (o) {
-        return _swatchTile(o, _def.colorSel, _def.setColor, undefined, _def.spriteCat, _def.sel);
+        return _swatchTile(o, _def.colorSel, _def.setColor);
       })
     : null;
   /* Reset both strips to their start whenever the type changes — the
@@ -331,29 +342,45 @@ export function NameModal(props) {
       onClick: function () { _openType(g.key, typeMemo[g.key] || g.types[0]); }
     }, /*#__PURE__*/React.createElement("img", { className: "bt-cc-tab-icon", src: '/ui/welcome/cat/' + g.icon + '.webp?v=' + BUILD_INFO.version, alt: '', draggable: false }),
     /*#__PURE__*/React.createElement("span", { className: "bt-cc-tab-label" }, g.label));
-  })), _activeGroup.types.length > 1 && /*#__PURE__*/React.createElement("div", {
-    /* Secondary tabs — only for Hair (Hair/Hats) and Face (Skin/Beard);
-       single-type groups show none (handoff). */
-    className: "bt-cc-subtabs"
-  }, _activeGroup.types.map(function (t) {
-    var on = t === _activeType;
-    return /*#__PURE__*/React.createElement("button", {
-      key: t, type: 'button', "aria-pressed": on ? 'true' : 'false',
-      className: 'bt-cc-subtab' + (on ? ' bt-cc-subtab--on' : ''),
-      onClick: function () { _openType(_activeGroup.key, t); }
-    }, _typeDefs[t].label);
   })), /*#__PURE__*/React.createElement("div", {
+    /* Secondary tabs — visible only for Head (Hair/Hats) and Face
+       (Skin/Beard).  v2.3.1252: single-type groups render the row as an
+       invisible GHOST instead of omitting it — the sheet is the flex
+       stage's height budget, so any row that comes and goes with the
+       category made the character preview grow/shrink on every tab
+       change (owner: keep the character ONE size, even if smaller). */
+    className: "bt-cc-subtabs" + (_activeGroup.types.length > 1 ? "" : " bt-cc-ghost"),
+    "aria-hidden": _activeGroup.types.length > 1 ? undefined : true
+  }, _activeGroup.types.length > 1
+    ? _activeGroup.types.map(function (t) {
+        var on = t === _activeType;
+        return /*#__PURE__*/React.createElement("button", {
+          key: t, type: 'button', "aria-pressed": on ? 'true' : 'false',
+          className: 'bt-cc-subtab' + (on ? ' bt-cc-subtab--on' : ''),
+          onClick: function () { _openType(_activeGroup.key, t); }
+        }, _typeDefs[t].label);
+      })
+    : /*#__PURE__*/React.createElement("button", {
+        type: 'button', className: "bt-cc-subtab", tabIndex: -1, disabled: true
+      }, " ")), /*#__PURE__*/React.createElement("div", {
     /* Option strip — exactly five complete tiles at rest; extra options
        scroll horizontally (sizing in .bt-cc-strip, game.css).  The whole
        catalog is always rendered: the v2.3.835 collapse-on-select
        machinery is retired with the pager. */
     className: "bt-cc-strip", ref: _stripRef, role: 'listbox', "aria-label": _def.label + ' options'
-  }, _items), _colors && /*#__PURE__*/React.createElement("div", {
-    className: "bt-cc-colors"
+  }, _items), /*#__PURE__*/React.createElement("div", {
+    /* v2.3.1252: like the subtabs, the color block always occupies its
+       row — an invisible ghost (with one placeholder tile so the row
+       keeps its swatch height) when the type/pick has no colors.  This
+       plus the ghost subtabs makes the sheet height IDENTICAL across
+       every category and pick, so the stage — and the character — never
+       change size. */
+    className: "bt-cc-colors" + (_colors ? "" : " bt-cc-ghost"),
+    "aria-hidden": _colors ? undefined : true
   }, /*#__PURE__*/React.createElement("span", { className: "bt-cc-colors-head" }, "Color"),
   /*#__PURE__*/React.createElement("div", {
-    className: "bt-cc-colors-row", ref: _colorRowRef, role: 'radiogroup', "aria-label": _def.label + ' colors'
-  }, _colors)), /*#__PURE__*/React.createElement("button", {
+    className: "bt-cc-colors-row", ref: _colorRowRef, role: _colors ? 'radiogroup' : undefined, "aria-label": _colors ? _def.label + ' colors' : undefined
+  }, _colors || /*#__PURE__*/React.createElement("div", null))), /*#__PURE__*/React.createElement("button", {
     /* Appearance RANDOMIZE — visually secondary (handoff), inside the
        sheet, right under what it acts on. */
     type: 'button', onClick: randomizeWithFlair, className: "bt-cc-rand",

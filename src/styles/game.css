@@ -866,6 +866,12 @@ input{font-family:inherit}
 /* v2.3.1251: compact secondary tabs — only Hair (Hair/Hats) and Face
    (Skin/Beard) render them; single-type groups show none. */
 .bt-cc-subtabs{flex:0 0 auto;display:flex;width:fit-content;min-height:32px;margin:0 auto;padding:2px;border:1px solid var(--ui-line);border-radius:9px;background:rgba(0,0,0,.13)}
+/* v2.3.1252: ghost rows — the subtabs/colors slots stay in the layout
+   (space reserved, nothing painted or tappable) when the active
+   category doesn't use them, so the sheet height never changes and the
+   flex stage can't resize the character on tab switches (owner: one
+   consistent character size). */
+.bt-cc-ghost{visibility:hidden}
 .bt-cc-subtab{min-width:72px;min-height:28px;padding:3px 12px;border:0;border-radius:7px;background:transparent;color:var(--ui-text-secondary);font-size:11px;font-weight:700;letter-spacing:.02em;font-family:'Source Sans 3',sans-serif;cursor:pointer}
 .bt-cc-subtab--on{color:var(--ui-text);background:var(--ui-raised)}
 /* v2.3.1251: the drawer (one step at a time + collapse-on-select +
