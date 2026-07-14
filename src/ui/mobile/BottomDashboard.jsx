@@ -1665,6 +1665,10 @@ export const BottomDashboard = () => {
                     now START (r4 §1 flipped them to alignContent:'start')
                     and its bottom stays on the shared 4px column padding —
                     the band keeps one coherent top AND bottom edge. */}
+                {/* v2.3.1280: cq wrapper (a container can't query itself —
+                    the v2.3.1259b lesson) so the compact grid's FIT_TRACK
+                    resolves against the Build column's content box. */}
+                <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', ...FIT_GRID_CONTAIN }}>
                 <div style={{
                   flex: 1,
                   display: 'grid',
@@ -1676,26 +1680,34 @@ export const BottomDashboard = () => {
                      with 3 rows gives a semantic split: column 1 = the three
                      damage stats (melee/bow/magic), column 2 = the three
                      resource stats (HP/defense/endurance). */
-                  gridTemplateColumns: SHOW_LIFE_SKILLS ? 'repeat(3, 1fr)' : 'repeat(2, 1fr)',
+                  /* v2.3.1280: owner — the compact Build becomes a 2x2 SLOT
+                     grid matching Bag/Equipped: same tracks, same 8px gap,
+                     tiles instead of open cells. */
+                  gridTemplateColumns: SHOW_LIFE_SKILLS ? 'repeat(3, 1fr)' : `repeat(2, ${FIT_TRACK})`,
                   /* v2.3.1236: owner feedback r5b — 1fr rows stretched this
                      grid over the full column height, so its cell content
                      floated LOWER than the top-packed Bag/Loadout rows.
                      min-content rows + alignContent start pack the rows
                      at the top, level with the neighbors' first rows. */
-                  gridTemplateRows: SHOW_LIFE_SKILLS ? 'repeat(5, 1fr)' : 'repeat(3, min-content)',
+                  gridTemplateRows: SHOW_LIFE_SKILLS ? 'repeat(5, 1fr)' : undefined,
+                  gridAutoRows: SHOW_LIFE_SKILLS ? undefined : 'min-content',
                   alignContent: SHOW_LIFE_SKILLS ? 'stretch' : 'start',
-                  /* v2.3.1235: §4 — open grid: no gap, cells share faint
-                     dividers instead of six individual dark cards. */
-                  gap: SHOW_LIFE_SKILLS ? 2 : 0,
-                  gridAutoFlow: 'column',
+                  justifyContent: SHOW_LIFE_SKILLS ? undefined : 'center',
+                  gap: SHOW_LIFE_SKILLS ? 2 : SLOT_GAP,
+                  gridAutoFlow: SHOW_LIFE_SKILLS ? 'column' : 'row',
                   minHeight: 0,
-                  /* v2.3.1238: owner feedback §3 — size container so the
-                     stat cells (grown 6px by the reserved pill padding
-                     below) can cap themselves at half the grid height on
-                     short viewports instead of overflowing the band. */
-                  ...(SHOW_LIFE_SKILLS ? {} : FIT_GRID_CONTAIN),
                 }}>
-                  {CHAR_STATS.map((s, bi) => {
+                  {/* v2.3.1280: owner — four combat-skill tiles; the offense
+                      tile SWAPS with the active weapon (melee -> Melee,
+                      bow -> Bow, staff -> Magic), so the panel always shows
+                      the skill the current weapon trains. */}
+                  {(SHOW_LIFE_SKILLS ? CHAR_STATS : (() => {
+                    const slot = R.activeSlot || 'melee';
+                    const off = slot === 'ranged' ? 'agility' : slot === 'staff' ? 'mind' : 'power';
+                    return [off, 'vitality', 'defense', 'endurance']
+                      .map(k => CHAR_STATS.find(s => s.key === k))
+                      .filter(Boolean);
+                  })()).map((s, bi) => {
                     /* Defense is a Tier-2 skill (level on rpg.defenseSkill);
                        the rest are Tier-1 capacity stats read straight off R.
                        defenseSkill is absent until v2.3.693 wires it -> 0. */
@@ -1741,6 +1753,70 @@ export const BottomDashboard = () => {
                        of just showing the tooltip. */
                     const unspentPts = buildSkillUnspent(R, s.key);
                     const openT2Cat = s.key === 'defense' ? 'defense' : STAT_TO_WEAPON_CAT[s.key];
+                    /* v2.3.1280: owner — compact Build cells become SLOT
+                       TILES: icon fills the tile like an inventory item,
+                       the level rides a bottom-right .bt-item-qty badge
+                       ("the same way the inventory works"), and the XP
+                       pills are removed.  Tap behavior (tooltip / T2 jump)
+                       and the unspent-points badge carry over. */
+                    if (!SHOW_LIFE_SKILLS) return (
+                      <div key={'b_' + s.key}
+                        className={unspentPts > 0 ? 'bt-build-flash' : undefined}
+                        onPointerUp={(e) => {
+                          e.stopPropagation();
+                          if (unspentPts > 0 && openT2Cat) {
+                            requestT2Category(openT2Cat);
+                            dashboardPanelBus.push('t2');
+                          } else {
+                            setTooltip({
+                              title: tipTitle,
+                              benefit,
+                              body: s.train,
+                              anchor: e.currentTarget.getBoundingClientRect(),
+                            });
+                          }
+                        }}
+                        title={`${tipTitle} — ${benefit}. ${s.train}`}
+                        style={{
+                          position: 'relative',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          borderRadius: 4,
+                          background: COL.wellSoft,
+                          border: `1px solid ${COL.tileBor}`,
+                          cursor: 'pointer',
+                          touchAction: 'none',
+                          minWidth: 0,
+                          minHeight: 0,
+                          aspectRatio: '1 / 1',
+                          width: '100%',
+                        }}>
+                        {unspentPts > 0 && (
+                          <span style={{
+                            position: 'absolute', top: 1, right: 2,
+                            background: '#D8A85F', color: '#20170D',
+                            fontSize: 10, fontWeight: 900,
+                            borderRadius: 7, padding: '0px 4px', lineHeight: 1.4,
+                            pointerEvents: 'none', zIndex: 1,
+                          }}>{unspentPts}</span>
+                        )}
+                        <img
+                          src={s.iconSrc}
+                          alt={s.label}
+                          draggable={false}
+                          style={{
+                            width: '72%',
+                            height: '72%',
+                            objectFit: 'contain',
+                            imageRendering: s.pixelated ? 'pixelated' : 'auto',
+                            pointerEvents: 'none',
+                            userSelect: 'none',
+                          }}
+                        />
+                        <span className="bt-item-qty">{val}</span>
+                      </div>
+                    );
                     return (
                       <div key={'b_' + s.key}
                         className={unspentPts > 0 ? 'bt-build-flash' : undefined}
@@ -1934,6 +2010,7 @@ export const BottomDashboard = () => {
                     );
                   })}
                 </div>
+                </div>{/* v2.3.1280: cq wrapper close */}
               </div>
             </div>
           </div>
