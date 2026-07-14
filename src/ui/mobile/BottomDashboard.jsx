@@ -39,6 +39,7 @@ import { FeedbackPanel }     from './dash/FeedbackPanel.jsx';
 import { SettingsPanel }     from './dash/SettingsPanel.jsx';
 /* v2.3.1143: account panel -- Login Key display + device transfer. */
 import { AccountPanel }      from './dash/AccountPanel.jsx';
+import { QuestsPanel }        from './dash/QuestsPanel.jsx';
 import { T2Panel, requestT2Category } from './dash/T2Panel.jsx';
 import { SpendPointConfirm }   from './dash/SpendPointConfirm.jsx';
 
@@ -115,6 +116,8 @@ const ICON_SRC = {
   /* v2.3.1225: chat finally gets a real icon (was an inline SVG since
      v2.3.1015, the one toolbar glyph the v2.3.1224 swap missed). */
   chat:      '/icons/ui/panel-chat.webp?v=2.3.1225',
+  /* v2.3.1258: Quests joins the ribbon (5-button toolbar). */
+  quests:    '/icons/ui/panel-quests.webp?v=2.3.1224',
 };
 
 // Character build stats shown in the middle dashboard column, ordered for a
@@ -615,6 +618,8 @@ const PANELS = {
   inventory:    { title: 'Inventory',   Component: InventoryPanel },
   self:         { title: 'Self',        Component: SelfPanel },
   journey:      { title: 'Journey',     Component: JourneyPanel },
+  /* v2.3.1258: Quests toolbar destination — read-only quest log. */
+  quests:       { title: 'Quests',      Component: QuestsPanel },
   map:          { title: 'Map',         Component: MapPanel },
   social:       { title: 'Social',      Component: SocialPanel },
   more:         { title: 'More',        Component: MorePanel },
@@ -1881,7 +1886,8 @@ export const BottomDashboard = () => {
           (Settings, Stats, ...) is open. */}
       {(() => {
         const rootId = stack.length ? stack[0] : null;
-        const moreLit = !!rootId && !['inventory', 'social', 'encyclopedia', 'journey'].includes(rootId);
+        /* v2.3.1258: Codex + Journey moved under More, so they light it. */
+        const moreLit = !!rootId && !['inventory', 'social', 'quests'].includes(rootId);
         return (
           <div className="bt-dashboard-toolbar-frame" style={{
             /* v2.3.1229b: fixed 68px shelf in panel mode (30% of the
@@ -1904,30 +1910,27 @@ export const BottomDashboard = () => {
             display: 'flex',
             alignItems: 'stretch',
           }}>
+            {/* v2.3.1258: owner — FIVE buttons (Inventory · Chat · Friends ·
+                Quests · More).  Codex and Journey moved into the More menu;
+                each button is ~20% wider. */}
             <div className="bt-dashboard-toolbar-ribbon">
               <IconButton glyph="inventory" label="Inventory" active={rootId === 'inventory'}
                 onClick={() => dashboardPanelBus.toggle('inventory')} />
-              <IconButton glyph="friends"   label="Friends" active={rootId === 'social'}
-                onClick={() => dashboardPanelBus.toggle('social')} />
-              <IconButton glyph="codex"     label="Codex" active={rootId === 'encyclopedia'}
-                onClick={() => dashboardPanelBus.toggle('encyclopedia')} />
-              <IconButton glyph="journey"   label="Journey" active={rootId === 'journey'}
-                onClick={() => dashboardPanelBus.toggle('journey')} />
-              {/* v2.3.1015: Chat replaces Map in the toolbar — TOGGLES the
-                  over-head chat bubble (ChatBubble.jsx): tap to open, tap again
-                  to close.  v2.3.1225: UI Bible panel-chat icon replaces the
-                  placeholder inline SVG. */}
+              {/* v2.3.1015: Chat TOGGLES the over-head chat bubble
+                  (ChatBubble.jsx).  v2.3.1235 §7: opening Chat dismisses any
+                  open destination sheet so the composer shows over the
+                  world/HUD with only Chat marked active. */}
               <IconButton glyph="chat" label="Chat" tut="dash-chat"
                 active={chatBubbleBus.open}
                 onClick={() => {
-                  /* v2.3.1235: §7 Chat state fix — opening Chat dismisses
-                     any open destination sheet so the composer shows over
-                     the world/HUD with only Chat marked active (it used
-                     to open ON TOP of e.g. the Journey panel). */
                   const opening = !chatBubbleBus.open;
                   chatBubbleBus.toggle();
                   if (opening) dashboardPanelBus.clear();
                 }} />
+              <IconButton glyph="friends"   label="Friends" active={rootId === 'social'}
+                onClick={() => dashboardPanelBus.toggle('social')} />
+              <IconButton glyph="quests"    label="Quests" active={rootId === 'quests'}
+                onClick={() => dashboardPanelBus.toggle('quests')} />
               <IconButton glyph="more"      label="More" tut="dash-more" active={moreLit}
                 onClick={() => dashboardPanelBus.toggle('more')} />
             </div>
