@@ -22,6 +22,9 @@ import { compactDashHeight, expandedSheetHeight } from './sheet/sheetGeometry.js
 import { sheetTransition } from './sheet/motion.js';            /* v2.3.1283 */
 import { useSheetDrag } from './sheet/useSheetDrag.js';         /* v2.3.1283 */
 import { BagCompact } from './sheet/BagCompact.jsx';            /* v2.3.1285 */
+import { HeroCompact } from './sheet/HeroCompact.jsx';          /* v2.3.1286 */
+import { HeroExpanded } from './sheet/HeroExpanded.jsx';        /* v2.3.1286 */
+import { SkillsCompact } from './sheet/SkillsCompact.jsx';      /* v2.3.1286 */
 import { InventoryPanel, BagTile }     from './dash/InventoryPanel.jsx';
 import { ItemDetailPopup }             from './dash/ItemDetailPopup.jsx';
 import { itemDetailBus }               from './dash/itemDetailBus.js';
@@ -491,11 +494,11 @@ const PANELS = {
      Weapons menu renamed Build (display string only; the t2 id and
      WEAPON_* internals keep their names). */
   t2:           { title: 'Build',       Component: T2Panel },
-  /* v2.3.1283: nav-system destination roots.  bag/hero expanded views
-     are interim aliases (InventoryPanel / StatsPanel) until the
-     dedicated sheet components land later in this PR. */
+  /* v2.3.1283: nav-system destination roots.  v2.3.1286: Hero gets its
+     dedicated expanded sheet (Self/Stats stay reachable via More for
+     one release, then retire on owner sign-off). */
   bag:          { title: 'Bag',         Component: InventoryPanel },
-  hero:         { title: 'Hero',        Component: StatsPanel },
+  hero:         { title: 'Hero',        Component: HeroExpanded },
 };
 
 /* v2.3.1283: the six toolbar destinations (nav-system spec).  Chat left
@@ -870,17 +873,9 @@ export const BottomDashboard = () => {
           </div>
         </>
       ) : rootId === 'hero' ? (
-        /* v2.3.1283: interim Hero compact stub — replaced by HeroCompact
-           later in this PR. */
-        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: COL.text2, fontSize: 13 }}>
-          Hero
-        </div>
+        <HeroCompact />
       ) : rootId === 'skills' ? (
-        /* v2.3.1283: interim Skills compact stub — replaced by
-           SkillsCompact later in this PR. */
-        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: COL.text2, fontSize: 13 }}>
-          Skills
-        </div>
+        <SkillsCompact />
       ) : (
         /* v2.3.1285: the home view — Bag compact (nav-system spec
            §Default State).  Replaces the v2.3.1236..1281 three-panel
