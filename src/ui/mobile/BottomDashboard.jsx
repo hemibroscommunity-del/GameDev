@@ -18,8 +18,9 @@ import { getShirt, onShirtChange } from '../../rendering/traits/shirtCatalog.js'
 import { getShirtColor, shirtColorTarget, onShirtColorChange } from '../../rendering/traits/shirtColorCatalog.js';
 import { getEquip } from '../../rendering/gearCatalog.js';
 import { dashboardPanelBus } from './dashboardPanelBus.js';
-import { expandedSheetHeight } from './sheet/sheetGeometry.js'; /* v2.3.1283 */
+import { compactDashHeight, expandedSheetHeight } from './sheet/sheetGeometry.js'; /* v2.3.1283 */
 import { sheetTransition } from './sheet/motion.js';            /* v2.3.1283 */
+import { useSheetDrag } from './sheet/useSheetDrag.js';         /* v2.3.1283 */
 import { InventoryPanel, BagTile }     from './dash/InventoryPanel.jsx';
 import { ItemDetailPopup }             from './dash/ItemDetailPopup.jsx';
 import { itemDetailBus }               from './dash/itemDetailBus.js';
@@ -740,6 +741,14 @@ export const BottomDashboard = () => {
       if (vv) vv.removeEventListener('resize', recompute);
     };
   }, []);
+  /* v2.3.1283: swipe up = expand, swipe down = collapse (spec §Direct
+     manipulation).  Getters read live viewport so a drag mid-rotation
+     still clamps correctly. */
+  const expandedPxRef = useRef(0);
+  expandedPxRef.current = expandedPx;
+  useSheetDrag(dashRef,
+    () => compactDashHeight((window.visualViewport && window.visualViewport.width) || window.innerWidth),
+    () => expandedPxRef.current);
   /* Player-card portrait: a head-and-shoulders render of the player's
      chosen cosmetics (skin / hair / hair color / beard / hat).  Generated
      on mount (captures the login picker) and regenerated if a cosmetic
@@ -985,6 +994,20 @@ export const BottomDashboard = () => {
         touchAction: 'none',
       }}
     >
+      {/* v2.3.1283: drag affordance (spec: subtle, must not consume
+          content height) — absolutely positioned over the band's top
+          edge so the compact height budget is untouched. */}
+      <div aria-hidden="true" style={{
+        position: 'absolute',
+        top: 4,
+        left: '50%',
+        transform: 'translateX(-50%)',
+        width: 32,
+        height: 4,
+        borderRadius: 2,
+        background: 'rgba(229,237,233,.22)',
+        pointerEvents: 'none',
+      }} />
       {active ? (
         <>
           {/* Header strip — back-chip (only on drilled child), title, ×.
