@@ -64,6 +64,16 @@ import { SHIRT_COLOR_CATALOG, setShirtColor } from '@/rendering/traits/shirtColo
    agreed floors: 10px text, ~35px taps, 16px input font for the iOS
    zoom gate).  Tiles go 5-at-rest → 7, swatches 6 → 8; the flex stage
    absorbs the freed height, so the character grows substantially. */
+/* v2.3.1276: owner round 7 — GROUND-UP RETHINK (owner picked the
+   slide-up drawer from three offered models).  The always-visible
+   sheet is retired: at REST the screen is a hero (huge character,
+   name well, Customize + Random actions, gold ENTER); the pickers
+   (tabs / subtype chips / tiles / colors) live in a fixed slide-up
+   DRAWER over the bottom half, opened by Customize and closed by
+   Done or a scrim tap.  The drawer is an absolute overlay, so the
+   character's size/position is structurally untouchable by anything
+   in it.  All state, handlers, catalogs and the join flow are
+   byte-identical — presentation only. */
 /* v2.3.1272: owner round 6 — "best logical use of space with adequate
    touch targets".  The v2.3.1257 shrink squeezed CONTROLS; this pass
    removes low-value ROWS instead and spends the savings on target
@@ -213,6 +223,8 @@ export function NameModal(props) {
   React.useEffect(function () { _measureMore(); }, [_def.sel]);
   /* v2.3.1143: Login Key overlay toggle (self-contained -- no BroTown prop). */
   var _acS = React.useState(false), showAccount = _acS[0], setShowAccount = _acS[1];
+  /* v2.3.1276: Customize drawer toggle (view-only, like showAccount). */
+  var _dwS = React.useState(false), drawerOpen = _dwS[0], setDrawerOpen = _dwS[1];
   /* v2.3.1235 rollout micro-fix §2's inline-SVG die (currentColor — no
      new hex, no emoji, no asset), shared by the name dice + Randomize. */
   var _dieSvg = function (sz) {
@@ -292,15 +304,16 @@ export function NameModal(props) {
     style: {
       /* v2.3.799: SQUARE canvas sized by stage HEIGHT, bottom-center
          anchored so the boots plant on the pedestal's top face.
-         v2.3.1251: 88% → 97% (+10%, handoff "preview character roughly
-         10–12% larger"); bottom drops 14.5% → 13.5% to keep the boots
-         (≈11% up the bitmap) on the same platform contact line.  The
-         extra width is transparent bitmap margin — the figure occupies
-         the middle ~50%, so any side clip is invisible. */
+         v2.3.1251: 88% → 97% (+10%); bottom 14.5% → 13.5%.
+         v2.3.1276b: 97% → 48.5% (owner: half-size character on the
+         hero screen).  The platform contact line lives at ≈24.2% of
+         stage (13.5 + 0.11×97, boots ≈11% up the bitmap); solving the
+         same line for the half canvas gives bottom = 24.2 − 0.11×48.5
+         ≈ 19%. */
       position: 'absolute',
       left: '50%',
-      bottom: '13.5%',
-      height: '97%',
+      bottom: '19%',
+      height: '48.5%',
       aspectRatio: '1 / 1',
       objectFit: 'contain',
       imageRendering: 'pixelated',
@@ -309,8 +322,9 @@ export function NameModal(props) {
       touchAction: 'none',
       cursor: 'grab',
       /* v2.3.744/745: per-angle drop — SW/E source frames sit higher in
-         their 256 box than the others. */
-      transform: 'translateX(-50%) translateY(' + ({ southwest: 15, southeast: 15, east: 10, west: 10, northeast: 5, northwest: 5 }[previewDir] || 0) + 'px)',
+         their 256 box than the others.  v2.3.1276b: px offsets halve
+         with the bitmap's on-screen scale. */
+      transform: 'translateX(-50%) translateY(' + ({ southwest: 8, southeast: 8, east: 5, west: 5, northeast: 3, northwest: 3 }[previewDir] || 0) + 'px)',
       /* v2.3.717: transparent — trait sprites carry white extraction
          residue that any dark backdrop would expose.  No z-index: DOM
          order stacks pillars < canvas < rotate buttons. */
@@ -336,17 +350,14 @@ export function NameModal(props) {
       boxShadow: 'inset 0 1px 0 rgba(255,255,255,.10), inset 0 -2px 3px rgba(0,0,0,.38), 0 2px 6px rgba(3,8,12,.30)',
       display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }
   }, /*#__PURE__*/React.createElement("span", { style: { fontSize: 23, fontWeight: 700, lineHeight: 1, transform: 'translateY(-1px)' } }, "↻"))),
+  /* v2.3.1276: the always-visible sheet (.bt-cc-menu) is retired — the
+     hero screen shows only the control cluster below; the pickers live
+     in the slide-up drawer after the box. */
   /*#__PURE__*/React.createElement("div", {
-    /* v2.3.1251: ONE unified creator sheet (handoff) — title, name row,
-       group tabs, subtype tabs, option strip, colors, Randomize all live
-       on this single card; the separate name bar and Randomize bar are
-       retired.  Chrome lives in .bt-cc-menu (game.css). */
-    className: "bt-cc-menu"
-  }, /* v2.3.1272: "CREATE YOUR BRO" title retired (space; v2.3.1034
-        precedent — self-explanatory screen). */
-  /*#__PURE__*/React.createElement("div", {
-    /* Name row — the dice ICON rerolls the NAME only (handoff: the word
-       "Roll" is retired); appearance Randomize sits below the pickers. */
+    /* Name row — the dice ICON rerolls the NAME only.  .bt-cc-namewrap's
+       margin-top:auto pins the whole control cluster to the bottom, so
+       the capped stage floats in the upper space (hero composition). */
+    className: "bt-cc-namewrap",
     style: { position: 'relative', width: '100%', flex: '0 0 auto' }
   }, /*#__PURE__*/React.createElement("input", {
     value: nameInput,
@@ -389,7 +400,74 @@ export function NameModal(props) {
     /* v2.3.1272: 40px target inside the 44px name well. */
     style: { position: 'absolute', right: 2, top: '50%', transform: 'translateY(-50%)', width: 40, height: 40, borderRadius: 8, cursor: 'pointer',
       display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }
-  }, _dieSvg(18))), /*#__PURE__*/React.createElement("nav", {
+  }, _dieSvg(18))), /*#__PURE__*/React.createElement("div", {
+    /* v2.3.1276: hero action row — Customize slides the drawer up;
+       Random rerolls the whole look (same randomizeWithFlair the
+       drawer's die cell uses). */
+    className: "bt-cc-actions"
+  }, /*#__PURE__*/React.createElement("button", {
+    type: 'button', className: "bt-cc-btn",
+    "aria-expanded": drawerOpen ? 'true' : 'false',
+    onClick: function () { setDrawerOpen(true); }
+  }, /*#__PURE__*/React.createElement("img", { className: "bt-cc-action-icon", src: '/ui/welcome/cat/shirt.webp?v=' + BUILD_INFO.version, alt: '', draggable: false }),
+  /*#__PURE__*/React.createElement("span", null, "Customize")),
+  /*#__PURE__*/React.createElement("button", {
+    type: 'button', className: "bt-cc-btn", onClick: randomizeWithFlair
+  }, _dieSvg(18), /*#__PURE__*/React.createElement("span", null, "Random"))),
+  /*#__PURE__*/React.createElement("button", {
+    onClick: joinTown,
+    /* v2.3.1251: PLAY → ENTER BRO TOWN, the screen's one dominant gold
+       action. */
+    className: "bt-cc-play",
+    "aria-label": 'Enter Bro Town',
+    style: {
+      width: '100%',
+      cursor: 'pointer'
+    }
+  }, "Enter Bro Town"), /*#__PURE__*/React.createElement("button", {
+    /* v2.3.1143: returning-player door. */
+    type: 'button',
+    onClick: function () { setShowAccount(true); },
+    style: {
+      background: 'none',
+      border: 'none',
+      color: '#B6C1BE',
+      fontFamily: 'Source Sans 3, sans-serif',
+      fontSize: 12,
+      cursor: 'pointer',
+      padding: '4px 0',
+      minHeight: 44,
+      display: 'inline-flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 4,
+      alignSelf: 'center'
+    }
+  }, /*#__PURE__*/React.createElement("span", null, "Already have a Bro?"),
+  /*#__PURE__*/React.createElement("span", {
+    style: { color: '#EAC675', textDecoration: 'underline', textUnderlineOffset: 3 }
+  }, "Enter Login Key")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      color: 'var(--txt2)',
+      fontFamily: 'Source Sans 3, sans-serif',
+      letterSpacing: '.06em',
+      textAlign: 'center'
+    }
+  }, "v" + BUILD_INFO.version + " \u00b7 " + BUILD_INFO.sha)), drawerOpen && /*#__PURE__*/React.createElement("div", {
+    /* v2.3.1276: light tap-to-close scrim under the drawer — the world
+       stays visible; tapping it is the "put the drawer away" gesture. */
+    className: "bt-cc-drawer-scrim",
+    onClick: function () { setDrawerOpen(false); }
+  }), /*#__PURE__*/React.createElement("div", {
+    /* v2.3.1276: the Customize DRAWER — always mounted (the strip refs
+       and scroll positions persist), slid off-screen + pointer-inert
+       when closed (transform, not display: layout stays measurable for
+       _measureMore).  Absolute overlay: nothing in here can move the
+       stage. */
+    className: "bt-cc-drawer" + (drawerOpen ? " bt-cc-drawer--open" : ""),
+    "aria-hidden": drawerOpen ? undefined : true
+  }, /*#__PURE__*/React.createElement("nav", {
     className: "bt-cc-tabs", role: 'tablist', "aria-label": 'Appearance category'
   }, _GROUPS.map(function (g) {
     var on = g.key === _activeGroupKey;
@@ -456,50 +534,12 @@ export function NameModal(props) {
     className: "bt-cc-colors-row", ref: _colorRowRef, onScroll: _measureMore, role: _colors ? 'radiogroup' : undefined, "aria-label": _colors ? _def.label + ' colors' : undefined
   }, _colors || /*#__PURE__*/React.createElement("div", null)), /*#__PURE__*/React.createElement("span", {
     className: "bt-cc-more" + (scrollMore.colors ? " bt-cc-more--on" : ""), "aria-hidden": true
-  }, "›")))),
-  /*#__PURE__*/React.createElement("button", {
-    onClick: joinTown,
-    /* v2.3.1251: PLAY → ENTER BRO TOWN, the screen's one dominant gold
-       action (handoff); full card width now — the v2.3.801 230px cap is
-       superseded by the approved mockup (cap lives in .bt-cc-play). */
-    className: "bt-cc-play",
-    "aria-label": 'Enter Bro Town',
-    style: {
-      width: '100%',
-      cursor: 'pointer'
-    }
-  }, "Enter Bro Town"), /*#__PURE__*/React.createElement("button", {
-    /* v2.3.1143: returning-player door.  v2.3.1251: handoff copy —
-       plain lead-in + underlined link half; same setShowAccount handler. */
-    type: 'button',
-    onClick: function () { setShowAccount(true); },
-    style: {
-      background: 'none',
-      border: 'none',
-      color: '#B6C1BE',
-      fontFamily: 'Source Sans 3, sans-serif',
-      fontSize: 12,
-      cursor: 'pointer',
-      padding: '4px 0',
-      minHeight: 44,
-      display: 'inline-flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      gap: 4,
-      alignSelf: 'center'
-    }
-  }, /*#__PURE__*/React.createElement("span", null, "Already have a Bro?"),
-  /*#__PURE__*/React.createElement("span", {
-    style: { color: '#EAC675', textDecoration: 'underline', textUnderlineOffset: 3 }
-  }, "Enter Login Key")), /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 11,
-      color: 'var(--txt2)',
-      fontFamily: 'Source Sans 3, sans-serif',
-      letterSpacing: '.06em',
-      textAlign: 'center'
-    }
-  }, "v" + BUILD_INFO.version + " · " + BUILD_INFO.sha)), showAccount && /*#__PURE__*/React.createElement(AccountModal, {
+  }, "›"))), /*#__PURE__*/React.createElement("button", {
+    /* v2.3.1276: closes the drawer; the hero screen (with ENTER) is
+       right behind it. */
+    type: 'button', className: "bt-cc-btn bt-cc-done",
+    onClick: function () { setDrawerOpen(false); }
+  }, "Done")), showAccount && /*#__PURE__*/React.createElement(AccountModal, {
     onClose: function () { setShowAccount(false); }
   }));
 }
