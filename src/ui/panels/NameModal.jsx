@@ -59,6 +59,11 @@ import { SHIRT_COLOR_CATALOG, setShirtColor } from '@/rendering/traits/shirtColo
    buttons Hair/Hats/Skin/Beard), Shirt, Pants, Shoes.  The subtabs row
    stays permanently reserved (real for Head, ghost elsewhere), so the
    constant-size guarantee from v2.3.1252/1253 is untouched. */
+/* v2.3.1257: owner round 5 — the whole sheet shrinks ~30% in each
+   dimension's internals (≈ half the on-screen area at full width;
+   agreed floors: 10px text, ~35px taps, 16px input font for the iOS
+   zoom gate).  Tiles go 5-at-rest → 7, swatches 6 → 8; the flex stage
+   absorbs the freed height, so the character grows substantially. */
 export function NameModal(props) {
   var _dragRotX = props._dragRotX,
     _swatchTile = props._swatchTile,
@@ -351,17 +356,17 @@ export function NameModal(props) {
       width: '100%',
       /* symmetric side padding clears the dice on the right while
          keeping the centered text centered. */
-      padding: '0 52px',
+      padding: '0 42px',
       /* v2.3.710: 16px floor — iOS Safari auto-zooms inputs with a smaller
          font on focus, leaving visualViewport.scale > 1, which trips the
-         joinTown pinch-zoom gate. */
+         joinTown pinch-zoom gate.  Survives the v2.3.1257 sheet shrink. */
       fontSize: 16,
       fontWeight: 700,
       outline: 'none',
       textAlign: 'center',
       boxSizing: 'border-box',
       caretColor: '#EAC675',
-      minHeight: 44
+      minHeight: 36
     }
   }), /*#__PURE__*/React.createElement("button", {
     type: 'button', title: 'Random name', "aria-label": 'Generate a random name', onClick: rollRandomName,
@@ -372,9 +377,11 @@ export function NameModal(props) {
        button sits inside the input, so it presses via the class's
        reversed bevel instead of moving. */
     className: "bt-cc-btn",
-    style: { position: 'absolute', right: 2, top: '50%', transform: 'translateY(-50%)', width: 44, height: 44, borderRadius: 8, cursor: 'pointer',
+    /* v2.3.1257: 44 → 34px with the sheet shrink (sits inside the 38px
+       name well). */
+    style: { position: 'absolute', right: 2, top: '50%', transform: 'translateY(-50%)', width: 34, height: 34, borderRadius: 7, cursor: 'pointer',
       display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }
-  }, _dieSvg(20))), /*#__PURE__*/React.createElement("nav", {
+  }, _dieSvg(16))), /*#__PURE__*/React.createElement("nav", {
     className: "bt-cc-tabs", role: 'tablist', "aria-label": 'Appearance category'
   }, _GROUPS.map(function (g) {
     var on = g.key === _activeGroupKey;
@@ -437,10 +444,11 @@ export function NameModal(props) {
        sheet, right under what it acts on.  v2.3.1254: chrome moved to
        .bt-cc-btn (micro-bevel); inline styles are layout-only. */
     type: 'button', onClick: randomizeWithFlair, className: "bt-cc-btn",
-    style: { alignSelf: 'center', padding: '6px 14px', minHeight: 40, cursor: 'pointer', borderRadius: 9,
-      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-      fontSize: 12, fontWeight: 700, letterSpacing: '.02em', fontFamily: "'Source Sans 3',sans-serif" }
-  }, _dieSvg(16), /*#__PURE__*/React.createElement("span", null, "Randomize appearance"))),
+    /* v2.3.1257: compacted with the sheet shrink. */
+    style: { alignSelf: 'center', padding: '4px 10px', minHeight: 30, cursor: 'pointer', borderRadius: 8,
+      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+      fontSize: 11, fontWeight: 700, letterSpacing: '.02em', fontFamily: "'Source Sans 3',sans-serif" }
+  }, _dieSvg(13), /*#__PURE__*/React.createElement("span", null, "Randomize appearance"))),
   /*#__PURE__*/React.createElement("button", {
     onClick: joinTown,
     /* v2.3.1251: PLAY → ENTER BRO TOWN, the screen's one dominant gold
