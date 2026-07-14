@@ -343,8 +343,13 @@ const Bar = ({ label, cur, max, kind, tip, onTip }) => {
 };
 
 /* v2.3.1205: `tut` = optional data-tut anchor id so the live-DOM
-   ControlsTutorial can getBoundingClientRect() the real button. */
-const IconButton = ({ glyph, src: srcProp, label, active, onClick, node, tut }) => {
+   ControlsTutorial can getBoundingClientRect() the real button.
+   v2.3.1289: `snap` (owner request) — the ACTIVE destination shows a
+   small brass chevron in its top-right corner: pointing up while
+   compact ("tap to expand"), rotating to point down while expanded
+   ("tap to collapse").  Matches the swipe direction, so the one glyph
+   teaches both the tap toggle and the drag gesture. */
+const IconButton = ({ glyph, src: srcProp, label, active, onClick, node, tut, snap }) => {
   /* v2.3.1283: destinations pass an explicit `src`; `glyph` (ICON_SRC
      lookup) stays for any legacy caller. */
   const src = srcProp || ICON_SRC[glyph];
@@ -392,6 +397,14 @@ const IconButton = ({ glyph, src: srcProp, label, active, onClick, node, tut }) 
         )}
       </span>
       <span className="bt-dashboard-nav-label">{label}</span>
+      {active && snap && (
+        <span className="bt-nav-snap" data-expanded={snap === 'expanded' ? 'true' : 'false'} aria-hidden="true">
+          <svg viewBox="0 0 12 12" width="12" height="12">
+            <path d="M2.5 7.5 L6 4 L9.5 7.5" stroke="currentColor" strokeWidth="1.8"
+              fill="none" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </span>
+      )}
     </button>
   );
 };
@@ -880,6 +893,7 @@ export const BottomDashboard = () => {
                 <IconButton key={d.id} src={d.icon} label={d.label}
                   tut={d.id === 'more' ? 'dash-more' : undefined}
                   active={litId === d.id}
+                  snap={litId === d.id ? mode : null}
                   onClick={() => dashboardPanelBus.tapDestination(d.id)} />
               ))}
             </div>

@@ -366,6 +366,24 @@
   outline:2px solid var(--ui-brass-highlight);
   outline-offset:-2px;
 }
+/* v2.3.1289: snap-state chevron (owner request) — sits in the ACTIVE
+   destination's top-right corner.  Up while compact = "tap to expand";
+   rotates to down while expanded = "tap to collapse".  One glyph, one
+   rotation — it also mirrors the swipe direction on the sheet. */
+.bt-nav-snap{
+  position:absolute;
+  top:3px;
+  right:5px;
+  width:12px;
+  height:12px;
+  color:var(--ui-brass);
+  pointer-events:none;
+  transition:transform .22s ease;
+}
+.bt-nav-snap[data-expanded='true']{transform:rotate(180deg)}
+@media (prefers-reduced-motion: reduce){
+  .bt-nav-snap{transition:none}
+}
 .bt-dashboard-nav-icon{
   width:30px;
   height:30px;
