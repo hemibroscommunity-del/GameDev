@@ -577,6 +577,12 @@ input{font-family:inherit}
    own bg.webp background (which stays the fallback), so nothing else needs
    a z-index. */
 .bt-cc-bgvideo{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:-1;pointer-events:none}
+/* v2.3.1251: restrained vignette/contrast veil over the vista (approved
+   mockup) — keeps the world visible without competing with the UI.  Same
+   negative z-index trick as the video (must sit under all content); the
+   ::after box paints after the video child at the same z level, so the
+   veil lands above the vista and below everything else. */
+.bt-name-modal::after{content:"";position:absolute;inset:0;z-index:-1;pointer-events:none;background:radial-gradient(circle at 50% 27%,transparent 0 25%,rgba(5,11,17,.10) 56%,rgba(5,11,17,.42) 100%),linear-gradient(to bottom,rgba(8,14,20,.06) 0 40%,rgba(8,14,20,.24) 67%,rgba(8,14,20,.48) 100%)}
 /* v2.3.738: touch-action:none on the modal — iOS ignores overscroll-behavior
    and rubber-banded the splash when a swipe started on a non-scrollable
    element.  The rail and sheet re-allow pan-y; everything else is taps. */
@@ -648,7 +654,16 @@ input{font-family:inherit}
    element on this screen.  The customization card is now a plain
    Lantern Slate sheet with a hairline border; overflow:hidden keeps the
    tab header strip inside the radius. */
-.bt-name-box.bt-cc-box>.bt-cc-menu{flex:0 0 auto;display:flex;flex-direction:column;background:var(--ui-sheet);border:1px solid var(--ui-line);border-radius:10px;overflow:hidden}
+/* v2.3.1251: the menu is the ONE unified creator sheet (approved mockup)
+   — title, name row, group tabs, subtype tabs, option strip, colors and
+   Randomize all live on this card, so it gets real interior padding +
+   row gap (the old header-strip tabs + chrome-less drawer are gone). */
+.bt-name-box.bt-cc-box>.bt-cc-menu{flex:0 0 auto;display:flex;flex-direction:column;gap:8px;padding:10px;background:var(--ui-sheet);border:1px solid var(--ui-line);border-radius:12px;overflow:hidden}
+/* v2.3.1251: sheet title — brass smallcaps flanked by fading rules
+   (approved mockup).  h1 for a11y; margins zeroed. */
+.bt-cc-sheet-title{display:flex;align-items:center;justify-content:center;gap:12px;margin:0;font-size:12px;font-weight:800;letter-spacing:.2em;text-transform:uppercase;color:var(--ui-brass-highlight);font-family:'Source Sans 3',sans-serif;white-space:nowrap;line-height:1}
+.bt-cc-sheet-title::before,.bt-cc-sheet-title::after{content:"";width:24px;height:1px;background:linear-gradient(to right,transparent,var(--ui-brass))}
+.bt-cc-sheet-title::after{transform:rotate(180deg)}
 @media (max-height:720px){
   .bt-cc-cta{display:none}
 }
@@ -660,6 +675,22 @@ input{font-family:inherit}
   /* v2.3.1013: menu is already content-sized; just cap the preview so a short
      webview can page-scroll the whole card rather than crush the stage. */
   .bt-cc-stage{flex:0 0 auto!important;height:210px}
+  /* v2.3.1251: tighter sheet rhythm on short viewports (375x667-class)
+     so ENTER BRO TOWN needs less page-scroll to reach. */
+  .bt-name-box.bt-cc-box>.bt-cc-menu{gap:6px;padding:8px}
+  .bt-cc-tab{min-height:46px}
+  .bt-cc-play{min-height:52px}
+}
+/* v2.3.1251: 320px-class widths — the five tabs and five tiles keep one
+   row; only gaps/labels compress (approved mockup's 359px breakpoint). */
+@media (max-width:359px){
+  .bt-name-box.bt-cc-box>.bt-cc-menu{padding:8px}
+  .bt-cc-tabs{gap:2px}
+  .bt-cc-tab-label{font-size:10px}
+  .bt-cc-strip{gap:5px}
+  .bt-cc-strip>*{flex-basis:calc((100% - 20px)/5)!important}
+  .bt-cc-colors-row{gap:6px}
+  .bt-cc-colors-row>*{flex-basis:calc((100% - 30px)/6)!important}
 }
 /* Torch pillars flanking the character — 12-frame sprite strip (static
    pillar + the flame animated from the owner's generated clip).  jump-none
@@ -697,7 +728,10 @@ input{font-family:inherit}
    can't balloon on wide cards (the v2.3.798 Pro Max lesson); the label
    is now real text in NameModal.jsx, so no invisible-button failure
    mode when an image 404s (the v2.3.740 incident). */
-.bt-cc-play{background:linear-gradient(180deg,#E2B765,#D2A14D);border:1px solid var(--ui-brass-highlight);border-radius:10px;box-shadow:inset 0 1px 0 rgba(255,255,255,.25),0 2px 6px rgba(0,0,0,.22);color:#172126;min-height:48px;max-width:230px;margin-left:auto;margin-right:auto;font-family:'Source Sans 3',sans-serif;font-size:16px;font-weight:700;letter-spacing:.08em;text-transform:uppercase}
+/* v2.3.1251: PLAY → ENTER BRO TOWN, the screen's ONE dominant gold
+   action (approved mockup) — the 230px cap is superseded: full card
+   width up to 500px, 56px tall. */
+.bt-cc-play{background:linear-gradient(180deg,#E2B765,#D2A14D);border:1px solid var(--ui-brass-highlight);border-radius:12px;box-shadow:inset 0 1px 0 rgba(255,255,255,.25),0 2px 6px rgba(0,0,0,.22);color:#172126;min-height:56px;max-width:500px;margin-left:auto;margin-right:auto;font-family:'Source Sans 3',sans-serif;font-size:clamp(16px,4.7vw,19px);font-weight:800;letter-spacing:.08em;text-transform:uppercase}
 .bt-cc-play:active{transform:translateY(1px);filter:brightness(1.05)}
 /* v2.3.1235: ornate gold-border treatment dropped — Randomize is a plain
    secondary button (fill/text inline in NameModal.jsx); :active needs
@@ -755,10 +789,12 @@ input{font-family:inherit}
    stage/menu keep their sizes (owner: "just shift everything up, don't change
    window sizes").  The logo sits over the stage's empty top-left sky. */
 .bt-cc-logo-wrap{position:absolute;top:max(6px,env(safe-area-inset-top));left:max(6px,env(safe-area-inset-left));z-index:3;pointer-events:none}
-.bt-cc-logo{position:relative;z-index:1;width:min(32vw,150px);height:auto;display:block;pointer-events:none}
+/* v2.3.1251: ~22% smaller (approved mockup) — 32vw/150 → 25vw/117.  The
+   sword + shines are wrap-relative %, so they track the new size. */
+.bt-cc-logo{position:relative;z-index:1;width:min(25vw,117px);height:auto;display:block;pointer-events:none}
 .bt-cc-logo-sword{position:absolute;left:63.5%;top:19%;height:115%;width:auto;pointer-events:none;filter:drop-shadow(0 2px 5px rgba(0,0,0,.55))}
 @media (max-height:720px){
-  .bt-cc-logo{width:min(26vw,120px)}
+  .bt-cc-logo{width:min(20vw,94px)}
 }
 /* v2.3.827: CSS specular shine — a narrow bright band (the standard
    shimmer gradient) swept across each asset and CLIPPED to the artwork's
@@ -817,78 +853,45 @@ input{font-family:inherit}
    header strip; the ACTIVE tab is a brass-soft tint + brass hairline
    (never a solid gold fill — PLAY is this surface's one gold element).
    Baloo/text-shadow dropped: Source Sans 3 only. */
-.bt-cc-tabs{flex:0 0 auto;display:flex;flex-direction:row;flex-wrap:wrap;gap:6px;padding:6px;align-items:stretch;background:var(--ui-header);border-bottom:1px solid var(--ui-line)}
-.bt-cc-tab{flex:0 0 calc((100% - 18px)/4);min-height:38px;display:flex;flex-direction:row;align-items:center;justify-content:center;gap:5px;padding:4px 4px;background:transparent;border:1px solid transparent;border-radius:8px;cursor:pointer;color:var(--ui-text-secondary);font-size:12px;font-weight:700;letter-spacing:.02em;font-family:'Source Sans 3',sans-serif}
+/* v2.3.1251: FIVE primary group tabs (approved mockup) — one grid row
+   even at 320px, icon over label, transparent at rest, brass-tint +
+   brass hairline when selected (never solid gold: PLAY owns gold). */
+.bt-cc-tabs{flex:0 0 auto;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:5px}
+.bt-cc-tab{min-width:0;min-height:52px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:5px 2px 4px;background:transparent;border:1px solid transparent;border-radius:9px;cursor:pointer;color:var(--ui-text-secondary);font-family:'Source Sans 3',sans-serif}
 .bt-cc-tab:active{transform:translateY(1px)}
 .bt-cc-tab--on{background:var(--ui-brass-soft);color:var(--ui-text);border-color:var(--ui-brass)}
 .bt-cc-tab-icon{width:22px;height:22px;object-fit:contain;opacity:.92;pointer-events:none}
 .bt-cc-tab--on .bt-cc-tab-icon{opacity:1}
-.bt-cc-tab-label{font-size:12px;line-height:1}
-/* v2.3.829: colors moved to the RIGHT of the objects (owner) — drawer is
-   ROW again: items fill the left and scroll horizontally, the colors
-   column docks on the right behind a gold-divider separator and only
-   renders at all once a real object is equipped (the _ccActive.colors
-   gate in BroTown.jsx; when null, items take the full width). */
-/* v2.3.1015: drawer shows ONE step at a time (items OR colors), so it's a
-   single column now — no side-by-side items/colors row (owner: no room). */
-.bt-cc-drawer{flex:1 1 auto;min-width:0;min-height:0;display:flex;flex-direction:column;gap:8px;padding:8px;box-sizing:border-box}
-.bt-cc-drawer-items{flex:1 1 auto;min-width:0;min-height:0;display:flex;flex-direction:column;gap:6px}
-/* v2.3.1015: "‹ Change Hat" — returns from the colors step to the item grid. */
-/* v2.3.1235: purple → secondary-button slate (geometry untouched — the
-   locked creator layout is overflow-sensitive, see the v2.3.796 revert). */
-.bt-cc-back{align-self:center;display:inline-flex;align-items:center;gap:4px;padding:3px 12px;border-radius:8px;background:var(--ui-raised);border:1px solid var(--ui-line-strong);color:var(--ui-text);font-size:12px;font-weight:700;letter-spacing:.02em;font-family:'Source Sans 3',sans-serif;cursor:pointer}
-.bt-cc-back:active{transform:translateY(1px)}
-/* v2.3.1016: the color step uses the same 10-track left-aligned row as items. */
-/* Item strip: column-wrap fills the available height (1-2 tile rows
-   depending on device) then extends rightward; pan-x re-allowed under
-   the modal's touch-action:none (the old rail's iOS trick, rotated). */
-/* v2.3.1012: 4-per-row item grid (was a column-wrap horizontal-scroll strip) --
-   bigger tiles, vertical scroll for overflow.  The > * override makes the
-   fixed-size tiles from _apTileStyle (BroTown.jsx) fill their grid cell. */
-/* v2.3.1013: the items grid is now bounded to exactly one page (8 = 2×4) by
-   the JS slice + pager below it, so it no longer scrolls — content-sized, two
-   rows, clipped.  This keeps Randomize/Play on screen (was overflowing).
-   v2.3.1014: columns size to the TILES (not 1fr stretch) and the grid centers,
-   so two rows of small tiles sit in the frame instead of ballooning to
-   container/4 and shoving the pager off (owner).
-   v2.3.1016: up to N across, LEFT-aligned (owner) — equal tracks fill the
-   width so the tiles can't overflow; a short final page leaves the empty
-   tracks on the right (left-aligned), and every category is one row tall.
-   v2.3.1017: 7 across (10 read too small on a phone, owner).
-   v2.3.1018: the row height is an EXPLICIT viewport-derived clamp (not derived
-   from each cell's aspect-ratio) so it's identical for every category — the
-   aspect-ratio path rounded by ~1-2px between trait menus and the container
-   visibly grew/shrank on each tab change (owner). */
-/* v2.3.1035: horizontal SWIPE strip (was a paged 7-col grid) -- all items in
-   one row, scroll left/right with a finger; pan-x re-allowed under the modal's
-   touch-action:none.  Scrollbar hidden (the swipe is the affordance). */
-.bt-cc-drawer-items>.bt-cc-drawer-grid{flex:0 0 auto;display:flex;flex-direction:row;align-items:center;gap:6px;overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain;touch-action:pan-x;padding-bottom:2px;scrollbar-width:none}
-.bt-cc-drawer-items>.bt-cc-drawer-grid::-webkit-scrollbar{display:none}
-.bt-cc-drawer-items>.bt-cc-drawer-grid>*{flex:0 0 auto!important;width:clamp(44px,12vw,52px)!important;height:clamp(44px,12vw,52px)!important}
-/* v2.3.804/816: the owner's gold divider art (divider.webp) is the
-   vertical separator on the colors column's left edge (rotated 90°). */
-.bt-cc-drawer-colors{flex:0 0 auto;max-width:122px;display:flex;flex-direction:column;gap:4px;border-left:1px solid var(--ui-line);padding-left:9px} /* v2.3.1235: purple divider → hairline */
-.bt-cc-drawer-colors>.bt-cc-drawer-grid{flex:1 1 auto;min-height:0;display:flex;flex-wrap:wrap;align-content:flex-start;gap:8px;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;touch-action:pan-y}
-.bt-cc-drawer-head{width:100%;flex:0 0 auto;text-align:center;font-size:11px;font-weight:700;color:var(--ui-text-muted);letter-spacing:.14em;font-family:'Source Sans 3',sans-serif} /* v2.3.1235: section-label spec */
-/* v2.3.1013: CUSTOMIZE section header above the tabs.
-   v2.3.1235: gold Baloo display cap → the standard 11/700 .14em section
-   label in muted slate; brass/gold on this screen belongs to PLAY only. */
-.bt-cc-cust-head{flex:0 0 auto;text-align:center;padding:5px 0 3px;font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--ui-text-muted);font-family:'Source Sans 3',sans-serif}
-/* v2.3.1013: item-grid pager — ‹ › arrows flanking one dot per page, the
-   active dot gold.  Sits under the grid, replacing the old vertical scroll. */
-/* v2.3.1016: fixed min-height so the (empty) single-page pager still reserves
-   its row — the drawer stays the same height across categories (owner). */
-.bt-cc-pager{flex:0 0 auto;display:flex;align-items:center;justify-content:center;gap:10px;padding:5px 0 1px;margin-top:auto;min-height:32px;box-sizing:border-box}
-.bt-cc-pager--empty{pointer-events:none}
-/* v2.3.1018: wider page buttons (owner) — easier tap targets than the old
-   26px squares. */
-/* v2.3.1235: purple → secondary-button slate (54x26 geometry kept — the
-   pager row's 32px budget is part of the locked-viewport height math). */
-.bt-cc-pager-arrow{display:flex;align-items:center;justify-content:center;width:54px;height:26px;padding:0;border-radius:7px;background:var(--ui-raised);border:1px solid var(--ui-line-strong);color:var(--ui-text);font-size:17px;line-height:1;cursor:pointer}
-.bt-cc-pager-arrow:active{transform:translateY(1px)}
-.bt-cc-pager-arrow:disabled{opacity:.32;cursor:default;pointer-events:none}
-/* v2.3.1016: page count as "1/3" shorthand (owner) — replaces the dot row. */
-.bt-cc-pager-count{min-width:34px;text-align:center;font-size:13px;font-weight:700;letter-spacing:.04em;color:var(--ui-text-secondary);font-family:'Source Sans 3',sans-serif;font-variant-numeric:tabular-nums} /* v2.3.1235: gold → secondary text (metadata, not an accent) */
+.bt-cc-tab-label{max-width:100%;overflow:hidden;text-overflow:ellipsis;font-size:11px;font-weight:700;letter-spacing:.02em;line-height:1}
+/* v2.3.1251: compact secondary tabs — only Hair (Hair/Hats) and Face
+   (Skin/Beard) render them; single-type groups show none. */
+.bt-cc-subtabs{flex:0 0 auto;display:flex;width:fit-content;min-height:32px;margin:0 auto;padding:2px;border:1px solid var(--ui-line);border-radius:9px;background:rgba(0,0,0,.13)}
+.bt-cc-subtab{min-width:72px;min-height:28px;padding:3px 12px;border:0;border-radius:7px;background:transparent;color:var(--ui-text-secondary);font-size:11px;font-weight:700;letter-spacing:.02em;font-family:'Source Sans 3',sans-serif;cursor:pointer}
+.bt-cc-subtab--on{color:var(--ui-text);background:var(--ui-raised)}
+/* v2.3.1251: the drawer (one step at a time + collapse-on-select +
+   ‹ 1/2 › pager, v2.3.835-1036) is retired by the approved mockup: the
+   option STRIP always shows the whole catalog — exactly five complete
+   tiles at rest, the rest by horizontal swipe (scroll-snap, no resting
+   half-tile, no page arrows) — and the color swatches sit DIRECTLY
+   below it.  Tile sizing overrides the inline _apTileStyle px (the
+   !important trick the old grid used); aspect-ratio keeps them square
+   at the flex-basis width. */
+.bt-cc-strip{flex:0 0 auto;display:flex;flex-direction:row;align-items:center;gap:6px;min-width:0;overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain;touch-action:pan-x;padding:2px 1px 4px;scroll-padding-inline:1px;scroll-snap-type:x proximity;scrollbar-width:none}
+.bt-cc-strip::-webkit-scrollbar{display:none}
+.bt-cc-strip>*{flex:0 0 calc((100% - 24px)/5)!important;width:auto!important;height:auto!important;aspect-ratio:1/1;scroll-snap-align:start}
+/* Colors: fixed-size swatches so a long catalog scrolls with six-ish
+   visible at phone width; the first/last auto margins center a short
+   row WITHOUT the clipped-left-edge bug of justify-content:center on an
+   overflowing flexbox. */
+.bt-cc-colors{flex:0 0 auto;display:flex;flex-direction:column;gap:6px;min-width:0}
+.bt-cc-colors-head{display:flex;align-items:center;justify-content:center;gap:10px;font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--ui-text-muted);font-family:'Source Sans 3',sans-serif;line-height:1}
+.bt-cc-colors-head::before,.bt-cc-colors-head::after{content:"";width:20px;height:1px;background:linear-gradient(to right,transparent,var(--ui-line-strong))}
+.bt-cc-colors-head::after{transform:rotate(180deg)}
+.bt-cc-colors-row{display:flex;flex-direction:row;align-items:center;gap:8px;min-width:0;overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain;touch-action:pan-x;padding:2px 1px;scroll-snap-type:x proximity;scrollbar-width:none}
+.bt-cc-colors-row::-webkit-scrollbar{display:none}
+.bt-cc-colors-row>*{flex:0 0 calc((100% - 40px)/6)!important;width:auto!important;height:auto!important;aspect-ratio:1/1;scroll-snap-align:start}
+.bt-cc-colors-row>*:first-child{margin-left:auto}
+.bt-cc-colors-row>*:last-child{margin-right:auto}
 .bt-avatar-pick{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin:12px 0}
 .bt-avatar-opt{width:56px;height:56px;border-radius:10px;border:2px solid var(--line);cursor:pointer;overflow:hidden;transition:border-color .15s,transform .15s}
 .bt-avatar-opt.sel{border-color:var(--pop);transform:scale(1.1)}
