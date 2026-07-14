@@ -1816,8 +1816,8 @@ export var BroTown = function BroTown(_ref0) {
     /* v2.3.1258/1256 history: 0.33 + 26px.  v2.3.1268: --dash-h is now
        WIDTH-derived (calc(50vw + 104px) — the band hugs the slot block;
        see game.css).  Mirror exactly. */
-    var DASH_W_FRAC = 0.375; /* v2.3.1277: owner — band 25% shorter (0.75 x (50vw+88)) */
-    var DASH_BASE = 66;
+    var DASH_W_FRAC = 0.222222; /* v2.3.1279: near-square panels — 3-wide grid band (see game.css) */
+    var DASH_BASE = 106;
     /* v2.3.1271: owner — the band's 14px rounded top corners cut out to
        the page background (a black spot at each shoulder).  The canvas
        now runs 14px UNDER the band, so the corner notches show live

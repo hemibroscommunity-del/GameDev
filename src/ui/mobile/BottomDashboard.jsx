@@ -506,18 +506,15 @@ const SLOT_GAP = 8;
    (grid-edge margin 8 + column 4 = 12 visual).  Reserving 16px instead
    (2 gaps + 2x4px margins) makes: in-grid side margin 4 + column 4 = 8
    == the inter-slot gap.  Cells grow ~4px in the bargain. */
-const FIT_TRACK = 'min(calc((100cqw - 16px) / 2), calc((100cqh - 16px) / 3))';
-/* v2.3.1278: owner — "re-derive the grid" for the 25%-shorter band
-   (v2.3.1277).  At the new height the cells are height-bound, so the
-   PANELS narrow to fit them instead of stretching full-width: the
-   height arm gives t = (band - 141px)/3 = 12.5vw - 25px (141 = 16px
-   grid gaps + 125px measured chrome, see the game.css --dash-h note),
-   and a panel needs 2t + 16px content + 10px padding/border.  2px is
-   shaved so device rounding keeps cells in the WIDTH-bound regime —
-   that is the regime where gap == edge == 8 holds exactly; the
-   sub-pixel vertical slack pools invisibly below the block.  The row
-   centers the narrowed trio (space-evenly). */
-const PANEL_W = 'calc(25vw - 26px)';
+/* v2.3.1279: owner — near-SQUARE panels: the slot grids go 3-wide x
+   2-tall (they were 2x3 since v2.3.1258), panels return to full-width
+   thirds (~134px at 430), and the band re-derives to 22.222vw + 106px
+   (~202px — shorter again than the v2.3.1277 227px).  Width arm: 3
+   cells + 2x8 gaps + 2x4 in-grid margins = 24px reserve.  Height arm:
+   2 rows + one 8px gap.  The band formula makes the arms meet (+2px
+   safety keeps cells WIDTH-bound on device rounding — the regime where
+   gap == edge == 8 exactly; sub-pixel slack pools below). */
+const FIT_TRACK = 'min(calc((100cqw - 24px) / 3), calc((100cqh - 8px) / 2))';
 
 const InventoryPreview = () => {
   const [, force] = useState(0);
@@ -609,7 +606,7 @@ const InventoryPreview = () => {
         /* v2.3.1258: 3 -> 2 columns (owner: bigger slots, more rows). */
         /* v2.3.1259: cell-sized tracks.  v2.3.1266: ONE fixed gap on both
            axes (see SLOT_GAP) — vertical spacing == horizontal spacing. */
-        gridTemplateColumns: `repeat(2, ${FIT_TRACK})`,
+        gridTemplateColumns: `repeat(3, ${FIT_TRACK})`, /* v2.3.1279: 3-wide */
         justifyContent: 'center',
         gridAutoRows: 'min-content',
         alignContent: 'start',
@@ -994,7 +991,7 @@ export const BottomDashboard = () => {
             {/* v2.3.1240: three equal dark wells on the lighter tray use
                 common-region grouping and 6px gutters; divider rules are
                 intentionally gone. */}
-            <div style={{ flex: 1, display: 'flex', gap: 6, minHeight: 0, justifyContent: 'space-evenly' /* v2.3.1278 */ }}>
+            <div style={{ flex: 1, display: 'flex', gap: 6, minHeight: 0 }}>
               {/* ── Left column — hybrid card: HP/MP/END chip row +
                   Crit/Move derived stats + session summary (Zone, Kills,
                   Playtime).  v2.3.126: portrait migrated to the top-right
@@ -1009,7 +1006,7 @@ export const BottomDashboard = () => {
                 /* v2.3.1236: owner feedback r2 §2 — back to equal thirds so
                    a bag cell and a loadout slot render the same size (both
                    grids: 3 equal columns, gap 4, 2px inner inset). */
-                flex: '0 0 auto', width: PANEL_W, /* v2.3.1278: re-derived */
+                flex: '1 1 0', /* v2.3.1279: full-width thirds again */
                 display: 'flex',
                 flexDirection: 'column',
                 minWidth: 0,
@@ -1193,7 +1190,7 @@ export const BottomDashboard = () => {
                    r4 §2: ...and it's back, by owner request, as a compact
                    icon-based line occupying the grid's third row (level
                    with the bag's third row now that both grids top-align). */
-                flex: '0 0 auto', width: PANEL_W, /* v2.3.1278: re-derived */
+                flex: '1 1 0', /* v2.3.1279: full-width thirds again */
                 display: 'flex',
                 flexDirection: 'column',
                 minWidth: 0,
@@ -1370,13 +1367,15 @@ export const BottomDashboard = () => {
                              are ~40-47px wide, so the 10px floor finally
                              fits the label set (verified on the rig at 390;
                              overflow:hidden stays as the backstop). */
-                          /* v2.3.1278: the re-derived cells are 12.5vw-25px
-                             (28px at 430, 21px on an SE) — a fixed 10px tag
-                             clipped 8px on the SE (measured with the real
-                             Source Sans 3 on the rig).  Track the cell:
-                             ~1/3 of its width, 10px ceiling (the 10px floor
-                             stays waived HERE, as since v2.3.1239). */
-                          fontSize: 'min(10px, calc((12.5vw - 25px) * 0.33))',
+                          /* v2.3.1278: fixed 10px clipped on narrow cells
+                             (measured with the real Source Sans 3 on the rig
+                             — the sandbox fallback font lies) so the tag
+                             tracks the cell width, 10px ceiling (the 10px
+                             floor stays waived HERE, as since v2.3.1239).
+                             v2.3.1279: cell is (100vw - 130px)/9 in the
+                             3-wide grid; ~0.27 of it fits the 6-char tags
+                             (Weapon/Shield) — 8.9px at 430, 7.3px on an SE. */
+                          fontSize: 'min(10px, calc((100vw - 130px) * 0.0296))',
                           letterSpacing: '-0.02em',
                           maxWidth: '100%',
                           overflow: 'hidden',
@@ -1481,15 +1480,18 @@ export const BottomDashboard = () => {
                          table moves to row 4. */
                       /* v2.3.1259: cell-sized tracks.  v2.3.1266: ONE fixed
                          gap on both axes, matching the bag grid exactly. */
-                      gridTemplateColumns: `repeat(2, ${FIT_TRACK})`,
+                      gridTemplateColumns: `repeat(3, ${FIT_TRACK})`, /* v2.3.1279: 3-wide */
                       justifyContent: 'center',
                       gridAutoRows: 'min-content',
                       alignContent: 'start',
                       gap: SLOT_GAP,
                       padding: 0,
                     }}>
-                      {/* The six equipment slots.  v2.3.1262 owner order:
-                          chest·weapon / legs·shield / cape·neck. */}
+                      {/* The six equipment slots.  v2.3.1262 owner order was
+                          chest·weapon / legs·shield / cape·neck (2-wide);
+                          v2.3.1279's 3-wide rows regroup as
+                          chest·weapon·shield / legs·cape·neck so the combat
+                          hand pair (weapon+shield) shares the top row. */}
                       {slotCell({
                           k: 'chest',
                           label: 'Chest',
@@ -1505,6 +1507,7 @@ export const BottomDashboard = () => {
                         })}
                         {/* v2.3.1025: label is always WEAPON (melee/ranged/staff all live here). */}
                         {slotCell({ k: 'weapon', label: 'Weapon', iconSrc: slotIconSrc, active: !!wpn, onTap: onTapWeapon, quality: wpn && wpn.quality })}
+                        {slotCell({ k: 'shield', label: 'Shield', iconSrc: shieldSrc, active: !!R.shield, equipped: !!R.shield, onTap: onTapShield })}
                         {slotCell({
                           k: 'legs',
                           label: 'Legs',
@@ -1514,7 +1517,6 @@ export const BottomDashboard = () => {
                           active: gearLegsId !== 'none',
                           onTap: onTapLegsArmor,
                         })}
-                        {slotCell({ k: 'shield', label: 'Shield', iconSrc: shieldSrc, active: !!R.shield, equipped: !!R.shield, onTap: onTapShield })}
                         {/* Cape: new back-layer slot (v2.3.692).  Render + equip
                             flow land in Phase 2; cell shows as empty for now. */}
                         {slotCell({ k: 'cape', label: 'Cape', iconSrc: null, active: false })}
@@ -1634,7 +1636,7 @@ export const BottomDashboard = () => {
                 /* v2.3.1236: owner feedback r2 §2 — equal third (this column
                    actually WIDENS, 31% -> 33.3%, so its 3x2 text cells gain
                    room; no inner-padding change needed). */
-                flex: '0 0 auto', width: PANEL_W, /* v2.3.1278: re-derived */
+                flex: '1 1 0', /* v2.3.1279: full-width thirds again */
                 display: 'flex',
                 flexDirection: 'column',
                 minWidth: 0,
@@ -1753,10 +1755,19 @@ export const BottomDashboard = () => {
                           /* v2.3.696: vertical stack -- icon top-center,
                              value centered directly beneath it (user).
                              v2.3.695's horizontal pair superseded. */
-                          flexDirection: 'column',
+                          /* v2.3.1279: ...and un-superseded for the compact
+                             build grid: the near-square panels leave ~29px
+                             per stat row — the stacked icon (the designated
+                             shrink absorber) collapsed to invisible while
+                             the fixed 16px number survived, leaving six
+                             bare zeros.  Icon-beside-number needs only
+                             ~18px of height, so the icon returns at a
+                             fixed size.  The dormant life-skills variant
+                             keeps the stack. */
+                          flexDirection: SHOW_LIFE_SKILLS ? 'column' : 'row',
                           alignItems: 'center',
                           justifyContent: 'center',
-                          gap: 1,
+                          gap: SHOW_LIFE_SKILLS ? 1 : 5,
                           /* v2.3.1238: owner feedback §3 — the value text
                              sat on padding-bottom 2 while the 4px XP pill
                              floats absolute at bottom 2..6, so the digits'
@@ -1802,8 +1813,11 @@ export const BottomDashboard = () => {
                           alt={s.label}
                           draggable={false}
                           style={{
-                            width: 24 * (s.iconScale || 1),
-                            height: 24 * (s.iconScale || 1),
+                            /* v2.3.1279: 18px fixed beside the number in the
+                               compact grid (see flexDirection note); the
+                               stacked variant keeps the 24px shrinkable. */
+                            width: (SHOW_LIFE_SKILLS ? 24 : 18) * (s.iconScale || 1),
+                            height: (SHOW_LIFE_SKILLS ? 24 : 18) * (s.iconScale || 1),
                             objectFit: 'contain',
                             imageRendering: s.pixelated ? 'pixelated' : 'auto',
                             pointerEvents: 'none',
@@ -1811,7 +1825,7 @@ export const BottomDashboard = () => {
                             /* v2.3.1225: shrink-allowed so the 1.5x icon is a
                                ceiling, not a clip risk in short cells
                                (overflow:hidden on the cell). */
-                            flexShrink: 1,
+                            flexShrink: SHOW_LIFE_SKILLS ? 1 : 0,
                             minHeight: 0,
                           }}
                         />
