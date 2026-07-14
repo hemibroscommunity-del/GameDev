@@ -1825,7 +1825,7 @@ export var BroTown = function BroTown(_ref0) {
        WIDTH-derived (calc(50vw + 104px) — the band hugs the slot block;
        see game.css).  Mirror exactly. */
     var DASH_W_FRAC = 0.5;
-    var DASH_BASE = 111;
+    var DASH_BASE = 88; /* v2.3.1262: cap halved */
     function resize() {
       var dpr = window.devicePixelRatio || 1;
       var vw = vv ? vv.width : window.innerWidth;

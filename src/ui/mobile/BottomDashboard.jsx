@@ -193,14 +193,16 @@ const ColHeader = ({ variant, children }) => (
        the slot grids; 12/700 keeps the hierarchy without shouting. */
     /* v2.3.1240: the mockup groups each function with its own dark well;
        the old title underline duplicated that boundary and looked dated. */
-    fontSize: 12,
+    /* v2.3.1262: owner — one consistent UI type treatment: Title Case
+       like the toolbar labels (the all-caps + wide tracking was the
+       odd one out), 13/700. */
+    fontSize: 13,
     fontWeight: 700,
     /* v2.3.1240: the approved mockup uses a near-white, crisp header;
        COL.text2 made the built version read noticeably gray. */
     color: 'var(--ui-dashboard-text)',
     textShadow: '0 1px 0 rgba(0,0,0,.72)',
-    letterSpacing: '.14em',
-    textTransform: 'uppercase',
+    letterSpacing: '.03em',
     padding: '0 2px 2px',
     display: 'flex',
     alignItems: 'center',
@@ -213,7 +215,9 @@ const ColHeader = ({ variant, children }) => (
        v2.3.1256 subheaders goes to the HEADER instead (21 -> 47px cap;
        the strips are removed).  Same band height, same slot budget. */
     /* v2.3.1261: cap-to-block spacing = the 8px slot gap (was 4). */
-    ...(variant ? { margin: '-4px -4px 8px', padding: '4px 6px 2px', height: 47, flex: '0 0 47px' } : null),
+    /* v2.3.1262: owner — cap height halved (47 -> 24); the texture reads
+       as a slim material band.  Band constant follows (-23). */
+    ...(variant ? { margin: '-4px -4px 8px', padding: '3px 6px 2px', height: 24, flex: '0 0 24px' } : null),
   }}>
     <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{children}</span>
   </div>
@@ -1186,7 +1190,7 @@ export const BottomDashboard = () => {
                 position: 'relative',
                 zIndex: 1,
               }}>
-                <ColHeader variant="loadout">Loadout</ColHeader>
+                <ColHeader variant="loadout">Equipped</ColHeader>
                 {(() => {
                   /* DMG/DPS calc — mirrors WeaponSwapBar.readState() so the
                      numbers match what combat actually rolls.  Stat driver
@@ -1468,7 +1472,7 @@ export const BottomDashboard = () => {
                           chest·weapon / legs·shield / cape·neck. */}
                       {slotCell({
                           k: 'chest',
-                          label: 'CHEST',
+                          label: 'Chest',
                           /* v2.3.756: top visible layer -- armour over
                              shirt; legacy stats-armor fallback last */
                           iconSrc: gearChestId !== 'none' ? gearIconSrc(gearChestId)
@@ -1480,27 +1484,27 @@ export const BottomDashboard = () => {
                           onTap: onTapChestLayers,
                         })}
                         {/* v2.3.1025: label is always WEAPON (melee/ranged/staff all live here). */}
-                        {slotCell({ k: 'weapon', label: 'WEAPON', iconSrc: slotIconSrc, active: !!wpn, onTap: onTapWeapon, quality: wpn && wpn.quality })}
+                        {slotCell({ k: 'weapon', label: 'Weapon', iconSrc: slotIconSrc, active: !!wpn, onTap: onTapWeapon, quality: wpn && wpn.quality })}
                         {slotCell({
                           k: 'legs',
-                          label: 'LEGS',
+                          label: 'Legs',
                           iconSrc: gearLegsId !== 'none' ? gearIconSrc(gearLegsId) : null,
                           equipped: gearLegsId !== 'none',
                           equippedGlyph: '\u{1F456}',
                           active: gearLegsId !== 'none',
                           onTap: onTapLegsArmor,
                         })}
-                        {slotCell({ k: 'shield', label: 'SHIELD', iconSrc: shieldSrc, active: !!R.shield, equipped: !!R.shield, onTap: onTapShield })}
+                        {slotCell({ k: 'shield', label: 'Shield', iconSrc: shieldSrc, active: !!R.shield, equipped: !!R.shield, onTap: onTapShield })}
                         {/* Cape: new back-layer slot (v2.3.692).  Render + equip
                             flow land in Phase 2; cell shows as empty for now. */}
-                        {slotCell({ k: 'cape', label: 'CAPE', iconSrc: null, active: false })}
+                        {slotCell({ k: 'cape', label: 'Cape', iconSrc: null, active: false })}
                         {/* v2.3.1242: owner directive — the amulet slot must
                             match its neighbour (CAPE), which renders as a word,
                             not an icon.  "AMULET" (6 chars) was the sole holdout
                             below the 10px floor because it clipped the ~33px
                             slot; "NECK" (4 chars) matches CAPE exactly, so both
                             bottom-row placeholders read identically. */}
-                        {slotCell({ k: 'amulet', label: 'NECK', iconSrc: null, active: !!R.amulet, equipped: !!R.amulet })}
+                        {slotCell({ k: 'amulet', label: 'Neck', iconSrc: null, active: !!R.amulet, equipped: !!R.amulet })}
                         {/* v2.3.1236: owner feedback r4 §2 — the damage
                             readout returns (r3 §1 removed the r2 text
                             footer; owner asked for a compact ICON line in
