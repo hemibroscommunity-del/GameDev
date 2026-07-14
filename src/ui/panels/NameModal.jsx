@@ -304,15 +304,16 @@ export function NameModal(props) {
     style: {
       /* v2.3.799: SQUARE canvas sized by stage HEIGHT, bottom-center
          anchored so the boots plant on the pedestal's top face.
-         v2.3.1251: 88% → 97% (+10%, handoff "preview character roughly
-         10–12% larger"); bottom drops 14.5% → 13.5% to keep the boots
-         (≈11% up the bitmap) on the same platform contact line.  The
-         extra width is transparent bitmap margin — the figure occupies
-         the middle ~50%, so any side clip is invisible. */
+         v2.3.1251: 88% → 97% (+10%); bottom 14.5% → 13.5%.
+         v2.3.1273b: 97% → 48.5% (owner: half-size character on the
+         hero screen).  The platform contact line lives at ≈24.2% of
+         stage (13.5 + 0.11×97, boots ≈11% up the bitmap); solving the
+         same line for the half canvas gives bottom = 24.2 − 0.11×48.5
+         ≈ 19%. */
       position: 'absolute',
       left: '50%',
-      bottom: '13.5%',
-      height: '97%',
+      bottom: '19%',
+      height: '48.5%',
       aspectRatio: '1 / 1',
       objectFit: 'contain',
       imageRendering: 'pixelated',
@@ -321,8 +322,9 @@ export function NameModal(props) {
       touchAction: 'none',
       cursor: 'grab',
       /* v2.3.744/745: per-angle drop — SW/E source frames sit higher in
-         their 256 box than the others. */
-      transform: 'translateX(-50%) translateY(' + ({ southwest: 15, southeast: 15, east: 10, west: 10, northeast: 5, northwest: 5 }[previewDir] || 0) + 'px)',
+         their 256 box than the others.  v2.3.1273b: px offsets halve
+         with the bitmap's on-screen scale. */
+      transform: 'translateX(-50%) translateY(' + ({ southwest: 8, southeast: 8, east: 5, west: 5, northeast: 3, northwest: 3 }[previewDir] || 0) + 'px)',
       /* v2.3.717: transparent — trait sprites carry white extraction
          residue that any dark backdrop would expose.  No z-index: DOM
          order stacks pillars < canvas < rotate buttons. */
