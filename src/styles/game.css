@@ -710,12 +710,18 @@ input{font-family:inherit}
    AREA at full width, floors held at 10px text / ~35px tap targets /
    16px input font for the iOS zoom gate).  The flex stage absorbs all
    the height the sheet gives up, so the character grows accordingly. */
-/* v2.3.1272: space-vs-targets rebalance (owner) — the title and COLOR
-   header rows are retired and Randomize joins the tab row, so the
-   sheet has five rows (name / tabs / subtabs / tiles / colors) and
-   every control returns to an adequate touch size (44px primaries,
-   ≥32px secondaries). */
-.bt-name-box.bt-cc-box>.bt-cc-menu{flex:0 0 auto;display:flex;flex-direction:column;gap:5px;padding:7px;background:var(--ui-sheet);border:1px solid var(--ui-line);border-radius:12px;overflow:hidden}
+/* v2.3.1273: GROUND-UP RETHINK (owner) — the always-visible sheet
+   (.bt-cc-menu, v2.3.1251-1272) is retired.  The hero screen keeps only
+   the bottom control cluster; the pickers live in .bt-cc-drawer (below,
+   after the base picker rules), an absolute slide-up overlay that can
+   never move the stage. */
+/* Hero cluster: margin-top:auto pins name/actions/ENTER/link/version to
+   the bottom of the box, so the (width-capped) stage floats in the
+   upper space instead of leaving a dead gap under the version line. */
+.bt-cc-namewrap{margin-top:auto}
+.bt-cc-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.bt-cc-actions>button{min-height:48px;border-radius:10px;display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;font-family:'Source Sans 3',sans-serif;font-size:13px;font-weight:700;letter-spacing:.02em;padding:6px 10px}
+.bt-cc-action-icon{width:20px;height:20px;object-fit:contain;pointer-events:none}
 @media (max-height:720px){
   .bt-cc-cta{display:none}
 }
@@ -989,7 +995,11 @@ input{font-family:inherit}
 /* v2.3.1272: back up to comfortable targets — 6 tiles at rest (~50px
    at 390) and 7 swatches (~42px); constants: fixed base 62 + gaps
    (tiles 5×5=25, swatches 6×6=36). */
-.bt-name-modal{--cc-tile:min(calc((100vw - 87px)/6),64px);--cc-swatch:min(calc((100vw - 98px)/7),56px)}
+/* v2.3.1273: strips live in the DRAWER now (inset 20 + border 2 +
+   padding 20 + row pad 2 = 44 fixed): the biggest targets of any
+   version — ~64px tiles (5 at rest) and ~53px swatches (6 at rest) on
+   a 390 screen. */
+.bt-name-modal{--cc-tile:min(calc((100vw - 68px)/5),72px);--cc-swatch:min(calc((100vw - 74px)/6),60px)}
 .bt-cc-strip{flex:0 0 auto;display:flex;flex-direction:row;align-items:center;gap:5px;min-width:0;height:calc(var(--cc-tile) + 6px);overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain;touch-action:pan-x;padding:2px 1px 4px;scroll-padding-inline:1px;scroll-snap-type:x proximity;scrollbar-width:none;box-sizing:border-box}
 .bt-cc-strip::-webkit-scrollbar{display:none}
 .bt-cc-strip>*{flex:0 0 var(--cc-tile)!important;width:var(--cc-tile)!important;height:var(--cc-tile)!important;scroll-snap-align:start}
@@ -1014,6 +1024,17 @@ input{font-family:inherit}
 .bt-cc-scroll{position:relative;flex:0 0 auto;min-width:0}
 .bt-cc-more{position:absolute;top:0;right:0;bottom:0;width:26px;display:flex;align-items:center;justify-content:flex-end;padding-right:2px;pointer-events:none;opacity:0;transition:opacity 160ms ease;background:linear-gradient(to right,rgba(30,46,52,0),var(--ui-sheet) 80%);color:var(--ui-text-secondary);font-size:15px;font-weight:700;line-height:1}
 .bt-cc-more--on{opacity:1}
+/* v2.3.1273: the Customize DRAWER — floating bottom card holding tabs /
+   subtype chips / tiles / colors / Done.  Always mounted; closed =
+   slid past the bottom edge + pointer-inert (transform keeps layout
+   measurable for the scroll-affordance probe).  Height is content-
+   sized: every row inside is fixed-height by construction (ghost rows
+   included), so it cannot wobble between categories. */
+.bt-cc-drawer-scrim{position:absolute;inset:0;z-index:8;background:rgba(4,9,12,.2)}
+.bt-cc-drawer{position:absolute;left:max(10px,env(safe-area-inset-left));right:max(10px,env(safe-area-inset-right));bottom:max(10px,env(safe-area-inset-bottom));z-index:9;display:flex;flex-direction:column;gap:8px;max-width:560px;margin:0 auto;padding:10px;background:var(--ui-sheet);border:1px solid var(--ui-line-strong);border-radius:16px;box-shadow:0 -8px 24px rgba(3,8,12,.35);box-sizing:border-box;transform:translateY(calc(100% + 40px));transition:transform 240ms cubic-bezier(.2,.8,.2,1);pointer-events:none}
+.bt-cc-drawer--open{transform:translateY(0);pointer-events:auto}
+@media (prefers-reduced-motion:reduce){.bt-cc-drawer{transition:none}}
+.bt-cc-done{width:100%;min-height:48px;border-radius:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-family:'Source Sans 3',sans-serif;font-size:14px;font-weight:800;letter-spacing:.06em;text-transform:uppercase}
 /* v2.3.1272: the two creator media blocks moved BELOW every base rule
    they override — they sat earlier in the file, so equal-specificity
    base declarations silently won and the 690/359 fallbacks were dead
@@ -1034,7 +1055,7 @@ input{font-family:inherit}
   /* v2.3.1253/1272: 320-class — one fewer tile/swatch at rest keeps the
      targets ≥40px instead of shrinking them (fixed base 62 + tile gaps
      4×4 / swatch gaps 5×5). */
-  .bt-name-modal{--cc-tile:calc((100vw - 78px)/5);--cc-swatch:calc((100vw - 87px)/6)}
+  .bt-name-modal{--cc-tile:calc((100vw - 60px)/5);--cc-swatch:calc((100vw - 69px)/6)}
   .bt-cc-tabs{gap:2px}
   .bt-cc-tab-label{font-size:10px}
   .bt-cc-strip{gap:4px}
