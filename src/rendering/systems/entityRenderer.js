@@ -96,6 +96,14 @@ const MONSTER_HPBAR_H = Math.round(MONSTER_HPBAR_W * HPBAR_ASPECT); /* 13 */
 const PLAYER_HPBAR_W = 76;
 const PLAYER_HPBAR_H = Math.round(PLAYER_HPBAR_W * HPBAR_ASPECT);   /* 22 */
 const HPBAR_FLASH_MS = 160;   /* white flash on damage */
+
+/* v2.3.1274: size experiment (owner directive) — characters render 33%
+   bigger and world monsters 50% bigger.  Applied at the CONTAINER level
+   so the body, above-head bar, and labels scale together and the change
+   stays one knob per entity type.  Render-only: world positions, server
+   hitboxes, and combat ranges are untouched. */
+const PLAYER_SIZE_MULT = 4 / 3;
+const MONSTER_SIZE_MULT = 1.5;
 /* Build (or return) a display-owned cropped view of the full-bar texture.
    The Texture is RECREATED when the crop width changes (integer source
    px, so at most one realloc per hp change): Pixi 8's Sprite.width
@@ -2546,6 +2554,11 @@ export class EntityRenderer {
                cleanly on the first damage tick. */
             if (display._hpHeart && !display._hpHeart.destroyed) display._hpHeart.alpha = 0;
             if (display._hpText && !display._hpText.destroyed) display._hpText.alpha = 0;
+            /* v2.3.1273: the bar art added fill + fx layers — clear them
+               too, or the red fill and white ghost chunk float over the
+               corpse for the whole death animation (owner report). */
+            if (display._hpBarFill && !display._hpBarFill.destroyed) display._hpBarFill.alpha = 0;
+            if (display._hpBarFx && !display._hpBarFx.destroyed) display._hpBarFx.clear();
             display._lastHpPct = 1;
             if (display._dynGfx) {
               display._dynGfx.clear();
@@ -2580,6 +2593,8 @@ export class EntityRenderer {
                same problem applies to raw fodder slime kills. */
             if (display._hpHeart && !display._hpHeart.destroyed) display._hpHeart.alpha = 0;
             if (display._hpText && !display._hpText.destroyed) display._hpText.alpha = 0;
+            if (display._hpBarFill && !display._hpBarFill.destroyed) display._hpBarFill.alpha = 0;
+            if (display._hpBarFx && !display._hpBarFx.destroyed) display._hpBarFx.clear();
             display._lastHpPct = 1;
             /* Clear any leftover dynamic content (aggro arrow, status
                icons) so it doesn't linger on the death frame. */
@@ -2617,6 +2632,8 @@ export class EntityRenderer {
             /* Clear HP bar -- same fix as slime / variant death branches. */
             if (display._hpHeart && !display._hpHeart.destroyed) display._hpHeart.alpha = 0;
             if (display._hpText && !display._hpText.destroyed) display._hpText.alpha = 0;
+            if (display._hpBarFill && !display._hpBarFill.destroyed) display._hpBarFill.alpha = 0;
+            if (display._hpBarFx && !display._hpBarFx.destroyed) display._hpBarFx.clear();
             display._lastHpPct = 1;
             if (display._dynGfx) {
               display._dynGfx.clear();
@@ -2655,6 +2672,9 @@ export class EntityRenderer {
       if (display.x !== rx) display.x = rx;
       if (display.y !== ry) display.y = ry;
       if (display.visible !== m.alive) display.visible = m.alive;
+      /* v2.3.1274: monster size experiment (persists through the death
+         animation since the container keeps its scale). */
+      if (display.scale.x !== MONSTER_SIZE_MULT) display.scale.set(MONSTER_SIZE_MULT);
 
       const size = display._size;
 
@@ -3387,7 +3407,7 @@ export class EntityRenderer {
          lives on the inner _spriteBody, so scaling the container uniformly
          here doesn't disturb facing. */
       {
-        const pscale = this._zonePscale(S, display.x, display.y);
+        const pscale = this._zonePscale(S, display.x, display.y) * PLAYER_SIZE_MULT; /* v2.3.1274 */
         if (display.scale.x !== pscale) display.scale.set(pscale);
       }
 
@@ -3962,7 +3982,7 @@ export class EntityRenderer {
        distant edges). Absent => 1 (normal). v2.3.1091: extracted to
        _zonePscale and shared with the remote-player path. */
     {
-      const pscale = this._zonePscale(S, P.x, P.y);
+      const pscale = this._zonePscale(S, P.x, P.y) * PLAYER_SIZE_MULT; /* v2.3.1274 */
       if (display.scale.x !== pscale) display.scale.set(pscale);
     }
 
