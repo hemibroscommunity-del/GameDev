@@ -207,6 +207,31 @@ export async function drawCharacterPortrait(canvas, opts) {
   ctx.translate(ZCX, ZCY);
   ctx.scale(Z, Z);
   ctx.translate(-ZCX, -ZCY);
+  /* v2.3.1283: OPT-IN ground shadow (login preview passes groundShadow;
+     portraitDataUrl/headshot exports don't, so they stay clean) — a soft
+     3/4-squashed contact ellipse painted FIRST so every figure layer
+     composites over it.  Lives inside the zoom/mirror transform, so it
+     tracks the boots at every angle and flips with the mirrored views
+     for free.  The per-direction foot line mirrors the v2.3.744 finding
+     (SW/E source frames sit higher in their 256 box).  Alpha/squash
+     follow the in-game blob-shadow recipe (entityRenderer: black
+     ellipse, ry≈0.35×rx). */
+  if (opts && opts.groundShadow) {
+    const _FOOT_Y = { south: 202, north: 202, east: 203, northeast: 206, southwest: 214 };
+    const fy = _FOOT_Y[DIR] || 205;
+    const g = ctx.createRadialGradient(FRAME / 2, fy, 2, FRAME / 2, fy, 40);
+    g.addColorStop(0, 'rgba(0,0,0,0.30)');
+    g.addColorStop(0.55, 'rgba(0,0,0,0.16)');
+    g.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.save();
+    /* squash the radial circle into the platform's 3/4 ellipse */
+    ctx.translate(FRAME / 2, fy);
+    ctx.scale(1, 0.34);
+    ctx.translate(-FRAME / 2, -fy);
+    ctx.fillStyle = g;
+    ctx.fillRect(FRAME / 2 - 44, fy - 44, 88, 88);
+    ctx.restore();
+  }
   /* v2.3.757: the body always draws SHIRTLESS (baked shirt retired); the
      shirt is the layered white-base sheet tinted to the picked color and
      composited on top -- exactly what the game renders.  Null color = white

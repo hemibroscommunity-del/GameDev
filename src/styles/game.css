@@ -817,6 +817,23 @@ input{font-family:inherit}
 .bt-cc-brazier--left{left:4%;aspect-ratio:110/227;background-image:url('/ui/welcome/brazier-dark-strip.webp')}
 /* negative delay desyncs the two flames so they don't flicker in lockstep */
 .bt-cc-brazier--right{right:4%;aspect-ratio:110/231;background-image:url('/ui/welcome/brazier-light-strip.webp');animation-delay:-.45s}
+/* v2.3.1283: firelight cast shadows under the preview character — two
+   pre-blurred radial-gradient ellipses on the pedestal's top face (the
+   group is the position context, so they scale with the disc), each
+   skewed away from its brazier.  Flicker = OPACITY + TRANSFORM ONLY:
+   animated CSS filters near the video surface reproduce the iOS
+   grainy-static incident (charge-pie v2.3.948 / TouchControls
+   v2.3.1236), so no filter/blur/blend-mode here.  Cadence matches the
+   flames (1.0s; right side reuses the braziers' own -.45s desync).
+   The boots' contact line sits ≈62% up the group (24.3% of stage from
+   v2.3.1276b's bottom 19% + 0.11×48.5 canvas, minus the group's 3%
+   inset, over its 34% height). */
+.bt-cc-castshadow{position:absolute;left:50%;bottom:50%;width:34%;height:24%;margin-left:-17%;background:radial-gradient(ellipse 50% 50% at 50% 50%,rgba(0,0,0,.30),rgba(0,0,0,.13) 55%,rgba(0,0,0,0) 74%);pointer-events:none;transform-origin:50% 100%}
+.bt-cc-castshadow--l{transform:skewX(20deg) scaleY(.5);animation:bt-cc-shadowflick-l 1.0s ease-in-out infinite}
+.bt-cc-castshadow--r{transform:skewX(-20deg) scaleY(.5);animation:bt-cc-shadowflick-r 1.0s ease-in-out infinite;animation-delay:-.45s}
+@keyframes bt-cc-shadowflick-l{0%,100%{opacity:.8;transform:skewX(20deg) scaleY(.5)}50%{opacity:.55;transform:skewX(17deg) scaleY(.46) scaleX(1.06)}}
+@keyframes bt-cc-shadowflick-r{0%,100%{opacity:.8;transform:skewX(-20deg) scaleY(.5)}50%{opacity:.55;transform:skewX(-17deg) scaleY(.46) scaleX(1.06)}}
+@media (prefers-reduced-motion:reduce){.bt-cc-castshadow--l,.bt-cc-castshadow--r{animation:none}}
 /* Chunky beveled PLAY — presses down on tap (border-bottom is the bevel). */
 /* v2.3.725: PLAY is the owner's painted button art (label baked in). */
 /* v2.3.740: solid color UNDER the art + a min-height — the button's entire
