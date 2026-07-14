@@ -25,6 +25,9 @@ import { BagCompact } from './sheet/BagCompact.jsx';            /* v2.3.1285 */
 import { HeroCompact } from './sheet/HeroCompact.jsx';          /* v2.3.1286 */
 import { HeroExpanded } from './sheet/HeroExpanded.jsx';        /* v2.3.1286 */
 import { SkillsCompact } from './sheet/SkillsCompact.jsx';      /* v2.3.1286 */
+import { FriendsCompact } from './sheet/FriendsCompact.jsx';    /* v2.3.1288 */
+import { QuestsCompact } from './sheet/QuestsCompact.jsx';      /* v2.3.1288 */
+import { MoreCompact } from './sheet/MoreCompact.jsx';          /* v2.3.1288 */
 import { InventoryPanel, BagTile }     from './dash/InventoryPanel.jsx';
 import { ItemDetailPopup }             from './dash/ItemDetailPopup.jsx';
 import { itemDetailBus }               from './dash/itemDetailBus.js';
@@ -433,18 +436,29 @@ const PANELS = {
 
 /* v2.3.1283: the six toolbar destinations (nav-system spec).  Chat left
    the toolbar (owner) — the composer opens by tapping your own
-   character in the world (BroTown self-tap gate).  `compact:false`
-   destinations promote to expanded until PR B gives them compact views;
-   the bus routes their collapses home to Bag. */
+   character in the world (BroTown self-tap gate).
+   v2.3.1288 (PR B): every destination has a compact view now — the
+   `compact:false` promotion flag and the compactless registration are
+   gone (the bus keeps the mechanism, registered empty). */
 const DESTINATIONS = [
-  { id: 'bag',    label: 'Bag',     icon: '/icons/ui/nav-inventory.webp?v=2.3.1224', compact: true },
-  { id: 'hero',   label: 'Hero',    icon: '/icons/ui/panel-self.webp?v=2.3.1224',    compact: true },
-  { id: 'skills', label: 'Skills',  icon: '/icons/ui/panel-skills.webp?v=2.3.1224',  compact: true },
-  { id: 'social', label: 'Friends', icon: '/icons/ui/nav-friends.webp?v=2.3.1224',   compact: false },
-  { id: 'quests', label: 'Quests',  icon: '/icons/ui/panel-quests.webp?v=2.3.1224',  compact: false },
-  { id: 'more',   label: 'More',    icon: '/icons/ui/nav-more.webp?v=2.3.1224',      compact: false },
+  { id: 'bag',    label: 'Bag',     icon: '/icons/ui/nav-inventory.webp?v=2.3.1224' },
+  { id: 'hero',   label: 'Hero',    icon: '/icons/ui/panel-self.webp?v=2.3.1224' },
+  { id: 'skills', label: 'Skills',  icon: '/icons/ui/panel-skills.webp?v=2.3.1224' },
+  { id: 'social', label: 'Friends', icon: '/icons/ui/nav-friends.webp?v=2.3.1224' },
+  { id: 'quests', label: 'Quests',  icon: '/icons/ui/panel-quests.webp?v=2.3.1224' },
+  { id: 'more',   label: 'More',    icon: '/icons/ui/nav-more.webp?v=2.3.1224' },
 ];
-dashboardPanelBus.compactless = new Set(DESTINATIONS.filter(d => !d.compact).map(d => d.id));
+
+/* v2.3.1288: PR B — the rootId ternary chain in the render became this
+   registry the moment it hit six entries. */
+const COMPACT_VIEWS = {
+  bag:    BagCompact,
+  hero:   HeroCompact,
+  skills: SkillsCompact,
+  social: FriendsCompact,
+  quests: QuestsCompact,
+  more:   MoreCompact,
+};
 
 export const BottomDashboard = () => {
   const [, force] = useState(0);
@@ -461,6 +475,16 @@ export const BottomDashboard = () => {
      must not linger over a freshly opened panel: clear it on every
      panel-bus event (it did NOT clear before; only the 3s timer did). */
   useEffect(() => dashboardPanelBus.subscribe(() => { setTooltip(''); force(v => v + 1); }), []);
+  /* v2.3.1288: PR B — stamp the snap mode on <html> so pure CSS can dim
+     the floating combat chrome (joystick discs + charge pie) while the
+     sheet is expanded; rules live in game.css next to .bt-joystick-zone.
+     CSS-driven so the dim never depends on those overlays re-rendering. */
+  useEffect(() => {
+    const stamp = () => { document.documentElement.dataset.btSheet = dashboardPanelBus.state.mode; };
+    stamp();
+    const unsub = dashboardPanelBus.subscribe(stamp);
+    return () => { delete document.documentElement.dataset.btSheet; unsub(); };
+  }, []);
   /* v2.3.1283: expanded snap height — ~half the viewport with the sheet
      top stopping below the player's feet (sheetGeometry).  Recomputed on
      viewport changes with the same iOS-keyboard guard the canvas resize
@@ -801,16 +825,12 @@ export const BottomDashboard = () => {
             {Active && <Active />}
           </div>
         </>
-      ) : rootId === 'hero' ? (
-        <HeroCompact />
-      ) : rootId === 'skills' ? (
-        <SkillsCompact />
       ) : (
-        /* v2.3.1285: the home view — Bag compact (nav-system spec
-           §Default State).  Replaces the v2.3.1236..1281 three-panel
-           row (Bag preview / Loadout / Build): equipped + recent now
-           live here, the Build data moves into the Hero destination. */
-        <BagCompact />
+        /* v2.3.1285: the home view is Bag compact (nav-system spec
+           §Default State) — equipped + recent replaced the
+           v2.3.1236..1281 three-panel row.  v2.3.1288 (PR B): all six
+           destinations render from the COMPACT_VIEWS registry. */
+        (() => { const CompactView = COMPACT_VIEWS[rootId] || BagCompact; return <CompactView />; })()
       )}
 
       {/* Navigation ribbon.  v2.3.1229: PERSISTENT in both modes.

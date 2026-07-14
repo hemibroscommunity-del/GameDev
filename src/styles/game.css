@@ -568,6 +568,23 @@ input{font-family:inherit}
 .bt-chat-input:focus{border-color:var(--pop)}
 .bt-joystick-zone{z-index:30;display:block;
   -webkit-touch-callout:none;-webkit-user-select:none;user-select:none;touch-action:none}
+/* v2.3.1288 (nav-system PR B): while the sheet is EXPANDED the floating
+   combat chrome — both joystick discs and the special-charge pie — dims
+   to ghost opacity so it reads as parked, not tappable, where it pokes
+   past the sheet's top edge.  BottomDashboard stamps data-bt-sheet on
+   <html> from the panel bus, so this is pure CSS with no dependency on
+   the overlays re-rendering.  The dim rides the CONTAINERS: BroTown's
+   engagement ladder stamps opacity on the base elements inside (rest .5
+   / engaged .92, v2.3.1233b), which multiplies instead of fighting —
+   and a joystick touch collapses the sheet instantly (v2.3.1283
+   interlock), so "engaged while expanded" never persists. */
+.bt-joystick-zone,.bt-rjoy-zone,.bt-charge-pie{transition:opacity .22s ease}
+@media (prefers-reduced-motion: reduce){
+  .bt-joystick-zone,.bt-rjoy-zone,.bt-charge-pie{transition:none}
+}
+:root[data-bt-sheet="expanded"] .bt-joystick-zone,
+:root[data-bt-sheet="expanded"] .bt-rjoy-zone,
+:root[data-bt-sheet="expanded"] .bt-charge-pie{opacity:.15}
 
 /* Joystick base — outer ring filled with a light transparent gray so
    it sits over the game world like a subtle puck. */

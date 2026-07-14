@@ -85,7 +85,12 @@ export const SpecialChargePie = () => {
   const DISK_EDGE = 'rgba(0, 0, 0, 0.6)';
 
   return (
-    <div style={{
+    /* v2.3.1288: className hooks the expanded-sheet dim (game.css,
+       nav-system PR B).  The charge-full fade `opacity` moved off this
+       root onto the <svg> — an inline opacity here would beat the
+       class rule (inline > selector), so the two effects live on
+       separate elements and simply multiply. */
+    <div className="bt-charge-pie" style={{
       position: 'fixed',
       bottom: bottomVal,
       right: rightVal,
@@ -93,13 +98,12 @@ export const SpecialChargePie = () => {
       height: size,
       zIndex: 31,
       pointerEvents: 'none',
-      opacity,
       /* v2.3.948: drop-shadow removed -- on iOS a CSS drop-shadow filter on a DOM
          overlay compositing over the WebGL canvas produced grainy "static" on the
          pie (the next suspect flagged in CLAUDE.md after the strokeDasharray fix).
          The disk fill + edge stroke below already give it definition. */
     }}>
-      <svg viewBox={'0 0 ' + size + ' ' + size} width={size} height={size}>
+      <svg viewBox={'0 0 ' + size + ' ' + size} width={size} height={size} style={{ opacity, display: 'block' }}>
         <circle cx={cx} cy={cy} r={diskR} fill={DISK_FILL} stroke={DISK_EDGE} strokeWidth={1} />
         <circle cx={cx} cy={cy} r={ringR} fill="none" stroke={RING_BG} strokeWidth={strokeW} />
         <circle

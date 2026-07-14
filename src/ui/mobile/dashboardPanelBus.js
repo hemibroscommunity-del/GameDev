@@ -18,10 +18,11 @@ const emit = () => { for (const fn of listeners) fn(); };
 export const dashboardPanelBus = {
   state: { stack: ['bag'], mode: 'compact' },
 
-  // Destinations that have no compact view yet (PR B fills them in).
-  // BottomDashboard registers these; the bus routes their compact
-  // requests to expanded, and a collapse lands on home (Bag compact)
-  // instead of a compact frame with no content.
+  // Destinations that have no compact view — the bus routes their
+  // compact requests to expanded, and a collapse lands on home (Bag
+  // compact) instead of a compact frame with no content.
+  // v2.3.1288 (PR B): EMPTY since Friends/Quests/More got compact
+  // views; the mechanism stays for any future compactless destination.
   compactless: new Set(),
 
   // Top-of-stack helper — what the dashboard should currently render.

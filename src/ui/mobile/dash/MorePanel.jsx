@@ -7,7 +7,9 @@ import { COL, panelStyle } from './common.js';
 // sliced by tools/process_icon_sheets.py); every tile has a real icon
 // now (stats/t2/account/controls previously had only glyphs).  Falls
 // back to glyph if the image fails.
-const TILES = [
+/* v2.3.1288: exported — MoreCompact (nav-system PR B) renders the same
+   launcher roster as a 6×2 glance grid; one list, no drift. */
+export const TILES = [
   { id: 'self',        src: '/icons/ui/panel-self.webp?v=2.3.1224',        label: 'Self',     glyph: '🪪' },
   { id: 'stats',       src: '/icons/ui/panel-stats.webp?v=2.3.1224',       label: 'Stats',    glyph: '📊' },
   /* v2.3.609: per-weapon-category build allocation (replaces generic specs). */
