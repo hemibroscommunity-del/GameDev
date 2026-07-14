@@ -1226,26 +1226,17 @@ export var BroTown = function BroTown(_ref0) {
     setShoesSel = _shoesSelState[1];
   /* Which appearance-picker category is active.  v2.3.797: single active
      tab string (replaces the v2.3.711 accordion's expanded-map) — the
-     tabs+drawer creator always shows exactly one category; 'hat' is the
-     landing tab. */
-  var _catState = useState('hat'),
+     creator always shows exactly one category.  v2.3.1251: always a TYPE
+     key; NameModal derives the five-group tab state (Hair/Face/Top/
+     Bottom/Feet) from it.  'hair' is the landing type (the mockup's
+     Hair group opens on its Hair subtype). */
+  var _catState = useState('hair'),
     activeCat = _catState[0],
     setActiveCat = _catState[1];
-  /* v2.3.834: per-category flag set the first time the user taps an object
-     in that category this session.  The color menu only appears once this
-     is set (owner: hide colors until an object is picked, so the object
-     grid gets the full drawer width by default). */
-  var _objPickState = useState({}),
-    objPicked = _objPickState[0],
-    setObjPicked = _objPickState[1];
-  var markObjPicked = function (k) { setObjPicked(function (p) { if (p[k]) return p; var n = Object.assign({}, p); n[k] = true; return n; }); };
-  /* v2.3.835: per-category open/collapsed state for the object grid and the
-     color grid.  Picking an object collapses its grid to just that pick
-     (checkmark) and opens the colors; picking a color collapses the color
-     grid to that swatch; tapping a collapsed pick re-expands its grid.
-     Absent key === open (the default on first view). */
-  var _objOpenState = useState({}), objOpen = _objOpenState[0], setObjOpen = _objOpenState[1];
-  var _colOpenState = useState({}), colOpen = _colOpenState[0], setColOpen = _colOpenState[1];
+  /* v2.3.1251: the v2.3.834/835 collapse-on-select state (objPicked/
+     objOpen/colOpen + markObjPicked) is retired — the approved mockup
+     always shows the full option strip with the colors directly below,
+     so nothing collapses and colors need no reveal gate. */
   /* Live character preview on the login screen -- redraws whenever any
      cosmetic selection (or the preview angle) changes. */
   var previewCanvasRef = useRef(null);
@@ -5964,7 +5955,7 @@ export var BroTown = function BroTown(_ref0) {
      right.  Layout-only change — every input/button keeps its previous
      handlers and state. */
   if (showNameModal) {
-    return /*#__PURE__*/React.createElement(NameModal, { _dragRotX: _dragRotX, _swatchTile: _swatchTile, _thumbTile: _thumbTile, activeCat: activeCat, beardColorSel: beardColorSel, colOpen: colOpen, facialHairSel: facialHairSel, hairColorSel: hairColorSel, hairSel: hairSel, hatColorSel: hatColorSel, headwearSel: headwearSel, joinTown: joinTown, markObjPicked: markObjPicked, nameInput: nameInput, objOpen: objOpen, objPicked: objPicked, pantsSel: pantsSel, previewCanvasRef: previewCanvasRef, previewDir: previewDir, randomizeWithFlair: randomizeWithFlair, rollRandomName: rollRandomName, rotatePreview: rotatePreview, setActiveCat: setActiveCat, setBeardColorSel: setBeardColorSel, setColOpen: setColOpen, setFacialHairSel: setFacialHairSel, setHairColorSel: setHairColorSel, setHairSel: setHairSel, setHatColorSel: setHatColorSel, setHeadwearSel: setHeadwearSel, setNameInput: setNameInput, setObjOpen: setObjOpen, setPantsSel: setPantsSel, setShirtColorSel: setShirtColorSel, setShirtSel: setShirtSel, setShoesSel: setShoesSel, setSkinSel: setSkinSel, shirtColorSel: shirtColorSel, shirtSel: shirtSel, shoesSel: shoesSel, skinSel: skinSel });
+    return /*#__PURE__*/React.createElement(NameModal, { _dragRotX: _dragRotX, _swatchTile: _swatchTile, _thumbTile: _thumbTile, activeCat: activeCat, beardColorSel: beardColorSel, facialHairSel: facialHairSel, hairColorSel: hairColorSel, hairSel: hairSel, hatColorSel: hatColorSel, headwearSel: headwearSel, joinTown: joinTown, nameInput: nameInput, pantsSel: pantsSel, previewCanvasRef: previewCanvasRef, previewDir: previewDir, randomizeWithFlair: randomizeWithFlair, rollRandomName: rollRandomName, rotatePreview: rotatePreview, setActiveCat: setActiveCat, setBeardColorSel: setBeardColorSel, setFacialHairSel: setFacialHairSel, setHairColorSel: setHairColorSel, setHairSel: setHairSel, setHatColorSel: setHatColorSel, setHeadwearSel: setHeadwearSel, setNameInput: setNameInput, setPantsSel: setPantsSel, setShirtColorSel: setShirtColorSel, setShirtSel: setShirtSel, setShoesSel: setShoesSel, setSkinSel: setSkinSel, shirtColorSel: shirtColorSel, shirtSel: shirtSel, shoesSel: shoesSel, skinSel: skinSel });
   }
   return /*#__PURE__*/React.createElement(React.Fragment, null, showIntro && /*#__PURE__*/React.createElement(IntroVideo, {
     waitFor: introWaitRef.current,

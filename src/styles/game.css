@@ -577,6 +577,12 @@ input{font-family:inherit}
    own bg.webp background (which stays the fallback), so nothing else needs
    a z-index. */
 .bt-cc-bgvideo{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:-1;pointer-events:none}
+/* v2.3.1251: restrained vignette/contrast veil over the vista (approved
+   mockup) — keeps the world visible without competing with the UI.  Same
+   negative z-index trick as the video (must sit under all content); the
+   ::after box paints after the video child at the same z level, so the
+   veil lands above the vista and below everything else. */
+.bt-name-modal::after{content:"";position:absolute;inset:0;z-index:-1;pointer-events:none;background:radial-gradient(circle at 50% 27%,transparent 0 25%,rgba(5,11,17,.10) 56%,rgba(5,11,17,.42) 100%),linear-gradient(to bottom,rgba(8,14,20,.06) 0 40%,rgba(8,14,20,.24) 67%,rgba(8,14,20,.48) 100%)}
 /* v2.3.738: touch-action:none on the modal — iOS ignores overscroll-behavior
    and rubber-banded the splash when a swipe started on a non-scrollable
    element.  The rail and sheet re-allow pan-y; everything else is taps. */
@@ -623,7 +629,12 @@ input{font-family:inherit}
    neither can collapse again.  The stage's children are all absolutely
    positioned / 100%-sized, so flex height works cleanly and the canvas
    contain+scale adapts to whatever shape falls out. */
-.bt-name-box.bt-cc-box>.bt-cc-stage{flex:1 1 auto;min-height:150px;max-height:480px}
+/* v2.3.1257: the shrunken sheet frees ~100px to the stage, so the cap
+   matters now — the pedestal is HEIGHT-driven (34% × 480/165 ≈ 0.99×H
+   wide), so the stage must never get taller than it is wide or the
+   platform's edges clip at the card boundary.  100vw - 44px ≈ the
+   stage's own width (modal 20 + box 24). */
+.bt-name-box.bt-cc-box>.bt-cc-stage{flex:1 1 auto;min-height:150px;max-height:min(calc(100vw - 44px),480px)}
 /* v2.3.803: menu goes ROW — vertical tab rail left, drawer right
    (owner: tabs span down vertically, the container expands to the
    right).
@@ -648,7 +659,21 @@ input{font-family:inherit}
    element on this screen.  The customization card is now a plain
    Lantern Slate sheet with a hairline border; overflow:hidden keeps the
    tab header strip inside the radius. */
-.bt-name-box.bt-cc-box>.bt-cc-menu{flex:0 0 auto;display:flex;flex-direction:column;background:var(--ui-sheet);border:1px solid var(--ui-line);border-radius:10px;overflow:hidden}
+/* v2.3.1251: the menu is the ONE unified creator sheet (approved mockup)
+   — title, name row, group tabs, subtype tabs, option strip, colors and
+   Randomize all live on this card, so it gets real interior padding +
+   row gap (the old header-strip tabs + chrome-less drawer are gone). */
+/* v2.3.1257: sheet shrunk ~30% in every internal metric (owner: shrink
+   the creation menu diagonally; agreed target ≈ half the on-screen
+   AREA at full width, floors held at 10px text / ~35px tap targets /
+   16px input font for the iOS zoom gate).  The flex stage absorbs all
+   the height the sheet gives up, so the character grows accordingly. */
+.bt-name-box.bt-cc-box>.bt-cc-menu{flex:0 0 auto;display:flex;flex-direction:column;gap:5px;padding:7px;background:var(--ui-sheet);border:1px solid var(--ui-line);border-radius:12px;overflow:hidden}
+/* v2.3.1251: sheet title — brass smallcaps flanked by fading rules
+   (approved mockup).  h1 for a11y; margins zeroed. */
+.bt-cc-sheet-title{display:flex;align-items:center;justify-content:center;gap:8px;margin:0;font-size:10px;font-weight:800;letter-spacing:.18em;text-transform:uppercase;color:var(--ui-brass-highlight);font-family:'Source Sans 3',sans-serif;white-space:nowrap;line-height:1}
+.bt-cc-sheet-title::before,.bt-cc-sheet-title::after{content:"";width:18px;height:1px;background:linear-gradient(to right,transparent,var(--ui-brass))}
+.bt-cc-sheet-title::after{transform:rotate(180deg)}
 @media (max-height:720px){
   .bt-cc-cta{display:none}
 }
@@ -660,6 +685,21 @@ input{font-family:inherit}
   /* v2.3.1013: menu is already content-sized; just cap the preview so a short
      webview can page-scroll the whole card rather than crush the stage. */
   .bt-cc-stage{flex:0 0 auto!important;height:210px}
+  /* v2.3.1251: tighter CTA on short viewports (375x667-class).
+     v2.3.1257: the menu/tab compaction here is retired — the base sheet
+     is now smaller than these overrides were. */
+  .bt-cc-play{min-height:52px}
+}
+/* v2.3.1251: 320px-class widths — the five tabs and five tiles keep one
+   row; only gaps/labels compress (approved mockup's 359px breakpoint). */
+@media (max-width:359px){
+  /* v2.3.1253/1257: var redefinition for the tighter 320-class gaps
+     (fixed base 62px + tile gaps 6x4 / swatch gaps 7x5). */
+  .bt-name-modal{--cc-tile:calc((100vw - 86px)/7);--cc-swatch:calc((100vw - 97px)/8)}
+  .bt-cc-tabs{gap:2px}
+  .bt-cc-strip{gap:4px}
+  .bt-cc-colors-row{gap:5px}
+  .bt-cc-subtab{min-width:42px}
 }
 /* Torch pillars flanking the character — 12-frame sprite strip (static
    pillar + the flame animated from the owner's generated clip).  jump-none
@@ -697,13 +737,45 @@ input{font-family:inherit}
    can't balloon on wide cards (the v2.3.798 Pro Max lesson); the label
    is now real text in NameModal.jsx, so no invisible-button failure
    mode when an image 404s (the v2.3.740 incident). */
-.bt-cc-play{background:linear-gradient(180deg,#E2B765,#D2A14D);border:1px solid var(--ui-brass-highlight);border-radius:10px;box-shadow:inset 0 1px 0 rgba(255,255,255,.25),0 2px 6px rgba(0,0,0,.22);color:#172126;min-height:48px;max-width:230px;margin-left:auto;margin-right:auto;font-family:'Source Sans 3',sans-serif;font-size:16px;font-weight:700;letter-spacing:.08em;text-transform:uppercase}
-.bt-cc-play:active{transform:translateY(1px);filter:brightness(1.05)}
-/* v2.3.1235: ornate gold-border treatment dropped — Randomize is a plain
-   secondary button (fill/text inline in NameModal.jsx); :active needs
-   !important only to outrank that inline background. */
-.bt-cc-rand{border:1px solid var(--ui-line-strong)}
-.bt-cc-rand:active{background:var(--ui-raised-high)!important}
+/* v2.3.1251: PLAY → ENTER BRO TOWN, the screen's ONE dominant gold
+   action (approved mockup) — the 230px cap is superseded: full card
+   width up to 500px, 56px tall. */
+/* v2.3.1254: chunky bevel restored (the historical PLAY treatment —
+   border-bottom IS the bevel; presses flat on tap).  Buttons are
+   border-box, so the thicker bottom edge changes no layout. */
+.bt-cc-play{background:linear-gradient(180deg,#E2B765,#D2A14D);border:1px solid var(--ui-brass-highlight);border-bottom:4px solid #9C742D;border-radius:12px;box-shadow:inset 0 1px 0 rgba(255,255,255,.30),0 2px 6px rgba(0,0,0,.22);color:#172126;min-height:56px;max-width:500px;margin-left:auto;margin-right:auto;font-family:'Source Sans 3',sans-serif;font-size:clamp(16px,4.7vw,19px);font-weight:800;letter-spacing:.08em;text-transform:uppercase;box-sizing:border-box}
+.bt-cc-play:active{transform:translateY(2px);border-bottom-width:2px;filter:brightness(1.05)}
+/* v2.3.1254: creator slate buttons (dice, Randomize) share one class
+   carrying the v2.3.1241 edge-parity MICRO-BEVEL — a hairline top
+   highlight + bottom shade painted INSIDE the fill gradient (owner:
+   buttons need a beveled appearance; same recipe as the dashboard nav,
+   which replaced stacked box-shadow bevels that fattened on Retina).
+   Pressed = reversed bevel over the raised-high fill. */
+.bt-cc-btn{
+  background:
+    linear-gradient(180deg,
+      rgba(255,255,255,.07) 0,
+      rgba(255,255,255,.07) var(--ui-hairline),
+      transparent var(--ui-hairline),
+      transparent calc(100% - var(--ui-hairline)),
+      rgba(0,0,0,.30) calc(100% - var(--ui-hairline)),
+      rgba(0,0,0,.30) 100%),
+    #293B41;
+  border:var(--ui-hairline) solid rgba(229,237,233,.22);
+  color:#F4F0E7;
+}
+.bt-cc-btn:active{
+  transform:translateY(1px);
+  background:
+    linear-gradient(180deg,
+      rgba(0,0,0,.30) 0,
+      rgba(0,0,0,.30) var(--ui-hairline),
+      transparent var(--ui-hairline),
+      transparent calc(100% - var(--ui-hairline)),
+      rgba(255,255,255,.07) calc(100% - var(--ui-hairline)),
+      rgba(255,255,255,.07) 100%),
+    #32454C;
+}
 /* v2.3.718: name input on the owner's parchment scroll (3-slice border-
    image: rolled end caps stay fixed, the parchment middle stretches).
    Ink-dark text + placeholder; the quill img is an absolutely-positioned
@@ -755,10 +827,12 @@ input{font-family:inherit}
    stage/menu keep their sizes (owner: "just shift everything up, don't change
    window sizes").  The logo sits over the stage's empty top-left sky. */
 .bt-cc-logo-wrap{position:absolute;top:max(6px,env(safe-area-inset-top));left:max(6px,env(safe-area-inset-left));z-index:3;pointer-events:none}
-.bt-cc-logo{position:relative;z-index:1;width:min(32vw,150px);height:auto;display:block;pointer-events:none}
+/* v2.3.1251: ~22% smaller (approved mockup) — 32vw/150 → 25vw/117.  The
+   sword + shines are wrap-relative %, so they track the new size. */
+.bt-cc-logo{position:relative;z-index:1;width:min(25vw,117px);height:auto;display:block;pointer-events:none}
 .bt-cc-logo-sword{position:absolute;left:63.5%;top:19%;height:115%;width:auto;pointer-events:none;filter:drop-shadow(0 2px 5px rgba(0,0,0,.55))}
 @media (max-height:720px){
-  .bt-cc-logo{width:min(26vw,120px)}
+  .bt-cc-logo{width:min(20vw,94px)}
 }
 /* v2.3.827: CSS specular shine — a narrow bright band (the standard
    shimmer gradient) swept across each asset and CLIPPED to the artwork's
@@ -794,7 +868,9 @@ input{font-family:inherit}
    retired — the name field is a standard Lantern Slate recessed well
    (spec recipe) so it matches every other input in the game.  16px font
    floor still lives inline in NameModal.jsx (iOS zoom gate, v2.3.710). */
-.bt-cc-name{background:linear-gradient(180deg,#132329,#111E23);border:1px solid var(--ui-line);border-radius:10px;box-shadow:inset 0 2px 5px rgba(0,0,0,.32),inset 0 1px 0 rgba(255,255,255,.025);color:var(--ui-text);height:48px;font-family:'Source Sans 3',sans-serif}
+/* v2.3.1257: 48 → 38px with the sheet shrink; the 16px font stays (iOS
+   zoom gate, v2.3.710). */
+.bt-cc-name{background:linear-gradient(180deg,#132329,#111E23);border:1px solid var(--ui-line);border-radius:9px;box-shadow:inset 0 2px 5px rgba(0,0,0,.32),inset 0 1px 0 rgba(255,255,255,.025);color:var(--ui-text);height:38px;font-family:'Source Sans 3',sans-serif}
 .bt-cc-name::placeholder{color:#B6C1BE;opacity:1} /* v2.3.1235: Checkpoint B — placeholder muted → secondary (too faint on the dark well) */
 /* v2.3.797: the two-pane grid (.bt-cc-main/.bt-cc-left/.bt-cc-rail*) is
    retired with the rail.  Text-only category TABS fused to ONE drawer
@@ -817,78 +893,88 @@ input{font-family:inherit}
    header strip; the ACTIVE tab is a brass-soft tint + brass hairline
    (never a solid gold fill — PLAY is this surface's one gold element).
    Baloo/text-shadow dropped: Source Sans 3 only. */
-.bt-cc-tabs{flex:0 0 auto;display:flex;flex-direction:row;flex-wrap:wrap;gap:6px;padding:6px;align-items:stretch;background:var(--ui-header);border-bottom:1px solid var(--ui-line)}
-.bt-cc-tab{flex:0 0 calc((100% - 18px)/4);min-height:38px;display:flex;flex-direction:row;align-items:center;justify-content:center;gap:5px;padding:4px 4px;background:transparent;border:1px solid transparent;border-radius:8px;cursor:pointer;color:var(--ui-text-secondary);font-size:12px;font-weight:700;letter-spacing:.02em;font-family:'Source Sans 3',sans-serif}
+/* v2.3.1251: primary group tabs — one grid row even at 320px, icon over
+   label, transparent at rest, brass-tint + brass hairline when selected
+   (never solid gold: PLAY owns gold).  v2.3.1256: five → FOUR columns
+   (owner): Head / Shirt / Pants / Shoes. */
+.bt-cc-tabs{flex:0 0 auto;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:4px}
+.bt-cc-tab{min-width:0;min-height:36px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:3px 2px;background:transparent;border:1px solid transparent;border-radius:8px;cursor:pointer;color:var(--ui-text-secondary);font-family:'Source Sans 3',sans-serif}
 .bt-cc-tab:active{transform:translateY(1px)}
 .bt-cc-tab--on{background:var(--ui-brass-soft);color:var(--ui-text);border-color:var(--ui-brass)}
-.bt-cc-tab-icon{width:22px;height:22px;object-fit:contain;opacity:.92;pointer-events:none}
+.bt-cc-tab-icon{width:16px;height:16px;object-fit:contain;opacity:.92;pointer-events:none}
 .bt-cc-tab--on .bt-cc-tab-icon{opacity:1}
-.bt-cc-tab-label{font-size:12px;line-height:1}
-/* v2.3.829: colors moved to the RIGHT of the objects (owner) — drawer is
-   ROW again: items fill the left and scroll horizontally, the colors
-   column docks on the right behind a gold-divider separator and only
-   renders at all once a real object is equipped (the _ccActive.colors
-   gate in BroTown.jsx; when null, items take the full width). */
-/* v2.3.1015: drawer shows ONE step at a time (items OR colors), so it's a
-   single column now — no side-by-side items/colors row (owner: no room). */
-.bt-cc-drawer{flex:1 1 auto;min-width:0;min-height:0;display:flex;flex-direction:column;gap:8px;padding:8px;box-sizing:border-box}
-.bt-cc-drawer-items{flex:1 1 auto;min-width:0;min-height:0;display:flex;flex-direction:column;gap:6px}
-/* v2.3.1015: "‹ Change Hat" — returns from the colors step to the item grid. */
-/* v2.3.1235: purple → secondary-button slate (geometry untouched — the
-   locked creator layout is overflow-sensitive, see the v2.3.796 revert). */
-.bt-cc-back{align-self:center;display:inline-flex;align-items:center;gap:4px;padding:3px 12px;border-radius:8px;background:var(--ui-raised);border:1px solid var(--ui-line-strong);color:var(--ui-text);font-size:12px;font-weight:700;letter-spacing:.02em;font-family:'Source Sans 3',sans-serif;cursor:pointer}
-.bt-cc-back:active{transform:translateY(1px)}
-/* v2.3.1016: the color step uses the same 10-track left-aligned row as items. */
-/* Item strip: column-wrap fills the available height (1-2 tile rows
-   depending on device) then extends rightward; pan-x re-allowed under
-   the modal's touch-action:none (the old rail's iOS trick, rotated). */
-/* v2.3.1012: 4-per-row item grid (was a column-wrap horizontal-scroll strip) --
-   bigger tiles, vertical scroll for overflow.  The > * override makes the
-   fixed-size tiles from _apTileStyle (BroTown.jsx) fill their grid cell. */
-/* v2.3.1013: the items grid is now bounded to exactly one page (8 = 2×4) by
-   the JS slice + pager below it, so it no longer scrolls — content-sized, two
-   rows, clipped.  This keeps Randomize/Play on screen (was overflowing).
-   v2.3.1014: columns size to the TILES (not 1fr stretch) and the grid centers,
-   so two rows of small tiles sit in the frame instead of ballooning to
-   container/4 and shoving the pager off (owner).
-   v2.3.1016: up to N across, LEFT-aligned (owner) — equal tracks fill the
-   width so the tiles can't overflow; a short final page leaves the empty
-   tracks on the right (left-aligned), and every category is one row tall.
-   v2.3.1017: 7 across (10 read too small on a phone, owner).
-   v2.3.1018: the row height is an EXPLICIT viewport-derived clamp (not derived
-   from each cell's aspect-ratio) so it's identical for every category — the
-   aspect-ratio path rounded by ~1-2px between trait menus and the container
-   visibly grew/shrank on each tab change (owner). */
-/* v2.3.1035: horizontal SWIPE strip (was a paged 7-col grid) -- all items in
-   one row, scroll left/right with a finger; pan-x re-allowed under the modal's
-   touch-action:none.  Scrollbar hidden (the swipe is the affordance). */
-.bt-cc-drawer-items>.bt-cc-drawer-grid{flex:0 0 auto;display:flex;flex-direction:row;align-items:center;gap:6px;overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain;touch-action:pan-x;padding-bottom:2px;scrollbar-width:none}
-.bt-cc-drawer-items>.bt-cc-drawer-grid::-webkit-scrollbar{display:none}
-.bt-cc-drawer-items>.bt-cc-drawer-grid>*{flex:0 0 auto!important;width:clamp(44px,12vw,52px)!important;height:clamp(44px,12vw,52px)!important}
-/* v2.3.804/816: the owner's gold divider art (divider.webp) is the
-   vertical separator on the colors column's left edge (rotated 90°). */
-.bt-cc-drawer-colors{flex:0 0 auto;max-width:122px;display:flex;flex-direction:column;gap:4px;border-left:1px solid var(--ui-line);padding-left:9px} /* v2.3.1235: purple divider → hairline */
-.bt-cc-drawer-colors>.bt-cc-drawer-grid{flex:1 1 auto;min-height:0;display:flex;flex-wrap:wrap;align-content:flex-start;gap:8px;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;touch-action:pan-y}
-.bt-cc-drawer-head{width:100%;flex:0 0 auto;text-align:center;font-size:11px;font-weight:700;color:var(--ui-text-muted);letter-spacing:.14em;font-family:'Source Sans 3',sans-serif} /* v2.3.1235: section-label spec */
-/* v2.3.1013: CUSTOMIZE section header above the tabs.
-   v2.3.1235: gold Baloo display cap → the standard 11/700 .14em section
-   label in muted slate; brass/gold on this screen belongs to PLAY only. */
-.bt-cc-cust-head{flex:0 0 auto;text-align:center;padding:5px 0 3px;font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--ui-text-muted);font-family:'Source Sans 3',sans-serif}
-/* v2.3.1013: item-grid pager — ‹ › arrows flanking one dot per page, the
-   active dot gold.  Sits under the grid, replacing the old vertical scroll. */
-/* v2.3.1016: fixed min-height so the (empty) single-page pager still reserves
-   its row — the drawer stays the same height across categories (owner). */
-.bt-cc-pager{flex:0 0 auto;display:flex;align-items:center;justify-content:center;gap:10px;padding:5px 0 1px;margin-top:auto;min-height:32px;box-sizing:border-box}
-.bt-cc-pager--empty{pointer-events:none}
-/* v2.3.1018: wider page buttons (owner) — easier tap targets than the old
-   26px squares. */
-/* v2.3.1235: purple → secondary-button slate (54x26 geometry kept — the
-   pager row's 32px budget is part of the locked-viewport height math). */
-.bt-cc-pager-arrow{display:flex;align-items:center;justify-content:center;width:54px;height:26px;padding:0;border-radius:7px;background:var(--ui-raised);border:1px solid var(--ui-line-strong);color:var(--ui-text);font-size:17px;line-height:1;cursor:pointer}
-.bt-cc-pager-arrow:active{transform:translateY(1px)}
-.bt-cc-pager-arrow:disabled{opacity:.32;cursor:default;pointer-events:none}
-/* v2.3.1016: page count as "1/3" shorthand (owner) — replaces the dot row. */
-.bt-cc-pager-count{min-width:34px;text-align:center;font-size:13px;font-weight:700;letter-spacing:.04em;color:var(--ui-text-secondary);font-family:'Source Sans 3',sans-serif;font-variant-numeric:tabular-nums} /* v2.3.1235: gold → secondary text (metadata, not an accent) */
+.bt-cc-tab-label{max-width:100%;overflow:hidden;text-overflow:ellipsis;font-size:10px;font-weight:700;letter-spacing:.02em;line-height:1}
+/* v2.3.1251: compact secondary tabs.  v2.3.1256: only HEAD renders them
+   — four chips (Hair/Hats/Skin/Beard), so min-width drops 72 → 56 to
+   keep all four on one row inside a 320px viewport (4×56 + chrome ≈
+   230px < the 256px menu content there); max-width guards overflow. */
+.bt-cc-subtabs{flex:0 0 auto;display:flex;width:fit-content;max-width:100%;min-height:26px;margin:0 auto;padding:2px;border:1px solid var(--ui-line);border-radius:8px;background:rgba(0,0,0,.13)}
+/* v2.3.1252: ghost rows — the subtabs/colors slots stay in the layout
+   (space reserved, nothing painted or tappable) when the active
+   category doesn't use them, so the sheet height never changes and the
+   flex stage can't resize the character on tab switches (owner: one
+   consistent character size). */
+.bt-cc-ghost{visibility:hidden}
+.bt-cc-subtab{min-width:48px;min-height:22px;padding:2px 7px;border:0;border-radius:6px;background:transparent;color:var(--ui-text-secondary);font-size:10px;font-weight:700;letter-spacing:.02em;font-family:'Source Sans 3',sans-serif;cursor:pointer}
+/* v2.3.1254: selected subtab is a raised, micro-beveled chip. */
+.bt-cc-subtab--on{color:var(--ui-text);background:
+  linear-gradient(180deg,
+    rgba(255,255,255,.07) 0,
+    rgba(255,255,255,.07) var(--ui-hairline),
+    transparent var(--ui-hairline),
+    transparent calc(100% - var(--ui-hairline)),
+    rgba(0,0,0,.30) calc(100% - var(--ui-hairline)),
+    rgba(0,0,0,.30) 100%),
+  var(--ui-raised)}
+/* v2.3.1251: the drawer (one step at a time + collapse-on-select +
+   ‹ 1/2 › pager, v2.3.835-1036) is retired by the approved mockup: the
+   option STRIP always shows the whole catalog — exactly five complete
+   tiles at rest, the rest by horizontal swipe (scroll-snap, no resting
+   half-tile, no page arrows) — and the color swatches sit DIRECTLY
+   below it.  Tile sizing overrides the inline _apTileStyle px (the
+   !important trick the old grid used); aspect-ratio keeps them square
+   at the flex-basis width. */
+/* v2.3.1253: tile/swatch sizes are EXPLICIT viewport-derived lengths
+   (owner: a residual subtle stage resize survived the v2.3.1252 ghost
+   rows).  The old %-flex-basis + aspect-ratio:1/1 sizing let the row
+   height derive from layout — one WebKit rounding or aspect-ratio
+   quirk and the sheet moves the flex stage.  Now both rows carry a
+   FIXED height and their children fixed square sizes, so NO content
+   can change the sheet's height.  The formulas mirror the box math
+   (modal 20 + box pad 24 + menu pad 20 + border 2 + row pad 2 +
+   gaps), min()-capped for the 560px card ceiling; the ≤359px media
+   redefines them for its tighter gaps/padding. */
+/* v2.3.1257: sheet shrink — tiles drop to ~70% linear (7 complete at
+   rest instead of 5, same no-half-tile guarantee: 7T + 6 gaps fill the
+   row exactly), swatches likewise (8 at rest).  Constants re-derived
+   for the 7px menu padding: modal 20 + box 24 + menu 14 + border 2 +
+   row pad 2 = 62, then + gaps (tiles 6×5=30, swatches 7×6=42). */
+.bt-name-modal{--cc-tile:min(calc((100vw - 92px)/7),65px);--cc-swatch:min(calc((100vw - 104px)/8),58px)}
+.bt-cc-strip{flex:0 0 auto;display:flex;flex-direction:row;align-items:center;gap:5px;min-width:0;height:calc(var(--cc-tile) + 6px);overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain;touch-action:pan-x;padding:2px 1px 4px;scroll-padding-inline:1px;scroll-snap-type:x proximity;scrollbar-width:none;box-sizing:border-box}
+.bt-cc-strip::-webkit-scrollbar{display:none}
+.bt-cc-strip>*{flex:0 0 var(--cc-tile)!important;width:var(--cc-tile)!important;height:var(--cc-tile)!important;scroll-snap-align:start}
+/* Colors: fixed-size swatches so a long catalog scrolls with six-ish
+   visible at phone width; the first/last auto margins center a short
+   row WITHOUT the clipped-left-edge bug of justify-content:center on an
+   overflowing flexbox. */
+.bt-cc-colors{flex:0 0 auto;display:flex;flex-direction:column;gap:4px;min-width:0}
+.bt-cc-colors-head{display:flex;align-items:center;justify-content:center;gap:8px;font-size:10px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--ui-text-muted);font-family:'Source Sans 3',sans-serif;line-height:1}
+.bt-cc-colors-head::before,.bt-cc-colors-head::after{content:"";width:16px;height:1px;background:linear-gradient(to right,transparent,var(--ui-line-strong))}
+.bt-cc-colors-head::after{transform:rotate(180deg)}
+.bt-cc-colors-row{display:flex;flex-direction:row;align-items:center;gap:6px;min-width:0;height:calc(var(--cc-swatch) + 4px);overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain;touch-action:pan-x;padding:2px 1px;scroll-snap-type:x proximity;scrollbar-width:none;box-sizing:border-box}
+.bt-cc-colors-row::-webkit-scrollbar{display:none}
+.bt-cc-colors-row>*{flex:0 0 var(--cc-swatch)!important;width:var(--cc-swatch)!important;height:var(--cc-swatch)!important;scroll-snap-align:start}
+.bt-cc-colors-row>*:first-child{margin-left:auto}
+.bt-cc-colors-row>*:last-child{margin-right:auto}
+/* v2.3.1254: scroll affordance (owner: indicate there are more items) —
+   each strip sits in a .bt-cc-scroll wrap; when content extends past
+   the right edge, a sheet-colored fade + chevron fades in (driven by
+   the scrollMore state in NameModal.jsx, measured on scroll/category
+   change).  pointer-events:none — it's paint, not a control; the glyph
+   matches the retired pager's › (no emoji). */
+.bt-cc-scroll{position:relative;flex:0 0 auto;min-width:0}
+.bt-cc-more{position:absolute;top:0;right:0;bottom:0;width:26px;display:flex;align-items:center;justify-content:flex-end;padding-right:2px;pointer-events:none;opacity:0;transition:opacity 160ms ease;background:linear-gradient(to right,rgba(30,46,52,0),var(--ui-sheet) 80%);color:var(--ui-text-secondary);font-size:15px;font-weight:700;line-height:1}
+.bt-cc-more--on{opacity:1}
 .bt-avatar-pick{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin:12px 0}
 .bt-avatar-opt{width:56px;height:56px;border-radius:10px;border:2px solid var(--line);cursor:pointer;overflow:hidden;transition:border-color .15s,transform .15s}
 .bt-avatar-opt.sel{border-color:var(--pop);transform:scale(1.1)}
