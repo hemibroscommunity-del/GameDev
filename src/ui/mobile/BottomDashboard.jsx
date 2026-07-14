@@ -212,7 +212,8 @@ const ColHeader = ({ variant, children }) => (
     /* v2.3.1257: owner experiment — the +26px the band gained for the
        v2.3.1256 subheaders goes to the HEADER instead (21 -> 47px cap;
        the strips are removed).  Same band height, same slot budget. */
-    ...(variant ? { margin: '-4px -4px 4px', padding: '4px 6px 2px', height: 47, flex: '0 0 47px' } : null),
+    /* v2.3.1261: cap-to-block spacing = the 8px slot gap (was 4). */
+    ...(variant ? { margin: '-4px -4px 8px', padding: '4px 6px 2px', height: 47, flex: '0 0 47px' } : null),
   }}>
     <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{children}</span>
   </div>
@@ -498,7 +499,7 @@ const SLOT_GAP = 8;
    (grid-edge margin 8 + column 4 = 12 visual).  Reserving 16px instead
    (2 gaps + 2x4px margins) makes: in-grid side margin 4 + column 4 = 8
    == the inter-slot gap.  Cells grow ~4px in the bargain. */
-const FIT_TRACK = 'min(calc((100cqw - 16px) / 2), calc((100cqh - 20px) / 3))';
+const FIT_TRACK = 'min(calc((100cqw - 16px) / 2), calc((100cqh - 16px) / 3))';
 
 const InventoryPreview = () => {
   const [, force] = useState(0);
@@ -1001,7 +1002,7 @@ export const BottomDashboard = () => {
                    grids now pad 0), so the cells absorb the freed width.
                    Vertical stays 4 — the shared bottom-padding number the
                    §4 bottom alignment is built on. */
-                padding: '4px 4px 6px',
+                padding: '4px 4px 8px', /* v2.3.1261: block-to-bottom = 8px */
                 /* v2.3.1240: this shared dark functional well is the only
                    outer chrome; Bag remains the quiet/deep module. */
                 /* v2.3.129: clip overflow so the Kills row (and any other
@@ -1181,7 +1182,7 @@ export const BottomDashboard = () => {
                 /* v2.3.1236: owner feedback r3 §2 — symmetric minimal 2px
                    horizontal inset (matches Bag/Build); 4px vertical kept
                    as the shared bottom-padding for the §4 alignment. */
-                padding: '4px 4px 6px',
+                padding: '4px 4px 8px', /* v2.3.1261: block-to-bottom = 8px */
                 position: 'relative',
                 zIndex: 1,
               }}>
@@ -1616,7 +1617,7 @@ export const BottomDashboard = () => {
                 /* v2.3.1236: owner feedback r3 §2 — symmetric minimal 2px
                    horizontal inset (matches Bag/Loadout); 4px vertical kept
                    as the shared bottom-padding for the §4 alignment. */
-                padding: '4px 4px 6px',
+                padding: '4px 4px 8px', /* v2.3.1261: block-to-bottom = 8px */
               }}>
                 <ColHeader variant="build">{SHOW_LIFE_SKILLS ? 'Stats · Skills' : 'Build'}</ColHeader>
                 {/* v2.3.1236: owner feedback r3 §4 — no alignment change
