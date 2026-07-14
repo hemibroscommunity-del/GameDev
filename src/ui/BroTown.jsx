@@ -1826,6 +1826,11 @@ export var BroTown = function BroTown(_ref0) {
        see game.css).  Mirror exactly. */
     var DASH_W_FRAC = 0.5;
     var DASH_BASE = 88; /* v2.3.1262: cap halved */
+    /* v2.3.1264: owner — the band's 14px rounded top corners cut out to
+       the page background (a black spot at each shoulder).  The canvas
+       now runs 14px UNDER the band, so the corner notches show live
+       world instead.  (Owner prefers world over squaring the corners.) */
+    var DASH_OVERLAP = 14;
     function resize() {
       var dpr = window.devicePixelRatio || 1;
       var vw = vv ? vv.width : window.innerWidth;
@@ -1837,7 +1842,7 @@ export var BroTown = function BroTown(_ref0) {
          then floats over the canvas like an overlay instead of
          shifting the scene up and exposing a black bar at the bottom. */
       if (vv && window.innerHeight - vhFull > 100) return;
-      var vh = Math.max(120, Math.round(vhFull - (vw * DASH_W_FRAC + DASH_BASE)));
+      var vh = Math.max(120, Math.round(vhFull - (vw * DASH_W_FRAC + DASH_BASE)) + DASH_OVERLAP);
       canvas.width = vw * dpr;
       canvas.height = vh * dpr;
       canvas.style.width = vw + 'px';
