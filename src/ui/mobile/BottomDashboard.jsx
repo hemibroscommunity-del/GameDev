@@ -486,6 +486,13 @@ const FIT_GRID_CONTAIN = { containerType: 'size' };
 /* v2.3.1254: owner experiment — bag drops to 6 tiles and the DEF/DPS row
    comes out of the loadout, so BOTH grids are 2x3; height budget divides
    by 3 (cells get bigger again). */
+/* v2.3.1259: owner — slot spacing equal VERTICALLY and HORIZONTALLY.
+   Per-axis space-evenly gave h=8 / v=~12 (3 rows vs 2 columns split
+   their leftovers differently).  One fixed 8px gap on both axes now:
+   the width arm below reserves exactly 24px = 3 gaps, so width-bound
+   cells get 8px side margins too — gap == edge == 8 everywhere; the
+   remaining vertical slack pools quietly below the slot block. */
+const SLOT_GAP = 8;
 const FIT_TRACK = 'min(calc((100cqw - 24px) / 2), calc((100cqh - 20px) / 3))';
 
 const InventoryPreview = () => {
@@ -576,13 +583,13 @@ const InventoryPreview = () => {
         minHeight: 0,
         display: 'grid',
         /* v2.3.1251: 3 -> 2 columns (owner: bigger slots, more rows). */
-        /* v2.3.1252: cell-sized tracks.  v2.3.1253: space-evenly on BOTH
-           axes — edge padding equals inter-cell spacing, per axis. */
+        /* v2.3.1252: cell-sized tracks.  v2.3.1259: ONE fixed gap on both
+           axes (see SLOT_GAP) — vertical spacing == horizontal spacing. */
         gridTemplateColumns: `repeat(2, ${FIT_TRACK})`,
-        justifyContent: 'space-evenly',
+        justifyContent: 'center',
         gridAutoRows: 'min-content',
-        alignContent: 'space-evenly',
-        gap: 0,
+        alignContent: 'start',
+        gap: SLOT_GAP,
         padding: 0,
       }}>
         {tiles.map((e, i) => (
@@ -1442,13 +1449,13 @@ export const BottomDashboard = () => {
                       /* v2.3.1251: 3 -> 2 columns (owner) — six slots flow as
                          chest·weapon / shield·legs / neck·cape; the DEF/DPS
                          table moves to row 4. */
-                      /* v2.3.1252: cell-sized tracks.  v2.3.1253: space-evenly
-                         on BOTH axes, matching the bag grid exactly. */
+                      /* v2.3.1252: cell-sized tracks.  v2.3.1259: ONE fixed
+                         gap on both axes, matching the bag grid exactly. */
                       gridTemplateColumns: `repeat(2, ${FIT_TRACK})`,
-                      justifyContent: 'space-evenly',
+                      justifyContent: 'center',
                       gridAutoRows: 'min-content',
-                      alignContent: 'space-evenly',
-                      gap: 0,
+                      alignContent: 'start',
+                      gap: SLOT_GAP,
                       padding: 0,
                     }}>
                       {/* The six equipment slots.  v2.3.1255 owner order:
