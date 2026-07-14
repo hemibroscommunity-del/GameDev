@@ -196,7 +196,10 @@ const ColHeader = ({ variant, children }) => (
     /* v2.3.1269: owner — one consistent UI type treatment: Title Case
        like the toolbar labels (the all-caps + wide tracking was the
        odd one out), 13/700. */
-    fontSize: 13,
+    /* v2.3.1278: the re-derived panels are ~25vw wide (82px at 430) —
+       a fixed 13px truncated "Equipped" on the narrow caps.  Scale
+       with the panel, 10px floor (owner rule), 13px ceiling. */
+    fontSize: 'clamp(10px, 2.9vw, 13px)',
     fontWeight: 700,
     /* v2.3.1240: the approved mockup uses a near-white, crisp header;
        COL.text2 made the built version read noticeably gray. */
@@ -504,6 +507,17 @@ const SLOT_GAP = 8;
    (2 gaps + 2x4px margins) makes: in-grid side margin 4 + column 4 = 8
    == the inter-slot gap.  Cells grow ~4px in the bargain. */
 const FIT_TRACK = 'min(calc((100cqw - 16px) / 2), calc((100cqh - 16px) / 3))';
+/* v2.3.1278: owner — "re-derive the grid" for the 25%-shorter band
+   (v2.3.1277).  At the new height the cells are height-bound, so the
+   PANELS narrow to fit them instead of stretching full-width: the
+   height arm gives t = (band - 141px)/3 = 12.5vw - 25px (141 = 16px
+   grid gaps + 125px measured chrome, see the game.css --dash-h note),
+   and a panel needs 2t + 16px content + 10px padding/border.  2px is
+   shaved so device rounding keeps cells in the WIDTH-bound regime —
+   that is the regime where gap == edge == 8 holds exactly; the
+   sub-pixel vertical slack pools invisibly below the block.  The row
+   centers the narrowed trio (space-evenly). */
+const PANEL_W = 'calc(25vw - 26px)';
 
 const InventoryPreview = () => {
   const [, force] = useState(0);
@@ -980,7 +994,7 @@ export const BottomDashboard = () => {
             {/* v2.3.1240: three equal dark wells on the lighter tray use
                 common-region grouping and 6px gutters; divider rules are
                 intentionally gone. */}
-            <div style={{ flex: 1, display: 'flex', gap: 6, minHeight: 0 }}>
+            <div style={{ flex: 1, display: 'flex', gap: 6, minHeight: 0, justifyContent: 'space-evenly' /* v2.3.1278 */ }}>
               {/* ── Left column — hybrid card: HP/MP/END chip row +
                   Crit/Move derived stats + session summary (Zone, Kills,
                   Playtime).  v2.3.126: portrait migrated to the top-right
@@ -995,7 +1009,7 @@ export const BottomDashboard = () => {
                 /* v2.3.1236: owner feedback r2 §2 — back to equal thirds so
                    a bag cell and a loadout slot render the same size (both
                    grids: 3 equal columns, gap 4, 2px inner inset). */
-                flex: '1 1 0',
+                flex: '0 0 auto', width: PANEL_W, /* v2.3.1278: re-derived */
                 display: 'flex',
                 flexDirection: 'column',
                 minWidth: 0,
@@ -1179,7 +1193,7 @@ export const BottomDashboard = () => {
                    r4 §2: ...and it's back, by owner request, as a compact
                    icon-based line occupying the grid's third row (level
                    with the bag's third row now that both grids top-align). */
-                flex: '1 1 0',
+                flex: '0 0 auto', width: PANEL_W, /* v2.3.1278: re-derived */
                 display: 'flex',
                 flexDirection: 'column',
                 minWidth: 0,
@@ -1356,7 +1370,13 @@ export const BottomDashboard = () => {
                              are ~40-47px wide, so the 10px floor finally
                              fits the label set (verified on the rig at 390;
                              overflow:hidden stays as the backstop). */
-                          fontSize: 10,
+                          /* v2.3.1278: the re-derived cells are 12.5vw-25px
+                             (28px at 430, 21px on an SE) — a fixed 10px tag
+                             clipped 8px on the SE (measured with the real
+                             Source Sans 3 on the rig).  Track the cell:
+                             ~1/3 of its width, 10px ceiling (the 10px floor
+                             stays waived HERE, as since v2.3.1239). */
+                          fontSize: 'min(10px, calc((12.5vw - 25px) * 0.33))',
                           letterSpacing: '-0.02em',
                           maxWidth: '100%',
                           overflow: 'hidden',
@@ -1614,7 +1634,7 @@ export const BottomDashboard = () => {
                 /* v2.3.1236: owner feedback r2 §2 — equal third (this column
                    actually WIDENS, 31% -> 33.3%, so its 3x2 text cells gain
                    room; no inner-padding change needed). */
-                flex: '1 1 0',
+                flex: '0 0 auto', width: PANEL_W, /* v2.3.1278: re-derived */
                 display: 'flex',
                 flexDirection: 'column',
                 minWidth: 0,
