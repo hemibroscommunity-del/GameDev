@@ -55,8 +55,11 @@ const NODE_SPRITE_SOURCES = {
   oreVein:  '/sprites/world/ore-vein.webp',
 };
 const NODE_SPRITE_TEX = {};
-/* Target render heights in world px at tierStep 1, scaled up with tier. */
-const NODE_SPRITE_HEIGHT_BASE = { tree: 112, fishSpot: 88, oreVein: 88 };
+/* Target render heights in world px at tierStep 1, scaled up with tier.
+   v2.3.1275: +50% (was tree 112 / fishSpot 88 / oreVein 88) — owner's
+   size experiment scales resources with the 50%-bigger monsters.  The
+   ore-break animation derives from these too (_spawnOreBreak). */
+const NODE_SPRITE_HEIGHT_BASE = { tree: 168, fishSpot: 132, oreVein: 132 };
 const NODE_SPRITE_ANCHOR_Y = { tree: 1.0, fishSpot: 0.5, oreVein: 1.0 };
 Promise.all(Object.entries(NODE_SPRITE_SOURCES).map(([k, path]) =>
   Assets.load(path).then((tex) => { NODE_SPRITE_TEX[k] = tex; })
@@ -2416,22 +2419,24 @@ export class EffectsRenderer {
           else _wantLayer.addChild(node._pixiSprite);
         }
       } else if (node.nodeType === 'tree') {
-        const tw = tier?.trunkW || 3;
-        const th = tier?.trunkH || 8;
-        const cr = tier?.canopyR || 6;
+        /* v2.3.1275: procedural fallbacks get the same +50% as the
+           sprites so nodes don't visibly shrink once textures resolve. */
+        const tw = (tier?.trunkW || 3) * 1.5;
+        const th = (tier?.trunkH || 8) * 1.5;
+        const cr = (tier?.canopyR || 6) * 1.5;
         gfx.rect(node.x - tw / 2, node.y - th, tw, th);
         gfx.fill({ color: cssToHex(tier?.trunkColor || '#3a2810') });
         gfx.circle(node.x, node.y - th - cr * 0.5, cr);
         gfx.fill({ color: cssToHex(tier?.canopyColor || '#2a7a1a') });
       } else if (node.nodeType === 'fishSpot') {
         const pulse = Math.sin(now / 600 + node.x) * 0.2 + 1;
-        const r = (tier?.size || 6) * pulse;
+        const r = (tier?.size || 6) * 1.5 * pulse;
         gfx.circle(node.x, node.y, r);
         gfx.fill({ color: 0x3498db, alpha: 0.35 });
         gfx.circle(node.x, node.y, r * 0.6);
         gfx.fill({ color: 0x3498db, alpha: 0.2 });
       } else {
-        const size = tier?.size || 8;
+        const size = (tier?.size || 8) * 1.5;
         gfx.circle(node.x, node.y, size / 2);
         gfx.fill({ color: cssToHex(tier?.rockColor || '#6a6a6a') });
         gfx.circle(node.x + 2, node.y - 1, size / 4);
