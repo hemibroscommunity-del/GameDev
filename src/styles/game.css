@@ -732,13 +732,42 @@ input{font-family:inherit}
 /* v2.3.1251: PLAY → ENTER BRO TOWN, the screen's ONE dominant gold
    action (approved mockup) — the 230px cap is superseded: full card
    width up to 500px, 56px tall. */
-.bt-cc-play{background:linear-gradient(180deg,#E2B765,#D2A14D);border:1px solid var(--ui-brass-highlight);border-radius:12px;box-shadow:inset 0 1px 0 rgba(255,255,255,.25),0 2px 6px rgba(0,0,0,.22);color:#172126;min-height:56px;max-width:500px;margin-left:auto;margin-right:auto;font-family:'Source Sans 3',sans-serif;font-size:clamp(16px,4.7vw,19px);font-weight:800;letter-spacing:.08em;text-transform:uppercase}
-.bt-cc-play:active{transform:translateY(1px);filter:brightness(1.05)}
-/* v2.3.1235: ornate gold-border treatment dropped — Randomize is a plain
-   secondary button (fill/text inline in NameModal.jsx); :active needs
-   !important only to outrank that inline background. */
-.bt-cc-rand{border:1px solid var(--ui-line-strong)}
-.bt-cc-rand:active{background:var(--ui-raised-high)!important}
+/* v2.3.1254: chunky bevel restored (the historical PLAY treatment —
+   border-bottom IS the bevel; presses flat on tap).  Buttons are
+   border-box, so the thicker bottom edge changes no layout. */
+.bt-cc-play{background:linear-gradient(180deg,#E2B765,#D2A14D);border:1px solid var(--ui-brass-highlight);border-bottom:4px solid #9C742D;border-radius:12px;box-shadow:inset 0 1px 0 rgba(255,255,255,.30),0 2px 6px rgba(0,0,0,.22);color:#172126;min-height:56px;max-width:500px;margin-left:auto;margin-right:auto;font-family:'Source Sans 3',sans-serif;font-size:clamp(16px,4.7vw,19px);font-weight:800;letter-spacing:.08em;text-transform:uppercase;box-sizing:border-box}
+.bt-cc-play:active{transform:translateY(2px);border-bottom-width:2px;filter:brightness(1.05)}
+/* v2.3.1254: creator slate buttons (dice, Randomize) share one class
+   carrying the v2.3.1241 edge-parity MICRO-BEVEL — a hairline top
+   highlight + bottom shade painted INSIDE the fill gradient (owner:
+   buttons need a beveled appearance; same recipe as the dashboard nav,
+   which replaced stacked box-shadow bevels that fattened on Retina).
+   Pressed = reversed bevel over the raised-high fill. */
+.bt-cc-btn{
+  background:
+    linear-gradient(180deg,
+      rgba(255,255,255,.07) 0,
+      rgba(255,255,255,.07) var(--ui-hairline),
+      transparent var(--ui-hairline),
+      transparent calc(100% - var(--ui-hairline)),
+      rgba(0,0,0,.30) calc(100% - var(--ui-hairline)),
+      rgba(0,0,0,.30) 100%),
+    #293B41;
+  border:var(--ui-hairline) solid rgba(229,237,233,.22);
+  color:#F4F0E7;
+}
+.bt-cc-btn:active{
+  transform:translateY(1px);
+  background:
+    linear-gradient(180deg,
+      rgba(0,0,0,.30) 0,
+      rgba(0,0,0,.30) var(--ui-hairline),
+      transparent var(--ui-hairline),
+      transparent calc(100% - var(--ui-hairline)),
+      rgba(255,255,255,.07) calc(100% - var(--ui-hairline)),
+      rgba(255,255,255,.07) 100%),
+    #32454C;
+}
 /* v2.3.718: name input on the owner's parchment scroll (3-slice border-
    image: rolled end caps stay fixed, the parchment middle stretches).
    Ink-dark text + placeholder; the quill img is an absolutely-positioned
@@ -874,7 +903,16 @@ input{font-family:inherit}
    consistent character size). */
 .bt-cc-ghost{visibility:hidden}
 .bt-cc-subtab{min-width:72px;min-height:28px;padding:3px 12px;border:0;border-radius:7px;background:transparent;color:var(--ui-text-secondary);font-size:11px;font-weight:700;letter-spacing:.02em;font-family:'Source Sans 3',sans-serif;cursor:pointer}
-.bt-cc-subtab--on{color:var(--ui-text);background:var(--ui-raised)}
+/* v2.3.1254: selected subtab is a raised, micro-beveled chip. */
+.bt-cc-subtab--on{color:var(--ui-text);background:
+  linear-gradient(180deg,
+    rgba(255,255,255,.07) 0,
+    rgba(255,255,255,.07) var(--ui-hairline),
+    transparent var(--ui-hairline),
+    transparent calc(100% - var(--ui-hairline)),
+    rgba(0,0,0,.30) calc(100% - var(--ui-hairline)),
+    rgba(0,0,0,.30) 100%),
+  var(--ui-raised)}
 /* v2.3.1251: the drawer (one step at a time + collapse-on-select +
    ‹ 1/2 › pager, v2.3.835-1036) is retired by the approved mockup: the
    option STRIP always shows the whole catalog — exactly five complete
@@ -910,6 +948,15 @@ input{font-family:inherit}
 .bt-cc-colors-row>*{flex:0 0 var(--cc-swatch)!important;width:var(--cc-swatch)!important;height:var(--cc-swatch)!important;scroll-snap-align:start}
 .bt-cc-colors-row>*:first-child{margin-left:auto}
 .bt-cc-colors-row>*:last-child{margin-right:auto}
+/* v2.3.1254: scroll affordance (owner: indicate there are more items) —
+   each strip sits in a .bt-cc-scroll wrap; when content extends past
+   the right edge, a sheet-colored fade + chevron fades in (driven by
+   the scrollMore state in NameModal.jsx, measured on scroll/category
+   change).  pointer-events:none — it's paint, not a control; the glyph
+   matches the retired pager's › (no emoji). */
+.bt-cc-scroll{position:relative;flex:0 0 auto;min-width:0}
+.bt-cc-more{position:absolute;top:0;right:0;bottom:0;width:36px;display:flex;align-items:center;justify-content:flex-end;padding-right:3px;pointer-events:none;opacity:0;transition:opacity 160ms ease;background:linear-gradient(to right,rgba(30,46,52,0),var(--ui-sheet) 80%);color:var(--ui-text-secondary);font-size:19px;font-weight:700;line-height:1}
+.bt-cc-more--on{opacity:1}
 .bt-avatar-pick{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin:12px 0}
 .bt-avatar-opt{width:56px;height:56px;border-radius:10px;border:2px solid var(--line);cursor:pointer;overflow:hidden;transition:border-color .15s,transform .15s}
 .bt-avatar-opt.sel{border-color:var(--pop);transform:scale(1.1)}

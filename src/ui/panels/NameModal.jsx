@@ -49,6 +49,12 @@ import { SHIRT_COLOR_CATALOG, setShirtColor } from '@/rendering/traits/shirtColo
    sizing), so no sheet content can move the stage at all.  The
    'default' color also loses its swatch entirely: unpicked = default,
    and re-tapping the picked swatch unselects back to default. */
+/* v2.3.1254: owner round 3 — beveled buttons (dice/Randomize share the
+   .bt-cc-btn micro-bevel, rotate circles get inset shadows, ENTER gets
+   the historical chunky border-bottom bevel, selected subtab raised)
+   and a scroll affordance: each strip sits in .bt-cc-scroll with a
+   sheet-colored fade + › chevron that shows while more items wait
+   off-screen (scrollMore state, measured on scroll/content change). */
 export function NameModal(props) {
   var _dragRotX = props._dragRotX,
     _swatchTile = props._swatchTile,
@@ -165,10 +171,28 @@ export function NameModal(props) {
      content width changes with the catalog. */
   var _stripRef = React.useRef(null);
   var _colorRowRef = React.useRef(null);
+  /* v2.3.1254: scroll affordance — per-strip "more content to the
+     right" flags drive the fade+chevron overlays (.bt-cc-more).
+     Measured on scroll and whenever the strip contents change; the
+     setter bails when nothing changed so scrolling doesn't re-render
+     every frame. */
+  var _moreS = React.useState({ items: false, colors: false }), scrollMore = _moreS[0], setScrollMore = _moreS[1];
+  var _measureMore = function () {
+    var i = _stripRef.current, c = _colorRowRef.current;
+    var next = {
+      items: !!(i && i.scrollWidth - i.clientWidth - i.scrollLeft > 2),
+      colors: !!(c && c.scrollWidth - c.clientWidth - c.scrollLeft > 2)
+    };
+    setScrollMore(function (p) { return (p.items === next.items && p.colors === next.colors) ? p : next; });
+  };
   React.useEffect(function () {
     if (_stripRef.current) _stripRef.current.scrollLeft = 0;
     if (_colorRowRef.current) _colorRowRef.current.scrollLeft = 0;
+    _measureMore();
   }, [activeCat]);
+  /* Re-measure without a scroll reset when the pick changes — the color
+     row appears/disappears with it and the user may be mid-browse. */
+  React.useEffect(function () { _measureMore(); }, [_def.sel]);
   /* v2.3.1143: Login Key overlay toggle (self-contained -- no BroTown prop). */
   var _acS = React.useState(false), showAccount = _acS[0], setShowAccount = _acS[1];
   /* v2.3.1235 rollout micro-fix §2's inline-SVG die (currentColor — no
@@ -279,14 +303,19 @@ export function NameModal(props) {
        48–52px) and dropped to the platform's baseline so they read as
        part of the pedestal, not the stage corners. */
     type: 'button', title: 'Rotate left', onClick: function () { rotatePreview(1); },
+    /* v2.3.1254: inset top-light / bottom-shade bevel — the hairline-
+       gradient recipe reads as a sliver on a circle, so circles use
+       soft inset shadows instead. */
     style: { position: 'absolute', left: 8, bottom: '3%', width: 50, height: 50, borderRadius: '50%', cursor: 'pointer',
       background: 'rgba(17,25,29,.88)', border: '1px solid rgba(238,242,235,.24)', color: 'var(--txt)',
+      boxShadow: 'inset 0 1px 0 rgba(255,255,255,.10), inset 0 -2px 3px rgba(0,0,0,.38), 0 2px 6px rgba(3,8,12,.30)',
       display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }
   }, /*#__PURE__*/React.createElement("span", { style: { fontSize: 23, fontWeight: 700, lineHeight: 1, transform: 'translateY(-1px)' } }, "↺")),
   /*#__PURE__*/React.createElement("button", {
     type: 'button', title: 'Rotate right', onClick: function () { rotatePreview(-1); },
     style: { position: 'absolute', right: 8, bottom: '3%', width: 50, height: 50, borderRadius: '50%', cursor: 'pointer',
       background: 'rgba(17,25,29,.88)', border: '1px solid rgba(238,242,235,.24)', color: 'var(--txt)',
+      boxShadow: 'inset 0 1px 0 rgba(255,255,255,.10), inset 0 -2px 3px rgba(0,0,0,.38), 0 2px 6px rgba(3,8,12,.30)',
       display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }
   }, /*#__PURE__*/React.createElement("span", { style: { fontSize: 23, fontWeight: 700, lineHeight: 1, transform: 'translateY(-1px)' } }, "↻"))),
   /*#__PURE__*/React.createElement("div", {
@@ -333,9 +362,13 @@ export function NameModal(props) {
   }), /*#__PURE__*/React.createElement("button", {
     type: 'button', title: 'Random name', "aria-label": 'Generate a random name', onClick: rollRandomName,
     /* v2.3.1251: "Roll" text → dice icon inside the input (handoff).
-       44pt touch target, inline-SVG die (no emoji / no asset). */
+       44pt touch target, inline-SVG die (no emoji / no asset).
+       v2.3.1254: chrome moved to .bt-cc-btn (micro-bevel); the inline
+       styles left are layout-only.  No :active translate here — the
+       button sits inside the input, so it presses via the class's
+       reversed bevel instead of moving. */
+    className: "bt-cc-btn",
     style: { position: 'absolute', right: 2, top: '50%', transform: 'translateY(-50%)', width: 44, height: 44, borderRadius: 8, cursor: 'pointer',
-      background: '#293B41', border: '1px solid rgba(229,237,233,0.20)', color: '#F4F0E7',
       display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }
   }, _dieSvg(20))), /*#__PURE__*/React.createElement("nav", {
     className: "bt-cc-tabs", role: 'tablist', "aria-label": 'Appearance category'
@@ -370,13 +403,17 @@ export function NameModal(props) {
       })
     : /*#__PURE__*/React.createElement("button", {
         type: 'button', className: "bt-cc-subtab", tabIndex: -1, disabled: true
-      }, " ")), /*#__PURE__*/React.createElement("div", {
+      }, " ")), /*#__PURE__*/React.createElement("div", { className: "bt-cc-scroll" },
+  /*#__PURE__*/React.createElement("div", {
     /* Option strip — exactly five complete tiles at rest; extra options
        scroll horizontally (sizing in .bt-cc-strip, game.css).  The whole
        catalog is always rendered: the v2.3.835 collapse-on-select
        machinery is retired with the pager. */
-    className: "bt-cc-strip", ref: _stripRef, role: 'listbox', "aria-label": _def.label + ' options'
-  }, _items), /*#__PURE__*/React.createElement("div", {
+    className: "bt-cc-strip", ref: _stripRef, onScroll: _measureMore, role: 'listbox', "aria-label": _def.label + ' options'
+  }, _items), /*#__PURE__*/React.createElement("span", {
+    /* v2.3.1254: fade + chevron while more tiles wait off-screen. */
+    className: "bt-cc-more" + (scrollMore.items ? " bt-cc-more--on" : ""), "aria-hidden": true
+  }, "›")), /*#__PURE__*/React.createElement("div", {
     /* v2.3.1252: like the subtabs, the color block always occupies its
        row — an invisible ghost (with one placeholder tile so the row
        keeps its swatch height) when the type/pick has no colors.  This
@@ -386,15 +423,18 @@ export function NameModal(props) {
     className: "bt-cc-colors" + (_colors ? "" : " bt-cc-ghost"),
     "aria-hidden": _colors ? undefined : true
   }, /*#__PURE__*/React.createElement("span", { className: "bt-cc-colors-head" }, "Color"),
+  /*#__PURE__*/React.createElement("div", { className: "bt-cc-scroll" },
   /*#__PURE__*/React.createElement("div", {
-    className: "bt-cc-colors-row", ref: _colorRowRef, role: _colors ? 'radiogroup' : undefined, "aria-label": _colors ? _def.label + ' colors' : undefined
-  }, _colors || /*#__PURE__*/React.createElement("div", null))), /*#__PURE__*/React.createElement("button", {
+    className: "bt-cc-colors-row", ref: _colorRowRef, onScroll: _measureMore, role: _colors ? 'radiogroup' : undefined, "aria-label": _colors ? _def.label + ' colors' : undefined
+  }, _colors || /*#__PURE__*/React.createElement("div", null)), /*#__PURE__*/React.createElement("span", {
+    className: "bt-cc-more" + (scrollMore.colors ? " bt-cc-more--on" : ""), "aria-hidden": true
+  }, "›")))), /*#__PURE__*/React.createElement("button", {
     /* Appearance RANDOMIZE — visually secondary (handoff), inside the
-       sheet, right under what it acts on. */
-    type: 'button', onClick: randomizeWithFlair, className: "bt-cc-rand",
+       sheet, right under what it acts on.  v2.3.1254: chrome moved to
+       .bt-cc-btn (micro-bevel); inline styles are layout-only. */
+    type: 'button', onClick: randomizeWithFlair, className: "bt-cc-btn",
     style: { alignSelf: 'center', padding: '6px 14px', minHeight: 40, cursor: 'pointer', borderRadius: 9,
       display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-      background: '#293B41', color: '#F4F0E7',
       fontSize: 12, fontWeight: 700, letterSpacing: '.02em', fontFamily: "'Source Sans 3',sans-serif" }
   }, _dieSvg(16), /*#__PURE__*/React.createElement("span", null, "Randomize appearance"))),
   /*#__PURE__*/React.createElement("button", {
