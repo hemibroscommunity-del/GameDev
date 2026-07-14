@@ -684,13 +684,14 @@ input{font-family:inherit}
 /* v2.3.1251: 320px-class widths — the five tabs and five tiles keep one
    row; only gaps/labels compress (approved mockup's 359px breakpoint). */
 @media (max-width:359px){
+  /* v2.3.1253: var redefinition for the 8px menu padding + tighter gaps
+     (modal 20 + box 24 + menu 16 + border 2 + row pad 2 + gaps). */
+  .bt-name-modal{--cc-tile:calc((100vw - 84px)/5);--cc-swatch:calc((100vw - 94px)/6)}
   .bt-name-box.bt-cc-box>.bt-cc-menu{padding:8px}
   .bt-cc-tabs{gap:2px}
   .bt-cc-tab-label{font-size:10px}
   .bt-cc-strip{gap:5px}
-  .bt-cc-strip>*{flex-basis:calc((100% - 20px)/5)!important}
   .bt-cc-colors-row{gap:6px}
-  .bt-cc-colors-row>*{flex-basis:calc((100% - 30px)/6)!important}
 }
 /* Torch pillars flanking the character — 12-frame sprite strip (static
    pillar + the flame animated from the owner's generated clip).  jump-none
@@ -882,9 +883,20 @@ input{font-family:inherit}
    below it.  Tile sizing overrides the inline _apTileStyle px (the
    !important trick the old grid used); aspect-ratio keeps them square
    at the flex-basis width. */
-.bt-cc-strip{flex:0 0 auto;display:flex;flex-direction:row;align-items:center;gap:6px;min-width:0;overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain;touch-action:pan-x;padding:2px 1px 4px;scroll-padding-inline:1px;scroll-snap-type:x proximity;scrollbar-width:none}
+/* v2.3.1253: tile/swatch sizes are EXPLICIT viewport-derived lengths
+   (owner: a residual subtle stage resize survived the v2.3.1252 ghost
+   rows).  The old %-flex-basis + aspect-ratio:1/1 sizing let the row
+   height derive from layout — one WebKit rounding or aspect-ratio
+   quirk and the sheet moves the flex stage.  Now both rows carry a
+   FIXED height and their children fixed square sizes, so NO content
+   can change the sheet's height.  The formulas mirror the box math
+   (modal 20 + box pad 24 + menu pad 20 + border 2 + row pad 2 +
+   gaps), min()-capped for the 560px card ceiling; the ≤359px media
+   redefines them for its tighter gaps/padding. */
+.bt-name-modal{--cc-tile:min(calc((100vw - 92px)/5),97px);--cc-swatch:min(calc((100vw - 108px)/6),78px)}
+.bt-cc-strip{flex:0 0 auto;display:flex;flex-direction:row;align-items:center;gap:6px;min-width:0;height:calc(var(--cc-tile) + 6px);overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain;touch-action:pan-x;padding:2px 1px 4px;scroll-padding-inline:1px;scroll-snap-type:x proximity;scrollbar-width:none;box-sizing:border-box}
 .bt-cc-strip::-webkit-scrollbar{display:none}
-.bt-cc-strip>*{flex:0 0 calc((100% - 24px)/5)!important;width:auto!important;height:auto!important;aspect-ratio:1/1;scroll-snap-align:start}
+.bt-cc-strip>*{flex:0 0 var(--cc-tile)!important;width:var(--cc-tile)!important;height:var(--cc-tile)!important;scroll-snap-align:start}
 /* Colors: fixed-size swatches so a long catalog scrolls with six-ish
    visible at phone width; the first/last auto margins center a short
    row WITHOUT the clipped-left-edge bug of justify-content:center on an
@@ -893,9 +905,9 @@ input{font-family:inherit}
 .bt-cc-colors-head{display:flex;align-items:center;justify-content:center;gap:10px;font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--ui-text-muted);font-family:'Source Sans 3',sans-serif;line-height:1}
 .bt-cc-colors-head::before,.bt-cc-colors-head::after{content:"";width:20px;height:1px;background:linear-gradient(to right,transparent,var(--ui-line-strong))}
 .bt-cc-colors-head::after{transform:rotate(180deg)}
-.bt-cc-colors-row{display:flex;flex-direction:row;align-items:center;gap:8px;min-width:0;overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain;touch-action:pan-x;padding:2px 1px;scroll-snap-type:x proximity;scrollbar-width:none}
+.bt-cc-colors-row{display:flex;flex-direction:row;align-items:center;gap:8px;min-width:0;height:calc(var(--cc-swatch) + 4px);overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain;touch-action:pan-x;padding:2px 1px;scroll-snap-type:x proximity;scrollbar-width:none;box-sizing:border-box}
 .bt-cc-colors-row::-webkit-scrollbar{display:none}
-.bt-cc-colors-row>*{flex:0 0 calc((100% - 40px)/6)!important;width:auto!important;height:auto!important;aspect-ratio:1/1;scroll-snap-align:start}
+.bt-cc-colors-row>*{flex:0 0 var(--cc-swatch)!important;width:var(--cc-swatch)!important;height:var(--cc-swatch)!important;scroll-snap-align:start}
 .bt-cc-colors-row>*:first-child{margin-left:auto}
 .bt-cc-colors-row>*:last-child{margin-right:auto}
 .bt-avatar-pick{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin:12px 0}

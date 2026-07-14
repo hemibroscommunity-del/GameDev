@@ -43,6 +43,12 @@ import { SHIRT_COLOR_CATALOG, setShirtColor } from '@/rendering/traits/shirtColo
    when unused) so the sheet height is constant and the flex stage
    never resizes the character between categories; the color row's
    'default' tile shows the catalog swatch, not the item icon again. */
+/* v2.3.1253: owner reported a residual subtle grow/shrink when the
+   color row toggled.  The strip/color rows now have EXPLICIT viewport-
+   derived heights in game.css (no aspect-ratio, no content-derived
+   sizing), so no sheet content can move the stage at all.  The
+   'default' color also loses its swatch entirely: unpicked = default,
+   and re-tapping the picked swatch unselects back to default. */
 export function NameModal(props) {
   var _dragRotX = props._dragRotX,
     _swatchTile = props._swatchTile,
@@ -143,14 +149,16 @@ export function NameModal(props) {
       : _swatchTile(o, _def.sel, _onPick, 40);
   });
   /* Colors sit DIRECTLY below the options (handoff) and go blank when
-     the type has none or the pick is 'none'.  v2.3.1252: the 'default'
-     tile no longer repeats the picked item's thumbnail (owner: don't
-     show the same icon again in the color row) — with no thumbCat arg,
-     _swatchTile falls back to the catalog's own 'default' swatch hex,
-     which every color catalog carries. */
-  var _colors = (_def.colors && _def.sel !== 'none')
-    ? _def.colors.map(function (o) {
-        return _swatchTile(o, _def.colorSel, _def.setColor);
+     the type has none or the pick is 'none'.  v2.3.1253: the 'default'
+     entry gets NO tile at all (owner) — no color selected IS the
+     default; tapping the selected swatch again unselects it, which
+     sets the store back to 'default' (the sprite's native color). */
+  var _colorList = _def.colors ? _def.colors.filter(function (o) { return o.id !== 'default'; }) : null;
+  var _colors = (_colorList && _colorList.length > 0 && _def.sel !== 'none')
+    ? _colorList.map(function (o) {
+        return _swatchTile(o, _def.colorSel, function (id) {
+          _def.setColor(id === _def.colorSel ? 'default' : id);
+        });
       })
     : null;
   /* Reset both strips to their start whenever the type changes — the
