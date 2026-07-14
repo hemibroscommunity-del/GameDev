@@ -4,22 +4,22 @@
 :root {
   /* Bottom dashboard band height.  Single source of truth — JS-side
      code (BroTown.jsx DASH_FRAC) must be kept in sync if changed. */
-  /* v2.3.1251: 28vh -> 33vh (owner + ChatGPT: the dashboard felt
+  /* v2.3.1258: 28vh -> 33vh (owner + ChatGPT: the dashboard felt
      compressed; ~+45px on real phones, capped at one-third of the
      viewport so the world stays dominant).  The v2.3.1238 height-aware
      tile formula turns the extra height into larger slots and looser
      Build/DEF/DPS rows automatically. */
-  /* v2.3.1256: +26px for the (later removed) subheader strip.
-     v2.3.1261: owner — "make the dashboard not as tall to make it all
+  /* v2.3.1263: +26px for the (later removed) subheader strip.
+     v2.3.1268: owner — "make the dashboard not as tall to make it all
      even."  The band height now DERIVES from the slot geometry instead
-     of the viewport: cells are (panelContent-16)/2 wide (v2.3.1260), the
+     of the viewport: cells are (panelContent-16)/2 wide (v2.3.1267), the
      block is 3 cells + 2x8px gaps, and the chrome around it is fixed
      (47px cap + 8 above block + 8 below + tray 4 + border 2 + 72
      toolbar).  Algebra: panelContent = (100vw - 28px)/3 - 10px  ->
      band = 50vw + 111px (104 by algebra, +7 measured chrome).  Every spacing around a slot is exactly the 8px
      inter-slot gap, on every portrait device width, with zero pooled
      slack.  JS-side sync: BroTown.jsx DASH_W_FRAC/DASH_BASE. */
-  --dash-h:   calc(50vw + 88px); /* v2.3.1262: cap halved (47->24) */
+  --dash-h:   calc(50vw + 88px); /* v2.3.1269: cap halved (47->24) */
   /* v2.3.1235: Lantern Slate CORRECTION PASS (owner-approved ChatGPT
      review of the v2.3.1234 screenshots).  Slightly brighter, greener
      slate; four depth roles only (sheet / raised / well / well-deep);
@@ -182,7 +182,7 @@
 }
 .bt-dashboard-module{
   /* v2.3.1250: visible 1px gray contour (panels blended into the tray).
-     v2.3.1263: owner — "panels need more visual depth (subtle gradients,
+     v2.3.1270: owner — "panels need more visual depth (subtle gradients,
      borders, or drop shadows)".  Three quiet cues: a top-lit vertical
      gradient (lighter crown, darker seat), a 1px inner catch-light under
      the top edge, and a soft two-part drop shadow lifting each panel off
@@ -220,7 +220,7 @@
   background-color:#213E5A;
   background-image:url('/ui/dashboard/header-circuit.webp');
 }
-/* v2.3.1256: panel SUBHEADER — a quiet 22px info strip directly under the
+/* v2.3.1263: panel SUBHEADER — a quiet 22px info strip directly under the
    textured cap (owner: DEF/DPS for Loadout, slots-left for Bag, level +
    unspent points for Build).  Full-bleed like the cap; hairline base rule;
    data text only — never buttons or slots.  The band grew by exactly this
@@ -258,7 +258,7 @@
   pointer-events:none;
 }
 .bt-dashboard-toolbar-frame{
-  /* v2.3.1251: +4px breathing room between the panels and the nav row
+  /* v2.3.1258: +4px breathing room between the panels and the nav row
      (part of the taller-dashboard pass). */
   padding:8px 8px 7px;
   background:var(--ui-dashboard-tray);

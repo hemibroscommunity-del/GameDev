@@ -16,7 +16,7 @@ brass accent.
 
 - The painterly world stays the brightest, most saturated thing on
   screen. The band is a neutral slate tray with deep, quiet wells.
-- Band stays exactly 33dvh (v2.3.1251, owner directive — was 28dvh;
+- Band stays exactly 33dvh (v2.3.1258, owner directive — was 28dvh;
   one-third of the viewport is the hard ceiling); toolbar stays inside it.
 - The 90-icon set is retained unchanged (no repaint/recolor).
 - All chrome is CSS. No baked panel art, carved wood, leather,
@@ -111,7 +111,7 @@ short category labels.
 
 ## Dashboard (§8 — v2.3.1240 approved structure)
 
-The 33dvh band (v2.3.1251) is a lighter `#2E4754` slate tray with a 14px rounded
+The 33dvh band (v2.3.1258) is a lighter `#2E4754` slate tray with a 14px rounded
 top edge and a tight, crisp contact shadow against the world. Its idle
 body contains three equal `#10222A` functional wells, separated by 6px
 gutters. The wells—not rules, title underlines, textures, or accent

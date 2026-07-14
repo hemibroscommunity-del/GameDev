@@ -116,7 +116,7 @@ const ICON_SRC = {
   /* v2.3.1225: chat finally gets a real icon (was an inline SVG since
      v2.3.1015, the one toolbar glyph the v2.3.1224 swap missed). */
   chat:      '/icons/ui/panel-chat.webp?v=2.3.1225',
-  /* v2.3.1258: Quests joins the ribbon (5-button toolbar). */
+  /* v2.3.1265: Quests joins the ribbon (5-button toolbar). */
   quests:    '/icons/ui/panel-quests.webp?v=2.3.1224',
 };
 
@@ -193,7 +193,7 @@ const ColHeader = ({ variant, children }) => (
        the slot grids; 12/700 keeps the hierarchy without shouting. */
     /* v2.3.1240: the mockup groups each function with its own dark well;
        the old title underline duplicated that boundary and looked dated. */
-    /* v2.3.1262: owner — one consistent UI type treatment: Title Case
+    /* v2.3.1269: owner — one consistent UI type treatment: Title Case
        like the toolbar labels (the all-caps + wide tracking was the
        odd one out), 13/700. */
     fontSize: 13,
@@ -211,11 +211,11 @@ const ColHeader = ({ variant, children }) => (
     whiteSpace: 'nowrap',
     overflow: 'hidden',
     /* v2.3.1249: flow-neutral cap offsets (see the note above). */
-    /* v2.3.1257: owner experiment — the +26px the band gained for the
-       v2.3.1256 subheaders goes to the HEADER instead (21 -> 47px cap;
+    /* v2.3.1264: owner experiment — the +26px the band gained for the
+       v2.3.1263 subheaders goes to the HEADER instead (21 -> 47px cap;
        the strips are removed).  Same band height, same slot budget. */
-    /* v2.3.1261: cap-to-block spacing = the 8px slot gap (was 4). */
-    /* v2.3.1262: owner — cap height halved (47 -> 24); the texture reads
+    /* v2.3.1268: cap-to-block spacing = the 8px slot gap (was 4). */
+    /* v2.3.1269: owner — cap height halved (47 -> 24); the texture reads
        as a slim material band.  Band constant follows (-23). */
     ...(variant ? { margin: '-4px -4px 8px', padding: '3px 6px 2px', height: 24, flex: '0 0 24px' } : null),
   }}>
@@ -474,31 +474,31 @@ const IconButton = ({ glyph, label, active, onClick, node, tut }) => {
    are unsupported the min() is dropped and behavior degrades to the
    previous width-driven sizing. */
 const FIT_GRID_CONTAIN = { containerType: 'size' };
-/* v2.3.1251: owner — 2-column slot grids (bigger slots, extra rows in the
+/* v2.3.1258: owner — 2-column slot grids (bigger slots, extra rows in the
    taller 33vh band): bag 2x4, loadout 2x3 + metric row.  Both grids are
    FOUR rows tall (3 x 4px gaps), so the height budget divides by 4. */
-/* v2.3.1252: owner — "spacing of the grid is weird, I want it uniform."
+/* v2.3.1259: owner — "spacing of the grid is weird, I want it uniform."
    Height-capped cells centered in 1fr tracks left ~19px between columns
    vs the 4px row gap.  Fix: the TRACKS themselves take the cell size
    (width budget vs height budget, whichever binds) and the grid centers
    as a block, so every cell-to-cell gap — horizontal and vertical — is
    the same 4px.  Cells fill their track (width 100%). */
-/* v2.3.1253: owner — "space out the slots more so it's uniform padding."
+/* v2.3.1260: owner — "space out the slots more so it's uniform padding."
    Fixed 4px gaps left a tight cluster with big side margins.  Now the
    grids distribute ALL leftover space evenly per axis (space-evenly:
    edge margin == inter-cell spacing), and the cell formula reserves
    ~24px horizontal / ~20px vertical for that breathing room. */
-/* v2.3.1254: owner experiment — bag drops to 6 tiles and the DEF/DPS row
+/* v2.3.1261: owner experiment — bag drops to 6 tiles and the DEF/DPS row
    comes out of the loadout, so BOTH grids are 2x3; height budget divides
    by 3 (cells get bigger again). */
-/* v2.3.1259: owner — slot spacing equal VERTICALLY and HORIZONTALLY.
+/* v2.3.1266: owner — slot spacing equal VERTICALLY and HORIZONTALLY.
    Per-axis space-evenly gave h=8 / v=~12 (3 rows vs 2 columns split
    their leftovers differently).  One fixed 8px gap on both axes now:
    the width arm below reserves exactly 24px = 3 gaps, so width-bound
    cells get 8px side margins too — gap == edge == 8 everywhere; the
    remaining vertical slack pools quietly below the slot block. */
 const SLOT_GAP = 8;
-/* v2.3.1260: owner — the slot-to-PANEL-EDGE distance must ALSO be 8px.
+/* v2.3.1267: owner — the slot-to-PANEL-EDGE distance must ALSO be 8px.
    The column carries a 4px horizontal inset the old 24px reserve ignored
    (grid-edge margin 8 + column 4 = 12 visual).  Reserving 16px instead
    (2 gaps + 2x4px margins) makes: in-grid side margin 4 + column 4 = 8
@@ -524,8 +524,8 @@ const InventoryPreview = () => {
      the Loadout slots; a third row fits cleanly when the block is anchored
      to the top of the column. Items fill first, then faint empty slots pad
      out to 9 so it always reads as an inventory grid. */
-  /* v2.3.1251: 2-col grid — owner: two wide columns of larger slots.
-     v2.3.1254: owner experiment — 8 -> 6 tiles (2x3, matching the
+  /* v2.3.1258: 2-col grid — owner: two wide columns of larger slots.
+     v2.3.1261: owner experiment — 8 -> 6 tiles (2x3, matching the
      loadout's six slots now that DEF/DPS moved out). */
   const tiles = entries.slice(0, 6);
   const openFullBag = (e) => {
@@ -562,7 +562,7 @@ const InventoryPreview = () => {
            padding puts the bag grid's bottom edge on the same y as the
            loadout/Build grids (§4).  The freed width goes to the cells. */
         padding: 0,
-        /* v2.3.1252b: the OUTER wrapper is the size container — cq units in
+        /* v2.3.1259b: the OUTER wrapper is the size container — cq units in
            the grid's own track list resolve against the nearest ancestor
            container, never the grid itself (they fell back to the viewport
            and the cells exploded; caught on the rig).  Height == the grid's
@@ -592,8 +592,8 @@ const InventoryPreview = () => {
         flex: 1,
         minHeight: 0,
         display: 'grid',
-        /* v2.3.1251: 3 -> 2 columns (owner: bigger slots, more rows). */
-        /* v2.3.1252: cell-sized tracks.  v2.3.1259: ONE fixed gap on both
+        /* v2.3.1258: 3 -> 2 columns (owner: bigger slots, more rows). */
+        /* v2.3.1259: cell-sized tracks.  v2.3.1266: ONE fixed gap on both
            axes (see SLOT_GAP) — vertical spacing == horizontal spacing. */
         gridTemplateColumns: `repeat(2, ${FIT_TRACK})`,
         justifyContent: 'center',
@@ -616,7 +616,7 @@ const InventoryPreview = () => {
         {Array.from({ length: Math.max(0, 6 - tiles.length) }).map((_, i) => (
           <div key={`pe-${i}`} aria-hidden="true" style={{
             aspectRatio: '1 / 1',
-            /* v2.3.1252: tracks are cell-sized now; fill the track. */
+            /* v2.3.1259: tracks are cell-sized now; fill the track. */
             width: '100%',
             background: COL.wellSoft,
             border: `1px solid ${COL.tileBor}`,
@@ -635,7 +635,7 @@ const PANELS = {
   inventory:    { title: 'Inventory',   Component: InventoryPanel },
   self:         { title: 'Self',        Component: SelfPanel },
   journey:      { title: 'Journey',     Component: JourneyPanel },
-  /* v2.3.1258: Quests toolbar destination — read-only quest log. */
+  /* v2.3.1265: Quests toolbar destination — read-only quest log. */
   quests:       { title: 'Quests',      Component: QuestsPanel },
   map:          { title: 'Map',         Component: MapPanel },
   social:       { title: 'Social',      Component: SocialPanel },
@@ -1006,7 +1006,7 @@ export const BottomDashboard = () => {
                    grids now pad 0), so the cells absorb the freed width.
                    Vertical stays 4 — the shared bottom-padding number the
                    §4 bottom alignment is built on. */
-                padding: '4px 4px 8px', /* v2.3.1261: block-to-bottom = 8px */
+                padding: '4px 4px 8px', /* v2.3.1268: block-to-bottom = 8px */
                 /* v2.3.1240: this shared dark functional well is the only
                    outer chrome; Bag remains the quiet/deep module. */
                 /* v2.3.129: clip overflow so the Kills row (and any other
@@ -1186,7 +1186,7 @@ export const BottomDashboard = () => {
                 /* v2.3.1236: owner feedback r3 §2 — symmetric minimal 2px
                    horizontal inset (matches Bag/Build); 4px vertical kept
                    as the shared bottom-padding for the §4 alignment. */
-                padding: '4px 4px 8px', /* v2.3.1261: block-to-bottom = 8px */
+                padding: '4px 4px 8px', /* v2.3.1268: block-to-bottom = 8px */
                 position: 'relative',
                 zIndex: 1,
               }}>
@@ -1291,7 +1291,7 @@ export const BottomDashboard = () => {
                         minWidth: 0,
                         minHeight: 0,
                         aspectRatio: '1 / 1',
-                        /* v2.3.1252: tracks are cell-sized; fill the track. */
+                        /* v2.3.1259: tracks are cell-sized; fill the track. */
                         width: '100%',
                       }}>
                       {iconSrc ? (
@@ -1352,7 +1352,7 @@ export const BottomDashboard = () => {
                              v2.3.1242: the last real eyesore ("AMULET") was the
                              owner-approved relabel to "NECK" (4 chars) so it now
                              matches its CAPE neighbour exactly at this size. */
-                          /* v2.3.1251: 7 -> 10 — the 2-column loadout slots
+                          /* v2.3.1258: 7 -> 10 — the 2-column loadout slots
                              are ~40-47px wide, so the 10px floor finally
                              fits the label set (verified on the rig at 390;
                              overflow:hidden stays as the backstop). */
@@ -1445,7 +1445,7 @@ export const BottomDashboard = () => {
                        readout spans that row, vertically centered — i.e.
                        level with the bag's third row. */
                     <>
-                    {/* v2.3.1252b: cq units in a grid's OWN track list resolve
+                    {/* v2.3.1259b: cq units in a grid's OWN track list resolve
                        against the nearest ANCESTOR container (a container
                        cannot query itself) — without this wrapper they fell
                        back to the viewport and the cells exploded (caught on
@@ -1456,10 +1456,10 @@ export const BottomDashboard = () => {
                       flex: 1,
                       minHeight: 0,
                       display: 'grid',
-                      /* v2.3.1251: 3 -> 2 columns (owner) — six slots flow as
+                      /* v2.3.1258: 3 -> 2 columns (owner) — six slots flow as
                          chest·weapon / shield·legs / neck·cape; the DEF/DPS
                          table moves to row 4. */
-                      /* v2.3.1252: cell-sized tracks.  v2.3.1259: ONE fixed
+                      /* v2.3.1259: cell-sized tracks.  v2.3.1266: ONE fixed
                          gap on both axes, matching the bag grid exactly. */
                       gridTemplateColumns: `repeat(2, ${FIT_TRACK})`,
                       justifyContent: 'center',
@@ -1468,7 +1468,7 @@ export const BottomDashboard = () => {
                       gap: SLOT_GAP,
                       padding: 0,
                     }}>
-                      {/* The six equipment slots.  v2.3.1255 owner order:
+                      {/* The six equipment slots.  v2.3.1262 owner order:
                           chest·weapon / legs·shield / cape·neck. */}
                       {slotCell({
                           k: 'chest',
@@ -1513,20 +1513,20 @@ export const BottomDashboard = () => {
                             row 3 to one slot height — the exact height of
                             the bag's third row — so the line's band is
                             level with it by construction. */}
-                        {/* v2.3.1254: owner experiment — DEF/DPS readout (and
+                        {/* v2.3.1261: owner experiment — DEF/DPS readout (and
                             its row-4 spacer) removed so the six slots fill the
                             panel; the info still lives in the item picker and
                             stat panels.  Kept one revert away (false &&),
                             matching the repo's layout-experiment convention. */}
                         {false && (<>
                         <div aria-hidden="true" style={{
-                          gridRow: 4, /* v2.3.1251: below the 2x3 slot rows */
+                          gridRow: 4, /* v2.3.1258: below the 2x3 slot rows */
                           gridColumn: 1,
                           aspectRatio: '1 / 1',
                           minWidth: 0,
                           minHeight: 0,
                           pointerEvents: 'none',
-                          /* v2.3.1252: tracks are cell-sized; fill the track. */
+                          /* v2.3.1259: tracks are cell-sized; fill the track. */
                           width: '100%',
                         }} />
                         {/* One centered line spanning row 3:
@@ -1576,7 +1576,7 @@ export const BottomDashboard = () => {
                               }); }}
                             title={kind === 'weapon' ? `${slotLabel} · DMG ${dmgText} · DPS ${dpsText}` : 'Defense from worn armor'}
                             style={{
-                              gridRow: 4, /* v2.3.1251: 2-col grid — row 4 */
+                              gridRow: 4, /* v2.3.1258: 2-col grid — row 4 */
                               gridColumn: ci + 1,
                               minWidth: 0,
                               display: 'flex',
@@ -1621,7 +1621,7 @@ export const BottomDashboard = () => {
                 /* v2.3.1236: owner feedback r3 §2 — symmetric minimal 2px
                    horizontal inset (matches Bag/Loadout); 4px vertical kept
                    as the shared bottom-padding for the §4 alignment. */
-                padding: '4px 4px 8px', /* v2.3.1261: block-to-bottom = 8px */
+                padding: '4px 4px 8px', /* v2.3.1268: block-to-bottom = 8px */
               }}>
                 <ColHeader variant="build">{SHOW_LIFE_SKILLS ? 'Stats · Skills' : 'Build'}</ColHeader>
                 {/* v2.3.1236: owner feedback r3 §4 — no alignment change
@@ -1638,7 +1638,7 @@ export const BottomDashboard = () => {
                      ROW-major (damage stats top, combat resources bottom).
                      With life skills shown, fall back to the old 3-col x 5-row
                      column-flow layout (Build in sub-col 1, skills in 2-3). */
-                  /* v2.3.1251: owner — 2-column build grid.  Column flow
+                  /* v2.3.1258: owner — 2-column build grid.  Column flow
                      with 3 rows gives a semantic split: column 1 = the three
                      damage stats (melee/bow/magic), column 2 = the three
                      resource stats (HP/defense/endurance). */
@@ -1750,14 +1750,14 @@ export const BottomDashboard = () => {
                              overflow short viewports; the icon is the
                              shrink absorber (flexShrink 1, v2.3.1225).
                              -1px absorbs the row-1 cells' bottom border. */
-                          /* v2.3.1251: three rows now — cap at a third. */
+                          /* v2.3.1258: three rows now — cap at a third. */
                           maxHeight: SHOW_LIFE_SKILLS ? undefined : 'calc(100cqh / 3 - 1px)',
                           /* v2.3.1235: §4 — OPEN cells: no fill, no card
                              border; faint shared dividers between cells
                              (right edge on cols 1-2, bottom edge on row 1
                              of the 3x2 build grid). */
                           background: 'transparent',
-                          /* v2.3.1251: column-flow 2x3 — one vertical divider
+                          /* v2.3.1258: column-flow 2x3 — one vertical divider
                              between the columns (right edge of column 1 =
                              indices 0-2), horizontal dividers under rows 1-2
                              (row = bi % 3). */
@@ -1903,7 +1903,7 @@ export const BottomDashboard = () => {
           (Settings, Stats, ...) is open. */}
       {(() => {
         const rootId = stack.length ? stack[0] : null;
-        /* v2.3.1258: Codex + Journey moved under More, so they light it. */
+        /* v2.3.1265: Codex + Journey moved under More, so they light it. */
         const moreLit = !!rootId && !['inventory', 'social', 'quests'].includes(rootId);
         return (
           <div className="bt-dashboard-toolbar-frame" style={{
@@ -1914,7 +1914,7 @@ export const BottomDashboard = () => {
                (was '30%' of the fractional band), so the ribbon frame never
                lands on a sub-pixel vertical coord that would resample its
                contour on Retina.  Panel mode was already 68. */
-            /* v2.3.1251: 68 -> 72 — the taller-dashboard pass adds 4px of
+            /* v2.3.1258: 68 -> 72 — the taller-dashboard pass adds 4px of
                breathing room between the panels and the nav row via the
                frame's top padding; the shelf grows by the same 4 so the
                ribbon (and the buttons' rendered height) stay EXACTLY as
@@ -1927,7 +1927,7 @@ export const BottomDashboard = () => {
             display: 'flex',
             alignItems: 'stretch',
           }}>
-            {/* v2.3.1258: owner — FIVE buttons (Inventory · Chat · Friends ·
+            {/* v2.3.1265: owner — FIVE buttons (Inventory · Chat · Friends ·
                 Quests · More).  Codex and Journey moved into the More menu;
                 each button is ~20% wider. */}
             <div className="bt-dashboard-toolbar-ribbon">

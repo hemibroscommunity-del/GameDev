@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { COL, panelStyle, getState } from './common.js';
 import { QUEST_CHAINS, QUEST_STATUS, getNpcQuest } from '../../../data/gameSystems.js';
 
-/* v2.3.1258: Quests — new toolbar destination (owner: the 5-button ribbon
+/* v2.3.1265: Quests — new toolbar destination (owner: the 5-button ribbon
    is Inventory · Chat · Friends · Quests · More).  A READ-ONLY quest log:
    accepting and turning in stays with the NPCs (the server-authoritative
    quest_accept / quest_turn_in flow, v2.3.782 + handoff rules) — this
