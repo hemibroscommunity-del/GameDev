@@ -102,7 +102,9 @@ const HPBAR_FLASH_MS = 160;   /* white flash on damage */
    so the body, above-head bar, and labels scale together and the change
    stays one knob per entity type.  Render-only: world positions, server
    hitboxes, and combat ranges are untouched. */
-const PLAYER_SIZE_MULT = 4 / 3;
+/* v2.3.1277: owner — "character 25% smaller."  4/3 x 0.75 = 1.0, i.e.
+   exactly the pre-experiment size; keep the knob for further tuning. */
+const PLAYER_SIZE_MULT = 1.0;
 const MONSTER_SIZE_MULT = 1.5;
 /* Build (or return) a display-owned cropped view of the full-bar texture.
    The Texture is RECREATED when the crop width changes (integer source

@@ -19,7 +19,19 @@
      band = 50vw + 111px (104 by algebra, +7 measured chrome).  Every spacing around a slot is exactly the 8px
      inter-slot gap, on every portrait device width, with zero pooled
      slack.  JS-side sync: BroTown.jsx DASH_W_FRAC/DASH_BASE. */
-  --dash-h:   calc(50vw + 88px); /* v2.3.1269: cap halved (47->24) */
+  /* v2.3.1277: owner — "dashboard 25% shorter" (37.5vw + 66px).
+     v2.3.1279: owner — near-square panels: the slot grids are 3-wide x
+     2-tall again, so the band re-derives around a TWO-row block:
+     band = 2t + 8 + 125 chrome with t = (100vw - 130px)/9 (the
+     width-bound cell) -> 22.2222vw + 104px, +2px so device rounding
+     keeps cells width-bound (gap == edge == 8 exactly; the 2px pools
+     invisibly).  ~202px at 430w vs 227 (v2.3.1277) / 303 (v2.3.1271).
+     JS mirror: BroTown.jsx DASH_W_FRAC/DASH_BASE. */
+  /* v2.3.1280: owner — 2x2 grid / 4 slots / headerless: PERFECTLY
+     square panels (134x134 at 430w, ~54px slots).  Band re-derives
+     around the square: panel = (100vw - 28px)/3 tall, +83px band
+     chrome, +2px width-bound safety -> ~219px at 430w. */
+  --dash-h:   calc(33.3333vw + 76px);
   /* v2.3.1235: Lantern Slate CORRECTION PASS (owner-approved ChatGPT
      review of the v2.3.1234 screenshots).  Slightly brighter, greener
      slate; four depth roles only (sheet / raised / well / well-deep);
@@ -117,8 +129,8 @@
    snaps the height to a whole CSS px (28vh uses the stable large-viewport
    height on iOS, so this does NOT jump when the address bar shows/hides).
    CSS-only + graceful: any engine without round() keeps plain 28vh. */
-@supports (height: round(nearest, 50vw, 1px)) {
-  :root { --dash-h: calc(round(nearest, 50vw, 1px) + 88px); }
+@supports (height: round(nearest, 33.3333vw, 1px)) {
+  :root { --dash-h: calc(round(nearest, 33.3333vw, 1px) + 76px); } /* v2.3.1280 */
 }
 /* v2.3.1241: edge-parity — device-pixel hairlines.  A "1px" contour is 2–3
    physical pixels on Retina; that thickness (stacked with borders/shadows)

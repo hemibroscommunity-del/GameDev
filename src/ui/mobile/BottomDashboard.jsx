@@ -145,7 +145,9 @@ const CHAR_STATS = [
   /* Defense = Tier-2 trained skill (rpg.defenseSkill.level); tapping opens the
      DEF spend tab in the T2 panel (wired in v2.3.693).  v2.3.696: DEF and END
      swapped -- bottom row reads Vitality · Defense · Endurance per user. */
-  { key: 'defense',   label: 'Defense',   short: 'DEF', iconSrc: '/icons/ui/stat-defense.webp?v=2.3.1224',   pixelated: false, iconScale: 1.5, t2: true, train: 'Improves when you block and mitigate hits; spend points in the DEF tab.' },
+  /* v2.3.1282: owner — the stat-defense art is "an awkward double
+     shield"; the single round combat-defense shield replaces it. */
+  { key: 'defense',   label: 'Defense',   short: 'DEF', iconSrc: '/icons/ui/combat-defense.webp?v=2.3.1224', pixelated: false, iconScale: 1.5, t2: true, train: 'Improves when you block and mitigate hits; spend points in the DEF tab.' },
   { key: 'endurance', label: 'Endurance', short: 'END', iconSrc: '/icons/ui/stat-endurance.webp?v=2.3.1225', pixelated: false, iconScale: 1.5, train: 'Improves when you spend stamina on dodge, block, or sprint.' },
 ];
 
@@ -196,7 +198,10 @@ const ColHeader = ({ variant, children }) => (
     /* v2.3.1269: owner — one consistent UI type treatment: Title Case
        like the toolbar labels (the all-caps + wide tracking was the
        odd one out), 13/700. */
-    fontSize: 13,
+    /* v2.3.1278: the re-derived panels are ~25vw wide (82px at 430) —
+       a fixed 13px truncated "Equipped" on the narrow caps.  Scale
+       with the panel, 10px floor (owner rule), 13px ceiling. */
+    fontSize: 'clamp(10px, 2.9vw, 13px)',
     fontWeight: 700,
     /* v2.3.1240: the approved mockup uses a near-white, crisp header;
        COL.text2 made the built version read noticeably gray. */
@@ -503,7 +508,18 @@ const SLOT_GAP = 8;
    (grid-edge margin 8 + column 4 = 12 visual).  Reserving 16px instead
    (2 gaps + 2x4px margins) makes: in-grid side margin 4 + column 4 = 8
    == the inter-slot gap.  Cells grow ~4px in the bargain. */
-const FIT_TRACK = 'min(calc((100cqw - 16px) / 2), calc((100cqh - 16px) / 3))';
+/* v2.3.1279: owner — near-SQUARE panels: 3-wide x 2-tall grids, band
+   22.222vw + 106px (~202px).
+   v2.3.1280: owner — "Let me see what 4 slots per panel looks like in
+   the 2x2 grid": PERFECTLY square panels.  2x2 slots, header caps
+   hidden (any header height re-opens the height/width gap), panels
+   full-width thirds -> 134x134 at 430w with ~54px slots (the biggest
+   of any variant).  Width arm: 2 cells + 8 gap + 2x4 margins = 16px
+   reserve; height arm: 2 rows + 8 gap.  Band = 33.333vw + 76px
+   (~219px; +2px safety keeps cells WIDTH-bound on device rounding —
+   the regime where gap == edge == 8 exactly). */
+const SHOW_PANEL_HEADERS = false;
+const FIT_TRACK = 'min(calc((100cqw - 16px) / 2), calc((100cqh - 8px) / 2))';
 
 const InventoryPreview = () => {
   const [, force] = useState(0);
@@ -527,7 +543,8 @@ const InventoryPreview = () => {
   /* v2.3.1258: 2-col grid — owner: two wide columns of larger slots.
      v2.3.1261: owner experiment — 8 -> 6 tiles (2x3, matching the
      loadout's six slots now that DEF/DPS moved out). */
-  const tiles = entries.slice(0, 6);
+  /* v2.3.1280: 6 -> 4 (2x2 square-panel experiment). */
+  const tiles = entries.slice(0, 4);
   const openFullBag = (e) => {
     if (e) e.stopPropagation();
     dashboardPanelBus.toggle('inventory');
@@ -595,7 +612,7 @@ const InventoryPreview = () => {
         /* v2.3.1258: 3 -> 2 columns (owner: bigger slots, more rows). */
         /* v2.3.1259: cell-sized tracks.  v2.3.1266: ONE fixed gap on both
            axes (see SLOT_GAP) — vertical spacing == horizontal spacing. */
-        gridTemplateColumns: `repeat(2, ${FIT_TRACK})`,
+        gridTemplateColumns: `repeat(2, ${FIT_TRACK})`, /* v2.3.1280: 2x2 */
         justifyContent: 'center',
         gridAutoRows: 'min-content',
         alignContent: 'start',
@@ -613,7 +630,8 @@ const InventoryPreview = () => {
             <BagTile entry={e} />
           </div>
         ))}
-        {Array.from({ length: Math.max(0, 6 - tiles.length) }).map((_, i) => (
+        {/* v2.3.1280: pad to 4 (2x2 square-panel experiment; was 6). */}
+        {Array.from({ length: Math.max(0, 4 - tiles.length) }).map((_, i) => (
           <div key={`pe-${i}`} aria-hidden="true" style={{
             aspectRatio: '1 / 1',
             /* v2.3.1259: tracks are cell-sized now; fill the track. */
@@ -995,7 +1013,7 @@ export const BottomDashboard = () => {
                 /* v2.3.1236: owner feedback r2 §2 — back to equal thirds so
                    a bag cell and a loadout slot render the same size (both
                    grids: 3 equal columns, gap 4, 2px inner inset). */
-                flex: '1 1 0',
+                flex: '1 1 0', /* v2.3.1279: full-width thirds again */
                 display: 'flex',
                 flexDirection: 'column',
                 minWidth: 0,
@@ -1006,7 +1024,7 @@ export const BottomDashboard = () => {
                    grids now pad 0), so the cells absorb the freed width.
                    Vertical stays 4 — the shared bottom-padding number the
                    §4 bottom alignment is built on. */
-                padding: '4px 4px 8px', /* v2.3.1268: block-to-bottom = 8px */
+                padding: '8px 4px 8px', /* v2.3.1280: symmetric 8 top/bottom (headerless square) */
                 /* v2.3.1240: this shared dark functional well is the only
                    outer chrome; Bag remains the quiet/deep module. */
                 /* v2.3.129: clip overflow so the Kills row (and any other
@@ -1016,7 +1034,7 @@ export const BottomDashboard = () => {
               }}>
                 {/* v2.3.1065: BAG title matching the Loadout/Build ColHeaders. */}
                 {/* v2.3.1236: owner dashboard feedback §1 — icon prop removed. */}
-                <ColHeader variant="bag">Bag</ColHeader>
+                {SHOW_PANEL_HEADERS && <ColHeader variant="bag">Bag</ColHeader>}
                 {/* v2.3.155: hybrid HP/MP/END card replaced with a
                     compact inventory preview. The derived stats it used
                     to show (Crit / Block / Zone / Kills / Time) are
@@ -1179,18 +1197,18 @@ export const BottomDashboard = () => {
                    r4 §2: ...and it's back, by owner request, as a compact
                    icon-based line occupying the grid's third row (level
                    with the bag's third row now that both grids top-align). */
-                flex: '1 1 0',
+                flex: '1 1 0', /* v2.3.1279: full-width thirds again */
                 display: 'flex',
                 flexDirection: 'column',
                 minWidth: 0,
                 /* v2.3.1236: owner feedback r3 §2 — symmetric minimal 2px
                    horizontal inset (matches Bag/Build); 4px vertical kept
                    as the shared bottom-padding for the §4 alignment. */
-                padding: '4px 4px 8px', /* v2.3.1268: block-to-bottom = 8px */
+                padding: '8px 4px 8px', /* v2.3.1280: symmetric 8 top/bottom (headerless square) */
                 position: 'relative',
                 zIndex: 1,
               }}>
-                <ColHeader variant="loadout">Equipped</ColHeader>
+                {SHOW_PANEL_HEADERS && <ColHeader variant="loadout">Equipped</ColHeader>}
                 {(() => {
                   /* DMG/DPS calc — mirrors WeaponSwapBar.readState() so the
                      numbers match what combat actually rolls.  Stat driver
@@ -1356,7 +1374,18 @@ export const BottomDashboard = () => {
                              are ~40-47px wide, so the 10px floor finally
                              fits the label set (verified on the rig at 390;
                              overflow:hidden stays as the backstop). */
-                          fontSize: 10,
+                          /* v2.3.1278: fixed 10px clipped on narrow cells
+                             (measured with the real Source Sans 3 on the rig
+                             — the sandbox fallback font lies) so the tag
+                             tracks the cell width, 10px ceiling (the 10px
+                             floor stays waived HERE, as since v2.3.1239).
+                             v2.3.1279: cell is (100vw - 130px)/9 in the
+                             3-wide grid; ~0.27 of it fits the 6-char tags
+                             (Weapon/Shield) — 8.9px at 430, 7.3px on an SE.
+                             v2.3.1280: 2x2 cells are (100vw - 106px)/6 —
+                             ~54px, so the 10px cap rules everywhere down
+                             to ~330px-wide devices. */
+                          fontSize: 'min(10px, calc((100vw - 106px) * 0.045))',
                           letterSpacing: '-0.02em',
                           maxWidth: '100%',
                           overflow: 'hidden',
@@ -1461,15 +1490,18 @@ export const BottomDashboard = () => {
                          table moves to row 4. */
                       /* v2.3.1259: cell-sized tracks.  v2.3.1266: ONE fixed
                          gap on both axes, matching the bag grid exactly. */
-                      gridTemplateColumns: `repeat(2, ${FIT_TRACK})`,
+                      gridTemplateColumns: `repeat(2, ${FIT_TRACK})`, /* v2.3.1280: 2x2 */
                       justifyContent: 'center',
                       gridAutoRows: 'min-content',
                       alignContent: 'start',
                       gap: SLOT_GAP,
                       padding: 0,
                     }}>
-                      {/* The six equipment slots.  v2.3.1262 owner order:
-                          chest·weapon / legs·shield / cape·neck. */}
+                      {/* The six equipment slots.  v2.3.1262 owner order was
+                          chest·weapon / legs·shield / cape·neck (2-wide);
+                          v2.3.1279's 3-wide rows regroup as
+                          chest·weapon·shield / legs·cape·neck so the combat
+                          hand pair (weapon+shield) shares the top row. */}
                       {slotCell({
                           k: 'chest',
                           label: 'Chest',
@@ -1485,6 +1517,7 @@ export const BottomDashboard = () => {
                         })}
                         {/* v2.3.1025: label is always WEAPON (melee/ranged/staff all live here). */}
                         {slotCell({ k: 'weapon', label: 'Weapon', iconSrc: slotIconSrc, active: !!wpn, onTap: onTapWeapon, quality: wpn && wpn.quality })}
+                        {slotCell({ k: 'shield', label: 'Shield', iconSrc: shieldSrc, active: !!R.shield, equipped: !!R.shield, onTap: onTapShield })}
                         {slotCell({
                           k: 'legs',
                           label: 'Legs',
@@ -1494,17 +1527,20 @@ export const BottomDashboard = () => {
                           active: gearLegsId !== 'none',
                           onTap: onTapLegsArmor,
                         })}
-                        {slotCell({ k: 'shield', label: 'Shield', iconSrc: shieldSrc, active: !!R.shield, equipped: !!R.shield, onTap: onTapShield })}
                         {/* Cape: new back-layer slot (v2.3.692).  Render + equip
                             flow land in Phase 2; cell shows as empty for now. */}
-                        {slotCell({ k: 'cape', label: 'Cape', iconSrc: null, active: false })}
+                        {/* v2.3.1280: 2x2 square-panel experiment — cape/neck
+                            hidden (both are tap-less Phase-2 placeholders, so
+                            nothing interactive is lost).  Restore with the
+                            panel headers if the owner keeps 6 slots. */}
+                        {SHOW_PANEL_HEADERS && slotCell({ k: 'cape', label: 'Cape', iconSrc: null, active: false })}
                         {/* v2.3.1242: owner directive — the amulet slot must
                             match its neighbour (CAPE), which renders as a word,
                             not an icon.  "AMULET" (6 chars) was the sole holdout
                             below the 10px floor because it clipped the ~33px
                             slot; "NECK" (4 chars) matches CAPE exactly, so both
                             bottom-row placeholders read identically. */}
-                        {slotCell({ k: 'amulet', label: 'Neck', iconSrc: null, active: !!R.amulet, equipped: !!R.amulet })}
+                        {SHOW_PANEL_HEADERS && slotCell({ k: 'amulet', label: 'Neck', iconSrc: null, active: !!R.amulet, equipped: !!R.amulet })}
                         {/* v2.3.1236: owner feedback r4 §2 — the damage
                             readout returns (r3 §1 removed the r2 text
                             footer; owner asked for a compact ICON line in
@@ -1614,16 +1650,16 @@ export const BottomDashboard = () => {
                 /* v2.3.1236: owner feedback r2 §2 — equal third (this column
                    actually WIDENS, 31% -> 33.3%, so its 3x2 text cells gain
                    room; no inner-padding change needed). */
-                flex: '1 1 0',
+                flex: '1 1 0', /* v2.3.1279: full-width thirds again */
                 display: 'flex',
                 flexDirection: 'column',
                 minWidth: 0,
                 /* v2.3.1236: owner feedback r3 §2 — symmetric minimal 2px
                    horizontal inset (matches Bag/Loadout); 4px vertical kept
                    as the shared bottom-padding for the §4 alignment. */
-                padding: '4px 4px 8px', /* v2.3.1268: block-to-bottom = 8px */
+                padding: '8px 4px 8px', /* v2.3.1280: symmetric 8 top/bottom (headerless square) */
               }}>
-                <ColHeader variant="build">{SHOW_LIFE_SKILLS ? 'Stats · Skills' : 'Build'}</ColHeader>
+                {SHOW_PANEL_HEADERS && <ColHeader variant="build">{SHOW_LIFE_SKILLS ? 'Stats · Skills' : 'Build'}</ColHeader>}
                 {/* v2.3.1236: owner feedback r3 §4 — no alignment change
                     needed HERE for the line-up: flex:1 + 1fr rows mean this
                     grid fills the column's content area top-to-bottom, so
@@ -1631,6 +1667,10 @@ export const BottomDashboard = () => {
                     now START (r4 §1 flipped them to alignContent:'start')
                     and its bottom stays on the shared 4px column padding —
                     the band keeps one coherent top AND bottom edge. */}
+                {/* v2.3.1280: cq wrapper (a container can't query itself —
+                    the v2.3.1259b lesson) so the compact grid's FIT_TRACK
+                    resolves against the Build column's content box. */}
+                <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', ...FIT_GRID_CONTAIN }}>
                 <div style={{
                   flex: 1,
                   display: 'grid',
@@ -1642,26 +1682,34 @@ export const BottomDashboard = () => {
                      with 3 rows gives a semantic split: column 1 = the three
                      damage stats (melee/bow/magic), column 2 = the three
                      resource stats (HP/defense/endurance). */
-                  gridTemplateColumns: SHOW_LIFE_SKILLS ? 'repeat(3, 1fr)' : 'repeat(2, 1fr)',
+                  /* v2.3.1280: owner — the compact Build becomes a 2x2 SLOT
+                     grid matching Bag/Equipped: same tracks, same 8px gap,
+                     tiles instead of open cells. */
+                  gridTemplateColumns: SHOW_LIFE_SKILLS ? 'repeat(3, 1fr)' : `repeat(2, ${FIT_TRACK})`,
                   /* v2.3.1236: owner feedback r5b — 1fr rows stretched this
                      grid over the full column height, so its cell content
                      floated LOWER than the top-packed Bag/Loadout rows.
                      min-content rows + alignContent start pack the rows
                      at the top, level with the neighbors' first rows. */
-                  gridTemplateRows: SHOW_LIFE_SKILLS ? 'repeat(5, 1fr)' : 'repeat(3, min-content)',
+                  gridTemplateRows: SHOW_LIFE_SKILLS ? 'repeat(5, 1fr)' : undefined,
+                  gridAutoRows: SHOW_LIFE_SKILLS ? undefined : 'min-content',
                   alignContent: SHOW_LIFE_SKILLS ? 'stretch' : 'start',
-                  /* v2.3.1235: §4 — open grid: no gap, cells share faint
-                     dividers instead of six individual dark cards. */
-                  gap: SHOW_LIFE_SKILLS ? 2 : 0,
-                  gridAutoFlow: 'column',
+                  justifyContent: SHOW_LIFE_SKILLS ? undefined : 'center',
+                  gap: SHOW_LIFE_SKILLS ? 2 : SLOT_GAP,
+                  gridAutoFlow: SHOW_LIFE_SKILLS ? 'column' : 'row',
                   minHeight: 0,
-                  /* v2.3.1238: owner feedback §3 — size container so the
-                     stat cells (grown 6px by the reserved pill padding
-                     below) can cap themselves at half the grid height on
-                     short viewports instead of overflowing the band. */
-                  ...(SHOW_LIFE_SKILLS ? {} : FIT_GRID_CONTAIN),
                 }}>
-                  {CHAR_STATS.map((s, bi) => {
+                  {/* v2.3.1280: owner — four combat-skill tiles; the offense
+                      tile SWAPS with the active weapon (melee -> Melee,
+                      bow -> Bow, staff -> Magic), so the panel always shows
+                      the skill the current weapon trains. */}
+                  {(SHOW_LIFE_SKILLS ? CHAR_STATS : (() => {
+                    const slot = R.activeSlot || 'melee';
+                    const off = slot === 'ranged' ? 'agility' : slot === 'staff' ? 'mind' : 'power';
+                    return [off, 'vitality', 'defense', 'endurance']
+                      .map(k => CHAR_STATS.find(s => s.key === k))
+                      .filter(Boolean);
+                  })()).map((s, bi) => {
                     /* Defense is a Tier-2 skill (level on rpg.defenseSkill);
                        the rest are Tier-1 capacity stats read straight off R.
                        defenseSkill is absent until v2.3.693 wires it -> 0. */
@@ -1707,6 +1755,70 @@ export const BottomDashboard = () => {
                        of just showing the tooltip. */
                     const unspentPts = buildSkillUnspent(R, s.key);
                     const openT2Cat = s.key === 'defense' ? 'defense' : STAT_TO_WEAPON_CAT[s.key];
+                    /* v2.3.1280: owner — compact Build cells become SLOT
+                       TILES: icon fills the tile like an inventory item,
+                       the level rides a bottom-right .bt-item-qty badge
+                       ("the same way the inventory works"), and the XP
+                       pills are removed.  Tap behavior (tooltip / T2 jump)
+                       and the unspent-points badge carry over. */
+                    if (!SHOW_LIFE_SKILLS) return (
+                      <div key={'b_' + s.key}
+                        className={unspentPts > 0 ? 'bt-build-flash' : undefined}
+                        onPointerUp={(e) => {
+                          e.stopPropagation();
+                          if (unspentPts > 0 && openT2Cat) {
+                            requestT2Category(openT2Cat);
+                            dashboardPanelBus.push('t2');
+                          } else {
+                            setTooltip({
+                              title: tipTitle,
+                              benefit,
+                              body: s.train,
+                              anchor: e.currentTarget.getBoundingClientRect(),
+                            });
+                          }
+                        }}
+                        title={`${tipTitle} — ${benefit}. ${s.train}`}
+                        style={{
+                          position: 'relative',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          borderRadius: 4,
+                          background: COL.wellSoft,
+                          border: `1px solid ${COL.tileBor}`,
+                          cursor: 'pointer',
+                          touchAction: 'none',
+                          minWidth: 0,
+                          minHeight: 0,
+                          aspectRatio: '1 / 1',
+                          width: '100%',
+                        }}>
+                        {unspentPts > 0 && (
+                          <span style={{
+                            position: 'absolute', top: 1, right: 2,
+                            background: '#D8A85F', color: '#20170D',
+                            fontSize: 10, fontWeight: 900,
+                            borderRadius: 7, padding: '0px 4px', lineHeight: 1.4,
+                            pointerEvents: 'none', zIndex: 1,
+                          }}>{unspentPts}</span>
+                        )}
+                        <img
+                          src={s.iconSrc}
+                          alt={s.label}
+                          draggable={false}
+                          style={{
+                            width: '72%',
+                            height: '72%',
+                            objectFit: 'contain',
+                            imageRendering: s.pixelated ? 'pixelated' : 'auto',
+                            pointerEvents: 'none',
+                            userSelect: 'none',
+                          }}
+                        />
+                        <span className="bt-item-qty">{val}</span>
+                      </div>
+                    );
                     return (
                       <div key={'b_' + s.key}
                         className={unspentPts > 0 ? 'bt-build-flash' : undefined}
@@ -1733,10 +1845,19 @@ export const BottomDashboard = () => {
                           /* v2.3.696: vertical stack -- icon top-center,
                              value centered directly beneath it (user).
                              v2.3.695's horizontal pair superseded. */
-                          flexDirection: 'column',
+                          /* v2.3.1279: ...and un-superseded for the compact
+                             build grid: the near-square panels leave ~29px
+                             per stat row — the stacked icon (the designated
+                             shrink absorber) collapsed to invisible while
+                             the fixed 16px number survived, leaving six
+                             bare zeros.  Icon-beside-number needs only
+                             ~18px of height, so the icon returns at a
+                             fixed size.  The dormant life-skills variant
+                             keeps the stack. */
+                          flexDirection: SHOW_LIFE_SKILLS ? 'column' : 'row',
                           alignItems: 'center',
                           justifyContent: 'center',
-                          gap: 1,
+                          gap: SHOW_LIFE_SKILLS ? 1 : 5,
                           /* v2.3.1238: owner feedback §3 — the value text
                              sat on padding-bottom 2 while the 4px XP pill
                              floats absolute at bottom 2..6, so the digits'
@@ -1782,8 +1903,11 @@ export const BottomDashboard = () => {
                           alt={s.label}
                           draggable={false}
                           style={{
-                            width: 24 * (s.iconScale || 1),
-                            height: 24 * (s.iconScale || 1),
+                            /* v2.3.1279: 18px fixed beside the number in the
+                               compact grid (see flexDirection note); the
+                               stacked variant keeps the 24px shrinkable. */
+                            width: (SHOW_LIFE_SKILLS ? 24 : 18) * (s.iconScale || 1),
+                            height: (SHOW_LIFE_SKILLS ? 24 : 18) * (s.iconScale || 1),
                             objectFit: 'contain',
                             imageRendering: s.pixelated ? 'pixelated' : 'auto',
                             pointerEvents: 'none',
@@ -1791,7 +1915,7 @@ export const BottomDashboard = () => {
                             /* v2.3.1225: shrink-allowed so the 1.5x icon is a
                                ceiling, not a clip risk in short cells
                                (overflow:hidden on the cell). */
-                            flexShrink: 1,
+                            flexShrink: SHOW_LIFE_SKILLS ? 1 : 0,
                             minHeight: 0,
                           }}
                         />
@@ -1888,6 +2012,7 @@ export const BottomDashboard = () => {
                     );
                   })}
                 </div>
+                </div>{/* v2.3.1280: cq wrapper close */}
               </div>
             </div>
           </div>
