@@ -22,7 +22,9 @@ export const COMBAT_SKILLS = [
   { key: 'power',     label: 'Melee',     iconSrc: '/icons/ui/combat-melee.webp?v=2.3.1224' },
   { key: 'agility',   label: 'Bow',       iconSrc: '/icons/ui/combat-bow.webp?v=2.3.1225' },
   { key: 'mind',      label: 'Magic',     iconSrc: '/icons/ui/combat-magic.webp?v=2.3.1224' },
-  { key: 'vitality',  label: 'HP',        iconSrc: '/icons/ui/stat-vitality.webp?v=2.3.1224' },
+  /* v2.3.1292 (round-3 §4 canonical naming): the skill is Vitality (it
+     raises max HP); "HP" is the resource bar's name, not the skill's. */
+  { key: 'vitality',  label: 'Vitality',  iconSrc: '/icons/ui/stat-vitality.webp?v=2.3.1224' },
   /* v2.3.1282: single round shield (owner: the stat-defense art is
      "an awkward double shield"). */
   { key: 'defense',   label: 'Defense',   iconSrc: '/icons/ui/combat-defense.webp?v=2.3.1224', t2: true },

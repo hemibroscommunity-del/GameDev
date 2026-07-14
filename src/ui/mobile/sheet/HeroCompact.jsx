@@ -64,24 +64,14 @@ export const HeroCompact = () => {
       gap: 6,
       padding: '10px 10px 8px',
     }}>
-      {/* Live resources + gold. */}
-      <div style={{ display: 'flex', gap: 10, alignItems: 'stretch' }}>
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 4, minWidth: 0 }}>
-          {row('❤️', R.hp || 0, R.maxHp || 100, null, true)}
-          {row('⚡', R.stamina || 0, R.maxStamina || 100, '#D8A85F')}
-          {row('💧', R.mana || 0, R.maxMana || 100, '#5B99DE')}
-        </div>
-        <div style={{
-          flex: 'none', display: 'flex', flexDirection: 'column',
-          alignItems: 'center', justifyContent: 'center', gap: 2,
-          padding: '0 6px',
-        }}>
-          <img src="/icons/ui/cur-gold.webp?v=2.3.1224" alt="Gold" draggable={false}
-            style={{ width: 20, height: 20, objectFit: 'contain' }} />
-          <span style={{ fontSize: 14, fontWeight: 800, color: '#EAC675', fontVariantNumeric: 'tabular-nums' }}>
-            {d.gold}
-          </span>
-        </div>
+      {/* Live resources.  v2.3.1292 (ChatGPT round-3 §4 Hero): the gold
+          column is gone — gold is always visible in the persistent
+          player card top-right; duplicating it here spent glance space
+          on a number the eye already has.  Bars get the full width. */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 4, minWidth: 0 }}>
+        {row('❤️', R.hp || 0, R.maxHp || 100, null, true)}
+        {row('⚡', R.stamina || 0, R.maxStamina || 100, '#D8A85F')}
+        {row('💧', R.mana || 0, R.maxMana || 100, '#5B99DE')}
       </div>
 
       {/* Combat skills + the two mid-fight derived values. */}
@@ -132,15 +122,21 @@ export const HeroCompact = () => {
             </div>
           );
         })}
-        {/* DPS + Block share the row's tile rhythm but read as values. */}
+        {/* DPS + DEF share the row's tile rhythm but read as values.
+            v2.3.1292 (canonical naming): the mitigation number — block
+            reduction from the Defense skill + shield — is called DEF in
+            BOTH Hero views now (was BLK here / Block in expanded).
+            This game has no separate armor stat (heroModel NOTE:
+            armorDef was never wired), so DEF and block are one number
+            with one name. */}
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 2, minWidth: 0 }}>
-          <span style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: '.04em', color: '#7BCD84' }}>DPS</span>
+          <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.04em', color: '#7BCD84' }}>DPS</span>
           <span style={{ fontSize: 12, fontWeight: 700, color: COL.text, lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>
             {d.dps.toFixed(1)}
           </span>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 2, minWidth: 0 }}>
-          <span style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: '.04em', color: '#6FC3DF' }}>BLK</span>
+          <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.04em', color: '#6FC3DF' }}>DEF</span>
           <span style={{ fontSize: 12, fontWeight: 700, color: COL.text, lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>
             {Math.round(d.block * 100)}%
           </span>

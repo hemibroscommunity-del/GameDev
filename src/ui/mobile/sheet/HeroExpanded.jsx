@@ -61,18 +61,15 @@ export const HeroExpanded = () => {
 
   return (
     <div style={{ ...panelStyle, overflowY: 'auto' }}>
-      {/* Identity + level/XP. */}
+      {/* Identity + level/XP.  v2.3.1292 (ChatGPT round-3 §4 Hero): the
+          gold readout is gone here too — the persistent player card
+          top-right already shows it in every mode. */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '4px 2px 8px' }}>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: 15, fontWeight: 800, color: COL.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
             {(S && S.player && S.player.name) || 'Bro'}
           </div>
           <div style={{ fontSize: 11.5, color: COL.muted }}>Level {level}</div>
-        </div>
-        <div style={{ flex: 'none', display: 'flex', alignItems: 'center', gap: 5 }}>
-          <img src="/icons/ui/cur-gold.webp?v=2.3.1224" alt="Gold" draggable={false}
-            style={{ width: 18, height: 18, objectFit: 'contain' }} />
-          <span style={{ fontSize: 14, fontWeight: 800, color: '#EAC675', fontVariantNumeric: 'tabular-nums' }}>{d.gold}</span>
         </div>
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -89,7 +86,21 @@ export const HeroExpanded = () => {
       {bar(R.stamina || 0, R.maxStamina || 100, '#D8A85F')}
       {bar(R.mana || 0, R.maxMana || 100, '#5B99DE')}
 
-      <div style={secHdr}>Combat Skills</div>
+      {/* v2.3.1292 (round-3 §4 Hero): information order — the derived
+          combat stats move ABOVE the build grid so the first viewport
+          is level/XP -> vitals -> core stats; they previously began
+          below the fold. */}
+      <div style={secHdr}>Combat Stats</div>
+      {valRow('Damage', d.dmgText)}
+      {valRow('DPS', d.dps.toFixed(1), '#7BCD84')}
+      {valRow('DEF — damage blocked', `${Math.round(d.block * 100)}%`, '#6FC3DF')}
+      {valRow('Crit Chance', `${(d.crit * 100).toFixed(1)}%`)}
+      {valRow('Dodge', `${(d.dodge * 100).toFixed(1)}%`)}
+      {valRow('Move Speed', `${d.speed.toFixed(1)} u/s`)}
+
+      {/* v2.3.1292: section renamed Build — it IS the spend flow's
+          home (the T2 drill is titled Build), one canonical name. */}
+      <div style={secHdr}>Build</div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6 }}>
         {COMBAT_SKILLS.map(s => {
           const lvl = skillLevel(R, s.key);
@@ -107,8 +118,12 @@ export const HeroExpanded = () => {
                 position: 'relative',
                 display: 'flex', alignItems: 'center', gap: 6,
                 padding: '6px 8px 9px',
-                background: COL.wellSoft,
-                border: `1px solid ${COL.tileBor}`,
+                background: unspent > 0 ? COL.accentFill : COL.wellSoft,
+                /* v2.3.1292 (round-3 §4 Hero): with points waiting the
+                   WHOLE card reads actionable — brass tint + brass
+                   edge, not just the tiny count badge.  The card was
+                   already fully tappable; now it looks it. */
+                border: `1px solid ${unspent > 0 ? COL.accent : COL.tileBor}`,
                 borderRadius: 8,
                 cursor: unspent > 0 ? 'pointer' : 'default',
                 touchAction: 'none',
@@ -136,14 +151,6 @@ export const HeroExpanded = () => {
           );
         })}
       </div>
-
-      <div style={secHdr}>Derived</div>
-      {valRow('Damage', d.dmgText)}
-      {valRow('DPS', d.dps.toFixed(1), '#7BCD84')}
-      {valRow('Crit Chance', `${(d.crit * 100).toFixed(1)}%`)}
-      {valRow('Dodge', `${(d.dodge * 100).toFixed(1)}%`)}
-      {valRow('Block', `${Math.round(d.block * 100)}%`, '#6FC3DF')}
-      {valRow('Move Speed', `${d.speed.toFixed(1)} u/s`)}
 
       <div style={secHdr}>Record</div>
       {valRow('Kills', cs.monstersKilled ?? cs.kills ?? 0)}
