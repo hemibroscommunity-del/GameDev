@@ -55,6 +55,10 @@ import { SHIRT_COLOR_CATALOG, setShirtColor } from '@/rendering/traits/shirtColo
    and a scroll affordance: each strip sits in .bt-cc-scroll with a
    sheet-colored fade + › chevron that shows while more items wait
    off-screen (scrollMore state, measured on scroll/content change). */
+/* v2.3.1256: owner round 4 — FOUR primary categories: Head (subtype
+   buttons Hair/Hats/Skin/Beard), Shirt, Pants, Shoes.  The subtabs row
+   stays permanently reserved (real for Head, ghost elsewhere), so the
+   constant-size guarantee from v2.3.1252/1253 is untouched. */
 export function NameModal(props) {
   var _dragRotX = props._dragRotX,
     _swatchTile = props._swatchTile,
@@ -120,18 +124,18 @@ export function NameModal(props) {
     shoes: { label: 'Shoes', kind: 'swatch', spriteCat: null, catalog: SHOES_CATALOG, sel: shoesSel,
       set: function (id) { setShoes(id); setShoesSel(id); }, colors: null }
   };
-  /* v2.3.1251: five primary groups (approved mockup).  Icons reuse the
-     existing painted category art in /ui/welcome/cat/ — no emoji, no new
-     assets.  A group with one type shows no secondary tabs.
-     v2.3.1252: first group renamed Hair → HEAD (owner) — it holds both
-     Hair and Hats, so the group name matches the body part like the
-     other four. */
+  /* v2.3.1251: primary groups reuse the existing painted category art
+     in /ui/welcome/cat/ — no emoji, no new assets.  A group with one
+     type shows no secondary tabs.
+     v2.3.1256: FOUR primary groups (owner) — the old Head (hair/hats)
+     and Face (skin/beard) merge into one HEAD group whose subtype row
+     carries all four buttons; the garment groups drop the body-part
+     names for the garment itself: Shirt / Pants / Shoes. */
   var _GROUPS = [
-    { key: 'head', label: 'Head', icon: 'hair', types: ['hair', 'hat'] },
-    { key: 'face', label: 'Face', icon: 'skin', types: ['skin', 'beard'] },
-    { key: 'top', label: 'Top', icon: 'shirt', types: ['shirt'] },
-    { key: 'bottom', label: 'Bottom', icon: 'pants', types: ['pants'] },
-    { key: 'feet', label: 'Feet', icon: 'shoes', types: ['shoes'] }
+    { key: 'head', label: 'Head', icon: 'skin', types: ['hair', 'hat', 'skin', 'beard'] },
+    { key: 'shirt', label: 'Shirt', icon: 'shirt', types: ['shirt'] },
+    { key: 'pants', label: 'Pants', icon: 'pants', types: ['pants'] },
+    { key: 'shoes', label: 'Shoes', icon: 'shoes', types: ['shoes'] }
   ];
   var _groupOfType = {};
   _GROUPS.forEach(function (g) { g.types.forEach(function (t) { _groupOfType[t] = g.key; }); });

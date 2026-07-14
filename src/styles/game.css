@@ -883,26 +883,29 @@ input{font-family:inherit}
    header strip; the ACTIVE tab is a brass-soft tint + brass hairline
    (never a solid gold fill — PLAY is this surface's one gold element).
    Baloo/text-shadow dropped: Source Sans 3 only. */
-/* v2.3.1251: FIVE primary group tabs (approved mockup) — one grid row
-   even at 320px, icon over label, transparent at rest, brass-tint +
-   brass hairline when selected (never solid gold: PLAY owns gold). */
-.bt-cc-tabs{flex:0 0 auto;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:5px}
+/* v2.3.1251: primary group tabs — one grid row even at 320px, icon over
+   label, transparent at rest, brass-tint + brass hairline when selected
+   (never solid gold: PLAY owns gold).  v2.3.1256: five → FOUR columns
+   (owner): Head / Shirt / Pants / Shoes. */
+.bt-cc-tabs{flex:0 0 auto;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px}
 .bt-cc-tab{min-width:0;min-height:52px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:5px 2px 4px;background:transparent;border:1px solid transparent;border-radius:9px;cursor:pointer;color:var(--ui-text-secondary);font-family:'Source Sans 3',sans-serif}
 .bt-cc-tab:active{transform:translateY(1px)}
 .bt-cc-tab--on{background:var(--ui-brass-soft);color:var(--ui-text);border-color:var(--ui-brass)}
 .bt-cc-tab-icon{width:22px;height:22px;object-fit:contain;opacity:.92;pointer-events:none}
 .bt-cc-tab--on .bt-cc-tab-icon{opacity:1}
 .bt-cc-tab-label{max-width:100%;overflow:hidden;text-overflow:ellipsis;font-size:11px;font-weight:700;letter-spacing:.02em;line-height:1}
-/* v2.3.1251: compact secondary tabs — only Hair (Hair/Hats) and Face
-   (Skin/Beard) render them; single-type groups show none. */
-.bt-cc-subtabs{flex:0 0 auto;display:flex;width:fit-content;min-height:32px;margin:0 auto;padding:2px;border:1px solid var(--ui-line);border-radius:9px;background:rgba(0,0,0,.13)}
+/* v2.3.1251: compact secondary tabs.  v2.3.1256: only HEAD renders them
+   — four chips (Hair/Hats/Skin/Beard), so min-width drops 72 → 56 to
+   keep all four on one row inside a 320px viewport (4×56 + chrome ≈
+   230px < the 256px menu content there); max-width guards overflow. */
+.bt-cc-subtabs{flex:0 0 auto;display:flex;width:fit-content;max-width:100%;min-height:32px;margin:0 auto;padding:2px;border:1px solid var(--ui-line);border-radius:9px;background:rgba(0,0,0,.13)}
 /* v2.3.1252: ghost rows — the subtabs/colors slots stay in the layout
    (space reserved, nothing painted or tappable) when the active
    category doesn't use them, so the sheet height never changes and the
    flex stage can't resize the character on tab switches (owner: one
    consistent character size). */
 .bt-cc-ghost{visibility:hidden}
-.bt-cc-subtab{min-width:72px;min-height:28px;padding:3px 12px;border:0;border-radius:7px;background:transparent;color:var(--ui-text-secondary);font-size:11px;font-weight:700;letter-spacing:.02em;font-family:'Source Sans 3',sans-serif;cursor:pointer}
+.bt-cc-subtab{min-width:56px;min-height:28px;padding:3px 8px;border:0;border-radius:7px;background:transparent;color:var(--ui-text-secondary);font-size:11px;font-weight:700;letter-spacing:.02em;font-family:'Source Sans 3',sans-serif;cursor:pointer}
 /* v2.3.1254: selected subtab is a raised, micro-beveled chip. */
 .bt-cc-subtab--on{color:var(--ui-text);background:
   linear-gradient(180deg,
