@@ -64,6 +64,15 @@ import { SHIRT_COLOR_CATALOG, setShirtColor } from '@/rendering/traits/shirtColo
    agreed floors: 10px text, ~35px taps, 16px input font for the iOS
    zoom gate).  Tiles go 5-at-rest → 7, swatches 6 → 8; the flex stage
    absorbs the freed height, so the character grows substantially. */
+/* v2.3.1272: owner round 6 — "best logical use of space with adequate
+   touch targets".  The v2.3.1257 shrink squeezed CONTROLS; this pass
+   removes low-value ROWS instead and spends the savings on target
+   size: the sheet title is dropped (v2.3.1034 precedent — the screen
+   is self-explanatory), the — COLOR — header is dropped (the swatch
+   row reads as colors on its own), and Randomize moves into the tab
+   row as a fifth beveled die cell.  Every control returns to ≥32px
+   with the primary ones at 44px+; the sheet ends up SHORTER than
+   v2.3.1257 anyway (three rows removed vs one control-height added). */
 export function NameModal(props) {
   var _dragRotX = props._dragRotX,
     _swatchTile = props._swatchTile,
@@ -333,9 +342,8 @@ export function NameModal(props) {
        on this single card; the separate name bar and Randomize bar are
        retired.  Chrome lives in .bt-cc-menu (game.css). */
     className: "bt-cc-menu"
-  }, /*#__PURE__*/React.createElement("h1", {
-    className: "bt-cc-sheet-title"
-  }, /*#__PURE__*/React.createElement("span", null, "Create Your Bro")),
+  }, /* v2.3.1272: "CREATE YOUR BRO" title retired (space; v2.3.1034
+        precedent — self-explanatory screen). */
   /*#__PURE__*/React.createElement("div", {
     /* Name row — the dice ICON rerolls the NAME only (handoff: the word
        "Roll" is retired); appearance Randomize sits below the pickers. */
@@ -366,7 +374,8 @@ export function NameModal(props) {
       textAlign: 'center',
       boxSizing: 'border-box',
       caretColor: '#EAC675',
-      minHeight: 36
+      /* v2.3.1272: back to the 44px comfort floor. */
+      minHeight: 44
     }
   }), /*#__PURE__*/React.createElement("button", {
     type: 'button', title: 'Random name', "aria-label": 'Generate a random name', onClick: rollRandomName,
@@ -377,11 +386,10 @@ export function NameModal(props) {
        button sits inside the input, so it presses via the class's
        reversed bevel instead of moving. */
     className: "bt-cc-btn",
-    /* v2.3.1257: 44 → 34px with the sheet shrink (sits inside the 38px
-       name well). */
-    style: { position: 'absolute', right: 2, top: '50%', transform: 'translateY(-50%)', width: 34, height: 34, borderRadius: 7, cursor: 'pointer',
+    /* v2.3.1272: 40px target inside the 44px name well. */
+    style: { position: 'absolute', right: 2, top: '50%', transform: 'translateY(-50%)', width: 40, height: 40, borderRadius: 8, cursor: 'pointer',
       display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }
-  }, _dieSvg(16))), /*#__PURE__*/React.createElement("nav", {
+  }, _dieSvg(18))), /*#__PURE__*/React.createElement("nav", {
     className: "bt-cc-tabs", role: 'tablist', "aria-label": 'Appearance category'
   }, _GROUPS.map(function (g) {
     var on = g.key === _activeGroupKey;
@@ -394,7 +402,15 @@ export function NameModal(props) {
       onClick: function () { _openType(g.key, typeMemo[g.key] || g.types[0]); }
     }, /*#__PURE__*/React.createElement("img", { className: "bt-cc-tab-icon", src: '/ui/welcome/cat/' + g.icon + '.webp?v=' + BUILD_INFO.version, alt: '', draggable: false }),
     /*#__PURE__*/React.createElement("span", { className: "bt-cc-tab-label" }, g.label));
-  })), /*#__PURE__*/React.createElement("div", {
+  }), /*#__PURE__*/React.createElement("button", {
+    /* v2.3.1272: Randomize moves INTO the tab row as a fifth, beveled
+       die cell (its old standalone row is retired — the biggest single
+       space win of this pass).  Same randomizeWithFlair handler. */
+    key: 'rand', type: 'button', title: 'Randomize appearance',
+    "aria-label": 'Randomize appearance',
+    className: "bt-cc-tab bt-cc-tab--action",
+    onClick: randomizeWithFlair
+  }, _dieSvg(18), /*#__PURE__*/React.createElement("span", { className: "bt-cc-tab-label" }, "Random"))), /*#__PURE__*/React.createElement("div", {
     /* Secondary tabs — visible only for Head (Hair/Hats) and Face
        (Skin/Beard).  v2.3.1252: single-type groups render the row as an
        invisible GHOST instead of omitting it — the sheet is the flex
@@ -433,22 +449,14 @@ export function NameModal(props) {
        change size. */
     className: "bt-cc-colors" + (_colors ? "" : " bt-cc-ghost"),
     "aria-hidden": _colors ? undefined : true
-  }, /*#__PURE__*/React.createElement("span", { className: "bt-cc-colors-head" }, "Color"),
+  }, /* v2.3.1272: the — COLOR — header is retired (space) — the swatch
+        row under the item tiles reads as colors on its own. */
   /*#__PURE__*/React.createElement("div", { className: "bt-cc-scroll" },
   /*#__PURE__*/React.createElement("div", {
     className: "bt-cc-colors-row", ref: _colorRowRef, onScroll: _measureMore, role: _colors ? 'radiogroup' : undefined, "aria-label": _colors ? _def.label + ' colors' : undefined
   }, _colors || /*#__PURE__*/React.createElement("div", null)), /*#__PURE__*/React.createElement("span", {
     className: "bt-cc-more" + (scrollMore.colors ? " bt-cc-more--on" : ""), "aria-hidden": true
-  }, "›"))), /*#__PURE__*/React.createElement("button", {
-    /* Appearance RANDOMIZE — visually secondary (handoff), inside the
-       sheet, right under what it acts on.  v2.3.1254: chrome moved to
-       .bt-cc-btn (micro-bevel); inline styles are layout-only. */
-    type: 'button', onClick: randomizeWithFlair, className: "bt-cc-btn",
-    /* v2.3.1257: compacted with the sheet shrink. */
-    style: { alignSelf: 'center', padding: '4px 10px', minHeight: 30, cursor: 'pointer', borderRadius: 8,
-      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-      fontSize: 11, fontWeight: 700, letterSpacing: '.02em', fontFamily: "'Source Sans 3',sans-serif" }
-  }, _dieSvg(13), /*#__PURE__*/React.createElement("span", null, "Randomize appearance"))),
+  }, "›")))),
   /*#__PURE__*/React.createElement("button", {
     onClick: joinTown,
     /* v2.3.1251: PLAY → ENTER BRO TOWN, the screen's one dominant gold
