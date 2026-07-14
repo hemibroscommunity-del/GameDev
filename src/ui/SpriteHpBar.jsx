@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 
-/* v2.3.1276: DOM version of the owner's health-bar art (the canvas
+/* v2.3.1273: DOM version of the owner's health-bar art (the canvas
    widgets live in entityRenderer).  Two-sprite technique: the empty
    frame paints the track, and the full red bar paints on top CLIPPED to
    the hp fraction — smooth at any percentage.  Damage feedback matches
