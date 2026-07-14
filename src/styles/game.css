@@ -4,7 +4,22 @@
 :root {
   /* Bottom dashboard band height.  Single source of truth — JS-side
      code (BroTown.jsx DASH_FRAC) must be kept in sync if changed. */
-  --dash-h:   28vh;
+  /* v2.3.1258: 28vh -> 33vh (owner + ChatGPT: the dashboard felt
+     compressed; ~+45px on real phones, capped at one-third of the
+     viewport so the world stays dominant).  The v2.3.1238 height-aware
+     tile formula turns the extra height into larger slots and looser
+     Build/DEF/DPS rows automatically. */
+  /* v2.3.1263: +26px for the (later removed) subheader strip.
+     v2.3.1268: owner — "make the dashboard not as tall to make it all
+     even."  The band height now DERIVES from the slot geometry instead
+     of the viewport: cells are (panelContent-16)/2 wide (v2.3.1267), the
+     block is 3 cells + 2x8px gaps, and the chrome around it is fixed
+     (47px cap + 8 above block + 8 below + tray 4 + border 2 + 72
+     toolbar).  Algebra: panelContent = (100vw - 28px)/3 - 10px  ->
+     band = 50vw + 111px (104 by algebra, +7 measured chrome).  Every spacing around a slot is exactly the 8px
+     inter-slot gap, on every portrait device width, with zero pooled
+     slack.  JS-side sync: BroTown.jsx DASH_W_FRAC/DASH_BASE. */
+  --dash-h:   calc(50vw + 88px); /* v2.3.1269: cap halved (47->24) */
   /* v2.3.1235: Lantern Slate CORRECTION PASS (owner-approved ChatGPT
      review of the v2.3.1234 screenshots).  Slightly brighter, greener
      slate; four depth roles only (sheet / raised / well / well-deep);
@@ -102,8 +117,8 @@
    snaps the height to a whole CSS px (28vh uses the stable large-viewport
    height on iOS, so this does NOT jump when the address bar shows/hides).
    CSS-only + graceful: any engine without round() keeps plain 28vh. */
-@supports (height: round(nearest, 28vh, 1px)) {
-  :root { --dash-h: round(nearest, 28vh, 1px); }
+@supports (height: round(nearest, 50vw, 1px)) {
+  :root { --dash-h: calc(round(nearest, 50vw, 1px) + 88px); }
 }
 /* v2.3.1241: edge-parity — device-pixel hairlines.  A "1px" contour is 2–3
    physical pixels on Retina; that thickness (stacked with borders/shadows)
@@ -166,15 +181,19 @@
     inset 0 var(--ui-hairline) 0 0 #66838E;
 }
 .bt-dashboard-module{
-  background:var(--ui-dashboard-panel);
-  /* v2.3.1241: edge-parity — exactly ONE contour; no inset highlight, no
-     external shadow.  (radius 10 -> 9 per the mockup.) */
-  /* v2.3.1250: owner — the panels blended into the tray; the device
-     hairline of #29414B was invisible on-screen.  A thin discernible
-     gray contour marks where each panel area exists. */
+  /* v2.3.1250: visible 1px gray contour (panels blended into the tray).
+     v2.3.1270: owner — "panels need more visual depth (subtle gradients,
+     borders, or drop shadows)".  Three quiet cues: a top-lit vertical
+     gradient (lighter crown, darker seat), a 1px inner catch-light under
+     the top edge, and a soft two-part drop shadow lifting each panel off
+     the tray. */
+  background:linear-gradient(180deg, #15272F 0%, #10222A 42%, #0C1B22 100%);
   border:1px solid #4A565E;
   border-radius:9px;
-  box-shadow:none;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.055),
+    0 5px 12px rgba(3,8,11,.35),
+    0 1px 3px rgba(3,8,11,.30);
 }
 /* v2.3.1249: panel-header TEXTURES (owner-approved scope: textures only,
    zero layout change — the flow-neutral offsets live inline in
@@ -201,6 +220,27 @@
   background-color:#213E5A;
   background-image:url('/ui/dashboard/header-circuit.webp');
 }
+/* v2.3.1263: panel SUBHEADER — a quiet 22px info strip directly under the
+   textured cap (owner: DEF/DPS for Loadout, slots-left for Bag, level +
+   unspent points for Build).  Full-bleed like the cap; hairline base rule;
+   data text only — never buttons or slots.  The band grew by exactly this
+   strip's height so the slot grids below are untouched. */
+.bt-dashboard-panel-subheader{
+  flex:0 0 22px;
+  height:22px;
+  margin:0 -4px 4px;
+  display:flex;align-items:center;justify-content:center;gap:5px;
+  background:rgba(6,14,18,.45);
+  border-bottom:var(--ui-hairline) solid #29414B;
+  font-size:10px;font-weight:700;letter-spacing:.06em;
+  color:var(--ui-dashboard-text-secondary);
+  white-space:nowrap;overflow:hidden;
+  pointer-events:none;
+}
+.bt-dashboard-panel-subheader .sub-label{color:#93A2A2}
+.bt-dashboard-panel-subheader .sub-def{color:#6FCBD6;font-variant-numeric:tabular-nums}
+.bt-dashboard-panel-subheader .sub-dps{color:#7BCD84;font-variant-numeric:tabular-nums}
+.bt-dashboard-panel-subheader .sub-num{font-variant-numeric:tabular-nums}
 /* v2.3.1249: compact item-quantity badge (bottom-right of ItemTile) —
    replaces the big uncontained 15px count.  Bare number, no "x", shown
    only when count > 1, sized for the 2-digit stack max.  pointer-events
@@ -218,7 +258,9 @@
   pointer-events:none;
 }
 .bt-dashboard-toolbar-frame{
-  padding:4px 8px 7px;
+  /* v2.3.1258: +4px breathing room between the panels and the nav row
+     (part of the taller-dashboard pass). */
+  padding:8px 8px 7px;
   background:var(--ui-dashboard-tray);
 }
 .bt-dashboard-toolbar-ribbon{

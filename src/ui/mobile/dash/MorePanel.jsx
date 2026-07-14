@@ -14,6 +14,9 @@ const TILES = [
   /* v2.3.1236: owner feedback — Weapons menu renamed Build (label only;
      the t2 id and the panel-weapons icon asset keep their names). */
   { id: 't2',          src: '/icons/ui/panel-weapons.webp?v=2.3.1224',     label: 'Build',    glyph: '⚔️' },
+  /* v2.3.1265: Journey + Codex demoted from the 5-button toolbar. */
+  { id: 'journey',     src: '/icons/ui/journey.webp?v=2.3.1224',           label: 'Journey',  glyph: '🛤' },
+  { id: 'encyclopedia', src: '/icons/ui/panel-encyclopedia.webp?v=2.3.1224', label: 'Codex',  glyph: '📚' },
   { id: 'leaderboard', src: '/icons/ui/panel-leaderboard.webp?v=2.3.1224', label: 'Ranks',    glyph: '🏆' },
   { id: 'clan',        src: '/icons/ui/panel-clan.webp?v=2.3.1224',        label: 'Clan',     glyph: '🛡' },
   { id: 'guild',       src: '/icons/ui/panel-guild.webp?v=2.3.1224',       label: 'Guild',    glyph: '⚒' },
