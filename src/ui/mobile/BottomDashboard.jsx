@@ -477,7 +477,10 @@ const FIT_GRID_CONTAIN = { containerType: 'size' };
    grids distribute ALL leftover space evenly per axis (space-evenly:
    edge margin == inter-cell spacing), and the cell formula reserves
    ~24px horizontal / ~20px vertical for that breathing room. */
-const FIT_TRACK = 'min(calc((100cqw - 24px) / 2), calc((100cqh - 20px) / 4))';
+/* v2.3.1254: owner experiment — bag drops to 6 tiles and the DEF/DPS row
+   comes out of the loadout, so BOTH grids are 2x3; height budget divides
+   by 3 (cells get bigger again). */
+const FIT_TRACK = 'min(calc((100cqw - 24px) / 2), calc((100cqh - 20px) / 3))';
 
 const InventoryPreview = () => {
   const [, force] = useState(0);
@@ -498,9 +501,10 @@ const InventoryPreview = () => {
      the Loadout slots; a third row fits cleanly when the block is anchored
      to the top of the column. Items fill first, then faint empty slots pad
      out to 9 so it always reads as an inventory grid. */
-  /* v2.3.1251: 2-col x 4-row grid (8 tiles) — owner: two wide columns of
-     larger slots, using the taller band's extra rows. */
-  const tiles = entries.slice(0, 8);
+  /* v2.3.1251: 2-col grid — owner: two wide columns of larger slots.
+     v2.3.1254: owner experiment — 8 -> 6 tiles (2x3, matching the
+     loadout's six slots now that DEF/DPS moved out). */
+  const tiles = entries.slice(0, 6);
   const openFullBag = (e) => {
     if (e) e.stopPropagation();
     dashboardPanelBus.toggle('inventory');
@@ -586,7 +590,7 @@ const InventoryPreview = () => {
             <BagTile entry={e} />
           </div>
         ))}
-        {Array.from({ length: Math.max(0, 8 - tiles.length) }).map((_, i) => (
+        {Array.from({ length: Math.max(0, 6 - tiles.length) }).map((_, i) => (
           <div key={`pe-${i}`} aria-hidden="true" style={{
             aspectRatio: '1 / 1',
             /* v2.3.1252: tracks are cell-sized now; fill the track. */
@@ -1483,6 +1487,12 @@ export const BottomDashboard = () => {
                             row 3 to one slot height — the exact height of
                             the bag's third row — so the line's band is
                             level with it by construction. */}
+                        {/* v2.3.1254: owner experiment — DEF/DPS readout (and
+                            its row-4 spacer) removed so the six slots fill the
+                            panel; the info still lives in the item picker and
+                            stat panels.  Kept one revert away (false &&),
+                            matching the repo's layout-experiment convention. */}
+                        {false && (<>
                         <div aria-hidden="true" style={{
                           gridRow: 4, /* v2.3.1251: below the 2x3 slot rows */
                           gridColumn: 1,
@@ -1560,6 +1570,7 @@ export const BottomDashboard = () => {
                             <span style={{ fontSize: 11, fontWeight: 600, fontVariantNumeric: 'tabular-nums', color: kind === 'def' ? '#6FCBD6' : '#7BCD84', whiteSpace: 'nowrap' }}>{val}</span>
                           </div>
                         ))}
+                        </>)}
                       </div>
                     </div>
                   );
