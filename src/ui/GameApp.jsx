@@ -15,7 +15,10 @@ import { setEquip, getEquip, GEAR_CATALOG, GEAR_SLOTS, gearInventoryItems } from
 import { BlockRing } from './mobile/BlockRing.jsx';
 import { SpecialChargePie } from './mobile/SpecialChargePie.jsx';
 import { blockRingBus } from './mobile/blockRingBus.js';
-import { MoreOverlay, moreOverlay } from './mobile/MoreOverlay.jsx';
+/* v2.3.1287: MoreOverlay deleted (unmounted since the BottomDashboard
+   landed); the legacy wheel's "more" activation routes to the nav
+   sheet's More destination instead. */
+import { dashboardPanelBus } from './mobile/dashboardPanelBus.js';
 import { ControlsTutorial } from './mobile/ControlsTutorial.jsx';
 /* v2.3.820: MasteryNotification removed from the render (owner request) --
    import dropped to avoid an unused symbol. */
@@ -281,8 +284,9 @@ export const GameApp = () => {
       const profile = (s && s.player) ? buildSelfProfile(s) : generateMockProfile({ name: 'You' });
       inspectCardBus.open(profile);
     }));
-    // Wire wheel → "More" overlay (legacy panels not yet relocated).
-    offs.push(wheelBus.onActivate('more', () => moreOverlay.open()));
+    // Wire wheel → the nav sheet's More destination (v2.3.1287: the
+    // legacy MoreOverlay is deleted).
+    offs.push(wheelBus.onActivate('more', () => dashboardPanelBus.openCompact('more')));
     // Wire wheel slots that map directly to a legacy panel.
     const legacyPanel = (key) => () => {
       const fn = window.__broLegacyUI?.[key];

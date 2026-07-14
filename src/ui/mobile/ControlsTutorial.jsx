@@ -33,9 +33,11 @@ const STEPS = [
   { key: 'dashboard', shape: 'rect',
     sels: ['[data-tut="dash-bag"]'],
     label: 'Bag', body: 'Your gear on top, latest loot below. Tap anything for details — swipe up for the full bag.' },
+  /* v2.3.1287: Chat left the toolbar — the composer opens by tapping
+     your own character; the step teaches that instead. */
   { key: 'toolbar', shape: 'rect',
-    sels: ['[data-tut="dash-chat"]', '[data-tut="dash-more"]'],
-    label: 'Toolbar', body: 'Menus live down here.' },
+    sels: ['[data-tut="dash-more"]'],
+    label: 'Toolbar', body: 'Menus live down here. Tap your character to chat.' },
   { key: 'dodge', shape: null, sels: null,
     label: 'Swipe / Dodge', body: 'Swipe anywhere in the world to dodge-roll.' },
 ];

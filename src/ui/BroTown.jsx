@@ -89,6 +89,7 @@ import { pushHudPopup } from './XpFlyOverlay.jsx';
 import { firemakingBus } from './mobile/firemakingBus.js';
 import { eatBus } from './mobile/eatBus.js';
 import { blockRingBus } from './mobile/blockRingBus.js';
+import { chatBubbleBus } from './mobile/chatBubbleBus.js'; /* v2.3.1287: self-tap opens chat */
 import { controlsTutorialBus } from './mobile/controlsTutorialBus.js';
 /* Renderer: PixiJS (WebGL) with Canvas 2D fallback */
 import { initPixiRenderer, preloadPlayerAssets } from '@/rendering/pixiRenderer.js';
@@ -5290,6 +5291,33 @@ export var BroTown = function BroTown(_ref0) {
       var dy = clientY - (P.y - 24 - cam.y);
       return (dx * dx + dy * dy) < (170 * 170);
     };
+    /* v2.3.1287: tapping YOUR OWN character opens the chat composer —
+       Chat left the toolbar (owner, nav-system).  Same screen-space
+       anchor math as isReelTouch, tight ~48px radius over the sprite.
+       Checked at tap-CLASSIFICATION time (lE/rE), never at touchstart:
+       a drag that starts on the character must still move/aim. */
+    var isSelfTouch = function (clientX, clientY) {
+      var S = stateRef.current;
+      var cam = S && S.camera, P = S && S.player;
+      if (!cam || !P) return false;
+      /* v2.3.1111 lesson: world px -> CSS px needs the published
+         renderer scale (WORLD_ZOOM), or every tap is ~25% radially off.
+         (isReelTouch above predates the fix but its 170px radius
+         tolerates the error; this 52px one doesn't.) */
+      var sx = S._worldScaleX || 1.0;
+      var sy = S._worldScaleY || 1.0;
+      var dx = clientX - (P.x - cam.x) * sx;
+      var dy = clientY - (P.y - 24 - cam.y) * sy;
+      var r = 52 * sx;
+      return (dx * dx + dy * dy) < (r * r);
+    };
+    var openSelfChat = function () {
+      try {
+        var _busC = window.__broDashPanelBus;
+        if (_busC && _busC.state.mode === 'expanded') _busC.collapse();
+      } catch (_e3) {}
+      try { chatBubbleBus.setOpen(true); } catch (_e4) {}
+    };
     /* Left joystick double-tap = cycle weapon (melee -> ranged -> staff).
        Constants shared with the right joystick at the head of this
        useEffect so both gestures use the same tap-vs-drag classifier.
@@ -5298,6 +5326,7 @@ export var BroTown = function BroTown(_ref0) {
        counted as a second tap and double-cycling the weapon. */
     var DOUBLE_TAP_WINDOW_MS = 220;
     var TAP_MAX_DURATION_MS = 200;
+    var SELF_TAP_MAX_MS = 400; /* v2.3.1287: chat self-tap dwell ceiling */
     var TAP_MAX_MOVE_SQ_PX = 100; /* 10 px squared */
     var DOUBLE_TAP_MAX_DIST_SQ_PX = 2500; /* 50 px squared */
     var PREVIEW_HOLD_MS = 350;
@@ -5369,6 +5398,16 @@ export var BroTown = function BroTown(_ref0) {
         var wasTap = !lts.moved && (endT - lts.startAt) < TAP_MAX_DURATION_MS;
         lTouchId.current = null;
         handleJoystickEnd();
+        /* v2.3.1287: a tap ON the character opens chat and consumes —
+           BEFORE the double-tap weapon-cycle classifier, so a self-tap
+           never counts as tap #1 or #2 of a cycle, and no synthetic
+           lock-on click is forwarded.  Own 400ms ceiling (see rE). */
+        if (!lts.moved && (endT - lts.startAt) < SELF_TAP_MAX_MS
+            && isSelfTouch(t.clientX, t.clientY)) {
+          lts.lastEndAt = 0;
+          openSelfChat();
+          return;
+        }
         if (wasTap) {
           /* Did this tap COMPLETE a double-tap with a recent prior
              tap?  Check the prior tap's end-time + position against
@@ -5593,6 +5632,18 @@ export var BroTown = function BroTown(_ref0) {
         var rts3 = rTapState.current;
         var endT = Date.now();
         var wasTap = !rts3.moved && (endT - rts3.startAt) < TAP_MAX_DURATION_MS && !isFlick;
+        /* v2.3.1287: self-tap on the aim side opens chat too — no
+           lock-on click, no shield preview (see lE).  Its own 400ms
+           ceiling (SELF_TAP_MAX_MS): opening chat is not a twitch
+           gesture, so a deliberate thumb dwell still counts. */
+        if (!rts3.moved && !isFlick && (endT - rts3.startAt) < SELF_TAP_MAX_MS
+            && isSelfTouch(t.clientX, t.clientY)) {
+          rts3.lastEndAt = 0;
+          rTouchId.current = null;
+          handleRJoyEnd();
+          openSelfChat();
+          return;
+        }
         if (wasTap) {
           rts3.lastEndAt = endT;
           rts3.lastX = t.clientX;

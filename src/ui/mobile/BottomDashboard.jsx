@@ -143,41 +143,12 @@ const ICON_SRC = {
    rendered as the tooltip's explanation row (the quantified benefit line
    is derived live in the render loop from the same formulas the cells
    already display). */
-const CHAR_STATS = [
-  { key: 'power',     label: 'Melee',     short: 'MEL', iconSrc: '/icons/ui/combat-melee.webp?v=2.3.1224',   pixelated: false, iconScale: 1.5, train: 'Improves when sword or greatsword attacks land.' },
-  { key: 'agility',   label: 'Bow',       short: 'BOW', iconSrc: '/icons/ui/combat-bow.webp?v=2.3.1225',     pixelated: false, iconScale: 1.5, train: 'Also boosts move speed and dodge; improves when dodges succeed or bow shots land.' },
-  { key: 'mind',      label: 'Magic',     short: 'MAG', iconSrc: '/icons/ui/combat-magic.webp?v=2.3.1224',   pixelated: false, iconScale: 1.5, train: 'Also grows the mana pool; improves when you spend mana on staff bolts.' },
-  { key: 'vitality',  label: 'HP',        short: 'HP',  iconSrc: '/icons/ui/stat-vitality.webp?v=2.3.1224',  pixelated: false, iconScale: 1.5, train: 'Improves when you take damage and survive the fight.' },
-  /* Defense = Tier-2 trained skill (rpg.defenseSkill.level); tapping opens the
-     DEF spend tab in the T2 panel (wired in v2.3.693).  v2.3.696: DEF and END
-     swapped -- bottom row reads Vitality · Defense · Endurance per user. */
-  /* v2.3.1282: owner — the stat-defense art is "an awkward double
-     shield"; the single round combat-defense shield replaces it. */
-  { key: 'defense',   label: 'Defense',   short: 'DEF', iconSrc: '/icons/ui/combat-defense.webp?v=2.3.1224', pixelated: false, iconScale: 1.5, t2: true, train: 'Improves when you block and mitigate hits; spend points in the DEF tab.' },
-  { key: 'endurance', label: 'Endurance', short: 'END', iconSrc: '/icons/ui/stat-endurance.webp?v=2.3.1225', pixelated: false, iconScale: 1.5, train: 'Improves when you spend stamina on dodge, block, or sprint.' },
-];
+/* v2.3.1287: CHAR_STATS moved to sheet/heroModel.js (COMBAT_SKILLS);
+   the life-skills roster to sheet/skillsModel.js. */
 
 /* Dashboard now focuses on the build/combat stats; the life-skills grid is
    hidden behind this flag (flip to true to restore the 10-skill column). */
-const SHOW_LIFE_SKILLS = false;
 
-// 10 life skills — names match the canonical labels in BroTown.jsx
-// (Woodcutting, Fishing, Mining, Cooking, Blacksmithing, Woodworking,
-// Gem Cutting, Enchanting, Farming, Trapping).
-const LIFE_SKILLS = [
-  /* v2.3.1224: iconSrc = UI Bible skill icons; emoji kept as the render
-     fallback if an image ever 404s. */
-  { key: 'cooking',       icon: '🍳', iconSrc: '/icons/ui/skill-cooking.webp?v=2.3.1224',       label: 'Cooking',       tip: 'Cooking — turn raw ingredients into stat-boosting food.' },
-  { key: 'fishing',       icon: '🎣', iconSrc: '/icons/ui/skill-fishing.webp?v=2.3.1224',       label: 'Fishing',       tip: 'Fishing — catch fish from water tiles for cooking + alchemy.' },
-  { key: 'mining',        icon: '⛏',  iconSrc: '/icons/ui/skill-mining.webp?v=2.3.1224',        label: 'Mining',        tip: 'Mining — break ore + zone gems with a pickaxe.' },
-  { key: 'woodcutting',   icon: '🪓', iconSrc: '/icons/ui/skill-woodcutting.webp?v=2.3.1224',   label: 'Woodcutting',   tip: 'Woodcutting — chop trees for logs and twigs.' },
-  { key: 'farming',       icon: '🌾', iconSrc: '/icons/ui/skill-farming.webp?v=2.3.1224',       label: 'Farming',       tip: 'Farming — plant + harvest crops on owned plots.' },
-  { key: 'blacksmithing', icon: '🔨', iconSrc: '/icons/ui/skill-blacksmithing.webp?v=2.3.1224', label: 'Blacksmithing', tip: 'Blacksmithing — forge weapons, armor, tools.' },
-  { key: 'woodworking',   icon: '🛠',  iconSrc: '/icons/ui/skill-woodworking.webp?v=2.3.1224',   label: 'Woodworking',   tip: 'Woodworking — craft bows, staves, furniture from logs.' },
-  { key: 'gemCutting',    icon: '💎', iconSrc: '/icons/ui/skill-gemcutting.webp?v=2.3.1224',    label: 'Gem Cutting',   tip: 'Gem Cutting — refine raw gems into polished sockets.' },
-  { key: 'enchanting',    icon: '✨', iconSrc: '/icons/ui/skill-enchanting.webp?v=2.3.1224',    label: 'Enchanting',    tip: 'Enchanting — infuse equipment with elemental effects.' },
-  { key: 'trapping',      icon: '🪤', iconSrc: '/icons/ui/skill-trapping.webp?v=2.3.1224',      label: 'Trapping',      tip: 'Trapping — hunt animals + monsters with set traps.' },
-];
 
 // Tiny column-header used at the top of each of the three dashboard
 // columns.  Centered above its column.
@@ -190,49 +161,8 @@ const LIFE_SKILLS = [
    glyphs and every sibling stay at the same pixel; the cap just paints
    edge-to-edge through the column's 4px inset.  Verified by pixel-diff
    against the pre-change build. */
-const ColHeader = ({ variant, children }) => (
-  <div
-    className={variant ? `bt-dashboard-panel-header bt-dashboard-panel-header--${variant}` : undefined}
-    style={{
-    /* v2.3.1236: owner dashboard feedback §1 — the 16px icon is gone;
-       the freed space goes to a larger title (11 -> 13/700, same
-       uppercase + .14em tracking). */
-    /* v2.3.1236: owner feedback r2 §3 — 13 was a notch too loud next to
-       the slot grids; 12/700 keeps the hierarchy without shouting. */
-    /* v2.3.1240: the mockup groups each function with its own dark well;
-       the old title underline duplicated that boundary and looked dated. */
-    /* v2.3.1269: owner — one consistent UI type treatment: Title Case
-       like the toolbar labels (the all-caps + wide tracking was the
-       odd one out), 13/700. */
-    /* v2.3.1278: the re-derived panels are ~25vw wide (82px at 430) —
-       a fixed 13px truncated "Equipped" on the narrow caps.  Scale
-       with the panel, 10px floor (owner rule), 13px ceiling. */
-    fontSize: 'clamp(10px, 2.9vw, 13px)',
-    fontWeight: 700,
-    /* v2.3.1240: the approved mockup uses a near-white, crisp header;
-       COL.text2 made the built version read noticeably gray. */
-    color: 'var(--ui-dashboard-text)',
-    textShadow: '0 1px 0 rgba(0,0,0,.72)',
-    letterSpacing: '.03em',
-    padding: '0 2px 2px',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 4,
-    whiteSpace: 'nowrap',
-    overflow: 'hidden',
-    /* v2.3.1249: flow-neutral cap offsets (see the note above). */
-    /* v2.3.1264: owner experiment — the +26px the band gained for the
-       v2.3.1263 subheaders goes to the HEADER instead (21 -> 47px cap;
-       the strips are removed).  Same band height, same slot budget. */
-    /* v2.3.1268: cap-to-block spacing = the 8px slot gap (was 4). */
-    /* v2.3.1269: owner — cap height halved (47 -> 24); the texture reads
-       as a slim material band.  Band constant follows (-23). */
-    ...(variant ? { margin: '-4px -4px 8px', padding: '3px 6px 2px', height: 24, flex: '0 0 24px' } : null),
-  }}>
-    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{children}</span>
-  </div>
-);
+/* v2.3.1287: ColHeader retired with the 3-panel row (headers left the
+   band in v2.3.1280; the sheet header strip is the one title now). */
 
 // Tooltip popup module — taps on stat / skill rows show a short
 // description above the dashboard.  One active tooltip at a time;
@@ -523,7 +453,6 @@ export const BottomDashboard = () => {
   /* v2.3.1025: the BUILD/stats column rect -- the loadout equip picker docks
      over it (to the right of the loadout cells) so switching categories never
      moves the menu or covers the loadout, and it can't exceed the dashboard. */
-  const buildColRef = useRef(null);
   useEffect(() => {
     const id = setInterval(() => force(v => v + 1), 200);
     return () => clearInterval(id);
