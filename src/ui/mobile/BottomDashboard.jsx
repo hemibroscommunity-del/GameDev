@@ -206,7 +206,10 @@ const ColHeader = ({ variant, children }) => (
     whiteSpace: 'nowrap',
     overflow: 'hidden',
     /* v2.3.1249: flow-neutral cap offsets (see the note above). */
-    ...(variant ? { margin: '-4px -4px 4px', padding: '4px 6px 2px' } : null),
+    /* v2.3.1257: owner experiment — the +26px the band gained for the
+       v2.3.1256 subheaders goes to the HEADER instead (21 -> 47px cap;
+       the strips are removed).  Same band height, same slot budget. */
+    ...(variant ? { margin: '-4px -4px 4px', padding: '4px 6px 2px', height: 47, flex: '0 0 47px' } : null),
   }}>
     <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{children}</span>
   </div>
@@ -992,12 +995,6 @@ export const BottomDashboard = () => {
                 {/* v2.3.1065: BAG title matching the Loadout/Build ColHeaders. */}
                 {/* v2.3.1236: owner dashboard feedback §1 — icon prop removed. */}
                 <ColHeader variant="bag">Bag</ColHeader>
-                {/* v2.3.1256: owner — panel subheader strip: slots left
-                    (mirrors the Inventory panel's N/32 counter). */}
-                <div className="bt-dashboard-panel-subheader">
-                  <span className="sub-num">{Math.max(0, 32 - getBagEntries(R).length)}</span>
-                  <span className="sub-label">SLOTS LEFT</span>
-                </div>
                 {/* v2.3.155: hybrid HP/MP/END card replaced with a
                     compact inventory preview. The derived stats it used
                     to show (Crit / Block / Zone / Kills / Time) are
@@ -1426,14 +1423,6 @@ export const BottomDashboard = () => {
                        readout spans that row, vertically centered — i.e.
                        level with the bag's third row. */
                     <>
-                    {/* v2.3.1256: owner — panel subheader strip: the always-on
-                        DEF/DPS home (replaces the retired in-grid row). */}
-                    <div className="bt-dashboard-panel-subheader">
-                      <span className="sub-label">DEF</span>
-                      <span className="sub-def">+{armorDef}</span>
-                      <span className="sub-label" style={{ marginLeft: 6 }}>DPS</span>
-                      <span className="sub-dps">{dpsText}</span>
-                    </div>
                     {/* v2.3.1252b: cq units in a grid's OWN track list resolve
                        against the nearest ANCESTOR container (a container
                        cannot query itself) — without this wrapper they fell
@@ -1613,21 +1602,6 @@ export const BottomDashboard = () => {
                 padding: '4px 4px 6px',
               }}>
                 <ColHeader variant="build">{SHOW_LIFE_SKILLS ? 'Stats · Skills' : 'Build'}</ColHeader>
-                {/* v2.3.1256: owner — panel subheader strip: combat level +
-                    unspent build points (actionable when > 0). */}
-                {(() => {
-                  const unspentTotal = CHAR_STATS.reduce((a, st) => a + buildSkillUnspent(R, st.key), 0);
-                  return (
-                    <div className="bt-dashboard-panel-subheader">
-                      <span className="sub-label">LV</span>
-                      <span className="sub-num">{R.level || 1}</span>
-                      {unspentTotal > 0 && (<>
-                        <span className="sub-label" style={{ marginLeft: 6 }}>UNSPENT</span>
-                        <span className="sub-num" style={{ color: '#D8A85F' }}>{unspentTotal}</span>
-                      </>)}
-                    </div>
-                  );
-                })()}
                 {/* v2.3.1236: owner feedback r3 §4 — no alignment change
                     needed HERE for the line-up: flex:1 + 1fr rows mean this
                     grid fills the column's content area top-to-bottom, so
