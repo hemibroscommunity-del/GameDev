@@ -163,7 +163,10 @@ export function TouchControls(props) {
       textTransform: 'uppercase',
     }
   }))), /*#__PURE__*/React.createElement("div", {
-    className: "bt-desktop-hide",
+    /* v2.3.1288: bt-rjoy-zone names the right disc's corner container so
+       the expanded-sheet dim (game.css, nav-system PR B) can reach it —
+       the left disc already had .bt-joystick-zone. */
+    className: "bt-desktop-hide bt-rjoy-zone",
     style: {
       position: 'fixed',
       bottom: 'calc(var(--dash-h) + 70px)',

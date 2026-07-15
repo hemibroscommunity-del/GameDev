@@ -5,6 +5,8 @@ import { itemDetailBus } from './itemDetailBus.js';
 import { isLocked as itemIsLocked } from './inventoryLocks.js';
 import { reconcileGearStash } from '../../../rendering/gearCatalog.js';
 import { getBagEntries } from './bagModel.js';
+import { SlotTile } from '../sheet/SlotTile.jsx';                 /* v2.3.1285 */
+import { getEquippedSlots, GHOST_SRC } from '../sheet/equipModel.js';
 
 // Category filter chips.  "All" comes first so the player always opens
 // the bag with everything visible.  v2.3.1231: UI Bible icons replace
@@ -175,9 +177,15 @@ export const ItemTile = ({ ikey, count, style: styleOverride }) => {
   );
 };
 
+/* v2.3.1293 (ChatGPT round-3 §6): the selected filter survives leaving
+   the destination — module-scoped, session-only.  Switching to Hero
+   and back should not silently reset a Weapon filter to All. */
+let _lastFilter = 'all';
+
 export const InventoryPanel = () => {
   const [, force] = useState(0);
-  const [filter, setFilter] = useState('all');
+  const [filter, setFilterState] = useState(_lastFilter);
+  const setFilter = (f) => { _lastFilter = f; setFilterState(f); };
 
   useEffect(() => {
     const id = setInterval(() => force(v => v + 1), 400);
@@ -206,12 +214,56 @@ export const InventoryPanel = () => {
     ? entries
     : entries.filter(e => e.cat === filter);
 
-  const SLOTS = 32;
-  const shownItems = filtered.slice(0, SLOTS);
+  /* v2.3.1285 (nav-system spec §Bag Expanded): 6-col grid, minimum 4
+     rows, GROWS by whole rows and scrolls when the bag outgrows 24 —
+     the bag has no real capacity (the old "N / 32" was display-only
+     fiction, now retired), so a hard 24 would hide items. */
+  const COLS = 6;
+  const shownItems = filtered;
   const usedTiles = shownItems.length;
+  const MIN_CELLS = COLS * 4;
+  const totalCells = Math.max(MIN_CELLS, Math.ceil(usedTiles / COLS) * COLS);
+
+  const R = (S && S.rpg) || {};
+  const equipped = getEquippedSlots(R);
+  const openPicker = (pickerSlot) => (anchor) => {
+    const st = itemDetailBus.state;
+    if (st && st.open && st.target && st.target.kind === 'loadout' && st.target.slot === pickerSlot) {
+      itemDetailBus.close();
+      return;
+    }
+    itemDetailBus.open({ kind: 'loadout', slot: pickerSlot, anchor, panel: null });
+  };
 
   return (
     <div style={{ ...panelStyle, display: 'flex', flexDirection: 'column' }}>
+
+      {/* v2.3.1285: the SAME six equipped positions as the compact row,
+          same order, same tile component — expanding feels like the
+          panel revealing more, not a different screen. */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: `repeat(${COLS}, 1fr)`,
+        gap: 8,
+        marginBottom: 8,
+        flex: 'none',
+      }}>
+        {equipped.map(sl => (
+          <SlotTile
+            key={`eq-${sl.slot}`}
+            k={`eq-${sl.slot}`}
+            label={sl.label}
+            iconSrc={sl.iconSrc}
+            ghostSrc={sl.ghost ? GHOST_SRC[sl.slot] : null}
+            occupied={!sl.ghost}
+            quality={sl.quality}
+            onTap={sl.pickerSlot ? openPicker(sl.pickerSlot)
+              : sl.slot === 'amulet' && R.amulet
+                ? (anchor) => itemDetailBus.open({ kind: 'amulet', amulet: R.amulet, anchor })
+                : undefined}
+          />
+        ))}
+      </div>
 
       {/* Filter strip — labeled category chips (glyph + name).
           v2.3.1235: row scrolls horizontally (nowrap + pan-x) so chips
@@ -255,10 +307,8 @@ export const InventoryPanel = () => {
           );
         })}
       </div>
-      {/* v2.3.1236: slot counter (kept from the removed BAG row). */}
-      <span style={{ flex: 'none', fontSize: 11, color: COL.muted, paddingRight: 2 }}>
-        {Math.min(usedTiles, SLOTS)} / {SLOTS}
-      </span>
+      {/* v2.3.1285: the fictional "N / 32" counter is retired with the
+          display cap (nav-system plan §0.3); the bag has no real limit. */}
       </div>
 
       {/* v2.3.1235: the empty bag no longer renders the recessed tray —
@@ -304,11 +354,19 @@ export const InventoryPanel = () => {
             padding: 6,
             flex: 1,
             minHeight: 0,
+            /* v2.3.1285: rows past the 4-row minimum scroll inside the
+               tray; the world never scrolls with panel content. */
+            overflowY: 'auto',
+            touchAction: 'pan-y',
+            WebkitOverflowScrolling: 'touch',
           }}>
           <div style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(8, 1fr)',
-            gap: 4,
+            /* v2.3.1285: 8 -> 6 columns — the same slot rhythm as the
+               compact grid, so the first six cells ARE the compact
+               recent row (Recent order is the shared bagModel sort). */
+            gridTemplateColumns: `repeat(${COLS}, 1fr)`,
+            gap: 8,
           }}>
             {shownItems.map((e, i) => (
               <BagTile key={e.kind === 'item' ? `i-${e.key}` : `${e.kind}-${e.index}-${i}`} entry={e} />
@@ -316,7 +374,7 @@ export const InventoryPanel = () => {
             {/* Empty slots so the bag always reads as a full grid of squares.
                 v2.3.1039: recessed dark fill + clearly-visible outline (the old
                 COL.tileBor at .10 alpha vanished against the leather bg). */}
-            {Array.from({ length: Math.max(0, SLOTS - usedTiles) }).map((_, i) => (
+            {Array.from({ length: Math.max(0, totalCells - usedTiles) }).map((_, i) => (
               <div key={`empty-${i}`} aria-hidden="true" style={{
                 width: '100%', aspectRatio: '1 / 1',
                 background: 'rgba(0,0,0,0.28)',

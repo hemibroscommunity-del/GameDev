@@ -27,11 +27,15 @@
      keeps cells width-bound (gap == edge == 8 exactly; the 2px pools
      invisibly).  ~202px at 430w vs 227 (v2.3.1277) / 303 (v2.3.1271).
      JS mirror: BroTown.jsx DASH_W_FRAC/DASH_BASE. */
-  /* v2.3.1280: owner — 2x2 grid / 4 slots / headerless: PERFECTLY
-     square panels (134x134 at 430w, ~54px slots).  Band re-derives
-     around the square: panel = (100vw - 28px)/3 tall, +83px band
-     chrome, +2px width-bound safety -> ~219px at 430w. */
-  --dash-h:   calc(33.3333vw + 76px);
+  /* v2.3.1283: nav-system band.  v2.3.1290 (owner: three-state nav) —
+     --dash-h is now the BAR height: the toolbar-only resting state, the
+     game's default with maximum world visibility.  Compact (glance) and
+     expanded (detail) are taller overlays managed by BottomDashboard;
+     they never move any var(--dash-h) consumer (canvas, joystick zones,
+     world HUD).  JS source of truth: sheetGeometry.js BAR_H — keep this
+     var equal to it.  A whole px, so the v2.3.1241 round() pixel-snap
+     variant below is retired. */
+  --dash-h:   72px;
   /* v2.3.1235: Lantern Slate CORRECTION PASS (owner-approved ChatGPT
      review of the v2.3.1234 screenshots).  Slightly brighter, greener
      slate; four depth roles only (sheet / raised / well / well-deep);
@@ -123,15 +127,8 @@
   --ui-info: #599FE5;
   --ui-magic: #9A78D0;
 }
-/* v2.3.1241: edge-parity — pixel-snap the band height.  A fractional 28vh
-   puts the dashboard's TOP coord on a sub-pixel boundary, so every seam and
-   panel edge above it resamples into a soft 1–2px band on Retina.  round()
-   snaps the height to a whole CSS px (28vh uses the stable large-viewport
-   height on iOS, so this does NOT jump when the address bar shows/hides).
-   CSS-only + graceful: any engine without round() keeps plain 28vh. */
-@supports (height: round(nearest, 33.3333vw, 1px)) {
-  :root { --dash-h: calc(round(nearest, 33.3333vw, 1px) + 76px); } /* v2.3.1280 */
-}
+/* v2.3.1290: the v2.3.1241 round() pixel-snap block is retired — the
+   bar-height --dash-h is a whole CSS px by construction. */
 /* v2.3.1241: edge-parity — device-pixel hairlines.  A "1px" contour is 2–3
    physical pixels on Retina; that thickness (stacked with borders/shadows)
    is what fattened the old edges.  Scale the token so one contour renders
@@ -357,11 +354,44 @@
       rgba(0,0,0,.28) 100%),
     var(--ui-dashboard-button-active);
   border-color:rgba(234,198,117,.82);
-  box-shadow:none;
+  /* v2.3.1293 (ChatGPT round-3 §5): the active state must not lean on
+     the tiny chevron — a real 2px brass inset edge carries it (this
+     amends the v2.3.1241 'box-shadow:none'; the inset ring is a
+     contour, not the banned outer glow). */
+  box-shadow:inset 0 0 0 2px var(--ui-brass);
+  border-radius:10px;
 }
 .bt-dashboard-nav-button:focus-visible{
   outline:2px solid var(--ui-brass-highlight);
   outline-offset:-2px;
+}
+/* v2.3.1289: snap-state chevron (owner request) — sits in the ACTIVE
+   destination's top-right corner.  Up while compact = "tap to expand";
+   rotates to down while expanded = "tap to collapse".  One glyph, one
+   rotation — it also mirrors the swipe direction on the sheet. */
+.bt-nav-snap{
+  position:absolute;
+  top:3px;
+  right:5px;
+  width:12px;
+  height:12px;
+  color:var(--ui-brass);
+  pointer-events:none;
+  transition:transform .22s ease;
+}
+.bt-nav-snap[data-expanded='true']{transform:rotate(180deg)}
+@media (prefers-reduced-motion: reduce){
+  .bt-nav-snap{transition:none}
+}
+/* v2.3.1299 (round-6 More): pressed feedback for the launcher tiles
+   and hub cards — slight scale + brass tint on touch (the bare icons
+   previously gave no press acknowledgement). */
+.bt-more-tile,.bt-more-card{transition:transform .1s ease,background-color .1s ease}
+.bt-more-tile:active{transform:scale(.95);background:rgba(216,170,88,.10)!important}
+.bt-more-card:active{transform:scale(.985);background:rgba(216,170,88,.10)!important}
+@media (prefers-reduced-motion: reduce){
+  .bt-more-tile,.bt-more-card{transition:none}
+  .bt-more-tile:active,.bt-more-card:active{transform:none}
 }
 .bt-dashboard-nav-icon{
   width:30px;
@@ -454,6 +484,12 @@ input{font-family:inherit}
    point waiting to be allocated.  Brightness pulse reads even where the cell's
    overflow clips a glow; the purple box-shadow adds the halo where it shows. */
 @keyframes bt-build-flash{0%,100%{filter:brightness(1);box-shadow:0 0 0 0 rgba(216,168,95,0)}50%{filter:brightness(1.5);box-shadow:0 0 8px 2px rgba(216,168,95,.7)}}
+/* v2.3.1285: one-shot arrival pulse for a fresh pickup landing in the
+   Bag compact recent row (spec: brief, subtle, then settle — no
+   continuous animation).  Class is dropped after the first render
+   cycle; reduced-motion callers never attach it. */
+@keyframes bt-arrive-pulse{0%{box-shadow:0 0 0 0 rgba(216,168,95,.75);filter:brightness(1.45)}100%{box-shadow:0 0 0 6px rgba(216,168,95,0);filter:brightness(1)}}
+.bt-arrive-pulse{animation:bt-arrive-pulse 480ms ease-out 1;border-radius:8px}
 .bt-build-flash{animation:bt-build-flash 1.2s ease-in-out infinite}
 .bt-plist{position:absolute;top:46px;left:8px;z-index:25;width:200px;max-height:260px;
   background:rgba(17,25,29,.94);border:1px solid rgba(255,255,255,.15);border-radius:10px;
@@ -559,6 +595,29 @@ input{font-family:inherit}
 .bt-chat-input:focus{border-color:var(--pop)}
 .bt-joystick-zone{z-index:30;display:block;
   -webkit-touch-callout:none;-webkit-user-select:none;user-select:none;touch-action:none}
+/* v2.3.1288 (nav-system PR B): while a sheet is OPEN the floating
+   combat chrome — both joystick discs and the special-charge pie — dims
+   to ghost opacity so it reads as parked, not tappable, under/over the
+   sheet.  BottomDashboard stamps data-bt-sheet on <html> from the panel
+   bus, so this is pure CSS with no dependency on the overlays
+   re-rendering.  The dim rides the CONTAINERS: BroTown's engagement
+   ladder stamps opacity on the base elements inside (rest .5 / engaged
+   .92, v2.3.1233b), which multiplies instead of fighting — and a
+   joystick touch drops the sheet to the bar instantly (v2.3.1283
+   interlock), so "engaged while open" never persists.
+   v2.3.1290: with the bar as resting state the discs anchor just above
+   the toolbar, INSIDE the compact sheet's footprint — so the dim now
+   applies in BOTH open modes, and full opacity is bar-mode only. */
+.bt-joystick-zone,.bt-rjoy-zone,.bt-charge-pie{transition:opacity .22s ease}
+@media (prefers-reduced-motion: reduce){
+  .bt-joystick-zone,.bt-rjoy-zone,.bt-charge-pie{transition:none}
+}
+:root[data-bt-sheet="compact"] .bt-joystick-zone,
+:root[data-bt-sheet="compact"] .bt-rjoy-zone,
+:root[data-bt-sheet="compact"] .bt-charge-pie,
+:root[data-bt-sheet="expanded"] .bt-joystick-zone,
+:root[data-bt-sheet="expanded"] .bt-rjoy-zone,
+:root[data-bt-sheet="expanded"] .bt-charge-pie{opacity:.15}
 
 /* Joystick base — outer ring filled with a light transparent gray so
    it sits over the game world like a subtle puck. */

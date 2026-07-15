@@ -2702,7 +2702,12 @@ export class EffectsRenderer {
     const scaleX = S._worldScaleX || 1, scaleY = S._worldScaleY || 1;
     let bagSx = 56, bagSy = (viewH || 800) - 56;     /* screen px fallback (bottom-left) */
     try {
-      const bag = typeof document !== 'undefined' && document.getElementById('bt-bag-target');
+      /* v2.3.1293: the home grid only exists while the Bag sheet is
+         open (three-state nav) — the toolbar Bag button is the landing
+         point the rest of the time. */
+      const bag = typeof document !== 'undefined' && (
+        document.getElementById('bt-bag-target')
+        || document.querySelector('.bt-dashboard-nav-button[aria-label="Bag"]'));
       if (bag) { const r = bag.getBoundingClientRect(); if (r.width) { bagSx = r.left + r.width / 2; bagSy = r.top + r.height / 2; } }
     } catch (e) { /* SSR / no DOM — keep fallback */ }
     const bagWx = bagSx / scaleX + cam.x;            /* bag, world coords */

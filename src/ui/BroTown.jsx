@@ -89,6 +89,7 @@ import { pushHudPopup } from './XpFlyOverlay.jsx';
 import { firemakingBus } from './mobile/firemakingBus.js';
 import { eatBus } from './mobile/eatBus.js';
 import { blockRingBus } from './mobile/blockRingBus.js';
+import { chatBubbleBus } from './mobile/chatBubbleBus.js'; /* v2.3.1287: self-tap opens chat */
 import { controlsTutorialBus } from './mobile/controlsTutorialBus.js';
 /* Renderer: PixiJS (WebGL) with Canvas 2D fallback */
 import { initPixiRenderer, preloadPlayerAssets } from '@/rendering/pixiRenderer.js';
@@ -231,6 +232,7 @@ const {
 
 import { _regenerator, _regeneratorDefine2, _asyncToGenerator, _typeof, _slicedToArray, _toConsumableArray, _objectSpread, _defineProperty, _toPropertyKey, _toPrimitive, ownKeys, _arrayWithHoles, _iterableToArrayLimit, _unsupportedIterableToArray, _arrayLikeToArray, _nonIterableRest, _arrayWithoutHoles, _iterableToArray, _nonIterableSpread, _createForOfIteratorHelper, asyncGeneratorStep } from '@/lib/babelHelpers.js';
 import { SpriteHpBar } from './SpriteHpBar.jsx'; /* v2.3.1273: owner's HP-bar art (desktop HUD row) */
+import { BAR_H, DASH_OVERLAP } from './mobile/sheet/sheetGeometry.js'; /* v2.3.1283; v2.3.1290 bar-height canvas */
 
 /* Expose all exports as globals for the pre-transpiled code.
    The original index.html had everything in one scope; this bridges the gap. */
@@ -1810,19 +1812,13 @@ export var BroTown = function BroTown(_ref0) {
        player, so a shorter canvas just means less peripheral world is
        visible — the player stays centered. */
     var vv = window.visualViewport;
-    /* DASH_FRAC must stay in sync with the --dash-h CSS variable in
-       src/styles/game.css.  Both express the bottom-dashboard fraction
-       of the viewport. */
-    /* v2.3.1258/1256 history: 0.33 + 26px.  v2.3.1268: --dash-h is now
-       WIDTH-derived (calc(50vw + 104px) — the band hugs the slot block;
-       see game.css).  Mirror exactly. */
-    var DASH_W_FRAC = 0.333333; /* v2.3.1280: 2x2 square-panel band (see game.css) */
-    var DASH_BASE = 76;
-    /* v2.3.1271: owner — the band's 14px rounded top corners cut out to
-       the page background (a black spot at each shoulder).  The canvas
-       now runs 14px UNDER the band, so the corner notches show live
-       world instead.  (Owner prefers world over squaring the corners.) */
-    var DASH_OVERLAP = 14;
+    /* v2.3.1283: geometry constants now come from sheetGeometry.js —
+       the shared source BottomDashboard also imports — instead of the
+       comment-enforced mirror of --dash-h that lived here through
+       v2.3.1280.  v2.3.1290: the canvas keys off the BAR height (toolbar-
+       only resting state) in all modes; compact and expanded sheets
+       overlay the world without resizing
+       the canvas (see sheetGeometry's invariant note). */
     function resize() {
       var dpr = window.devicePixelRatio || 1;
       var vw = vv ? vv.width : window.innerWidth;
@@ -1834,9 +1830,15 @@ export var BroTown = function BroTown(_ref0) {
          then floats over the canvas like an overlay instead of
          shifting the scene up and exposing a black bar at the bottom. */
       if (vv && window.innerHeight - vhFull > 100) return;
-      var vh = Math.max(120, Math.round(vhFull - (vw * DASH_W_FRAC + DASH_BASE)) + DASH_OVERLAP);
-      canvas.width = vw * dpr;
-      canvas.height = vh * dpr;
+      var vh = Math.max(120, Math.round(vhFull - BAR_H) + DASH_OVERLAP); /* v2.3.1290: bar is the resting band */
+      /* v2.3.1283: short-circuit when nothing changed — the
+         ResizeObserver below re-fires during layout churn (e.g. the
+         sheet's height animation), and assigning canvas.width even to
+         the SAME value reallocates the WebGL drawing buffer. */
+      var tw = Math.round(vw * dpr), th = Math.round(vh * dpr);
+      if (canvas.width === tw && canvas.height === th) return;
+      canvas.width = tw;
+      canvas.height = th;
       canvas.style.width = vw + 'px';
       canvas.style.height = vh + 'px';
     }
@@ -5290,6 +5292,33 @@ export var BroTown = function BroTown(_ref0) {
       var dy = clientY - (P.y - 24 - cam.y);
       return (dx * dx + dy * dy) < (170 * 170);
     };
+    /* v2.3.1287: tapping YOUR OWN character opens the chat composer —
+       Chat left the toolbar (owner, nav-system).  Same screen-space
+       anchor math as isReelTouch, tight ~48px radius over the sprite.
+       Checked at tap-CLASSIFICATION time (lE/rE), never at touchstart:
+       a drag that starts on the character must still move/aim. */
+    var isSelfTouch = function (clientX, clientY) {
+      var S = stateRef.current;
+      var cam = S && S.camera, P = S && S.player;
+      if (!cam || !P) return false;
+      /* v2.3.1111 lesson: world px -> CSS px needs the published
+         renderer scale (WORLD_ZOOM), or every tap is ~25% radially off.
+         (isReelTouch above predates the fix but its 170px radius
+         tolerates the error; this 52px one doesn't.) */
+      var sx = S._worldScaleX || 1.0;
+      var sy = S._worldScaleY || 1.0;
+      var dx = clientX - (P.x - cam.x) * sx;
+      var dy = clientY - (P.y - 24 - cam.y) * sy;
+      var r = 52 * sx;
+      return (dx * dx + dy * dy) < (r * r);
+    };
+    var openSelfChat = function () {
+      try {
+        var _busC = window.__broDashPanelBus;
+        if (_busC && _busC.state.mode !== 'bar') _busC.toBar(); /* v2.3.1290 */
+      } catch (_e3) {}
+      try { chatBubbleBus.setOpen(true); } catch (_e4) {}
+    };
     /* Left joystick double-tap = cycle weapon (melee -> ranged -> staff).
        Constants shared with the right joystick at the head of this
        useEffect so both gestures use the same tap-vs-drag classifier.
@@ -5298,6 +5327,7 @@ export var BroTown = function BroTown(_ref0) {
        counted as a second tap and double-cycling the weapon. */
     var DOUBLE_TAP_WINDOW_MS = 220;
     var TAP_MAX_DURATION_MS = 200;
+    var SELF_TAP_MAX_MS = 400; /* v2.3.1287: chat self-tap dwell ceiling */
     var TAP_MAX_MOVE_SQ_PX = 100; /* 10 px squared */
     var DOUBLE_TAP_MAX_DIST_SQ_PX = 2500; /* 50 px squared */
     var PREVIEW_HOLD_MS = 350;
@@ -5323,6 +5353,14 @@ export var BroTown = function BroTown(_ref0) {
       var t = e.changedTouches[0];
       /* v2.3.845: hand reel-zone touches to the fishing gesture, not movement. */
       if (isReelTouch(t.clientX, t.clientY)) return;
+      /* v2.3.1283: movement input collapses an expanded sheet
+         immediately (nav-system spec §Real-time gameplay safety) — the
+         zones only exist above the sheet's top edge, so any touch here
+         is world-intent. */
+      try {
+        var _bus = window.__broDashPanelBus;
+        if (_bus && _bus.state.mode !== 'bar') _bus.toBar(); /* v2.3.1290: straight to bar */
+      } catch (_e2) {}
       var nowMs = Date.now();
       var lts = lTapState.current;
       lTouchId.current = t.identifier;
@@ -5361,6 +5399,16 @@ export var BroTown = function BroTown(_ref0) {
         var wasTap = !lts.moved && (endT - lts.startAt) < TAP_MAX_DURATION_MS;
         lTouchId.current = null;
         handleJoystickEnd();
+        /* v2.3.1287: a tap ON the character opens chat and consumes —
+           BEFORE the double-tap weapon-cycle classifier, so a self-tap
+           never counts as tap #1 or #2 of a cycle, and no synthetic
+           lock-on click is forwarded.  Own 400ms ceiling (see rE). */
+        if (!lts.moved && (endT - lts.startAt) < SELF_TAP_MAX_MS
+            && isSelfTouch(t.clientX, t.clientY)) {
+          lts.lastEndAt = 0;
+          openSelfChat();
+          return;
+        }
         if (wasTap) {
           /* Did this tap COMPLETE a double-tap with a recent prior
              tap?  Check the prior tap's end-time + position against
@@ -5437,6 +5485,12 @@ export var BroTown = function BroTown(_ref0) {
       var t = e.changedTouches[0];
       /* v2.3.845: hand reel-zone touches to the fishing gesture, not aim/attack. */
       if (isReelTouch(t.clientX, t.clientY)) return;
+      /* v2.3.1283: aim/attack input collapses an expanded sheet too —
+         same rule as the movement zone (see lS). */
+      try {
+        var _busR = window.__broDashPanelBus;
+        if (_busR && _busR.state.mode !== 'bar') _busR.toBar(); /* v2.3.1290: straight to bar */
+      } catch (_e2) {}
       var nowMs = Date.now();
       var rts = rTapState.current;
       var dxLast = t.clientX - rts.lastX;
@@ -5579,6 +5633,18 @@ export var BroTown = function BroTown(_ref0) {
         var rts3 = rTapState.current;
         var endT = Date.now();
         var wasTap = !rts3.moved && (endT - rts3.startAt) < TAP_MAX_DURATION_MS && !isFlick;
+        /* v2.3.1287: self-tap on the aim side opens chat too — no
+           lock-on click, no shield preview (see lE).  Its own 400ms
+           ceiling (SELF_TAP_MAX_MS): opening chat is not a twitch
+           gesture, so a deliberate thumb dwell still counts. */
+        if (!rts3.moved && !isFlick && (endT - rts3.startAt) < SELF_TAP_MAX_MS
+            && isSelfTouch(t.clientX, t.clientY)) {
+          rts3.lastEndAt = 0;
+          rTouchId.current = null;
+          handleRJoyEnd();
+          openSelfChat();
+          return;
+        }
         if (wasTap) {
           rts3.lastEndAt = endT;
           rts3.lastX = t.clientX;

@@ -1,87 +1,178 @@
-﻿import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { dashboardPanelBus } from '../dashboardPanelBus.js';
-import { controlsTutorialBus } from '../controlsTutorialBus.js';
-import { COL, panelStyle } from './common.js';
+import { COL, panelStyle, getState } from './common.js';
 
 // v2.3.1224: swapped to the UI Bible icon set (docs/UI-BIBLE.md Part 4,
-// sliced by tools/process_icon_sheets.py); every tile has a real icon
-// now (stats/t2/account/controls previously had only glyphs).  Falls
-// back to glyph if the image fails.
-const TILES = [
-  { id: 'self',        src: '/icons/ui/panel-self.webp?v=2.3.1224',        label: 'Self',     glyph: '🪪' },
-  { id: 'stats',       src: '/icons/ui/panel-stats.webp?v=2.3.1224',       label: 'Stats',    glyph: '📊' },
-  /* v2.3.609: per-weapon-category build allocation (replaces generic specs). */
-  /* v2.3.1236: owner feedback — Weapons menu renamed Build (label only;
-     the t2 id and the panel-weapons icon asset keep their names). */
-  { id: 't2',          src: '/icons/ui/panel-weapons.webp?v=2.3.1224',     label: 'Build',    glyph: '⚔️' },
-  /* v2.3.1265: Journey + Codex demoted from the 5-button toolbar. */
-  { id: 'journey',     src: '/icons/ui/journey.webp?v=2.3.1224',           label: 'Journey',  glyph: '🛤' },
-  { id: 'encyclopedia', src: '/icons/ui/panel-encyclopedia.webp?v=2.3.1224', label: 'Codex',  glyph: '📚' },
-  { id: 'leaderboard', src: '/icons/ui/panel-leaderboard.webp?v=2.3.1224', label: 'Ranks',    glyph: '🏆' },
-  { id: 'clan',        src: '/icons/ui/panel-clan.webp?v=2.3.1224',        label: 'Clan',     glyph: '🛡' },
-  { id: 'guild',       src: '/icons/ui/panel-guild.webp?v=2.3.1224',       label: 'Guild',    glyph: '⚒' },
-  { id: 'feedback',    src: '/icons/ui/panel-feedback.webp?v=2.3.1224',    label: 'Feedback', glyph: '💬' },
-  /* v2.3.1143: account panel -- Login Key display + device transfer. */
-  { id: 'account',     src: '/icons/ui/panel-account.webp?v=2.3.1224',     label: 'Account',  glyph: '🔑' },
-  { id: 'settings',    src: '/icons/ui/panel-settings.webp?v=2.3.1224',    label: 'Settings', glyph: '⚙' },
-  /* v2.3.225: opens the annotated controls tutorial via its bus
-     instead of pushing a dashboard panel. */
-  { id: 'controls',    src: '/icons/ui/panel-controls.webp?v=2.3.1224',    label: 'Controls', glyph: '?' },
+// sliced by tools/process_icon_sheets.py); every tile has a real icon.
+// Falls back to glyph if the image fails.
+/* v2.3.1291 (ChatGPT round-3 §1): More owns genuinely SECONDARY
+   systems only — six tiles.  MoreCompact renders this same list 3x2 —
+   one roster, no drift.
+   v2.3.1299 (round-6): per-tile iconScale (the journey asset carries
+   more padding and rendered visibly smaller) and iconFilter (the
+   settings gear needed a touch more contrast on the dark tile). */
+export const TILES = [
+  { id: 'journey',     src: '/icons/ui/journey.webp?v=2.3.1224',           label: 'Journey',  glyph: '🛤', group: 'Progress',  iconScale: 1.18 },
+  { id: 'encyclopedia', src: '/icons/ui/panel-encyclopedia.webp?v=2.3.1224', label: 'Codex',  glyph: '📚', group: 'Progress',  iconScale: 1 },
+  { id: 'leaderboard', src: '/icons/ui/panel-leaderboard.webp?v=2.3.1224', label: 'Ranks',    glyph: '🏆', group: 'Progress',  iconScale: 1 },
+  { id: 'clan',        src: '/icons/ui/panel-clan.webp?v=2.3.1224',        label: 'Clan',     glyph: '🛡', group: 'Community', iconScale: 1 },
+  { id: 'guild',       src: '/icons/ui/panel-guild.webp?v=2.3.1224',       label: 'Guild',    glyph: '⚒', group: 'Community', iconScale: 1 },
+  { id: 'settings',    src: '/icons/ui/panel-settings.webp?v=2.3.1224',    label: 'Settings', glyph: '⚙', group: 'System',    iconScale: 1, iconFilter: 'brightness(1.18) contrast(1.05)' },
 ];
 
-export const MorePanel = () => (
-  <div style={panelStyle}>
-    {/* v2.3.1235: owner-approved correction — 4-across outlined tiles read
-        as ten noisy boxes; the launcher is now a balanced 5×2 grid of BARE
-        icon+label buttons (no permanent outline/fill — the icon is the
-        identity), gaps on the 8px grid. Every id/handler/src unchanged. */}
-    <div style={{
-      display: 'grid',
-      gridTemplateColumns: 'repeat(5, 1fr)',
-      gap: 8,
-    }}>
-      {TILES.map(t => (
-        <button
-          key={t.id}
-          onPointerUp={(e) => {
-            e.stopPropagation();
-            if (t.id === 'controls') controlsTutorialBus.open();
-            else dashboardPanelBus.push(t.id);
-          }}
-          /* v2.3.1235: bare button — no outline/fill/shadow (the raised
-             boxes are gone per the correction pass); radius kept so any
-             future :active tint has a shape, ≥44pt column stays tappable. */
-          style={{
-            background: 'transparent',
-            border: 'none',
-            borderRadius: 10,
-            padding: '8px 2px',
-            minHeight: 60,
-            minWidth: 44,
-            color: COL.text,
-            fontFamily: 'Source Sans 3, sans-serif',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: 6,
-            cursor: 'pointer',
-            touchAction: 'manipulation',
-          }}
-        >
-          {t.src ? (
-            <img
-              src={t.src}
-              alt={t.label}
-              draggable={false}
-              style={{ width: 28, height: 28, objectFit: 'contain' }}
-            />
-          ) : (
-            <span style={{ fontSize: 20 }}>{t.glyph}</span>
-          )}
-          <span style={{ fontSize: 11, fontWeight: 600, color: COL.text2 }}>{t.label}</span>
+/* v2.3.1299 (round-6): one short LIVE status line per destination —
+   expanded More is an informative hub now, not the same six icons with
+   more whitespace.  Every line reads real state; nothing invented
+   (Journey is the travel LOG — neither achievements nor story, which
+   also answers round-6's naming question; the Clan/Guild lines carry
+   the player-clans vs profession-guilds distinction). */
+function statusFor(id, S) {
+  const R = S?.rpg || {};
+  switch (id) {
+    case 'journey': {
+      const j = R.journey || S?.journey || {};
+      const n = (j.entries || j.recent || []).length;
+      return n > 0 ? `Travel log · ${n} entr${n === 1 ? 'y' : 'ies'}` : 'Your travels, logged live';
+    }
+    case 'encyclopedia': {
+      const n = Object.keys(R._seenMonsters || R.killedMonsters || {}).length
+        + Object.keys(R._seenMaterials || {}).length;
+      return n > 0 ? `${n} discovered` : 'Discover monsters & materials';
+    }
+    case 'leaderboard': return 'View the leaderboards';
+    case 'clan': {
+      const c = S?._clanData;
+      return c && (c.name || c.tag) ? (c.name || c.tag) : 'Not joined · player clans';
+    }
+    case 'guild': {
+      const g = R.guild || S?._guild;
+      return g && g.name ? g.name : 'Not joined · profession guilds';
+    }
+    case 'settings': return 'Audio · Controls · Account · Feedback';
+    default: return '';
+  }
+}
+
+const secHdr = {
+  fontSize: 10,
+  fontWeight: 700,
+  letterSpacing: '.10em',
+  textTransform: 'uppercase',
+  color: COL.muted,
+  /* round-6 spacing: heading -> cards ~8px */
+  padding: '0 4px 8px',
+};
+
+const cardBase = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: 8,
+  background: COL.wellSoft,
+  border: `1px solid ${COL.tileBor}`,
+  borderRadius: 10,
+  color: COL.text,
+  fontFamily: 'Source Sans 3, sans-serif',
+  cursor: 'pointer',
+  touchAction: 'manipulation',
+  minWidth: 0,
+  textAlign: 'left',
+  padding: '10px 10px',
+};
+
+const Icon = ({ t, px }) => t.src ? (
+  <img src={t.src} alt="" draggable={false}
+    style={{
+      width: Math.round(px * (t.iconScale || 1)),
+      height: Math.round(px * (t.iconScale || 1)),
+      objectFit: 'contain', flex: 'none',
+      filter: t.iconFilter || 'none',
+    }} />
+) : <span style={{ fontSize: px - 6, flex: 'none' }}>{t.glyph}</span>;
+
+const open = (id) => dashboardPanelBus.push(id);
+const tile = (id) => TILES.find(t => t.id === id);
+
+/* v2.3.1299 (ChatGPT round-6, owner-approved): expanded More = a
+   STATUS HUB.  Progress: three status cards; Community: two wider
+   cards that explain membership; Settings: ONE full-width horizontal
+   card (its lonely three-column "System" row was the dead space that
+   pushed the gear under the fold).  Tight vertical rhythm (8px heading
+   gap, 16px between groups) + real bottom padding so the last card
+   scrolls fully above the fade. */
+export const MorePanel = () => {
+  const [, force] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => force(v => v + 1), 1000);
+    return () => clearInterval(id);
+  }, []);
+  const S = getState();
+
+  return (
+    <div style={{ ...panelStyle, overflowY: 'auto' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 16, paddingBottom: 30 }}>
+        {/* PROGRESS — three status cards. */}
+        <div>
+          <div style={secHdr}>Progress</div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6 }}>
+            {['journey', 'encyclopedia', 'leaderboard'].map(id => {
+              const t = tile(id);
+              return (
+                <button key={id} className="bt-more-card"
+                  onPointerUp={(e) => { e.stopPropagation(); open(id); }}
+                  style={{ ...cardBase, flexDirection: 'column', gap: 5, padding: '10px 6px' }}>
+                  <Icon t={t} px={28} />
+                  <span style={{ fontSize: 12, fontWeight: 700, color: COL.text }}>{t.label}</span>
+                  <span style={{
+                    fontSize: 10, lineHeight: 1.25, color: COL.text2, textAlign: 'center',
+                    overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
+                  }}>{statusFor(id, S)}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* COMMUNITY — two wider cards with membership state. */}
+        <div>
+          <div style={secHdr}>Community</div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 6 }}>
+            {['clan', 'guild'].map(id => {
+              const t = tile(id);
+              return (
+                <button key={id} className="bt-more-card"
+                  onPointerUp={(e) => { e.stopPropagation(); open(id); }}
+                  style={cardBase}>
+                  <Icon t={t} px={26} />
+                  <span style={{ flex: 1, minWidth: 0 }}>
+                    <span style={{ display: 'block', fontSize: 12.5, fontWeight: 700, color: COL.text }}>{t.label}</span>
+                    {/* two-line clamp — 'player clans' / 'profession
+                        guilds' are the clarifying words; a one-line
+                        ellipsis cut exactly them at 390px. */}
+                    <span style={{
+                      fontSize: 10.5, lineHeight: 1.25, color: COL.text2, marginTop: 1,
+                      overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
+                    }}>{statusFor(id, S)}</span>
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* SETTINGS — one full-width horizontal card, no heading. */}
+        <button className="bt-more-card"
+          onPointerUp={(e) => { e.stopPropagation(); open('settings'); }}
+          style={cardBase}>
+          <Icon t={tile('settings')} px={26} />
+          <span style={{ flex: 1, minWidth: 0 }}>
+            <span style={{ display: 'block', fontSize: 12.5, fontWeight: 700, color: COL.text }}>Settings</span>
+            <span style={{ display: 'block', fontSize: 10.5, color: COL.text2, marginTop: 1 }}>
+              {statusFor('settings', S)}
+            </span>
+          </span>
+          <span aria-hidden="true" style={{ flex: 'none', fontSize: 14, color: COL.muted }}>›</span>
         </button>
-      ))}
+      </div>
     </div>
-  </div>
-);
+  );
+};

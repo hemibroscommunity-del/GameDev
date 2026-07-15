@@ -28,12 +28,18 @@ const STEPS = [
     label: 'Move', body: 'Drag the left stick to move.' },
   { key: 'attack', shape: 'circle', sels: ['.bt-rjoy-base'],
     label: 'Attack', body: 'Drag the right stick — hold for special.' },
+  /* v2.3.1285: the 3-panel row is retired — the home view is the Bag
+     compact grid (equipped row over recent items). */
   { key: 'dashboard', shape: 'rect',
-    sels: ['[data-tut="dash-bag"]', '[data-tut="dash-loadout"]', '[data-tut="dash-build"]'],
-    label: 'Dashboard', body: 'Your bag, loadout and build live here. Tap anything for details.' },
+    /* v2.3.1290: the home grid only exists in compact mode now — fall
+       back to the toolbar Bag button so the step never goes dark. */
+    sels: ['[data-tut="dash-bag"]', '.bt-dashboard-nav-button[aria-label="Bag"]'],
+    label: 'Bag', body: 'Your gear on top, latest loot below. Tap anything for details — swipe up for the full bag.' },
+  /* v2.3.1287: Chat left the toolbar — the composer opens by tapping
+     your own character; the step teaches that instead. */
   { key: 'toolbar', shape: 'rect',
-    sels: ['[data-tut="dash-chat"]', '[data-tut="dash-more"]'],
-    label: 'Toolbar', body: 'Menus live down here.' },
+    sels: ['[data-tut="dash-more"]'],
+    label: 'Toolbar', body: 'Menus live down here. Tap your character to chat.' },
   { key: 'dodge', shape: null, sels: null,
     label: 'Swipe / Dodge', body: 'Swipe anywhere in the world to dodge-roll.' },
 ];

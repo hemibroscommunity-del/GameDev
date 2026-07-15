@@ -1,84 +1,133 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { COL, panelStyle, getState } from './common.js';
+import { skillXpRequired } from '../../../data/items.js';
+import { SKILL_DISPLAY_12, markSkillsSeen } from '../sheet/skillsModel.js';
+import { skillsFocusBus } from '../sheet/skillsFocusBus.js';
+import { skillDetailBus } from '../sheet/skillDetailBus.js';
+import { dashboardPanelBus } from '../dashboardPanelBus.js';
 
 /* v2.3.1224: roster corrected to the canonical 10 LIFE_SKILLS (owner
-   directive) — the panel previously listed alchemy / tailoring / taming,
-   which don't exist in src/data/lifeSkills.js, and was missing
-   woodcutting / enchanting / trapping.  Order matches the dashboard's
-   LIFE_SKILLS list.  iconSrc = UI Bible skill icons; emoji is the
-   image-failure fallback. */
-/* v2.3.1235: batch-2 rollout — the ten per-skill tailwind hexes
-   (#f59e0b/#3b82f6/…) were off the approved correction-pass token list
-   and made ten differently-coloured progress bars on one sheet; every
-   skill bar is XP progress, so they all use the single COL.xp token
-   (locked contract: bars carry semantic colors only). */
-const SKILL_DEFS = [
-  { key: 'cooking',       icon: '🍳', iconSrc: '/icons/ui/skill-cooking.webp?v=2.3.1224',       name: 'Cooking' },
-  { key: 'fishing',       icon: '🎣', iconSrc: '/icons/ui/skill-fishing.webp?v=2.3.1224',       name: 'Fishing' },
-  { key: 'mining',        icon: '⛏',  iconSrc: '/icons/ui/skill-mining.webp?v=2.3.1224',        name: 'Mining' },
-  { key: 'woodcutting',   icon: '🪓', iconSrc: '/icons/ui/skill-woodcutting.webp?v=2.3.1224',   name: 'Woodcutting' },
-  { key: 'farming',       icon: '🌾', iconSrc: '/icons/ui/skill-farming.webp?v=2.3.1224',       name: 'Farming' },
-  { key: 'blacksmithing', icon: '🔨', iconSrc: '/icons/ui/skill-blacksmithing.webp?v=2.3.1224', name: 'Smithing' },
-  { key: 'woodworking',   icon: '🛠',  iconSrc: '/icons/ui/skill-woodworking.webp?v=2.3.1224',   name: 'Woodworking' },
-  { key: 'gemCutting',    icon: '💎', iconSrc: '/icons/ui/skill-gemcutting.webp?v=2.3.1224',    name: 'Gem cutting' },
-  { key: 'enchanting',    icon: '✨', iconSrc: '/icons/ui/skill-enchanting.webp?v=2.3.1224',    name: 'Enchanting' },
-  { key: 'trapping',      icon: '🪤', iconSrc: '/icons/ui/skill-trapping.webp?v=2.3.1224',      name: 'Trapping' },
-];
-
-const xpForLevel = (lvl) => Math.floor(50 + lvl * lvl * 25);
-
+   directive).  v2.3.1286 (nav-system): 3-column card grid on the shared
+   roster; XP CURVE FIX — progress uses skillXpRequired (items.js,
+   500·1.08^(level-1)), the exact award curve.
+   v2.3.1296 (ChatGPT round-5): display order matches compact (gathering
+   then processing, two "soon" pads); cards ~10% shorter; empty track
+   contrast raised; bottom padding clears the toolbar; compact-tile taps
+   scroll their card into view with a brief brass flash (skillsFocusBus);
+   tapping a card drills into the skill DETAIL view (unlock ladder,
+   earn hint — skillDetailBus).  Opening this panel marks level-ups
+   seen (clears the toolbar dot). */
 export const SkillsPanel = () => {
   const [, force] = useState(0);
+  const rootRef = useRef(null);
+  const [flashKey, setFlashKey] = useState('');
   useEffect(() => {
     const id = setInterval(() => force(v => v + 1), 600);
     return () => clearInterval(id);
   }, []);
+  /* Level-up badge lifecycle: viewing the expanded panel = seen. */
+  useEffect(() => {
+    const S = getState();
+    markSkillsSeen((S && S.rpg) || {});
+  }, []);
+  /* Focus request from a compact tile: scroll + flash.  Consumed on
+     mount; the subscribe handles already-mounted re-focus taps. */
+  useEffect(() => {
+    const run = () => {
+      const req = skillsFocusBus.consume();
+      if (!req || !rootRef.current) return;
+      const el = rootRef.current.querySelector(`[data-skill="${req.key}"]`);
+      if (el) {
+        try { el.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch { el.scrollIntoView(); }
+        setFlashKey(req.key + ':' + req.epoch);
+        setTimeout(() => setFlashKey(''), 1400);
+      }
+    };
+    run();
+    return skillsFocusBus.subscribe(run);
+  }, []);
 
   const S = getState();
-  const ls = S?.rpg?.lifeSkills || {};
+  const ls = (S && S.rpg && S.rpg.lifeSkills) || {};
 
   return (
-    <div style={panelStyle}>
-      {SKILL_DEFS.map(sd => {
-        const sk = ls[sd.key] || { level: 1, xp: 0 };
-        const need = xpForLevel(sk.level);
-        const pct = Math.min(100, (sk.xp / need) * 100);
-        return (
-          /* v2.3.1235: batch-2 rollout — rows onto the contract ladder:
-             13/600 body name + 13/700 tabular value (was a loose 15),
-             6px bar on the well-deep track at pill radius (the shared
-             bar recipe; the old rgba(.06) track was an off-token gray),
-             and enough row height that ten rows still scan cleanly. */
-          <div key={sd.key} style={{ marginBottom: 8 }}>
-            <div style={{
-              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-              fontSize: 13, minHeight: 22,
-            }}>
-              <span style={{ color: COL.text, fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 5 }}>
-                {/* v2.3.1224: UI Bible icon with emoji fallback */}
-                {sd.iconSrc
-                  ? <img src={sd.iconSrc} alt="" draggable={false}
-                      style={{ width: 16, height: 16, objectFit: 'contain' }}
-                      onError={(e) => { e.currentTarget.replaceWith(document.createTextNode(sd.icon)); }} />
-                  : <span>{sd.icon}</span>}
-                {sd.name}
+    <div ref={rootRef} style={{ ...panelStyle, overflowY: 'auto' }}>
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(3, 1fr)',
+        gap: 8,
+        /* round-5: last row must scroll fully above the toolbar/fade. */
+        paddingBottom: 26,
+      }}>
+        {SKILL_DISPLAY_12.map(sd => {
+          if (sd.placeholder) {
+            return (
+              <div key={sd.key} aria-hidden="true" style={{
+                background: 'rgba(0,0,0,0.18)',
+                border: `1px dashed ${COL.tileBor}`,
+                borderRadius: 8,
+                minHeight: 76,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}>
+                <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.08em', color: COL.disabled }}>SOON</span>
+              </div>
+            );
+          }
+          const sk = ls[sd.key] || { level: 1, xp: 0 };
+          const need = Math.max(1, skillXpRequired(sk.level));
+          const pct = Math.min(100, ((sk.xp || 0) / need) * 100);
+          const flashing = flashKey.startsWith(sd.key + ':');
+          return (
+            <button key={sd.key} data-skill={sd.key}
+              onPointerUp={(e) => {
+                e.stopPropagation();
+                skillDetailBus.select(sd.key);
+                dashboardPanelBus.push('skillDetail');
+              }}
+              style={{
+                display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3,
+                padding: '7px 6px 6px',
+                background: flashing ? COL.accentFill : COL.wellSoft,
+                border: `1px solid ${flashing ? COL.accent : COL.tileBor}`,
+                borderRadius: 8,
+                minWidth: 0,
+                cursor: 'pointer',
+                touchAction: 'manipulation',
+                fontFamily: 'Source Sans 3, sans-serif',
+                color: COL.text,
+                transition: 'background .3s ease, border-color .3s ease',
+              }}>
+              {sd.iconSrc
+                ? <img src={sd.iconSrc} alt="" draggable={false}
+                    style={{ width: Math.round(26 * (sd.iconScale || 1)), height: Math.round(26 * (sd.iconScale || 1)), objectFit: 'contain' }}
+                    onError={(e) => { e.currentTarget.replaceWith(document.createTextNode(sd.icon)); }} />
+                : <span style={{ fontSize: 22 }}>{sd.icon}</span>}
+              <span style={{
+                fontSize: 11, fontWeight: 600, color: COL.text,
+                whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%',
+              }}>{sd.name}</span>
+              <span style={{ fontSize: 13, fontWeight: 700, color: COL.text, fontVariantNumeric: 'tabular-nums', lineHeight: 1 }}>
+                Lv {sk.level || 0}
               </span>
-              <span style={{ color: COL.text, fontSize: 13, fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>
-                Lv {sk.level}
+              <div style={{
+                alignSelf: 'stretch',
+                height: 5,
+                /* round-5: empty track lifted from wellDeep for contrast */
+                background: '#0A1318',
+                border: '1px solid rgba(229,237,233,.10)',
+                borderRadius: 999,
+                overflow: 'hidden',
+                boxShadow: 'inset 0 1px 2px rgba(0,0,0,.55)',
+              }}>
+                <div style={{ width: pct + '%', height: '100%', borderRadius: 999, background: COL.xp }} />
+              </div>
+              <span style={{ fontSize: 10, color: COL.muted, fontVariantNumeric: 'tabular-nums' }}>
+                {Math.floor(sk.xp || 0)} / {need} XP
               </span>
-            </div>
-            <div style={{
-              height: 6,
-              background: COL.wellDeep,
-              borderRadius: 999,
-              overflow: 'hidden',
-              boxShadow: 'inset 0 1px 2px rgba(0,0,0,.55)',
-            }}>
-              <div style={{ width: pct + '%', height: '100%', borderRadius: 999, background: COL.xp }} />
-            </div>
-          </div>
-        );
-      })}
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 };

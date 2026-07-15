@@ -14,3 +14,6 @@ export const chatBubbleBus = {
   toggle() { this.setOpen(!this.open); },
   subscribe(fn) { listeners.add(fn); return () => listeners.delete(fn); },
 };
+
+/* v2.3.1287: QA visibility (mirrors __broDashPanelBus). */
+if (typeof window !== 'undefined') window.__broChatBubbleBus = chatBubbleBus;
