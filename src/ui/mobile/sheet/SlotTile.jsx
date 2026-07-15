@@ -72,18 +72,15 @@ export const SlotTile = ({ k, label, iconSrc, ghostSrc, onTap, occupied, quality
         <span className="bt-item-qty">{badge}</span>
       )}
       {occupied && wornSrc && (
-        <span aria-hidden="true" style={{
-          position: 'absolute', top: 2, right: 2,
-          width: 15, height: 15,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          background: 'rgba(9,14,17,.85)',
-          border: '1px solid rgba(216,170,88,.55)',
-          borderRadius: 4,
-          pointerEvents: 'none', zIndex: 1,
-        }}>
-          <img src={wornSrc} alt="" draggable={false}
-            style={{ width: 11, height: 11, objectFit: 'contain' }} />
-        </span>
+        /* v2.3.1321 (owner): bare icon — the dark chip + brass ring
+           around it read as a border; the checkmark art carries its
+           own contrast. */
+        <img src={wornSrc} alt="" aria-hidden="true" draggable={false}
+          style={{
+            position: 'absolute', top: 2, right: 2,
+            width: 14, height: 14, objectFit: 'contain',
+            pointerEvents: 'none', zIndex: 1,
+          }} />
       )}
       {children}
     </div>

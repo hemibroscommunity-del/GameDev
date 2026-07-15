@@ -387,22 +387,34 @@ export const InventoryPanel = () => {
             overflowY: 'auto',
             touchAction: 'pan-y',
             WebkitOverflowScrolling: 'touch',
-            display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-            gap: 5, padding: '10px 8px', textAlign: 'center', color: COL.muted,
+            display: 'flex', flexDirection: 'column',
+            padding: '10px 8px', color: COL.muted,
           }}>
-            {/* v2.3.1224: UI Bible satchel icon */}
-            <img src="/icons/ui/nav-inventory.webp?v=2.3.1224" alt="" draggable={false}
-              style={{ width: 32, height: 32, opacity: 0.4, filter: 'grayscale(1)', flex: 'none' }} />
-            <div style={{ fontSize: 13, fontWeight: 700, color: COL.text2 }}>
-              {filter === 'all' ? 'Your bag is empty.' : `No ${(CATEGORIES.find(c => c.id === filter)?.label || 'matching').toLowerCase()} items yet.`}
-            </div>
-            {filter === 'all' && (
-              /* v2.3.1235: 10.5px lavender-gray → 12px palette muted (type
-                 floor + no off-palette grays). */
-              <div style={{ fontSize: 12, color: COL.muted, maxWidth: 220 }}>
-                Defeat monsters and gather materials to fill it up.
+            {/* v2.3.1321 (owner screenshot): margin:auto wrapper instead
+                of justifyContent:center — centered flex content TALLER
+                than a scrollable box clips at BOTH ends (the icon rode
+                the tray's top edge, the text's last line vanished under
+                the bottom).  margin:auto centers when it fits and
+                top-aligns + scrolls when it doesn't. */}
+            <div style={{ margin: 'auto', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5, textAlign: 'center' }}>
+              {/* v2.3.1224: UI Bible satchel icon */}
+              <img src="/icons/ui/nav-inventory.webp?v=2.3.1224" alt="" draggable={false}
+                style={{ width: 32, height: 32, opacity: 0.4, filter: 'grayscale(1)', flex: 'none' }} />
+              <div style={{ fontSize: 13, fontWeight: 700, color: COL.text2 }}>
+                {filter === 'all' ? 'Your bag is empty.' : `No ${(CATEGORIES.find(c => c.id === filter)?.label || 'matching').toLowerCase()} items yet.`}
               </div>
-            )}
+              {filter === 'all' && (
+                /* v2.3.1321 (owner): maxWidth 220 forced a two-line wrap
+                   whose second line clipped on device — at full tray
+                   width the sentence fits ONE line on any modern phone
+                   (~285px at 12px vs ~330px tray @390).  No nowrap: a
+                   320px-class screen wraps instead of overflowing, and
+                   the margin:auto wrapper keeps it visible either way. */
+                <div style={{ fontSize: 12, color: COL.muted }}>
+                  Defeat monsters and gather materials to fill it up.
+                </div>
+              )}
+            </div>
           </div>
         )
         : (
