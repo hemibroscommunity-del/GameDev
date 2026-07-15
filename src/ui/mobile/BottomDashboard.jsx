@@ -271,6 +271,28 @@ const Tooltip = ({ tip, onClose }) => {
    button's top-LEFT (the chevron owns top-right) for ACTIONABLE state
    only: unviewed skill level-ups, ready quest turn-ins.  Never for
    routine churn like XP gains or friends-online counts. */
+/* v2.3.1307b (owner: "the chevron isn't obvious enough for a swipe
+   action, especially both directions"): the swipe cue is now a pair of
+   STACKED chevrons that visibly drift in the swipe direction on a slow
+   loop — the standard mobile "swipe me" semiotics, animated with
+   transform/opacity only (no filters: iOS-WebGL static hazard,
+   CLAUDE.md).  data-dir points the glyph and the drift; faint = the
+   bar-mode hint on every icon.  While COMPACT the active icon carries
+   BOTH cues (up at the icon's top edge = widen, down at the bottom
+   edge = close) so both available directions are advertised. */
+const Cue = ({ dir, faint }) => (
+  <span className="bt-swipe-cue" data-dir={dir} data-faint={faint ? 'true' : 'false'} aria-hidden="true">
+    <svg className="bt-cue-c1" viewBox="0 0 14 8" width="14" height="8">
+      <path d="M2 6.5 L7 1.5 L12 6.5" stroke="currentColor" strokeWidth="2"
+        fill="none" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+    <svg className="bt-cue-c2" viewBox="0 0 14 8" width="14" height="8">
+      <path d="M2 6.5 L7 1.5 L12 6.5" stroke="currentColor" strokeWidth="2"
+        fill="none" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  </span>
+);
+
 const IconButton = ({ glyph, src: srcProp, label, active, onClick, node, tut, snap, dot, dest, hint }) => {
   /* v2.3.1283: destinations pass an explicit `src`; `glyph` (ICON_SRC
      lookup) stays for any legacy caller. */
@@ -333,22 +355,14 @@ const IconButton = ({ glyph, src: srcProp, label, active, onClick, node, tut, sn
           pointerEvents: 'none',
         }} />
       )}
-      {/* v2.3.1307: the icon chevron is now the game's ONE resize
-          affordance (owner: swipe on the icon is the only way to
-          collapse/widen).  Three faces: bar mode shows a faint ▲ hint
-          on every icon (swipe up opens); the active icon shows a
-          bright ▲ while compact (swipe up widens) rotating to ▼ while
-          expanded (swipe down shrinks) — same glyph the old snap
-          indicator used, same .22s rotation. */}
-      {(active && snap) || hint ? (
-        <span className="bt-nav-snap" data-expanded={snap === 'expanded' ? 'true' : 'false'} aria-hidden="true"
-          style={hint ? { opacity: 0.4 } : undefined}>
-          <svg viewBox="0 0 12 12" width="12" height="12">
-            <path d="M2.5 7.5 L6 4 L9.5 7.5" stroke="currentColor" strokeWidth="1.8"
-              fill="none" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-        </span>
-      ) : null}
+      {/* v2.3.1307: the icon cue is the game's ONE resize affordance
+          (owner: swipe on the icon is the only way to collapse/widen).
+          bar = faint drifting ▲▲ hint on every icon (swipe up opens);
+          compact active = bright ▲▲ top + ▼▼ bottom (both directions
+          live); expanded active = bright ▼▼ (swipe down to shrink). */}
+      {hint && <Cue dir="up" faint />}
+      {active && snap === 'compact' && (<><Cue dir="up" /><Cue dir="down" /></>)}
+      {active && snap === 'expanded' && <Cue dir="down" />}
     </button>
   );
 };
@@ -638,7 +652,7 @@ export const BottomDashboard = () => {
       {/* v2.3.1307: the top-edge drag handle (v2.3.1283/1293) is gone —
           band-wide swipes are retired (owner: too ambiguous over
           interactive menus).  Resizing lives ONLY on the toolbar icons
-          (useSheetDrag on the ribbon + the .bt-nav-snap chevrons). */}
+          (useSheetDrag on the ribbon + the .bt-swipe-cue chevrons). */}
       {active ? (
         <>
           {/* Header strip — back-chip (only on drilled child), title, ×.
@@ -683,15 +697,22 @@ export const BottomDashboard = () => {
           </div>
           {/* v2.3.1229: panels render in a flex body ABOVE the persistent
               toolbar (spec §9: the toolbar stays visible in panel mode;
-              its lit item identifies the panel; tapping it again = home). */}
-          <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+              its lit item identifies the panel).  v2.3.1307b: the toolbar
+              is absolute-pinned to the band bottom now — the marginBottom
+              reserves its 72px so panel content never hides under it. */}
+          <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', marginBottom: 72 }}>
             {Active && <Active />}
           </div>
         </>
       ) : mode === 'compact' ? (
         /* v2.3.1288 (PR B): all six destinations render their compact
-           view from the COMPACT_VIEWS registry. */
-        (() => { const CompactView = COMPACT_VIEWS[rootId] || BagCompact; return <CompactView />; })()
+           view from the COMPACT_VIEWS registry.  v2.3.1307b: wrapped so
+           the compact view also reserves the pinned toolbar's 72px. */
+        (() => { const CompactView = COMPACT_VIEWS[rootId] || BagCompact; return (
+          <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', marginBottom: 72 }}>
+            <CompactView />
+          </div>
+        ); })()
       ) : null /* v2.3.1290: bar mode — toolbar only, the game's resting
            default (owner: maximum world visibility). */}
 
@@ -724,6 +745,27 @@ export const BottomDashboard = () => {
         };
         return (
           <div className="bt-dashboard-toolbar-frame" ref={toolbarRef} style={{
+            /* v2.3.1307b (owner: "toolbar bounces ~20-30px after closing"):
+               the ribbon is pinned OUT OF FLOW to the band's bottom edge.
+               In flex flow it sat BELOW the content (at the band bottom)
+               while a sheet was open, but the instant a close settled the
+               content unmounted and the ribbon reflowed to the TOP of the
+               still-tall band — hopping up by the leftover height (the
+               released drag's residual, ~20-30px) and then riding the
+               shrinking band back down over the 220ms ease.  That ride-back
+               IS the bounce, and its size varies with where the collapse
+               starts (the earlier full-height "rubber band" reports were
+               the same mechanism at bigger amplitude).  Absolute-pinned to
+               the band's bottom it cannot move, in any mode, ever.  The
+               env() offset keeps it above an iOS home indicator; content
+               wrappers reserve the 72px below (marginBottom) so panels
+               never slide under it. */
+            position: 'absolute',
+            left: 0,
+            right: 0,
+            bottom: 'env(safe-area-inset-bottom, 0px)',
+            zIndex: 2,
+            boxSizing: 'border-box',
             /* v2.3.1229b: fixed 68px shelf in panel mode (30% of the
                grown band would balloon); 30% of the resting 28vh band
                ≈ the same 68px, so the shelf never visibly jumps. */
