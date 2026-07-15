@@ -78,9 +78,26 @@ export function useSheetDrag(dashRef, toolbarRef, getBarPx, getCompactPx, getExp
          BEFORE touchend, so a stale stamp from a slow >350ms drag
          would let the release fire the tap after all. */
       try { window.__btNavSwipeTs = Date.now(); } catch (err) {}
+      /* v2.3.1307b (owner: opening compact from the bar "opens too
+         large for a split second and snaps into place"): the live drag
+         used to track the finger across the FULL bar..expanded range,
+         so a natural flick from the bar carried the band past the
+         compact snap before release, and the settle eased it back down
+         — read as an overshoot-bounce.  A gesture now moves exactly
+         ONE snap (matching the flick rule that always applied), and
+         the drag clamps to that one-step range so the band physically
+         cannot travel past where it will land:
+           bar      -> [bar .. compact]
+           compact  -> [bar .. expanded]   (one step either way)
+           expanded -> [compact .. expanded]
+         Fully closing from expanded is two short swipes — the ▼▼ cue
+         re-advertises after the first. */
       const barPx = getBarPx();
+      const compactPx = getCompactPx();
       const expandedPx = getExpandedPx();
-      const h = Math.max(barPx, Math.min(expandedPx, startHeight - dy));
+      const lo = startMode === 'expanded' ? compactPx : barPx;
+      const hi = startMode === 'bar' ? compactPx : expandedPx;
+      const h = Math.max(lo, Math.min(hi, startHeight - dy));
       el.style.height = h + 'px';
       const dt = Math.max(1, e.timeStamp - lastT);
       vel = (t.clientY - lastY) / dt; /* +down / -up, px per ms */
