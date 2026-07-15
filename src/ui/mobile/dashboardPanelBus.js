@@ -13,14 +13,22 @@
 //   'compact'  — the destination's glance view.
 //   'expanded' — the destination's detailed / actionable view.
 //
-// Toolbar semantics: tapping any destination from the bar (or an
-// inactive one anytime) opens its COMPACT view; tapping the active
-// destination steps UP then closes — compact -> expanded -> bar — so
-// three taps cycle a destination through all of its states.  Movement
-// or aim input drops straight to the bar (combat safety).
+// Toolbar semantics (v2.3.1311, ChatGPT round-8): tapping any
+// destination from the bar (or an inactive one anytime) opens its
+// COMPACT view; tapping the ACTIVE destination toggles compact <->
+// expanded.  Tap never reaches the bar — dismissal is a swipe DOWN on
+// the icon, a world tap, or joystick input (combat safety drops
+// straight to bar).  Swiping up/down ON a toolbar icon advances /
+// retreats exactly one state (advance/retreat below).
 
 const listeners = new Set();
 const emit = () => { for (const fn of listeners) fn(); };
+
+/* v2.3.1311: one restrained tick when the sheet snaps to a new state
+   (round-8 spec: "subtle haptic on snap").  navigator.vibrate is a
+   no-op on iOS Safari — Android/PWA users get it, everyone else
+   silently doesn't; never let an exotic WebView throw over it. */
+const haptic = () => { try { navigator.vibrate && navigator.vibrate(8); } catch (_) {} };
 
 export const dashboardPanelBus = {
   state: { stack: ['bag'], mode: 'bar' },
@@ -43,26 +51,50 @@ export const dashboardPanelBus = {
   },
 
   // Toolbar tap: from the bar or an inactive destination -> its compact
-  // view; active destination -> compact -> expanded -> bar cycle.
+  // view; active destination toggles compact <-> expanded (v2.3.1311 —
+  // round-8 dropped the old third tap-to-bar step: closing is a gesture,
+  // never a tap, so a triple-tap can't yank the sheet away mid-glance).
   tapDestination(id) {
     if (this.state.mode === 'bar' || this.root() !== id) {
       this.openCompact(id);
     } else if (this.state.mode === 'compact') {
       this.expand();
     } else {
-      this.toBar();
+      this.stepDown();
     }
+  },
+
+  // v2.3.1311 (round-8 icon swipes): swipe UP on a toolbar icon moves
+  // its destination one state up — bar/inactive -> compact -> expanded.
+  // At expanded it's a deliberate no-op (spec: "swipe ends are no-ops,
+  // not wrap-arounds").
+  advance(id) {
+    if (this.state.mode === 'bar' || this.root() !== id) {
+      this.openCompact(id);
+    } else if (this.state.mode === 'compact') {
+      this.expand();
+    }
+  },
+
+  // Swipe DOWN: one state down — expanded -> compact -> bar.  No-op
+  // when the destination isn't open (bar, or the swipe hit an inactive
+  // icon — retreating someone ELSE's sheet would be a surprise).
+  retreat(id) {
+    if (this.state.mode === 'bar' || this.root() !== id) return;
+    this.stepDown();
   },
 
   openCompact(id) {
     this.state.stack = [id];
     this.state.mode = this.compactless.has(id) ? 'expanded' : 'compact';
+    haptic();
     emit();
   },
 
   expand() {
     if (this.state.mode === 'expanded') return;
     this.state.mode = 'expanded';
+    haptic();
     emit();
   },
 
@@ -73,6 +105,7 @@ export const dashboardPanelBus = {
     if (this.state.mode === 'expanded') {
       this.state.mode = 'compact';
       this.state.stack = [this.state.stack[0] || 'bag'];
+      haptic();
       emit();
     } else if (this.state.mode === 'compact') {
       this.toBar();
@@ -87,15 +120,20 @@ export const dashboardPanelBus = {
     if (this.state.mode === 'bar') return;
     this.state.mode = 'bar';
     this.state.stack = [this.state.stack[0] || 'bag'];
+    haptic();
     emit();
   },
 
-  // Settle to an explicit snap after a drag (useSheetDrag).  Leaving
+  // Settle to an explicit snap.  Was the drag-release landing spot for
+  // useSheetDrag (retired v2.3.1311 — body drags are gone, gestures
+  // live on the toolbar icons now); kept because it's still the honest
+  // "set mode" API for tests and any future gesture surface.  Leaving
   // expanded pops drill children for the same reason stepDown does.
   settle(mode) {
     if (this.state.mode === mode) return;
     this.state.mode = mode;
     if (mode !== 'expanded') this.state.stack = [this.state.stack[0] || 'bag'];
+    haptic();
     emit();
   },
 
