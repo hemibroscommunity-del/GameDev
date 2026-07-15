@@ -65,17 +65,21 @@ const HudPopup = ({ pop, stackIdx }) => {
   /* v2.3.821: the XP bar moved into the top-right character card, so the
      XP popups now anchor there too (just below the gold popups) instead of
      above the retired bottom strip. */
+  /* v2.3.1294: the top-right identity card is retired (Hero owns the
+     character HUD) — the transient +gold/+XP popups keep landing in
+     the freed top-right corner, just higher now that there's no card
+     to clear (round-4 spec: temporary feedback, no permanent HUD). */
   const base = isGold
     ? {
         position: 'fixed',
         right: 'calc(env(safe-area-inset-right, 0px) + 12px)',
-        top: 'calc(env(safe-area-inset-top, 0px) + 92px + ' + (stackIdx * STACK_SPACING_PX) + 'px)',
+        top: 'calc(env(safe-area-inset-top, 0px) + 14px + ' + (stackIdx * STACK_SPACING_PX) + 'px)',
         textAlign: 'right',
       }
     : {
         position: 'fixed',
         right: 'calc(env(safe-area-inset-right, 0px) + 12px)',
-        top: 'calc(env(safe-area-inset-top, 0px) + 112px + ' + (stackIdx * STACK_SPACING_PX) + 'px)',
+        top: 'calc(env(safe-area-inset-top, 0px) + 34px + ' + (stackIdx * STACK_SPACING_PX) + 'px)',
         textAlign: 'right',
       };
 

@@ -19,6 +19,7 @@ import { getShirtColor, shirtColorTarget, onShirtColorChange } from '../../rende
 import { getEquip } from '../../rendering/gearCatalog.js';
 import { dashboardPanelBus } from './dashboardPanelBus.js';
 import { BAR_H, compactDashHeight, expandedSheetHeight } from './sheet/sheetGeometry.js'; /* v2.3.1283; v2.3.1290 three-state */
+import { portraitStore } from './sheet/portraitStore.js';          /* v2.3.1294 */
 import { sheetTransition } from './sheet/motion.js';            /* v2.3.1283 */
 import { useSheetDrag } from './sheet/useSheetDrag.js';         /* v2.3.1283 */
 import { BagCompact } from './sheet/BagCompact.jsx';            /* v2.3.1285 */
@@ -93,22 +94,9 @@ const COL = {
   overlayText:   '#F4F0E7',
 };
 
-// Bar artwork sliced from the user-supplied mockup screenshot.  Each
-// PNG has dark padding baked into both ends; the Bar component
-// over-stretches the image and clips the parent so the colored middle
-// fills edge-to-edge with flat corners (no rounded pill).
-//
-// v=2.3.68: cache-bust suffix added because users reported the bars
-// + toolbar icons missing in-game.  Cloudflare's edge had served the
-// PNGs for ~weeks; the new ?v= query string forces a fresh fetch on
-// every browser (the bytes haven't changed -- the suffix just busts
-// the URL-based cache key).
-const BAR_IMG = {
-  hp:   '/icons/ui/bar-hp.webp?v=2.3.115',
-  mp:   '/icons/ui/bar-mp.webp?v=2.3.115',
-  stam: '/icons/ui/bar-stam.webp?v=2.3.115',
-  xp:   '/icons/ui/bar-xp.webp?v=2.3.115',
-};
+/* v2.3.1294: BAR_IMG + the Bar capsule component retired — the last
+   consumers (three-panel dashboard bars, then the identity card) are
+   gone.  The PNGs stay in public/icons/ui/ for stale-cached bundles. */
 
 // Toolbar icon source.  v2.3.1224: swapped to the UI Bible icon set
 // (docs/UI-BIBLE.md Part 4; generated per the Part 5 master prompt and
@@ -264,83 +252,6 @@ const Tooltip = ({ tip, onClose }) => {
       )}
       {anchor && <div style={tri(9, COL.overlayBorder)} />}
       {anchor && <div style={tri(8, COL.overlayBg)} />}
-    </div>
-  );
-};
-
-// Stat bar — uses the mockup's clean rounded-capsule artwork.  We
-// stretch the PNG to full width, slide a depletion overlay over the
-// right-hand portion (sharp left edge, rounded right cap), and lay
-// two text overlays on top: a metric label on the left and live
-// current/max on the right.
-const Bar = ({ label, cur, max, kind, tip, onTip }) => {
-  const pct = max > 0 ? Math.max(0, Math.min(100, (cur / max) * 100)) : 0;
-  const src = BAR_IMG[kind];
-  return (
-    <div
-      onPointerUp={tip && onTip ? (e) => { e.stopPropagation(); onTip(tip); } : undefined}
-      title={tip}
-      style={{
-        position: 'relative',
-        width: '100%',
-        height: 28,
-        overflow: 'hidden',
-        cursor: tip ? 'pointer' : 'default',
-        touchAction: 'none',
-      }}>
-      <img
-        src={src}
-        alt={label}
-        draggable={false}
-        style={{
-          position: 'absolute',
-          top: 0,
-          left: '-7%',
-          width: '114%',
-          height: '100%',
-          objectFit: 'fill',
-        }}
-      />
-      {pct < 100 && (
-        <div style={{
-          position: 'absolute',
-          top: 0,
-          bottom: 0,
-          left: pct + '%',
-          right: 0,
-          background: 'linear-gradient(90deg, rgba(0,0,0,0.55), rgba(0,0,0,0.72))',
-          transition: 'left .15s linear',
-          pointerEvents: 'none',
-        }} />
-      )}
-      {/* Metric label (left side). */}
-      <span style={{
-        position: 'absolute',
-        left: 10,
-        top: '50%',
-        transform: 'translateY(-50%)',
-        fontSize: 15,
-        fontWeight: 700,
-        color: '#fff',
-        letterSpacing: '.04em',
-        textShadow: '0 1px 2px rgba(0,0,0,.85), 0 0 1px rgba(0,0,0,.95)',
-        pointerEvents: 'none',
-        fontFamily: 'Source Sans 3, sans-serif',
-      }}>{label}</span>
-      {/* Live current / max (right side). */}
-      <span style={{
-        position: 'absolute',
-        right: 10,
-        top: '50%',
-        transform: 'translateY(-50%)',
-        fontSize: 15,
-        fontWeight: 700,
-        color: '#fff',
-        letterSpacing: '.04em',
-        textShadow: '0 1px 2px rgba(0,0,0,.85), 0 0 1px rgba(0,0,0,.95)',
-        pointerEvents: 'none',
-        fontFamily: 'Source Sans 3, sans-serif',
-      }}>{Math.round(cur)} / {Math.round(max)}</span>
     </div>
   );
 };
@@ -559,7 +470,11 @@ export const BottomDashboard = () => {
      chosen cosmetics (skin / hair / hair color / beard / hat).  Generated
      on mount (captures the login picker) and regenerated if a cosmetic
      changes.  Falls back to the NFT avatar, then the static icon. */
+  /* v2.3.1294: the portrait now ALSO feeds portraitStore — the Hero
+     toolbar icon below and the Hero identity strip read it (the
+     top-right card it used to serve is retired). */
   const [profilePortrait, setProfilePortrait] = useState('');
+  useEffect(() => { portraitStore.set(profilePortrait); }, [profilePortrait]);
   useEffect(() => {
     let alive = true;
     const regen = () => {
@@ -614,49 +529,10 @@ export const BottomDashboard = () => {
   const activeId = stack.length ? stack[stack.length - 1] : null;
   const active = mode === 'expanded' ? (PANELS[activeId] || PANELS[rootId] || PANELS.bag) : null;
 
-  const S = (typeof window !== 'undefined') && window._gameState && window._gameState.current;
-  const R = (S && S.rpg) || {};
-
-  const level = R.level || 1;
-  /* v2.3.1236: owner dashboard feedback §6 — `xp`/`xpNeeded` removed
-     with the player-card XP strip below; nothing else read them. */
-  /* v2.3.1207: `buildThresh` (xpRequired(combat level)) removed — the
-     build-cell progress strips now divide by the STAT'S OWN threshold,
-     xpRequired(R[stat]), computed per cell below.  Since v2.3.910 the
-     real level-up trigger (combatHelpers addBuildProg) keys the cost to
-     the stat's level, and combat level became the SUM of the stats — so
-     dividing by xpRequired(level) made every strip read near-zero at
-     mid game.  (T2Panel's grid tabs already used the per-stat curve.) */
-
-  // Gold readout — moved from the bag panel into the top-right HUD so
-  // the inventory grid has full vertical room.  Use the same fallback
-  // chain the bag was using so cached vs canonical fields both work.
-  const gold =
-    (R._compStats && (R._compStats.totalGoldEarned || R._compStats.goldEarnedTotal)) ||
-    R.goldEarned || R.coins || R.gold || 0;
-
-  /* v2.3.131: smoothly count the gold readout up to the new total
-     instead of snapping.  Pickup popup shows "+N G" below the pill
-     while the number visibly ticks toward `gold`.  RAF stops as soon
-     as the displayed value reaches the target. */
-  const [displayGold, setDisplayGold] = useState(gold);
-  const displayGoldRef = useRef(gold);
-  useEffect(() => {
-    if (gold === displayGoldRef.current) return undefined;
-    let raf = 0;
-    const tick = () => {
-      const cur = displayGoldRef.current;
-      if (cur === gold) return;
-      const diff = gold - cur;
-      const step = Math.sign(diff) * Math.max(1, Math.ceil(Math.abs(diff) * 0.3));
-      const next = Math.abs(step) >= Math.abs(diff) ? gold : cur + step;
-      displayGoldRef.current = next;
-      setDisplayGold(next);
-      if (next !== gold) raf = requestAnimationFrame(tick);
-    };
-    raf = requestAnimationFrame(tick);
-    return () => { if (raf) cancelAnimationFrame(raf); };
-  }, [gold]);
+  /* v2.3.1294: the card's level/gold reads and the v2.3.131 gold
+     count-up left with the card — the Hero identity strip owns the
+     readouts now (its coin keeps the glimmer class; the RAF count-up
+     retired with its anchor). */
 
   const Active = active?.Component;
 
@@ -676,95 +552,13 @@ export const BottomDashboard = () => {
       <SpendPointConfirm />
       <Tooltip tip={tooltip} onClose={() => setTooltip('')} />
 
-      {/* v2.3.821: the XP bar moved off the bottom trim into the top-right
-          character card (beneath the gold row) at the owner's request --
-          see the card below. */}
-
-      {/* Upper-right player card — v2.3.1227: Lantern Slate compact
-          132×58 horizontal card (§10): portrait left with presence dot,
-          name / Lv + gold right (v2.3.1236: the 3px XP strip that was
-          flush to the inner bottom is gone — owner feedback §6).
-          Replaces the tall vertical stack; the separate "N online" pill
-          is gone (presence = the dot; count moves to Friends later). */}
-      <div
-        onPointerDown={(e) => e.stopPropagation()}
-        style={{
-          position: 'fixed',
-          top: 'calc(env(safe-area-inset-top, 0px) + 8px)',
-          right: 'calc(env(safe-area-inset-right, 0px) + 8px)',
-          zIndex: 30,
-          width: 132,
-          height: 58,
-          background: COL.overlayBg,
-          border: `1px solid ${COL.overlayBorder}`,
-          borderRadius: 12,
-          boxShadow: '0 14px 30px rgba(4,7,9,.38)',
-          display: 'flex',
-          alignItems: 'center',
-          gap: 7,
-          padding: '0 8px 0 6px',
-          boxSizing: 'border-box',
-          overflow: 'hidden',
-          touchAction: 'none',
-        }}>
-        {/* Portrait 40×40 with presence dot. */}
-        <div style={{ position: 'relative', width: 40, height: 40, flexShrink: 0 }}>
-          <img
-            src={profilePortrait || (S && S.myAvatar) || '/icons/ui/profile.webp?v=2.3.128'}
-            alt="Portrait"
-            draggable={false}
-            style={{
-              width: '100%',
-              height: '100%',
-              objectFit: 'cover',
-              imageRendering: 'pixelated',
-              borderRadius: 8,
-              userSelect: 'none',
-              pointerEvents: 'none',
-            }}
-          />
-          <span style={{
-            position: 'absolute', right: -2, bottom: -2,
-            width: 7, height: 7, borderRadius: '50%',
-            background: (S && S._realtimeStatus === 'connected') ? '#59BF91' : '#D95C54',
-            border: '2px solid #202C32',
-          }} />
-        </div>
-        {/* Name / level + gold. */}
-        <div style={{ flex: 1, minWidth: 0, paddingBottom: 3 }}>
-          <div style={{
-            color: COL.overlayText,
-            fontFamily: 'Source Sans 3, sans-serif',
-            fontSize: 13,
-            fontWeight: 700,
-            lineHeight: '15px',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap',
-          }}>{(S && S.myName) || 'Anon'}</div>
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 6,
-            fontFamily: 'Source Sans 3, sans-serif',
-            lineHeight: '15px',
-          }}>
-            <span style={{ color: COL.text2, fontSize: 10, fontWeight: 600 }}>Lv {level}</span>
-            <span style={{
-              display: 'inline-flex', alignItems: 'center', gap: 3,
-              color: COL.gold, fontSize: 13, fontWeight: 700,
-              fontVariantNumeric: 'tabular-nums',
-              minWidth: 0, overflow: 'hidden',
-            }}>
-              <img src="/icons/popups/gold.webp" alt=""
-                style={{ width: 13, height: 13, imageRendering: 'pixelated', display: 'block' }} />
-              <span className="bt-coin-glimmer">{Number(displayGold).toLocaleString()}</span>
-            </span>
-          </div>
-        </div>
-        {/* v2.3.1236: owner dashboard feedback §6 — the 3px XP strip that
-            sat flush to the card's inner bottom is removed. */}
-      </div>
+      {/* v2.3.1294 (ChatGPT round-4, owner-approved): the persistent
+          top-right identity card is RETIRED — name/level/XP/gold are
+          rarely needed mid-play, and the card cost world space in the
+          new toolbar-only resting state.  Hero owns the character HUD
+          now (sheet/IdentityStrip.jsx); transient +XP/+gold popups
+          (XpFlyOverlay) still land top-right; combat health stays on
+          the above-head bars (v2.3.1272). */}
 
     <div
       ref={dashRef}
@@ -938,6 +732,18 @@ export const BottomDashboard = () => {
               {DESTINATIONS.map(d => (
                 <IconButton key={d.id} src={d.icon} label={d.label}
                   tut={d.id === 'more' ? 'dash-more' : undefined}
+                  /* v2.3.1294 (round-4): the Hero icon is the player's
+                     own portrait bust — now that Hero owns the whole
+                     character HUD, nothing says "my character" better
+                     than the character (replaces the magnifier art;
+                     falls back to it until the bust renders). */
+                  node={d.id === 'hero' && profilePortrait ? (
+                    <img src={profilePortrait} alt="Hero" draggable={false}
+                      style={{
+                        width: 30, height: 30, objectFit: 'cover',
+                        imageRendering: 'pixelated', borderRadius: 8,
+                      }} />
+                  ) : undefined}
                   active={litId === d.id}
                   snap={litId === d.id ? mode : null}
                   onClick={() => dashboardPanelBus.tapDestination(d.id)} />

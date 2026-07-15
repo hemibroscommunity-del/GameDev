@@ -5,6 +5,7 @@ import { requestT2Category } from '../dash/T2Panel.jsx';
 import { dashboardPanelBus } from '../dashboardPanelBus.js';
 import { SpriteHpBar } from '../../SpriteHpBar.jsx';
 import { COMBAT_SKILLS, skillLevel, deriveHeroStats } from './heroModel.js';
+import { IdentityStrip } from './IdentityStrip.jsx';   /* v2.3.1294 */
 
 /* v2.3.1286: Hero compact — the glanceable combat dashboard (nav-system
    spec §Hero Compact).  Upper band: the three live resource bars with
@@ -61,14 +62,16 @@ export const HeroCompact = () => {
     <div style={{
       flex: 1, minHeight: 0,
       display: 'flex', flexDirection: 'column',
-      gap: 6,
-      padding: '10px 10px 8px',
+      gap: 4,
+      padding: '7px 10px 6px',
     }}>
-      {/* Live resources.  v2.3.1292 (ChatGPT round-3 §4 Hero): the gold
-          column is gone — gold is always visible in the persistent
-          player card top-right; duplicating it here spent glance space
-          on a number the eye already has.  Bars get the full width. */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 4, minWidth: 0 }}>
+      {/* v2.3.1294 (ChatGPT round-4): identity strip — the retired
+          top-right world card lives here now (portrait, name, level,
+          exact XP, gold).  Hero compact = the character HUD: who am I,
+          what condition am I in, what's my combat strength. */}
+      <IdentityStrip />
+      {/* Live resources (v2.3.1292: full-width bars). */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 3, minWidth: 0 }}>
         {row('❤️', R.hp || 0, R.maxHp || 100, null, true)}
         {row('⚡', R.stamina || 0, R.maxStamina || 100, '#D8A85F')}
         {row('💧', R.mana || 0, R.maxMana || 100, '#5B99DE')}
@@ -122,13 +125,11 @@ export const HeroCompact = () => {
             </div>
           );
         })}
-        {/* DPS + DEF share the row's tile rhythm but read as values.
-            v2.3.1292 (canonical naming): the mitigation number — block
-            reduction from the Defense skill + shield — is called DEF in
-            BOTH Hero views now (was BLK here / Block in expanded).
-            This game has no separate armor stat (heroModel NOTE:
-            armorDef was never wired), so DEF and block are one number
-            with one name. */}
+        {/* DPS + DR share the row's tile rhythm but read as values.
+            v2.3.1294 (round-4 naming fix): the mitigation number is DR
+            (damage reduction) — v2.3.1292's DEF collided with the
+            Defense build attribute one row over.  Same single number
+            (Defense skill + shield block reduction), clearer name. */}
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 2, minWidth: 0 }}>
           <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.04em', color: '#7BCD84' }}>DPS</span>
           <span style={{ fontSize: 12, fontWeight: 700, color: COL.text, lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>
@@ -136,7 +137,7 @@ export const HeroCompact = () => {
           </span>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 2, minWidth: 0 }}>
-          <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.04em', color: '#6FC3DF' }}>DEF</span>
+          <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.04em', color: '#6FC3DF' }}>DR</span>
           <span style={{ fontSize: 12, fontWeight: 700, color: COL.text, lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>
             {Math.round(d.block * 100)}%
           </span>
