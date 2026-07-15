@@ -24,6 +24,7 @@ import { perfTracker } from '@/debug/perfTracker.js';
 import { _typeof } from '@/lib/babelHelpers.js';
 
 import { pushDmgPopup } from '@/game/combatHelpers.js';
+import { onZoneEntered } from '@/networking/nodeSync.js'; /* v2.3.1301: gather-node self-heal */
 export function handleZoneTransitions(S, ptx, pty, _zone, W, H) {
   var P = S.player;
         /* v2.3.387: town exits are PROXIMITY zones on the painted
@@ -126,6 +127,9 @@ export function handleZoneTransitions(S, ptx, pty, _zone, W, H) {
               var depthCfg = DEPTH_CONFIG[entryDepth];
               if(!S._serverMonsters) S.monsters = spawnMonstersForZone(newZone, (depthCfg === null || depthCfg === void 0 ? void 0 : depthCfg.levelMod) || 0);
               if (!S._serverGatherNodes) S.gatherNodes = spawnGatherNodes(bestExit.zoneId, entryDepth);
+              /* v2.3.1301: apply a buffered node snapshot that raced the
+                 zone flip, or arm the lost-move reclaim (nodeSync.js). */
+              onZoneEntered(S, bestExit.zoneId);
               var nW = newZone.w * TILE,
                 nH = newZone.h * TILE;
               /* Spawn continues your direction of travel from town.
@@ -389,6 +393,7 @@ export function handleZoneTransitions(S, ptx, pty, _zone, W, H) {
               S.map = generateZoneMap(S.currentZone);
               if(!S._serverMonsters) S.monsters = spawnMonstersForZone(zn, (dc === null || dc === void 0 ? void 0 : dc.levelMod) || 0);
               if (!S._serverGatherNodes) S.gatherNodes = spawnGatherNodes(S.currentZone, nextDepth);
+              onZoneEntered(S, S.currentZone); /* v2.3.1301: node self-heal */
               P.x = zn.w / 2 * TILE;
               P.y = (zn.h - 3) * TILE;
               S.groundLoot = []; if (window._pixiRenderer && window._pixiRenderer.flushAllLoot) window._pixiRenderer.flushAllLoot();
@@ -525,6 +530,7 @@ export function handleZoneTransitions(S, ptx, pty, _zone, W, H) {
             globalThis.ROWS = _zn.h;
             if(!S._serverMonsters) S.monsters = spawnMonstersForZone(_zn, (_dc2 === null || _dc2 === void 0 ? void 0 : _dc2.levelMod) || 0);
             if (!S._serverGatherNodes) S.gatherNodes = spawnGatherNodes(S.currentZone, depth);
+            onZoneEntered(S, S.currentZone); /* v2.3.1301: node self-heal */
             S.groundLoot = []; if (window._pixiRenderer && window._pixiRenderer.flushAllLoot) window._pixiRenderer.flushAllLoot();
             S.hitParticles = [];
             S.deathExplosions = [];

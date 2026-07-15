@@ -16,6 +16,7 @@
    body is untouched. Returns the effect cleanup (or undefined when gated
    by showNameModal/showLogin — same as the original early return). */
 import { processGameEvent } from '@/networking/gameEvents.js';
+import { stashPendingZoneNodes } from '@/networking/nodeSync.js'; /* v2.3.1301: node self-heal */
 import { getDeviceNonce, generatePassphrase, passphraseToId } from '@/networking/index.js';
 import { createGatherNode, spawnMonstersForZone, BT_AUDIO, ZONES, TILE, DEATH_GOLD_PENALTY, RARITY_TIERS, ZONE_RESOURCES, createDefaultCompStats, generateZoneMap, recalcDerived, updateZoneDimensions, setGridCapsEnabled } from '@/data/index.js';
 import { _objectSpread, _slicedToArray, _toConsumableArray } from '@/lib/babelHelpers.js';
@@ -711,7 +712,11 @@ export function setupWebSocket(ctx) {
                 if (_curZoneCfgN && _curZoneCfgN.safe) {
                   S.gatherNodes = [];
                 } else if (_nzone && _nzone !== S.currentZone) {
-                  /* Stale snapshot for a different zone -- ignore. */
+                  /* v2.3.1301: mismatched snapshot is BUFFERED, not
+                     dropped — if it raced the S.currentZone flip by a
+                     frame, onZoneEntered applies it (the old silent
+                     drop left the zone permanently node-less). */
+                  stashPendingZoneNodes(S, _nzone, msg.nodes);
                 } else {
                   S.gatherNodes = msg.nodes.map(function (n) {
                     var local = createGatherNode(_nzone, 'shallow', n.x, n.y, n.nodeType, n.tierLvl);
@@ -1542,7 +1547,9 @@ export function setupWebSocket(ctx) {
              (v2.3.136). */
           S.gatherNodes = [];
         } else if (_zzone && _zzone !== S.currentZone) {
-          /* Stale snapshot for a different zone -- ignore. */
+          /* v2.3.1301: buffer instead of drop (see nodeSync.js) — a
+             snapshot that raced the zone flip is applied on entry. */
+          stashPendingZoneNodes(S, _zzone, msg.nodes);
         } else {
           S.gatherNodes = msg.nodes.map(function (n) {
             var local = createGatherNode(_zzone, 'shallow', n.x, n.y, n.nodeType, n.tierLvl);
