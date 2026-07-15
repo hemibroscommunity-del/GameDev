@@ -1125,7 +1125,14 @@ input{font-family:inherit}
 .bt-cc-drawer{position:absolute;left:max(10px,env(safe-area-inset-left));right:max(10px,env(safe-area-inset-right));bottom:max(10px,env(safe-area-inset-bottom));z-index:9;display:flex;flex-direction:column;gap:8px;max-width:560px;margin:0 auto;padding:10px;background:var(--ui-sheet);border:1px solid var(--ui-line-strong);border-radius:16px;box-shadow:0 -8px 24px rgba(3,8,12,.35);box-sizing:border-box;transform:translateY(calc(100% + 40px));transition:transform 240ms cubic-bezier(.2,.8,.2,1);pointer-events:none}
 .bt-cc-drawer--open{transform:translateY(0);pointer-events:auto}
 @media (prefers-reduced-motion:reduce){.bt-cc-drawer{transition:none}}
-.bt-cc-done{width:100%;min-height:48px;border-radius:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-family:'Source Sans 3',sans-serif;font-size:14px;font-weight:800;letter-spacing:.06em;text-transform:uppercase}
+/* v2.3.1308 (round-7): DONE is the drawer's primary action — a filled
+   muted-brass button now instead of a dark row that read low-priority.
+   Deliberately quieter than the parent screen's bright gold ENTER. */
+.bt-cc-done{width:100%;min-height:48px;border-radius:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-family:'Source Sans 3',sans-serif;font-size:14px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;
+  background:linear-gradient(180deg,#C29A50 0%,#A9823F 100%)!important;
+  border:1px solid #E3C87E!important;
+  color:#20170D!important;
+  text-shadow:none}
 /* v2.3.1272: the two creator media blocks moved BELOW every base rule
    they override — they sat earlier in the file, so equal-specificity
    base declarations silently won and the 690/359 fallbacks were dead

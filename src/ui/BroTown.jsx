@@ -1313,16 +1313,22 @@ export var BroTown = function BroTown(_ref0) {
        v2.3.800: checker -> soft light-gray GRADIENT (owner request) —
        still light enough that dark art silhouettes; selection still
        rides on the gold ring + badge. */
+    /* v2.3.1307 (ChatGPT round-7): the bright lavender border on EVERY
+       tile made everything look selected — unselected tiles drop to a
+       thin muted slate line; only the pick carries the 2px brass ring
+       (+ the painted check badge below). */
     return { width: size, height: size, flex: '0 0 auto', padding: 2, cursor: 'pointer', boxSizing: 'border-box',
       position: 'relative', borderRadius: 8,
       background: 'linear-gradient(180deg,#f4f5f8,#cdd2dc)',
-      border: sel ? '2px solid var(--gold)' : '1.5px solid #56499a',
+      border: sel ? '2px solid #D8AA58' : '1px solid rgba(238,242,235,.28)',
       display: 'flex', alignItems: 'center', justifyContent: 'center' };
   };
-  /* v2.3.711: explicit checkmark badge on the picked tile -- the purple
-     highlight alone was ambiguous next to the purple-ish swatches. */
+  /* v2.3.711: explicit checkmark badge on the picked tile.
+     v2.3.1307: the owner's painted gold-coin check replaces the flat
+     purple disc (round-7 icon set). */
   var _checkBadge = function () {
-    return /*#__PURE__*/React.createElement("span", { key: 'ck', style: { position: 'absolute', right: -2, bottom: -2, width: 14, height: 14, borderRadius: '50%', background: 'var(--pop)', border: '1px solid #fff', color: '#fff', fontSize: 9, lineHeight: '12px', textAlign: 'center', fontWeight: 800, pointerEvents: 'none' } }, "✓");
+    return /*#__PURE__*/React.createElement("img", { key: 'ck', src: '/ui/welcome/cc/cc-selected.webp?v=' + BUILD_INFO.version, alt: '',
+      style: { position: 'absolute', right: -4, bottom: -4, width: 17, height: 17, pointerEvents: 'none' } });
   };
   var _swatchTile = function (opt, selId, onSet, size, thumbCat, thumbItem) {
     /* The 'default' option = keep the item's original color (no recolor).
@@ -1348,12 +1354,12 @@ export var BroTown = function BroTown(_ref0) {
       key: 's_' + opt.id, type: 'button', title: opt.name,
       onClick: function () { onSet(opt.id); }, style: _apTileStyle(sel, sz)
     }, opt.id === 'none'
-      /* v2.3.1016: size relative to the tile (was a fixed sz-14 circle that
-         read smaller than its neighbours, and overflowed once tiles shrank).
-         v2.3.1017: 86% — the trait thumbnails (e.g. hair) carry ~15% of
-         transparent padding, so their art fills ~85% of the tile; matching
-         that makes the dashed 'none' circle the same visual size as them. */
-      ? /*#__PURE__*/React.createElement("div", { style: { width: '86%', aspectRatio: '1 / 1', borderRadius: '50%', border: '2px dashed var(--line)', boxSizing: 'border-box' } })
+      /* v2.3.1307 (round-7): the dashed circle read as a missing asset /
+         loading placeholder — the painted bald-head "none" icon with a
+         tiny None caption replaces it. */
+      ? /*#__PURE__*/React.createElement("div", { style: { width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' } },
+          /*#__PURE__*/React.createElement("img", { src: '/ui/welcome/cc/cc-no-hair.webp?v=' + BUILD_INFO.version, alt: 'None', draggable: false, style: { width: '68%', height: '68%', objectFit: 'contain' } }),
+          /*#__PURE__*/React.createElement("span", { style: { fontSize: 9, fontWeight: 700, letterSpacing: '.06em', color: '#3a4450', lineHeight: 1 } }, "None"))
       : /*#__PURE__*/React.createElement("img", { src: '/sprites/traits/' + cat + '/' + opt.id + '/thumb.png?v=' + BUILD_INFO.version, alt: opt.name, decoding: 'async', style: { width: '100%', height: '100%', objectFit: 'contain', imageRendering: 'pixelated' } }),
     sel ? _checkBadge() : null);
   };
