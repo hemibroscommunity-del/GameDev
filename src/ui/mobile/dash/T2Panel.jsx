@@ -146,19 +146,10 @@ export const T2Panel = () => {
   let channels = gridTab
     ? (gridsLive ? gridTab.channels : gridTab.channels.map((ch) => ({ ...ch, active: false })))
     : isDef ? DEFENSE_CHANNELS : (WEAPON_CHANNELS[activeCat] || []);
-  /* v2.3.1311 (owner canon: every parent owns exactly FIVE categories):
-     Vitality's data model ships 4 (vigor/recovery/lifeblood/resilience)
-     — one short.  A UI-ONLY locked slot keeps the 5-per-parent shape
-     visible until the owner names the real 5th ability; nothing is
-     added to the data model or the wire (spending into it is
-     impossible: active:false reuses the SOON row treatment). */
-  if (activeCat === 'hp' && channels.length === 4) {
-    channels = [...channels, {
-      key: '_slot5', label: '???', active: false,
-      blurb: 'A fifth Vitality ability — coming soon.',
-      derive: () => '',
-    }];
-  }
+  /* v2.3.1313: the v2.3.1311 UI-only '???' slot is retired — the 5th
+     Vitality category is real data now (HP_CHANNELS 'Last Stand',
+     owner-named via the T2 icon sheet, inactive until it gets an
+     effect). */
   const channelCap = t2uniform
     ? (gridTab ? GRID_CHANNEL_CAP : isDef ? DEFENSE_CHANNEL_CAP : WEAPON_CHANNEL_CAP)
     : (gridTab || isDef ? LEGACY_GRID_CAP : LEGACY_WEAPON_CAP);
@@ -385,6 +376,13 @@ export const T2Panel = () => {
             borderBottom: '1px solid ' + COL.divider,
             opacity: ch.active ? 1 : 0.55,
           }}>
+            {/* v2.3.1313: per-category icon from the owner's T2 build
+                sheet (tools/process_t2_icons_sheet.py) — file names are
+                `${tab}-${channelKey}` by construction. */}
+            <img src={`/icons/ui/t2/${activeCat}-${ch.key}.webp?v=2.3.1313`} alt=""
+              draggable={false}
+              style={{ width: 26, height: 26, objectFit: 'contain', flex: 'none' }}
+              onError={(e) => { e.currentTarget.style.display = 'none'; }} />
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, minWidth: 0 }}>
                 <span style={{ fontSize: 13, fontWeight: 700, lineHeight: 1.25, color: COL.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{ch.label}</span>

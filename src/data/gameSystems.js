@@ -3001,6 +3001,13 @@ export const HP_CHANNELS = [
   { key: 'resilience', label: 'Resilience', role: 'resilience', active: false, perPt: 0,
     blurb: 'Shrug off the nastiest hits.',
     derive: (v) => String(v) },
+  /* v2.3.1313: the owner NAMED the 5th Vitality category via the T2
+     icon sheet — Last Stand.  Inactive until the owner defines its
+     effect (and the server adds the key to HP_CHANNEL_KEYS); the
+     v2.3.1312 UI-only '???' placeholder in T2Panel is retired. */
+  { key: 'laststand', label: 'Last Stand', role: 'laststand', active: false, perPt: 0,
+    blurb: 'When death comes knocking, hold the line.',
+    derive: (v) => String(v) },
 ];
 export const ENDURANCE_CHANNELS = [
   { key: 'stamina',      label: 'Deep Lungs',   role: 'maxstam',   active: true,  perPt: 0.5,

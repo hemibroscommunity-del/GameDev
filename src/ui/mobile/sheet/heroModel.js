@@ -1,7 +1,7 @@
 import {
   calcCritChance, calcBlockReduction, calcDisplayDmgRange, calcDisplayDps,
   calcMoveSpeed, passiveDodgeChance, getActiveWeapon, getWeaponCritStat,
-  getEvasionPts, getDefenseBlockBonus, xpRequired,
+  getEvasionPts, getDefenseBlockBonus, xpRequired, weaponXpRequired,
 } from '../../../data/gameSystems.js';
 
 /* v2.3.1286: data model for the Hero destination (nav-system spec) —
@@ -43,19 +43,23 @@ export function skillLevel(R, key) {
 /* Per-stat XP progress toward the next point — the exact formula the
    level-up trigger uses (combatHelpers addBuildProg, v2.3.910). */
 export function skillProgressPct(R, key) {
-  if (key === 'defense') return 0; /* DEF strip wired with the skill in v2.3.693 */
-  const val = R[key] || 0;
-  const prog = (R._buildProg && R._buildProg[key]) || 0;
-  const thresh = Math.max(200, Math.floor(xpRequired(val)));
-  return Math.max(0, Math.min(100, (prog / thresh) * 100));
+  const p = skillProgress(R, key);
+  if (!p || !p.thresh) return 0;
+  return Math.max(0, Math.min(100, (p.prog / p.thresh) * 100));
 }
 
 /* v2.3.1295 (ChatGPT round-4 Build cards): exact per-stat XP progress —
    same numbers skillProgressPct rounds into a bar, exposed so the card
-   can print "14 / 463" (the bars alone read as unexplained decoration).
-   Defense returns null: its strip was never wired (v2.3.693 note). */
+   can print "14 / 463" (the bars alone read as unexplained decoration). */
 export function skillProgress(R, key) {
-  if (key === 'defense') return null;
+  /* v2.3.1313 (owner: 'add the xp bar for defense like the rest'):
+     Defense finally gets its strip — its track is defenseSkill.xp
+     against weaponXpRequired(level), the exact awardDefenseXp curve
+     (the v2.3.693 'never wired' note is retired). */
+  if (key === 'defense') {
+    const sk = R.defenseSkill || { level: 0, xp: 0 };
+    return { prog: Math.floor(sk.xp || 0), thresh: Math.max(1, Math.floor(weaponXpRequired(sk.level || 0))) };
+  }
   const val = R[key] || 0;
   const prog = Math.floor((R._buildProg && R._buildProg[key]) || 0);
   const thresh = Math.max(200, Math.floor(xpRequired(val)));
