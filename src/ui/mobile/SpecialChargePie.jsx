@@ -76,7 +76,10 @@ export const SpecialChargePie = () => {
   const strokeW = 10;
   const diskR = ringR - strokeW / 2;
   const C = 2 * Math.PI * ringR;
-  const bottomVal = 'calc(var(--dash-h) + ' + (70 + joyW + 8) + 'px)';
+  /* v2.3.1307: keyed to --sheet-h so the pie rides above the OPEN
+     sheet with the right disc it annotates (movement now works with
+     menus open; --sheet-h == --dash-h in bar mode). */
+  const bottomVal = 'calc(var(--sheet-h, var(--dash-h)) + ' + (70 + joyW + 8) + 'px)';
   const rightVal  = (50 + (joyW - size) / 2) + 'px';
 
   const RING_FG   = '#4aa3ff';

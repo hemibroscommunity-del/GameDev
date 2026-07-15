@@ -37,17 +37,17 @@ export function TouchControls(props) {
     ref: lZoneRef,
     className: "bt-desktop-hide",
     'data-joyzone': 'L',
-    style: { position: 'fixed', left: 0, top: 0, width: '50%', height: 'calc(100% - var(--dash-h))', zIndex: 6, touchAction: 'none', background: 'transparent', WebkitUserSelect: 'none', userSelect: 'none' }
+    style: { position: 'fixed', left: 0, top: 0, width: '50%', height: 'calc(100% - var(--sheet-h, var(--dash-h)))' /* v2.3.1307: zones end above the OPEN sheet so movement works with menus open */, zIndex: 6, touchAction: 'none', background: 'transparent', WebkitUserSelect: 'none', userSelect: 'none' }
   }), /*#__PURE__*/React.createElement("div", {
     ref: rZoneRef,
     className: "bt-desktop-hide",
     'data-joyzone': 'R',
-    style: { position: 'fixed', right: 0, top: 0, width: '50%', height: 'calc(100% - var(--dash-h))', zIndex: 6, touchAction: 'none', background: 'transparent', WebkitUserSelect: 'none', userSelect: 'none' }
+    style: { position: 'fixed', right: 0, top: 0, width: '50%', height: 'calc(100% - var(--sheet-h, var(--dash-h)))' /* v2.3.1307: zones end above the OPEN sheet so movement works with menus open */, zIndex: 6, touchAction: 'none', background: 'transparent', WebkitUserSelect: 'none', userSelect: 'none' }
   }), /* duplicate kb-hints removed — kept the one near joystick zone below */ /*#__PURE__*/React.createElement("div", {
     className: "bt-joystick-zone",
     style: {
       position: 'fixed',
-      bottom: 'calc(var(--dash-h) + 70px)',
+      bottom: 'calc(var(--sheet-h, var(--dash-h)) + 70px)', /* v2.3.1307: disc rides above the open sheet */
       left: isLandscape ? 16 : 12,
       zIndex: 30,
       /* v2.3.816: visuals only -- touches are handled by lZoneRef beneath,
@@ -169,7 +169,7 @@ export function TouchControls(props) {
     className: "bt-desktop-hide bt-rjoy-zone",
     style: {
       position: 'fixed',
-      bottom: 'calc(var(--dash-h) + 70px)',
+      bottom: 'calc(var(--sheet-h, var(--dash-h)) + 70px)', /* v2.3.1307: disc rides above the open sheet */
       right: isLandscape ? 50 : 50,
       zIndex: 30,
       /* v2.3.816: visuals only -- touches handled by rZoneRef beneath. */

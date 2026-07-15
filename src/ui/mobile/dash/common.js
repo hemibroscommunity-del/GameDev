@@ -59,6 +59,13 @@ export const panelStyle = {
   minHeight: 0,
   overflow: 'auto',
   touchAction: 'pan-y',
+  /* v2.3.1307: contain iOS momentum/rubber-band INSIDE the panel.
+     Without this, a fling in an open panel keeps its overscroll
+     bounce alive while the sheet collapses — which reads as the whole
+     BAND rubber-banding (the owner's persistent "bounce after
+     collapsing the expanded menus" report; the band's own writers and
+     easing were already single-writer and non-overshooting). */
+  overscrollBehavior: 'contain',
   padding: '8px 12px 10px',
   color: COL.text,
   fontFamily: 'Source Sans 3, sans-serif',
