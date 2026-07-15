@@ -365,10 +365,12 @@
   outline:2px solid var(--ui-brass-highlight);
   outline-offset:-2px;
 }
-/* v2.3.1289: snap-state chevron (owner request) — sits in the ACTIVE
-   destination's top-right corner.  Up while compact = "tap to expand";
-   rotates to down while expanded = "tap to collapse".  One glyph, one
-   rotation — it also mirrors the swipe direction on the sheet. */
+/* v2.3.1289: snap-state chevron — sits in the icon's top-right corner.
+   v2.3.1307: this is now the ONE resize affordance (owner: swipe on
+   the toolbar icon is the only collapse/widen method).  Up while
+   compact = "swipe up to widen"; rotates down while expanded = "swipe
+   down to shrink"; bar mode shows it faint (0.4) on every icon =
+   "swipe up to open".  One glyph, one rotation. */
 .bt-nav-snap{
   position:absolute;
   top:3px;
@@ -595,29 +597,20 @@ input{font-family:inherit}
 .bt-chat-input:focus{border-color:var(--pop)}
 .bt-joystick-zone{z-index:30;display:block;
   -webkit-touch-callout:none;-webkit-user-select:none;user-select:none;touch-action:none}
-/* v2.3.1288 (nav-system PR B): while a sheet is OPEN the floating
-   combat chrome — both joystick discs and the special-charge pie — dims
-   to ghost opacity so it reads as parked, not tappable, under/over the
-   sheet.  BottomDashboard stamps data-bt-sheet on <html> from the panel
-   bus, so this is pure CSS with no dependency on the overlays
-   re-rendering.  The dim rides the CONTAINERS: BroTown's engagement
-   ladder stamps opacity on the base elements inside (rest .5 / engaged
-   .92, v2.3.1233b), which multiplies instead of fighting — and a
-   joystick touch drops the sheet to the bar instantly (v2.3.1283
-   interlock), so "engaged while open" never persists.
-   v2.3.1290: with the bar as resting state the discs anchor just above
-   the toolbar, INSIDE the compact sheet's footprint — so the dim now
-   applies in BOTH open modes, and full opacity is bar-mode only. */
-.bt-joystick-zone,.bt-rjoy-zone,.bt-charge-pie{transition:opacity .22s ease}
+/* v2.3.1307 (owner: play with menus open): the v2.3.1288 open-sheet
+   ghost dim is GONE — the joystick discs and charge pie are live
+   controls while a sheet is open, at full engagement-ladder opacity.
+   They now RIDE ABOVE the open sheet: their bottom anchors key off
+   --sheet-h (stamped per mode by BottomDashboard), and the bottom
+   transition below matches the sheet's 220ms motion token so the
+   discs glide up/down with the band instead of teleporting.  The
+   v2.3.1283 "movement collapses the sheet" interlock was removed the
+   same version (BroTown lS/rS handlers).  transform/opacity/bottom
+   only — no filters (iOS WebGL static, CLAUDE.md). */
+.bt-joystick-zone,.bt-rjoy-zone,.bt-charge-pie{transition:opacity .22s ease,bottom 220ms cubic-bezier(.2,.8,.2,1)}
 @media (prefers-reduced-motion: reduce){
   .bt-joystick-zone,.bt-rjoy-zone,.bt-charge-pie{transition:none}
 }
-:root[data-bt-sheet="compact"] .bt-joystick-zone,
-:root[data-bt-sheet="compact"] .bt-rjoy-zone,
-:root[data-bt-sheet="compact"] .bt-charge-pie,
-:root[data-bt-sheet="expanded"] .bt-joystick-zone,
-:root[data-bt-sheet="expanded"] .bt-rjoy-zone,
-:root[data-bt-sheet="expanded"] .bt-charge-pie{opacity:.15}
 
 /* Joystick base — outer ring filled with a light transparent gray so
    it sits over the game world like a subtle puck. */

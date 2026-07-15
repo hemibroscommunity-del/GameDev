@@ -5353,14 +5353,11 @@ export var BroTown = function BroTown(_ref0) {
       var t = e.changedTouches[0];
       /* v2.3.845: hand reel-zone touches to the fishing gesture, not movement. */
       if (isReelTouch(t.clientX, t.clientY)) return;
-      /* v2.3.1283: movement input collapses an expanded sheet
-         immediately (nav-system spec §Real-time gameplay safety) — the
-         zones only exist above the sheet's top edge, so any touch here
-         is world-intent. */
-      try {
-        var _bus = window.__broDashPanelBus;
-        if (_bus && _bus.state.mode !== 'bar') _bus.toBar(); /* v2.3.1290: straight to bar */
-      } catch (_e2) {}
+      /* v2.3.1307: the v2.3.1283 "movement collapses the sheet"
+         interlock is REMOVED (owner: players may just want to play
+         with menus open).  The joystick zones end above the sheet
+         (height keys off --sheet-h in TouchControls), so a touch here
+         is world-intent AND the sheet stays put. */
       var nowMs = Date.now();
       var lts = lTapState.current;
       lTouchId.current = t.identifier;
@@ -5485,12 +5482,8 @@ export var BroTown = function BroTown(_ref0) {
       var t = e.changedTouches[0];
       /* v2.3.845: hand reel-zone touches to the fishing gesture, not aim/attack. */
       if (isReelTouch(t.clientX, t.clientY)) return;
-      /* v2.3.1283: aim/attack input collapses an expanded sheet too —
-         same rule as the movement zone (see lS). */
-      try {
-        var _busR = window.__broDashPanelBus;
-        if (_busR && _busR.state.mode !== 'bar') _busR.toBar(); /* v2.3.1290: straight to bar */
-      } catch (_e2) {}
+      /* v2.3.1307: aim/attack no longer collapses the sheet — same
+         owner directive as the movement zone (see lS). */
       var nowMs = Date.now();
       var rts = rTapState.current;
       var dxLast = t.clientX - rts.lastX;

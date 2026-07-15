@@ -13,11 +13,17 @@
 //   'compact'  — the destination's glance view.
 //   'expanded' — the destination's detailed / actionable view.
 //
-// Toolbar semantics: tapping any destination from the bar (or an
-// inactive one anytime) opens its COMPACT view; tapping the active
-// destination steps UP then closes — compact -> expanded -> bar — so
-// three taps cycle a destination through all of its states.  Movement
-// or aim input drops straight to the bar (combat safety).
+// Toolbar semantics (v2.3.1307, owner): TAPS never resize.  Tapping an
+// inactive destination opens/switches to it (compact from the bar,
+// KEEPING the current size otherwise); tapping the active destination
+// is a no-op.  Resizing — bar <-> compact <-> expanded — happens ONLY
+// via a vertical swipe on the toolbar icons (useSheetDrag, now bound
+// to the ribbon).  The old tap-cycle (compact -> expanded -> bar) and
+// the header ▾ chevron are gone: two resize methods plus band-wide
+// swipes over interactive menus read as ambiguous in play-testing.
+// Movement/aim input no longer collapses the sheet — the owner wants
+// players walking around with menus open (BroTown interlocks removed
+// same version).
 
 const listeners = new Set();
 const emit = () => { for (const fn of listeners) fn(); };
@@ -42,16 +48,28 @@ export const dashboardPanelBus = {
     return this.state.stack[0] || 'bag';
   },
 
-  // Toolbar tap: from the bar or an inactive destination -> its compact
-  // view; active destination -> compact -> expanded -> bar cycle.
+  // Toolbar tap (v2.3.1307): open/switch only, never resize.  From the
+  // bar -> the destination's compact view; from an open sheet ->
+  // switch destinations at the CURRENT size (a reader comparing two
+  // panels shouldn't lose their chosen height); active tap -> no-op
+  // (swipe down is the one way to shrink).
+  // DESKTOP EXCEPTION: mouse users can't swipe (useSheetDrag is
+  // touch-only), so on no-touch devices the active tap keeps the old
+  // v2.3.1290 cycle (compact -> expanded -> bar) or the sheet would be
+  // stuck open.  Primary platform is iPhone Safari; this branch is the
+  // dev/desktop escape hatch.
   tapDestination(id) {
-    if (this.state.mode === 'bar' || this.root() !== id) {
+    if (this.state.mode === 'bar') {
       this.openCompact(id);
-    } else if (this.state.mode === 'compact') {
-      this.expand();
-    } else {
-      this.toBar();
+    } else if (this.root() !== id) {
+      this.state.stack = [id];
+      if (this.compactless.has(id)) this.state.mode = 'expanded';
+      emit();
+    } else if (!(typeof window !== 'undefined' && ('ontouchstart' in window || (navigator.maxTouchPoints || 0) > 0))) {
+      if (this.state.mode === 'compact') this.expand();
+      else this.toBar();
     }
+    /* touch device + active destination already open: no-op */
   },
 
   openCompact(id) {
