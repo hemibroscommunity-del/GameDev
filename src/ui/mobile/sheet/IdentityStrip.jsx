@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { COL, getState } from '../dash/common.js';
-import { xpRequired } from '../../../data/gameSystems.js';
+import { combatLevelProgress } from './heroModel.js';
 import { portraitStore } from './portraitStore.js';
 
 /* v2.3.1294 (ChatGPT round-4): the identity strip — one compact row
@@ -10,7 +10,17 @@ import { portraitStore } from './portraitStore.js';
    "who am I" row is pixel-identical in both.
    Canonical name source: S.myName (the world card's source) — the old
    HeroExpanded read S.player.name and fell back to 'Bro' while the
-   card said 'Anon'; one record now. */
+   card said 'Anon'; one record now.
+
+   v2.3.1311 (owner: "1097 / 500 XP is invalid while Lv 1"): the strip
+   used to pair LIFETIME rpg.xp against the single-level xpRequired
+   cost — two unrelated scales (level derives from skill points, not
+   xp).  It now renders combatLevelProgress (heroModel): exact progress
+   toward the next combat level from the same _buildProg machinery that
+   actually grants levels; the numerator can never exceed the
+   denominator.  Lifetime XP lives in Hero > Records.  Also this pass:
+   40x40 portrait, wider name/level spacing, brighter XP text, coin +
+   number as one unit (spec items). */
 export const IdentityStrip = () => {
   const [, force] = useState(0);
   useEffect(() => portraitStore.subscribe(() => force(v => v + 1)), []);
@@ -18,11 +28,12 @@ export const IdentityStrip = () => {
   const S = getState();
   const R = (S && S.rpg) || {};
   const level = R.level || 1;
-  const xp = R.xp || 0;
-  const xpNeed = Math.max(1, Math.floor(xpRequired(level)));
-  const gold =
-    (R._compStats && (R._compStats.totalGoldEarned || R._compStats.goldEarnedTotal)) ||
-    R.goldEarned || R.coins || R.gold || 0;
+  const lp = combatLevelProgress(R);
+  /* v2.3.1311: CURRENT balance, not lifetime earned — the old fallback
+     chain preferred _compStats.totalGoldEarned, which is the Records
+     number ("Lifetime Gold"); showing it here is exactly the confusion
+     the spec's naming rule exists to prevent. */
+  const gold = R.coins || R.gold || 0;
   const portrait = portraitStore.get();
 
   return (
@@ -34,7 +45,7 @@ export const IdentityStrip = () => {
     }}>
       {/* Portrait + presence dot (connection status — lived on the old
           world card; the identity strip keeps it). */}
-      <div style={{ position: 'relative', width: 36, height: 36, flexShrink: 0 }}>
+      <div style={{ position: 'relative', width: 40, height: 40, flexShrink: 0 }}>
         <img
           src={portrait || (S && S.myAvatar) || '/icons/ui/profile.webp?v=2.3.128'}
           alt="Portrait"
@@ -54,7 +65,7 @@ export const IdentityStrip = () => {
       </div>
       {/* Name · Lv + XP strip with exact progress. */}
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, minWidth: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 9, minWidth: 0 }}>
           <span style={{
             fontSize: 13, fontWeight: 700, color: COL.text,
             whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
@@ -68,16 +79,16 @@ export const IdentityStrip = () => {
             background: 'rgba(0,0,0,.5)', border: '1px solid rgba(255,255,255,.08)',
             overflow: 'hidden',
           }}>
-            <div style={{ width: `${Math.min(100, (xp / xpNeed) * 100)}%`, height: '100%', background: '#8AA9F9' }} />
+            <div style={{ width: `${Math.min(100, (lp.prog / lp.thresh) * 100)}%`, height: '100%', background: '#8AA9F9' }} />
           </div>
-          <span style={{ flex: 'none', fontSize: 10, color: COL.muted, fontVariantNumeric: 'tabular-nums' }}>
-            {xp} / {xpNeed} XP
+          <span style={{ flex: 'none', fontSize: 10, color: COL.text2, fontVariantNumeric: 'tabular-nums' }}>
+            {lp.prog} / {lp.thresh} XP
           </span>
         </div>
       </div>
-      {/* Gold, right-aligned. */}
+      {/* Gold — coin icon + number as one compact unit, right-aligned. */}
       <span style={{
-        flex: 'none', display: 'inline-flex', alignItems: 'center', gap: 4,
+        flex: 'none', display: 'inline-flex', alignItems: 'center', gap: 3,
         color: COL.gold, fontSize: 13, fontWeight: 700, fontVariantNumeric: 'tabular-nums',
       }}>
         <img src="/icons/popups/gold.webp" alt=""

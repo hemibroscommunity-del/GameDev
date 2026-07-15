@@ -18,7 +18,7 @@ import { getShirt, onShirtChange } from '../../rendering/traits/shirtCatalog.js'
 import { getShirtColor, shirtColorTarget, onShirtColorChange } from '../../rendering/traits/shirtColorCatalog.js';
 import { getEquip } from '../../rendering/gearCatalog.js';
 import { dashboardPanelBus } from './dashboardPanelBus.js';
-import { BAR_H, compactDashHeight, expandedSheetHeight } from './sheet/sheetGeometry.js'; /* v2.3.1283; v2.3.1290 three-state */
+import { BAR_H, compactDashHeight, expandedSheetHeight, drillSheetHeight } from './sheet/sheetGeometry.js'; /* v2.3.1283; v2.3.1290 three-state; v2.3.1311e drill height */
 import { portraitStore } from './sheet/portraitStore.js';          /* v2.3.1294 */
 import { hasUnseenLevelUps } from './sheet/skillsModel.js';        /* v2.3.1296 */
 import { readyQuestCount } from './sheet/questModel.js';           /* v2.3.1298 */
@@ -26,6 +26,7 @@ import { sheetTransition } from './sheet/motion.js';            /* v2.3.1283 */
 import { useSheetDrag } from './sheet/useSheetDrag.js';         /* v2.3.1283 */
 import { BagCompact } from './sheet/BagCompact.jsx';            /* v2.3.1285 */
 import { HeroCompact } from './sheet/HeroCompact.jsx';          /* v2.3.1286 */
+import { COMBAT_SKILLS } from './sheet/heroModel.js';           /* v2.3.1311: hero toolbar badge */
 import { HeroExpanded } from './sheet/HeroExpanded.jsx';        /* v2.3.1286 */
 import { SkillsCompact } from './sheet/SkillsCompact.jsx';      /* v2.3.1286 */
 import { FriendsCompact } from './sheet/FriendsCompact.jsx';    /* v2.3.1288 */
@@ -271,29 +272,29 @@ const Tooltip = ({ tip, onClose }) => {
    button's top-LEFT (the chevron owns top-right) for ACTIONABLE state
    only: unviewed skill level-ups, ready quest turn-ins.  Never for
    routine churn like XP gains or friends-online counts. */
-/* v2.3.1307b (owner: "the chevron isn't obvious enough for a swipe
-   action, especially both directions"): the swipe cue is now a pair of
-   STACKED chevrons that visibly drift in the swipe direction on a slow
-   loop — the standard mobile "swipe me" semiotics, animated with
-   transform/opacity only (no filters: iOS-WebGL static hazard,
-   CLAUDE.md).  data-dir points the glyph and the drift; faint = the
-   bar-mode hint on every icon.  While COMPACT the active icon carries
-   BOTH cues (up at the icon's top edge = widen, down at the bottom
-   edge = close) so both available directions are advertised. */
-const Cue = ({ dir, faint }) => (
-  <span className="bt-swipe-cue" data-dir={dir} data-faint={faint ? 'true' : 'false'} aria-hidden="true">
+/* v2.3.1307b: animated drifting chevron swipe cue (transform/opacity
+   only — no filters: iOS-WebGL static hazard, CLAUDE.md).
+   v2.3.1311b (owner): the cue encodes the NUMBER OF STEPS available in
+   that direction — one chevron per step.  Compact = one up (expand) +
+   one down (bar); expanded = TWO stacked down (compact, then bar).
+   Cues render only while at least compact is active — the resting bar
+   shows none (gestures still work there; the display is what's gated). */
+const Cue = ({ dir, count }) => (
+  <span className="bt-swipe-cue" data-dir={dir} data-count={count === 2 ? '2' : '1'} aria-hidden="true">
     <svg className="bt-cue-c1" viewBox="0 0 14 8" width="14" height="8">
       <path d="M2 6.5 L7 1.5 L12 6.5" stroke="currentColor" strokeWidth="2"
         fill="none" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
-    <svg className="bt-cue-c2" viewBox="0 0 14 8" width="14" height="8">
-      <path d="M2 6.5 L7 1.5 L12 6.5" stroke="currentColor" strokeWidth="2"
-        fill="none" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
+    {count === 2 && (
+      <svg className="bt-cue-c2" viewBox="0 0 14 8" width="14" height="8">
+        <path d="M2 6.5 L7 1.5 L12 6.5" stroke="currentColor" strokeWidth="2"
+          fill="none" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    )}
   </span>
 );
 
-const IconButton = ({ glyph, src: srcProp, label, active, onClick, node, tut, snap, dot, dest, hint }) => {
+const IconButton = ({ glyph, src: srcProp, label, active, onClick, node, tut, snap, dot, dest }) => {
   /* v2.3.1283: destinations pass an explicit `src`; `glyph` (ICON_SRC
      lookup) stays for any legacy caller. */
   const src = srcProp || ICON_SRC[glyph];
@@ -346,7 +347,19 @@ const IconButton = ({ glyph, src: srcProp, label, active, onClick, node, tut, sn
         )}
       </span>
       <span className="bt-dashboard-nav-label">{label}</span>
-      {dot && (
+      {/* v2.3.1311: a NUMBER dot renders as a count badge (the Hero
+          icon's global unspent points — spec: badge only actionable
+          things); `true` keeps the original notification dot. */}
+      {typeof dot === 'number' && dot > 0 ? (
+        <span aria-hidden="true" style={{
+          position: 'absolute', top: 2, left: 4,
+          background: '#D8AA58', color: '#20170D',
+          fontSize: 10, fontWeight: 900,
+          borderRadius: 7, padding: '0 4px', lineHeight: 1.4,
+          border: '1px solid rgba(0,0,0,.5)',
+          pointerEvents: 'none',
+        }}>{dot}</span>
+      ) : dot === true ? (
         <span aria-hidden="true" style={{
           position: 'absolute', top: 4, left: 6,
           width: 8, height: 8, borderRadius: '50%',
@@ -354,15 +367,13 @@ const IconButton = ({ glyph, src: srcProp, label, active, onClick, node, tut, sn
           border: '1px solid rgba(0,0,0,.5)',
           pointerEvents: 'none',
         }} />
-      )}
-      {/* v2.3.1307: the icon cue is the game's ONE resize affordance
-          (owner: swipe on the icon is the only way to collapse/widen).
-          bar = faint drifting ▲▲ hint on every icon (swipe up opens);
-          compact active = bright ▲▲ top + ▼▼ bottom (both directions
-          live); expanded active = bright ▼▼ (swipe down to shrink). */}
-      {hint && <Cue dir="up" faint />}
-      {active && snap === 'compact' && (<><Cue dir="up" /><Cue dir="down" /></>)}
-      {active && snap === 'expanded' && <Cue dir="down" />}
+      ) : null}
+      {/* v2.3.1311b (owner): one chevron PER AVAILABLE STEP, active
+          icon only, and only once at least compact is open — the
+          resting bar shows no cues.  Compact: ▲ (one step up) + ▼ (one
+          step down).  Expanded: ▼▼ (two steps down). */}
+      {active && snap === 'compact' && (<><Cue dir="up" count={1} /><Cue dir="down" count={1} /></>)}
+      {active && snap === 'expanded' && <Cue dir="down" count={2} />}
     </button>
   );
 };
@@ -469,7 +480,8 @@ export const BottomDashboard = () => {
     const stamp = () => {
       const mode = dashboardPanelBus.state.mode;
       document.documentElement.dataset.btSheet = mode;
-      const px = mode === 'expanded' ? snapPxRef.current.expanded
+      /* v2.3.1311e: drill panels (stack depth > 1) use the taller sheet. */
+      const px = mode === 'expanded' ? (dashboardPanelBus.state.stack.length > 1 ? snapPxRef.current.drill : snapPxRef.current.expanded)
         : mode === 'compact' ? snapPxRef.current.compact
         : BAR_H;
       document.documentElement.style.setProperty('--sheet-h', px + 'px');
@@ -491,6 +503,7 @@ export const BottomDashboard = () => {
   const [snapPx, setSnapPx] = useState(() => ({
     compact: compactDashHeight(window.innerWidth),
     expanded: expandedSheetHeight(window.innerWidth, window.innerHeight),
+    drill: drillSheetHeight(window.innerWidth, window.innerHeight),
   }));
   useEffect(() => {
     const vv = window.visualViewport;
@@ -498,7 +511,7 @@ export const BottomDashboard = () => {
       const vw = vv ? vv.width : window.innerWidth;
       const vh = vv ? vv.height : window.innerHeight;
       if (vv && window.innerHeight - vh > 100) return; /* keyboard up */
-      setSnapPx({ compact: compactDashHeight(vw), expanded: expandedSheetHeight(vw, vh) });
+      setSnapPx({ compact: compactDashHeight(vw), expanded: expandedSheetHeight(vw, vh), drill: drillSheetHeight(vw, vh) });
     };
     recompute();
     window.addEventListener('resize', recompute);
@@ -519,7 +532,7 @@ export const BottomDashboard = () => {
   useSheetDrag(dashRef, toolbarRef,
     () => BAR_H,
     () => snapPxRef.current.compact,
-    () => snapPxRef.current.expanded);
+    () => (dashboardPanelBus.state.stack.length > 1 ? snapPxRef.current.drill : snapPxRef.current.expanded)); /* v2.3.1311e */
   /* Player-card portrait: a head-and-shoulders render of the player's
      chosen cosmetics (skin / hair / hair color / beard / hat).  Generated
      on mount (captures the login picker) and regenerated if a cosmetic
@@ -626,7 +639,7 @@ export const BottomDashboard = () => {
            resting default; canvas/zones/HUD all key off it), compact
            (glance), expanded (detail).  Every destination uses the same
            snaps.  220ms token; reduced-motion drops the transition. */
-        height: mode === 'expanded' ? snapPx.expanded + 'px'
+        height: mode === 'expanded' ? (stack.length > 1 ? snapPx.drill : snapPx.expanded) + 'px' /* v2.3.1311e: drill = taller */
           : mode === 'compact' ? snapPx.compact + 'px'
           : 'var(--dash-h)',
         transition: sheetTransition(),
@@ -742,6 +755,15 @@ export const BottomDashboard = () => {
         const dots = {
           skills: hasUnseenLevelUps((Sb && Sb.rpg) || {}),
           quests: readyQuestCount(Sb) > 0,
+          /* v2.3.1311 (owner spec): the Hero icon badges the GLOBAL
+             unspent-point total — actionable only; XP/health/stat
+             gains never badge (world popups carry those).  A number
+             here renders as a count badge, not a dot (IconButton). */
+          hero: (() => {
+            const Rb = Sb && Sb.rpg;
+            if (!Rb) return 0;
+            return COMBAT_SKILLS.reduce((n, s) => n + buildSkillUnspent(Rb, s.key), 0);
+          })(),
         };
         return (
           <div className="bt-dashboard-toolbar-frame" ref={toolbarRef} style={{
@@ -810,9 +832,8 @@ export const BottomDashboard = () => {
                   ) : undefined}
                   active={litId === d.id}
                   snap={litId === d.id ? mode : null}
-                  hint={mode === 'bar'}
                   dest={d.id}
-                  dot={!!dots[d.id]}
+                  dot={dots[d.id]} /* v2.3.1311: raw — numbers render as count badges */
                   onClick={() => dashboardPanelBus.tapDestination(d.id)} />
               ))}
             </div>
