@@ -217,11 +217,18 @@ export async function drawCharacterPortrait(canvas, opts) {
      follow the in-game blob-shadow recipe (entityRenderer: black
      ellipse, ry≈0.35×rx). */
   if (opts && opts.groundShadow) {
-    const _FOOT_Y = { south: 202, north: 202, east: 203, northeast: 206, southwest: 214 };
-    const fy = _FOOT_Y[DIR] || 205;
-    const g = ctx.createRadialGradient(FRAME / 2, fy, 2, FRAME / 2, fy, 40);
-    g.addColorStop(0, 'rgba(0,0,0,0.30)');
-    g.addColorStop(0.55, 'rgba(0,0,0,0.16)');
+    /* v2.3.1283b: the first cut sat ~20px too HIGH, so the figure
+       (composited over it) hid it almost entirely (owner: "I don't see
+       any shadow... might be drawn on a layer beneath").  These foot
+       lines are MEASURED — lowest opaque pixel of each stand-<dir>.png
+       (south 221 / north 219 / east 223 / NE 227 / SW 234), +3px so
+       the ellipse peeks around the boots; stronger/wider for the
+       half-scale hero display. */
+    const _FOOT_Y = { south: 224, north: 222, east: 226, northeast: 230, southwest: 237 };
+    const fy = _FOOT_Y[DIR] || 226;
+    const g = ctx.createRadialGradient(FRAME / 2, fy, 2, FRAME / 2, fy, 48);
+    g.addColorStop(0, 'rgba(0,0,0,0.38)');
+    g.addColorStop(0.55, 'rgba(0,0,0,0.18)');
     g.addColorStop(1, 'rgba(0,0,0,0)');
     ctx.save();
     /* squash the radial circle into the platform's 3/4 ellipse */
@@ -229,7 +236,7 @@ export async function drawCharacterPortrait(canvas, opts) {
     ctx.scale(1, 0.34);
     ctx.translate(-FRAME / 2, -fy);
     ctx.fillStyle = g;
-    ctx.fillRect(FRAME / 2 - 44, fy - 44, 88, 88);
+    ctx.fillRect(FRAME / 2 - 52, fy - 52, 104, 104);
     ctx.restore();
   }
   /* v2.3.757: the body always draws SHIRTLESS (baked shirt retired); the

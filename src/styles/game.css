@@ -828,11 +828,13 @@ input{font-family:inherit}
    The boots' contact line sits ≈62% up the group (24.3% of stage from
    v2.3.1276b's bottom 19% + 0.11×48.5 canvas, minus the group's 3%
    inset, over its 34% height). */
-.bt-cc-castshadow{position:absolute;left:50%;bottom:50%;width:34%;height:24%;margin-left:-17%;background:radial-gradient(ellipse 50% 50% at 50% 50%,rgba(0,0,0,.30),rgba(0,0,0,.13) 55%,rgba(0,0,0,0) 74%);pointer-events:none;transform-origin:50% 100%}
+/* v2.3.1283b: lifted + strengthened — the first cut was too low/faint
+   to read on the bright disc (owner report). */
+.bt-cc-castshadow{position:absolute;left:50%;bottom:52%;width:36%;height:24%;margin-left:-18%;background:radial-gradient(ellipse 50% 50% at 50% 50%,rgba(0,0,0,.36),rgba(0,0,0,.16) 55%,rgba(0,0,0,0) 74%);pointer-events:none;transform-origin:50% 100%}
 .bt-cc-castshadow--l{transform:skewX(20deg) scaleY(.5);animation:bt-cc-shadowflick-l 1.0s ease-in-out infinite}
 .bt-cc-castshadow--r{transform:skewX(-20deg) scaleY(.5);animation:bt-cc-shadowflick-r 1.0s ease-in-out infinite;animation-delay:-.45s}
-@keyframes bt-cc-shadowflick-l{0%,100%{opacity:.8;transform:skewX(20deg) scaleY(.5)}50%{opacity:.55;transform:skewX(17deg) scaleY(.46) scaleX(1.06)}}
-@keyframes bt-cc-shadowflick-r{0%,100%{opacity:.8;transform:skewX(-20deg) scaleY(.5)}50%{opacity:.55;transform:skewX(-17deg) scaleY(.46) scaleX(1.06)}}
+@keyframes bt-cc-shadowflick-l{0%,100%{opacity:.9;transform:skewX(20deg) scaleY(.5)}50%{opacity:.62;transform:skewX(17deg) scaleY(.46) scaleX(1.06)}}
+@keyframes bt-cc-shadowflick-r{0%,100%{opacity:.9;transform:skewX(-20deg) scaleY(.5)}50%{opacity:.62;transform:skewX(-17deg) scaleY(.46) scaleX(1.06)}}
 @media (prefers-reduced-motion:reduce){.bt-cc-castshadow--l,.bt-cc-castshadow--r{animation:none}}
 /* Chunky beveled PLAY — presses down on tap (border-bottom is the bevel). */
 /* v2.3.725: PLAY is the owner's painted button art (label baked in). */
