@@ -120,8 +120,12 @@ export const SkillsPanel = () => {
     );
   }
 
-  /* ── Roster: two labeled sections, 3-column cards ── */
-  const card = (sd) => {
+  /* ── Roster: two labeled sections of PILLS (v2.3.1312b, owner: "make
+     the expanded view pill shaped so they all fit without scrolling").
+     Horizontal pills, two per row — icon, name, Lv, and the thin XP
+     line along the pill's bottom edge.  Exact XP moved into the detail
+     view (one tap away); all ten skills + both labels clear the fold. */
+  const pill = (sd) => {
     const sk = ls[sd.key] || { level: 0, xp: 0 };
     const need = Math.max(1, skillXpRequired(sk.level));
     const pct = Math.min(100, ((sk.xp || 0) / need) * 100);
@@ -133,60 +137,57 @@ export const SkillsPanel = () => {
           setDetailKey(sd.key);
         }}
         style={{
-          display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3,
-          padding: '7px 6px 6px',
+          position: 'relative',
+          display: 'flex', alignItems: 'center', gap: 6,
+          height: 32,
+          padding: '0 11px 0 7px',
           background: COL.wellSoft,
           border: `1px solid ${COL.tileBor}`,
-          borderRadius: 8,
+          borderRadius: 999,
           minWidth: 0,
           cursor: 'pointer',
           touchAction: 'manipulation',
           fontFamily: 'Source Sans 3, sans-serif',
           color: COL.text,
+          overflow: 'hidden',
         }}>
         {sd.iconSrc
           ? <img src={sd.iconSrc} alt="" draggable={false}
-              style={{ width: Math.round(30 * (sd.iconScale || 1)), height: Math.round(30 * (sd.iconScale || 1)), objectFit: 'contain' }}
+              style={{ width: Math.round(21 * (sd.iconScale || 1)), height: Math.round(21 * (sd.iconScale || 1)), objectFit: 'contain', flex: 'none' }}
               onError={(e) => { e.currentTarget.replaceWith(document.createTextNode(sd.icon)); }} />
-          : <span style={{ fontSize: 24 }}>{sd.icon}</span>}
+          : <span style={{ fontSize: 16, flex: 'none' }}>{sd.icon}</span>}
         <span style={{
-          fontSize: 11, fontWeight: 600, color: COL.text,
-          whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%',
+          flex: 1, fontSize: 11.5, fontWeight: 700, color: COL.text, textAlign: 'left',
+          whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0,
         }}>{sd.name}</span>
-        <span style={{ fontSize: 13, fontWeight: 700, color: COL.text, fontVariantNumeric: 'tabular-nums', lineHeight: 1 }}>
+        <span style={{ flex: 'none', fontSize: 11, fontWeight: 700, color: COL.text2, fontVariantNumeric: 'tabular-nums' }}>
           Lv {sk.level || 0}
         </span>
+        {/* thin XP line along the pill's bottom edge: green = progress,
+            dark = zero (same signals as the compact tiles). */}
         <div style={{
-          alignSelf: 'stretch',
-          height: 5,
-          background: '#0A1318',
-          border: '1px solid rgba(229,237,233,.10)',
-          borderRadius: 999,
-          overflow: 'hidden',
-          boxShadow: 'inset 0 1px 2px rgba(0,0,0,.55)',
+          position: 'absolute', left: 12, right: 12, bottom: 3,
+          height: 2.5, borderRadius: 999, overflow: 'hidden',
+          background: '#0A1318', pointerEvents: 'none',
         }}>
-          <div style={{ width: pct + '%', height: '100%', borderRadius: 999, background: COL.xp }} />
+          {pct > 0 && <div style={{ width: pct + '%', height: '100%', borderRadius: 999, background: COL.xp }} />}
         </div>
-        {/* v2.3.1312: brightened from COL.muted (owner: 'unnecessarily faint'). */}
-        <span style={{ fontSize: 10, color: COL.text2, fontVariantNumeric: 'tabular-nums' }}>
-          {Math.floor(sk.xp || 0)} / {need} XP
-        </span>
       </button>
     );
   };
 
   return (
-    <div style={{ ...panelStyle, overflowY: 'auto' }}>
+    <div style={{ ...panelStyle, overflowY: 'auto', WebkitMaskImage: 'none', maskImage: 'none' }}>
       <div style={{
         display: 'grid',
-        gridTemplateColumns: 'repeat(3, 1fr)',
-        gap: 8,
-        paddingBottom: 26,
+        gridTemplateColumns: 'repeat(2, 1fr)',
+        gap: 5,
+        paddingBottom: 6,
       }}>
         {SECTION('Gathering')}
-        {SKILL_GATHER.map(card)}
+        {SKILL_GATHER.map(pill)}
         {SECTION('Crafting')}
-        {SKILL_CRAFT.map(card)}
+        {SKILL_CRAFT.map(pill)}
       </div>
     </div>
   );
