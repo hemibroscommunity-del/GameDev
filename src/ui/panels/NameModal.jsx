@@ -683,15 +683,9 @@ export function NameModal(props) {
     "aria-hidden": _colors ? undefined : true,
     style: { position: 'relative' }
   }, /* v2.3.1272: the — COLOR — header is retired (space).
-        v2.3.1308 (round-7): a TINY contextual label returns instead —
-        absolutely positioned so the v2.3.1253 constant-height contract
-        (nothing in the drawer may resize the stage) holds. */
-  _colors ? /*#__PURE__*/React.createElement("span", {
-    "aria-hidden": true,
-    style: { position: 'absolute', top: -1, left: 4, fontSize: 9, fontWeight: 700,
-      letterSpacing: '.1em', color: '#8D9B98', textTransform: 'uppercase',
-      fontFamily: 'Source Sans 3, sans-serif', pointerEvents: 'none', zIndex: 1 }
-  }, _def.label + ' color') : null,
+        v2.3.1308 tried a tiny absolute contextual label here; v2.3.1310
+        removes it (owner: redundant, overlapped the swatches, barely
+        readable).  The swatch row reads as colors on its own. */
   /*#__PURE__*/React.createElement("div", { className: "bt-cc-scroll" },
   /*#__PURE__*/React.createElement("div", {
     className: "bt-cc-colors-row", ref: _colorRowRef, onScroll: _measureMore, role: _colors ? 'radiogroup' : undefined, "aria-label": _colors ? _def.label + ' colors' : undefined
