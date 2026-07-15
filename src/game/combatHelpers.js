@@ -34,9 +34,14 @@ import { xpRequired, recalcDerived, BT_AUDIO } from '@/data/index.js';
    Vitality / Endurance keep their existing names since they don't
    correspond to a weapon. Used by both the dmgNumbers floater
    (pushStatIncreaseNotice) and the LEVEL UP banner (levelUpMsg). */
+/* v2.3.1311 (owner canonical taxonomy): the six combat parents are
+   Melee / Bow / Magic / Vitality / Defense / STAMINA — this map used
+   to say 'Archery' (vs 'Bow' everywhere else) and 'Endurance' (the
+   parent's canonical NAME is Stamina; only the storage key stays
+   'endurance').  Floaters/banners now match the Hero menu. */
 var BUILD_LABELS = {
-  power: 'Melee', vitality: 'Vitality', endurance: 'Endurance',
-  agility: 'Archery', mind: 'Magic',
+  power: 'Melee', vitality: 'Vitality', endurance: 'Stamina',
+  agility: 'Bow', mind: 'Magic',
 };
 /* Icon for each stat's level-up banner. Combat falls through to
    '/icons/popups/xp.webp' in the banner render itself. */

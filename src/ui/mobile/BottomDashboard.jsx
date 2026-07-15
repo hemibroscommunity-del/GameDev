@@ -26,6 +26,7 @@ import { sheetTransition } from './sheet/motion.js';            /* v2.3.1283 */
 import { useSheetDrag } from './sheet/useSheetDrag.js';         /* v2.3.1283 */
 import { BagCompact } from './sheet/BagCompact.jsx';            /* v2.3.1285 */
 import { HeroCompact } from './sheet/HeroCompact.jsx';          /* v2.3.1286 */
+import { COMBAT_SKILLS } from './sheet/heroModel.js';           /* v2.3.1311: hero toolbar badge */
 import { HeroExpanded } from './sheet/HeroExpanded.jsx';        /* v2.3.1286 */
 import { SkillsCompact } from './sheet/SkillsCompact.jsx';      /* v2.3.1286 */
 import { FriendsCompact } from './sheet/FriendsCompact.jsx';    /* v2.3.1288 */
@@ -346,7 +347,19 @@ const IconButton = ({ glyph, src: srcProp, label, active, onClick, node, tut, sn
         )}
       </span>
       <span className="bt-dashboard-nav-label">{label}</span>
-      {dot && (
+      {/* v2.3.1311: a NUMBER dot renders as a count badge (the Hero
+          icon's global unspent points — spec: badge only actionable
+          things); `true` keeps the original notification dot. */}
+      {typeof dot === 'number' && dot > 0 ? (
+        <span aria-hidden="true" style={{
+          position: 'absolute', top: 2, left: 4,
+          background: '#D8AA58', color: '#20170D',
+          fontSize: 10, fontWeight: 900,
+          borderRadius: 7, padding: '0 4px', lineHeight: 1.4,
+          border: '1px solid rgba(0,0,0,.5)',
+          pointerEvents: 'none',
+        }}>{dot}</span>
+      ) : dot === true ? (
         <span aria-hidden="true" style={{
           position: 'absolute', top: 4, left: 6,
           width: 8, height: 8, borderRadius: '50%',
@@ -354,7 +367,7 @@ const IconButton = ({ glyph, src: srcProp, label, active, onClick, node, tut, sn
           border: '1px solid rgba(0,0,0,.5)',
           pointerEvents: 'none',
         }} />
-      )}
+      ) : null}
       {/* v2.3.1307: the icon cue is the game's ONE resize affordance
           (owner: swipe on the icon is the only way to collapse/widen).
           bar = faint drifting ▲▲ hint on every icon (swipe up opens);
@@ -742,6 +755,15 @@ export const BottomDashboard = () => {
         const dots = {
           skills: hasUnseenLevelUps((Sb && Sb.rpg) || {}),
           quests: readyQuestCount(Sb) > 0,
+          /* v2.3.1311 (owner spec): the Hero icon badges the GLOBAL
+             unspent-point total — actionable only; XP/health/stat
+             gains never badge (world popups carry those).  A number
+             here renders as a count badge, not a dot (IconButton). */
+          hero: (() => {
+            const Rb = Sb && Sb.rpg;
+            if (!Rb) return 0;
+            return COMBAT_SKILLS.reduce((n, s) => n + buildSkillUnspent(Rb, s.key), 0);
+          })(),
         };
         return (
           <div className="bt-dashboard-toolbar-frame" ref={toolbarRef} style={{
@@ -812,7 +834,7 @@ export const BottomDashboard = () => {
                   snap={litId === d.id ? mode : null}
                   hint={mode === 'bar'}
                   dest={d.id}
-                  dot={!!dots[d.id]}
+                  dot={dots[d.id]} /* v2.3.1311: raw — numbers render as count badges */
                   onClick={() => dashboardPanelBus.tapDestination(d.id)} />
               ))}
             </div>

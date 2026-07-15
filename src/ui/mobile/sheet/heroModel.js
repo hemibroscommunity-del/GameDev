@@ -18,17 +18,21 @@ import {
 /* The six combat skills (ported from the retired Build column's
    CHAR_STATS).  defense levels live on R.defenseSkill; the rest are
    Tier-1 capacity stats straight off R. */
+/* v2.3.1311 (owner's canonical taxonomy): the SIX combat parents are
+   Melee, Bow, Magic, Vitality, Defense, STAMINA — each owning a family
+   of 5 tier-2 categories.  'Stamina' is the parent's NAME everywhere
+   the player reads it; the storage key stays 'endurance' (renaming a
+   persisted rpg field breaks saves — rule 1).  Icons are the owner's
+   hero-stat sheet (magenta-keyed, tools/process_hero_stats_sheet.py). */
 export const COMBAT_SKILLS = [
-  { key: 'power',     label: 'Melee',     iconSrc: '/icons/ui/combat-melee.webp?v=2.3.1224' },
-  { key: 'agility',   label: 'Bow',       iconSrc: '/icons/ui/combat-bow.webp?v=2.3.1225' },
-  { key: 'mind',      label: 'Magic',     iconSrc: '/icons/ui/combat-magic.webp?v=2.3.1224' },
+  { key: 'power',     label: 'Melee',    iconSrc: '/icons/ui/hero/melee.webp?v=2.3.1311' },
+  { key: 'agility',   label: 'Bow',      iconSrc: '/icons/ui/hero/bow.webp?v=2.3.1311' },
+  { key: 'mind',      label: 'Magic',    iconSrc: '/icons/ui/hero/magic.webp?v=2.3.1311' },
   /* v2.3.1292 (round-3 §4 canonical naming): the skill is Vitality (it
      raises max HP); "HP" is the resource bar's name, not the skill's. */
-  { key: 'vitality',  label: 'Vitality',  iconSrc: '/icons/ui/stat-vitality.webp?v=2.3.1224' },
-  /* v2.3.1282: single round shield (owner: the stat-defense art is
-     "an awkward double shield"). */
-  { key: 'defense',   label: 'Defense',   iconSrc: '/icons/ui/combat-defense.webp?v=2.3.1224', t2: true },
-  { key: 'endurance', label: 'Endurance', iconSrc: '/icons/ui/stat-endurance.webp?v=2.3.1225' },
+  { key: 'vitality',  label: 'Vitality', iconSrc: '/icons/ui/hero/vitality.webp?v=2.3.1311' },
+  { key: 'defense',   label: 'Defense',  iconSrc: '/icons/ui/hero/defense.webp?v=2.3.1311', t2: true },
+  { key: 'endurance', label: 'Stamina',  iconSrc: '/icons/ui/hero/endurance.webp?v=2.3.1311' },
 ];
 
 export function skillLevel(R, key) {
@@ -58,6 +62,29 @@ export function skillProgress(R, key) {
   return { prog, thresh };
 }
 
+/* v2.3.1311 (owner: "1097 / 500 XP" at Lv 1 is invalid): normalized
+   progress toward the NEXT COMBAT LEVEL for the identity strip.
+   rpg.xp is a LIFETIME cumulative counter and rpg.level is DERIVED
+   from the sum of the six skill levels (recalcDerived v2.3.910) — the
+   two are on unrelated scales, which is how the old strip's numerator
+   blew past its denominator.  The next combat level arrives when the
+   FIRST skill crosses its own _buildProg threshold (addBuildProg
+   grants the point; +1 point = +1 derived level), so the honest
+   "XP to next level" is the best-progressed skill's exact prog/thresh
+   — the same numbers the Build cards print.  Clamped so the numerator
+   can never exceed the denominator, per the spec.  Lifetime XP moved
+   to Records. */
+export function combatLevelProgress(R) {
+  let best = null;
+  for (const s of COMBAT_SKILLS) {
+    const p = skillProgress(R, s.key);
+    if (!p || !p.thresh) continue;
+    if (!best || p.prog / p.thresh > best.prog / best.thresh) best = p;
+  }
+  if (!best) return { prog: 0, thresh: 500 };
+  return { prog: Math.min(best.prog, best.thresh), thresh: best.thresh };
+}
+
 /* v2.3.1295: one-line CURRENT effect per attribute, from the real
    formulas only — no invented percentages:
    - damage stats add statVal * 0.1667 flat to the weapon's base
@@ -73,7 +100,9 @@ export function attributeEffect(R, key) {
     case 'mind':      return `${dmg(R.mind)} with staves`;
     case 'vitality':  return `+${(R.vitality || 0) * 10} max HP`;
     case 'endurance': return `+${Math.round((R.endurance || 0) * 3)} max stamina`;
-    case 'defense':   return `${Math.round(calcBlockReduction(getDefenseBlockBonus(R), R.shield) * 100)}% damage reduced`;
+    /* v2.3.1311: this number is calcBlockReduction — shield BLOCK, not
+       persistent mitigation (Iron Skin/armor aren't in it) — so say so. */
+    case 'defense':   return `${Math.round(calcBlockReduction(getDefenseBlockBonus(R), R.shield) * 100)}% blocked with shield`;
     default:          return '';
   }
 }

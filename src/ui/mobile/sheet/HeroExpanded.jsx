@@ -3,27 +3,35 @@ import { COL, panelStyle, getState } from '../dash/common.js';
 import { buildSkillUnspent, STAT_TO_WEAPON_CAT } from '../../../data/gameSystems.js';
 import { requestT2Category } from '../dash/T2Panel.jsx';
 import { dashboardPanelBus } from '../dashboardPanelBus.js';
-import { SpriteHpBar } from '../../SpriteHpBar.jsx';
 import { COMBAT_SKILLS, skillLevel, skillProgressPct, skillProgress, attributeEffect, deriveHeroStats } from './heroModel.js';
 import { IdentityStrip } from './IdentityStrip.jsx';
+import { VitalBar, VITAL_ICONS } from './VitalBar.jsx'; /* v2.3.1311 */
 
 /* v2.3.1286: Hero expanded — the detailed character sheet.
    v2.3.1295 (ChatGPT round-4, owner-approved): no longer one long
    vertical feed — Overview, Build and Records are different TASKS, so
    a sticky segmented control under the identity strip gives each a
-   focused half-screen view:
-   - Overview: labeled vitals + a 3x2 data grid of every derived combat
-     number, no scrolling.
-   - Build: available points up top, six attribute cards with the
-     CURRENT gameplay effect and exact XP progress; whole card taps to
-     the spend flow when points wait.
-   - Records: lifetime stats as number-dominant data cards.
+   focused half-screen view.
+   v2.3.1311 (owner spec): Build goes 3x2 with a "BUILD POINTS · N
+   AVAILABLE" header and Build·N on the segment when actionable;
+   Overview renames DR to Block (the number is shield block, not
+   general mitigation) and tightens the stat cards; Records grows
+   Lifetime XP + Duels Won cards (Lifetime XP moved here from the
+   identity strip, which now shows normalized next-level progress);
+   vitals unified on VitalBar; the selected section resets to Overview
+   when the sheet fully closes to the bar (it still survives compact
+   dips and destination switches).
    Equipment management intentionally lives in Bag, not here. */
 
 const SECTIONS = ['Overview', 'Build', 'Records'];
 /* Round-3 §6 state preservation: the selected section survives leaving
-   the destination (module-scoped, session-only). */
+   the destination (module-scoped, session-only).  v2.3.1311: reset to
+   Overview when Hero is closed all the way to the toolbar — a NEXT
+   open is a fresh visit (owner spec); a dip to compact keeps it. */
 let _lastSection = 'Overview';
+dashboardPanelBus.subscribe(() => {
+  if (dashboardPanelBus.state.mode === 'bar') _lastSection = 'Overview';
+});
 
 const seg = (active) => ({
   flex: 1,
@@ -54,16 +62,12 @@ export const HeroExpanded = () => {
   const d = deriveHeroStats(R);
   const cs = R._compStats || {};
 
-  const labeledBar = (label, cur, max, color, hp) => (
+  const labeledBar = (kind, label, cur, max) => (
     <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '3px 0' }}>
-      <span style={{ flex: 'none', width: 58, fontSize: 11, fontWeight: 700, color: COL.text2 }}>{label}</span>
-      {hp ? (
-        <div style={{ flex: 1 }}><SpriteHpBar hp={cur} maxHp={max} height={14} /></div>
-      ) : (
-        <div style={{ flex: 1, height: 10, borderRadius: 5, background: 'rgba(0,0,0,.5)', border: '1px solid rgba(255,255,255,.08)', overflow: 'hidden' }}>
-          <div style={{ width: `${Math.max(0, Math.min(100, (cur / (max || 1)) * 100))}%`, height: '100%', background: color, transition: 'width .15s linear' }} />
-        </div>
-      )}
+      <img src={VITAL_ICONS[kind]} alt="" draggable={false}
+        style={{ width: 15, height: 15, objectFit: 'contain', flex: 'none', pointerEvents: 'none' }} />
+      <span style={{ flex: 'none', width: 52, fontSize: 11, fontWeight: 700, color: COL.text2 }}>{label}</span>
+      <VitalBar kind={kind} cur={cur} max={max} thick={kind === 'hp' ? 12 : 10} />
       <span style={{ flex: 'none', minWidth: 74, textAlign: 'right', fontSize: 12, fontWeight: 700, color: COL.text2, fontVariantNumeric: 'tabular-nums' }}>
         {Math.ceil(cur)} / {Math.ceil(max)}
       </span>
@@ -72,27 +76,30 @@ export const HeroExpanded = () => {
 
   /* Overview 3x2 data grid — every derived number in one viewport.
      Values stay neutral (round-4: reserve green for deltas/bonuses).
-     Speed drops the "u/s" developer unit. */
+     Speed drops the "u/s" developer unit.  v2.3.1311: tightened so
+     the second row clears the fold on 390x844. */
   const cell = (label, value) => (
     <div key={label} style={{
       background: COL.wellSoft,
       border: `1px solid ${COL.tileBor}`,
       borderRadius: 8,
-      padding: '7px 8px',
+      padding: '5px 8px 6px',
       minWidth: 0,
     }}>
       <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: COL.muted }}>{label}</div>
-      <div style={{ fontSize: 16, fontWeight: 800, color: COL.text, fontVariantNumeric: 'tabular-nums', marginTop: 1 }}>{value}</div>
+      <div style={{ fontSize: 15, fontWeight: 800, color: COL.text, fontVariantNumeric: 'tabular-nums', marginTop: 1 }}>{value}</div>
     </div>
   );
 
   const totalUnspent = COMBAT_SKILLS.reduce((n, s) => n + buildSkillUnspent(R, s.key), 0);
 
   return (
-    <div style={{ ...panelStyle, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
+    <div style={{ ...panelStyle, overflowY: 'auto', display: 'flex', flexDirection: 'column', paddingBottom: 14 }}>
       <IdentityStrip />
 
-      {/* Sticky segmented control — content scrolls under it. */}
+      {/* Sticky segmented control — content scrolls under it.
+          v2.3.1311: Build carries an actionable count (Build · N);
+          Overview/Records never badge (spec). */}
       <div style={{
         position: 'sticky', top: 0, zIndex: 2,
         display: 'flex', gap: 2,
@@ -102,21 +109,27 @@ export const HeroExpanded = () => {
         flex: '0 0 auto',
       }}>
         {SECTIONS.map(s => (
-          <button key={s} onClick={() => setSection(s)} style={seg(section === s)}>{s}</button>
+          <button key={s} onClick={() => setSection(s)} style={seg(section === s)}>
+            {s === 'Build' && totalUnspent > 0 ? `Build · ${totalUnspent}` : s}
+          </button>
         ))}
       </div>
 
       {section === 'Overview' && (
         <>
           <div style={{ padding: '8px 0 4px' }}>
-            {labeledBar('HP', R.hp || 0, R.maxHp || 100, null, true)}
-            {labeledBar('Stamina', R.stamina || 0, R.maxStamina || 100, '#D8A85F')}
-            {labeledBar('Mana', R.mana || 0, R.maxMana || 100, '#5B99DE')}
+            {labeledBar('hp', 'HP', R.hp || 0, R.maxHp || 100)}
+            {labeledBar('stamina', 'Stamina', R.stamina || 0, R.maxStamina || 100)}
+            {labeledBar('mana', 'Mana', R.mana || 0, R.maxMana || 100)}
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6 }}>
             {cell('Damage', d.dmgText)}
             {cell('DPS', d.dps.toFixed(1))}
-            {cell('DR', `${Math.round(d.block * 100)}%`)}
+            {/* v2.3.1311: full name in expanded — and it's BLOCK: the
+                number is calcBlockReduction (shield block %), not
+                armor/Iron-Skin mitigation, so "Damage Reduction" would
+                overclaim. */}
+            {cell('Block', `${Math.round(d.block * 100)}%`)}
             {cell('Crit', `${(d.crit * 100).toFixed(1)}%`)}
             {cell('Dodge', `${(d.dodge * 100).toFixed(1)}%`)}
             {cell('Speed', d.speed.toFixed(1))}
@@ -133,12 +146,19 @@ export const HeroExpanded = () => {
             borderRadius: 8,
             background: totalUnspent > 0 ? COL.accentFill : COL.wellSoft,
             border: `1px solid ${totalUnspent > 0 ? COL.accent : COL.tileBor}`,
-            fontSize: 13, fontWeight: 700,
+            display: 'flex', alignItems: 'baseline', justifyContent: 'space-between',
+            fontSize: 12, fontWeight: 700, letterSpacing: '.06em',
             color: totalUnspent > 0 ? COL.accent : COL.text2,
           }}>
-            Build Points: {totalUnspent}
+            <span>BUILD POINTS</span>
+            <span style={{ fontVariantNumeric: 'tabular-nums' }}>{totalUnspent} AVAILABLE</span>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 6 }}>
+          {/* v2.3.1311: six parent cards in a 3x2 grid (spec) — column
+              layout per card.  These levels DO advance through combat
+              XP (addBuildProg), so the exact-progress line + bar stay
+              (spec: bars imply XP — correct here — but must show exact
+              numbers).  The +N chip is the parent's own T2 pool. */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6 }}>
             {COMBAT_SKILLS.map(s => {
               const lvl = skillLevel(R, s.key);
               const pct = skillProgressPct(R, s.key);
@@ -154,8 +174,9 @@ export const HeroExpanded = () => {
                   }}
                   style={{
                     position: 'relative',
-                    display: 'flex', alignItems: 'center', gap: 8,
-                    padding: '8px 9px 11px',
+                    display: 'flex', flexDirection: 'column', alignItems: 'center',
+                    gap: 3,
+                    padding: '8px 6px 12px',
                     background: unspent > 0 ? COL.accentFill : COL.wellSoft,
                     border: `1px solid ${unspent > 0 ? COL.accent : COL.tileBor}`,
                     borderRadius: 8,
@@ -163,37 +184,34 @@ export const HeroExpanded = () => {
                     touchAction: 'none',
                     minWidth: 0,
                   }}>
-                  <img src={s.iconSrc} alt="" draggable={false}
-                    style={{ width: 26, height: 26, objectFit: 'contain', flex: 'none', pointerEvents: 'none' }} />
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: 'flex', alignItems: 'baseline', gap: 5 }}>
-                      <span style={{ fontSize: 12, fontWeight: 700, color: COL.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>{s.label}</span>
-                      <span style={{ flex: 'none', fontSize: 12, fontWeight: 800, color: COL.text2, fontVariantNumeric: 'tabular-nums' }}>Lv {lvl}</span>
-                    </div>
-                    {/* Current gameplay effect (real formulas only). */}
-                    <div style={{ fontSize: 10.5, color: COL.muted, marginTop: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                      {attributeEffect(R, s.key)}
-                    </div>
-                    {/* Exact XP progress — the bar alone read as decoration
-                        (round-4).  These levels DO advance through combat
-                        XP (addBuildProg), so the bar stays, now labeled. */}
-                    {prog && (
-                      <div style={{ fontSize: 10, color: COL.muted, marginTop: 1, fontVariantNumeric: 'tabular-nums' }}>
-                        {prog.prog} / {prog.thresh} XP
-                      </div>
-                    )}
-                  </div>
                   {unspent > 0 && (
                     <span aria-hidden="true" style={{
-                      flex: 'none',
-                      width: 22, height: 22, borderRadius: 6,
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      position: 'absolute', top: 4, right: 4,
                       background: COL.accent, color: '#20170D',
-                      fontSize: 15, fontWeight: 900, lineHeight: 1,
-                    }}>+</span>
+                      fontSize: 10, fontWeight: 900,
+                      borderRadius: 7, padding: '1px 5px', lineHeight: 1.3,
+                      pointerEvents: 'none',
+                    }}>+{unspent}</span>
+                  )}
+                  <img src={s.iconSrc} alt="" draggable={false}
+                    style={{ width: 28, height: 28, objectFit: 'contain', flex: 'none', pointerEvents: 'none' }} />
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 4, minWidth: 0, maxWidth: '100%' }}>
+                    <span style={{ fontSize: 11.5, fontWeight: 700, color: COL.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>{s.label}</span>
+                    <span style={{ flex: 'none', fontSize: 11, fontWeight: 800, color: COL.text2, fontVariantNumeric: 'tabular-nums' }}>Lv {lvl}</span>
+                  </div>
+                  {/* Current gameplay effect (real formulas only). */}
+                  <div style={{ fontSize: 9.5, color: COL.muted, textAlign: 'center', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%' }}>
+                    {attributeEffect(R, s.key)}
+                  </div>
+                  {/* Exact XP progress toward the next level of THIS
+                      parent (round-4: a bare bar reads as decoration). */}
+                  {prog && (
+                    <div style={{ fontSize: 9.5, color: COL.muted, fontVariantNumeric: 'tabular-nums' }}>
+                      {prog.prog} / {prog.thresh} XP
+                    </div>
                   )}
                   {prog && (
-                    <div style={{ position: 'absolute', left: '10%', right: '10%', bottom: 4, height: 3, borderRadius: 999, overflow: 'hidden', background: '#0B1216', pointerEvents: 'none' }}>
+                    <div style={{ position: 'absolute', left: '12%', right: '12%', bottom: 5, height: 3, borderRadius: 999, overflow: 'hidden', background: '#0B1216', pointerEvents: 'none' }}>
                       <div style={{ width: pct + '%', height: '100%', background: '#D8A85F' }} />
                     </div>
                   )}
@@ -212,6 +230,10 @@ export const HeroExpanded = () => {
             /* Renamed from "Gold Earned" so it can't be confused with
                the current balance in the identity strip (round-4). */
             ['Lifetime Gold', Number(cs.totalGoldEarned ?? cs.goldEarnedTotal ?? 0).toLocaleString()],
+            /* v2.3.1311: lifetime cumulative XP lives HERE now — the
+               identity strip shows normalized next-level progress. */
+            ['Lifetime XP', Number(R.xp || 0).toLocaleString()],
+            ['Duels Won', cs.duelsWon ?? 0],
             ['Deepest Zone', cs.deepestZone ?? '—'],
           ].map(([label, value]) => (
             <div key={label} style={{

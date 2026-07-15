@@ -3,27 +3,23 @@ import { COL } from '../dash/common.js';
 import { buildSkillUnspent, STAT_TO_WEAPON_CAT } from '../../../data/gameSystems.js';
 import { requestT2Category } from '../dash/T2Panel.jsx';
 import { dashboardPanelBus } from '../dashboardPanelBus.js';
-import { SpriteHpBar } from '../../SpriteHpBar.jsx';
 import { COMBAT_SKILLS, skillLevel, deriveHeroStats } from './heroModel.js';
 import { IdentityStrip } from './IdentityStrip.jsx';   /* v2.3.1294 */
+import { VitalBar, VITAL_ICONS } from './VitalBar.jsx'; /* v2.3.1311 */
 
 /* v2.3.1286: Hero compact — the glanceable combat dashboard (nav-system
    spec §Hero Compact).  Upper band: the three live resource bars with
-   exact values + gold.  Lower band: the six combat-skill icons with
+   exact values + gold.  Lower band: the six combat-parent icons with
    levels (unspent-T2 badge jumps to the spend screen) and the two
    derived numbers that matter mid-fight, DPS and Block%.
-   Bars and readouts keep their own shapes — the spec explicitly says
-   NOT to force Hero into the item-slot metaphor. */
 
-const flatBar = () => ({
-  flex: 1,
-  height: 8,
-  borderRadius: 4,
-  background: 'rgba(0,0,0,.5)',
-  border: '1px solid rgba(255,255,255,.08)',
-  overflow: 'hidden',
-  position: 'relative',
-});
+   v2.3.1311 (owner spec): vitals unified on ONE bar component
+   (VitalBar — same trough/caps/highlight, HP 2px thicker), emoji
+   icons replaced by the owner's HD pixel-art set, per-parent unspent
+   badges restyled "+N" (they are parent-SPECIFIC T2 pool counts — a
+   bare number read as a global currency), and the mitigation tile is
+   named BLOCK (the number is calcBlockReduction = shield block, not
+   general damage reduction). */
 
 export const HeroCompact = () => {
   const [, force] = useState(0);
@@ -36,20 +32,11 @@ export const HeroCompact = () => {
   const R = (S && S.rpg) || {};
   const d = deriveHeroStats(R);
 
-  const row = (icon, cur, max, color, hp) => (
+  const row = (kind, cur, max) => (
     <div style={{ display: 'flex', alignItems: 'center', gap: 6, minHeight: 0 }}>
-      <span style={{ width: 14, fontSize: 11, textAlign: 'center', flex: 'none' }}>{icon}</span>
-      {hp ? (
-        <div style={{ flex: 1 }}><SpriteHpBar hp={cur} maxHp={max} height={12} /></div>
-      ) : (
-        <div style={flatBar()}>
-          <div style={{
-            width: `${Math.max(0, Math.min(100, (cur / (max || 1)) * 100))}%`,
-            height: '100%', borderRadius: 4, background: color,
-            transition: 'width .15s linear',
-          }} />
-        </div>
-      )}
+      <img src={VITAL_ICONS[kind]} alt={kind} draggable={false}
+        style={{ width: 14, height: 14, objectFit: 'contain', flex: 'none', pointerEvents: 'none' }} />
+      <VitalBar kind={kind} cur={cur} max={max} />
       <span style={{
         flex: 'none', minWidth: 58, textAlign: 'right',
         fontSize: 11, fontWeight: 700, color: COL.text2,
@@ -70,14 +57,14 @@ export const HeroCompact = () => {
           exact XP, gold).  Hero compact = the character HUD: who am I,
           what condition am I in, what's my combat strength. */}
       <IdentityStrip />
-      {/* Live resources (v2.3.1292: full-width bars). */}
+      {/* Live resources — one VitalBar component for all three. */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 3, minWidth: 0 }}>
-        {row('❤️', R.hp || 0, R.maxHp || 100, null, true)}
-        {row('⚡', R.stamina || 0, R.maxStamina || 100, '#D8A85F')}
-        {row('💧', R.mana || 0, R.maxMana || 100, '#5B99DE')}
+        {row('hp', R.hp || 0, R.maxHp || 100)}
+        {row('stamina', R.stamina || 0, R.maxStamina || 100)}
+        {row('mana', R.mana || 0, R.maxMana || 100)}
       </div>
 
-      {/* Combat skills + the two mid-fight derived values. */}
+      {/* Combat parents + the two mid-fight derived values. */}
       <div style={{
         flex: 1, minHeight: 0,
         display: 'grid',
@@ -108,6 +95,10 @@ export const HeroCompact = () => {
                 cursor: unspent > 0 ? 'pointer' : 'default',
                 touchAction: 'none',
               }}>
+              {/* v2.3.1311: "+N" — these are parent-specific T2 points
+                  (e.g. the bow pool), not a global currency; the bare
+                  "2" read as spendable-anywhere.  The GLOBAL total now
+                  badges the Hero toolbar icon + the Build subtab. */}
               {unspent > 0 && (
                 <span style={{
                   position: 'absolute', top: -2, right: 0,
@@ -115,29 +106,28 @@ export const HeroCompact = () => {
                   fontSize: 10, fontWeight: 900,
                   borderRadius: 7, padding: '0 4px', lineHeight: 1.4,
                   pointerEvents: 'none', zIndex: 1,
-                }}>{unspent}</span>
+                }}>+{unspent}</span>
               )}
               <img src={s.iconSrc} alt={s.label} draggable={false}
-                style={{ width: 20, height: 20, objectFit: 'contain', pointerEvents: 'none' }} />
+                style={{ width: 22, height: 22, objectFit: 'contain', pointerEvents: 'none' }} />
               <span style={{ fontSize: 12, fontWeight: 700, color: COL.text, lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>
                 {lvl}
               </span>
             </div>
           );
         })}
-        {/* DPS + DR share the row's tile rhythm but read as values.
-            v2.3.1294 (round-4 naming fix): the mitigation number is DR
-            (damage reduction) — v2.3.1292's DEF collided with the
-            Defense build attribute one row over.  Same single number
-            (Defense skill + shield block reduction), clearer name. */}
+        {/* DPS + Block share the row's tile rhythm but read as values.
+            v2.3.1311: DR renamed BLOCK — the number is shield block %
+            (calcBlockReduction), not general mitigation; labels go
+            neutral (green is reserved for buffs/deltas per round-4). */}
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 2, minWidth: 0 }}>
-          <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.04em', color: '#7BCD84' }}>DPS</span>
+          <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.04em', color: COL.text2 }}>DPS</span>
           <span style={{ fontSize: 12, fontWeight: 700, color: COL.text, lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>
             {d.dps.toFixed(1)}
           </span>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 2, minWidth: 0 }}>
-          <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.04em', color: '#6FC3DF' }}>DR</span>
+          <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.04em', color: COL.text2 }}>BLOCK</span>
           <span style={{ fontSize: 12, fontWeight: 700, color: COL.text, lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>
             {Math.round(d.block * 100)}%
           </span>
