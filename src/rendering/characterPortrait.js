@@ -207,7 +207,7 @@ export async function drawCharacterPortrait(canvas, opts) {
   ctx.translate(ZCX, ZCY);
   ctx.scale(Z, Z);
   ctx.translate(-ZCX, -ZCY);
-  /* v2.3.1283: OPT-IN ground shadow (login preview passes groundShadow;
+  /* v2.3.1300: OPT-IN ground shadow (login preview passes groundShadow;
      portraitDataUrl/headshot exports don't, so they stay clean) — a soft
      3/4-squashed contact ellipse painted FIRST so every figure layer
      composites over it.  Lives inside the zoom/mirror transform, so it
@@ -217,7 +217,7 @@ export async function drawCharacterPortrait(canvas, opts) {
      follow the in-game blob-shadow recipe (entityRenderer: black
      ellipse, ry≈0.35×rx). */
   if (opts && opts.groundShadow) {
-    /* v2.3.1283b: the first cut sat ~20px too HIGH, so the figure
+    /* v2.3.1300b: the first cut sat ~20px too HIGH, so the figure
        (composited over it) hid it almost entirely (owner: "I don't see
        any shadow... might be drawn on a layer beneath").  These foot
        lines are MEASURED — lowest opaque pixel of each stand-<dir>.png
@@ -227,7 +227,7 @@ export async function drawCharacterPortrait(canvas, opts) {
     const _FOOT_Y = { south: 224, north: 222, east: 226, northeast: 230, southwest: 237 };
     const fy = _FOOT_Y[DIR] || 226;
     const g = ctx.createRadialGradient(FRAME / 2, fy, 2, FRAME / 2, fy, 48);
-    /* v2.3.1283c: ~45% darker (owner: increase intensity). */
+    /* v2.3.1300c: ~45% darker (owner: increase intensity). */
     g.addColorStop(0, 'rgba(0,0,0,0.52)');
     g.addColorStop(0.55, 'rgba(0,0,0,0.26)');
     g.addColorStop(1, 'rgba(0,0,0,0)');

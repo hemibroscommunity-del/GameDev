@@ -106,7 +106,7 @@ const HPBAR_FLASH_MS = 160;   /* white flash on damage */
    exactly the pre-experiment size; keep the knob for further tuning. */
 const PLAYER_SIZE_MULT = 1.0;
 const MONSTER_SIZE_MULT = 1.5;
-/* v2.3.1283: shared ground-shadow texture — ONE 64x32 radial-gradient
+/* v2.3.1300: shared ground-shadow texture — ONE 64x32 radial-gradient
    ellipse minted lazily on a canvas and reused by every entity shadow
    sprite, so all shadows batch into a single draw call (same recipe as
    the recolor caches / _hpFillTex shared source).  Never a per-frame
@@ -118,7 +118,7 @@ function _shadowTex() {
   cv.width = 64; cv.height = 32;
   const c = cv.getContext('2d');
   const g = c.createRadialGradient(32, 16, 2, 32, 16, 30);
-  /* v2.3.1283c: ~45% darker (owner: increase intensity). */
+  /* v2.3.1300c: ~45% darker (owner: increase intensity). */
   g.addColorStop(0, 'rgba(0,0,0,0.48)');
   g.addColorStop(0.6, 'rgba(0,0,0,0.22)');
   g.addColorStop(1, 'rgba(0,0,0,0)');
@@ -131,7 +131,7 @@ function _shadowTex() {
   _shadowTexCache.source.scaleMode = 'linear';
   return _shadowTexCache;
 }
-/* v2.3.1283: mint one entity ground shadow (soft 3/4 ellipse, feet-
+/* v2.3.1300: mint one entity ground shadow (soft 3/4 ellipse, feet-
    centered).  Sized in container-local units — the container-level
    PLAYER_SIZE_MULT / MONSTER_SIZE_MULT / zone pscale scale it along
    with the body for free.  _shadowW lets the walk-bob hook wobble the
@@ -1940,7 +1940,7 @@ function createMonsterDisplay(monster) {
     body.stroke({ color: 0xff5e6c, width: 2 });
   }
   container.addChild(body);
-  /* v2.3.1283: ground shadow at child 0 — feet are at y=size (the
+  /* v2.3.1300: ground shadow at child 0 — feet are at y=size (the
      circle's bottom edge / the sprite's bottom-center anchor line).
      Inherits the container-level MONSTER_SIZE_MULT. */
   const shadow = _mintShadow(size * 2.2);
@@ -2022,7 +2022,7 @@ function createPlayerDisplay() {
   const container = new Container();
   container.label = 'localPlayer';
 
-  /* v2.3.1283: ground shadow at child 0 — under the body, over the
+  /* v2.3.1300: ground shadow at child 0 — under the body, over the
      ground (entity containers use pure insertion-order z).  y=20 is the
      de-facto feet line (the old fallback blob's line); the shadow stays
      grounded while the body bobs, which is what sells the 3/4 depth. */
@@ -2355,7 +2355,7 @@ function createPlayerDisplay() {
 function createOtherPlayerDisplay() {
   const container = new Container();
 
-  /* v2.3.1283: ground shadow at child 0 (see createPlayerDisplay). */
+  /* v2.3.1300: ground shadow at child 0 (see createPlayerDisplay). */
   const shadow = _mintShadow(26);
   shadow.y = 20;
   container.addChildAt(shadow, 0);
@@ -3568,7 +3568,7 @@ export class EntityRenderer {
       else isMoving = _remoteV > 0.05;
       display._remoteMoving = isMoving;
       const bobY = isMoving ? Math.sin(now / 120) * 2 : 0;
-      /* v2.3.1283: the shadow stays GROUNDED while the body bobs (the
+      /* v2.3.1300: the shadow stays GROUNDED while the body bobs (the
          depth cue), but breathes a touch with the stride — width-only,
          two property writes on a frame we're already touching. */
       if (display._shadow) display._shadow.width = display._shadow._shadowW * (1 - bobY * 0.02);
@@ -3778,7 +3778,7 @@ export class EntityRenderer {
           display._lastIsMoving = isMoving;
           display._procDrawn = true;
           body.clear();
-          /* v2.3.1283: the baked fallback shadow ellipse is retired —
+          /* v2.3.1300: the baked fallback shadow ellipse is retired —
              the shared-texture _shadow (child 0) covers both render
              paths now, so the fallback drew a double shadow. */
           // Legs with walk animation
@@ -4178,7 +4178,7 @@ export class EntityRenderer {
     const bh = slim ? 22 : 24;
     const isMoving = Math.abs(P.vx || 0) > 0.01 || Math.abs(P.vy || 0) > 0.01;
     const bobY = isMoving ? Math.sin(now / 120) * 2 : 0;
-    /* v2.3.1283: grounded shadow breathes with the stride (see remote twin). */
+    /* v2.3.1300: grounded shadow breathes with the stride (see remote twin). */
     if (display._shadow) display._shadow.width = display._shadow._shadowW * (1 - bobY * 0.02);
 
     /* Match the Canvas 2D facing logic exactly (BroTown.jsx ~13125-13137):
@@ -4660,7 +4660,7 @@ export class EntityRenderer {
         display._lastIsMoving = isMoving;
         display._procDrawn = true;
         body.clear();
-        /* v2.3.1283: baked fallback shadow retired — the shared-texture
+        /* v2.3.1300: baked fallback shadow retired — the shared-texture
            _shadow (child 0) covers both render paths (see remote twin). */
         // Legs with walk animation
         const legSwing = isMoving ? Math.sin(now / 80) * 3 : 0;

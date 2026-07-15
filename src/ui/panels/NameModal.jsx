@@ -288,7 +288,7 @@ export function NameModal(props) {
     src: '/ui/welcome/platform.webp', alt: '',
     style: { position: 'absolute', inset: 0, width: '100%', height: '100%', filter: 'drop-shadow(0 4px 10px rgba(0,0,0,.6))' }
   }), /*#__PURE__*/React.createElement("div", {
-    /* v2.3.1283: firelight cast shadows — two soft skewed ellipses on the
+    /* v2.3.1300: firelight cast shadows — two soft skewed ellipses on the
        disc's top face, each leaning AWAY from its brazier and flickering
        with the flame cadence (opacity/transform-only animation: the CSS
        filter route is banned near the video surface — the iOS grainy-
