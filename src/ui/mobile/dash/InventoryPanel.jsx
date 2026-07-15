@@ -245,6 +245,28 @@ export const InventoryPanel = () => {
        scroll-edge fade follows it there). */
     <div style={{ ...panelStyle, overflow: 'hidden', WebkitMaskImage: 'none', maskImage: 'none', display: 'flex', flexDirection: 'column' }}>
 
+      {/* v2.3.1315 (owner round-8b): the equipped row carries the same
+          labeled header as the compact view — icon + EQUIPPED + open-
+          slot count — so the row's purpose is never ambiguous. */}
+      {(() => {
+        const openSlots = equipped.filter(sl => sl.ghost).length;
+        return (
+          <div style={{ height: 14, marginBottom: 6, display: 'flex', alignItems: 'center', gap: 5, flex: 'none' }}>
+            <img src="/icons/bag/bag-equipped.webp?v=2.3.1315" alt="" aria-hidden="true"
+              draggable={false} style={{ width: 13, height: 13, objectFit: 'contain' }} />
+            <span style={{
+              fontSize: 10, fontWeight: 700, letterSpacing: '.09em',
+              textTransform: 'uppercase', color: COL.text2, lineHeight: 1,
+            }}>Equipped</span>
+            <span style={{
+              marginLeft: 'auto',
+              fontSize: 10, fontWeight: 700, letterSpacing: '.05em',
+              textTransform: 'uppercase', color: COL.muted, lineHeight: 1,
+              fontVariantNumeric: 'tabular-nums',
+            }}>{openSlots === 0 ? 'Full' : `${openSlots} ${openSlots === 1 ? 'slot' : 'slots'} open`}</span>
+          </div>
+        );
+      })()}
       {/* v2.3.1285: the SAME six equipped positions as the compact row,
           same order, same tile component — expanding feels like the
           panel revealing more, not a different screen. */}

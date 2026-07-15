@@ -93,10 +93,20 @@ export const BagCompact = () => {
     if (R.amulet) itemDetailBus.open({ kind: 'amulet', amulet: R.amulet, anchor });
   };
 
+  /* v2.3.1315 (owner round-8b): "the equipped row needs to be more
+     obvious" — a slim labeled header with the owner's bag-equipped
+     icon and an open-slot count.  Cape counts as open until it gets a
+     data field (it IS an empty position). */
+  const openSlots = equipped.filter(sl => sl.ghost).length;
+
   return (
     /* id="bt-bag-target": the fishing catch-flight landing point
        (effectsRenderer._updateCatchFlights) — moved here from the
        retired quick-bag preview.  Silent breakage if dropped. */
+    /* v2.3.1315: grid -> flex column (label row / equipped grid /
+       hairline / recent grid) so the label and separator have natural
+       homes; tiles stay square via their own aspect-ratio, and the
+       compact height algebra moved with it (sheetGeometry DASH_BASE). */
     <div
       id="bt-bag-target"
       data-tut="dash-bag"
@@ -106,40 +116,60 @@ export const BagCompact = () => {
       style={{
         flex: 1,
         minHeight: 0,
-        position: 'relative',
-        display: 'grid',
-        gridTemplateColumns: 'repeat(6, 1fr)',
-        gridTemplateRows: 'repeat(2, 1fr)',
-        gap: CELL_GAP,
+        display: 'flex',
+        flexDirection: 'column',
         padding: '8px 8px',
-        alignContent: 'start',
       }}>
-      {/* v2.3.1312 (round-8 §3): hairline between the equipped row and
-          the recent-pickups row — with equal 1fr rows and symmetric
-          padding the container's vertical midpoint IS the middle of
-          the row gap, so one absolutely-placed line never drifts. */}
-      <div aria-hidden="true" style={{
-        position: 'absolute', top: '50%', left: 10, right: 10,
-        height: 1, background: 'rgba(0,0,0,.35)',
-        boxShadow: '0 1px 0 rgba(229,237,233,.06)',
-        pointerEvents: 'none',
-      }} />
+      <div style={{
+        height: 14,
+        marginBottom: 6,
+        display: 'flex',
+        alignItems: 'center',
+        gap: 5,
+        flex: 'none',
+      }}>
+        <img src="/icons/bag/bag-equipped.webp?v=2.3.1315" alt="" aria-hidden="true"
+          draggable={false} style={{ width: 13, height: 13, objectFit: 'contain' }} />
+        <span style={{
+          fontSize: 10, fontWeight: 700, letterSpacing: '.09em',
+          textTransform: 'uppercase', color: COL.text2, lineHeight: 1,
+        }}>Equipped</span>
+        <span style={{
+          marginLeft: 'auto',
+          fontSize: 10, fontWeight: 700, letterSpacing: '.05em',
+          textTransform: 'uppercase', color: COL.muted, lineHeight: 1,
+          fontVariantNumeric: 'tabular-nums',
+        }}>{openSlots === 0 ? 'Full' : `${openSlots} ${openSlots === 1 ? 'slot' : 'slots'} open`}</span>
+      </div>
       {/* Row 1 — equipped, fixed order. */}
-      {equipped.map(sl => (
-        <SlotTile
-          key={`eq-${sl.slot}`}
-          k={`eq-${sl.slot}`}
-          label={sl.label}
-          iconSrc={sl.iconSrc}
-          ghostSrc={sl.ghost ? GHOST_SRC[sl.slot] : null}
-          occupied={!sl.ghost}
-          quality={sl.quality}
-          onTap={sl.pickerSlot ? openPicker(sl.pickerSlot)
-            : sl.slot === 'amulet' && R.amulet ? openAmulet
-            : undefined}
-        />
-      ))}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: CELL_GAP, flex: 'none' }}>
+        {equipped.map(sl => (
+          <SlotTile
+            key={`eq-${sl.slot}`}
+            k={`eq-${sl.slot}`}
+            label={sl.label}
+            iconSrc={sl.iconSrc}
+            ghostSrc={sl.ghost ? GHOST_SRC[sl.slot] : null}
+            occupied={!sl.ghost}
+            quality={sl.quality}
+            onTap={sl.pickerSlot ? openPicker(sl.pickerSlot)
+              : sl.slot === 'amulet' && R.amulet ? openAmulet
+              : undefined}
+          />
+        ))}
+      </div>
+      {/* v2.3.1312 (round-8 §3): hairline between the equipped row and
+          the recent-pickups row. */}
+      <div aria-hidden="true" style={{
+        height: 1, margin: '7px 2px',
+        background: 'rgba(0,0,0,.35)',
+        boxShadow: '0 1px 0 rgba(229,237,233,.06)',
+        flex: 'none',
+      }} />
       {/* Row 2 — recent bag stacks, newest left. */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: CELL_GAP, flex: 'none' }}>
+      {/* v2.3.1315: recent row keeps its darker treatment + sparkle
+          markers (round-8 §3) inside its own grid now. */}
       {entries.map((e) => {
         const k = keyOf(e);
         return (
@@ -186,6 +216,7 @@ export const BagCompact = () => {
           borderRadius: 8,
         }} />
       ))}
+      </div>
     </div>
   );
 };

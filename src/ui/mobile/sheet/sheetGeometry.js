@@ -31,12 +31,15 @@ export const FEET_OFFSET = 24;
 
 /* Compact snap algebra (Bag 6x2 drives it):
    slot s = (100vw - 56px) / 6   (5 inner gaps x8 + 2x8 edges = 56)
-   sheet = 2 rows + 1 gap + 8 top pad + 8 bottom pad + 72 toolbar shelf
-         = 2s + 8 + 16 + 72 = (100vw - 56)/3 + 96 = 33.3333vw + 77.33
-   -> rounded to 78.  (v2.3.1290: no longer the --dash-h value — this is
-   the sheet's COMPACT overlay height only.) */
+   v2.3.1315 (owner round-8b): the Bag compact gained an EQUIPPED label
+   row (14 + 6 margin = 20) and the row gap became a hairline block
+   (7 + 1 + 7 = 15):
+   sheet = 8 pad + 20 label + s + 15 separator + s + 8 pad + 72 toolbar
+         = 2s + 123 = (100vw - 56)/3 + 123 = 33.3333vw + 104.33
+   -> rounded to 105.  (v2.3.1290: not the --dash-h value — this is the
+   sheet's COMPACT overlay height only; the canvas keys off BAR_H.) */
 export const DASH_W_FRAC = 1 / 3;
-export const DASH_BASE = 78;
+export const DASH_BASE = 105;
 
 export function compactDashHeight(vw) {
   return Math.round(vw * DASH_W_FRAC + DASH_BASE);
