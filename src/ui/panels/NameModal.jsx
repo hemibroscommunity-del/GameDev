@@ -237,12 +237,44 @@ export function NameModal(props) {
      zoom overrides to close-up; everything transitions in ~180ms.
      Frames solve b + k·h = contact/center lines against the v2.3.799
      geometry (boots ≈11% up the bitmap, head ≈78%). */
-  var _frame = { h: 54.5, b: 18.2 };                       /* full body (rest) */
-  if (previewZoom) _frame = { h: 96, b: -13 };             /* close-up */
-  else if (drawerOpen) {
+  /* v2.3.1309 (owner): no frame may CROP the sprite against thin air —
+     the stage no longer clips (overflow visible).  Drawer frames MEASURE
+     where the drawer's resting top edge is (offsetTop ignores the slide
+     transform) and drop the canvas so its bottom sits ~24px BEHIND the
+     sheet — the legs visibly continue under a real surface instead of
+     ending at an invisible line (or floating, the first fix's bug).
+     On the hero screen (no drawer to hide behind) the tap-zoom uses a
+     full-body frame that stays entirely inside the stage. */
+  var _stageRef = React.useRef(null);
+  var _drawerRef = React.useRef(null);
+  var _dbS = React.useState(null), drawerBpx = _dbS[0], setDrawerBpx = _dbS[1];
+  React.useLayoutEffect(function () {
+    var measure = function () {
+      var st = _stageRef.current, dr = _drawerRef.current;
+      if (!drawerOpen || !st || !dr || !dr.offsetParent) { setDrawerBpx(null); return; }
+      var stR = st.getBoundingClientRect();
+      var modalTop = dr.offsetParent.getBoundingClientRect().top;
+      var drawerTop = modalTop + dr.offsetTop;
+      /* CSS bottom for the canvas, relative to the STAGE's bottom edge
+         (negative = below it): canvas bottom lands 24px past the sheet. */
+      setDrawerBpx(Math.round(stR.bottom - (drawerTop + 24)));
+    };
+    measure();
+    window.addEventListener('resize', measure);
+    return function () { window.removeEventListener('resize', measure); };
+  }, [drawerOpen]);
+  var _frame = { h: 54.5, b: '18.2%' };                    /* full body (rest) */
+  /* drawerBpx IS the CSS bottom (stage-bottom-relative; negative =
+     below the stage, i.e. behind the sheet). */
+  var _behindDrawer = (drawerBpx != null) ? drawerBpx + 'px' : '-13%';
+  if (previewZoom) {
+    _frame = drawerOpen
+      ? { h: 96, b: _behindDrawer }                        /* close-up, legs behind drawer */
+      : { h: 92, b: '2%' };                                /* hero zoom: whole body, no crop */
+  } else if (drawerOpen) {
     var _g = _activeGroupKey;
-    if (_g === 'head') _frame = { h: 96, b: -13 };         /* upper body */
-    else if (_g === 'shirt') _frame = { h: 78, b: -3 };    /* torso center */
+    if (_g === 'head') _frame = { h: 96, b: _behindDrawer };   /* upper body, legs behind drawer */
+    else if (_g === 'shirt') _frame = { h: 78, b: _behindDrawer }; /* torso, dips behind the sheet */
     /* pants/shoes: full body — the default frame already centers them. */
   }
   /* v2.3.1307: name validity gates ENTER (round-7).  Local rules only:
@@ -319,11 +351,14 @@ export function NameModal(props) {
     /* Character SHOWCASE — the character is the star; flex-driven height
        (see .bt-cc-stage in game.css).  The pedestal group / braziers /
        canvas geometry is the v2.3.799-802 system, untouched except the
-       v2.3.1251 sizes below.  v2.3.1307/1308: overflow hidden — the
-       close-up and category frames intentionally push the sprite past
-       the stage edges. */
+       v2.3.1251 sizes below.  v2.3.1309: overflow stays VISIBLE — the
+       v2.3.1307 overflow:hidden clipped the zoomed sprite at the stage
+       edge, which read as an invisible layer cutting the body (owner).
+       The drawer frames now let the legs slide behind the drawer
+       sheet; the hero tap-zoom keeps the whole body inside the stage. */
     className: "bt-cc-stage",
-    style: { position: 'relative', width: '100%', boxSizing: 'border-box', overflow: 'hidden' }
+    ref: _stageRef,
+    style: { position: 'relative', width: '100%', boxSizing: 'border-box' }
   }, /*#__PURE__*/React.createElement("div", {
     /* Pedestal GROUP (v2.3.802): platform + braziers scale together off
        stage height; DOM order keeps them behind the character canvas. */
@@ -386,7 +421,7 @@ export function NameModal(props) {
          ease. */
       position: 'absolute',
       left: '50%',
-      bottom: _frame.b + '%',
+      bottom: _frame.b,
       height: _frame.h + '%',
       transition: 'height .18s ease, bottom .18s ease',
       aspectRatio: '1 / 1',
@@ -584,6 +619,7 @@ export function NameModal(props) {
        _measureMore).  Absolute overlay: nothing in here can move the
        stage. */
     className: "bt-cc-drawer" + (drawerOpen ? " bt-cc-drawer--open" : ""),
+    ref: _drawerRef,
     "aria-hidden": drawerOpen ? undefined : true
   }, /*#__PURE__*/React.createElement("nav", {
     className: "bt-cc-tabs", role: 'tablist', "aria-label": 'Appearance category'

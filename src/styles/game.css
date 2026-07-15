@@ -1017,13 +1017,16 @@ input{font-family:inherit}
    (owner): Head / Shirt / Pants / Shoes. */
 /* v2.3.1272: five equal cells — the four category tabs + the Random
    action cell; 44px tall (comfort floor). */
-.bt-cc-tabs{flex:0 0 auto;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:4px}
-.bt-cc-tab{min-width:0;min-height:44px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:4px 2px;background:transparent;border:1px solid transparent;border-radius:8px;cursor:pointer;color:var(--ui-text-secondary);font-family:'Source Sans 3',sans-serif}
+/* v2.3.1309 (owner): FOUR columns since the Random cell retired, and
+   the category cells/icons/labels grow — they were sized for the old
+   five-across row. */
+.bt-cc-tabs{flex:0 0 auto;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
+.bt-cc-tab{min-width:0;min-height:56px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:4px 2px;background:transparent;border:1px solid transparent;border-radius:8px;cursor:pointer;color:var(--ui-text-secondary);font-family:'Source Sans 3',sans-serif}
 .bt-cc-tab:active{transform:translateY(1px)}
 .bt-cc-tab--on{background:var(--ui-brass-soft);color:var(--ui-text);border-color:var(--ui-brass)}
-.bt-cc-tab-icon{width:18px;height:18px;object-fit:contain;opacity:.92;pointer-events:none}
+.bt-cc-tab-icon{width:30px;height:30px;object-fit:contain;opacity:.92;pointer-events:none}
 .bt-cc-tab--on .bt-cc-tab-icon{opacity:1}
-.bt-cc-tab-label{max-width:100%;overflow:hidden;text-overflow:ellipsis;font-size:11px;font-weight:700;letter-spacing:.02em;line-height:1}
+.bt-cc-tab-label{max-width:100%;overflow:hidden;text-overflow:ellipsis;font-size:12px;font-weight:700;letter-spacing:.02em;line-height:1}
 /* v2.3.1272: the Random cell reads as an ACTION among the tabs — the
    standard slate micro-bevel instead of the transparent tab rest state
    (re-stated here because .bt-cc-tab's transparent background is
@@ -1042,14 +1045,14 @@ input{font-family:inherit}
    — four chips (Hair/Hats/Skin/Beard), so min-width drops 72 → 56 to
    keep all four on one row inside a 320px viewport (4×56 + chrome ≈
    230px < the 256px menu content there); max-width guards overflow. */
-.bt-cc-subtabs{flex:0 0 auto;display:flex;width:fit-content;max-width:100%;min-height:36px;margin:0 auto;padding:2px;border:1px solid var(--ui-line);border-radius:9px;background:rgba(0,0,0,.13)}
+.bt-cc-subtabs{flex:0 0 auto;display:flex;width:fit-content;max-width:100%;min-height:42px;margin:0 auto;padding:2px;border:1px solid var(--ui-line);border-radius:9px;background:rgba(0,0,0,.13)}
 /* v2.3.1252: ghost rows — the subtabs/colors slots stay in the layout
    (space reserved, nothing painted or tappable) when the active
    category doesn't use them, so the sheet height never changes and the
    flex stage can't resize the character on tab switches (owner: one
    consistent character size). */
 .bt-cc-ghost{visibility:hidden}
-.bt-cc-subtab{min-width:52px;min-height:32px;padding:3px 9px;border:0;border-radius:7px;background:transparent;color:var(--ui-text-secondary);font-size:11px;font-weight:700;letter-spacing:.02em;font-family:'Source Sans 3',sans-serif;cursor:pointer}
+.bt-cc-subtab{min-width:60px;min-height:38px;padding:3px 11px;border:0;border-radius:7px;background:transparent;color:var(--ui-text-secondary);font-size:13px;font-weight:700;letter-spacing:.02em;font-family:'Source Sans 3',sans-serif;cursor:pointer}
 /* v2.3.1254: selected subtab is a raised, micro-beveled chip. */
 .bt-cc-subtab--on{color:var(--ui-text);background:
   linear-gradient(180deg,
