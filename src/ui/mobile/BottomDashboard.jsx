@@ -24,6 +24,7 @@ import { hasUnseenLevelUps } from './sheet/skillsModel.js';        /* v2.3.1296 
 import { readyQuestCount } from './sheet/questModel.js';           /* v2.3.1298 */
 import { sheetTransition } from './sheet/motion.js';            /* v2.3.1283 */
 import { bagUnseen, bagEntryKey } from './sheet/bagUnseenModel.js'; /* v2.3.1312 */
+import { useSheetDrag } from './sheet/useSheetDrag.js';          /* v2.3.1283; v2.3.1307 ribbon-bound */
 import { BagCompact } from './sheet/BagCompact.jsx';            /* v2.3.1285 */
 import { HeroCompact } from './sheet/HeroCompact.jsx';          /* v2.3.1286 */
 import { HeroExpanded } from './sheet/HeroExpanded.jsx';        /* v2.3.1286 */
@@ -271,21 +272,20 @@ const Tooltip = ({ tip, onClose }) => {
    button's top-LEFT (the chevron owns top-right) for ACTIONABLE state
    only: unviewed skill level-ups, ready quest turn-ins.  Never for
    routine churn like XP gains or friends-online counts. */
-/* v2.3.1311 (round-8 §2): `onSwipe` — vertical swipes ON a toolbar icon
-   are the sheet-resize gesture now (body drags retired).  Recognition
-   at pointer-up: |dy| >= 24px and clearly vertical (|dy| > 1.5·|dx|)
-   reads as a swipe; anything smaller stays a tap.  Pointer capture
-   keeps the up event on the button even when the finger drifts off it
-   mid-swipe (it always does).
+/* v2.3.1316 merge (round-8b × #285): `dest` — the destination id
+   stamped as data-dest so useSheetDrag (bound to the toolbar ribbon)
+   knows which icon a swipe started on.  Icon swipes are #285's live
+   drag; the owner's round-8b chevron rules render below (my .bt-nav-
+   snap stack replaced #285's .bt-swipe-cue — no cue at bar, one
+   chevron per available step while open).
    `pulse` (round-8 §Badges) — an epoch counter; each bump remounts the
    icon span (key) to replay one restrained scale pulse (CSS
    .bt-nav-pulse, reduced-motion guarded). */
-const IconButton = ({ glyph, src: srcProp, label, active, onClick, onSwipe, node, tut, snap, dot, pulse }) => {
+const IconButton = ({ glyph, src: srcProp, label, active, onClick, node, tut, snap, dot, dest, pulse }) => {
   /* v2.3.1283: destinations pass an explicit `src`; `glyph` (ICON_SRC
      lookup) stays for any legacy caller. */
   const src = srcProp || ICON_SRC[glyph];
   const [pressed, setPressed] = useState(false);
-  const gestureStart = useRef(null);
   // Use onPointerUp instead of onClick so iOS fires it even when
   // another finger is mid-drag on a joystick.  stopPropagation
   // prevents the event reaching the dashboard's outer pointerdown
@@ -293,16 +293,10 @@ const IconButton = ({ glyph, src: srcProp, label, active, onClick, onSwipe, node
   const fire = (e) => {
     e.stopPropagation();
     setPressed(false);
-    const s = gestureStart.current;
-    gestureStart.current = null;
-    if (s && onSwipe) {
-      const dy = e.clientY - s.y;
-      const dx = e.clientX - s.x;
-      if (Math.abs(dy) >= 24 && Math.abs(dy) > Math.abs(dx) * 1.5) {
-        onSwipe(dy < 0 ? 'up' : 'down');
-        return;
-      }
-    }
+    /* v2.3.1307: swipes start on these icons now (useSheetDrag binds
+       the toolbar ribbon) and this fires on pointerUP — swallow the
+       tap when the pointerup is the tail end of a recognized swipe. */
+    if (typeof window !== 'undefined' && window.__btNavSwipeTs && Date.now() - window.__btNavSwipeTs < 350) return;
     onClick && onClick();
   };
   /* v2.3.1240: the toolbar is one dark navigation ribbon, but every
@@ -314,17 +308,11 @@ const IconButton = ({ glyph, src: srcProp, label, active, onClick, onSwipe, node
     <button
       type="button"
       onPointerUp={fire}
-      onPointerDown={(e) => {
-        e.stopPropagation();
-        setPressed(true);
-        gestureStart.current = { x: e.clientX, y: e.clientY };
-        /* Without capture a swipe whose finger leaves the button never
-           delivers pointerup here and the gesture dies silently. */
-        try { e.currentTarget.setPointerCapture(e.pointerId); } catch (_) {}
-      }}
-      onPointerCancel={() => { setPressed(false); gestureStart.current = null; }}
+      onPointerDown={(e) => { e.stopPropagation(); setPressed(true); }}
+      onPointerCancel={() => setPressed(false)}
       onPointerLeave={() => setPressed(false)}
       data-tut={tut}
+      data-dest={dest}
       aria-label={label}
       aria-pressed={active}
       data-pressed={pressed ? 'true' : 'false'}
@@ -357,10 +345,11 @@ const IconButton = ({ glyph, src: srcProp, label, active, onClick, onSwipe, node
       )}
       {/* v2.3.1314 (owner round-8b): state-aware chevrons — ONE chevron
           per available step, shown only while a view is open (never at
-          bar).  Compact: one up (expand available) + one down (bar
-          available).  Expanded: two down (compact, then bar).  The
-          gentle bob animation reads as "swipeable"; direction matches
-          both the icon swipe and the tap cycle's next step. */}
+          bar; supersedes #285's at-rest faint cues).  Compact: one up
+          (expand available) + one down (bar available).  Expanded: two
+          down (compact, then bar).  The gentle bob animation reads as
+          "swipeable"; direction matches both the icon swipe and the
+          tap cycle's next step. */}
       {active && snap && snap !== 'bar' && (
         <span className="bt-nav-snap" aria-hidden="true">
           {snap === 'compact' ? (
@@ -560,15 +549,19 @@ export const BottomDashboard = () => {
       if (vv) vv.removeEventListener('resize', recompute);
     };
   }, []);
-  /* v2.3.1311 (round-8): body drags are GONE — useSheetDrag retired.
-     Users read the sheet body as content, not a handle; drags fought
-     panel scrolling and the misleading grab bar implied a gesture
-     surface that wasn't there.  Resize gestures live on the toolbar
-     icons now (IconButton onSwipe -> bus.advance/retreat), where the
-     three-state affordance (the chevron) already is.  The snapPx ref
-     stays: the <html> stamp effect reads it. */
+  /* v2.3.1311/1307: BODY drags are gone — the sheet body is content,
+     not a handle (drags fought panel scrolling).  Resize gestures live
+     on the toolbar ribbon (useSheetDrag below).  The snapPx ref also
+     feeds the <html> stamp effect. */
   const snapPxRef = useRef(snapPx);
   snapPxRef.current = snapPx;
+  /* v2.3.1307: gesture surface = the toolbar frame (the band root stays
+     the height-animation target).  Band-wide swipes are retired. */
+  const toolbarRef = useRef(null);
+  useSheetDrag(dashRef, toolbarRef,
+    () => BAR_H,
+    () => snapPxRef.current.compact,
+    () => snapPxRef.current.expanded);
   /* Player-card portrait: a head-and-shoulders render of the player's
      chosen cosmetics (skin / hair / hair color / beard / hat).  Generated
      on mount (captures the login picker) and regenerated if a cosmetic
@@ -698,10 +691,10 @@ export const BottomDashboard = () => {
         touchAction: 'none',
       }}
     >
-      {/* v2.3.1311 (round-8 §1): the grab handle is REMOVED — body
-          drags retired with useSheetDrag, and a handle with no gesture
-          behind it is a lie (ChatGPT: "misleading affordance").  The
-          resize affordance is the toolbar chevron + icon swipes. */}
+      {/* v2.3.1307/1311: the top-edge drag handle is gone — band-wide
+          swipes are retired (owner: too ambiguous over interactive
+          menus; a handle with no gesture behind it is a lie).  Resizing
+          lives on the toolbar: tap cycle + icon swipes + chevrons. */}
       {active ? (
         <>
           {/* Header strip — back-chip (only on drilled child), title, ×.
@@ -737,45 +730,44 @@ export const BottomDashboard = () => {
               overflow: 'hidden',
               textOverflow: 'ellipsis',
             }}>{active.title}</div>
-            {/* v2.3.1290 (ChatGPT round-3 §5): the header chip is a
-                DOWN CHEVRON, not an × — this control steps the sheet
-                down to the destination's compact view, it doesn't
-                dismiss anything.  × stays reserved for true popovers
-                (item card, inspect). */}
-            <button
-              aria-label="Collapse"
-              onPointerUp={(e) => { e.stopPropagation(); dashboardPanelBus.stepDown(); }}
-              style={chipStyle}
-            >
-              <svg viewBox="0 0 12 12" width="14" height="14" aria-hidden="true">
-                <path d="M2.5 4.5 L6 8 L9.5 4.5" stroke="currentColor" strokeWidth="1.8"
-                  fill="none" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            </button>
+            {/* v2.3.1307: the header ▾ chevron chip (v2.3.1290) is
+                removed — the owner made the toolbar-icon swipe the ONE
+                resize control, and a second down-path here undercut
+                that.  A width-matched spacer keeps the title centered
+                when a back-chip is present. */}
+            {stack.length > 1 && <span style={{ width: 32, flex: '0 0 32px' }} aria-hidden="true" />}
           </div>
           {/* v2.3.1229: panels render in a flex body ABOVE the persistent
               toolbar (spec §9: the toolbar stays visible in panel mode;
-              its lit item identifies the panel; tapping it again = home). */}
-          <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+              its lit item identifies the panel).  v2.3.1307b: the toolbar
+              is absolute-pinned to the band bottom now — the marginBottom
+              reserves its 72px so panel content never hides under it. */}
+          <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', marginBottom: 72 }}>
             {Active && <Active />}
           </div>
         </>
       ) : mode === 'compact' ? (
         /* v2.3.1288 (PR B): all six destinations render their compact
-           view from the COMPACT_VIEWS registry. */
-        (() => { const CompactView = COMPACT_VIEWS[rootId] || BagCompact; return <CompactView />; })()
+           view from the COMPACT_VIEWS registry.  v2.3.1307b: wrapped so
+           the compact view also reserves the pinned toolbar's 72px. */
+        (() => { const CompactView = COMPACT_VIEWS[rootId] || BagCompact; return (
+          <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', marginBottom: 72 }}>
+            <CompactView />
+          </div>
+        ); })()
       ) : null /* v2.3.1290: bar mode — toolbar only, the game's resting
            default (owner: maximum world visibility). */}
 
       {/* Navigation ribbon.  v2.3.1229: PERSISTENT in both modes.
           v2.3.1283 (nav-system): SIX destinations, each always one of
           the DESTINATIONS roots; the active root carries the brass edge
-          in BOTH snap modes (Bag is selected at rest — there is no
-          "nothing selected" state anymore).  Tap semantics live in
-          dashboardPanelBus.tapDestination: inactive -> compact, active
-          -> expanded/compact toggle.  rootId (stack[0]) keeps a
-          destination selected while one of its drill children
-          (Settings, T2, ...) is open. */}
+          in BOTH snap modes.  v2.3.1307: the ribbon is ALSO the sheet's
+          gesture surface — vertical swipes on the icons resize one snap
+          per swipe (useSheetDrag via toolbarRef).  v2.3.1316 (owner
+          round-8b): taps CYCLE again — inactive -> compact, active
+          compact -> expanded -> bar (dashboardPanelBus.tapDestination).
+          rootId (stack[0]) keeps a destination selected while one of
+          its drill children (Settings, T2, ...) is open. */}
       {(() => {
         const knownRoots = DESTINATIONS.map(d => d.id);
         /* v2.3.1290: bar mode = NOTHING lit — the resting state has no
@@ -800,7 +792,28 @@ export const BottomDashboard = () => {
           quests: readyQuestCount(Sb) > 0,
         };
         return (
-          <div className="bt-dashboard-toolbar-frame" style={{
+          <div className="bt-dashboard-toolbar-frame" ref={toolbarRef} style={{
+            /* v2.3.1307b (owner: "toolbar bounces ~20-30px after closing"):
+               the ribbon is pinned OUT OF FLOW to the band's bottom edge.
+               In flex flow it sat BELOW the content (at the band bottom)
+               while a sheet was open, but the instant a close settled the
+               content unmounted and the ribbon reflowed to the TOP of the
+               still-tall band — hopping up by the leftover height (the
+               released drag's residual, ~20-30px) and then riding the
+               shrinking band back down over the 220ms ease.  That ride-back
+               IS the bounce, and its size varies with where the collapse
+               starts (the earlier full-height "rubber band" reports were
+               the same mechanism at bigger amplitude).  Absolute-pinned to
+               the band's bottom it cannot move, in any mode, ever.  The
+               env() offset keeps it above an iOS home indicator; content
+               wrappers reserve the 72px below (marginBottom) so panels
+               never slide under it. */
+            position: 'absolute',
+            left: 0,
+            right: 0,
+            bottom: 'env(safe-area-inset-bottom, 0px)',
+            zIndex: 2,
+            boxSizing: 'border-box',
             /* v2.3.1229b: fixed 68px shelf in panel mode (30% of the
                grown band would balloon); 30% of the resting 28vh band
                ≈ the same 68px, so the shelf never visibly jumps. */
@@ -845,17 +858,15 @@ export const BottomDashboard = () => {
                   ) : undefined}
                   active={litId === d.id}
                   snap={litId === d.id ? mode : null}
+                  dest={d.id}
                   dot={!!dots[d.id]}
                   /* v2.3.1312: one restrained pulse per NEW pickup (the
                      epoch key replays the animation); gated on unseen
                      count so inspecting the item retires the motion. */
                   pulse={d.id === 'bag' && bagUnseen.count() > 0 ? bagUnseen.epoch() : 0}
-                  onClick={() => dashboardPanelBus.tapDestination(d.id)}
-                  /* v2.3.1311 (round-8 §2): icon swipes resize the sheet
-                     one state per swipe; ends are no-ops. */
-                  onSwipe={(dir) => dir === 'up'
-                    ? dashboardPanelBus.advance(d.id)
-                    : dashboardPanelBus.retreat(d.id)} />
+                  /* Icon swipes are useSheetDrag on the ribbon
+                     (v2.3.1307); taps cycle via the bus (round-8b). */
+                  onClick={() => dashboardPanelBus.tapDestination(d.id)} />
               ))}
             </div>
           </div>

@@ -371,7 +371,11 @@
    chevron per available step, shown only while a view is open:
    compact = up + down (expand or close available), expanded = down +
    down (two steps down to the bar).  Each chevron bobs gently in its
-   own direction — animated affordance for the icon swipe. */
+   own direction — animated affordance for the icon swipe.
+   v2.3.1316 merge note: supersedes the v2.3.1307b .bt-swipe-cue pair
+   system from #285 — the owner's round-8b correction ("only display
+   the double chevrons once at least the compact view is active; one
+   chevron per menu option") landed AFTER #285 merged. */
 .bt-nav-snap{
   position:absolute;
   top:2px;
@@ -617,20 +621,20 @@ input{font-family:inherit}
 .bt-chat-input:focus{border-color:var(--pop)}
 .bt-joystick-zone{z-index:30;display:block;
   -webkit-touch-callout:none;-webkit-user-select:none;user-select:none;touch-action:none}
-/* v2.3.1314 (owner round-8b): "keep joysticks above the screen and
-   active with any menu view open."  The v2.3.1288 ghost-dim is GONE —
-   the floating combat chrome (both discs + the special-charge pie) now
-   ANCHORS off --bt-chrome-base, which is the toolbar height at rest
-   and the OPEN sheet's height while a menu is up (--sheet-h, stamped
-   by BottomDashboard).  The chrome slides above the sheet's top edge
-   and stays fully live: the v2.3.1283/1290 joystick->bar interlock is
-   removed in BroTown's lS/rS, so you can play with menus open.
-   Consumers: TouchControls corner containers + SpecialChargePie use
-   bottom:calc(var(--bt-chrome-base, var(--dash-h)) + Npx). */
-:root{--bt-chrome-base:var(--dash-h)}
-:root[data-bt-sheet="compact"],
-:root[data-bt-sheet="expanded"]{--bt-chrome-base:var(--sheet-h)}
-.bt-joystick-zone,.bt-rjoy-zone,.bt-charge-pie{transition:opacity .22s ease,bottom .22s cubic-bezier(.2,.8,.2,1)}
+/* v2.3.1307 (owner: play with menus open): the v2.3.1288 open-sheet
+   ghost dim is GONE — the joystick discs and charge pie are live
+   controls while a sheet is open, at full engagement-ladder opacity.
+   They now RIDE ABOVE the open sheet: their bottom anchors key off
+   --sheet-h (stamped per mode by BottomDashboard), and the bottom
+   transition below matches the sheet's 220ms motion token so the
+   discs glide up/down with the band instead of teleporting.  The
+   v2.3.1283 "movement collapses the sheet" interlock was removed the
+   same version (BroTown lS/rS handlers).  transform/opacity/bottom
+   only — no filters (iOS WebGL static, CLAUDE.md).
+   (v2.3.1316 merge: this #285 --sheet-h keying supersedes the
+   equivalent v2.3.1314 --bt-chrome-base var from #287 — one var,
+   same behavior, and #285's zones ALSO end above the open sheet.) */
+.bt-joystick-zone,.bt-rjoy-zone,.bt-charge-pie{transition:opacity .22s ease,bottom 220ms cubic-bezier(.2,.8,.2,1)}
 @media (prefers-reduced-motion: reduce){
   .bt-joystick-zone,.bt-rjoy-zone,.bt-charge-pie{transition:none}
 }

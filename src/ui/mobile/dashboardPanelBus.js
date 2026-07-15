@@ -13,16 +13,18 @@
 //   'compact'  — the destination's glance view.
 //   'expanded' — the destination's detailed / actionable view.
 //
-// Toolbar semantics (v2.3.1314, owner round-8b): tapping any
-// destination from the bar (or an inactive one anytime) opens its
-// COMPACT view; tapping the ACTIVE destination cycles UP then closes —
-// compact -> expanded -> bar — so three taps walk a destination
-// through all of its states (the owner overrode ChatGPT's round-8
-// tap-toggle here: "third tap to return to toolbar only").  Swiping
-// up/down ON a toolbar icon still advances/retreats exactly one state
-// (advance/retreat below).  Joystick/world input no longer closes the
-// sheet (v2.3.1314: play with menus open — the combat chrome rides
-// above the sheet via --bt-chrome-base).
+// Toolbar semantics (v2.3.1316, owner round-8b — supersedes both the
+// v2.3.1307 taps-never-resize contract from #285 and the v2.3.1311
+// tap-toggle): tapping any destination from the bar (or an inactive
+// one anytime) opens its COMPACT view; tapping the ACTIVE destination
+// cycles UP then closes — compact -> expanded -> bar — so three taps
+// walk a destination through all of its states ("third tap to return
+// to toolbar only").  Icon SWIPES also resize, one snap per swipe,
+// via useSheetDrag bound to the toolbar ribbon (#285's live drag; a
+// recognized swipe stamps window.__btNavSwipeTs so IconButton swallows
+// the tap its release would otherwise fire).  Movement/aim input never
+// collapses the sheet — play with menus open (v2.3.1307); the combat
+// chrome rides above the open sheet keyed off --sheet-h.
 
 const listeners = new Set();
 const emit = () => { for (const fn of listeners) fn(); };
@@ -53,10 +55,12 @@ export const dashboardPanelBus = {
     return this.state.stack[0] || 'bag';
   },
 
-  // Toolbar tap: from the bar or an inactive destination -> its compact
-  // view; active destination cycles compact -> expanded -> bar.
-  // (v2.3.1311 briefly made the third tap toggle back to compact per
-  // ChatGPT round-8; the owner restored the full cycle in round-8b.)
+  // Toolbar tap (v2.3.1316, owner round-8b): from the bar or an
+  // inactive destination -> its compact view ("tapping another toolbar
+  // icon opens its compact view if [you] have any menu view" — this
+  // reverses #285's switch-keeps-size); active destination cycles
+  // compact -> expanded -> bar.  #285's desktop exception died with
+  // the cycle's return — mice cycle the same way fingers do.
   tapDestination(id) {
     if (this.state.mode === 'bar' || this.root() !== id) {
       this.openCompact(id);
@@ -65,26 +69,6 @@ export const dashboardPanelBus = {
     } else {
       this.toBar();
     }
-  },
-
-  // v2.3.1311 (round-8 icon swipes): swipe UP on a toolbar icon moves
-  // its destination one state up — bar/inactive -> compact -> expanded.
-  // At expanded it's a deliberate no-op (spec: "swipe ends are no-ops,
-  // not wrap-arounds").
-  advance(id) {
-    if (this.state.mode === 'bar' || this.root() !== id) {
-      this.openCompact(id);
-    } else if (this.state.mode === 'compact') {
-      this.expand();
-    }
-  },
-
-  // Swipe DOWN: one state down — expanded -> compact -> bar.  No-op
-  // when the destination isn't open (bar, or the swipe hit an inactive
-  // icon — retreating someone ELSE's sheet would be a surprise).
-  retreat(id) {
-    if (this.state.mode === 'bar' || this.root() !== id) return;
-    this.stepDown();
   },
 
   openCompact(id) {
@@ -127,11 +111,9 @@ export const dashboardPanelBus = {
     emit();
   },
 
-  // Settle to an explicit snap.  Was the drag-release landing spot for
-  // useSheetDrag (retired v2.3.1311 — body drags are gone, gestures
-  // live on the toolbar icons now); kept because it's still the honest
-  // "set mode" API for tests and any future gesture surface.  Leaving
-  // expanded pops drill children for the same reason stepDown does.
+  // Settle to an explicit snap after a drag release (useSheetDrag,
+  // bound to the toolbar ribbon since v2.3.1307).  Leaving expanded
+  // pops drill children for the same reason stepDown does.
   settle(mode) {
     if (this.state.mode === mode) return;
     this.state.mode = mode;
