@@ -46,6 +46,7 @@ export const MapPanel = () => {
         const t = map[y][x] | 0;
         if (!t) continue;
         if (t === 1) ctx.fillStyle = '#3a4762';        // wall / structure
+        else if (t === 8) ctx.fillStyle = '#5b52ff';    // hub exit portal (v2.3.1303: town/worldview markers were invisible here)
         else if (t === 9) ctx.fillStyle = '#5b52ff';    // exit
         else if (t === 10) ctx.fillStyle = '#f5c542';   // dungeon
         else ctx.fillStyle = '#2d5a1e';                 // ground

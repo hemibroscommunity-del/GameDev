@@ -18,7 +18,7 @@
 import { TILE } from './constants.js';
 import { ZONES } from './zones.js';
 import { TOWN_BUILDINGS } from './buildings.js';
-import { TOWN_EXITS } from './effects.js';
+import { TOWN_EXITS, WORLDVIEW_EXITS } from './effects.js';
 
 /* ── Babel helper polyfill (from pre-transpiled source) ── */
 function _defineProperty(e, r, t) { return (r in e) ? Object.defineProperty(e, r, { value: t, enumerable: true, configurable: true, writable: true }) : e[r] = t, e; }
@@ -736,6 +736,27 @@ export function generateZoneMap(zoneId) {
         if (py >= 0 && py < H && px >= 0 && px < W && map[py][px] === 0) map[py][px] = 2;
       }
     }
+  } else if (zoneId === 'worldview') {
+    /* ═══ WORLD VIEW — trail-head portal markers only (v2.3.1303) ═══
+       Owner bug report: "in world view it's not clear where the portals
+       are because they're invisible" — and they always were.  The v2.3.859
+       town/worldview split gave the worldview its WORLDVIEW_EXITS
+       (proximity-triggered, zoneTransitions hub logic) but never a
+       generateZoneMap branch, so the zone fell through to the combat-zone
+       else below: its 9 real trail-heads got NO tile-8 markers (nothing
+       for tileRenderer's portal-glow pass to draw), while the generic
+       south-entrance tile 9 + north dungeon tile 10 painted two spurious
+       halos where no exit exists.  The zone is a painted image, fully
+       walkable (isSolid short-circuits on IMAGE_ZONE_MAPS), so the ONLY
+       job of this map is the marker tiles: leave everything else 0 and
+       stamp a 2x2 tile-8 block at each trail-head, exactly like the
+       TOWN_EXITS loop above. */
+    WORLDVIEW_EXITS.forEach(function (ex) {
+      for (var _wy = -1; _wy <= 0; _wy++) for (var _wx = -1; _wx <= 0; _wx++) {
+        var _wry = ex.ty + _wy, _wrx = ex.tx + _wx;
+        if (_wry >= 0 && _wry < H && _wrx >= 0 && _wrx < W) map[_wry][_wrx] = 8;
+      }
+    });
   } else if (zoneId === 'farm_home') {
     /* ═══ PERSONAL FARM — house, plots, garden, path to exit ═══ */
     /* Grass everywhere */

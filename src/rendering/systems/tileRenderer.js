@@ -6,7 +6,7 @@ import { Container, Graphics, Sprite, Text, TextStyle, Texture, Rectangle, Asset
 import { TILE } from '@/data/constants.js';
 import { ZONES } from '@/data/zones.js';
 import { TOWN_BUILDINGS } from '@/data/buildings.js';
-import { TOWN_EXITS } from '@/data/effects.js';
+import { TOWN_EXITS, WORLDVIEW_EXITS } from '@/data/effects.js';
 import { getLoadedTiledMap, getTilesetImage, IMAGE_ZONE_MAPS, VIDEO_ZONE_MAPS } from '../tiledMaps.js';
 
 const ZONE_LABEL_STYLE = new TextStyle({
@@ -178,6 +178,21 @@ export class TileRenderer {
         const destZone = ZONES[ex.zoneId];
         const text = (destZone && destZone.name) || ex.zoneId;
         labelsForFrame.push(this._exitLabelPos(ex.tx, ex.ty, cols, rows, text, ex.dir));
+      }
+    } else if (zoneId === 'worldview') {
+      /* v2.3.1303: worldview trail-heads get destination labels —
+         before this the zone fell into the tile-9 branch below and,
+         having no tile 9, showed nothing.  Unlike town, whose exits
+         hug the map edges (labels go in the black margin via
+         _exitLabelPos), the worldview trail-heads are INTERIOR (the
+         town portal is dead center), so each label floats just above
+         its portal halo like an annotation on the painted vista.
+         ex.tx/ty is the 2x2 marker block's corner = the halo's
+         visual center in world px. */
+      for (const ex of WORLDVIEW_EXITS) {
+        const destZone = ZONES[ex.zoneId];
+        const text = (destZone && destZone.name) || ex.zoneId;
+        labelsForFrame.push({ text, x: ex.tx * TILE, y: ex.ty * TILE - TILE * 2.4, rotation: 0 });
       }
     } else {
       /* Find tile-9 cells (return-to-town) and label one of them. */
