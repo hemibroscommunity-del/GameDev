@@ -122,6 +122,7 @@ const psB = room.playerState.pb;
   // Blocking victim takes zero.
   psB.blocking = true;
   room.eventBuffer.length = 0;
+  room._pvpHitLanes = new Map(); // v2.3.1306: cadence floor would drop this back-to-back hit
   room._resolvePvPAttack(room.sessions.get(wsA), { range: 250, arc: 3, angle: 0, dmgBase: 50, critChance: 0 });
   const blockedHit = room.eventBuffer.find((e) => e.type === 'pvp_hit');
   check('pvp: blocked hit deals 0', !!blockedHit && blockedHit.payload.blocked === true && blockedHit.payload.dmgTaken === 0,
@@ -131,6 +132,7 @@ const psB = room.playerState.pb;
   // Dead attackers can't fire.
   psA.dead = true;
   room.eventBuffer.length = 0;
+  room._pvpHitLanes = new Map(); // v2.3.1306: isolate from the cadence floor — this check is about the dead gate
   room._resolvePvPAttack(room.sessions.get(wsA), { range: 250, arc: 3, angle: 0, dmgBase: 50, critChance: 0 });
   check('pvp: dead attacker rejected', room.eventBuffer.filter((e) => e.type === 'pvp_hit').length === 0);
   psA.dead = false;

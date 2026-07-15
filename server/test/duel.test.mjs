@@ -207,7 +207,15 @@ psB.x = 600; psB.y = 0; psB.z = psA.z;
 psB.agility = 0; psB.dodging = false; psB.blocking = false;
 psB._zoneEntryGraceUntil = 0; psB.def = 100;
 room.stateHistory['bp_duel_b'] = []; // force current-state fallback
-const pvpAtk = (over) => ({ dmgBase: 20, critChance: 0, angle: 0, arc: 0.9, ...over });
+/* v2.3.1306: ranged/staff kind is honored only when the server knows
+   the matching weapon; give A both so the §9 geometry checks still
+   exercise the widened caps. */
+psA.rangedWeapon = { type: 'bow', tierMult: 1 };
+psA.staffWeapon = { type: 'staff', tierMult: 1 };
+/* v2.3.1306: back-to-back resolves in these tests would trip the new
+   per-pair cadence floor — clear the lanes before each landed hit. */
+const freshLanes = () => { room._pvpHitLanes = new Map(); };
+const pvpAtk = (over) => { freshLanes(); return { dmgBase: 20, critChance: 0, angle: 0, arc: 0.9, ...over }; };
 
 // 9a. ranged kind at projectile distance (600px) lands — the exact case
 // the flat 250 clamp used to reject silently.
@@ -244,6 +252,56 @@ psB.x = 300; psB.hp = 100; psB.def = 0;
 room.eventBuffer.length = 0;
 room._resolvePvPAttack(sessA, pvpAtk({ kind: 'staff', range: 360 }));
 check('def 0 takes scale-only damage (20 -> 10)', room.eventBuffer.some((e) => e.type === 'pvp_hit' && e.payload.dmgTaken === 10), room.eventBuffer.map((e) => e.payload));
+
+// ── 10. v2.3.1306 hardening (repo-review of v2.3.1302) ──
+// 10a. spoofed def past DEF_CAP gains nothing: effDef 150 -> 20*0.5*(100/250)=4.
+psB.x = 300; psB.hp = 100; psB.def = 1e9;
+room.eventBuffer.length = 0;
+room._resolvePvPAttack(sessA, pvpAtk({ kind: 'ranged', range: 360 }));
+check('spoofed def clamped at DEF_CAP (1e9 -> same as 150)', room.eventBuffer.some((e) => e.type === 'pvp_hit' && e.payload.dmgTaken === 4), room.eventBuffer.map((e) => e.payload));
+psB.def = 0;
+// 10b. kind:'ranged' without a server-known ranged weapon falls back to
+// the melee clamp — the 600px forgery is rejected.
+psB.x = 600;
+const savedBow = psA.rangedWeapon; psA.rangedWeapon = null;
+room.eventBuffer.length = 0;
+room._resolvePvPAttack(sessA, pvpAtk({ kind: 'ranged', range: 660 }));
+check('weaponless ranged kind clamped to melee 250', !room.eventBuffer.some((e) => e.type === 'pvp_hit'), room.eventBuffer.map((e) => e.type));
+psA.rangedWeapon = savedBow;
+// 10c. cadence floor: second normal hit inside 300ms on the same pair drops.
+psB.x = 100; psB.hp = 100;
+room.eventBuffer.length = 0;
+freshLanes();
+room._resolvePvPAttack(sessA, { dmgBase: 20, critChance: 0, angle: 0, arc: 0.9, range: 250 });
+room._resolvePvPAttack(sessA, { dmgBase: 20, critChance: 0, angle: 0, arc: 0.9, range: 250 });
+check('cadence floor drops the immediate second hit', room.eventBuffer.filter((e) => e.type === 'pvp_hit').length === 1, room.eventBuffer.map((e) => e.type));
+// 10d. special lane allows a 3-bolt burst, drops the 4th.
+psB.hp = 100;
+room.eventBuffer.length = 0;
+freshLanes();
+for (let i = 0; i < 4; i++) room._resolvePvPAttack(sessA, { dmgBase: 20, critChance: 0, angle: 0, arc: 0.9, range: 360, kind: 'staff', special: true });
+check('special lane: 3 bolts land, 4th drops', room.eventBuffer.filter((e) => e.type === 'pvp_hit').length === 3, room.eventBuffer.map((e) => e.type));
+// 10e. declared single target skips a bystander inside the cone.
+const wsC = fakeWs('c');
+await join(wsC, 'bp_duel_c');
+const psC = room.playerState['bp_duel_c'];
+// lawless zone so the bystander is consent-eligible (worst case).
+psA.z = psB.z = psC.z = 'meadow';
+psC.x = 150; psC.y = 0; psC.hp = 100; psC.agility = 0; psC._zoneEntryGraceUntil = 0;
+psB.x = 300; psB.hp = 100;
+room.stateHistory['bp_duel_c'] = [];
+room.eventBuffer.length = 0;
+room._resolvePvPAttack(sessA, pvpAtk({ kind: 'ranged', range: 360, target: 'bp_duel_b' }));
+const hits10e = room.eventBuffer.filter((e) => e.type === 'pvp_hit');
+check('declared target hit, cone bystander skipped', hits10e.length === 1 && hits10e[0].payload.target === 'bp_duel_b' && psC.hp === 100, hits10e.map((e) => e.payload));
+psA.z = psB.z = 'town';
+// 10f. authoritative died flag rides pvp_hit.
+psB.hp = 3;
+room.eventBuffer.length = 0;
+room._resolvePvPAttack(sessA, pvpAtk({ kind: 'ranged', range: 360 }));
+const hit10f = room.eventBuffer.find((e) => e.type === 'pvp_hit');
+check('lethal hit carries died:true', hit10f && hit10f.payload.died === true && psB.hp === 0, hit10f && hit10f.payload);
+psB.hp = 100; psB.dying = false; psB.dead = false;
 
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);
 process.exit(failures === 0 ? 0 : 1);

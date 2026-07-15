@@ -656,7 +656,12 @@ export function updateArrows(S, deps) {
                       ts: Date.now(),
                       inDuel: !!S._inDuel,
                       special: !!a.isSpecial,
-                      kind: isStaffProj ? 'staff' : 'ranged'
+                      kind: isStaffProj ? 'staff' : 'ranged',
+                      /* v2.3.1306: declare the single intended target so
+                         the server skips everyone else in the cone — the
+                         "never a bystander" promise is now enforced
+                         server-side too.  Old workers ignore the field. */
+                      target: _pvpTid
                     }
                   });
                   /* Impact feedback — sound + a few particles at the

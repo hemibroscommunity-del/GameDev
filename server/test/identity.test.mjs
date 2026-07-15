@@ -174,6 +174,7 @@ check('lawless zone allows PvP without consent', room.eventBuffer.filter((e) => 
 // ── 8. death clears consent ──
 room.playerState['bp_bob'].hp = 1;
 room.eventBuffer.length = 0;
+room._pvpHitLanes = new Map(); // v2.3.1306: cadence floor would drop this back-to-back alice->bob hit
 await room.webSocketMessage(wsA4, JSON.stringify({ type: 'player_attack', payload: { ...atk } }));
 check('lethal duel hit kills', room.playerState['bp_bob'].dying === true);
 check('death clears the consent pair', !room._pvpConsent.has(room._pvpPairKey('bp_alice', 'bp_bob')));
