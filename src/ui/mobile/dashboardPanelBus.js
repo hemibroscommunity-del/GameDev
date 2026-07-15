@@ -48,25 +48,21 @@ export const dashboardPanelBus = {
     return this.state.stack[0] || 'bag';
   },
 
-  // Toolbar tap (v2.3.1307): open/switch only, never resize.  From the
-  // bar -> the destination's compact view; from an open sheet ->
-  // v2.3.1311 (owner Hero spec): switching destinations ALWAYS opens
-  // the new one in COMPACT (was keep-current-size) — compact is every
-  // destination's front door; expanded is a deliberate step; active
-  // tap -> no-op (swipe down is the one way to shrink).
-  // DESKTOP EXCEPTION: mouse users can't swipe (useSheetDrag is
-  // touch-only), so on no-touch devices the active tap keeps the old
-  // v2.3.1290 cycle (compact -> expanded -> bar) or the sheet would be
-  // stuck open.  Primary platform is iPhone Safari; this branch is the
-  // dev/desktop escape hatch.
+  // Toolbar tap (v2.3.1311b, owner): the three-tap CYCLE is back for
+  // every device — tap opens compact, tap again expands, third tap
+  // returns to the toolbar-only bar.  Tapping a DIFFERENT destination
+  // while any view is open switches to ITS compact view.  Swipes on
+  // the icons remain the direct-manipulation alternative (one snap per
+  // swipe); the animated chevron cues only display once at least
+  // compact is active.
   tapDestination(id) {
     if (this.state.mode === 'bar' || this.root() !== id) {
       this.openCompact(id);
-    } else if (!(typeof window !== 'undefined' && ('ontouchstart' in window || (navigator.maxTouchPoints || 0) > 0))) {
-      if (this.state.mode === 'compact') this.expand();
-      else this.toBar();
+    } else if (this.state.mode === 'compact') {
+      this.expand();
+    } else {
+      this.toBar();
     }
-    /* touch device + active destination already open: no-op */
   },
 
   openCompact(id) {

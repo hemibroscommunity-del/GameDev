@@ -272,29 +272,29 @@ const Tooltip = ({ tip, onClose }) => {
    button's top-LEFT (the chevron owns top-right) for ACTIONABLE state
    only: unviewed skill level-ups, ready quest turn-ins.  Never for
    routine churn like XP gains or friends-online counts. */
-/* v2.3.1307b (owner: "the chevron isn't obvious enough for a swipe
-   action, especially both directions"): the swipe cue is now a pair of
-   STACKED chevrons that visibly drift in the swipe direction on a slow
-   loop — the standard mobile "swipe me" semiotics, animated with
-   transform/opacity only (no filters: iOS-WebGL static hazard,
-   CLAUDE.md).  data-dir points the glyph and the drift; faint = the
-   bar-mode hint on every icon.  While COMPACT the active icon carries
-   BOTH cues (up at the icon's top edge = widen, down at the bottom
-   edge = close) so both available directions are advertised. */
-const Cue = ({ dir, faint }) => (
-  <span className="bt-swipe-cue" data-dir={dir} data-faint={faint ? 'true' : 'false'} aria-hidden="true">
+/* v2.3.1307b: animated drifting chevron swipe cue (transform/opacity
+   only — no filters: iOS-WebGL static hazard, CLAUDE.md).
+   v2.3.1311b (owner): the cue encodes the NUMBER OF STEPS available in
+   that direction — one chevron per step.  Compact = one up (expand) +
+   one down (bar); expanded = TWO stacked down (compact, then bar).
+   Cues render only while at least compact is active — the resting bar
+   shows none (gestures still work there; the display is what's gated). */
+const Cue = ({ dir, count }) => (
+  <span className="bt-swipe-cue" data-dir={dir} data-count={count === 2 ? '2' : '1'} aria-hidden="true">
     <svg className="bt-cue-c1" viewBox="0 0 14 8" width="14" height="8">
       <path d="M2 6.5 L7 1.5 L12 6.5" stroke="currentColor" strokeWidth="2"
         fill="none" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
-    <svg className="bt-cue-c2" viewBox="0 0 14 8" width="14" height="8">
-      <path d="M2 6.5 L7 1.5 L12 6.5" stroke="currentColor" strokeWidth="2"
-        fill="none" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
+    {count === 2 && (
+      <svg className="bt-cue-c2" viewBox="0 0 14 8" width="14" height="8">
+        <path d="M2 6.5 L7 1.5 L12 6.5" stroke="currentColor" strokeWidth="2"
+          fill="none" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    )}
   </span>
 );
 
-const IconButton = ({ glyph, src: srcProp, label, active, onClick, node, tut, snap, dot, dest, hint }) => {
+const IconButton = ({ glyph, src: srcProp, label, active, onClick, node, tut, snap, dot, dest }) => {
   /* v2.3.1283: destinations pass an explicit `src`; `glyph` (ICON_SRC
      lookup) stays for any legacy caller. */
   const src = srcProp || ICON_SRC[glyph];
@@ -368,14 +368,12 @@ const IconButton = ({ glyph, src: srcProp, label, active, onClick, node, tut, sn
           pointerEvents: 'none',
         }} />
       ) : null}
-      {/* v2.3.1307: the icon cue is the game's ONE resize affordance
-          (owner: swipe on the icon is the only way to collapse/widen).
-          bar = faint drifting ▲▲ hint on every icon (swipe up opens);
-          compact active = bright ▲▲ top + ▼▼ bottom (both directions
-          live); expanded active = bright ▼▼ (swipe down to shrink). */}
-      {hint && <Cue dir="up" faint />}
-      {active && snap === 'compact' && (<><Cue dir="up" /><Cue dir="down" /></>)}
-      {active && snap === 'expanded' && <Cue dir="down" />}
+      {/* v2.3.1311b (owner): one chevron PER AVAILABLE STEP, active
+          icon only, and only once at least compact is open — the
+          resting bar shows no cues.  Compact: ▲ (one step up) + ▼ (one
+          step down).  Expanded: ▼▼ (two steps down). */}
+      {active && snap === 'compact' && (<><Cue dir="up" count={1} /><Cue dir="down" count={1} /></>)}
+      {active && snap === 'expanded' && <Cue dir="down" count={2} />}
     </button>
   );
 };
@@ -832,7 +830,6 @@ export const BottomDashboard = () => {
                   ) : undefined}
                   active={litId === d.id}
                   snap={litId === d.id ? mode : null}
-                  hint={mode === 'bar'}
                   dest={d.id}
                   dot={dots[d.id]} /* v2.3.1311: raw — numbers render as count badges */
                   onClick={() => dashboardPanelBus.tapDestination(d.id)} />

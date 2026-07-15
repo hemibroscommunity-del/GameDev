@@ -35,7 +35,7 @@ dashboardPanelBus.subscribe(() => {
 
 const seg = (active) => ({
   flex: 1,
-  minHeight: 36,
+  minHeight: 34, /* v2.3.1311b: no-scroll budget */
   background: active ? COL.raised : 'transparent',
   color: active ? COL.text : COL.text2,
   border: 'none',
@@ -63,7 +63,7 @@ export const HeroExpanded = () => {
   const cs = R._compStats || {};
 
   const labeledBar = (kind, label, cur, max) => (
-    <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '3px 0' }}>
+    <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '2px 0' }}>
       <img src={VITAL_ICONS[kind]} alt="" draggable={false}
         style={{ width: 15, height: 15, objectFit: 'contain', flex: 'none', pointerEvents: 'none' }} />
       <span style={{ flex: 'none', width: 52, fontSize: 11, fontWeight: 700, color: COL.text2 }}>{label}</span>
@@ -74,27 +74,28 @@ export const HeroExpanded = () => {
     </div>
   );
 
-  /* Overview 3x2 data grid — every derived number in one viewport.
-     Values stay neutral (round-4: reserve green for deltas/bonuses).
-     Speed drops the "u/s" developer unit.  v2.3.1311: tightened so
-     the second row clears the fold on 390x844. */
+  /* Overview derived pills — v2.3.1311b (owner): ALL SIX on ONE ROW,
+     no scrolling anywhere in the subtab.  ~55px per pill at 390w:
+     centered 8.5px label over a 13px value.  Values stay neutral
+     (round-4: green is reserved for deltas/bonuses). */
   const cell = (label, value) => (
     <div key={label} style={{
       background: COL.wellSoft,
       border: `1px solid ${COL.tileBor}`,
       borderRadius: 8,
-      padding: '5px 8px 6px',
+      padding: '4px 2px 5px',
       minWidth: 0,
+      textAlign: 'center',
     }}>
-      <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: COL.muted }}>{label}</div>
-      <div style={{ fontSize: 15, fontWeight: 800, color: COL.text, fontVariantNumeric: 'tabular-nums', marginTop: 1 }}>{value}</div>
+      <div style={{ fontSize: 8.5, fontWeight: 700, letterSpacing: '.04em', textTransform: 'uppercase', color: COL.muted, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{label}</div>
+      <div style={{ fontSize: 13, fontWeight: 800, color: COL.text, fontVariantNumeric: 'tabular-nums', marginTop: 1, whiteSpace: 'nowrap' }}>{value}</div>
     </div>
   );
 
   const totalUnspent = COMBAT_SKILLS.reduce((n, s) => n + buildSkillUnspent(R, s.key), 0);
 
   return (
-    <div style={{ ...panelStyle, overflowY: 'auto', display: 'flex', flexDirection: 'column', paddingBottom: 14 }}>
+    <div style={{ ...panelStyle, overflowY: 'auto', display: 'flex', flexDirection: 'column', paddingBottom: 10 }}>
       <IdentityStrip />
 
       {/* Sticky segmented control — content scrolls under it.
@@ -117,21 +118,20 @@ export const HeroExpanded = () => {
 
       {section === 'Overview' && (
         <>
-          <div style={{ padding: '8px 0 4px' }}>
+          <div style={{ padding: '6px 0 4px' }}>
             {labeledBar('hp', 'HP', R.hp || 0, R.maxHp || 100)}
             {labeledBar('stamina', 'Stamina', R.stamina || 0, R.maxStamina || 100)}
             {labeledBar('mana', 'Mana', R.mana || 0, R.maxMana || 100)}
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 5 }}>
             {cell('Damage', d.dmgText)}
             {cell('DPS', d.dps.toFixed(1))}
-            {/* v2.3.1311: full name in expanded — and it's BLOCK: the
-                number is calcBlockReduction (shield block %), not
-                armor/Iron-Skin mitigation, so "Damage Reduction" would
-                overclaim. */}
+            {/* v2.3.1311: it's BLOCK — the number is calcBlockReduction
+                (shield block %), not armor/Iron-Skin mitigation, so
+                "Damage Reduction" would overclaim. */}
             {cell('Block', `${Math.round(d.block * 100)}%`)}
-            {cell('Crit', `${(d.crit * 100).toFixed(1)}%`)}
-            {cell('Dodge', `${(d.dodge * 100).toFixed(1)}%`)}
+            {cell('Crit', `${Math.round(d.crit * 100)}%`)}
+            {cell('Dodge', `${Math.round(d.dodge * 100)}%`)}
             {cell('Speed', d.speed.toFixed(1))}
           </div>
         </>
@@ -139,15 +139,16 @@ export const HeroExpanded = () => {
 
       {section === 'Build' && (
         <>
-          {/* Available points, prominent — brass when actionable. */}
+          {/* Available points, prominent — brass when actionable.
+              v2.3.1311b: tightened so all six cards clear the fold. */}
           <div style={{
-            margin: '8px 0 6px',
-            padding: '7px 10px',
+            margin: '6px 0 5px',
+            padding: '5px 10px',
             borderRadius: 8,
             background: totalUnspent > 0 ? COL.accentFill : COL.wellSoft,
             border: `1px solid ${totalUnspent > 0 ? COL.accent : COL.tileBor}`,
             display: 'flex', alignItems: 'baseline', justifyContent: 'space-between',
-            fontSize: 12, fontWeight: 700, letterSpacing: '.06em',
+            fontSize: 11.5, fontWeight: 700, letterSpacing: '.06em',
             color: totalUnspent > 0 ? COL.accent : COL.text2,
           }}>
             <span>BUILD POINTS</span>
@@ -175,8 +176,8 @@ export const HeroExpanded = () => {
                   style={{
                     position: 'relative',
                     display: 'flex', flexDirection: 'column', alignItems: 'center',
-                    gap: 3,
-                    padding: '8px 6px 12px',
+                    gap: 2,
+                    padding: '6px 4px 10px',
                     background: unspent > 0 ? COL.accentFill : COL.wellSoft,
                     border: `1px solid ${unspent > 0 ? COL.accent : COL.tileBor}`,
                     borderRadius: 8,
@@ -186,32 +187,32 @@ export const HeroExpanded = () => {
                   }}>
                   {unspent > 0 && (
                     <span aria-hidden="true" style={{
-                      position: 'absolute', top: 4, right: 4,
+                      position: 'absolute', top: 3, right: 3,
                       background: COL.accent, color: '#20170D',
                       fontSize: 10, fontWeight: 900,
-                      borderRadius: 7, padding: '1px 5px', lineHeight: 1.3,
+                      borderRadius: 7, padding: '0 4px', lineHeight: 1.4,
                       pointerEvents: 'none',
                     }}>+{unspent}</span>
                   )}
                   <img src={s.iconSrc} alt="" draggable={false}
-                    style={{ width: 28, height: 28, objectFit: 'contain', flex: 'none', pointerEvents: 'none' }} />
+                    style={{ width: 22, height: 22, objectFit: 'contain', flex: 'none', pointerEvents: 'none' }} />
                   <div style={{ display: 'flex', alignItems: 'baseline', gap: 4, minWidth: 0, maxWidth: '100%' }}>
-                    <span style={{ fontSize: 11.5, fontWeight: 700, color: COL.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>{s.label}</span>
-                    <span style={{ flex: 'none', fontSize: 11, fontWeight: 800, color: COL.text2, fontVariantNumeric: 'tabular-nums' }}>Lv {lvl}</span>
+                    <span style={{ fontSize: 11, fontWeight: 700, color: COL.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>{s.label}</span>
+                    <span style={{ flex: 'none', fontSize: 10.5, fontWeight: 800, color: COL.text2, fontVariantNumeric: 'tabular-nums' }}>Lv {lvl}</span>
                   </div>
                   {/* Current gameplay effect (real formulas only). */}
-                  <div style={{ fontSize: 9.5, color: COL.muted, textAlign: 'center', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%' }}>
+                  <div style={{ fontSize: 9, color: COL.muted, textAlign: 'center', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%' }}>
                     {attributeEffect(R, s.key)}
                   </div>
                   {/* Exact XP progress toward the next level of THIS
                       parent (round-4: a bare bar reads as decoration). */}
                   {prog && (
-                    <div style={{ fontSize: 9.5, color: COL.muted, fontVariantNumeric: 'tabular-nums' }}>
+                    <div style={{ fontSize: 9, color: COL.muted, fontVariantNumeric: 'tabular-nums' }}>
                       {prog.prog} / {prog.thresh} XP
                     </div>
                   )}
                   {prog && (
-                    <div style={{ position: 'absolute', left: '12%', right: '12%', bottom: 5, height: 3, borderRadius: 999, overflow: 'hidden', background: '#0B1216', pointerEvents: 'none' }}>
+                    <div style={{ position: 'absolute', left: '12%', right: '12%', bottom: 4, height: 3, borderRadius: 999, overflow: 'hidden', background: '#0B1216', pointerEvents: 'none' }}>
                       <div style={{ width: pct + '%', height: '100%', background: '#D8A85F' }} />
                     </div>
                   )}
@@ -223,7 +224,7 @@ export const HeroExpanded = () => {
       )}
 
       {section === 'Records' && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 6, paddingTop: 8 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 5, paddingTop: 6 }}>
           {[
             ['Kills', cs.monstersKilled ?? cs.kills ?? 0],
             ['Deaths', cs.deaths ?? 0],
@@ -240,11 +241,11 @@ export const HeroExpanded = () => {
               background: COL.wellSoft,
               border: `1px solid ${COL.tileBor}`,
               borderRadius: 8,
-              padding: '9px 10px',
+              padding: '6px 10px 7px',
               minWidth: 0,
             }}>
-              <div style={{ fontSize: 18, fontWeight: 800, color: COL.text, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{value}</div>
-              <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: COL.muted, marginTop: 1 }}>{label}</div>
+              <div style={{ fontSize: 16, fontWeight: 800, color: COL.text, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{value}</div>
+              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: COL.muted, marginTop: 1 }}>{label}</div>
             </div>
           ))}
         </div>
