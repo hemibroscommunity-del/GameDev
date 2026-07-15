@@ -18,7 +18,7 @@ import { getShirt, onShirtChange } from '../../rendering/traits/shirtCatalog.js'
 import { getShirtColor, shirtColorTarget, onShirtColorChange } from '../../rendering/traits/shirtColorCatalog.js';
 import { getEquip } from '../../rendering/gearCatalog.js';
 import { dashboardPanelBus } from './dashboardPanelBus.js';
-import { BAR_H, compactDashHeight, expandedSheetHeight } from './sheet/sheetGeometry.js'; /* v2.3.1283; v2.3.1290 three-state */
+import { BAR_H, compactDashHeight, expandedSheetHeight, drillSheetHeight } from './sheet/sheetGeometry.js'; /* v2.3.1283; v2.3.1290 three-state; v2.3.1311e drill height */
 import { portraitStore } from './sheet/portraitStore.js';          /* v2.3.1294 */
 import { hasUnseenLevelUps } from './sheet/skillsModel.js';        /* v2.3.1296 */
 import { readyQuestCount } from './sheet/questModel.js';           /* v2.3.1298 */
@@ -480,7 +480,8 @@ export const BottomDashboard = () => {
     const stamp = () => {
       const mode = dashboardPanelBus.state.mode;
       document.documentElement.dataset.btSheet = mode;
-      const px = mode === 'expanded' ? snapPxRef.current.expanded
+      /* v2.3.1311e: drill panels (stack depth > 1) use the taller sheet. */
+      const px = mode === 'expanded' ? (dashboardPanelBus.state.stack.length > 1 ? snapPxRef.current.drill : snapPxRef.current.expanded)
         : mode === 'compact' ? snapPxRef.current.compact
         : BAR_H;
       document.documentElement.style.setProperty('--sheet-h', px + 'px');
@@ -502,6 +503,7 @@ export const BottomDashboard = () => {
   const [snapPx, setSnapPx] = useState(() => ({
     compact: compactDashHeight(window.innerWidth),
     expanded: expandedSheetHeight(window.innerWidth, window.innerHeight),
+    drill: drillSheetHeight(window.innerWidth, window.innerHeight),
   }));
   useEffect(() => {
     const vv = window.visualViewport;
@@ -509,7 +511,7 @@ export const BottomDashboard = () => {
       const vw = vv ? vv.width : window.innerWidth;
       const vh = vv ? vv.height : window.innerHeight;
       if (vv && window.innerHeight - vh > 100) return; /* keyboard up */
-      setSnapPx({ compact: compactDashHeight(vw), expanded: expandedSheetHeight(vw, vh) });
+      setSnapPx({ compact: compactDashHeight(vw), expanded: expandedSheetHeight(vw, vh), drill: drillSheetHeight(vw, vh) });
     };
     recompute();
     window.addEventListener('resize', recompute);
@@ -530,7 +532,7 @@ export const BottomDashboard = () => {
   useSheetDrag(dashRef, toolbarRef,
     () => BAR_H,
     () => snapPxRef.current.compact,
-    () => snapPxRef.current.expanded);
+    () => (dashboardPanelBus.state.stack.length > 1 ? snapPxRef.current.drill : snapPxRef.current.expanded)); /* v2.3.1311e */
   /* Player-card portrait: a head-and-shoulders render of the player's
      chosen cosmetics (skin / hair / hair color / beard / hat).  Generated
      on mount (captures the login picker) and regenerated if a cosmetic
@@ -637,7 +639,7 @@ export const BottomDashboard = () => {
            resting default; canvas/zones/HUD all key off it), compact
            (glance), expanded (detail).  Every destination uses the same
            snaps.  220ms token; reduced-motion drops the transition. */
-        height: mode === 'expanded' ? snapPx.expanded + 'px'
+        height: mode === 'expanded' ? (stack.length > 1 ? snapPx.drill : snapPx.expanded) + 'px' /* v2.3.1311e: drill = taller */
           : mode === 'compact' ? snapPx.compact + 'px'
           : 'var(--dash-h)',
         transition: sheetTransition(),

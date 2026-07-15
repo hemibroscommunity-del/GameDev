@@ -58,3 +58,14 @@ export function expandedSheetHeight(vw, vh) {
   const feetRule = vh - (feetY + 44);
   return Math.round(Math.min(vh * 0.52, Math.max(vh * 0.40, feetRule)));
 }
+
+/* v2.3.1311e (owner: the T2 spend screen's 5 categories must fit one
+   screen): DRILL panels (stack depth > 1 — T2 spend, Settings, quest
+   detail) get the taller pre-v2.3.1311 56vh sheet.  The 44px-ground
+   feet rule above exists so the character stays visible behind ROOT
+   destination sheets; a drill is a focused task where content beats
+   world visibility.  The band animates between the two heights on
+   push/pop, which doubles as a depth cue. */
+export function drillSheetHeight(vw, vh) {
+  return Math.round(vh * 0.56);
+}

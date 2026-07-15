@@ -3,7 +3,7 @@ import { COL, panelStyle, getState } from '../dash/common.js';
 import { buildSkillUnspent, STAT_TO_WEAPON_CAT } from '../../../data/gameSystems.js';
 import { requestT2Category } from '../dash/T2Panel.jsx';
 import { dashboardPanelBus } from '../dashboardPanelBus.js';
-import { COMBAT_SKILLS, skillLevel, skillProgressPct, skillProgress, parentBlurb, deriveHeroStats } from './heroModel.js';
+import { COMBAT_SKILLS, skillLevel, skillProgressPct, skillProgress, deriveHeroStats } from './heroModel.js';
 import { IdentityStrip } from './IdentityStrip.jsx';
 import { VitalBar, VITAL_ICONS } from './VitalBar.jsx'; /* v2.3.1311 */
 
@@ -205,18 +205,17 @@ export const HeroExpanded = () => {
                       pointerEvents: 'none',
                     }}>+{unspent}</span>
                   )}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 4, minWidth: 0 }}>
+                  {/* v2.3.1311f (owner): bigger icon + text; the
+                      "5 x skills" line is gone to pay for it — the
+                      drill chevron alone marks the tap-through. */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 5, minWidth: 0 }}>
                     <img src={s.iconSrc} alt="" draggable={false}
-                      style={{ width: 17, height: 17, objectFit: 'contain', flex: 'none', pointerEvents: 'none' }} />
-                    <span style={{ fontSize: 10.5, fontWeight: 700, color: COL.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>{s.label}</span>
-                    <span style={{ flex: 'none', marginLeft: 'auto', fontSize: 10, fontWeight: 800, color: COL.text2, fontVariantNumeric: 'tabular-nums' }}>Lv {lvl}</span>
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 3, minWidth: 0 }}>
-                    <span style={{ flex: 1, fontSize: 8.5, color: COL.muted, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                      {parentBlurb(s.key)}
-                    </span>
-                    {/* drill affordance — this tile OPENS the family. */}
-                    <span aria-hidden="true" style={{ flex: 'none', fontSize: 10, fontWeight: 800, color: COL.text2, lineHeight: 1 }}>›</span>
+                      style={{ width: 26, height: 26, objectFit: 'contain', flex: 'none', pointerEvents: 'none' }} />
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 12.5, fontWeight: 700, color: COL.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', lineHeight: 1.15 }}>{s.label}</div>
+                      <div style={{ fontSize: 11, fontWeight: 800, color: COL.text2, fontVariantNumeric: 'tabular-nums', lineHeight: 1.15 }}>Lv {lvl}</div>
+                    </div>
+                    <span aria-hidden="true" style={{ flex: 'none', fontSize: 13, fontWeight: 800, color: COL.text2, lineHeight: 1 }}>›</span>
                   </div>
                   {prog && (
                     <div style={{ position: 'absolute', left: 7, right: 7, bottom: 4, height: 3, borderRadius: 999, overflow: 'hidden', background: '#0B1216', pointerEvents: 'none' }}>

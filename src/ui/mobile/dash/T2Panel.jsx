@@ -248,7 +248,7 @@ export const T2Panel = () => {
                    44px hitbox floor.  Pointer handler byte-identical. */
                 flex: 1,
                 position: 'relative',
-                minHeight: 44,
+                minHeight: 38, /* v2.3.1311e: no-scroll under the drill sheet */
                 background: sel ? COL.raised : 'transparent',
                 border: '1px solid ' + (sel ? COL.borderStrong : COL.border),
                 boxShadow: sel ? 'inset 0 -2px 0 ' + COL.accent : 'none',
@@ -266,8 +266,10 @@ export const T2Panel = () => {
                     style={{ width: 16, height: 16, objectFit: 'contain' }}
                     onError={(e) => { e.currentTarget.replaceWith(document.createTextNode(meta.emoji)); }} />
                 : <span style={{ fontSize: 15, lineHeight: 1 }}>{meta.emoji}</span>}
-              <span style={{ fontSize: 11, fontWeight: 600, lineHeight: 1 }}>{meta.label}</span>
-              <span style={{ fontSize: 11, fontWeight: 600, lineHeight: 1, fontVariantNumeric: 'tabular-nums', color: sel ? COL.accent : COL.muted }}>Lv {lvl}</span>
+              <span style={{ fontSize: 10.5, fontWeight: 600, lineHeight: 1 }}>{meta.label}</span>
+              {/* v2.3.1311e: the per-tab Lv line is gone — the selected
+                  category's level already reads on the skill bar below,
+                  and the 5 channel rows need the vertical room. */}
               {p > 0 && (
                 <span style={{
                   position: 'absolute', top: -5, right: -4,
@@ -324,6 +326,11 @@ export const T2Panel = () => {
           gold when it applies) and the CHANNELS section header.  The
           v2.3.1157 1000-pt combat build meter sits right-aligned on the
           same line (was in the Builds header). */}
+      {/* v2.3.1311e: the hint/meter line renders only when it says
+          something actionable — the old-worker gold notice or the
+          build-ceiling state.  The evergreen "deal damage to train"
+          copy cost 19px of the 5-row no-scroll budget. */}
+      {((gridTab && !gridsLive) || atCeiling) && (
       <div style={{
         display: 'flex', alignItems: 'baseline', justifyContent: 'space-between',
         gap: 8, marginBottom: 4,
@@ -350,6 +357,7 @@ export const T2Panel = () => {
           </span>
         )}
       </div>
+      )}
       {channels.map((ch) => {
         const v = catSpecs[ch.key] || 0;
         const atCap = v >= channelCap;
@@ -373,7 +381,7 @@ export const T2Panel = () => {
             display: 'flex',
             alignItems: 'center',
             gap: 8,
-            minHeight: 44,
+            minHeight: 38, /* v2.3.1311e: 5 rows must clear the fold */
             borderBottom: '1px solid ' + COL.divider,
             opacity: ch.active ? 1 : 0.55,
           }}>
@@ -403,7 +411,7 @@ export const T2Panel = () => {
               onPointerUp={(e) => { e.stopPropagation(); if (canAdd) addPoint(ch.key, ch.active); }}
               disabled={!canAdd}
               style={{
-                width: 44, height: 44,
+                width: 38, height: 38, /* v2.3.1311e */
                 flexShrink: 0,
                 background: COL.raised,
                 color: canAdd ? COL.accent : COL.disabled,
