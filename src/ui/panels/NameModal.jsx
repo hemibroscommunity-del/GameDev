@@ -135,7 +135,9 @@ export function NameModal(props) {
     hat: { label: 'Hats', kind: 'thumb', spriteCat: 'headwear', catalog: HEADWEAR_CATALOG, sel: headwearSel,
       set: function (id) { setHeadwear(id); setHeadwearSel(id); },
       colors: HAT_COLOR_CATALOG, colorSel: hatColorSel, setColor: function (id) { setHatColor(id); setHatColorSel(id); } },
-    skin: { label: 'Skin', kind: 'swatch', spriteCat: null, catalog: SKIN_CATALOG, sel: skinSel,
+    /* v2.3.1308 (round-7): 'Skin' → 'Skin Tone' — it recolors the whole
+       body, and the plain label read as head-only inside the Head group. */
+    skin: { label: 'Skin Tone', kind: 'swatch', spriteCat: null, catalog: SKIN_CATALOG, sel: skinSel,
       set: function (id) { setSkin(id); setSkinSel(id); }, colors: null },
     beard: { label: 'Beard', kind: 'thumb', spriteCat: 'facialhair', catalog: FACIALHAIR_CATALOG, sel: facialHairSel,
       set: function (id) { setFacialHair(id); setFacialHairSel(id); },
@@ -225,6 +227,75 @@ export function NameModal(props) {
   var _acS = React.useState(false), showAccount = _acS[0], setShowAccount = _acS[1];
   /* v2.3.1276: Customize drawer toggle (view-only, like showAccount). */
   var _dwS = React.useState(false), drawerOpen = _dwS[0], setDrawerOpen = _dwS[1];
+  /* v2.3.1307 (ChatGPT round-7): preview zoom — tapping the character
+     toggles full-body <-> close-up (swipes still rotate at either zoom;
+     a tap is a pointer journey under 8px with no rotation fired). */
+  var _zmS = React.useState(false), previewZoom = _zmS[0], setPreviewZoom = _zmS[1];
+  var _dragMoved = React.useRef(false);
+  /* v2.3.1308: category-aware framing — while the drawer is open the
+     preview frames the region being edited (round-7 §preview).  Tap
+     zoom overrides to close-up; everything transitions in ~180ms.
+     Frames solve b + k·h = contact/center lines against the v2.3.799
+     geometry (boots ≈11% up the bitmap, head ≈78%). */
+  /* v2.3.1309 (owner): no frame may CROP the sprite against thin air —
+     the stage no longer clips (overflow visible).  Drawer frames MEASURE
+     where the drawer's resting top edge is (offsetTop ignores the slide
+     transform) and drop the canvas so its bottom sits ~24px BEHIND the
+     sheet — the legs visibly continue under a real surface instead of
+     ending at an invisible line (or floating, the first fix's bug).
+     On the hero screen (no drawer to hide behind) the tap-zoom uses a
+     full-body frame that stays entirely inside the stage. */
+  var _stageRef = React.useRef(null);
+  var _drawerRef = React.useRef(null);
+  var _dbS = React.useState(null), drawerBpx = _dbS[0], setDrawerBpx = _dbS[1];
+  React.useLayoutEffect(function () {
+    var measure = function () {
+      var st = _stageRef.current, dr = _drawerRef.current;
+      if (!drawerOpen || !st || !dr || !dr.offsetParent) { setDrawerBpx(null); return; }
+      var stR = st.getBoundingClientRect();
+      var modalTop = dr.offsetParent.getBoundingClientRect().top;
+      var drawerTop = modalTop + dr.offsetTop;
+      /* CSS bottom for the canvas, relative to the STAGE's bottom edge
+         (negative = below it): canvas bottom lands 24px past the sheet. */
+      setDrawerBpx(Math.round(stR.bottom - (drawerTop + 24)));
+    };
+    measure();
+    window.addEventListener('resize', measure);
+    return function () { window.removeEventListener('resize', measure); };
+  }, [drawerOpen]);
+  var _frame = { h: 54.5, b: '18.2%' };                    /* full body (rest) */
+  /* drawerBpx IS the CSS bottom (stage-bottom-relative; negative =
+     below the stage, i.e. behind the sheet). */
+  var _behindDrawer = (drawerBpx != null) ? drawerBpx + 'px' : '-13%';
+  if (previewZoom) {
+    _frame = drawerOpen
+      ? { h: 96, b: _behindDrawer }                        /* close-up, legs behind drawer */
+      : { h: 92, b: '2%' };                                /* hero zoom: whole body, no crop */
+  } else if (drawerOpen) {
+    var _g = _activeGroupKey;
+    if (_g === 'head') _frame = { h: 96, b: _behindDrawer };   /* upper body, legs behind drawer */
+    else if (_g === 'shirt') _frame = { h: 78, b: _behindDrawer }; /* torso, dips behind the sheet */
+    /* pants/shoes: full body — the default frame already centers them. */
+  }
+  /* v2.3.1307: name validity gates ENTER (round-7).  Local rules only:
+     names are not unique server-side, so there is no availability
+     check to run — trimmed length is the honest contract. */
+  var _trimmedName = (nameInput || '').trim();
+  var _nameValid = _trimmedName.length >= 2;
+  /* v2.3.1307: iOS keyboard — reserve its height at the bottom of the
+     box (visualViewport), so the name field + validation and the
+     controls stay visible while typing. */
+  var _kbS = React.useState(0), kbPad = _kbS[0], setKbPad = _kbS[1];
+  React.useEffect(function () {
+    var vv = window.visualViewport;
+    if (!vv) return undefined;
+    var onR = function () {
+      var kb = Math.max(0, window.innerHeight - vv.height - (vv.offsetTop || 0));
+      setKbPad(kb > 100 ? kb : 0);
+    };
+    vv.addEventListener('resize', onR);
+    return function () { vv.removeEventListener('resize', onR); };
+  }, []);
   /* v2.3.1235 rollout micro-fix §2's inline-SVG die (currentColor — no
      new hex, no emoji, no asset), shared by the name dice + Randomize. */
   var _dieSvg = function (sz) {
@@ -272,13 +343,21 @@ export function NameModal(props) {
   }), /*#__PURE__*/React.createElement("div", {
     className: "bt-cc-logo-shine", "aria-hidden": true
   })), /*#__PURE__*/React.createElement("div", {
-    className: "bt-name-box bt-cc-box"
+    className: "bt-name-box bt-cc-box",
+    /* v2.3.1307: keyboard reservation — the box gives up its bottom to
+       the iOS keyboard so the name field + hint stay visible. */
+    style: kbPad ? { paddingBottom: kbPad } : undefined
   }, /*#__PURE__*/React.createElement("section", {
     /* Character SHOWCASE — the character is the star; flex-driven height
        (see .bt-cc-stage in game.css).  The pedestal group / braziers /
        canvas geometry is the v2.3.799-802 system, untouched except the
-       v2.3.1251 sizes below. */
+       v2.3.1251 sizes below.  v2.3.1309: overflow stays VISIBLE — the
+       v2.3.1307 overflow:hidden clipped the zoomed sprite at the stage
+       edge, which read as an invisible layer cutting the body (owner).
+       The drawer frames now let the legs slide behind the drawer
+       sheet; the hero tap-zoom keeps the whole body inside the stage. */
     className: "bt-cc-stage",
+    ref: _stageRef,
     style: { position: 'relative', width: '100%', boxSizing: 'border-box' }
   }, /*#__PURE__*/React.createElement("div", {
     /* Pedestal GROUP (v2.3.802): platform + braziers scale together off
@@ -299,14 +378,32 @@ export function NameModal(props) {
     className: "bt-cc-castshadow bt-cc-castshadow--r", "aria-hidden": true
   }), /*#__PURE__*/React.createElement("div", { className: "bt-cc-brazier bt-cc-brazier--left" }),
   /*#__PURE__*/React.createElement("div", { className: "bt-cc-brazier bt-cc-brazier--right" })),
+  /*#__PURE__*/React.createElement("div", {
+    /* v2.3.1307 (round-7): crisp contact shadow under the boots — the
+       missing ground contact was what read as "pasted on".  Anchored to
+       the platform contact line (24.2% of stage, v2.3.799 algebra);
+       hidden while a zoom/category frame moves the boots off the line. */
+    "aria-hidden": true,
+    style: {
+      position: 'absolute', left: '50%', bottom: '22.4%',
+      width: '15%', height: '2.4%',
+      transform: 'translateX(-50%)',
+      borderRadius: '50%',
+      background: 'radial-gradient(ellipse at center, rgba(0,0,0,.44) 0%, rgba(0,0,0,.20) 55%, transparent 72%)',
+      pointerEvents: 'none',
+      opacity: (_frame.h === 54.5) ? 1 : 0,
+      transition: 'opacity .18s ease'
+    }
+  }),
   /*#__PURE__*/React.createElement("canvas", {
     ref: previewCanvasRef,
-    title: 'Live preview',
+    title: 'Live preview — tap to zoom',
     /* v2.3.711: drag-to-rotate.  Pointer capture keeps the gesture alive
-       when the finger drifts off the canvas mid-swipe. */
-    onPointerDown: function (e) { _dragRotX.current = e.clientX; try { e.currentTarget.setPointerCapture(e.pointerId); } catch (err) {} },
-    onPointerMove: function (e) { if (_dragRotX.current === null) return; var dx = e.clientX - _dragRotX.current; if (Math.abs(dx) >= 26) { rotatePreview(dx > 0 ? 1 : -1); _dragRotX.current = e.clientX; } },
-    onPointerUp: function () { _dragRotX.current = null; },
+       when the finger drifts off the canvas mid-swipe.  v2.3.1307: a
+       pointer journey with no rotation is a TAP — toggles the zoom. */
+    onPointerDown: function (e) { _dragRotX.current = e.clientX; _dragMoved.current = false; try { e.currentTarget.setPointerCapture(e.pointerId); } catch (err) {} },
+    onPointerMove: function (e) { if (_dragRotX.current === null) return; var dx = e.clientX - _dragRotX.current; if (Math.abs(dx) >= 26) { _dragMoved.current = true; rotatePreview(dx > 0 ? 1 : -1); _dragRotX.current = e.clientX; } },
+    onPointerUp: function () { _dragRotX.current = null; if (!_dragMoved.current) setPreviewZoom(function (z) { return !z; }); },
     onPointerCancel: function () { _dragRotX.current = null; },
     /* No width/height attributes: drawCharacterPortrait force-sets the
        bitmap to 256x256 on every draw.  The bitmap upscales via CSS —
@@ -317,13 +414,16 @@ export function NameModal(props) {
          v2.3.1251: 88% → 97% (+10%); bottom 14.5% → 13.5%.
          v2.3.1276b: 97% → 48.5% (owner: half-size character on the
          hero screen).  The platform contact line lives at ≈24.2% of
-         stage (13.5 + 0.11×97, boots ≈11% up the bitmap); solving the
-         same line for the half canvas gives bottom = 24.2 − 0.11×48.5
-         ≈ 19%. */
+         stage (13.5 + 0.11×97, boots ≈11% up the bitmap).
+         v2.3.1307 (round-7): rest frame +12% → 54.5% (bottom = 24.2 −
+         0.11×54.5 ≈ 18.2%); height/bottom now come from the _frame
+         presets (tap zoom + drawer category framing) with a 180ms
+         ease. */
       position: 'absolute',
       left: '50%',
-      bottom: '19%',
-      height: '48.5%',
+      bottom: _frame.b,
+      height: _frame.h + '%',
+      transition: 'height .18s ease, bottom .18s ease',
       aspectRatio: '1 / 1',
       objectFit: 'contain',
       imageRendering: 'pixelated',
@@ -352,14 +452,22 @@ export function NameModal(props) {
       background: 'rgba(17,25,29,.88)', border: '1px solid rgba(238,242,235,.24)', color: 'var(--txt)',
       boxShadow: 'inset 0 1px 0 rgba(255,255,255,.10), inset 0 -2px 3px rgba(0,0,0,.38), 0 2px 6px rgba(3,8,12,.30)',
       display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }
-  }, /*#__PURE__*/React.createElement("span", { style: { fontSize: 23, fontWeight: 700, lineHeight: 1, transform: 'translateY(-1px)' } }, "↺")),
+  }, /*#__PURE__*/React.createElement("img", {
+    /* v2.3.1307 (round-7): the owner's painted rotate icons replace the
+       ↺/↻ glyphs, which read as Undo/Redo. */
+    src: '/ui/welcome/cc/cc-rotate-left.webp?v=' + BUILD_INFO.version, alt: 'Rotate left', draggable: false,
+    style: { width: 32, height: 32, objectFit: 'contain', pointerEvents: 'none' }
+  })),
   /*#__PURE__*/React.createElement("button", {
     type: 'button', title: 'Rotate right', onClick: function () { rotatePreview(-1); },
     style: { position: 'absolute', right: 8, bottom: '3%', width: 50, height: 50, borderRadius: '50%', cursor: 'pointer',
       background: 'rgba(17,25,29,.88)', border: '1px solid rgba(238,242,235,.24)', color: 'var(--txt)',
       boxShadow: 'inset 0 1px 0 rgba(255,255,255,.10), inset 0 -2px 3px rgba(0,0,0,.38), 0 2px 6px rgba(3,8,12,.30)',
       display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }
-  }, /*#__PURE__*/React.createElement("span", { style: { fontSize: 23, fontWeight: 700, lineHeight: 1, transform: 'translateY(-1px)' } }, "↻"))),
+  }, /*#__PURE__*/React.createElement("img", {
+    src: '/ui/welcome/cc/cc-rotate-right.webp?v=' + BUILD_INFO.version, alt: 'Rotate right', draggable: false,
+    style: { width: 32, height: 32, objectFit: 'contain', pointerEvents: 'none' }
+  }))),
   /* v2.3.1276: the always-visible sheet (.bt-cc-menu) is retired — the
      hero screen shows only the control cluster below; the pickers live
      in the slide-up drawer after the box. */
@@ -369,13 +477,21 @@ export function NameModal(props) {
        the capped stage floats in the upper space (hero composition). */
     className: "bt-cc-namewrap",
     style: { position: 'relative', width: '100%', flex: '0 0 auto' }
-  }, /*#__PURE__*/React.createElement("input", {
+  }, /*#__PURE__*/React.createElement("label", {
+    /* v2.3.1307 (round-7): persistent field label — the placeholder
+       vanishes the moment you type; the label doesn't. */
+    htmlFor: 'bt-cc-name-input',
+    style: { display: 'block', fontSize: 10, fontWeight: 700, letterSpacing: '.12em',
+      color: '#B6C1BE', fontFamily: 'Source Sans 3, sans-serif',
+      textTransform: 'uppercase', padding: '0 2px 3px', textAlign: 'left' }
+  }, "Bro Name"), /*#__PURE__*/React.createElement("input", {
+    id: 'bt-cc-name-input',
     value: nameInput,
     onChange: function onChange(e) {
       return setNameInput(e.target.value);
     },
     onKeyDown: function onKeyDown(e) {
-      return e.key === 'Enter' && joinTown();
+      return e.key === 'Enter' && _nameValid && joinTown();
     },
     placeholder: "Name your Bro…",
     maxLength: 20,
@@ -410,7 +526,16 @@ export function NameModal(props) {
     /* v2.3.1272: 40px target inside the 44px name well. */
     style: { position: 'absolute', right: 2, top: '50%', transform: 'translateY(-50%)', width: 40, height: 40, borderRadius: 8, cursor: 'pointer',
       display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }
-  }, _dieSvg(18))), /*#__PURE__*/React.createElement("div", {
+  }, _dieSvg(18)), /*#__PURE__*/React.createElement("div", {
+    /* v2.3.1307: inline validation line — green check once the name
+       clears the local rules, quiet guidance otherwise.  Fixed height
+       so the cluster never jumps.  (Names are not unique server-side,
+       so length is the honest contract — no availability check.) */
+    "aria-live": 'polite',
+    style: { height: 15, fontSize: 11, fontFamily: 'Source Sans 3, sans-serif',
+      textAlign: 'center', paddingTop: 2,
+      color: _nameValid ? '#55B98A' : '#8D9B98' }
+  }, _trimmedName.length === 0 ? '' : _nameValid ? '✓ Ready to go' : 'At least 2 characters')), /*#__PURE__*/React.createElement("div", {
     /* v2.3.1276: hero action row — Customize slides the drawer up;
        Random rerolls the whole look (same randomizeWithFlair the
        drawer's die cell uses). */
@@ -419,44 +544,60 @@ export function NameModal(props) {
     type: 'button', className: "bt-cc-btn",
     "aria-expanded": drawerOpen ? 'true' : 'false',
     onClick: function () { setDrawerOpen(true); }
-  }, /*#__PURE__*/React.createElement("img", { className: "bt-cc-action-icon", src: '/ui/welcome/cat/shirt.webp?v=' + BUILD_INFO.version, alt: '', draggable: false }),
-  /*#__PURE__*/React.createElement("span", null, "Customize")),
+  }, /*#__PURE__*/React.createElement("img", {
+    /* v2.3.1307 (round-7): "Customize Appearance" with the painted
+       brush-portrait icon — the shirt icon read clothing-specific. */
+    className: "bt-cc-action-icon", src: '/ui/welcome/cc/cc-customize.webp?v=' + BUILD_INFO.version, alt: '', draggable: false }),
+  /*#__PURE__*/React.createElement("span", null, "Customize Appearance")),
   /*#__PURE__*/React.createElement("button", {
     type: 'button', className: "bt-cc-btn", onClick: randomizeWithFlair
-  }, _dieSvg(18), /*#__PURE__*/React.createElement("span", null, "Random"))),
+  }, /*#__PURE__*/React.createElement("img", {
+    /* v2.3.1307: "Randomize Look" with the sparkle-character icon — a
+       second die next to the name die was the round-7 ambiguity. */
+    className: "bt-cc-action-icon", src: '/ui/welcome/cc/cc-random-look.webp?v=' + BUILD_INFO.version, alt: '', draggable: false }),
+  /*#__PURE__*/React.createElement("span", null, "Randomize Look"))),
   /*#__PURE__*/React.createElement("button", {
-    onClick: joinTown,
+    onClick: function () { if (_nameValid) joinTown(); },
+    disabled: !_nameValid,
     /* v2.3.1251: PLAY → ENTER BRO TOWN, the screen's one dominant gold
-       action. */
+       action.  v2.3.1307: gated on a valid name (round-7). */
     className: "bt-cc-play",
     "aria-label": 'Enter Bro Town',
     style: {
       width: '100%',
-      cursor: 'pointer'
+      cursor: _nameValid ? 'pointer' : 'default',
+      opacity: _nameValid ? 1 : 0.55
     }
   }, "Enter Bro Town"), /*#__PURE__*/React.createElement("button", {
-    /* v2.3.1143: returning-player door. */
+    /* v2.3.1143: returning-player door.  v2.3.1307 (round-7): promoted
+       from footer text to a real secondary action \u2014 full-width 44px
+       bordered row with the painted key icon. */
     type: 'button',
     onClick: function () { setShowAccount(true); },
     style: {
-      background: 'none',
-      border: 'none',
-      color: '#B6C1BE',
+      width: '100%',
+      background: 'rgba(17,25,29,.55)',
+      border: '1px solid rgba(238,242,235,.22)',
+      borderRadius: 10,
+      color: '#E8E4DA',
       fontFamily: 'Source Sans 3, sans-serif',
-      fontSize: 12,
+      fontSize: 13,
+      fontWeight: 600,
       cursor: 'pointer',
-      padding: '4px 0',
+      padding: '0 10px',
       minHeight: 44,
-      display: 'inline-flex',
+      display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      gap: 4,
-      alignSelf: 'center'
+      gap: 7
     }
-  }, /*#__PURE__*/React.createElement("span", null, "Already have a Bro?"),
+  }, /*#__PURE__*/React.createElement("img", {
+    src: '/ui/welcome/cc/cc-login-key.webp?v=' + BUILD_INFO.version, alt: '', draggable: false,
+    style: { width: 20, height: 20, objectFit: 'contain' }
+  }), /*#__PURE__*/React.createElement("span", null, "Already have a Bro?"),
   /*#__PURE__*/React.createElement("span", {
-    style: { color: '#EAC675', textDecoration: 'underline', textUnderlineOffset: 3 }
-  }, "Enter Login Key")), /*#__PURE__*/React.createElement("div", {
+    style: { color: '#EAC675', fontWeight: 700 }
+  }, "Log in with key")), /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 11,
       color: 'var(--txt2)',
@@ -464,7 +605,9 @@ export function NameModal(props) {
       letterSpacing: '.06em',
       textAlign: 'center'
     }
-  }, "v" + BUILD_INFO.version + " \u00b7 " + BUILD_INFO.sha)), drawerOpen && /*#__PURE__*/React.createElement("div", {
+    /* v2.3.1307: the commit sha leaves the splash (round-7) \u2014 support
+       reads it from the console BUILD_INFO when needed. */
+  }, "v" + BUILD_INFO.version)), drawerOpen && /*#__PURE__*/React.createElement("div", {
     /* v2.3.1276: light tap-to-close scrim under the drawer — the world
        stays visible; tapping it is the "put the drawer away" gesture. */
     className: "bt-cc-drawer-scrim",
@@ -476,6 +619,7 @@ export function NameModal(props) {
        _measureMore).  Absolute overlay: nothing in here can move the
        stage. */
     className: "bt-cc-drawer" + (drawerOpen ? " bt-cc-drawer--open" : ""),
+    ref: _drawerRef,
     "aria-hidden": drawerOpen ? undefined : true
   }, /*#__PURE__*/React.createElement("nav", {
     className: "bt-cc-tabs", role: 'tablist', "aria-label": 'Appearance category'
@@ -488,17 +632,17 @@ export function NameModal(props) {
       key: g.key, type: 'button', role: 'tab', "aria-selected": on ? 'true' : 'false',
       className: 'bt-cc-tab' + (on ? ' bt-cc-tab--on' : ''),
       onClick: function () { _openType(g.key, typeMemo[g.key] || g.types[0]); }
-    }, /*#__PURE__*/React.createElement("img", { className: "bt-cc-tab-icon", src: '/ui/welcome/cat/' + g.icon + '.webp?v=' + BUILD_INFO.version, alt: '', draggable: false }),
+    }, /*#__PURE__*/React.createElement("img", {
+      /* v2.3.1308 (round-7): the generic white category art gives way to
+         the owner's painted set — same style as the in-game nav icons. */
+      className: "bt-cc-tab-icon", src: '/ui/welcome/cc/cc-' + g.key + '.webp?v=' + BUILD_INFO.version, alt: '', draggable: false }),
     /*#__PURE__*/React.createElement("span", { className: "bt-cc-tab-label" }, g.label));
-  }), /*#__PURE__*/React.createElement("button", {
-    /* v2.3.1272: Randomize moves INTO the tab row as a fifth, beveled
-       die cell (its old standalone row is retired — the biggest single
-       space win of this pass).  Same randomizeWithFlair handler. */
-    key: 'rand', type: 'button', title: 'Randomize appearance',
-    "aria-label": 'Randomize appearance',
-    className: "bt-cc-tab bt-cc-tab--action",
-    onClick: randomizeWithFlair
-  }, _dieSvg(18), /*#__PURE__*/React.createElement("span", { className: "bt-cc-tab-label" }, "Random"))), /*#__PURE__*/React.createElement("div", {
+  })
+  /* v2.3.1308 (round-7): the v2.3.1272 fifth Random die cell is retired
+     — randomization is an ACTION, not a body region, and the hero
+     screen's "Randomize Look" already owns it.  Four equal category
+     tabs remain. */
+  ), /*#__PURE__*/React.createElement("div", {
     /* Secondary tabs — visible only for Head (Hair/Hats) and Face
        (Skin/Beard).  v2.3.1252: single-type groups render the row as an
        invisible GHOST instead of omitting it — the sheet is the flex
@@ -536,9 +680,12 @@ export function NameModal(props) {
        every category and pick, so the stage — and the character — never
        change size. */
     className: "bt-cc-colors" + (_colors ? "" : " bt-cc-ghost"),
-    "aria-hidden": _colors ? undefined : true
-  }, /* v2.3.1272: the — COLOR — header is retired (space) — the swatch
-        row under the item tiles reads as colors on its own. */
+    "aria-hidden": _colors ? undefined : true,
+    style: { position: 'relative' }
+  }, /* v2.3.1272: the — COLOR — header is retired (space).
+        v2.3.1308 tried a tiny absolute contextual label here; v2.3.1310
+        removes it (owner: redundant, overlapped the swatches, barely
+        readable).  The swatch row reads as colors on its own. */
   /*#__PURE__*/React.createElement("div", { className: "bt-cc-scroll" },
   /*#__PURE__*/React.createElement("div", {
     className: "bt-cc-colors-row", ref: _colorRowRef, onScroll: _measureMore, role: _colors ? 'radiogroup' : undefined, "aria-label": _colors ? _def.label + ' colors' : undefined
