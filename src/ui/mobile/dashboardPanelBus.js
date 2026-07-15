@@ -29,7 +29,8 @@
 const listeners = new Set();
 const emit = () => { for (const fn of listeners) fn(); };
 
-/* v2.3.1311: one restrained tick when the sheet snaps to a new state
+/* v2.3.1312 (round-8; retagged from 1311 — #288 claimed it first):
+   one restrained tick when the sheet snaps to a new state
    (round-8 spec: "subtle haptic on snap").  navigator.vibrate is a
    no-op on iOS Safari — Android/PWA users get it, everyone else
    silently doesn't; never let an exotic WebView throw over it. */
@@ -55,10 +56,10 @@ export const dashboardPanelBus = {
     return this.state.stack[0] || 'bag';
   },
 
-  // Toolbar tap (v2.3.1316, owner round-8b): from the bar or an
-  // inactive destination -> its compact view ("tapping another toolbar
-  // icon opens its compact view if [you] have any menu view" — this
-  // reverses #285's switch-keeps-size); active destination cycles
+  // Toolbar tap (owner round-8b; both sessions converged — #288's
+  // v2.3.1311b and this branch's v2.3.1316 wrote the IDENTICAL body):
+  // from the bar or an inactive destination -> its compact view
+  // (switching never keeps the old size); active destination cycles
   // compact -> expanded -> bar.  #285's desktop exception died with
   // the cycle's return — mice cycle the same way fingers do.
   tapDestination(id) {

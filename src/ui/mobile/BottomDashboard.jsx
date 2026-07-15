@@ -18,7 +18,7 @@ import { getShirt, onShirtChange } from '../../rendering/traits/shirtCatalog.js'
 import { getShirtColor, shirtColorTarget, onShirtColorChange } from '../../rendering/traits/shirtColorCatalog.js';
 import { getEquip } from '../../rendering/gearCatalog.js';
 import { dashboardPanelBus } from './dashboardPanelBus.js';
-import { BAR_H, compactDashHeight, expandedSheetHeight } from './sheet/sheetGeometry.js'; /* v2.3.1283; v2.3.1290 three-state */
+import { BAR_H, compactDashHeight, expandedSheetHeight, drillSheetHeight } from './sheet/sheetGeometry.js'; /* v2.3.1283; v2.3.1290 three-state; v2.3.1311e drill height */
 import { portraitStore } from './sheet/portraitStore.js';          /* v2.3.1294 */
 import { hasUnseenLevelUps } from './sheet/skillsModel.js';        /* v2.3.1296 */
 import { readyQuestCount } from './sheet/questModel.js';           /* v2.3.1298 */
@@ -27,6 +27,7 @@ import { bagUnseen, bagEntryKey } from './sheet/bagUnseenModel.js'; /* v2.3.1312
 import { useSheetDrag } from './sheet/useSheetDrag.js';          /* v2.3.1283; v2.3.1307 ribbon-bound */
 import { BagCompact } from './sheet/BagCompact.jsx';            /* v2.3.1285 */
 import { HeroCompact } from './sheet/HeroCompact.jsx';          /* v2.3.1286 */
+import { COMBAT_SKILLS } from './sheet/heroModel.js';           /* v2.3.1311: hero toolbar badge */
 import { HeroExpanded } from './sheet/HeroExpanded.jsx';        /* v2.3.1286 */
 import { SkillsCompact } from './sheet/SkillsCompact.jsx';      /* v2.3.1286 */
 import { FriendsCompact } from './sheet/FriendsCompact.jsx';    /* v2.3.1288 */
@@ -272,12 +273,14 @@ const Tooltip = ({ tip, onClose }) => {
    button's top-LEFT (the chevron owns top-right) for ACTIONABLE state
    only: unviewed skill level-ups, ready quest turn-ins.  Never for
    routine churn like XP gains or friends-online counts. */
-/* v2.3.1316 merge (round-8b × #285): `dest` — the destination id
+/* v2.3.1316 merge (round-8b x #285): `dest` — the destination id
    stamped as data-dest so useSheetDrag (bound to the toolbar ribbon)
-   knows which icon a swipe started on.  Icon swipes are #285's live
-   drag; the owner's round-8b chevron rules render below (my .bt-nav-
-   snap stack replaced #285's .bt-swipe-cue — no cue at bar, one
-   chevron per available step while open).
+   knows which icon a swipe started on.
+   v2.3.1311 (#288): a NUMBER `dot` renders as a count badge (Hero's
+   unspent points); `true` keeps the notification dot.
+   v2.3.1317 merge note: #288's drifting Cue component is superseded by
+   this branch's .bt-nav-snap chevron stack below — same owner rule
+   (no cue at bar, one chevron per available step), one implementation.
    `pulse` (round-8 §Badges) — an epoch counter; each bump remounts the
    icon span (key) to replay one restrained scale pulse (CSS
    .bt-nav-pulse, reduced-motion guarded). */
@@ -334,7 +337,19 @@ const IconButton = ({ glyph, src: srcProp, label, active, onClick, node, tut, sn
         )}
       </span>
       <span className="bt-dashboard-nav-label">{label}</span>
-      {dot && (
+      {/* v2.3.1311: a NUMBER dot renders as a count badge (the Hero
+          icon's global unspent points — spec: badge only actionable
+          things); `true` keeps the original notification dot. */}
+      {typeof dot === 'number' && dot > 0 ? (
+        <span aria-hidden="true" style={{
+          position: 'absolute', top: 2, left: 4,
+          background: '#D8AA58', color: '#20170D',
+          fontSize: 10, fontWeight: 900,
+          borderRadius: 7, padding: '0 4px', lineHeight: 1.4,
+          border: '1px solid rgba(0,0,0,.5)',
+          pointerEvents: 'none',
+        }}>{dot}</span>
+      ) : dot === true ? (
         <span aria-hidden="true" style={{
           position: 'absolute', top: 4, left: 6,
           width: 8, height: 8, borderRadius: '50%',
@@ -342,7 +357,7 @@ const IconButton = ({ glyph, src: srcProp, label, active, onClick, node, tut, sn
           border: '1px solid rgba(0,0,0,.5)',
           pointerEvents: 'none',
         }} />
-      )}
+      ) : null}
       {/* v2.3.1314 (owner round-8b): state-aware chevrons — ONE chevron
           per available step, shown only while a view is open (never at
           bar; supersedes #285's at-rest faint cues).  Compact: one up
@@ -510,7 +525,8 @@ export const BottomDashboard = () => {
     const stamp = () => {
       const mode = dashboardPanelBus.state.mode;
       document.documentElement.dataset.btSheet = mode;
-      const px = mode === 'expanded' ? snapPxRef.current.expanded
+      /* v2.3.1311e: drill panels (stack depth > 1) use the taller sheet. */
+      const px = mode === 'expanded' ? (dashboardPanelBus.state.stack.length > 1 ? snapPxRef.current.drill : snapPxRef.current.expanded)
         : mode === 'compact' ? snapPxRef.current.compact
         : BAR_H;
       document.documentElement.style.setProperty('--sheet-h', px + 'px');
@@ -532,6 +548,7 @@ export const BottomDashboard = () => {
   const [snapPx, setSnapPx] = useState(() => ({
     compact: compactDashHeight(window.innerWidth),
     expanded: expandedSheetHeight(window.innerWidth, window.innerHeight),
+    drill: drillSheetHeight(window.innerWidth, window.innerHeight),
   }));
   useEffect(() => {
     const vv = window.visualViewport;
@@ -539,7 +556,7 @@ export const BottomDashboard = () => {
       const vw = vv ? vv.width : window.innerWidth;
       const vh = vv ? vv.height : window.innerHeight;
       if (vv && window.innerHeight - vh > 100) return; /* keyboard up */
-      setSnapPx({ compact: compactDashHeight(vw), expanded: expandedSheetHeight(vw, vh) });
+      setSnapPx({ compact: compactDashHeight(vw), expanded: expandedSheetHeight(vw, vh), drill: drillSheetHeight(vw, vh) });
     };
     recompute();
     window.addEventListener('resize', recompute);
@@ -549,7 +566,7 @@ export const BottomDashboard = () => {
       if (vv) vv.removeEventListener('resize', recompute);
     };
   }, []);
-  /* v2.3.1311/1307: BODY drags are gone — the sheet body is content,
+  /* v2.3.1312/1307 (retag: #288 owns 1311): BODY drags are gone — the sheet body is content,
      not a handle (drags fought panel scrolling).  Resize gestures live
      on the toolbar ribbon (useSheetDrag below).  The snapPx ref also
      feeds the <html> stamp effect. */
@@ -561,7 +578,7 @@ export const BottomDashboard = () => {
   useSheetDrag(dashRef, toolbarRef,
     () => BAR_H,
     () => snapPxRef.current.compact,
-    () => snapPxRef.current.expanded);
+    () => (dashboardPanelBus.state.stack.length > 1 ? snapPxRef.current.drill : snapPxRef.current.expanded)); /* v2.3.1311e */
   /* Player-card portrait: a head-and-shoulders render of the player's
      chosen cosmetics (skin / hair / hair color / beard / hat).  Generated
      on mount (captures the login picker) and regenerated if a cosmetic
@@ -668,7 +685,7 @@ export const BottomDashboard = () => {
            resting default; canvas/zones/HUD all key off it), compact
            (glance), expanded (detail).  Every destination uses the same
            snaps.  220ms token; reduced-motion drops the transition. */
-        height: mode === 'expanded' ? snapPx.expanded + 'px'
+        height: mode === 'expanded' ? (stack.length > 1 ? snapPx.drill : snapPx.expanded) + 'px' /* v2.3.1311e: drill = taller */
           : mode === 'compact' ? snapPx.compact + 'px'
           : 'var(--dash-h)',
         transition: sheetTransition(),
@@ -790,6 +807,15 @@ export const BottomDashboard = () => {
         const dots = {
           skills: hasUnseenLevelUps((Sb && Sb.rpg) || {}),
           quests: readyQuestCount(Sb) > 0,
+          /* v2.3.1311 (owner spec): the Hero icon badges the GLOBAL
+             unspent-point total — actionable only; XP/health/stat
+             gains never badge (world popups carry those).  A number
+             here renders as a count badge, not a dot (IconButton). */
+          hero: (() => {
+            const Rb = Sb && Sb.rpg;
+            if (!Rb) return 0;
+            return COMBAT_SKILLS.reduce((n, s) => n + buildSkillUnspent(Rb, s.key), 0);
+          })(),
         };
         return (
           <div className="bt-dashboard-toolbar-frame" ref={toolbarRef} style={{
@@ -859,7 +885,7 @@ export const BottomDashboard = () => {
                   active={litId === d.id}
                   snap={litId === d.id ? mode : null}
                   dest={d.id}
-                  dot={!!dots[d.id]}
+                  dot={dots[d.id]} /* v2.3.1311: raw — numbers render as count badges */
                   /* v2.3.1312: one restrained pulse per NEW pickup (the
                      epoch key replays the animation); gated on unseen
                      count so inspecting the item retires the motion. */

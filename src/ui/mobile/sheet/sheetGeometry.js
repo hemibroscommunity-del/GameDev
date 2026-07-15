@@ -45,21 +45,33 @@ export function compactDashHeight(vw) {
   return Math.round(vw * DASH_W_FRAC + DASH_BASE);
 }
 
-/* Expanded snap: ~half the viewport, with the sheet's top edge stopping
-   BELOW the player's feet (camera centers the player in the canvas
-   area) so a strip of ground stays visible under the boots.
-   v2.3.1290: the canvas area now runs down to the BAR, so the feet sit
-   lower on screen.
-   v2.3.1312 (ChatGPT round-8 §4): clearance 90 -> 40 and the clamp
-   window drops from 48-52% to 42-48% — the old numbers left the boots
-   nearly kissing the sheet edge ("character feels crowded"); the spec
-   asks for 32-48px of visible ground and ~47-48% of usable viewport
-   for the sheet.  @844vh: canvasH 786, feetY 417, rule 387 (45.9%) —
-   exactly 40px of ground below the boots.  The canvas itself NEVER
-   resizes (invariant above); only the overlay height changes. */
+/* Expanded snap: ~half the viewport, with the sheet's top edge leaving
+   visible GROUND below the player's boots (camera centers the player
+   in the canvas area).
+   v2.3.1311 (owner Hero spec: "expanded begins almost directly beneath
+   the boots — leave ~32-48px of visible ground"): the old
+   max(48%vh, ...) FLOOR overrode the feet rule on tall phones — on a
+   390x844 viewport it pushed the sheet top to ~22px below the feet.
+   The feet rule now wins: sheet top = feetY + 44px of ground, with the
+   floor lowered to 40%vh (short-viewport backstop) and the 52% cap
+   kept.  The canvas itself never resizes (BAR_H invariant above).
+   (v2.3.1317 merge: #288's 44px rule supersedes this branch's
+   equivalent round-8 40px/42-48% version — same intent, later owner
+   directive wins.) */
 export function expandedSheetHeight(vw, vh) {
   const canvasH = vh - BAR_H + DASH_OVERLAP;
   const feetY = canvasH / 2 + FEET_OFFSET;
-  const feetRule = vh - (feetY + 40);
-  return Math.round(Math.max(vh * 0.42, Math.min(vh * 0.48, feetRule)));
+  const feetRule = vh - (feetY + 44);
+  return Math.round(Math.min(vh * 0.52, Math.max(vh * 0.40, feetRule)));
+}
+
+/* v2.3.1311e (owner: the T2 spend screen's 5 categories must fit one
+   screen): DRILL panels (stack depth > 1 — T2 spend, Settings, quest
+   detail) get the taller pre-v2.3.1311 56vh sheet.  The 44px-ground
+   feet rule above exists so the character stays visible behind ROOT
+   destination sheets; a drill is a focused task where content beats
+   world visibility.  The band animates between the two heights on
+   push/pop, which doubles as a depth cue. */
+export function drillSheetHeight(vw, vh) {
+  return Math.round(vh * 0.56);
 }

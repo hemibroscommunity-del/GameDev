@@ -306,26 +306,59 @@ export const InventoryPanel = () => {
           "N / 32" counter it carried now sits at the right end of this
           row, OUTSIDE the scrollable chip strip so it never scrolls
           away; the freed row height goes to larger slot tiles below. */}
-      {/* v2.3.1312 (round-8 §6): the chip strip is a FIXED row — five
-          chips, equal widths, no horizontal scroll (a scrolling filter
-          row hid categories and invited accidental pans).  Icons up to
-          20px, inactive labels lifted from muted to text2 (the old
-          contrast made unselected filters look disabled). */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 6 }}>
+      {/* v2.3.1312 (round-8 §6): fixed five-chip row, no horizontal
+          scroll, icons 20px.
+          v2.3.1317 (owner: "make it more obvious that the filter
+          categories are filters"): two changes —
+          1. a FILTER micro-header in the same language as EQUIPPED
+             above (funnel glyph + label), with a LIVE result readout
+             on the right ("3 of 12") that visibly reacts to the active
+             chip — the feedback loop is what teaches "these filter".
+          2. the chips sit in ONE recessed segmented track (shared well
+             + joined segments) instead of five free-floating buttons —
+             a grouped segment control is the universal filter/tab
+             affordance. */}
+      <div style={{ height: 14, marginBottom: 5, display: 'flex', alignItems: 'center', gap: 5, flex: 'none' }}>
+        <svg viewBox="0 0 12 12" width="12" height="12" aria-hidden="true" style={{ flex: 'none' }}>
+          <path d="M1.5 2 H10.5 L7.2 6.2 V10 L4.8 8.8 V6.2 Z" fill="none"
+            stroke={COL.text2} strokeWidth="1.3" strokeLinejoin="round" />
+        </svg>
+        <span style={{
+          fontSize: 10, fontWeight: 700, letterSpacing: '.09em',
+          textTransform: 'uppercase', color: COL.text2, lineHeight: 1,
+        }}>Filter</span>
+        <span style={{
+          marginLeft: 'auto',
+          fontSize: 10, fontWeight: 700, letterSpacing: '.05em',
+          textTransform: 'uppercase', color: COL.muted, lineHeight: 1,
+          fontVariantNumeric: 'tabular-nums',
+        }}>{filter === 'all'
+          ? `${usedTiles} ${usedTiles === 1 ? 'item' : 'items'}`
+          : `${usedTiles} of ${entries.length}`}</span>
+      </div>
+      <div style={{
+        display: 'flex', alignItems: 'stretch', gap: 2, marginBottom: 6, flex: 'none',
+        background: COL.well,
+        border: `1px solid ${COL.tileBor}`,
+        boxShadow: 'inset 0 2px 4px rgba(0,0,0,.3)',
+        borderRadius: 8,
+        padding: 3,
+      }}>
         {CATEGORIES.map(c => {
           const active = c.id === filter;
           return (
             <button key={c.id}
               onClick={() => setFilter(c.id)}
               title={c.label}
+              aria-pressed={active}
               style={{
                 flex: '1 1 0', minWidth: 0,
                 display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 1,
                 padding: '4px 2px',
                 background: active ? COL.accentFill : 'transparent',
                 color: active ? COL.text : COL.text2,
-                border: `1px solid ${active ? COL.accent : COL.border}`,
-                borderRadius: 5,
+                border: active ? `1px solid ${COL.accent}` : '1px solid transparent',
+                borderRadius: 6,
                 fontFamily: 'inherit',
                 cursor: 'pointer',
               }}
@@ -343,17 +376,35 @@ export const InventoryPanel = () => {
       {/* v2.3.1285: the fictional "N / 32" counter is retired with the
           display cap (nav-system plan §0.3); the bag has no real limit. */}
 
-      {/* v2.3.1235: the empty bag no longer renders the recessed tray —
-          an enormous bordered rectangle around one small message read as
-          a broken screen (owner correction).  Zero items = icon + message
-          centered directly on the sheet; the tray/grid below is unchanged
-          and only mounts once there is something to hold. */}
+      {/* v2.3.1317 (owner screenshot): the free-floating empty state
+          OVERFLOWED — since the sheet lost height to the equipped/filter
+          headers, its flex box could shrink below its content, and the
+          centered icon/text spilled UP over the Armor chip and clipped
+          at the bottom under the toolbar.  It now lives INSIDE the same
+          recessed tray the grid uses (overflow-y auto, minHeight 0), so
+          tight sheets scroll it instead of overlapping neighbors — and
+          the compacted content (icon 32, tight paddings) fits without
+          scrolling on every current phone anyway.  (v2.3.1235 dropped
+          the tray for empty state; the tray reads fine now that the
+          headers above give the panel structure.) */}
       {usedTiles === 0
         ? (
-          <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '24px 8px', textAlign: 'center', color: COL.muted }}>
+          <div style={{
+            background: COL.well,
+            border: `1px solid ${COL.tileBor}`,
+            boxShadow: 'inset 0 2px 4px rgba(0,0,0,.44), inset 0 1px 0 rgba(255,255,255,.035)',
+            borderRadius: 10,
+            flex: 1,
+            minHeight: 0,
+            overflowY: 'auto',
+            touchAction: 'pan-y',
+            WebkitOverflowScrolling: 'touch',
+            display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+            gap: 5, padding: '10px 8px', textAlign: 'center', color: COL.muted,
+          }}>
             {/* v2.3.1224: UI Bible satchel icon */}
             <img src="/icons/ui/nav-inventory.webp?v=2.3.1224" alt="" draggable={false}
-              style={{ width: 40, height: 40, opacity: 0.4, filter: 'grayscale(1)' }} />
+              style={{ width: 32, height: 32, opacity: 0.4, filter: 'grayscale(1)', flex: 'none' }} />
             <div style={{ fontSize: 13, fontWeight: 700, color: COL.text2 }}>
               {filter === 'all' ? 'Your bag is empty.' : `No ${(CATEGORIES.find(c => c.id === filter)?.label || 'matching').toLowerCase()} items yet.`}
             </div>

@@ -42,13 +42,17 @@ const DEF_META = { label: 'Defense', emoji: '\u{1F6E1}' };
    caps.hpEndGrids (deploy-order safety): against an old worker the
    channels render as "Soon" so points can't be spent into multipliers
    the worker would stomp. */
+/* v2.3.1311 (owner canonical taxonomy): the tabs carry the PARENT
+   names — Vitality (HP-related abilities) and Stamina (energy-related
+   abilities).  Storage keys ('hp' tab id, rpg.enduranceSpec, ...) are
+   unchanged — renaming persisted fields breaks saves (rule 1). */
 const GRID_TABS = {
   hp: {
-    stat: 'vitality', label: 'HP', emoji: '❤️',
+    stat: 'vitality', label: 'Vitality', emoji: '❤️',
     channels: HP_CHANNELS, specKey: 'hpSpec', poolKey: 'hpUnspent',
   },
   endurance: {
-    stat: 'endurance', label: 'Endur.', emoji: '⚡',
+    stat: 'endurance', label: 'Stamina', emoji: '⚡',
     channels: ENDURANCE_CHANNELS, specKey: 'enduranceSpec', poolKey: 'enduranceUnspent',
   },
 };
@@ -57,13 +61,15 @@ const GRID_TABS = {
    UI-Bible icon (emoji stays as the onError fallback, the SkillsPanel
    replaceWith pattern).  Keyed by tab id: weapon categories + defense +
    the HP/Endurance grid tabs. */
+/* v2.3.1311: owner's hero-stat icon set — the same six parent icons the
+   Hero menu uses, so the spend screen and the dashboard agree. */
 const T2_TAB_ICONS = {
-  sword:     '/icons/ui/combat-melee.webp?v=2.3.1232',
-  bow:       '/icons/ui/combat-bow.webp?v=2.3.1232',
-  staff:     '/icons/ui/combat-magic.webp?v=2.3.1232',
-  defense:   '/icons/ui/combat-defense.webp?v=2.3.1232',
-  hp:        '/icons/ui/stat-vitality.webp?v=2.3.1232',
-  endurance: '/icons/ui/stat-endurance.webp?v=2.3.1232',
+  sword:     '/icons/ui/hero/melee.webp?v=2.3.1311',
+  bow:       '/icons/ui/hero/bow.webp?v=2.3.1311',
+  staff:     '/icons/ui/hero/magic.webp?v=2.3.1311',
+  defense:   '/icons/ui/hero/defense.webp?v=2.3.1311',
+  hp:        '/icons/ui/hero/vitality.webp?v=2.3.1311',
+  endurance: '/icons/ui/hero/endurance.webp?v=2.3.1311',
 };
 
 function persist(R) {
@@ -137,9 +143,22 @@ export const T2Panel = () => {
     : isDef ? (R.defenseSkill || { level: 0, xp: 0 }) : (skills[activeCat] || { level: 0, xp: 0 });
   const catSpecs = gridTab ? (R[gridTab.specKey] || {}) : isDef ? (R.defenseSpec || {}) : (specs[activeCat] || {});
   const unspent = gridTab ? (R[gridTab.poolKey] || 0) : isDef ? (R.defenseUnspent || 0) : (pools[activeCat] || 0);
-  const channels = gridTab
+  let channels = gridTab
     ? (gridsLive ? gridTab.channels : gridTab.channels.map((ch) => ({ ...ch, active: false })))
     : isDef ? DEFENSE_CHANNELS : (WEAPON_CHANNELS[activeCat] || []);
+  /* v2.3.1311 (owner canon: every parent owns exactly FIVE categories):
+     Vitality's data model ships 4 (vigor/recovery/lifeblood/resilience)
+     — one short.  A UI-ONLY locked slot keeps the 5-per-parent shape
+     visible until the owner names the real 5th ability; nothing is
+     added to the data model or the wire (spending into it is
+     impossible: active:false reuses the SOON row treatment). */
+  if (activeCat === 'hp' && channels.length === 4) {
+    channels = [...channels, {
+      key: '_slot5', label: '???', active: false,
+      blurb: 'A fifth Vitality ability — coming soon.',
+      derive: () => '',
+    }];
+  }
   const channelCap = t2uniform
     ? (gridTab ? GRID_CHANNEL_CAP : isDef ? DEFENSE_CHANNEL_CAP : WEAPON_CHANNEL_CAP)
     : (gridTab || isDef ? LEGACY_GRID_CAP : LEGACY_WEAPON_CAP);
@@ -229,7 +248,7 @@ export const T2Panel = () => {
                    44px hitbox floor.  Pointer handler byte-identical. */
                 flex: 1,
                 position: 'relative',
-                minHeight: 44,
+                minHeight: 38, /* v2.3.1311e: no-scroll under the drill sheet */
                 background: sel ? COL.raised : 'transparent',
                 border: '1px solid ' + (sel ? COL.borderStrong : COL.border),
                 boxShadow: sel ? 'inset 0 -2px 0 ' + COL.accent : 'none',
@@ -247,8 +266,10 @@ export const T2Panel = () => {
                     style={{ width: 16, height: 16, objectFit: 'contain' }}
                     onError={(e) => { e.currentTarget.replaceWith(document.createTextNode(meta.emoji)); }} />
                 : <span style={{ fontSize: 15, lineHeight: 1 }}>{meta.emoji}</span>}
-              <span style={{ fontSize: 11, fontWeight: 600, lineHeight: 1 }}>{meta.label}</span>
-              <span style={{ fontSize: 11, fontWeight: 600, lineHeight: 1, fontVariantNumeric: 'tabular-nums', color: sel ? COL.accent : COL.muted }}>Lv {lvl}</span>
+              <span style={{ fontSize: 10.5, fontWeight: 600, lineHeight: 1 }}>{meta.label}</span>
+              {/* v2.3.1311e: the per-tab Lv line is gone — the selected
+                  category's level already reads on the skill bar below,
+                  and the 5 channel rows need the vertical room. */}
               {p > 0 && (
                 <span style={{
                   position: 'absolute', top: -5, right: -4,
@@ -305,6 +326,11 @@ export const T2Panel = () => {
           gold when it applies) and the CHANNELS section header.  The
           v2.3.1157 1000-pt combat build meter sits right-aligned on the
           same line (was in the Builds header). */}
+      {/* v2.3.1311e: the hint/meter line renders only when it says
+          something actionable — the old-worker gold notice or the
+          build-ceiling state.  The evergreen "deal damage to train"
+          copy cost 19px of the 5-row no-scroll budget. */}
+      {((gridTab && !gridsLive) || atCeiling) && (
       <div style={{
         display: 'flex', alignItems: 'baseline', justifyContent: 'space-between',
         gap: 8, marginBottom: 4,
@@ -331,6 +357,7 @@ export const T2Panel = () => {
           </span>
         )}
       </div>
+      )}
       {channels.map((ch) => {
         const v = catSpecs[ch.key] || 0;
         const atCap = v >= channelCap;
@@ -354,7 +381,7 @@ export const T2Panel = () => {
             display: 'flex',
             alignItems: 'center',
             gap: 8,
-            minHeight: 44,
+            minHeight: 38, /* v2.3.1311e: 5 rows must clear the fold */
             borderBottom: '1px solid ' + COL.divider,
             opacity: ch.active ? 1 : 0.55,
           }}>
@@ -384,7 +411,7 @@ export const T2Panel = () => {
               onPointerUp={(e) => { e.stopPropagation(); if (canAdd) addPoint(ch.key, ch.active); }}
               disabled={!canAdd}
               style={{
-                width: 44, height: 44,
+                width: 38, height: 38, /* v2.3.1311e */
                 flexShrink: 0,
                 background: COL.raised,
                 color: canAdd ? COL.accent : COL.disabled,
