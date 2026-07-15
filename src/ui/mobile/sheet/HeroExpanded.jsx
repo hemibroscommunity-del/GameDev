@@ -95,7 +95,14 @@ export const HeroExpanded = () => {
   const totalUnspent = COMBAT_SKILLS.reduce((n, s) => n + buildSkillUnspent(R, s.key), 0);
 
   return (
-    <div style={{ ...panelStyle, overflowY: 'auto', display: 'flex', flexDirection: 'column', paddingBottom: 10 }}>
+    <div style={{
+      ...panelStyle, overflowY: 'auto', display: 'flex', flexDirection: 'column', paddingBottom: 10,
+      /* v2.3.1311d (owner: "the last row is faded at the bottom"): the
+         panelStyle bottom scroll-edge fade exists to signal MORE
+         content below the fold — Hero's subtabs are designed no-scroll,
+         so the mask only dimmed the flush last row.  Off here. */
+      WebkitMaskImage: 'none', maskImage: 'none',
+    }}>
       <IdentityStrip />
 
       {/* Sticky segmented control — content scrolls under it.
@@ -155,14 +162,15 @@ export const HeroExpanded = () => {
             <span>BUILD POINTS</span>
             <span style={{ fontVariantNumeric: 'tabular-nums' }}>{totalUnspent} AVAILABLE</span>
           </div>
-          {/* v2.3.1311c (owner): horizontal micro-cards, 3x2, sized to
-              the REAL device budget (~140px section content on iPhone
-              Safari with its dynamic toolbar).  The description is the
-              PARENT's role — each houses a family of five tier-2
-              category skills (parentBlurb) — not the old T1 effect
-              line.  Exact XP progress stays (these levels advance via
-              combat XP); the +N chip is the parent's own T2 pool. */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 5 }}>
+          {/* v2.3.1311d (owner): the six parents are LAUNCHERS — every
+              tile is ALWAYS tappable and opens that parent's five-
+              category spend screen (T2Panel), points or not.  With the
+              detail living one tap away, the tiles drop the XP text
+              line for breathing room: icon + name + Lv + the parent's
+              family line + level-progress bar + drill chevron; the +N
+              chip marks waiting points.  3x2, sized to the real device
+              budget. */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 5, flex: 1, minHeight: 0, alignContent: 'stretch' }}>
             {COMBAT_SKILLS.map(s => {
               const lvl = skillLevel(R, s.key);
               const pct = skillProgressPct(R, s.key);
@@ -174,17 +182,17 @@ export const HeroExpanded = () => {
                   className={unspent > 0 ? 'bt-build-flash' : undefined}
                   onPointerUp={(e) => {
                     e.stopPropagation();
-                    if (unspent > 0 && openT2Cat) { requestT2Category(openT2Cat); dashboardPanelBus.push('t2'); }
+                    if (openT2Cat) { requestT2Category(openT2Cat); dashboardPanelBus.push('t2'); }
                   }}
                   style={{
                     position: 'relative',
-                    display: 'flex', flexDirection: 'column',
-                    gap: 1,
-                    padding: '4px 6px 8px',
+                    display: 'flex', flexDirection: 'column', justifyContent: 'center',
+                    gap: 2,
+                    padding: '5px 7px 9px',
                     background: unspent > 0 ? COL.accentFill : COL.wellSoft,
                     border: `1px solid ${unspent > 0 ? COL.accent : COL.tileBor}`,
                     borderRadius: 7,
-                    cursor: unspent > 0 ? 'pointer' : 'default',
+                    cursor: 'pointer',
                     touchAction: 'none',
                     minWidth: 0,
                   }}>
@@ -199,21 +207,19 @@ export const HeroExpanded = () => {
                   )}
                   <div style={{ display: 'flex', alignItems: 'center', gap: 4, minWidth: 0 }}>
                     <img src={s.iconSrc} alt="" draggable={false}
-                      style={{ width: 15, height: 15, objectFit: 'contain', flex: 'none', pointerEvents: 'none' }} />
+                      style={{ width: 17, height: 17, objectFit: 'contain', flex: 'none', pointerEvents: 'none' }} />
                     <span style={{ fontSize: 10.5, fontWeight: 700, color: COL.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>{s.label}</span>
                     <span style={{ flex: 'none', marginLeft: 'auto', fontSize: 10, fontWeight: 800, color: COL.text2, fontVariantNumeric: 'tabular-nums' }}>Lv {lvl}</span>
                   </div>
-                  {/* The parent's role: a family of five T2 skills. */}
-                  <div style={{ fontSize: 8.5, color: COL.muted, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                    {parentBlurb(s.key)}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 3, minWidth: 0 }}>
+                    <span style={{ flex: 1, fontSize: 8.5, color: COL.muted, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {parentBlurb(s.key)}
+                    </span>
+                    {/* drill affordance — this tile OPENS the family. */}
+                    <span aria-hidden="true" style={{ flex: 'none', fontSize: 10, fontWeight: 800, color: COL.text2, lineHeight: 1 }}>›</span>
                   </div>
                   {prog && (
-                    <div style={{ fontSize: 8.5, color: COL.muted, fontVariantNumeric: 'tabular-nums' }}>
-                      {prog.prog} / {prog.thresh} XP
-                    </div>
-                  )}
-                  {prog && (
-                    <div style={{ position: 'absolute', left: 6, right: 6, bottom: 3, height: 3, borderRadius: 999, overflow: 'hidden', background: '#0B1216', pointerEvents: 'none' }}>
+                    <div style={{ position: 'absolute', left: 7, right: 7, bottom: 4, height: 3, borderRadius: 999, overflow: 'hidden', background: '#0B1216', pointerEvents: 'none' }}>
                       <div style={{ width: pct + '%', height: '100%', background: '#D8A85F' }} />
                     </div>
                   )}

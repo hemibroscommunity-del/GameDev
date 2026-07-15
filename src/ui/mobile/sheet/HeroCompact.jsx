@@ -81,7 +81,9 @@ export const HeroCompact = () => {
               className={unspent > 0 ? 'bt-build-flash' : undefined}
               onPointerUp={(e) => {
                 e.stopPropagation();
-                if (unspent > 0 && openT2Cat) {
+                /* v2.3.1311d (owner): parents are launchers — always
+                   tappable into their five-category spend screen. */
+                if (openT2Cat) {
                   requestT2Category(openT2Cat);
                   dashboardPanelBus.push('t2');
                 }
@@ -92,7 +94,7 @@ export const HeroCompact = () => {
                 display: 'flex', flexDirection: 'column',
                 alignItems: 'center', justifyContent: 'center', gap: 2,
                 minWidth: 0, minHeight: 0,
-                cursor: unspent > 0 ? 'pointer' : 'default',
+                cursor: 'pointer',
                 touchAction: 'none',
               }}>
               {/* v2.3.1311: "+N" — these are parent-specific T2 points
