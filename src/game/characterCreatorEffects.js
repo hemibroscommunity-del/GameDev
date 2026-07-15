@@ -31,6 +31,9 @@ export function wireCharacterPortrait(previewCanvasRef, sel) {
     facialHair: facialHairSel, facialHairColor: facialHairColorTarget(beardColorSel),
     headwear: headwearSel, hatColor: hatColorTarget(hatColorSel),
     shirt: shirtSel, shirtColor: shirtColorTarget(shirtColorSel),
+    /* v2.3.1300: baked contact shadow — login preview only (exports and
+       headshots keep a clean figure). */
+    groundShadow: true,
   });
   /* v2.3.715: warm the other 7 angles for whatever is selected NOW, so
      rotating never waits on the network. */

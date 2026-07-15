@@ -207,6 +207,39 @@ export async function drawCharacterPortrait(canvas, opts) {
   ctx.translate(ZCX, ZCY);
   ctx.scale(Z, Z);
   ctx.translate(-ZCX, -ZCY);
+  /* v2.3.1300: OPT-IN ground shadow (login preview passes groundShadow;
+     portraitDataUrl/headshot exports don't, so they stay clean) — a soft
+     3/4-squashed contact ellipse painted FIRST so every figure layer
+     composites over it.  Lives inside the zoom/mirror transform, so it
+     tracks the boots at every angle and flips with the mirrored views
+     for free.  The per-direction foot line mirrors the v2.3.744 finding
+     (SW/E source frames sit higher in their 256 box).  Alpha/squash
+     follow the in-game blob-shadow recipe (entityRenderer: black
+     ellipse, ry≈0.35×rx). */
+  if (opts && opts.groundShadow) {
+    /* v2.3.1300b: the first cut sat ~20px too HIGH, so the figure
+       (composited over it) hid it almost entirely (owner: "I don't see
+       any shadow... might be drawn on a layer beneath").  These foot
+       lines are MEASURED — lowest opaque pixel of each stand-<dir>.png
+       (south 221 / north 219 / east 223 / NE 227 / SW 234), +3px so
+       the ellipse peeks around the boots; stronger/wider for the
+       half-scale hero display. */
+    const _FOOT_Y = { south: 224, north: 222, east: 226, northeast: 230, southwest: 237 };
+    const fy = _FOOT_Y[DIR] || 226;
+    const g = ctx.createRadialGradient(FRAME / 2, fy, 2, FRAME / 2, fy, 48);
+    /* v2.3.1300c: ~45% darker (owner: increase intensity). */
+    g.addColorStop(0, 'rgba(0,0,0,0.52)');
+    g.addColorStop(0.55, 'rgba(0,0,0,0.26)');
+    g.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.save();
+    /* squash the radial circle into the platform's 3/4 ellipse */
+    ctx.translate(FRAME / 2, fy);
+    ctx.scale(1, 0.34);
+    ctx.translate(-FRAME / 2, -fy);
+    ctx.fillStyle = g;
+    ctx.fillRect(FRAME / 2 - 52, fy - 52, 104, 104);
+    ctx.restore();
+  }
   /* v2.3.757: the body always draws SHIRTLESS (baked shirt retired); the
      shirt is the layered white-base sheet tinted to the picked color and
      composited on top -- exactly what the game renders.  Null color = white
