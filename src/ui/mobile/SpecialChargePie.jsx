@@ -76,7 +76,9 @@ export const SpecialChargePie = () => {
   const strokeW = 10;
   const diskR = ringR - strokeW / 2;
   const C = 2 * Math.PI * ringR;
-  const bottomVal = 'calc(var(--dash-h) + ' + (70 + joyW + 8) + 'px)';
+  /* v2.3.1314: --bt-chrome-base (game.css) — the pie rides above the
+     open sheet with the joystick discs (owner: play with menus open). */
+  const bottomVal = 'calc(var(--bt-chrome-base, var(--dash-h)) + ' + (70 + joyW + 8) + 'px)';
   const rightVal  = (50 + (joyW - size) / 2) + 'px';
 
   const RING_FG   = '#4aa3ff';

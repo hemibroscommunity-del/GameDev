@@ -366,22 +366,29 @@
   outline-offset:-2px;
 }
 /* v2.3.1289: snap-state chevron (owner request) — sits in the ACTIVE
-   destination's top-right corner.  Up while compact = "tap to expand";
-   rotates to down while expanded = "tap to collapse".  One glyph, one
-   rotation — it also mirrors the swipe direction on the sheet. */
+   destination's top-right corner.
+   v2.3.1314 (owner round-8b): rebuilt as a two-chevron STACK, one
+   chevron per available step, shown only while a view is open:
+   compact = up + down (expand or close available), expanded = down +
+   down (two steps down to the bar).  Each chevron bobs gently in its
+   own direction — animated affordance for the icon swipe. */
 .bt-nav-snap{
   position:absolute;
-  top:3px;
-  right:5px;
-  width:12px;
-  height:12px;
+  top:2px;
+  right:4px;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:1px;
   color:var(--ui-brass);
   pointer-events:none;
-  transition:transform .22s ease;
 }
-.bt-nav-snap[data-expanded='true']{transform:rotate(180deg)}
+@keyframes bt-snap-bob-up{0%,100%{transform:translateY(0)}50%{transform:translateY(-1.5px)}}
+@keyframes bt-snap-bob-down{0%,100%{transform:translateY(0)}50%{transform:translateY(1.5px)}}
+.bt-nav-snap-up{animation:bt-snap-bob-up 1.4s ease-in-out infinite}
+.bt-nav-snap-down{animation:bt-snap-bob-down 1.4s ease-in-out infinite}
 @media (prefers-reduced-motion: reduce){
-  .bt-nav-snap{transition:none}
+  .bt-nav-snap-up,.bt-nav-snap-down{animation:none}
 }
 /* v2.3.1312 (round-8 §Badges): one restrained pulse on the toolbar Bag
    icon per NEW pickup — BottomDashboard remounts the icon span (epoch
@@ -610,29 +617,23 @@ input{font-family:inherit}
 .bt-chat-input:focus{border-color:var(--pop)}
 .bt-joystick-zone{z-index:30;display:block;
   -webkit-touch-callout:none;-webkit-user-select:none;user-select:none;touch-action:none}
-/* v2.3.1288 (nav-system PR B): while a sheet is OPEN the floating
-   combat chrome — both joystick discs and the special-charge pie — dims
-   to ghost opacity so it reads as parked, not tappable, under/over the
-   sheet.  BottomDashboard stamps data-bt-sheet on <html> from the panel
-   bus, so this is pure CSS with no dependency on the overlays
-   re-rendering.  The dim rides the CONTAINERS: BroTown's engagement
-   ladder stamps opacity on the base elements inside (rest .5 / engaged
-   .92, v2.3.1233b), which multiplies instead of fighting — and a
-   joystick touch drops the sheet to the bar instantly (v2.3.1283
-   interlock), so "engaged while open" never persists.
-   v2.3.1290: with the bar as resting state the discs anchor just above
-   the toolbar, INSIDE the compact sheet's footprint — so the dim now
-   applies in BOTH open modes, and full opacity is bar-mode only. */
-.bt-joystick-zone,.bt-rjoy-zone,.bt-charge-pie{transition:opacity .22s ease}
+/* v2.3.1314 (owner round-8b): "keep joysticks above the screen and
+   active with any menu view open."  The v2.3.1288 ghost-dim is GONE —
+   the floating combat chrome (both discs + the special-charge pie) now
+   ANCHORS off --bt-chrome-base, which is the toolbar height at rest
+   and the OPEN sheet's height while a menu is up (--sheet-h, stamped
+   by BottomDashboard).  The chrome slides above the sheet's top edge
+   and stays fully live: the v2.3.1283/1290 joystick->bar interlock is
+   removed in BroTown's lS/rS, so you can play with menus open.
+   Consumers: TouchControls corner containers + SpecialChargePie use
+   bottom:calc(var(--bt-chrome-base, var(--dash-h)) + Npx). */
+:root{--bt-chrome-base:var(--dash-h)}
+:root[data-bt-sheet="compact"],
+:root[data-bt-sheet="expanded"]{--bt-chrome-base:var(--sheet-h)}
+.bt-joystick-zone,.bt-rjoy-zone,.bt-charge-pie{transition:opacity .22s ease,bottom .22s cubic-bezier(.2,.8,.2,1)}
 @media (prefers-reduced-motion: reduce){
   .bt-joystick-zone,.bt-rjoy-zone,.bt-charge-pie{transition:none}
 }
-:root[data-bt-sheet="compact"] .bt-joystick-zone,
-:root[data-bt-sheet="compact"] .bt-rjoy-zone,
-:root[data-bt-sheet="compact"] .bt-charge-pie,
-:root[data-bt-sheet="expanded"] .bt-joystick-zone,
-:root[data-bt-sheet="expanded"] .bt-rjoy-zone,
-:root[data-bt-sheet="expanded"] .bt-charge-pie{opacity:.15}
 
 /* Joystick base — outer ring filled with a light transparent gray so
    it sits over the game world like a subtle puck. */

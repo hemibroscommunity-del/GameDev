@@ -47,7 +47,10 @@ export function TouchControls(props) {
     className: "bt-joystick-zone",
     style: {
       position: 'fixed',
-      bottom: 'calc(var(--dash-h) + 70px)',
+      /* v2.3.1314: --bt-chrome-base = toolbar at rest, the OPEN sheet's
+         height while a menu is up (game.css) — the disc rides above the
+         sheet and stays live (owner: play with menus open). */
+      bottom: 'calc(var(--bt-chrome-base, var(--dash-h)) + 70px)',
       left: isLandscape ? 16 : 12,
       zIndex: 30,
       /* v2.3.816: visuals only -- touches are handled by lZoneRef beneath,
@@ -169,7 +172,8 @@ export function TouchControls(props) {
     className: "bt-desktop-hide bt-rjoy-zone",
     style: {
       position: 'fixed',
-      bottom: 'calc(var(--dash-h) + 70px)',
+      /* v2.3.1314: rides --bt-chrome-base like the left disc. */
+      bottom: 'calc(var(--bt-chrome-base, var(--dash-h)) + 70px)',
       right: isLandscape ? 50 : 50,
       zIndex: 30,
       /* v2.3.816: visuals only -- touches handled by rZoneRef beneath. */

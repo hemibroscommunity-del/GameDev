@@ -13,13 +13,16 @@
 //   'compact'  — the destination's glance view.
 //   'expanded' — the destination's detailed / actionable view.
 //
-// Toolbar semantics (v2.3.1311, ChatGPT round-8): tapping any
+// Toolbar semantics (v2.3.1314, owner round-8b): tapping any
 // destination from the bar (or an inactive one anytime) opens its
-// COMPACT view; tapping the ACTIVE destination toggles compact <->
-// expanded.  Tap never reaches the bar — dismissal is a swipe DOWN on
-// the icon, a world tap, or joystick input (combat safety drops
-// straight to bar).  Swiping up/down ON a toolbar icon advances /
-// retreats exactly one state (advance/retreat below).
+// COMPACT view; tapping the ACTIVE destination cycles UP then closes —
+// compact -> expanded -> bar — so three taps walk a destination
+// through all of its states (the owner overrode ChatGPT's round-8
+// tap-toggle here: "third tap to return to toolbar only").  Swiping
+// up/down ON a toolbar icon still advances/retreats exactly one state
+// (advance/retreat below).  Joystick/world input no longer closes the
+// sheet (v2.3.1314: play with menus open — the combat chrome rides
+// above the sheet via --bt-chrome-base).
 
 const listeners = new Set();
 const emit = () => { for (const fn of listeners) fn(); };
@@ -51,16 +54,16 @@ export const dashboardPanelBus = {
   },
 
   // Toolbar tap: from the bar or an inactive destination -> its compact
-  // view; active destination toggles compact <-> expanded (v2.3.1311 —
-  // round-8 dropped the old third tap-to-bar step: closing is a gesture,
-  // never a tap, so a triple-tap can't yank the sheet away mid-glance).
+  // view; active destination cycles compact -> expanded -> bar.
+  // (v2.3.1311 briefly made the third tap toggle back to compact per
+  // ChatGPT round-8; the owner restored the full cycle in round-8b.)
   tapDestination(id) {
     if (this.state.mode === 'bar' || this.root() !== id) {
       this.openCompact(id);
     } else if (this.state.mode === 'compact') {
       this.expand();
     } else {
-      this.stepDown();
+      this.toBar();
     }
   },
 

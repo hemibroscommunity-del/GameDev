@@ -355,12 +355,37 @@ const IconButton = ({ glyph, src: srcProp, label, active, onClick, onSwipe, node
           pointerEvents: 'none',
         }} />
       )}
-      {active && snap && (
-        <span className="bt-nav-snap" data-expanded={snap === 'expanded' ? 'true' : 'false'} aria-hidden="true">
-          <svg viewBox="0 0 12 12" width="12" height="12">
-            <path d="M2.5 7.5 L6 4 L9.5 7.5" stroke="currentColor" strokeWidth="1.8"
-              fill="none" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
+      {/* v2.3.1314 (owner round-8b): state-aware chevrons — ONE chevron
+          per available step, shown only while a view is open (never at
+          bar).  Compact: one up (expand available) + one down (bar
+          available).  Expanded: two down (compact, then bar).  The
+          gentle bob animation reads as "swipeable"; direction matches
+          both the icon swipe and the tap cycle's next step. */}
+      {active && snap && snap !== 'bar' && (
+        <span className="bt-nav-snap" aria-hidden="true">
+          {snap === 'compact' ? (
+            <>
+              <svg className="bt-nav-snap-up" viewBox="0 0 12 7" width="11" height="6">
+                <path d="M2 5.5 L6 1.5 L10 5.5" stroke="currentColor" strokeWidth="1.8"
+                  fill="none" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+              <svg className="bt-nav-snap-down" viewBox="0 0 12 7" width="11" height="6">
+                <path d="M2 1.5 L6 5.5 L10 1.5" stroke="currentColor" strokeWidth="1.8"
+                  fill="none" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </>
+          ) : (
+            <>
+              <svg className="bt-nav-snap-down" viewBox="0 0 12 7" width="11" height="6">
+                <path d="M2 1.5 L6 5.5 L10 1.5" stroke="currentColor" strokeWidth="1.8"
+                  fill="none" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+              <svg className="bt-nav-snap-down" viewBox="0 0 12 7" width="11" height="6">
+                <path d="M2 1.5 L6 5.5 L10 1.5" stroke="currentColor" strokeWidth="1.8"
+                  fill="none" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </>
+          )}
         </span>
       )}
     </button>
@@ -765,13 +790,14 @@ export const BottomDashboard = () => {
            READY turn-ins (v2.3.1298; available quests never badge).
            The 200ms interval keeps these live. */
         const Sb = (typeof window !== 'undefined') && window._gameState && window._gameState.current;
-        /* v2.3.1312 (round-8 §Badges): bag badges on UNVIEWED pickups —
-           cleared only when the item is inspected (bagUnseenModel),
-           never merely by opening Bag. */
+        /* v2.3.1315 (owner round-8b): the Bag's circle dot is REMOVED —
+           "remove the little circle indicator for new items."  The
+           one-shot pickup pulse and the in-bag sparkle markers stay;
+           skills/quests keep their dots (level-ups and turn-ins, not
+           items). */
         const dots = {
           skills: hasUnseenLevelUps((Sb && Sb.rpg) || {}),
           quests: readyQuestCount(Sb) > 0,
-          bag: bagUnseen.count() > 0,
         };
         return (
           <div className="bt-dashboard-toolbar-frame" style={{
@@ -821,9 +847,9 @@ export const BottomDashboard = () => {
                   snap={litId === d.id ? mode : null}
                   dot={!!dots[d.id]}
                   /* v2.3.1312: one restrained pulse per NEW pickup (the
-                     epoch key replays the animation); gated on the dot
-                     so inspecting the item also retires the motion. */
-                  pulse={d.id === 'bag' && dots.bag ? bagUnseen.epoch() : 0}
+                     epoch key replays the animation); gated on unseen
+                     count so inspecting the item retires the motion. */
+                  pulse={d.id === 'bag' && bagUnseen.count() > 0 ? bagUnseen.epoch() : 0}
                   onClick={() => dashboardPanelBus.tapDestination(d.id)}
                   /* v2.3.1311 (round-8 §2): icon swipes resize the sheet
                      one state per swipe; ends are no-ops. */

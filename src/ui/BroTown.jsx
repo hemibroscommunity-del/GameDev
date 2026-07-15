@@ -5359,14 +5359,13 @@ export var BroTown = function BroTown(_ref0) {
       var t = e.changedTouches[0];
       /* v2.3.845: hand reel-zone touches to the fishing gesture, not movement. */
       if (isReelTouch(t.clientX, t.clientY)) return;
-      /* v2.3.1283: movement input collapses an expanded sheet
-         immediately (nav-system spec §Real-time gameplay safety) — the
-         zones only exist above the sheet's top edge, so any touch here
-         is world-intent. */
-      try {
-        var _bus = window.__broDashPanelBus;
-        if (_bus && _bus.state.mode !== 'bar') _bus.toBar(); /* v2.3.1290: straight to bar */
-      } catch (_e2) {}
+      /* v2.3.1314 (owner round-8b): the v2.3.1283/1290 collapse-on-move
+         interlock is REMOVED — "you can keep joysticks active with any
+         menu view open."  Sheet touches never reach this zone (sheet
+         z 30 over zone z 6), and the combat chrome now rides above the
+         open sheet via --bt-chrome-base, so movement and an open menu
+         coexist.  Closing is the third tap, an icon swipe down, or the
+         header chevron. */
       var nowMs = Date.now();
       var lts = lTapState.current;
       lTouchId.current = t.identifier;
@@ -5491,12 +5490,8 @@ export var BroTown = function BroTown(_ref0) {
       var t = e.changedTouches[0];
       /* v2.3.845: hand reel-zone touches to the fishing gesture, not aim/attack. */
       if (isReelTouch(t.clientX, t.clientY)) return;
-      /* v2.3.1283: aim/attack input collapses an expanded sheet too —
-         same rule as the movement zone (see lS). */
-      try {
-        var _busR = window.__broDashPanelBus;
-        if (_busR && _busR.state.mode !== 'bar') _busR.toBar(); /* v2.3.1290: straight to bar */
-      } catch (_e2) {}
+      /* v2.3.1314 (owner round-8b): collapse-on-aim interlock removed —
+         same rule change as the movement zone (see lS). */
       var nowMs = Date.now();
       var rts = rTapState.current;
       var dxLast = t.clientX - rts.lastX;
