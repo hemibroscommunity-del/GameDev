@@ -40,11 +40,23 @@ const _sheets = {};
 /* v2.3.1122: WebP-preferring load (PNG fallback) for the gear sheets. */
 function loadImg(url) { return loadWebpOrPng(url); }
 
-function buildSheet(key, slot, item, pose, dir) {
+/* v2.3.1305: bounded retry on gear-sheet load failure.  A flaked request
+   (deploy-day cold CDN edge / dropped mobile request) used to cache []
+   permanently and hide that gear slot for that (pose,dir) all session —
+   part of the owner's "clothes missing depending on the angle" report.
+   The entry stays 'loading' across the backoff so callers keep their
+   graceful null fallback; the retry URL appends &r=N to bypass a
+   poisoned cache entry.  Deliberately NO crash-telemetry here: partial
+   pose sets are by design (fish/pickup ship south only), so a final
+   failure is only distinguishable from expected-missing art by eye —
+   flip window.__spriteLog = true to see them. */
+const _GEAR_RETRY_MS = [2000, 6000];
+function buildSheet(key, slot, item, pose, dir, attempt = 0) {
   _sheets[key] = 'loading';
   /* Returns a promise that ALWAYS resolves (missing sheet -> []), so callers
      that want to await a full preload don't hang on a 404. */
-  return loadImg(`/sprites/gear/${slot}/${item}/${pose}-${dir}.png?v=${GEAR_VERSION}`).then(rawImg => {
+  const bust = attempt > 0 ? `&r=${attempt}` : '';
+  return loadImg(`/sprites/gear/${slot}/${item}/${pose}-${dir}.png?v=${GEAR_VERSION}${bust}`).then(rawImg => {
     /* restore a downscaled-on-disk gear sheet to the 256px frame (no-op for any
        native >=256 sheet, so the variable-height combat poses are untouched) */
     const img = upscaleToFrameHeight(rawImg, FRAME_H);
@@ -62,7 +74,14 @@ function buildSheet(key, slot, item, pose, dir) {
       out.push(new Texture({ source: src, frame: new Rectangle(i * FRAME_W, 0, FRAME_W, FRAME_H) }));
     }
     _sheets[key] = out;
-  }).catch(() => { _sheets[key] = []; /* missing -> caller hides the slot */ });
+  }).catch(() => {
+    if (attempt < _GEAR_RETRY_MS.length) {
+      setTimeout(() => buildSheet(key, slot, item, pose, dir, attempt + 1), _GEAR_RETRY_MS[attempt]);
+      return; /* stays 'loading' during the backoff */
+    }
+    _sheets[key] = []; /* missing -> caller hides the slot */
+    try { if (window.__spriteLog) console.warn('[sprite] gear sheet failed', key); } catch (e) { /* ignore */ }
+  });
 }
 
 /** Frame texture for an equipped piece, or null while loading / if missing /

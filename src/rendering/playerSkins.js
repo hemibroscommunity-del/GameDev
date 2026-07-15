@@ -496,10 +496,20 @@ export function recolorBodyToCanvas(img, skinT, pantsT, shoesT, shirtT, targetH)
    -- the WebP is LOSSLESS so the recolour's exact-RGB classification is intact. */
 function loadImg(url) { return loadWebpOrPng(url); }
 
-function buildBodySheet(sheetKey, pose, dir, skinT, pantsT, shoesT, shirtT) {
+/* v2.3.1305: bounded retry on body-sheet load failure (mirrors
+   gearSheets.buildSheet).  The recolored body carries the SHIRT bake
+   (v2.3.497) plus skin/pants/shoes — a flaked request used to cache []
+   permanently, so that facing silently fell back to the base sheet for
+   the whole session (shirt gone / wrong colors on one angle only: part
+   of the owner's "clothes missing depending on the angle" report).
+   'loading' persists across the backoff so the base-sheet fallback
+   keeps the player visible; &r=N bypasses a poisoned cache entry. */
+const _BODY_RETRY_MS = [2000, 6000];
+function buildBodySheet(sheetKey, pose, dir, skinT, pantsT, shoesT, shirtT, attempt = 0) {
   _bodySheets[sheetKey] = 'loading';
   /* Returns an always-resolving promise so a full preload can await it. */
-  return loadImg(`/sprites/player/${pose}-${dir}.png?v=${SPRITE_VERSION}`).then(img => {
+  const bust = attempt > 0 ? `&r=${attempt}` : '';
+  return loadImg(`/sprites/player/${pose}-${dir}.png?v=${SPRITE_VERSION}${bust}`).then(img => {
     /* body poses are 256px frames; restore if stored smaller on disk.  Recolour
        runs at full 256 (exact skin/pants/shoes pixel thresholds). */
     const full = recolorBodyToCanvas(img, skinT, pantsT, shoesT, shirtT, FRAME_H);
@@ -534,7 +544,14 @@ function buildBodySheet(sheetKey, pose, dir, skinT, pantsT, shoesT, shirtT) {
       out.push(new Texture({ source: src, frame: new Rectangle(i * fw, 0, fw, fh) }));
     }
     _bodySheets[sheetKey] = out;
-  }).catch(() => { _bodySheets[sheetKey] = []; /* missing -> caller falls back */ });
+  }).catch(() => {
+    if (attempt < _BODY_RETRY_MS.length) {
+      setTimeout(() => buildBodySheet(sheetKey, pose, dir, skinT, pantsT, shoesT, shirtT, attempt + 1), _BODY_RETRY_MS[attempt]);
+      return; /* stays 'loading' during the backoff */
+    }
+    _bodySheets[sheetKey] = []; /* missing -> caller falls back */
+    try { if (window.__spriteLog) console.warn('[sprite] body sheet failed', sheetKey); } catch (e) { /* ignore */ }
+  });
 }
 
 /** Recolored body frame for (skin, pants, shoes, pose, dir, frameIdx).  Falls

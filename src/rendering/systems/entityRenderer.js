@@ -38,6 +38,7 @@ import { getShirtColor, shirtFill } from '../traits/shirtColorCatalog.js';
 import { getGearFrame, getLoadedGearSources } from '../gearSheets.js';
 import { combatGearUrls } from '../combatGear.js';
 import { getEquip, onEquipChange, GEAR_CATALOG } from '../gearCatalog.js'; /* v2.3.1236: GEAR_CATALOG drives the all-states loading-screen prewarm */
+import { recordCrash } from '../../debug/crashTrap.js'; /* v2.3.1305: trait-sheet load-failure telemetry */
 
 /* §9.2.1 Collision-opportunity weapon edge glow — proximity radius (≈20u). */
 const COLLISION_GLOW_RANGE_PX = 80;
@@ -221,20 +222,52 @@ function _ensureTraitLoaded(category, id) {
       .then(j => { if (j) e.meta = j; })
       .catch(() => {});
     for (const dir of Object.keys(e.tex)) {
-      Assets.load(`/sprites/traits/${category}/${id}/${dir}.png?v=${TRAIT_VER}`)
-        .then(t => {
-          e.tex[dir] = t;
-          if (t && t.source) {
-            /* match body's linear scaleMode + mipmaps so Lanczos
-               downscale artifacts blend out the same way. */
-            t.source.scaleMode = 'linear';
-            t.source.autoGenerateMipmaps = true;
-          }
-        })
-        .catch(() => {});  // expected for directions that don't exist yet
+      _loadTraitDir(e, category, id, dir, 0);
     }
   }
   return e;
+}
+/* v2.3.1305: per-direction trait load with bounded retry.  Owner
+   two-player report: "lots of layers are missing depending on the
+   angle of the player (face missing, clothes missing)".  The old
+   loader fired each direction's Assets.load exactly ONCE with a
+   swallow-all catch — one flaked request (deploy-day cold CDN edge,
+   iPhone Safari dropping a request during the join burst) left
+   e.tex[dir] null for the whole session, silently hiding that trait
+   for that facing (_placeTrait's visible=false branch).  Two quiet
+   retries (2s/6s) recover the transient case; the retry URL appends
+   &r=N so a poisoned CDN/browser cache entry — and Pixi's own
+   rejected-load cache — can't replay the failure.  A direction that
+   still fails WITH a loaded sibling is real evidence (the art set
+   exists but this dir flaked deterministically) and lands in the
+   crashTrap ring + upload; a direction with NO loaded siblings stays
+   quiet (trait sets missing whole dirs were historically normal —
+   the old catch comment said "expected for directions that don't
+   exist yet"). */
+const _TRAIT_RETRY_MS = [2000, 6000];
+function _loadTraitDir(e, category, id, dir, attempt) {
+  const bust = attempt > 0 ? `&r=${attempt}` : '';
+  Assets.load(`/sprites/traits/${category}/${id}/${dir}.png?v=${TRAIT_VER}${bust}`)
+    .then(t => {
+      e.tex[dir] = t;
+      if (t && t.source) {
+        /* match body's linear scaleMode + mipmaps so Lanczos
+           downscale artifacts blend out the same way. */
+        t.source.scaleMode = 'linear';
+        t.source.autoGenerateMipmaps = true;
+      }
+    })
+    .catch(() => {
+      if (attempt < _TRAIT_RETRY_MS.length) {
+        setTimeout(() => _loadTraitDir(e, category, id, dir, attempt + 1), _TRAIT_RETRY_MS[attempt]);
+        return;
+      }
+      try {
+        if (window.__spriteLog) console.warn('[sprite] trait dir failed', category, id, dir);
+        const siblingLoaded = Object.keys(e.tex).some(d => d !== dir && e.tex[d]);
+        if (siblingLoaded) recordCrash('sheet', `trait ${category}/${id}/${dir} failed x${attempt + 1}`);
+      } catch (err) { /* telemetry must never break rendering */ }
+    });
 }
 function _ensureHeadwearLoaded(id) { return _ensureTraitLoaded('headwear', id); }
 function _ensureFacialHairLoaded(id) { return _ensureTraitLoaded('facialhair', id); }
@@ -366,7 +399,14 @@ function bodyDirScale(pose, dir) {
 function _placeTrait(sprite, entry, display, pose, dir, mirror, frameIdx, bodyScale) {
   if (!sprite) return;
   _ensureBodyData();
-  const headwearTex = entry && entry.tex[dir];
+  /* v2.3.1305: fallbackTex = the NATIVE-color textures behind a recolored
+     set.  The color catalogs cache a build as complete even when one
+     direction's recolor failed (hairColorCatalog build(): per-dir catch,
+     then the whole map is stored) — that hole used to render as an
+     INVISIBLE trait for that facing, because the truthy colored map
+     replaced the base entry outright.  Wrong-color-but-visible beats
+     invisible: fall through to the native texture for just that dir. */
+  const headwearTex = entry && (entry.tex[dir] || (entry.fallbackTex && entry.fallbackTex[dir]));
   const meta = entry && entry.meta;
   const spriteBody = display._spriteBody;
   const bodyTop = _lookupBodyTop(pose, dir, frameIdx);
@@ -429,7 +469,7 @@ function _placeHeadwear(display, hatId, hatColorId, pose, dir, mirror, frameIdx,
      reuse the base meta; fall back to native color while they bake). */
   let entry = baseEntry;
   const colored = getColoredHatTextures(hatId, hatColorId);
-  if (colored && baseEntry) entry = { tex: colored, meta: baseEntry.meta };
+  if (colored && baseEntry) entry = { tex: colored, meta: baseEntry.meta, fallbackTex: baseEntry.tex }; /* v2.3.1305 */
   _placeTrait(display._headwearSprite, entry, display, pose, dir, mirror, frameIdx, bodyScale);
 }
 function _placeFacialHair(display, fhId, fhColorId, pose, dir, mirror, frameIdx, bodyScale) {
@@ -438,7 +478,7 @@ function _placeFacialHair(display, fhId, fhColorId, pose, dir, mirror, frameIdx,
      reuse the base meta; fall back to native color while they bake). */
   let entry = baseEntry;
   const colored = getColoredFacialHairTextures(fhId, fhColorId);
-  if (colored && baseEntry) entry = { tex: colored, meta: baseEntry.meta };
+  if (colored && baseEntry) entry = { tex: colored, meta: baseEntry.meta, fallbackTex: baseEntry.tex }; /* v2.3.1305 */
   _placeTrait(display._facialHairSprite, entry, display, pose, dir, mirror, frameIdx, bodyScale);
 }
 /* v2.3.497: the shirt is no longer an overlay sprite -- it's baked into the
@@ -1482,7 +1522,7 @@ function _placeHair(display, hairId, hairColorId, hatId, pose, dir, mirror, fram
      they bake. */
   let entry = baseEntry;
   const colored = getColoredHairTextures(hairId, hairColorId);
-  if (colored && baseEntry) entry = { tex: colored, meta: baseEntry.meta };
+  if (colored && baseEntry) entry = { tex: colored, meta: baseEntry.meta, fallbackTex: baseEntry.tex }; /* v2.3.1305 */
   _placeTrait(display._hairSprite, entry, display, pose, dir, mirror, frameIdx, bodyScale);
   _clipHairToHat(display, hatId, pose, dir, mirror, frameIdx, bodyScale);
 }
@@ -1497,7 +1537,8 @@ function _placeHair(display, hairId, hairColorId, hatId, pose, dir, mirror, fram
    spriteBody assumptions — placement is purely world-space. */
 function _placeStandaloneTrait(sprite, entry, dir, mirror, cwx, cwy, scaleVal) {
   if (!sprite) return;
-  const tex = entry && entry.tex[dir];
+  /* v2.3.1305: same native-color fallback as _placeTrait — see there. */
+  const tex = entry && (entry.tex[dir] || (entry.fallbackTex && entry.fallbackTex[dir]));
   const meta = entry && entry.meta;
   const anchorPx = (meta && meta.anchors && meta.anchors[dir]) || null;
   if (!(tex && meta && meta.fullFrame && anchorPx)) { sprite.visible = false; return; }
@@ -1538,17 +1579,17 @@ export function placeSkillTraits(sprites, cwx, cwy, dir, mirror, scaleVal) {
      beard, then hat. */
   let hairEntry = _ensureHairLoaded(getHair());
   const hairCol = getColoredHairTextures(getHair(), getHairColor());
-  if (hairCol && hairEntry) hairEntry = { tex: hairCol, meta: hairEntry.meta };
+  if (hairCol && hairEntry) hairEntry = { tex: hairCol, meta: hairEntry.meta, fallbackTex: hairEntry.tex }; /* v2.3.1305 */
   _placeStandaloneTrait(sprites.hair, hairEntry, dir, mirror, cwx, cwy, scaleVal);
 
   let fhEntry = _ensureFacialHairLoaded(getFacialHair());
   const fhCol = getColoredFacialHairTextures(getFacialHair(), getFacialHairColor());
-  if (fhCol && fhEntry) fhEntry = { tex: fhCol, meta: fhEntry.meta };
+  if (fhCol && fhEntry) fhEntry = { tex: fhCol, meta: fhEntry.meta, fallbackTex: fhEntry.tex }; /* v2.3.1305 */
   _placeStandaloneTrait(sprites.beard, fhEntry, dir, mirror, cwx, cwy, scaleVal);
 
   let hwEntry = _ensureHeadwearLoaded(getHeadwear());
   const hwCol = getColoredHatTextures(getHeadwear(), getHatColor());
-  if (hwCol && hwEntry) hwEntry = { tex: hwCol, meta: hwEntry.meta };
+  if (hwCol && hwEntry) hwEntry = { tex: hwCol, meta: hwEntry.meta, fallbackTex: hwEntry.tex }; /* v2.3.1305 */
   _placeStandaloneTrait(sprites.hat, hwEntry, dir, mirror, cwx, cwy, scaleVal);
 }
 
@@ -1561,17 +1602,17 @@ export function placeSkillTraitsFor(sprites, looks, cwx, cwy, dir, mirror, scale
   if (!sprites || !looks) return;
   let hairEntry = _ensureHairLoaded(looks.hair);
   const hairCol = getColoredHairTextures(looks.hair, looks.hairColor);
-  if (hairCol && hairEntry) hairEntry = { tex: hairCol, meta: hairEntry.meta };
+  if (hairCol && hairEntry) hairEntry = { tex: hairCol, meta: hairEntry.meta, fallbackTex: hairEntry.tex }; /* v2.3.1305 */
   _placeStandaloneTrait(sprites.hair, hairEntry, dir, mirror, cwx, cwy, scaleVal);
 
   let fhEntry = _ensureFacialHairLoaded(looks.facialhair);
   const fhCol = getColoredFacialHairTextures(looks.facialhair, looks.facialHairColor);
-  if (fhCol && fhEntry) fhEntry = { tex: fhCol, meta: fhEntry.meta };
+  if (fhCol && fhEntry) fhEntry = { tex: fhCol, meta: fhEntry.meta, fallbackTex: fhEntry.tex }; /* v2.3.1305 */
   _placeStandaloneTrait(sprites.beard, fhEntry, dir, mirror, cwx, cwy, scaleVal);
 
   let hwEntry2 = _ensureHeadwearLoaded(looks.headwear);
   const hwCol2 = getColoredHatTextures(looks.headwear, looks.hatColor);
-  if (hwCol2 && hwEntry2) hwEntry2 = { tex: hwCol2, meta: hwEntry2.meta };
+  if (hwCol2 && hwEntry2) hwEntry2 = { tex: hwCol2, meta: hwEntry2.meta, fallbackTex: hwEntry2.tex }; /* v2.3.1305 */
   _placeStandaloneTrait(sprites.hat, hwEntry2, dir, mirror, cwx, cwy, scaleVal);
 }
 
