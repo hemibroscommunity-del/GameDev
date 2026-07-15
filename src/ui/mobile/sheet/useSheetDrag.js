@@ -135,11 +135,25 @@ export function useSheetDrag(dashRef, getBarPx, getCompactPx, getExpandedPx) {
         target = snaps.reduce((a, b) => (Math.abs(b.px - h) < Math.abs(a.px - h) ? b : a));
       }
       el.style.transition = sheetTransition();
-      /* Settle to the explicit snap px: when the mode DIDN'T change the
-         bus won't emit and React won't re-render, so an emptied inline
-         height would leave the band collapsed to auto.  The next React
-         render re-asserts the style prop anyway. */
-      el.style.height = target.px + 'px';
+      /* Settle to the snap height — but write the EXACT string React
+         renders for the target mode (BottomDashboard.jsx height
+         ternary: 'var(--dash-h)' for bar, snap px otherwise).
+
+         v2.3.1304: this string identity is load-bearing.  The old code
+         always pinned raw px ('72px'), so on a collapse-to-bar the
+         settle() re-render diffed height ('72px' -> 'var(--dash-h)',
+         same computed value, different specified string) and re-wrote
+         it MID-TRANSITION — interrupting the live 220ms ease and
+         restarting it over the remaining distance, which read as a
+         rubber-band bounce (owner two-player-session report).  Compact
+         and expanded never bounced because their strings already
+         matched React's px render.  With identical strings React's
+         re-render diffs height as unchanged and never touches it, so
+         the release ease has a single writer end-to-end.  A pin (not
+         '') is still required for the mode-UNCHANGED snap-back: settle
+         no-ops, React doesn't re-render, and an emptied inline height
+         would collapse the band to auto. */
+      el.style.height = target.mode === 'bar' ? 'var(--dash-h)' : target.px + 'px';
       dashboardPanelBus.settle(target.mode);
     };
 
