@@ -21,14 +21,19 @@ export const MoreCompact = () => (
     fontFamily: 'Source Sans 3, sans-serif',
   }}>
     {TILES.map(t => (
+      /* Bare icon+label buttons per the v2.3.1235 launcher correction
+         (the icon is the identity — no outline/fill).  The BUTTON fills
+         its whole grid cell, so the tap target far exceeds the icon
+         (round-6).  v2.3.1299: pressed state (bt-more-tile in game.css:
+         slight scale + brass tint) + per-tile iconScale/iconFilter
+         normalization from the shared TILES roster. */
       <button
         key={t.id}
+        className="bt-more-tile"
         onPointerUp={(e) => {
           e.stopPropagation();
           dashboardPanelBus.push(t.id);
         }}
-        /* Bare icon+label buttons per the v2.3.1235 launcher correction
-           (the icon is the identity — no outline/fill). */
         style={{
           background: 'transparent',
           border: 'none',
@@ -36,6 +41,8 @@ export const MoreCompact = () => (
           padding: 0,
           minWidth: 44,
           minHeight: 44,
+          width: '100%',
+          height: '100%',
           color: COL.text,
           fontFamily: 'inherit',
           display: 'flex',
@@ -52,7 +59,13 @@ export const MoreCompact = () => (
             src={t.src}
             alt={t.label}
             draggable={false}
-            style={{ width: 32, height: 32, objectFit: 'contain' }}
+            style={{
+              width: Math.round(32 * (t.iconScale || 1)),
+              height: Math.round(32 * (t.iconScale || 1)),
+              objectFit: 'contain',
+              filter: t.iconFilter || 'none',
+              pointerEvents: 'none',
+            }}
           />
         ) : (
           <span style={{ fontSize: 22 }}>{t.glyph}</span>

@@ -383,6 +383,16 @@
 @media (prefers-reduced-motion: reduce){
   .bt-nav-snap{transition:none}
 }
+/* v2.3.1299 (round-6 More): pressed feedback for the launcher tiles
+   and hub cards — slight scale + brass tint on touch (the bare icons
+   previously gave no press acknowledgement). */
+.bt-more-tile,.bt-more-card{transition:transform .1s ease,background-color .1s ease}
+.bt-more-tile:active{transform:scale(.95);background:rgba(216,170,88,.10)!important}
+.bt-more-card:active{transform:scale(.985);background:rgba(216,170,88,.10)!important}
+@media (prefers-reduced-motion: reduce){
+  .bt-more-tile,.bt-more-card{transition:none}
+  .bt-more-tile:active,.bt-more-card:active{transform:none}
+}
 .bt-dashboard-nav-icon{
   width:30px;
   height:30px;
