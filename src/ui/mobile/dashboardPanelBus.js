@@ -19,12 +19,12 @@
 // one anytime) opens its COMPACT view; tapping the ACTIVE destination
 // cycles UP then closes — compact -> expanded -> bar — so three taps
 // walk a destination through all of its states ("third tap to return
-// to toolbar only").  Icon SWIPES also resize, one snap per swipe,
-// via useSheetDrag bound to the toolbar ribbon (#285's live drag; a
-// recognized swipe stamps window.__btNavSwipeTs so IconButton swallows
-// the tap its release would otherwise fire).  Movement/aim input never
-// collapses the sheet — play with menus open (v2.3.1307); the combat
-// chrome rides above the open sheet keyed off --sheet-h.
+// to toolbar only").  Icon SWIPES also resize, one snap per swipe —
+// classified in IconButton at pointer-up and routed to advance/retreat
+// below (v2.3.1318: this session's discrete contract, owner-selected
+// over #285's ribbon drag).  Movement/aim input never collapses the
+// sheet — play with menus open (v2.3.1307); the combat chrome rides
+// above the open sheet keyed off --sheet-h.
 
 const listeners = new Set();
 const emit = () => { for (const fn of listeners) fn(); };
@@ -72,6 +72,32 @@ export const dashboardPanelBus = {
     }
   },
 
+  /* v2.3.1318 (owner: "if there are any conflicts with touch or swipe
+     controls with the other session keep yours"): the icon-swipe
+     semantics return to THIS session's discrete advance/retreat
+     contract, displacing #285's drag-release rules where they
+     differed — a swipe up on an INACTIVE icon opens that destination
+     COMPACT (the drag opened it at the swiped-to size, jumping straight
+     to expanded past the compact glance), and a swipe DOWN on an
+     inactive icon is a NO-OP (the drag closed the sheet — retreating a
+     destination you didn't swipe on is a surprise). */
+  // Swipe UP on a toolbar icon: one state up — bar/inactive -> compact
+  // -> expanded.  At expanded it's a deliberate no-op (ends never wrap).
+  advance(id) {
+    if (this.state.mode === 'bar' || this.root() !== id) {
+      this.openCompact(id);
+    } else if (this.state.mode === 'compact') {
+      this.expand();
+    }
+  },
+
+  // Swipe DOWN: one state down — expanded -> compact -> bar.  No-op
+  // when the swiped destination isn't the open one.
+  retreat(id) {
+    if (this.state.mode === 'bar' || this.root() !== id) return;
+    this.stepDown();
+  },
+
   openCompact(id) {
     this.state.stack = [id];
     this.state.mode = this.compactless.has(id) ? 'expanded' : 'compact';
@@ -112,9 +138,10 @@ export const dashboardPanelBus = {
     emit();
   },
 
-  // Settle to an explicit snap after a drag release (useSheetDrag,
-  // bound to the toolbar ribbon since v2.3.1307).  Leaving expanded
-  // pops drill children for the same reason stepDown does.
+  // Settle to an explicit snap — the honest "set mode" API for tests
+  // and any future gesture surface (its drag-release caller retired
+  // v2.3.1318).  Leaving expanded pops drill children for the same
+  // reason stepDown does.
   settle(mode) {
     if (this.state.mode === mode) return;
     this.state.mode = mode;
