@@ -17,16 +17,17 @@ import { getEquip } from '../../../rendering/gearCatalog.js';
    silhouette assets exist yet — weapon/shield/chest/legs reuse the real
    item art grayscaled; cape and amulet get inline SVGs until the owner
    generates art (flagged in the PR notes). */
+/* v2.3.1312 (round-8): the owner's painted slot-silhouette set replaces
+   the mixed bag of borrowed item art + inline SVG line drawings — all
+   six slots share one optical scale now, and the cape/amulet ghosts
+   finally have real contrast. */
 export const GHOST_SRC = {
-  weapon: '/sprites/weapons/swords/Sword1.webp?v=2.3.173',
-  shield: '/sprites/shields/wood-shield-front.webp?v=2.3.198',
-  chest: '/sprites/gear/icons/steelplate.webp?v=2.3.685',
-  legs: '/sprites/gear/icons/steelgreaves.webp?v=2.3.685',
-  /* simple line pictograms, currentColor strokes */
-  cape: 'data:image/svg+xml;utf8,' + encodeURIComponent(
-    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#B6C1BE" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3 L5 20 L12 17 L19 20 L16 3 Q12 6 8 3 Z"/></svg>'),
-  amulet: 'data:image/svg+xml;utf8,' + encodeURIComponent(
-    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#B6C1BE" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3 Q12 12 19 3"/><circle cx="12" cy="15" r="4"/></svg>'),
+  weapon: '/icons/bag/slot-weapon.webp?v=2.3.1312',
+  shield: '/icons/bag/slot-shield.webp?v=2.3.1312',
+  chest:  '/icons/bag/slot-chest.webp?v=2.3.1312',
+  legs:   '/icons/bag/slot-legs.webp?v=2.3.1312',
+  cape:   '/icons/bag/slot-cape.webp?v=2.3.1312',
+  amulet: '/icons/bag/slot-amulet.webp?v=2.3.1312',
 };
 
 const wpnIconSrc = (R, wpn) => {

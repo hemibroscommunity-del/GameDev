@@ -23,7 +23,7 @@ import { portraitStore } from './sheet/portraitStore.js';          /* v2.3.1294 
 import { hasUnseenLevelUps } from './sheet/skillsModel.js';        /* v2.3.1296 */
 import { readyQuestCount } from './sheet/questModel.js';           /* v2.3.1298 */
 import { sheetTransition } from './sheet/motion.js';            /* v2.3.1283 */
-import { useSheetDrag } from './sheet/useSheetDrag.js';         /* v2.3.1283 */
+import { bagUnseen, bagEntryKey } from './sheet/bagUnseenModel.js'; /* v2.3.1312 */
 import { BagCompact } from './sheet/BagCompact.jsx';            /* v2.3.1285 */
 import { HeroCompact } from './sheet/HeroCompact.jsx';          /* v2.3.1286 */
 import { HeroExpanded } from './sheet/HeroExpanded.jsx';        /* v2.3.1286 */
@@ -271,11 +271,21 @@ const Tooltip = ({ tip, onClose }) => {
    button's top-LEFT (the chevron owns top-right) for ACTIONABLE state
    only: unviewed skill level-ups, ready quest turn-ins.  Never for
    routine churn like XP gains or friends-online counts. */
-const IconButton = ({ glyph, src: srcProp, label, active, onClick, node, tut, snap, dot }) => {
+/* v2.3.1311 (round-8 §2): `onSwipe` — vertical swipes ON a toolbar icon
+   are the sheet-resize gesture now (body drags retired).  Recognition
+   at pointer-up: |dy| >= 24px and clearly vertical (|dy| > 1.5·|dx|)
+   reads as a swipe; anything smaller stays a tap.  Pointer capture
+   keeps the up event on the button even when the finger drifts off it
+   mid-swipe (it always does).
+   `pulse` (round-8 §Badges) — an epoch counter; each bump remounts the
+   icon span (key) to replay one restrained scale pulse (CSS
+   .bt-nav-pulse, reduced-motion guarded). */
+const IconButton = ({ glyph, src: srcProp, label, active, onClick, onSwipe, node, tut, snap, dot, pulse }) => {
   /* v2.3.1283: destinations pass an explicit `src`; `glyph` (ICON_SRC
      lookup) stays for any legacy caller. */
   const src = srcProp || ICON_SRC[glyph];
   const [pressed, setPressed] = useState(false);
+  const gestureStart = useRef(null);
   // Use onPointerUp instead of onClick so iOS fires it even when
   // another finger is mid-drag on a joystick.  stopPropagation
   // prevents the event reaching the dashboard's outer pointerdown
@@ -283,6 +293,16 @@ const IconButton = ({ glyph, src: srcProp, label, active, onClick, node, tut, sn
   const fire = (e) => {
     e.stopPropagation();
     setPressed(false);
+    const s = gestureStart.current;
+    gestureStart.current = null;
+    if (s && onSwipe) {
+      const dy = e.clientY - s.y;
+      const dx = e.clientX - s.x;
+      if (Math.abs(dy) >= 24 && Math.abs(dy) > Math.abs(dx) * 1.5) {
+        onSwipe(dy < 0 ? 'up' : 'down');
+        return;
+      }
+    }
     onClick && onClick();
   };
   /* v2.3.1240: the toolbar is one dark navigation ribbon, but every
@@ -294,8 +314,15 @@ const IconButton = ({ glyph, src: srcProp, label, active, onClick, node, tut, sn
     <button
       type="button"
       onPointerUp={fire}
-      onPointerDown={(e) => { e.stopPropagation(); setPressed(true); }}
-      onPointerCancel={() => setPressed(false)}
+      onPointerDown={(e) => {
+        e.stopPropagation();
+        setPressed(true);
+        gestureStart.current = { x: e.clientX, y: e.clientY };
+        /* Without capture a swipe whose finger leaves the button never
+           delivers pointerup here and the gesture dies silently. */
+        try { e.currentTarget.setPointerCapture(e.pointerId); } catch (_) {}
+      }}
+      onPointerCancel={() => { setPressed(false); gestureStart.current = null; }}
       onPointerLeave={() => setPressed(false)}
       data-tut={tut}
       aria-label={label}
@@ -303,7 +330,7 @@ const IconButton = ({ glyph, src: srcProp, label, active, onClick, node, tut, sn
       data-pressed={pressed ? 'true' : 'false'}
       className="bt-dashboard-nav-button"
     >
-      <span className="bt-dashboard-nav-icon">
+      <span className={'bt-dashboard-nav-icon' + (pulse ? ' bt-nav-pulse' : '')} key={pulse || 0}>
         {node ? node : (
           <img
             src={src}
@@ -431,6 +458,33 @@ export const BottomDashboard = () => {
      must not linger over a freshly opened panel: clear it on every
      panel-bus event (it did NOT clear before; only the 3s timer did). */
   useEffect(() => dashboardPanelBus.subscribe(() => { setTooltip(''); force(v => v + 1); }), []);
+  /* v2.3.1312 (round-8 §Badges): the pickup watcher lives HERE — the
+     dashboard is mounted in every snap mode.  It used to live in
+     BagCompact, which unmounts at bar (the resting default!) and
+     expanded, so pickups made while resting never badged the toolbar
+     and inspections from the expanded grid never cleared it.  New bag
+     keys register as unseen; opening a matching detail card marks
+     seen.  Stack quantity increments reuse their key — no re-badge. */
+  useEffect(() => {
+    let prev = null;
+    const tick = () => {
+      const S = window._gameState && window._gameState.current;
+      if (!S || !S.rpg) return;
+      const keys = getBagEntries(S.rpg).map(bagEntryKey);
+      if (prev) for (const k of keys) { if (!prev.has(k)) bagUnseen.add(k); }
+      prev = new Set(keys);
+    };
+    tick();
+    const id = setInterval(tick, 400);
+    const unsubDetail = itemDetailBus.subscribe(() => {
+      const t = itemDetailBus.state.open && itemDetailBus.state.target;
+      if (!t) return;
+      if (t.kind === 'inventory' && t.key) bagUnseen.markSeen(`i-${t.key}`);
+      else if (typeof t.kind === 'string' && t.kind.startsWith('stash')) bagUnseen.markSeen(`${t.kind}-${t.index}`);
+    });
+    const unsubUnseen = bagUnseen.subscribe(() => force(v => v + 1));
+    return () => { clearInterval(id); unsubDetail(); unsubUnseen(); };
+  }, []);
   /* v2.3.1288: PR B — stamp the snap mode on <html> so pure CSS can dim
      the floating combat chrome (joystick discs + charge pie) while a
      sheet is open; rules live in game.css next to .bt-joystick-zone.
@@ -481,15 +535,15 @@ export const BottomDashboard = () => {
       if (vv) vv.removeEventListener('resize', recompute);
     };
   }, []);
-  /* v2.3.1283: swipe gestures between snaps (spec §Direct manipulation);
-     v2.3.1290: three snaps.  Getters read the ref so a drag
-     mid-rotation still clamps correctly. */
+  /* v2.3.1311 (round-8): body drags are GONE — useSheetDrag retired.
+     Users read the sheet body as content, not a handle; drags fought
+     panel scrolling and the misleading grab bar implied a gesture
+     surface that wasn't there.  Resize gestures live on the toolbar
+     icons now (IconButton onSwipe -> bus.advance/retreat), where the
+     three-state affordance (the chevron) already is.  The snapPx ref
+     stays: the <html> stamp effect reads it. */
   const snapPxRef = useRef(snapPx);
   snapPxRef.current = snapPx;
-  useSheetDrag(dashRef,
-    () => BAR_H,
-    () => snapPxRef.current.compact,
-    () => snapPxRef.current.expanded);
   /* Player-card portrait: a head-and-shoulders render of the player's
      chosen cosmetics (skin / hair / hair color / beard / hat).  Generated
      on mount (captures the login picker) and regenerated if a cosmetic
@@ -619,28 +673,10 @@ export const BottomDashboard = () => {
         touchAction: 'none',
       }}
     >
-      {/* v2.3.1283: drag affordance (spec: subtle, must not consume
-          content height) — absolutely positioned over the band's top
-          edge so the compact height budget is untouched.  v2.3.1290:
-          hidden in bar mode (nothing to drag — the resting band is all
-          toolbar; destinations open by tap). */}
-      {mode !== 'bar' && (
-        /* v2.3.1293 (round-3 §5): bigger visible handle (44x5) — the
-           drag itself works anywhere on non-scrolling chrome, so the
-           whole top strip already exceeds a 44px hit area; the visual
-           just needed to look grabbable. */
-        <div aria-hidden="true" style={{
-          position: 'absolute',
-          top: 4,
-          left: '50%',
-          transform: 'translateX(-50%)',
-          width: 44,
-          height: 5,
-          borderRadius: 3,
-          background: 'rgba(229,237,233,.28)',
-          pointerEvents: 'none',
-        }} />
-      )}
+      {/* v2.3.1311 (round-8 §1): the grab handle is REMOVED — body
+          drags retired with useSheetDrag, and a handle with no gesture
+          behind it is a lie (ChatGPT: "misleading affordance").  The
+          resize affordance is the toolbar chevron + icon swipes. */}
       {active ? (
         <>
           {/* Header strip — back-chip (only on drilled child), title, ×.
@@ -729,9 +765,13 @@ export const BottomDashboard = () => {
            READY turn-ins (v2.3.1298; available quests never badge).
            The 200ms interval keeps these live. */
         const Sb = (typeof window !== 'undefined') && window._gameState && window._gameState.current;
+        /* v2.3.1312 (round-8 §Badges): bag badges on UNVIEWED pickups —
+           cleared only when the item is inspected (bagUnseenModel),
+           never merely by opening Bag. */
         const dots = {
           skills: hasUnseenLevelUps((Sb && Sb.rpg) || {}),
           quests: readyQuestCount(Sb) > 0,
+          bag: bagUnseen.count() > 0,
         };
         return (
           <div className="bt-dashboard-toolbar-frame" style={{
@@ -780,7 +820,16 @@ export const BottomDashboard = () => {
                   active={litId === d.id}
                   snap={litId === d.id ? mode : null}
                   dot={!!dots[d.id]}
-                  onClick={() => dashboardPanelBus.tapDestination(d.id)} />
+                  /* v2.3.1312: one restrained pulse per NEW pickup (the
+                     epoch key replays the animation); gated on the dot
+                     so inspecting the item also retires the motion. */
+                  pulse={d.id === 'bag' && dots.bag ? bagUnseen.epoch() : 0}
+                  onClick={() => dashboardPanelBus.tapDestination(d.id)}
+                  /* v2.3.1311 (round-8 §2): icon swipes resize the sheet
+                     one state per swipe; ends are no-ops. */
+                  onSwipe={(dir) => dir === 'up'
+                    ? dashboardPanelBus.advance(d.id)
+                    : dashboardPanelBus.retreat(d.id)} />
               ))}
             </div>
           </div>

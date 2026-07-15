@@ -43,14 +43,20 @@ export function compactDashHeight(vw) {
 }
 
 /* Expanded snap: ~half the viewport, with the sheet's top edge stopping
-   ~90px below the player's feet (camera centers the player in the
-   canvas area), clamped to the spec's 48-52% window.
+   BELOW the player's feet (camera centers the player in the canvas
+   area) so a strip of ground stays visible under the boots.
    v2.3.1290: the canvas area now runs down to the BAR, so the feet sit
-   lower on screen; the 48% floor keeps the snap in the approved
-   window either way. */
+   lower on screen.
+   v2.3.1312 (ChatGPT round-8 §4): clearance 90 -> 40 and the clamp
+   window drops from 48-52% to 42-48% — the old numbers left the boots
+   nearly kissing the sheet edge ("character feels crowded"); the spec
+   asks for 32-48px of visible ground and ~47-48% of usable viewport
+   for the sheet.  @844vh: canvasH 786, feetY 417, rule 387 (45.9%) —
+   exactly 40px of ground below the boots.  The canvas itself NEVER
+   resizes (invariant above); only the overlay height changes. */
 export function expandedSheetHeight(vw, vh) {
   const canvasH = vh - BAR_H + DASH_OVERLAP;
   const feetY = canvasH / 2 + FEET_OFFSET;
-  const feetRule = vh - (feetY + 90);
-  return Math.round(Math.max(vh * 0.48, Math.min(vh * 0.52, feetRule)));
+  const feetRule = vh - (feetY + 40);
+  return Math.round(Math.max(vh * 0.42, Math.min(vh * 0.48, feetRule)));
 }

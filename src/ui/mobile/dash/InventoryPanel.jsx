@@ -11,14 +11,16 @@ import { getEquippedSlots, GHOST_SRC } from '../sheet/equipModel.js';
 // Category filter chips.  "All" comes first so the player always opens
 // the bag with everything visible.  v2.3.1231: UI Bible icons replace
 // the legacy emoji glyphs (owner request); glyph kept as the
-// image-failure fallback.  No potion icon exists in the 90-icon set,
-// so Potion borrows the soak droplets until one is generated.
+// image-failure fallback.
+// v2.3.1312 (round-8): the owner's dedicated bag filter set replaces
+// the borrowed nav/combat/skill art — Potion finally gets a real
+// potion instead of the soak droplets.
 export const CATEGORIES = [
-  { id: 'all',      glyph: '◎', iconSrc: '/icons/ui/nav-inventory.webp?v=2.3.1231',       label: 'All' },
-  { id: 'weapon',   glyph: '⚔', iconSrc: '/icons/ui/combat-melee.webp?v=2.3.1231',        label: 'Weapon' },
-  { id: 'armor',    glyph: '🛡', iconSrc: '/icons/ui/combat-defense.webp?v=2.3.1231',      label: 'Armor' },
-  { id: 'potion',   glyph: '🧪', iconSrc: '/icons/ui/status-soak.webp?v=2.3.1231',         label: 'Potion' },
-  { id: 'crafting', glyph: '⚒', iconSrc: '/icons/ui/skill-blacksmithing.webp?v=2.3.1231', label: 'Crafting' },
+  { id: 'all',      glyph: '◎', iconSrc: '/icons/bag/bag-all.webp?v=2.3.1312',      label: 'All' },
+  { id: 'weapon',   glyph: '⚔', iconSrc: '/icons/bag/bag-weapons.webp?v=2.3.1312',  label: 'Weapon' },
+  { id: 'armor',    glyph: '🛡', iconSrc: '/icons/bag/bag-armor.webp?v=2.3.1312',    label: 'Armor' },
+  { id: 'potion',   glyph: '🧪', iconSrc: '/icons/bag/bag-potions.webp?v=2.3.1312',  label: 'Potion' },
+  { id: 'crafting', glyph: '⚒', iconSrc: '/icons/bag/bag-crafting.webp?v=2.3.1312', label: 'Crafting' },
 ];
 
 // Light heuristic — classify an inventory key into one of the four
@@ -214,15 +216,16 @@ export const InventoryPanel = () => {
     ? entries
     : entries.filter(e => e.cat === filter);
 
-  /* v2.3.1285 (nav-system spec §Bag Expanded): 6-col grid, minimum 4
-     rows, GROWS by whole rows and scrolls when the bag outgrows 24 —
-     the bag has no real capacity (the old "N / 32" was display-only
-     fiction, now retired), so a hard 24 would hide items. */
+  /* v2.3.1285 (nav-system spec §Bag Expanded): 6-col grid, GROWS by
+     whole rows and scrolls — the bag has no real capacity (the old
+     "N / 32" was display-only fiction, now retired).
+     v2.3.1312 (round-8 §7): empty cells only COMPLETE the final row
+     (min one row) — the old 4-row minimum padded a small bag with
+     rows of dead cells that read as fake capacity. */
   const COLS = 6;
   const shownItems = filtered;
   const usedTiles = shownItems.length;
-  const MIN_CELLS = COLS * 4;
-  const totalCells = Math.max(MIN_CELLS, Math.ceil(usedTiles / COLS) * COLS);
+  const totalCells = Math.max(COLS, Math.ceil(usedTiles / COLS) * COLS);
 
   const R = (S && S.rpg) || {};
   const equipped = getEquippedSlots(R);
@@ -236,7 +239,11 @@ export const InventoryPanel = () => {
   };
 
   return (
-    <div style={{ ...panelStyle, display: 'flex', flexDirection: 'column' }}>
+    /* v2.3.1312 (round-8 §9): the PANEL no longer scrolls — equipped
+       row + filter chips stay pinned while only the item tray scrolls
+       (overflow moved off panelStyle onto the tray, and the bottom
+       scroll-edge fade follows it there). */
+    <div style={{ ...panelStyle, overflow: 'hidden', WebkitMaskImage: 'none', maskImage: 'none', display: 'flex', flexDirection: 'column' }}>
 
       {/* v2.3.1285: the SAME six equipped positions as the compact row,
           same order, same tile component — expanding feels like the
@@ -277,8 +284,12 @@ export const InventoryPanel = () => {
           "N / 32" counter it carried now sits at the right end of this
           row, OUTSIDE the scrollable chip strip so it never scrolls
           away; the freed row height goes to larger slot tiles below. */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-      <div style={{ flex: 1, minWidth: 0, display: 'flex', gap: 4, flexWrap: 'nowrap', overflowX: 'auto', touchAction: 'pan-x', WebkitOverflowScrolling: 'touch' }}>
+      {/* v2.3.1312 (round-8 §6): the chip strip is a FIXED row — five
+          chips, equal widths, no horizontal scroll (a scrolling filter
+          row hid categories and invited accidental pans).  Icons up to
+          20px, inactive labels lifted from muted to text2 (the old
+          contrast made unselected filters look disabled). */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 6 }}>
         {CATEGORIES.map(c => {
           const active = c.id === filter;
           return (
@@ -286,11 +297,11 @@ export const InventoryPanel = () => {
               onClick={() => setFilter(c.id)}
               title={c.label}
               style={{
-                flex: '1 0 auto', minWidth: 56,
+                flex: '1 1 0', minWidth: 0,
                 display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 1,
-                padding: '4px 8px',
+                padding: '4px 2px',
                 background: active ? COL.accentFill : 'transparent',
-                color: active ? COL.text : COL.muted,
+                color: active ? COL.text : COL.text2,
                 border: `1px solid ${active ? COL.accent : COL.border}`,
                 borderRadius: 5,
                 fontFamily: 'inherit',
@@ -299,17 +310,16 @@ export const InventoryPanel = () => {
             >
               {c.iconSrc
                 ? <img src={c.iconSrc} alt="" draggable={false}
-                    style={{ width: 18, height: 18, objectFit: 'contain' }}
+                    style={{ width: 20, height: 20, objectFit: 'contain' }}
                     onError={(e) => { e.currentTarget.replaceWith(document.createTextNode(c.glyph)); }} />
                 : <span style={{ fontSize: 14, lineHeight: 1 }}>{c.glyph}</span>}
-              <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: '.02em' }}>{c.label}</span>
+              <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: '.02em', whiteSpace: 'nowrap' }}>{c.label}</span>
             </button>
           );
         })}
       </div>
       {/* v2.3.1285: the fictional "N / 32" counter is retired with the
           display cap (nav-system plan §0.3); the bag has no real limit. */}
-      </div>
 
       {/* v2.3.1235: the empty bag no longer renders the recessed tray —
           an enormous bordered rectangle around one small message read as
@@ -354,11 +364,15 @@ export const InventoryPanel = () => {
             padding: 6,
             flex: 1,
             minHeight: 0,
-            /* v2.3.1285: rows past the 4-row minimum scroll inside the
-               tray; the world never scrolls with panel content. */
+            /* v2.3.1285: overflow rows scroll inside the tray; the
+               world never scrolls with panel content.  v2.3.1312: the
+               bottom scroll-edge fade moved here from panelStyle (the
+               panel is pinned now — only this tray scrolls). */
             overflowY: 'auto',
             touchAction: 'pan-y',
             WebkitOverflowScrolling: 'touch',
+            WebkitMaskImage: 'linear-gradient(180deg, #000 calc(100% - 18px), transparent)',
+            maskImage: 'linear-gradient(180deg, #000 calc(100% - 18px), transparent)',
           }}>
           <div style={{
             display: 'grid',
@@ -367,6 +381,12 @@ export const InventoryPanel = () => {
                recent row (Recent order is the shared bagModel sort). */
             gridTemplateColumns: `repeat(${COLS}, 1fr)`,
             gap: 8,
+            /* v2.3.1312 (round-8 §7): scroll clearance — the last row
+               must clear the edge fade at scroll end.  The toolbar sits
+               BELOW the sheet body in flex (it never overlaps this
+               tray), so 14px of grid padding + the 18px fade is the
+               honest equivalent of the spec's "toolbar + 12" rule. */
+            paddingBottom: 14,
           }}>
             {shownItems.map((e, i) => (
               <BagTile key={e.kind === 'item' ? `i-${e.key}` : `${e.kind}-${e.index}-${i}`} entry={e} />
