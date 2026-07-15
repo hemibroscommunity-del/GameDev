@@ -7,6 +7,7 @@ import { reconcileGearStash } from '../../../rendering/gearCatalog.js';
 import { getBagEntries } from './bagModel.js';
 import { SlotTile } from '../sheet/SlotTile.jsx';                 /* v2.3.1285 */
 import { getEquippedSlots, GHOST_SRC } from '../sheet/equipModel.js';
+import { RowRail, CornerTag } from '../sheet/RowRail.jsx';        /* v2.3.1319 */
 
 // Category filter chips.  "All" comes first so the player always opens
 // the bag with everything visible.  v2.3.1231: UI Bible icons replace
@@ -245,53 +246,42 @@ export const InventoryPanel = () => {
        scroll-edge fade follows it there). */
     <div style={{ ...panelStyle, overflow: 'hidden', WebkitMaskImage: 'none', maskImage: 'none', display: 'flex', flexDirection: 'column' }}>
 
-      {/* v2.3.1315 (owner round-8b): the equipped row carries the same
-          labeled header as the compact view — icon + EQUIPPED + open-
-          slot count — so the row's purpose is never ambiguous. */}
-      {(() => {
-        const openSlots = equipped.filter(sl => sl.ghost).length;
-        return (
-          <div style={{ height: 14, marginBottom: 6, display: 'flex', alignItems: 'center', gap: 5, flex: 'none' }}>
-            <img src="/icons/bag/bag-equipped.webp?v=2.3.1315" alt="" aria-hidden="true"
-              draggable={false} style={{ width: 13, height: 13, objectFit: 'contain' }} />
-            <span style={{
-              fontSize: 10, fontWeight: 700, letterSpacing: '.09em',
-              textTransform: 'uppercase', color: COL.text2, lineHeight: 1,
-            }}>Equipped</span>
-            <span style={{
-              marginLeft: 'auto',
-              fontSize: 10, fontWeight: 700, letterSpacing: '.05em',
-              textTransform: 'uppercase', color: COL.muted, lineHeight: 1,
-              fontVariantNumeric: 'tabular-nums',
-            }}>{openSlots === 0 ? 'Full' : `${openSlots} ${openSlots === 1 ? 'slot' : 'slots'} open`}</span>
-          </div>
-        );
-      })()}
+      {/* v2.3.1319 (owner: "row headers to save room — I can't see the
+          inventory slot rows anymore"): the v2.3.1315 EQUIPPED header
+          LINE is replaced by a 16px vertical RowRail + a CornerTag for
+          the open-slot count — the ~20px it cost goes back to the item
+          tray below. */}
       {/* v2.3.1285: the SAME six equipped positions as the compact row,
           same order, same tile component — expanding feels like the
           panel revealing more, not a different screen. */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: `repeat(${COLS}, 1fr)`,
-        gap: 8,
-        marginBottom: 8,
-        flex: 'none',
-      }}>
-        {equipped.map(sl => (
-          <SlotTile
-            key={`eq-${sl.slot}`}
-            k={`eq-${sl.slot}`}
-            label={sl.label}
-            iconSrc={sl.iconSrc}
-            ghostSrc={sl.ghost ? GHOST_SRC[sl.slot] : null}
-            occupied={!sl.ghost}
-            quality={sl.quality}
-            onTap={sl.pickerSlot ? openPicker(sl.pickerSlot)
-              : sl.slot === 'amulet' && R.amulet
-                ? (anchor) => itemDetailBus.open({ kind: 'amulet', amulet: R.amulet, anchor })
-                : undefined}
-          />
-        ))}
+      <div style={{ position: 'relative', paddingLeft: 22, marginTop: 2, marginBottom: 7, flex: 'none' }}>
+        <RowRail text="Equip" />
+        <CornerTag text={(() => {
+          const openSlots = equipped.filter(sl => sl.ghost).length;
+          return openSlots === 0 ? 'Full' : `${openSlots} open`;
+        })()} />
+        <div style={{
+          minWidth: 0,
+          display: 'grid',
+          gridTemplateColumns: `repeat(${COLS}, 1fr)`,
+          gap: 8,
+        }}>
+          {equipped.map(sl => (
+            <SlotTile
+              key={`eq-${sl.slot}`}
+              k={`eq-${sl.slot}`}
+              label={sl.label}
+              iconSrc={sl.iconSrc}
+              ghostSrc={sl.ghost ? GHOST_SRC[sl.slot] : null}
+              occupied={!sl.ghost}
+              quality={sl.quality}
+              onTap={sl.pickerSlot ? openPicker(sl.pickerSlot)
+                : sl.slot === 'amulet' && R.amulet
+                  ? (anchor) => itemDetailBus.open({ kind: 'amulet', amulet: R.amulet, anchor })
+                  : undefined}
+            />
+          ))}
+        </div>
       </div>
 
       {/* Filter strip — labeled category chips (glyph + name).
@@ -308,42 +298,27 @@ export const InventoryPanel = () => {
           away; the freed row height goes to larger slot tiles below. */}
       {/* v2.3.1312 (round-8 §6): fixed five-chip row, no horizontal
           scroll, icons 20px.
-          v2.3.1317 (owner: "make it more obvious that the filter
-          categories are filters"): two changes —
-          1. a FILTER micro-header in the same language as EQUIPPED
-             above (funnel glyph + label), with a LIVE result readout
-             on the right ("3 of 12") that visibly reacts to the active
-             chip — the feedback loop is what teaches "these filter".
-          2. the chips sit in ONE recessed segmented track (shared well
-             + joined segments) instead of five free-floating buttons —
-             a grouped segment control is the universal filter/tab
-             affordance. */}
-      <div style={{ height: 14, marginBottom: 5, display: 'flex', alignItems: 'center', gap: 5, flex: 'none' }}>
-        <svg viewBox="0 0 12 12" width="12" height="12" aria-hidden="true" style={{ flex: 'none' }}>
-          <path d="M1.5 2 H10.5 L7.2 6.2 V10 L4.8 8.8 V6.2 Z" fill="none"
-            stroke={COL.text2} strokeWidth="1.3" strokeLinejoin="round" />
-        </svg>
-        <span style={{
-          fontSize: 10, fontWeight: 700, letterSpacing: '.09em',
-          textTransform: 'uppercase', color: COL.text2, lineHeight: 1,
-        }}>Filter</span>
-        <span style={{
-          marginLeft: 'auto',
-          fontSize: 10, fontWeight: 700, letterSpacing: '.05em',
-          textTransform: 'uppercase', color: COL.muted, lineHeight: 1,
-          fontVariantNumeric: 'tabular-nums',
-        }}>{filter === 'all'
+          v2.3.1317 (owner): recessed segmented track = the filter
+          affordance, with a LIVE result readout that reacts to the
+          active chip.
+          v2.3.1319 (owner): the FILTER header LINE became a vertical
+          RowRail beside the track and the readout became a CornerTag
+          riding the track's top edge — the header's ~19px goes back to
+          the item tray. */}
+      <div style={{ position: 'relative', paddingLeft: 22, marginTop: 2, marginBottom: 6, flex: 'none' }}>
+        <RowRail text="Filter" />
+        <CornerTag text={filter === 'all'
           ? `${usedTiles} ${usedTiles === 1 ? 'item' : 'items'}`
-          : `${usedTiles} of ${entries.length}`}</span>
-      </div>
-      <div style={{
-        display: 'flex', alignItems: 'stretch', gap: 2, marginBottom: 6, flex: 'none',
-        background: COL.well,
-        border: `1px solid ${COL.tileBor}`,
-        boxShadow: 'inset 0 2px 4px rgba(0,0,0,.3)',
-        borderRadius: 8,
-        padding: 3,
-      }}>
+          : `${usedTiles} of ${entries.length}`} />
+        <div style={{
+          minWidth: 0,
+          display: 'flex', alignItems: 'stretch', gap: 2,
+          background: COL.well,
+          border: `1px solid ${COL.tileBor}`,
+          boxShadow: 'inset 0 2px 4px rgba(0,0,0,.3)',
+          borderRadius: 8,
+          padding: 3,
+        }}>
         {CATEGORIES.map(c => {
           const active = c.id === filter;
           return (
@@ -354,7 +329,10 @@ export const InventoryPanel = () => {
               style={{
                 flex: '1 1 0', minWidth: 0,
                 display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 1,
-                padding: '4px 2px',
+                /* v2.3.1319: 4px -> 2px vertical + 20 -> 18px icon —
+                   part of handing the header lines' room back to the
+                   item tray (18 is round-8 §6's floor). */
+                padding: '2px 2px',
                 background: active ? COL.accentFill : 'transparent',
                 color: active ? COL.text : COL.text2,
                 border: active ? `1px solid ${COL.accent}` : '1px solid transparent',
@@ -365,13 +343,14 @@ export const InventoryPanel = () => {
             >
               {c.iconSrc
                 ? <img src={c.iconSrc} alt="" draggable={false}
-                    style={{ width: 20, height: 20, objectFit: 'contain' }}
+                    style={{ width: 18, height: 18, objectFit: 'contain' }}
                     onError={(e) => { e.currentTarget.replaceWith(document.createTextNode(c.glyph)); }} />
                 : <span style={{ fontSize: 14, lineHeight: 1 }}>{c.glyph}</span>}
               <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: '.02em', whiteSpace: 'nowrap' }}>{c.label}</span>
             </button>
           );
         })}
+        </div>
       </div>
       {/* v2.3.1285: the fictional "N / 32" counter is retired with the
           display cap (nav-system plan §0.3); the bag has no real limit. */}

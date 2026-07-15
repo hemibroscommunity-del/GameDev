@@ -8,6 +8,7 @@ import { getEquippedSlots, GHOST_SRC } from './equipModel.js';
 import { SlotTile } from './SlotTile.jsx';
 import { prefersReducedMotion } from './motion.js';
 import { bagUnseen, bagEntryKey } from './bagUnseenModel.js';
+import { RowRail, CornerTag } from './RowRail.jsx';               /* v2.3.1319 */
 
 /* v2.3.1285: the DEFAULT home view of the nav-system — one full-width
    panel, strict 6-col x 2-row grid, no headers, no labels (spec
@@ -103,10 +104,13 @@ export const BagCompact = () => {
     /* id="bt-bag-target": the fishing catch-flight landing point
        (effectsRenderer._updateCatchFlights) — moved here from the
        retired quick-bag preview.  Silent breakage if dropped. */
-    /* v2.3.1315: grid -> flex column (label row / equipped grid /
-       hairline / recent grid) so the label and separator have natural
-       homes; tiles stay square via their own aspect-ratio, and the
-       compact height algebra moved with it (sheetGeometry DASH_BASE). */
+    /* v2.3.1319 (owner: "make the equipped and filters as row headers
+       to save room"): the v2.3.1315 full-width EQUIPPED header line is
+       replaced by a 16px vertical RowRail on the row's left edge and a
+       CornerTag for the open-slot count — zero added height, and the
+       compact sheet shrank back down with it (sheetGeometry DASH_BASE
+       105 -> 77).  The recent row gets a matching RECENT rail so the
+       two grids stay column-aligned (an empty spacer looked broken). */
     <div
       id="bt-bag-target"
       data-tut="dash-bag"
@@ -120,43 +124,27 @@ export const BagCompact = () => {
         flexDirection: 'column',
         padding: '8px 8px',
       }}>
-      <div style={{
-        height: 14,
-        marginBottom: 6,
-        display: 'flex',
-        alignItems: 'center',
-        gap: 5,
-        flex: 'none',
-      }}>
-        <img src="/icons/bag/bag-equipped.webp?v=2.3.1315" alt="" aria-hidden="true"
-          draggable={false} style={{ width: 13, height: 13, objectFit: 'contain' }} />
-        <span style={{
-          fontSize: 10, fontWeight: 700, letterSpacing: '.09em',
-          textTransform: 'uppercase', color: COL.text2, lineHeight: 1,
-        }}>Equipped</span>
-        <span style={{
-          marginLeft: 'auto',
-          fontSize: 10, fontWeight: 700, letterSpacing: '.05em',
-          textTransform: 'uppercase', color: COL.muted, lineHeight: 1,
-          fontVariantNumeric: 'tabular-nums',
-        }}>{openSlots === 0 ? 'Full' : `${openSlots} ${openSlots === 1 ? 'slot' : 'slots'} open`}</span>
-      </div>
-      {/* Row 1 — equipped, fixed order. */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: CELL_GAP, flex: 'none' }}>
-        {equipped.map(sl => (
-          <SlotTile
-            key={`eq-${sl.slot}`}
-            k={`eq-${sl.slot}`}
-            label={sl.label}
-            iconSrc={sl.iconSrc}
-            ghostSrc={sl.ghost ? GHOST_SRC[sl.slot] : null}
-            occupied={!sl.ghost}
-            quality={sl.quality}
-            onTap={sl.pickerSlot ? openPicker(sl.pickerSlot)
-              : sl.slot === 'amulet' && R.amulet ? openAmulet
-              : undefined}
-          />
-        ))}
+      {/* Row 1 — equipped, fixed order.  paddingLeft 22 reserves the
+          absolute rail's column (16 rail + 6 gap). */}
+      <div style={{ position: 'relative', paddingLeft: 22, flex: 'none' }}>
+        <RowRail text="Equip" />
+        <CornerTag text={openSlots === 0 ? 'Full' : `${openSlots} open`} />
+        <div style={{ minWidth: 0, display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: CELL_GAP }}>
+          {equipped.map(sl => (
+            <SlotTile
+              key={`eq-${sl.slot}`}
+              k={`eq-${sl.slot}`}
+              label={sl.label}
+              iconSrc={sl.iconSrc}
+              ghostSrc={sl.ghost ? GHOST_SRC[sl.slot] : null}
+              occupied={!sl.ghost}
+              quality={sl.quality}
+              onTap={sl.pickerSlot ? openPicker(sl.pickerSlot)
+                : sl.slot === 'amulet' && R.amulet ? openAmulet
+                : undefined}
+            />
+          ))}
+        </div>
       </div>
       {/* v2.3.1312 (round-8 §3): hairline between the equipped row and
           the recent-pickups row. */}
@@ -167,7 +155,9 @@ export const BagCompact = () => {
         flex: 'none',
       }} />
       {/* Row 2 — recent bag stacks, newest left. */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: CELL_GAP, flex: 'none' }}>
+      <div style={{ position: 'relative', paddingLeft: 22, flex: 'none' }}>
+      <RowRail text="Recent" />
+      <div style={{ minWidth: 0, display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: CELL_GAP }}>
       {/* v2.3.1315: recent row keeps its darker treatment + sparkle
           markers (round-8 §3) inside its own grid now. */}
       {entries.map((e) => {
@@ -216,6 +206,7 @@ export const BagCompact = () => {
           borderRadius: 8,
         }} />
       ))}
+      </div>
       </div>
     </div>
   );
