@@ -7,7 +7,7 @@ import { reconcileGearStash } from '../../../rendering/gearCatalog.js';
 import { getBagEntries } from './bagModel.js';
 import { SlotTile } from '../sheet/SlotTile.jsx';                 /* v2.3.1285 */
 import { getEquippedSlots, GHOST_SRC } from '../sheet/equipModel.js';
-import { RowRail, CornerTag } from '../sheet/RowRail.jsx';        /* v2.3.1319 */
+import { CornerTag } from '../sheet/RowRail.jsx';                 /* v2.3.1319; rails retired v2.3.1320 */
 
 // Category filter chips.  "All" comes first so the player always opens
 // the bag with everything visible.  v2.3.1231: UI Bible icons replace
@@ -246,20 +246,15 @@ export const InventoryPanel = () => {
        scroll-edge fade follows it there). */
     <div style={{ ...panelStyle, overflow: 'hidden', WebkitMaskImage: 'none', maskImage: 'none', display: 'flex', flexDirection: 'column' }}>
 
-      {/* v2.3.1319 (owner: "row headers to save room — I can't see the
-          inventory slot rows anymore"): the v2.3.1315 EQUIPPED header
-          LINE is replaced by a 16px vertical RowRail + a CornerTag for
-          the open-slot count — the ~20px it cost goes back to the item
-          tray below. */}
+      {/* v2.3.1320 (owner: "understood without using language"): the
+          EQUIP text rail is gone — each WORN item carries a small
+          bag-equipped badge in its top-right corner, and the count tag
+          is numbers only (worn/total). */}
       {/* v2.3.1285: the SAME six equipped positions as the compact row,
           same order, same tile component — expanding feels like the
           panel revealing more, not a different screen. */}
-      <div style={{ position: 'relative', paddingLeft: 22, marginTop: 2, marginBottom: 7, flex: 'none' }}>
-        <RowRail text="Equip" />
-        <CornerTag text={(() => {
-          const openSlots = equipped.filter(sl => sl.ghost).length;
-          return openSlots === 0 ? 'Full' : `${openSlots} open`;
-        })()} />
+      <div style={{ position: 'relative', marginTop: 2, marginBottom: 7, flex: 'none' }}>
+        <CornerTag text={`${equipped.filter(sl => !sl.ghost).length}/6`} />
         <div style={{
           minWidth: 0,
           display: 'grid',
@@ -275,6 +270,7 @@ export const InventoryPanel = () => {
               ghostSrc={sl.ghost ? GHOST_SRC[sl.slot] : null}
               occupied={!sl.ghost}
               quality={sl.quality}
+              wornSrc="/icons/bag/bag-equipped.webp?v=2.3.1320"
               onTap={sl.pickerSlot ? openPicker(sl.pickerSlot)
                 : sl.slot === 'amulet' && R.amulet
                   ? (anchor) => itemDetailBus.open({ kind: 'amulet', amulet: R.amulet, anchor })
@@ -301,15 +297,17 @@ export const InventoryPanel = () => {
           v2.3.1317 (owner): recessed segmented track = the filter
           affordance, with a LIVE result readout that reacts to the
           active chip.
-          v2.3.1319 (owner): the FILTER header LINE became a vertical
-          RowRail beside the track and the readout became a CornerTag
-          riding the track's top edge — the header's ~19px goes back to
-          the item tray. */}
-      <div style={{ position: 'relative', paddingLeft: 22, marginTop: 2, marginBottom: 6, flex: 'none' }}>
-        <RowRail text="Filter" />
+          v2.3.1319 (owner): the readout became a CornerTag riding the
+          track's top edge.
+          v2.3.1320 (owner: "understood without using language"): the
+          FILTER text rail is gone — every chip carries a tiny funnel
+          glyph in its top-right corner instead (per the owner's own
+          suggestion), and the count tag is numbers only ("9" on All,
+          "1/9" filtered). */}
+      <div style={{ position: 'relative', marginTop: 2, marginBottom: 6, flex: 'none' }}>
         <CornerTag text={filter === 'all'
-          ? `${usedTiles} ${usedTiles === 1 ? 'item' : 'items'}`
-          : `${usedTiles} of ${entries.length}`} />
+          ? `${usedTiles}`
+          : `${usedTiles}/${entries.length}`} />
         <div style={{
           minWidth: 0,
           display: 'flex', alignItems: 'stretch', gap: 2,
@@ -327,6 +325,7 @@ export const InventoryPanel = () => {
               title={c.label}
               aria-pressed={active}
               style={{
+                position: 'relative',
                 flex: '1 1 0', minWidth: 0,
                 display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 1,
                 /* v2.3.1319: 4px -> 2px vertical + 20 -> 18px icon —
@@ -341,6 +340,16 @@ export const InventoryPanel = () => {
                 cursor: 'pointer',
               }}
             >
+              {/* v2.3.1320: the language-free filter mark — a tiny
+                  funnel on every chip's top-right corner (owner's
+                  suggestion); brass on the active chip. */}
+              <svg viewBox="0 0 10 10" width="9" height="9" aria-hidden="true" style={{
+                position: 'absolute', top: 2, right: 2, pointerEvents: 'none',
+              }}>
+                <path d="M1 1.5 H9 L6.2 5 V8.6 L3.8 7.4 V5 Z"
+                  fill={active ? COL.accent : 'none'}
+                  stroke={active ? COL.accent : COL.muted} strokeWidth="1.1" strokeLinejoin="round" />
+              </svg>
               {c.iconSrc
                 ? <img src={c.iconSrc} alt="" draggable={false}
                     style={{ width: 18, height: 18, objectFit: 'contain' }}

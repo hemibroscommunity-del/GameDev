@@ -30,16 +30,16 @@ export const DASH_OVERLAP = 14;
 export const FEET_OFFSET = 24;
 
 /* Compact snap algebra (Bag 6x2 drives it):
-   v2.3.1319 (owner: "row headers to save room"): the EQUIPPED label
-   ROW is gone — each grid row now carries a 16px vertical RowRail on
-   its left (+6 gap), so the slot shrinks but no header line exists:
-   slot s = (100vw - 16 edge*2 - 22 rail - 40 gaps) / 6 = (100vw-78)/6
+   v2.3.1320 (owner: language-free — the v2.3.1319 text rails became
+   per-tile worn badges, so the rail column is gone and the grids get
+   their full width back):
+   slot s = (100vw - 16 edge*2 - 40 gaps) / 6 = (100vw - 56)/6
    sheet = 8 pad + s + 15 separator (7+1+7) + s + 8 pad + 72 toolbar
-         = 2s + 103 = (100vw - 78)/3 + 103 = 33.3333vw + 77
-   -> DASH_BASE 77.  (v2.3.1290: not the --dash-h value — this is the
+         = 2s + 103 = (100vw - 56)/3 + 103 = 33.3333vw + 84.33
+   -> DASH_BASE 84.  (v2.3.1290: not the --dash-h value — this is the
    sheet's COMPACT overlay height only; the canvas keys off BAR_H.) */
 export const DASH_W_FRAC = 1 / 3;
-export const DASH_BASE = 77;
+export const DASH_BASE = 84;
 
 export function compactDashHeight(vw) {
   return Math.round(vw * DASH_W_FRAC + DASH_BASE);

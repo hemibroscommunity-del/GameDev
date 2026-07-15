@@ -8,7 +8,7 @@ import { getEquippedSlots, GHOST_SRC } from './equipModel.js';
 import { SlotTile } from './SlotTile.jsx';
 import { prefersReducedMotion } from './motion.js';
 import { bagUnseen, bagEntryKey } from './bagUnseenModel.js';
-import { RowRail, CornerTag } from './RowRail.jsx';               /* v2.3.1319 */
+import { CornerTag } from './RowRail.jsx';                        /* v2.3.1319; rails retired v2.3.1320 */
 
 /* v2.3.1285: the DEFAULT home view of the nav-system — one full-width
    panel, strict 6-col x 2-row grid, no headers, no labels (spec
@@ -124,11 +124,13 @@ export const BagCompact = () => {
         flexDirection: 'column',
         padding: '8px 8px',
       }}>
-      {/* Row 1 — equipped, fixed order.  paddingLeft 22 reserves the
-          absolute rail's column (16 rail + 6 gap). */}
-      <div style={{ position: 'relative', paddingLeft: 22, flex: 'none' }}>
-        <RowRail text="Equip" />
-        <CornerTag text={openSlots === 0 ? 'Full' : `${openSlots} open`} />
+      {/* Row 1 — equipped, fixed order.  v2.3.1320 (owner: language-
+          free): the EQUIP text rail is gone — each WORN item carries a
+          small bag-equipped badge in its corner instead, and the count
+          tag is numbers only (worn/total).  Grids get their full width
+          back (sheetGeometry DASH_BASE 77 -> 84). */}
+      <div style={{ position: 'relative', flex: 'none' }}>
+        <CornerTag text={`${6 - openSlots}/6`} />
         <div style={{ minWidth: 0, display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: CELL_GAP }}>
           {equipped.map(sl => (
             <SlotTile
@@ -139,6 +141,7 @@ export const BagCompact = () => {
               ghostSrc={sl.ghost ? GHOST_SRC[sl.slot] : null}
               occupied={!sl.ghost}
               quality={sl.quality}
+              wornSrc="/icons/bag/bag-equipped.webp?v=2.3.1320"
               onTap={sl.pickerSlot ? openPicker(sl.pickerSlot)
                 : sl.slot === 'amulet' && R.amulet ? openAmulet
                 : undefined}
@@ -154,9 +157,10 @@ export const BagCompact = () => {
         boxShadow: '0 1px 0 rgba(229,237,233,.06)',
         flex: 'none',
       }} />
-      {/* Row 2 — recent bag stacks, newest left. */}
-      <div style={{ position: 'relative', paddingLeft: 22, flex: 'none' }}>
-      <RowRail text="Recent" />
+      {/* Row 2 — recent bag stacks, newest left.  v2.3.1320: no label —
+          the darker cells + separator + sparkle markers carry the
+          "recent pickups" meaning without words. */}
+      <div style={{ position: 'relative', flex: 'none' }}>
       <div style={{ minWidth: 0, display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: CELL_GAP }}>
       {/* v2.3.1315: recent row keeps its darker treatment + sparkle
           markers (round-8 §3) inside its own grid now. */}
