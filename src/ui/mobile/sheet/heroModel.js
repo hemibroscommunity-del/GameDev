@@ -46,6 +46,38 @@ export function skillProgressPct(R, key) {
   return Math.max(0, Math.min(100, (prog / thresh) * 100));
 }
 
+/* v2.3.1295 (ChatGPT round-4 Build cards): exact per-stat XP progress —
+   same numbers skillProgressPct rounds into a bar, exposed so the card
+   can print "14 / 463" (the bars alone read as unexplained decoration).
+   Defense returns null: its strip was never wired (v2.3.693 note). */
+export function skillProgress(R, key) {
+  if (key === 'defense') return null;
+  const val = R[key] || 0;
+  const prog = Math.floor((R._buildProg && R._buildProg[key]) || 0);
+  const thresh = Math.max(200, Math.floor(xpRequired(val)));
+  return { prog, thresh };
+}
+
+/* v2.3.1295: one-line CURRENT effect per attribute, from the real
+   formulas only — no invented percentages:
+   - damage stats add statVal * 0.1667 flat to the weapon's base
+     (calcDisplayDmgRange) — shown as "+N dmg" for that category;
+   - vitality/endurance/mind capacity: +10 HP / +3 stam / +3.5 mana
+     per point (calcMaxHp/Stam/Mana);
+   - defense: the live DR% (with shield). */
+export function attributeEffect(R, key) {
+  const dmg = (v) => `+${((v || 0) * 0.1667).toFixed(1)} dmg`;
+  switch (key) {
+    case 'power':     return `${dmg(R.power)} with melee`;
+    case 'agility':   return `${dmg(R.agility)} with bows`;
+    case 'mind':      return `${dmg(R.mind)} with staves`;
+    case 'vitality':  return `+${(R.vitality || 0) * 10} max HP`;
+    case 'endurance': return `+${Math.round((R.endurance || 0) * 3)} max stamina`;
+    case 'defense':   return `${Math.round(calcBlockReduction(getDefenseBlockBonus(R), R.shield) * 100)}% damage reduced`;
+    default:          return '';
+  }
+}
+
 export function deriveHeroStats(R) {
   const wpn = getActiveWeapon(R);
   const range = wpn ? calcDisplayDmgRange(R, wpn) : null;
