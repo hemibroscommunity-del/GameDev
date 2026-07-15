@@ -729,6 +729,25 @@ export const combatMethods = {
   },
 
   // §16.12 — Attacker-favored rollback PvP resolution
+  //
+  // v2.3.1302 PvP tuning (owner decision 2026-07-15, "Both"):
+  //   - DMG_SCALE 0.5: PvE dmgBase numbers are balanced against monster
+  //     HP pools (thousands); player pools are ~100-300, so a raw
+  //     special+crit one-shot both duelists (owner's two-player report).
+  //   - DEF mitigation 100/(100+def), PvP ONLY: Phase 1 retired def from
+  //     the monster→player path (armor folds into maxHp) but ps.def is
+  //     still tracked + clamped in grids.js (defCap = lvl*20+100), so
+  //     PvP can consume it without touching PvE math.
+  //   - Per-kind range: ranged/staff PvP hits are reported by the CLIENT
+  //     at projectile impact (src/game/projectiles.js), which can be up
+  //     to the 900px arrow travel limit away — the old flat 250 cap
+  //     silently rejected every legitimate bow/magic duel hit (the
+  //     "only melee hurts" bug).  kind absent = melee (legacy payload,
+  //     byte-identical behavior).
+  PVP_TUNING: {
+    DMG_SCALE: 0.5,
+    RANGE_CAP: { melee: 250, ranged: 950, staff: 950 },
+  },
   _resolvePvPAttack(attackerSession, payload) {
     const attackerId = attackerSession.id;
     const attackerPs = this.playerState[attackerId];
@@ -744,9 +763,14 @@ export const combatMethods = {
     if (attackerPs.dying || attackerPs.dead || attackerPs.disconnected) return;
     // Bound the client-supplied attack geometry so a cheater can't
     // claim a 99999-pixel range or full-circle arc to hit every player
-    // in the room.  Realistic max: bow range = 200 + amulet bonus,
-    // greatsword arc = PI*0.85 ≈ 2.67 rad.  Cap a bit above those.
-    const range = Math.max(10, Math.min(250, payload.range || 40));
+    // in the room.  Realistic max: greatsword arc = PI*0.85 ≈ 2.67 rad;
+    // melee reach tops out ~200.  v2.3.1302: ranged/staff hits are
+    // reported at projectile impact, so their cap matches the 900px
+    // arrow travel limit (projectiles.js) + lag slack.  Unknown kinds
+    // fall back to the tight melee cap (fail closed).
+    const kind = payload.kind === 'ranged' || payload.kind === 'staff' ? payload.kind : 'melee';
+    const rangeCap = this.PVP_TUNING.RANGE_CAP[kind];
+    const range = Math.max(10, Math.min(rangeCap, payload.range || 40));
     const arc = Math.max(0.1, Math.min(Math.PI * 1.1, payload.arc || 1.2));
     const angle = payload.angle || 0;
     // Weapon-aware cap (slice 16) -- mirrors monster_damage cap above.
@@ -804,7 +828,12 @@ export const combatMethods = {
       // a blocked hit is full invuln (was 0.25× partial), so pass
       // isBlock=true straight through.  Phase 4 dodge rolls inside
       // _applyDamage independently of block.
-      const rawDmg = dmgBase * (isCrit ? 1.5 : 1);
+      // v2.3.1302: PvP-only balance pass — 0.5× global scale plus
+      // 100/(100+def) mitigation from the target's server-clamped def
+      // stat (see PVP_TUNING above).  _applyDamage floors at 1 so a
+      // maxed-def target still takes chip damage.
+      const defMit = 100 / (100 + Math.max(0, targetPs.def || 0));
+      const rawDmg = dmgBase * (isCrit ? 1.5 : 1) * this.PVP_TUNING.DMG_SCALE * defMit;
       const dmgResult = this._applyDamage(targetPs, rawDmg, blocked);
       const dmgTaken = dmgResult.dmgTaken;
 

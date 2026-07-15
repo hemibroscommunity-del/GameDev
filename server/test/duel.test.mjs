@@ -19,6 +19,11 @@
  *   7. Stale-escrow sweep refunds both after a "deploy wipe", but never
  *      refunds on top of an already-paid pot.
  *   8. Zero-wager duels create no escrow and resolve cleanly.
+ *   9. v2.3.1302 PvP resolution tuning: ranged/staff `kind` unlocks the
+ *      projectile-scale range cap (the "only melee hurts in duels" bug),
+ *      damage is 0.5x-scaled + def-mitigated (no one-shots), legacy
+ *      payloads (no kind) keep the tight 250 melee clamp, and
+ *      out-of-range hits of either kind are still rejected.
  */
 import { GameRoom } from '../src/index.js';
 
@@ -187,6 +192,58 @@ check('zero-wager duel activates with no escrow record', accFree && duel8 && due
 psB.hp = 0; psB.dying = false; psB.dead = false;
 room._handlePlayerDeath(psB, 'bp_duel_b', 'pvp:bp_duel_a');
 check('zero-wager duel resolves cleanly on kill', room._duelFor('bp_duel_a') === null);
+
+// ── 9. PvP attack resolution: kind-aware range + scaled/mitigated damage (v2.3.1302) ──
+// Fresh zero-wager duel to re-arm the consent pair after section 8 resolved it.
+psB.dying = false; psB.dead = false; psB.hp = 100; psB.maxHp = 100;
+await room._interceptDuel('bp_duel_a', { type: 'duel_request', payload: { target: 'bp_duel_b', fromName: 'A' } });
+await room._interceptDuel('bp_duel_b', acceptMsg('bp_duel_a', 0));
+check('pvp: consent pair armed for resolution tests', room._pvpAllowed('bp_duel_a', 'bp_duel_b', 'town') === true);
+// Deterministic setup: no crit (critChance 0), no dodge (agility 0, no
+// defenseSpec), no grace window, def 100 -> mitigation exactly 0.5.
+const sessA = { id: 'bp_duel_a', name: 'A', rtt: 0 };
+psA.x = 0; psA.y = 0; psA.dying = false; psA.dead = false;
+psB.x = 600; psB.y = 0; psB.z = psA.z;
+psB.agility = 0; psB.dodging = false; psB.blocking = false;
+psB._zoneEntryGraceUntil = 0; psB.def = 100;
+room.stateHistory['bp_duel_b'] = []; // force current-state fallback
+const pvpAtk = (over) => ({ dmgBase: 20, critChance: 0, angle: 0, arc: 0.9, ...over });
+
+// 9a. ranged kind at projectile distance (600px) lands — the exact case
+// the flat 250 clamp used to reject silently.
+room.eventBuffer.length = 0;
+room._resolvePvPAttack(sessA, pvpAtk({ kind: 'ranged', range: 660 }));
+const hit9a = room.eventBuffer.find((e) => e.type === 'pvp_hit');
+check('ranged kind lands at 600px', !!hit9a, room.eventBuffer.map((e) => e.type));
+// 9b. damage is 0.5x scaled AND def-mitigated: 20 * 0.5 * 100/(100+100) = 5.
+check('pvp damage scaled + def-mitigated (20 -> 5 at def 100)', hit9a && hit9a.payload.dmgTaken === 5 && psB.hp === 95, hit9a && hit9a.payload);
+// 9c. no one-shot at representative stats: a special+crit-sized dmgBase
+// (200 raw, the old lethal case) leaves a 100-hp target alive.
+psB.hp = 100;
+room.eventBuffer.length = 0;
+room._resolvePvPAttack(sessA, pvpAtk({ kind: 'ranged', range: 660, dmgBase: 200, special: true }));
+check('old one-shot dmgBase no longer lethal', psB.hp > 0, psB.hp);
+// 9d. legacy payload (no kind) keeps the tight melee clamp: same 600px
+// distance is rejected.
+room.eventBuffer.length = 0;
+room._resolvePvPAttack(sessA, pvpAtk({ range: 660 }));
+check('legacy no-kind payload still clamped to melee 250', !room.eventBuffer.some((e) => e.type === 'pvp_hit'), room.eventBuffer.map((e) => e.type));
+// 9e. legacy payload in melee reach still lands (byte-identical gate).
+psB.x = 100; psB.hp = 100;
+room.eventBuffer.length = 0;
+room._resolvePvPAttack(sessA, pvpAtk({ range: 250 }));
+check('legacy payload lands in melee reach, scaled', room.eventBuffer.some((e) => e.type === 'pvp_hit' && e.payload.dmgTaken === 5), room.eventBuffer.map((e) => e.payload));
+// 9f. ranged kind beyond the 950 projectile cap is rejected (anticheat
+// ceiling intact — kind widens the clamp, it doesn't remove it).
+psB.x = 1200; psB.hp = 100;
+room.eventBuffer.length = 0;
+room._resolvePvPAttack(sessA, pvpAtk({ kind: 'ranged', range: 5000 }));
+check('ranged kind still capped at 950', !room.eventBuffer.some((e) => e.type === 'pvp_hit'), room.eventBuffer.map((e) => e.type));
+// 9g. zero def -> scale only: 20 * 0.5 = 10.
+psB.x = 300; psB.hp = 100; psB.def = 0;
+room.eventBuffer.length = 0;
+room._resolvePvPAttack(sessA, pvpAtk({ kind: 'staff', range: 360 }));
+check('def 0 takes scale-only damage (20 -> 10)', room.eventBuffer.some((e) => e.type === 'pvp_hit' && e.payload.dmgTaken === 10), room.eventBuffer.map((e) => e.payload));
 
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);
 process.exit(failures === 0 ? 0 : 1);

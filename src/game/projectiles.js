@@ -13,6 +13,7 @@
    everything else is a module import below. S is stateRef.current. */
 import {
   BT_AUDIO, COMBO_NEXT_DURATION_BONUS, ELEMENTS, QUEST_CHAINS, QUEST_STATUS, RARITY_TIERS,
+  PVP_THREAT_DURATION,
   WEAPON_TYPES, WELL_RESTED_XP_MULT, ZONES, applyStatus, awardWeaponXp, calcWeaponDmg,
   discoverCollision, getActiveWeapon, getCollisionDeathFX, getElementDeathFX, recalcDerived,
   getEvasionPts, resolveCollision, rollPassiveDodge, spawnWeaponHitFX, staffAoeMult,
@@ -603,6 +604,82 @@ export function updateArrows(S, deps) {
                 }
               }
             });
+            /* ── PvP projectile hits (v2.3.1302) ──
+               Duel bug (owner two-player report): only the melee swing
+               ever emitted player_attack, so bow arrows and staff bolts
+               sailed straight through the opponent — "only melee damage
+               hurt the other player".  Mirror the melee §19 intent gate
+               (monsterCombat.js): report a hit ONLY on an intentional
+               target — the duel opponent or a tap-locked player — never
+               a bystander, so a co-op partner can't eat (or stop) a
+               stray arrow.  The server's _pvpAllowed consent gate stays
+               the real authority; this is just the report.  The server
+               damage popup arrives via pvp_hit (gameEvents), so no
+               local damage number here — impact FX only. */
+            if (!hit && S.others && !((ZONES[S.currentZone] || {}).safe)
+                && (S._inDuel || (S.lockedTarget && S.lockedTarget.type === 'player' && S.lockedTarget.id))) {
+              var _pvpTid = S._inDuel ? S._inDuel.opponent : S.lockedTarget.id;
+              var _pvpO = _pvpTid != null ? S.others[_pvpTid] : null;
+              if (_pvpO && !a.hitIds.has('p_' + _pvpTid)) {
+                var _pvpX = (typeof _pvpO.renderX === 'number') ? _pvpO.renderX : _pvpO.x;
+                var _pvpY = (typeof _pvpO.renderY === 'number') ? _pvpO.renderY : _pvpO.y;
+                /* Body centre sits above the feet anchor — same intuition
+                   as monsterBodyOffsetY; player sprites are fodder-scale. */
+                var _pvpHitR = a.isStaff ? 34 : 22;
+                if (a.isSpecial) _pvpHitR *= 1.5;
+                if (Math.sqrt(Math.pow(_pvpX - a._renderX, 2) + Math.pow(_pvpY - 24 - a._renderY, 2)) < _pvpHitR) {
+                  a.hitIds.add('p_' + _pvpTid);
+                  var _pvpDx = _pvpX - P.x, _pvpDy = _pvpY - P.y;
+                  var _pvpDist = Math.sqrt(_pvpDx * _pvpDx + _pvpDy * _pvpDy);
+                  S._pvpThreat = Date.now() + PVP_THREAT_DURATION;
+                  if (S.channel) S.channel.send({
+                    type: 'broadcast',
+                    event: 'player_attack',
+                    payload: {
+                      id: S.myId,
+                      x: P.x,
+                      y: P.y,
+                      /* Exact bearing to the target + a narrow arc: the
+                         server re-checks angle from the ATTACKER, so a
+                         wide arc is unnecessary and exploitable. */
+                      angle: Math.atan2(_pvpDy, _pvpDx),
+                      /* a.dmg already includes any crit rolled at spawn —
+                         critChance 0 so the server can't double-crit it. */
+                      dmgBase: Math.max(1, Math.round(a.dmg || 1)),
+                      critChance: 0,
+                      /* Server measures attacker→target distance and
+                         rejects hits past payload.range, so claim the
+                         actual distance + lag slack, capped just under
+                         the server's 950 ranged/staff clamp. */
+                      range: Math.min(940, Math.round(_pvpDist + 60)),
+                      arc: 0.9,
+                      ts: Date.now(),
+                      inDuel: !!S._inDuel,
+                      special: !!a.isSpecial,
+                      kind: isStaffProj ? 'staff' : 'ranged'
+                    }
+                  });
+                  /* Impact feedback — sound + a few particles at the
+                     target; damage number waits for the server pvp_hit. */
+                  if (a.isStaff) BT_AUDIO.magicHit({ vol: 0.3 });
+                  else { try { BT_AUDIO.play('arrow-hit', { vol: 0.6 }); } catch (e) {} }
+                  if (!S.hitParticles) S.hitParticles = [];
+                  for (var _pvpP = 0; _pvpP < 6; _pvpP++) {
+                    var _pvpA = a.ang + (Math.random() - 0.5) * 0.8;
+                    S.hitParticles.push({
+                      x: _pvpX + (Math.random() - 0.5) * 4,
+                      y: _pvpY - 24 + (Math.random() - 0.5) * 4,
+                      vx: Math.cos(_pvpA) * (1.5 + Math.random() * 2.5),
+                      vy: Math.sin(_pvpA) * (1.5 + Math.random() * 2.5) - 0.5,
+                      life: 0.4 + Math.random() * 0.2,
+                      color: a.isStaff ? '#a78bfa' : '#ffd79a',
+                      size: 1 + Math.random() * 1.5,
+                    });
+                  }
+                  hit = true;
+                }
+              }
+            }
             /* Non-piercing arrows die on the first hit.  Piercing
                arrows survive each hit and only expire when a.life
                (line 8954, decrements each frame) hits zero -- so
