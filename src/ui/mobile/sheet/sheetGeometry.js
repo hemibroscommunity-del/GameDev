@@ -30,13 +30,16 @@ export const DASH_OVERLAP = 14;
 export const FEET_OFFSET = 24;
 
 /* Compact snap algebra (Bag 6x2 drives it):
-   slot s = (100vw - 56px) / 6   (5 inner gaps x8 + 2x8 edges = 56)
-   sheet = 2 rows + 1 gap + 8 top pad + 8 bottom pad + 72 toolbar shelf
-         = 2s + 8 + 16 + 72 = (100vw - 56)/3 + 96 = 33.3333vw + 77.33
-   -> rounded to 78.  (v2.3.1290: no longer the --dash-h value — this is
-   the sheet's COMPACT overlay height only.) */
+   v2.3.1320 (owner: language-free — the v2.3.1319 text rails became
+   per-tile worn badges, so the rail column is gone and the grids get
+   their full width back):
+   slot s = (100vw - 16 edge*2 - 40 gaps) / 6 = (100vw - 56)/6
+   sheet = 8 pad + s + 15 separator (7+1+7) + s + 8 pad + 72 toolbar
+         = 2s + 103 = (100vw - 56)/3 + 103 = 33.3333vw + 84.33
+   -> DASH_BASE 84.  (v2.3.1290: not the --dash-h value — this is the
+   sheet's COMPACT overlay height only; the canvas keys off BAR_H.) */
 export const DASH_W_FRAC = 1 / 3;
-export const DASH_BASE = 78;
+export const DASH_BASE = 84;
 
 export function compactDashHeight(vw) {
   return Math.round(vw * DASH_W_FRAC + DASH_BASE);
@@ -51,7 +54,10 @@ export function compactDashHeight(vw) {
    390x844 viewport it pushed the sheet top to ~22px below the feet.
    The feet rule now wins: sheet top = feetY + 44px of ground, with the
    floor lowered to 40%vh (short-viewport backstop) and the 52% cap
-   kept.  The canvas itself never resizes (BAR_H invariant above). */
+   kept.  The canvas itself never resizes (BAR_H invariant above).
+   (v2.3.1317 merge: #288's 44px rule supersedes this branch's
+   equivalent round-8 40px/42-48% version — same intent, later owner
+   directive wins.) */
 export function expandedSheetHeight(vw, vh) {
   const canvasH = vh - BAR_H + DASH_OVERLAP;
   const feetY = canvasH / 2 + FEET_OFFSET;

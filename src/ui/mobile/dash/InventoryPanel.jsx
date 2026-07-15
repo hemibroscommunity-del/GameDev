@@ -7,18 +7,21 @@ import { reconcileGearStash } from '../../../rendering/gearCatalog.js';
 import { getBagEntries } from './bagModel.js';
 import { SlotTile } from '../sheet/SlotTile.jsx';                 /* v2.3.1285 */
 import { getEquippedSlots, GHOST_SRC } from '../sheet/equipModel.js';
+import { CornerTag } from '../sheet/RowRail.jsx';                 /* v2.3.1319; rails retired v2.3.1320 */
 
 // Category filter chips.  "All" comes first so the player always opens
 // the bag with everything visible.  v2.3.1231: UI Bible icons replace
 // the legacy emoji glyphs (owner request); glyph kept as the
-// image-failure fallback.  No potion icon exists in the 90-icon set,
-// so Potion borrows the soak droplets until one is generated.
+// image-failure fallback.
+// v2.3.1312 (round-8): the owner's dedicated bag filter set replaces
+// the borrowed nav/combat/skill art — Potion finally gets a real
+// potion instead of the soak droplets.
 export const CATEGORIES = [
-  { id: 'all',      glyph: '◎', iconSrc: '/icons/ui/nav-inventory.webp?v=2.3.1231',       label: 'All' },
-  { id: 'weapon',   glyph: '⚔', iconSrc: '/icons/ui/combat-melee.webp?v=2.3.1231',        label: 'Weapon' },
-  { id: 'armor',    glyph: '🛡', iconSrc: '/icons/ui/combat-defense.webp?v=2.3.1231',      label: 'Armor' },
-  { id: 'potion',   glyph: '🧪', iconSrc: '/icons/ui/status-soak.webp?v=2.3.1231',         label: 'Potion' },
-  { id: 'crafting', glyph: '⚒', iconSrc: '/icons/ui/skill-blacksmithing.webp?v=2.3.1231', label: 'Crafting' },
+  { id: 'all',      glyph: '◎', iconSrc: '/icons/bag/bag-all.webp?v=2.3.1312',      label: 'All' },
+  { id: 'weapon',   glyph: '⚔', iconSrc: '/icons/bag/bag-weapons.webp?v=2.3.1312',  label: 'Weapon' },
+  { id: 'armor',    glyph: '🛡', iconSrc: '/icons/bag/bag-armor.webp?v=2.3.1312',    label: 'Armor' },
+  { id: 'potion',   glyph: '🧪', iconSrc: '/icons/bag/bag-potions.webp?v=2.3.1312',  label: 'Potion' },
+  { id: 'crafting', glyph: '⚒', iconSrc: '/icons/bag/bag-crafting.webp?v=2.3.1312', label: 'Crafting' },
 ];
 
 // Light heuristic — classify an inventory key into one of the four
@@ -214,15 +217,16 @@ export const InventoryPanel = () => {
     ? entries
     : entries.filter(e => e.cat === filter);
 
-  /* v2.3.1285 (nav-system spec §Bag Expanded): 6-col grid, minimum 4
-     rows, GROWS by whole rows and scrolls when the bag outgrows 24 —
-     the bag has no real capacity (the old "N / 32" was display-only
-     fiction, now retired), so a hard 24 would hide items. */
+  /* v2.3.1285 (nav-system spec §Bag Expanded): 6-col grid, GROWS by
+     whole rows and scrolls — the bag has no real capacity (the old
+     "N / 32" was display-only fiction, now retired).
+     v2.3.1312 (round-8 §7): empty cells only COMPLETE the final row
+     (min one row) — the old 4-row minimum padded a small bag with
+     rows of dead cells that read as fake capacity. */
   const COLS = 6;
   const shownItems = filtered;
   const usedTiles = shownItems.length;
-  const MIN_CELLS = COLS * 4;
-  const totalCells = Math.max(MIN_CELLS, Math.ceil(usedTiles / COLS) * COLS);
+  const totalCells = Math.max(COLS, Math.ceil(usedTiles / COLS) * COLS);
 
   const R = (S && S.rpg) || {};
   const equipped = getEquippedSlots(R);
@@ -236,33 +240,44 @@ export const InventoryPanel = () => {
   };
 
   return (
-    <div style={{ ...panelStyle, display: 'flex', flexDirection: 'column' }}>
+    /* v2.3.1312 (round-8 §9): the PANEL no longer scrolls — equipped
+       row + filter chips stay pinned while only the item tray scrolls
+       (overflow moved off panelStyle onto the tray, and the bottom
+       scroll-edge fade follows it there). */
+    <div style={{ ...panelStyle, overflow: 'hidden', WebkitMaskImage: 'none', maskImage: 'none', display: 'flex', flexDirection: 'column' }}>
 
+      {/* v2.3.1320 (owner: "understood without using language"): the
+          EQUIP text rail is gone — each WORN item carries a small
+          bag-equipped badge in its top-right corner, and the count tag
+          is numbers only (worn/total). */}
       {/* v2.3.1285: the SAME six equipped positions as the compact row,
           same order, same tile component — expanding feels like the
           panel revealing more, not a different screen. */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: `repeat(${COLS}, 1fr)`,
-        gap: 8,
-        marginBottom: 8,
-        flex: 'none',
-      }}>
-        {equipped.map(sl => (
-          <SlotTile
-            key={`eq-${sl.slot}`}
-            k={`eq-${sl.slot}`}
-            label={sl.label}
-            iconSrc={sl.iconSrc}
-            ghostSrc={sl.ghost ? GHOST_SRC[sl.slot] : null}
-            occupied={!sl.ghost}
-            quality={sl.quality}
-            onTap={sl.pickerSlot ? openPicker(sl.pickerSlot)
-              : sl.slot === 'amulet' && R.amulet
-                ? (anchor) => itemDetailBus.open({ kind: 'amulet', amulet: R.amulet, anchor })
-                : undefined}
-          />
-        ))}
+      <div style={{ position: 'relative', marginTop: 2, marginBottom: 7, flex: 'none' }}>
+        <CornerTag text={`${equipped.filter(sl => !sl.ghost).length}/6`} />
+        <div style={{
+          minWidth: 0,
+          display: 'grid',
+          gridTemplateColumns: `repeat(${COLS}, 1fr)`,
+          gap: 8,
+        }}>
+          {equipped.map(sl => (
+            <SlotTile
+              key={`eq-${sl.slot}`}
+              k={`eq-${sl.slot}`}
+              label={sl.label}
+              iconSrc={sl.iconSrc}
+              ghostSrc={sl.ghost ? GHOST_SRC[sl.slot] : null}
+              occupied={!sl.ghost}
+              quality={sl.quality}
+              wornSrc="/icons/bag/bag-equipped.webp?v=2.3.1320"
+              onTap={sl.pickerSlot ? openPicker(sl.pickerSlot)
+                : sl.slot === 'amulet' && R.amulet
+                  ? (anchor) => itemDetailBus.open({ kind: 'amulet', amulet: R.amulet, anchor })
+                  : undefined}
+            />
+          ))}
+        </div>
       </div>
 
       {/* Filter strip — labeled category chips (glyph + name).
@@ -277,61 +292,129 @@ export const InventoryPanel = () => {
           "N / 32" counter it carried now sits at the right end of this
           row, OUTSIDE the scrollable chip strip so it never scrolls
           away; the freed row height goes to larger slot tiles below. */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-      <div style={{ flex: 1, minWidth: 0, display: 'flex', gap: 4, flexWrap: 'nowrap', overflowX: 'auto', touchAction: 'pan-x', WebkitOverflowScrolling: 'touch' }}>
+      {/* v2.3.1312 (round-8 §6): fixed five-chip row, no horizontal
+          scroll, icons 20px.
+          v2.3.1317 (owner): recessed segmented track = the filter
+          affordance, with a LIVE result readout that reacts to the
+          active chip.
+          v2.3.1319 (owner): the readout became a CornerTag riding the
+          track's top edge.
+          v2.3.1320 (owner: "understood without using language"): the
+          FILTER text rail is gone — every chip carries a tiny funnel
+          glyph in its top-right corner instead (per the owner's own
+          suggestion), and the count tag is numbers only ("9" on All,
+          "1/9" filtered). */}
+      <div style={{ position: 'relative', marginTop: 2, marginBottom: 6, flex: 'none' }}>
+        <CornerTag text={filter === 'all'
+          ? `${usedTiles}`
+          : `${usedTiles}/${entries.length}`} />
+        <div style={{
+          minWidth: 0,
+          display: 'flex', alignItems: 'stretch', gap: 2,
+          background: COL.well,
+          border: `1px solid ${COL.tileBor}`,
+          boxShadow: 'inset 0 2px 4px rgba(0,0,0,.3)',
+          borderRadius: 8,
+          padding: 3,
+        }}>
         {CATEGORIES.map(c => {
           const active = c.id === filter;
           return (
             <button key={c.id}
               onClick={() => setFilter(c.id)}
               title={c.label}
+              aria-pressed={active}
               style={{
-                flex: '1 0 auto', minWidth: 56,
+                position: 'relative',
+                flex: '1 1 0', minWidth: 0,
                 display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 1,
-                padding: '4px 8px',
+                /* v2.3.1319: 4px -> 2px vertical + 20 -> 18px icon —
+                   part of handing the header lines' room back to the
+                   item tray (18 is round-8 §6's floor). */
+                padding: '2px 2px',
                 background: active ? COL.accentFill : 'transparent',
-                color: active ? COL.text : COL.muted,
-                border: `1px solid ${active ? COL.accent : COL.border}`,
-                borderRadius: 5,
+                color: active ? COL.text : COL.text2,
+                border: active ? `1px solid ${COL.accent}` : '1px solid transparent',
+                borderRadius: 6,
                 fontFamily: 'inherit',
                 cursor: 'pointer',
               }}
             >
+              {/* v2.3.1320: the language-free filter mark — a tiny
+                  funnel on every chip's top-right corner (owner's
+                  suggestion); brass on the active chip. */}
+              <svg viewBox="0 0 10 10" width="9" height="9" aria-hidden="true" style={{
+                position: 'absolute', top: 2, right: 2, pointerEvents: 'none',
+              }}>
+                <path d="M1 1.5 H9 L6.2 5 V8.6 L3.8 7.4 V5 Z"
+                  fill={active ? COL.accent : 'none'}
+                  stroke={active ? COL.accent : COL.muted} strokeWidth="1.1" strokeLinejoin="round" />
+              </svg>
               {c.iconSrc
                 ? <img src={c.iconSrc} alt="" draggable={false}
                     style={{ width: 18, height: 18, objectFit: 'contain' }}
                     onError={(e) => { e.currentTarget.replaceWith(document.createTextNode(c.glyph)); }} />
                 : <span style={{ fontSize: 14, lineHeight: 1 }}>{c.glyph}</span>}
-              <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: '.02em' }}>{c.label}</span>
+              <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: '.02em', whiteSpace: 'nowrap' }}>{c.label}</span>
             </button>
           );
         })}
+        </div>
       </div>
       {/* v2.3.1285: the fictional "N / 32" counter is retired with the
           display cap (nav-system plan §0.3); the bag has no real limit. */}
-      </div>
 
-      {/* v2.3.1235: the empty bag no longer renders the recessed tray —
-          an enormous bordered rectangle around one small message read as
-          a broken screen (owner correction).  Zero items = icon + message
-          centered directly on the sheet; the tray/grid below is unchanged
-          and only mounts once there is something to hold. */}
+      {/* v2.3.1317 (owner screenshot): the free-floating empty state
+          OVERFLOWED — since the sheet lost height to the equipped/filter
+          headers, its flex box could shrink below its content, and the
+          centered icon/text spilled UP over the Armor chip and clipped
+          at the bottom under the toolbar.  It now lives INSIDE the same
+          recessed tray the grid uses (overflow-y auto, minHeight 0), so
+          tight sheets scroll it instead of overlapping neighbors — and
+          the compacted content (icon 32, tight paddings) fits without
+          scrolling on every current phone anyway.  (v2.3.1235 dropped
+          the tray for empty state; the tray reads fine now that the
+          headers above give the panel structure.) */}
       {usedTiles === 0
         ? (
-          <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '24px 8px', textAlign: 'center', color: COL.muted }}>
-            {/* v2.3.1224: UI Bible satchel icon */}
-            <img src="/icons/ui/nav-inventory.webp?v=2.3.1224" alt="" draggable={false}
-              style={{ width: 40, height: 40, opacity: 0.4, filter: 'grayscale(1)' }} />
-            <div style={{ fontSize: 13, fontWeight: 700, color: COL.text2 }}>
-              {filter === 'all' ? 'Your bag is empty.' : `No ${(CATEGORIES.find(c => c.id === filter)?.label || 'matching').toLowerCase()} items yet.`}
-            </div>
-            {filter === 'all' && (
-              /* v2.3.1235: 10.5px lavender-gray → 12px palette muted (type
-                 floor + no off-palette grays). */
-              <div style={{ fontSize: 12, color: COL.muted, maxWidth: 220 }}>
-                Defeat monsters and gather materials to fill it up.
+          <div style={{
+            background: COL.well,
+            border: `1px solid ${COL.tileBor}`,
+            boxShadow: 'inset 0 2px 4px rgba(0,0,0,.44), inset 0 1px 0 rgba(255,255,255,.035)',
+            borderRadius: 10,
+            flex: 1,
+            minHeight: 0,
+            overflowY: 'auto',
+            touchAction: 'pan-y',
+            WebkitOverflowScrolling: 'touch',
+            display: 'flex', flexDirection: 'column',
+            padding: '10px 8px', color: COL.muted,
+          }}>
+            {/* v2.3.1321 (owner screenshot): margin:auto wrapper instead
+                of justifyContent:center — centered flex content TALLER
+                than a scrollable box clips at BOTH ends (the icon rode
+                the tray's top edge, the text's last line vanished under
+                the bottom).  margin:auto centers when it fits and
+                top-aligns + scrolls when it doesn't. */}
+            <div style={{ margin: 'auto', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5, textAlign: 'center' }}>
+              {/* v2.3.1224: UI Bible satchel icon */}
+              <img src="/icons/ui/nav-inventory.webp?v=2.3.1224" alt="" draggable={false}
+                style={{ width: 32, height: 32, opacity: 0.4, filter: 'grayscale(1)', flex: 'none' }} />
+              <div style={{ fontSize: 13, fontWeight: 700, color: COL.text2 }}>
+                {filter === 'all' ? 'Your bag is empty.' : `No ${(CATEGORIES.find(c => c.id === filter)?.label || 'matching').toLowerCase()} items yet.`}
               </div>
-            )}
+              {filter === 'all' && (
+                /* v2.3.1321 (owner): maxWidth 220 forced a two-line wrap
+                   whose second line clipped on device — at full tray
+                   width the sentence fits ONE line on any modern phone
+                   (~285px at 12px vs ~330px tray @390).  No nowrap: a
+                   320px-class screen wraps instead of overflowing, and
+                   the margin:auto wrapper keeps it visible either way. */
+                <div style={{ fontSize: 12, color: COL.muted }}>
+                  Defeat monsters and gather materials to fill it up.
+                </div>
+              )}
+            </div>
           </div>
         )
         : (
@@ -354,11 +437,15 @@ export const InventoryPanel = () => {
             padding: 6,
             flex: 1,
             minHeight: 0,
-            /* v2.3.1285: rows past the 4-row minimum scroll inside the
-               tray; the world never scrolls with panel content. */
+            /* v2.3.1285: overflow rows scroll inside the tray; the
+               world never scrolls with panel content.  v2.3.1312: the
+               bottom scroll-edge fade moved here from panelStyle (the
+               panel is pinned now — only this tray scrolls). */
             overflowY: 'auto',
             touchAction: 'pan-y',
             WebkitOverflowScrolling: 'touch',
+            WebkitMaskImage: 'linear-gradient(180deg, #000 calc(100% - 18px), transparent)',
+            maskImage: 'linear-gradient(180deg, #000 calc(100% - 18px), transparent)',
           }}>
           <div style={{
             display: 'grid',
@@ -367,6 +454,12 @@ export const InventoryPanel = () => {
                recent row (Recent order is the shared bagModel sort). */
             gridTemplateColumns: `repeat(${COLS}, 1fr)`,
             gap: 8,
+            /* v2.3.1312 (round-8 §7): scroll clearance — the last row
+               must clear the edge fade at scroll end.  The toolbar sits
+               BELOW the sheet body in flex (it never overlaps this
+               tray), so 14px of grid padding + the 18px fade is the
+               honest equivalent of the spec's "toolbar + 12" rule. */
+            paddingBottom: 14,
           }}>
             {shownItems.map((e, i) => (
               <BagTile key={e.kind === 'item' ? `i-${e.key}` : `${e.kind}-${e.index}-${i}`} entry={e} />

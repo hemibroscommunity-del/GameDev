@@ -6,7 +6,12 @@ import { COL } from '../dash/common.js';
    icon-safe area, and gaps").  Styling ported from the retired Loadout
    slotCell (rarity edges, brass occupied edge) with the ghost variant
    for empty equipped positions (25-30% opacity pictogram). */
-export const SlotTile = ({ k, label, iconSrc, ghostSrc, onTap, occupied, quality, badge, children }) => {
+/* v2.3.1320 (owner: "understood without using language"): `wornSrc` —
+   a small badge icon in the tile's top-right corner marking an
+   OCCUPIED equipped slot as "worn".  Replaces the EQUIP text rail;
+   the owner's bag-equipped art is the glyph.  Ghost slots carry no
+   badge (the silhouette already says "empty gear position"). */
+export const SlotTile = ({ k, label, iconSrc, ghostSrc, onTap, occupied, quality, badge, wornSrc, children }) => {
   const rarityEdge = quality === 'rare' ? '#5B99DE'
     : quality === 'elite' ? '#A477DF' : null;
   const godly = quality === 'godly';
@@ -65,6 +70,17 @@ export const SlotTile = ({ k, label, iconSrc, ghostSrc, onTap, occupied, quality
       ) : null}
       {badge != null && (
         <span className="bt-item-qty">{badge}</span>
+      )}
+      {occupied && wornSrc && (
+        /* v2.3.1321 (owner): bare icon — the dark chip + brass ring
+           around it read as a border; the checkmark art carries its
+           own contrast.  v2.3.1322 (owner): 14 -> 18px (+25%). */
+        <img src={wornSrc} alt="" aria-hidden="true" draggable={false}
+          style={{
+            position: 'absolute', top: 1, right: 1,
+            width: 18, height: 18, objectFit: 'contain',
+            pointerEvents: 'none', zIndex: 1,
+          }} />
       )}
       {children}
     </div>

@@ -23,7 +23,7 @@ import { portraitStore } from './sheet/portraitStore.js';          /* v2.3.1294 
 import { hasUnseenLevelUps } from './sheet/skillsModel.js';        /* v2.3.1296 */
 import { readyQuestCount } from './sheet/questModel.js';           /* v2.3.1298 */
 import { sheetTransition } from './sheet/motion.js';            /* v2.3.1283 */
-import { useSheetDrag } from './sheet/useSheetDrag.js';         /* v2.3.1283 */
+import { bagUnseen, bagEntryKey } from './sheet/bagUnseenModel.js'; /* v2.3.1312 */
 import { BagCompact } from './sheet/BagCompact.jsx';            /* v2.3.1285 */
 import { HeroCompact } from './sheet/HeroCompact.jsx';          /* v2.3.1286 */
 import { COMBAT_SKILLS } from './sheet/heroModel.js';           /* v2.3.1311: hero toolbar badge */
@@ -272,33 +272,26 @@ const Tooltip = ({ tip, onClose }) => {
    button's top-LEFT (the chevron owns top-right) for ACTIONABLE state
    only: unviewed skill level-ups, ready quest turn-ins.  Never for
    routine churn like XP gains or friends-online counts. */
-/* v2.3.1307b: animated drifting chevron swipe cue (transform/opacity
-   only — no filters: iOS-WebGL static hazard, CLAUDE.md).
-   v2.3.1311b (owner): the cue encodes the NUMBER OF STEPS available in
-   that direction — one chevron per step.  Compact = one up (expand) +
-   one down (bar); expanded = TWO stacked down (compact, then bar).
-   Cues render only while at least compact is active — the resting bar
-   shows none (gestures still work there; the display is what's gated). */
-const Cue = ({ dir, count }) => (
-  <span className="bt-swipe-cue" data-dir={dir} data-count={count === 2 ? '2' : '1'} aria-hidden="true">
-    <svg className="bt-cue-c1" viewBox="0 0 14 8" width="14" height="8">
-      <path d="M2 6.5 L7 1.5 L12 6.5" stroke="currentColor" strokeWidth="2"
-        fill="none" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-    {count === 2 && (
-      <svg className="bt-cue-c2" viewBox="0 0 14 8" width="14" height="8">
-        <path d="M2 6.5 L7 1.5 L12 6.5" stroke="currentColor" strokeWidth="2"
-          fill="none" strokeLinecap="round" strokeLinejoin="round" />
-      </svg>
-    )}
-  </span>
-);
-
-const IconButton = ({ glyph, src: srcProp, label, active, onClick, node, tut, snap, dot, dest }) => {
+/* v2.3.1318 (owner: touch/swipe conflicts resolve to THIS session):
+   `onSwipe` returns — vertical swipes ON a toolbar icon are classified
+   here at pointer-up (|dy| >= 24px and |dy| > 1.5·|dx| reads as a
+   swipe; anything smaller stays a tap) and routed to the bus's
+   discrete advance/retreat, which enforce open-compact-on-inactive
+   and no-op-on-foreign-retreat.  Replaces #285/#288's ribbon-bound
+   useSheetDrag (deleted with its __btNavSwipeTs tap swallow — the
+   classifier IS the tap/swipe decision now).  Pointer capture keeps
+   the up event on the button when the finger drifts off mid-swipe.
+   v2.3.1311 (#288): a NUMBER `dot` renders as a count badge (Hero's
+   unspent points); `true` keeps the notification dot.
+   `pulse` (round-8 §Badges) — an epoch counter; each bump remounts the
+   icon span (key) to replay one restrained scale pulse (CSS
+   .bt-nav-pulse, reduced-motion guarded). */
+const IconButton = ({ glyph, src: srcProp, label, active, onClick, onSwipe, node, tut, snap, dot, pulse }) => {
   /* v2.3.1283: destinations pass an explicit `src`; `glyph` (ICON_SRC
      lookup) stays for any legacy caller. */
   const src = srcProp || ICON_SRC[glyph];
   const [pressed, setPressed] = useState(false);
+  const gestureStart = useRef(null);
   // Use onPointerUp instead of onClick so iOS fires it even when
   // another finger is mid-drag on a joystick.  stopPropagation
   // prevents the event reaching the dashboard's outer pointerdown
@@ -306,10 +299,16 @@ const IconButton = ({ glyph, src: srcProp, label, active, onClick, node, tut, sn
   const fire = (e) => {
     e.stopPropagation();
     setPressed(false);
-    /* v2.3.1307: swipes start on these icons now (useSheetDrag binds
-       the toolbar ribbon) and this fires on pointerUP — swallow the
-       tap when the pointerup is the tail end of a recognized swipe. */
-    if (typeof window !== 'undefined' && window.__btNavSwipeTs && Date.now() - window.__btNavSwipeTs < 350) return;
+    const s = gestureStart.current;
+    gestureStart.current = null;
+    if (s && onSwipe) {
+      const dy = e.clientY - s.y;
+      const dx = e.clientX - s.x;
+      if (Math.abs(dy) >= 24 && Math.abs(dy) > Math.abs(dx) * 1.5) {
+        onSwipe(dy < 0 ? 'up' : 'down');
+        return;
+      }
+    }
     onClick && onClick();
   };
   /* v2.3.1240: the toolbar is one dark navigation ribbon, but every
@@ -321,17 +320,23 @@ const IconButton = ({ glyph, src: srcProp, label, active, onClick, node, tut, sn
     <button
       type="button"
       onPointerUp={fire}
-      onPointerDown={(e) => { e.stopPropagation(); setPressed(true); }}
-      onPointerCancel={() => setPressed(false)}
+      onPointerDown={(e) => {
+        e.stopPropagation();
+        setPressed(true);
+        gestureStart.current = { x: e.clientX, y: e.clientY };
+        /* Without capture a swipe whose finger leaves the button never
+           delivers pointerup here and the gesture dies silently. */
+        try { e.currentTarget.setPointerCapture(e.pointerId); } catch (_) {}
+      }}
+      onPointerCancel={() => { setPressed(false); gestureStart.current = null; }}
       onPointerLeave={() => setPressed(false)}
       data-tut={tut}
-      data-dest={dest}
       aria-label={label}
       aria-pressed={active}
       data-pressed={pressed ? 'true' : 'false'}
       className="bt-dashboard-nav-button"
     >
-      <span className="bt-dashboard-nav-icon">
+      <span className={'bt-dashboard-nav-icon' + (pulse ? ' bt-nav-pulse' : '')} key={pulse || 0}>
         {node ? node : (
           <img
             src={src}
@@ -368,12 +373,40 @@ const IconButton = ({ glyph, src: srcProp, label, active, onClick, node, tut, sn
           pointerEvents: 'none',
         }} />
       ) : null}
-      {/* v2.3.1311b (owner): one chevron PER AVAILABLE STEP, active
-          icon only, and only once at least compact is open — the
-          resting bar shows no cues.  Compact: ▲ (one step up) + ▼ (one
-          step down).  Expanded: ▼▼ (two steps down). */}
-      {active && snap === 'compact' && (<><Cue dir="up" count={1} /><Cue dir="down" count={1} /></>)}
-      {active && snap === 'expanded' && <Cue dir="down" count={2} />}
+      {/* v2.3.1314 (owner round-8b): state-aware chevrons — ONE chevron
+          per available step, shown only while a view is open (never at
+          bar; supersedes #285's at-rest faint cues).  Compact: one up
+          (expand available) + one down (bar available).  Expanded: two
+          down (compact, then bar).  The gentle bob animation reads as
+          "swipeable"; direction matches both the icon swipe and the
+          tap cycle's next step. */}
+      {active && snap && snap !== 'bar' && (
+        <span className="bt-nav-snap" aria-hidden="true">
+          {snap === 'compact' ? (
+            <>
+              <svg className="bt-nav-snap-up" viewBox="0 0 12 7" width="11" height="6">
+                <path d="M2 5.5 L6 1.5 L10 5.5" stroke="currentColor" strokeWidth="1.8"
+                  fill="none" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+              <svg className="bt-nav-snap-down" viewBox="0 0 12 7" width="11" height="6">
+                <path d="M2 1.5 L6 5.5 L10 1.5" stroke="currentColor" strokeWidth="1.8"
+                  fill="none" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </>
+          ) : (
+            <>
+              <svg className="bt-nav-snap-down" viewBox="0 0 12 7" width="11" height="6">
+                <path d="M2 1.5 L6 5.5 L10 1.5" stroke="currentColor" strokeWidth="1.8"
+                  fill="none" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+              <svg className="bt-nav-snap-down" viewBox="0 0 12 7" width="11" height="6">
+                <path d="M2 1.5 L6 5.5 L10 1.5" stroke="currentColor" strokeWidth="1.8"
+                  fill="none" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </>
+          )}
+        </span>
+      )}
     </button>
   );
 };
@@ -469,6 +502,33 @@ export const BottomDashboard = () => {
      must not linger over a freshly opened panel: clear it on every
      panel-bus event (it did NOT clear before; only the 3s timer did). */
   useEffect(() => dashboardPanelBus.subscribe(() => { setTooltip(''); force(v => v + 1); }), []);
+  /* v2.3.1312 (round-8 §Badges): the pickup watcher lives HERE — the
+     dashboard is mounted in every snap mode.  It used to live in
+     BagCompact, which unmounts at bar (the resting default!) and
+     expanded, so pickups made while resting never badged the toolbar
+     and inspections from the expanded grid never cleared it.  New bag
+     keys register as unseen; opening a matching detail card marks
+     seen.  Stack quantity increments reuse their key — no re-badge. */
+  useEffect(() => {
+    let prev = null;
+    const tick = () => {
+      const S = window._gameState && window._gameState.current;
+      if (!S || !S.rpg) return;
+      const keys = getBagEntries(S.rpg).map(bagEntryKey);
+      if (prev) for (const k of keys) { if (!prev.has(k)) bagUnseen.add(k); }
+      prev = new Set(keys);
+    };
+    tick();
+    const id = setInterval(tick, 400);
+    const unsubDetail = itemDetailBus.subscribe(() => {
+      const t = itemDetailBus.state.open && itemDetailBus.state.target;
+      if (!t) return;
+      if (t.kind === 'inventory' && t.key) bagUnseen.markSeen(`i-${t.key}`);
+      else if (typeof t.kind === 'string' && t.kind.startsWith('stash')) bagUnseen.markSeen(`${t.kind}-${t.index}`);
+    });
+    const unsubUnseen = bagUnseen.subscribe(() => force(v => v + 1));
+    return () => { clearInterval(id); unsubDetail(); unsubUnseen(); };
+  }, []);
   /* v2.3.1288: PR B — stamp the snap mode on <html> so pure CSS can dim
      the floating combat chrome (joystick discs + charge pie) while a
      sheet is open; rules live in game.css next to .bt-joystick-zone.
@@ -521,18 +581,19 @@ export const BottomDashboard = () => {
       if (vv) vv.removeEventListener('resize', recompute);
     };
   }, []);
-  /* v2.3.1283: swipe gestures between snaps (spec §Direct manipulation);
-     v2.3.1290: three snaps.  Getters read the ref so a drag
-     mid-rotation still clamps correctly. */
+  /* v2.3.1312/1307 (retag: #288 owns 1311): BODY drags are gone — the
+     sheet body is content, not a handle (drags fought panel scrolling).
+     v2.3.1318 (owner: touch/swipe conflicts resolve to THIS session):
+     useSheetDrag is retired AGAIN — icon swipes are classified in
+     IconButton (pointer events) and routed to bus.advance/retreat; the
+     mode change animates the band via the height ternary's 220ms
+     transition, so there is no live height-tracking drag and no second
+     writer to the band's height.  The snapPx ref feeds the <html>
+     stamp effect.  toolbarRef stays on the frame (tutorial anchoring +
+     any future gesture surface). */
   const snapPxRef = useRef(snapPx);
   snapPxRef.current = snapPx;
-  /* v2.3.1307: gesture surface = the toolbar frame (the band root stays
-     the height-animation target).  Band-wide swipes are retired. */
   const toolbarRef = useRef(null);
-  useSheetDrag(dashRef, toolbarRef,
-    () => BAR_H,
-    () => snapPxRef.current.compact,
-    () => (dashboardPanelBus.state.stack.length > 1 ? snapPxRef.current.drill : snapPxRef.current.expanded)); /* v2.3.1311e */
   /* Player-card portrait: a head-and-shoulders render of the player's
      chosen cosmetics (skin / hair / hair color / beard / hat).  Generated
      on mount (captures the login picker) and regenerated if a cosmetic
@@ -662,10 +723,10 @@ export const BottomDashboard = () => {
         touchAction: 'none',
       }}
     >
-      {/* v2.3.1307: the top-edge drag handle (v2.3.1283/1293) is gone —
-          band-wide swipes are retired (owner: too ambiguous over
-          interactive menus).  Resizing lives ONLY on the toolbar icons
-          (useSheetDrag on the ribbon + the .bt-swipe-cue chevrons). */}
+      {/* v2.3.1307/1311: the top-edge drag handle is gone — band-wide
+          swipes are retired (owner: too ambiguous over interactive
+          menus; a handle with no gesture behind it is a lie).  Resizing
+          lives on the toolbar: tap cycle + icon swipes + chevrons. */}
       {active ? (
         <>
           {/* Header strip — back-chip (only on drilled child), title, ×.
@@ -732,12 +793,13 @@ export const BottomDashboard = () => {
       {/* Navigation ribbon.  v2.3.1229: PERSISTENT in both modes.
           v2.3.1283 (nav-system): SIX destinations, each always one of
           the DESTINATIONS roots; the active root carries the brass edge
-          in BOTH snap modes.  v2.3.1307: the ribbon is ALSO the sheet's
-          only gesture surface — vertical swipes on the icons resize
-          (useSheetDrag via toolbarRef); taps only open/switch
-          (dashboardPanelBus.tapDestination).  rootId (stack[0]) keeps a
-          destination selected while one of its drill children
-          (Settings, T2, ...) is open. */}
+          in BOTH snap modes.  Vertical swipes on the icons resize one
+          snap per swipe (IconButton onSwipe -> bus advance/retreat,
+          v2.3.1318).  v2.3.1316 (owner round-8b): taps CYCLE —
+          inactive -> compact, active compact -> expanded -> bar
+          (dashboardPanelBus.tapDestination).
+          rootId (stack[0]) keeps a destination selected while one of
+          its drill children (Settings, T2, ...) is open. */}
       {(() => {
         const knownRoots = DESTINATIONS.map(d => d.id);
         /* v2.3.1290: bar mode = NOTHING lit — the resting state has no
@@ -752,6 +814,11 @@ export const BottomDashboard = () => {
            READY turn-ins (v2.3.1298; available quests never badge).
            The 200ms interval keeps these live. */
         const Sb = (typeof window !== 'undefined') && window._gameState && window._gameState.current;
+        /* v2.3.1315 (owner round-8b): the Bag's circle dot is REMOVED —
+           "remove the little circle indicator for new items."  The
+           one-shot pickup pulse and the in-bag sparkle markers stay;
+           skills/quests keep their dots (level-ups and turn-ins, not
+           items). */
         const dots = {
           skills: hasUnseenLevelUps((Sb && Sb.rpg) || {}),
           quests: readyQuestCount(Sb) > 0,
@@ -832,9 +899,17 @@ export const BottomDashboard = () => {
                   ) : undefined}
                   active={litId === d.id}
                   snap={litId === d.id ? mode : null}
-                  dest={d.id}
                   dot={dots[d.id]} /* v2.3.1311: raw — numbers render as count badges */
-                  onClick={() => dashboardPanelBus.tapDestination(d.id)} />
+                  /* v2.3.1312: one restrained pulse per NEW pickup (the
+                     epoch key replays the animation); gated on unseen
+                     count so inspecting the item retires the motion. */
+                  pulse={d.id === 'bag' && bagUnseen.count() > 0 ? bagUnseen.epoch() : 0}
+                  onClick={() => dashboardPanelBus.tapDestination(d.id)}
+                  /* v2.3.1318: icon swipes -> discrete one-state moves
+                     (this session's contract, owner-selected). */
+                  onSwipe={(dir) => dir === 'up'
+                    ? dashboardPanelBus.advance(d.id)
+                    : dashboardPanelBus.retreat(d.id)} />
               ))}
             </div>
           </div>

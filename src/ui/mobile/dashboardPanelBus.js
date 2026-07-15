@@ -13,20 +13,28 @@
 //   'compact'  — the destination's glance view.
 //   'expanded' — the destination's detailed / actionable view.
 //
-// Toolbar semantics (v2.3.1307, owner): TAPS never resize.  Tapping an
-// inactive destination opens/switches to it (compact from the bar,
-// KEEPING the current size otherwise); tapping the active destination
-// is a no-op.  Resizing — bar <-> compact <-> expanded — happens ONLY
-// via a vertical swipe on the toolbar icons (useSheetDrag, now bound
-// to the ribbon).  The old tap-cycle (compact -> expanded -> bar) and
-// the header ▾ chevron are gone: two resize methods plus band-wide
-// swipes over interactive menus read as ambiguous in play-testing.
-// Movement/aim input no longer collapses the sheet — the owner wants
-// players walking around with menus open (BroTown interlocks removed
-// same version).
+// Toolbar semantics (v2.3.1316, owner round-8b — supersedes both the
+// v2.3.1307 taps-never-resize contract from #285 and the v2.3.1311
+// tap-toggle): tapping any destination from the bar (or an inactive
+// one anytime) opens its COMPACT view; tapping the ACTIVE destination
+// cycles UP then closes — compact -> expanded -> bar — so three taps
+// walk a destination through all of its states ("third tap to return
+// to toolbar only").  Icon SWIPES also resize, one snap per swipe —
+// classified in IconButton at pointer-up and routed to advance/retreat
+// below (v2.3.1318: this session's discrete contract, owner-selected
+// over #285's ribbon drag).  Movement/aim input never collapses the
+// sheet — play with menus open (v2.3.1307); the combat chrome rides
+// above the open sheet keyed off --sheet-h.
 
 const listeners = new Set();
 const emit = () => { for (const fn of listeners) fn(); };
+
+/* v2.3.1312 (round-8; retagged from 1311 — #288 claimed it first):
+   one restrained tick when the sheet snaps to a new state
+   (round-8 spec: "subtle haptic on snap").  navigator.vibrate is a
+   no-op on iOS Safari — Android/PWA users get it, everyone else
+   silently doesn't; never let an exotic WebView throw over it. */
+const haptic = () => { try { navigator.vibrate && navigator.vibrate(8); } catch (_) {} };
 
 export const dashboardPanelBus = {
   state: { stack: ['bag'], mode: 'bar' },
@@ -48,13 +56,12 @@ export const dashboardPanelBus = {
     return this.state.stack[0] || 'bag';
   },
 
-  // Toolbar tap (v2.3.1311b, owner): the three-tap CYCLE is back for
-  // every device — tap opens compact, tap again expands, third tap
-  // returns to the toolbar-only bar.  Tapping a DIFFERENT destination
-  // while any view is open switches to ITS compact view.  Swipes on
-  // the icons remain the direct-manipulation alternative (one snap per
-  // swipe); the animated chevron cues only display once at least
-  // compact is active.
+  // Toolbar tap (owner round-8b; both sessions converged — #288's
+  // v2.3.1311b and this branch's v2.3.1316 wrote the IDENTICAL body):
+  // from the bar or an inactive destination -> its compact view
+  // (switching never keeps the old size); active destination cycles
+  // compact -> expanded -> bar.  #285's desktop exception died with
+  // the cycle's return — mice cycle the same way fingers do.
   tapDestination(id) {
     if (this.state.mode === 'bar' || this.root() !== id) {
       this.openCompact(id);
@@ -65,15 +72,43 @@ export const dashboardPanelBus = {
     }
   },
 
+  /* v2.3.1318 (owner: "if there are any conflicts with touch or swipe
+     controls with the other session keep yours"): the icon-swipe
+     semantics return to THIS session's discrete advance/retreat
+     contract, displacing #285's drag-release rules where they
+     differed — a swipe up on an INACTIVE icon opens that destination
+     COMPACT (the drag opened it at the swiped-to size, jumping straight
+     to expanded past the compact glance), and a swipe DOWN on an
+     inactive icon is a NO-OP (the drag closed the sheet — retreating a
+     destination you didn't swipe on is a surprise). */
+  // Swipe UP on a toolbar icon: one state up — bar/inactive -> compact
+  // -> expanded.  At expanded it's a deliberate no-op (ends never wrap).
+  advance(id) {
+    if (this.state.mode === 'bar' || this.root() !== id) {
+      this.openCompact(id);
+    } else if (this.state.mode === 'compact') {
+      this.expand();
+    }
+  },
+
+  // Swipe DOWN: one state down — expanded -> compact -> bar.  No-op
+  // when the swiped destination isn't the open one.
+  retreat(id) {
+    if (this.state.mode === 'bar' || this.root() !== id) return;
+    this.stepDown();
+  },
+
   openCompact(id) {
     this.state.stack = [id];
     this.state.mode = this.compactless.has(id) ? 'expanded' : 'compact';
+    haptic();
     emit();
   },
 
   expand() {
     if (this.state.mode === 'expanded') return;
     this.state.mode = 'expanded';
+    haptic();
     emit();
   },
 
@@ -84,6 +119,7 @@ export const dashboardPanelBus = {
     if (this.state.mode === 'expanded') {
       this.state.mode = 'compact';
       this.state.stack = [this.state.stack[0] || 'bag'];
+      haptic();
       emit();
     } else if (this.state.mode === 'compact') {
       this.toBar();
@@ -98,15 +134,19 @@ export const dashboardPanelBus = {
     if (this.state.mode === 'bar') return;
     this.state.mode = 'bar';
     this.state.stack = [this.state.stack[0] || 'bag'];
+    haptic();
     emit();
   },
 
-  // Settle to an explicit snap after a drag (useSheetDrag).  Leaving
-  // expanded pops drill children for the same reason stepDown does.
+  // Settle to an explicit snap — the honest "set mode" API for tests
+  // and any future gesture surface (its drag-release caller retired
+  // v2.3.1318).  Leaving expanded pops drill children for the same
+  // reason stepDown does.
   settle(mode) {
     if (this.state.mode === mode) return;
     this.state.mode = mode;
     if (mode !== 'expanded') this.state.stack = [this.state.stack[0] || 'bag'];
+    haptic();
     emit();
   },
 
