@@ -118,8 +118,9 @@ function _shadowTex() {
   cv.width = 64; cv.height = 32;
   const c = cv.getContext('2d');
   const g = c.createRadialGradient(32, 16, 2, 32, 16, 30);
-  g.addColorStop(0, 'rgba(0,0,0,0.32)');
-  g.addColorStop(0.6, 'rgba(0,0,0,0.14)');
+  /* v2.3.1283c: ~45% darker (owner: increase intensity). */
+  g.addColorStop(0, 'rgba(0,0,0,0.48)');
+  g.addColorStop(0.6, 'rgba(0,0,0,0.22)');
   g.addColorStop(1, 'rgba(0,0,0,0)');
   c.save();
   c.translate(32, 16); c.scale(1, 0.5); c.translate(-32, -16);

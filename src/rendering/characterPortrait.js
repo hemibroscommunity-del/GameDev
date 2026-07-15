@@ -227,8 +227,9 @@ export async function drawCharacterPortrait(canvas, opts) {
     const _FOOT_Y = { south: 224, north: 222, east: 226, northeast: 230, southwest: 237 };
     const fy = _FOOT_Y[DIR] || 226;
     const g = ctx.createRadialGradient(FRAME / 2, fy, 2, FRAME / 2, fy, 48);
-    g.addColorStop(0, 'rgba(0,0,0,0.38)');
-    g.addColorStop(0.55, 'rgba(0,0,0,0.18)');
+    /* v2.3.1283c: ~45% darker (owner: increase intensity). */
+    g.addColorStop(0, 'rgba(0,0,0,0.52)');
+    g.addColorStop(0.55, 'rgba(0,0,0,0.26)');
     g.addColorStop(1, 'rgba(0,0,0,0)');
     ctx.save();
     /* squash the radial circle into the platform's 3/4 ellipse */

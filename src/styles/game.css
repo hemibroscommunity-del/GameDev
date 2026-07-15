@@ -830,7 +830,8 @@ input{font-family:inherit}
    inset, over its 34% height). */
 /* v2.3.1283b: lifted + strengthened — the first cut was too low/faint
    to read on the bright disc (owner report). */
-.bt-cc-castshadow{position:absolute;left:50%;bottom:52%;width:36%;height:24%;margin-left:-18%;background:radial-gradient(ellipse 50% 50% at 50% 50%,rgba(0,0,0,.36),rgba(0,0,0,.16) 55%,rgba(0,0,0,0) 74%);pointer-events:none;transform-origin:50% 100%}
+/* v2.3.1283c: ~45% darker (owner: increase intensity). */
+.bt-cc-castshadow{position:absolute;left:50%;bottom:52%;width:36%;height:24%;margin-left:-18%;background:radial-gradient(ellipse 50% 50% at 50% 50%,rgba(0,0,0,.46),rgba(0,0,0,.22) 55%,rgba(0,0,0,0) 74%);pointer-events:none;transform-origin:50% 100%}
 .bt-cc-castshadow--l{transform:skewX(20deg) scaleY(.5);animation:bt-cc-shadowflick-l 1.0s ease-in-out infinite}
 .bt-cc-castshadow--r{transform:skewX(-20deg) scaleY(.5);animation:bt-cc-shadowflick-r 1.0s ease-in-out infinite;animation-delay:-.45s}
 @keyframes bt-cc-shadowflick-l{0%,100%{opacity:.9;transform:skewX(20deg) scaleY(.5)}50%{opacity:.62;transform:skewX(17deg) scaleY(.46) scaleX(1.06)}}
