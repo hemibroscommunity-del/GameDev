@@ -3,7 +3,7 @@ import { COL, panelStyle, getState } from '../dash/common.js';
 import { buildSkillUnspent, STAT_TO_WEAPON_CAT } from '../../../data/gameSystems.js';
 import { requestT2Category } from '../dash/T2Panel.jsx';
 import { dashboardPanelBus } from '../dashboardPanelBus.js';
-import { COMBAT_SKILLS, skillLevel, skillProgressPct, skillProgress, attributeEffect, deriveHeroStats } from './heroModel.js';
+import { COMBAT_SKILLS, skillLevel, skillProgressPct, skillProgress, parentBlurb, deriveHeroStats } from './heroModel.js';
 import { IdentityStrip } from './IdentityStrip.jsx';
 import { VitalBar, VITAL_ICONS } from './VitalBar.jsx'; /* v2.3.1311 */
 
@@ -139,27 +139,30 @@ export const HeroExpanded = () => {
 
       {section === 'Build' && (
         <>
-          {/* Available points, prominent — brass when actionable.
-              v2.3.1311b: tightened so all six cards clear the fold. */}
+          {/* v2.3.1311c: single-line points chip — the two-cell header
+              banner cost ~14px the no-scroll budget doesn't have on a
+              real iPhone Safari viewport (~715px innerHeight). */}
           <div style={{
-            margin: '6px 0 5px',
-            padding: '5px 10px',
-            borderRadius: 8,
+            margin: '5px 0 4px',
+            padding: '3px 10px',
+            borderRadius: 7,
             background: totalUnspent > 0 ? COL.accentFill : COL.wellSoft,
             border: `1px solid ${totalUnspent > 0 ? COL.accent : COL.tileBor}`,
             display: 'flex', alignItems: 'baseline', justifyContent: 'space-between',
-            fontSize: 11.5, fontWeight: 700, letterSpacing: '.06em',
+            fontSize: 10.5, fontWeight: 700, letterSpacing: '.06em',
             color: totalUnspent > 0 ? COL.accent : COL.text2,
           }}>
             <span>BUILD POINTS</span>
             <span style={{ fontVariantNumeric: 'tabular-nums' }}>{totalUnspent} AVAILABLE</span>
           </div>
-          {/* v2.3.1311: six parent cards in a 3x2 grid (spec) — column
-              layout per card.  These levels DO advance through combat
-              XP (addBuildProg), so the exact-progress line + bar stay
-              (spec: bars imply XP — correct here — but must show exact
-              numbers).  The +N chip is the parent's own T2 pool. */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6 }}>
+          {/* v2.3.1311c (owner): horizontal micro-cards, 3x2, sized to
+              the REAL device budget (~140px section content on iPhone
+              Safari with its dynamic toolbar).  The description is the
+              PARENT's role — each houses a family of five tier-2
+              category skills (parentBlurb) — not the old T1 effect
+              line.  Exact XP progress stays (these levels advance via
+              combat XP); the +N chip is the parent's own T2 pool. */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 5 }}>
             {COMBAT_SKILLS.map(s => {
               const lvl = skillLevel(R, s.key);
               const pct = skillProgressPct(R, s.key);
@@ -175,44 +178,42 @@ export const HeroExpanded = () => {
                   }}
                   style={{
                     position: 'relative',
-                    display: 'flex', flexDirection: 'column', alignItems: 'center',
-                    gap: 2,
-                    padding: '6px 4px 10px',
+                    display: 'flex', flexDirection: 'column',
+                    gap: 1,
+                    padding: '4px 6px 8px',
                     background: unspent > 0 ? COL.accentFill : COL.wellSoft,
                     border: `1px solid ${unspent > 0 ? COL.accent : COL.tileBor}`,
-                    borderRadius: 8,
+                    borderRadius: 7,
                     cursor: unspent > 0 ? 'pointer' : 'default',
                     touchAction: 'none',
                     minWidth: 0,
                   }}>
                   {unspent > 0 && (
                     <span aria-hidden="true" style={{
-                      position: 'absolute', top: 3, right: 3,
+                      position: 'absolute', top: 2, right: 2,
                       background: COL.accent, color: '#20170D',
-                      fontSize: 10, fontWeight: 900,
-                      borderRadius: 7, padding: '0 4px', lineHeight: 1.4,
+                      fontSize: 9, fontWeight: 900,
+                      borderRadius: 6, padding: '0 3px', lineHeight: 1.4,
                       pointerEvents: 'none',
                     }}>+{unspent}</span>
                   )}
-                  <img src={s.iconSrc} alt="" draggable={false}
-                    style={{ width: 22, height: 22, objectFit: 'contain', flex: 'none', pointerEvents: 'none' }} />
-                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 4, minWidth: 0, maxWidth: '100%' }}>
-                    <span style={{ fontSize: 11, fontWeight: 700, color: COL.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>{s.label}</span>
-                    <span style={{ flex: 'none', fontSize: 10.5, fontWeight: 800, color: COL.text2, fontVariantNumeric: 'tabular-nums' }}>Lv {lvl}</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 4, minWidth: 0 }}>
+                    <img src={s.iconSrc} alt="" draggable={false}
+                      style={{ width: 15, height: 15, objectFit: 'contain', flex: 'none', pointerEvents: 'none' }} />
+                    <span style={{ fontSize: 10.5, fontWeight: 700, color: COL.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>{s.label}</span>
+                    <span style={{ flex: 'none', marginLeft: 'auto', fontSize: 10, fontWeight: 800, color: COL.text2, fontVariantNumeric: 'tabular-nums' }}>Lv {lvl}</span>
                   </div>
-                  {/* Current gameplay effect (real formulas only). */}
-                  <div style={{ fontSize: 9, color: COL.muted, textAlign: 'center', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%' }}>
-                    {attributeEffect(R, s.key)}
+                  {/* The parent's role: a family of five T2 skills. */}
+                  <div style={{ fontSize: 8.5, color: COL.muted, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {parentBlurb(s.key)}
                   </div>
-                  {/* Exact XP progress toward the next level of THIS
-                      parent (round-4: a bare bar reads as decoration). */}
                   {prog && (
-                    <div style={{ fontSize: 9, color: COL.muted, fontVariantNumeric: 'tabular-nums' }}>
+                    <div style={{ fontSize: 8.5, color: COL.muted, fontVariantNumeric: 'tabular-nums' }}>
                       {prog.prog} / {prog.thresh} XP
                     </div>
                   )}
                   {prog && (
-                    <div style={{ position: 'absolute', left: '12%', right: '12%', bottom: 4, height: 3, borderRadius: 999, overflow: 'hidden', background: '#0B1216', pointerEvents: 'none' }}>
+                    <div style={{ position: 'absolute', left: 6, right: 6, bottom: 3, height: 3, borderRadius: 999, overflow: 'hidden', background: '#0B1216', pointerEvents: 'none' }}>
                       <div style={{ width: pct + '%', height: '100%', background: '#D8A85F' }} />
                     </div>
                   )}
@@ -224,7 +225,9 @@ export const HeroExpanded = () => {
       )}
 
       {section === 'Records' && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 5, paddingTop: 6 }}>
+        /* v2.3.1311c: 3x2 (was 2x3) — two card rows fit the real device
+           budget without scrolling; three didn't. */
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 5, paddingTop: 6 }}>
           {[
             ['Kills', cs.monstersKilled ?? cs.kills ?? 0],
             ['Deaths', cs.deaths ?? 0],
@@ -240,12 +243,12 @@ export const HeroExpanded = () => {
             <div key={label} style={{
               background: COL.wellSoft,
               border: `1px solid ${COL.tileBor}`,
-              borderRadius: 8,
-              padding: '6px 10px 7px',
+              borderRadius: 7,
+              padding: '5px 7px 6px',
               minWidth: 0,
             }}>
-              <div style={{ fontSize: 16, fontWeight: 800, color: COL.text, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{value}</div>
-              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: COL.muted, marginTop: 1 }}>{label}</div>
+              <div style={{ fontSize: 14, fontWeight: 800, color: COL.text, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{value}</div>
+              <div style={{ fontSize: 8.5, fontWeight: 700, letterSpacing: '.04em', textTransform: 'uppercase', color: COL.muted, marginTop: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{label}</div>
             </div>
           ))}
         </div>

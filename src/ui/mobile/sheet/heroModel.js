@@ -107,6 +107,22 @@ export function attributeEffect(R, key) {
   }
 }
 
+/* v2.3.1311c (owner): the Build cards describe the PARENT — each of
+   the six combat parents houses a family of five tier-2 category
+   skills (the T2Panel spend screen lists them).  The old effect line
+   ("+0.2 dmg with melee") described the T1 stat, not the family. */
+export function parentBlurb(key) {
+  switch (key) {
+    case 'power':     return '5 melee skills';
+    case 'agility':   return '5 bow skills';
+    case 'mind':      return '5 magic skills';
+    case 'vitality':  return '5 HP skills';
+    case 'defense':   return '5 defense skills';
+    case 'endurance': return '5 energy skills';
+    default:          return '';
+  }
+}
+
 export function deriveHeroStats(R) {
   const wpn = getActiveWeapon(R);
   const range = wpn ? calcDisplayDmgRange(R, wpn) : null;
