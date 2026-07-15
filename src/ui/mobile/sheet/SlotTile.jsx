@@ -74,11 +74,11 @@ export const SlotTile = ({ k, label, iconSrc, ghostSrc, onTap, occupied, quality
       {occupied && wornSrc && (
         /* v2.3.1321 (owner): bare icon — the dark chip + brass ring
            around it read as a border; the checkmark art carries its
-           own contrast. */
+           own contrast.  v2.3.1322 (owner): 14 -> 18px (+25%). */
         <img src={wornSrc} alt="" aria-hidden="true" draggable={false}
           style={{
-            position: 'absolute', top: 2, right: 2,
-            width: 14, height: 14, objectFit: 'contain',
+            position: 'absolute', top: 1, right: 1,
+            width: 18, height: 18, objectFit: 'contain',
             pointerEvents: 'none', zIndex: 1,
           }} />
       )}
