@@ -18,10 +18,30 @@ import {
   calcDisplayDps,
   calcDisplayHeal,
   calcDisplayArmorHp,
+  calcBlockReduction,
   BLACKSMITH_TIERS,
   WOODWORKING_TIERS,
   recalcDerived,
 } from '../../../data/gameSystems.js';
+
+/* v2.3.1313 (ChatGPT round-8 §8): comparison line for stash cards —
+   the delta vs the currently equipped counterpart ("+2.4 DPS vs
+   equipped"), so upgrade decisions don't require memorizing numbers
+   and flipping between two cards.  Positive = green, negative = red;
+   no counterpart equipped = no line (the base stat line already says
+   everything).  Uses the SAME display formulas as the stat line, so
+   the two can never disagree. */
+function statDelta(d, unit, decimals) {
+  if (!isFinite(d)) return null;
+  const rounded = decimals ? Number(d.toFixed(decimals)) : Math.round(d);
+  const sep = unit.startsWith('%') ? '' : ' '; /* "+5% Block", "+2.4 DPS" */
+  if (rounded === 0) return { text: 'Same ' + unit.replace(/^% /, '').trim() + ' as equipped', tone: 0 };
+  const mag = decimals ? Math.abs(rounded).toFixed(decimals) : Math.abs(rounded);
+  return {
+    text: (rounded > 0 ? '+' : '−') + mag + sep + unit + ' vs equipped',
+    tone: rounded > 0 ? 1 : -1,
+  };
+}
 
 /* Damage range + DPS for a weapon.
    v2.3.1206: was a "stat-free" local copy (wType.base × tierMult only) —
@@ -144,12 +164,20 @@ function resolveTarget(target) {
        while a sword is equipped), so compares are apples-to-apples. */
     const SW = getState();
     const range = weaponDmgRange(SW && SW.rpg, wpn);
+    /* v2.3.1313: DPS delta vs the weapon equipped in this stash
+       weapon's OWN slot (a stash bow compares to the equipped bow even
+       while a sword is active) — same slot the Equip button swaps. */
+    const eqWpn = SW && SW.rpg && SW.rpg[slotFor(wpn.type)];
+    const delta = eqWpn
+      ? statDelta(calcDisplayDps(SW.rpg, wpn) - calcDisplayDps(SW.rpg, eqWpn), 'DPS', 1)
+      : null;
     return {
       lockKey: 'stashWeapon_' + (target.index || 0),
       thumb: weaponThumb(wpn),
       glyph: null,
       name: wpn.name || 'Weapon',
       info: range ? ('Damage ' + range.dmgText + ' · DPS ' + range.dps) : null,
+      delta,
       desc: tierLabel(wpn) + ' · ' + (wpn.type || '').charAt(0).toUpperCase() + (wpn.type || '').slice(1),
       actions: { equip: true },
     };
@@ -157,12 +185,21 @@ function resolveTarget(target) {
   if (target.kind === 'stashShield') {
     const sh = target.shield;
     if (!sh) return null;
+    /* v2.3.1313: block-reduction delta in percentage points vs the
+       equipped shield (calcBlockReduction ignores its legacy first
+       arg; only the shields' blockBonus differs). */
+    const SS = getState();
+    const eqSh = SS && SS.rpg && SS.rpg.shield;
+    const delta = eqSh
+      ? statDelta((calcBlockReduction(0, sh) - calcBlockReduction(0, eqSh)) * 100, '% Block', 0)
+      : null;
     return {
       lockKey: 'stashShield_' + (target.index || 0),
       thumb: shieldThumb(sh),
       glyph: '\u{1F6E1}',
       name: sh.name || 'Shield',
       info: 'Hold to block',
+      delta,
       desc: (sh.gearBase === 'wood' ? 'Wooden' : tierLabel(sh)) + ' · Shield',
       actions: { equip: true },
     };
@@ -192,12 +229,18 @@ function resolveTarget(target) {
     /* v2.3.1207: × Vigor, same as the equipped-armor card above. */
     const S = getState();
     const hp = calcDisplayArmorHp(S && S.rpg, ar);
+    /* v2.3.1313: Max-HP delta vs the equipped chest armor. */
+    const eqAr = S && S.rpg && S.rpg.armor;
+    const delta = eqAr
+      ? statDelta(hp - calcDisplayArmorHp(S.rpg, eqAr), 'Max HP', 0)
+      : null;
     return {
       lockKey: 'stashArmor_' + (target.index || 0),
       thumb: null,
       glyph: '\u{1F9BA}',
       name: ar.name || 'Armor',
       info: '+' + hp + ' Max HP',
+      delta,
       desc: (ar.gearBase === 'wood' ? 'Leather' : tierLabel(ar)) + ' · Chest',
       actions: { equip: true },
     };
@@ -755,7 +798,7 @@ export const ItemDetailPopup = () => {
 
   const resolved = resolveTarget(target);
   if (!resolved) return null;
-  const { lockKey, thumb, glyph, name, info, desc, actions } = resolved;
+  const { lockKey, thumb, glyph, name, info, delta, desc, actions } = resolved;
   const locked = itemIsLocked(lockKey);
 
   /* v2.3.853: logs no longer cook directly -- they light a campfire.  Tapping a
@@ -1032,6 +1075,19 @@ export const ItemDetailPopup = () => {
             boxShadow: 'inset 0 2px 4px rgba(0,0,0,.44), inset 0 1px 0 rgba(255,255,255,.035)',
             borderRadius: 8,
           }}>{info}</div>
+        )}
+
+        {/* v2.3.1313 (round-8 §8): comparison vs equipped — green
+            upgrade / red downgrade / muted tie.  Only stash cards set
+            it (no counterpart -> no line). */}
+        {delta && (
+          <div style={{
+            fontSize: 12, fontWeight: 700, fontVariantNumeric: 'tabular-nums',
+            textAlign: 'center',
+            /* Palette tokens: xp green for gains, danger red for losses
+               (no off-palette colors — v2.3.1235 correction-pass rule). */
+            color: delta.tone > 0 ? COL.xp : delta.tone < 0 ? COL.danger : COL.muted,
+          }}>{delta.text}</div>
         )}
 
         {/* v2.3.1232: category caption — 10/600 uppercase metadata */}
