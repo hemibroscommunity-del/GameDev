@@ -44,7 +44,6 @@ import { SocialPanel }       from './dash/SocialPanel.jsx';
 import { MorePanel }         from './dash/MorePanel.jsx';
 import { StatsPanel }        from './dash/StatsPanel.jsx';
 import { SkillsPanel }       from './dash/SkillsPanel.jsx';
-import { SkillDetailPanel }  from './dash/SkillDetailPanel.jsx'; /* v2.3.1296 */
 import { EncyclopediaPanel } from './dash/EncyclopediaPanel.jsx';
 import { GuildPanel }        from './dash/GuildPanel.jsx';
 import { LeaderboardPanel }  from './dash/LeaderboardPanel.jsx';
@@ -403,9 +402,9 @@ const PANELS = {
   stats:        { title: 'Stats',       Component: StatsPanel },
   /* v2.3.1296 (round-5): expanded header says LIFE SKILLS to separate
      these from Hero's combat attributes; the toolbar label stays
-     Skills.  skillDetail = the per-skill drill (unlock ladder). */
+     Skills.  v2.3.1312: the skillDetail drill is retired — the
+     per-skill detail renders IN-PANEL inside SkillsPanel now. */
   skills:       { title: 'Life Skills', Component: SkillsPanel },
-  skillDetail:  { title: 'Skill',       Component: SkillDetailPanel },
   encyclopedia: { title: 'Codex',       Component: EncyclopediaPanel },
   guild:        { title: 'Guild',       Component: GuildPanel },
   leaderboard:  { title: 'Leaderboard', Component: LeaderboardPanel },
