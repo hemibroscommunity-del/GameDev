@@ -2336,7 +2336,10 @@ export function updateMonsterCombat(S, deps) {
                       * (S.rpg && S.rpg.activeSlot === 'ranged' ? bowRangeMult(S.rpg) : 1))),
                     arc: wpnType.arc || SWING_ARC,
                     ts: Date.now(),
-                    inDuel: !!S._inDuel
+                    inDuel: !!S._inDuel,
+                    /* v2.3.1302: kind tags the attack for the server's
+                       per-kind range clamp.  Old servers ignore it. */
+                    kind: 'melee'
                   }
                 });
               }
