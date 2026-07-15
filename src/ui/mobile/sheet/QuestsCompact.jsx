@@ -1,15 +1,22 @@
 import React, { useEffect, useState } from 'react';
 import { COL, getState } from '../dash/common.js';
-import { deriveQuestLog } from './questModel.js';
+import { deriveQuestLog, trackedQuestId, rewardText } from './questModel.js';
+import { questDetailBus } from './questDetailBus.js';
+import { dashboardPanelBus } from '../dashboardPanelBus.js';
 
-/* v2.3.1288: Quests compact (nav-system PR B) — the quest log at a
-   glance: a count line + up to three one-line rows, READY quests first
-   (they're the actionable ones), then in-progress, then the first
-   available pickups.  Descriptions, rewards and the completed list are
-   the expanded panel's job.  Read-only, same derivation as the panel
-   (sheet/questModel.js). */
+/* v2.3.1288: Quests compact.  v2.3.1298 (ChatGPT round-5): the glance
+   answers "what should I do NEXT?", not "what states exist":
+   - TWO comfortable rows instead of three compressed ones, sorted
+     ready → tracked → active → recommended available.
+   - Rows carry DIRECTION instead of repeated status labels: a ready
+     quest says where to turn in, an active quest shows its objective,
+     an available one names the NPC and the reward.
+   - Summary prioritizes actionable states: "1 READY · 2 ACTIVE", or
+     "0 ACTIVE · 8 AVAILABLE" when nothing is underway (completed
+     never counts here).
+   - Tapping a row expands straight into that quest's detail view. */
 
-const ROW_CAP = 3;
+const ROW_CAP = 2;
 
 export const QuestsCompact = () => {
   const [, force] = useState(0);
@@ -19,18 +26,30 @@ export const QuestsCompact = () => {
   }, []);
 
   const { active, upcoming, done } = deriveQuestLog(getState());
+  const tracked = trackedQuestId();
 
-  /* One flat glance list: READY → ACTIVE → AVAILABLE.  v2.3.1291
-     (ChatGPT round-3 §1): one canonical status set everywhere —
-     Ready / Active / Available / Completed ("in progress" retired). */
   const rows = [
-    ...active.filter(a => a.ready).map(a => ({ quest: a.quest, badge: 'READY', color: '#59BF91' })),
-    ...active.filter(a => !a.ready).map(a => ({ quest: a.quest, badge: 'ACTIVE', color: '#D8A85F' })),
-    ...upcoming.map(quest => ({ quest, badge: 'AVAILABLE', color: COL.muted })),
+    ...active.filter(a => a.ready).map(a => ({
+      quest: a.quest, tone: '#D8AA58',
+      line: `Ready — return to ${a.quest.npc}`,
+    })),
+    ...active.filter(a => !a.ready && a.quest.id === tracked).map(a => ({
+      quest: a.quest, tone: '#5B99DE', star: true,
+      line: a.quest.desc,
+    })),
+    ...active.filter(a => !a.ready && a.quest.id !== tracked).map(a => ({
+      quest: a.quest, tone: null,
+      line: a.quest.desc,
+    })),
+    ...upcoming.map(quest => ({
+      quest, tone: null, dim: true,
+      line: `Talk to ${quest.npc}${rewardText(quest) ? ' · ' + rewardText(quest) : ''}`,
+    })),
   ];
   const overflow = rows.length - ROW_CAP;
+  const readyN = active.filter(a => a.ready).length;
 
-  if (rows.length === 0) {
+  if (rows.length === 0 && done.length === 0) {
     return (
       <div style={{
         flex: 1, minHeight: 0,
@@ -42,7 +61,7 @@ export const QuestsCompact = () => {
           style={{ width: 32, height: 32, objectFit: 'contain', opacity: 0.4 }}
           onError={(e) => { e.currentTarget.replaceWith(document.createTextNode('📜')); }} />
         <div style={{ fontSize: 13, fontWeight: 700, color: COL.text2 }}>
-          {done.length > 0 ? 'All quests done — for now.' : 'No quests yet — talk to the folks around town.'}
+          No quests yet — talk to the folks around town.
         </div>
       </div>
     );
@@ -62,27 +81,48 @@ export const QuestsCompact = () => {
         padding: '2px 0 2px',
         flex: '0 0 auto',
       }}>
-        {/* v2.3.1291 (round-3 §4): a USEFUL summary — "0 active" alone
-            hid the 8 waiting pickups. */}
-        {active.length} active · {upcoming.length} available{done.length ? ` · ${done.length} done` : ''}
+        {readyN > 0 || active.length > 0
+          ? `${readyN} ready · ${active.length - readyN} active`
+          : `0 active · ${upcoming.length} available`}
       </div>
-      {rows.slice(0, ROW_CAP).map(({ quest, badge, color }) => (
-        <div key={quest.id} style={{
-          flex: '1 1 0', minHeight: 0,
-          display: 'flex', alignItems: 'center', gap: 10,
-          borderTop: `1px solid ${COL.divider}`,
-        }}>
-          <span style={{
-            flex: 1, minWidth: 0,
-            fontSize: 13, fontWeight: 600, color: badge === 'AVAILABLE' ? COL.text2 : COL.text,
-            whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-          }}>{quest.title}</span>
-          <span style={{
-            flex: '0 0 auto',
-            fontSize: 10, fontWeight: 700, letterSpacing: '.06em',
-            color, whiteSpace: 'nowrap',
-          }}>{badge}</span>
-        </div>
+      {rows.length === 0 && (
+        <div style={{
+          flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontSize: 13, fontWeight: 600, color: COL.text2,
+        }}>All caught up — for now.</div>
+      )}
+      {rows.slice(0, ROW_CAP).map(({ quest, tone, line, star, dim }) => (
+        <button key={quest.id}
+          onPointerUp={(e) => {
+            e.stopPropagation();
+            questDetailBus.select(quest.id);
+            dashboardPanelBus.push('questDetail');
+          }}
+          style={{
+            flex: '1 1 0', minHeight: 0,
+            display: 'flex', alignItems: 'center', gap: 8,
+            borderTop: `1px solid ${COL.divider}`,
+            background: 'transparent', border: 'none',
+            borderRadius: 0,
+            padding: '0 2px',
+            color: COL.text, fontFamily: 'inherit', textAlign: 'left',
+            cursor: 'pointer', touchAction: 'manipulation',
+            minWidth: 0,
+          }}>
+          <span style={{ flex: 1, minWidth: 0 }}>
+            <span style={{
+              display: 'block', fontSize: 13, fontWeight: 600,
+              color: dim ? COL.text2 : COL.text,
+              whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+            }}>{star ? '★ ' : ''}{quest.title}</span>
+            <span style={{
+              display: 'block', fontSize: 11, marginTop: 1,
+              color: tone || COL.muted, fontWeight: tone ? 700 : 400,
+              whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+            }}>{line}</span>
+          </span>
+          <span aria-hidden="true" style={{ flex: 'none', fontSize: 14, color: COL.muted }}>›</span>
+        </button>
       ))}
       {overflow > 0 && (
         <div style={{

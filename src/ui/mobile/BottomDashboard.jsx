@@ -20,6 +20,8 @@ import { getEquip } from '../../rendering/gearCatalog.js';
 import { dashboardPanelBus } from './dashboardPanelBus.js';
 import { BAR_H, compactDashHeight, expandedSheetHeight } from './sheet/sheetGeometry.js'; /* v2.3.1283; v2.3.1290 three-state */
 import { portraitStore } from './sheet/portraitStore.js';          /* v2.3.1294 */
+import { hasUnseenLevelUps } from './sheet/skillsModel.js';        /* v2.3.1296 */
+import { readyQuestCount } from './sheet/questModel.js';           /* v2.3.1298 */
 import { sheetTransition } from './sheet/motion.js';            /* v2.3.1283 */
 import { useSheetDrag } from './sheet/useSheetDrag.js';         /* v2.3.1283 */
 import { BagCompact } from './sheet/BagCompact.jsx';            /* v2.3.1285 */
@@ -41,6 +43,7 @@ import { SocialPanel }       from './dash/SocialPanel.jsx';
 import { MorePanel }         from './dash/MorePanel.jsx';
 import { StatsPanel }        from './dash/StatsPanel.jsx';
 import { SkillsPanel }       from './dash/SkillsPanel.jsx';
+import { SkillDetailPanel }  from './dash/SkillDetailPanel.jsx'; /* v2.3.1296 */
 import { EncyclopediaPanel } from './dash/EncyclopediaPanel.jsx';
 import { GuildPanel }        from './dash/GuildPanel.jsx';
 import { LeaderboardPanel }  from './dash/LeaderboardPanel.jsx';
@@ -50,6 +53,7 @@ import { SettingsPanel }     from './dash/SettingsPanel.jsx';
 /* v2.3.1143: account panel -- Login Key display + device transfer. */
 import { AccountPanel }      from './dash/AccountPanel.jsx';
 import { QuestsPanel }        from './dash/QuestsPanel.jsx';
+import { QuestDetailPanel }   from './dash/QuestDetailPanel.jsx'; /* v2.3.1298 */
 import { T2Panel, requestT2Category } from './dash/T2Panel.jsx';
 import { SpendPointConfirm }   from './dash/SpendPointConfirm.jsx';
 
@@ -263,7 +267,11 @@ const Tooltip = ({ tip, onClose }) => {
    compact ("tap to expand"), rotating to point down while expanded
    ("tap to collapse").  Matches the swipe direction, so the one glyph
    teaches both the tap toggle and the drag gesture. */
-const IconButton = ({ glyph, src: srcProp, label, active, onClick, node, tut, snap }) => {
+/* v2.3.1296: `dot` (round-5 notifications) — a small brass dot on the
+   button's top-LEFT (the chevron owns top-right) for ACTIONABLE state
+   only: unviewed skill level-ups, ready quest turn-ins.  Never for
+   routine churn like XP gains or friends-online counts. */
+const IconButton = ({ glyph, src: srcProp, label, active, onClick, node, tut, snap, dot }) => {
   /* v2.3.1283: destinations pass an explicit `src`; `glyph` (ICON_SRC
      lookup) stays for any legacy caller. */
   const src = srcProp || ICON_SRC[glyph];
@@ -311,6 +319,15 @@ const IconButton = ({ glyph, src: srcProp, label, active, onClick, node, tut, sn
         )}
       </span>
       <span className="bt-dashboard-nav-label">{label}</span>
+      {dot && (
+        <span aria-hidden="true" style={{
+          position: 'absolute', top: 4, left: 6,
+          width: 8, height: 8, borderRadius: '50%',
+          background: '#D8AA58',
+          border: '1px solid rgba(0,0,0,.5)',
+          pointerEvents: 'none',
+        }} />
+      )}
       {active && snap && (
         <span className="bt-nav-snap" data-expanded={snap === 'expanded' ? 'true' : 'false'} aria-hidden="true">
           <svg viewBox="0 0 12 12" width="12" height="12">
@@ -334,8 +351,11 @@ const PANELS = {
   inventory:    { title: 'Inventory',   Component: InventoryPanel },
   self:         { title: 'Self',        Component: SelfPanel },
   journey:      { title: 'Journey',     Component: JourneyPanel },
-  /* v2.3.1265: Quests toolbar destination — read-only quest log. */
+  /* v2.3.1265: Quests toolbar destination — read-only quest log.
+     v2.3.1298: questDetail = the per-quest drill (objectives, rewards,
+     tracking). */
   quests:       { title: 'Quests',      Component: QuestsPanel },
+  questDetail:  { title: 'Quest',       Component: QuestDetailPanel },
   map:          { title: 'Map',         Component: MapPanel },
   /* v2.3.1291 (ChatGPT round-3 §1): the tab says Friends, so the header
      says Friends — one name everywhere (the panel id stays 'social' on
@@ -343,7 +363,11 @@ const PANELS = {
   social:       { title: 'Friends',     Component: SocialPanel },
   more:         { title: 'More',        Component: MorePanel },
   stats:        { title: 'Stats',       Component: StatsPanel },
-  skills:       { title: 'Skills',      Component: SkillsPanel },
+  /* v2.3.1296 (round-5): expanded header says LIFE SKILLS to separate
+     these from Hero's combat attributes; the toolbar label stays
+     Skills.  skillDetail = the per-skill drill (unlock ladder). */
+  skills:       { title: 'Life Skills', Component: SkillsPanel },
+  skillDetail:  { title: 'Skill',       Component: SkillDetailPanel },
   encyclopedia: { title: 'Codex',       Component: EncyclopediaPanel },
   guild:        { title: 'Guild',       Component: GuildPanel },
   leaderboard:  { title: 'Leaderboard', Component: LeaderboardPanel },
@@ -700,6 +724,15 @@ export const BottomDashboard = () => {
           : knownRoots.includes(rootId) ? rootId
           /* legacy drill roots (inventory push, tutorial ids...) light More */
           : (rootId ? 'more' : 'bag');
+        /* v2.3.1296: actionable badges (round-5) — skills: unviewed
+           level-ups (cleared when the expanded panel opens); quests:
+           READY turn-ins (v2.3.1298; available quests never badge).
+           The 200ms interval keeps these live. */
+        const Sb = (typeof window !== 'undefined') && window._gameState && window._gameState.current;
+        const dots = {
+          skills: hasUnseenLevelUps((Sb && Sb.rpg) || {}),
+          quests: readyQuestCount(Sb) > 0,
+        };
         return (
           <div className="bt-dashboard-toolbar-frame" style={{
             /* v2.3.1229b: fixed 68px shelf in panel mode (30% of the
@@ -746,6 +779,7 @@ export const BottomDashboard = () => {
                   ) : undefined}
                   active={litId === d.id}
                   snap={litId === d.id ? mode : null}
+                  dot={!!dots[d.id]}
                   onClick={() => dashboardPanelBus.tapDestination(d.id)} />
               ))}
             </div>

@@ -38,3 +38,30 @@ export function deriveQuestLog(S) {
 
   return { active, upcoming, done };
 }
+
+/* v2.3.1298 (round-5 Quests): client-side quest TRACKING — a pinned
+   quest id in localStorage.  Safe by design: tracking is a display
+   preference; accepting/turning-in stays with the NPCs and the
+   server-authoritative flow untouched. */
+const TRACK_KEY = 'bt_trackedQuest';
+export function trackedQuestId() {
+  try { return localStorage.getItem(TRACK_KEY) || null; } catch { return null; }
+}
+export function setTrackedQuest(id) {
+  try {
+    if (id) localStorage.setItem(TRACK_KEY, id);
+    else localStorage.removeItem(TRACK_KEY);
+  } catch (_e) {}
+}
+
+/* Toolbar badge feed: READY turn-ins only (round-5: available quests
+   alone never badge). */
+export function readyQuestCount(S) {
+  try { return deriveQuestLog(S).active.filter(a => a.ready).length; } catch { return 0; }
+}
+
+/* One reward string, shared by every quest row. */
+export function rewardText(q) {
+  return [q.reward?.gold ? `${q.reward.gold}g` : null, q.reward?.xp ? `${q.reward.xp} XP` : null]
+    .filter(Boolean).join(' · ');
+}
