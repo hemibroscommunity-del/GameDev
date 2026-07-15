@@ -407,7 +407,13 @@ export const joinMethods = {
         (msg.data && msg.data.rpgLifeSkills) || null);
       // Session-only equipment-derived values.  Always read from join
       // — recomputed client-side on every recalcDerived.
-      this.playerState[msg.id].def = (msg.data && typeof msg.data.rpgDef === 'number') ? Math.max(0, msg.data.rpgDef) : 0;
+      // v2.3.1306: upper-bound def at ingest too (2100 = the grids.js
+      // stats_update defCap at level 100).  This path had NO cap, which
+      // was harmless while def was inert (Phase 1) but became a live
+      // PvP mitigation input at v2.3.1302 — the consumption-side
+      // PVP_TUNING.DEF_CAP in combat.js is the real bound; this is
+      // belt-and-braces so no unbounded number sits in playerState.
+      this.playerState[msg.id].def = (msg.data && typeof msg.data.rpgDef === 'number') ? Math.max(0, Math.min(2100, msg.data.rpgDef)) : 0;
       this.playerState[msg.id].amuletHpRegen = (msg.data && typeof msg.data.rpgAmuletHpRegen === 'number') ? Math.max(0, msg.data.rpgAmuletHpRegen) : 0;
       this.playerState[msg.id].amuletStaminaRegen = (msg.data && typeof msg.data.rpgAmuletStaminaRegen === 'number') ? Math.max(0, msg.data.rpgAmuletStaminaRegen) : 0;
       this.playerState[msg.id].lastDamageAt = 0;

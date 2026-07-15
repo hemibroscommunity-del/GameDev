@@ -1441,7 +1441,14 @@ export function processGameEvent(type, payload, S, deps) {
                  _R2.hp <= 0 directly would never fire.  The server-side
                  player_died event drives the death animation; this
                  attribution popup is best-effort. */
-              var _wouldDiePvp = (_R2.hp - Math.ceil(dmgTaken)) <= 0;
+              /* v2.3.1306: prefer the server's authoritative died flag —
+                 the local-hp prediction reads STALE hp when several
+                 pvp_hits land before one player_state flush (staff heavy
+                 = 3 bolts/cast), under-counting real kills and minting
+                 phantom ones when Second Wind saved the target. */
+              var _wouldDiePvp = typeof payload.died === 'boolean'
+                ? payload.died
+                : (_R2.hp - Math.ceil(dmgTaken)) <= 0;
               if (_wouldDiePvp) {
                 pushDmgPopup(S, S.player.x, S.player.y - 45, 'Killed by ' + (payload.attackerName || '???'), '#ff5e6c');
                 BT_AUDIO.deathBoom();
@@ -1680,6 +1687,19 @@ export function processGameEvent(type, payload, S, deps) {
                 S._activeDuel = {
                   partnerId: payload.from,
                   startTs: Date.now()
+                };
+                /* v2.3.1306: the CHALLENGER never got S._inDuel — only the
+                   accepter sets it (DuelRequestPanel).  Both PvP attack
+                   gates key on it (monsterCombat melee, projectiles
+                   ranged/staff), so the challenging side only landed hits
+                   while tap-locked: the owner's "only melee hurt" duel
+                   report was half challenger-side gating.  Mirror the
+                   accepter's shape; duel_end clears both fields already. */
+                S._inDuel = {
+                  opponent: payload.from,
+                  opponentName: payload.fromName || '',
+                  wager: payload.wager || 0,
+                  startTime: Date.now()
                 };
                 pushDmgPopup(S, S.player.x, S.player.y - 40, 'DUEL STARTED!', '#fbbf24');
               }

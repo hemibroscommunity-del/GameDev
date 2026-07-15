@@ -747,6 +747,25 @@ export const combatMethods = {
   PVP_TUNING: {
     DMG_SCALE: 0.5,
     RANGE_CAP: { melee: 250, ranged: 950, staff: 950 },
+    /* v2.3.1306 hardening (repo-review of v2.3.1302, findings I/II):
+       DEF_CAP bounds the def value the mitigation formula will consume.
+       ps.def is client-computed (equipment-derived, session-only): the
+       grids.js stats_update clamp (lvl*20+100) was deliberately sized
+       4x above legit max back when def was INERT (Phase 1 retired it
+       from PvE damage), and the join path ingested it with no upper
+       bound at all — v2.3.1302 unknowingly turned that into a wagered-
+       duel advantage (spoofed def -> near-immunity -> pot by attrition).
+       150 caps mitigation at 60%: legit low-level def (~50-75) keeps
+       its intended bite, spoofed values gain nothing past the cap.
+       CADENCE: _resolvePvPAttack had no hit-rate floor (the monster
+       path has had lanes since v2.3.1134) — one socket loop could land
+       capped hits every tick.  Same lane shape as monsters: normal
+       hits >= 300ms apart per attacker->target pair; specials get a
+       burst lane (the staff heavy is 3 bolts per cast) of 3 per 1200ms. */
+    DEF_CAP: 150,
+    CADENCE_MS: 300,
+    SPECIAL_LANE_MAX: 3,
+    SPECIAL_LANE_MS: 1200,
   },
   _resolvePvPAttack(attackerSession, payload) {
     const attackerId = attackerSession.id;
@@ -768,9 +787,25 @@ export const combatMethods = {
     // reported at projectile impact, so their cap matches the 900px
     // arrow travel limit (projectiles.js) + lag slack.  Unknown kinds
     // fall back to the tight melee cap (fail closed).
-    const kind = payload.kind === 'ranged' || payload.kind === 'staff' ? payload.kind : 'melee';
+    /* v2.3.1306: the projectile-scale cap is honored only when the
+       server knows the attacker actually carries the matching weapon
+       (join/stats ingest both run _sanitizeWeapon, so these fields are
+       shape-validated).  A bare kind:'ranged' claim from a weaponless
+       attacker falls back to the melee clamp — the widened cap was a
+       zone-scale forgery surface in lawless zones otherwise (repo-review
+       finding II: 950px x PI*1.1 arc covers most of a 1024px zone). */
+    const kind = (payload.kind === 'ranged' && attackerPs.rangedWeapon) ? 'ranged'
+      : (payload.kind === 'staff' && attackerPs.staffWeapon) ? 'staff'
+      : 'melee';
     const rangeCap = this.PVP_TUNING.RANGE_CAP[kind];
     const range = Math.max(10, Math.min(rangeCap, payload.range || 40));
+    /* v2.3.1306: optional single-target hint.  The new-client projectile
+       path always aims at ONE intended player (duel opponent / tap-lock)
+       and now says so — the server then skips every other player in the
+       cone, closing the honest-fire bystander-collateral gap the client
+       comment promised but only the client enforced.  Absent (old
+       clients, melee) = cone behavior unchanged. */
+    const onlyTarget = typeof payload.target === 'string' ? payload.target : null;
     const arc = Math.max(0.1, Math.min(Math.PI * 1.1, payload.arc || 1.2));
     const angle = payload.angle || 0;
     // Weapon-aware cap (slice 16) -- mirrors monster_damage cap above.
@@ -784,6 +819,7 @@ export const combatMethods = {
     // Check all players in room for hits
     for (const [targetId, targetPs] of Object.entries(this.playerState)) {
       if (targetId === attackerId) continue;
+      if (onlyTarget && targetId !== onlyTarget) continue; // v2.3.1306: declared single target
       if (targetPs.z !== attackerPs.z) continue; // different zone
       if (targetPs.dead || targetPs.disconnected) continue;
       // v2.3.1116: consent gate.  Damage lands only in lawless zones
@@ -815,6 +851,28 @@ export const combatMethods = {
       while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
       if (Math.abs(angleDiff) > arc / 2) continue;
 
+      /* v2.3.1306: per-(attacker,target) hit-cadence floor — mirrors
+         the monster-damage lanes (v2.3.1134).  In-memory only (rule 11:
+         a deploy wipe just re-opens the lane, loss costs nothing).
+         Map, not {}, per the '__proto__' key rule — both ids are
+         client-supplied. */
+      if (!this._pvpHitLanes) this._pvpHitLanes = new Map();
+      if (this._pvpHitLanes.size > 2000) this._pvpHitLanes.clear(); // stale-pair backstop
+      {
+        const laneKey = attackerId + '>' + targetId;
+        const now = Date.now();
+        let lane = this._pvpHitLanes.get(laneKey);
+        if (!lane) { lane = { lastTs: 0, spStart: 0, spCount: 0 }; this._pvpHitLanes.set(laneKey, lane); }
+        if (payload.special) {
+          if (now - lane.spStart > this.PVP_TUNING.SPECIAL_LANE_MS) { lane.spStart = now; lane.spCount = 0; }
+          if (lane.spCount >= this.PVP_TUNING.SPECIAL_LANE_MAX) continue;
+          lane.spCount++;
+        } else {
+          if (now - lane.lastTs < this.PVP_TUNING.CADENCE_MS) continue;
+          lane.lastTs = now;
+        }
+      }
+
       // §16.12 — Resolve dodge/block against historical state
       if (checkState.dodging) continue; // was in i-frames from attacker's perspective
 
@@ -832,7 +890,11 @@ export const combatMethods = {
       // 100/(100+def) mitigation from the target's server-clamped def
       // stat (see PVP_TUNING above).  _applyDamage floors at 1 so a
       // maxed-def target still takes chip damage.
-      const defMit = 100 / (100 + Math.max(0, targetPs.def || 0));
+      /* v2.3.1306: DEF_CAP bounds the consumed def (see PVP_TUNING) —
+         ps.def is client-derived and its ingest clamps were sized for
+         the retired Phase-1 formula, not for use as a damage divisor. */
+      const effDef = Math.min(this.PVP_TUNING.DEF_CAP, Math.max(0, targetPs.def || 0));
+      const defMit = 100 / (100 + effDef);
       const rawDmg = dmgBase * (isCrit ? 1.5 : 1) * this.PVP_TUNING.DMG_SCALE * defMit;
       const dmgResult = this._applyDamage(targetPs, rawDmg, blocked);
       const dmgTaken = dmgResult.dmgTaken;
@@ -854,6 +916,14 @@ export const combatMethods = {
           // v2.3.1137: Second Wind fires in PvP too (channel identity);
           // undefined when 0 so the field stays off the wire.
           secondWind: dmgResult.secondWind || undefined,
+          // v2.3.1306: authoritative death flag.  The target client's
+          // "would die" prediction ran stale local hp against dmgTaken
+          // and fed the attacker's pvpKills ledger via pvp_confirmed —
+          // multi-bolt casts (3 pvp_hits before one player_state flush)
+          // made both under-count (staggered kill) and phantom-kill
+          // (Second Wind saved the target mid-window) routine.  New
+          // clients prefer this flag; old clients ignore it.
+          died: targetPs.hp <= 0,
           ts: Date.now(),
           rewindTicks: rewindTicks,
         }

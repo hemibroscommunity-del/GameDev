@@ -87,6 +87,47 @@ Deploy-order safe both ways: old client + new server = no `kind`
 field = melee clamp (today's behavior, but scaled); new client + old
 server = `kind` ignored, distant hits rejected (today's behavior).
 
+## Hardening pass (v2.3.1306 — adversarial review of the above)
+
+A same-day repo-review of v2.3.1302 found the tuning had wired two
+client-influenced inputs into wager-deciding outcomes. Fixes, all in
+`_resolvePvPAttack` unless noted:
+
+- **DEF_CAP 150 at consumption** (+ absolute clamp 2100 at the join
+  ingest, `server/src/join.js`): `ps.def` is client-derived; the
+  stats_update clamp was deliberately 4x legit max (sized for the
+  retired Phase-1 formula) and the join path had NO upper bound —
+  spoofed def bought near-immunity in wagered duels. Mitigation now
+  tops out at 60%.
+- **kind requires the matching server-known weapon** (`rangedWeapon`/
+  `staffWeapon`, both `_sanitizeWeapon`-validated): a bare
+  `kind:'ranged'` claim from a weaponless attacker falls back to the
+  250px melee clamp instead of buying a 950px x PI*1.1 cone (most of a
+  1024px lawless zone).
+- **Per-(attacker,target) hit-cadence floor** mirroring the v2.3.1134
+  monster lanes: normal hits >= 300ms apart, specials <= 3 per 1200ms
+  (the staff heavy is a 3-bolt burst). In-memory only; a deploy wipe
+  just re-opens the lane.
+- **Optional `target` field on `player_attack`**: the projectile path
+  declares its single intended target and the server skips everyone
+  else in the cone — the "never a bystander" property is now enforced
+  server-side, not just client-side. Absent = cone (melee/old clients).
+- **Authoritative `died` flag on `pvp_hit`**: the target's local
+  would-die prediction (stale hp across a 3-bolt burst) fed the
+  attacker's pvpKills ledger via `pvp_confirmed`, both under-counting
+  real kills and minting phantom ones past Second Wind. New clients
+  prefer the flag; old clients ignore it.
+- **Client, `gameEvents.js` duel_accept**: the CHALLENGER now gets
+  `S._inDuel` (previously only the accepter set it, so the challenging
+  side's attack gates only fired while tap-locked — half of the
+  original "only melee hurt" report).
+
+Known residual (documented, not fixed): `_maxDmgForAttacker`'s
+`special:true` headroom (x2) plus post-cap crit means a forged
+max-dmgBase special still hits far above an honest hit — pre-existing
+cap posture, now bounded by the cadence floor and weapon gate rather
+than eliminated. Re-deriving the cap is a balance task, not a patch.
+
 Integration points in `index.js`: default-branch intercept (like
 trades), `_duelOnDeath` in `_handlePlayerDeath` (before the pile),
 `_duelOnDisconnect` in `webSocketClose`, `_duelOnRejoin` +
@@ -96,7 +137,7 @@ PR1 interim observer — deliberately deferred.
 
 ## Tests
 
-`server/test/duel.test.mjs` (33 assertions, in `npm test`): handshake +
+`server/test/duel.test.mjs` (39 assertions, in `npm test`): handshake +
 escrow + gate registration, wager-inflation immunity, forged-accept
 drop, poor-accepter refund, clean-kill pot/no-pile/no-wipe, monster-
 death forfeit with normal death, reconnect grace + forfeit (including

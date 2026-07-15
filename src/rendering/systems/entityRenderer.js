@@ -258,14 +258,26 @@ function _loadTraitDir(e, category, id, dir, attempt) {
       }
     })
     .catch(() => {
+      /* v2.3.1306: meta.anchors is the authoritative list of directions
+         a trait SHIPS (e.g. facialhair/beard has no north.png and no
+         north anchor — by design, verified on disk).  The v2.3.1305
+         sibling heuristic misread that as a per-session deterministic
+         flake: every bearded session retried north 3x and pushed a bogus
+         'sheet' entry into the 16-slot crash ring + beacon upload,
+         crowding out real crash evidence.  When meta has loaded and
+         lacks this dir's anchor, stop quietly — no retry, no report.
+         When meta hasn't loaded yet (first 2s race) retry anyway; the
+         final report requires the anchor to exist. */
+      const designedMissing = e.meta && e.meta.anchors && !e.meta.anchors[dir];
+      if (designedMissing) return;
       if (attempt < _TRAIT_RETRY_MS.length) {
         setTimeout(() => _loadTraitDir(e, category, id, dir, attempt + 1), _TRAIT_RETRY_MS[attempt]);
         return;
       }
       try {
         if (window.__spriteLog) console.warn('[sprite] trait dir failed', category, id, dir);
-        const siblingLoaded = Object.keys(e.tex).some(d => d !== dir && e.tex[d]);
-        if (siblingLoaded) recordCrash('sheet', `trait ${category}/${id}/${dir} failed x${attempt + 1}`);
+        const shouldExist = e.meta && e.meta.anchors && e.meta.anchors[dir];
+        if (shouldExist) recordCrash('sheet', `trait ${category}/${id}/${dir} failed x${attempt + 1}`);
       } catch (err) { /* telemetry must never break rendering */ }
     });
 }
