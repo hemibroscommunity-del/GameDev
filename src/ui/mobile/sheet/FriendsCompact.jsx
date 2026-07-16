@@ -1,24 +1,39 @@
 import React, { useEffect, useState } from 'react';
 import { COL, getState } from '../dash/common.js';
-import { ZONES } from '../../../data/zones.js';
-import { getFriends } from './friendsModel.js';
+import { getFriendRows, lastSeenText } from './friendsModel.js';
+import { friendPortrait } from './friendPortraits.js';
 
-/* v2.3.1288: Friends compact (nav-system PR B) — who's online at a
-   glance, online rows only.
-   v2.3.1297 (ChatGPT round-5): no more dead-end empty states —
-   - fresh account: guidance + the REAL add flow (players are added by
-     tapping them in the world; there is no add-by-name API, so no
-     fake Add Friend button).
-   - friends but nobody online: say that, with the count.
-   - connection lost: say THAT — a network failure must never read as
-     "no friends" (round-5 §technical).
-   Rows gain a location line when the friend is in your zone's player
-   list (the only presence detail the client has). */
+/* v2.3.1288: Friends compact (nav-system PR B).
+   v2.3.1297 (round-5): real store + honest reconnect state.
+   v2.3.1323 (ChatGPT Friends round): "both views feel too passive" —
+   the compact view now ALWAYS shows a useful person when you have any
+   friends: up to 3 online rows (same presence model as expanded, via
+   friendsModel.getFriendRows — which also fixes presence reading the
+   never-assigned S.players); when nobody is online, the most recently
+   active OFFLINE friend fills the panel instead of an empty message,
+   with a last-seen line.  Rows carry a portrait (initial fallback) and
+   one quick action: Profile (online only — inspect needs live peer
+   data).  The interface-explaining "expand for the full list" copy is
+   gone.  The centered empty state survives only for ZERO friends, now
+   with the two actions the spec asks for: Add a Bro (teaches the real
+   world-tap flow — there is no add-by-name API) and Share Invite
+   (native share sheet, clipboard fallback). */
 
 const ROW_CAP = 3;
 
+const shareInvite = async () => {
+  const url = (typeof location !== 'undefined' && location.origin) || 'https://brotown.pages.dev';
+  try {
+    if (navigator.share) { await navigator.share({ title: 'Bro Town', url }); return true; }
+  } catch (_e) { return false; }
+  try { await navigator.clipboard.writeText(url); return 'copied'; } catch (_e) {}
+  return false;
+};
+
 export const FriendsCompact = () => {
   const [, force] = useState(0);
+  const [addTip, setAddTip] = useState(false);
+  const [shared, setShared] = useState('');
   useEffect(() => {
     const id = setInterval(() => force(v => v + 1), 1000);
     return () => clearInterval(id);
@@ -29,29 +44,21 @@ export const FriendsCompact = () => {
      unset flag (mid-boot) must not masquerade as a lost connection,
      just as a lost connection must not masquerade as no friends. */
   const connected = !(S && ['disconnected', 'frozen', 'rejected', 'superseded'].includes(S._realtimeStatus));
-  /* v2.3.1297 bug fix: read the real localStorage store (friendsModel). */
-  const friends = getFriends(S);
-  const onlinePlayers = S?.players || {};
-
-  const all = friends
-    .map(f => {
-      const fid = f.id || f;
-      const p = onlinePlayers[fid];
-      return {
-        fid,
-        name: f.name || fid,
-        online: !!p,
-        /* Location line: zone name when the player entry carries one,
-           else 'Nearby' (the client only sees same-zone players). */
-        where: p ? (ZONES[p.zoneId || p.zone]?.name || 'Nearby') : null,
-      };
-    })
-    .sort((a, b) => (b.online ? 1 : 0) - (a.online ? 1 : 0));
+  const all = getFriendRows(S);
   const onlineCount = all.filter(r => r.online).length;
-  const rows = onlineCount > 0 ? all.filter(r => r.online) : [];
+  /* Online rows first; nobody online -> the most recently active
+     offline friend (getFriendRows already sorts recency). */
+  const rows = onlineCount > 0 ? all.filter(r => r.online).slice(0, ROW_CAP) : all.slice(0, 1);
   const overflow = all.length - rows.length;
 
-  /* Connection failure state — distinct from "no friends". */
+  const openProfile = (r) => {
+    try {
+      if (window.__broInspectPlayer && window.__broInspectPlayer(r.fid)) {
+        window.__broDashPanelBus && window.__broDashPanelBus.toBar();
+      }
+    } catch (_e) {}
+  };
+
   if (!connected) {
     return (
       <Center icon="/icons/ui/nav-friends.webp" line="Reconnecting…"
@@ -61,8 +68,44 @@ export const FriendsCompact = () => {
 
   if (all.length === 0) {
     return (
-      <Center icon="/icons/ui/nav-friends.webp" line="No friends yet"
-        sub="Tap another player in the world to view their profile and add them." />
+      <div style={{
+        flex: 1, minHeight: 0,
+        display: 'flex', flexDirection: 'column',
+        alignItems: 'center', justifyContent: 'center', gap: 6,
+        fontFamily: 'Source Sans 3, sans-serif',
+        padding: '0 20px', textAlign: 'center',
+      }}>
+        <div style={{ fontSize: 13, fontWeight: 700, color: COL.text2 }}>No friends yet</div>
+        {addTip && (
+          <div style={{ fontSize: 11, lineHeight: 1.3, color: COL.muted }}>
+            Tap another player in the world to view their profile and add them.
+          </div>
+        )}
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button
+            onPointerUp={(e) => { e.stopPropagation(); setAddTip(v => !v); }}
+            style={{
+              minHeight: 36, padding: '0 14px',
+              background: COL.accentFill, color: COL.text,
+              border: `1px solid ${COL.accent}`, borderRadius: 8,
+              fontFamily: 'inherit', fontSize: 12, fontWeight: 700,
+              cursor: 'pointer', touchAction: 'manipulation',
+            }}>Add a Bro</button>
+          <button
+            onPointerUp={async (e) => {
+              e.stopPropagation();
+              const r = await shareInvite();
+              setShared(r === 'copied' ? 'Link copied!' : '');
+            }}
+            style={{
+              minHeight: 36, padding: '0 14px',
+              background: 'transparent', color: COL.text2,
+              border: `1px solid ${COL.border}`, borderRadius: 8,
+              fontFamily: 'inherit', fontSize: 12, fontWeight: 700,
+              cursor: 'pointer', touchAction: 'manipulation',
+            }}>{shared || 'Share Invite'}</button>
+        </div>
+      </div>
     );
   }
 
@@ -76,50 +119,69 @@ export const FriendsCompact = () => {
     }}>
       <div style={{
         fontSize: 10, fontWeight: 700, letterSpacing: '.10em',
-        textTransform: 'uppercase', color: COL.muted,
+        textTransform: 'uppercase', color: COL.text2,
         padding: '2px 0 2px',
         flex: '0 0 auto',
+        display: 'flex',
       }}>
-        {onlineCount} online · {all.length} friend{all.length === 1 ? '' : 's'}
+        <span style={{ flex: 1 }}>
+          {onlineCount} online · {all.length} friend{all.length === 1 ? '' : 's'}
+        </span>
+        {overflow > 0 && <span style={{ color: COL.muted }}>+{overflow} more</span>}
       </div>
-      {onlineCount === 0 && (
-        <div style={{
-          flex: 1, minHeight: 0,
-          display: 'flex', flexDirection: 'column',
-          alignItems: 'center', justifyContent: 'center', gap: 2,
-        }}>
-          <div style={{ fontSize: 13, fontWeight: 700, color: COL.text2 }}>No friends online</div>
-          <div style={{ fontSize: 11, color: COL.muted }}>{all.length} friend{all.length === 1 ? '' : 's'} — expand for the full list</div>
-        </div>
-      )}
-      {rows.slice(0, ROW_CAP).map(r => (
-        <div key={r.fid} style={{
-          flex: '1 1 0', minHeight: 0,
-          display: 'flex', alignItems: 'center', gap: 8,
-          borderTop: `1px solid ${COL.divider}`,
-        }}>
-          <span style={{
-            width: 8, height: 8, borderRadius: '50%',
-            background: '#55B98A',
-            flex: '0 0 auto',
-          }} />
-          <span style={{
-            flex: 1, minWidth: 0, fontSize: 13, color: COL.text,
-            whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-          }}>{r.name}</span>
-          {r.where && (
-            <span style={{ flex: 'none', fontSize: 11, color: COL.text2, whiteSpace: 'nowrap' }}>{r.where}</span>
-          )}
-          <span style={{ flex: 'none', fontSize: 11, fontWeight: 600, color: COL.muted }}>online</span>
-        </div>
-      ))}
-      {onlineCount > 0 && overflow > 0 && (
-        <div style={{
-          flex: '0 0 auto',
-          fontSize: 11, fontWeight: 600, color: COL.muted,
-          padding: '2px 0 4px',
-        }}>+{overflow} more — expand for everyone</div>
-      )}
+      {rows.map(r => {
+        const portrait = friendPortrait(r.fid, r.peer, () => force(v => v + 1));
+        const seenLine = !r.online ? lastSeenText(r.lastSeen) : null;
+        return (
+          <div key={r.fid} style={{
+            flex: '1 1 0', minHeight: 0,
+            display: 'flex', alignItems: 'center', gap: 8,
+            borderTop: `1px solid ${COL.divider}`,
+          }}>
+            <span style={{
+              width: 30, height: 30, borderRadius: '50%',
+              background: COL.raised,
+              border: `2px solid ${r.online ? '#55B98A' : '#8D9B98'}`,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              overflow: 'hidden',
+              fontSize: 13, fontWeight: 800, color: COL.text2,
+              flex: '0 0 auto',
+            }}>
+              {portrait
+                ? <img src={portrait} alt="" draggable={false}
+                    style={{ width: '100%', height: '100%', objectFit: 'cover', imageRendering: 'pixelated' }} />
+                : (r.name || '?').slice(0, 1).toUpperCase()}
+            </span>
+            <span style={{ flex: 1, minWidth: 0 }}>
+              <span style={{
+                display: 'block', fontSize: 13, fontWeight: 700, color: COL.text,
+                whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                lineHeight: 1.2,
+              }}>{r.name}</span>
+              <span style={{
+                display: 'block', fontSize: 11, lineHeight: 1.2,
+                color: r.online ? '#55B98A' : COL.text2,
+                whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+              }}>
+                {r.online
+                  ? `Online${r.zoneName ? ' · ' + r.zoneName : ''}`
+                  : `Offline${seenLine ? ' · ' + seenLine.replace('Last seen ', '') : ''}`}
+              </span>
+            </span>
+            {r.online && (
+              <button
+                onPointerUp={(e) => { e.stopPropagation(); openProfile(r); }}
+                style={{
+                  flex: 'none', minHeight: 30, padding: '0 10px',
+                  background: 'transparent', color: COL.text2,
+                  border: `1px solid ${COL.border}`, borderRadius: 7,
+                  fontFamily: 'inherit', fontSize: 11, fontWeight: 700,
+                  cursor: 'pointer', touchAction: 'manipulation',
+                }}>Profile</button>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 };

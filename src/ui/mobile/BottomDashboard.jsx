@@ -21,6 +21,7 @@ import { dashboardPanelBus } from './dashboardPanelBus.js';
 import { BAR_H, compactDashHeight, expandedSheetHeight, drillSheetHeight } from './sheet/sheetGeometry.js'; /* v2.3.1283; v2.3.1290 three-state; v2.3.1311e drill height */
 import { portraitStore } from './sheet/portraitStore.js';          /* v2.3.1294 */
 import { hasUnseenLevelUps } from './sheet/skillsModel.js';        /* v2.3.1296 */
+import { getFriendRows } from './sheet/friendsModel.js';           /* v2.3.1323 */
 import { readyQuestCount } from './sheet/questModel.js';           /* v2.3.1298 */
 import { sheetTransition } from './sheet/motion.js';            /* v2.3.1283 */
 import { bagUnseen, bagEntryKey } from './sheet/bagUnseenModel.js'; /* v2.3.1312 */
@@ -354,7 +355,9 @@ const IconButton = ({ glyph, src: srcProp, label, active, onClick, onSwipe, node
       <span className="bt-dashboard-nav-label">{label}</span>
       {/* v2.3.1311: a NUMBER dot renders as a count badge (the Hero
           icon's global unspent points — spec: badge only actionable
-          things); `true` keeps the original notification dot. */}
+          things); `true` keeps the original notification dot.
+          v2.3.1323: 'online' renders the dot in presence GREEN — the
+          Friends icon's "someone is online" signal (never a count). */}
       {typeof dot === 'number' && dot > 0 ? (
         <span aria-hidden="true" style={{
           position: 'absolute', top: 2, left: 4,
@@ -364,11 +367,11 @@ const IconButton = ({ glyph, src: srcProp, label, active, onClick, onSwipe, node
           border: '1px solid rgba(0,0,0,.5)',
           pointerEvents: 'none',
         }}>{dot}</span>
-      ) : dot === true ? (
+      ) : (dot === true || dot === 'online') ? (
         <span aria-hidden="true" style={{
           position: 'absolute', top: 4, left: 6,
           width: 8, height: 8, borderRadius: '50%',
-          background: '#D8AA58',
+          background: dot === 'online' ? '#55B98A' : '#D8AA58',
           border: '1px solid rgba(0,0,0,.5)',
           pointerEvents: 'none',
         }} />
@@ -830,6 +833,14 @@ export const BottomDashboard = () => {
             const Rb = Sb && Sb.rpg;
             if (!Rb) return 0;
             return COMBAT_SKILLS.reduce((n, s) => n + buildSkillUnspent(Rb, s.key), 0);
+          })(),
+          /* v2.3.1323 (Friends spec): a small GREEN dot when at least
+             one friend is online — never the total friend count.  Uses
+             the shared presence rows (S.others + 20s grace), which
+             also keeps last-seen stamps fresh while panels are shut. */
+          social: (() => {
+            try { return getFriendRows(Sb).some(r => r.online) ? 'online' : false; }
+            catch (_e) { return false; }
           })(),
         };
         return (

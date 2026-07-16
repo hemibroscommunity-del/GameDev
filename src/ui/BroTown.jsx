@@ -5325,6 +5325,23 @@ export var BroTown = function BroTown(_ref0) {
       } catch (_e3) {}
       try { chatBubbleBus.setOpen(true); } catch (_e4) {}
     };
+    /* v2.3.1323 (Friends round): the dash Friends views open a friend's
+       profile via this bridge — same InspectPlayerPanel the world-tap
+       flow uses, built from the live S.others peer entry.  Returns true
+       when the peer is live (caller then drops the sheet so the inspect
+       card has the world behind it); false for offline friends, whose
+       data the client simply doesn't have. */
+    window.__broInspectPlayer = function (fid) {
+      var S2 = stateRef.current;
+      var o = S2 && S2.others && S2.others[fid];
+      if (!o) return false;
+      setInspectPlayer({
+        id: fid, name: o.name, color: o.color, avatar: o.avatar, bro: o.bro,
+        x: o.x, y: o.y, rpgLv: o.rpgLv, rpgData: o.rpgData, pet: o.pet,
+        rep: o.rep, clanTag: o.clanTag, clanColor1: o.clanColor1,
+      });
+      return true;
+    };
     /* Left joystick double-tap = cycle weapon (melee -> ranged -> staff).
        Constants shared with the right joystick at the head of this
        useEffect so both gestures use the same tap-vs-drag classifier.
