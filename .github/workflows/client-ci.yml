@@ -18,20 +18,22 @@
 # reconciliation (qa-combat-predict), armored-sprite rendering
 # (qa-gear-smoke, cover for the armor-art work), and the party HUD
 # (qa-party-smoke).  Promotion criteria are on the steps below.
+#
+# v2.3.1333 (owner directive, 2026-07-16): the smoke job NO LONGER runs
+# on PRs — "there aren't live players and it slows down production for
+# no reason."  PRs gate on lint-build only.  The job and its harnesses
+# are kept behind workflow_dispatch (Actions tab -> Client CI -> Run
+# workflow) for on-demand integration checks; re-adding it to the PR
+# path is an owner call, not a "fix".
 name: Client CI
 on:
+  workflow_dispatch:
   pull_request:
     paths:
       - 'src/**'
       - 'package.json'
       - 'eslint.config.js'
       - 'vite.config.js'
-      - 'tools/qa/qa-smoke.mjs'
-      - 'tools/qa/qa-facing.mjs'
-      - 'tools/qa/qa-combat-predict.mjs'
-      - 'tools/qa/qa-gear-smoke.mjs'
-      - 'tools/qa/qa-party-smoke.mjs'
-      - 'server/**'
       - '.github/workflows/client-ci.yml'
 jobs:
   lint-build:
@@ -45,6 +47,7 @@ jobs:
       - run: npm run build
 
   smoke:
+    if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:

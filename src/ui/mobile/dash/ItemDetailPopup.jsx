@@ -11,6 +11,7 @@ import { thumbFor, iconFor, classify } from './InventoryPanel.jsx';
 import { firemakingBus } from '../firemakingBus.js';
 import { eatBus } from '../eatBus.js';
 import { GEAR_CATALOG, getEquip, setEquip } from '../../../rendering/gearCatalog.js';
+import { unequipWeaponSlot, unequipShieldDirect, unequipArmorDirect, unequipGearDirect, syncArmorChange } from './equipActions.js'; /* v2.3.1330: shared unequip cores */
 import { setShirt } from '../../../rendering/traits/shirtCatalog.js';
 import {
   WEAPON_TYPES,
@@ -304,25 +305,19 @@ function prettyName(key) {
    #20170D; the ONE brass action per popup state), raised secondary
    (gradient + hairline + text-1), destructive #7C3431/#FFF1EE with the
    #C7655F edge.  44pt targets, radius 11 per the spec. */
-const buttonStyle = (variant) => ({
+/* v2.3.1332 (owner: chiseled frames everywhere): the ladder's colors
+   now come from the .bt-chisel classes (game.css) — brass primary /
+   red danger faces inside the owner's 9-sliced frame; layout only
+   here.  buttonClass pairs with buttonStyle at every call site. */
+const buttonClass = (variant) =>
+  'bt-chisel' + (variant === 'primary' ? ' bt-chisel--brass'
+    : variant === 'danger' ? ' bt-chisel--danger' : '');
+const buttonStyle = (_variant) => ({
   flex: 1,
   minHeight: 44,
-  padding: '8px 0',
-  background: variant === 'primary' ? COL.accent
-             : variant === 'danger'  ? '#7C3431'
-             :                         'linear-gradient(180deg, #304047 0%, #2B3940 100%)',
-  color: variant === 'primary' ? COL.onAccent
-       : variant === 'danger'  ? '#FFF1EE'
-       :                         COL.text,
-  border: variant === 'primary' ? 'none'
-        : variant === 'danger'  ? '1px solid #C7655F'
-        :                         '1px solid ' + COL.border,
-  borderRadius: 11,
+  padding: '4px 0',
   fontSize: 12,
   fontWeight: 700,
-  cursor: 'pointer',
-  touchAction: 'manipulation',
-  fontFamily: 'Source Sans 3, sans-serif',
 });
 
 /* Compute an anchored position for the tooltip.
@@ -812,36 +807,11 @@ export const ItemDetailPopup = () => {
     itemDetailBus.close();
   };
   const onUnequipWeapon = () => {
-    const S = getState();
-    if (!S || !S.rpg) return;
-    const R = S.rpg;
-    const slotProp = target.slot === 'ranged' ? 'rangedWeapon'
-                   : target.slot === 'staff'  ? 'staffWeapon'
-                   : 'weapon';
-    const cur = R[slotProp];
-    if (!cur) { itemDetailBus.close(); return; }
-    if (!R.weaponStash) R.weaponStash = [];
-    R.weaponStash.push(cur);
-    R[slotProp] = null;
-    /* v2.3.1159: server-sync + active-slot repair (see syncWeaponSlot). */
-    syncWeaponSlot({ type: 'unequip_request', payload: { slot: slotProp } });
-    if ((slotProp === 'rangedWeapon' && R.activeSlot === 'ranged')
-        || (slotProp === 'staffWeapon' && R.activeSlot === 'staff')) {
-      R.activeSlot = 'melee';
-      syncWeaponSlot({ type: 'set_active_slot', payload: { slot: 'melee' } });
-    }
-    persist(R);
+    unequipWeaponSlot(target.slot);
     itemDetailBus.close();
   };
   const onUnequipShield = () => {
-    const S = getState();
-    if (!S || !S.rpg) return;
-    const R = S.rpg;
-    if (!R.shield) { itemDetailBus.close(); return; }
-    if (!R.shieldStash) R.shieldStash = [];
-    R.shieldStash.push(R.shield);
-    R.shield = null;
-    persist(R);
+    unequipShieldDirect();
     itemDetailBus.close();
   };
   const onEquipStashWeapon = () => {
@@ -891,40 +861,8 @@ export const ItemDetailPopup = () => {
      fires and the worker's ps.armor stays in sync.  Without that,
      the worker's next player_state echo re-applies the old armor and
      the local unequip silently undoes itself. */
-  const _syncArmorChange = (R) => {
-    /* Direct stats_update push -- popup mutates S.rpg without going
-       through setRpgState, so the React-driven stats_update useEffect
-       in BroTown doesn't fire on its own.  Send the armor change
-       (with current raw stats so the server has everything it needs
-       to recompute maxes correctly) explicitly here. */
-    const S = getState();
-    if (S && S.channel) {
-      try {
-        S.channel.send({ type: 'stats_update', payload: {
-          armor: R.armor || null,
-          maxHp: R.maxHp || 100,
-          vitality: R.vitality || 0,
-          power: R.power || 0,
-          endurance: R.endurance || 0,
-          agility: R.agility || 0,
-          mind: R.mind || 0,
-          /* v2.3.1155: the five retired T2 stats are off the wire. */
-        }});
-      } catch (e) {}
-    }
-  };
   const onUnequipArmor = () => {
-    const S = getState();
-    if (!S || !S.rpg) return;
-    const R = S.rpg;
-    if (!R.armor) { itemDetailBus.close(); return; }
-    if (!R.armorStash) R.armorStash = [];
-    R.armorStash.push(R.armor);
-    R.armor = null;
-    recalcDerived(R);
-    R.hp = Math.min(R.maxHp, R.hp);  // cap only, no delta-subtract
-    persist(R);
-    _syncArmorChange(R);
+    unequipArmorDirect();
     itemDetailBus.close();
   };
   const onEquipStashArmor = () => {
@@ -939,7 +877,7 @@ export const ItemDetailPopup = () => {
     recalcDerived(R);
     R.hp = Math.min(R.maxHp, R.hp);  // cap only, no delta-heal
     persist(R);
-    _syncArmorChange(R);
+    syncArmorChange(R);
     itemDetailBus.close();
   };
   /* v2.3.685: worn gear (rendered steel chest/legs) unequips into
@@ -948,16 +886,7 @@ export const ItemDetailPopup = () => {
      setEquip drives the renderer directly (same path as the Equipment menu),
      so the armour visibly comes off/on and eqc/eql sync covers remotes. */
   const onUnequipGear = () => {
-    const S = getState();
-    if (!S || !S.rpg) return;
-    const R = S.rpg;
-    const slot = target.slot;
-    const gearId = getEquip(slot);
-    if (!gearId || gearId === 'none') { itemDetailBus.close(); return; }
-    if (!R.gearStash) R.gearStash = [];
-    R.gearStash.push({ slot, gearId, name: gearName(slot, gearId) });
-    setEquip(slot, 'none');
-    persist(R);
+    unequipGearDirect(target.slot);
     itemDetailBus.close();
   };
   const onEquipStashGear = () => {
@@ -1100,14 +1029,14 @@ export const ItemDetailPopup = () => {
         )}
 
         <div style={{ display: 'flex', gap: 6, marginTop: 2 }}>
-          {actions.light    && <button onClick={onLight}   style={buttonStyle('primary')}>Light fire</button>}
-          {actions.eat      && <button onClick={onEat}     style={buttonStyle('primary')}>Eat</button>}
-          {actions.equip    && <button onClick={onEquip}   style={buttonStyle('primary')}>Equip</button>}
-          {actions.unequip  && <button onClick={onUnequip} style={buttonStyle('danger')}>Unequip</button>}
-          <button onClick={onToggleLock} style={buttonStyle()}>
+          {actions.light    && <button onClick={onLight}   className={buttonClass('primary')} style={buttonStyle('primary')}>Light fire</button>}
+          {actions.eat      && <button onClick={onEat}     className={buttonClass('primary')} style={buttonStyle('primary')}>Eat</button>}
+          {actions.equip    && <button onClick={onEquip}   className={buttonClass('primary')} style={buttonStyle('primary')}>Equip</button>}
+          {actions.unequip  && <button onClick={onUnequip} className={buttonClass('danger')} style={buttonStyle('danger')}>Unequip</button>}
+          <button onClick={onToggleLock} className={buttonClass()} style={buttonStyle()}>
             {locked ? '⚓ Unanchor' : '⚓ Anchor'}
           </button>
-          <button onClick={onClose} style={buttonStyle()}>X</button>
+          <button onClick={onClose} className={buttonClass()} style={buttonStyle()}>X</button>
         </div>
       </div>
     </div>
@@ -1133,3 +1062,4 @@ function syncWeaponSlot(msg) {
     try { S.channel.send(msg); } catch (e) {}
   }
 }
+

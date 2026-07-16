@@ -40,19 +40,17 @@ dashboardPanelBus.subscribe(() => {
   if (dashboardPanelBus.state.mode === 'bar') _lastSection = 'Overview';
 });
 
+/* v2.3.1332 (owner: chiseled frames everywhere): segments wear the
+   chip frame; gold ridge marks the active section (segCls pairs with
+   seg at the call site). */
+const segCls = (active) => 'bt-chisel bt-chisel--chip' + (active ? ' bt-chisel--on' : '');
 const seg = (active) => ({
   flex: 1,
-  minHeight: 34, /* v2.3.1311b: no-scroll budget */
-  background: active ? COL.raised : 'transparent',
+  minHeight: 36,
   color: active ? COL.text : COL.text2,
-  border: 'none',
-  borderBottom: `2px solid ${active ? COL.accent : 'transparent'}`,
-  borderRadius: 8,
   fontFamily: 'inherit',
   fontSize: 12,
   fontWeight: 700,
-  cursor: 'pointer',
-  touchAction: 'manipulation',
 });
 
 export const HeroExpanded = () => {
@@ -124,7 +122,8 @@ export const HeroExpanded = () => {
         flex: '0 0 auto',
       }}>
         {SECTIONS.map(s => (
-          <button key={s} onClick={() => setSection(s)} style={{ ...seg(section === s), display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5 }}>
+          <button key={s} onClick={() => setSection(s)} className={segCls(section === s)}
+            style={{ ...seg(section === s), display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5 }}>
             <img src={SECTION_ICONS[s]} alt="" draggable={false}
               style={{ width: 17, height: 17, objectFit: 'contain', flex: 'none', pointerEvents: 'none' }} />
             {s === 'Build' && totalUnspent > 0 ? `Build · ${totalUnspent}` : s}

@@ -1,13 +1,13 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { COL, panelStyle, getState } from './common.js';
 import { eatBus } from '../eatBus.js';
 import { itemDetailBus } from './itemDetailBus.js';
 import { isLocked as itemIsLocked } from './inventoryLocks.js';
 import { reconcileGearStash } from '../../../rendering/gearCatalog.js';
 import { getBagEntries } from './bagModel.js';
-import { SlotTile } from '../sheet/SlotTile.jsx';                 /* v2.3.1285 */
-import { getEquippedSlots, GHOST_SRC } from '../sheet/equipModel.js';
-import { CornerTag } from '../sheet/RowRail.jsx';                 /* v2.3.1319; rails retired v2.3.1320 */
+import { getEquippedSlots, getEquipContribs, GHOST_SRC } from '../sheet/equipModel.js'; /* v2.3.1328: contribs */
+import { unequipWeaponSlot, unequipShieldDirect, unequipArmorDirect, unequipGearDirect } from './equipActions.js'; /* v2.3.1330 */
+import { getEquip } from '../../../rendering/gearCatalog.js';
 
 // Category filter chips.  "All" comes first so the player always opens
 // the bag with everything visible.  v2.3.1231: UI Bible icons replace
@@ -184,11 +184,79 @@ export const ItemTile = ({ ikey, count, style: styleOverride }) => {
    the destination — module-scoped, session-only.  Switching to Hero
    and back should not silently reset a Weapon filter to All. */
 let _lastFilter = 'all';
+/* v2.3.1326 (owner: "bag [gets] two tabs at top — one for items in
+   inventory and another for equipped items; keeps the views cleaner"):
+   the active tab survives leaving the destination, same as the filter. */
+let _lastBagTab = 'items';
+
+/* v2.3.1328: stat glyphs for the EQUIPPED TOTAL cells.
+   v2.3.1329b (owner: "use icons that already exist"): the inline SVG
+   line-drawings are replaced by the game's own hero stat icon set
+   (icons/ui/hero — the same art the Hero panel uses) + the gem
+   currency icon, so the widget grid speaks the game's established
+   icon language. */
+const STAT_ICON = {
+  DMG:   '/icons/ui/hero/damage.webp?v=2.3.1323',
+  DPS:   '/icons/ui/hero/dps.webp?v=2.3.1323',
+  BLOCK: '/icons/ui/hero/defense.webp?v=2.3.1323',
+  HP:    '/icons/ui/hero/hp.webp?v=2.3.1323',
+  GEM:   '/icons/ui/cur-gem.webp?v=2.3.1224',
+  STAM:  '/icons/ui/hero/stamina.webp?v=2.3.1323',
+};
+const StatGlyph = ({ k, size }) => (
+  <img src={STAT_ICON[k] || STAT_ICON.GEM} alt="" aria-hidden="true" draggable={false}
+    style={{
+      width: size || 14, height: size || 14, objectFit: 'contain',
+      flex: 'none', userSelect: 'none', pointerEvents: 'none',
+    }} />
+);
 
 export const InventoryPanel = () => {
   const [, force] = useState(0);
   const [filter, setFilterState] = useState(_lastFilter);
   const setFilter = (f) => { _lastFilter = f; setFilterState(f); };
+  /* v2.3.1328b (owner: "don't display the stats of each item unless
+     it's tapped"): which equipped card is selected — the right pane is
+     a FIXED display window showing the aggregate when nothing is
+     selected and the tapped item's contribution when one is.  Not
+     module-persisted: selection is a transient inspection, cleared on
+     tab switch. */
+  const [eqSel, setEqSel] = useState(null);
+  const [bagTab, setBagTabState] = useState(_lastBagTab);
+  const setBagTab = (t) => { _lastBagTab = t; setBagTabState(t); setEqSel(null); };
+  /* v2.3.1327 (owner device: "the last row gets cut off"): measure the
+     tab's actual box and size rows to FIT — real phones' Safari chrome
+     shrinks visualViewport below the rig's 844.
+     v2.3.1328 (owner mockup): the measure now sizes the CARD ROW
+     height for the 2-col x 3-row card grid (pad 6+6 + 2 gaps of 6 =
+     24 vertical), clamped 36..78.  ResizeObserver, not a one-shot:
+     the sheet ANIMATES open over 220ms, so a mount-time measure reads
+     the mid-animation (small) height and sticks at the floor. */
+  const eqBoxRef = useRef(null);
+  const [eqCard, setEqCard] = useState(56);
+  useEffect(() => {
+    if (bagTab !== 'equipped') return;
+    const measure = () => {
+      const el = eqBoxRef.current;
+      if (!el || !el.clientHeight) return;
+      /* Budget: row padding 4+4 + 2 grid gaps of 6 + the widget
+         pane's 2px border (its grid rows match the card rows, so its
+         border-box is the row's tallest child) = 22 vertical.
+         Floor 26 fits an SE-class box (~90px); below it the safety
+         scroller takes over. */
+      const t = Math.floor((el.clientHeight - 22) / 3);
+      const clamped = Math.max(26, Math.min(78, t));
+      setEqCard(prev => (Math.abs(prev - clamped) > 1 ? clamped : prev));
+    };
+    measure();
+    const obs = window.ResizeObserver ? new ResizeObserver(measure) : null;
+    if (obs && eqBoxRef.current) obs.observe(eqBoxRef.current);
+    window.addEventListener('resize', measure);
+    return () => {
+      if (obs) obs.disconnect();
+      window.removeEventListener('resize', measure);
+    };
+  }, [bagTab]);
 
   useEffect(() => {
     const id = setInterval(() => force(v => v + 1), 400);
@@ -246,40 +314,310 @@ export const InventoryPanel = () => {
        scroll-edge fade follows it there). */
     <div style={{ ...panelStyle, overflow: 'hidden', WebkitMaskImage: 'none', maskImage: 'none', display: 'flex', flexDirection: 'column' }}>
 
-      {/* v2.3.1320 (owner: "understood without using language"): the
-          EQUIP text rail is gone — each WORN item carries a small
-          bag-equipped badge in its top-right corner, and the count tag
-          is numbers only (worn/total). */}
-      {/* v2.3.1285: the SAME six equipped positions as the compact row,
-          same order, same tile component — expanding feels like the
-          panel revealing more, not a different screen. */}
-      <div style={{ position: 'relative', marginTop: 2, marginBottom: 7, flex: 'none' }}>
-        <CornerTag text={`${equipped.filter(sl => !sl.ghost).length}/6`} />
-        <div style={{
-          minWidth: 0,
-          display: 'grid',
-          gridTemplateColumns: `repeat(${COLS}, 1fr)`,
-          gap: 8,
-        }}>
-          {equipped.map(sl => (
-            <SlotTile
-              key={`eq-${sl.slot}`}
-              k={`eq-${sl.slot}`}
-              label={sl.label}
-              iconSrc={sl.iconSrc}
-              ghostSrc={sl.ghost ? GHOST_SRC[sl.slot] : null}
-              occupied={!sl.ghost}
-              quality={sl.quality}
-              wornSrc="/icons/bag/bag-equipped.webp?v=2.3.1320"
-              onTap={sl.pickerSlot ? openPicker(sl.pickerSlot)
-                : sl.slot === 'amulet' && R.amulet
-                  ? (anchor) => itemDetailBus.open({ kind: 'amulet', amulet: R.amulet, anchor })
-                  : undefined}
-            />
-          ))}
-        </div>
+      {/* v2.3.1326 (owner): Items / Equipped segmented tabs — the
+          equipped row no longer shares the screen with the item grid;
+          each view gets the full sheet.  Same segmented-track pattern
+          as the Friends panel's tabs. */}
+      <div style={{
+        display: 'flex', gap: 2, marginTop: 2, marginBottom: 8, flex: 'none',
+        background: COL.well, border: `1px solid ${COL.tileBor}`,
+        borderRadius: 8, padding: 3,
+      }}>
+        {[
+          { id: 'items', label: 'Items', icon: '/icons/ui/nav-inventory.webp?v=2.3.1224' },
+          { id: 'equipped', label: 'Equipped', icon: '/icons/bag/bag-equipped.webp?v=2.3.1320' },
+        ].map(t => (
+          <button key={t.id}
+            onClick={() => setBagTab(t.id)}
+            aria-pressed={bagTab === t.id}
+            className="bt-chisel bt-chisel--chip"
+            style={{
+              flex: 1, minHeight: 36,
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+              color: bagTab === t.id ? COL.text : COL.text2,
+              fontFamily: 'inherit', fontSize: 12, fontWeight: 700,
+            }}>
+            <img src={t.icon} alt="" draggable={false}
+              style={{ width: 16, height: 16, objectFit: 'contain' }} />
+            {t.label}
+          </button>
+        ))}
       </div>
 
+      {/* v2.3.1328 (owner mockup): left ~64% — six QUIET equipment
+          cards (2-col x 3-row, fixed order, art + slot label only);
+          right ~36% — one FIXED display window.
+          v2.3.1328b (owner: "don't display the stats of each item
+          unless it's tapped"): the window shows the loadout AGGREGATE
+          when nothing is selected and the tapped item's contribution
+          when a card is; tapping the already-selected card opens the
+          existing equip modal (management stays one tap deeper), and
+          tapping the window returns it to the aggregate.  Empty slots
+          keep their old behavior (straight to the picker). */}
+      {bagTab === 'equipped' && (() => {
+        const contribs = getEquipContribs(R);
+        const wornCount = equipped.filter(sl => !sl.ghost).length;
+        const compactCard = eqCard < 52; /* short viewports: tighter type */
+        const selSlot = equipped.find(sl => sl.slot === eqSel && !sl.ghost) || null;
+        const selCard = selSlot ? contribs.cards[selSlot.slot] : null;
+        return (
+        <div ref={eqBoxRef} style={{ position: 'relative', flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+          <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', touchAction: 'pan-y', WebkitOverflowScrolling: 'touch' }}>
+            <div style={{ display: 'flex', gap: 8, padding: '4px 2px', minWidth: 0 }}>
+              {/* Equipment cards, fixed order Weapon/Shield/Chest/Legs/Cape/Amulet.
+                  v2.3.1329: 64 -> 60% — the widget grid gets the width. */}
+              <div style={{
+                flex: '1 1 60%', minWidth: 0,
+                display: 'grid',
+                gridTemplateColumns: '1fr 1fr',
+                gridAutoRows: `${eqCard}px`,
+                gap: 6,
+              }}>
+                {equipped.map(sl => {
+                  const openModal = sl.pickerSlot ? openPicker(sl.pickerSlot)
+                    : sl.slot === 'amulet' && R.amulet
+                      ? (anchor) => itemDetailBus.open({ kind: 'amulet', amulet: R.amulet, anchor })
+                      : undefined;
+                  const selected = !sl.ghost && eqSel === sl.slot;
+                  /* Occupied: first tap selects (window shows the item);
+                     tap again for the modal.  Empty: picker directly. */
+                  const onTap = sl.ghost ? openModal
+                    : (anchor) => {
+                        if (eqSel === sl.slot) { openModal && openModal(anchor); }
+                        else setEqSel(sl.slot);
+                      };
+                  const rarityEdge = sl.quality === 'rare' ? '#5B99DE'
+                    : sl.quality === 'elite' ? '#A477DF' : null;
+                  const art = sl.iconSrc || GHOST_SRC[sl.slot];
+                  return (
+                    <div key={`eq-${sl.slot}`}
+                      onPointerUp={onTap ? (e) => {
+                        e.stopPropagation();
+                        let anchor = null;
+                        try {
+                          const rect = e.currentTarget.getBoundingClientRect();
+                          anchor = { left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom, width: rect.width, height: rect.height };
+                        } catch (_e) {}
+                        onTap(anchor);
+                      } : undefined}
+                      title={sl.label}
+                      aria-pressed={selected}
+                      style={{
+                        position: 'relative', minWidth: 0,
+                        display: 'flex', alignItems: 'center', gap: 7,
+                        padding: '0 6px',
+                        borderRadius: 9,
+                        background: sl.ghost ? COL.wellSoft : COL.brassFill,
+                        /* Restrained gold = equipped; dark neutral =
+                           empty; the SELECTED card gets the 2px brass
+                           inset ring (same accent language as the
+                           active tab).  Rarity keeps its edge color. */
+                        border: rarityEdge ? `2px solid ${rarityEdge}`
+                          : sl.ghost ? `1px solid ${COL.tileBor}`
+                          : selected ? `1px solid ${COL.brass}`
+                          : '1px solid rgba(216,168,95,.55)',
+                        boxShadow: selected ? `inset 0 0 0 2px ${COL.brass}`
+                          : sl.ghost ? 'inset 0 2px 4px rgba(0,0,0,.30)'
+                          : 'inset 0 0 6px rgba(245,199,70,0.18)',
+                        cursor: onTap ? 'pointer' : 'default',
+                        touchAction: 'none',
+                      }}>
+                      {art && (
+                        <img src={art} alt="" aria-hidden="true" draggable={false}
+                          style={{
+                            /* 28 cap: WEAPON must never truncate at the
+                               60% column — the name outranks art size. */
+                            width: Math.min(eqCard - 12, 28), height: Math.min(eqCard - 12, 28),
+                            flex: 'none', objectFit: 'contain',
+                            imageRendering: 'pixelated',
+                            opacity: sl.ghost ? 0.28 : (sl.iconSrc ? 1 : 0.95),
+                            filter: sl.ghost ? 'grayscale(1)' : 'none',
+                            userSelect: 'none', pointerEvents: 'none',
+                          }} />
+                      )}
+                      {/* v2.3.1329b (owner: "not enough space — revert
+                          the equipped item part"): cards stay QUIET —
+                          art + slot label only.  Per-item stats live in
+                          the display window on selection. */}
+                      <span style={{
+                        flex: 1, minWidth: 0,
+                        fontSize: 10, fontWeight: 700, letterSpacing: '.03em',
+                        color: sl.ghost ? COL.muted : COL.text2, lineHeight: 1.25,
+                        whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                      }}>{sl.label.toUpperCase()}</span>
+                      {!sl.ghost && (
+                        <img src="/icons/bag/bag-equipped.webp?v=2.3.1320" alt="" aria-hidden="true" draggable={false}
+                          style={{
+                            position: 'absolute', top: 2, right: 2,
+                            width: 13, height: 13, objectFit: 'contain',
+                            pointerEvents: 'none', zIndex: 1,
+                          }} />
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+              {/* The fixed display window: aggregate by default, the
+                  selected item's contribution when a card is tapped.
+                  Tapping it returns to the aggregate. */}
+              <div
+                onPointerUp={selCard || selSlot ? (e) => { e.stopPropagation(); setEqSel(null); } : undefined}
+                style={{
+                  /* v2.3.1329 (feedback): 36 -> 40% — the widget grid's
+                     big values get the width. */
+                  flex: '1 1 40%', minWidth: 0, maxWidth: '42%',
+                  alignSelf: 'stretch',
+                  position: 'relative',
+                  background: COL.well,
+                  border: `1px solid ${selSlot ? 'rgba(216,168,95,.45)' : COL.tileBor}`,
+                  boxShadow: 'inset 0 2px 4px rgba(0,0,0,.3)',
+                  borderRadius: 10,
+                  padding: selSlot ? (compactCard ? '3px 7px' : '6px 9px') : '0 6px',
+                  display: 'flex', flexDirection: 'column',
+                  cursor: selSlot ? 'pointer' : 'default',
+                }}>
+                {selSlot && (
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 4, paddingBottom: 2, flex: 'none' }}>
+                    <span style={{
+                      flex: 1, minWidth: 0,
+                      fontSize: 9, fontWeight: 800, letterSpacing: '.08em',
+                      color: COL.text2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                    }}>{(selCard && selCard.title) || selSlot.label.toUpperCase()}</span>
+                    <span style={{ fontSize: 10, fontWeight: 700, color: COL.muted, flex: 'none' }}>×</span>
+                  </div>
+                )}
+                {selSlot ? (
+                  /* Item view: art + this item's contribution rows. */
+                  <>
+                    {/* v2.3.1330: the art hides on short viewports —
+                        the Unequip button needs its room. */}
+                    {!compactCard && (
+                      <div style={{ flex: 'none', display: 'flex', justifyContent: 'center', padding: '2px 0' }}>
+                        <img src={selSlot.iconSrc || GHOST_SRC[selSlot.slot]} alt="" aria-hidden="true" draggable={false}
+                          style={{
+                            width: 40, height: 40,
+                            objectFit: 'contain', imageRendering: 'pixelated',
+                            userSelect: 'none', pointerEvents: 'none',
+                          }} />
+                      </div>
+                    )}
+                    {(selCard ? [selCard.primary, selCard.secondary].filter(Boolean) : []).map((row, i) => (
+                      <div key={row.k + i} style={{
+                        flex: 1, minHeight: 0, maxHeight: 44,
+                        display: 'flex', alignItems: 'center', gap: 5,
+                        borderTop: `1px solid ${COL.tileBor}`,
+                      }}>
+                        <span style={{ fontSize: compactCard ? 9 : 10, fontWeight: 700, letterSpacing: '.05em', color: COL.muted, flex: 'none' }}>{row.k}</span>
+                        <span style={{
+                          flex: 1, minWidth: 0, textAlign: 'right',
+                          fontSize: compactCard ? 12 : 18, lineHeight: 1.05, fontWeight: 800, color: COL.text,
+                          fontVariantNumeric: 'tabular-nums',
+                          whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                        }}>{row.v}</span>
+                      </div>
+                    ))}
+                    {!selCard && (
+                      /* Cosmetic pieces contribute no stats — say so
+                         with a quiet dash row, never fake zeros. */
+                      <div style={{
+                        flex: 1, minHeight: 0,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        borderTop: `1px solid ${COL.tileBor}`,
+                        fontSize: 16, fontWeight: 800, color: COL.muted,
+                      }}>—</div>
+                    )}
+                    {/* v2.3.1330 (owner): one-tap Unequip at the pane's
+                        bottom — no second tap through the modal.  Same
+                        shared flows the modal runs (equipActions.js);
+                        amulet/cape have no unequip flow, so no button.
+                        stopPropagation: the pane's own tap handler
+                        would otherwise just deselect. */}
+                    {(() => {
+                      const R2 = (getState() && getState().rpg) || {};
+                      const doUnequip = selSlot.slot === 'weapon' ? () => unequipWeaponSlot(R2.activeSlot === 'ranged' ? 'ranged' : R2.activeSlot === 'staff' ? 'staff' : 'weapon')
+                        : selSlot.slot === 'shield' ? unequipShieldDirect
+                        : selSlot.slot === 'chest' ? (R2.armor ? unequipArmorDirect : (getEquip('chest') !== 'none' ? () => unequipGearDirect('chest') : null))
+                        : selSlot.slot === 'legs' ? () => unequipGearDirect('legs')
+                        : null;
+                      if (!doUnequip) return null;
+                      return (
+                        <button
+                          onPointerUp={(e) => {
+                            e.stopPropagation();
+                            doUnequip();
+                            setEqSel(null); /* item gone -> back to the aggregate */
+                            force(v => v + 1);
+                          }}
+                          className="bt-chisel bt-chisel--danger"
+                          style={{
+                            flex: 'none', minHeight: compactCard ? 34 : 42,
+                            margin: '4px 0 2px',
+                            fontFamily: 'inherit', fontSize: 13, fontWeight: 800,
+                            letterSpacing: '.02em',
+                          }}>Unequip</button>
+                      );
+                    })()}
+                  </>
+                ) : (
+                  /* v2.3.1329 (feedback): iOS-widget grid — 2 cols x 3
+                     rows (DMG|DPS, BLOCK|HP, GEM|STAM), row heights
+                     matched to the equipment rows so the two sides
+                     share one rhythm.  Cells: small glyph+label line
+                     over a BIG value; hairline dividers only (no
+                     borders/gold — cells must not look tappable).
+                     The x/6 count floats in the top-right corner. */
+                  <>
+                    <span aria-hidden="true" style={{
+                      position: 'absolute', top: 3, right: 7,
+                      fontSize: 9, fontWeight: 700, color: COL.muted,
+                      fontVariantNumeric: 'tabular-nums', pointerEvents: 'none',
+                    }}>{wornCount}/6</span>
+                    <div style={{
+                      flex: 'none',
+                      display: 'grid',
+                      gridTemplateColumns: '1fr 1fr',
+                      gridTemplateRows: `${eqCard}px ${eqCard}px ${eqCard}px`,
+                      gap: '6px 0',
+                    }}>
+                      {contribs.totals.map((row, i) => (
+                        <div key={row.k} style={{
+                          minWidth: 0, minHeight: 0,
+                          display: 'flex', flexDirection: 'column',
+                          alignItems: 'center', justifyContent: 'center', gap: compactCard ? 0 : 2,
+                          borderLeft: i % 2 === 1 ? `1px solid ${COL.tileBor}` : 'none',
+                          borderTop: i >= 2 ? `1px solid ${COL.tileBor}` : 'none',
+                        }}>
+                          {/* v2.3.1329b (owner): smaller label — the
+                              hero-set icon carries the meaning, the
+                              text is a whisper. */}
+                          <span style={{ display: 'flex', alignItems: 'center', gap: 3, minWidth: 0 }}>
+                            <StatGlyph k={row.k} size={compactCard ? 11 : 14} />
+                            <span style={{
+                              fontSize: compactCard ? 7.5 : 8.5, fontWeight: 600,
+                              letterSpacing: '.04em', color: COL.muted,
+                              whiteSpace: 'nowrap',
+                            }}>{row.k}</span>
+                          </span>
+                          <span style={{
+                            maxWidth: '100%',
+                            fontSize: compactCard ? 13 : 18, lineHeight: 1.05, fontWeight: 800,
+                            color: COL.text, opacity: row.v === '—' ? 0.45 : 1,
+                            fontVariantNumeric: 'tabular-nums',
+                            whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                          }}>{row.v}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+        );
+      })()}
+
+      {bagTab === 'items' && <>
       {/* Filter strip — labeled category chips (glyph + name).
           v2.3.1235: row scrolls horizontally (nowrap + pan-x) so chips
           never squash as categories grow; labels lifted to the 11px type
@@ -302,12 +640,13 @@ export const InventoryPanel = () => {
           v2.3.1320 (owner: "understood without using language"): the
           FILTER text rail is gone — every chip carries a tiny funnel
           glyph in its top-right corner instead (per the owner's own
-          suggestion), and the count tag is numbers only ("9" on All,
-          "1/9" filtered). */}
+          suggestion).
+          v2.3.1325 (owner): the count CornerTag that rode this track's
+          top edge is REMOVED — it visually landed on one of the filter
+          chips and read as chip info; "not the right place for
+          inventory item info".  The equipped row's N/6 tag (a slot
+          gauge the owner asked for in round 8b) stays. */}
       <div style={{ position: 'relative', marginTop: 2, marginBottom: 6, flex: 'none' }}>
-        <CornerTag text={filter === 'all'
-          ? `${usedTiles}`
-          : `${usedTiles}/${entries.length}`} />
         <div style={{
           minWidth: 0,
           display: 'flex', alignItems: 'stretch', gap: 2,
@@ -324,20 +663,14 @@ export const InventoryPanel = () => {
               onClick={() => setFilter(c.id)}
               title={c.label}
               aria-pressed={active}
+              className="bt-chisel bt-chisel--chip"
               style={{
                 position: 'relative',
                 flex: '1 1 0', minWidth: 0,
                 display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 1,
-                /* v2.3.1319: 4px -> 2px vertical + 20 -> 18px icon —
-                   part of handing the header lines' room back to the
-                   item tray (18 is round-8 §6's floor). */
-                padding: '2px 2px',
-                background: active ? COL.accentFill : 'transparent',
+                padding: '2px 0',
                 color: active ? COL.text : COL.text2,
-                border: active ? `1px solid ${COL.accent}` : '1px solid transparent',
-                borderRadius: 6,
                 fontFamily: 'inherit',
-                cursor: 'pointer',
               }}
             >
               {/* v2.3.1320: the language-free filter mark — a tiny
@@ -478,6 +811,7 @@ export const InventoryPanel = () => {
           </div>
           </div>
         )}
+      </> /* v2.3.1326: end Items tab */}
     </div>
   );
 };

@@ -2,27 +2,30 @@ import React, { useEffect, useRef, useState } from 'react';
 import { COL } from '../dash/common.js';
 import { getBagEntries } from '../dash/bagModel.js';
 import { subscribe as subscribeInvLocks } from '../dash/inventoryLocks.js';
-import { itemDetailBus } from '../dash/itemDetailBus.js';
 import { BagTile } from '../dash/InventoryPanel.jsx';
-import { getEquippedSlots, GHOST_SRC } from './equipModel.js';
-import { SlotTile } from './SlotTile.jsx';
 import { prefersReducedMotion } from './motion.js';
 import { bagUnseen, bagEntryKey } from './bagUnseenModel.js';
-import { CornerTag } from './RowRail.jsx';                        /* v2.3.1319; rails retired v2.3.1320 */
 
 /* v2.3.1285: the DEFAULT home view of the nav-system — one full-width
    panel, strict 6-col x 2-row grid, no headers, no labels (spec
-   §Default State).  Top row: the six equipped positions in fixed order
-   Weapon · Shield · Chest · Legs · Cape · Amulet (ghost pictograms
-   when empty).  Bottom row: the six most recent bag stacks, newest
-   LEFT (bagModel's shared order — anchored items outrank recency by
-   design, so both this row and the expanded inventory always agree).
+   §Default State).
+   v2.3.1327 (owner: "move the equipped item row out of the compact
+   view and replace it with just the standard row of inventory
+   slots"): the equipped positions now live ONLY on the expanded Bag's
+   Equipped tab (v2.3.1326) — the compact view is twelve standard
+   inventory slots, newest LEFT (bagModel's shared order — anchored
+   items outrank recency by design, so this grid and the expanded
+   inventory always agree).  The v2.3.1312 recent-row darkening is
+   retired with the equipped row: with one surface there is no second
+   row to distinguish.  Sparkle markers, the arrival pulse, and the
+   touch-freeze all stay.
 
    The band's compact height is DERIVED from this grid's algebra
    (sheetGeometry.js) — 1fr tracks are exact by construction; no
    container queries needed. */
 
 const CELL_GAP = 8;
+const SLOTS = 12;
 
 /* v2.3.1293 (ChatGPT round-3 §4 Bag): unread pickups — a pickup you
    haven't LOOKED at keeps a marker until its detail card is opened.
@@ -41,8 +44,7 @@ export const BagCompact = () => {
   const S = (typeof window !== 'undefined') && window._gameState && window._gameState.current;
   const R = (S && S.rpg) || {};
 
-  const equipped = getEquippedSlots(R);
-  const live = getBagEntries(R).slice(0, 6);
+  const live = getBagEntries(R).slice(0, SLOTS);
 
   /* Touch-freeze (spec §Bottom row): while a finger is down on the
      panel, render from a snapshot so a mid-tap pickup can't move the
@@ -79,38 +81,10 @@ export const BagCompact = () => {
   }
   useEffect(() => { prevKeys.current = new Set(entries.map(keyOf)); seeded.current = true; });
 
-  const openPicker = (pickerSlot) => (anchor) => {
-    const st = itemDetailBus.state;
-    if (st && st.open && st.target && st.target.kind === 'loadout' && st.target.slot === pickerSlot) {
-      itemDetailBus.close();
-      return;
-    }
-    /* v2.3.1285: the picker is no longer docked over the retired Build
-       column — anchor-only positioning (ItemDetailPopup handles a null
-       panel). */
-    itemDetailBus.open({ kind: 'loadout', slot: pickerSlot, anchor, panel: null });
-  };
-  const openAmulet = (anchor) => {
-    if (R.amulet) itemDetailBus.open({ kind: 'amulet', amulet: R.amulet, anchor });
-  };
-
-  /* v2.3.1315 (owner round-8b): "the equipped row needs to be more
-     obvious" — a slim labeled header with the owner's bag-equipped
-     icon and an open-slot count.  Cape counts as open until it gets a
-     data field (it IS an empty position). */
-  const openSlots = equipped.filter(sl => sl.ghost).length;
-
   return (
     /* id="bt-bag-target": the fishing catch-flight landing point
        (effectsRenderer._updateCatchFlights) — moved here from the
        retired quick-bag preview.  Silent breakage if dropped. */
-    /* v2.3.1319 (owner: "make the equipped and filters as row headers
-       to save room"): the v2.3.1315 full-width EQUIPPED header line is
-       replaced by a 16px vertical RowRail on the row's left edge and a
-       CornerTag for the open-slot count — zero added height, and the
-       compact sheet shrank back down with it (sheetGeometry DASH_BASE
-       105 -> 77).  The recent row gets a matching RECENT rail so the
-       two grids stay column-aligned (an empty spacer looked broken). */
     <div
       id="bt-bag-target"
       data-tut="dash-bag"
@@ -122,95 +96,47 @@ export const BagCompact = () => {
         minHeight: 0,
         display: 'flex',
         flexDirection: 'column',
+        justifyContent: 'center',
         padding: '8px 8px',
       }}>
-      {/* Row 1 — equipped, fixed order.  v2.3.1320 (owner: language-
-          free): the EQUIP text rail is gone — each WORN item carries a
-          small bag-equipped badge in its corner instead, and the count
-          tag is numbers only (worn/total).  Grids get their full width
-          back (sheetGeometry DASH_BASE 77 -> 84). */}
-      <div style={{ position: 'relative', flex: 'none' }}>
-        <CornerTag text={`${6 - openSlots}/6`} />
-        <div style={{ minWidth: 0, display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: CELL_GAP }}>
-          {equipped.map(sl => (
-            <SlotTile
-              key={`eq-${sl.slot}`}
-              k={`eq-${sl.slot}`}
-              label={sl.label}
-              iconSrc={sl.iconSrc}
-              ghostSrc={sl.ghost ? GHOST_SRC[sl.slot] : null}
-              occupied={!sl.ghost}
-              quality={sl.quality}
-              wornSrc="/icons/bag/bag-equipped.webp?v=2.3.1320"
-              onTap={sl.pickerSlot ? openPicker(sl.pickerSlot)
-                : sl.slot === 'amulet' && R.amulet ? openAmulet
-                : undefined}
-            />
-          ))}
-        </div>
-      </div>
-      {/* v2.3.1312 (round-8 §3): hairline between the equipped row and
-          the recent-pickups row. */}
-      <div aria-hidden="true" style={{
-        height: 1, margin: '7px 2px',
-        background: 'rgba(0,0,0,.35)',
-        boxShadow: '0 1px 0 rgba(229,237,233,.06)',
-        flex: 'none',
-      }} />
-      {/* Row 2 — recent bag stacks, newest left.  v2.3.1320: no label —
-          the darker cells + separator + sparkle markers carry the
-          "recent pickups" meaning without words. */}
-      <div style={{ position: 'relative', flex: 'none' }}>
       <div style={{ minWidth: 0, display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: CELL_GAP }}>
-      {/* v2.3.1315: recent row keeps its darker treatment + sparkle
-          markers (round-8 §3) inside its own grid now. */}
-      {entries.map((e) => {
-        const k = keyOf(e);
-        return (
-          <div key={k}
-            className={newKeys.has(k) && !prefersReducedMotion() ? 'bt-arrive-pulse' : undefined}
-            style={{ minWidth: 0, minHeight: 0, position: 'relative' }}>
-            <BagTile entry={e} />
-            {/* v2.3.1312 (round-8 §3): recent-row cells sit a shade
-                darker than the equipped row — plain overlay, never a
-                CSS filter (iOS WebGL compositing trap, v2.3.948). */}
-            <div aria-hidden="true" style={{
-              position: 'absolute', inset: 0, borderRadius: 8,
-              background: 'rgba(0,0,0,.07)',
-              pointerEvents: 'none',
-            }} />
-            {/* v2.3.1293: unread marker — stays until inspected (the
-                pulse alone vanished before the player looked).
-                v2.3.1312: the owner's sparkle art replaces the brass
-                dot (round-8: "brass dot or corner sparkle"). */}
-            {bagUnseen.has(k) && (
-              <img aria-hidden="true" alt="" draggable={false}
-                src="/icons/bag/bag-new-item.webp?v=2.3.1312"
-                style={{
-                  /* No drop-shadow filter here: the sheet composites
-                     over the WebGL canvas and iOS filter compositing
-                     is the v2.3.948 static-noise trap. */
-                  position: 'absolute', top: 1, left: 1,
-                  width: 14, height: 14,
-                  pointerEvents: 'none', zIndex: 1,
-                }} />
-            )}
-          </div>
-        );
-      })}
-      {Array.from({ length: Math.max(0, 6 - entries.length) }).map((_, i) => (
-        <div key={`pe-${i}`} aria-hidden="true" style={{
-          aspectRatio: '1 / 1',
-          width: '100%',
-          background: COL.wellSoft,
-          border: `1px solid ${COL.tileBor}`,
-          /* v2.3.1312: empty recent cells carry the same darkening as
-             occupied ones so the row reads as one surface. */
-          boxShadow: 'inset 0 2px 4px rgba(0,0,0,.44), inset 0 0 0 999px rgba(0,0,0,.07)',
-          borderRadius: 8,
-        }} />
-      ))}
-      </div>
+        {entries.map((e) => {
+          const k = keyOf(e);
+          return (
+            <div key={k}
+              className={newKeys.has(k) && !prefersReducedMotion() ? 'bt-arrive-pulse' : undefined}
+              style={{ minWidth: 0, minHeight: 0, position: 'relative' }}>
+              <BagTile entry={e} />
+              {/* v2.3.1293: unread marker — stays until inspected (the
+                  pulse alone vanished before the player looked).
+                  v2.3.1312: the owner's sparkle art replaces the brass
+                  dot (round-8: "brass dot or corner sparkle").  No
+                  drop-shadow filter: the sheet composites over the
+                  WebGL canvas and iOS filter compositing is the
+                  v2.3.948 static-noise trap. */}
+              {bagUnseen.has(k) && (
+                <img aria-hidden="true" alt="" draggable={false}
+                  src="/icons/bag/bag-new-item.webp?v=2.3.1312"
+                  style={{
+                    position: 'absolute', top: 1, left: 1,
+                    width: 14, height: 14,
+                    pointerEvents: 'none', zIndex: 1,
+                  }} />
+              )}
+            </div>
+          );
+        })}
+        {Array.from({ length: Math.max(0, SLOTS - entries.length) }).map((_, i) => (
+          /* Empty cells match the expanded inventory's standard empty
+             slots — one surface, one language (v2.3.1327). */
+          <div key={`pe-${i}`} aria-hidden="true" style={{
+            aspectRatio: '1 / 1',
+            width: '100%',
+            background: 'rgba(0,0,0,0.28)',
+            border: '1px solid rgba(238, 242, 235, 0.24)',
+            borderRadius: 8,
+          }} />
+        ))}
       </div>
     </div>
   );

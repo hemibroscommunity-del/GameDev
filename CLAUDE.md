@@ -120,9 +120,11 @@ Two protocol versions coexist; both must keep working:
   guilds, threat, pets, hardening, trade2, elemental2; 450+
   assertions) against a mocked DO storage. Every new system adds a
   suite; extend the nearest one when touching its wire format.
-- Client: no unit suite; CI runs a two-session Playwright smoke harness
-  (`tools/qa/qa-smoke.mjs`, `qa-facing.mjs`) plus lint + build on every
-  PR, and the Pages bot posts a preview URL. Primary platform is
+- Client: no unit suite; CI runs lint + build on every PR, and the
+  Pages bot posts a preview URL. The Playwright smoke harnesses
+  (`tools/qa/qa-smoke.mjs`, `qa-facing.mjs`, …) are OFF the PR path
+  (owner directive, 2026-07-16 — no live players, CI speed wins) and
+  run only via workflow_dispatch on demand. Primary platform is
   **iPhone Safari** — test touch controls, not just desktop.
 
 ## Conventions

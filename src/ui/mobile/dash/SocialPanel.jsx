@@ -38,18 +38,15 @@ const Empty = ({ line, sub, children }) => (
   </div>
 );
 
-const actionBtn = (danger) => ({
+/* v2.3.1332 (owner: chiseled frames everywhere): colors come from the
+   .bt-chisel classes; the factory keeps layout only. */
+const actionCls = (danger) => 'bt-chisel bt-chisel--chip' + (danger ? ' bt-chisel--danger' : '');
+const actionBtn = (_danger) => ({
   flex: 1,
   minHeight: 40,
-  background: 'transparent',
-  border: `1px solid ${danger ? '#C7655F' : COL.border}`,
-  borderRadius: 8,
-  color: danger ? '#E8938D' : COL.text,
   fontFamily: 'inherit',
   fontSize: 12,
   fontWeight: 700,
-  cursor: 'pointer',
-  touchAction: 'manipulation',
 });
 
 const shareInvite = async () => {
@@ -168,31 +165,24 @@ export const SocialPanel = () => {
           <button
             onPointerUp={(e) => { e.stopPropagation(); setShowAdd(v => !v); setOpenRow(null); }}
             aria-label="Add friend"
+            className={'bt-chisel bt-chisel--chip' + (showAdd ? ' bt-chisel--on' : '')}
             style={{
               display: 'flex', alignItems: 'center', gap: 5,
-              minHeight: 36, padding: '0 10px',
-              background: showAdd ? COL.accentFill : 'transparent',
-              border: `1px solid ${showAdd ? COL.accent : COL.border}`,
-              borderRadius: 8,
+              minHeight: 38, padding: '0 6px',
               color: showAdd ? COL.text : COL.text2,
-              fontSize: 12, fontWeight: 700,
-              cursor: 'pointer', touchAction: 'manipulation', fontFamily: 'inherit',
+              fontSize: 12, fontWeight: 700, fontFamily: 'inherit',
             }}
           ><PersonPlus />Add Friend</button>
         )}
         <button
           onPointerUp={(e) => { e.stopPropagation(); setShowBlocked(v => !v); setOpenRow(null); setShowAdd(false); }}
           aria-label={showBlocked ? 'Back to friends' : 'Blocked players'}
+          className="bt-chisel bt-chisel--chip"
           style={{
-            width: 44, height: 36,
-            background: 'transparent',
-            border: `1px solid ${COL.border}`,
-            borderRadius: 8,
+            width: 44, height: 38,
             color: COL.text2,
             fontSize: showBlocked ? 13 : 17,
             fontWeight: 700,
-            cursor: 'pointer',
-            touchAction: 'manipulation',
             fontFamily: 'inherit',
           }}
         >{showBlocked ? '◂' : '•••'}</button>
@@ -216,12 +206,11 @@ export const SocialPanel = () => {
               const r = await shareInvite();
               setShared(r === 'copied' ? 'Link copied!' : '');
             }}
+            className="bt-chisel bt-chisel--chip"
             style={{
-              display: 'block', marginTop: 8, minHeight: 36, padding: '0 14px',
-              background: 'transparent', color: COL.text,
-              border: `1px solid ${COL.border}`, borderRadius: 8,
+              display: 'block', marginTop: 8, minHeight: 38, padding: '0 10px',
+              color: COL.text,
               fontFamily: 'inherit', fontSize: 12, fontWeight: 700,
-              cursor: 'pointer', touchAction: 'manipulation',
             }}>{shared || 'Share Invite Link'}</button>
         </div>
       )}
@@ -242,13 +231,11 @@ export const SocialPanel = () => {
             <button key={t.id}
               onPointerUp={(e) => { e.stopPropagation(); setTab(t.id); setOpenRow(null); }}
               aria-pressed={tab === t.id}
+              className="bt-chisel bt-chisel--chip"
               style={{
-                flex: 1, minHeight: 32,
-                background: tab === t.id ? COL.accentFill : 'transparent',
-                border: `1px solid ${tab === t.id ? COL.accent : 'transparent'}`,
-                borderRadius: 6, color: tab === t.id ? COL.text : COL.text2,
+                flex: 1, minHeight: 34,
+                color: tab === t.id ? COL.text : COL.text2,
                 fontFamily: 'inherit', fontSize: 12, fontWeight: 700,
-                cursor: 'pointer', touchAction: 'manipulation',
                 position: 'relative',
               }}>
               {t.label}
@@ -281,9 +268,9 @@ export const SocialPanel = () => {
                   <span style={{ fontWeight: 600, color: COL.text2 }}> wants to be Bros</span>
                 </div>
                 <div style={{ display: 'flex', gap: 6 }}>
-                  <button style={{ ...actionBtn(false), background: COL.accentFill, borderColor: COL.accent }}
+                  <button className={actionCls(false) + ' bt-chisel--on'} style={actionBtn(false)}
                     onPointerUp={(e) => { e.stopPropagation(); sendFriend('friend_accept', { from: fid }); }}>Accept</button>
-                  <button style={actionBtn(false)}
+                  <button className={actionCls(false)} style={actionBtn(false)}
                     onPointerUp={(e) => { e.stopPropagation(); sendFriend('friend_decline', { from: fid }); }}>Decline</button>
                 </div>
               </div>
@@ -410,22 +397,22 @@ export const SocialPanel = () => {
             {openRow === r.fid && (
               <div style={{ display: 'flex', gap: 6, padding: '0 0 8px' }}>
                 {r.online && (
-                  <button style={actionBtn(false)}
+                  <button className={actionCls(false)} style={actionBtn(false)}
                     onPointerUp={(e) => { e.stopPropagation(); openProfile(r); }}>Profile</button>
                 )}
                 {/* v2.3.1324: DMs need a MUTUAL (server) friendship —
                     legacy one-way follows can't message. */}
                 {capsFriends && r.srv && (
-                  <button style={actionBtn(false)}
+                  <button className={actionCls(false)} style={actionBtn(false)}
                     onPointerUp={(e) => { e.stopPropagation(); toggleThread(r.fid); }}>Message</button>
                 )}
                 {partyCaps && r.online && (
-                  <button style={{ ...actionBtn(false), color: '#D8A94D', borderColor: 'rgba(216,169,77,.5)' }}
+                  <button className={actionCls(false)} style={{ ...actionBtn(false), color: '#D8A94D' }}
                     onPointerUp={(e) => { e.stopPropagation(); invite(r.fid); }}>Invite</button>
                 )}
-                <button style={actionBtn(false)}
+                <button className={actionCls(false)} style={actionBtn(false)}
                   onPointerUp={(e) => { e.stopPropagation(); removeFriend(r.fid, r.srv); }}>Remove</button>
-                <button style={actionBtn(true)}
+                <button className={actionCls(true)} style={actionBtn(true)}
                   onPointerUp={(e) => { e.stopPropagation(); blockPlayer(r.fid, r.name); }}>Block</button>
               </div>
             )}
@@ -477,13 +464,11 @@ export const SocialPanel = () => {
                   <button
                     onPointerUp={(e) => { e.stopPropagation(); sendDm(r.fid); }}
                     disabled={!draft.trim()}
+                    className={'bt-chisel bt-chisel--chip' + (draft.trim() ? ' bt-chisel--brass' : '')}
                     style={{
-                      flex: 'none', minHeight: 36, padding: '0 14px',
-                      background: draft.trim() ? COL.accentFill : 'transparent',
-                      border: `1px solid ${draft.trim() ? COL.accent : COL.border}`,
-                      borderRadius: 8, color: draft.trim() ? COL.text : COL.muted,
+                      flex: 'none', minHeight: 38, padding: '0 10px',
+                      color: draft.trim() ? undefined : COL.muted,
                       fontFamily: 'inherit', fontSize: 12, fontWeight: 700,
-                      cursor: 'pointer', touchAction: 'manipulation',
                     }}>Send</button>
                 </div>
               </div>

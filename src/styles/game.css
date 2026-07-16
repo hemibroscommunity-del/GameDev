@@ -35,7 +35,12 @@
      world HUD).  JS source of truth: sheetGeometry.js BAR_H — keep this
      var equal to it.  A whole px, so the v2.3.1241 round() pixel-snap
      variant below is retired. */
-  --dash-h:   72px;
+  /* v2.3.1325 (owner: slot-sized toolbar icons): the bar height is
+     slot-derived and viewport-dependent now — BroTown's resize() stamps
+     BOTH vars below with sheetGeometry's JS-rounded values on every
+     viewport change.  These are only boot fallbacks (390w values). */
+  --nav-slot: 56px;
+  --dash-h:   87px;
   /* v2.3.1235: Lantern Slate CORRECTION PASS (owner-approved ChatGPT
      review of the v2.3.1234 screenshots).  Slightly brighter, greener
      slate; four depth roles only (sheet / raised / well / well-deep);
@@ -287,6 +292,16 @@
   border-radius:9px;
   box-shadow:none;
 }
+/* v2.3.1331 (owner asset drop: "I really like how these buttons look
+   — use this schema for the toolbar buttons"): the buttons render the
+   owner's chiseled SVG frame shells (deep outer cut, metal ridge,
+   groove, inner bevel, navy face) as their FULL background —
+   inactive / selected (double gold ridge) / pressed (darker inset).
+   Per the asset README: NO extra CSS border or bevel around the art
+   (it would flatten the chisel), icon + label stay HTML children.
+   This supersedes the v2.3.1241 hand-painted gradient bevel and the
+   v2.3.1293 brass inset ring — the gold ridge in the selected frame
+   IS the active affordance now. */
 .bt-dashboard-nav-button{
   flex:1 1 0;
   min-width:0;
@@ -299,71 +314,94 @@
   gap:1px;
   padding:2px 0;
   color:var(--ui-dashboard-text);
-  /* v2.3.1241: edge-parity — ONE device-pixel contour, NO external drop
-     shadow, NO second outer contour.  The restrained internal bevel is
-     painted as two physical-pixel horizontal lines INSIDE the fill
-     gradient (top highlight, bottom shade) so it never touches the side
-     edges and never overlaps the contour — replaces the old stacked
-     box-shadow bevel that fattened the edges on Retina. */
-  background:
-    linear-gradient(180deg,
-      rgba(255,255,255,.045) 0,
-      rgba(255,255,255,.045) var(--ui-hairline),
-      transparent var(--ui-hairline),
-      transparent calc(100% - var(--ui-hairline)),
-      rgba(0,0,0,.28) calc(100% - var(--ui-hairline)),
-      rgba(0,0,0,.28) 100%),
-    var(--ui-dashboard-button);
-  border:var(--ui-hairline) solid #3E5059;
-  border-radius:7px;
+  background:url('/icons/ui/toolbar-button-inactive.svg?v=2.3.1331') center / 100% 100% no-repeat;
+  border:none;
+  border-radius:12px;
   box-shadow:none;
   font-family:'Source Sans 3',sans-serif;
   cursor:pointer;
   touch-action:none;
   -webkit-tap-highlight-color:transparent;
-  transition:
-    transform 90ms cubic-bezier(.2,.8,.2,1),
-    border-color 90ms cubic-bezier(.2,.8,.2,1);
-}
-.bt-dashboard-nav-button[data-pressed='true']{
-  transform:scale(.97);
-  /* v2.3.1241: edge-parity — reverse ONLY the internal bevel (shade on
-     top, highlight on bottom); fill + contour unchanged, keep .97 scale. */
-  background:
-    linear-gradient(180deg,
-      rgba(0,0,0,.28) 0,
-      rgba(0,0,0,.28) var(--ui-hairline),
-      transparent var(--ui-hairline),
-      transparent calc(100% - var(--ui-hairline)),
-      rgba(255,255,255,.045) calc(100% - var(--ui-hairline)),
-      rgba(255,255,255,.045) 100%),
-    var(--ui-dashboard-button);
+  transition:transform 90ms cubic-bezier(.2,.8,.2,1);
 }
 .bt-dashboard-nav-button[aria-pressed='true']{
   color:var(--ui-text);
-  /* v2.3.1241: edge-parity — active = darker fill + a single physical-
-     pixel brass contour; keep the resting bevel; NO filled-gold bg, NO
-     second contour. */
-  background:
-    linear-gradient(180deg,
-      rgba(255,255,255,.045) 0,
-      rgba(255,255,255,.045) var(--ui-hairline),
-      transparent var(--ui-hairline),
-      transparent calc(100% - var(--ui-hairline)),
-      rgba(0,0,0,.28) calc(100% - var(--ui-hairline)),
-      rgba(0,0,0,.28) 100%),
-    var(--ui-dashboard-button-active);
-  border-color:rgba(234,198,117,.82);
-  /* v2.3.1293 (ChatGPT round-3 §5): the active state must not lean on
-     the tiny chevron — a real 2px brass inset edge carries it (this
-     amends the v2.3.1241 'box-shadow:none'; the inset ring is a
-     contour, not the banned outer glow). */
-  box-shadow:inset 0 0 0 2px var(--ui-brass);
-  border-radius:10px;
+  background-image:url('/icons/ui/toolbar-button-selected.svg?v=2.3.1331');
+}
+/* Pressed AFTER selected: the momentary touch feedback wins while the
+   finger is down, even on the active destination. */
+.bt-dashboard-nav-button[data-pressed='true']{
+  transform:scale(.97) translateY(1px);
+  background-image:url('/icons/ui/toolbar-button-pressed.svg?v=2.3.1331');
 }
 .bt-dashboard-nav-button:focus-visible{
   outline:2px solid var(--ui-brass-highlight);
   outline-offset:-2px;
+}
+/* ═══ v2.3.1332 (owner: "use them on all the buttons everywhere") —
+   the chiseled frame as the app-wide button system.  The shells are
+   square 120x120, so non-square buttons use BORDER-IMAGE 9-slicing:
+   slice 26 keeps the carved corners pixel-crisp while only the
+   straight edges stretch.  Ring width 9px (chips 6px) keeps a
+   one-line label inside a 44px button.
+   Roles: base = navy face; --on = selected (double gold ridge, via
+   class or aria-pressed); --danger = destructive (red CSS face inside
+   the ring: slice WITHOUT fill + padding-box gradient — stopgap until
+   the owner generates a real red-face variant); --brass = the one
+   primary action per screen (brass face, dark text).  Pressed =
+   :active / [data-pressed] swaps the darker inset shell.
+   Sites keep their own layout styles; inline background/border/shadow
+   must be REMOVED where this class is applied (README: never layer a
+   CSS border on the art). */
+.bt-chisel{
+  border:9px solid transparent;
+  border-image:url('/icons/ui/toolbar-button-inactive-3x.png?v=2.3.1332') 78 fill / 9px stretch;
+  background:none;
+  box-shadow:none;
+  color:var(--ui-text);
+  font-family:'Source Sans 3',sans-serif;
+  cursor:pointer;
+  touch-action:manipulation;
+  -webkit-tap-highlight-color:transparent;
+  transition:transform 90ms cubic-bezier(.2,.8,.2,1);
+}
+.bt-chisel--chip{
+  border-width:6px;
+  border-image-width:6px;
+}
+.bt-chisel--on,
+.bt-chisel[aria-pressed='true']{
+  border-image-source:url('/icons/ui/toolbar-button-selected-3x.png?v=2.3.1332');
+  color:var(--ui-text);
+}
+.bt-chisel--danger{
+  border-image:url('/icons/ui/toolbar-button-inactive-3x.png?v=2.3.1332') 78 / 9px stretch;
+  background:linear-gradient(180deg,#8A3B36 0%,#6E2C29 100%);
+  background-clip:padding-box;
+  border-radius:8px; /* round the CSS face to the art's inner rim */
+  color:#FFF1EE;
+}
+.bt-chisel--brass{
+  border-image:url('/icons/ui/toolbar-button-inactive-3x.png?v=2.3.1332') 78 / 9px stretch;
+  background:linear-gradient(180deg,#E0B266 0%,#C89A4F 100%);
+  background-clip:padding-box;
+  border-radius:8px;
+  color:#20170D;
+}
+.bt-chisel:active,
+.bt-chisel[data-pressed='true']{
+  border-image-source:url('/icons/ui/toolbar-button-pressed-3x.png?v=2.3.1332');
+  transform:translateY(1px);
+}
+/* Danger/brass keep their CSS face while pressed (the pressed shell
+   has fill, which would paint navy over the face — pin source only). */
+.bt-chisel--danger:active,.bt-chisel--brass:active,
+.bt-chisel--danger[data-pressed='true'],.bt-chisel--brass[data-pressed='true']{
+  border-image-slice:78;
+}
+.bt-chisel:focus-visible{
+  outline:2px solid var(--ui-brass-highlight);
+  outline-offset:-3px;
 }
 /* v2.3.1289: snap-state chevron (owner request) — sits in the ACTIVE
    destination's top-right corner.
@@ -419,6 +457,12 @@
   .bt-more-tile,.bt-more-card{transition:none}
   .bt-more-tile:active,.bt-more-card:active{transform:none}
 }
+/* v2.3.1326 (owner correction of v2.3.1325: "shrink the icons again
+   and add the labels back — I just wanted buttons bigger"): icon back
+   to the classic 30px with the text label restored beneath it; the
+   BUTTONS stay big — the shelf keeps the v2.3.1325 slot-derived height
+   (~87px at 390w vs the old 72), so each button is a taller, easier
+   touch target with the familiar icon+label inside. */
 .bt-dashboard-nav-icon{
   width:30px;
   height:30px;
@@ -450,13 +494,6 @@
 .bt-dashboard-nav-button[aria-pressed='true'] .bt-dashboard-nav-icon,
 .bt-dashboard-nav-button[aria-pressed='true'] .bt-dashboard-nav-label{
   opacity:1;
-}
-@media (max-height:720px){
-  .bt-dashboard-toolbar-frame{padding-top:3px;padding-bottom:5px}
-  .bt-dashboard-toolbar-ribbon{padding:3px}
-  .bt-dashboard-nav-icon,
-  .bt-dashboard-nav-icon img{width:26px!important;height:26px!important}
-  .bt-dashboard-nav-label{font-size:10px;line-height:11px}
 }
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%;overflow:hidden;background:#10181D;touch-action:none;overscroll-behavior:none;position:fixed;width:100%;top:0;left:0}

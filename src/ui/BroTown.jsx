@@ -232,7 +232,7 @@ const {
 
 import { _regenerator, _regeneratorDefine2, _asyncToGenerator, _typeof, _slicedToArray, _toConsumableArray, _objectSpread, _defineProperty, _toPropertyKey, _toPrimitive, ownKeys, _arrayWithHoles, _iterableToArrayLimit, _unsupportedIterableToArray, _arrayLikeToArray, _nonIterableRest, _arrayWithoutHoles, _iterableToArray, _nonIterableSpread, _createForOfIteratorHelper, asyncGeneratorStep } from '@/lib/babelHelpers.js';
 import { SpriteHpBar } from './SpriteHpBar.jsx'; /* v2.3.1273: owner's HP-bar art (desktop HUD row) */
-import { BAR_H, DASH_OVERLAP } from './mobile/sheet/sheetGeometry.js'; /* v2.3.1283; v2.3.1290 bar-height canvas */
+import { barHeight, navSlotSize, DASH_OVERLAP } from './mobile/sheet/sheetGeometry.js'; /* v2.3.1283; v2.3.1290 bar-height canvas; v2.3.1325 slot-derived bar */
 
 /* Expose all exports as globals for the pre-transpiled code.
    The original index.html had everything in one scope; this bridges the gap. */
@@ -1836,7 +1836,16 @@ export var BroTown = function BroTown(_ref0) {
          then floats over the canvas like an overlay instead of
          shifting the scene up and exposing a black bar at the bottom. */
       if (vv && window.innerHeight - vhFull > 100) return;
-      var vh = Math.max(120, Math.round(vhFull - BAR_H) + DASH_OVERLAP); /* v2.3.1290: bar is the resting band */
+      /* v2.3.1325: the bar height is slot-derived (owner: slot-sized
+         toolbar icons), so it varies with the viewport.  Stamp the two
+         CSS vars here — the ONE place that already owns viewport
+         changes — so every game.css consumer (joystick zones, world-HUD
+         anchors) and this canvas math share the same rounded value.
+         game.css only carries boot fallbacks. */
+      var bar = barHeight(vw, vhFull);
+      document.documentElement.style.setProperty('--nav-slot', navSlotSize(vw, vhFull) + 'px');
+      document.documentElement.style.setProperty('--dash-h', bar + 'px');
+      var vh = Math.max(120, Math.round(vhFull - bar) + DASH_OVERLAP); /* v2.3.1290: bar is the resting band */
       /* v2.3.1283: short-circuit when nothing changed — the
          ResizeObserver below re-fires during layout churn (e.g. the
          sheet's height animation), and assigning canvas.width even to

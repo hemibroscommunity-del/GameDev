@@ -18,7 +18,7 @@ import { getShirt, onShirtChange } from '../../rendering/traits/shirtCatalog.js'
 import { getShirtColor, shirtColorTarget, onShirtColorChange } from '../../rendering/traits/shirtColorCatalog.js';
 import { getEquip } from '../../rendering/gearCatalog.js';
 import { dashboardPanelBus } from './dashboardPanelBus.js';
-import { BAR_H, compactDashHeight, expandedSheetHeight, drillSheetHeight } from './sheet/sheetGeometry.js'; /* v2.3.1283; v2.3.1290 three-state; v2.3.1311e drill height */
+import { barHeight, compactDashHeight, expandedSheetHeight, drillSheetHeight } from './sheet/sheetGeometry.js'; /* v2.3.1283; v2.3.1290 three-state; v2.3.1311e drill height; v2.3.1325 slot-derived bar */
 import { portraitStore } from './sheet/portraitStore.js';          /* v2.3.1294 */
 import { hasUnseenLevelUps } from './sheet/skillsModel.js';        /* v2.3.1296 */
 import { getFriendRows } from './sheet/friendsModel.js';           /* v2.3.1323 */
@@ -337,18 +337,16 @@ const IconButton = ({ glyph, src: srcProp, label, active, onClick, onSwipe, node
       data-pressed={pressed ? 'true' : 'false'}
       className="bt-dashboard-nav-button"
     >
+      {/* v2.3.1326 (owner correction of v2.3.1325): classic 30px icon +
+          text label restored — only the BUTTON grew (the shelf keeps the
+          slot-derived height, so the tiles are taller touch targets). */}
       <span className={'bt-dashboard-nav-icon' + (pulse ? ' bt-nav-pulse' : '')} key={pulse || 0}>
         {node ? node : (
           <img
             src={src}
             alt={label}
             draggable={false}
-            style={{
-              width: 32,
-              height: 32,
-              objectFit: 'contain',
-              imageRendering: 'auto',
-            }}
+            style={{ objectFit: 'contain', imageRendering: 'auto' }}
           />
         )}
       </span>
@@ -473,7 +471,9 @@ const PANELS = {
 const DESTINATIONS = [
   { id: 'bag',    label: 'Bag',     icon: '/icons/ui/nav-inventory.webp?v=2.3.1224' },
   { id: 'hero',   label: 'Hero',    icon: '/icons/ui/panel-self.webp?v=2.3.1224' },
-  { id: 'skills', label: 'Skills',  icon: '/icons/ui/panel-skills.webp?v=2.3.1224' },
+  /* v2.3.1331 (owner art drop): dedicated life-skills crest replaces
+     the borrowed panel-skills art (magenta knocked out, 256px webp). */
+  { id: 'skills', label: 'Skills',  icon: '/icons/ui/nav-lifeskills.webp?v=2.3.1331' },
   { id: 'social', label: 'Friends', icon: '/icons/ui/nav-friends.webp?v=2.3.1224' },
   { id: 'quests', label: 'Quests',  icon: '/icons/ui/panel-quests.webp?v=2.3.1224' },
   { id: 'more',   label: 'More',    icon: '/icons/ui/nav-more.webp?v=2.3.1224' },
@@ -546,7 +546,7 @@ export const BottomDashboard = () => {
       /* v2.3.1311e: drill panels (stack depth > 1) use the taller sheet. */
       const px = mode === 'expanded' ? (dashboardPanelBus.state.stack.length > 1 ? snapPxRef.current.drill : snapPxRef.current.expanded)
         : mode === 'compact' ? snapPxRef.current.compact
-        : BAR_H;
+        : barHeight(window.innerWidth, window.innerHeight);
       document.documentElement.style.setProperty('--sheet-h', px + 'px');
     };
     stamp();
@@ -564,7 +564,7 @@ export const BottomDashboard = () => {
      compact joins expanded as React state (it's an overlay snap now,
      not the resting --dash-h). */
   const [snapPx, setSnapPx] = useState(() => ({
-    compact: compactDashHeight(window.innerWidth),
+    compact: compactDashHeight(window.innerWidth, window.innerHeight),
     expanded: expandedSheetHeight(window.innerWidth, window.innerHeight),
     drill: drillSheetHeight(window.innerWidth, window.innerHeight),
   }));
@@ -574,7 +574,7 @@ export const BottomDashboard = () => {
       const vw = vv ? vv.width : window.innerWidth;
       const vh = vv ? vv.height : window.innerHeight;
       if (vv && window.innerHeight - vh > 100) return; /* keyboard up */
-      setSnapPx({ compact: compactDashHeight(vw), expanded: expandedSheetHeight(vw, vh), drill: drillSheetHeight(vw, vh) });
+      setSnapPx({ compact: compactDashHeight(vw, vh), expanded: expandedSheetHeight(vw, vh), drill: drillSheetHeight(vw, vh) });
     };
     recompute();
     window.addEventListener('resize', recompute);
@@ -747,6 +747,7 @@ export const BottomDashboard = () => {
             {stack.length > 1 && (
               <button
                 onPointerUp={(e) => { e.stopPropagation(); dashboardPanelBus.pop(); }}
+                className="bt-chisel bt-chisel--chip"
                 style={chipStyle}
               >◂</button>
             )}
@@ -776,17 +777,18 @@ export const BottomDashboard = () => {
               toolbar (spec §9: the toolbar stays visible in panel mode;
               its lit item identifies the panel).  v2.3.1307b: the toolbar
               is absolute-pinned to the band bottom now — the marginBottom
-              reserves its 72px so panel content never hides under it. */}
-          <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', marginBottom: 72 }}>
+              reserves its height so panel content never hides under it
+              (v2.3.1325: var — the shelf is slot-derived now). */}
+          <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', marginBottom: 'var(--dash-h, 87px)' }}>
             {Active && <Active />}
           </div>
         </>
       ) : mode === 'compact' ? (
         /* v2.3.1288 (PR B): all six destinations render their compact
            view from the COMPACT_VIEWS registry.  v2.3.1307b: wrapped so
-           the compact view also reserves the pinned toolbar's 72px. */
+           the compact view also reserves the pinned toolbar's shelf. */
         (() => { const CompactView = COMPACT_VIEWS[rootId] || BagCompact; return (
-          <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', marginBottom: 72 }}>
+          <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', marginBottom: 'var(--dash-h, 87px)' }}>
             <CompactView />
           </div>
         ); })()
@@ -882,8 +884,11 @@ export const BottomDashboard = () => {
                ribbon (and the buttons' rendered height) stay EXACTLY as
                before.  A fixed +4 inside the fixed shelf would instead
                squeeze the buttons to their 44px floor and clip the labels
-               (caught on the rig). */
-            height: 72,
+               (caught on the rig).
+               v2.3.1325 (owner: slot-sized icons): the shelf is the
+               slot-derived bar height — BroTown stamps --dash-h on
+               viewport changes; sheetGeometry.barHeight is the source. */
+            height: 'var(--dash-h, 87px)',
             minHeight: 56,
             flex: '0 0 auto',
             display: 'flex',
@@ -907,6 +912,8 @@ export const BottomDashboard = () => {
                   node={d.id === 'hero' && profilePortrait ? (
                     <img src={profilePortrait} alt="Hero" draggable={false}
                       style={{
+                        /* v2.3.1326: back to the classic 30px bust
+                           (owner shrank the icons again). */
                         width: 30, height: 30, objectFit: 'cover',
                         imageRendering: 'pixelated', borderRadius: 8,
                       }} />
@@ -934,17 +941,15 @@ export const BottomDashboard = () => {
   );
 };
 
+/* v2.3.1332: frame via .bt-chisel — layout only here. */
 const chipStyle = {
-  width: 32, height: 32,
+  width: 34, height: 34,
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
-  background: 'transparent',
-  border: `1px solid ${COL.divider}`,
-  borderRadius: 4,
   color: COL.text,
   fontFamily: 'inherit',
-  fontSize: 22,
+  fontSize: 20,
   fontWeight: 700,
   lineHeight: 1,
   cursor: 'pointer',
