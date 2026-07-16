@@ -2929,6 +2929,16 @@ export function awardDefenseXp(rpg, weightedAmount) {
 
 /* Apply Iron Skin to a raw post-block damage number (flat % cut, integers
    in → integers out; identity when the player has 0 Iron Skin points). */
+/* v2.3.1314: Resilience mirror for client-local damage paths (legacy
+   zones) — the server applies the same cut in _applyDamage.  Only hits
+   above 20% of max HP qualify. */
+export function applyResilience(rpg, dmg) {
+  var pts = (rpg && rpg.hpSpec && rpg.hpSpec.resilience) || 0;
+  var maxHp = (rpg && rpg.maxHp) || 100;
+  if (!(pts > 0) || !(dmg > 0.20 * maxHp)) return dmg;
+  return Math.max(1, Math.round(dmg * (1 - Math.min(0.25, pts * 0.0025))));
+}
+
 export function applyIronSkin(rpg, dmg) {
   if (!(dmg > 0)) return dmg;
   var out = Math.round(dmg * (1 - getIronSkinReduction(rpg)));
@@ -2998,16 +3008,21 @@ export const HP_CHANNELS = [
   { key: 'lifeblood',  label: 'Lifeblood',  role: 'killheal', active: true,  perPt: 0.25,
     blurb: 'Every killing blow restores health.',
     derive: (v) => 'heal ' + Math.min(25, v * 0.25).toFixed(1) + '% HP on kill' },
-  { key: 'resilience', label: 'Resilience', role: 'resilience', active: false, perPt: 0,
-    blurb: 'Shrug off the nastiest hits.',
-    derive: (v) => String(v) },
-  /* v2.3.1313: the owner NAMED the 5th Vitality category via the T2
-     icon sheet — Last Stand.  Inactive until the owner defines its
-     effect (and the server adds the key to HP_CHANNEL_KEYS); the
-     v2.3.1312 UI-only '???' placeholder in T2Panel is retired. */
-  { key: 'laststand', label: 'Last Stand', role: 'laststand', active: false, perPt: 0,
-    blurb: 'When death comes knocking, hold the line.',
-    derive: (v) => String(v) },
+  /* v2.3.1314 (owner: 'remove the SOON designations and make those
+     skills active'): Resilience goes live — big-hit taming: hits above
+     20% of max HP reduced 0.25%/pt (cap 25%).  Server-authoritative in
+     _applyDamage; applyResilience mirrors it on client-local paths. */
+  { key: 'resilience', label: 'Resilience', role: 'resilience', active: true, perPt: 0.25,
+    blurb: 'Shrug off the nastiest hits — big hits (>20% max HP) land softer.',
+    derive: (v) => '-' + Math.min(25, v * 0.25).toFixed(1) + '% from big hits' },
+  /* v2.3.1313: owner-named 5th Vitality category.  v2.3.1314: LIVE —
+     a killing blow leaves you at 1 HP instead, once per cooldown
+     (120s base, -0.5s/pt, floor 70s).  Server-authoritative
+     (_applyDamage); T2Panel gates spending on caps.laststand so an
+     old worker can't strip the key on echo. */
+  { key: 'laststand', label: 'Last Stand', role: 'laststand', active: true, perPt: 0.5,
+    blurb: 'A killing blow leaves you at 1 HP instead — once per cooldown.',
+    derive: (v) => 'survive at 1 HP · ' + Math.round(120 - Math.min(50, v * 0.5)) + 's cooldown' },
 ];
 export const ENDURANCE_CHANNELS = [
   { key: 'stamina',      label: 'Deep Lungs',   role: 'maxstam',   active: true,  perPt: 0.5,
@@ -3022,9 +3037,12 @@ export const ENDURANCE_CHANNELS = [
   { key: 'evasion',      label: 'Evasion',      role: 'dodge',     active: true,  perPt: 0.1,
     blurb: 'Dodge more hits — shares the 30% cap with Agility.',
     derive: (v) => '+' + (v * 0.1).toFixed(1) + '% dodge (30% cap)' },
-  { key: 'reflexes',     label: 'Reflexes',     role: 'reflexes',  active: false, perPt: 0,
+  /* v2.3.1314: Reflexes goes live — +1ms dodge-roll invulnerability
+     per point (cap +100ms on the 250ms base window).  Purely client-
+     mechanical: the roll window IS the i-frame (BroTown _dodgeMs). */
+  { key: 'reflexes',     label: 'Reflexes',     role: 'reflexes',  active: true, perPt: 1,
     blurb: 'Longer dodge-roll invulnerability.',
-    derive: (v) => String(v) },
+    derive: (v) => '+' + Math.min(100, v) + 'ms roll window' },
 ];
 
 /* Fresh grid scaffolding for a new character. */

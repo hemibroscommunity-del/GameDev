@@ -1066,6 +1066,10 @@ export function processGameEvent(type, payload, S, deps) {
               /* v2.3.1137: Second Wind — the worker healed us right after
                  this hit (defense channel, 10s cooldown); green popup.
                  The authoritative hp arrives via player_state as usual. */
+              /* v2.3.1314: Last Stand — the killing blow left us at 1 HP. */
+              if (payload.lastStand) {
+                pushDmgPopup(S, S.player.x, S.player.y - 52, 'LAST STAND!', '#D8AA58', { ts: Date.now() + 3 });
+              }
               if (payload.secondWind > 0) {
                 pushDmgPopup(S, S.player.x + 16, S.player.y - 38, '+' + payload.secondWind + ' Second Wind', '#4ade80', { ts: Date.now() + 2 });
               }
@@ -1420,6 +1424,10 @@ export function processGameEvent(type, payload, S, deps) {
               pushDmgPopup(S, S.player.x, S.player.y - 20, '-' + Math.ceil(dmgTaken), payload.blocked ? '#607D8B' : '#ff5e6c');
               /* v2.3.1137: Second Wind fires in PvP too (see server
                  _applyDamage); mirror the green heal popup here. */
+              /* v2.3.1314: Last Stand — the killing blow left us at 1 HP. */
+              if (payload.lastStand) {
+                pushDmgPopup(S, S.player.x, S.player.y - 52, 'LAST STAND!', '#D8AA58', { ts: Date.now() + 3 });
+              }
               if (payload.secondWind > 0) {
                 pushDmgPopup(S, S.player.x + 16, S.player.y - 38, '+' + payload.secondWind + ' Second Wind', '#4ade80', { ts: Date.now() + 2 });
               }

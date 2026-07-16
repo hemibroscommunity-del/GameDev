@@ -17,7 +17,7 @@ import {
   WEAPON_TYPES, WELL_RESTED_XP_MULT, ZONES, applyStatus, awardWeaponXp, calcWeaponDmg,
   discoverCollision, getActiveWeapon, getCollisionDeathFX, getElementDeathFX, recalcDerived,
   getEvasionPts, resolveCollision, rollPassiveDodge, spawnWeaponHitFX, staffAoeMult,
-  monsterBodyY, monsterBodyOffsetY, trainDefense, applyIronSkin,
+  monsterBodyY, monsterBodyOffsetY, trainDefense, applyIronSkin, applyResilience, /* v2.3.1314 */
 } from '@/data/index.js';
 import { baseArchetypeOf, isRemnantSkull, maybeTransformMonster, xpMultFor } from '@/data/monsterVariants.js';
 import { getEquip } from '@/rendering/gearCatalog.js'; /* v2.3.1108: armoured-hit clang on projectile hits */
@@ -774,7 +774,7 @@ export function updateSlimeProjectiles(S) {
             }
             /* v2.3.1113: Iron Skin cut + quarter-rate defense XP on the
                taken hit.  v2.3.1140: ±5 gate live via proj.srcLevel. */
-            var _projDmg = applyIronSkin(_R6P, proj.rawDmg);
+            var _projDmg = applyResilience(_R6P, applyIronSkin(_R6P, proj.rawDmg)); /* v2.3.1314 */
             var _defUpPj = trainDefense(_R6P, 0, _projDmg, proj.srcLevel || null, false);
             if (_defUpPj) pushDmgPopup(S, P.x, P.y - 34, '🛡️ Defense Lv ' + _defUpPj.level, '#60a5fa', { ts: Date.now() + 2 });
             _R6P.hp -= _projDmg;

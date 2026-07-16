@@ -105,6 +105,30 @@ export const combatMethods = {
     }
     if (typeof ps.maxHp !== 'number') ps.maxHp = 100;
     if (typeof ps.hp !== 'number') ps.hp = ps.maxHp;
+    // v2.3.1314: RESILIENCE (HP grid) goes live — big-hit taming only:
+    // hits above 20% of max HP are reduced 0.25%/pt (cap 25%), same
+    // scale as Iron Skin but spike-selective so the two channels stay
+    // distinct.  ps.hpSpec is server-clamped via _sanitizeGridSpec.
+    const _resil = (ps.hpSpec && ps.hpSpec.resilience) || 0;
+    if (_resil > 0 && dmgTaken > 0.20 * ps.maxHp) {
+      dmgTaken = Math.max(1, Math.round(dmgTaken * (1 - Math.min(0.25, _resil * 0.0025))));
+    }
+    // v2.3.1314: LAST STAND (HP grid, owner-named 5th category) — a
+    // killing blow leaves the player at exactly 1 HP instead, once per
+    // internal cooldown (120s, -0.5s/pt, floor 70s).  Fires BEFORE the
+    // hp write so the death flow never starts; Second Wind below may
+    // then top up from 1 (they stack — both are defensive celebrations).
+    // _lastStandReadyAt is in-memory only (rule 11): a deploy re-arms it.
+    let lastStand = false;
+    const _ls = (ps.hpSpec && ps.hpSpec.laststand) || 0;
+    if (_ls > 0 && dmgTaken >= ps.hp) {
+      const _nowLs = Date.now();
+      if (!ps._lastStandReadyAt || _nowLs >= ps._lastStandReadyAt) {
+        dmgTaken = Math.max(0, ps.hp - 1);
+        ps._lastStandReadyAt = _nowLs + (120000 - Math.min(50000, _ls * 500));
+        lastStand = true;
+      }
+    }
     ps.hp = Math.max(0, ps.hp - dmgTaken);
     ps.lastDamageAt = Date.now();
     // v2.3.1137: SECOND WIND — after SURVIVING an unblocked hit, heal
@@ -130,7 +154,7 @@ export const combatMethods = {
         }
       }
     }
-    return { dmgTaken, dodged: false, secondWind };
+    return { dmgTaken, dodged: false, secondWind, lastStand };
   },
 
   // ═══ Melee lifesteal (per docs/specs/lifesteal-server.md) ═══
@@ -916,6 +940,8 @@ export const combatMethods = {
           // v2.3.1137: Second Wind fires in PvP too (channel identity);
           // undefined when 0 so the field stays off the wire.
           secondWind: dmgResult.secondWind || undefined,
+          // v2.3.1314: Last Stand fires in PvP too.
+          lastStand: dmgResult.lastStand || undefined,
           // v2.3.1306: authoritative death flag.  The target client's
           // "would die" prediction ran stale local hp against dmgTaken
           // and fed the attacker's pvpKills ledger via pvp_confirmed —

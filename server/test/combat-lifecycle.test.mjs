@@ -646,5 +646,35 @@ for (const m of meadowMonsters) m._wanderPausedUntil = Date.now() + 600000;
     psA.rangedWeapon === null && psA.activeSlot === 'melee', psA.activeSlot);
 }
 
+// ── v2.3.1314: Resilience + Last Stand (HP grid goes fully live) ──
+{
+  // Resilience: hits ABOVE 20% of maxHp reduced 0.25%/pt (cap 25%);
+  // small hits untouched.
+  const ps = { hp: 200, maxHp: 200, agility: 0, z: 'meadow', hpSpec: { resilience: 100 } };
+  const big = room._applyDamage(ps, 100, false); // 100 > 40 (20% of 200) -> -25% => 75
+  check('resilience: big hit reduced 25% at 100 pts', big.dmgTaken === 75 && ps.hp === 125, big);
+  const small = room._applyDamage(ps, 30, false); // 30 <= 40 -> untouched
+  check('resilience: small hit untouched', small.dmgTaken === 30 && ps.hp === 95, small);
+
+  // Last Stand: a killing blow leaves exactly 1 HP, once per cooldown.
+  const ps2 = { hp: 50, maxHp: 100, agility: 0, z: 'meadow', hpSpec: { laststand: 100 } };
+  const saved = room._applyDamage(ps2, 500, false);
+  check('last stand: lethal hit leaves 1 HP', saved.lastStand === true && ps2.hp === 1, { hp: ps2.hp, saved });
+  check('last stand: cooldown armed (70s floor at 100 pts)',
+    ps2._lastStandReadyAt > Date.now() + 60000 && ps2._lastStandReadyAt <= Date.now() + 70000, ps2._lastStandReadyAt - Date.now());
+  const dead = room._applyDamage(ps2, 500, false);
+  check('last stand: second lethal inside cooldown kills', !dead.lastStand && ps2.hp === 0, { hp: ps2.hp, dead });
+
+  // Zero points = no save.
+  const ps3 = { hp: 10, maxHp: 100, agility: 0, z: 'meadow', hpSpec: {} };
+  const plain = room._applyDamage(ps3, 500, false);
+  check('last stand: no points, no save', !plain.lastStand && ps3.hp === 0, plain);
+
+  // Server sanitize accepts the laststand key (v2.3.1314 HP_CHANNEL_KEYS).
+  const psS = { vitality: 100 };
+  const spec = room._sanitizeHpSpec({ vigor: 10, laststand: 20 }, psS);
+  check('sanitize: laststand key stored', spec && spec.laststand === 20, spec);
+}
+
 console.log(failures === 0 ? '\nALL TESTS PASSED' : `\n${failures} TEST(S) FAILED`);
 process.exit(failures === 0 ? 0 : 1);

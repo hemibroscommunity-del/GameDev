@@ -146,10 +146,15 @@ export const T2Panel = () => {
   let channels = gridTab
     ? (gridsLive ? gridTab.channels : gridTab.channels.map((ch) => ({ ...ch, active: false })))
     : isDef ? DEFENSE_CHANNELS : (WEAPON_CHANNELS[activeCat] || []);
-  /* v2.3.1313: the v2.3.1311 UI-only '???' slot is retired — the 5th
-     Vitality category is real data now (HP_CHANNELS 'Last Stand',
-     owner-named via the T2 icon sheet, inactive until it gets an
-     effect). */
+  /* v2.3.1314: Last Stand spending is gated on caps.laststand — an
+     old worker's _sanitizeGridSpec doesn't know the key and would
+     strip the spent points on the next echo (the caps.gems lesson,
+     TRAPS #9).  Against such a worker the row shows SOON; resilience/
+     reflexes keys were always server-stored, so their activation
+     needs no gate. */
+  if (!(S._serverCaps && S._serverCaps.laststand) && S.channel) {
+    channels = channels.map((ch) => ch.key === 'laststand' ? { ...ch, active: false } : ch);
+  }
   const channelCap = t2uniform
     ? (gridTab ? GRID_CHANNEL_CAP : isDef ? DEFENSE_CHANNEL_CAP : WEAPON_CHANNEL_CAP)
     : (gridTab || isDef ? LEGACY_GRID_CAP : LEGACY_WEAPON_CAP);
@@ -381,7 +386,7 @@ export const T2Panel = () => {
                 `${tab}-${channelKey}` by construction. */}
             <img src={`/icons/ui/t2/${activeCat}-${ch.key}.webp?v=2.3.1313`} alt=""
               draggable={false}
-              style={{ width: 26, height: 26, objectFit: 'contain', flex: 'none' }}
+              style={{ width: 33, height: 33, objectFit: 'contain', flex: 'none' }} /* v2.3.1314: owner, +25% */
               onError={(e) => { e.currentTarget.style.display = 'none'; }} />
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, minWidth: 0 }}>
