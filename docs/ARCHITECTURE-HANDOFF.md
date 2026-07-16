@@ -81,6 +81,8 @@ extended.
    | `liveflags` | `{name: bool\|num}` live-ops flags (kill switches, xp_mult) | liveops.md |
    | `motd` | `{text, ts}` sticky announcement, delivered on join | liveops.md |
    | `metrics:<yyyymmdd>` | daily economy snapshot (ring of 30) | liveops.md |
+   | `friends:<pid>` | `{list, reqIn, reqOut}` mutual-friend graph + pending requests | friends.md |
+   | `friend_msg:<pid>` | offline DM backlog, capped 50, cleared on join delivery | friends.md |
 
    Naming convention going forward: **lowercase_snake prefixes**
    (`duelEscrow:` predates the rule; don't imitate it). Register every

@@ -4213,6 +4213,10 @@ export var BroTown = function BroTown(_ref0) {
                 name: S.myName,
                 color: S.myColor,
                 avatar: S.myAvatar,
+                /* v2.3.1324: away flag — 2min without input.  Peers get
+                   it via the player_update Object.assign for free; the
+                   server never interprets it (friends.md). */
+                aw: Date.now() - (S._lastInputAt || Date.now()) > 120000 ? 1 : 0,
                 dir: P.dir,
                 bt: S.bodyTorso,
                 bl: S.bodyLegs,
@@ -5325,6 +5329,17 @@ export var BroTown = function BroTown(_ref0) {
       } catch (_e3) {}
       try { chatBubbleBus.setOpen(true); } catch (_e4) {}
     };
+    /* v2.3.1324 (Friends server round): AWAY presence — stamp the last
+       real user input; the 2s track relay below carries aw:1 after two
+       idle minutes, and peers read it straight off S.others (the
+       player_update handler Object.assigns every track field).  Window-
+       level capture listeners so joystick, toolbar, and panel touches
+       all count as activity. */
+    stateRef.current._lastInputAt = Date.now();
+    var _stampInput = function () { stateRef.current._lastInputAt = Date.now(); };
+    window.addEventListener('touchstart', _stampInput, { passive: true, capture: true });
+    window.addEventListener('pointerdown', _stampInput, { passive: true, capture: true });
+    window.addEventListener('keydown', _stampInput, { passive: true, capture: true });
     /* v2.3.1323 (Friends round): the dash Friends views open a friend's
        profile via this bridge — same InspectPlayerPanel the world-tap
        flow uses, built from the live S.others peer entry.  Returns true
@@ -5788,6 +5803,9 @@ export var BroTown = function BroTown(_ref0) {
       });
     }
     return function () {
+      window.removeEventListener('touchstart', _stampInput, { capture: true });
+      window.removeEventListener('pointerdown', _stampInput, { capture: true });
+      window.removeEventListener('keydown', _stampInput, { capture: true });
       lBase.removeEventListener('touchstart', lS);
       window.removeEventListener('touchmove', gM);
       window.removeEventListener('touchmove', lM);

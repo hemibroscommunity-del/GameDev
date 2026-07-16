@@ -563,7 +563,17 @@ export function InspectPlayerPanel(props) {
           try {
             localStorage.setItem('bt_friends', JSON.stringify(_updated));
           } catch (e) {}
-          pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'Added friend!', '#59BF91');
+          /* v2.3.1324: with a friends-capable server this ALSO sends a
+             real friend_request — accepted requests become mutual
+             server friendships (requests + DMs).  The local write above
+             stays as the legacy-path fallback (rule 19). */
+          try {
+            var _S9 = stateRef.current;
+            if (_S9 && _S9._serverCaps && _S9._serverCaps.friends && _S9.channel) {
+              _S9.channel.send({ type: 'broadcast', event: 'friend_request', payload: { target: inspectPlayer.id, name: inspectPlayer.name } });
+            }
+          } catch (e) {}
+          pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'Friend request sent!', '#59BF91');
           BT_AUDIO.beep(600, 0.06, 0.08, 'sine');
         }
       }

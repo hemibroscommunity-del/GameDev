@@ -141,7 +141,8 @@ export const FriendsCompact = () => {
             <span style={{
               width: 30, height: 30, borderRadius: '50%',
               background: COL.raised,
-              border: `2px solid ${r.online ? '#55B98A' : '#8D9B98'}`,
+              /* v2.3.1324: amber = away (idle >2min, aw track flag). */
+              border: `2px solid ${r.online ? (r.away ? '#DFAE4E' : '#55B98A') : '#8D9B98'}`,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               overflow: 'hidden',
               fontSize: 13, fontWeight: 800, color: COL.text2,
@@ -160,11 +161,11 @@ export const FriendsCompact = () => {
               }}>{r.name}</span>
               <span style={{
                 display: 'block', fontSize: 11, lineHeight: 1.2,
-                color: r.online ? '#55B98A' : COL.text2,
+                color: r.online ? (r.away ? '#DFAE4E' : '#55B98A') : COL.text2,
                 whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
               }}>
                 {r.online
-                  ? `Online${r.zoneName ? ' · ' + r.zoneName : ''}`
+                  ? `${r.away ? 'Away' : 'Online'}${r.zoneName ? ' · ' + r.zoneName : ''}`
                   : `Offline${seenLine ? ' · ' + seenLine.replace('Last seen ', '') : ''}`}
               </span>
             </span>

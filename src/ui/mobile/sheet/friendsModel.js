@@ -62,9 +62,32 @@ export function lastSeenText(ts) {
 
 /* The one row builder.  Sort (spec): 1. online in MY zone, 2. other
    online, 3. offline seen within 7 days (most recent first),
-   4. the rest alphabetically. */
+   4. the rest alphabetically.
+   v2.3.1324: with caps.friends the SERVER's mutual list (friendsSync)
+   is unioned in — server entries carry srv:true so Remove routes to
+   friend_remove instead of the localStorage legacy list.  `away` rides
+   the peer's `aw` track flag (2min idle, client-stamped). */
+import { friendsSrv } from './friendsSync.js';
+
 export function getFriendRows(S) {
-  const friends = getFriends(S);
+  const legacy = getFriends(S);
+  const srvList = (S && S._serverCaps && S._serverCaps.friends) ? friendsSrv.serverList() : null;
+  const byId = Object.create(null);
+  for (const f of legacy) {
+    const fid = f.id || f;
+    if (fid) byId[fid] = { fid, name: f.name || String(fid), addedAt: f.addedAt || null, srv: false };
+  }
+  if (srvList) {
+    for (const fid of Object.keys(srvList)) {
+      byId[fid] = {
+        fid,
+        name: (srvList[fid] && srvList[fid].name) || (byId[fid] && byId[fid].name) || String(fid),
+        addedAt: (srvList[fid] && srvList[fid].since) || (byId[fid] && byId[fid].addedAt) || null,
+        srv: true,
+      };
+    }
+  }
+  const friends = Object.keys(byId).map(k => byId[k]);
   const others = (S && S.others) || {};
   const myZone = (S && (S.currentZone || S.zone || (S.player && S.player.zone))) || 'town';
   const now = Date.now();
@@ -72,7 +95,7 @@ export function getFriendRows(S) {
   let dirty = false;
 
   const rows = friends.map(f => {
-    const fid = f.id || f;
+    const fid = f.fid;
     const p = others[fid];
     if (p) {
       liveAt[fid] = now;
@@ -83,6 +106,10 @@ export function getFriendRows(S) {
       fid,
       name: f.name || String(fid),
       online,
+      /* v2.3.1324: idle >2min rides the `aw` track flag — an away
+         friend is still connected (amber, not gray). */
+      away: !!(online && p && p.aw),
+      srv: !!f.srv,
       sameZone: !!(p && (p.zone || 'town') === myZone),
       level: p ? (p.rpgLv || null) : null,
       zoneName: p ? (ZONES[p.zone]?.name || 'Nearby') : null,

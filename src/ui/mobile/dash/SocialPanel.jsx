@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { COL, panelStyle, getState } from './common.js';
 import { getFriendRows, lastSeenText, getBlocked, removeFriend as modelRemove, blockPlayer as modelBlock } from '../sheet/friendsModel.js';
 import { friendPortrait } from '../sheet/friendPortraits.js';
+import { friendsSrv } from '../sheet/friendsSync.js';            /* v2.3.1324 */
 
 /* v2.3.1232: Lantern Slate pass.  v2.3.1297 (round-5): Blocked behind
    overflow, inline action strip, honest empty/reconnect states.
@@ -75,18 +76,33 @@ export const SocialPanel = () => {
   const [showBlocked, setShowBlocked] = useState(false);
   const [showAdd, setShowAdd] = useState(false);
   const [openRow, setOpenRow] = useState(null);
+  const [tab, setTab] = useState('friends');       /* v2.3.1324 */
+  const [openThread, setOpenThreadRow] = useState(null);
+  const [draft, setDraft] = useState('');
   const [query, setQuery] = useState('');
   const [shared, setShared] = useState('');
   useEffect(() => {
     const id = setInterval(() => force(v => v + 1), 1000);
     return () => clearInterval(id);
   }, []);
+  useEffect(() => friendsSrv.subscribe(() => force(v => v + 1)), []);
+  /* Thread-open bookkeeping (unread suppression) — cleared on unmount. */
+  useEffect(() => () => friendsSrv.setOpenThread(null), []);
 
   const S = getState();
   /* Fail-OPEN: only an explicit failure state gates the list. */
   const connected = !(S && ['disconnected', 'frozen', 'rejected', 'superseded'].includes(S._realtimeStatus));
   const blocked = getBlocked(S);
   const partyCaps = !!(S && S._serverCaps && S._serverCaps.party);
+  /* v2.3.1324: server friends — requests, DMs, mutual removes. */
+  const capsFriends = !!(S && S._serverCaps && S._serverCaps.friends);
+  const doc = capsFriends ? friendsSrv.doc() : null;
+  const reqIn = doc ? Object.keys(doc.reqIn) : [];
+  const reqOut = doc ? Object.keys(doc.reqOut) : [];
+
+  const sendFriend = (event, payload) => {
+    try { if (S && S.channel) S.channel.send({ type: 'broadcast', event, payload }); } catch (_e) {}
+  };
 
   const allRows = getFriendRows(S);
   const onlineCount = allRows.filter(r => r.online).length;
@@ -94,6 +110,22 @@ export const SocialPanel = () => {
   const rows = searchable && query.trim()
     ? allRows.filter(r => r.name.toLowerCase().includes(query.trim().toLowerCase()))
     : allRows;
+
+  const toggleThread = (fid) => {
+    const next = openThread === fid ? null : fid;
+    setOpenThreadRow(next);
+    friendsSrv.setOpenThread(next);
+    setDraft('');
+    setOpenRow(null);
+  };
+  const sendDm = (fid) => {
+    const text = draft.trim();
+    if (!text) return;
+    sendFriend('friend_dm', { to: fid, text });
+    /* Optimistic local append (the server never echoes to the sender). */
+    friendsSrv.appendDm(fid, { from: 'me', fromName: 'You', text, ts: Date.now() }, true);
+    setDraft('');
+  };
 
   const openProfile = (r) => {
     try {
@@ -111,7 +143,10 @@ export const SocialPanel = () => {
     } catch (_e) {}
     setOpenRow(null);
   };
-  const removeFriend = (fid) => {
+  const removeFriend = (fid, srv) => {
+    /* v2.3.1324: server friendships remove BOTH edge halves via the
+       server; the legacy localStorage copy is cleared either way. */
+    if (srv && capsFriends) sendFriend('friend_remove', { fid });
     try { modelRemove(S, fid); } catch (_e) {}
     setOpenRow(null);
     force(v => v + 1);
@@ -191,8 +226,90 @@ export const SocialPanel = () => {
         </div>
       )}
 
+      {/* v2.3.1324: Friends / Requests segmented tabs — REAL now that
+          requests are a server system.  Rendered only when the server
+          claims caps.friends (an old worker has no request flow). */}
+      {capsFriends && !showBlocked && (
+        <div style={{
+          display: 'flex', gap: 2, marginBottom: 8,
+          background: COL.well, border: `1px solid ${COL.tileBor}`,
+          borderRadius: 8, padding: 3,
+        }}>
+          {[
+            { id: 'friends', label: `Friends (${allRows.length})` },
+            { id: 'requests', label: `Requests (${reqIn.length})` },
+          ].map(t => (
+            <button key={t.id}
+              onPointerUp={(e) => { e.stopPropagation(); setTab(t.id); setOpenRow(null); }}
+              aria-pressed={tab === t.id}
+              style={{
+                flex: 1, minHeight: 32,
+                background: tab === t.id ? COL.accentFill : 'transparent',
+                border: `1px solid ${tab === t.id ? COL.accent : 'transparent'}`,
+                borderRadius: 6, color: tab === t.id ? COL.text : COL.text2,
+                fontFamily: 'inherit', fontSize: 12, fontWeight: 700,
+                cursor: 'pointer', touchAction: 'manipulation',
+                position: 'relative',
+              }}>
+              {t.label}
+              {t.id === 'requests' && reqIn.length > 0 && tab !== 'requests' && (
+                <span aria-hidden="true" style={{
+                  position: 'absolute', top: 3, right: 6,
+                  width: 7, height: 7, borderRadius: '50%',
+                  background: COL.accent,
+                }} />
+              )}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Requests tab body. */}
+      {capsFriends && !showBlocked && tab === 'requests' && (
+        reqIn.length === 0 && reqOut.length === 0 ? (
+          <Empty line="No requests"
+            sub="Requests you receive — and ones you've sent — show up here." />
+        ) : (
+          <div>
+            {reqIn.map(fid => (
+              <div key={fid} style={{
+                background: COL.wellSoft, border: `1px solid ${COL.tileBor}`,
+                borderRadius: 10, marginBottom: 6, padding: '8px 10px',
+              }}>
+                <div style={{ fontSize: 13.5, fontWeight: 700, color: COL.text, marginBottom: 6 }}>
+                  {(doc.reqIn[fid] && doc.reqIn[fid].name) || fid}
+                  <span style={{ fontWeight: 600, color: COL.text2 }}> wants to be Bros</span>
+                </div>
+                <div style={{ display: 'flex', gap: 6 }}>
+                  <button style={{ ...actionBtn(false), background: COL.accentFill, borderColor: COL.accent }}
+                    onPointerUp={(e) => { e.stopPropagation(); sendFriend('friend_accept', { from: fid }); }}>Accept</button>
+                  <button style={actionBtn(false)}
+                    onPointerUp={(e) => { e.stopPropagation(); sendFriend('friend_decline', { from: fid }); }}>Decline</button>
+                </div>
+              </div>
+            ))}
+            {reqOut.length > 0 && (
+              <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', color: COL.muted, margin: '8px 0 4px' }}>
+                Sent
+              </div>
+            )}
+            {reqOut.map(fid => (
+              <div key={fid} style={{
+                display: 'flex', alignItems: 'center', minHeight: 40,
+                padding: '0 10px', borderRadius: 10, marginBottom: 4,
+                background: COL.wellSoft, border: `1px solid ${COL.tileBor}`,
+                fontSize: 13, color: COL.text2,
+              }}>
+                <span style={{ flex: 1 }}>{(doc.reqOut[fid] && doc.reqOut[fid].name) || fid}</span>
+                <span style={{ fontSize: 11, color: COL.muted }}>Pending</span>
+              </div>
+            ))}
+          </div>
+        )
+      )}
+
       {/* Search — only once the list is big enough to need it. */}
-      {searchable && !showBlocked && (
+      {searchable && !showBlocked && tab === 'friends' && (
         <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
@@ -208,7 +325,7 @@ export const SocialPanel = () => {
 
       {!connected ? (
         <Empty line="Reconnecting…" sub="Friend presence returns when the connection is back." />
-      ) : !showBlocked ? (
+      ) : !showBlocked && (!capsFriends || tab === 'friends') ? (
         rows.length === 0 ? (
           allRows.length === 0 ? (
             <Empty line="No friends yet"
@@ -232,13 +349,14 @@ export const SocialPanel = () => {
               width: '100%',
               minHeight: 54,
             }}>
-              {/* Portrait disc + presence dot (green online / gray
-                  offline — the game has no away signal yet). */}
+              {/* Portrait disc + presence ring: green online, amber
+                  AWAY (v2.3.1324 — idle >2min via the aw track flag),
+                  gray offline. */}
               <span style={{
                 position: 'relative',
                 width: 36, height: 36, borderRadius: '50%',
                 background: COL.raised,
-                border: `2px solid ${r.online ? '#55B98A' : '#8D9B98'}`,
+                border: `2px solid ${r.online ? (r.away ? '#DFAE4E' : '#55B98A') : '#8D9B98'}`,
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 overflow: 'hidden',
                 fontSize: 15, fontWeight: 800, color: COL.text2,
@@ -259,12 +377,21 @@ export const SocialPanel = () => {
                     <span style={{ fontWeight: 600, color: COL.text2 }}>{` · Lv ${r.level}`}</span>
                   )}
                 </span>
-                <span style={{ display: 'block', fontSize: 11.5, color: r.online ? '#55B98A' : COL.text2 }}>
+                <span style={{ display: 'block', fontSize: 11.5, color: r.online ? (r.away ? '#DFAE4E' : '#55B98A') : COL.text2 }}>
                   {r.online
-                    ? `Online${r.zoneName ? ' · ' + r.zoneName : ''}${r.sameZone ? ' · with you' : ''}`
+                    ? `${r.away ? 'Away' : 'Online'}${r.zoneName ? ' · ' + r.zoneName : ''}${r.sameZone ? ' · with you' : ''}`
                     : `Offline${seenLine ? ' · ' + seenLine : ''}`}
                 </span>
               </span>
+              {/* v2.3.1324: per-thread unread count. */}
+              {capsFriends && friendsSrv.unreadOf(r.fid) > 0 && (
+                <span aria-hidden="true" style={{
+                  flex: 'none',
+                  background: COL.accent, color: '#20170D',
+                  fontSize: 10, fontWeight: 900,
+                  borderRadius: 7, padding: '1px 5px', lineHeight: 1.4,
+                }}>{friendsSrv.unreadOf(r.fid)}</span>
+              )}
               {/* Row overflow menu toggle — replaces the ▾ chevron that
                   read as another panel-size control (v2.3.1323). */}
               <button
@@ -286,14 +413,79 @@ export const SocialPanel = () => {
                   <button style={actionBtn(false)}
                     onPointerUp={(e) => { e.stopPropagation(); openProfile(r); }}>Profile</button>
                 )}
+                {/* v2.3.1324: DMs need a MUTUAL (server) friendship —
+                    legacy one-way follows can't message. */}
+                {capsFriends && r.srv && (
+                  <button style={actionBtn(false)}
+                    onPointerUp={(e) => { e.stopPropagation(); toggleThread(r.fid); }}>Message</button>
+                )}
                 {partyCaps && r.online && (
                   <button style={{ ...actionBtn(false), color: '#D8A94D', borderColor: 'rgba(216,169,77,.5)' }}
                     onPointerUp={(e) => { e.stopPropagation(); invite(r.fid); }}>Invite</button>
                 )}
                 <button style={actionBtn(false)}
-                  onPointerUp={(e) => { e.stopPropagation(); removeFriend(r.fid); }}>Remove</button>
+                  onPointerUp={(e) => { e.stopPropagation(); removeFriend(r.fid, r.srv); }}>Remove</button>
                 <button style={actionBtn(true)}
                   onPointerUp={(e) => { e.stopPropagation(); blockPlayer(r.fid, r.name); }}>Block</button>
+              </div>
+            )}
+            {/* v2.3.1324: inline DM thread — local archive (the server
+                backlog is delivered-once), newest at the bottom. */}
+            {openThread === r.fid && (
+              <div style={{ padding: '0 0 8px' }}>
+                <div style={{
+                  maxHeight: 150, overflowY: 'auto', touchAction: 'pan-y',
+                  WebkitOverflowScrolling: 'touch',
+                  background: COL.well, border: `1px solid ${COL.tileBor}`,
+                  borderRadius: 8, padding: '6px 8px', marginBottom: 6,
+                }}>
+                  {friendsSrv.thread(r.fid).length === 0 && (
+                    <div style={{ fontSize: 11.5, color: COL.muted, textAlign: 'center', padding: '8px 0' }}>
+                      Say hi — messages reach {r.name} even while they're offline.
+                    </div>
+                  )}
+                  {friendsSrv.thread(r.fid).map((m, mi) => (
+                    <div key={mi} style={{
+                      display: 'flex',
+                      justifyContent: m.mine ? 'flex-end' : 'flex-start',
+                      marginBottom: 3,
+                    }}>
+                      <span style={{
+                        maxWidth: '80%',
+                        background: m.mine ? COL.accentFill : COL.wellSoft,
+                        border: `1px solid ${m.mine ? 'rgba(216,170,88,.4)' : COL.tileBor}`,
+                        borderRadius: 8, padding: '4px 8px',
+                        fontSize: 12.5, color: COL.text, lineHeight: 1.3,
+                        wordBreak: 'break-word',
+                      }}>{m.text}</span>
+                    </div>
+                  ))}
+                </div>
+                <div style={{ display: 'flex', gap: 6 }}>
+                  <input
+                    value={draft}
+                    onChange={(e) => setDraft(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') sendDm(r.fid); }}
+                    placeholder="Message…"
+                    maxLength={280}
+                    style={{
+                      flex: 1, minWidth: 0, minHeight: 36, padding: '0 10px',
+                      background: COL.well, color: COL.text,
+                      border: `1px solid ${COL.tileBor}`, borderRadius: 8,
+                      fontFamily: 'inherit', fontSize: 13,
+                    }} />
+                  <button
+                    onPointerUp={(e) => { e.stopPropagation(); sendDm(r.fid); }}
+                    disabled={!draft.trim()}
+                    style={{
+                      flex: 'none', minHeight: 36, padding: '0 14px',
+                      background: draft.trim() ? COL.accentFill : 'transparent',
+                      border: `1px solid ${draft.trim() ? COL.accent : COL.border}`,
+                      borderRadius: 8, color: draft.trim() ? COL.text : COL.muted,
+                      fontFamily: 'inherit', fontSize: 12, fontWeight: 700,
+                      cursor: 'pointer', touchAction: 'manipulation',
+                    }}>Send</button>
+                </div>
               </div>
             )}
           </div>

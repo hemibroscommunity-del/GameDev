@@ -22,6 +22,7 @@ import { BAR_H, compactDashHeight, expandedSheetHeight, drillSheetHeight } from 
 import { portraitStore } from './sheet/portraitStore.js';          /* v2.3.1294 */
 import { hasUnseenLevelUps } from './sheet/skillsModel.js';        /* v2.3.1296 */
 import { getFriendRows } from './sheet/friendsModel.js';           /* v2.3.1323 */
+import { friendsSrv } from './sheet/friendsSync.js';               /* v2.3.1324 */
 import { readyQuestCount } from './sheet/questModel.js';           /* v2.3.1298 */
 import { sheetTransition } from './sheet/motion.js';            /* v2.3.1283 */
 import { bagUnseen, bagEntryKey } from './sheet/bagUnseenModel.js'; /* v2.3.1312 */
@@ -834,13 +835,16 @@ export const BottomDashboard = () => {
             if (!Rb) return 0;
             return COMBAT_SKILLS.reduce((n, s) => n + buildSkillUnspent(Rb, s.key), 0);
           })(),
-          /* v2.3.1323 (Friends spec): a small GREEN dot when at least
-             one friend is online — never the total friend count.  Uses
-             the shared presence rows (S.others + 20s grace), which
-             also keeps last-seen stamps fresh while panels are shut. */
+          /* v2.3.1323 (Friends spec): green dot when a friend is online.
+             v2.3.1324: a NUMBER (count badge) for actionable social
+             state — pending requests + unread DMs — which always
+             outranks the dot.  Never the total friend count. */
           social: (() => {
-            try { return getFriendRows(Sb).some(r => r.online) ? 'online' : false; }
-            catch (_e) { return false; }
+            try {
+              const actionable = friendsSrv.requestsIn().length + friendsSrv.unreadTotal();
+              if (actionable > 0) return actionable;
+              return getFriendRows(Sb).some(r => r.online) ? 'online' : false;
+            } catch (_e) { return false; }
           })(),
         };
         return (
