@@ -292,6 +292,16 @@
   border-radius:9px;
   box-shadow:none;
 }
+/* v2.3.1331 (owner asset drop: "I really like how these buttons look
+   — use this schema for the toolbar buttons"): the buttons render the
+   owner's chiseled SVG frame shells (deep outer cut, metal ridge,
+   groove, inner bevel, navy face) as their FULL background —
+   inactive / selected (double gold ridge) / pressed (darker inset).
+   Per the asset README: NO extra CSS border or bevel around the art
+   (it would flatten the chisel), icon + label stay HTML children.
+   This supersedes the v2.3.1241 hand-painted gradient bevel and the
+   v2.3.1293 brass inset ring — the gold ridge in the selected frame
+   IS the active affordance now. */
 .bt-dashboard-nav-button{
   flex:1 1 0;
   min-width:0;
@@ -304,67 +314,25 @@
   gap:1px;
   padding:2px 0;
   color:var(--ui-dashboard-text);
-  /* v2.3.1241: edge-parity — ONE device-pixel contour, NO external drop
-     shadow, NO second outer contour.  The restrained internal bevel is
-     painted as two physical-pixel horizontal lines INSIDE the fill
-     gradient (top highlight, bottom shade) so it never touches the side
-     edges and never overlaps the contour — replaces the old stacked
-     box-shadow bevel that fattened the edges on Retina. */
-  background:
-    linear-gradient(180deg,
-      rgba(255,255,255,.045) 0,
-      rgba(255,255,255,.045) var(--ui-hairline),
-      transparent var(--ui-hairline),
-      transparent calc(100% - var(--ui-hairline)),
-      rgba(0,0,0,.28) calc(100% - var(--ui-hairline)),
-      rgba(0,0,0,.28) 100%),
-    var(--ui-dashboard-button);
-  border:var(--ui-hairline) solid #3E5059;
-  border-radius:7px;
+  background:url('/icons/ui/toolbar-button-inactive.svg?v=2.3.1331') center / 100% 100% no-repeat;
+  border:none;
+  border-radius:12px;
   box-shadow:none;
   font-family:'Source Sans 3',sans-serif;
   cursor:pointer;
   touch-action:none;
   -webkit-tap-highlight-color:transparent;
-  transition:
-    transform 90ms cubic-bezier(.2,.8,.2,1),
-    border-color 90ms cubic-bezier(.2,.8,.2,1);
-}
-.bt-dashboard-nav-button[data-pressed='true']{
-  transform:scale(.97);
-  /* v2.3.1241: edge-parity — reverse ONLY the internal bevel (shade on
-     top, highlight on bottom); fill + contour unchanged, keep .97 scale. */
-  background:
-    linear-gradient(180deg,
-      rgba(0,0,0,.28) 0,
-      rgba(0,0,0,.28) var(--ui-hairline),
-      transparent var(--ui-hairline),
-      transparent calc(100% - var(--ui-hairline)),
-      rgba(255,255,255,.045) calc(100% - var(--ui-hairline)),
-      rgba(255,255,255,.045) 100%),
-    var(--ui-dashboard-button);
+  transition:transform 90ms cubic-bezier(.2,.8,.2,1);
 }
 .bt-dashboard-nav-button[aria-pressed='true']{
   color:var(--ui-text);
-  /* v2.3.1241: edge-parity — active = darker fill + a single physical-
-     pixel brass contour; keep the resting bevel; NO filled-gold bg, NO
-     second contour. */
-  background:
-    linear-gradient(180deg,
-      rgba(255,255,255,.045) 0,
-      rgba(255,255,255,.045) var(--ui-hairline),
-      transparent var(--ui-hairline),
-      transparent calc(100% - var(--ui-hairline)),
-      rgba(0,0,0,.28) calc(100% - var(--ui-hairline)),
-      rgba(0,0,0,.28) 100%),
-    var(--ui-dashboard-button-active);
-  border-color:rgba(234,198,117,.82);
-  /* v2.3.1293 (ChatGPT round-3 §5): the active state must not lean on
-     the tiny chevron — a real 2px brass inset edge carries it (this
-     amends the v2.3.1241 'box-shadow:none'; the inset ring is a
-     contour, not the banned outer glow). */
-  box-shadow:inset 0 0 0 2px var(--ui-brass);
-  border-radius:10px;
+  background-image:url('/icons/ui/toolbar-button-selected.svg?v=2.3.1331');
+}
+/* Pressed AFTER selected: the momentary touch feedback wins while the
+   finger is down, even on the active destination. */
+.bt-dashboard-nav-button[data-pressed='true']{
+  transform:scale(.97) translateY(1px);
+  background-image:url('/icons/ui/toolbar-button-pressed.svg?v=2.3.1331');
 }
 .bt-dashboard-nav-button:focus-visible{
   outline:2px solid var(--ui-brass-highlight);

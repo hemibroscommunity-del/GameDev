@@ -471,7 +471,9 @@ const PANELS = {
 const DESTINATIONS = [
   { id: 'bag',    label: 'Bag',     icon: '/icons/ui/nav-inventory.webp?v=2.3.1224' },
   { id: 'hero',   label: 'Hero',    icon: '/icons/ui/panel-self.webp?v=2.3.1224' },
-  { id: 'skills', label: 'Skills',  icon: '/icons/ui/panel-skills.webp?v=2.3.1224' },
+  /* v2.3.1331 (owner art drop): dedicated life-skills crest replaces
+     the borrowed panel-skills art (magenta knocked out, 256px webp). */
+  { id: 'skills', label: 'Skills',  icon: '/icons/ui/nav-lifeskills.webp?v=2.3.1331' },
   { id: 'social', label: 'Friends', icon: '/icons/ui/nav-friends.webp?v=2.3.1224' },
   { id: 'quests', label: 'Quests',  icon: '/icons/ui/panel-quests.webp?v=2.3.1224' },
   { id: 'more',   label: 'More',    icon: '/icons/ui/nav-more.webp?v=2.3.1224' },

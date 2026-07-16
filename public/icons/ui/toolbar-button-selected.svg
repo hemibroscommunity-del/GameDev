@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" fill="none">
+  <defs>
+    <linearGradient id="face" x1="22" y1="10" x2="98" y2="114" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#243942"/>
+      <stop offset="0.5" stop-color="#1D3139"/>
+      <stop offset="1" stop-color="#16272F"/>
+    </linearGradient>
+    <linearGradient id="gold" x1="18" y1="3" x2="104" y2="117" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F4DEA0"/>
+      <stop offset="0.28" stop-color="#D7B85E"/>
+      <stop offset="0.68" stop-color="#98712D"/>
+      <stop offset="1" stop-color="#4C3413"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Identical silhouette to the inactive state. -->
+  <rect x="1.5" y="1.5" width="117" height="117" rx="15" fill="#07151B"/>
+
+  <!-- Thin selected gold ridge. -->
+  <rect x="4" y="4" width="112" height="112" rx="12.5" fill="url(#gold)"/>
+
+  <!-- Hairline engraving between the two gold edges. -->
+  <rect x="6.7" y="6.7" width="106.6" height="106.6" rx="10.5" fill="#17170F"/>
+  <rect x="8.2" y="8.2" width="103.6" height="103.6" rx="9.6" stroke="#B18B3B" stroke-width="1.25"/>
+
+  <!-- Navy face. -->
+  <rect x="10" y="10" width="100" height="100" rx="8.5" fill="url(#face)"/>
+
+  <!-- Gold catches the light primarily on top and left. -->
+  <path d="M14.5 5.5H104.5C110 5.5 114.5 10 114.5 15.5" stroke="#FFF1B9" stroke-width="1" stroke-linecap="round" opacity="0.82"/>
+  <path d="M5.5 15.5V104.5C5.5 110 10 114.5 15.5 114.5" stroke="#E3C56E" stroke-width="1" stroke-linecap="round" opacity="0.6"/>
+
+  <!-- Recessed lower edge. -->
+  <path d="M114.5 15.5V104.5C114.5 110 110 114.5 104.5 114.5H15.5" stroke="#241707" stroke-width="1.65" stroke-linecap="round" opacity="0.94"/>
+
+  <!-- Subtle interior outline. -->
+  <rect x="11.8" y="11.8" width="96.4" height="96.4" rx="7.1" stroke="#6D5523" stroke-width="0.95" opacity="0.8"/>
+
+  <!-- Tiny hand-cut corner facets. -->
+  <path d="M6.7 16.5C6.7 11.1 11.1 6.7 16.5 6.7L12.2 10.5C10.7 12 9.9 14.2 10 17L6.7 16.5Z" fill="#FFF4C3" opacity="0.32"/>
+  <path d="M113.3 103.5C113.3 108.9 108.9 113.3 103.5 113.3L107.8 109.5C109.3 108 110.1 105.8 110 103L113.3 103.5Z" fill="#231305" opacity="0.76"/>
+</svg>
