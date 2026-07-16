@@ -210,3 +210,31 @@ Once the worker mirrors the formulas, the following client shims become dead wei
 2. Any future server-echo paths that double-apply armor HP (none today, but watch as new events get added).
 
 The T1 / T2 derivative computations in `gameSystems.js` (`getArmorHp`, `calcCritChance`, `calcSpecialDmg`, `rollPassiveDodge`) should stay — they're shared between SP, single-player dungeons, and the display layer. Only the *MP-echo override* is the shim.
+
+## v2.3.1314 — the HP/Stamina grids go fully live (owner: "remove the SOON designations")
+
+Three previously-inert channels gained real effects (owner-approved designs):
+
+- **Resilience** (HP grid): hits above 20% of max HP are reduced
+  0.25%/pt, cap 25% — Iron Skin's scale but spike-selective, so the two
+  channels stay distinct.  Server-authoritative in `_applyDamage`;
+  `applyResilience` (gameSystems.js) mirrors it on the client-local
+  legacy damage paths.
+- **Last Stand** (HP grid, 5th category — owner-named via the T2 icon
+  sheet): a killing blow leaves the player at exactly 1 HP instead,
+  once per internal cooldown (120s base, −0.5s/pt, floor 70s).  Fires
+  in `_applyDamage` before the hp write; stacks with Second Wind.  The
+  cooldown stamp is in-memory (rule 11).  NEW server surface: the
+  `laststand` key joined `HP_CHANNEL_KEYS` and the join caps advertise
+  `laststand: true` — the client gates spending on that flag (an old
+  worker would strip the key on echo; the caps.gems lesson).  The
+  survival flag rides `monster_attack` and `pvp_hit` payloads for the
+  client's LAST STAND! popup.
+- **Reflexes** (Stamina grid): +1ms dodge-roll invulnerability per
+  point, cap +100ms on the 250ms base window.  Purely client-mechanical
+  (the roll window IS the i-frame — BroTown `_dodgeMs`); the server's
+  PvP dodge check already honors the client-declared roll state.
+
+Tests: combat-lifecycle suite +7 assertions (resilience big/small hit
+math, last-stand save + cooldown + no-points cases, sanitize accepts
+the new key).
