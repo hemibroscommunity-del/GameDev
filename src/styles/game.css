@@ -422,11 +422,12 @@
    raised chisel buttons pop against it (asset README).  9-sliced like
    the buttons; content sits inside the lip. */
 .bt-well{
-  /* 6px lip (not 8): the tracks sit in height-budgeted sheets — the
-     v2.3.1327 measure math absorbs small drifts, but SE-class heights
-     clip past ~4px of extra track chrome (rig-caught at 390x664). */
-  border:6px solid transparent;
-  border-image:url('/icons/ui/recessed-well-3x.png?v=2.3.1334') 78 fill / 6px stretch;
+  /* v2.3.1336 (owner screenshot): 3px lip — at 6px the dark recessed
+     band around the tracks stretched wide enough to read as "a big
+     black border" around the buttons.  3px keeps the carved-in edge
+     as a thin contour; the cavity still fills behind the chips. */
+  border:3px solid transparent;
+  border-image:url('/icons/ui/recessed-well-3x.png?v=2.3.1334') 78 fill / 3px stretch;
   background:none;
   box-shadow:none;
 }
