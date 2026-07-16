@@ -118,6 +118,7 @@ import { httpAuthMethods } from './httpauth.js';
 // v2.3.1185: party roster (handoff item D) -- invite/accept handshake +
 // cross-zone vitals HUD; memory-only, no combat/XP changes -- see party.js.
 import { partyMethods } from './party.js';
+import { friendsMethods } from './friends.js';
 // v2.3.1191 (P4 decomposition): the combat/damage core -- see combat.js.
 import { combatMethods } from './combat.js';
 // v2.3.1192: server amulet forge (handoff item I follow-up) -- smelt/
@@ -306,6 +307,12 @@ export const PRIVILEGED_EVENTS = new Set([
   // rosters; forging party_invited is popup-spam surface.
   'party_state', 'party_invited', 'party_error',
   'party_chat', // v2.3.1212: server-relayed party-only chat (party.js)
+  // v2.3.1323: friends system emissions (friends.js) -- the graph sync,
+  // request/accept notifications, error channel, and DMs (live +
+  // join-time backlog) are all server-authored; a forged friend_sync
+  // could paint a fake roster and a forged friend_dm a fake message.
+  'friend_sync', 'friend_request_in', 'friend_accepted', 'friend_error',
+  'friend_dm', 'friend_dm_backlog',
   // Combat resolution
   'monster_attack', 'monster_hit', 'monster_kill', 'pvp_hit',
   // v2.3.1147: server-emitted since the mummy->skeleton transform moved
@@ -2374,6 +2381,26 @@ export class GameRoom {
         if (session.id) this._handlePartyChat(session, msg.payload || msg);
         break;
 
+      // v2.3.1323: friends system (friends.js) -- request/accept/decline/
+      // remove handshake (rule 14/15: accepts validated against stored
+      // requests, forged accepts dropped) + friend-gated DMs on the
+      // party_chat shape.  All own validated cases; none rebroadcast.
+      case 'friend_request':
+        if (session.id) await this._handleFriendRequest(session, msg.payload || msg);
+        break;
+      case 'friend_accept':
+        if (session.id) await this._handleFriendAccept(session, msg.payload || msg);
+        break;
+      case 'friend_decline':
+        if (session.id) await this._handleFriendDecline(session, msg.payload || msg);
+        break;
+      case 'friend_remove':
+        if (session.id) await this._handleFriendRemove(session, msg.payload || msg);
+        break;
+      case 'friend_dm':
+        if (session.id) await this._handleFriendDm(session, msg.payload || msg);
+        break;
+
       case 'harden_weapon':
         // v2.3.1131: the §4.6c Blacksmith lottery -- gold cost, odds
         // ladder, temper pity bands, all server-rolled (hardening.js).
@@ -2718,3 +2745,5 @@ Object.assign(GameRoom.prototype, partyMethods);
 Object.assign(GameRoom.prototype, combatMethods);
 // v2.3.1192: server amulet forge (handoff item I follow-up) -- see amulet.js.
 Object.assign(GameRoom.prototype, amuletMethods);
+// v2.3.1323: mutual friendships + requests + DMs -- see friends.js.
+Object.assign(GameRoom.prototype, friendsMethods);

@@ -19,6 +19,7 @@ import { BT_API_BASE } from '@/networking/index.js';
 import { pushHudPopup } from '@/ui/XpFlyOverlay.jsx';
 import { enqueuePeerDamage, peerDmgKey, distributeKillXpToBuild, applyMeleeLifesteal, addBuildUse, pushDmgPopup } from '@/game/combatHelpers.js';
 import { handleChatEvent, handleEmoteEvent, handlePartyChatEvent } from '@/game/chat.js';
+import { friendsSrv } from '@/ui/mobile/sheet/friendsSync.js'; /* v2.3.1324 */
 import { _objectSpread, _slicedToArray, _toConsumableArray } from '@/lib/babelHelpers.js';
 
 /* v2.3.1107: angle -> 8-way compass, same SECTORS convention as
@@ -143,6 +144,53 @@ export function processGameEvent(type, payload, S, deps) {
               /* v2.3.1212: server-validated party-only chat (item D
                  follow-up). Body in chat.js beside the room-chat path. */
               handlePartyChatEvent(payload, S, { setChatLog: setChatLog, setUnreadChats: setUnreadChats });
+              break;
+            }
+          /* v2.3.1324: friends system (server/src/friends.js).  The doc
+             sync is the single truth for list/requests; DMs append to
+             the local thread archive (the server backlog is delivered-
+             once).  A one-time migration graduates the legacy local
+             bt_friends follows into real requests. */
+          case 'friend_sync':
+            {
+              friendsSrv.setDoc(payload);
+              try {
+                if (S._serverCaps && S._serverCaps.friends && S.channel
+                    && !localStorage.getItem('bt_friendsMigrated')) {
+                  var _legacy = JSON.parse(localStorage.getItem('bt_friends') || '[]');
+                  for (var _li = 0; _li < _legacy.length && _li < 25; _li++) {
+                    var _lf = _legacy[_li];
+                    var _lid = (_lf && _lf.id) || _lf;
+                    if (!_lid || (payload.list && payload.list[_lid]) || (payload.reqOut && payload.reqOut[_lid])) continue;
+                    S.channel.send({ type: 'broadcast', event: 'friend_request', payload: { target: _lid, name: (_lf && _lf.name) || 'Bro' } });
+                  }
+                  localStorage.setItem('bt_friendsMigrated', '1');
+                }
+              } catch (_e) {}
+              break;
+            }
+          case 'friend_request_in':
+          case 'friend_accepted':
+            /* Display state rides the friend_sync that accompanies
+               every mutation; these are notification hooks (badge
+               refresh happens via the store's emit on that sync). */
+            break;
+          case 'friend_dm':
+            {
+              if (payload && payload.from) friendsSrv.appendDm(payload.from, payload, false);
+              break;
+            }
+          case 'friend_dm_backlog':
+            {
+              var _msgs = (payload && payload.messages) || [];
+              for (var _mi = 0; _mi < _msgs.length; _mi++) {
+                if (_msgs[_mi] && _msgs[_mi].from) friendsSrv.appendDm(_msgs[_mi].from, _msgs[_mi], false);
+              }
+              break;
+            }
+          case 'friend_error':
+            {
+              friendsSrv.setError(payload || null);
               break;
             }
           case 'gamble_result':

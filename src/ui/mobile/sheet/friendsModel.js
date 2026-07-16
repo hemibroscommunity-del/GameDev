@@ -23,6 +23,114 @@ const read = (key) => {
   return null;
 };
 
+/* v2.3.1323 (ChatGPT Friends round): PRESENCE moved here so both views
+   share one truth — and fixed while moving: both views read S.players,
+   which is NEVER assigned anywhere in the client (grep: zero writes) —
+   so every friend has shown Offline since the nav system shipped.  The
+   real peer map is S.others (wsClient state_sync/tick), keyed by peer
+   id, carrying name/zone/rpgLv/cosmetics for the WHOLE room at >= 1Hz.
+
+   Grace period (spec: 15-30s): iOS Safari suspends background tabs, so
+   a peer vanishing from S.others for a beat must not flap to Offline.
+   A friend counts online while seen in S.others within GRACE_MS.
+
+   Last-seen: stamped to localStorage 'bt_friendSeen' ({fid: ms}) at
+   most once per 30s per friend while online — survives reloads so an
+   offline row can honestly say "Last seen 2h ago". */
+import { ZONES } from '../../../data/zones.js';
+
+const GRACE_MS = 20000;
+const liveAt = Object.create(null); /* fid -> last S.others sighting (ms) */
+
+const readSeen = () => {
+  try {
+    const v = JSON.parse(localStorage.getItem('bt_friendSeen'));
+    if (v && typeof v === 'object' && !Array.isArray(v)) return v;
+  } catch (_e) {}
+  return {};
+};
+
+export function lastSeenText(ts) {
+  if (!ts) return null;
+  const d = Date.now() - ts;
+  if (d < 90 * 1000) return 'Last seen just now';
+  if (d < 60 * 60 * 1000) return `Last seen ${Math.round(d / 60000)}m ago`;
+  if (d < 24 * 60 * 60 * 1000) return `Last seen ${Math.round(d / 3600000)}h ago`;
+  const days = Math.round(d / 86400000);
+  return days <= 14 ? `Last seen ${days}d ago` : null;
+}
+
+/* The one row builder.  Sort (spec): 1. online in MY zone, 2. other
+   online, 3. offline seen within 7 days (most recent first),
+   4. the rest alphabetically.
+   v2.3.1324: with caps.friends the SERVER's mutual list (friendsSync)
+   is unioned in — server entries carry srv:true so Remove routes to
+   friend_remove instead of the localStorage legacy list.  `away` rides
+   the peer's `aw` track flag (2min idle, client-stamped). */
+import { friendsSrv } from './friendsSync.js';
+
+export function getFriendRows(S) {
+  const legacy = getFriends(S);
+  const srvList = (S && S._serverCaps && S._serverCaps.friends) ? friendsSrv.serverList() : null;
+  const byId = Object.create(null);
+  for (const f of legacy) {
+    const fid = f.id || f;
+    if (fid) byId[fid] = { fid, name: f.name || String(fid), addedAt: f.addedAt || null, srv: false };
+  }
+  if (srvList) {
+    for (const fid of Object.keys(srvList)) {
+      byId[fid] = {
+        fid,
+        name: (srvList[fid] && srvList[fid].name) || (byId[fid] && byId[fid].name) || String(fid),
+        addedAt: (srvList[fid] && srvList[fid].since) || (byId[fid] && byId[fid].addedAt) || null,
+        srv: true,
+      };
+    }
+  }
+  const friends = Object.keys(byId).map(k => byId[k]);
+  const others = (S && S.others) || {};
+  const myZone = (S && (S.currentZone || S.zone || (S.player && S.player.zone))) || 'town';
+  const now = Date.now();
+  const seen = readSeen();
+  let dirty = false;
+
+  const rows = friends.map(f => {
+    const fid = f.fid;
+    const p = others[fid];
+    if (p) {
+      liveAt[fid] = now;
+      if (!seen[fid] || now - seen[fid] > 30000) { seen[fid] = now; dirty = true; }
+    }
+    const online = !!p || (liveAt[fid] != null && now - liveAt[fid] < GRACE_MS);
+    return {
+      fid,
+      name: f.name || String(fid),
+      online,
+      /* v2.3.1324: idle >2min rides the `aw` track flag — an away
+         friend is still connected (amber, not gray). */
+      away: !!(online && p && p.aw),
+      srv: !!f.srv,
+      sameZone: !!(p && (p.zone || 'town') === myZone),
+      level: p ? (p.rpgLv || null) : null,
+      zoneName: p ? (ZONES[p.zone]?.name || 'Nearby') : null,
+      lastSeen: seen[fid] || f.addedAt || null,
+      peer: p || null,
+    };
+  });
+  if (dirty) { try { localStorage.setItem('bt_friendSeen', JSON.stringify(seen)); } catch (_e) {} }
+
+  const RECENT_MS = 7 * 86400000;
+  const rank = (r) => r.online ? (r.sameZone ? 0 : 1)
+    : (r.lastSeen && now - r.lastSeen < RECENT_MS) ? 2 : 3;
+  rows.sort((a, b) => {
+    const ra = rank(a), rb = rank(b);
+    if (ra !== rb) return ra - rb;
+    if (ra === 2) return (b.lastSeen || 0) - (a.lastSeen || 0);
+    return a.name.localeCompare(b.name);
+  });
+  return rows;
+}
+
 export function getFriends(S) {
   return read('bt_friends') || S?.friends || S?._friends || [];
 }

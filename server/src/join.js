@@ -489,6 +489,11 @@ export const joinMethods = {
     // below, so the first snapshot the client renders already
     // includes the credits.
     await this._drainInbox(msg.id, ws);
+    // v2.3.1323: friends -- deliver the friend doc (list/requests) and
+    // any offline DM backlog (friends.js _friendsOnJoin; backlog is
+    // delivered-once, cleared after send).  After the inbox drain so
+    // credit lines land first, before social chatter.
+    await this._friendsOnJoin(msg.id, ws);
     // v2.3.1149: cadence hooks -- daily login reward (per-player
     // lazy settlement) + the weekly jackpot's lazy draw resolution
     // (rule 12: a week that ended in an empty room settles on the
@@ -601,7 +606,7 @@ export const joinMethods = {
       // the echo (the caps.gems lesson, TRAPS #9).  Absent, the legacy
       // client-local Extract path stays (broken settlement, no
       // regression -- echo-stomped as before).
-      caps: { trade: true, questTrack: true, gamble: true, clans: true, arena: true, dungeon: true, sponsor: true, guilds: true, pets: true, harden: true, trade2: true, weaponDrops: true, botfp: true, jackpot: true, hpEndGrids: true, t2uniform: true, httpAuth: true, party: true, amuletForge: true, gems: true, petLoot: true, gemExtract: true, partyChat: true, trade2Weapons: true, laststand: true, ..._liveFlags },
+      caps: { trade: true, questTrack: true, gamble: true, clans: true, arena: true, dungeon: true, sponsor: true, guilds: true, pets: true, harden: true, trade2: true, weaponDrops: true, botfp: true, jackpot: true, hpEndGrids: true, t2uniform: true, httpAuth: true, party: true, amuletForge: true, gems: true, petLoot: true, gemExtract: true, partyChat: true, trade2Weapons: true, laststand: true, friends: true /* v2.3.1323 */, ..._liveFlags },
       // v2.3.1178: this session's private economy-endpoint token.
       // state_sync goes to the joining socket ONLY -- never broadcast.
       httpToken: session.httpToken,
