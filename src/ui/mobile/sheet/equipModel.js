@@ -129,7 +129,11 @@ export function getEquipContribs(R) {
     amulet: am ? { title: 'AMULET', primary: gemOf(am), secondary: null } : null,
   };
 
-  /* Fixed order + fixed labels; '—' for absent (brief: rows never move). */
+  /* Fixed order + fixed labels; '—' for absent (brief: cells never
+     move).  v2.3.1329 (widget grid, 2-col x 3-row): pairs DMG|DPS,
+     BLOCK|HP, GEM|STAM.  The feedback's SPD cell has no equipment
+     source in this game's data — STAM (the shield's real stamina
+     bonus) takes the sixth cell instead. */
   const D = '—';
   const totals = [
     { k: 'DMG',   v: dmgText || D },
@@ -137,6 +141,7 @@ export function getEquipContribs(R) {
     { k: 'BLOCK', v: ss ? '+' + fmt1(ss.blockBonus) + '%' : D },
     { k: 'HP',    v: armorHp ? '+' + armorHp : D },
     { k: 'GEM',   v: am ? '+' + fmt1(am.value) + (am.unit || '') : D },
+    { k: 'STAM',  v: ss ? '+' + ss.staminaBonus : D },
   ];
   return { cards, totals };
 }

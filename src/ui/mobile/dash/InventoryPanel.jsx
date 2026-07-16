@@ -187,24 +187,27 @@ let _lastFilter = 'all';
    the active tab survives leaving the destination, same as the filter. */
 let _lastBagTab = 'items';
 
-/* v2.3.1328: monochrome stat glyphs for the EQUIPPED TOTAL rows —
-   simple interface indicators, not painted item icons (brief §Visual
-   hierarchy).  Stroke currentColor at the muted tone. */
-const StatGlyph = ({ k }) => {
-  const paths = {
-    DMG:   'M2 10 L9 3 M9 3 L9 6 M9 3 L6 3 M3.5 8.5 L2 10 M4 6.5 L5.5 8',      /* sword */
-    DPS:   'M6 1 L7 4.5 L10.5 5.5 L7.5 7 L8.5 10.5 L6 8 L3.5 10.5 L4.5 7 L1.5 5.5 L5 4.5 Z', /* burst */
-    BLOCK: 'M6 1.2 L10 2.8 V6 C10 8.4 8.4 10 6 10.8 C3.6 10 2 8.4 2 6 V2.8 Z', /* shield */
-    HP:    'M6 10 C2.4 7.4 1.4 5 2.6 3.4 C3.6 2 5.4 2.4 6 3.8 C6.6 2.4 8.4 2 9.4 3.4 C10.6 5 9.6 7.4 6 10 Z', /* heart */
-    GEM:   'M3.4 2 H8.6 L10.5 4.6 L6 10 L1.5 4.6 Z M1.5 4.6 H10.5 M6 10 L4.2 4.6 M6 10 L7.8 4.6', /* gem */
-  };
-  return (
-    <svg viewBox="0 0 12 12" width="11" height="11" aria-hidden="true" style={{ flex: 'none', color: COL.muted }}>
-      <path d={paths[k] || paths.GEM} fill="none" stroke="currentColor"
-        strokeWidth="1.1" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
+/* v2.3.1328: stat glyphs for the EQUIPPED TOTAL cells.
+   v2.3.1329b (owner: "use icons that already exist"): the inline SVG
+   line-drawings are replaced by the game's own hero stat icon set
+   (icons/ui/hero — the same art the Hero panel uses) + the gem
+   currency icon, so the widget grid speaks the game's established
+   icon language. */
+const STAT_ICON = {
+  DMG:   '/icons/ui/hero/damage.webp?v=2.3.1323',
+  DPS:   '/icons/ui/hero/dps.webp?v=2.3.1323',
+  BLOCK: '/icons/ui/hero/defense.webp?v=2.3.1323',
+  HP:    '/icons/ui/hero/hp.webp?v=2.3.1323',
+  GEM:   '/icons/ui/cur-gem.webp?v=2.3.1224',
+  STAM:  '/icons/ui/hero/stamina.webp?v=2.3.1323',
 };
+const StatGlyph = ({ k, size }) => (
+  <img src={STAT_ICON[k] || STAT_ICON.GEM} alt="" aria-hidden="true" draggable={false}
+    style={{
+      width: size || 14, height: size || 14, objectFit: 'contain',
+      flex: 'none', userSelect: 'none', pointerEvents: 'none',
+    }} />
+);
 
 export const InventoryPanel = () => {
   const [, force] = useState(0);
@@ -234,11 +237,12 @@ export const InventoryPanel = () => {
     const measure = () => {
       const el = eqBoxRef.current;
       if (!el || !el.clientHeight) return;
-      /* Budget: row padding 4+4 + 2 grid gaps of 6 = 20 vertical.
+      /* Budget: row padding 4+4 + 2 grid gaps of 6 + the widget
+         pane's 2px border (its grid rows match the card rows, so its
+         border-box is the row's tallest child) = 22 vertical.
          Floor 26 fits an SE-class box (~90px); below it the safety
-         scroller takes over.  The cards are art + label only, so a
-         26px row stays readable. */
-      const t = Math.floor((el.clientHeight - 20) / 3);
+         scroller takes over. */
+      const t = Math.floor((el.clientHeight - 22) / 3);
       const clamped = Math.max(26, Math.min(78, t));
       setEqCard(prev => (Math.abs(prev - clamped) > 1 ? clamped : prev));
     };
@@ -360,9 +364,10 @@ export const InventoryPanel = () => {
         <div ref={eqBoxRef} style={{ position: 'relative', flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
           <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', touchAction: 'pan-y', WebkitOverflowScrolling: 'touch' }}>
             <div style={{ display: 'flex', gap: 8, padding: '4px 2px', minWidth: 0 }}>
-              {/* Equipment cards, fixed order Weapon/Shield/Chest/Legs/Cape/Amulet. */}
+              {/* Equipment cards, fixed order Weapon/Shield/Chest/Legs/Cape/Amulet.
+                  v2.3.1329: 64 -> 60% — the widget grid gets the width. */}
               <div style={{
-                flex: '1 1 64%', minWidth: 0,
+                flex: '1 1 60%', minWidth: 0,
                 display: 'grid',
                 gridTemplateColumns: '1fr 1fr',
                 gridAutoRows: `${eqCard}px`,
@@ -420,9 +425,9 @@ export const InventoryPanel = () => {
                       {art && (
                         <img src={art} alt="" aria-hidden="true" draggable={false}
                           style={{
-                            /* 32 cap: at 40 the slot labels truncated
-                               ("WEA…") — the name outranks art size. */
-                            width: Math.min(eqCard - 12, 32), height: Math.min(eqCard - 12, 32),
+                            /* 28 cap: WEAPON must never truncate at the
+                               60% column — the name outranks art size. */
+                            width: Math.min(eqCard - 12, 28), height: Math.min(eqCard - 12, 28),
                             flex: 'none', objectFit: 'contain',
                             imageRendering: 'pixelated',
                             opacity: sl.ghost ? 0.28 : (sl.iconSrc ? 1 : 0.95),
@@ -430,6 +435,10 @@ export const InventoryPanel = () => {
                             userSelect: 'none', pointerEvents: 'none',
                           }} />
                       )}
+                      {/* v2.3.1329b (owner: "not enough space — revert
+                          the equipped item part"): cards stay QUIET —
+                          art + slot label only.  Per-item stats live in
+                          the display window on selection. */}
                       <span style={{
                         flex: 1, minWidth: 0,
                         fontSize: 10, fontWeight: 700, letterSpacing: '.03em',
@@ -454,30 +463,29 @@ export const InventoryPanel = () => {
               <div
                 onPointerUp={selCard || selSlot ? (e) => { e.stopPropagation(); setEqSel(null); } : undefined}
                 style={{
-                  flex: '1 1 36%', minWidth: 0, maxWidth: '38%',
+                  /* v2.3.1329 (feedback): 36 -> 40% — the widget grid's
+                     big values get the width. */
+                  flex: '1 1 40%', minWidth: 0, maxWidth: '42%',
                   alignSelf: 'stretch',
+                  position: 'relative',
                   background: COL.well,
                   border: `1px solid ${selSlot ? 'rgba(216,168,95,.45)' : COL.tileBor}`,
                   boxShadow: 'inset 0 2px 4px rgba(0,0,0,.3)',
                   borderRadius: 10,
-                  /* compact viewports: the pane's MIN content height is
-                     what overflows first — tighter padding + line
-                     heights below keep 5 rows inside the shortest
-                     sheets. */
-                  padding: compactCard ? '3px 7px' : '6px 9px',
+                  padding: selSlot ? (compactCard ? '3px 7px' : '6px 9px') : '0 6px',
                   display: 'flex', flexDirection: 'column',
                   cursor: selSlot ? 'pointer' : 'default',
                 }}>
-                <div style={{ display: 'flex', alignItems: 'baseline', gap: 4, paddingBottom: 2, flex: 'none' }}>
-                  <span style={{
-                    flex: 1, minWidth: 0,
-                    fontSize: 9, fontWeight: 800, letterSpacing: '.08em',
-                    color: COL.text2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-                  }}>{selSlot ? ((selCard && selCard.title) || selSlot.label.toUpperCase()) : 'EQUIPPED TOTAL'}</span>
-                  <span style={{ fontSize: 10, fontWeight: 700, color: COL.muted, fontVariantNumeric: 'tabular-nums', flex: 'none' }}>
-                    {selSlot ? '×' : `${wornCount}/6`}
-                  </span>
-                </div>
+                {selSlot && (
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 4, paddingBottom: 2, flex: 'none' }}>
+                    <span style={{
+                      flex: 1, minWidth: 0,
+                      fontSize: 9, fontWeight: 800, letterSpacing: '.08em',
+                      color: COL.text2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                    }}>{(selCard && selCard.title) || selSlot.label.toUpperCase()}</span>
+                    <span style={{ fontSize: 10, fontWeight: 700, color: COL.muted, flex: 'none' }}>×</span>
+                  </div>
+                )}
                 {selSlot ? (
                   /* Item view: art + this item's contribution rows. */
                   <>
@@ -516,23 +524,56 @@ export const InventoryPanel = () => {
                     )}
                   </>
                 ) : (
-                  contribs.totals.map((row, i) => (
-                    <div key={row.k} style={{
-                      flex: 1, minHeight: 0,
-                      display: 'flex', alignItems: 'center', gap: 5,
-                      borderTop: i === 0 ? 'none' : `1px solid ${COL.tileBor}`,
+                  /* v2.3.1329 (feedback): iOS-widget grid — 2 cols x 3
+                     rows (DMG|DPS, BLOCK|HP, GEM|STAM), row heights
+                     matched to the equipment rows so the two sides
+                     share one rhythm.  Cells: small glyph+label line
+                     over a BIG value; hairline dividers only (no
+                     borders/gold — cells must not look tappable).
+                     The x/6 count floats in the top-right corner. */
+                  <>
+                    <span aria-hidden="true" style={{
+                      position: 'absolute', top: 3, right: 7,
+                      fontSize: 9, fontWeight: 700, color: COL.muted,
+                      fontVariantNumeric: 'tabular-nums', pointerEvents: 'none',
+                    }}>{wornCount}/6</span>
+                    <div style={{
+                      flex: 'none',
+                      display: 'grid',
+                      gridTemplateColumns: '1fr 1fr',
+                      gridTemplateRows: `${eqCard}px ${eqCard}px ${eqCard}px`,
+                      gap: '6px 0',
                     }}>
-                      <StatGlyph k={row.k} />
-                      <span style={{ fontSize: compactCard ? 9 : 10, fontWeight: 700, letterSpacing: '.05em', color: COL.muted, flex: 'none' }}>{row.k}</span>
-                      <span style={{
-                        flex: 1, minWidth: 0, textAlign: 'right',
-                        fontSize: compactCard ? 12 : 18, lineHeight: 1.05, fontWeight: 800,
-                        color: row.v === '—' ? COL.muted : COL.text,
-                        fontVariantNumeric: 'tabular-nums',
-                        whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-                      }}>{row.v}</span>
+                      {contribs.totals.map((row, i) => (
+                        <div key={row.k} style={{
+                          minWidth: 0, minHeight: 0,
+                          display: 'flex', flexDirection: 'column',
+                          alignItems: 'center', justifyContent: 'center', gap: compactCard ? 0 : 2,
+                          borderLeft: i % 2 === 1 ? `1px solid ${COL.tileBor}` : 'none',
+                          borderTop: i >= 2 ? `1px solid ${COL.tileBor}` : 'none',
+                        }}>
+                          {/* v2.3.1329b (owner): smaller label — the
+                              hero-set icon carries the meaning, the
+                              text is a whisper. */}
+                          <span style={{ display: 'flex', alignItems: 'center', gap: 3, minWidth: 0 }}>
+                            <StatGlyph k={row.k} size={compactCard ? 11 : 14} />
+                            <span style={{
+                              fontSize: compactCard ? 7.5 : 8.5, fontWeight: 600,
+                              letterSpacing: '.04em', color: COL.muted,
+                              whiteSpace: 'nowrap',
+                            }}>{row.k}</span>
+                          </span>
+                          <span style={{
+                            maxWidth: '100%',
+                            fontSize: compactCard ? 13 : 18, lineHeight: 1.05, fontWeight: 800,
+                            color: COL.text, opacity: row.v === '—' ? 0.45 : 1,
+                            fontVariantNumeric: 'tabular-nums',
+                            whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                          }}>{row.v}</span>
+                        </div>
+                      ))}
                     </div>
-                  ))
+                  </>
                 )}
               </div>
             </div>
