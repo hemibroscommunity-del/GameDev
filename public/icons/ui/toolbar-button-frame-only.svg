@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" fill="none">
+  <defs>
+    <linearGradient id="ridge" x1="18" y1="3" x2="104" y2="117" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#718692"/>
+      <stop offset="0.34" stop-color="#465E69"/>
+      <stop offset="0.72" stop-color="#20323B"/>
+      <stop offset="1" stop-color="#08151B"/>
+    </linearGradient>
+    <mask id="ringMask" maskUnits="userSpaceOnUse" x="0" y="0" width="120" height="120">
+      <rect width="120" height="120" fill="white"/>
+      <rect x="9.3" y="9.3" width="101.4" height="101.4" rx="9" fill="black"/>
+    </mask>
+  </defs>
+
+  <!-- Standard inactive ring with the entire face punched out to transparency. -->
+  <g mask="url(#ringMask)">
+    <rect x="1.5" y="1.5" width="117" height="117" rx="15" fill="#07151B"/>
+    <rect x="4" y="4" width="112" height="112" rx="12.5" fill="url(#ridge)"/>
+    <rect x="6.8" y="6.8" width="106.4" height="106.4" rx="10.5" fill="#091820"/>
+
+    <path d="M14.5 8H104.5C108.6 8 112 11.4 112 15.5" stroke="#9AA9AF" stroke-width="1.05" stroke-linecap="round" opacity="0.46"/>
+    <path d="M8 15.5V104.5C8 108.6 11.4 112 15.5 112" stroke="#647A84" stroke-width="1" stroke-linecap="round" opacity="0.3"/>
+    <path d="M112 15.5V104.5C112 108.6 108.6 112 104.5 112H15.5" stroke="#020A0E" stroke-width="1.55" stroke-linecap="round" opacity="0.88"/>
+
+    <path d="M6.8 16.5C6.8 11.2 11.2 6.8 16.5 6.8L12.4 10.7C10.7 12.2 9.3 14.1 9.3 17L6.8 16.5Z" fill="#B2BEC2" opacity="0.16"/>
+    <path d="M113.2 103.5C113.2 108.8 108.8 113.2 103.5 113.2L107.6 109.3C109.3 107.8 110.7 105.9 110.7 103L113.2 103.5Z" fill="#02090D" opacity="0.62"/>
+  </g>
+
+  <!-- Interior hairline remains part of the ring; everything inside is transparent. -->
+  <rect x="9.7" y="9.7" width="100.6" height="100.6" rx="8.6" stroke="#2E4853" stroke-width="0.85" opacity="0.6"/>
+</svg>

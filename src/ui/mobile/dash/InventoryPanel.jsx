@@ -325,10 +325,8 @@ export const InventoryPanel = () => {
           equipped row no longer shares the screen with the item grid;
           each view gets the full sheet.  Same segmented-track pattern
           as the Friends panel's tabs. */}
-      <div style={{
+      <div className="bt-well" style={{
         display: 'flex', gap: 2, marginTop: 2, marginBottom: 8, flex: 'none',
-        background: COL.well, border: `1px solid ${COL.tileBor}`,
-        borderRadius: 8, padding: 3,
       }}>
         {[
           { id: 'items', label: 'Items', icon: '/icons/ui/nav-inventory.webp?v=2.3.1224' },
@@ -654,14 +652,9 @@ export const InventoryPanel = () => {
           inventory item info".  The equipped row's N/6 tag (a slot
           gauge the owner asked for in round 8b) stays. */}
       <div style={{ position: 'relative', marginTop: 2, marginBottom: 6, flex: 'none' }}>
-        <div style={{
+        <div className="bt-well" style={{
           minWidth: 0,
           display: 'flex', alignItems: 'stretch', gap: 2,
-          background: COL.well,
-          border: `1px solid ${COL.tileBor}`,
-          boxShadow: 'inset 0 2px 4px rgba(0,0,0,.3)',
-          borderRadius: 8,
-          padding: 3,
         }}>
         {CATEGORIES.map(c => {
           const active = c.id === filter;
