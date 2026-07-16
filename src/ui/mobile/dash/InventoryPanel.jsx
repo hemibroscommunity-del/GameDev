@@ -184,11 +184,17 @@ export const ItemTile = ({ ikey, count, style: styleOverride }) => {
    the destination — module-scoped, session-only.  Switching to Hero
    and back should not silently reset a Weapon filter to All. */
 let _lastFilter = 'all';
+/* v2.3.1326 (owner: "bag [gets] two tabs at top — one for items in
+   inventory and another for equipped items; keeps the views cleaner"):
+   the active tab survives leaving the destination, same as the filter. */
+let _lastBagTab = 'items';
 
 export const InventoryPanel = () => {
   const [, force] = useState(0);
   const [filter, setFilterState] = useState(_lastFilter);
   const setFilter = (f) => { _lastFilter = f; setFilterState(f); };
+  const [bagTab, setBagTabState] = useState(_lastBagTab);
+  const setBagTab = (t) => { _lastBagTab = t; setBagTabState(t); };
 
   useEffect(() => {
     const id = setInterval(() => force(v => v + 1), 400);
@@ -246,40 +252,86 @@ export const InventoryPanel = () => {
        scroll-edge fade follows it there). */
     <div style={{ ...panelStyle, overflow: 'hidden', WebkitMaskImage: 'none', maskImage: 'none', display: 'flex', flexDirection: 'column' }}>
 
-      {/* v2.3.1320 (owner: "understood without using language"): the
-          EQUIP text rail is gone — each WORN item carries a small
-          bag-equipped badge in its top-right corner, and the count tag
-          is numbers only (worn/total). */}
-      {/* v2.3.1285: the SAME six equipped positions as the compact row,
-          same order, same tile component — expanding feels like the
-          panel revealing more, not a different screen. */}
-      <div style={{ position: 'relative', marginTop: 2, marginBottom: 7, flex: 'none' }}>
-        <CornerTag text={`${equipped.filter(sl => !sl.ghost).length}/6`} />
-        <div style={{
-          minWidth: 0,
-          display: 'grid',
-          gridTemplateColumns: `repeat(${COLS}, 1fr)`,
-          gap: 8,
-        }}>
-          {equipped.map(sl => (
-            <SlotTile
-              key={`eq-${sl.slot}`}
-              k={`eq-${sl.slot}`}
-              label={sl.label}
-              iconSrc={sl.iconSrc}
-              ghostSrc={sl.ghost ? GHOST_SRC[sl.slot] : null}
-              occupied={!sl.ghost}
-              quality={sl.quality}
-              wornSrc="/icons/bag/bag-equipped.webp?v=2.3.1320"
-              onTap={sl.pickerSlot ? openPicker(sl.pickerSlot)
-                : sl.slot === 'amulet' && R.amulet
-                  ? (anchor) => itemDetailBus.open({ kind: 'amulet', amulet: R.amulet, anchor })
-                  : undefined}
-            />
-          ))}
-        </div>
+      {/* v2.3.1326 (owner): Items / Equipped segmented tabs — the
+          equipped row no longer shares the screen with the item grid;
+          each view gets the full sheet.  Same segmented-track pattern
+          as the Friends panel's tabs. */}
+      <div style={{
+        display: 'flex', gap: 2, marginTop: 2, marginBottom: 8, flex: 'none',
+        background: COL.well, border: `1px solid ${COL.tileBor}`,
+        borderRadius: 8, padding: 3,
+      }}>
+        {[
+          { id: 'items', label: 'Items', icon: '/icons/ui/nav-inventory.webp?v=2.3.1224' },
+          { id: 'equipped', label: 'Equipped', icon: '/icons/bag/bag-equipped.webp?v=2.3.1320' },
+        ].map(t => (
+          <button key={t.id}
+            onClick={() => setBagTab(t.id)}
+            aria-pressed={bagTab === t.id}
+            style={{
+              flex: 1, minHeight: 34,
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+              background: bagTab === t.id ? COL.accentFill : 'transparent',
+              border: `1px solid ${bagTab === t.id ? COL.accent : 'transparent'}`,
+              borderRadius: 6, color: bagTab === t.id ? COL.text : COL.text2,
+              fontFamily: 'inherit', fontSize: 12, fontWeight: 700,
+              cursor: 'pointer', touchAction: 'manipulation',
+            }}>
+            <img src={t.icon} alt="" draggable={false}
+              style={{ width: 16, height: 16, objectFit: 'contain' }} />
+            {t.label}
+          </button>
+        ))}
       </div>
 
+      {/* v2.3.1320 (owner: "understood without using language"): each
+          WORN item carries a small bag-equipped badge in its top-right
+          corner, and the count tag is numbers only (worn/total). */}
+      {/* v2.3.1326: the equipped positions are their own TAB — with
+          the full sheet to themselves the six slots render 3-wide (two
+          roomy rows) instead of the old cramped 6-wide header row.
+          Same order, same tile component as the compact row. */}
+      {bagTab === 'equipped' && (
+        /* Non-scrolling relative wrapper: the CornerTag half-overlaps
+           the view's top edge (top:-6), which an overflow:auto box
+           would clip — the scroller lives one level down. */
+        <div style={{ position: 'relative', flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+          <CornerTag text={`${equipped.filter(sl => !sl.ghost).length}/6`} />
+          <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', touchAction: 'pan-y', WebkitOverflowScrolling: 'touch' }}>
+          <div style={{
+            minWidth: 0,
+            display: 'grid',
+            /* v2.3.1326b (rig screenshot): fixed 80px tiles centered —
+               1fr tiles (~100px) pushed row two under the toolbar and
+               the 4/6 tag onto the third tile.  80px keeps both rows +
+               the tag fully visible inside the expanded sheet. */
+            gridTemplateColumns: 'repeat(3, 80px)',
+            justifyContent: 'center',
+            gap: 10,
+            padding: '14px 8px 8px',
+          }}>
+            {equipped.map(sl => (
+              <SlotTile
+                key={`eq-${sl.slot}`}
+                k={`eq-${sl.slot}`}
+                label={sl.label}
+                iconSrc={sl.iconSrc}
+                ghostSrc={sl.ghost ? GHOST_SRC[sl.slot] : null}
+                occupied={!sl.ghost}
+                quality={sl.quality}
+                wornSrc="/icons/bag/bag-equipped.webp?v=2.3.1320"
+                onTap={sl.pickerSlot ? openPicker(sl.pickerSlot)
+                  : sl.slot === 'amulet' && R.amulet
+                    ? (anchor) => itemDetailBus.open({ kind: 'amulet', amulet: R.amulet, anchor })
+                    : undefined}
+              />
+            ))}
+          </div>
+          </div>
+        </div>
+      )}
+
+      {bagTab === 'items' && <>
       {/* Filter strip — labeled category chips (glyph + name).
           v2.3.1235: row scrolls horizontally (nowrap + pan-x) so chips
           never squash as categories grow; labels lifted to the 11px type
@@ -479,6 +531,7 @@ export const InventoryPanel = () => {
           </div>
           </div>
         )}
+      </> /* v2.3.1326: end Items tab */}
     </div>
   );
 };

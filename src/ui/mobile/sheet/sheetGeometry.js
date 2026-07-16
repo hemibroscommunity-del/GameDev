@@ -18,11 +18,12 @@
    a sheet opens.  Opening a sheet must not resize the canvas — a
    canvas.width write reallocates the WebGL drawing buffer. */
 
-/* v2.3.1325 (owner: "toolbar icons as big as a compact inventory
-   slot"): the toolbar buttons are now slot-sized square tiles (labels
-   dropped — the game is language-free by owner directive), so the bar
-   height derives from the SAME slot algebra as the compact bag grid
-   instead of the old fixed 72.
+/* v2.3.1325 (owner: bigger toolbar): the bar height derives from the
+   compact bag grid's slot algebra instead of the old fixed 72, giving
+   each toolbar button a slot-tall touch target.
+   v2.3.1326 (owner correction): the icons went back to the classic
+   30px + label INSIDE those bigger buttons — the slot-derived shelf
+   height below is what "buttons bigger" means and it stays.
      slot n = round(clamp((vw - 56)/6, 40..64))   (50 cap on short
               viewports so an SE-class phone keeps its world view)
      bar    = n + 31  (15 frame pad 8/7 + 8+2 ribbon pad/border +

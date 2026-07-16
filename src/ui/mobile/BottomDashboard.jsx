@@ -337,11 +337,9 @@ const IconButton = ({ glyph, src: srcProp, label, active, onClick, onSwipe, node
       data-pressed={pressed ? 'true' : 'false'}
       className="bt-dashboard-nav-button"
     >
-      {/* v2.3.1325 (owner: "toolbar icons as big as a compact inventory
-          slot"): the icon fills a --nav-slot square (same algebra as the
-          bag grid, stamped by BroTown's resize) and the text label is
-          GONE — the owner's language-free directive; aria-label keeps
-          the name for screen readers and the QA rig. */}
+      {/* v2.3.1326 (owner correction of v2.3.1325): classic 30px icon +
+          text label restored — only the BUTTON grew (the shelf keeps the
+          slot-derived height, so the tiles are taller touch targets). */}
       <span className={'bt-dashboard-nav-icon' + (pulse ? ' bt-nav-pulse' : '')} key={pulse || 0}>
         {node ? node : (
           <img
@@ -352,6 +350,7 @@ const IconButton = ({ glyph, src: srcProp, label, active, onClick, onSwipe, node
           />
         )}
       </span>
+      <span className="bt-dashboard-nav-label">{label}</span>
       {/* v2.3.1311: a NUMBER dot renders as a count badge (the Hero
           icon's global unspent points — spec: badge only actionable
           things); `true` keeps the original notification dot.
@@ -910,12 +909,9 @@ export const BottomDashboard = () => {
                   node={d.id === 'hero' && profilePortrait ? (
                     <img src={profilePortrait} alt="Hero" draggable={false}
                       style={{
-                        /* v2.3.1325: slot-sized like its siblings; small
-                           inset so the bust's rounded frame keeps a hair
-                           of ribbon around it. */
-                        width: 'calc(var(--nav-slot, 56px) - 6px)',
-                        height: 'calc(var(--nav-slot, 56px) - 6px)',
-                        objectFit: 'cover',
+                        /* v2.3.1326: back to the classic 30px bust
+                           (owner shrank the icons again). */
+                        width: 30, height: 30, objectFit: 'cover',
                         imageRendering: 'pixelated', borderRadius: 8,
                       }} />
                   ) : undefined}
