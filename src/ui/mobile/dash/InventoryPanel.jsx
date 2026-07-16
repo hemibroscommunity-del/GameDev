@@ -41,33 +41,40 @@ export const classify = (key) => {
 // actually caught/crafted.  Currently only fish-08 is wired — map all
 // fish_* inventory keys to its frame-0 thumbnail; expand once additional
 // fish sprites are wired into the minigame.
-const WOOD_THUMB = '/icons/wood/wood-log.webp';
-const BURNT_DUST_THUMB = '/icons/cook/burnt-dust.webp';
-const SLIME_REMNANTS_THUMB = '/icons/monsters/slime-remnants.webp';
-const SNOWMAN_REMNANTS_THUMB = '/icons/monsters/snowman-remnants.webp';
-const FIRE_GOBLIN_REMNANTS_THUMB = '/icons/monsters/fire-goblin-remnants.webp';
-const SKELETON_REMNANTS_THUMB = '/icons/monsters/skeleton-remnants.webp';
+/* v2.3.1325 (owner icon sheets): the whole bag catalog repainted in
+   one consistent style — everything now lives under /icons/items/.
+   The old per-type dirs (icons/wood, icons/cook, ...) keep their files
+   for any legacy surface still pointing at them. */
+const ITEMS_V = '?v=2.3.1325';
+const WOOD_THUMB = `/icons/items/wood-log.webp${ITEMS_V}`;
+const BURNT_DUST_THUMB = `/icons/items/burnt-dust.webp${ITEMS_V}`;
+const SLIME_REMNANTS_THUMB = `/icons/items/remnants-slime.webp${ITEMS_V}`;
+const SNOWMAN_REMNANTS_THUMB = `/icons/items/remnants-snowman.webp${ITEMS_V}`;
+const FIRE_GOBLIN_REMNANTS_THUMB = `/icons/items/remnants-fire-goblin.webp${ITEMS_V}`;
+const SKELETON_REMNANTS_THUMB = `/icons/items/remnants-skeleton.webp${ITEMS_V}`;
 /* Per-tier fish thumbnails (raw + cooked).  Order matters in thumbFor:
    match longer prefixes first so e.g. fish_clownfish doesn't fall
    through to the generic fish_ branch. Add an entry per tier; the
    generic 'fish' / 'cooked_fish' fallbacks catch unmapped tiers. */
 const FISH_THUMBS = {
-  fish_clownfish: '/icons/fish/fish-clownfish.webp',
+  fish_clownfish: `/icons/items/fish-clownfish.webp${ITEMS_V}`,
+  fish_trout: `/icons/items/fish-trout.webp${ITEMS_V}`, /* v2.3.1325: trout finally has its own art */
 };
 const COOKED_FISH_THUMBS = {
-  cooked_fish_clownfish: '/icons/cook/cooked-fish-clownfish.webp',
+  cooked_fish_clownfish: `/icons/items/cooked-clownfish.webp${ITEMS_V}`,
+  cooked_fish_trout: `/icons/items/cooked-trout.webp${ITEMS_V}`,
 };
-const FISH_THUMB_DEFAULT = '/icons/fish/fish-minnow.webp';
-const COOKED_FISH_THUMB_DEFAULT = '/icons/cook/cooked-fish-minnow.webp';
+const FISH_THUMB_DEFAULT = `/icons/items/fish-minnow.webp${ITEMS_V}`;
+const COOKED_FISH_THUMB_DEFAULT = `/icons/items/cooked-minnow.webp${ITEMS_V}`;
 const ORE_THUMBS = {
-  ore_copper_ore: '/icons/ore/ore-copper.webp',
+  ore_copper_ore: `/icons/items/ore-copper.webp${ITEMS_V}`,
 };
-const ORE_THUMB_DEFAULT = '/icons/ore/ore-copper.webp';
-const FISHING_POLE_THUMB = '/icons/tools/fishing-pole.webp';
-/* Elemental shards: one PNG per zone, all under /icons/shards/<key>.webp
+const ORE_THUMB_DEFAULT = `/icons/items/ore-copper.webp${ITEMS_V}`;
+const FISHING_POLE_THUMB = `/icons/items/fishing-pole.webp${ITEMS_V}`;
+/* Elemental shards: one webp per zone, /icons/items/<key>.webp
    following the keys defined in src/data/shards.js (shard_meadow,
    shard_ember, ...).  thumbFor() takes the shard_ prefix branch
-   below so any zone we add later just needs the PNG dropped in --
+   below so any zone we add later just needs the webp dropped in --
    no new code in the inventory panel. */
 export const thumbFor = (key) => {
   const k = (key || '').toLowerCase();
@@ -79,7 +86,7 @@ export const thumbFor = (key) => {
   if (k.startsWith('wood_'))        return WOOD_THUMB;
   if (ORE_THUMBS[k])                return ORE_THUMBS[k];
   if (k.startsWith('ore_'))         return ORE_THUMB_DEFAULT;
-  if (k.startsWith('shard_'))       return `/icons/shards/${k}.webp`;
+  if (k.startsWith('shard_'))       return `/icons/items/${k}.webp${ITEMS_V}`;
   if (k === 'fishing_pole')         return FISHING_POLE_THUMB;
   if (k === 'slime-remnants')       return SLIME_REMNANTS_THUMB;
   if (k === 'fire-goblin-remnants') return FIRE_GOBLIN_REMNANTS_THUMB;
@@ -518,18 +525,22 @@ const StashTile = ({ kind, obj, index }) => {
       itemDetailBus.open({ kind: 'stashWeapon', wpn: obj, index, anchor });
     }
   };
-  const v = '2.3.211';
+  /* v2.3.1325 (owner icon sheets): stash tiles use the painted item
+     set.  Greatsword and sword FINALLY split — they are distinct drop
+     types but shared one icon since the stash existed; shields of every
+     tier get art (was wood-only + 🛡 glyph). */
   const thumb = kind === 'stashGear'
-    ? ((obj && (obj.gearId === 'steelplate' || obj.gearId === 'steelgreaves'))
-        ? `/sprites/gear/icons/${obj.gearId}.webp?v=2.3.685` : null)
+    ? (obj && obj.gearId === 'steelplate'   ? `/icons/items/chest-plate.webp${ITEMS_V}`
+      : obj && obj.gearId === 'steelgreaves' ? `/icons/items/greaves.webp${ITEMS_V}`
+      : obj && obj.gearId === 'tshirt'       ? `/icons/items/cloth-shirt.webp${ITEMS_V}` : null)
     : kind === 'stashArmor'
     ? null /* no armor sprites yet -- glyph fallback below */
     : kind === 'stashShield'
-    ? (obj && obj.gearBase === 'wood' ? `/sprites/shields/wood-shield-front.webp?v=${v}` : null)
-    : obj && obj.type === 'bow'   ? `/sprites/weapons/bows/Bow2.webp?v=${v}`
-    : obj && obj.type === 'staff' ? `/sprites/weapons/staffs/Wizard%20Staff2.webp?v=${v}`
-    : obj && obj.gearBase === 'wood' ? `/sprites/weapons/swords/steel-sword-east.webp?v=2.3.1070` /* v2.3.1070: mini steel-sword icon, not bamboo */
-    : `/sprites/weapons/swords/Sword1.webp?v=${v}`;
+    ? `/icons/items/shield.webp${ITEMS_V}`
+    : obj && obj.type === 'bow'        ? `/icons/items/bow.webp${ITEMS_V}`
+    : obj && obj.type === 'staff'      ? `/icons/items/staff.webp${ITEMS_V}`
+    : obj && obj.type === 'greatsword' ? `/icons/items/great-sword.webp${ITEMS_V}`
+    : `/icons/items/sword.webp${ITEMS_V}`;
   /* v2.3.1228: edge from the item's REAL quality (weapons carry
      server-rolled quality; shields/armor have none -> common grey).
      Godly gets the conic ring class instead of a border color. */

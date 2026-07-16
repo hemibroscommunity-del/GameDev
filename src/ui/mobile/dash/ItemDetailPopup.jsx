@@ -66,24 +66,22 @@ function tierLabel(wpn) {
   return tier ? tier.label : wpn.gearBase;
 }
 
-/* Pick a thumb URL for a weapon based on type / gearBase. */
+/* Pick a thumb URL for a weapon based on type.
+   v2.3.1325 (owner icon sheets): painted item set — greatsword and
+   sword split after sharing one icon since v2.3.210. */
+const ITEMS_V = '?v=2.3.1325';
 function weaponThumb(wpn) {
   if (!wpn || !wpn.type) return null;
-  const v = '2.3.210';
-  if (wpn.type === 'bow')   return `/sprites/weapons/bows/Bow2.webp?v=${v}`;
-  if (wpn.type === 'staff') return `/sprites/weapons/staffs/Wizard%20Staff2.webp?v=${v}`;
-  /* v2.3.1070: starter (wood) sword shows a clean mini steel-sword icon
-     (east-view frame lifted from sword-east-weapon.png) instead of the old
-     bamboo-stick render. */
-  return wpn.gearBase === 'wood'
-    ? `/sprites/weapons/swords/steel-sword-east.webp?v=2.3.1070`
-    : `/sprites/weapons/swords/Sword1.webp?v=${v}`;
+  if (wpn.type === 'bow')        return `/icons/items/bow.webp${ITEMS_V}`;
+  if (wpn.type === 'staff')      return `/icons/items/staff.webp${ITEMS_V}`;
+  if (wpn.type === 'greatsword') return `/icons/items/great-sword.webp${ITEMS_V}`;
+  return `/icons/items/sword.webp${ITEMS_V}`;
 }
 
 function shieldThumb(shield) {
-  const v = '2.3.211';
-  if (shield && shield.gearBase === 'wood') return `/sprites/shields/wood-shield-front.webp?v=${v}`;
-  return null; /* no metal-shield art slot yet; popup falls back to glyph */
+  /* v2.3.1325: every shield tier shows the painted shield (was
+     wood-only + glyph fallback). */
+  return shield ? `/icons/items/shield.webp${ITEMS_V}` : null;
 }
 
 /* Which weapon slot does a `type` belong in. */
@@ -280,10 +278,11 @@ function gearName(slot, gearId) {
   const c = (GEAR_CATALOG[slot] || []).find((g) => g.id === gearId);
   return (c && c.name) || 'Armor';
 }
-/* Icon PNGs exist for the steel set; other ids fall back to the glyph. */
+/* v2.3.1325: painted item set for the worn-gear pieces. */
 function gearThumb(gearId) {
-  return (gearId === 'steelplate' || gearId === 'steelgreaves')
-    ? '/sprites/gear/icons/' + gearId + '.webp?v=2.3.685'
+  return gearId === 'steelplate' ? `/icons/items/chest-plate.webp${ITEMS_V}`
+    : gearId === 'steelgreaves' ? `/icons/items/greaves.webp${ITEMS_V}`
+    : gearId === 'tshirt' ? `/icons/items/cloth-shirt.webp${ITEMS_V}`
     : null;
 }
 
@@ -511,7 +510,7 @@ export const ItemDetailPopup = () => {
         const shirtOn = getEquip('shirt') !== 'none';
         rows.push({
           key: 'shirt', name: 'T-Shirt', sub: 'Cloth shirt · worn under armor',
-          iconSrc: '/sprites/gear/icons/tshirt.webp?v=2.3.756', on: shirtOn,
+          iconSrc: `/icons/items/cloth-shirt.webp${ITEMS_V}`, on: shirtOn, /* v2.3.1325 */
           /* v2.3.1070: drive the MASTER shirt store (setShirt) so the swing
              renderer -- which reads getShirt() -- sees the change; setEquip
              keeps the gear mirror in lockstep even when setShirt dedupes. */
@@ -707,10 +706,10 @@ export const ItemDetailPopup = () => {
             Chest — Layers
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-            {layerRow('armor', '/sprites/gear/icons/steelplate.webp?v=2.3.685',
+            {layerRow('armor', `/icons/items/chest-plate.webp${ITEMS_V}`, /* v2.3.1325 */
               armorOn ? gearName('chest', chestId) : (stashedChest ? stashedChest.name : 'Steel Plate'),
               'Armor · top layer', armorOn, !!stashedChest, toggleArmor)}
-            {layerRow('shirt', '/sprites/gear/icons/tshirt.webp?v=2.3.756',
+            {layerRow('shirt', `/icons/items/cloth-shirt.webp${ITEMS_V}`,
               'T-Shirt', 'Clothing · under armor', shirtOn, true, toggleShirt)}
           </div>
         </div>
@@ -772,7 +771,7 @@ export const ItemDetailPopup = () => {
             background: on ? '#243137' : '#19252A',
             border: `1px solid ${on ? '#D8A85F' : 'rgba(238, 242, 235, .14)'}`,
           }}>
-            <img src="/sprites/gear/icons/steelgreaves.webp?v=2.3.685" alt="Steel Greaves" draggable={false}
+            <img src={`/icons/items/greaves.webp${ITEMS_V}`} alt="Steel Greaves" draggable={false} /* v2.3.1325 */
               style={{ width: 24, height: 24, imageRendering: 'pixelated',
                 filter: on ? 'none' : 'grayscale(1) brightness(.6)', userSelect: 'none' }} />
             <div style={{ flex: 1, minWidth: 0 }}>

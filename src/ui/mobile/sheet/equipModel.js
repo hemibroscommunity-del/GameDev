@@ -30,20 +30,24 @@ export const GHOST_SRC = {
   amulet: '/icons/bag/slot-amulet.webp?v=2.3.1312',
 };
 
+/* v2.3.1325 (owner icon sheets): equipped slots use the painted item
+   set — one consistent style with the stash and inventory tiles.
+   Weapon art keys off wpn.type (greatsword vs sword are distinct drop
+   types that shared one icon since v2.3.173). */
+const ITEMS_V = '?v=2.3.1325';
 const wpnIconSrc = (R, wpn) => {
   if (!wpn) return null;
   const slot = R.activeSlot || 'melee';
-  const isWoodSword = slot === 'melee' && wpn.gearBase === 'wood';
-  return slot === 'ranged' ? '/sprites/weapons/bows/Bow2.webp?v=2.3.173'
-    : slot === 'staff' ? '/sprites/weapons/staffs/Wizard%20Staff2.webp?v=2.3.173'
-    : isWoodSword ? '/sprites/weapons/swords/steel-sword-east.webp?v=2.3.1070'
-    : '/sprites/weapons/swords/Sword1.webp?v=2.3.173';
+  return wpn.type === 'bow' || slot === 'ranged' ? `/icons/items/bow.webp${ITEMS_V}`
+    : wpn.type === 'staff' || slot === 'staff' ? `/icons/items/staff.webp${ITEMS_V}`
+    : wpn.type === 'greatsword' ? `/icons/items/great-sword.webp${ITEMS_V}`
+    : `/icons/items/sword.webp${ITEMS_V}`;
 };
 
 const gearIconSrc = (id) =>
-  (id === 'steelplate' || id === 'steelgreaves')
-    ? `/sprites/gear/icons/${id}.webp?v=2.3.685`
-    : id === 'tshirt' ? '/sprites/gear/icons/tshirt.webp?v=2.3.756' : null;
+  id === 'steelplate' ? `/icons/items/chest-plate.webp${ITEMS_V}`
+    : id === 'steelgreaves' ? `/icons/items/greaves.webp${ITEMS_V}`
+    : id === 'tshirt' ? `/icons/items/cloth-shirt.webp${ITEMS_V}` : null;
 
 export function getEquippedSlots(R) {
   const wpn = R ? getActiveWeapon(R) : null;
@@ -57,7 +61,7 @@ export function getEquippedSlots(R) {
     { slot: 'weapon', label: 'Weapon', item: wpn, iconSrc: wpnIconSrc(R, wpn),
       ghost: !wpn, quality: wpn && wpn.quality, pickerSlot: 'weapon' },
     { slot: 'shield', label: 'Shield', item: R.shield,
-      iconSrc: R.shield ? '/sprites/shields/wood-shield-front.webp?v=2.3.198' : null,
+      iconSrc: R.shield ? `/icons/items/shield.webp${ITEMS_V}` : null,
       ghost: !R.shield, pickerSlot: 'shield' },
     { slot: 'chest', label: 'Chest', item: chestEquipped ? { gearChestId, gearShirtId } : null,
       iconSrc: chestIcon, ghost: !chestEquipped, pickerSlot: 'chest' },
@@ -66,7 +70,10 @@ export function getEquippedSlots(R) {
       ghost: gearLegsId === 'none', pickerSlot: 'legs' },
     /* Cape: Phase-2 — no data field yet; permanently ghosted, no picker. */
     { slot: 'cape', label: 'Cape', item: null, iconSrc: null, ghost: true, pickerSlot: null },
-    { slot: 'amulet', label: 'Amulet', item: R.amulet || null, iconSrc: null,
+    /* v2.3.1325: an equipped amulet finally shows real art instead of
+       staying on the ghost pictogram. */
+    { slot: 'amulet', label: 'Amulet', item: R.amulet || null,
+      iconSrc: R.amulet ? `/icons/items/amulet.webp${ITEMS_V}` : null,
       ghost: !R.amulet, pickerSlot: null },
   ];
 }
