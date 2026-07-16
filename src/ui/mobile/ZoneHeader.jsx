@@ -14,7 +14,7 @@ import { DEPTH_CONFIG } from '../../data/lifeSkills.js';
    another panel.  Assets: zone-header-bar.svg (9-slice, styled in
    game.css .bt-zone-header) + logout-door-icon.svg. */
 
-const V = '?v=2.3.1333';
+const V = '?v=2.3.1333c'; /* v2.3.1333c: bigger logout glyph */
 
 /* Same zone + depth suffix the old floating label showed — the info
    survives, only the housing changed.  Title stays white per spec

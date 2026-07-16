@@ -1,4 +1,7 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" fill="none">
+<!-- v2.3.1333c: viewBox tightened to the glyph bounds - a third of the
+     original 120x120 canvas was empty margin, which made the icon read
+     tiny inside the 34px chip. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="14 16 84 88" fill="none">
   <defs>
     <linearGradient id="door" x1="60" y1="24" x2="88" y2="97" gradientUnits="userSpaceOnUse">
       <stop stop-color="#91A5AC"/>

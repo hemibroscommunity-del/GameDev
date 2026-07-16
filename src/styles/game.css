@@ -648,8 +648,8 @@ input{font-family:inherit}
   pointer-events:none}
 .bt-zone-header__logout{width:34px;height:34px;display:grid;place-items:center;
   padding:0;pointer-events:auto}
-.bt-zone-header__logout img{width:21px;height:21px;object-fit:contain;display:block;
-  pointer-events:none}
+.bt-zone-header__logout img{width:26px;height:26px;object-fit:contain;display:block;
+  pointer-events:none} /* v2.3.1333c: 21 -> 26 + svg viewBox tightened (owner: icon read tiny) */
 .bt-zone-header__title{min-width:0;overflow:hidden;color:#F4F5F3;
   font:650 15px/1.1 'Source Sans 3',sans-serif;letter-spacing:.045em;
   text-align:center;text-overflow:ellipsis;white-space:nowrap;
