@@ -422,12 +422,13 @@
    raised chisel buttons pop against it (asset README).  9-sliced like
    the buttons; content sits inside the lip. */
 .bt-well{
-  /* v2.3.1336 (owner screenshot): 3px lip — at 6px the dark recessed
+  /* v2.3.1336 (owner screenshot): 6px -> 3px lip — the dark recessed
      band around the tracks stretched wide enough to read as "a big
-     black border" around the buttons.  3px keeps the carved-in edge
-     as a thin contour; the cavity still fills behind the chips. */
-  border:3px solid transparent;
-  border-image:url('/icons/ui/recessed-well-3x.png?v=2.3.1334') 78 fill / 3px stretch;
+     black border" around the buttons.  v2.3.1337: owner asked for 2px —
+     the thinnest lip that still shows the carved-in contour; the
+     cavity still fills behind the chips. */
+  border:2px solid transparent;
+  border-image:url('/icons/ui/recessed-well-3x.png?v=2.3.1334') 78 fill / 2px stretch;
   background:none;
   box-shadow:none;
 }
