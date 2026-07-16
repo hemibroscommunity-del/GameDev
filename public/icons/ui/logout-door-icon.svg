@@ -1,0 +1,27 @@
+<!-- v2.3.1333c: viewBox tightened to the glyph bounds - a third of the
+     original 120x120 canvas was empty margin, which made the icon read
+     tiny inside the 34px chip. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="14 16 84 88" fill="none">
+  <defs>
+    <linearGradient id="door" x1="60" y1="24" x2="88" y2="97" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#91A5AC"/>
+      <stop offset="1" stop-color="#526C76"/>
+    </linearGradient>
+    <linearGradient id="arrow" x1="22" y1="42" x2="68" y2="78" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F5F6F2"/>
+      <stop offset="1" stop-color="#C6D1D4"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Door and frame. Chunky geometry stays readable around 18–20px. -->
+  <path d="M55 21H94V99H55V21Z" fill="#22303C"/>
+  <path d="M61 28H87V92H61V28Z" fill="url(#door)" stroke="#22303C" stroke-width="4" stroke-linejoin="round"/>
+  <path d="M61 28H87" stroke="#C6D1D4" stroke-width="3" stroke-linecap="round" opacity="0.56"/>
+
+  <!-- Outward arrow; the leftward direction reads naturally in the top-left control. -->
+  <path d="M48 38L20 60L48 82V70H72V50H48V38Z" fill="url(#arrow)" stroke="#22303C" stroke-width="6" stroke-linejoin="round"/>
+  <path d="M29 59.5L45 47" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round" opacity="0.58"/>
+
+  <!-- Small brass hardware ties the icon to the Bro Town palette. -->
+  <circle cx="79" cy="72" r="5.5" fill="#B08D57" stroke="#22303C" stroke-width="3"/>
+</svg>

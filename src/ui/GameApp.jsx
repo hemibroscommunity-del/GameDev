@@ -13,6 +13,7 @@ import { inspectCardBus } from './mobile/inspectCardBus.js';
 import { generateMockProfile } from './mobile/mockProfile.js';
 import { setEquip, getEquip, GEAR_CATALOG, GEAR_SLOTS, gearInventoryItems } from '@/rendering/gearCatalog.js';
 import { BlockRing } from './mobile/BlockRing.jsx';
+import { ZoneHeader } from './mobile/ZoneHeader.jsx'; /* v2.3.1333 */
 import { SpecialChargePie } from './mobile/SpecialChargePie.jsx';
 import { blockRingBus } from './mobile/blockRingBus.js';
 /* v2.3.1287: MoreOverlay deleted (unmounted since the BottomDashboard
@@ -543,6 +544,10 @@ export const GameApp = () => {
           window.location.href = '/?noresume=1';
         }}
       />
+      {/* v2.3.1333: zone header rail — hosts the logout chip (with
+          confirmation) + centered zone name; replaces BroTown's
+          bt-exit-fab and floating zone label. */}
+      <ZoneHeader onExit={() => { window.location.href = '/?noresume=1'; }} />
       <BottomDashboard />
       <ChatBubble />
       {/* InventorySurface, InspectCard, MoreOverlay are no longer mounted — */}

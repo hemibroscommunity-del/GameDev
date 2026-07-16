@@ -656,12 +656,41 @@ input{font-family:inherit}
 .bt-inspect-tp{margin-top:12px;padding:8px 20px;background:var(--pop);color:#fff;border:none;
   border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;width:100%}
 .bt-inspect-tp:active{opacity:.8}
-.bt-exit-fab{position:absolute;top:8px;left:8px;z-index:20;width:36px;height:36px;
-  border-radius:50%;background:rgba(17,25,29,.85);border:1.5px solid rgba(255,255,255,.15);
-  display:flex;align-items:center;justify-content:center;cursor:pointer;
-  color:rgba(255,255,255,.8);
-  -webkit-tap-highlight-color:transparent}
-.bt-exit-fab:active{background:rgba(217,92,84,.5)}
+/* v2.3.1333: zone header rail — replaces the bt-exit-fab back arrow
+   AND the floating zone label (both retired; see ZoneHeader.jsx).
+   Recessed navy 9-slice face, deliberately shallower than the bottom
+   toolbar; equal 38px side columns keep the title optically centered
+   on the screen.  The logout chip inside reuses the bt-chisel--chip
+   frames — no new button art. */
+.bt-zone-header{position:fixed;top:-4px;left:0;right:0;z-index:20;
+  display:grid;grid-template-columns:38px minmax(0,1fr) 38px;align-items:center;
+  /* v2.3.1333b (owner: "tiny sliver above the bar"): the 9-slice svg
+     has a ~1.5px transparent margin + rounded top corners baked into
+     its top slice — world art peeked through it.  Pull the rail 4px
+     off-screen (height grows to match) so the svg's top edge and
+     corner rounding disappear past the screen edge, exactly as the
+     spec intended. */
+  box-sizing:border-box;height:calc(50px + env(safe-area-inset-top,0px));
+  padding:calc(env(safe-area-inset-top,0px) + 4px) 5px 0;
+  border:6px solid transparent;
+  border-image:url('/icons/ui/zone-header-bar.svg?v=2.3.1333') 18 fill / 6px stretch;
+  pointer-events:none}
+.bt-zone-header__logout{width:34px;height:34px;display:grid;place-items:center;
+  padding:0;pointer-events:auto}
+.bt-zone-header__logout img{width:26px;height:26px;object-fit:contain;display:block;
+  pointer-events:none} /* v2.3.1333c: 21 -> 26 + svg viewBox tightened (owner: icon read tiny) */
+.bt-zone-header__title{min-width:0;overflow:hidden;color:#F4F5F3;
+  font:650 15px/1.1 'Source Sans 3',sans-serif;letter-spacing:.045em;
+  text-align:center;text-overflow:ellipsis;white-space:nowrap;
+  text-shadow:0 1px 2px rgba(0,0,0,.78)}
+.bt-zone-header__balance{width:38px;height:1px}
+/* v2.3.1336: equipped-item marker — a simple green gradient dot (owner:
+   replaces the bracketed-checkmark art, which read as UI chrome). */
+.bt-worn-dot{position:absolute;top:3px;right:3px;width:10px;height:10px;
+  border-radius:50%;
+  background:linear-gradient(180deg,#7FE3A0 0%,#2E9B57 100%);
+  box-shadow:0 0 0 1.5px rgba(9,14,17,.55), inset 0 1px 1px rgba(255,255,255,.35);
+  pointer-events:none;z-index:1}
 /* v2.3.785/786: reload indicator shown when the exit arrow tears the app
    down (full page navigation).  Full-screen dim so it reads over the frozen
    game frame Safari keeps painted until the new document's first paint;

@@ -151,8 +151,8 @@ export var doRetreatShot = function (S, R, ang) {
     if (!S.arrows) S.arrows = [];
     var pushArrow = function (a) {
       S.arrows.push({
-        ang: a, dist: 14, dmg: shotDmg, life: isStaff ? 90 : 120,
-        maxLife: isStaff ? 90 : 120, hitIds: new Set(), isStaff: isStaff,
+        ang: a, dist: 14, dmg: shotDmg, life: isStaff ? 68 : 90, /* v2.3.1335: range -25% */
+        maxLife: isStaff ? 68 : 90, hitIds: new Set(), isStaff: isStaff,
         element: activeWpn.element1 || null, retreatShot: true
       });
     };

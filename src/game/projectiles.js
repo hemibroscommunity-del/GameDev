@@ -112,7 +112,8 @@ export function updateArrows(S, deps) {
                 _edge = a._renderX < S.camera.x + _em || a._renderX > S.camera.x + S._viewW - _em
                      || a._renderY < S.camera.y + _em || a._renderY > S.camera.y + S._viewH - _em;
               }
-              if (_edge || a.dist > 900 * (a._rangeMult || 1)) {
+              /* v2.3.1335 (owner): bow range -25% (900 -> 675). */
+              if (_edge || a.dist > 675 * (a._rangeMult || 1)) {
                 a.planting = true;
                 a._plantX = a._renderX;
                 a._plantStartY = a._renderY;

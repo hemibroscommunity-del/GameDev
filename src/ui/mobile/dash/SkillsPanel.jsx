@@ -28,14 +28,10 @@ import { skillDetailBus } from '../sheet/skillDetailBus.js';
      (skillDetailBus.open/consumeOpen).
    Opening this panel marks level-ups seen (clears the toolbar dot). */
 
-const SECTION = (label) => (
-  <div key={label} style={{
-    gridColumn: '1 / -1',
-    fontSize: 10, fontWeight: 700, letterSpacing: '.10em',
-    textTransform: 'uppercase', color: COL.muted,
-    padding: '2px 2px 0',
-  }}>{label}</div>
-);
+/* v2.3.1337 (owner): the GATHERING/CRAFTING section labels are gone —
+   they cost two grid rows that pushed the last skills under the fold.
+   Order is unchanged (gathering five, then crafting five), so the
+   grouping survives spatially without the headings. */
 
 export const SkillsPanel = () => {
   const [, force] = useState(0);
@@ -139,7 +135,7 @@ export const SkillsPanel = () => {
         style={{
           position: 'relative',
           display: 'flex', alignItems: 'center', gap: 6,
-          height: 32,
+          height: 28, /* v2.3.1337: 32 -> 28, part of the no-scroll budget */
           padding: '0 11px 0 7px',
           background: COL.wellSoft,
           border: `1px solid ${COL.tileBor}`,
@@ -166,7 +162,7 @@ export const SkillsPanel = () => {
         {/* thin XP line along the pill's bottom edge: green = progress,
             dark = zero (same signals as the compact tiles). */}
         <div style={{
-          position: 'absolute', left: 12, right: 12, bottom: 3,
+          position: 'absolute', left: 12, right: 12, bottom: 2,
           height: 2.5, borderRadius: 999, overflow: 'hidden',
           background: '#0A1318', pointerEvents: 'none',
         }}>
@@ -176,17 +172,18 @@ export const SkillsPanel = () => {
     );
   };
 
+  /* v2.3.1337: labels removed + pills 32->28 and gap 5->4 so all ten
+     clear the fold on a real iPhone Safari viewport (owner: "fit on one
+     screen without scrolling"). */
   return (
     <div style={{ ...panelStyle, overflowY: 'auto', WebkitMaskImage: 'none', maskImage: 'none' }}>
       <div style={{
         display: 'grid',
         gridTemplateColumns: 'repeat(2, 1fr)',
-        gap: 5,
-        paddingBottom: 6,
+        gap: 4,
+        paddingBottom: 4,
       }}>
-        {SECTION('Gathering')}
         {SKILL_GATHER.map(pill)}
-        {SECTION('Crafting')}
         {SKILL_CRAFT.map(pill)}
       </div>
     </div>

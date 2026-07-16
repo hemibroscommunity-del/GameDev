@@ -1209,8 +1209,11 @@ export function updateMonsterCombat(S, deps) {
                      calcWeaponDmg as the 0.6x-0.8x range, so no
                      per-projectile multiplier is needed here. */
                   dmg: Math.round(pDmg),
-                  life: isStaff ? 90 : 120,
-                  maxLife: isStaff ? 90 : 120,
+                  /* v2.3.1335 (owner): bow/staff range -25% — staff 90->68
+                     ticks (450->340px at 5px/tick); bow 120->90 ticks (the
+                     675px plant cap in projectiles.js governs the real reach). */
+                  life: isStaff ? 68 : 90,
+                  maxLife: isStaff ? 68 : 90,
                   hitIds: new Set(),
                   isStaff: isStaff,
                   /* v2.3.1135: Piercing/Longshot channels — finite pierce

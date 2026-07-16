@@ -68,18 +68,20 @@ const HudPopup = ({ pop, stackIdx }) => {
   /* v2.3.1294: the top-right identity card is retired (Hero owns the
      character HUD) — the transient +gold/+XP popups keep landing in
      the freed top-right corner, just higher now that there's no card
-     to clear (round-4 spec: temporary feedback, no permanent HUD). */
+     to clear (round-4 spec: temporary feedback, no permanent HUD).
+     v2.3.1333: dropped 46px so they land BELOW the new ZoneHeader rail
+     instead of painting over it. */
   const base = isGold
     ? {
         position: 'fixed',
         right: 'calc(env(safe-area-inset-right, 0px) + 12px)',
-        top: 'calc(env(safe-area-inset-top, 0px) + 14px + ' + (stackIdx * STACK_SPACING_PX) + 'px)',
+        top: 'calc(env(safe-area-inset-top, 0px) + 60px + ' + (stackIdx * STACK_SPACING_PX) + 'px)',
         textAlign: 'right',
       }
     : {
         position: 'fixed',
         right: 'calc(env(safe-area-inset-right, 0px) + 12px)',
-        top: 'calc(env(safe-area-inset-top, 0px) + 34px + ' + (stackIdx * STACK_SPACING_PX) + 'px)',
+        top: 'calc(env(safe-area-inset-top, 0px) + 80px + ' + (stackIdx * STACK_SPACING_PX) + 'px)',
         textAlign: 'right',
       };
 

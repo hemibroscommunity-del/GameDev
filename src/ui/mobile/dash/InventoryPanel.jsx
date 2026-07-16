@@ -450,14 +450,9 @@ export const InventoryPanel = () => {
                         color: sl.ghost ? COL.muted : COL.text2, lineHeight: 1.25,
                         whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
                       }}>{sl.label.toUpperCase()}</span>
-                      {!sl.ghost && (
-                        <img src="/icons/bag/bag-equipped.webp?v=2.3.1320" alt="" aria-hidden="true" draggable={false}
-                          style={{
-                            position: 'absolute', top: 2, right: 2,
-                            width: 13, height: 13, objectFit: 'contain',
-                            pointerEvents: 'none', zIndex: 1,
-                          }} />
-                      )}
+                      {/* v2.3.1336 (owner): the bracketed checkmark becomes a
+                          simple green gradient dot. */}
+                      {!sl.ghost && <span className="bt-worn-dot" aria-hidden="true" />}
                     </div>
                   );
                 })}

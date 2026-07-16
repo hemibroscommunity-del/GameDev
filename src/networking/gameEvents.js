@@ -641,7 +641,7 @@ export function processGameEvent(type, payload, S, deps) {
               S._remoteProjectiles.push({
                 x: payload.x, y: payload.y, ang: payload.ang,
                 isStaff: payload.isStaff, isSpecial: !!payload.isSpecial, dist: 14,
-                life: payload.isStaff ? 90 : 120,
+                life: payload.isStaff ? 68 : 90, /* v2.3.1335: mirror the -25% range */
                 ts: Date.now(), ownerId: payload.id
               });
               /* v2.3.1011: a bow shot (non-staff) drives the remote bow-draw

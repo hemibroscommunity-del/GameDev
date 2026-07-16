@@ -44,6 +44,29 @@ Promise.all(Object.values(ZONE_SHARDS).map((s) =>
   Assets.load('/icons/shards/' + s.key + '.webp').then((tex) => { SHARD_ICONS[s.key] = tex; })
 )).catch((err) => console.warn('[shard-icons] load failed', err));
 
+/* v2.3.1334: painted magic bolt (owner sheet) — the basic staff
+   projectile's flat two-circle draw becomes a 4-frame flickering
+   sprite.  Horizontal strip, orb head noses RIGHT in the art, wisp
+   tail trails LEFT, so rotation = the projectile's travel angle puts
+   the tail pointing back at the caster.  Anchor sits on the ORB
+   center (printed by tools/process_magic_bolt_sheet.py) — rotating
+   around the frame center would sweep the head in an arc instead of
+   pivoting the tail.  Until the strip resolves, the old circle draw
+   is the fallback so an in-flight load never blanks live bolts. */
+const MAGIC_BOLT_FRAMES = [];
+const MAGIC_BOLT_ANCHOR = { x: 0.688, y: 0.534 };
+const MAGIC_BOLT_FRAME_MS = 90;
+Assets.load('/sprites/projectiles/magic-bolt-v1.webp?v=2.3.1334').then((tex) => {
+  if (!tex || !tex.source) return;
+  const fw = Math.floor(tex.source.width / 4);
+  for (let i = 0; i < 4; i++) {
+    MAGIC_BOLT_FRAMES.push(new Texture({
+      source: tex.source,
+      frame: new Rectangle(i * fw, 0, fw, tex.source.height),
+    }));
+  }
+}).catch((err) => console.warn('[magic-bolt] load failed', err));
+
 /* Gather-node sprites — keyed by node.nodeType. Until each texture is
    loaded, _updateGatherNodes falls through to the procedural drawing path
    below. Source PNGs are ~1000-1250 px; in-game node footprints are
@@ -274,6 +297,11 @@ export class EffectsRenderer {
        entries here so we can destroy orphans after the simulator
        drops a projectile from S.slimeProjectiles. */
     this.slimeProjSprites = [];
+
+    /* v2.3.1334: tracked Sprite instances for the painted magic bolt
+       (basic staff projectiles, local + remote) — same reap pattern
+       as slimeProjSprites. */
+    this.magicBoltSprites = [];
 
     // Chat bubble texts
     this.chatTexts = new Map();
@@ -1173,6 +1201,10 @@ export class EffectsRenderer {
        trailing-tail effect. */
     const bend = -Math.max(-0.6, Math.min(0.6, (this._aimRate || 0) * 6));
 
+    /* v2.3.1334: live set for painted magic-bolt sprites (local +
+       remote); anything not re-added this frame is reaped below. */
+    const _liveBolts = new Set();
+
     // Local arrows
     const arrows = S.arrows || [];
     for (const a of arrows) {
@@ -1191,8 +1223,13 @@ export class EffectsRenderer {
          streak that visually extends the arrow's path.
          Stuck arrows / hit arrows don't need this.
          Bow heavy attacks (isSpecial without _isStaffProj) keep the
-         arrow trail style — the orb trail belongs to staff/ice. */
-      if (!_stuckPose) this._updateProjectileTrail(a, gfx, fadeA, /* isStaffProj */ a._isStaffProj || a.ice);
+         arrow trail style — the orb trail belongs to staff/ice.
+         v2.3.1334: the basic staff bolt's painted sprite carries its
+         own wisp tail — no line trail on top of it. */
+      const _isBasicStaffBolt = a._isStaffProj && !a.isSpecial && !a.ice;
+      if (!_stuckPose && !(_isBasicStaffBolt && MAGIC_BOLT_FRAMES.length)) {
+        this._updateProjectileTrail(a, gfx, fadeA, /* isStaffProj */ a._isStaffProj || a.ice);
+      }
 
       const isBowHeavy = a.isSpecial && !a._isStaffProj && !a.ice;
       if (isBowHeavy) {
@@ -1226,10 +1263,18 @@ export class EffectsRenderer {
         gfx.circle(a._renderX, a._renderY, 7 * sz);
         gfx.stroke({ color: 0xfff2a8, width: 1.5, alpha: fadeA * 0.85 });
       } else if (a._isStaffProj) {
-        gfx.circle(a._renderX, a._renderY, 5);
-        gfx.fill({ color: elemColor, alpha: fadeA * 0.8 });
-        gfx.circle(a._renderX, a._renderY, 9);
-        gfx.fill({ color: elemColor, alpha: fadeA * 0.2 });
+        /* v2.3.1334: painted 4-frame magic bolt (owner sheet).  The
+           tail always points back toward the caster: rotation = the
+           travel angle, art noses right.  Falls back to the old
+           two-circle draw until the strip loads. */
+        if (MAGIC_BOLT_FRAMES.length) {
+          this._placeMagicBolt(a, a._renderX, a._renderY, a.ang, fadeA, now, _liveBolts);
+        } else {
+          gfx.circle(a._renderX, a._renderY, 5);
+          gfx.fill({ color: elemColor, alpha: fadeA * 0.8 });
+          gfx.circle(a._renderX, a._renderY, 9);
+          gfx.fill({ color: elemColor, alpha: fadeA * 0.2 });
+        }
       } else {
         /* Detailed arrow — wooden shaft + colored arrowhead +
            colored fletching.  Drawn rotated so the math is
@@ -1261,15 +1306,34 @@ export class EffectsRenderer {
     const remote = S._remoteProjectiles || [];
     for (const rp of remote) {
       if (!rp._renderX) continue;
-      this._updateProjectileTrail(rp, gfx, 1.0, !!rp.isStaff);
+      /* v2.3.1334: basic remote staff bolts share the painted sprite
+         (and skip the line trail — the art carries its own tail). */
+      const _remoteBasicBolt = rp.isStaff && !rp.isSpecial && MAGIC_BOLT_FRAMES.length;
+      if (!_remoteBasicBolt) this._updateProjectileTrail(rp, gfx, 1.0, !!rp.isStaff);
       if (rp.isStaff) {
-        /* v2.3.840: special staff bolts read bigger + golden with a halo. */
-        gfx.circle(rp._renderX, rp._renderY, rp.isSpecial ? 7 : 4);
-        gfx.fill({ color: rp.isSpecial ? 0xf5c542 : 0xa855f7, alpha: rp.isSpecial ? 0.95 : 0.8 });
-        if (rp.isSpecial) { gfx.circle(rp._renderX, rp._renderY, 11); gfx.stroke({ color: 0xfff2a8, width: 2, alpha: 0.6 }); }
+        if (_remoteBasicBolt) {
+          this._placeMagicBolt(rp, rp._renderX, rp._renderY, rp.ang, 0.95, now, _liveBolts);
+        } else {
+          /* v2.3.840: special staff bolts read bigger + golden with a halo. */
+          gfx.circle(rp._renderX, rp._renderY, rp.isSpecial ? 7 : 4);
+          gfx.fill({ color: rp.isSpecial ? 0xf5c542 : 0xa855f7, alpha: rp.isSpecial ? 0.95 : 0.8 });
+          if (rp.isSpecial) { gfx.circle(rp._renderX, rp._renderY, 11); gfx.stroke({ color: 0xfff2a8, width: 2, alpha: 0.6 }); }
+        }
       } else {
         this._drawArrow(gfx, rp._renderX, rp._renderY, rp.ang + bend, rp.isSpecial ? 0xf5c542 : 0xd4a574, rp.isSpecial ? 1.0 : 0.9);
         if (rp.isSpecial) { gfx.circle(rp._renderX, rp._renderY, 9); gfx.stroke({ color: 0xfff2a8, width: 2, alpha: 0.55 }); }
+      }
+    }
+
+    /* v2.3.1334: reap magic-bolt sprites whose projectile is gone
+       (expired, hit, or zone-reset) — same pattern as the slime-orb
+       reaper below. */
+    for (let i = this.magicBoltSprites.length - 1; i >= 0; i--) {
+      const entry = this.magicBoltSprites[i];
+      if (!_liveBolts.has(entry.proj) || !entry.sprite || entry.sprite.destroyed) {
+        if (entry.sprite && !entry.sprite.destroyed) entry.sprite.destroy();
+        if (entry.proj) entry.proj._boltSprite = null;
+        this.magicBoltSprites.splice(i, 1);
       }
     }
 
@@ -1339,6 +1403,36 @@ export class EffectsRenderer {
         sprite.rotation = projBaseAng !== 0 ? (sp.ang || 0) - projBaseAng : 0;
       }
     }
+  }
+
+  /** v2.3.1334: place (create/update) one painted magic-bolt sprite.
+   *  Shared by local staff arrows and remote staff bolts.  The strip's
+   *  frames flick at MAGIC_BOLT_FRAME_MS with a per-projectile phase
+   *  offset so simultaneous bolts don't strobe in lockstep.  Anchor =
+   *  the orb center, so position pins the head and rotation swings the
+   *  tail — which therefore always points back toward the caster. */
+  _placeMagicBolt(p, x, y, ang, alpha, now, liveSet) {
+    let sprite = p._boltSprite;
+    if (!sprite || sprite.destroyed) {
+      sprite = new Sprite(MAGIC_BOLT_FRAMES[0]);
+      sprite.anchor.set(MAGIC_BOLT_ANCHOR.x, MAGIC_BOLT_ANCHOR.y);
+      /* 217x128 source frame; the orb core is ~100 px of it — 0.18
+         lands the head at ~18 px, matching the old 9 px-radius glow. */
+      sprite.scale.set(0.18);
+      if (p._boltPhase == null) p._boltPhase = Math.floor(Math.random() * 4);
+      this.projectileLayer.addChild(sprite);
+      p._boltSprite = sprite;
+      this.magicBoltSprites.push({ proj: p, sprite });
+    }
+    const frame = MAGIC_BOLT_FRAMES[
+      (Math.floor(now / MAGIC_BOLT_FRAME_MS) + (p._boltPhase || 0)) % MAGIC_BOLT_FRAMES.length
+    ];
+    if (sprite.texture !== frame) sprite.texture = frame;
+    sprite.x = x;
+    sprite.y = y;
+    sprite.rotation = ang || 0;
+    sprite.alpha = alpha;
+    liveSet.add(p);
   }
 
   /** Push the projectile's current render position into a small

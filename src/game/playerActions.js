@@ -94,8 +94,8 @@ export function specialAttack(S) {
         ang: aimAng,
         dist: 14,
         dmg: Math.round(wpnDmg * SPECIAL_ATK_MULT),
-        life: 200,
-        maxLife: 200,
+        life: 150, /* v2.3.1335: range -25% (the 675px plant cap governs reach) */
+        maxLife: 150,
         hitIds: new Set(),
         isSpecial: true,
         isStaff: false,
@@ -123,8 +123,8 @@ export function specialAttack(S) {
           ang: aimAng + si * 0.25,
           dist: 14,
           dmg: Math.round(_wpnDmg * SPECIAL_ATK_MULT * 0.6),
-          life: 150,
-          maxLife: 150,
+          life: 112, /* v2.3.1335: range -25% (750->560px at 5px/tick) */
+          maxLife: 112,
           hitIds: new Set(),
           isSpecial: true,
           isStaff: true,
