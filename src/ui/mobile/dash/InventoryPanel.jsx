@@ -6,6 +6,8 @@ import { isLocked as itemIsLocked } from './inventoryLocks.js';
 import { reconcileGearStash } from '../../../rendering/gearCatalog.js';
 import { getBagEntries } from './bagModel.js';
 import { getEquippedSlots, getEquipContribs, GHOST_SRC } from '../sheet/equipModel.js'; /* v2.3.1328: contribs */
+import { unequipWeaponSlot, unequipShieldDirect, unequipArmorDirect, unequipGearDirect } from './equipActions.js'; /* v2.3.1330 */
+import { getEquip } from '../../../rendering/gearCatalog.js';
 
 // Category filter chips.  "All" comes first so the player always opens
 // the bag with everything visible.  v2.3.1231: UI Bible icons replace
@@ -489,14 +491,18 @@ export const InventoryPanel = () => {
                 {selSlot ? (
                   /* Item view: art + this item's contribution rows. */
                   <>
-                    <div style={{ flex: 'none', display: 'flex', justifyContent: 'center', padding: '2px 0' }}>
-                      <img src={selSlot.iconSrc || GHOST_SRC[selSlot.slot]} alt="" aria-hidden="true" draggable={false}
-                        style={{
-                          width: compactCard ? 28 : 40, height: compactCard ? 28 : 40,
-                          objectFit: 'contain', imageRendering: 'pixelated',
-                          userSelect: 'none', pointerEvents: 'none',
-                        }} />
-                    </div>
+                    {/* v2.3.1330: the art hides on short viewports —
+                        the Unequip button needs its room. */}
+                    {!compactCard && (
+                      <div style={{ flex: 'none', display: 'flex', justifyContent: 'center', padding: '2px 0' }}>
+                        <img src={selSlot.iconSrc || GHOST_SRC[selSlot.slot]} alt="" aria-hidden="true" draggable={false}
+                          style={{
+                            width: 40, height: 40,
+                            objectFit: 'contain', imageRendering: 'pixelated',
+                            userSelect: 'none', pointerEvents: 'none',
+                          }} />
+                      </div>
+                    )}
                     {(selCard ? [selCard.primary, selCard.secondary].filter(Boolean) : []).map((row, i) => (
                       <div key={row.k + i} style={{
                         flex: 1, minHeight: 0, maxHeight: 44,
@@ -522,6 +528,39 @@ export const InventoryPanel = () => {
                         fontSize: 16, fontWeight: 800, color: COL.muted,
                       }}>—</div>
                     )}
+                    {/* v2.3.1330 (owner): one-tap Unequip at the pane's
+                        bottom — no second tap through the modal.  Same
+                        shared flows the modal runs (equipActions.js);
+                        amulet/cape have no unequip flow, so no button.
+                        stopPropagation: the pane's own tap handler
+                        would otherwise just deselect. */}
+                    {(() => {
+                      const R2 = (getState() && getState().rpg) || {};
+                      const doUnequip = selSlot.slot === 'weapon' ? () => unequipWeaponSlot(R2.activeSlot === 'ranged' ? 'ranged' : R2.activeSlot === 'staff' ? 'staff' : 'weapon')
+                        : selSlot.slot === 'shield' ? unequipShieldDirect
+                        : selSlot.slot === 'chest' ? (R2.armor ? unequipArmorDirect : (getEquip('chest') !== 'none' ? () => unequipGearDirect('chest') : null))
+                        : selSlot.slot === 'legs' ? () => unequipGearDirect('legs')
+                        : null;
+                      if (!doUnequip) return null;
+                      return (
+                        <button
+                          onPointerUp={(e) => {
+                            e.stopPropagation();
+                            doUnequip();
+                            setEqSel(null); /* item gone -> back to the aggregate */
+                            force(v => v + 1);
+                          }}
+                          style={{
+                            flex: 'none', minHeight: compactCard ? 34 : 42,
+                            margin: '4px 0 2px',
+                            background: '#7C3431', color: '#FFF1EE',
+                            border: '1px solid #C7655F', borderRadius: 9,
+                            fontFamily: 'inherit', fontSize: 13, fontWeight: 800,
+                            letterSpacing: '.02em',
+                            cursor: 'pointer', touchAction: 'manipulation',
+                          }}>Unequip</button>
+                      );
+                    })()}
                   </>
                 ) : (
                   /* v2.3.1329 (feedback): iOS-widget grid — 2 cols x 3
