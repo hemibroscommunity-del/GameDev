@@ -388,28 +388,11 @@ export const T2Panel = () => {
               draggable={false}
               style={{ width: 33, height: 33, objectFit: 'contain', flex: 'none' }} /* v2.3.1314: owner, +25% */
               onError={(e) => { e.currentTarget.style.display = 'none'; }} />
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, minWidth: 0 }}>
-                <span style={{ fontSize: 13, fontWeight: 700, lineHeight: 1.25, color: COL.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{ch.label}</span>
-                {!ch.active && (
-                  <span style={{ fontSize: 11, fontWeight: 700, color: COL.gold, letterSpacing: '0.08em' }}>SOON</span>
-                )}
-                {atCap && (
-                  <span style={{ fontSize: 11, fontWeight: 700, color: COL.gold, letterSpacing: '0.08em' }}>MAX</span>
-                )}
-              </div>
-              <div style={{ fontSize: 11, lineHeight: 1.25, marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                {ch.active && (
-                  <span style={{ color: COL.text, fontVariantNumeric: 'tabular-nums' }}>{ch.derive(v)}{' · '}</span>
-                )}
-                <span style={{ color: COL.muted }}>{ch.blurb}</span>
-              </div>
-            </div>
-            <span style={{
-              fontSize: 14, fontWeight: 700, fontVariantNumeric: 'tabular-nums',
-              color: v > 0 ? COL.text : COL.text2,
-              minWidth: 26, textAlign: 'right', flexShrink: 0,
-            }}>{v}</span>
+            {/* v2.3.1314b (owner): the + stepper sits RIGHT BESIDE the
+                icon — spending is the row's one action, and parking it
+                at the far edge made the eye walk the whole row to find
+                it.  The point count moved into the text column's top
+                line so the right edge is empty. */}
             <button
               onPointerUp={(e) => { e.stopPropagation(); if (canAdd) addPoint(ch.key, ch.active); }}
               disabled={!canAdd}
@@ -427,6 +410,29 @@ export const T2Panel = () => {
                 lineHeight: 1,
               }}
             >+</button>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, minWidth: 0 }}>
+                <span style={{ fontSize: 13, fontWeight: 700, lineHeight: 1.25, color: COL.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{ch.label}</span>
+                {/* v2.3.1314b: the point count rides the label line now
+                    that the right edge is empty. */}
+                <span style={{
+                  fontSize: 13, fontWeight: 700, fontVariantNumeric: 'tabular-nums',
+                  color: v > 0 ? COL.accent : COL.text2, flex: 'none',
+                }}>{v}</span>
+                {!ch.active && (
+                  <span style={{ fontSize: 11, fontWeight: 700, color: COL.gold, letterSpacing: '0.08em' }}>SOON</span>
+                )}
+                {atCap && (
+                  <span style={{ fontSize: 11, fontWeight: 700, color: COL.gold, letterSpacing: '0.08em' }}>MAX</span>
+                )}
+              </div>
+              <div style={{ fontSize: 11, lineHeight: 1.25, marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                {ch.active && (
+                  <span style={{ color: COL.text, fontVariantNumeric: 'tabular-nums' }}>{ch.derive(v)}{' · '}</span>
+                )}
+                <span style={{ color: COL.muted }}>{ch.blurb}</span>
+              </div>
+            </div>
           </div>
         );
       })}
