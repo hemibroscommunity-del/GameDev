@@ -983,6 +983,8 @@ export class GameRoom {
                 // v2.3.1137: Second Wind heal rides the attack event so the
                 // client pops the green number without a round-trip (the
                 // authoritative hp echo arrives via player_state anyway).
+                // v2.3.1314: Last Stand survival flag rides the same way.
+                lastStand: dmgResult.lastStand || undefined,
                 // undefined when 0 -- JSON.stringify drops it from the wire.
                 secondWind: dmgResult.secondWind || undefined,
                 zone: zoneId,

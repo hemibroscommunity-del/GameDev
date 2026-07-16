@@ -29,7 +29,7 @@ const DEFENSE_CHANNEL_KEYS = ['bulwark', 'ironskin', 'thorns', 'secondwind', 'po
 // last two build skills get channels.  resilience/reflexes are stored
 // but inert ("Soon"): resilience has nothing to consume (monsters
 // don't crit), reflexes waits for server-owned dodge-roll timing.
-const HP_CHANNEL_KEYS = ['vigor', 'recovery', 'lifeblood', 'resilience'];
+const HP_CHANNEL_KEYS = ['vigor', 'recovery', 'lifeblood', 'resilience', 'laststand']; // v2.3.1314: laststand = the owner-named 5th Vitality category
 const ENDURANCE_CHANNEL_KEYS = ['stamina', 'conditioning', 'swiftness', 'evasion', 'reflexes'];
 // v2.3.1156: level clamps 99 -> 100 and every channel clamp -> the
 // uniform 100 cap (owner design: one allocation max everywhere, every

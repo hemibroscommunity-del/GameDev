@@ -32,7 +32,7 @@ import {
   getAttunementPts, getCollisionDeathFX, getDefenseBlockBonus, getEffectiveness, getElementDeathFX,
   getShieldStats, getWeaponCritDmgStat, getWeaponCritStat, meleeSwingSfx, recalcDerived, resolveCollision,
   getEvasionPts, poiseStunMult, rollPassiveDodge, spawnElementStatusFX, spawnWeaponHitFX, swingCooldownMult, tickStatuses, updateZoneDimensions,
-  trainDefense, applyIronSkin,
+  trainDefense, applyIronSkin, applyResilience, /* v2.3.1314 */
   monsterBodyY,
 } from '@/data/index.js';
 import { MONSTER_VARIANTS, baseArchetypeOf, isFodderLike, isRemnantSkull, maybeTransformMonster, usesClientSideMovement, xpMultFor } from '@/data/monsterVariants.js';
@@ -701,7 +701,7 @@ export function updateMonsterCombat(S, deps) {
                   /* v2.3.1113: Iron Skin (defense channel, -0.5%/pt, cap
                      -25%) goes live on the local-AI path; the server
                      mirrors it in _applyDamage for worker-driven damage. */
-                  if (dmgTaken > 0) dmgTaken = applyIronSkin(_R6, dmgTaken);
+                  if (dmgTaken > 0) dmgTaken = applyResilience(_R6, applyIronSkin(_R6, dmgTaken)); /* v2.3.1314 */
                   /* v2.3.1113: defense-loop revival -- block trains at full
                      rate, taken damage at quarter rate.
                      v2.3.1140: ±5 valid-threat gate re-enabled (real monster

@@ -146,18 +146,14 @@ export const T2Panel = () => {
   let channels = gridTab
     ? (gridsLive ? gridTab.channels : gridTab.channels.map((ch) => ({ ...ch, active: false })))
     : isDef ? DEFENSE_CHANNELS : (WEAPON_CHANNELS[activeCat] || []);
-  /* v2.3.1311 (owner canon: every parent owns exactly FIVE categories):
-     Vitality's data model ships 4 (vigor/recovery/lifeblood/resilience)
-     — one short.  A UI-ONLY locked slot keeps the 5-per-parent shape
-     visible until the owner names the real 5th ability; nothing is
-     added to the data model or the wire (spending into it is
-     impossible: active:false reuses the SOON row treatment). */
-  if (activeCat === 'hp' && channels.length === 4) {
-    channels = [...channels, {
-      key: '_slot5', label: '???', active: false,
-      blurb: 'A fifth Vitality ability — coming soon.',
-      derive: () => '',
-    }];
+  /* v2.3.1314: Last Stand spending is gated on caps.laststand — an
+     old worker's _sanitizeGridSpec doesn't know the key and would
+     strip the spent points on the next echo (the caps.gems lesson,
+     TRAPS #9).  Against such a worker the row shows SOON; resilience/
+     reflexes keys were always server-stored, so their activation
+     needs no gate. */
+  if (!(S._serverCaps && S._serverCaps.laststand) && S.channel) {
+    channels = channels.map((ch) => ch.key === 'laststand' ? { ...ch, active: false } : ch);
   }
   const channelCap = t2uniform
     ? (gridTab ? GRID_CHANNEL_CAP : isDef ? DEFENSE_CHANNEL_CAP : WEAPON_CHANNEL_CAP)
@@ -385,28 +381,18 @@ export const T2Panel = () => {
             borderBottom: '1px solid ' + COL.divider,
             opacity: ch.active ? 1 : 0.55,
           }}>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, minWidth: 0 }}>
-                <span style={{ fontSize: 13, fontWeight: 700, lineHeight: 1.25, color: COL.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{ch.label}</span>
-                {!ch.active && (
-                  <span style={{ fontSize: 11, fontWeight: 700, color: COL.gold, letterSpacing: '0.08em' }}>SOON</span>
-                )}
-                {atCap && (
-                  <span style={{ fontSize: 11, fontWeight: 700, color: COL.gold, letterSpacing: '0.08em' }}>MAX</span>
-                )}
-              </div>
-              <div style={{ fontSize: 11, lineHeight: 1.25, marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                {ch.active && (
-                  <span style={{ color: COL.text, fontVariantNumeric: 'tabular-nums' }}>{ch.derive(v)}{' · '}</span>
-                )}
-                <span style={{ color: COL.muted }}>{ch.blurb}</span>
-              </div>
-            </div>
-            <span style={{
-              fontSize: 14, fontWeight: 700, fontVariantNumeric: 'tabular-nums',
-              color: v > 0 ? COL.text : COL.text2,
-              minWidth: 26, textAlign: 'right', flexShrink: 0,
-            }}>{v}</span>
+            {/* v2.3.1313: per-category icon from the owner's T2 build
+                sheet (tools/process_t2_icons_sheet.py) — file names are
+                `${tab}-${channelKey}` by construction. */}
+            <img src={`/icons/ui/t2/${activeCat}-${ch.key}.webp?v=2.3.1313`} alt=""
+              draggable={false}
+              style={{ width: 33, height: 33, objectFit: 'contain', flex: 'none' }} /* v2.3.1314: owner, +25% */
+              onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+            {/* v2.3.1314b (owner): the + stepper sits RIGHT BESIDE the
+                icon — spending is the row's one action, and parking it
+                at the far edge made the eye walk the whole row to find
+                it.  The point count moved into the text column's top
+                line so the right edge is empty. */}
             <button
               onPointerUp={(e) => { e.stopPropagation(); if (canAdd) addPoint(ch.key, ch.active); }}
               disabled={!canAdd}
@@ -424,6 +410,29 @@ export const T2Panel = () => {
                 lineHeight: 1,
               }}
             >+</button>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, minWidth: 0 }}>
+                <span style={{ fontSize: 13, fontWeight: 700, lineHeight: 1.25, color: COL.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{ch.label}</span>
+                {/* v2.3.1314b: the point count rides the label line now
+                    that the right edge is empty. */}
+                <span style={{
+                  fontSize: 13, fontWeight: 700, fontVariantNumeric: 'tabular-nums',
+                  color: v > 0 ? COL.accent : COL.text2, flex: 'none',
+                }}>{v}</span>
+                {!ch.active && (
+                  <span style={{ fontSize: 11, fontWeight: 700, color: COL.gold, letterSpacing: '0.08em' }}>SOON</span>
+                )}
+                {atCap && (
+                  <span style={{ fontSize: 11, fontWeight: 700, color: COL.gold, letterSpacing: '0.08em' }}>MAX</span>
+                )}
+              </div>
+              <div style={{ fontSize: 11, lineHeight: 1.25, marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                {ch.active && (
+                  <span style={{ color: COL.text, fontVariantNumeric: 'tabular-nums' }}>{ch.derive(v)}{' · '}</span>
+                )}
+                <span style={{ color: COL.muted }}>{ch.blurb}</span>
+              </div>
+            </div>
           </div>
         );
       })}

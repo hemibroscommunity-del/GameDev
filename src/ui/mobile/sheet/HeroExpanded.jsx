@@ -176,7 +176,14 @@ export const HeroExpanded = () => {
               const pct = skillProgressPct(R, s.key);
               const prog = skillProgress(R, s.key);
               const unspent = buildSkillUnspent(R, s.key);
-              const openT2Cat = s.key === 'defense' ? 'defense' : STAT_TO_WEAPON_CAT[s.key];
+              /* v2.3.1313 (owner): Vitality and Stamina were DEAD buttons — the
+                 map only knew defense + the weapon cats, so openT2Cat came back
+                 undefined and the tap no-oped.  Their T2 tabs are 'hp' and
+                 'endurance'. */
+              const openT2Cat = s.key === 'defense' ? 'defense'
+                : s.key === 'vitality' ? 'hp'
+                : s.key === 'endurance' ? 'endurance'
+                : STAT_TO_WEAPON_CAT[s.key];
               return (
                 <div key={s.key}
                   className={unspent > 0 ? 'bt-build-flash' : undefined}
