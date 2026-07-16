@@ -32,10 +32,13 @@ export const HeroCompact = () => {
   const R = (S && S.rpg) || {};
   const d = deriveHeroStats(R);
 
+  /* v2.3.1339 (owner): the heart/bolt/droplet icons were the "super
+     tiny" ones — 14 -> 24px, still under the 40px identity portrait
+     (owner's stated ceiling). */
   const row = (kind, cur, max) => (
     <div style={{ display: 'flex', alignItems: 'center', gap: 6, minHeight: 0 }}>
       <img src={VITAL_ICONS[kind]} alt={kind} draggable={false}
-        style={{ width: 14, height: 14, objectFit: 'contain', flex: 'none', pointerEvents: 'none' }} />
+        style={{ width: 24, height: 24, objectFit: 'contain', flex: 'none', pointerEvents: 'none' }} />
       <VitalBar kind={kind} cur={cur} max={max} />
       <span style={{
         flex: 'none', minWidth: 58, textAlign: 'right',
@@ -49,8 +52,8 @@ export const HeroCompact = () => {
     <div style={{
       flex: 1, minHeight: 0,
       display: 'flex', flexDirection: 'column',
-      gap: 4,
-      padding: '7px 10px 6px',
+      gap: 3, /* v2.3.1339: pays for the taller vital rows */
+      padding: '6px 10px 4px',
     }}>
       {/* v2.3.1294 (ChatGPT round-4): identity strip — the retired
           top-right world card lives here now (portrait, name, level,
@@ -58,17 +61,17 @@ export const HeroCompact = () => {
           what condition am I in, what's my combat strength. */}
       <IdentityStrip />
       {/* Live resources — one VitalBar component for all three. */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 3, minWidth: 0 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
         {row('hp', R.hp || 0, R.maxHp || 100)}
         {row('stamina', R.stamina || 0, R.maxStamina || 100)}
         {row('mana', R.mana || 0, R.maxMana || 100)}
       </div>
 
       {/* Combat parents + the two mid-fight derived values.
-          v2.3.1338 (owner: "the icons are super tiny — 2x or 3x as
-          big"): six columns instead of eight — DPS/Block leave the
-          tile rhythm and stack in a compact right-hand column, which
-          buys every skill icon the width to double (22 -> 44px). */}
+          v2.3.1339: the v2.3.1338 44px icons clipped their level
+          numbers below the compact fold — back to 22px (the owner's
+          "super tiny" icons were the VITALS trio, now 24px above).
+          DPS/Block keep the v2.3.1338 stacked trailing column. */}
       <div style={{
         flex: 1, minHeight: 0,
         display: 'grid',
@@ -123,7 +126,7 @@ export const HeroCompact = () => {
                 }}>+{unspent}</span>
               )}
               <img src={s.iconSrc} alt={s.label} draggable={false}
-                style={{ width: 44, height: 44, objectFit: 'contain', pointerEvents: 'none' }} /> {/* v2.3.1338: 22 -> 44 */}
+                style={{ width: 22, height: 22, objectFit: 'contain', pointerEvents: 'none' }} /> {/* v2.3.1339: 44 -> 22 — the 2x pass clipped the levels below the compact fold; the tiny-icon complaint was the VITALS trio */}
               <span style={{ fontSize: 12, fontWeight: 700, color: COL.text, lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>
                 {lvl}
               </span>
