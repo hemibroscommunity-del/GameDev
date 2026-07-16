@@ -330,7 +330,9 @@ export const InventoryPanel = () => {
       }}>
         {[
           { id: 'items', label: 'Items', icon: '/icons/ui/nav-inventory.webp?v=2.3.1224' },
-          { id: 'equipped', label: 'Equipped', icon: '/icons/bag/bag-equipped.webp?v=2.3.1320' },
+          /* v2.3.1339 (owner): the checkmark art becomes the same green
+             gradient dot as the per-item worn marker. */
+          { id: 'equipped', label: 'Equipped', dot: true },
         ].map(t => (
           <button key={t.id}
             onClick={() => setBagTab(t.id)}
@@ -342,9 +344,19 @@ export const InventoryPanel = () => {
               color: bagTab === t.id ? COL.text : COL.text2,
               fontFamily: 'inherit', fontSize: 12, fontWeight: 700,
             }}>
-            <img src={t.icon} alt="" draggable={false}
-              style={{ width: 16, height: 16, objectFit: 'contain' }} />
+            {!t.dot && (
+              <img src={t.icon} alt="" draggable={false}
+                style={{ width: 16, height: 16, objectFit: 'contain' }} />
+            )}
             {t.label}
+            {/* v2.3.1339b (owner): dot AFTER the word. */}
+            {t.dot && (
+              <span aria-hidden="true" style={{
+                width: 12, height: 12, borderRadius: '50%', flex: 'none',
+                background: 'linear-gradient(180deg,#7FE3A0 0%,#2E9B57 100%)',
+                boxShadow: '0 0 0 1.5px rgba(9,14,17,.55), inset 0 1px 1px rgba(255,255,255,.35)',
+              }} />
+            )}
           </button>
         ))}
       </div>
