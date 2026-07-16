@@ -69,7 +69,7 @@ function tierLabel(wpn) {
 /* Pick a thumb URL for a weapon based on type.
    v2.3.1325 (owner icon sheets): painted item set — greatsword and
    sword split after sharing one icon since v2.3.210. */
-const ITEMS_V = '?v=2.3.1325';
+const ITEMS_V = '?v=2.3.1325b';
 function weaponThumb(wpn) {
   if (!wpn || !wpn.type) return null;
   if (wpn.type === 'bow')        return `/icons/items/bow.webp${ITEMS_V}`;

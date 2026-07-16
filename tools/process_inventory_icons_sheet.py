@@ -38,7 +38,7 @@ SHEETS = [
         'fish-minnow', 'fish-clownfish', 'fish-trout', 'cooked-minnow', 'cooked-clownfish',
         'cooked-trout', 'burnt-dust', 'wood-log', 'ore-copper', 'fishing-pole',
         'remnants-slime', 'remnants-fire-goblin', 'remnants-skeleton', 'remnants-snowman', 'amulet',
-    ], []),
+    ], ['amulet']),  # v2.3.1325b: the cord loop encloses background white, same as the bow
     ('sheet-inv-painted-p2.png', 4, 4, [
         'shard_meadow', 'shard_ember', 'shard_mist', 'shard_frost',
         'shard_thunder', 'shard_hollows', 'shard_sky', 'shard_tidal',
