@@ -1835,6 +1835,9 @@ const HP_TIER_GREEN = 0x3ec27a, HP_TIER_YELLOW = 0xf5c542, HP_TIER_ORANGE = 0xe8
 const HP_RING_OUTLINE = 0x12161d;  /* dark frame under the band so it doesn't blend into the world */
 const HP_GHOST_WHITE = 0xffffff;   /* recently-lost HP trail */
 const HP_GHOST_DRAIN = 0.010;      /* ghost catches down ~0.6/sec (per ~60fps frame) */
+const HP_GHOST_DRAIN_M = 0.030;    /* v2.3.1338: MONSTER bars only — owner wants the white
+                                      trail ~3x faster to drain; the player ring/widget keeps
+                                      the slower v2.3.458 rate */
 const HP_GHOST_HOLD_MS = 140;      /* brief hold before the white trail starts draining */
 const HP_RING_MAX_STYLE = {
   fontFamily: 'Source Sans 3, sans-serif',
@@ -3257,6 +3260,14 @@ export class EntityRenderer {
         const lvlTopY = -size - 22;
         const topY = Math.min(visualTopY, lvlTopY);
         const barY = topY - 2 - MONSTER_HPBAR_H / 2;
+        /* v2.3.1338: stamp the bar-top anchor on the game monster so
+           combat popups spawn ABOVE the health bar (owner: damage
+           numbers rise from over the bar, not over the sprite body).
+           Local offset from the monster origin — the sprite-top math
+           above (variants/snowman/fodder) already lives here, so this
+           is the one place that knows where the bar actually is.
+           Consumed by combatHelpers.monsterPopupY(). */
+        m._popupTopOff = barY - MONSTER_HPBAR_H / 2 - 6;
         display._hpHeart.width = MONSTER_HPBAR_W;
         display._hpHeart.height = MONSTER_HPBAR_H;
         display._hpHeart.x = 0;  /* anchor already centered at creation */
@@ -3280,7 +3291,7 @@ export class EntityRenderer {
         }
         if (hpPct >= display._mGhost) display._mGhost = hpPct;
         else if (now >= (display._mGhostDrainAt || 0)) {
-          display._mGhost = Math.max(hpPct, display._mGhost - HP_GHOST_DRAIN);
+          display._mGhost = Math.max(hpPct, display._mGhost - HP_GHOST_DRAIN_M);
         }
         display._mLastFrac = hpPct;
         const fx = display._hpBarFx;

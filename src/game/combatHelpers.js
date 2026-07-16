@@ -301,8 +301,21 @@ function pushDmgPopup(S, x, y, text, color, extra) {
   S.dmgNumbers.push(p);
 }
 
+/* v2.3.1338: spawn-Y for a damage number on a monster — just ABOVE its
+   floating HP bar (owner: numbers rise from over the bar, not over the
+   sprite body).  entityRenderer stamps _popupTopOff each frame from the
+   real bar geometry (variant/snowman/fodder sprite tops all differ);
+   `fallback` is the site's old hand-tuned offset, used until the first
+   render stamp (freshly spawned monster) or in headless paths. */
+function monsterPopupY(m, fallback) {
+  var y = (m.y != null ? m.y : m.renderY) || 0;
+  var off = m._popupTopOff != null ? m._popupTopOff : (fallback != null ? fallback : -30);
+  return y + off;
+}
+
 export {
   pushDmgPopup,
+  monsterPopupY,
   BUILD_LABELS,
   BUILD_ICONS,
   peerDmgKey,

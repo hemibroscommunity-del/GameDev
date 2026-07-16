@@ -24,7 +24,7 @@
 import { ZONES, BT_AUDIO, SNOWBALL_DMG_BASE, SNOWBALL_STUN_MS, SNOWMAN_DURATION, SNOWMAN_AGGRO_RADIUS, SLED_DURATION, TIDE_CYCLE_MS, DIVE_MAX_AIR, DIVE_AIR_DRAIN, DIVE_AIR_REFILL, DIVE_DAMAGE_RATE, DIVE_TREASURE_CHANCE, TORCH_DURATION } from '@/data/index.js';
 import { _createForOfIteratorHelper } from '@/lib/babelHelpers.js';
 
-import { pushDmgPopup } from '@/game/combatHelpers.js';
+import { pushDmgPopup, monsterPopupY } from '@/game/combatHelpers.js';
 export function updateZoneMechanics(S, ptx, pty) {
   var P = S.player;
   var R; /* see header — dormant-code guard, intentionally undefined */
@@ -146,7 +146,7 @@ export function updateZoneMechanics(S, ptx, pty) {
                   m._sledHit = true;
                   var sledDmg = Math.ceil(20 + (((_R5 = R) === null || _R5 === void 0 ? void 0 : _R5.power) || 0) * 0.5);
                   m.curHp -= sledDmg;
-                  pushDmgPopup(S, m.x, m.y - 20, 'SLED ' + sledDmg, '#60a5fa');
+                  pushDmgPopup(S, m.x, monsterPopupY(m, -20), 'SLED ' + sledDmg, '#60a5fa');
                   S.screenShake = 3;
                   BT_AUDIO.beep(300, 0.08, 0.1, 'triangle');
                 }
