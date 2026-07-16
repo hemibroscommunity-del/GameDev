@@ -248,7 +248,10 @@ export const HeroExpanded = () => {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 5, paddingTop: 6 }}>
           {[
             /* v2.3.1323 (owner icon sheet): each record card gets its
-               icon — same magenta-key pipeline as the stat sheet. */
+               icon — same magenta-key pipeline as the stat sheet.
+               v2.3.1341 (owner art drop): rec-kills replaced with the
+               new sword-and-skull art (green-screen sheet, chroma
+               knocked out); shared ?v bumped to bust the old cache. */
             ['Kills', cs.monstersKilled ?? cs.kills ?? 0, 'rec-kills'],
             ['Deaths', cs.deaths ?? 0, 'rec-deaths'],
             /* Renamed from "Gold Earned" so it can't be confused with
@@ -268,7 +271,7 @@ export const HeroExpanded = () => {
               minWidth: 0,
               display: 'flex', alignItems: 'center', gap: 6,
             }}>
-              <img src={`/icons/ui/hero/${icon}.webp?v=2.3.1323`} alt="" draggable={false}
+              <img src={`/icons/ui/hero/${icon}.webp?v=2.3.1341`} alt="" draggable={false}
                 style={{ width: 26, height: 26, objectFit: 'contain', flex: 'none', pointerEvents: 'none' }} />
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 14, fontWeight: 800, color: COL.text, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{value}</div>
