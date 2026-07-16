@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { COL, panelStyle, getState } from './common.js';
 import { eatBus } from '../eatBus.js';
 import { itemDetailBus } from './itemDetailBus.js';
@@ -195,6 +195,39 @@ export const InventoryPanel = () => {
   const setFilter = (f) => { _lastFilter = f; setFilterState(f); };
   const [bagTab, setBagTabState] = useState(_lastBagTab);
   const setBagTab = (t) => { _lastBagTab = t; setBagTabState(t); };
+  /* v2.3.1327 (owner device: "the last row of equipped item slots get
+     cut off"): the fixed 80px tiles overflowed shorter real-phone
+     viewports (Safari chrome shrinks visualViewport below the rig's
+     844).  Measure the tab's actual box and size the 3x2 tiles to FIT
+     — height budget (pad 14+8, row gap 10) and width budget (pad 16,
+     gaps 20) both respected, clamped 44..96. */
+  const eqBoxRef = useRef(null);
+  const [eqTile, setEqTile] = useState(80);
+  useEffect(() => {
+    if (bagTab !== 'equipped') return;
+    const measure = () => {
+      const el = eqBoxRef.current;
+      if (!el || !el.clientHeight) return;
+      /* Budget: grid padding 10+6 + row gap 10 = 26 vertical; 8+8 pad
+         + 2 gaps of 10 = 36 horizontal.  Floor 40 (not 44): on the
+         shortest sheets a taller floor overflowed by a few px — the
+         exact bug this measure exists to kill. */
+      const t = Math.floor(Math.min((el.clientHeight - 26) / 2, (el.clientWidth - 36) / 3));
+      const clamped = Math.max(40, Math.min(96, t));
+      setEqTile(prev => (Math.abs(prev - clamped) > 1 ? clamped : prev));
+    };
+    measure();
+    /* ResizeObserver, not a one-shot: the sheet ANIMATES open over
+       220ms, so a mount-time measure reads the mid-animation (small)
+       height and sticks at the clamp floor. */
+    const obs = window.ResizeObserver ? new ResizeObserver(measure) : null;
+    if (obs && eqBoxRef.current) obs.observe(eqBoxRef.current);
+    window.addEventListener('resize', measure);
+    return () => {
+      if (obs) obs.disconnect();
+      window.removeEventListener('resize', measure);
+    };
+  }, [bagTab]);
 
   useEffect(() => {
     const id = setInterval(() => force(v => v + 1), 400);
@@ -295,20 +328,18 @@ export const InventoryPanel = () => {
         /* Non-scrolling relative wrapper: the CornerTag half-overlaps
            the view's top edge (top:-6), which an overflow:auto box
            would clip — the scroller lives one level down. */
-        <div style={{ position: 'relative', flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+        <div ref={eqBoxRef} style={{ position: 'relative', flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
           <CornerTag text={`${equipped.filter(sl => !sl.ghost).length}/6`} />
           <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', touchAction: 'pan-y', WebkitOverflowScrolling: 'touch' }}>
           <div style={{
             minWidth: 0,
             display: 'grid',
-            /* v2.3.1326b (rig screenshot): fixed 80px tiles centered —
-               1fr tiles (~100px) pushed row two under the toolbar and
-               the 4/6 tag onto the third tile.  80px keeps both rows +
-               the tag fully visible inside the expanded sheet. */
-            gridTemplateColumns: 'repeat(3, 80px)',
+            /* v2.3.1327: measured tile size (see eqTile above) — fixed
+               80px clipped row two on real phones. */
+            gridTemplateColumns: `repeat(3, ${eqTile}px)`,
             justifyContent: 'center',
             gap: 10,
-            padding: '14px 8px 8px',
+            padding: '10px 8px 6px',
           }}>
             {equipped.map(sl => (
               <SlotTile
