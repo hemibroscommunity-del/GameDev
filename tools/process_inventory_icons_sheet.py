@@ -33,18 +33,24 @@ OUT_DIR = os.path.join(ROOT, 'public', 'icons', 'items')
 OUT_SIZE = 256
 MARGIN = 0.12
 
+P2_NAMES = [
+    'shard_meadow', 'shard_ember', 'shard_mist', 'shard_frost',
+    'shard_thunder', 'shard_hollows', 'shard_sky', 'shard_tidal',
+    'great-sword', 'sword', 'bow', 'staff',
+    'shield', 'chest-plate', 'greaves', 'cloth-shirt',
+]
+# (src, cols, rows, row-major names, punch-hole names, only-render subset)
 SHEETS = [
     ('sheet-inv-painted-p1.png', 5, 3, [
         'fish-minnow', 'fish-clownfish', 'fish-trout', 'cooked-minnow', 'cooked-clownfish',
         'cooked-trout', 'burnt-dust', 'wood-log', 'ore-copper', 'fishing-pole',
         'remnants-slime', 'remnants-fire-goblin', 'remnants-skeleton', 'remnants-snowman', 'amulet',
-    ], ['amulet']),  # v2.3.1325b: the cord loop encloses background white, same as the bow
-    ('sheet-inv-painted-p2.png', 4, 4, [
-        'shard_meadow', 'shard_ember', 'shard_mist', 'shard_frost',
-        'shard_thunder', 'shard_hollows', 'shard_sky', 'shard_tidal',
-        'great-sword', 'sword', 'bow', 'staff',
-        'shield', 'chest-plate', 'greaves', 'cloth-shirt',
-    ], ['bow']),
+    ], ['amulet'], None),  # v2.3.1325b: the cord loop encloses background white, same as the bow
+    ('sheet-inv-painted-p2.png', 4, 4, P2_NAMES, ['bow'], None),
+    # v2.3.1325c (owner): revised sheet swapping the boots for armored
+    # leg plates — SAME 4x4 layout, but only the greaves cell is taken;
+    # every other icon stays from the original p2 pass above.
+    ('sheet-inv-painted-p2b.png', 4, 4, P2_NAMES, [], ['greaves']),
 ]
 
 
@@ -55,7 +61,7 @@ def is_bg(px):
     return min(r, g, b) > 198 and (max(r, g, b) - min(r, g, b)) < 22
 
 
-def slice_sheet(src_name, cols, rows, names, punch_holes):
+def slice_sheet(src_name, cols, rows, names, punch_holes, only=None):
     im = Image.open(os.path.join(ROOT, 'assets', 'icons-source', src_name)).convert('RGB')
     W, H = im.size
     cw, ch = W / cols, H / rows
@@ -110,6 +116,8 @@ def slice_sheet(src_name, cols, rows, names, punch_holes):
 
     # 3. render each cell's union of components
     for idx, name in enumerate(names):
+        if only is not None and name not in only:
+            continue
         pts = cell_px[idx]
         if not pts:
             raise SystemExit(f'{name}: no components landed in cell {idx}')
@@ -165,8 +173,8 @@ def slice_sheet(src_name, cols, rows, names, punch_holes):
 
 def main():
     os.makedirs(OUT_DIR, exist_ok=True)
-    for src, cols, rows, names, punch in SHEETS:
-        slice_sheet(src, cols, rows, names, punch)
+    for src, cols, rows, names, punch, only in SHEETS:
+        slice_sheet(src, cols, rows, names, punch, only)
 
 
 if __name__ == '__main__':

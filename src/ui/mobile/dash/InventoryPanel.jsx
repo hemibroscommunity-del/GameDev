@@ -45,7 +45,7 @@ export const classify = (key) => {
    one consistent style — everything now lives under /icons/items/.
    The old per-type dirs (icons/wood, icons/cook, ...) keep their files
    for any legacy surface still pointing at them. */
-const ITEMS_V = '?v=2.3.1325b';
+const ITEMS_V = '?v=2.3.1325c';
 const WOOD_THUMB = `/icons/items/wood-log.webp${ITEMS_V}`;
 const BURNT_DUST_THUMB = `/icons/items/burnt-dust.webp${ITEMS_V}`;
 const SLIME_REMNANTS_THUMB = `/icons/items/remnants-slime.webp${ITEMS_V}`;
