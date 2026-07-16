@@ -370,18 +370,20 @@
    stay legible at 28-36px), carved-garnet danger + its own pressed
    shell, the brass-faced primary, and the recessed well below.  All
    rasterized to @3x PNGs for reliable border-image slicing. */
+/* v2.3.1335 (owner: "I don't like the thick black border around the
+   sort buttons" — regression vs the simpler pack): chips go BACK to
+   the original toolbar frames 9-sliced at 6px (the v2.3.1332 look).
+   The dedicated chip-frame art has a proportionally heavier outer cut
+   that stacks dark-on-dark inside the recessed tracks; assets stay in
+   public/icons/ui for possible use at larger sizes. */
 .bt-chisel--chip{
   border-width:6px;
-  border-image:url('/icons/ui/chip-frame-inactive-3x.png?v=2.3.1334') 78 fill / 6px stretch;
+  border-image-width:6px;
 }
 .bt-chisel--on,
 .bt-chisel[aria-pressed='true']{
   border-image-source:url('/icons/ui/toolbar-button-selected-3x.png?v=2.3.1332');
   color:var(--ui-text);
-}
-.bt-chisel--chip.bt-chisel--on,
-.bt-chisel--chip[aria-pressed='true']{
-  border-image-source:url('/icons/ui/chip-frame-selected-3x.png?v=2.3.1334');
 }
 .bt-chisel--danger{
   border-image:url('/icons/ui/toolbar-button-danger-3x.png?v=2.3.1334') 78 fill / 9px stretch;
@@ -401,10 +403,6 @@
 .bt-chisel[data-pressed='true']{
   border-image-source:url('/icons/ui/toolbar-button-pressed-3x.png?v=2.3.1332');
   transform:translateY(1px);
-}
-.bt-chisel--chip:active,
-.bt-chisel--chip[data-pressed='true']{
-  border-image-source:url('/icons/ui/chip-frame-pressed-3x.png?v=2.3.1334');
 }
 /* Danger has its own carved pressed shell; brass keeps its face. */
 .bt-chisel--danger:active,
