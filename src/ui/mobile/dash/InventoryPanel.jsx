@@ -5,9 +5,7 @@ import { itemDetailBus } from './itemDetailBus.js';
 import { isLocked as itemIsLocked } from './inventoryLocks.js';
 import { reconcileGearStash } from '../../../rendering/gearCatalog.js';
 import { getBagEntries } from './bagModel.js';
-import { SlotTile } from '../sheet/SlotTile.jsx';                 /* v2.3.1285 */
-import { getEquippedSlots, GHOST_SRC } from '../sheet/equipModel.js';
-import { CornerTag } from '../sheet/RowRail.jsx';                 /* v2.3.1319; rails retired v2.3.1320 */
+import { getEquippedSlots, getEquipContribs, GHOST_SRC } from '../sheet/equipModel.js'; /* v2.3.1328: contribs */
 
 // Category filter chips.  "All" comes first so the player always opens
 // the bag with everything visible.  v2.3.1231: UI Bible icons replace
@@ -189,37 +187,62 @@ let _lastFilter = 'all';
    the active tab survives leaving the destination, same as the filter. */
 let _lastBagTab = 'items';
 
+/* v2.3.1328: monochrome stat glyphs for the EQUIPPED TOTAL rows —
+   simple interface indicators, not painted item icons (brief §Visual
+   hierarchy).  Stroke currentColor at the muted tone. */
+const StatGlyph = ({ k }) => {
+  const paths = {
+    DMG:   'M2 10 L9 3 M9 3 L9 6 M9 3 L6 3 M3.5 8.5 L2 10 M4 6.5 L5.5 8',      /* sword */
+    DPS:   'M6 1 L7 4.5 L10.5 5.5 L7.5 7 L8.5 10.5 L6 8 L3.5 10.5 L4.5 7 L1.5 5.5 L5 4.5 Z', /* burst */
+    BLOCK: 'M6 1.2 L10 2.8 V6 C10 8.4 8.4 10 6 10.8 C3.6 10 2 8.4 2 6 V2.8 Z', /* shield */
+    HP:    'M6 10 C2.4 7.4 1.4 5 2.6 3.4 C3.6 2 5.4 2.4 6 3.8 C6.6 2.4 8.4 2 9.4 3.4 C10.6 5 9.6 7.4 6 10 Z', /* heart */
+    GEM:   'M3.4 2 H8.6 L10.5 4.6 L6 10 L1.5 4.6 Z M1.5 4.6 H10.5 M6 10 L4.2 4.6 M6 10 L7.8 4.6', /* gem */
+  };
+  return (
+    <svg viewBox="0 0 12 12" width="11" height="11" aria-hidden="true" style={{ flex: 'none', color: COL.muted }}>
+      <path d={paths[k] || paths.GEM} fill="none" stroke="currentColor"
+        strokeWidth="1.1" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+};
+
 export const InventoryPanel = () => {
   const [, force] = useState(0);
   const [filter, setFilterState] = useState(_lastFilter);
   const setFilter = (f) => { _lastFilter = f; setFilterState(f); };
+  /* v2.3.1328b (owner: "don't display the stats of each item unless
+     it's tapped"): which equipped card is selected — the right pane is
+     a FIXED display window showing the aggregate when nothing is
+     selected and the tapped item's contribution when one is.  Not
+     module-persisted: selection is a transient inspection, cleared on
+     tab switch. */
+  const [eqSel, setEqSel] = useState(null);
   const [bagTab, setBagTabState] = useState(_lastBagTab);
-  const setBagTab = (t) => { _lastBagTab = t; setBagTabState(t); };
-  /* v2.3.1327 (owner device: "the last row of equipped item slots get
-     cut off"): the fixed 80px tiles overflowed shorter real-phone
-     viewports (Safari chrome shrinks visualViewport below the rig's
-     844).  Measure the tab's actual box and size the 3x2 tiles to FIT
-     — height budget (pad 14+8, row gap 10) and width budget (pad 16,
-     gaps 20) both respected, clamped 44..96. */
+  const setBagTab = (t) => { _lastBagTab = t; setBagTabState(t); setEqSel(null); };
+  /* v2.3.1327 (owner device: "the last row gets cut off"): measure the
+     tab's actual box and size rows to FIT — real phones' Safari chrome
+     shrinks visualViewport below the rig's 844.
+     v2.3.1328 (owner mockup): the measure now sizes the CARD ROW
+     height for the 2-col x 3-row card grid (pad 6+6 + 2 gaps of 6 =
+     24 vertical), clamped 36..78.  ResizeObserver, not a one-shot:
+     the sheet ANIMATES open over 220ms, so a mount-time measure reads
+     the mid-animation (small) height and sticks at the floor. */
   const eqBoxRef = useRef(null);
-  const [eqTile, setEqTile] = useState(80);
+  const [eqCard, setEqCard] = useState(56);
   useEffect(() => {
     if (bagTab !== 'equipped') return;
     const measure = () => {
       const el = eqBoxRef.current;
       if (!el || !el.clientHeight) return;
-      /* Budget: grid padding 10+6 + row gap 10 = 26 vertical; 8+8 pad
-         + 2 gaps of 10 = 36 horizontal.  Floor 40 (not 44): on the
-         shortest sheets a taller floor overflowed by a few px — the
-         exact bug this measure exists to kill. */
-      const t = Math.floor(Math.min((el.clientHeight - 26) / 2, (el.clientWidth - 36) / 3));
-      const clamped = Math.max(40, Math.min(96, t));
-      setEqTile(prev => (Math.abs(prev - clamped) > 1 ? clamped : prev));
+      /* Budget: row padding 4+4 + 2 grid gaps of 6 = 20 vertical.
+         Floor 26 fits an SE-class box (~90px); below it the safety
+         scroller takes over.  The cards are art + label only, so a
+         26px row stays readable. */
+      const t = Math.floor((el.clientHeight - 20) / 3);
+      const clamped = Math.max(26, Math.min(78, t));
+      setEqCard(prev => (Math.abs(prev - clamped) > 1 ? clamped : prev));
     };
     measure();
-    /* ResizeObserver, not a one-shot: the sheet ANIMATES open over
-       220ms, so a mount-time measure reads the mid-animation (small)
-       height and sticks at the clamp floor. */
     const obs = window.ResizeObserver ? new ResizeObserver(measure) : null;
     if (obs && eqBoxRef.current) obs.observe(eqBoxRef.current);
     window.addEventListener('resize', measure);
@@ -317,50 +340,206 @@ export const InventoryPanel = () => {
         ))}
       </div>
 
-      {/* v2.3.1320 (owner: "understood without using language"): each
-          WORN item carries a small bag-equipped badge in its top-right
-          corner, and the count tag is numbers only (worn/total). */}
-      {/* v2.3.1326: the equipped positions are their own TAB — with
-          the full sheet to themselves the six slots render 3-wide (two
-          roomy rows) instead of the old cramped 6-wide header row.
-          Same order, same tile component as the compact row. */}
-      {bagTab === 'equipped' && (
-        /* Non-scrolling relative wrapper: the CornerTag half-overlaps
-           the view's top edge (top:-6), which an overflow:auto box
-           would clip — the scroller lives one level down. */
+      {/* v2.3.1328 (owner mockup): left ~64% — six QUIET equipment
+          cards (2-col x 3-row, fixed order, art + slot label only);
+          right ~36% — one FIXED display window.
+          v2.3.1328b (owner: "don't display the stats of each item
+          unless it's tapped"): the window shows the loadout AGGREGATE
+          when nothing is selected and the tapped item's contribution
+          when a card is; tapping the already-selected card opens the
+          existing equip modal (management stays one tap deeper), and
+          tapping the window returns it to the aggregate.  Empty slots
+          keep their old behavior (straight to the picker). */}
+      {bagTab === 'equipped' && (() => {
+        const contribs = getEquipContribs(R);
+        const wornCount = equipped.filter(sl => !sl.ghost).length;
+        const compactCard = eqCard < 52; /* short viewports: tighter type */
+        const selSlot = equipped.find(sl => sl.slot === eqSel && !sl.ghost) || null;
+        const selCard = selSlot ? contribs.cards[selSlot.slot] : null;
+        return (
         <div ref={eqBoxRef} style={{ position: 'relative', flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
-          <CornerTag text={`${equipped.filter(sl => !sl.ghost).length}/6`} />
           <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', touchAction: 'pan-y', WebkitOverflowScrolling: 'touch' }}>
-          <div style={{
-            minWidth: 0,
-            display: 'grid',
-            /* v2.3.1327: measured tile size (see eqTile above) — fixed
-               80px clipped row two on real phones. */
-            gridTemplateColumns: `repeat(3, ${eqTile}px)`,
-            justifyContent: 'center',
-            gap: 10,
-            padding: '10px 8px 6px',
-          }}>
-            {equipped.map(sl => (
-              <SlotTile
-                key={`eq-${sl.slot}`}
-                k={`eq-${sl.slot}`}
-                label={sl.label}
-                iconSrc={sl.iconSrc}
-                ghostSrc={sl.ghost ? GHOST_SRC[sl.slot] : null}
-                occupied={!sl.ghost}
-                quality={sl.quality}
-                wornSrc="/icons/bag/bag-equipped.webp?v=2.3.1320"
-                onTap={sl.pickerSlot ? openPicker(sl.pickerSlot)
-                  : sl.slot === 'amulet' && R.amulet
-                    ? (anchor) => itemDetailBus.open({ kind: 'amulet', amulet: R.amulet, anchor })
-                    : undefined}
-              />
-            ))}
-          </div>
+            <div style={{ display: 'flex', gap: 8, padding: '4px 2px', minWidth: 0 }}>
+              {/* Equipment cards, fixed order Weapon/Shield/Chest/Legs/Cape/Amulet. */}
+              <div style={{
+                flex: '1 1 64%', minWidth: 0,
+                display: 'grid',
+                gridTemplateColumns: '1fr 1fr',
+                gridAutoRows: `${eqCard}px`,
+                gap: 6,
+              }}>
+                {equipped.map(sl => {
+                  const openModal = sl.pickerSlot ? openPicker(sl.pickerSlot)
+                    : sl.slot === 'amulet' && R.amulet
+                      ? (anchor) => itemDetailBus.open({ kind: 'amulet', amulet: R.amulet, anchor })
+                      : undefined;
+                  const selected = !sl.ghost && eqSel === sl.slot;
+                  /* Occupied: first tap selects (window shows the item);
+                     tap again for the modal.  Empty: picker directly. */
+                  const onTap = sl.ghost ? openModal
+                    : (anchor) => {
+                        if (eqSel === sl.slot) { openModal && openModal(anchor); }
+                        else setEqSel(sl.slot);
+                      };
+                  const rarityEdge = sl.quality === 'rare' ? '#5B99DE'
+                    : sl.quality === 'elite' ? '#A477DF' : null;
+                  const art = sl.iconSrc || GHOST_SRC[sl.slot];
+                  return (
+                    <div key={`eq-${sl.slot}`}
+                      onPointerUp={onTap ? (e) => {
+                        e.stopPropagation();
+                        let anchor = null;
+                        try {
+                          const rect = e.currentTarget.getBoundingClientRect();
+                          anchor = { left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom, width: rect.width, height: rect.height };
+                        } catch (_e) {}
+                        onTap(anchor);
+                      } : undefined}
+                      title={sl.label}
+                      aria-pressed={selected}
+                      style={{
+                        position: 'relative', minWidth: 0,
+                        display: 'flex', alignItems: 'center', gap: 7,
+                        padding: '0 6px',
+                        borderRadius: 9,
+                        background: sl.ghost ? COL.wellSoft : COL.brassFill,
+                        /* Restrained gold = equipped; dark neutral =
+                           empty; the SELECTED card gets the 2px brass
+                           inset ring (same accent language as the
+                           active tab).  Rarity keeps its edge color. */
+                        border: rarityEdge ? `2px solid ${rarityEdge}`
+                          : sl.ghost ? `1px solid ${COL.tileBor}`
+                          : selected ? `1px solid ${COL.brass}`
+                          : '1px solid rgba(216,168,95,.55)',
+                        boxShadow: selected ? `inset 0 0 0 2px ${COL.brass}`
+                          : sl.ghost ? 'inset 0 2px 4px rgba(0,0,0,.30)'
+                          : 'inset 0 0 6px rgba(245,199,70,0.18)',
+                        cursor: onTap ? 'pointer' : 'default',
+                        touchAction: 'none',
+                      }}>
+                      {art && (
+                        <img src={art} alt="" aria-hidden="true" draggable={false}
+                          style={{
+                            /* 32 cap: at 40 the slot labels truncated
+                               ("WEA…") — the name outranks art size. */
+                            width: Math.min(eqCard - 12, 32), height: Math.min(eqCard - 12, 32),
+                            flex: 'none', objectFit: 'contain',
+                            imageRendering: 'pixelated',
+                            opacity: sl.ghost ? 0.28 : (sl.iconSrc ? 1 : 0.95),
+                            filter: sl.ghost ? 'grayscale(1)' : 'none',
+                            userSelect: 'none', pointerEvents: 'none',
+                          }} />
+                      )}
+                      <span style={{
+                        flex: 1, minWidth: 0,
+                        fontSize: 10, fontWeight: 700, letterSpacing: '.03em',
+                        color: sl.ghost ? COL.muted : COL.text2, lineHeight: 1.25,
+                        whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                      }}>{sl.label.toUpperCase()}</span>
+                      {!sl.ghost && (
+                        <img src="/icons/bag/bag-equipped.webp?v=2.3.1320" alt="" aria-hidden="true" draggable={false}
+                          style={{
+                            position: 'absolute', top: 2, right: 2,
+                            width: 13, height: 13, objectFit: 'contain',
+                            pointerEvents: 'none', zIndex: 1,
+                          }} />
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+              {/* The fixed display window: aggregate by default, the
+                  selected item's contribution when a card is tapped.
+                  Tapping it returns to the aggregate. */}
+              <div
+                onPointerUp={selCard || selSlot ? (e) => { e.stopPropagation(); setEqSel(null); } : undefined}
+                style={{
+                  flex: '1 1 36%', minWidth: 0, maxWidth: '38%',
+                  alignSelf: 'stretch',
+                  background: COL.well,
+                  border: `1px solid ${selSlot ? 'rgba(216,168,95,.45)' : COL.tileBor}`,
+                  boxShadow: 'inset 0 2px 4px rgba(0,0,0,.3)',
+                  borderRadius: 10,
+                  /* compact viewports: the pane's MIN content height is
+                     what overflows first — tighter padding + line
+                     heights below keep 5 rows inside the shortest
+                     sheets. */
+                  padding: compactCard ? '3px 7px' : '6px 9px',
+                  display: 'flex', flexDirection: 'column',
+                  cursor: selSlot ? 'pointer' : 'default',
+                }}>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: 4, paddingBottom: 2, flex: 'none' }}>
+                  <span style={{
+                    flex: 1, minWidth: 0,
+                    fontSize: 9, fontWeight: 800, letterSpacing: '.08em',
+                    color: COL.text2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                  }}>{selSlot ? ((selCard && selCard.title) || selSlot.label.toUpperCase()) : 'EQUIPPED TOTAL'}</span>
+                  <span style={{ fontSize: 10, fontWeight: 700, color: COL.muted, fontVariantNumeric: 'tabular-nums', flex: 'none' }}>
+                    {selSlot ? '×' : `${wornCount}/6`}
+                  </span>
+                </div>
+                {selSlot ? (
+                  /* Item view: art + this item's contribution rows. */
+                  <>
+                    <div style={{ flex: 'none', display: 'flex', justifyContent: 'center', padding: '2px 0' }}>
+                      <img src={selSlot.iconSrc || GHOST_SRC[selSlot.slot]} alt="" aria-hidden="true" draggable={false}
+                        style={{
+                          width: compactCard ? 28 : 40, height: compactCard ? 28 : 40,
+                          objectFit: 'contain', imageRendering: 'pixelated',
+                          userSelect: 'none', pointerEvents: 'none',
+                        }} />
+                    </div>
+                    {(selCard ? [selCard.primary, selCard.secondary].filter(Boolean) : []).map((row, i) => (
+                      <div key={row.k + i} style={{
+                        flex: 1, minHeight: 0, maxHeight: 44,
+                        display: 'flex', alignItems: 'center', gap: 5,
+                        borderTop: `1px solid ${COL.tileBor}`,
+                      }}>
+                        <span style={{ fontSize: compactCard ? 9 : 10, fontWeight: 700, letterSpacing: '.05em', color: COL.muted, flex: 'none' }}>{row.k}</span>
+                        <span style={{
+                          flex: 1, minWidth: 0, textAlign: 'right',
+                          fontSize: compactCard ? 12 : 18, lineHeight: 1.05, fontWeight: 800, color: COL.text,
+                          fontVariantNumeric: 'tabular-nums',
+                          whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                        }}>{row.v}</span>
+                      </div>
+                    ))}
+                    {!selCard && (
+                      /* Cosmetic pieces contribute no stats — say so
+                         with a quiet dash row, never fake zeros. */
+                      <div style={{
+                        flex: 1, minHeight: 0,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        borderTop: `1px solid ${COL.tileBor}`,
+                        fontSize: 16, fontWeight: 800, color: COL.muted,
+                      }}>—</div>
+                    )}
+                  </>
+                ) : (
+                  contribs.totals.map((row, i) => (
+                    <div key={row.k} style={{
+                      flex: 1, minHeight: 0,
+                      display: 'flex', alignItems: 'center', gap: 5,
+                      borderTop: i === 0 ? 'none' : `1px solid ${COL.tileBor}`,
+                    }}>
+                      <StatGlyph k={row.k} />
+                      <span style={{ fontSize: compactCard ? 9 : 10, fontWeight: 700, letterSpacing: '.05em', color: COL.muted, flex: 'none' }}>{row.k}</span>
+                      <span style={{
+                        flex: 1, minWidth: 0, textAlign: 'right',
+                        fontSize: compactCard ? 12 : 18, lineHeight: 1.05, fontWeight: 800,
+                        color: row.v === '—' ? COL.muted : COL.text,
+                        fontVariantNumeric: 'tabular-nums',
+                        whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                      }}>{row.v}</span>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
           </div>
         </div>
-      )}
+        );
+      })()}
 
       {bagTab === 'items' && <>
       {/* Filter strip — labeled category chips (glyph + name).
