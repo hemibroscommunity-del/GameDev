@@ -64,13 +64,18 @@ export const HeroCompact = () => {
         {row('mana', R.mana || 0, R.maxMana || 100)}
       </div>
 
-      {/* Combat parents + the two mid-fight derived values. */}
+      {/* Combat parents + the two mid-fight derived values.
+          v2.3.1338 (owner: "the icons are super tiny — 2x or 3x as
+          big"): six columns instead of eight — DPS/Block leave the
+          tile rhythm and stack in a compact right-hand column, which
+          buys every skill icon the width to double (22 -> 44px). */}
       <div style={{
         flex: 1, minHeight: 0,
         display: 'grid',
-        gridTemplateColumns: 'repeat(8, 1fr)',
+        gridTemplateColumns: 'repeat(6, 1fr) auto',
         gap: 6,
         alignContent: 'center',
+        alignItems: 'center',
       }}>
         {COMBAT_SKILLS.map(s => {
           const lvl = skillLevel(R, s.key);
@@ -118,28 +123,30 @@ export const HeroCompact = () => {
                 }}>+{unspent}</span>
               )}
               <img src={s.iconSrc} alt={s.label} draggable={false}
-                style={{ width: 22, height: 22, objectFit: 'contain', pointerEvents: 'none' }} />
+                style={{ width: 44, height: 44, objectFit: 'contain', pointerEvents: 'none' }} /> {/* v2.3.1338: 22 -> 44 */}
               <span style={{ fontSize: 12, fontWeight: 700, color: COL.text, lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>
                 {lvl}
               </span>
             </div>
           );
         })}
-        {/* DPS + Block share the row's tile rhythm but read as values.
-            v2.3.1311: DR renamed BLOCK — the number is shield block %
-            (calcBlockReduction), not general mitigation; labels go
-            neutral (green is reserved for buffs/deltas per round-4). */}
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 2, minWidth: 0 }}>
-          <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.04em', color: COL.text2 }}>DPS</span>
-          <span style={{ fontSize: 12, fontWeight: 700, color: COL.text, lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>
-            {d.dps.toFixed(1)}
-          </span>
-        </div>
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 2, minWidth: 0 }}>
-          <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.04em', color: COL.text2 }}>BLOCK</span>
-          <span style={{ fontSize: 12, fontWeight: 700, color: COL.text, lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>
-            {Math.round(d.block * 100)}%
-          </span>
+        {/* DPS + Block — stacked mini-rows in the trailing auto column
+            (v2.3.1338).  v2.3.1311: DR renamed BLOCK — the number is
+            shield block % (calcBlockReduction), not general mitigation;
+            labels stay neutral (green is reserved for buffs/deltas). */}
+        <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 5, minWidth: 0, paddingLeft: 2 }}>
+          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'flex-end', gap: 4 }}>
+            <span style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: '.04em', color: COL.text2 }}>DPS</span>
+            <span style={{ fontSize: 12.5, fontWeight: 700, color: COL.text, lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>
+              {d.dps.toFixed(1)}
+            </span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'flex-end', gap: 4 }}>
+            <span style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: '.04em', color: COL.text2 }}>BLOCK</span>
+            <span style={{ fontSize: 12.5, fontWeight: 700, color: COL.text, lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>
+              {Math.round(d.block * 100)}%
+            </span>
+          </div>
         </div>
       </div>
     </div>

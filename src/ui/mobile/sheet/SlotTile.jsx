@@ -72,15 +72,10 @@ export const SlotTile = ({ k, label, iconSrc, ghostSrc, onTap, occupied, quality
         <span className="bt-item-qty">{badge}</span>
       )}
       {occupied && wornSrc && (
-        /* v2.3.1321 (owner): bare icon — the dark chip + brass ring
-           around it read as a border; the checkmark art carries its
-           own contrast.  v2.3.1322 (owner): 14 -> 18px (+25%). */
-        <img src={wornSrc} alt="" aria-hidden="true" draggable={false}
-          style={{
-            position: 'absolute', top: 1, right: 1,
-            width: 18, height: 18, objectFit: 'contain',
-            pointerEvents: 'none', zIndex: 1,
-          }} />
+        /* v2.3.1336 (owner): the bracketed-checkmark art becomes a simple
+           green gradient dot (game.css .bt-worn-dot); wornSrc is now just
+           the "show the worn marker" flag. */
+        <span className="bt-worn-dot" aria-hidden="true" />
       )}
       {children}
     </div>

@@ -655,6 +655,13 @@ input{font-family:inherit}
   text-align:center;text-overflow:ellipsis;white-space:nowrap;
   text-shadow:0 1px 2px rgba(0,0,0,.78)}
 .bt-zone-header__balance{width:38px;height:1px}
+/* v2.3.1336: equipped-item marker — a simple green gradient dot (owner:
+   replaces the bracketed-checkmark art, which read as UI chrome). */
+.bt-worn-dot{position:absolute;top:3px;right:3px;width:10px;height:10px;
+  border-radius:50%;
+  background:linear-gradient(180deg,#7FE3A0 0%,#2E9B57 100%);
+  box-shadow:0 0 0 1.5px rgba(9,14,17,.55), inset 0 1px 1px rgba(255,255,255,.35);
+  pointer-events:none;z-index:1}
 /* v2.3.785/786: reload indicator shown when the exit arrow tears the app
    down (full page navigation).  Full-screen dim so it reads over the frozen
    game frame Safari keeps painted until the new document's first paint;
