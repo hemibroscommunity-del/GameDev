@@ -627,12 +627,28 @@ input{font-family:inherit}
 .bt-inspect-tp{margin-top:12px;padding:8px 20px;background:var(--pop);color:#fff;border:none;
   border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;width:100%}
 .bt-inspect-tp:active{opacity:.8}
-.bt-exit-fab{position:absolute;top:8px;left:8px;z-index:20;width:36px;height:36px;
-  border-radius:50%;background:rgba(17,25,29,.85);border:1.5px solid rgba(255,255,255,.15);
-  display:flex;align-items:center;justify-content:center;cursor:pointer;
-  color:rgba(255,255,255,.8);
-  -webkit-tap-highlight-color:transparent}
-.bt-exit-fab:active{background:rgba(217,92,84,.5)}
+/* v2.3.1333: zone header rail — replaces the bt-exit-fab back arrow
+   AND the floating zone label (both retired; see ZoneHeader.jsx).
+   Recessed navy 9-slice face, deliberately shallower than the bottom
+   toolbar; equal 38px side columns keep the title optically centered
+   on the screen.  The logout chip inside reuses the bt-chisel--chip
+   frames — no new button art. */
+.bt-zone-header{position:fixed;top:0;left:0;right:0;z-index:20;
+  display:grid;grid-template-columns:38px minmax(0,1fr) 38px;align-items:center;
+  box-sizing:border-box;height:calc(46px + env(safe-area-inset-top,0px));
+  padding:env(safe-area-inset-top,0px) 5px 0;
+  border:6px solid transparent;
+  border-image:url('/icons/ui/zone-header-bar.svg?v=2.3.1333') 18 fill / 6px stretch;
+  pointer-events:none}
+.bt-zone-header__logout{width:34px;height:34px;display:grid;place-items:center;
+  padding:0;pointer-events:auto}
+.bt-zone-header__logout img{width:21px;height:21px;object-fit:contain;display:block;
+  pointer-events:none}
+.bt-zone-header__title{min-width:0;overflow:hidden;color:#F4F5F3;
+  font:650 15px/1.1 'Source Sans 3',sans-serif;letter-spacing:.045em;
+  text-align:center;text-overflow:ellipsis;white-space:nowrap;
+  text-shadow:0 1px 2px rgba(0,0,0,.78)}
+.bt-zone-header__balance{width:38px;height:1px}
 /* v2.3.785/786: reload indicator shown when the exit arrow tears the app
    down (full page navigation).  Full-screen dim so it reads over the frozen
    game frame Safari keeps painted until the new document's first paint;

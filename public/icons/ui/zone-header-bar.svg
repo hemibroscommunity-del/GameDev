@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" fill="none">
+  <defs>
+    <linearGradient id="face" x1="60" y1="5" x2="60" y2="116" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#0D1D25" stop-opacity="0.97"/>
+      <stop offset="0.46" stop-color="#152A34" stop-opacity="0.96"/>
+      <stop offset="1" stop-color="#1C3540" stop-opacity="0.97"/>
+    </linearGradient>
+    <linearGradient id="rim" x1="60" y1="2" x2="60" y2="118" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#071319"/>
+      <stop offset="0.52" stop-color="#223A45"/>
+      <stop offset="1" stop-color="#526A74"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Shallow recessed rail: deliberately simpler than a full toolbar button. -->
+  <rect x="1.5" y="1.5" width="117" height="117" rx="12" fill="#10242D"/>
+  <rect x="3.5" y="3.5" width="113" height="113" rx="10.5" fill="url(#rim)"/>
+  <rect x="6.5" y="6.5" width="107" height="107" rx="8.5" fill="url(#face)"/>
+
+  <!-- Dark cut on the upper edge. -->
+  <path d="M14 7.5H106C109.6 7.5 112.5 10.4 112.5 14" stroke="#02090D" stroke-width="2.25" stroke-linecap="round" opacity="0.92"/>
+  <path d="M7.5 14V106" stroke="#07151B" stroke-width="1.7" stroke-linecap="round" opacity="0.88"/>
+
+  <!-- Restrained light catch along the bottom/right edge. -->
+  <path d="M112.5 14V106C112.5 109.6 109.6 112.5 106 112.5H14" stroke="#647A83" stroke-width="1.2" stroke-linecap="round" opacity="0.68"/>
+  <path d="M15 109.5H105" stroke="#83949B" stroke-width="0.75" stroke-linecap="round" opacity="0.24"/>
+</svg>

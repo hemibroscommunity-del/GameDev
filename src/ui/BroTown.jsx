@@ -6588,45 +6588,7 @@ export var BroTown = function BroTown(_ref0) {
       color: '#D8A94D',
       marginTop: 4
     }
-  }, collectMsg.text)), React.createElement(ActiveWarBanner, { stateRef: stateRef }), React.createElement(EndedWarBanner, { stateRef: stateRef }), /*#__PURE__*/React.createElement("button", {
-    className: "bt-exit-fab",
-    onClick: function onClick() {
-      /* v2.3.785: exiting reloads the whole app, and the teardown stutter
-         read as a frame-rate crash with no explanation.
-         v2.3.786: the lone 36px spinner wasn't legible over the frozen
-         game frame (Safari keeps the old page painted, animations and all
-         stopped, until the new document's first paint).  Full-screen dim
-         + spinner + label instead, appended OUTSIDE the React tree so
-         unmounting can't remove it; navigate on the next frame so it
-         paints first.  The new page's #bt-loading boot screen takes over
-         from there. */
-      try {
-        var dim = document.createElement('div');
-        dim.className = 'bt-exit-dim';
-        var sp = document.createElement('div');
-        sp.className = 'bt-exit-loading';
-        var lbl = document.createElement('div');
-        lbl.className = 'bt-exit-label';
-        lbl.textContent = 'Reloading…';
-        dim.appendChild(sp);
-        dim.appendChild(lbl);
-        document.body.appendChild(dim);
-      } catch (e) {}
-      requestAnimationFrame(function () {
-        setTimeout(onExit, 30);
-      });
-    }
-  }, /*#__PURE__*/React.createElement("svg", {
-    width: "14",
-    height: "14",
-    viewBox: "0 0 24 24",
-    fill: "none",
-    stroke: "currentColor",
-    strokeWidth: "2.5",
-    strokeLinecap: "round"
-  }, /*#__PURE__*/React.createElement("polyline", {
-    points: "15 18 9 12 15 6"
-  }))), showGuildPanel && rpgState && /*#__PURE__*/React.createElement(GuildPanel, { rpgState: rpgState, guildSkill: guildSkill, setGuildSkill: setGuildSkill, setRpgState: setRpgState, setShowGuildPanel: setShowGuildPanel, stateRef: stateRef }), showFeedback && /*#__PURE__*/React.createElement(FeedbackPanel, { stateRef: stateRef, feedbackTab: feedbackTab, setFeedbackTab: setFeedbackTab, feedbackCategory: feedbackCategory, setFeedbackCategory: setFeedbackCategory, feedbackTopic: feedbackTopic, setFeedbackTopic: setFeedbackTopic, feedbackText: feedbackText, setFeedbackText: setFeedbackText, feedbackSort: feedbackSort, setFeedbackSort: setFeedbackSort, feedbackTickets: feedbackTickets, setFeedbackTickets: setFeedbackTickets, feedbackSubmitCategory: feedbackSubmitCategory, setFeedbackSubmitCategory: setFeedbackSubmitCategory, feedbackSubmitTopic: feedbackSubmitTopic, setFeedbackSubmitTopic: setFeedbackSubmitTopic, setShowFeedback: setShowFeedback }), showLeaderboard && /*#__PURE__*/React.createElement(LeaderboardPanel, { stateRef: stateRef, leaderboardTab: leaderboardTab, setLeaderboardTab: setLeaderboardTab, setRpgState: setRpgState, setShowLeaderboard: setShowLeaderboard }), showEncyclopedia && /*#__PURE__*/React.createElement(EncyclopediaPanel, { encyclopediaTab: encyclopediaTab, setEncyclopediaTab: setEncyclopediaTab, setShowEncyclopedia: setShowEncyclopedia }), showPetHouse && rpgState && /*#__PURE__*/React.createElement(PetHousePanel, { rpgState: rpgState, stateRef: stateRef, petHouseTab: petHouseTab, setPetHouseTab: setPetHouseTab, petEvolve1: petEvolve1, setPetEvolve1: setPetEvolve1, petEvolve2: petEvolve2, setPetEvolve2: setPetEvolve2, setRpgState: setRpgState, setShowPetHouse: setShowPetHouse }), showFurniture && rpgState && /*#__PURE__*/React.createElement(FurniturePanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState, setShowFurniture: setShowFurniture }), showDungeonCreator && dungeonCreator && rpgState && /*#__PURE__*/React.createElement(DungeonCreatorPanel, { rpgState: rpgState, stateRef: stateRef, dungeonCreator: dungeonCreator, setDungeonCreator: setDungeonCreator, dungeonCreatorTab: dungeonCreatorTab, setDungeonCreatorTab: setDungeonCreatorTab, setRpgState: setRpgState, setShowDungeonCreator: setShowDungeonCreator }), showStatScreen && rpgState && /*#__PURE__*/React.createElement(StatScreenPanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState, setShowStatScreen: setShowStatScreen }), buildingPanel && rpgState && /*#__PURE__*/React.createElement("div", {
+  }, collectMsg.text)), React.createElement(ActiveWarBanner, { stateRef: stateRef }), React.createElement(EndedWarBanner, { stateRef: stateRef }), null /* v2.3.1333: bt-exit-fab retired — logout lives in the ZoneHeader rail chip (GameApp), now with confirmation */, showGuildPanel && rpgState && /*#__PURE__*/React.createElement(GuildPanel, { rpgState: rpgState, guildSkill: guildSkill, setGuildSkill: setGuildSkill, setRpgState: setRpgState, setShowGuildPanel: setShowGuildPanel, stateRef: stateRef }), showFeedback && /*#__PURE__*/React.createElement(FeedbackPanel, { stateRef: stateRef, feedbackTab: feedbackTab, setFeedbackTab: setFeedbackTab, feedbackCategory: feedbackCategory, setFeedbackCategory: setFeedbackCategory, feedbackTopic: feedbackTopic, setFeedbackTopic: setFeedbackTopic, feedbackText: feedbackText, setFeedbackText: setFeedbackText, feedbackSort: feedbackSort, setFeedbackSort: setFeedbackSort, feedbackTickets: feedbackTickets, setFeedbackTickets: setFeedbackTickets, feedbackSubmitCategory: feedbackSubmitCategory, setFeedbackSubmitCategory: setFeedbackSubmitCategory, feedbackSubmitTopic: feedbackSubmitTopic, setFeedbackSubmitTopic: setFeedbackSubmitTopic, setShowFeedback: setShowFeedback }), showLeaderboard && /*#__PURE__*/React.createElement(LeaderboardPanel, { stateRef: stateRef, leaderboardTab: leaderboardTab, setLeaderboardTab: setLeaderboardTab, setRpgState: setRpgState, setShowLeaderboard: setShowLeaderboard }), showEncyclopedia && /*#__PURE__*/React.createElement(EncyclopediaPanel, { encyclopediaTab: encyclopediaTab, setEncyclopediaTab: setEncyclopediaTab, setShowEncyclopedia: setShowEncyclopedia }), showPetHouse && rpgState && /*#__PURE__*/React.createElement(PetHousePanel, { rpgState: rpgState, stateRef: stateRef, petHouseTab: petHouseTab, setPetHouseTab: setPetHouseTab, petEvolve1: petEvolve1, setPetEvolve1: setPetEvolve1, petEvolve2: petEvolve2, setPetEvolve2: setPetEvolve2, setRpgState: setRpgState, setShowPetHouse: setShowPetHouse }), showFurniture && rpgState && /*#__PURE__*/React.createElement(FurniturePanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState, setShowFurniture: setShowFurniture }), showDungeonCreator && dungeonCreator && rpgState && /*#__PURE__*/React.createElement(DungeonCreatorPanel, { rpgState: rpgState, stateRef: stateRef, dungeonCreator: dungeonCreator, setDungeonCreator: setDungeonCreator, dungeonCreatorTab: dungeonCreatorTab, setDungeonCreatorTab: setDungeonCreatorTab, setRpgState: setRpgState, setShowDungeonCreator: setShowDungeonCreator }), showStatScreen && rpgState && /*#__PURE__*/React.createElement(StatScreenPanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState, setShowStatScreen: setShowStatScreen }), buildingPanel && rpgState && /*#__PURE__*/React.createElement("div", {
     className: "bt-inspect",
     onClick: function onClick() {
       return setBuildingPanel(null);
@@ -7163,40 +7125,7 @@ export var BroTown = function BroTown(_ref0) {
         color: 'rgba(255,255,255,.4)'
       }
     }, q.desc));
-  }(), /*#__PURE__*/React.createElement("div", {
-    style: {
-      position: 'absolute',
-      top: 0,
-      left: 0,
-      right: 0,
-      zIndex: 18,
-      fontSize: 14,
-      fontWeight: 800,
-      letterSpacing: '.08em',
-      fontFamily: 'Source Sans 3,sans-serif',
-      color: function (_stateRef$current32, _ELEMENTS$z$element4) {
-        var z = ZONES[((_stateRef$current32 = stateRef.current) === null || _stateRef$current32 === void 0 ? void 0 : _stateRef$current32.currentZone) || 'town'];
-        return z !== null && z !== void 0 && z.element ? (_ELEMENTS$z$element4 = ELEMENTS[z.element]) === null || _ELEMENTS$z$element4 === void 0 ? void 0 : _ELEMENTS$z$element4.color : '#F7F2E7';
-      }(),
-      /* v2.3.820: was a solid black bar (background:#000 + border) that
-         clipped the player when they ran to the top map edge.  Now a
-         transparent text overlay -- the map fills the full play area to
-         the top, the zone/level label just floats over it with a shadow
-         for legibility, and nothing can clip behind it. */
-      background: 'transparent',
-      padding: '6px 12px',
-      textAlign: 'center',
-      textShadow: '0 1px 3px rgba(0,0,0,0.95), 0 0 6px rgba(0,0,0,0.7)',
-      pointerEvents: 'none',
-    }
-  }, ((_ZONES = ZONES[((_stateRef$current33 = stateRef.current) === null || _stateRef$current33 === void 0 ? void 0 : _stateRef$current33.currentZone) || 'town']) === null || _ZONES === void 0 ? void 0 : _ZONES.name) || 'Town', function (_stateRef$current34, _stateRef$current35, _stateRef$current36, _z$level) {
-    var z = ZONES[((_stateRef$current34 = stateRef.current) === null || _stateRef$current34 === void 0 ? void 0 : _stateRef$current34.currentZone) || 'town'];
-    var depth = (_stateRef$current35 = stateRef.current) === null || _stateRef$current35 === void 0 ? void 0 : _stateRef$current35._currentDepth;
-    if (!depth || depth === 'shallow' || ((_stateRef$current36 = stateRef.current) === null || _stateRef$current36 === void 0 ? void 0 : _stateRef$current36.currentZone) === 'town') return (z === null || z === void 0 || (_z$level = z.level) === null || _z$level === void 0 ? void 0 : _z$level[1]) > 0 ? " (Lv".concat(z.level[0], "-").concat(z.level[1], ")") : '';
-    var dc = DEPTH_CONFIG[depth];
-    var lr = (dc === null || dc === void 0 ? void 0 : dc.lvlRange) || [1, 10];
-    return " \u2014 ".concat(depth.toUpperCase(), " (Lv").concat(lr[0], "-").concat(lr[1], ")");
-  }()), function (_stateRef$current37, _ZONES$nearest$zone) {
+  }(), null /* v2.3.1333: floating zone label retired — the zone name lives in the ZoneHeader rail (GameApp) */, function (_stateRef$current37, _ZONES$nearest$zone) {
     var dd = (_stateRef$current37 = stateRef.current) === null || _stateRef$current37 === void 0 ? void 0 : _stateRef$current37._deathDrops;
     if (!dd || dd.length === 0) return null;
     var active = dd.filter(function (d) {
@@ -7211,7 +7140,7 @@ export var BroTown = function BroTown(_ref0) {
     return /*#__PURE__*/React.createElement("div", {
       style: {
         position: 'absolute',
-        top: 30,
+        top: 52, /* v2.3.1333: clears the 46px ZoneHeader rail (was 30, under the old text label) */
         left: '50%',
         transform: 'translateX(-50%)',
         zIndex: 18,
