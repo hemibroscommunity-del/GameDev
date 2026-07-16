@@ -22,7 +22,7 @@ import {
 import { baseArchetypeOf, isRemnantSkull, maybeTransformMonster, xpMultFor } from '@/data/monsterVariants.js';
 import { getEquip } from '@/rendering/gearCatalog.js'; /* v2.3.1108: armoured-hit clang on projectile hits */
 import { rollMonsterShard } from '@/data/shards.js';
-import { addBuildUse, applyMeleeLifesteal, distributeKillXpToBuild, trackMonsterDamage, pushDmgPopup } from '@/game/combatHelpers.js';
+import { addBuildUse, applyMeleeLifesteal, distributeKillXpToBuild, trackMonsterDamage, pushDmgPopup, monsterPopupY } from '@/game/combatHelpers.js';
 import { earnCertification as masteryEarnCert } from '@/game/mastery.js';
 import { pushHudPopup } from '@/ui/XpFlyOverlay.jsx';
 import { _objectSpread, _slicedToArray } from '@/lib/babelHelpers.js';
@@ -294,7 +294,7 @@ export function updateArrows(S, deps) {
                   /* §5.7 Resonance — bright readout + ring on resonance-timed projectile collisions. */
                   var _arPrefix = arrowCollision.resonating ? '🎯💥' : '💥';
                   var _arColor = arrowCollision.resonating ? '#fffbb0' : elemCol;
-                  pushDmgPopup(S, m.x + 8, m.y - 30, _arPrefix + arrowCollision.damage + ' ' + coll.name, _arColor);
+                  pushDmgPopup(S, m.x + 8, monsterPopupY(m, -30), _arPrefix + arrowCollision.damage + ' ' + coll.name, _arColor);
                   if (arrowCollision.resonating) {
                     var _arRingR = 28 + arrowCollision.resonanceDepth * 14;
                     for (var _arrp = 0; _arrp < 24; _arrp++) {
@@ -442,7 +442,7 @@ export function updateArrows(S, deps) {
                 /* Cap display at the HP that was actually removed so the kill
                    blow doesn't show an inflated overkill number. */
                 var _displayDmg = Math.min(a.dmg, _hpBefore);
-                pushDmgPopup(S, m.x, m.y - 10, _displayDmg + '', '#ff9', { iconKey: a.isStaff ? 'spell' : 'arrow', special: !!a.isSpecial });
+                pushDmgPopup(S, m.x, monsterPopupY(m, -10), _displayDmg + '', '#ff9', { iconKey: a.isStaff ? 'spell' : 'arrow', special: !!a.isSpecial });
                 if (m.curHp <= 0) {
                   /* In server-mode the network monster_killed event is
                      authoritative for XP/T1 distribution — only clamp

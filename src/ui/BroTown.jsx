@@ -115,7 +115,7 @@ import { wireSpriteSheets } from '@/game/spriteSheets.js';
 import { wireSlimeAudio } from '@/game/slimeAudio.js';
 import { wireOrientationSync } from '@/game/orientationSync.js';
 /* v2.3.765: combat helpers extracted behavior-frozen (docs/REBUILD-PLAN.md Phase 0). */
-import { releasePeerDamage, addBuildProg, pushDmgPopup } from '@/game/combatHelpers.js';
+import { releasePeerDamage, addBuildProg, pushDmgPopup, monsterPopupY } from '@/game/combatHelpers.js';
 /* v2.3.767: chat send + chat/emote handlers extracted behavior-frozen (REBUILD-PLAN Phase 2). */
 import { sendChatMessage } from '@/game/chat.js';
 /* v2.3.787: zone transitions (town exits, tile-9 return, dungeon entrance/exit)
@@ -3740,7 +3740,7 @@ export var BroTown = function BroTown(_ref0) {
                 nearestM.curHp -= petDmg;
                 S._petAtkCd = Date.now() + 1500; /* pet attacks every 1.5s */
                 /* Visual feedback — small damage number from pet */
-                pushDmgPopup(S, nearestM.x, nearestM.y - 10, pet.emoji + ' -' + petDmg, pet.color || '#59BF91');
+                pushDmgPopup(S, nearestM.x, monsterPopupY(nearestM, -10), pet.emoji + ' -' + petDmg, pet.color || '#59BF91');
                 /* Pet attack particles */
                 for (var pp = 0; pp < 3; pp++) {
                   S.hitParticles.push({

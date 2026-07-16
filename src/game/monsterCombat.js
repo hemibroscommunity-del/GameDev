@@ -38,7 +38,7 @@ import {
 import { MONSTER_VARIANTS, baseArchetypeOf, isFodderLike, isRemnantSkull, maybeTransformMonster, usesClientSideMovement, xpMultFor } from '@/data/monsterVariants.js';
 import { getEquip } from '@/rendering/gearCatalog.js'; /* v2.3.1104: armoured-hit SFX check */
 import { rollMonsterShard } from '@/data/shards.js';
-import { addBuildUse, applyMeleeLifesteal, distributeKillXpToBuild, trackMonsterDamage, pushDmgPopup } from '@/game/combatHelpers.js';
+import { addBuildUse, applyMeleeLifesteal, distributeKillXpToBuild, trackMonsterDamage, pushDmgPopup, monsterPopupY } from '@/game/combatHelpers.js';
 import { earnCertification as masteryEarnCert } from '@/game/mastery.js';
 import { btRpc, getBtPlayerId, syncRpgToServer } from '@/networking/index.js';
 import { pushHudPopup } from '@/ui/XpFlyOverlay.jsx';
@@ -155,7 +155,7 @@ export function updateMonsterCombat(S, deps) {
                 return ELEMENTS[e].status === dot.statusId;
               });
               var dotColor = dotElem ? ELEMENTS[dotElem].color : '#ff5e6c';
-              pushDmgPopup(S, m.x + (Math.random() - 0.5) * 10, m.y - 22, dot.amount + '', dotColor);
+              pushDmgPopup(S, m.x + (Math.random() - 0.5) * 10, monsterPopupY(m, -22), dot.amount + '', dotColor);
               m._lastDotDmg = null;
             }
             /* Check if DoT killed */
@@ -1611,7 +1611,7 @@ export function updateMonsterCombat(S, deps) {
                     _bColor = '#fffbb0'; /* near-white shimmer per §5.7.3 */
                   }
                   /* Collision burst damage number */
-                  pushDmgPopup(S, m.x + 8, m.y - 35, _bPrefix + collisionResult.damage + ' ' + coll.name, _bColor);
+                  pushDmgPopup(S, m.x + 8, monsterPopupY(m, -35), _bPrefix + collisionResult.damage + ' ' + coll.name, _bColor);
                   /* §5.7.3 Resonance ring — brighter ground burst when the
                      consumed status was timed inside its resonance window. */
                   if (collisionResult.resonating) {
@@ -1751,11 +1751,11 @@ export function updateMonsterCombat(S, deps) {
                 /* Damage number — scaled by crit/normal in the renderer. */
                 var _isSpecialDmg = !!S._specialAttack;
                 if (isCrit && collisionResult) {
-                  pushDmgPopup(S, m.x, m.y - 20, 'ZAP ' + dmg, '#f5c542', { iconKey: 'sword', special: _isSpecialDmg });
+                  pushDmgPopup(S, m.x, monsterPopupY(m, -20), 'ZAP ' + dmg, '#f5c542', { iconKey: 'sword', special: _isSpecialDmg });
                 } else if (isCrit) {
-                  pushDmgPopup(S, m.x, m.y - 20, String(dmg), '#f5c542', { iconKey: 'sword', special: _isSpecialDmg });
+                  pushDmgPopup(S, m.x, monsterPopupY(m, -20), String(dmg), '#f5c542', { iconKey: 'sword', special: _isSpecialDmg });
                 } else {
-                  pushDmgPopup(S, m.x, m.y - 20, '' + dmg, '#fff', { iconKey: 'sword', special: _isSpecialDmg });
+                  pushDmgPopup(S, m.x, monsterPopupY(m, -20), '' + dmg, '#fff', { iconKey: 'sword', special: _isSpecialDmg });
                 }
                 /* v2.3.254: "block N" mitigation indicator removed
                    alongside the level-diff scaling above. */

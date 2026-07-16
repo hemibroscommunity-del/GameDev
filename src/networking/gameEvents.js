@@ -17,7 +17,7 @@ import { rollMonsterShard } from '@/data/shards.js';
    its own module scope — the barrel export is the canonical copy. */
 import { BT_API_BASE } from '@/networking/index.js';
 import { pushHudPopup } from '@/ui/XpFlyOverlay.jsx';
-import { enqueuePeerDamage, peerDmgKey, distributeKillXpToBuild, applyMeleeLifesteal, addBuildUse, pushDmgPopup } from '@/game/combatHelpers.js';
+import { enqueuePeerDamage, peerDmgKey, distributeKillXpToBuild, applyMeleeLifesteal, addBuildUse, pushDmgPopup, monsterPopupY } from '@/game/combatHelpers.js';
 import { handleChatEvent, handleEmoteEvent, handlePartyChatEvent } from '@/game/chat.js';
 import { friendsSrv } from '@/ui/mobile/sheet/friendsSync.js'; /* v2.3.1324 */
 import { _objectSpread, _slicedToArray, _toConsumableArray } from '@/lib/babelHelpers.js';
@@ -736,7 +736,7 @@ export function processGameEvent(type, payload, S, deps) {
                      stacking into a column. */
                   if (payload.attackerId !== S.myId) {
                     enqueuePeerDamage(S, peerDmgKey(payload.monsterId, hitM.x || hitM.renderX, hitM.y || hitM.renderY), {
-                      x: hitM.x || hitM.renderX, y: (hitM.y || hitM.renderY) - 20,
+                      x: hitM.x || hitM.renderX, y: monsterPopupY(hitM, -20),
                       text: '-' + payload.dmg, color: payload.isCrit ? '#fbbf24' : '#ff8888'
                     });
                   } else if (payload.thorns) {
@@ -744,7 +744,7 @@ export function processGameEvent(type, payload, S, deps) {
                        local prediction (unlike swings), so our own thorns
                        hits DO need the popup or the block just silently
                        chips the monster's bar. */
-                    pushDmgPopup(S, hitM.x || hitM.renderX, (hitM.y || hitM.renderY) - 20, '-' + payload.dmg + ' 🌵', '#a3e635');
+                    pushDmgPopup(S, hitM.x || hitM.renderX, monsterPopupY(hitM, -20), '-' + payload.dmg + ' 🌵', '#a3e635');
                   }
                   /* Hit particles for everyone */
                   for (var hp2 = 0; hp2 < 3; hp2++) {
