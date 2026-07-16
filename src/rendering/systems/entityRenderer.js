@@ -3266,8 +3266,13 @@ export class EntityRenderer {
            Local offset from the monster origin — the sprite-top math
            above (variants/snowman/fodder) already lives here, so this
            is the one place that knows where the bar actually is.
-           Consumed by combatHelpers.monsterPopupY(). */
-        m._popupTopOff = barY - MONSTER_HPBAR_H / 2 - 6;
+           Consumed by combatHelpers.monsterPopupY().
+           v2.3.1340 (owner screenshot): the popup Text is anchored
+           (0.5, 0.5) — dmg.y is the glyph CENTER, not its bottom — and
+           spawns with a 1.6x pop at 21px font (27 crit), so a 6px gap
+           left the glyph's lower half sitting ON the bar.  Clear the
+           bar by the popped half-height (~21px) plus a small gap. */
+        m._popupTopOff = barY - MONSTER_HPBAR_H / 2 - 24;
         display._hpHeart.width = MONSTER_HPBAR_W;
         display._hpHeart.height = MONSTER_HPBAR_H;
         display._hpHeart.x = 0;  /* anchor already centered at creation */
