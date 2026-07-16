@@ -113,12 +113,10 @@ export const HeroExpanded = () => {
       {/* Sticky segmented control — content scrolls under it.
           v2.3.1311: Build carries an actionable count (Build · N);
           Overview/Records never badge (spec). */}
-      <div style={{
+      <div className="bt-well" style={{
         position: 'sticky', top: 0, zIndex: 2,
         display: 'flex', gap: 2,
-        background: COL.bg,
-        borderRadius: 10, padding: 2,
-        border: `1px solid ${COL.border}`,
+        background: COL.bg, /* sticky: keep opaque so content scrolls UNDER */
         flex: '0 0 auto',
       }}>
         {SECTIONS.map(s => (

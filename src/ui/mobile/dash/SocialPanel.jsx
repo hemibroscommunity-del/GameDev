@@ -219,10 +219,8 @@ export const SocialPanel = () => {
           requests are a server system.  Rendered only when the server
           claims caps.friends (an old worker has no request flow). */}
       {capsFriends && !showBlocked && (
-        <div style={{
+        <div className="bt-well" style={{
           display: 'flex', gap: 2, marginBottom: 8,
-          background: COL.well, border: `1px solid ${COL.tileBor}`,
-          borderRadius: 8, padding: 3,
         }}>
           {[
             { id: 'friends', label: `Friends (${allRows.length})` },

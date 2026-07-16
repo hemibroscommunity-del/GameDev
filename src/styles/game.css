@@ -365,43 +365,72 @@
   -webkit-tap-highlight-color:transparent;
   transition:transform 90ms cubic-bezier(.2,.8,.2,1);
 }
+/* v2.3.1334 (owner's expanded v2 pack): the REAL variants replace the
+   v2.3.1332 stand-ins — dedicated chip frames (three clean layers that
+   stay legible at 28-36px), carved-garnet danger + its own pressed
+   shell, the brass-faced primary, and the recessed well below.  All
+   rasterized to @3x PNGs for reliable border-image slicing. */
 .bt-chisel--chip{
   border-width:6px;
-  border-image-width:6px;
+  border-image:url('/icons/ui/chip-frame-inactive-3x.png?v=2.3.1334') 78 fill / 6px stretch;
 }
 .bt-chisel--on,
 .bt-chisel[aria-pressed='true']{
   border-image-source:url('/icons/ui/toolbar-button-selected-3x.png?v=2.3.1332');
   color:var(--ui-text);
 }
+.bt-chisel--chip.bt-chisel--on,
+.bt-chisel--chip[aria-pressed='true']{
+  border-image-source:url('/icons/ui/chip-frame-selected-3x.png?v=2.3.1334');
+}
 .bt-chisel--danger{
-  border-image:url('/icons/ui/toolbar-button-inactive-3x.png?v=2.3.1332') 78 / 9px stretch;
-  background:linear-gradient(180deg,#8A3B36 0%,#6E2C29 100%);
-  background-clip:padding-box;
-  border-radius:8px; /* round the CSS face to the art's inner rim */
+  border-image:url('/icons/ui/toolbar-button-danger-3x.png?v=2.3.1334') 78 fill / 9px stretch;
   color:#FFF1EE;
 }
+.bt-chisel--chip.bt-chisel--danger{
+  border-image-width:6px;
+}
 .bt-chisel--brass{
-  border-image:url('/icons/ui/toolbar-button-inactive-3x.png?v=2.3.1332') 78 / 9px stretch;
-  background:linear-gradient(180deg,#E0B266 0%,#C89A4F 100%);
-  background-clip:padding-box;
-  border-radius:8px;
+  border-image:url('/icons/ui/toolbar-button-primary-brass-3x.png?v=2.3.1334') 78 fill / 9px stretch;
   color:#20170D;
+}
+.bt-chisel--chip.bt-chisel--brass{
+  border-image-width:6px;
 }
 .bt-chisel:active,
 .bt-chisel[data-pressed='true']{
   border-image-source:url('/icons/ui/toolbar-button-pressed-3x.png?v=2.3.1332');
   transform:translateY(1px);
 }
-/* Danger/brass keep their CSS face while pressed (the pressed shell
-   has fill, which would paint navy over the face — pin source only). */
-.bt-chisel--danger:active,.bt-chisel--brass:active,
-.bt-chisel--danger[data-pressed='true'],.bt-chisel--brass[data-pressed='true']{
-  border-image-slice:78;
+.bt-chisel--chip:active,
+.bt-chisel--chip[data-pressed='true']{
+  border-image-source:url('/icons/ui/chip-frame-pressed-3x.png?v=2.3.1334');
+}
+/* Danger has its own carved pressed shell; brass keeps its face. */
+.bt-chisel--danger:active,
+.bt-chisel--danger[data-pressed='true']{
+  border-image-source:url('/icons/ui/toolbar-button-danger-pressed-3x.png?v=2.3.1334');
+}
+.bt-chisel--brass:active,
+.bt-chisel--brass[data-pressed='true']{
+  border-image-source:url('/icons/ui/toolbar-button-primary-brass-3x.png?v=2.3.1334');
 }
 .bt-chisel:focus-visible{
   outline:2px solid var(--ui-brass-highlight);
   outline-offset:-3px;
+}
+/* v2.3.1334: the recessed WELL — the inverse of the button, cut INTO
+   the surface.  For segmented-control tracks, inputs, and trays; the
+   raised chisel buttons pop against it (asset README).  9-sliced like
+   the buttons; content sits inside the lip. */
+.bt-well{
+  /* 6px lip (not 8): the tracks sit in height-budgeted sheets — the
+     v2.3.1327 measure math absorbs small drifts, but SE-class heights
+     clip past ~4px of extra track chrome (rig-caught at 390x664). */
+  border:6px solid transparent;
+  border-image:url('/icons/ui/recessed-well-3x.png?v=2.3.1334') 78 fill / 6px stretch;
+  background:none;
+  box-shadow:none;
 }
 /* v2.3.1289: snap-state chevron (owner request) — sits in the ACTIVE
    destination's top-right corner.

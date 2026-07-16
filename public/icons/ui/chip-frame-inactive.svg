@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" fill="none">
+  <defs>
+    <linearGradient id="face" x1="24" y1="8" x2="96" y2="114" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#203844"/>
+      <stop offset="0.52" stop-color="#1B303A"/>
+      <stop offset="1" stop-color="#152832"/>
+    </linearGradient>
+    <linearGradient id="ridge" x1="20" y1="3" x2="103" y2="117" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#718692"/>
+      <stop offset="0.4" stop-color="#465E69"/>
+      <stop offset="1" stop-color="#0A171D"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Chip geometry intentionally has only three layers. -->
+  <rect x="1.5" y="1.5" width="117" height="117" rx="14" fill="#07151B"/>
+  <rect x="3.8" y="3.8" width="112.4" height="112.4" rx="12" fill="url(#ridge)"/>
+  <rect x="6.5" y="6.5" width="107" height="107" rx="10" fill="url(#face)"/>
+</svg>

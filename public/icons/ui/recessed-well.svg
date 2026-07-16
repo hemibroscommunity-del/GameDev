@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" fill="none">
+  <defs>
+    <linearGradient id="cavity" x1="60" y1="5" x2="60" y2="115" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#0A171D"/>
+      <stop offset="0.38" stop-color="#10242C"/>
+      <stop offset="1" stop-color="#19313B"/>
+    </linearGradient>
+    <linearGradient id="lip" x1="60" y1="2" x2="60" y2="118" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#071319"/>
+      <stop offset="0.55" stop-color="#1A303A"/>
+      <stop offset="1" stop-color="#536A74"/>
+    </linearGradient>
+  </defs>
+
+  <!-- No external shadow: this shape is cut into its parent surface. -->
+  <rect x="1.5" y="1.5" width="117" height="117" rx="15" fill="#29444F"/>
+  <rect x="3.8" y="3.8" width="112.4" height="112.4" rx="12.8" fill="url(#lip)"/>
+  <rect x="7" y="7" width="106" height="106" rx="10.5" fill="url(#cavity)"/>
+
+  <!-- Heavy inner shadow on top/left. -->
+  <path d="M16 8H104C108.4 8 112 11.6 112 16" stroke="#02090D" stroke-width="2.4" stroke-linecap="round" opacity="0.94"/>
+  <path d="M8 16V104" stroke="#061217" stroke-width="2" stroke-linecap="round" opacity="0.88"/>
+
+  <!-- Light catch at the bottom/right makes the cavity read as recessed. -->
+  <path d="M112 16V104C112 108.4 108.4 112 104 112H16" stroke="#60757E" stroke-width="1.35" stroke-linecap="round" opacity="0.72"/>
+  <rect x="9.5" y="9.5" width="101" height="101" rx="8.7" stroke="#0A1A21" stroke-width="1" opacity="0.9"/>
+</svg>
