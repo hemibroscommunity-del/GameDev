@@ -330,14 +330,12 @@ export const InventoryPanel = () => {
           <button key={t.id}
             onClick={() => setBagTab(t.id)}
             aria-pressed={bagTab === t.id}
+            className="bt-chisel bt-chisel--chip"
             style={{
-              flex: 1, minHeight: 34,
+              flex: 1, minHeight: 36,
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-              background: bagTab === t.id ? COL.accentFill : 'transparent',
-              border: `1px solid ${bagTab === t.id ? COL.accent : 'transparent'}`,
-              borderRadius: 6, color: bagTab === t.id ? COL.text : COL.text2,
+              color: bagTab === t.id ? COL.text : COL.text2,
               fontFamily: 'inherit', fontSize: 12, fontWeight: 700,
-              cursor: 'pointer', touchAction: 'manipulation',
             }}>
             <img src={t.icon} alt="" draggable={false}
               style={{ width: 16, height: 16, objectFit: 'contain' }} />
@@ -550,14 +548,12 @@ export const InventoryPanel = () => {
                             setEqSel(null); /* item gone -> back to the aggregate */
                             force(v => v + 1);
                           }}
+                          className="bt-chisel bt-chisel--danger"
                           style={{
                             flex: 'none', minHeight: compactCard ? 34 : 42,
                             margin: '4px 0 2px',
-                            background: '#7C3431', color: '#FFF1EE',
-                            border: '1px solid #C7655F', borderRadius: 9,
                             fontFamily: 'inherit', fontSize: 13, fontWeight: 800,
                             letterSpacing: '.02em',
-                            cursor: 'pointer', touchAction: 'manipulation',
                           }}>Unequip</button>
                       );
                     })()}
@@ -667,20 +663,14 @@ export const InventoryPanel = () => {
               onClick={() => setFilter(c.id)}
               title={c.label}
               aria-pressed={active}
+              className="bt-chisel bt-chisel--chip"
               style={{
                 position: 'relative',
                 flex: '1 1 0', minWidth: 0,
                 display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 1,
-                /* v2.3.1319: 4px -> 2px vertical + 20 -> 18px icon —
-                   part of handing the header lines' room back to the
-                   item tray (18 is round-8 §6's floor). */
-                padding: '2px 2px',
-                background: active ? COL.accentFill : 'transparent',
+                padding: '2px 0',
                 color: active ? COL.text : COL.text2,
-                border: active ? `1px solid ${COL.accent}` : '1px solid transparent',
-                borderRadius: 6,
                 fontFamily: 'inherit',
-                cursor: 'pointer',
               }}
             >
               {/* v2.3.1320: the language-free filter mark — a tiny

@@ -747,6 +747,7 @@ export const BottomDashboard = () => {
             {stack.length > 1 && (
               <button
                 onPointerUp={(e) => { e.stopPropagation(); dashboardPanelBus.pop(); }}
+                className="bt-chisel bt-chisel--chip"
                 style={chipStyle}
               >◂</button>
             )}
@@ -940,17 +941,15 @@ export const BottomDashboard = () => {
   );
 };
 
+/* v2.3.1332: frame via .bt-chisel — layout only here. */
 const chipStyle = {
-  width: 32, height: 32,
+  width: 34, height: 34,
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
-  background: 'transparent',
-  border: `1px solid ${COL.divider}`,
-  borderRadius: 4,
   color: COL.text,
   fontFamily: 'inherit',
-  fontSize: 22,
+  fontSize: 20,
   fontWeight: 700,
   lineHeight: 1,
   cursor: 'pointer',

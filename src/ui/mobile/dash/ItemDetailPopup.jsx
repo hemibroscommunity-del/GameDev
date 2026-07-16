@@ -305,25 +305,19 @@ function prettyName(key) {
    #20170D; the ONE brass action per popup state), raised secondary
    (gradient + hairline + text-1), destructive #7C3431/#FFF1EE with the
    #C7655F edge.  44pt targets, radius 11 per the spec. */
-const buttonStyle = (variant) => ({
+/* v2.3.1332 (owner: chiseled frames everywhere): the ladder's colors
+   now come from the .bt-chisel classes (game.css) — brass primary /
+   red danger faces inside the owner's 9-sliced frame; layout only
+   here.  buttonClass pairs with buttonStyle at every call site. */
+const buttonClass = (variant) =>
+  'bt-chisel' + (variant === 'primary' ? ' bt-chisel--brass'
+    : variant === 'danger' ? ' bt-chisel--danger' : '');
+const buttonStyle = (_variant) => ({
   flex: 1,
   minHeight: 44,
-  padding: '8px 0',
-  background: variant === 'primary' ? COL.accent
-             : variant === 'danger'  ? '#7C3431'
-             :                         'linear-gradient(180deg, #304047 0%, #2B3940 100%)',
-  color: variant === 'primary' ? COL.onAccent
-       : variant === 'danger'  ? '#FFF1EE'
-       :                         COL.text,
-  border: variant === 'primary' ? 'none'
-        : variant === 'danger'  ? '1px solid #C7655F'
-        :                         '1px solid ' + COL.border,
-  borderRadius: 11,
+  padding: '4px 0',
   fontSize: 12,
   fontWeight: 700,
-  cursor: 'pointer',
-  touchAction: 'manipulation',
-  fontFamily: 'Source Sans 3, sans-serif',
 });
 
 /* Compute an anchored position for the tooltip.
@@ -1035,14 +1029,14 @@ export const ItemDetailPopup = () => {
         )}
 
         <div style={{ display: 'flex', gap: 6, marginTop: 2 }}>
-          {actions.light    && <button onClick={onLight}   style={buttonStyle('primary')}>Light fire</button>}
-          {actions.eat      && <button onClick={onEat}     style={buttonStyle('primary')}>Eat</button>}
-          {actions.equip    && <button onClick={onEquip}   style={buttonStyle('primary')}>Equip</button>}
-          {actions.unequip  && <button onClick={onUnequip} style={buttonStyle('danger')}>Unequip</button>}
-          <button onClick={onToggleLock} style={buttonStyle()}>
+          {actions.light    && <button onClick={onLight}   className={buttonClass('primary')} style={buttonStyle('primary')}>Light fire</button>}
+          {actions.eat      && <button onClick={onEat}     className={buttonClass('primary')} style={buttonStyle('primary')}>Eat</button>}
+          {actions.equip    && <button onClick={onEquip}   className={buttonClass('primary')} style={buttonStyle('primary')}>Equip</button>}
+          {actions.unequip  && <button onClick={onUnequip} className={buttonClass('danger')} style={buttonStyle('danger')}>Unequip</button>}
+          <button onClick={onToggleLock} className={buttonClass()} style={buttonStyle()}>
             {locked ? '⚓ Unanchor' : '⚓ Anchor'}
           </button>
-          <button onClick={onClose} style={buttonStyle()}>X</button>
+          <button onClick={onClose} className={buttonClass()} style={buttonStyle()}>X</button>
         </div>
       </div>
     </div>

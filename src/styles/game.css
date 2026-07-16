@@ -338,6 +338,71 @@
   outline:2px solid var(--ui-brass-highlight);
   outline-offset:-2px;
 }
+/* ═══ v2.3.1332 (owner: "use them on all the buttons everywhere") —
+   the chiseled frame as the app-wide button system.  The shells are
+   square 120x120, so non-square buttons use BORDER-IMAGE 9-slicing:
+   slice 26 keeps the carved corners pixel-crisp while only the
+   straight edges stretch.  Ring width 9px (chips 6px) keeps a
+   one-line label inside a 44px button.
+   Roles: base = navy face; --on = selected (double gold ridge, via
+   class or aria-pressed); --danger = destructive (red CSS face inside
+   the ring: slice WITHOUT fill + padding-box gradient — stopgap until
+   the owner generates a real red-face variant); --brass = the one
+   primary action per screen (brass face, dark text).  Pressed =
+   :active / [data-pressed] swaps the darker inset shell.
+   Sites keep their own layout styles; inline background/border/shadow
+   must be REMOVED where this class is applied (README: never layer a
+   CSS border on the art). */
+.bt-chisel{
+  border:9px solid transparent;
+  border-image:url('/icons/ui/toolbar-button-inactive-3x.png?v=2.3.1332') 78 fill / 9px stretch;
+  background:none;
+  box-shadow:none;
+  color:var(--ui-text);
+  font-family:'Source Sans 3',sans-serif;
+  cursor:pointer;
+  touch-action:manipulation;
+  -webkit-tap-highlight-color:transparent;
+  transition:transform 90ms cubic-bezier(.2,.8,.2,1);
+}
+.bt-chisel--chip{
+  border-width:6px;
+  border-image-width:6px;
+}
+.bt-chisel--on,
+.bt-chisel[aria-pressed='true']{
+  border-image-source:url('/icons/ui/toolbar-button-selected-3x.png?v=2.3.1332');
+  color:var(--ui-text);
+}
+.bt-chisel--danger{
+  border-image:url('/icons/ui/toolbar-button-inactive-3x.png?v=2.3.1332') 78 / 9px stretch;
+  background:linear-gradient(180deg,#8A3B36 0%,#6E2C29 100%);
+  background-clip:padding-box;
+  border-radius:8px; /* round the CSS face to the art's inner rim */
+  color:#FFF1EE;
+}
+.bt-chisel--brass{
+  border-image:url('/icons/ui/toolbar-button-inactive-3x.png?v=2.3.1332') 78 / 9px stretch;
+  background:linear-gradient(180deg,#E0B266 0%,#C89A4F 100%);
+  background-clip:padding-box;
+  border-radius:8px;
+  color:#20170D;
+}
+.bt-chisel:active,
+.bt-chisel[data-pressed='true']{
+  border-image-source:url('/icons/ui/toolbar-button-pressed-3x.png?v=2.3.1332');
+  transform:translateY(1px);
+}
+/* Danger/brass keep their CSS face while pressed (the pressed shell
+   has fill, which would paint navy over the face — pin source only). */
+.bt-chisel--danger:active,.bt-chisel--brass:active,
+.bt-chisel--danger[data-pressed='true'],.bt-chisel--brass[data-pressed='true']{
+  border-image-slice:78;
+}
+.bt-chisel:focus-visible{
+  outline:2px solid var(--ui-brass-highlight);
+  outline-offset:-3px;
+}
 /* v2.3.1289: snap-state chevron (owner request) — sits in the ACTIVE
    destination's top-right corner.
    v2.3.1314 (owner round-8b): rebuilt as a two-chevron STACK, one

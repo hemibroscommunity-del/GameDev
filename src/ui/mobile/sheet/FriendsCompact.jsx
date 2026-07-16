@@ -84,12 +84,11 @@ export const FriendsCompact = () => {
         <div style={{ display: 'flex', gap: 8 }}>
           <button
             onPointerUp={(e) => { e.stopPropagation(); setAddTip(v => !v); }}
+            className="bt-chisel bt-chisel--chip bt-chisel--on"
             style={{
-              minHeight: 36, padding: '0 14px',
-              background: COL.accentFill, color: COL.text,
-              border: `1px solid ${COL.accent}`, borderRadius: 8,
+              minHeight: 38, padding: '0 10px',
+              color: COL.text,
               fontFamily: 'inherit', fontSize: 12, fontWeight: 700,
-              cursor: 'pointer', touchAction: 'manipulation',
             }}>Add a Bro</button>
           <button
             onPointerUp={async (e) => {
@@ -97,12 +96,11 @@ export const FriendsCompact = () => {
               const r = await shareInvite();
               setShared(r === 'copied' ? 'Link copied!' : '');
             }}
+            className="bt-chisel bt-chisel--chip"
             style={{
-              minHeight: 36, padding: '0 14px',
-              background: 'transparent', color: COL.text2,
-              border: `1px solid ${COL.border}`, borderRadius: 8,
+              minHeight: 38, padding: '0 10px',
+              color: COL.text2,
               fontFamily: 'inherit', fontSize: 12, fontWeight: 700,
-              cursor: 'pointer', touchAction: 'manipulation',
             }}>{shared || 'Share Invite'}</button>
         </div>
       </div>
@@ -172,12 +170,11 @@ export const FriendsCompact = () => {
             {r.online && (
               <button
                 onPointerUp={(e) => { e.stopPropagation(); openProfile(r); }}
+                className="bt-chisel bt-chisel--chip"
                 style={{
-                  flex: 'none', minHeight: 30, padding: '0 10px',
-                  background: 'transparent', color: COL.text2,
-                  border: `1px solid ${COL.border}`, borderRadius: 7,
+                  flex: 'none', minHeight: 32, padding: '0 6px',
+                  color: COL.text2,
                   fontFamily: 'inherit', fontSize: 11, fontWeight: 700,
-                  cursor: 'pointer', touchAction: 'manipulation',
                 }}>Profile</button>
             )}
           </div>
