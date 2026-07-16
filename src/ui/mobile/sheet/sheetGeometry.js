@@ -6,21 +6,39 @@
 
    v2.3.1290 (owner: three-state nav): the resting default is now BAR —
    toolbar only, maximum world visibility.  Three snap heights:
-     bar      = BAR_H (72, the toolbar shelf)      <- NEW resting state
+     bar      = barHeight(vw,vh) (slot-sized shelf) <- NEW resting state
      compact  = compactDashHeight(vw)              <- glance view
      expanded = expandedSheetHeight(vw, vh)        <- detail view
 
    INVARIANT (nav-system spec, amended v2.3.1290): --dash-h /
-   BAR_H stay the BAR height in ALL modes.  Compact and expanded are
+   barHeight stay the BAR height in ALL modes.  Compact and expanded are
    both taller position:fixed overlays above the world; the WebGL
    canvas, joystick zones (height: calc(100% - var(--dash-h))), and
    every bottom:calc(var(--dash-h)+N) world-HUD anchor NEVER move when
    a sheet opens.  Opening a sheet must not resize the canvas — a
    canvas.width write reallocates the WebGL drawing buffer. */
 
-/* The toolbar shelf (v2.3.1258: 72 = 68 ribbon + 4 breathing room).
-   CSS mirror: game.css --dash-h. */
-export const BAR_H = 72;
+/* v2.3.1325 (owner: "toolbar icons as big as a compact inventory
+   slot"): the toolbar buttons are now slot-sized square tiles (labels
+   dropped — the game is language-free by owner directive), so the bar
+   height derives from the SAME slot algebra as the compact bag grid
+   instead of the old fixed 72.
+     slot n = round(clamp((vw - 56)/6, 40..64))   (50 cap on short
+              viewports so an SE-class phone keeps its world view)
+     bar    = n + 31  (15 frame pad 8/7 + 8+2 ribbon pad/border +
+              4+2 button pad/border, borders at their 1px non-retina
+              worst case so the icon never clips)
+   ~87px at 390w (was 72).  BroTown's resize() stamps --nav-slot and
+   --dash-h on :root every viewport change, so every CSS consumer
+   (joystick zones, world HUD anchors) and the canvas math read ONE
+   JS-rounded whole-px value — game.css only carries boot fallbacks. */
+export function navSlotSize(vw, vh) {
+  const cap = vh && vh <= 720 ? 50 : 64;
+  return Math.round(Math.min(Math.max((vw - 56) / 6, 40), cap));
+}
+export function barHeight(vw, vh) {
+  return navSlotSize(vw, vh) + 31;
+}
 /* v2.3.1271: the band's 14px rounded top corners cut out to the page
    background; the canvas runs 14px UNDER the band so the notches show
    live world. */
@@ -34,15 +52,11 @@ export const FEET_OFFSET = 24;
    per-tile worn badges, so the rail column is gone and the grids get
    their full width back):
    slot s = (100vw - 16 edge*2 - 40 gaps) / 6 = (100vw - 56)/6
-   sheet = 8 pad + s + 15 separator (7+1+7) + s + 8 pad + 72 toolbar
-         = 2s + 103 = (100vw - 56)/3 + 103 = 33.3333vw + 84.33
-   -> DASH_BASE 84.  (v2.3.1290: not the --dash-h value — this is the
-   sheet's COMPACT overlay height only; the canvas keys off BAR_H.) */
-export const DASH_W_FRAC = 1 / 3;
-export const DASH_BASE = 84;
-
-export function compactDashHeight(vw) {
-  return Math.round(vw * DASH_W_FRAC + DASH_BASE);
+   sheet = 8 pad + s + 15 separator (7+1+7) + s + 8 pad + toolbar
+         = 2s + 31 + barHeight   (v2.3.1325: the toolbar term is the
+   slot-derived bar height above, no longer a fixed 72). */
+export function compactDashHeight(vw, vh) {
+  return Math.round((vw - 56) / 3 + 31) + barHeight(vw, vh);
 }
 
 /* Expanded snap: ~half the viewport, with the sheet's top edge leaving
@@ -59,7 +73,7 @@ export function compactDashHeight(vw) {
    equivalent round-8 40px/42-48% version — same intent, later owner
    directive wins.) */
 export function expandedSheetHeight(vw, vh) {
-  const canvasH = vh - BAR_H + DASH_OVERLAP;
+  const canvasH = vh - barHeight(vw, vh) + DASH_OVERLAP;
   const feetY = canvasH / 2 + FEET_OFFSET;
   const feetRule = vh - (feetY + 44);
   return Math.round(Math.min(vh * 0.52, Math.max(vh * 0.40, feetRule)));

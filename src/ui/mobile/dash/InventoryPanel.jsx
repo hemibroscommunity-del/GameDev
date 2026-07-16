@@ -302,12 +302,13 @@ export const InventoryPanel = () => {
           v2.3.1320 (owner: "understood without using language"): the
           FILTER text rail is gone — every chip carries a tiny funnel
           glyph in its top-right corner instead (per the owner's own
-          suggestion), and the count tag is numbers only ("9" on All,
-          "1/9" filtered). */}
+          suggestion).
+          v2.3.1325 (owner): the count CornerTag that rode this track's
+          top edge is REMOVED — it visually landed on one of the filter
+          chips and read as chip info; "not the right place for
+          inventory item info".  The equipped row's N/6 tag (a slot
+          gauge the owner asked for in round 8b) stays. */}
       <div style={{ position: 'relative', marginTop: 2, marginBottom: 6, flex: 'none' }}>
-        <CornerTag text={filter === 'all'
-          ? `${usedTiles}`
-          : `${usedTiles}/${entries.length}`} />
         <div style={{
           minWidth: 0,
           display: 'flex', alignItems: 'stretch', gap: 2,
