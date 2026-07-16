@@ -633,10 +633,16 @@ input{font-family:inherit}
    toolbar; equal 38px side columns keep the title optically centered
    on the screen.  The logout chip inside reuses the bt-chisel--chip
    frames — no new button art. */
-.bt-zone-header{position:fixed;top:0;left:0;right:0;z-index:20;
+.bt-zone-header{position:fixed;top:-4px;left:0;right:0;z-index:20;
   display:grid;grid-template-columns:38px minmax(0,1fr) 38px;align-items:center;
-  box-sizing:border-box;height:calc(46px + env(safe-area-inset-top,0px));
-  padding:env(safe-area-inset-top,0px) 5px 0;
+  /* v2.3.1333b (owner: "tiny sliver above the bar"): the 9-slice svg
+     has a ~1.5px transparent margin + rounded top corners baked into
+     its top slice — world art peeked through it.  Pull the rail 4px
+     off-screen (height grows to match) so the svg's top edge and
+     corner rounding disappear past the screen edge, exactly as the
+     spec intended. */
+  box-sizing:border-box;height:calc(50px + env(safe-area-inset-top,0px));
+  padding:calc(env(safe-area-inset-top,0px) + 4px) 5px 0;
   border:6px solid transparent;
   border-image:url('/icons/ui/zone-header-bar.svg?v=2.3.1333') 18 fill / 6px stretch;
   pointer-events:none}
