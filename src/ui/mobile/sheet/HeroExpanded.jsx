@@ -24,6 +24,13 @@ import { VitalBar, VITAL_ICONS } from './VitalBar.jsx'; /* v2.3.1311 */
    Equipment management intentionally lives in Bag, not here. */
 
 const SECTIONS = ['Overview', 'Build', 'Records'];
+/* v2.3.1323 (owner icon sheet): each section tab gets its art —
+   knight bust / point tree / tally ledger. */
+const SECTION_ICONS = {
+  Overview: '/icons/ui/hero/tab-overview.webp?v=2.3.1323',
+  Build: '/icons/ui/hero/tab-build.webp?v=2.3.1323',
+  Records: '/icons/ui/hero/tab-records.webp?v=2.3.1323',
+};
 /* Round-3 §6 state preservation: the selected section survives leaving
    the destination (module-scoped, session-only).  v2.3.1311: reset to
    Overview when Hero is closed all the way to the toolbar — a NEXT
@@ -117,7 +124,9 @@ export const HeroExpanded = () => {
         flex: '0 0 auto',
       }}>
         {SECTIONS.map(s => (
-          <button key={s} onClick={() => setSection(s)} style={seg(section === s)}>
+          <button key={s} onClick={() => setSection(s)} style={{ ...seg(section === s), display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5 }}>
+            <img src={SECTION_ICONS[s]} alt="" draggable={false}
+              style={{ width: 17, height: 17, objectFit: 'contain', flex: 'none', pointerEvents: 'none' }} />
             {s === 'Build' && totalUnspent > 0 ? `Build · ${totalUnspent}` : s}
           </button>
         ))}
@@ -241,26 +250,33 @@ export const HeroExpanded = () => {
            budget without scrolling; three didn't. */
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 5, paddingTop: 6 }}>
           {[
-            ['Kills', cs.monstersKilled ?? cs.kills ?? 0],
-            ['Deaths', cs.deaths ?? 0],
+            /* v2.3.1323 (owner icon sheet): each record card gets its
+               icon — same magenta-key pipeline as the stat sheet. */
+            ['Kills', cs.monstersKilled ?? cs.kills ?? 0, 'rec-kills'],
+            ['Deaths', cs.deaths ?? 0, 'rec-deaths'],
             /* Renamed from "Gold Earned" so it can't be confused with
                the current balance in the identity strip (round-4). */
-            ['Lifetime Gold', Number(cs.totalGoldEarned ?? cs.goldEarnedTotal ?? 0).toLocaleString()],
+            ['Lifetime Gold', Number(cs.totalGoldEarned ?? cs.goldEarnedTotal ?? 0).toLocaleString(), 'rec-gold'],
             /* v2.3.1311: lifetime cumulative XP lives HERE now — the
                identity strip shows normalized next-level progress. */
-            ['Lifetime XP', Number(R.xp || 0).toLocaleString()],
-            ['Duels Won', cs.duelsWon ?? 0],
-            ['Deepest Zone', cs.deepestZone ?? '—'],
-          ].map(([label, value]) => (
+            ['Lifetime XP', Number(R.xp || 0).toLocaleString(), 'rec-xp'],
+            ['Duels Won', cs.duelsWon ?? 0, 'rec-duels'],
+            ['Deepest Zone', cs.deepestZone ?? '—', 'rec-zone'],
+          ].map(([label, value, icon]) => (
             <div key={label} style={{
               background: COL.wellSoft,
               border: `1px solid ${COL.tileBor}`,
               borderRadius: 7,
               padding: '5px 7px 6px',
               minWidth: 0,
+              display: 'flex', alignItems: 'center', gap: 6,
             }}>
-              <div style={{ fontSize: 14, fontWeight: 800, color: COL.text, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{value}</div>
-              <div style={{ fontSize: 8.5, fontWeight: 700, letterSpacing: '.04em', textTransform: 'uppercase', color: COL.muted, marginTop: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{label}</div>
+              <img src={`/icons/ui/hero/${icon}.webp?v=2.3.1323`} alt="" draggable={false}
+                style={{ width: 26, height: 26, objectFit: 'contain', flex: 'none', pointerEvents: 'none' }} />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 14, fontWeight: 800, color: COL.text, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{value}</div>
+                <div style={{ fontSize: 8.5, fontWeight: 700, letterSpacing: '.04em', textTransform: 'uppercase', color: COL.muted, marginTop: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{label}</div>
+              </div>
             </div>
           ))}
         </div>
