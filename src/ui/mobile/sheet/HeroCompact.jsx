@@ -127,9 +127,10 @@ export const HeroCompact = () => {
               )}
               <img src={s.iconSrc} alt={s.label} draggable={false}
                 style={{ width: 22, height: 22, objectFit: 'contain', pointerEvents: 'none' }} /> {/* v2.3.1339: 44 -> 22 — the 2x pass clipped the levels below the compact fold; the tiny-icon complaint was the VITALS trio */}
-              <span style={{ fontSize: 12, fontWeight: 700, color: COL.text, lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>
-                {lvl}
-              </span>
+              {/* v2.3.1339b (owner): the level rides the icon as the same
+                  contained corner badge inventory tiles use for stack
+                  counts, instead of a bare number underneath. */}
+              <span className="bt-item-qty">{lvl}</span>
             </div>
           );
         })}
