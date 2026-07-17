@@ -74,6 +74,7 @@ extended.
    | `device:<deviceId>` | identity list per device nonce (fleet correlation) | anticheat-botfp.md |
    | `frozen:<pid>` | `{ts, note}` operator freeze — join gate | admin.md |
    | `rpgsnap:<pid>:<yyyymmdd>` | daily rpg-blob snapshot (ring of 7) | admin.md |
+   | `rpgsnap:<pid>:prereset-<ts>` | parachute snapshot before a self-service character restart | character-restart.md |
    | `rpgsnap_at:<pid>` | snapshot throttle timestamp (20h) | admin.md |
    | `admin_log` | capped ring (100) of mutating admin ops | admin.md |
    | `cadence:<scope>:<subject>` | `{period, streak, ts}` lazy daily/weekly settle | cadence.md |

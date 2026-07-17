@@ -310,8 +310,11 @@ export var BroTown = function BroTown(_ref0) {
   var weaponHandlesRef = useRef(null);
   var stateRef = useRef({
     player: {
-      x: 16 * TILE,
-      y: 16 * TILE,
+      /* v2.3.1347: first spawn at the fountain plaza (24,24) — same spot
+         death-respawn uses; the old (16,16) dropped new players in a
+         nothing-corner of town (owner playtest). */
+      x: 24 * TILE,
+      y: 24 * TILE,
       vx: 0,
       vy: 0,
       dir: 'down'

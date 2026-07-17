@@ -25,6 +25,65 @@ import { _typeof } from '@/lib/babelHelpers.js';
 
 import { pushDmgPopup } from '@/game/combatHelpers.js';
 import { onZoneEntered } from '@/networking/nodeSync.js'; /* v2.3.1301: gather-node self-heal */
+
+/* v2.3.1347: fixed directional entry spawns don't consult the painted
+   walkability masks, so zones whose mask blocks the spawn point strand
+   the player on unwalkable ground — Desert Winds ('sky') stuck every
+   south-entry player on the dune mask (owner playtest). After the spawn
+   point is chosen, snap it to the nearest walkable grid cell: ring
+   search outward from the spawn cell, preferring cells whose four
+   neighbours are also walkable (so we don't drop onto a 1-cell island),
+   falling back to any walkable cell. Zones without a mask are fully
+   walkable — no-op. Grid semantics match isSolid(): grid[gy][gx] ===
+   false blocks; the grid has its own resolution, scaled via the zone's
+   world-pixel extent. */
+function nudgeSpawnToWalkable(S, zoneId, zone) {
+  var P = S.player;
+  var grid = (S._tiledWalkable && S._tiledWalkable[zoneId]) || null;
+  if (!grid || !grid.length || !grid[0] || !grid[0].length) return;
+  var gh = grid.length, gw = grid[0].length;
+  var mw = zone.w * TILE, mh = zone.h * TILE;
+  var gx = Math.max(0, Math.min(gw - 1, Math.floor(P.x * gw / mw)));
+  var gy = Math.max(0, Math.min(gh - 1, Math.floor(P.y * gh / mh)));
+  var open = function (x, y) { return y >= 0 && y < gh && x >= 0 && x < gw && grid[y][x] !== false; };
+  /* Full 3x3 block open — the movement hitbox (20x20, hs=10 in
+     BroTown.jsx) spans up to 3 grid cells including diagonals when the
+     grid runs finer than TILE (sky's mask is 64x64 → 16px cells), so a
+     lone walkable cell still wedges the player. */
+  var roomy = function (x, y) {
+    for (var oy = -1; oy <= 1; oy++) for (var ox = -1; ox <= 1; ox++) {
+      if (!open(x + ox, y + oy)) return false;
+    }
+    return true;
+  };
+  if (roomy(gx, gy)) return;
+  var fallback = open(gx, gy) ? { x: gx, y: gy } : null;
+  var maxR = Math.max(gw, gh);
+  for (var r = 1; r < maxR; r++) {
+    var best = null, bestD = Infinity;
+    for (var dy = -r; dy <= r; dy++) {
+      for (var dx = -r; dx <= r; dx++) {
+        if (Math.max(Math.abs(dx), Math.abs(dy)) !== r) continue; /* ring perimeter only */
+        var nx = gx + dx, ny = gy + dy;
+        if (!open(nx, ny)) continue;
+        if (!fallback) fallback = { x: nx, y: ny };
+        if (!roomy(nx, ny)) continue;
+        var d = dx * dx + dy * dy;
+        if (d < bestD) { bestD = d; best = { x: nx, y: ny }; }
+      }
+    }
+    if (best) {
+      P.x = (best.x + 0.5) * (mw / gw);
+      P.y = (best.y + 0.5) * (mh / gh);
+      return;
+    }
+  }
+  if (fallback) {
+    P.x = (fallback.x + 0.5) * (mw / gw);
+    P.y = (fallback.y + 0.5) * (mh / gh);
+  }
+}
+
 export function handleZoneTransitions(S, ptx, pty, _zone, W, H) {
   var P = S.player;
         /* v2.3.387: town exits are PROXIMITY zones on the painted
@@ -166,6 +225,10 @@ export function handleZoneTransitions(S, ptx, pty, _zone, W, H) {
                  trigger -- so worldview->town instantly bounced back, spamming the
                  enter/exit-town messages. Landing near centre breaks the bounce. */
               if (bestExit.zoneId === 'worldview' || bestExit.zoneId === 'town') { P.x = midX; P.y = midY + TILE * 7; }
+              /* v2.3.1347: snap the chosen spawn onto walkable ground
+                 (Desert Winds stuck-spawn fix). Runs BEFORE the monster
+                 push-back so monsters clear the FINAL position. */
+              nudgeSpawnToWalkable(S, bestExit.zoneId, newZone);
               /* Push monsters away from player spawn — minimum 200px distance */
               var _minSpawnDist = 200;
               if (S.monsters) {
