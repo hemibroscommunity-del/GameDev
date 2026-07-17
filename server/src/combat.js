@@ -38,7 +38,7 @@
 import {
   ELEMENT_STATUS, applyElementStatus, resolveElementCollision,
 } from './elemental.js';
-import { AMULET_TIER_POWER, DAMAGE_CHANNEL_PCT } from './data.js';
+import { AMULET_TIER_POWER, DAMAGE_CHANNEL_FLAT } from './data.js';
 import { LIVEOPS } from './liveops.js';
 
 export const combatMethods = {
@@ -76,13 +76,13 @@ export const combatMethods = {
       ps.lastDamageAt = Date.now();
       return { dmgTaken: 0, dodged: false };
     }
-    // Phase 4: Agility passive dodge roll.  Cap 30% so pure-Agility
-    // builds still eat ~70% of hits.
-    // v2.3.1154: + Endurance-grid Evasion (+0.2%/pt) INSIDE the same
-    // min() — the BALANCE-PLAN §4 shared-cap hard rule: stacking dodge
-    // sources share the one 30% cap so channel completion can't
-    // compound past INV-06.  Mirrors client passiveDodgeChance.
-    const dodgePct = Math.min((ps.agility || 0) * 0.0008 + this._evasionDodge(ps), 0.30); // v2.3.1156: evasion now 0.1%/pt inside the same shared cap
+    // Phase 4: Agility passive dodge roll + Endurance-grid Evasion
+    // INSIDE the same min() — the BALANCE-PLAN §4 shared-cap hard rule:
+    // stacking dodge sources share ONE cap so channel completion can't
+    // compound past it.  Mirrors client passiveDodgeChance.
+    // v2.3.1343 (kid-simple reprice): evasion 0.5%/pt and the shared
+    // cap rises 30% -> 50% ("dodge half of all hits at max").
+    const dodgePct = Math.min((ps.agility || 0) * 0.0008 + this._evasionDodge(ps), 0.50);
     if (Math.random() < dodgePct) {
       ps.lastDamageAt = Date.now();
       return { dmgTaken: 0, dodged: true };
@@ -101,7 +101,7 @@ export const combatMethods = {
     // channel existed since v2.3.1021 but was never consumed anywhere.
     const _ironskin = (ps.defenseSpec && ps.defenseSpec.ironskin) || 0;
     if (_ironskin > 0) {
-      dmgTaken = Math.max(1, Math.round(dmgTaken * (1 - Math.min(0.25, _ironskin * 0.0025)))); // v2.3.1156: 0.25%/pt (cap raise)
+      dmgTaken = Math.max(1, Math.round(dmgTaken * (1 - Math.min(0.50, _ironskin * 0.005)))); // v2.3.1343: 0.5%/pt, cap -50% (half damage at max)
     }
     if (typeof ps.maxHp !== 'number') ps.maxHp = 100;
     if (typeof ps.hp !== 'number') ps.hp = ps.maxHp;
@@ -111,7 +111,7 @@ export const combatMethods = {
     // distinct.  ps.hpSpec is server-clamped via _sanitizeGridSpec.
     const _resil = (ps.hpSpec && ps.hpSpec.resilience) || 0;
     if (_resil > 0 && dmgTaken > 0.20 * ps.maxHp) {
-      dmgTaken = Math.max(1, Math.round(dmgTaken * (1 - Math.min(0.25, _resil * 0.0025))));
+      dmgTaken = Math.max(1, Math.round(dmgTaken * (1 - Math.min(0.50, _resil * 0.005)))); // v2.3.1343: 0.5%/pt, cap -50%
     }
     // v2.3.1314: LAST STAND (HP grid, owner-named 5th category) — a
     // killing blow leaves the player at exactly 1 HP instead, once per
@@ -125,7 +125,8 @@ export const combatMethods = {
       const _nowLs = Date.now();
       if (!ps._lastStandReadyAt || _nowLs >= ps._lastStandReadyAt) {
         dmgTaken = Math.max(0, ps.hp - 1);
-        ps._lastStandReadyAt = _nowLs + (120000 - Math.min(50000, _ls * 500));
+        // v2.3.1343 (kid-simple reprice): -1s/pt, floor 20s at the cap.
+        ps._lastStandReadyAt = _nowLs + Math.max(20000, 120000 - _ls * 1000);
         lastStand = true;
       }
     }
@@ -145,9 +146,10 @@ export const combatMethods = {
     if (ps.hp > 0 && _sw > 0) {
       const _nowSw = Date.now();
       if (!ps._secondWindReadyAt || _nowSw >= ps._secondWindReadyAt) {
-        // v2.3.1154: × HP-grid Recovery (+1%/pt on discrete heals, cap
-        // +50%) — Second Wind is Recovery's flagship synergy.
-        secondWind = Math.round((ps.maxHp || 100) * Math.min(0.50, _sw * 0.005) * this._recoveryMult(ps)); // v2.3.1156: 0.5%/pt (cap raise)
+        // v2.3.1154: × HP-grid Recovery — Second Wind is Recovery's
+        // flagship synergy.  v2.3.1343: 1%/pt, cap 100% — survive a
+        // hit at max and heal to FULL (Math.min(maxHp) bounds it).
+        secondWind = Math.round((ps.maxHp || 100) * Math.min(1.00, _sw * 0.01) * this._recoveryMult(ps));
         if (secondWind > 0) {
           ps.hp = Math.min(ps.maxHp, ps.hp + secondWind);
           ps._secondWindReadyAt = _nowSw + 10000;
@@ -221,19 +223,19 @@ export const combatMethods = {
     // still scales normal swings.  Coefficient baseline-10 rescaled
     // (0.8 ÷ 4.8 = 0.1667) so the cap tracks the new damage scale.
     const statBonus = isSpecial ? ((ps.mind || 0) * 0.1667) : ((ps.power || 0) * 0.1667);
-    // v2.3.1153: damage channel repriced flat +1/pt -> ×(1+pts×0.005).
-    // Ceiling assumes a MAXED channel (×1.495 at 99 pts) instead of
-    // reading live points -- the v2.3.1133 crit-ceiling pattern.  Much
-    // TIGHTER than the old flat term it replaces (+99 pre-tier was worth
-    // ~×8 mid-band), so this closes anti-cheat headroom, not opens it.
-    // Specials stay channel-free, matching _computeAttackDamage.
-    const channelCeil = isSpecial ? 1.0 : 1 + 100 * DAMAGE_CHANNEL_PCT; // v2.3.1156: cap 99 -> 100
+    // v2.3.1343 (kid-simple reprice): the damage channel is FLAT
+    // +DAMAGE_CHANNEL_FLAT/pt post-variance.  Ceiling assumes a MAXED
+    // channel (+100 flat) instead of reading live points -- the
+    // v2.3.1133 crit-ceiling pattern.  Specials stay channel-free,
+    // matching _computeAttackDamage.  FORGETTING this term rejects
+    // every legit maxed-build hit (anticheat.test pins it).
+    const channelFlat = isSpecial ? 0 : 100 * DAMAGE_CHANNEL_FLAT;
     for (const w of candidates) {
       // v2.3.1131: §4.4 effective base -- (raw + hardness×1.0417) ×
       // quality, BEFORE stat/channel/tierMult.  Identity for legacy
       // weapons (H0/Normal); keeps godly/hardened hits from being
       // rejected as cheats.
-      const base = (this._weaponEffBase(w.type, w) + statBonus) * channelCeil * (w.tierMult || 1);
+      const base = (this._weaponEffBase(w.type, w) + statBonus) * (w.tierMult || 1) + channelFlat;
       if (base > max) max = base;
     }
     return max;
@@ -245,9 +247,9 @@ export const combatMethods = {
     // v2.3.1133: ceiling assumes a MAXED crit-dmg channel instead of
     // reading live points, so a fully-invested crit isn't rejected by
     // the anti-cheat cap (same bug class v2.3.912 fixed for the damage
-    // channel).  v2.3.1157: +1.20 at the 100-pt cap × the 1.2%/pt
-    // UN-01 parity retune.
-    const critMult = 1.5 + (ps.power || 0) * 0.001 + 1.20;
+    // channel).  v2.3.1343 (kid-simple reprice): +2.00 at the 100-pt
+    // cap (2%/pt).
+    const critMult = 1.5 + (ps.power || 0) * 0.001 + 2.00;
     const comboBoost = 5; // covers combo + status amplifier + amulet elemDmg + lunge mult
     // SPECIAL_ATK_MULT = 2.0 applied client-side; double the cap on
     // special hits so they don't get rejected as too-high.
@@ -293,43 +295,39 @@ export const combatMethods = {
     // v2.3.912: + weapon damage channel (edge/drawPower/spellPower) so spent
     // build points raise authoritative damage.  Specials stay channel-free
     // (mirrors client calcSpecialDmg).
-    // v2.3.1153: repriced flat +1/pt -> ×(1 + pts × DAMAGE_CHANNEL_PCT).
-    // The flat term rode INSIDE the tierMult product, so 99 pts bought
-    // ~+725% DPS mid-band; the multiplier prices identically at every
-    // tier (+49.5% at 99 pts).  Mirrors client calcWeaponDmg.
+    // v2.3.1153: repriced flat-in-tierMult -> multiplier (+49.5% at 99).
+    // v2.3.1343 (kid-simple reprice): FLAT +DAMAGE_CHANNEL_FLAT/pt
+    // again, added AFTER tier AND variance, before the crit/buff
+    // multipliers — "+N damage on every swing", the same number the
+    // panel promises, on every roll.  Mirrors client calcWeaponDmg.
     const dmgPts = isSpecial ? 0 : this._wpnDmgChannel(ps, type);
     // v2.3.1131: _weaponBase -> _weaponEffBase (quality × hardness
     // layers, BALANCE-PLAN §4.4 order: pre-stat, pre-tier).  Reduces
     // exactly to the old formula at Hardness 0 / Normal quality --
     // tools/balance-sim.mjs asserts that equivalence.
-    let base = (this._weaponEffBase(type, w) + stat * 0.1667) * (1 + dmgPts * DAMAGE_CHANNEL_PCT) * tierMult; // 0.8 ÷ 4.8
+    let base = (this._weaponEffBase(type, w) + stat * 0.1667) * tierMult; // 0.8 ÷ 4.8
     // Per-type variance -- same rolls as the client.
     const v = type === 'staff' ? (0.5  + Math.random() * 1.0)
             : type === 'bow'   ? (0.6  + Math.random() * 0.2)
             :                    (0.75 + Math.random() * 0.5);
     base *= v;
+    base += dmgPts * DAMAGE_CHANNEL_FLAT;
     if (isSpecial) base *= 2.0;                        // SPECIAL_ATK_MULT
     if (w && w.isVolatile) base *= 1.30;               // §4.7 volatile weapon
     if (this._buffActive(ps, 'damage')) base *= 1.20;  // cooked damage buff (client gameLoop.js:2346)
     // Crit (calcCritChance + calcCritMult).
     // v2.3.912: crit chance = Power baseline + the weapon CRIT channel
-    // (precision/marksmanship/overload) at +0.5%/pt, capped +30% (linear,
-    // mirrors calcCritChance).  Ferocity is retired; crit mult stays Power-based.
-    // v2.3.1156: crit channel 0.5 -> 0.3%/pt so the +30% cap lands at
-    // exactly the 100-pt channel cap (was a silent trap at 60 pts).
-    // Mirrors client calcCritChance; spent points refunded by the
-    // uniform-t2-caps migration.
+    // (precision/marksmanship/overload), linear.  Ferocity is retired.
+    // v2.3.1343 (kid-simple reprice): 0.5%/pt, cap +50% at the 100-pt
+    // channel cap.  Mirrors client calcCritChance.
     const P = ps.power || 0;
     const critChance = Math.max(0, Math.min(1,
-      40 * P / (P + 200) / 100 + Math.min(0.30, this._wpnCritPts(ps, type) * 0.003)));
+      40 * P / (P + 200) / 100 + Math.min(0.50, this._wpnCritPts(ps, type) * 0.005)));
     const isCrit = Math.random() < critChance;
     // v2.3.1133: crit mult gains the crit-DMG channel (executioner/headshot/
-    // focus), mirroring client calcCritMult.  The Ferocity term (retired,
-    // pinned 0 since v2.3.910) is dropped.  v2.3.1157: 0.8 -> 1.2%/pt —
-    // the sim's UN-01 synergy-aware parity band showed crit-dmg
-    // underpriced vs the damage channel under the fungible 1000-pt
-    // economy (+120% at the 100-pt cap).
-    if (isCrit) base *= (1.5 + P * 0.001 + this._wpnCritDmgPts(ps, type) * 0.012);
+    // focus), mirroring client calcCritMult.  v2.3.1343 (kid-simple
+    // reprice): 2%/pt — +200% at the 100-pt cap, crits ~3.5x at max.
+    if (isCrit) base *= (1.5 + P * 0.001 + this._wpnCritDmgPts(ps, type) * 0.02);
     // v2.3.1139 (item I): the two multipliers the v2.3.912 scope note
     // deliberately omitted, now server-side (the client applies both
     // locally and its numbers finally match the wire truth):
@@ -373,10 +371,12 @@ export const combatMethods = {
     // makes cadence a build stat, give it a server backstop keyed per
     // (player, monster) so Cleave/pierce fan-out (many monsters, one
     // swing) can never false-positive.  Two classes:
-    //  - normal hits: min 335ms gap = 600ms swing x 0.80 (Tempo CAP, not
-    //    live points -- needs no client sync) x ~0.7 lag headroom (mobile
-    //    bunches sends).  Legit fastest today is ~450ms (Tempo cap +
-    //    mythic storm amulet 6.5%).
+    //  - normal hits: min gap = 600ms swing x the Tempo CAP (not live
+    //    points -- needs no client sync) x ~0.7 lag headroom (mobile
+    //    bunches sends).  v2.3.1343: Tempo cap -20% -> -50% (kid-simple
+    //    reprice), so the floor resizes 335 -> 210ms IN LOCKSTEP with
+    //    client swingCooldownMultFor — ship them together or legit
+    //    fast swings get rejected.
     //  - specials: <=3 hits per 1200ms per monster.  The staff special is
     //    a 3-bolt cone that can land all 3 on one target within ~100ms,
     //    and the melee special bypasses the swing cooldown entirely
@@ -395,7 +395,7 @@ export const combatMethods = {
         if (cad.s.length >= 3) return;
         cad.s.push(nowTs);
       } else {
-        if (nowTs - cad.n < 335) return;
+        if (nowTs - cad.n < 210) return; // v2.3.1343: 335 -> 210 (Tempo cap -50%)
         cad.n = nowTs;
       }
       // Bound the map (fighting packs cycles monsters; oldest-in first-out).
@@ -830,7 +830,10 @@ export const combatMethods = {
        comment promised but only the client enforced.  Absent (old
        clients, melee) = cone behavior unchanged. */
     const onlyTarget = typeof payload.target === 'string' ? payload.target : null;
-    const arc = Math.max(0.1, Math.min(Math.PI * 1.1, payload.arc || 1.2));
+    /* v2.3.1343: arc clamp PI*1.1 -> PI*1.41 — it was sized to the
+       greatsword's PI*0.85 base + the old +45° Cleave cap; the
+       kid-simple reprice raises Cleave to +100° (253° ≈ PI*1.406). */
+    const arc = Math.max(0.1, Math.min(Math.PI * 1.41, payload.arc || 1.2));
     const angle = payload.angle || 0;
     // Weapon-aware cap (slice 16) -- mirrors monster_damage cap above.
     // Server now owns the weapon table so the bound is tighter than

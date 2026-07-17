@@ -3085,11 +3085,12 @@ export var BroTown = function BroTown(_ref0) {
              Endurance up to 500ms.  Damage sites read truthiness of
              _dodgeRoll for invuln, so this directly stretches the
              invuln window in sync with the movement window. */
-          /* v2.3.1314: + Reflexes (Stamina-grid T2, +1ms/pt cap +100)
-             on top of the Endurance stretch — the roll window IS the
-             i-frame, so this directly buys survival frames. */
+          /* v2.3.1314: + Reflexes (Stamina-grid T2) on top of the
+             Endurance stretch — the roll window IS the i-frame, so
+             this directly buys survival frames.
+             v2.3.1343 (kid-simple reprice): +2ms/pt, cap +200ms. */
           var _dodgeMs = 250 + Math.min(((S.rpg && S.rpg.endurance) || 0), 250)
-            + Math.min(100, (S.rpg && S.rpg.enduranceSpec && S.rpg.enduranceSpec.reflexes) || 0);
+            + Math.min(200, 2 * ((S.rpg && S.rpg.enduranceSpec && S.rpg.enduranceSpec.reflexes) || 0));
           if (rollAge < _dodgeMs) {
             S.player.x += Math.cos(S._dodgeRoll.angle) * 6;
             S.player.y += Math.sin(S._dodgeRoll.angle) * 6;

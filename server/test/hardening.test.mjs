@@ -101,7 +101,10 @@ ps.rangedWeapon = null; ps.staffWeapon = null;
 const capNormal = room._maxDmgForAttacker(ps, false);
 ps.weapon.quality = 'godly'; ps.weapon.hardness = 5;
 const capGodly = room._maxDmgForAttacker(ps, false);
-check('damage ceiling rises for godly/hardened weapons', capGodly > capNormal * 2, { capNormal, capGodly });
+// v2.3.1343: the flat +100 damage-channel headroom in _maxWeaponDmg
+// dilutes the multiplicative quality/hardness ratio on a tier-1 wood
+// sword (was >2x), so the guard pins a still-meaningful margin.
+check('damage ceiling rises for godly/hardened weapons', capGodly > capNormal * 1.2, { capNormal, capGodly });
 ps.weapon.quality = 'normal'; ps.weapon.hardness = 0;
 
 // ── 5. sanitizer postures ──

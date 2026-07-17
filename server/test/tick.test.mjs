@@ -133,19 +133,20 @@ const blk = room.eventBuffer.find((e) => e.type === 'monster_attack' && e.payloa
 check('block: event flagged blocked with the stamina drain on the wire', !!blk && blk.payload.blocked === true && blk.payload.staminaDrain === 15 && blk.payload.dmgTaken === 0, blk && blk.payload);
 check('block: 15 stamina deducted server-side, hp untouched', ps.stamina === 85 && ps.hp === 100, { stamina: ps.stamina, hp: ps.hp });
 
-// ── 3b. v2.3.1153: Bulwark block-stamina efficiency (v2.3.1156:
-// 0.5%/pt, cap −50% at the 100-pt uniform cap) discounts the
-// per-blocked-hit cost, and the DISCOUNTED number rides the wire so
-// pre-fix clients render it correctly. ──
+// ── 3b. Bulwark block-stamina efficiency (v2.3.1343: -1%/pt, cap
+// -100%) discounts the per-blocked-hit cost, and the DISCOUNTED number
+// rides the wire so pre-fix clients render it correctly.  At the cap
+// the Math.max(1, …) floor holds the cost at 1 — blocking is never
+// TRULY free (the anti-turtle backstop). ──
 ps.stamina = 100; ps.defenseSpec = { bulwark: 100 };
 m0.atkCd = 0;
 clearDirty();
 room.eventBuffer.length = 0;
 room._tickMonsters();
 const blkBw = room.eventBuffer.find((e) => e.type === 'monster_attack' && e.payload.monsterId === m0.id);
-check('bulwark: 100 pts (cap) halve the block cost (15 -> 8, rounded) on the wire',
-  !!blkBw && blkBw.payload.blocked === true && blkBw.payload.staminaDrain === 8, blkBw && blkBw.payload);
-check('bulwark: discounted cost deducted server-side', ps.stamina === 92, ps.stamina);
+check('bulwark: 100 pts (cap) floor the block cost at 1 on the wire',
+  !!blkBw && blkBw.payload.blocked === true && blkBw.payload.staminaDrain === 1, blkBw && blkBw.payload);
+check('bulwark: floored cost deducted server-side', ps.stamina === 99, ps.stamina);
 ps.defenseSpec = {};
 ps.blocking = false;
 

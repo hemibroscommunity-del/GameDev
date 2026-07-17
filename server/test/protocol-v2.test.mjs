@@ -236,12 +236,14 @@ check('v2 safe-zone change sends empty zone_state', zsTown.length === 1 && zsTow
   check('v2.3.912 _wpnDmgChannel reads edge points (raw pts since the v2.3.1153 reprice)', room._wpnDmgChannel(ps, 'sword') === 10, room._wpnDmgChannel(ps, 'sword'));
   check('v2.3.912 _wpnCritPts reads precision points', room._wpnCritPts(ps, 'sword') === 20, room._wpnCritPts(ps, 'sword'));
   check('v2.3.912 greatsword shares the sword/melee category', room._wpnCat('greatsword') === 'sword', room._wpnCat('greatsword'));
-  // v2.3.1153: the cap assumes a MAXED damage channel (×1.495) instead of
-  // reading live points (the v2.3.1133 crit-ceiling pattern), so it no
-  // longer moves with the spec — 6.67 × 1.495 with or without points.
+  // v2.3.1343 (kid-simple reprice): the damage channel is FLAT +1/pt
+  // post-variance; the cap assumes a MAXED channel (+100) instead of
+  // reading live points (the v2.3.1133 crit-ceiling pattern), so it
+  // still doesn't move with the spec — 6.67 + 100 with or without
+  // points.
   const capNormal = room._maxWeaponDmg(ps, false);
-  check('v2.3.1153 normal-swing cap assumes the maxed damage channel (×1.5 at the v2.3.1156 100-pt cap)',
-    Math.abs(capNormal - 6.67 * 1.5) < 0.001, capNormal);
+  check('v2.3.1343 normal-swing cap assumes the maxed flat damage channel (+100)',
+    Math.abs(capNormal - (6.67 + 100)) < 0.001, capNormal);
   ps.weaponSpecs = {};
   check('v2.3.1153 cap is live-point independent (same bound with zero points)',
     Math.abs(room._maxWeaponDmg(ps, false) - capNormal) < 0.001, room._maxWeaponDmg(ps, false));
