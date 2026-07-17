@@ -377,7 +377,8 @@ const psB = room.playerState.pb;
   room.state.storage.put = origPutN;
   const psN = room.playerState.pn;
   check('bootstrap: coins clamp to BOOTSTRAP_COINS_CAP (2000)', bootN && bootN.coins === 2000, bootN && bootN.coins);
-  check('bootstrap: level clamps to BOOTSTRAP_LEVEL_CAP (500)', bootN && bootN.level === 500, bootN && bootN.level);
+  // v2.3.1342: cap 500 -> 1000 (level-is-build; max level 1000).
+  check('bootstrap: level clamps to BOOTSTRAP_LEVEL_CAP (1000)', bootN && bootN.level === 1000, bootN && bootN.level);
   check('bootstrap: xp clamps to BOOTSTRAP_XP_CAP (50000)', bootN && bootN.xp === 50000, bootN && bootN.xp);
   check('bootstrap: unspentT2 clamps to BOOTSTRAP_UT2_CAP (75)', bootN && bootN.unspentT2 === 75, bootN && bootN.unspentT2);
   check('bootstrap: buildPointsThisLvl clamps to 4 (build_point_earned flurry max)',

@@ -17,7 +17,7 @@
  * the only change that isn't a pure line move; nothing outside this
  * file referenced them via the class. */
 
-import { computeCanonicalPools } from './migrations.js';
+import { computeCanonicalPools, computeBuildTotal } from './migrations.js';
 
 // v2.3.1170: these were `static get` members on GameRoom; as module
 // constants the mixin methods can reference them without a circular
@@ -389,18 +389,25 @@ export const gridMethods = {
 
   _recomputeMaxes(ps) {
     if (!ps) return;
-    // v2.3.910: combat level is DERIVED -- the sum of the use-trained
-    // build-skill levels, clamped to 500.  Mirrors recalcDerived on the
-    // client and replaces the old 5-build-point gate.
-    // v2.3.1138: + defenseSkill.level (the 6th skill; spec Phase 2).
-    // Trust posture: defenseSkill is client-trained-but-clamped [0,99]
-    // (_sanitizeDefenseSkill), same known-loose class as weaponSkills --
-    // a forged claim buys <= +99 level (~ +247 maxHp).  Documented, not
-    // fixed here; tightens when training moves fully server-side.
-    ps.level = Math.max(1, Math.min(500,
-      (ps.power || 0) + (ps.vitality || 0) + (ps.endurance || 0)
-      + (ps.agility || 0) + (ps.mind || 0)
-      + ((ps.defenseSkill && ps.defenseSkill.level) || 0)));
+    // v2.3.910: combat level was DERIVED as the sum of the use-trained
+    // build-skill levels, clamped to 500 (replacing the old
+    // 5-build-point gate; v2.3.1138 added defenseSkill as the 6th).
+    // v2.3.1342: level = total T2 points PLACED, cap 1000 (owner
+    // directive 2026-07-16: every point spent = +1 combat level, so
+    // every level-up is a bought power gain; max level 1000 =
+    // COMBAT_BUILD_CEILING).  computeBuildTotal (migrations.js) is the
+    // one summation, shared with migration v8 'level-is-build' and
+    // mirrored by recalcDerived on the client behind caps.t2simple.
+    // Trust posture unchanged: specs are client-reported-but-clamped
+    // ([0,100]/channel + the 1000 ceiling via the sanitizers), the
+    // same known-loose class as weaponSkills — a forged claim buys
+    // bounded level, tightens when training moves fully server-side.
+    // The +1: fresh characters are level 1 (RPG floor), and the FIRST
+    // point spent must be +1 level like every other — level = points
+    // alone made point #1 a dud (1 -> 1), caught by the QA rig.  The
+    // cap instead lands on point #1000 (build complete, level already
+    // maxed) — the far lesser dud.
+    ps.level = Math.min(1000, 1 + computeBuildTotal(ps));
     const lvl = ps.level;
     const oldMaxHp = ps.maxHp || 100;
     const oldMaxStam = ps.maxStamina || 100;

@@ -309,16 +309,26 @@ const session = [...room.sessions.values()].find((s) => s.id === 'bp_gr_a');
   await room.webSocketMessage(ws, JSON.stringify({ type: 'stat_allocate', payload: { stat: 'mind' } }));
   check('stat_allocate: zero unspentT2 is a clean no-op', ps.unspentT2 === 0, ps.unspentT2);
 
-  // build_point_earned: derived level comes from the stat sum, so a
-  // stat bump + the event recomputes maxes and tops pools on the gain.
-  ps.power = 10; ps.vitality = 10; ps.endurance = 10; ps.agility = 10; ps.mind = 10;
+  // v2.3.1342 (level-is-build): a stat bump no longer moves combat
+  // level — only PLACED T2 points do — so build_point_earned holds the
+  // level flat (and therefore must NOT refill pools), while a
+  // stats_update that lands one more placed point is +1 level and DOES
+  // refill (the spend is the level-up moment).
+  ps.power = 10; ps.vitality = 20; ps.endurance = 10; ps.agility = 10; ps.mind = 10;
   ps.defenseSkill = { level: 0, xp: 0 };
+  ps.weaponSpecs = { sword: { edge: 50 } };
+  ps.defenseSpec = {}; ps.hpSpec = { recovery: 10 }; ps.enduranceSpec = {};
   room._recomputeMaxes(ps);
+  check('level-is-build: level = 1 + placed points (50 edge + 10 recovery)', ps.level === 61, ps.level);
   ps.hp = 1; ps.stamina = 1; ps.mana = 1;
   ps.vitality += 1; // the "stat went up on the client" the event signals
   await room.webSocketMessage(ws, JSON.stringify({ type: 'build_point_earned' }));
-  check('build_point_earned: derived level rises with the stat sum and pools refill',
-    ps.level === 51 && ps.hp === ps.maxHp && ps.stamina === ps.maxStamina && ps.mana === ps.maxMana,
+  check('build_point_earned: stat bump holds level flat, no pool refill',
+    ps.level === 61 && ps.hp === 1 && ps.stamina === 1 && ps.mana === 1,
+    { level: ps.level, hp: ps.hp });
+  room._handleStatsUpdate(room.sessions.get(ws), { hpSpec: { recovery: 11 } });
+  check('stats_update: one more placed point = +1 level and pools refill',
+    ps.level === 62 && ps.hp === ps.maxHp && ps.stamina === ps.maxStamina && ps.mana === ps.maxMana,
     { level: ps.level, hp: ps.hp, maxHp: ps.maxHp });
 }
 

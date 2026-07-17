@@ -2298,8 +2298,11 @@ export const STAT_POINTS_PER_LEVEL = 10; /* 5 Tier1 + 5 Tier2 */
 /* v2.3.910: combat level is now the SUM of the build-skill levels (the five
    use-trained stats), so it climbs ~5x faster than the old 5-build-point gate.
    Cap raised 100 -> 500 (≈ five skills × ~100) so a fully-built character
-   isn't frozen. See docs/specs/build-skill-progression.md. */
-export const LEVEL_CAP = 500;
+   isn't frozen. See docs/specs/build-skill-progression.md.
+   v2.3.1342: level = total T2 points PLACED (owner directive 2026-07-16:
+   every point spent = +1 combat level), so the cap rises to the
+   1000-point COMBAT_BUILD_CEILING — max level 1000 IS a finished build. */
+export const LEVEL_CAP = 1000;
 
 /* ═══ GEAR STAT REQUIREMENTS — Tier 1 stat thresholds replace level gating ═══ */
 /* Each gear type requires a specific Tier 1 stat. Threshold = tierIndex × 10. */
@@ -2947,12 +2950,16 @@ export function applyIronSkin(rpg, dmg) {
 
 /* Train Defense from a damage event.  `prevented` = damage the block stopped
    (trains at full rate), `taken` = damage that still landed (quarter rate).
-   Valid-threat rule (GDD §1.4): only counts vs attackers within ±5 levels or
-   a boss.  Returns the awardDefenseXp result (level-up info) or null. */
+   Returns the awardDefenseXp result (level-up info) or null.
+   v2.3.1342: the GDD §1.4 "valid threat" ±5-level gate is REMOVED —
+   under level-is-build (level = T2 points placed, cap 1000) a player's
+   level races far past every monster's, so the gate would permanently
+   freeze defense training the moment you spent your first few dozen
+   points.  Fun-first, owner-approved.  Signature keeps attackerLevel/
+   isBoss so the call sites don't churn (and a future re-gate is easy). */
 export function trainDefense(rpg, prevented, taken, attackerLevel, isBoss) {
   if (!rpg) return null;
-  var pl = rpg.level || 1;
-  if (!isBoss && attackerLevel != null && Math.abs((attackerLevel || 1) - pl) > 5) return null;
+  void attackerLevel; void isBoss;
   var amt = (prevented > 0 ? prevented * DEFENSE_XP_BLOCKED : 0)
           + (taken > 0 ? taken * DEFENSE_XP_TAKEN : 0);
   return awardDefenseXp(rpg, amt);
@@ -3147,6 +3154,17 @@ export function migrateUniformT2(rpg) {
 var _gridCapsEnabled = true;
 export function setGridCapsEnabled(on) { _gridCapsEnabled = !!on; }
 export function isGridCapsEnabled() { return _gridCapsEnabled; }
+
+/* v2.3.1342: same deploy-order gate for the level-is-build derivation
+   (level = T2 points placed, cap 1000).  Against an old worker the
+   client keeps the legacy stat-sum formula, because the worker's
+   player_state echo carries ITS derivation verbatim (wsClient accepts
+   server level as authoritative) and the two formulas fighting would
+   make the level flicker every flush.  Defaults ON (offline/tests);
+   wsClient flips it from state_sync.caps.t2simple. */
+var _t2SimpleEnabled = true;
+export function setT2SimpleEnabled(on) { _t2SimpleEnabled = !!on; }
+export function isT2SimpleEnabled() { return _t2SimpleEnabled; }
 
 /* Grid channel multipliers — mirror the server helpers in index.js.
    v2.3.1156: coefficients halved with the 50 -> 100 cap raise (cap
@@ -4402,16 +4420,26 @@ export function createDefaultRpg() {
 
 /* Recalculate derived stats from allocations */
 export function recalcDerived(rpg) {
-  /* v2.3.910: combat level is DERIVED — it is the sum of the use-trained
-     build-skill levels, clamped to LEVEL_CAP.  This replaces the old
-     5-build-point gate; each build-skill level-up is exactly +1 combat level.
-     v2.3.1138: Defense (the 6th skill) now counts too — the spec's Phase 2
-     follow-up, unblocked since the server started persisting defenseSkill
-     (v2.3.1021) and training went live (v2.3.1113). */
-  rpg.level = Math.max(1, Math.min(LEVEL_CAP,
-    (rpg.power || 0) + (rpg.vitality || 0) + (rpg.endurance || 0)
-    + (rpg.agility || 0) + (rpg.mind || 0)
-    + ((rpg.defenseSkill && rpg.defenseSkill.level) || 0)));
+  /* v2.3.910: combat level was DERIVED as the sum of the use-trained
+     build-skill levels (v2.3.1138 added Defense as the 6th), cap 500.
+     v2.3.1342: level = total T2 points PLACED, cap LEVEL_CAP=1000
+     (owner directive 2026-07-16: every point spent = +1 combat level,
+     so every level-up is a bought power gain; max level 1000).
+     combatBuildTotal already applies the per-channel [0,100] clamp —
+     one summation, mirrored by the server's computeBuildTotal.
+     Gated on caps.t2simple (isT2SimpleEnabled): an old worker echoes
+     ITS stat-sum level verbatim in player_state, and the two formulas
+     fighting would flicker the level every flush — keep the legacy
+     formula until the worker owns the new one. */
+  rpg.level = isT2SimpleEnabled()
+    /* The +1: fresh characters are level 1 (RPG floor), and the FIRST
+       point spent must be +1 level like every other — level = points
+       alone made point #1 a dud (1 -> 1).  Cap lands on point #1000. */
+    ? Math.min(LEVEL_CAP, 1 + combatBuildTotal(rpg))
+    : Math.max(1, Math.min(500,
+      (rpg.power || 0) + (rpg.vitality || 0) + (rpg.endurance || 0)
+      + (rpg.agility || 0) + (rpg.mind || 0)
+      + ((rpg.defenseSkill && rpg.defenseSkill.level) || 0)));
   rpg.maxHp = calcMaxHp(rpg.level, rpg.vitality);
   /* v2.3.227: armor contributes flat HP scaled by Vitality (1% per pt). */
   rpg.maxHp += getArmorHp(rpg.armor, rpg.vitality);

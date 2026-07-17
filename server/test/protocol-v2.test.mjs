@@ -187,21 +187,42 @@ const zsTown = msgsOfType(ws2, 'zone_state');
 check('v2 safe-zone change sends empty zone_state', zsTown.length === 1 && zsTown[0].zone === 'town'
   && zsTown[0].monsters.length === 0 && zsTown[0].nodes.length === 0 && zsTown[0].loot.length === 0);
 
-// ── v2.3.910: combat level is the SUM of the five build-skill levels, and
-// maxHp uses the retuned flat 2.5/combat-level term ──
+// ── v2.3.1342: combat level = total T2 points PLACED (cap 1000), and
+// maxHp keeps the flat 2.5/combat-level term (owner directive
+// 2026-07-16: every point spent = +1 level = a felt power gain) ──
 {
   const ps = room.playerState.p2;
   ps.armor = null;
-  ps.power = 10; ps.vitality = 8; ps.endurance = 0; ps.agility = 4; ps.mind = 3; // sum 25
+  ps.power = 10; ps.vitality = 8; ps.endurance = 0; ps.agility = 4; ps.mind = 3;
+  // 25 points placed across three grids -> level 25 (stat levels no
+  // longer count; only allocation does).
+  ps.weaponSpecs = { sword: { edge: 10, tempo: 5 } };
+  ps.defenseSpec = { ironskin: 6 };
+  ps.hpSpec = { recovery: 4 }; // NOT vigor — it would multiply the maxHp assert below
   room._recomputeMaxes(ps);
-  check('v2.3.910 combat level = sum of build-skill stats', ps.level === 25, ps.level);
-  // floor(100 + (25-1)*2.5 + 8*10) = 100 + 60 + 80 = 240
-  check('v2.3.910 maxHp uses flat 2.5/level term', ps.maxHp === 240, ps.maxHp);
+  check('v2.3.1342 combat level = 1 + T2 points placed', ps.level === 26, ps.level);
+  // floor(100 + (26-1)*2.5 + 8*10) = floor(242.5) = 242 (level 26 = 1 + 25 placed)
+  check('v2.3.910 maxHp uses flat 2.5/level term', ps.maxHp === 242, ps.maxHp);
   check('v2.3.910 _calcMaxHp(100,0) == 347', room._calcMaxHp(100, 0) === 347, room._calcMaxHp(100, 0));
-  // Over-cap stat sum clamps combat level to 500.
-  ps.power = 600; ps.vitality = 0; ps.agility = 0; ps.mind = 0; ps.endurance = 0;
+  // Stat levels alone no longer move the level; a maxed 30-channel
+  // build (per-channel clamp 100) lands exactly at the 1000 cap.
+  ps.power = 600;
   room._recomputeMaxes(ps);
-  check('v2.3.910 combat level clamps at 500', ps.level === 500, ps.level);
+  check('v2.3.1342 stat levels do not raise level', ps.level === 26, ps.level);
+  ps.weaponSpecs = {
+    sword: { edge: 999, precision: 100, executioner: 100, tempo: 100, cleave: 100 },
+    bow:   { drawPower: 100, marksmanship: 100, headshot: 100, piercing: 100, longshot: 100 },
+    staff: { spellPower: 100, overload: 100, detonation: 100, attunement: 100, focus: 100 },
+  };
+  ps.defenseSpec = { bulwark: 100, ironskin: 100, thorns: 100, secondwind: 100, poise: 100 };
+  ps.hpSpec = { vigor: 100, recovery: 100, lifeblood: 100, resilience: 100, laststand: 100 };
+  ps.enduranceSpec = { stamina: 100, conditioning: 100, swiftness: 100, evasion: 100, reflexes: 100 };
+  room._recomputeMaxes(ps);
+  check('v2.3.1342 combat level caps at 1000 (30 channels x 100, over-cap channel clamped)', ps.level === 1000, ps.level);
+  // restore the small build for the tests below
+  ps.weaponSpecs = {}; ps.defenseSpec = {}; ps.hpSpec = {}; ps.enduranceSpec = {};
+  ps.power = 10;
+  room._recomputeMaxes(ps);
 }
 
 // ── v2.3.912: weapon build CHANNELS reach the authoritative damage roll ──
@@ -270,11 +291,18 @@ check('v2 safe-zone change sends empty zone_state', zsTown.length === 1 && zsTow
     && ps.defenseSpec.ironskin === 100 && ps.defenseSpec.bogus === undefined,
     { defenseSkill: ps.defenseSkill, defenseSpec: ps.defenseSpec });
 
-  // v2.3.1138: Defense (the 6th build skill) counts toward combat level.
-  ps.power = 10; ps.vitality = 8; ps.endurance = 0; ps.agility = 4; ps.mind = 3; // sum 25
+  // v2.3.1138 asserted defenseSkill.level ADDED to combat level (25+4=29).
+  // v2.3.1342 inverts it: skill levels no longer feed the level at all —
+  // only placed T2 points do — so raising the skill must leave it flat.
+  ps.power = 10; ps.vitality = 8; ps.endurance = 0; ps.agility = 4; ps.mind = 3;
   room._recomputeMaxes(ps);
-  check('v2.3.1138 combat level includes defenseSkill.level (25 + 4 = 29)',
-    ps.level === 29, ps.level);
+  const lvlBeforeSkill = ps.level;
+  ps.defenseSkill = { level: 50, xp: 12 };
+  room._recomputeMaxes(ps);
+  check('v2.3.1342 defenseSkill.level no longer moves combat level',
+    ps.level === lvlBeforeSkill, { before: lvlBeforeSkill, after: ps.level });
+  ps.defenseSkill = { level: 4, xp: 12 }; // restore for the echo/_saveRpg asserts below
+  room._recomputeMaxes(ps);
 
   // player_state echoes the track (unregistered ws => full, non-delta payload).
   const ws3 = fakeWs('echo');

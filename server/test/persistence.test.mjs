@@ -159,12 +159,13 @@ const ws2 = fakeWs('p2');
 await join(ws2, 'bp_pt_a', { rpg: { coins: 999999 } });
 const ps2 = room.playerState['bp_pt_a'];
 // NOTE: level is NOT restored verbatim -- v2.3.910 made combat level
-// DERIVED (sum of the five T1 stats) and v2.3.1138 added
-// defenseSkill.level as the 6th skill: 9+8+7+6+5 + defense 2 = 37
-// here.  The blob's stored `level` is a snapshot for legacy readers;
-// the join bootstrap recomputes.  Coins must come from the store, not
-// the join payload.
-check('reconnect restores stored coins; level re-derives from the six combat skills', ps2.coins === 1234 && ps2.level === 37, { coins: ps2.coins, level: ps2.level });
+// derived, and v2.3.1342 re-based it on T2 points PLACED (cap 1000):
+// here defenseSpec bulwark 2 + ironskin 1 = 3 (the weaponSpecs entry
+// uses the legacy non-canonical 'melee.damage' shape, which the
+// canonical summation ignores).  The blob's stored `level` is a
+// snapshot for legacy readers; the join bootstrap recomputes.  Coins
+// must come from the store, not the join payload.
+check('reconnect restores stored coins; level re-derives as 1 + placed T2 points', ps2.coins === 1234 && ps2.level === 4, { coins: ps2.coins, level: ps2.level });
 check('reconnect stash passes the NON-strict clamp (server-minted quality kept)', ps2.weaponStash.length === 1 && ps2.weaponStash[0].quality === 'rare', ps2.weaponStash);
 check('reconnect restores the defense track', ps2.defenseSkill && ps2.defenseSkill.level === 2 && ps2.defenseSpec && ps2.defenseSpec.ironskin === 1);
 

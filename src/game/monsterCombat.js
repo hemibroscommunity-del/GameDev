@@ -40,6 +40,7 @@ import { getEquip } from '@/rendering/gearCatalog.js'; /* v2.3.1104: armoured-hi
 import { rollMonsterShard } from '@/data/shards.js';
 import { addBuildUse, applyMeleeLifesteal, distributeKillXpToBuild, trackMonsterDamage, pushDmgPopup, monsterPopupY } from '@/game/combatHelpers.js';
 import { earnCertification as masteryEarnCert } from '@/game/mastery.js';
+import { celebrateLevelUps } from '@/game/levelCelebration.js';
 import { btRpc, getBtPlayerId, syncRpgToServer } from '@/networking/index.js';
 import { pushHudPopup } from '@/ui/XpFlyOverlay.jsx';
 import { _objectSpread, _slicedToArray } from '@/lib/babelHelpers.js';
@@ -2164,22 +2165,12 @@ export function updateMonsterCombat(S, deps) {
                      refund 90% of damage taken from this monster. */
                   applyMeleeLifesteal(S, _R6, m);
 
-                  /* v2.3.910: combat level is DERIVED (sum of build-skill
-                     levels, set in recalcDerived inside addBuildProg above), so
-                     we no longer increment it here -- fire feedback once per
-                     newly-reached level (tracked by _lastShownLevel) + refill. */
-                  while (_R6.level > (_R6._lastShownLevel || 1)) {
-                    _R6._lastShownLevel = (_R6._lastShownLevel || 1) + 1;
-                    _R6.hp = _R6.maxHp;
-                    _R6.stamina = _R6.maxStamina;
-                    _R6.mana = _R6.maxMana;
-                    setLevelUpMsg({
-                      kind: 'combat',
-                      level: _R6._lastShownLevel,
-                      ts: Date.now()
-                    });
-                    BT_AUDIO.levelUp();
-                  }
+                  /* v2.3.910: combat level is DERIVED (set in recalcDerived
+                     inside addBuildProg above), so we no longer increment it
+                     here.  v2.3.1342: shared celebrateLevelUps — full burst
+                     (this melee path used to be chime-only; parity with the
+                     loot-pickup celebration was accidental drift). */
+                  celebrateLevelUps(S, _R6, { setLevelUpMsg: setLevelUpMsg });
                   setRpgState(_objectSpread({}, _R6));
                   try {
                     localStorage.setItem('bt_rpg', JSON.stringify(_R6));

@@ -2074,8 +2074,11 @@ export var BroTown = function BroTown(_ref0) {
       /* v2.3.910: combat level is now derived (sum of build-skill levels), set
          by recalcDerived above.  Seed _lastShownLevel to the current level so
          the on-kill level-up VFX fires only for levels gained from here on, not
-         a burst for every level the character already has. */
-      if (S.rpg._lastShownLevel == null) S.rpg._lastShownLevel = S.rpg.level || 1;
+         a burst for every level the character already has.
+         v2.3.1342: also clamp DOWNWARD — level-is-build (level = T2 points
+         placed) can lower an old save's level, and a stale high-water here
+         would mute every celebration until the player re-passed it. */
+      if (S.rpg._lastShownLevel == null || S.rpg._lastShownLevel > (S.rpg.level || 1)) S.rpg._lastShownLevel = S.rpg.level || 1;
       /* v2.3.687: restore any orphaned steel piece (worn nowhere, bagged
          nowhere -- e.g. unequipped via the old Equipment-menu toggle) into
          the bag so it's never lost. */
@@ -6917,7 +6920,12 @@ export var BroTown = function BroTown(_ref0) {
     style: {
       position: 'absolute',
       inset: 0,
-      zIndex: 22,
+      /* v2.3.1342: 22 -> 70.  Spending a T2 point in the Build sheet is
+         now a level-up (level-is-build), and the dash sheet + spend
+         dialog sit at zIndex 60 — the banner must float above them or
+         the in-sheet celebration is invisible.  pointerEvents none, so
+         nothing underneath loses taps. */
+      zIndex: 70,
       pointerEvents: 'none',
       display: 'flex',
       alignItems: 'center',
@@ -6973,7 +6981,11 @@ export var BroTown = function BroTown(_ref0) {
       color: 'rgba(255,255,255,.6)',
       marginTop: 4
     }
-  }, levelUpMsg.kind === 'warning' ? (levelUpMsg.sub || '') : "+5 Capacity \xB7 +5 Technique"))), rpgState && /*#__PURE__*/React.createElement("div", {
+  }, levelUpMsg.kind === 'warning' ? (levelUpMsg.sub || '')
+    /* v2.3.1342: was "+5 Capacity · +5 Technique" — legacy copy from the
+       retired flat per-level T2 grant.  Kid-true line: every level-up
+       (kill-path or point spend) refills all three pools. */
+    : "You got stronger! HP \xB7 Stamina \xB7 Mana refilled"))), rpgState && /*#__PURE__*/React.createElement("div", {
     style: {
       position: 'absolute',
       top: 44,

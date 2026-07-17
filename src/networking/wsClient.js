@@ -18,7 +18,7 @@
 import { processGameEvent } from '@/networking/gameEvents.js';
 import { stashPendingZoneNodes } from '@/networking/nodeSync.js'; /* v2.3.1301: node self-heal */
 import { getDeviceNonce, generatePassphrase, passphraseToId } from '@/networking/index.js';
-import { createGatherNode, spawnMonstersForZone, BT_AUDIO, ZONES, TILE, DEATH_GOLD_PENALTY, RARITY_TIERS, ZONE_RESOURCES, createDefaultCompStats, generateZoneMap, recalcDerived, updateZoneDimensions, setGridCapsEnabled } from '@/data/index.js';
+import { createGatherNode, spawnMonstersForZone, BT_AUDIO, ZONES, TILE, DEATH_GOLD_PENALTY, RARITY_TIERS, ZONE_RESOURCES, createDefaultCompStats, generateZoneMap, recalcDerived, updateZoneDimensions, setGridCapsEnabled, setT2SimpleEnabled } from '@/data/index.js';
 import { _objectSpread, _slicedToArray, _toConsumableArray } from '@/lib/babelHelpers.js';
 import { usesClientSideMovement, MONSTER_VARIANTS, isRemnantSkull, applyZoneVariant } from '@/data/monsterVariants.js';
 import { rollMonsterShard, shardByKey } from '@/data/shards.js';
@@ -620,6 +620,12 @@ export function setupWebSocket(ctx) {
                  Re-derive immediately so the gate takes effect now. */
               try {
                 setGridCapsEnabled(!!(msg.caps && msg.caps.hpEndGrids));
+                /* v2.3.1342: level-is-build deploy-order gate — the
+                   client derives level = T2 points placed (cap 1000)
+                   only while THIS worker claims caps.t2simple;
+                   otherwise the worker's stat-sum level echo would
+                   fight the local formula every player_state flush. */
+                setT2SimpleEnabled(!!(S._serverCaps && S._serverCaps.t2simple));
                 if (S.rpg) recalcDerived(S.rpg);
               } catch (e) {}
               var others = {};
