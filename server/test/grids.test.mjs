@@ -116,20 +116,20 @@ const session = [...room.sessions.values()].find((s) => s.id === 'bp_gr_a');
 
 // ── 3+4. vigor / stamina formulas ──
 {
-  // v2.3.1343 (kid-simple reprice): Vigor is FLAT +10 HP/pt (+1000 at
-  // the cap, no longer scaling armor HP); Stamina channel +1%/pt
-  // (double the pool at the cap).
+  // v2.3.1345 (accelerating flat): Vigor +t2Accel(p, 2) HP (+20,200 at
+  // the cap, no longer scaling armor HP); Deep Lungs +t2Accel(p, 1)
+  // energy (+10,100 at the cap).
   ps.armor = null;
   ps.hpSpec = { vigor: 100 };
   ps.enduranceSpec = { stamina: 100 };
   room._recomputeMaxes(ps);
   const baseHp = room._calcMaxHp(ps.level, ps.vitality);
-  check('vigor: maxHp = floor(base + 1000) at the 100-pt cap (flat +10/pt)',
-    ps.maxHp === Math.floor(baseHp + 1000), { maxHp: ps.maxHp, base: baseHp });
+  check('vigor: maxHp = floor(base + 20,200) at the 100-pt cap (accelerating flat)',
+    ps.maxHp === Math.floor(baseHp + 20200), { maxHp: ps.maxHp, base: baseHp });
   const baseStam = room._calcMaxStamina(ps.endurance);
-  check('stamina channel: maxStamina = floor(base × 2.0) at the 100-pt cap',
-    ps.maxStamina === Math.floor(baseStam * 2.0), { maxStamina: ps.maxStamina, base: baseStam });
-  check('vigor: flat helper caps past 100 pts', room._vigorFlat({ hpSpec: { vigor: 999 } }) === 1000);
+  check('stamina channel: maxStamina = floor(base + 10,100) at the 100-pt cap',
+    ps.maxStamina === Math.floor(baseStam + 10100), { maxStamina: ps.maxStamina, base: baseStam });
+  check('vigor: flat helper caps past 100 pts', room._vigorFlat({ hpSpec: { vigor: 999 } }) === 20200);
 }
 
 // ── 5. conditioning regen ──
@@ -147,9 +147,8 @@ const session = [...room.sessions.values()].find((s) => s.id === 'bp_gr_a');
   ps.stamina = 10;
   room._tickPlayerRegen();
   const condGain = ps.stamina - 10;
-  check('conditioning: 100 pts (the cap) regen ~2x the base tick (v2.3.1343: 1%/pt)',
-    condGain === Math.max(1, Math.ceil(plainGain * 2.0)) || condGain === Math.max(1, Math.ceil(7 * (1 + nowEnd * 0.002) * 2.0)),
-    { plainGain, condGain });
+  check('conditioning: 100 pts (the cap) add +50 flat to the base tick (v2.3.1345)',
+    condGain === plainGain + 50, { plainGain, condGain });
 }
 
 // ── 6. recovery on discrete heals, NOT on lifesteal ──
@@ -162,18 +161,19 @@ const session = [...room.sessions.values()].find((s) => s.id === 'bp_gr_a');
   ps.hp = 1;
   const rawHeal = room._fishHealAmount('cooked_fish_minnow');
   room._handleEatRequest(session, { invKey: 'cooked_fish_minnow' });
-  check('recovery: fish heal × 2.0 at the 100-pt cap (v2.3.1343: 1%/pt)',
-    ps.hp === Math.min(ps.maxHp, 1 + Math.ceil(rawHeal * 2.0)), { hp: ps.hp, rawHeal });
-  // second wind: heal fraction × recovery (40 pts = 40% at 1%/pt),
-  // bounded by maxHp inside _applyDamage.
+  check('recovery: fish heal + flat t2Accel(100,1) = +10,100 at the cap (v2.3.1345)',
+    ps.hp === Math.min(ps.maxHp, 1 + Math.ceil(rawHeal) + 10100), { hp: ps.hp, rawHeal, maxHp: ps.maxHp });
+  // second wind: flat t2Accel(40, 2.5) = 4,100 + Recovery's flat
+  // per-heal bonus t2Accel(100, 1) = 10,100 (recovery spec still 100
+  // from the fish check above), bounded by maxHp in _applyDamage.
   ps.defenseSpec = { secondwind: 40 };
   ps._secondWindReadyAt = 0;
   ps.hp = Math.floor(ps.maxHp / 2);
   ps.agility = 0;
   const before = ps.hp;
   const r = room._applyDamage(ps, 10, false);
-  check('recovery: second wind heal × 2.0 (survived unblocked hit)',
-    r.secondWind === Math.round(ps.maxHp * 0.40 * 2.0), { got: r.secondWind, expect: Math.round(ps.maxHp * 0.40 * 2.0), before });
+  check('recovery: second wind = flat 4,100 + recovery flat 10,100 (survived unblocked hit)',
+    r.secondWind === 4100 + 10100, { got: r.secondWind, before });
   ps.defenseSpec = {};
   // lifesteal: EXCLUDED from recovery — still exactly 90% of taken.
   ps.dmgFromMonster = { m1: 40 };

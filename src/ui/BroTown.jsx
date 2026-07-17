@@ -171,7 +171,7 @@ const {
   recalcDerived, getActiveWeapon, meleeSwingSfx, calcWeaponDmg, calcCritChance, calcCritMult,
   getWeaponCritStat, awardWeaponXp, migrateWeaponT2,
   migrateDefenseT2, awardDefenseXp, getDefenseBlockBonus, getIronSkinReduction, getBlockStaminaMult,
-  migrateGrids, getConditioningMult, migrateUniformT2,
+  migrateGrids, getConditioningFlat, migrateUniformT2,
   calcMoveSpeed, calcMaxHp, calcMaxStam, calcMaxMana, calcBlockReduction, getArmorHp,
   calcSpecialDmg, rollPassiveDodge,
   xpRequired, monsterStat, createDefaultCompStats,
@@ -3907,7 +3907,7 @@ export var BroTown = function BroTown(_ref0) {
             var stAmuletMult = ((_R7$_amuletBonus = _R7._amuletBonus) === null || _R7$_amuletBonus === void 0 ? void 0 : _R7$_amuletBonus.stat) === 'staminaRegen' ? 1 + _R7._amuletBonus.value / 100 : 1;
             /* v2.3.1154: × Conditioning (Endurance grid) -- mirrors the
                worker's regen tick. */
-            _R7.stamina = Math.min(_R7.maxStamina, _R7.stamina + 10 / 60 * stEndMult * regenMult * stAmuletMult * getConditioningMult(_R7));
+            _R7.stamina = Math.min(_R7.maxStamina, _R7.stamina + 10 / 60 * stEndMult * regenMult * stAmuletMult + getConditioningFlat(_R7) / 60); /* v2.3.1345: flat regen */
           }
           /* Mana regen — §3.4: OOC 2.5%/s after 2s × Mind.
              v2.3.234 (Phase 4): Mind speeds up the recharge alongside
@@ -3927,7 +3927,7 @@ export var BroTown = function BroTown(_ref0) {
           if (_R8.stamina < _R8.maxStamina && !S._serverMonsters) {
             var _stEndMult8 = 1 + (_R8.endurance || 0) * 0.002;
             /* v2.3.1154: × Conditioning, same as the OOC branch above. */
-            _R8.stamina = Math.min(_R8.maxStamina, _R8.stamina + 10 / 60 * _stEndMult8 * getConditioningMult(_R8));
+            _R8.stamina = Math.min(_R8.maxStamina, _R8.stamina + 10 / 60 * _stEndMult8 + getConditioningFlat(_R8) / 60); /* v2.3.1345: flat regen */
           }
           /* Slow mana regen in combat — 1%/s × Mind.
              v2.3.234 (Phase 4): Mind multiplies combat regen too. */

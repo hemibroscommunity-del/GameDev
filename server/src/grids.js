@@ -18,6 +18,7 @@
  * file referenced them via the class. */
 
 import { computeCanonicalPools, computeBuildTotal } from './migrations.js';
+import { T2_UNITS, t2Accel, t2CounterRate } from './data.js';
 
 // v2.3.1170: these were `static get` members on GameRoom; as module
 // constants the mixin methods can reference them without a circular
@@ -277,31 +278,29 @@ export const gridMethods = {
     return this._sanitizeGridSpec(src, ENDURANCE_CHANNEL_KEYS, ps ? Math.min(200, 2 * (ps.endurance || 0)) : undefined);
   },
   // Grid channel multipliers, mirrored in src/data/gameSystems.js.
-  // v2.3.1343 (kid-simple reprice, owner directive 2026-07-16): chunky
-  // per-point values, caps landing at exactly 100 points.  Recovery is
-  // deliberately still NOT on the melee-lifesteal refund (already 90%
-  // of damage taken — any boost mints infinite melee sustain).
-  // Vigor is FLAT +10 HP/pt now (see _recomputeMaxes); Evasion shares
-  // ONE dodge cap with agility (raised 30% -> 50% at the combat.js
-  // min()); Lifeblood heals 0.5%/pt of maxHp on a kill (cap 50%).
-  // Mirrors src/data/gameSystems.js getVigorFlat/getRecoveryMult/etc.
+  // v2.3.1345 (owner round 2): ACCELERATING FLATS — cumulative value
+  // UNIT·p·(p+1) via the shared t2Accel (data.js; the client mirrors in
+  // gameSystems.js).  Recovery is a flat per-heal bonus, deliberately
+  // still NOT on the melee-lifesteal refund; Evasion's counter rate
+  // lives in combat.js's accumulator (t2CounterRate).
   _vigorFlat(ps) {
-    return Math.min(100, ((ps && ps.hpSpec && ps.hpSpec.vigor) || 0)) * 10;
+    return t2Accel((ps && ps.hpSpec && ps.hpSpec.vigor) || 0, T2_UNITS.vigor);
   },
-  _recoveryMult(ps) {
-    return 1 + Math.min(1.00, ((ps && ps.hpSpec && ps.hpSpec.recovery) || 0) * 0.01);
+  _recoveryFlat(ps) {
+    return t2Accel((ps && ps.hpSpec && ps.hpSpec.recovery) || 0, T2_UNITS.recovery);
   },
-  _staminaGridMult(ps) {
-    return 1 + Math.min(1.00, ((ps && ps.enduranceSpec && ps.enduranceSpec.stamina) || 0) * 0.01);
+  _recoveryMult() { return 1; }, // legacy shape for stale readers
+  _staminaFlat(ps) {
+    return t2Accel((ps && ps.enduranceSpec && ps.enduranceSpec.stamina) || 0, T2_UNITS.stamina);
   },
-  _conditioningMult(ps) {
-    return 1 + Math.min(1.00, ((ps && ps.enduranceSpec && ps.enduranceSpec.conditioning) || 0) * 0.01);
+  _conditioningFlat(ps) {
+    return Math.floor(Math.min(100, ((ps && ps.enduranceSpec && ps.enduranceSpec.conditioning) || 0)) / 2);
   },
   _evasionDodge(ps) {
-    return ((ps && ps.enduranceSpec && ps.enduranceSpec.evasion) || 0) * 0.005;
+    return t2CounterRate((ps && ps.enduranceSpec && ps.enduranceSpec.evasion) || 0);
   },
-  _lifebloodFrac(ps) {
-    return Math.min(0.50, ((ps && ps.hpSpec && ps.hpSpec.lifeblood) || 0) * 0.005);
+  _lifebloodFlat(ps) {
+    return t2Accel((ps && ps.hpSpec && ps.hpSpec.lifeblood) || 0, T2_UNITS.lifeblood);
   },
   // Mirror of the WCH clamp in _handleStatsUpdate, factored out so the join /
   // migration paths apply the SAME [0,99] channel clamp (weaponSpecs feeds the
@@ -415,7 +414,7 @@ export const gridMethods = {
     // v2.3.1343: Vigor is FLAT +10 HP/pt (kid-simple reprice) — it no
     // longer multiplies armor HP (deliberate simplification).
     ps.maxHp = Math.floor(this._calcMaxHp(lvl, ps.vitality || 0) + this._armorHp(ps.armor, ps.vitality || 0) + this._vigorFlat(ps));
-    ps.maxStamina = Math.floor(this._calcMaxStamina(ps.endurance || 0) * this._staminaGridMult(ps));
+    ps.maxStamina = Math.floor(this._calcMaxStamina(ps.endurance || 0) + this._staminaFlat(ps)); // v2.3.1345: flat
     ps.maxMana = this._calcMaxMana(ps.mind || 0);
     // Clamp current values into the new ranges.
     if (typeof ps.hp !== 'number') ps.hp = ps.maxHp;

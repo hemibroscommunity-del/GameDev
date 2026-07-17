@@ -38,7 +38,7 @@
 import {
   ELEMENT_STATUS, applyElementStatus, resolveElementCollision,
 } from './elemental.js';
-import { AMULET_TIER_POWER, DAMAGE_CHANNEL_FLAT } from './data.js';
+import { AMULET_TIER_POWER, T2_UNITS, t2Accel, t2CounterRate } from './data.js';
 import { LIVEOPS } from './liveops.js';
 
 export const combatMethods = {
@@ -76,14 +76,19 @@ export const combatMethods = {
       ps.lastDamageAt = Date.now();
       return { dmgTaken: 0, dodged: false };
     }
-    // Phase 4: Agility passive dodge roll + Endurance-grid Evasion
-    // INSIDE the same min() — the BALANCE-PLAN §4 shared-cap hard rule:
-    // stacking dodge sources share ONE cap so channel completion can't
-    // compound past it.  Mirrors client passiveDodgeChance.
-    // v2.3.1343 (kid-simple reprice): evasion 0.5%/pt and the shared
-    // cap rises 30% -> 50% ("dodge half of all hits at max").
-    const dodgePct = Math.min((ps.agility || 0) * 0.0008 + this._evasionDodge(ps), 0.50);
-    if (Math.random() < dodgePct) {
+    // v2.3.1345 (counter skills): Agility keeps its dice roll (capped
+    // 50%); the Evasion CHANNEL is a deterministic accumulator — "a
+    // hit MISSES you every N hits", rate 0.005/pt (every 2nd at the
+    // cap).  In-memory only (rule 11).  Mirrors client
+    // passiveDodgeChance's expected value.
+    const dodgePct = Math.min((ps.agility || 0) * 0.0008, 0.50);
+    let dodged = Math.random() < dodgePct;
+    const _evRate = t2CounterRate((ps.enduranceSpec && ps.enduranceSpec.evasion) || 0);
+    if (!dodged && _evRate > 0) {
+      ps._evadeAcc = (ps._evadeAcc || 0) + _evRate;
+      if (ps._evadeAcc >= 1) { ps._evadeAcc -= 1; dodged = true; }
+    }
+    if (dodged) {
       ps.lastDamageAt = Date.now();
       return { dmgTaken: 0, dodged: true };
     }
@@ -101,7 +106,7 @@ export const combatMethods = {
     // channel existed since v2.3.1021 but was never consumed anywhere.
     const _ironskin = (ps.defenseSpec && ps.defenseSpec.ironskin) || 0;
     if (_ironskin > 0) {
-      dmgTaken = Math.max(1, Math.round(dmgTaken * (1 - Math.min(0.50, _ironskin * 0.005)))); // v2.3.1343: 0.5%/pt, cap -50% (half damage at max)
+      dmgTaken = Math.max(1, Math.round(dmgTaken - t2Accel(_ironskin, T2_UNITS.ironskin))); // v2.3.1345: flat accelerating soak, floor 1
     }
     if (typeof ps.maxHp !== 'number') ps.maxHp = 100;
     if (typeof ps.hp !== 'number') ps.hp = ps.maxHp;
@@ -111,7 +116,7 @@ export const combatMethods = {
     // distinct.  ps.hpSpec is server-clamped via _sanitizeGridSpec.
     const _resil = (ps.hpSpec && ps.hpSpec.resilience) || 0;
     if (_resil > 0 && dmgTaken > 0.20 * ps.maxHp) {
-      dmgTaken = Math.max(1, Math.round(dmgTaken * (1 - Math.min(0.50, _resil * 0.005)))); // v2.3.1343: 0.5%/pt, cap -50%
+      dmgTaken = Math.max(1, Math.round(dmgTaken - t2Accel(_resil, T2_UNITS.resilience))); // v2.3.1345: flat accelerating soak on big hits
     }
     // v2.3.1314: LAST STAND (HP grid, owner-named 5th category) — a
     // killing blow leaves the player at exactly 1 HP instead, once per
@@ -146,10 +151,9 @@ export const combatMethods = {
     if (ps.hp > 0 && _sw > 0) {
       const _nowSw = Date.now();
       if (!ps._secondWindReadyAt || _nowSw >= ps._secondWindReadyAt) {
-        // v2.3.1154: × HP-grid Recovery — Second Wind is Recovery's
-        // flagship synergy.  v2.3.1343: 1%/pt, cap 100% — survive a
-        // hit at max and heal to FULL (Math.min(maxHp) bounds it).
-        secondWind = Math.round((ps.maxHp || 100) * Math.min(1.00, _sw * 0.01) * this._recoveryMult(ps));
+        // v2.3.1345: FLAT accelerating heal (+25,250 at the cap) plus
+        // Recovery's flat per-heal bonus; Math.min(maxHp) bounds it.
+        secondWind = t2Accel(_sw, T2_UNITS.secondwind) + this._recoveryFlat(ps);
         if (secondWind > 0) {
           ps.hp = Math.min(ps.maxHp, ps.hp + secondWind);
           ps._secondWindReadyAt = _nowSw + 10000;
@@ -229,7 +233,7 @@ export const combatMethods = {
     // v2.3.1133 crit-ceiling pattern.  Specials stay channel-free,
     // matching _computeAttackDamage.  FORGETTING this term rejects
     // every legit maxed-build hit (anticheat.test pins it).
-    const channelFlat = isSpecial ? 0 : 100 * DAMAGE_CHANNEL_FLAT;
+    const channelFlat = isSpecial ? 0 : t2Accel(100, T2_UNITS.damage); // v2.3.1345: 10,100 at the cap
     for (const w of candidates) {
       // v2.3.1131: §4.4 effective base -- (raw + hardness×1.0417) ×
       // quality, BEFORE stat/channel/tierMult.  Identity for legacy
@@ -244,12 +248,11 @@ export const combatMethods = {
   _maxDmgForAttacker(ps, isSpecial) {
     if (!ps) return 21; // baseline-10: 100 ÷ 4.8
     const maxWpn = this._maxWeaponDmg(ps, isSpecial);
-    // v2.3.1133: ceiling assumes a MAXED crit-dmg channel instead of
-    // reading live points, so a fully-invested crit isn't rejected by
-    // the anti-cheat cap (same bug class v2.3.912 fixed for the damage
-    // channel).  v2.3.1343 (kid-simple reprice): +2.00 at the 100-pt
-    // cap (2%/pt).
-    const critMult = 1.5 + (ps.power || 0) * 0.001 + 2.00;
+    // v2.3.1345: crit is power-mult + a FLAT accelerating bonus; the
+    // ceiling assumes both MAXED (the v2.3.1133 pattern) — forgetting
+    // either term rejects legit maxed-build hits.
+    const critMult = 1.5 + (ps.power || 0) * 0.001;
+    const critFlatCeil = t2Accel(100, T2_UNITS.critDmg); // 15,150
     const comboBoost = 5; // covers combo + status amplifier + amulet elemDmg + lunge mult
     // SPECIAL_ATK_MULT = 2.0 applied client-side; double the cap on
     // special hits so they don't get rejected as too-high.
@@ -257,7 +260,7 @@ export const combatMethods = {
     // Floor baseline-10 rescaled (100 ÷ 4.8 ≈ 21) so it doesn't sit ~10x
     // above a real hit.  Now a sanity backstop on the server's own roll
     // (monster damage is server-computed) AND the PvP dmgBase cap.
-    return Math.max(21, Math.ceil(maxWpn * critMult * comboBoost * specialMult));
+    return Math.max(21, Math.ceil((maxWpn * critMult + critFlatCeil) * comboBoost * specialMult));
   },
 
   // Server-authoritative player->monster damage roll.  Mirrors the
@@ -311,23 +314,28 @@ export const combatMethods = {
             : type === 'bow'   ? (0.6  + Math.random() * 0.2)
             :                    (0.75 + Math.random() * 0.5);
     base *= v;
-    base += dmgPts * DAMAGE_CHANNEL_FLAT;
+    base += t2Accel(dmgPts, T2_UNITS.damage); // v2.3.1345: accelerating flat
     if (isSpecial) base *= 2.0;                        // SPECIAL_ATK_MULT
     if (w && w.isVolatile) base *= 1.30;               // §4.7 volatile weapon
     if (this._buffActive(ps, 'damage')) base *= 1.20;  // cooked damage buff (client gameLoop.js:2346)
     // Crit (calcCritChance + calcCritMult).
-    // v2.3.912: crit chance = Power baseline + the weapon CRIT channel
-    // (precision/marksmanship/overload), linear.  Ferocity is retired.
-    // v2.3.1343 (kid-simple reprice): 0.5%/pt, cap +50% at the 100-pt
-    // channel cap.  Mirrors client calcCritChance.
+    // v2.3.1345 (counter skills): the crit CHANNEL is a deterministic
+    // accumulator — "a LUCKY hit every N hits", never streaky.  Power's
+    // baseline stays a dice roll; the channel adds rate 0.005/pt to the
+    // per-player accumulator and GUARANTEES a lucky hit each time it
+    // crosses 1 (every 2nd hit at the 100-pt cap).  In-memory only
+    // (rule 11): a deploy just restarts the count.
     const P = ps.power || 0;
-    const critChance = Math.max(0, Math.min(1,
-      40 * P / (P + 200) / 100 + Math.min(0.50, this._wpnCritPts(ps, type) * 0.005)));
-    const isCrit = Math.random() < critChance;
-    // v2.3.1133: crit mult gains the crit-DMG channel (executioner/headshot/
-    // focus), mirroring client calcCritMult.  v2.3.1343 (kid-simple
-    // reprice): 2%/pt — +200% at the 100-pt cap, crits ~3.5x at max.
-    if (isCrit) base *= (1.5 + P * 0.001 + this._wpnCritDmgPts(ps, type) * 0.02);
+    const baseCrit = Math.max(0, Math.min(1, 40 * P / (P + 200) / 100));
+    let isCrit = Math.random() < baseCrit;
+    const _critRate = t2CounterRate(this._wpnCritPts(ps, type));
+    if (_critRate > 0) {
+      ps._luckyAcc = (ps._luckyAcc || 0) + _critRate;
+      if (ps._luckyAcc >= 1) { ps._luckyAcc -= 1; isCrit = true; }
+    }
+    // v2.3.1345: the crit-DMG channel is a FLAT accelerating bonus on
+    // lucky hits (after the power multiplier) — +15,150 at the cap.
+    if (isCrit) base = base * (1.5 + P * 0.001) + t2Accel(this._wpnCritDmgPts(ps, type), T2_UNITS.critDmg);
     // v2.3.1139 (item I): the two multipliers the v2.3.912 scope note
     // deliberately omitted, now server-side (the client applies both
     // locally and its numbers finally match the wire truth):
@@ -698,10 +706,11 @@ export const combatMethods = {
       // Recovery (a %-maxHp heal scaling with another %-heal channel
       // would double-dip the same grid's budget).  Skips dead killers.
       if (killerPs && killerPs.hp > 0) {
-        const _lbFrac = this._lifebloodFrac(killerPs);
-        if (_lbFrac > 0) {
+        // v2.3.1345: flat accelerating on-kill heal (+15,150 at cap).
+        const _lbFlat = this._lifebloodFlat(killerPs);
+        if (_lbFlat > 0) {
           const _lbMax = killerPs.maxHp || 100;
-          killerPs.hp = Math.min(_lbMax, killerPs.hp + Math.max(1, Math.round(_lbMax * _lbFrac)));
+          killerPs.hp = Math.min(_lbMax, killerPs.hp + _lbFlat);
         }
       }
       // Melee lifesteal -- refund 90% of net damage the killer took

@@ -64,7 +64,7 @@ export const cookingMethods = {
     if (!ps.inventory) ps.inventory = {}; // proto-ok: invKey guarded by startsWith cooked_fish_ above
     if ((ps.inventory[invKey] || 0) <= 0) return;
     // v2.3.1154: × HP-grid Recovery (+1%/pt on discrete heals, cap +50%).
-    const heal = Math.ceil(this._fishHealAmount(invKey) * this._recoveryMult(ps));
+    const heal = Math.ceil(this._fishHealAmount(invKey)) + this._recoveryFlat(ps); // v2.3.1345: flat recovery bonus
     if (heal <= 0) return;
     // Decrement inventory + apply heal.  Heal is "wasted" if at max;
     // we still consume the item to match client semantics (the click

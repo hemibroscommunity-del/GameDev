@@ -213,7 +213,35 @@ skill levels net zero — an anti-forgery property), v8 `level-is-build`
 old-worker sessions on legacy caps; `caps.t2simple` gates the §4c
 level derivation.
 
-## 4c. Kid-simple reprice + level-is-build — **LIVE v2.3.1342–1344** (owner directive 2026-07-16)
+## 4c. Kid-simple reprice + level-is-build — **LIVE v2.3.1342–1345** (owner directive 2026-07-16/17)
+
+**v2.3.1345 (owner round 2) supersedes the per-point values below:**
+"make all these flat points… more powerful… each level ~20% advantage
+over the previous."  True ×1.2 compounding over 1000 levels overflows
+every number, so:
+- **Accelerating flat** (free-running channels): point N is worth
+  2·UNIT·N — always bigger than the last; cumulative = UNIT·p·(p+1)
+  (`t2Accel` + the one `T2_UNITS` table, client gameSystems.js /
+  server data.js, mirror-audit-tied).  At the 100-pt cap: damage trio
+  +10,100; crit-dmg trio +15,150 FLAT on lucky hits (power-only ×
+  mult); ironskin −5,050/hit; resilience −10,100 off big hits; thorns
+  10,100 payback; secondwind +25,250 heal; vigor +20,200 HP; recovery
+  +10,100 per heal; lifeblood +15,150 per kill; Deep Lungs +10,100
+  energy.  Floors of 1 keep hits/costs nonzero.
+- **Counter skills** (crit + evasion): deterministic accumulators at
+  0.005/pt — "a LUCKY hit every N hits", "a hit MISSES you every N" —
+  server-owned in-memory counters (rule 11), never streaky, every 2nd
+  at the cap.  Agility/Power baselines stay dice; the old shared dodge
+  cap is GONE by design (counter stacks; display ceiling 95%).
+- **Capped mechanics stay linear, shown flat**: tempo −3ms/pt (cap
+  −300ms), cleave +2.07°/pt (FULL-CIRCLE 360° at max, PvP arc clamp
+  2π-ready at π×1.41→ see combat.js), piercing +1/10 pts (10 at max),
+  longshot +4px/pt, bulwark −0.15 energy/pt (≥1 floor), poise −3ms/pt,
+  swiftness +0.02 speed/pt (5.0→7.0; anti-teleport margin IMPROVED vs
+  ×1.5), conditioning +0.5 regen/pt, laststand −1s/pt floor 20s,
+  reflexes +2ms/pt.
+
+Original v2.3.1343 values (historical):
 
 Owner: "I want each level up to feel powerful… max level 1000… every
 tier 2 point should raise combat level… if it's too complicated for a

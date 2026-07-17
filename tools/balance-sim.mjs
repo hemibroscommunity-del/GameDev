@@ -27,8 +27,9 @@ import {
   SPECIAL_ATK_MULT, LUNGE_DAMAGE_MULT, HP_PER_COMBAT_LEVEL,
   DAMAGE_CHANNEL_FLAT, passiveDodgeChance, getVigorFlat,
   swingCooldownMult, cleaveArcBonus, bowPierceCount, bowRangeMult, staffAoeMult,
-  getIronSkinReduction, getBlockStaminaMult, poiseStunMult,
-  getRecoveryMult, getConditioningMult, getStaminaGridMult, getSwiftnessMult,
+  getIronSkinFlat, getBlockStaminaMult, poiseStunMult,
+  getRecoveryFlat, getConditioningFlat, getStaminaFlat, getSwiftnessFlat,
+  t2Accel, t2CounterRate, T2_UNITS,
   COMBAT_BUILD_CEILING, T2_CHANNEL_CAP,
 } from '../src/data/gameSystems.js';
 
@@ -269,11 +270,12 @@ check('INV-14', `lunge mult ${LUNGE_DAMAGE_MULT} < 1.0 (per-hit below auto)`, LU
   const refPower = Math.round(6 + (REF_LEVEL - 1) * 1.05);
   const dps = (w, { dmgPts = 0, critPts = 0, critDmgPts = 0, cdMult = 1 }) => {
     const critC = calcCritChance(refPower, critPts);
-    const critM = calcCritMult(refPower, critDmgPts);
+    const critM = calcCritMult(refPower);
+    const critFlat = t2Accel(critDmgPts, T2_UNITS.critDmg); // v2.3.1345: flat crit bonus
     let sum = 0;
     for (let i = 0; i < SAMPLES; i++) {
-      let d = calcWeaponDmg(w, refPower, refTier.tierMult) + dmgPts * DAMAGE_CHANNEL_FLAT; // v2.3.1343: flat post-roll
-      if (Math.random() < critC) d *= critM;
+      let d = calcWeaponDmg(w, refPower, refTier.tierMult) + t2Accel(dmgPts, T2_UNITS.damage); // v2.3.1345: accel flat
+      if (Math.random() < critC) d = d * critM + critFlat;
       sum += Math.max(1, Math.round(d));
     }
     return (sum / SAMPLES) / (SWING_SEC * cdMult);
@@ -361,13 +363,17 @@ check('INV-14', `lunge mult ${LUNGE_DAMAGE_MULT} < 1.0 (per-hit below auto)`, LU
   console.log(pad('vigor 100 (flat, v2.3.1343)', 42) + '+' + num(vigorUplift) + ' HP');
   /* HP-01 RETIRED (v2.3.1344): vigor's flat identity has no %EHP unit
      to band — pricing parity is no longer a goal (owner 2026-07-16). */
-  const capAgi = 625; // 625 × 0.0008 = 50% — at the v2.3.1343 cap from agility alone
+  const capAgi = 625; // 625 × 0.0008 = 50% — agility's own dice cap
   const dodgeAtCap = passiveDodgeChance(capAgi, 0);
   const dodgeStacked = passiveDodgeChance(capAgi, 100);
   const dodgeEvOnly = passiveDodgeChance(0, 100);
   console.log(pad('evasion 100 (v2.3.1156, Endurance grid)', 42) + '+' + num(dodgeEvOnly * 100) + '% dodge alone; ' + num(dodgeStacked * 100) + '% stacked on capped agility');
-  check('EN-01', 'evasion SHARES the 50% dodge cap with agility (no stacking past it; v2.3.1343)',
-    dodgeAtCap === 0.50 && dodgeStacked === 0.50 && Math.abs(dodgeEvOnly - 0.50) < 1e-9,
+  // v2.3.1345 (counter skills): Evasion is a deterministic counter
+  // STACKING on the agility dice (the old shared cap is gone by
+  // design); the expected-value helper ceilings at 95% so displays
+  // never claim immunity.
+  check('EN-01', 'dodge model: agility dice cap 50%; evasion counter stacks; display ceiling 95%',
+    dodgeAtCap === 0.50 && Math.abs(dodgeStacked - 0.95) < 1e-9 && Math.abs(dodgeEvOnly - 0.50) < 1e-9,
     `capped ${num(dodgeAtCap * 100)}%, stacked ${num(dodgeStacked * 100)}%, alone ${num(dodgeEvOnly * 100)}%`);
 
   /* ═══ v2.3.1157: the uniform-economy sweep gates (UN-02..04) ═══
@@ -392,27 +398,30 @@ check('INV-14', `lunge mult ${LUNGE_DAMAGE_MULT} < 1.0 (per-hit below auto)`, LU
      inline (SYNC: server/src/index.js thorns/secondwind/lifeblood). */
   {
     const mkW = (cat, key, p) => ({ weapon: { type: cat === 'bow' ? 'bow' : cat === 'staff' ? 'staff' : 'sword' }, activeSlot: 'melee', weaponSpecs: { [cat]: { [key]: p } } });
+    /* v2.3.1345: probes updated to the accelerating-flat / counter
+       helpers.  SYNC: server/src/{data,grids,combat,index}.js consume
+       the same t2Accel/T2_UNITS table (mirror-audit ties it). */
     const PROBES = [
-      ['edge/drawPower/spellPower', (p) => p * DAMAGE_CHANNEL_FLAT],
+      ['edge/drawPower/spellPower', (p) => t2Accel(p, T2_UNITS.damage)],
       ['precision/marksmanship/overload', (p) => calcCritChance(0, p)],
-      ['executioner/headshot/focus', (p) => calcCritMult(0, p)],
+      ['executioner/headshot/focus', (p) => t2Accel(p, T2_UNITS.critDmg)],
       ['tempo', (p) => -swingCooldownMult(mkW('sword', 'tempo', p))],
       ['cleave', (p) => cleaveArcBonus({ weaponSpecs: { sword: { cleave: p } } })],
       ['piercing', (p) => bowPierceCount({ weaponSpecs: { bow: { piercing: p } } })],
       ['longshot', (p) => bowRangeMult({ weaponSpecs: { bow: { longshot: p } } })],
       ['detonation', (p) => staffAoeMult({ weaponSpecs: { staff: { detonation: p } } })],
-      ['attunement', (p) => 1 + Math.min(100, p) * 0.005],
+      ['attunement', (p) => 1 + Math.min(100, p) * 0.01],
       ['bulwark', (p) => 1 - getBlockStaminaMult({ defenseSpec: { bulwark: p } })],
-      ['ironskin', (p) => getIronSkinReduction({ defenseSpec: { ironskin: p } })],
-      ['thorns', (p) => Math.min(0.5, p * 0.005)],
-      ['secondwind', (p) => Math.min(0.5, p * 0.005)],
+      ['ironskin', (p) => getIronSkinFlat({ defenseSpec: { ironskin: p } })],
+      ['thorns', (p) => t2Accel(p, T2_UNITS.thorns)],
+      ['secondwind', (p) => t2Accel(p, T2_UNITS.secondwind)],
       ['poise', (p) => 1 - poiseStunMult({ defenseSpec: { poise: p } })],
       ['vigor', (p) => getVigorFlat({ hpSpec: { vigor: p } })],
-      ['recovery', (p) => getRecoveryMult({ hpSpec: { recovery: p } })],
-      ['lifeblood', (p) => Math.min(0.25, p * 0.0025)],
-      ['stamina', (p) => getStaminaGridMult({ enduranceSpec: { stamina: p } })],
-      ['conditioning', (p) => getConditioningMult({ enduranceSpec: { conditioning: p } })],
-      ['swiftness', (p) => getSwiftnessMult({ enduranceSpec: { swiftness: p } })],
+      ['recovery', (p) => getRecoveryFlat({ hpSpec: { recovery: p } })],
+      ['lifeblood', (p) => t2Accel(p, T2_UNITS.lifeblood)],
+      ['stamina', (p) => getStaminaFlat({ enduranceSpec: { stamina: p } })],
+      ['conditioning', (p) => getConditioningFlat({ enduranceSpec: { conditioning: p } })],
+      ['swiftness', (p) => getSwiftnessFlat({ enduranceSpec: { swiftness: p } })],
       ['evasion', (p) => passiveDodgeChance(0, p)],
     ];
     const traps = PROBES.filter(([, f]) => !(f(100) > f(99))).map(([name]) => name);

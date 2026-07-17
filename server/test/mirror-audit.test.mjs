@@ -26,7 +26,7 @@ import {
   ARCHETYPES, MONSTER_HP_CURVE, COOKING_RECIPES, QUEST_CHAINS,
   BLACKSMITH_TIERS, WOODWORKING_TIERS, SKILL_GUILDS, GUILD_QUESTS,
   QUALITY_MULTS, RARITY_TIERS,
-  DAMAGE_CHANNEL_FLAT, WEAPON_CHANNELS,
+  DAMAGE_CHANNEL_FLAT, WEAPON_CHANNELS, T2_UNITS as CLIENT_T2_UNITS,
   GEM_CUT_TIERS, WEAPON_TYPES,
 } from '../../src/data/gameSystems.js';
 import { FISHING_TIERS } from '../../src/data/lifeSkills.js';
@@ -215,6 +215,11 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
   // moves from PCT/100 to the flat constant itself.
   check('DAMAGE_CHANNEL_FLAT server <-> client', SRV.DAMAGE_CHANNEL_FLAT === DAMAGE_CHANNEL_FLAT,
     { server: SRV.DAMAGE_CHANNEL_FLAT, client: DAMAGE_CHANNEL_FLAT });
+  // v2.3.1345: the accelerating-flat UNIT table must match exactly —
+  // a one-sided retune silently splits prediction from settlement.
+  check('T2_UNITS server <-> client (accelerating-flat units)',
+    JSON.stringify(SRV.T2_UNITS) === JSON.stringify(CLIENT_T2_UNITS),
+    { server: SRV.T2_UNITS, client: CLIENT_T2_UNITS });
   const bad = [];
   for (const [cat, defs] of Object.entries(WEAPON_CHANNELS)) {
     for (const d of defs) {

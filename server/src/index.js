@@ -27,8 +27,7 @@ import { tickElementStatuses, elementMoveMult } from './elemental.js';
 // lookup methods stay (call sites unchanged); only the literals moved.
 import {
   ARCHETYPES, ZONES,
-  MONSTER_HP_CURVE, RARITY_TIERS,
-} from './data.js';
+  MONSTER_HP_CURVE, RARITY_TIERS, T2_UNITS, t2Accel } from './data.js';
 // v2.3.1118 (heavy-systems PR3): order book folded into the GameRoom --
 // escrow-at-placement settlement under one DO's input gates.  Methods
 // are mixed into the class below (see market.js header for why).
@@ -907,7 +906,7 @@ export class GameRoom {
               const _thornsPts = (blockerPs && blockerPs.defenseSpec && blockerPs.defenseSpec.thorns) || 0;
               if (_thornsPts > 0 && m.hp > 0) {
                 const reflect = Math.min(Math.max(0, m.hp),
-                  Math.max(1, Math.round(m.dmg * Math.min(1.00, _thornsPts * 0.01)))); // v2.3.1343: 1%/pt, cap 100% — full payback at max
+                  Math.max(1, t2Accel(_thornsPts, T2_UNITS.thorns))); // v2.3.1345: flat accelerating payback (10,100 at cap)
                 m.hp -= reflect;
                 if (!m.dmgByPlayer) m.dmgByPlayer = Object.create(null); // v2.3.1202: player-id-keyed
                 m.dmgByPlayer[nearest.id] = (m.dmgByPlayer[nearest.id] || 0) + reflect;
@@ -1594,7 +1593,7 @@ export class GameRoom {
           // v2.3.1154: × Endurance-grid Conditioning (+1%/pt, cap +50%)
           // — the successor to the retired restoration mult, deleted
           // v2.3.1155 (it was ×1.0 for every live player since v2.3.910).
-          const stHeal = Math.max(1, Math.ceil(7 * stAmuletMult * stEndMult * this._conditioningMult(ps)));
+          const stHeal = Math.max(1, Math.ceil(7 * stAmuletMult * stEndMult) + this._conditioningFlat(ps)); // v2.3.1345: flat regen add
           const beforeSt = ps.stamina;
           ps.stamina = Math.min(ps.maxStamina, ps.stamina + stHeal);
           if (ps.stamina !== beforeSt) changed = true;

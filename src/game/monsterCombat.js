@@ -31,7 +31,7 @@ import {
   createMonster, discoverCollision, discoverMonster, generateZoneMap, getActiveWeapon,
   getAttunementPts, getCollisionDeathFX, getDefenseBlockBonus, getEffectiveness, getElementDeathFX,
   getShieldStats, getWeaponCritDmgStat, getWeaponCritStat, meleeSwingSfx, recalcDerived, resolveCollision,
-  getEvasionPts, poiseStunMult, rollPassiveDodge, spawnElementStatusFX, spawnWeaponHitFX, swingCooldownMult, tickStatuses, updateZoneDimensions,
+  getEvasionPts, poiseStunFlatMs, rollPassiveDodge, getWeaponCritFlat, spawnElementStatusFX, spawnWeaponHitFX, swingCooldownMult, tickStatuses, updateZoneDimensions,
   trainDefense, applyIronSkin, applyResilience, /* v2.3.1314 */
   monsterBodyY,
 } from '@/data/index.js';
@@ -94,7 +94,10 @@ export function updateMonsterCombat(S, deps) {
              Headshot / Arcane Focus), not the crit-CHANCE channel — the old
              call passed _wCrit here, quietly drifting from the server which
              used the retired Ferocity (0). */
-          var critMult = calcCritMult(_R6.power, getWeaponCritDmgStat(_R6));
+          var critMult = calcCritMult(_R6.power);
+          /* v2.3.1345: the crit-DMG channel is a FLAT accelerating
+             bonus on lucky hits now (added after the power mult). */
+          var critFlat = getWeaponCritFlat(_R6);
           /* Baseline floor: at zero ferocity, calcCritChance returns 0%, which
              meant a brand-new player could never grand-slam. Floor at 8% so a
              grand slam is reachable from the first swing. Applied before the
@@ -513,7 +516,7 @@ export function updateMonsterCombat(S, deps) {
                         S._hitFlash = Date.now();
                         if (S.channel) S.channel.send({ type: 'broadcast', event: 'player_hurt_by_monster', payload: { id: S.myId, dmg: finalDmg } });
                         /* v2.3.1137: Poise channel shortens the stagger */
-                        S._playerStunUntil = Math.max(S._playerStunUntil || 0, Date.now() + Math.round(250 * poiseStunMult(S.rpg)));
+                        S._playerStunUntil = Math.max(S._playerStunUntil || 0, Date.now() + Math.max(0, Math.round(250 - poiseStunFlatMs(S.rpg)))); /* v2.3.1345: flat ms */
                       }
                     } else if (distToP < slamRange && dodged) {
                       pushDmgPopup(S, P.x, P.y - 20, 'Dodged!', '#3dd497');
@@ -558,7 +561,7 @@ export function updateMonsterCombat(S, deps) {
                         S._hitFlash = Date.now();
                         if (S.channel) S.channel.send({ type: 'broadcast', event: 'player_hurt_by_monster', payload: { id: S.myId, dmg: _finalDmg } });
                         /* v2.3.1137: Poise channel shortens the stagger */
-                        S._playerStunUntil = Math.max(S._playerStunUntil || 0, Date.now() + Math.round(250 * poiseStunMult(S.rpg)));
+                        S._playerStunUntil = Math.max(S._playerStunUntil || 0, Date.now() + Math.max(0, Math.round(250 - poiseStunFlatMs(S.rpg)))); /* v2.3.1345: flat ms */
                       }
                     }
                   }
@@ -861,7 +864,7 @@ export function updateMonsterCombat(S, deps) {
                       P.x += Math.cos(kbAngle) * 12;
                       P.y += Math.sin(kbAngle) * 12;
                       S.screenShake = Math.max(S.screenShake || 0, 6);
-                      S._playerStunUntil = Date.now() + Math.round(300 * poiseStunMult(S.rpg)); /* brief stagger — v2.3.1137: Poise shortens it */
+                      S._playerStunUntil = Date.now() + Math.max(0, Math.round(300 - poiseStunFlatMs(S.rpg))); /* brief stagger — v2.3.1345: Poise shaves flat ms */
                     }
                     /* Swarm bleed DoT removed — at higher levels the
                        1%-of-maxHp tick (every 500 ms for 3 s) read as
@@ -1433,7 +1436,7 @@ export function updateMonsterCombat(S, deps) {
                    per-hit so different monsters in a sweep can take
                    slightly different damage. */
                 var _specBase = S._specialAttack ? calcSpecialDmg(_activeWpn.type, _R6, _activeWpn.tierMult, _activeWpn) : pDmg;
-                var dmg = Math.round((isCrit ? _specBase * critMult : _specBase) * specialMult * _comboBurst);
+                var dmg = Math.round(((isCrit ? _specBase * critMult + critFlat : _specBase)) * specialMult * _comboBurst);
                 /* §12.2 cert — first time the combo-burst multiplier (>1) actually lands. */
                 if (_comboBurst > 1) masteryEarnCert('first-combo-burst');
                 /* Boss invulnerability — can only be damaged during recovery phase */

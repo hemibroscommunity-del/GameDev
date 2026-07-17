@@ -129,14 +129,19 @@ for (const m of meadowMonsters) m._wanderPausedUntil = Date.now() + 600000;
   check('applyDamage: resist buff shaves 5%', resisted.dmgTaken === 95 && ps.hp === 5, resisted);
   ps._buffs = {};
 
-  // v2.3.1343 (kid-simple reprice): Iron Skin -0.5%/pt, cap -50%.
+  // v2.3.1345 (accelerating flat): Iron Skin soaks t2Accel(p, 0.5)
+  // flat per hit — 5,050 at the cap swallows a 100 hit to the floor 1.
   ps.hp = 100; ps.defenseSpec = { ironskin: 100 };
   const ironed = room._applyDamage(ps, 100, false);
-  check('applyDamage: Iron Skin 100pts cuts 50%', ironed.dmgTaken === 50 && ps.hp === 50, ironed);
-  ps.defenseSpec = { ironskin: 999 };   // over-cap spec (legacy blob) still capped at 50%
+  check('applyDamage: Iron Skin 100pts soaks a 100 hit to the floor 1', ironed.dmgTaken === 1 && ps.hp === 99, ironed);
+  ps.defenseSpec = { ironskin: 10 }; // small spend: t2Accel(10, 0.5) = 55 soak
+  ps.hp = 100;
+  const ironSmall = room._applyDamage(ps, 100, false);
+  check('applyDamage: Iron Skin 10pts soaks 55 flat (100 -> 45)', ironSmall.dmgTaken === 45, ironSmall);
+  ps.defenseSpec = { ironskin: 999 };   // over-cap spec still clamps at the 100-pt value
   ps.hp = 100;
   const ironCap = room._applyDamage(ps, 100, false);
-  check('applyDamage: Iron Skin cap holds at 50% for over-cap spec', ironCap.dmgTaken === 50, ironCap);
+  check('applyDamage: Iron Skin over-cap spec clamps to the 100-pt soak (floor 1)', ironCap.dmgTaken === 1, ironCap);
   ps.defenseSpec = {};
 }
 
@@ -323,13 +328,13 @@ for (const m of meadowMonsters) m._wanderPausedUntil = Date.now() + 600000;
 
 // ── 6g. v2.3.1137: defense channels — Second Wind + Thorns ──
 {
-  // v2.3.1343 (kid-simple reprice): Second Wind 1%/pt, cap 100% —
-  // survive a hit at max and heal to FULL (min(maxHp) bounds it),
-  // 10s cooldown, never on the lethal hit.
+  // v2.3.1345 (accelerating flat): Second Wind heals a FLAT
+  // t2Accel(p, 2.5) — 25,250 at the cap, bounded to maxHp — on a 10s
+  // cooldown, never on the lethal hit.
   const ps = { hp: 100, maxHp: 200, agility: 0, defenseSpec: { secondwind: 100 } };
   const r1 = room._applyDamage(ps, 50, false);
-  check('secondwind: 100 pts heal to full after surviving a hit',
-    r1.dmgTaken === 50 && r1.secondWind === 200 && ps.hp === 200, { r1, hp: ps.hp });
+  check('secondwind: 100 pts heal (flat 25,250) tops to full after surviving a hit',
+    r1.dmgTaken === 50 && r1.secondWind === 25250 && ps.hp === 200, { r1, hp: ps.hp });
   const r2 = room._applyDamage(ps, 50, false);
   check('secondwind: 10s cooldown blocks back-to-back heals',
     r2.secondWind === 0 && ps.hp === 150, { r2, hp: ps.hp });
@@ -350,17 +355,14 @@ for (const m of meadowMonsters) m._wanderPausedUntil = Date.now() + 600000;
   room.eventBuffer.length = 0;
   room._tickMonsters();
   const th = room.eventBuffer.find((e) => e.type === 'monster_hit' && e.payload.thorns);
-  check('thorns: blocked attack reflects 100% back at the monster (v2.3.1343 full payback)',
-    !!th && th.payload.dmg === 40 && tm.hp === 960 && (tm.dmgByPlayer.pa || 0) === 40,
-    { th: th && th.payload, hp: tm.hp });
-
-  tm.hp = 5; tm.atkCd = 0; tm._attackingUntil = 0;
-  room.eventBuffer.length = 0;
-  room._tickMonsters();
+  // v2.3.1345: flat accelerating payback — t2Accel(100, 1) = 10,100
+  // obliterates the 1000-HP test monster in one blocked hit, and the
+  // lethal reflect must flow through the shared kill pipeline.
   const tk = room.eventBuffer.find((e) => e.type === 'monster_kill' && e.payload.monsterId === tm.id);
-  check('thorns: lethal reflect kills through the shared pipeline',
-    !!tk && tm.alive === false && tk.payload.recipients.includes('pa'),
-    tk && tk.payload);
+  check('thorns: flat payback lands and the lethal reflect kills through the shared pipeline',
+    !!th && th.payload.dmg === 1000 && tm.hp === 0
+    && !!tk && tm.alive === false && tk.payload.recipients.includes('pa'),
+    { th: th && th.payload, hp: tm.hp, tk: tk && tk.payload });
   psA.blocking = false; psA.defenseSpec = {};
 }
 
@@ -539,12 +541,11 @@ for (const m of meadowMonsters) m._wanderPausedUntil = Date.now() + 600000;
   Math.random = origRandom;
   check('critDmg: helper reads executioner points', room._wpnCritDmgPts(ps, 'sword') === 99);
   check('critDmg: both rolls crit under a forced roll', plain.isCrit === true && boosted.isCrit === true);
-  // v2.3.1343 (kid-simple reprice, 2%/pt):
-  // ratio = (1.5 + 0.2 + 99×0.02) / (1.5 + 0.2) = 3.68 / 1.7 ≈ 2.165.
-  // NOTE: with the flat damage channel the ratio also carries the +99
-  // flat on both rolls, but edge is 0 in this pair so it's pure crit.
-  const ratio = boosted.dmg / plain.dmg;
-  check('critDmg: 99 executioner pts scale the crit ×3.68/×1.7', Math.abs(ratio - 3.68 / 1.7) < 0.02, ratio);
+  // v2.3.1345 (accelerating flat): the crit-dmg channel adds a FLAT
+  // t2Accel(99, 1.5) = 14,850 on top of the power-only multiplier —
+  // assert the delta, not a ratio.
+  const delta = boosted.dmg - plain.dmg;
+  check('critDmg: 99 executioner pts add +14,850 flat on the crit', Math.abs(delta - 14850) <= 1, delta);
   check('critDmg: maxed edge+executioner crit clears the anti-cheat ceiling',
     maxRoll.dmg <= room._maxDmgForAttacker(ps, false),
     { roll: maxRoll.dmg, cap: room._maxDmgForAttacker(ps, false) });
@@ -569,10 +570,10 @@ for (const m of meadowMonsters) m._wanderPausedUntil = Date.now() + 600000;
   const plainT1 = room._computeAttackDamage(ps, 'melee', false);
   ps.weapon.tierMult = 3.24;
   Math.random = origRandom;
-  check('reprice: 99 edge pts add exactly +99 flat (post-tier)',
-    Math.abs((priced.dmg - plain.dmg) - 99) <= 1, priced.dmg - plain.dmg);
-  check('reprice: the flat bonus is tier-independent (+99 at tier 1 too)',
-    Math.abs((pricedT1.dmg - plainT1.dmg) - 99) <= 1, pricedT1.dmg - plainT1.dmg);
+  check('reprice: 99 edge pts add exactly t2Accel(99) = +9,900 flat (post-tier)',
+    Math.abs((priced.dmg - plain.dmg) - 9900) <= 1, priced.dmg - plain.dmg);
+  check('reprice: the flat bonus is tier-independent (+9,900 at tier 1 too)',
+    Math.abs((pricedT1.dmg - plainT1.dmg) - 9900) <= 1, pricedT1.dmg - plainT1.dmg);
   // Ceiling guard: a maxed-channel roll must clear the weapon bound.
   ps.weaponSpecs = { sword: { edge: 100 } };
   Math.random = () => 0.999999;
@@ -651,13 +652,13 @@ for (const m of meadowMonsters) m._wanderPausedUntil = Date.now() + 600000;
 
 // ── v2.3.1314: Resilience + Last Stand (HP grid goes fully live) ──
 {
-  // Resilience: hits ABOVE 20% of maxHp reduced 0.5%/pt (cap 50%,
-  // v2.3.1343); small hits untouched.
+  // v2.3.1345: Resilience soaks a FLAT t2Accel(p, 1) off hits ABOVE
+  // 20% of maxHp (10,100 at the cap -> floor 1); small hits untouched.
   const ps = { hp: 200, maxHp: 200, agility: 0, z: 'meadow', hpSpec: { resilience: 100 } };
-  const big = room._applyDamage(ps, 100, false); // 100 > 40 (20% of 200) -> -25% => 75
-  check('resilience: big hit reduced 50% at 100 pts (v2.3.1343)', big.dmgTaken === 50 && ps.hp === 150, big);
+  const big = room._applyDamage(ps, 100, false); // 100 > 40 -> soaked to floor 1
+  check('resilience: big hit soaked to the floor 1 at 100 pts', big.dmgTaken === 1 && ps.hp === 199, big);
   const small = room._applyDamage(ps, 30, false); // 30 <= 40 -> untouched
-  check('resilience: small hit untouched', small.dmgTaken === 30 && ps.hp === 120, small);
+  check('resilience: small hit untouched', small.dmgTaken === 30 && ps.hp === 169, small);
 
   // Last Stand: a killing blow leaves exactly 1 HP, once per cooldown.
   const ps2 = { hp: 50, maxHp: 100, agility: 0, z: 'meadow', hpSpec: { laststand: 100 } };

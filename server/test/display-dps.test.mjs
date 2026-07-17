@@ -146,9 +146,9 @@ const STAFF = { type: 'staff', tierMult: 1.5 };
   check('hardness strictly increases DPS (0 < 3 < 5)', h0 < h3 && h3 < h5, { h0, h3, h5 });
 }
 
-// ── 5. Hand-computed fixture matches EXACTLY (the v2.3.1343 formula:
-// (effBase + stat×0.1667) × tierMult, variance band, + flat dmgPts,
-// then avg/period × (1 + critChance×(critMult−1))) ──
+// ── 5. Hand-computed fixture matches EXACTLY (the v2.3.1345 formula:
+// (effBase + stat×0.1667) × tierMult, variance band, + t2Accel flat,
+// then (avg × (1 + cc×(cm−1)) + cc×critFlat) / period) ──
 {
   const cat = WEAPON_CATEGORY.sword;
   const rpg = makeRpg({ power: 100 });
@@ -159,12 +159,14 @@ const STAFF = { type: 'staff', tierMult: 1.5 };
 
   // By hand: sword base 6.67 (WEAPON_TYPES), no quality/hardness.
   const base = (6.67 + 100 * 0.1667) * 2.0;
-  const expMin = Math.round(base * 0.75 + 40);      // melee band 0.75-1.25, +40 flat
-  const expMax = Math.round(base * 1.25 + 40);
-  const critChance = 40 * 100 / (100 + 200) / 100   // Power baseline
-                   + Math.min(0.50, 50 * 0.005);    // + crit channel, cap 50%
-  const critMult = 1.5 + 100 * 0.001 + 25 * 0.02;   // 2.1
-  const expDps = (expMin + expMax) / 2 / (600 / 1000) * (1 + critChance * (critMult - 1));
+  const flat = 1 * 40 * 41;                          // t2Accel(40, 1) = 1,640
+  const expMin = Math.round(base * 0.75 + flat);     // melee band 0.75-1.25
+  const expMax = Math.round(base * 1.25 + flat);
+  const critChance = 40 * 100 / (100 + 200) / 100    // Power baseline
+                   + 50 * 0.005;                     // + counter channel expected rate
+  const critMult = 1.5 + 100 * 0.001;                // power-only (1.6)
+  const critFlat = Math.round(1.5 * 25 * 26);        // t2Accel(25, 1.5) = 975
+  const expDps = ((expMin + expMax) / 2 * (1 + critChance * (critMult - 1)) + critChance * critFlat) / (600 / 1000);
 
   const r = calcDisplayDmgRange(rpg, wpn);
   check('fixture: damage range matches hand math exactly',
@@ -215,16 +217,16 @@ const STAFF = { type: 'staff', tierMult: 1.5 };
 }
 
 // ── 8. v2.3.1207: calcDisplayHeal mirrors cooking.js _handleEatRequest
-// — ceil(fishHealAmount × Recovery mult), 0 pts = raw table value,
-// 100 pts = ×2.0 (the v2.3.1343 +100% cap), ceil'd. ──
+// — ceil(fishHealAmount) + Recovery's flat bonus (v2.3.1345:
+// t2Accel(p, 1); +10,100 at the cap). ──
 {
   const KEY = 'cooked_fish_clownfish';
   const raw = getFishHealAmount(KEY);
   check('heal fixture is a real tiered fish (raw > default 20)', raw > 20, raw);
   const at = (pts) => calcDisplayHeal({ hpSpec: { recovery: pts } }, KEY);
   check('calcDisplayHeal: 0 recovery pts = raw table value', at(0) === raw, { got: at(0), raw });
-  check('calcDisplayHeal: 100 recovery pts = ceil(raw × 2.0)',
-    at(100) === Math.ceil(raw * 2.0), { got: at(100), exp: Math.ceil(raw * 2.0) });
+  check('calcDisplayHeal: 100 recovery pts = ceil(raw) + flat 10,100 (v2.3.1345)',
+    at(100) === Math.ceil(raw) + 10100, { got: at(100), exp: Math.ceil(raw) + 10100 });
   const h0 = at(0), h50 = at(50), h100 = at(100);
   check('recovery points monotonically increase the displayed heal',
     h0 < h50 && h50 < h100, { h0, h50, h100 });
