@@ -166,19 +166,14 @@ export function createGatherNode(zoneId, depth, x, y, nodeType, forcedTierLvl) {
 }
 
 /* Hard cap on resource nodes per zone, applied AFTER the per-depth
-   nodeCount.  Keeps zones from feeling like a forest farm even if a
-   depth config inadvertently bumps the count.  v2.3.54. */
-const MAX_NODES_PER_ZONE = 6;
+   nodeCount.  v2.3.1346: 6 -> 9 — the uniform 3-of-each config below
+   needs all nine slots. */
+const MAX_NODES_PER_ZONE = 9;
 
-/* Per-zone resource specialization -- mirrors the server's
-   _getZoneNodeConfig in src/index.js.  Only the named zones get nodes;
-   every other zone returns an empty list.  Keep in sync if zones
-   change resource type on the server. */
-const ZONE_NODE_CONFIG = {
-  meadow:  { treeCt: 0, fishCt: 6, oreCt: 0 },
-  hollows: { treeCt: 0, fishCt: 0, oreCt: 6 },
-  frost:   { treeCt: 6, fishCt: 0, oreCt: 0 },
-};
+/* v2.3.1346 (owner): EVERY resource appears 3 times in EVERY zone —
+   mirrors the server's _getZoneNodeConfig (server/src/gathering.js);
+   keep the two together. */
+const ZONE_NODE_CONFIG = {};
 
 export function spawnGatherNodes(zoneId, depth) {
   const zone = ZONES[zoneId];
@@ -187,8 +182,8 @@ export function spawnGatherNodes(zoneId, depth) {
      zone.safe check has been here since the original spawn logic;
      keep both for belt + suspenders. */
   if (!zone || zone.safe || zoneId === 'town') return [];
-  const cfg = ZONE_NODE_CONFIG[zoneId];
-  if (!cfg) return []; // zone not specialized -- spawn nothing locally
+  /* v2.3.1346 (owner): uniform 3-of-each for every combat zone. */
+  const cfg = ZONE_NODE_CONFIG[zoneId] || { treeCt: 3, fishCt: 3, oreCt: 3 };
   const nodes = [];
   const W = zone.w * TILE, H = zone.h * TILE;
   /* 8-tile inset from every edge so harvestable resources stay

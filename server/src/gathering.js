@@ -41,18 +41,11 @@ export const gatheringMethods = {
   //   - all others (meadow / ember / mist / verdant / thunder / sky /
   //     tidal): fishing holes only
   _getZoneNodeConfig(zoneId) {
-    const ZONE_NODES = {
-      meadow:  { treeCt: 0, fishCt: 6, oreCt: 0 },
-      ember:   { treeCt: 0, fishCt: 6, oreCt: 0 },
-      mist:    { treeCt: 0, fishCt: 6, oreCt: 0 },
-      verdant: { treeCt: 0, fishCt: 6, oreCt: 0 },
-      frost:   { treeCt: 6, fishCt: 6, oreCt: 0 },
-      thunder: { treeCt: 0, fishCt: 6, oreCt: 0 },
-      hollows: { treeCt: 0, fishCt: 6, oreCt: 6 },
-      sky:     { treeCt: 0, fishCt: 6, oreCt: 0 },
-      tidal:   { treeCt: 0, fishCt: 6, oreCt: 0 },
-    };
-    return ZONE_NODES[zoneId] || { treeCt: 0, fishCt: 0, oreCt: 0 };
+    // v2.3.1346 (owner): EVERY resource appears 3 times in EVERY zone —
+    // one uniform config replaces the per-zone table (client
+    // lifeSkills.js DEPTH node config mirrors this; keep together).
+    void zoneId;
+    return { treeCt: 3, fishCt: 3, oreCt: 3 };
   },
 
   // Spawn the static node layout for a zone.  Positions are randomized
