@@ -245,6 +245,17 @@ Each entry: what, why, the shape to build, and dangers. Higher =
 sooner. The shipped v1 backlog is collapsed at the end of this part —
 its letters are frozen (TRAPS.md and the specs cite them).
 
+**Standing posture (v2.3.1342–1344, owner directive 2026-07-16):
+imbalance is POLICY.** Level = 1 + T2 points placed (cap 1000,
+`caps.t2simple`); all 30 channels repriced kid-simple with the
+balance-sim parity gates (UN-01/02/03, CH-03, HP-01) retired ON
+PURPOSE — the sim is a trap-audit now (UN-04 stays law), not a parity
+enforcer. Do NOT "restore balance" or re-derive level from stat sums;
+that reverts an owner decision. Anticheat ceilings (_maxWeaponDmg
+flat term, crit ceiling, 210ms cadence floor, π×1.41 arc clamp) are
+sized to the new caps and MUST move with any future reprice.
+Details: BALANCE-PLAN §4c, docs/specs/build-skill-progression.md.
+
 ### A. Gem-slot consume settlement
 Gem EXTRACTION shipped v2.3.1209 (amulet.js `op:'extract'`,
 `caps.gemExtract`): ForgePanel's two Extract buttons — the four

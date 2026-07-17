@@ -146,9 +146,9 @@ const STAFF = { type: 'staff', tierMult: 1.5 };
   check('hardness strictly increases DPS (0 < 3 < 5)', h0 < h3 && h3 < h5, { h0, h3, h5 });
 }
 
-// ── 5. Hand-computed fixture matches EXACTLY (the full formula:
-// (effBase + stat×0.1667) × (1 + dmgPts×0.005) × tierMult, variance
-// band, then avg/period × (1 + critChance×(critMult−1))) ──
+// ── 5. Hand-computed fixture matches EXACTLY (the v2.3.1345 formula:
+// (effBase + stat×0.1667) × tierMult, variance band, + t2Accel flat,
+// then (avg × (1 + cc×(cm−1)) + cc×critFlat) / period) ──
 {
   const cat = WEAPON_CATEGORY.sword;
   const rpg = makeRpg({ power: 100 });
@@ -158,13 +158,15 @@ const STAFF = { type: 'staff', tierMult: 1.5 };
   const wpn = { type: 'sword', tierMult: 2.0 }; // plain quality, hardness 0
 
   // By hand: sword base 6.67 (WEAPON_TYPES), no quality/hardness.
-  const base = (6.67 + 100 * 0.1667) * (1 + 40 * 0.005) * 2.0;
-  const expMin = Math.round(base * 0.75);           // melee band 0.75-1.25
-  const expMax = Math.round(base * 1.25);
-  const critChance = 40 * 100 / (100 + 200) / 100   // Power baseline
-                   + Math.min(0.30, 50 * 0.003);    // + crit channel, cap 30%
-  const critMult = 1.5 + 100 * 0.001 + 25 * 0.012;  // 1.9
-  const expDps = (expMin + expMax) / 2 / (600 / 1000) * (1 + critChance * (critMult - 1));
+  const base = (6.67 + 100 * 0.1667) * 2.0;
+  const flat = 1 * 40 * 41;                          // t2Accel(40, 1) = 1,640
+  const expMin = Math.round(base * 0.75 + flat);     // melee band 0.75-1.25
+  const expMax = Math.round(base * 1.25 + flat);
+  const critChance = 40 * 100 / (100 + 200) / 100    // Power baseline
+                   + 50 * 0.005;                     // + counter channel expected rate
+  const critMult = 1.5 + 100 * 0.001;                // power-only (1.6)
+  const critFlat = Math.round(1.5 * 25 * 26);        // t2Accel(25, 1.5) = 975
+  const expDps = ((expMin + expMax) / 2 * (1 + critChance * (critMult - 1)) + critChance * critFlat) / (600 / 1000);
 
   const r = calcDisplayDmgRange(rpg, wpn);
   check('fixture: damage range matches hand math exactly',
@@ -177,7 +179,7 @@ const STAFF = { type: 'staff', tierMult: 1.5 };
 
 // ── 6. v2.3.1207: Tempo (atk-spd channel) folds into the period —
 // points strictly increase DPS, damage range untouched, and the
-// -20% hard cap lands exactly at the 100-pt channel cap.  Only the
+// -50% hard cap (v2.3.1343) lands exactly at the 100-pt channel cap.  Only the
 // sword category has an atkspd channel today. ──
 {
   const cat = WEAPON_CATEGORY[SWORD.type];
@@ -193,8 +195,8 @@ const STAFF = { type: 'staff', tierMult: 1.5 };
     a0.dps < a50.dps && a50.dps < a100.dps, { d0: a0.dps, d50: a50.dps, d100: a100.dps });
   check('tempo moves the PERIOD only — damage range unchanged',
     a0.r.min === a100.r.min && a0.r.max === a100.r.max, { r0: a0.r, r100: a100.r });
-  check('tempo cap: 100 pts = exactly -20% period',
-    Math.abs(a100.r.cdMs - SWING_COOLDOWN * 0.8) < 1e-9, a100.r.cdMs);
+  check('tempo cap: 100 pts = exactly -50% period (v2.3.1343)',
+    Math.abs(a100.r.cdMs - SWING_COOLDOWN * 0.5) < 1e-9, a100.r.cdMs);
 }
 
 // ── 7. v2.3.1207: determinism — the range/DPS helpers are pure
@@ -215,16 +217,16 @@ const STAFF = { type: 'staff', tierMult: 1.5 };
 }
 
 // ── 8. v2.3.1207: calcDisplayHeal mirrors cooking.js _handleEatRequest
-// — ceil(fishHealAmount × Recovery mult), 0 pts = raw table value,
-// 100 pts = ×1.5 (the +50% cap), ceil'd. ──
+// — ceil(fishHealAmount) + Recovery's flat bonus (v2.3.1345:
+// t2Accel(p, 1); +10,100 at the cap). ──
 {
   const KEY = 'cooked_fish_clownfish';
   const raw = getFishHealAmount(KEY);
   check('heal fixture is a real tiered fish (raw > default 20)', raw > 20, raw);
   const at = (pts) => calcDisplayHeal({ hpSpec: { recovery: pts } }, KEY);
   check('calcDisplayHeal: 0 recovery pts = raw table value', at(0) === raw, { got: at(0), raw });
-  check('calcDisplayHeal: 100 recovery pts = ceil(raw × 1.5)',
-    at(100) === Math.ceil(raw * 1.5), { got: at(100), exp: Math.ceil(raw * 1.5) });
+  check('calcDisplayHeal: 100 recovery pts = ceil(raw) + flat 10,100 (v2.3.1345)',
+    at(100) === Math.ceil(raw) + 10100, { got: at(100), exp: Math.ceil(raw) + 10100 });
   const h0 = at(0), h50 = at(50), h100 = at(100);
   check('recovery points monotonically increase the displayed heal',
     h0 < h50 && h50 < h100, { h0, h50, h100 });
@@ -232,17 +234,18 @@ const STAFF = { type: 'staff', tierMult: 1.5 };
     calcDisplayHeal(null, KEY) === raw, calcDisplayHeal(null, KEY));
 }
 
-// ── 9. v2.3.1207: calcDisplayArmorHp mirrors the server's maxHp pool
-// line (grids.js): Vigor multiplies armor HP too — 0 pts = raw
-// getArmorHp, 100 pts = ×1.25 (the +25% cap), floored. ──
+// ── 9. calcDisplayArmorHp mirrors the server's maxHp pool line
+// (grids.js).  v2.3.1343: Vigor is FLAT +10 HP/pt now and no longer
+// scales armor HP — the display returns the raw armor contribution at
+// every point count. ──
 {
   const armor = { tierMult: 2.0 };
   const vit = 40;
   const raw = getArmorHp(armor, vit);
   const at = (pts) => calcDisplayArmorHp({ vitality: vit, hpSpec: { vigor: pts } }, armor);
   check('calcDisplayArmorHp: 0 vigor pts = raw getArmorHp', at(0) === raw, { got: at(0), raw });
-  check('calcDisplayArmorHp: 100 vigor pts = floor(raw × 1.25)',
-    at(100) === Math.floor(raw * 1.25), { got: at(100), exp: Math.floor(raw * 1.25) });
+  check('calcDisplayArmorHp: 100 vigor pts still = raw (flat vigor does not scale armor)',
+    at(100) === raw, { got: at(100), exp: raw });
   check('calcDisplayArmorHp degrades on null rpg/armor',
     calcDisplayArmorHp(null, armor) === getArmorHp(armor, 0)
     && calcDisplayArmorHp({ vitality: vit }, null) === 0);

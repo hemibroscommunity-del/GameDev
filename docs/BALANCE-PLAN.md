@@ -28,18 +28,18 @@ Everything that actually affects damage/survival in the shipped game:
 |---|---|---|
 | Weapon base | greatsword 10 · sword 6.67 · bow 7.29 · staff 8.54 | gameSystems.js WEAPON_TYPES |
 | Governing stat | `+ stat × 0.1667` (melee=power, bow=agility, staff=mind) | calcWeaponDmg |
-| Damage channel | `× (1 + points × 0.005)` (edge/drawPower/spellPower), cap 99 — repriced v2.3.1153 (was `+1/pt` pre-tier) | WEAPON_CHANNELS / DAMAGE_CHANNEL_PCT |
+| Damage channel | FLAT `+1/pt` POST-tier POST-variance (edge/drawPower/spellPower), cap 100 — v2.3.1343 kid-simple reprice (v2.3.1153's multiplier retired) | WEAPON_CHANNELS / DAMAGE_CHANNEL_FLAT |
 | Material tier | `× tierMult` — 1.00 → 7.84 over 20 tiers (geometric ×1.115) | BLACKSMITH_TIERS |
 | Variance | melee ×0.75-1.25 · bow ×0.6-0.8 · staff ×0.5-1.5 | calcWeaponDmg |
 | Special | ×2.0, scales on Mind, no channel bonus | calcSpecialDmg |
-| Crit chance | `40·P/(P+200)%` + crit channel `+0.5%/pt` (cap +30%) | calcCritChance |
-| Crit mult | `1.5 + power × 0.001` | calcCritMult |
+| Crit chance | `40·P/(P+200)%` + crit channel `+0.5%/pt` (cap +50%, v2.3.1343) | calcCritChance |
+| Crit mult | `1.5 + power × 0.001 + critDmg channel × 2%/pt` (cap +200%, v2.3.1343) | calcCritMult |
 | Max HP | `100 + (level-1)×2.5 + vitality×10` | calcMaxHp |
-| Dodge | `min(agility × 0.0008, 30%)` | passive dodge |
+| Dodge | `min(agility × 0.0008 + evasion × 0.5%/pt, 50%)` — shared cap, raised v2.3.1343 | passive dodge |
 | Block | full negation while shielded (base 25%+shield figure is readout-only) | monsterCombat / _applyDamage |
-| Block stamina | 15/blocked hit + 5/tick hold, × Bulwark `(1 − pts × 0.01)` cap −50% — repriced v2.3.1153 | _blockStaminaMult |
+| Block stamina | 15/blocked hit + 5/tick hold, × Bulwark `(1 − pts × 0.01)` cap −100% with a ≥1 floor (v2.3.1343) | _blockStaminaMult |
 | Monster HP | `ceil(monsterStat(12.5, lvl) × archetype.hpMult)` | createMonster (client+server) |
-| Combat level | sum of the five T1 stats, cap 500 | recalcDerived |
+| Combat level | `min(1000, 1 + total T2 points placed)` — level-is-build, v2.3.1342 | recalcDerived / _recomputeMaxes |
 
 **Scale map:** the code is the GDD §4.4 formula rescaled ÷4.8 (GDD
 `Power×0.8` ↔ code `×0.1667`; greatsword 48 ↔ 10). Any GDD damage number
@@ -200,24 +200,78 @@ Three rules replace the historical-accident caps:
    the grid. The 200-point gap between earnable and spendable is the
    specialization squeeze.
 
-Balance is **equal value, sim-enforced — not identical numbers**: the
-sweep gates price every channel at full investment and CI-fail on drift:
-- **UN-01** DPS parity (synergy-aware marginal value, 0.75–1.25× of the
-  class median): edge +50%, precision-in-context +45%, executioner-in-
-  context +37%.
-- **UN-02** EHP parity (same band): ironskin +33%, secondwind +27%,
-  vigor +25%.
-- **UN-03** utility ~70% rule (tempo; thorns/bulwark keep their
-  dedicated DF-01/DF-03 gates — their value is block-uptime-conditional,
-  not clean %DPS).
-- **UN-04** trap-free: all 21 active channel families strictly gain
-  through point 100 (mechanical proof of rule 1).
+~~Balance is equal value, sim-enforced~~ — **SUPERSEDED by §4c**: the
+parity gates (UN-01/02/03, CH-03, HP-01) are RETIRED (v2.3.1344).
+**UN-04 trap-free stays law**: all active channel families strictly
+gain through point 100.
 
 Migrations: v6 `uniform-t2-caps` (double 50-cap grids, refund repriced
 weapon channels), v7 `uniform-t2-pools` (pools recompute to the
 canonical `min(200, 2×level) − spent`; forged specs without recorded
-skill levels net zero — an anti-forgery property). Deploy-order:
-`caps.t2uniform` keeps old-worker sessions on legacy caps.
+skill levels net zero — an anti-forgery property), v8 `level-is-build`
+(level = 1 + placed points, §4c). Deploy-order: `caps.t2uniform` keeps
+old-worker sessions on legacy caps; `caps.t2simple` gates the §4c
+level derivation.
+
+## 4c. Kid-simple reprice + level-is-build — **LIVE v2.3.1342–1345** (owner directive 2026-07-16/17)
+
+**v2.3.1345 (owner round 2) supersedes the per-point values below:**
+"make all these flat points… more powerful… each level ~20% advantage
+over the previous."  True ×1.2 compounding over 1000 levels overflows
+every number, so:
+- **Accelerating flat** (free-running channels): point N is worth
+  2·UNIT·N — always bigger than the last; cumulative = UNIT·p·(p+1)
+  (`t2Accel` + the one `T2_UNITS` table, client gameSystems.js /
+  server data.js, mirror-audit-tied).  At the 100-pt cap: damage trio
+  +10,100; crit-dmg trio +15,150 FLAT on lucky hits (power-only ×
+  mult); ironskin −5,050/hit; resilience −10,100 off big hits; thorns
+  10,100 payback; secondwind +25,250 heal; vigor +20,200 HP; recovery
+  +10,100 per heal; lifeblood +15,150 per kill; Deep Lungs +10,100
+  energy.  Floors of 1 keep hits/costs nonzero.
+- **Counter skills** (crit + evasion): deterministic accumulators at
+  0.005/pt — "a LUCKY hit every N hits", "a hit MISSES you every N" —
+  server-owned in-memory counters (rule 11), never streaky, every 2nd
+  at the cap.  Agility/Power baselines stay dice; the old shared dodge
+  cap is GONE by design (counter stacks; display ceiling 95%).
+- **Capped mechanics stay linear, shown flat**: tempo −3ms/pt (cap
+  −300ms), cleave +2.07°/pt (FULL-CIRCLE 360° at max, PvP arc clamp
+  2π-ready at π×1.41→ see combat.js), piercing +1/10 pts (10 at max),
+  longshot +4px/pt, bulwark −0.15 energy/pt (≥1 floor), poise −3ms/pt,
+  swiftness +0.02 speed/pt (5.0→7.0; anti-teleport margin IMPROVED vs
+  ×1.5), conditioning +0.5 regen/pt, laststand −1s/pt floor 20s,
+  reflexes +2ms/pt.
+
+Original v2.3.1343 values (historical):
+
+Owner: "I want each level up to feel powerful… max level 1000… every
+tier 2 point should raise combat level… if it's too complicated for a
+7 year old to understand then it's bad."  **Fun-first: IMBALANCE IS
+ACCEPTED BY DESIGN.**  Do not "fix" these numbers back toward parity —
+that is a reverted owner decision, not a cleanup (TRAPS-class mistake).
+
+- **Combat level = min(1000, 1 + total T2 points placed)** (v2.3.1342,
+  migration v8, `caps.t2simple`).  Every spend = +1 level = pool refill
+  + the LEVEL UP! banner (spend path celebrates via
+  `levelCelebration.js`).  Max level 1000 IS a finished build.
+- **Every channel one kid sentence, chunky values, caps at exactly 100
+  points** (v2.3.1343): damage trio FLAT +1/pt post-tier post-variance
+  (`DAMAGE_CHANNEL_FLAT`); crit 0.5%/pt cap 50%; crit-dmg 2%/pt cap
+  200%; tempo −0.5%/pt floor 0.50 (server cadence floor 210ms in
+  lockstep); cleave +1°/pt cap 100° (PvP arc clamp π×1.41); piercing
+  +1/25 pts max 4; longshot/detonation/attunement 1%/pt cap 100%;
+  bulwark −1%/pt cap −100% (≥1 stamina floor holds); ironskin/
+  resilience 0.5%/pt cap −50%; thorns/secondwind 1%/pt cap 100%; poise
+  −1%/pt; **vigor FLAT +10 HP/pt** (no longer scales armor HP);
+  recovery/stamina/conditioning 1%/pt cap 100%; lifeblood 0.5%/pt cap
+  50%; laststand cooldown floor 20s; swiftness 0.5%/pt cap +50%
+  (anti-teleport audit: worst stack ≈441 px/s < 500); evasion 0.5%/pt
+  with the SHARED dodge cap raised 30% → 50%; reflexes 2ms/pt.
+- **Known accepted extremes**: near-unkillable max tank builds (50%
+  dodge + half damage + full-heal Second Wind + 20s Last Stand), ~3.5×
+  crits, free blocking.  PvE-focused; PvP is consent-gated/lawless-only.
+- Anticheat ceilings raised in lockstep (`_maxWeaponDmg` +100 flat,
+  crit ceiling +2.00, cadence floor 210ms, arc clamp π×1.41) — these
+  MUST move with any future reprice or legit hits get rejected.
 
 ## 5. Hardening v1 (rare chase) — adopted spec
 

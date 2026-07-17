@@ -6,7 +6,7 @@
  * exception).  Also covers fail-open ordering, the join bootstrap's
  * boundary heal, and the admin-restore re-migration path. */
 import { GameRoom } from '../src/index.js';
-import { RPG_SCHEMA_VERSION, MIGRATIONS, runRpgMigrations, healLifeSkills } from '../src/migrations.js';
+import { RPG_SCHEMA_VERSION, MIGRATIONS, runRpgMigrations, healLifeSkills, computeCanonicalPools } from '../src/migrations.js';
 
 function makeState() {
   const store = new Map();
@@ -267,6 +267,41 @@ const legacyBlob = () => ({
   check('v6 creates no specs on an empty blob; v7 zero-initializes the pools',
     rEmpty.failed === null && !('defenseSpec' in empty) && empty.weaponUnspent.sword === 0
     && empty.defenseUnspent === 0 && empty.hpUnspent === 0 && empty._v === RPG_SCHEMA_VERSION, empty);
+}
+
+// ── 12. v8 level-is-build (v2.3.1342): combat level = total T2 points
+// PLACED (cap 1000), recomputed on the stored blob; plus the laststand
+// canonical-pool regression (laststand was missing from the HP spent
+// list since v2.3.1160 — spends there were refunded as free points) ──
+{
+  // _v: 7 isolates v8 — a legacy blob would first flow through v3
+  // (edge refund) and v6 (grid-point doubling), which is covered above.
+  const b = {
+    _v: 7,
+    level: 300, // stale stat-sum snapshot — must be recomputed
+    vitality: 30,
+    weaponSpecs: { sword: { edge: 40, tempo: 10 } },
+    defenseSpec: { ironskin: 20 },
+    hpSpec: { vigor: 10, laststand: 15 },
+    enduranceSpec: { swiftness: 5 },
+  };
+  const r = runRpgMigrations(b);
+  check('v8 recomputes level = 1 + placed points (1 + 40+10+20+10+15+5 = 101)',
+    r.failed === null && b.level === 101, { level: b.level, failed: r.failed });
+  check('v8 idempotent', runRpgMigrations(b).changed === false && b.level === 101, b.level);
+  // The laststand canonical-pool regression (shared live path): before
+  // the v2.3.1342 fix the 15 laststand points were NOT counted as
+  // spent, so the pool refunded them (60 - 10 = 50 free points).
+  computeCanonicalPools(b);
+  check('laststand pool fix: laststand spend COUNTS as spent (hpUnspent = min(200,2x30) - 25 = 35)',
+    b.hpUnspent === 35, b.hpUnspent);
+  // Over-ceiling forgery clamps at 1000; empty blob floors at level 1.
+  const big = { _v: 7, weaponSpecs: { sword: { edge: 999999 } } };
+  runRpgMigrations(big);
+  check('v8 per-channel clamp holds a forged blob to 100 placed (level 101)', big.level === 101, big.level);
+  const empty = { _v: 7 };
+  runRpgMigrations(empty);
+  check('v8 empty blob starts at level 1 (0 placed)', empty.level === 1, empty.level);
 }
 
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);

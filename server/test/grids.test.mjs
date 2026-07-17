@@ -116,19 +116,20 @@ const session = [...room.sessions.values()].find((s) => s.id === 'bp_gr_a');
 
 // ── 3+4. vigor / stamina formulas ──
 {
-  // v2.3.1156: coefficients halved with the 100-pt cap — cap values land
-  // at exactly 100 points now.
+  // v2.3.1345 (accelerating flat): Vigor +t2Accel(p, 2) HP (+20,200 at
+  // the cap, no longer scaling armor HP); Deep Lungs +t2Accel(p, 1)
+  // energy (+10,100 at the cap).
   ps.armor = null;
   ps.hpSpec = { vigor: 100 };
   ps.enduranceSpec = { stamina: 100 };
   room._recomputeMaxes(ps);
   const baseHp = room._calcMaxHp(ps.level, ps.vitality);
-  check('vigor: maxHp = floor(base × 1.25) at the 100-pt cap',
-    ps.maxHp === Math.floor(baseHp * 1.25), { maxHp: ps.maxHp, base: baseHp });
+  check('vigor: maxHp = floor(base + 20,200) at the 100-pt cap (accelerating flat)',
+    ps.maxHp === Math.floor(baseHp + 20200), { maxHp: ps.maxHp, base: baseHp });
   const baseStam = room._calcMaxStamina(ps.endurance);
-  check('stamina channel: maxStamina = floor(base × 1.5) at the 100-pt cap',
-    ps.maxStamina === Math.floor(baseStam * 1.5), { maxStamina: ps.maxStamina, base: baseStam });
-  check('vigor: helper caps past 100 pts', Math.abs(room._vigorMult({ hpSpec: { vigor: 999 } }) - 1.25) < 1e-9);
+  check('stamina channel: maxStamina = floor(base + 10,100) at the 100-pt cap',
+    ps.maxStamina === Math.floor(baseStam + 10100), { maxStamina: ps.maxStamina, base: baseStam });
+  check('vigor: flat helper caps past 100 pts', room._vigorFlat({ hpSpec: { vigor: 999 } }) === 20200);
 }
 
 // ── 5. conditioning regen ──
@@ -146,9 +147,8 @@ const session = [...room.sessions.values()].find((s) => s.id === 'bp_gr_a');
   ps.stamina = 10;
   room._tickPlayerRegen();
   const condGain = ps.stamina - 10;
-  check('conditioning: 100 pts (the new cap) regen ~1.5x the base tick',
-    condGain === Math.max(1, Math.ceil(plainGain * 1.5)) || condGain === Math.max(1, Math.ceil(7 * (1 + nowEnd * 0.002) * 1.5)),
-    { plainGain, condGain });
+  check('conditioning: 100 pts (the cap) add +50 flat to the base tick (v2.3.1345)',
+    condGain === plainGain + 50, { plainGain, condGain });
 }
 
 // ── 6. recovery on discrete heals, NOT on lifesteal ──
@@ -161,17 +161,19 @@ const session = [...room.sessions.values()].find((s) => s.id === 'bp_gr_a');
   ps.hp = 1;
   const rawHeal = room._fishHealAmount('cooked_fish_minnow');
   room._handleEatRequest(session, { invKey: 'cooked_fish_minnow' });
-  check('recovery: fish heal × 1.5 at the 100-pt cap',
-    ps.hp === Math.min(ps.maxHp, 1 + Math.ceil(rawHeal * 1.5)), { hp: ps.hp, rawHeal });
-  // second wind: heal fraction × recovery (40 pts = 20% at 0.5%/pt)
+  check('recovery: fish heal + flat t2Accel(100,1) = +10,100 at the cap (v2.3.1345)',
+    ps.hp === Math.min(ps.maxHp, 1 + Math.ceil(rawHeal) + 10100), { hp: ps.hp, rawHeal, maxHp: ps.maxHp });
+  // second wind: flat t2Accel(40, 2.5) = 4,100 + Recovery's flat
+  // per-heal bonus t2Accel(100, 1) = 10,100 (recovery spec still 100
+  // from the fish check above), bounded by maxHp in _applyDamage.
   ps.defenseSpec = { secondwind: 40 };
   ps._secondWindReadyAt = 0;
   ps.hp = Math.floor(ps.maxHp / 2);
   ps.agility = 0;
   const before = ps.hp;
   const r = room._applyDamage(ps, 10, false);
-  check('recovery: second wind heal × 1.5 (survived unblocked hit)',
-    r.secondWind === Math.round(ps.maxHp * 0.20 * 1.5), { got: r.secondWind, expect: Math.round(ps.maxHp * 0.20 * 1.5), before });
+  check('recovery: second wind = flat 4,100 + recovery flat 10,100 (survived unblocked hit)',
+    r.secondWind === 4100 + 10100, { got: r.secondWind, before });
   ps.defenseSpec = {};
   // lifesteal: EXCLUDED from recovery — still exactly 90% of taken.
   ps.dmgFromMonster = { m1: 40 };
@@ -181,24 +183,24 @@ const session = [...room.sessions.values()].find((s) => s.id === 'bp_gr_a');
     ls.refund === Math.ceil(40 * 0.9), ls);
 }
 
-// ── 7. evasion shares the 30% dodge cap ──
+// ── 7. evasion shares the dodge cap (v2.3.1343: raised 30% -> 50%) ──
 {
   ps.hpSpec = {}; ps.defenseSpec = {};
-  ps.agility = 375; // 375 × 0.0008 = 30% — capped from agility alone
+  ps.agility = 625; // 625 × 0.0008 = 50% — capped from agility alone
   ps.enduranceSpec = { evasion: 50 };
   ps._zoneEntryGraceUntil = 0;
   const origRandom = Math.random;
-  // A roll at 0.299999 dodges (under 30%); at 0.300001 it must NOT —
-  // evasion cannot push the cap past 30%.
-  Math.random = () => 0.299999;
+  // A roll at 0.499999 dodges (under 50%); at 0.500001 it must NOT —
+  // evasion cannot push past the shared cap.
+  Math.random = () => 0.499999;
   const dodged = room._applyDamage(ps, 5, false);
   ps.hp = ps.maxHp;
-  Math.random = () => 0.300001;
+  Math.random = () => 0.500001;
   const hit = room._applyDamage(ps, 5, false);
   Math.random = origRandom;
-  check('evasion: shared 30% cap — dodge at 29.9999%, hit at 30.0001% even with 50 evasion pts',
+  check('evasion: shared 50% cap — dodge at 49.9999%, hit at 50.0001% even with 50 evasion pts',
     dodged.dodged === true && hit.dodged === false, { dodged, hit });
-  check('evasion: helper is +0.1%/pt (v2.3.1156)', Math.abs(room._evasionDodge({ enduranceSpec: { evasion: 10 } }) - 0.01) < 1e-9);
+  check('evasion: helper is +0.5%/pt (v2.3.1343)', Math.abs(room._evasionDodge({ enduranceSpec: { evasion: 10 } }) - 0.05) < 1e-9);
   ps.agility = 0;
 }
 
@@ -211,8 +213,8 @@ const session = [...room.sessions.values()].find((s) => s.id === 'bp_gr_a');
   const before = ps.hp;
   const m = { id: 'gr_m1', alive: true, hp: 0, maxHp: 10, xp: 5, gold: 0, level: 1, x: 100, y: 100, dmgByPlayer: { bp_gr_a: 10 } };
   room._resolveMonsterKill('meadow', m, 'bp_gr_a', ps, 'melee');
-  check('lifeblood: killing blow heals 12.5% maxHp at the 50-pt cap (plus any lifesteal)',
-    ps.hp >= Math.min(ps.maxHp, before + Math.round(ps.maxHp * 0.25 * 0.5)), { before, after: ps.hp, maxHp: ps.maxHp });
+  check('lifeblood: killing blow heals 25% maxHp at 50 pts (v2.3.1343: 0.5%/pt; plus any lifesteal)',
+    ps.hp >= Math.min(ps.maxHp, before + Math.round(ps.maxHp * 0.25)), { before, after: ps.hp, maxHp: ps.maxHp });
   ps.hpSpec = {};
 }
 
@@ -309,16 +311,26 @@ const session = [...room.sessions.values()].find((s) => s.id === 'bp_gr_a');
   await room.webSocketMessage(ws, JSON.stringify({ type: 'stat_allocate', payload: { stat: 'mind' } }));
   check('stat_allocate: zero unspentT2 is a clean no-op', ps.unspentT2 === 0, ps.unspentT2);
 
-  // build_point_earned: derived level comes from the stat sum, so a
-  // stat bump + the event recomputes maxes and tops pools on the gain.
-  ps.power = 10; ps.vitality = 10; ps.endurance = 10; ps.agility = 10; ps.mind = 10;
+  // v2.3.1342 (level-is-build): a stat bump no longer moves combat
+  // level — only PLACED T2 points do — so build_point_earned holds the
+  // level flat (and therefore must NOT refill pools), while a
+  // stats_update that lands one more placed point is +1 level and DOES
+  // refill (the spend is the level-up moment).
+  ps.power = 10; ps.vitality = 20; ps.endurance = 10; ps.agility = 10; ps.mind = 10;
   ps.defenseSkill = { level: 0, xp: 0 };
+  ps.weaponSpecs = { sword: { edge: 50 } };
+  ps.defenseSpec = {}; ps.hpSpec = { recovery: 10 }; ps.enduranceSpec = {};
   room._recomputeMaxes(ps);
+  check('level-is-build: level = 1 + placed points (50 edge + 10 recovery)', ps.level === 61, ps.level);
   ps.hp = 1; ps.stamina = 1; ps.mana = 1;
   ps.vitality += 1; // the "stat went up on the client" the event signals
   await room.webSocketMessage(ws, JSON.stringify({ type: 'build_point_earned' }));
-  check('build_point_earned: derived level rises with the stat sum and pools refill',
-    ps.level === 51 && ps.hp === ps.maxHp && ps.stamina === ps.maxStamina && ps.mana === ps.maxMana,
+  check('build_point_earned: stat bump holds level flat, no pool refill',
+    ps.level === 61 && ps.hp === 1 && ps.stamina === 1 && ps.mana === 1,
+    { level: ps.level, hp: ps.hp });
+  room._handleStatsUpdate(room.sessions.get(ws), { hpSpec: { recovery: 11 } });
+  check('stats_update: one more placed point = +1 level and pools refill',
+    ps.level === 62 && ps.hp === ps.maxHp && ps.stamina === ps.maxStamina && ps.mana === ps.maxMana,
     { level: ps.level, hp: ps.hp, maxHp: ps.maxHp });
 }
 

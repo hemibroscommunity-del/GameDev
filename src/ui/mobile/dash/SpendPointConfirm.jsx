@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { COL } from './common.js';
 import { spendConfirmBus } from './spendConfirmBus.js';
-import { recalcDerived, WEAPON_CHANNEL_CAP, DEFENSE_CHANNEL_CAP, GRID_CHANNEL_CAP, combatBuildTotal, COMBAT_BUILD_CEILING } from '../../../data/gameSystems.js';
+import { recalcDerived, WEAPON_CHANNEL_CAP, DEFENSE_CHANNEL_CAP, GRID_CHANNEL_CAP, combatBuildTotal, COMBAT_BUILD_CEILING, isT2SimpleEnabled } from '../../../data/gameSystems.js';
+import { celebrateLevelUps } from '../../../game/levelCelebration.js';
 
 /* v2.3.911: confirmation window for spending a build-skill Tier-2 point.
    Shows the channel's current effect vs the effect after +1 (via the
@@ -61,6 +62,15 @@ export const SpendPointConfirm = () => {
         }
       }
       recalcDerived(R);
+      /* v2.3.1342: level-is-build makes THIS the level-up moment — the
+         point just placed is +1 combat level.  Light variant: banner +
+         chime only; shake and a particle burst under a modal sheet read
+         as a bug.  Gated on caps.t2simple — against an old worker the
+         spend doesn't raise the authoritative level, so celebrating
+         here would lie (its echo would put the level right back). */
+      if (isT2SimpleEnabled()) {
+        try { celebrateLevelUps(S, R, { light: true }); } catch (e) { void e; }
+      }
       persist(R);
       /* v2.3.1021: flush the spend to the worker immediately.  This popup
          mutates S.rpg directly (no setRpgState), so BroTown's React-driven

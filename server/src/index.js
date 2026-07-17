@@ -27,8 +27,7 @@ import { tickElementStatuses, elementMoveMult } from './elemental.js';
 // lookup methods stay (call sites unchanged); only the literals moved.
 import {
   ARCHETYPES, ZONES,
-  MONSTER_HP_CURVE, RARITY_TIERS,
-} from './data.js';
+  MONSTER_HP_CURVE, RARITY_TIERS, T2_UNITS, t2Accel } from './data.js';
 // v2.3.1118 (heavy-systems PR3): order book folded into the GameRoom --
 // escrow-at-placement settlement under one DO's input gates.  Methods
 // are mixed into the class below (see market.js header for why).
@@ -907,7 +906,7 @@ export class GameRoom {
               const _thornsPts = (blockerPs && blockerPs.defenseSpec && blockerPs.defenseSpec.thorns) || 0;
               if (_thornsPts > 0 && m.hp > 0) {
                 const reflect = Math.min(Math.max(0, m.hp),
-                  Math.max(1, Math.round(m.dmg * Math.min(0.50, _thornsPts * 0.005)))); // v2.3.1156: 0.5%/pt (cap raise)
+                  Math.max(1, t2Accel(_thornsPts, T2_UNITS.thorns))); // v2.3.1345: flat accelerating payback (10,100 at cap)
                 m.hp -= reflect;
                 if (!m.dmgByPlayer) m.dmgByPlayer = Object.create(null); // v2.3.1202: player-id-keyed
                 m.dmgByPlayer[nearest.id] = (m.dmgByPlayer[nearest.id] || 0) + reflect;
@@ -1203,14 +1202,16 @@ export class GameRoom {
     const cat = this._wpnCat(type);
     return (ps && ps.weaponSpecs && ps.weaponSpecs[cat] && ps.weaponSpecs[cat][K[cat]]) || 0;
   }
-  // v2.3.1136: Attunement status-duration multiplier (+0.5%/pt, <=1.495).
-  // Successor to the retired Influence bonus; weaponSpecs is server-clamped
-  // [0,99] so a forged client can't exceed the cap.  Applies to statuses
-  // from ANY weapon's element (global, matching the Influence it replaces).
+  // v2.3.1136: Attunement status-duration multiplier.  Successor to the
+  // retired Influence bonus; weaponSpecs is server-clamped so a forged
+  // client can't exceed the cap.  Applies to statuses from ANY weapon's
+  // element (global, matching the Influence it replaces).
   _attuneMult(ps) {
-    // v2.3.1156: clamp 99 -> 100 with the uniform cap (ceiling 1.50).
+    // v2.3.1343 (kid-simple reprice): +1%/pt, ceiling ×2.00 — fire &
+    // ice last twice as long at the 100-pt cap.  elemental.js's
+    // durMult clamp rises in lockstep.
     const pts = (ps && ps.weaponSpecs && ps.weaponSpecs.staff && ps.weaponSpecs.staff.attunement) || 0;
-    return 1 + Math.min(100, pts) * 0.005;
+    return 1 + Math.min(100, pts) * 0.01;
   }
   // v2.3.1153: BULWARK repurposed — block stamina efficiency, −1%/pt on
   // both block stamina costs (per-blocked-hit AND shield-hold drain),
@@ -1221,10 +1222,12 @@ export class GameRoom {
   // your shield twice as long, block twice as many hits."  defenseSpec
   // is client-trained but server-clamped, so the discount is bounded.
   _blockStaminaMult(ps) {
-    // v2.3.1156: 0.5%/pt (halved with the 50 -> 100 cap raise; the
-    // −50% cap value is unchanged).
+    // v2.3.1343 (kid-simple reprice): -1%/pt, cap -100% — free blocking
+    // at max.  Safe ONLY because both cost sites keep their
+    // Math.max(1, …) floor (a block always drains at least 1 stamina —
+    // no permanent-invuln turtle; hardening.test pins the floor).
     const pts = (ps && ps.defenseSpec && ps.defenseSpec.bulwark) || 0;
-    return 1 - Math.min(0.50, Math.min(100, pts) * 0.005);
+    return 1 - Math.min(1.00, Math.min(100, pts) * 0.01);
   }
 
   // ═══ Weapon sanitizers + sell ═══ moved to gear.js (v2.3.1169,
@@ -1590,7 +1593,7 @@ export class GameRoom {
           // v2.3.1154: × Endurance-grid Conditioning (+1%/pt, cap +50%)
           // — the successor to the retired restoration mult, deleted
           // v2.3.1155 (it was ×1.0 for every live player since v2.3.910).
-          const stHeal = Math.max(1, Math.ceil(7 * stAmuletMult * stEndMult * this._conditioningMult(ps)));
+          const stHeal = Math.max(1, Math.ceil(7 * stAmuletMult * stEndMult) + this._conditioningFlat(ps)); // v2.3.1345: flat regen add
           const beforeSt = ps.stamina;
           ps.stamina = Math.min(ps.maxStamina, ps.stamina + stHeal);
           if (ps.stamina !== beforeSt) changed = true;

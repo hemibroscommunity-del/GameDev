@@ -27,16 +27,34 @@
  * (unchanged by BF-1; centralize them if they ever need tuning). */
 export const MONSTER_HP_CURVE = { base: 12.5, ramp: 1.052, plateau: 1.035, endgame: 1.025 };
 
-/* v2.3.1153: damage-channel coefficient (edge/drawPower/spellPower),
- * fraction per point.  Was a flat +1/pt added PRE-tierMult, which priced
- * 99 pts at ~+725% DPS at the L35/mythril audit cell -- an order of
- * magnitude above every %-channel (BALANCE-PLAN §4 outlier).  Now a
- * tier-independent multiplier: dmg ×(1 + pts × this) = +49.5% at 99 pts,
- * keeping the damage channel just above the crit pair (~+44%) so CH-01's
- * "damage channel is the ceiling" semantics survive the reprice.
- *   DAMAGE_CHANNEL_PCT <-> src/data/gameSystems.js DAMAGE_CHANNEL_PCT
- *                          (and WEAPON_CHANNELS damage-role perPt/100) */
-export const DAMAGE_CHANNEL_PCT = 0.005;
+/* v2.3.1153: damage channel was repriced flat-in-tierMult -> a
+ * tier-independent multiplier (+49.5% at 99 pts).
+ * v2.3.1343 (owner directive 2026-07-16, kid-simple reprice): FLAT
+ * +1/pt again, but added POST-tier POST-variance (pre-crit/buffs) in
+ * _computeAttackDamage — "+1 damage per point" is the kid sentence,
+ * and post-roll flat can't compound with tier like the pre-1153
+ * version did.  Imbalance accepted by design (fun-first).
+ *   DAMAGE_CHANNEL_FLAT <-> src/data/gameSystems.js DAMAGE_CHANNEL_FLAT
+ *                           (and WEAPON_CHANNELS damage-role perPt) */
+export const DAMAGE_CHANNEL_FLAT = 1;
+
+/* v2.3.1345 (owner round 2): ACCELERATING FLAT + COUNTER SKILLS.
+ * Point N in a free-running channel is worth 2·UNIT·N (always bigger
+ * than the point before); cumulative = UNIT·p·(p+1).  Crit/dodge are
+ * deterministic accumulators at rate 0.005/pt ("every Nth hit").
+ * Mirrors src/data/gameSystems.js t2Accel/T2_UNITS/t2CounterRate —
+ * mirror-audit ties them. */
+export const T2_UNITS = {
+  damage: 1, critDmg: 1.5, ironskin: 0.5, resilience: 1, thorns: 1,
+  secondwind: 2.5, vigor: 2, recovery: 1, lifeblood: 1.5, stamina: 1,
+};
+export function t2Accel(pts, unit) {
+  const p = Math.max(0, Math.min(100, Math.floor(pts || 0)));
+  return Math.round(unit * p * (p + 1));
+}
+export function t2CounterRate(pts) {
+  return Math.max(0, Math.min(100, Math.floor(pts || 0))) * 0.005;
+}
 
 export const ARCHETYPES = {
       fodder:   { hpMult: 0.6, dmgMult: 0.8, spdMult: 1.0, emoji: '🟢', color: '#3dd497' },

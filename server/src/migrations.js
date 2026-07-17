@@ -40,7 +40,7 @@
  *   4. add a case to test/migrations.test.mjs with a real legacy blob.
  */
 
-export const RPG_SCHEMA_VERSION = 7;
+export const RPG_SCHEMA_VERSION = 8;
 
 /* Pure version of the v2.3.769 heal (was GameRoom._healLifeSkills):
  * records bootstrapped from pre-fix clients carry lifeSkills with
@@ -93,11 +93,45 @@ export function computeCanonicalPools(blob) {
   const defNext = pool(blob.defenseSkill && blob.defenseSkill.level,
     sum(blob.defenseSpec, ['bulwark', 'ironskin', 'thorns', 'secondwind', 'poise']));
   if (blob.defenseUnspent !== defNext) { blob.defenseUnspent = defNext; changed = true; }
-  const hpNext = pool(blob.vitality, sum(blob.hpSpec, ['vigor', 'recovery', 'lifeblood', 'resilience']));
+  /* v2.3.1342: 'laststand' was missing from this list since the channel
+     shipped (v2.3.1160) — Last Stand spends were never counted as
+     "spent", so this recompute refunded them into hpUnspent every pass:
+     free points and a client/server pool desync.  Found during the
+     level-is-build design audit. */
+  const hpNext = pool(blob.vitality, sum(blob.hpSpec, ['vigor', 'recovery', 'lifeblood', 'resilience', 'laststand']));
   if (blob.hpUnspent !== hpNext) { blob.hpUnspent = hpNext; changed = true; }
   const enNext = pool(blob.endurance, sum(blob.enduranceSpec, ['stamina', 'conditioning', 'swiftness', 'evasion', 'reflexes']));
   if (blob.enduranceUnspent !== enNext) { blob.enduranceUnspent = enNext; changed = true; }
   return changed;
+}
+
+/* v2.3.1342: total T2 points PLACED across all six grids — the new
+ * combat level (owner directive 2026-07-16: "each tier 2 point should
+ * raise your combat level", cap 1000 = COMBAT_BUILD_CEILING).  Pure and
+ * blob-shaped so migration v8, _recomputeMaxes (grids.js), and tests
+ * share ONE summation; per-channel [0,100] clamp matches the
+ * sanitizers.  Read-only — never reuse _clampBuildTotal (it mutates). */
+const BUILD_KEYS = {
+  weapon: {
+    sword: ['edge', 'precision', 'executioner', 'tempo', 'cleave'],
+    bow:   ['drawPower', 'marksmanship', 'headshot', 'piercing', 'longshot'],
+    staff: ['spellPower', 'overload', 'detonation', 'attunement', 'focus'],
+  },
+  defense:   ['bulwark', 'ironskin', 'thorns', 'secondwind', 'poise'],
+  hp:        ['vigor', 'recovery', 'lifeblood', 'resilience', 'laststand'],
+  endurance: ['stamina', 'conditioning', 'swiftness', 'evasion', 'reflexes'],
+};
+export function computeBuildTotal(blob) {
+  if (!blob || typeof blob !== 'object') return 0;
+  const sum = (spec, keys) => keys.reduce((a, k) => a + ((spec && typeof spec[k] === 'number') ? Math.max(0, Math.min(100, Math.floor(spec[k]))) : 0), 0);
+  let total = 0;
+  for (const cat of Object.keys(BUILD_KEYS.weapon)) {
+    total += sum(blob.weaponSpecs && blob.weaponSpecs[cat], BUILD_KEYS.weapon[cat]);
+  }
+  total += sum(blob.defenseSpec, BUILD_KEYS.defense);
+  total += sum(blob.hpSpec, BUILD_KEYS.hp);
+  total += sum(blob.enduranceSpec, BUILD_KEYS.endurance);
+  return total;
 }
 
 export const MIGRATIONS = [
@@ -279,6 +313,30 @@ export const MIGRATIONS = [
     // v2.3.1158: formula extracted to computeCanonicalPools (above) so
     // the live stats_update path shares it; this entry just delegates.
     run: computeCanonicalPools,
+  },
+  {
+    v: 8,
+    name: 'level-is-build',
+    // v2.3.1342: combat level = total T2 points PLACED, cap 1000 (owner
+    // directive 2026-07-16 — every point spent is +1 level, so every
+    // level-up is a real power gain; max level 1000).  Replaces the
+    // v2.3.910 stat-sum derivation (sum of six skill levels, cap 500).
+    // Recomputed here once per stored blob so saves converge on load
+    // without waiting for a stats_update; _recomputeMaxes re-derives
+    // the same formula live.  Levels can DROP for characters with
+    // skill levels but unspent points — accepted (no live players;
+    // celebration loops only fire on increases).  Idempotent: the
+    // recompute converges.  Runs AFTER the v8-adjacent laststand pool
+    // fix in computeCanonicalPools so "placed" counts every channel.
+    run(blob) {
+      if (!blob || typeof blob !== 'object') return false;
+      // 1 + placed (capped 1000) — mirrors _recomputeMaxes: fresh
+      // characters are level 1 and the first point is +1 like every
+      // other (level = points alone made point #1 a 1 -> 1 dud).
+      const next = Math.min(1000, 1 + computeBuildTotal(blob));
+      if (blob.level !== next) { blob.level = next; return true; }
+      return false;
+    },
   },
 ];
 

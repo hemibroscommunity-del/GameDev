@@ -171,7 +171,7 @@ const {
   recalcDerived, getActiveWeapon, meleeSwingSfx, calcWeaponDmg, calcCritChance, calcCritMult,
   getWeaponCritStat, awardWeaponXp, migrateWeaponT2,
   migrateDefenseT2, awardDefenseXp, getDefenseBlockBonus, getIronSkinReduction, getBlockStaminaMult,
-  migrateGrids, getConditioningMult, migrateUniformT2,
+  migrateGrids, getConditioningFlat, migrateUniformT2,
   calcMoveSpeed, calcMaxHp, calcMaxStam, calcMaxMana, calcBlockReduction, getArmorHp,
   calcSpecialDmg, rollPassiveDodge,
   xpRequired, monsterStat, createDefaultCompStats,
@@ -2074,8 +2074,11 @@ export var BroTown = function BroTown(_ref0) {
       /* v2.3.910: combat level is now derived (sum of build-skill levels), set
          by recalcDerived above.  Seed _lastShownLevel to the current level so
          the on-kill level-up VFX fires only for levels gained from here on, not
-         a burst for every level the character already has. */
-      if (S.rpg._lastShownLevel == null) S.rpg._lastShownLevel = S.rpg.level || 1;
+         a burst for every level the character already has.
+         v2.3.1342: also clamp DOWNWARD — level-is-build (level = T2 points
+         placed) can lower an old save's level, and a stale high-water here
+         would mute every celebration until the player re-passed it. */
+      if (S.rpg._lastShownLevel == null || S.rpg._lastShownLevel > (S.rpg.level || 1)) S.rpg._lastShownLevel = S.rpg.level || 1;
       /* v2.3.687: restore any orphaned steel piece (worn nowhere, bagged
          nowhere -- e.g. unequipped via the old Equipment-menu toggle) into
          the bag so it's never lost. */
@@ -3082,11 +3085,12 @@ export var BroTown = function BroTown(_ref0) {
              Endurance up to 500ms.  Damage sites read truthiness of
              _dodgeRoll for invuln, so this directly stretches the
              invuln window in sync with the movement window. */
-          /* v2.3.1314: + Reflexes (Stamina-grid T2, +1ms/pt cap +100)
-             on top of the Endurance stretch — the roll window IS the
-             i-frame, so this directly buys survival frames. */
+          /* v2.3.1314: + Reflexes (Stamina-grid T2) on top of the
+             Endurance stretch — the roll window IS the i-frame, so
+             this directly buys survival frames.
+             v2.3.1343 (kid-simple reprice): +2ms/pt, cap +200ms. */
           var _dodgeMs = 250 + Math.min(((S.rpg && S.rpg.endurance) || 0), 250)
-            + Math.min(100, (S.rpg && S.rpg.enduranceSpec && S.rpg.enduranceSpec.reflexes) || 0);
+            + Math.min(200, 2 * ((S.rpg && S.rpg.enduranceSpec && S.rpg.enduranceSpec.reflexes) || 0));
           if (rollAge < _dodgeMs) {
             S.player.x += Math.cos(S._dodgeRoll.angle) * 6;
             S.player.y += Math.sin(S._dodgeRoll.angle) * 6;
@@ -3903,7 +3907,7 @@ export var BroTown = function BroTown(_ref0) {
             var stAmuletMult = ((_R7$_amuletBonus = _R7._amuletBonus) === null || _R7$_amuletBonus === void 0 ? void 0 : _R7$_amuletBonus.stat) === 'staminaRegen' ? 1 + _R7._amuletBonus.value / 100 : 1;
             /* v2.3.1154: × Conditioning (Endurance grid) -- mirrors the
                worker's regen tick. */
-            _R7.stamina = Math.min(_R7.maxStamina, _R7.stamina + 10 / 60 * stEndMult * regenMult * stAmuletMult * getConditioningMult(_R7));
+            _R7.stamina = Math.min(_R7.maxStamina, _R7.stamina + 10 / 60 * stEndMult * regenMult * stAmuletMult + getConditioningFlat(_R7) / 60); /* v2.3.1345: flat regen */
           }
           /* Mana regen — §3.4: OOC 2.5%/s after 2s × Mind.
              v2.3.234 (Phase 4): Mind speeds up the recharge alongside
@@ -3923,7 +3927,7 @@ export var BroTown = function BroTown(_ref0) {
           if (_R8.stamina < _R8.maxStamina && !S._serverMonsters) {
             var _stEndMult8 = 1 + (_R8.endurance || 0) * 0.002;
             /* v2.3.1154: × Conditioning, same as the OOC branch above. */
-            _R8.stamina = Math.min(_R8.maxStamina, _R8.stamina + 10 / 60 * _stEndMult8 * getConditioningMult(_R8));
+            _R8.stamina = Math.min(_R8.maxStamina, _R8.stamina + 10 / 60 * _stEndMult8 + getConditioningFlat(_R8) / 60); /* v2.3.1345: flat regen */
           }
           /* Slow mana regen in combat — 1%/s × Mind.
              v2.3.234 (Phase 4): Mind multiplies combat regen too. */
@@ -6917,7 +6921,12 @@ export var BroTown = function BroTown(_ref0) {
     style: {
       position: 'absolute',
       inset: 0,
-      zIndex: 22,
+      /* v2.3.1342: 22 -> 70.  Spending a T2 point in the Build sheet is
+         now a level-up (level-is-build), and the dash sheet + spend
+         dialog sit at zIndex 60 — the banner must float above them or
+         the in-sheet celebration is invisible.  pointerEvents none, so
+         nothing underneath loses taps. */
+      zIndex: 70,
       pointerEvents: 'none',
       display: 'flex',
       alignItems: 'center',
@@ -6973,7 +6982,11 @@ export var BroTown = function BroTown(_ref0) {
       color: 'rgba(255,255,255,.6)',
       marginTop: 4
     }
-  }, levelUpMsg.kind === 'warning' ? (levelUpMsg.sub || '') : "+5 Capacity \xB7 +5 Technique"))), rpgState && /*#__PURE__*/React.createElement("div", {
+  }, levelUpMsg.kind === 'warning' ? (levelUpMsg.sub || '')
+    /* v2.3.1342: was "+5 Capacity · +5 Technique" — legacy copy from the
+       retired flat per-level T2 grant.  Kid-true line: every level-up
+       (kill-path or point spend) refills all three pools. */
+    : "You got stronger! HP \xB7 Stamina \xB7 Mana refilled"))), rpgState && /*#__PURE__*/React.createElement("div", {
     style: {
       position: 'absolute',
       top: 44,

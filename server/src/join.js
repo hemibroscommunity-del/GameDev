@@ -266,7 +266,10 @@ export const joinMethods = {
         // v2.3.910: combat level is now the sum of the build-skill levels
         // (up to 500), so the first-connect cap rises to match.  The level
         // is re-derived from the stat sum on the next stats_update anyway.
-        const BOOTSTRAP_LEVEL_CAP = 500;
+        // v2.3.1342: level = T2 points placed, cap 1000 (owner directive
+        // 2026-07-16); still re-derived by _recomputeMaxes regardless of
+        // what the bootstrap payload claims.
+        const BOOTSTRAP_LEVEL_CAP = 1000;
         const BOOTSTRAP_XP_CAP = 50000;
         const BOOTSTRAP_UT2_CAP = 75;
         const BOOTSTRAP_COINS_CAP = 2000;
@@ -606,7 +609,7 @@ export const joinMethods = {
       // the echo (the caps.gems lesson, TRAPS #9).  Absent, the legacy
       // client-local Extract path stays (broken settlement, no
       // regression -- echo-stomped as before).
-      caps: { trade: true, questTrack: true, gamble: true, clans: true, arena: true, dungeon: true, sponsor: true, guilds: true, pets: true, harden: true, trade2: true, weaponDrops: true, botfp: true, jackpot: true, hpEndGrids: true, t2uniform: true, httpAuth: true, party: true, amuletForge: true, gems: true, petLoot: true, gemExtract: true, partyChat: true, trade2Weapons: true, laststand: true, friends: true /* v2.3.1323 */, ..._liveFlags },
+      caps: { trade: true, questTrack: true, gamble: true, clans: true, arena: true, dungeon: true, sponsor: true, guilds: true, pets: true, harden: true, trade2: true, weaponDrops: true, botfp: true, jackpot: true, hpEndGrids: true, t2uniform: true, httpAuth: true, party: true, amuletForge: true, gems: true, petLoot: true, gemExtract: true, partyChat: true, trade2Weapons: true, laststand: true, friends: true /* v2.3.1323 */, t2simple: true /* v2.3.1342: level = T2 points placed (cap 1000); client gates its level derivation + spend celebration on this so an old worker's player_state echo can't stomp the new formula */, ..._liveFlags },
       // v2.3.1178: this session's private economy-endpoint token.
       // state_sync goes to the joining socket ONLY -- never broadcast.
       httpToken: session.httpToken,
