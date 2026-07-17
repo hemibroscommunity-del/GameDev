@@ -2960,10 +2960,11 @@ export class EffectsRenderer {
       if (ent.fire) ent.fire.visible = false;
     }
     /* drawn-height / frame cadence -- copied from the LOCAL figures so a remote
-       gatherer reads at the same size: chopper (_updateExtractionCue, 84px @
-       45ms), cook (41px @ 60ms), fire (_updateFiremaking, 88px @ 55ms). */
+       gatherer reads at the same size: chopper (_updateExtractionCue, 112px @
+       45ms; v2.3.1348 +33% with the local figure), cook (41px @ 60ms), fire
+       (_updateFiremaking, 88px @ 55ms). */
     const SPEC = {
-      chop: { frames: this._chopFrames, h: 84, ms: 45 },
+      chop: { frames: this._chopFrames, h: 112, ms: 45 },
       cook: { frames: this._cookFrames, h: 41, ms: 60 },
       fire: { frames: this._fireFrames, h: 88, ms: 55 },
     };
@@ -3741,7 +3742,7 @@ export class EffectsRenderer {
        player's side, faces the trunk (source faces right -> flip when the
        tree is on the player's LEFT). */
     if (ex.skill === 'woodcutting' && this.chopSprite && this._chopFrames.length) {
-      const CHOP_H = 84;          // drawn height (~player scale); tune to taste
+      const CHOP_H = 112;         // drawn height; v2.3.1348: 84 -> 112 (+33%, owner request). Gear layers + traits derive from this same transform, so everything scales together.
       const CHOP_OFFSET = 30;     // px from the trunk to the figure's centre
       const CHOP_FRAME_MS = 45;   // ~22fps -> ~1.1s per swing loop
       /* v2.3.1131: play only the 12 downswing frames (source indices 12-23) --
