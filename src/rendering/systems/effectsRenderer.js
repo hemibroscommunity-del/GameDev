@@ -4,6 +4,15 @@
  * Uses PixiJS Graphics for procedural particles and Text for damage numbers.
  */
 import { Assets, BitmapFont, BitmapText, Container, Graphics, Rectangle, Sprite, Text, Texture, TextStyle } from 'pixi.js';
+
+/* v2.3.1358 (owner directive: ALL animations ready before first use —
+   see CLAUDE.md "Animation preloading is LAW"): every Assets.load in
+   this renderer is tracked so the intro gate can AWAIT the whole set.
+   _fxLoad is a drop-in for Assets.load; effectsAnimationsReady() is
+   consumed by preloadWorldAnimations (preloadAnimations.js). */
+const _fxPreload = [];
+const _fxLoad = (url) => { const p = Assets.load(url); _fxPreload.push(p); return p; };
+export function effectsAnimationsReady() { return Promise.allSettled(_fxPreload); }
 import { ELEMENTS } from '@/data/elements.js';
 import { ZONES } from '@/data/zones.js';
 import { TILE, MINE_SPOT_R } from '@/data/constants.js';
@@ -32,7 +41,7 @@ import { GEARLAYER_VER } from '../gearVersion.js';   // shared cache-bust string
 const POPUP_ICONS = {};
 const POPUP_ICON_KEYS = ['xp', 'gold', 'sword', 'arrow', 'spell', 'heart'];
 Promise.all(POPUP_ICON_KEYS.map((k) =>
-  Assets.load('/icons/popups/' + k + '.webp').then((tex) => { POPUP_ICONS[k] = tex; })
+  _fxLoad('/icons/popups/' + k + '.webp').then((tex) => { POPUP_ICONS[k] = tex; })
 )).catch((err) => console.warn('[popup-icons] load failed', err));
 
 /* Elemental shard icons -- one PNG per zone, served from
@@ -41,7 +50,7 @@ Promise.all(POPUP_ICON_KEYS.map((k) =>
    the overlay. */
 const SHARD_ICONS = {};
 Promise.all(Object.values(ZONE_SHARDS).map((s) =>
-  Assets.load('/icons/shards/' + s.key + '.webp').then((tex) => { SHARD_ICONS[s.key] = tex; })
+  _fxLoad('/icons/shards/' + s.key + '.webp').then((tex) => { SHARD_ICONS[s.key] = tex; })
 )).catch((err) => console.warn('[shard-icons] load failed', err));
 
 /* v2.3.1334: painted magic bolt (owner sheet) — the basic staff
@@ -56,7 +65,7 @@ Promise.all(Object.values(ZONE_SHARDS).map((s) =>
 const MAGIC_BOLT_FRAMES = [];
 const MAGIC_BOLT_ANCHOR = { x: 0.688, y: 0.534 };
 const MAGIC_BOLT_FRAME_MS = 90;
-Assets.load('/sprites/projectiles/magic-bolt-v1.webp?v=2.3.1334').then((tex) => {
+_fxLoad('/sprites/projectiles/magic-bolt-v1.webp?v=2.3.1334').then((tex) => {
   if (!tex || !tex.source) return;
   const fw = Math.floor(tex.source.width / 4);
   for (let i = 0; i < 4; i++) {
@@ -85,7 +94,7 @@ const NODE_SPRITE_TEX = {};
 const NODE_SPRITE_HEIGHT_BASE = { tree: 168, fishSpot: 132, oreVein: 132 };
 const NODE_SPRITE_ANCHOR_Y = { tree: 1.0, fishSpot: 0.5, oreVein: 1.0 };
 Promise.all(Object.entries(NODE_SPRITE_SOURCES).map(([k, path]) =>
-  Assets.load(path).then((tex) => { NODE_SPRITE_TEX[k] = tex; })
+  _fxLoad(path).then((tex) => { NODE_SPRITE_TEX[k] = tex; })
 )).catch((err) => console.warn('[node-sprites] load failed', err));
 
 /* Ore-vein break: a 14-frame 256-px horizontal strip (intact -> split
@@ -102,7 +111,7 @@ const ORE_BREAK_DURATION_MS = 700;
 const ORE_BREAK_FILL = 0.45;
 const ORE_BREAK_ANCHOR_Y = 0.78;
 let ORE_BREAK_TEX = null;
-Assets.load('/sprites/world/ore-vein-break.webp?v=1').then((tex) => {
+_fxLoad('/sprites/world/ore-vein-break.webp?v=1').then((tex) => {
   if (!tex || !tex.source) return;
   tex.source.scaleMode = 'linear';
   tex.source.autoGenerateMipmaps = true;
@@ -123,7 +132,7 @@ const ORE_BREAK_SPLIT_FRAME = 7;
 /* Copper ore icon (same asset the inventory uses) — floats out of the broken
    node as a "collected" pop. All ores currently share the copper thumb. */
 let ORE_ICON_TEX = null;
-Assets.load('/icons/ore/ore-copper.webp').then((tex) => {
+_fxLoad('/icons/ore/ore-copper.webp').then((tex) => {
   if (tex) { tex.source.scaleMode = 'linear'; ORE_ICON_TEX = tex; }
 }).catch((err) => console.warn('[ore-icon] load failed', err));
 
@@ -173,10 +182,10 @@ const IMPACT_MIN_GAP_MS = 150;
    town has no snowmen.  Keeps the "no eager preloading" memory/download budget. */
 let IMPACT_TEX = null;
 let _impactLoadStarted = false;
-function ensureImpactTex() {
+export function ensureImpactTex() {
   if (_impactLoadStarted) return;
   _impactLoadStarted = true;
-  Assets.load('/sprites/monsters/snowman/impact.png?v=2').then((tex) => {
+  _fxLoad('/sprites/monsters/snowman/impact.png?v=2').then((tex) => {
     if (!tex || !tex.source) return;
     tex.source.scaleMode = 'linear';
     tex.source.autoGenerateMipmaps = true;
@@ -376,7 +385,7 @@ export class EffectsRenderer {
     this.nodeLayer.addChild(this.chopSprite);
     this._chopFrames = [];
     this._chopLastFrame = -1;  // strike-frame edge tracker for the chop sfx
-    Assets.load('/sprites/skills/chop-strip.webp').then((tex) => {
+    _fxLoad('/sprites/skills/chop-strip.webp').then((tex) => {
       const FW = 240, FH = 220;  // per-frame size of chop-strip.png
       const n = Math.max(1, Math.round(tex.width / FW));
       for (let i = 0; i < n; i++) {
@@ -439,7 +448,7 @@ export class EffectsRenderer {
     this.cookChestSprite.visible = false;
     this.nodeLayer.addChild(this.cookChestSprite);
     this._cookFrames = [];
-    Assets.load('/sprites/skills/cook-strip.webp').then((tex) => {
+    _fxLoad('/sprites/skills/cook-strip.webp').then((tex) => {
       const FW = 213, FH = 220;
       const n = Math.max(1, Math.round(tex.width / FW));
       for (let i = 0; i < n; i++) this._cookFrames.push(new Texture({ source: tex.source, frame: new Rectangle(i * FW, 0, FW, FH) }));
@@ -448,7 +457,7 @@ export class EffectsRenderer {
        the bare mannequin legs don't show behind/through the greaves (the pan is
        preserved). Same 213x220 frame layout as cook-strip. */
     this._cookLeglessFrames = [];
-    Assets.load('/sprites/skills/cook-strip-legless.webp').then((tex) => {
+    _fxLoad('/sprites/skills/cook-strip-legless.webp').then((tex) => {
       const FW = 213, FH = 220;
       const n = Math.max(1, Math.round(tex.width / FW));
       for (let i = 0; i < n; i++) this._cookLeglessFrames.push(new Texture({ source: tex.source, frame: new Rectangle(i * FW, 0, FW, FH) }));
@@ -459,7 +468,7 @@ export class EffectsRenderer {
     this.fireSprite.visible = false;
     this.nodeLayer.addChild(this.fireSprite);
     this._fireFrames = [];
-    Assets.load('/sprites/skills/firemaking-strip.webp').then((tex) => {
+    _fxLoad('/sprites/skills/firemaking-strip.webp').then((tex) => {
       const FW = 161, FH = 220;
       const n = Math.max(1, Math.round(tex.width / FW));
       for (let i = 0; i < n; i++) this._fireFrames.push(new Texture({ source: tex.source, frame: new Rectangle(i * FW, 0, FW, FH) }));
@@ -680,7 +689,7 @@ export class EffectsRenderer {
     this.nodeLayer.addChild(this.bowWeaponSprite);
     const _loadBowStrip = (target, dir, url, cfg) => {
       target[dir] = [];
-      Assets.load(url + '?v=' + BOW_ART_VERSION).then((tex) => {
+      _fxLoad(url + '?v=' + BOW_ART_VERSION).then((tex) => {
         const n = Math.max(1, Math.round(tex.width / cfg.fw));
         for (let i = 0; i < n; i++) target[dir].push(new Texture({ source: tex.source, frame: new Rectangle(i * cfg.fw, 0, cfg.fw, cfg.fh) }));
       }).catch((err) => console.warn('[bow ' + dir + '] load failed', err));
@@ -3073,7 +3082,7 @@ export class EffectsRenderer {
     let e = this._gearStrips[key];
     if (e === undefined) {
       this._gearStrips[key] = 'loading';
-      Assets.load('/sprites/gear/' + slot + '/' + item + '/' + pose + '-' + dir + '.png?v=' + GEARLAYER_VER).then((tex) => {
+      _fxLoad('/sprites/gear/' + slot + '/' + item + '/' + pose + '-' + dir + '.png?v=' + GEARLAYER_VER).then((tex) => {
         const n = Math.max(1, Math.round(tex.width / fw));
         const arr = [];
         for (let i = 0; i < n; i++) arr.push(new Texture({ source: tex.source, frame: new Rectangle(i * fw, 0, fw, tex.height) }));

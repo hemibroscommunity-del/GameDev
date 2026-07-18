@@ -25,9 +25,9 @@ import { getDeathFrame as getPlayerDeathFrame, hasDeathSprites as hasPlayerDeath
 import { getWeaponTexture, hasWeapon } from '../weaponSprites.js';
 import { getAnchor, getJogForwardHand, getWeaponHandle, getHeadAnchor } from '../playerAnchors.js';
 import { getNftTextures } from '../nftAvatars.js';
-import { getHeadwear } from '../traits/headwearCatalog.js';
-import { getFacialHair } from '../traits/facialHairCatalog.js';
-import { getHair } from '../traits/hairCatalog.js';
+import { getHeadwear, HEADWEAR_CATALOG } from '../traits/headwearCatalog.js';
+import { getFacialHair, FACIALHAIR_CATALOG } from '../traits/facialHairCatalog.js';
+import { getHair, HAIR_CATALOG } from '../traits/hairCatalog.js';
 import { getSkin, getPants, getShoes, getBodyFrame, getPickupHeadFrame, preloadBodyVariant } from '../playerSkins.js';
 import { DISPLAY_DS, downscaleByFactor } from '../spriteScale.js'; /* v2.3.1120: display-texture downscale + lockstep transform compensation */
 import { getHairColor, getColoredHairTextures } from '../traits/hairColorCatalog.js';
@@ -1857,6 +1857,46 @@ function _ensureTraitTextures() {
    is the red one."  v2.3.139 shrunk the player heart to 40 (3-digit
    fit); v2.3.141 matched the monster heart to the same size + sprite
    per user request. */
+/* v2.3.1358 (owner directive: ALL animations ready before first use —
+   CLAUDE.md "Animation preloading is LAW").  Kicks every head-trait set
+   (base art for ALL catalog ids + the local player's selected recolors,
+   hair-clip masks, the NFT face composite) and the HUD bar/heart
+   textures, and returns a promise the intro gate awaits.  The ensure
+   guards cache internally, so in-game first-use lookups become cache
+   hits.  Remote players' arbitrary RECOLORS stay lazy by design (the
+   recolor LRU holds 12 — pre-baking every color x trait combo would
+   evict itself); their base art is covered here. */
+export function preloadTraits() {
+  const urls = [];
+  const cats = [
+    ['headwear', HEADWEAR_CATALOG],
+    ['hair', HAIR_CATALOG],
+    ['facialhair', FACIALHAIR_CATALOG],
+  ];
+  for (const [category, catalog] of cats) {
+    for (const entry of catalog) {
+      if (!entry.id || entry.id === 'none') continue;
+      _ensureTraitLoaded(category, entry.id); /* kicks meta + all dirs (retry-guarded) */
+      for (const dir of ['east', 'north', 'northeast', 'south', 'southwest']) {
+        urls.push(`/sprites/traits/${category}/${entry.id}/${dir}.png?v=${TRAIT_VER}`);
+      }
+    }
+  }
+  /* Local player's live selection: recolors + hair-clip mask + NFT face. */
+  try {
+    getColoredHatTextures(getHeadwear(), getHatColor());
+    getColoredHairTextures(getHair(), getHairColor());
+    getColoredFacialHairTextures(getFacialHair(), getFacialHairColor());
+    _ensureHairMaskLoaded(getHeadwear());
+    _ensureTraitTextures();
+    _ensureHudBarTextures();
+  } catch (e) { /* individual warms are best-effort */ }
+  /* Await the base art via Assets' per-URL dedup (same URLs the ensure
+     guards fetch).  allSettled: a missing direction is normal for some
+     traits (meta-declared) and must not hold the gate hostage. */
+  return Promise.allSettled(urls.map((u) => Assets.load(u).catch(() => {})));
+}
+
 const PLAYER_HEART_SIZE = 40;
 const MONSTER_HEART_SIZE = 40;
 const PLAYER_HP_NUM_STYLE = {
