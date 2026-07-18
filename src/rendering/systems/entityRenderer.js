@@ -17,6 +17,7 @@ for (const el of Object.values(ELEMENTS || {})) {
 import { lookupCollision, PVP_THREAT_CONSENT_MS } from '@/data/gameSystems.js';
 import { getFrame, resolveDirection, cycleMs, hasPose, frameCount as playerFrameCount } from '../playerSprites.js';
 import { getShieldFrame } from '../shieldSprites.js';
+import { jogWaistRow } from '../jogWaist.js'; /* v2.3.1341: stable waist band */
 import { getFrame as getSlimeFrame, hasState as hasSlimeState, frameCount as slimeFrameCount } from '../slimeSprites.js';
 import { getFrame as getSnowmanFrame, hasFrames as hasSnowmanFrames, frameCount as snowmanFrameCount, getHitFrame as getSnowmanHitFrame, hitFrameCount as snowmanHitFrameCount, getDeathFrame as getSnowmanDeathFrame, deathFrameCount as snowmanDeathFrameCount } from '../snowmanSprites.js';
 import { variantSpritesFor } from '../monsterVariantSprites.js';
@@ -614,7 +615,7 @@ function _bodyRegionTex(bodyTex, region) {
    and cached per (body-frame, loadout) -- cheap, recomputed only on a cache
    miss.  Falls back to the raw body texture if pixel access fails. */
 const _maskedBodyCache = new Map();
-function _maskedBodyFrame(bodyTex, worn, dilate) {
+function _maskedBodyFrame(bodyTex, worn, dilate, poseInfo) {
   /* v2.3.690: bake accounting for the perf HUD (?perf=1).  Cache misses are
      the spike source -- a gear swap rebakes every frame on next sighting.
      Read + reset by perfHud; zero cost beyond two adds per MISS. */
@@ -623,10 +624,10 @@ function _maskedBodyFrame(bodyTex, worn, dilate) {
     ? (window.__btBakeStats || (window.__btBakeStats = { count: 0, ms: 0 }))
     : null;
   try {
-    return _maskedBodyFrameInner(bodyTex, worn, dilate, _bt0, _bs);
+    return _maskedBodyFrameInner(bodyTex, worn, dilate, _bt0, _bs, poseInfo);
   } finally { /* timing recorded inside on actual bakes only */ }
 }
-function _maskedBodyFrameInner(bodyTex, worn, dilate, _bt0, _bs) {
+function _maskedBodyFrameInner(bodyTex, worn, dilate, _bt0, _bs, poseInfo) {
   if (!bodyTex || !worn.length) return bodyTex;
   let bres;
   try { bres = bodyTex.source && bodyTex.source.resource; } catch (e) { bres = null; }
@@ -943,8 +944,23 @@ function _maskedBodyFrameInner(bodyTex, worn, dilate, _bt0, _bs) {
         let w0 = 256, w1 = 256;
         if ((wornChest || wornLegs) && figBot > figTop) {
           const fh2 = figBot - figTop;
-          w0 = Math.max(0, Math.round(figTop + 0.38 * fh2));
-          w1 = Math.min(256, Math.round(figTop + 0.64 * fh2));
+          /* v2.3.1341 (owner: waist shimmer): for JOG the band rows come from
+             the committed jogWaistRow table (the offline-measured skin->pants
+             row per frame, the same source the attack composites land on)
+             instead of the live silhouette's figTop/figBot -- the alpha-
+             threshold jitter in those made the pants strip visible through
+             the see-through chain belt shift every frame.  The measured row
+             still tracks the genuine run-cycle bob.  Extents ~= the old
+             0.38..0.64 fractions around the waist.  Stand is a single frame
+             (already stable) and other poses keep the fraction formula. */
+          if (poseInfo && poseInfo.pose === 'jog') {
+            const wr = jogWaistRow(poseInfo.dir, poseInfo.frameIdx || 0);
+            w0 = Math.max(0, wr - 26);
+            w1 = Math.min(256, wr + 18);
+          } else {
+            w0 = Math.max(0, Math.round(figTop + 0.38 * fh2));
+            w1 = Math.min(256, Math.round(figTop + 0.64 * fh2));
+          }
           for (let y = w0; y < w1; y++) {
             for (let x = 0; x < 256; x++) {
               if (gop[y * 256 + x]) { if (x < rowMin[y]) rowMin[y] = x; if (x > rowMax[y]) rowMax[y] = x; }
@@ -1229,7 +1245,7 @@ export async function prewarmMaskedBodyFrames(opts) {
           }
         }
         if (!worn.length) continue;
-        try { _maskedBodyFrame(tex, worn, 6); } catch (e) { /* best-effort */ }
+        try { _maskedBodyFrame(tex, worn, 6, { pose, dir, frameIdx: f }); } catch (e) { /* best-effort */ }
         if (budgetMs) {
           if (performance.now() - chunkT0 >= budgetMs) {
             await _nextFrame();
@@ -1309,7 +1325,7 @@ export async function prewarmAltWornSets(opts) {
             if (gt) worn.push({ k: sl + ':' + id, tex: gt });
           }
           if (!worn.length) continue;
-          try { _maskedBodyFrame(tex, worn, 6); } catch (e) { /* best-effort */ }
+          try { _maskedBodyFrame(tex, worn, 6, { pose, dir, frameIdx: f }); } catch (e) { /* best-effort */ }
           if (++sinceYield >= (fast ? 6 : 2)) {
             sinceYield = 0;
             if (fast) await new Promise((r) => setTimeout(r, 0));
@@ -3786,7 +3802,7 @@ export class EntityRenderer {
             const _rlegsW = _rworn.some(w => w.k && w.k.indexOf('legs:') === 0);
             const _rchestW = _rworn.some(w => w.k && w.k.indexOf('chest:') === 0);
             _rfull = pose === 'pickup' && _rlegsW && _rchestW;   // v2.3.1057: hide body, head overlay + gear render it (no bake)
-            const _mt = (pose === 'pickup') ? tex : _maskedBodyFrame(tex, _rworn, 6);
+            const _mt = (pose === 'pickup') ? tex : _maskedBodyFrame(tex, _rworn, 6, { pose, dir, frameIdx });
             if (spriteBody.texture !== _mt) spriteBody.texture = _mt;
           }
           /* v2.3.1055: pickup head overlay (drawn above gear in _orderTraitsAndWeapon).
@@ -4556,7 +4572,7 @@ export class EntityRenderer {
         const _chestW = _worn.some(w => w.k && w.k.indexOf('chest:') === 0);
         let _bodyTex;
         try {
-          _bodyTex = (!_worn.length || pose === 'pickup') ? tex : _maskedBodyFrame(tex, _worn, 6);
+          _bodyTex = (!_worn.length || pose === 'pickup') ? tex : _maskedBodyFrame(tex, _worn, 6, { pose, dir, frameIdx });
         } catch (e) { _bodyTex = tex; }
         if (spriteBody.texture !== _bodyTex) spriteBody.texture = _bodyTex;
         /* v2.3.1055: pickup head overlay (drawn above gear in _orderTraitsAndWeapon).

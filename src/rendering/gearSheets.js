@@ -15,7 +15,7 @@
 
 import { Rectangle, Texture } from 'pixi.js';
 import { GEAR_SLOTS, GEAR_CATALOG } from './gearCatalog.js';
-import { upscaleToFrameHeight } from './spriteScale.js'; /* v2.3.1110: restore downscaled gear sheets to the 256px frame */
+import { upscaleToFrameHeight, antialiasUpscaledCanvas } from './spriteScale.js'; /* v2.3.1110 upscale; v2.3.1341 AA */
 import { loadWebpOrPng } from './webpImage.js'; /* v2.3.1122: prefer lossless WebP, fall back to PNG */
 
 const FRAME_W = 256;
@@ -59,12 +59,20 @@ function buildSheet(key, slot, item, pose, dir, attempt = 0) {
   return loadImg(`/sprites/gear/${slot}/${item}/${pose}-${dir}.png?v=${GEAR_VERSION}${bust}`).then(rawImg => {
     /* restore a downscaled-on-disk gear sheet to the 256px frame (no-op for any
        native >=256 sheet, so the variable-height combat poses are untouched) */
-    const img = upscaleToFrameHeight(rawImg, FRAME_H);
+    const rawH = rawImg.naturalHeight || rawImg.height || 0;
     /* v2.3.1120: gear stays at the FULL 256 frame (NOT display-downscaled like the
        body).  Gear is also consumed by the combat swing/bowshot stand-ins
        (effectsRenderer) at 256, so downscaling it here would shrink the legs there;
        instead the MAIN renderer's _placeGear divides the body transform by
-       DISPLAY_DS to render this 256 gear at the right size over the smaller body. */
+       DISPLAY_DS to render this 256 gear at the right size over the smaller body.
+       v2.3.1341 (owner: the chain belt / armor edges SHIMMER while jogging): the
+       v2.3.1237 anti-alias cure was only ever applied to the BODY sheets, so
+       128px-on-disk gear rendered with raw nearest-upscale stair-steps that
+       crawl sub-pixel in motion.  antialiasUpscaledCanvas is the SAME resample,
+       but size-preserving — the 256 contract above still holds (unlike
+       bakeDisplayCanvas, which would shrink gear if DISPLAY_DS ever went back
+       to 2).  Native >=256 sheets pass through untouched. */
+    const img = antialiasUpscaledCanvas(upscaleToFrameHeight(rawImg, FRAME_H), rawH);
     const src = Texture.from(img).source;
     src.scaleMode = 'linear';
     src.autoGenerateMipmaps = true;

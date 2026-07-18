@@ -49,6 +49,32 @@ SHEETS = {
 }
 
 
+_JOG_WAIST = None
+def jog_waist_row(pose, d, frame_idx):
+    """v2.3.1341: parse JOG_WAIST out of src/rendering/jogWaist.js (single
+    source of truth) and mirror jogWaistRow().  None for non-jog poses or a
+    direction missing from the table (caller falls back to the silhouette
+    fractions, matching the renderer)."""
+    global _JOG_WAIST
+    if pose != 'jog':
+        return None
+    if _JOG_WAIST is None:
+        import json, re
+        src = open('src/rendering/jogWaist.js').read()
+        m = re.search(r'JOG_WAIST\s*=\s*(\{.*?\n\})', src, re.S)
+        _JOG_WAIST = {}
+        if m:
+            body = m.group(1)
+            for dm in re.finditer(r"(\w+)\s*:\s*\[([^\]]*)\]", body):
+                vals = [int(v) for v in dm.group(2).replace('\n', ' ').split(',') if v.strip()]
+                if vals:
+                    _JOG_WAIST[dm.group(1)] = vals
+    arr = _JOG_WAIST.get(d)
+    if not arr:
+        return None
+    return arr[frame_idx % len(arr)]
+
+
 def load(slot, pose, d):
     try:
         return Image.open(SHEETS[slot].format(pose=pose, dir=d)).convert('RGBA')
@@ -231,8 +257,16 @@ def composite(pose, d, i, worn, nudges, mask_dilate=6):
                     # horizontal span per row so outline arcs at waist height
                     # (beyond the gauntlets) stay dead.
                     if (worn.get('chest') or worn.get('legs')) and len(ys):
-                        fh = int(ys[-1] - ys[0])
-                        w0 = int(ys[0] + 0.38 * fh); w1 = int(ys[0] + 0.64 * fh)
+                        # v2.3.1341: for JOG the band rows come from the
+                        # committed JOG_WAIST table (jogWaistRow), not the
+                        # live silhouette -- mirrors entityRenderer's stable
+                        # waist band; keep in sync.
+                        wr = jog_waist_row(pose, d, i)
+                        if wr is not None:
+                            w0, w1 = max(0, wr - 26), min(FRAME, wr + 18)
+                        else:
+                            fh = int(ys[-1] - ys[0])
+                            w0 = int(ys[0] + 0.38 * fh); w1 = int(ys[0] + 0.64 * fh)
                         for y in range(max(0, w0), min(FRAME, w1)):
                             gx = np.where(gop[y])[0]
                             if len(gx):
