@@ -149,22 +149,26 @@ def verify(d):
                     if x < gxmin: gxmin = x
                     if x > gxmax: gxmax = x
             for x in range(H):
-                # draw order (v2.3.1346): BELT (behind the whole character) ->
-                # pants band / pocket body -> greaves -> chest.  Band/pocket
-                # body only survives OUTSIDE the dilated erase.
+                # draw order: pants band / pocket body -> greaves -> chest.
+                # v2.3.1347: visible BODY pixels in the band rows that classify
+                # as pants get the belt sheet's chain painted over them
+                # (mirrors _maskedBodyFrame's waist chain paint).
                 p = None
                 in_band = (w0 is not None and w0 <= y < w1 and gxmin <= x <= gxmax)
                 in_pocket = (not gearop[y][x] and not reach[y][x])
-                if beltFx0 is not None:
-                    bp = beltSpx[beltFx0 + x, y]
-                    if bp[3] > ALPHA:
-                        p = bp; srcmap[y][x] = 4
                 if bpx[bx0 + x, y][3] > ALPHA:
                     if (in_band or in_pocket) and not dil[y][x]:
                         p = bpx[bx0 + x, y]; srcmap[y][x] = 1   # surviving skin/pants
                     elif (wr is not None and y >= int(wr * scale)
                           and (near2[y][x] or in_band or in_pocket)):
                         p = bpx[bx0 + x, y]; srcmap[y][x] = 1   # pants-restore
+                if beltFx0 is not None and in_band:
+                    bp = beltSpx[beltFx0 + x, y]
+                    if bp[3] > ALPHA and (p is None or (
+                            p[1] >= p[0] - 10 and p[1] > p[2] + 8 and p[0] < 150)):
+                        # chain fills seam holes and replaces pants/green;
+                        # skin (arm) stays in front
+                        p = bp; srcmap[y][x] = 4
                 if lpx[lx0 + x, y][3] > ALPHA:
                     p = lpx[lx0 + x, y]; srcmap[y][x] = 2
                 if cpx[cx0 + x, y][3] > ALPHA:

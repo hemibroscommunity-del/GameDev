@@ -217,14 +217,6 @@ def composite(pose, d, i, worn, nudges, mask_dilate=6):
             if f is not None:
                 pieces[slot] = np.array(f)
     o = Image.new('RGBA', (FRAME, FRAME), (0, 0, 0, 0))
-    # v2.3.1346: jog chain belt sheet — BEHIND the whole character (mirrors
-    # entityRenderer's addChildAt(0); keep in sync).  Composited first so the
-    # body, arms, and every armor piece draw over it; it shows only through
-    # the seam holes the masked-body erase opens.
-    if pose == 'jog' and worn.get('chest') and worn.get('legs'):
-        bf = frame('belt', pose, d, i)
-        if bf is not None:
-            o.alpha_composite(bf)
     if not full:
         b = frame('body', pose, d, i)
         if b is not None:
@@ -253,6 +245,18 @@ def composite(pose, d, i, worn, nudges, mask_dilate=6):
                     # them.  Mirrors the renderer.
                     if worn.get('chest') and worn.get('legs'):
                         _blend_ghost_hand(ba, ys[0], ys[-1], orig_alpha)
+                        # v2.3.1347: mirror the renderer's v2.3.650 PANTS-
+                        # RESTORE (previously missing here — the preview
+                        # under-showed the waist band): the erase only zeroes
+                        # alpha, RGB stays, so re-open erased pixels that read
+                        # as pants; skin/shoes stay erased.
+                        rr = ba[:, :, 0].astype(int)
+                        gg = ba[:, :, 1].astype(int)
+                        bb2 = ba[:, :, 2].astype(int)
+                        pantsish = (gg >= rr - 10) & (gg > bb2 + 8) & (rr < 150)
+                        res2 = (ba[:, :, 3] == 0) & (orig_alpha > 40) & pantsish
+                        res2[:max(0, neck_y)] = False
+                        ba[res2, 3] = orig_alpha[res2]
                 # v2.3.681: erase the naked-body OUTLINE/SHADOW remnants that
                 # survive OUTSIDE the armour silhouette where the AI drawing
                 # drifted (floating arcs hugging the figure).  When armoured,
@@ -323,6 +327,31 @@ def composite(pose, d, i, worn, nudges, mask_dilate=6):
                         if worn.get('legs'):
                             res[min(FRAME, hi + 8):] = False
                         ba[res, 3] = orig_alpha[res]
+            # v2.3.1347: paint the chain ONTO the exposed waist — pants/green-
+            # classified body pixels in the jog band rows are replaced with the
+            # frame-aligned belt sheet's pixels (mirrors _maskedBodyFrame's
+            # waist chain paint; keep in sync).  Arm/skin pixels untouched, so
+            # the art's own depth applies.
+            if pose == 'jog' and worn.get('chest') and worn.get('legs'):
+                wr = jog_waist_row(pose, d, i)
+                bf = frame('belt', pose, d, i)
+                if wr is not None and bf is not None:
+                    barr = np.array(bf)
+                    w0b, w1b = max(0, wr - 26), min(FRAME, wr + 18)
+                    sl = ba[w0b:w1b]
+                    bsl = barr[w0b:w1b]
+                    r = sl[:, :, 0].astype(int); g = sl[:, :, 1].astype(int); b = sl[:, :, 2].astype(int)
+                    beltop = bsl[:, :, 3] > 40
+                    # seam holes (erased bare midriff) fill with chain; pants/
+                    # green pixels get chain over them; skin (arm) untouched
+                    hole = (sl[:, :, 3] <= 40) & beltop
+                    pantsy = (sl[:, :, 3] > 40) & (g >= r - 10) & (g > b + 8) & (r < 150) & beltop
+                    for msk, seta in ((hole, True), (pantsy, False)):
+                        sl[:, :, 0][msk] = bsl[:, :, 0][msk]
+                        sl[:, :, 1][msk] = bsl[:, :, 1][msk]
+                        sl[:, :, 2][msk] = bsl[:, :, 2][msk]
+                        if seta:
+                            sl[:, :, 3][msk] = 255
             o.alpha_composite(Image.fromarray(ba))
     for slot in ('legs', 'chest', 'head'):
         if slot in pieces:
