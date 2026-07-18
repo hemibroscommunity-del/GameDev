@@ -255,6 +255,34 @@ try {
 /* Plain popups the atlas can render: digits/letters/space and + - . ! */
 const DMG_BMP_RE = /^[0-9A-Za-z+\-. !]+$/;
 
+/* v2.3.1361: prewarm the BitmapText render pipe behind the loading
+   screen.  BitmapFont.install (above) bakes the glyph atlas at module
+   load, but the atlas GPU upload AND the BitmapText batcher/shader
+   init were still deferred to the first popup DRAW — i.e. the first
+   hit of the session, mid-combat.  On iOS Safari that first-use init
+   is the prime suspect for the "hit once by a fire goblin → game
+   crashed" report (the rest of the hit path is years-old code and the
+   crash arrived with v2.3.1357).  Renders one throwaway BitmapText
+   containing every baked char through the REAL renderer while the
+   intro overlay is still up, so combat never pays (or crashes on)
+   that init.  Any failure here permanently downgrades popups to the
+   classic Text path — same visuals, pre-1357 cost. */
+export function prewarmDmgFontPipe(renderer) {
+  if (!renderer || !_dmgBmpReady) return;
+  let bt = null;
+  try {
+    bt = new BitmapText({
+      text: '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz+-. !',
+      style: { fontFamily: DMG_BMP_FONT, fontSize: DMG_BMP_BAKE_PX },
+    });
+    bt.alpha = 0.001; /* must actually draw — alpha 0 / visible false would be culled */
+    renderer.render(bt);
+  } catch (e) {
+    _dmgBmpReady = false; /* pipe is broken here — never touch it in combat */
+  }
+  if (bt) { try { bt.destroy(); } catch (e) { /* best-effort */ } }
+}
+
 /* Cheap ASCII test — anything outside 0x20-0x7E is treated as emoji. */
 function isAsciiOnly(s) {
   if (typeof s !== 'string') return true;
@@ -795,18 +823,32 @@ export class EffectsRenderer {
 
     /* v2.3.1360 (owner): World View player beacon — the avatar renders
        as a distant speck on the overworld and gets lost against the
-       painted terrain.  A tiny pulsing circle of light hugs the
-       character, worldview-only.  Plain layered fills on the shared
-       particle Graphics (no filters — iOS WebGL static, CLAUDE.md);
-       low alpha so the speck reads THROUGH the glow. */
+       painted terrain.  v2.3.1361 (owner: "more like a reticle circle,
+       not a blurry light"): crisp stroked ring + 4 compass ticks +
+       center dot instead of soft fills.  A dark under-stroke keeps the
+       ring readable over both snow and dark forest.  Plain strokes on
+       the shared particle Graphics (no filters — iOS WebGL static,
+       CLAUDE.md); subtle radius pulse so the eye still finds it. */
     if (S.currentZone === 'worldview' && S.player) {
-      const _pu = 0.85 + 0.15 * Math.sin(now / 400);
-      gfx.circle(S.player.x, S.player.y, 16 * _pu);
-      gfx.fill({ color: 0xfff2c8, alpha: 0.10 });
-      gfx.circle(S.player.x, S.player.y, 10 * _pu);
-      gfx.fill({ color: 0xfff2c8, alpha: 0.16 });
-      gfx.circle(S.player.x, S.player.y, 5);
-      gfx.fill({ color: 0xffffff, alpha: 0.22 });
+      const px = S.player.x, py = S.player.y;
+      const r = 14 + 1.5 * Math.sin(now / 400);
+      /* contrast halo under the bright ring */
+      gfx.circle(px, py, r);
+      gfx.stroke({ width: 3.5, color: 0x1c2430, alpha: 0.5 });
+      /* the reticle ring */
+      gfx.circle(px, py, r);
+      gfx.stroke({ width: 1.5, color: 0xffffff, alpha: 0.95 });
+      /* 4 compass ticks, outward from the ring */
+      for (let i = 0; i < 4; i++) {
+        const a = i * Math.PI / 2;
+        const ca = Math.cos(a), sa = Math.sin(a);
+        gfx.moveTo(px + ca * (r + 1), py + sa * (r + 1));
+        gfx.lineTo(px + ca * (r + 6), py + sa * (r + 6));
+      }
+      gfx.stroke({ width: 2, color: 0xffffff, alpha: 0.95 });
+      /* center dot on the player's feet */
+      gfx.circle(px, py, 2);
+      gfx.fill({ color: 0xffffff, alpha: 0.9 });
     }
 
     // Hit particles
@@ -1028,19 +1070,30 @@ export class EffectsRenderer {
            the baked set) assemble from the pre-baked glyph atlas instead of
            rasterizing a fresh canvas — the pack-fight frame killer.  Tint
            colors the white fill; the black stroke stays black (0 x tint). */
-        let text;
+        let text = null;
         if (_dmgBmpReady && !dmg.special && baseStyle === DMG_STYLE && DMG_BMP_RE.test(dmg.text || '')) {
-          text = new BitmapText({
-            text: dmg.text,
-            style: { fontFamily: DMG_BMP_FONT, fontSize: DMG_BMP_BAKE_PX },
-          });
-          /* Bake is 2x — scale down to the popup size (crisp on retina).
-             NOTE the spawn-pop animation below multiplies .scale; stash
-             the base so it scales around this, not around 1. */
-          text._bmpBaseScale = fontSize / DMG_BMP_BAKE_PX;
-          text.scale.set(text._bmpBaseScale, text._bmpBaseScale);
-          text.tint = displayColor;
-        } else {
+          /* v2.3.1361: defensive — if the BitmapText pipe ever throws
+             (fire-goblin crash hardening), downgrade to classic Text
+             PERMANENTLY for the session instead of taking the whole
+             frame down on every subsequent popup. */
+          try {
+            text = new BitmapText({
+              text: dmg.text,
+              style: { fontFamily: DMG_BMP_FONT, fontSize: DMG_BMP_BAKE_PX },
+            });
+            /* Bake is 2x — scale down to the popup size (crisp on retina).
+               NOTE the spawn-pop animation below multiplies .scale; stash
+               the base so it scales around this, not around 1. */
+            text._bmpBaseScale = fontSize / DMG_BMP_BAKE_PX;
+            text.scale.set(text._bmpBaseScale, text._bmpBaseScale);
+            text.tint = displayColor;
+          } catch (e) {
+            _dmgBmpReady = false;
+            if (text) { try { text.destroy(); } catch (e2) { /* best-effort */ } }
+            text = null;
+          }
+        }
+        if (!text) {
           const textStyle = { ...baseStyle, fontSize, fill: displayColor };
           if (dmg.special) {
             /* distance:0 + high blur = even halo on all sides. Warm yellow
