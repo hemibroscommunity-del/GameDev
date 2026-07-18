@@ -21,6 +21,7 @@ import { enqueuePeerDamage, peerDmgKey, distributeKillXpToBuild, applyMeleeLifes
 import { handleChatEvent, handleEmoteEvent, handlePartyChatEvent } from '@/game/chat.js';
 import { friendsSrv } from '@/ui/mobile/sheet/friendsSync.js'; /* v2.3.1324 */
 import { _objectSpread, _slicedToArray, _toConsumableArray } from '@/lib/babelHelpers.js';
+import { saveRpgSoon } from '@/game/rpgSave.js'; /* v2.3.1356 */
 
 /* v2.3.1107: angle -> 8-way compass, same SECTORS convention as
    entityRenderer (atan2(dy,dx) -> 'east' when dx>0).  Used to reconcile a
@@ -920,7 +921,11 @@ export function processGameEvent(type, payload, S, deps) {
                     }
                   }
                   setRpgState(_objectSpread({}, R));
-                  try { localStorage.setItem('bt_rpg', JSON.stringify(R)); } catch(e) {}
+                  /* v2.3.1356: debounced — a piercing special one-shotting
+                     a pack delivers N monster_kill events back-to-back;
+                     the inline full-blob write per event froze the frame
+                     (owner report: bow specials vs snowmen).  rpgSave.js. */
+                  saveRpgSoon();
                 }
               }
               break;
