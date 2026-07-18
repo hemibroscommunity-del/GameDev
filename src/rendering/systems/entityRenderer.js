@@ -451,7 +451,15 @@ function _placeTrait(sprite, entry, display, pose, dir, mirror, frameIdx, bodySc
      only by bodyScale reads too small on the taller mining figure (and a touch
      big on the shorter fishing one).  Multiply by the character-height ratio so
      the hat/beard sit on the head the same way they do idle. */
-  const poseTraitMul = pose === 'mine' ? 1.21 : pose === 'fish' ? 0.88 : 1;
+  /* v2.3.1349: jog east (and west via mirror -- 'east' is the stored dir for
+     both) renders the whole body at BODY_DIR_SCALE 1.25 to close the jog-east
+     source art's small-body-mass gap (v2.3.740), which inflated the
+     stand-referenced head traits (hair / beard / hat / hat mask) along with
+     it.  Owner: shrink the head + all headwear 33% on that facing.  Applied
+     here so every trait AND the hair-clip mask shrink in lockstep around the
+     crown anchor. */
+  const poseTraitMul = pose === 'mine' ? 1.21 : pose === 'fish' ? 0.88
+    : (pose === 'jog' && dir === 'east') ? 0.67 : 1;
   const dscale = (_pick(meta.scale) || 1) * poseScale * poseTraitMul;
   if (headwear.texture !== headwearTex) headwear.texture = headwearTex;
   /* Anchor the hat sprite on its own crown pixel, then pin that point to
