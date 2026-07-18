@@ -32,9 +32,9 @@ const FRAME_H = 256;
    recoloured shirt (paper-doll, mirrors the cook stand-in). Each is a 4096x128
    32-frame strip aligned to fish-south.png; the armor tracks the body's per-
    frame lean, the shirt is a grayscale tint base with a 1px outline. */
-const GEAR_VERSION = '2.3.1344'; /* v2.3.1344: waist sealed — zero tan, minimal black (owner).  Alpha
-   hardened to NE's binary standard (semi-transparent belt pixels let the pants-restored body bleed
-   through) + full chain coverage of the exposed midsection.
+const GEAR_VERSION = '2.3.1344b'; /* v2.3.1344b: waist seal redone with the renderer's visibility rules —
+   chain only on pixels the game actually shows (no more chain over the SW swing arm), thigh-edge pants
+   left alone, NE magenta-bleed specks neutralized.  Alpha hardened to NE's binary standard.
    BUMP THIS on EVERY gear-art regen — v2.3.1342c changed the PNGs without bumping, so
    previews served the cached old art and the change was invisible on-device. */
 

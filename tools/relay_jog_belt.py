@@ -25,10 +25,27 @@ Dry-run writes a before/after montage to $BT_SCRATCH.  Do NOT pipe the
 run through `head` -- SIGPIPE can kill the process before the save.
 """
 import os
+import re
 import sys
 from PIL import Image
 
 ALPHA = 20
+
+
+def jog_waist_table():
+    """Parse src/rendering/jogWaist.js -> {dir: [row256, ...]} (the measured
+    per-frame skin->pants transition rows the renderer's band anchors on)."""
+    src = open('src/rendering/jogWaist.js').read()
+    m = re.search(r'JOG_WAIST\s*=\s*(\{.*?\n\})', src, re.S)
+    jw = {}
+    if m:
+        for dm in re.finditer(r'"?(\w+)"?\s*:\s*\[([^\]]*)\]', m.group(1)):
+            vals = [int(v) for v in dm.group(2).replace('\n', ' ').split(',') if v.strip()]
+            if vals:
+                jw[dm.group(1)] = vals
+    if not jw:
+        raise SystemExit('jogWaist.js parse failed')
+    return jw
 
 
 def arg(flag, default=None, cast=str):
@@ -53,6 +70,7 @@ def main():
     # strip_belt_shadow) is then run against at 256px.
     strip_only = '--strip-only' in sys.argv
 
+    _JW = jog_waist_table()
     chest_p = f'public/sprites/gear/chest/steelplate/jog-{d}.png'
     chest = Image.open(chest_p).convert('RGBA')
     legs = Image.open(f'public/sprites/gear/legs/steelgreaves/jog-{d}.png').convert('RGBA')
@@ -255,53 +273,80 @@ def main():
                     cpx[cx0 + x, y] = (0, 0, 0, 0)
                     fixedA += 1
 
-        # per-column nearest chest-opaque row above / greaves-opaque row below
-        prox = max(8, int(0.18 * figH))
-        chest_above = [[-1] * H for _ in range(H)]   # [x][y]
-        legs_below = [[H * 4] * H for _ in range(H)]
-        for x in range(H):
-            last = -1
-            ca = chest_above[x]
-            for y in range(H):
-                if cpx[cx0 + x, y][3] > ALPHA:
-                    last = y
-                ca[y] = last
-            nxt = H * 4
-            lb = legs_below[x]
-            for y in range(H - 1, -1, -1):
-                if lpx[lx0 + x, y][3] > ALPHA:
-                    nxt = y
-                lb[y] = nxt
+        # v2.3.1344b (owner: "chain is in front of the swing arm"): the first
+        # seal painted every uncovered body pixel — including forearm/thigh
+        # pixels the game never SHOWS (the masked-body bake erases body within
+        # 6px-at-256 of any gear; only pants-coloured pixels get re-opened by
+        # the v2.3.650 restore, and the confinement pass kills everything
+        # outside the gear silhouette except the waist band rows).  Chain over
+        # those invisible pixels surfaced as chain ON the crossing arm.  Now
+        # the seal mirrors the renderer's visibility rules and covers ONLY
+        # pixels that would actually show:
+        #   pants  (row >= the jogWaist skin->pants line): visible when within
+        #          2px of gear or in the band rows -> chain;
+        #   skin   (row < the line): visible only OUTSIDE the 3px dilated
+        #          erase AND in the band rows within the gear span -> chain;
+        #   erased interior holes: armor on both sides within 12px -> chain
+        #          (background would show through the seam otherwise).
+        # Rows confined to the seam (down to the greaves-top median +2): the
+        # thigh/crotch region below is left alone — pants outlines beside the
+        # greaves are the normal look, and the crotch shadow is already baked.
+        wr256 = _JW[d][i % len(_JW[d])] if d in _JW else None
+        scale = H / 256.0
+        wr_s = int(wr256 * scale) if wr256 else y0 + int(0.52 * figH)
+        bw0, bw1 = (max(0, int((wr256 - 26) * scale)), min(H, int((wr256 + 18) * scale))) if wr256 else (0, 0)
+        # chebyshev distance-to-gear masks, radius 2 and 3 (separable)
+        gearop_f = [[(cpx[cx0 + x, y][3] > ALPHA or lpx[lx0 + x, y][3] > ALPHA)
+                     for x in range(H)] for y in range(H)]
+        def dilate(r):
+            hz = [[any(gearop_f[y][max(0, x - r):x + r + 1]) for x in range(H)] for y in range(H)]
+            return [[any(hz[yy][x] for yy in range(max(0, y - r), min(H, y + r + 1)))
+                     for x in range(H)] for y in range(H)]
+        near2, near3 = dilate(2), dilate(3)
+        span = {}
+        for y in range(H):
+            gx = [x for x in range(H) if gearop_f[y][x]]
+            if gx:
+                span[y] = (min(gx), max(gx))
 
-        mid0, mid1 = y0 + int(0.32 * figH), min(H, y0 + int(0.72 * figH))
-        halfT = int(0.20 * figH)
+        # per-frame greaves top: on airborne stride frames the legs ride LOWER
+        # than the direction median and the seam stretches — the window must
+        # follow, or the stretched gap stays open (north f17, 16px hole).
+        lt_f = [y for y in range(y0 + int(0.42 * figH), H)
+                if any(lpx[lx0 + x, y][3] > ALPHA for x in range(max(0, bcx - 4), min(H, bcx + 5)))]
+        frame_gt_rel = (min(lt_f) - y0) if lt_f else med_gt_rel
+        mid0, mid1 = y0 + int(0.32 * figH), min(H, y0 + max(med_gt_rel, frame_gt_rel) + 3)
         for y in range(mid0, mid1):
+            sp_row = span.get(y)
             for x in range(H):
                 if bpx[bx0f + x, y][3] <= ALPHA:
                     continue
                 if cpx[cx0 + x, y][3] > ALPHA or lpx[lx0 + x, y][3] > ALPHA:
                     continue
-                ca, lb = chest_above[x][y], legs_below[x][y]
-                has_above = ca >= 0 and y - ca <= prox * 2
-                enclosed = has_above and lb - y <= prox * 2
-                central = has_above and abs(x - bcx) <= halfT
-                if not (enclosed or central):
-                    # last-resort gate (verifier's own interior rule): armor
-                    # rendered on BOTH sides within 20px -> this hole would
-                    # show background/skin between armor pieces; cover it.
+                in_band = bw0 <= y < bw1 and sp_row is not None and sp_row[0] <= x <= sp_row[1]
+                pants = y >= wr_s
+                vis_pants = pants and (near2[y][x] or in_band)
+                vis_skin = (not pants) and (not near3[y][x]) and in_band
+                # below the direction's median seam bottom, ONLY interior
+                # holes are covered: visible pants there are the normal
+                # thigh-edge pants outline beside the greaves — chaining
+                # them drew chain flecks down the thighs on stride frames.
+                if y > y0 + med_gt_rel + 2:
+                    vis_pants = vis_skin = False
+                if not (vis_pants or vis_skin):
+                    # erased in-game: cover only a tight interior hole (armor
+                    # both sides within 6px), where background would punch
+                    # through the seam; arm<->torso gaps stay open.
                     covered = lambda xx: (cpx[cx0 + xx, y][3] > ALPHA or lpx[lx0 + xx, y][3] > ALPHA)
-                    left = any(covered(xx) for xx in range(max(0, x - 20), x))
-                    right = any(covered(xx) for xx in range(x + 1, min(H, x + 21)))
+                    left = any(covered(xx) for xx in range(max(0, x - 12), x))
+                    right = any(covered(xx) for xx in range(x + 1, min(H, x + 13)))
                     if not (left and right):
                         continue
-                if y <= y0 + med_gt_rel:
-                    sp = chpx[(x - x0) % chain_w, (y - plate_bot) % bandH]
-                    if sp[3] > 30:
-                        cpx[cx0 + x, y] = (sp[0], sp[1], sp[2], 255)
-                    else:
-                        cpx[cx0 + x, y] = (32, 34, 40, 255)  # link shadow, not black
+                sp = chpx[(x - x0) % chain_w, (y - plate_bot) % bandH]
+                if sp[3] > 30:
+                    cpx[cx0 + x, y] = (sp[0], sp[1], sp[2], 255)
                 else:
-                    cpx[cx0 + x, y] = (20, 22, 26, 255)      # inter-thigh crotch shadow
+                    cpx[cx0 + x, y] = (32, 34, 40, 255)  # link shadow, not black
                 fixedB += 1
 
         # solid-black backing bands -> chain: flat near-black chest pixels
