@@ -72,6 +72,13 @@ export const SettingsPanel = () => {
   const [debug, setDebug] = useState(() => {
     try { return localStorage.getItem('brotown_debug') === '1'; } catch { return false; }
   });
+  /* v2.3.1347: self-service character restart (owner playtest).
+     'idle' -> confirm overlay -> 'sending' (waiting on the server's
+     character_reset_done, which wipes + reloads in wsClient.js) or
+     'offline' (no live connection -- the reset MUST settle server-side,
+     a local-only wipe would just restore from the server blob on the
+     next join). */
+  const [resetStage, setResetStage] = useState('idle');
 
   const toggleAudio = () => {
     const next = !audio;
@@ -88,6 +95,62 @@ export const SettingsPanel = () => {
     } catch {}
   };
 
+  const confirmReset = () => {
+    const S = (typeof window !== 'undefined') && window._gameState && window._gameState.current;
+    if (!S || S._realtimeStatus !== 'connected' || !S.channel) {
+      setResetStage('offline');
+      return;
+    }
+    setResetStage('sending');
+    try { S.channel.send({ type: 'character_reset', payload: { confirm: true } }); } catch (e) {}
+    /* Fallback: if the ack (or the reload it triggers) never lands --
+       dropped socket mid-flight -- reload anyway after 8s.  Whether the
+       server processed the reset decides what the rejoin loads; the
+       player is never left staring at a dead "Restarting…" screen. */
+    setTimeout(() => { try { window.location.reload(); } catch (e) {} }, 8000);
+  };
+
+  if (resetStage === 'confirm' || resetStage === 'sending' || resetStage === 'offline') {
+    return (
+      <div style={{ ...panelStyle, display: 'flex', flexDirection: 'column', gap: 12, padding: '16px 12px' }}>
+        <div style={{ fontSize: 16, fontWeight: 700, color: COL.danger }}>Restart Character?</div>
+        {resetStage === 'sending' ? (
+          <div style={{ fontSize: 13.5, color: COL.text, lineHeight: 1.5 }}>Restarting…</div>
+        ) : resetStage === 'offline' ? (
+          <div style={{ fontSize: 13.5, color: COL.text, lineHeight: 1.5 }}>
+            Can&apos;t restart right now — no connection to the game server. Try again in a moment.
+          </div>
+        ) : (
+          <div style={{ fontSize: 13.5, color: COL.text, lineHeight: 1.5 }}>
+            Your character starts over at <b>Level 1</b>. All items, gold, skills and
+            quest progress are <b style={{ color: COL.danger }}>deleted forever</b>.
+            Your name, login key and friends are kept.
+          </div>
+        )}
+        <div style={{ display: 'flex', gap: 10, marginTop: 4 }}>
+          <button
+            onPointerUp={(e) => { e.stopPropagation(); if (resetStage !== 'sending') setResetStage('idle'); }}
+            style={{
+              flex: 1, minHeight: 44, borderRadius: 8, cursor: 'pointer',
+              background: COL.raised, color: COL.text,
+              border: `1px solid ${COL.borderStrong}`, fontFamily: 'inherit', fontSize: 14, fontWeight: 600,
+              opacity: resetStage === 'sending' ? 0.5 : 1,
+            }}
+          >Keep playing</button>
+          <button
+            onPointerUp={(e) => { e.stopPropagation(); if (resetStage === 'confirm') confirmReset(); }}
+            style={{
+              flex: 1, minHeight: 44, borderRadius: 8, cursor: 'pointer',
+              background: resetStage === 'confirm' ? COL.danger : COL.raised,
+              color: resetStage === 'confirm' ? '#fff' : COL.muted,
+              border: `1px solid ${COL.danger}`, fontFamily: 'inherit', fontSize: 14, fontWeight: 700,
+            }}
+          >{resetStage === 'sending' ? 'Restarting…' : 'Restart at Lv 1'}</button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div style={panelStyle}>
       <Toggle label="Audio" value={audio} onChange={toggleAudio} />
@@ -101,6 +164,11 @@ export const SettingsPanel = () => {
         onTap={() => controlsTutorialBus.open()} />
       <LinkRow label="Feedback — message the developers"
         onTap={() => dashboardPanelBus.push('feedback')} />
+      {/* v2.3.1347: destructive row — red label, drills into the
+          in-panel confirmation screen above (owner playtest request). */}
+      <LinkRow label="Restart character — start over at Level 1"
+        danger
+        onTap={() => setResetStage('confirm')} />
       <div style={{ marginTop: 10, padding: '0 8px', fontSize: 13, color: COL.muted, lineHeight: 1.4 }}>
         Tap the floating <b>D</b> button for the full devtools console.
       </div>
@@ -108,8 +176,9 @@ export const SettingsPanel = () => {
   );
 };
 
-/* v2.3.1291: 44px drill row — label left, ▸ affordance right. */
-const LinkRow = ({ label, onTap }) => (
+/* v2.3.1291: 44px drill row — label left, ▸ affordance right.
+   v2.3.1347: `danger` tints the label for destructive rows. */
+const LinkRow = ({ label, onTap, danger }) => (
   <button
     onPointerUp={(e) => { e.stopPropagation(); onTap(); }}
     style={{
@@ -123,7 +192,7 @@ const LinkRow = ({ label, onTap }) => (
       background: 'transparent',
       border: 'none',
       borderBottom: `1px solid ${COL.divider}`,
-      color: COL.text,
+      color: danger ? COL.danger : COL.text,
       fontFamily: 'inherit',
       fontSize: 13.5,
       textAlign: 'left',

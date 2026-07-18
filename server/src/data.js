@@ -25,7 +25,7 @@
  * Consumed by _spawnZoneMonsters (index.js) and _dungeonMonster
  * (dungeon.js).  Damage/XP/gold curves stay inline at those call sites
  * (unchanged by BF-1; centralize them if they ever need tuning). */
-export const MONSTER_HP_CURVE = { base: 12.5, ramp: 1.052, plateau: 1.035, endgame: 1.025 };
+export const MONSTER_HP_CURVE = { base: 12.5, ramp: 1.052, plateau: 1.035, endgame: 1.025, flat: 100 }; /* v2.3.1346: owner — every monster +100 HP flat */
 
 /* v2.3.1153: damage channel was repriced flat-in-tierMult -> a
  * tier-independent multiplier (+49.5% at 99 pts).

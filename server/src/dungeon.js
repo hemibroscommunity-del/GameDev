@@ -310,8 +310,8 @@ export const dungeonMethods = {
       variant: null, spawnVariant: null, spawnSpd: spd,
       level: lvl,
       element: element || null,
-      hp: Math.ceil(baseHp * a.hpMult),
-      maxHp: Math.ceil(baseHp * a.hpMult),
+      hp: Math.ceil(baseHp * a.hpMult) + (MONSTER_HP_CURVE.flat || 0),
+      maxHp: Math.ceil(baseHp * a.hpMult) + (MONSTER_HP_CURVE.flat || 0),
       dmg: Math.ceil(baseDmg * a.dmgMult),
       xp: Math.ceil(baseXp),
       gold: Math.ceil(baseGold),
@@ -358,7 +358,10 @@ export const dungeonMethods = {
     const present = this._dungeonZonePlayers(inst.zone).length;
     const scale = DUNGEONS.PARTY_HP_SCALE[Math.max(0, Math.min(present - 1, DUNGEONS.PARTY_HP_SCALE.length - 1))];
     const m = this._dungeonMonster(inst, inst.cfg.bossArchetype, inst.cfg.monsterLevel + 5, inst.cfg.element, 'boss');
-    m.hp = Math.ceil(m.hp * inst.cfg.bossMultiplier * scale);
+    // v2.3.1346: the flat +100 HP bump applies AFTER the boss/party
+    // multipliers -- "all monsters get +100", not +100 x8 amplified.
+    const hpFlat = MONSTER_HP_CURVE.flat || 0;
+    m.hp = Math.ceil((m.hp - hpFlat) * inst.cfg.bossMultiplier * scale) + hpFlat;
     m.maxHp = m.hp;
     m.dmg = Math.ceil(m.dmg * 1.5);
     m.emoji = BOSS_ABILITIES.BOSS_EMOJI[inst.cfg.bossArchetype] || '🐉';

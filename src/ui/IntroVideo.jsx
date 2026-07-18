@@ -108,13 +108,18 @@ export const IntroVideo = ({ onComplete, waitFor, themeAudio }) => {
            no-audio + thumbnail stream stripped, H.264 yuv420p + faststart
            (~0.6 MB). It carries its OWN LOADING caption + bar in the art, so
            the JS overlay was dropped.  loading-island.mp4 stays in git
-           history. */
+           history.
+           v2.3.1347: `loop` removed — the bar is baked into the frames, so
+           looping replayed the "loading" fill from empty after it had
+           visually completed (owner playtest: "shows it load all the way
+           then replays it loading halfway"). The clip now plays once and
+           holds its final (bar-full) frame while the asset gate resolves. */
         src="/intro/loading-ashore.mp4"
         autoPlay
         muted
         playsInline
-        loop
         preload="auto"
+        onEnded={(e) => { try { e.target.pause(); } catch (err) {} }}
         onError={() => { minDoneRef.current = true; readyRef.current = true; beginTransition(); finish(); }}
       />
     </div>

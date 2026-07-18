@@ -169,5 +169,32 @@ check('reconnect restores stored coins; level re-derives as 1 + placed T2 points
 check('reconnect stash passes the NON-strict clamp (server-minted quality kept)', ps2.weaponStash.length === 1 && ps2.weaponStash[0].quality === 'rare', ps2.weaponStash);
 check('reconnect restores the defense track', ps2.defenseSkill && ps2.defenseSkill.level === 2 && ps2.defenseSpec && ps2.defenseSpec.ironskin === 1);
 
+// ── 7. character_reset (v2.3.1347 self-service restart) ──
+// Wire contract: {confirm:true} required; snapshot to
+// rpgsnap:<pid>:prereset-<ts>; rpg:<pid> deleted; privileged
+// character_reset_done ack; session closed + in-memory state dropped.
+{
+  // 7a. no confirm -> no-op (accidental/forged sends do nothing).
+  await room.webSocketMessage(ws2, JSON.stringify({ type: 'character_reset', payload: {} }));
+  check('reset without confirm:true is a no-op', !!state._store.get('rpg:bp_pt_a') && !!room.playerState['bp_pt_a']);
+
+  // 7b. confirmed reset.
+  ws2.sent.length = 0;
+  await room.webSocketMessage(ws2, JSON.stringify({ type: 'character_reset', payload: { confirm: true } }));
+  check('rpg blob deleted', state._store.get('rpg:bp_pt_a') === undefined);
+  const snapKeys = [...state._store.keys()].filter((k) => k.startsWith('rpgsnap:bp_pt_a:prereset-'));
+  check('prereset parachute snapshot written', snapKeys.length === 1 && state._store.get(snapKeys[0]).coins === 1234, snapKeys);
+  check('character_reset_done acked', ws2.sent.some((m) => m.type === 'character_reset_done'), ws2.sent.map((m) => m.type));
+  check('session evicted + in-memory state dropped', !room.sessions.has(ws2) && room.playerState['bp_pt_a'] === undefined);
+  check('auth record survives (identity keeps the Login Key)', state._store.get('auth:bp_pt_a') !== undefined);
+
+  // 7c. rejoin bootstraps a FRESH character (empty payload -> level 1,
+  // zero coins) instead of restoring the old blob.
+  const ws3 = fakeWs('p3');
+  await join(ws3, 'bp_pt_a');
+  const ps3 = room.playerState['bp_pt_a'];
+  check('rejoin after reset is a fresh level-1 bootstrap', ps3 && ps3.level === 1 && (ps3.coins || 0) === 0 && Object.keys(ps3.inventory || {}).length === 0, ps3 && { level: ps3.level, coins: ps3.coins });
+}
+
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);
 process.exit(failures === 0 ? 0 : 1);

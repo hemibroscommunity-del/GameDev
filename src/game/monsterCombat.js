@@ -143,7 +143,13 @@ export function updateMonsterCombat(S, deps) {
             var expired = tickStatuses(m, 16.7 / 1000, Date.now(), _R6, { applyHp: !S._serverMonsters });
 
             /* ═══ ELEMENT STATUS OVERLAY — ambient particles on statused monsters ═══ */
-            if (m.statuses && m.alive) {
+            /* v2.3.1347: budget-capped. This runs per statused monster per
+               FRAME; a pack of burning fire goblins fed S.hitParticles
+               (and, below, S.dmgNumbers — each popup mints a Pixi Text)
+               without bound, and the game visibly slowed (owner playtest).
+               Past ~250 live particles the extra FX are invisible noise
+               anyway, so skip spawning instead of queueing. */
+            if (m.statuses && m.alive && S.hitParticles.length < 250) {
               Object.entries(m.statuses).forEach(function (_ref13) {
                 var _ref14 = _slicedToArray(_ref13, 2),
                   sid = _ref14[0],
@@ -155,11 +161,17 @@ export function updateMonsterCombat(S, deps) {
             }
             if (m._lastDotDmg && Date.now() - m._lastDotDmg.ts < 100) {
               var dot = m._lastDotDmg;
-              var dotElem = Object.keys(ELEMENTS).find(function (e) {
-                return ELEMENTS[e].status === dot.statusId;
-              });
-              var dotColor = dotElem ? ELEMENTS[dotElem].color : '#ff5e6c';
-              pushDmgPopup(S, m.x + (Math.random() - 0.5) * 10, monsterPopupY(m, -22), dot.amount + '', dotColor);
+              /* v2.3.1347: DoT popups yield when the popup field is already
+                 crowded — every burning monster emits one each 0.5s tick,
+                 and each popup is a fresh Pixi Text raster. Player-attack
+                 popups are unaffected (their sites don't check this). */
+              if ((S.dmgNumbers ? S.dmgNumbers.length : 0) < 30) {
+                var dotElem = Object.keys(ELEMENTS).find(function (e) {
+                  return ELEMENTS[e].status === dot.statusId;
+                });
+                var dotColor = dotElem ? ELEMENTS[dotElem].color : '#ff5e6c';
+                pushDmgPopup(S, m.x + (Math.random() - 0.5) * 10, monsterPopupY(m, -22), dot.amount + '', dotColor);
+              }
               m._lastDotDmg = null;
             }
             /* Check if DoT killed */

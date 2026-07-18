@@ -107,8 +107,10 @@ const room = new GameRoom(mockState, {});
 // Curve lock — the binding INV-03 audit point behind the 1.052 ramp.
 {
   const brute35 = createMonster('t', 'brute', 35, 0, 0);
-  check('curve lock: brute L35 HP === 99 (1.052 ramp, ceil-at-breaks form)',
-    brute35.hp === 99, brute35.hp);
+  // v2.3.1346: +100 universal flat rides on top of the ramp; the lock
+  // still pins the 1.052 curve itself (hp minus flat must stay 99).
+  check('curve lock: brute L35 HP === 99 + flat (1.052 ramp, ceil-at-breaks form)',
+    brute35.hp === 99 + (CLIENT_CURVE.flat || 0), brute35.hp);
 }
 
 // Spawn levels stay inside the band.

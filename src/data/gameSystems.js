@@ -3961,7 +3961,7 @@ export function discoverZone(zoneId) {
    server/src/data.js MONSTER_HP_CURVE (keep in sync), and IMPORTED by
    tools/balance-sim.mjs (which previously hardcoded a copy that could
    drift).  Damage/XP/gold curves are untouched (BF-1 is HP-only). */
-export const MONSTER_HP_CURVE = { base: 12.5, ramp: 1.052, plateau: 1.035, endgame: 1.025 };
+export const MONSTER_HP_CURVE = { base: 12.5, ramp: 1.052, plateau: 1.035, endgame: 1.025, flat: 100 }; /* v2.3.1346: owner — every monster +100 HP flat */
 
 export function monsterStat(base, level, rRamp, rPlateau, rEndgame) {
   if (level <= 30) return Math.ceil(base * Math.pow(rRamp, level - 1));
@@ -4062,8 +4062,8 @@ export function createMonster(id, archetype, level, x, y, element) {
     archetype: archetype,
     level: level,
     element: element || null,
-    hp: Math.ceil(baseHp * a.hpMult),
-    maxHp: Math.ceil(baseHp * a.hpMult),
+    hp: Math.ceil(baseHp * a.hpMult) + (MONSTER_HP_CURVE.flat || 0),
+    maxHp: Math.ceil(baseHp * a.hpMult) + (MONSTER_HP_CURVE.flat || 0),
     dmg: Math.ceil(baseDmg * a.dmgMult),
     xp: Math.ceil(baseXp),
     gold: Math.ceil(baseGold),

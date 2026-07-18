@@ -754,6 +754,11 @@ export class EffectsRenderer {
 
     // Hit particles
     const parts = S.hitParticles || [];
+    /* v2.3.1347: hard ceiling — burning-monster status FX (and any other
+       runaway spawner) could grow this without bound and tank the frame
+       rate. Particles are plain data drawn into the shared Graphics (no
+       per-particle Pixi object), so dropping the oldest is safe. */
+    if (parts.length > 400) parts.splice(0, parts.length - 400);
     for (let i = parts.length - 1; i >= 0; i--) {
       const p = parts[i];
       if (isNaN(p.x) || isNaN(p.y)) { parts.splice(i, 1); continue; }
@@ -939,7 +944,11 @@ export class EffectsRenderer {
         const SPACING = 26;
         let lowestY = -Infinity;
         let hasNeighbor = false;
-        for (let j = 0; j < numbers.length; j++) {
+        /* v2.3.1347: the neighbor scan is O(n) per NEW popup (O(n²) in a
+           burst). Past ~40 live popups the field is dense chaos where
+           stacking placement is unreadable anyway — skip the scan and
+           take the raw spawn position. */
+        for (let j = 0; numbers.length <= 40 && j < numbers.length; j++) {
           if (j === i) continue;
           const o = numbers[j];
           if (!o._pixiText || o._pixiText.destroyed) continue;
@@ -2951,10 +2960,11 @@ export class EffectsRenderer {
       if (ent.fire) ent.fire.visible = false;
     }
     /* drawn-height / frame cadence -- copied from the LOCAL figures so a remote
-       gatherer reads at the same size: chopper (_updateExtractionCue, 84px @
-       45ms), cook (41px @ 60ms), fire (_updateFiremaking, 88px @ 55ms). */
+       gatherer reads at the same size: chopper (_updateExtractionCue, 112px @
+       45ms; v2.3.1348 +33% with the local figure), cook (41px @ 60ms), fire
+       (_updateFiremaking, 88px @ 55ms). */
     const SPEC = {
-      chop: { frames: this._chopFrames, h: 84, ms: 45 },
+      chop: { frames: this._chopFrames, h: 112, ms: 45 },
       cook: { frames: this._cookFrames, h: 41, ms: 60 },
       fire: { frames: this._fireFrames, h: 88, ms: 55 },
     };
@@ -3732,7 +3742,7 @@ export class EffectsRenderer {
        player's side, faces the trunk (source faces right -> flip when the
        tree is on the player's LEFT). */
     if (ex.skill === 'woodcutting' && this.chopSprite && this._chopFrames.length) {
-      const CHOP_H = 84;          // drawn height (~player scale); tune to taste
+      const CHOP_H = 112;         // drawn height; v2.3.1348: 84 -> 112 (+33%, owner request). Gear layers + traits derive from this same transform, so everything scales together.
       const CHOP_OFFSET = 30;     // px from the trunk to the figure's centre
       const CHOP_FRAME_MS = 45;   // ~22fps -> ~1.1s per swing loop
       /* v2.3.1131: play only the 12 downswing frames (source indices 12-23) --

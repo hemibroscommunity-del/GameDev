@@ -289,6 +289,11 @@ export const PRIVILEGED_EVENTS = new Set([
   'pet_capture_result',
   // v2.3.1131: hardening rolls are server-side + private.
   'harden_result',
+  // v2.3.1347: character-restart ack (persistence.js) -- the client
+  // handler wipes localStorage and reloads; a forged one would wipe
+  // another player's local caches (their server blob would survive,
+  // but the grief is real).  Server-emitted only.
+  'character_reset_done',
   // v2.3.1198: gem-cut outcomes are server-rolled + private (amulet.js
   // _handleGemCut); forging one is fake-popup grief surface.
   'gem_cut_result',
@@ -638,8 +643,8 @@ export class GameRoom {
           spawnSpd: finalSpd,
           level: lvl,
           element: zone.element || null,
-          hp: Math.ceil(baseHp * a.hpMult),
-          maxHp: Math.ceil(baseHp * a.hpMult),
+          hp: Math.ceil(baseHp * a.hpMult) + (MONSTER_HP_CURVE.flat || 0),
+          maxHp: Math.ceil(baseHp * a.hpMult) + (MONSTER_HP_CURVE.flat || 0),
           dmg: Math.ceil(baseDmg * a.dmgMult),
           xp: Math.ceil(baseXp),
           gold: Math.ceil(baseGold),
@@ -2569,6 +2574,15 @@ export class GameRoom {
         // next in chain.
         if (session.id) {
           this._handleQuestTurnIn(session, msg.payload || msg);
+        }
+        break;
+
+      case 'character_reset':
+        // v2.3.1347: self-service full character restart -- snapshot,
+        // delete rpg:<pid>, ack + close so the client reloads into a
+        // fresh level-1 bootstrap.  See persistence.js.
+        if (session.id) {
+          await this._handleCharacterReset(session, msg.payload || msg);
         }
         break;
 
