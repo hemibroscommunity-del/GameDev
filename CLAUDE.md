@@ -129,6 +129,19 @@ Two protocol versions coexist; both must keep working:
 
 ## Conventions
 
+- **Animation preloading is LAW (owner directive 2026-07-19, after
+  repeated first-use-hitch reports).** EVERY animation/sprite asset
+  must be fully loaded during the loading screen, before the intro
+  overlay lifts — the loading screen is explicitly allowed to take
+  longer instead. The intro gate is `preloadPlayerAssets()`
+  (`src/rendering/pixiRenderer.js`), which awaits the central manifest
+  `preloadWorldAnimations()` (`src/rendering/preloadAnimations.js`).
+  Any NEW animation system MUST register its loader in that manifest
+  in the same PR. Lazy "load on first sighting/use" patterns
+  (`ensure*Loaded` guards, ctor-kicked unawaited `Assets.load`) are
+  BUGS unless the asset genuinely cannot be known at load time (e.g.
+  a remote player's arbitrary recolor). The owner has flagged this
+  multiple times — treat any first-use texture load as a regression.
 - Code comments carry version tags (e.g. `v2.3.694:`) explaining WHY a
   change exists, often with incident history. Match this style; the
   comments are the project's institutional memory.

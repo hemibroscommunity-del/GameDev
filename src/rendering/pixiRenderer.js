@@ -19,6 +19,7 @@ import { preloadStartZoneMap } from './tiledMaps.js';
 import { preloadGear } from './gearSheets.js';
 import { preloadCombatGear } from './combatGear.js';
 import { preloadBodyAll } from './playerSkins.js';
+import { preloadWorldAnimations } from './preloadAnimations.js'; /* v2.3.1358 */
 import { Assets } from 'pixi.js';
 
 /* v2.3.778: decode ALL textures to <img>-backed sources, never ImageBitmap.
@@ -59,6 +60,14 @@ export function preloadPlayerAssets() {
     /* v2.3.1022: warm the swing/bowshot gear sheets (network-only, parallel)
        so the first armored attack doesn't cold-load mid-combat. */
     preloadCombatGear(),
+    /* v2.3.1358 (owner directive — CLAUDE.md "Animation preloading is
+       LAW"): EVERY remaining animation — monster variants, slime/
+       snowman/player-death sheets, all EffectsRenderer strips (skill +
+       attack stand-ins, impact, icons), head traits, all zone maps +
+       walkability.  The loading screen is allowed to take longer;
+       first-use hitches are not.  New animation systems REGISTER in
+       preloadAnimations.js in the same PR. */
+    preloadWorldAnimations(),
   ]).then((results) =>
     /* Bake the armored-body masked frames while the intro overlay is still
        up (needs the body + gear sheets above resolved first), so the
