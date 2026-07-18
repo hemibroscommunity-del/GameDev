@@ -99,6 +99,18 @@ export function downscaleByFactor(src, ds = DISPLAY_DS) {
    helper then defers to downscaleByFactor, byte-identical to v2.3.1235. */
 export function bakeDisplayCanvas(full, srcH) {
   if (DISPLAY_DS > 1) return downscaleByFactor(full, DISPLAY_DS);
+  return antialiasUpscaledCanvas(full, srcH);
+}
+
+/* v2.3.1341: the DS=1 anti-alias resample above, extracted so GEAR sheets can
+   get the identical edge treatment.  Size-preserving by contract: the output
+   canvas is always the input's dimensions, so consumers that rely on the full
+   256 frame (effectsRenderer's combat stand-ins, gear<->body pixel alignment)
+   are unaffected — which is exactly why gearSheets couldn't reuse
+   bakeDisplayCanvas itself (a future DISPLAY_DS=2 rollback would shrink gear
+   through downscaleByFactor and break both).  Native-res art (srcH >= h)
+   passes through untouched and stays pixel-sharp. */
+export function antialiasUpscaledCanvas(full, srcH) {
   const w = full.naturalWidth || full.width || 0;
   const h = full.naturalHeight || full.height || 0;
   if (!w || !h || !srcH || srcH >= h) return full;  // native-res art: keep sharp
