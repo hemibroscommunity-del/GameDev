@@ -59,3 +59,8 @@ export function onHeadwearChange(fn) {
   _listeners.add(fn);
   return () => _listeners.delete(fn);
 }
+
+/* v2.3.1351: QA hook (same pattern as window.__broDashPanelBus) — the
+   headwear size-comparison rig cycles every hat on the live character;
+   the setter is otherwise unreachable from the console/bundle. */
+if (typeof window !== 'undefined') window.__btSetHeadwear = setHeadwear;
