@@ -42,6 +42,11 @@ def main():
     only = arg('--frames', None)
     only = set(int(f) for f in only.split(',')) if only else None
     apply_ = '--apply' in sys.argv
+    # v2.3.1342b (owner): --fix-only skips the erase+re-lay and runs ONLY the
+    # correction passes below (belt-behind-legs + gap fill) — for east/
+    # northeast, whose baked look the owner likes and which just need the
+    # layering rule enforced.
+    fix_only = '--fix-only' in sys.argv
 
     chest_p = f'public/sprites/gear/chest/steelplate/jog-{d}.png'
     chest = Image.open(chest_p).convert('RGBA')
@@ -126,6 +131,8 @@ def main():
         if plate_bot is None:
             plate_bot = y0 + med_plate_rel   # irregular frames use the direction median
         x0, x1 = bcx - W // 2, bcx + W // 2
+        if fix_only:
+            continue
 
         # per-column band bottom: greaves top + 2 (bridges the sliver);
         # CLAMPED to the direction median +4 -- the greaves probe follows
@@ -175,8 +182,57 @@ def main():
                     cpx[cx0 + x, y] = (sp[0], sp[1], sp[2], 255)
                     changed += 1
 
+    # ── Correction passes (all modes) — owner rules 2026-07-18: ──
+    #  A. the belt renders BEHIND the leg layer: the chest sheet draws ABOVE
+    #     gearLegs, so any chain pixel over opaque greaves paints ON TOP of
+    #     leg armor -> erase it (the greaves cover the spot; can't open a
+    #     gap).  Confined to the chain window below the plate bottom so
+    #     gauntlets crossing the thighs are untouched.
+    #  B. no background through the midsection: body-opaque pixels with
+    #     rendered coverage on both sides but nothing over them get a chain
+    #     pixel (laid only where plate+greaves are transparent -> behind
+    #     everything).
+    fixedA = fixedB = 0
+    for i in range(n):
+        if only is not None and i not in only:
+            continue
+        if not meas[i]:
+            continue
+        y0, figH, bcx, plate_bot, _, _ = meas[i]
+        cx0, lx0, bx0f = i * H, (i % ln) * H, (i % bn) * H
+        if plate_bot is None:
+            plate_bot = y0 + med_plate_rel
+        x0 = bcx - W // 2
+        wlo, whi = plate_bot - 1, min(H, y0 + med_gt_rel + int(0.14 * figH))
+        for y in range(wlo, whi):
+            for x in range(max(0, x0 - 4), min(H, bcx + W // 2 + 5)):
+                if cpx[cx0 + x, y][3] > ALPHA and lpx[lx0 + x, y][3] > ALPHA:
+                    cpx[cx0 + x, y] = (0, 0, 0, 0)
+                    fixedA += 1
+        mid0, mid1 = y0 + int(0.42 * figH), y0 + int(0.68 * figH)
+        for y in range(mid0, mid1):
+            for x in range(H):
+                if bpx[bx0f + x, y][3] <= ALPHA:
+                    continue
+                if cpx[cx0 + x, y][3] > ALPHA or lpx[lx0 + x, y][3] > ALPHA:
+                    continue
+                covered = lambda xx: (cpx[cx0 + xx, y][3] > ALPHA or lpx[lx0 + xx, y][3] > ALPHA)
+                left = any(covered(xx) for xx in range(max(0, x - 20), x))
+                right = any(covered(xx) for xx in range(x + 1, min(H, x + 21)))
+                if left and right:
+                    sp = chpx[(x - x0) % chain_w, (y - plate_bot) % bandH]
+                    if sp[3] > 30:
+                        cpx[cx0 + x, y] = (sp[0], sp[1], sp[2], 255)
+                    else:
+                        # chain hole at this phase: the pants band may not
+                        # reach this row, so back it with the bake's dark
+                        # shadow instead of risking a background dot
+                        cpx[cx0 + x, y] = (20, 22, 26, 255)
+                    fixedB += 1
+
     print(f'jog-{d}: W={W} bandH={bandH} plateRelMed={med_plate_rel} '
-          f'greavesRelMed={med_gt_rel} -> {changed}px changed across {n} frames')
+          f'greavesRelMed={med_gt_rel} -> {changed}px re-laid, '
+          f'{fixedA}px belt-behind-legs erased, {fixedB}px gap-filled, {n} frames')
 
     zy0, zy1 = int(0.30 * H), int(0.95 * H)
     zh = zy1 - zy0
