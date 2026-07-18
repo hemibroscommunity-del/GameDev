@@ -421,9 +421,9 @@ const JOG_EW_HAT_TUNE = {
   'red-cap':           { mul: 1.10, dy: 0 },
   'shark-hat':         { mul: 1.00, dy: 2 },
   'bandana':           { mul: 1.10, dy: 0 },
-  'sombrero':          { mul: 1.20, dy: 7 },
-  'bucket-hat':        { mul: 1.20, dy: 7 },
-  'fedora':            { mul: 1.20, dy: 7 },
+  'sombrero':          { mul: 1.20, dy: 6 }, /* v2.3.1355: owner round 3, up 1px */
+  'bucket-hat':        { mul: 1.20, dy: 6 },
+  'fedora':            { mul: 1.20, dy: 6 },
 };
 /* v2.3.1354: IDLE (stand pose, every facing — a hat that reads small
    idling east reads small on every idle facing; per-dir splits would
