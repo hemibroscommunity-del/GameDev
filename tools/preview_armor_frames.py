@@ -217,6 +217,14 @@ def composite(pose, d, i, worn, nudges, mask_dilate=6):
             if f is not None:
                 pieces[slot] = np.array(f)
     o = Image.new('RGBA', (FRAME, FRAME), (0, 0, 0, 0))
+    # v2.3.1346: jog chain belt sheet — BEHIND the whole character (mirrors
+    # entityRenderer's addChildAt(0); keep in sync).  Composited first so the
+    # body, arms, and every armor piece draw over it; it shows only through
+    # the seam holes the masked-body erase opens.
+    if pose == 'jog' and worn.get('chest') and worn.get('legs'):
+        bf = frame('belt', pose, d, i)
+        if bf is not None:
+            o.alpha_composite(bf)
     if not full:
         b = frame('body', pose, d, i)
         if b is not None:
@@ -316,13 +324,6 @@ def composite(pose, d, i, worn, nudges, mask_dilate=6):
                             res[min(FRAME, hi + 8):] = False
                         ba[res, 3] = orig_alpha[res]
             o.alpha_composite(Image.fromarray(ba))
-    # v2.3.1345: jog chain belt sheet — drawn UNDER legs+chest, over the body
-    # (mirrors entityRenderer._placeGear's _gearBelt; keep in sync).  The
-    # sheet is body-frame-aligned so it composites like any gear layer.
-    if pose == 'jog' and worn.get('chest') and worn.get('legs'):
-        bf = frame('belt', pose, d, i)
-        if bf is not None:
-            o.alpha_composite(bf)
     for slot in ('legs', 'chest', 'head'):
         if slot in pieces:
             o.alpha_composite(Image.fromarray(pieces[slot]))

@@ -2159,10 +2159,13 @@ function createPlayerDisplay() {
      v2.3.748: gearShirt = the layered t-shirt (tinted white-base sheet),
      under the armour so a chest plate covers it. */
   const gearShirt = new Sprite(); gearShirt.anchor.set(0.5, 0.5); gearShirt.visible = false; container.addChild(gearShirt);
-  /* v2.3.1345: runtime jog chain belt — UNDER both armor layers (owner rule:
-     belt behind chestplate and legs), so any overlap hides behind the plate/
-     greaves and the band can never cover armor or the swinging arm. */
-  const gearBelt = new Sprite(); gearBelt.anchor.set(0.5, 0.5); gearBelt.visible = false; container.addChild(gearBelt);
+  /* v2.3.1346 (owner): the jog chain belt renders BEHIND THE WHOLE CHARACTER
+     — addChildAt(0) puts it under the body itself, so the swinging bare arm
+     (body layer) and every armor piece always draw over it.  It shows only
+     through the seam holes the masked-body erase opens at the waist, which
+     is exactly where it's needed.  Same per-frame anchors as any gear sheet
+     (the sprite still copies the body transform in _placeGear). */
+  const gearBelt = new Sprite(); gearBelt.anchor.set(0.5, 0.5); gearBelt.visible = false; container.addChildAt(gearBelt, 0);
   const gearLegs = new Sprite(); gearLegs.anchor.set(0.5, 0.5); gearLegs.visible = false; container.addChild(gearLegs);
   const gearChest = new Sprite(); gearChest.anchor.set(0.5, 0.5); gearChest.visible = false; container.addChild(gearChest);
   const gearShoulders = new Sprite(); gearShoulders.anchor.set(0.5, 0.5); gearShoulders.visible = false; container.addChild(gearShoulders);
@@ -2489,8 +2492,9 @@ function createOtherPlayerDisplay() {
      Driven by other.equip; placement copies the body transform.
      v2.3.748: + shirt under-layer (see local display). */
   const gearShirt = new Sprite(); gearShirt.anchor.set(0.5, 0.5); gearShirt.visible = false; container.addChild(gearShirt);
-  /* v2.3.1345: runtime jog belt for remote players too (see local display). */
-  const gearBelt = new Sprite(); gearBelt.anchor.set(0.5, 0.5); gearBelt.visible = false; container.addChild(gearBelt);
+  /* v2.3.1346: jog belt behind the whole character for remote players too
+     (see local display). */
+  const gearBelt = new Sprite(); gearBelt.anchor.set(0.5, 0.5); gearBelt.visible = false; container.addChildAt(gearBelt, 0);
   const gearLegs = new Sprite(); gearLegs.anchor.set(0.5, 0.5); gearLegs.visible = false; container.addChild(gearLegs);
   const gearChest = new Sprite(); gearChest.anchor.set(0.5, 0.5); gearChest.visible = false; container.addChild(gearChest);
   const gearShoulders = new Sprite(); gearShoulders.anchor.set(0.5, 0.5); gearShoulders.visible = false; container.addChild(gearShoulders);
