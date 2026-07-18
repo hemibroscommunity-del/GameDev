@@ -409,22 +409,34 @@ function bodyDirScale(pose, dir) {
    down in SCREEN pixels (the three wide-brim hats rode high on the
    jogging head).  Applied to the hat AND its hair-clip mask (both flow
    through _placeTrait with the same tune), never to hair/beard — the
-   bare-head row was owner-rated 0. */
+   bare-head row was owner-rated 0.
+   v2.3.1354 (owner round 2, cumulative): helmet 1.20->1.15 +2px down,
+   top-hat +3px, purple +1px, beanie 1.20->1.25 +2px down, shark-hat
+   +2px down, wide-brims 10->7px (owner: "up 3px"). */
 const JOG_EW_HAT_TUNE = {
-  'old-school-helmet': { mul: 1.20, dy: 0 },
-  'top-hat':           { mul: 1.10, dy: 0 },
-  'purple-hat':        { mul: 1.10, dy: 0 },
-  'beanie':            { mul: 1.20, dy: 0 },
+  'old-school-helmet': { mul: 1.15, dy: 2 },
+  'top-hat':           { mul: 1.10, dy: 3 },
+  'purple-hat':        { mul: 1.10, dy: 1 },
+  'beanie':            { mul: 1.25, dy: 2 },
   'red-cap':           { mul: 1.10, dy: 0 },
-  'shark-hat':         { mul: 1.00, dy: 0 },
+  'shark-hat':         { mul: 1.00, dy: 2 },
   'bandana':           { mul: 1.10, dy: 0 },
-  'sombrero':          { mul: 1.20, dy: 10 },
-  'bucket-hat':        { mul: 1.20, dy: 10 },
-  'fedora':            { mul: 1.20, dy: 10 },
+  'sombrero':          { mul: 1.20, dy: 7 },
+  'bucket-hat':        { mul: 1.20, dy: 7 },
+  'fedora':            { mul: 1.20, dy: 7 },
 };
-function jogEwHatTune(hatId, pose, dir) {
-  if (pose !== 'jog' || dir !== 'east') return null;
-  return JOG_EW_HAT_TUNE[hatId] || null;
+/* v2.3.1354: IDLE (stand pose, every facing — a hat that reads small
+   idling east reads small on every idle facing; per-dir splits would
+   make the hat pop while turning) corrections from the same review:
+   bucket-hat and fedora +10% and 2px down. */
+const STAND_HAT_TUNE = {
+  'bucket-hat': { mul: 1.10, dy: 2 },
+  'fedora':     { mul: 1.10, dy: 2 },
+};
+function hatPoseTune(hatId, pose, dir) {
+  if (pose === 'jog' && dir === 'east') return JOG_EW_HAT_TUNE[hatId] || null;
+  if (pose === 'stand') return STAND_HAT_TUNE[hatId] || null;
+  return null;
 }
 
 /* Place a player's headwear sprite for this frame.  Shared by the local
@@ -520,7 +532,7 @@ function _placeHeadwear(display, hatId, hatColorId, pose, dir, mirror, frameIdx,
   const colored = getColoredHatTextures(hatId, hatColorId);
   if (colored && baseEntry) entry = { tex: colored, meta: baseEntry.meta, fallbackTex: baseEntry.tex }; /* v2.3.1305 */
   _placeTrait(display._headwearSprite, entry, display, pose, dir, mirror, frameIdx, bodyScale,
-    jogEwHatTune(hatId, pose, dir)); /* v2.3.1353 */
+    hatPoseTune(hatId, pose, dir)); /* v2.3.1353/1354 */
 }
 function _placeFacialHair(display, fhId, fhColorId, pose, dir, mirror, frameIdx, bodyScale) {
   const baseEntry = _ensureFacialHairLoaded(fhId);
@@ -1560,7 +1572,7 @@ function _clipHairToHat(display, hatId, pose, dir, mirror, frameIdx, bodyScale) 
      so the silhouette lands exactly over the helmet — including the
      v2.3.1353 per-hat jog tune, or the clip drifts off the resized hat. */
   _placeTrait(maskSprite, { tex: maskEntry.tex, meta }, display, pose, dir, mirror, frameIdx, bodyScale,
-    jogEwHatTune(hatId, pose, dir));
+    hatPoseTune(hatId, pose, dir));
   if (maskSprite.visible) {
     if (hair.mask !== maskSprite) hair.mask = maskSprite;
   } else if (hair.mask) {
