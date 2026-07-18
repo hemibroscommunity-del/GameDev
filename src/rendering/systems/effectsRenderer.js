@@ -3,7 +3,7 @@
  * projectiles, telegraphs, lock-on, ambient particles, chat bubbles, building signs.
  * Uses PixiJS Graphics for procedural particles and Text for damage numbers.
  */
-import { Assets, Container, Graphics, Rectangle, Sprite, Text, Texture, TextStyle } from 'pixi.js';
+import { Assets, BitmapFont, BitmapText, Container, Graphics, Rectangle, Sprite, Text, Texture, TextStyle } from 'pixi.js';
 import { ELEMENTS } from '@/data/elements.js';
 import { ZONES } from '@/data/zones.js';
 import { TILE, MINE_SPOT_R } from '@/data/constants.js';
@@ -213,6 +213,38 @@ const DMG_STYLE_EMOJI = new TextStyle({
   fill: '#ffffff',
   align: 'center',
 });
+
+/* v2.3.1357: pre-baked glyph atlas for PLAIN NUMERIC popups (damage /
+   XP / gold — the overwhelming majority in combat).  Every `new Text`
+   is a synchronous canvas rasterization; profiling a 12-monster pack
+   fight showed popup MINT RATE (not live count) dominating the frame
+   (avg -55ms and the 400ms spikes vanished with popups suppressed).
+   +100-HP fights run several times longer, so that churn is sustained
+   — the owner's "running badly" report.  BitmapText assembles glyphs
+   from this atlas at near-zero cost.  Glyphs bake WHITE + black stroke
+   at 2x the base popup size (scaled down at use = crisp on retina);
+   tint colors the fill while the black stroke stays black (0 x tint).
+   Popups needing canvas features keep classic Text: emoji (own style),
+   specials (dropShadow halo), and any char outside the baked set. */
+const DMG_BMP_FONT = 'bt-dmg-digits';
+const DMG_BMP_BAKE_PX = 28; /* 2x the 14px DMG_STYLE base */
+let _dmgBmpReady = false;
+try {
+  BitmapFont.install({
+    name: DMG_BMP_FONT,
+    style: {
+      fontFamily: 'Source Sans 3, sans-serif',
+      fontSize: DMG_BMP_BAKE_PX,
+      fontWeight: '800',
+      fill: '#ffffff',
+      stroke: { color: '#000000', width: 6 }, /* 2x the 3px base stroke */
+    },
+    chars: [['0', '9'], ['A', 'Z'], ['a', 'z'], '+-. !'],
+  });
+  _dmgBmpReady = true;
+} catch (e) { /* fallback: classic Text path below */ }
+/* Plain popups the atlas can render: digits/letters/space and + - . ! */
+const DMG_BMP_RE = /^[0-9A-Za-z+\-. !]+$/;
 
 /* Cheap ASCII test — anything outside 0x20-0x7E is treated as emoji. */
 function isAsciiOnly(s) {
@@ -967,34 +999,52 @@ export class EffectsRenderer {
            match normal size and instead get a bright outer glow (see
            dropShadow below) to mark them as specials. */
         const fontSize = baseFontSize;
-        const textStyle = { ...baseStyle, fontSize, fill: displayColor };
-        if (dmg.special) {
-          /* distance:0 + high blur = even halo on all sides. Warm yellow
-             matches the special-projectile yellow halo. */
-          textStyle.dropShadow = {
-            color: '#ffe066',
-            alpha: 0.95,
-            blur: 8,
-            distance: 0,
-            angle: 0,
-          };
-        }
-        const text = new Text({
-          text: dmg.text,
-          style: textStyle,
-        });
-        /* Pixi v8 TextStyle stores fields privately; the spread above may drop
-           overrides. Set fill and fontSize explicitly to guarantee they apply. */
-        text.style.fill = displayColor;
-        text.style.fontSize = fontSize;
-        if (dmg.special) {
-          text.style.dropShadow = {
-            color: '#ffe066',
-            alpha: 0.95,
-            blur: 8,
-            distance: 0,
-            angle: 0,
-          };
+        /* v2.3.1357: plain popups (no emoji, no special halo, chars inside
+           the baked set) assemble from the pre-baked glyph atlas instead of
+           rasterizing a fresh canvas — the pack-fight frame killer.  Tint
+           colors the white fill; the black stroke stays black (0 x tint). */
+        let text;
+        if (_dmgBmpReady && !dmg.special && baseStyle === DMG_STYLE && DMG_BMP_RE.test(dmg.text || '')) {
+          text = new BitmapText({
+            text: dmg.text,
+            style: { fontFamily: DMG_BMP_FONT, fontSize: DMG_BMP_BAKE_PX },
+          });
+          /* Bake is 2x — scale down to the popup size (crisp on retina).
+             NOTE the spawn-pop animation below multiplies .scale; stash
+             the base so it scales around this, not around 1. */
+          text._bmpBaseScale = fontSize / DMG_BMP_BAKE_PX;
+          text.scale.set(text._bmpBaseScale, text._bmpBaseScale);
+          text.tint = displayColor;
+        } else {
+          const textStyle = { ...baseStyle, fontSize, fill: displayColor };
+          if (dmg.special) {
+            /* distance:0 + high blur = even halo on all sides. Warm yellow
+               matches the special-projectile yellow halo. */
+            textStyle.dropShadow = {
+              color: '#ffe066',
+              alpha: 0.95,
+              blur: 8,
+              distance: 0,
+              angle: 0,
+            };
+          }
+          text = new Text({
+            text: dmg.text,
+            style: textStyle,
+          });
+          /* Pixi v8 TextStyle stores fields privately; the spread above may drop
+             overrides. Set fill and fontSize explicitly to guarantee they apply. */
+          text.style.fill = displayColor;
+          text.style.fontSize = fontSize;
+          if (dmg.special) {
+            text.style.dropShadow = {
+              color: '#ffe066',
+              alpha: 0.95,
+              blur: 8,
+              distance: 0,
+              angle: 0,
+            };
+          }
         }
         text.anchor.set(0.5, 0.5);
         this.dmgLayer.addChild(text);
@@ -1051,7 +1101,9 @@ export class EffectsRenderer {
         popBoost = POP_AMOUNT * t * t;
       }
       const critWiggle = dmg.crit ? Math.sin(age * 8) * 0.1 : 0;
-      text.scale.set(1 + popBoost + critWiggle);
+      /* v2.3.1357: BitmapText popups render at a 2x bake scaled down —
+         the pop/wiggle multiplies AROUND that base scale, not around 1. */
+      text.scale.set((text._bmpBaseScale || 1) * (1 + popBoost + critWiggle));
       if (dmg._pixiIcon && !dmg._pixiIcon.destroyed) {
         /* Place icon flush to the right of the text. Text anchor is
            (0.5, 0.5), so the right edge sits at text.x + text.width/2.
@@ -1059,7 +1111,7 @@ export class EffectsRenderer {
            floor still let the magic icon clip the last digit on
            fire-goblin hits ("32" reading as "3[magic]").  Stroked text
            extends a few px past text.width on iOS canvas rendering. */
-        const _iconGap = Math.max(10, (text.style.fontSize || 21) * 0.35);
+        const _iconGap = Math.max(10, (dmg.crit ? 27 : 21) * 0.35);
         dmg._pixiIcon.x = text.x + text.width / 2 + _iconGap;
         dmg._pixiIcon.y = text.y;
         dmg._pixiIcon.alpha = text.alpha;
