@@ -434,15 +434,12 @@
 }
 /* v2.3.1289: snap-state chevron (owner request) — sits in the ACTIVE
    destination's top-right corner.
-   v2.3.1314 (owner round-8b): rebuilt as a two-chevron STACK, one
-   chevron per available step, shown only while a view is open:
-   compact = up + down (expand or close available), expanded = down +
-   down (two steps down to the bar).  Each chevron bobs gently in its
-   own direction — animated affordance for the icon swipe.
-   v2.3.1316 merge note: supersedes the v2.3.1307b .bt-swipe-cue pair
-   system from #285 — the owner's round-8b correction ("only display
-   the double chevrons once at least the compact view is active; one
-   chevron per menu option") landed AFTER #285 merged. */
+   v2.3.1314 (owner round-8b): one chevron per available step, shown
+   only while a view is open, each bobbing gently in its own direction
+   — animated affordance for the icon swipe.
+   v2.3.1350 (two-state nav): with compact retired, the only open state
+   is expanded and it renders a SINGLE down chevron (bar is the one
+   step down).  The up/stack variants' keyframes stay for history. */
 .bt-nav-snap{
   position:absolute;
   top:2px;

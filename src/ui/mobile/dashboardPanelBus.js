@@ -5,26 +5,24 @@
 // more), deeper entries are drill children (e.g. more -> settings)
 // rendered expanded.
 //
-// v2.3.1290 (owner: three-state nav): THREE snap modes —
+// v2.3.1350 (owner: "make the expanded menu and toolbar menu the only
+// options"): the compact glance state is RETIRED — two snap modes:
 //   'bar'      — toolbar only.  The game's DEFAULT resting state:
 //                maximum world visibility, nothing open.  stack keeps
 //                the last destination so reopening resumes where you
 //                were, but nothing renders and no button is lit.
-//   'compact'  — the destination's glance view.
 //   'expanded' — the destination's detailed / actionable view.
+// (v2.3.1290's three-state history — compact as the middle snap, the
+// v2.3.1316 three-tap cycle — lives in git; the compact views and
+// their COMPACT_VIEWS registry were deleted with this slice.)
 //
-// Toolbar semantics (v2.3.1316, owner round-8b — supersedes both the
-// v2.3.1307 taps-never-resize contract from #285 and the v2.3.1311
-// tap-toggle): tapping any destination from the bar (or an inactive
-// one anytime) opens its COMPACT view; tapping the ACTIVE destination
-// cycles UP then closes — compact -> expanded -> bar — so three taps
-// walk a destination through all of its states ("third tap to return
-// to toolbar only").  Icon SWIPES also resize, one snap per swipe —
-// classified in IconButton at pointer-up and routed to advance/retreat
-// below (v2.3.1318: this session's discrete contract, owner-selected
-// over #285's ribbon drag).  Movement/aim input never collapses the
-// sheet — play with menus open (v2.3.1307); the combat chrome rides
-// above the open sheet keyed off --sheet-h.
+// Toolbar semantics: tapping any destination from the bar (or an
+// inactive one anytime) opens its EXPANDED view; tapping the ACTIVE
+// destination closes to the bar — a plain toggle.  Icon SWIPES map to
+// the same two states: up opens, down closes (classified in IconButton
+// at pointer-up, routed to advance/retreat below).  Movement/aim input
+// never collapses the sheet — play with menus open (v2.3.1307); the
+// combat chrome rides above the open sheet keyed off --sheet-h.
 
 const listeners = new Set();
 const emit = () => { for (const fn of listeners) fn(); };
@@ -39,12 +37,6 @@ const haptic = () => { try { navigator.vibrate && navigator.vibrate(8); } catch 
 export const dashboardPanelBus = {
   state: { stack: ['bag'], mode: 'bar' },
 
-  // Destinations that have no compact view — the bus routes their
-  // compact requests to expanded.  v2.3.1288 (PR B): EMPTY since
-  // Friends/Quests/More got compact views; the mechanism stays for any
-  // future compactless destination.
-  compactless: new Set(),
-
   // Top-of-stack helper — what the dashboard should currently render.
   current() {
     const s = this.state.stack;
@@ -56,54 +48,41 @@ export const dashboardPanelBus = {
     return this.state.stack[0] || 'bag';
   },
 
-  // Toolbar tap (owner round-8b; both sessions converged — #288's
-  // v2.3.1311b and this branch's v2.3.1316 wrote the IDENTICAL body):
-  // from the bar or an inactive destination -> its compact view
-  // (switching never keeps the old size); active destination cycles
-  // compact -> expanded -> bar.  #285's desktop exception died with
-  // the cycle's return — mice cycle the same way fingers do.
+  // Toolbar tap (v2.3.1350 two-state): bar or an inactive destination
+  // -> that destination expanded; the active destination -> bar.
   tapDestination(id) {
     if (this.state.mode === 'bar' || this.root() !== id) {
-      this.openCompact(id);
-    } else if (this.state.mode === 'compact') {
-      this.expand();
+      this.open(id);
     } else {
       this.toBar();
     }
   },
 
-  /* v2.3.1318 (owner: "if there are any conflicts with touch or swipe
-     controls with the other session keep yours"): the icon-swipe
-     semantics return to THIS session's discrete advance/retreat
-     contract, displacing #285's drag-release rules where they
-     differed — a swipe up on an INACTIVE icon opens that destination
-     COMPACT (the drag opened it at the swiped-to size, jumping straight
-     to expanded past the compact glance), and a swipe DOWN on an
-     inactive icon is a NO-OP (the drag closed the sheet — retreating a
-     destination you didn't swipe on is a surprise). */
-  // Swipe UP on a toolbar icon: one state up — bar/inactive -> compact
-  // -> expanded.  At expanded it's a deliberate no-op (ends never wrap).
+  // Swipe UP on a toolbar icon: open that destination expanded.
+  // Already-open destination: deliberate no-op (ends never wrap).
   advance(id) {
     if (this.state.mode === 'bar' || this.root() !== id) {
-      this.openCompact(id);
-    } else if (this.state.mode === 'compact') {
-      this.expand();
+      this.open(id);
     }
   },
 
-  // Swipe DOWN: one state down — expanded -> compact -> bar.  No-op
-  // when the swiped destination isn't the open one.
+  // Swipe DOWN: close to the bar.  No-op when the swiped destination
+  // isn't the open one (retreating a foreign destination is a surprise).
   retreat(id) {
     if (this.state.mode === 'bar' || this.root() !== id) return;
-    this.stepDown();
+    this.toBar();
   },
 
-  openCompact(id) {
+  open(id) {
     this.state.stack = [id];
-    this.state.mode = this.compactless.has(id) ? 'expanded' : 'compact';
+    this.state.mode = 'expanded';
     haptic();
     emit();
   },
+
+  // v2.3.1350: legacy alias — compact requests open expanded now
+  // (external callers: GameApp's wheelBus 'more' activation).
+  openCompact(id) { this.open(id); },
 
   expand() {
     if (this.state.mode === 'expanded') return;
@@ -112,24 +91,15 @@ export const dashboardPanelBus = {
     emit();
   },
 
-  // One step down: expanded -> compact (popping drill children — they
-  // have no compact view), compact -> bar.  The header ▾ chip and the
-  // back-chip's root case land here.
+  // One step down IS the bar now (two states).  The back-chip's root
+  // case and legacy collapse() land here.
   stepDown() {
-    if (this.state.mode === 'expanded') {
-      this.state.mode = 'compact';
-      this.state.stack = [this.state.stack[0] || 'bag'];
-      haptic();
-      emit();
-    } else if (this.state.mode === 'compact') {
-      this.toBar();
-    }
+    this.toBar();
   },
 
   // Straight to the toolbar-only resting state.  Joystick/movement
-  // interlocks land here — combat wants the world back NOW, not a
-  // stopover in compact.  The root is kept so the next tap/swipe
-  // resumes the same destination.
+  // interlocks land here — combat wants the world back NOW.  The root
+  // is kept so the next tap/swipe resumes the same destination.
   toBar() {
     if (this.state.mode === 'bar') return;
     this.state.mode = 'bar';
@@ -139,10 +109,10 @@ export const dashboardPanelBus = {
   },
 
   // Settle to an explicit snap — the honest "set mode" API for tests
-  // and any future gesture surface (its drag-release caller retired
-  // v2.3.1318).  Leaving expanded pops drill children for the same
-  // reason stepDown does.
+  // and any future gesture surface.  'compact' maps to 'expanded'
+  // (v2.3.1350 two-state).  Leaving expanded pops drill children.
   settle(mode) {
+    if (mode === 'compact') mode = 'expanded';
     if (this.state.mode === mode) return;
     this.state.mode = mode;
     if (mode !== 'expanded') this.state.stack = [this.state.stack[0] || 'bag'];
@@ -151,7 +121,7 @@ export const dashboardPanelBus = {
   },
 
   // v2.3.1290: legacy alias — pre-three-state callers meant "get the
-  // sheet out of the way"; that is stepDown semantics now.
+  // sheet out of the way"; that is bar semantics now.
   collapse() { this.stepDown(); },
 
   // Legacy toggle kept for old call sites (InventoryPreview tap etc.).
@@ -166,18 +136,17 @@ export const dashboardPanelBus = {
   },
 
   // Push a child panel onto the stack — used by launcher tiles and the
-  // Hero -> Build jump.  Drill children have no compact view, so a push
-  // implies the expanded snap.
+  // Hero -> Build jump.  Drill children render expanded.
   push(id) {
     this.state.stack = [...this.state.stack, id];
     this.state.mode = 'expanded';
     emit();
   },
 
-  // Pop one level (back-chip).  Never pops the last root — step down
-  // instead if already at the root.
+  // Pop one level (back-chip).  Never pops the last root — close to
+  // the bar instead if already at the root.
   pop() {
-    if (this.state.stack.length <= 1) { this.stepDown(); return; }
+    if (this.state.stack.length <= 1) { this.toBar(); return; }
     this.state.stack = this.state.stack.slice(0, -1);
     emit();
   },
