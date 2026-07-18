@@ -18,6 +18,7 @@ import { _objectSpread } from '@/lib/babelHelpers.js';
 
 import { pushDmgPopup } from '@/game/combatHelpers.js';
 import { celebrateLevelUps } from '@/game/levelCelebration.js';
+import { saveRpgSoon } from '@/game/rpgSave.js'; /* v2.3.1356 */
 export function updateGroundLootPickup(S, deps) {
   var P = S.player;
   var pixiRef = deps.pixiRef,
@@ -201,9 +202,7 @@ export function updateGroundLootPickup(S, deps) {
                   BT_AUDIO.beep(400, 0.05, 0.08, 'sine');
                 }
                 setRpgState(_objectSpread({}, S.rpg));
-                try {
-                  localStorage.setItem('bt_rpg', JSON.stringify(S.rpg));
-                } catch (e) {}
+                saveRpgSoon(); /* v2.3.1356: debounced -- pack-kill loot showers fire this per pile */
                 /* v2.3.189: mark for delayed despawn instead of
                    immediate dispose; the top-of-filter check fires
                    the dispose after 0.75 s so the pickup animation
@@ -233,9 +232,7 @@ export function updateGroundLootPickup(S, deps) {
                   return BT_AUDIO.beep(784, 0.1, 0.1, 'sine');
                 }, 160);
                 setRpgState(_objectSpread({}, S.rpg));
-                try {
-                  localStorage.setItem('bt_rpg', JSON.stringify(S.rpg));
-                } catch (e) {}
+                saveRpgSoon(); /* v2.3.1356: debounced -- pack-kill loot showers fire this per pile */
                 /* v2.3.189: mark for delayed despawn instead of
                    immediate dispose; the top-of-filter check fires
                    the dispose after 0.75 s so the pickup animation
@@ -295,9 +292,7 @@ export function updateGroundLootPickup(S, deps) {
                  sheet's spend path is a level-up site now too. */
               celebrateLevelUps(S, S.rpg, { setLevelUpMsg: setLevelUpMsg, burstAt: P });
               setRpgState(_objectSpread({}, S.rpg));
-              try {
-                localStorage.setItem('bt_rpg', JSON.stringify(S.rpg));
-              } catch (e) {}
+              saveRpgSoon(); /* v2.3.1356: debounced -- see rpgSave.js */
               /* v2.3.138: explicit Pixi dispose for the picked-up pile.
                  The orphan sweep would catch this next frame, but
                  intermittently the coin sprite was sticking on the

@@ -44,6 +44,7 @@ import { celebrateLevelUps } from '@/game/levelCelebration.js';
 import { btRpc, getBtPlayerId, syncRpgToServer } from '@/networking/index.js';
 import { pushHudPopup } from '@/ui/XpFlyOverlay.jsx';
 import { _objectSpread, _slicedToArray } from '@/lib/babelHelpers.js';
+import { saveRpgSoon } from '@/game/rpgSave.js'; /* v2.3.1356 */
 
 export function updateMonsterCombat(S, deps) {
   var P = S.player;
@@ -1716,9 +1717,12 @@ export function updateMonsterCombat(S, deps) {
                    bounce back amount.").  Crit sits between normal
                    and special. */
                 var kbAngle = Math.atan2(m.y - P.y, m.x - P.x);
-                var kbForce = S._specialAttack ? 180 : isCrit ? 45 : 30;
-                /* Collision adds extra knockback */
-                var collisionKb = collisionResult ? 6 : 0;
+                /* v2.3.1356: owner — "bounce back is too intense for
+                   monsters, reduce by 75%": 180/45/30 -> 45/11/8 (the
+                   special/crit/normal RATIO from v2.3.110 is kept). */
+                var kbForce = S._specialAttack ? 45 : isCrit ? 11 : 8;
+                /* Collision adds extra knockback (v2.3.1356: 6 -> 2) */
+                var collisionKb = collisionResult ? 2 : 0;
                 m.x += Math.cos(kbAngle) * (kbForce + collisionKb);
                 m.y += Math.sin(kbAngle) * (kbForce + collisionKb);
                 /* Knockback recovery -- without this, client-side-AI
@@ -2187,9 +2191,11 @@ export function updateMonsterCombat(S, deps) {
                      loot-pickup celebration was accidental drift). */
                   celebrateLevelUps(S, _R6, { setLevelUpMsg: setLevelUpMsg });
                   setRpgState(_objectSpread({}, _R6));
-                  try {
-                    localStorage.setItem('bt_rpg', JSON.stringify(_R6));
-                  } catch (e) {}
+                  /* v2.3.1356: debounced — the 360° cleave can one-shot a
+                     pack, running this kill block N times in one swing;
+                     inline full-blob writes stalled the frame (same
+                     mechanism as the bow-special freeze).  rpgSave.js. */
+                  saveRpgSoon();
                   btRpc('bt_monster_kill', {
                     p_id: getBtPlayerId(),
                     p_monster_type: m.type,
