@@ -793,6 +793,22 @@ export class EffectsRenderer {
     const gfx = this.particleGfx;
     gfx.clear();
 
+    /* v2.3.1360 (owner): World View player beacon — the avatar renders
+       as a distant speck on the overworld and gets lost against the
+       painted terrain.  A tiny pulsing circle of light hugs the
+       character, worldview-only.  Plain layered fills on the shared
+       particle Graphics (no filters — iOS WebGL static, CLAUDE.md);
+       low alpha so the speck reads THROUGH the glow. */
+    if (S.currentZone === 'worldview' && S.player) {
+      const _pu = 0.85 + 0.15 * Math.sin(now / 400);
+      gfx.circle(S.player.x, S.player.y, 16 * _pu);
+      gfx.fill({ color: 0xfff2c8, alpha: 0.10 });
+      gfx.circle(S.player.x, S.player.y, 10 * _pu);
+      gfx.fill({ color: 0xfff2c8, alpha: 0.16 });
+      gfx.circle(S.player.x, S.player.y, 5);
+      gfx.fill({ color: 0xffffff, alpha: 0.22 });
+    }
+
     // Hit particles
     const parts = S.hitParticles || [];
     /* v2.3.1347: hard ceiling — burning-monster status FX (and any other

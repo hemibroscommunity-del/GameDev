@@ -38,7 +38,7 @@ export const IMAGE_ZONE_MAPS = {
      iOS Safari 14+. Dimensions unchanged (1024x1024), so world bounds and the
      walkability grids still align. */
   town:    '/maps/town_v15.webp',   /* new walled town with buildings (normal avatar size) */
-  worldview: '/maps/worldview_v1.webp',   /* zoomed-out hub: trails branch to every region (speck avatar) */
+  worldview: '/maps/worldview_v2.webp',   /* v2.3.1359: owner's painted overworld — central walled town, trails to every region (speck avatar) */
   frost:   '/maps/frost_v5.webp',   /* redesign: meadow-coast -> deep-ice transition */
   meadow:  '/maps/meadow_v6.webp',   /* redesign: new painterly meadow (scaled to 1024 world) */
   thunder: '/maps/thunder_v5.webp',   /* redesign: metallic/electric buried-machine peaks */
@@ -87,7 +87,7 @@ export const WALKABILITY_MAPS = {
   thunder: '/maps/thunder_v5.walk.json',   /* dense machinery -> walkable is mostly the central path corridor */
   farm_home: '/maps/farm_v1.walk.json',   /* note: mask was a wider aspect than the art -- walls align at edges, interior drifts a few % */
   verdant: '/maps/verdant_v1.walk.json',
-  worldview: '/maps/worldview_v1.walk.json',   /* black-painted mask: walkable trails, blocked wedges */
+  // worldview: '/maps/worldview_v1.walk.json',   /* v2.3.1359: DISABLED — the v1 mask was painted for the old art's trails and misaligns on worldview_v2; fully walkable until a v2 mask is painted (same posture as the town mask above) */
 };
 
 /** Preload every image-zone map URL into the Pixi Assets cache.  Call
