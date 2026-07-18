@@ -32,7 +32,9 @@ const FRAME_H = 256;
    recoloured shirt (paper-doll, mirrors the cook stand-in). Each is a 4096x128
    32-frame strip aligned to fish-south.png; the armor tracks the body's per-
    frame lean, the shirt is a grayscale tint base with a 1px outline. */
-const GEAR_VERSION = '2.3.1342'; /* v2.3.1342: jog belt re-laid stably on south/north/southwest (relay_jog_belt.py) */
+const GEAR_VERSION = '2.3.1343'; /* v2.3.1343: south/north/southwest belts rebaked with the original NE pipeline.
+   BUMP THIS on EVERY gear-art regen — v2.3.1342c changed the PNGs without bumping, so
+   previews served the cached old art and the change was invisible on-device. */
 
 /* `${slot}/${item}/${pose}/${dir}` -> [Texture] | 'loading' | [] (missing) */
 const _sheets = {};

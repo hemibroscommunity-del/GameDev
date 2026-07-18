@@ -47,6 +47,11 @@ def main():
     # northeast, whose baked look the owner likes and which just need the
     # layering rule enforced.
     fix_only = '--fix-only' in sys.argv
+    # v2.3.1343: --strip-only = erase the current chain and STOP (no re-lay,
+    # no correction passes) — produces the beltless sheet the original
+    # numpy/scipy bake pipeline (fill_gear_gaps -> refit_jog_belt ->
+    # strip_belt_shadow) is then run against at 256px.
+    strip_only = '--strip-only' in sys.argv
 
     chest_p = f'public/sprites/gear/chest/steelplate/jog-{d}.png'
     chest = Image.open(chest_p).convert('RGBA')
@@ -176,6 +181,9 @@ def main():
                             cpx[cx0 + x, y] = (0, 0, 0, 0)
                             changed += 1
 
+        if strip_only:
+            continue
+
         # ── Lay the fresh band: dark shadow backing first (NE's recipe —
         # chain links read over shadow, and chain-texture holes can never
         # show background), then the chain at constant phase from the
@@ -207,7 +215,7 @@ def main():
     #     pixel (laid only where plate+greaves are transparent -> behind
     #     everything).
     fixedA = fixedB = 0
-    for i in range(n):
+    for i in ([] if strip_only else range(n)):
         if only is not None and i not in only:
             continue
         if not meas[i]:
