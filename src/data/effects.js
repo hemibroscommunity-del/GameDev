@@ -268,14 +268,20 @@ export const TOWN_EXITS = [
    radiate from the central town circle to every region. Positions are
    approximate (the zone is walkable-everywhere until a mask); tune them to the
    painted trail-heads later. */
+/* v2.3.1359: trail-heads retuned to the owner's worldview_v2 art (the
+   painted overworld: central walled town, volcano N, desert NE, crystal
+   cave E, thunder dome SE, beach+pier S, gnarled mistwood SW, blossom
+   verdant W, snow peaks NW).  Coords verified against a marker overlay
+   on the actual art.  The town marker stays 3 tiles from the hub-entry
+   spawn (24,31) — inside 2 re-triggers the v2.3.948 bounce. */
 export const WORLDVIEW_EXITS = [
   { zoneId: 'town',    tx: 24, ty: 28, dir: 'north', label: 'Town',            color: '#cdb27a' },
-  { zoneId: 'ember',   tx: 27, ty: 9,  dir: 'north', label: 'Ember Fields',    color: ELEMENTS.flame.color },
+  { zoneId: 'ember',   tx: 25, ty: 10, dir: 'north', label: 'Ember Fields',    color: ELEMENTS.flame.color },
   { zoneId: 'sky',     tx: 39, ty: 12, dir: 'ne',    label: 'Desert Winds',    color: ELEMENTS.wind.color },
-  { zoneId: 'hollows', tx: 43, ty: 23, dir: 'east',  label: 'Deep Hollows',    color: ELEMENTS.stone.color },
-  { zoneId: 'thunder', tx: 41, ty: 37, dir: 'se',    label: 'Thunder Peaks',   color: ELEMENTS.storm.color },
-  { zoneId: 'tidal',   tx: 25, ty: 40, dir: 'south', label: 'Tidal Caves',     color: ELEMENTS.water.color },
-  { zoneId: 'mist',    tx: 9,  ty: 32, dir: 'sw',    label: 'Mistwood',        color: ELEMENTS.venom.color },
-  { zoneId: 'verdant', tx: 10, ty: 16, dir: 'nw',    label: 'Verdant Wilds',   color: '#6abf4f' },
-  { zoneId: 'frost',   tx: 16, ty: 12, dir: 'nw',    label: 'Frozen Shore',    color: ELEMENTS.frost.color },
+  { zoneId: 'hollows', tx: 43, ty: 22, dir: 'east',  label: 'Deep Hollows',    color: ELEMENTS.stone.color },
+  { zoneId: 'thunder', tx: 42, ty: 36, dir: 'se',    label: 'Thunder Peaks',   color: ELEMENTS.storm.color },
+  { zoneId: 'tidal',   tx: 24, ty: 40, dir: 'south', label: 'Tidal Caves',     color: ELEMENTS.water.color },
+  { zoneId: 'mist',    tx: 8,  ty: 32, dir: 'sw',    label: 'Mistwood',        color: ELEMENTS.venom.color },
+  { zoneId: 'verdant', tx: 7,  ty: 20, dir: 'nw',    label: 'Verdant Wilds',   color: '#6abf4f' },
+  { zoneId: 'frost',   tx: 13, ty: 13, dir: 'nw',    label: 'Frozen Shore',    color: ELEMENTS.frost.color },
 ];
