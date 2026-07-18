@@ -32,9 +32,9 @@ const FRAME_H = 256;
    recoloured shirt (paper-doll, mirrors the cook stand-in). Each is a 4096x128
    32-frame strip aligned to fish-south.png; the armor tracks the body's per-
    frame lean, the shirt is a grayscale tint base with a 1px outline. */
-const GEAR_VERSION = '2.3.1343b'; /* v2.3.1343b: rebake redone from the PRISTINE belted originals in git
-   history (517aca8) — the owner pointed out the originals are recoverable there, so the strip no longer
-   starts from sheets carrying three rounds of interim edits.
+const GEAR_VERSION = '2.3.1344'; /* v2.3.1344: waist sealed — zero tan, minimal black (owner).  Alpha
+   hardened to NE's binary standard (semi-transparent belt pixels let the pants-restored body bleed
+   through) + full chain coverage of the exposed midsection.
    BUMP THIS on EVERY gear-art regen — v2.3.1342c changed the PNGs without bumping, so
    previews served the cached old art and the change was invisible on-device. */
 

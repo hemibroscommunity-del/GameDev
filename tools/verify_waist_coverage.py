@@ -40,13 +40,18 @@ def jog_waist_row(d, i):
         m = re.search(r'JOG_WAIST\s*=\s*(\{.*?\n\})', src, re.S)
         _JW = {}
         if m:
-            for dm in re.finditer(r"(\w+)\s*:\s*\[([^\]]*)\]", m.group(1)):
+            # v2.3.1344: accept QUOTED keys ("south": [...]) — the unquoted-only
+            # pattern silently matched nothing, so wr=None and the pants band was
+            # never emulated: the verifier passed sheets that showed bare skin
+            # in-game.  A parse failure now raises instead of degrading.
+            for dm in re.finditer(r'"?(\w+)"?\s*:\s*\[([^\]]*)\]', m.group(1)):
                 vals = [int(v) for v in dm.group(2).replace('\n', ' ').split(',') if v.strip()]
                 if vals:
                     _JW[dm.group(1)] = vals
     arr = _JW.get(d)
     if not arr:
-        return None
+        raise SystemExit(f'jogWaist.js parse failed for "{d}" — verifier would '
+                         f'silently skip the pants band; fix the regex')
     return arr[i % len(arr)]
 
 
@@ -59,8 +64,8 @@ def verify(d):
     cpx, lpx, bpx = chest.load(), legs.load(), base.load()
     scale = H / 256.0
 
-    over = gaps = 0
-    over_f, gap_f = set(), set()
+    over = gaps = tan = black = semi = 0
+    over_f, gap_f, tan_f, semi_f = set(), set(), set(), set()
     comp = Image.new('RGBA', (n * (H + 2), H), (60, 64, 72, 255))
     for i in range(n):
         cx0, lx0, bx0 = i * H, (i % ln) * H, (i % bn) * H
@@ -91,9 +96,30 @@ def verify(d):
                 if 0 <= nx < H and 0 <= ny < H and not gearop[ny][nx] and not reach[ny][nx]:
                     reach[ny][nx] = True; dq.append((nx, ny))
 
+        # v2.3.1344: mirror the renderer's DILATED gear erase
+        # (entityRenderer._maskedBodyFrame: destination-out with the gear
+        # silhouette box-dilated by 6 at 256 -> 3 here).  Body survives only
+        # OUTSIDE the dilated silhouette; the earlier model drew body wherever
+        # opaque, so bare skin the game shows (far from any armor pixel) and
+        # holes the erase opens (near armor, nothing over) were both invisible
+        # to the verifier.  Separable box dilation: rows then columns.
+        dil_r = max(1, round(6 * scale))
+        horiz = [[False] * H for _ in range(H)]
+        for y in range(H):
+            g = gearop[y]
+            for x in range(H):
+                lo, hi = max(0, x - dil_r), min(H, x + dil_r + 1)
+                horiz[y][x] = any(g[lo:hi])
+        dil = [[False] * H for _ in range(H)]
+        for x in range(H):
+            for y in range(H):
+                lo, hi = max(0, y - dil_r), min(H, y + dil_r + 1)
+                dil[y][x] = any(horiz[yy][x] for yy in range(lo, hi))
+
         # per-row gear span (chest|greaves opaque) for the pants band rule
         frame = Image.new('RGBA', (H, H), MAG)
         fpx = frame.load()
+        srcmap = [[0] * H for _ in range(H)]   # [y][x]: 0 none 1 body 2 legs 3 chest
         for y in range(H):
             gxmin, gxmax = H, -1
             for x in range(H):
@@ -101,16 +127,17 @@ def verify(d):
                     if x < gxmin: gxmin = x
                     if x > gxmax: gxmax = x
             for x in range(H):
-                # draw order: pants band / pocket body -> greaves -> chest
+                # draw order: pants band / pocket body -> greaves -> chest.
+                # Band/pocket body only survives OUTSIDE the dilated erase.
                 p = None
                 in_band = (w0 is not None and w0 <= y < w1 and gxmin <= x <= gxmax)
                 in_pocket = (not gearop[y][x] and not reach[y][x])
-                if (in_band or in_pocket) and bpx[bx0 + x, y][3] > ALPHA:
-                    p = bpx[bx0 + x, y]
+                if (in_band or in_pocket) and not dil[y][x] and bpx[bx0 + x, y][3] > ALPHA:
+                    p = bpx[bx0 + x, y]; srcmap[y][x] = 1
                 if lpx[lx0 + x, y][3] > ALPHA:
-                    p = lpx[lx0 + x, y]
+                    p = lpx[lx0 + x, y]; srcmap[y][x] = 2
                 if cpx[cx0 + x, y][3] > ALPHA:
-                    p = cpx[cx0 + x, y]
+                    p = cpx[cx0 + x, y]; srcmap[y][x] = 3
                 if p is not None:
                     fpx[x, y] = (p[0], p[1], p[2], 255)
 
@@ -143,24 +170,50 @@ def verify(d):
                     if left and right:
                         gaps += 1
                         gap_f.add(i)
+                # violation 3 (owner: fully armored => ZERO tan): a rendered
+                # BODY pixel in the midsection — bare hip/skin the seal pass
+                # must have covered.  Highlighted cyan.
+                elif srcmap[y][x] == 1:
+                    tan += 1
+                    tan_f.add(i)
+                    fpx[x, y] = (0, 255, 255, 255)
+                # "minimal black" tracker: near-black CHEST pixels (belt
+                # backing / shadow fills) in the midsection — counted, not a
+                # hard violation.
+                if srcmap[y][x] == 3:
+                    pr, pg, pb2 = fpx[x, y][:3]
+                    if max(pr, pg, pb2) <= 34:
+                        black += 1
+                # violation 4 (v2.3.1344): SEMI-TRANSPARENT chest pixels — the
+                # game alpha-blends them with the pants-restored body behind
+                # the belt (tan bleed-through).  NE, the owner's reference,
+                # has zero.  Highlighted yellow.
+                ca4 = cpx[cx0 + x, y][3]
+                if ALPHA < ca4 < 240:
+                    semi += 1
+                    semi_f.add(i)
+                    fpx[x, y] = (255, 255, 0, 255)
         comp.paste(frame, (i * (H + 2), 0))
 
     S = os.environ.get('BT_SCRATCH', '.')
     mp = os.path.join(S, f'waist-verify-{d}.png')
     comp.save(mp)
     print(f'jog-{d}: chain-over-greaves px={over} (frames {sorted(over_f)}), '
-          f'interior background gaps px={gaps} (frames {sorted(gap_f)})')
+          f'interior background gaps px={gaps} (frames {sorted(gap_f)}), '
+          f'TAN body px={tan} (frames {sorted(tan_f)}), near-black px={black}, '
+          f'semi-alpha px={semi} (frames {sorted(semi_f)})')
     print('  montage:', mp)
-    return over, gaps
+    return over, gaps, tan, black, semi
 
 
 def main():
     dirs = sys.argv[1:] or ['south', 'north', 'east', 'northeast', 'southwest']
-    total = [0, 0]
+    total = [0, 0, 0, 0, 0]
     for d in dirs:
-        o, g = verify(d)
-        total[0] += o; total[1] += g
-    print(f'TOTAL: chain-over-greaves={total[0]}px, background-gaps={total[1]}px')
+        o, g, t, b, s = verify(d)
+        total[0] += o; total[1] += g; total[2] += t; total[3] += b; total[4] += s
+    print(f'TOTAL: chain-over-greaves={total[0]}px, background-gaps={total[1]}px, '
+          f'TAN={total[2]}px, near-black={total[3]}px, semi-alpha={total[4]}px')
 
 
 if __name__ == '__main__':

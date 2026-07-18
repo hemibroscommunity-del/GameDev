@@ -210,10 +210,18 @@ def main():
     #     leg armor -> erase it (the greaves cover the spot; can't open a
     #     gap).  Confined to the chain window below the plate bottom so
     #     gauntlets crossing the thighs are untouched.
-    #  B. no background through the midsection: body-opaque pixels with
-    #     rendered coverage on both sides but nothing over them get a chain
-    #     pixel (laid only where plate+greaves are transparent -> behind
-    #     everything).
+    #  B. v2.3.1344 SEAL (owner: "minimal black and ZERO tan showing by the
+    #     waist area (player is fully armored)"): the renderer's masked-body
+    #     pants band draws BODY rows jogWaistRow+-(26/18) under the gear, so
+    #     EVERY armor-transparent pixel there showed bare hip skin — the old
+    #     ~W-wide belt only covered the middle.  Now every body-opaque pixel
+    #     in the waist window that is vertically ENCLOSED by armor (chest
+    #     above and greaves below in the same column, near proximity — the
+    #     gate keeps hands/head/loose arms safe) is painted with CHAIN
+    #     texture (metal, phase-continuous with the laid band), dark-steel
+    #     (32,34,40) in the texture's holes.  Below the greaves-top median
+    #     the fill stays flat shadow — chain specks in the inter-thigh gap
+    #     read as floating debris (v2.3.1342c lesson).
     fixedA = fixedB = 0
     for i in ([] if strip_only else range(n)):
         if only is not None and i not in only:
@@ -225,34 +233,99 @@ def main():
         if plate_bot is None:
             plate_bot = y0 + med_plate_rel
         x0 = bcx - W // 2
+        # ── v2.3.1344 pass 0: HARDEN the waist alpha.  The LANCZOS 256->128
+        # ship-downscale left the re-laid belts with soft alpha ramps (south
+        # 1599 / north 1352 / southwest 979 semi-transparent px in the waist
+        # rows; NORTHEAST — the owner's "best looking" — has ZERO).  In-game
+        # those blend with the pants-restored body behind the belt
+        # (entityRenderer v2.3.650 re-opens pants-coloured pixels), so tan
+        # bleeds through every soft edge and the backing reads muddy.  Snap
+        # to NE's binary alpha: >=120 -> opaque, else gone (the seal below
+        # re-covers anything that opens). ──
+        h0, h1 = y0 + int(0.38 * figH), min(H, y0 + int(0.72 * figH))
+        for y in range(h0, h1):
+            for x in range(H):
+                p = cpx[cx0 + x, y]
+                if ALPHA < p[3] < 240:
+                    cpx[cx0 + x, y] = (p[0], p[1], p[2], 255) if p[3] >= 120 else (0, 0, 0, 0)
         wlo, whi = plate_bot - 1, min(H, y0 + med_gt_rel + int(0.14 * figH))
         for y in range(wlo, whi):
             for x in range(max(0, x0 - 4), min(H, bcx + W // 2 + 5)):
                 if cpx[cx0 + x, y][3] > ALPHA and lpx[lx0 + x, y][3] > ALPHA:
                     cpx[cx0 + x, y] = (0, 0, 0, 0)
                     fixedA += 1
-        mid0, mid1 = y0 + int(0.42 * figH), y0 + int(0.68 * figH)
+
+        # per-column nearest chest-opaque row above / greaves-opaque row below
+        prox = max(8, int(0.18 * figH))
+        chest_above = [[-1] * H for _ in range(H)]   # [x][y]
+        legs_below = [[H * 4] * H for _ in range(H)]
+        for x in range(H):
+            last = -1
+            ca = chest_above[x]
+            for y in range(H):
+                if cpx[cx0 + x, y][3] > ALPHA:
+                    last = y
+                ca[y] = last
+            nxt = H * 4
+            lb = legs_below[x]
+            for y in range(H - 1, -1, -1):
+                if lpx[lx0 + x, y][3] > ALPHA:
+                    nxt = y
+                lb[y] = nxt
+
+        mid0, mid1 = y0 + int(0.32 * figH), min(H, y0 + int(0.72 * figH))
+        halfT = int(0.20 * figH)
         for y in range(mid0, mid1):
             for x in range(H):
                 if bpx[bx0f + x, y][3] <= ALPHA:
                     continue
                 if cpx[cx0 + x, y][3] > ALPHA or lpx[lx0 + x, y][3] > ALPHA:
                     continue
-                covered = lambda xx: (cpx[cx0 + xx, y][3] > ALPHA or lpx[lx0 + xx, y][3] > ALPHA)
-                left = any(covered(xx) for xx in range(max(0, x - 20), x))
-                right = any(covered(xx) for xx in range(x + 1, min(H, x + 21)))
-                if left and right:
-                    # v2.3.1342c: always the dark shadow — these leftovers sit
-                    # mostly in the inter-thigh region below the belt, where
-                    # isolated chain-textured SPECKS read as floating debris;
-                    # flat shadow reads as the crotch shadow the original
-                    # bake's black gap-fill provided.
-                    cpx[cx0 + x, y] = (20, 22, 26, 255)
+                ca, lb = chest_above[x][y], legs_below[x][y]
+                has_above = ca >= 0 and y - ca <= prox * 2
+                enclosed = has_above and lb - y <= prox * 2
+                central = has_above and abs(x - bcx) <= halfT
+                if not (enclosed or central):
+                    # last-resort gate (verifier's own interior rule): armor
+                    # rendered on BOTH sides within 20px -> this hole would
+                    # show background/skin between armor pieces; cover it.
+                    covered = lambda xx: (cpx[cx0 + xx, y][3] > ALPHA or lpx[lx0 + xx, y][3] > ALPHA)
+                    left = any(covered(xx) for xx in range(max(0, x - 20), x))
+                    right = any(covered(xx) for xx in range(x + 1, min(H, x + 21)))
+                    if not (left and right):
+                        continue
+                if y <= y0 + med_gt_rel:
+                    sp = chpx[(x - x0) % chain_w, (y - plate_bot) % bandH]
+                    if sp[3] > 30:
+                        cpx[cx0 + x, y] = (sp[0], sp[1], sp[2], 255)
+                    else:
+                        cpx[cx0 + x, y] = (32, 34, 40, 255)  # link shadow, not black
+                else:
+                    cpx[cx0 + x, y] = (20, 22, 26, 255)      # inter-thigh crotch shadow
+                fixedB += 1
+
+        # solid-black backing bands -> chain: flat near-black chest pixels
+        # below the plate (NOT its outline: skip pixels directly under a lit
+        # plate pixel) get the chain texture so no black BAND reads at the
+        # waist; texture holes stay dark = the "minimal black" that remains.
+        for y in range(plate_bot + 2, min(H, y0 + med_gt_rel + 1)):
+            for x in range(H):
+                p = cpx[cx0 + x, y]
+                if p[3] <= ALPHA or max(p[0], p[1], p[2]) > 30:
+                    continue
+                if lpx[lx0 + x, y][3] > ALPHA or bpx[bx0f + x, y][3] <= ALPHA:
+                    continue
+                up = cpx[cx0 + x, y - 1]
+                if up[3] > ALPHA and max(up[0], up[1], up[2]) > 60:
+                    continue                      # plate bottom outline: keep
+                sp = chpx[(x - x0) % chain_w, (y - plate_bot) % bandH]
+                if sp[3] > 30:
+                    cpx[cx0 + x, y] = (sp[0], sp[1], sp[2], 255)
                     fixedB += 1
 
     print(f'jog-{d}: W={W} bandH={bandH} plateRelMed={med_plate_rel} '
           f'greavesRelMed={med_gt_rel} -> {changed}px re-laid, '
-          f'{fixedA}px belt-behind-legs erased, {fixedB}px gap-filled, {n} frames')
+          f'{fixedA}px belt-behind-legs erased, {fixedB}px waist-sealed, {n} frames')
 
     zy0, zy1 = int(0.30 * H), int(0.95 * H)
     zh = zy1 - zy0
