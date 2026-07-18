@@ -122,18 +122,18 @@ def gen(d):
             Image.fromarray(content, 'RGBA').resize((nw, nh), Image.LANCZOS), (px_, py_))
         parr = np.array(placed)
 
-        # THE GREEN MIDSECTION: mannequin #00AA46 showing through the armor,
-        # restricted to the waist window (excludes the green neck/face) and
-        # clipped to the current body silhouette
+        # v2.3.1348b (owner): the source art's waist connective is a GREEN
+        # UPSIDE-DOWN TRIANGLE (trunks) — the only green visible on the
+        # armored figure (the helmet covers the head), so no row window is
+        # needed.  Looser test than before: the first pass (G > 1.6R) caught
+        # only the triangle's brightest core and produced a thin line instead
+        # of the full trunks.  Dilate 1px to swallow the AA fringe against
+        # armor, then clip to the body silhouette.
         R = parr[:, :, 0].astype(int); G = parr[:, :, 1].astype(int); B = parr[:, :, 2].astype(int)
-        green = (parr[:, :, 3] > 40) & (G > 90) & (G > R * 1.6) & (G > B * 1.5)
-        figh = by1 - by0
-        wlo, whi = by0 + int(0.30 * figh), by0 + int(0.80 * figh)
-        green[:wlo] = False
-        green[whi:] = False
+        green = (parr[:, :, 3] > 40) & (G > 80) & (G > R + 25) & (G > B + 20)
+        green = ndimage.binary_closing(green, iterations=2)
+        green = ndimage.binary_dilation(green, iterations=1)
         green &= bop
-        # close pinholes so the chain reads solid across the band
-        green = ndimage.binary_closing(green, iterations=1)
         stats.append(int(green.sum()))
         if not green.any():
             continue
