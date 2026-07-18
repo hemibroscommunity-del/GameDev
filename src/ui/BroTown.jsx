@@ -1825,9 +1825,9 @@ export var BroTown = function BroTown(_ref0) {
        the shared source BottomDashboard also imports — instead of the
        comment-enforced mirror of --dash-h that lived here through
        v2.3.1280.  v2.3.1290: the canvas keys off the BAR height (toolbar-
-       only resting state) in all modes; compact and expanded sheets
-       overlay the world without resizing
-       the canvas (see sheetGeometry's invariant note). */
+       only resting state) in all modes; the expanded sheet (the one
+       open state since the v2.3.1350 two-state cut) overlays the world
+       without resizing the canvas (see sheetGeometry's invariant note). */
     function resize() {
       var dpr = window.devicePixelRatio || 1;
       var vw = vv ? vv.width : window.innerWidth;

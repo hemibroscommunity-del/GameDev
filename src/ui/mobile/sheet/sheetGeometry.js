@@ -5,17 +5,18 @@
    in two files on every band change (v2.3.1268..1280 history).
 
    v2.3.1290 (owner: three-state nav): the resting default is now BAR —
-   toolbar only, maximum world visibility.  Three snap heights:
-     bar      = barHeight(vw,vh) (slot-sized shelf) <- NEW resting state
-     compact  = compactDashHeight(vw)              <- glance view
+   toolbar only, maximum world visibility.
+   v2.3.1350 (owner: bar + expanded ONLY): the compact glance snap is
+   retired (compactDashHeight deleted with it).  Two snap heights:
+     bar      = barHeight(vw,vh) (slot-sized shelf) <- resting state
      expanded = expandedSheetHeight(vw, vh)        <- detail view
 
    INVARIANT (nav-system spec, amended v2.3.1290): --dash-h /
-   barHeight stay the BAR height in ALL modes.  Compact and expanded are
-   both taller position:fixed overlays above the world; the WebGL
-   canvas, joystick zones (height: calc(100% - var(--dash-h))), and
-   every bottom:calc(var(--dash-h)+N) world-HUD anchor NEVER move when
-   a sheet opens.  Opening a sheet must not resize the canvas — a
+   barHeight stay the BAR height in ALL modes.  Expanded is a taller
+   position:fixed overlay above the world; the WebGL canvas, joystick
+   zones (height: calc(100% - var(--dash-h))), and every
+   bottom:calc(var(--dash-h)+N) world-HUD anchor NEVER move when a
+   sheet opens.  Opening a sheet must not resize the canvas — a
    canvas.width write reallocates the WebGL drawing buffer. */
 
 /* v2.3.1325 (owner: bigger toolbar): the bar height derives from the
@@ -48,17 +49,8 @@ export const DASH_OVERLAP = 14;
    anchor in BroTown's isReelTouch). */
 export const FEET_OFFSET = 24;
 
-/* Compact snap algebra (Bag 6x2 drives it):
-   v2.3.1320 (owner: language-free — the v2.3.1319 text rails became
-   per-tile worn badges, so the rail column is gone and the grids get
-   their full width back):
-   slot s = (100vw - 16 edge*2 - 40 gaps) / 6 = (100vw - 56)/6
-   sheet = 8 pad + s + 15 separator (7+1+7) + s + 8 pad + toolbar
-         = 2s + 31 + barHeight   (v2.3.1325: the toolbar term is the
-   slot-derived bar height above, no longer a fixed 72). */
-export function compactDashHeight(vw, vh) {
-  return Math.round((vw - 56) / 3 + 31) + barHeight(vw, vh);
-}
+/* v2.3.1350: compactDashHeight retired with the compact snap (its
+   6x2-slot algebra lives in git history at v2.3.1320/1325). */
 
 /* Expanded snap: ~half the viewport, with the sheet's top edge leaving
    visible GROUND below the player's boots (camera centers the player

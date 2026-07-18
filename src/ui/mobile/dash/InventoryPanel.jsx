@@ -271,6 +271,43 @@ export const InventoryPanel = () => {
   }, []);
 
   const S = getState();
+  /* v2.3.1350 (owner: "the inventory menu needs to have a second row —
+     at least partially but hopefully the full row — visible"): the
+     items tray sizes its grid ROWS to fit two full rows in whatever
+     height the sheet actually has.  Real phones' Safari chrome shrinks
+     visualViewport below the rig's 844, where the width-driven square
+     tiles pushed row two half under the toolbar.  rowH = min(tile
+     width, half the tray's free height): square tiles whenever they
+     fit, slightly squat tiles on short viewports, two FULL rows
+     always.  Same ResizeObserver pattern as the equipped tab's eqCard
+     (the sheet ANIMATES open over 220ms — a mount-time measure would
+     stick at the mid-animation height). */
+  const itemsBoxRef = useRef(null);
+  const [itemRowH, setItemRowH] = useState(0);
+  const bagIsEmpty = getBagEntries(S?.rpg).length === 0;
+  useEffect(() => {
+    if (bagTab !== 'items' || bagIsEmpty) return;
+    const measure = () => {
+      const el = itemsBoxRef.current;
+      if (!el || !el.clientHeight) return;
+      /* Width budget: tray padding 6+6 + 5 gaps of 8 = 52.  Height
+         budget around the two rows: tray padding 6+6 + the grid's
+         14px scroll-clearance paddingBottom + 1 inter-row gap of 8
+         = 34. */
+      const tileW = (el.clientWidth - 52) / 6;
+      const half = Math.floor((el.clientHeight - 34) / 2);
+      const clamped = Math.max(36, Math.min(Math.floor(tileW), half));
+      setItemRowH(prev => (Math.abs(prev - clamped) > 1 ? clamped : prev));
+    };
+    measure();
+    const obs = window.ResizeObserver ? new ResizeObserver(measure) : null;
+    if (obs && itemsBoxRef.current) obs.observe(itemsBoxRef.current);
+    window.addEventListener('resize', measure);
+    return () => {
+      if (obs) obs.disconnect();
+      window.removeEventListener('resize', measure);
+    };
+  }, [bagTab, bagIsEmpty]);
 
   /* v2.3.687: self-healing gear stash -- restore any orphaned steel piece
      (e.g. unequipped via the Equipment menu's toggle, which predates the
@@ -762,7 +799,7 @@ export const InventoryPanel = () => {
              here too (spec hard lock: leather removed EVERYWHERE — the
              v2.3.1227 sweep caught the preview grid but missed this one,
              owner-reported with a screenshot). */
-          <div style={{
+          <div ref={itemsBoxRef} style={{
             background: COL.well,
             border: `1px solid ${COL.tileBor}`,
             boxShadow: 'inset 0 2px 4px rgba(0,0,0,.44), inset 0 1px 0 rgba(255,255,255,.035)',
@@ -790,9 +827,13 @@ export const InventoryPanel = () => {
           <div style={{
             display: 'grid',
             /* v2.3.1285: 8 -> 6 columns — the same slot rhythm as the
-               compact grid, so the first six cells ARE the compact
-               recent row (Recent order is the shared bagModel sort). */
+               retired compact grid (Recent order is the shared bagModel
+               sort). */
             gridTemplateColumns: `repeat(${COLS}, 1fr)`,
+            /* v2.3.1350: measured row height — two full rows always fit
+               (see the itemRowH effect above).  0 until first measure:
+               fall back to square tiles for that frame. */
+            ...(itemRowH ? { gridAutoRows: `${itemRowH}px` } : {}),
             gap: 8,
             /* v2.3.1312 (round-8 §7): scroll clearance — the last row
                must clear the edge fade at scroll end.  The toolbar sits
@@ -801,8 +842,15 @@ export const InventoryPanel = () => {
                honest equivalent of the spec's "toolbar + 12" rule. */
             paddingBottom: 14,
           }}>
+            {(() => {
+              /* v2.3.1350: with measured rows the tiles fill their row
+                 instead of forcing 1:1 (squat-not-clipped on short
+                 viewports; rowH is width-capped so they stay square
+                 whenever the height allows). */
+              const rowFit = itemRowH ? { aspectRatio: 'auto', height: '100%' } : null;
+              return (<>
             {shownItems.map((e, i) => (
-              <BagTile key={e.kind === 'item' ? `i-${e.key}` : `${e.kind}-${e.index}-${i}`} entry={e} />
+              <BagTile key={e.kind === 'item' ? `i-${e.key}` : `${e.kind}-${e.index}-${i}`} entry={e} style={rowFit} />
             ))}
             {/* Empty slots so the bag always reads as a full grid of squares.
                 v2.3.1039: recessed dark fill + clearly-visible outline (the old
@@ -813,8 +861,11 @@ export const InventoryPanel = () => {
                 background: 'rgba(0,0,0,0.28)',
                 border: '1px solid rgba(238, 242, 235, 0.24)',
                 borderRadius: 6,
+                ...(rowFit || {}),
               }} />
             ))}
+              </>);
+            })()}
           </div>
           </div>
         )}
@@ -823,20 +874,21 @@ export const InventoryPanel = () => {
   );
 };
 
-/* v2.3.1070: dispatch a shared bag entry to the right tile so the quick-bag
-   preview and the full Bag panel render identical tiles from one list. */
-export const BagTile = ({ entry }) => {
+/* v2.3.1070: dispatch a shared bag entry to the right tile so every bag
+   surface renders identical tiles from one list.  v2.3.1350: `style`
+   threads the measured row-fit override down to both tile kinds. */
+export const BagTile = ({ entry, style }) => {
   if (!entry) return null;
   if (entry.kind === 'item') {
-    return <ItemTile ikey={entry.key} count={entry.count} />;
+    return <ItemTile ikey={entry.key} count={entry.count} style={style} />;
   }
-  return <StashTile kind={entry.kind} obj={entry.obj} index={entry.index} />;
+  return <StashTile kind={entry.kind} obj={entry.obj} index={entry.index} style={style} />;
 };
 
 /* Stash tile for an unequipped weapon or shield.  Opens the popup
    with the stashWeapon / stashShield kind so the Equip action wires
    it back into the matching loadout slot. */
-const StashTile = ({ kind, obj, index }) => {
+const StashTile = ({ kind, obj, index, style: styleOverride }) => {
   /* v2.3.1070: anchored stash items show the same ⚓ badge as inventory
      tiles -- the popup anchors them under the matching index-based key. */
   const locked = itemIsLocked(`${kind}_${index}`);
@@ -901,6 +953,8 @@ const StashTile = ({ kind, obj, index }) => {
       position: 'relative',
       cursor: 'pointer',
       touchAction: 'manipulation',
+      /* v2.3.1350: row-fit override from the measured items grid. */
+      ...(styleOverride || {}),
     }} title={(obj && obj.name) || (kind === 'stashShield' ? 'Shield' : kind === 'stashArmor' ? 'Armor' : 'Weapon')}>
       {thumb
         ? <img src={thumb} alt="" draggable={false}
