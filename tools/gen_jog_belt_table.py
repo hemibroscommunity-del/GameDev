@@ -156,9 +156,11 @@ def render_sheet(d, t):
     The renderer then treats it as a normal gear layer — same transform as
     the body, no runtime anchor math at all."""
     base = Image.open(f'public/sprites/player/jog-{d}.png').convert('RGBA')
+    chest = Image.open(f'public/sprites/gear/chest/steelplate/jog-{d}.png').convert('RGBA')
     H = base.height
     n = base.width // H
-    bpx = base.load()
+    cn = chest.width // H
+    bpx, cpx = base.load(), chest.load()
     s = H / 256.0
     jw = jog_waist_rows(d)
     chain = Image.open('tools/posesheets/chainbelt.png').convert('RGBA')
@@ -170,21 +172,63 @@ def render_sheet(d, t):
     opx = out.load()
     for i in range(n):
         bx0 = i * H
+        cxi = (i % cn) * H
         w = max(2, round(t['w'][i % len(t['w'])] * s))
         cx = round(t['cx'][i % len(t['cx'])] * s)
         wr = round(jw[i % len(jw)] * s)
         y1 = wr + round(t['b'] * s)          # band bottom
         y0b = y1 - h                          # band top
+
+        def chest_at(x, y):
+            return 0 <= x < H and 0 <= y < H and cpx[cxi + x, y][3] > ALPHA
+
         x0 = cx - w // 2
         for y in range(max(0, y0b), min(H, y1)):
             for x in range(max(0, x0), min(H, x0 + w)):
                 if bpx[bx0 + x, y][3] <= ALPHA:
                     continue                  # clip to the body silhouette
+                # v2.3.1345b GAUNTLET STANDOFF (owner: east/west belt "chewing
+                # up" the swinging gauntlet; southwest chain on the arm): near
+                # chest-opaque art at the SAME row or BELOW (a gauntlet/arm at
+                # waist height) the band paints FLAT SHADOW instead of chain —
+                # the busy links no longer touch the gauntlet outline (its
+                # silhouette stays readable) and no background hole opens.
+                # Chest directly ABOVE within 3 rows is the plate's bottom
+                # edge — the band still tucks under it with full chain.
+                tuck = chest_at(x, y - 1) or chest_at(x, y - 2) or chest_at(x, y - 3)
+                if not tuck:
+                    near = False
+                    for dy in (0, 1, 2):
+                        for dx in (-2, -1, 0, 1, 2):
+                            if (dx or dy) and chest_at(x + dx, y + dy):
+                                near = True; break
+                        if near:
+                            break
+                    if near:
+                        opx[bx0 + x, y] = (26, 28, 32, 255)
+                        continue
                 sp = tpx[(x - x0) % tile_w, (y - y0b) % h]
                 if sp[3] > 30:
                     opx[bx0 + x, y] = (sp[0], sp[1], sp[2], 255)
                 else:
                     opx[bx0 + x, y] = (20, 22, 26, 255)   # backing: reads solid
+        # v2.3.1345b EDGE RING (owner: "white pixel halo outlines"): the chain
+        # texture's bright highlight pixels ended abruptly at the band's edge
+        # with no outline — against the world background they read as a white
+        # halo.  Darken every painted pixel that borders an unpainted one, so
+        # the band gets the 1px dark rim every other sprite in the game has.
+        for y in range(max(0, y0b - 1), min(H, y1 + 1)):
+            for x in range(max(0, x0 - 1), min(H, x0 + w + 1)):
+                p = opx[bx0 + x, y]
+                if p[3] == 0:
+                    continue
+                edge = False
+                for dx, dy in ((-1, 0), (1, 0), (0, -1), (0, 1)):
+                    nx, ny = x + dx, y + dy
+                    if not (0 <= nx < H and 0 <= ny < H) or opx[bx0 + nx, ny][3] == 0:
+                        edge = True; break
+                if edge:
+                    opx[bx0 + x, y] = (int(p[0] * 0.45), int(p[1] * 0.45), int(p[2] * 0.45), 255)
     path = f'public/sprites/gear/belt/chainbelt/jog-{d}.png'
     import os
     os.makedirs(os.path.dirname(path), exist_ok=True)
