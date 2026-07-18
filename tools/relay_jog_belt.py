@@ -99,7 +99,13 @@ def main():
     med_W = med([m[5] - m[4] + 1 for m in ok if m[4] is not None])
     if med_plate_rel is None or med_W is None:
         raise SystemExit(f'{d}: could not establish medians')
-    W = med_W
+    # v2.3.1342c (owner: "northeast looks by far the best"): NE's chain is a
+    # NARROW strip tucked into the plate<->greaves seam (W=22 at figH~100,
+    # ratio ~0.22), not the wide worn band the other dirs got.  Width now
+    # follows NE's proportion instead of the direction's legacy band width.
+    width_frac = arg('--width-frac', 0.22, float)
+    figH_med = med([m[1] for m in ok])
+    W = max(10, round(width_frac * figH_med))
 
     # ── Direction-wide greaves anchor for the band height ──
     gt_rel = []
@@ -139,11 +145,14 @@ def main():
         # knee/boot pixels far down on columns beside the legs, which
         # tiled chain "drips" without the clamp.  Columns with no greaves
         # fall back to the direction median.
-        clamp = y0 + med_gt_rel + 4
+        # v2.3.1342c: strict seam — band ends AT the greaves top (no +2
+        # overlap; the layering pass would erase it anyway) like NE's
+        # gap-fill.  Clamp unchanged (knee/boot pixels would drip).
+        clamp = y0 + med_gt_rel + 2
         col_bot = {}
         for x in range(max(0, x0), min(H, x1 + 1)):
             lt = [y for y in range(y0 + int(0.42 * figH), H) if lpx[lx0 + x, y][3] > ALPHA]
-            col_bot[x] = min((min(lt) + 2) if lt else (y0 + med_gt_rel + 2), clamp)
+            col_bot[x] = min(min(lt) if lt else (y0 + med_gt_rel + 1), clamp)
 
         # ── Erase the old chain: central run-cluster in rows below the plate ──
         cbot_rows = range(plate_bot, min(H, y0 + med_gt_rel + int(0.10 * figH)))
@@ -167,7 +176,10 @@ def main():
                             cpx[cx0 + x, y] = (0, 0, 0, 0)
                             changed += 1
 
-        # ── Lay the fresh band: constant phase from the band's left edge ──
+        # ── Lay the fresh band: dark shadow backing first (NE's recipe —
+        # chain links read over shadow, and chain-texture holes can never
+        # show background), then the chain at constant phase from the
+        # band's left edge ──
         bx0 = (i % bn) * H
         for x in range(max(0, x0), min(H, x1 + 1)):
             for y in range(plate_bot, min(H, col_bot[x])):
@@ -180,7 +192,9 @@ def main():
                 sp = chpx[(x - x0) % chain_w, (y - plate_bot) % bandH]
                 if sp[3] > 30:
                     cpx[cx0 + x, y] = (sp[0], sp[1], sp[2], 255)
-                    changed += 1
+                else:
+                    cpx[cx0 + x, y] = (20, 22, 26, 255)   # shadow backing
+                changed += 1
 
     # ── Correction passes (all modes) — owner rules 2026-07-18: ──
     #  A. the belt renders BEHIND the leg layer: the chest sheet draws ABOVE
@@ -220,14 +234,12 @@ def main():
                 left = any(covered(xx) for xx in range(max(0, x - 20), x))
                 right = any(covered(xx) for xx in range(x + 1, min(H, x + 21)))
                 if left and right:
-                    sp = chpx[(x - x0) % chain_w, (y - plate_bot) % bandH]
-                    if sp[3] > 30:
-                        cpx[cx0 + x, y] = (sp[0], sp[1], sp[2], 255)
-                    else:
-                        # chain hole at this phase: the pants band may not
-                        # reach this row, so back it with the bake's dark
-                        # shadow instead of risking a background dot
-                        cpx[cx0 + x, y] = (20, 22, 26, 255)
+                    # v2.3.1342c: always the dark shadow — these leftovers sit
+                    # mostly in the inter-thigh region below the belt, where
+                    # isolated chain-textured SPECKS read as floating debris;
+                    # flat shadow reads as the crotch shadow the original
+                    # bake's black gap-fill provided.
+                    cpx[cx0 + x, y] = (20, 22, 26, 255)
                     fixedB += 1
 
     print(f'jog-{d}: W={W} bandH={bandH} plateRelMed={med_plate_rel} '
