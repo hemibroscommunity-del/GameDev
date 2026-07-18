@@ -183,30 +183,67 @@ def render_sheet(d, t):
             return 0 <= x < H and 0 <= y < H and cpx[cxi + x, y][3] > ALPHA
 
         x0 = cx - w // 2
+        # v2.3.1345c ARM EXCLUSION (owner flagged SW f6-9/16-17 + E f10/23/24:
+        # chain in front of the swinging arm).  The v2.3.1345b standoff's
+        # "tuck under the plate" exception (chest directly above) was ALSO
+        # satisfied by the crossing arm's armor tube, leaking chain under the
+        # arm.  Now the chest pixels in/near the band rect are split into
+        # connected clusters and classified: the cluster whose top-of-rect
+        # x-span covers >=50% of the band width is the PLATE (the cuirass
+        # bottom always enters from above across most of the band); every
+        # other cluster is the ARM/GAUNTLET.  Belt pixels within 3px of an
+        # arm cluster stay EMPTY — no chain, no shadow: the arm and the
+        # renderer's erase own that space.
+        ex0, ex1 = max(0, x0 - 3), min(H, x0 + w + 3)
+        ey0, ey1 = max(0, y0b - 3), min(H, y1 + 3)
+        seen = set()
+        arm = set()
+        flank = set()
+        for sy in range(ey0, ey1):
+            for sx in range(ex0, ex1):
+                if (sx, sy) in seen or not chest_at(sx, sy):
+                    continue
+                stack = [(sx, sy)]
+                seen.add((sx, sy))
+                comp = []
+                while stack:
+                    px_, py_ = stack.pop()
+                    comp.append((px_, py_))
+                    for dx, dy in ((-1, 0), (1, 0), (0, -1), (0, 1)):
+                        nx, ny = px_ + dx, py_ + dy
+                        if (ex0 <= nx < ex1 and ey0 <= ny < ey1
+                                and (nx, ny) not in seen and chest_at(nx, ny)):
+                            seen.add((nx, ny))
+                            stack.append((nx, ny))
+                top_xs = [px_ for px_, py_ in comp if py_ <= y0b + 2]
+                is_plate = top_xs and (max(top_xs) - min(top_xs) + 1) >= 0.5 * w
+                if is_plate:
+                    continue
+                # CROSSING arm (reaches the band's interior — the flagged
+                # SW/E frames): the band stays EMPTY near it, the arm owns
+                # that space.  FLANKING arm (hangs at the band's ends, e.g.
+                # south's resting gauntlets): the band paints flat SHADOW
+                # there instead — leaving it empty opened seam slivers
+                # (south 24->270px) while chain touching it "chews" it.
+                crossing = any(x0 + 4 <= px_ < x0 + w - 4 and y0b <= py_ < y1
+                               for px_, py_ in comp)
+                (arm if crossing else flank).update(comp)
+        def near(mask, x, y, r):
+            for dy in range(-r, r + 1):
+                for dx in range(-r, r + 1):
+                    if (x + dx, y + dy) in mask:
+                        return True
+            return False
+
         for y in range(max(0, y0b), min(H, y1)):
             for x in range(max(0, x0), min(H, x0 + w)):
                 if bpx[bx0 + x, y][3] <= ALPHA:
                     continue                  # clip to the body silhouette
-                # v2.3.1345b GAUNTLET STANDOFF (owner: east/west belt "chewing
-                # up" the swinging gauntlet; southwest chain on the arm): near
-                # chest-opaque art at the SAME row or BELOW (a gauntlet/arm at
-                # waist height) the band paints FLAT SHADOW instead of chain —
-                # the busy links no longer touch the gauntlet outline (its
-                # silhouette stays readable) and no background hole opens.
-                # Chest directly ABOVE within 3 rows is the plate's bottom
-                # edge — the band still tucks under it with full chain.
-                tuck = chest_at(x, y - 1) or chest_at(x, y - 2) or chest_at(x, y - 3)
-                if not tuck:
-                    near = False
-                    for dy in (0, 1, 2):
-                        for dx in (-2, -1, 0, 1, 2):
-                            if (dx or dy) and chest_at(x + dx, y + dy):
-                                near = True; break
-                        if near:
-                            break
-                    if near:
-                        opx[bx0 + x, y] = (26, 28, 32, 255)
-                        continue
+                if arm and near(arm, x, y, 3):
+                    continue                  # the crossing arm owns this space
+                if flank and near(flank, x, y, 2):
+                    opx[bx0 + x, y] = (26, 28, 32, 255)   # quiet shadow beside it
+                    continue
                 sp = tpx[(x - x0) % tile_w, (y - y0b) % h]
                 if sp[3] > 30:
                     opx[bx0 + x, y] = (sp[0], sp[1], sp[2], 255)

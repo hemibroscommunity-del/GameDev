@@ -27,14 +27,25 @@ ALPHA = 20
 MIN_KEEP = 50
 DIRS = ['south', 'north', 'east', 'northeast', 'southwest']
 
+# v2.3.1345c (owner: "ne f0 and f1 both have neck and shoulder skin showing a
+# bit too much"): those frames' pristine collar leaves a skin gap between the
+# neckline and the pauldron that the rest of the cycle covers.  For each
+# listed frame, uncovered body pixels in the collar region are patched from a
+# DONOR frame whose collar covers them (shifted by the body-bob delta) — the
+# neckline ends up exactly as the donor frame draws it, no hand-painted art.
+COLLAR_PATCH = {('northeast', 0): 2, ('northeast', 1): 2}
+
 
 def scrub(d):
     p = f'public/sprites/gear/chest/steelplate/jog-{d}.png'
     im = Image.open(p).convert('RGBA')
+    base = Image.open(f'public/sprites/player/jog-{d}.png').convert('RGBA')
     H = im.height
     n = im.width // H
+    bn = base.width // H
     a = np.array(im)
-    removed = tinted = 0
+    barr = np.array(base)
+    removed = tinted = raised = 0
     for i in range(n):
         fr = a[:, i * H:(i + 1) * H]
         op = fr[:, :, 3] > ALPHA
@@ -61,8 +72,33 @@ def scrub(d):
             fr[:, :, 1][mag] = lum[mag]
             fr[:, :, 2][mag] = np.minimum(255, (lum[mag] * 1.1)).astype(np.uint8)
             tinted += int(mag.sum())
+    # collar patch (see COLLAR_PATCH) — second loop so donors are post-scrub
+    def fig_top(fi):
+        bf = barr[:, (fi % bn) * H:((fi % bn) + 1) * H]
+        ys = np.where((bf[:, :, 3] > ALPHA).any(axis=1))[0]
+        return int(ys[0]) if len(ys) else 0
+    for (dd, i), donor in COLLAR_PATCH.items():
+        if dd != d or i >= n:
+            continue
+        fr = a[:, i * H:(i + 1) * H]
+        dfr = a[:, donor * H:(donor + 1) * H]
+        bfr = barr[:, (i % bn) * H:((i % bn) + 1) * H]
+        dy = fig_top(i) - fig_top(donor)     # body-bob alignment
+        lo, hi = int(0.22 * H), int(0.45 * H)
+        cx0, cx1 = int(0.25 * H), int(0.75 * H)
+        for y in range(lo, hi):
+            sy = y - dy
+            if not (0 <= sy < H):
+                continue
+            for x in range(cx0, cx1):
+                if fr[y, x, 3] > ALPHA or bfr[y, x, 3] <= ALPHA:
+                    continue
+                if dfr[sy, x, 3] > ALPHA:
+                    fr[y, x] = dfr[sy, x]
+                    raised += 1
     Image.fromarray(a).save(p)
-    print(f'jog-{d}: {removed}px detached fragments erased, {tinted}px magenta bleed neutralized')
+    print(f'jog-{d}: {removed}px detached fragments erased, {tinted}px magenta bleed '
+          f'neutralized, {raised}px collar raised')
 
 
 def main():
