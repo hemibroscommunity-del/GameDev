@@ -291,11 +291,12 @@ export const InventoryPanel = () => {
       const el = itemsBoxRef.current;
       if (!el || !el.clientHeight) return;
       /* Width budget: tray padding 6+6 + 5 gaps of 8 = 52.  Height
-         budget around the two rows: tray padding 6+6 + the grid's
-         14px scroll-clearance paddingBottom + 1 inter-row gap of 8
-         = 34. */
+         budget around the two guaranteed rows: tray padding 6+6 + the
+         grid's 10px scroll-clearance paddingBottom + 1 inter-row gap
+         of 8 = 30 (v2.3.1352: clearance 14 -> 10 with the tighter
+         vertical budget). */
       const tileW = (el.clientWidth - 52) / 6;
-      const half = Math.floor((el.clientHeight - 34) / 2);
+      const half = Math.floor((el.clientHeight - 30) / 2);
       const clamped = Math.max(36, Math.min(Math.floor(tileW), half));
       setItemRowH(prev => (Math.abs(prev - clamped) > 1 ? clamped : prev));
     };
@@ -356,14 +357,23 @@ export const InventoryPanel = () => {
        row + filter chips stay pinned while only the item tray scrolls
        (overflow moved off panelStyle onto the tray, and the bottom
        scroll-edge fade follows it there). */
-    <div style={{ ...panelStyle, overflow: 'hidden', WebkitMaskImage: 'none', maskImage: 'none', display: 'flex', flexDirection: 'column' }}>
+    <div style={{ ...panelStyle, overflow: 'hidden', WebkitMaskImage: 'none', maskImage: 'none', display: 'flex', flexDirection: 'column',
+      /* v2.3.1352 (owner: "there's more room between the toolbar
+         container and the inventory window"): the Bag runs a tighter
+         vertical budget than the shared panelStyle — top 8->6, bottom
+         10->2 (the tray's own 18px fade is the bottom edge treatment;
+         dead margin above the toolbar bought nothing).  Local override
+         only: other panels keep panelStyle's padding. */
+      padding: '6px 12px 2px' }}>
 
       {/* v2.3.1326 (owner): Items / Equipped segmented tabs — the
           equipped row no longer shares the screen with the item grid;
           each view gets the full sheet.  Same segmented-track pattern
           as the Friends panel's tabs. */}
       <div className="bt-well" style={{
-        display: 'flex', gap: 2, marginTop: 2, marginBottom: 8, flex: 'none',
+        /* v2.3.1352: marginTop 2->0 / marginBottom 8->6 — spacing-only
+           trim feeding the third item row. */
+        display: 'flex', gap: 2, marginTop: 0, marginBottom: 6, flex: 'none',
       }}>
         {[
           { id: 'items', label: 'Items', icon: '/icons/ui/nav-inventory.webp?v=2.3.1224' },
@@ -695,7 +705,7 @@ export const InventoryPanel = () => {
           chips and read as chip info; "not the right place for
           inventory item info".  The equipped row's N/6 tag (a slot
           gauge the owner asked for in round 8b) stays. */}
-      <div style={{ position: 'relative', marginTop: 2, marginBottom: 6, flex: 'none' }}>
+      <div style={{ position: 'relative', marginTop: 0, marginBottom: 4, flex: 'none' /* v2.3.1352: 2/6 -> 0/4 */ }}>
         <div className="bt-well" style={{
           minWidth: 0,
           display: 'flex', alignItems: 'stretch', gap: 2,
@@ -836,11 +846,10 @@ export const InventoryPanel = () => {
             ...(itemRowH ? { gridAutoRows: `${itemRowH}px` } : {}),
             gap: 8,
             /* v2.3.1312 (round-8 §7): scroll clearance — the last row
-               must clear the edge fade at scroll end.  The toolbar sits
-               BELOW the sheet body in flex (it never overlaps this
-               tray), so 14px of grid padding + the 18px fade is the
-               honest equivalent of the spec's "toolbar + 12" rule. */
-            paddingBottom: 14,
+               must clear the edge fade at scroll end.  v2.3.1352:
+               14 -> 10 (tighter budget; still holds the last row off
+               the 18px fade at scroll end). */
+            paddingBottom: 10,
           }}>
             {(() => {
               /* v2.3.1350: with measured rows the tiles fill their row

@@ -68,7 +68,11 @@ export const FEET_OFFSET = 24;
 export function expandedSheetHeight(vw, vh) {
   const canvasH = vh - barHeight(vw, vh) + DASH_OVERLAP;
   const feetY = canvasH / 2 + FEET_OFFSET;
-  const feetRule = vh - (feetY + 44);
+  /* v2.3.1352 (owner: fit a third bag row without shrinking anything):
+     ground allowance 44 -> 36px — still inside the owner's original
+     "leave ~32-48px of visible ground" band (v2.3.1311), and the extra
+     8px goes to every root sheet's content. */
+  const feetRule = vh - (feetY + 36);
   return Math.round(Math.min(vh * 0.52, Math.max(vh * 0.40, feetRule)));
 }
 
