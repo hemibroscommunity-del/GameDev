@@ -402,13 +402,40 @@ function bodyDirScale(pose, dir) {
    The neutralized scaffolding (functions returning 1.0 multiplied into every
    scale) was deleted in the v2.3.688 cleanup; history has the tuned maps. */
 
+/* v2.3.1353: per-hat jog east/west corrections — the owner read the
+   headwear comparison sheet row by row and dialed each hat against the
+   v2.3.1349 global 0.67: `mul` multiplies the jog-east trait scale
+   (west is the mirrored render of the same dir), `dy` nudges the hat
+   down in SCREEN pixels (the three wide-brim hats rode high on the
+   jogging head).  Applied to the hat AND its hair-clip mask (both flow
+   through _placeTrait with the same tune), never to hair/beard — the
+   bare-head row was owner-rated 0. */
+const JOG_EW_HAT_TUNE = {
+  'old-school-helmet': { mul: 1.20, dy: 0 },
+  'top-hat':           { mul: 1.10, dy: 0 },
+  'purple-hat':        { mul: 1.10, dy: 0 },
+  'beanie':            { mul: 1.20, dy: 0 },
+  'red-cap':           { mul: 1.10, dy: 0 },
+  'shark-hat':         { mul: 1.00, dy: 0 },
+  'bandana':           { mul: 1.10, dy: 0 },
+  'sombrero':          { mul: 1.20, dy: 10 },
+  'bucket-hat':        { mul: 1.20, dy: 10 },
+  'fedora':            { mul: 1.20, dy: 10 },
+};
+function jogEwHatTune(hatId, pose, dir) {
+  if (pose !== 'jog' || dir !== 'east') return null;
+  return JOG_EW_HAT_TUNE[hatId] || null;
+}
+
 /* Place a player's headwear sprite for this frame.  Shared by the local
    player (_updatePlayer) and remote players (_updateOtherPlayers).
    Crown-anchored + placement-independent: pins the hat's own crown
    (meta.anchors[dir]) onto the body crown (body-tops, per frame) plus
    small reusable per-dir/per-pose nudges, scaled to the body.  hatId
-   'none' / falsy, or missing art/anchor -> hat hidden. */
-function _placeTrait(sprite, entry, display, pose, dir, mirror, frameIdx, bodyScale) {
+   'none' / falsy, or missing art/anchor -> hat hidden.
+   v2.3.1353: `tune` ({mul, dy}) — optional per-hat jog-east correction
+   from JOG_EW_HAT_TUNE; callers that know the hat id pass it. */
+function _placeTrait(sprite, entry, display, pose, dir, mirror, frameIdx, bodyScale, tune) {
   if (!sprite) return;
   _ensureBodyData();
   /* v2.3.1305: fallbackTex = the NATIVE-color textures behind a recolored
@@ -460,7 +487,7 @@ function _placeTrait(sprite, entry, display, pose, dir, mirror, frameIdx, bodySc
      crown anchor. */
   const poseTraitMul = pose === 'mine' ? 1.21 : pose === 'fish' ? 0.88
     : (pose === 'jog' && dir === 'east') ? 0.67 : 1;
-  const dscale = (_pick(meta.scale) || 1) * poseScale * poseTraitMul;
+  const dscale = (_pick(meta.scale) || 1) * poseScale * poseTraitMul * ((tune && tune.mul) || 1);
   if (headwear.texture !== headwearTex) headwear.texture = headwearTex;
   /* Anchor the hat sprite on its own crown pixel, then pin that point to
      the body crown's SCREEN position (mirror-correct) + the nudge, with
@@ -473,7 +500,9 @@ function _placeTrait(sprite, entry, display, pose, dir, mirror, frameIdx, bodySc
   const bodyCrownX = spriteBody.x + (bodyTop[0] - W / 2) * absBodyScale * m;
   const bodyCrownY = spriteBody.y + (bodyTop[1] - W / 2) * absBodyScale;
   headwear.x = bodyCrownX + (nudge[0] + poseN[0]) * absBodyScale * m;
-  headwear.y = bodyCrownY + (nudge[1] + poseN[1]) * absBodyScale;
+  /* v2.3.1353: tune.dy is a SCREEN-pixel nudge (down-positive), applied
+     unscaled so "10px down" means 10px on every device. */
+  headwear.y = bodyCrownY + (nudge[1] + poseN[1]) * absBodyScale + ((tune && tune.dy) || 0);
   headwear.scale.x = m * absBodyScale * dscale;
   headwear.scale.y = absBodyScale * dscale;
   headwear.visible = true;
@@ -490,7 +519,8 @@ function _placeHeadwear(display, hatId, hatColorId, pose, dir, mirror, frameIdx,
   let entry = baseEntry;
   const colored = getColoredHatTextures(hatId, hatColorId);
   if (colored && baseEntry) entry = { tex: colored, meta: baseEntry.meta, fallbackTex: baseEntry.tex }; /* v2.3.1305 */
-  _placeTrait(display._headwearSprite, entry, display, pose, dir, mirror, frameIdx, bodyScale);
+  _placeTrait(display._headwearSprite, entry, display, pose, dir, mirror, frameIdx, bodyScale,
+    jogEwHatTune(hatId, pose, dir)); /* v2.3.1353 */
 }
 function _placeFacialHair(display, fhId, fhColorId, pose, dir, mirror, frameIdx, bodyScale) {
   const baseEntry = _ensureFacialHairLoaded(fhId);
@@ -1527,8 +1557,10 @@ function _clipHairToHat(display, hatId, pose, dir, mirror, frameIdx, bodyScale) 
     return;
   }
   /* Reuse the trait placement with the helmet's meta but the mask texture
-     so the silhouette lands exactly over the helmet. */
-  _placeTrait(maskSprite, { tex: maskEntry.tex, meta }, display, pose, dir, mirror, frameIdx, bodyScale);
+     so the silhouette lands exactly over the helmet — including the
+     v2.3.1353 per-hat jog tune, or the clip drifts off the resized hat. */
+  _placeTrait(maskSprite, { tex: maskEntry.tex, meta }, display, pose, dir, mirror, frameIdx, bodyScale,
+    jogEwHatTune(hatId, pose, dir));
   if (maskSprite.visible) {
     if (hair.mask !== maskSprite) hair.mask = maskSprite;
   } else if (hair.mask) {
