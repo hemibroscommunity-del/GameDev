@@ -32,6 +32,10 @@ from PIL import Image
 ALPHA = 20
 MAG = (255, 0, 255, 255)
 
+# v2.3.1345: the chain belt is its own gear sheet now
+# (belt/chainbelt/jog-<dir>.png, body-frame-aligned, drawn under legs+chest)
+# — composite it the same way here so the counters reflect what ships.
+
 _JW = None
 def jog_waist_row(d, i):
     global _JW
@@ -63,6 +67,11 @@ def verify(d):
     n, ln, bn = chest.width // H, legs.width // H, base.width // H
     cpx, lpx, bpx = chest.load(), legs.load(), base.load()
     scale = H / 256.0
+    try:
+        beltS = Image.open(f'public/sprites/gear/belt/chainbelt/jog-{d}.png').convert('RGBA')
+        beltSpx, beltN = beltS.load(), beltS.width // beltS.height
+    except FileNotFoundError:
+        beltSpx, beltN = None, 0
 
     over = gaps = tan = black = semi = 0
     over_f, gap_f, tan_f, semi_f = set(), set(), set(), set()
@@ -72,6 +81,9 @@ def verify(d):
         wr = jog_waist_row(d, i)
         w0 = int((wr - 26) * scale) if wr else None
         w1 = int((wr + 18) * scale) if wr else None
+
+        # v2.3.1345: the belt sheet frame for this body frame (frame-aligned)
+        beltFx0 = (i % beltN) * H if beltN else None
 
         # gear-enclosed POCKETS: the renderer's fill = gear | unreached, so
         # body pixels enclosed by gear (armpit pockets etc.) stay visible.
@@ -103,18 +115,28 @@ def verify(d):
         # opaque, so bare skin the game shows (far from any armor pixel) and
         # holes the erase opens (near armor, nothing over) were both invisible
         # to the verifier.  Separable box dilation: rows then columns.
-        dil_r = max(1, round(6 * scale))
-        horiz = [[False] * H for _ in range(H)]
-        for y in range(H):
-            g = gearop[y]
-            for x in range(H):
-                lo, hi = max(0, x - dil_r), min(H, x + dil_r + 1)
-                horiz[y][x] = any(g[lo:hi])
-        dil = [[False] * H for _ in range(H)]
-        for x in range(H):
+        def dilate(r):
+            hz = [[False] * H for _ in range(H)]
             for y in range(H):
-                lo, hi = max(0, y - dil_r), min(H, y + dil_r + 1)
-                dil[y][x] = any(horiz[yy][x] for yy in range(lo, hi))
+                g = gearop[y]
+                for x in range(H):
+                    hz[y][x] = any(g[max(0, x - r):min(H, x + r + 1)])
+            out = [[False] * H for _ in range(H)]
+            for x in range(H):
+                for y in range(H):
+                    out[y][x] = any(hz[yy][x] for yy in range(max(0, y - r), min(H, y + r + 1)))
+            return out
+        dil_r = max(1, round(6 * scale))
+        dil = dilate(dil_r)
+        # v2.3.1345: the PANTS-RESTORE (entityRenderer v2.3.650) re-opens any
+        # erased pixel whose colour reads as pants; positionally that's the
+        # body below the measured skin->pants line (the jogWaist row).  The
+        # confinement pass then keeps restored pixels only near the gear
+        # silhouette (fill = gear|pockets dilated 2) or in the band rows.
+        # Without this model every seam pixel near armor counted as a
+        # "background gap" — yet northeast, which passes on-device, showed
+        # 761px of them: in the real game they render as pants.
+        near2 = dilate(2)
 
         # per-row gear span (chest|greaves opaque) for the pants band rule
         frame = Image.new('RGBA', (H, H), MAG)
@@ -127,13 +149,22 @@ def verify(d):
                     if x < gxmin: gxmin = x
                     if x > gxmax: gxmax = x
             for x in range(H):
-                # draw order: pants band / pocket body -> greaves -> chest.
-                # Band/pocket body only survives OUTSIDE the dilated erase.
+                # draw order: pants band / pocket body -> BELT -> greaves ->
+                # chest.  Band/pocket body only survives OUTSIDE the dilated
+                # erase.  The belt is the v2.3.1345 runtime layer.
                 p = None
                 in_band = (w0 is not None and w0 <= y < w1 and gxmin <= x <= gxmax)
                 in_pocket = (not gearop[y][x] and not reach[y][x])
-                if (in_band or in_pocket) and not dil[y][x] and bpx[bx0 + x, y][3] > ALPHA:
-                    p = bpx[bx0 + x, y]; srcmap[y][x] = 1
+                if bpx[bx0 + x, y][3] > ALPHA:
+                    if (in_band or in_pocket) and not dil[y][x]:
+                        p = bpx[bx0 + x, y]; srcmap[y][x] = 1   # surviving skin/pants
+                    elif (wr is not None and y >= int(wr * scale)
+                          and (near2[y][x] or in_band or in_pocket)):
+                        p = bpx[bx0 + x, y]; srcmap[y][x] = 1   # pants-restore
+                if beltFx0 is not None:
+                    bp = beltSpx[beltFx0 + x, y]
+                    if bp[3] > ALPHA:
+                        p = bp; srcmap[y][x] = 4
                 if lpx[lx0 + x, y][3] > ALPHA:
                     p = lpx[lx0 + x, y]; srcmap[y][x] = 2
                 if cpx[cx0 + x, y][3] > ALPHA:
@@ -170,10 +201,13 @@ def verify(d):
                     if left and right:
                         gaps += 1
                         gap_f.add(i)
+                        if os.environ.get('VWC_DEBUG'):
+                            print(f'  GAP {d} f{i} ({x},{y})')
                 # violation 3 (owner: fully armored => ZERO tan): a rendered
-                # BODY pixel in the midsection — bare hip/skin the seal pass
-                # must have covered.  Highlighted cyan.
-                elif srcmap[y][x] == 1:
+                # BODY pixel in the SKIN rows (above the jogWaist skin->pants
+                # line).  Pants below the line are the designed band backing
+                # around the runtime belt, not a violation.  Highlighted cyan.
+                elif srcmap[y][x] == 1 and wr is not None and y < int(wr * scale):
                     tan += 1
                     tan_f.add(i)
                     fpx[x, y] = (0, 255, 255, 255)

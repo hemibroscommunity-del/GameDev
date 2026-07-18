@@ -200,6 +200,20 @@ def main():
                             changed += 1
 
         if strip_only:
+            # v2.3.1345 cleanup: the erased belt leaves AA residue on the
+            # pristine sheets — inside the belt window, drop semi-alpha pixels
+            # and anything over the greaves (the runtime belt layer replaces
+            # all of it; gauntlets outside the window are untouched).
+            lo = max(0, plate_bot - 1)
+            hi = min(H, y0 + med_gt_rel + int(0.14 * figH))
+            for y in range(lo, hi):
+                for x in range(max(0, x0 - 6), min(H, x1 + 7)):
+                    p = cpx[cx0 + x, y]
+                    if p[3] <= ALPHA:
+                        continue
+                    if p[3] < 240 or lpx[lx0 + x, y][3] > ALPHA:
+                        cpx[cx0 + x, y] = (0, 0, 0, 0)
+                        changed += 1
             continue
 
         # ── Lay the fresh band: dark shadow backing first (NE's recipe —
