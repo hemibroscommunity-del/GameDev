@@ -827,11 +827,26 @@ function _maskedBodyFrameInner(bodyTex, worn, dilate, _bt0, _bs, poseInfo) {
              the pants next to the gauntlets.  The erase only zeroed alpha (RGB
              intact in origBody), so re-open any erased pixel that reads as PANTS;
              skin/shoes stay erased so the armour still hides the torso/arms.
-             Mirrors preview_armor_frames._blend_ghost_hand.  v2.3.650 */
+             Mirrors preview_armor_frames._blend_ghost_hand.  v2.3.650
+             v2.3.1353: WAIST BAND ONLY.  The v2.3.1349b origBody refs revived
+             this restore on the frontal/profile dirs — but un-gated it also
+             re-opened the pants-scored OUTLINE ring the dilated erase eats
+             around the ENTIRE armor (east's body art has an olive outline —
+             owner: "an entire chain armor outline on the east body").  Its
+             v2.3.650 purpose was always the waist next to the gauntlets, and
+             the chain paint (same band) converts what it restores. */
           if (origBody) {
-            for (let p = 0; p < 256 * 256; p++) {
+            let rLo = neckY, rHi = 256;
+            if (poseInfo && poseInfo.pose === 'jog') {
+              const wrr = jogWaistRow(poseInfo.dir, poseInfo.frameIdx || 0);
+              rLo = Math.max(neckY, wrr - 50); rHi = Math.min(256, wrr + 42);
+            } else {
+              rLo = Math.max(neckY, Math.round(figTop + 0.33 * fh));
+              rHi = Math.min(256, Math.round(figTop + 0.70 * fh));
+            }
+            for (let p = rLo * 256; p < rHi * 256; p++) {
               const o = p * 4;
-              if (d[o + 3] > 40 || origBody[o + 3] <= 40 || ((p / 256) | 0) < neckY) continue;
+              if (d[o + 3] > 40 || origBody[o + 3] <= 40) continue;
               const R = origBody[o], G = origBody[o + 1], B = origBody[o + 2];
               const sP = score(R, G, B, pantsRef);
               if (sP >= score(R, G, B, skinRef) && sP >= score(R, G, B, shoesRef)) {
@@ -948,6 +963,10 @@ function _maskedBodyFrameInner(bodyTex, worn, dilate, _bt0, _bs, poseInfo) {
         /* allowed = filled silhouette (gop | unreached) dilated by 2 */
         let fill = new Uint8Array(256 * 256);
         for (let p = 0; p < 256 * 256; p++) fill[p] = (gop[p] || !reach[p]) ? 1 : 0;
+        /* v2.3.1353: pre-dilation silhouette (exact gear + interior windows)
+           — the peek-ring tightening below needs it to tell "2px allowance
+           ring" apart from "inside the armor / an interior window". */
+        const fill0 = new Uint8Array(fill);
         for (let it = 0; it < 2; it++) {
           const nx = new Uint8Array(fill);
           for (let p = 0; p < 256 * 256; p++) {
@@ -1044,7 +1063,20 @@ function _maskedBodyFrameInner(bodyTex, worn, dilate, _bt0, _bs, poseInfo) {
               if (!covered[y]) continue;              // bare row stays whole
             } else if (skipBelow || skipAbove) continue;
             if (inWaist && x >= rowMin[y] && x <= rowMax[y]) continue;
-            if (!fill[p]) { d2[o + 3] = 0; dirty2 = true; }
+            if (!fill[p]) { d2[o + 3] = 0; dirty2 = true; continue; }
+            /* v2.3.1353 (owner: "an entire chain armor outline on the east
+               body — it just needs to be in the waist part"): outside the
+               waist band the 2px allowance ring let the BODY's edges peek
+               past the narrower armor art — east's olive pants traced the
+               whole figure.  Legs/torso are not waist: there the body may
+               show only INSIDE the exact gear silhouette (interior windows
+               included, fill0); the waist rows keep the ring, where the
+               trunks legitimately meet the hip edge.  Full-set jog only —
+               partial wear and other poses keep the v2.3.681 behavior. */
+            if (!partial && poseInfo && poseInfo.pose === 'jog' && w0 < w1
+                && (y < w0 - 8 || y >= w1 + 8) && !fill0[p]) {
+              d2[o + 3] = 0; dirty2 = true;
+            }
           }
         }
         /* v2.3.1347 (owner): the chain belt is PAINTED ONTO the exposed

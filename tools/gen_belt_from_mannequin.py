@@ -217,7 +217,24 @@ def gen(d):
         band = np.zeros_like(exposed)
         wrow = wrs[i] if i < len(wrs) else wrs[-1]
         band[max(0, wrow - 30):min(FRAME, wrow + 26)] = True
-        green = green | (exposed & band)
+        geo = exposed & band
+        # v2.3.1353 (owner: "an entire chain armor outline on the east body —
+        # it just needs to be in the waist part"): the body sheet is drawn a
+        # few px wider than the armor, so the geometry fill also caught the
+        # sliver between the greaves/chest EDGES and the body silhouette —
+        # a chain lump bulging past the hip on the profile dirs.  Geometry
+        # chain stays 3px INSIDE the silhouette (the waist seam is interior;
+        # an edge sliver is not waist) and sub-40px speckles drop.  The board
+        # green mask is untouched — the artist's trunks legitimately reach
+        # the hip edge.
+        geo &= ndimage.binary_erosion(bop, iterations=3)
+        lblg, ng = ndimage.label(geo)
+        if ng:
+            sizes = ndimage.sum(geo, lblg, range(1, ng + 1))
+            keep = np.zeros(ng + 1, bool)
+            keep[1:] = sizes >= 40
+            geo &= keep[lblg]
+        green = green | geo
         # v2.3.1349: clip against the body dilated by 2, not the exact
         # silhouette — the ±8px alignment wobble clipped the trunks' hip
         # edges, which the game's erase turned into hip-side holes (SW).
