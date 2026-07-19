@@ -5,7 +5,7 @@
 import { createPixiApp } from './pixiApp.js';
 import { TileRenderer } from './systems/tileRenderer.js';
 import { EntityRenderer, prewarmMaskedBodyFrames, prewarmAltWornSets, planPrewarmProgress, uploadBakedTextures, uploadGearTextures, registerPrewarmRenderer } from './systems/entityRenderer.js';
-import { EffectsRenderer } from './systems/effectsRenderer.js';
+import { EffectsRenderer, prewarmDmgFontPipe } from './systems/effectsRenderer.js';
 import { FpsOverlay } from './systems/fpsOverlay.js';
 import { loadTileAssets } from './tileAssets.js';
 import { loadPlayerSprites } from './playerSprites.js';
@@ -89,6 +89,11 @@ export function preloadPlayerAssets() {
          lazy first-draw upload.  Staggered + dedup'd; appended here so it runs
          after the bake and never blocks the parallel network preloads above. */
       .then(() => uploadGearTextures(_appRef && _appRef.renderer).catch(() => {}))
+      /* v2.3.1361: init the damage-popup BitmapText pipe (batcher/shader
+         + glyph-atlas GPU upload) behind the intro — it was the last
+         first-use render init left, paid on the first HIT of the session
+         (iOS fire-goblin crash suspect). */
+      .then(() => { try { prewarmDmgFontPipe(_appRef && _appRef.renderer); } catch (e) { /* best-effort */ } })
       .then(() => results)
   );
 }
