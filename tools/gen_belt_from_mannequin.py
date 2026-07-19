@@ -45,6 +45,16 @@ MAG_TOL = 60
 ALPHA = 20
 DIRS = ['south', 'north', 'southwest', 'east', 'northeast']
 BOARD_DIRS = {'south', 'north', 'southwest'}   # boards that match today's cycles
+# v2.3.1354 (owner: east "more than half of the frames ... just the shadow in
+# the waist area or the chain making a ghost character outline"): the profile
+# dirs' exposed waist gap is too thin for the geometry fill — after the edge
+# erosion + despeckle almost nothing survived, so most frames fell back to
+# the bake safety net's flat shadow, and the surviving slivers read as ghost
+# outline fragments.  East/northeast instead reuse their APPROVED v2.3.1349b
+# measurement-based masks (tools/posesheets/beltmask-<dir>.png, extracted
+# from commit 511d464) and only get RE-TEXTURED with the unified chain, so
+# the color matches every other dir without changing their geometry.
+MASK_DIRS = {'east', 'northeast'}
 TILE_H = 40   # ONE link scale for every dir/frame (v2.3.1350 same-color rule)
 
 # v2.3.1349b: per-frame waist rows from the game's own table, for the
@@ -151,6 +161,45 @@ def board_mask(arm, meta, i, base, bop):
     return green
 
 
+def chain_fill(green, gys, gxs, bop, tile, tw, cf, wrow):
+    """Fill the mask with the unified chain material.  v2.3.1350 shimmer fix:
+    the tile phase is anchored per frame — NOT to the mask bbox, whose jumps
+    re-rolled the link pattern every frame.  v2.3.1351 (owner: "maybe it
+    needs to be anchored with the armor?"): anchored to the CHEST PLATE'S
+    measured skirt bottom edge + horizontal center (the seam the eye tracks
+    is plate-edge <-> chain); body waist row/center only as fallback."""
+    byy, bxx = np.where(bop)
+    cx = int(round(bxx.mean()))
+    reg0 = max(0, wrow - 44)
+    ys2, xs2 = np.where(cf[reg0:min(FRAME, wrow + 30)])
+    if len(ys2):
+        ay = reg0 + int(np.percentile(ys2, 95))   # skirt bottom edge
+        ax = int(round(xs2.mean()))
+    else:
+        ay, ax = wrow, cx
+    frame_out = np.zeros((FRAME, FRAME, 4), np.uint8)
+    for y, x in zip(gys, gxs):
+        sp = tile[(y - ay) % TILE_H, (x - ax) % tw]
+        if sp[3] > 30:
+            frame_out[y, x] = (sp[0], sp[1], sp[2], 255)
+        else:
+            frame_out[y, x] = (44, 47, 54, 255)   # recessed mail, not void
+    # 1px darkened rim so the band has the game's outline style
+    op_ = frame_out[:, :, 3] > 0
+    rim = op_ & ~ndimage.binary_erosion(op_, iterations=1)
+    for ch2 in range(3):
+        frame_out[:, :, ch2][rim] = (frame_out[:, :, ch2][rim] * 0.45).astype(np.uint8)
+    return frame_out
+
+
+def paste_cell(out, frame_out, i):
+    cell_rgb = Image.fromarray(frame_out).resize((128, 128), Image.LANCZOS)
+    cell_a = Image.fromarray(frame_out[:, :, 3], 'L').resize((128, 128), Image.NEAREST)
+    cell = np.array(cell_rgb)
+    cell[:, :, 3] = np.array(cell_a)              # binary alpha, smooth RGB
+    out.paste(Image.fromarray(cell), (i * 128, 0))
+
+
 def gen(d):
     base128 = Image.open(f'public/sprites/player/jog-{d}.png').convert('RGBA')
     n = base128.width // base128.height
@@ -190,6 +239,13 @@ def gen(d):
     legsop = load_gear(f'public/sprites/gear/legs/steelgreaves/jog-{d}.png')
     wrs = waist_rows(d)
 
+    maskarr = None
+    if d in MASK_DIRS:
+        mim = Image.open(f'tools/posesheets/beltmask-{d}.png').convert('RGBA')
+        if mim.width // mim.height != n:
+            raise SystemExit(f'{d}: beltmask has {mim.width // mim.height} frames, body has {n}')
+        maskarr = np.array(mim.resize((mim.width * 2, 256), Image.NEAREST))[:, :, 3] > 40
+
     out = Image.new('RGBA', (n * 128, 128), (0, 0, 0, 0))
     stats = []
     for i in range(n):
@@ -197,6 +253,20 @@ def gen(d):
         bop = bfr[:, :, 3] > 40
         if not bop.any():
             stats.append(0); continue
+        if maskarr is not None:
+            # approved-mask path (east/northeast): geometry comes straight
+            # from the v2.3.1349b sheet; only the texture below is new.
+            green = maskarr[:, i * FRAME:(i + 1) * FRAME].copy()
+            green &= ndimage.binary_dilation(bop, iterations=2)
+            stats.append(int(green.sum()))
+            if not green.any():
+                continue
+            wrow = wrs[i] if i < len(wrs) else wrs[-1]
+            gys, gxs = np.where(green)
+            frame_out = chain_fill(green, gys, gxs, bop, tile, tw,
+                                   chestop[:, i * FRAME:(i + 1) * FRAME], wrow)
+            paste_cell(out, frame_out, i)
+            continue
         green = (board_mask(arm, meta, i, base, bop) if arm is not None
                  else np.zeros((FRAME, FRAME), bool))
         # game-geometry fill — every body pixel in the waist band not covered
@@ -243,44 +313,10 @@ def gen(d):
         if not green.any():
             continue
 
-        # chain fill.  v2.3.1350 shimmer fix: phase anchored per frame — NOT
-        # the trunk bbox, whose jumps re-rolled the link pattern every frame.
-        # v2.3.1351 (owner: "maybe it needs to be anchored with the armor?"):
-        # anchor to the CHEST PLATE'S skirt, not the body waist row.  The
-        # seam the eye tracks is plate-edge <-> chain, and the plate art's
-        # hand-drawn bob differs a pixel or two from the jogWaist body row —
-        # a body-anchored chain still slides against the armor it hangs
-        # from.  Measure the skirt's bottom edge + horizontal center per
-        # frame; body center/waist row only as fallback.
-        byy, bxx = np.where(bop)
-        cx = int(round(bxx.mean()))
-        cf = chestop[:, i * FRAME:(i + 1) * FRAME]
-        reg0 = max(0, wrow - 44)
-        ys2, xs2 = np.where(cf[reg0:min(FRAME, wrow + 30)])
-        if len(ys2):
-            ay = reg0 + int(np.percentile(ys2, 95))   # skirt bottom edge
-            ax = int(round(xs2.mean()))
-        else:
-            ay, ax = wrow, cx
         gys, gxs = np.where(green)
-        frame_out = np.zeros((FRAME, FRAME, 4), np.uint8)
-        for y, x in zip(gys, gxs):
-            sp = tile[(y - ay) % TILE_H, (x - ax) % tw]
-            if sp[3] > 30:
-                frame_out[y, x] = (sp[0], sp[1], sp[2], 255)
-            else:
-                frame_out[y, x] = (44, 47, 54, 255)   # recessed mail, not void
-        # 1px darkened rim so the band has the game's outline style
-        op_ = frame_out[:, :, 3] > 0
-        rim = op_ & ~ndimage.binary_erosion(op_, iterations=1)
-        for ch2 in range(3):
-            frame_out[:, :, ch2][rim] = (frame_out[:, :, ch2][rim] * 0.45).astype(np.uint8)
-
-        cell_rgb = Image.fromarray(frame_out).resize((128, 128), Image.LANCZOS)
-        cell_a = Image.fromarray(frame_out[:, :, 3], 'L').resize((128, 128), Image.NEAREST)
-        cell = np.array(cell_rgb)
-        cell[:, :, 3] = np.array(cell_a)              # binary alpha, smooth RGB
-        out.paste(Image.fromarray(cell), (i * 128, 0))
+        frame_out = chain_fill(green, gys, gxs, bop, tile, tw,
+                               chestop[:, i * FRAME:(i + 1) * FRAME], wrow)
+        paste_cell(out, frame_out, i)
 
     path = f'public/sprites/gear/belt/chainbelt/jog-{d}.png'
     out.save(path)
