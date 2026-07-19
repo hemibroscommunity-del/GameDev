@@ -4445,6 +4445,15 @@ export var BroTown = function BroTown(_ref0) {
       try {
         var cv = canvasRef.current;
         if (!cv || !cv.width) return -1;
+        /* v2.3.1383 (owner: rejoin "blanks out"): a LOST WebGL context must
+           count as FULLY DARK.  drawImage from a dead GL canvas can throw or
+           yield nothing -> the old -1 "can't judge" skip meant the watchdog
+           never struck, so an iOS memory-pressure context kill left the
+           screen blank forever with no rebuild and no reload. */
+        try {
+          var _glWd = cv.getContext('webgl2') || cv.getContext('webgl');
+          if (_glWd && _glWd.isContextLost && _glWd.isContextLost()) return 0;
+        } catch (eWd) { /* fall through to the pixel sample */ }
         var c2 = document.createElement('canvas');
         c2.width = 32;
         c2.height = 18;
@@ -4478,6 +4487,24 @@ export var BroTown = function BroTown(_ref0) {
             if (_rawHb) {
               var _snHb = JSON.parse(_rawHb);
               _snHb.t = _nowWd;
+              /* v2.3.1391: refresh the TRAITS too — the snapshot captured
+                 them once at PLAY, so an auto-rejoin after a mid-session
+                 outfit change silently reverted the look AND overwrote the
+                 picker stores with the stale values (repro: equip a hat
+                 in-game, recovery-reload -> hat gone everywhere). */
+              _snHb.traits = {
+                headwear: getHeadwear(),
+                hair: getHair(),
+                facialHair: getFacialHair(),
+                skin: getSkin(),
+                pants: getPants(),
+                shoes: getShoes(),
+                hairColor: getHairColor(),
+                hatColor: getHatColor(),
+                facialHairColor: getFacialHairColor(),
+                shirt: getShirt(),
+                shirtColor: getShirtColor()
+              };
               var _strHb = JSON.stringify(_snHb);
               sessionStorage.setItem('bt_resume', _strHb);
               localStorage.setItem('bt_resume', _strHb);

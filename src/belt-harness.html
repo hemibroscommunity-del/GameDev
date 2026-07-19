@@ -1,0 +1,136 @@
+<!doctype html>
+<!-- v2.3.1349: headless ground-truth harness — renders the REAL masked-body
+     bake (chain waist paint included) + gear layers for every jog frame per
+     direction, exactly as entityRenderer composes them.  Driven by
+     tools/qa/belt-harness-shot.mjs; not linked from the game. -->
+<html>
+<head><meta charset="utf-8"><title>belt harness</title>
+<style>body{background:#3c4048;margin:0} canvas{display:block;margin:6px;image-rendering:pixelated}</style>
+</head>
+<body>
+<div id="boards"></div>
+<script type="module">
+import { getBodyFrame, getPickupHeadFrame } from './rendering/playerSkins.js';
+import { getGearFrame, getGearFramePhased } from './rendering/gearSheets.js';
+import { frameCount, loadPlayerSprites } from './rendering/playerSprites.js';
+import { _maskedBodyFrame } from './rendering/systems/entityRenderer.js';
+
+const DIRS = ['south', 'north', 'east', 'northeast', 'southwest'];
+// ?layers=body draws ONLY the masked-body bake (debug decomposition)
+const MODE = new URLSearchParams(location.search).get('layers') || 'all';
+// ?wear=chest | legs | full (default): partial-wear rendering (v2.3.1360 —
+// chest-only/legs-only jog broke unseen because the harness only ever
+// rendered the full set)
+const WEAR = new URLSearchParams(location.search).get('wear') || 'full';
+// ?bg=magenta: chroma-key background — for exporting ChatGPT source boards
+const BG = new URLSearchParams(location.search).get('bg') === 'magenta' ? '#ff00ff' : '#3c4048';
+// mirrored production angles: rendered from the base dir with a negative
+// x-scale, exactly how the game mirrors (v2.3.1349b)
+const MIRROR = { west: 'east', northwest: 'northeast', southeast: 'southwest' };
+const SKIN = 'default', PANTS = 'default', SHOES = 'default';
+const wait = (ms) => new Promise(r => setTimeout(r, ms));
+
+async function ready(fn, tries = 200) {
+  for (let t = 0; t < tries; t++) {
+    const v = fn();
+    if (v) return v;
+    await wait(50);
+  }
+  return null;
+}
+
+function drawTex(ctx, tex, dx, dy, scale = 1, flip = false) {
+  const src = tex && tex.source && tex.source.resource;
+  if (!src) return;
+  const f = tex.frame;
+  if (!flip) {
+    ctx.drawImage(src, f.x, f.y, f.width, f.height, dx, dy, 256 * scale, 256 * scale);
+  } else {
+    ctx.save();
+    ctx.translate(dx + 256 * scale, dy);
+    ctx.scale(-1, 1);
+    ctx.drawImage(src, f.x, f.y, f.width, f.height, 0, 0, 256 * scale, 256 * scale);
+    ctx.restore();
+  }
+}
+
+async function board(dir) {
+  const base = MIRROR[dir] || dir;
+  const flip = !!MIRROR[dir];
+  const n = frameCount('jog', base) || 1;
+  const cols = Math.min(n, 7);
+  const rows = Math.ceil(n / cols);
+  const Z = 1.6;
+  const cv = document.createElement('canvas');
+  cv.width = Math.round(cols * 256 * Z / 2) * 2;
+  cv.height = Math.round(rows * 256 * Z / 2) * 2;
+  cv.id = 'board-' + dir;
+  const ctx = cv.getContext('2d');
+  ctx.imageSmoothingEnabled = false;
+  ctx.fillStyle = BG;
+  ctx.fillRect(0, 0, cv.width, cv.height);
+  for (let f = 0; f < n; f++) {
+    const body = await ready(() => getBodyFrame(SKIN, PANTS, SHOES, 'jog', base, f, null, 'none'));
+    const chest = await ready(() => getGearFrame('chest', 'steelplate', 'jog', base, f));
+    const legs = await ready(() => getGearFrame('legs', 'steelgreaves', 'jog', base, f));
+    const belt = await ready(() => getGearFrame('belt', 'chainbelt', 'jog', base, f), 60);
+    if (f === 0) console.log('[harness]', dir, 'body=', !!body, 'chest=', !!chest, 'legs=', !!legs, 'belt=', !!belt);
+    if (!body || !chest || !legs) continue;
+    // v2.3.1361: the fullset figure replaces everything when it ships for
+    // this dir (only jog-south so far); dirs without it keep the bake path.
+    if (MODE !== 'body' && WEAR === 'full') {
+      // v2.3.1367: draw by cycle phase — mirrors the game's native-count
+      // playback for sheets whose frame count differs from the body's.
+      const fs = await ready(() => getGearFramePhased('fullset', 'steel', 'jog', base, f / n), f === 0 ? 60 : 10);
+      if (fs) {
+        const dx = (f % cols) * 256 * Z, dy = Math.floor(f / cols) * 256 * Z;
+        drawTex(ctx, fs, dx, dy, Z, flip);
+        // v2.3.1368: the real head draws above the (helmet-less) fullset,
+        // exactly as _placePickupHead does in-game.
+        // v2.3.1389: same cycle phase as the armor — head frame-locked to it.
+        const hd = await ready(() => getPickupHeadFrame(SKIN, PANTS, SHOES, 'jog', base, f, f / n), f === 0 ? 60 : 10);
+        if (hd) {
+          const hs = hd.frame ? 256 / hd.frame.width : 1;
+          const src = hd.source && hd.source.resource;
+          if (src) {
+            ctx.save();
+            if (flip) { ctx.translate(dx + 256 * Z, dy); ctx.scale(-1, 1); ctx.drawImage(src, hd.frame.x, hd.frame.y, hd.frame.width, hd.frame.height, 0, 0, 256 * Z, 256 * Z); }
+            else ctx.drawImage(src, hd.frame.x, hd.frame.y, hd.frame.width, hd.frame.height, dx, dy, 256 * Z, 256 * Z);
+            ctx.restore();
+          }
+        }
+        ctx.fillStyle = '#ffdd44'; ctx.font = '20px monospace';
+        ctx.fillText(dir + ' f' + f + ' (fullset)', dx + 8, dy + 24);
+        continue;
+      }
+    }
+    const worn = WEAR === 'chest' ? [{ k: 'chest:steelplate', tex: chest }]
+      : WEAR === 'legs' ? [{ k: 'legs:steelgreaves', tex: legs }]
+        : [{ k: 'chest:steelplate', tex: chest }, { k: 'legs:steelgreaves', tex: legs }];
+    let masked = null;
+    for (let t = 0; t < 40 && !masked; t++) {
+      try { masked = _maskedBodyFrame(body, worn, 6, { pose: 'jog', dir: base, frameIdx: f }); } catch (e) { break; }
+      if (masked && belt === null) break;
+      if (!masked) await wait(50);
+    }
+    const dx = (f % cols) * 256 * Z, dy = Math.floor(f / cols) * 256 * Z;
+    drawTex(ctx, masked || body, dx, dy, Z, flip);
+    if (MODE !== 'body') {
+      if (WEAR !== 'chest') drawTex(ctx, legs, dx, dy, Z, flip);
+      if (WEAR !== 'legs') drawTex(ctx, chest, dx, dy, Z, flip);
+    }
+    ctx.fillStyle = '#ffdd44'; ctx.font = '20px monospace';
+    ctx.fillText(dir + ' f' + f, dx + 8, dy + 24);
+  }
+  document.getElementById('boards').appendChild(cv);
+}
+
+(async () => {
+  await loadPlayerSprites();
+  for (const d of DIRS) await board(d);
+  for (const d of Object.keys(MIRROR)) await board(d);
+  window.__done = true;
+})();
+</script>
+</body>
+</html>

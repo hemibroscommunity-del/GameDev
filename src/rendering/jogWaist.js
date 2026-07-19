@@ -109,7 +109,6 @@ export const JOG_WAIST = {
     138,
     134,
     134,
-    132,
     132
   ],
   "southwest": [

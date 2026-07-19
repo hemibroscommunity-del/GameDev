@@ -39,6 +39,8 @@ import { loadPlayerDeathSprites } from './playerDeathSprites.js';
 import { loadImageZoneMaps, loadWalkabilityMaps } from './tiledMaps.js';
 import { effectsAnimationsReady, ensureImpactTex } from './systems/effectsRenderer.js';
 import { preloadTraits } from './systems/entityRenderer.js';
+import { preloadFullsetFigures } from './gearSheets.js'; /* v2.3.1376: fullset knight figures */
+import { preloadJogHeadOverlays } from './playerSkins.js'; /* v2.3.1376: their head overlays */
 
 export async function preloadWorldAnimations() {
   /* Kick the lazy-by-default loaders eagerly. */
@@ -60,5 +62,19 @@ export async function preloadWorldAnimations() {
   const report = {};
   names.forEach((n, i) => { report[n] = settled[i].status; });
   try { if (typeof window !== 'undefined') window.__btPreloadReport = report; } catch (e) {}
+  /* v2.3.1382 (owner: "can't start the game anymore ... memory"): the
+     fullset knight figures + their head overlays (v2.3.1376) moved OFF the
+     blocking intro gate to a background warm a few seconds after it — the
+     four upscaled fullset strips added enough to the loading-screen memory
+     PEAK to kill startup on iPhone Safari on top of the v2.3.1358
+     preload-everything gate.  They still warm long before a player
+     realistically armors up and jogs every direction; a cold-start jog
+     falls back to the classic composite for a moment instead of hitching. */
+  try {
+    setTimeout(() => {
+      try { preloadFullsetFigures(); } catch (e) { /* lazy path covers it */ }
+      try { preloadJogHeadOverlays(); } catch (e) { /* lazy path covers it */ }
+    }, 4000);
+  } catch (e) { /* ignore */ }
   return report;
 }

@@ -52,6 +52,10 @@ function _doFlush() {
       v: typeof __BUILD_VERSION__ !== 'undefined' ? __BUILD_VERSION__ : 'dev',
       ua: (navigator && navigator.userAgent) || '',
       zone: (window._gameState && window._gameState.current && window._gameState.current.currentZone) || '',
+      /* v2.3.1384: GPU caps + context state ride along — an invisible
+         character from a failed big-texture upload is only diagnosable
+         with MAX_TEXTURE_SIZE and lost/ok in hand. */
+      gl: (function () { try { var cv = document.querySelector('canvas'); var g = cv && (cv.getContext('webgl2') || cv.getContext('webgl')); return g ? (g.getParameter(g.MAX_TEXTURE_SIZE) + '/' + (g.isContextLost() ? 'lost' : 'ok')) : ''; } catch (e) { return ''; } })(),
       log: log.slice(-16),
     });
     const url = _apiBase() + '/api/feedback/crash';

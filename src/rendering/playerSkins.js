@@ -600,8 +600,16 @@ function _pickupHeadCap() {
      (insertion order) baked entry; destroy its source on a 30s delay so an
      in-use texture is never killed mid-frame (same guard as _maskedBodyCache). */
   const keys = Object.keys(_pickupHeadSheets);
-  if (keys.length <= 6) return;
+  if (keys.length <= 20) return; /* v2.3.1382: 12 -> 20 — jog heads are 5/combo, and
+     town scenes with a few armored remotes crossed 12 quickly */
+  /* v2.3.1382 (owner: "head fully missing on north jog"): NEVER evict the
+     LOCAL player's current combo — those are the oldest entries (preloaded
+     at the loading screen), so the old oldest-first rule destroyed exactly
+     the sheets on screen; the head then vanished until a rebuild+re-evict
+     thrash cycle. */
+  const _localPrefix = (_skinStore.get() || 'default') + '/' + (_pantsStore.get() || 'default') + '/' + (_shoesStore.get() || 'default') + '|';
   for (const k of keys) {
+    if (k.startsWith(_localPrefix)) continue;
     const e = _pickupHeadSheets[k];
     if (!Array.isArray(e) || !e.length) continue;   // skip 'loading'/empty
     delete _pickupHeadSheets[k];
@@ -610,9 +618,14 @@ function _pickupHeadCap() {
     break;
   }
 }
-function _buildPickupHeadSheet(key, pose, dir, skinT, pantsT, shoesT) {
+function _buildPickupHeadSheet(key, pose, dir, skinT, pantsT, shoesT, attempt = 0) {
   _pickupHeadSheets[key] = 'loading';
-  return loadImg(`/sprites/player/${pose}-${dir}-head.png?v=${SPRITE_VERSION}`).then(img => {
+  /* v2.3.1381: bounded retry (v2.3.1305 pattern) — a flaked head-sheet
+     fetch used to cache [] permanently, leaving the fullset knight
+     headless for that dir all session.  Missing dirs still settle to []
+     after the retries (pickup ships south-only by design). */
+  const _bust = attempt > 0 ? `&r=${attempt}` : '';
+  return loadImg(`/sprites/player/${pose}-${dir}-head.png?v=${SPRITE_VERSION}${_bust}`).then(img => {
     const full = recolorBodyToCanvas(img, skinT, pantsT, shoesT, null, FRAME_H);
     const cv = document.createElement('canvas');
     cv.width = Math.max(1, Math.round(full.width / HEAD_DS));
@@ -631,19 +644,39 @@ function _buildPickupHeadSheet(key, pose, dir, skinT, pantsT, shoesT) {
     }
     _pickupHeadSheets[key] = out;
     _pickupHeadCap();
-  }).catch(() => { _pickupHeadSheets[key] = []; /* missing dir -> caller hides the overlay */ });
+  }).catch(() => {
+    if (attempt < 2) {
+      setTimeout(() => _buildPickupHeadSheet(key, pose, dir, skinT, pantsT, shoesT, attempt + 1), [2000, 6000][attempt]);
+      return; /* stays 'loading' during the backoff */
+    }
+    _pickupHeadSheets[key] = []; /* missing dir -> caller hides the overlay */
+  });
 }
 /** Recolored loot-pickup head-overlay frame for (skin, pants, shoes, pose, dir,
  *  frameIdx).  Returns null outside the pickup pose, while the sheet bakes, or
  *  when no head sheet exists for that dir (only -south ships) -- the caller then
  *  leaves the body's own head showing. */
-export function getPickupHeadFrame(skinId, pantsId, shoesId, pose, dir, frameIdx) {
-  if (pose !== 'pickup') return null;
+export function getPickupHeadFrame(skinId, pantsId, shoesId, pose, dir, frameIdx, phase) {
+  /* v2.3.1368: + jog — the fullset armored figure (helmet erased from the
+     sheet) gets the player's real head drawn above it, exactly like the
+     pickup pose.  Only the fullset base dirs ship jog-<dir>-head.png;
+     other dirs 404 -> [] -> null and nothing changes for them. */
+  if (pose !== 'pickup' && pose !== 'jog') return null;
   const skinT = skinTarget(skinId), pantsT = pantsTarget(pantsId), shoesT = shoesTarget(shoesId);
   const key = (skinId || 'default') + '/' + (pantsId || 'default') + '/' + (shoesId || 'default') + '|' + pose + '-' + dir;
   const entry = _pickupHeadSheets[key];
   if (entry === undefined) { _buildPickupHeadSheet(key, pose, dir, skinT, pantsT, shoesT); return null; }
   if (entry === 'loading' || !entry.length) return null;
+  /* v2.3.1389: jog callers pass the cycle `phase` (0..1) — the SAME clock
+     getGearFramePhased plays the fullset armor with, so a head sheet whose
+     native frame count differs from the body's (east: 25 vs 28) stays
+     frame-locked to the armor instead of bobbing on the body's cadence
+     (owner: "the head doesn't bob with the armor").  Same-count dirs
+     resolve identically either way. */
+  if (phase != null && pose === 'jog') {
+    const p = ((phase % 1) + 1) % 1;
+    return entry[Math.min(entry.length - 1, Math.floor(p * entry.length))];
+  }
   return entry[((frameIdx % entry.length) + entry.length) % entry.length];
 }
 
@@ -698,6 +731,23 @@ export function preloadBodyAll() {
   prewarm('pickup', 'south');
   const headKey = (skinId || 'default') + '/' + (pantsId || 'default') + '/' + (shoesId || 'default') + '|pickup-south';
   if (_pickupHeadSheets[headKey] === undefined) tasks.push(_buildPickupHeadSheet(headKey, 'pickup', 'south', skinT, pantsT, shoesT));
+  return Promise.all(tasks);
+}
+
+/** v2.3.1376: preload the JOG head-overlay sheets (jog-<dir>-head.png) for
+ *  the current combo — the fullset knight figures draw the player's real
+ *  head from these, and a lazy first build hitched the first armored jog in
+ *  each direction (animation-preload law, CLAUDE.md v2.3.1358).  Unlike
+ *  preloadBodyAll this runs for the DEFAULT combo too: the head sheets must
+ *  fetch + bake regardless of recoloring. */
+export function preloadJogHeadOverlays() {
+  const skinId = _skinStore.get(), pantsId = _pantsStore.get(), shoesId = _shoesStore.get();
+  const skinT = skinTarget(skinId), pantsT = pantsTarget(pantsId), shoesT = shoesTarget(shoesId);
+  const tasks = [];
+  for (const dir of ['south', 'southwest', 'north', 'east']) {
+    const key = (skinId || 'default') + '/' + (pantsId || 'default') + '/' + (shoesId || 'default') + '|jog-' + dir;
+    if (_pickupHeadSheets[key] === undefined) tasks.push(_buildPickupHeadSheet(key, 'jog', dir, skinT, pantsT, shoesT));
+  }
   return Promise.all(tasks);
 }
 

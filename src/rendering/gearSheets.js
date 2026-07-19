@@ -15,7 +15,7 @@
 
 import { Rectangle, Texture } from 'pixi.js';
 import { GEAR_SLOTS, GEAR_CATALOG } from './gearCatalog.js';
-import { upscaleToFrameHeight } from './spriteScale.js'; /* v2.3.1110: restore downscaled gear sheets to the 256px frame */
+import { upscaleToFrameHeight, antialiasUpscaledCanvas } from './spriteScale.js'; /* v2.3.1110 upscale; v2.3.1341 AA */
 import { loadWebpOrPng } from './webpImage.js'; /* v2.3.1122: prefer lossless WebP, fall back to PNG */
 
 const FRAME_W = 256;
@@ -32,7 +32,20 @@ const FRAME_H = 256;
    recoloured shirt (paper-doll, mirrors the cook stand-in). Each is a 4096x128
    32-frame strip aligned to fish-south.png; the armor tracks the body's per-
    frame lean, the shirt is a grayscale tint base with a 1px outline. */
-const GEAR_VERSION = '2.3.1123';
+const GEAR_VERSION = '2.3.1393'; /* v2.3.1393: east collar slit-fill under the jaw (fix_east_neck_collar.py). v2.3.1381: south fullset rebuilt on armor-anchored cuts (shoulder slivers). v2.3.1380: SW f1 two-band cut — face clear, pauldron kept (owner). v2.3.1379: north rebuilt on armor-anchored cuts (sliver flicker); SW f1 gray arcs stripped. v2.3.1378: SW f0-f2/f13-f14 helmet-edge leftovers shaved to the armor shelf (owner). v2.3.1377: southwest fullset rebuilt on armor-anchored per-frame neck cuts (owner frame list). v2.3.1373: chest hem belt extended a few px down (south/southwest/
+   north) so chest-only wear never flashes tan belly between hem and trousers; east fullset interior
+   seam lines lifted toward soft gray ("too thick of black outlines"). */
+/* v2.3.1372: hip-skirt (thigh plate) pixels stripped BACK OUT of the
+   south/southwest/north jog chest sheets (restored to the v2.3.1345b belt-stripped originals).  The
+   v2.3.1348b "restored hip skirt" baked the mannequin's silver skirt into the CHEST sheet, so a player
+   wearing ONLY the chest plate showed leg armor on bare thighs (owner report).  Full-set on these dirs
+   uses the fullset figure and never draws this sheet; NE/NW full-set gets its thigh cover from the
+   LEGS sheet, so nothing else changes. */
+/* v2.3.1345: baked jog belts STRIPPED from all five chest sheets — the
+   chain belt is now a runtime layer (see getJogBeltTexture + entityRenderer._placeGear); six rounds of
+   baking/sealing it into the sheets each produced a new on-device artifact.
+   BUMP THIS on EVERY gear-art regen — v2.3.1342c changed the PNGs without bumping, so
+   previews served the cached old art and the change was invisible on-device. */
 
 /* `${slot}/${item}/${pose}/${dir}` -> [Texture] | 'loading' | [] (missing) */
 const _sheets = {};
@@ -59,14 +72,28 @@ function buildSheet(key, slot, item, pose, dir, attempt = 0) {
   return loadImg(`/sprites/gear/${slot}/${item}/${pose}-${dir}.png?v=${GEAR_VERSION}${bust}`).then(rawImg => {
     /* restore a downscaled-on-disk gear sheet to the 256px frame (no-op for any
        native >=256 sheet, so the variable-height combat poses are untouched) */
-    const img = upscaleToFrameHeight(rawImg, FRAME_H);
+    const rawH = rawImg.naturalHeight || rawImg.height || 0;
     /* v2.3.1120: gear stays at the FULL 256 frame (NOT display-downscaled like the
        body).  Gear is also consumed by the combat swing/bowshot stand-ins
        (effectsRenderer) at 256, so downscaling it here would shrink the legs there;
        instead the MAIN renderer's _placeGear divides the body transform by
-       DISPLAY_DS to render this 256 gear at the right size over the smaller body. */
+       DISPLAY_DS to render this 256 gear at the right size over the smaller body.
+       v2.3.1341 (owner: the chain belt / armor edges SHIMMER while jogging): the
+       v2.3.1237 anti-alias cure was only ever applied to the BODY sheets, so
+       128px-on-disk gear rendered with raw nearest-upscale stair-steps that
+       crawl sub-pixel in motion.  antialiasUpscaledCanvas is the SAME resample,
+       but size-preserving — the 256 contract above still holds (unlike
+       bakeDisplayCanvas, which would shrink gear if DISPLAY_DS ever went back
+       to 2).  Native >=256 sheets pass through untouched. */
+    const img = antialiasUpscaledCanvas(upscaleToFrameHeight(rawImg, FRAME_H), rawH);
     const src = Texture.from(img).source;
     src.scaleMode = 'linear';
+    /* v2.3.1385: the v2.3.1384 fullset mips-off (invisible-knight memory
+       guess) came RIGHT BACK as "lines are blurry and wobbly behind the
+       character while running east" — on a 3x-DPR phone the strip renders
+       slightly minified in device pixels, exactly where mips matter.
+       Restored; the invisible-knight hunt rides on the v2.3.1384 telemetry
+       (gear-sheet-failed / body-sheet-failed + GL caps) instead. */
     src.autoGenerateMipmaps = true;
     const frames = Math.max(1, Math.floor(img.width / FRAME_W));
     const out = [];
@@ -81,6 +108,14 @@ function buildSheet(key, slot, item, pose, dir, attempt = 0) {
     }
     _sheets[key] = []; /* missing -> caller hides the slot */
     try { if (window.__spriteLog) console.warn('[sprite] gear sheet failed', key); } catch (e) { /* ignore */ }
+    /* v2.3.1384: a FINAL failure on a sheet that must exist (the fullset
+       knights and their jog belts) is real evidence for an invisible /
+       misdressed character — land it in the crash ring so on-device
+       reports arrive with facts.  Poses that legitimately 404 (fish/
+       pickup non-south) never reach here with these slots. */
+    if (slot === 'fullset' || slot === 'belt') {
+      try { import('../debug/crashTrap.js').then(ct => ct.recordCrash('gear-sheet-failed', key)).catch(() => {}); } catch (e) { /* ignore */ }
+    }
   });
 }
 
@@ -95,6 +130,46 @@ export function getGearFrame(slot, item, pose, dir, frameIdx) {
   if (entry === undefined) { buildSheet(key, slot, item, pose, dir); return null; }
   if (entry === 'loading' || !entry.length) return null;
   return entry[((frameIdx % entry.length) + entry.length) % entry.length];
+}
+
+/** v2.3.1367: frame by CYCLE PHASE (0..1) instead of a body frame index —
+ *  for sheets whose frame count differs from the body cycle's (the east
+ *  fullset ships its native 25 frames vs the 28-frame body cycle; owner:
+ *  "cut the animation cycle down to the frame count instead of extending
+ *  it").  Each sheet frame plays exactly once per cycle, evenly spaced on
+ *  the same clock, so there are no held/duplicated frames and no wrap
+ *  jump. */
+export function getGearFramePhased(slot, item, pose, dir, phase) {
+  if (!item || item === 'none') return null;
+  const key = slot + '/' + item + '/' + pose + '/' + dir;
+  const entry = _sheets[key];
+  if (entry === undefined) { buildSheet(key, slot, item, pose, dir); return null; }
+  if (entry === 'loading' || !entry.length) return null;
+  const p = ((phase % 1) + 1) % 1;
+  return entry[Math.min(entry.length - 1, Math.floor(p * entry.length))];
+}
+
+/* v2.3.1345: the jog chain belt ships as its own gear sheet
+   (belt/chainbelt/jog-<dir>.png, generated by tools/gen_jog_belt_table.py,
+   clipped to the body silhouette per frame) and loads through the normal
+   buildSheet path above — entityRenderer requests
+   getGearFrame('belt', 'chainbelt', 'jog', dir, frameIdx) and draws it on a
+   dedicated sprite BELOW gearLegs.  A missing sheet degrades gracefully
+   (belt hidden; the pants band still covers the seam). */
+
+/** v2.3.1376: preload the pre-composed FULLSET knight figures (jog
+ *  south/southwest/north/east) — they replace the whole armored body when
+ *  the full steel set is worn, and a lazy first fetch hitched the first
+ *  armored jog per direction (animation-preload law, CLAUDE.md v2.3.1358).
+ *  Missing dirs (northeast keeps the classic composite) resolve to [] and
+ *  cost one 404 at load time. */
+export function preloadFullsetFigures() {
+  const tasks = [];
+  for (const dir of ['south', 'southwest', 'north', 'east']) {
+    const key = 'fullset/steel/jog/' + dir;
+    if (_sheets[key] === undefined) tasks.push(buildSheet(key, 'fullset', 'steel', 'jog', dir));
+  }
+  return Promise.all(tasks);
 }
 
 /** Unique TextureSources of every gear sheet baked so far (idle/jog stand sets).

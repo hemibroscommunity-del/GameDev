@@ -17,6 +17,7 @@ for (const el of Object.values(ELEMENTS || {})) {
 import { lookupCollision, PVP_THREAT_CONSENT_MS } from '@/data/gameSystems.js';
 import { getFrame, resolveDirection, cycleMs, hasPose, frameCount as playerFrameCount } from '../playerSprites.js';
 import { getShieldFrame } from '../shieldSprites.js';
+import { jogWaistRow } from '../jogWaist.js'; /* v2.3.1341: stable waist band */
 import { getFrame as getSlimeFrame, hasState as hasSlimeState, frameCount as slimeFrameCount } from '../slimeSprites.js';
 import { getFrame as getSnowmanFrame, hasFrames as hasSnowmanFrames, frameCount as snowmanFrameCount, getHitFrame as getSnowmanHitFrame, hitFrameCount as snowmanHitFrameCount, getDeathFrame as getSnowmanDeathFrame, deathFrameCount as snowmanDeathFrameCount } from '../snowmanSprites.js';
 import { variantSpritesFor } from '../monsterVariantSprites.js';
@@ -35,7 +36,7 @@ import { getHatColor, getColoredHatTextures } from '../traits/hatColorCatalog.js
 import { getFacialHairColor, getColoredFacialHairTextures } from '../traits/facialHairColorCatalog.js';
 import { getShirt } from '../traits/shirtCatalog.js';
 import { getShirtColor, shirtFill } from '../traits/shirtColorCatalog.js';
-import { getGearFrame, getLoadedGearSources } from '../gearSheets.js';
+import { getGearFrame, getGearFramePhased, getLoadedGearSources } from '../gearSheets.js';
 import { combatGearUrls } from '../combatGear.js';
 import { getEquip, onEquipChange, GEAR_CATALOG } from '../gearCatalog.js'; /* v2.3.1236: GEAR_CATALOG drives the all-states loading-screen prewarm */
 import { recordCrash } from '../../debug/crashTrap.js'; /* v2.3.1305: trait-sheet load-failure telemetry */
@@ -176,7 +177,9 @@ function _hpFillTexFor(holder, frac) {
    read the active player's NFT ID from R.nftId or similar. */
 const TRAIT_NFT_ID = 'test-1';
 /* v2.3.708: bumped for the regenerated NE jog body-tops/body-anchors. */
-const TRAIT_VER = '2.3.708';
+/* v2.3.1394: bumped — bandana gains hairmask/*.png + clipsHair in meta.json
+   (owner: hair not clipped under the bandana on NE/NW). */
+const TRAIT_VER = '2.3.1394';
 
 /* v2.3.377: the on-back (sheathed) shield render is purely cosmetic and was
    a persistent source of per-facing z-order issues vs the body/arms/weapon/
@@ -217,10 +220,20 @@ function _ensureTraitLoaded(category, id) {
   }
   if (!e.loadStarted) {
     e.loadStarted = true;
-    fetch(`/sprites/traits/${category}/${id}/meta.json?v=${TRAIT_VER}`)
-      .then(r => r.ok ? r.json() : null)
-      .then(j => { if (j) e.meta = j; })
-      .catch(() => {});
+    /* v2.3.1382: meta.json gets the same bounded retry the trait textures
+       got in v2.3.1305 — a flaked meta left the trait unplaceable all
+       session (owner: "hair and headwear missing on east jog"). */
+    const _fetchMeta = (attempt) => {
+      const bust = attempt > 0 ? `&r=${attempt}` : '';
+      fetch(`/sprites/traits/${category}/${id}/meta.json?v=${TRAIT_VER}${bust}`)
+        .then(r => r.ok ? r.json() : null)
+        .then(j => {
+          if (j) { e.meta = j; return; }
+          if (attempt < 2) setTimeout(() => _fetchMeta(attempt + 1), [2000, 6000][attempt]);
+        })
+        .catch(() => { if (attempt < 2) setTimeout(() => _fetchMeta(attempt + 1), [2000, 6000][attempt]); });
+    };
+    _fetchMeta(0);
     for (const dir of Object.keys(e.tex)) {
       _loadTraitDir(e, category, id, dir, 0);
     }
@@ -295,14 +308,20 @@ let _bodyDataStarted = false;
 function _ensureBodyData() {
   if (_bodyDataStarted) return;
   _bodyDataStarted = true;
-  fetch(`/sprites/player/body-anchors.json?v=${TRAIT_VER}`)
-    .then(r => r.ok ? r.json() : null)
-    .then(j => { if (j) _bodyAnchors = j; })
-    .catch(() => {});
-  fetch(`/sprites/player/body-tops.json?v=${TRAIT_VER}`)
-    .then(r => r.ok ? r.json() : null)
-    .then(j => { if (j) _bodyTops = j; })
-    .catch(() => {});
+  /* v2.3.1382: bounded retry (v2.3.1305 pattern) — these anchors place every
+     hat/hair/beard; a single flaked fetch used to hide headwear all session. */
+  const _fetchJson = (url, apply, attempt = 0) => {
+    const bust = attempt > 0 ? `&r=${attempt}` : '';
+    fetch(url + bust)
+      .then(r => r.ok ? r.json() : null)
+      .then(j => {
+        if (j) { apply(j); return; }
+        if (attempt < 2) setTimeout(() => _fetchJson(url, apply, attempt + 1), [2000, 6000][attempt]);
+      })
+      .catch(() => { if (attempt < 2) setTimeout(() => _fetchJson(url, apply, attempt + 1), [2000, 6000][attempt]); });
+  };
+  _fetchJson(`/sprites/player/body-anchors.json?v=${TRAIT_VER}`, (j) => { _bodyAnchors = j; });
+  _fetchJson(`/sprites/player/body-tops.json?v=${TRAIT_VER}`, (j) => { _bodyTops = j; });
 }
 
 /* Mirrored views (W/NW/SE) reuse the opposite sheet texture, so they
@@ -439,6 +458,30 @@ function hatPoseTune(hatId, pose, dir) {
   return null;
 }
 
+/* v2.3.1389 (owner: "the head doesn't bob with the armor" + "headwear
+   needs to move left with the head"): when the fullset knight figure is
+   active, the DRAWN head is the jog-<dir>-head.png overlay — rebuilt
+   (tools/rebuild_east_head_track.py) to ride the armor's own 25-frame
+   bob and carrying the owner-dialed left shift.  body-tops.json still
+   describes the BODY sheet's crown (28-frame cadence, unshifted), so
+   hats/hair/beards anchored there slid against the visible head.  This
+   table is the rebuilt head sheet's measured per-frame crown ([x, y],
+   256-space, one entry per ARMOR frame); _crownOverride swaps it in for
+   the trait anchors while the fullset figure is on screen. */
+const FULLSET_CROWN = {
+  /* v2.3.1390: smoothed track (owner: "really jittery") — the raw
+     per-frame measurement stepped up to 10px between adjacent frames;
+     this glides ≤4px like body-tops itself. */
+  east: [[134, 48], [136, 48], [136, 48], [136, 48], [134, 50], [134, 52], [134, 56], [134, 56], [134, 56], [134, 56], [134, 54], [134, 50], [134, 48], [136, 48], [136, 48], [136, 50], [134, 50], [134, 52], [134, 54], [134, 56], [134, 56], [134, 52], [134, 50], [134, 48], [134, 48]],
+};
+let _crownOverride = null;   // set around the trait placements when fullset is active
+function _fullsetCrown(dir, phase) {
+  const t = FULLSET_CROWN[dir];
+  if (!t || phase == null) return null;
+  const p = ((phase % 1) + 1) % 1;
+  return t[Math.min(t.length - 1, Math.floor(p * t.length))];
+}
+
 /* Place a player's headwear sprite for this frame.  Shared by the local
    player (_updatePlayer) and remote players (_updateOtherPlayers).
    Crown-anchored + placement-independent: pins the hat's own crown
@@ -460,7 +503,7 @@ function _placeTrait(sprite, entry, display, pose, dir, mirror, frameIdx, bodySc
   const headwearTex = entry && (entry.tex[dir] || (entry.fallbackTex && entry.fallbackTex[dir]));
   const meta = entry && entry.meta;
   const spriteBody = display._spriteBody;
-  const bodyTop = _lookupBodyTop(pose, dir, frameIdx);
+  const bodyTop = _crownOverride || _lookupBodyTop(pose, dir, frameIdx); /* v2.3.1389 */
   const anchorPx = (meta && meta.anchors && meta.anchors[dir]) || null;
   if (!(headwearTex && meta && meta.fullFrame && spriteBody && bodyTop && anchorPx)) {
     sprite.visible = false;
@@ -569,8 +612,36 @@ const _GEAR_SLOTS = [['shirt', '_gearShirt'], ['legs', '_gearLegs'], ['chest', '
    removes the JITTER, not the intended resting fit.  Drop this table if the
    fish-south chest sheet is ever re-cut to match the body lean. */
 const _FISH_CHEST_DEJITTER = [-5, -4, -6, -5, -4, -6, -5, -4, -4, -3, -2, -1, -1, 2, 2, 5, 5, 7, 5, 6, 6, 6, 6, 7, 7, 2, 2, -3, -3, -4, -4, -4];
+/* v2.3.1361 (owner: "Try 1"): pre-composed FULL-SET armored figure.  A
+   finished textured knight (helmet included, chain waist baked by the
+   artist) ships per (pose,dir) at gear/fullset/steel/<pose>-<dir>.png and
+   REPLACES the whole masked-body bake + chest/legs layering when the full
+   steel set is worn — no erase, no chain paint, no seams for those dirs.
+   A missing sheet (only jog-south ships so far) returns null and the
+   classic path runs unchanged.  DISPLAY_DS guard: the sheet rides the 256
+   gear pipeline while the body sprite's transform expects display-sized
+   frames — identical only while DISPLAY_DS === 1. */
+function _fullsetFrame(chestItem, legsItem, pose, dir, frameIdx, phase) {
+  if (DISPLAY_DS !== 1 || pose !== 'jog') return null;
+  if (chestItem !== 'steelplate' || legsItem !== 'steelgreaves') return null;
+  /* v2.3.1367: when the caller knows the jog cycle PHASE, the sheet plays
+     its NATIVE frame count evenly on the same clock (east ships 25 frames
+     vs the 28-frame body cycle — no held frames, no wrap jump).  Callers
+     that only gate on presence (_placeGear) pass the body frameIdx. */
+  if (phase != null) return getGearFramePhased('fullset', 'steel', pose, dir, phase);
+  return getGearFrame('fullset', 'steel', pose, dir, frameIdx);
+}
 function _placeGear(display, equip, pose, dir, frameIdx) {
   const sb = display._spriteBody;
+  /* v2.3.1361: the fullset figure carries ALL its armor — hide every gear
+     layer so nothing double-draws over the finished art. */
+  if (_fullsetFrame(equip && equip.chest, equip && equip.legs, pose, dir, frameIdx)) {
+    for (let s = 0; s < _GEAR_SLOTS.length; s++) {
+      const spr = display[_GEAR_SLOTS[s][1]];
+      if (spr && spr.visible) spr.visible = false;
+    }
+    return;
+  }
   for (let s = 0; s < _GEAR_SLOTS.length; s++) {
     const spr = display[_GEAR_SLOTS[s][1]];
     if (!spr) continue;
@@ -624,6 +695,12 @@ function _placeGear(display, equip, pose, dir, frameIdx) {
       if (!spr.visible) spr.visible = true;
     } else if (spr.visible) spr.visible = false;
   }
+  /* v2.3.1347: the jog chain belt has no layer of its own anymore — it is
+     painted onto the exposed waist (the green/pants band) inside the
+     masked-body bake (_maskedBodyFrame), using the frame-aligned belt sheet
+     belt/chainbelt/jog-<dir>.png as the texture source.  The art's own
+     hand-drawn depth (arm over waist, plate over seam) applies to the chain
+     automatically.  Other poses keep their baked belts (backlog). */
 }
 /* v2.3.608: per-region body sub-sprites.  Helmet/chest/legs are independent
    slots; the body is drawn as three region sprites (head / torso+arms / legs)
@@ -664,7 +741,10 @@ function _bodyRegionTex(bodyTex, region) {
    and cached per (body-frame, loadout) -- cheap, recomputed only on a cache
    miss.  Falls back to the raw body texture if pixel access fails. */
 const _maskedBodyCache = new Map();
-function _maskedBodyFrame(bodyTex, worn, dilate) {
+/* v2.3.1349: exported for tools/qa/belt-harness (headless ground-truth render
+   of the REAL bake — the offline Python mirrors kept diverging).  Not used by
+   any game path. */
+export function _maskedBodyFrame(bodyTex, worn, dilate, poseInfo) {
   /* v2.3.690: bake accounting for the perf HUD (?perf=1).  Cache misses are
      the spike source -- a gear swap rebakes every frame on next sighting.
      Read + reset by perfHud; zero cost beyond two adds per MISS. */
@@ -673,10 +753,10 @@ function _maskedBodyFrame(bodyTex, worn, dilate) {
     ? (window.__btBakeStats || (window.__btBakeStats = { count: 0, ms: 0 }))
     : null;
   try {
-    return _maskedBodyFrameInner(bodyTex, worn, dilate, _bt0, _bs);
+    return _maskedBodyFrameInner(bodyTex, worn, dilate, _bt0, _bs, poseInfo);
   } finally { /* timing recorded inside on actual bakes only */ }
 }
-function _maskedBodyFrameInner(bodyTex, worn, dilate, _bt0, _bs) {
+function _maskedBodyFrameInner(bodyTex, worn, dilate, _bt0, _bs, poseInfo) {
   if (!bodyTex || !worn.length) return bodyTex;
   let bres;
   try { bres = bodyTex.source && bodyTex.source.resource; } catch (e) { bres = null; }
@@ -691,6 +771,7 @@ function _maskedBodyFrameInner(bodyTex, worn, dilate, _bt0, _bs) {
      evicted the next hot frame: a rolling ~10ms-per-frame bake thrash that
      read as a stutter after every gear swap. */
   if (hit) { _maskedBodyCache.delete(key); _maskedBodyCache.set(key, hit); return hit; }
+  let _beltPending = false;  /* v2.3.1347: belt sheet not loaded yet -> skip caching */
   let cv;
   try {
     cv = document.createElement('canvas'); cv.width = 256; cv.height = 256;
@@ -804,18 +885,38 @@ function _maskedBodyFrameInner(bodyTex, worn, dilate, _bt0, _bs) {
        ghost fist -- with chest-only wear the bare belly/hands are legit skin,
        and the blend painted flat pants-colour smears across the belly, ate the
        pants' top edge, and chewed the idle outlines near the hanging hands. */
-    if (figBot > figTop
-        && worn.some(w => w.k && w.k.indexOf('chest:') === 0)
-        && worn.some(w => w.k && w.k.indexOf('legs:') === 0)) {
+    /* v2.3.1347: refs hoisted for the waist chain paint (see the confinement
+       block) — the sampled skin/pants/shoes colours classify which waist
+       pixels are the exposed green/pants band the chain replaces. */
+    let _bakeRefs = null;
+    /* v2.3.1360 (owner: chest-only jog "messed up"): refs are computed
+       whenever the CHEST is worn — the chain waist paint needs them on
+       partial wear too (chest-only lost its waist cover when v2.3.1345
+       stripped the baked belt).  The v2.3.650 pants-restore and the
+       ghost-hand blend stay FULL-SET only (v2.3.686), gated below. */
+    const _wornChestRefs = worn.some(w => w.k && w.k.indexOf('chest:') === 0);
+    const _wornLegsRefs = worn.some(w => w.k && w.k.indexOf('legs:') === 0);
+    if (figBot > figTop && _wornChestRefs) {
       try {
         const fh = figBot - figTop;
         const waistY = Math.round(figTop + 0.45 * fh);   // a bit above mid-figure so the waist/hip skin (chain-belt zone) is caught too
         const img = ctx.getImageData(0, 0, 256, 256);
         const d = img.data;
+        /* v2.3.1349b: sample from the PRE-ERASE body (origBody), not the
+           erased canvas.  With a full set worn the dilated erase wipes the
+           whole waist + shoe band on the frontal dirs, so sampling `d` found
+           nothing, pantsRef/shoesRef came back null, and BOTH the v2.3.650
+           pants-restore and the v2.3.1347 chain waist paint silently never
+           ran for south/north/most southwest frames — the safety net's flat
+           fill covered the gap and read as "black superhero underwear"
+           (owner).  East/northeast only worked because their profile erase
+           leaves leftovers to sample.  origBody is what the restores colour-
+           match against, so it is also the CORRECT sample source. */
+        const spx = origBody || d;
         const medRGB = (y0, y1) => {            // per-channel median of opaque pixels in [y0,y1)
           const rs = [], gs = [], bs = [];
           for (let y = Math.max(0, y0); y < Math.min(256, y1); y++)
-            for (let x = 0; x < 256; x++) { const o = (y * 256 + x) * 4; if (d[o + 3] > 40) { rs.push(d[o]); gs.push(d[o + 1]); bs.push(d[o + 2]); } }
+            for (let x = 0; x < 256; x++) { const o = (y * 256 + x) * 4; if (spx[o + 3] > 40) { rs.push(spx[o]); gs.push(spx[o + 1]); bs.push(spx[o + 2]); } }
           if (!rs.length) return null;
           const mid = a => { a.sort((p, q) => p - q); return a[a.length >> 1]; };
           return [mid(rs), mid(gs), mid(bs)];
@@ -834,8 +935,8 @@ function _maskedBodyFrameInner(bodyTex, worn, dilate, _bt0, _bs) {
           const rs = [], gs = [], bs = [], y1 = waistY + Math.round(0.40 * fh);
           for (let y = waistY; y < Math.min(256, y1); y++)
             for (let x = 0; x < 256; x++) {
-              const o = (y * 256 + x) * 4; if (d[o + 3] <= 40) continue;
-              const R = d[o], G = d[o + 1], B = d[o + 2];
+              const o = (y * 256 + x) * 4; if (spx[o + 3] <= 40) continue;
+              const R = spx[o], G = spx[o + 1], B = spx[o + 2];
               const pn = Math.sqrt(R * R + G * G + B * B) || 1;
               const cos = (R * skinRef[0] + G * skinRef[1] + B * skinRef[2]) / (pn * sn);
               if (cos < 0.985) { rs.push(R); gs.push(G); bs.push(B); }
@@ -844,17 +945,33 @@ function _maskedBodyFrameInner(bodyTex, worn, dilate, _bt0, _bs) {
           else pantsRef = medRGB(waistY, waistY + Math.round(0.40 * fh));
         }
         const score = (R, G, B, T) => { const n = T[0] * T[0] + T[1] * T[1] + T[2] * T[2] || 1; const dt = R * T[0] + G * T[1] + B * T[2]; return dt * dt / n; };
-        if (skinRef && pantsRef && shoesRef) {
+        _bakeRefs = { skinRef, pantsRef, shoesRef };
+        if (_wornLegsRefs && skinRef && pantsRef && shoesRef) {
           let dirty = false;
           /* Restore pants the dilated cover-mask ATE: the chest gear's halo erodes
              the pants next to the gauntlets.  The erase only zeroed alpha (RGB
              intact in origBody), so re-open any erased pixel that reads as PANTS;
              skin/shoes stay erased so the armour still hides the torso/arms.
-             Mirrors preview_armor_frames._blend_ghost_hand.  v2.3.650 */
+             Mirrors preview_armor_frames._blend_ghost_hand.  v2.3.650
+             v2.3.1353: WAIST BAND ONLY.  The v2.3.1349b origBody refs revived
+             this restore on the frontal/profile dirs — but un-gated it also
+             re-opened the pants-scored OUTLINE ring the dilated erase eats
+             around the ENTIRE armor (east's body art has an olive outline —
+             owner: "an entire chain armor outline on the east body").  Its
+             v2.3.650 purpose was always the waist next to the gauntlets, and
+             the chain paint (same band) converts what it restores. */
           if (origBody) {
-            for (let p = 0; p < 256 * 256; p++) {
+            let rLo = neckY, rHi = 256;
+            if (poseInfo && poseInfo.pose === 'jog') {
+              const wrr = jogWaistRow(poseInfo.dir, poseInfo.frameIdx || 0);
+              rLo = Math.max(neckY, wrr - 50); rHi = Math.min(256, wrr + 42);
+            } else {
+              rLo = Math.max(neckY, Math.round(figTop + 0.33 * fh));
+              rHi = Math.min(256, Math.round(figTop + 0.70 * fh));
+            }
+            for (let p = rLo * 256; p < rHi * 256; p++) {
               const o = p * 4;
-              if (d[o + 3] > 40 || origBody[o + 3] <= 40 || ((p / 256) | 0) < neckY) continue;
+              if (d[o + 3] > 40 || origBody[o + 3] <= 40) continue;
               const R = origBody[o], G = origBody[o + 1], B = origBody[o + 2];
               const sP = score(R, G, B, pantsRef);
               if (sP >= score(R, G, B, skinRef) && sP >= score(R, G, B, shoesRef)) {
@@ -971,6 +1088,10 @@ function _maskedBodyFrameInner(bodyTex, worn, dilate, _bt0, _bs) {
         /* allowed = filled silhouette (gop | unreached) dilated by 2 */
         let fill = new Uint8Array(256 * 256);
         for (let p = 0; p < 256 * 256; p++) fill[p] = (gop[p] || !reach[p]) ? 1 : 0;
+        /* v2.3.1353: pre-dilation silhouette (exact gear + interior windows)
+           — the peek-ring tightening below needs it to tell "2px allowance
+           ring" apart from "inside the armor / an interior window". */
+        const fill0 = new Uint8Array(fill);
         for (let it = 0; it < 2; it++) {
           const nx = new Uint8Array(fill);
           for (let p = 0; p < 256 * 256; p++) {
@@ -993,8 +1114,23 @@ function _maskedBodyFrameInner(bodyTex, worn, dilate, _bt0, _bs) {
         let w0 = 256, w1 = 256;
         if ((wornChest || wornLegs) && figBot > figTop) {
           const fh2 = figBot - figTop;
-          w0 = Math.max(0, Math.round(figTop + 0.38 * fh2));
-          w1 = Math.min(256, Math.round(figTop + 0.64 * fh2));
+          /* v2.3.1341 (owner: waist shimmer): for JOG the band rows come from
+             the committed jogWaistRow table (the offline-measured skin->pants
+             row per frame, the same source the attack composites land on)
+             instead of the live silhouette's figTop/figBot -- the alpha-
+             threshold jitter in those made the pants strip visible through
+             the see-through chain belt shift every frame.  The measured row
+             still tracks the genuine run-cycle bob.  Extents ~= the old
+             0.38..0.64 fractions around the waist.  Stand is a single frame
+             (already stable) and other poses keep the fraction formula. */
+          if (poseInfo && poseInfo.pose === 'jog') {
+            const wr = jogWaistRow(poseInfo.dir, poseInfo.frameIdx || 0);
+            w0 = Math.max(0, wr - 26);
+            w1 = Math.min(256, wr + 18);
+          } else {
+            w0 = Math.max(0, Math.round(figTop + 0.38 * fh2));
+            w1 = Math.min(256, Math.round(figTop + 0.64 * fh2));
+          }
           for (let y = w0; y < w1; y++) {
             for (let x = 0; x < 256; x++) {
               if (gop[y * 256 + x]) { if (x < rowMin[y]) rowMin[y] = x; if (x > rowMax[y]) rowMax[y] = x; }
@@ -1052,7 +1188,174 @@ function _maskedBodyFrameInner(bodyTex, worn, dilate, _bt0, _bs) {
               if (!covered[y]) continue;              // bare row stays whole
             } else if (skipBelow || skipAbove) continue;
             if (inWaist && x >= rowMin[y] && x <= rowMax[y]) continue;
-            if (!fill[p]) { d2[o + 3] = 0; dirty2 = true; }
+            if (!fill[p]) { d2[o + 3] = 0; dirty2 = true; continue; }
+            /* v2.3.1353 (owner: "an entire chain armor outline on the east
+               body — it just needs to be in the waist part"): BELOW the
+               waist band the 2px allowance ring let the BODY's leg edges
+               peek past the narrower greave art — east's olive pants traced
+               the legs.  Legs are not waist: there the body may show only
+               INSIDE the exact gear silhouette (interior windows included,
+               fill0); the waist rows keep the ring, where the trunks
+               legitimately meet the hip edge.  Full-set jog only — partial
+               wear and other poses keep the v2.3.681 behavior.
+               v2.3.1358 (owner: SW/SE "head ... sunken behind" the plate on
+               the early frames): below-band ONLY.  Tightening ABOVE the band
+               also shaved the neck/chin edge under neckY that pads the
+               collar, sinking the head behind the plate where the chin dips
+               lowest in the cycle. */
+            if (!partial && poseInfo && poseInfo.pose === 'jog' && w0 < w1
+                && (y >= w1 + 8
+                    /* v2.3.1359 (owner: east "still has a slight ghost
+                       outline"): east's fixed 46px chain band never reaches
+                       the hip edges, so the band rows' allowance ring there
+                       is pure olive-pants bleed — clamp it too.  The neck
+                       rows above w0-8 keep the ring (head padding). */
+                    || (poseInfo.dir === 'east' && y >= w0 - 8))
+                && !fill0[p]) {
+              d2[o + 3] = 0; dirty2 = true;
+            }
+          }
+        }
+        /* v2.3.1347 (owner): the chain belt is PAINTED ONTO the exposed
+           waist — the green/pants band the art left between plate and
+           greaves — instead of rendering as its own layer.  Because the
+           paint replaces only pants-classified pixels of the BODY frame,
+           the swinging bare arm (skin) and every armor piece keep their
+           exact hand-drawn depth: whatever the sheet drew over the green
+           stays in front.  Chain pixels come from the frame-aligned belt
+           sheet (belt/chainbelt/jog-<dir>.png), sampled at the same (x,y).
+           Runs only on the ARMORED bake, so unarmored players (and the
+           shirt-hem / waist anchors computed from the raw sheets) are
+           untouched. */
+        /* v2.3.1360: the paint ran whenever the CHEST was worn — partial
+           chest-only wear lost its waist cover when v2.3.1345 stripped the
+           baked belt (the bare-midriff band read as broken).
+           v2.3.1372 (owner: "leg armor is appearing on thighs" on chest-only):
+           FULL SET ONLY again.  The belt sheets carry chain TRUNKS over the
+           hips/thighs on the frontal dirs — under greaves that's the sealed
+           waist, on bare legs it read as chain shorts.  Chest-only wear now
+           uses the ORIGINAL pre-v2.3.1345 chest sheets (baked hem belt
+           restored on south/southwest/north/east), so the old-system look
+           needs no runtime paint; those dirs draw this sheet only on partial
+           wear (full set = the fullset figure), so the baked belt cannot
+           re-trigger the full-set belt artifacts. */
+        if (wornChest && wornLegs && poseInfo && poseInfo.pose === 'jog' && w0 < w1
+            && _bakeRefs && _bakeRefs.pantsRef) {
+          try {
+            const bt = getGearFrame('belt', 'chainbelt', 'jog', poseInfo.dir, poseInfo.frameIdx | 0);
+            const br = bt && bt.source && bt.source.resource;
+            if (!br) {
+              _beltPending = true;   // sheet still loading: bake uncached, retry later
+            } else {
+              const bcv = document.createElement('canvas'); bcv.width = 256; bcv.height = 256;
+              const bctx = bcv.getContext('2d');
+              const bfr = bt.frame;
+              bctx.drawImage(br, bfr.x, bfr.y, bfr.width, bfr.height, 0, 0, 256, 256);
+              const bd = bctx.getImageData(0, 0, 256, 256).data;
+              const _score = (R, G, B, T) => { const nn = T[0] * T[0] + T[1] * T[1] + T[2] * T[2] || 1; const dt = R * T[0] + G * T[1] + B * T[2]; return dt * dt / nn; };
+              const { skinRef, pantsRef, shoesRef } = _bakeRefs;
+              /* v2.3.1349: paint over the belt sheet's FULL extent, not just
+                 the w0..w1 band rows — the trunks reach below wr+18 on SW and
+                 the row gate left their lower hips unpainted = the on-device
+                 holes.  The sheet itself is already confined to the waist. */
+              for (let y = Math.max(0, w0 - 24); y < Math.min(256, w1 + 24); y++) {
+                for (let x = 0; x < 256; x++) {
+                  const o = (y * 256 + x) * 4;
+                  if (bd[o + 3] <= 40) continue;
+                  if (d2[o + 3] <= 40) {
+                    /* seam hole (the erase ate the bare midriff): fill with
+                       chain — this WAS the detached torso/legs gap.
+                       v2.3.1359 (owner: SE "light material between the legs"):
+                       only where the BODY originally existed — the belt
+                       sheet's 2px clip slack bridges the crotch gap when the
+                       thighs separate, and filling background pixels there
+                       hung floating chain between the legs. */
+                    if (!origBody || origBody[o + 3] <= 40) continue;
+                    d2[o] = bd[o]; d2[o + 1] = bd[o + 1]; d2[o + 2] = bd[o + 2];
+                    d2[o + 3] = 255;
+                    dirty2 = true;
+                    continue;
+                  }
+                  const R = d2[o], G = d2[o + 1], B = d2[o + 2];
+                  /* v2.3.1349b (owner: "black superhero underwear"): the body
+                     sheet draws a DARK waistband/shadow at the waist (max
+                     channel < 75).  The hue-projection score is unstable at
+                     that brightness, so those pixels failed the pants test
+                     and survived as a flat dark band under the plate.  Dark
+                     pixels inside the belt's extent ARE the exposed waist —
+                     replace them with chain; skin (arm, fist) is bright and
+                     never matches.
+                     v2.3.1360: on the non-profile dirs the arm NEVER crosses
+                     the band (fixed/central masks), so the belt extent
+                     replaces EVERYTHING there — the bare-midriff skin sliver
+                     included (glaring on chest-only wear).  East/northeast
+                     keep the skin test so the crossing fist stays in front. */
+                  const _skinSafe = poseInfo.dir !== 'east' && poseInfo.dir !== 'northeast';
+                  const sP = _score(R, G, B, pantsRef);
+                  if (_skinSafe || Math.max(R, G, B) < 75
+                      || ((!skinRef || sP >= _score(R, G, B, skinRef))
+                          && (!shoesRef || sP >= _score(R, G, B, shoesRef)))) {
+                    /* green/pants band pixel: chain replaces it; skin (arm,
+                       fist) stays and keeps its hand-drawn depth */
+                    d2[o] = bd[o]; d2[o + 1] = bd[o + 1]; d2[o + 2] = bd[o + 2];
+                    dirty2 = true;
+                  }
+                }
+              }
+            }
+          } catch (e) { /* best-effort: waist stays pants this bake */ }
+        }
+        /* v2.3.1359 (owner: east "still has a slight ghost outline"): east's
+           body sheet draws its pants OLIVE-GREEN.  Through the armor's
+           INTERIOR windows around the crotch/legs — legitimately inside the
+           silhouette, so the exact-silhouette clamp can't touch them — the
+           olive reads as a ghost tracing the figure.  East only: quiet any
+           olive-tinted pixel below the chain band's top to under-armor
+           shadow.  Skin fails the tint test (R far above G); chain gray has
+           G ~= B and passes through untouched. */
+        if (!partial && poseInfo && poseInfo.pose === 'jog' && w0 < w1
+            && poseInfo.dir === 'east') {
+          for (let y = Math.max(0, w0 - 8); y < 256; y++) {
+            for (let x = 0; x < 256; x++) {
+              const o = (y * 256 + x) * 4;
+              if (d2[o + 3] <= 40) continue;
+              const R = d2[o], G = d2[o + 1], B = d2[o + 2];
+              if (G > B + 14 && G >= R - 24 && R > 40) {
+                d2[o] = 44; d2[o + 1] = 47; d2[o + 2] = 54; dirty2 = true;
+              }
+            }
+          }
+        }
+        /* v2.3.1349 SAFETY NET: no interior waist hole survives, period.  Any
+           pixel where the ORIGINAL body existed, nothing remains after the
+           erase/restores/paints, and the gear silhouette encloses it
+           vertically (armor within 16 rows above AND below) is filled with
+           quiet under-armor shadow.  This is independent of any sheet's
+           coverage — the class of bug that kept reappearing ("giant gaps
+           while running") whenever a generator and the art disagreed. */
+        if (wornChest && wornLegs && origBody && poseInfo && poseInfo.pose === 'jog' && w0 < w1) {
+          /* v2.3.1360 ran this on chest-only wear too; v2.3.1373 (owner:
+             "sudden black appearing in the south jog torso only"): the slate
+             fill flashing in and out at the hem read as black flicker on the
+             bare-pants look.  FULL SET ONLY — chest-only waist cover is now
+             the chest sheet's own extended hem belt (art-level, steady). */
+          const lo3 = Math.max(0, w0 - 28), hi3 = Math.min(256, w1 + 28);
+          for (let y = lo3; y < hi3; y++) {
+            for (let x = 0; x < 256; x++) {
+              const p = y * 256 + x, o = p * 4;
+              if (d2[o + 3] > 40 || origBody[o + 3] <= 40) continue;
+              let above = false, below = false;
+              for (let k = 1; k <= 16 && !(above && below); k++) {
+                if (!above && y - k >= 0 && (gop[p - k * 256] || d2[(p - k * 256) * 4 + 3] > 40)) above = true;
+                if (!below && y + k < 256 && (gop[p + k * 256] || d2[(p + k * 256) * 4 + 3] > 40)) below = true;
+              }
+              if (above && below) {
+                /* v2.3.1349b: dark STEEL, not near-black — flat black patches
+                   at the waist read as "underwear" (owner) */
+                d2[o] = 44; d2[o + 1] = 47; d2[o + 2] = 54; d2[o + 3] = 255;
+                dirty2 = true;
+              }
+            }
           }
         }
         if (dirty2) ctx.putImageData(img2, 0, 0);
@@ -1075,7 +1378,9 @@ function _maskedBodyFrameInner(bodyTex, worn, dilate, _bt0, _bs) {
      bare-skin edges don't crawl while jogging in armour (same fix as the bare
      body sheets). Cheap on the downscaled texture. */
   try { if (t.source) t.source.autoGenerateMipmaps = true; } catch (e) { /* best-effort */ }
-  _maskedBodyCache.set(key, t);
+  /* v2.3.1347: if the belt sheet was still loading, the bake went out without
+     its chain — don't cache it, so the next sighting rebakes with the chain. */
+  if (!_beltPending) _maskedBodyCache.set(key, t);
   if (_bs && _bt0) { _bs.count++; _bs.ms += (performance.now() - _bt0); }
   /* v2.3.689: cap 600 -> 256.  Each entry is a 256x256 RGBA texture (256KB
      GPU), so the old cap allowed ~150MB of masked-body frames -- brutal on
@@ -1279,7 +1584,7 @@ export async function prewarmMaskedBodyFrames(opts) {
           }
         }
         if (!worn.length) continue;
-        try { _maskedBodyFrame(tex, worn, 6); } catch (e) { /* best-effort */ }
+        try { _maskedBodyFrame(tex, worn, 6, { pose, dir, frameIdx: f }); } catch (e) { /* best-effort */ }
         if (budgetMs) {
           if (performance.now() - chunkT0 >= budgetMs) {
             await _nextFrame();
@@ -1359,7 +1664,7 @@ export async function prewarmAltWornSets(opts) {
             if (gt) worn.push({ k: sl + ':' + id, tex: gt });
           }
           if (!worn.length) continue;
-          try { _maskedBodyFrame(tex, worn, 6); } catch (e) { /* best-effort */ }
+          try { _maskedBodyFrame(tex, worn, 6, { pose, dir, frameIdx: f }); } catch (e) { /* best-effort */ }
           if (++sinceYield >= (fast ? 6 : 2)) {
             sinceYield = 0;
             if (fast) await new Promise((r) => setTimeout(r, 0));
@@ -1452,10 +1757,15 @@ function _hideBodyRegions(display) {
 /* Place the pickup head overlay on the (reused) _bodyHead sprite at the body
    sprite's exact transform.  No-op (leaves _bodyHead as the caller left it --
    hidden) outside the pickup pose or before the sheet loads. */
-function _placePickupHead(display, sb, skinId, pantsId, shoesId, pose, dir, frameIdx) {
+function _placePickupHead(display, sb, skinId, pantsId, shoesId, pose, dir, frameIdx, phase) {
   const hd = display._bodyHead;
   if (!hd || !sb) return;
-  const t = getPickupHeadFrame(skinId, pantsId, shoesId, pose, dir, frameIdx);
+  /* v2.3.1389: `phase` (jog cycle 0..1) picks the head frame on the SAME
+     clock as the fullset armor (getGearFramePhased) — east's head sheet
+     is now 25 frames matching the armor, so head and armor bob as one.
+     Dirs whose head count equals the body count resolve to the same
+     frame either way; non-jog callers omit it. */
+  const t = getPickupHeadFrame(skinId, pantsId, shoesId, pose, dir, frameIdx, phase);
   if (!t) return;
   if (hd.texture !== t) hd.texture = t;
   hd.x = sb.x; hd.y = sb.y;
@@ -1725,14 +2035,17 @@ function _orderTraitsAndWeapon(display, facingIdx) {
   const beard = display._facialHairSprite;
   /* --- Beard layer --- */
   if (display._spriteBody && beard && beard.visible) {
-    /* Rear = away-from-camera: NW(5) / N(6).  NE(7) is a toward-camera
-       facing (same set as the weapon block below: E/SE/S/NE) -- the
-       v2.3.679 fix shipped with NE in the rear set, which hid the beard
-       on NE (user report, v2.3.689).  SW(3) was then swept INTO the rear
-       set by that fix, which hid the beard entirely on southwest (user
-       report, v2.3.698) -- SW shows the face, so it belongs with the
-       toward-camera facings (beard above body + gear like S/SE). */
-    const rearFacing = (facingIdx === 5 || facingIdx === 6);
+    /* Rear = away-from-camera: NW(5) / N(6) / NE(7).  SW(3) shows the
+       face, so it belongs with the toward-camera facings (beard above
+       body + gear like S/SE) -- it was briefly swept into the rear set
+       and the beard vanished on southwest (user report, v2.3.698).
+       NE history: v2.3.679 had NE rear -> beard invisible on the OLD
+       NE art (user report, v2.3.689) -> moved to the toward set.  On
+       the regenerated NE sheets (v2.3.708+) that draws the beard OVER
+       the back of the head, and only on NE -- NW, its mirror twin, was
+       rear -- so the beard "showed on one side only".  Owner call
+       (2026-07-19): both diagonals layer the beard BEHIND the head. */
+    const rearFacing = (facingIdx === 5 || facingIdx === 6 || facingIdx === 7);
     if (rearFacing) {
       /* Behind the head: insert just BELOW the body sprite. */
       const bodyIdx = display.getChildIndex(display._spriteBody);
@@ -2170,14 +2483,9 @@ function createPlayerDisplay() {
   const container = new Container();
   container.label = 'localPlayer';
 
-  /* v2.3.1300: ground shadow at child 0 — under the body, over the
-     ground (entity containers use pure insertion-order z).  y=20 is the
-     de-facto feet line (the old fallback blob's line); the shadow stays
-     grounded while the body bobs, which is what sells the 3/4 depth. */
-  const shadow = _mintShadow(26);
-  shadow.y = 20;
-  container.addChildAt(shadow, 0);
-  container._shadow = shadow;
+  /* v2.3.1365 (owner): PLAYER ground shadow removed — the v2.3.1300
+     ellipse read as a dark blob between the knight's legs mid-stride.
+     Monsters keep theirs (createMonsterDisplay). */
 
   /* Procedural fallback body — drawn until the sprite sheets resolve
      (and as a permanent fallback if they fail to load). */
@@ -2207,6 +2515,9 @@ function createPlayerDisplay() {
      v2.3.748: gearShirt = the layered t-shirt (tinted white-base sheet),
      under the armour so a chest plate covers it. */
   const gearShirt = new Sprite(); gearShirt.anchor.set(0.5, 0.5); gearShirt.visible = false; container.addChild(gearShirt);
+  /* v2.3.1347: no belt sprite — the jog chain is painted onto the exposed
+     waist inside the masked-body bake (see _maskedBodyFrame), which gives
+     the art's own hand-drawn depth for free. */
   const gearLegs = new Sprite(); gearLegs.anchor.set(0.5, 0.5); gearLegs.visible = false; container.addChild(gearLegs);
   const gearChest = new Sprite(); gearChest.anchor.set(0.5, 0.5); gearChest.visible = false; container.addChild(gearChest);
   const gearShoulders = new Sprite(); gearShoulders.anchor.set(0.5, 0.5); gearShoulders.visible = false; container.addChild(gearShoulders);
@@ -2503,11 +2814,7 @@ function createPlayerDisplay() {
 function createOtherPlayerDisplay() {
   const container = new Container();
 
-  /* v2.3.1300: ground shadow at child 0 (see createPlayerDisplay). */
-  const shadow = _mintShadow(26);
-  shadow.y = 20;
-  container.addChildAt(shadow, 0);
-  container._shadow = shadow;
+  /* v2.3.1365 (owner): player ground shadow removed (see createPlayerDisplay). */
 
   /* Procedural fallback body — drawn until /sprites/player sheets
      resolve (and as a permanent fallback if they fail to load). */
@@ -2533,6 +2840,8 @@ function createOtherPlayerDisplay() {
      Driven by other.equip; placement copies the body transform.
      v2.3.748: + shirt under-layer (see local display). */
   const gearShirt = new Sprite(); gearShirt.anchor.set(0.5, 0.5); gearShirt.visible = false; container.addChild(gearShirt);
+  /* v2.3.1347: no belt sprite for remote players either — chain is painted in
+     the masked-body bake (see local display). */
   const gearLegs = new Sprite(); gearLegs.anchor.set(0.5, 0.5); gearLegs.visible = false; container.addChild(gearLegs);
   const gearChest = new Sprite(); gearChest.anchor.set(0.5, 0.5); gearChest.visible = false; container.addChild(gearChest);
   const gearShoulders = new Sprite(); gearShoulders.anchor.set(0.5, 0.5); gearShoulders.visible = false; container.addChild(gearShoulders);
@@ -3729,10 +4038,7 @@ export class EntityRenderer {
       else isMoving = _remoteV > 0.05;
       display._remoteMoving = isMoving;
       const bobY = isMoving ? Math.sin(now / 120) * 2 : 0;
-      /* v2.3.1300: the shadow stays GROUNDED while the body bobs (the
-         depth cue), but breathes a touch with the stride — width-only,
-         two property writes on a frame we're already touching. */
-      if (display._shadow) display._shadow.width = display._shadow._shadowW * (1 - bobY * 0.02);
+      /* v2.3.1365: player shadow removed — no stride wobble to drive. */
 
       /* Sprite-sheet body — same as local player.  Other players
          broadcast their own 8-way facing in `f` (-> other._renderFacing). */
@@ -3786,6 +4092,7 @@ export class EntityRenderer {
         /* mine/fish frames are authored south-only -> force south, no mirror. */
         if (pose === 'mine' || pose === 'fish') { dir = 'south'; mirror = false; }
         let frameIdx = 0;
+        let _rJogPhase = null;  /* v2.3.1367: cycle phase for native-count fullset playback */
         if (pose === 'jog') {
           /* Frame count is per-direction now (24-35) — pulled from
              the loaded sheet width so a longer strip plays more frames
@@ -3795,6 +4102,8 @@ export class EntityRenderer {
           const _arm = !!(other.equip && other.equip.chest && other.equip.chest !== 'none'
             && other.equip.legs && other.equip.legs !== 'none');
           frameIdx = Math.floor((now / cycleMs('jog', dir, _arm)) * fc) % fc;
+          /* v2.3.1367: cycle phase for native-count fullset playback. */
+          _rJogPhase = ((now / cycleMs('jog', dir, _arm)) % 1 + 1) % 1;
         } else if (pose === 'hit') {
           const hitT = (now - (other._hitFlash || 0)) / 250;
           frameIdx = Math.max(0, Math.min(5, Math.floor(hitT * 6)));
@@ -3874,17 +4183,21 @@ export class EntityRenderer {
             }
           }
           let _rfull = false;
+          let _fsR = null; /* v2.3.1389: hoisted — the trait crown override below needs it */
           if (_rworn.length) {
             const _rlegsW = _rworn.some(w => w.k && w.k.indexOf('legs:') === 0);
             const _rchestW = _rworn.some(w => w.k && w.k.indexOf('chest:') === 0);
             _rfull = pose === 'pickup' && _rlegsW && _rchestW;   // v2.3.1057: hide body, head overlay + gear render it (no bake)
-            const _mt = (pose === 'pickup') ? tex : _maskedBodyFrame(tex, _rworn, 6);
+            /* v2.3.1361: fullset figure for remote players too. */
+            _fsR = _fullsetFrame(other.equip && other.equip.chest, other.equip && other.equip.legs, pose, dir, frameIdx, _rJogPhase);
+            const _mt = _fsR || ((pose === 'pickup') ? tex : _maskedBodyFrame(tex, _rworn, 6, { pose, dir, frameIdx }));
             if (spriteBody.texture !== _mt) spriteBody.texture = _mt;
           }
           /* v2.3.1055: pickup head overlay (drawn above gear in _orderTraitsAndWeapon).
              v2.3.1116: guarded (see local path) -- a throw here must not freeze the loop. */
           try {
-            _placePickupHead(display, spriteBody, other.skin, other.pants, other.shoes, pose, dir, frameIdx);
+            /* v2.3.1394: jog overlay only over the fullset figure (see local path). */
+            if (pose !== 'jog' || _fsR) _placePickupHead(display, spriteBody, other.skin, other.pants, other.shoes, pose, dir, frameIdx, _rJogPhase);
             spriteBody.visible = !(_rfull && !!getPickupHeadFrame(other.skin, other.pants, other.shoes, pose, dir, frameIdx));
             /* v2.3.1123: lift the angler's head above the fishing chest plate. */
             if (pose === 'fish' && _rworn.some(w => w.k && w.k.indexOf('chest:') === 0)) _placeFishHead(display, spriteBody, tex);
@@ -3892,9 +4205,11 @@ export class EntityRenderer {
           /* shirt is baked into the body (see getBodyFrame above); no overlay. */
           if (display._shirtSprite) display._shirtSprite.visible = false;
           /* always show the remote's hair/hat/beard (no helmet to hide them). */
+          _crownOverride = _fsR ? _fullsetCrown(dir, _rJogPhase) : null; /* v2.3.1389 */
           _placeHeadwear(display, other.headwear, other.hatColor, pose, dir, mirror, frameIdx, sizeMul);
           _placeFacialHair(display, other.facialhair, other.facialHairColor, pose, dir, mirror, frameIdx, sizeMul);
           _placeHair(display, other.hair, other.hairColor, other.headwear, pose, dir, mirror, frameIdx, sizeMul);
+          _crownOverride = null;
         } else {
           spriteBody.visible = false;
           body.visible = true;
@@ -3939,9 +4254,9 @@ export class EntityRenderer {
           display._lastIsMoving = isMoving;
           display._procDrawn = true;
           body.clear();
-          /* v2.3.1300: the baked fallback shadow ellipse is retired —
-             the shared-texture _shadow (child 0) covers both render
-             paths now, so the fallback drew a double shadow. */
+          /* v2.3.1300: the baked fallback shadow ellipse is retired;
+             v2.3.1365: the player ground shadow is gone entirely
+             (owner) — do not re-add one here. */
           // Legs with walk animation
           const legSwing = isMoving ? Math.sin(now / 80) * 3 : 0;
           body.rect(-bodyW / 2, 2 + bobY + legSwing, bodyW / 2 - 1, bodyH / 2);
@@ -4339,8 +4654,7 @@ export class EntityRenderer {
     const bh = slim ? 22 : 24;
     const isMoving = Math.abs(P.vx || 0) > 0.01 || Math.abs(P.vy || 0) > 0.01;
     const bobY = isMoving ? Math.sin(now / 120) * 2 : 0;
-    /* v2.3.1300: grounded shadow breathes with the stride (see remote twin). */
-    if (display._shadow) display._shadow.width = display._shadow._shadowW * (1 - bobY * 0.02);
+    /* v2.3.1365: player shadow removed — no stride wobble to drive. */
 
     /* Match the Canvas 2D facing logic exactly (BroTown.jsx ~13125-13137):
        1. S._shieldUp → S._shieldAngle (shield direction)
@@ -4487,6 +4801,7 @@ export class EntityRenderer {
     if (spritesAvailable) {
       const spriteBody = display._spriteBody;
       let frameIdx = 0;
+      let _jogPhase = null;  /* v2.3.1367: cycle phase 0..1 for native-count fullset playback */
       if (pose === 'jog') {
         /* Per-direction frame count — sheets vary 24-34 frames.  During
            an attack or shield (movement slowed 50% by gameplay), play
@@ -4502,6 +4817,10 @@ export class EntityRenderer {
         const effectiveCycle = useAimDirection ? baseCycle * 2 : baseCycle;
         const rawIdx = Math.floor((now / effectiveCycle) * fc) % fc;
         frameIdx = isMovingBackward ? ((fc - 1) - rawIdx) : rawIdx;
+        /* v2.3.1367: the same clock as rawIdx, as a 0..1 phase — drives
+           native-frame-count fullset sheets (east: 25f vs 28f body). */
+        _jogPhase = ((now / effectiveCycle) % 1 + 1) % 1;
+        if (isMovingBackward) _jogPhase = 1 - _jogPhase;
         /* v2.3.1105: footsteps fire on the actual FOOT-PLANT frames of each
            direction's jog loop, so the sound lands exactly when a foot hits the
            ground -- a fixed timer never lined up because the per-direction
@@ -4647,8 +4966,12 @@ export class EntityRenderer {
         const _legsW = _worn.some(w => w.k && w.k.indexOf('legs:') === 0);
         const _chestW = _worn.some(w => w.k && w.k.indexOf('chest:') === 0);
         let _bodyTex;
+        let _fsT = null; /* v2.3.1389: hoisted — the trait crown override below needs it */
         try {
-          _bodyTex = (!_worn.length || pose === 'pickup') ? tex : _maskedBodyFrame(tex, _worn, 6);
+          /* v2.3.1361: fullset figure replaces the bake when it ships for
+             this (pose,dir); null -> classic masked path. */
+          _fsT = _fullsetFrame(getEquip('chest'), getEquip('legs'), pose, dir, frameIdx, _jogPhase);
+          _bodyTex = _fsT || ((!_worn.length || pose === 'pickup') ? tex : _maskedBodyFrame(tex, _worn, 6, { pose, dir, frameIdx }));
         } catch (e) { _bodyTex = tex; }
         if (spriteBody.texture !== _bodyTex) spriteBody.texture = _bodyTex;
         /* v2.3.1055: pickup head overlay (drawn above gear in _orderTraitsAndWeapon).
@@ -4656,7 +4979,14 @@ export class EntityRenderer {
            (a bad overlay texture, a recolor hiccup) would freeze the whole game
            loop, not just the head.  On failure: no overlay, body stays visible. */
         try {
-          _placePickupHead(display, spriteBody, getSkin(), getPants(), getShoes(), pose, dir, frameIdx);
+          /* v2.3.1394: the JOG head overlay exists to cap the fullset knight
+             (v2.3.1368) — since v2.3.1389 its sheet is armor-synced (25f,
+             armor bob), so drawing it over the CLASSIC body (partial/no
+             armor) painted a second, detached head that ignored the body's
+             own bob (owner: chest-only east "not nudging").  Gate it on the
+             fullset figure actually rendering; pickup/fish keep their
+             unconditional overlay. */
+          if (pose !== 'jog' || _fsT) _placePickupHead(display, spriteBody, getSkin(), getPants(), getShoes(), pose, dir, frameIdx, _jogPhase);
           spriteBody.visible = !(pose === 'pickup' && _legsW && _chestW && !!getPickupHeadFrame(getSkin(), getPants(), getShoes(), pose, dir, frameIdx));
           /* v2.3.1123: lift the angler's head above the fishing chest plate. */
           if (pose === 'fish' && _chestW) _placeFishHead(display, spriteBody, tex);
@@ -4688,9 +5018,14 @@ export class EntityRenderer {
         /* shirt is baked into the body (see getBodyFrame above); no overlay. */
         if (display._shirtSprite) display._shirtSprite.visible = false;
         /* v2.3.613: no helmet -- always show hair/hat/beard on the visible head. */
+        /* v2.3.1389: while the fullset figure is on screen, anchor the head
+           traits to the DRAWN head's crown (FULLSET_CROWN — armor-synced,
+           left-shifted) instead of the body sheet's. */
+        _crownOverride = _fsT ? _fullsetCrown(dir, _jogPhase) : null;
         _placeHeadwear(display, getHeadwear(), getHatColor(), pose, dir, mirror, frameIdx, bodyScale);
         _placeFacialHair(display, getFacialHair(), getFacialHairColor(), pose, dir, mirror, frameIdx, bodyScale);
         _placeHair(display, getHair(), getHairColor(), getHeadwear(), pose, dir, mirror, frameIdx, bodyScale);
+        _crownOverride = null;
 
         /* v2.3.265: combined-trait overlay disabled while sticker
            pipeline is being wired. */
@@ -4821,8 +5156,8 @@ export class EntityRenderer {
         display._lastIsMoving = isMoving;
         display._procDrawn = true;
         body.clear();
-        /* v2.3.1300: baked fallback shadow retired — the shared-texture
-           _shadow (child 0) covers both render paths (see remote twin). */
+        /* v2.3.1300: baked fallback shadow retired; v2.3.1365: player
+           ground shadow gone entirely (owner) — do not re-add one here. */
         // Legs with walk animation
         const legSwing = isMoving ? Math.sin(now / 80) * 3 : 0;
         body.rect(-bw / 2, 2 + bobY + legSwing, bw / 2 - 1, bh / 2);
