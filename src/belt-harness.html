@@ -22,6 +22,8 @@ const MODE = new URLSearchParams(location.search).get('layers') || 'all';
 // chest-only/legs-only jog broke unseen because the harness only ever
 // rendered the full set)
 const WEAR = new URLSearchParams(location.search).get('wear') || 'full';
+// ?bg=magenta: chroma-key background — for exporting ChatGPT source boards
+const BG = new URLSearchParams(location.search).get('bg') === 'magenta' ? '#ff00ff' : '#3c4048';
 // mirrored production angles: rendered from the base dir with a negative
 // x-scale, exactly how the game mirrors (v2.3.1349b)
 const MIRROR = { west: 'east', northwest: 'northeast', southeast: 'southwest' };
@@ -65,7 +67,7 @@ async function board(dir) {
   cv.id = 'board-' + dir;
   const ctx = cv.getContext('2d');
   ctx.imageSmoothingEnabled = false;
-  ctx.fillStyle = '#3c4048';
+  ctx.fillStyle = BG;
   ctx.fillRect(0, 0, cv.width, cv.height);
   for (let f = 0; f < n; f++) {
     const body = await ready(() => getBodyFrame(SKIN, PANTS, SHOES, 'jog', base, f, null, 'none'));
