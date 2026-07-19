@@ -177,7 +177,9 @@ function _hpFillTexFor(holder, frac) {
    read the active player's NFT ID from R.nftId or similar. */
 const TRAIT_NFT_ID = 'test-1';
 /* v2.3.708: bumped for the regenerated NE jog body-tops/body-anchors. */
-const TRAIT_VER = '2.3.708';
+/* v2.3.1394: bumped — bandana gains hairmask/*.png + clipsHair in meta.json
+   (owner: hair not clipped under the bandana on NE/NW). */
+const TRAIT_VER = '2.3.1394';
 
 /* v2.3.377: the on-back (sheathed) shield render is purely cosmetic and was
    a persistent source of per-facing z-order issues vs the body/arms/weapon/
@@ -4191,7 +4193,8 @@ export class EntityRenderer {
           /* v2.3.1055: pickup head overlay (drawn above gear in _orderTraitsAndWeapon).
              v2.3.1116: guarded (see local path) -- a throw here must not freeze the loop. */
           try {
-            _placePickupHead(display, spriteBody, other.skin, other.pants, other.shoes, pose, dir, frameIdx, _rJogPhase);
+            /* v2.3.1394: jog overlay only over the fullset figure (see local path). */
+            if (pose !== 'jog' || _fsR) _placePickupHead(display, spriteBody, other.skin, other.pants, other.shoes, pose, dir, frameIdx, _rJogPhase);
             spriteBody.visible = !(_rfull && !!getPickupHeadFrame(other.skin, other.pants, other.shoes, pose, dir, frameIdx));
             /* v2.3.1123: lift the angler's head above the fishing chest plate. */
             if (pose === 'fish' && _rworn.some(w => w.k && w.k.indexOf('chest:') === 0)) _placeFishHead(display, spriteBody, tex);
@@ -4973,7 +4976,14 @@ export class EntityRenderer {
            (a bad overlay texture, a recolor hiccup) would freeze the whole game
            loop, not just the head.  On failure: no overlay, body stays visible. */
         try {
-          _placePickupHead(display, spriteBody, getSkin(), getPants(), getShoes(), pose, dir, frameIdx, _jogPhase);
+          /* v2.3.1394: the JOG head overlay exists to cap the fullset knight
+             (v2.3.1368) — since v2.3.1389 its sheet is armor-synced (25f,
+             armor bob), so drawing it over the CLASSIC body (partial/no
+             armor) painted a second, detached head that ignored the body's
+             own bob (owner: chest-only east "not nudging").  Gate it on the
+             fullset figure actually rendering; pickup/fish keep their
+             unconditional overlay. */
+          if (pose !== 'jog' || _fsT) _placePickupHead(display, spriteBody, getSkin(), getPants(), getShoes(), pose, dir, frameIdx, _jogPhase);
           spriteBody.visible = !(pose === 'pickup' && _legsW && _chestW && !!getPickupHeadFrame(getSkin(), getPants(), getShoes(), pose, dir, frameIdx));
           /* v2.3.1123: lift the angler's head above the fishing chest plate. */
           if (pose === 'fish' && _chestW) _placeFishHead(display, spriteBody, tex);
