@@ -13,7 +13,8 @@ trunks) in the waist region, and merges them into the chest sheet ONLY where
 it is currently transparent — existing art is never touched.
 
 Directions: south / north / southwest (the boards that match today's frame
-cycles).  Run AFTER the belt sheets are generated so the two share alignment.
+cycles).  Run BEFORE gen_belt_from_mannequin (v2.3.1349b): the belt tool
+reads the FINAL chest sheet to chain-fill exactly what stays exposed.
 
 Usage: python3 tools/patch_chest_from_mannequin.py [dir ...]
 Do NOT pipe through `head` — SIGPIPE can kill the run before the save.
@@ -127,6 +128,14 @@ def patch(d):
         green = (parr[:, :, 3] > 40) & (G > 80) & (G > R + 25) & (G > B + 20)
         green = ndimage.binary_closing(green, iterations=2)
         armor = (parr[:, :, 3] > 40) & ~green
+        # v2.3.1349b (owner: "black superhero underwear"): the boards draw a
+        # big DARK shadow region around/under the trunks (50-65 warm gray).
+        # Merging it as armor put black bars in the CHEST layer, drawn over
+        # everything — no belt/bake change could remove them.  Merge BRIGHT
+        # armor only; gen_belt_from_mannequin (run AFTER this tool) chain-
+        # fills whatever the final chest+greaves leave exposed, so the
+        # dropped shadow renders as mail, never as a flat dark band.
+        armor &= np.maximum(np.maximum(R, G), B) >= 70
 
         # waist region only: from a bit above the current plate bottom down to
         # the greaves top area — we're restoring the hip skirt, nothing else
@@ -155,12 +164,17 @@ def patch(d):
     # v2.3.1348c: the trunks' anti-aliased edges fall below the green test and
     # merged as "armor" — a green rim around the chain in-game.  Desaturate
     # any greenish merged pixel to its own luminance (steel gray).
+    # v2.3.1349b: generalized to ANY high-chroma merged pixel — the magenta
+    # key's purple fringe and the mannequin's yellow-green AA both leaked
+    # through as colored flecks on the thigh edges (SW f10/f11).  Steel is
+    # desaturated by nature, so chroma in the merge is always board bleed.
     mr, mg, mb = (chest[:, :, 0].astype(int), chest[:, :, 1].astype(int),
                   chest[:, :, 2].astype(int))
-    greenish = merge_mask & (chest[:, :, 3] > 0) & (mg > mr + 8) & (mg > mb + 4)
+    chroma = np.maximum(np.maximum(np.abs(mr - mg), np.abs(mg - mb)), np.abs(mr - mb))
+    tinted = merge_mask & (chest[:, :, 3] > 0) & (((mg > mr + 8) & (mg > mb + 4)) | (chroma > 24))
     lum = (0.30 * mr + 0.45 * mg + 0.25 * mb).astype(np.uint8)
     for ch2 in range(3):
-        chest[:, :, ch2][greenish] = lum[greenish]
+        chest[:, :, ch2][tinted] = lum[tinted]
 
     # v2.3.1348c: HARDEN the ship-size downscale IN THE MERGED REGION ONLY.
     # A plain LANCZOS resize left the merged skirt with semi-transparent

@@ -23,6 +23,7 @@ Usage: python3 tools/gen_belt_from_mannequin.py [dir ...]
 Do NOT pipe through `head` — SIGPIPE can kill the run before the save.
 """
 import json
+import re
 import sys
 import numpy as np
 from scipy import ndimage
@@ -33,6 +34,15 @@ MAGENTA = np.array([255, 0, 255])
 MAG_TOL = 60
 ALPHA = 20
 DIRS = ['south', 'north', 'southwest']
+
+# v2.3.1349b: per-frame waist rows from the game's own table, for the
+# game-geometry exposure fill below.
+_JW_SRC = open('src/rendering/jogWaist.js').read()
+
+
+def waist_rows(d):
+    m = re.search(r'"%s"\s*:\s*\[([^\]]+)\]' % d, _JW_SRC, re.S)
+    return [int(x) for x in re.findall(r'-?\d+', m.group(1))]
 
 
 def key_region(reg):
@@ -69,6 +79,22 @@ def gen(d):
     base = base128.resize((base128.width * 2, base128.height * 2), Image.NEAREST)
 
     chain = Image.open('tools/posesheets/chainbelt.png').convert('RGBA')
+
+    # v2.3.1349b: the GAME's chest/greaves sheets (the chest already carries
+    # the restored skirt — run patch_chest_from_mannequin FIRST).  The board's
+    # green+shadow mask only approximates the game's exposed waist (the
+    # shipped armor is different art from the board's), and the uncovered
+    # remainder rendered as the bake safety net's flat dark band ("black
+    # superhero underwear").  The chain must cover body ∧ ¬chest ∧ ¬greaves
+    # in the waist band — measured from the sheets that actually render.
+    def load_gear(p):
+        im = Image.open(p).convert('RGBA')
+        if im.height == 128:
+            im = im.resize((im.width * 2, 256), Image.NEAREST)
+        return np.array(im)[:, :, 3] > 40
+    chestop = load_gear(f'public/sprites/gear/chest/steelplate/jog-{d}.png')
+    legsop = load_gear(f'public/sprites/gear/legs/steelgreaves/jog-{d}.png')
+    wrs = waist_rows(d)
 
     out = Image.new('RGBA', (n * 128, 128), (0, 0, 0, 0))
     stats = []
@@ -133,6 +159,35 @@ def gen(d):
         green = (parr[:, :, 3] > 40) & (G > 80) & (G > R + 25) & (G > B + 20)
         green = ndimage.binary_closing(green, iterations=2)
         green = ndimage.binary_dilation(green, iterations=1)
+        # v2.3.1349b (owner: "black superhero underwear"): the boards also
+        # paint a DARK shadow region under the plate skirt / around the
+        # trunks (50-65 warm gray).  patch_chest_from_mannequin now EXCLUDES
+        # that shadow from the chest merge (same threshold-70 interior-blob
+        # test), so chain-fill it HERE — otherwise the bake's safety net
+        # backfills it flat dark and the waist reads as black briefs.
+        R2 = parr[:, :, 0].astype(int); G2 = parr[:, :, 1].astype(int); B2 = parr[:, :, 2].astype(int)
+        figop = parr[:, :, 3] > 40
+        dark = figop & ~green & (np.maximum(np.maximum(R2, G2), B2) < 70)
+        shadow = ndimage.binary_dilation(ndimage.binary_erosion(dark, iterations=1), iterations=1)
+        if green.any():
+            gr = np.where(green.any(axis=1))[0]
+            win = np.zeros_like(green)
+            # tight window: the under-skirt shadow hugs the trunks; reaching
+            # 40 rows up pulled the board's mid-torso armor shading into the
+            # belt sheet (chain on the chest wherever the plate has a gap)
+            win[max(0, gr[0] - 14):min(FRAME, gr[-1] + 9)] = True
+            green = green | (shadow & win)
+        # v2.3.1349b: game-geometry fill — every body pixel in the waist band
+        # not covered by the game's chest or greaves gets chain, no matter
+        # what the board shows there.  The bake paint replaces only
+        # pants/dark/erased pixels, so the arm crossing the band keeps its
+        # skin and depth.
+        exposed = (bop & ~chestop[:, i * FRAME:(i + 1) * FRAME]
+                   & ~legsop[:, i * FRAME:(i + 1) * FRAME])
+        band = np.zeros_like(exposed)
+        wrow = wrs[i] if i < len(wrs) else wrs[-1]
+        band[max(0, wrow - 30):min(FRAME, wrow + 26)] = True
+        green = green | (exposed & band)
         # v2.3.1349: clip against the body dilated by 2, not the exact
         # silhouette — the ±8px alignment wobble clipped the trunks' hip
         # edges, which the game's erase turned into hip-side holes (SW).
@@ -141,28 +196,39 @@ def gen(d):
         if not green.any():
             continue
 
-        # chain fill: tile at the green band's height, anchored to its bbox
+        # chain fill (v2.3.1349b: owner — the trunks read as "black superhero
+        # underwear").  The tile is scaled to the trunks' 256-space height so
+        # the links stay legible, brightened toward steel, and the backing is
+        # dark STEEL (44,47,54) instead of near-black, so the region reads as
+        # chainmail rather than a void.
         gys, gxs = np.where(green)
         g0, g1 = int(gys.min()), int(gys.max()) + 1
         gx0 = int(gxs.min())
-        bh = max(6, g1 - g0)
+        bh = max(12, g1 - g0)
         tw = max(1, round(chain.width * bh / chain.height))
-        tile = np.array(chain.resize((tw, bh), Image.LANCZOS))
+        tile = np.array(chain.resize((tw, bh), Image.LANCZOS)).astype(int)
+        # brighten the links toward steel (x1.9 read as WHITE briefs on the
+        # wide game-geometry band — keep it mid-steel)
+        tile[:, :, :3] = np.clip(tile[:, :, :3] * 1.55 + 18, 0, 225)
+        tile = tile.astype(np.uint8)
         frame_out = np.zeros((FRAME, FRAME, 4), np.uint8)
         for y, x in zip(gys, gxs):
             sp = tile[(y - g0) % bh, (x - gx0) % tw]
             if sp[3] > 30:
                 frame_out[y, x] = (sp[0], sp[1], sp[2], 255)
             else:
-                frame_out[y, x] = (20, 22, 26, 255)   # backing: chain reads solid
+                frame_out[y, x] = (44, 47, 54, 255)   # recessed mail, not void
         # 1px darkened rim so the band has the game's outline style
         op_ = frame_out[:, :, 3] > 0
         rim = op_ & ~ndimage.binary_erosion(op_, iterations=1)
         for ch2 in range(3):
             frame_out[:, :, ch2][rim] = (frame_out[:, :, ch2][rim] * 0.45).astype(np.uint8)
 
-        cell = Image.fromarray(frame_out).resize((128, 128), Image.NEAREST)
-        out.paste(cell, (i * 128, 0))
+        cell_rgb = Image.fromarray(frame_out).resize((128, 128), Image.LANCZOS)
+        cell_a = Image.fromarray(frame_out[:, :, 3], 'L').resize((128, 128), Image.NEAREST)
+        cell = np.array(cell_rgb)
+        cell[:, :, 3] = np.array(cell_a)              # binary alpha, smooth RGB
+        out.paste(Image.fromarray(cell), (i * 128, 0))
 
     path = f'public/sprites/gear/belt/chainbelt/jog-{d}.png'
     out.save(path)

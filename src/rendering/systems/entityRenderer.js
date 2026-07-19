@@ -777,10 +777,21 @@ function _maskedBodyFrameInner(bodyTex, worn, dilate, _bt0, _bs, poseInfo) {
         const waistY = Math.round(figTop + 0.45 * fh);   // a bit above mid-figure so the waist/hip skin (chain-belt zone) is caught too
         const img = ctx.getImageData(0, 0, 256, 256);
         const d = img.data;
+        /* v2.3.1349b: sample from the PRE-ERASE body (origBody), not the
+           erased canvas.  With a full set worn the dilated erase wipes the
+           whole waist + shoe band on the frontal dirs, so sampling `d` found
+           nothing, pantsRef/shoesRef came back null, and BOTH the v2.3.650
+           pants-restore and the v2.3.1347 chain waist paint silently never
+           ran for south/north/most southwest frames — the safety net's flat
+           fill covered the gap and read as "black superhero underwear"
+           (owner).  East/northeast only worked because their profile erase
+           leaves leftovers to sample.  origBody is what the restores colour-
+           match against, so it is also the CORRECT sample source. */
+        const spx = origBody || d;
         const medRGB = (y0, y1) => {            // per-channel median of opaque pixels in [y0,y1)
           const rs = [], gs = [], bs = [];
           for (let y = Math.max(0, y0); y < Math.min(256, y1); y++)
-            for (let x = 0; x < 256; x++) { const o = (y * 256 + x) * 4; if (d[o + 3] > 40) { rs.push(d[o]); gs.push(d[o + 1]); bs.push(d[o + 2]); } }
+            for (let x = 0; x < 256; x++) { const o = (y * 256 + x) * 4; if (spx[o + 3] > 40) { rs.push(spx[o]); gs.push(spx[o + 1]); bs.push(spx[o + 2]); } }
           if (!rs.length) return null;
           const mid = a => { a.sort((p, q) => p - q); return a[a.length >> 1]; };
           return [mid(rs), mid(gs), mid(bs)];
@@ -799,8 +810,8 @@ function _maskedBodyFrameInner(bodyTex, worn, dilate, _bt0, _bs, poseInfo) {
           const rs = [], gs = [], bs = [], y1 = waistY + Math.round(0.40 * fh);
           for (let y = waistY; y < Math.min(256, y1); y++)
             for (let x = 0; x < 256; x++) {
-              const o = (y * 256 + x) * 4; if (d[o + 3] <= 40) continue;
-              const R = d[o], G = d[o + 1], B = d[o + 2];
+              const o = (y * 256 + x) * 4; if (spx[o + 3] <= 40) continue;
+              const R = spx[o], G = spx[o + 1], B = spx[o + 2];
               const pn = Math.sqrt(R * R + G * G + B * B) || 1;
               const cos = (R * skinRef[0] + G * skinRef[1] + B * skinRef[2]) / (pn * sn);
               if (cos < 0.985) { rs.push(R); gs.push(G); bs.push(B); }
@@ -1079,9 +1090,18 @@ function _maskedBodyFrameInner(bodyTex, worn, dilate, _bt0, _bs, poseInfo) {
                     continue;
                   }
                   const R = d2[o], G = d2[o + 1], B = d2[o + 2];
+                  /* v2.3.1349b (owner: "black superhero underwear"): the body
+                     sheet draws a DARK waistband/shadow at the waist (max
+                     channel < 75).  The hue-projection score is unstable at
+                     that brightness, so those pixels failed the pants test
+                     and survived as a flat dark band under the plate.  Dark
+                     pixels inside the belt's extent ARE the exposed waist —
+                     replace them with chain; skin (arm, fist) is bright and
+                     never matches. */
                   const sP = _score(R, G, B, pantsRef);
-                  if ((!skinRef || sP >= _score(R, G, B, skinRef))
-                      && (!shoesRef || sP >= _score(R, G, B, shoesRef))) {
+                  if (Math.max(R, G, B) < 75
+                      || ((!skinRef || sP >= _score(R, G, B, skinRef))
+                          && (!shoesRef || sP >= _score(R, G, B, shoesRef)))) {
                     /* green/pants band pixel: chain replaces it; skin (arm,
                        fist) stays and keeps its hand-drawn depth */
                     d2[o] = bd[o]; d2[o + 1] = bd[o + 1]; d2[o + 2] = bd[o + 2];
@@ -1111,7 +1131,9 @@ function _maskedBodyFrameInner(bodyTex, worn, dilate, _bt0, _bs, poseInfo) {
                 if (!below && y + k < 256 && (gop[p + k * 256] || d2[(p + k * 256) * 4 + 3] > 40)) below = true;
               }
               if (above && below) {
-                d2[o] = 26; d2[o + 1] = 28; d2[o + 2] = 32; d2[o + 3] = 255;
+                /* v2.3.1349b: dark STEEL, not near-black — flat black patches
+                   at the waist read as "underwear" (owner) */
+                d2[o] = 44; d2[o + 1] = 47; d2[o + 2] = 54; d2[o + 3] = 255;
                 dirty2 = true;
               }
             }

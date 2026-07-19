@@ -15,9 +15,9 @@ const browser = await chromium.launch({
 const page = await browser.newPage({ viewport: { width: 3200, height: 1200 } });
 page.on('console', (m) => { if (m.type() === 'error') console.log('[page]', m.text()); });
 page.on('pageerror', (e) => console.log('[pageerror]', e.message));
-await page.goto('http://localhost:5173/belt-harness.html');
+await page.goto('http://localhost:5173/belt-harness.html' + (process.env.HARNESS_QUERY || ''));
 await page.waitForFunction('window.__done === true', null, { timeout: 300000 });
-for (const d of ['south', 'north', 'east', 'northeast', 'southwest']) {
+for (const d of ['south', 'north', 'east', 'northeast', 'southwest', 'west', 'northwest', 'southeast']) {
   const el = await page.$('#board-' + d);
   if (el) {
     await el.screenshot({ path: `${out}/real-${d}.png` });
