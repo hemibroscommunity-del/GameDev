@@ -520,8 +520,31 @@ const _GEAR_SLOTS = [['shirt', '_gearShirt'], ['legs', '_gearLegs'], ['chest', '
    removes the JITTER, not the intended resting fit.  Drop this table if the
    fish-south chest sheet is ever re-cut to match the body lean. */
 const _FISH_CHEST_DEJITTER = [-5, -4, -6, -5, -4, -6, -5, -4, -4, -3, -2, -1, -1, 2, 2, 5, 5, 7, 5, 6, 6, 6, 6, 7, 7, 2, 2, -3, -3, -4, -4, -4];
+/* v2.3.1361 (owner: "Try 1"): pre-composed FULL-SET armored figure.  A
+   finished textured knight (helmet included, chain waist baked by the
+   artist) ships per (pose,dir) at gear/fullset/steel/<pose>-<dir>.png and
+   REPLACES the whole masked-body bake + chest/legs layering when the full
+   steel set is worn — no erase, no chain paint, no seams for those dirs.
+   A missing sheet (only jog-south ships so far) returns null and the
+   classic path runs unchanged.  DISPLAY_DS guard: the sheet rides the 256
+   gear pipeline while the body sprite's transform expects display-sized
+   frames — identical only while DISPLAY_DS === 1. */
+function _fullsetFrame(chestItem, legsItem, pose, dir, frameIdx) {
+  if (DISPLAY_DS !== 1 || pose !== 'jog') return null;
+  if (chestItem !== 'steelplate' || legsItem !== 'steelgreaves') return null;
+  return getGearFrame('fullset', 'steel', pose, dir, frameIdx);
+}
 function _placeGear(display, equip, pose, dir, frameIdx) {
   const sb = display._spriteBody;
+  /* v2.3.1361: the fullset figure carries ALL its armor — hide every gear
+     layer so nothing double-draws over the finished art. */
+  if (_fullsetFrame(equip && equip.chest, equip && equip.legs, pose, dir, frameIdx)) {
+    for (let s = 0; s < _GEAR_SLOTS.length; s++) {
+      const spr = display[_GEAR_SLOTS[s][1]];
+      if (spr && spr.visible) spr.visible = false;
+    }
+    return;
+  }
   for (let s = 0; s < _GEAR_SLOTS.length; s++) {
     const spr = display[_GEAR_SLOTS[s][1]];
     if (!spr) continue;
@@ -4016,7 +4039,9 @@ export class EntityRenderer {
             const _rlegsW = _rworn.some(w => w.k && w.k.indexOf('legs:') === 0);
             const _rchestW = _rworn.some(w => w.k && w.k.indexOf('chest:') === 0);
             _rfull = pose === 'pickup' && _rlegsW && _rchestW;   // v2.3.1057: hide body, head overlay + gear render it (no bake)
-            const _mt = (pose === 'pickup') ? tex : _maskedBodyFrame(tex, _rworn, 6, { pose, dir, frameIdx });
+            /* v2.3.1361: fullset figure for remote players too. */
+            const _fsR = _fullsetFrame(other.equip && other.equip.chest, other.equip && other.equip.legs, pose, dir, frameIdx);
+            const _mt = _fsR || ((pose === 'pickup') ? tex : _maskedBodyFrame(tex, _rworn, 6, { pose, dir, frameIdx }));
             if (spriteBody.texture !== _mt) spriteBody.texture = _mt;
           }
           /* v2.3.1055: pickup head overlay (drawn above gear in _orderTraitsAndWeapon).
@@ -4786,7 +4811,10 @@ export class EntityRenderer {
         const _chestW = _worn.some(w => w.k && w.k.indexOf('chest:') === 0);
         let _bodyTex;
         try {
-          _bodyTex = (!_worn.length || pose === 'pickup') ? tex : _maskedBodyFrame(tex, _worn, 6, { pose, dir, frameIdx });
+          /* v2.3.1361: fullset figure replaces the bake when it ships for
+             this (pose,dir); null -> classic masked path. */
+          const _fsT = _fullsetFrame(getEquip('chest'), getEquip('legs'), pose, dir, frameIdx);
+          _bodyTex = _fsT || ((!_worn.length || pose === 'pickup') ? tex : _maskedBodyFrame(tex, _worn, 6, { pose, dir, frameIdx }));
         } catch (e) { _bodyTex = tex; }
         if (spriteBody.texture !== _bodyTex) spriteBody.texture = _bodyTex;
         /* v2.3.1055: pickup head overlay (drawn above gear in _orderTraitsAndWeapon).

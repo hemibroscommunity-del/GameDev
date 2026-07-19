@@ -74,6 +74,18 @@ async function board(dir) {
     const belt = await ready(() => getGearFrame('belt', 'chainbelt', 'jog', base, f), 60);
     if (f === 0) console.log('[harness]', dir, 'body=', !!body, 'chest=', !!chest, 'legs=', !!legs, 'belt=', !!belt);
     if (!body || !chest || !legs) continue;
+    // v2.3.1361: the fullset figure replaces everything when it ships for
+    // this dir (only jog-south so far); dirs without it keep the bake path.
+    if (MODE !== 'body' && WEAR === 'full') {
+      const fs = await ready(() => getGearFrame('fullset', 'steel', 'jog', base, f), f === 0 ? 60 : 10);
+      if (fs) {
+        const dx = (f % cols) * 256 * Z, dy = Math.floor(f / cols) * 256 * Z;
+        drawTex(ctx, fs, dx, dy, Z, flip);
+        ctx.fillStyle = '#ffdd44'; ctx.font = '20px monospace';
+        ctx.fillText(dir + ' f' + f + ' (fullset)', dx + 8, dy + 24);
+        continue;
+      }
+    }
     const worn = WEAR === 'chest' ? [{ k: 'chest:steelplate', tex: chest }]
       : WEAR === 'legs' ? [{ k: 'legs:steelgreaves', tex: legs }]
         : [{ k: 'chest:steelplate', tex: chest }, { k: 'legs:steelgreaves', tex: legs }];
