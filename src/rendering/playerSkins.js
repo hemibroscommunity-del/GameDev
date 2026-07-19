@@ -600,7 +600,7 @@ function _pickupHeadCap() {
      (insertion order) baked entry; destroy its source on a 30s delay so an
      in-use texture is never killed mid-frame (same guard as _maskedBodyCache). */
   const keys = Object.keys(_pickupHeadSheets);
-  if (keys.length <= 6) return;
+  if (keys.length <= 12) return; /* v2.3.1368: jog head sheets share this cache (4 dirs/combo) */
   for (const k of keys) {
     const e = _pickupHeadSheets[k];
     if (!Array.isArray(e) || !e.length) continue;   // skip 'loading'/empty
@@ -638,7 +638,11 @@ function _buildPickupHeadSheet(key, pose, dir, skinT, pantsT, shoesT) {
  *  when no head sheet exists for that dir (only -south ships) -- the caller then
  *  leaves the body's own head showing. */
 export function getPickupHeadFrame(skinId, pantsId, shoesId, pose, dir, frameIdx) {
-  if (pose !== 'pickup') return null;
+  /* v2.3.1368: + jog — the fullset armored figure (helmet erased from the
+     sheet) gets the player's real head drawn above it, exactly like the
+     pickup pose.  Only the fullset base dirs ship jog-<dir>-head.png;
+     other dirs 404 -> [] -> null and nothing changes for them. */
+  if (pose !== 'pickup' && pose !== 'jog') return null;
   const skinT = skinTarget(skinId), pantsT = pantsTarget(pantsId), shoesT = shoesTarget(shoesId);
   const key = (skinId || 'default') + '/' + (pantsId || 'default') + '/' + (shoesId || 'default') + '|' + pose + '-' + dir;
   const entry = _pickupHeadSheets[key];

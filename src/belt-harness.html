@@ -10,7 +10,7 @@
 <body>
 <div id="boards"></div>
 <script type="module">
-import { getBodyFrame } from './rendering/playerSkins.js';
+import { getBodyFrame, getPickupHeadFrame } from './rendering/playerSkins.js';
 import { getGearFrame, getGearFramePhased } from './rendering/gearSheets.js';
 import { frameCount, loadPlayerSprites } from './rendering/playerSprites.js';
 import { _maskedBodyFrame } from './rendering/systems/entityRenderer.js';
@@ -85,6 +85,19 @@ async function board(dir) {
       if (fs) {
         const dx = (f % cols) * 256 * Z, dy = Math.floor(f / cols) * 256 * Z;
         drawTex(ctx, fs, dx, dy, Z, flip);
+        // v2.3.1368: the real head draws above the (helmet-less) fullset,
+        // exactly as _placePickupHead does in-game.
+        const hd = await ready(() => getPickupHeadFrame(SKIN, PANTS, SHOES, 'jog', base, f), f === 0 ? 60 : 10);
+        if (hd) {
+          const hs = hd.frame ? 256 / hd.frame.width : 1;
+          const src = hd.source && hd.source.resource;
+          if (src) {
+            ctx.save();
+            if (flip) { ctx.translate(dx + 256 * Z, dy); ctx.scale(-1, 1); ctx.drawImage(src, hd.frame.x, hd.frame.y, hd.frame.width, hd.frame.height, 0, 0, 256 * Z, 256 * Z); }
+            else ctx.drawImage(src, hd.frame.x, hd.frame.y, hd.frame.width, hd.frame.height, dx, dy, 256 * Z, 256 * Z);
+            ctx.restore();
+          }
+        }
         ctx.fillStyle = '#ffdd44'; ctx.font = '20px monospace';
         ctx.fillText(dir + ' f' + f + ' (fullset)', dx + 8, dy + 24);
         continue;
