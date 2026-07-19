@@ -279,11 +279,14 @@ def gen(d):
             band = np.zeros((FRAME, FRAME), bool)
             band[r0:r1, max(0, cxr - E_W // 2):min(FRAME, cxr - E_W // 2 + E_W)] = True
             green = band & ndimage.binary_dilation(bop, iterations=1)
-            # arm guard (v2.3.1352): the fist crosses the band — skin + 2px
-            # fringe never gets chain, so the arm stays in front, whole.
-            Rb = bfr[:, :, 0].astype(int); Gb = bfr[:, :, 1].astype(int); Bb = bfr[:, :, 2].astype(int)
-            skin = bop & (Rb > 120) & (Rb > Gb + 25) & (Gb > Bb + 10)
-            green &= ~ndimage.binary_dilation(skin, iterations=2)
+            # v2.3.1357 (owner: east f2-f6/f16-f19 were "the dark shadow and
+            # not the chain"): NO arm guard on the fixed band.  The guard
+            # gutted the band whenever the fist crossed it, leaving the
+            # safety net's flat shadow.  A rectangle doesn't trace the arm
+            # (the v2.3.1352 ghost came from an ARM-SHAPED geometry fill),
+            # and the bake keeps the fist in front anyway: the ghost-hand
+            # restore runs before the paint, and the paint never replaces
+            # bright skin — chain lands only behind it.
             stats.append(int(green.sum()))
             if not green.any():
                 continue
