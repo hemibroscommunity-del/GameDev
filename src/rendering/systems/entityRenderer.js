@@ -1135,11 +1135,19 @@ function _maskedBodyFrameInner(bodyTex, worn, dilate, _bt0, _bs, poseInfo) {
            Runs only on the ARMORED bake, so unarmored players (and the
            shirt-hem / waist anchors computed from the raw sheets) are
            untouched. */
-        /* v2.3.1360: the paint runs whenever the CHEST is worn — partial
+        /* v2.3.1360: the paint ran whenever the CHEST was worn — partial
            chest-only wear lost its waist cover when v2.3.1345 stripped the
-           baked belt (the bare-midriff band read as broken).  Legs-only
-           stays paint-free (no plate to hang a belt from). */
-        if (wornChest && poseInfo && poseInfo.pose === 'jog' && w0 < w1
+           baked belt (the bare-midriff band read as broken).
+           v2.3.1372 (owner: "leg armor is appearing on thighs" on chest-only):
+           FULL SET ONLY again.  The belt sheets carry chain TRUNKS over the
+           hips/thighs on the frontal dirs — under greaves that's the sealed
+           waist, on bare legs it read as chain shorts.  Chest-only wear now
+           uses the ORIGINAL pre-v2.3.1345 chest sheets (baked hem belt
+           restored on south/southwest/north/east), so the old-system look
+           needs no runtime paint; those dirs draw this sheet only on partial
+           wear (full set = the fullset figure), so the baked belt cannot
+           re-trigger the full-set belt artifacts. */
+        if (wornChest && wornLegs && poseInfo && poseInfo.pose === 'jog' && w0 < w1
             && _bakeRefs && _bakeRefs.pantsRef) {
           try {
             const bt = getGearFrame('belt', 'chainbelt', 'jog', poseInfo.dir, poseInfo.frameIdx | 0);
