@@ -31,7 +31,15 @@ OVERLAP = 2   # px of skin allowed to tuck over the collar top
 # less neck skin, more helmet risk).  Applied after the min() rule.
 # southwest f8/f18: the collar sits genuinely low there (leaning pose),
 # so the body-line cut left a long bare throat (owner's frame list).
-OFFSETS = {'southwest': {8: -3, 18: -3}}
+OFFSETS = {'southwest': {1: 4, 8: -3, 18: -3}}
+# per-frame right-slack clip for the head band (default +7): f1's lowered
+# cut otherwise scoops the raised arm's skin into the overlay.
+RSLACK = {'southwest': {1: 1}}
+# frames whose cut sits BELOW the armor shoulder line: between the two,
+# erase only the FACE-width columns so the pauldrons keep their tops
+# (owner: f1 "chunk still missing from that shoulder").  Value =
+# (left inset, right inset) applied to the head cols for the mid band.
+MIDBAND = {'southwest': {1: (0, 3)}}
 # v2.3.1378: frames where a smidge of helmet edge survived BEYOND the
 # column slack (owner: SW f0/f1/f2/f13/f14).  For these, a wider band
 # is shaved down to the armor SHELF: everything above the first row
@@ -41,7 +49,7 @@ SHELF_ERASE = {'southwest': [0, 1, 2, 13, 14]}
 # carries a thick dark hair/shadow arc along the skull edge that reads
 # as helmet next to the armor.  Mid-dark pixels within 3px of the
 # silhouette edge are erased (the 1px black outline survives).
-EDGE_STRIP = {'southwest': [1]}
+EDGE_STRIP = {}
 
 
 def head_cols(op, top, figh):
@@ -111,7 +119,7 @@ def main():
         band = op.copy()
         band[cut:] = False
         band[:, :max(0, hx0 - 6)] = False
-        band[:, min(fw, hx1 + 7):] = False
+        band[:, min(fw, hx1 + 1 + RSLACK.get(d, {}).get(i, 6)):] = False
         lbl, num = ndimage.label(band)
         if num:
             sizes = ndimage.sum(band, lbl, range(1, num + 1))
@@ -127,7 +135,22 @@ def main():
         cut, hx0, hx1 = cuts[bi]
         ff = fs[:, fi * ffw:(fi + 1) * ffw]
         zone = np.zeros(ff.shape[:2], bool)
-        zone[:cut, max(0, hx0 - 4):min(ffw, hx1 + 5)] = True
+        mb = MIDBAND.get(d, {}).get(bi)
+        if mb is not None:
+            fop0 = ff[:, :, 3] > 40
+            tops0 = []
+            for x in list(range(max(0, hx0 - 9), max(0, hx0 - 1))) \
+                    + list(range(min(ffw, hx1 + 2), min(ffw, hx1 + 10))):
+                col0 = np.where(fop0[:, x])[0]
+                if len(col0):
+                    tops0.append(col0.min())
+            shelf0 = int(np.median(tops0)) if tops0 else cut
+            _mbShelf = min(shelf0, cut)
+            zone[:min(shelf0, cut), max(0, hx0 - 4):min(ffw, hx1 + 5)] = True
+            zone[min(shelf0, cut):cut, max(0, hx0 + mb[0]):min(ffw, hx1 - mb[1] + 1)] = True
+        else:
+            _mbShelf = None
+            zone[:cut, max(0, hx0 - 4):min(ffw, hx1 + 5)] = True
         zone &= ff[:, :, 3] > 0
         ff[:, :, 3][zone] = 0
         tot += int(zone.sum())
@@ -135,11 +158,14 @@ def main():
             bx0, bx1 = max(0, hx0 - 8), min(ffw, hx1 + 11)
             bw2 = bx1 - bx0
             fop2 = ff[:, :, 3] > 40
-            shelf = None
-            for y in range(ffw):
-                if fop2[y, bx0:bx1].sum() >= 0.55 * bw2:
-                    shelf = y
-                    break
+            shelf = _mbShelf   # two-band frames: the real shoulder line —
+                               # scanning after the center erase would land
+                               # at the cut and re-eat the pauldron tops
+            if shelf is None:
+                for y in range(ffw):
+                    if fop2[y, bx0:bx1].sum() >= 0.55 * bw2:
+                        shelf = y
+                        break
             if shelf is not None:
                 extra = np.zeros(ff.shape[:2], bool)
                 extra[:shelf, bx0:bx1] = True
