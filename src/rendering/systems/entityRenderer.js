@@ -769,9 +769,14 @@ function _maskedBodyFrameInner(bodyTex, worn, dilate, _bt0, _bs, poseInfo) {
        block) — the sampled skin/pants/shoes colours classify which waist
        pixels are the exposed green/pants band the chain replaces. */
     let _bakeRefs = null;
-    if (figBot > figTop
-        && worn.some(w => w.k && w.k.indexOf('chest:') === 0)
-        && worn.some(w => w.k && w.k.indexOf('legs:') === 0)) {
+    /* v2.3.1360 (owner: chest-only jog "messed up"): refs are computed
+       whenever the CHEST is worn — the chain waist paint needs them on
+       partial wear too (chest-only lost its waist cover when v2.3.1345
+       stripped the baked belt).  The v2.3.650 pants-restore and the
+       ghost-hand blend stay FULL-SET only (v2.3.686), gated below. */
+    const _wornChestRefs = worn.some(w => w.k && w.k.indexOf('chest:') === 0);
+    const _wornLegsRefs = worn.some(w => w.k && w.k.indexOf('legs:') === 0);
+    if (figBot > figTop && _wornChestRefs) {
       try {
         const fh = figBot - figTop;
         const waistY = Math.round(figTop + 0.45 * fh);   // a bit above mid-figure so the waist/hip skin (chain-belt zone) is caught too
@@ -821,7 +826,7 @@ function _maskedBodyFrameInner(bodyTex, worn, dilate, _bt0, _bs, poseInfo) {
         }
         const score = (R, G, B, T) => { const n = T[0] * T[0] + T[1] * T[1] + T[2] * T[2] || 1; const dt = R * T[0] + G * T[1] + B * T[2]; return dt * dt / n; };
         _bakeRefs = { skinRef, pantsRef, shoesRef };
-        if (skinRef && pantsRef && shoesRef) {
+        if (_wornLegsRefs && skinRef && pantsRef && shoesRef) {
           let dirty = false;
           /* Restore pants the dilated cover-mask ATE: the chest gear's halo erodes
              the pants next to the gauntlets.  The erase only zeroed alpha (RGB
@@ -1102,7 +1107,11 @@ function _maskedBodyFrameInner(bodyTex, worn, dilate, _bt0, _bs, poseInfo) {
            Runs only on the ARMORED bake, so unarmored players (and the
            shirt-hem / waist anchors computed from the raw sheets) are
            untouched. */
-        if (!partial && poseInfo && poseInfo.pose === 'jog' && w0 < w1
+        /* v2.3.1360: the paint runs whenever the CHEST is worn — partial
+           chest-only wear lost its waist cover when v2.3.1345 stripped the
+           baked belt (the bare-midriff band read as broken).  Legs-only
+           stays paint-free (no plate to hang a belt from). */
+        if (wornChest && poseInfo && poseInfo.pose === 'jog' && w0 < w1
             && _bakeRefs && _bakeRefs.pantsRef) {
           try {
             const bt = getGearFrame('belt', 'chainbelt', 'jog', poseInfo.dir, poseInfo.frameIdx | 0);
@@ -1147,9 +1156,15 @@ function _maskedBodyFrameInner(bodyTex, worn, dilate, _bt0, _bs, poseInfo) {
                      and survived as a flat dark band under the plate.  Dark
                      pixels inside the belt's extent ARE the exposed waist —
                      replace them with chain; skin (arm, fist) is bright and
-                     never matches. */
+                     never matches.
+                     v2.3.1360: on the non-profile dirs the arm NEVER crosses
+                     the band (fixed/central masks), so the belt extent
+                     replaces EVERYTHING there — the bare-midriff skin sliver
+                     included (glaring on chest-only wear).  East/northeast
+                     keep the skin test so the crossing fist stays in front. */
+                  const _skinSafe = poseInfo.dir !== 'east' && poseInfo.dir !== 'northeast';
                   const sP = _score(R, G, B, pantsRef);
-                  if (Math.max(R, G, B) < 75
+                  if (_skinSafe || Math.max(R, G, B) < 75
                       || ((!skinRef || sP >= _score(R, G, B, skinRef))
                           && (!shoesRef || sP >= _score(R, G, B, shoesRef)))) {
                     /* green/pants band pixel: chain replaces it; skin (arm,
@@ -1190,7 +1205,10 @@ function _maskedBodyFrameInner(bodyTex, worn, dilate, _bt0, _bs, poseInfo) {
            quiet under-armor shadow.  This is independent of any sheet's
            coverage — the class of bug that kept reappearing ("giant gaps
            while running") whenever a generator and the art disagreed. */
-        if (!partial && origBody && poseInfo && poseInfo.pose === 'jog' && w0 < w1) {
+        if (wornChest && origBody && poseInfo && poseInfo.pose === 'jog' && w0 < w1) {
+          /* v2.3.1360: also on chest-only wear (the vertical-enclosure test
+             below self-limits: with no greaves, nothing encloses from below
+             on bare rows, so bare legs never get filled). */
           const lo3 = Math.max(0, w0 - 28), hi3 = Math.min(256, w1 + 28);
           for (let y = lo3; y < hi3; y++) {
             for (let x = 0; x < 256; x++) {

@@ -18,6 +18,10 @@ import { _maskedBodyFrame } from './rendering/systems/entityRenderer.js';
 const DIRS = ['south', 'north', 'east', 'northeast', 'southwest'];
 // ?layers=body draws ONLY the masked-body bake (debug decomposition)
 const MODE = new URLSearchParams(location.search).get('layers') || 'all';
+// ?wear=chest | legs | full (default): partial-wear rendering (v2.3.1360 —
+// chest-only/legs-only jog broke unseen because the harness only ever
+// rendered the full set)
+const WEAR = new URLSearchParams(location.search).get('wear') || 'full';
 // mirrored production angles: rendered from the base dir with a negative
 // x-scale, exactly how the game mirrors (v2.3.1349b)
 const MIRROR = { west: 'east', northwest: 'northeast', southeast: 'southwest' };
@@ -70,7 +74,9 @@ async function board(dir) {
     const belt = await ready(() => getGearFrame('belt', 'chainbelt', 'jog', base, f), 60);
     if (f === 0) console.log('[harness]', dir, 'body=', !!body, 'chest=', !!chest, 'legs=', !!legs, 'belt=', !!belt);
     if (!body || !chest || !legs) continue;
-    const worn = [{ k: 'chest:steelplate', tex: chest }, { k: 'legs:steelgreaves', tex: legs }];
+    const worn = WEAR === 'chest' ? [{ k: 'chest:steelplate', tex: chest }]
+      : WEAR === 'legs' ? [{ k: 'legs:steelgreaves', tex: legs }]
+        : [{ k: 'chest:steelplate', tex: chest }, { k: 'legs:steelgreaves', tex: legs }];
     let masked = null;
     for (let t = 0; t < 40 && !masked; t++) {
       try { masked = _maskedBodyFrame(body, worn, 6, { pose: 'jog', dir: base, frameIdx: f }); } catch (e) { break; }
@@ -80,8 +86,8 @@ async function board(dir) {
     const dx = (f % cols) * 256 * Z, dy = Math.floor(f / cols) * 256 * Z;
     drawTex(ctx, masked || body, dx, dy, Z, flip);
     if (MODE !== 'body') {
-      drawTex(ctx, legs, dx, dy, Z, flip);
-      drawTex(ctx, chest, dx, dy, Z, flip);
+      if (WEAR !== 'chest') drawTex(ctx, legs, dx, dy, Z, flip);
+      if (WEAR !== 'legs') drawTex(ctx, chest, dx, dy, Z, flip);
     }
     ctx.fillStyle = '#ffdd44'; ctx.font = '20px monospace';
     ctx.fillText(dir + ' f' + f, dx + 8, dy + 24);

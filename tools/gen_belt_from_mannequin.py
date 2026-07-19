@@ -72,7 +72,13 @@ MASK_DIRS = {'northeast'}
 # v2.3.1359: south joins (48 = its narrowest waist width) — its board-mask
 # trunks pumped 2x in size on f0/f1 (the midsection flicker), and the
 # geometry fill alone is starved there (the merged skirt covers the gap).
-FIXED_DIRS = {'east': (46, 24, -10), 'south': (48, 24, -10)}
+# v2.3.1360: FIXED WIDTH per dir (the owner's rule); the band's ROWS span
+# waist row wr-14 down to the chest skirt's bottom +14 — the top rides the
+# body's waistband (chest-only wear paints over the bare-midriff band the
+# v2.3.1345 belt strip exposed; measured at rows 120-133 vs the old
+# skirt-anchored top of 134), the bottom the armor.  Both overshoots hide
+# under the plate / greaves on the full set.
+FIXED_DIRS = {'east': 46, 'south': 48}
 TILE_H = 40   # ONE link scale for every dir/frame (v2.3.1350 same-color rule)
 
 # v2.3.1349b: per-frame waist rows from the game's own table, for the
@@ -273,13 +279,13 @@ def gen(d):
         if not bop.any():
             stats.append(0); continue
         if d in FIXED_DIRS:
-            F_W, F_H, F_TOP = FIXED_DIRS[d]
+            F_W = FIXED_DIRS[d]
             wrow = wrs[i] if i < len(wrs) else wrs[-1]
             cf = chestop[:, i * FRAME:(i + 1) * FRAME]
             reg0 = max(0, wrow - 44)
             ys2, xs2 = np.where(cf[reg0:min(FRAME, wrow + 30)])
             ay = reg0 + int(np.percentile(ys2, 95)) if len(ys2) else wrow
-            r0 = max(0, ay + F_TOP); r1 = min(FRAME, r0 + F_H)
+            r0 = max(0, wrow - 14); r1 = min(FRAME, max(ay + 14, wrow + 12))
             rowsel = np.zeros((FRAME, FRAME), bool)
             rowsel[r0:r1] = True
             bxs = np.where(bop & rowsel)[1]
