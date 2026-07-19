@@ -217,15 +217,29 @@ def gen(d):
         if not green.any():
             continue
 
-        # chain fill.  v2.3.1350 shimmer fix: phase anchored to the waist row
-        # (the run-cycle bob) + the body's horizontal center — NOT the trunk
-        # bbox, whose per-frame jumps re-rolled the link pattern every frame.
+        # chain fill.  v2.3.1350 shimmer fix: phase anchored per frame — NOT
+        # the trunk bbox, whose jumps re-rolled the link pattern every frame.
+        # v2.3.1351 (owner: "maybe it needs to be anchored with the armor?"):
+        # anchor to the CHEST PLATE'S skirt, not the body waist row.  The
+        # seam the eye tracks is plate-edge <-> chain, and the plate art's
+        # hand-drawn bob differs a pixel or two from the jogWaist body row —
+        # a body-anchored chain still slides against the armor it hangs
+        # from.  Measure the skirt's bottom edge + horizontal center per
+        # frame; body center/waist row only as fallback.
         byy, bxx = np.where(bop)
         cx = int(round(bxx.mean()))
+        cf = chestop[:, i * FRAME:(i + 1) * FRAME]
+        reg0 = max(0, wrow - 44)
+        ys2, xs2 = np.where(cf[reg0:min(FRAME, wrow + 30)])
+        if len(ys2):
+            ay = reg0 + int(np.percentile(ys2, 95))   # skirt bottom edge
+            ax = int(round(xs2.mean()))
+        else:
+            ay, ax = wrow, cx
         gys, gxs = np.where(green)
         frame_out = np.zeros((FRAME, FRAME, 4), np.uint8)
         for y, x in zip(gys, gxs):
-            sp = tile[(y - wrow) % TILE_H, (x - cx) % tw]
+            sp = tile[(y - ay) % TILE_H, (x - ax) % tw]
             if sp[3] > 30:
                 frame_out[y, x] = (sp[0], sp[1], sp[2], 255)
             else:
