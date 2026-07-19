@@ -65,6 +65,7 @@ def patch(d):
     chest_p = f'public/sprites/gear/chest/steelplate/jog-{d}.png'
     chest128 = Image.open(chest_p).convert('RGBA')
     chest = np.array(chest128.resize((chest128.width * 2, 256), Image.NEAREST))
+    merge_mask = np.zeros(chest.shape[:2], bool)
 
     added_tot = 0
     for i in range(n):
@@ -116,11 +117,15 @@ def patch(d):
             (int(round(bestp[0])), int(round(bestp[1]))))
         parr = np.array(placed)
 
-        # armor = figure minus the green trunks (loose green test + dilation
-        # so no green fringe rides along as "armor")
+        # armor = figure minus the green trunks.  v2.3.1348c: NO dilation on
+        # the exclusion — dilating by 2 left a 2px unfilled ring between the
+        # skirt and the trunks, which the game's erase turned into a hole
+        # ring around the chain on every frame ("bad holes while jogging").
+        # The trunks' own dark outline pixels count as armor and form the
+        # boundary, as drawn.
         R = parr[:, :, 0].astype(int); G = parr[:, :, 1].astype(int); B = parr[:, :, 2].astype(int)
         green = (parr[:, :, 3] > 40) & (G > 80) & (G > R + 25) & (G > B + 20)
-        green = ndimage.binary_dilation(ndimage.binary_closing(green, iterations=2), iterations=2)
+        green = ndimage.binary_closing(green, iterations=2)
         armor = (parr[:, :, 3] > 40) & ~green
 
         # waist region only: from a bit above the current plate bottom down to
@@ -144,10 +149,33 @@ def patch(d):
         cfr[:, :, 1][fill] = parr[:, :, 1][fill]
         cfr[:, :, 2][fill] = parr[:, :, 2][fill]
         cfr[:, :, 3][fill] = 255
+        merge_mask[:, i * FRAME:(i + 1) * FRAME] |= ndimage.binary_dilation(fill, iterations=1)
         added_tot += int(fill.sum())
 
-    out = Image.fromarray(chest).resize((chest128.width, chest128.height), Image.LANCZOS)
-    out.save(chest_p)
+    # v2.3.1348c: the trunks' anti-aliased edges fall below the green test and
+    # merged as "armor" — a green rim around the chain in-game.  Desaturate
+    # any greenish merged pixel to its own luminance (steel gray).
+    mr, mg, mb = (chest[:, :, 0].astype(int), chest[:, :, 1].astype(int),
+                  chest[:, :, 2].astype(int))
+    greenish = merge_mask & (chest[:, :, 3] > 0) & (mg > mr + 8) & (mg > mb + 4)
+    lum = (0.30 * mr + 0.45 * mg + 0.25 * mb).astype(np.uint8)
+    for ch2 in range(3):
+        chest[:, :, ch2][greenish] = lum[greenish]
+
+    # v2.3.1348c: HARDEN the ship-size downscale IN THE MERGED REGION ONLY.
+    # A plain LANCZOS resize left the merged skirt with semi-transparent
+    # alpha — the game alpha-blends those with the erased body behind =
+    # see-through patches (the v2.3.1344 belt-hardening lesson; northeast's
+    # binary alpha is the reference).  RGB downscales LANCZOS for quality;
+    # alpha inside the merge zone is thresholded to binary; the original
+    # plate's soft edges elsewhere are untouched.
+    small = Image.fromarray(chest).resize((chest128.width, chest128.height), Image.LANCZOS)
+    sa = np.array(small)
+    mm = np.array(Image.fromarray((merge_mask * 255).astype(np.uint8), 'L')
+                  .resize((chest128.width, chest128.height), Image.NEAREST)) > 0
+    hard = np.where(sa[:, :, 3] >= 100, 255, 0).astype(np.uint8)
+    sa[:, :, 3] = np.where(mm, hard, sa[:, :, 3])
+    Image.fromarray(sa).save(chest_p)
     print(f'{d}: {added_tot}px lower-plate restored (256-space) -> {chest_p}')
 
 
