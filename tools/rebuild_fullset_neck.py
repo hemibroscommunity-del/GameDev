@@ -37,6 +37,11 @@ OFFSETS = {'southwest': {8: -3, 18: -3}}
 # is shaved down to the armor SHELF: everything above the first row
 # whose armor run spans most of the band is erased.
 SHELF_ERASE = {'southwest': [0, 1, 2, 13, 14]}
+# v2.3.1379b (owner: "take off more on 1"): frames whose head overlay
+# carries a thick dark hair/shadow arc along the skull edge that reads
+# as helmet next to the armor.  Mid-dark pixels within 3px of the
+# silhouette edge are erased (the 1px black outline survives).
+EDGE_STRIP = {'southwest': [1]}
 
 
 def head_cols(op, top, figh):
@@ -162,7 +167,39 @@ def main():
                 if hf[y, x, 3] > 40 and not (k0 <= x <= k1):
                     hf[y, x, 3] = 0
                     trimmed += 1
+    # v2.3.1379 (owner: SW f0/f1 "smidge too much helmet left over"): the
+    # body art draws parts of the head outline in NEUTRAL GRAY (~75,75,74)
+    # — on the bare body it reads as shading, but over the knight it reads
+    # as leftover helmet steel.  Recolor neutral grays in the OVERLAY to
+    # the skin-outline brown; the body sheet itself is untouched.
+    for i in EDGE_STRIP.get(d, []):
+        hf = heads[:, i * fw:(i + 1) * fw]
+        op3 = hf[:, :, 3] > 40
+        if not op3.any():
+            continue
+        from scipy.ndimage import binary_erosion
+        inner = binary_erosion(op3, iterations=3)
+        edge3 = op3 & ~inner
+        Rz = hf[:, :, 0].astype(int)
+        Gz = hf[:, :, 1].astype(int)
+        Bz = hf[:, :, 2].astype(int)
+        lz = 0.3 * Rz + 0.45 * Gz + 0.25 * Bz
+        # neutral grays only — warm skin-shadow browns share the
+        # luminance band but have R far above B (v2.3.1379c: the first
+        # lum-only filter ate the shaded side of the face)
+        strip = edge3 & (lz > 40) & (lz < 135) & ((Rz - Bz) < 25)
+        hf[:, :, 3][strip] = 0
+    Rh = heads[:, :, 0].astype(int)
+    Gh = heads[:, :, 1].astype(int)
+    Bh = heads[:, :, 2].astype(int)
+    lum = 0.3 * Rh + 0.45 * Gh + 0.25 * Bh
+    grayish = (heads[:, :, 3] > 40) & (np.abs(Rh - Gh) < 16) \
+        & (np.abs(Gh - Bh) < 16) & (lum > 50) & (lum < 120)
+    heads[:, :, 0][grayish] = 65
+    heads[:, :, 1][grayish] = 38
+    heads[:, :, 2][grayish] = 18
     Image.fromarray(heads).save(hp)
+    print(f'{d}: {int(grayish.sum())} gray outline px recolored to skin-outline brown')
     print(f'{d}: per-frame cuts {[c[0] if c else None for c in cuts]}')
     print(f'{d}: helmet erased ({tot} px) -> {p}; head sheet -> {hp} (jaw trim {trimmed} px)')
 
