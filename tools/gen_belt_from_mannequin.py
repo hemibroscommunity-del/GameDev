@@ -54,7 +54,18 @@ BOARD_DIRS = {'south', 'north', 'southwest'}   # boards that match today's cycle
 # measurement-based masks (tools/posesheets/beltmask-<dir>.png, extracted
 # from commit 511d464) and only get RE-TEXTURED with the unified chain, so
 # the color matches every other dir without changing their geometry.
-MASK_DIRS = {'east', 'northeast'}
+MASK_DIRS = {'northeast'}
+# v2.3.1355 (owner: "Do a fixed pixel width area for the waist at the
+# narrowest east frame"): east gets a FIXED 46x24 band (256-space), the same
+# size every frame.  Measured from the approved v2.3.1349b mask: height was
+# exactly 24 on all 28 frames; width ran 46-78 with the narrowest (46) on
+# the arm-crossing frames; the band top sat a median 10 rows above the
+# chest skirt's measured bottom edge.  Anchored to the armor (skirt bottom)
+# vertically and the body's rows-local center horizontally, clipped to the
+# body, minus the arm guard — so the visible chain is an identical block
+# riding the armor instead of a per-frame ragged shape.
+FIXED_DIRS = {'east'}
+E_W, E_H, E_TOP = 46, 24, -10
 TILE_H = 40   # ONE link scale for every dir/frame (v2.3.1350 same-color rule)
 
 # v2.3.1349b: per-frame waist rows from the game's own table, for the
@@ -253,8 +264,34 @@ def gen(d):
         bop = bfr[:, :, 3] > 40
         if not bop.any():
             stats.append(0); continue
+        if d in FIXED_DIRS:
+            wrow = wrs[i] if i < len(wrs) else wrs[-1]
+            cf = chestop[:, i * FRAME:(i + 1) * FRAME]
+            reg0 = max(0, wrow - 44)
+            ys2, xs2 = np.where(cf[reg0:min(FRAME, wrow + 30)])
+            ay = reg0 + int(np.percentile(ys2, 95)) if len(ys2) else wrow
+            r0 = max(0, ay + E_TOP); r1 = min(FRAME, r0 + E_H)
+            rowsel = np.zeros((FRAME, FRAME), bool)
+            rowsel[r0:r1] = True
+            bxs = np.where(bop & rowsel)[1]
+            cxr = int(round(bxs.mean())) if len(bxs) else 128
+            band = np.zeros((FRAME, FRAME), bool)
+            band[r0:r1, max(0, cxr - E_W // 2):min(FRAME, cxr - E_W // 2 + E_W)] = True
+            green = band & ndimage.binary_dilation(bop, iterations=1)
+            # arm guard (v2.3.1352): the fist crosses the band — skin + 2px
+            # fringe never gets chain, so the arm stays in front, whole.
+            Rb = bfr[:, :, 0].astype(int); Gb = bfr[:, :, 1].astype(int); Bb = bfr[:, :, 2].astype(int)
+            skin = bop & (Rb > 120) & (Rb > Gb + 25) & (Gb > Bb + 10)
+            green &= ~ndimage.binary_dilation(skin, iterations=2)
+            stats.append(int(green.sum()))
+            if not green.any():
+                continue
+            gys, gxs = np.where(green)
+            frame_out = chain_fill(green, gys, gxs, bop, tile, tw, cf, wrow)
+            paste_cell(out, frame_out, i)
+            continue
         if maskarr is not None:
-            # approved-mask path (east/northeast): geometry comes straight
+            # approved-mask path (northeast): geometry comes straight
             # from the v2.3.1349b sheet; only the texture below is new.
             green = maskarr[:, i * FRAME:(i + 1) * FRAME].copy()
             green &= ndimage.binary_dilation(bop, iterations=2)
