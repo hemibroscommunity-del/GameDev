@@ -133,7 +133,10 @@ def gen(d):
         green = (parr[:, :, 3] > 40) & (G > 80) & (G > R + 25) & (G > B + 20)
         green = ndimage.binary_closing(green, iterations=2)
         green = ndimage.binary_dilation(green, iterations=1)
-        green &= bop
+        # v2.3.1349: clip against the body dilated by 2, not the exact
+        # silhouette — the ±8px alignment wobble clipped the trunks' hip
+        # edges, which the game's erase turned into hip-side holes (SW).
+        green &= ndimage.binary_dilation(bop, iterations=2)
         stats.append(int(green.sum()))
         if not green.any():
             continue

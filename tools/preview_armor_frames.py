@@ -337,7 +337,7 @@ def composite(pose, d, i, worn, nudges, mask_dilate=6):
                 bf = frame('belt', pose, d, i)
                 if wr is not None and bf is not None:
                     barr = np.array(bf)
-                    w0b, w1b = max(0, wr - 26), min(FRAME, wr + 18)
+                    w0b, w1b = max(0, wr - 50), min(FRAME, wr + 42)  # full belt extent (v2.3.1349)
                     sl = ba[w0b:w1b]
                     bsl = barr[w0b:w1b]
                     r = sl[:, :, 0].astype(int); g = sl[:, :, 1].astype(int); b = sl[:, :, 2].astype(int)

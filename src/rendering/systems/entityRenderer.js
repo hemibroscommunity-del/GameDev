@@ -621,7 +621,10 @@ function _bodyRegionTex(bodyTex, region) {
    and cached per (body-frame, loadout) -- cheap, recomputed only on a cache
    miss.  Falls back to the raw body texture if pixel access fails. */
 const _maskedBodyCache = new Map();
-function _maskedBodyFrame(bodyTex, worn, dilate, poseInfo) {
+/* v2.3.1349: exported for tools/qa/belt-harness (headless ground-truth render
+   of the REAL bake — the offline Python mirrors kept diverging).  Not used by
+   any game path. */
+export function _maskedBodyFrame(bodyTex, worn, dilate, poseInfo) {
   /* v2.3.690: bake accounting for the perf HUD (?perf=1).  Cache misses are
      the spike source -- a gear swap rebakes every frame on next sighting.
      Read + reset by perfHud; zero cost beyond two adds per MISS. */
@@ -1059,7 +1062,11 @@ function _maskedBodyFrameInner(bodyTex, worn, dilate, _bt0, _bs, poseInfo) {
               const bd = bctx.getImageData(0, 0, 256, 256).data;
               const _score = (R, G, B, T) => { const nn = T[0] * T[0] + T[1] * T[1] + T[2] * T[2] || 1; const dt = R * T[0] + G * T[1] + B * T[2]; return dt * dt / nn; };
               const { skinRef, pantsRef, shoesRef } = _bakeRefs;
-              for (let y = w0; y < w1; y++) {
+              /* v2.3.1349: paint over the belt sheet's FULL extent, not just
+                 the w0..w1 band rows — the trunks reach below wr+18 on SW and
+                 the row gate left their lower hips unpainted = the on-device
+                 holes.  The sheet itself is already confined to the waist. */
+              for (let y = Math.max(0, w0 - 24); y < Math.min(256, w1 + 24); y++) {
                 for (let x = 0; x < 256; x++) {
                   const o = (y * 256 + x) * 4;
                   if (bd[o + 3] <= 40) continue;
@@ -1084,6 +1091,31 @@ function _maskedBodyFrameInner(bodyTex, worn, dilate, _bt0, _bs, poseInfo) {
               }
             }
           } catch (e) { /* best-effort: waist stays pants this bake */ }
+        }
+        /* v2.3.1349 SAFETY NET: no interior waist hole survives, period.  Any
+           pixel where the ORIGINAL body existed, nothing remains after the
+           erase/restores/paints, and the gear silhouette encloses it
+           vertically (armor within 16 rows above AND below) is filled with
+           quiet under-armor shadow.  This is independent of any sheet's
+           coverage — the class of bug that kept reappearing ("giant gaps
+           while running") whenever a generator and the art disagreed. */
+        if (!partial && origBody && poseInfo && poseInfo.pose === 'jog' && w0 < w1) {
+          const lo3 = Math.max(0, w0 - 28), hi3 = Math.min(256, w1 + 28);
+          for (let y = lo3; y < hi3; y++) {
+            for (let x = 0; x < 256; x++) {
+              const p = y * 256 + x, o = p * 4;
+              if (d2[o + 3] > 40 || origBody[o + 3] <= 40) continue;
+              let above = false, below = false;
+              for (let k = 1; k <= 16 && !(above && below); k++) {
+                if (!above && y - k >= 0 && (gop[p - k * 256] || d2[(p - k * 256) * 4 + 3] > 40)) above = true;
+                if (!below && y + k < 256 && (gop[p + k * 256] || d2[(p + k * 256) * 4 + 3] > 40)) below = true;
+              }
+              if (above && below) {
+                d2[o] = 26; d2[o + 1] = 28; d2[o + 2] = 32; d2[o + 3] = 255;
+                dirty2 = true;
+              }
+            }
+          }
         }
         if (dirty2) ctx.putImageData(img2, 0, 0);
       }
