@@ -4487,6 +4487,24 @@ export var BroTown = function BroTown(_ref0) {
             if (_rawHb) {
               var _snHb = JSON.parse(_rawHb);
               _snHb.t = _nowWd;
+              /* v2.3.1391: refresh the TRAITS too — the snapshot captured
+                 them once at PLAY, so an auto-rejoin after a mid-session
+                 outfit change silently reverted the look AND overwrote the
+                 picker stores with the stale values (repro: equip a hat
+                 in-game, recovery-reload -> hat gone everywhere). */
+              _snHb.traits = {
+                headwear: getHeadwear(),
+                hair: getHair(),
+                facialHair: getFacialHair(),
+                skin: getSkin(),
+                pants: getPants(),
+                shoes: getShoes(),
+                hairColor: getHairColor(),
+                hatColor: getHatColor(),
+                facialHairColor: getFacialHairColor(),
+                shirt: getShirt(),
+                shirtColor: getShirtColor()
+              };
               var _strHb = JSON.stringify(_snHb);
               sessionStorage.setItem('bt_resume', _strHb);
               localStorage.setItem('bt_resume', _strHb);
