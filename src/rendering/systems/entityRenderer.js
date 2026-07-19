@@ -467,7 +467,10 @@ function hatPoseTune(hatId, pose, dir) {
    256-space, one entry per ARMOR frame); _crownOverride swaps it in for
    the trait anchors while the fullset figure is on screen. */
 const FULLSET_CROWN = {
-  east: [[134, 46], [136, 46], [136, 46], [136, 50], [134, 46], [134, 52], [136, 56], [136, 54], [134, 58], [134, 56], [134, 58], [134, 48], [134, 46], [136, 46], [136, 46], [136, 50], [134, 50], [134, 50], [134, 54], [136, 56], [136, 56], [134, 50], [134, 52], [134, 46], [134, 48]],
+  /* v2.3.1390: smoothed track (owner: "really jittery") — the raw
+     per-frame measurement stepped up to 10px between adjacent frames;
+     this glides ≤4px like body-tops itself. */
+  east: [[134, 48], [136, 48], [136, 48], [136, 48], [134, 50], [134, 52], [134, 56], [134, 56], [134, 56], [134, 56], [134, 54], [134, 50], [134, 48], [136, 48], [136, 48], [136, 50], [134, 50], [134, 52], [134, 54], [134, 56], [134, 56], [134, 52], [134, 50], [134, 48], [134, 48]],
 };
 let _crownOverride = null;   // set around the trait placements when fullset is active
 function _fullsetCrown(dir, phase) {
