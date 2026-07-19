@@ -32,6 +32,11 @@ OVERLAP = 2   # px of skin allowed to tuck over the collar top
 # southwest f8/f18: the collar sits genuinely low there (leaning pose),
 # so the body-line cut left a long bare throat (owner's frame list).
 OFFSETS = {'southwest': {8: -3, 18: -3}}
+# v2.3.1378: frames where a smidge of helmet edge survived BEYOND the
+# column slack (owner: SW f0/f1/f2/f13/f14).  For these, a wider band
+# is shaved down to the armor SHELF: everything above the first row
+# whose armor run spans most of the band is erased.
+SHELF_ERASE = {'southwest': [0, 1, 2, 13, 14]}
 
 
 def head_cols(op, top, figh):
@@ -121,6 +126,21 @@ def main():
         zone &= ff[:, :, 3] > 0
         ff[:, :, 3][zone] = 0
         tot += int(zone.sum())
+        if bi in SHELF_ERASE.get(d, []):
+            bx0, bx1 = max(0, hx0 - 8), min(ffw, hx1 + 11)
+            bw2 = bx1 - bx0
+            fop2 = ff[:, :, 3] > 40
+            shelf = None
+            for y in range(ffw):
+                if fop2[y, bx0:bx1].sum() >= 0.55 * bw2:
+                    shelf = y
+                    break
+            if shelf is not None:
+                extra = np.zeros(ff.shape[:2], bool)
+                extra[:shelf, bx0:bx1] = True
+                extra &= ff[:, :, 3] > 0
+                ff[:, :, 3][extra] = 0
+                tot += int(extra.sum())
     Image.fromarray(fs).save(p)
     hp = f'public/sprites/player/jog-{d}-head.png'
     # jaw side trim (bottom 2 rows to the central 60%) — the jaw is wider
