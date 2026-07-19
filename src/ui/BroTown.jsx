@@ -4445,6 +4445,15 @@ export var BroTown = function BroTown(_ref0) {
       try {
         var cv = canvasRef.current;
         if (!cv || !cv.width) return -1;
+        /* v2.3.1383 (owner: rejoin "blanks out"): a LOST WebGL context must
+           count as FULLY DARK.  drawImage from a dead GL canvas can throw or
+           yield nothing -> the old -1 "can't judge" skip meant the watchdog
+           never struck, so an iOS memory-pressure context kill left the
+           screen blank forever with no rebuild and no reload. */
+        try {
+          var _glWd = cv.getContext('webgl2') || cv.getContext('webgl');
+          if (_glWd && _glWd.isContextLost && _glWd.isContextLost()) return 0;
+        } catch (eWd) { /* fall through to the pixel sample */ }
         var c2 = document.createElement('canvas');
         c2.width = 32;
         c2.height = 18;

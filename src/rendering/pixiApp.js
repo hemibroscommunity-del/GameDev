@@ -66,6 +66,22 @@ function buildScene(app) {
  * @param {HTMLCanvasElement} canvas - Existing canvas element to render into
  */
 export async function createPixiApp(canvas) {
+  /* v2.3.1383: without a webglcontextlost preventDefault the browser never
+     even ATTEMPTS a context restore — the canvas just dies.  iOS Safari
+     kills WebGL contexts under memory pressure (owner: rejoin "blanks
+     out"); with this, short pressure spikes restore in place, and the
+     unrecoverable case is caught by the black-screen watchdog (a lost
+     context now samples as fully dark -> rebuild -> capped reload). */
+  try {
+    canvas.addEventListener('webglcontextlost', (e) => {
+      try { e.preventDefault(); } catch (err) { /* ignore */ }
+      try { import('../debug/crashTrap.js').then(ct => ct.recordCrash('gl-context-lost', 'canvas context lost')).catch(() => {}); } catch (err) { /* ignore */ }
+    });
+    canvas.addEventListener('webglcontextrestored', () => {
+      try { import('../debug/crashTrap.js').then(ct => ct.recordCrash('gl-context-restored', 'canvas context restored')).catch(() => {}); } catch (err) { /* ignore */ }
+    });
+  } catch (e) { /* ignore */ }
+
   const dpr = window.devicePixelRatio || 1;
 
   const initOpts = {
