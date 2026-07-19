@@ -14,10 +14,20 @@ overlap), takes the green pixels in the waist window, fills them with the
 chain texture, and writes the belt sheet the masked-body bake paints from
 (public/sprites/gear/belt/chainbelt/jog-<dir>.png).
 
-Only directions whose board frame count matches the CURRENT body cycle are
-regenerated (south 26 / north 23 / southwest 20).  East (board 25 vs body 28)
-and northeast (16 vs 24) are older cycles — their belt sheets stay as-is
-(northeast is the owner-approved reference).
+v2.3.1350 (owner: "fix the shimmer and make sure it's the same color per
+every jog direction"): ALL FIVE base dirs are generated with ONE chain
+material.  East/northeast have no matching board (older cycles) but need
+none — the game-geometry fill below covers their exposed waist, so their
+old measurement-based sheets (darker chain, green residue) are replaced
+and every direction gets identical link scale, brightness and backing.
+Shimmer fix: the tile phase used to be anchored to each frame's trunk
+bbox (g0/gx0), which jumps frame to frame — the links re-hashed every
+frame while running.  The phase is now anchored to the frame's WAIST ROW
+(jogWaist table — the run-cycle bob) and the body's horizontal center, so
+the pattern rides the body instead of re-rolling.
+
+Run AFTER patch_chest_from_mannequin — the game-geometry fill reads the
+final chest sheet to chain-fill exactly what stays exposed.
 
 Usage: python3 tools/gen_belt_from_mannequin.py [dir ...]
 Do NOT pipe through `head` — SIGPIPE can kill the run before the save.
@@ -33,7 +43,9 @@ FRAME = 256
 MAGENTA = np.array([255, 0, 255])
 MAG_TOL = 60
 ALPHA = 20
-DIRS = ['south', 'north', 'southwest']
+DIRS = ['south', 'north', 'southwest', 'east', 'northeast']
+BOARD_DIRS = {'south', 'north', 'southwest'}   # boards that match today's cycles
+TILE_H = 40   # ONE link scale for every dir/frame (v2.3.1350 same-color rule)
 
 # v2.3.1349b: per-frame waist rows from the game's own table, for the
 # game-geometry exposure fill below.
@@ -64,29 +76,111 @@ def overlap(sm, bop, px, py):
     return int((bop[y0:y1, x0:x1] & sm[y0 - py:y1 - py, x0 - px:x1 - px]).sum())
 
 
-def gen(d):
-    meta = json.load(open(f'tools/posesheets/jog-{d}.json'))
+def board_mask(arm, meta, i, base, bop):
+    """Board green trunks + under-skirt shadow mapped onto frame i (256-space).
+    Returns a bool mask (all-False when the cell has no usable figure)."""
     cols, ch_, cw = meta['cols'], meta['cell_h'], meta['cell_w']
-    n = meta['n']
-    arm = Image.open(f'tools/posesheets/jog-{d}-mannequin-armored.png').convert('RGB')
-    arm = np.array(arm.resize((cols * cw, meta['rows'] * ch_), Image.LANCZOS))
+    r, c = divmod(i, cols)
+    ry0 = max(0, r * ch_ - ch_ // 3); ry1 = min(arm.shape[0], (r + 1) * ch_ + ch_ // 3)
+    rx0 = max(0, c * cw - cw // 3); rx1 = min(arm.shape[1], (c + 1) * cw + cw // 3)
+    sub = arm[ry0:ry1, rx0:rx1]
+    mask = ndimage.binary_opening(key_region(sub), iterations=1)
+    lbl, num = ndimage.label(mask)
+    if num == 0:
+        return np.zeros((FRAME, FRAME), bool)
+    ccx = (c + 0.5) * cw - rx0; ccy = (r + 0.5) * ch_ - ry0
+    best, bd = None, 1e18
+    for k in range(1, num + 1):
+        ys, xs = np.where(lbl == k)
+        if len(ys) < 300:
+            continue
+        dd = (xs.mean() - ccx) ** 2 + (ys.mean() - ccy) ** 2
+        if dd < bd:
+            bd, best = dd, k
+    if best is None:
+        return np.zeros((FRAME, FRAME), bool)
+    ys, xs = np.where(lbl == best)
+    t, l = int(ys.min()), int(xs.min())
+    h, w = int(ys.max()) - t + 1, int(xs.max()) - l + 1
+    content = np.zeros((h, w, 4), np.uint8)
+    content[:, :, :3] = sub[t:t + h, l:l + w]
+    content[:, :, 3] = (lbl[t:t + h, l:l + w] == best).astype(np.uint8) * 255
 
+    # aligned placement: scale to the body bbox height, register by overlap
+    byy, bxx = np.where(bop)
+    by0, by1 = int(byy.min()), int(byy.max())
+    s = (by1 - by0) / h if h else 1.0
+    nw, nh = max(1, round(w * s)), max(1, round(h * s))
+    sm = np.array(Image.fromarray(((content[:, :, 3] > 40) * 255).astype(np.uint8), 'L')
+                  .resize((nw, nh), Image.NEAREST)) > 40
+    sy, sx = np.where(sm)
+    px0 = bxx.mean() - sx.mean(); py0 = byy.mean() - sy.mean()
+    bestp, bestov = (px0, py0), -1
+    for dy in range(-8, 9):
+        for dx in range(-8, 9):
+            ov = overlap(sm, bop, int(round(px0 + dx)), int(round(py0 + dy)))
+            if ov > bestov:
+                bestov, bestp = ov, (px0 + dx, py0 + dy)
+    px_, py_ = int(round(bestp[0])), int(round(bestp[1]))
+    placed = Image.new('RGBA', (FRAME, FRAME), (0, 0, 0, 0))
+    placed.alpha_composite(
+        Image.fromarray(content, 'RGBA').resize((nw, nh), Image.LANCZOS), (px_, py_))
+    parr = np.array(placed)
+
+    # v2.3.1348b (owner): the source art's waist connective is a GREEN
+    # UPSIDE-DOWN TRIANGLE (trunks) — the only green visible on the armored
+    # figure.  Loose test + close + dilate to swallow the AA fringe.
+    R = parr[:, :, 0].astype(int); G = parr[:, :, 1].astype(int); B = parr[:, :, 2].astype(int)
+    green = (parr[:, :, 3] > 40) & (G > 80) & (G > R + 25) & (G > B + 20)
+    green = ndimage.binary_closing(green, iterations=2)
+    green = ndimage.binary_dilation(green, iterations=1)
+    # v2.3.1349b (owner: "black superhero underwear"): the boards also paint a
+    # DARK shadow region under the plate skirt / around the trunks (50-65 warm
+    # gray).  patch_chest_from_mannequin EXCLUDES that shadow from the chest
+    # merge, so chain-fill it here.
+    figop = parr[:, :, 3] > 40
+    dark = figop & ~green & (np.maximum(np.maximum(R, G), B) < 70)
+    shadow = ndimage.binary_dilation(ndimage.binary_erosion(dark, iterations=1), iterations=1)
+    if green.any():
+        gr = np.where(green.any(axis=1))[0]
+        win = np.zeros_like(green)
+        # tight window: the under-skirt shadow hugs the trunks; reaching 40
+        # rows up pulled the board's mid-torso armor shading into the belt
+        win[max(0, gr[0] - 14):min(FRAME, gr[-1] + 9)] = True
+        green = green | (shadow & win)
+    return green
+
+
+def gen(d):
     base128 = Image.open(f'public/sprites/player/jog-{d}.png').convert('RGBA')
-    bn = base128.width // base128.height
-    if bn != n:
-        raise SystemExit(f'{d}: board has {n} frames but body sheet has {bn} — '
-                         f'older cycle, cannot map (skip this direction)')
+    n = base128.width // base128.height
     base = base128.resize((base128.width * 2, base128.height * 2), Image.NEAREST)
 
+    meta = arm = None
+    if d in BOARD_DIRS:
+        meta = json.load(open(f'tools/posesheets/jog-{d}.json'))
+        if meta['n'] != n:
+            raise SystemExit(f'{d}: board has {meta["n"]} frames but body sheet has {n}')
+        arm = Image.open(f'tools/posesheets/jog-{d}-mannequin-armored.png').convert('RGB')
+        arm = np.array(arm.resize((meta['cols'] * meta['cell_w'],
+                                   meta['rows'] * meta['cell_h']), Image.LANCZOS))
+
+    # ONE chain material for every dir and frame (v2.3.1350): fixed link
+    # scale, fixed brightness, fixed backing — the belt can no longer read
+    # lighter or darker depending on which way the player runs.
     chain = Image.open('tools/posesheets/chainbelt.png').convert('RGBA')
+    tw = max(1, round(chain.width * TILE_H / chain.height))
+    tile = np.array(chain.resize((tw, TILE_H), Image.LANCZOS)).astype(int)
+    # brighten the links toward steel (x1.9 read as WHITE briefs — mid-steel)
+    tile[:, :, :3] = np.clip(tile[:, :, :3] * 1.55 + 18, 0, 225)
+    tile = tile.astype(np.uint8)
 
     # v2.3.1349b: the GAME's chest/greaves sheets (the chest already carries
     # the restored skirt — run patch_chest_from_mannequin FIRST).  The board's
-    # green+shadow mask only approximates the game's exposed waist (the
-    # shipped armor is different art from the board's), and the uncovered
-    # remainder rendered as the bake safety net's flat dark band ("black
-    # superhero underwear").  The chain must cover body ∧ ¬chest ∧ ¬greaves
-    # in the waist band — measured from the sheets that actually render.
+    # green+shadow mask only approximates the game's exposed waist, so the
+    # chain must cover body ∧ ¬chest ∧ ¬greaves in the waist band — measured
+    # from the sheets that actually render.  For east/northeast (no matching
+    # board) this is the ONLY mask, which is exactly why no board is needed.
     def load_gear(p):
         im = Image.open(p).convert('RGBA')
         if im.height == 128:
@@ -99,89 +193,16 @@ def gen(d):
     out = Image.new('RGBA', (n * 128, 128), (0, 0, 0, 0))
     stats = []
     for i in range(n):
-        r, c = divmod(i, cols)
-        ry0 = max(0, r * ch_ - ch_ // 3); ry1 = min(arm.shape[0], (r + 1) * ch_ + ch_ // 3)
-        rx0 = max(0, c * cw - cw // 3); rx1 = min(arm.shape[1], (c + 1) * cw + cw // 3)
-        sub = arm[ry0:ry1, rx0:rx1]
-        mask = ndimage.binary_opening(key_region(sub), iterations=1)
-        lbl, num = ndimage.label(mask)
-        if num == 0:
-            stats.append(0); continue
-        ccx = (c + 0.5) * cw - rx0; ccy = (r + 0.5) * ch_ - ry0
-        best, bd = None, 1e18
-        for k in range(1, num + 1):
-            ys, xs = np.where(lbl == k)
-            if len(ys) < 300:
-                continue
-            dd = (xs.mean() - ccx) ** 2 + (ys.mean() - ccy) ** 2
-            if dd < bd:
-                bd, best = dd, k
-        if best is None:
-            stats.append(0); continue
-        ys, xs = np.where(lbl == best)
-        t, l = int(ys.min()), int(xs.min())
-        h, w = int(ys.max()) - t + 1, int(xs.max()) - l + 1
-        content = np.zeros((h, w, 4), np.uint8)
-        content[:, :, :3] = sub[t:t + h, l:l + w]
-        content[:, :, 3] = (lbl[t:t + h, l:l + w] == best).astype(np.uint8) * 255
-
-        # aligned placement: scale to the body bbox height, register by overlap
         bfr = np.array(base.crop((i * FRAME, 0, (i + 1) * FRAME, FRAME)))
         bop = bfr[:, :, 3] > 40
-        byy, bxx = np.where(bop)
-        by0, by1 = int(byy.min()), int(byy.max())
-        s = (by1 - by0) / h if h else 1.0
-        nw, nh = max(1, round(w * s)), max(1, round(h * s))
-        sm = np.array(Image.fromarray(((content[:, :, 3] > 40) * 255).astype(np.uint8), 'L')
-                      .resize((nw, nh), Image.NEAREST)) > 40
-        sy, sx = np.where(sm)
-        px0 = bxx.mean() - sx.mean(); py0 = byy.mean() - sy.mean()
-        bestp, bestov = (px0, py0), -1
-        for dy in range(-8, 9):
-            for dx in range(-8, 9):
-                ov = overlap(sm, bop, int(round(px0 + dx)), int(round(py0 + dy)))
-                if ov > bestov:
-                    bestov, bestp = ov, (px0 + dx, py0 + dy)
-        px_, py_ = int(round(bestp[0])), int(round(bestp[1]))
-        placed = Image.new('RGBA', (FRAME, FRAME), (0, 0, 0, 0))
-        placed.alpha_composite(
-            Image.fromarray(content, 'RGBA').resize((nw, nh), Image.LANCZOS), (px_, py_))
-        parr = np.array(placed)
-
-        # v2.3.1348b (owner): the source art's waist connective is a GREEN
-        # UPSIDE-DOWN TRIANGLE (trunks) — the only green visible on the
-        # armored figure (the helmet covers the head), so no row window is
-        # needed.  Looser test than before: the first pass (G > 1.6R) caught
-        # only the triangle's brightest core and produced a thin line instead
-        # of the full trunks.  Dilate 1px to swallow the AA fringe against
-        # armor, then clip to the body silhouette.
-        R = parr[:, :, 0].astype(int); G = parr[:, :, 1].astype(int); B = parr[:, :, 2].astype(int)
-        green = (parr[:, :, 3] > 40) & (G > 80) & (G > R + 25) & (G > B + 20)
-        green = ndimage.binary_closing(green, iterations=2)
-        green = ndimage.binary_dilation(green, iterations=1)
-        # v2.3.1349b (owner: "black superhero underwear"): the boards also
-        # paint a DARK shadow region under the plate skirt / around the
-        # trunks (50-65 warm gray).  patch_chest_from_mannequin now EXCLUDES
-        # that shadow from the chest merge (same threshold-70 interior-blob
-        # test), so chain-fill it HERE — otherwise the bake's safety net
-        # backfills it flat dark and the waist reads as black briefs.
-        R2 = parr[:, :, 0].astype(int); G2 = parr[:, :, 1].astype(int); B2 = parr[:, :, 2].astype(int)
-        figop = parr[:, :, 3] > 40
-        dark = figop & ~green & (np.maximum(np.maximum(R2, G2), B2) < 70)
-        shadow = ndimage.binary_dilation(ndimage.binary_erosion(dark, iterations=1), iterations=1)
-        if green.any():
-            gr = np.where(green.any(axis=1))[0]
-            win = np.zeros_like(green)
-            # tight window: the under-skirt shadow hugs the trunks; reaching
-            # 40 rows up pulled the board's mid-torso armor shading into the
-            # belt sheet (chain on the chest wherever the plate has a gap)
-            win[max(0, gr[0] - 14):min(FRAME, gr[-1] + 9)] = True
-            green = green | (shadow & win)
-        # v2.3.1349b: game-geometry fill — every body pixel in the waist band
-        # not covered by the game's chest or greaves gets chain, no matter
-        # what the board shows there.  The bake paint replaces only
-        # pants/dark/erased pixels, so the arm crossing the band keeps its
-        # skin and depth.
+        if not bop.any():
+            stats.append(0); continue
+        green = (board_mask(arm, meta, i, base, bop) if arm is not None
+                 else np.zeros((FRAME, FRAME), bool))
+        # game-geometry fill — every body pixel in the waist band not covered
+        # by the game's chest or greaves gets chain, no matter what the board
+        # shows there.  The bake paint replaces only pants/dark/erased pixels,
+        # so the arm crossing the band keeps its skin and depth.
         exposed = (bop & ~chestop[:, i * FRAME:(i + 1) * FRAME]
                    & ~legsop[:, i * FRAME:(i + 1) * FRAME])
         band = np.zeros_like(exposed)
@@ -196,24 +217,15 @@ def gen(d):
         if not green.any():
             continue
 
-        # chain fill (v2.3.1349b: owner — the trunks read as "black superhero
-        # underwear").  The tile is scaled to the trunks' 256-space height so
-        # the links stay legible, brightened toward steel, and the backing is
-        # dark STEEL (44,47,54) instead of near-black, so the region reads as
-        # chainmail rather than a void.
+        # chain fill.  v2.3.1350 shimmer fix: phase anchored to the waist row
+        # (the run-cycle bob) + the body's horizontal center — NOT the trunk
+        # bbox, whose per-frame jumps re-rolled the link pattern every frame.
+        byy, bxx = np.where(bop)
+        cx = int(round(bxx.mean()))
         gys, gxs = np.where(green)
-        g0, g1 = int(gys.min()), int(gys.max()) + 1
-        gx0 = int(gxs.min())
-        bh = max(12, g1 - g0)
-        tw = max(1, round(chain.width * bh / chain.height))
-        tile = np.array(chain.resize((tw, bh), Image.LANCZOS)).astype(int)
-        # brighten the links toward steel (x1.9 read as WHITE briefs on the
-        # wide game-geometry band — keep it mid-steel)
-        tile[:, :, :3] = np.clip(tile[:, :, :3] * 1.55 + 18, 0, 225)
-        tile = tile.astype(np.uint8)
         frame_out = np.zeros((FRAME, FRAME, 4), np.uint8)
         for y, x in zip(gys, gxs):
-            sp = tile[(y - g0) % bh, (x - gx0) % tw]
+            sp = tile[(y - wrow) % TILE_H, (x - cx) % tw]
             if sp[3] > 30:
                 frame_out[y, x] = (sp[0], sp[1], sp[2], 255)
             else:
@@ -232,7 +244,7 @@ def gen(d):
 
     path = f'public/sprites/gear/belt/chainbelt/jog-{d}.png'
     out.save(path)
-    print(f'{d}: green px per frame (256-space) {stats[:8]}... -> {path}')
+    print(f'{d}: chain px per frame (256-space) {stats[:8]}... -> {path}')
 
 
 def main():
