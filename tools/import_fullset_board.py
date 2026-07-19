@@ -48,16 +48,22 @@ def overlap(sm, bop, px, py):
 
 def main():
     src, d, cols = sys.argv[1], sys.argv[2], int(sys.argv[3])
+    # v2.3.1366: optional 4th arg = the BOARD's frame count when it differs
+    # from the game cycle (east: 25-frame board vs 28-frame cycle).  Frames
+    # are then resampled nearest-index — board_i = i * bn // n — so a few
+    # frames hold twice per loop instead of the sheet being unusable.
+    bn = int(sys.argv[4]) if len(sys.argv) > 4 else None
     im = Image.open(src).convert('RGB')
     a = np.array(im)
     base128 = Image.open(f'public/sprites/player/jog-{d}.png').convert('RGBA')
     n = base128.width // base128.height
-    rows = (n + cols - 1) // cols
+    bn = bn or n
+    rows = (bn + cols - 1) // cols
     cw, ch = im.width // cols, im.height // rows
     base = base128.resize((base128.width * 2, 256), Image.NEAREST)
     out = Image.new('RGBA', (n * 128, 128), (0, 0, 0, 0))
     for i in range(n):
-        r, c = divmod(i, cols)
+        r, c = divmod(i * bn // n, cols)
         sub = a[r * ch:(r + 1) * ch, c * cw:(c + 1) * cw]
         mask = ndimage.binary_opening(key_region(sub), iterations=1)
         lbl, num = ndimage.label(mask)
