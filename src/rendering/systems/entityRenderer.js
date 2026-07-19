@@ -2035,14 +2035,17 @@ function _orderTraitsAndWeapon(display, facingIdx) {
   const beard = display._facialHairSprite;
   /* --- Beard layer --- */
   if (display._spriteBody && beard && beard.visible) {
-    /* Rear = away-from-camera: NW(5) / N(6).  NE(7) is a toward-camera
-       facing (same set as the weapon block below: E/SE/S/NE) -- the
-       v2.3.679 fix shipped with NE in the rear set, which hid the beard
-       on NE (user report, v2.3.689).  SW(3) was then swept INTO the rear
-       set by that fix, which hid the beard entirely on southwest (user
-       report, v2.3.698) -- SW shows the face, so it belongs with the
-       toward-camera facings (beard above body + gear like S/SE). */
-    const rearFacing = (facingIdx === 5 || facingIdx === 6);
+    /* Rear = away-from-camera: NW(5) / N(6) / NE(7).  SW(3) shows the
+       face, so it belongs with the toward-camera facings (beard above
+       body + gear like S/SE) -- it was briefly swept into the rear set
+       and the beard vanished on southwest (user report, v2.3.698).
+       NE history: v2.3.679 had NE rear -> beard invisible on the OLD
+       NE art (user report, v2.3.689) -> moved to the toward set.  On
+       the regenerated NE sheets (v2.3.708+) that draws the beard OVER
+       the back of the head, and only on NE -- NW, its mirror twin, was
+       rear -- so the beard "showed on one side only".  Owner call
+       (2026-07-19): both diagonals layer the beard BEHIND the head. */
+    const rearFacing = (facingIdx === 5 || facingIdx === 6 || facingIdx === 7);
     if (rearFacing) {
       /* Behind the head: insert just BELOW the body sprite. */
       const bodyIdx = display.getChildIndex(display._spriteBody);
