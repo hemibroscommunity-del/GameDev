@@ -205,6 +205,15 @@ def gen(d):
         # so the arm crossing the band keeps its skin and depth.
         exposed = (bop & ~chestop[:, i * FRAME:(i + 1) * FRAME]
                    & ~legsop[:, i * FRAME:(i + 1) * FRAME])
+        # v2.3.1352 arm guard (owner: "double body effect on east west"): the
+        # bare forearm/fist crosses the waist band on the profile dirs — it
+        # is body and not armor, but it is NOT waist.  Chain on it read as a
+        # chain-shaped arm ghost.  Skin + a 2px fringe (outline AA) never
+        # gets chain; the bake's ghost-hand/pants restores keep handling the
+        # arm exactly as before.
+        Rb = bfr[:, :, 0].astype(int); Gb = bfr[:, :, 1].astype(int); Bb = bfr[:, :, 2].astype(int)
+        skin = bop & (Rb > 120) & (Rb > Gb + 25) & (Gb > Bb + 10)
+        exposed &= ~ndimage.binary_dilation(skin, iterations=2)
         band = np.zeros_like(exposed)
         wrow = wrs[i] if i < len(wrs) else wrs[-1]
         band[max(0, wrow - 30):min(FRAME, wrow + 26)] = True

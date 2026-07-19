@@ -32,7 +32,7 @@ const FRAME_H = 256;
    recoloured shirt (paper-doll, mirrors the cook stand-in). Each is a 4096x128
    32-frame strip aligned to fish-south.png; the armor tracks the body's per-
    frame lean, the shirt is a grayscale tint base with a 1px outline. */
-const GEAR_VERSION = '2.3.1351'; /* v2.3.1345: baked jog belts STRIPPED from all five chest sheets — the
+const GEAR_VERSION = '2.3.1352'; /* v2.3.1345: baked jog belts STRIPPED from all five chest sheets — the
    chain belt is now a runtime layer (see getJogBeltTexture + entityRenderer._placeGear); six rounds of
    baking/sealing it into the sheets each produced a new on-device artifact.
    BUMP THIS on EVERY gear-art regen — v2.3.1342c changed the PNGs without bumping, so
