@@ -3961,7 +3961,16 @@ export function discoverZone(zoneId) {
    server/src/data.js MONSTER_HP_CURVE (keep in sync), and IMPORTED by
    tools/balance-sim.mjs (which previously hardcoded a copy that could
    drift).  Damage/XP/gold curves are untouched (BF-1 is HP-only). */
-export const MONSTER_HP_CURVE = { base: 12.5, ramp: 1.052, plateau: 1.035, endgame: 1.025, flat: 100 }; /* v2.3.1346: owner — every monster +100 HP flat */
+export const MONSTER_HP_CURVE = { base: 12.5, ramp: 1.052, plateau: 1.035, endgame: 1.025, flat: 100, flatLow: 50, flatLowMaxLvl: 2 }; /* v2.3.1346: owner — every monster +100 HP flat.  v2.3.1364: owner — Lv1-2 monsters carry 50 LESS of it (flatLow) so starter fights don't feel spongy */
+
+/* v2.3.1364: level-aware flat HP term.  Use this instead of reading
+   MONSTER_HP_CURVE.flat directly at spawn sites — Lv1-2 gets flatLow.
+   MIRRORED in server/src/data.js monsterHpFlat (keep in sync). */
+export function monsterHpFlat(level) {
+  return level <= (MONSTER_HP_CURVE.flatLowMaxLvl || 0)
+    ? (MONSTER_HP_CURVE.flatLow || 0)
+    : (MONSTER_HP_CURVE.flat || 0);
+}
 
 export function monsterStat(base, level, rRamp, rPlateau, rEndgame) {
   if (level <= 30) return Math.ceil(base * Math.pow(rRamp, level - 1));
@@ -4062,8 +4071,8 @@ export function createMonster(id, archetype, level, x, y, element) {
     archetype: archetype,
     level: level,
     element: element || null,
-    hp: Math.ceil(baseHp * a.hpMult) + (MONSTER_HP_CURVE.flat || 0),
-    maxHp: Math.ceil(baseHp * a.hpMult) + (MONSTER_HP_CURVE.flat || 0),
+    hp: Math.ceil(baseHp * a.hpMult) + monsterHpFlat(level), /* v2.3.1364: Lv1-2 -> flatLow */
+    maxHp: Math.ceil(baseHp * a.hpMult) + monsterHpFlat(level),
     dmg: Math.ceil(baseDmg * a.dmgMult),
     xp: Math.ceil(baseXp),
     gold: Math.ceil(baseGold),

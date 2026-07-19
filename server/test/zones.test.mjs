@@ -113,6 +113,21 @@ const room = new GameRoom(mockState, {});
     brute35.hp === 99 + (CLIENT_CURVE.flat || 0), brute35.hp);
 }
 
+// v2.3.1364 (owner): Lv1-2 monsters carry flatLow (50 less than the
+// universal +100 flat).  Pin the boundary on both sides so a curve
+// tweak can't silently re-sponge the starter zones.
+{
+  const f1 = createMonster('t', 'fodder', 1, 0, 0);
+  const f2 = createMonster('t', 'fodder', 2, 0, 0);
+  const f3 = createMonster('t', 'fodder', 3, 0, 0);
+  const raw = (lvl) => Math.ceil(monsterStat(CLIENT_CURVE.base, lvl, CLIENT_CURVE.ramp, CLIENT_CURVE.plateau, CLIENT_CURVE.endgame) * 0.6); /* fodder hpMult 0.6 */
+  check('Lv1 flat = flatLow (50 less)', f1.hp === raw(1) + (CLIENT_CURVE.flatLow || 0), f1.hp);
+  check('Lv2 flat = flatLow (50 less)', f2.hp === raw(2) + (CLIENT_CURVE.flatLow || 0), f2.hp);
+  check('Lv3 flat = full +100', f3.hp === raw(3) + (CLIENT_CURVE.flat || 0), f3.hp);
+  check('flatLow is exactly 50 below flat', (CLIENT_CURVE.flat || 0) - (CLIENT_CURVE.flatLow || 0) === 50,
+    { flat: CLIENT_CURVE.flat, flatLow: CLIENT_CURVE.flatLow });
+}
+
 // Spawn levels stay inside the band.
 // v2.3.1160: every wilderness band is [1,2] — OWNER DIRECTIVE
 // (2026-07-04): entry-depth zones stay L1-2 while the game is a demo.

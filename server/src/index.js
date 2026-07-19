@@ -27,7 +27,7 @@ import { tickElementStatuses, elementMoveMult } from './elemental.js';
 // lookup methods stay (call sites unchanged); only the literals moved.
 import {
   ARCHETYPES, ZONES,
-  MONSTER_HP_CURVE, RARITY_TIERS, T2_UNITS, t2Accel } from './data.js';
+  MONSTER_HP_CURVE, monsterHpFlat, RARITY_TIERS, T2_UNITS, t2Accel } from './data.js';
 // v2.3.1118 (heavy-systems PR3): order book folded into the GameRoom --
 // escrow-at-placement settlement under one DO's input gates.  Methods
 // are mixed into the class below (see market.js header for why).
@@ -643,8 +643,8 @@ export class GameRoom {
           spawnSpd: finalSpd,
           level: lvl,
           element: zone.element || null,
-          hp: Math.ceil(baseHp * a.hpMult) + (MONSTER_HP_CURVE.flat || 0),
-          maxHp: Math.ceil(baseHp * a.hpMult) + (MONSTER_HP_CURVE.flat || 0),
+          hp: Math.ceil(baseHp * a.hpMult) + monsterHpFlat(lvl), /* v2.3.1364: Lv1-2 -> flatLow */
+          maxHp: Math.ceil(baseHp * a.hpMult) + monsterHpFlat(lvl),
           dmg: Math.ceil(baseDmg * a.dmgMult),
           xp: Math.ceil(baseXp),
           gold: Math.ceil(baseGold),
