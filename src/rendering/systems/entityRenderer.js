@@ -665,7 +665,8 @@ function _bodyRegionTex(bodyTex, region) {
    and cached per (body-frame, loadout) -- cheap, recomputed only on a cache
    miss.  Falls back to the raw body texture if pixel access fails. */
 const _maskedBodyCache = new Map();
-function _maskedBodyFrame(bodyTex, worn, dilate, poseInfo) {
+/* v2.3.1375: exported for tools/qa/frame-harness (headless ground-truth render of the REAL bake).  Not used by any game path. */
+export function _maskedBodyFrame(bodyTex, worn, dilate, poseInfo) {
   /* v2.3.690: bake accounting for the perf HUD (?perf=1).  Cache misses are
      the spike source -- a gear swap rebakes every frame on next sighting.
      Read + reset by perfHud; zero cost beyond two adds per MISS. */
