@@ -1241,10 +1241,12 @@ function _maskedBodyFrameInner(bodyTex, worn, dilate, _bt0, _bs, poseInfo) {
            quiet under-armor shadow.  This is independent of any sheet's
            coverage — the class of bug that kept reappearing ("giant gaps
            while running") whenever a generator and the art disagreed. */
-        if (wornChest && origBody && poseInfo && poseInfo.pose === 'jog' && w0 < w1) {
-          /* v2.3.1360: also on chest-only wear (the vertical-enclosure test
-             below self-limits: with no greaves, nothing encloses from below
-             on bare rows, so bare legs never get filled). */
+        if (wornChest && wornLegs && origBody && poseInfo && poseInfo.pose === 'jog' && w0 < w1) {
+          /* v2.3.1360 ran this on chest-only wear too; v2.3.1373 (owner:
+             "sudden black appearing in the south jog torso only"): the slate
+             fill flashing in and out at the hem read as black flicker on the
+             bare-pants look.  FULL SET ONLY — chest-only waist cover is now
+             the chest sheet's own extended hem belt (art-level, steady). */
           const lo3 = Math.max(0, w0 - 28), hi3 = Math.min(256, w1 + 28);
           for (let y = lo3; y < hi3; y++) {
             for (let x = 0; x < 256; x++) {

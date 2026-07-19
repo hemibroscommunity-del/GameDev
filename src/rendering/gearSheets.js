@@ -32,7 +32,10 @@ const FRAME_H = 256;
    recoloured shirt (paper-doll, mirrors the cook stand-in). Each is a 4096x128
    32-frame strip aligned to fish-south.png; the armor tracks the body's per-
    frame lean, the shirt is a grayscale tint base with a 1px outline. */
-const GEAR_VERSION = '2.3.1372'; /* v2.3.1372: hip-skirt (thigh plate) pixels stripped BACK OUT of the
+const GEAR_VERSION = '2.3.1373'; /* v2.3.1373: chest hem belt extended a few px down (south/southwest/
+   north) so chest-only wear never flashes tan belly between hem and trousers; east fullset interior
+   seam lines lifted toward soft gray ("too thick of black outlines"). */
+/* v2.3.1372: hip-skirt (thigh plate) pixels stripped BACK OUT of the
    south/southwest/north jog chest sheets (restored to the v2.3.1345b belt-stripped originals).  The
    v2.3.1348b "restored hip skirt" baked the mannequin's silver skirt into the CHEST sheet, so a player
    wearing ONLY the chest plate showed leg armor on bare thighs (owner report).  Full-set on these dirs
