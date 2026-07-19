@@ -87,7 +87,8 @@ async function board(dir) {
         drawTex(ctx, fs, dx, dy, Z, flip);
         // v2.3.1368: the real head draws above the (helmet-less) fullset,
         // exactly as _placePickupHead does in-game.
-        const hd = await ready(() => getPickupHeadFrame(SKIN, PANTS, SHOES, 'jog', base, f), f === 0 ? 60 : 10);
+        // v2.3.1389: same cycle phase as the armor — head frame-locked to it.
+        const hd = await ready(() => getPickupHeadFrame(SKIN, PANTS, SHOES, 'jog', base, f, f / n), f === 0 ? 60 : 10);
         if (hd) {
           const hs = hd.frame ? 256 / hd.frame.width : 1;
           const src = hd.source && hd.source.resource;

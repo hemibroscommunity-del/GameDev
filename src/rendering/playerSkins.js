@@ -656,7 +656,7 @@ function _buildPickupHeadSheet(key, pose, dir, skinT, pantsT, shoesT, attempt = 
  *  frameIdx).  Returns null outside the pickup pose, while the sheet bakes, or
  *  when no head sheet exists for that dir (only -south ships) -- the caller then
  *  leaves the body's own head showing. */
-export function getPickupHeadFrame(skinId, pantsId, shoesId, pose, dir, frameIdx) {
+export function getPickupHeadFrame(skinId, pantsId, shoesId, pose, dir, frameIdx, phase) {
   /* v2.3.1368: + jog — the fullset armored figure (helmet erased from the
      sheet) gets the player's real head drawn above it, exactly like the
      pickup pose.  Only the fullset base dirs ship jog-<dir>-head.png;
@@ -667,6 +667,16 @@ export function getPickupHeadFrame(skinId, pantsId, shoesId, pose, dir, frameIdx
   const entry = _pickupHeadSheets[key];
   if (entry === undefined) { _buildPickupHeadSheet(key, pose, dir, skinT, pantsT, shoesT); return null; }
   if (entry === 'loading' || !entry.length) return null;
+  /* v2.3.1389: jog callers pass the cycle `phase` (0..1) — the SAME clock
+     getGearFramePhased plays the fullset armor with, so a head sheet whose
+     native frame count differs from the body's (east: 25 vs 28) stays
+     frame-locked to the armor instead of bobbing on the body's cadence
+     (owner: "the head doesn't bob with the armor").  Same-count dirs
+     resolve identically either way. */
+  if (phase != null && pose === 'jog') {
+    const p = ((phase % 1) + 1) % 1;
+    return entry[Math.min(entry.length - 1, Math.floor(p * entry.length))];
+  }
   return entry[((frameIdx % entry.length) + entry.length) % entry.length];
 }
 

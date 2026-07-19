@@ -456,6 +456,27 @@ function hatPoseTune(hatId, pose, dir) {
   return null;
 }
 
+/* v2.3.1389 (owner: "the head doesn't bob with the armor" + "headwear
+   needs to move left with the head"): when the fullset knight figure is
+   active, the DRAWN head is the jog-<dir>-head.png overlay — rebuilt
+   (tools/rebuild_east_head_track.py) to ride the armor's own 25-frame
+   bob and carrying the owner-dialed left shift.  body-tops.json still
+   describes the BODY sheet's crown (28-frame cadence, unshifted), so
+   hats/hair/beards anchored there slid against the visible head.  This
+   table is the rebuilt head sheet's measured per-frame crown ([x, y],
+   256-space, one entry per ARMOR frame); _crownOverride swaps it in for
+   the trait anchors while the fullset figure is on screen. */
+const FULLSET_CROWN = {
+  east: [[134, 46], [136, 46], [136, 46], [136, 50], [134, 46], [134, 52], [136, 56], [136, 54], [134, 58], [134, 56], [134, 58], [134, 48], [134, 46], [136, 46], [136, 46], [136, 50], [134, 50], [134, 50], [134, 54], [136, 56], [136, 56], [134, 50], [134, 52], [134, 46], [134, 48]],
+};
+let _crownOverride = null;   // set around the trait placements when fullset is active
+function _fullsetCrown(dir, phase) {
+  const t = FULLSET_CROWN[dir];
+  if (!t || phase == null) return null;
+  const p = ((phase % 1) + 1) % 1;
+  return t[Math.min(t.length - 1, Math.floor(p * t.length))];
+}
+
 /* Place a player's headwear sprite for this frame.  Shared by the local
    player (_updatePlayer) and remote players (_updateOtherPlayers).
    Crown-anchored + placement-independent: pins the hat's own crown
@@ -477,7 +498,7 @@ function _placeTrait(sprite, entry, display, pose, dir, mirror, frameIdx, bodySc
   const headwearTex = entry && (entry.tex[dir] || (entry.fallbackTex && entry.fallbackTex[dir]));
   const meta = entry && entry.meta;
   const spriteBody = display._spriteBody;
-  const bodyTop = _lookupBodyTop(pose, dir, frameIdx);
+  const bodyTop = _crownOverride || _lookupBodyTop(pose, dir, frameIdx); /* v2.3.1389 */
   const anchorPx = (meta && meta.anchors && meta.anchors[dir]) || null;
   if (!(headwearTex && meta && meta.fullFrame && spriteBody && bodyTop && anchorPx)) {
     sprite.visible = false;
@@ -1731,10 +1752,15 @@ function _hideBodyRegions(display) {
 /* Place the pickup head overlay on the (reused) _bodyHead sprite at the body
    sprite's exact transform.  No-op (leaves _bodyHead as the caller left it --
    hidden) outside the pickup pose or before the sheet loads. */
-function _placePickupHead(display, sb, skinId, pantsId, shoesId, pose, dir, frameIdx) {
+function _placePickupHead(display, sb, skinId, pantsId, shoesId, pose, dir, frameIdx, phase) {
   const hd = display._bodyHead;
   if (!hd || !sb) return;
-  const t = getPickupHeadFrame(skinId, pantsId, shoesId, pose, dir, frameIdx);
+  /* v2.3.1389: `phase` (jog cycle 0..1) picks the head frame on the SAME
+     clock as the fullset armor (getGearFramePhased) — east's head sheet
+     is now 25 frames matching the armor, so head and armor bob as one.
+     Dirs whose head count equals the body count resolve to the same
+     frame either way; non-jog callers omit it. */
+  const t = getPickupHeadFrame(skinId, pantsId, shoesId, pose, dir, frameIdx, phase);
   if (!t) return;
   if (hd.texture !== t) hd.texture = t;
   hd.x = sb.x; hd.y = sb.y;
@@ -4149,19 +4175,20 @@ export class EntityRenderer {
             }
           }
           let _rfull = false;
+          let _fsR = null; /* v2.3.1389: hoisted — the trait crown override below needs it */
           if (_rworn.length) {
             const _rlegsW = _rworn.some(w => w.k && w.k.indexOf('legs:') === 0);
             const _rchestW = _rworn.some(w => w.k && w.k.indexOf('chest:') === 0);
             _rfull = pose === 'pickup' && _rlegsW && _rchestW;   // v2.3.1057: hide body, head overlay + gear render it (no bake)
             /* v2.3.1361: fullset figure for remote players too. */
-            const _fsR = _fullsetFrame(other.equip && other.equip.chest, other.equip && other.equip.legs, pose, dir, frameIdx, _rJogPhase);
+            _fsR = _fullsetFrame(other.equip && other.equip.chest, other.equip && other.equip.legs, pose, dir, frameIdx, _rJogPhase);
             const _mt = _fsR || ((pose === 'pickup') ? tex : _maskedBodyFrame(tex, _rworn, 6, { pose, dir, frameIdx }));
             if (spriteBody.texture !== _mt) spriteBody.texture = _mt;
           }
           /* v2.3.1055: pickup head overlay (drawn above gear in _orderTraitsAndWeapon).
              v2.3.1116: guarded (see local path) -- a throw here must not freeze the loop. */
           try {
-            _placePickupHead(display, spriteBody, other.skin, other.pants, other.shoes, pose, dir, frameIdx);
+            _placePickupHead(display, spriteBody, other.skin, other.pants, other.shoes, pose, dir, frameIdx, _rJogPhase);
             spriteBody.visible = !(_rfull && !!getPickupHeadFrame(other.skin, other.pants, other.shoes, pose, dir, frameIdx));
             /* v2.3.1123: lift the angler's head above the fishing chest plate. */
             if (pose === 'fish' && _rworn.some(w => w.k && w.k.indexOf('chest:') === 0)) _placeFishHead(display, spriteBody, tex);
@@ -4169,9 +4196,11 @@ export class EntityRenderer {
           /* shirt is baked into the body (see getBodyFrame above); no overlay. */
           if (display._shirtSprite) display._shirtSprite.visible = false;
           /* always show the remote's hair/hat/beard (no helmet to hide them). */
+          _crownOverride = _fsR ? _fullsetCrown(dir, _rJogPhase) : null; /* v2.3.1389 */
           _placeHeadwear(display, other.headwear, other.hatColor, pose, dir, mirror, frameIdx, sizeMul);
           _placeFacialHair(display, other.facialhair, other.facialHairColor, pose, dir, mirror, frameIdx, sizeMul);
           _placeHair(display, other.hair, other.hairColor, other.headwear, pose, dir, mirror, frameIdx, sizeMul);
+          _crownOverride = null;
         } else {
           spriteBody.visible = false;
           body.visible = true;
@@ -4928,10 +4957,11 @@ export class EntityRenderer {
         const _legsW = _worn.some(w => w.k && w.k.indexOf('legs:') === 0);
         const _chestW = _worn.some(w => w.k && w.k.indexOf('chest:') === 0);
         let _bodyTex;
+        let _fsT = null; /* v2.3.1389: hoisted — the trait crown override below needs it */
         try {
           /* v2.3.1361: fullset figure replaces the bake when it ships for
              this (pose,dir); null -> classic masked path. */
-          const _fsT = _fullsetFrame(getEquip('chest'), getEquip('legs'), pose, dir, frameIdx, _jogPhase);
+          _fsT = _fullsetFrame(getEquip('chest'), getEquip('legs'), pose, dir, frameIdx, _jogPhase);
           _bodyTex = _fsT || ((!_worn.length || pose === 'pickup') ? tex : _maskedBodyFrame(tex, _worn, 6, { pose, dir, frameIdx }));
         } catch (e) { _bodyTex = tex; }
         if (spriteBody.texture !== _bodyTex) spriteBody.texture = _bodyTex;
@@ -4940,7 +4970,7 @@ export class EntityRenderer {
            (a bad overlay texture, a recolor hiccup) would freeze the whole game
            loop, not just the head.  On failure: no overlay, body stays visible. */
         try {
-          _placePickupHead(display, spriteBody, getSkin(), getPants(), getShoes(), pose, dir, frameIdx);
+          _placePickupHead(display, spriteBody, getSkin(), getPants(), getShoes(), pose, dir, frameIdx, _jogPhase);
           spriteBody.visible = !(pose === 'pickup' && _legsW && _chestW && !!getPickupHeadFrame(getSkin(), getPants(), getShoes(), pose, dir, frameIdx));
           /* v2.3.1123: lift the angler's head above the fishing chest plate. */
           if (pose === 'fish' && _chestW) _placeFishHead(display, spriteBody, tex);
@@ -4972,9 +5002,14 @@ export class EntityRenderer {
         /* shirt is baked into the body (see getBodyFrame above); no overlay. */
         if (display._shirtSprite) display._shirtSprite.visible = false;
         /* v2.3.613: no helmet -- always show hair/hat/beard on the visible head. */
+        /* v2.3.1389: while the fullset figure is on screen, anchor the head
+           traits to the DRAWN head's crown (FULLSET_CROWN — armor-synced,
+           left-shifted) instead of the body sheet's. */
+        _crownOverride = _fsT ? _fullsetCrown(dir, _jogPhase) : null;
         _placeHeadwear(display, getHeadwear(), getHatColor(), pose, dir, mirror, frameIdx, bodyScale);
         _placeFacialHair(display, getFacialHair(), getFacialHairColor(), pose, dir, mirror, frameIdx, bodyScale);
         _placeHair(display, getHair(), getHairColor(), getHeadwear(), pose, dir, mirror, frameIdx, bodyScale);
+        _crownOverride = null;
 
         /* v2.3.265: combined-trait overlay disabled while sticker
            pipeline is being wired. */
