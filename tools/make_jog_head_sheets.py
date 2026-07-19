@@ -82,24 +82,17 @@ def neck_row(op):
         while hi < len(row) - 1 and row[hi + 1]:
             hi += 1
         return hi - lo + 1
-    # v2.3.1369c: TWO cut rules, first to fire wins.  Wh = the head's
-    # stable width (median of its fat middle).  PINCH (true neck, e.g.
-    # east profile): run narrows under 0.62*Wh.  FLARE (southwest: the
-    # big head merges straight into the shoulders with no neck at all —
-    # measured f0: width 25 constant, then monotonic growth to 45): run
-    # widens past 1.3*Wh.  Fallback 0.32*figh if neither fires.
-    mid = [runw(y) for y in range(top + int(0.10 * figh), top + int(0.22 * figh) + 1)]
-    Wh = float(np.median([w for w in mid if w > 0])) if any(mid) else 0.0
-    if Wh <= 0:
-        return top + int(0.32 * figh), hx0, hx1
-    cap = top + int(0.40 * figh)
-    for y in range(top + int(0.15 * figh), cap + 1):
-        w = runw(y)
-        if w and w < 0.62 * Wh:
-            return y + 2, hx0, hx1
-        if w > 1.3 * Wh:
-            return y, hx0, hx1
-    return top + int(0.32 * figh), hx0, hx1
+    # v2.3.1369e (owner: SW f1/f2/f11/f12 "helmet's thick black outline
+    # beneath the face"; SW f4-9/f14-18 + east f0/f14 "bare shoulders";
+    # east f1 "chestplate invisible"): every shape-based detector (row
+    # sum, column-limited sum, center-run pinch, shoulder flare) wobbled
+    # between cutting at the chin (helmet remnant survives below the
+    # face) and at the shoulders (bare skin in the overlay + armor top
+    # erased).  The cut is now a FIXED fraction of the figure — necks
+    # live in a narrow band, the per-frame figure top already tracks the
+    # run-cycle bob, and one constant is tunable by eye.
+    _ = runw  # (kept for potential diagnostics)
+    return top + int(round(0.27 * figh)), hx0, hx1
 
 
 def gen(d):
