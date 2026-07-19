@@ -277,6 +277,10 @@ async function loadSheet(pose, dir, attempt = 0) {
        falls back to procedural / the stand frame). */
     if (attempt < _SHEET_RETRY_MS.length) {
       setTimeout(() => { loadSheet(pose, dir, attempt + 1); }, _SHEET_RETRY_MS[attempt]);
+    } else {
+      /* v2.3.1384: final failure of a BASE body sheet = invisible player.
+         Evidence for the crash ring (stand/jog exist for every dir). */
+      try { import('../debug/crashTrap.js').then(ct => ct.recordCrash('body-sheet-failed', pose + '-' + dir)).catch(() => {}); } catch (e) { /* ignore */ }
     }
   }
 }

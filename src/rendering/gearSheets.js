@@ -88,7 +88,13 @@ function buildSheet(key, slot, item, pose, dir, attempt = 0) {
     const img = antialiasUpscaledCanvas(upscaleToFrameHeight(rawImg, FRAME_H), rawH);
     const src = Texture.from(img).source;
     src.scaleMode = 'linear';
-    src.autoGenerateMipmaps = true;
+    /* v2.3.1384 (owner: "jog south invisible character"): the fullset knight
+       strips are the LARGEST textures in the game (up to 6656px wide); their
+       mip chains cost +33% GPU memory each, and on a memory-stressed iPhone
+       the allocation failing silently = an invisible player while the world
+       renders on.  The knights draw at ~1:1, so mips buy little — skip them
+       for fullset only; regular gear keeps the v2.3.1341 shimmer cure. */
+    src.autoGenerateMipmaps = slot !== 'fullset';
     const frames = Math.max(1, Math.floor(img.width / FRAME_W));
     const out = [];
     for (let i = 0; i < frames; i++) {
@@ -102,6 +108,14 @@ function buildSheet(key, slot, item, pose, dir, attempt = 0) {
     }
     _sheets[key] = []; /* missing -> caller hides the slot */
     try { if (window.__spriteLog) console.warn('[sprite] gear sheet failed', key); } catch (e) { /* ignore */ }
+    /* v2.3.1384: a FINAL failure on a sheet that must exist (the fullset
+       knights and their jog belts) is real evidence for an invisible /
+       misdressed character — land it in the crash ring so on-device
+       reports arrive with facts.  Poses that legitimately 404 (fish/
+       pickup non-south) never reach here with these slots. */
+    if (slot === 'fullset' || slot === 'belt') {
+      try { import('../debug/crashTrap.js').then(ct => ct.recordCrash('gear-sheet-failed', key)).catch(() => {}); } catch (e) { /* ignore */ }
+    }
   });
 }
 
