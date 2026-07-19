@@ -143,6 +143,21 @@ export function getGearFramePhased(slot, item, pose, dir, phase) {
    dedicated sprite BELOW gearLegs.  A missing sheet degrades gracefully
    (belt hidden; the pants band still covers the seam). */
 
+/** v2.3.1376: preload the pre-composed FULLSET knight figures (jog
+ *  south/southwest/north/east) — they replace the whole armored body when
+ *  the full steel set is worn, and a lazy first fetch hitched the first
+ *  armored jog per direction (animation-preload law, CLAUDE.md v2.3.1358).
+ *  Missing dirs (northeast keeps the classic composite) resolve to [] and
+ *  cost one 404 at load time. */
+export function preloadFullsetFigures() {
+  const tasks = [];
+  for (const dir of ['south', 'southwest', 'north', 'east']) {
+    const key = 'fullset/steel/jog/' + dir;
+    if (_sheets[key] === undefined) tasks.push(buildSheet(key, 'fullset', 'steel', 'jog', dir));
+  }
+  return Promise.all(tasks);
+}
+
 /** Unique TextureSources of every gear sheet baked so far (idle/jog stand sets).
  *  Lets the renderer force-GPU-upload them during the loading screen (mirrors
  *  the masked-body uploadBakedTextures) so a first armored turn doesn't pay a

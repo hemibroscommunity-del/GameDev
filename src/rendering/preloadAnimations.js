@@ -39,6 +39,8 @@ import { loadPlayerDeathSprites } from './playerDeathSprites.js';
 import { loadImageZoneMaps, loadWalkabilityMaps } from './tiledMaps.js';
 import { effectsAnimationsReady, ensureImpactTex } from './systems/effectsRenderer.js';
 import { preloadTraits } from './systems/entityRenderer.js';
+import { preloadFullsetFigures } from './gearSheets.js'; /* v2.3.1376: fullset knight figures */
+import { preloadJogHeadOverlays } from './playerSkins.js'; /* v2.3.1376: their head overlays */
 
 export async function preloadWorldAnimations() {
   /* Kick the lazy-by-default loaders eagerly. */
@@ -53,6 +55,11 @@ export async function preloadWorldAnimations() {
     walkability: loadWalkabilityMaps(),
     fx: effectsAnimationsReady(),
     traits: preloadTraits(),
+    /* v2.3.1376: the fullset armored figures + the head overlays they draw
+       the player's real head from — new animation system, registered per
+       the law above in the same PR that ships it. */
+    fullset: preloadFullsetFigures(),
+    jogHeads: preloadJogHeadOverlays(),
   };
 
   const names = Object.keys(groups);

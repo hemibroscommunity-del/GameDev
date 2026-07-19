@@ -705,6 +705,23 @@ export function preloadBodyAll() {
   return Promise.all(tasks);
 }
 
+/** v2.3.1376: preload the JOG head-overlay sheets (jog-<dir>-head.png) for
+ *  the current combo — the fullset knight figures draw the player's real
+ *  head from these, and a lazy first build hitched the first armored jog in
+ *  each direction (animation-preload law, CLAUDE.md v2.3.1358).  Unlike
+ *  preloadBodyAll this runs for the DEFAULT combo too: the head sheets must
+ *  fetch + bake regardless of recoloring. */
+export function preloadJogHeadOverlays() {
+  const skinId = _skinStore.get(), pantsId = _pantsStore.get(), shoesId = _shoesStore.get();
+  const skinT = skinTarget(skinId), pantsT = pantsTarget(pantsId), shoesT = shoesTarget(shoesId);
+  const tasks = [];
+  for (const dir of ['south', 'southwest', 'north', 'east']) {
+    const key = (skinId || 'default') + '/' + (pantsId || 'default') + '/' + (shoesId || 'default') + '|jog-' + dir;
+    if (_pickupHeadSheets[key] === undefined) tasks.push(_buildPickupHeadSheet(key, 'jog', dir, skinT, pantsT, shoesT));
+  }
+  return Promise.all(tasks);
+}
+
 /** Preload the current combo's sheets for a SPECIFIC shirt variant (both
  *  poses, all dirs).  v2.3.698: armor on/off flips the shirt bake, and the
  *  first toggle paid a full 13056x256 sheet recolor on the spot -- the
