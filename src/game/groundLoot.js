@@ -17,6 +17,8 @@ import { pushHudPopup } from '@/ui/XpFlyOverlay.jsx';
 import { _objectSpread } from '@/lib/babelHelpers.js';
 
 import { pushDmgPopup } from '@/game/combatHelpers.js';
+import { celebrateLevelUps } from '@/game/levelCelebration.js';
+import { saveRpgSoon } from '@/game/rpgSave.js'; /* v2.3.1356 */
 export function updateGroundLootPickup(S, deps) {
   var P = S.player;
   var pixiRef = deps.pixiRef,
@@ -200,9 +202,7 @@ export function updateGroundLootPickup(S, deps) {
                   BT_AUDIO.beep(400, 0.05, 0.08, 'sine');
                 }
                 setRpgState(_objectSpread({}, S.rpg));
-                try {
-                  localStorage.setItem('bt_rpg', JSON.stringify(S.rpg));
-                } catch (e) {}
+                saveRpgSoon(); /* v2.3.1356: debounced -- pack-kill loot showers fire this per pile */
                 /* v2.3.189: mark for delayed despawn instead of
                    immediate dispose; the top-of-filter check fires
                    the dispose after 0.75 s so the pickup animation
@@ -232,9 +232,7 @@ export function updateGroundLootPickup(S, deps) {
                   return BT_AUDIO.beep(784, 0.1, 0.1, 'sine');
                 }, 160);
                 setRpgState(_objectSpread({}, S.rpg));
-                try {
-                  localStorage.setItem('bt_rpg', JSON.stringify(S.rpg));
-                } catch (e) {}
+                saveRpgSoon(); /* v2.3.1356: debounced -- pack-kill loot showers fire this per pile */
                 /* v2.3.189: mark for delayed despawn instead of
                    immediate dispose; the top-of-filter check fires
                    the dispose after 0.75 s so the pickup animation
@@ -287,57 +285,14 @@ export function updateGroundLootPickup(S, deps) {
                 });
               }
               /* Check level up.
-                 v2.3.910: combat level is DERIVED (sum of the build-skill
-                 levels, set in recalcDerived inside addBuildProg above), so we
-                 no longer increment it here -- we fire the celebratory feedback
-                 once per newly-reached level (tracked by _lastShownLevel) and
-                 refill pools. */
-              while (S.rpg.level > (S.rpg._lastShownLevel || 1)) {
-                S.rpg._lastShownLevel = (S.rpg._lastShownLevel || 1) + 1;
-                S.rpg.hp = S.rpg.maxHp;
-                S.rpg.stamina = S.rpg.maxStamina;
-                S.rpg.mana = S.rpg.maxMana;
-                setLevelUpMsg({
-                  kind: 'combat',
-                  level: S.rpg.level,
-                  ts: Date.now()
-                });
-                BT_AUDIO.collect();
-                /* ═══ LEVEL UP BURST — celebratory particle explosion ═══ */
-                S.screenShake = 8;
-                S._levelUpFlash = Date.now();
-                for (var lp = 0; lp < 40; lp++) {
-                  var lpAngle = lp / 40 * Math.PI * 2;
-                  var lpSpd = 3 + Math.random() * 5;
-                  S.hitParticles.push({
-                    x: P.x,
-                    y: P.y,
-                    vx: Math.cos(lpAngle) * lpSpd,
-                    vy: Math.sin(lpAngle) * lpSpd - 2,
-                    life: 1.2,
-                    color: ['#f5c542', '#fbbf24', '#60a5fa', '#3dd497', '#a78bfa', '#fff'][Math.floor(Math.random() * 6)],
-                    size: 2 + Math.random() * 3
-                  });
-                }
-                /* Rising level text */
-                pushDmgPopup(S, P.x, P.y - 50, 'LEVEL ' + S.rpg.level + '!', '#f5c542');
-                pushDmgPopup(S, P.x, P.y - 35, 'HP/MANA RESTORED', '#3dd497');
-                /* Ascending chime */
-                BT_AUDIO.beep(523, 0.1, 0.08, 'sine');
-                setTimeout(function () {
-                  return BT_AUDIO.beep(659, 0.08, 0.06, 'sine');
-                }, 100);
-                setTimeout(function () {
-                  return BT_AUDIO.beep(784, 0.08, 0.06, 'sine');
-                }, 200);
-                setTimeout(function () {
-                  return BT_AUDIO.beep(1047, 0.12, 0.1, 'sine');
-                }, 300);
-              }
+                 v2.3.910: combat level is DERIVED (set in recalcDerived
+                 inside addBuildProg above), so we no longer increment it
+                 here.  v2.3.1342: the burst body moved to the shared
+                 celebrateLevelUps (levelCelebration.js) — the Build
+                 sheet's spend path is a level-up site now too. */
+              celebrateLevelUps(S, S.rpg, { setLevelUpMsg: setLevelUpMsg, burstAt: P });
               setRpgState(_objectSpread({}, S.rpg));
-              try {
-                localStorage.setItem('bt_rpg', JSON.stringify(S.rpg));
-              } catch (e) {}
+              saveRpgSoon(); /* v2.3.1356: debounced -- see rpgSave.js */
               /* v2.3.138: explicit Pixi dispose for the picked-up pile.
                  The orphan sweep would catch this next frame, but
                  intermittently the coin sprite was sticking on the

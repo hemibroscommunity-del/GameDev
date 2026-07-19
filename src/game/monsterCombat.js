@@ -31,7 +31,7 @@ import {
   createMonster, discoverCollision, discoverMonster, generateZoneMap, getActiveWeapon,
   getAttunementPts, getCollisionDeathFX, getDefenseBlockBonus, getEffectiveness, getElementDeathFX,
   getShieldStats, getWeaponCritDmgStat, getWeaponCritStat, meleeSwingSfx, recalcDerived, resolveCollision,
-  getEvasionPts, poiseStunMult, rollPassiveDodge, spawnElementStatusFX, spawnWeaponHitFX, swingCooldownMult, tickStatuses, updateZoneDimensions,
+  getEvasionPts, poiseStunFlatMs, rollPassiveDodge, getWeaponCritFlat, spawnElementStatusFX, spawnWeaponHitFX, swingCooldownMult, tickStatuses, updateZoneDimensions,
   trainDefense, applyIronSkin, applyResilience, /* v2.3.1314 */
   monsterBodyY,
 } from '@/data/index.js';
@@ -40,9 +40,11 @@ import { getEquip } from '@/rendering/gearCatalog.js'; /* v2.3.1104: armoured-hi
 import { rollMonsterShard } from '@/data/shards.js';
 import { addBuildUse, applyMeleeLifesteal, distributeKillXpToBuild, trackMonsterDamage, pushDmgPopup, monsterPopupY } from '@/game/combatHelpers.js';
 import { earnCertification as masteryEarnCert } from '@/game/mastery.js';
+import { celebrateLevelUps } from '@/game/levelCelebration.js';
 import { btRpc, getBtPlayerId, syncRpgToServer } from '@/networking/index.js';
 import { pushHudPopup } from '@/ui/XpFlyOverlay.jsx';
 import { _objectSpread, _slicedToArray } from '@/lib/babelHelpers.js';
+import { saveRpgSoon } from '@/game/rpgSave.js'; /* v2.3.1356 */
 
 export function updateMonsterCombat(S, deps) {
   var P = S.player;
@@ -93,7 +95,10 @@ export function updateMonsterCombat(S, deps) {
              Headshot / Arcane Focus), not the crit-CHANCE channel — the old
              call passed _wCrit here, quietly drifting from the server which
              used the retired Ferocity (0). */
-          var critMult = calcCritMult(_R6.power, getWeaponCritDmgStat(_R6));
+          var critMult = calcCritMult(_R6.power);
+          /* v2.3.1345: the crit-DMG channel is a FLAT accelerating
+             bonus on lucky hits now (added after the power mult). */
+          var critFlat = getWeaponCritFlat(_R6);
           /* Baseline floor: at zero ferocity, calcCritChance returns 0%, which
              meant a brand-new player could never grand-slam. Floor at 8% so a
              grand slam is reachable from the first swing. Applied before the
@@ -139,7 +144,13 @@ export function updateMonsterCombat(S, deps) {
             var expired = tickStatuses(m, 16.7 / 1000, Date.now(), _R6, { applyHp: !S._serverMonsters });
 
             /* ═══ ELEMENT STATUS OVERLAY — ambient particles on statused monsters ═══ */
-            if (m.statuses && m.alive) {
+            /* v2.3.1347: budget-capped. This runs per statused monster per
+               FRAME; a pack of burning fire goblins fed S.hitParticles
+               (and, below, S.dmgNumbers — each popup mints a Pixi Text)
+               without bound, and the game visibly slowed (owner playtest).
+               Past ~250 live particles the extra FX are invisible noise
+               anyway, so skip spawning instead of queueing. */
+            if (m.statuses && m.alive && S.hitParticles.length < 250) {
               Object.entries(m.statuses).forEach(function (_ref13) {
                 var _ref14 = _slicedToArray(_ref13, 2),
                   sid = _ref14[0],
@@ -151,11 +162,17 @@ export function updateMonsterCombat(S, deps) {
             }
             if (m._lastDotDmg && Date.now() - m._lastDotDmg.ts < 100) {
               var dot = m._lastDotDmg;
-              var dotElem = Object.keys(ELEMENTS).find(function (e) {
-                return ELEMENTS[e].status === dot.statusId;
-              });
-              var dotColor = dotElem ? ELEMENTS[dotElem].color : '#ff5e6c';
-              pushDmgPopup(S, m.x + (Math.random() - 0.5) * 10, monsterPopupY(m, -22), dot.amount + '', dotColor);
+              /* v2.3.1347: DoT popups yield when the popup field is already
+                 crowded — every burning monster emits one each 0.5s tick,
+                 and each popup is a fresh Pixi Text raster. Player-attack
+                 popups are unaffected (their sites don't check this). */
+              if ((S.dmgNumbers ? S.dmgNumbers.length : 0) < 30) {
+                var dotElem = Object.keys(ELEMENTS).find(function (e) {
+                  return ELEMENTS[e].status === dot.statusId;
+                });
+                var dotColor = dotElem ? ELEMENTS[dotElem].color : '#ff5e6c';
+                pushDmgPopup(S, m.x + (Math.random() - 0.5) * 10, monsterPopupY(m, -22), dot.amount + '', dotColor);
+              }
               m._lastDotDmg = null;
             }
             /* Check if DoT killed */
@@ -512,7 +529,7 @@ export function updateMonsterCombat(S, deps) {
                         S._hitFlash = Date.now();
                         if (S.channel) S.channel.send({ type: 'broadcast', event: 'player_hurt_by_monster', payload: { id: S.myId, dmg: finalDmg } });
                         /* v2.3.1137: Poise channel shortens the stagger */
-                        S._playerStunUntil = Math.max(S._playerStunUntil || 0, Date.now() + Math.round(250 * poiseStunMult(S.rpg)));
+                        S._playerStunUntil = Math.max(S._playerStunUntil || 0, Date.now() + Math.max(0, Math.round(250 - poiseStunFlatMs(S.rpg)))); /* v2.3.1345: flat ms */
                       }
                     } else if (distToP < slamRange && dodged) {
                       pushDmgPopup(S, P.x, P.y - 20, 'Dodged!', '#3dd497');
@@ -557,7 +574,7 @@ export function updateMonsterCombat(S, deps) {
                         S._hitFlash = Date.now();
                         if (S.channel) S.channel.send({ type: 'broadcast', event: 'player_hurt_by_monster', payload: { id: S.myId, dmg: _finalDmg } });
                         /* v2.3.1137: Poise channel shortens the stagger */
-                        S._playerStunUntil = Math.max(S._playerStunUntil || 0, Date.now() + Math.round(250 * poiseStunMult(S.rpg)));
+                        S._playerStunUntil = Math.max(S._playerStunUntil || 0, Date.now() + Math.max(0, Math.round(250 - poiseStunFlatMs(S.rpg)))); /* v2.3.1345: flat ms */
                       }
                     }
                   }
@@ -860,7 +877,7 @@ export function updateMonsterCombat(S, deps) {
                       P.x += Math.cos(kbAngle) * 12;
                       P.y += Math.sin(kbAngle) * 12;
                       S.screenShake = Math.max(S.screenShake || 0, 6);
-                      S._playerStunUntil = Date.now() + Math.round(300 * poiseStunMult(S.rpg)); /* brief stagger — v2.3.1137: Poise shortens it */
+                      S._playerStunUntil = Date.now() + Math.max(0, Math.round(300 - poiseStunFlatMs(S.rpg))); /* brief stagger — v2.3.1345: Poise shaves flat ms */
                     }
                     /* Swarm bleed DoT removed — at higher levels the
                        1%-of-maxHp tick (every 500 ms for 3 s) read as
@@ -1432,7 +1449,7 @@ export function updateMonsterCombat(S, deps) {
                    per-hit so different monsters in a sweep can take
                    slightly different damage. */
                 var _specBase = S._specialAttack ? calcSpecialDmg(_activeWpn.type, _R6, _activeWpn.tierMult, _activeWpn) : pDmg;
-                var dmg = Math.round((isCrit ? _specBase * critMult : _specBase) * specialMult * _comboBurst);
+                var dmg = Math.round(((isCrit ? _specBase * critMult + critFlat : _specBase)) * specialMult * _comboBurst);
                 /* §12.2 cert — first time the combo-burst multiplier (>1) actually lands. */
                 if (_comboBurst > 1) masteryEarnCert('first-combo-burst');
                 /* Boss invulnerability — can only be damaged during recovery phase */
@@ -1700,9 +1717,12 @@ export function updateMonsterCombat(S, deps) {
                    bounce back amount.").  Crit sits between normal
                    and special. */
                 var kbAngle = Math.atan2(m.y - P.y, m.x - P.x);
-                var kbForce = S._specialAttack ? 180 : isCrit ? 45 : 30;
-                /* Collision adds extra knockback */
-                var collisionKb = collisionResult ? 6 : 0;
+                /* v2.3.1356: owner — "bounce back is too intense for
+                   monsters, reduce by 75%": 180/45/30 -> 45/11/8 (the
+                   special/crit/normal RATIO from v2.3.110 is kept). */
+                var kbForce = S._specialAttack ? 45 : isCrit ? 11 : 8;
+                /* Collision adds extra knockback (v2.3.1356: 6 -> 2) */
+                var collisionKb = collisionResult ? 2 : 0;
                 m.x += Math.cos(kbAngle) * (kbForce + collisionKb);
                 m.y += Math.sin(kbAngle) * (kbForce + collisionKb);
                 /* Knockback recovery -- without this, client-side-AI
@@ -2164,26 +2184,18 @@ export function updateMonsterCombat(S, deps) {
                      refund 90% of damage taken from this monster. */
                   applyMeleeLifesteal(S, _R6, m);
 
-                  /* v2.3.910: combat level is DERIVED (sum of build-skill
-                     levels, set in recalcDerived inside addBuildProg above), so
-                     we no longer increment it here -- fire feedback once per
-                     newly-reached level (tracked by _lastShownLevel) + refill. */
-                  while (_R6.level > (_R6._lastShownLevel || 1)) {
-                    _R6._lastShownLevel = (_R6._lastShownLevel || 1) + 1;
-                    _R6.hp = _R6.maxHp;
-                    _R6.stamina = _R6.maxStamina;
-                    _R6.mana = _R6.maxMana;
-                    setLevelUpMsg({
-                      kind: 'combat',
-                      level: _R6._lastShownLevel,
-                      ts: Date.now()
-                    });
-                    BT_AUDIO.levelUp();
-                  }
+                  /* v2.3.910: combat level is DERIVED (set in recalcDerived
+                     inside addBuildProg above), so we no longer increment it
+                     here.  v2.3.1342: shared celebrateLevelUps — full burst
+                     (this melee path used to be chime-only; parity with the
+                     loot-pickup celebration was accidental drift). */
+                  celebrateLevelUps(S, _R6, { setLevelUpMsg: setLevelUpMsg });
                   setRpgState(_objectSpread({}, _R6));
-                  try {
-                    localStorage.setItem('bt_rpg', JSON.stringify(_R6));
-                  } catch (e) {}
+                  /* v2.3.1356: debounced — the 360° cleave can one-shot a
+                     pack, running this kill block N times in one swing;
+                     inline full-blob writes stalled the frame (same
+                     mechanism as the bow-special freeze).  rpgSave.js. */
+                  saveRpgSoon();
                   btRpc('bt_monster_kill', {
                     p_id: getBtPlayerId(),
                     p_monster_type: m.type,

@@ -162,6 +162,42 @@ export const persistenceMethods = {
     } catch (e) {}
   },
 
+  /* v2.3.1347: self-service character restart (owner playtest: "players
+     should be given chance to restart their character ... begin at
+     lvl 1").  Wire: client sends `character_reset {confirm:true}` after
+     its confirmation screen; we parachute-snapshot the current blob
+     (rpgsnap:<pid>:prereset-<ts> -- same registered prefix as the admin
+     restore flow, recoverable via admin /restore), DELETE rpg:<pid>,
+     ack with the privileged `character_reset_done`, and close the
+     session (admin-freeze pattern: sessions.delete first so no later
+     handler can _saveRpg the old in-memory state back over the wipe).
+     The client wipes its own bt_* caches and reloads; the rejoin finds
+     no stored blob and bootstraps a fresh level-1 character from the
+     (now empty) join payload.  Identity is untouched: auth:<pid> keeps
+     the first-join lock, so the player keeps their Login Key, name,
+     friends, and clan -- only the CHARACTER restarts. */
+  async _handleCharacterReset(session, payload) {
+    const pid = session && session.id;
+    if (!pid) return;
+    if (!payload || payload.confirm !== true) return; // accidental sends are no-ops
+    try {
+      const current = await this.state.storage.get('rpg:' + pid);
+      if (current) await this.state.storage.put('rpgsnap:' + pid + ':prereset-' + Date.now(), current);
+    } catch (e) { /* snapshot is best-effort; the reset itself proceeds */ }
+    try { await this.state.storage.delete('rpg:' + pid); } catch (e) {}
+    const ws = this._wsBySessionId(pid);
+    if (ws) {
+      try { ws.send(JSON.stringify({ type: 'character_reset_done' })); } catch (e) {}
+      this.sessions.delete(ws);
+      try { ws.close(4005, 'character reset'); } catch (e) {}
+    }
+    // Belt-and-braces: drop the in-memory state NOW (webSocketClose
+    // would too, but it only fires on the TCP close completing).
+    delete this.playerState[pid];
+    delete this.stateHistory[pid];
+    this.dirtyPlayers.delete(pid);
+  },
+
   // Queue a player_state emit for the next tick flush.  Used by
   // tick-path mutators (regen, monster attack, respawn, combat XP)
   // to coalesce multiple per-tick mutations into one wire emit per

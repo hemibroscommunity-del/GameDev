@@ -295,10 +295,28 @@ function distributeKillXpToBuild(R, killXp) {
    defaults, so the handful of non-default sites (ttl, iconKey/special,
    stacked `ts: Date.now() + n` render-order nudges, precomputed `now`
    timestamps) pass exactly what they differ by and nothing else. */
+/* v2.3.1357: global live-popup budget.  Every popup mints a freshly
+   rasterized Pixi Text (a synchronous canvas draw); profiling a 12-
+   monster pack fight showed the popup field reaching 80+ live Texts
+   and dominating the frame (avg -55ms and the 400ms+ spikes vanished
+   with popups suppressed).  +100-HP fights run several times longer,
+   so the churn is now sustained — the owner's "running badly" report.
+   Over budget, the OLDEST default-ttl popup is expired by aging it out
+   (ts=0): the renderer's own age cleanup destroys its Text on the next
+   frame — the ONE sanctioned destroy path (never prune the array here;
+   see the destroyed-Text crash note in effectsRenderer).  Long-lived
+   popups (custom ttl: kill banners, warnings) are never dropped. */
+var MAX_LIVE_POPUPS = 24;
 function pushDmgPopup(S, x, y, text, color, extra) {
   var p = { x: x, y: y, text: text, color: color, ts: Date.now() };
   if (extra) for (var k in extra) p[k] = extra[k];
-  S.dmgNumbers.push(p);
+  var list = S.dmgNumbers;
+  if (list.length >= MAX_LIVE_POPUPS) {
+    for (var i = 0; i < list.length; i++) {
+      if (!list[i].ttl && list[i].ts !== 0) { list[i].ts = 0; break; }
+    }
+  }
+  list.push(p);
 }
 
 /* v2.3.1338: spawn-Y for a damage number on a monster — just ABOVE its

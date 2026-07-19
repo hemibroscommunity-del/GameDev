@@ -24,6 +24,8 @@ import { getEquip } from '@/rendering/gearCatalog.js'; /* v2.3.1108: armoured-hi
 import { rollMonsterShard } from '@/data/shards.js';
 import { addBuildUse, applyMeleeLifesteal, distributeKillXpToBuild, trackMonsterDamage, pushDmgPopup, monsterPopupY } from '@/game/combatHelpers.js';
 import { earnCertification as masteryEarnCert } from '@/game/mastery.js';
+import { celebrateLevelUps } from '@/game/levelCelebration.js';
+import { saveRpgSoon } from '@/game/rpgSave.js'; /* v2.3.1356 */
 import { pushHudPopup } from '@/ui/XpFlyOverlay.jsx';
 import { _objectSpread, _slicedToArray } from '@/lib/babelHelpers.js';
 
@@ -390,9 +392,9 @@ export function updateArrows(S, deps) {
                 }
                 var kba = Math.atan2(m.y - a._renderY, m.x - a._renderX);
                 /* Special projectiles (bow heavy / staff burst) knock
-                   back 3x.  Base 5 -> 8, special 15 -> 23 = +50% per
-                   user (v2.3.15) so arrow hits read as forceful. */
-                var _projKb = a.isSpecial ? 23 : 8;
+                   back 3x.  v2.3.1356: owner — monster bounce-back
+                   reduced 75% (23/8 -> 6/2; ratio kept). */
+                var _projKb = a.isSpecial ? 6 : 2;
                 m.x += Math.cos(kba) * _projKb;
                 m.y += Math.sin(kba) * _projKb;
                 /* Knockback recovery -- see melee path; pauses
@@ -505,17 +507,10 @@ export function updateArrows(S, deps) {
                        ranged/staff kill is a no-op (activeSlot gate),
                        but we still clear the per-monster damage entry. */
                     applyMeleeLifesteal(S, _R9, m);
-                    /* v2.3.910: combat level is DERIVED (sum of build-skill
-                       levels, set in recalcDerived inside addBuildProg above);
-                       fire feedback once per newly-reached level + refill. */
-                    while (_R9.level > (_R9._lastShownLevel || 1)) {
-                      _R9._lastShownLevel = (_R9._lastShownLevel || 1) + 1;
-                      _R9.hp = _R9.maxHp;
-                      _R9.stamina = _R9.maxStamina;
-                      _R9.mana = _R9.maxMana;
-                      setLevelUpMsg({ kind: 'combat', level: _R9._lastShownLevel, ts: Date.now() });
-                      try { BT_AUDIO.levelUp(); } catch (e) {}
-                    }
+                    /* v2.3.910: combat level is DERIVED (set in recalcDerived
+                       inside addBuildProg above), so no increment here.
+                       v2.3.1342: shared celebrateLevelUps (full burst). */
+                    celebrateLevelUps(S, _R9, { setLevelUpMsg: setLevelUpMsg });
                     var isCrit = a.dmg > pDmg;
                     try { BT_AUDIO.deathBoom(m && m.archetype); } catch (e) {}
                     S.screenShake = isCrit ? 6 : 3;
@@ -587,7 +582,12 @@ export function updateArrows(S, deps) {
                       pushDmgPopup(S, m.x, m.y - 40, dropName + '!', RARITY_TIERS[dropTier].color);
                     }
                     setRpgState(_objectSpread({}, _R9));
-                    try { localStorage.setItem('bt_rpg', JSON.stringify(_R9)); } catch (e) {}
+                    /* v2.3.1356: debounced — this runs once PER CORPSE
+                       inside the monster forEach; an unlimited-pierce
+                       special one-shotting a pack used to fire N
+                       synchronous full-blob writes in one frame (the
+                       frozen-screen report).  See rpgSave.js. */
+                    saveRpgSoon();
                   }
                   /* Kill marker removed — the damage number (capped at
                      remaining HP) plus the death effects already convey

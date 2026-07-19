@@ -25,10 +25,11 @@ import {
   calcWeaponDmg, calcCritChance, calcCritMult, calcMaxHp,
   monsterStat, MONSTER_HP_CURVE, ARCHETYPES, WEAPON_TYPES, BLACKSMITH_TIERS,
   SPECIAL_ATK_MULT, LUNGE_DAMAGE_MULT, HP_PER_COMBAT_LEVEL,
-  DAMAGE_CHANNEL_PCT, passiveDodgeChance, getVigorMult,
+  DAMAGE_CHANNEL_FLAT, passiveDodgeChance, getVigorFlat,
   swingCooldownMult, cleaveArcBonus, bowPierceCount, bowRangeMult, staffAoeMult,
-  getIronSkinReduction, getBlockStaminaMult, poiseStunMult,
-  getRecoveryMult, getConditioningMult, getStaminaGridMult, getSwiftnessMult,
+  getIronSkinFlat, getBlockStaminaMult, poiseStunMult,
+  getRecoveryFlat, getConditioningFlat, getStaminaFlat, getSwiftnessFlat,
+  t2Accel, t2CounterRate, T2_UNITS,
   COMBAT_BUILD_CEILING, T2_CHANNEL_CAP,
 } from '../src/data/gameSystems.js';
 
@@ -202,7 +203,7 @@ const ehps = BUILDS.map((b) => {
   // v2.3.1156: grid budget is min(200, 2 × stat), channels cap at 100.
   const vigorPts = Math.min(100, 2 * tank.vitality);
   const evasionPts = Math.min(100, 2 * tank.endurance);
-  const gHp = Math.floor(calcMaxHp(LEVEL, tank.vitality) * getVigorMult({ hpSpec: { vigor: vigorPts } }));
+  const gHp = Math.floor(calcMaxHp(LEVEL, tank.vitality) + getVigorFlat({ hpSpec: { vigor: vigorPts } })); // v2.3.1343: flat vigor
   const gDodge = passiveDodgeChance(tank.agility, evasionPts);
   const gEhp = gHp / (1 - gDodge);
   console.log(pad('tank+grids', 18) + pad(gHp, 8) + pad(num(gDodge * 100), 8) + pad(num(gEhp, 0), 8));
@@ -269,11 +270,12 @@ check('INV-14', `lunge mult ${LUNGE_DAMAGE_MULT} < 1.0 (per-hit below auto)`, LU
   const refPower = Math.round(6 + (REF_LEVEL - 1) * 1.05);
   const dps = (w, { dmgPts = 0, critPts = 0, critDmgPts = 0, cdMult = 1 }) => {
     const critC = calcCritChance(refPower, critPts);
-    const critM = calcCritMult(refPower, critDmgPts);
+    const critM = calcCritMult(refPower);
+    const critFlat = t2Accel(critDmgPts, T2_UNITS.critDmg); // v2.3.1345: flat crit bonus
     let sum = 0;
     for (let i = 0; i < SAMPLES; i++) {
-      let d = calcWeaponDmg(w, refPower, refTier.tierMult) * (1 + dmgPts * DAMAGE_CHANNEL_PCT);
-      if (Math.random() < critC) d *= critM;
+      let d = calcWeaponDmg(w, refPower, refTier.tierMult) + t2Accel(dmgPts, T2_UNITS.damage); // v2.3.1345: accel flat
+      if (Math.random() < critC) d = d * critM + critFlat;
       sum += Math.max(1, Math.round(d));
     }
     return (sum / SAMPLES) / (SWING_SEC * cdMult);
@@ -303,11 +305,18 @@ check('INV-14', `lunge mult ${LUNGE_DAMAGE_MULT} < 1.0 (per-hit below auto)`, LU
   report('tempo 100 (atk speed at the -20% cap)', tempoPct);
   const dpsVals = [dmg100, ccCtx, cdCtx];
   const dpsMedian = dpsVals.slice().sort((a, b) => a - b)[1];
-  check('UN-01', 'every DPS channel prices in the parity band (0.75x-1.25x of the class median, synergy-aware)',
-    dpsVals.every((v) => v >= dpsMedian * 0.75 && v <= dpsMedian * 1.25),
-    `[${dpsVals.map((v) => num(v)).join(', ')}] vs median ${num(dpsMedian)} (band ${num(dpsMedian * 0.75)}..${num(dpsMedian * 1.25)})`);
+  /* ═══ PARITY GATES RETIRED (v2.3.1344, owner directive 2026-07-16) ═══
+     The kid-simple reprice makes IMBALANCE POLICY: the game is
+     fun-first, explicitly not competitive, and channels are priced for
+     how a 7-year-old reads them, not for cross-channel parity.  UN-01
+     (DPS parity band), UN-02 (EHP parity band), UN-03 (utility ~70%
+     rule) and CH-03 (crit-pair sanity ceiling) are retired ON PURPOSE
+     — do NOT "fix" the imbalance back (BALANCE-PLAN §4c).  UN-04
+     (trap-free: strictly gains through point 100) STAYS — "no silent
+     traps" is still law. */
+  console.log(pad('  (UN-01 parity band retired)', 42) + `[${dpsVals.map((v) => num(v)).join(', ')}] vs median ${num(dpsMedian)}`);
   check('CH-02', 'crit-dmg full investment is felt (>3% DPS)', exePct > 3, `+${num(exePct)}%`);
-  check('CH-03', 'crit pair stays a sane multiplier (< x2 DPS)', pairPct < 100, `+${num(pairPct)}%`);
+  console.log(pad('  (CH-03 sanity ceiling retired)', 42) + `crit pair +${num(pairPct)}%`);
   check('CH-04', 'tempo cap buys ~+25% DPS (cadence, not damage)', tempoPct > 20 && tempoPct < 30, `+${num(tempoPct)}%`);
 
   /* ── defense channels (v2.3.1137) at the same reference cell ──
@@ -347,18 +356,24 @@ check('INV-14', `lunge mult ${LUNGE_DAMAGE_MULT} < 1.0 (per-hit below auto)`, LU
      the shared 30% dodge cap (the §4 hard rule) — the whole point of the
      gate is that channel completion CANNOT push past agility's cap. */
   /* v2.3.1156: full investment is now the uniform 100-pt cap. */
-  const vigorUplift = (getVigorMult({ hpSpec: { vigor: 100 } }) - 1) * 100; // +25% maxHp == +25% EHP
-  console.log(pad('vigor 100 (v2.3.1156, HP grid)', 42) + '+' + num(vigorUplift) + '% EHP');
-  check('HP-01', 'vigor lands in the Iron Skin band (0.5x-2x of +33% EHP)',
-    vigorUplift >= ironUplift * 0.5 && vigorUplift <= ironUplift * 2,
-    `+${num(vigorUplift)}% vs yardstick +${num(ironUplift)}%`);
-  const capAgi = 375; // 375 × 0.0008 = 30% — at the cap from agility alone
+  /* v2.3.1343: vigor is FLAT +10 HP/pt; report the flat pool add.  Its
+     %EHP now depends on base HP, which is exactly the kind of parity
+     math the owner retired (see the gate-retirement note below). */
+  const vigorUplift = getVigorFlat({ hpSpec: { vigor: 100 } });
+  console.log(pad('vigor 100 (flat, v2.3.1343)', 42) + '+' + num(vigorUplift) + ' HP');
+  /* HP-01 RETIRED (v2.3.1344): vigor's flat identity has no %EHP unit
+     to band — pricing parity is no longer a goal (owner 2026-07-16). */
+  const capAgi = 625; // 625 × 0.0008 = 50% — agility's own dice cap
   const dodgeAtCap = passiveDodgeChance(capAgi, 0);
   const dodgeStacked = passiveDodgeChance(capAgi, 100);
   const dodgeEvOnly = passiveDodgeChance(0, 100);
   console.log(pad('evasion 100 (v2.3.1156, Endurance grid)', 42) + '+' + num(dodgeEvOnly * 100) + '% dodge alone; ' + num(dodgeStacked * 100) + '% stacked on capped agility');
-  check('EN-01', 'evasion SHARES the 30% dodge cap with agility (no stacking past it)',
-    dodgeAtCap === 0.30 && dodgeStacked === 0.30 && Math.abs(dodgeEvOnly - 0.10) < 1e-9,
+  // v2.3.1345 (counter skills): Evasion is a deterministic counter
+  // STACKING on the agility dice (the old shared cap is gone by
+  // design); the expected-value helper ceilings at 95% so displays
+  // never claim immunity.
+  check('EN-01', 'dodge model: agility dice cap 50%; evasion counter stacks; display ceiling 95%',
+    dodgeAtCap === 0.50 && Math.abs(dodgeStacked - 0.95) < 1e-9 && Math.abs(dodgeEvOnly - 0.50) < 1e-9,
     `capped ${num(dodgeAtCap * 100)}%, stacked ${num(dodgeStacked * 100)}%, alone ${num(dodgeEvOnly * 100)}%`);
 
   /* ═══ v2.3.1157: the uniform-economy sweep gates (UN-02..04) ═══
@@ -367,18 +382,14 @@ check('INV-14', `lunge mult ${LUNGE_DAMAGE_MULT} < 1.0 (per-hit below auto)`, LU
   console.log(`\n═══ uniform T2 economy — 6 skills × 5 channels × ${T2_CHANNEL_CAP} = 3000 slots; ceiling ${COMBAT_BUILD_CEILING} (${num(COMBAT_BUILD_CEILING / 3000 * 100, 0)}%); earn 2/level → 200/skill ═══`);
   const ehpVals = [ironUplift, vigorUplift, swUplift];
   const ehpMedian = ehpVals.slice().sort((a, b) => a - b)[1];
-  check('UN-02', 'every EHP channel prices in the parity band (0.75x-1.25x of the class median)',
-    ehpVals.every((v) => v >= ehpMedian * 0.75 && v <= ehpMedian * 1.25),
-    `[${ehpVals.map((v) => num(v)).join(', ')}] vs median ${num(ehpMedian)}`);
+  console.log(pad('  (UN-02 parity band retired)', 42) + `[${ehpVals.map((v) => num(v)).join(', ')}] vs median ${num(ehpMedian)}`);
   /* UN-03 covers the %DPS-priceable utility (tempo).  Thorns and
      bulwark deliberately live under their own dedicated gates instead
      (DF-01 reflect ceiling, DF-03 block uptime) — their value isn't a
      clean %DPS unit (both are conditional on block uptime), so folding
      them into this band would compare apples to stamina bars. */
   const utilVals = { tempo: tempoPct };
-  check('UN-03', 'utility channels price at 0.3x-0.85x of a DPS point (the ~70% rule, banded)',
-    Object.values(utilVals).every((v) => v >= dpsMedian * 0.3 && v <= dpsMedian * 0.85),
-    `${JSON.stringify(utilVals)} vs DPS median ${num(dpsMedian)}`);
+  console.log(pad('  (UN-03 ~70% rule retired)', 42) + `${JSON.stringify(utilVals)} vs DPS median ${num(dpsMedian)}`);
   /* UN-04 — TRAP-FREE: every active channel's value function strictly
      increases through the 100th point.  This is the mechanical proof of
      the "every cap lands at exactly 100 points" rule; a coefficient
@@ -387,27 +398,30 @@ check('INV-14', `lunge mult ${LUNGE_DAMAGE_MULT} < 1.0 (per-hit below auto)`, LU
      inline (SYNC: server/src/index.js thorns/secondwind/lifeblood). */
   {
     const mkW = (cat, key, p) => ({ weapon: { type: cat === 'bow' ? 'bow' : cat === 'staff' ? 'staff' : 'sword' }, activeSlot: 'melee', weaponSpecs: { [cat]: { [key]: p } } });
+    /* v2.3.1345: probes updated to the accelerating-flat / counter
+       helpers.  SYNC: server/src/{data,grids,combat,index}.js consume
+       the same t2Accel/T2_UNITS table (mirror-audit ties it). */
     const PROBES = [
-      ['edge/drawPower/spellPower', (p) => p * DAMAGE_CHANNEL_PCT],
+      ['edge/drawPower/spellPower', (p) => t2Accel(p, T2_UNITS.damage)],
       ['precision/marksmanship/overload', (p) => calcCritChance(0, p)],
-      ['executioner/headshot/focus', (p) => calcCritMult(0, p)],
+      ['executioner/headshot/focus', (p) => t2Accel(p, T2_UNITS.critDmg)],
       ['tempo', (p) => -swingCooldownMult(mkW('sword', 'tempo', p))],
       ['cleave', (p) => cleaveArcBonus({ weaponSpecs: { sword: { cleave: p } } })],
       ['piercing', (p) => bowPierceCount({ weaponSpecs: { bow: { piercing: p } } })],
       ['longshot', (p) => bowRangeMult({ weaponSpecs: { bow: { longshot: p } } })],
       ['detonation', (p) => staffAoeMult({ weaponSpecs: { staff: { detonation: p } } })],
-      ['attunement', (p) => 1 + Math.min(100, p) * 0.005],
+      ['attunement', (p) => 1 + Math.min(100, p) * 0.01],
       ['bulwark', (p) => 1 - getBlockStaminaMult({ defenseSpec: { bulwark: p } })],
-      ['ironskin', (p) => getIronSkinReduction({ defenseSpec: { ironskin: p } })],
-      ['thorns', (p) => Math.min(0.5, p * 0.005)],
-      ['secondwind', (p) => Math.min(0.5, p * 0.005)],
+      ['ironskin', (p) => getIronSkinFlat({ defenseSpec: { ironskin: p } })],
+      ['thorns', (p) => t2Accel(p, T2_UNITS.thorns)],
+      ['secondwind', (p) => t2Accel(p, T2_UNITS.secondwind)],
       ['poise', (p) => 1 - poiseStunMult({ defenseSpec: { poise: p } })],
-      ['vigor', (p) => getVigorMult({ hpSpec: { vigor: p } })],
-      ['recovery', (p) => getRecoveryMult({ hpSpec: { recovery: p } })],
-      ['lifeblood', (p) => Math.min(0.25, p * 0.0025)],
-      ['stamina', (p) => getStaminaGridMult({ enduranceSpec: { stamina: p } })],
-      ['conditioning', (p) => getConditioningMult({ enduranceSpec: { conditioning: p } })],
-      ['swiftness', (p) => getSwiftnessMult({ enduranceSpec: { swiftness: p } })],
+      ['vigor', (p) => getVigorFlat({ hpSpec: { vigor: p } })],
+      ['recovery', (p) => getRecoveryFlat({ hpSpec: { recovery: p } })],
+      ['lifeblood', (p) => t2Accel(p, T2_UNITS.lifeblood)],
+      ['stamina', (p) => getStaminaFlat({ enduranceSpec: { stamina: p } })],
+      ['conditioning', (p) => getConditioningFlat({ enduranceSpec: { conditioning: p } })],
+      ['swiftness', (p) => getSwiftnessFlat({ enduranceSpec: { swiftness: p } })],
       ['evasion', (p) => passiveDodgeChance(0, p)],
     ];
     const traps = PROBES.filter(([, f]) => !(f(100) > f(99))).map(([name]) => name);

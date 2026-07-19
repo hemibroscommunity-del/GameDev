@@ -1,4 +1,4 @@
-# Build-Skill Progression (combat level = Σ build skills)
+# Build-Skill Progression (combat level = T2 points placed)
 
 **Status:** Phase 1 shipped (v2.3.910).  The wired-channel slice shipped
 v2.3.1133–1138: ALL built grid channels are live (weapon 15/15, defense
@@ -7,6 +7,48 @@ v2.3.1133–1138: ALL built grid channels are live (weapon 15/15, defense
 server `_recomputeMaxes`).  Still pending: dedicated HP/Endurance skills
 with their own 5-category grids (Phases 2/4 below).  Prototype — no live
 players, so there is no save migration or backwards-compat layer.
+
+## v2.3.1342 — LEVEL IS BUILD (supersedes the level formula below)
+
+Owner directive 2026-07-16 ("I want each level up to feel powerful…
+each time you earn a tier 2 level it should raise your combat level",
+max level 1000):
+
+- **Combat level = min(1000, 1 + total T2 points PLACED across all six
+  grids)** — `LEVEL_CAP` 500 → 1000 ≈ `COMBAT_BUILD_CEILING`, so max
+  level IS a finished build and **every point spent is exactly +1
+  combat level**.  The `1 +`: fresh characters are level 1 (RPG
+  floor), and the FIRST spend must level like every other — plain
+  `max(1, total)` made point #1 a 1 → 1 dud (caught by the QA rig);
+  the cap instead lands on point #1000, when the level is already
+  maxed.  One summation both sides: `combatBuildTotal` (client,
+  gameSystems.js) / `computeBuildTotal` (server, migrations.js —
+  shared by `_recomputeMaxes` and migration v8 `level-is-build`).
+  Skill LEVELS still gate earning (2 pts/level, 200/skill) but no
+  longer feed the level number.
+- **Deploy-order gate `caps.t2simple`:** the client keeps the legacy
+  stat-sum formula until the worker advertises the flag — the worker's
+  `player_state.level` echo is verbatim-authoritative, and two live
+  formulas would flicker.  Same pattern as `hpEndGrids`
+  (`setT2SimpleEnabled` / `isT2SimpleEnabled`).
+- **Spend = level-up moment.** The celebration body is extracted to
+  `src/game/levelCelebration.js` (`celebrateLevelUps(S, R, opts)`),
+  called from the three kill paths (full burst) AND
+  `SpendPointConfirm.onConfirm` (`opts.light`: banner + chime, no
+  shake/particles under the sheet).  Banner overlay z-index 22 → 70
+  (above the dash sheet, pointer-events none); `_lastShownLevel` is
+  clamped DOWNWARD at boot and in the helper because level-is-build can
+  lower an old save's level.
+- **trainDefense ±5 valid-threat gate removed** (client gameSystems) —
+  with level racing to 1000, the gate would permanently freeze defense
+  training after the first few dozen points.
+- **Canonical-pool fix:** `computeCanonicalPools` was missing
+  `laststand` in the HP spent-key list since the channel shipped —
+  Last Stand spends were refunded as free points.  Fixed and pinned by
+  a migrations.test regression.
+- Tests: protocol-v2 (derivation + 1000 cap + skill-level inertness),
+  grids (spend = +1 level + refill; stat bump = flat), migrations (v8),
+  anticheat (bootstrap cap 1000), persistence (reconnect re-derive).
 
 ## The model
 The six combat identities are **build skills**, each leveled by *use*, each

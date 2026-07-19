@@ -3,7 +3,16 @@
  * projectiles, telegraphs, lock-on, ambient particles, chat bubbles, building signs.
  * Uses PixiJS Graphics for procedural particles and Text for damage numbers.
  */
-import { Assets, Container, Graphics, Rectangle, Sprite, Text, Texture, TextStyle } from 'pixi.js';
+import { Assets, BitmapFont, BitmapText, Container, Graphics, Rectangle, Sprite, Text, Texture, TextStyle } from 'pixi.js';
+
+/* v2.3.1358 (owner directive: ALL animations ready before first use —
+   see CLAUDE.md "Animation preloading is LAW"): every Assets.load in
+   this renderer is tracked so the intro gate can AWAIT the whole set.
+   _fxLoad is a drop-in for Assets.load; effectsAnimationsReady() is
+   consumed by preloadWorldAnimations (preloadAnimations.js). */
+const _fxPreload = [];
+const _fxLoad = (url) => { const p = Assets.load(url); _fxPreload.push(p); return p; };
+export function effectsAnimationsReady() { return Promise.allSettled(_fxPreload); }
 import { ELEMENTS } from '@/data/elements.js';
 import { ZONES } from '@/data/zones.js';
 import { TILE, MINE_SPOT_R } from '@/data/constants.js';
@@ -32,7 +41,7 @@ import { GEARLAYER_VER } from '../gearVersion.js';   // shared cache-bust string
 const POPUP_ICONS = {};
 const POPUP_ICON_KEYS = ['xp', 'gold', 'sword', 'arrow', 'spell', 'heart'];
 Promise.all(POPUP_ICON_KEYS.map((k) =>
-  Assets.load('/icons/popups/' + k + '.webp').then((tex) => { POPUP_ICONS[k] = tex; })
+  _fxLoad('/icons/popups/' + k + '.webp').then((tex) => { POPUP_ICONS[k] = tex; })
 )).catch((err) => console.warn('[popup-icons] load failed', err));
 
 /* Elemental shard icons -- one PNG per zone, served from
@@ -41,7 +50,7 @@ Promise.all(POPUP_ICON_KEYS.map((k) =>
    the overlay. */
 const SHARD_ICONS = {};
 Promise.all(Object.values(ZONE_SHARDS).map((s) =>
-  Assets.load('/icons/shards/' + s.key + '.webp').then((tex) => { SHARD_ICONS[s.key] = tex; })
+  _fxLoad('/icons/shards/' + s.key + '.webp').then((tex) => { SHARD_ICONS[s.key] = tex; })
 )).catch((err) => console.warn('[shard-icons] load failed', err));
 
 /* v2.3.1334: painted magic bolt (owner sheet) — the basic staff
@@ -56,7 +65,7 @@ Promise.all(Object.values(ZONE_SHARDS).map((s) =>
 const MAGIC_BOLT_FRAMES = [];
 const MAGIC_BOLT_ANCHOR = { x: 0.688, y: 0.534 };
 const MAGIC_BOLT_FRAME_MS = 90;
-Assets.load('/sprites/projectiles/magic-bolt-v1.webp?v=2.3.1334').then((tex) => {
+_fxLoad('/sprites/projectiles/magic-bolt-v1.webp?v=2.3.1334').then((tex) => {
   if (!tex || !tex.source) return;
   const fw = Math.floor(tex.source.width / 4);
   for (let i = 0; i < 4; i++) {
@@ -85,7 +94,7 @@ const NODE_SPRITE_TEX = {};
 const NODE_SPRITE_HEIGHT_BASE = { tree: 168, fishSpot: 132, oreVein: 132 };
 const NODE_SPRITE_ANCHOR_Y = { tree: 1.0, fishSpot: 0.5, oreVein: 1.0 };
 Promise.all(Object.entries(NODE_SPRITE_SOURCES).map(([k, path]) =>
-  Assets.load(path).then((tex) => { NODE_SPRITE_TEX[k] = tex; })
+  _fxLoad(path).then((tex) => { NODE_SPRITE_TEX[k] = tex; })
 )).catch((err) => console.warn('[node-sprites] load failed', err));
 
 /* Ore-vein break: a 14-frame 256-px horizontal strip (intact -> split
@@ -102,7 +111,7 @@ const ORE_BREAK_DURATION_MS = 700;
 const ORE_BREAK_FILL = 0.45;
 const ORE_BREAK_ANCHOR_Y = 0.78;
 let ORE_BREAK_TEX = null;
-Assets.load('/sprites/world/ore-vein-break.webp?v=1').then((tex) => {
+_fxLoad('/sprites/world/ore-vein-break.webp?v=1').then((tex) => {
   if (!tex || !tex.source) return;
   tex.source.scaleMode = 'linear';
   tex.source.autoGenerateMipmaps = true;
@@ -123,7 +132,7 @@ const ORE_BREAK_SPLIT_FRAME = 7;
 /* Copper ore icon (same asset the inventory uses) — floats out of the broken
    node as a "collected" pop. All ores currently share the copper thumb. */
 let ORE_ICON_TEX = null;
-Assets.load('/icons/ore/ore-copper.webp').then((tex) => {
+_fxLoad('/icons/ore/ore-copper.webp').then((tex) => {
   if (tex) { tex.source.scaleMode = 'linear'; ORE_ICON_TEX = tex; }
 }).catch((err) => console.warn('[ore-icon] load failed', err));
 
@@ -173,10 +182,10 @@ const IMPACT_MIN_GAP_MS = 150;
    town has no snowmen.  Keeps the "no eager preloading" memory/download budget. */
 let IMPACT_TEX = null;
 let _impactLoadStarted = false;
-function ensureImpactTex() {
+export function ensureImpactTex() {
   if (_impactLoadStarted) return;
   _impactLoadStarted = true;
-  Assets.load('/sprites/monsters/snowman/impact.png?v=2').then((tex) => {
+  _fxLoad('/sprites/monsters/snowman/impact.png?v=2').then((tex) => {
     if (!tex || !tex.source) return;
     tex.source.scaleMode = 'linear';
     tex.source.autoGenerateMipmaps = true;
@@ -213,6 +222,102 @@ const DMG_STYLE_EMOJI = new TextStyle({
   fill: '#ffffff',
   align: 'center',
 });
+
+/* v2.3.1357: pre-baked glyph atlas for PLAIN NUMERIC popups (damage /
+   XP / gold — the overwhelming majority in combat).  Every `new Text`
+   is a synchronous canvas rasterization; profiling a 12-monster pack
+   fight showed popup MINT RATE (not live count) dominating the frame
+   (avg -55ms and the 400ms spikes vanished with popups suppressed).
+   +100-HP fights run several times longer, so that churn is sustained
+   — the owner's "running badly" report.  BitmapText assembles glyphs
+   from this atlas at near-zero cost.  Glyphs bake WHITE + black stroke
+   at 2x the base popup size (scaled down at use = crisp on retina);
+   tint colors the fill while the black stroke stays black (0 x tint).
+   Popups needing canvas features keep classic Text: emoji (own style),
+   specials (dropShadow halo), and any char outside the baked set. */
+const DMG_BMP_FONT = 'bt-dmg-digits';
+/* v2.3.1363: bake at 100px — pixi's DynamicBitmapFont measurement base.
+   The v2.3.1357 28px bake ended up stored at a FRACTIONAL effective
+   resolution (pixi scales page resolution by bakePx/100), so on iPhone
+   (DPR 3) glyphs were upscaled at draw time: bilinear filtering smeared
+   the heavy black stroke across the white fill and damage numbers read
+   as muddy BLACK over Ember's dark terrain (owner report).  Desktop at
+   DPR 1 downscaled and looked fine, which is why the rig never caught
+   it.  A 100px bake always DOWNSCALES (21px popup × DPR 3 = 63 device
+   px) — crisp on every device, no DPR games.  Stroke 14 keeps the
+   classic DMG_STYLE outline ratio (3/21 = 14/100 ≈ 0.14; the old bake's
+   6/28 = 0.21 was 50% heavier, part of the mud). */
+const DMG_BMP_BAKE_PX = 100;
+let _dmgBmpReady = false;
+try {
+  BitmapFont.install({
+    name: DMG_BMP_FONT,
+    style: {
+      fontFamily: 'Source Sans 3, sans-serif',
+      fontSize: DMG_BMP_BAKE_PX,
+      fontWeight: '800',
+      fill: '#ffffff',
+      stroke: { color: '#000000', width: 14 },
+    },
+    chars: [['0', '9'], ['A', 'Z'], ['a', 'z'], '+-. !'],
+  });
+  _dmgBmpReady = true;
+} catch (e) { /* fallback: classic Text path below */ }
+/* Plain popups the atlas can render: digits/letters/space and + - . ! */
+const DMG_BMP_RE = /^[0-9A-Za-z+\-. !]+$/;
+
+/* v2.3.1361: prewarm the BitmapText render pipe behind the loading
+   screen.  BitmapFont.install (above) bakes the glyph atlas at module
+   load, but the atlas GPU upload AND the BitmapText batcher/shader
+   init were still deferred to the first popup DRAW — i.e. the first
+   hit of the session, mid-combat.  On iOS Safari that first-use init
+   is the prime suspect for the "hit once by a fire goblin → game
+   crashed" report (the rest of the hit path is years-old code and the
+   crash arrived with v2.3.1357).  Renders one throwaway BitmapText
+   containing every baked char through the REAL renderer while the
+   intro overlay is still up, so combat never pays (or crashes on)
+   that init.  Any failure here permanently downgrades popups to the
+   classic Text path — same visuals, pre-1357 cost. */
+export function prewarmDmgFontPipe(renderer) {
+  if (!renderer) return;
+  if (_dmgBmpReady) {
+    let bt = null;
+    try {
+      bt = new BitmapText({
+        text: '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz+-. !',
+        style: { fontFamily: DMG_BMP_FONT, fontSize: DMG_BMP_BAKE_PX },
+      });
+      bt.alpha = 0.001; /* must actually draw — alpha 0 / visible false would be culled */
+      renderer.render(bt);
+    } catch (e) {
+      _dmgBmpReady = false; /* pipe is broken here — never touch it in combat */
+    }
+    if (bt) { try { bt.destroy(); } catch (e) { /* best-effort */ } }
+  }
+  /* v2.3.1363: also warm the CLASSIC Text popup pipe — owner still felt
+     a hitch on the first hit taken.  Early hits mint classic-Text popups
+     the BitmapText atlas can't cover ('🛡️ Defense Lv N' fires on nearly
+     every early hit), and their first draw pays the canvas-text pipe
+     init PLUS the platform's first emoji-glyph rasterization (Apple
+     Color Emoji load on iOS) at full DPR.  Render one of each style
+     once behind the loading screen instead. */
+  /* NB mirror real usage: DMG_STYLE (stroked) only ever draws ASCII;
+     emoji ONLY goes through DMG_STYLE_EMOJI — stroked Text + emoji is
+     the documented iOS Safari tab-killer, in prewarm too. */
+  const warmTexts = [
+    [DMG_STYLE, '-0 BLOCK Dodge!'],
+    [DMG_STYLE_EMOJI, '🛡️🔥 Defense Lv 0'],
+  ];
+  for (const [style, str] of warmTexts) {
+    let t = null;
+    try {
+      t = new Text({ text: str, style: { ...style, fontSize: 21 } });
+      t.alpha = 0.001;
+      renderer.render(t);
+    } catch (e) { /* best-effort */ }
+    if (t) { try { t.destroy(); } catch (e) { /* best-effort */ } }
+  }
+}
 
 /* Cheap ASCII test — anything outside 0x20-0x7E is treated as emoji. */
 function isAsciiOnly(s) {
@@ -344,7 +449,7 @@ export class EffectsRenderer {
     this.nodeLayer.addChild(this.chopSprite);
     this._chopFrames = [];
     this._chopLastFrame = -1;  // strike-frame edge tracker for the chop sfx
-    Assets.load('/sprites/skills/chop-strip.webp').then((tex) => {
+    _fxLoad('/sprites/skills/chop-strip.webp').then((tex) => {
       const FW = 240, FH = 220;  // per-frame size of chop-strip.png
       const n = Math.max(1, Math.round(tex.width / FW));
       for (let i = 0; i < n; i++) {
@@ -407,7 +512,7 @@ export class EffectsRenderer {
     this.cookChestSprite.visible = false;
     this.nodeLayer.addChild(this.cookChestSprite);
     this._cookFrames = [];
-    Assets.load('/sprites/skills/cook-strip.webp').then((tex) => {
+    _fxLoad('/sprites/skills/cook-strip.webp').then((tex) => {
       const FW = 213, FH = 220;
       const n = Math.max(1, Math.round(tex.width / FW));
       for (let i = 0; i < n; i++) this._cookFrames.push(new Texture({ source: tex.source, frame: new Rectangle(i * FW, 0, FW, FH) }));
@@ -416,7 +521,7 @@ export class EffectsRenderer {
        the bare mannequin legs don't show behind/through the greaves (the pan is
        preserved). Same 213x220 frame layout as cook-strip. */
     this._cookLeglessFrames = [];
-    Assets.load('/sprites/skills/cook-strip-legless.webp').then((tex) => {
+    _fxLoad('/sprites/skills/cook-strip-legless.webp').then((tex) => {
       const FW = 213, FH = 220;
       const n = Math.max(1, Math.round(tex.width / FW));
       for (let i = 0; i < n; i++) this._cookLeglessFrames.push(new Texture({ source: tex.source, frame: new Rectangle(i * FW, 0, FW, FH) }));
@@ -427,7 +532,7 @@ export class EffectsRenderer {
     this.fireSprite.visible = false;
     this.nodeLayer.addChild(this.fireSprite);
     this._fireFrames = [];
-    Assets.load('/sprites/skills/firemaking-strip.webp').then((tex) => {
+    _fxLoad('/sprites/skills/firemaking-strip.webp').then((tex) => {
       const FW = 161, FH = 220;
       const n = Math.max(1, Math.round(tex.width / FW));
       for (let i = 0; i < n; i++) this._fireFrames.push(new Texture({ source: tex.source, frame: new Rectangle(i * FW, 0, FW, FH) }));
@@ -648,7 +753,7 @@ export class EffectsRenderer {
     this.nodeLayer.addChild(this.bowWeaponSprite);
     const _loadBowStrip = (target, dir, url, cfg) => {
       target[dir] = [];
-      Assets.load(url + '?v=' + BOW_ART_VERSION).then((tex) => {
+      _fxLoad(url + '?v=' + BOW_ART_VERSION).then((tex) => {
         const n = Math.max(1, Math.round(tex.width / cfg.fw));
         for (let i = 0; i < n; i++) target[dir].push(new Texture({ source: tex.source, frame: new Rectangle(i * cfg.fw, 0, cfg.fw, cfg.fh) }));
       }).catch((err) => console.warn('[bow ' + dir + '] load failed', err));
@@ -752,8 +857,46 @@ export class EffectsRenderer {
     const gfx = this.particleGfx;
     gfx.clear();
 
+    /* v2.3.1360 (owner): World View player beacon — the avatar renders
+       as a distant speck on the overworld and gets lost against the
+       painted terrain.  v2.3.1361 (owner: "more like a reticle circle,
+       not a blurry light"): crisp stroked ring + 4 compass ticks +
+       center dot instead of soft fills.  A dark under-stroke keeps the
+       ring readable over both snow and dark forest.  Plain strokes on
+       the shared particle Graphics (no filters — iOS WebGL static,
+       CLAUDE.md); subtle radius pulse so the eye still finds it. */
+    if (S.currentZone === 'worldview' && S.player) {
+      const px = S.player.x, py = S.player.y;
+      const r = 14 + 1.5 * Math.sin(now / 400);
+      /* v2.3.1362 (owner): whole reticle at ~50% opacity — full-strength
+         strokes read too harsh over the painted map.  Alphas below are
+         the v2.3.1361 values halved. */
+      /* contrast halo under the bright ring */
+      gfx.circle(px, py, r);
+      gfx.stroke({ width: 3.5, color: 0x1c2430, alpha: 0.25 });
+      /* the reticle ring */
+      gfx.circle(px, py, r);
+      gfx.stroke({ width: 1.5, color: 0xffffff, alpha: 0.5 });
+      /* 4 compass ticks, outward from the ring */
+      for (let i = 0; i < 4; i++) {
+        const a = i * Math.PI / 2;
+        const ca = Math.cos(a), sa = Math.sin(a);
+        gfx.moveTo(px + ca * (r + 1), py + sa * (r + 1));
+        gfx.lineTo(px + ca * (r + 6), py + sa * (r + 6));
+      }
+      gfx.stroke({ width: 2, color: 0xffffff, alpha: 0.5 });
+      /* center dot on the player's feet */
+      gfx.circle(px, py, 2);
+      gfx.fill({ color: 0xffffff, alpha: 0.45 });
+    }
+
     // Hit particles
     const parts = S.hitParticles || [];
+    /* v2.3.1347: hard ceiling — burning-monster status FX (and any other
+       runaway spawner) could grow this without bound and tank the frame
+       rate. Particles are plain data drawn into the shared Graphics (no
+       per-particle Pixi object), so dropping the oldest is safe. */
+    if (parts.length > 400) parts.splice(0, parts.length - 400);
     for (let i = parts.length - 1; i >= 0; i--) {
       const p = parts[i];
       if (isNaN(p.x) || isNaN(p.y)) { parts.splice(i, 1); continue; }
@@ -939,7 +1082,11 @@ export class EffectsRenderer {
         const SPACING = 26;
         let lowestY = -Infinity;
         let hasNeighbor = false;
-        for (let j = 0; j < numbers.length; j++) {
+        /* v2.3.1347: the neighbor scan is O(n) per NEW popup (O(n²) in a
+           burst). Past ~40 live popups the field is dense chaos where
+           stacking placement is unreadable anyway — skip the scan and
+           take the raw spawn position. */
+        for (let j = 0; numbers.length <= 40 && j < numbers.length; j++) {
           if (j === i) continue;
           const o = numbers[j];
           if (!o._pixiText || o._pixiText.destroyed) continue;
@@ -958,34 +1105,63 @@ export class EffectsRenderer {
            match normal size and instead get a bright outer glow (see
            dropShadow below) to mark them as specials. */
         const fontSize = baseFontSize;
-        const textStyle = { ...baseStyle, fontSize, fill: displayColor };
-        if (dmg.special) {
-          /* distance:0 + high blur = even halo on all sides. Warm yellow
-             matches the special-projectile yellow halo. */
-          textStyle.dropShadow = {
-            color: '#ffe066',
-            alpha: 0.95,
-            blur: 8,
-            distance: 0,
-            angle: 0,
-          };
+        /* v2.3.1357: plain popups (no emoji, no special halo, chars inside
+           the baked set) assemble from the pre-baked glyph atlas instead of
+           rasterizing a fresh canvas — the pack-fight frame killer.  Tint
+           colors the white fill; the black stroke stays black (0 x tint). */
+        let text = null;
+        if (_dmgBmpReady && !dmg.special && baseStyle === DMG_STYLE && DMG_BMP_RE.test(dmg.text || '')) {
+          /* v2.3.1361: defensive — if the BitmapText pipe ever throws
+             (fire-goblin crash hardening), downgrade to classic Text
+             PERMANENTLY for the session instead of taking the whole
+             frame down on every subsequent popup. */
+          try {
+            text = new BitmapText({
+              text: dmg.text,
+              style: { fontFamily: DMG_BMP_FONT, fontSize: DMG_BMP_BAKE_PX },
+            });
+            /* Bake is 2x — scale down to the popup size (crisp on retina).
+               NOTE the spawn-pop animation below multiplies .scale; stash
+               the base so it scales around this, not around 1. */
+            text._bmpBaseScale = fontSize / DMG_BMP_BAKE_PX;
+            text.scale.set(text._bmpBaseScale, text._bmpBaseScale);
+            text.tint = displayColor;
+          } catch (e) {
+            _dmgBmpReady = false;
+            if (text) { try { text.destroy(); } catch (e2) { /* best-effort */ } }
+            text = null;
+          }
         }
-        const text = new Text({
-          text: dmg.text,
-          style: textStyle,
-        });
-        /* Pixi v8 TextStyle stores fields privately; the spread above may drop
-           overrides. Set fill and fontSize explicitly to guarantee they apply. */
-        text.style.fill = displayColor;
-        text.style.fontSize = fontSize;
-        if (dmg.special) {
-          text.style.dropShadow = {
-            color: '#ffe066',
-            alpha: 0.95,
-            blur: 8,
-            distance: 0,
-            angle: 0,
-          };
+        if (!text) {
+          const textStyle = { ...baseStyle, fontSize, fill: displayColor };
+          if (dmg.special) {
+            /* distance:0 + high blur = even halo on all sides. Warm yellow
+               matches the special-projectile yellow halo. */
+            textStyle.dropShadow = {
+              color: '#ffe066',
+              alpha: 0.95,
+              blur: 8,
+              distance: 0,
+              angle: 0,
+            };
+          }
+          text = new Text({
+            text: dmg.text,
+            style: textStyle,
+          });
+          /* Pixi v8 TextStyle stores fields privately; the spread above may drop
+             overrides. Set fill and fontSize explicitly to guarantee they apply. */
+          text.style.fill = displayColor;
+          text.style.fontSize = fontSize;
+          if (dmg.special) {
+            text.style.dropShadow = {
+              color: '#ffe066',
+              alpha: 0.95,
+              blur: 8,
+              distance: 0,
+              angle: 0,
+            };
+          }
         }
         text.anchor.set(0.5, 0.5);
         this.dmgLayer.addChild(text);
@@ -1042,7 +1218,9 @@ export class EffectsRenderer {
         popBoost = POP_AMOUNT * t * t;
       }
       const critWiggle = dmg.crit ? Math.sin(age * 8) * 0.1 : 0;
-      text.scale.set(1 + popBoost + critWiggle);
+      /* v2.3.1357: BitmapText popups render at a 2x bake scaled down —
+         the pop/wiggle multiplies AROUND that base scale, not around 1. */
+      text.scale.set((text._bmpBaseScale || 1) * (1 + popBoost + critWiggle));
       if (dmg._pixiIcon && !dmg._pixiIcon.destroyed) {
         /* Place icon flush to the right of the text. Text anchor is
            (0.5, 0.5), so the right edge sits at text.x + text.width/2.
@@ -1050,7 +1228,7 @@ export class EffectsRenderer {
            floor still let the magic icon clip the last digit on
            fire-goblin hits ("32" reading as "3[magic]").  Stroked text
            extends a few px past text.width on iOS canvas rendering. */
-        const _iconGap = Math.max(10, (text.style.fontSize || 21) * 0.35);
+        const _iconGap = Math.max(10, (dmg.crit ? 27 : 21) * 0.35);
         dmg._pixiIcon.x = text.x + text.width / 2 + _iconGap;
         dmg._pixiIcon.y = text.y;
         dmg._pixiIcon.alpha = text.alpha;
@@ -2951,10 +3129,11 @@ export class EffectsRenderer {
       if (ent.fire) ent.fire.visible = false;
     }
     /* drawn-height / frame cadence -- copied from the LOCAL figures so a remote
-       gatherer reads at the same size: chopper (_updateExtractionCue, 84px @
-       45ms), cook (41px @ 60ms), fire (_updateFiremaking, 88px @ 55ms). */
+       gatherer reads at the same size: chopper (_updateExtractionCue, 112px @
+       45ms; v2.3.1348 +33% with the local figure), cook (41px @ 60ms), fire
+       (_updateFiremaking, 88px @ 55ms). */
     const SPEC = {
-      chop: { frames: this._chopFrames, h: 84, ms: 45 },
+      chop: { frames: this._chopFrames, h: 112, ms: 45 },
       cook: { frames: this._cookFrames, h: 41, ms: 60 },
       fire: { frames: this._fireFrames, h: 88, ms: 55 },
     };
@@ -3011,7 +3190,7 @@ export class EffectsRenderer {
     let e = this._gearStrips[key];
     if (e === undefined) {
       this._gearStrips[key] = 'loading';
-      Assets.load('/sprites/gear/' + slot + '/' + item + '/' + pose + '-' + dir + '.png?v=' + GEARLAYER_VER).then((tex) => {
+      _fxLoad('/sprites/gear/' + slot + '/' + item + '/' + pose + '-' + dir + '.png?v=' + GEARLAYER_VER).then((tex) => {
         const n = Math.max(1, Math.round(tex.width / fw));
         const arr = [];
         for (let i = 0; i < n; i++) arr.push(new Texture({ source: tex.source, frame: new Rectangle(i * fw, 0, fw, tex.height) }));
@@ -3732,7 +3911,7 @@ export class EffectsRenderer {
        player's side, faces the trunk (source faces right -> flip when the
        tree is on the player's LEFT). */
     if (ex.skill === 'woodcutting' && this.chopSprite && this._chopFrames.length) {
-      const CHOP_H = 84;          // drawn height (~player scale); tune to taste
+      const CHOP_H = 112;         // drawn height; v2.3.1348: 84 -> 112 (+33%, owner request). Gear layers + traits derive from this same transform, so everything scales together.
       const CHOP_OFFSET = 30;     // px from the trunk to the figure's centre
       const CHOP_FRAME_MS = 45;   // ~22fps -> ~1.1s per swing loop
       /* v2.3.1131: play only the 12 downswing frames (source indices 12-23) --

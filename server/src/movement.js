@@ -31,10 +31,13 @@ export const movementMethods = {
     // speed * elapsed-time bound.
     //
     // Client max walk speed (calcMoveSpeed in gameSystems.js):
-    //   baseSpd = calcMoveSpeed(agility)/5.0 * SPEED
-    //           = (1 + min(agility*0.0012, 0.60)) * 2.5 px/frame
-    //   Max ~4 px/frame * 60fps = 240 px/sec.  spdBuff adds 15%
-    //   = 276 px/sec.  Dodge / lunge burst ~48 px instantaneously.
+    //   baseSpd = calcMoveSpeed(agility, swiftness)/5.0 * SPEED
+    //           = (1 + min(agility*0.0012, 0.60)) * (1 + swiftness
+    //             cap 0.50) * 2.5 px/frame
+    //   v2.3.1343 audit (Swiftness cap +10% -> +50%): worst legit
+    //   stack = 240 (agility cap) × 1.5 (swiftness) × 1.15 (food
+    //   buff) × 1.065 (mythic storm amulet) ≈ 441 px/sec — still
+    //   under the 500 sustained bound below, burst slack untouched.
     //
     // Cap: 500 px/sec sustained + 80 px burst slack (covers
     // dodge/lunge + a bit of network jitter).  Far below the

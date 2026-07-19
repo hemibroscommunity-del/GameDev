@@ -5,7 +5,7 @@
 import { createPixiApp } from './pixiApp.js';
 import { TileRenderer } from './systems/tileRenderer.js';
 import { EntityRenderer, prewarmMaskedBodyFrames, prewarmAltWornSets, planPrewarmProgress, uploadBakedTextures, uploadGearTextures, registerPrewarmRenderer } from './systems/entityRenderer.js';
-import { EffectsRenderer } from './systems/effectsRenderer.js';
+import { EffectsRenderer, prewarmDmgFontPipe } from './systems/effectsRenderer.js';
 import { FpsOverlay } from './systems/fpsOverlay.js';
 import { loadTileAssets } from './tileAssets.js';
 import { loadPlayerSprites } from './playerSprites.js';
@@ -19,6 +19,7 @@ import { preloadStartZoneMap } from './tiledMaps.js';
 import { preloadGear } from './gearSheets.js';
 import { preloadCombatGear } from './combatGear.js';
 import { preloadBodyAll } from './playerSkins.js';
+import { preloadWorldAnimations } from './preloadAnimations.js'; /* v2.3.1358 */
 import { Assets } from 'pixi.js';
 
 /* v2.3.778: decode ALL textures to <img>-backed sources, never ImageBitmap.
@@ -59,6 +60,14 @@ export function preloadPlayerAssets() {
     /* v2.3.1022: warm the swing/bowshot gear sheets (network-only, parallel)
        so the first armored attack doesn't cold-load mid-combat. */
     preloadCombatGear(),
+    /* v2.3.1358 (owner directive — CLAUDE.md "Animation preloading is
+       LAW"): EVERY remaining animation — monster variants, slime/
+       snowman/player-death sheets, all EffectsRenderer strips (skill +
+       attack stand-ins, impact, icons), head traits, all zone maps +
+       walkability.  The loading screen is allowed to take longer;
+       first-use hitches are not.  New animation systems REGISTER in
+       preloadAnimations.js in the same PR. */
+    preloadWorldAnimations(),
   ]).then((results) =>
     /* Bake the armored-body masked frames while the intro overlay is still
        up (needs the body + gear sheets above resolved first), so the
@@ -80,6 +89,11 @@ export function preloadPlayerAssets() {
          lazy first-draw upload.  Staggered + dedup'd; appended here so it runs
          after the bake and never blocks the parallel network preloads above. */
       .then(() => uploadGearTextures(_appRef && _appRef.renderer).catch(() => {}))
+      /* v2.3.1361: init the damage-popup BitmapText pipe (batcher/shader
+         + glyph-atlas GPU upload) behind the intro — it was the last
+         first-use render init left, paid on the first HIT of the session
+         (iOS fire-goblin crash suspect). */
+      .then(() => { try { prewarmDmgFontPipe(_appRef && _appRef.renderer); } catch (e) { /* best-effort */ } })
       .then(() => results)
   );
 }

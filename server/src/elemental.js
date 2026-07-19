@@ -55,7 +55,8 @@ export function lookupCollision(a, b) {
  * a client claim.
  * v2.3.1136: durMult -- the Attunement channel's duration bonus, the
  * successor to the retired Influence bonus (BALANCE-PLAN §8).  The caller
- * derives it from SERVER-clamped weaponSpecs so it's bounded (<=1.495)
+ * derives it from SERVER-clamped weaponSpecs so it's bounded (<=2.00
+ * since the v2.3.1343 kid-simple reprice: +1%/pt at the 100-pt cap)
  * even for forged clients.  Scales the initial duration AND maxDur;
  * refreshes cap at the instance's own scaled maxDur. */
 export function applyElementStatus(m, element, sourceId, power, now, durMult) {

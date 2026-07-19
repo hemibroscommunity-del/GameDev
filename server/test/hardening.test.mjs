@@ -101,7 +101,12 @@ ps.rangedWeapon = null; ps.staffWeapon = null;
 const capNormal = room._maxDmgForAttacker(ps, false);
 ps.weapon.quality = 'godly'; ps.weapon.hardness = 5;
 const capGodly = room._maxDmgForAttacker(ps, false);
-check('damage ceiling rises for godly/hardened weapons', capGodly > capNormal * 2, { capNormal, capGodly });
+// v2.3.1345: the accelerating flat channel headroom (+10,100 damage,
+// +15,150 crit) dwarfs a tier-1 wood sword's multiplicative
+// quality/hardness uplift, so the guard is directional only — godly
+// must still raise the ceiling, by however little relative to the
+// flat terms.
+check('damage ceiling rises for godly/hardened weapons', capGodly > capNormal, { capNormal, capGodly });
 ps.weapon.quality = 'normal'; ps.weapon.hardness = 0;
 
 // ── 5. sanitizer postures ──

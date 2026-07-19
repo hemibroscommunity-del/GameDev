@@ -17,7 +17,8 @@
  * the only change that isn't a pure line move; nothing outside this
  * file referenced them via the class. */
 
-import { computeCanonicalPools } from './migrations.js';
+import { computeCanonicalPools, computeBuildTotal } from './migrations.js';
+import { T2_UNITS, t2Accel, t2CounterRate } from './data.js';
 
 // v2.3.1170: these were `static get` members on GameRoom; as module
 // constants the mixin methods can reference them without a circular
@@ -277,33 +278,29 @@ export const gridMethods = {
     return this._sanitizeGridSpec(src, ENDURANCE_CHANNEL_KEYS, ps ? Math.min(200, 2 * (ps.endurance || 0)) : undefined);
   },
   // Grid channel multipliers, mirrored in src/data/gameSystems.js.
-  // Vigor +0.5%/pt maxHp (cap +25%); Recovery +1%/pt on DISCRETE heals
-  // (cap +50%) — deliberately NOT on the melee-lifesteal refund, which
-  // already returns 90% of damage taken (any boost pushes it past 100%
-  // and mints infinite melee sustain); Stamina +1%/pt maxStamina (cap
-  // +50%); Conditioning +1%/pt stamina regen (cap +50%); Evasion
-  // +0.2%/pt dodge SHARING the 30% cap with agility (BALANCE-PLAN §4
-  // shared-caps hard rule); Lifeblood on-kill heal 0.5%/pt maxHp (cap
-  // 25%).
-  // v2.3.1156: all grid coefficients halved with the 50 -> 100 cap
-  // raise — cap values unchanged, stored points doubled by migration.
-  _vigorMult(ps) {
-    return 1 + Math.min(0.25, ((ps && ps.hpSpec && ps.hpSpec.vigor) || 0) * 0.0025);
+  // v2.3.1345 (owner round 2): ACCELERATING FLATS — cumulative value
+  // UNIT·p·(p+1) via the shared t2Accel (data.js; the client mirrors in
+  // gameSystems.js).  Recovery is a flat per-heal bonus, deliberately
+  // still NOT on the melee-lifesteal refund; Evasion's counter rate
+  // lives in combat.js's accumulator (t2CounterRate).
+  _vigorFlat(ps) {
+    return t2Accel((ps && ps.hpSpec && ps.hpSpec.vigor) || 0, T2_UNITS.vigor);
   },
-  _recoveryMult(ps) {
-    return 1 + Math.min(0.50, ((ps && ps.hpSpec && ps.hpSpec.recovery) || 0) * 0.005);
+  _recoveryFlat(ps) {
+    return t2Accel((ps && ps.hpSpec && ps.hpSpec.recovery) || 0, T2_UNITS.recovery);
   },
-  _staminaGridMult(ps) {
-    return 1 + Math.min(0.50, ((ps && ps.enduranceSpec && ps.enduranceSpec.stamina) || 0) * 0.005);
+  _recoveryMult() { return 1; }, // legacy shape for stale readers
+  _staminaFlat(ps) {
+    return t2Accel((ps && ps.enduranceSpec && ps.enduranceSpec.stamina) || 0, T2_UNITS.stamina);
   },
-  _conditioningMult(ps) {
-    return 1 + Math.min(0.50, ((ps && ps.enduranceSpec && ps.enduranceSpec.conditioning) || 0) * 0.005);
+  _conditioningFlat(ps) {
+    return Math.floor(Math.min(100, ((ps && ps.enduranceSpec && ps.enduranceSpec.conditioning) || 0)) / 2);
   },
   _evasionDodge(ps) {
-    return ((ps && ps.enduranceSpec && ps.enduranceSpec.evasion) || 0) * 0.001;
+    return t2CounterRate((ps && ps.enduranceSpec && ps.enduranceSpec.evasion) || 0);
   },
-  _lifebloodFrac(ps) {
-    return Math.min(0.25, ((ps && ps.hpSpec && ps.hpSpec.lifeblood) || 0) * 0.0025);
+  _lifebloodFlat(ps) {
+    return t2Accel((ps && ps.hpSpec && ps.hpSpec.lifeblood) || 0, T2_UNITS.lifeblood);
   },
   // Mirror of the WCH clamp in _handleStatsUpdate, factored out so the join /
   // migration paths apply the SAME [0,99] channel clamp (weaponSpecs feeds the
@@ -389,27 +386,35 @@ export const gridMethods = {
 
   _recomputeMaxes(ps) {
     if (!ps) return;
-    // v2.3.910: combat level is DERIVED -- the sum of the use-trained
-    // build-skill levels, clamped to 500.  Mirrors recalcDerived on the
-    // client and replaces the old 5-build-point gate.
-    // v2.3.1138: + defenseSkill.level (the 6th skill; spec Phase 2).
-    // Trust posture: defenseSkill is client-trained-but-clamped [0,99]
-    // (_sanitizeDefenseSkill), same known-loose class as weaponSkills --
-    // a forged claim buys <= +99 level (~ +247 maxHp).  Documented, not
-    // fixed here; tightens when training moves fully server-side.
-    ps.level = Math.max(1, Math.min(500,
-      (ps.power || 0) + (ps.vitality || 0) + (ps.endurance || 0)
-      + (ps.agility || 0) + (ps.mind || 0)
-      + ((ps.defenseSkill && ps.defenseSkill.level) || 0)));
+    // v2.3.910: combat level was DERIVED as the sum of the use-trained
+    // build-skill levels, clamped to 500 (replacing the old
+    // 5-build-point gate; v2.3.1138 added defenseSkill as the 6th).
+    // v2.3.1342: level = total T2 points PLACED, cap 1000 (owner
+    // directive 2026-07-16: every point spent = +1 combat level, so
+    // every level-up is a bought power gain; max level 1000 =
+    // COMBAT_BUILD_CEILING).  computeBuildTotal (migrations.js) is the
+    // one summation, shared with migration v8 'level-is-build' and
+    // mirrored by recalcDerived on the client behind caps.t2simple.
+    // Trust posture unchanged: specs are client-reported-but-clamped
+    // ([0,100]/channel + the 1000 ceiling via the sanitizers), the
+    // same known-loose class as weaponSkills — a forged claim buys
+    // bounded level, tightens when training moves fully server-side.
+    // The +1: fresh characters are level 1 (RPG floor), and the FIRST
+    // point spent must be +1 level like every other — level = points
+    // alone made point #1 a dud (1 -> 1), caught by the QA rig.  The
+    // cap instead lands on point #1000 (build complete, level already
+    // maxed) — the far lesser dud.
+    ps.level = Math.min(1000, 1 + computeBuildTotal(ps));
     const lvl = ps.level;
     const oldMaxHp = ps.maxHp || 100;
     const oldMaxStam = ps.maxStamina || 100;
     const oldMaxMana = ps.maxMana || 100;
-    // v2.3.1154: HP-grid Vigor (+0.5%/pt, cap +25%) multiplies the WHOLE
-    // pool including armor HP; Endurance-grid Stamina (+1%/pt, cap +50%)
-    // multiplies maxStamina.  Mirrors recalcDerived on the client.
-    ps.maxHp = Math.floor((this._calcMaxHp(lvl, ps.vitality || 0) + this._armorHp(ps.armor, ps.vitality || 0)) * this._vigorMult(ps));
-    ps.maxStamina = Math.floor(this._calcMaxStamina(ps.endurance || 0) * this._staminaGridMult(ps));
+    // v2.3.1154: HP-grid Vigor and Endurance-grid Stamina adjust the
+    // pools.  Mirrors recalcDerived on the client.
+    // v2.3.1343: Vigor is FLAT +10 HP/pt (kid-simple reprice) — it no
+    // longer multiplies armor HP (deliberate simplification).
+    ps.maxHp = Math.floor(this._calcMaxHp(lvl, ps.vitality || 0) + this._armorHp(ps.armor, ps.vitality || 0) + this._vigorFlat(ps));
+    ps.maxStamina = Math.floor(this._calcMaxStamina(ps.endurance || 0) + this._staminaFlat(ps)); // v2.3.1345: flat
     ps.maxMana = this._calcMaxMana(ps.mind || 0);
     // Clamp current values into the new ranges.
     if (typeof ps.hp !== 'number') ps.hp = ps.maxHp;

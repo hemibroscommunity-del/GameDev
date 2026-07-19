@@ -130,3 +130,17 @@ surface and had to be re-applied to the live loadout weapon slot.
 Check reachability (who renders the trigger?) before styling or
 demoing any surface. **Receipt:** PR #259; `src/ui/GameApp.jsx`
 wheelBus wiring.
+
+## 12. Lazy "load on first sighting" for a new animation
+
+**Tempting:** a new monster/skill/FX sheet is big, town sessions never
+see it — copy the v2.3.1119 variant pattern and load it lazily on
+first render; the loading screen stays fast. **Wrong:** the owner has
+repeatedly reported first-use hitches and issued a standing directive
+(2026-07-19, CLAUDE.md "Animation preloading is LAW"): EVERY animation
+loads during the loading screen, which is explicitly allowed to take
+longer. First-use texture loads are regressions, not optimizations.
+**Receipt:** v2.3.1358 — the central manifest
+`src/rendering/preloadAnimations.js` (awaited by the intro gate) plus
+`window.__btPreloadReport` for verification; the v2.3.1119 lazy
+variant loading it retired is the pattern NOT to copy.

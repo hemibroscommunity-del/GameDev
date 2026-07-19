@@ -18,7 +18,7 @@ import { getShirt, onShirtChange } from '../../rendering/traits/shirtCatalog.js'
 import { getShirtColor, shirtColorTarget, onShirtColorChange } from '../../rendering/traits/shirtColorCatalog.js';
 import { getEquip } from '../../rendering/gearCatalog.js';
 import { dashboardPanelBus } from './dashboardPanelBus.js';
-import { barHeight, compactDashHeight, expandedSheetHeight, drillSheetHeight } from './sheet/sheetGeometry.js'; /* v2.3.1283; v2.3.1290 three-state; v2.3.1311e drill height; v2.3.1325 slot-derived bar */
+import { barHeight, expandedSheetHeight, drillSheetHeight } from './sheet/sheetGeometry.js'; /* v2.3.1283; v2.3.1350 two-state; v2.3.1311e drill height; v2.3.1325 slot-derived bar */
 import { portraitStore } from './sheet/portraitStore.js';          /* v2.3.1294 */
 import { hasUnseenLevelUps } from './sheet/skillsModel.js';        /* v2.3.1296 */
 import { getFriendRows } from './sheet/friendsModel.js';           /* v2.3.1323 */
@@ -26,15 +26,9 @@ import { friendsSrv } from './sheet/friendsSync.js';               /* v2.3.1324 
 import { readyQuestCount } from './sheet/questModel.js';           /* v2.3.1298 */
 import { sheetTransition } from './sheet/motion.js';            /* v2.3.1283 */
 import { bagUnseen, bagEntryKey } from './sheet/bagUnseenModel.js'; /* v2.3.1312 */
-import { BagCompact } from './sheet/BagCompact.jsx';            /* v2.3.1285 */
-import { HeroCompact } from './sheet/HeroCompact.jsx';          /* v2.3.1286 */
 import { COMBAT_SKILLS } from './sheet/heroModel.js';           /* v2.3.1311: hero toolbar badge */
 import { HeroExpanded } from './sheet/HeroExpanded.jsx';        /* v2.3.1286 */
-import { SkillsCompact } from './sheet/SkillsCompact.jsx';      /* v2.3.1286 */
-import { FriendsCompact } from './sheet/FriendsCompact.jsx';    /* v2.3.1288 */
-import { QuestsCompact } from './sheet/QuestsCompact.jsx';      /* v2.3.1288 */
-import { MoreCompact } from './sheet/MoreCompact.jsx';          /* v2.3.1288 */
-import { InventoryPanel, BagTile }     from './dash/InventoryPanel.jsx';
+import { InventoryPanel }              from './dash/InventoryPanel.jsx';
 import { ItemDetailPopup }             from './dash/ItemDetailPopup.jsx';
 import { itemDetailBus }               from './dash/itemDetailBus.js';
 import { subscribe as subscribeInvLocks } from './dash/inventoryLocks.js';
@@ -376,36 +370,17 @@ const IconButton = ({ glyph, src: srcProp, label, active, onClick, onSwipe, node
       ) : null}
       {/* v2.3.1314 (owner round-8b): state-aware chevrons — ONE chevron
           per available step, shown only while a view is open (never at
-          bar; supersedes #285's at-rest faint cues).  Compact: one up
-          (expand available) + one down (bar available).  Expanded: two
-          down (compact, then bar).  The gentle bob animation reads as
+          bar).  v2.3.1350 (two-state): expanded is the only open state,
+          so the active destination shows a single down chevron (bar is
+          the one step down).  The gentle bob animation reads as
           "swipeable"; direction matches both the icon swipe and the
-          tap cycle's next step. */}
-      {active && snap && snap !== 'bar' && (
+          tap toggle. */}
+      {active && snap === 'expanded' && (
         <span className="bt-nav-snap" aria-hidden="true">
-          {snap === 'compact' ? (
-            <>
-              <svg className="bt-nav-snap-up" viewBox="0 0 12 7" width="11" height="6">
-                <path d="M2 5.5 L6 1.5 L10 5.5" stroke="currentColor" strokeWidth="1.8"
-                  fill="none" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-              <svg className="bt-nav-snap-down" viewBox="0 0 12 7" width="11" height="6">
-                <path d="M2 1.5 L6 5.5 L10 1.5" stroke="currentColor" strokeWidth="1.8"
-                  fill="none" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            </>
-          ) : (
-            <>
-              <svg className="bt-nav-snap-down" viewBox="0 0 12 7" width="11" height="6">
-                <path d="M2 1.5 L6 5.5 L10 1.5" stroke="currentColor" strokeWidth="1.8"
-                  fill="none" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-              <svg className="bt-nav-snap-down" viewBox="0 0 12 7" width="11" height="6">
-                <path d="M2 1.5 L6 5.5 L10 1.5" stroke="currentColor" strokeWidth="1.8"
-                  fill="none" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            </>
-          )}
+          <svg className="bt-nav-snap-down" viewBox="0 0 12 7" width="11" height="6">
+            <path d="M2 1.5 L6 5.5 L10 1.5" stroke="currentColor" strokeWidth="1.8"
+              fill="none" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
         </span>
       )}
     </button>
@@ -479,16 +454,9 @@ const DESTINATIONS = [
   { id: 'more',   label: 'More',    icon: '/icons/ui/nav-more.webp?v=2.3.1224' },
 ];
 
-/* v2.3.1288: PR B — the rootId ternary chain in the render became this
-   registry the moment it hit six entries. */
-const COMPACT_VIEWS = {
-  bag:    BagCompact,
-  hero:   HeroCompact,
-  skills: SkillsCompact,
-  social: FriendsCompact,
-  quests: QuestsCompact,
-  more:   MoreCompact,
-};
+/* v2.3.1350 (owner): the COMPACT_VIEWS registry and the six compact
+   glance views are RETIRED — bar and expanded are the only two nav
+   states now (files deleted; git history has them). */
 
 export const BottomDashboard = () => {
   const [, force] = useState(0);
@@ -545,7 +513,6 @@ export const BottomDashboard = () => {
       document.documentElement.dataset.btSheet = mode;
       /* v2.3.1311e: drill panels (stack depth > 1) use the taller sheet. */
       const px = mode === 'expanded' ? (dashboardPanelBus.state.stack.length > 1 ? snapPxRef.current.drill : snapPxRef.current.expanded)
-        : mode === 'compact' ? snapPxRef.current.compact
         : barHeight(window.innerWidth, window.innerHeight);
       document.documentElement.style.setProperty('--sheet-h', px + 'px');
     };
@@ -557,14 +524,12 @@ export const BottomDashboard = () => {
       unsub();
     };
   }, []);
-  /* v2.3.1283: snap heights — compact and expanded recomputed on
-     viewport changes with the same iOS-keyboard guard the canvas resize
-     uses: when the keyboard shrinks visualViewport, HOLD the last value
-     so the sheet doesn't jump under the chat composer.  v2.3.1290:
-     compact joins expanded as React state (it's an overlay snap now,
-     not the resting --dash-h). */
+  /* v2.3.1283: snap heights — recomputed on viewport changes with the
+     same iOS-keyboard guard the canvas resize uses: when the keyboard
+     shrinks visualViewport, HOLD the last value so the sheet doesn't
+     jump under the chat composer.  v2.3.1350: the compact snap left
+     with the compact state. */
   const [snapPx, setSnapPx] = useState(() => ({
-    compact: compactDashHeight(window.innerWidth, window.innerHeight),
     expanded: expandedSheetHeight(window.innerWidth, window.innerHeight),
     drill: drillSheetHeight(window.innerWidth, window.innerHeight),
   }));
@@ -574,7 +539,7 @@ export const BottomDashboard = () => {
       const vw = vv ? vv.width : window.innerWidth;
       const vh = vv ? vv.height : window.innerHeight;
       if (vv && window.innerHeight - vh > 100) return; /* keyboard up */
-      setSnapPx({ compact: compactDashHeight(vw, vh), expanded: expandedSheetHeight(vw, vh), drill: drillSheetHeight(vw, vh) });
+      setSnapPx({ expanded: expandedSheetHeight(vw, vh), drill: drillSheetHeight(vw, vh) });
     };
     recompute();
     window.addEventListener('resize', recompute);
@@ -698,13 +663,12 @@ export const BottomDashboard = () => {
       style={{
         position: 'fixed',
         left: 0, right: 0, bottom: 0,
-        /* v2.3.1283: ONE bottom sheet.  v2.3.1290 (owner): THREE snap
-           points — bar (var(--dash-h) = the 72px toolbar shelf, the
-           resting default; canvas/zones/HUD all key off it), compact
-           (glance), expanded (detail).  Every destination uses the same
-           snaps.  220ms token; reduced-motion drops the transition. */
+        /* v2.3.1283: ONE bottom sheet.  v2.3.1350 (owner): TWO snap
+           points — bar (var(--dash-h) toolbar shelf, the resting
+           default; canvas/zones/HUD all key off it) and expanded
+           (detail).  Every destination uses the same snaps.  220ms
+           token; reduced-motion drops the transition. */
         height: mode === 'expanded' ? (stack.length > 1 ? snapPx.drill : snapPx.expanded) + 'px' /* v2.3.1311e: drill = taller */
-          : mode === 'compact' ? snapPx.compact + 'px'
           : 'var(--dash-h)',
         transition: sheetTransition(),
         /* v2.3.1240: surface, rounded top edge, and crisp contact shadow
@@ -732,47 +696,52 @@ export const BottomDashboard = () => {
           lives on the toolbar: tap cycle + icon swipes + chevrons. */}
       {active ? (
         <>
-          {/* Header strip — back-chip (only on drilled child), title, ×.
-              v2.3.1229: 44px minimum so back/close meet the 44pt touch
-              rule (Lantern Slate §9). */}
-          <div style={{
-            height: 44,
-            flex: '0 0 44px',
-            display: 'flex',
-            alignItems: 'center',
-            padding: '0 8px',
-            borderBottom: `1px solid ${COL.divider}`,
-            gap: 8,
-          }}>
-            {stack.length > 1 && (
+          {/* v2.3.1350 (owner: "remove the headers — it's redundant"):
+              ROOT panels have no header strip — the lit toolbar button
+              already names the destination, and the freed 44px goes to
+              content (the Bag's second item row was the motivating
+              case).  DRILL children (Settings, Build, quest detail...)
+              keep a slim header: their titles are NOT on the toolbar
+              and the back-chip is the way out.  44px minimum so back
+              meets the 44pt touch rule (Lantern Slate §9). */}
+          {stack.length > 1 && (
+            <div style={{
+              height: 44,
+              flex: '0 0 44px',
+              display: 'flex',
+              alignItems: 'center',
+              padding: '0 8px',
+              borderBottom: `1px solid ${COL.divider}`,
+              gap: 8,
+            }}>
               <button
                 onPointerUp={(e) => { e.stopPropagation(); dashboardPanelBus.pop(); }}
                 className="bt-chisel bt-chisel--chip"
                 style={chipStyle}
               >◂</button>
-            )}
-            {/* v2.3.692: match the LOADOUT / BUILD ColHeader treatment
-                (14px, .08em tracking, uppercase, centered) so every open
-                panel title reads consistently. */}
-            <div style={{
-              flex: 1,
-              fontSize: 13,
-              fontWeight: 700,
-              letterSpacing: '.10em',
-              textTransform: 'uppercase',
-              textAlign: 'center',
-              color: COL.text,
-              whiteSpace: 'nowrap',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-            }}>{active.title}</div>
-            {/* v2.3.1307: the header ▾ chevron chip (v2.3.1290) is
-                removed — the owner made the toolbar-icon swipe the ONE
-                resize control, and a second down-path here undercut
-                that.  A width-matched spacer keeps the title centered
-                when a back-chip is present. */}
-            {stack.length > 1 && <span style={{ width: 32, flex: '0 0 32px' }} aria-hidden="true" />}
-          </div>
+              {/* v2.3.692: match the LOADOUT / BUILD ColHeader treatment
+                  (14px, .08em tracking, uppercase, centered) so every open
+                  panel title reads consistently. */}
+              <div style={{
+                flex: 1,
+                fontSize: 13,
+                fontWeight: 700,
+                letterSpacing: '.10em',
+                textTransform: 'uppercase',
+                textAlign: 'center',
+                color: COL.text,
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+              }}>{active.title}</div>
+              {/* v2.3.1307: the header ▾ chevron chip (v2.3.1290) is
+                  removed — the owner made the toolbar-icon swipe the ONE
+                  resize control, and a second down-path here undercut
+                  that.  A width-matched spacer keeps the title centered
+                  against the back-chip. */}
+              <span style={{ width: 32, flex: '0 0 32px' }} aria-hidden="true" />
+            </div>
+          )}
           {/* v2.3.1229: panels render in a flex body ABOVE the persistent
               toolbar (spec §9: the toolbar stays visible in panel mode;
               its lit item identifies the panel).  v2.3.1307b: the toolbar
@@ -783,17 +752,9 @@ export const BottomDashboard = () => {
             {Active && <Active />}
           </div>
         </>
-      ) : mode === 'compact' ? (
-        /* v2.3.1288 (PR B): all six destinations render their compact
-           view from the COMPACT_VIEWS registry.  v2.3.1307b: wrapped so
-           the compact view also reserves the pinned toolbar's shelf. */
-        (() => { const CompactView = COMPACT_VIEWS[rootId] || BagCompact; return (
-          <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', marginBottom: 'var(--dash-h, 87px)' }}>
-            <CompactView />
-          </div>
-        ); })()
-      ) : null /* v2.3.1290: bar mode — toolbar only, the game's resting
-           default (owner: maximum world visibility). */}
+      ) : null /* v2.3.1350: bar mode — toolbar only, the game's resting
+           default (owner: maximum world visibility).  The compact
+           branch left with the compact state. */}
 
       {/* Navigation ribbon.  v2.3.1229: PERSISTENT in both modes.
           v2.3.1283 (nav-system): SIX destinations, each always one of

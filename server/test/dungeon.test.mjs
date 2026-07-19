@@ -208,7 +208,8 @@ check('boss spawned after final wave', !!boss && boss.alive && inst.bossSpawned 
 // v2.3.1140: HP curve imported (was a hardcoded copy of the pre-BF-1 ramp).
 const baseHp = Math.ceil(room._monsterStat(MONSTER_HP_CURVE.base, cfg.monsterLevel + 5, MONSTER_HP_CURVE.ramp, MONSTER_HP_CURVE.plateau, MONSTER_HP_CURVE.endgame) * 0.6);
 const baseDmg = Math.ceil(room._monsterStat(12, cfg.monsterLevel + 5, 1.045, 1.025, 1.018) * 0.8);
-check('boss hp = base x mult x party scale 1.6', boss.hp === Math.ceil(baseHp * 8 * 1.6), { hp: boss.hp, expected: Math.ceil(baseHp * 8 * 1.6) });
+// v2.3.1346: +100 flat is added AFTER boss/party multipliers (exact +100 like all monsters).
+check('boss hp = base x mult x party scale 1.6 + flat', boss.hp === Math.ceil(baseHp * 8 * 1.6) + (MONSTER_HP_CURVE.flat || 0), { hp: boss.hp, expected: Math.ceil(baseHp * 8 * 1.6) + (MONSTER_HP_CURVE.flat || 0) });
 check('boss dmg = base x 1.5', boss.dmg === Math.ceil(baseDmg * 1.5), { dmg: boss.dmg, expected: Math.ceil(baseDmg * 1.5) });
 check('dungeon_boss emitted to both players', msgsOfType(wsA, 'dungeon_boss').length === 1 && msgsOfType(wsB, 'dungeon_boss').length === 1);
 

@@ -18,7 +18,7 @@
 import { processGameEvent } from '@/networking/gameEvents.js';
 import { stashPendingZoneNodes } from '@/networking/nodeSync.js'; /* v2.3.1301: node self-heal */
 import { getDeviceNonce, generatePassphrase, passphraseToId } from '@/networking/index.js';
-import { createGatherNode, spawnMonstersForZone, BT_AUDIO, ZONES, TILE, DEATH_GOLD_PENALTY, RARITY_TIERS, ZONE_RESOURCES, createDefaultCompStats, generateZoneMap, recalcDerived, updateZoneDimensions, setGridCapsEnabled } from '@/data/index.js';
+import { createGatherNode, spawnMonstersForZone, BT_AUDIO, ZONES, TILE, DEATH_GOLD_PENALTY, RARITY_TIERS, ZONE_RESOURCES, createDefaultCompStats, generateZoneMap, recalcDerived, updateZoneDimensions, setGridCapsEnabled, setT2SimpleEnabled } from '@/data/index.js';
 import { _objectSpread, _slicedToArray, _toConsumableArray } from '@/lib/babelHelpers.js';
 import { usesClientSideMovement, MONSTER_VARIANTS, isRemnantSkull, applyZoneVariant } from '@/data/monsterVariants.js';
 import { rollMonsterShard, shardByKey } from '@/data/shards.js';
@@ -594,6 +594,29 @@ export function setupWebSocket(ctx) {
               } catch (e) {}
               break;
             }
+          case 'character_reset_done':
+            {
+              /* v2.3.1347: the server snapshotted + deleted our rpg blob
+                 (self-service restart, persistence.js).  Wipe the local
+                 per-character caches and reload -- the rejoin finds no
+                 stored blob and bootstraps a fresh level-1 character.
+                 KEEP identity (bt_passphrase / bt_passphrase_prev /
+                 bt_device -- the Login Key survives a restart) and the
+                 social keys (bt_friends / bt_clan / bt_blocked /
+                 bt_muted); the character restarts, the account doesn't. */
+              S._characterReset = true; /* onclose 4005 guard: no reconnect race */
+              try {
+                ['bt_rpg', 'bt_stats', 'bt_codex', 'bt_bestiary', 'bt_materials', 'bt_zones', 'bt_resume'].forEach(function (k) {
+                  localStorage.removeItem(k);
+                });
+              } catch (e) {}
+              try {
+                sessionStorage.removeItem('bt_resume');
+                sessionStorage.removeItem('bt_resume_now');
+              } catch (e) {}
+              try { window.location.reload(); } catch (e) {}
+              break;
+            }
           case 'state_sync':
             {
               /* v2.3.1119: server capability flags.  Settlement-aware
@@ -620,6 +643,12 @@ export function setupWebSocket(ctx) {
                  Re-derive immediately so the gate takes effect now. */
               try {
                 setGridCapsEnabled(!!(msg.caps && msg.caps.hpEndGrids));
+                /* v2.3.1342: level-is-build deploy-order gate — the
+                   client derives level = T2 points placed (cap 1000)
+                   only while THIS worker claims caps.t2simple;
+                   otherwise the worker's stat-sum level echo would
+                   fight the local formula every player_state flush. */
+                setT2SimpleEnabled(!!(S._serverCaps && S._serverCaps.t2simple));
                 if (S.rpg) recalcDerived(S.rpg);
               } catch (e) {}
               var others = {};
@@ -1619,6 +1648,13 @@ export function setupWebSocket(ctx) {
           S._realtimeStatus = 'frozen';
           return;
         }
+        /* v2.3.1347: server closes 4005 after a character reset -- the
+           character_reset_done handler is already reloading the page;
+           don't race it with a reconnect (which would rejoin and
+           bootstrap before the local wipe finishes). */
+        if (S._characterReset || (event && event.code === 4005)) {
+          return;
+        }
         /* v2.3.1181: fatal join rejection (repeat auth fail / unknown
            future reason) -- the join_rejected handler said "not retrying"
            but this guard is what makes that true.  Without it the client
@@ -1892,6 +1928,12 @@ export function setupWebSocket(ctx) {
           return;
         }
         if (msg.type === 'quest_accept') {
+          ws.send(JSON.stringify(msg));
+          return;
+        }
+        /* v2.3.1347: self-service character restart (SettingsPanel
+           confirmation flow -> persistence.js _handleCharacterReset). */
+        if (msg.type === 'character_reset') {
           ws.send(JSON.stringify(msg));
           return;
         }
