@@ -50,6 +50,12 @@ SHELF_ERASE = {'southwest': [0, 1, 2, 13, 14]}
 # as helmet next to the armor.  Mid-dark pixels within 3px of the
 # silhouette edge are erased (the 1px black outline survives).
 EDGE_STRIP = {}
+# v2.3.1385 (owner: north/south "top of the armor is clipped a little
+# around the head"): the erase used the same row as the head cut, so the
+# 2px tuck overlap shaved the collar top.  The ERASE now stops RELIEF px
+# higher; the head overlay still reaches the cut and covers the strip in
+# between, so the neck keeps tucking with the collar top intact.
+RELIEF = {'south': 2, 'north': 2}
 
 
 def head_cols(op, top, figh):
@@ -150,7 +156,7 @@ def main():
             zone[min(shelf0, cut):cut, max(0, hx0 + mb[0]):min(ffw, hx1 - mb[1] + 1)] = True
         else:
             _mbShelf = None
-            zone[:cut, max(0, hx0 - 4):min(ffw, hx1 + 5)] = True
+            zone[:cut - RELIEF.get(d, 0), max(0, hx0 - 4):min(ffw, hx1 + 5)] = True
         zone &= ff[:, :, 3] > 0
         ff[:, :, 3][zone] = 0
         tot += int(zone.sum())

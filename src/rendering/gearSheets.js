@@ -32,7 +32,7 @@ const FRAME_H = 256;
    recoloured shirt (paper-doll, mirrors the cook stand-in). Each is a 4096x128
    32-frame strip aligned to fish-south.png; the armor tracks the body's per-
    frame lean, the shirt is a grayscale tint base with a 1px outline. */
-const GEAR_VERSION = '2.3.1381'; /* v2.3.1381: south fullset rebuilt on armor-anchored cuts (shoulder slivers). v2.3.1380: SW f1 two-band cut — face clear, pauldron kept (owner). v2.3.1379: north rebuilt on armor-anchored cuts (sliver flicker); SW f1 gray arcs stripped. v2.3.1378: SW f0-f2/f13-f14 helmet-edge leftovers shaved to the armor shelf (owner). v2.3.1377: southwest fullset rebuilt on armor-anchored per-frame neck cuts (owner frame list). v2.3.1373: chest hem belt extended a few px down (south/southwest/
+const GEAR_VERSION = '2.3.1385'; /* v2.3.1381: south fullset rebuilt on armor-anchored cuts (shoulder slivers). v2.3.1380: SW f1 two-band cut — face clear, pauldron kept (owner). v2.3.1379: north rebuilt on armor-anchored cuts (sliver flicker); SW f1 gray arcs stripped. v2.3.1378: SW f0-f2/f13-f14 helmet-edge leftovers shaved to the armor shelf (owner). v2.3.1377: southwest fullset rebuilt on armor-anchored per-frame neck cuts (owner frame list). v2.3.1373: chest hem belt extended a few px down (south/southwest/
    north) so chest-only wear never flashes tan belly between hem and trousers; east fullset interior
    seam lines lifted toward soft gray ("too thick of black outlines"). */
 /* v2.3.1372: hip-skirt (thigh plate) pixels stripped BACK OUT of the
@@ -88,13 +88,13 @@ function buildSheet(key, slot, item, pose, dir, attempt = 0) {
     const img = antialiasUpscaledCanvas(upscaleToFrameHeight(rawImg, FRAME_H), rawH);
     const src = Texture.from(img).source;
     src.scaleMode = 'linear';
-    /* v2.3.1384 (owner: "jog south invisible character"): the fullset knight
-       strips are the LARGEST textures in the game (up to 6656px wide); their
-       mip chains cost +33% GPU memory each, and on a memory-stressed iPhone
-       the allocation failing silently = an invisible player while the world
-       renders on.  The knights draw at ~1:1, so mips buy little — skip them
-       for fullset only; regular gear keeps the v2.3.1341 shimmer cure. */
-    src.autoGenerateMipmaps = slot !== 'fullset';
+    /* v2.3.1385: the v2.3.1384 fullset mips-off (invisible-knight memory
+       guess) came RIGHT BACK as "lines are blurry and wobbly behind the
+       character while running east" — on a 3x-DPR phone the strip renders
+       slightly minified in device pixels, exactly where mips matter.
+       Restored; the invisible-knight hunt rides on the v2.3.1384 telemetry
+       (gear-sheet-failed / body-sheet-failed + GL caps) instead. */
+    src.autoGenerateMipmaps = true;
     const frames = Math.max(1, Math.floor(img.width / FRAME_W));
     const out = [];
     for (let i = 0; i < frames; i++) {
