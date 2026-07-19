@@ -218,10 +218,20 @@ function _ensureTraitLoaded(category, id) {
   }
   if (!e.loadStarted) {
     e.loadStarted = true;
-    fetch(`/sprites/traits/${category}/${id}/meta.json?v=${TRAIT_VER}`)
-      .then(r => r.ok ? r.json() : null)
-      .then(j => { if (j) e.meta = j; })
-      .catch(() => {});
+    /* v2.3.1382: meta.json gets the same bounded retry the trait textures
+       got in v2.3.1305 — a flaked meta left the trait unplaceable all
+       session (owner: "hair and headwear missing on east jog"). */
+    const _fetchMeta = (attempt) => {
+      const bust = attempt > 0 ? `&r=${attempt}` : '';
+      fetch(`/sprites/traits/${category}/${id}/meta.json?v=${TRAIT_VER}${bust}`)
+        .then(r => r.ok ? r.json() : null)
+        .then(j => {
+          if (j) { e.meta = j; return; }
+          if (attempt < 2) setTimeout(() => _fetchMeta(attempt + 1), [2000, 6000][attempt]);
+        })
+        .catch(() => { if (attempt < 2) setTimeout(() => _fetchMeta(attempt + 1), [2000, 6000][attempt]); });
+    };
+    _fetchMeta(0);
     for (const dir of Object.keys(e.tex)) {
       _loadTraitDir(e, category, id, dir, 0);
     }
@@ -296,14 +306,20 @@ let _bodyDataStarted = false;
 function _ensureBodyData() {
   if (_bodyDataStarted) return;
   _bodyDataStarted = true;
-  fetch(`/sprites/player/body-anchors.json?v=${TRAIT_VER}`)
-    .then(r => r.ok ? r.json() : null)
-    .then(j => { if (j) _bodyAnchors = j; })
-    .catch(() => {});
-  fetch(`/sprites/player/body-tops.json?v=${TRAIT_VER}`)
-    .then(r => r.ok ? r.json() : null)
-    .then(j => { if (j) _bodyTops = j; })
-    .catch(() => {});
+  /* v2.3.1382: bounded retry (v2.3.1305 pattern) — these anchors place every
+     hat/hair/beard; a single flaked fetch used to hide headwear all session. */
+  const _fetchJson = (url, apply, attempt = 0) => {
+    const bust = attempt > 0 ? `&r=${attempt}` : '';
+    fetch(url + bust)
+      .then(r => r.ok ? r.json() : null)
+      .then(j => {
+        if (j) { apply(j); return; }
+        if (attempt < 2) setTimeout(() => _fetchJson(url, apply, attempt + 1), [2000, 6000][attempt]);
+      })
+      .catch(() => { if (attempt < 2) setTimeout(() => _fetchJson(url, apply, attempt + 1), [2000, 6000][attempt]); });
+  };
+  _fetchJson(`/sprites/player/body-anchors.json?v=${TRAIT_VER}`, (j) => { _bodyAnchors = j; });
+  _fetchJson(`/sprites/player/body-tops.json?v=${TRAIT_VER}`, (j) => { _bodyTops = j; });
 }
 
 /* Mirrored views (W/NW/SE) reuse the opposite sheet texture, so they

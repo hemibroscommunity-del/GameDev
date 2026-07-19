@@ -600,8 +600,16 @@ function _pickupHeadCap() {
      (insertion order) baked entry; destroy its source on a 30s delay so an
      in-use texture is never killed mid-frame (same guard as _maskedBodyCache). */
   const keys = Object.keys(_pickupHeadSheets);
-  if (keys.length <= 12) return; /* v2.3.1368: jog head sheets share this cache (4 dirs/combo) */
+  if (keys.length <= 20) return; /* v2.3.1382: 12 -> 20 — jog heads are 5/combo, and
+     town scenes with a few armored remotes crossed 12 quickly */
+  /* v2.3.1382 (owner: "head fully missing on north jog"): NEVER evict the
+     LOCAL player's current combo — those are the oldest entries (preloaded
+     at the loading screen), so the old oldest-first rule destroyed exactly
+     the sheets on screen; the head then vanished until a rebuild+re-evict
+     thrash cycle. */
+  const _localPrefix = (_skinStore.get() || 'default') + '/' + (_pantsStore.get() || 'default') + '/' + (_shoesStore.get() || 'default') + '|';
   for (const k of keys) {
+    if (k.startsWith(_localPrefix)) continue;
     const e = _pickupHeadSheets[k];
     if (!Array.isArray(e) || !e.length) continue;   // skip 'loading'/empty
     delete _pickupHeadSheets[k];
