@@ -1065,16 +1065,21 @@ function _maskedBodyFrameInner(bodyTex, worn, dilate, _bt0, _bs, poseInfo) {
             if (inWaist && x >= rowMin[y] && x <= rowMax[y]) continue;
             if (!fill[p]) { d2[o + 3] = 0; dirty2 = true; continue; }
             /* v2.3.1353 (owner: "an entire chain armor outline on the east
-               body — it just needs to be in the waist part"): outside the
-               waist band the 2px allowance ring let the BODY's edges peek
-               past the narrower armor art — east's olive pants traced the
-               whole figure.  Legs/torso are not waist: there the body may
-               show only INSIDE the exact gear silhouette (interior windows
-               included, fill0); the waist rows keep the ring, where the
-               trunks legitimately meet the hip edge.  Full-set jog only —
-               partial wear and other poses keep the v2.3.681 behavior. */
+               body — it just needs to be in the waist part"): BELOW the
+               waist band the 2px allowance ring let the BODY's leg edges
+               peek past the narrower greave art — east's olive pants traced
+               the legs.  Legs are not waist: there the body may show only
+               INSIDE the exact gear silhouette (interior windows included,
+               fill0); the waist rows keep the ring, where the trunks
+               legitimately meet the hip edge.  Full-set jog only — partial
+               wear and other poses keep the v2.3.681 behavior.
+               v2.3.1358 (owner: SW/SE "head ... sunken behind" the plate on
+               the early frames): below-band ONLY.  Tightening ABOVE the band
+               also shaved the neck/chin edge under neckY that pads the
+               collar, sinking the head behind the plate where the chin dips
+               lowest in the cycle. */
             if (!partial && poseInfo && poseInfo.pose === 'jog' && w0 < w1
-                && (y < w0 - 8 || y >= w1 + 8) && !fill0[p]) {
+                && y >= w1 + 8 && !fill0[p]) {
               d2[o + 3] = 0; dirty2 = true;
             }
           }
