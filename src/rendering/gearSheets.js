@@ -32,7 +32,7 @@ const FRAME_H = 256;
    recoloured shirt (paper-doll, mirrors the cook stand-in). Each is a 4096x128
    32-frame strip aligned to fish-south.png; the armor tracks the body's per-
    frame lean, the shirt is a grayscale tint base with a 1px outline. */
-const GEAR_VERSION = '2.3.1366'; /* v2.3.1345: baked jog belts STRIPPED from all five chest sheets — the
+const GEAR_VERSION = '2.3.1367'; /* v2.3.1345: baked jog belts STRIPPED from all five chest sheets — the
    chain belt is now a runtime layer (see getJogBeltTexture + entityRenderer._placeGear); six rounds of
    baking/sealing it into the sheets each produced a new on-device artifact.
    BUMP THIS on EVERY gear-art regen — v2.3.1342c changed the PNGs without bumping, so
@@ -107,6 +107,23 @@ export function getGearFrame(slot, item, pose, dir, frameIdx) {
   if (entry === undefined) { buildSheet(key, slot, item, pose, dir); return null; }
   if (entry === 'loading' || !entry.length) return null;
   return entry[((frameIdx % entry.length) + entry.length) % entry.length];
+}
+
+/** v2.3.1367: frame by CYCLE PHASE (0..1) instead of a body frame index —
+ *  for sheets whose frame count differs from the body cycle's (the east
+ *  fullset ships its native 25 frames vs the 28-frame body cycle; owner:
+ *  "cut the animation cycle down to the frame count instead of extending
+ *  it").  Each sheet frame plays exactly once per cycle, evenly spaced on
+ *  the same clock, so there are no held/duplicated frames and no wrap
+ *  jump. */
+export function getGearFramePhased(slot, item, pose, dir, phase) {
+  if (!item || item === 'none') return null;
+  const key = slot + '/' + item + '/' + pose + '/' + dir;
+  const entry = _sheets[key];
+  if (entry === undefined) { buildSheet(key, slot, item, pose, dir); return null; }
+  if (entry === 'loading' || !entry.length) return null;
+  const p = ((phase % 1) + 1) % 1;
+  return entry[Math.min(entry.length - 1, Math.floor(p * entry.length))];
 }
 
 /* v2.3.1345: the jog chain belt ships as its own gear sheet

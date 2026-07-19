@@ -36,7 +36,7 @@ import { getHatColor, getColoredHatTextures } from '../traits/hatColorCatalog.js
 import { getFacialHairColor, getColoredFacialHairTextures } from '../traits/facialHairColorCatalog.js';
 import { getShirt } from '../traits/shirtCatalog.js';
 import { getShirtColor, shirtFill } from '../traits/shirtColorCatalog.js';
-import { getGearFrame, getLoadedGearSources } from '../gearSheets.js';
+import { getGearFrame, getGearFramePhased, getLoadedGearSources } from '../gearSheets.js';
 import { combatGearUrls } from '../combatGear.js';
 import { getEquip, onEquipChange, GEAR_CATALOG } from '../gearCatalog.js'; /* v2.3.1236: GEAR_CATALOG drives the all-states loading-screen prewarm */
 import { recordCrash } from '../../debug/crashTrap.js'; /* v2.3.1305: trait-sheet load-failure telemetry */
@@ -529,9 +529,14 @@ const _FISH_CHEST_DEJITTER = [-5, -4, -6, -5, -4, -6, -5, -4, -4, -3, -2, -1, -1
    classic path runs unchanged.  DISPLAY_DS guard: the sheet rides the 256
    gear pipeline while the body sprite's transform expects display-sized
    frames — identical only while DISPLAY_DS === 1. */
-function _fullsetFrame(chestItem, legsItem, pose, dir, frameIdx) {
+function _fullsetFrame(chestItem, legsItem, pose, dir, frameIdx, phase) {
   if (DISPLAY_DS !== 1 || pose !== 'jog') return null;
   if (chestItem !== 'steelplate' || legsItem !== 'steelgreaves') return null;
+  /* v2.3.1367: when the caller knows the jog cycle PHASE, the sheet plays
+     its NATIVE frame count evenly on the same clock (east ships 25 frames
+     vs the 28-frame body cycle — no held frames, no wrap jump).  Callers
+     that only gate on presence (_placeGear) pass the body frameIdx. */
+  if (phase != null) return getGearFramePhased('fullset', 'steel', pose, dir, phase);
   return getGearFrame('fullset', 'steel', pose, dir, frameIdx);
 }
 function _placeGear(display, equip, pose, dir, frameIdx) {
@@ -3935,6 +3940,7 @@ export class EntityRenderer {
         /* mine/fish frames are authored south-only -> force south, no mirror. */
         if (pose === 'mine' || pose === 'fish') { dir = 'south'; mirror = false; }
         let frameIdx = 0;
+        let _rJogPhase = null;  /* v2.3.1367: cycle phase for native-count fullset playback */
         if (pose === 'jog') {
           /* Frame count is per-direction now (24-35) — pulled from
              the loaded sheet width so a longer strip plays more frames
@@ -3944,6 +3950,8 @@ export class EntityRenderer {
           const _arm = !!(other.equip && other.equip.chest && other.equip.chest !== 'none'
             && other.equip.legs && other.equip.legs !== 'none');
           frameIdx = Math.floor((now / cycleMs('jog', dir, _arm)) * fc) % fc;
+          /* v2.3.1367: cycle phase for native-count fullset playback. */
+          _rJogPhase = ((now / cycleMs('jog', dir, _arm)) % 1 + 1) % 1;
         } else if (pose === 'hit') {
           const hitT = (now - (other._hitFlash || 0)) / 250;
           frameIdx = Math.max(0, Math.min(5, Math.floor(hitT * 6)));
@@ -4028,7 +4036,7 @@ export class EntityRenderer {
             const _rchestW = _rworn.some(w => w.k && w.k.indexOf('chest:') === 0);
             _rfull = pose === 'pickup' && _rlegsW && _rchestW;   // v2.3.1057: hide body, head overlay + gear render it (no bake)
             /* v2.3.1361: fullset figure for remote players too. */
-            const _fsR = _fullsetFrame(other.equip && other.equip.chest, other.equip && other.equip.legs, pose, dir, frameIdx);
+            const _fsR = _fullsetFrame(other.equip && other.equip.chest, other.equip && other.equip.legs, pose, dir, frameIdx, _rJogPhase);
             const _mt = _fsR || ((pose === 'pickup') ? tex : _maskedBodyFrame(tex, _rworn, 6, { pose, dir, frameIdx }));
             if (spriteBody.texture !== _mt) spriteBody.texture = _mt;
           }
@@ -4637,6 +4645,7 @@ export class EntityRenderer {
     if (spritesAvailable) {
       const spriteBody = display._spriteBody;
       let frameIdx = 0;
+      let _jogPhase = null;  /* v2.3.1367: cycle phase 0..1 for native-count fullset playback */
       if (pose === 'jog') {
         /* Per-direction frame count — sheets vary 24-34 frames.  During
            an attack or shield (movement slowed 50% by gameplay), play
@@ -4652,6 +4661,10 @@ export class EntityRenderer {
         const effectiveCycle = useAimDirection ? baseCycle * 2 : baseCycle;
         const rawIdx = Math.floor((now / effectiveCycle) * fc) % fc;
         frameIdx = isMovingBackward ? ((fc - 1) - rawIdx) : rawIdx;
+        /* v2.3.1367: the same clock as rawIdx, as a 0..1 phase — drives
+           native-frame-count fullset sheets (east: 25f vs 28f body). */
+        _jogPhase = ((now / effectiveCycle) % 1 + 1) % 1;
+        if (isMovingBackward) _jogPhase = 1 - _jogPhase;
         /* v2.3.1105: footsteps fire on the actual FOOT-PLANT frames of each
            direction's jog loop, so the sound lands exactly when a foot hits the
            ground -- a fixed timer never lined up because the per-direction
@@ -4800,7 +4813,7 @@ export class EntityRenderer {
         try {
           /* v2.3.1361: fullset figure replaces the bake when it ships for
              this (pose,dir); null -> classic masked path. */
-          const _fsT = _fullsetFrame(getEquip('chest'), getEquip('legs'), pose, dir, frameIdx);
+          const _fsT = _fullsetFrame(getEquip('chest'), getEquip('legs'), pose, dir, frameIdx, _jogPhase);
           _bodyTex = _fsT || ((!_worn.length || pose === 'pickup') ? tex : _maskedBodyFrame(tex, _worn, 6, { pose, dir, frameIdx }));
         } catch (e) { _bodyTex = tex; }
         if (spriteBody.texture !== _bodyTex) spriteBody.texture = _bodyTex;

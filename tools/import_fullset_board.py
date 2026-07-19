@@ -48,10 +48,13 @@ def overlap(sm, bop, px, py):
 
 def main():
     src, d, cols = sys.argv[1], sys.argv[2], int(sys.argv[3])
-    # v2.3.1366: optional 4th arg = the BOARD's frame count when it differs
-    # from the game cycle (east: 25-frame board vs 28-frame cycle).  Frames
-    # are then resampled nearest-index — board_i = i * bn // n — so a few
-    # frames hold twice per loop instead of the sheet being unusable.
+    # v2.3.1367 (owner: "cut the animation cycle down to the frame count
+    # instead of extending it"): optional 4th arg = the BOARD's frame count
+    # when it differs from the game cycle (east: 25-frame board vs 28-frame
+    # cycle).  The sheet ships at its NATIVE count; the renderer plays it by
+    # cycle PHASE (getGearFramePhased) so every frame plays exactly once per
+    # cycle — no held frames.  Each board frame registers against the
+    # nearest-in-phase body frame for scale/position.
     bn = int(sys.argv[4]) if len(sys.argv) > 4 else None
     im = Image.open(src).convert('RGB')
     a = np.array(im)
@@ -61,9 +64,9 @@ def main():
     rows = (bn + cols - 1) // cols
     cw, ch = im.width // cols, im.height // rows
     base = base128.resize((base128.width * 2, 256), Image.NEAREST)
-    out = Image.new('RGBA', (n * 128, 128), (0, 0, 0, 0))
-    for i in range(n):
-        r, c = divmod(i * bn // n, cols)
+    out = Image.new('RGBA', (bn * 128, 128), (0, 0, 0, 0))
+    for i in range(bn):
+        r, c = divmod(i, cols)
         sub = a[r * ch:(r + 1) * ch, c * cw:(c + 1) * cw]
         mask = ndimage.binary_opening(key_region(sub), iterations=1)
         lbl, num = ndimage.label(mask)
@@ -86,7 +89,8 @@ def main():
         lum = (0.30 * cr + 0.45 * cg + 0.25 * cb).astype(np.uint8)
         for chan in range(3):
             content[:, :, chan][fr] = lum[fr]
-        bfr = np.array(base.crop((i * FRAME, 0, (i + 1) * FRAME, FRAME)))
+        bi = min(n - 1, round(i * n / bn))   # nearest-in-phase body frame
+        bfr = np.array(base.crop((bi * FRAME, 0, (bi + 1) * FRAME, FRAME)))
         bop = bfr[:, :, 3] > 40
         byy, bxx = np.where(bop)
         by0, by1 = byy.min(), byy.max()
@@ -115,7 +119,7 @@ def main():
     os.makedirs('public/sprites/gear/fullset/steel', exist_ok=True)
     path = f'public/sprites/gear/fullset/steel/jog-{d}.png'
     out.save(path)
-    print(f'{d}: {n} frames imported -> {path}')
+    print(f'{d}: {bn} frames imported (game cycle {n}) -> {path}')
 
 
 if __name__ == '__main__':

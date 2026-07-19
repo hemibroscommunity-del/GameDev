@@ -11,7 +11,7 @@
 <div id="boards"></div>
 <script type="module">
 import { getBodyFrame } from './rendering/playerSkins.js';
-import { getGearFrame } from './rendering/gearSheets.js';
+import { getGearFrame, getGearFramePhased } from './rendering/gearSheets.js';
 import { frameCount, loadPlayerSprites } from './rendering/playerSprites.js';
 import { _maskedBodyFrame } from './rendering/systems/entityRenderer.js';
 
@@ -79,7 +79,9 @@ async function board(dir) {
     // v2.3.1361: the fullset figure replaces everything when it ships for
     // this dir (only jog-south so far); dirs without it keep the bake path.
     if (MODE !== 'body' && WEAR === 'full') {
-      const fs = await ready(() => getGearFrame('fullset', 'steel', 'jog', base, f), f === 0 ? 60 : 10);
+      // v2.3.1367: draw by cycle phase — mirrors the game's native-count
+      // playback for sheets whose frame count differs from the body's.
+      const fs = await ready(() => getGearFramePhased('fullset', 'steel', 'jog', base, f / n), f === 0 ? 60 : 10);
       if (fs) {
         const dx = (f % cols) * 256 * Z, dy = Math.floor(f / cols) * 256 * Z;
         drawTex(ctx, fs, dx, dy, Z, flip);
