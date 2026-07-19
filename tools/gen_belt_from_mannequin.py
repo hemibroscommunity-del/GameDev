@@ -231,8 +231,9 @@ def gen(d):
     chain = Image.open('tools/posesheets/chainbelt.png').convert('RGBA')
     tw = max(1, round(chain.width * TILE_H / chain.height))
     tile = np.array(chain.resize((tw, TILE_H), Image.LANCZOS)).astype(int)
-    # brighten the links toward steel (x1.9 read as WHITE briefs — mid-steel)
-    tile[:, :, :3] = np.clip(tile[:, :, :3] * 1.55 + 18, 0, 225)
+    # v2.3.1356 (owner: "All chain directions need to be darker"): x1.9 read
+    # as WHITE briefs, x1.55 still too silvery — settle on a darker steel.
+    tile[:, :, :3] = np.clip(tile[:, :, :3] * 1.2 + 8, 0, 190)
     tile = tile.astype(np.uint8)
 
     # v2.3.1349b: the GAME's chest/greaves sheets (the chest already carries
