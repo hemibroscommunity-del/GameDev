@@ -11,6 +11,11 @@ on:
         description: 'How many recent crash reports to fetch (max 200)'
         required: false
         default: '20'
+  # workflow_dispatch only works once the file is on the default branch;
+  # until this PR merges, a push touching this file re-runs the fetch.
+  push:
+    paths:
+      - '.github/workflows/crash-report.yml'
 jobs:
   fetch:
     runs-on: ubuntu-latest
