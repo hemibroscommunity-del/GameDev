@@ -151,6 +151,10 @@ export function specialAttack(S) {
       S.isSwinging = true;
       S._specialAttack = true;
       if (hasElement) S._iceAttack = true;
+      /* v2.3.1396: owner-painted slash crescent — one-shot 4-frame FX
+         rendered by effectsRenderer._updateSlashFx, riding the player. */
+      if (!S._slashFx) S._slashFx = [];
+      S._slashFx.push({ ownerId: 'me', ang: aimAng, x: S.player.x, y: S.player.y, ts: now });
       /* Broadcast the special swing so peers render the wider arc +
          gold halo.  The regular auto-swing broadcast path is skipped
          because isSwinging is already true here. */

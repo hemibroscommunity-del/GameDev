@@ -631,6 +631,17 @@ export function processGameEvent(type, payload, S, deps) {
                 if (typeof payload.ang === 'number') S.others[payload.id]._swingAng = payload.ang;
                 /* v2.3.1107: point the body the same way as the swing. */
                 _reconcileFacing(S.others[payload.id], payload.ang);
+                /* v2.3.1396: peer sword special -> same painted slash
+                   crescent the local special shows (rides the peer). */
+                if (payload.special) {
+                  if (!S._slashFx) S._slashFx = [];
+                  S._slashFx.push({
+                    ownerId: payload.id,
+                    ang: typeof payload.ang === 'number' ? payload.ang : 0,
+                    x: S.others[payload.id].x, y: S.others[payload.id].y,
+                    ts: Date.now(),
+                  });
+                }
               }
               break;
             }

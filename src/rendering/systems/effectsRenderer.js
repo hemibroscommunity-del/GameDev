@@ -76,6 +76,26 @@ _fxLoad('/sprites/projectiles/magic-bolt-v1.webp?v=2.3.1334').then((tex) => {
   }
 }).catch((err) => console.warn('[magic-bolt] load failed', err));
 
+/* v2.3.1396: owner-painted sword-slash special crescent — 4-frame
+   one-shot (born -> full -> dissolving -> wisps), frames 104x128,
+   crescent OPENS right / convex bulge LEFT in the art.  Placement
+   rotates it so the convex edge leads the swing direction.  Loaded
+   via _fxLoad => preloaded behind the intro (animation law).  Until
+   the strip resolves the special swing keeps its old wind-gust-only
+   look, so an in-flight load never blanks a live swing. */
+const SWORD_SLASH_FRAMES = [];
+const SWORD_SLASH_FRAME_MS = 85;
+_fxLoad('/sprites/effects/sword-slash-v1.webp?v=2.3.1396').then((tex) => {
+  if (!tex || !tex.source) return;
+  const fw = Math.floor(tex.source.width / 4);
+  for (let i = 0; i < 4; i++) {
+    SWORD_SLASH_FRAMES.push(new Texture({
+      source: tex.source,
+      frame: new Rectangle(i * fw, 0, fw, tex.source.height),
+    }));
+  }
+}).catch((err) => console.warn('[sword-slash] load failed', err));
+
 /* Gather-node sprites — keyed by node.nodeType. Until each texture is
    loaded, _updateGatherNodes falls through to the procedural drawing path
    below. Source PNGs are ~1000-1250 px; in-game node footprints are
@@ -407,6 +427,7 @@ export class EffectsRenderer {
        (basic staff projectiles, local + remote) — same reap pattern
        as slimeProjSprites. */
     this.magicBoltSprites = [];
+    this.slashFxSprites = []; /* v2.3.1396: painted sword-slash special crescents */
 
     // Chat bubble texts
     this.chatTexts = new Map();
@@ -847,6 +868,7 @@ export class EffectsRenderer {
        (chop/cook/fire). Guarded like the remote attack stand-ins. */
     try { this._updateRemoteExtraction(S, now); } catch (e) { /* skip remote skill stand-in */ }
     this._updateProjectiles(S, now);
+    this._updateSlashFx(S, now); /* v2.3.1396 */
     this._updateTelegraphs(S, now);
     this._updateOverlays(S, now);
     this._updateHUD(S, viewW, viewH, now);
@@ -1611,6 +1633,65 @@ export class EffectsRenderer {
     sprite.rotation = ang || 0;
     sprite.alpha = alpha;
     liveSet.add(p);
+  }
+
+  /** v2.3.1396: sword-special slash crescents — one-shot 4-frame
+   *  animation riding the swinger.  Entries live in S._slashFx
+   *  ({ownerId: 'me'|peerId, ang, ts}), pushed by playerActions
+   *  (local special) and gameEvents player_swing (remote specials).
+   *  The crescent follows its owner's CURRENT position so a moving
+   *  swing carries the arc with the character; art convex bulge is
+   *  LEFT so rotation = ang + PI leads the swing direction. */
+  _updateSlashFx(S, now) {
+    const list = S._slashFx || [];
+    const DUR = SWORD_SLASH_FRAME_MS * 4;
+    for (let i = list.length - 1; i >= 0; i--) {
+      const fx = list[i];
+      const age = now - fx.ts;
+      if (age >= DUR || age < 0) {
+        if (fx._sprite && !fx._sprite.destroyed) fx._sprite.destroy();
+        fx._sprite = null;
+        list.splice(i, 1);
+        continue;
+      }
+      if (!SWORD_SLASH_FRAMES.length) continue; /* strip still loading */
+      let sprite = fx._sprite;
+      if (!sprite || sprite.destroyed) {
+        sprite = new Sprite(SWORD_SLASH_FRAMES[0]);
+        sprite.anchor.set(0.5, 0.5);
+        /* Frame is 128 px tall; the special's half-disc reach is
+           GS_OUTER_RADIUS-ish x2 wide — 1.1 spans it without dwarfing
+           the ~64 px character. */
+        sprite.scale.set(1.1);
+        this.projectileLayer.addChild(sprite);
+        fx._sprite = sprite;
+        this.slashFxSprites.push({ fx, sprite });
+      }
+      const frame = SWORD_SLASH_FRAMES[Math.min(3, Math.floor(age / SWORD_SLASH_FRAME_MS))];
+      if (sprite.texture !== frame) sprite.texture = frame;
+      /* Follow the swinger (fall back to spawn coords if they left). */
+      let ox = fx.x || 0, oy = fx.y || 0;
+      if (fx.ownerId === 'me' && S.player) { ox = S.player.x; oy = S.player.y; }
+      else if (fx.ownerId && S.others && S.others[fx.ownerId]) {
+        const o = S.others[fx.ownerId];
+        ox = (o.renderX != null ? o.renderX : o.x) || ox;
+        oy = (o.renderY != null ? o.renderY : o.y) || oy;
+      }
+      const ang = fx.ang || 0;
+      sprite.x = ox + Math.cos(ang) * 40;
+      sprite.y = oy + Math.sin(ang) * 40;
+      sprite.rotation = ang + Math.PI;
+    }
+    /* Reap sprites whose fx entry is gone (zone reset clears the list). */
+    const live = new Set(list);
+    for (let i = this.slashFxSprites.length - 1; i >= 0; i--) {
+      const entry = this.slashFxSprites[i];
+      if (!live.has(entry.fx) || !entry.sprite || entry.sprite.destroyed) {
+        if (entry.sprite && !entry.sprite.destroyed) entry.sprite.destroy();
+        if (entry.fx) entry.fx._sprite = null;
+        this.slashFxSprites.splice(i, 1);
+      }
+    }
   }
 
   /** Push the projectile's current render position into a small
