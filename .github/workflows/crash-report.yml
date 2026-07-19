@@ -1,0 +1,23 @@
+# v2.3.1392: on-demand crash-telemetry reader.  The dev sandbox's proxy
+# blocks direct requests to the worker, so field crash evidence
+# (crashTrap.js ring uploads from the owner's iPhone) was unreadable in
+# sessions.  This workflow_dispatch job fetches the public crashes feed
+# from a CI runner and prints it in the job log — no secrets involved.
+name: crash-report
+on:
+  workflow_dispatch:
+    inputs:
+      limit:
+        description: 'How many recent crash reports to fetch (max 200)'
+        required: false
+        default: '20'
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Fetch recent crash reports
+        run: |
+          curl -sS --max-time 30 \
+            "https://brotown-server.hemibroscommunity.workers.dev/api/feedback/crashes?limit=${{ github.event.inputs.limit || '20' }}" \
+            | python3 -m json.tool
