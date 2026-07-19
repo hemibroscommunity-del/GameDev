@@ -2186,14 +2186,9 @@ function createPlayerDisplay() {
   const container = new Container();
   container.label = 'localPlayer';
 
-  /* v2.3.1300: ground shadow at child 0 — under the body, over the
-     ground (entity containers use pure insertion-order z).  y=20 is the
-     de-facto feet line (the old fallback blob's line); the shadow stays
-     grounded while the body bobs, which is what sells the 3/4 depth. */
-  const shadow = _mintShadow(26);
-  shadow.y = 20;
-  container.addChildAt(shadow, 0);
-  container._shadow = shadow;
+  /* v2.3.1365 (owner): PLAYER ground shadow removed — the v2.3.1300
+     ellipse read as a dark blob between the knight's legs mid-stride.
+     Monsters keep theirs (createMonsterDisplay). */
 
   /* Procedural fallback body — drawn until the sprite sheets resolve
      (and as a permanent fallback if they fail to load). */
@@ -2519,11 +2514,7 @@ function createPlayerDisplay() {
 function createOtherPlayerDisplay() {
   const container = new Container();
 
-  /* v2.3.1300: ground shadow at child 0 (see createPlayerDisplay). */
-  const shadow = _mintShadow(26);
-  shadow.y = 20;
-  container.addChildAt(shadow, 0);
-  container._shadow = shadow;
+  /* v2.3.1365 (owner): player ground shadow removed (see createPlayerDisplay). */
 
   /* Procedural fallback body — drawn until /sprites/player sheets
      resolve (and as a permanent fallback if they fail to load). */
@@ -3745,10 +3736,7 @@ export class EntityRenderer {
       else isMoving = _remoteV > 0.05;
       display._remoteMoving = isMoving;
       const bobY = isMoving ? Math.sin(now / 120) * 2 : 0;
-      /* v2.3.1300: the shadow stays GROUNDED while the body bobs (the
-         depth cue), but breathes a touch with the stride — width-only,
-         two property writes on a frame we're already touching. */
-      if (display._shadow) display._shadow.width = display._shadow._shadowW * (1 - bobY * 0.02);
+      /* v2.3.1365: player shadow removed — no stride wobble to drive. */
 
       /* Sprite-sheet body — same as local player.  Other players
          broadcast their own 8-way facing in `f` (-> other._renderFacing). */
@@ -3955,9 +3943,9 @@ export class EntityRenderer {
           display._lastIsMoving = isMoving;
           display._procDrawn = true;
           body.clear();
-          /* v2.3.1300: the baked fallback shadow ellipse is retired —
-             the shared-texture _shadow (child 0) covers both render
-             paths now, so the fallback drew a double shadow. */
+          /* v2.3.1300: the baked fallback shadow ellipse is retired;
+             v2.3.1365: the player ground shadow is gone entirely
+             (owner) — do not re-add one here. */
           // Legs with walk animation
           const legSwing = isMoving ? Math.sin(now / 80) * 3 : 0;
           body.rect(-bodyW / 2, 2 + bobY + legSwing, bodyW / 2 - 1, bodyH / 2);
@@ -4355,8 +4343,7 @@ export class EntityRenderer {
     const bh = slim ? 22 : 24;
     const isMoving = Math.abs(P.vx || 0) > 0.01 || Math.abs(P.vy || 0) > 0.01;
     const bobY = isMoving ? Math.sin(now / 120) * 2 : 0;
-    /* v2.3.1300: grounded shadow breathes with the stride (see remote twin). */
-    if (display._shadow) display._shadow.width = display._shadow._shadowW * (1 - bobY * 0.02);
+    /* v2.3.1365: player shadow removed — no stride wobble to drive. */
 
     /* Match the Canvas 2D facing logic exactly (BroTown.jsx ~13125-13137):
        1. S._shieldUp → S._shieldAngle (shield direction)
@@ -4837,8 +4824,8 @@ export class EntityRenderer {
         display._lastIsMoving = isMoving;
         display._procDrawn = true;
         body.clear();
-        /* v2.3.1300: baked fallback shadow retired — the shared-texture
-           _shadow (child 0) covers both render paths (see remote twin). */
+        /* v2.3.1300: baked fallback shadow retired; v2.3.1365: player
+           ground shadow gone entirely (owner) — do not re-add one here. */
         // Legs with walk animation
         const legSwing = isMoving ? Math.sin(now / 80) * 3 : 0;
         body.rect(-bw / 2, 2 + bobY + legSwing, bw / 2 - 1, bh / 2);
