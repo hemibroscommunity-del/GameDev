@@ -25,7 +25,16 @@
  * Consumed by _spawnZoneMonsters (index.js) and _dungeonMonster
  * (dungeon.js).  Damage/XP/gold curves stay inline at those call sites
  * (unchanged by BF-1; centralize them if they ever need tuning). */
-export const MONSTER_HP_CURVE = { base: 12.5, ramp: 1.052, plateau: 1.035, endgame: 1.025, flat: 100 }; /* v2.3.1346: owner — every monster +100 HP flat */
+export const MONSTER_HP_CURVE = { base: 12.5, ramp: 1.052, plateau: 1.035, endgame: 1.025, flat: 100, flatLow: 50, flatLowMaxLvl: 2 }; /* v2.3.1346: owner — every monster +100 HP flat.  v2.3.1364: owner — Lv1-2 monsters carry 50 LESS of it (flatLow) so starter fights don't feel spongy */
+
+/* v2.3.1364: level-aware flat HP term.  Use this instead of reading
+ * MONSTER_HP_CURVE.flat directly at spawn sites — Lv1-2 gets flatLow.
+ * MIRRORED in src/data/gameSystems.js monsterHpFlat (keep in sync). */
+export function monsterHpFlat(level) {
+  return level <= (MONSTER_HP_CURVE.flatLowMaxLvl || 0)
+    ? (MONSTER_HP_CURVE.flatLow || 0)
+    : (MONSTER_HP_CURVE.flat || 0);
+}
 
 /* v2.3.1153: damage channel was repriced flat-in-tierMult -> a
  * tier-independent multiplier (+49.5% at 99 pts).

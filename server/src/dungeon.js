@@ -40,7 +40,7 @@
  * Boss HP scales by cfg.bossMultiplier (server-clamped 2..8) and by
  * present player count 1.0/1.6/2.2/3.0 (GDD §55.7 party scaling). */
 
-import { ARCHETYPES, MONSTER_HP_CURVE } from './data.js';
+import { ARCHETYPES, MONSTER_HP_CURVE, monsterHpFlat } from './data.js';
 
 export const DUNGEONS = {
   MAX_WAVES: 10,        // client caps at 10 by level; hard server ceiling
@@ -310,8 +310,8 @@ export const dungeonMethods = {
       variant: null, spawnVariant: null, spawnSpd: spd,
       level: lvl,
       element: element || null,
-      hp: Math.ceil(baseHp * a.hpMult) + (MONSTER_HP_CURVE.flat || 0),
-      maxHp: Math.ceil(baseHp * a.hpMult) + (MONSTER_HP_CURVE.flat || 0),
+      hp: Math.ceil(baseHp * a.hpMult) + monsterHpFlat(lvl), /* v2.3.1364: Lv1-2 -> flatLow */
+      maxHp: Math.ceil(baseHp * a.hpMult) + monsterHpFlat(lvl),
       dmg: Math.ceil(baseDmg * a.dmgMult),
       xp: Math.ceil(baseXp),
       gold: Math.ceil(baseGold),
@@ -360,7 +360,7 @@ export const dungeonMethods = {
     const m = this._dungeonMonster(inst, inst.cfg.bossArchetype, inst.cfg.monsterLevel + 5, inst.cfg.element, 'boss');
     // v2.3.1346: the flat +100 HP bump applies AFTER the boss/party
     // multipliers -- "all monsters get +100", not +100 x8 amplified.
-    const hpFlat = MONSTER_HP_CURVE.flat || 0;
+    const hpFlat = monsterHpFlat(m.level); /* v2.3.1364: level-aware — must match the flat added at spawn */
     m.hp = Math.ceil((m.hp - hpFlat) * inst.cfg.bossMultiplier * scale) + hpFlat;
     m.maxHp = m.hp;
     m.dmg = Math.ceil(m.dmg * 1.5);
