@@ -832,12 +832,15 @@ export class EffectsRenderer {
     if (S.currentZone === 'worldview' && S.player) {
       const px = S.player.x, py = S.player.y;
       const r = 14 + 1.5 * Math.sin(now / 400);
+      /* v2.3.1362 (owner): whole reticle at ~50% opacity — full-strength
+         strokes read too harsh over the painted map.  Alphas below are
+         the v2.3.1361 values halved. */
       /* contrast halo under the bright ring */
       gfx.circle(px, py, r);
-      gfx.stroke({ width: 3.5, color: 0x1c2430, alpha: 0.5 });
+      gfx.stroke({ width: 3.5, color: 0x1c2430, alpha: 0.25 });
       /* the reticle ring */
       gfx.circle(px, py, r);
-      gfx.stroke({ width: 1.5, color: 0xffffff, alpha: 0.95 });
+      gfx.stroke({ width: 1.5, color: 0xffffff, alpha: 0.5 });
       /* 4 compass ticks, outward from the ring */
       for (let i = 0; i < 4; i++) {
         const a = i * Math.PI / 2;
@@ -845,10 +848,10 @@ export class EffectsRenderer {
         gfx.moveTo(px + ca * (r + 1), py + sa * (r + 1));
         gfx.lineTo(px + ca * (r + 6), py + sa * (r + 6));
       }
-      gfx.stroke({ width: 2, color: 0xffffff, alpha: 0.95 });
+      gfx.stroke({ width: 2, color: 0xffffff, alpha: 0.5 });
       /* center dot on the player's feet */
       gfx.circle(px, py, 2);
-      gfx.fill({ color: 0xffffff, alpha: 0.9 });
+      gfx.fill({ color: 0xffffff, alpha: 0.45 });
     }
 
     // Hit particles
