@@ -56,6 +56,13 @@ EDGE_STRIP = {}
 # higher; the head overlay still reaches the cut and covers the strip in
 # between, so the neck keeps tucking with the collar top intact.
 RELIEF = {'south': 2, 'north': 2}
+# v2.3.1386 (owner: "top of the armor was razored off in a straight line
+# ... round the pauldrons out"): after the erase, the armor top is a flat
+# ruler line.  For these dirs the flat top's ends are tapered into a dome
+# (progressively deeper erase over the outermost columns) and any stray
+# nubs above the line are removed.
+ROUND_TOP = {'south', 'north'}
+ROUND_DROPS = [4, 3, 2, 1, 1]   # extra rows erased at run-end columns
 
 
 def head_cols(op, top, figh):
@@ -178,6 +185,36 @@ def main():
                 extra &= ff[:, :, 3] > 0
                 ff[:, :, 3][extra] = 0
                 tot += int(extra.sum())
+    if d in ROUND_TOP:
+        for fi in range(fn):
+            ff = fs[:, fi * ffw:(fi + 1) * ffw]
+            op2 = ff[:, :, 3] > 40
+            flat = None
+            for y in range(ffw):
+                row = op2[y]
+                # longest run on this row
+                best = 0
+                run = 0
+                for v in row:
+                    run = run + 1 if v else 0
+                    best = max(best, run)
+                if best >= 20:
+                    flat = y
+                    break
+            if flat is None:
+                continue
+            # stray nubs above the line: clear everything above it
+            ff[:, :, 3][:flat][op2[:flat]] = 0
+            # find the flat run's extent on the line
+            row = ff[:, :, 3][flat] > 40
+            xs = np.where(row)[0]
+            if not len(xs):
+                continue
+            x0, x1 = xs.min(), xs.max()
+            for k, drop in enumerate(ROUND_DROPS):
+                for x in (x0 + k, x1 - k):
+                    if 0 <= x < ffw:
+                        ff[:, :, 3][flat:flat + drop, x] = 0
     Image.fromarray(fs).save(p)
     hp = f'public/sprites/player/jog-{d}-head.png'
     # jaw side trim (bottom 2 rows to the central 60%) — the jaw is wider
