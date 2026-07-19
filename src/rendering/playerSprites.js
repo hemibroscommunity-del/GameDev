@@ -119,7 +119,7 @@ const POSES = ['stand', 'jog', 'hit', 'pickup', 'attack', 'mine', 'fish'];
    belt re-baked from chainbelt.png.  anchors.json NE hand positions are
    measured from the wristband marker per frame -- real data, replacing the
    stale 48-entry list from the pre-v2.3.6xx sheet. */
-const VERSION = 74; /* v2.3.1380: SW head overlay rebuilt again (f1 band clip) */
+const VERSION = 75; /* v2.3.1381: south jog head overlay rebuilt (armor-anchored cuts) */
 /* Re-exported so the skin-recolor pipeline (playerSkins.js) loads the same
    cache-busted sheet URLs and never drifts onto a stale cached image. */
 export const SPRITE_VERSION = VERSION;
@@ -223,8 +223,16 @@ export function stripDetachedComponents(src, nFrames) {
   return cv;
 }
 
-async function loadSheet(pose, dir) {
-  const url = spriteUrl(pose, dir);
+/* v2.3.1381 (owner: "make sure all the assets retry loading if they don't
+   load first time — sometimes character appears invisible"): bounded retry
+   for the BASE body sheets, mirroring gearSheets' v2.3.1305 pattern.  A
+   flaked request used to leave manifest[pose][dir] undefined for the WHOLE
+   session (loadPromise is cached), killing the sprite path for that
+   (pose,dir).  The retry URL appends &r=N to bypass a poisoned cache entry;
+   south-only poses 404 by design and stop retrying via the same cap. */
+const _SHEET_RETRY_MS = [2000, 6000];
+async function loadSheet(pose, dir, attempt = 0) {
+  const url = spriteUrl(pose, dir) + (attempt > 0 ? `&r=${attempt}` : '');
   try {
     /* v2.3.1108: load via Image (not Assets.load) so the sheet can be
        nearest-upscaled back to the 256px logical frame when it's stored
@@ -265,7 +273,11 @@ async function loadSheet(pose, dir) {
     }
     manifest[pose][dir] = out;
   } catch {
-    /* Sheet missing — leave undefined, caller falls back to procedural. */
+    /* Sheet missing — retry on a backoff, then leave undefined (caller
+       falls back to procedural / the stand frame). */
+    if (attempt < _SHEET_RETRY_MS.length) {
+      setTimeout(() => { loadSheet(pose, dir, attempt + 1); }, _SHEET_RETRY_MS[attempt]);
+    }
   }
 }
 

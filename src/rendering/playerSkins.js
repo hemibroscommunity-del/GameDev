@@ -610,9 +610,14 @@ function _pickupHeadCap() {
     break;
   }
 }
-function _buildPickupHeadSheet(key, pose, dir, skinT, pantsT, shoesT) {
+function _buildPickupHeadSheet(key, pose, dir, skinT, pantsT, shoesT, attempt = 0) {
   _pickupHeadSheets[key] = 'loading';
-  return loadImg(`/sprites/player/${pose}-${dir}-head.png?v=${SPRITE_VERSION}`).then(img => {
+  /* v2.3.1381: bounded retry (v2.3.1305 pattern) — a flaked head-sheet
+     fetch used to cache [] permanently, leaving the fullset knight
+     headless for that dir all session.  Missing dirs still settle to []
+     after the retries (pickup ships south-only by design). */
+  const _bust = attempt > 0 ? `&r=${attempt}` : '';
+  return loadImg(`/sprites/player/${pose}-${dir}-head.png?v=${SPRITE_VERSION}${_bust}`).then(img => {
     const full = recolorBodyToCanvas(img, skinT, pantsT, shoesT, null, FRAME_H);
     const cv = document.createElement('canvas');
     cv.width = Math.max(1, Math.round(full.width / HEAD_DS));
@@ -631,7 +636,13 @@ function _buildPickupHeadSheet(key, pose, dir, skinT, pantsT, shoesT) {
     }
     _pickupHeadSheets[key] = out;
     _pickupHeadCap();
-  }).catch(() => { _pickupHeadSheets[key] = []; /* missing dir -> caller hides the overlay */ });
+  }).catch(() => {
+    if (attempt < 2) {
+      setTimeout(() => _buildPickupHeadSheet(key, pose, dir, skinT, pantsT, shoesT, attempt + 1), [2000, 6000][attempt]);
+      return; /* stays 'loading' during the backoff */
+    }
+    _pickupHeadSheets[key] = []; /* missing dir -> caller hides the overlay */
+  });
 }
 /** Recolored loot-pickup head-overlay frame for (skin, pants, shoes, pose, dir,
  *  frameIdx).  Returns null outside the pickup pose, while the sheet bakes, or
