@@ -44,7 +44,12 @@ MAGENTA = np.array([255, 0, 255])
 MAG_TOL = 60
 ALPHA = 20
 DIRS = ['south', 'north', 'southwest', 'east', 'northeast']
-BOARD_DIRS = {'south', 'north', 'southwest'}   # boards that match today's cycles
+# v2.3.1359 (owner: "South jog looks like a lot of flickering around the
+# midsection"): south dropped from the board mask — its board cells f0/f1
+# produced trunks TWICE the size of the other frames', so the chain area
+# pumped frame to frame.  South now uses the geometry fill alone, which
+# tracks the actual plate/greaves gap and stays temporally smooth.
+BOARD_DIRS = {'north', 'southwest'}   # boards that match today's cycles
 # v2.3.1354 (owner: east "more than half of the frames ... just the shadow in
 # the waist area or the chain making a ghost character outline"): the profile
 # dirs' exposed waist gap is too thin for the geometry fill — after the edge
@@ -62,10 +67,12 @@ MASK_DIRS = {'northeast'}
 # the arm-crossing frames; the band top sat a median 10 rows above the
 # chest skirt's measured bottom edge.  Anchored to the armor (skirt bottom)
 # vertically and the body's rows-local center horizontally, clipped to the
-# body, minus the arm guard — so the visible chain is an identical block
-# riding the armor instead of a per-frame ragged shape.
-FIXED_DIRS = {'east'}
-E_W, E_H, E_TOP = 46, 24, -10
+# body — so the visible chain is an identical block riding the armor
+# instead of a per-frame ragged shape.
+# v2.3.1359: south joins (48 = its narrowest waist width) — its board-mask
+# trunks pumped 2x in size on f0/f1 (the midsection flicker), and the
+# geometry fill alone is starved there (the merged skirt covers the gap).
+FIXED_DIRS = {'east': (46, 24, -10), 'south': (48, 24, -10)}
 TILE_H = 40   # ONE link scale for every dir/frame (v2.3.1350 same-color rule)
 
 # v2.3.1349b: per-frame waist rows from the game's own table, for the
@@ -266,18 +273,19 @@ def gen(d):
         if not bop.any():
             stats.append(0); continue
         if d in FIXED_DIRS:
+            F_W, F_H, F_TOP = FIXED_DIRS[d]
             wrow = wrs[i] if i < len(wrs) else wrs[-1]
             cf = chestop[:, i * FRAME:(i + 1) * FRAME]
             reg0 = max(0, wrow - 44)
             ys2, xs2 = np.where(cf[reg0:min(FRAME, wrow + 30)])
             ay = reg0 + int(np.percentile(ys2, 95)) if len(ys2) else wrow
-            r0 = max(0, ay + E_TOP); r1 = min(FRAME, r0 + E_H)
+            r0 = max(0, ay + F_TOP); r1 = min(FRAME, r0 + F_H)
             rowsel = np.zeros((FRAME, FRAME), bool)
             rowsel[r0:r1] = True
             bxs = np.where(bop & rowsel)[1]
             cxr = int(round(bxs.mean())) if len(bxs) else 128
             band = np.zeros((FRAME, FRAME), bool)
-            band[r0:r1, max(0, cxr - E_W // 2):min(FRAME, cxr - E_W // 2 + E_W)] = True
+            band[r0:r1, max(0, cxr - F_W // 2):min(FRAME, cxr - F_W // 2 + F_W)] = True
             green = band & ndimage.binary_dilation(bop, iterations=1)
             # v2.3.1357 (owner: east f2-f6/f16-f19 were "the dark shadow and
             # not the chain"): NO arm guard on the fixed band.  The guard

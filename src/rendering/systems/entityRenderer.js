@@ -1079,7 +1079,14 @@ function _maskedBodyFrameInner(bodyTex, worn, dilate, _bt0, _bs, poseInfo) {
                collar, sinking the head behind the plate where the chin dips
                lowest in the cycle. */
             if (!partial && poseInfo && poseInfo.pose === 'jog' && w0 < w1
-                && y >= w1 + 8 && !fill0[p]) {
+                && (y >= w1 + 8
+                    /* v2.3.1359 (owner: east "still has a slight ghost
+                       outline"): east's fixed 46px chain band never reaches
+                       the hip edges, so the band rows' allowance ring there
+                       is pure olive-pants bleed — clamp it too.  The neck
+                       rows above w0-8 keep the ring (head padding). */
+                    || (poseInfo.dir === 'east' && y >= w0 - 8))
+                && !fill0[p]) {
               d2[o + 3] = 0; dirty2 = true;
             }
           }
@@ -1120,7 +1127,13 @@ function _maskedBodyFrameInner(bodyTex, worn, dilate, _bt0, _bs, poseInfo) {
                   if (bd[o + 3] <= 40) continue;
                   if (d2[o + 3] <= 40) {
                     /* seam hole (the erase ate the bare midriff): fill with
-                       chain — this WAS the detached torso/legs gap */
+                       chain — this WAS the detached torso/legs gap.
+                       v2.3.1359 (owner: SE "light material between the legs"):
+                       only where the BODY originally existed — the belt
+                       sheet's 2px clip slack bridges the crotch gap when the
+                       thighs separate, and filling background pixels there
+                       hung floating chain between the legs. */
+                    if (!origBody || origBody[o + 3] <= 40) continue;
                     d2[o] = bd[o]; d2[o + 1] = bd[o + 1]; d2[o + 2] = bd[o + 2];
                     d2[o + 3] = 255;
                     dirty2 = true;
@@ -1148,6 +1161,27 @@ function _maskedBodyFrameInner(bodyTex, worn, dilate, _bt0, _bs, poseInfo) {
               }
             }
           } catch (e) { /* best-effort: waist stays pants this bake */ }
+        }
+        /* v2.3.1359 (owner: east "still has a slight ghost outline"): east's
+           body sheet draws its pants OLIVE-GREEN.  Through the armor's
+           INTERIOR windows around the crotch/legs — legitimately inside the
+           silhouette, so the exact-silhouette clamp can't touch them — the
+           olive reads as a ghost tracing the figure.  East only: quiet any
+           olive-tinted pixel below the chain band's top to under-armor
+           shadow.  Skin fails the tint test (R far above G); chain gray has
+           G ~= B and passes through untouched. */
+        if (!partial && poseInfo && poseInfo.pose === 'jog' && w0 < w1
+            && poseInfo.dir === 'east') {
+          for (let y = Math.max(0, w0 - 8); y < 256; y++) {
+            for (let x = 0; x < 256; x++) {
+              const o = (y * 256 + x) * 4;
+              if (d2[o + 3] <= 40) continue;
+              const R = d2[o], G = d2[o + 1], B = d2[o + 2];
+              if (G > B + 14 && G >= R - 24 && R > 40) {
+                d2[o] = 44; d2[o + 1] = 47; d2[o + 2] = 54; dirty2 = true;
+              }
+            }
+          }
         }
         /* v2.3.1349 SAFETY NET: no interior waist hole survives, period.  Any
            pixel where the ORIGINAL body existed, nothing remains after the
