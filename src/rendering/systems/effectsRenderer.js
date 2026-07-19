@@ -236,7 +236,18 @@ const DMG_STYLE_EMOJI = new TextStyle({
    Popups needing canvas features keep classic Text: emoji (own style),
    specials (dropShadow halo), and any char outside the baked set. */
 const DMG_BMP_FONT = 'bt-dmg-digits';
-const DMG_BMP_BAKE_PX = 28; /* 2x the 14px DMG_STYLE base */
+/* v2.3.1363: bake at 100px — pixi's DynamicBitmapFont measurement base.
+   The v2.3.1357 28px bake ended up stored at a FRACTIONAL effective
+   resolution (pixi scales page resolution by bakePx/100), so on iPhone
+   (DPR 3) glyphs were upscaled at draw time: bilinear filtering smeared
+   the heavy black stroke across the white fill and damage numbers read
+   as muddy BLACK over Ember's dark terrain (owner report).  Desktop at
+   DPR 1 downscaled and looked fine, which is why the rig never caught
+   it.  A 100px bake always DOWNSCALES (21px popup × DPR 3 = 63 device
+   px) — crisp on every device, no DPR games.  Stroke 14 keeps the
+   classic DMG_STYLE outline ratio (3/21 = 14/100 ≈ 0.14; the old bake's
+   6/28 = 0.21 was 50% heavier, part of the mud). */
+const DMG_BMP_BAKE_PX = 100;
 let _dmgBmpReady = false;
 try {
   BitmapFont.install({
@@ -246,7 +257,7 @@ try {
       fontSize: DMG_BMP_BAKE_PX,
       fontWeight: '800',
       fill: '#ffffff',
-      stroke: { color: '#000000', width: 6 }, /* 2x the 3px base stroke */
+      stroke: { color: '#000000', width: 14 },
     },
     chars: [['0', '9'], ['A', 'Z'], ['a', 'z'], '+-. !'],
   });
@@ -268,19 +279,44 @@ const DMG_BMP_RE = /^[0-9A-Za-z+\-. !]+$/;
    that init.  Any failure here permanently downgrades popups to the
    classic Text path — same visuals, pre-1357 cost. */
 export function prewarmDmgFontPipe(renderer) {
-  if (!renderer || !_dmgBmpReady) return;
-  let bt = null;
-  try {
-    bt = new BitmapText({
-      text: '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz+-. !',
-      style: { fontFamily: DMG_BMP_FONT, fontSize: DMG_BMP_BAKE_PX },
-    });
-    bt.alpha = 0.001; /* must actually draw — alpha 0 / visible false would be culled */
-    renderer.render(bt);
-  } catch (e) {
-    _dmgBmpReady = false; /* pipe is broken here — never touch it in combat */
+  if (!renderer) return;
+  if (_dmgBmpReady) {
+    let bt = null;
+    try {
+      bt = new BitmapText({
+        text: '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz+-. !',
+        style: { fontFamily: DMG_BMP_FONT, fontSize: DMG_BMP_BAKE_PX },
+      });
+      bt.alpha = 0.001; /* must actually draw — alpha 0 / visible false would be culled */
+      renderer.render(bt);
+    } catch (e) {
+      _dmgBmpReady = false; /* pipe is broken here — never touch it in combat */
+    }
+    if (bt) { try { bt.destroy(); } catch (e) { /* best-effort */ } }
   }
-  if (bt) { try { bt.destroy(); } catch (e) { /* best-effort */ } }
+  /* v2.3.1363: also warm the CLASSIC Text popup pipe — owner still felt
+     a hitch on the first hit taken.  Early hits mint classic-Text popups
+     the BitmapText atlas can't cover ('🛡️ Defense Lv N' fires on nearly
+     every early hit), and their first draw pays the canvas-text pipe
+     init PLUS the platform's first emoji-glyph rasterization (Apple
+     Color Emoji load on iOS) at full DPR.  Render one of each style
+     once behind the loading screen instead. */
+  /* NB mirror real usage: DMG_STYLE (stroked) only ever draws ASCII;
+     emoji ONLY goes through DMG_STYLE_EMOJI — stroked Text + emoji is
+     the documented iOS Safari tab-killer, in prewarm too. */
+  const warmTexts = [
+    [DMG_STYLE, '-0 BLOCK Dodge!'],
+    [DMG_STYLE_EMOJI, '🛡️🔥 Defense Lv 0'],
+  ];
+  for (const [style, str] of warmTexts) {
+    let t = null;
+    try {
+      t = new Text({ text: str, style: { ...style, fontSize: 21 } });
+      t.alpha = 0.001;
+      renderer.render(t);
+    } catch (e) { /* best-effort */ }
+    if (t) { try { t.destroy(); } catch (e) { /* best-effort */ } }
+  }
 }
 
 /* Cheap ASCII test — anything outside 0x20-0x7E is treated as emoji. */
