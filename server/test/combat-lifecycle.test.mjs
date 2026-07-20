@@ -507,10 +507,11 @@ for (const m of meadowMonsters) m._wanderPausedUntil = Date.now() + 600000;
   check('ranged special: staff special roll carries the 2x multiplier',
     Math.abs(staffSpec.dmg / staffNorm.dmg - 2.0) < 0.05, { norm: staffNorm.dmg, spec: staffSpec.dmg });
   // Bow special scales on Mind (all specials do), exactly the formula:
-  // (effBase + mind*0.1667) * v(0.7) * 2.0.
-  const bowExpect = Math.round((room._weaponEffBase('bow', ps.rangedWeapon) + 200 * 0.1667) * 0.7 * 2.0);
+  // (effBase + mind*0.1667) * v(0.7) * 3.0.
+  // v2.3.1397 (owner): per-weapon special mult — melee/bow 3x, staff 2x.
+  const bowExpect = Math.round((room._weaponEffBase('bow', ps.rangedWeapon) + 200 * 0.1667) * 0.7 * 3.0);
   const bowSpec = room._computeAttackDamage(ps, 'ranged', true);
-  check('ranged special: bow special = Mind-scaled 2x formula',
+  check('ranged special: bow special = Mind-scaled 3x formula',
     Math.abs(bowSpec.dmg - bowExpect) <= 1, { got: bowSpec.dmg, expect: bowExpect });
   // Agility must NOT leak into the special roll (specials are Mind-only).
   ps.agility = 999;

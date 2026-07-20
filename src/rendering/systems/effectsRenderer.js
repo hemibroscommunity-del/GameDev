@@ -76,6 +76,43 @@ _fxLoad('/sprites/projectiles/magic-bolt-v1.webp?v=2.3.1334').then((tex) => {
   }
 }).catch((err) => console.warn('[magic-bolt] load failed', err));
 
+/* v2.3.1396: painted SPECIAL projectiles (owner sheets) — the charged
+   bow arrow and staff orb replace their procedural halo-ring draws with
+   4-frame flicker strips, magic-bolt conventions (art noses RIGHT, tail
+   trails LEFT, rotation = travel angle).  Anchors printed by
+   tools/process_special_sheets.py: arrow pivots mid-shaft, orb pivots
+   on its white-hot core.  Until a strip resolves, the old ring draw is
+   the fallback so an in-flight load never blanks live specials. */
+const ARROW_SPECIAL = {
+  frames: [], anchor: { x: 0.460, y: 0.580 }, frameMs: 90, scale: 0.34,
+};
+const MAGIC_SPECIAL = {
+  frames: [], anchor: { x: 0.639, y: 0.536 }, frameMs: 90, scale: 0.60,
+};
+/* v2.3.1396: painted special-SWING slash (owner sheet) — a golden
+   crescent that flashes then dissipates, played ONCE across the melee
+   special's swing window by _updateSwordSwing / _updateRemoteSwordSwings
+   (the sword stand-ins replace the whole body+weapon during a swing, so
+   the slash draws here, not in entityRenderer's retired arc path).
+   Art: crescent bulge faces LEFT → rotation aim+PI leads the swing. */
+const SWORD_SLASH = { frames: [], anchor: { x: 0.5, y: 0.5 } };
+for (const [cfg, url] of [
+  [ARROW_SPECIAL, '/sprites/projectiles/arrow-special-v1.webp?v=2.3.1396'],
+  [MAGIC_SPECIAL, '/sprites/projectiles/magic-special-v1.webp?v=2.3.1396'],
+  [SWORD_SLASH, '/sprites/projectiles/sword-slash-v1.webp?v=2.3.1396'],
+]) {
+  _fxLoad(url).then((tex) => {
+    if (!tex || !tex.source) return;
+    const fw = Math.floor(tex.source.width / 4);
+    for (let i = 0; i < 4; i++) {
+      cfg.frames.push(new Texture({
+        source: tex.source,
+        frame: new Rectangle(i * fw, 0, fw, tex.source.height),
+      }));
+    }
+  }).catch((err) => console.warn('[special-fx] load failed', url, err));
+}
+
 /* Gather-node sprites — keyed by node.nodeType. Until each texture is
    loaded, _updateGatherNodes falls through to the procedural drawing path
    below. Source PNGs are ~1000-1250 px; in-game node footprints are
@@ -407,6 +444,9 @@ export class EffectsRenderer {
        (basic staff projectiles, local + remote) — same reap pattern
        as slimeProjSprites. */
     this.magicBoltSprites = [];
+    /* v2.3.1396: same lifecycle for the painted SPECIAL projectiles
+       (charged bow arrow + charged staff orb, local + remote). */
+    this.specialFxSprites = [];
 
     // Chat bubble texts
     this.chatTexts = new Map();
@@ -627,6 +667,14 @@ export class EffectsRenderer {
     this.swordWeaponSprite.anchor.set(0.5, 1);
     this.swordWeaponSprite.visible = false;
     this.nodeLayer.addChild(this.swordWeaponSprite);
+    /* v2.3.1396: painted special-swing crescent, drawn OVER the stand-in. */
+    this.slashSprite = new Sprite();
+    this.slashSprite.anchor.set(0.5, 0.5);
+    this.slashSprite.visible = false;
+    this.nodeLayer.addChild(this.slashSprite);
+    /* remote players' crescents, one sprite per live special swing (keyed
+       by player id; reaped in _updateRemoteSwordSwings). */
+    this._remoteSlashSprites = new Map();
     const _loadSwordStrip = (target, dir, url, cfg) => {
       target[dir] = [];
       /* v2.3.1112: load via <img> + nearest-upscale to the authored frame height
@@ -1405,18 +1453,33 @@ export class EffectsRenderer {
          v2.3.1334: the basic staff bolt's painted sprite carries its
          own wisp tail — no line trail on top of it. */
       const _isBasicStaffBolt = a._isStaffProj && !a.isSpecial && !a.ice;
-      if (!_stuckPose && !(_isBasicStaffBolt && MAGIC_BOLT_FRAMES.length)) {
+      const isBowHeavy = a.isSpecial && !a._isStaffProj && !a.ice;
+      /* v2.3.1396: `ice: true` is set on EVERY staff special (it is the
+         legacy "draw as orb" toggle, not the element — see the bow-heavy
+         comment in playerActions.js), so it must NOT exclude the painted
+         orb.  All staff specials share the charged-orb art regardless of
+         element. */
+      const _isStaffSpecial = a._isStaffProj && a.isSpecial;
+      /* v2.3.1396: painted special art carries its own flame/wisp tail —
+         skip the line trail exactly like the basic bolt's art does. */
+      const _paintedSpecial = (isBowHeavy && ARROW_SPECIAL.frames.length)
+        || (_isStaffSpecial && MAGIC_SPECIAL.frames.length);
+      if (!_stuckPose && !(_isBasicStaffBolt && MAGIC_BOLT_FRAMES.length) && !_paintedSpecial) {
         this._updateProjectileTrail(a, gfx, fadeA, /* isStaffProj */ a._isStaffProj || a.ice);
       }
 
-      const isBowHeavy = a.isSpecial && !a._isStaffProj && !a.ice;
-      if (isBowHeavy) {
+      if (isBowHeavy && ARROW_SPECIAL.frames.length) {
+        /* v2.3.1396: painted charged arrow (owner sheet) — golden flame
+           wrap baked into the art, so the halo circles retire. */
+        this._placeSpecialFx(ARROW_SPECIAL, a, a._renderX, a._renderY, _angB, fadeA, now, _liveBolts);
+      } else if (isBowHeavy) {
         /* Heavy bow shot — draw the arrow normally with a bright
            element-tinted halo around it.  Reads as a powered shot
            (clearly distinct from a regular arrow) without hiding the
            arrow itself in an orb.  v2.3.222: 3x scale per user
            request so the special bow shot reads as much heavier and
-           its damage radius matches the visual. */
+           its damage radius matches the visual.
+           v2.3.1396: fallback while the painted strip loads. */
         gfx.circle(a._renderX, a._renderY, 39);
         gfx.fill({ color: 0xf5c542, alpha: fadeA * 0.25 });
         gfx.circle(a._renderX, a._renderY, 27);
@@ -1424,6 +1487,11 @@ export class EffectsRenderer {
         gfx.circle(a._renderX, a._renderY, 15);
         gfx.fill({ color: 0xfff2a8, alpha: fadeA * 0.55 });
         this._drawArrow(gfx, a._renderX, a._renderY, _angB, elemColor, fadeA, 3);
+      } else if (_isStaffSpecial && MAGIC_SPECIAL.frames.length) {
+        /* v2.3.1396: painted charged orb (owner sheet) — golden power
+           halo baked into the art; the ring draw below stays as the
+           pre-load fallback (and for non-staff ice projectiles). */
+        this._placeSpecialFx(MAGIC_SPECIAL, a, a._renderX, a._renderY, a.ang, fadeA, now, _liveBolts);
       } else if (a.isSpecial || a.ice) {
         /* Staff special / ice — bigger yellow glow ring so specials
            read as distinct from regular projectiles. Three concentric
@@ -1485,11 +1553,16 @@ export class EffectsRenderer {
     for (const rp of remote) {
       if (!rp._renderX) continue;
       /* v2.3.1334: basic remote staff bolts share the painted sprite
-         (and skip the line trail — the art carries its own tail). */
+         (and skip the line trail — the art carries its own tail).
+         v2.3.1396: remote SPECIALS share the painted special art too. */
       const _remoteBasicBolt = rp.isStaff && !rp.isSpecial && MAGIC_BOLT_FRAMES.length;
-      if (!_remoteBasicBolt) this._updateProjectileTrail(rp, gfx, 1.0, !!rp.isStaff);
+      const _remoteMagicSpec = rp.isStaff && rp.isSpecial && MAGIC_SPECIAL.frames.length;
+      const _remoteArrowSpec = !rp.isStaff && rp.isSpecial && ARROW_SPECIAL.frames.length;
+      if (!_remoteBasicBolt && !_remoteMagicSpec && !_remoteArrowSpec) this._updateProjectileTrail(rp, gfx, 1.0, !!rp.isStaff);
       if (rp.isStaff) {
-        if (_remoteBasicBolt) {
+        if (_remoteMagicSpec) {
+          this._placeSpecialFx(MAGIC_SPECIAL, rp, rp._renderX, rp._renderY, rp.ang, 0.95, now, _liveBolts);
+        } else if (_remoteBasicBolt) {
           this._placeMagicBolt(rp, rp._renderX, rp._renderY, rp.ang, 0.95, now, _liveBolts);
         } else {
           /* v2.3.840: special staff bolts read bigger + golden with a halo. */
@@ -1497,6 +1570,8 @@ export class EffectsRenderer {
           gfx.fill({ color: rp.isSpecial ? 0xf5c542 : 0xa855f7, alpha: rp.isSpecial ? 0.95 : 0.8 });
           if (rp.isSpecial) { gfx.circle(rp._renderX, rp._renderY, 11); gfx.stroke({ color: 0xfff2a8, width: 2, alpha: 0.6 }); }
         }
+      } else if (_remoteArrowSpec) {
+        this._placeSpecialFx(ARROW_SPECIAL, rp, rp._renderX, rp._renderY, rp.ang + bend, 1.0, now, _liveBolts);
       } else {
         this._drawArrow(gfx, rp._renderX, rp._renderY, rp.ang + bend, rp.isSpecial ? 0xf5c542 : 0xd4a574, rp.isSpecial ? 1.0 : 0.9);
         if (rp.isSpecial) { gfx.circle(rp._renderX, rp._renderY, 9); gfx.stroke({ color: 0xfff2a8, width: 2, alpha: 0.55 }); }
@@ -1512,6 +1587,15 @@ export class EffectsRenderer {
         if (entry.sprite && !entry.sprite.destroyed) entry.sprite.destroy();
         if (entry.proj) entry.proj._boltSprite = null;
         this.magicBoltSprites.splice(i, 1);
+      }
+    }
+    /* v2.3.1396: same reap for the painted special-projectile sprites. */
+    for (let i = this.specialFxSprites.length - 1; i >= 0; i--) {
+      const entry = this.specialFxSprites[i];
+      if (!_liveBolts.has(entry.proj) || !entry.sprite || entry.sprite.destroyed) {
+        if (entry.sprite && !entry.sprite.destroyed) entry.sprite.destroy();
+        if (entry.proj) entry.proj._fxSprite = null;
+        this.specialFxSprites.splice(i, 1);
       }
     }
 
@@ -1604,6 +1688,32 @@ export class EffectsRenderer {
     }
     const frame = MAGIC_BOLT_FRAMES[
       (Math.floor(now / MAGIC_BOLT_FRAME_MS) + (p._boltPhase || 0)) % MAGIC_BOLT_FRAMES.length
+    ];
+    if (sprite.texture !== frame) sprite.texture = frame;
+    sprite.x = x;
+    sprite.y = y;
+    sprite.rotation = ang || 0;
+    sprite.alpha = alpha;
+    liveSet.add(p);
+  }
+
+  /** v2.3.1396: place (create/update) one painted SPECIAL-projectile
+   *  sprite — charged bow arrow or charged staff orb (cfg =
+   *  ARROW_SPECIAL / MAGIC_SPECIAL).  Same flicker + anchor + reap
+   *  contract as _placeMagicBolt; shared by local and remote. */
+  _placeSpecialFx(cfg, p, x, y, ang, alpha, now, liveSet) {
+    let sprite = p._fxSprite;
+    if (!sprite || sprite.destroyed) {
+      sprite = new Sprite(cfg.frames[0]);
+      sprite.anchor.set(cfg.anchor.x, cfg.anchor.y);
+      sprite.scale.set(cfg.scale);
+      if (p._fxPhase == null) p._fxPhase = Math.floor(Math.random() * 4);
+      this.projectileLayer.addChild(sprite);
+      p._fxSprite = sprite;
+      this.specialFxSprites.push({ proj: p, sprite });
+    }
+    const frame = cfg.frames[
+      (Math.floor(now / cfg.frameMs) + (p._fxPhase || 0)) % cfg.frames.length
     ];
     if (sprite.texture !== frame) sprite.texture = frame;
     sprite.x = x;
@@ -3353,6 +3463,7 @@ export class EffectsRenderer {
     if (!this._remoteSwordSprites) this._remoteSwordSprites = new Map();
     const others = (S && S.others) || {};
     const active = new Set();
+    const activeSlash = new Set();
     for (const id in others) {
       const o = others[id];
       if (!o) continue;
@@ -3361,6 +3472,30 @@ export class EffectsRenderer {
       const elapsed = now - (o._swingTs || 0);
       if (!isMelee || elapsed < 0 || elapsed >= SWORD_SWING_MS) continue;
       const ang = (typeof o._swingAng === 'number') ? o._swingAng : 0;
+      /* v2.3.1396: painted crescent for a remote SPECIAL swing — placed
+         before the facing gates below so it shows on every aim angle
+         (same rule as the local slash in _updateSwordSwing). */
+      if (o._swingSpecial && SWORD_SLASH.frames.length) {
+        let spx = this._remoteSlashSprites.get(id);
+        if (!spx || spx.destroyed) {
+          spx = new Sprite(SWORD_SLASH.frames[0]);
+          spx.anchor.set(0.5, 0.5);
+          this.nodeLayer.addChild(spx);
+          this._remoteSlashSprites.set(id, spx);
+        }
+        const _sp = Math.max(0, Math.min(1, elapsed / SWORD_SWING_MS));
+        const _sfr = SWORD_SLASH.frames[Math.min(3, Math.floor(_sp * 4))];
+        if (spx.texture !== _sfr) spx.texture = _sfr;
+        const _sox = (o.renderX != null) ? o.renderX : o.x;
+        const _soy = (o.renderY != null) ? o.renderY : o.y;
+        spx.x = _sox + Math.cos(ang) * GS_OUTER_RADIUS * 0.85;
+        spx.y = _soy - 10 + Math.sin(ang) * GS_OUTER_RADIUS * 0.85;
+        spx.rotation = ang + Math.PI;
+        spx.scale.set((GS_OUTER_RADIUS * 2.2) / 128);
+        spx.alpha = 0.95;
+        spx.visible = true;
+        activeSlash.add(id);
+      }
       const sdx = Math.cos(ang), sdy = Math.sin(ang);
       const dir4 = Math.abs(sdx) >= Math.abs(sdy) ? (sdx >= 0 ? 'east' : 'west') : (sdy >= 0 ? 'south' : 'north');
       const fmap = this._swordFacing[dir4];
@@ -3465,6 +3600,15 @@ export class EffectsRenderer {
           try { s.destroy(); } catch (e) {}
         }
         this._remoteSwordSprites.delete(id);
+      }
+    }
+    /* v2.3.1396: hide/reap the remote crescents the same way. */
+    for (const [id, spx] of this._remoteSlashSprites) {
+      if (activeSlash.has(id)) continue;
+      spx.visible = false;
+      if (!others[id]) {
+        try { spx.destroy(); } catch (e) {}
+        this._remoteSlashSprites.delete(id);
       }
     }
   }
@@ -3611,7 +3755,29 @@ export class EffectsRenderer {
     if (this.swordShirtSprite) this.swordShirtSprite.visible = false;
     if (this.swordJogLegsSprite) this.swordJogLegsSprite.visible = false;
     if (this.swordJogLegsGearSprite) this.swordJogLegsGearSprite.visible = false;
+    if (this.slashSprite) this.slashSprite.visible = false;
     if (!S || !S._swordSwinging || !S.player || !this.swordSprite) return;
+    /* v2.3.1396: painted crescent over the special swing — placed before
+       the facing gate below, so the slash shows on EVERY aim direction
+       (the stand-in body only exists for its authored facings, but the
+       special's damage is all-around and the tell should be too). */
+    if (S._specialAttack && SWORD_SLASH.frames.length) {
+      const aimA = (S._aimAngle != null) ? S._aimAngle
+        : (S._facingAngle != null) ? S._facingAngle : 0;
+      const p = Math.max(0, Math.min(1, (now - (S.swingTimer || now)) / SWORD_SWING_MS));
+      const spx = this.slashSprite;
+      const frame = SWORD_SLASH.frames[Math.min(3, Math.floor(p * 4))];
+      if (spx.texture !== frame) spx.texture = frame;
+      /* crescent centered at the special's mid-reach, leading edge (the
+         art's LEFT-facing bulge) pointed down the aim */
+      spx.x = S.player.x + Math.cos(aimA) * GS_OUTER_RADIUS * 0.85;
+      spx.y = S.player.y - 10 + Math.sin(aimA) * GS_OUTER_RADIUS * 0.85;
+      spx.rotation = aimA + Math.PI;
+      /* frame is 128px tall; span the special's widened reach */
+      spx.scale.set((GS_OUTER_RADIUS * 2.2) / 128);
+      spx.alpha = 0.95;
+      spx.visible = true;
+    }
     /* entityRenderer published the active facing; resolve it to a sheet + mirror. */
     const fmap = this._swordFacing[S._swordSwingDir];
     if (!fmap) return;

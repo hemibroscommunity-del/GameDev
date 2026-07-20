@@ -254,9 +254,10 @@ export const combatMethods = {
     const critMult = 1.5 + (ps.power || 0) * 0.001;
     const critFlatCeil = t2Accel(100, T2_UNITS.critDmg); // 15,150
     const comboBoost = 5; // covers combo + status amplifier + amulet elemDmg + lunge mult
-    // SPECIAL_ATK_MULT = 2.0 applied client-side; double the cap on
-    // special hits so they don't get rejected as too-high.
-    const specialMult = isSpecial ? 2.0 : 1.0;
+    // v2.3.1397: per-weapon special mult (client specialAtkMultFor) —
+    // melee/bow 3.0, staff 2.0.  The cap covers the LARGEST so no legit
+    // special is rejected.
+    const specialMult = isSpecial ? 3.0 : 1.0;
     // Floor baseline-10 rescaled (100 ÷ 4.8 ≈ 21) so it doesn't sit ~10x
     // above a real hit.  Now a sanity backstop on the server's own roll
     // (monster damage is server-computed) AND the PvP dmgBase cap.
@@ -315,7 +316,10 @@ export const combatMethods = {
             :                    (0.75 + Math.random() * 0.5);
     base *= v;
     base += t2Accel(dmgPts, T2_UNITS.damage); // v2.3.1345: accelerating flat
-    if (isSpecial) base *= 2.0;                        // SPECIAL_ATK_MULT
+    // v2.3.1397 (owner): per-weapon special multiplier — melee (sword/
+    // greatsword) and bow specials hit 3x, each staff orb 2x.  Mirrors
+    // client specialAtkMultFor (src/data/gameSystems.js).
+    if (isSpecial) base *= (type === 'staff' ? 2.0 : 3.0);
     if (w && w.isVolatile) base *= 1.30;               // §4.7 volatile weapon
     if (this._buffActive(ps, 'damage')) base *= 1.20;  // cooked damage buff (client gameLoop.js:2346)
     // Crit (calcCritChance + calcCritMult).

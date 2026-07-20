@@ -24,7 +24,7 @@ import {
   ECHO_AGGRO_MULT, ELEMENTS, GEM_DROP_RATES, GOLD_NUGGET_DROP, GS_FORWARD_ARC,
   GS_INNER_RADIUS, GS_OUTER_RADIUS, PVP_THREAT_DURATION,
   QUEST_CHAINS, QUEST_STATUS, RARE_DROP_CHANCE, RARE_DROP_ITEMS, RARITY_TIERS,
-  RESPAWN_BASE, RESPAWN_ESCALATE, RESPAWN_ESCALATE_WINDOW, RESPAWN_MAX, SPECIAL_ATK_MULT,
+  RESPAWN_BASE, RESPAWN_ESCALATE, RESPAWN_ESCALATE_WINDOW, RESPAWN_MAX, SPECIAL_ATK_MULT, specialAtkMultFor,
   SWING_ARC, SWING_COOLDOWN, SWING_RANGE, TILE, WEAPON_TYPES, WELL_RESTED_XP_MULT,
   ZONES, ZONE_RESOURCES, applyStatus, awardWeaponXp, bowPierceCount, bowRangeMult, calcBlockReduction, calcCritChance,
   calcCritMult, calcSpecialDmg, calcWeaponDmg, cleaveArcBonus, createDefaultCompStats, createDefaultLifeSkills,
@@ -1373,7 +1373,7 @@ export function updateMonsterCombat(S, deps) {
                 m._hitThisSwing = true;
                 if (!_swingHitTarget) _swingHitTarget = m;
                 var isCrit = Math.random() < critChance;
-                var specialMult = S._specialAttack ? SPECIAL_ATK_MULT : 1;
+                var specialMult = S._specialAttack ? specialAtkMultFor(_activeWpn.type) : 1; /* v2.3.1397: melee special 3x (owner) */
 
                 /* §9 — Apply element status on hit */
                 var hitElement = S._specialAttack ? _activeWpn.element2 : _activeWpn.element1;
@@ -1719,8 +1719,10 @@ export function updateMonsterCombat(S, deps) {
                 var kbAngle = Math.atan2(m.y - P.y, m.x - P.x);
                 /* v2.3.1356: owner — "bounce back is too intense for
                    monsters, reduce by 75%": 180/45/30 -> 45/11/8 (the
-                   special/crit/normal RATIO from v2.3.110 is kept). */
-                var kbForce = S._specialAttack ? 45 : isCrit ? 11 : 8;
+                   special/crit/normal RATIO from v2.3.110 is kept).
+                   v2.3.1397: owner — special bounce = exactly 2x a
+                   normal hit (45 -> 16); crit unchanged between. */
+                var kbForce = S._specialAttack ? 16 : isCrit ? 11 : 8;
                 /* Collision adds extra knockback (v2.3.1356: 6 -> 2) */
                 var collisionKb = collisionResult ? 2 : 0;
                 m.x += Math.cos(kbAngle) * (kbForce + collisionKb);
@@ -2325,7 +2327,7 @@ export function updateMonsterCombat(S, deps) {
                PvP, take damage, and spam "Killed by …" messages. */
             if (S.channel) {
               var _ZONES$S$currentZone7;
-              var specialMult2 = S._specialAttack ? SPECIAL_ATK_MULT : 1;
+              var specialMult2 = S._specialAttack ? specialAtkMultFor(_activeWpn.type) : 1; /* v2.3.1397 */
               /* §19 PvP only works outside town and safe zones */
               var inSafeZone = (_ZONES$S$currentZone7 = ZONES[S.currentZone]) === null || _ZONES$S$currentZone7 === void 0 ? void 0 : _ZONES$S$currentZone7.safe;
               var pvpLocked = S.lockedTarget && S.lockedTarget.type === 'player' && S.lockedTarget.ref;
