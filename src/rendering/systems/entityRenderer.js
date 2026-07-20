@@ -304,24 +304,35 @@ function _ensureHairLoaded(id) { return _ensureTraitLoaded('hair', id); }
    tools/derive_body_tops.py: frame-exact, no detection noise). */
 let _bodyAnchors = null;
 let _bodyTops = null;
-let _bodyDataStarted = false;
+let _bodyDataPromise = null;
 function _ensureBodyData() {
-  if (_bodyDataStarted) return;
-  _bodyDataStarted = true;
+  if (_bodyDataPromise) return _bodyDataPromise;
   /* v2.3.1382: bounded retry (v2.3.1305 pattern) — these anchors place every
-     hat/hair/beard; a single flaked fetch used to hide headwear all session. */
-  const _fetchJson = (url, apply, attempt = 0) => {
-    const bust = attempt > 0 ? `&r=${attempt}` : '';
-    fetch(url + bust)
+     hat/hair/beard; a single flaked fetch used to hide headwear all session.
+     v2.3.1398: the retries CHAIN into a returned promise and preloadTraits
+     awaits it, so the loading screen holds until the placement schemas are
+     really in (owner: hats/beards missing right after a deploy). */
+  const _fetchJson = (url, apply, attempt = 0) =>
+    fetch(url + (attempt > 0 ? `&r=${attempt}` : ''))
       .then(r => r.ok ? r.json() : null)
       .then(j => {
         if (j) { apply(j); return; }
-        if (attempt < 2) setTimeout(() => _fetchJson(url, apply, attempt + 1), [2000, 6000][attempt]);
+        if (attempt < 2) {
+          return new Promise((res) => setTimeout(res, [2000, 6000][attempt]))
+            .then(() => _fetchJson(url, apply, attempt + 1));
+        }
       })
-      .catch(() => { if (attempt < 2) setTimeout(() => _fetchJson(url, apply, attempt + 1), [2000, 6000][attempt]); });
-  };
-  _fetchJson(`/sprites/player/body-anchors.json?v=${TRAIT_VER}`, (j) => { _bodyAnchors = j; });
-  _fetchJson(`/sprites/player/body-tops.json?v=${TRAIT_VER}`, (j) => { _bodyTops = j; });
+      .catch(() => {
+        if (attempt < 2) {
+          return new Promise((res) => setTimeout(res, [2000, 6000][attempt]))
+            .then(() => _fetchJson(url, apply, attempt + 1));
+        }
+      });
+  _bodyDataPromise = Promise.allSettled([
+    _fetchJson(`/sprites/player/body-anchors.json?v=${TRAIT_VER}`, (j) => { _bodyAnchors = j; }),
+    _fetchJson(`/sprites/player/body-tops.json?v=${TRAIT_VER}`, (j) => { _bodyTops = j; }),
+  ]);
+  return _bodyDataPromise;
 }
 
 /* Mirrored views (W/NW/SE) reuse the opposite sheet texture, so they
@@ -630,6 +641,23 @@ function _fullsetFrame(chestItem, legsItem, pose, dir, frameIdx, phase) {
      that only gate on presence (_placeGear) pass the body frameIdx. */
   if (phase != null) return getGearFramePhased('fullset', 'steel', pose, dir, phase);
   return getGearFrame('fullset', 'steel', pose, dir, frameIdx);
+}
+/* v2.3.1399: TRUE when a masked-body bake for this (worn set, pose, dir)
+   would be dead weight — the fullset knight figure replaces the masked
+   composite at runtime for the full steel set on the jog dirs that ship a
+   figure (all but northeast), so baking those frames only burns VRAM.
+   Both prewarm passes skip on this.  Incident chain: the v2.3.1382 iPhone
+   startup OOM was "fixed" by deferring the fullset warm; v2.3.1398 put the
+   warm back on the loading gate (owner: assets must load at the login
+   screen) and the ~39MB landed on top of ~64MB of these dead bakes —
+   context-loss crash loop on iPhone (2026-07-20).  Skipping the dead bakes
+   pays for the gated warm with ~25MB to spare.  If a figure ever fails all
+   gate retries, the runtime falls back to a lazy on-demand masked bake —
+   rare hitch, correct image. */
+function _fullsetCoversBake(worn, pose, dir) {
+  if (DISPLAY_DS !== 1 || pose !== 'jog' || dir === 'northeast') return false;
+  const has = (k) => worn.some((w) => w.k === k);
+  return has('chest:steelplate') && has('legs:steelgreaves');
 }
 function _placeGear(display, equip, pose, dir, frameIdx) {
   const sb = display._spriteBody;
@@ -1584,6 +1612,9 @@ export async function prewarmMaskedBodyFrames(opts) {
           }
         }
         if (!worn.length) continue;
+        /* v2.3.1399: the fullset figure replaces these frames at runtime —
+           baking them only burns VRAM (see _fullsetCoversBake). */
+        if (_fullsetCoversBake(worn, pose, dir)) continue;
         try { _maskedBodyFrame(tex, worn, 6, { pose, dir, frameIdx: f }); } catch (e) { /* best-effort */ }
         if (budgetMs) {
           if (performance.now() - chunkT0 >= budgetMs) {
@@ -1664,6 +1695,9 @@ export async function prewarmAltWornSets(opts) {
             if (gt) worn.push({ k: sl + ':' + id, tex: gt });
           }
           if (!worn.length) continue;
+          /* v2.3.1399: skip the full-steel family's figure-covered jog
+             bakes here too (see _fullsetCoversBake). */
+          if (_fullsetCoversBake(worn, pose, dir)) continue;
           try { _maskedBodyFrame(tex, worn, 6, { pose, dir, frameIdx: f }); } catch (e) { /* best-effort */ }
           if (++sinceYield >= (fast ? 6 : 2)) {
             sinceYield = 0;
@@ -2206,8 +2240,13 @@ export function preloadTraits() {
   } catch (e) { /* individual warms are best-effort */ }
   /* Await the base art via Assets' per-URL dedup (same URLs the ensure
      guards fetch).  allSettled: a missing direction is normal for some
-     traits (meta-declared) and must not hold the gate hostage. */
-  return Promise.allSettled(urls.map((u) => Assets.load(u).catch(() => {})));
+     traits (meta-declared) and must not hold the gate hostage.
+     v2.3.1398: + the body placement schemas (anchors/tops) — without
+     them EVERY hat/hair/beard is hidden, so they belong on the gate. */
+  return Promise.allSettled([
+    _ensureBodyData(),
+    ...urls.map((u) => Assets.load(u).catch(() => {})),
+  ]);
 }
 
 const PLAYER_HEART_SIZE = 40;

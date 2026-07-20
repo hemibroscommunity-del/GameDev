@@ -276,7 +276,11 @@ async function loadSheet(pose, dir, attempt = 0) {
     /* Sheet missing — retry on a backoff, then leave undefined (caller
        falls back to procedural / the stand frame). */
     if (attempt < _SHEET_RETRY_MS.length) {
-      setTimeout(() => { loadSheet(pose, dir, attempt + 1); }, _SHEET_RETRY_MS[attempt]);
+      /* v2.3.1398: AWAIT the retry so loadPlayerSprites (the intro gate)
+         holds the loading screen until the sheet is really in — a flaked
+         BASE body sheet passing the gate = invisible player mid-play. */
+      await new Promise((res) => setTimeout(res, _SHEET_RETRY_MS[attempt]));
+      return loadSheet(pose, dir, attempt + 1);
     } else {
       /* v2.3.1384: final failure of a BASE body sheet = invisible player.
          Evidence for the crash ring (stand/jog exist for every dir). */
