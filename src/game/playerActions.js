@@ -8,7 +8,7 @@
    `stateRef.current._tutorialStep` read became `S._tutorialStep` (same
    object). raiseShield takes setShieldUp via deps (its only React
    setter). All other references are module imports below. */
-import { SWING_COOLDOWN, SPECIAL_ATK_MULT, BT_AUDIO, meleeSwingSfx, getActiveWeapon, calcSpecialDmg, monsterBodyY, swingCooldownMult } from '@/data/index.js';
+import { SWING_COOLDOWN, SPECIAL_ATK_MULT, specialAtkMultFor, BT_AUDIO, meleeSwingSfx, getActiveWeapon, calcSpecialDmg, monsterBodyY, swingCooldownMult } from '@/data/index.js';
 import { addBuildUse, pushDmgPopup } from '@/game/combatHelpers.js';
 
 export function swingAttack(S) {
@@ -93,7 +93,7 @@ export function specialAttack(S) {
       S.arrows.push({
         ang: aimAng,
         dist: 14,
-        dmg: Math.round(wpnDmg * SPECIAL_ATK_MULT),
+        dmg: Math.round(wpnDmg * specialAtkMultFor('bow')), /* v2.3.1397: bow special 3x (owner) */
         life: 150, /* v2.3.1335: range -25% (the 675px plant cap governs reach) */
         maxLife: 150,
         hitIds: new Set(),
@@ -122,7 +122,7 @@ export function specialAttack(S) {
         S.arrows.push({
           ang: aimAng + si * 0.25,
           dist: 14,
-          dmg: Math.round(_wpnDmg * SPECIAL_ATK_MULT * 0.6),
+          dmg: Math.round(_wpnDmg * specialAtkMultFor('staff')), /* v2.3.1397: 2x per orb, 0.6 haircut dropped (owner) */
           life: 112, /* v2.3.1335: range -25% (750->560px at 5px/tick) */
           maxLife: 112,
           hitIds: new Set(),

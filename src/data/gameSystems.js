@@ -4400,8 +4400,17 @@ export function xpRequired(level) {
 }
 
 /* §15.2 Special attack multiplier (no element = raw damage boost).
-   Bumped 1.8 → 2.0 so a special does exactly 2× a normal hit. */
+   Bumped 1.8 → 2.0 so a special does exactly 2× a normal hit.
+   v2.3.1397 (owner): per-weapon — melee (sword/greatsword) and bow
+   specials hit 3×; each staff special orb hits 2× (was 2×·0.6 = 1.2×
+   per orb).  specialAtkMultFor is the one source of truth; the flat
+   constant remains only for legacy imports.  SERVER MIRROR:
+   server/src/combat.js _computeAttackDamage + _maxDmgForAttacker —
+   change BOTH or the anticheat cap rejects legit specials. */
 export const SPECIAL_ATK_MULT = 2.0;
+export function specialAtkMultFor(weaponType) {
+  return weaponType === 'staff' ? 2.0 : 3.0;
+}
 
 /* Create a default player RPG state with the new stat system */
 export function createDefaultRpg() {
