@@ -15,9 +15,16 @@ import React, { useEffect, useRef, useState } from 'react';
 
 const SEGMENTS = 5;
 const FADE_MS = 300;
+/* v2.3.1401: painted gauge frame (owner sheet) — riveted steel ring with
+   a golden bolt at 12 o'clock and a recessed channel the live blue arc
+   fills.  Measured off the keyed art: the channel spans 62%..81% of the
+   art's radius, so the arc rides its centerline.  Until the image loads
+   (or if it fails) the old procedural disc+track render as the fallback. */
+const GAUGE_URL = '/icons/ui/charge-gauge-v1.webp?v=2.3.1401';
 
 export const SpecialChargePie = () => {
   const [, force] = useState(0);
+  const [gaugeReady, setGaugeReady] = useState(false);
   const [isLandscape, setIsLandscape] = useState(
     typeof window !== 'undefined' ? window.innerWidth > window.innerHeight : false
   );
@@ -70,11 +77,13 @@ export const SpecialChargePie = () => {
   const size = 40;
   const cx = size / 2;
   const cy = size / 2;
-  /* 40 px overall.  Ring annulus is half the radius (10 px wide),
-     leaving a 20 px-diameter dark center for the number. */
-  const ringR = 15;
-  const strokeW = 10;
-  const diskR = ringR - strokeW / 2;
+  /* Painted gauge: arc centered in the art's channel (r 0.62-0.81 of the
+     20px half-size -> centerline 14.3, width 3.6 keeps a hair of channel
+     visible on both sides).  Procedural fallback keeps the old chunky
+     annulus so the indicator never blanks while the art fetches. */
+  const ringR = gaugeReady ? 13.9 : 15;
+  const strokeW = gaugeReady ? 3.2 : 10;
+  const diskR = 15 - 10 / 2;
   const C = 2 * Math.PI * ringR;
   /* v2.3.1307: keyed to --sheet-h so the pie rides above the OPEN
      sheet with the right disc it annotates (movement now works with
@@ -106,9 +115,20 @@ export const SpecialChargePie = () => {
          pie (the next suspect flagged in CLAUDE.md after the strokeDasharray fix).
          The disk fill + edge stroke below already give it definition. */
     }}>
-      <svg viewBox={'0 0 ' + size + ' ' + size} width={size} height={size} style={{ opacity, display: 'block' }}>
-        <circle cx={cx} cy={cy} r={diskR} fill={DISK_FILL} stroke={DISK_EDGE} strokeWidth={1} />
-        <circle cx={cx} cy={cy} r={ringR} fill="none" stroke={RING_BG} strokeWidth={strokeW} />
+      <img
+        src={GAUGE_URL}
+        alt=""
+        onLoad={() => setGaugeReady(true)}
+        onError={() => setGaugeReady(false)}
+        style={{
+          position: 'absolute', inset: 0, width: size, height: size,
+          opacity: gaugeReady ? opacity : 0, display: 'block',
+        }}
+      />
+      <svg viewBox={'0 0 ' + size + ' ' + size} width={size} height={size}
+        style={{ opacity, display: 'block', position: 'relative' }}>
+        {!gaugeReady && <circle cx={cx} cy={cy} r={diskR} fill={DISK_FILL} stroke={DISK_EDGE} strokeWidth={1} />}
+        {!gaugeReady && <circle cx={cx} cy={cy} r={ringR} fill="none" stroke={RING_BG} strokeWidth={strokeW} />}
         <circle
           cx={cx}
           cy={cy}
