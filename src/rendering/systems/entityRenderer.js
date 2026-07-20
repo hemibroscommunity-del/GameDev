@@ -6226,8 +6226,6 @@ export class EntityRenderer {
     /* v2.3.214: prefer white-fill heart so we can tint by HP tier;
        fall back to the red one until heart-white resolves. */
 
-    const W = 64, H = 10;
-    const MIN_LABEL_W = 14; /* hide the value-number if its section is narrower */
     const HOLD_MS = 2500;
     const FADE_STEP = 16.7 / 300; /* ~300 ms fade-in / fade-out */
 
@@ -6244,51 +6242,49 @@ export class EntityRenderer {
       if (d._hudMpTextEmpty && d._hudMpTextEmpty.visible) d._hudMpTextEmpty.visible = false;
     }
 
-    /* Stamina pill (legacy single-bar style; unchanged). */
-    const bars = [
-      { sprite: d._hudStamSprite, empty: d._hudStamEmpty, tFull: d._hudStamTextFull, tEmpty: d._hudStamTextEmpty, cur: R.stamina, max: R.maxStamina, y: -124 },
-    ];
-    for (const b of bars) {
-      const max = b.max || 1;
-      const cur = Math.max(0, Math.min(max, b.cur || 0));
+    /* Stamina — v2.3.1400 (owner): the 64px horizontal pill above the
+       head is retired for a bare percentage NUMBER below the player's
+       feet.  "Energy percentage shouldn't draw much attention" — no bar,
+       no icon, small text, and it keeps the old visibility contract:
+       fades in while below max, holds HOLD_MS once refilled, fades out.
+       The pill sprite/overlay/split labels stay allocated but hidden
+       (pickup/death paths still reference them). */
+    {
+      const max = R.maxStamina || 1;
+      const cur = Math.max(0, Math.min(max, R.stamina || 0));
       const pct = cur / max;
       const full = cur >= max - 0.01;
-      if (!full) b.sprite._lastNotFullAt = now;
-      const sinceChange = now - (b.sprite._lastNotFullAt || 0);
+      const b = d._hudStamSprite;
+      if (!full) b._lastNotFullAt = now;
+      const sinceChange = now - (b._lastNotFullAt || 0);
       const targetAlpha = (!full || sinceChange < HOLD_MS) ? 1 : 0;
-      const a = (b.sprite.alpha != null) ? b.sprite.alpha : 0;
+      /* raw fade tracked separately — reading label.alpha back would
+         re-apply the 0.8 dim each frame and trap the fade at ~0.22 */
+      const a = (b._fadeA != null) ? b._fadeA : 0;
       const delta = targetAlpha - a;
       const newAlpha = a + Math.max(-FADE_STEP, Math.min(FADE_STEP, delta));
-      b.sprite.alpha = b.empty.alpha = newAlpha;
+      b._fadeA = newAlpha;
 
-      if (b.sprite.texture && b.sprite.texture.width > 0) {
-        b.sprite.width = W;
-        b.sprite.height = H;
-        b.sprite.x = 0;
-        b.sprite.y = b.y;
-      }
-      b.empty.clear();
-      const filledW = W * pct;
-      const emptyW = W - filledW;
-      if (emptyW > 0.5) {
-        b.empty.rect(-W / 2 + filledW, b.y - H / 2, emptyW, H);
-        b.empty.fill({ color: 0x000000, alpha: 0.55 });
-      }
+      if (b.visible) b.visible = false;
+      d._hudStamEmpty.clear();
+      if (d._hudStamTextEmpty.visible) d._hudStamTextEmpty.visible = false;
 
-      const curStr = String(Math.ceil(cur));
-      const missStr = String(Math.ceil(max - cur));
-      if (b.tFull.text !== curStr) b.tFull.text = curStr;
-      if (b.tEmpty.text !== missStr) b.tEmpty.text = missStr;
-      b.tFull.x = -W / 2 + filledW / 2;
-      b.tFull.y = b.y;
-      b.tEmpty.x = -W / 2 + filledW + emptyW / 2;
-      b.tEmpty.y = b.y;
-      const fullVisible = filledW >= MIN_LABEL_W && newAlpha > 0.02;
-      const emptyVisible = emptyW >= MIN_LABEL_W && newAlpha > 0.02;
-      b.tFull.alpha = fullVisible ? newAlpha : 0;
-      b.tEmpty.alpha = emptyVisible ? newAlpha : 0;
-      b.tFull.visible = fullVisible;
-      b.tEmpty.visible = emptyVisible;
+      const label = d._hudStamTextFull;
+      if (!label._energyStyled) {
+        /* one-time restyle: the shared pill-number style (8px) reads as a
+           speck on its own.  11px, still quiet.  Pixi clones the plain
+           style object per Text, so this can't leak to the MP labels. */
+        label._energyStyled = true;
+        label.style.fontSize = 11;
+      }
+      /* small ⚡ marks it as ENERGY without pulling focus (owner) */
+      const pctStr = '⚡' + Math.round(pct * 100) + '%';
+      if (label.text !== pctStr) label.text = pctStr;
+      label.x = 0;
+      label.y = 86;                     /* just under the feet (container origin
+                                           sits near the head; name tag is -28) */
+      label.alpha = newAlpha * 0.8;     /* deliberately understated */
+      label.visible = newAlpha > 0.02;
     }
 
     /* HP: quartile-colored progress RING with a muted-gray center holding

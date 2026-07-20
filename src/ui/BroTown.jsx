@@ -8544,16 +8544,11 @@ export var BroTown = function BroTown(_ref0) {
     }, React.createElement('div', {
       className: 'bt-ds-icon'
     }, '⚡'), React.createElement('div', {
-      className: 'bt-ds-track'
-    }, React.createElement('div', {
-      className: 'bt-ds-fill',
-      style: {
-        width: stamPct + '%',
-        background: '#d4a03d'
-      }
-    })), React.createElement('div', {
-      className: 'bt-ds-val'
-    }, stam + '/' + maxStam)), React.createElement('div', {
+      /* v2.3.1400 (owner): energy shows as a quiet percentage, no bar —
+         matches the new in-world readout below the player. */
+      className: 'bt-ds-val',
+      style: { textAlign: 'left', minWidth: 0 }
+    }, Math.round(stamPct) + '%')), React.createElement('div', {
       style: {
         display: 'flex',
         alignItems: 'center',
