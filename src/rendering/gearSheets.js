@@ -103,8 +103,11 @@ function buildSheet(key, slot, item, pose, dir, attempt = 0) {
     _sheets[key] = out;
   }).catch(() => {
     if (attempt < _GEAR_RETRY_MS.length) {
-      setTimeout(() => buildSheet(key, slot, item, pose, dir, attempt + 1), _GEAR_RETRY_MS[attempt]);
-      return; /* stays 'loading' during the backoff */
+      /* v2.3.1398: retry CHAINS into the returned promise so the intro
+         gate (preloadGear/preloadFullsetFigures awaiters) waits through
+         the backoff instead of passing with a sheet still re-fetching. */
+      return new Promise((res) => setTimeout(res, _GEAR_RETRY_MS[attempt]))
+        .then(() => buildSheet(key, slot, item, pose, dir, attempt + 1));
     }
     _sheets[key] = []; /* missing -> caller hides the slot */
     try { if (window.__spriteLog) console.warn('[sprite] gear sheet failed', key); } catch (e) { /* ignore */ }

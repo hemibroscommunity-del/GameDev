@@ -304,24 +304,35 @@ function _ensureHairLoaded(id) { return _ensureTraitLoaded('hair', id); }
    tools/derive_body_tops.py: frame-exact, no detection noise). */
 let _bodyAnchors = null;
 let _bodyTops = null;
-let _bodyDataStarted = false;
+let _bodyDataPromise = null;
 function _ensureBodyData() {
-  if (_bodyDataStarted) return;
-  _bodyDataStarted = true;
+  if (_bodyDataPromise) return _bodyDataPromise;
   /* v2.3.1382: bounded retry (v2.3.1305 pattern) — these anchors place every
-     hat/hair/beard; a single flaked fetch used to hide headwear all session. */
-  const _fetchJson = (url, apply, attempt = 0) => {
-    const bust = attempt > 0 ? `&r=${attempt}` : '';
-    fetch(url + bust)
+     hat/hair/beard; a single flaked fetch used to hide headwear all session.
+     v2.3.1398: the retries CHAIN into a returned promise and preloadTraits
+     awaits it, so the loading screen holds until the placement schemas are
+     really in (owner: hats/beards missing right after a deploy). */
+  const _fetchJson = (url, apply, attempt = 0) =>
+    fetch(url + (attempt > 0 ? `&r=${attempt}` : ''))
       .then(r => r.ok ? r.json() : null)
       .then(j => {
         if (j) { apply(j); return; }
-        if (attempt < 2) setTimeout(() => _fetchJson(url, apply, attempt + 1), [2000, 6000][attempt]);
+        if (attempt < 2) {
+          return new Promise((res) => setTimeout(res, [2000, 6000][attempt]))
+            .then(() => _fetchJson(url, apply, attempt + 1));
+        }
       })
-      .catch(() => { if (attempt < 2) setTimeout(() => _fetchJson(url, apply, attempt + 1), [2000, 6000][attempt]); });
-  };
-  _fetchJson(`/sprites/player/body-anchors.json?v=${TRAIT_VER}`, (j) => { _bodyAnchors = j; });
-  _fetchJson(`/sprites/player/body-tops.json?v=${TRAIT_VER}`, (j) => { _bodyTops = j; });
+      .catch(() => {
+        if (attempt < 2) {
+          return new Promise((res) => setTimeout(res, [2000, 6000][attempt]))
+            .then(() => _fetchJson(url, apply, attempt + 1));
+        }
+      });
+  _bodyDataPromise = Promise.allSettled([
+    _fetchJson(`/sprites/player/body-anchors.json?v=${TRAIT_VER}`, (j) => { _bodyAnchors = j; }),
+    _fetchJson(`/sprites/player/body-tops.json?v=${TRAIT_VER}`, (j) => { _bodyTops = j; }),
+  ]);
+  return _bodyDataPromise;
 }
 
 /* Mirrored views (W/NW/SE) reuse the opposite sheet texture, so they
@@ -2206,8 +2217,13 @@ export function preloadTraits() {
   } catch (e) { /* individual warms are best-effort */ }
   /* Await the base art via Assets' per-URL dedup (same URLs the ensure
      guards fetch).  allSettled: a missing direction is normal for some
-     traits (meta-declared) and must not hold the gate hostage. */
-  return Promise.allSettled(urls.map((u) => Assets.load(u).catch(() => {})));
+     traits (meta-declared) and must not hold the gate hostage.
+     v2.3.1398: + the body placement schemas (anchors/tops) — without
+     them EVERY hat/hair/beard is hidden, so they belong on the gate. */
+  return Promise.allSettled([
+    _ensureBodyData(),
+    ...urls.map((u) => Assets.load(u).catch(() => {})),
+  ]);
 }
 
 const PLAYER_HEART_SIZE = 40;

@@ -646,8 +646,12 @@ function _buildPickupHeadSheet(key, pose, dir, skinT, pantsT, shoesT, attempt = 
     _pickupHeadCap();
   }).catch(() => {
     if (attempt < 2) {
-      setTimeout(() => _buildPickupHeadSheet(key, pose, dir, skinT, pantsT, shoesT, attempt + 1), [2000, 6000][attempt]);
-      return; /* stays 'loading' during the backoff */
+      /* v2.3.1398: the retry CHAINS into the returned promise, so the
+         loading-screen gate (preloadJogHeadOverlays) waits through the
+         backoff instead of passing while a flaked sheet is still
+         re-fetching (owner: assets missing right after a deploy). */
+      return new Promise((res) => setTimeout(res, [2000, 6000][attempt]))
+        .then(() => _buildPickupHeadSheet(key, pose, dir, skinT, pantsT, shoesT, attempt + 1));
     }
     _pickupHeadSheets[key] = []; /* missing dir -> caller hides the overlay */
   });

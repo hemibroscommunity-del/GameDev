@@ -61,20 +61,24 @@ export async function preloadWorldAnimations() {
   const settled = await Promise.allSettled(names.map((n) => Promise.resolve(groups[n]).catch(() => {})));
   const report = {};
   names.forEach((n, i) => { report[n] = settled[i].status; });
+  /* v2.3.1398 (owner: "make sure all this stuff loads correctly at the
+     login loading page"): the fullset knight figures + their head
+     overlays are BACK on the blocking gate.  The v2.3.1382 +4s
+     background warm raced the player's first armored jog on-device —
+     the recurring "head disappearing" reports are that race (plus
+     post-deploy cache re-fetches) landing mid-play.  Memory guard: they
+     load as a SECOND WAVE only after every other group has settled, so
+     their decode buffers never stack on top of the main preload burst —
+     the all-parallel shape is what killed iPhone startup in v2.3.1382,
+     not gating per se.  The loading screen is allowed to take longer
+     (CLAUDE.md, preloading is LAW). */
+  const wave2 = {
+    fullset: preloadFullsetFigures(),
+    jogHeads: preloadJogHeadOverlays(),
+  };
+  const names2 = Object.keys(wave2);
+  const settled2 = await Promise.allSettled(names2.map((n) => Promise.resolve(wave2[n]).catch(() => {})));
+  names2.forEach((n, i) => { report[n] = settled2[i].status; });
   try { if (typeof window !== 'undefined') window.__btPreloadReport = report; } catch (e) {}
-  /* v2.3.1382 (owner: "can't start the game anymore ... memory"): the
-     fullset knight figures + their head overlays (v2.3.1376) moved OFF the
-     blocking intro gate to a background warm a few seconds after it — the
-     four upscaled fullset strips added enough to the loading-screen memory
-     PEAK to kill startup on iPhone Safari on top of the v2.3.1358
-     preload-everything gate.  They still warm long before a player
-     realistically armors up and jogs every direction; a cold-start jog
-     falls back to the classic composite for a moment instead of hitching. */
-  try {
-    setTimeout(() => {
-      try { preloadFullsetFigures(); } catch (e) { /* lazy path covers it */ }
-      try { preloadJogHeadOverlays(); } catch (e) { /* lazy path covers it */ }
-    }, 4000);
-  } catch (e) { /* ignore */ }
   return report;
 }
