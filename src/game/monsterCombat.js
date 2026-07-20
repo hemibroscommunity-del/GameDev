@@ -646,10 +646,10 @@ export function updateMonsterCombat(S, deps) {
                   }
                   S.screenShake = 6;
                   m._chargeUntil = 0; /* stop charging on hit */
-                  /* Knockback */
+                  /* Knockback — v2.3.1402: owner, all knockback -50% (18 -> 9) */
                   var kbA = Math.atan2(P.y - m.y, P.x - m.x);
-                  P.x += Math.cos(kbA) * 18;
-                  P.y += Math.sin(kbA) * 18;
+                  P.x += Math.cos(kbA) * 9;
+                  P.y += Math.sin(kbA) * 9;
                 }
               }
 
@@ -872,10 +872,11 @@ export function updateMonsterCombat(S, deps) {
                       }
                     }
                     if (arch === 'brute' && !shielded) {
-                      /* Brute: heavy hit — knockback + extra screen shake */
+                      /* Brute: heavy hit — knockback + extra screen shake
+                         v2.3.1402: owner, all knockback -50% (12 -> 6) */
                       var kbAngle = Math.atan2(P.y - m.y, P.x - m.x);
-                      P.x += Math.cos(kbAngle) * 12;
-                      P.y += Math.sin(kbAngle) * 12;
+                      P.x += Math.cos(kbAngle) * 6;
+                      P.y += Math.sin(kbAngle) * 6;
                       S.screenShake = Math.max(S.screenShake || 0, 6);
                       S._playerStunUntil = Date.now() + Math.max(0, Math.round(300 - poiseStunFlatMs(S.rpg))); /* brief stagger — v2.3.1345: Poise shaves flat ms */
                     }
@@ -1721,10 +1722,12 @@ export function updateMonsterCombat(S, deps) {
                    monsters, reduce by 75%": 180/45/30 -> 45/11/8 (the
                    special/crit/normal RATIO from v2.3.110 is kept).
                    v2.3.1397: owner — special bounce = exactly 2x a
-                   normal hit (45 -> 16); crit unchanged between. */
-                var kbForce = S._specialAttack ? 16 : isCrit ? 11 : 8;
-                /* Collision adds extra knockback (v2.3.1356: 6 -> 2) */
-                var collisionKb = collisionResult ? 2 : 0;
+                   normal hit (45 -> 16); crit unchanged between.
+                   v2.3.1402: owner — reduce ALL knockback 50% (16/11/8 ->
+                   8/5.5/4; the 2x-normal special ratio still holds). */
+                var kbForce = S._specialAttack ? 8 : isCrit ? 5.5 : 4;
+                /* Collision adds extra knockback (v2.3.1356: 6 -> 2; v2.3.1402: -> 1) */
+                var collisionKb = collisionResult ? 1 : 0;
                 m.x += Math.cos(kbAngle) * (kbForce + collisionKb);
                 m.y += Math.sin(kbAngle) * (kbForce + collisionKb);
                 /* Knockback recovery -- without this, client-side-AI
@@ -2251,8 +2254,8 @@ export function updateMonsterCombat(S, deps) {
                   npc.hp -= npcDmg;
                   BT_AUDIO.swordHit({ vol: 0.55 });
                   var nkbA2 = Math.atan2(npc.y - P.y, npc.x - P.x);
-                  npc.x += Math.cos(nkbA2) * 8;
-                  npc.y += Math.sin(nkbA2) * 8;
+                  npc.x += Math.cos(nkbA2) * 4;   /* v2.3.1402: knockback -50% (8 -> 4) */
+                  npc.y += Math.sin(nkbA2) * 4;
                   for (var np2 = 0; np2 < 10; np2++) S.hitParticles.push({
                     x: npc.x,
                     y: npc.y,
@@ -2264,8 +2267,8 @@ export function updateMonsterCombat(S, deps) {
                   });
                   S.screenShake = 2;
                   var nkbA = Math.atan2(npc.y - P.y, npc.x - P.x);
-                  npc.x += Math.cos(nkbA) * 5;
-                  npc.y += Math.sin(nkbA) * 5;
+                  npc.x += Math.cos(nkbA) * 2.5;   /* v2.3.1402: knockback -50% (5 -> 2.5) */
+                  npc.y += Math.sin(nkbA) * 2.5;
                   for (var np = 0; np < 8; np++) {
                     S.hitParticles.push({
                       x: npc.x,

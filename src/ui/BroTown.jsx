@@ -3141,7 +3141,13 @@ export var BroTown = function BroTown(_ref0) {
         if (footTile === 7) terrainMult = 0.85; /* stone: heavy */
         /* Zone-specific terrain effects */
         var curZone = ZONES[S.currentZone];
-        if ((curZone === null || curZone === void 0 ? void 0 : curZone.element) === 'frost') terrainSlide = 0.92; /* ice: adds momentum/slide */
+        /* v2.3.1402 (owner: "stop the player speed increase in the frozen
+           shore zone"): the ice slide applied its momentum ON TOP of normal
+           movement (line ~3303 adds _slideVx after the base nx step), so at
+           steady state the player moved ~2x speed on ice.  Disabled — frost
+           now moves at normal speed.  (Re-enable as a NON-additive slide if
+           the glide feel is ever wanted back without the speed gain.) */
+        /* if (curZone?.element === 'frost') terrainSlide = 0.92; */
         if ((curZone === null || curZone === void 0 ? void 0 : curZone.element) === 'venom' && footTile === 0) terrainMult *= 0.85; /* swamp: heavy on grass */
 
         /* v2.3.224: frost-zone snow auto-collection removed.  The

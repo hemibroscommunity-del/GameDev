@@ -3712,7 +3712,10 @@ export class EntityRenderer {
            spawns with a 1.6x pop at 21px font (27 crit), so a 6px gap
            left the glyph's lower half sitting ON the bar.  Clear the
            bar by the popped half-height (~21px) plus a small gap. */
-        m._popupTopOff = barY - MONSTER_HPBAR_H / 2 - 24;
+        /* v2.3.1402 (owner: "damage numbers are still over monster HP bars"):
+           24 -> 40.  The 1.6x spawn pop on the larger post-balance numbers
+           still clipped the bar; lift them clear of it. */
+        m._popupTopOff = barY - MONSTER_HPBAR_H / 2 - 40;
         display._hpHeart.width = MONSTER_HPBAR_W;
         display._hpHeart.height = MONSTER_HPBAR_H;
         display._hpHeart.x = 0;  /* anchor already centered at creation */
