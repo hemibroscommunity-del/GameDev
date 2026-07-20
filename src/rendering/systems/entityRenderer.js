@@ -642,6 +642,23 @@ function _fullsetFrame(chestItem, legsItem, pose, dir, frameIdx, phase) {
   if (phase != null) return getGearFramePhased('fullset', 'steel', pose, dir, phase);
   return getGearFrame('fullset', 'steel', pose, dir, frameIdx);
 }
+/* v2.3.1399: TRUE when a masked-body bake for this (worn set, pose, dir)
+   would be dead weight — the fullset knight figure replaces the masked
+   composite at runtime for the full steel set on the jog dirs that ship a
+   figure (all but northeast), so baking those frames only burns VRAM.
+   Both prewarm passes skip on this.  Incident chain: the v2.3.1382 iPhone
+   startup OOM was "fixed" by deferring the fullset warm; v2.3.1398 put the
+   warm back on the loading gate (owner: assets must load at the login
+   screen) and the ~39MB landed on top of ~64MB of these dead bakes —
+   context-loss crash loop on iPhone (2026-07-20).  Skipping the dead bakes
+   pays for the gated warm with ~25MB to spare.  If a figure ever fails all
+   gate retries, the runtime falls back to a lazy on-demand masked bake —
+   rare hitch, correct image. */
+function _fullsetCoversBake(worn, pose, dir) {
+  if (DISPLAY_DS !== 1 || pose !== 'jog' || dir === 'northeast') return false;
+  const has = (k) => worn.some((w) => w.k === k);
+  return has('chest:steelplate') && has('legs:steelgreaves');
+}
 function _placeGear(display, equip, pose, dir, frameIdx) {
   const sb = display._spriteBody;
   /* v2.3.1361: the fullset figure carries ALL its armor — hide every gear
@@ -1595,6 +1612,9 @@ export async function prewarmMaskedBodyFrames(opts) {
           }
         }
         if (!worn.length) continue;
+        /* v2.3.1399: the fullset figure replaces these frames at runtime —
+           baking them only burns VRAM (see _fullsetCoversBake). */
+        if (_fullsetCoversBake(worn, pose, dir)) continue;
         try { _maskedBodyFrame(tex, worn, 6, { pose, dir, frameIdx: f }); } catch (e) { /* best-effort */ }
         if (budgetMs) {
           if (performance.now() - chunkT0 >= budgetMs) {
@@ -1675,6 +1695,9 @@ export async function prewarmAltWornSets(opts) {
             if (gt) worn.push({ k: sl + ':' + id, tex: gt });
           }
           if (!worn.length) continue;
+          /* v2.3.1399: skip the full-steel family's figure-covered jog
+             bakes here too (see _fullsetCoversBake). */
+          if (_fullsetCoversBake(worn, pose, dir)) continue;
           try { _maskedBodyFrame(tex, worn, 6, { pose, dir, frameIdx: f }); } catch (e) { /* best-effort */ }
           if (++sinceYield >= (fast ? 6 : 2)) {
             sinceYield = 0;
