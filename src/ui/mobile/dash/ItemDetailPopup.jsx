@@ -492,13 +492,37 @@ export const ItemDetailPopup = () => {
       });
       const curId = getEquip(slot);
       if (curId !== 'none') rows.push(mkGearRow(curId, true, null));
-      for (const g of R2.gearStash.filter((g) => g && g.slot === slot)) rows.push(mkGearRow(g.gearId, false, g));
-      /* Own nothing for this slot? still offer the catalog options so it can
-         always be filled from the loadout. */
-      if (!rows.length) {
-        for (const c of (GEAR_CATALOG[slot] || [])) {
-          if (c && c.id && c.id !== 'none') rows.push(mkGearRow(c.id, false, null));
+      /* v2.3.1413 (owner: after unequipping the chest plate with a shirt
+         on, the chest slot "only shows shirt with blank stats" — no way
+         to re-equip).  Two hardening moves:
+         1. SANITIZE the stash: older saves accumulated malformed entries
+            (missing/unknown gearId) that rendered as a blank row that
+            couldn't equip anything — and, being a row, SUPPRESSED the
+            rows.length-gated catalog fallback that would have offered
+            the real plate.  Unknown-id entries are dropped from the
+            save (self-healing), duplicates collapse to one row.
+         2. ALWAYS offer every catalog item for the slot: presence is
+            checked per gear id, not via rows.length, so the plate can
+            always be re-equipped from the loadout no matter what state
+            an old save is in. */
+      const _valid = new Set((GEAR_CATALOG[slot] || []).map((c) => c && c.id).filter((id) => id && id !== 'none'));
+      const _stash = R2.gearStash.filter((g) => g && g.slot === slot);
+      let _stashDirty = false;
+      for (const g of _stash) {
+        if (!_valid.has(g.gearId)) {
+          const i = R2.gearStash.indexOf(g);
+          if (i >= 0) { R2.gearStash.splice(i, 1); _stashDirty = true; }
         }
+      }
+      if (_stashDirty) persist(R2);
+      const _seen = new Set([curId]);
+      for (const g of _stash) {
+        if (!_valid.has(g.gearId) || _seen.has(g.gearId)) continue;
+        _seen.add(g.gearId);
+        rows.push(mkGearRow(g.gearId, false, g));
+      }
+      for (const id of _valid) {
+        if (!_seen.has(id)) { _seen.add(id); rows.push(mkGearRow(id, false, null)); }
       }
       /* Chest also carries the optional t-shirt under-layer. */
       if (slot === 'chest') {
