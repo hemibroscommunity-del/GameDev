@@ -109,7 +109,28 @@ export function downscaleByFactor(src, ds = DISPLAY_DS) {
    classification is unaffected.  Rollback: DISPLAY_DS=2 in this file — this
    helper then defers to downscaleByFactor, byte-identical to v2.3.1235. */
 export function bakeDisplayCanvas(full, srcH) {
-  if (DISPLAY_DS > 1) return downscaleByFactor(full, DISPLAY_DS);
+  if (DISPLAY_DS > 1) {
+    /* v2.3.1412 (owner: half-res "looks soft").  Most body sheets ship
+       128px ON DISK (v2.3.1108) and reach here as an exact 2x pixel-
+       double (nearest upscale, and the recolour maps each 2x2 block
+       uniformly).  For those, a NEAREST 2x downscale is a LOSSLESS
+       inverse — every display texel is an exact on-disk (recoloured)
+       texel — where the smooth Lanczos downscale was re-blurring art
+       that was never really 256 to begin with.  Native >=256 art keeps
+       the smooth path (real detail needs real resampling). */
+    const h = full.naturalHeight || full.height || 0;
+    if (srcH && h && srcH === Math.round(h / DISPLAY_DS)) {
+      const w = full.naturalWidth || full.width || 0;
+      const cv = document.createElement('canvas');
+      cv.width = Math.max(1, Math.round(w / DISPLAY_DS));
+      cv.height = Math.max(1, Math.round(h / DISPLAY_DS));
+      const ctx = cv.getContext('2d');
+      ctx.imageSmoothingEnabled = false; // nearest: exact texel picks
+      ctx.drawImage(full, 0, 0, cv.width, cv.height);
+      return cv;
+    }
+    return downscaleByFactor(full, DISPLAY_DS);
+  }
   return antialiasUpscaledCanvas(full, srcH);
 }
 

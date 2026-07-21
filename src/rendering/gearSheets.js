@@ -85,7 +85,6 @@ function buildSheet(key, slot, item, pose, dir, attempt = 0) {
        but size-preserving — the 256 contract above still holds (unlike
        bakeDisplayCanvas, which would shrink gear if DISPLAY_DS ever went back
        to 2).  Native >=256 sheets pass through untouched. */
-    let img = antialiasUpscaledCanvas(upscaleToFrameHeight(rawImg, FRAME_H), rawH);
     /* v2.3.1408 (DISPLAY_DS=2): the FULLSET figure sheets are display-
        downscaled like the body, NOT kept at the 256 gear contract.  The
        figure texture is assigned directly onto the body sprite
@@ -94,12 +93,26 @@ function buildSheet(key, slot, item, pose, dir, attempt = 0) {
        figure path used to be guarded to DISPLAY_DS === 1.  Storing the
        fullset at display size makes the figure a drop-in body frame at
        any DS, so the guards lift and the painted knight stays on the
-       figure path (a Lanczos downscale of painted art, far better than
-       falling back to half-res masked bakes).  Overlay/combat gear
-       sheets keep the full-256 contract (the note above still holds
-       for them).  fw/fh track the scaled frame for slicing. */
+       figure path.  Overlay/combat gear sheets keep the full-256
+       contract (the note above still holds for them).  fw/fh track the
+       scaled frame for slicing. */
     const _fsDs = (slot === 'fullset') ? DISPLAY_DS : 1;
-    if (_fsDs > 1) img = downscaleByFactor(img, _fsDs);
+    let img;
+    if (_fsDs > 1 && rawH === FRAME_H / _fsDs) {
+      /* v2.3.1412 (owner: "the half res texture looks soft — it's a very
+         simple armor sprite, maybe it can be compressed differently").
+         The steel figure sheets ship 128px ON DISK — the 256 "full res"
+         was always a nearest-neighbour 2x pixel-double of these texels.
+         The v2.3.1408 pipeline (NN-upscale 128->256, anti-alias, Lanczos
+         back down to 128) double-resampled the art into mush.  When the
+         on-disk height already IS the display size, slice the RAW image
+         untouched: the texture is the artist's exact pixels, same memory,
+         no resampling anywhere. */
+      img = rawImg;
+    } else {
+      img = antialiasUpscaledCanvas(upscaleToFrameHeight(rawImg, FRAME_H), rawH);
+      if (_fsDs > 1) img = downscaleByFactor(img, _fsDs);
+    }
     const fw = FRAME_W / _fsDs, fh = FRAME_H / _fsDs;
     const src = Texture.from(img).source;
     src.scaleMode = 'linear';
