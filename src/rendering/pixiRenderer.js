@@ -61,12 +61,16 @@ export function preloadPlayerAssets() {
        so the first armored attack doesn't cold-load mid-combat. */
     preloadCombatGear(),
     /* v2.3.1358 (owner directive — CLAUDE.md "Animation preloading is
-       LAW"): EVERY remaining animation — monster variants, slime/
-       snowman/player-death sheets, all EffectsRenderer strips (skill +
-       attack stand-ins, impact, icons), head traits, all zone maps +
-       walkability.  The loading screen is allowed to take longer;
-       first-use hitches are not.  New animation systems REGISTER in
-       preloadAnimations.js in the same PR. */
+       LAW"): every GLOBAL animation — slime + player-death sheets, all
+       EffectsRenderer strips (skill + attack stand-ins, icons), head
+       traits, walkability grids, fullset knight figures.  The loading
+       screen is allowed to take longer; first-use hitches are not.  New
+       animation systems REGISTER in preloadAnimations.js in the same PR.
+       v2.3.1405 (owner: "per zone loading"): the ZONE-SPECIFIC assets —
+       the 12 zone maps, monster variants, and frost snowman/ice-burst —
+       moved OFF this gate to preloadZoneAssets(zoneId), loaded per-zone
+       behind the loading overlay on entry (zoneTransitions.js).  Only the
+       starting-zone (town) map is warmed here, above. */
     preloadWorldAnimations(),
   ]).then((results) =>
     /* Bake the armored-body masked frames while the intro overlay is still

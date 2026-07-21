@@ -142,6 +142,25 @@ Two protocol versions coexist; both must keep working:
   BUGS unless the asset genuinely cannot be known at load time (e.g.
   a remote player's arbitrary recolor). The owner has flagged this
   multiple times — treat any first-use texture load as a regression.
+  - **ZONE-ASSET EXCEPTION (owner directive 2026-07-20, "per zone
+    loading instead of one long pregame loading screen", v2.3.1405).**
+    The game was "wonky with RAM" on iPhone because the gate above force-
+    loaded ALL zone-specific art up front (12 zone maps ~48MB + every
+    monster variant + the frost snowman), stacking ~60MB onto the
+    startup peak for assets you don't use in the zone you're standing in.
+    Those THREE categories now load PER-ZONE via `preloadZoneAssets(zoneId)`
+    (`preloadAnimations.js`) behind a brief per-zone loading overlay on
+    zone entry (`src/game/zoneTransitions.js`, the `S._zoneLoading` gate),
+    and the previous zone's ~4MB map is freed on exit (`freeZoneMap`,
+    `tiledMaps.js`; hubs town/worldview stay resident). This does NOT
+    weaken the law's real intent — the per-zone loads are AWAITED behind
+    an overlay (a deliberate loading SCREEN, not an unawaited lazy
+    `Assets.load` that hitches mid-play). Everything else — player, town
+    map, slime, all fx/skill/attack strips, head traits, fullset figures
+    — still preloads up front on the gate. If you add a new PER-ZONE
+    system, register it in `preloadZoneAssets` (not the global manifest)
+    and free it on exit; anything global still registers in
+    `preloadWorldAnimations`.
 - Code comments carry version tags (e.g. `v2.3.694:`) explaining WHY a
   change exists, often with incident history. Match this style; the
   comments are the project's institutional memory.

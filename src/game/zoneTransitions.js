@@ -25,6 +25,8 @@ import { _typeof } from '@/lib/babelHelpers.js';
 
 import { pushDmgPopup } from '@/game/combatHelpers.js';
 import { onZoneEntered } from '@/networking/nodeSync.js'; /* v2.3.1301: gather-node self-heal */
+import { preloadZoneAssets } from '@/rendering/preloadAnimations.js'; /* v2.3.1405: per-zone asset gate */
+import { freeZoneMap, isZoneMapResident } from '@/rendering/tiledMaps.js'; /* v2.3.1405: map eviction + sync residency check */
 
 /* v2.3.1347: fixed directional entry spawns don't consult the painted
    walkability masks, so zones whose mask blocks the spawn point strand
@@ -82,6 +84,36 @@ function nudgeSpawnToWalkable(S, zoneId, zone) {
     P.x = (fallback.x + 0.5) * (mw / gw);
     P.y = (fallback.y + 0.5) * (mh / gh);
   }
+}
+
+/* v2.3.1405: per-zone loading overlay — a full-screen dark veil with a
+   spinner + destination zone name, injected DIRECTLY on document.body
+   (outside the React tree, z-index above everything) while
+   preloadZoneAssets warms the next zone's map + monster variants.  Mirrors
+   the body-injected bt-rejoin-loading spinner (BroTown.jsx); lives here
+   because the gate that drives it lives here.  Its compositor-driven CSS
+   spin keeps turning through main-thread stutter. */
+var _zoneLoadEl = null;
+function showZoneLoadingOverlay(name) {
+  if (typeof document === 'undefined') return;
+  try {
+    if (!_zoneLoadEl) {
+      _zoneLoadEl = document.createElement('div');
+      _zoneLoadEl.className = 'bt-zone-loading';
+      var spin = document.createElement('div');
+      spin.className = 'bt-zone-loading-spin';
+      var lbl = document.createElement('div');
+      lbl.className = 'bt-zone-loading-name';
+      _zoneLoadEl.appendChild(spin);
+      _zoneLoadEl.appendChild(lbl);
+      document.body.appendChild(_zoneLoadEl);
+    }
+    var nameEl = _zoneLoadEl.querySelector('.bt-zone-loading-name');
+    if (nameEl) nameEl.textContent = name || '';
+  } catch (e) {}
+}
+function hideZoneLoadingOverlay() {
+  try { if (_zoneLoadEl) { _zoneLoadEl.remove(); _zoneLoadEl = null; } } catch (e) {}
 }
 
 export function handleZoneTransitions(S, ptx, pty, _zone, W, H) {
@@ -154,6 +186,46 @@ export function handleZoneTransitions(S, ptx, pty, _zone, W, H) {
             }
             /* Zone exits — open to all players (quest gate removed) */
             {
+              /* v2.3.1405: PER-ZONE ASSET GATE (owner: "per zone loading
+                 instead of one long pregame loading screen").  Zone maps +
+                 monster variants no longer preload at startup; they load
+                 HERE, on entry, behind a brief loading overlay.  This
+                 transition is SYNCHRONOUS (called every frame, no await
+                 seam), so we mirror the introWaitRef flag+polled-promise
+                 pattern: on the first frame at an exit whose map isn't
+                 resident, kick preloadZoneAssets, show the overlay, and hold
+                 at the hub exit.  BroTown.jsx zeroes move speed while
+                 S._zoneLoading is set, and currentZone is NOT flipped — so
+                 the server keeps the player in the hub and no zone_state
+                 churn / stale-guard drops occur.  When the load resolves,
+                 free the PREVIOUS zone's map, drop the overlay, and fall
+                 through into the entry body once.  Resident maps (hubs,
+                 un-freed revisits) skip the gate entirely and enter
+                 instantly, exactly like before this change. */
+              var _tz = bestExit.zoneId;
+              var _zl = S._zoneLoading;
+              if (_zl && _zl.toZone === _tz) {
+                if (!_zl.done) return; /* still loading — hold frozen at the exit */
+                hideZoneLoadingOverlay();
+                S._zoneLoading = null;
+                if (_zl.from && _zl.from !== 'town' && _zl.from !== 'worldview') {
+                  Promise.resolve(freeZoneMap(_zl.from)).catch(function () {});
+                }
+                /* fall through: run the entry body once, now that assets are warm */
+              } else if (!isZoneMapResident(_tz)) {
+                var _zlObj = { toZone: _tz, from: S.currentZone, done: false };
+                S._zoneLoading = _zlObj;
+                var _tzName = (ZONES[_tz] && ZONES[_tz].name) || _tz;
+                showZoneLoadingOverlay(_tzName);
+                /* race a 15s cap so a hung network fetch can never freeze
+                   the player forever — the map self-heals on cache-miss
+                   (tileRenderer) if it wasn't ready. */
+                Promise.race([
+                  Promise.resolve(preloadZoneAssets(_tz)).catch(function () {}),
+                  new Promise(function (r) { setTimeout(r, 15000); }),
+                ]).then(function () { _zlObj.done = true; });
+                return; /* hold this frame; enter once _zlObj.done flips */
+              }
               S._enteredFromHub = S.currentZone; /* v2.3.859: which hub (town/worldview) to return to */
               S.currentZone = bestExit.zoneId;
               perfTracker.setZone(bestExit.zoneId);
@@ -382,6 +454,7 @@ export function handleZoneTransitions(S, ptx, pty, _zone, W, H) {
             }
           }
           if (_czNearReturn) {
+            var _leftZone = S.currentZone; /* v2.3.1405: free its ~4MB map on exit (below) */
             var _retHub = (S._enteredFromHub === 'worldview') ? 'worldview' : 'town'; /* v2.3.859 */
             S.currentZone = _retHub;
             updateZoneDimensions(_retHub);
@@ -423,6 +496,15 @@ export function handleZoneTransitions(S, ptx, pty, _zone, W, H) {
             /* Snap camera to player — keep them centered, no edge clamp. */
             S.camera.x = P.x - W / 2;
             S.camera.y = P.y - H / 2;
+            /* v2.3.1405: the combat zone we just left is no longer on
+               screen — free its ~4MB map so steady-state map memory stays
+               bounded to the hubs + the current zone (else every visited
+               zone's map would accumulate resident).  Hub maps are kept
+               (freeZoneMap skips town/worldview).  Safe: tileRenderer
+               destroyed the old ground sprite on the hub's rebuild. */
+            if (_leftZone && _leftZone !== 'town' && _leftZone !== 'worldview') {
+              Promise.resolve(freeZoneMap(_leftZone)).catch(function () {});
+            }
           }
         }
 

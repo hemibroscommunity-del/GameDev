@@ -3180,6 +3180,11 @@ export var BroTown = function BroTown(_ref0) {
           vistaSpeedMult = Math.max(0.2, _vsc / _vnear);
         }
         var finalSpd = S._sled ? 0 : baseSpd * terrainMult * spdBuff * amuletSpdMult * swimMult * shieldMult * vistaSpeedMult; /* sled overrides movement */
+        /* v2.3.1405: per-zone loading gate — while a zone's assets warm
+           behind the loading overlay (zoneTransitions.js), freeze the
+           player at the hub exit so the proximity trigger stays armed and
+           the entry runs the instant the load resolves. */
+        if (S._zoneLoading) finalSpd = 0;
 
         /* Auto-attack movement: 50% speed across the board while
            S.autoAttack is on. Backpedal flag still tracks "moving

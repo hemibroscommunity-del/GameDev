@@ -32,26 +32,61 @@
  * A settle report lands on window.__btPreloadReport so rigs (and
  * anyone debugging a first-use hitch) can verify coverage. */
 
-import { loadAllVariantSprites } from './monsterVariantSprites.js';
+import { variantSpritesFor } from './monsterVariantSprites.js';
 import { loadSlimeSprites } from './slimeSprites.js';
 import { loadSnowmanSprites } from './snowmanSprites.js';
 import { loadPlayerDeathSprites } from './playerDeathSprites.js';
-import { loadImageZoneMaps, loadWalkabilityMaps } from './tiledMaps.js';
+import { preloadStartZoneMap, loadWalkabilityMaps } from './tiledMaps.js';
 import { effectsAnimationsReady, ensureImpactTex } from './systems/effectsRenderer.js';
 import { preloadTraits } from './systems/entityRenderer.js';
 import { preloadFullsetFigures } from './gearSheets.js'; /* v2.3.1376: fullset knight figures */
 import { preloadJogHeadOverlays } from './playerSkins.js'; /* v2.3.1376: their head overlays */
+import { ZONE_VARIANT_MAP } from '../data/monsterVariants.js'; /* v2.3.1405: per-zone variant scoping */
+
+/* v2.3.1405 (owner: "per zone loading instead of one long pregame loading
+   screen"): ZONE-SPECIFIC textures moved OFF the blocking pre-game gate —
+   the 12 zone maps (~4MB each = ~48MB), the monster variants (~10-20MB),
+   and the frost-only snowman + ice-burst (~4MB) were all loaded up front,
+   stacking ~60MB onto the iPhone startup peak for assets you don't use in
+   the zone you're standing in.  They now load per-zone via
+   preloadZoneAssets(zoneId) behind the per-zone loading overlay
+   (zoneTransitions.js), and the previous zone's map is freed on exit
+   (freeZoneMap).  The pre-game gate keeps only GLOBAL assets (player,
+   town map [pixiRenderer.preloadStartZoneMap], slime [raw fodder is
+   everywhere], fx, traits, fullset).  CLAUDE.md's preloading LAW is
+   amended: these load during the per-zone loading SCREEN (awaited, no
+   in-play first-use hitch) — compliant in spirit. */
+export async function preloadZoneAssets(zoneId) {
+  const tasks = [];
+  /* map texture (self-heals via tileRenderer if missing, but we await it
+     so the overlay holds until the ground is ready = no black flash) */
+  tasks.push(Promise.resolve(preloadStartZoneMap(zoneId)).catch(() => {}));
+  /* the monster VARIANT sheets this zone uses (server sends the monsters;
+     we need their art warm before they render). */
+  const vmap = ZONE_VARIANT_MAP[zoneId];
+  if (vmap) {
+    const keys = new Set(Object.values(vmap));
+    /* skeleton has no zone entry — it only appears via the mummy->skeleton
+       transform, so co-load it wherever mummy loads (sky). */
+    if (keys.has('mummy')) keys.add('skeleton');
+    for (const key of keys) {
+      const v = variantSpritesFor(key); /* kicks the loader once (idempotent) */
+      if (v && v.load) tasks.push(Promise.resolve(v.load()).catch(() => {}));
+    }
+  }
+  /* frost is the only snowman zone — its sprites + the ice-burst impact
+     sheet (both ~2MB) load here instead of globally. */
+  if (zoneId === 'frost') {
+    tasks.push(Promise.resolve(loadSnowmanSprites()).catch(() => {}));
+    try { ensureImpactTex(); } catch (e) { /* effectsAnimationsReady tracks it */ }
+  }
+  await Promise.allSettled(tasks);
+}
 
 export async function preloadWorldAnimations() {
-  /* Kick the lazy-by-default loaders eagerly. */
-  try { ensureImpactTex(); } catch (e) { /* tracked below via effectsAnimationsReady */ }
-
   const groups = {
-    variants: loadAllVariantSprites(),
     slime: loadSlimeSprites(),
-    snowman: loadSnowmanSprites(),
     playerDeath: loadPlayerDeathSprites(),
-    zoneMaps: loadImageZoneMaps(),
     walkability: loadWalkabilityMaps(),
     fx: effectsAnimationsReady(),
     traits: preloadTraits(),
