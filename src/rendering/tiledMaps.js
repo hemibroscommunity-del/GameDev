@@ -99,6 +99,10 @@ export const WALKABILITY_MAPS = {
  *  cleared by freeZoneMap. */
 const _residentZoneMaps = new Set();
 export function isZoneMapResident(zoneId) {
+  /* v2.3.1406: a zone with no image map has nothing to load — report it
+     resident so the transition gate never arms (else a procedural-map
+     zone would flash the overlay on EVERY entry for a near-instant load). */
+  if (!IMAGE_ZONE_MAPS[zoneId]) return true;
   return _residentZoneMaps.has(zoneId);
 }
 

@@ -6845,6 +6845,9 @@ export var BroTown = function BroTown(_ref0) {
     },
     onClick: function onClick() {
       var S2 = stateRef.current;
+      /* v2.3.1406: farm map is per-zone-loaded now and this warp bypasses
+         the hub-exit gate — kick the load so the ground paints promptly. */
+      import('@/rendering/preloadAnimations.js').then(function (m) { return m.preloadZoneAssets('farm_home'); }).catch(function () {});
       S2.currentZone = 'farm_home';
       S2.map = generateZoneMap('farm_home');
       var fz = ZONES.farm_home;

@@ -118,6 +118,23 @@ function hideZoneLoadingOverlay() {
 
 export function handleZoneTransitions(S, ptx, pty, _zone, W, H) {
   var P = S.player;
+        /* v2.3.1406: STUCK-GATE FAILSAFE.  S._zoneLoading is normally
+           consumed by the hub-exit gate below, but that only runs while
+           the player is in a hub AND still within the armed exit's
+           radius.  If either stops holding mid-load — a server-forced
+           zone flip (respawn / dungeon event) empties _hubExits, or
+           something displaces the frozen player off the exit — the gate
+           object would orphan: movement frozen (BroTown zeroes finalSpd
+           on it) under a stuck overlay, forever.  Clear it here, before
+           the hub block, whenever we're no longer in a hub or the load
+           has aged past 20s (the arm's own 15s cap makes the age check
+           pure belt-and-braces).  The bestExit-mismatch case is cleared
+           inside the hub block where bestExit is known. */
+        if (S._zoneLoading) {
+          var _zlStale = S.currentZone !== 'town' && S.currentZone !== 'worldview';
+          if (!_zlStale && S._zoneLoading.t && Date.now() - S._zoneLoading.t > 20000) _zlStale = true;
+          if (_zlStale) { S._zoneLoading = null; hideZoneLoadingOverlay(); }
+        }
         /* v2.3.387: town exits are PROXIMITY zones on the painted
            path-ends (the pink markers), not the map edge.  Transition when
            the player walks within TOWN_EXIT_R tiles (manhattan) of an exit
@@ -137,6 +154,15 @@ export function handleZoneTransitions(S, ptx, pty, _zone, W, H) {
               bestExit = ex;
             }
           });
+          /* v2.3.1406: second half of the stuck-gate failsafe — the armed
+             load no longer matches where the player is standing (drifted
+             off the exit, or a different exit now wins).  Abandon it; the
+             kicked load finishes harmlessly in the background and the maps
+             it warmed just make the next approach instant. */
+          if (S._zoneLoading && (!bestExit || bestExit.zoneId !== S._zoneLoading.toZone)) {
+            S._zoneLoading = null;
+            hideZoneLoadingOverlay();
+          }
           if (bestExit) {
             /* v2.3.1147: SOFT entry gating -- with zone bands live
                (v2.3.1140) a fresh player can walk from the hub into a
@@ -149,7 +175,13 @@ export function handleZoneTransitions(S, ptx, pty, _zone, W, H) {
             var _gzone = ZONES[bestExit.zoneId];
             var _gfloor = (_gzone && Array.isArray(_gzone.level)) ? _gzone.level[0] : 0;
             var _plvl = (S.rpg && S.rpg.level) || 1;
-            if (_gfloor > _plvl + 5) {
+            /* v2.3.1406: never re-run the warning while the per-zone load
+               for THIS exit is armed — the player already passed it to arm
+               the gate, and a load outlasting the 10s warning window would
+               re-fire it, nudge the frozen player off the exit, and orphan
+               the gate (the drift-clear would then abandon their entry). */
+            var _zlArmedHere = S._zoneLoading && S._zoneLoading.toZone === bestExit.zoneId;
+            if (_gfloor > _plvl + 5 && !_zlArmedHere) {
               if (!S._zoneWarnAt) S._zoneWarnAt = {};
               var _warnedAt = S._zoneWarnAt[bestExit.zoneId] || 0;
               if (Date.now() - _warnedAt > 10000) {
@@ -213,7 +245,7 @@ export function handleZoneTransitions(S, ptx, pty, _zone, W, H) {
                 }
                 /* fall through: run the entry body once, now that assets are warm */
               } else if (!isZoneMapResident(_tz)) {
-                var _zlObj = { toZone: _tz, from: S.currentZone, done: false };
+                var _zlObj = { toZone: _tz, from: S.currentZone, done: false, t: Date.now() }; /* v2.3.1406: t feeds the 20s failsafe */
                 S._zoneLoading = _zlObj;
                 var _tzName = (ZONES[_tz] && ZONES[_tz].name) || _tz;
                 showZoneLoadingOverlay(_tzName);

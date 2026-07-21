@@ -12,7 +12,6 @@ import { loadPlayerSprites } from './playerSprites.js';
 import { loadPlayerAnchors } from './playerAnchors.js';
 import { loadSlimeSprites } from './slimeSprites.js';
 import { loadPlayerDeathSprites } from './playerDeathSprites.js';
-import { loadSnowmanSprites } from './snowmanSprites.js';
 import { loadWeaponSprites } from './weaponSprites.js';
 import { loadShieldSprites } from './shieldSprites.js';
 import { preloadStartZoneMap } from './tiledMaps.js';
@@ -158,8 +157,11 @@ export async function initPixiRenderer(canvas) {
   loadPlayerDeathSprites().catch((err) => console.warn('Player death sprites failed to load, using fade-rotate fallback:', err));
   // Same for slime monsters (idle / shoot / hit / death / remnants).
   loadSlimeSprites().catch((err) => console.warn('Slime sprites failed to load, using procedural fallback:', err));
-  // Snowman monsters — 5 source directional stills (W / NW / SE rendered by mirror).
-  loadSnowmanSprites().catch((err) => console.warn('Snowman sprites failed to load, using procedural fallback:', err));
+  /* v2.3.1406: the snowman kick that lived here (pre-v2.3.1358 legacy) is
+     GONE — it decoded the frost-only sheets at startup on every session,
+     silently defeating the v2.3.1405 per-zone move.  preloadZoneAssets('frost')
+     owns the load now (zone-entry overlay awaits it); the renderer's
+     procedural snowman covers any race. */
   /* v2.3.1119: monster variant sheets (fire goblin, mummy, skeleton, ...) now
      load LAZILY per-variant on first sighting (variantSpritesFor kicks the load),
      not as one batched preload at startup.  Town has no monsters, so this keeps

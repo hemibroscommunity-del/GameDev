@@ -716,7 +716,7 @@ input{font-family:inherit}
    is compositor-driven (shares bt-exit-spin) so it keeps turning through
    the load's main-thread work.  No filters over the WebGL canvas (iOS
    static, CLAUDE.md). */
-.bt-zone-loading{position:fixed;inset:0;z-index:100001;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;background:rgba(10,14,17,.92);pointer-events:auto;-webkit-user-select:none;user-select:none}
+.bt-zone-loading{position:fixed;top:0;left:0;right:0;bottom:0;z-index:100001;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;background:rgba(10,14,17,.92);pointer-events:auto;-webkit-user-select:none;user-select:none}/* explicit edges, not inset: — iOS Safari <14.5 lacks inset and would collapse the veil */
 .bt-zone-loading-spin{width:44px;height:44px;border-radius:50%;border:3.5px solid rgba(255,255,255,.18);border-top-color:rgba(255,255,255,.92);animation:bt-exit-spin .8s linear infinite}
 .bt-zone-loading-name{font-size:15px;font-weight:700;letter-spacing:.06em;color:rgba(255,255,255,.9);font-family:'Source Sans 3',sans-serif;text-align:center;max-width:80vw}
 .bt-zone-loading-name::before{content:'Entering ';color:rgba(255,255,255,.5);font-weight:600}
