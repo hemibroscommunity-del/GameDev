@@ -40,9 +40,26 @@ import { GEARLAYER_VER } from '../gearVersion.js';   // shared cache-bust string
    ready. Until then, popups render text-only and the icon is skipped. */
 const POPUP_ICONS = {};
 const POPUP_ICON_KEYS = ['xp', 'gold', 'sword', 'arrow', 'spell', 'heart'];
-Promise.all(POPUP_ICON_KEYS.map((k) =>
-  _fxLoad('/icons/popups/' + k + '.webp').then((tex) => { POPUP_ICONS[k] = tex; })
-)).catch((err) => console.warn('[popup-icons] load failed', err));
+/* v2.3.1403 (owner: "the damage bow icon did not work" while damage
+   numbers still showed): the icon load was one-shot — a single flaked
+   fetch (common right after a deploy) left that icon undefined for the
+   whole session, so the number renders but its icon is silently missing.
+   Bounded retry (v2.3.1305 pattern, 2s/6s + cache-bust) so a flake
+   self-heals; the popup renderer already no-ops the icon until the
+   texture resolves. */
+function _loadPopupIcon(k, attempt) {
+  const bust = attempt > 0 ? '&r=' + attempt : '';
+  return _fxLoad('/icons/popups/' + k + '.webp?v=2.3.1403' + bust)
+    .then((tex) => { POPUP_ICONS[k] = tex; })
+    .catch(() => {
+      if (attempt < 2) {
+        return new Promise((res) => setTimeout(res, [2000, 6000][attempt]))
+          .then(() => _loadPopupIcon(k, attempt + 1));
+      }
+      console.warn('[popup-icons] load failed after retries', k);
+    });
+}
+Promise.all(POPUP_ICON_KEYS.map((k) => _loadPopupIcon(k, 0)));
 
 /* Elemental shard icons -- one PNG per zone, served from
    /icons/shards/.  Loaded lazily, falling back to a procedural circle
