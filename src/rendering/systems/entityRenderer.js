@@ -38,7 +38,7 @@ import { getShirt } from '../traits/shirtCatalog.js';
 import { getShirtColor, shirtFill } from '../traits/shirtColorCatalog.js';
 import { getGearFrame, getGearFramePhased, getLoadedGearSources } from '../gearSheets.js';
 import { combatGearUrls } from '../combatGear.js';
-import { getEquip, onEquipChange, GEAR_CATALOG } from '../gearCatalog.js'; /* v2.3.1236: GEAR_CATALOG drives the all-states loading-screen prewarm */
+import { getEquip, onEquipChange } from '../gearCatalog.js'; /* v2.3.1407: GEAR_CATALOG import dropped with the speculative all-states prewarm */
 import { recordCrash } from '../../debug/crashTrap.js'; /* v2.3.1305: trait-sheet load-failure telemetry */
 
 /* §9.2.1 Collision-opportunity weapon edge glow — proximity radius (≈20u). */
@@ -1504,18 +1504,26 @@ export function planPrewarmProgress() {
    (~27MB at DISPLAY_DS=2, ~108MB at DISPLAY_DS=1) -- if iPhone WebGL context
    loss reappears, shrink HERE first.  Currently-worn combination sorts first
    so the spawn loadout is warm earliest behind the loading bar. */
+/* v2.3.1407: SHRUNK HERE, as the line above instructs — context loss is
+   back, worse: hard iOS page kills (owner: game restarted seconds after
+   first worldview entry, crashed again in frost; no crashTrap beacons =
+   Safari OOM'd the tab before JS could log).  Renderer probes measured the
+   real cost of the 3-family speculative bake at ~230MB of GPU strips
+   (40-odd 6-7MB canvases — the 108MB comment above predates belts/poses)
+   PLUS the same again in CPU canvas backing — the dominant share of the
+   whole game's footprint, parked at the iPhone kill threshold so the small
+   per-zone loads (+5MB worldview, +31MB frost) tipped it over.  Now bakes
+   ONLY the currently-worn combination (~1/3): the v2.3.1236 anti-hitch
+   intent survives via the v2.3.692 equip-change re-prewarm, which re-bakes
+   a new combination in the equip menu's dead time and GPU-uploads it
+   (v2.3.704) — so a first swap still lands warm, it just isn't paid for
+   up front by every session that never swaps. */
 function _catalogWornSets() {
-  const chestIds = (GEAR_CATALOG.chest || []).map((c) => c && c.id).filter((id) => id && id !== 'none');
-  const legsIds = (GEAR_CATALOG.legs || []).map((c) => c && c.id).filter((id) => id && id !== 'none');
-  const sets = [];
-  for (const c of chestIds) for (const l of legsIds) sets.push([['chest', c], ['legs', l]]);
-  for (const c of chestIds) sets.push([['chest', c]]);
-  for (const l of legsIds) sets.push([['legs', l]]);
   const wc = getEquip('chest'), wl = getEquip('legs');
-  const wornCount = (wc && wc !== 'none' ? 1 : 0) + (wl && wl !== 'none' ? 1 : 0);
-  const isWorn = (s) => s.length === wornCount && s.every(([sl, id]) => getEquip(sl) === id);
-  sets.sort((a, b) => (isWorn(b) ? 1 : 0) - (isWorn(a) ? 1 : 0));
-  return sets;
+  const worn = [];
+  if (wc && wc !== 'none') worn.push(['chest', wc]);
+  if (wl && wl !== 'none') worn.push(['legs', wl]);
+  return worn.length ? [worn] : [];
 }
 
 /* v2.3.701: force-upload the baked masked-body textures to the GPU while the
@@ -1670,7 +1678,10 @@ export async function prewarmAltWornSets(opts) {
      v2.3.1236: REVERSED per owner directive -- prewarm EVERY catalog gear
      state behind the post-Play loading screen so a first equip/unequip never
      pays the lazy masked-body bake hitch.  _catalogWornSets() documents the
-     memory trade-off and is the knob to shrink if context loss returns. */
+     memory trade-off and is the knob to shrink if context loss returns.
+     v2.3.1407: context loss returned as hard iOS OOM kills — the knob is
+     shrunk: _catalogWornSets now yields only the worn combination, so this
+     pass is mostly cache hits over the prewarmMaskedBodyFrames output. */
   /* v2.3.756: baked shirt retired -- only the shirtless body sheets exist
      now, so there is a single variant to warm. */
   try { await preloadBodyVariant(null, 'none'); } catch (e) { /* best-effort */ }
