@@ -3481,6 +3481,33 @@ export var BroTown = function BroTown(_ref0) {
           var _cfd = Math.sqrt(Math.pow(S._campfire.x - P.x, 2) + Math.pow(S._campfire.y - P.y, 2));
           if (_cfd < 80 && _cfd < closestDist) { closestDist = _cfd; S._nearNode = S._campfire; }
         }
+        /* v2.3.1409 (owner: "the ore resource contextual menu appeared too
+           far below the ore on screen"): anchor the interact prompt to the
+           NODE instead of the dashboard.  The button is React-rendered but
+           positioned imperatively here every frame (world -> CSS via the
+           published worldScale, mirroring ExtractionSwipeLayer's cue math),
+           because React doesn't re-render per camera move.  Sits just
+           below the node sprite; clamped to the viewport so an edge-of-
+           screen node never pushes the button off-screen or under the
+           dashboard.  Falls back to the class's dashboard anchor until
+           the first frame lands. */
+        {
+          var _npEl = typeof document !== 'undefined' && document.getElementById('bt-node-prompt');
+          if (_npEl && S._nearNode && S.camera) {
+            var _nwx = (S._nearNode.x - S.camera.x) * (S._worldScaleX || 1);
+            var _nwy = (S._nearNode.y + 14 - S.camera.y) * (S._worldScaleY || 1);
+            var _npW2 = (_npEl.offsetWidth || 200) / 2;
+            var _npH = _npEl.offsetHeight || 36;
+            var _vw = window.innerWidth, _vh = window.innerHeight;
+            var _dashH = 0;
+            try { _dashH = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--dash-h')) || _vh * 0.25; } catch (e3) { _dashH = _vh * 0.25; }
+            var _npx = Math.max(_npW2 + 6, Math.min(_vw - _npW2 - 6, _nwx));
+            var _npy = Math.max(8, Math.min(_vh - _dashH - _npH - 8, _nwy));
+            _npEl.style.left = _npx + 'px';
+            _npEl.style.top = _npy + 'px';
+            _npEl.style.bottom = 'auto';
+          }
+        }
 
         /* v2.3.853: firemaking → campfire lifecycle.  Firemaking is a one-shot
            animation (set when a log is lit from the Bag); when it finishes,
@@ -7946,14 +7973,23 @@ export var BroTown = function BroTown(_ref0) {
     }
   }, "\uD83E\uDE91 Furniture Workshop"), ((_stateRef$current58 = stateRef.current) === null || _stateRef$current58 === void 0 ? void 0 : _stateRef$current58._nearNode) && /*#__PURE__*/React.createElement("button", {
     className: "bt-interact-prompt",
+    id: "bt-node-prompt", /* v2.3.1409: game loop re-anchors this to the node's screen pos each frame */
     style: {
       /* Inline 'bottom: 140' was hiding this button behind the 25vh
          BottomDashboard on mobile.  Sit it just above the dashboard
          instead (matches the class default ~ calc(25vh + 16px) but
          a bit higher so it clears the mobile dashboard's top border
-         and stays below the joysticks at calc(25vh + 70px)). */
+         and stays below the joysticks at calc(25vh + 70px)).
+         v2.3.1409: this is now only the FIRST-FRAME fallback \u2014 the loop
+         moves the button to the node itself (owner: prompt was too far
+         below the ore). */
       bottom: 'calc(var(--dash-h) + 24px)',
-      background: 'rgba(0,180,140,.85)'
+      background: 'rgba(0,180,140,.85)',
+      /* v2.3.1409: long tier labels ("Permafrost Dirt Mound — Frozen
+         Copper (Lv1)") ran off the phone's edge — cap + ellipsize. */
+      maxWidth: 'calc(100vw - 16px)',
+      overflow: 'hidden',
+      textOverflow: 'ellipsis'
     },
     onClick: function onClick(e) {
       var _R$lifeSkills3;

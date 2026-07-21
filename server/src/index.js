@@ -844,6 +844,21 @@ export class GameRoom {
         // what it is now" from the 30 px v2.3.96 ring).
         const ATTACK_RANGE = 45;
         const Y_SCALE = 3.0;
+        /* v2.3.1409 (owner: "snowmen attacks are lethargic — I can stand
+           there for 5 seconds and they won't attack me once").  Geometry
+           conflict, not AI: the snowman's CLIENT collision body
+           (BroTown _monBody: disc centred 19px above the feet, r13+10)
+           push-outs the player to ~42px from m.y, but the attack test
+           here needs dy <= 45/Y_SCALE = 15px — so the client physically
+           holds the player OUTSIDE the attack window forever and the
+           push (≈120px/s at 60fps) outruns the snowman's slowest-in-game
+           chase (spdMult 0.8).  Slimes don't collide with their own
+           window (low body disc) which is why only the tall snowman
+           reads as passive.  Relax the ring for snowmen only: range 70
+           with Y_SCALE 1.5 puts the collision equilibrium (dy≈42 ->
+           scaled 63) inside reach on every approach angle. */
+        const _atkRange = m.arch === 'snowman' ? 70 : ATTACK_RANGE;
+        const _yScale = m.arch === 'snowman' ? 1.5 : Y_SCALE;
         // Effective aggro range -- bumps to 1200 px when the sticky
         // override is active, so a bow-snipe from anywhere on screen
         // pulls the monster.  Without the bump the monster could be
@@ -854,14 +869,14 @@ export class GameRoom {
           m.targetId = nearest.id;
           const dxA = nearest.x - m.x;
           const dyA = nearest.y - m.y;
-          const attackDist = Math.sqrt(dxA * dxA + (dyA * Y_SCALE) * (dyA * Y_SCALE));
+          const attackDist = Math.sqrt(dxA * dxA + (dyA * _yScale) * (dyA * _yScale));
 
           // Move toward player -- but freeze in place while the monster
           // is in the middle of its post-attack animation window.  The
           // worker stamps m._attackingUntil after firing a monster_attack
           // event so the body stops sliding during the swing/lunge sheet.
           const attackingNow = m._attackingUntil && now < m._attackingUntil;
-          if (attackDist > ATTACK_RANGE && !attackingNow && ccMoveMult > 0) {
+          if (attackDist > _atkRange && !attackingNow && ccMoveMult > 0) {
             const dx = nearest.x - m.x;
             const dy = nearest.y - m.y;
             const dist = Math.sqrt(dx * dx + dy * dy);
@@ -875,7 +890,7 @@ export class GameRoom {
           // Attack player if in range.  v2.3.1139: frozen/rooted
           // monsters can't swing either (client gates the whole AI
           // branch on moveMult > 0 -- mirror that here).
-          if (attackDist <= ATTACK_RANGE && now > m.atkCd && ccMoveMult > 0) {
+          if (attackDist <= _atkRange && now > m.atkCd && ccMoveMult > 0) {
             // Don't fire damage events while the player is blocking — the
             // client's monster_attack handler also computes block reduction,
             // but that path was producing inconsistent block resolution
