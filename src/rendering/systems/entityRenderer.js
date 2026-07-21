@@ -631,9 +631,13 @@ const _FISH_CHEST_DEJITTER = [-5, -4, -6, -5, -4, -6, -5, -4, -4, -3, -2, -1, -1
    A missing sheet (only jog-south ships so far) returns null and the
    classic path runs unchanged.  DISPLAY_DS guard: the sheet rides the 256
    gear pipeline while the body sprite's transform expects display-sized
-   frames — identical only while DISPLAY_DS === 1. */
+   frames — identical only while DISPLAY_DS === 1.
+   v2.3.1408: guard LIFTED — gearSheets now stores the fullset slot at
+   display size (256/DISPLAY_DS, see its buildSheet fullset branch), so
+   the figure is a drop-in body frame at any DS and the knight keeps the
+   painted-figure path under the half-res memory mode. */
 function _fullsetFrame(chestItem, legsItem, pose, dir, frameIdx, phase) {
-  if (DISPLAY_DS !== 1 || pose !== 'jog') return null;
+  if (pose !== 'jog') return null;
   if (chestItem !== 'steelplate' || legsItem !== 'steelgreaves') return null;
   /* v2.3.1367: when the caller knows the jog cycle PHASE, the sheet plays
      its NATIVE frame count evenly on the same clock (east ships 25 frames
@@ -655,7 +659,9 @@ function _fullsetFrame(chestItem, legsItem, pose, dir, frameIdx, phase) {
    gate retries, the runtime falls back to a lazy on-demand masked bake —
    rare hitch, correct image. */
 function _fullsetCoversBake(worn, pose, dir) {
-  if (DISPLAY_DS !== 1 || pose !== 'jog' || dir === 'northeast') return false;
+  /* v2.3.1408: DISPLAY_DS guard lifted with _fullsetFrame's (the figure
+     path now runs at any DS), so the dead-bake skip keeps paying. */
+  if (pose !== 'jog' || dir === 'northeast') return false;
   const has = (k) => worn.some((w) => w.k === k);
   return has('chest:steelplate') && has('legs:steelgreaves');
 }
