@@ -925,34 +925,32 @@ export class EffectsRenderer {
     /* v2.3.1360 (owner): World View player beacon — the avatar renders
        as a distant speck on the overworld and gets lost against the
        painted terrain.  v2.3.1361 (owner: "more like a reticle circle,
-       not a blurry light"): crisp stroked ring + 4 compass ticks +
-       center dot instead of soft fills.  A dark under-stroke keeps the
-       ring readable over both snow and dark forest.  Plain strokes on
-       the shared particle Graphics (no filters — iOS WebGL static,
-       CLAUDE.md); subtle radius pulse so the eye still finds it. */
+       not a blurry light"): crisp stroked ring + ticks + dot.
+       v2.3.1410 (owner: "I don't want a literal reticle, I just want a
+       ring of light around the player"): the ticks/dot/crisp stroke are
+       gone — a soft luminous ring instead, feathered by LAYERED
+       translucent strokes of the same circle (widest+faintest under,
+       narrowest+brightest on top).  No filters (iOS WebGL static,
+       CLAUDE.md) — the layering IS the glow.  Warm lantern-light tint
+       (Lantern Slate) with a white core so it reads as light, not UI;
+       a faint wide dark underlay keeps it visible over bright snow.
+       Gentle radius pulse so the eye still finds it. */
     if (S.currentZone === 'worldview' && S.player) {
       const px = S.player.x, py = S.player.y;
-      const r = 14 + 1.5 * Math.sin(now / 400);
-      /* v2.3.1362 (owner): whole reticle at ~50% opacity — full-strength
-         strokes read too harsh over the painted map.  Alphas below are
-         the v2.3.1361 values halved. */
-      /* contrast halo under the bright ring */
+      const r = 13 + 1.2 * Math.sin(now / 500);
+      /* contrast underlay — soft, so it darkens snow without outlining */
       gfx.circle(px, py, r);
-      gfx.stroke({ width: 3.5, color: 0x1c2430, alpha: 0.25 });
-      /* the reticle ring */
+      gfx.stroke({ width: 9, color: 0x1c2430, alpha: 0.10 });
+      /* feathered glow: wide->narrow, faint->bright, warm->white */
       gfx.circle(px, py, r);
-      gfx.stroke({ width: 1.5, color: 0xffffff, alpha: 0.5 });
-      /* 4 compass ticks, outward from the ring */
-      for (let i = 0; i < 4; i++) {
-        const a = i * Math.PI / 2;
-        const ca = Math.cos(a), sa = Math.sin(a);
-        gfx.moveTo(px + ca * (r + 1), py + sa * (r + 1));
-        gfx.lineTo(px + ca * (r + 6), py + sa * (r + 6));
-      }
-      gfx.stroke({ width: 2, color: 0xffffff, alpha: 0.5 });
-      /* center dot on the player's feet */
-      gfx.circle(px, py, 2);
-      gfx.fill({ color: 0xffffff, alpha: 0.45 });
+      gfx.stroke({ width: 7, color: 0xffdf9e, alpha: 0.10 });
+      gfx.circle(px, py, r);
+      gfx.stroke({ width: 4.5, color: 0xffe9bd, alpha: 0.18 });
+      gfx.circle(px, py, r);
+      gfx.stroke({ width: 2.2, color: 0xfff6e0, alpha: 0.32 });
+      /* faint pool of light inside the ring, cupping the character */
+      gfx.circle(px, py, r - 2);
+      gfx.fill({ color: 0xffedc4, alpha: 0.05 });
     }
 
     // Hit particles
