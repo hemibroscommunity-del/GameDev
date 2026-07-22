@@ -709,6 +709,17 @@ input{font-family:inherit}
 .bt-rejoin-loading{position:fixed;top:max(10px,env(safe-area-inset-top));left:52px;z-index:100000;display:flex;align-items:center;gap:8px;padding:6px 11px;border-radius:10px;background:rgba(17,25,29,.85);pointer-events:none}
 .bt-rejoin-loading::before{content:'';width:18px;height:18px;border-radius:50%;border:2.5px solid rgba(255,255,255,.25);border-top-color:rgba(255,255,255,.92);animation:bt-exit-spin .8s linear infinite}
 .bt-rejoin-loading::after{content:'Loading\2026';font-size:11px;font-weight:700;letter-spacing:.06em;color:rgba(255,255,255,.85);font-family:'Source Sans 3',sans-serif}
+/* v2.3.1405: per-zone loading overlay — a full-screen dark veil shown
+   while the destination zone's map + monster variants warm on entry
+   (owner: "per zone loading instead of one long pregame loading screen").
+   Injected on document.body (outside React) at the top layer; the spinner
+   is compositor-driven (shares bt-exit-spin) so it keeps turning through
+   the load's main-thread work.  No filters over the WebGL canvas (iOS
+   static, CLAUDE.md). */
+.bt-zone-loading{position:fixed;top:0;left:0;right:0;bottom:0;z-index:100001;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;background:rgba(10,14,17,.92);pointer-events:auto;-webkit-user-select:none;user-select:none}/* explicit edges, not inset: — iOS Safari <14.5 lacks inset and would collapse the veil */
+.bt-zone-loading-spin{width:44px;height:44px;border-radius:50%;border:3.5px solid rgba(255,255,255,.18);border-top-color:rgba(255,255,255,.92);animation:bt-exit-spin .8s linear infinite}
+.bt-zone-loading-name{font-size:15px;font-weight:700;letter-spacing:.06em;color:rgba(255,255,255,.9);font-family:'Source Sans 3',sans-serif;text-align:center;max-width:80vw}
+.bt-zone-loading-name::before{content:'Entering ';color:rgba(255,255,255,.5);font-weight:600}
 .bt-chat-input::placeholder{color:rgba(255,255,255,.3)}
 .bt-chat-input:focus{border-color:var(--pop)}
 .bt-joystick-zone{z-index:30;display:block;

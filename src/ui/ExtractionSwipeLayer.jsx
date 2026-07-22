@@ -267,7 +267,18 @@ export const ExtractionSwipeLayer = ({ stateRef, onSuccess }) => {
           });
         }
       }
-      try { if (BT_AUDIO) BT_AUDIO.beep(620, 0.045, 0.06, 'square'); } catch (e) {}
+      /* v2.3.1423 (owner: the sample must play when the MARKER hits the
+         rock): the slam fires on every down-pump reversal — the moment the
+         marker visually bottoms out — so the pickaxe-on-stone sample lives
+         HERE (alternating its two strikes).  The 0.9-phase burst in
+         effectsRenderer is particles-only now (sounding both doubled the
+         hit on full drags). */
+      try {
+        if (BT_AUDIO && BT_AUDIO.play) {
+          g._slamSndAlt = !g._slamSndAlt;
+          BT_AUDIO.play('mine-strike', { offset: g._slamSndAlt ? 0.08 : 0.6, duration: 0.45, vol: 0.6 });
+        }
+      } catch (e) {}
     };
 
     const onPointerMove = (e) => {
@@ -282,10 +293,39 @@ export const ExtractionSwipeLayer = ({ stateRef, onSuccess }) => {
       const g = ex._gesture;
       if (ex.skill === 'fishing') {
         const ang = Math.atan2(y - g.cueY, x - g.cueX);
-        g.totalAngle += wrapPi(ang - g.lastAngle);   /* clockwise (screen y-down) = + */
+        const _dAng = wrapPi(ang - g.lastAngle);
+        g.totalAngle += _dAng;   /* clockwise (screen y-down) = + */
         g.lastAngle = ang;
+        /* v2.3.1422: stamp active cranking so the reel-loop SFX
+           (effectsRenderer) plays only while the handle is turning. */
+        if (Math.abs(_dAng) > 0.02) ex._reelSpinAt = performance.now();
       } else {
         stepOscillation(g, (ex.skill === 'mining' || ex.skill === 'cooking') ? y : x, ex.skill);
+      }
+
+      /* v2.3.1417: GESTURE-TOOL FRAME DRIVER — the painted tool sprite in
+         the world cue (effectsRenderer._updateExtractionCue) plays its
+         8-frame sheet from this phase, so the tool physically follows the
+         finger (owner: "a pickaxe that moves frames depending on where
+         your finger moves when mining, or a reel that rotates when
+         fishing").  Fishing maps the accumulated circle angle straight to
+         the crank rotation (one finger-circle = one crank turn); the
+         stroke skills scrub the swing with signed finger deltas — mining
+         swings on the DOWN stroke, cooking flips on the UP flick, the axe
+         chops TOWARD the tree — and rewind on the return stroke. */
+      if (ex.skill === 'fishing') {
+        ex.cueFrame01 = ((g.totalAngle / (Math.PI * 2)) % 1 + 1) % 1;
+      } else {
+        const _n = sw.samples.length;
+        const _prev = _n > 1 ? sw.samples[_n - 2] : null;
+        if (_prev) {
+          const SPAN = ex.skill === 'cooking' ? 130 : 110; /* px of travel for a full swing */
+          let _d;
+          if (ex.skill === 'mining') _d = (y - _prev.y) / SPAN;
+          else if (ex.skill === 'cooking') _d = (_prev.y - y) / SPAN;
+          else _d = ((x - _prev.x) * (g.treeward || 1)) / SPAN;
+          ex.cueFrame01 = Math.max(0, Math.min(1, (ex.cueFrame01 || 0) + _d));
+        }
       }
 
       const reps = repsFromGesture(ex.skill, g);

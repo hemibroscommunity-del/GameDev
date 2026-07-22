@@ -54,7 +54,10 @@ export const DAMAGE_CHANNEL_FLAT = 1;
  * Mirrors src/data/gameSystems.js t2Accel/T2_UNITS/t2CounterRate —
  * mirror-audit ties them. */
 export const T2_UNITS = {
-  damage: 1, critDmg: 1.5, ironskin: 0.5, resilience: 1, thorns: 1,
+  /* v2.3.1415: critDmg 1.5 -> 4 (owner balance pass — crit build hits
+     per-point parity with the damage channel; see the client
+     gameSystems.js T2_UNITS note).  Keep in lockstep with the client. */
+  damage: 1, critDmg: 4, ironskin: 0.5, resilience: 1, thorns: 1,
   secondwind: 2.5, vigor: 2, recovery: 1, lifeblood: 1.5, stamina: 1,
 };
 export function t2Accel(pts, unit) {

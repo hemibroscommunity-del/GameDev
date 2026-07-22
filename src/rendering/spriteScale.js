@@ -48,7 +48,18 @@ export function upscaleToFrameHeight(img, frameH = 256) {
    returns.  NOTE: many body-sheet PNGs ship 128px-on-disk since the download
    downscale (v2.3.1108, upscaled back nearest-neighbour here) -- this
    constant governs the BAKE/display resolution, not the source art. */
-export const DISPLAY_DS = 1;
+/* v2.3.1408: 1 -> 2, the documented rollback above, taken WITH owner
+   approval ("try half-res on preview").  iPhone memory pressure returned
+   as hard Safari OOM page kills: ~245MB of GPU display textures + the
+   matching CPU canvases parked the game at the kill threshold, and the
+   ~64MB fishing-start allocation (fish/pickup strips + bakes) tipped it
+   ("crashed just as I began fishing").  Half-res display bakes cut the
+   body/bake share ~4x.  Differences vs the v2.3.1236-rejected look:
+   the full-steel knight now renders from the PAINTED fullset figures
+   (v2.3.1361+), which at DS=2 are Lanczos-downscaled painted art (see
+   gearSheets fullset branch), not the old soft body bakes — and gear
+   overlays stay at the full 256 contract.  Instant rollback: set 1. */
+export const DISPLAY_DS = 2;
 
 /** Downscale an image/canvas to 1/ds in both dimensions onto a new canvas
  *  (bilinear). Returns the source unchanged when ds <= 1 (the DISPLAY_DS=1
@@ -98,7 +109,28 @@ export function downscaleByFactor(src, ds = DISPLAY_DS) {
    classification is unaffected.  Rollback: DISPLAY_DS=2 in this file — this
    helper then defers to downscaleByFactor, byte-identical to v2.3.1235. */
 export function bakeDisplayCanvas(full, srcH) {
-  if (DISPLAY_DS > 1) return downscaleByFactor(full, DISPLAY_DS);
+  if (DISPLAY_DS > 1) {
+    /* v2.3.1412 (owner: half-res "looks soft").  Most body sheets ship
+       128px ON DISK (v2.3.1108) and reach here as an exact 2x pixel-
+       double (nearest upscale, and the recolour maps each 2x2 block
+       uniformly).  For those, a NEAREST 2x downscale is a LOSSLESS
+       inverse — every display texel is an exact on-disk (recoloured)
+       texel — where the smooth Lanczos downscale was re-blurring art
+       that was never really 256 to begin with.  Native >=256 art keeps
+       the smooth path (real detail needs real resampling). */
+    const h = full.naturalHeight || full.height || 0;
+    if (srcH && h && srcH === Math.round(h / DISPLAY_DS)) {
+      const w = full.naturalWidth || full.width || 0;
+      const cv = document.createElement('canvas');
+      cv.width = Math.max(1, Math.round(w / DISPLAY_DS));
+      cv.height = Math.max(1, Math.round(h / DISPLAY_DS));
+      const ctx = cv.getContext('2d');
+      ctx.imageSmoothingEnabled = false; // nearest: exact texel picks
+      ctx.drawImage(full, 0, 0, cv.width, cv.height);
+      return cv;
+    }
+    return downscaleByFactor(full, DISPLAY_DS);
+  }
   return antialiasUpscaledCanvas(full, srcH);
 }
 

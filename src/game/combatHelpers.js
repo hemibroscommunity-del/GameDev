@@ -331,7 +331,23 @@ function monsterPopupY(m, fallback) {
   return y + off;
 }
 
+/* v2.3.1421: clear the per-swing melee dedup flags on every entity.
+   Called at every swing START (manual tap, auto-swing, and the sword
+   SPECIAL).  Previously the flags only cleared 450ms after a swing
+   began (the swing-end sweep in monsterCombat), so a special fired
+   right after a normal swing inherited the previous swing's
+   "already hit" marks and silently skipped those monsters — the
+   owner's "special right after a normal swing doesn't register the
+   hit". */
+function clearSwingHitFlags(S) {
+  if (!S) return;
+  if (S.monsters) S.monsters.forEach(function (m) { if (m) m._hitThisSwing = false; });
+  if (S.npcs) S.npcs.forEach(function (n) { if (n) n._hitThisSwing = false; });
+  if (S.others) Object.values(S.others).forEach(function (o) { if (o) o._hitThisSwing = false; });
+}
+
 export {
+  clearSwingHitFlags,
   pushDmgPopup,
   monsterPopupY,
   BUILD_LABELS,

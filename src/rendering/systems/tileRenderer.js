@@ -139,6 +139,13 @@ export class TileRenderer {
     this.currentMap = map;
     this.overlayGfx.clear();
     this.bgGfx.clear();
+    /* v2.3.1405: destroy the PREVIOUS image-zone ground sprite (display
+       object only — never its texture) before rebuilding, so the
+       per-zone map eviction (tiledMaps.freeZoneMap → Assets.unload) can't
+       orphan a live Sprite still pointing at the source it's about to
+       free.  removeChildren() only detaches; the sprite object (and its
+       texture ref) would linger until GC otherwise. */
+    if (this._imageSprite) { try { this._imageSprite.destroy(); } catch (e) { /* ignore */ } this._imageSprite = null; }
     // Remove old tile sprites
     this.tileContainer.removeChildren();
     this.buildingContainer.removeChildren();
@@ -345,6 +352,7 @@ export class TileRenderer {
       sprite.width = this._mapW;
       sprite.height = this._mapH;
       this.tileContainer.addChild(sprite);
+      this._imageSprite = sprite; /* v2.3.1405: tracked for safe per-zone map eviction */
       /* Race fix: if the preload is still in flight when the user
          enters the zone, the cache miss above leaves the sprite on
          Texture.EMPTY (blank).  Kick off the load and swap the

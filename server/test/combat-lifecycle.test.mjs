@@ -15,6 +15,7 @@
  *      assertion if overflow deferral ships).
  */
 import { GameRoom } from '../src/index.js';
+import { T2_UNITS as _u, t2Accel as _accel } from '../src/data.js'; /* v2.3.1415: critDmg assertion derives from the unit table */
 
 const mockState = {
   storage: {
@@ -233,6 +234,28 @@ for (const m of meadowMonsters) m._wanderPausedUntil = Date.now() + 600000;
     && Math.abs(room._blockStaminaMult({ defenseSpec: { bulwark: 999 } }) - 0) < 1e-9,
     room._blockStaminaMult(psA));
   psA.blocking = false; psA.defenseSpec = {};
+
+  // v2.3.1414: WORLD VIEW joins the safe-zone regen list, and hubs top
+  // off stamina/mana at the HP pace (10%/tick) — all combat resources
+  // refill in a hub, not just HP.
+  psA.z = 'worldview'; psA.hp = 50; psA.stamina = 40; psA.mana = 40;
+  psA.lastDamageAt = Date.now(); /* even fresh out of combat */
+  room._tickPlayerRegen();
+  check('regen: worldview heals 10% of maxHp per tick', psA.hp === 60, psA.hp);
+  check('regen: hub tops off stamina at >=10%/tick', psA.stamina >= 50, psA.stamina);
+  check('regen: hub tops off mana at >=10%/tick', psA.mana >= 50, psA.mana);
+
+  // v2.3.1414: a combat-skill level-up reported via stats_update fully
+  // restores hp/stamina/mana (level INCREASE only — echoes don't).
+  psA.z = 'town'; psA.hp = 10; psA.stamina = 10; psA.mana = 10;
+  psA.weaponSkills = { sword: { level: 2, xp: 0 } };
+  room._handleStatsUpdate({ id: 'pa' }, { weaponSkills: { sword: { level: 3, xp: 0 } } });
+  check('levelup restore: weapon level increase fills hp/stamina/mana',
+    psA.hp === psA.maxHp && psA.stamina === psA.maxStamina && psA.mana === psA.maxMana,
+    { hp: psA.hp, stamina: psA.stamina, mana: psA.mana });
+  psA.hp = 10; psA.stamina = 10; psA.mana = 10;
+  room._handleStatsUpdate({ id: 'pa' }, { weaponSkills: { sword: { level: 3, xp: 5 } } });
+  check('levelup restore: same-level echo does NOT restore', psA.hp === 10, psA.hp);
 }
 
 // ── 6b. v2.3.1110: monster<->monster separation ──
@@ -543,10 +566,13 @@ for (const m of meadowMonsters) m._wanderPausedUntil = Date.now() + 600000;
   check('critDmg: helper reads executioner points', room._wpnCritDmgPts(ps, 'sword') === 99);
   check('critDmg: both rolls crit under a forced roll', plain.isCrit === true && boosted.isCrit === true);
   // v2.3.1345 (accelerating flat): the crit-dmg channel adds a FLAT
-  // t2Accel(99, 1.5) = 14,850 on top of the power-only multiplier —
-  // assert the delta, not a ratio.
+  // t2Accel(99, T2_UNITS.critDmg) on top of the power-only multiplier —
+  // assert the delta, not a ratio.  v2.3.1415: expected value now
+  // DERIVES from the unit table (was a 14,850 literal at unit 1.5)
+  // so balance tuning of the unit doesn't break the suite.
+  const _expCritFlat = _accel(99, _u.critDmg);
   const delta = boosted.dmg - plain.dmg;
-  check('critDmg: 99 executioner pts add +14,850 flat on the crit', Math.abs(delta - 14850) <= 1, delta);
+  check('critDmg: 99 executioner pts add t2Accel(99, unit) flat on the crit', Math.abs(delta - _expCritFlat) <= 1, { delta, expected: _expCritFlat });
   check('critDmg: maxed edge+executioner crit clears the anti-cheat ceiling',
     maxRoll.dmg <= room._maxDmgForAttacker(ps, false),
     { roll: maxRoll.dmg, cap: room._maxDmgForAttacker(ps, false) });

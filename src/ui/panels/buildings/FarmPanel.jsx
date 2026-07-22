@@ -100,6 +100,11 @@ export function FarmPanel(props) {
         onClick: function onClick() {
           var S2 = stateRef.current,
             P2 = S2.player;
+          /* v2.3.1406: farm map no longer preloads at startup (per-zone
+             loading) and this warp bypasses the hub-exit gate — kick the
+             load now so the ground paints instead of flashing black;
+             tileRenderer's cache-miss self-heal is the backstop. */
+          import('@/rendering/preloadAnimations.js').then(function (m) { return m.preloadZoneAssets('farm_home'); }).catch(function () {});
           S2.currentZone = 'farm_home';
           updateZoneDimensions('farm_home');
           S2.map = generateZoneMap('farm_home');

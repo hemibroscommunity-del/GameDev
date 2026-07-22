@@ -8,8 +8,8 @@
    `stateRef.current._tutorialStep` read became `S._tutorialStep` (same
    object). raiseShield takes setShieldUp via deps (its only React
    setter). All other references are module imports below. */
-import { SWING_COOLDOWN, SPECIAL_ATK_MULT, specialAtkMultFor, BT_AUDIO, meleeSwingSfx, getActiveWeapon, calcSpecialDmg, monsterBodyY, swingCooldownMult } from '@/data/index.js';
-import { addBuildUse, pushDmgPopup } from '@/game/combatHelpers.js';
+import { SWING_COOLDOWN, SPECIAL_ATK_MULT, specialAtkMultFor, BT_AUDIO, meleeSwingSfx, getActiveWeapon, calcSpecialDmg, calcWeaponDmg, monsterBodyY, swingCooldownMult } from '@/data/index.js';
+import { addBuildUse, clearSwingHitFlags, pushDmgPopup } from '@/game/combatHelpers.js';
 
 export function swingAttack(S) {
     /* v2.3.1134: the manual tap gate honors Tempo like the auto-attack loop
@@ -26,6 +26,7 @@ export function swingAttack(S) {
     S.swingTimer = Date.now();
     S.isSwinging = true;
     S._specialAttack = false;
+    clearSwingHitFlags(S); /* v2.3.1421: fresh dedup per swing (quick re-tap fix) */
     BT_AUDIO.play(meleeSwingSfx(S.rpg), { vol: 0.55 });
 }
 
@@ -90,10 +91,15 @@ export function specialAttack(S) {
       if (!S.arrows) S.arrows = [];
       /* v2.3.234 (Phase 4): specials scale with Mind, not weapon stat. */
       var wpnDmg = calcSpecialDmg(activeWpn.type, R || {}, activeWpn.tierMult, activeWpn);
+      /* v2.3.1402 (owner): capture a NORMAL bow hit's damage at fire time
+         so the landed arrow's lingering ground-tick (projectiles.js) deals
+         base damage, immune to a later weapon swap. */
+      var _bowBase = Math.max(1, Math.round(calcWeaponDmg(activeWpn.type, R || {}, activeWpn.tierMult, activeWpn)));
       S.arrows.push({
         ang: aimAng,
         dist: 14,
         dmg: Math.round(wpnDmg * specialAtkMultFor('bow')), /* v2.3.1397: bow special 3x (owner) */
+        baseDmg: _bowBase, /* v2.3.1402: lingering ground-tick base damage */
         life: 150, /* v2.3.1335: range -25% (the 675px plant cap governs reach) */
         maxLife: 150,
         hitIds: new Set(),
@@ -150,6 +156,7 @@ export function specialAttack(S) {
       S.swingTimer = now;
       S.isSwinging = true;
       S._specialAttack = true;
+      clearSwingHitFlags(S); /* v2.3.1421: the special is a NEW swing — without this a special fired <450ms after a normal swing inherited its "already hit" flags and never registered (owner report) */
       if (hasElement) S._iceAttack = true;
       /* Broadcast the special swing so peers render the wider arc +
          gold halo.  The regular auto-swing broadcast path is skipped

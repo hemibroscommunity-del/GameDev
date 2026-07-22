@@ -38,7 +38,7 @@ import { getShirt } from '../traits/shirtCatalog.js';
 import { getShirtColor, shirtFill } from '../traits/shirtColorCatalog.js';
 import { getGearFrame, getGearFramePhased, getLoadedGearSources } from '../gearSheets.js';
 import { combatGearUrls } from '../combatGear.js';
-import { getEquip, onEquipChange, GEAR_CATALOG } from '../gearCatalog.js'; /* v2.3.1236: GEAR_CATALOG drives the all-states loading-screen prewarm */
+import { getEquip, onEquipChange } from '../gearCatalog.js'; /* v2.3.1407: GEAR_CATALOG import dropped with the speculative all-states prewarm */
 import { recordCrash } from '../../debug/crashTrap.js'; /* v2.3.1305: trait-sheet load-failure telemetry */
 
 /* §9.2.1 Collision-opportunity weapon edge glow — proximity radius (≈20u). */
@@ -631,9 +631,13 @@ const _FISH_CHEST_DEJITTER = [-5, -4, -6, -5, -4, -6, -5, -4, -4, -3, -2, -1, -1
    A missing sheet (only jog-south ships so far) returns null and the
    classic path runs unchanged.  DISPLAY_DS guard: the sheet rides the 256
    gear pipeline while the body sprite's transform expects display-sized
-   frames — identical only while DISPLAY_DS === 1. */
+   frames — identical only while DISPLAY_DS === 1.
+   v2.3.1408: guard LIFTED — gearSheets now stores the fullset slot at
+   display size (256/DISPLAY_DS, see its buildSheet fullset branch), so
+   the figure is a drop-in body frame at any DS and the knight keeps the
+   painted-figure path under the half-res memory mode. */
 function _fullsetFrame(chestItem, legsItem, pose, dir, frameIdx, phase) {
-  if (DISPLAY_DS !== 1 || pose !== 'jog') return null;
+  if (pose !== 'jog') return null;
   if (chestItem !== 'steelplate' || legsItem !== 'steelgreaves') return null;
   /* v2.3.1367: when the caller knows the jog cycle PHASE, the sheet plays
      its NATIVE frame count evenly on the same clock (east ships 25 frames
@@ -655,7 +659,9 @@ function _fullsetFrame(chestItem, legsItem, pose, dir, frameIdx, phase) {
    gate retries, the runtime falls back to a lazy on-demand masked bake —
    rare hitch, correct image. */
 function _fullsetCoversBake(worn, pose, dir) {
-  if (DISPLAY_DS !== 1 || pose !== 'jog' || dir === 'northeast') return false;
+  /* v2.3.1408: DISPLAY_DS guard lifted with _fullsetFrame's (the figure
+     path now runs at any DS), so the dead-bake skip keeps paying. */
+  if (pose !== 'jog' || dir === 'northeast') return false;
   const has = (k) => worn.some((w) => w.k === k);
   return has('chest:steelplate') && has('legs:steelgreaves');
 }
@@ -1504,18 +1510,26 @@ export function planPrewarmProgress() {
    (~27MB at DISPLAY_DS=2, ~108MB at DISPLAY_DS=1) -- if iPhone WebGL context
    loss reappears, shrink HERE first.  Currently-worn combination sorts first
    so the spawn loadout is warm earliest behind the loading bar. */
+/* v2.3.1407: SHRUNK HERE, as the line above instructs — context loss is
+   back, worse: hard iOS page kills (owner: game restarted seconds after
+   first worldview entry, crashed again in frost; no crashTrap beacons =
+   Safari OOM'd the tab before JS could log).  Renderer probes measured the
+   real cost of the 3-family speculative bake at ~230MB of GPU strips
+   (40-odd 6-7MB canvases — the 108MB comment above predates belts/poses)
+   PLUS the same again in CPU canvas backing — the dominant share of the
+   whole game's footprint, parked at the iPhone kill threshold so the small
+   per-zone loads (+5MB worldview, +31MB frost) tipped it over.  Now bakes
+   ONLY the currently-worn combination (~1/3): the v2.3.1236 anti-hitch
+   intent survives via the v2.3.692 equip-change re-prewarm, which re-bakes
+   a new combination in the equip menu's dead time and GPU-uploads it
+   (v2.3.704) — so a first swap still lands warm, it just isn't paid for
+   up front by every session that never swaps. */
 function _catalogWornSets() {
-  const chestIds = (GEAR_CATALOG.chest || []).map((c) => c && c.id).filter((id) => id && id !== 'none');
-  const legsIds = (GEAR_CATALOG.legs || []).map((c) => c && c.id).filter((id) => id && id !== 'none');
-  const sets = [];
-  for (const c of chestIds) for (const l of legsIds) sets.push([['chest', c], ['legs', l]]);
-  for (const c of chestIds) sets.push([['chest', c]]);
-  for (const l of legsIds) sets.push([['legs', l]]);
   const wc = getEquip('chest'), wl = getEquip('legs');
-  const wornCount = (wc && wc !== 'none' ? 1 : 0) + (wl && wl !== 'none' ? 1 : 0);
-  const isWorn = (s) => s.length === wornCount && s.every(([sl, id]) => getEquip(sl) === id);
-  sets.sort((a, b) => (isWorn(b) ? 1 : 0) - (isWorn(a) ? 1 : 0));
-  return sets;
+  const worn = [];
+  if (wc && wc !== 'none') worn.push(['chest', wc]);
+  if (wl && wl !== 'none') worn.push(['legs', wl]);
+  return worn.length ? [worn] : [];
 }
 
 /* v2.3.701: force-upload the baked masked-body textures to the GPU while the
@@ -1670,7 +1684,10 @@ export async function prewarmAltWornSets(opts) {
      v2.3.1236: REVERSED per owner directive -- prewarm EVERY catalog gear
      state behind the post-Play loading screen so a first equip/unequip never
      pays the lazy masked-body bake hitch.  _catalogWornSets() documents the
-     memory trade-off and is the knob to shrink if context loss returns. */
+     memory trade-off and is the knob to shrink if context loss returns.
+     v2.3.1407: context loss returned as hard iOS OOM kills — the knob is
+     shrunk: _catalogWornSets now yields only the worn combination, so this
+     pass is mostly cache hits over the prewarmMaskedBodyFrames output. */
   /* v2.3.756: baked shirt retired -- only the shirtless body sheets exist
      now, so there is a single variant to warm. */
   try { await preloadBodyVariant(null, 'none'); } catch (e) { /* best-effort */ }
@@ -3712,7 +3729,11 @@ export class EntityRenderer {
            spawns with a 1.6x pop at 21px font (27 crit), so a 6px gap
            left the glyph's lower half sitting ON the bar.  Clear the
            bar by the popped half-height (~21px) plus a small gap. */
-        m._popupTopOff = barY - MONSTER_HPBAR_H / 2 - 24;
+        /* v2.3.1402 (owner: "damage numbers are still over monster HP bars"):
+           24 -> 40.  v2.3.1403 (owner, still overlapping on the tall snowman
+           bar): 40 -> 62 — clears even the tallest monster's bar + the 1.6x
+           spawn pop. */
+        m._popupTopOff = barY - MONSTER_HPBAR_H / 2 - 62;
         display._hpHeart.width = MONSTER_HPBAR_W;
         display._hpHeart.height = MONSTER_HPBAR_H;
         display._hpHeart.x = 0;  /* anchor already centered at creation */
@@ -6226,8 +6247,6 @@ export class EntityRenderer {
     /* v2.3.214: prefer white-fill heart so we can tint by HP tier;
        fall back to the red one until heart-white resolves. */
 
-    const W = 64, H = 10;
-    const MIN_LABEL_W = 14; /* hide the value-number if its section is narrower */
     const HOLD_MS = 2500;
     const FADE_STEP = 16.7 / 300; /* ~300 ms fade-in / fade-out */
 
@@ -6244,51 +6263,49 @@ export class EntityRenderer {
       if (d._hudMpTextEmpty && d._hudMpTextEmpty.visible) d._hudMpTextEmpty.visible = false;
     }
 
-    /* Stamina pill (legacy single-bar style; unchanged). */
-    const bars = [
-      { sprite: d._hudStamSprite, empty: d._hudStamEmpty, tFull: d._hudStamTextFull, tEmpty: d._hudStamTextEmpty, cur: R.stamina, max: R.maxStamina, y: -124 },
-    ];
-    for (const b of bars) {
-      const max = b.max || 1;
-      const cur = Math.max(0, Math.min(max, b.cur || 0));
+    /* Stamina — v2.3.1400 (owner): the 64px horizontal pill above the
+       head is retired for a bare percentage NUMBER below the player's
+       feet.  "Energy percentage shouldn't draw much attention" — no bar,
+       no icon, small text, and it keeps the old visibility contract:
+       fades in while below max, holds HOLD_MS once refilled, fades out.
+       The pill sprite/overlay/split labels stay allocated but hidden
+       (pickup/death paths still reference them). */
+    {
+      const max = R.maxStamina || 1;
+      const cur = Math.max(0, Math.min(max, R.stamina || 0));
       const pct = cur / max;
       const full = cur >= max - 0.01;
-      if (!full) b.sprite._lastNotFullAt = now;
-      const sinceChange = now - (b.sprite._lastNotFullAt || 0);
+      const b = d._hudStamSprite;
+      if (!full) b._lastNotFullAt = now;
+      const sinceChange = now - (b._lastNotFullAt || 0);
       const targetAlpha = (!full || sinceChange < HOLD_MS) ? 1 : 0;
-      const a = (b.sprite.alpha != null) ? b.sprite.alpha : 0;
+      /* raw fade tracked separately — reading label.alpha back would
+         re-apply the 0.8 dim each frame and trap the fade at ~0.22 */
+      const a = (b._fadeA != null) ? b._fadeA : 0;
       const delta = targetAlpha - a;
       const newAlpha = a + Math.max(-FADE_STEP, Math.min(FADE_STEP, delta));
-      b.sprite.alpha = b.empty.alpha = newAlpha;
+      b._fadeA = newAlpha;
 
-      if (b.sprite.texture && b.sprite.texture.width > 0) {
-        b.sprite.width = W;
-        b.sprite.height = H;
-        b.sprite.x = 0;
-        b.sprite.y = b.y;
-      }
-      b.empty.clear();
-      const filledW = W * pct;
-      const emptyW = W - filledW;
-      if (emptyW > 0.5) {
-        b.empty.rect(-W / 2 + filledW, b.y - H / 2, emptyW, H);
-        b.empty.fill({ color: 0x000000, alpha: 0.55 });
-      }
+      if (b.visible) b.visible = false;
+      d._hudStamEmpty.clear();
+      if (d._hudStamTextEmpty.visible) d._hudStamTextEmpty.visible = false;
 
-      const curStr = String(Math.ceil(cur));
-      const missStr = String(Math.ceil(max - cur));
-      if (b.tFull.text !== curStr) b.tFull.text = curStr;
-      if (b.tEmpty.text !== missStr) b.tEmpty.text = missStr;
-      b.tFull.x = -W / 2 + filledW / 2;
-      b.tFull.y = b.y;
-      b.tEmpty.x = -W / 2 + filledW + emptyW / 2;
-      b.tEmpty.y = b.y;
-      const fullVisible = filledW >= MIN_LABEL_W && newAlpha > 0.02;
-      const emptyVisible = emptyW >= MIN_LABEL_W && newAlpha > 0.02;
-      b.tFull.alpha = fullVisible ? newAlpha : 0;
-      b.tEmpty.alpha = emptyVisible ? newAlpha : 0;
-      b.tFull.visible = fullVisible;
-      b.tEmpty.visible = emptyVisible;
+      const label = d._hudStamTextFull;
+      if (!label._energyStyled) {
+        /* one-time restyle: the shared pill-number style (8px) reads as a
+           speck on its own.  11px, still quiet.  Pixi clones the plain
+           style object per Text, so this can't leak to the MP labels. */
+        label._energyStyled = true;
+        label.style.fontSize = 11;
+      }
+      /* small ⚡ marks it as ENERGY without pulling focus (owner) */
+      const pctStr = '⚡' + Math.round(pct * 100) + '%';
+      if (label.text !== pctStr) label.text = pctStr;
+      label.x = 0;
+      label.y = 86;                     /* just under the feet (container origin
+                                           sits near the head; name tag is -28) */
+      label.alpha = newAlpha * 0.8;     /* deliberately understated */
+      label.visible = newAlpha > 0.02;
     }
 
     /* HP: quartile-colored progress RING with a muted-gray center holding

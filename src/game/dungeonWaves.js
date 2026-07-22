@@ -84,6 +84,9 @@ export function updateDungeonWaves(S, deps) {
                     st._inDungeon = false;
                     st._inCustomDungeon = false;
                     st._customDungeonConfig = null;
+                    /* v2.3.1406: per-zone loading — warm the farm map (idempotent;
+                       usually still resident from the entry warp). */
+                    import('@/rendering/preloadAnimations.js').then(function (m) { return m.preloadZoneAssets('farm_home'); }).catch(function () {});
                     st.currentZone = 'farm_home';
                     updateZoneDimensions('farm_home');
                     st.map = generateZoneMap('farm_home');
@@ -169,6 +172,8 @@ export function updateDungeonWaves(S, deps) {
                   st._inDungeon = false;
                   st._inCustomDungeon = false;
                   st._customDungeonConfig = null;
+                  /* v2.3.1406: per-zone loading — warm the farm map (idempotent). */
+                  import('@/rendering/preloadAnimations.js').then(function (m) { return m.preloadZoneAssets('farm_home'); }).catch(function () {});
                   st.currentZone = 'farm_home';
                   updateZoneDimensions('farm_home');
                   st.map = generateZoneMap('farm_home');

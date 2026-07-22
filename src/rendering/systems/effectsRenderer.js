@@ -40,9 +40,26 @@ import { GEARLAYER_VER } from '../gearVersion.js';   // shared cache-bust string
    ready. Until then, popups render text-only and the icon is skipped. */
 const POPUP_ICONS = {};
 const POPUP_ICON_KEYS = ['xp', 'gold', 'sword', 'arrow', 'spell', 'heart'];
-Promise.all(POPUP_ICON_KEYS.map((k) =>
-  _fxLoad('/icons/popups/' + k + '.webp').then((tex) => { POPUP_ICONS[k] = tex; })
-)).catch((err) => console.warn('[popup-icons] load failed', err));
+/* v2.3.1403 (owner: "the damage bow icon did not work" while damage
+   numbers still showed): the icon load was one-shot — a single flaked
+   fetch (common right after a deploy) left that icon undefined for the
+   whole session, so the number renders but its icon is silently missing.
+   Bounded retry (v2.3.1305 pattern, 2s/6s + cache-bust) so a flake
+   self-heals; the popup renderer already no-ops the icon until the
+   texture resolves. */
+function _loadPopupIcon(k, attempt) {
+  const bust = attempt > 0 ? '&r=' + attempt : '';
+  return _fxLoad('/icons/popups/' + k + '.webp?v=2.3.1403' + bust)
+    .then((tex) => { POPUP_ICONS[k] = tex; })
+    .catch(() => {
+      if (attempt < 2) {
+        return new Promise((res) => setTimeout(res, [2000, 6000][attempt]))
+          .then(() => _loadPopupIcon(k, attempt + 1));
+      }
+      console.warn('[popup-icons] load failed after retries', k);
+    });
+}
+Promise.all(POPUP_ICON_KEYS.map((k) => _loadPopupIcon(k, 0)));
 
 /* Elemental shard icons -- one PNG per zone, served from
    /icons/shards/.  Loaded lazily, falling back to a procedural circle
@@ -111,6 +128,39 @@ for (const [cfg, url] of [
       }));
     }
   }).catch((err) => console.warn('[special-fx] load failed', url, err));
+}
+
+/* v2.3.1417: GESTURE TOOL sheets (owner art, part 2 of the gather-feel
+   redesign) — the harvest cue's floating tool is a painted sprite whose
+   FRAME follows the finger: ExtractionSwipeLayer writes ex.cueFrame01
+   (0..1) from the live gesture (mining drag scrubs the pickaxe swing,
+   fishing circles crank the reel, the chop swipe drives the axe, the
+   up-flick flips the pan) and _updateExtractionCue picks the frame.
+   8-frame 256px strips from tools/process_gesture_sheets.py.  Until a
+   strip resolves, the old procedural tool draw is the fallback. */
+/* v2.3.1418 (owner tuning): all four tools 2x larger; per-tool nudges —
+   axe 10px left, pickaxe 20px up, pan 10px up (dx/dy applied at
+   placement in _updateExtractionCue). */
+const GESTURE_TOOLS = {
+  /* v2.3.1423 (owner: pickaxe "floats above it — move down and to the
+     left"): mining dx/dy now shift the WHOLE swing path (hover +
+     contact both carry them in the clamp branch). */
+  mining:      { frames: [], h: 128, dx: -14, dy: 16,  url: '/sprites/tools/pickaxe-gesture-v1.webp?v=2.3.1417' },
+  woodcutting: { frames: [], h: 128, dx: -10, dy: 0,   url: '/sprites/tools/axe-gesture-v1.webp?v=2.3.1417' },
+  fishing:     { frames: [], h: 116, dx: 0,   dy: 0,   url: '/sprites/tools/reel-gesture-v1.webp?v=2.3.1417' },
+  cooking:     { frames: [], h: 124, dx: 0,   dy: -10, url: '/sprites/tools/pan-gesture-v1.webp?v=2.3.1417' },
+};
+for (const cfg of Object.values(GESTURE_TOOLS)) {
+  _fxLoad(cfg.url).then((tex) => {
+    if (!tex || !tex.source) return;
+    const fw = Math.floor(tex.source.width / 8);
+    for (let i = 0; i < 8; i++) {
+      cfg.frames.push(new Texture({
+        source: tex.source,
+        frame: new Rectangle(i * fw, 0, fw, tex.source.height),
+      }));
+    }
+  }).catch((err) => console.warn('[gesture-tools] load failed', cfg.url, err));
 }
 
 /* Gather-node sprites — keyed by node.nodeType. Until each texture is
@@ -487,6 +537,16 @@ export class EffectsRenderer {
     this.chopSprite.anchor.set(0.5, 1);  // bottom-centre stands on the ground
     this.chopSprite.visible = false;
     this.nodeLayer.addChild(this.chopSprite);
+    /* v2.3.1417: the gesture-driven tool cue (painted pickaxe/reel/axe/
+       pan) — one reusable centre-anchored sprite, positioned + frame-
+       picked per tick in _updateExtractionCue.  On the OVERLAY layer
+       (above nodes AND the player): node sprites join nodeLayer after
+       construction-time children, so a nodeLayer tool was painted over
+       by the ore/tree art it floats on. */
+    this.gestureToolSprite = new Sprite();
+    this.gestureToolSprite.anchor.set(0.5, 0.5);
+    this.gestureToolSprite.visible = false;
+    this.overlayLayer.addChild(this.gestureToolSprite);
     this._chopFrames = [];
     this._chopLastFrame = -1;  // strike-frame edge tracker for the chop sfx
     _fxLoad('/sprites/skills/chop-strip.webp').then((tex) => {
@@ -908,34 +968,32 @@ export class EffectsRenderer {
     /* v2.3.1360 (owner): World View player beacon — the avatar renders
        as a distant speck on the overworld and gets lost against the
        painted terrain.  v2.3.1361 (owner: "more like a reticle circle,
-       not a blurry light"): crisp stroked ring + 4 compass ticks +
-       center dot instead of soft fills.  A dark under-stroke keeps the
-       ring readable over both snow and dark forest.  Plain strokes on
-       the shared particle Graphics (no filters — iOS WebGL static,
-       CLAUDE.md); subtle radius pulse so the eye still finds it. */
+       not a blurry light"): crisp stroked ring + ticks + dot.
+       v2.3.1410 (owner: "I don't want a literal reticle, I just want a
+       ring of light around the player"): the ticks/dot/crisp stroke are
+       gone — a soft luminous ring instead, feathered by LAYERED
+       translucent strokes of the same circle (widest+faintest under,
+       narrowest+brightest on top).  No filters (iOS WebGL static,
+       CLAUDE.md) — the layering IS the glow.  Warm lantern-light tint
+       (Lantern Slate) with a white core so it reads as light, not UI;
+       a faint wide dark underlay keeps it visible over bright snow.
+       Gentle radius pulse so the eye still finds it. */
     if (S.currentZone === 'worldview' && S.player) {
       const px = S.player.x, py = S.player.y;
-      const r = 14 + 1.5 * Math.sin(now / 400);
-      /* v2.3.1362 (owner): whole reticle at ~50% opacity — full-strength
-         strokes read too harsh over the painted map.  Alphas below are
-         the v2.3.1361 values halved. */
-      /* contrast halo under the bright ring */
+      const r = 13 + 1.2 * Math.sin(now / 500);
+      /* contrast underlay — soft, so it darkens snow without outlining */
       gfx.circle(px, py, r);
-      gfx.stroke({ width: 3.5, color: 0x1c2430, alpha: 0.25 });
-      /* the reticle ring */
+      gfx.stroke({ width: 9, color: 0x1c2430, alpha: 0.10 });
+      /* feathered glow: wide->narrow, faint->bright, warm->white */
       gfx.circle(px, py, r);
-      gfx.stroke({ width: 1.5, color: 0xffffff, alpha: 0.5 });
-      /* 4 compass ticks, outward from the ring */
-      for (let i = 0; i < 4; i++) {
-        const a = i * Math.PI / 2;
-        const ca = Math.cos(a), sa = Math.sin(a);
-        gfx.moveTo(px + ca * (r + 1), py + sa * (r + 1));
-        gfx.lineTo(px + ca * (r + 6), py + sa * (r + 6));
-      }
-      gfx.stroke({ width: 2, color: 0xffffff, alpha: 0.5 });
-      /* center dot on the player's feet */
-      gfx.circle(px, py, 2);
-      gfx.fill({ color: 0xffffff, alpha: 0.45 });
+      gfx.stroke({ width: 7, color: 0xffdf9e, alpha: 0.10 });
+      gfx.circle(px, py, r);
+      gfx.stroke({ width: 4.5, color: 0xffe9bd, alpha: 0.18 });
+      gfx.circle(px, py, r);
+      gfx.stroke({ width: 2.2, color: 0xfff6e0, alpha: 0.32 });
+      /* faint pool of light inside the ring, cupping the character */
+      gfx.circle(px, py, r - 2);
+      gfx.fill({ color: 0xffedc4, alpha: 0.05 });
     }
 
     // Hit particles
@@ -4047,6 +4105,28 @@ export class EffectsRenderer {
     if (this.cookShirtSprite) this.cookShirtSprite.visible = false;
     if (this.cookLegsSprite) this.cookLegsSprite.visible = false;
     if (this.cookChestSprite) this.cookChestSprite.visible = false;
+    if (this.gestureToolSprite) this.gestureToolSprite.visible = false; /* v2.3.1417 */
+    /* v2.3.1422: harvest-loop SFX, ENSURED per frame so every cancel path
+       (walk-away, node death, zone change, success) silences them within
+       one tick — no lifecycle bookkeeping to leak:
+       - pan-sizzle: loops the whole time a cooking attempt is active
+         (the pan is on the fire from the tap).
+       - fish-reel: loops only while the crank is actually TURNING
+         (ExtractionSwipeLayer stamps _reelSpinAt on angle movement). */
+    try {
+      const _au = (typeof window !== 'undefined') && window.BT_AUDIO;
+      if (_au && _au.startSfxLoop) {
+        /* v2.3.1423: the sizzle covers the WHOLE cook — the character's
+           normal cooking animation (waiting wind-up) AND the flip phase
+           (owner: "make sizzling sound during normal cooking animation").
+           Volume 0.33 -> 0.4 so it reads on a phone speaker. */
+        const _cookOn = !!(ex && ex.skill === 'cooking' && (ex.status === 'ready' || ex.status === 'waiting'));
+        const _reelOn = !!(ex && ex.skill === 'fishing' && ex.status === 'ready'
+          && ex._reelSpinAt && (performance.now() - ex._reelSpinAt) < 250);
+        if (_cookOn) _au.startSfxLoop('pan-sizzle', 0.4); else _au.stopSfxLoop('pan-sizzle');
+        if (_reelOn) _au.startSfxLoop('fish-reel', 0.5); else _au.stopSfxLoop('fish-reel');
+      }
+    } catch (e) { /* audio is best-effort */ }
     if (!ex || (ex.status !== 'ready' && ex.status !== 'waiting')) { this._chopLastFrame = -1; return; }
     /* v2.3.253: prefer stored node ref so SP nodes (no id) work too. */
     const node = (ex.nodeRef && ex.nodeRef.alive) ? ex.nodeRef
@@ -4131,6 +4211,29 @@ export class EffectsRenderer {
     } else {
       this._chopLastFrame = -1;  // mining/fishing — no chopper, reset the edge
     }
+    /* v2.3.1423 (owner: "make the pickaxe sound play during normal pickaxe
+       animation each time the player hits the rock").  The character's own
+       mine swing — pose 'mine', a 14-frame loop deterministic off `now`
+       (entityRenderer uses the same formula) — lands the pickaxe-on-stone
+       sample on its STRIKE frame, edge-detected exactly like the
+       chopper's CHOP_STRIKE_K.  Frame 4 measured from the strip: the
+       first frame with the pick down (frames 0-3/11-13 hold it raised). */
+    if (ex.skill === 'mining') {
+      const _mfc = jogFrameCount('mine', 'south') || 14;
+      const _mk = Math.floor((now / jogCycleMs('mine', 'south')) * _mfc) % _mfc;
+      if (_mk === 4 && this._mineLastFrame !== 4) {
+        try {
+          const _au = (typeof window !== 'undefined') && window.BT_AUDIO;
+          if (_au && _au.play) {
+            this._mineSndAlt = !this._mineSndAlt;
+            _au.play('mine-strike', { offset: this._mineSndAlt ? 0.08 : 0.6, duration: 0.45, vol: 0.55 });
+          }
+        } catch (e) {}
+      }
+      this._mineLastFrame = _mk;
+    } else {
+      this._mineLastFrame = -1;
+    }
     /* v2.3.853: cook character at the campfire during the whole cook (waiting
        + ready), the chopper's sibling.  Stands just left of the fire so the
        pan (extends right) sits over the flames. */
@@ -4175,18 +4278,105 @@ export class EffectsRenderer {
     const pulse = 1 + Math.sin(now / 80) * 0.12;
     const bob = Math.sin(now / 300) * 4;
     const cy = y + bob;
-    /* Soft shadow + dim disc so the floating tool reads against bright zones. */
+    /* Soft shadow so the floating tool reads against bright zones. */
     gfx.ellipse(x, y + 16, 10, 3);
     gfx.fill({ color: 0x000000, alpha: 0.22 });
-    gfx.circle(x, cy, 16 * pulse);
-    gfx.fill({ color: 0x000000, alpha: 0.3 });
-    /* Floating tool icon — the grab target the finger drags from.  Fishing
-       skips it: the player already holds the rod, so the rotating reel arrow
-       below is the whole cue ("reel icon appears -> circle clockwise"). */
-    if (ex.skill === 'fishing' || ex.skill === 'cooking') {
+    /* v2.3.1417: the floating tool is the owner's painted GESTURE sprite —
+       its frame follows the finger via ex.cueFrame01 (written live by
+       ExtractionSwipeLayer): the pickaxe swings with the mining drag, the
+       reel cranks with the fishing circles, the axe follows the chop
+       swipe, the pan flips with the up-flick.  Idle (no finger) holds the
+       last frame with the gentle bob.  The axe mirrors so it always chops
+       TOWARD the tree.  Procedural fallback below covers a still-loading
+       strip; fishing/cooking previously had no floating tool, so their
+       fallback is simply nothing (the gesture hint still renders). */
+    const _gt = GESTURE_TOOLS[ex.skill];
+    if (_gt && _gt.frames.length === 8 && this.gestureToolSprite) {
+      const f01 = Math.max(0, Math.min(0.9999, ex.cueFrame01 || 0));
+      const sp = this.gestureToolSprite;
+      /* v2.3.1421 (owner: "less frames... still travels too far — the
+         resource should obstruct the latter half of the animation, but
+         doesn't apply to cooking or fishing").  The swing tools play
+         only the FIRST HALF of their sheet (frames 0-3, wind-up through
+         early swing) — the poses past that would carry the head through
+         the resource, and the surface is where the swing ENDS now.  The
+         reel and pan keep the full 8 frames (they animate in place). */
+      const _swingTool = ex.skill === 'mining' || ex.skill === 'woodcutting';
+      sp.texture = _gt.frames[_swingTool ? Math.min(3, Math.floor(f01 * 4)) : Math.floor(f01 * 8)];
+      const s = _gt.h / 256;
+      sp.scale.set(ex.skill === 'woodcutting' && chopSign < 0 ? -s : s, s);
+      let _tpx = x + (_gt.dx || 0); /* v2.3.1418: owner nudges */
+      let _tpy = cy - 8 + (_gt.dy || 0);
+      /* v2.3.1419 (owner: the tool "moves through the resource
+         transparently" — it should "appear to strike it").  SURFACE
+         CLAMP: the swing tools no longer sit at a fixed point while
+         their frames change — the sprite TRAVELS along the swing with
+         the gesture phase and STOPS at the node's surface, so it can
+         never ghost through the art.  Pickaxe: hovers wound-up above
+         the rock, accelerates down onto its upper face.  Axe: winds
+         back on the player's side, drives into the trunk edge.  When
+         the swing bottoms out, a one-shot spark/chip burst fires AT
+         the contact point (edge-detected on the phase so holding the
+         finger down doesn't spray).  The node sizes mirror
+         NODE_SPRITE_HEIGHT_BASE x the tier step scale (BroTown's
+         proximity formula).  Reel/pan keep the fixed placement — they
+         animate in place by design. */
+      if (ex.skill === 'mining' || ex.skill === 'woodcutting') {
+        const _tStep = Math.min(10, Math.max(1, Math.ceil((node.gatherLvl || 1) / 10)));
+        const _nH = (node.nodeType === 'tree' ? 168 : 132) * (1 + (_tStep - 1) * 0.15);
+        const _ease = f01 * f01; /* accelerate into the strike */
+        let _cpx, _cpy; /* contact point on the surface */
+        /* v2.3.1421: travel SHORTENED (owner: "still travels too far") —
+           the arc now ends at the resource's rim, not deep in its body:
+           pickaxe stops at the ore's upper rim, axe stops just short of
+           the trunk. */
+        if (ex.skill === 'mining') {
+          _cpx = node.x + (_gt.dx || 0);
+          _cpy = node.y - _nH * 0.85 + (_gt.dy || 0);
+          const _hoverY = node.y - _nH - 20 + (_gt.dy || 0);
+          _tpx = _cpx;
+          _tpy = _hoverY + (_cpy - _hoverY) * _ease + bob * (1 - _ease);
+        } else {
+          _cpx = node.x - chopSign * 30;
+          _cpy = node.y - 64 + (_gt.dy || 0);
+          const _hoverX = node.x - chopSign * 62;
+          _tpx = _hoverX + (_cpx - chopSign * 10 - _hoverX) * _ease + (_gt.dx || 0);
+          _tpy = _cpy + bob * (1 - _ease);
+        }
+        if (f01 >= 0.9 && (ex._strikeP || 0) < 0.9 && S.hitParticles) {
+          for (let i = 0; i < 6; i++) {
+            S.hitParticles.push({
+              x: _cpx, y: _cpy,
+              vx: (Math.random() - 0.5) * 4 - (ex.skill === 'woodcutting' ? chopSign * 1.5 : 0),
+              vy: -Math.random() * 2.5 - 0.5,
+              life: 0.4,
+              color: ex.skill === 'mining' ? (i % 2 ? '#ffd27a' : '#fff2c0') : (i % 2 ? '#d9b98c' : '#f0e3c8'),
+              size: 1.7,
+            });
+          }
+          try {
+            /* v2.3.1423: mining's strike SOUND lives on the pump slam
+               (ExtractionSwipeLayer onSlam — every reversal, i.e. every
+               time the marker visually hits) — this full-drag burst is
+               particles-only for mining so the two never double.
+               Chopping keeps its beep until a chop sample exists. */
+            const _au = (typeof window !== 'undefined') && window.BT_AUDIO;
+            if (_au && ex.skill !== 'mining') _au.beep(340, 0.04, 0.05, 'square');
+          } catch (e) {}
+        }
+        ex._strikeP = f01;
+      }
+      sp.x = _tpx;
+      sp.y = _tpy;
+      sp.visible = true;
+    } else if (ex.skill === 'fishing' || ex.skill === 'cooking') {
       /* no floating tool — the angler holds the rod / the cook holds the pan;
          the gesture hint below is the whole cue (v2.3.853 for cooking). */
+      gfx.circle(x, cy, 16 * pulse);
+      gfx.fill({ color: 0x000000, alpha: 0.3 });
     } else if (ex.skill === 'woodcutting') {
+      gfx.circle(x, cy, 16 * pulse);
+      gfx.fill({ color: 0x000000, alpha: 0.3 });
       /* Axe icon: brown handle + grey head. */
       gfx.rect(x - 2, cy - 12 * pulse, 4, 24 * pulse);
       gfx.fill({ color: 0x6a4830, alpha: 0.95 });
@@ -4196,6 +4386,8 @@ export class EffectsRenderer {
       gfx.lineTo(x - 2, cy + 2 * pulse);
       gfx.fill({ color: 0xb0b0b0, alpha: 0.95 });
     } else {
+      gfx.circle(x, cy, 16 * pulse);
+      gfx.fill({ color: 0x000000, alpha: 0.3 });
       /* Mining: pickaxe — handle + curved double-tip head. */
       gfx.rect(x - 2, cy - 12 * pulse, 4, 24 * pulse);
       gfx.fill({ color: 0x6a4830, alpha: 0.95 });

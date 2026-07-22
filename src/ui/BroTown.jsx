@@ -3141,7 +3141,13 @@ export var BroTown = function BroTown(_ref0) {
         if (footTile === 7) terrainMult = 0.85; /* stone: heavy */
         /* Zone-specific terrain effects */
         var curZone = ZONES[S.currentZone];
-        if ((curZone === null || curZone === void 0 ? void 0 : curZone.element) === 'frost') terrainSlide = 0.92; /* ice: adds momentum/slide */
+        /* v2.3.1402 (owner: "stop the player speed increase in the frozen
+           shore zone"): the ice slide applied its momentum ON TOP of normal
+           movement (line ~3303 adds _slideVx after the base nx step), so at
+           steady state the player moved ~2x speed on ice.  Disabled — frost
+           now moves at normal speed.  (Re-enable as a NON-additive slide if
+           the glide feel is ever wanted back without the speed gain.) */
+        /* if (curZone?.element === 'frost') terrainSlide = 0.92; */
         if ((curZone === null || curZone === void 0 ? void 0 : curZone.element) === 'venom' && footTile === 0) terrainMult *= 0.85; /* swamp: heavy on grass */
 
         /* v2.3.224: frost-zone snow auto-collection removed.  The
@@ -3174,6 +3180,11 @@ export var BroTown = function BroTown(_ref0) {
           vistaSpeedMult = Math.max(0.2, _vsc / _vnear);
         }
         var finalSpd = S._sled ? 0 : baseSpd * terrainMult * spdBuff * amuletSpdMult * swimMult * shieldMult * vistaSpeedMult; /* sled overrides movement */
+        /* v2.3.1405: per-zone loading gate — while a zone's assets warm
+           behind the loading overlay (zoneTransitions.js), freeze the
+           player at the hub exit so the proximity trigger stays armed and
+           the entry runs the instant the load resolves. */
+        if (S._zoneLoading) finalSpd = 0;
 
         /* Auto-attack movement: 50% speed across the board while
            S.autoAttack is on. Backpedal flag still tracks "moving
@@ -3470,6 +3481,33 @@ export var BroTown = function BroTown(_ref0) {
           var _cfd = Math.sqrt(Math.pow(S._campfire.x - P.x, 2) + Math.pow(S._campfire.y - P.y, 2));
           if (_cfd < 80 && _cfd < closestDist) { closestDist = _cfd; S._nearNode = S._campfire; }
         }
+        /* v2.3.1409 (owner: "the ore resource contextual menu appeared too
+           far below the ore on screen"): anchor the interact prompt to the
+           NODE instead of the dashboard.  The button is React-rendered but
+           positioned imperatively here every frame (world -> CSS via the
+           published worldScale, mirroring ExtractionSwipeLayer's cue math),
+           because React doesn't re-render per camera move.  Sits just
+           below the node sprite; clamped to the viewport so an edge-of-
+           screen node never pushes the button off-screen or under the
+           dashboard.  Falls back to the class's dashboard anchor until
+           the first frame lands. */
+        {
+          var _npEl = typeof document !== 'undefined' && document.getElementById('bt-node-prompt');
+          if (_npEl && S._nearNode && S.camera) {
+            var _nwx = (S._nearNode.x - S.camera.x) * (S._worldScaleX || 1);
+            var _nwy = (S._nearNode.y + 14 - S.camera.y) * (S._worldScaleY || 1);
+            var _npW2 = (_npEl.offsetWidth || 200) / 2;
+            var _npH = _npEl.offsetHeight || 36;
+            var _vw = window.innerWidth, _vh = window.innerHeight;
+            var _dashH = 0;
+            try { _dashH = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--dash-h')) || _vh * 0.25; } catch (e3) { _dashH = _vh * 0.25; }
+            var _npx = Math.max(_npW2 + 6, Math.min(_vw - _npW2 - 6, _nwx));
+            var _npy = Math.max(8, Math.min(_vh - _dashH - _npH - 8, _nwy));
+            _npEl.style.left = _npx + 'px';
+            _npEl.style.top = _npy + 'px';
+            _npEl.style.bottom = 'auto';
+          }
+        }
 
         /* v2.3.853: firemaking → campfire lifecycle.  Firemaking is a one-shot
            animation (set when a log is lit from the Bag); when it finishes,
@@ -3531,27 +3569,19 @@ export var BroTown = function BroTown(_ref0) {
             } else if (_ex.status === 'waiting' && _exNow >= _ex.windowOpensAt) {
               _ex.status = 'ready';
               try { BT_AUDIO.beep(820, 0.04, 0.05, 'sine'); } catch (e) {}
-            } else if (_ex.status === 'ready' && _exNow >= _ex.windowClosesAt) {
-              if (_ex.skill === 'cooking') {
-                /* v2.3.853: never flipped in time → the fish burns (consume
-                   raw → burnt_dust, no XP).  The campfire is not consumed. */
-                applyCookingResult(S, _ex.fishKey, 'burnt', [], { setRpgState: setRpgState });
-                try { BT_AUDIO.beep(200, 0.06, 0.08, 'sawtooth'); } catch (e) {}
-                S._extraction = null;
-              } else {
-                /* Window closed without a swipe — fish swims off, axe vanishes.
-                   Node depletes locally + via server in MP so it respawns on
-                   its normal timer. No XP, no inventory. */
-                _exNode.alive = false;
-                _exNode.respawnAt = _exNow + (_exNode.respawnTime || 30000);
-                if (S._serverGatherNodes && S.channel) {
-                  try { S.channel.send({ type: 'node_strike', payload: { id: _exNode.id, zone: S.currentZone, accuracy: 'miss' } }); } catch (e) {}
-                }
-                pushDmgPopup(S, _exNode.x, _exNode.y - 10, _ex.skill === 'fishing' ? 'Fish escaped' : 'Missed', '#D95C54', { ts: _exNow });
-                try { BT_AUDIO.beep(200, 0.06, 0.08, 'sawtooth'); } catch (e) {}
-                S._extraction = null;
-              }
             }
+            /* v2.3.1416 (owner: "all resources NOT have a time out window
+               — it'll just stay on the phase where the resource can be
+               harvested; moving away etc cancels it").  The 'ready ->
+               windowClosesAt' expiry branch is GONE: no "Fish escaped" /
+               "Missed" node depletion, no cooking burn-by-timer.  The
+               ready phase (and the character's harvesting animation, which
+               loops from the cue renderer) holds until the gesture
+               completes or one of the real cancels fires — walk-away
+               above, node death/zone change, or starting a different
+               extraction.  windowOpensAt (the wind-up) is unchanged; the
+               server's late-strike coercion is relaxed in lockstep
+               (gathering.js). */
           }
         }
 
@@ -6834,6 +6864,9 @@ export var BroTown = function BroTown(_ref0) {
     },
     onClick: function onClick() {
       var S2 = stateRef.current;
+      /* v2.3.1406: farm map is per-zone-loaded now and this warp bypasses
+         the hub-exit gate — kick the load so the ground paints promptly. */
+      import('@/rendering/preloadAnimations.js').then(function (m) { return m.preloadZoneAssets('farm_home'); }).catch(function () {});
       S2.currentZone = 'farm_home';
       S2.map = generateZoneMap('farm_home');
       var fz = ZONES.farm_home;
@@ -7932,14 +7965,23 @@ export var BroTown = function BroTown(_ref0) {
     }
   }, "\uD83E\uDE91 Furniture Workshop"), ((_stateRef$current58 = stateRef.current) === null || _stateRef$current58 === void 0 ? void 0 : _stateRef$current58._nearNode) && /*#__PURE__*/React.createElement("button", {
     className: "bt-interact-prompt",
+    id: "bt-node-prompt", /* v2.3.1409: game loop re-anchors this to the node's screen pos each frame */
     style: {
       /* Inline 'bottom: 140' was hiding this button behind the 25vh
          BottomDashboard on mobile.  Sit it just above the dashboard
          instead (matches the class default ~ calc(25vh + 16px) but
          a bit higher so it clears the mobile dashboard's top border
-         and stays below the joysticks at calc(25vh + 70px)). */
+         and stays below the joysticks at calc(25vh + 70px)).
+         v2.3.1409: this is now only the FIRST-FRAME fallback \u2014 the loop
+         moves the button to the node itself (owner: prompt was too far
+         below the ore). */
       bottom: 'calc(var(--dash-h) + 24px)',
-      background: 'rgba(0,180,140,.85)'
+      background: 'rgba(0,180,140,.85)',
+      /* v2.3.1409: long tier labels ("Permafrost Dirt Mound — Frozen
+         Copper (Lv1)") ran off the phone's edge — cap + ellipsize. */
+      maxWidth: 'calc(100vw - 16px)',
+      overflow: 'hidden',
+      textOverflow: 'ellipsis'
     },
     onClick: function onClick(e) {
       var _R$lifeSkills3;
@@ -8544,16 +8586,11 @@ export var BroTown = function BroTown(_ref0) {
     }, React.createElement('div', {
       className: 'bt-ds-icon'
     }, '⚡'), React.createElement('div', {
-      className: 'bt-ds-track'
-    }, React.createElement('div', {
-      className: 'bt-ds-fill',
-      style: {
-        width: stamPct + '%',
-        background: '#d4a03d'
-      }
-    })), React.createElement('div', {
-      className: 'bt-ds-val'
-    }, stam + '/' + maxStam)), React.createElement('div', {
+      /* v2.3.1400 (owner): energy shows as a quiet percentage, no bar —
+         matches the new in-world readout below the player. */
+      className: 'bt-ds-val',
+      style: { textAlign: 'left', minWidth: 0 }
+    }, Math.round(stamPct) + '%')), React.createElement('div', {
       style: {
         display: 'flex',
         alignItems: 'center',

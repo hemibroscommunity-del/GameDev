@@ -38,7 +38,7 @@ export const IMAGE_ZONE_MAPS = {
      iOS Safari 14+. Dimensions unchanged (1024x1024), so world bounds and the
      walkability grids still align. */
   town:    '/maps/town_v15.webp',   /* new walled town with buildings (normal avatar size) */
-  worldview: '/maps/worldview_v2.webp',   /* v2.3.1359: owner's painted overworld — central walled town, trails to every region (speck avatar) */
+  worldview: '/maps/worldview_v2.webp',   /* v2.3.1420: REVERTED to v2 (owner: "revert back to the previous world map art").  The v2.3.1403 worldview_v3 trial stays on disk if it's ever wanted again.  Upside of the revert: the WORLDVIEW_EXITS trail-heads were coordinate-verified against THIS art (v2.3.1359), so the markers sit exactly on the painted trails again. */
   frost:   '/maps/frost_v5.webp',   /* redesign: meadow-coast -> deep-ice transition */
   meadow:  '/maps/meadow_v6.webp',   /* redesign: new painterly meadow (scaled to 1024 world) */
   thunder: '/maps/thunder_v5.webp',   /* redesign: metallic/electric buried-machine peaks */
@@ -90,11 +90,29 @@ export const WALKABILITY_MAPS = {
   // worldview: '/maps/worldview_v1.walk.json',   /* v2.3.1359: DISABLED — the v1 mask was painted for the old art's trails and misaligns on worldview_v2; fully walkable until a v2 mask is painted (same posture as the town mask above) */
 };
 
+/** v2.3.1405: which zone maps are currently decoded + resident in the Pixi
+ *  Assets cache.  A synchronous mirror of the async cache so the per-zone
+ *  loading gate (zoneTransitions.js — a per-frame SYNC function, no await
+ *  seam) can decide in one frame whether a zone needs its brief loading
+ *  overlay or can be entered instantly (map already resident, e.g. a hub
+ *  or a not-yet-freed revisit).  Populated on a successful map load,
+ *  cleared by freeZoneMap. */
+const _residentZoneMaps = new Set();
+export function isZoneMapResident(zoneId) {
+  /* v2.3.1406: a zone with no image map has nothing to load — report it
+     resident so the transition gate never arms (else a procedural-map
+     zone would flash the overlay on EVERY entry for a near-instant load). */
+  if (!IMAGE_ZONE_MAPS[zoneId]) return true;
+  return _residentZoneMaps.has(zoneId);
+}
+
 /** Preload every image-zone map URL into the Pixi Assets cache.  Call
  *  once at renderer startup (alongside loadTileAssets / loadPlayerSprites).
  *  Without preload, Texture.from(url) in Pixi v8 returns an empty
  *  placeholder — the Sprite shows blank until something else
- *  triggers a load. */
+ *  triggers a load.
+ *  v2.3.1405: no longer on the pre-game gate (zone maps load per-zone now);
+ *  kept for any caller that still wants the whole set at once. */
 export async function loadImageZoneMaps() {
   // Lazy import so this module stays usable in non-Pixi contexts.
   const { Assets } = await import('pixi.js');
@@ -102,8 +120,8 @@ export async function loadImageZoneMaps() {
      pixiRenderer.js module scope, early enough for ALL loaders);
      kept as belt-and-braces. */
   try { Assets.setPreferences({ preferCreateImageBitmap: false }); } catch (e) { /* older pixi */ }
-  const tasks = Object.values(IMAGE_ZONE_MAPS).map((url) =>
-    Assets.load(url).catch((e) => {
+  const tasks = Object.entries(IMAGE_ZONE_MAPS).map(([zoneId, url]) =>
+    Assets.load(url).then(() => { _residentZoneMaps.add(zoneId); }).catch((e) => {
       console.warn('[image-zone] failed to load', url, e && e.message);
     })
   );
@@ -121,9 +139,30 @@ export async function preloadStartZoneMap(zoneId = 'town') {
   if (!url) return;
   const { Assets } = await import('pixi.js');
   try { Assets.setPreferences({ preferCreateImageBitmap: false }); } catch (e) { /* older pixi */ }
-  return Assets.load(url).catch((e) => {
+  return Assets.load(url).then((tex) => {
+    _residentZoneMaps.add(zoneId); /* v2.3.1405: mirror the async cache for the sync gate */
+    return tex;
+  }).catch((e) => {
     console.warn('[start-zone] failed to load', url, e && e.message);
   });
+}
+
+/** v2.3.1405: free a zone's 4MB map texture when leaving it, so only the
+ *  hubs + current zone stay resident (per-zone loading, owner directive).
+ *  The HUBS (town / worldview) are kept resident — you return to them
+ *  constantly and they're cheap to hold.  Assets.unload releases the GPU
+ *  TextureSource + cache entry; a later preloadStartZoneMap re-fetches
+ *  (usually from the browser's HTTP cache, so a re-decode, not a
+ *  re-download).  Safe because tileRenderer destroys the previous zone's
+ *  ground sprite before this runs (v2.3.1405) — no live Sprite references
+ *  the source when it's unloaded. */
+export async function freeZoneMap(zoneId) {
+  if (!zoneId || zoneId === 'town' || zoneId === 'worldview') return;
+  const url = IMAGE_ZONE_MAPS[zoneId];
+  if (!url) return;
+  _residentZoneMaps.delete(zoneId); /* v2.3.1405: drop from the sync mirror before the async unload */
+  const { Assets } = await import('pixi.js');
+  try { await Assets.unload(url); } catch (e) { /* already gone / still in use */ }
 }
 
 /** Fetch every walkability JSON in WALKABILITY_MAPS.  Returns a

@@ -28,6 +28,7 @@ import {
   calcDisplayDmgRange, calcDisplayDps, calcDisplayHeal, calcDisplayArmorHp,
   getFishHealAmount, getArmorHp,
   WEAPON_CHANNELS, WEAPON_CATEGORY, SWING_COOLDOWN,
+  T2_UNITS, /* v2.3.1415: critDmg fixture derives from the unit table */
 } from '../../src/data/gameSystems.js';
 
 let failures = 0;
@@ -165,7 +166,7 @@ const STAFF = { type: 'staff', tierMult: 1.5 };
   const critChance = 40 * 100 / (100 + 200) / 100    // Power baseline
                    + 50 * 0.005;                     // + counter channel expected rate
   const critMult = 1.5 + 100 * 0.001;                // power-only (1.6)
-  const critFlat = Math.round(1.5 * 25 * 26);        // t2Accel(25, 1.5) = 975
+  const critFlat = Math.round(T2_UNITS.critDmg * 25 * 26); // t2Accel(25, unit) — v2.3.1415: derives from the table so unit tuning can't break the fixture
   const expDps = ((expMin + expMax) / 2 * (1 + critChance * (critMult - 1)) + critChance * critFlat) / (600 / 1000);
 
   const r = calcDisplayDmgRange(rpg, wpn);

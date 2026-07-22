@@ -51,7 +51,45 @@ export function updateArrows(S, deps) {
             /* v2.3.1095: PLANTED -- the arrow reached the screen edge / max
                range, arced down, and is stuck in the ground.  Hold its frozen
                world position, take no hits, and remove ~2 s after planting. */
-            if (a.planted) return (Date.now() - a.plantedAt) < 2000;
+            if (a.planted) {
+              var _pAge = Date.now() - a.plantedAt;
+              /* v2.3.1402 (owner): a landed BOW SPECIAL becomes a lingering
+                 ground hazard — every 0.5 s it deals BASE bow damage to any
+                 monster within 100 px of where it stuck, until it disappears
+                 (4 s).  Regular arrows just sit for 2 s as before.  Base
+                 damage was captured at fire time (a.baseDmg) so a weapon swap
+                 can't change it; server mode sends a normal ranged hit and
+                 lets the worker roll the authoritative number. */
+              var _pLife = (a.isSpecial && !a.isStaff) ? 4000 : 2000;
+              if (a.isSpecial && !a.isStaff && S.monsters && _pAge < _pLife) {
+                if (a._lingerNext == null) a._lingerNext = a.plantedAt + 500;
+                if (Date.now() >= a._lingerNext) {
+                  a._lingerNext = Date.now() + 500;   /* relative reset — no burst catch-up after a background tab */
+                  var _lBase = a.baseDmg || 1;
+                  var _lElem = a.element || null;
+                  var _lcx = (a._plantX != null) ? a._plantX : a._renderX;
+                  var _lcy = (a._plantY != null) ? a._plantY : a._renderY;
+                  for (var _lmi = 0; _lmi < S.monsters.length; _lmi++) {
+                    var _lm = S.monsters[_lmi];
+                    if (!_lm || !_lm.alive) continue;
+                    var _lmx = (typeof _lm.renderX === 'number') ? _lm.renderX : _lm.x;
+                    var _lmy = ((typeof _lm.renderY === 'number') ? _lm.renderY : _lm.y) - monsterBodyOffsetY(_lm.archetype || _lm.type);
+                    var _ldx = _lmx - _lcx, _ldy = _lmy - _lcy;
+                    if (_ldx * _ldx + _ldy * _ldy > 100 * 100) continue;   /* outside the 100px vicinity */
+                    if (S._serverMonsters && S.channel) {
+                      /* authoritative BASE ranged hit (special:false -> normal lane, 1/335ms; ticks are 500ms apart) */
+                      S.channel.send({ type: 'monster_damage', payload: { monsterId: _lm.id, zone: S.currentZone, element: _lElem, slot: 'ranged', special: false } });
+                    } else {
+                      _lm.curHp -= _lBase;
+                      if (_lm.curHp < 0) _lm.curHp = 0;
+                    }
+                    if (!S.dmgNumbers) S.dmgNumbers = [];
+                    pushDmgPopup(S, _lm.x, monsterPopupY(_lm, -10), _lBase + '', '#ffe08a', { iconKey: 'arrow' });
+                  }
+                }
+              }
+              return _pAge < _pLife;
+            }
             /* v2.3.213: fall back to inert object when unarmed so
                arrow tick doesn't crash on .type/.tierMult reads. */
             var activeWpn = (S.rpg && getActiveWeapon(S.rpg)) || { element1: null, element2: null };
@@ -393,8 +431,9 @@ export function updateArrows(S, deps) {
                 var kba = Math.atan2(m.y - a._renderY, m.x - a._renderX);
                 /* Special projectiles (bow heavy / staff burst) knock
                    back 3x.  v2.3.1356: owner — monster bounce-back
-                   reduced 75% (23/8 -> 6/2; ratio kept). */
-                var _projKb = a.isSpecial ? 6 : 2;
+                   reduced 75% (23/8 -> 6/2; ratio kept).
+                   v2.3.1402: owner — all knockback -50% (6/2 -> 3/1). */
+                var _projKb = a.isSpecial ? 3 : 1;
                 m.x += Math.cos(kba) * _projKb;
                 m.y += Math.sin(kba) * _projKb;
                 /* Knockback recovery -- see melee path; pauses

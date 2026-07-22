@@ -368,6 +368,9 @@ export function processGameEvent(type, payload, S, deps) {
                 S._inCustomDungeon = false;
                 S._customDungeonConfig = null;
                 S._serverMonsters = false;
+                /* v2.3.1406: per-zone loading — warm the farm map (idempotent;
+                   usually still resident from the entry warp). */
+                import('@/rendering/preloadAnimations.js').then(function (m) { return m.preloadZoneAssets('farm_home'); }).catch(function () {});
                 S.currentZone = 'farm_home';
                 updateZoneDimensions('farm_home');
                 S.map = generateZoneMap('farm_home');

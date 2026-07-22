@@ -415,7 +415,7 @@ export class GameRoom {
     this.EXTRACT_OPEN_MAX  = 10000;
     this.EXTRACT_OPEN_BASE = 4000;
     this.EXTRACT_JITTER    = 0.15;
-    this.EXTRACTION_TIMEOUT_MS = 15000;     // walk-away cancel is silent; sweep stale state after this
+    this.EXTRACTION_TIMEOUT_MS = 600000;    // walk-away cancel is silent; sweep stale state after this.  v2.3.1416: 15s -> 10min — the harvest phase no longer times out client-side, so a strike minutes after extraction_start is legitimate; the record must outlive the player's patience (one small record per session, bounded by session count).
     this.EXTRACTION_GRACE_MS = 250;         // forgiveness on both ends to absorb network jitter
     this.SWIPE_FP_CAP_PER_SESSION = 100;    // ring-buffer the fp samples for offline analysis
     this.LATENCY_CAP_PER_SESSION = 200;     // ring-buffer the open->swipe latencies for stats
@@ -844,6 +844,21 @@ export class GameRoom {
         // what it is now" from the 30 px v2.3.96 ring).
         const ATTACK_RANGE = 45;
         const Y_SCALE = 3.0;
+        /* v2.3.1409 (owner: "snowmen attacks are lethargic — I can stand
+           there for 5 seconds and they won't attack me once").  Geometry
+           conflict, not AI: the snowman's CLIENT collision body
+           (BroTown _monBody: disc centred 19px above the feet, r13+10)
+           push-outs the player to ~42px from m.y, but the attack test
+           here needs dy <= 45/Y_SCALE = 15px — so the client physically
+           holds the player OUTSIDE the attack window forever and the
+           push (≈120px/s at 60fps) outruns the snowman's slowest-in-game
+           chase (spdMult 0.8).  Slimes don't collide with their own
+           window (low body disc) which is why only the tall snowman
+           reads as passive.  Relax the ring for snowmen only: range 70
+           with Y_SCALE 1.5 puts the collision equilibrium (dy≈42 ->
+           scaled 63) inside reach on every approach angle. */
+        const _atkRange = m.arch === 'snowman' ? 70 : ATTACK_RANGE;
+        const _yScale = m.arch === 'snowman' ? 1.5 : Y_SCALE;
         // Effective aggro range -- bumps to 1200 px when the sticky
         // override is active, so a bow-snipe from anywhere on screen
         // pulls the monster.  Without the bump the monster could be
@@ -854,14 +869,14 @@ export class GameRoom {
           m.targetId = nearest.id;
           const dxA = nearest.x - m.x;
           const dyA = nearest.y - m.y;
-          const attackDist = Math.sqrt(dxA * dxA + (dyA * Y_SCALE) * (dyA * Y_SCALE));
+          const attackDist = Math.sqrt(dxA * dxA + (dyA * _yScale) * (dyA * _yScale));
 
           // Move toward player -- but freeze in place while the monster
           // is in the middle of its post-attack animation window.  The
           // worker stamps m._attackingUntil after firing a monster_attack
           // event so the body stops sliding during the swing/lunge sheet.
           const attackingNow = m._attackingUntil && now < m._attackingUntil;
-          if (attackDist > ATTACK_RANGE && !attackingNow && ccMoveMult > 0) {
+          if (attackDist > _atkRange && !attackingNow && ccMoveMult > 0) {
             const dx = nearest.x - m.x;
             const dy = nearest.y - m.y;
             const dist = Math.sqrt(dx * dx + dy * dy);
@@ -875,7 +890,7 @@ export class GameRoom {
           // Attack player if in range.  v2.3.1139: frozen/rooted
           // monsters can't swing either (client gates the whole AI
           // branch on moveMult > 0 -- mirror that here).
-          if (attackDist <= ATTACK_RANGE && now > m.atkCd && ccMoveMult > 0) {
+          if (attackDist <= _atkRange && now > m.atkCd && ccMoveMult > 0) {
             // Don't fire damage events while the player is blocking — the
             // client's monster_attack handler also computes block reduction,
             // but that path was producing inconsistent block resolution
@@ -1570,7 +1585,13 @@ export class GameRoom {
       // regen tick would make them literally unendable for non-burst
       // builds.  HP only; stamina/mana below keep regenerating so
       // blocking still works.
-      if (!ps._arenaMatch && (ps.z === 'town' || ps.z === 'farm_home') && ps.hp < ps.maxHp) {
+      /* v2.3.1414 (owner: "make the character heal and restore all combat
+         resources when in worldview and in town"): the WORLD VIEW joins
+         the safe-zone list, and the same fast top-off now covers stamina
+         + mana below (the hub block after the normal regen paths), so a
+         few seconds in any hub returns a full expedition kit. */
+      const inHub = ps.z === 'town' || ps.z === 'worldview' || ps.z === 'farm_home';
+      if (!ps._arenaMatch && inHub && ps.hp < ps.maxHp) {
         const heal = Math.max(1, Math.ceil(ps.maxHp * 0.10));
         const beforeHp = ps.hp;
         ps.hp = Math.min(ps.maxHp, ps.hp + heal);
@@ -1617,6 +1638,26 @@ export class GameRoom {
         const beforeMn = ps.mana;
         ps.mana = Math.min(ps.maxMana, ps.mana + manaHeal);
         if (ps.mana !== beforeMn) changed = true;
+      }
+
+      /* v2.3.1414: HUB TOP-OFF — in town/worldview/farm_home the normal
+         stamina/mana trickle above is topped up to the HP pace (10% of
+         max per regen tick), so ALL combat resources refill in ~7s of
+         standing in a hub (owner: "heal and restore all combat resources
+         when in worldview and in town").  Skipped while blocking (the
+         drain above must win) and during an arena match (same posture
+         as the HP gate). */
+      if (inHub && !ps._arenaMatch && !ps.blocking) {
+        if (typeof ps.maxStamina === 'number' && typeof ps.stamina === 'number' && ps.stamina < ps.maxStamina) {
+          const beforeSt2 = ps.stamina;
+          ps.stamina = Math.min(ps.maxStamina, ps.stamina + Math.max(1, Math.ceil(ps.maxStamina * 0.10)));
+          if (ps.stamina !== beforeSt2) changed = true;
+        }
+        if (typeof ps.maxMana === 'number' && typeof ps.mana === 'number' && ps.mana < ps.maxMana) {
+          const beforeMn2 = ps.mana;
+          ps.mana = Math.min(ps.maxMana, ps.mana + Math.max(1, Math.ceil(ps.maxMana * 0.10)));
+          if (ps.mana !== beforeMn2) changed = true;
+        }
       }
 
       if (changed) {
