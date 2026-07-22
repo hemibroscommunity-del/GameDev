@@ -38,7 +38,7 @@ import {
 import { MONSTER_VARIANTS, baseArchetypeOf, isFodderLike, isRemnantSkull, maybeTransformMonster, usesClientSideMovement, xpMultFor } from '@/data/monsterVariants.js';
 import { getEquip } from '@/rendering/gearCatalog.js'; /* v2.3.1104: armoured-hit SFX check */
 import { rollMonsterShard } from '@/data/shards.js';
-import { addBuildUse, applyMeleeLifesteal, distributeKillXpToBuild, trackMonsterDamage, pushDmgPopup, monsterPopupY } from '@/game/combatHelpers.js';
+import { addBuildUse, applyMeleeLifesteal, clearSwingHitFlags, distributeKillXpToBuild, trackMonsterDamage, pushDmgPopup, monsterPopupY } from '@/game/combatHelpers.js';
 import { earnCertification as masteryEarnCert } from '@/game/mastery.js';
 import { celebrateLevelUps } from '@/game/levelCelebration.js';
 import { btRpc, getBtPlayerId, syncRpgToServer } from '@/networking/index.js';
@@ -1260,6 +1260,7 @@ export function updateMonsterCombat(S, deps) {
                 S.swingTimer = Date.now();
                 S.isSwinging = true;
                 S._specialAttack = false;
+                clearSwingHitFlags(S); /* v2.3.1421: fresh dedup per swing */
                 /* v2.3.1011: defer the player_swing broadcast until S._swingAng
                    is computed just below, so peers get the weapon + facing and
                    can render the full stand-in (not just a bare arc). */

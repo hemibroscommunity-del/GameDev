@@ -4247,7 +4247,15 @@ export class EffectsRenderer {
     if (_gt && _gt.frames.length === 8 && this.gestureToolSprite) {
       const f01 = Math.max(0, Math.min(0.9999, ex.cueFrame01 || 0));
       const sp = this.gestureToolSprite;
-      sp.texture = _gt.frames[Math.floor(f01 * 8)];
+      /* v2.3.1421 (owner: "less frames... still travels too far — the
+         resource should obstruct the latter half of the animation, but
+         doesn't apply to cooking or fishing").  The swing tools play
+         only the FIRST HALF of their sheet (frames 0-3, wind-up through
+         early swing) — the poses past that would carry the head through
+         the resource, and the surface is where the swing ENDS now.  The
+         reel and pan keep the full 8 frames (they animate in place). */
+      const _swingTool = ex.skill === 'mining' || ex.skill === 'woodcutting';
+      sp.texture = _gt.frames[_swingTool ? Math.min(3, Math.floor(f01 * 4)) : Math.floor(f01 * 8)];
       const s = _gt.h / 256;
       sp.scale.set(ex.skill === 'woodcutting' && chopSign < 0 ? -s : s, s);
       let _tpx = x + (_gt.dx || 0); /* v2.3.1418: owner nudges */
@@ -4271,17 +4279,21 @@ export class EffectsRenderer {
         const _nH = (node.nodeType === 'tree' ? 168 : 132) * (1 + (_tStep - 1) * 0.15);
         const _ease = f01 * f01; /* accelerate into the strike */
         let _cpx, _cpy; /* contact point on the surface */
+        /* v2.3.1421: travel SHORTENED (owner: "still travels too far") —
+           the arc now ends at the resource's rim, not deep in its body:
+           pickaxe stops at the ore's upper rim, axe stops just short of
+           the trunk. */
         if (ex.skill === 'mining') {
           _cpx = node.x;
-          _cpy = node.y - _nH * 0.55;
-          const _hoverY = node.y - _nH - 34;
+          _cpy = node.y - _nH * 0.85;
+          const _hoverY = node.y - _nH - 20;
           _tpx = node.x + (_gt.dx || 0);
           _tpy = _hoverY + (_cpy - _hoverY) * _ease + bob * (1 - _ease);
         } else {
-          _cpx = node.x - chopSign * 16;
+          _cpx = node.x - chopSign * 30;
           _cpy = node.y - 64;
-          const _hoverX = node.x - chopSign * 74;
-          _tpx = _hoverX + (_cpx + chopSign * 30 - _hoverX) * _ease + (_gt.dx || 0);
+          const _hoverX = node.x - chopSign * 62;
+          _tpx = _hoverX + (_cpx - chopSign * 10 - _hoverX) * _ease + (_gt.dx || 0);
           _tpy = _cpy + bob * (1 - _ease);
         }
         if (f01 >= 0.9 && (ex._strikeP || 0) < 0.9 && S.hitParticles) {

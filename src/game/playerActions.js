@@ -9,7 +9,7 @@
    object). raiseShield takes setShieldUp via deps (its only React
    setter). All other references are module imports below. */
 import { SWING_COOLDOWN, SPECIAL_ATK_MULT, specialAtkMultFor, BT_AUDIO, meleeSwingSfx, getActiveWeapon, calcSpecialDmg, calcWeaponDmg, monsterBodyY, swingCooldownMult } from '@/data/index.js';
-import { addBuildUse, pushDmgPopup } from '@/game/combatHelpers.js';
+import { addBuildUse, clearSwingHitFlags, pushDmgPopup } from '@/game/combatHelpers.js';
 
 export function swingAttack(S) {
     /* v2.3.1134: the manual tap gate honors Tempo like the auto-attack loop
@@ -26,6 +26,7 @@ export function swingAttack(S) {
     S.swingTimer = Date.now();
     S.isSwinging = true;
     S._specialAttack = false;
+    clearSwingHitFlags(S); /* v2.3.1421: fresh dedup per swing (quick re-tap fix) */
     BT_AUDIO.play(meleeSwingSfx(S.rpg), { vol: 0.55 });
 }
 
@@ -155,6 +156,7 @@ export function specialAttack(S) {
       S.swingTimer = now;
       S.isSwinging = true;
       S._specialAttack = true;
+      clearSwingHitFlags(S); /* v2.3.1421: the special is a NEW swing — without this a special fired <450ms after a normal swing inherited its "already hit" flags and never registered (owner report) */
       if (hasElement) S._iceAttack = true;
       /* Broadcast the special swing so peers render the wider arc +
          gold halo.  The regular auto-swing broadcast path is skipped
