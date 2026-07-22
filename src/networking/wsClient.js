@@ -2006,6 +2006,26 @@ export function setupWebSocket(ctx) {
           type: 'track',
           data: data
         }));
+      },
+      /* v2.3.1424: ground-truth probe for UI gates (SettingsPanel
+         restart).  S._realtimeStatus is a SHADOW of the socket state
+         and can go stale on device: a zombie socket's late onclose/
+         onerror stamps 'disconnected' AFTER a newer socket already
+         opened (iOS resume race), and a 'superseded' session never
+         auto-reconnects while the game keeps playing locally -- so a
+         gate that refuses an action must ask the socket itself. */
+      isLive: function isLive() {
+        return !!(ws && ws.readyState === WebSocket.OPEN);
+      },
+      /* v2.3.1424: user-initiated reconnect (same intent as the
+         superseded banner's "Play here instead" button): if no socket
+         is open or already connecting, connect NOW, skipping any
+         pending backoff window. */
+      forceReconnect: function forceReconnect() {
+        if (ws && (ws.readyState === WebSocket.CONNECTING || ws.readyState === WebSocket.OPEN)) return;
+        if (reconnectTimer) clearTimeout(reconnectTimer);
+        reconnectDelay = 1000;
+        try { connect(); } catch (e) {}
       }
     };
     S.channel = channelShim;

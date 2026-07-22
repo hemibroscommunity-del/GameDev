@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { COL, panelStyle } from './common.js';
 import { dashboardPanelBus } from '../dashboardPanelBus.js';
 import { controlsTutorialBus } from '../controlsTutorialBus.js';
@@ -79,6 +79,13 @@ export const SettingsPanel = () => {
      a local-only wipe would just restore from the server blob on the
      next join). */
   const [resetStage, setResetStage] = useState('idle');
+  /* v2.3.1424: retry-loop timer for the reconnect-then-reset flow;
+     cleared on unmount so closing the panel cancels the restart. */
+  const retryTimerRef = useRef(null);
+  const clearRetry = () => {
+    if (retryTimerRef.current) { clearInterval(retryTimerRef.current); retryTimerRef.current = null; }
+  };
+  useEffect(() => clearRetry, []);
 
   const toggleAudio = () => {
     const next = !audio;
@@ -96,26 +103,61 @@ export const SettingsPanel = () => {
   };
 
   const confirmReset = () => {
+    /* v2.3.1424 (owner: "restart button never works — says it can't
+       right now"): the gate used to trust S._realtimeStatus, a shadow
+       of the socket state that can be stale on device (a zombie
+       socket's late onclose/onerror stamps 'disconnected' after a
+       newer socket already opened; a 'superseded' session never
+       auto-reconnects while the game keeps playing locally).  Now:
+       ask the socket itself via channel.isLive(), and when it truly
+       is down, kick an immediate reconnect and keep trying for ~6 s
+       ("Connecting…") before giving up — iOS routinely kills the
+       socket on backgrounding and the auto-reconnect may still be in
+       its backoff window at tap time. */
     const S = (typeof window !== 'undefined') && window._gameState && window._gameState.current;
-    if (!S || S._realtimeStatus !== 'connected' || !S.channel) {
+    if (!S || !S.channel) {
       setResetStage('offline');
       return;
     }
-    setResetStage('sending');
-    try { S.channel.send({ type: 'character_reset', payload: { confirm: true } }); } catch (e) {}
-    /* Fallback: if the ack (or the reload it triggers) never lands --
-       dropped socket mid-flight -- reload anyway after 8s.  Whether the
-       server processed the reset decides what the rejoin loads; the
-       player is never left staring at a dead "Restarting…" screen. */
-    setTimeout(() => { try { window.location.reload(); } catch (e) {} }, 8000);
+    const isLive = () => {
+      try { if (S.channel && S.channel.isLive) return S.channel.isLive(); } catch (e) {}
+      return S._realtimeStatus === 'connected';
+    };
+    const sendReset = () => {
+      setResetStage('sending');
+      try { S.channel.send({ type: 'character_reset', payload: { confirm: true } }); } catch (e) {}
+      /* Fallback: if the ack (or the reload it triggers) never lands --
+         dropped socket mid-flight -- reload anyway after 8s.  Whether the
+         server processed the reset decides what the rejoin loads; the
+         player is never left staring at a dead "Restarting…" screen. */
+      setTimeout(() => { try { window.location.reload(); } catch (e) {} }, 8000);
+    };
+    if (isLive()) { sendReset(); return; }
+    setResetStage('connecting');
+    try { S.channel.forceReconnect && S.channel.forceReconnect(); } catch (e) {}
+    const t0 = Date.now();
+    clearRetry();
+    retryTimerRef.current = setInterval(() => {
+      if (isLive()) {
+        clearRetry();
+        sendReset();
+      } else if (Date.now() - t0 > 6000) {
+        clearRetry();
+        setResetStage('offline');
+      } else {
+        try { S.channel.forceReconnect && S.channel.forceReconnect(); } catch (e) {}
+      }
+    }, 400);
   };
 
-  if (resetStage === 'confirm' || resetStage === 'sending' || resetStage === 'offline') {
+  if (resetStage === 'confirm' || resetStage === 'sending' || resetStage === 'connecting' || resetStage === 'offline') {
     return (
       <div style={{ ...panelStyle, display: 'flex', flexDirection: 'column', gap: 12, padding: '16px 12px' }}>
         <div style={{ fontSize: 16, fontWeight: 700, color: COL.danger }}>Restart Character?</div>
         {resetStage === 'sending' ? (
           <div style={{ fontSize: 13.5, color: COL.text, lineHeight: 1.5 }}>Restarting…</div>
+        ) : resetStage === 'connecting' ? (
+          <div style={{ fontSize: 13.5, color: COL.text, lineHeight: 1.5 }}>Connecting to the game server…</div>
         ) : resetStage === 'offline' ? (
           <div style={{ fontSize: 13.5, color: COL.text, lineHeight: 1.5 }}>
             Can&apos;t restart right now — no connection to the game server. Try again in a moment.
@@ -129,7 +171,7 @@ export const SettingsPanel = () => {
         )}
         <div style={{ display: 'flex', gap: 10, marginTop: 4 }}>
           <button
-            onPointerUp={(e) => { e.stopPropagation(); if (resetStage !== 'sending') setResetStage('idle'); }}
+            onPointerUp={(e) => { e.stopPropagation(); if (resetStage !== 'sending') { clearRetry(); setResetStage('idle'); } }}
             style={{
               flex: 1, minHeight: 44, borderRadius: 8, cursor: 'pointer',
               background: COL.raised, color: COL.text,
@@ -145,7 +187,7 @@ export const SettingsPanel = () => {
               color: resetStage === 'confirm' ? '#fff' : COL.muted,
               border: `1px solid ${COL.danger}`, fontFamily: 'inherit', fontSize: 14, fontWeight: 700,
             }}
-          >{resetStage === 'sending' ? 'Restarting…' : 'Restart at Lv 1'}</button>
+          >{resetStage === 'sending' ? 'Restarting…' : resetStage === 'connecting' ? 'Connecting…' : 'Restart at Lv 1'}</button>
         </div>
       </div>
     );
