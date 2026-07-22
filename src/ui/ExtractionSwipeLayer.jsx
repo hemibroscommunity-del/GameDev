@@ -267,7 +267,9 @@ export const ExtractionSwipeLayer = ({ stateRef, onSuccess }) => {
           });
         }
       }
-      try { if (BT_AUDIO) BT_AUDIO.beep(620, 0.045, 0.06, 'square'); } catch (e) {}
+      /* v2.3.1422: the strike CLINK moved to the surface-contact burst in
+         effectsRenderer (the owner's mine-strike sample) — beeping here too
+         doubled the hit. The spark particles stay. */
     };
 
     const onPointerMove = (e) => {
@@ -282,8 +284,12 @@ export const ExtractionSwipeLayer = ({ stateRef, onSuccess }) => {
       const g = ex._gesture;
       if (ex.skill === 'fishing') {
         const ang = Math.atan2(y - g.cueY, x - g.cueX);
-        g.totalAngle += wrapPi(ang - g.lastAngle);   /* clockwise (screen y-down) = + */
+        const _dAng = wrapPi(ang - g.lastAngle);
+        g.totalAngle += _dAng;   /* clockwise (screen y-down) = + */
         g.lastAngle = ang;
+        /* v2.3.1422: stamp active cranking so the reel-loop SFX
+           (effectsRenderer) plays only while the handle is turning. */
+        if (Math.abs(_dAng) > 0.02) ex._reelSpinAt = performance.now();
       } else {
         stepOscillation(g, (ex.skill === 'mining' || ex.skill === 'cooking') ? y : x, ex.skill);
       }

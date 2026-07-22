@@ -1453,20 +1453,25 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
        only varies the feel: armoured a touch louder + lower-pitched, bare
        lighter + slightly up-pitched. Per-step vol/pitch jitter stops repeated
        steps from machine-gunning the same waveform. */
-    if (!(this._samples && this._samples['footstep-v2'])) return;
-    /* v2.3.1105: alternate TWO distinct steps isolated from the walking clip
-       (the first two footfalls -- a natural left/right pair) so successive
-       steps don't reuse one identical waveform. */
+    /* v2.3.1422: footstep-v3 (owner: dirt footsteps, "replace the current
+       one — keep cadence when sound plays").  Same per-jog-cycle trigger,
+       same alternating left/right pair + vol/pitch jitter — only the
+       SAMPLE changed.  The trimmed clip holds two clean steps at ~0.08s
+       and ~0.92s (tools/trim_mp3.py window 8.60-10.30 of the source).
+       Falls back to footstep-v2 while v3 is still loading. */
+    var _fsKey = (this._samples && this._samples['footstep-v3']) ? 'footstep-v3'
+               : (this._samples && this._samples['footstep-v2']) ? 'footstep-v2' : null;
+    if (!_fsKey) return;
     if (this._footToggle === undefined) this._footToggle = 0;
     var two = (this._footToggle++ & 1);
-    var off = two ? 0.57 : 0.0;
-    var dur = two ? 0.18 : 0.22;
+    var off = _fsKey === 'footstep-v3' ? (two ? 0.92 : 0.08) : (two ? 0.57 : 0.0);
+    var dur = _fsKey === 'footstep-v3' ? 0.34 : (two ? 0.18 : 0.22);
     /* v2.3.1237: owner feedback — footstep volume halved (armored
        0.34→0.17 base, bare 0.26→0.13; jitter halved in step). */
     if (armored) {
-      this.play('footstep-v2', { offset: off, duration: dur, vol: 0.17 + Math.random() * 0.03, rate: 0.96 + (Math.random() - 0.5) * 0.08 });
+      this.play(_fsKey, { offset: off, duration: dur, vol: 0.17 + Math.random() * 0.03, rate: 0.96 + (Math.random() - 0.5) * 0.08 });
     } else {
-      this.play('footstep-v2', { offset: off, duration: dur, vol: 0.13 + Math.random() * 0.025, rate: 1.06 + (Math.random() - 0.5) * 0.10 });
+      this.play(_fsKey, { offset: off, duration: dur, vol: 0.13 + Math.random() * 0.025, rate: 1.06 + (Math.random() - 0.5) * 0.10 });
     }
   },
   enterBuilding: function enterBuilding() {
@@ -1789,6 +1794,20 @@ BT_AUDIO.SFX_MANIFEST = {
      and fires it once per jog cycle on foot-strike. Used for both armoured and
      bare (footstep() varies vol/pitch between them). */
   'footstep-v2':      '/sfx/footstep/footstep-v2.mp3',
+  /* v2.3.1422: owner sound pack — all four frame-trimmed to their useful
+     seconds by tools/trim_mp3.py (lossless MP3 frame cut; the 60s source
+     uploads shrank 4.6MB -> ~350KB total).
+     footstep-v3: dirt footsteps, REPLACES footstep-v2 in footstep() —
+       two clean steps at ~0.08s and ~0.92s; the per-jog-cycle cadence
+       caller is untouched (owner: "keep cadence when sound plays").
+     mine-strike: two pickaxe-on-stone hits (~0.08s / ~0.60s), fired at
+       the gesture-tool's surface-contact moment, alternated.
+     pan-sizzle: 6s frying loop while a cooking extraction is active.
+     fish-reel: 5s steady reel loop while the fishing crank is turning. */
+  'footstep-v3':      '/sfx/footstep/footstep-v3.mp3',
+  'mine-strike':      '/sfx/mining/mine-strike.mp3',
+  'pan-sizzle':       '/sfx/cooking/pan-sizzle.mp3',
+  'fish-reel':        '/sfx/fishing/fish-reel.mp3',
   'sword-swing':   '/sfx/sword/sword-swing.m4a',
   /* v2.3.254: wood-tier sword (the bamboo stick) gets its own swing
      SFX -- airier whoosh sourced from the user-uploaded mov. */
@@ -1911,6 +1930,41 @@ BT_AUDIO.loadSfxManifest = function () {
   this._loadedManifest = true;
   var m = this.SFX_MANIFEST;
   for (var k in m) this.loadSample(k, m[k]);
+};
+/* v2.3.1422: managed looping SFX (sizzle while cooking, reel while
+   cranking).  Keyed + idempotent: callers ENSURE the loop every frame
+   and stop it when their condition lapses, so lifecycle bugs can't
+   leave a loop orphaned longer than one condition check.  Missing
+   sample -> kicks loadSample and no-ops (the next ensure starts it). */
+BT_AUDIO.startSfxLoop = function (key, vol) {
+  if (this.muted || !this.ctx) return;
+  if (!this._sfxLoops) this._sfxLoops = {};
+  if (this._sfxLoops[key]) return;             /* already running */
+  var buf = this._samples[key];
+  if (!buf) { var url = this.SFX_MANIFEST[key]; if (url) this.loadSample(key, url); return; }
+  try {
+    var src = this.ctx.createBufferSource();
+    src.buffer = buf;
+    src.loop = true;
+    var g = this.ctx.createGain();
+    g.gain.value = vol != null ? vol : 0.4;
+    src.connect(g);
+    g.connect(this._out());
+    src.start(0);
+    this._sfxLoops[key] = { src: src, gain: g };
+  } catch (e) {}
+};
+BT_AUDIO.stopSfxLoop = function (key) {
+  var l = this._sfxLoops && this._sfxLoops[key];
+  if (!l) return;
+  delete this._sfxLoops[key];
+  try {
+    /* short fade so the loop doesn't click off */
+    var now = this.ctx.currentTime;
+    l.gain.gain.setValueAtTime(l.gain.gain.value, now);
+    l.gain.gain.linearRampToValueAtTime(0, now + 0.12);
+    l.src.stop(now + 0.15);
+  } catch (e) { try { l.src.stop(); } catch (_) {} }
 };
 BT_AUDIO.unlock = function () {
   if (!this.ctx) this.init();

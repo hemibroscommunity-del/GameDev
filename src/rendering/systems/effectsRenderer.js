@@ -4103,6 +4103,23 @@ export class EffectsRenderer {
     if (this.cookLegsSprite) this.cookLegsSprite.visible = false;
     if (this.cookChestSprite) this.cookChestSprite.visible = false;
     if (this.gestureToolSprite) this.gestureToolSprite.visible = false; /* v2.3.1417 */
+    /* v2.3.1422: harvest-loop SFX, ENSURED per frame so every cancel path
+       (walk-away, node death, zone change, success) silences them within
+       one tick — no lifecycle bookkeeping to leak:
+       - pan-sizzle: loops the whole time a cooking attempt is active
+         (the pan is on the fire from the tap).
+       - fish-reel: loops only while the crank is actually TURNING
+         (ExtractionSwipeLayer stamps _reelSpinAt on angle movement). */
+    try {
+      const _au = (typeof window !== 'undefined') && window.BT_AUDIO;
+      if (_au && _au.startSfxLoop) {
+        const _cookOn = !!(ex && ex.skill === 'cooking' && (ex.status === 'ready' || ex.status === 'waiting'));
+        const _reelOn = !!(ex && ex.skill === 'fishing' && ex.status === 'ready'
+          && ex._reelSpinAt && (performance.now() - ex._reelSpinAt) < 250);
+        if (_cookOn) _au.startSfxLoop('pan-sizzle', 0.33); else _au.stopSfxLoop('pan-sizzle');
+        if (_reelOn) _au.startSfxLoop('fish-reel', 0.5); else _au.stopSfxLoop('fish-reel');
+      }
+    } catch (e) { /* audio is best-effort */ }
     if (!ex || (ex.status !== 'ready' && ex.status !== 'waiting')) { this._chopLastFrame = -1; return; }
     /* v2.3.253: prefer stored node ref so SP nodes (no id) work too. */
     const node = (ex.nodeRef && ex.nodeRef.alive) ? ex.nodeRef
@@ -4307,7 +4324,20 @@ export class EffectsRenderer {
               size: 1.7,
             });
           }
-          try { const _au = (typeof window !== 'undefined') && window.BT_AUDIO; if (_au) _au.beep(ex.skill === 'mining' ? 620 : 340, 0.04, 0.05, 'square'); } catch (e) {}
+          try {
+            const _au = (typeof window !== 'undefined') && window.BT_AUDIO;
+            if (_au) {
+              /* v2.3.1422: mining uses the owner's pickaxe-on-stone sample,
+                 alternating its two strikes; chopping keeps the beep until
+                 a chop sample exists. */
+              if (ex.skill === 'mining' && _au.play) {
+                ex._mineHitAlt = !ex._mineHitAlt;
+                _au.play('mine-strike', { offset: ex._mineHitAlt ? 0.08 : 0.6, duration: 0.45, vol: 0.6 });
+              } else {
+                _au.beep(340, 0.04, 0.05, 'square');
+              }
+            }
+          } catch (e) {}
         }
         ex._strikeP = f01;
       }
