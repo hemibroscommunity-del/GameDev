@@ -493,14 +493,39 @@ export const gridMethods = {
     // just stores the reported value (sanitized) so it survives reconnect.
     // These don't feed _recomputeMaxes, so they don't toggle statsChanged
     // (no pool refill); _saveRpg below persists them regardless.
+    /* v2.3.1414 (owner: "make all combat resources restore on level up
+       of any combat skill").  The skill tracks are client-trained; the
+       server LEARNS of a level-up right here, when the reported level
+       exceeds its stored one.  Full-restore hp/stamina/mana on any
+       increase — the client does the same locally at award time
+       (awardWeaponXp/awardDefenseXp), so the bars fill instantly and
+       this makes it authoritative.  Level DECREASES (sanitizer clamps,
+       stale reconnect echoes) never trigger it, and the restore itself
+       is capped at the maxes, so the forgeable-report class stays as
+       harmless as the skill fields themselves (v2.3.1021 posture). */
+    let _skillLeveledUp = false;
     if (payload.weaponSkills && typeof payload.weaponSkills === 'object') {
+      const _oldWs = ps.weaponSkills || {};
       ps.weaponSkills = this._sanitizeWeaponSkills(payload.weaponSkills);
+      for (const cat of Object.keys(ps.weaponSkills)) {
+        const nl = (ps.weaponSkills[cat] && ps.weaponSkills[cat].level) || 0;
+        const ol = (_oldWs[cat] && _oldWs[cat].level) || 0;
+        if (nl > ol) _skillLeveledUp = true;
+      }
     }
     if (payload.weaponUnspent && typeof payload.weaponUnspent === 'object') {
       ps.weaponUnspent = this._sanitizeWeaponUnspent(payload.weaponUnspent);
     }
     if (payload.defenseSkill && typeof payload.defenseSkill === 'object') {
+      const _oldDl = (ps.defenseSkill && ps.defenseSkill.level) || 0;
       ps.defenseSkill = this._sanitizeDefenseSkill(payload.defenseSkill);
+      if (((ps.defenseSkill && ps.defenseSkill.level) || 0) > _oldDl) _skillLeveledUp = true;
+    }
+    if (_skillLeveledUp) {
+      if (typeof ps.maxHp === 'number') ps.hp = ps.maxHp;
+      if (typeof ps.maxStamina === 'number') ps.stamina = ps.maxStamina;
+      if (typeof ps.maxMana === 'number') ps.mana = ps.maxMana;
+      this._queuePlayerStateFlush(session.id);
     }
     if (typeof payload.defenseUnspent === 'number') {
       ps.defenseUnspent = Math.max(0, Math.min(999, Math.floor(payload.defenseUnspent)));

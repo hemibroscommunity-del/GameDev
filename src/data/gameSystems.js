@@ -2548,7 +2548,17 @@ export function t2AccelNext(pts, unit) {
 /* Per-channel UNITs — the one tuning table (server data.js mirrors). */
 export var T2_UNITS = {
   damage: 1,      /* edge/drawPower/spellPower: +10,100 dmg at 100   */
-  critDmg: 1.5,   /* executioner/headshot/focus: +15,150 on luckies  */
+  /* v2.3.1415 (owner: "increasing base damage is way better than some
+     of the other melee options — bring the other values up, don't
+     nerf base damage").  critDmg 1.5 -> 4: at the full crit pair
+     (100 counter + 100 critDmg = 200 pts, LUCKY every 2nd hit) the
+     average is +40,400/2 = +20,200 per hit — 101 dmg per invested
+     point, exact parity with the damage channel's 101/pt.  Applies to
+     executioner/headshot/focus alike (shared unit).  Supersedes the
+     BALANCE-PLAN §4c "imbalance accepted" posture for this channel;
+     server data.js mirror updated in lockstep, and the server's
+     critFlatCeil anticheat clamp derives from this same constant. */
+  critDmg: 4,     /* executioner/headshot/focus: +40,400 on luckies  */
   ironskin: 0.5,  /* flat damage soak: −5,050 per hit at 100         */
   resilience: 1,  /* big-hit soak: −10,100 at 100                    */
   thorns: 1,      /* flat payback on block: 10,100 at 100            */
@@ -2834,7 +2844,20 @@ export function awardWeaponXp(rpg, dmg) {
     rpg.weaponUnspent[cat] = (rpg.weaponUnspent[cat] || 0) + WEAPON_PTS_PER_LEVEL;
   }
   if (sk.level >= WEAPON_LEVEL_CAP) sk.xp = 0;
+  /* v2.3.1414 (owner): a combat-skill level-up fully restores hp/stamina/
+     mana.  Local for instant bars; the server mirrors authoritatively
+     when the level lands via stats_update (grids._handleStatsUpdate). */
+  if (gained > 0) restoreCombatResources(rpg);
   return gained > 0 ? { cat: cat, level: sk.level, points: gained * WEAPON_PTS_PER_LEVEL } : null;
+}
+
+/* v2.3.1414: full combat-resource restore — level-up reward + the shared
+   helper for anything else that wants a clean top-off. */
+export function restoreCombatResources(rpg) {
+  if (!rpg) return;
+  if (typeof rpg.maxHp === 'number') rpg.hp = rpg.maxHp;
+  if (typeof rpg.maxStamina === 'number') rpg.stamina = rpg.maxStamina;
+  if (typeof rpg.maxMana === 'number') rpg.mana = rpg.maxMana;
 }
 
 /* Fresh per-category skill/spec/pool scaffolding for a new character. */
@@ -2983,6 +3006,9 @@ export function awardDefenseXp(rpg, weightedAmount) {
     rpg.defenseUnspent = (rpg.defenseUnspent || 0) + DEFENSE_PTS_PER_LEVEL;
   }
   if (sk.level >= DEFENSE_LEVEL_CAP) sk.xp = 0;
+  /* v2.3.1414: combat-skill level-up = full resource restore (see
+     awardWeaponXp / restoreCombatResources). */
+  if (gained > 0) restoreCombatResources(rpg);
   return gained > 0 ? { level: sk.level, points: gained * DEFENSE_PTS_PER_LEVEL } : null;
 }
 
@@ -4210,7 +4236,8 @@ export function calcCritMult(power, critDmgPts) {
 }
 
 /* v2.3.1345: the crit-DMG channel's FLAT accelerating bonus — added
-   to a lucky hit AFTER the power multiplier.  +15,150 at the cap. */
+   to a lucky hit AFTER the power multiplier.  +40,400 at the cap
+   (v2.3.1415 critDmg unit buff). */
 export function weaponCritFlatFor(rpg, weaponType) {
   return t2Accel(weaponCritDmgStatFor(rpg, weaponType), T2_UNITS.critDmg);
 }

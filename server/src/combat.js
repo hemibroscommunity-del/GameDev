@@ -252,7 +252,7 @@ export const combatMethods = {
     // ceiling assumes both MAXED (the v2.3.1133 pattern) — forgetting
     // either term rejects legit maxed-build hits.
     const critMult = 1.5 + (ps.power || 0) * 0.001;
-    const critFlatCeil = t2Accel(100, T2_UNITS.critDmg); // 15,150
+    const critFlatCeil = t2Accel(100, T2_UNITS.critDmg); // 40,400 (v2.3.1415 unit buff — ceil derives from the unit)
     const comboBoost = 5; // covers combo + status amplifier + amulet elemDmg + lunge mult
     // v2.3.1397: per-weapon special mult (client specialAtkMultFor) —
     // melee/bow 3.0, staff 2.0.  The cap covers the LARGEST so no legit
@@ -338,7 +338,7 @@ export const combatMethods = {
       if (ps._luckyAcc >= 1) { ps._luckyAcc -= 1; isCrit = true; }
     }
     // v2.3.1345: the crit-DMG channel is a FLAT accelerating bonus on
-    // lucky hits (after the power multiplier) — +15,150 at the cap.
+    // lucky hits (after the power multiplier) — +40,400 at the cap (v2.3.1415).
     if (isCrit) base = base * (1.5 + P * 0.001) + t2Accel(this._wpnCritDmgPts(ps, type), T2_UNITS.critDmg);
     // v2.3.1139 (item I): the two multipliers the v2.3.912 scope note
     // deliberately omitted, now server-side (the client applies both

@@ -1585,7 +1585,13 @@ export class GameRoom {
       // regen tick would make them literally unendable for non-burst
       // builds.  HP only; stamina/mana below keep regenerating so
       // blocking still works.
-      if (!ps._arenaMatch && (ps.z === 'town' || ps.z === 'farm_home') && ps.hp < ps.maxHp) {
+      /* v2.3.1414 (owner: "make the character heal and restore all combat
+         resources when in worldview and in town"): the WORLD VIEW joins
+         the safe-zone list, and the same fast top-off now covers stamina
+         + mana below (the hub block after the normal regen paths), so a
+         few seconds in any hub returns a full expedition kit. */
+      const inHub = ps.z === 'town' || ps.z === 'worldview' || ps.z === 'farm_home';
+      if (!ps._arenaMatch && inHub && ps.hp < ps.maxHp) {
         const heal = Math.max(1, Math.ceil(ps.maxHp * 0.10));
         const beforeHp = ps.hp;
         ps.hp = Math.min(ps.maxHp, ps.hp + heal);
@@ -1632,6 +1638,26 @@ export class GameRoom {
         const beforeMn = ps.mana;
         ps.mana = Math.min(ps.maxMana, ps.mana + manaHeal);
         if (ps.mana !== beforeMn) changed = true;
+      }
+
+      /* v2.3.1414: HUB TOP-OFF — in town/worldview/farm_home the normal
+         stamina/mana trickle above is topped up to the HP pace (10% of
+         max per regen tick), so ALL combat resources refill in ~7s of
+         standing in a hub (owner: "heal and restore all combat resources
+         when in worldview and in town").  Skipped while blocking (the
+         drain above must win) and during an arena match (same posture
+         as the HP gate). */
+      if (inHub && !ps._arenaMatch && !ps.blocking) {
+        if (typeof ps.maxStamina === 'number' && typeof ps.stamina === 'number' && ps.stamina < ps.maxStamina) {
+          const beforeSt2 = ps.stamina;
+          ps.stamina = Math.min(ps.maxStamina, ps.stamina + Math.max(1, Math.ceil(ps.maxStamina * 0.10)));
+          if (ps.stamina !== beforeSt2) changed = true;
+        }
+        if (typeof ps.maxMana === 'number' && typeof ps.mana === 'number' && ps.mana < ps.maxMana) {
+          const beforeMn2 = ps.mana;
+          ps.mana = Math.min(ps.maxMana, ps.mana + Math.max(1, Math.ceil(ps.maxMana * 0.10)));
+          if (ps.mana !== beforeMn2) changed = true;
+        }
       }
 
       if (changed) {
