@@ -130,6 +130,33 @@ for (const [cfg, url] of [
   }).catch((err) => console.warn('[special-fx] load failed', url, err));
 }
 
+/* v2.3.1417: GESTURE TOOL sheets (owner art, part 2 of the gather-feel
+   redesign) — the harvest cue's floating tool is a painted sprite whose
+   FRAME follows the finger: ExtractionSwipeLayer writes ex.cueFrame01
+   (0..1) from the live gesture (mining drag scrubs the pickaxe swing,
+   fishing circles crank the reel, the chop swipe drives the axe, the
+   up-flick flips the pan) and _updateExtractionCue picks the frame.
+   8-frame 256px strips from tools/process_gesture_sheets.py.  Until a
+   strip resolves, the old procedural tool draw is the fallback. */
+const GESTURE_TOOLS = {
+  mining:      { frames: [], h: 64, url: '/sprites/tools/pickaxe-gesture-v1.webp?v=2.3.1417' },
+  woodcutting: { frames: [], h: 64, url: '/sprites/tools/axe-gesture-v1.webp?v=2.3.1417' },
+  fishing:     { frames: [], h: 58, url: '/sprites/tools/reel-gesture-v1.webp?v=2.3.1417' },
+  cooking:     { frames: [], h: 62, url: '/sprites/tools/pan-gesture-v1.webp?v=2.3.1417' },
+};
+for (const cfg of Object.values(GESTURE_TOOLS)) {
+  _fxLoad(cfg.url).then((tex) => {
+    if (!tex || !tex.source) return;
+    const fw = Math.floor(tex.source.width / 8);
+    for (let i = 0; i < 8; i++) {
+      cfg.frames.push(new Texture({
+        source: tex.source,
+        frame: new Rectangle(i * fw, 0, fw, tex.source.height),
+      }));
+    }
+  }).catch((err) => console.warn('[gesture-tools] load failed', cfg.url, err));
+}
+
 /* Gather-node sprites — keyed by node.nodeType. Until each texture is
    loaded, _updateGatherNodes falls through to the procedural drawing path
    below. Source PNGs are ~1000-1250 px; in-game node footprints are
@@ -504,6 +531,16 @@ export class EffectsRenderer {
     this.chopSprite.anchor.set(0.5, 1);  // bottom-centre stands on the ground
     this.chopSprite.visible = false;
     this.nodeLayer.addChild(this.chopSprite);
+    /* v2.3.1417: the gesture-driven tool cue (painted pickaxe/reel/axe/
+       pan) — one reusable centre-anchored sprite, positioned + frame-
+       picked per tick in _updateExtractionCue.  On the OVERLAY layer
+       (above nodes AND the player): node sprites join nodeLayer after
+       construction-time children, so a nodeLayer tool was painted over
+       by the ore/tree art it floats on. */
+    this.gestureToolSprite = new Sprite();
+    this.gestureToolSprite.anchor.set(0.5, 0.5);
+    this.gestureToolSprite.visible = false;
+    this.overlayLayer.addChild(this.gestureToolSprite);
     this._chopFrames = [];
     this._chopLastFrame = -1;  // strike-frame edge tracker for the chop sfx
     _fxLoad('/sprites/skills/chop-strip.webp').then((tex) => {
@@ -4062,6 +4099,7 @@ export class EffectsRenderer {
     if (this.cookShirtSprite) this.cookShirtSprite.visible = false;
     if (this.cookLegsSprite) this.cookLegsSprite.visible = false;
     if (this.cookChestSprite) this.cookChestSprite.visible = false;
+    if (this.gestureToolSprite) this.gestureToolSprite.visible = false; /* v2.3.1417 */
     if (!ex || (ex.status !== 'ready' && ex.status !== 'waiting')) { this._chopLastFrame = -1; return; }
     /* v2.3.253: prefer stored node ref so SP nodes (no id) work too. */
     const node = (ex.nodeRef && ex.nodeRef.alive) ? ex.nodeRef
@@ -4190,18 +4228,36 @@ export class EffectsRenderer {
     const pulse = 1 + Math.sin(now / 80) * 0.12;
     const bob = Math.sin(now / 300) * 4;
     const cy = y + bob;
-    /* Soft shadow + dim disc so the floating tool reads against bright zones. */
+    /* Soft shadow so the floating tool reads against bright zones. */
     gfx.ellipse(x, y + 16, 10, 3);
     gfx.fill({ color: 0x000000, alpha: 0.22 });
-    gfx.circle(x, cy, 16 * pulse);
-    gfx.fill({ color: 0x000000, alpha: 0.3 });
-    /* Floating tool icon — the grab target the finger drags from.  Fishing
-       skips it: the player already holds the rod, so the rotating reel arrow
-       below is the whole cue ("reel icon appears -> circle clockwise"). */
-    if (ex.skill === 'fishing' || ex.skill === 'cooking') {
+    /* v2.3.1417: the floating tool is the owner's painted GESTURE sprite —
+       its frame follows the finger via ex.cueFrame01 (written live by
+       ExtractionSwipeLayer): the pickaxe swings with the mining drag, the
+       reel cranks with the fishing circles, the axe follows the chop
+       swipe, the pan flips with the up-flick.  Idle (no finger) holds the
+       last frame with the gentle bob.  The axe mirrors so it always chops
+       TOWARD the tree.  Procedural fallback below covers a still-loading
+       strip; fishing/cooking previously had no floating tool, so their
+       fallback is simply nothing (the gesture hint still renders). */
+    const _gt = GESTURE_TOOLS[ex.skill];
+    if (_gt && _gt.frames.length === 8 && this.gestureToolSprite) {
+      const f01 = Math.max(0, Math.min(0.9999, ex.cueFrame01 || 0));
+      const sp = this.gestureToolSprite;
+      sp.texture = _gt.frames[Math.floor(f01 * 8)];
+      const s = _gt.h / 256;
+      sp.scale.set(ex.skill === 'woodcutting' && chopSign < 0 ? -s : s, s);
+      sp.x = x;
+      sp.y = cy - 8;
+      sp.visible = true;
+    } else if (ex.skill === 'fishing' || ex.skill === 'cooking') {
       /* no floating tool — the angler holds the rod / the cook holds the pan;
          the gesture hint below is the whole cue (v2.3.853 for cooking). */
+      gfx.circle(x, cy, 16 * pulse);
+      gfx.fill({ color: 0x000000, alpha: 0.3 });
     } else if (ex.skill === 'woodcutting') {
+      gfx.circle(x, cy, 16 * pulse);
+      gfx.fill({ color: 0x000000, alpha: 0.3 });
       /* Axe icon: brown handle + grey head. */
       gfx.rect(x - 2, cy - 12 * pulse, 4, 24 * pulse);
       gfx.fill({ color: 0x6a4830, alpha: 0.95 });
@@ -4211,6 +4267,8 @@ export class EffectsRenderer {
       gfx.lineTo(x - 2, cy + 2 * pulse);
       gfx.fill({ color: 0xb0b0b0, alpha: 0.95 });
     } else {
+      gfx.circle(x, cy, 16 * pulse);
+      gfx.fill({ color: 0x000000, alpha: 0.3 });
       /* Mining: pickaxe — handle + curved double-tip head. */
       gfx.rect(x - 2, cy - 12 * pulse, 4, 24 * pulse);
       gfx.fill({ color: 0x6a4830, alpha: 0.95 });

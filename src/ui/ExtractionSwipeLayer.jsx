@@ -288,6 +288,31 @@ export const ExtractionSwipeLayer = ({ stateRef, onSuccess }) => {
         stepOscillation(g, (ex.skill === 'mining' || ex.skill === 'cooking') ? y : x, ex.skill);
       }
 
+      /* v2.3.1417: GESTURE-TOOL FRAME DRIVER — the painted tool sprite in
+         the world cue (effectsRenderer._updateExtractionCue) plays its
+         8-frame sheet from this phase, so the tool physically follows the
+         finger (owner: "a pickaxe that moves frames depending on where
+         your finger moves when mining, or a reel that rotates when
+         fishing").  Fishing maps the accumulated circle angle straight to
+         the crank rotation (one finger-circle = one crank turn); the
+         stroke skills scrub the swing with signed finger deltas — mining
+         swings on the DOWN stroke, cooking flips on the UP flick, the axe
+         chops TOWARD the tree — and rewind on the return stroke. */
+      if (ex.skill === 'fishing') {
+        ex.cueFrame01 = ((g.totalAngle / (Math.PI * 2)) % 1 + 1) % 1;
+      } else {
+        const _n = sw.samples.length;
+        const _prev = _n > 1 ? sw.samples[_n - 2] : null;
+        if (_prev) {
+          const SPAN = ex.skill === 'cooking' ? 130 : 110; /* px of travel for a full swing */
+          let _d;
+          if (ex.skill === 'mining') _d = (y - _prev.y) / SPAN;
+          else if (ex.skill === 'cooking') _d = (_prev.y - y) / SPAN;
+          else _d = ((x - _prev.x) * (g.treeward || 1)) / SPAN;
+          ex.cueFrame01 = Math.max(0, Math.min(1, (ex.cueFrame01 || 0) + _d));
+        }
+      }
+
       const reps = repsFromGesture(ex.skill, g);
       const target = ex.repsTarget || repsTargetFor(ex.skill);
       ex.reps = reps;
