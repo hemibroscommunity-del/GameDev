@@ -100,11 +100,14 @@ _fxLoad('/sprites/projectiles/magic-bolt-v1.webp?v=2.3.1334').then((tex) => {
    tools/process_special_sheets.py: arrow pivots mid-shaft, orb pivots
    on its white-hot core.  Until a strip resolves, the old ring draw is
    the fallback so an in-flight load never blanks live specials. */
+/* v2.3.1425 (owner): both special-projectile sprites 50% smaller
+   (0.34 -> 0.17 arrow, 0.60 -> 0.30 orb).  Hit radii are untouched --
+   this is a visual-size change only. */
 const ARROW_SPECIAL = {
-  frames: [], anchor: { x: 0.460, y: 0.580 }, frameMs: 90, scale: 0.34,
+  frames: [], anchor: { x: 0.460, y: 0.580 }, frameMs: 90, scale: 0.17,
 };
 const MAGIC_SPECIAL = {
-  frames: [], anchor: { x: 0.639, y: 0.536 }, frameMs: 90, scale: 0.60,
+  frames: [], anchor: { x: 0.639, y: 0.536 }, frameMs: 90, scale: 0.30,
 };
 /* v2.3.1396: painted special-SWING slash (owner sheet) — a golden
    crescent that flashes then dissipates, played ONCE across the melee
@@ -1496,8 +1499,9 @@ export class EffectsRenderer {
       const elemColor = a._projElem && ELEMENTS[a._projElem] ? cssToHex(ELEMENTS[a._projElem].color) : 0xc8c8d0;
       const fadeA = Math.min(1, a.life / 20);
       /* v2.3.1095: a planted/falling arrow is stuck in the world -- no motion
-         trail, and it ignores the live aim-bend so it sits rock-steady. */
-      const _stuckPose = a.planted || a.planting;
+         trail, and it ignores the live aim-bend so it sits rock-steady.
+         v2.3.1425: an orb stuck in a monster (a.stuckIn) is the same pose. */
+      const _stuckPose = a.planted || a.planting || a.stuckIn;
       const _angB = a.ang + (_stuckPose ? 0 : bend);
 
       /* Motion-blur trail — push the current position into a small

@@ -43,6 +43,12 @@ skills, quests, codex/bestiary caches) resets.
 
 - Not connected: the Settings flow refuses ("no connection") — a
   local-only wipe would just restore from the server blob on rejoin.
+  - v2.3.1424: the refusal gate no longer trusts `S._realtimeStatus`
+    (a shadow of the socket state that went stale on device — owner:
+    the button ALWAYS said "can't restart right now"). It now asks the
+    socket itself (`channel.isLive()`, readyState probe) and, when the
+    socket truly is down, calls `channel.forceReconnect()` and retries
+    for ~6 s ("Connecting…") before showing the offline copy.
 - Ack lost mid-flight: 8s fallback reload; whether the server processed
   the delete decides what the rejoin loads (either fully reset or fully
   intact — never half).

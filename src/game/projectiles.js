@@ -48,6 +48,38 @@ export function updateArrows(S, deps) {
           }
           S.arrows = S.arrows.filter(function (a) {
             var _S$rpg15;
+            /* v2.3.1425 (owner): STUCK-IN-MONSTER -- a staff-special orb
+               that hit a monster embeds in its body instead of vanishing
+               (it used to look like it flew past).  While stuck it rides
+               the monster's rendered position and applies the same
+               chip-damage effect the landed bow special has: every 0.5s
+               a BASE staff hit on the stuck monster, for 4s.  Server
+               mode sends a normal staff hit and lets the worker roll the
+               authoritative number (bow-linger contract, v2.3.1402). */
+            if (a.stuckIn) {
+              var _sm = a.stuckIn;
+              var _sAge = Date.now() - a.stuckAt;
+              if (_sAge >= 4000 || !_sm || !_sm.alive || _sm.curHp <= 0) return false;
+              var _smx = (typeof _sm.renderX === 'number') ? _sm.renderX : _sm.x;
+              var _smy = ((typeof _sm.renderY === 'number') ? _sm.renderY : _sm.y) - monsterBodyOffsetY(_sm.archetype || _sm.type);
+              a._renderX = _smx + (a._stickOx || 0);
+              a._renderY = _smy + (a._stickOy || 0);
+              if (a._lingerNext == null) a._lingerNext = a.stuckAt + 500;
+              if (Date.now() >= a._lingerNext) {
+                a._lingerNext = Date.now() + 500;   /* relative reset — no burst catch-up after a background tab */
+                var _cBase = a.baseDmg || 1;
+                if (S._serverMonsters && S.channel) {
+                  /* authoritative BASE staff hit (special:false -> normal lane; ticks are 500ms apart) */
+                  S.channel.send({ type: 'monster_damage', payload: { monsterId: _sm.id, zone: S.currentZone, element: a.element || null, slot: 'staff', special: false } });
+                } else {
+                  _sm.curHp -= _cBase;
+                  if (_sm.curHp < 0) _sm.curHp = 0;
+                }
+                if (!S.dmgNumbers) S.dmgNumbers = [];
+                pushDmgPopup(S, _sm.x, monsterPopupY(_sm, -10), _cBase + '', '#ffe08a', { iconKey: 'spell' });
+              }
+              return true;
+            }
             /* v2.3.1095: PLANTED -- the arrow reached the screen edge / max
                range, arced down, and is stuck in the ground.  Hold its frozen
                world position, take no hits, and remove ~2 s after planting. */
@@ -633,6 +665,19 @@ export function updateArrows(S, deps) {
                      the kill without a separate glyph. */
                 }
                 hit = true;
+                /* v2.3.1425 (owner): the staff-special orb EMBEDS in the
+                   monster it just hit (survivors only -- a kill ends the
+                   orb as before).  Entry offset mirrors the stuck-arrow
+                   intuition: back along the flight direction so the core
+                   buries slightly into the body silhouette; the stuckIn
+                   early-return above takes over from the next tick. */
+                if (a.isStaff && a.isSpecial && !a.stuckIn && m.alive && m.curHp > 0) {
+                  a.stuckIn = m;
+                  a.stuckAt = Date.now();
+                  a.life = 999;      /* stuckAt governs removal now, not life */
+                  a._stickOx = -Math.cos(a.ang) * 8;
+                  a._stickOy = -Math.sin(a.ang) * 8;
+                }
                 /* v2.3.1135: finite pierce budget (Piercing channel).
                    pierceLeft = extra targets past the first; once the
                    arrow has hit 1 + pierceLeft monsters, clear the pierce
@@ -730,7 +775,9 @@ export function updateArrows(S, deps) {
                (line 8954, decrements each frame) hits zero -- so
                the arrow flies its full range and damages everything
                along the line. */
-            if (hit && !a.pierce) return false;
+            /* v2.3.1425: a freshly-stuck orb survives its hit -- the
+               stuckIn branch at the top owns its lifetime from here. */
+            if (hit && !a.pierce && !a.stuckIn) return false;
             /* Store render-ready element info */
             a._projElem = projElem;
             a._isStaffProj = isStaffProj;
