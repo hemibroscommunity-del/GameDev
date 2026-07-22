@@ -415,7 +415,7 @@ export class GameRoom {
     this.EXTRACT_OPEN_MAX  = 10000;
     this.EXTRACT_OPEN_BASE = 4000;
     this.EXTRACT_JITTER    = 0.15;
-    this.EXTRACTION_TIMEOUT_MS = 15000;     // walk-away cancel is silent; sweep stale state after this
+    this.EXTRACTION_TIMEOUT_MS = 600000;    // walk-away cancel is silent; sweep stale state after this.  v2.3.1416: 15s -> 10min — the harvest phase no longer times out client-side, so a strike minutes after extraction_start is legitimate; the record must outlive the player's patience (one small record per session, bounded by session count).
     this.EXTRACTION_GRACE_MS = 250;         // forgiveness on both ends to absorb network jitter
     this.SWIPE_FP_CAP_PER_SESSION = 100;    // ring-buffer the fp samples for offline analysis
     this.LATENCY_CAP_PER_SESSION = 200;     // ring-buffer the open->swipe latencies for stats

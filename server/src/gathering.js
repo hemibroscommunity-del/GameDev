@@ -323,10 +323,14 @@ export const gatheringMethods = {
         session._extractionRejects++;
         return;
       }
-      if (now > latestClose) {
-        // Past the window -- whatever the client said, it was a miss.
-        coercedAccuracy = 'miss';
-      }
+      /* v2.3.1416 (owner: harvest windows no longer time out): the
+         late-strike 'miss' coercion is GONE — the client's ready phase
+         now holds indefinitely, so a strike minutes after the window
+         opened is legitimate play, not a stale claim.  The too-early
+         rejection above (no human swipes before the wind-up ends) is
+         the anticheat that matters and stays.  latestClose survives
+         only in telemetry. */
+      void latestClose;
       // Latency telemetry: ms from earliest-possible-open to swipe.
       openLatencyMs = now - earliestOpen;
     } else if (!ex) {

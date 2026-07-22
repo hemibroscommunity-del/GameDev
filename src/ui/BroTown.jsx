@@ -3569,27 +3569,19 @@ export var BroTown = function BroTown(_ref0) {
             } else if (_ex.status === 'waiting' && _exNow >= _ex.windowOpensAt) {
               _ex.status = 'ready';
               try { BT_AUDIO.beep(820, 0.04, 0.05, 'sine'); } catch (e) {}
-            } else if (_ex.status === 'ready' && _exNow >= _ex.windowClosesAt) {
-              if (_ex.skill === 'cooking') {
-                /* v2.3.853: never flipped in time → the fish burns (consume
-                   raw → burnt_dust, no XP).  The campfire is not consumed. */
-                applyCookingResult(S, _ex.fishKey, 'burnt', [], { setRpgState: setRpgState });
-                try { BT_AUDIO.beep(200, 0.06, 0.08, 'sawtooth'); } catch (e) {}
-                S._extraction = null;
-              } else {
-                /* Window closed without a swipe — fish swims off, axe vanishes.
-                   Node depletes locally + via server in MP so it respawns on
-                   its normal timer. No XP, no inventory. */
-                _exNode.alive = false;
-                _exNode.respawnAt = _exNow + (_exNode.respawnTime || 30000);
-                if (S._serverGatherNodes && S.channel) {
-                  try { S.channel.send({ type: 'node_strike', payload: { id: _exNode.id, zone: S.currentZone, accuracy: 'miss' } }); } catch (e) {}
-                }
-                pushDmgPopup(S, _exNode.x, _exNode.y - 10, _ex.skill === 'fishing' ? 'Fish escaped' : 'Missed', '#D95C54', { ts: _exNow });
-                try { BT_AUDIO.beep(200, 0.06, 0.08, 'sawtooth'); } catch (e) {}
-                S._extraction = null;
-              }
             }
+            /* v2.3.1416 (owner: "all resources NOT have a time out window
+               — it'll just stay on the phase where the resource can be
+               harvested; moving away etc cancels it").  The 'ready ->
+               windowClosesAt' expiry branch is GONE: no "Fish escaped" /
+               "Missed" node depletion, no cooking burn-by-timer.  The
+               ready phase (and the character's harvesting animation, which
+               loops from the cue renderer) holds until the gesture
+               completes or one of the real cancels fires — walk-away
+               above, node death/zone change, or starting a different
+               extraction.  windowOpensAt (the wind-up) is unchanged; the
+               server's late-strike coercion is relaxed in lockstep
+               (gathering.js). */
           }
         }
 
