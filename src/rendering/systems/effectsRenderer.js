@@ -4250,8 +4250,57 @@ export class EffectsRenderer {
       sp.texture = _gt.frames[Math.floor(f01 * 8)];
       const s = _gt.h / 256;
       sp.scale.set(ex.skill === 'woodcutting' && chopSign < 0 ? -s : s, s);
-      sp.x = x + (_gt.dx || 0); /* v2.3.1418: owner nudges */
-      sp.y = cy - 8 + (_gt.dy || 0);
+      let _tpx = x + (_gt.dx || 0); /* v2.3.1418: owner nudges */
+      let _tpy = cy - 8 + (_gt.dy || 0);
+      /* v2.3.1419 (owner: the tool "moves through the resource
+         transparently" — it should "appear to strike it").  SURFACE
+         CLAMP: the swing tools no longer sit at a fixed point while
+         their frames change — the sprite TRAVELS along the swing with
+         the gesture phase and STOPS at the node's surface, so it can
+         never ghost through the art.  Pickaxe: hovers wound-up above
+         the rock, accelerates down onto its upper face.  Axe: winds
+         back on the player's side, drives into the trunk edge.  When
+         the swing bottoms out, a one-shot spark/chip burst fires AT
+         the contact point (edge-detected on the phase so holding the
+         finger down doesn't spray).  The node sizes mirror
+         NODE_SPRITE_HEIGHT_BASE x the tier step scale (BroTown's
+         proximity formula).  Reel/pan keep the fixed placement — they
+         animate in place by design. */
+      if (ex.skill === 'mining' || ex.skill === 'woodcutting') {
+        const _tStep = Math.min(10, Math.max(1, Math.ceil((node.gatherLvl || 1) / 10)));
+        const _nH = (node.nodeType === 'tree' ? 168 : 132) * (1 + (_tStep - 1) * 0.15);
+        const _ease = f01 * f01; /* accelerate into the strike */
+        let _cpx, _cpy; /* contact point on the surface */
+        if (ex.skill === 'mining') {
+          _cpx = node.x;
+          _cpy = node.y - _nH * 0.55;
+          const _hoverY = node.y - _nH - 34;
+          _tpx = node.x + (_gt.dx || 0);
+          _tpy = _hoverY + (_cpy - _hoverY) * _ease + bob * (1 - _ease);
+        } else {
+          _cpx = node.x - chopSign * 16;
+          _cpy = node.y - 64;
+          const _hoverX = node.x - chopSign * 74;
+          _tpx = _hoverX + (_cpx + chopSign * 30 - _hoverX) * _ease + (_gt.dx || 0);
+          _tpy = _cpy + bob * (1 - _ease);
+        }
+        if (f01 >= 0.9 && (ex._strikeP || 0) < 0.9 && S.hitParticles) {
+          for (let i = 0; i < 6; i++) {
+            S.hitParticles.push({
+              x: _cpx, y: _cpy,
+              vx: (Math.random() - 0.5) * 4 - (ex.skill === 'woodcutting' ? chopSign * 1.5 : 0),
+              vy: -Math.random() * 2.5 - 0.5,
+              life: 0.4,
+              color: ex.skill === 'mining' ? (i % 2 ? '#ffd27a' : '#fff2c0') : (i % 2 ? '#d9b98c' : '#f0e3c8'),
+              size: 1.7,
+            });
+          }
+          try { const _au = (typeof window !== 'undefined') && window.BT_AUDIO; if (_au) _au.beep(ex.skill === 'mining' ? 620 : 340, 0.04, 0.05, 'square'); } catch (e) {}
+        }
+        ex._strikeP = f01;
+      }
+      sp.x = _tpx;
+      sp.y = _tpy;
       sp.visible = true;
     } else if (ex.skill === 'fishing' || ex.skill === 'cooking') {
       /* no floating tool — the angler holds the rod / the cook holds the pan;
