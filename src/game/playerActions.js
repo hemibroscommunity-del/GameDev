@@ -124,11 +124,17 @@ export function specialAttack(S) {
       if (!S.arrows) S.arrows = [];
       /* v2.3.234 (Phase 4): staff special damage scales with Mind. */
       var _wpnDmg = calcSpecialDmg(activeWpn.type, R || {}, activeWpn.tierMult, activeWpn);
+      /* v2.3.1425 (owner): the orb now STICKS in the first monster it
+         hits and chips it every 0.5s (projectiles.js) — capture a NORMAL
+         staff hit's damage at fire time as the chip base, same
+         weapon-swap immunity as the bow special's _bowBase. */
+      var _staffBase = Math.max(1, Math.round(calcWeaponDmg(activeWpn.type, R || {}, activeWpn.tierMult, activeWpn)));
       for (var si = -1; si <= 1; si++) {
         S.arrows.push({
           ang: aimAng + si * 0.25,
           dist: 14,
           dmg: Math.round(_wpnDmg * specialAtkMultFor('staff')), /* v2.3.1397: 2x per orb, 0.6 haircut dropped (owner) */
+          baseDmg: _staffBase, /* v2.3.1425: stuck-orb chip-tick base */
           life: 112, /* v2.3.1335: range -25% (750->560px at 5px/tick) */
           maxLife: 112,
           hitIds: new Set(),
