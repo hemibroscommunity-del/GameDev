@@ -38,7 +38,7 @@ export const IMAGE_ZONE_MAPS = {
      iOS Safari 14+. Dimensions unchanged (1024x1024), so world bounds and the
      walkability grids still align. */
   town:    '/maps/town_v15.webp',   /* new walled town with buildings (normal avatar size) */
-  worldview: '/maps/worldview_v3.webp',   /* v2.3.1403: owner's new painted overworld — central hub city with six radial trails to snow / volcano / desert / cherry-blossom / swamp / coast + crystal cave & thunder spire (speck avatar). Fully walkable (no v3 mask yet); WORLDVIEW_EXITS may need re-anchoring if the owner adopts it. */
+  worldview: '/maps/worldview_v2.webp',   /* v2.3.1420: REVERTED to v2 (owner: "revert back to the previous world map art").  The v2.3.1403 worldview_v3 trial stays on disk if it's ever wanted again.  Upside of the revert: the WORLDVIEW_EXITS trail-heads were coordinate-verified against THIS art (v2.3.1359), so the markers sit exactly on the painted trails again. */
   frost:   '/maps/frost_v5.webp',   /* redesign: meadow-coast -> deep-ice transition */
   meadow:  '/maps/meadow_v6.webp',   /* redesign: new painterly meadow (scaled to 1024 world) */
   thunder: '/maps/thunder_v5.webp',   /* redesign: metallic/electric buried-machine peaks */
