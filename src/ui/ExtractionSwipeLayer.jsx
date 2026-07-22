@@ -267,9 +267,18 @@ export const ExtractionSwipeLayer = ({ stateRef, onSuccess }) => {
           });
         }
       }
-      /* v2.3.1422: the strike CLINK moved to the surface-contact burst in
-         effectsRenderer (the owner's mine-strike sample) — beeping here too
-         doubled the hit. The spark particles stay. */
+      /* v2.3.1423 (owner: the sample must play when the MARKER hits the
+         rock): the slam fires on every down-pump reversal — the moment the
+         marker visually bottoms out — so the pickaxe-on-stone sample lives
+         HERE (alternating its two strikes).  The 0.9-phase burst in
+         effectsRenderer is particles-only now (sounding both doubled the
+         hit on full drags). */
+      try {
+        if (BT_AUDIO && BT_AUDIO.play) {
+          g._slamSndAlt = !g._slamSndAlt;
+          BT_AUDIO.play('mine-strike', { offset: g._slamSndAlt ? 0.08 : 0.6, duration: 0.45, vol: 0.6 });
+        }
+      } catch (e) {}
     };
 
     const onPointerMove = (e) => {

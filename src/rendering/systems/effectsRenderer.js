@@ -142,7 +142,10 @@ for (const [cfg, url] of [
    axe 10px left, pickaxe 20px up, pan 10px up (dx/dy applied at
    placement in _updateExtractionCue). */
 const GESTURE_TOOLS = {
-  mining:      { frames: [], h: 128, dx: 0,   dy: -20, url: '/sprites/tools/pickaxe-gesture-v1.webp?v=2.3.1417' },
+  /* v2.3.1423 (owner: pickaxe "floats above it — move down and to the
+     left"): mining dx/dy now shift the WHOLE swing path (hover +
+     contact both carry them in the clamp branch). */
+  mining:      { frames: [], h: 128, dx: -14, dy: 16,  url: '/sprites/tools/pickaxe-gesture-v1.webp?v=2.3.1417' },
   woodcutting: { frames: [], h: 128, dx: -10, dy: 0,   url: '/sprites/tools/axe-gesture-v1.webp?v=2.3.1417' },
   fishing:     { frames: [], h: 116, dx: 0,   dy: 0,   url: '/sprites/tools/reel-gesture-v1.webp?v=2.3.1417' },
   cooking:     { frames: [], h: 124, dx: 0,   dy: -10, url: '/sprites/tools/pan-gesture-v1.webp?v=2.3.1417' },
@@ -4113,10 +4116,14 @@ export class EffectsRenderer {
     try {
       const _au = (typeof window !== 'undefined') && window.BT_AUDIO;
       if (_au && _au.startSfxLoop) {
+        /* v2.3.1423: the sizzle covers the WHOLE cook — the character's
+           normal cooking animation (waiting wind-up) AND the flip phase
+           (owner: "make sizzling sound during normal cooking animation").
+           Volume 0.33 -> 0.4 so it reads on a phone speaker. */
         const _cookOn = !!(ex && ex.skill === 'cooking' && (ex.status === 'ready' || ex.status === 'waiting'));
         const _reelOn = !!(ex && ex.skill === 'fishing' && ex.status === 'ready'
           && ex._reelSpinAt && (performance.now() - ex._reelSpinAt) < 250);
-        if (_cookOn) _au.startSfxLoop('pan-sizzle', 0.33); else _au.stopSfxLoop('pan-sizzle');
+        if (_cookOn) _au.startSfxLoop('pan-sizzle', 0.4); else _au.stopSfxLoop('pan-sizzle');
         if (_reelOn) _au.startSfxLoop('fish-reel', 0.5); else _au.stopSfxLoop('fish-reel');
       }
     } catch (e) { /* audio is best-effort */ }
@@ -4203,6 +4210,29 @@ export class EffectsRenderer {
       this._placeSkillTraitsOn('chop', sp, fi, 'east', chopSign < 0);
     } else {
       this._chopLastFrame = -1;  // mining/fishing — no chopper, reset the edge
+    }
+    /* v2.3.1423 (owner: "make the pickaxe sound play during normal pickaxe
+       animation each time the player hits the rock").  The character's own
+       mine swing — pose 'mine', a 14-frame loop deterministic off `now`
+       (entityRenderer uses the same formula) — lands the pickaxe-on-stone
+       sample on its STRIKE frame, edge-detected exactly like the
+       chopper's CHOP_STRIKE_K.  Frame 4 measured from the strip: the
+       first frame with the pick down (frames 0-3/11-13 hold it raised). */
+    if (ex.skill === 'mining') {
+      const _mfc = jogFrameCount('mine', 'south') || 14;
+      const _mk = Math.floor((now / jogCycleMs('mine', 'south')) * _mfc) % _mfc;
+      if (_mk === 4 && this._mineLastFrame !== 4) {
+        try {
+          const _au = (typeof window !== 'undefined') && window.BT_AUDIO;
+          if (_au && _au.play) {
+            this._mineSndAlt = !this._mineSndAlt;
+            _au.play('mine-strike', { offset: this._mineSndAlt ? 0.08 : 0.6, duration: 0.45, vol: 0.55 });
+          }
+        } catch (e) {}
+      }
+      this._mineLastFrame = _mk;
+    } else {
+      this._mineLastFrame = -1;
     }
     /* v2.3.853: cook character at the campfire during the whole cook (waiting
        + ready), the chopper's sibling.  Stands just left of the fire so the
@@ -4301,14 +4331,14 @@ export class EffectsRenderer {
            pickaxe stops at the ore's upper rim, axe stops just short of
            the trunk. */
         if (ex.skill === 'mining') {
-          _cpx = node.x;
-          _cpy = node.y - _nH * 0.85;
-          const _hoverY = node.y - _nH - 20;
-          _tpx = node.x + (_gt.dx || 0);
+          _cpx = node.x + (_gt.dx || 0);
+          _cpy = node.y - _nH * 0.85 + (_gt.dy || 0);
+          const _hoverY = node.y - _nH - 20 + (_gt.dy || 0);
+          _tpx = _cpx;
           _tpy = _hoverY + (_cpy - _hoverY) * _ease + bob * (1 - _ease);
         } else {
           _cpx = node.x - chopSign * 30;
-          _cpy = node.y - 64;
+          _cpy = node.y - 64 + (_gt.dy || 0);
           const _hoverX = node.x - chopSign * 62;
           _tpx = _hoverX + (_cpx - chopSign * 10 - _hoverX) * _ease + (_gt.dx || 0);
           _tpy = _cpy + bob * (1 - _ease);
@@ -4325,18 +4355,13 @@ export class EffectsRenderer {
             });
           }
           try {
+            /* v2.3.1423: mining's strike SOUND lives on the pump slam
+               (ExtractionSwipeLayer onSlam — every reversal, i.e. every
+               time the marker visually hits) — this full-drag burst is
+               particles-only for mining so the two never double.
+               Chopping keeps its beep until a chop sample exists. */
             const _au = (typeof window !== 'undefined') && window.BT_AUDIO;
-            if (_au) {
-              /* v2.3.1422: mining uses the owner's pickaxe-on-stone sample,
-                 alternating its two strikes; chopping keeps the beep until
-                 a chop sample exists. */
-              if (ex.skill === 'mining' && _au.play) {
-                ex._mineHitAlt = !ex._mineHitAlt;
-                _au.play('mine-strike', { offset: ex._mineHitAlt ? 0.08 : 0.6, duration: 0.45, vol: 0.6 });
-              } else {
-                _au.beep(340, 0.04, 0.05, 'square');
-              }
-            }
+            if (_au && ex.skill !== 'mining') _au.beep(340, 0.04, 0.05, 'square');
           } catch (e) {}
         }
         ex._strikeP = f01;
