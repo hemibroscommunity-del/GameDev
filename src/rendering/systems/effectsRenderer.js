@@ -1500,7 +1500,8 @@ export class EffectsRenderer {
       const fadeA = Math.min(1, a.life / 20);
       /* v2.3.1095: a planted/falling arrow is stuck in the world -- no motion
          trail, and it ignores the live aim-bend so it sits rock-steady.
-         v2.3.1425: an orb stuck in a monster (a.stuckIn) is the same pose. */
+         v2.3.1425/1426: a special stuck in a monster (a.stuckIn — the
+         bow special arrow since v2.3.1426) is the same pose. */
       const _stuckPose = a.planted || a.planting || a.stuckIn;
       const _angB = a.ang + (_stuckPose ? 0 : bend);
 
