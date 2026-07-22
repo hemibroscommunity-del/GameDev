@@ -138,11 +138,14 @@ for (const [cfg, url] of [
    up-flick flips the pan) and _updateExtractionCue picks the frame.
    8-frame 256px strips from tools/process_gesture_sheets.py.  Until a
    strip resolves, the old procedural tool draw is the fallback. */
+/* v2.3.1418 (owner tuning): all four tools 2x larger; per-tool nudges —
+   axe 10px left, pickaxe 20px up, pan 10px up (dx/dy applied at
+   placement in _updateExtractionCue). */
 const GESTURE_TOOLS = {
-  mining:      { frames: [], h: 64, url: '/sprites/tools/pickaxe-gesture-v1.webp?v=2.3.1417' },
-  woodcutting: { frames: [], h: 64, url: '/sprites/tools/axe-gesture-v1.webp?v=2.3.1417' },
-  fishing:     { frames: [], h: 58, url: '/sprites/tools/reel-gesture-v1.webp?v=2.3.1417' },
-  cooking:     { frames: [], h: 62, url: '/sprites/tools/pan-gesture-v1.webp?v=2.3.1417' },
+  mining:      { frames: [], h: 128, dx: 0,   dy: -20, url: '/sprites/tools/pickaxe-gesture-v1.webp?v=2.3.1417' },
+  woodcutting: { frames: [], h: 128, dx: -10, dy: 0,   url: '/sprites/tools/axe-gesture-v1.webp?v=2.3.1417' },
+  fishing:     { frames: [], h: 116, dx: 0,   dy: 0,   url: '/sprites/tools/reel-gesture-v1.webp?v=2.3.1417' },
+  cooking:     { frames: [], h: 124, dx: 0,   dy: -10, url: '/sprites/tools/pan-gesture-v1.webp?v=2.3.1417' },
 };
 for (const cfg of Object.values(GESTURE_TOOLS)) {
   _fxLoad(cfg.url).then((tex) => {
@@ -4247,8 +4250,8 @@ export class EffectsRenderer {
       sp.texture = _gt.frames[Math.floor(f01 * 8)];
       const s = _gt.h / 256;
       sp.scale.set(ex.skill === 'woodcutting' && chopSign < 0 ? -s : s, s);
-      sp.x = x;
-      sp.y = cy - 8;
+      sp.x = x + (_gt.dx || 0); /* v2.3.1418: owner nudges */
+      sp.y = cy - 8 + (_gt.dy || 0);
       sp.visible = true;
     } else if (ex.skill === 'fishing' || ex.skill === 'cooking') {
       /* no floating tool — the angler holds the rod / the cook holds the pan;
