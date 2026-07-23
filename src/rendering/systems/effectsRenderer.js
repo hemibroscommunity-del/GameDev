@@ -4128,8 +4128,14 @@ export class EffectsRenderer {
         const _cookOn = !!(ex && ex.skill === 'cooking' && (ex.status === 'ready' || ex.status === 'waiting'));
         const _reelOn = !!(ex && ex.skill === 'fishing' && ex.status === 'ready'
           && ex._reelSpinAt && (performance.now() - ex._reelSpinAt) < 250);
+        /* v2.3.1427 (owner): flowing-water ambience under the WHOLE
+           fishing attempt — cast/wind-up and reel phase alike (same
+           whole-attempt contract as the cooking sizzle); the reel
+           crank still layers on top only while the crank turns. */
+        const _waterOn = !!(ex && ex.skill === 'fishing' && (ex.status === 'ready' || ex.status === 'waiting'));
         if (_cookOn) _au.startSfxLoop('pan-sizzle', 0.4); else _au.stopSfxLoop('pan-sizzle');
         if (_reelOn) _au.startSfxLoop('fish-reel', 0.5); else _au.stopSfxLoop('fish-reel');
+        if (_waterOn) _au.startSfxLoop('river-water', 0.35); else _au.stopSfxLoop('river-water');
       }
     } catch (e) { /* audio is best-effort */ }
     if (!ex || (ex.status !== 'ready' && ex.status !== 'waiting')) { this._chopLastFrame = -1; return; }
@@ -4364,9 +4370,15 @@ export class EffectsRenderer {
                (ExtractionSwipeLayer onSlam — every reversal, i.e. every
                time the marker visually hits) — this full-drag burst is
                particles-only for mining so the two never double.
-               Chopping keeps its beep until a chop sample exists. */
+               v2.3.1427 (owner): chopping gets the real hatchet sample —
+               two distinct strikes in the clip, alternated per hit
+               (mine-strike pattern).  The old beep(340) placeholder was
+               silent anyway: beep() has been a no-op since v2.3.1103. */
             const _au = (typeof window !== 'undefined') && window.BT_AUDIO;
-            if (_au && ex.skill !== 'mining') _au.beep(340, 0.04, 0.05, 'square');
+            if (_au && ex.skill === 'woodcutting') {
+              ex._chopSndAlt = !ex._chopSndAlt;
+              _au.play('axe-chop', { offset: ex._chopSndAlt ? 0.06 : 1.10, duration: 0.6, vol: 0.6 });
+            }
           } catch (e) {}
         }
         ex._strikeP = f01;
