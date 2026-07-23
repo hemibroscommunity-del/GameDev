@@ -340,26 +340,39 @@ export const cookingMethods = {
       return;
     }
     // v2.3.1167: physics floor -- a legit cook can't complete faster
-    // than the minigame's own open delay (skill-vs-tier curve, minus
-    // the client's jitter band).  Bursts inside the 20/min budget used
-    // to convert instantly; now each cook must be a full window apart.
-    // Dropped WITHOUT consuming (same snap-back posture as the rate
-    // limit).  ps._lastCookAt is in-memory only (like _lastGambleAt --
-    // NOT persisted; _cookHistory rides the rpg blob and still binds
-    // at 20/min across reconnects, so cycling the WS to reset the
-    // floor's anchor buys at most one instant cook per reconnect).
+    // than the minigame's own open delay.  Dropped WITHOUT consuming
+    // (same snap-back posture as the rate limit).  ps._lastCookAt is
+    // in-memory only (like _lastGambleAt -- NOT persisted; _cookHistory
+    // rides the rpg blob and still binds at 20/min across reconnects,
+    // so cycling the WS to reset the floor's anchor buys at most one
+    // instant cook per reconnect).
+    // v2.3.1432 (owner: "the minnow still isn't cooking"): the floor
+    // used to be the full skill-vs-tier openDelay curve, which SILENTLY
+    // ate legit cooks whenever the server's view of the player's
+    // cooking level lagged the client's (level desync -> server floor
+    // seconds longer than the client's actual wind-up).  The curve
+    // floor is replaced by a flat 1200ms -- still far below any human
+    // cook cycle (wind-up alone is >=2s), still blocks instant-convert
+    // scripts, immune to level/tier desync.  The 20/min rate limit and
+    // botfp caps stay as the real farming bounds.
     const nowCk = Date.now();
-    const cookLvl = (ps.lifeSkills && ps.lifeSkills.cooking && ps.lifeSkills.cooking.level) || 1;
-    const cookFloor = Math.ceil(
-      this._computeOpenDelayBase(cookLvl, this._fishTierLvl(fishKey)) * (1 - this.EXTRACT_JITTER),
-    );
-    if (ps._lastCookAt && (nowCk - ps._lastCookAt) < cookFloor) {
+    const COOK_FLOOR_MS = 1200;
+    if (ps._lastCookAt && (nowCk - ps._lastCookAt) < COOK_FLOOR_MS) {
       const ws = this._wsBySessionId(session.id);
       if (ws) this._sendPlayerState(ws, session.id);
       return;
     }
     if (!ps.inventory) ps.inventory = {};
-    if ((ps.inventory[fishKey] || 0) <= 0) return;
+    if ((ps.inventory[fishKey] || 0) <= 0) {
+      // v2.3.1432: this was a SILENT return -- if the server blob lacks
+      // the raw fish the client thinks it has (drift), the client's
+      // 'Cooked!' celebration played and nothing changed, with no
+      // correction ever arriving.  Echo authoritative state so the bag
+      // reconciles instead of quietly lying.
+      const ws = this._wsBySessionId(session.id);
+      if (ws) this._sendPlayerState(ws, session.id);
+      return;
+    }
     ps._lastCookAt = nowCk;
     ps.inventory[fishKey] -= 1;
     if (ps.inventory[fishKey] <= 0) delete ps.inventory[fishKey];

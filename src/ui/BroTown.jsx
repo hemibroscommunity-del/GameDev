@@ -3481,6 +3481,12 @@ export var BroTown = function BroTown(_ref0) {
           var _cfd = Math.sqrt(Math.pow(S._campfire.x - P.x, 2) + Math.pow(S._campfire.y - P.y, 2));
           if (_cfd < 80 && _cfd < closestDist) { closestDist = _cfd; S._nearNode = S._campfire; }
         }
+        /* v2.3.1432 (owner: "the contextual menu for cooking didn't go
+           away"): while a harvest attempt is ACTIVE, the interact prompt
+           is noise — you're already doing the thing it offers (and its
+           tap could restart the attempt).  Hide it for every skill; it
+           returns the moment the attempt ends or cancels. */
+        if (S._extraction) S._nearNode = null;
         /* v2.3.1409 (owner: "the ore resource contextual menu appeared too
            far below the ore on screen"): anchor the interact prompt to the
            NODE instead of the dashboard.  The button is React-rendered but
@@ -3495,7 +3501,10 @@ export var BroTown = function BroTown(_ref0) {
           var _npEl = typeof document !== 'undefined' && document.getElementById('bt-node-prompt');
           if (_npEl && S._nearNode && S.camera) {
             var _nwx = (S._nearNode.x - S.camera.x) * (S._worldScaleX || 1);
-            var _nwy = (S._nearNode.y + 14 - S.camera.y) * (S._worldScaleY || 1);
+            /* v2.3.1429 (owner: "still sits too low ... up maybe another
+               25 pixels"): +14 -> -11 world-y, so the prompt hugs the
+               node's base instead of floating below it. */
+            var _nwy = (S._nearNode.y - 11 - S.camera.y) * (S._worldScaleY || 1);
             var _npW2 = (_npEl.offsetWidth || 200) / 2;
             var _npH = _npEl.offsetHeight || 36;
             var _vw = window.innerWidth, _vh = window.innerHeight;
@@ -3521,6 +3530,18 @@ export var BroTown = function BroTown(_ref0) {
             name: 'Campfire', spotName: 'Campfire', gatherLvl: 1, skill: 'cooking', emoji: '🔥',
           };
           try { BT_AUDIO.beep(360, 0.05, 0.12, 'sawtooth'); } catch (e) {}
+        }
+        /* v2.3.1431 (owner: "the minnow isn't getting cooked"): the fire
+           must NOT burn out mid-cook.  Since v2.3.1416 the cook window
+           holds until the flip (no timeout), so a leisurely cook easily
+           outlived the flat 45s fuse — the campfire died under the pan
+           and the extraction silently cancelled (flip did nothing).
+           While a cooking attempt is active, keep pushing the fuse
+           ~15s ahead; it starts burning down only once the cook ends,
+           leaving time to start the next one. */
+        if (S._campfire && S._extraction && S._extraction.skill === 'cooking') {
+          var _cfKeepAlive = Date.now() + 15000;
+          if (S._campfire.expiresAt < _cfKeepAlive) S._campfire.expiresAt = _cfKeepAlive;
         }
         if (S._campfire && Date.now() > S._campfire.expiresAt) {
           S._campfire.alive = false;   // so an in-progress cook cancels
@@ -4958,9 +4979,16 @@ export var BroTown = function BroTown(_ref0) {
     var S = stateRef.current;
     var R = S && S.rpg;
     if (!R || !R.inventory) return;
-    var fishKey = Object.keys(R.inventory).find(function (k) {
+    /* v2.3.1431 (owner: "the minnow isn't getting cooked"): the campfire
+       used to grab the FIRST fish_ key in bag insertion order, so whole
+       species could sit uncooked behind whatever was caught first.  Now
+       the lowest-tier raw fish cooks first (minnow -> clownfish ->
+       trout; unknown species last), a deterministic order the player
+       can reason about. */
+    var _fishOrder = { fish_minnow: 1, fish_clownfish: 6, fish_trout: 11 };
+    var fishKey = Object.keys(R.inventory).filter(function (k) {
       return k.indexOf('fish_') === 0 && R.inventory[k] > 0;
-    });
+    }).sort(function (a, b) { return (_fishOrder[a] || 99) - (_fishOrder[b] || 99); })[0];
     if (!fishKey) {
       pushDmgPopup(S, node.x, node.y - 24, 'Need raw fish', '#D95C54');
       try { BT_AUDIO.beep(200, 0.05, 0.08, 'square'); } catch (e) {}
@@ -5370,14 +5398,40 @@ export var BroTown = function BroTown(_ref0) {
        the gesture can complete (so no fish is ever awarded).  The reel cue is
        centered on the player; claim touches within ~170 px of it.  Touches
        outside that (screen edges) still move, so walking away to cancel works. */
-    var isReelTouch = function (clientX, clientY) {
+    /* v2.3.1429: isReelTouch (v2.3.845) is retired — it predated the
+       world-scale fix so its 170px claim circle sat ~20% off at mobile
+       viewports, and isGestureTouch below covers fishing (correctly
+       scaled) along with every other skill. */
+    /* v2.3.1429 (owner: "make sure all life skills can be walked away
+       from — I tried walking away while fishing and couldn't"): the
+       v2.3.848 guard below used to bail the WHOLE joystick zone while a
+       gesture window was open.  Back then 'ready' expired in seconds;
+       since v2.3.1416 removed the timeout it lasts forever, so the
+       blanket bail rooted the player permanently.  Replace it with a
+       cue-proximity claim mirroring ExtractionSwipeLayer's own start
+       gate (SWIPE_START_RADIUS 160 + slack): touches near the gesture
+       cue belong to the gesture; anything else is movement, so walking
+       away works mid-animation for every skill. */
+    var isGestureTouch = function (clientX, clientY) {
       var S = stateRef.current;
-      if (!S || !S._extraction || S._extraction.skill !== 'fishing') return false;
+      var ex = S && S._extraction;
+      if (!ex || ex.status !== 'ready') return false;
       var cam = S.camera, P = S.player;
-      if (!cam || !P) return false;
-      var dx = clientX - (P.x - cam.x);
-      var dy = clientY - (P.y - 24 - cam.y);
-      return (dx * dx + dy * dy) < (170 * 170);
+      if (!cam) return false;
+      var sx = S._worldScaleX || 1, sy = S._worldScaleY || 1;
+      var cx, cy;
+      if (ex.skill === 'fishing' && P) {
+        cx = (P.x - cam.x) * sx; cy = (P.y - 24 - cam.y) * sy;
+      } else {
+        var node = (ex.nodeRef && ex.nodeRef.alive) ? ex.nodeRef
+          : (S.gatherNodes && ex.nodeId ? S.gatherNodes.find(function (n) { return n.id === ex.nodeId; }) : null);
+        if (!node) return false;
+        var yOff = ex.skill === 'cooking' ? 40
+          : node.nodeType === 'tree' ? 96 : node.nodeType === 'oreVein' ? 36 : 30;
+        cx = (node.x - cam.x) * sx; cy = (node.y - yOff - cam.y) * sy;
+      }
+      var dx = clientX - cx, dy = clientY - cy;
+      return (dx * dx + dy * dy) < (190 * 190);
     };
     /* v2.3.1287: tapping YOUR OWN character opens the chat composer —
        Chat left the toolbar (owner, nav-system).  Same screen-space
@@ -5461,13 +5515,13 @@ export var BroTown = function BroTown(_ref0) {
          character around.  The chop swipe is handled by the window-level
          pointer layer (ExtractionSwipeLayer), a separate event stream, so
          bailing here leaves it working while stopping movement. */
-      var _exL = stateRef.current && stateRef.current._extraction;
-      if (_exL && _exL.status === 'ready') { e.preventDefault(); return; }
+      /* v2.3.1429: was a blanket "ready => no movement" bail (v2.3.848);
+         now only touches near the gesture cue are ceded — see
+         isGestureTouch above.  Walking away mid-gesture cancels. */
       e.preventDefault();
       e.stopPropagation();
       var t = e.changedTouches[0];
-      /* v2.3.845: hand reel-zone touches to the fishing gesture, not movement. */
-      if (isReelTouch(t.clientX, t.clientY)) return;
+      if (isGestureTouch(t.clientX, t.clientY)) return;
       /* v2.3.1307: the v2.3.1283 "movement collapses the sheet"
          interlock is REMOVED (owner: players may just want to play
          with menus open).  The joystick zones end above the sheet
@@ -5590,13 +5644,12 @@ export var BroTown = function BroTown(_ref0) {
       /* v2.3.848: same chop-swipe guard as the left zone (see lS) so a
          swipe started on the right half during a chop doesn't fire
          attacks/aim instead of chopping. */
-      var _exR = stateRef.current && stateRef.current._extraction;
-      if (_exR && _exR.status === 'ready') { e.preventDefault(); return; }
+      /* v2.3.1429: same de-blanketing as the left zone (see lS) — only
+         gesture-cue touches are ceded; the rest aim/attack normally. */
       e.preventDefault();
       e.stopPropagation();
       var t = e.changedTouches[0];
-      /* v2.3.845: hand reel-zone touches to the fishing gesture, not aim/attack. */
-      if (isReelTouch(t.clientX, t.clientY)) return;
+      if (isGestureTouch(t.clientX, t.clientY)) return;
       /* v2.3.1307: aim/attack no longer collapses the sheet — same
          owner directive as the movement zone (see lS). */
       var nowMs = Date.now();

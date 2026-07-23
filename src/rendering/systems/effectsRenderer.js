@@ -147,11 +147,35 @@ for (const [cfg, url] of [
 const GESTURE_TOOLS = {
   /* v2.3.1423 (owner: pickaxe "floats above it — move down and to the
      left"): mining dx/dy now shift the WHOLE swing path (hover +
-     contact both carry them in the clamp branch). */
-  mining:      { frames: [], h: 128, dx: -14, dy: 16,  url: '/sprites/tools/pickaxe-gesture-v1.webp?v=2.3.1417' },
+     contact both carry them in the clamp branch).
+     v2.3.1429 (owner again: "down and to the left MORE — its left-to-
+     right half-circle swing sits right above the ore"): -14/16 ->
+     -30/44 so the art's swing arc lands ON the ore body, not over it. */
+  mining:      { frames: [], h: 128, dx: -30, dy: 44,  url: '/sprites/tools/pickaxe-gesture-v1.webp?v=2.3.1417' },
   woodcutting: { frames: [], h: 128, dx: -10, dy: 0,   url: '/sprites/tools/axe-gesture-v1.webp?v=2.3.1417' },
   fishing:     { frames: [], h: 116, dx: 0,   dy: 0,   url: '/sprites/tools/reel-gesture-v1.webp?v=2.3.1417' },
-  cooking:     { frames: [], h: 124, dx: 0,   dy: -10, url: '/sprites/tools/pan-gesture-v1.webp?v=2.3.1417' },
+  /* v2.3.1431: pan raised dy -10 -> -66 — the v2.3.1429 2x cook figure
+     grew INTO the pan marker's old spot, so the animating pan kept
+     covering/uncovering the torso (owner: "the shirt is flickering
+     when the naked shirt wearing character cooks").  -66 clears the
+     82px figure's head with margin.
+     v2.3.1433 (owner sheet, round 2): pan-gesture-v2 — the painted
+     fillet is ERASED from the frames (tools/process_pan_food_sheet.py)
+     and the REAL raw-fish bag icon of the fish being cooked rides
+     `food`: per-frame {x,y} anchors (256-cell coords, the measured
+     centroid of where the painted food sat) + rot (radians) so the
+     fillet flips through the arc and LANDS UPSIDE DOWN (owner). */
+  cooking:     { frames: [], h: 124, dx: 0,   dy: -66, url: '/sprites/tools/pan-gesture-v2.webp?v=2.3.1433',
+    food: [
+      { x: 109, y: 163, rot: 0 },
+      { x: 101, y: 141, rot: -0.15 },
+      { x: 97,  y: 53,  rot: 0.6 },
+      { x: 103, y: 54,  rot: 1.3 },
+      { x: 125, y: 56,  rot: 2.0 },
+      { x: 110, y: 87,  rot: 2.7 },
+      { x: 98,  y: 163, rot: Math.PI },
+      { x: 98,  y: 166, rot: Math.PI },
+    ] },
 };
 for (const cfg of Object.values(GESTURE_TOOLS)) {
   _fxLoad(cfg.url).then((tex) => {
@@ -550,6 +574,17 @@ export class EffectsRenderer {
     this.gestureToolSprite.anchor.set(0.5, 0.5);
     this.gestureToolSprite.visible = false;
     this.overlayLayer.addChild(this.gestureToolSprite);
+    /* v2.3.1433 (owner): the cooking pan sheet is food-agnostic now
+       (painted fillet erased by tools/process_pan_food_sheet.py) — this
+       sprite rides the per-frame food anchors carrying the REAL raw-fish
+       bag icon of whatever is being cooked, rotating through the flip so
+       it lands upside down.  Added AFTER gestureToolSprite so the food
+       composites over the pan. */
+    this.gestureFoodSprite = new Sprite();
+    this.gestureFoodSprite.anchor.set(0.5, 0.5);
+    this.gestureFoodSprite.visible = false;
+    this.overlayLayer.addChild(this.gestureFoodSprite);
+    this._foodIconTex = {};   /* iconUrl -> Texture | 'loading' */
     this._chopFrames = [];
     this._chopLastFrame = -1;  // strike-frame edge tracker for the chop sfx
     _fxLoad('/sprites/skills/chop-strip.webp').then((tex) => {
@@ -3128,6 +3163,10 @@ export class EffectsRenderer {
   }
 
   /* ── Catch flight (v2.3.845) ──
+   * v2.3.1429: DORMANT — applyFishingReward now uses the DOM icon flyer
+   * (_flyResourceToInventory, real fish bag-icon + breach stage) instead of
+   * queueing here; nothing pushes _catchFlights anymore.  Kept because the
+   * pooled-canvas approach is the fallback if the DOM flyer ever misbehaves.
    * A caught fish pops out of the pond and arcs into the quick-bag.  Flights
    * are queued by applyFishingReward as { wx, wy (pond, world), t0, dur }.
    * Rendered as a 🐟 Text on overlayWorld (above the player); pooled so a
@@ -3307,7 +3346,7 @@ export class EffectsRenderer {
        (_updateFiremaking, 88px @ 55ms). */
     const SPEC = {
       chop: { frames: this._chopFrames, h: 112, ms: 45 },
-      cook: { frames: this._cookFrames, h: 41, ms: 60 },
+      cook: { frames: this._cookFrames, h: 82, ms: 60 }, /* v2.3.1431: match the local 2x cook (v2.3.1429) */
       fire: { frames: this._fireFrames, h: 88, ms: 55 },
     };
     for (const id in others) {
@@ -4111,6 +4150,7 @@ export class EffectsRenderer {
     if (this.cookLegsSprite) this.cookLegsSprite.visible = false;
     if (this.cookChestSprite) this.cookChestSprite.visible = false;
     if (this.gestureToolSprite) this.gestureToolSprite.visible = false; /* v2.3.1417 */
+    if (this.gestureFoodSprite) this.gestureFoodSprite.visible = false; /* v2.3.1433 */
     /* v2.3.1422: harvest-loop SFX, ENSURED per frame so every cancel path
        (walk-away, node death, zone change, success) silences them within
        one tick — no lifecycle bookkeeping to leak:
@@ -4249,7 +4289,7 @@ export class EffectsRenderer {
        + ready), the chopper's sibling.  Stands just left of the fire so the
        pan (extends right) sits over the flames. */
     if (cookingCue && this.cookSprite && this._cookFrames.length) {
-      const COOK_H = 41, COOK_FRAME_MS = 60;   // v2.3.896: ~50% smaller (owner: was too large)
+      const COOK_H = 82, COOK_FRAME_MS = 60;   // v2.3.1429 (owner): 2x — undoes the v2.3.896 halving
       const sp = this.cookSprite;
       const cookFi = Math.floor(now / COOK_FRAME_MS) % this._cookFrames.length;
       /* v2.3.1114: when leg armour is equipped, use the legs-erased body so the
@@ -4258,7 +4298,7 @@ export class EffectsRenderer {
       sp.texture = (_legsOn ? this._cookLeglessFrames : this._cookFrames)[cookFi];
       const s = COOK_H / 220;
       sp.scale.set(s, s);
-      sp.x = node.x - 7;                        // halved with the size so the pan still sits over the fire
+      sp.x = node.x - 14;                       // doubled with the size so the pan still sits over the fire (v2.3.1429)
       sp.y = node.y + 8;
       sp.visible = true;
       /* v2.3.1113: draw the player's shirt over the cook torso, copying the
@@ -4386,6 +4426,38 @@ export class EffectsRenderer {
       sp.x = _tpx;
       sp.y = _tpy;
       sp.visible = true;
+      /* v2.3.1433 (owner: "anchor whatever food item sprite is being
+         cooked over the food that [was] drawn with the sprite sheet...
+         rotate what's being cooked so it lands upside down"): the pan
+         frames are food-less; the raw fish's bag icon rides the
+         measured per-frame anchors and flips through the arc. */
+      if (ex.skill === 'cooking' && _gt.food) {
+        const _fi = Math.min(7, Math.floor(f01 * 8));
+        const _fa = _gt.food[_fi] || _gt.food[0];
+        const _fs = this.gestureFoodSprite;
+        const _rawIcon = ({
+          fish_clownfish: '/icons/items/fish-clownfish.webp',
+          fish_trout: '/icons/items/fish-trout.webp',
+        })[ex.fishKey] || '/icons/items/fish-minnow.webp';
+        let _ft = this._foodIconTex[_rawIcon];
+        if (_ft === undefined) {
+          this._foodIconTex[_rawIcon] = 'loading';
+          _fxLoad(_rawIcon)
+            .then((t) => { this._foodIconTex[_rawIcon] = t || null; })
+            .catch(() => { this._foodIconTex[_rawIcon] = null; });
+          _ft = 'loading';
+        }
+        if (_ft && _ft !== 'loading' && _fs) {
+          _fs.texture = _ft;
+          _fs.x = sp.x + (_fa.x - 128) * s;
+          _fs.y = sp.y + (_fa.y - 128) * s;
+          _fs.rotation = _fa.rot || 0;
+          /* the painted fillet spanned ~90px of the 256 cell — size the
+             icon to read the same in the pan. */
+          _fs.scale.set((84 * s) / (_ft.width || 64));
+          _fs.visible = true;
+        }
+      }
     } else if (ex.skill === 'fishing' || ex.skill === 'cooking') {
       /* no floating tool — the angler holds the rod / the cook holds the pan;
          the gesture hint below is the whole cue (v2.3.853 for cooking). */

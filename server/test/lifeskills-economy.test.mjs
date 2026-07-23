@@ -198,19 +198,38 @@ check('floor: instant second cook is dropped without consuming',
   ps.inventory.fish_minnow === 2 && ps.inventory.cooked_fish_minnow === 1
   && ps.lifeSkills.cooking.xp === 8,
   { inv: ps.inventory, xp: ps.lifeSkills.cooking.xp });
-// A sub-floor gap (1s < the ~3.4s lvl-1 window) still fails even with
+// A sub-floor gap (1s < the 1200ms flat floor) still fails even with
 // an empty rate-limit history.
 ps._cookHistory = [];
 ps._lastCookAt = Date.now() - 1000;
 await send(ws, 'cook_request', { fishKey: 'fish_minnow', kind: 'cooked' });
-check('floor: 1s-gap cook is dropped (below the lvl-1 minnow window)',
+check('floor: 1s-gap cook is dropped (below the flat 1200ms floor)',
   ps.inventory.fish_minnow === 2, ps.inventory);
-// Backdated past the window -> accepted.
+// v2.3.1432: a 1.4s gap used to be eaten by the lvl-1 minnow curve
+// floor (~3.4s) -- the owner's "minnow still isn't cooking" class of
+// silent drop.  With the flat 1200ms floor it lands.
+ps._cookHistory = [];
+ps._lastCookAt = Date.now() - 1400;
+await send(ws, 'cook_request', { fishKey: 'fish_minnow', kind: 'cooked' });
+check('floor: 1.4s-gap cook lands (v2.3.1432 flat floor; curve floor ate this)',
+  ps.inventory.fish_minnow === 1 && ps.inventory.cooked_fish_minnow === 2, ps.inventory);
+// Backdated well past the floor -> accepted.
 ps._cookHistory = [];
 ps._lastCookAt = Date.now() - 10000;
 await send(ws, 'cook_request', { fishKey: 'fish_minnow', kind: 'cooked' });
-check('floor: full-window gap cooks normally',
-  ps.inventory.fish_minnow === 1 && ps.inventory.cooked_fish_minnow === 2, ps.inventory);
+check('floor: full-gap cook cooks normally (last fish key deleted at 0)',
+  ps.inventory.fish_minnow === undefined && ps.inventory.cooked_fish_minnow === 3, ps.inventory);
+// v2.3.1432: cooking a fish the server blob does NOT hold used to be a
+// SILENT return -- the client's optimistic celebration played and no
+// correction ever arrived.  Now the drop echoes player_state so the
+// client bag reconciles.
+ps._cookHistory = [];
+ps._lastCookAt = Date.now() - 10000;
+ws.sent.length = 0;
+await send(ws, 'cook_request', { fishKey: 'fish_trout', kind: 'cooked' });
+check('missing-fish cook echoes player_state (no silent drop)',
+  msgsOfType(ws, 'player_state').length >= 1 && (ps.inventory.cooked_fish_trout || 0) === 0,
+  ws.sent.map((m) => m.type));
 
 // ── 3b. eat_request (v2.3.1166: first direct coverage, added with the
 // cooking.js extraction) ──

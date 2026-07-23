@@ -25,11 +25,16 @@ import { pushDmgPopup } from '@/game/combatHelpers.js';
    resume spinner) so it floats above the canvas/HUD and animates on the
    compositor; world->screen is node minus camera (world canvas pinned
    top-left, 1:1 CSS px).  No-ops outside the browser. */
-function _flyResourceToInventory(S, wx, wy, iconUrl) {
+function _flyResourceToInventory(S, wx, wy, iconUrl, opts) {
   try {
     if (typeof document === 'undefined' || typeof window === 'undefined') return;
     var cam = (S && S.camera) || { x: 0, y: 0 };
-    var sx = wx - cam.x, sy = wy - cam.y;
+    /* v2.3.1429: world->screen now applies the world canvas scale (the
+       "1:1 CSS px" note above predates S._worldScaleX) -- same mapping
+       the node-prompt anchor uses, so the icon launches ON the node at
+       every viewport size. */
+    var _scX = (S && S._worldScaleX) || 1, _scY = (S && S._worldScaleY) || 1;
+    var sx = (wx - cam.x) * _scX, sy = (wy - cam.y) * _scY;
     var img = document.createElement('img');
     img.src = iconUrl;
     img.alt = '';
@@ -54,13 +59,29 @@ function _flyResourceToInventory(S, wx, wy, iconUrl) {
         ty = br.top + br.height / 2;
       }
     } catch (e2) {}
-    requestAnimationFrame(function () {
+    var _fly = function () {
+      img.style.transition = 'transform .7s cubic-bezier(.45,.05,.3,1),opacity .7s ease-in';
+      img.style.transform = 'translate(' + tx + 'px,' + ty + 'px) scale(0.55)';
+      img.style.opacity = '0.15';
+      setTimeout(function () { try { img.remove(); } catch (e) {} }, 760);
+    };
+    if (opts && opts.pop) {
+      /* v2.3.1429 (owner): "the icon appears out of the water and jumps
+         to your bag" — stage 1 breaches: starts small AT the water line
+         and pops up ~36 px to full size, THEN stage 2 flies to the bag. */
+      img.style.transition = 'transform .25s ease-out';
+      img.style.transform = 'translate(' + sx + 'px,' + sy + 'px) scale(0.35)';
       requestAnimationFrame(function () {
-        img.style.transform = 'translate(' + tx + 'px,' + ty + 'px) scale(0.55)';
-        img.style.opacity = '0.15';
+        requestAnimationFrame(function () {
+          img.style.transform = 'translate(' + sx + 'px,' + (sy - 36) + 'px) scale(1.1)';
+        });
       });
-    });
-    setTimeout(function () { try { img.remove(); } catch (e) {} }, 760);
+      setTimeout(_fly, 280);
+    } else {
+      requestAnimationFrame(function () {
+        requestAnimationFrame(_fly);
+      });
+    }
   } catch (e) {}
 }
 
@@ -157,7 +178,9 @@ function applyFishingReward(S, node, result, deps) {
     if (!node || !R) return;
     var accuracy = (result && result.accuracy) || 'good';
     var reward = MINIGAME_REWARDS[accuracy] || MINIGAME_REWARDS.good;
-    BT_AUDIO.beep(600, 0.03, 0.06, 'triangle');
+    /* v2.3.1429 (owner): real water splash on the catch (the beep(600)
+       it replaces has been a no-op since v2.3.1103). */
+    try { BT_AUDIO.play('catch-splash', { vol: 0.65 }); } catch (e) {}
     /* Consume node */
     node.alive = false;
     node.respawnAt = Date.now() + (node.respawnTime || 30000);
@@ -222,10 +245,18 @@ function applyFishingReward(S, node, result, deps) {
       BT_AUDIO.collect();
     }
     /* v2.3.845: the catch pops out of the pond and flies into the quick-bag.
-       effectsRenderer._updateCatchFlights renders it; the pond (node) is the
-       launch point and #bt-bag-target is the landing point. */
-    if (!S._catchFlights) S._catchFlights = [];
-    S._catchFlights.push({ wx: node.x, wy: node.y, t0: Date.now(), dur: 850, qty: yieldQty });
+       v2.3.1429 (owner: "show the ICON appear out of the water and jump to
+       your bag"): the tiny procedural silhouette (_updateCatchFlights) is
+       replaced by the wood-harvest DOM flyer carrying the fish's REAL bag
+       icon, with a breach stage before the flight.  Icon mapping mirrors
+       InventoryPanel's FISH_THUMBS (kept inline: rendering-free module,
+       and the game layer shouldn't import the panel). */
+    var _fishKey = 'fish_' + baseName.replace(/\s+/g, '_').toLowerCase();
+    var _fishIcon = ({
+      fish_clownfish: '/icons/items/fish-clownfish.webp',
+      fish_trout: '/icons/items/fish-trout.webp',
+    })[_fishKey] || '/icons/items/fish-minnow.webp';
+    _flyResourceToInventory(S, node.x, node.y - 4, _fishIcon, { pop: true });
     setRpgState(_objectSpread({}, R));
     try { localStorage.setItem('bt_rpg', JSON.stringify(R)); } catch (e) {}
 }
@@ -242,9 +273,10 @@ function applyWoodReward(S, node, result, deps) {
     node.respawnAt = Date.now() + (node.respawnTime || 30000);
     /* v2.3.849: a wood-log icon pops out of the felled tree and flies into
        the bottom-left inventory, so the harvest reads as "collected".
-       Pure DOM (document.body, like the resume spinner) — world->screen is
-       node minus camera (the world canvas is pinned top-left, 1:1). */
-    _flyResourceToInventory(S, node.x, node.y - 24, '/icons/wood/wood-log.webp');
+       v2.3.1430 (owner: "make that true for each life skill"): upgraded to
+       the fish-catch treatment — the CURRENT bag icon (icons/items/) with
+       the breach-pop stage before the flight, launched from the trunk. */
+    _flyResourceToInventory(S, node.x, node.y - 60, '/icons/items/wood-log.webp', { pop: true });
     /* When the server owns gather-node state, tell it about the harvest so
        it broadcasts the deplete + respawn to every other player.  Local
        mutation above stays as a client-prediction so the player sees the
@@ -315,6 +347,11 @@ function applyMiningReward(S, node, result, deps) {
     BT_AUDIO.beep(700, 0.04, 0.07, 'square');
     node.alive = false;
     node.respawnAt = Date.now() + (node.respawnTime || 30000);
+    /* v2.3.1430 (owner): the ore's bag icon pops out of the vein and flies
+       into the Bag — fish-catch treatment for mining too.  ore-copper is
+       the only ore art in the bag catalog (ItemsPanel ORE_THUMB_DEFAULT),
+       so every tier ships it until per-tier art exists. */
+    _flyResourceToInventory(S, node.x, node.y - 40, '/icons/items/ore-copper.webp', { pop: true });
     /* When the server owns gather-node state, tell it about the harvest so
        it broadcasts the deplete + respawn to every other player.  Local
        mutation above stays as a client-prediction so the player sees the
@@ -378,6 +415,24 @@ export function applyCookingResult(S, fishKey, kind, taps, deps) {
     if (kind === 'cooked') {
       pushDmgPopup(S, S.player.x, S.player.y - 30, 'Cooked!', '#f5c542');
       pushDmgPopup(S, S.player.x, S.player.y - 46, '+8 Cooking XP', '#00d4b8');
+      /* v2.3.1429 (owner): success sizzle sting — distinct from the
+         pan-sizzle loop, which the extraction clear silences this tick. */
+      try { BT_AUDIO.play('cook-success', { vol: 0.6 }); } catch (e) {}
+      /* v2.3.1430 (owner): the cooked dish pops off the pan and flies to
+         the Bag — fish-catch treatment for cooking.  This runs BEFORE
+         succeedExtraction nulls S._extraction (same ordering the swipeFp
+         block below relies on), so the campfire node is still reachable;
+         fall back to the player if it isn't. */
+      try {
+        var _cookNode = (S._extraction && S._extraction.nodeRef) || S._campfire;
+        var _lx = (_cookNode && _cookNode.x != null) ? _cookNode.x : S.player.x;
+        var _ly = (_cookNode && _cookNode.y != null) ? _cookNode.y - 36 : S.player.y - 20;
+        var _cookedIcon = ({
+          fish_clownfish: '/icons/items/cooked-clownfish.webp',
+          fish_trout: '/icons/items/cooked-trout.webp',
+        })[fishKey] || '/icons/items/cooked-minnow.webp';
+        _flyResourceToInventory(S, _lx, _ly, _cookedIcon, { pop: true });
+      } catch (e) {}
     } else {
       pushDmgPopup(S, S.player.x, S.player.y - 30, 'Burnt!', '#ff5e6c');
     }
