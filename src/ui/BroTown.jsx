@@ -3525,6 +3525,18 @@ export var BroTown = function BroTown(_ref0) {
           };
           try { BT_AUDIO.beep(360, 0.05, 0.12, 'sawtooth'); } catch (e) {}
         }
+        /* v2.3.1431 (owner: "the minnow isn't getting cooked"): the fire
+           must NOT burn out mid-cook.  Since v2.3.1416 the cook window
+           holds until the flip (no timeout), so a leisurely cook easily
+           outlived the flat 45s fuse — the campfire died under the pan
+           and the extraction silently cancelled (flip did nothing).
+           While a cooking attempt is active, keep pushing the fuse
+           ~15s ahead; it starts burning down only once the cook ends,
+           leaving time to start the next one. */
+        if (S._campfire && S._extraction && S._extraction.skill === 'cooking') {
+          var _cfKeepAlive = Date.now() + 15000;
+          if (S._campfire.expiresAt < _cfKeepAlive) S._campfire.expiresAt = _cfKeepAlive;
+        }
         if (S._campfire && Date.now() > S._campfire.expiresAt) {
           S._campfire.alive = false;   // so an in-progress cook cancels
           S._campfire = null;
@@ -4961,9 +4973,16 @@ export var BroTown = function BroTown(_ref0) {
     var S = stateRef.current;
     var R = S && S.rpg;
     if (!R || !R.inventory) return;
-    var fishKey = Object.keys(R.inventory).find(function (k) {
+    /* v2.3.1431 (owner: "the minnow isn't getting cooked"): the campfire
+       used to grab the FIRST fish_ key in bag insertion order, so whole
+       species could sit uncooked behind whatever was caught first.  Now
+       the lowest-tier raw fish cooks first (minnow -> clownfish ->
+       trout; unknown species last), a deterministic order the player
+       can reason about. */
+    var _fishOrder = { fish_minnow: 1, fish_clownfish: 6, fish_trout: 11 };
+    var fishKey = Object.keys(R.inventory).filter(function (k) {
       return k.indexOf('fish_') === 0 && R.inventory[k] > 0;
-    });
+    }).sort(function (a, b) { return (_fishOrder[a] || 99) - (_fishOrder[b] || 99); })[0];
     if (!fishKey) {
       pushDmgPopup(S, node.x, node.y - 24, 'Need raw fish', '#D95C54');
       try { BT_AUDIO.beep(200, 0.05, 0.08, 'square'); } catch (e) {}

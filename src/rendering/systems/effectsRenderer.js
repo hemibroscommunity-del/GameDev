@@ -154,7 +154,12 @@ const GESTURE_TOOLS = {
   mining:      { frames: [], h: 128, dx: -30, dy: 44,  url: '/sprites/tools/pickaxe-gesture-v1.webp?v=2.3.1417' },
   woodcutting: { frames: [], h: 128, dx: -10, dy: 0,   url: '/sprites/tools/axe-gesture-v1.webp?v=2.3.1417' },
   fishing:     { frames: [], h: 116, dx: 0,   dy: 0,   url: '/sprites/tools/reel-gesture-v1.webp?v=2.3.1417' },
-  cooking:     { frames: [], h: 124, dx: 0,   dy: -10, url: '/sprites/tools/pan-gesture-v1.webp?v=2.3.1417' },
+  /* v2.3.1431: pan raised dy -10 -> -66 — the v2.3.1429 2x cook figure
+     grew INTO the pan marker's old spot, so the animating pan kept
+     covering/uncovering the torso (owner: "the shirt is flickering
+     when the naked shirt wearing character cooks").  -66 clears the
+     82px figure's head with margin. */
+  cooking:     { frames: [], h: 124, dx: 0,   dy: -66, url: '/sprites/tools/pan-gesture-v1.webp?v=2.3.1417' },
 };
 for (const cfg of Object.values(GESTURE_TOOLS)) {
   _fxLoad(cfg.url).then((tex) => {
@@ -3314,7 +3319,7 @@ export class EffectsRenderer {
        (_updateFiremaking, 88px @ 55ms). */
     const SPEC = {
       chop: { frames: this._chopFrames, h: 112, ms: 45 },
-      cook: { frames: this._cookFrames, h: 41, ms: 60 },
+      cook: { frames: this._cookFrames, h: 82, ms: 60 }, /* v2.3.1431: match the local 2x cook (v2.3.1429) */
       fire: { frames: this._fireFrames, h: 88, ms: 55 },
     };
     for (const id in others) {
