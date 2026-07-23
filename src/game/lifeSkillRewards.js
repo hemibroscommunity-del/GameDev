@@ -273,9 +273,10 @@ function applyWoodReward(S, node, result, deps) {
     node.respawnAt = Date.now() + (node.respawnTime || 30000);
     /* v2.3.849: a wood-log icon pops out of the felled tree and flies into
        the bottom-left inventory, so the harvest reads as "collected".
-       Pure DOM (document.body, like the resume spinner) — world->screen is
-       node minus camera (the world canvas is pinned top-left, 1:1). */
-    _flyResourceToInventory(S, node.x, node.y - 24, '/icons/wood/wood-log.webp');
+       v2.3.1430 (owner: "make that true for each life skill"): upgraded to
+       the fish-catch treatment — the CURRENT bag icon (icons/items/) with
+       the breach-pop stage before the flight, launched from the trunk. */
+    _flyResourceToInventory(S, node.x, node.y - 60, '/icons/items/wood-log.webp', { pop: true });
     /* When the server owns gather-node state, tell it about the harvest so
        it broadcasts the deplete + respawn to every other player.  Local
        mutation above stays as a client-prediction so the player sees the
@@ -346,6 +347,11 @@ function applyMiningReward(S, node, result, deps) {
     BT_AUDIO.beep(700, 0.04, 0.07, 'square');
     node.alive = false;
     node.respawnAt = Date.now() + (node.respawnTime || 30000);
+    /* v2.3.1430 (owner): the ore's bag icon pops out of the vein and flies
+       into the Bag — fish-catch treatment for mining too.  ore-copper is
+       the only ore art in the bag catalog (ItemsPanel ORE_THUMB_DEFAULT),
+       so every tier ships it until per-tier art exists. */
+    _flyResourceToInventory(S, node.x, node.y - 40, '/icons/items/ore-copper.webp', { pop: true });
     /* When the server owns gather-node state, tell it about the harvest so
        it broadcasts the deplete + respawn to every other player.  Local
        mutation above stays as a client-prediction so the player sees the
@@ -412,6 +418,21 @@ export function applyCookingResult(S, fishKey, kind, taps, deps) {
       /* v2.3.1429 (owner): success sizzle sting — distinct from the
          pan-sizzle loop, which the extraction clear silences this tick. */
       try { BT_AUDIO.play('cook-success', { vol: 0.6 }); } catch (e) {}
+      /* v2.3.1430 (owner): the cooked dish pops off the pan and flies to
+         the Bag — fish-catch treatment for cooking.  This runs BEFORE
+         succeedExtraction nulls S._extraction (same ordering the swipeFp
+         block below relies on), so the campfire node is still reachable;
+         fall back to the player if it isn't. */
+      try {
+        var _cookNode = (S._extraction && S._extraction.nodeRef) || S._campfire;
+        var _lx = (_cookNode && _cookNode.x != null) ? _cookNode.x : S.player.x;
+        var _ly = (_cookNode && _cookNode.y != null) ? _cookNode.y - 36 : S.player.y - 20;
+        var _cookedIcon = ({
+          fish_clownfish: '/icons/items/cooked-clownfish.webp',
+          fish_trout: '/icons/items/cooked-trout.webp',
+        })[fishKey] || '/icons/items/cooked-minnow.webp';
+        _flyResourceToInventory(S, _lx, _ly, _cookedIcon, { pop: true });
+      } catch (e) {}
     } else {
       pushDmgPopup(S, S.player.x, S.player.y - 30, 'Burnt!', '#ff5e6c');
     }
