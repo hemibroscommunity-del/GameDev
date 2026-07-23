@@ -1808,6 +1808,13 @@ BT_AUDIO.SFX_MANIFEST = {
   'mine-strike':      '/sfx/mining/mine-strike.mp3',
   'pan-sizzle':       '/sfx/cooking/pan-sizzle.mp3',
   'fish-reel':        '/sfx/fishing/fish-reel.mp3',
+  /* v2.3.1427 (owner sounds, round 2):
+     axe-chop: two hatchet strikes (offsets ~0.08 / ~1.10) played when
+       the axe marker hits the trunk, mine-strike alternation pattern.
+     river-water: 6s flowing-water loop under the whole fishing
+       attempt (pan-sizzle pattern). */
+  'axe-chop':         '/sfx/woodcutting/axe-chop.mp3',
+  'river-water':      '/sfx/fishing/river-water.mp3',
   'sword-swing':   '/sfx/sword/sword-swing.m4a',
   /* v2.3.254: wood-tier sword (the bamboo stick) gets its own swing
      SFX -- airier whoosh sourced from the user-uploaded mov. */

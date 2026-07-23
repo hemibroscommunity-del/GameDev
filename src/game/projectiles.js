@@ -48,14 +48,17 @@ export function updateArrows(S, deps) {
           }
           S.arrows = S.arrows.filter(function (a) {
             var _S$rpg15;
-            /* v2.3.1425 (owner): STUCK-IN-MONSTER -- a staff-special orb
-               that hit a monster embeds in its body instead of vanishing
-               (it used to look like it flew past).  While stuck it rides
-               the monster's rendered position and applies the same
-               chip-damage effect the landed bow special has: every 0.5s
-               a BASE staff hit on the stuck monster, for 4s.  Server
-               mode sends a normal staff hit and lets the worker roll the
-               authoritative number (bow-linger contract, v2.3.1402). */
+            /* v2.3.1425: STUCK-IN-MONSTER -- a special projectile that
+               hit a monster embeds in its body instead of vanishing (it
+               used to look like it flew past).  While stuck it rides
+               the monster's rendered position and applies the chip-
+               damage contract of the landed bow special (v2.3.1402):
+               every 0.5s a BASE weapon hit on the stuck monster, for
+               4s.  Server mode sends a normal hit and lets the worker
+               roll the authoritative number.
+               v2.3.1426 (owner: "I meant the ARROW special get stuck in
+               the monster, not the orbs"): this state now belongs to the
+               bow special -- see the stick site in the hit block. */
             if (a.stuckIn) {
               var _sm = a.stuckIn;
               var _sAge = Date.now() - a.stuckAt;
@@ -69,14 +72,14 @@ export function updateArrows(S, deps) {
                 a._lingerNext = Date.now() + 500;   /* relative reset — no burst catch-up after a background tab */
                 var _cBase = a.baseDmg || 1;
                 if (S._serverMonsters && S.channel) {
-                  /* authoritative BASE staff hit (special:false -> normal lane; ticks are 500ms apart) */
-                  S.channel.send({ type: 'monster_damage', payload: { monsterId: _sm.id, zone: S.currentZone, element: a.element || null, slot: 'staff', special: false } });
+                  /* authoritative BASE hit (special:false -> normal lane; ticks are 500ms apart) */
+                  S.channel.send({ type: 'monster_damage', payload: { monsterId: _sm.id, zone: S.currentZone, element: a.element || null, slot: a.isStaff ? 'staff' : 'ranged', special: false } });
                 } else {
                   _sm.curHp -= _cBase;
                   if (_sm.curHp < 0) _sm.curHp = 0;
                 }
                 if (!S.dmgNumbers) S.dmgNumbers = [];
-                pushDmgPopup(S, _sm.x, monsterPopupY(_sm, -10), _cBase + '', '#ffe08a', { iconKey: 'spell' });
+                pushDmgPopup(S, _sm.x, monsterPopupY(_sm, -10), _cBase + '', '#ffe08a', { iconKey: a.isStaff ? 'spell' : 'arrow' });
               }
               return true;
             }
@@ -202,7 +205,10 @@ export function updateArrows(S, deps) {
                  through every monster in its hit radius; hitIds still
                  prevents the same monster from taking multiple ticks
                  of damage from one arrow. */
-              if (!m.alive || a.hitIds.has(m.id) || (hit && !a.pierce)) return;
+              /* v2.3.1426: a stuck special takes no further hits -- the
+                 bow special pierces, so without this gate it would keep
+                 chaining through monsters after embedding in one. */
+              if (!m.alive || a.hitIds.has(m.id) || (hit && !a.pierce) || a.stuckIn) return;
               /* Same y-offset fix as the melee path — fodder slimes
                  render at 96 px anchored at the feet, sprite mid-frame
                  at m.y - 40, so projectiles aim there (v2.1.72).
@@ -665,13 +671,17 @@ export function updateArrows(S, deps) {
                      the kill without a separate glyph. */
                 }
                 hit = true;
-                /* v2.3.1425 (owner): the staff-special orb EMBEDS in the
-                   monster it just hit (survivors only -- a kill ends the
-                   orb as before).  Entry offset mirrors the stuck-arrow
-                   intuition: back along the flight direction so the core
-                   buries slightly into the body silhouette; the stuckIn
-                   early-return above takes over from the next tick. */
-                if (a.isStaff && a.isSpecial && !a.stuckIn && m.alive && m.curHp > 0) {
+                /* v2.3.1426 (owner clarification of v2.3.1425): the BOW
+                   special arrow EMBEDS in the monster it just hit
+                   (survivors only -- a kill lets it pierce onward as
+                   before, and a miss still ends in the v2.3.1402 ground
+                   plant + lingering AoE).  Entry offset mirrors the
+                   stuck-arrow intuition: back along the flight direction
+                   so the head buries into the body silhouette; the
+                   stuckIn early-return above takes over from the next
+                   tick and chips the stuck monster every 0.5s.  Staff
+                   orbs are back to dying on their first hit. */
+                if (!a.isStaff && a.isSpecial && !a.stuckIn && m.alive && m.curHp > 0) {
                   a.stuckIn = m;
                   a.stuckAt = Date.now();
                   a.life = 999;      /* stuckAt governs removal now, not life */
