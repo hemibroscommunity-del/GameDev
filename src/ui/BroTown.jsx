@@ -3495,7 +3495,10 @@ export var BroTown = function BroTown(_ref0) {
           var _npEl = typeof document !== 'undefined' && document.getElementById('bt-node-prompt');
           if (_npEl && S._nearNode && S.camera) {
             var _nwx = (S._nearNode.x - S.camera.x) * (S._worldScaleX || 1);
-            var _nwy = (S._nearNode.y + 14 - S.camera.y) * (S._worldScaleY || 1);
+            /* v2.3.1429 (owner: "still sits too low ... up maybe another
+               25 pixels"): +14 -> -11 world-y, so the prompt hugs the
+               node's base instead of floating below it. */
+            var _nwy = (S._nearNode.y - 11 - S.camera.y) * (S._worldScaleY || 1);
             var _npW2 = (_npEl.offsetWidth || 200) / 2;
             var _npH = _npEl.offsetHeight || 36;
             var _vw = window.innerWidth, _vh = window.innerHeight;
@@ -5370,14 +5373,40 @@ export var BroTown = function BroTown(_ref0) {
        the gesture can complete (so no fish is ever awarded).  The reel cue is
        centered on the player; claim touches within ~170 px of it.  Touches
        outside that (screen edges) still move, so walking away to cancel works. */
-    var isReelTouch = function (clientX, clientY) {
+    /* v2.3.1429: isReelTouch (v2.3.845) is retired — it predated the
+       world-scale fix so its 170px claim circle sat ~20% off at mobile
+       viewports, and isGestureTouch below covers fishing (correctly
+       scaled) along with every other skill. */
+    /* v2.3.1429 (owner: "make sure all life skills can be walked away
+       from — I tried walking away while fishing and couldn't"): the
+       v2.3.848 guard below used to bail the WHOLE joystick zone while a
+       gesture window was open.  Back then 'ready' expired in seconds;
+       since v2.3.1416 removed the timeout it lasts forever, so the
+       blanket bail rooted the player permanently.  Replace it with a
+       cue-proximity claim mirroring ExtractionSwipeLayer's own start
+       gate (SWIPE_START_RADIUS 160 + slack): touches near the gesture
+       cue belong to the gesture; anything else is movement, so walking
+       away works mid-animation for every skill. */
+    var isGestureTouch = function (clientX, clientY) {
       var S = stateRef.current;
-      if (!S || !S._extraction || S._extraction.skill !== 'fishing') return false;
+      var ex = S && S._extraction;
+      if (!ex || ex.status !== 'ready') return false;
       var cam = S.camera, P = S.player;
-      if (!cam || !P) return false;
-      var dx = clientX - (P.x - cam.x);
-      var dy = clientY - (P.y - 24 - cam.y);
-      return (dx * dx + dy * dy) < (170 * 170);
+      if (!cam) return false;
+      var sx = S._worldScaleX || 1, sy = S._worldScaleY || 1;
+      var cx, cy;
+      if (ex.skill === 'fishing' && P) {
+        cx = (P.x - cam.x) * sx; cy = (P.y - 24 - cam.y) * sy;
+      } else {
+        var node = (ex.nodeRef && ex.nodeRef.alive) ? ex.nodeRef
+          : (S.gatherNodes && ex.nodeId ? S.gatherNodes.find(function (n) { return n.id === ex.nodeId; }) : null);
+        if (!node) return false;
+        var yOff = ex.skill === 'cooking' ? 40
+          : node.nodeType === 'tree' ? 96 : node.nodeType === 'oreVein' ? 36 : 30;
+        cx = (node.x - cam.x) * sx; cy = (node.y - yOff - cam.y) * sy;
+      }
+      var dx = clientX - cx, dy = clientY - cy;
+      return (dx * dx + dy * dy) < (190 * 190);
     };
     /* v2.3.1287: tapping YOUR OWN character opens the chat composer —
        Chat left the toolbar (owner, nav-system).  Same screen-space
@@ -5461,13 +5490,13 @@ export var BroTown = function BroTown(_ref0) {
          character around.  The chop swipe is handled by the window-level
          pointer layer (ExtractionSwipeLayer), a separate event stream, so
          bailing here leaves it working while stopping movement. */
-      var _exL = stateRef.current && stateRef.current._extraction;
-      if (_exL && _exL.status === 'ready') { e.preventDefault(); return; }
+      /* v2.3.1429: was a blanket "ready => no movement" bail (v2.3.848);
+         now only touches near the gesture cue are ceded — see
+         isGestureTouch above.  Walking away mid-gesture cancels. */
       e.preventDefault();
       e.stopPropagation();
       var t = e.changedTouches[0];
-      /* v2.3.845: hand reel-zone touches to the fishing gesture, not movement. */
-      if (isReelTouch(t.clientX, t.clientY)) return;
+      if (isGestureTouch(t.clientX, t.clientY)) return;
       /* v2.3.1307: the v2.3.1283 "movement collapses the sheet"
          interlock is REMOVED (owner: players may just want to play
          with menus open).  The joystick zones end above the sheet
@@ -5590,13 +5619,12 @@ export var BroTown = function BroTown(_ref0) {
       /* v2.3.848: same chop-swipe guard as the left zone (see lS) so a
          swipe started on the right half during a chop doesn't fire
          attacks/aim instead of chopping. */
-      var _exR = stateRef.current && stateRef.current._extraction;
-      if (_exR && _exR.status === 'ready') { e.preventDefault(); return; }
+      /* v2.3.1429: same de-blanketing as the left zone (see lS) — only
+         gesture-cue touches are ceded; the rest aim/attack normally. */
       e.preventDefault();
       e.stopPropagation();
       var t = e.changedTouches[0];
-      /* v2.3.845: hand reel-zone touches to the fishing gesture, not aim/attack. */
-      if (isReelTouch(t.clientX, t.clientY)) return;
+      if (isGestureTouch(t.clientX, t.clientY)) return;
       /* v2.3.1307: aim/attack no longer collapses the sheet — same
          owner directive as the movement zone (see lS). */
       var nowMs = Date.now();

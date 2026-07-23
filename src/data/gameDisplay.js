@@ -1815,6 +1815,12 @@ BT_AUDIO.SFX_MANIFEST = {
        attempt (pan-sizzle pattern). */
   'axe-chop':         '/sfx/woodcutting/axe-chop.mp3',
   'river-water':      '/sfx/fishing/river-water.mp3',
+  /* v2.3.1429 (owner sounds, round 3):
+     catch-splash: 1.6s water splash when the fish is caught (pairs
+       with the breach-and-fly bag animation).
+     cook-success: 0.7s sizzle sting when the cook completes. */
+  'catch-splash':     '/sfx/fishing/catch-splash.mp3',
+  'cook-success':     '/sfx/cooking/cook-success.mp3',
   'sword-swing':   '/sfx/sword/sword-swing.m4a',
   /* v2.3.254: wood-tier sword (the bamboo stick) gets its own swing
      SFX -- airier whoosh sourced from the user-uploaded mov. */

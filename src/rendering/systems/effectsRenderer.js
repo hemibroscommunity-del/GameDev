@@ -147,8 +147,11 @@ for (const [cfg, url] of [
 const GESTURE_TOOLS = {
   /* v2.3.1423 (owner: pickaxe "floats above it — move down and to the
      left"): mining dx/dy now shift the WHOLE swing path (hover +
-     contact both carry them in the clamp branch). */
-  mining:      { frames: [], h: 128, dx: -14, dy: 16,  url: '/sprites/tools/pickaxe-gesture-v1.webp?v=2.3.1417' },
+     contact both carry them in the clamp branch).
+     v2.3.1429 (owner again: "down and to the left MORE — its left-to-
+     right half-circle swing sits right above the ore"): -14/16 ->
+     -30/44 so the art's swing arc lands ON the ore body, not over it. */
+  mining:      { frames: [], h: 128, dx: -30, dy: 44,  url: '/sprites/tools/pickaxe-gesture-v1.webp?v=2.3.1417' },
   woodcutting: { frames: [], h: 128, dx: -10, dy: 0,   url: '/sprites/tools/axe-gesture-v1.webp?v=2.3.1417' },
   fishing:     { frames: [], h: 116, dx: 0,   dy: 0,   url: '/sprites/tools/reel-gesture-v1.webp?v=2.3.1417' },
   cooking:     { frames: [], h: 124, dx: 0,   dy: -10, url: '/sprites/tools/pan-gesture-v1.webp?v=2.3.1417' },
@@ -3128,6 +3131,10 @@ export class EffectsRenderer {
   }
 
   /* ── Catch flight (v2.3.845) ──
+   * v2.3.1429: DORMANT — applyFishingReward now uses the DOM icon flyer
+   * (_flyResourceToInventory, real fish bag-icon + breach stage) instead of
+   * queueing here; nothing pushes _catchFlights anymore.  Kept because the
+   * pooled-canvas approach is the fallback if the DOM flyer ever misbehaves.
    * A caught fish pops out of the pond and arcs into the quick-bag.  Flights
    * are queued by applyFishingReward as { wx, wy (pond, world), t0, dur }.
    * Rendered as a 🐟 Text on overlayWorld (above the player); pooled so a
@@ -4249,7 +4256,7 @@ export class EffectsRenderer {
        + ready), the chopper's sibling.  Stands just left of the fire so the
        pan (extends right) sits over the flames. */
     if (cookingCue && this.cookSprite && this._cookFrames.length) {
-      const COOK_H = 41, COOK_FRAME_MS = 60;   // v2.3.896: ~50% smaller (owner: was too large)
+      const COOK_H = 82, COOK_FRAME_MS = 60;   // v2.3.1429 (owner): 2x — undoes the v2.3.896 halving
       const sp = this.cookSprite;
       const cookFi = Math.floor(now / COOK_FRAME_MS) % this._cookFrames.length;
       /* v2.3.1114: when leg armour is equipped, use the legs-erased body so the
@@ -4258,7 +4265,7 @@ export class EffectsRenderer {
       sp.texture = (_legsOn ? this._cookLeglessFrames : this._cookFrames)[cookFi];
       const s = COOK_H / 220;
       sp.scale.set(s, s);
-      sp.x = node.x - 7;                        // halved with the size so the pan still sits over the fire
+      sp.x = node.x - 14;                       // doubled with the size so the pan still sits over the fire (v2.3.1429)
       sp.y = node.y + 8;
       sp.visible = true;
       /* v2.3.1113: draw the player's shirt over the cook torso, copying the
