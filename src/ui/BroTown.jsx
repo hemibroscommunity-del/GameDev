@@ -3481,6 +3481,12 @@ export var BroTown = function BroTown(_ref0) {
           var _cfd = Math.sqrt(Math.pow(S._campfire.x - P.x, 2) + Math.pow(S._campfire.y - P.y, 2));
           if (_cfd < 80 && _cfd < closestDist) { closestDist = _cfd; S._nearNode = S._campfire; }
         }
+        /* v2.3.1432 (owner: "the contextual menu for cooking didn't go
+           away"): while a harvest attempt is ACTIVE, the interact prompt
+           is noise — you're already doing the thing it offers (and its
+           tap could restart the attempt).  Hide it for every skill; it
+           returns the moment the attempt ends or cancels. */
+        if (S._extraction) S._nearNode = null;
         /* v2.3.1409 (owner: "the ore resource contextual menu appeared too
            far below the ore on screen"): anchor the interact prompt to the
            NODE instead of the dashboard.  The button is React-rendered but
