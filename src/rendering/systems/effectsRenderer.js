@@ -4223,8 +4223,8 @@ export class EffectsRenderer {
       if (now < L.until && L.f > 0.1 && _lgt.frames.length === 8 && this.gestureToolSprite) {
         const _ldt = Math.max(0, Math.min(100, now - (L.t || now)));
         L.t = now;
-        if (L.f < 0.9999) L.f = Math.min(0.9999, L.f + _ldt / 800);
-        else if (!L.doneAt) L.doneAt = now + 300;
+        if (L.f < 0.9999) L.f = Math.min(0.9999, L.f + _ldt / 1600);   /* v2.3.1442: 2x slower with the live chase */
+        else if (!L.doneAt) L.doneAt = now + 350;
         const _lsp = this.gestureToolSprite;
         const _ls = _lgt.h / 256;
         _lsp.texture = _lgt.frames[Math.floor(L.f * 8)];
@@ -4422,13 +4422,20 @@ export class EffectsRenderer {
          - cooking: a flick raced all 8 flip frames in ~300ms ("slow the
            animation to about half") — capped at one full flip per 800ms.
          Swing tools stay 1:1 (their feel is the strike itself). */
+      /* v2.3.1442 (owner: cooking "still goes way too fast"): the chase
+         state moves ONTO the extraction record — the old this._toolDispF
+         survived between cooks, so the next attempt started with the pan
+         already flipped (~1) and visibly UNWOUND backwards before
+         tracking again ("something is wrong").  ex._dispF dies with the
+         attempt, so every cook starts flat.  Cook rate also slowed
+         another 2x (full flip 800ms -> 1600ms). */
       let _dispF = f01;
       if (ex.skill === 'cooking' || ex.skill === 'fishing') {
-        const _lastT = this._toolDispT || now;
+        const _lastT = ex._dispT || now;
         const _dt = Math.max(0, Math.min(100, now - _lastT));
-        this._toolDispT = now;
-        let _cur = (this._toolDispF != null && this._toolDispSkill === ex.skill) ? this._toolDispF : f01;
-        const _rate = _dt / (ex.skill === 'cooking' ? 800 : 450);
+        ex._dispT = now;
+        let _cur = (ex._dispF != null) ? ex._dispF : (ex.skill === 'cooking' ? 0 : f01);
+        const _rate = _dt / (ex.skill === 'cooking' ? 1600 : 450);
         if (ex.skill === 'fishing') {
           let _d = f01 - _cur;
           if (_d > 0.5) _d -= 1; else if (_d < -0.5) _d += 1;
@@ -4437,10 +4444,8 @@ export class EffectsRenderer {
           const _d = f01 - _cur;
           _cur = _cur + Math.max(-_rate, Math.min(_rate, _d));
         }
-        this._toolDispF = _cur; this._toolDispSkill = ex.skill;
+        ex._dispF = _cur;
         _dispF = Math.max(0, Math.min(0.9999, _cur));
-      } else {
-        this._toolDispF = null; this._toolDispSkill = null;
       }
       sp.texture = _gt.frames[_swingTool ? Math.min(3, Math.floor(f01 * 4)) : Math.floor(_dispF * 8)];
       const s = _gt.h / 256;
@@ -4526,7 +4531,7 @@ export class EffectsRenderer {
            mid-animation (success fires on the up-stroke, which used to
            cut the pan off), the marker stays and finishes the slowed
            flip from here (see the linger block above the early-return). */
-        this._cookLinger = { x: sp.x, y: sp.y, f: _dispF, fishKey: ex.fishKey, t: now, until: now + 1500 };
+        this._cookLinger = { x: sp.x, y: sp.y, f: _dispF, fishKey: ex.fishKey, t: now, until: now + 2600 };   /* v2.3.1442: window fits the 1600ms flip + hold */
       }
     } else if (ex.skill === 'fishing' || ex.skill === 'cooking') {
       /* no floating tool — the angler holds the rod / the cook holds the pan;
@@ -4576,21 +4581,26 @@ export class EffectsRenderer {
     const HINT_REACH = 30;     /* arrow half-length / streak length basis */
     const FINGER_LEN = 30, FINGER_W = 19;
     if (ex.skill === 'fishing') {
-      /* Clockwise circular arrow — "reel". Rotates so it reads as motion. */
+      /* v2.3.1442 (owner: cues "still not consistent in color or size"):
+         the gold arc-arrow becomes the SAME white finger every skill
+         uses, orbiting the reel circle — a faint white track shows the
+         path and a white streak trails the fingertip. */
       const rA = 78;   /* v2.3.1436: ENCIRCLES the reel art instead of hiding behind it */
-      const a0 = (now / 400) % (Math.PI * 2);
-      const aEnd = a0 + Math.PI * 1.5;
-      /* seed the path point at the arc start so Pixi doesn't draw a stray
-         line from (0,0) to the arc (the diagonal-line bug). */
-      gfx.moveTo(x + Math.cos(a0) * rA, y + Math.sin(a0) * rA);
-      gfx.arc(x, y, rA, a0, aEnd);
-      gfx.stroke({ color: hintCol, width: HINT_W, alpha: hintAlpha });
-      const hx = x + Math.cos(aEnd) * rA, hy = y + Math.sin(aEnd) * rA;
-      const tx = -Math.sin(aEnd), ty = Math.cos(aEnd); /* clockwise tangent */
-      gfx.moveTo(hx, hy);
-      gfx.lineTo(hx + tx * 14 + Math.cos(aEnd) * 10, hy + ty * 14 + Math.sin(aEnd) * 10);
-      gfx.lineTo(hx + tx * 14 - Math.cos(aEnd) * 10, hy + ty * 14 - Math.sin(aEnd) * 10);
-      gfx.fill({ color: hintCol, alpha: hintAlpha });
+      const a = (now / 900) % (Math.PI * 2);
+      gfx.circle(x, y, rA);
+      gfx.stroke({ color: 0xffffff, width: 2.5, alpha: hintAlpha * 0.28 });
+      gfx.moveTo(x + Math.cos(a - 0.85) * rA, y + Math.sin(a - 0.85) * rA);
+      gfx.arc(x, y, rA, a - 0.85, a);
+      gfx.stroke({ color: 0xffffff, width: HINT_W, alpha: hintAlpha * 0.5 });
+      const fx = x + Math.cos(a) * rA, fy = y + Math.sin(a) * rA;
+      const tx = -Math.sin(a), ty = Math.cos(a);   /* clockwise tangent */
+      gfx.moveTo(fx - tx * FINGER_LEN, fy - ty * FINGER_LEN);
+      gfx.lineTo(fx, fy);
+      gfx.stroke({ color: 0xffffff, width: FINGER_W, cap: 'round', alpha: hintAlpha });
+      gfx.circle(fx, fy, FINGER_W / 2 + 0.5);
+      gfx.fill({ color: 0xffffff, alpha: hintAlpha });
+      gfx.circle(fx - tx * (FINGER_LEN + 4), fy - ty * (FINGER_LEN + 4), 8);
+      gfx.fill({ color: 0xe6e6ee, alpha: hintAlpha });
     } else if (ex.skill === 'woodcutting') {
       /* v2.3.843: a finger demonstrates the chop gesture — wind UP away
          from the tree, then SWIPE back toward it, on a loop ("do this a
@@ -4615,7 +4625,7 @@ export class EffectsRenderer {
       if (chopping) {
         gfx.moveTo(fx - dir * (HINT_REACH + 8), fy);
         gfx.lineTo(fx, fy);
-        gfx.stroke({ color: hintCol, width: HINT_W, alpha: hintAlpha * 0.5 });
+        gfx.stroke({ color: 0xffffff, width: HINT_W, alpha: hintAlpha * 0.5 });   /* v2.3.1442: white everywhere */
       }
       /* finger: a capsule body pointing toward the tree + a rounded tip;
          a knuckle dot at the back reads it as a hand. */
@@ -4642,7 +4652,7 @@ export class EffectsRenderer {
       if (flicking) {                          // upward swipe streak (v2.3.1435: shared sizes)
         gfx.moveTo(fx, fy + HINT_REACH + 8);
         gfx.lineTo(fx, fy);
-        gfx.stroke({ color: hintCol, width: HINT_W, alpha: hintAlpha * 0.5 });
+        gfx.stroke({ color: 0xffffff, width: HINT_W, alpha: hintAlpha * 0.5 });   /* v2.3.1442: white everywhere */
       }
       const len = FINGER_LEN, w = FINGER_W;
       gfx.roundRect(fx - w / 2, fy, w, len, w / 2);  // finger body (below the tip)
@@ -4652,18 +4662,26 @@ export class EffectsRenderer {
       gfx.circle(fx, fy + len + 2, 8);               // knuckle
       gfx.fill({ color: 0xe6e6ee, alpha: hintAlpha });
     } else {
-      /* Vertical double-arrow (up + down pump), bobbing.
-         (v2.3.1435: shared HINT_W/HINT_REACH sizes.) */
-      const bob = Math.sin(now / 150) * 3;
-      const ax = x + 44, ay = y + bob;   /* v2.3.1436: clear of the ore body */
-      const L = HINT_REACH;
-      gfx.moveTo(ax, ay - L);
-      gfx.lineTo(ax, ay + L);
-      gfx.stroke({ color: hintCol, width: HINT_W, alpha: hintAlpha });
-      gfx.moveTo(ax, ay - L); gfx.lineTo(ax - 10, ay - L + 14); gfx.lineTo(ax + 10, ay - L + 14);
-      gfx.fill({ color: hintCol, alpha: hintAlpha });
-      gfx.moveTo(ax, ay + L); gfx.lineTo(ax - 10, ay + L - 14); gfx.lineTo(ax + 10, ay + L - 14);
-      gfx.fill({ color: hintCol, alpha: hintAlpha });
+      /* v2.3.1442: the gold double-arrow becomes the SAME white finger,
+         pumping up-down on the mining axis (x+44 keeps it clear of the
+         ore body, v2.3.1436) with a white streak trailing the motion. */
+      const T = 1100;
+      const p = (now % T) / T;
+      const off = -Math.cos(p * Math.PI * 2) * HINT_REACH;
+      const vel = Math.sin(p * Math.PI * 2);
+      const ax = x + 44, ay = y + off;
+      if (Math.abs(vel) > 0.35) {                 /* streak while moving */
+        const trailY = vel > 0 ? -(HINT_REACH - 4) : (HINT_REACH - 4);
+        gfx.moveTo(ax, ay + trailY);
+        gfx.lineTo(ax, ay);
+        gfx.stroke({ color: 0xffffff, width: HINT_W, alpha: hintAlpha * 0.5 });
+      }
+      gfx.roundRect(ax - FINGER_W / 2, ay, FINGER_W, FINGER_LEN, FINGER_W / 2);
+      gfx.fill({ color: 0xffffff, alpha: hintAlpha });
+      gfx.circle(ax, ay, FINGER_W / 2 + 0.5);
+      gfx.fill({ color: 0xffffff, alpha: hintAlpha });
+      gfx.circle(ax, ay + FINGER_LEN + 2, 8);
+      gfx.fill({ color: 0xe6e6ee, alpha: hintAlpha });
     }
     /* Progress as a horizontal pip row beneath the tool (no ring — the old
        circling ring read as a stray diagonal line and the user prefers just
