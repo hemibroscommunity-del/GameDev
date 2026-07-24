@@ -28,6 +28,11 @@ import {
   QUALITY_MULTS, RARITY_TIERS,
   DAMAGE_CHANNEL_FLAT, WEAPON_CHANNELS, T2_UNITS as CLIENT_T2_UNITS,
   GEM_CUT_TIERS, WEAPON_TYPES,
+  /* v2.3.1451: bench-locked T2 mirrors */
+  T2_BENCH as CLIENT_T2_BENCH, T2_BENCH_CANONICAL as CLIENT_T2_BENCH_CANONICAL,
+  t2BenchStats as clientT2BenchStats, t2PointValue as clientT2PointValue,
+  t2BenchLevel as clientT2BenchLevel, t2SpendLevel as clientT2SpendLevel,
+  t2ReplayFlat as clientT2ReplayFlat,
 } from '../../src/data/gameSystems.js';
 import { FISHING_TIERS } from '../../src/data/lifeSkills.js';
 import { AMULET_TIERS, NUGGETS_PER_BAR, GOLD_NUGGET_DROP, GEM_DROP_RATES, GEM_EXTRACT_BASE_COST } from '../../src/data/items.js';
@@ -229,6 +234,42 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
     }
   }
   check('WEAPON_CHANNELS damage-role perPt ties to DAMAGE_CHANNEL_FLAT', bad.length === 0, bad);
+
+  // ── v2.3.1451: BENCH-LOCKED T2 mirrors.  The tuning table, the
+  // canonical channel order, and every pricing function must agree
+  // between server data.js and client gameSystems.js — a one-sided
+  // retune splits the client's spend-time prediction from the
+  // server's authoritative accumulator (grids.js _t2BenchReprice),
+  // and a canonical-order drift makes replays diverge. ──
+  check('T2_BENCH server <-> client (bench-locked tuning table)',
+    JSON.stringify(SRV.T2_BENCH) === JSON.stringify(CLIENT_T2_BENCH),
+    { server: SRV.T2_BENCH, client: CLIENT_T2_BENCH });
+  check('T2_BENCH_CANONICAL server <-> client (channel order + roles)',
+    JSON.stringify(SRV.T2_BENCH_CANONICAL) === JSON.stringify(CLIENT_T2_BENCH_CANONICAL),
+    { server: SRV.T2_BENCH_CANONICAL.length, client: CLIENT_T2_BENCH_CANONICAL.length });
+  {
+    const fnBad = [];
+    for (const B of [1, 2, 8, 25, 65, 80, 100]) {
+      if (JSON.stringify(SRV.t2BenchStats(B)) !== JSON.stringify(clientT2BenchStats(B))) fnBad.push({ B, fn: 't2BenchStats' });
+      for (const role of Object.keys(SRV.T2_BENCH)) {
+        if (SRV.t2PointValue(role, B) !== clientT2PointValue(role, B)) fnBad.push({ B, role, fn: 't2PointValue' });
+      }
+    }
+    for (const L of [1, 5, 10, 11, 250, 991, 1000]) {
+      if (SRV.t2BenchLevel(L) !== clientT2BenchLevel(L)) fnBad.push({ L, fn: 't2BenchLevel' });
+      if (SRV.t2SpendLevel(L) !== clientT2SpendLevel(L)) fnBad.push({ L, fn: 't2SpendLevel' });
+    }
+    // Replay parity on a mixed build — the migration/boundary path and
+    // the client's fixture builder must agree byte-for-byte.
+    const mixed = {
+      weaponSpecs: { sword: { edge: 60, executioner: 30 }, bow: { drawPower: 15 } },
+      defenseSpec: { ironskin: 40, secondwind: 25, bulwark: 50 },
+      hpSpec: { vigor: 70, lifeblood: 10, laststand: 20 },
+      enduranceSpec: { stamina: 35, swiftness: 45 },
+    };
+    if (JSON.stringify(SRV.t2ReplayFlat(mixed)) !== JSON.stringify(clientT2ReplayFlat(mixed))) fnBad.push({ fn: 't2ReplayFlat' });
+    check('bench-locked pricing functions server <-> client (probes at several benchmarks)', fnBad.length === 0, fnBad);
+  }
 }
 
 // ── 9. Variant map: server _variantForArchInZone vs client

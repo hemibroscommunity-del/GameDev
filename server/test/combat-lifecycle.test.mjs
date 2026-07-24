@@ -15,7 +15,11 @@
  *      assertion if overflow deferral ships).
  */
 import { GameRoom } from '../src/index.js';
-import { T2_UNITS as _u, t2Accel as _accel } from '../src/data.js'; /* v2.3.1415: critDmg assertion derives from the unit table */
+/* v2.3.1451 (bench-locked T2): fixtures build their accumulator with
+   the REAL replay helper and assertions derive from it — never
+   hand-rolled numbers, so tuning T2_BENCH can't silently break the
+   suite (the v2.3.1415 lesson, now structural). */
+import { t2ReplayFlat as _replay } from '../src/data.js';
 
 const mockState = {
   storage: {
@@ -130,19 +134,27 @@ for (const m of meadowMonsters) m._wanderPausedUntil = Date.now() + 600000;
   check('applyDamage: resist buff shaves 5%', resisted.dmgTaken === 95 && ps.hp === 5, resisted);
   ps._buffs = {};
 
-  // v2.3.1345 (accelerating flat): Iron Skin soaks t2Accel(p, 0.5)
-  // flat per hit — 5,050 at the cap swallows a 100 hit to the floor 1.
+  // v2.3.1451 (bench-locked): Iron Skin soaks the BANKED flat from
+  // ps.t2Flat — fixtures replay their spec through the real helper
+  // and the expectations derive from the banked value.
   ps.hp = 100; ps.defenseSpec = { ironskin: 100 };
-  const ironed = room._applyDamage(ps, 100, false);
-  check('applyDamage: Iron Skin 100pts soaks a 100 hit to the floor 1', ironed.dmgTaken === 1 && ps.hp === 99, ironed);
-  ps.defenseSpec = { ironskin: 10 }; // small spend: t2Accel(10, 0.5) = 55 soak
+  ps.t2Flat = _replay(ps);
+  const _soakMax = ps.t2Flat.defense.ironskin;   // 100 pts replayed from level 1
+  const ironed = room._applyDamage(ps, _soakMax, false); // hit == soak -> floor 1
+  check('applyDamage: Iron Skin banked soak swallows an equal hit to the floor 1', ironed.dmgTaken === 1 && ps.hp === 99, { ironed, _soakMax });
+  ps.defenseSpec = { ironskin: 10 }; // small spend
+  ps.t2Flat = _replay(ps);
+  const _soak10 = ps.t2Flat.defense.ironskin;
   ps.hp = 100;
-  const ironSmall = room._applyDamage(ps, 100, false);
-  check('applyDamage: Iron Skin 10pts soaks 55 flat (100 -> 45)', ironSmall.dmgTaken === 45, ironSmall);
-  ps.defenseSpec = { ironskin: 999 };   // over-cap spec still clamps at the 100-pt value
+  const ironSmall = room._applyDamage(ps, _soak10 + 45, false);
+  check('applyDamage: Iron Skin small spend soaks exactly its banked flat', ironSmall.dmgTaken === 45, { ironSmall, _soak10 });
+  ps.defenseSpec = { ironskin: 999 };   // over-cap spec: replay clamps at 100 pts
+  ps.t2Flat = _replay(ps);
+  check('applyDamage: over-cap spec banks only the 100-pt replay value', ps.t2Flat.defense.ironskin === _soakMax, ps.t2Flat.defense.ironskin);
   ps.hp = 100;
-  const ironCap = room._applyDamage(ps, 100, false);
-  check('applyDamage: Iron Skin over-cap spec clamps to the 100-pt soak (floor 1)', ironCap.dmgTaken === 1, ironCap);
+  const ironCap = room._applyDamage(ps, _soakMax, false);
+  check('applyDamage: Iron Skin over-cap spec still soaks to the floor 1', ironCap.dmgTaken === 1, ironCap);
+  ps.t2Flat = undefined; ps.defenseSpec = undefined;
   ps.defenseSpec = {};
 }
 
@@ -351,42 +363,47 @@ for (const m of meadowMonsters) m._wanderPausedUntil = Date.now() + 600000;
 
 // ── 6g. v2.3.1137: defense channels — Second Wind + Thorns ──
 {
-  // v2.3.1345 (accelerating flat): Second Wind heals a FLAT
-  // t2Accel(p, 2.5) — 25,250 at the cap, bounded to maxHp — on a 10s
-  // cooldown, never on the lethal hit.
+  // v2.3.1451 (bench-locked): Second Wind heals the BANKED flat from
+  // ps.t2Flat (plus Recovery's banked bonus, 0 here), bounded to
+  // maxHp, on a 10s cooldown, never on the lethal hit.
   const ps = { hp: 100, maxHp: 200, agility: 0, defenseSpec: { secondwind: 100 } };
+  ps.t2Flat = _replay(ps);
+  const _swFlat = ps.t2Flat.defense.secondwind;
   const r1 = room._applyDamage(ps, 50, false);
-  check('secondwind: 100 pts heal (flat 25,250) tops to full after surviving a hit',
-    r1.dmgTaken === 50 && r1.secondWind === 25250 && ps.hp === 200, { r1, hp: ps.hp });
+  check('secondwind: banked heal fires after surviving a hit (bounded to maxHp)',
+    r1.dmgTaken === 50 && r1.secondWind === _swFlat && ps.hp === Math.min(200, 50 + _swFlat), { r1, hp: ps.hp, _swFlat });
+  const _hpAfter1 = ps.hp;
   const r2 = room._applyDamage(ps, 50, false);
   check('secondwind: 10s cooldown blocks back-to-back heals',
-    r2.secondWind === 0 && ps.hp === 150, { r2, hp: ps.hp });
+    r2.secondWind === 0 && ps.hp === _hpAfter1 - 50, { r2, hp: ps.hp });
   ps._secondWindReadyAt = 0; ps.hp = 30;
   const r3 = room._applyDamage(ps, 100, false);
   check('secondwind: never fires on the lethal hit', ps.hp === 0 && r3.secondWind === 0, { r3, hp: ps.hp });
 
-  // Thorns: blocked attack reflects 1%/pt (cap 50%) through the REAL
-  // tick block branch; lethal reflect kills via the shared pipeline.
+  // Thorns: blocked attack reflects through the REAL tick block
+  // branch; lethal reflect kills via the shared pipeline.
   psA.z = 'meadow'; psA.dead = false; psA.dying = false; psA.disconnected = false;
   psA.blocking = true; psA.stamina = 100; psA.maxStamina = 100; psA.hp = 100; psA.maxHp = 100;
-  psA.defenseSpec = { thorns: 100 }; // v2.3.1156: cap 100 (0.5%/pt)
+  psA.defenseSpec = { thorns: 100 }; // v2.3.1156: cap 100
+  // v2.3.1451 (bench-locked): the payback is the BANKED flat, so the
+  // test monster's HP is sized to it — the lethal reflect must still
+  // flow through the shared kill pipeline.
+  psA.t2Flat = _replay({ defenseSpec: psA.defenseSpec });
+  const _thornsFlat = psA.t2Flat.defense.thorns;
   const tm = meadowMonsters[3];
-  tm.alive = true; tm.hp = 1000; tm.maxHp = 1000; tm.dmg = 40; tm.dmgByPlayer = {};
+  tm.alive = true; tm.hp = _thornsFlat; tm.maxHp = _thornsFlat; tm.dmg = 40; tm.dmgByPlayer = {};
   tm.statuses = undefined; tm.atkCd = 0; tm._attackingUntil = 0; tm._wanderPausedUntil = 0;
   tm.x = 3000; tm.y = 3000; tm.spawnX = 3000; tm.spawnY = 3000;
   psA.x = 3000; psA.y = 3000;
   room.eventBuffer.length = 0;
   room._tickMonsters();
   const th = room.eventBuffer.find((e) => e.type === 'monster_hit' && e.payload.thorns);
-  // v2.3.1345: flat accelerating payback — t2Accel(100, 1) = 10,100
-  // obliterates the 1000-HP test monster in one blocked hit, and the
-  // lethal reflect must flow through the shared kill pipeline.
   const tk = room.eventBuffer.find((e) => e.type === 'monster_kill' && e.payload.monsterId === tm.id);
-  check('thorns: flat payback lands and the lethal reflect kills through the shared pipeline',
-    !!th && th.payload.dmg === 1000 && tm.hp === 0
+  check('thorns: banked payback lands and the lethal reflect kills through the shared pipeline',
+    !!th && th.payload.dmg === _thornsFlat && tm.hp === 0
     && !!tk && tm.alive === false && tk.payload.recipients.includes('pa'),
-    { th: th && th.payload, hp: tm.hp, tk: tk && tk.payload });
-  psA.blocking = false; psA.defenseSpec = {};
+    { th: th && th.payload, hp: tm.hp, tk: tk && tk.payload, _thornsFlat });
+  psA.blocking = false; psA.defenseSpec = {}; psA.t2Flat = undefined;
 }
 
 // ── 6f. v2.3.1136: Attunement scales server status duration ──
@@ -556,23 +573,22 @@ for (const m of meadowMonsters) m._wanderPausedUntil = Date.now() + 600000;
   const origRandom = Math.random;
   Math.random = () => 0;   // variance floor (×0.75 sword) + guaranteed crit (P200 → 20%)
   const plain = room._computeAttackDamage(ps, 'melee', false);
+  // v2.3.1451 (bench-locked): the crit-dmg value is the BANKED flat —
+  // build it with the real replay helper, assert the exact delta.
   ps.weaponSpecs = { sword: { executioner: 99 } };
+  ps.t2Flat = _replay(ps);
+  const _expCritFlat = ps.t2Flat.sword.executioner;
   const boosted = room._computeAttackDamage(ps, 'melee', false);
   // Max-variance, max-channel roll must stay under the anti-cheat ceiling.
   ps.weaponSpecs = { sword: { edge: 99, executioner: 99 } };
+  ps.t2Flat = _replay(ps);
   Math.random = () => 0.999999;
   const maxRoll = room._computeAttackDamage(ps, 'melee', false);
   Math.random = origRandom;
   check('critDmg: helper reads executioner points', room._wpnCritDmgPts(ps, 'sword') === 99);
   check('critDmg: both rolls crit under a forced roll', plain.isCrit === true && boosted.isCrit === true);
-  // v2.3.1345 (accelerating flat): the crit-dmg channel adds a FLAT
-  // t2Accel(99, T2_UNITS.critDmg) on top of the power-only multiplier —
-  // assert the delta, not a ratio.  v2.3.1415: expected value now
-  // DERIVES from the unit table (was a 14,850 literal at unit 1.5)
-  // so balance tuning of the unit doesn't break the suite.
-  const _expCritFlat = _accel(99, _u.critDmg);
   const delta = boosted.dmg - plain.dmg;
-  check('critDmg: 99 executioner pts add t2Accel(99, unit) flat on the crit', Math.abs(delta - _expCritFlat) <= 1, { delta, expected: _expCritFlat });
+  check('critDmg: 99 executioner pts add exactly their banked flat on the crit', Math.abs(delta - _expCritFlat) <= 1, { delta, expected: _expCritFlat });
   check('critDmg: maxed edge+executioner crit clears the anti-cheat ceiling',
     maxRoll.dmg <= room._maxDmgForAttacker(ps, false),
     { roll: maxRoll.dmg, cap: room._maxDmgForAttacker(ps, false) });
@@ -589,27 +605,32 @@ for (const m of meadowMonsters) m._wanderPausedUntil = Date.now() + 600000;
   const origRandom = Math.random;
   Math.random = () => 0.5;   // fixed mid variance; 0.5 > 20% crit chance -> no crit
   const plain = room._computeAttackDamage(ps, 'melee', false);
+  // v2.3.1451 (bench-locked): the roll adds the BANKED flat, still
+  // post-tier post-variance — the tier-independence contract holds.
   ps.weaponSpecs = { sword: { edge: 99 } };
+  ps.t2Flat = _replay(ps);
+  const _edgeFlat = ps.t2Flat.sword.edge;
   const priced = room._computeAttackDamage(ps, 'melee', false);
   ps.weapon.tierMult = 1;
   const pricedT1 = room._computeAttackDamage(ps, 'melee', false);
-  ps.weaponSpecs = {};
+  ps.weaponSpecs = {}; ps.t2Flat = undefined;
   const plainT1 = room._computeAttackDamage(ps, 'melee', false);
   ps.weapon.tierMult = 3.24;
   Math.random = origRandom;
-  check('reprice: 99 edge pts add exactly t2Accel(99) = +9,900 flat (post-tier)',
-    Math.abs((priced.dmg - plain.dmg) - 9900) <= 1, priced.dmg - plain.dmg);
-  check('reprice: the flat bonus is tier-independent (+9,900 at tier 1 too)',
-    Math.abs((pricedT1.dmg - plainT1.dmg) - 9900) <= 1, pricedT1.dmg - plainT1.dmg);
+  check('reprice: 99 edge pts add exactly their banked flat (post-tier)',
+    Math.abs((priced.dmg - plain.dmg) - _edgeFlat) <= 1, { delta: priced.dmg - plain.dmg, _edgeFlat });
+  check('reprice: the banked flat is tier-independent (same delta at tier 1)',
+    Math.abs((pricedT1.dmg - plainT1.dmg) - _edgeFlat) <= 1, pricedT1.dmg - plainT1.dmg);
   // Ceiling guard: a maxed-channel roll must clear the weapon bound.
   ps.weaponSpecs = { sword: { edge: 100 } };
+  ps.t2Flat = _replay(ps);
   Math.random = () => 0.999999;
   const maxFlatRoll = room._computeAttackDamage(ps, 'melee', false);
   Math.random = origRandom;
   check('reprice: maxed flat-channel roll clears the anti-cheat weapon ceiling',
     maxFlatRoll.dmg <= room._maxDmgForAttacker(ps, false),
     { roll: maxFlatRoll.dmg, cap: room._maxDmgForAttacker(ps, false) });
-  ps.weaponSpecs = {};
+  ps.weaponSpecs = {}; ps.t2Flat = undefined;
 }
 
 // ── 7. Event buffer cap on the tick broadcast ──
@@ -679,13 +700,18 @@ for (const m of meadowMonsters) m._wanderPausedUntil = Date.now() + 600000;
 
 // ── v2.3.1314: Resilience + Last Stand (HP grid goes fully live) ──
 {
-  // v2.3.1345: Resilience soaks a FLAT t2Accel(p, 1) off hits ABOVE
-  // 20% of maxHp (10,100 at the cap -> floor 1); small hits untouched.
+  // v2.3.1451 (bench-locked): Resilience soaks its BANKED flat off
+  // hits ABOVE 20% of maxHp; small hits untouched.
   const ps = { hp: 200, maxHp: 200, agility: 0, z: 'meadow', hpSpec: { resilience: 100 } };
-  const big = room._applyDamage(ps, 100, false); // 100 > 40 -> soaked to floor 1
-  check('resilience: big hit soaked to the floor 1 at 100 pts', big.dmgTaken === 1 && ps.hp === 199, big);
+  ps.t2Flat = _replay(ps);
+  const _resFlat = ps.t2Flat.hp.resilience;
+  const _bigHit = Math.max(_resFlat, Math.ceil(0.20 * ps.maxHp) + 1); // above the 20% gate, fully soakable
+  const big = room._applyDamage(ps, _bigHit, false);
+  check('resilience: big hit soaked to the floor by the banked flat',
+    big.dmgTaken === Math.max(1, _bigHit - _resFlat) && ps.hp === 200 - big.dmgTaken, { big, _resFlat, _bigHit });
+  const _hpAfterBig = ps.hp;
   const small = room._applyDamage(ps, 30, false); // 30 <= 40 -> untouched
-  check('resilience: small hit untouched', small.dmgTaken === 30 && ps.hp === 169, small);
+  check('resilience: small hit untouched', small.dmgTaken === 30 && ps.hp === _hpAfterBig - 30, small);
 
   // Last Stand: a killing blow leaves exactly 1 HP, once per cooldown.
   const ps2 = { hp: 50, maxHp: 100, agility: 0, z: 'meadow', hpSpec: { laststand: 100 } };

@@ -152,6 +152,11 @@ export const persistenceMethods = {
         hpUnspent: ps.hpUnspent || 0,
         enduranceSpec: ps.enduranceSpec || {},
         enduranceUnspent: ps.enduranceUnspent || 0,
+        // v2.3.1451: the bench-locked T2 accumulator — the banked flat
+        // value of every priced point (grids.js _t2BenchReprice; the
+        // v9 migration replays it for pre-slice blobs).  Server-owned:
+        // the client never supplies it, only receives it.
+        t2Flat: ps.t2Flat || null,
         // v2.3.1152: schema stamp -- the ONE field allowed beyond the
         // gameplay list (ARCHITECTURE-HANDOFF rule 1 exception).  The
         // CONSTANT, never ps._v: a blob written by current code is
@@ -277,6 +282,12 @@ export const persistenceMethods = {
           hpUnspent: ps.hpUnspent || 0,
           enduranceSpec: ps.enduranceSpec || {},
           enduranceUnspent: ps.enduranceUnspent || 0,
+          // v2.3.1451: bench-locked accumulator echo — THE drift
+          // corrector for the client's spend-time prediction (the
+          // client adopts it wholesale, presence-gated, in wsClient).
+          // Old clients ignore the unknown field (deploy-order safe);
+          // protocol-v2 delta handles it like every other field.
+          t2Flat: ps.t2Flat || null,
       };
       const session = this.sessions.get(ws);
       let payload = full;

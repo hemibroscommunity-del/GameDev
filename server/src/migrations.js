@@ -40,7 +40,9 @@
  *   4. add a case to test/migrations.test.mjs with a real legacy blob.
  */
 
-export const RPG_SCHEMA_VERSION = 8;
+import { t2ReplayFlat } from './data.js';
+
+export const RPG_SCHEMA_VERSION = 9;
 
 /* Pure version of the v2.3.769 heal (was GameRoom._healLifeSkills):
  * records bootstrapped from pre-fix clients carry lifeSkills with
@@ -336,6 +338,34 @@ export const MIGRATIONS = [
       const next = Math.min(1000, 1 + computeBuildTotal(blob));
       if (blob.level !== next) { blob.level = next; return true; }
       return false;
+    },
+  },
+  {
+    v: 9,
+    name: 'bench-locked-t2',
+    // v2.3.1451: BENCH-LOCKED T2 PRICING (owner directive 2026-07-24 —
+    // "make the strength of that skill relative to current level
+    // monsters... with decaying power carried to the next level up").
+    // The 10 flat channels stop reading t2Accel(pts, unit) and read a
+    // server-owned per-channel accumulator (blob.t2Flat) instead; a
+    // point banks its value AT SPEND TIME, sized to the benchmark
+    // monster of the buyer's level (t2PointValue, data.js).  Existing
+    // characters never chose under that rule, so their spent points
+    // are REPLAYED at benchmark: t2ReplayFlat assumes each channel's
+    // points were bought uniformly interleaved across the character's
+    // whole purchase history (owner-approved migration choice —
+    // nobody loses points, no player action needed).  Absent-only
+    // fill (the v4 idempotency pattern): a blob that already carries
+    // t2Flat was priced live and must NEVER be re-replayed — the
+    // replay is an estimate, the live accumulator is the truth.
+    // The join bootstrap runs the same computation on fresh client
+    // payloads (the boundary heal — payloads never carry a trusted
+    // t2Flat; see the bootstrap branch in join/index.js).
+    run(blob) {
+      if (!blob || typeof blob !== 'object') return false;
+      if (blob.t2Flat && typeof blob.t2Flat === 'object') return false;
+      blob.t2Flat = t2ReplayFlat(blob);
+      return true;
     },
   },
 ];

@@ -2584,6 +2584,197 @@ export function t2CounterEvery(pts) {
   return r > 0 ? Math.max(2, Math.ceil(1 / r)) : 0; /* 0 = never */
 }
 
+/* ═══ v2.3.1451: BENCH-LOCKED T2 PRICING (owner directive 2026-07-24) ═══
+   "Make the strength of that skill relative to current level monsters
+   (and lower) with decaying power carried to the next level up...
+   each stat point needs to offer an immediate noticeable improvement
+   similar to an increase in base damage."
+
+   The 10 FLAT channels (the T2_UNITS set) become BENCH-LOCKED: a
+   point, at the moment it is spent, converts to a permanent flat
+   amount sized as a percentage of the BENCHMARK MONSTER's stats at
+   the buyer's level (a level-(combatLevel/10) sentinel).  The number
+   never shrinks (owner: locked-in, no explicit decay) — monsters
+   simply outgrow old points.  Flat PER POINT, not accelerating: the
+   benchmark itself grows ~5%/monster-level, so later points are
+   still bigger without the absurd absolute flats t2Accel produced.
+   Mechanical channels and the counters are untouched; t2Accel /
+   T2_UNITS stay as the legacy fallback until caps.t2bench flips the
+   live paths (deploy-order safety).
+   THE SERVER OWNS the accumulated values (ps.t2Flat, priced in
+   grids.js from post-clamp spec diffs — the client's copy here is
+   prediction only, corrected by every player_state echo).  MIRRORED
+   in server/src/data.js; mirror-audit pins the tables and probes the
+   functions at several benchmarks.
+   NOTE: monsterStat / monsterHpFlat / MONSTER_HP_CURVE are declared
+   further down this file (function declarations hoist; the const is
+   initialized long before any runtime call). */
+export function t2BenchLevel(playerLevel) {
+  /* Combat level 1-1000 -> benchmark monster level 1-100.  CEIL: the
+     yardstick monster grows a level exactly every 10 points placed. */
+  return Math.max(1, Math.min(100, Math.ceil((playerLevel || 1) / 10)));
+}
+export function t2BenchStats(B) {
+  /* Benchmark SENTINEL at level B — real spawn math (dmg curve
+     constants match _spawnZoneMonsters / createMonster: base 12,
+     ramps 1.045/1.025/1.018), so the benchmark can't drift from what
+     actually spawns. */
+  return {
+    hp: Math.ceil(monsterStat(MONSTER_HP_CURVE.base, B, MONSTER_HP_CURVE.ramp, MONSTER_HP_CURVE.plateau, MONSTER_HP_CURVE.endgame)) + monsterHpFlat(B),
+    dmg: Math.ceil(monsterStat(12, B, 1.045, 1.025, 1.018)),
+  };
+}
+/* The one tuning table.  ref 'hp' = fraction of benchmark sentinel HP
+   (offense = "bites out of the monster"); ref 'dmg' = fraction of its
+   damage (defense/heals/pools = "monster hits soaked/healed/
+   survived").  Tuned via tools/balance-sim.mjs --bench. */
+export var T2_BENCH = {
+  damage:     { ref: 'hp',  pct: 0.04 }, /* 1 pt = a 4% bite of today's monster, every swing */
+  critDmg:    { ref: 'hp',  pct: 0.16 }, /* 4x the damage point — v2.3.1415 crit-pair parity kept */
+  thorns:     { ref: 'hp',  pct: 0.05 },
+  ironskin:   { ref: 'dmg', pct: 0.05 }, /* 20 at-level pts ≈ one sentinel hit fully soaked */
+  resilience: { ref: 'dmg', pct: 0.08 },
+  secondwind: { ref: 'dmg', pct: 0.15 },
+  recovery:   { ref: 'dmg', pct: 0.05 },
+  lifeblood:  { ref: 'dmg', pct: 0.10 },
+  vigor:      { ref: 'dmg', pct: 0.25 }, /* 4 pts ≈ +1 enemy hit survived */
+  stamina:    { ref: 'dmg', pct: 0.10 },
+};
+/* The 30 channels in THE canonical order (the server's
+   _clampBuildTotal walk).  role = T2_BENCH entry for the 10
+   bench-priced channels; null = mechanical (occupies a level slot,
+   banks no flat).  Drives prediction AND the shared replay below —
+   one order everywhere or client/server replays diverge. */
+export var T2_BENCH_CANONICAL = [
+  { grid: 'sword', key: 'edge',        role: 'damage' },
+  { grid: 'sword', key: 'precision',   role: null },
+  { grid: 'sword', key: 'executioner', role: 'critDmg' },
+  { grid: 'sword', key: 'tempo',       role: null },
+  { grid: 'sword', key: 'cleave',      role: null },
+  { grid: 'bow',   key: 'drawPower',   role: 'damage' },
+  { grid: 'bow',   key: 'marksmanship', role: null },
+  { grid: 'bow',   key: 'headshot',    role: 'critDmg' },
+  { grid: 'bow',   key: 'piercing',    role: null },
+  { grid: 'bow',   key: 'longshot',    role: null },
+  { grid: 'staff', key: 'spellPower',  role: 'damage' },
+  { grid: 'staff', key: 'overload',    role: null },
+  { grid: 'staff', key: 'detonation',  role: null },
+  { grid: 'staff', key: 'attunement',  role: null },
+  { grid: 'staff', key: 'focus',       role: 'critDmg' },
+  { grid: 'defense', key: 'bulwark',    role: null },
+  { grid: 'defense', key: 'ironskin',   role: 'ironskin' },
+  { grid: 'defense', key: 'thorns',     role: 'thorns' },
+  { grid: 'defense', key: 'secondwind', role: 'secondwind' },
+  { grid: 'defense', key: 'poise',      role: null },
+  { grid: 'hp', key: 'vigor',      role: 'vigor' },
+  { grid: 'hp', key: 'recovery',   role: 'recovery' },
+  { grid: 'hp', key: 'lifeblood',  role: 'lifeblood' },
+  { grid: 'hp', key: 'resilience', role: 'resilience' },
+  { grid: 'hp', key: 'laststand',  role: null },
+  { grid: 'endurance', key: 'stamina',      role: 'stamina' },
+  { grid: 'endurance', key: 'conditioning', role: null },
+  { grid: 'endurance', key: 'swiftness',    role: null },
+  { grid: 'endurance', key: 'evasion',      role: null },
+  { grid: 'endurance', key: 'reflexes',     role: null },
+];
+export function emptyT2Flat() {
+  var out = {};
+  T2_BENCH_CANONICAL.forEach(function (ch) {
+    if (!ch.role) return;
+    if (!out[ch.grid]) out[ch.grid] = {};
+    out[ch.grid][ch.key] = 0;
+  });
+  return out;
+}
+/* T2_BENCH role for a grid+key pair (null = mechanical channel).  The
+   channel tables' own `role` strings (maxhp/dmgreduce/…) predate the
+   bench table and stay untouched — this is the pricing-side mapping. */
+export function t2BenchRoleOf(grid, key) {
+  for (var i = 0; i < T2_BENCH_CANONICAL.length; i++) {
+    if (T2_BENCH_CANONICAL[i].grid === grid && T2_BENCH_CANONICAL[i].key === key) return T2_BENCH_CANONICAL[i].role;
+  }
+  return null;
+}
+/* What ONE point buys at benchmark B.  CEIL (server twin has the full
+   why): a point is always AT LEAST its promised fraction, making the
+   4-vigor-points-per-enemy-hit / 20-ironskin-points-per-full-soak
+   anchors hold by algebra at every benchmark (sim gates BN-03/04). */
+export function t2PointValue(role, B) {
+  var r = T2_BENCH[role];
+  if (!r) return 0;
+  var s = t2BenchStats(B);
+  return Math.max(1, Math.ceil(r.pct * (r.ref === 'hp' ? s.hp : s.dmg)));
+}
+/* Level at spend time = level BEFORE the point lands = 1 + points
+   already placed — derived from the build total on both sides. */
+export function t2SpendLevel(buildTotalBefore) {
+  return Math.min(1000, 1 + Math.max(0, buildTotalBefore || 0));
+}
+/* Safe accumulator read for all the consumption sites below. */
+export function t2FlatOf(rpg, grid, key) {
+  return (rpg && rpg.t2Flat && rpg.t2Flat[grid] && typeof rpg.t2Flat[grid][key] === 'number')
+    ? rpg.t2Flat[grid][key] : 0;
+}
+/* Deploy-order gate (the setT2SimpleEnabled pattern): wsClient flips
+   this from state_sync.caps.t2bench.  Against an old worker the flag
+   is absent, the gate stays off, and every helper below keeps the
+   legacy t2Accel math — matching that worker's authoritative rolls
+   and echoes.  Defaults ON (offline/tests). */
+var _t2BenchEnabled = true;
+export function setT2BenchEnabled(on) { _t2BenchEnabled = !!on; }
+export function isT2BenchEnabled() { return _t2BenchEnabled; }
+/* PRESENCE-gated live check: the accumulator is only used when the
+   worker claims the capability AND the echo has actually delivered
+   rpg.t2Flat — the frames between join and the first player_state,
+   and any fixture without an accumulator, fall back to legacy math
+   instead of reading everything as zero. */
+export function t2BenchLive(rpg) {
+  return _t2BenchEnabled && !!(rpg && rpg.t2Flat && typeof rpg.t2Flat === 'object');
+}
+/* Banked weapon-channel flat by weapon TYPE (greatsword shares sword). */
+var _T2_WPN_FLAT_KEYS = {
+  damage:  { sword: 'edge',        bow: 'drawPower', staff: 'spellPower' },
+  critDmg: { sword: 'executioner', bow: 'headshot',  staff: 'focus' },
+};
+export function t2WpnBankedFlat(rpg, weaponType, role) {
+  var cat = WEAPON_CATEGORY[weaponType] || 'sword';
+  var keys = _T2_WPN_FLAT_KEYS[role];
+  return keys ? t2FlatOf(rpg, cat, keys[cat]) : 0;
+}
+/* Replay-at-benchmark (twin of server t2ReplayFlat — the v9 migration
+   / boundary heal / fixture builder).  Purchase history was never
+   stored, so each channel's p points are assumed uniformly
+   interleaved across the N total purchases: point j prices at global
+   position ceil((2j-1)·N/(2p)) (midpoint stratification — exact when
+   one channel holds every point; order-independent; idempotent). */
+export function t2ReplayFlat(blob) {
+  var out = emptyT2Flat();
+  if (!blob || typeof blob !== 'object') return out;
+  var pts = function (ch) {
+    var spec = (ch.grid === 'sword' || ch.grid === 'bow' || ch.grid === 'staff')
+      ? (blob.weaponSpecs && blob.weaponSpecs[ch.grid])
+      : ch.grid === 'defense' ? blob.defenseSpec
+      : ch.grid === 'hp' ? blob.hpSpec
+      : blob.enduranceSpec;
+    var v = (spec && typeof spec[ch.key] === 'number') ? spec[ch.key] : 0;
+    return Math.max(0, Math.min(100, Math.floor(v)));
+  };
+  var N = 0;
+  T2_BENCH_CANONICAL.forEach(function (ch) { N += pts(ch); });
+  if (N <= 0) return out;
+  T2_BENCH_CANONICAL.forEach(function (ch) {
+    if (!ch.role) return;
+    var p = pts(ch);
+    var v = 0;
+    for (var j = 1; j <= p; j++) {
+      var pos = Math.ceil(((2 * j - 1) * N) / (2 * p));
+      v += t2PointValue(ch.role, t2BenchLevel(t2SpendLevel(pos - 1)));
+    }
+    out[ch.grid][ch.key] = v;
+  });
+  return out;
+}
+
 /* Per-category channel definitions.  `role` drives the combat wiring
    (damage/crit are LIVE this slice; the rest are `active:false` and shown
    as "Soon" in the UI so points are never wasted on inert channels).
@@ -2603,7 +2794,17 @@ export function t2CounterEvery(pts) {
    more than the last, t2Accel above).  Mechanically-capped channels
    (tempo/cleave/longshot/piercing) stay linear but read in flat units.
    Crit channels are COUNTERS: "LUCKY hit every N hits". */
-var _dmgDerive = function (v) {
+/* v2.3.1451 (bench-locked): every flat-role derive accepts an optional
+   ctx = { flat, next, bench } — the BANKED total, the next point's
+   value, and the benchmark monster level, built by T2Panel from the
+   live rpg when caps.t2bench is on.  Without ctx (old worker, stale
+   panel) the legacy t2Accel string renders unchanged. */
+var _dmgDerive = function (v, ctx) {
+  if (ctx) {
+    return v > 0
+      ? 'hits +' + ctx.flat + ' harder · next +' + ctx.next + ' (Lv-' + ctx.bench + ' monsters)'
+      : 'first point: +' + ctx.next + ' damage — a bite of a Lv-' + ctx.bench + ' monster';
+  }
   return v > 0
     ? 'hits +' + t2Accel(v, T2_UNITS.damage) + ' harder · next +' + t2AccelNext(v, T2_UNITS.damage)
     : 'first point: +' + t2AccelNext(0, T2_UNITS.damage) + ' damage';
@@ -2612,7 +2813,12 @@ var _critDerive = function (v) {
   var n = t2CounterEvery(v);
   return n > 0 ? 'LUCKY hit every ' + n + ' hits' + (v >= 100 ? ' (MAX)' : '') : 'first point starts the counter';
 };
-var _critDmgDerive = function (v) {
+var _critDmgDerive = function (v, ctx) {
+  if (ctx) {
+    return v > 0
+      ? 'LUCKY hits hit +' + ctx.flat + ' harder · next +' + ctx.next + ' (Lv-' + ctx.bench + ' monsters)'
+      : 'first point: +' + ctx.next + ' on luckies — sized to Lv-' + ctx.bench + ' monsters';
+  }
   return v > 0
     ? 'LUCKY hits hit +' + t2Accel(v, T2_UNITS.critDmg) + ' harder · next +' + t2AccelNext(v, T2_UNITS.critDmg)
     : 'first point: +' + t2AccelNext(0, T2_UNITS.critDmg) + ' on luckies';
@@ -2940,13 +3146,19 @@ export const DEFENSE_CHANNELS = [
     derive: (v) => v >= 100 ? 'blocks cost only 1 energy (MAX)' : 'blocks cost −' + Math.round(Math.min(100, v) * 0.14) + ' energy' },
   { key: 'ironskin',  label: 'Iron Skin',   role: 'dmgreduce', active: true,  perPt: 0.5,
     blurb: 'Every hit on you does flat less — each point bigger than the last.',
-    derive: (v) => v > 0 ? 'every hit does −' + t2Accel(v, T2_UNITS.ironskin) + ' to you · next −' + t2AccelNext(v, T2_UNITS.ironskin) : 'first point: −' + t2AccelNext(0, T2_UNITS.ironskin) + ' per hit' },
+    derive: (v, ctx) => ctx
+      ? (v > 0 ? 'every hit does −' + ctx.flat + ' to you · next −' + ctx.next + ' (Lv-' + ctx.bench + ' monsters)' : 'first point: −' + ctx.next + ' per hit from Lv-' + ctx.bench + ' monsters')
+      : (v > 0 ? 'every hit does −' + t2Accel(v, T2_UNITS.ironskin) + ' to you · next −' + t2AccelNext(v, T2_UNITS.ironskin) : 'first point: −' + t2AccelNext(0, T2_UNITS.ironskin) + ' per hit') },
   { key: 'thorns',    label: 'Thorns',      role: 'reflect',   active: true, perPt: 1,
     blurb: 'Blocked monsters hurt THEMSELVES — each point bigger than the last.',
-    derive: (v) => v > 0 ? 'blocked monsters take ' + t2Accel(v, T2_UNITS.thorns) + ' back · next +' + t2AccelNext(v, T2_UNITS.thorns) : 'first point: ' + t2AccelNext(0, T2_UNITS.thorns) + ' payback' },
+    derive: (v, ctx) => ctx
+      ? (v > 0 ? 'blocked monsters take ' + ctx.flat + ' back · next +' + ctx.next + ' (Lv-' + ctx.bench + ' monsters)' : 'first point: ' + ctx.next + ' payback — sized to Lv-' + ctx.bench + ' monsters')
+      : (v > 0 ? 'blocked monsters take ' + t2Accel(v, T2_UNITS.thorns) + ' back · next +' + t2AccelNext(v, T2_UNITS.thorns) : 'first point: ' + t2AccelNext(0, T2_UNITS.thorns) + ' payback') },
   { key: 'secondwind', label: 'Second Wind', role: 'regen',    active: true, perPt: 1,
     blurb: 'Survive a hit, heal a flat chunk right back (every 10s).',
-    derive: (v) => v > 0 ? 'survive a hit → heal +' + t2Accel(v, T2_UNITS.secondwind) + ' HP · next +' + t2AccelNext(v, T2_UNITS.secondwind) : 'first point: +' + t2AccelNext(0, T2_UNITS.secondwind) + ' HP' },
+    derive: (v, ctx) => ctx
+      ? (v > 0 ? 'survive a hit → heal +' + ctx.flat + ' HP · next +' + ctx.next + ' (Lv-' + ctx.bench + ' monsters)' : 'first point: +' + ctx.next + ' HP — sized to Lv-' + ctx.bench + ' monsters')
+      : (v > 0 ? 'survive a hit → heal +' + t2Accel(v, T2_UNITS.secondwind) + ' HP · next +' + t2AccelNext(v, T2_UNITS.secondwind) : 'first point: +' + t2AccelNext(0, T2_UNITS.secondwind) + ' HP') },
   { key: 'poise',     label: 'Poise',       role: 'poise',     active: true, perPt: 1,
     blurb: 'Shrug off stuns — never stunned at max.',
     derive: (v) => v >= 100 ? 'NEVER stunned (MAX)' : 'stuns are ' + Math.min(300, v * 3) + 'ms shorter' },
@@ -2972,6 +3184,9 @@ export function getBlockStaminaMult(rpg) {
 /* v2.3.1345: Iron Skin is a FLAT accelerating soak now — every hit
    does this much less (floor 1 at the apply sites).  −5,050 at 100. */
 export function getIronSkinFlat(rpg) {
+  /* v2.3.1451: bench-locked banked value when the worker + echo
+     support it; legacy accelerating flat otherwise. */
+  if (t2BenchLive(rpg)) return t2FlatOf(rpg, 'defense', 'ironskin');
   return t2Accel(getDefenseSpec(rpg, 'ironskin'), T2_UNITS.ironskin);
 }
 /* Legacy fraction shape kept at 0 for stale readers. */
@@ -3023,7 +3238,9 @@ export function applyResilience(rpg, dmg) {
   var pts = (rpg && rpg.hpSpec && rpg.hpSpec.resilience) || 0;
   var maxHp = (rpg && rpg.maxHp) || 100;
   if (!(pts > 0) || !(dmg > 0.20 * maxHp)) return dmg;
-  return Math.max(1, Math.round(dmg - t2Accel(pts, T2_UNITS.resilience)));
+  /* v2.3.1451: bench-locked banked soak when live; legacy otherwise. */
+  var soak = t2BenchLive(rpg) ? t2FlatOf(rpg, 'hp', 'resilience') : t2Accel(pts, T2_UNITS.resilience);
+  return Math.max(1, Math.round(dmg - soak));
 }
 
 export function applyIronSkin(rpg, dmg) {
@@ -3096,16 +3313,24 @@ export const GRID_CHANNEL_CAP = T2_CHANNEL_CAP;
 export const HP_CHANNELS = [
   { key: 'vigor',      label: 'Vigor',      role: 'maxhp',    active: true,  perPt: 2,
     blurb: 'More health — each point gives more HP than the last.',
-    derive: (v) => v > 0 ? '+' + t2Accel(v, T2_UNITS.vigor) + ' HP · next +' + t2AccelNext(v, T2_UNITS.vigor) : 'first point: +' + t2AccelNext(0, T2_UNITS.vigor) + ' HP' },
+    derive: (v, ctx) => ctx
+      ? (v > 0 ? '+' + ctx.flat + ' HP · next +' + ctx.next + ' (Lv-' + ctx.bench + ' monsters)' : 'first point: +' + ctx.next + ' HP — sized to Lv-' + ctx.bench + ' monsters')
+      : (v > 0 ? '+' + t2Accel(v, T2_UNITS.vigor) + ' HP · next +' + t2AccelNext(v, T2_UNITS.vigor) : 'first point: +' + t2AccelNext(0, T2_UNITS.vigor) + ' HP') },
   { key: 'recovery',   label: 'Recovery',   role: 'healboost', active: true, perPt: 1,
     blurb: 'Every heal gives a flat bonus on top — each point bigger than the last.',
-    derive: (v) => v > 0 ? 'every heal gives +' + t2Accel(v, T2_UNITS.recovery) + ' extra HP · next +' + t2AccelNext(v, T2_UNITS.recovery) : 'first point: +' + t2AccelNext(0, T2_UNITS.recovery) + ' per heal' },
+    derive: (v, ctx) => ctx
+      ? (v > 0 ? 'every heal gives +' + ctx.flat + ' extra HP · next +' + ctx.next + ' (Lv-' + ctx.bench + ' monsters)' : 'first point: +' + ctx.next + ' per heal — sized to Lv-' + ctx.bench + ' monsters')
+      : (v > 0 ? 'every heal gives +' + t2Accel(v, T2_UNITS.recovery) + ' extra HP · next +' + t2AccelNext(v, T2_UNITS.recovery) : 'first point: +' + t2AccelNext(0, T2_UNITS.recovery) + ' per heal') },
   { key: 'lifeblood',  label: 'Lifeblood',  role: 'killheal', active: true,  perPt: 1.5,
     blurb: 'Beat a monster, heal a flat chunk — each point bigger than the last.',
-    derive: (v) => v > 0 ? 'beat a monster → heal +' + t2Accel(v, T2_UNITS.lifeblood) + ' HP · next +' + t2AccelNext(v, T2_UNITS.lifeblood) : 'first point: +' + t2AccelNext(0, T2_UNITS.lifeblood) + ' HP' },
+    derive: (v, ctx) => ctx
+      ? (v > 0 ? 'beat a monster → heal +' + ctx.flat + ' HP · next +' + ctx.next + ' (Lv-' + ctx.bench + ' monsters)' : 'first point: +' + ctx.next + ' HP — sized to Lv-' + ctx.bench + ' monsters')
+      : (v > 0 ? 'beat a monster → heal +' + t2Accel(v, T2_UNITS.lifeblood) + ' HP · next +' + t2AccelNext(v, T2_UNITS.lifeblood) : 'first point: +' + t2AccelNext(0, T2_UNITS.lifeblood) + ' HP') },
   { key: 'resilience', label: 'Resilience', role: 'resilience', active: true, perPt: 1,
     blurb: 'REALLY big hits do flat less — each point bigger than the last.',
-    derive: (v) => v > 0 ? 'big hits do −' + t2Accel(v, T2_UNITS.resilience) + ' to you · next −' + t2AccelNext(v, T2_UNITS.resilience) : 'first point: −' + t2AccelNext(0, T2_UNITS.resilience) + ' off big hits' },
+    derive: (v, ctx) => ctx
+      ? (v > 0 ? 'big hits do −' + ctx.flat + ' to you · next −' + ctx.next + ' (Lv-' + ctx.bench + ' monsters)' : 'first point: −' + ctx.next + ' off big hits from Lv-' + ctx.bench + ' monsters')
+      : (v > 0 ? 'big hits do −' + t2Accel(v, T2_UNITS.resilience) + ' to you · next −' + t2AccelNext(v, T2_UNITS.resilience) : 'first point: −' + t2AccelNext(0, T2_UNITS.resilience) + ' off big hits') },
   /* v2.3.1313: owner-named 5th Vitality category; server-authoritative
      (_applyDamage); T2Panel gates spending on caps.laststand. */
   { key: 'laststand', label: 'Last Stand', role: 'laststand', active: true, perPt: 1,
@@ -3121,7 +3346,9 @@ export const HP_CHANNELS = [
 export const ENDURANCE_CHANNELS = [
   { key: 'stamina',      label: 'Deep Lungs',   role: 'maxstam',   active: true,  perPt: 1,
     blurb: 'More energy — each point gives more than the last.',
-    derive: (v) => v > 0 ? '+' + t2Accel(v, T2_UNITS.stamina) + ' energy · next +' + t2AccelNext(v, T2_UNITS.stamina) : 'first point: +' + t2AccelNext(0, T2_UNITS.stamina) + ' energy' },
+    derive: (v, ctx) => ctx
+      ? (v > 0 ? '+' + ctx.flat + ' energy · next +' + ctx.next + ' (Lv-' + ctx.bench + ' monsters)' : 'first point: +' + ctx.next + ' energy — sized to Lv-' + ctx.bench + ' monsters')
+      : (v > 0 ? '+' + t2Accel(v, T2_UNITS.stamina) + ' energy · next +' + t2AccelNext(v, T2_UNITS.stamina) : 'first point: +' + t2AccelNext(0, T2_UNITS.stamina) + ' energy') },
   { key: 'conditioning', label: 'Conditioning', role: 'stamregen', active: true,  perPt: 0.5,
     blurb: 'Energy refills faster — a flat chunk more every beat.',
     derive: (v) => 'energy refills +' + Math.floor(Math.min(100, v) / 2) + ' extra per beat' + (v >= 100 ? ' (MAX)' : '') },
@@ -3255,17 +3482,21 @@ export function isT2SimpleEnabled() { return _t2SimpleEnabled; }
    can run free; legacy multiplier shapes kept as identity for any
    stale reader. */
 export function getVigorFlat(rpg) {
-  /* Accelerating: +20,200 HP at the cap. */
+  /* v2.3.1451: bench-locked banked HP when live; legacy accelerating
+     flat against an old worker (whose echo would stomp anything else). */
+  if (t2BenchLive(rpg)) return t2FlatOf(rpg, 'hp', 'vigor');
   return t2Accel((rpg && rpg.hpSpec && rpg.hpSpec.vigor) || 0, T2_UNITS.vigor);
 }
 export function getVigorMult() { return 1; }
-/* Recovery: FLAT bonus added to every discrete heal (+10,100 at cap). */
+/* Recovery: FLAT bonus added to every discrete heal. */
 export function getRecoveryFlat(rpg) {
+  if (t2BenchLive(rpg)) return t2FlatOf(rpg, 'hp', 'recovery'); /* v2.3.1451 */
   return t2Accel((rpg && rpg.hpSpec && rpg.hpSpec.recovery) || 0, T2_UNITS.recovery);
 }
 export function getRecoveryMult() { return 1; }
-/* Deep Lungs: FLAT max-energy add (+10,100 at cap). */
+/* Deep Lungs: FLAT max-energy add. */
 export function getStaminaFlat(rpg) {
+  if (t2BenchLive(rpg)) return t2FlatOf(rpg, 'endurance', 'stamina'); /* v2.3.1451 */
   return t2Accel((rpg && rpg.enduranceSpec && rpg.enduranceSpec.stamina) || 0, T2_UNITS.stamina);
 }
 export function getStaminaGridMult() { return 1; }
@@ -4178,8 +4409,11 @@ export function calcWeaponDmg(weaponType, statValOrRpg, tierMult, wpn) {
      same number the panel promises, on every roll.  Mirrors server
      _computeAttackDamage / DAMAGE_CHANNEL_FLAT. */
   var base = (weaponEffBase(w.base, wpn) + statVal * 0.1667) * tierMult; // baseline-10: 0.8 ÷ 4.8
-  /* v2.3.1345: accelerating flat — cumulative UNIT·p·(p+1). */
-  var flat = t2Accel(dmgChannel, T2_UNITS.damage);
+  /* v2.3.1451: bench-locked banked flat when live (rpg object passed
+     + worker capability); legacy accelerating flat otherwise. */
+  var flat = (statValOrRpg && typeof statValOrRpg === 'object' && t2BenchLive(statValOrRpg))
+    ? t2WpnBankedFlat(statValOrRpg, weaponType, 'damage')
+    : t2Accel(dmgChannel, T2_UNITS.damage);
   /* Per-type variance: staff widest, melee mid, bow tightest. */
   if (weaponType === 'staff')  return base * (0.5  + Math.random() * 1.0) + flat;
   if (weaponType === 'bow')    return base * (0.6  + Math.random() * 0.2) + flat;
@@ -4239,6 +4473,8 @@ export function calcCritMult(power, critDmgPts) {
    to a lucky hit AFTER the power multiplier.  +40,400 at the cap
    (v2.3.1415 critDmg unit buff). */
 export function weaponCritFlatFor(rpg, weaponType) {
+  /* v2.3.1451: banked bench-locked flat when live; legacy otherwise. */
+  if (t2BenchLive(rpg)) return t2WpnBankedFlat(rpg, weaponType, 'critDmg');
   return t2Accel(weaponCritDmgStatFor(rpg, weaponType), T2_UNITS.critDmg);
 }
 export function getWeaponCritFlat(rpg) {
@@ -4296,7 +4532,10 @@ export function calcDisplayDmgRange(rpg, wpn) {
      drawPower / spellPower) — v2.3.1343: flat +DAMAGE_CHANNEL_FLAT/pt
      added after tier and variance (mirrors calcWeaponDmg). */
   var dmgPts = weaponDamageBonusFor(rpg, wpn.type);
-  var flat = t2Accel(dmgPts, T2_UNITS.damage); /* v2.3.1345: accelerating */
+  /* v2.3.1451: banked bench-locked flat when live; legacy otherwise. */
+  var flat = t2BenchLive(rpg)
+    ? t2WpnBankedFlat(rpg, wpn.type, 'damage')
+    : t2Accel(dmgPts, T2_UNITS.damage);
   var base = (weaponEffBase(w.base, wpn) + statVal * 0.1667) * (wpn.tierMult || 1);
   /* v2.3.1207: Tempo folds into the period (see header); the staff's
      +300ms cast penalty is added AFTER the mult, unscaled, matching

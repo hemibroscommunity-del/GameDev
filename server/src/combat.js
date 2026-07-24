@@ -38,7 +38,7 @@
 import {
   ELEMENT_STATUS, applyElementStatus, resolveElementCollision,
 } from './elemental.js';
-import { AMULET_TIER_POWER, T2_UNITS, t2Accel, t2CounterRate } from './data.js';
+import { AMULET_TIER_POWER, t2CounterRate } from './data.js'; // v2.3.1451: t2Accel/T2_UNITS reads replaced by the ps.t2Flat accumulator
 import { LIVEOPS } from './liveops.js';
 
 export const combatMethods = {
@@ -106,7 +106,7 @@ export const combatMethods = {
     // channel existed since v2.3.1021 but was never consumed anywhere.
     const _ironskin = (ps.defenseSpec && ps.defenseSpec.ironskin) || 0;
     if (_ironskin > 0) {
-      dmgTaken = Math.max(1, Math.round(dmgTaken - t2Accel(_ironskin, T2_UNITS.ironskin))); // v2.3.1345: flat accelerating soak, floor 1
+      dmgTaken = Math.max(1, Math.round(dmgTaken - this._t2Flat(ps, 'defense', 'ironskin'))); // v2.3.1451: bench-locked banked soak (was t2Accel), floor 1
     }
     if (typeof ps.maxHp !== 'number') ps.maxHp = 100;
     if (typeof ps.hp !== 'number') ps.hp = ps.maxHp;
@@ -116,7 +116,7 @@ export const combatMethods = {
     // distinct.  ps.hpSpec is server-clamped via _sanitizeGridSpec.
     const _resil = (ps.hpSpec && ps.hpSpec.resilience) || 0;
     if (_resil > 0 && dmgTaken > 0.20 * ps.maxHp) {
-      dmgTaken = Math.max(1, Math.round(dmgTaken - t2Accel(_resil, T2_UNITS.resilience))); // v2.3.1345: flat accelerating soak on big hits
+      dmgTaken = Math.max(1, Math.round(dmgTaken - this._t2Flat(ps, 'hp', 'resilience'))); // v2.3.1451: bench-locked banked soak on big hits (was t2Accel)
     }
     // v2.3.1314: LAST STAND (HP grid, owner-named 5th category) — a
     // killing blow leaves the player at exactly 1 HP instead, once per
@@ -151,9 +151,9 @@ export const combatMethods = {
     if (ps.hp > 0 && _sw > 0) {
       const _nowSw = Date.now();
       if (!ps._secondWindReadyAt || _nowSw >= ps._secondWindReadyAt) {
-        // v2.3.1345: FLAT accelerating heal (+25,250 at the cap) plus
-        // Recovery's flat per-heal bonus; Math.min(maxHp) bounds it.
-        secondWind = t2Accel(_sw, T2_UNITS.secondwind) + this._recoveryFlat(ps);
+        // v2.3.1451: bench-locked banked heal (was t2Accel) plus
+        // Recovery's banked per-heal bonus; Math.min(maxHp) bounds it.
+        secondWind = this._t2Flat(ps, 'defense', 'secondwind') + this._recoveryFlat(ps);
         if (secondWind > 0) {
           ps.hp = Math.min(ps.maxHp, ps.hp + secondWind);
           ps._secondWindReadyAt = _nowSw + 10000;
@@ -227,18 +227,22 @@ export const combatMethods = {
     // still scales normal swings.  Coefficient baseline-10 rescaled
     // (0.8 ÷ 4.8 = 0.1667) so the cap tracks the new damage scale.
     const statBonus = isSpecial ? ((ps.mind || 0) * 0.1667) : ((ps.power || 0) * 0.1667);
-    // v2.3.1343 (kid-simple reprice): the damage channel is FLAT
-    // +DAMAGE_CHANNEL_FLAT/pt post-variance.  Ceiling assumes a MAXED
-    // channel (+100 flat) instead of reading live points -- the
-    // v2.3.1133 crit-ceiling pattern.  Specials stay channel-free,
-    // matching _computeAttackDamage.  FORGETTING this term rejects
-    // every legit maxed-build hit (anticheat.test pins it).
-    const channelFlat = isSpecial ? 0 : t2Accel(100, T2_UNITS.damage); // v2.3.1345: 10,100 at the cap
+    // v2.3.1451 (bench-locked T2): the ceiling reads the attacker's
+    // ACTUAL banked damage flat per candidate weapon — the exact
+    // number _computeAttackDamage adds, so the cap is lockstep BY
+    // CONSTRUCTION (tighter than the old "assume maxed t2Accel"
+    // v2.3.1133 pattern, and safe to tighten because the accumulator
+    // is server-owned: the client never supplies it, so a cheater
+    // can't shrink or inflate their own cap).  Specials stay
+    // channel-free, matching _computeAttackDamage.  FORGETTING this
+    // term rejects every legit invested-build hit (anticheat.test
+    // pins it).
     for (const w of candidates) {
       // v2.3.1131: §4.4 effective base -- (raw + hardness×1.0417) ×
       // quality, BEFORE stat/channel/tierMult.  Identity for legacy
       // weapons (H0/Normal); keeps godly/hardened hits from being
       // rejected as cheats.
+      const channelFlat = isSpecial ? 0 : this._wpnDmgFlat(ps, w.type);
       const base = (this._weaponEffBase(w.type, w) + statBonus) * (w.tierMult || 1) + channelFlat;
       if (base > max) max = base;
     }
@@ -252,7 +256,14 @@ export const combatMethods = {
     // ceiling assumes both MAXED (the v2.3.1133 pattern) — forgetting
     // either term rejects legit maxed-build hits.
     const critMult = 1.5 + (ps.power || 0) * 0.001;
-    const critFlatCeil = t2Accel(100, T2_UNITS.critDmg); // 40,400 (v2.3.1415 unit buff — ceil derives from the unit)
+    // v2.3.1451: the attacker's ACTUAL banked crit-dmg flat, max
+    // across the three categories (the candidate loop in
+    // _maxWeaponDmg doesn't know which weapon wins, so cover the
+    // largest).  Server-owned accumulator — see _maxWeaponDmg note.
+    const critFlatCeil = Math.max(
+      this._t2Flat(ps, 'sword', 'executioner'),
+      this._t2Flat(ps, 'bow', 'headshot'),
+      this._t2Flat(ps, 'staff', 'focus'));
     const comboBoost = 5; // covers combo + status amplifier + amulet elemDmg + lunge mult
     // v2.3.1397: per-weapon special mult (client specialAtkMultFor) —
     // melee/bow 3.0, staff 2.0.  The cap covers the LARGEST so no legit
@@ -304,7 +315,11 @@ export const combatMethods = {
     // again, added AFTER tier AND variance, before the crit/buff
     // multipliers — "+N damage on every swing", the same number the
     // panel promises, on every roll.  Mirrors client calcWeaponDmg.
-    const dmgPts = isSpecial ? 0 : this._wpnDmgChannel(ps, type);
+    // v2.3.1451 (bench-locked T2): the damage channel's value is the
+    // BANKED accumulator for the weapon's category (priced at each
+    // point's spend time against that day's benchmark monster), no
+    // longer a formula over point counts.  Specials stay channel-free.
+    const dmgFlat = isSpecial ? 0 : this._wpnDmgFlat(ps, type);
     // v2.3.1131: _weaponBase -> _weaponEffBase (quality × hardness
     // layers, BALANCE-PLAN §4.4 order: pre-stat, pre-tier).  Reduces
     // exactly to the old formula at Hardness 0 / Normal quality --
@@ -315,7 +330,7 @@ export const combatMethods = {
             : type === 'bow'   ? (0.6  + Math.random() * 0.2)
             :                    (0.75 + Math.random() * 0.5);
     base *= v;
-    base += t2Accel(dmgPts, T2_UNITS.damage); // v2.3.1345: accelerating flat
+    base += dmgFlat; // v2.3.1451: bench-locked banked flat (post-tier post-variance slot unchanged)
     // v2.3.1397 (owner): per-weapon special multiplier — melee (sword/
     // greatsword) and bow specials hit 3x, each staff orb 2x.  Mirrors
     // client specialAtkMultFor (src/data/gameSystems.js).
@@ -337,9 +352,9 @@ export const combatMethods = {
       ps._luckyAcc = (ps._luckyAcc || 0) + _critRate;
       if (ps._luckyAcc >= 1) { ps._luckyAcc -= 1; isCrit = true; }
     }
-    // v2.3.1345: the crit-DMG channel is a FLAT accelerating bonus on
-    // lucky hits (after the power multiplier) — +40,400 at the cap (v2.3.1415).
-    if (isCrit) base = base * (1.5 + P * 0.001) + t2Accel(this._wpnCritDmgPts(ps, type), T2_UNITS.critDmg);
+    // v2.3.1451: the crit-DMG channel adds its BANKED bench-locked
+    // flat on lucky hits (after the power multiplier) — was t2Accel.
+    if (isCrit) base = base * (1.5 + P * 0.001) + this._wpnCritDmgFlat(ps, type);
     // v2.3.1139 (item I): the two multipliers the v2.3.912 scope note
     // deliberately omitted, now server-side (the client applies both
     // locally and its numbers finally match the wire truth):

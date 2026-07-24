@@ -31,6 +31,8 @@ import {
   getRecoveryFlat, getConditioningFlat, getStaminaFlat, getSwiftnessFlat,
   t2Accel, t2CounterRate, T2_UNITS,
   COMBAT_BUILD_CEILING, T2_CHANNEL_CAP,
+  /* v2.3.1451: bench-locked pricing (--bench mode) */
+  T2_BENCH, t2BenchStats, t2BenchLevel, t2PointValue, t2SpendLevel, t2ReplayFlat,
 } from '../src/data/gameSystems.js';
 
 /* ── args ── */
@@ -427,6 +429,89 @@ check('INV-14', `lunge mult ${LUNGE_DAMAGE_MULT} < 1.0 (per-hit below auto)`, LU
     const traps = PROBES.filter(([, f]) => !(f(100) > f(99))).map(([name]) => name);
     check('UN-04', `trap-free: all ${PROBES.length} active channel families strictly gain through point 100`,
       traps.length === 0, `traps: ${traps.join(', ')}`);
+  }
+}
+
+/* ── v2.3.1451: BENCH-LOCKED PRICING GATES (--bench) ──
+   The 10 flat channels are priced as a % of the benchmark sentinel
+   (t2PointValue, gameSystems.js — mirror-audited against the server).
+   These gates are the acceptance criteria the T2_BENCH pcts are tuned
+   against; the table prints so the owner can eyeball point values. */
+if (argv.includes('--bench')) {
+  console.log('\n═══ bench-locked point values (per role, per benchmark monster level) ═══');
+  const BENCHES = [1, 2, 5, 10, 25, 50, 80, 100];
+  console.log(pad('role', 12) + pad('ref', 5) + pad('pct', 6) + BENCHES.map((B) => pad('B' + B, 7)).join(''));
+  for (const [role, r] of Object.entries(T2_BENCH)) {
+    console.log(pad(role, 12) + pad(r.ref, 5) + pad(r.pct, 6)
+      + BENCHES.map((B) => pad(t2PointValue(role, B), 7)).join(''));
+  }
+  console.log(pad('(sentinel)', 12) + pad('', 11)
+    + BENCHES.map((B) => { const s = t2BenchStats(B); return pad(s.hp + '/' + s.dmg, 7); }).join(''));
+
+  /* BN-01 noticeability: a damage point is always a real bite —
+     between 2.5% and 8% of the benchmark sentinel's HP after rounding
+     (the max(1,…) floor makes tiny benchmarks land above 4%). */
+  {
+    let bad = [];
+    for (let B = 1; B <= 100; B++) {
+      const hp = t2BenchStats(B).hp;
+      const v = t2PointValue('damage', B);
+      if (v < 0.025 * hp || v > 0.08 * hp) bad.push({ B, v, hp });
+    }
+    check('BN-01', 'damage point stays a 2.5–8% bite of the benchmark HP at every level', bad.length === 0, JSON.stringify(bad.slice(0, 3)));
+  }
+  /* BN-02 (UN-04 reworded for bench pricing): later points are NEVER
+     smaller — the benchmark curve is monotone, so each role's point
+     value is non-decreasing across all 100 benchmarks. */
+  {
+    const bad = [];
+    for (const role of Object.keys(T2_BENCH)) {
+      for (let B = 2; B <= 100; B++) {
+        if (t2PointValue(role, B) < t2PointValue(role, B - 1)) { bad.push(role + '@B' + B); break; }
+      }
+    }
+    check('BN-02', 'never-smaller: every role\'s point value is non-decreasing in the benchmark', bad.length === 0, bad.join(','));
+  }
+  /* BN-03 vigor anchor: 4 at-level points ≈ +1 sentinel hit survived. */
+  {
+    let bad = [];
+    for (let B = 1; B <= 100; B++) {
+      if (4 * t2PointValue('vigor', B) < t2BenchStats(B).dmg) bad.push(B);
+    }
+    check('BN-03', 'vigor: 4 at-level points buy at least one extra sentinel hit of maxHp', bad.length === 0, bad.slice(0, 5).join(','));
+  }
+  /* BN-04 ironskin anchor: 20 at-level points fully soak a sentinel hit. */
+  {
+    let bad = [];
+    for (let B = 1; B <= 100; B++) {
+      if (20 * t2PointValue('ironskin', B) < t2BenchStats(B).dmg) bad.push(B);
+    }
+    check('BN-04', 'ironskin: 20 at-level points soak a full sentinel hit', bad.length === 0, bad.slice(0, 5).join(','));
+  }
+  /* BN-05 crit-pair parity posture (v2.3.1415): critDmg per point stays
+     roughly 4× the damage point (LUCKY every 2nd hit at the maxed
+     counter → ~2× average, twice the pair cost → parity).  Rounding at
+     tiny benchmarks widens the band. */
+  {
+    let bad = [];
+    for (let B = 1; B <= 100; B++) {
+      const ratio = t2PointValue('critDmg', B) / t2PointValue('damage', B);
+      if (ratio < 3.0 || ratio > 5.0) bad.push({ B, ratio: num(ratio, 2) });
+    }
+    check('BN-05', 'critDmg point value stays 3–5× the damage point (crit-pair parity)', bad.length === 0, JSON.stringify(bad.slice(0, 3)));
+  }
+  /* BN-06 decay story: the same 100 edge points are worth more the
+     later they're bought — steady spend over a 100-point build < the
+     same channel inside a 1000-point build (later positions, higher
+     benchmarks).  This is the emergent "old points get outgrown". */
+  {
+    const early = t2ReplayFlat({ weaponSpecs: { sword: { edge: 100 } } }).sword.edge;
+    const late = t2ReplayFlat({
+      weaponSpecs: { sword: { edge: 100, precision: 100, executioner: 100, tempo: 100, cleave: 100 },
+                     bow: { drawPower: 100, marksmanship: 100, headshot: 100, piercing: 100 } },
+    }).sword.edge;
+    check('BN-06', 'decay: 100 edge pts in a 900-pt build outvalue the same 100 bought first', late > early, { early, late });
+    console.log(`INFO  BN-06  100 edge pts: bought levels 1-100 = +${early}; inside a 900-pt build = +${late}; bought at 991+ = +${100 * t2PointValue('damage', 100)}`);
   }
 }
 
