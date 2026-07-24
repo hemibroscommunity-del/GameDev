@@ -4568,14 +4568,16 @@ export class EffectsRenderer {
     const hintCol = 0xfff2a8;
     /* v2.3.1435 (owner: "make the gesture cue a bit larger and make it a
        consistent size across each life skill"): one shared size sheet —
-       stroke width 4, arrow/streak reach ~20px, finger 21x13 — every
-       skill's cue below draws from these. */
-    const HINT_W = 4;          /* stroke width everywhere */
-    const HINT_REACH = 20;     /* arrow half-length / streak length basis */
-    const FINGER_LEN = 21, FINGER_W = 13;
+       every skill's cue below draws from these.
+       v2.3.1436 (owner: "the white gesture cues need to be larger",
+       verified frame-by-frame with headless screenshots): another ~1.5x
+       — stroke 4 -> 6, reach 20 -> 30, finger 21x13 -> 30x19. */
+    const HINT_W = 6;          /* stroke width everywhere */
+    const HINT_REACH = 30;     /* arrow half-length / streak length basis */
+    const FINGER_LEN = 30, FINGER_W = 19;
     if (ex.skill === 'fishing') {
       /* Clockwise circular arrow — "reel". Rotates so it reads as motion. */
-      const rA = 34;
+      const rA = 78;   /* v2.3.1436: ENCIRCLES the reel art instead of hiding behind it */
       const a0 = (now / 400) % (Math.PI * 2);
       const aEnd = a0 + Math.PI * 1.5;
       /* seed the path point at the arc start so Pixi doesn't draw a stray
@@ -4586,8 +4588,8 @@ export class EffectsRenderer {
       const hx = x + Math.cos(aEnd) * rA, hy = y + Math.sin(aEnd) * rA;
       const tx = -Math.sin(aEnd), ty = Math.cos(aEnd); /* clockwise tangent */
       gfx.moveTo(hx, hy);
-      gfx.lineTo(hx + tx * 10 + Math.cos(aEnd) * 7, hy + ty * 10 + Math.sin(aEnd) * 7);
-      gfx.lineTo(hx + tx * 10 - Math.cos(aEnd) * 7, hy + ty * 10 - Math.sin(aEnd) * 7);
+      gfx.lineTo(hx + tx * 14 + Math.cos(aEnd) * 10, hy + ty * 14 + Math.sin(aEnd) * 10);
+      gfx.lineTo(hx + tx * 14 - Math.cos(aEnd) * 10, hy + ty * 14 - Math.sin(aEnd) * 10);
       gfx.fill({ color: hintCol, alpha: hintAlpha });
     } else if (ex.skill === 'woodcutting') {
       /* v2.3.843: a finger demonstrates the chop gesture — wind UP away
@@ -4596,7 +4598,7 @@ export class EffectsRenderer {
       const dir = chopSign;
       const T = 1100;                         // one wind-up+chop cycle
       const p = (now % T) / T;
-      const WIND = 18, REACH = 15;            // travel away / toward the tree
+      const WIND = 24, REACH = 20;   /* v2.3.1436: scaled with the bigger finger */            // travel away / toward the tree
       let off;                                // horizontal offset along the tree axis
       if (p < 0.5) {                          // wind up: ease back away from tree
         const t = p / 0.5; off = -dir * WIND * (t * t * (3 - 2 * t));
@@ -4623,14 +4625,14 @@ export class EffectsRenderer {
       gfx.fill({ color: 0xffffff, alpha: hintAlpha });
       gfx.circle(fx, fy, w / 2 + 0.5);        // fingertip toward the tree
       gfx.fill({ color: 0xffffff, alpha: hintAlpha });
-      gfx.circle(fx - dir * (len + 2), fy, 6);// knuckle
+      gfx.circle(fx - dir * (len + 2), fy, 8);// knuckle
       gfx.fill({ color: 0xe6e6ee, alpha: hintAlpha });
     } else if (ex.skill === 'cooking') {
       /* v2.3.853: a finger flicks UP to flip the fish, on a loop — dip down,
          flick up, recover. */
       const T = 1100;
       const p = (now % T) / T;
-      const DOWN = 10, UP = 22;
+      const DOWN = 14, UP = 30;   /* v2.3.1436: scaled with the bigger finger */
       let off;
       if (p < 0.5) { const t = p / 0.5; off = DOWN * (t * t * (3 - 2 * t)); }        // settle down
       else if (p < 0.68) { const t = (p - 0.5) / 0.18; off = DOWN - (DOWN + UP) * t; } // flick up
@@ -4647,20 +4649,20 @@ export class EffectsRenderer {
       gfx.fill({ color: 0xffffff, alpha: hintAlpha });
       gfx.circle(fx, fy, w / 2 + 0.5);               // fingertip (pointing up)
       gfx.fill({ color: 0xffffff, alpha: hintAlpha });
-      gfx.circle(fx, fy + len + 2, 6);               // knuckle
+      gfx.circle(fx, fy + len + 2, 8);               // knuckle
       gfx.fill({ color: 0xe6e6ee, alpha: hintAlpha });
     } else {
       /* Vertical double-arrow (up + down pump), bobbing.
          (v2.3.1435: shared HINT_W/HINT_REACH sizes.) */
       const bob = Math.sin(now / 150) * 3;
-      const ax = x + 24, ay = y + bob;
+      const ax = x + 44, ay = y + bob;   /* v2.3.1436: clear of the ore body */
       const L = HINT_REACH;
       gfx.moveTo(ax, ay - L);
       gfx.lineTo(ax, ay + L);
       gfx.stroke({ color: hintCol, width: HINT_W, alpha: hintAlpha });
-      gfx.moveTo(ax, ay - L); gfx.lineTo(ax - 7, ay - L + 10); gfx.lineTo(ax + 7, ay - L + 10);
+      gfx.moveTo(ax, ay - L); gfx.lineTo(ax - 10, ay - L + 14); gfx.lineTo(ax + 10, ay - L + 14);
       gfx.fill({ color: hintCol, alpha: hintAlpha });
-      gfx.moveTo(ax, ay + L); gfx.lineTo(ax - 7, ay + L - 10); gfx.lineTo(ax + 7, ay + L - 10);
+      gfx.moveTo(ax, ay + L); gfx.lineTo(ax - 10, ay + L - 14); gfx.lineTo(ax + 10, ay + L - 14);
       gfx.fill({ color: hintCol, alpha: hintAlpha });
     }
     /* Progress as a horizontal pip row beneath the tool (no ring — the old
