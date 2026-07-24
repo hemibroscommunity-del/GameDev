@@ -8042,9 +8042,13 @@ export var BroTown = function BroTown(_ref0) {
          v2.3.1440 (owner: "about 50% smaller but keep the text
          readable"): 264x79 -> 186x56 (~70% linear = half the area);
          the type sizes below shrink less than the box so labels stay
-         legible at phone distance. */
-      width: 186,
-      height: 56,
+         legible at phone distance.
+         v2.3.1446 (owner: "reduced 50% further ... remove item name to
+         make room"): 186x56 -> 132x40 (same half-the-area rule as
+         v2.3.1440) and the subtitle line is GONE — the title centers
+         vertically in the freed space. */
+      width: 132,
+      height: 40,
       padding: 0,
       border: 'none',
       background: 'transparent',
@@ -8119,10 +8123,10 @@ export var BroTown = function BroTown(_ref0) {
     var _xp = (_ls && _ls.xp) || 0;
     var _thr = Math.ceil(500 * Math.pow(1.08, _lvl - 1));  /* LIFE_SKILL_XP mirror */
     var _frac = Math.max(0, Math.min(1, _xp / _thr));
-    /* v2.3.1441 (owner): the resource's level lives ONLY in the pill now
-       — the description is the bare resource name (the old pill showed
-       the PLAYER's skill level, duplicating the subtitle's tier). */
-    var _sub = !n ? '' : n.nodeType === 'campfire' ? 'Campfire' : (n.name || n.spotName || '');
+    /* v2.3.1446 (owner: "reduced 50% further ... remove item name to
+       make room"): the v2.3.1441 subtitle (bare resource name) is gone
+       — at 132x40 there's only room for the verb + pill, so the title
+       centers vertically where the two lines used to stack. */
     return [
       /*#__PURE__*/React.createElement("img", {
         key: 'i', src: _icons[s], alt: '', draggable: false,
@@ -8130,21 +8134,17 @@ export var BroTown = function BroTown(_ref0) {
       }),
       /*#__PURE__*/React.createElement("div", {
         key: 't',
-        style: { position: 'absolute', left: '30%', top: '13%', fontSize: 13.5, fontWeight: 800, color: '#f4f6f8', letterSpacing: 1, lineHeight: 1, pointerEvents: 'none', textShadow: '0 1px 2px rgba(0,0,0,.6)' }
+        style: { position: 'absolute', left: '30%', top: '50%', transform: 'translateY(-58%)', fontSize: 11, fontWeight: 800, color: '#f4f6f8', letterSpacing: 1, lineHeight: 1, pointerEvents: 'none', textShadow: '0 1px 2px rgba(0,0,0,.6)' }
       }, stateRef.current._isDesktop && /*#__PURE__*/React.createElement("kbd", {
-        style: { background: 'rgba(255,255,255,.18)', padding: '0 3px', borderRadius: 3, fontSize: 8.5, marginRight: 4, verticalAlign: 'middle' }
+        style: { background: 'rgba(255,255,255,.18)', padding: '0 3px', borderRadius: 3, fontSize: 7.5, marginRight: 3, verticalAlign: 'middle' }
       }, "E"), _titles[s] || 'MINE'),
       /*#__PURE__*/React.createElement("div", {
-        key: 's',
-        style: { position: 'absolute', left: '30%', top: '44%', maxWidth: '46%', fontSize: 9.5, fontWeight: 600, color: _cols[s], whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', pointerEvents: 'none' }
-      }, _sub),
-      /*#__PURE__*/React.createElement("div", {
         key: 'l',
-        style: { position: 'absolute', left: '76.5%', top: '28%', width: '17.5%', height: '40%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10.5, fontWeight: 800, color: '#f4f6f8', pointerEvents: 'none' }
+        style: { position: 'absolute', left: '76.5%', top: '28%', width: '17.5%', height: '40%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 8.5, fontWeight: 800, color: '#f4f6f8', pointerEvents: 'none' }
       }, 'LV ' + ((n && n.gatherLvl) || 1)),
       /*#__PURE__*/React.createElement("div", {
         key: 'p',
-        style: { position: 'absolute', left: '7%', bottom: '10%', width: (86 * _frac) + '%', maxWidth: '86%', height: '4.5%', background: _cols[s], borderRadius: 3, pointerEvents: 'none', boxShadow: '0 0 6px ' + _cols[s] }
+        style: { position: 'absolute', left: '7%', bottom: '10%', width: (86 * _frac) + '%', maxWidth: '86%', height: '6%', background: _cols[s], borderRadius: 3, pointerEvents: 'none', boxShadow: '0 0 6px ' + _cols[s] }   /* v2.3.1446: 6% of the 40px shell ≈ the old 2.5px groove */
       })
     ];
   }()), /*#__PURE__*/React.createElement(ExtractionSwipeLayer, {
