@@ -64,9 +64,24 @@ export const gatheringMethods = {
     // entry-tier nodes only.
     const nodes = [];
     let idx = 0;
+    /* v2.3.1444 (owner): nodes used to land wherever the dice fell, and
+       two resources spawning near each other stacked their prompt menus
+       on top of one another.  Enforce a minimum gap via rejection
+       sampling: re-roll up to 40 times until the candidate is at least
+       MIN_NODE_GAP from every already-placed node, keeping the
+       best-spread candidate as a fallback so tiny zones still place all
+       their nodes (mirror of client spawnGatherNodes; keep together). */
+    const MIN_NODE_GAP = 6 * this.TILE;
     const placeOne = (type) => {
-      const x = margin + Math.random() * (W - margin * 2);
-      const y = margin + Math.random() * (H - margin * 2);
+      let x = 0, y = 0, bestD = -1;
+      for (let att = 0; att < 40; att++) {
+        const cx = margin + Math.random() * (W - margin * 2);
+        const cy = margin + Math.random() * (H - margin * 2);
+        let dMin = Infinity;
+        for (const o of nodes) dMin = Math.min(dMin, Math.hypot(o.x - cx, o.y - cy));
+        if (dMin > bestD) { bestD = dMin; x = cx; y = cy; }
+        if (dMin >= MIN_NODE_GAP) break;
+      }
       const tierLvl = 1;
       nodes.push({
         id: 'sn-' + zoneId + '-' + idx,
