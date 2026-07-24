@@ -133,6 +133,31 @@ for (const [cfg, url] of [
   }).catch((err) => console.warn('[special-fx] load failed', url, err));
 }
 
+/* v2.3.1443: harvest EFFECT bursts (owner art, gather-feel round 3) —
+   one-shot 8-frame strips played at the MARKER-HIT moments (owner chose
+   marker movements over the passive wind-up): rock debris on each
+   pickaxe slam, wood chips on each axe strike, a grease pop on the pan
+   flip, a water splash while reeling + at the catch.  Queued via
+   S._fxBursts { kind, x, y, t0, flip? } from ExtractionSwipeLayer /
+   lifeSkillRewards / the strike blocks below; _updateFxBursts renders
+   each over ~600ms on the overlay layer and reaps it. */
+const EFFECT_BURSTS = {
+  rocks:     { frames: [], h: 84, ay: 0.80, url: '/sprites/effects/rocks-burst-v1.webp?v=2.3.1443' },
+  woodchips: { frames: [], h: 84, ay: 0.70, url: '/sprites/effects/woodchips-burst-v1.webp?v=2.3.1443' },
+  grease:    { frames: [], h: 64, ay: 0.85, url: '/sprites/effects/grease-burst-v1.webp?v=2.3.1443' },
+  splash:    { frames: [], h: 88, ay: 0.80, url: '/sprites/effects/splash-burst-v1.webp?v=2.3.1443' },
+};
+for (const cfg of Object.values(EFFECT_BURSTS)) {
+  _fxLoad(cfg.url).then((tex) => {
+    if (!tex || !tex.source) return;
+    const fw = Math.floor(tex.source.width / 8);
+    for (let i = 0; i < 8; i++) {
+      cfg.frames.push(new Texture({ source: tex.source, frame: new Rectangle(i * fw, 0, fw, tex.source.height) }));
+    }
+  }).catch((err) => console.warn('[effect-burst] load failed', cfg.url, err));
+}
+const FX_BURST_MS = 600;
+
 /* v2.3.1417: GESTURE TOOL sheets (owner art, part 2 of the gather-feel
    redesign) — the harvest cue's floating tool is a painted sprite whose
    FRAME follows the finger: ExtractionSwipeLayer writes ex.cueFrame01
@@ -972,6 +997,7 @@ export class EffectsRenderer {
     this._updateParticles(S, now);
     this._updateDamageNumbers(S, now);
     this._updateCatchFlights(S, viewW, viewH, now);
+    this._updateFxBursts(S, now);   /* v2.3.1443 */
     this._updateScreenFlash(S, viewW, viewH, now);
     this._updateAtmosphere(S, viewW, viewH, now);
     this._updateGroundLoot(S, now);
@@ -3197,6 +3223,43 @@ export class EffectsRenderer {
     }
   }
 
+  /* ── Harvest effect bursts (v2.3.1443) ──
+   * Plays each queued S._fxBursts entry as a one-shot 8-frame strip at its
+   * world point, then reaps it (sprite destroyed, entry spliced).  flip:-1
+   * mirrors horizontally (wood chips fly away from the trunk). */
+  _updateFxBursts(S, now) {
+    const q = S && S._fxBursts;
+    if (!q || !q.length) return;
+    for (let i = q.length - 1; i >= 0; i--) {
+      const b = q[i];
+      const cfg = EFFECT_BURSTS[b.kind];
+      const age = now - (b.t0 || now);
+      if (!cfg || age >= FX_BURST_MS) {
+        if (b._spr && !b._spr.destroyed) b._spr.destroy();
+        q.splice(i, 1);
+        continue;
+      }
+      if (!cfg.frames.length) continue;   /* strip still loading — burst waits */
+      /* v2.3.1445: bursts may be scheduled slightly in the FUTURE (wood
+         chips lead the delayed bite sample) — hold until t0 arrives. */
+      if (age < 0) { if (b._spr) b._spr.visible = false; continue; }
+      let spr = b._spr;
+      if (!spr || spr.destroyed) {
+        spr = new Sprite();
+        spr.anchor.set(0.5, cfg.ay);
+        this.overlayLayer.addChild(spr);
+        b._spr = spr;
+      }
+      const fi = Math.min(7, Math.floor((age / FX_BURST_MS) * 8));
+      spr.texture = cfg.frames[fi];
+      const s = cfg.h / 256;
+      spr.scale.set((b.flip || 1) * s, s);
+      spr.x = b.x; spr.y = b.y;
+      spr.alpha = age > FX_BURST_MS - 120 ? (FX_BURST_MS - age) / 120 : 1;
+      spr.visible = true;
+    }
+  }
+
   /* ── Catch flight (v2.3.845) ──
    * v2.3.1429: DORMANT — applyFishingReward now uses the DOM icon flyer
    * (_flyResourceToInventory, real fish bag-icon + breach stage) instead of
@@ -4223,8 +4286,8 @@ export class EffectsRenderer {
       if (now < L.until && L.f > 0.1 && _lgt.frames.length === 8 && this.gestureToolSprite) {
         const _ldt = Math.max(0, Math.min(100, now - (L.t || now)));
         L.t = now;
-        if (L.f < 0.9999) L.f = Math.min(0.9999, L.f + _ldt / 800);
-        else if (!L.doneAt) L.doneAt = now + 300;
+        if (L.f < 0.9999) L.f = Math.min(0.9999, L.f + _ldt / 1600);   /* v2.3.1442: 2x slower with the live chase */
+        else if (!L.doneAt) L.doneAt = now + 350;   /* v2.3.1445: land pop folded into the constant grease beat */
         const _lsp = this.gestureToolSprite;
         const _ls = _lgt.h / 256;
         _lsp.texture = _lgt.frames[Math.floor(L.f * 8)];
@@ -4252,6 +4315,40 @@ export class EffectsRenderer {
     /* v2.3.853: cooking's "node" is the campfire; the swipe-up cue + pan sit
        just above it. */
     const cookingCue = ex.skill === 'cooking';
+    /* v2.3.1443: pond splash bursts at the FISH SPOT while the crank is
+       actually turning (same _reelSpinAt freshness window as the reel SFX
+       loop) — one splash roughly every 800ms so it reads as agitation,
+       not a strobe.  v2.3.1445 (owner): reeling is the ONLY splash moment
+       — the catch burst that applyFishingReward used to add is gone. */
+    if (ex.skill === 'fishing' && ex.status === 'ready'
+        && ex._reelSpinAt && (performance.now() - ex._reelSpinAt) < 250
+        && now - (ex._splashAt || 0) > 800) {
+      ex._splashAt = now;
+      if (!S._fxBursts) S._fxBursts = [];
+      if (S._fxBursts.length < 6) S._fxBursts.push({ kind: 'splash', t0: now, x: node.x, y: node.y + 2 });
+    }
+    /* v2.3.1445 (owner: "make cooking grease constant"): grease pops on a
+       steady beat the whole time the pan is on the fire (same
+       whole-attempt contract as the sizzle loop).  Anchored to the live
+       marker pan when the flip cue is up, else to the baked pan the cook
+       figure holds over the flames. */
+    if (ex.skill === 'cooking' && now - (ex._greaseAt || 0) > 650) {
+      ex._greaseAt = now;
+      /* The tool sprite is force-hidden at the top of every frame and
+         re-shown by the marker block AFTER this emitter, so visibility
+         can't be read mid-frame — the marker block caches its pan
+         position in _panPos instead.  The -10/+14 offset lands on the
+         pan BOWL within the 256-cell art (the food anchors put the bowl
+         low-left of the cell centre); fallback is the pan the cook
+         figure holds over the flames. */
+      const _pp = (this._panPos && now - this._panPos.t < 250) ? this._panPos : null;
+      const _pan = _pp ? { x: _pp.x - 10, y: _pp.y + 14 } : { x: node.x + 8, y: node.y - 20 };
+      if (!S._fxBursts) S._fxBursts = [];
+      if (S._fxBursts.length < 6) {
+        this._greaseFlip = !this._greaseFlip;
+        S._fxBursts.push({ kind: 'grease', t0: now, x: _pan.x, y: _pan.y, flip: this._greaseFlip ? 1 : -1 });
+      }
+    }
     const x = fishingCue ? S.player.x : node.x;
     /* Anchor cue above the node so it doesn't sit on top of the
        sprite. Trees are tallest so they get the largest offset. */
@@ -4313,6 +4410,15 @@ export class EffectsRenderer {
             if (_a && _a.play) _a.play('sword-hit3', { vol: 0.55 });
           }, 200);
         } catch (e) {}
+        /* v2.3.1445 (owner: "make wood chip effects constant"): chips fly
+           off the trunk on EVERY swing of the chopper loop, scheduled
+           +200ms to land with the delayed bite sample above.  Mirrored so
+           they burst AWAY from the tree (art bursts rightward from a left
+           anchor). */
+        if (!S._fxBursts) S._fxBursts = [];
+        if (S._fxBursts.length < 6) {
+          S._fxBursts.push({ kind: 'woodchips', t0: now + 200, x: node.x - chopSign * 12, y: node.y - 64, flip: chopSign < 0 ? 1 : -1 });
+        }
       }
       this._chopLastFrame = k;
       /* chopper faces RIGHT in source (east); flipped (scale.x<0) when the tree
@@ -4339,6 +4445,17 @@ export class EffectsRenderer {
             _au.play('mine-strike', { offset: this._mineSndAlt ? 0.08 : 0.6, duration: 0.45, vol: 0.55 });
           }
         } catch (e) {}
+        /* v2.3.1445 (owner: "make rock ore effects constant" + "placement
+           too low"): rock debris on EVERY strike of the character's own
+           swing loop — not just finger slams — anchored at the ore's
+           UPPER face where the pick actually bites (the vein sprite is
+           bottom-anchored, so its body extends UP from node.y; the old
+           node.y+14 put the burst at its feet). */
+        if (!S._fxBursts) S._fxBursts = [];
+        if (S._fxBursts.length < 6) {
+          this._rockFlip = !this._rockFlip;
+          S._fxBursts.push({ kind: 'rocks', t0: now, x: node.x, y: node.y - 95, flip: this._rockFlip ? 1 : -1 });
+        }
       }
       this._mineLastFrame = _mk;
     } else {
@@ -4422,13 +4539,20 @@ export class EffectsRenderer {
          - cooking: a flick raced all 8 flip frames in ~300ms ("slow the
            animation to about half") — capped at one full flip per 800ms.
          Swing tools stay 1:1 (their feel is the strike itself). */
+      /* v2.3.1442 (owner: cooking "still goes way too fast"): the chase
+         state moves ONTO the extraction record — the old this._toolDispF
+         survived between cooks, so the next attempt started with the pan
+         already flipped (~1) and visibly UNWOUND backwards before
+         tracking again ("something is wrong").  ex._dispF dies with the
+         attempt, so every cook starts flat.  Cook rate also slowed
+         another 2x (full flip 800ms -> 1600ms). */
       let _dispF = f01;
       if (ex.skill === 'cooking' || ex.skill === 'fishing') {
-        const _lastT = this._toolDispT || now;
+        const _lastT = ex._dispT || now;
         const _dt = Math.max(0, Math.min(100, now - _lastT));
-        this._toolDispT = now;
-        let _cur = (this._toolDispF != null && this._toolDispSkill === ex.skill) ? this._toolDispF : f01;
-        const _rate = _dt / (ex.skill === 'cooking' ? 800 : 450);
+        ex._dispT = now;
+        let _cur = (ex._dispF != null) ? ex._dispF : (ex.skill === 'cooking' ? 0 : f01);
+        const _rate = _dt / (ex.skill === 'cooking' ? 1600 : 450);
         if (ex.skill === 'fishing') {
           let _d = f01 - _cur;
           if (_d > 0.5) _d -= 1; else if (_d < -0.5) _d += 1;
@@ -4437,10 +4561,8 @@ export class EffectsRenderer {
           const _d = f01 - _cur;
           _cur = _cur + Math.max(-_rate, Math.min(_rate, _d));
         }
-        this._toolDispF = _cur; this._toolDispSkill = ex.skill;
+        ex._dispF = _cur;
         _dispF = Math.max(0, Math.min(0.9999, _cur));
-      } else {
-        this._toolDispF = null; this._toolDispSkill = null;
       }
       sp.texture = _gt.frames[_swingTool ? Math.min(3, Math.floor(f01 * 4)) : Math.floor(_dispF * 8)];
       const s = _gt.h / 256;
@@ -4508,6 +4630,10 @@ export class EffectsRenderer {
               ex._chopSndAlt = !ex._chopSndAlt;
               _au.play('axe-chop', { offset: ex._chopSndAlt ? 0.06 : 1.10, duration: 0.6, vol: 0.6 });
             }
+            /* v2.3.1445: the painted wood-chip burst moved to the chopper
+               loop's strike frame (constant, owner request) — this
+               full-drag moment keeps the procedural spark particles only,
+               like mining. */
           } catch (e) {}
         }
         ex._strikeP = f01;
@@ -4521,12 +4647,13 @@ export class EffectsRenderer {
          frames are food-less; the raw fish's bag icon rides the
          measured per-frame anchors and flips through the arc. */
       if (ex.skill === 'cooking' && _gt.food) {
+        this._panPos = { x: sp.x, y: sp.y, t: now };   /* v2.3.1445: grease emitter anchor */
         this._placeCookFood(sp.x, sp.y, s, _dispF, ex.fishKey);
         /* v2.3.1435: record the linger state — when the flip succeeds
            mid-animation (success fires on the up-stroke, which used to
            cut the pan off), the marker stays and finishes the slowed
            flip from here (see the linger block above the early-return). */
-        this._cookLinger = { x: sp.x, y: sp.y, f: _dispF, fishKey: ex.fishKey, t: now, until: now + 1500 };
+        this._cookLinger = { x: sp.x, y: sp.y, f: _dispF, fishKey: ex.fishKey, t: now, until: now + 2600 };   /* v2.3.1442: window fits the 1600ms flip + hold */
       }
     } else if (ex.skill === 'fishing' || ex.skill === 'cooking') {
       /* no floating tool — the angler holds the rod / the cook holds the pan;
@@ -4576,21 +4703,26 @@ export class EffectsRenderer {
     const HINT_REACH = 30;     /* arrow half-length / streak length basis */
     const FINGER_LEN = 30, FINGER_W = 19;
     if (ex.skill === 'fishing') {
-      /* Clockwise circular arrow — "reel". Rotates so it reads as motion. */
+      /* v2.3.1442 (owner: cues "still not consistent in color or size"):
+         the gold arc-arrow becomes the SAME white finger every skill
+         uses, orbiting the reel circle — a faint white track shows the
+         path and a white streak trails the fingertip. */
       const rA = 78;   /* v2.3.1436: ENCIRCLES the reel art instead of hiding behind it */
-      const a0 = (now / 400) % (Math.PI * 2);
-      const aEnd = a0 + Math.PI * 1.5;
-      /* seed the path point at the arc start so Pixi doesn't draw a stray
-         line from (0,0) to the arc (the diagonal-line bug). */
-      gfx.moveTo(x + Math.cos(a0) * rA, y + Math.sin(a0) * rA);
-      gfx.arc(x, y, rA, a0, aEnd);
-      gfx.stroke({ color: hintCol, width: HINT_W, alpha: hintAlpha });
-      const hx = x + Math.cos(aEnd) * rA, hy = y + Math.sin(aEnd) * rA;
-      const tx = -Math.sin(aEnd), ty = Math.cos(aEnd); /* clockwise tangent */
-      gfx.moveTo(hx, hy);
-      gfx.lineTo(hx + tx * 14 + Math.cos(aEnd) * 10, hy + ty * 14 + Math.sin(aEnd) * 10);
-      gfx.lineTo(hx + tx * 14 - Math.cos(aEnd) * 10, hy + ty * 14 - Math.sin(aEnd) * 10);
-      gfx.fill({ color: hintCol, alpha: hintAlpha });
+      const a = (now / 900) % (Math.PI * 2);
+      gfx.circle(x, y, rA);
+      gfx.stroke({ color: 0xffffff, width: 2.5, alpha: hintAlpha * 0.28 });
+      gfx.moveTo(x + Math.cos(a - 0.85) * rA, y + Math.sin(a - 0.85) * rA);
+      gfx.arc(x, y, rA, a - 0.85, a);
+      gfx.stroke({ color: 0xffffff, width: HINT_W, alpha: hintAlpha * 0.5 });
+      const fx = x + Math.cos(a) * rA, fy = y + Math.sin(a) * rA;
+      const tx = -Math.sin(a), ty = Math.cos(a);   /* clockwise tangent */
+      gfx.moveTo(fx - tx * FINGER_LEN, fy - ty * FINGER_LEN);
+      gfx.lineTo(fx, fy);
+      gfx.stroke({ color: 0xffffff, width: FINGER_W, cap: 'round', alpha: hintAlpha });
+      gfx.circle(fx, fy, FINGER_W / 2 + 0.5);
+      gfx.fill({ color: 0xffffff, alpha: hintAlpha });
+      gfx.circle(fx - tx * (FINGER_LEN + 4), fy - ty * (FINGER_LEN + 4), 8);
+      gfx.fill({ color: 0xe6e6ee, alpha: hintAlpha });
     } else if (ex.skill === 'woodcutting') {
       /* v2.3.843: a finger demonstrates the chop gesture — wind UP away
          from the tree, then SWIPE back toward it, on a loop ("do this a
@@ -4615,7 +4747,7 @@ export class EffectsRenderer {
       if (chopping) {
         gfx.moveTo(fx - dir * (HINT_REACH + 8), fy);
         gfx.lineTo(fx, fy);
-        gfx.stroke({ color: hintCol, width: HINT_W, alpha: hintAlpha * 0.5 });
+        gfx.stroke({ color: 0xffffff, width: HINT_W, alpha: hintAlpha * 0.5 });   /* v2.3.1442: white everywhere */
       }
       /* finger: a capsule body pointing toward the tree + a rounded tip;
          a knuckle dot at the back reads it as a hand. */
@@ -4642,7 +4774,7 @@ export class EffectsRenderer {
       if (flicking) {                          // upward swipe streak (v2.3.1435: shared sizes)
         gfx.moveTo(fx, fy + HINT_REACH + 8);
         gfx.lineTo(fx, fy);
-        gfx.stroke({ color: hintCol, width: HINT_W, alpha: hintAlpha * 0.5 });
+        gfx.stroke({ color: 0xffffff, width: HINT_W, alpha: hintAlpha * 0.5 });   /* v2.3.1442: white everywhere */
       }
       const len = FINGER_LEN, w = FINGER_W;
       gfx.roundRect(fx - w / 2, fy, w, len, w / 2);  // finger body (below the tip)
@@ -4652,18 +4784,26 @@ export class EffectsRenderer {
       gfx.circle(fx, fy + len + 2, 8);               // knuckle
       gfx.fill({ color: 0xe6e6ee, alpha: hintAlpha });
     } else {
-      /* Vertical double-arrow (up + down pump), bobbing.
-         (v2.3.1435: shared HINT_W/HINT_REACH sizes.) */
-      const bob = Math.sin(now / 150) * 3;
-      const ax = x + 44, ay = y + bob;   /* v2.3.1436: clear of the ore body */
-      const L = HINT_REACH;
-      gfx.moveTo(ax, ay - L);
-      gfx.lineTo(ax, ay + L);
-      gfx.stroke({ color: hintCol, width: HINT_W, alpha: hintAlpha });
-      gfx.moveTo(ax, ay - L); gfx.lineTo(ax - 10, ay - L + 14); gfx.lineTo(ax + 10, ay - L + 14);
-      gfx.fill({ color: hintCol, alpha: hintAlpha });
-      gfx.moveTo(ax, ay + L); gfx.lineTo(ax - 10, ay + L - 14); gfx.lineTo(ax + 10, ay + L - 14);
-      gfx.fill({ color: hintCol, alpha: hintAlpha });
+      /* v2.3.1442: the gold double-arrow becomes the SAME white finger,
+         pumping up-down on the mining axis (x+44 keeps it clear of the
+         ore body, v2.3.1436) with a white streak trailing the motion. */
+      const T = 1100;
+      const p = (now % T) / T;
+      const off = -Math.cos(p * Math.PI * 2) * HINT_REACH;
+      const vel = Math.sin(p * Math.PI * 2);
+      const ax = x + 44, ay = y + off;
+      if (Math.abs(vel) > 0.35) {                 /* streak while moving */
+        const trailY = vel > 0 ? -(HINT_REACH - 4) : (HINT_REACH - 4);
+        gfx.moveTo(ax, ay + trailY);
+        gfx.lineTo(ax, ay);
+        gfx.stroke({ color: 0xffffff, width: HINT_W, alpha: hintAlpha * 0.5 });
+      }
+      gfx.roundRect(ax - FINGER_W / 2, ay, FINGER_W, FINGER_LEN, FINGER_W / 2);
+      gfx.fill({ color: 0xffffff, alpha: hintAlpha });
+      gfx.circle(ax, ay, FINGER_W / 2 + 0.5);
+      gfx.fill({ color: 0xffffff, alpha: hintAlpha });
+      gfx.circle(ax, ay + FINGER_LEN + 2, 8);
+      gfx.fill({ color: 0xe6e6ee, alpha: hintAlpha });
     }
     /* Progress as a horizontal pip row beneath the tool (no ring — the old
        circling ring read as a stray diagonal line and the user prefers just

@@ -255,6 +255,9 @@ export const ExtractionSwipeLayer = ({ stateRef, onSuccess }) => {
     const onSlam = (g) => {
       const S = stateRef && stateRef.current;
       if (!S || g.nodeX == null) return;
+      /* v2.3.1445: the painted rock burst moved to the character's swing
+         loop (effectsRenderer, constant — owner request); slams keep the
+         procedural sparks + clink only. */
       if (S.hitParticles) {
         for (let i = 0; i < 7; i++) {
           S.hitParticles.push({

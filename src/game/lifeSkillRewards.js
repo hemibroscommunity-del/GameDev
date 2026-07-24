@@ -181,6 +181,9 @@ function applyFishingReward(S, node, result, deps) {
     /* v2.3.1429 (owner): real water splash on the catch (the beep(600)
        it replaces has been a no-op since v2.3.1103). */
     try { BT_AUDIO.play('catch-splash', { vol: 0.65 }); } catch (e) {}
+    /* v2.3.1445 (owner): the splash BURST plays only while reeling
+       (effectsRenderer's _reelSpinAt beat) — the catch keeps just the
+       splash sample + the fish-to-bag flight. */
     /* Consume node */
     node.alive = false;
     node.respawnAt = Date.now() + (node.respawnTime || 30000);

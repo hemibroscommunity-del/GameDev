@@ -86,8 +86,11 @@ export function setupDesktopControls(S, deps) {
           BT_AUDIO.enterBuilding();
           return;
         }
-        /* 3. Gather node */
-        if (S._nearNode && S._nearNode.alive) {
+        /* 3. Gather node.  v2.3.1448: the shell now only opens on a TAP
+           (S._nearNode), but the desktop E key keeps its proximity
+           behaviour — S._proxNode is the closest resource in reach. */
+        var _gn = S._nearNode || S._proxNode;
+        if (_gn && _gn.alive) {
           _desktopGather();
           return;
         }

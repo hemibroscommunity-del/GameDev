@@ -193,10 +193,22 @@ export function spawnGatherNodes(zoneId, depth) {
      out-of-bounds black border. */
   const margin = 8 * TILE;
 
+  /* v2.3.1444 (owner): minimum gap between nodes so their prompt menus
+     never stack — rejection-sample up to 40 rolls, keep the best-spread
+     candidate as the fallback (mirror of the server's _spawnZoneNodes in
+     server/src/gathering.js; keep the two together). */
+  const MIN_NODE_GAP = 6 * TILE;
   const placeNode = (type, tierBias) => {
     const yCenter = H - margin - tierBias * (H - margin * 2);
-    const y = Math.max(margin, Math.min(H - margin, yCenter + (Math.random() - 0.5) * TILE * 6));
-    const x = margin + Math.random() * (W - margin * 2);
+    let x = 0, y = 0, bestD = -1;
+    for (let att = 0; att < 40; att++) {
+      const cy = Math.max(margin, Math.min(H - margin, yCenter + (Math.random() - 0.5) * TILE * 6));
+      const cx = margin + Math.random() * (W - margin * 2);
+      let dMin = Infinity;
+      for (const o of nodes) dMin = Math.min(dMin, Math.hypot(o.x - cx, o.y - cy));
+      if (dMin > bestD) { bestD = dMin; x = cx; y = cy; }
+      if (dMin >= MIN_NODE_GAP) break;
+    }
     /* Pin tier 1 to match the server's _spawnZoneNodes (entry-level
        zones are all tier 1 today).  Without the force, createGatherNode
        random-rolls the shallow tier set and a brief flash of the wrong

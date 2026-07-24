@@ -290,6 +290,19 @@ check('shop: insufficient coins is a clean no-op', econSnap(ps) === preShop);
 // ── 6. harvest (extraction window + node_strike) ──
 ps.z = 'meadow';
 const nodes = room._ensureZoneNodes('meadow');
+
+// v2.3.1444: node spawn keeps a minimum gap so prompt menus never stack.
+// The rejection sampler falls back to best-spread when a zone is too
+// cramped, so assert against a slightly relaxed floor rather than the
+// exact MIN_NODE_GAP.
+{
+  let worst = Infinity;
+  for (let i = 0; i < nodes.length; i++)
+    for (let j = i + 1; j < nodes.length; j++)
+      worst = Math.min(worst, Math.hypot(nodes[i].x - nodes[j].x, nodes[i].y - nodes[j].y));
+  check('spawn: nodes keep a minimum spacing (no stacked prompts)',
+    nodes.length >= 2 && worst >= 4 * room.TILE, { worstGap: Math.round(worst), tile: room.TILE });
+}
 const n0 = nodes[0];
 n0.alive = true; n0.respawnAt = 0;
 ps.x = n0.x; ps.y = n0.y;
