@@ -8032,10 +8032,14 @@ export var BroTown = function BroTown(_ref0) {
       /* v2.3.1437 (owner shells): the green pill becomes the painted
          brass-on-navy shell — icon well left, title + node name middle,
          LV pill right, XP groove along the bottom (mock: the owner's
-         second sheet).  Fixed 264x79 box (the shell's 3.34 aspect) so
-         the loop's anchor/clamp math keeps using offsetWidth. */
-      width: 264,
-      height: 79,
+         second sheet).  Fixed box at the shell's 3.34 aspect so the
+         loop's anchor/clamp math keeps using offsetWidth.
+         v2.3.1440 (owner: "about 50% smaller but keep the text
+         readable"): 264x79 -> 186x56 (~70% linear = half the area);
+         the type sizes below shrink less than the box so labels stay
+         legible at phone distance. */
+      width: 186,
+      height: 56,
       padding: 0,
       border: 'none',
       background: 'transparent',
@@ -8111,7 +8115,7 @@ export var BroTown = function BroTown(_ref0) {
     var _thr = Math.ceil(500 * Math.pow(1.08, _lvl - 1));  /* LIFE_SKILL_XP mirror */
     var _frac = Math.max(0, Math.min(1, _xp / _thr));
     var _sub = !n ? '' : n.nodeType === 'campfire' ? 'Campfire'
-      : ((n.name || n.spotName || '') + ' (Lv' + (n.gatherLvl || 1) + ')');
+      : ((n.name || n.spotName || '') + ' Lv' + (n.gatherLvl || 1));   /* v2.3.1440: compact tier tail — fits the smaller shell */
     return [
       /*#__PURE__*/React.createElement("img", {
         key: 'i', src: _icons[s], alt: '', draggable: false,
@@ -8119,17 +8123,17 @@ export var BroTown = function BroTown(_ref0) {
       }),
       /*#__PURE__*/React.createElement("div", {
         key: 't',
-        style: { position: 'absolute', left: '30%', top: '13%', fontSize: 17, fontWeight: 800, color: '#f4f6f8', letterSpacing: 1.2, lineHeight: 1, pointerEvents: 'none', textShadow: '0 1px 2px rgba(0,0,0,.6)' }
+        style: { position: 'absolute', left: '30%', top: '13%', fontSize: 13.5, fontWeight: 800, color: '#f4f6f8', letterSpacing: 1, lineHeight: 1, pointerEvents: 'none', textShadow: '0 1px 2px rgba(0,0,0,.6)' }
       }, stateRef.current._isDesktop && /*#__PURE__*/React.createElement("kbd", {
-        style: { background: 'rgba(255,255,255,.18)', padding: '0 4px', borderRadius: 3, fontSize: 10, marginRight: 5, verticalAlign: 'middle' }
+        style: { background: 'rgba(255,255,255,.18)', padding: '0 3px', borderRadius: 3, fontSize: 8.5, marginRight: 4, verticalAlign: 'middle' }
       }, "E"), _titles[s] || 'MINE'),
       /*#__PURE__*/React.createElement("div", {
         key: 's',
-        style: { position: 'absolute', left: '30%', top: '44%', maxWidth: '44%', fontSize: 11.5, fontWeight: 600, color: _cols[s], whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', pointerEvents: 'none' }
+        style: { position: 'absolute', left: '30%', top: '44%', maxWidth: '46%', fontSize: 9.5, fontWeight: 600, color: _cols[s], whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', pointerEvents: 'none' }
       }, _sub),
       /*#__PURE__*/React.createElement("div", {
         key: 'l',
-        style: { position: 'absolute', left: '76.5%', top: '28%', width: '17.5%', height: '40%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 800, color: '#f4f6f8', pointerEvents: 'none' }
+        style: { position: 'absolute', left: '76.5%', top: '28%', width: '17.5%', height: '40%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10.5, fontWeight: 800, color: '#f4f6f8', pointerEvents: 'none' }
       }, 'LV ' + _lvl),
       /*#__PURE__*/React.createElement("div", {
         key: 'p',
