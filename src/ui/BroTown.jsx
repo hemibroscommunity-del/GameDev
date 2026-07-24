@@ -8029,12 +8029,20 @@ export var BroTown = function BroTown(_ref0) {
          moves the button to the node itself (owner: prompt was too far
          below the ore). */
       bottom: 'calc(var(--dash-h) + 24px)',
-      background: 'rgba(0,180,140,.85)',
-      /* v2.3.1409: long tier labels ("Permafrost Dirt Mound — Frozen
-         Copper (Lv1)") ran off the phone's edge — cap + ellipsize. */
-      maxWidth: 'calc(100vw - 16px)',
-      overflow: 'hidden',
-      textOverflow: 'ellipsis'
+      /* v2.3.1437 (owner shells): the green pill becomes the painted
+         brass-on-navy shell — icon well left, title + node name middle,
+         LV pill right, XP groove along the bottom (mock: the owner's
+         second sheet).  Fixed 264x79 box (the shell's 3.34 aspect) so
+         the loop's anchor/clamp math keeps using offsetWidth. */
+      width: 264,
+      height: 79,
+      padding: 0,
+      border: 'none',
+      background: 'transparent',
+      backgroundImage: 'url(/ui/lifeskill-shell.webp?v=2.3.1437)',
+      backgroundSize: '100% 100%',
+      overflow: 'visible',
+      textAlign: 'left'
     },
     onClick: function onClick(e) {
       var _R$lifeSkills3;
@@ -8081,22 +8089,53 @@ export var BroTown = function BroTown(_ref0) {
     onMouseDown: function onMouseDown(e) {
       return e.preventDefault();
     }
-  }, stateRef.current._isDesktop && /*#__PURE__*/React.createElement("kbd", {
-    style: {
-      background: 'rgba(255,255,255,.2)',
-      padding: '1px 5px',
-      borderRadius: 3,
-      fontSize: 10,
-      marginRight: 4
-    }
-  }, "E"), (_stateRef$current$_ne = stateRef.current._nearNode) === null || _stateRef$current$_ne === void 0 ? void 0 : _stateRef$current$_ne.emoji, " ", function () {
+  }, function () {
+    /* v2.3.1437: shell interior \u2014 computed once per render from the node
+       + the player's life skill.  Geometry in % of the 264x79 shell
+       (measured from the owner's art: icon well ~6-27% wide, LV pill
+       ~77-94%, XP groove along the bottom). */
     var n = stateRef.current._nearNode;
     var s = (n === null || n === void 0 ? void 0 : n.skill) || 'mining';
-    return s === 'woodcutting' ? 'Chop' : s === 'fishing' ? 'Fish' : s === 'cooking' ? 'Cook' : 'Mine';
-  }(), /* v2.3.853: campfire shows just "\ud83d\udd25 Cook"; gather nodes show the tier tail */ function () {
-    var n = stateRef.current._nearNode;
-    if (!n || n.nodeType === 'campfire') return '';
-    return '  ' + (n.spotName || '') + ' \u2014 ' + (n.name || '') + ' (Lv' + (n.gatherLvl || 1) + ')';
+    var _titles = { mining: 'MINE', woodcutting: 'CHOP', fishing: 'FISH', cooking: 'COOK' };
+    var _icons = {
+      mining: '/icons/items/ore-copper.webp',
+      woodcutting: '/icons/items/wood-log.webp',
+      fishing: '/icons/items/fish-minnow.webp',
+      cooking: '/icons/items/cooked-minnow.webp'
+    };
+    var _cols = { mining: '#38bdf8', woodcutting: '#fbbf24', fishing: '#6366f1', cooking: '#fb923c' };
+    var R = stateRef.current.rpg;
+    var _ls = R && R.lifeSkills && R.lifeSkills[s];
+    var _lvl = (_ls && _ls.level) || 1;
+    var _xp = (_ls && _ls.xp) || 0;
+    var _thr = Math.ceil(500 * Math.pow(1.08, _lvl - 1));  /* LIFE_SKILL_XP mirror */
+    var _frac = Math.max(0, Math.min(1, _xp / _thr));
+    var _sub = !n ? '' : n.nodeType === 'campfire' ? 'Campfire'
+      : ((n.name || n.spotName || '') + ' (Lv' + (n.gatherLvl || 1) + ')');
+    return [
+      /*#__PURE__*/React.createElement("img", {
+        key: 'i', src: _icons[s], alt: '', draggable: false,
+        style: { position: 'absolute', left: '7%', top: '16%', width: '19%', height: '62%', objectFit: 'contain', pointerEvents: 'none' }
+      }),
+      /*#__PURE__*/React.createElement("div", {
+        key: 't',
+        style: { position: 'absolute', left: '30%', top: '13%', fontSize: 17, fontWeight: 800, color: '#f4f6f8', letterSpacing: 1.2, lineHeight: 1, pointerEvents: 'none', textShadow: '0 1px 2px rgba(0,0,0,.6)' }
+      }, stateRef.current._isDesktop && /*#__PURE__*/React.createElement("kbd", {
+        style: { background: 'rgba(255,255,255,.18)', padding: '0 4px', borderRadius: 3, fontSize: 10, marginRight: 5, verticalAlign: 'middle' }
+      }, "E"), _titles[s] || 'MINE'),
+      /*#__PURE__*/React.createElement("div", {
+        key: 's',
+        style: { position: 'absolute', left: '30%', top: '44%', maxWidth: '44%', fontSize: 11.5, fontWeight: 600, color: _cols[s], whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', pointerEvents: 'none' }
+      }, _sub),
+      /*#__PURE__*/React.createElement("div", {
+        key: 'l',
+        style: { position: 'absolute', left: '76.5%', top: '28%', width: '17.5%', height: '40%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 800, color: '#f4f6f8', pointerEvents: 'none' }
+      }, 'LV ' + _lvl),
+      /*#__PURE__*/React.createElement("div", {
+        key: 'p',
+        style: { position: 'absolute', left: '7%', bottom: '10%', width: (86 * _frac) + '%', maxWidth: '86%', height: '4.5%', background: _cols[s], borderRadius: 3, pointerEvents: 'none', boxShadow: '0 0 6px ' + _cols[s] }
+      })
+    ];
   }()), /*#__PURE__*/React.createElement(ExtractionSwipeLayer, {
     stateRef: stateRef,
     onSuccess: _succeedExtraction
