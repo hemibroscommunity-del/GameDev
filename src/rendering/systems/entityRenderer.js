@@ -720,8 +720,13 @@ function _placeGear(display, equip, pose, dir, frameIdx) {
       /* v2.3.1120: gear sheets are NOT display-downscaled (still 256), but the
          body transform sb.scale carries the DISPLAY_DS factor for the smaller
          body -- divide it back out so the 256 gear renders at the right size and
-         stays pixel-aligned over the body. */
-      spr.scale.x = sb.scale.x / DISPLAY_DS; spr.scale.y = sb.scale.y / DISPLAY_DS;
+         stays pixel-aligned over the body.
+         v2.3.1434: normalize by the texture's OWN frame width instead of
+         assuming 256 -- gearSheets now stores display-sized (exact-texel)
+         sheets when the art ships at 128 on disk, and this factor is what
+         keeps both generations rendering at the identical world size. */
+      const _gnorm = 256 / ((tex.frame && tex.frame.width) || 256);
+      spr.scale.x = sb.scale.x * _gnorm / DISPLAY_DS; spr.scale.y = sb.scale.y * _gnorm / DISPLAY_DS;
       if (_GEAR_SLOTS[s][0] === 'shirt') {
         const t = equip && equip.shirtTint;
         spr.tint = t ? ((t[0] << 16) | (t[1] << 8) | t[2]) : 0xffffff;
