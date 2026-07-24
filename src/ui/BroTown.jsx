@@ -3501,17 +3501,17 @@ export var BroTown = function BroTown(_ref0) {
           var _npEl = typeof document !== 'undefined' && document.getElementById('bt-node-prompt');
           if (_npEl && S._nearNode && S.camera) {
             var _nwx = (S._nearNode.x - S.camera.x) * (S._worldScaleX || 1);
-            /* v2.3.1445 (owner: the menu "activates too low"): the node
-               SPRITES are bottom-anchored (effectsRenderer
-               NODE_SPRITE_ANCHOR_Y — ore/tree art extends UP from
-               node.y), so the old node.y-11 anchor draped the shell over
-               the resource's body.  Anchor the shell's BOTTOM just above
-               each type's visual top instead (fishSpot/campfire are
-               center/ground-drawn, so they get small offsets). */
-            var _nvT = { tree: 150, oreVein: 118, fishSpot: 62, campfire: 30 }[S._nearNode.nodeType] || 40;
+            /* v2.3.1447 (owner: "always make the shell appear directly
+               centered beneath the resource"): the shell's TOP sits just
+               below each type's visual BOTTOM.  Node sprites are
+               bottom-anchored at node.y (ore/tree art extends UP), the
+               pond is center-anchored (art reaches ~66px below node.y),
+               the campfire is drawn on the ground at node.y.  Offsets
+               tuned from headless screenshots. */
+            var _nvB = { tree: 10, oreVein: 8, fishSpot: 64, campfire: 14 }[S._nearNode.nodeType] || 10;
             var _npW2 = (_npEl.offsetWidth || 200) / 2;
             var _npH = _npEl.offsetHeight || 36;
-            var _nwy = (S._nearNode.y - _nvT - S.camera.y) * (S._worldScaleY || 1) - _npH - 6;
+            var _nwy = (S._nearNode.y + _nvB - S.camera.y) * (S._worldScaleY || 1);
             var _vw = window.innerWidth, _vh = window.innerHeight;
             var _dashH = 0;
             try { _dashH = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--dash-h')) || _vh * 0.25; } catch (e3) { _dashH = _vh * 0.25; }
