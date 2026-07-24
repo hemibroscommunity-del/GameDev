@@ -244,12 +244,105 @@ var SUPA_URL = ''; var SUPA_KEY = ''; var supa = null;
 Object.assign(globalThis, { BT_API_BASE, SUPA_URL, SUPA_KEY, supa });
 Object.assign(globalThis, { _regenerator, _regeneratorDefine2, _asyncToGenerator, _typeof, _slicedToArray, _toConsumableArray, _objectSpread, _defineProperty, _toPropertyKey, _toPrimitive, ownKeys, _arrayWithHoles, _iterableToArrayLimit, _unsupportedIterableToArray, _arrayLikeToArray, _nonIterableRest, _arrayWithoutHoles, _iterableToArray, _nonIterableSpread, _createForOfIteratorHelper, asyncGeneratorStep });
 
+/* ── v2.3.1448: tap-to-open resource menu ──────────────────────────
+   Owner: "only when a user touches the resource on screen does the
+   resource extraction menu pop up.  If they try to extract while too
+   far away a message pops up that says they're too far away."
+
+   Two helpers shared by the per-frame proximity scan, the canvas tap
+   hit-test and the desktop E key, so "in reach" and "which resource
+   is under my finger" are each defined ONCE.
+
+   nodeReachDist: the distance the reach test uses, or null when the
+   node is out of reach.  Ore keeps its one-tile-north mining SPOT
+   rule (the south-facing swing lines up over the rock — see
+   _startExtraction); everything else scales its radius with the
+   node's sprite height so a tall high-tier tree is still reachable
+   from under its canopy. */
+function nodeReachDist(S, n) {
+  if (!S || !n || !S.player) return null;
+  var P = S.player;
+  if (n.nodeType === 'campfire') {
+    var _dc = Math.sqrt(Math.pow(n.x - P.x, 2) + Math.pow(n.y - P.y, 2));
+    return _dc < 80 ? _dc : null;
+  }
+  if (n.nodeType === 'oreVein') {
+    var _ds = Math.sqrt(Math.pow(n.x - P.x, 2) + Math.pow((n.y - TILE) - P.y, 2));
+    return _ds < MINE_SPOT_R ? _ds : null;
+  }
+  var _baseH = n.nodeType === 'tree' ? 112 : 88;
+  var _tierStep = Math.min(10, Math.max(1, Math.ceil((n.gatherLvl || 1) / 10)));
+  var _proxR = Math.max(100, _baseH * (1 + (_tierStep - 1) * 0.15) * 0.75);
+  var _d = Math.sqrt(Math.pow(n.x - P.x, 2) + Math.pow(n.y - P.y, 2));
+  return _d < _proxR ? _d : null;
+}
+
+/* nodeAtScreen: which resource (if any) a CSS-pixel tap landed on.
+   Uses the node's LIVE Pixi sprite box when the renderer has built
+   one — that carries the exact art bounds, anchor and tier scale —
+   and falls back to a nominal box for the procedural campfire and
+   for the frame or two before a sprite exists.  World->CSS is
+   (world - camera) * publishedWorldScale, the same transform the
+   monster tap test uses.  Boxes get a small pad so a fingertip just
+   off the trunk still counts (iOS 44px tap-target guidance). */
+function nodeAtScreen(S, cssX, cssY) {
+  if (!S || !S.camera) return null;
+  var sx = S._worldScaleX || 1, sy = S._worldScaleY || 1;
+  var PAD = 10;
+  var list = [];
+  if (S.gatherNodes) for (var i = 0; i < S.gatherNodes.length; i++) list.push(S.gatherNodes[i]);
+  if (S._campfire && S._campfire.alive) list.push(S._campfire);
+  var best = null, bestD = Infinity;
+  for (var j = 0; j < list.length; j++) {
+    var n = list[j];
+    if (!n || !n.alive) continue;
+    if (n.respawnAt && Date.now() < n.respawnAt) continue;
+    var spr = n._pixiSprite;
+    var w, h, ax, ay, wx, wy;
+    if (spr && !spr.destroyed && spr.width > 2 && spr.height > 2) {
+      w = spr.width; h = spr.height;
+      ax = spr.anchor ? spr.anchor.x : 0.5;
+      ay = spr.anchor ? spr.anchor.y : 0.5;
+      wx = typeof spr.x === 'number' ? spr.x : n.x;
+      wy = typeof spr.y === 'number' ? spr.y : n.y;
+    } else if (n.nodeType === 'campfire') {
+      /* procedural fire: glow ellipse 52 wide, flames ~21 up, 9 down */
+      w = 56; h = 40; ax = 0.5; ay = 0.75; wx = n.x; wy = n.y;
+    } else {
+      var _ts = Math.min(10, Math.max(1, Math.ceil((n.gatherLvl || 1) / 10)));
+      h = (n.nodeType === 'tree' ? 168 : 132) * (1 + (_ts - 1) * 0.15);
+      w = h * 0.8;
+      ax = 0.5;
+      ay = n.nodeType === 'fishSpot' ? 0.5 : 1.0;
+      wx = n.x; wy = n.y;
+    }
+    var l = (wx - w * ax - S.camera.x) * sx;
+    var r = (wx + w * (1 - ax) - S.camera.x) * sx;
+    var t = (wy - h * ay - S.camera.y) * sy;
+    var b = (wy + h * (1 - ay) - S.camera.y) * sy;
+    if (cssX < l - PAD || cssX > r + PAD || cssY < t - PAD || cssY > b + PAD) continue;
+    /* overlapping boxes (a pond behind a tree): nearest centre wins */
+    var d = Math.sqrt(Math.pow(cssX - (l + r) / 2, 2) + Math.pow(cssY - (t + b) / 2, 2));
+    if (d < bestD) { bestD = d; best = n; }
+  }
+  return best;
+}
+
 export var BroTown = function BroTown(_ref0) {
   var _stateRef$current, _stateRef$current2, _minigameInstance$win, _minigameInstance$win2, _rpgState$lifeSkills3, _rpgState$lifeSkills4, _rpgState$lifeSkills5, _rpgState$lifeSkills6, _rpgState$lifeSkills0, _rpgState$weapon, _rpgState$rangedWeapo, _rpgState$armor, _rpgState$lifeSkills1, _ELEMENTS$rpgState$am2, _ELEMENTS$rpgState$sh2, _rpgState$lifeSkills14, _rpgState$lifeSkills18, _stateRef$current7, _rpgState$_compStats, _rpgState$_compStats2, _rpgState$_compStats3, _rpgState$_compStats4, _rpgState$_compStats5, _rpgState$_compStats6, _rpgState$_compStats7, _rpgState$_compStats8, _arenaStatus$currentM, _arenaStatus$currentM2, _arenaTournament$play5, _MKT_CATEGORIES$mktCa, _rpgState$lifeSkills21, _rpgState$lifeSkills29, _rpgState$lifeSkills33, _rpgState$lifeSkills36, _stateRef$current18, _stateRef$current19, _stateRef$current20, _stateRef$current$_sl, _stateRef$current21, _stateRef$current22, _stateRef$current$_fe, _stateRef$current23, _stateRef$current24, _stateRef$current$_sl2, _stateRef$current25, _clanData$members, _clanData$members2, _questPanel$npcRef, _incomingTrade$offer, _RARITY_TIERS$rpgStat, _rpgState$armor2, _rpgState$armor3, _rpgState$armor4, _AMULET_TIERS$rpgStat, _ELEMENTS$rpgState$am4, _ELEMENTS$rpgState$am5, _ELEMENTS$rpgState$am6, _BLACKSMITH_TIERS$rpg, _BLACKSMITH_TIERS$rpg2, _rpgState$lifeSkills37, _rpgState$lifeSkills38, _rpgState$lifeSkills39, _rpgState$lifeSkills40, _rpgState$lifeSkills42, _stateRef$current30, _REPUTATION$stateRef$, _REPUTATION$stateRef$2, _stateRef$current31, _ZONES, _stateRef$current33, _REPUTATION$inspectPl, _REPUTATION$inspectPl2, _inspectPlayer$bro$di, _inspectPlayer$rpgDat, _stateRef$current40, _stateRef$current41, _stateRef$current42, _stateRef$current43, _stateRef$current44, _stateRef$current45, _stateRef$current46, _stateRef$current47, _stateRef$current48, _stateRef$current49, _stateRef$current50, _stateRef$current51, _stateRef$current52, _stateRef$current53, _stateRef$current54, _stateRef$current55, _stateRef$current56, _stateRef$current57, _stateRef$current58, _stateRef$current$_ne, _stateRef$current$_ne2, _stateRef$current$_ne3, _stateRef$current$_ne4, _window$matchMedia, _window;
   var nfts = _ref0.nfts,
     onExit = _ref0.onExit;
   var canvasRef = useRef(null);
   var pixiRef = useRef(null);
+  /* v2.3.1448: the resource shell is opened by TAPPING the resource, so
+     it has to paint on the next frame, not whenever something else
+     happens to re-render.  The game loop mirrors S._nearNode into this
+     state on the open/close edge only (the ref is the last value it
+     pushed, so the compare costs nothing per frame). */
+  var _usePromptNode = useState(null),
+    promptNode = _usePromptNode[0],
+    setPromptNode = _usePromptNode[1];
+  var promptNodeRef = useRef(null);
   /* Promise that resolves once the local player's avatar assets (body,
      recolored skin, equipped gear for every direction, weapon, shield) are
      fully baked.  The intro overlay holds until this settles so the player
@@ -3452,41 +3545,51 @@ export var BroTown = function BroTown(_ref0) {
            fixed 100 px ceiling, which left some tall sprites visually
            in-range but proximity-out-of-range (user: "resources
            showing that have no menu to interact with it"). */
-        S._nearNode = null;
+        /* v2.3.1448 (owner: "only when a user touches the resource on
+           screen does the resource extraction menu pop up"): being NEAR
+           a resource no longer opens the shell.  This scan now publishes
+           S._proxNode — the closest resource actually within reach —
+           which the desktop E key uses; the shell renders from
+           S._nearNode, and only a TAP on the resource sets that (see
+           _tapResourceAt).  The tapped node is held until it's harvested
+           out, respawn-pending, or the player walks out of reach.
+           v2.3.853: a lit campfire counts as a node here (Cook). */
+        S._proxNode = null;
         var closestDist = Infinity;
         if (S.gatherNodes) {
           S.gatherNodes.forEach(function (n) {
             if (!n.alive || n.respawnAt && Date.now() < n.respawnAt) return;
-            if (n.nodeType === 'oreVein') {
-              /* Ore: only offer the Mine action when the player is standing on
-                 the spot one tile north of the vein (see _startExtraction). */
-              var _sd = Math.sqrt(Math.pow(n.x - P.x, 2) + Math.pow((n.y - TILE) - P.y, 2));
-              if (_sd < MINE_SPOT_R && _sd < closestDist) { closestDist = _sd; S._nearNode = n; }
-              return;
-            }
-            var _baseH = n.nodeType === 'tree' ? 112 : 88;
-            var _tierStep = Math.min(10, Math.max(1, Math.ceil((n.gatherLvl || 1) / 10)));
-            var _spriteH = _baseH * (1 + (_tierStep - 1) * 0.15);
-            var _proxR = Math.max(100, _spriteH * 0.75); /* 75% of sprite height + min 100 */
-            var nd = Math.sqrt(Math.pow(n.x - P.x, 2) + Math.pow(n.y - P.y, 2));
-            if (nd < _proxR && nd < closestDist) {
-              closestDist = nd;
-              S._nearNode = n;
-            }
+            var nd = nodeReachDist(S, n);
+            if (nd != null && nd < closestDist) { closestDist = nd; S._proxNode = n; }
           });
         }
-        /* v2.3.853: a lit campfire is also interactable (Cook) — treat it like
-           a node for the prompt/tap path. */
         if (S._campfire && S._campfire.alive) {
-          var _cfd = Math.sqrt(Math.pow(S._campfire.x - P.x, 2) + Math.pow(S._campfire.y - P.y, 2));
-          if (_cfd < 80 && _cfd < closestDist) { closestDist = _cfd; S._nearNode = S._campfire; }
+          var _cfd = nodeReachDist(S, S._campfire);
+          if (_cfd != null && _cfd < closestDist) { closestDist = _cfd; S._proxNode = S._campfire; }
         }
+        var _tapN = S._tapNode || null;
+        if (_tapN) {
+          var _tapLive = _tapN === S._campfire
+            ? !!(S._campfire && S._campfire.alive)
+            : !!(S.gatherNodes && S.gatherNodes.indexOf(_tapN) >= 0 && _tapN.alive
+                 && !(_tapN.respawnAt && Date.now() < _tapN.respawnAt));
+          if (!_tapLive || nodeReachDist(S, _tapN) == null) { S._tapNode = null; _tapN = null; }
+        }
+        S._nearNode = _tapN;
         /* v2.3.1432 (owner: "the contextual menu for cooking didn't go
            away"): while a harvest attempt is ACTIVE, the interact prompt
            is noise — you're already doing the thing it offers (and its
            tap could restart the attempt).  Hide it for every skill; it
            returns the moment the attempt ends or cancels. */
         if (S._extraction) S._nearNode = null;
+        /* v2.3.1448: the shell is React-rendered, and React doesn't
+           re-render per frame — push the open/close edge into state the
+           moment it changes so a tap paints the shell immediately (and
+           walking away clears it just as fast). */
+        if (S._nearNode !== promptNodeRef.current) {
+          promptNodeRef.current = S._nearNode;
+          setPromptNode(S._nearNode);
+        }
         /* v2.3.1409 (owner: "the ore resource contextual menu appeared too
            far below the ore on screen"): anchor the interact prompt to the
            NODE instead of the dashboard.  The button is React-rendered but
@@ -4932,10 +5035,49 @@ export var BroTown = function BroTown(_ref0) {
       localStorage.setItem('bt_rpg', JSON.stringify(R));
     } catch (e2) {}
   }, []);
+  /* v2.3.1448 (owner: "only when a user touches the resource on screen
+     does the resource extraction menu pop up.  If they try to extract
+     while too far away a message pops up that says they're too far
+     away"): the canvas tap paths call this after their monster / NPC /
+     player checks have passed on the tap.  Returns true when a resource
+     handled it, so the caller can skip its "tap on empty space" branch.
+     A tap on a resource that's out of reach floats the warning instead
+     of opening the shell; a tap on bare ground closes an open shell. */
+  var _tapResourceAt = useCallback(function (cssX, cssY) {
+    var S = stateRef.current;
+    var hit = nodeAtScreen(S, cssX, cssY);
+    if (!hit) {
+      if (S._tapNode) { S._tapNode = null; S._nearNode = null; }
+      return false;
+    }
+    if (nodeReachDist(S, hit) == null) {
+      /* Throttled — a flurry of taps shouldn't stack popups on top of
+         each other (the popup lives ~1s). */
+      if (Date.now() - (S._farMsgAt || 0) > 700) {
+        S._farMsgAt = Date.now();
+        /* Floats over the PLAYER, not the resource: a resource you're too
+           far from is by definition near a screen edge, and the popup was
+           clipping off the side of the phone (verified in the probe). */
+        pushDmgPopup(S, S.player.x, S.player.y - 74, 'Too far away', '#FF7A6B', { ttl: 1.4, crit: true });
+        try { BT_AUDIO.beep(200, 0.05, 0.08, 'square'); } catch (e) {}
+      }
+      S._tapNode = null;
+      S._nearNode = null;
+      return true;
+    }
+    S._tapNode = hit;
+    S._nearNode = hit;
+    try { BT_AUDIO.beep(540, 0.04, 0.05, 'sine'); } catch (e) {}
+    return true;
+  }, []);
+
   var _desktopGather = useCallback(function () {
     var _R$lifeSkills;
     var S = stateRef.current,
-      node = S._nearNode,
+      /* v2.3.1448: the E key keeps working on PROXIMITY (desktop has no
+         "touch the resource" gesture in the thumb sense) — the tapped
+         node wins when there is one. */
+      node = S._nearNode || S._proxNode,
       R = S.rpg;
     if (!node || !node.alive || !R) return;
     if (R.lifeSkills) migrateLifeSkills(R.lifeSkills);
@@ -5458,6 +5600,20 @@ export var BroTown = function BroTown(_ref0) {
       var r = 52 * sx;
       return (dx * dx + dy * dy) < (r * r);
     };
+    /* v2.3.1448: the floating joystick zones sit OVER the canvas, so the
+       canvas's own touch handlers never see a tap that lands inside one —
+       lE/rE forward it as a synthetic click instead.  But the self-tap
+       chat gesture (isSelfTouch, ~42 CSS px around the character) claims
+       the tap BEFORE that forward, and an in-reach ore vein or campfire
+       sits inside exactly that circle — so "touch the resource to open
+       its menu" opened chat instead.  Resource wins when its art is under
+       the finger; a self-tap on bare character still opens chat. */
+    var tapResourceAtClient = function (clientX, clientY) {
+      var c = canvasRef.current;
+      if (!c) return false;
+      var r = c.getBoundingClientRect();
+      return _tapResourceAt(clientX - r.left, clientY - r.top);
+    };
     var openSelfChat = function () {
       try {
         var _busC = window.__broDashPanelBus;
@@ -5577,6 +5733,8 @@ export var BroTown = function BroTown(_ref0) {
         if (!lts.moved && (endT - lts.startAt) < SELF_TAP_MAX_MS
             && isSelfTouch(t.clientX, t.clientY)) {
           lts.lastEndAt = 0;
+          /* v2.3.1448: resource art under the finger beats the chat gesture. */
+          if (tapResourceAtClient(t.clientX, t.clientY)) return;
           openSelfChat();
           return;
         }
@@ -5808,6 +5966,8 @@ export var BroTown = function BroTown(_ref0) {
           rts3.lastEndAt = 0;
           rTouchId.current = null;
           handleRJoyEnd();
+          /* v2.3.1448: resource art under the finger beats the chat gesture. */
+          if (tapResourceAtClient(t.clientX, t.clientY)) return;
           openSelfChat();
           return;
         }
@@ -6417,8 +6577,9 @@ export var BroTown = function BroTown(_ref0) {
                could be tapped).  Apply the same published renderer scale. */
             var _tapSX = _S._worldScaleX || 1.0;
             var _tapSY = _S._worldScaleY || 1.0;
+            var _closest = null;
             if (_S.monsters) {
-              var _closest = null, _closestDist = 40;
+              var _closestDist = 40;
               _S.monsters.forEach(function (m) {
                 if (!m.alive) return;
                 /* v2.3.1111: shared body-centre table (was missing the
@@ -6436,6 +6597,11 @@ export var BroTown = function BroTown(_ref0) {
                 }
               }
             }
+            /* v2.3.1448: no monster under the finger — see if the tap
+               landed on a resource (opens its shell, or warns that it's
+               too far).  Monsters keep priority: one standing in front
+               of a tree is still the thing you meant to tap. */
+            if (!_closest) _tapResourceAt(_cssX, _cssY);
           }
           ct.id = null;
           break;
@@ -6649,6 +6815,10 @@ export var BroTown = function BroTown(_ref0) {
           return;
         }
       }
+      /* v2.3.1448: resources come after the creature checks — a click on
+         a resource opens its shell (or warns it's out of reach) instead
+         of falling through to the unlock branch. */
+      if (_tapResourceAt(cssX, cssY)) return;
       /* Tap on empty space = unlock */
       S.lockedTarget = null;
     }
@@ -8021,7 +8191,7 @@ export var BroTown = function BroTown(_ref0) {
       setShowFurniture(true);
       BT_AUDIO.enterBuilding();
     }
-  }, "\uD83E\uDE91 Furniture Workshop"), ((_stateRef$current58 = stateRef.current) === null || _stateRef$current58 === void 0 ? void 0 : _stateRef$current58._nearNode) && /*#__PURE__*/React.createElement("button", {
+  }, "\uD83E\uDE91 Furniture Workshop"), promptNode && /*#__PURE__*/React.createElement("button", {
     className: "bt-interact-prompt",
     id: "bt-node-prompt", /* v2.3.1409: game loop re-anchors this to the node's screen pos each frame */
     style: {
@@ -8107,7 +8277,7 @@ export var BroTown = function BroTown(_ref0) {
        + the player's life skill.  Geometry in % of the 264x79 shell
        (measured from the owner's art: icon well ~6-27% wide, LV pill
        ~77-94%, XP groove along the bottom). */
-    var n = stateRef.current._nearNode;
+    var n = stateRef.current._nearNode || promptNode;   /* v2.3.1448: tap-held node */
     var s = (n === null || n === void 0 ? void 0 : n.skill) || 'mining';
     var _titles = { mining: 'MINE', woodcutting: 'CHOP', fishing: 'FISH', cooking: 'COOK' };
     var _icons = {
