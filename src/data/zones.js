@@ -65,7 +65,7 @@ export const ZONES = {
     enemyEmoji: { fodder: '🔥', brute: '🌋', swarm: '🦎', volatile: '💣', hexer: '🧙', sentinel: '⚔️' }
   },
   mist: {
-    id: 'mist', name: 'Venom Thicket' /* v2.3.1438 */, w: 32, h: 32,
+    id: 'mist', name: 'Poison Forest' /* v2.3.1438; v2.3.1439: owner wording */, w: 32, h: 32,
     /* Elemental zone 1 — see ember note. */
     element: 'venom', secondary: 'wind', level: [1, 2] /* band: [22,40] */, music: 'mist', safe: false,
     palette: { ground: '#2a4a2a', path: '#5a6a45', accent: '#3a5a30' },
@@ -92,7 +92,7 @@ export const ZONES = {
     enemyEmoji: {}
   },
   frost: {
-    id: 'frost', name: 'Frost Shore' /* v2.3.1438 */, w: 32, h: 32,
+    id: 'frost', name: 'Frost Ridge' /* v2.3.1438; v2.3.1439: owner — it's a mountain, no shore */, w: 32, h: 32,
     /* Elemental zone 1 — see ember note. */
     element: 'frost', secondary: 'storm', level: [1, 2] /* band: [8,25] */, music: 'frost', safe: false,
     palette: { ground: '#5a6a7a', path: '#8a9aaa', accent: '#3a5a8a' },
@@ -101,7 +101,7 @@ export const ZONES = {
     enemyEmoji: { fodder: '❄️', brute: '🐻‍❄️', swarm: '🦅', volatile: '🧊', stalker: '🐺', hexer: '🌀', sentinel: '🏔️', snowman: '⛄' }
   },
   thunder: {
-    id: 'thunder', name: 'Storm Peaks' /* v2.3.1438 */, w: 32, h: 32,
+    id: 'thunder', name: 'Electric Foundry' /* v2.3.1438; v2.3.1439: owner — metal/futuristic place word */, w: 32, h: 32,
     /* Elemental zone 1 — see ember note. */
     element: 'storm', secondary: 'flame', level: [1, 2] /* band: [55,80] */, music: 'thunder', safe: false,
     palette: { ground: '#4a4a5a', path: '#6a6a7a', accent: '#7a5aaa' },
