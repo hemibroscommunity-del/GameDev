@@ -8581,13 +8581,13 @@ export var BroTown = function BroTown(_ref0) {
         S2.arrows = [];
         S2._ambientParticles = [];
         S2._zoneWipe = Date.now();
-        pushDmgPopup(S2, P2.x, P2.y - 40, 'Shadow Sanctum', '#8E44AD');
+        pushDmgPopup(S2, P2.x, P2.y - 40, 'Dark Sanctum', '#8E44AD');
         pushDmgPopup(S2, P2.x, P2.y - 25, 'Lv 81-100', 'rgba(255,255,255,.5)');
       },
       onMouseDown: function onMouseDown(e) {
         return e.preventDefault();
       }
-    }, '🌑 Enter Shadow Sanctum'), React.createElement('button', {
+    }, '🌑 Enter Dark Sanctum'), React.createElement('button', {
       className: 'bt-interact-prompt',
       style: {
         position: 'relative',
@@ -8617,13 +8617,13 @@ export var BroTown = function BroTown(_ref0) {
         S2.arrows = [];
         S2._ambientParticles = [];
         S2._zoneWipe = Date.now();
-        pushDmgPopup(S2, P2.x, P2.y - 40, 'Radiant Heights', '#F1C40F');
+        pushDmgPopup(S2, P2.x, P2.y - 40, 'Light Summit', '#F1C40F');
         pushDmgPopup(S2, P2.x, P2.y - 25, 'Lv 81-100', 'rgba(255,255,255,.5)');
       },
       onMouseDown: function onMouseDown(e) {
         return e.preventDefault();
       }
-    }, '☀️ Enter Radiant Heights'));
+    }, '☀️ Enter Light Summit'));
   }()), /*#__PURE__*/React.createElement(MenuBar, { stateRef: stateRef, rpgState: rpgState, bodySize: bodySize, chatOpen: chatOpen, friendsList: friendsList, unreadChats: unreadChats, showClanPanel: showClanPanel, showEncyclopedia: showEncyclopedia, showFeedback: showFeedback, showGuildPanel: showGuildPanel, showInventory: showInventory, showLeaderboard: showLeaderboard, showSkills: showSkills, showSocialPanel: showSocialPanel, showStatScreen: showStatScreen, doSpecialAttack: doSpecialAttack, setBodySize: setBodySize, setChatOpen: setChatOpen, setRpgState: setRpgState, setUnreadChats: setUnreadChats, setShowClanPanel: setShowClanPanel, setShowEmotes: setShowEmotes, setShowEncyclopedia: setShowEncyclopedia, setShowFeedback: setShowFeedback, setShowGuildPanel: setShowGuildPanel, setShowInfo: setShowInfo, setShowInventory: setShowInventory, setShowLeaderboard: setShowLeaderboard, setShowShop: setShowShop, setShowSkills: setShowSkills, setShowSocialPanel: setShowSocialPanel, setShowStatScreen: setShowStatScreen }), showInfo && /*#__PURE__*/React.createElement(InfoPanel, { playerCount: playerCount, setPlayerCount: setPlayerCount, setShowInfo: setShowInfo, stateRef: stateRef }), function (_stateRef$current61) {
     var R = (_stateRef$current61 = stateRef.current) === null || _stateRef$current61 === void 0 ? void 0 : _stateRef$current61.rpg;
     if (!R) return null;

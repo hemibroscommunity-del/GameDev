@@ -30,7 +30,7 @@ export const ZONES = {
     spawns: [{ arch: 'fodder', count: 10 }]
   },
   ember: {
-    id: 'ember', name: 'Ember Fields', w: 32, h: 32,
+    id: 'ember', name: 'Flame Fields' /* v2.3.1438: element-first names (owner) */, w: 32, h: 32,
     /* v2.3.1140: bands UNPINNED (were flattened to [1,1] behind BF-1 --
        monster HP outran player damage mid-band; fixed by the flattened
        MONSTER_HP_CURVE in gameSystems.js, sim-verified).  Bands per
@@ -65,7 +65,7 @@ export const ZONES = {
     enemyEmoji: { fodder: '🔥', brute: '🌋', swarm: '🦎', volatile: '💣', hexer: '🧙', sentinel: '⚔️' }
   },
   mist: {
-    id: 'mist', name: 'Mistwood', w: 32, h: 32,
+    id: 'mist', name: 'Venom Thicket' /* v2.3.1438 */, w: 32, h: 32,
     /* Elemental zone 1 — see ember note. */
     element: 'venom', secondary: 'wind', level: [1, 2] /* band: [22,40] */, music: 'mist', safe: false,
     palette: { ground: '#2a4a2a', path: '#5a6a45', accent: '#3a5a30' },
@@ -92,7 +92,7 @@ export const ZONES = {
     enemyEmoji: {}
   },
   frost: {
-    id: 'frost', name: 'Frozen Shore', w: 32, h: 32,
+    id: 'frost', name: 'Frost Shore' /* v2.3.1438 */, w: 32, h: 32,
     /* Elemental zone 1 — see ember note. */
     element: 'frost', secondary: 'storm', level: [1, 2] /* band: [8,25] */, music: 'frost', safe: false,
     palette: { ground: '#5a6a7a', path: '#8a9aaa', accent: '#3a5a8a' },
@@ -101,7 +101,7 @@ export const ZONES = {
     enemyEmoji: { fodder: '❄️', brute: '🐻‍❄️', swarm: '🦅', volatile: '🧊', stalker: '🐺', hexer: '🌀', sentinel: '🏔️', snowman: '⛄' }
   },
   thunder: {
-    id: 'thunder', name: 'Thunder Peaks', w: 32, h: 32,
+    id: 'thunder', name: 'Storm Peaks' /* v2.3.1438 */, w: 32, h: 32,
     /* Elemental zone 1 — see ember note. */
     element: 'storm', secondary: 'flame', level: [1, 2] /* band: [55,80] */, music: 'thunder', safe: false,
     palette: { ground: '#4a4a5a', path: '#6a6a7a', accent: '#7a5aaa' },
@@ -112,7 +112,7 @@ export const ZONES = {
     enemyEmoji: { fodder: '⚡', brute: '🗿', swarm: '🦇', hexer: '🌩️', sentinel: '⛰️' }
   },
   hollows: {
-    id: 'hollows', name: 'Deep Hollows', w: 32, h: 32,
+    id: 'hollows', name: 'Stone Hollows' /* v2.3.1438 */, w: 32, h: 32,
     /* Elemental zone 1 — see ember note. */
     element: 'stone', secondary: 'venom', level: [1, 2] /* band: [38,58] */, music: 'hollows', safe: false,
     palette: { ground: '#3a3a3a', path: '#5a5a5a', accent: '#6a5a4a' },
@@ -123,7 +123,7 @@ export const ZONES = {
     enemyEmoji: { fodder: 'rubble', brute: 'rock', swarm: 'scorp', volatile: 'gem', hexer: 'urn' }
   },
   sky: {
-    id: 'sky', name: 'Desert Winds', w: 32, h: 32,
+    id: 'sky', name: 'Wind Dunes' /* v2.3.1438 */, w: 32, h: 32,
     /* Elemental zone 1 — see ember note. */
     element: 'wind', secondary: 'frost', level: [1, 2] /* band: [38,58] */, music: 'sky', safe: false,
     /* v2.3.855: warm desert palette (replaces the old cool "Sky Reaches" blue-grey). */
@@ -139,7 +139,7 @@ export const ZONES = {
     enemyEmoji: { fodder: '🌬️', brute: '🦅', swarm: '🕊️', volatile: '🌪️', stalker: '🦉', hexer: '☁️', sentinel: '🗼' }
   },
   tidal: {
-    id: 'tidal', name: 'Tidal Caves', w: 32, h: 32,
+    id: 'tidal', name: 'Water Caves' /* v2.3.1438 */, w: 32, h: 32,
     /* Elemental zone 1 — see ember note. */
     element: 'water', secondary: 'venom', level: [1, 2] /* band: [8,25] */, music: 'tidal', safe: false,
     palette: { ground: '#2a4a5a', path: '#4a6a7a', accent: '#2a6a9a' },
@@ -150,7 +150,7 @@ export const ZONES = {
     enemyEmoji: { fodder: 'fish', brute: 'fishman', swarm: 'octo', volatile: 'bubble', stalker: 'shark', hexer: 'wave', sentinel: 'shell' }
   },
   shadow: {
-    id: 'shadow', name: 'Shadow Sanctum', w: 40, h: 40,
+    id: 'shadow', name: 'Dark Sanctum' /* v2.3.1438 */, w: 40, h: 40,
     element: 'dark', secondary: null, level: [1, 2] /* band: [81,90] */, music: 'shadow', safe: false, endgame: true,
     palette: { ground: '#1a1a2a', path: '#2a2a3a', accent: '#3a2a4a' },
     /* v2.3.214: all 3 spawn archetypes were emoji-only. */
@@ -159,7 +159,7 @@ export const ZONES = {
     enemyEmoji: { fodder: '👤', brute: '👹', swarm: '🦇', volatile: '💀', hexer: '🔮', sentinel: '⚰️' }
   },
   radiant: {
-    id: 'radiant', name: 'Radiant Heights', w: 40, h: 40,
+    id: 'radiant', name: 'Light Summit' /* v2.3.1438 */, w: 40, h: 40,
     element: 'light', secondary: null, level: [1, 2] /* band: [81,100] */, music: 'radiant', safe: false, endgame: true,
     palette: { ground: '#6a6a4a', path: '#aaa870', accent: '#ccc060' },
     /* v2.3.214: all 3 spawn archetypes were emoji-only here (raw

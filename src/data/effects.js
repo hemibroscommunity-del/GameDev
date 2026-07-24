@@ -276,8 +276,8 @@ export const TOWN_EXITS = [
    spawn (24,31) — inside 2 re-triggers the v2.3.948 bounce. */
 export const WORLDVIEW_EXITS = [
   { zoneId: 'town',    tx: 24, ty: 28, dir: 'north', label: 'Town',            color: '#cdb27a' },
-  { zoneId: 'ember',   tx: 25, ty: 10, dir: 'north', label: 'Ember Fields',    color: ELEMENTS.flame.color },
-  { zoneId: 'sky',     tx: 39, ty: 12, dir: 'ne',    label: 'Desert Winds',    color: ELEMENTS.wind.color },
+  { zoneId: 'ember',   tx: 25, ty: 10, dir: 'north', label: 'Flame Fields',    color: ELEMENTS.flame.color },
+  { zoneId: 'sky',     tx: 39, ty: 12, dir: 'ne',    label: 'Wind Dunes',    color: ELEMENTS.wind.color },
   /* v2.3.1411 (owner: "disable portals to sea level, lightning/tech
      building, the rock cave, and the poison forest — it's unfinished"):
      the four unfinished spokes are CLOSED for now.  Commenting them out
@@ -285,10 +285,10 @@ export const WORLDVIEW_EXITS = [
      trail-head label (tileRenderer), and the minimap marker
      (gameDisplay) in one place — every consumer iterates this array.
      Uncomment to reopen. */
-  // { zoneId: 'hollows', tx: 43, ty: 22, dir: 'east',  label: 'Deep Hollows',    color: ELEMENTS.stone.color },   /* rock/crystal cave */
-  // { zoneId: 'thunder', tx: 42, ty: 36, dir: 'se',    label: 'Thunder Peaks',   color: ELEMENTS.storm.color },   /* lightning/tech building */
-  // { zoneId: 'tidal',   tx: 24, ty: 40, dir: 'south', label: 'Tidal Caves',     color: ELEMENTS.water.color },   /* sea level / beach+pier */
-  // { zoneId: 'mist',    tx: 8,  ty: 32, dir: 'sw',    label: 'Mistwood',        color: ELEMENTS.venom.color },   /* poison forest */
+  // { zoneId: 'hollows', tx: 43, ty: 22, dir: 'east',  label: 'Stone Hollows',    color: ELEMENTS.stone.color },   /* rock/crystal cave */
+  // { zoneId: 'thunder', tx: 42, ty: 36, dir: 'se',    label: 'Storm Peaks',   color: ELEMENTS.storm.color },   /* lightning/tech building */
+  // { zoneId: 'tidal',   tx: 24, ty: 40, dir: 'south', label: 'Water Caves',     color: ELEMENTS.water.color },   /* sea level / beach+pier */
+  // { zoneId: 'mist',    tx: 8,  ty: 32, dir: 'sw',    label: 'Venom Thicket',        color: ELEMENTS.venom.color },   /* poison forest */
   { zoneId: 'verdant', tx: 7,  ty: 20, dir: 'nw',    label: 'Verdant Wilds',   color: '#6abf4f' },
-  { zoneId: 'frost',   tx: 13, ty: 13, dir: 'nw',    label: 'Frozen Shore',    color: ELEMENTS.frost.color },
+  { zoneId: 'frost',   tx: 13, ty: 13, dir: 'nw',    label: 'Frost Shore',    color: ELEMENTS.frost.color },
 ];
