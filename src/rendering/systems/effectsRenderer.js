@@ -3240,6 +3240,9 @@ export class EffectsRenderer {
         continue;
       }
       if (!cfg.frames.length) continue;   /* strip still loading — burst waits */
+      /* v2.3.1445: bursts may be scheduled slightly in the FUTURE (wood
+         chips lead the delayed bite sample) — hold until t0 arrives. */
+      if (age < 0) { if (b._spr) b._spr.visible = false; continue; }
       let spr = b._spr;
       if (!spr || spr.destroyed) {
         spr = new Sprite();
@@ -4284,13 +4287,7 @@ export class EffectsRenderer {
         const _ldt = Math.max(0, Math.min(100, now - (L.t || now)));
         L.t = now;
         if (L.f < 0.9999) L.f = Math.min(0.9999, L.f + _ldt / 1600);   /* v2.3.1442: 2x slower with the live chase */
-        else if (!L.doneAt) {
-          L.doneAt = now + 350;
-          /* v2.3.1443: grease POP the moment the flipped food lands back
-             in the pan (owner's effect round 3 — marker-hit moments). */
-          if (!S._fxBursts) S._fxBursts = [];
-          if (S._fxBursts.length < 6) S._fxBursts.push({ kind: 'grease', t0: now, x: L.x, y: L.y + 6 });
-        }
+        else if (!L.doneAt) L.doneAt = now + 350;   /* v2.3.1445: land pop folded into the constant grease beat */
         const _lsp = this.gestureToolSprite;
         const _ls = _lgt.h / 256;
         _lsp.texture = _lgt.frames[Math.floor(L.f * 8)];
@@ -4321,14 +4318,36 @@ export class EffectsRenderer {
     /* v2.3.1443: pond splash bursts at the FISH SPOT while the crank is
        actually turning (same _reelSpinAt freshness window as the reel SFX
        loop) — one splash roughly every 800ms so it reads as agitation,
-       not a strobe.  The catch itself pushes a final splash from
-       lifeSkillRewards.applyFishingReward. */
+       not a strobe.  v2.3.1445 (owner): reeling is the ONLY splash moment
+       — the catch burst that applyFishingReward used to add is gone. */
     if (ex.skill === 'fishing' && ex.status === 'ready'
         && ex._reelSpinAt && (performance.now() - ex._reelSpinAt) < 250
         && now - (ex._splashAt || 0) > 800) {
       ex._splashAt = now;
       if (!S._fxBursts) S._fxBursts = [];
       if (S._fxBursts.length < 6) S._fxBursts.push({ kind: 'splash', t0: now, x: node.x, y: node.y + 2 });
+    }
+    /* v2.3.1445 (owner: "make cooking grease constant"): grease pops on a
+       steady beat the whole time the pan is on the fire (same
+       whole-attempt contract as the sizzle loop).  Anchored to the live
+       marker pan when the flip cue is up, else to the baked pan the cook
+       figure holds over the flames. */
+    if (ex.skill === 'cooking' && now - (ex._greaseAt || 0) > 650) {
+      ex._greaseAt = now;
+      /* The tool sprite is force-hidden at the top of every frame and
+         re-shown by the marker block AFTER this emitter, so visibility
+         can't be read mid-frame — the marker block caches its pan
+         position in _panPos instead.  The -10/+14 offset lands on the
+         pan BOWL within the 256-cell art (the food anchors put the bowl
+         low-left of the cell centre); fallback is the pan the cook
+         figure holds over the flames. */
+      const _pp = (this._panPos && now - this._panPos.t < 250) ? this._panPos : null;
+      const _pan = _pp ? { x: _pp.x - 10, y: _pp.y + 14 } : { x: node.x + 8, y: node.y - 20 };
+      if (!S._fxBursts) S._fxBursts = [];
+      if (S._fxBursts.length < 6) {
+        this._greaseFlip = !this._greaseFlip;
+        S._fxBursts.push({ kind: 'grease', t0: now, x: _pan.x, y: _pan.y, flip: this._greaseFlip ? 1 : -1 });
+      }
     }
     const x = fishingCue ? S.player.x : node.x;
     /* Anchor cue above the node so it doesn't sit on top of the
@@ -4391,6 +4410,15 @@ export class EffectsRenderer {
             if (_a && _a.play) _a.play('sword-hit3', { vol: 0.55 });
           }, 200);
         } catch (e) {}
+        /* v2.3.1445 (owner: "make wood chip effects constant"): chips fly
+           off the trunk on EVERY swing of the chopper loop, scheduled
+           +200ms to land with the delayed bite sample above.  Mirrored so
+           they burst AWAY from the tree (art bursts rightward from a left
+           anchor). */
+        if (!S._fxBursts) S._fxBursts = [];
+        if (S._fxBursts.length < 6) {
+          S._fxBursts.push({ kind: 'woodchips', t0: now + 200, x: node.x - chopSign * 12, y: node.y - 64, flip: chopSign < 0 ? 1 : -1 });
+        }
       }
       this._chopLastFrame = k;
       /* chopper faces RIGHT in source (east); flipped (scale.x<0) when the tree
@@ -4417,6 +4445,17 @@ export class EffectsRenderer {
             _au.play('mine-strike', { offset: this._mineSndAlt ? 0.08 : 0.6, duration: 0.45, vol: 0.55 });
           }
         } catch (e) {}
+        /* v2.3.1445 (owner: "make rock ore effects constant" + "placement
+           too low"): rock debris on EVERY strike of the character's own
+           swing loop — not just finger slams — anchored at the ore's
+           UPPER face where the pick actually bites (the vein sprite is
+           bottom-anchored, so its body extends UP from node.y; the old
+           node.y+14 put the burst at its feet). */
+        if (!S._fxBursts) S._fxBursts = [];
+        if (S._fxBursts.length < 6) {
+          this._rockFlip = !this._rockFlip;
+          S._fxBursts.push({ kind: 'rocks', t0: now, x: node.x, y: node.y - 95, flip: this._rockFlip ? 1 : -1 });
+        }
       }
       this._mineLastFrame = _mk;
     } else {
@@ -4591,13 +4630,10 @@ export class EffectsRenderer {
               ex._chopSndAlt = !ex._chopSndAlt;
               _au.play('axe-chop', { offset: ex._chopSndAlt ? 0.06 : 1.10, duration: 0.6, vol: 0.6 });
             }
-            /* v2.3.1443 (owner effect sheets): painted wood-chip burst at
-               the trunk contact, mirrored so chips fly AWAY from the tree
-               (the art bursts rightward from a left anchor). */
-            if (ex.skill === 'woodcutting') {
-              if (!S._fxBursts) S._fxBursts = [];
-              if (S._fxBursts.length < 6) S._fxBursts.push({ kind: 'woodchips', t0: now, x: _cpx, y: _cpy + 6, flip: chopSign < 0 ? 1 : -1 });
-            }
+            /* v2.3.1445: the painted wood-chip burst moved to the chopper
+               loop's strike frame (constant, owner request) — this
+               full-drag moment keeps the procedural spark particles only,
+               like mining. */
           } catch (e) {}
         }
         ex._strikeP = f01;
@@ -4611,6 +4647,7 @@ export class EffectsRenderer {
          frames are food-less; the raw fish's bag icon rides the
          measured per-frame anchors and flips through the arc. */
       if (ex.skill === 'cooking' && _gt.food) {
+        this._panPos = { x: sp.x, y: sp.y, t: now };   /* v2.3.1445: grease emitter anchor */
         this._placeCookFood(sp.x, sp.y, s, _dispF, ex.fishKey);
         /* v2.3.1435: record the linger state — when the flip succeeds
            mid-animation (success fires on the up-stroke, which used to
