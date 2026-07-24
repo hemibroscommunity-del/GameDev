@@ -8114,8 +8114,10 @@ export var BroTown = function BroTown(_ref0) {
     var _xp = (_ls && _ls.xp) || 0;
     var _thr = Math.ceil(500 * Math.pow(1.08, _lvl - 1));  /* LIFE_SKILL_XP mirror */
     var _frac = Math.max(0, Math.min(1, _xp / _thr));
-    var _sub = !n ? '' : n.nodeType === 'campfire' ? 'Campfire'
-      : ((n.name || n.spotName || '') + ' Lv' + (n.gatherLvl || 1));   /* v2.3.1440: compact tier tail — fits the smaller shell */
+    /* v2.3.1441 (owner): the resource's level lives ONLY in the pill now
+       — the description is the bare resource name (the old pill showed
+       the PLAYER's skill level, duplicating the subtitle's tier). */
+    var _sub = !n ? '' : n.nodeType === 'campfire' ? 'Campfire' : (n.name || n.spotName || '');
     return [
       /*#__PURE__*/React.createElement("img", {
         key: 'i', src: _icons[s], alt: '', draggable: false,
@@ -8134,7 +8136,7 @@ export var BroTown = function BroTown(_ref0) {
       /*#__PURE__*/React.createElement("div", {
         key: 'l',
         style: { position: 'absolute', left: '76.5%', top: '28%', width: '17.5%', height: '40%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10.5, fontWeight: 800, color: '#f4f6f8', pointerEvents: 'none' }
-      }, 'LV ' + _lvl),
+      }, 'LV ' + ((n && n.gatherLvl) || 1)),
       /*#__PURE__*/React.createElement("div", {
         key: 'p',
         style: { position: 'absolute', left: '7%', bottom: '10%', width: (86 * _frac) + '%', maxWidth: '86%', height: '4.5%', background: _cols[s], borderRadius: 3, pointerEvents: 'none', boxShadow: '0 0 6px ' + _cols[s] }
