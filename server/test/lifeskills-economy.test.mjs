@@ -14,7 +14,7 @@
  *   2b. sell_weapon (v2.3.1169): pays the server-computed value,
  *       removes the stash entry; out-of-range/negative idx no-ops.
  *   3.  cook_request: consumes exactly one raw fish; 'cooked' mints
- *       cooked_<fish> + 8 cooking XP, 'burnt' mints burnt_dust; the
+ *       cooked_<fish> + 40 cooking XP, 'burnt' mints burnt_dust; the
  *       20/min rate limit drops the request WITHOUT consuming.
  *   3a. cook physics floor (v2.3.1167): consecutive cooks below the
  *       minigame's own open-window minimum are dropped without
@@ -164,13 +164,13 @@ ps.inventory = { fish_minnow: 2 };
 ps.lifeSkills = { cooking: { level: 1, xp: 0 } };
 ps._cookHistory = [];
 await send(ws, 'cook_request', { fishKey: 'fish_minnow', kind: 'cooked' });
-check('cook: consumes ONE raw fish, mints cooked_<fish>, +8 cooking XP',
-  ps.inventory.fish_minnow === 1 && ps.inventory.cooked_fish_minnow === 1 && ps.lifeSkills.cooking.xp === 8,
+check('cook: consumes ONE raw fish, mints cooked_<fish>, +40 cooking XP (v2.3.1435 x5)',
+  ps.inventory.fish_minnow === 1 && ps.inventory.cooked_fish_minnow === 1 && ps.lifeSkills.cooking.xp === 40,
   ps.inventory);
 ps._lastCookAt = Date.now() - 60000; // v2.3.1167: clear the physics floor
 await send(ws, 'cook_request', { fishKey: 'fish_minnow', kind: 'burnt' });
 check('cook: burnt outcome mints burnt_dust, no XP',
-  ps.inventory.fish_minnow === undefined && ps.inventory.burnt_dust === 1 && ps.lifeSkills.cooking.xp === 8,
+  ps.inventory.fish_minnow === undefined && ps.inventory.burnt_dust === 1 && ps.lifeSkills.cooking.xp === 40,
   ps.inventory);
 // Rate limit: 20 in the rolling minute -> the 21st is dropped WITHOUT
 // consuming (the fish stockpile conversion throttle, v2.3.1104).
@@ -196,7 +196,7 @@ check('floor: first cook lands normally', ps.inventory.fish_minnow === 2, ps.inv
 await send(ws, 'cook_request', { fishKey: 'fish_minnow', kind: 'cooked' });
 check('floor: instant second cook is dropped without consuming',
   ps.inventory.fish_minnow === 2 && ps.inventory.cooked_fish_minnow === 1
-  && ps.lifeSkills.cooking.xp === 8,
+  && ps.lifeSkills.cooking.xp === 40,
   { inv: ps.inventory, xp: ps.lifeSkills.cooking.xp });
 // A sub-floor gap (1s < the 1200ms flat floor) still fails even with
 // an empty rate-limit history.

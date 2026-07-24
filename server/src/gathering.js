@@ -191,7 +191,9 @@ export const gatheringMethods = {
   // multiplier (xpMult above) is applied on top.  Mirrors the client
   // formula in createGatherNode (lifeSkills.js).
   _harvestXpForTier(tierLvl, accuracy) {
-    const baseXp = Math.ceil(((tierLvl || 1) * 1.5) + 5);
+    /* v2.3.1435 (owner): life-skill XP rate x5.  Client mirror:
+       createGatherNode in src/data/lifeSkills.js — keep in lockstep. */
+    const baseXp = Math.ceil((((tierLvl || 1) * 1.5) + 5) * 5);
     return Math.ceil(baseXp * this._harvestXpMult(accuracy));
   },
 

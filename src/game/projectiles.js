@@ -72,8 +72,12 @@ export function updateArrows(S, deps) {
                 a._lingerNext = Date.now() + 500;   /* relative reset — no burst catch-up after a background tab */
                 var _cBase = a.baseDmg || 1;
                 if (S._serverMonsters && S.channel) {
-                  /* authoritative BASE hit (special:false -> normal lane; ticks are 500ms apart) */
-                  S.channel.send({ type: 'monster_damage', payload: { monsterId: _sm.id, zone: S.currentZone, element: a.element || null, slot: a.isStaff ? 'staff' : 'ranged', special: false } });
+                  /* authoritative BASE hit (special:false -> normal lane; ticks are 500ms apart).
+                     v2.3.1435 (owner): noKb — chip ticks must not shove the
+                     monster around (only the arrow's FIRST hit knocks back);
+                     the worker zeroes kbForce when the flag is present.  Old
+                     workers ignore it (knockback until the merge deploys). */
+                  S.channel.send({ type: 'monster_damage', payload: { monsterId: _sm.id, zone: S.currentZone, element: a.element || null, slot: a.isStaff ? 'staff' : 'ranged', special: false, noKb: true } });
                 } else {
                   _sm.curHp -= _cBase;
                   if (_sm.curHp < 0) _sm.curHp = 0;
@@ -207,8 +211,13 @@ export function updateArrows(S, deps) {
                  of damage from one arrow. */
               /* v2.3.1426: a stuck special takes no further hits -- the
                  bow special pierces, so without this gate it would keep
-                 chaining through monsters after embedding in one. */
-              if (!m.alive || a.hitIds.has(m.id) || (hit && !a.pierce) || a.stuckIn) return;
+                 chaining through monsters after embedding in one.
+                 v2.3.1435: the staff-special volley shares volleyHitIds
+                 -- one orb per monster; sister orbs pass it and fly on
+                 to the rest of the pack (owner: special was 4-hitting
+                 single monsters). */
+              if (!m.alive || a.hitIds.has(m.id) || (hit && !a.pierce) || a.stuckIn
+                  || (a.volleyHitIds && a.volleyHitIds.has(m.id))) return;
               /* Same y-offset fix as the melee path — fodder slimes
                  render at 96 px anchored at the feet, sprite mid-frame
                  at m.y - 40, so projectiles aim there (v2.1.72).
@@ -248,6 +257,7 @@ export function updateArrows(S, deps) {
               var _mProjY = _hitBaseY - monsterBodyOffsetY(_archProj);
               if (Math.sqrt(Math.pow(_hitX - a._renderX, 2) + Math.pow(_mProjY - a._renderY, 2)) < _hitR) {
                 a.hitIds.add(m.id);
+                if (a.volleyHitIds) a.volleyHitIds.add(m.id);   /* v2.3.1435: claim for the whole cone */
                 var arrowElem = a.isSpecial ? activeWpn === null || activeWpn === void 0 ? void 0 : activeWpn.element2 : activeWpn === null || activeWpn === void 0 ? void 0 : activeWpn.element1;
                 if (arrowElem) {
                   var _ELEMENTS$arrowElem;

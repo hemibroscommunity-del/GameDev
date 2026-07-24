@@ -379,7 +379,7 @@ export const cookingMethods = {
     if (kind === 'cooked') {
       const cookedKey = 'cooked_' + fishKey;
       ps.inventory[cookedKey] = (ps.inventory[cookedKey] || 0) + 1;
-      this._addLifeSkillXp(ps, 'cooking', 8);
+      this._addLifeSkillXp(ps, 'cooking', 40);   /* v2.3.1435: life-skill XP x5 (was 8) */
     } else {
       ps.inventory.burnt_dust = (ps.inventory.burnt_dust || 0) + 1;
     }

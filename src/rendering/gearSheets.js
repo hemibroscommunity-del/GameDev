@@ -96,7 +96,22 @@ function buildSheet(key, slot, item, pose, dir, attempt = 0) {
        figure path.  Overlay/combat gear sheets keep the full-256
        contract (the note above still holds for them).  fw/fh track the
        scaled frame for slicing. */
-    const _fsDs = (slot === 'fullset') ? DISPLAY_DS : 1;
+    /* v2.3.1434 (frost OOM report: "crashed after harvesting different
+       resources over a short period"): the exact-texel treatment extends
+       from the fullset figures to EVERY gear sheet that ships at the
+       display size on disk (jog/stand/pickup/fish steel sheets are all
+       128px-tall art; the "full 256" was always a nearest-neighbour
+       pixel-double of these texels).  Storing them raw at 128 removes
+       ~60MB of resident upscale canvases at DS=2 with the artist's
+       exact pixels — the same owner-approved recipe as v2.3.1412 —
+       and halves the lazy fish/mine harvest-pose loads that stacked
+       the frost-zone peak back to the iOS kill line.  Consumers are
+       size-agnostic: the masked bake stretch-draws by source rect, and
+       _placeGear (entityRenderer) now normalizes by the texture's own
+       frame width.  Sheets shipping any OTHER height (bowshot/cook/
+       chop combat stand-in strips, 256-native art) keep the full-256
+       contract unchanged. */
+    const _fsDs = (slot === 'fullset' || (DISPLAY_DS > 1 && rawH === FRAME_H / DISPLAY_DS)) ? DISPLAY_DS : 1;
     let img;
     if (_fsDs > 1 && rawH === FRAME_H / _fsDs) {
       /* v2.3.1412 (owner: "the half res texture looks soft — it's a very
