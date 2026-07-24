@@ -414,7 +414,7 @@ export function applyCookingResult(S, fishKey, kind, taps, deps) {
        fallback to local apply otherwise (SP / disconnected). */
     if (kind === 'cooked') {
       pushDmgPopup(S, S.player.x, S.player.y - 30, 'Cooked!', '#f5c542');
-      pushDmgPopup(S, S.player.x, S.player.y - 46, '+8 Cooking XP', '#00d4b8');
+      pushDmgPopup(S, S.player.x, S.player.y - 46, '+40 Cooking XP', '#00d4b8');   /* v2.3.1435: x5 (server lockstep) */
       /* v2.3.1429 (owner): success sizzle sting — distinct from the
          pan-sizzle loop, which the extraction clear silences this tick. */
       try { BT_AUDIO.play('cook-success', { vol: 0.6 }); } catch (e) {}
@@ -467,7 +467,7 @@ export function applyCookingResult(S, fishKey, kind, taps, deps) {
       var cookedKey = 'cooked_' + fishKey;
       R.inventory[cookedKey] = (R.inventory[cookedKey] || 0) + 1;
       if (R.lifeSkills) migrateLifeSkills(R.lifeSkills);
-      addLifeSkillXp(R.lifeSkills, 'cooking', 8);
+      addLifeSkillXp(R.lifeSkills, 'cooking', 40);   /* v2.3.1435: x5 */
     } else {
       R.inventory.burnt_dust = (R.inventory.burnt_dust || 0) + 1;
     }

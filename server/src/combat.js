@@ -523,7 +523,12 @@ export const combatMethods = {
     // lifesteal silently broke.  Monster now resumes chase
     // immediately; visual bounce is briefer but the damage economy
     // works.
-    if (attackerPs) {
+    /* v2.3.1435 (owner: "arrow special causes knockback with each chip
+       damage — only the first hit should knock back"): the stuck-arrow
+       chip ticks declare noKb:true and get no shove.  Player-benefit
+       only shrinks (knockback pushes monsters away), so honoring the
+       client flag is cheat-neutral. */
+    if (attackerPs && payload.noKb !== true) {
       const kbForce = payload.special ? 60 : (rolled.isCrit ? 45 : 30);
       const kbAng = Math.atan2(m.y - attackerPs.y, m.x - attackerPs.x);
       m.x += Math.cos(kbAng) * kbForce;

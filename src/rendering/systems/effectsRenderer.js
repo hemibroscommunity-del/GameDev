@@ -1771,6 +1771,41 @@ export class EffectsRenderer {
    *  offset so simultaneous bolts don't strobe in lockstep.  Anchor =
    *  the orb center, so position pins the head and rotation swings the
    *  tail — which therefore always points back toward the caster. */
+  /** v2.3.1435: place the cooked-item icon at the pan's per-frame food
+   *  anchor (extracted from the inline v2.3.1433 block so the cook-flip
+   *  LINGER can reuse it after the extraction record is gone).
+   *  (panX, panY) = gestureToolSprite position, s = pan scale, f01 =
+   *  display flip phase, fishKey = raw fish being cooked. */
+  _placeCookFood(panX, panY, s, f01, fishKey) {
+    const _gt = GESTURE_TOOLS.cooking;
+    const _fs = this.gestureFoodSprite;
+    if (!_gt || !_gt.food || !_fs) return;
+    const _fi = Math.min(7, Math.floor(Math.max(0, f01) * 8));
+    const _fa = _gt.food[_fi] || _gt.food[0];
+    const _rawIcon = ({
+      fish_clownfish: '/icons/items/fish-clownfish.webp',
+      fish_trout: '/icons/items/fish-trout.webp',
+    })[fishKey] || '/icons/items/fish-minnow.webp';
+    let _ft = this._foodIconTex[_rawIcon];
+    if (_ft === undefined) {
+      this._foodIconTex[_rawIcon] = 'loading';
+      _fxLoad(_rawIcon)
+        .then((t) => { this._foodIconTex[_rawIcon] = t || null; })
+        .catch(() => { this._foodIconTex[_rawIcon] = null; });
+      _ft = 'loading';
+    }
+    if (_ft && _ft !== 'loading') {
+      _fs.texture = _ft;
+      _fs.x = panX + (_fa.x - 128) * s;
+      _fs.y = panY + (_fa.y - 128) * s;
+      _fs.rotation = _fa.rot || 0;
+      /* the painted fillet spanned ~90px of the 256 cell — size the
+         icon to read the same in the pan. */
+      _fs.scale.set((84 * s) / (_ft.width || 64));
+      _fs.visible = true;
+    }
+  }
+
   _placeMagicBolt(p, x, y, ang, alpha, now, liveSet) {
     let sprite = p._boltSprite;
     if (!sprite || sprite.destroyed) {
@@ -3305,7 +3340,7 @@ export class EffectsRenderer {
     const fm = S && S._firemaking;
     if (!fm || !S.player || !this.fireSprite || !this._fireFrames.length) return;
     if (fm.doneAt && now > fm.doneAt) return;
-    const FH = 88, FRAME_MS = 55;
+    const FH = 154, FRAME_MS = 55;   /* v2.3.1435 (owner): 1.75x (88 -> 154) */
     const elapsed = now - (fm.startedAt || now);
     const fi = Math.min(this._fireFrames.length - 1, Math.floor(elapsed / FRAME_MS));
     const sp = this.fireSprite;
@@ -3347,7 +3382,7 @@ export class EffectsRenderer {
     const SPEC = {
       chop: { frames: this._chopFrames, h: 112, ms: 45 },
       cook: { frames: this._cookFrames, h: 82, ms: 60 }, /* v2.3.1431: match the local 2x cook (v2.3.1429) */
-      fire: { frames: this._fireFrames, h: 88, ms: 55 },
+      fire: { frames: this._fireFrames, h: 154, ms: 55 }, /* v2.3.1435: 1.75x with the local figure */
     };
     for (const id in others) {
       const o = others[id];
@@ -4178,6 +4213,30 @@ export class EffectsRenderer {
         if (_waterOn) _au.startSfxLoop('river-water', 0.35); else _au.stopSfxLoop('river-water');
       }
     } catch (e) { /* audio is best-effort */ }
+    /* v2.3.1435: cook-flip LINGER — success fires the moment the up-stroke
+       registers, which used to cut the (now slowed) flip off mid-air.  If a
+       cook just ended with the flip in progress, keep the pan + food on
+       screen and finish the animation, then hold the landed frame a beat. */
+    if (!ex && this._cookLinger) {
+      const L = this._cookLinger;
+      const _lgt = GESTURE_TOOLS.cooking;
+      if (now < L.until && L.f > 0.1 && _lgt.frames.length === 8 && this.gestureToolSprite) {
+        const _ldt = Math.max(0, Math.min(100, now - (L.t || now)));
+        L.t = now;
+        if (L.f < 0.9999) L.f = Math.min(0.9999, L.f + _ldt / 800);
+        else if (!L.doneAt) L.doneAt = now + 300;
+        const _lsp = this.gestureToolSprite;
+        const _ls = _lgt.h / 256;
+        _lsp.texture = _lgt.frames[Math.floor(L.f * 8)];
+        _lsp.scale.set(_ls, _ls);
+        _lsp.x = L.x; _lsp.y = L.y;
+        _lsp.visible = true;
+        this._placeCookFood(L.x, L.y, _ls, L.f, L.fishKey);
+        if (L.doneAt && now > L.doneAt) this._cookLinger = null;
+      } else {
+        this._cookLinger = null;
+      }
+    }
     if (!ex || (ex.status !== 'ready' && ex.status !== 'waiting')) { this._chopLastFrame = -1; return; }
     /* v2.3.253: prefer stored node ref so SP nodes (no id) work too. */
     const node = (ex.nodeRef && ex.nodeRef.alive) ? ex.nodeRef
@@ -4353,7 +4412,37 @@ export class EffectsRenderer {
          the resource, and the surface is where the swing ENDS now.  The
          reel and pan keep the full 8 frames (they animate in place). */
       const _swingTool = ex.skill === 'mining' || ex.skill === 'woodcutting';
-      sp.texture = _gt.frames[_swingTool ? Math.min(3, Math.floor(f01 * 4)) : Math.floor(f01 * 8)];
+      /* v2.3.1435 (owner): the reel/pan DISPLAY phase now CHASES the raw
+         gesture phase instead of snapping to it —
+         - fishing: totalAngle arrives in per-pointermove jumps (a fast
+           crank moves 45°+ between events), so raw frames skipped and
+           the reel "looked choppy".  The chase caps the display at ~2.2
+           rev/s along the shortest wrap direction: even cadence, still
+           keeps up with any human crank.
+         - cooking: a flick raced all 8 flip frames in ~300ms ("slow the
+           animation to about half") — capped at one full flip per 800ms.
+         Swing tools stay 1:1 (their feel is the strike itself). */
+      let _dispF = f01;
+      if (ex.skill === 'cooking' || ex.skill === 'fishing') {
+        const _lastT = this._toolDispT || now;
+        const _dt = Math.max(0, Math.min(100, now - _lastT));
+        this._toolDispT = now;
+        let _cur = (this._toolDispF != null && this._toolDispSkill === ex.skill) ? this._toolDispF : f01;
+        const _rate = _dt / (ex.skill === 'cooking' ? 800 : 450);
+        if (ex.skill === 'fishing') {
+          let _d = f01 - _cur;
+          if (_d > 0.5) _d -= 1; else if (_d < -0.5) _d += 1;
+          _cur = ((_cur + Math.max(-_rate, Math.min(_rate, _d))) % 1 + 1) % 1;
+        } else {
+          const _d = f01 - _cur;
+          _cur = _cur + Math.max(-_rate, Math.min(_rate, _d));
+        }
+        this._toolDispF = _cur; this._toolDispSkill = ex.skill;
+        _dispF = Math.max(0, Math.min(0.9999, _cur));
+      } else {
+        this._toolDispF = null; this._toolDispSkill = null;
+      }
+      sp.texture = _gt.frames[_swingTool ? Math.min(3, Math.floor(f01 * 4)) : Math.floor(_dispF * 8)];
       const s = _gt.h / 256;
       sp.scale.set(ex.skill === 'woodcutting' && chopSign < 0 ? -s : s, s);
       let _tpx = x + (_gt.dx || 0); /* v2.3.1418: owner nudges */
@@ -4432,31 +4521,12 @@ export class EffectsRenderer {
          frames are food-less; the raw fish's bag icon rides the
          measured per-frame anchors and flips through the arc. */
       if (ex.skill === 'cooking' && _gt.food) {
-        const _fi = Math.min(7, Math.floor(f01 * 8));
-        const _fa = _gt.food[_fi] || _gt.food[0];
-        const _fs = this.gestureFoodSprite;
-        const _rawIcon = ({
-          fish_clownfish: '/icons/items/fish-clownfish.webp',
-          fish_trout: '/icons/items/fish-trout.webp',
-        })[ex.fishKey] || '/icons/items/fish-minnow.webp';
-        let _ft = this._foodIconTex[_rawIcon];
-        if (_ft === undefined) {
-          this._foodIconTex[_rawIcon] = 'loading';
-          _fxLoad(_rawIcon)
-            .then((t) => { this._foodIconTex[_rawIcon] = t || null; })
-            .catch(() => { this._foodIconTex[_rawIcon] = null; });
-          _ft = 'loading';
-        }
-        if (_ft && _ft !== 'loading' && _fs) {
-          _fs.texture = _ft;
-          _fs.x = sp.x + (_fa.x - 128) * s;
-          _fs.y = sp.y + (_fa.y - 128) * s;
-          _fs.rotation = _fa.rot || 0;
-          /* the painted fillet spanned ~90px of the 256 cell — size the
-             icon to read the same in the pan. */
-          _fs.scale.set((84 * s) / (_ft.width || 64));
-          _fs.visible = true;
-        }
+        this._placeCookFood(sp.x, sp.y, s, _dispF, ex.fishKey);
+        /* v2.3.1435: record the linger state — when the flip succeeds
+           mid-animation (success fires on the up-stroke, which used to
+           cut the pan off), the marker stays and finishes the slowed
+           flip from here (see the linger block above the early-return). */
+        this._cookLinger = { x: sp.x, y: sp.y, f: _dispF, fishKey: ex.fishKey, t: now, until: now + 1500 };
       }
     } else if (ex.skill === 'fishing' || ex.skill === 'cooking') {
       /* no floating tool — the angler holds the rod / the cook holds the pan;
@@ -4496,21 +4566,28 @@ export class EffectsRenderer {
     const repsTarget = ex.repsTarget || 3;
     const hintAlpha = 0.9 * (1 - 0.55 * progress);
     const hintCol = 0xfff2a8;
+    /* v2.3.1435 (owner: "make the gesture cue a bit larger and make it a
+       consistent size across each life skill"): one shared size sheet —
+       stroke width 4, arrow/streak reach ~20px, finger 21x13 — every
+       skill's cue below draws from these. */
+    const HINT_W = 4;          /* stroke width everywhere */
+    const HINT_REACH = 20;     /* arrow half-length / streak length basis */
+    const FINGER_LEN = 21, FINGER_W = 13;
     if (ex.skill === 'fishing') {
       /* Clockwise circular arrow — "reel". Rotates so it reads as motion. */
-      const rA = 30;
+      const rA = 34;
       const a0 = (now / 400) % (Math.PI * 2);
       const aEnd = a0 + Math.PI * 1.5;
       /* seed the path point at the arc start so Pixi doesn't draw a stray
          line from (0,0) to the arc (the diagonal-line bug). */
       gfx.moveTo(x + Math.cos(a0) * rA, y + Math.sin(a0) * rA);
       gfx.arc(x, y, rA, a0, aEnd);
-      gfx.stroke({ color: hintCol, width: 2, alpha: hintAlpha });
+      gfx.stroke({ color: hintCol, width: HINT_W, alpha: hintAlpha });
       const hx = x + Math.cos(aEnd) * rA, hy = y + Math.sin(aEnd) * rA;
       const tx = -Math.sin(aEnd), ty = Math.cos(aEnd); /* clockwise tangent */
       gfx.moveTo(hx, hy);
-      gfx.lineTo(hx + tx * 7 + Math.cos(aEnd) * 5, hy + ty * 7 + Math.sin(aEnd) * 5);
-      gfx.lineTo(hx + tx * 7 - Math.cos(aEnd) * 5, hy + ty * 7 - Math.sin(aEnd) * 5);
+      gfx.lineTo(hx + tx * 10 + Math.cos(aEnd) * 7, hy + ty * 10 + Math.sin(aEnd) * 7);
+      gfx.lineTo(hx + tx * 10 - Math.cos(aEnd) * 7, hy + ty * 10 - Math.sin(aEnd) * 7);
       gfx.fill({ color: hintCol, alpha: hintAlpha });
     } else if (ex.skill === 'woodcutting') {
       /* v2.3.843: a finger demonstrates the chop gesture — wind UP away
@@ -4531,21 +4608,22 @@ export class EffectsRenderer {
       const fy = y + 26;
       const fx = x + off;
       const chopping = p >= 0.5 && p < 0.68;
-      /* swipe streak during the chop, trailing back from the fingertip */
+      /* swipe streak during the chop, trailing back from the fingertip
+         (v2.3.1435: shared HINT_W/HINT_REACH sizes). */
       if (chopping) {
-        gfx.moveTo(fx - dir * 20, fy);
+        gfx.moveTo(fx - dir * (HINT_REACH + 8), fy);
         gfx.lineTo(fx, fy);
-        gfx.stroke({ color: hintCol, width: 3, alpha: hintAlpha * 0.5 });
+        gfx.stroke({ color: hintCol, width: HINT_W, alpha: hintAlpha * 0.5 });
       }
       /* finger: a capsule body pointing toward the tree + a rounded tip;
          a knuckle dot at the back reads it as a hand. */
-      const len = 15, w = 9;
+      const len = FINGER_LEN, w = FINGER_W;
       const bodyL = dir > 0 ? fx - len : fx;
       gfx.roundRect(bodyL, fy - w / 2, len, w, w / 2);
       gfx.fill({ color: 0xffffff, alpha: hintAlpha });
       gfx.circle(fx, fy, w / 2 + 0.5);        // fingertip toward the tree
       gfx.fill({ color: 0xffffff, alpha: hintAlpha });
-      gfx.circle(fx - dir * (len + 2), fy, 4);// knuckle
+      gfx.circle(fx - dir * (len + 2), fy, 6);// knuckle
       gfx.fill({ color: 0xe6e6ee, alpha: hintAlpha });
     } else if (ex.skill === 'cooking') {
       /* v2.3.853: a finger flicks UP to flip the fish, on a loop — dip down,
@@ -4559,29 +4637,30 @@ export class EffectsRenderer {
       else { const t = (p - 0.68) / 0.32; off = -UP * (1 - (t * t * (3 - 2 * t))); }  // recover
       const fx = x, fy = y + 30 + off;
       const flicking = p >= 0.5 && p < 0.68;
-      if (flicking) {                          // upward swipe streak
-        gfx.moveTo(fx, fy + 22);
+      if (flicking) {                          // upward swipe streak (v2.3.1435: shared sizes)
+        gfx.moveTo(fx, fy + HINT_REACH + 8);
         gfx.lineTo(fx, fy);
-        gfx.stroke({ color: hintCol, width: 3, alpha: hintAlpha * 0.5 });
+        gfx.stroke({ color: hintCol, width: HINT_W, alpha: hintAlpha * 0.5 });
       }
-      const len = 15, w = 9;
+      const len = FINGER_LEN, w = FINGER_W;
       gfx.roundRect(fx - w / 2, fy, w, len, w / 2);  // finger body (below the tip)
       gfx.fill({ color: 0xffffff, alpha: hintAlpha });
       gfx.circle(fx, fy, w / 2 + 0.5);               // fingertip (pointing up)
       gfx.fill({ color: 0xffffff, alpha: hintAlpha });
-      gfx.circle(fx, fy + len + 2, 4);               // knuckle
+      gfx.circle(fx, fy + len + 2, 6);               // knuckle
       gfx.fill({ color: 0xe6e6ee, alpha: hintAlpha });
     } else {
-      /* Vertical double-arrow (up + down pump), bobbing. */
+      /* Vertical double-arrow (up + down pump), bobbing.
+         (v2.3.1435: shared HINT_W/HINT_REACH sizes.) */
       const bob = Math.sin(now / 150) * 3;
       const ax = x + 24, ay = y + bob;
-      const L = 14;
+      const L = HINT_REACH;
       gfx.moveTo(ax, ay - L);
       gfx.lineTo(ax, ay + L);
-      gfx.stroke({ color: hintCol, width: 3, alpha: hintAlpha });
-      gfx.moveTo(ax, ay - L); gfx.lineTo(ax - 5, ay - L + 7); gfx.lineTo(ax + 5, ay - L + 7);
+      gfx.stroke({ color: hintCol, width: HINT_W, alpha: hintAlpha });
+      gfx.moveTo(ax, ay - L); gfx.lineTo(ax - 7, ay - L + 10); gfx.lineTo(ax + 7, ay - L + 10);
       gfx.fill({ color: hintCol, alpha: hintAlpha });
-      gfx.moveTo(ax, ay + L); gfx.lineTo(ax - 5, ay + L - 7); gfx.lineTo(ax + 5, ay + L - 7);
+      gfx.moveTo(ax, ay + L); gfx.lineTo(ax - 7, ay + L - 10); gfx.lineTo(ax + 7, ay + L - 10);
       gfx.fill({ color: hintCol, alpha: hintAlpha });
     }
     /* Progress as a horizontal pip row beneath the tool (no ring — the old

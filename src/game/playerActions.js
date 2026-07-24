@@ -128,8 +128,14 @@ export function specialAttack(S) {
          owner meant the BOW special sticks (projectiles.js), and its
          _bowBase above already carries the chip base.  Orbs die on
          their first hit again. */
+      /* v2.3.1435 (owner: "magic special is overpowered — often 4 hits
+         on one monster, regular hit plus the 3 orbs"): the volley
+         shares one hit set, so a monster can eat at most ONE orb of
+         the cone; the other orbs pass it and spread to the crowd. */
+      var _volleyHit = new Set();
       for (var si = -1; si <= 1; si++) {
         S.arrows.push({
+          volleyHitIds: _volleyHit,
           ang: aimAng + si * 0.25,
           dist: 14,
           dmg: Math.round(_wpnDmg * specialAtkMultFor('staff')), /* v2.3.1397: 2x per orb, 0.6 haircut dropped (owner) */
