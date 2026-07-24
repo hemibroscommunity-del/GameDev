@@ -181,6 +181,11 @@ function applyFishingReward(S, node, result, deps) {
     /* v2.3.1429 (owner): real water splash on the catch (the beep(600)
        it replaces has been a no-op since v2.3.1103). */
     try { BT_AUDIO.play('catch-splash', { vol: 0.65 }); } catch (e) {}
+    /* v2.3.1443: matching water-splash burst at the fish spot on the
+       catch (effect round 3 — pairs with the reel-phase splashes the
+       effects renderer emits while the crank turns). */
+    if (!S._fxBursts) S._fxBursts = [];
+    if (S._fxBursts.length < 6) S._fxBursts.push({ kind: 'splash', t0: Date.now(), x: node.x, y: node.y + 2 });
     /* Consume node */
     node.alive = false;
     node.respawnAt = Date.now() + (node.respawnTime || 30000);

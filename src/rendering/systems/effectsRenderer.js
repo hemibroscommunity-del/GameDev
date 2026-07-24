@@ -133,6 +133,31 @@ for (const [cfg, url] of [
   }).catch((err) => console.warn('[special-fx] load failed', url, err));
 }
 
+/* v2.3.1443: harvest EFFECT bursts (owner art, gather-feel round 3) —
+   one-shot 8-frame strips played at the MARKER-HIT moments (owner chose
+   marker movements over the passive wind-up): rock debris on each
+   pickaxe slam, wood chips on each axe strike, a grease pop on the pan
+   flip, a water splash while reeling + at the catch.  Queued via
+   S._fxBursts { kind, x, y, t0, flip? } from ExtractionSwipeLayer /
+   lifeSkillRewards / the strike blocks below; _updateFxBursts renders
+   each over ~600ms on the overlay layer and reaps it. */
+const EFFECT_BURSTS = {
+  rocks:     { frames: [], h: 84, ay: 0.80, url: '/sprites/effects/rocks-burst-v1.webp?v=2.3.1443' },
+  woodchips: { frames: [], h: 84, ay: 0.70, url: '/sprites/effects/woodchips-burst-v1.webp?v=2.3.1443' },
+  grease:    { frames: [], h: 64, ay: 0.85, url: '/sprites/effects/grease-burst-v1.webp?v=2.3.1443' },
+  splash:    { frames: [], h: 88, ay: 0.80, url: '/sprites/effects/splash-burst-v1.webp?v=2.3.1443' },
+};
+for (const cfg of Object.values(EFFECT_BURSTS)) {
+  _fxLoad(cfg.url).then((tex) => {
+    if (!tex || !tex.source) return;
+    const fw = Math.floor(tex.source.width / 8);
+    for (let i = 0; i < 8; i++) {
+      cfg.frames.push(new Texture({ source: tex.source, frame: new Rectangle(i * fw, 0, fw, tex.source.height) }));
+    }
+  }).catch((err) => console.warn('[effect-burst] load failed', cfg.url, err));
+}
+const FX_BURST_MS = 600;
+
 /* v2.3.1417: GESTURE TOOL sheets (owner art, part 2 of the gather-feel
    redesign) — the harvest cue's floating tool is a painted sprite whose
    FRAME follows the finger: ExtractionSwipeLayer writes ex.cueFrame01
@@ -972,6 +997,7 @@ export class EffectsRenderer {
     this._updateParticles(S, now);
     this._updateDamageNumbers(S, now);
     this._updateCatchFlights(S, viewW, viewH, now);
+    this._updateFxBursts(S, now);   /* v2.3.1443 */
     this._updateScreenFlash(S, viewW, viewH, now);
     this._updateAtmosphere(S, viewW, viewH, now);
     this._updateGroundLoot(S, now);
@@ -3197,6 +3223,40 @@ export class EffectsRenderer {
     }
   }
 
+  /* ── Harvest effect bursts (v2.3.1443) ──
+   * Plays each queued S._fxBursts entry as a one-shot 8-frame strip at its
+   * world point, then reaps it (sprite destroyed, entry spliced).  flip:-1
+   * mirrors horizontally (wood chips fly away from the trunk). */
+  _updateFxBursts(S, now) {
+    const q = S && S._fxBursts;
+    if (!q || !q.length) return;
+    for (let i = q.length - 1; i >= 0; i--) {
+      const b = q[i];
+      const cfg = EFFECT_BURSTS[b.kind];
+      const age = now - (b.t0 || now);
+      if (!cfg || age >= FX_BURST_MS) {
+        if (b._spr && !b._spr.destroyed) b._spr.destroy();
+        q.splice(i, 1);
+        continue;
+      }
+      if (!cfg.frames.length) continue;   /* strip still loading — burst waits */
+      let spr = b._spr;
+      if (!spr || spr.destroyed) {
+        spr = new Sprite();
+        spr.anchor.set(0.5, cfg.ay);
+        this.overlayLayer.addChild(spr);
+        b._spr = spr;
+      }
+      const fi = Math.min(7, Math.floor((age / FX_BURST_MS) * 8));
+      spr.texture = cfg.frames[fi];
+      const s = cfg.h / 256;
+      spr.scale.set((b.flip || 1) * s, s);
+      spr.x = b.x; spr.y = b.y;
+      spr.alpha = age > FX_BURST_MS - 120 ? (FX_BURST_MS - age) / 120 : 1;
+      spr.visible = true;
+    }
+  }
+
   /* ── Catch flight (v2.3.845) ──
    * v2.3.1429: DORMANT — applyFishingReward now uses the DOM icon flyer
    * (_flyResourceToInventory, real fish bag-icon + breach stage) instead of
@@ -4224,7 +4284,13 @@ export class EffectsRenderer {
         const _ldt = Math.max(0, Math.min(100, now - (L.t || now)));
         L.t = now;
         if (L.f < 0.9999) L.f = Math.min(0.9999, L.f + _ldt / 1600);   /* v2.3.1442: 2x slower with the live chase */
-        else if (!L.doneAt) L.doneAt = now + 350;
+        else if (!L.doneAt) {
+          L.doneAt = now + 350;
+          /* v2.3.1443: grease POP the moment the flipped food lands back
+             in the pan (owner's effect round 3 — marker-hit moments). */
+          if (!S._fxBursts) S._fxBursts = [];
+          if (S._fxBursts.length < 6) S._fxBursts.push({ kind: 'grease', t0: now, x: L.x, y: L.y + 6 });
+        }
         const _lsp = this.gestureToolSprite;
         const _ls = _lgt.h / 256;
         _lsp.texture = _lgt.frames[Math.floor(L.f * 8)];
@@ -4252,6 +4318,18 @@ export class EffectsRenderer {
     /* v2.3.853: cooking's "node" is the campfire; the swipe-up cue + pan sit
        just above it. */
     const cookingCue = ex.skill === 'cooking';
+    /* v2.3.1443: pond splash bursts at the FISH SPOT while the crank is
+       actually turning (same _reelSpinAt freshness window as the reel SFX
+       loop) — one splash roughly every 800ms so it reads as agitation,
+       not a strobe.  The catch itself pushes a final splash from
+       lifeSkillRewards.applyFishingReward. */
+    if (ex.skill === 'fishing' && ex.status === 'ready'
+        && ex._reelSpinAt && (performance.now() - ex._reelSpinAt) < 250
+        && now - (ex._splashAt || 0) > 800) {
+      ex._splashAt = now;
+      if (!S._fxBursts) S._fxBursts = [];
+      if (S._fxBursts.length < 6) S._fxBursts.push({ kind: 'splash', t0: now, x: node.x, y: node.y + 2 });
+    }
     const x = fishingCue ? S.player.x : node.x;
     /* Anchor cue above the node so it doesn't sit on top of the
        sprite. Trees are tallest so they get the largest offset. */
@@ -4512,6 +4590,13 @@ export class EffectsRenderer {
             if (_au && ex.skill === 'woodcutting') {
               ex._chopSndAlt = !ex._chopSndAlt;
               _au.play('axe-chop', { offset: ex._chopSndAlt ? 0.06 : 1.10, duration: 0.6, vol: 0.6 });
+            }
+            /* v2.3.1443 (owner effect sheets): painted wood-chip burst at
+               the trunk contact, mirrored so chips fly AWAY from the tree
+               (the art bursts rightward from a left anchor). */
+            if (ex.skill === 'woodcutting') {
+              if (!S._fxBursts) S._fxBursts = [];
+              if (S._fxBursts.length < 6) S._fxBursts.push({ kind: 'woodchips', t0: now, x: _cpx, y: _cpy + 6, flip: chopSign < 0 ? 1 : -1 });
             }
           } catch (e) {}
         }

@@ -255,6 +255,10 @@ export const ExtractionSwipeLayer = ({ stateRef, onSuccess }) => {
     const onSlam = (g) => {
       const S = stateRef && stateRef.current;
       if (!S || g.nodeX == null) return;
+      /* v2.3.1443 (owner effect sheets): painted rock-debris burst at the
+         ore on every slam — effectsRenderer._updateFxBursts plays it. */
+      if (!S._fxBursts) S._fxBursts = [];
+      if (S._fxBursts.length < 6) S._fxBursts.push({ kind: 'rocks', t0: Date.now(), x: g.nodeX, y: g.nodeY + 14 });   /* renderer clock is Date.now() */
       if (S.hitParticles) {
         for (let i = 0; i < 7; i++) {
           S.hitParticles.push({
