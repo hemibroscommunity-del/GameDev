@@ -55,13 +55,23 @@ EDGE_STRIP = {}
 # 2px tuck overlap shaved the collar top.  The ERASE now stops RELIEF px
 # higher; the head overlay still reaches the cut and covers the strip in
 # between, so the neck keeps tucking with the collar top intact.
-RELIEF = {'south': 2, 'north': 2}
+# v2.3.1457 (owner: SW "armor shoulder during full arm backswing is
+# getting clipped at the top"): southwest finally gets the same relief —
+# it was cut before v2.3.1385 existed and never re-ran.
+RELIEF = {'south': 2, 'north': 2, 'southwest': 2}
 # v2.3.1386 (owner: "top of the armor was razored off in a straight line
 # ... round the pauldrons out"): after the erase, the armor top is a flat
 # ruler line.  For these dirs the flat top's ends are tapered into a dome
 # (progressively deeper erase over the outermost columns) and any stray
 # nubs above the line are removed.
+# v2.3.1457: southwest joins, but through the BAND-LIMITED variant below
+# (BAND_ROUND) — the 3/4 view's trailing pauldron legitimately rises
+# above the flat line on the backswing, so the north/south "clear
+# everything above the line" rule would re-clip the exact dome the owner
+# is missing.  BAND_ROUND scans and tapers only inside the head band and
+# only at genuinely free run ends.
 ROUND_TOP = {'south', 'north'}
+BAND_ROUND = {'southwest'}
 ROUND_DROPS = [4, 3, 2, 1, 1]   # extra rows erased at run-end columns
 
 
@@ -86,6 +96,26 @@ def head_cols(op, top, figh):
 def main():
     d = sys.argv[1]
     overlap = int(sys.argv[2]) if len(sys.argv) > 2 else OVERLAP
+    # v2.3.1457: pristine guard (the rebuild_east_head_track.py pattern) —
+    # this tool is destructive; running it on an ALREADY-CUT sheet erases
+    # a second band and eats more armor.  A cut sheet has a long flat top
+    # run inside the head band on most frames; the pristine helmeted
+    # sheet never does.
+    _pp = f'public/sprites/gear/fullset/steel/jog-{d}.png'
+    _pa = np.array(Image.open(_pp).convert('RGBA'))
+    _pw = _pa.shape[0]
+    _flatish = 0
+    for _i in range(_pa.shape[1] // _pw):
+        _fr = _pa[:, _i * _pw:(_i + 1) * _pw, 3] > 40
+        _ys = np.where(_fr.any(axis=1))[0]
+        if not len(_ys):
+            continue
+        if _fr[_ys[0]].sum() >= 18:
+            _flatish += 1
+    if _flatish > 3:
+        raise SystemExit(
+            f'{_pp} looks ALREADY CUT ({_flatish} flat-top frames) — restore '
+            f'the pristine sheet first:  git show f162e5e:{_pp} > {_pp}')
     b = Image.open(f'public/sprites/player/jog-{d}.png').convert('RGBA')
     fw = b.height
     n = b.width // fw
@@ -180,11 +210,72 @@ def main():
                         shelf = y
                         break
             if shelf is not None:
-                extra = np.zeros(ff.shape[:2], bool)
-                extra[:shelf, bx0:bx1] = True
-                extra &= ff[:, :, 3] > 0
-                ff[:, :, 3][extra] = 0
-                tot += int(extra.sum())
+                # v2.3.1457 (owner: SW backswing "shoulder ... clipped at
+                # the top"): the blind [:shelf] band erase also ate the
+                # trailing PAULDRON dome wherever it rises through the
+                # shelf row — and the band reaches 11px past the head
+                # overlay's cover, so the destroyed strip showed as a
+                # flat-cut shoulder with nothing drawn over it.  The
+                # erase is now CONNECTIVITY-GATED: label the opaque
+                # pixels above-and-including the shelf row; components
+                # anchored on the shelf row are the armor itself (the
+                # dome rising through the line) and survive, floating
+                # components are helmet crumbs and die.  This keeps the
+                # v2.3.1378 owner fix (crumbs gone) without flattening
+                # the shoulder.
+                sub = ff[:shelf + 1, bx0:bx1, 3] > 0
+                lbl2, num2 = ndimage.label(sub)
+                if num2:
+                    anchored = set(lbl2[shelf][lbl2[shelf] > 0].tolist())
+                    kill = np.zeros_like(sub)
+                    for l2 in range(1, num2 + 1):
+                        if l2 not in anchored:
+                            kill |= (lbl2 == l2)
+                    kill[shelf] = False
+                    ff[:shelf + 1, bx0:bx1, 3][kill] = 0
+                    tot += int(kill.sum())
+    if d in BAND_ROUND:
+        # v2.3.1457: band-limited round-top for the 3/4 views.  Unlike
+        # ROUND_TOP below, this (a) scans for the razor line only INSIDE
+        # the head band, (b) never clears above it (the backswing
+        # pauldron dome legitimately lives there), and (c) tapers a run
+        # end only when the column just beyond it is transparent at the
+        # razor row — a genuinely free end, not a dome or arm the run
+        # continues into.
+        for fi in range(fn):
+            bi = min(n - 1, round(fi * n / fn))
+            if cuts[bi] is None:
+                continue
+            _, hx0, hx1 = cuts[bi]
+            bx0, bx1 = max(0, hx0 - 4), min(ffw, hx1 + 5)
+            ff = fs[:, fi * ffw:(fi + 1) * ffw]
+            op2 = ff[:, :, 3] > 40
+            flat = None
+            for y in range(ffw):
+                row = op2[y, bx0:bx1]
+                best = 0
+                run = 0
+                for v in row:
+                    run = run + 1 if v else 0
+                    best = max(best, run)
+                if best >= 16:
+                    flat = y
+                    break
+            if flat is None:
+                continue
+            rowa = ff[:, :, 3][flat] > 40
+            xs = np.where(rowa[bx0:bx1])[0]
+            if not len(xs):
+                continue
+            x0, x1 = bx0 + int(xs.min()), bx0 + int(xs.max())
+            for k, drop in enumerate(ROUND_DROPS):
+                for side, x in ((0, x0 + k), (1, x1 - k)):
+                    if not (0 <= x < ffw):
+                        continue
+                    ox = x0 - 1 if side == 0 else x1 + 1
+                    if 0 <= ox < ffw and rowa[ox]:
+                        continue   # run continues past the band: not a free end
+                    ff[:, :, 3][flat:flat + drop, x] = 0
     if d in ROUND_TOP:
         for fi in range(fn):
             ff = fs[:, fi * ffw:(fi + 1) * ffw]
