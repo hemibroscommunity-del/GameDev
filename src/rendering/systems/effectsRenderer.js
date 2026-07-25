@@ -142,7 +142,9 @@ for (const [cfg, url] of [
    lifeSkillRewards / the strike blocks below; _updateFxBursts renders
    each over ~600ms on the overlay layer and reaps it. */
 const EFFECT_BURSTS = {
-  rocks:     { frames: [], h: 84, ay: 0.80, url: '/sprites/effects/rocks-burst-v1.webp?v=2.3.1443' },
+  /* v2.3.1469: rocks art replaced with the owner's painted burst
+     (tools/import_rocks_burst.py) — same 8x256 strip contract. */
+  rocks:     { frames: [], h: 84, ay: 0.80, url: '/sprites/effects/rocks-burst-v1.webp?v=2.3.1469' },
   woodchips: { frames: [], h: 84, ay: 0.70, url: '/sprites/effects/woodchips-burst-v1.webp?v=2.3.1443' },
   grease:    { frames: [], h: 64, ay: 0.85, url: '/sprites/effects/grease-burst-v1.webp?v=2.3.1443' },
   splash:    { frames: [], h: 88, ay: 0.80, url: '/sprites/effects/splash-burst-v1.webp?v=2.3.1443' },
@@ -617,7 +619,10 @@ export class EffectsRenderer {
     this._foodIconTex = {};   /* iconUrl -> Texture | 'loading' */
     this._chopFrames = [];
     this._chopLastFrame = -1;  // strike-frame edge tracker for the chop sfx
-    _fxLoad('/sprites/skills/chop-strip.webp').then((tex) => {
+    /* v2.3.1469: ?v= added — the strip itself changed (transparent eye
+       holes filled white, owner report) and it had no cache-bust, so
+       returning players would have kept the stale copy forever. */
+    _fxLoad('/sprites/skills/chop-strip.webp?v=2.3.1469').then((tex) => {
       const FW = 240, FH = 220;  // per-frame size of chop-strip.png
       const n = Math.max(1, Math.round(tex.width / FW));
       for (let i = 0; i < n; i++) {
@@ -631,7 +636,7 @@ export class EffectsRenderer {
        (v2.3.1466) read as "duplicating another body beneath the legs"
        (owner).  With the legless body the armor legs ARE the legs. */
     this._chopLeglessFrames = [];
-    _fxLoad('/sprites/skills/chop-strip-legless.webp').then((tex) => {
+    _fxLoad('/sprites/skills/chop-strip-legless.webp?v=2.3.1469').then((tex) => {
       const FW = 240, FH = 220;
       const n = Math.max(1, Math.round(tex.width / FW));
       for (let i = 0; i < n; i++) {
