@@ -1814,9 +1814,9 @@ export class EffectsRenderer {
     const _fi = Math.min(7, Math.floor(Math.max(0, f01) * 8));
     const _fa = _gt.food[_fi] || _gt.food[0];
     const _rawIcon = ({
-      fish_clownfish: '/icons/items/fish-clownfish.webp',
-      fish_trout: '/icons/items/fish-trout.webp',
-    })[fishKey] || '/icons/items/fish-minnow.webp';
+      fish_clownfish: '/icons/items/fish-clownfish.webp?v=2.3.1452',
+      fish_trout: '/icons/items/fish-trout.webp?v=2.3.1452',
+    })[fishKey] || '/icons/items/fish-minnow.webp?v=2.3.1452';
     let _ft = this._foodIconTex[_rawIcon];
     if (_ft === undefined) {
       this._foodIconTex[_rawIcon] = 'loading';
