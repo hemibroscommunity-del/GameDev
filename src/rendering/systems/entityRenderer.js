@@ -4347,7 +4347,8 @@ export class EntityRenderer {
              v2.3.1116: guarded (see local path) -- a throw here must not freeze the loop. */
           try {
             /* v2.3.1394: jog overlay only over the fullset figure (see local path). */
-            if (pose !== 'jog' || _fsR) _placePickupHead(display, spriteBody, other.skin, other.pants, other.shoes, pose, dir, frameIdx, _rJogPhase);
+            /* v2.3.1479: same armour gate as the local path. */
+            if ((pose !== 'jog' || _fsR) && ((pose !== 'hit' && pose !== 'mine') || _rworn.length > 0)) _placePickupHead(display, spriteBody, other.skin, other.pants, other.shoes, pose, dir, frameIdx, _rJogPhase);
             spriteBody.visible = !(_rfull && !!getPickupHeadFrame(other.skin, other.pants, other.shoes, pose, dir, frameIdx));
             /* v2.3.1123: lift the angler's head above the fishing chest plate. */
             if (pose === 'fish' && _rworn.some(w => w.k && w.k.indexOf('chest:') === 0)) _placeFishHead(display, spriteBody, tex);
@@ -5164,7 +5165,13 @@ export class EntityRenderer {
              own bob (owner: chest-only east "not nudging").  Gate it on the
              fullset figure actually rendering; pickup/fish keep their
              unconditional overlay. */
-          if (pose !== 'jog' || _fsT) _placePickupHead(display, spriteBody, getSkin(), getPants(), getShoes(), pose, dir, frameIdx, _jogPhase);
+          /* v2.3.1479: hit / mine take the overlay only when armour is actually
+             worn.  The sheet is HEAD_DS-downscaled, so drawing it over a bare
+             player's own head would swap a crisp head for a softer one every
+             time they took a hit, for no benefit -- with no gear there is
+             nothing that could cover the head in the first place. */
+          const _needHead = (pose !== 'hit' && pose !== 'mine') || _worn.length > 0;
+          if ((pose !== 'jog' || _fsT) && _needHead) _placePickupHead(display, spriteBody, getSkin(), getPants(), getShoes(), pose, dir, frameIdx, _jogPhase);
           spriteBody.visible = !(pose === 'pickup' && _legsW && _chestW && !!getPickupHeadFrame(getSkin(), getPants(), getShoes(), pose, dir, frameIdx));
           /* v2.3.1123: lift the angler's head above the fishing chest plate. */
           if (pose === 'fish' && _chestW) _placeFishHead(display, spriteBody, tex);
