@@ -500,8 +500,24 @@ function hairPoseTune(pose, dir) {
 const FULLSET_CROWN = {
   /* v2.3.1390: smoothed track (owner: "really jittery") — the raw
      per-frame measurement stepped up to 10px between adjacent frames;
-     this glides ≤4px like body-tops itself. */
-  east: [[134, 48], [136, 48], [136, 48], [136, 48], [134, 50], [134, 52], [134, 56], [134, 56], [134, 56], [134, 56], [134, 54], [134, 50], [134, 48], [136, 48], [136, 48], [136, 50], [134, 50], [134, 52], [134, 54], [134, 56], [134, 56], [134, 52], [134, 50], [134, 48], [134, 48]],
+     this glides ≤4px like body-tops itself.
+     v2.3.1455: FLOAT precision + the sub-pixel head residual folded in
+     (the old even-integer rounding quantized the track to 2px steps),
+     so hats/hair glide with the same corrected head the player sees. */
+  east: [[134.6, 47.5], [135.6, 47.1], [136.0, 47.7], [135.4, 48.0], [134.6, 49.3], [134.6, 52.1], [135.0, 54.6], [134.9, 56.8], [134.4, 58.2], [133.9, 57.1], [134.0, 54.6], [134.1, 51.7], [134.6, 48.2], [135.6, 47.4], [136.0, 47.1], [135.6, 49.1], [134.5, 50.5], [134.2, 51.8], [134.6, 54.0], [135.0, 55.7], [134.6, 55.4], [134.0, 52.9], [134.0, 50.4], [134.1, 48.4], [134.1, 47.4]],
+};
+/* v2.3.1455 (owner: "'slivering' effect like lines are slightly cut and
+   moving while jogging where the head meets the torso armor"): the head
+   sheet's baked per-frame shift quantizes to whole sheet pixels (2px in
+   256-space at the 128px sheet) while the armor's smoothed bob moves
+   fractionally, so the head-to-collar seam breathed open/closed ±1px
+   through the jog cycle — a thin moving cut line at the neck.  This is
+   the FRACTIONAL remainder the bake couldn't carry (256-space, one
+   entry per armor frame, emitted by tools/rebuild_east_head_track.py);
+   _placePickupHead applies it as a sub-pixel y offset so the drawn head
+   rides the armor's true smooth track and the seam stays put. */
+const FULLSET_HEAD_RES = {
+  east: [0.0, -0.44, 0.67, 0.0, -0.67, -0.44, -0.89, -0.67, 0.22, -0.44, -0.44, 0.67, 0.22, 0.44, -0.89, -0.44, 0.0, -0.22, 0.0, 0.22, 0.44, 0.44, 0.44, 0.44, 0.44],
 };
 let _crownOverride = null;   // set around the trait placements when fullset is active
 function _fullsetCrown(dir, phase) {
@@ -1844,6 +1860,19 @@ function _placePickupHead(display, sb, skinId, pantsId, shoesId, pose, dir, fram
   if (!t) return;
   if (hd.texture !== t) hd.texture = t;
   hd.x = sb.x; hd.y = sb.y;
+  /* v2.3.1455: sub-pixel seam correction — the fractional shift the
+     baked head sheet can't carry (see FULLSET_HEAD_RES).  Same
+     phase->frame mapping as getPickupHeadFrame/getGearFramePhased, so
+     the residual always matches the frame on screen; 256-space ->
+     world via sb.scale.y / DISPLAY_DS (the _placeBodyRegions factor). */
+  if (pose === 'jog' && phase != null) {
+    const _res = FULLSET_HEAD_RES[dir];
+    if (_res && _res.length) {
+      const _p = ((phase % 1) + 1) % 1;
+      const _ri = Math.min(_res.length - 1, Math.floor(_p * _res.length));
+      hd.y = sb.y + _res[_ri] * sb.scale.y / DISPLAY_DS;
+    }
+  }
   /* v2.3.1117: the head sheet is baked DOWNSCALED to save VRAM, so its frame is
      smaller than the body's 256px frame.  Scale up by 256/frame so the overlay
      still lands exactly on the body (both anchored 0.5/0.5); reads the size off

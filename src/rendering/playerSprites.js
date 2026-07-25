@@ -119,7 +119,7 @@ const POSES = ['stand', 'jog', 'hit', 'pickup', 'attack', 'mine', 'fish'];
    belt re-baked from chainbelt.png.  anchors.json NE hand positions are
    measured from the wristband marker per frame -- real data, replacing the
    stale 48-entry list from the pre-v2.3.6xx sheet. */
-const VERSION = 80; /* v2.3.1452: pickup sheets defringed — gray-matte AA ring recolored to body colors (tools/defringe_gray.py) */
+const VERSION = 81; /* v2.3.1455: jog-east-head.png regenerated (28f source re-baked; sub-pixel seam residuals now applied at render).  v2.3.1452: pickup sheets defringed. */
 /* Re-exported so the skin-recolor pipeline (playerSkins.js) loads the same
    cache-busted sheet URLs and never drifts onto a stale cached image. */
 export const SPRITE_VERSION = VERSION;
