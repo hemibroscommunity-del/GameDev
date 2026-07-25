@@ -3622,7 +3622,26 @@ export class EffectsRenderer {
       jl.anchor.set(0.5, (_waist - TOP) / (256 - TOP));
       jl.scale.set(mir * _legScale, _legScale); jl.x = x + _legDX + legShiftX; jl.y = _yMeet + legShiftY; jl.tint = 0xffffff; jl.visible = true;
     } else if (jl) { jl.visible = false; }
-    if (gearFrame && jg) { jg.texture = gearFrame; jg.anchor.set(0.5, _waist / 256); jg.scale.set(mir * _legScale, _legScale); jg.x = x + _legDX + legShiftX; jg.y = _yMeet + legShiftY; jg.tint = 0xffffff; jg.visible = true; }
+    if (gearFrame && jg) {
+      /* v2.3.1453 (owner: "jog while swinging makes the leg armor
+         disappear or super tiny; happens to arrow shooting while
+         jogging also"): v2.3.1434 stores the jog gear sheets at their
+         on-disk 128px frames (exact-texel memory cut), and patched the
+         main-body consumer (_placeGear's _gnorm) — but THIS third
+         consumer kept applying its 256-calibrated _legScale
+         (s = bodyH/188) to the now-half-size texture, rendering the
+         greaves at exactly half linear size during every MOVING swing
+         and bow shot (the bare legs underneath stay suppressed when
+         armour is worn, so below the hip there was a half-size metal
+         fragment and then nothing).  Normalize by the texture's OWN
+         frame size, the same _gnorm pattern: identity for 256-native
+         sheets, ×2 for the 128 generation — covers all four call
+         sites (sword+bow, local+remote) through this one helper.
+         legTex needs no term: the jog-<dir>-legs.png bare-leg sheets
+         load at an explicit {fw:256, fh:256} and never shrank. */
+      const _gn = 256 / ((gearFrame.frame && gearFrame.frame.width) || 256);
+      jg.texture = gearFrame; jg.anchor.set(0.5, _waist / 256); jg.scale.set(mir * _legScale * _gn, _legScale * _gn); jg.x = x + _legDX + legShiftX; jg.y = _yMeet + legShiftY; jg.tint = 0xffffff; jg.visible = true;
+    }
     else if (jg) { jg.visible = false; }
   }
 
