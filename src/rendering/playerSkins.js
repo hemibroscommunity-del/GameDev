@@ -720,7 +720,12 @@ export function preloadBodyAll() {
     const key = (skinId || 'default') + '/' + (pantsId || 'default') + '/' + (shoesId || 'default') + '/none|' + pose + '/' + dir;
     if (_bodySheets[key] === undefined) tasks.push(buildBodySheet(key, pose, dir, skinT, pantsT, shoesT, null));
   };
-  for (const pose of ['stand', 'jog']) {
+  /* v2.3.1477: + 'hit'.  The recoil sheets used to bake on the FIRST HIT
+     TAKEN -- a 1536x256 recolour on the spot, right as a monster connects.
+     It went unnoticed while the pose had no armour (there was nothing to see
+     but a flicker); now that hit-<dir> gear ships, the same frame also wants
+     a masked-body bake, so it is preloaded behind the intro like the rest. */
+  for (const pose of ['stand', 'jog', 'hit']) {
     for (const dir of SOURCE_DIRS) prewarm(pose, dir);
   }
   /* v2.3.1118: prewarm the pickup BODY + (downscaled) HEAD behind the intro, so
@@ -767,7 +772,7 @@ export function preloadBodyVariant(shirtT, shirtKey) {
   if (!skinT && !pantsT && !shoesT && !shirtT) return Promise.resolve();
   const shKey = shirtT ? (shirtKey || 'shirt') : 'none';
   const tasks = [];
-  for (const pose of ['stand', 'jog']) {
+  for (const pose of ['stand', 'jog', 'hit']) {   /* v2.3.1477: hit ships gear now */
     for (const dir of SOURCE_DIRS) {
       const key = (skinId || 'default') + '/' + (pantsId || 'default') + '/' + (shoesId || 'default') + '/' + shKey + '|' + pose + '/' + dir;
       if (_bodySheets[key] === undefined) tasks.push(buildBodySheet(key, pose, dir, skinT, pantsT, shoesT, shirtT));
