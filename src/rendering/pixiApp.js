@@ -15,10 +15,15 @@ import { Application, Container } from 'pixi.js';
  * draw over trees/rocks/fishing holes whenever they overlapped, hiding
  * the resource.  Nodes now cover monsters; the local player (and the
  * chop/cook stand-ins that live in gatherNodes) keep drawing above both.
+ * v2.3.1472 (owner): monsterUi sits ABOVE gatherNodes — a monster's HP
+ * bar must stay readable even when a tree covers the monster itself, so
+ * the bar/level/number are parented here while the BODY stays down in
+ * entities and remains correctly hidden behind the resource.  Still
+ * below damageNumbers, so damage popups keep reading over the bars.
  */
 const WORLD_LAYER_NAMES = [
   'tiles', 'groundDetails', 'groundSplatter', 'groundLoot',
-  'telegraphs', 'entities', 'gatherNodes', 'player',
+  'telegraphs', 'entities', 'gatherNodes', 'monsterUi', 'player',
   'projectiles', 'particles', 'damageNumbers', 'overlayWorld',
 ];
 const SCREEN_LAYER_NAMES = ['atmosphere', 'screenFX', 'hud'];

@@ -15,7 +15,7 @@ const _fxLoad = (url) => { const p = Assets.load(url); _fxPreload.push(p); retur
 export function effectsAnimationsReady() { return Promise.allSettled(_fxPreload); }
 import { ELEMENTS } from '@/data/elements.js';
 import { ZONES } from '@/data/zones.js';
-import { TILE, MINE_SPOT_R } from '@/data/constants.js';
+import { TILE, MINE_SPOT_R, FISH_CUE_DY } from '@/data/constants.js';
 import { GS_INNER_RADIUS, GS_OUTER_RADIUS, GS_FORWARD_ARC, cleaveArcBonus } from '@/data/index.js';
 import { getFrame as getSlimeFrame, hasState as hasSlimeState } from '../slimeSprites.js';
 import { getRemnantsTexture as getSnowmanRemnantsTex } from '../snowmanSprites.js';
@@ -142,10 +142,14 @@ for (const [cfg, url] of [
    lifeSkillRewards / the strike blocks below; _updateFxBursts renders
    each over ~600ms on the overlay layer and reaps it. */
 const EFFECT_BURSTS = {
-  rocks:     { frames: [], h: 84, ay: 0.80, url: '/sprites/effects/rocks-burst-v1.webp?v=2.3.1443' },
+  /* v2.3.1469: rocks art replaced with the owner's painted burst
+     (tools/import_rocks_burst.py) — same 8x256 strip contract. */
+  rocks:     { frames: [], h: 84, ay: 0.80, url: '/sprites/effects/rocks-burst-v1.webp?v=2.3.1469' },
   woodchips: { frames: [], h: 84, ay: 0.70, url: '/sprites/effects/woodchips-burst-v1.webp?v=2.3.1443' },
   grease:    { frames: [], h: 64, ay: 0.85, url: '/sprites/effects/grease-burst-v1.webp?v=2.3.1443' },
-  splash:    { frames: [], h: 88, ay: 0.80, url: '/sprites/effects/splash-burst-v1.webp?v=2.3.1443' },
+  /* v2.3.1470: splash art replaced with the owner's painted droplet
+     crown (tools/import_rocks_burst.py) — same 8x256 strip contract. */
+  splash:    { frames: [], h: 88, ay: 0.80, url: '/sprites/effects/splash-burst-v1.webp?v=2.3.1470' },
 };
 for (const cfg of Object.values(EFFECT_BURSTS)) {
   _fxLoad(cfg.url).then((tex) => {
@@ -182,8 +186,13 @@ const GESTURE_TOOLS = {
      by about 70%"): the reel MARKER drops to ~30% of its v2.3.1418 size
      (116 -> 35).  Fishing's cue anchors on the PLAYER, not on a node, so
      the big reel was covering the character it hovers over; the other
-     three tools sit on their node and keep their tuned sizes. */
-  fishing:     { frames: [], h: 35,  dx: 0,   dy: 0,   url: '/sprites/tools/reel-gesture-v1.webp?v=2.3.1417' },
+     three tools sit on their node and keep their tuned sizes.
+     v2.3.1470 (owner: "increase reel marker and gesture cue by 2x then
+     move it down more so it's not on player face"): 35 -> 70.  The
+     v2.3.1449 shrink was a workaround for the cue sitting ON the head —
+     the anchor now drops below the face instead (FISH_CUE_DY), so the
+     marker can be readable again. */
+  fishing:     { frames: [], h: 70,  dx: 0,   dy: 0,   url: '/sprites/tools/reel-gesture-v1.webp?v=2.3.1417' },
   /* v2.3.1431: pan raised dy -10 -> -66 — the v2.3.1429 2x cook figure
      grew INTO the pan marker's old spot, so the animating pan kept
      covering/uncovering the torso (owner: "the shirt is flickering
@@ -617,13 +626,30 @@ export class EffectsRenderer {
     this._foodIconTex = {};   /* iconUrl -> Texture | 'loading' */
     this._chopFrames = [];
     this._chopLastFrame = -1;  // strike-frame edge tracker for the chop sfx
-    _fxLoad('/sprites/skills/chop-strip.webp').then((tex) => {
+    /* v2.3.1469: ?v= added — the strip itself changed (transparent eye
+       holes filled white, owner report) and it had no cache-bust, so
+       returning players would have kept the stale copy forever. */
+    _fxLoad('/sprites/skills/chop-strip.webp?v=2.3.1469').then((tex) => {
       const FW = 240, FH = 220;  // per-frame size of chop-strip.png
       const n = Math.max(1, Math.round(tex.width / FW));
       for (let i = 0; i < n; i++) {
         this._chopFrames.push(new Texture({ source: tex.source, frame: new Rectangle(i * FW, 0, FW, FH) }));
       }
     }).catch((err) => console.warn('[chop-strip] load failed', err));
+    /* v2.3.1468: legs-erased lumberjack, swapped in while leg armour is
+       equipped — the cook-strip-legless pattern (v2.3.1114).  The
+       regenerated greaves art's stances don't pixel-match the body's,
+       so the bare legs peeked around the armor; steel-filling the peeks
+       (v2.3.1466) read as "duplicating another body beneath the legs"
+       (owner).  With the legless body the armor legs ARE the legs. */
+    this._chopLeglessFrames = [];
+    _fxLoad('/sprites/skills/chop-strip-legless.webp?v=2.3.1469').then((tex) => {
+      const FW = 240, FH = 220;
+      const n = Math.max(1, Math.round(tex.width / FW));
+      for (let i = 0; i < n; i++) {
+        this._chopLeglessFrames.push(new Texture({ source: tex.source, frame: new Rectangle(i * FW, 0, FW, FH) }));
+      }
+    }).catch((err) => console.warn('[chop-strip-legless] load failed', err));
 
     /* v2.3.1131: gear layers for the woodcutting chopper (mirror of the cook
        stand-in).  Shirt / leg-armour / chest-plate drawn over the lumberjack when
@@ -4384,7 +4410,7 @@ export class EffectsRenderer {
     /* Anchor cue above the node so it doesn't sit on top of the
        sprite. Trees are tallest so they get the largest offset. */
     const yOff = node.nodeType === 'tree' ? 96 : node.nodeType === 'oreVein' ? 36 : 30;
-    const y = fishingCue ? (S.player.y - 24) : cookingCue ? (node.y - 40) : (node.y - yOff);
+    const y = fishingCue ? (S.player.y + FISH_CUE_DY) : cookingCue ? (node.y - 40) : (node.y - yOff);
     /* v2.3.843: which side of the tree the player is on (+1 = tree to the
        player's right).  Computed from live player position so the chopper
        and the finger hint pick the correct side the instant the cue shows
@@ -4395,7 +4421,7 @@ export class EffectsRenderer {
        player's side, faces the trunk (source faces right -> flip when the
        tree is on the player's LEFT). */
     if (ex.skill === 'woodcutting' && this.chopSprite && this._chopFrames.length) {
-      const CHOP_H = 112;         // drawn height; v2.3.1348: 84 -> 112 (+33%, owner request). Gear layers + traits derive from this same transform, so everything scales together.
+      const CHOP_H = 95;          // drawn height; v2.3.1348: 84 -> 112 (+33%, owner request); v2.3.1476: 112 -> 95 (-15%, owner). Gear layers + traits derive from this same transform, so everything scales together.
       const CHOP_OFFSET = 30;     // px from the trunk to the figure's centre
       const CHOP_FRAME_MS = 45;   // ~22fps -> ~1.1s per swing loop
       /* v2.3.1131: play only the 12 downswing frames (source indices 12-23) --
@@ -4406,7 +4432,17 @@ export class EffectsRenderer {
       const sp = this.chopSprite;
       const k = Math.floor(now / CHOP_FRAME_MS) % CHOP_COUNT;
       const fi = Math.min(this._chopFrames.length - 1, CHOP_BASE + k);
-      sp.texture = this._chopFrames[fi];
+      /* v2.3.1468: with leg armour equipped, draw the HOLLOW body (legs
+         erased, silhouette outline kept) so the lumberjack's own legs
+         can't show around the greaves — the cook stand-in's v2.3.1114
+         trick.  Gated on the greaves frame RESOLVING (not merely on
+         legs being equipped, as cook does): a legs item with no chop
+         art, or a sheet still loading, would otherwise render a
+         legless lumberjack with nothing drawn over the gap. */
+      const _chopLegsTex = this._gearStripFrame('legs', getEquip('legs'), 'chop', 'west', 480, k);
+      const _chopLegsOn = !!_chopLegsTex
+        && this._chopLeglessFrames.length === this._chopFrames.length;
+      sp.texture = (_chopLegsOn ? this._chopLeglessFrames : this._chopFrames)[fi];
       const s = CHOP_H / 220;
       sp.scale.set(chopSign < 0 ? -s : s, s);  // flip to face the trunk
       sp.x = node.x - chopSign * CHOP_OFFSET;
@@ -4428,7 +4464,7 @@ export class EffectsRenderer {
          _placeSwingShirt tints it to the player's chosen shirt colour (and hides
          it when a chest plate is worn, which replaces it). */
       this._placeSwingShirt(this.chopShirtSprite, placeChopLayer, getShirt(), getEquip('chest'), 'chop', 'west', 480, k, getShirtColor());
-      placeChopLayer(this.chopLegsSprite,  this._gearStripFrame('legs',  getEquip('legs'),  'chop', 'west', 480, k));
+      placeChopLayer(this.chopLegsSprite,  _chopLegsTex);
       placeChopLayer(this.chopChestSprite, this._gearStripFrame('chest', getEquip('chest'), 'chop', 'west', 480, k));
       /* v2.3.847: chop hit sfx on the swing's strike frame (woodcutting had
          none).  Fires once per loop — only on the transition INTO the strike
@@ -4746,7 +4782,8 @@ export class EffectsRenderer {
          cosmetic: the swipe hit-test is a fixed 160px start radius and
          the rep counter integrates the finger's ANGLE about the cue
          centre, so a smaller ring still reels at exactly the same rate. */
-      const F_S = 0.3;
+      /* v2.3.1470 (owner): 2x with the marker — 0.3 -> 0.6. */
+      const F_S = 0.6;
       const rA = 78 * F_S;   /* v2.3.1436: ENCIRCLES the reel art instead of hiding behind it */
       const fLen = FINGER_LEN * F_S, fW = FINGER_W * F_S;
       const a = (now / 900) % (Math.PI * 2);

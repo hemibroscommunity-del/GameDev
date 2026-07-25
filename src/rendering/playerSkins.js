@@ -600,8 +600,12 @@ function _pickupHeadCap() {
      (insertion order) baked entry; destroy its source on a 30s delay so an
      in-use texture is never killed mid-frame (same guard as _maskedBodyCache). */
   const keys = Object.keys(_pickupHeadSheets);
-  if (keys.length <= 20) return; /* v2.3.1382: 12 -> 20 — jog heads are 5/combo, and
-     town scenes with a few armored remotes crossed 12 quickly */
+  if (keys.length <= 32) return; /* v2.3.1382: 12 -> 20 — jog heads are 5/combo, and
+     town scenes with a few armored remotes crossed 12 quickly.
+     v2.3.1479: 20 -> 32 — the local combo alone now holds 11 (4 jog + 5 hit +
+     pickup + mine), so 20 left too little headroom before remotes started
+     evicting.  The local-combo guard below already protects the player's own
+     sheets; this keeps a few remotes from thrashing each other. */
   /* v2.3.1382 (owner: "head fully missing on north jog"): NEVER evict the
      LOCAL player's current combo — those are the oldest entries (preloaded
      at the loading screen), so the old oldest-first rule destroyed exactly
@@ -665,7 +669,14 @@ export function getPickupHeadFrame(skinId, pantsId, shoesId, pose, dir, frameIdx
      sheet) gets the player's real head drawn above it, exactly like the
      pickup pose.  Only the fullset base dirs ship jog-<dir>-head.png;
      other dirs 404 -> [] -> null and nothing changes for them. */
-  if (pose !== 'pickup' && pose !== 'jog') return null;
+  /* v2.3.1479: + hit / mine.  Both poses now ship armour, and gear draws
+     ABOVE the body — measured on the v2.3.1477 sheets, the plate covered
+     3-59 head px per hit frame and the masked bake ERASED 13-67 more on the
+     frames whose recoil throws the head below its horizontal neck-restore
+     band (owner: "the head ... disappears behind the armor due to AI drift").
+     Drawing the head from its own sheet above the gear is the same cure the
+     pickup crouch got in v2.3.1055. */
+  if (pose !== 'pickup' && pose !== 'jog' && pose !== 'hit' && pose !== 'mine') return null;
   const skinT = skinTarget(skinId), pantsT = pantsTarget(pantsId), shoesT = shoesTarget(shoesId);
   const key = (skinId || 'default') + '/' + (pantsId || 'default') + '/' + (shoesId || 'default') + '|' + pose + '-' + dir;
   const entry = _pickupHeadSheets[key];
@@ -720,7 +731,12 @@ export function preloadBodyAll() {
     const key = (skinId || 'default') + '/' + (pantsId || 'default') + '/' + (shoesId || 'default') + '/none|' + pose + '/' + dir;
     if (_bodySheets[key] === undefined) tasks.push(buildBodySheet(key, pose, dir, skinT, pantsT, shoesT, null));
   };
-  for (const pose of ['stand', 'jog']) {
+  /* v2.3.1477: + 'hit'.  The recoil sheets used to bake on the FIRST HIT
+     TAKEN -- a 1536x256 recolour on the spot, right as a monster connects.
+     It went unnoticed while the pose had no armour (there was nothing to see
+     but a flicker); now that hit-<dir> gear ships, the same frame also wants
+     a masked-body bake, so it is preloaded behind the intro like the rest. */
+  for (const pose of ['stand', 'jog', 'hit']) {
     for (const dir of SOURCE_DIRS) prewarm(pose, dir);
   }
   /* v2.3.1118: prewarm the pickup BODY + (downscaled) HEAD behind the intro, so
@@ -733,6 +749,12 @@ export function preloadBodyAll() {
      shrinking the head (v2.3.1117) and dropping the mine sheet -- and MINE stays
      lazy here (irrelevant to looting, pure VRAM waste otherwise). */
   prewarm('pickup', 'south');
+  /* v2.3.1478: MINE is no longer lazy either.  The note above was written when
+     the pickaxe swing had no armour to draw -- now that mine-south ships gear
+     sheets, its first use pays a body recolour AND 14 masked bakes at the
+     moment the player starts a gather.  The sheet is 1792x128 on disk, so at
+     DISPLAY_DS=2 this is a few hundred KB. */
+  prewarm('mine', 'south');
   const headKey = (skinId || 'default') + '/' + (pantsId || 'default') + '/' + (shoesId || 'default') + '|pickup-south';
   if (_pickupHeadSheets[headKey] === undefined) tasks.push(_buildPickupHeadSheet(headKey, 'pickup', 'south', skinT, pantsT, shoesT));
   return Promise.all(tasks);
@@ -748,9 +770,15 @@ export function preloadJogHeadOverlays() {
   const skinId = _skinStore.get(), pantsId = _pantsStore.get(), shoesId = _shoesStore.get();
   const skinT = skinTarget(skinId), pantsT = pantsTarget(pantsId), shoesT = shoesTarget(shoesId);
   const tasks = [];
-  for (const dir of ['south', 'southwest', 'north', 'east']) {
-    const key = (skinId || 'default') + '/' + (pantsId || 'default') + '/' + (shoesId || 'default') + '|jog-' + dir;
-    if (_pickupHeadSheets[key] === undefined) tasks.push(_buildPickupHeadSheet(key, 'jog', dir, skinT, pantsT, shoesT));
+  const want = [['jog', 'south'], ['jog', 'southwest'], ['jog', 'north'], ['jog', 'east']];
+  /* v2.3.1479: the hit-react (all five base dirs) and mining (south only)
+     overlays ride the same gate — a lazy first build would drop the head for
+     the first hit taken, which is exactly when it is being looked at. */
+  for (const dir of ['south', 'southwest', 'east', 'northeast', 'north']) want.push(['hit', dir]);
+  want.push(['mine', 'south']);
+  for (const [pose, dir] of want) {
+    const key = (skinId || 'default') + '/' + (pantsId || 'default') + '/' + (shoesId || 'default') + '|' + pose + '-' + dir;
+    if (_pickupHeadSheets[key] === undefined) tasks.push(_buildPickupHeadSheet(key, pose, dir, skinT, pantsT, shoesT));
   }
   return Promise.all(tasks);
 }
@@ -767,7 +795,7 @@ export function preloadBodyVariant(shirtT, shirtKey) {
   if (!skinT && !pantsT && !shoesT && !shirtT) return Promise.resolve();
   const shKey = shirtT ? (shirtKey || 'shirt') : 'none';
   const tasks = [];
-  for (const pose of ['stand', 'jog']) {
+  for (const pose of ['stand', 'jog', 'hit']) {   /* v2.3.1477: hit ships gear now */
     for (const dir of SOURCE_DIRS) {
       const key = (skinId || 'default') + '/' + (pantsId || 'default') + '/' + (shoesId || 'default') + '/' + shKey + '|' + pose + '/' + dir;
       if (_bodySheets[key] === undefined) tasks.push(buildBodySheet(key, pose, dir, skinT, pantsT, shoesT, shirtT));

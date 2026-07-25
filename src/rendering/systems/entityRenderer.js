@@ -1503,6 +1503,20 @@ function _maskedBodyFrameInner(bodyTex, worn, dilate, _bt0, _bs, poseInfo) {
    per frame; IntroVideo polls this to draw a real progress bar. */
 export const prewarmProgress = { done: 0, total: 0 };
 
+/* v2.3.1477: the poses whose masked-body bakes are paid for behind the intro.
+   'hit' joined stand/jog when the recoil finally got its own chest/legs sheets
+   -- 6 frames x 5 dirs = 30 more 256x256 bakes (~8MB, ~3% of what v2.3.1407
+   cut).  Worth it: the bake would otherwise land on the exact frame a monster
+   connects with you.  v2.3.1478: + 'mine' (south only, 14 frames) once the
+   pickaxe swing got its own sheets -- the mine BODY sheet was deliberately
+   left lazy back in v2.3.1118 as "pure VRAM waste", which was true while the
+   pose had no armour to bake against.  If iPhone context loss ever returns,
+   this list is the first thing to trim back to ['stand', 'jog']. */
+const PREWARM_POSES = ['stand', 'jog', 'hit', 'mine'];
+/* The gather poses are authored SOUTH-ONLY -- walking them through all five
+   dirs would bake four empty frames per pose and log four 404s per slot. */
+const prewarmDirs = (pose, dirs) => (pose === 'mine' ? ['south'] : dirs);
+
 /* v2.3.701: plan the WHOLE intro workload up front so the loading bar is
    monotonic.  Previously each pass added its own count to `total` when it
    started, so done/total dropped (bar visibly 'reset') when the alt pass
@@ -1512,8 +1526,8 @@ export function planPrewarmProgress() {
   prewarmProgress.total = 0;
   const DIRS = ['south', 'east', 'north', 'northeast', 'southwest'];
   let per = 0;
-  for (const pose of ['stand', 'jog']) {
-    for (const dir of DIRS) per += playerFrameCount(pose, dir) || 1;
+  for (const pose of PREWARM_POSES) {
+    for (const dir of prewarmDirs(pose, DIRS)) per += playerFrameCount(pose, dir) || 1;
   }
   const anyWorn = ['chest', 'legs'].some((sl) => { const it = getEquip(sl); return it && it !== 'none'; });
   /* v2.3.1118: the alt-worn pass bakes speculative families no longer.
@@ -1637,8 +1651,8 @@ export async function prewarmMaskedBodyFrames(opts) {
   });
   let sinceYield = 0;
   let chunkT0 = (typeof performance !== 'undefined') ? performance.now() : 0;
-  for (const pose of ['stand', 'jog']) {
-    for (const dir of DIRS) {
+  for (const pose of PREWARM_POSES) {
+    for (const dir of prewarmDirs(pose, DIRS)) {
       const fc = playerFrameCount(pose, dir) || 1;
       for (let f = 0; f < fc; f++) {
         prewarmProgress.done++;
@@ -1725,8 +1739,8 @@ export async function prewarmAltWornSets(opts) {
   let sinceYield = 0;
   for (const set of SETS) {
     const sT = null, sK = 'none';   /* v2.3.756: shirtless always */
-    for (const pose of ['stand', 'jog']) {
-      for (const dir of DIRS) {
+    for (const pose of PREWARM_POSES) {
+      for (const dir of prewarmDirs(pose, DIRS)) {
         const fc = playerFrameCount(pose, dir) || 1;
         for (let f = 0; f < fc; f++) {
           if (seq !== _altPrewarmSeq) return;
@@ -2527,10 +2541,18 @@ function createMonsterDisplay(monster) {
     container.addChild(spriteBody);
   }
 
+  /* v2.3.1472: the above-head UI (level, HP bar frame/fill/fx, HP
+     number) goes into its OWN container, parented to the monsterUi
+     layer by the caller so it draws above gather nodes while this
+     container's body stays behind them.  Positions are still monster-
+     local — _updateMonsters mirrors x/y/scale onto it each frame. */
+  const hpUi = new Container();
+  container._hpUi = hpUi;
+
   const lvlText = new Text({ text: '', style: { ...NAME_STYLE, fontSize: 8 } });
   lvlText.anchor.set(0.5, 1);
   lvlText.y = -size - 12;
-  container.addChild(lvlText);
+  hpUi.addChild(lvlText);
 
   /* Single dynamic Graphics for everything that DOES change per frame:
      status icons, aggro alert, stuck arrows, threat arrow, stun pip.
@@ -2546,12 +2568,12 @@ function createMonsterDisplay(monster) {
   hpHeart.anchor.set(0.5, 0.5);
   hpHeart.alpha = 0;
   hpHeart.tint = 0x000000;
-  container.addChild(hpHeart);
+  hpUi.addChild(hpHeart);
 
   const hpText = new Text({ text: '', style: MONSTER_HP_NUM_STYLE });
   hpText.anchor.set(0.5, 0.5);
   hpText.alpha = 0;
-  container.addChild(hpText);
+  hpUi.addChild(hpText);
 
   container._body = body;
   container._spriteBody = spriteBody;
@@ -3047,9 +3069,14 @@ function createOtherPlayerDisplay() {
  * Manages all entity rendering.
  */
 export class EntityRenderer {
-  constructor(entityLayer, playerLayer) {
+  constructor(entityLayer, playerLayer, monsterUiLayer) {
     this.entityLayer = entityLayer;
     this.playerLayer = playerLayer;
+    /* v2.3.1472: HP bar / level / number live in their own layer above
+       gatherNodes (see pixiApp) so a tree can hide the monster without
+       hiding its health.  Falls back to the entity layer if a caller
+       hasn't been updated, which just restores the old behaviour. */
+    this.monsterUiLayer = monsterUiLayer || entityLayer;
     this.monsterDisplays = new Map();
     this.otherPlayerDisplays = new Map();
     this.playerDisplay = null;
@@ -3265,6 +3292,10 @@ export class EntityRenderer {
       if (!display) {
         display = createMonsterDisplay(m);
         this.entityLayer.addChild(display);
+        /* v2.3.1472: the above-head UI rides its own layer (above the
+           gather nodes) — same world space, so mirroring the transform
+           below is all it needs. */
+        if (display._hpUi) this.monsterUiLayer.addChild(display._hpUi);
         this.monsterDisplays.set(m.id, display);
       }
 
@@ -3290,6 +3321,17 @@ export class EntityRenderer {
       /* v2.3.1274: monster size experiment (persists through the death
          animation since the container keeps its scale). */
       if (display.scale.x !== MONSTER_SIZE_MULT) display.scale.set(MONSTER_SIZE_MULT);
+      /* v2.3.1472: mirror the transform onto the above-head UI, which
+         lives in a sibling layer (same world container, so the values
+         carry over 1:1).  Guarded writes for the same batch-rebuild
+         reason as the body's. */
+      const _ui = display._hpUi;
+      if (_ui) {
+        if (_ui.x !== rx) _ui.x = rx;
+        if (_ui.y !== ry) _ui.y = ry;
+        if (_ui.visible !== m.alive) _ui.visible = m.alive;
+        if (_ui.scale.x !== MONSTER_SIZE_MULT) _ui.scale.set(MONSTER_SIZE_MULT);
+      }
 
       const size = display._size;
 
@@ -3729,14 +3771,17 @@ export class EntityRenderer {
       if (heartTex && display._hpHeart.texture !== heartTex) {
         display._hpHeart.texture = heartTex;
         display._hpHeart.tint = 0xffffff;
-        /* fill + fx layers insert UNDER the hp number text. */
-        const txtIdx = display.getChildIndex(display._hpText);
+        /* fill + fx layers insert UNDER the hp number text.
+           v2.3.1472: into the _hpUi container, which is where the bar
+           and the number now live (above the gather-node layer). */
+        const _ui = display._hpUi || display;
+        const txtIdx = _ui.getChildIndex(display._hpText);
         const fill = new Sprite();
         fill.anchor.set(0, 0.5);
-        display.addChildAt(fill, txtIdx);
+        _ui.addChildAt(fill, txtIdx);
         display._hpBarFill = fill;
         const fx = new Graphics();
-        display.addChildAt(fx, txtIdx + 1);
+        _ui.addChildAt(fx, txtIdx + 1);
         display._hpBarFx = fx;
       }
       if (heartTex && heartTex.width > 0) {
@@ -3984,6 +4029,10 @@ export class EntityRenderer {
 
     for (const [id, display] of this.monsterDisplays) {
       if (!activeIds.has(id)) {
+        /* v2.3.1472: the above-head UI is parented to another layer, so
+           destroying the body container does NOT reap it — it would be
+           left behind as a floating HP bar over an absent monster. */
+        if (display._hpUi && !display._hpUi.destroyed) display._hpUi.destroy({ children: true });
         display.destroy({ children: true });
         this.monsterDisplays.delete(id);
       }
@@ -4298,7 +4347,8 @@ export class EntityRenderer {
              v2.3.1116: guarded (see local path) -- a throw here must not freeze the loop. */
           try {
             /* v2.3.1394: jog overlay only over the fullset figure (see local path). */
-            if (pose !== 'jog' || _fsR) _placePickupHead(display, spriteBody, other.skin, other.pants, other.shoes, pose, dir, frameIdx, _rJogPhase);
+            /* v2.3.1479: same armour gate as the local path. */
+            if ((pose !== 'jog' || _fsR) && ((pose !== 'hit' && pose !== 'mine') || _rworn.length > 0)) _placePickupHead(display, spriteBody, other.skin, other.pants, other.shoes, pose, dir, frameIdx, _rJogPhase);
             spriteBody.visible = !(_rfull && !!getPickupHeadFrame(other.skin, other.pants, other.shoes, pose, dir, frameIdx));
             /* v2.3.1123: lift the angler's head above the fishing chest plate. */
             if (pose === 'fish' && _rworn.some(w => w.k && w.k.indexOf('chest:') === 0)) _placeFishHead(display, spriteBody, tex);
@@ -4615,7 +4665,17 @@ export class EntityRenderer {
     const _chopHide = _exSkill === 'woodcutting' || _exSkill === 'cooking' || !!S._firemaking;
     display.visible = !_chopHide;
     display.x = P.x;
-    display.y = P.y;
+    /* v2.3.1476 (owner: "move the stone that comes with the mining
+       animation like another 8 pixels up ... it sits a little beneath
+       the ore sprite"): the mine-south sheet has a rock baked in under
+       the boots, and v2.3.854 already draws the real ore vein ABOVE the
+       player to hide it — but the baked rock pokes out below.  Erasing
+       it from the art isn't an option: it is one connected blob with
+       the boots (checked), so a cut takes the feet with it.  Lifting
+       the whole mining figure 8px tucks the baked rock behind the ore
+       instead, and moves body + gear + traits + tool together so
+       nothing can drift apart. */
+    display.y = P.y - (_exSkill === 'mining' ? 8 : 0);
 
     /* v2.3.858: per-zone player render scale -- shrink the avatar on vista
        maps (e.g. the Overlook) so it doesn't dwarf the landscape.
@@ -4673,6 +4733,24 @@ export class EntityRenderer {
       if (display._handArmSprite) display._handArmSprite.visible = false;
       if (display._nftFront) display._nftFront.visible = false;
       if (display._nftBack) display._nftBack.visible = false;
+      /* v2.3.1473 (owner: "upon death don't display the character armor
+         or any other worn pieces"): the corpse sheet is a whole figure
+         (player -> skeleton -> bone pile), so EVERY worn layer has to go
+         with it — armour and head traits were still being drawn over the
+         skeleton, leaving a floating cuirass and hair/crown on the bones.
+         Body regions go too: the death frame replaces the body outright,
+         and a leftover region sprite reads as a stray limb. */
+      const _deathHide = [
+        display._gearShirt, display._gearLegs, display._gearChest,
+        display._gearShoulders, display._gearHead,
+        display._bodyHead, display._bodyTorso, display._bodyLegs,
+        display._hairSprite, display._facialHairSprite,
+        display._headwearSprite, display._shirtSprite, display._traitFace,
+      ];
+      for (let i = 0; i < _deathHide.length; i++) {
+        const _s = _deathHide[i];
+        if (_s && _s.visible) _s.visible = false;
+      }
       return;
     }
     /* Living — restore weapon container visibility (might have been
@@ -5087,7 +5165,13 @@ export class EntityRenderer {
              own bob (owner: chest-only east "not nudging").  Gate it on the
              fullset figure actually rendering; pickup/fish keep their
              unconditional overlay. */
-          if (pose !== 'jog' || _fsT) _placePickupHead(display, spriteBody, getSkin(), getPants(), getShoes(), pose, dir, frameIdx, _jogPhase);
+          /* v2.3.1479: hit / mine take the overlay only when armour is actually
+             worn.  The sheet is HEAD_DS-downscaled, so drawing it over a bare
+             player's own head would swap a crisp head for a softer one every
+             time they took a hit, for no benefit -- with no gear there is
+             nothing that could cover the head in the first place. */
+          const _needHead = (pose !== 'hit' && pose !== 'mine') || _worn.length > 0;
+          if ((pose !== 'jog' || _fsT) && _needHead) _placePickupHead(display, spriteBody, getSkin(), getPants(), getShoes(), pose, dir, frameIdx, _jogPhase);
           spriteBody.visible = !(pose === 'pickup' && _legsW && _chestW && !!getPickupHeadFrame(getSkin(), getPants(), getShoes(), pose, dir, frameIdx));
           /* v2.3.1123: lift the angler's head above the fishing chest plate. */
           if (pose === 'fish' && _chestW) _placeFishHead(display, spriteBody, tex);
@@ -6369,7 +6453,7 @@ export class EntityRenderer {
       const hpNewAlpha = hpA + Math.max(-FADE_STEP, Math.min(FADE_STEP, hpDelta));
       ring.alpha = hpNewAlpha;
       heartText.alpha = hpNewAlpha;
-      maxText.alpha = hpNewAlpha;
+      /* v2.3.1472: maxText is retired (see below) — no fade to drive. */
       /* v2.3.1273: bar sprites share the fade (alphas finalized below). */
 
       const hpFrac = hpCur / hpMax;
@@ -6440,11 +6524,17 @@ export class EntityRenderer {
         }
       }
       heartText.x = cx; heartText.y = cy;
-      maxText.x = cx;   maxText.y = cy + PLAYER_HPBAR_H / 2 + 7;
+      /* v2.3.1472 (owner: "a small 100 beneath the character hp bar and
+         it's not clear what that's from — remove it"): the max-HP
+         readout under the bar is gone.  The bar's own fill already
+         shows the fraction, so the number added nothing but noise
+         under the player's feet-to-head silhouette.  Kept as a hidden
+         object (rather than deleted) so the pooled-Text layout above
+         and the fade bookkeeping stay untouched. */
+      maxText.alpha = 0;
+      maxText.visible = false;
       const hpStr = String(Math.ceil(hpCur));
-      const maxStr = String(Math.ceil(hpMax));
       if (heartText.text !== hpStr) heartText.text = hpStr;
-      if (maxText.text !== maxStr) maxText.text = maxStr;
     }
   }
 
@@ -6455,7 +6545,11 @@ export class EntityRenderer {
        the sprite to render invisibly in some zones (probably a frame
        race between layer reattachment and the next _updatePlayer pass).
        app.destroy({children:true}) handles full cleanup at shutdown. */
-    for (const [, d] of this.monsterDisplays) d.destroy({ children: true });
+    for (const [, d] of this.monsterDisplays) {
+      /* v2.3.1472: sibling-layer UI container needs its own reap. */
+      if (d._hpUi && !d._hpUi.destroyed) d._hpUi.destroy({ children: true });
+      d.destroy({ children: true });
+    }
     this.monsterDisplays.clear();
     for (const [, d] of this.otherPlayerDisplays) d.destroy({ children: true });
     this.otherPlayerDisplays.clear();
