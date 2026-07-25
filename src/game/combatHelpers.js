@@ -346,6 +346,17 @@ function clearSwingHitFlags(S) {
   if (S.others) Object.values(S.others).forEach(function (o) { if (o) o._hitThisSwing = false; });
 }
 
+/* v2.3.1473 (owner: "don't ... allow them to keep attacking during the
+   death animation"): the single death test every attack path gates on.
+   Mirrors BroTown's own `_playerDead` idiom (which already zeroes the
+   movement stick), so a corpse can't swing, shoot or fire a special
+   while the skeleton animation plays.  hp<=0 covers the server-monster
+   window (hp is restored only on respawn); _dying covers the local path,
+   where the handler restores hp on a timeout but holds the animation. */
+export function isPlayerDead(S) {
+  return !!(S && (S._dying || (S.rpg && S.rpg.hp <= 0)));
+}
+
 export {
   clearSwingHitFlags,
   pushDmgPopup,

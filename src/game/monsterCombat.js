@@ -38,7 +38,7 @@ import {
 import { MONSTER_VARIANTS, baseArchetypeOf, isFodderLike, isRemnantSkull, maybeTransformMonster, usesClientSideMovement, xpMultFor } from '@/data/monsterVariants.js';
 import { getEquip } from '@/rendering/gearCatalog.js'; /* v2.3.1104: armoured-hit SFX check */
 import { rollMonsterShard } from '@/data/shards.js';
-import { addBuildUse, applyMeleeLifesteal, clearSwingHitFlags, distributeKillXpToBuild, trackMonsterDamage, pushDmgPopup, monsterPopupY } from '@/game/combatHelpers.js';
+import { addBuildUse, applyMeleeLifesteal, clearSwingHitFlags, distributeKillXpToBuild, trackMonsterDamage, pushDmgPopup, monsterPopupY, isPlayerDead } from '@/game/combatHelpers.js';
 import { earnCertification as masteryEarnCert } from '@/game/mastery.js';
 import { celebrateLevelUps } from '@/game/levelCelebration.js';
 import { btRpc, getBtPlayerId, syncRpgToServer } from '@/networking/index.js';
@@ -1193,7 +1193,9 @@ export function updateMonsterCombat(S, deps) {
             /* Loot pickup freeze suppresses auto-swing — keeps the
                0.5s pickup animation clean instead of mid-swing. */
             var _lootSwingBlock = S._lootFreezeUntil && Date.now() < S._lootFreezeUntil;
-            if (!_lootSwingBlock && !(S._playerStunUntil && Date.now() < S._playerStunUntil)) {
+            /* v2.3.1473: ...and the auto-attack loop stops on death, the
+               path that actually kept firing during the skeleton anim. */
+            if (!_lootSwingBlock && !isPlayerDead(S) && !(S._playerStunUntil && Date.now() < S._playerStunUntil)) {
               var _S$rpg0, _S$rpg1;
               if (((_S$rpg0 = S.rpg) === null || _S$rpg0 === void 0 ? void 0 : _S$rpg0.activeSlot) === 'ranged' || ((_S$rpg1 = S.rpg) === null || _S$rpg1 === void 0 ? void 0 : _S$rpg1.activeSlot) === 'staff') {
                 var _S$rpg10;

@@ -4708,6 +4708,24 @@ export class EntityRenderer {
       if (display._handArmSprite) display._handArmSprite.visible = false;
       if (display._nftFront) display._nftFront.visible = false;
       if (display._nftBack) display._nftBack.visible = false;
+      /* v2.3.1473 (owner: "upon death don't display the character armor
+         or any other worn pieces"): the corpse sheet is a whole figure
+         (player -> skeleton -> bone pile), so EVERY worn layer has to go
+         with it — armour and head traits were still being drawn over the
+         skeleton, leaving a floating cuirass and hair/crown on the bones.
+         Body regions go too: the death frame replaces the body outright,
+         and a leftover region sprite reads as a stray limb. */
+      const _deathHide = [
+        display._gearShirt, display._gearLegs, display._gearChest,
+        display._gearShoulders, display._gearHead,
+        display._bodyHead, display._bodyTorso, display._bodyLegs,
+        display._hairSprite, display._facialHairSprite,
+        display._headwearSprite, display._shirtSprite, display._traitFace,
+      ];
+      for (let i = 0; i < _deathHide.length; i++) {
+        const _s = _deathHide[i];
+        if (_s && _s.visible) _s.visible = false;
+      }
       return;
     }
     /* Living — restore weapon container visibility (might have been

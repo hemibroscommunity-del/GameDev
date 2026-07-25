@@ -9,9 +9,11 @@
    object). raiseShield takes setShieldUp via deps (its only React
    setter). All other references are module imports below. */
 import { SWING_COOLDOWN, SPECIAL_ATK_MULT, specialAtkMultFor, BT_AUDIO, meleeSwingSfx, getActiveWeapon, calcSpecialDmg, calcWeaponDmg, monsterBodyY, swingCooldownMult } from '@/data/index.js';
-import { addBuildUse, clearSwingHitFlags, pushDmgPopup } from '@/game/combatHelpers.js';
+import { addBuildUse, clearSwingHitFlags, pushDmgPopup, isPlayerDead } from '@/game/combatHelpers.js';
 
 export function swingAttack(S) {
+    /* v2.3.1473: a corpse doesn't swing (see isPlayerDead). */
+    if (isPlayerDead(S)) return;
     /* v2.3.1134: the manual tap gate honors Tempo like the auto-attack loop
        does, else tap-attackers get no benefit from the channel.  (The amulet
        atkSpd bonus was never applied here — unchanged, out of scope.) */
@@ -32,6 +34,8 @@ export function swingAttack(S) {
 
 export function specialAttack(S) {
     if (!S.rpg) return;
+    /* v2.3.1473: no specials during the death animation either. */
+    if (isPlayerDead(S)) return;
     var R = S.rpg;
     var now = Date.now();
 
