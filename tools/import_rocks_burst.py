@@ -21,14 +21,26 @@ still drops the burst on the pickaxe strike point.
 import numpy as np
 from PIL import Image
 
-DST = 'public/sprites/effects/rocks-burst-v1.webp'
 COLS, ROWS = 4, 2
 OUT = 256
-TARGET_W = 197      # union width of the sheet being replaced
-TARGET_CX = 124     # its horizontal centre
-TARGET_BOT = 218    # its plume base
 KEY_T = 60.0        # green-dominance span mapped to alpha 1..0
 A_MIN = 16          # drop near-transparent key residue
+
+
+def target_from(dst):
+    """Union bbox of the sheet being replaced — the new art inherits its
+    width, centre and base so the burst keeps landing on the same spot
+    with no renderer change."""
+    b = np.array(Image.open(dst).convert('RGBA'))
+    n = b.shape[1] // OUT
+    x0, x1, y1 = 10**9, -1, -1
+    for i in range(n):
+        a = b[:, i * OUT:(i + 1) * OUT, 3] > 20
+        if not a.any():
+            continue
+        ys, xs = np.where(a)
+        x0 = min(x0, xs.min()); x1 = max(x1, xs.max()); y1 = max(y1, ys.max())
+    return (x1 - x0 + 1), (x0 + x1) / 2, y1
 
 
 def key_green(cell):
@@ -45,7 +57,9 @@ def key_green(cell):
 
 def main():
     import sys
-    src = sys.argv[1]
+    src, DST = sys.argv[1], sys.argv[2]
+    TARGET_W, TARGET_CX, TARGET_BOT = target_from(DST)
+    print(f'target from {DST}: w {TARGET_W} cx {TARGET_CX:.1f} bot {TARGET_BOT}')
     up = np.array(Image.open(src).convert('RGBA'))
     H, W = up.shape[:2]
     cw, chh = W // COLS, H // ROWS

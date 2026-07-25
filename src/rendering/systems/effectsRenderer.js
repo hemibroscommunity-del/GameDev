@@ -15,7 +15,7 @@ const _fxLoad = (url) => { const p = Assets.load(url); _fxPreload.push(p); retur
 export function effectsAnimationsReady() { return Promise.allSettled(_fxPreload); }
 import { ELEMENTS } from '@/data/elements.js';
 import { ZONES } from '@/data/zones.js';
-import { TILE, MINE_SPOT_R } from '@/data/constants.js';
+import { TILE, MINE_SPOT_R, FISH_CUE_DY } from '@/data/constants.js';
 import { GS_INNER_RADIUS, GS_OUTER_RADIUS, GS_FORWARD_ARC, cleaveArcBonus } from '@/data/index.js';
 import { getFrame as getSlimeFrame, hasState as hasSlimeState } from '../slimeSprites.js';
 import { getRemnantsTexture as getSnowmanRemnantsTex } from '../snowmanSprites.js';
@@ -147,7 +147,9 @@ const EFFECT_BURSTS = {
   rocks:     { frames: [], h: 84, ay: 0.80, url: '/sprites/effects/rocks-burst-v1.webp?v=2.3.1469' },
   woodchips: { frames: [], h: 84, ay: 0.70, url: '/sprites/effects/woodchips-burst-v1.webp?v=2.3.1443' },
   grease:    { frames: [], h: 64, ay: 0.85, url: '/sprites/effects/grease-burst-v1.webp?v=2.3.1443' },
-  splash:    { frames: [], h: 88, ay: 0.80, url: '/sprites/effects/splash-burst-v1.webp?v=2.3.1443' },
+  /* v2.3.1470: splash art replaced with the owner's painted droplet
+     crown (tools/import_rocks_burst.py) — same 8x256 strip contract. */
+  splash:    { frames: [], h: 88, ay: 0.80, url: '/sprites/effects/splash-burst-v1.webp?v=2.3.1470' },
 };
 for (const cfg of Object.values(EFFECT_BURSTS)) {
   _fxLoad(cfg.url).then((tex) => {
@@ -184,8 +186,13 @@ const GESTURE_TOOLS = {
      by about 70%"): the reel MARKER drops to ~30% of its v2.3.1418 size
      (116 -> 35).  Fishing's cue anchors on the PLAYER, not on a node, so
      the big reel was covering the character it hovers over; the other
-     three tools sit on their node and keep their tuned sizes. */
-  fishing:     { frames: [], h: 35,  dx: 0,   dy: 0,   url: '/sprites/tools/reel-gesture-v1.webp?v=2.3.1417' },
+     three tools sit on their node and keep their tuned sizes.
+     v2.3.1470 (owner: "increase reel marker and gesture cue by 2x then
+     move it down more so it's not on player face"): 35 -> 70.  The
+     v2.3.1449 shrink was a workaround for the cue sitting ON the head —
+     the anchor now drops below the face instead (FISH_CUE_DY), so the
+     marker can be readable again. */
+  fishing:     { frames: [], h: 70,  dx: 0,   dy: 0,   url: '/sprites/tools/reel-gesture-v1.webp?v=2.3.1417' },
   /* v2.3.1431: pan raised dy -10 -> -66 — the v2.3.1429 2x cook figure
      grew INTO the pan marker's old spot, so the animating pan kept
      covering/uncovering the torso (owner: "the shirt is flickering
@@ -4403,7 +4410,7 @@ export class EffectsRenderer {
     /* Anchor cue above the node so it doesn't sit on top of the
        sprite. Trees are tallest so they get the largest offset. */
     const yOff = node.nodeType === 'tree' ? 96 : node.nodeType === 'oreVein' ? 36 : 30;
-    const y = fishingCue ? (S.player.y - 24) : cookingCue ? (node.y - 40) : (node.y - yOff);
+    const y = fishingCue ? (S.player.y + FISH_CUE_DY) : cookingCue ? (node.y - 40) : (node.y - yOff);
     /* v2.3.843: which side of the tree the player is on (+1 = tree to the
        player's right).  Computed from live player position so the chopper
        and the finger hint pick the correct side the instant the cue shows
@@ -4775,7 +4782,8 @@ export class EffectsRenderer {
          cosmetic: the swipe hit-test is a fixed 160px start radius and
          the rep counter integrates the finger's ANGLE about the cue
          centre, so a smaller ring still reels at exactly the same rate. */
-      const F_S = 0.3;
+      /* v2.3.1470 (owner): 2x with the marker — 0.3 -> 0.6. */
+      const F_S = 0.6;
       const rA = 78 * F_S;   /* v2.3.1436: ENCIRCLES the reel art instead of hiding behind it */
       const fLen = FINGER_LEN * F_S, fW = FINGER_W * F_S;
       const a = (now / 900) % (Math.PI * 2);

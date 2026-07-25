@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { EXTRACT_REPS_TARGET, EXTRACT_REPS_DEFAULT, BT_AUDIO } from '@/data/gameSystems.js';
+import { FISH_CUE_DY } from '@/data/constants.js';
 
 /* v2.3.229 / v2.4 — ExtractionSwipeLayer
  *
@@ -166,7 +167,7 @@ export const ExtractionSwipeLayer = ({ stateRef, onSuccess }) => {
          lookup: fishing only needs the player, and requiring the fish node here
          meant a depleted/absent node returned null and bailed the gesture. */
       if (ex.skill === 'fishing' && S.player) {
-        return { x: (S.player.x - S.camera.x) * sx, y: (S.player.y - 24 - S.camera.y) * sy };
+        return { x: (S.player.x - S.camera.x) * sx, y: (S.player.y + FISH_CUE_DY - S.camera.y) * sy };
       }
       const node = nodeOf(S, ex);
       if (!node) return null;

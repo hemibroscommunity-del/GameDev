@@ -17,6 +17,18 @@ export const WORLD_ZOOM = 1.25;
    spot for the Mine action to be offered. Shared by the marker + the gate. */
 export const MINE_SPOT_R = 42;
 
+/* v2.3.1470: fishing's gather cue anchors on the PLAYER (the rod's reel
+   is at the hands), not on the fish spot — world-y offset from
+   S.player.y.  It lives here because BOTH the render (effectsRenderer's
+   cue block) and the touch hit-test (ExtractionSwipeLayer.cueScreenPos)
+   must use the identical value: they each hard-coded -24, so any tweak
+   to one silently moved the drawn reel away from the zone that accepts
+   the swipe.  POSITIVE = down: at -24 the cue sat squarely on the
+   angler's face (owner), and the v2.3.1449 70% shrink had been a
+   workaround for exactly that; +24 clears the chin so the marker and
+   its finger ring can be full size again. */
+export const FISH_CUE_DY = 24;
+
 export const PLAYER_COLORS = ['#5b52ff', '#00d4b8', '#ff5e6c', '#f5c542', '#3dd497', '#ff8a5c', '#a78bfa', '#38bdf8', '#fb7185', '#4ade80', '#facc15', '#c084fc', '#22d3ee', '#f97316', '#e879f9', '#34d399'];
 
 /* ═══ PERSONAL FARM + HOUSE ═══ */
