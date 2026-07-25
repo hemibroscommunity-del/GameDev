@@ -20,6 +20,14 @@ import {
   GRID_CHANNEL_CAP,
   combatBuildTotal,
   COMBAT_BUILD_CEILING,
+  /* v2.3.1451: bench-locked derive context (banked flat + next-point
+     value + benchmark level) for the 10 flat channels. */
+  isT2BenchEnabled,
+  t2BenchRoleOf,
+  t2FlatOf,
+  t2PointValue,
+  t2BenchLevel,
+  t2SpendLevel,
 } from '../../../data/gameSystems.js';
 
 /* v2.3.911: lets the dashboard open this panel jumped to a specific tab.
@@ -164,6 +172,20 @@ export const T2Panel = () => {
     ? Math.max(200, Math.floor(xpRequired(sk.level || 0)))
     : weaponXpRequired(sk.level || 0);
   const xpPct = need > 0 ? Math.max(0, Math.min(100, ((sk.xp || 0) / need) * 100)) : 0;
+
+  /* v2.3.1451: bench-locked derive ctx for a flat channel row — the
+     BANKED total, the next point's value, and the benchmark monster
+     level (tab ids equal the t2Flat grid names by construction).
+     Null for mechanical channels, against an old worker, or before
+     the accumulator echo lands — the derive then renders its legacy
+     t2Accel string, matching that worker's math. */
+  const benchCtxFor = (chKey) => {
+    if (!isT2BenchEnabled() || !R.t2Flat) return null;
+    const role = t2BenchRoleOf(activeCat, chKey);
+    if (!role) return null;
+    const bench = t2BenchLevel(t2SpendLevel(buildTotal));
+    return { flat: t2FlatOf(R, activeCat, chKey), next: t2PointValue(role, bench), bench };
+  };
 
   /* v2.3.911: spending now goes through a confirmation window.  Keep the
      guards here, then hand the channel context to spendConfirmBus; the
@@ -428,7 +450,7 @@ export const T2Panel = () => {
               </div>
               <div style={{ fontSize: 11, lineHeight: 1.25, marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                 {ch.active && (
-                  <span style={{ color: COL.text, fontVariantNumeric: 'tabular-nums' }}>{ch.derive(v)}{' · '}</span>
+                  <span style={{ color: COL.text, fontVariantNumeric: 'tabular-nums' }}>{ch.derive(v, benchCtxFor(ch.key))}{' · '}</span>
                 )}
                 <span style={{ color: COL.muted }}>{ch.blurb}</span>
               </div>

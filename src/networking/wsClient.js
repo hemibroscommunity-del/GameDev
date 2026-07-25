@@ -18,7 +18,7 @@
 import { processGameEvent } from '@/networking/gameEvents.js';
 import { stashPendingZoneNodes } from '@/networking/nodeSync.js'; /* v2.3.1301: node self-heal */
 import { getDeviceNonce, generatePassphrase, passphraseToId } from '@/networking/index.js';
-import { createGatherNode, spawnMonstersForZone, BT_AUDIO, ZONES, TILE, DEATH_GOLD_PENALTY, RARITY_TIERS, ZONE_RESOURCES, createDefaultCompStats, generateZoneMap, recalcDerived, updateZoneDimensions, setGridCapsEnabled, setT2SimpleEnabled } from '@/data/index.js';
+import { createGatherNode, spawnMonstersForZone, BT_AUDIO, ZONES, TILE, DEATH_GOLD_PENALTY, RARITY_TIERS, ZONE_RESOURCES, createDefaultCompStats, generateZoneMap, recalcDerived, updateZoneDimensions, setGridCapsEnabled, setT2SimpleEnabled, setT2BenchEnabled } from '@/data/index.js';
 import { _objectSpread, _slicedToArray, _toConsumableArray } from '@/lib/babelHelpers.js';
 import { usesClientSideMovement, MONSTER_VARIANTS, isRemnantSkull, applyZoneVariant } from '@/data/monsterVariants.js';
 import { rollMonsterShard, shardByKey } from '@/data/shards.js';
@@ -649,6 +649,13 @@ export function setupWebSocket(ctx) {
                    otherwise the worker's stat-sum level echo would
                    fight the local formula every player_state flush. */
                 setT2SimpleEnabled(!!(S._serverCaps && S._serverCaps.t2simple));
+                /* v2.3.1451: bench-locked T2 deploy-order gate — the
+                   10 flat channels read the server-priced ps.t2Flat
+                   accumulator only while THIS worker claims
+                   caps.t2bench; otherwise every helper keeps the
+                   legacy t2Accel math that matches the old worker's
+                   authoritative rolls and echoes. */
+                setT2BenchEnabled(!!(S._serverCaps && S._serverCaps.t2bench));
                 if (S.rpg) recalcDerived(S.rpg);
               } catch (e) {}
               var others = {};
@@ -1054,6 +1061,14 @@ export function setupWebSocket(ctx) {
               if (typeof msg.payload.hpUnspent === 'number') S.rpg.hpUnspent = msg.payload.hpUnspent;
               if (msg.payload.enduranceSpec && typeof msg.payload.enduranceSpec === 'object') S.rpg.enduranceSpec = msg.payload.enduranceSpec;
               if (typeof msg.payload.enduranceUnspent === 'number') S.rpg.enduranceUnspent = msg.payload.enduranceUnspent;
+              /* v2.3.1451: bench-locked T2 accumulator — adopted
+                 WHOLESALE, presence-gated.  This echo is the drift
+                 corrector for the client's spend-time prediction
+                 (SpendPointConfirm): the server priced the same diff
+                 with the same helpers, so normally the numbers are
+                 identical and this is a no-op; after a clamp,
+                 truncation, or stale-echo scale they converge here. */
+              if (msg.payload.t2Flat && typeof msg.payload.t2Flat === 'object') S.rpg.t2Flat = msg.payload.t2Flat;
               setRpgState(_objectSpread({}, S.rpg));
               try { localStorage.setItem('bt_rpg', JSON.stringify(S.rpg)); } catch (e) {}
               break;

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { COL } from './common.js';
 import { spendConfirmBus } from './spendConfirmBus.js';
-import { recalcDerived, WEAPON_CHANNEL_CAP, DEFENSE_CHANNEL_CAP, GRID_CHANNEL_CAP, combatBuildTotal, COMBAT_BUILD_CEILING, isT2SimpleEnabled } from '../../../data/gameSystems.js';
+import { recalcDerived, WEAPON_CHANNEL_CAP, DEFENSE_CHANNEL_CAP, GRID_CHANNEL_CAP, combatBuildTotal, COMBAT_BUILD_CEILING, isT2SimpleEnabled, isT2BenchEnabled, t2FlatOf, t2BenchRoleOf, t2PointValue, t2BenchLevel, t2SpendLevel } from '../../../data/gameSystems.js';
 import { celebrateLevelUps } from '../../../game/levelCelebration.js';
 
 /* v2.3.911: confirmation window for spending a build-skill Tier-2 point.
@@ -22,8 +22,28 @@ export const SpendPointConfirm = () => {
 
   const ch = t.channel;
   const current = t.current || 0;
-  const before = ch.derive ? ch.derive(current) : ('' + current);
-  const after = ch.derive ? ch.derive(current + 1) : ('' + (current + 1));
+  /* v2.3.1451 (bench-locked): when the worker + echo support it, feed
+     the derive strings the BANKED total, the next point's value, and
+     the benchmark level — the "Now/After" well then shows exactly what
+     this point buys against today's monsters.  ctx stays null against
+     an old worker (or pre-echo), rendering the legacy strings. */
+  const _S0 = (typeof window !== 'undefined') && window._gameState && window._gameState.current;
+  const _R0 = _S0 && _S0.rpg;
+  let ctxNow = null, ctxAfter = null;
+  if (_R0 && isT2BenchEnabled() && _R0.t2Flat) {
+    const _grid = t.gridSpecKey ? (t.gridSpecKey === 'hpSpec' ? 'hp' : 'endurance') : (t.isDef ? 'defense' : t.cat);
+    const _role = t2BenchRoleOf(_grid, t.key);
+    if (_role) {
+      const _total = combatBuildTotal(_R0);
+      const _bench = t2BenchLevel(t2SpendLevel(_total)); /* the NEXT point's benchmark */
+      const _flat = t2FlatOf(_R0, _grid, t.key);
+      const _next = t2PointValue(_role, _bench);
+      ctxNow = { flat: _flat, next: _next, bench: _bench };
+      ctxAfter = { flat: _flat + _next, next: t2PointValue(_role, t2BenchLevel(t2SpendLevel(_total + 1))), bench: _bench };
+    }
+  }
+  const before = ch.derive ? ch.derive(current, ctxNow) : ('' + current);
+  const after = ch.derive ? ch.derive(current + 1, ctxAfter) : ('' + (current + 1));
 
   const onConfirm = () => {
     const S = (typeof window !== 'undefined') && window._gameState && window._gameState.current;
@@ -36,6 +56,10 @@ export const SpendPointConfirm = () => {
       return;
     }
     if (R) {
+      /* v2.3.1451: remember whether the point actually landed (and
+         where) so the bench-locked prediction below banks exactly the
+         points that were placed — a pool/cap-blocked tap banks nothing. */
+      let _spent = null;
       if (t.gridSpecKey) {
         /* v2.3.1154: HP/Endurance grid spend — the panel passes the rpg
            field names (hpSpec/hpUnspent or enduranceSpec/enduranceUnspent)
@@ -45,12 +69,14 @@ export const SpendPointConfirm = () => {
         if ((R[t.gridPoolKey] || 0) > 0 && (R[t.gridSpecKey][t.key] || 0) < GRID_CHANNEL_CAP) {
           R[t.gridSpecKey][t.key] = (R[t.gridSpecKey][t.key] || 0) + 1;
           R[t.gridPoolKey] -= 1;
+          _spent = { grid: t.gridSpecKey === 'hpSpec' ? 'hp' : 'endurance', key: t.key };
         }
       } else if (t.isDef) {
         if (!R.defenseSpec) R.defenseSpec = {};
         if ((R.defenseUnspent || 0) > 0 && (R.defenseSpec[t.key] || 0) < DEFENSE_CHANNEL_CAP) {
           R.defenseSpec[t.key] = (R.defenseSpec[t.key] || 0) + 1;
           R.defenseUnspent -= 1;
+          _spent = { grid: 'defense', key: t.key };
         }
       } else {
         if (!R.weaponSpecs) R.weaponSpecs = {};
@@ -59,6 +85,24 @@ export const SpendPointConfirm = () => {
         if (pool > 0 && (R.weaponSpecs[t.cat][t.key] || 0) < WEAPON_CHANNEL_CAP) {
           R.weaponSpecs[t.cat][t.key] = (R.weaponSpecs[t.cat][t.key] || 0) + 1;
           R.weaponUnspent[t.cat] -= 1;
+          _spent = { grid: t.cat, key: t.key };
+        }
+      }
+      /* v2.3.1451: bench-locked prediction — bank the point's value
+         locally with THE SAME formula the server prices the diff with
+         (grids.js _t2BenchReprice), so the panel updates instantly and
+         the echo is normally a no-op.  Only when the accumulator has
+         already arrived (R.t2Flat present): inventing one client-side
+         would understate every pre-existing point until the echo, and
+         reads fall back to legacy math without it anyway.  The spend
+         level derives from the build total (which now INCLUDES the
+         just-placed point, hence −1) — never from R.level. */
+      if (_spent && isT2BenchEnabled() && R.t2Flat) {
+        const _role = t2BenchRoleOf(_spent.grid, _spent.key);
+        if (_role) {
+          if (!R.t2Flat[_spent.grid]) R.t2Flat[_spent.grid] = {};
+          R.t2Flat[_spent.grid][_spent.key] = (R.t2Flat[_spent.grid][_spent.key] || 0)
+            + t2PointValue(_role, t2BenchLevel(t2SpendLevel(combatBuildTotal(R) - 1)));
         }
       }
       recalcDerived(R);
@@ -138,6 +182,12 @@ export const SpendPointConfirm = () => {
           {/* v2.3.1232: improvement reads semantic green + the number, never color alone */}
           <div style={{ color: '#59BF91', fontWeight: 700, marginTop: 2 }}>After: {after}</div>
         </div>
+        {/* v2.3.1451: the one-sentence bench-locked story, only when live */}
+        {ctxNow ? (
+          <div style={{ fontSize: 10.5, color: COL.muted, marginTop: -6, marginBottom: 10, lineHeight: 1.35 }}>
+            Points keep their number forever — bigger monsters, bigger points.
+          </div>
+        ) : null}
         <div style={{ display: 'flex', gap: 8 }}>
           <button
             onPointerUp={(e) => { e.stopPropagation(); onConfirm(); }}

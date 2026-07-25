@@ -254,27 +254,85 @@ Object.assign(globalThis, { _regenerator, _regeneratorDefine2, _asyncToGenerator
    is under my finger" are each defined ONCE.
 
    nodeReachDist: the distance the reach test uses, or null when the
-   node is out of reach.  Ore keeps its one-tile-north mining SPOT
-   rule (the south-facing swing lines up over the rock — see
-   _startExtraction); everything else scales its radius with the
-   node's sprite height so a tall high-tier tree is still reachable
-   from under its canopy. */
-function nodeReachDist(S, n) {
+   node is out of reach.
+
+   v2.3.1450 (owner: "the 'too far away' is based on a location that's
+   too far down (south) — sometimes you can be standing right on top of
+   the resource and it'll say you're too far away.  Make the distance be
+   based on the perimeter as if you were standing directly on where the
+   resource sprite is located"):  RIGHT.  Trees and ore veins anchor at
+   y=1.0, so `node.y` is the BOTTOM of the art and the whole sprite lives
+   NORTH of it — a tier-10 tree is ~395 px tall, so standing in the
+   middle of its trunk put you ~200 px from the point the old test
+   measured to, i.e. "too far away" while visibly on top of it.  Ore was
+   worse: a 42 px circle one tile north of the base, against 132+ px of
+   rock art.  The reach is now measured to the sprite's PERIMETER (0 when
+   you're standing inside the art) with a small pad, so anywhere on or
+   just beside the resource counts.  The old anchor-radius tests are kept
+   as a floor underneath so nothing that used to be reachable stopped
+   being reachable — this change only ever ADDS reach. */
+var NODE_REACH_PAD = 56;   /* px of slack outside the sprite box */
+
+/* The node's art box in WORLD px.  Prefers the renderer's live Pixi
+   sprite (exact bounds, anchor and tier scale); falls back to nominal
+   art sizes for the procedural campfire and for the frame or two before
+   a sprite exists.  Shared by the reach test and the tap hit-test so
+   "where the resource is" is defined ONCE. */
+function nodeWorldBox(S, n) {
+  if (!n) return null;
+  var spr = n._pixiSprite;
+  var w, h, ax, ay, wx, wy;
+  if (spr && !spr.destroyed && spr.width > 2 && spr.height > 2) {
+    w = spr.width; h = spr.height;
+    ax = spr.anchor ? spr.anchor.x : 0.5;
+    ay = spr.anchor ? spr.anchor.y : 0.5;
+    wx = typeof spr.x === 'number' ? spr.x : n.x;
+    wy = typeof spr.y === 'number' ? spr.y : n.y;
+  } else if (n.nodeType === 'campfire') {
+    /* procedural fire: glow ellipse 52 wide, flames ~21 up, 9 down */
+    w = 56; h = 40; ax = 0.5; ay = 0.75; wx = n.x; wy = n.y;
+  } else {
+    var _ts = Math.min(10, Math.max(1, Math.ceil((n.gatherLvl || 1) / 10)));
+    h = (n.nodeType === 'tree' ? 168 : 132) * (1 + (_ts - 1) * 0.15);
+    w = h * 0.8;
+    ax = 0.5;
+    ay = n.nodeType === 'fishSpot' ? 0.5 : 1.0;
+    wx = n.x; wy = n.y;
+  }
+  return {
+    l: wx - w * ax, r: wx + w * (1 - ax),
+    t: wy - h * ay, b: wy + h * (1 - ay),
+  };
+}
+
+/* `slack` widens every test by that many px — the walk-away cancel uses
+   it so a harvest can't self-abort at the range it was started from
+   (the v2.3.843 incident: "the button does nothing"). */
+function nodeReachDist(S, n, slack) {
   if (!S || !n || !S.player) return null;
-  var P = S.player;
+  var P = S.player, extra = slack || 0;
+  /* 1. Distance to the sprite's perimeter — 0 while standing ON the art. */
+  var _b = nodeWorldBox(S, n);
+  if (_b) {
+    var _bx = Math.max(_b.l - P.x, 0, P.x - _b.r);
+    var _by = Math.max(_b.t - P.y, 0, P.y - _b.b);
+    var _bd = Math.sqrt(_bx * _bx + _by * _by);
+    if (_bd < NODE_REACH_PAD + extra) return _bd;
+  }
+  /* 2. Legacy anchor-radius floors, so no old reach ever shrinks. */
   if (n.nodeType === 'campfire') {
     var _dc = Math.sqrt(Math.pow(n.x - P.x, 2) + Math.pow(n.y - P.y, 2));
-    return _dc < 80 ? _dc : null;
+    return _dc < 80 + extra ? _dc : null;
   }
   if (n.nodeType === 'oreVein') {
     var _ds = Math.sqrt(Math.pow(n.x - P.x, 2) + Math.pow((n.y - TILE) - P.y, 2));
-    return _ds < MINE_SPOT_R ? _ds : null;
+    if (_ds < MINE_SPOT_R + extra) return _ds;
   }
   var _baseH = n.nodeType === 'tree' ? 112 : 88;
   var _tierStep = Math.min(10, Math.max(1, Math.ceil((n.gatherLvl || 1) / 10)));
   var _proxR = Math.max(100, _baseH * (1 + (_tierStep - 1) * 0.15) * 0.75);
   var _d = Math.sqrt(Math.pow(n.x - P.x, 2) + Math.pow(n.y - P.y, 2));
-  return _d < _proxR ? _d : null;
+  return _d < _proxR + extra ? _d : null;
 }
 
 /* nodeAtScreen: which resource (if any) a CSS-pixel tap landed on.
@@ -297,29 +355,13 @@ function nodeAtScreen(S, cssX, cssY) {
     var n = list[j];
     if (!n || !n.alive) continue;
     if (n.respawnAt && Date.now() < n.respawnAt) continue;
-    var spr = n._pixiSprite;
-    var w, h, ax, ay, wx, wy;
-    if (spr && !spr.destroyed && spr.width > 2 && spr.height > 2) {
-      w = spr.width; h = spr.height;
-      ax = spr.anchor ? spr.anchor.x : 0.5;
-      ay = spr.anchor ? spr.anchor.y : 0.5;
-      wx = typeof spr.x === 'number' ? spr.x : n.x;
-      wy = typeof spr.y === 'number' ? spr.y : n.y;
-    } else if (n.nodeType === 'campfire') {
-      /* procedural fire: glow ellipse 52 wide, flames ~21 up, 9 down */
-      w = 56; h = 40; ax = 0.5; ay = 0.75; wx = n.x; wy = n.y;
-    } else {
-      var _ts = Math.min(10, Math.max(1, Math.ceil((n.gatherLvl || 1) / 10)));
-      h = (n.nodeType === 'tree' ? 168 : 132) * (1 + (_ts - 1) * 0.15);
-      w = h * 0.8;
-      ax = 0.5;
-      ay = n.nodeType === 'fishSpot' ? 0.5 : 1.0;
-      wx = n.x; wy = n.y;
-    }
-    var l = (wx - w * ax - S.camera.x) * sx;
-    var r = (wx + w * (1 - ax) - S.camera.x) * sx;
-    var t = (wy - h * ay - S.camera.y) * sy;
-    var b = (wy + h * (1 - ay) - S.camera.y) * sy;
+    /* v2.3.1450: same world box the reach test uses, just transformed. */
+    var wb = nodeWorldBox(S, n);
+    if (!wb) continue;
+    var l = (wb.l - S.camera.x) * sx;
+    var r = (wb.r - S.camera.x) * sx;
+    var t = (wb.t - S.camera.y) * sy;
+    var b = (wb.b - S.camera.y) * sy;
     if (cssX < l - PAD || cssX > r + PAD || cssY < t - PAD || cssY > b + PAD) continue;
     /* overlapping boxes (a pond behind a tree): nearest centre wins */
     var d = Math.sqrt(Math.pow(cssX - (l + r) / 2, 2) + Math.pow(cssY - (t + b) / 2, 2));
@@ -3675,24 +3717,16 @@ export var BroTown = function BroTown(_ref0) {
             /* Node disappeared (server depleted, zone changed) — silent cancel. */
             S._extraction = null;
           } else {
-            var _exDx = _exNode.x - P.x, _exDy = _exNode.y - P.y;
-            var _exDist = Math.sqrt(_exDx * _exDx + _exDy * _exDy);
             /* v2.3.843: the walk-away cancel radius must be at least the
                range the prompt let you START from, or chopping/fishing
-               self-cancels on the very next tick.  Trees/fish use the same
-               sprite-height proximity as the detection above (which reaches
-               100–196px), but the flat EXTRACT_CANCEL_R is only 90px — so a
-               chop begun from the canopy edge died instantly (owner: "the
-               button does nothing").  Ore stays tight (90) since mining is
-               done from the fixed north spot. */
-            var _cancelR = EXTRACT_CANCEL_R;
-            if (_exNode.nodeType !== 'oreVein') {
-              var _cbH = _exNode.nodeType === 'tree' ? 112 : 88;
-              var _cStep = Math.min(10, Math.max(1, Math.ceil((_exNode.gatherLvl || 1) / 10)));
-              var _cProx = Math.max(100, (_cbH * (1 + (_cStep - 1) * 0.15)) * 0.75);
-              _cancelR = Math.max(EXTRACT_CANCEL_R, _cProx) + 24;
-            }
-            if (_exDist > _cancelR) {
+               self-cancels on the very next tick (owner: "the button does
+               nothing").
+               v2.3.1450: so it now asks the reach test ITSELF, with a
+               slack ring on top, instead of re-deriving a second radius
+               that could drift out of step with it.  This is what keeps
+               the perimeter-based reach safe: a chop started while
+               standing on the canopy stays alive there. */
+            if (nodeReachDist(S, _exNode, EXTRACT_CANCEL_R) == null) {
               /* Walk-away cancel — no XP, no node damage, no popup. */
               S._extraction = null;
             } else if (_ex.status === 'waiting' && _exNow >= _ex.windowOpensAt) {

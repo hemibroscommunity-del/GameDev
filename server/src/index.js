@@ -27,7 +27,7 @@ import { tickElementStatuses, elementMoveMult } from './elemental.js';
 // lookup methods stay (call sites unchanged); only the literals moved.
 import {
   ARCHETYPES, ZONES,
-  MONSTER_HP_CURVE, monsterHpFlat, RARITY_TIERS, T2_UNITS, t2Accel } from './data.js';
+  MONSTER_HP_CURVE, monsterHpFlat, RARITY_TIERS } from './data.js'; // v2.3.1451: t2Accel/T2_UNITS reads replaced by the ps.t2Flat accumulator
 // v2.3.1118 (heavy-systems PR3): order book folded into the GameRoom --
 // escrow-at-placement settlement under one DO's input gates.  Methods
 // are mixed into the class below (see market.js header for why).
@@ -926,7 +926,7 @@ export class GameRoom {
               const _thornsPts = (blockerPs && blockerPs.defenseSpec && blockerPs.defenseSpec.thorns) || 0;
               if (_thornsPts > 0 && m.hp > 0) {
                 const reflect = Math.min(Math.max(0, m.hp),
-                  Math.max(1, t2Accel(_thornsPts, T2_UNITS.thorns))); // v2.3.1345: flat accelerating payback (10,100 at cap)
+                  Math.max(1, this._t2Flat(blockerPs, 'defense', 'thorns'))); // v2.3.1451: bench-locked banked payback (was t2Accel)
                 m.hp -= reflect;
                 if (!m.dmgByPlayer) m.dmgByPlayer = Object.create(null); // v2.3.1202: player-id-keyed
                 m.dmgByPlayer[nearest.id] = (m.dmgByPlayer[nearest.id] || 0) + reflect;
@@ -1221,6 +1221,21 @@ export class GameRoom {
     const K = { sword: 'executioner', bow: 'headshot', staff: 'focus' };
     const cat = this._wpnCat(type);
     return (ps && ps.weaponSpecs && ps.weaponSpecs[cat] && ps.weaponSpecs[cat][K[cat]]) || 0;
+  }
+  // v2.3.1451 (bench-locked T2): the BANKED flat value of the type's
+  // damage / crit-damage channel — reads the server-owned accumulator
+  // (ps.t2Flat, priced in grids.js at spend time), NOT a formula over
+  // point counts.  The point-count twins above survive for the crit
+  // COUNTER (_wpnCritPts) and any stale display reader.
+  _wpnDmgFlat(ps, type) {
+    const K = { sword: 'edge', bow: 'drawPower', staff: 'spellPower' };
+    const cat = this._wpnCat(type);
+    return this._t2Flat(ps, cat, K[cat]);
+  }
+  _wpnCritDmgFlat(ps, type) {
+    const K = { sword: 'executioner', bow: 'headshot', staff: 'focus' };
+    const cat = this._wpnCat(type);
+    return this._t2Flat(ps, cat, K[cat]);
   }
   // v2.3.1136: Attunement status-duration multiplier.  Successor to the
   // retired Influence bonus; weaponSpecs is server-clamped so a forged

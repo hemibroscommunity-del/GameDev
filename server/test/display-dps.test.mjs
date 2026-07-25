@@ -252,5 +252,20 @@ const STAFF = { type: 'staff', tierMult: 1.5 };
     && calcDisplayArmorHp({ vitality: vit }, null) === 0);
 }
 
+// ── v2.3.1451: bench-locked accumulator drives the display mirrors ──
+// When rpg.t2Flat is present (t2BenchLive), the damage / crit-dmg
+// flats come from the BANKED values, not from point counts — the
+// readout must move with the accumulator and ignore stale counts.
+{
+  const SWORD2 = { type: 'sword', tierMult: 1 };
+  const base = calcDisplayDmgRange({ power: 10 }, SWORD2);
+  const banked = calcDisplayDmgRange({ power: 10, weaponSpecs: { sword: { edge: 50 } }, t2Flat: { sword: { edge: 777 } } }, SWORD2);
+  check('t2bench: display range adds the banked damage flat (not the point count)',
+    banked.min === base.min + 777 && banked.max === base.max + 777, { base, banked });
+  const zeroBank = calcDisplayDmgRange({ power: 10, weaponSpecs: { sword: { edge: 50 } }, t2Flat: { sword: { edge: 0 } } }, SWORD2);
+  check('t2bench: zero banked flat beats a stale 50-point count when the accumulator is live',
+    zeroBank.min === base.min && zeroBank.max === base.max, { base, zeroBank });
+}
+
 console.log(failures ? `\n${failures} FAILURE(S)` : '\nALL PASS');
 process.exit(failures ? 1 : 0);

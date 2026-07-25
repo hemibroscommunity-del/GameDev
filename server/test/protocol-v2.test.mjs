@@ -236,21 +236,25 @@ check('v2 safe-zone change sends empty zone_state', zsTown.length === 1 && zsTow
   check('v2.3.912 _wpnDmgChannel reads edge points (raw pts since the v2.3.1153 reprice)', room._wpnDmgChannel(ps, 'sword') === 10, room._wpnDmgChannel(ps, 'sword'));
   check('v2.3.912 _wpnCritPts reads precision points', room._wpnCritPts(ps, 'sword') === 20, room._wpnCritPts(ps, 'sword'));
   check('v2.3.912 greatsword shares the sword/melee category', room._wpnCat('greatsword') === 'sword', room._wpnCat('greatsword'));
-  // v2.3.1345 (accelerating flat): the cap assumes a MAXED channel
-  // (t2Accel(100) = +10,100) instead of reading live points (the
-  // v2.3.1133 crit-ceiling pattern) — 6.67 + 10,100 with or without
-  // points.
+  // v2.3.1451 (bench-locked): the cap reads the attacker's ACTUAL
+  // banked damage flat (server-owned ps.t2Flat) — the exact number
+  // _computeAttackDamage adds, so roll and ceiling are lockstep by
+  // construction (replaces the v2.3.1345 "assume maxed t2Accel"
+  // posture; safe to tighten because the client never supplies the
+  // accumulator).
+  ps.t2Flat = { sword: { edge: 460 } };
   const capNormal = room._maxWeaponDmg(ps, false);
-  check('v2.3.1345 normal-swing cap assumes the maxed accelerating damage channel (+10,100)',
-    Math.abs(capNormal - (6.67 + 10100)) < 0.001, capNormal);
+  check('v2.3.1451 normal-swing cap adds the banked damage flat',
+    Math.abs(capNormal - (6.67 + 460)) < 0.001, capNormal);
   ps.weaponSpecs = {};
-  check('v2.3.1153 cap is live-point independent (same bound with zero points)',
+  check('v2.3.1451 cap is point-count independent (the banked flat is the source)',
     Math.abs(room._maxWeaponDmg(ps, false) - capNormal) < 0.001, room._maxWeaponDmg(ps, false));
   ps.weaponSpecs = { sword: { edge: 10, precision: 20 } };
   // Specials ignore the damage channel (mirror client calcSpecialDmg).
   ps.mind = 0;
   check('v2.3.912 specials are channel-free',
     Math.abs(room._maxWeaponDmg(ps, true) - 6.67) < 0.001, room._maxWeaponDmg(ps, true));
+  delete ps.t2Flat; // don't leak the fixture into later blocks
 
   // v2.3.1133: crit-DMG channel keys resolve per category, and the
   // stats_update clamp holds them to [0,99] like every other channel.
@@ -325,6 +329,24 @@ check('v2 safe-zone change sends empty zone_state', zsTown.length === 1 && zsTow
     saved && saved.weaponSkills && saved.weaponSkills.sword.level === 7
     && saved.weaponUnspent.sword === 0 && saved.defenseSkill.level === 4
     && saved.defenseUnspent === 0 && saved.defenseSpec.bulwark === 5, saved && Object.keys(saved));
+
+  // v2.3.1451: the bench-locked accumulator rides both the echo (the
+  // client's drift corrector) and the save field list — omitting
+  // either silently resets banked point values on reconnect.
+  ps.t2Flat = { sword: { edge: 123 }, hp: { vigor: 45 } };
+  const ws4 = fakeWs('echo-t2');
+  room._sendPlayerState(ws4, 'p2');
+  const echoT2 = msgsOfType(ws4, 'player_state').pop();
+  check('v2.3.1451 player_state echoes t2Flat',
+    echoT2 && echoT2.payload.t2Flat && echoT2.payload.t2Flat.sword.edge === 123
+    && echoT2.payload.t2Flat.hp.vigor === 45, echoT2 && echoT2.payload.t2Flat);
+  let saved2 = null;
+  room.state.storage.put = async (k, v) => { if (k === 'rpg:p2') saved2 = v; };
+  await room._saveRpg('p2', ps);
+  room.state.storage.put = origPut;
+  check('v2.3.1451 _saveRpg persists t2Flat',
+    saved2 && saved2.t2Flat && saved2.t2Flat.sword.edge === 123, saved2 && saved2.t2Flat);
+  ps.t2Flat = undefined;
 }
 
 // ── v2.3.1092: harvest-activity (ex) relay ──

@@ -14,6 +14,7 @@
  * The switch case now delegates: `await this._handleJoin(...)`. */
 
 import { healLifeSkills } from './migrations.js';
+import { t2ReplayFlat } from './data.js';
 
 export const joinMethods = {
   /* ═══ v2.3.1116: PERSISTENT IDENTITY (PR1 of the heavy-systems plan) ═══
@@ -477,6 +478,20 @@ export const joinMethods = {
           // join path too (a forged payload could otherwise seed
           // over-ceiling specs on first connect).
           this._clampBuildTotal(_ps);
+          // v2.3.1451: bench-locked T2 accumulator.  Stored wins —
+          // it was priced live at spend time (grids.js) or replayed
+          // once by migration v9, and re-replaying would overwrite
+          // the truth with an estimate.  Everything else (first
+          // connect, pre-v9 blob whose migration fail-opened) gets
+          // the boundary heal: replay the POST-CLAMP specs ingested
+          // above.  The join payload itself is NEVER a source —
+          // client-supplied flat values are ignored by construction
+          // (the accumulator feeds the authoritative damage roll and
+          // the anticheat ceiling; trusting it would let a forged
+          // payload raise its own cap, the v2.3.1131 lesson).
+          _ps.t2Flat = (stored && stored.t2Flat && typeof stored.t2Flat === 'object')
+            ? this._sanitizeT2Flat(stored.t2Flat)
+            : t2ReplayFlat(_ps);
         }
         // Server-owned max values: compute from clamped raw stats
         // (v2.3.1154: and the grid specs ingested just above --
@@ -609,7 +624,13 @@ export const joinMethods = {
       // the echo (the caps.gems lesson, TRAPS #9).  Absent, the legacy
       // client-local Extract path stays (broken settlement, no
       // regression -- echo-stomped as before).
-      caps: { trade: true, questTrack: true, gamble: true, clans: true, arena: true, dungeon: true, sponsor: true, guilds: true, pets: true, harden: true, trade2: true, weaponDrops: true, botfp: true, jackpot: true, hpEndGrids: true, t2uniform: true, httpAuth: true, party: true, amuletForge: true, gems: true, petLoot: true, gemExtract: true, partyChat: true, trade2Weapons: true, laststand: true, friends: true /* v2.3.1323 */, t2simple: true /* v2.3.1342: level = T2 points placed (cap 1000); client gates its level derivation + spend celebration on this so an old worker's player_state echo can't stomp the new formula */, ..._liveFlags },
+      // v2.3.1451: t2bench -- the client gates ALL bench-locked reads
+      // (its t2Flat adoption, the spend-time prediction, the 10 flat
+      // channels' combat/pool/display mirrors) on this flag.  Against
+      // an old worker the client keeps the full legacy t2Accel math so
+      // its numbers keep matching that worker's authoritative rolls
+      // and echoes (deploy-order safety, rule 19).
+      caps: { trade: true, questTrack: true, gamble: true, clans: true, arena: true, dungeon: true, sponsor: true, guilds: true, pets: true, harden: true, trade2: true, weaponDrops: true, botfp: true, jackpot: true, hpEndGrids: true, t2uniform: true, httpAuth: true, party: true, amuletForge: true, gems: true, petLoot: true, gemExtract: true, partyChat: true, trade2Weapons: true, laststand: true, friends: true /* v2.3.1323 */, t2simple: true /* v2.3.1342: level = T2 points placed (cap 1000); client gates its level derivation + spend celebration on this so an old worker's player_state echo can't stomp the new formula */, t2bench: true, ..._liveFlags },
       // v2.3.1178: this session's private economy-endpoint token.
       // state_sync goes to the joining socket ONLY -- never broadcast.
       httpToken: session.httpToken,

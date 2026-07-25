@@ -18,7 +18,13 @@
  * file referenced them via the class. */
 
 import { computeCanonicalPools, computeBuildTotal } from './migrations.js';
-import { T2_UNITS, t2Accel, t2CounterRate } from './data.js';
+import {
+  t2CounterRate,
+  // v2.3.1451: bench-locked T2 pricing (see the data.js block).
+  // t2Accel/T2_UNITS dropped from this import — every flat read in
+  // this file now goes through the ps.t2Flat accumulator.
+  T2_BENCH_CANONICAL, emptyT2Flat, t2PointValue, t2BenchLevel, t2SpendLevel, t2ReplayFlat,
+} from './data.js';
 
 // v2.3.1170: these were `static get` members on GameRoom; as module
 // constants the mixin methods can reference them without a circular
@@ -277,21 +283,130 @@ export const gridMethods = {
   _sanitizeEnduranceSpec(src, ps) {
     return this._sanitizeGridSpec(src, ENDURANCE_CHANNEL_KEYS, ps ? Math.min(200, 2 * (ps.endurance || 0)) : undefined);
   },
+  // ═══ v2.3.1451: BENCH-LOCKED T2 — the server-owned accumulator ═══
+  //
+  // ps.t2Flat holds one permanent flat number per bench-priced channel
+  // (the 10 T2_UNITS roles), banked AT SPEND TIME from the benchmark
+  // monster of the buyer's level (t2PointValue, data.js).  It is
+  // priced HERE, from post-clamp spec diffs, and NOWHERE else:
+  // payload.t2Flat is never read — the accumulator feeds the
+  // authoritative damage roll AND the anticheat ceiling, so a
+  // client-supplied value would raise its own cap (the v2.3.1131
+  // forged-godly lesson).  The client predicts with the same helpers
+  // and is corrected by every player_state echo.
+
+  // Safe read for every consumption site (combat.js, index.js,
+  // _recomputeMaxes below).  Missing shapes read as 0 — never throw.
+  _t2Flat(ps, grid, key) {
+    return (ps && ps.t2Flat && ps.t2Flat[grid] && typeof ps.t2Flat[grid][key] === 'number')
+      ? ps.t2Flat[grid][key] : 0;
+  },
+  // Shape-normalize a SERVER-stored accumulator (join adoption of a
+  // migrated/live blob; admin-restored snapshots flow through here
+  // too).  Merges onto the zeroed shape so every key exists and is a
+  // bounded non-negative integer.  10M cap = far above the legit
+  // ceiling (100 pts × 86/pt max) but bounds a corrupt snapshot.
+  _sanitizeT2Flat(src) {
+    const out = emptyT2Flat();
+    if (!src || typeof src !== 'object') return out;
+    for (const grid of Object.keys(out)) {
+      const g = src[grid];
+      if (!g || typeof g !== 'object') continue;
+      for (const k of Object.keys(out[grid])) {
+        const n = Number(g[k]);
+        if (Number.isFinite(n) && n > 0) out[grid][k] = Math.min(10000000, Math.round(n));
+      }
+    }
+    return out;
+  },
+  _t2SpecOf(ps, grid) {
+    if (grid === 'sword' || grid === 'bow' || grid === 'staff') return ps.weaponSpecs && ps.weaponSpecs[grid];
+    if (grid === 'defense') return ps.defenseSpec;
+    if (grid === 'hp') return ps.hpSpec;
+    return ps.enduranceSpec;
+  },
+  // All 30 channel counts in THE canonical order (_clampBuildTotal's
+  // walk == T2_BENCH_CANONICAL — one order everywhere or the batch
+  // pricing below diverges from the client's prediction).
+  _t2SnapshotCounts(ps) {
+    const counts = [];
+    for (const ch of T2_BENCH_CANONICAL) {
+      const spec = this._t2SpecOf(ps, ch.grid);
+      const v = (spec && typeof spec[ch.key] === 'number') ? spec[ch.key] : 0;
+      counts.push(Math.max(0, Math.min(100, Math.floor(v))));
+    }
+    return counts;
+  },
+  // The diff-and-price walk.  oldCounts = the pre-mutation snapshot;
+  // ps now carries the POST-sanitize POST-_clampBuildTotal counts, so
+  // a point truncated by the budget or the 1000 ceiling never banks
+  // value.  Each ADDED point prices at the level it was bought:
+  // level = 1 + points placed so far (t2SpendLevel), which ticks +1
+  // per point — a batch straddling a 10-point boundary prices its
+  // tail at the higher benchmark, exactly like buying one at a time.
+  // DECREASES (stale echo, clamp shrinkage — there is no player
+  // respec) scale the banked value proportionally: deterministic,
+  // and the client applies the same rule to its prediction.
+  _t2BenchReprice(ps, oldCounts) {
+    if (!ps || !Array.isArray(oldCounts)) return false;
+    if (!ps.t2Flat || typeof ps.t2Flat !== 'object') ps.t2Flat = emptyT2Flat();
+    const newCounts = this._t2SnapshotCounts(ps);
+    let placed = 0;
+    for (const c of oldCounts) placed += (c || 0);
+    let changed = false;
+    for (let i = 0; i < T2_BENCH_CANONICAL.length; i++) {
+      const ch = T2_BENCH_CANONICAL[i];
+      const oldPts = oldCounts[i] || 0;
+      const newPts = newCounts[i] || 0;
+      const added = newPts - oldPts;
+      if (added > 0) {
+        if (ch.role) {
+          if (!ps.t2Flat[ch.grid]) ps.t2Flat[ch.grid] = {};
+          let v = this._t2Flat(ps, ch.grid, ch.key);
+          for (let j = 0; j < added; j++) {
+            v += t2PointValue(ch.role, t2BenchLevel(t2SpendLevel(placed)));
+            placed++;
+          }
+          ps.t2Flat[ch.grid][ch.key] = v;
+          changed = true;
+        } else {
+          placed += added; // mechanical points still occupy level slots
+        }
+      } else if (added < 0) {
+        if (ch.role && oldPts > 0) {
+          const cur = this._t2Flat(ps, ch.grid, ch.key);
+          const next = newPts <= 0 ? 0 : Math.round(cur * newPts / oldPts);
+          if (next !== cur) {
+            if (!ps.t2Flat[ch.grid]) ps.t2Flat[ch.grid] = {};
+            ps.t2Flat[ch.grid][ch.key] = next;
+            changed = true;
+          }
+        }
+        placed += added;
+      }
+    }
+    return changed;
+  },
+
   // Grid channel multipliers, mirrored in src/data/gameSystems.js.
   // v2.3.1345 (owner round 2): ACCELERATING FLATS — cumulative value
   // UNIT·p·(p+1) via the shared t2Accel (data.js; the client mirrors in
   // gameSystems.js).  Recovery is a flat per-heal bonus, deliberately
   // still NOT on the melee-lifesteal refund; Evasion's counter rate
   // lives in combat.js's accumulator (t2CounterRate).
+  // v2.3.1451: the four FLAT pool helpers now read the bench-locked
+  // accumulator instead of t2Accel — same call sites, new source of
+  // truth.  Conditioning (mechanical) and Evasion (counter) are
+  // deliberately unchanged.
   _vigorFlat(ps) {
-    return t2Accel((ps && ps.hpSpec && ps.hpSpec.vigor) || 0, T2_UNITS.vigor);
+    return this._t2Flat(ps, 'hp', 'vigor');
   },
   _recoveryFlat(ps) {
-    return t2Accel((ps && ps.hpSpec && ps.hpSpec.recovery) || 0, T2_UNITS.recovery);
+    return this._t2Flat(ps, 'hp', 'recovery');
   },
   _recoveryMult() { return 1; }, // legacy shape for stale readers
   _staminaFlat(ps) {
-    return t2Accel((ps && ps.enduranceSpec && ps.enduranceSpec.stamina) || 0, T2_UNITS.stamina);
+    return this._t2Flat(ps, 'endurance', 'stamina');
   },
   _conditioningFlat(ps) {
     return Math.floor(Math.min(100, ((ps && ps.enduranceSpec && ps.enduranceSpec.conditioning) || 0)) / 2);
@@ -300,7 +415,7 @@ export const gridMethods = {
     return t2CounterRate((ps && ps.enduranceSpec && ps.enduranceSpec.evasion) || 0);
   },
   _lifebloodFlat(ps) {
-    return t2Accel((ps && ps.hpSpec && ps.hpSpec.lifeblood) || 0, T2_UNITS.lifeblood);
+    return this._t2Flat(ps, 'hp', 'lifeblood');
   },
   // Mirror of the WCH clamp in _handleStatsUpdate, factored out so the join /
   // migration paths apply the SAME [0,99] channel clamp (weaponSpecs feeds the
@@ -437,12 +552,23 @@ export const gridMethods = {
     // echo — the amplification behind the live "coins flashing / panels
     // thrashing" playtest report.  Snapshot every field this handler
     // can store; persist + echo at the tail ONLY when one changed.
+    // v2.3.1451: bench-locked pricing — capture the PRE-mutation
+    // channel counts before any sanitizer touches ps; the reprice
+    // walk after _clampBuildTotal diffs against these, so only
+    // points that SURVIVED every clamp bank value.  A missing
+    // accumulator (blob whose v9 migration fail-opened, or a state
+    // built by an exotic path) heals here from the still-old specs
+    // — replaying AFTER ingestion would mis-price the incoming
+    // points at replay estimates instead of today's benchmark.
+    if (!ps.t2Flat || typeof ps.t2Flat !== 'object') ps.t2Flat = t2ReplayFlat(ps);
+    const _t2Old = this._t2SnapshotCounts(ps);
     const relevantSig = () => JSON.stringify([
       ps.power, ps.vitality, ps.endurance, ps.agility, ps.mind,
       ps.weaponSpecs, ps.weaponSkills, ps.weaponUnspent,
       ps.defenseSkill, ps.defenseUnspent, ps.defenseSpec,
       ps.hpSpec, ps.hpUnspent, ps.enduranceSpec, ps.enduranceUnspent,
       ps.armor, ps.def, ps.amuletHpRegen, ps.amuletStaminaRegen,
+      ps.t2Flat, // v2.3.1451: accumulator mutations must persist + echo
     ]);
     const preSig = relevantSig();
     // Raw stats: accept client value, clamp to bounds.  T1 stats use
@@ -573,6 +699,12 @@ export const gridMethods = {
     // state, and the server derives them.
     if (payload.weaponSpecs || payload.defenseSpec || payload.hpSpec || payload.enduranceSpec) {
       this._clampBuildTotal(ps);
+      // v2.3.1451: price the surviving diff.  Strictly AFTER the
+      // ceiling clamp above — a point _clampBuildTotal truncated
+      // never happened, so it must never bank value.  Flips
+      // statsChanged because vigor/stamina flats feed
+      // _recomputeMaxes below.
+      if (this._t2BenchReprice(ps, _t2Old)) statsChanged = true;
     }
     if (payload.weaponSpecs || payload.weaponSkills || payload.defenseSpec || payload.defenseSkill
         || payload.hpSpec || payload.enduranceSpec || statsChanged) {

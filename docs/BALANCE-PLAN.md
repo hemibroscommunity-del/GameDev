@@ -273,6 +273,58 @@ that is a reverted owner decision, not a cleanup (TRAPS-class mistake).
   crit ceiling +2.00, cadence floor 210ms, arc clamp π×1.41) — these
   MUST move with any future reprice or legit hits get rejected.
 
+## 4d. Bench-locked T2 pricing — **LIVE v2.3.1451** (owner directive 2026-07-24)
+
+Owner: "Make the strength of that skill relative to current level
+monsters (and lower) with decaying power carried to the next level
+up... each stat point needs to offer an immediate noticeable
+improvement similar to an increase in base damage. Each stat point
+allocation choosing between each 5 should genuinely require a
+strategic decision because they are all good choices."
+
+**Supersedes §4c's accelerating-flat pricing for the 10 FLAT roles
+only** (damage trio, crit-dmg trio, ironskin, resilience, thorns,
+secondwind, recovery, lifeblood, vigor, stamina).  Counters and every
+capped mechanic in §4c are untouched.
+
+- **A point is a slice of "today's monster."**  At spend time it
+  converts to a permanent flat = `ceil(pct × benchmark sentinel stat)`
+  (`t2PointValue`, gameSystems.js ↔ server data.js, mirror-audited).
+  Benchmark monster level = `ceil(combatLevel / 10)` clamped [1,100]
+  ("every 10 levels your yardstick monster grows one"), priced off the
+  REAL spawn curves (`monsterStat` + `monsterHpFlat`, sentinel 1.0/1.0).
+- **The `T2_BENCH` table** (ref `hp` = % of benchmark HP, ref `dmg` =
+  % of benchmark damage): damage 4% hp · critDmg 16% hp (4× parity,
+  the v2.3.1415 posture) · thorns 5% hp · ironskin 5% dmg ·
+  resilience 8% dmg · secondwind 15% dmg · recovery 5% dmg ·
+  lifeblood 10% dmg · vigor 25% dmg · stamina 10% dmg.  CEIL rounding
+  makes the kid-anchors algebraic: 4 vigor points always survive one
+  extra sentinel hit, 20 ironskin points always soak a full one.
+- **Locked-in decay (owner choice):** the number NEVER shrinks —
+  monsters outgrow old points.  Flat per point, not accelerating: the
+  benchmark itself grows ~5%/monster-level, so later points are still
+  bigger (sim gate BN-02 "never smaller" replaces UN-04's "strictly
+  bigger" for these roles) without §4c's absurd absolute flats
+  (+10,100 damage vs a 537-HP endgame monster).
+- **Server owns the value** (`ps.t2Flat`, priced from post-clamp spec
+  diffs in grids.js `_t2BenchReprice`; `payload.t2Flat` is NEVER
+  read).  Client predicts at spend time with the same helpers and is
+  corrected by every player_state echo.  Anticheat ceilings read the
+  actual accumulator — lockstep by construction.
+- **Migration v9 `bench-locked-t2`**: existing points replayed at
+  benchmark (uniform interleave across the purchase history —
+  midpoint stratification, deterministic, absent-only fill).  Migrated
+  flats are ~20-100× smaller than §4c's — INTENDED; vs the pinned
+  L1-2 demo content players remain overwhelmingly strong.
+- **Known tension (accepted, documented):** hoarding points to spend
+  at a higher level is optimal on paper.  Bounded (pools cap
+  200/skill; you're weak while hoarding).  Earn-time pricing is a
+  one-line change to `t2SpendLevel`'s input if ever wanted.
+- Referee: `node tools/balance-sim.mjs --bench --strict` — prints the
+  per-role per-benchmark point table and gates BN-01..BN-06
+  (noticeability band, never-smaller, the vigor/ironskin anchors,
+  crit-pair parity, decay monotonicity).
+
 ## 5. Hardening v1 (rare chase) — adopted spec
 
 GDD §4.6c verbatim, flagged for a future server-side PR:

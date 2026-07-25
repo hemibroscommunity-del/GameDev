@@ -7,6 +7,7 @@
  * boundary heal, and the admin-restore re-migration path. */
 import { GameRoom } from '../src/index.js';
 import { RPG_SCHEMA_VERSION, MIGRATIONS, runRpgMigrations, healLifeSkills, computeCanonicalPools } from '../src/migrations.js';
+import { t2PointValue, t2BenchLevel } from '../src/data.js'; /* v2.3.1451: v9 bench-locked replay assertions */
 
 function makeState() {
   const store = new Map();
@@ -302,6 +303,53 @@ const legacyBlob = () => ({
   const empty = { _v: 7 };
   runRpgMigrations(empty);
   check('v8 empty blob starts at level 1 (0 placed)', empty.level === 1, empty.level);
+}
+
+// ── 13. v9 bench-locked-t2 (v2.3.1451): replay existing spent points
+// at benchmark into blob.t2Flat — absent-only fill (the v4 pattern),
+// deterministic midpoint stratification, exact when one channel holds
+// every point. ──
+{
+  const b = {
+    _v: 8,
+    weaponSpecs: { sword: { edge: 100 } },
+  };
+  const r = runRpgMigrations(b);
+  // Exactness: 100 points in ONE channel replay at global positions
+  // 1..100 — sum of t2PointValue at each position's benchmark.
+  let exact = 0;
+  for (let pos = 1; pos <= 100; pos++) exact += t2PointValue('damage', t2BenchLevel(pos));
+  check('v9 fills t2Flat via replay (all-in-one-channel is position-exact)',
+    r.failed === null && b.t2Flat && b.t2Flat.sword.edge === exact, { got: b.t2Flat && b.t2Flat.sword.edge, exact });
+  check('v9 stamps the schema version', b._v === RPG_SCHEMA_VERSION, b._v);
+  // Idempotency: re-run is a no-op, and a LIVE accumulator (different
+  // from the replay estimate) is never overwritten.
+  b.t2Flat.sword.edge = 999999;
+  const r2 = runRpgMigrations({ ...b, _v: 8 });
+  check('v9 never re-replays a blob that already carries t2Flat',
+    runRpgMigrations(b).changed === false && b.t2Flat.sword.edge === 999999, { r2: r2.changed, edge: b.t2Flat.sword.edge });
+  // Fairness: two equal-sized channels with the SAME pricing (ironskin
+  // and recovery are both 5% of benchmark dmg) replay to equal value —
+  // the uniform-interleave assumption favors neither.
+  const twin = { _v: 8, defenseSpec: { ironskin: 50 }, hpSpec: { recovery: 50 } };
+  runRpgMigrations(twin);
+  check('v9 equal channels with equal pricing replay to equal value',
+    twin.t2Flat.defense.ironskin > 0 && twin.t2Flat.defense.ironskin === twin.t2Flat.hp.recovery, twin.t2Flat);
+  // Mechanical channels bank nothing but still occupy level positions:
+  // an edge point bought "after" 100 tempo points prices at a higher
+  // benchmark than one bought alone.
+  const withMech = { _v: 8, weaponSpecs: { sword: { edge: 1, tempo: 100 } } };
+  const alone = { _v: 8, weaponSpecs: { sword: { edge: 1 } } };
+  runRpgMigrations(withMech); runRpgMigrations(alone);
+  check('v9 mechanical points raise the replay positions of flat points',
+    withMech.t2Flat.sword.edge >= alone.t2Flat.sword.edge
+    && Object.values(withMech.t2Flat.sword).length === 2,
+    { withMech: withMech.t2Flat.sword.edge, alone: alone.t2Flat.sword.edge });
+  // Empty blob → zeroed shape, still stamped.
+  const empty9 = { _v: 8 };
+  runRpgMigrations(empty9);
+  check('v9 empty blob gets the zeroed accumulator shape',
+    empty9.t2Flat && empty9.t2Flat.sword.edge === 0 && empty9.t2Flat.endurance.stamina === 0, empty9.t2Flat);
 }
 
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);

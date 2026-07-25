@@ -124,6 +124,19 @@ writers).
   `max(0, min(200, 2 × level-or-stat) − Σspec)` at the doubled earn
   rate. Idempotent (recompute converges); existing characters only
   gain; forged specs with no recorded skill levels net zero points.
+- **v8 `level-is-build`** (v2.3.1342): recomputes
+  `level = min(1000, 1 + computeBuildTotal(blob))` once per stored
+  blob — combat level IS the number of placed T2 points. Idempotent
+  (recompute converges).
+- **v9 `bench-locked-t2`** (v2.3.1451): fills `blob.t2Flat` — the
+  bench-locked per-channel flat accumulator — by REPLAYING existing
+  spent points at benchmark (`t2ReplayFlat`, data.js: uniform
+  interleave / midpoint stratification). ABSENT-ONLY fill (the v4
+  pattern): a blob already carrying `t2Flat` was priced live by
+  `_t2BenchReprice` and must never be re-replayed (the replay is an
+  estimate; the live accumulator is the truth). Boundary heal: the
+  join bootstrap runs the same replay on fresh client payloads after
+  the spec clamps. Spec: `docs/specs/t2-bench-pricing.md`.
 
 ## Tests
 

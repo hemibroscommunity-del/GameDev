@@ -178,7 +178,12 @@ const GESTURE_TOOLS = {
      -30/44 so the art's swing arc lands ON the ore body, not over it. */
   mining:      { frames: [], h: 128, dx: -30, dy: 44,  url: '/sprites/tools/pickaxe-gesture-v1.webp?v=2.3.1417' },
   woodcutting: { frames: [], h: 128, dx: -10, dy: 0,   url: '/sprites/tools/axe-gesture-v1.webp?v=2.3.1417' },
-  fishing:     { frames: [], h: 116, dx: 0,   dy: 0,   url: '/sprites/tools/reel-gesture-v1.webp?v=2.3.1417' },
+  /* v2.3.1449 (owner: "the fishing gesture and marker need to be shrank
+     by about 70%"): the reel MARKER drops to ~30% of its v2.3.1418 size
+     (116 -> 35).  Fishing's cue anchors on the PLAYER, not on a node, so
+     the big reel was covering the character it hovers over; the other
+     three tools sit on their node and keep their tuned sizes. */
+  fishing:     { frames: [], h: 35,  dx: 0,   dy: 0,   url: '/sprites/tools/reel-gesture-v1.webp?v=2.3.1417' },
   /* v2.3.1431: pan raised dy -10 -> -66 — the v2.3.1429 2x cook figure
      grew INTO the pan marker's old spot, so the animating pan kept
      covering/uncovering the torso (owner: "the shirt is flickering
@@ -4707,21 +4712,31 @@ export class EffectsRenderer {
          the gold arc-arrow becomes the SAME white finger every skill
          uses, orbiting the reel circle — a faint white track shows the
          path and a white streak trails the fingertip. */
-      const rA = 78;   /* v2.3.1436: ENCIRCLES the reel art instead of hiding behind it */
+      /* v2.3.1449 (owner: "the fishing gesture and marker need to be
+         shrank by about 70%"): FISHING-LOCAL scale — every length below
+         is derived from F_S so the shared HINT_W/FINGER_* sheet above is
+         untouched and mining/woodcutting/cooking keep the consistent
+         sizing the owner asked for in v2.3.1435/1436/1442.  Purely
+         cosmetic: the swipe hit-test is a fixed 160px start radius and
+         the rep counter integrates the finger's ANGLE about the cue
+         centre, so a smaller ring still reels at exactly the same rate. */
+      const F_S = 0.3;
+      const rA = 78 * F_S;   /* v2.3.1436: ENCIRCLES the reel art instead of hiding behind it */
+      const fLen = FINGER_LEN * F_S, fW = FINGER_W * F_S;
       const a = (now / 900) % (Math.PI * 2);
       gfx.circle(x, y, rA);
-      gfx.stroke({ color: 0xffffff, width: 2.5, alpha: hintAlpha * 0.28 });
+      gfx.stroke({ color: 0xffffff, width: Math.max(1, 2.5 * F_S), alpha: hintAlpha * 0.28 });
       gfx.moveTo(x + Math.cos(a - 0.85) * rA, y + Math.sin(a - 0.85) * rA);
       gfx.arc(x, y, rA, a - 0.85, a);
-      gfx.stroke({ color: 0xffffff, width: HINT_W, alpha: hintAlpha * 0.5 });
+      gfx.stroke({ color: 0xffffff, width: Math.max(1, HINT_W * F_S), alpha: hintAlpha * 0.5 });
       const fx = x + Math.cos(a) * rA, fy = y + Math.sin(a) * rA;
       const tx = -Math.sin(a), ty = Math.cos(a);   /* clockwise tangent */
-      gfx.moveTo(fx - tx * FINGER_LEN, fy - ty * FINGER_LEN);
+      gfx.moveTo(fx - tx * fLen, fy - ty * fLen);
       gfx.lineTo(fx, fy);
-      gfx.stroke({ color: 0xffffff, width: FINGER_W, cap: 'round', alpha: hintAlpha });
-      gfx.circle(fx, fy, FINGER_W / 2 + 0.5);
+      gfx.stroke({ color: 0xffffff, width: fW, cap: 'round', alpha: hintAlpha });
+      gfx.circle(fx, fy, fW / 2 + 0.5);
       gfx.fill({ color: 0xffffff, alpha: hintAlpha });
-      gfx.circle(fx - tx * (FINGER_LEN + 4), fy - ty * (FINGER_LEN + 4), 8);
+      gfx.circle(fx - tx * (fLen + 4 * F_S), fy - ty * (fLen + 4 * F_S), 8 * F_S);
       gfx.fill({ color: 0xe6e6ee, alpha: hintAlpha });
     } else if (ex.skill === 'woodcutting') {
       /* v2.3.843: a finger demonstrates the chop gesture — wind UP away

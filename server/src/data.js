@@ -68,6 +68,199 @@ export function t2CounterRate(pts) {
   return Math.max(0, Math.min(100, Math.floor(pts || 0))) * 0.005;
 }
 
+/* ═══ v2.3.1451: BENCH-LOCKED T2 PRICING (owner directive 2026-07-24) ═══
+ *
+ * "Make the strength of that skill relative to current level monsters
+ * (and lower) with decaying power carried to the next level up...
+ * each stat point needs to offer an immediate noticeable improvement
+ * similar to an increase in base damage."
+ *
+ * The 10 FLAT-number channels (the T2_UNITS set) stop being absolute
+ * accelerating flats and become BENCH-LOCKED: a point, at the moment
+ * it is spent, converts to a permanent flat amount sized as a
+ * percentage of the BENCHMARK MONSTER's stats at the buyer's level.
+ * Benchmark = a level-(combatLevel/10) SENTINEL (1.0/1.0 mults), so:
+ *   - every point is immediately felt against what you fight NOW
+ *     ("1 point = a 4% bite of today's monster"), at level 3 and at
+ *     level 900 alike;
+ *   - the number NEVER shrinks (owner choice: locked-in, no explicit
+ *     decay factor) — monsters simply outgrow old points, which is
+ *     the "decaying power carried to the next level up";
+ *   - flat PER POINT, not accelerating: the benchmark itself grows
+ *     ~5%/monster-level (ticking every 10 combat levels), so later
+ *     points are still bigger than earlier ones without re-creating
+ *     the absurd absolute flats (+10,100 damage vs a 537-HP endgame
+ *     monster) that t2Accel produced.
+ * The mechanical channels (tempo/cleave/counters/etc.) are UNTOUCHED,
+ * and t2Accel/T2_UNITS above stay: counters still use t2CounterRate,
+ * and pre-t2bench clients still run the legacy math locally until the
+ * caps flag flips their paths (deploy-order safety).
+ * Server owns the accumulated values (ps.t2Flat — see grids.js); the
+ * client NEVER supplies them, it only predicts with these same
+ * helpers.  MIRRORED in src/data/gameSystems.js; mirror-audit pins
+ * every table and probes the functions at several benchmarks. */
+
+/* Standalone twin of GameRoom._monsterStat (index.js) / the client's
+ * monsterStat (gameSystems.js) — the tri-phase spawn curve.  Needed
+ * here so the bench helpers below can price points off the REAL
+ * spawn math (a benchmark that could drift from what actually spawns
+ * would silently break the whole "relative to monsters" promise). */
+export function monsterStat(base, level, rRamp, rPlateau, rEndgame) {
+  if (level <= 30) return Math.ceil(base * Math.pow(rRamp, level - 1));
+  const at30 = Math.ceil(base * Math.pow(rRamp, 29));
+  if (level <= 65) return Math.ceil(at30 * Math.pow(rPlateau, level - 30));
+  const at65 = Math.ceil(at30 * Math.pow(rPlateau, 35));
+  return Math.ceil(at65 * Math.pow(rEndgame, level - 65));
+}
+
+/* Combat level 1-1000 -> benchmark monster level 1-100.  CEIL, so the
+ * yardstick monster grows a level exactly every 10 points placed and
+ * is never 0 ("every 10 levels, your yardstick monster grows one"). */
+export function t2BenchLevel(playerLevel) {
+  return Math.max(1, Math.min(100, Math.ceil((playerLevel || 1) / 10)));
+}
+
+/* Benchmark SENTINEL stats at bench level B — hp uses the centralized
+ * MONSTER_HP_CURVE + the level-aware flat term, dmg uses the same
+ * inline curve constants as _spawnZoneMonsters / _dungeonMonster
+ * (base 12, ramps 1.045/1.025/1.018).  Sentinel mults are 1.0/1.0 so
+ * no archetype factor appears. */
+export function t2BenchStats(B) {
+  return {
+    hp: Math.ceil(monsterStat(MONSTER_HP_CURVE.base, B, MONSTER_HP_CURVE.ramp, MONSTER_HP_CURVE.plateau, MONSTER_HP_CURVE.endgame)) + monsterHpFlat(B),
+    dmg: Math.ceil(monsterStat(12, B, 1.045, 1.025, 1.018)),
+  };
+}
+
+/* The one tuning table.  ref 'hp' = fraction of the benchmark
+ * sentinel's HP (offense reads as "bites out of the monster"); ref
+ * 'dmg' = fraction of its damage (defense/heals/pools read as
+ * "monster hits soaked/healed/survived").  Tuned against the
+ * balance-sim gates (tools/balance-sim.mjs --bench; INV-03 kill-time
+ * windows, INV-06 EHP spread). */
+export const T2_BENCH = {
+  damage:     { ref: 'hp',  pct: 0.04 }, /* 1 pt = a 4% bite of today's monster, every swing */
+  critDmg:    { ref: 'hp',  pct: 0.16 }, /* 4x the damage point — keeps the v2.3.1415 crit-pair parity (LUCKY every 2nd hit at max counter) */
+  thorns:     { ref: 'hp',  pct: 0.05 }, /* 20 at-level pts ≈ a full monster per block */
+  ironskin:   { ref: 'dmg', pct: 0.05 }, /* 20 at-level pts ≈ one sentinel hit fully soaked (floor 1 stays) */
+  resilience: { ref: 'dmg', pct: 0.08 }, /* big hits only (>20% maxHp rule unchanged) */
+  secondwind: { ref: 'dmg', pct: 0.15 }, /* ~7 pts heal back one sentinel hit per proc (10s cd unchanged) */
+  recovery:   { ref: 'dmg', pct: 0.05 },
+  lifeblood:  { ref: 'dmg', pct: 0.10 },
+  vigor:      { ref: 'dmg', pct: 0.25 }, /* maxHp in enemy hits: 4 pts ≈ +1 hit survived */
+  stamina:    { ref: 'dmg', pct: 0.10 },
+};
+
+/* The 30 channels in THE canonical order (_clampBuildTotal's walk:
+ * sword, bow, staff, defense, hp, endurance).  `role` names the
+ * T2_BENCH entry for the 10 bench-priced channels; null = mechanical
+ * (occupies a purchase slot / level, banks no flat).  This SAME array
+ * drives the stats_update diff-pricing walk (grids.js) and the replay
+ * migration below — one order, everywhere, or replays diverge. */
+export const T2_BENCH_CANONICAL = [
+  { grid: 'sword', key: 'edge',        role: 'damage' },
+  { grid: 'sword', key: 'precision',   role: null },
+  { grid: 'sword', key: 'executioner', role: 'critDmg' },
+  { grid: 'sword', key: 'tempo',       role: null },
+  { grid: 'sword', key: 'cleave',      role: null },
+  { grid: 'bow',   key: 'drawPower',   role: 'damage' },
+  { grid: 'bow',   key: 'marksmanship', role: null },
+  { grid: 'bow',   key: 'headshot',    role: 'critDmg' },
+  { grid: 'bow',   key: 'piercing',    role: null },
+  { grid: 'bow',   key: 'longshot',    role: null },
+  { grid: 'staff', key: 'spellPower',  role: 'damage' },
+  { grid: 'staff', key: 'overload',    role: null },
+  { grid: 'staff', key: 'detonation',  role: null },
+  { grid: 'staff', key: 'attunement',  role: null },
+  { grid: 'staff', key: 'focus',       role: 'critDmg' },
+  { grid: 'defense', key: 'bulwark',    role: null },
+  { grid: 'defense', key: 'ironskin',   role: 'ironskin' },
+  { grid: 'defense', key: 'thorns',     role: 'thorns' },
+  { grid: 'defense', key: 'secondwind', role: 'secondwind' },
+  { grid: 'defense', key: 'poise',      role: null },
+  { grid: 'hp', key: 'vigor',      role: 'vigor' },
+  { grid: 'hp', key: 'recovery',   role: 'recovery' },
+  { grid: 'hp', key: 'lifeblood',  role: 'lifeblood' },
+  { grid: 'hp', key: 'resilience', role: 'resilience' },
+  { grid: 'hp', key: 'laststand',  role: null },
+  { grid: 'endurance', key: 'stamina',      role: 'stamina' },
+  { grid: 'endurance', key: 'conditioning', role: null },
+  { grid: 'endurance', key: 'swiftness',    role: null },
+  { grid: 'endurance', key: 'evasion',      role: null },
+  { grid: 'endurance', key: 'reflexes',     role: null },
+];
+
+/* Zeroed accumulator in the persisted shape: one number per
+ * bench-priced channel, grouped by grid. */
+export function emptyT2Flat() {
+  const out = {};
+  for (const ch of T2_BENCH_CANONICAL) {
+    if (!ch.role) continue;
+    if (!out[ch.grid]) out[ch.grid] = {};
+    out[ch.grid][ch.key] = 0;
+  }
+  return out;
+}
+
+/* What ONE point is worth if bought at benchmark B.  CEIL, not round:
+ * a point is always AT LEAST its promised fraction, which makes the
+ * kid-anchors hold by algebra at every benchmark — 4 vigor points
+ * always survive one extra sentinel hit (4·ceil(.25d) ≥ d), 20
+ * ironskin points always soak a full one (20·ceil(.05d) ≥ d).  With
+ * round(), mid benchmarks broke both (sim gates BN-03/BN-04).
+ * max(1, …) is belt-and-braces; ceil of a positive already ≥ 1. */
+export function t2PointValue(role, B) {
+  const r = T2_BENCH[role];
+  if (!r) return 0;
+  const s = t2BenchStats(B);
+  return Math.max(1, Math.ceil(r.pct * (r.ref === 'hp' ? s.hp : s.dmg)));
+}
+
+/* Level "at that moment" = level BEFORE the point lands = 1 + points
+ * already placed.  Purely a function of the build total, so server
+ * and client derive it identically without trusting ps.level. */
+export function t2SpendLevel(buildTotalBefore) {
+  return Math.min(1000, 1 + Math.max(0, buildTotalBefore || 0));
+}
+
+/* Replay-at-benchmark: rebuild the accumulator for a blob whose
+ * purchase HISTORY was never stored (the v9 migration, the join
+ * boundary heal, and test fixtures).  Fair deterministic assumption:
+ * each channel's p points were uniformly interleaved across the
+ * player's N total purchases — channel point j prices at global
+ * purchase position ceil((2j-1)·N/(2p)) (midpoint stratification).
+ * Properties: exact when one channel holds every point (pos = j);
+ * order-independent; a lone point in an N=1000 build prices at the
+ * median level; re-running on the same counts is a no-op by
+ * construction. */
+export function t2ReplayFlat(blob) {
+  const out = emptyT2Flat();
+  if (!blob || typeof blob !== 'object') return out;
+  const pts = (ch) => {
+    const spec = (ch.grid === 'sword' || ch.grid === 'bow' || ch.grid === 'staff')
+      ? (blob.weaponSpecs && blob.weaponSpecs[ch.grid])
+      : ch.grid === 'defense' ? blob.defenseSpec
+      : ch.grid === 'hp' ? blob.hpSpec
+      : blob.enduranceSpec;
+    const v = (spec && typeof spec[ch.key] === 'number') ? spec[ch.key] : 0;
+    return Math.max(0, Math.min(100, Math.floor(v)));
+  };
+  let N = 0;
+  for (const ch of T2_BENCH_CANONICAL) N += pts(ch);
+  if (N <= 0) return out;
+  for (const ch of T2_BENCH_CANONICAL) {
+    if (!ch.role) continue;
+    const p = pts(ch);
+    let v = 0;
+    for (let j = 1; j <= p; j++) {
+      const pos = Math.ceil(((2 * j - 1) * N) / (2 * p));
+      v += t2PointValue(ch.role, t2BenchLevel(t2SpendLevel(pos - 1)));
+    }
+    out[ch.grid][ch.key] = v;
+  }
+  return out;
+}
+
 export const ARCHETYPES = {
       fodder:   { hpMult: 0.6, dmgMult: 0.8, spdMult: 1.0, emoji: '🟢', color: '#3dd497' },
       brute:    { hpMult: 1.5, dmgMult: 1.3, spdMult: 0.7, emoji: '🪨', color: '#6b6b6b' },

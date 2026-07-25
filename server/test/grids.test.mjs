@@ -21,6 +21,10 @@
  * Convention: tick functions + handlers invoked directly, never
  * startTickLoop (the combat-lifecycle convention). */
 import { GameRoom } from '../src/index.js';
+/* v2.3.1451 (bench-locked T2): fixtures replay their specs through the
+   real helper; assertions derive from the banked values. */
+import { t2ReplayFlat as _replay, t2PointValue, t2BenchLevel, t2SpendLevel } from '../src/data.js';
+import { computeBuildTotal } from '../src/migrations.js';
 
 function makeState() {
   const store = new Map();
@@ -116,20 +120,25 @@ const session = [...room.sessions.values()].find((s) => s.id === 'bp_gr_a');
 
 // ── 3+4. vigor / stamina formulas ──
 {
-  // v2.3.1345 (accelerating flat): Vigor +t2Accel(p, 2) HP (+20,200 at
-  // the cap, no longer scaling armor HP); Deep Lungs +t2Accel(p, 1)
-  // energy (+10,100 at the cap).
+  // v2.3.1451 (bench-locked): Vigor / Deep Lungs add their BANKED
+  // flats from ps.t2Flat — fixtures replay through the real helper
+  // and expectations derive from the banked values.
   ps.armor = null;
   ps.hpSpec = { vigor: 100 };
   ps.enduranceSpec = { stamina: 100 };
+  ps.t2Flat = _replay(ps);
+  const _vigFlat = ps.t2Flat.hp.vigor;
+  const _stamFlat = ps.t2Flat.endurance.stamina;
   room._recomputeMaxes(ps);
   const baseHp = room._calcMaxHp(ps.level, ps.vitality);
-  check('vigor: maxHp = floor(base + 20,200) at the 100-pt cap (accelerating flat)',
-    ps.maxHp === Math.floor(baseHp + 20200), { maxHp: ps.maxHp, base: baseHp });
+  check('vigor: maxHp = floor(base + banked flat) at the 100-pt cap',
+    _vigFlat > 0 && ps.maxHp === Math.floor(baseHp + _vigFlat), { maxHp: ps.maxHp, base: baseHp, _vigFlat });
   const baseStam = room._calcMaxStamina(ps.endurance);
-  check('stamina channel: maxStamina = floor(base + 10,100) at the 100-pt cap',
-    ps.maxStamina === Math.floor(baseStam + 10100), { maxStamina: ps.maxStamina, base: baseStam });
-  check('vigor: flat helper caps past 100 pts', room._vigorFlat({ hpSpec: { vigor: 999 } }) === 20200);
+  check('stamina channel: maxStamina = floor(base + banked flat) at the 100-pt cap',
+    _stamFlat > 0 && ps.maxStamina === Math.floor(baseStam + _stamFlat), { maxStamina: ps.maxStamina, base: baseStam, _stamFlat });
+  check('vigor: helper reads the server-owned accumulator, not point counts',
+    room._vigorFlat({ hpSpec: { vigor: 999 }, t2Flat: { hp: { vigor: 777 } } }) === 777
+    && room._vigorFlat({ hpSpec: { vigor: 999 } }) === 0);
 }
 
 // ── 5. conditioning regen ──
@@ -153,28 +162,35 @@ const session = [...room.sessions.values()].find((s) => s.id === 'bp_gr_a');
 
 // ── 6. recovery on discrete heals, NOT on lifesteal ──
 {
+  // v2.3.1451 (bench-locked): Recovery adds its BANKED per-heal flat.
   ps.hpSpec = { recovery: 100 };
   ps.enduranceSpec = {};
+  ps.t2Flat = _replay(ps);
+  const _recFlat = ps.t2Flat.hp.recovery;
   room._recomputeMaxes(ps);
   // fish eat: cooked minnow heals ceil(_fishHealAmount × 1.5)
   ps.inventory = { cooked_fish_minnow: 1 };
   ps.hp = 1;
   const rawHeal = room._fishHealAmount('cooked_fish_minnow');
   room._handleEatRequest(session, { invKey: 'cooked_fish_minnow' });
-  check('recovery: fish heal + flat t2Accel(100,1) = +10,100 at the cap (v2.3.1345)',
-    ps.hp === Math.min(ps.maxHp, 1 + Math.ceil(rawHeal) + 10100), { hp: ps.hp, rawHeal, maxHp: ps.maxHp });
-  // second wind: flat t2Accel(40, 2.5) = 4,100 + Recovery's flat
-  // per-heal bonus t2Accel(100, 1) = 10,100 (recovery spec still 100
-  // from the fish check above), bounded by maxHp in _applyDamage.
+  check('recovery: fish heal + the banked per-heal flat',
+    _recFlat > 0 && ps.hp === Math.min(ps.maxHp, 1 + Math.ceil(rawHeal) + _recFlat), { hp: ps.hp, rawHeal, maxHp: ps.maxHp, _recFlat });
+  // second wind: banked secondwind flat + Recovery's banked per-heal
+  // bonus (recovery spec still 100 from the fish check above),
+  // bounded by maxHp in _applyDamage.
   ps.defenseSpec = { secondwind: 40 };
+  ps.t2Flat = _replay(ps);
+  const _swFlat2 = ps.t2Flat.defense.secondwind;
+  const _recFlat2 = ps.t2Flat.hp.recovery;
   ps._secondWindReadyAt = 0;
   ps.hp = Math.floor(ps.maxHp / 2);
   ps.agility = 0;
   const before = ps.hp;
   const r = room._applyDamage(ps, 10, false);
-  check('recovery: second wind = flat 4,100 + recovery flat 10,100 (survived unblocked hit)',
-    r.secondWind === 4100 + 10100, { got: r.secondWind, before });
+  check('recovery: second wind = banked secondwind flat + banked recovery flat (survived unblocked hit)',
+    _swFlat2 > 0 && r.secondWind === _swFlat2 + _recFlat2, { got: r.secondWind, before, _swFlat2, _recFlat2 });
   ps.defenseSpec = {};
+  ps.t2Flat = _replay(ps);
   // lifesteal: EXCLUDED from recovery — still exactly 90% of taken.
   ps.dmgFromMonster = { m1: 40 };
   ps.hp = 1;
@@ -206,16 +222,20 @@ const session = [...room.sessions.values()].find((s) => s.id === 'bp_gr_a');
 
 // ── 8. lifeblood on the killing blow ──
 {
+  // v2.3.1451 (bench-locked): the kill heal is the BANKED flat.
   ps.hpSpec = { lifeblood: 50 };
+  ps.t2Flat = _replay(ps);
+  const _lbFlat = ps.t2Flat.hp.lifeblood;
   room._recomputeMaxes(ps);
   ps.z = 'meadow'; ps.x = 100; ps.y = 100;
   ps.hp = Math.floor(ps.maxHp / 2);
   const before = ps.hp;
   const m = { id: 'gr_m1', alive: true, hp: 0, maxHp: 10, xp: 5, gold: 0, level: 1, x: 100, y: 100, dmgByPlayer: { bp_gr_a: 10 } };
   room._resolveMonsterKill('meadow', m, 'bp_gr_a', ps, 'melee');
-  check('lifeblood: killing blow heals 25% maxHp at 50 pts (v2.3.1343: 0.5%/pt; plus any lifesteal)',
-    ps.hp >= Math.min(ps.maxHp, before + Math.round(ps.maxHp * 0.25)), { before, after: ps.hp, maxHp: ps.maxHp });
+  check('lifeblood: killing blow heals the banked flat (plus any lifesteal)',
+    _lbFlat > 0 && ps.hp >= Math.min(ps.maxHp, before + _lbFlat), { before, after: ps.hp, maxHp: ps.maxHp, _lbFlat });
   ps.hpSpec = {};
+  ps.t2Flat = undefined;
 }
 
 // ── 9. join backfill (boundary heal for pre-grid stored records) ──
@@ -332,6 +352,68 @@ const session = [...room.sessions.values()].find((s) => s.id === 'bp_gr_a');
   check('stats_update: one more placed point = +1 level and pools refill',
     ps.level === 62 && ps.hp === ps.maxHp && ps.stamina === ps.maxStamina && ps.mana === ps.maxMana,
     { level: ps.level, hp: ps.hp, maxHp: ps.maxHp });
+}
+
+// ── 11. v2.3.1451: BENCH-LOCKED T2 — the stats_update diff pricing ──
+// The server owns ps.t2Flat: each ADDED post-clamp point banks
+// t2PointValue at the level it was bought (level = 1 + points placed,
+// ticking mid-batch); payload.t2Flat is never read; decreases scale
+// proportionally; clamp-truncated points bank nothing.
+{
+  ps.weaponSpecs = {}; ps.defenseSpec = {}; ps.hpSpec = {}; ps.enduranceSpec = {};
+  ps.t2Flat = undefined;
+  ps.power = 10; ps.vitality = 20; ps.endurance = 10; ps.agility = 10; ps.mind = 10;
+
+  // 1. single point priced at the PRE-spend level (fresh build: level 1).
+  room._handleStatsUpdate(session, { weaponSpecs: { sword: { edge: 1 } } });
+  const _p1 = t2PointValue('damage', t2BenchLevel(t2SpendLevel(0)));
+  check('t2bench: first point banks t2PointValue at the level-1 benchmark',
+    ps.t2Flat && ps.t2Flat.sword.edge === _p1, { got: ps.t2Flat && ps.t2Flat.sword.edge, _p1 });
+
+  // 2. a batch that straddles the 10-point benchmark boundary prices
+  // each point at its own position — identical to buying one at a time.
+  room._handleStatsUpdate(session, { weaponSpecs: { sword: { edge: 9 } } });
+  const _before = ps.t2Flat.sword.edge;
+  room._handleStatsUpdate(session, { weaponSpecs: { sword: { edge: 13 } } });
+  let _exp = 0;
+  for (let placed = 9; placed < 13; placed++) _exp += t2PointValue('damage', t2BenchLevel(t2SpendLevel(placed)));
+  check('t2bench: batch prices per point across the benchmark tick (placed 9→13)',
+    ps.t2Flat.sword.edge === _before + _exp, { got: ps.t2Flat.sword.edge, want: _before + _exp });
+
+  // 3. payload.t2Flat is NEVER read — a forged accumulator (with or
+  // without a legit spec alongside) leaves the server's value alone
+  // beyond the priced diff.
+  const _pre3 = ps.t2Flat.sword.edge;
+  room._handleStatsUpdate(session, { t2Flat: { sword: { edge: 999999 } } });
+  check('t2bench: forged payload.t2Flat alone is ignored', ps.t2Flat.sword.edge === _pre3, ps.t2Flat.sword.edge);
+  const _placedNow = computeBuildTotal(ps);
+  room._handleStatsUpdate(session, { weaponSpecs: { sword: { edge: 14 } }, t2Flat: { sword: { edge: 999999 } } });
+  check('t2bench: forged t2Flat riding a legit spend adds only the priced point',
+    ps.t2Flat.sword.edge === _pre3 + t2PointValue('damage', t2BenchLevel(t2SpendLevel(_placedNow))), ps.t2Flat.sword.edge);
+
+  // 4. decrease (stale echo — no player respec exists) scales the
+  // banked value proportionally, deterministic on both sides.
+  const _cur = ps.t2Flat.sword.edge; // 14 points banked
+  room._handleStatsUpdate(session, { weaponSpecs: { sword: { edge: 6 } } });
+  check('t2bench: count decrease scales the banked flat proportionally (14 → 6)',
+    ps.t2Flat.sword.edge === Math.round(_cur * 6 / 14), { got: ps.t2Flat.sword.edge, want: Math.round(_cur * 6 / 14) });
+
+  // 5. clamp-truncated points bank NOTHING: vitality 20 → grid budget
+  // min(200, 40) = 40; a 50-point vigor claim sanitizes down to 40,
+  // and exactly 40 points' value lands in the accumulator.
+  const _placed5 = computeBuildTotal(ps);
+  room._handleStatsUpdate(session, { hpSpec: { vigor: 50 } });
+  let _expV = 0;
+  for (let p = 0; p < 40; p++) _expV += t2PointValue('vigor', t2BenchLevel(t2SpendLevel(_placed5 + p)));
+  check('t2bench: budget-truncated points never bank value (50 claimed, 40 priced)',
+    ps.hpSpec.vigor === 40 && ps.t2Flat.hp.vigor === _expV,
+    { vigor: ps.hpSpec.vigor, got: ps.t2Flat.hp.vigor, want: _expV });
+
+  // 6. the banked flat is what combat reads: maxHp carries it via
+  // _vigorFlat the same tick.
+  check('t2bench: _vigorFlat reads the accumulator',
+    room._vigorFlat(ps) === ps.t2Flat.hp.vigor, room._vigorFlat(ps));
+  ps.weaponSpecs = {}; ps.hpSpec = {}; ps.t2Flat = undefined;
 }
 
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);
