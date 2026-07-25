@@ -22,8 +22,10 @@ import numpy as np
 from PIL import Image
 from scipy import ndimage
 
-UPLOAD = ('/root/.claude/uploads/85dab866-0f38-5e59-9ced-da9eaeb2cf4b/'
-          '3a21fbd0-F50A106BBF85434D96A2E32DFD10FC62.png')
+import sys
+UPLOAD = sys.argv[1] if len(sys.argv) > 1 else (
+    '/root/.claude/uploads/85dab866-0f38-5e59-9ced-da9eaeb2cf4b/'
+    '3a21fbd0-F50A106BBF85434D96A2E32DFD10FC62.png')
 GEAR = 'public/sprites/gear/legs/steelgreaves/chop-west.png'
 BODY = 'public/sprites/skills/chop-strip.webp'
 GW, GH = 480, 440
@@ -150,11 +152,17 @@ def main():
         bfr = body[:, (12 + k) * 240:(13 + k) * 240]
         br = bfr[:, :, 0].astype(int); bg = bfr[:, :, 1].astype(int)
         bb = bfr[:, :, 2].astype(int); ba = bfr[:, :, 3]
+        # any leg pixel: olive pants, gray shin, near-black boot, orange
+        # sash — the new art's stances don't exactly match the body's
+        # (worst on the wide backswing frames), so uncovered body legs
+        # must render as the old covering steel, not as bare cloth/skin.
+        # Browns (axe handle) and skin stay excluded.
+        gray = (abs(br - bg) < 18) & (abs(bg - bb) < 18) & (br < 170)
         bare = (ba > 40) & (
             ((abs(br - bg) < 40) & (bg - bb > 15) & (bg > 55) & (bg < 165)) |
-            ((br > 150) & (br - bg > 70) & (bb < 75)))
+            ((br > 150) & (br - bg > 70) & (bb < 75)) | gray)
         bare[:110] = False
-        bare[186:] = False
+        bare[220:] = False
         chf = chest[:, k * GW:(k + 1) * GW]
         cov = (np.array(Image.fromarray(res).resize((FW, FH), Image.NEAREST))[:, :, 3] > 40) | \
               (np.array(Image.fromarray(np.ascontiguousarray(chf)).resize((FW, FH), Image.NEAREST))[:, :, 3] > 40)
