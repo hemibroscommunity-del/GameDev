@@ -133,7 +133,7 @@ export async function initPixiRenderer(canvas) {
   registerPrewarmRenderer(app.renderer);
 
   const tileRenderer = new TileRenderer(layers.tiles, app);
-  const entityRenderer = new EntityRenderer(layers.entities, layers.player);
+  const entityRenderer = new EntityRenderer(layers.entities, layers.player, layers.monsterUi);
   const effectsRenderer = new EffectsRenderer(layers);
   /* v2.3.221: FPS counter only mounts with ?dev=1. */
   const _devUI = typeof window !== 'undefined' && /[?&]dev=1\b/.test(window.location.search);

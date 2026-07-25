@@ -2527,10 +2527,18 @@ function createMonsterDisplay(monster) {
     container.addChild(spriteBody);
   }
 
+  /* v2.3.1472: the above-head UI (level, HP bar frame/fill/fx, HP
+     number) goes into its OWN container, parented to the monsterUi
+     layer by the caller so it draws above gather nodes while this
+     container's body stays behind them.  Positions are still monster-
+     local — _updateMonsters mirrors x/y/scale onto it each frame. */
+  const hpUi = new Container();
+  container._hpUi = hpUi;
+
   const lvlText = new Text({ text: '', style: { ...NAME_STYLE, fontSize: 8 } });
   lvlText.anchor.set(0.5, 1);
   lvlText.y = -size - 12;
-  container.addChild(lvlText);
+  hpUi.addChild(lvlText);
 
   /* Single dynamic Graphics for everything that DOES change per frame:
      status icons, aggro alert, stuck arrows, threat arrow, stun pip.
@@ -2546,12 +2554,12 @@ function createMonsterDisplay(monster) {
   hpHeart.anchor.set(0.5, 0.5);
   hpHeart.alpha = 0;
   hpHeart.tint = 0x000000;
-  container.addChild(hpHeart);
+  hpUi.addChild(hpHeart);
 
   const hpText = new Text({ text: '', style: MONSTER_HP_NUM_STYLE });
   hpText.anchor.set(0.5, 0.5);
   hpText.alpha = 0;
-  container.addChild(hpText);
+  hpUi.addChild(hpText);
 
   container._body = body;
   container._spriteBody = spriteBody;
@@ -3047,9 +3055,14 @@ function createOtherPlayerDisplay() {
  * Manages all entity rendering.
  */
 export class EntityRenderer {
-  constructor(entityLayer, playerLayer) {
+  constructor(entityLayer, playerLayer, monsterUiLayer) {
     this.entityLayer = entityLayer;
     this.playerLayer = playerLayer;
+    /* v2.3.1472: HP bar / level / number live in their own layer above
+       gatherNodes (see pixiApp) so a tree can hide the monster without
+       hiding its health.  Falls back to the entity layer if a caller
+       hasn't been updated, which just restores the old behaviour. */
+    this.monsterUiLayer = monsterUiLayer || entityLayer;
     this.monsterDisplays = new Map();
     this.otherPlayerDisplays = new Map();
     this.playerDisplay = null;
@@ -3265,6 +3278,10 @@ export class EntityRenderer {
       if (!display) {
         display = createMonsterDisplay(m);
         this.entityLayer.addChild(display);
+        /* v2.3.1472: the above-head UI rides its own layer (above the
+           gather nodes) — same world space, so mirroring the transform
+           below is all it needs. */
+        if (display._hpUi) this.monsterUiLayer.addChild(display._hpUi);
         this.monsterDisplays.set(m.id, display);
       }
 
@@ -3290,6 +3307,17 @@ export class EntityRenderer {
       /* v2.3.1274: monster size experiment (persists through the death
          animation since the container keeps its scale). */
       if (display.scale.x !== MONSTER_SIZE_MULT) display.scale.set(MONSTER_SIZE_MULT);
+      /* v2.3.1472: mirror the transform onto the above-head UI, which
+         lives in a sibling layer (same world container, so the values
+         carry over 1:1).  Guarded writes for the same batch-rebuild
+         reason as the body's. */
+      const _ui = display._hpUi;
+      if (_ui) {
+        if (_ui.x !== rx) _ui.x = rx;
+        if (_ui.y !== ry) _ui.y = ry;
+        if (_ui.visible !== m.alive) _ui.visible = m.alive;
+        if (_ui.scale.x !== MONSTER_SIZE_MULT) _ui.scale.set(MONSTER_SIZE_MULT);
+      }
 
       const size = display._size;
 
@@ -3729,14 +3757,17 @@ export class EntityRenderer {
       if (heartTex && display._hpHeart.texture !== heartTex) {
         display._hpHeart.texture = heartTex;
         display._hpHeart.tint = 0xffffff;
-        /* fill + fx layers insert UNDER the hp number text. */
-        const txtIdx = display.getChildIndex(display._hpText);
+        /* fill + fx layers insert UNDER the hp number text.
+           v2.3.1472: into the _hpUi container, which is where the bar
+           and the number now live (above the gather-node layer). */
+        const _ui = display._hpUi || display;
+        const txtIdx = _ui.getChildIndex(display._hpText);
         const fill = new Sprite();
         fill.anchor.set(0, 0.5);
-        display.addChildAt(fill, txtIdx);
+        _ui.addChildAt(fill, txtIdx);
         display._hpBarFill = fill;
         const fx = new Graphics();
-        display.addChildAt(fx, txtIdx + 1);
+        _ui.addChildAt(fx, txtIdx + 1);
         display._hpBarFx = fx;
       }
       if (heartTex && heartTex.width > 0) {
@@ -3984,6 +4015,10 @@ export class EntityRenderer {
 
     for (const [id, display] of this.monsterDisplays) {
       if (!activeIds.has(id)) {
+        /* v2.3.1472: the above-head UI is parented to another layer, so
+           destroying the body container does NOT reap it — it would be
+           left behind as a floating HP bar over an absent monster. */
+        if (display._hpUi && !display._hpUi.destroyed) display._hpUi.destroy({ children: true });
         display.destroy({ children: true });
         this.monsterDisplays.delete(id);
       }
@@ -6369,7 +6404,7 @@ export class EntityRenderer {
       const hpNewAlpha = hpA + Math.max(-FADE_STEP, Math.min(FADE_STEP, hpDelta));
       ring.alpha = hpNewAlpha;
       heartText.alpha = hpNewAlpha;
-      maxText.alpha = hpNewAlpha;
+      /* v2.3.1472: maxText is retired (see below) — no fade to drive. */
       /* v2.3.1273: bar sprites share the fade (alphas finalized below). */
 
       const hpFrac = hpCur / hpMax;
@@ -6440,11 +6475,17 @@ export class EntityRenderer {
         }
       }
       heartText.x = cx; heartText.y = cy;
-      maxText.x = cx;   maxText.y = cy + PLAYER_HPBAR_H / 2 + 7;
+      /* v2.3.1472 (owner: "a small 100 beneath the character hp bar and
+         it's not clear what that's from — remove it"): the max-HP
+         readout under the bar is gone.  The bar's own fill already
+         shows the fraction, so the number added nothing but noise
+         under the player's feet-to-head silhouette.  Kept as a hidden
+         object (rather than deleted) so the pooled-Text layout above
+         and the fade bookkeeping stay untouched. */
+      maxText.alpha = 0;
+      maxText.visible = false;
       const hpStr = String(Math.ceil(hpCur));
-      const maxStr = String(Math.ceil(hpMax));
       if (heartText.text !== hpStr) heartText.text = hpStr;
-      if (maxText.text !== maxStr) maxText.text = maxStr;
     }
   }
 
@@ -6455,7 +6496,11 @@ export class EntityRenderer {
        the sprite to render invisibly in some zones (probably a frame
        race between layer reattachment and the next _updatePlayer pass).
        app.destroy({children:true}) handles full cleanup at shutdown. */
-    for (const [, d] of this.monsterDisplays) d.destroy({ children: true });
+    for (const [, d] of this.monsterDisplays) {
+      /* v2.3.1472: sibling-layer UI container needs its own reap. */
+      if (d._hpUi && !d._hpUi.destroyed) d._hpUi.destroy({ children: true });
+      d.destroy({ children: true });
+    }
     this.monsterDisplays.clear();
     for (const [, d] of this.otherPlayerDisplays) d.destroy({ children: true });
     this.otherPlayerDisplays.clear();
