@@ -468,6 +468,24 @@ function hatPoseTune(hatId, pose, dir) {
   if (pose === 'stand') return STAND_HAT_TUNE[hatId] || null;
   return null;
 }
+/* v2.3.1454 (owner: east jog "hair sits up too high and is too small on
+   the head", reading as an oval head): the v2.3.1349 global 0.67 was a
+   hand-dialed "shrink 33%" against BODY_DIR_SCALE.jog.east = 1.25, and
+   it over-corrects — measured in 256-space, the jog-east head is only
+   ~6% narrower than the stand-east head (44px vs 47px), so the correct
+   trait multiplier is 44/47 ≈ 0.94, not 0.67.  Every HAT was later
+   dialed back up per-id (JOG_EW_HAT_TUNE above, 1.10-1.25 on top of the
+   0.67), but hair/beard were left at the raw 0.67: they rendered at
+   ~71% of their standing head-coverage, and because _placeTrait anchors
+   on the trait's own crown pixel the whole deficit sheds off the
+   bottom/back of the skull — small cap riding high, bare oval below.
+   1.40 × 0.67 = 0.938 ≈ the measured ratio.  A tune (the hat pattern),
+   NOT a change to the global 0.67, so every owner-dialed hat value
+   stays exactly as rated. */
+const JOG_EW_HAIR_TUNE = { mul: 1.40 };
+function hairPoseTune(pose, dir) {
+  return (pose === 'jog' && dir === 'east') ? JOG_EW_HAIR_TUNE : null;
+}
 
 /* v2.3.1389 (owner: "the head doesn't bob with the armor" + "headwear
    needs to move left with the head"): when the fullset knight figure is
@@ -482,8 +500,24 @@ function hatPoseTune(hatId, pose, dir) {
 const FULLSET_CROWN = {
   /* v2.3.1390: smoothed track (owner: "really jittery") — the raw
      per-frame measurement stepped up to 10px between adjacent frames;
-     this glides ≤4px like body-tops itself. */
-  east: [[134, 48], [136, 48], [136, 48], [136, 48], [134, 50], [134, 52], [134, 56], [134, 56], [134, 56], [134, 56], [134, 54], [134, 50], [134, 48], [136, 48], [136, 48], [136, 50], [134, 50], [134, 52], [134, 54], [134, 56], [134, 56], [134, 52], [134, 50], [134, 48], [134, 48]],
+     this glides ≤4px like body-tops itself.
+     v2.3.1455: FLOAT precision + the sub-pixel head residual folded in
+     (the old even-integer rounding quantized the track to 2px steps),
+     so hats/hair glide with the same corrected head the player sees. */
+  east: [[134.6, 47.5], [135.6, 46.8], [136.0, 47.2], [135.4, 47.8], [134.6, 49.3], [134.6, 52.3], [135.0, 54.8], [134.9, 57.1], [134.4, 58.2], [133.9, 56.8], [134.0, 54.1], [134.1, 51.4], [134.6, 48.0], [135.6, 46.5], [136.0, 46.5], [135.6, 47.7], [134.5, 49.2], [134.2, 51.4], [134.6, 52.8], [135.0, 55.5], [134.6, 55.4], [134.0, 53.2], [134.0, 50.7], [134.1, 48.7], [134.1, 47.7]],
+};
+/* v2.3.1455 (owner: "'slivering' effect like lines are slightly cut and
+   moving while jogging where the head meets the torso armor"): the head
+   sheet's baked per-frame shift quantizes to whole sheet pixels (2px in
+   256-space at the 128px sheet) while the armor's smoothed bob moves
+   fractionally, so the head-to-collar seam breathed open/closed ±1px
+   through the jog cycle — a thin moving cut line at the neck.  This is
+   the FRACTIONAL remainder the bake couldn't carry (256-space, one
+   entry per armor frame, emitted by tools/rebuild_east_head_track.py);
+   _placePickupHead applies it as a sub-pixel y offset so the drawn head
+   rides the armor's true smooth track and the seam stays put. */
+const FULLSET_HEAD_RES = {
+  east: [0.0, -0.67, 0.22, -0.22, -0.67, -0.22, -0.67, -0.44, 0.22, -0.67, -0.89, 0.44, 0.0, 0.0, 0.0, 0.22, 0.67, 0.89, -0.67, 0.0, 0.44, 0.67, 0.67, 0.67, 0.67],
 };
 let _crownOverride = null;   // set around the trait placements when fullset is active
 function _fullsetCrown(dir, phase) {
@@ -595,7 +629,8 @@ function _placeFacialHair(display, fhId, fhColorId, pose, dir, mirror, frameIdx,
   let entry = baseEntry;
   const colored = getColoredFacialHairTextures(fhId, fhColorId);
   if (colored && baseEntry) entry = { tex: colored, meta: baseEntry.meta, fallbackTex: baseEntry.tex }; /* v2.3.1305 */
-  _placeTrait(display._facialHairSprite, entry, display, pose, dir, mirror, frameIdx, bodyScale);
+  _placeTrait(display._facialHairSprite, entry, display, pose, dir, mirror, frameIdx, bodyScale,
+    hairPoseTune(pose, dir)); /* v2.3.1454: beards share the jog-east 0.67 shortfall — same geometric correction */
 }
 /* v2.3.497: the shirt is no longer an overlay sprite -- it's baked into the
    body (torso skin retinted to the shirt color in playerSkins.getBodyFrame),
@@ -610,19 +645,13 @@ function _placeFacialHair(display, fhId, fhColorId, pose, dir, mirror, frameIdx,
 /* v2.3.748: 'shirt' is a tinted under-layer (white-base sheet x picked colour);
    it is NOT in the masked-body worn list (skin-tight, no body erase). */
 const _GEAR_SLOTS = [['shirt', '_gearShirt'], ['legs', '_gearLegs'], ['chest', '_gearChest'], ['shoulders', '_gearShoulders']];
-/* v2.3.1216: fishing-pose chest-plate de-jitter.  The fish-south chest sheet
-   (steelplate) was hand-drawn with a rod-sway ~2.1x the body's own lean AND a
-   slightly different phase, so the cuirass visibly slid around on the torso as
-   the character rocked (owner report: "jittery armor while fishing").  The
-   greaves track the body fine (relative wobble <1.3px) so only the chest needs
-   help.  These are the per-frame horizontal centroid deltas (chest minus body,
-   both measured off the shipped 128px sheets, ×2 for the 256 gear space and
-   negated to cancel) -- applying them re-anchors the plate to the body's own
-   sway each frame, dropping the relative wobble from ~12px to <1px.  Baseline
-   offset is excluded (each curve is measured from its own mean), so this only
-   removes the JITTER, not the intended resting fit.  Drop this table if the
-   fish-south chest sheet is ever re-cut to match the body lean. */
-const _FISH_CHEST_DEJITTER = [-5, -4, -6, -5, -4, -6, -5, -4, -4, -3, -2, -1, -1, 2, 2, 5, 5, 7, 5, 6, 6, 6, 6, 7, 7, 2, 2, -3, -3, -4, -4, -4];
+/* v2.3.1459: the v2.3.1216 _FISH_CHEST_DEJITTER table is GONE.  It existed
+   because the fish-south gear sheets were one stamp hand-placed with ~2.1x
+   the body's sway; tools/rebake_fish_gear.py has since re-baked all three
+   sheets (chest/shirt/legs) to warp the stamp onto the body's measured
+   per-row motion — sway, lean AND vertical bob (relative wobble now
+   <0.7px, was ~4.5).  A runtime X-only correction on top of the tracked
+   sheets would re-introduce the very slide it used to cancel. */
 /* v2.3.1361 (owner: "Try 1"): pre-composed FULL-SET armored figure.  A
    finished textured knight (helmet included, chain waist baked by the
    artist) ships per (pose,dir) at gear/fullset/steel/<pose>-<dir>.png and
@@ -709,13 +738,6 @@ function _placeGear(display, equip, pose, dir, frameIdx) {
          applies to shirt-only and legs+shirt). */
       if (_GEAR_SLOTS[s][0] === 'shirt' && pose === 'pickup' && frameIdx >= 24) {
         spr.y += 15 * sb.scale.y / DISPLAY_DS;           // v2.3.1120: 256-space offset
-      }
-      /* v2.3.1216: fishing chest-plate de-jitter -- cancel the fish sheet's
-         excess horizontal sway so the cuirass tracks the body's own lean (see
-         _FISH_CHEST_DEJITTER).  sb.scale.x carries the mirror sign, but fishing
-         is south-only (unmirrored); the /DISPLAY_DS matches the gear's own scale. */
-      if (_GEAR_SLOTS[s][0] === 'chest' && pose === 'fish') {
-        spr.x += _FISH_CHEST_DEJITTER[((frameIdx % 32) + 32) % 32] * sb.scale.x / DISPLAY_DS;
       }
       /* v2.3.1120: gear sheets are NOT display-downscaled (still 256), but the
          body transform sb.scale carries the DISPLAY_DS factor for the smaller
@@ -1825,6 +1847,19 @@ function _placePickupHead(display, sb, skinId, pantsId, shoesId, pose, dir, fram
   if (!t) return;
   if (hd.texture !== t) hd.texture = t;
   hd.x = sb.x; hd.y = sb.y;
+  /* v2.3.1455: sub-pixel seam correction — the fractional shift the
+     baked head sheet can't carry (see FULLSET_HEAD_RES).  Same
+     phase->frame mapping as getPickupHeadFrame/getGearFramePhased, so
+     the residual always matches the frame on screen; 256-space ->
+     world via sb.scale.y / DISPLAY_DS (the _placeBodyRegions factor). */
+  if (pose === 'jog' && phase != null) {
+    const _res = FULLSET_HEAD_RES[dir];
+    if (_res && _res.length) {
+      const _p = ((phase % 1) + 1) % 1;
+      const _ri = Math.min(_res.length - 1, Math.floor(_p * _res.length));
+      hd.y = sb.y + _res[_ri] * sb.scale.y / DISPLAY_DS;
+    }
+  }
   /* v2.3.1117: the head sheet is baked DOWNSCALED to save VRAM, so its frame is
      smaller than the body's 256px frame.  Scale up by 256/frame so the overlay
      still lands exactly on the body (both anchored 0.5/0.5); reads the size off
@@ -1953,7 +1988,8 @@ function _placeHair(display, hairId, hairColorId, hatId, pose, dir, mirror, fram
   let entry = baseEntry;
   const colored = getColoredHairTextures(hairId, hairColorId);
   if (colored && baseEntry) entry = { tex: colored, meta: baseEntry.meta, fallbackTex: baseEntry.tex }; /* v2.3.1305 */
-  _placeTrait(display._hairSprite, entry, display, pose, dir, mirror, frameIdx, bodyScale);
+  _placeTrait(display._hairSprite, entry, display, pose, dir, mirror, frameIdx, bodyScale,
+    hairPoseTune(pose, dir)); /* v2.3.1454: jog-east size correction (hats keep their own tune) */
   _clipHairToHat(display, hatId, pose, dir, mirror, frameIdx, bodyScale);
 }
 

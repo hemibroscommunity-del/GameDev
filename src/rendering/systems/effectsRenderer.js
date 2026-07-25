@@ -948,7 +948,7 @@ export class EffectsRenderer {
        Recolored to the player's combo via the same pipeline.  Keyed by MOVEMENT
        dir (the 5 source dirs), not the bow facing. */
     this._bowJogLegFrames = {};
-    const JOG_LEGS_VERSION = 5;   // 5: drop the synthetic pants-fill rectangle (lift + real pants cover the seam)
+    const JOG_LEGS_VERSION = 6;   // 6: v2.3.1456 pinhole fill (enclosed transparent speckles inpainted); 5: drop the synthetic pants-fill rectangle (lift + real pants cover the seam)
     for (const dir of ['south', 'east', 'north', 'northeast', 'southwest']) {
       _loadRecoloredBody(this._bowJogLegFrames, dir, '/sprites/player/jog-' + dir + '-legs.png', { fw: 256, fh: 256 }, JOG_LEGS_VERSION);
     }
@@ -1814,9 +1814,9 @@ export class EffectsRenderer {
     const _fi = Math.min(7, Math.floor(Math.max(0, f01) * 8));
     const _fa = _gt.food[_fi] || _gt.food[0];
     const _rawIcon = ({
-      fish_clownfish: '/icons/items/fish-clownfish.webp',
-      fish_trout: '/icons/items/fish-trout.webp',
-    })[fishKey] || '/icons/items/fish-minnow.webp';
+      fish_clownfish: '/icons/items/fish-clownfish.webp?v=2.3.1452',
+      fish_trout: '/icons/items/fish-trout.webp?v=2.3.1452',
+    })[fishKey] || '/icons/items/fish-minnow.webp?v=2.3.1452';
     let _ft = this._foodIconTex[_rawIcon];
     if (_ft === undefined) {
       this._foodIconTex[_rawIcon] = 'loading';
@@ -2959,10 +2959,17 @@ export class EffectsRenderer {
         const _mineEx = S._extraction;
         const _isMineTarget = !!(_mineEx && _mineEx.skill === 'mining'
           && (_mineEx.nodeRef === node || (_mineEx.nodeId != null && _mineEx.nodeId === node.id)));
-        const _wantLayer = _isMineTarget ? this.overlayLayer : this.nodeLayer;
+        /* v2.3.1464 (owner): fishing holes go BEHIND monsters — a pond
+           lies flat on the ground, so a monster walking over it should
+           cover it (unlike trees/rocks, which stay in front since
+           v2.3.1460).  groundLoot sits below entities; index 0 keeps
+           dropped loot above the water. */
+        const _wantLayer = _isMineTarget ? this.overlayLayer
+          : node.nodeType === 'fishSpot' ? this.lootLayer
+            : this.nodeLayer;
         if (node._pixiSprite.parent !== _wantLayer) {
-          if (_wantLayer === this.nodeLayer) this.nodeLayer.addChildAt(node._pixiSprite, 0);
-          else _wantLayer.addChild(node._pixiSprite);
+          if (_wantLayer === this.overlayLayer) _wantLayer.addChild(node._pixiSprite);
+          else _wantLayer.addChildAt(node._pixiSprite, 0);
         }
       } else if (node.nodeType === 'tree') {
         /* v2.3.1275: procedural fallbacks get the same +50% as the
@@ -3622,7 +3629,26 @@ export class EffectsRenderer {
       jl.anchor.set(0.5, (_waist - TOP) / (256 - TOP));
       jl.scale.set(mir * _legScale, _legScale); jl.x = x + _legDX + legShiftX; jl.y = _yMeet + legShiftY; jl.tint = 0xffffff; jl.visible = true;
     } else if (jl) { jl.visible = false; }
-    if (gearFrame && jg) { jg.texture = gearFrame; jg.anchor.set(0.5, _waist / 256); jg.scale.set(mir * _legScale, _legScale); jg.x = x + _legDX + legShiftX; jg.y = _yMeet + legShiftY; jg.tint = 0xffffff; jg.visible = true; }
+    if (gearFrame && jg) {
+      /* v2.3.1453 (owner: "jog while swinging makes the leg armor
+         disappear or super tiny; happens to arrow shooting while
+         jogging also"): v2.3.1434 stores the jog gear sheets at their
+         on-disk 128px frames (exact-texel memory cut), and patched the
+         main-body consumer (_placeGear's _gnorm) — but THIS third
+         consumer kept applying its 256-calibrated _legScale
+         (s = bodyH/188) to the now-half-size texture, rendering the
+         greaves at exactly half linear size during every MOVING swing
+         and bow shot (the bare legs underneath stay suppressed when
+         armour is worn, so below the hip there was a half-size metal
+         fragment and then nothing).  Normalize by the texture's OWN
+         frame size, the same _gnorm pattern: identity for 256-native
+         sheets, ×2 for the 128 generation — covers all four call
+         sites (sword+bow, local+remote) through this one helper.
+         legTex needs no term: the jog-<dir>-legs.png bare-leg sheets
+         load at an explicit {fw:256, fh:256} and never shrank. */
+      const _gn = 256 / ((gearFrame.frame && gearFrame.frame.width) || 256);
+      jg.texture = gearFrame; jg.anchor.set(0.5, _waist / 256); jg.scale.set(mir * _legScale * _gn, _legScale * _gn); jg.x = x + _legDX + legShiftX; jg.y = _yMeet + legShiftY; jg.tint = 0xffffff; jg.visible = true;
+    }
     else if (jg) { jg.visible = false; }
   }
 

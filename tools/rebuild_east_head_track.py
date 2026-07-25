@@ -96,11 +96,23 @@ def main():
     out = np.zeros((fh, an * fh, 4), dtype=np.uint8)
     crowns = []
     dys = []
+    res = []
     for i in range(an):
         src = hf[jmap[i]]
         # smoothed target minus RAW head bottom would re-inject the head's
         # own measurement noise — shift by the smooth-curve delta instead
-        dy = int(round((ay_s[i] + G) - hb_s[i]))
+        dyf = (ay_s[i] + G) - hb_s[i]
+        dy = int(round(dyf))
+        # v2.3.1455 (owner: "slivering ... lines slightly cut and moving
+        # while jogging where the head meets the torso armor"): the baked
+        # shift quantizes to whole sheet pixels (2px in 256-space at the
+        # 128px sheet), while the armor's smoothed bob moves fractionally
+        # — so the head-to-collar seam breathed open/closed ±1px through
+        # the cycle.  Emit the FRACTIONAL remainder per frame (256-space)
+        # for the renderer to apply as a sub-pixel y offset
+        # (FULLSET_HEAD_RES in entityRenderer.js): the drawn head then
+        # rides the armor's true smooth track and the seam stays put.
+        res.append(round((dyf - dy) * 2, 2))
         dys.append(dy)
         dst = np.zeros_like(src)
         if dy >= 0:
@@ -120,18 +132,24 @@ def main():
 
     # crown table: smooth the measured track the same way (the hat must
     # GLIDE with the head; per-frame pixel tops carry shape noise)
+    # v2.3.1455: FLOAT precision (rounding to even 256-px quantized the
+    # trait track to 2px steps), and + the render-time residual so the
+    # traits ride the same sub-pixel-corrected head the player sees.
     cx_s = smooth([c[0] for c in crowns], (1, 2, 1))
     cy_s = smooth([c[1] for c in crowns], (1, 2, 1))
-    table = [[int(round(x)) * 2, int(round(y)) * 2] for x, y in zip(cx_s, cy_s)]
+    table = [[round(x * 2, 1), round(y * 2 + res[i], 1)]
+             for i, (x, y) in enumerate(zip(cx_s, cy_s))]
 
     d = lambda a: max(abs(a[(i + 1) % len(a)] - a[i]) for i in range(len(a)))
     print('max adjacent-frame delta: dy-shift', d(dys),
-          ' crown-y', d([t[1] for t in table]))
+          ' crown-y', round(d([t[1] for t in table]), 2))
 
     Image.fromarray(out).save(HEAD)
     print(f'\nwrote {HEAD} ({an} frames)')
     print('\nFULLSET_CROWN east table (256-space [x,y] per armor frame):')
     print('  east: ' + repr(table) + ',')
+    print('\nFULLSET_HEAD_RES east table (256-space sub-pixel y per armor frame):')
+    print('  east: ' + repr(res) + ',')
 
 
 if __name__ == '__main__':

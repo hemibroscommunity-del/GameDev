@@ -294,11 +294,11 @@ export function InventoryPanel(props) {
   }, "WORN ARMOR"), /*#__PURE__*/React.createElement("div", {
     style: { display: 'flex', gap: 8, marginBottom: 8 }
   }, [
-    { slot: 'chest', name: 'Steel Plate', sub: 'Chest', icon: '/icons/items/chest-plate.webp?v=2.3.1325c' }, /* v2.3.1325: painted item set */
-    { slot: 'legs', name: 'Steel Greaves', sub: 'Legs', icon: '/icons/items/greaves.webp?v=2.3.1325c' },
+    { slot: 'chest', name: 'Steel Plate', sub: 'Chest', icon: '/icons/items/chest-plate.webp?v=2.3.1452' }, /* v2.3.1325: painted item set */
+    { slot: 'legs', name: 'Steel Greaves', sub: 'Legs', icon: '/icons/items/greaves.webp?v=2.3.1452' },
     /* v2.3.756: the t-shirt layer -- worn UNDER the chest armour (both can
        be on at once; armour always renders on top). */
-    { slot: 'shirt', name: 'T-Shirt', sub: 'Chest \u00b7 under armor', icon: '/icons/items/cloth-shirt.webp?v=2.3.1325c' }
+    { slot: 'shirt', name: 'T-Shirt', sub: 'Chest \u00b7 under armor', icon: '/icons/items/cloth-shirt.webp?v=2.3.1452' }
   ].map(function (it) {
     var on = gearWorn[it.slot];
     return /*#__PURE__*/React.createElement("div", {

@@ -256,9 +256,9 @@ function applyFishingReward(S, node, result, deps) {
        and the game layer shouldn't import the panel). */
     var _fishKey = 'fish_' + baseName.replace(/\s+/g, '_').toLowerCase();
     var _fishIcon = ({
-      fish_clownfish: '/icons/items/fish-clownfish.webp',
-      fish_trout: '/icons/items/fish-trout.webp',
-    })[_fishKey] || '/icons/items/fish-minnow.webp';
+      fish_clownfish: '/icons/items/fish-clownfish.webp?v=2.3.1452',
+      fish_trout: '/icons/items/fish-trout.webp?v=2.3.1452',
+    })[_fishKey] || '/icons/items/fish-minnow.webp?v=2.3.1452';
     _flyResourceToInventory(S, node.x, node.y - 4, _fishIcon, { pop: true });
     setRpgState(_objectSpread({}, R));
     try { localStorage.setItem('bt_rpg', JSON.stringify(R)); } catch (e) {}
@@ -279,7 +279,7 @@ function applyWoodReward(S, node, result, deps) {
        v2.3.1430 (owner: "make that true for each life skill"): upgraded to
        the fish-catch treatment — the CURRENT bag icon (icons/items/) with
        the breach-pop stage before the flight, launched from the trunk. */
-    _flyResourceToInventory(S, node.x, node.y - 60, '/icons/items/wood-log.webp', { pop: true });
+    _flyResourceToInventory(S, node.x, node.y - 60, '/icons/items/wood-log.webp?v=2.3.1452', { pop: true });
     /* When the server owns gather-node state, tell it about the harvest so
        it broadcasts the deplete + respawn to every other player.  Local
        mutation above stays as a client-prediction so the player sees the
@@ -354,7 +354,7 @@ function applyMiningReward(S, node, result, deps) {
        into the Bag — fish-catch treatment for mining too.  ore-copper is
        the only ore art in the bag catalog (ItemsPanel ORE_THUMB_DEFAULT),
        so every tier ships it until per-tier art exists. */
-    _flyResourceToInventory(S, node.x, node.y - 40, '/icons/items/ore-copper.webp', { pop: true });
+    _flyResourceToInventory(S, node.x, node.y - 40, '/icons/items/ore-copper.webp?v=2.3.1452', { pop: true });
     /* When the server owns gather-node state, tell it about the harvest so
        it broadcasts the deplete + respawn to every other player.  Local
        mutation above stays as a client-prediction so the player sees the
@@ -431,9 +431,9 @@ export function applyCookingResult(S, fishKey, kind, taps, deps) {
         var _lx = (_cookNode && _cookNode.x != null) ? _cookNode.x : S.player.x;
         var _ly = (_cookNode && _cookNode.y != null) ? _cookNode.y - 36 : S.player.y - 20;
         var _cookedIcon = ({
-          fish_clownfish: '/icons/items/cooked-clownfish.webp',
-          fish_trout: '/icons/items/cooked-trout.webp',
-        })[fishKey] || '/icons/items/cooked-minnow.webp';
+          fish_clownfish: '/icons/items/cooked-clownfish.webp?v=2.3.1452',
+          fish_trout: '/icons/items/cooked-trout.webp?v=2.3.1452',
+        })[fishKey] || '/icons/items/cooked-minnow.webp?v=2.3.1452';
         _flyResourceToInventory(S, _lx, _ly, _cookedIcon, { pop: true });
       } catch (e) {}
     } else {

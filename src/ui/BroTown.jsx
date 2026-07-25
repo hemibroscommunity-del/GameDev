@@ -8315,10 +8315,10 @@ export var BroTown = function BroTown(_ref0) {
     var s = (n === null || n === void 0 ? void 0 : n.skill) || 'mining';
     var _titles = { mining: 'MINE', woodcutting: 'CHOP', fishing: 'FISH', cooking: 'COOK' };
     var _icons = {
-      mining: '/icons/items/ore-copper.webp',
-      woodcutting: '/icons/items/wood-log.webp',
-      fishing: '/icons/items/fish-minnow.webp',
-      cooking: '/icons/items/cooked-minnow.webp'
+      mining: '/icons/items/ore-copper.webp?v=2.3.1452',
+      woodcutting: '/icons/items/wood-log.webp?v=2.3.1452',
+      fishing: '/icons/items/fish-minnow.webp?v=2.3.1452',
+      cooking: '/icons/items/cooked-minnow.webp?v=2.3.1452'
     };
     var _cols = { mining: '#38bdf8', woodcutting: '#fbbf24', fishing: '#6366f1', cooking: '#fb923c' };
     var R = stateRef.current.rpg;

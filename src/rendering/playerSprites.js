@@ -119,7 +119,7 @@ const POSES = ['stand', 'jog', 'hit', 'pickup', 'attack', 'mine', 'fish'];
    belt re-baked from chainbelt.png.  anchors.json NE hand positions are
    measured from the wristband marker per frame -- real data, replacing the
    stale 48-entry list from the pre-v2.3.6xx sheet. */
-const VERSION = 79; /* v2.3.1390: east head bob smoothed — track the armor's motion, not its measurement noise */
+const VERSION = 83; /* v2.3.1457: jog-southwest-head regenerated (SW re-cut).  v2.3.1456: jog body/leg sheets pinhole-filled (enclosed transparent speckles — the "background through the face/body" dots).  v2.3.1455: jog-east-head re-baked.  v2.3.1452: pickup defringe. */
 /* Re-exported so the skin-recolor pipeline (playerSkins.js) loads the same
    cache-busted sheet URLs and never drifts onto a stale cached image. */
 export const SPRITE_VERSION = VERSION;

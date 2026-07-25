@@ -11,10 +11,14 @@ import { Application, Container } from 'pixi.js';
  * this export sat unused -- two copies of the same 15 names is a silent
  * drift hazard, so the world/screen splits are now THE definition and
  * LAYER_NAMES derives from them.
+ * v2.3.1460 (owner): gatherNodes moved ABOVE entities — monsters used to
+ * draw over trees/rocks/fishing holes whenever they overlapped, hiding
+ * the resource.  Nodes now cover monsters; the local player (and the
+ * chop/cook stand-ins that live in gatherNodes) keep drawing above both.
  */
 const WORLD_LAYER_NAMES = [
   'tiles', 'groundDetails', 'groundSplatter', 'groundLoot',
-  'gatherNodes', 'telegraphs', 'entities', 'player',
+  'telegraphs', 'entities', 'gatherNodes', 'player',
   'projectiles', 'particles', 'damageNumbers', 'overlayWorld',
 ];
 const SCREEN_LAYER_NAMES = ['atmosphere', 'screenFX', 'hud'];
