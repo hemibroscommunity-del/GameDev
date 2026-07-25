@@ -1515,6 +1515,10 @@ export function planPrewarmProgress() {
   for (const pose of ['stand', 'jog']) {
     for (const dir of DIRS) per += playerFrameCount(pose, dir) || 1;
   }
+  /* v2.3.1474: the fish pose's 32 south frames join the WORN pass only
+     (see prewarmMaskedBodyFrames) — counted here so the loading bar stays
+     monotonic. */
+  const _fishPer = playerFrameCount('fish', 'south') || 0;
   const anyWorn = ['chest', 'legs'].some((sl) => { const it = getEquip(sl); return it && it !== 'none'; });
   /* v2.3.1118: the alt-worn pass bakes speculative families no longer.
      v2.3.1236: reversed per owner directive ("preload EVERYTHING on the
@@ -1522,7 +1526,7 @@ export function planPrewarmProgress() {
      (see _catalogWornSets), so plan: masked worn pass (armoured only) +
      one full pass per catalog family. */
   const families = _catalogWornSets().length;
-  prewarmProgress.total = per * ((anyWorn ? 1 : 0) + families);
+  prewarmProgress.total = per * ((anyWorn ? 1 : 0) + families) + (anyWorn ? _fishPer : 0);
 }
 
 /* v2.3.1236: every masked-armour family reachable from the gear catalog --
@@ -1637,8 +1641,21 @@ export async function prewarmMaskedBodyFrames(opts) {
   });
   let sinceYield = 0;
   let chunkT0 = (typeof performance !== 'undefined') ? performance.now() : 0;
-  for (const pose of ['stand', 'jog']) {
-    for (const dir of DIRS) {
+  /* v2.3.1474 (owner: "flickering orange hand during the fully armored
+     fishing animation"): 'fish' joins the prewarm.  The masked-body bake
+     is per (body frame, worn set), and _maskedBodyFrameInner deliberately
+     returns the RAW body for a frame whose bake isn't ready yet — so the
+     32 unprewarmed fish frames each rendered the un-erased body once, and
+     the bare hands/arms flashed orange through the plate on the first
+     cycle (and again after any eviction).  Exactly the lazy
+     load-on-first-use pattern CLAUDE.md forbids; the loading screen is
+     allowed to take longer instead.  South only (the pose ships south
+     only) and only for the CURRENTLY worn set — the alt-worn pass stays
+     stand/jog so this costs ~32 bakes, not 32 per gear family, keeping
+     the iPhone VRAM budget intact. */
+  const _POSES = ['stand', 'jog', 'fish'];
+  for (const pose of _POSES) {
+    for (const dir of (pose === 'fish' ? ['south'] : DIRS)) {
       const fc = playerFrameCount(pose, dir) || 1;
       for (let f = 0; f < fc; f++) {
         prewarmProgress.done++;
