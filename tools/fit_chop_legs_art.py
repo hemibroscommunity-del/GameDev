@@ -73,26 +73,41 @@ def main():
         waist = int(rows[0]) if len(rows) else 115
         return waist, feet                 # waist row, feet row (body px)
 
-    # scale by WIDTH match to the old greaves footprint — height-fitting
-    # to the waist band ballooned the chunkier new art 40% past the
-    # figure ("legs dwarf the torso").  The old footprint's coverage is
-    # owner-verified; matching its width keeps the proportions.
+    # ---- BODY-anchored fit (owner on the footprint-matched attempt:
+    # "legs need to be matched up better ... use the torso ... for
+    # reference on where to scale and position the legs").  The body's
+    # own waist row (112, constant all 12 frames), feet row (218/219)
+    # and pelvis centroid are the anchors: the chain band tops out at
+    # the waist, the sabatons land on the feet line, and the armor's
+    # own chain-band centroid rides the pelvis.  Scale is the MEDIAN of
+    # (waist..feet)/blob-height — constant, so the armor never pulses.
+    def anchors(k):
+        f = body[:, (12 + k) * 240:(13 + k) * 240]
+        br = f[:, :, 0].astype(int); bg = f[:, :, 1].astype(int)
+        bb = f[:, :, 2].astype(int); ba = f[:, :, 3]
+        olive = (ba > 40) & (abs(br - bg) < 25) & (bg - bb > 25) & \
+                (bg > 70) & (bg < 150)
+        sash = (ba > 40) & (br > 180) & (br - bg > 90) & (bb < 70)
+        po = np.where(olive[140:166])
+        pcx = float(po[1].mean())
+        c0, c1 = int(pcx - 24), int(pcx + 25)
+        m = (olive | sash)[:, c0:c1]
+        waist = next((y for y in range(112, 151) if m[y].sum() >= 4), 115)
+        feet = int(np.where(ba.any(axis=1))[0][-1])
+        return pcx, waist, feet
+
     ratios = []
     blobs_data = []
     for k, (l, x0, y0, x1, y1) in enumerate(boxes):
-        of = old[:, k * GW:(k + 1) * GW]
-        oa = of[:, :, 3] > 40
-        ol, on = ndimage.label(oa)
-        osz = ndimage.sum(oa, ol, range(1, on + 1))
-        oys, oxs = np.where(ol == (np.argmax(osz) + 1))
-        ratios.append((oxs.max() - oxs.min() + 1) / (x1 - x0 + 1))
-        blobs_data.append((l, x0, y0, x1, y1, 0))
+        pcx, waist, feet = anchors(k)
+        ratios.append((feet - waist + 1) * 2 / (y1 - y0 + 1))
+        blobs_data.append((l, x0, y0, x1, y1, (pcx, feet)))
     s = float(np.median(ratios))
     print(f'constant scale s = {s:.3f} (per-frame ratios '
           f'{[round(r, 2) for r in ratios]})')
 
     out = []
-    for k, (l, x0, y0, x1, y1, feet) in enumerate(blobs_data):
+    for k, (l, x0, y0, x1, y1, anchor) in enumerate(blobs_data):
         # --- extract + defringe the new blob ---
         crop = up[y0:y1 + 1, x0:x1 + 1].copy()
         m = (lbl[y0:y1 + 1, x0:x1 + 1] == l)
@@ -107,18 +122,16 @@ def main():
             fy, fx = np.where(fringe)
             crop[fy, fx, :3] = crop[iy[fy, fx], ix[fy, fx], :3]
 
-        # --- per-frame anchor: old main component (mid-thigh down) is
-        # stable — use its x center + bottom (the feet line) ---
+        # --- per-frame anchor: the BODY's pelvis + feet line; the
+        # armor's own chain-band centroid (top fifth of the blob) is
+        # what rides the pelvis ---
         of = old[:, k * GW:(k + 1) * GW]
-        oa = of[:, :, 3] > 40
-        ol, on = ndimage.label(oa)
-        osz = ndimage.sum(oa, ol, range(1, on + 1))
-        main = ol == (np.argmax(osz) + 1)
-        oys, oxs = np.where(main)
-        cx = (oxs.min() + oxs.max()) / 2
-        bot = oys.max()
-
+        pcx, feet = anchor
         nh, nw = crop.shape[:2]
+        bandm = crop[:max(1, nh // 5), :, 3] > 40
+        band_cx = float(np.where(bandm)[1].mean())
+        cx = pcx * 2 + (nw / 2 - band_cx) * s   # blob center s.t. the scaled band lands on the pelvis
+        bot = feet * 2 + 1
         pre = crop.astype(float)
         pre[:, :, :3] *= pre[:, :, 3:4] / 255.0
         newW, newH = max(1, int(round(nw * s))), max(1, int(round(nh * s)))
