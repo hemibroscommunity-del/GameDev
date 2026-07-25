@@ -645,19 +645,13 @@ function _placeFacialHair(display, fhId, fhColorId, pose, dir, mirror, frameIdx,
 /* v2.3.748: 'shirt' is a tinted under-layer (white-base sheet x picked colour);
    it is NOT in the masked-body worn list (skin-tight, no body erase). */
 const _GEAR_SLOTS = [['shirt', '_gearShirt'], ['legs', '_gearLegs'], ['chest', '_gearChest'], ['shoulders', '_gearShoulders']];
-/* v2.3.1216: fishing-pose chest-plate de-jitter.  The fish-south chest sheet
-   (steelplate) was hand-drawn with a rod-sway ~2.1x the body's own lean AND a
-   slightly different phase, so the cuirass visibly slid around on the torso as
-   the character rocked (owner report: "jittery armor while fishing").  The
-   greaves track the body fine (relative wobble <1.3px) so only the chest needs
-   help.  These are the per-frame horizontal centroid deltas (chest minus body,
-   both measured off the shipped 128px sheets, ×2 for the 256 gear space and
-   negated to cancel) -- applying them re-anchors the plate to the body's own
-   sway each frame, dropping the relative wobble from ~12px to <1px.  Baseline
-   offset is excluded (each curve is measured from its own mean), so this only
-   removes the JITTER, not the intended resting fit.  Drop this table if the
-   fish-south chest sheet is ever re-cut to match the body lean. */
-const _FISH_CHEST_DEJITTER = [-5, -4, -6, -5, -4, -6, -5, -4, -4, -3, -2, -1, -1, 2, 2, 5, 5, 7, 5, 6, 6, 6, 6, 7, 7, 2, 2, -3, -3, -4, -4, -4];
+/* v2.3.1459: the v2.3.1216 _FISH_CHEST_DEJITTER table is GONE.  It existed
+   because the fish-south gear sheets were one stamp hand-placed with ~2.1x
+   the body's sway; tools/rebake_fish_gear.py has since re-baked all three
+   sheets (chest/shirt/legs) to warp the stamp onto the body's measured
+   per-row motion — sway, lean AND vertical bob (relative wobble now
+   <0.7px, was ~4.5).  A runtime X-only correction on top of the tracked
+   sheets would re-introduce the very slide it used to cancel. */
 /* v2.3.1361 (owner: "Try 1"): pre-composed FULL-SET armored figure.  A
    finished textured knight (helmet included, chain waist baked by the
    artist) ships per (pose,dir) at gear/fullset/steel/<pose>-<dir>.png and
@@ -744,13 +738,6 @@ function _placeGear(display, equip, pose, dir, frameIdx) {
          applies to shirt-only and legs+shirt). */
       if (_GEAR_SLOTS[s][0] === 'shirt' && pose === 'pickup' && frameIdx >= 24) {
         spr.y += 15 * sb.scale.y / DISPLAY_DS;           // v2.3.1120: 256-space offset
-      }
-      /* v2.3.1216: fishing chest-plate de-jitter -- cancel the fish sheet's
-         excess horizontal sway so the cuirass tracks the body's own lean (see
-         _FISH_CHEST_DEJITTER).  sb.scale.x carries the mirror sign, but fishing
-         is south-only (unmirrored); the /DISPLAY_DS matches the gear's own scale. */
-      if (_GEAR_SLOTS[s][0] === 'chest' && pose === 'fish') {
-        spr.x += _FISH_CHEST_DEJITTER[((frameIdx % 32) + 32) % 32] * sb.scale.x / DISPLAY_DS;
       }
       /* v2.3.1120: gear sheets are NOT display-downscaled (still 256), but the
          body transform sb.scale carries the DISPLAY_DS factor for the smaller
