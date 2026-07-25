@@ -2959,10 +2959,17 @@ export class EffectsRenderer {
         const _mineEx = S._extraction;
         const _isMineTarget = !!(_mineEx && _mineEx.skill === 'mining'
           && (_mineEx.nodeRef === node || (_mineEx.nodeId != null && _mineEx.nodeId === node.id)));
-        const _wantLayer = _isMineTarget ? this.overlayLayer : this.nodeLayer;
+        /* v2.3.1464 (owner): fishing holes go BEHIND monsters — a pond
+           lies flat on the ground, so a monster walking over it should
+           cover it (unlike trees/rocks, which stay in front since
+           v2.3.1460).  groundLoot sits below entities; index 0 keeps
+           dropped loot above the water. */
+        const _wantLayer = _isMineTarget ? this.overlayLayer
+          : node.nodeType === 'fishSpot' ? this.lootLayer
+            : this.nodeLayer;
         if (node._pixiSprite.parent !== _wantLayer) {
-          if (_wantLayer === this.nodeLayer) this.nodeLayer.addChildAt(node._pixiSprite, 0);
-          else _wantLayer.addChild(node._pixiSprite);
+          if (_wantLayer === this.overlayLayer) _wantLayer.addChild(node._pixiSprite);
+          else _wantLayer.addChildAt(node._pixiSprite, 0);
         }
       } else if (node.nodeType === 'tree') {
         /* v2.3.1275: procedural fallbacks get the same +50% as the
