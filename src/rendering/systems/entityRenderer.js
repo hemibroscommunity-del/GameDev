@@ -4650,7 +4650,17 @@ export class EntityRenderer {
     const _chopHide = _exSkill === 'woodcutting' || _exSkill === 'cooking' || !!S._firemaking;
     display.visible = !_chopHide;
     display.x = P.x;
-    display.y = P.y;
+    /* v2.3.1476 (owner: "move the stone that comes with the mining
+       animation like another 8 pixels up ... it sits a little beneath
+       the ore sprite"): the mine-south sheet has a rock baked in under
+       the boots, and v2.3.854 already draws the real ore vein ABOVE the
+       player to hide it — but the baked rock pokes out below.  Erasing
+       it from the art isn't an option: it is one connected blob with
+       the boots (checked), so a cut takes the feet with it.  Lifting
+       the whole mining figure 8px tucks the baked rock behind the ore
+       instead, and moves body + gear + traits + tool together so
+       nothing can drift apart. */
+    display.y = P.y - (_exSkill === 'mining' ? 8 : 0);
 
     /* v2.3.858: per-zone player render scale -- shrink the avatar on vista
        maps (e.g. the Overlook) so it doesn't dwarf the landscape.

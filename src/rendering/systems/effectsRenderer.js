@@ -4421,7 +4421,7 @@ export class EffectsRenderer {
        player's side, faces the trunk (source faces right -> flip when the
        tree is on the player's LEFT). */
     if (ex.skill === 'woodcutting' && this.chopSprite && this._chopFrames.length) {
-      const CHOP_H = 112;         // drawn height; v2.3.1348: 84 -> 112 (+33%, owner request). Gear layers + traits derive from this same transform, so everything scales together.
+      const CHOP_H = 95;          // drawn height; v2.3.1348: 84 -> 112 (+33%, owner request); v2.3.1476: 112 -> 95 (-15%, owner). Gear layers + traits derive from this same transform, so everything scales together.
       const CHOP_OFFSET = 30;     // px from the trunk to the figure's centre
       const CHOP_FRAME_MS = 45;   // ~22fps -> ~1.1s per swing loop
       /* v2.3.1131: play only the 12 downswing frames (source indices 12-23) --

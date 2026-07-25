@@ -481,7 +481,12 @@ export function updateArrows(S, deps) {
                    back 3x.  v2.3.1356: owner — monster bounce-back
                    reduced 75% (23/8 -> 6/2; ratio kept).
                    v2.3.1402: owner — all knockback -50% (6/2 -> 3/1). */
-                var _projKb = a.isSpecial ? 3 : 1;
+                /* v2.3.1476 (owner: "remove regular arrow attack knockback
+                   by 75%"): the REGULAR arrow drops 1 -> 0.25.  Scoped to
+                   arrows: the special keeps its 3 (it is the heavy shot's
+                   whole read), and staff bolts keep 1 — they are not
+                   arrows, and nothing was said about magic. */
+                var _projKb = a.isSpecial ? 3 : (a.isStaff ? 1 : 0.25);
                 m.x += Math.cos(kba) * _projKb;
                 m.y += Math.sin(kba) * _projKb;
                 /* Knockback recovery -- see melee path; pauses
