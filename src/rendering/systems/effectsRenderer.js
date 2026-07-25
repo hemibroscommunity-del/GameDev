@@ -948,7 +948,7 @@ export class EffectsRenderer {
        Recolored to the player's combo via the same pipeline.  Keyed by MOVEMENT
        dir (the 5 source dirs), not the bow facing. */
     this._bowJogLegFrames = {};
-    const JOG_LEGS_VERSION = 5;   // 5: drop the synthetic pants-fill rectangle (lift + real pants cover the seam)
+    const JOG_LEGS_VERSION = 6;   // 6: v2.3.1456 pinhole fill (enclosed transparent speckles inpainted); 5: drop the synthetic pants-fill rectangle (lift + real pants cover the seam)
     for (const dir of ['south', 'east', 'north', 'northeast', 'southwest']) {
       _loadRecoloredBody(this._bowJogLegFrames, dir, '/sprites/player/jog-' + dir + '-legs.png', { fw: 256, fh: 256 }, JOG_LEGS_VERSION);
     }
