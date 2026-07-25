@@ -468,6 +468,24 @@ function hatPoseTune(hatId, pose, dir) {
   if (pose === 'stand') return STAND_HAT_TUNE[hatId] || null;
   return null;
 }
+/* v2.3.1454 (owner: east jog "hair sits up too high and is too small on
+   the head", reading as an oval head): the v2.3.1349 global 0.67 was a
+   hand-dialed "shrink 33%" against BODY_DIR_SCALE.jog.east = 1.25, and
+   it over-corrects — measured in 256-space, the jog-east head is only
+   ~6% narrower than the stand-east head (44px vs 47px), so the correct
+   trait multiplier is 44/47 ≈ 0.94, not 0.67.  Every HAT was later
+   dialed back up per-id (JOG_EW_HAT_TUNE above, 1.10-1.25 on top of the
+   0.67), but hair/beard were left at the raw 0.67: they rendered at
+   ~71% of their standing head-coverage, and because _placeTrait anchors
+   on the trait's own crown pixel the whole deficit sheds off the
+   bottom/back of the skull — small cap riding high, bare oval below.
+   1.40 × 0.67 = 0.938 ≈ the measured ratio.  A tune (the hat pattern),
+   NOT a change to the global 0.67, so every owner-dialed hat value
+   stays exactly as rated. */
+const JOG_EW_HAIR_TUNE = { mul: 1.40 };
+function hairPoseTune(pose, dir) {
+  return (pose === 'jog' && dir === 'east') ? JOG_EW_HAIR_TUNE : null;
+}
 
 /* v2.3.1389 (owner: "the head doesn't bob with the armor" + "headwear
    needs to move left with the head"): when the fullset knight figure is
@@ -595,7 +613,8 @@ function _placeFacialHair(display, fhId, fhColorId, pose, dir, mirror, frameIdx,
   let entry = baseEntry;
   const colored = getColoredFacialHairTextures(fhId, fhColorId);
   if (colored && baseEntry) entry = { tex: colored, meta: baseEntry.meta, fallbackTex: baseEntry.tex }; /* v2.3.1305 */
-  _placeTrait(display._facialHairSprite, entry, display, pose, dir, mirror, frameIdx, bodyScale);
+  _placeTrait(display._facialHairSprite, entry, display, pose, dir, mirror, frameIdx, bodyScale,
+    hairPoseTune(pose, dir)); /* v2.3.1454: beards share the jog-east 0.67 shortfall — same geometric correction */
 }
 /* v2.3.497: the shirt is no longer an overlay sprite -- it's baked into the
    body (torso skin retinted to the shirt color in playerSkins.getBodyFrame),
@@ -1953,7 +1972,8 @@ function _placeHair(display, hairId, hairColorId, hatId, pose, dir, mirror, fram
   let entry = baseEntry;
   const colored = getColoredHairTextures(hairId, hairColorId);
   if (colored && baseEntry) entry = { tex: colored, meta: baseEntry.meta, fallbackTex: baseEntry.tex }; /* v2.3.1305 */
-  _placeTrait(display._hairSprite, entry, display, pose, dir, mirror, frameIdx, bodyScale);
+  _placeTrait(display._hairSprite, entry, display, pose, dir, mirror, frameIdx, bodyScale,
+    hairPoseTune(pose, dir)); /* v2.3.1454: jog-east size correction (hats keep their own tune) */
   _clipHairToHat(display, hatId, pose, dir, mirror, frameIdx, bodyScale);
 }
 
