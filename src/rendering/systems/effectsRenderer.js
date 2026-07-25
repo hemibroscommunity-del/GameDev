@@ -624,6 +624,20 @@ export class EffectsRenderer {
         this._chopFrames.push(new Texture({ source: tex.source, frame: new Rectangle(i * FW, 0, FW, FH) }));
       }
     }).catch((err) => console.warn('[chop-strip] load failed', err));
+    /* v2.3.1468: legs-erased lumberjack, swapped in while leg armour is
+       equipped — the cook-strip-legless pattern (v2.3.1114).  The
+       regenerated greaves art's stances don't pixel-match the body's,
+       so the bare legs peeked around the armor; steel-filling the peeks
+       (v2.3.1466) read as "duplicating another body beneath the legs"
+       (owner).  With the legless body the armor legs ARE the legs. */
+    this._chopLeglessFrames = [];
+    _fxLoad('/sprites/skills/chop-strip-legless.webp').then((tex) => {
+      const FW = 240, FH = 220;
+      const n = Math.max(1, Math.round(tex.width / FW));
+      for (let i = 0; i < n; i++) {
+        this._chopLeglessFrames.push(new Texture({ source: tex.source, frame: new Rectangle(i * FW, 0, FW, FH) }));
+      }
+    }).catch((err) => console.warn('[chop-strip-legless] load failed', err));
 
     /* v2.3.1131: gear layers for the woodcutting chopper (mirror of the cook
        stand-in).  Shirt / leg-armour / chest-plate drawn over the lumberjack when
@@ -4406,7 +4420,17 @@ export class EffectsRenderer {
       const sp = this.chopSprite;
       const k = Math.floor(now / CHOP_FRAME_MS) % CHOP_COUNT;
       const fi = Math.min(this._chopFrames.length - 1, CHOP_BASE + k);
-      sp.texture = this._chopFrames[fi];
+      /* v2.3.1468: with leg armour equipped, draw the HOLLOW body (legs
+         erased, silhouette outline kept) so the lumberjack's own legs
+         can't show around the greaves — the cook stand-in's v2.3.1114
+         trick.  Gated on the greaves frame RESOLVING (not merely on
+         legs being equipped, as cook does): a legs item with no chop
+         art, or a sheet still loading, would otherwise render a
+         legless lumberjack with nothing drawn over the gap. */
+      const _chopLegsTex = this._gearStripFrame('legs', getEquip('legs'), 'chop', 'west', 480, k);
+      const _chopLegsOn = !!_chopLegsTex
+        && this._chopLeglessFrames.length === this._chopFrames.length;
+      sp.texture = (_chopLegsOn ? this._chopLeglessFrames : this._chopFrames)[fi];
       const s = CHOP_H / 220;
       sp.scale.set(chopSign < 0 ? -s : s, s);  // flip to face the trunk
       sp.x = node.x - chopSign * CHOP_OFFSET;
@@ -4428,7 +4452,7 @@ export class EffectsRenderer {
          _placeSwingShirt tints it to the player's chosen shirt colour (and hides
          it when a chest plate is worn, which replaces it). */
       this._placeSwingShirt(this.chopShirtSprite, placeChopLayer, getShirt(), getEquip('chest'), 'chop', 'west', 480, k, getShirtColor());
-      placeChopLayer(this.chopLegsSprite,  this._gearStripFrame('legs',  getEquip('legs'),  'chop', 'west', 480, k));
+      placeChopLayer(this.chopLegsSprite,  _chopLegsTex);
       placeChopLayer(this.chopChestSprite, this._gearStripFrame('chest', getEquip('chest'), 'chop', 'west', 480, k));
       /* v2.3.847: chop hit sfx on the swing's strike frame (woodcutting had
          none).  Fires once per loop — only on the transition INTO the strike

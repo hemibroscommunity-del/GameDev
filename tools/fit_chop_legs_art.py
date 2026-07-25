@@ -152,43 +152,13 @@ def main():
         dst.paste(Image.fromarray(rs[sy0:sy0 + h, sx0:sx0 + w]),
                   (dx0, dy0),
                   Image.fromarray(rs[sy0:sy0 + h, sx0:sx0 + w]))
-        res = np.array(dst)
-        # carry over the old sheet's coverage ABOVE the new art's top —
-        # the v2.3.1463 chain fill over the waist sash; without it the
-        # orange sash peeks between chest hem and the new chain band
-        keep = of[:dy0].copy()
-        km = keep[:, :, 3] > 40
-        res[:dy0][km] = keep[km]
-        # final seal: any waist-band sash/pants pixel the new silhouette
-        # leaves bare (the new plates are cut differently from the old)
-        # gets the old frame's covering pixel (chain or plate)
-        bfr = body[:, (12 + k) * 240:(13 + k) * 240]
-        br = bfr[:, :, 0].astype(int); bg = bfr[:, :, 1].astype(int)
-        bb = bfr[:, :, 2].astype(int); ba = bfr[:, :, 3]
-        # any leg pixel: olive pants, gray shin, near-black boot, orange
-        # sash — the new art's stances don't exactly match the body's
-        # (worst on the wide backswing frames), so uncovered body legs
-        # must render as the old covering steel, not as bare cloth/skin.
-        # Browns (axe handle) and skin stay excluded.
-        gray = (abs(br - bg) < 18) & (abs(bg - bb) < 18) & (br < 170)
-        bare = (ba > 40) & (
-            ((abs(br - bg) < 40) & (bg - bb > 15) & (bg > 55) & (bg < 165)) |
-            ((br > 150) & (br - bg > 70) & (bb < 75)) | gray)
-        bare[:110] = False
-        bare[220:] = False
-        chf = chest[:, k * GW:(k + 1) * GW]
-        cov = (np.array(Image.fromarray(res).resize((FW, FH), Image.NEAREST))[:, :, 3] > 40) | \
-              (np.array(Image.fromarray(np.ascontiguousarray(chf)).resize((FW, FH), Image.NEAREST))[:, :, 3] > 40)
-        hys, hxs = np.where(bare & ~cov)
-        filled = 0
-        for (y, x) in zip(hys, hxs):
-            blk = of[y * 2:y * 2 + 2, x * 2:x * 2 + 2]
-            bm = blk[:, :, 3] > 40
-            if bm.any():
-                tgt = res[y * 2:y * 2 + 2, x * 2:x * 2 + 2]
-                tgt[bm] = blk[bm]
-                filled += int(bm.sum())
-        out.append(res)
+        # v2.3.1468: NO seal pass.  v2.3.1466 pasted the previous sheet's
+        # steel wherever the new stances left body leg showing — owner:
+        # "it's duplicating another body beneath the legs".  The hollow
+        # chop body (make_chop_legless.py, swapped in when greaves are
+        # worn) removes the thing being covered, so the armor stands
+        # alone and nothing needs layering underneath.
+        out.append(np.array(dst))
         print(f'k{k:2d}: blob {nw}x{nh} -> {newW}x{newH} at ({dx0},{dy0})')
 
     Image.fromarray(np.concatenate(out, axis=1)).save(GEAR)
