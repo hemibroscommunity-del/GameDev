@@ -1507,9 +1507,15 @@ export const prewarmProgress = { done: 0, total: 0 };
    'hit' joined stand/jog when the recoil finally got its own chest/legs sheets
    -- 6 frames x 5 dirs = 30 more 256x256 bakes (~8MB, ~3% of what v2.3.1407
    cut).  Worth it: the bake would otherwise land on the exact frame a monster
-   connects with you.  If iPhone context loss ever returns, this list is the
-   first thing to trim back to ['stand', 'jog']. */
-const PREWARM_POSES = ['stand', 'jog', 'hit'];
+   connects with you.  v2.3.1478: + 'mine' (south only, 14 frames) once the
+   pickaxe swing got its own sheets -- the mine BODY sheet was deliberately
+   left lazy back in v2.3.1118 as "pure VRAM waste", which was true while the
+   pose had no armour to bake against.  If iPhone context loss ever returns,
+   this list is the first thing to trim back to ['stand', 'jog']. */
+const PREWARM_POSES = ['stand', 'jog', 'hit', 'mine'];
+/* The gather poses are authored SOUTH-ONLY -- walking them through all five
+   dirs would bake four empty frames per pose and log four 404s per slot. */
+const prewarmDirs = (pose, dirs) => (pose === 'mine' ? ['south'] : dirs);
 
 /* v2.3.701: plan the WHOLE intro workload up front so the loading bar is
    monotonic.  Previously each pass added its own count to `total` when it
@@ -1521,7 +1527,7 @@ export function planPrewarmProgress() {
   const DIRS = ['south', 'east', 'north', 'northeast', 'southwest'];
   let per = 0;
   for (const pose of PREWARM_POSES) {
-    for (const dir of DIRS) per += playerFrameCount(pose, dir) || 1;
+    for (const dir of prewarmDirs(pose, DIRS)) per += playerFrameCount(pose, dir) || 1;
   }
   const anyWorn = ['chest', 'legs'].some((sl) => { const it = getEquip(sl); return it && it !== 'none'; });
   /* v2.3.1118: the alt-worn pass bakes speculative families no longer.
@@ -1646,7 +1652,7 @@ export async function prewarmMaskedBodyFrames(opts) {
   let sinceYield = 0;
   let chunkT0 = (typeof performance !== 'undefined') ? performance.now() : 0;
   for (const pose of PREWARM_POSES) {
-    for (const dir of DIRS) {
+    for (const dir of prewarmDirs(pose, DIRS)) {
       const fc = playerFrameCount(pose, dir) || 1;
       for (let f = 0; f < fc; f++) {
         prewarmProgress.done++;
@@ -1734,7 +1740,7 @@ export async function prewarmAltWornSets(opts) {
   for (const set of SETS) {
     const sT = null, sK = 'none';   /* v2.3.756: shirtless always */
     for (const pose of PREWARM_POSES) {
-      for (const dir of DIRS) {
+      for (const dir of prewarmDirs(pose, DIRS)) {
         const fc = playerFrameCount(pose, dir) || 1;
         for (let f = 0; f < fc; f++) {
           if (seq !== _altPrewarmSeq) return;

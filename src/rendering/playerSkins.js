@@ -738,6 +738,12 @@ export function preloadBodyAll() {
      shrinking the head (v2.3.1117) and dropping the mine sheet -- and MINE stays
      lazy here (irrelevant to looting, pure VRAM waste otherwise). */
   prewarm('pickup', 'south');
+  /* v2.3.1478: MINE is no longer lazy either.  The note above was written when
+     the pickaxe swing had no armour to draw -- now that mine-south ships gear
+     sheets, its first use pays a body recolour AND 14 masked bakes at the
+     moment the player starts a gather.  The sheet is 1792x128 on disk, so at
+     DISPLAY_DS=2 this is a few hundred KB. */
+  prewarm('mine', 'south');
   const headKey = (skinId || 'default') + '/' + (pantsId || 'default') + '/' + (shoesId || 'default') + '|pickup-south';
   if (_pickupHeadSheets[headKey] === undefined) tasks.push(_buildPickupHeadSheet(headKey, 'pickup', 'south', skinT, pantsT, shoesT));
   return Promise.all(tasks);
