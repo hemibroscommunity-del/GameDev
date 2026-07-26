@@ -2942,7 +2942,15 @@ export class EffectsRenderer {
          vein so the south-facing swing lines up over the rock. Twinkle the spot
          when the player is nearby; turns green once they're standing on it. */
       if (node.nodeType === 'oreVein') {
-        const sx = node.x, sy = node.y - TILE;
+        /* v2.3.1501: the marker follows the rock's north edge, not a fixed tile
+           offset -- the vein is solid now, so one tile north is INSIDE it (and
+           was 4x inside it on a tier-10 rock, whose art is 310px tall).  Same
+           derivation as oreStandSpot in BroTown.jsx. */
+        const _sp = node._pixiSprite;
+        const _top = (_sp && !_sp.destroyed && _sp.height > 2)
+          ? _sp.y - _sp.height * (_sp.anchor ? _sp.anchor.y : 0.5)
+          : node.y - TILE + 14;
+        const sx = node.x, sy = _top - 14;
         const sd2 = (px - sx) * (px - sx) + (py - sy) * (py - sy);
         if (sd2 < 180 * 180) {
           const tw = 0.55 + 0.45 * Math.sin(now / 200 + node.x);

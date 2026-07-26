@@ -309,54 +309,74 @@ function nodeWorldBox(S, n) {
 /* v2.3.1500 (owner): "make the player unable to walk over ore to mine, just
    the base of trees ... and make ponds unwalkable."
 
-   Returned as an ELLIPSE rather than the art box, because the movement code
-   resolves each axis separately: sliding along a box catches on its corners,
-   an ellipse lets you round it.
+   v2.3.1501: MEASURED FROM THE SPRITE BOX, not from the node anchor.  The
+   first cut centred every shape on (n.x, n.y) and got ponds right and ore and
+   trees badly wrong, because a pond's art is centred on its anchor while ore
+   and tree art is anchored at the BASE and drawn upward.  A flat footprint at
+   the anchor therefore matched sideways and blocked nothing at all from the
+   north: tools/qa/qa-node-collision.mjs walked the player to within 30px of a
+   tier-1 vein whose rock is 132px tall, i.e. straight through it, and 28px into
+   a tree through both trunk and canopy.  The owner spotted it immediately and
+   guessed the cause exactly ("where the image sits relative to where you're
+   measuring from").  Everything below is derived from b.t/b.b/b.l/b.r so the
+   anchor convention cannot matter again.
 
-   THE ORE CAP IS LOAD-BEARING.  Ore is mined from one tile NORTH of the vein
-   — the "stand here" marker at n.y - TILE, reached within MINE_SPOT_R — so a
-   blocker sized to the DRAWN rock would swallow the one spot you have to
-   stand on and make mining impossible.  The art is 132px tall and scales to
-   2.35x by tier 10, which is four tiles: sizing off it would have broken
-   high-tier veins worst.  So ore blocks a GROUND footprint whose height is
-   capped to keep the player's box clear of the marker, and only its width
-   grows with tier.
+   Ellipses rather than the box: the movement code resolves each axis
+   separately, so a box catches on its corners and an ellipse lets you round it.
 
-   Trees block the trunk foot only, per the owner: the canopy is walk-behind
-   (and now draws in front of you, see pixiApp's gatherNodesFront).  Ponds
-   block whole — they are water lying flat on the ground.  The campfire is
-   deliberately absent: you cook standing on it. */
-/* The cap is derived, not picked: the movement test inflates the ellipse by the
-   player's half-size before testing their CENTRE, so with the ore ellipse
-   centred on the ground line the player is stopped at ry + hs from it.  To keep
-   the marker one tile north reachable that has to stay inside TILE, leaving
-   ry <= TILE - hs - margin = 18.  (Sized off the drawn rock instead, tier-10
-   ore blocked 46px north of itself and could not be mined at all.) */
-var NODE_BLOCK_MAX_RY = TILE - 10 - 4;   /* TILE north - player half-size - margin */
+   ORE blocks its whole drawn body -- the owner does not want it stood on.  That
+   puts the old "stand here" marker (one tile north) inside the blocker, so the
+   marker moves to the north edge of the art; mining reach is unaffected because
+   nodeReachDist measures from the sprite PERIMETER first and only falls back to
+   the marker radius.  TREES block a trunk-sized column at the foot only, per
+   the owner, so you walk under the canopy -- which now draws in front of you.
+   PONDS block the whole pool.  The campfire is deliberately absent: you cook
+   standing on it. */
+/* Fraction of each texture's CANVAS that the artwork actually occupies,
+   measured off the source webp (see tools/qa/qa-node-collision.mjs).  This is
+   the second half of the same lesson: even after measuring from the sprite BOX
+   rather than the node anchor, the box is mostly empty and each type fills a
+   different part of it.  The ore rock floats in the upper middle of its canvas
+   and its base sits 35px ABOVE the node anchor at tier 1; the pond is a shallow
+   ellipse across the middle; the tree fills a tall wedge whose trunk is a
+   narrow column at the bottom.  Sizing collision off the canvas therefore
+   over-blocks empty air in one direction and under-blocks the art in another,
+   which is what the owner was seeing. */
+var NODE_ART = {
+  oreVein:  { x0: 0.232, x1: 0.777, y0: 0.223, y1: 0.737 },
+  fishSpot: { x0: 0.179, x1: 0.816, y0: 0.348, y1: 0.686 },
+  /* tree: the whole silhouette, then the TRUNK alone (bottom 6% of it) --
+     the owner wants only the base solid, so the canopy is walk-under. */
+  tree:     { x0: 0.250, x1: 0.750, y0: 0.104, y1: 0.840,
+              tx0: 0.379, tx1: 0.613, ty0: 0.795, ty1: 0.840 },
+};
 
+/* The ellipse the player cannot walk into, in world pixels.  Ellipse rather
+   than a box because the movement code resolves each axis separately: a box
+   catches on its corners, an ellipse lets you round it -- and all three of
+   these shapes (a blobby rock, a round pond, a trunk) are closer to an ellipse
+   than to a rectangle anyway. */
 function nodeBlockEllipse(S, n) {
   if (!n || !n.alive) return null;
   if (n.respawnAt && Date.now() < n.respawnAt) return null;
+  var art = NODE_ART[n.nodeType];
+  if (!art) return null;          /* campfire and anything new: walkable */
   var b = nodeWorldBox(S, n);
   if (!b) return null;
   var w = b.r - b.l, h = b.b - b.t;
-  if (n.nodeType === 'tree') {
-    return { x: n.x, y: n.y - 5, rx: Math.max(9, w * 0.13), ry: Math.max(5, Math.min(NODE_BLOCK_MAX_RY, h * 0.05)) };
-  }
-  if (n.nodeType === 'oreVein') {
-    /* Centred ON the ground line (n.y), not above it -- the art is anchored
-       there, and lifting the centre by ry pushed the blocker a further ry north
-       into the mining marker.  Only the width grows with tier. */
-    return { x: n.x, y: n.y, rx: Math.max(14, w * 0.42),
-             ry: Math.max(8, Math.min(NODE_BLOCK_MAX_RY, h * 0.14)) };
-  }
-  if (n.nodeType === 'fishSpot') {
-    /* The whole pool.  0.46 rather than a full half-extent so the stop line
-       lands ON the water's edge once the player's half-size is added, instead
-       of a body-width outside it. */
-    return { x: n.x, y: n.y, rx: Math.max(14, w * 0.46), ry: Math.max(8, h * 0.46) };
-  }
-  return null;
+  var x0 = art.x0, x1 = art.x1, y0 = art.y0, y1 = art.y1;
+  if (n.nodeType === 'tree') { x0 = art.tx0; x1 = art.tx1; y0 = art.ty0; y1 = art.ty1; }
+  var l = b.l + w * x0, r = b.l + w * x1;
+  var t = b.t + h * y0, bt = b.t + h * y1;
+  return { x: (l + r) / 2, y: (t + bt) / 2, rx: (r - l) / 2, ry: (bt - t) / 2 };
+}
+
+/* Where to stand to mine a vein.  Was n.y - TILE, which v2.3.1501 put inside
+   the rock's collision -- it is now the north edge of the art, which is where
+   the player physically ends up when they walk into the vein from above. */
+function oreStandSpot(S, n) {
+  var b = nodeWorldBox(S, n);
+  return b ? { x: n.x, y: b.t - 14 } : { x: n.x, y: n.y - TILE };
 }
 
 /* `slack` widens every test by that many px — the walk-away cancel uses
@@ -379,7 +399,8 @@ function nodeReachDist(S, n, slack) {
     return _dc < 80 + extra ? _dc : null;
   }
   if (n.nodeType === 'oreVein') {
-    var _ds = Math.sqrt(Math.pow(n.x - P.x, 2) + Math.pow((n.y - TILE) - P.y, 2));
+    var _sp = oreStandSpot(S, n);
+    var _ds = Math.sqrt(Math.pow(_sp.x - P.x, 2) + Math.pow(_sp.y - P.y, 2));
     if (_ds < MINE_SPOT_R + extra) return _ds;
   }
   var _baseH = n.nodeType === 'tree' ? 112 : 88;
