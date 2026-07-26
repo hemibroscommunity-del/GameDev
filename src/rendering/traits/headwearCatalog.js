@@ -25,6 +25,13 @@ export const HEADWEAR_CATALOG = [
   { id: 'sombrero', name: 'Sombrero' },
   { id: 'bucket-hat', name: 'Bucket Hat', solid: true },
   { id: 'fedora', name: 'Fedora' },
+  /* v2.3.1483: first hat through the generated pipeline — drawn onto the
+     mannequin (tools/make_headwear_mannequin.py) and imported by
+     tools/import_headwear.py, which derives anchors/crownNudge/scale from the
+     head the art was drawn on instead of the by-eye tuning every hat above
+     needed.  Not `solid`: the gold band, the darker points and the red gems
+     are three tones, so a brightness-ratio retint would flatten them. */
+  { id: 'crown', name: 'Crown' },
 ];
 
 /** True if the hat can be recolored (single-color design). */
