@@ -14,6 +14,12 @@ import { addBuildUse, clearSwingHitFlags, pushDmgPopup, isPlayerDead } from '@/g
 export function swingAttack(S) {
     /* v2.3.1473: a corpse doesn't swing (see isPlayerDead). */
     if (isPlayerDead(S)) return;
+    /* v2.3.1500 (owner): no attacking while a life-skill animation is
+       playing.  The harvest pose and a swing pose are the same body, so a tap
+       mid-chop used to swap the character to a swing for a frame and leave the
+       harvest running underneath. */
+    if (S._extraction) return;
+
     /* v2.3.1134: the manual tap gate honors Tempo like the auto-attack loop
        does, else tap-attackers get no benefit from the channel.  (The amulet
        atkSpd bonus was never applied here — unchanged, out of scope.) */
@@ -36,6 +42,12 @@ export function specialAttack(S) {
     if (!S.rpg) return;
     /* v2.3.1473: no specials during the death animation either. */
     if (isPlayerDead(S)) return;
+    /* v2.3.1500 (owner): no attacking while a life-skill animation is
+       playing.  The harvest pose and a swing pose are the same body, so a tap
+       mid-chop used to swap the character to a swing for a frame and leave the
+       harvest running underneath. */
+    if (S._extraction) return;
+
     var R = S.rpg;
     var now = Date.now();
 

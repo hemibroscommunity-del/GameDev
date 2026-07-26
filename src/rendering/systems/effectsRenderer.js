@@ -525,6 +525,8 @@ export class EffectsRenderer {
     this.lootLayer = layers.groundLoot;
     this.splatLayer = layers.groundSplatter;
     this.nodeLayer = layers.gatherNodes;
+    /* v2.3.1500: above the player — trees only (see _wantLayer below). */
+    this.nodeFrontLayer = layers.gatherNodesFront || layers.gatherNodes;
     this.projectileLayer = layers.projectiles;
     this.telegraphLayer = layers.telegraphs;
     this.overlayLayer = layers.overlayWorld;
@@ -2990,9 +2992,15 @@ export class EffectsRenderer {
            cover it (unlike trees/rocks, which stay in front since
            v2.3.1460).  groundLoot sits below entities; index 0 keeps
            dropped loot above the water. */
+        /* v2.3.1500 (owner): trees render IN FRONT of the character, so
+           walking behind one is occluded by it.  Only trees -- ore stays in
+           nodeLayer (it is waist-high and you now cannot walk onto it at all,
+           so there is nothing to occlude), and the active mining target keeps
+           its overlayLayer promotion. */
         const _wantLayer = _isMineTarget ? this.overlayLayer
           : node.nodeType === 'fishSpot' ? this.lootLayer
-            : this.nodeLayer;
+            : node.nodeType === 'tree' ? this.nodeFrontLayer
+              : this.nodeLayer;
         if (node._pixiSprite.parent !== _wantLayer) {
           if (_wantLayer === this.overlayLayer) _wantLayer.addChild(node._pixiSprite);
           else _wantLayer.addChildAt(node._pixiSprite, 0);
