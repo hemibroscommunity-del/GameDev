@@ -55,17 +55,71 @@ TEXT_DROP = 0.30     # a real hat reaches at least this far down toward the crow
 
 
 def keys(rgb):
-    """(magenta backdrop, green person, hat) masks.
+    """(magenta backdrop, green-ish, everything else).
 
-    Both keys are deliberately loose.  A regenerated sheet blends every edge, so
-    a pixel halfway between the green and the hat's outline is cleanly neither;
-    those fall through to `hat`, fattening its silhouette by about one art pixel
-    -- under a third of a game pixel once downscaled.  That costs nothing, and is
-    far safer than eroding a hat's real edge away."""
+    Green is keyed on DOMINANCE -- how much greener than either other channel --
+    rather than on absolute values, because a hat is allowed to be green too.
+    The Kermit cap is mint: its shadow reads (98,184,100), only 84 greener,
+    against the key's 230.  A loose "is it greenish" test ate 4857px of that hat.
+
+    Both keys stay loose at the edges on purpose; dekey_fringe below cleans up
+    the blend band they leave behind, which is a job that needs the hat mask and
+    cannot be done here."""
     r, g, b = rgb[:, :, 0], rgb[:, :, 1], rgb[:, :, 2]
     mag = (r > 150) & (b > 150) & (g < 90) & (np.abs(r - b) < 60)
-    grn = (g > 150) & (r < 130) & (b < 130)
+    grn = (g > 150) & ((g - np.maximum(r, b)) > 120)
     return mag, grn, ~(mag | grn)
+
+
+def dekey_fringe(rgb, hat, mag, grn):
+    """Drop the blend band where the hat meets a key colour.
+
+    A regenerated sheet has soft edges, so along every boundary there is a band
+    of pixels that are part key and part hat.  They match neither key test and
+    fall into the hat, where they survive the downscale as a visible coloured
+    rim -- a dark green line under each hat's brim and a magenta fringe over its
+    outline.  (I had assumed this was sub-pixel and harmless; at 10x it plainly
+    is not.)
+
+    Dropping everything "tinted toward a key" would be wrong: the Kermit cap is
+    mint, and 1134 of its pixels read as green-tinted while being the actual
+    hat.  What separates a blend from real art is BRIGHTNESS.  These bands are
+    the key mixed with the near-black outline, so they land far darker than the
+    key itself -- measured (28,63,24) against a (12,246,16) key, and (53,15,50)
+    against a (245,5,244) backdrop -- while genuine hat colour does not.  So a
+    pixel is dropped only if it borders that key, leans toward it, AND is much
+    darker than it."""
+    r, g, b = rgb[:, :, 0], rgb[:, :, 1], rgb[:, :, 2]
+    lum = 0.299 * r + 0.587 * g + 0.114 * b
+    out = hat.copy()
+    st = ndi.generate_binary_structure(2, 2)
+    for key, tint in ((grn, g - np.maximum(r, b)), (mag, np.minimum(r, b) - g)):
+        if not key.any():
+            continue
+        klum = lum[key].mean()
+        near = ndi.binary_dilation(key, st, iterations=3)
+        out &= ~(hat & near & (tint > 12) & (lum < 0.75 * klum))
+    return out
+
+
+def split_green(grn):
+    """The five silhouettes, and the green that is NOT one of them.
+
+    Dominance alone cannot fully separate a green hat from a green key -- on the
+    Kermit sheet the two ranges overlap (key floor 153, hat ceiling 196).  What
+    does separate them is size: a silhouette is one flat region of 35-60k px,
+    while hat shading breaks into a hundred small ones.  So the head is defined
+    as the five big blobs, and every other green pixel goes back to the hat
+    where it belongs -- which holds no matter what colour the hat is."""
+    lab, k = ndi.label(grn, np.ones((3, 3)))
+    if k < 5:
+        raise SystemExit(f'found {k} green regions, expected at least 5 — did the '
+                         'generator paint the person flat #00FF00?')
+    sizes = np.array(ndi.sum(grn, lab, range(1, k + 1)))
+    objs = ndi.find_objects(lab)
+    big = sorted(np.argsort(sizes)[::-1][:5], key=lambda i: objs[i][1].start)
+    heads = np.isin(lab, [i + 1 for i in big]) & grn
+    return heads, [((lab == i + 1), objs[i]) for i in big], int((grn & ~heads).sum())
 
 
 def panel_of(mag):
@@ -75,18 +129,6 @@ def panel_of(mag):
     sizes = np.array(ndi.sum(mag, lab, range(1, k + 1)))
     sl = ndi.find_objects(lab)[int(np.argmax(sizes))]
     return sl[1].start, sl[0].start, sl[1].stop, sl[0].stop
-
-
-def figures(grn):
-    """The five green people, left to right."""
-    lab, k = ndi.label(grn, np.ones((3, 3)))
-    if k < 5:
-        raise SystemExit(f'found {k} green silhouettes, expected 5 — did the '
-                         'generator paint the person flat #00FF00?')
-    sizes = np.array(ndi.sum(grn, lab, range(1, k + 1)))
-    objs = ndi.find_objects(lab)
-    big = sorted(np.argsort(sizes)[::-1][:5], key=lambda i: objs[i][1].start)
-    return [(lab == i + 1, objs[i]) for i in big]
 
 
 def hat_of(ink, sl):
@@ -155,8 +197,8 @@ def register(fig, mcell):
                 iou = int((sh & band).sum()) / max(1, int((sh | band).sum()))
                 if best is None or iou > best[0]:
                     best = (iou, float(s), int(dx), int(my1 - th + dy))
-    if best is None or best[0] < 0.90:
-        raise SystemExit(f'could not register a cell (best shoulder IoU '
+    if best is None or best[0] < 0.70:
+        raise SystemExit(f'could not register a cell at all (best shoulder IoU '
                          f'{0 if best is None else best[0]:.3f}) — is the green flat?')
     iou, s, dx, oy = best
     return iou, s, dx, oy
@@ -174,8 +216,13 @@ def main():
     rgb = np.array(Image.open(args.art).convert('RGB')).astype(int)
     mag, grn, ink = keys(rgb)
     px0, py0, px1, py1 = panel_of(mag)
-    rgb, grn, ink = (a[py0:py1, px0:px1] for a in (rgb, grn, ink))
-    figs = figures(grn)
+    rgb, grn = (a[py0:py1, px0:px1] for a in (rgb, grn))
+    heads, figs, reclaimed = split_green(grn)
+    pmag = mag[py0:py1, px0:px1]
+    ink = dekey_fringe(rgb, ~(pmag | heads), pmag, heads)
+    if reclaimed:
+        print(f'note: {reclaimed}px of green were not part of a silhouette — '
+              f'returned to the hat (a green hat keys close to the backdrop)')
 
     tmp = os.path.join(TOOLS, '.mannequin-rebuild.png')
     os.system(f'python3 {TOOLS}/make_headwear_mannequin.py --out {tmp} >/dev/null')
@@ -265,8 +312,13 @@ def main():
         anchors[d] = anchor
         nudges[d] = [int(anchor[0] - crown_in_frame[0]), int(anchor[1] - crown_in_frame[1])]
         scales[d] = 1
-        print(f'{d:<10} silhouette IoU {iou:.3f} @ {scale:.3f}x   bbox {bb}  '
-              f'anchor {anchor}  crownNudge {nudges[d]}')
+        # A low fit is a SHEET problem, not a tool problem: the generator
+        # redrew that figure's torso off-model, so nothing lines up against the
+        # real body.  Reported per cell so the owner can see which directions
+        # are trustworthy and regenerate only those.
+        grade = 'good' if iou >= 0.95 else 'soft' if iou >= 0.90 else 'POOR — regenerate this direction'
+        print(f'{d:<10} fit {iou:.3f} @ {scale:.3f}x  {grade:<32} '
+              f'bbox {bb}  crownNudge {nudges[d]}')
 
         if args.clips_hair:
             mm = out[:, :, 3] > ALPHA_T
