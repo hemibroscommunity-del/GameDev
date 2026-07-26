@@ -84,7 +84,10 @@ export const HEADWEAR_CATALOG = [
   { id: 'bandana-blue', name: 'Blue Bandana' },
   { id: 'blonde-hair', name: 'Blonde Hair' },
   { id: 'flat-top', name: 'Flat Top' },
-  { id: 'frog-cap', name: 'Frog Cap' },
+  { id: 'kermit-hat', name: 'Kermit Hat' },
+  /* v2.3.1490: floats clear of the scalp, like new-idea — it only imports at
+     all because the core test is open at the top (see import_headwear.py). */
+  { id: 'halo', name: 'Halo' },
 ];
 
 /** True if the hat can be recolored (single-color design). */
