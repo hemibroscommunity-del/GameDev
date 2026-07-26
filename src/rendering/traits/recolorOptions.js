@@ -38,6 +38,21 @@ export const RECOLOR_ENABLED = {
   shirt: true,
 };
 
+/* v2.3.1499: whether hat color is restricted to hats flagged `solid`.
+ *
+ * OFF, to match what main ships today.  hatColorCatalog's header has always
+ * claimed the restriction, but nothing enforced it, so live players have been
+ * recoloring multi-tone hats (Top Hat, Sombrero, Fedora, Shark Hat, Bandana,
+ * Old School Helmet) for as long as the feature has existed.  Enforcing it here
+ * would have quietly removed a control they use today -- a regression dressed
+ * as a bug fix, on a merge whose whole point is to change nothing visible.
+ *
+ * The restriction is still right, and this is the switch for it: turn it on
+ * together with PENDING_TRAITS_LIVE.  The generated hats are the ones it really
+ * protects -- retinting them repaints the head baked into their frames -- and
+ * that is the moment to decide whether the older hats lose the option too. */
+export const SOLID_ONLY_HAT_COLOR = false;
+
 /** True if `key`'s color picker should be offered and its recolor applied. */
 export function recolorEnabled(key) {
   return RECOLOR_ENABLED[key] !== false;

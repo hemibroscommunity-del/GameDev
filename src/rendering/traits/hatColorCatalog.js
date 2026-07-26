@@ -11,7 +11,7 @@
 import { Texture } from 'pixi.js';
 import { recolorHairToCanvas } from '../characterPortrait.js';
 import { headwearIsSolid } from './headwearCatalog.js';
-import { recolorEnabled } from './recolorOptions.js';
+import { recolorEnabled, SOLID_ONLY_HAT_COLOR } from './recolorOptions.js';
 
 export const HAT_COLOR_CATALOG = [
   { id: 'default', name: 'Default', swatch: '#7c6cff', target: null },
@@ -166,7 +166,7 @@ export function getColoredHatTextures(hatId, colorId) {
      hidden passenger into a glaring second head.  Gating here rather than only
      in the picker matters: hatColor persists in localStorage, so a player who
      already chose one would keep seeing it long after the picker was hidden. */
-  if (!headwearIsSolid(hatId)) return null;
+  if (SOLID_ONLY_HAT_COLOR && !headwearIsSolid(hatId)) return null;
   const key = hatId + '/' + colorId;
   const e = _cache[key];
   if (e === undefined) { build(hatId, colorId); return null; }

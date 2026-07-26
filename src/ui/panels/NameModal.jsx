@@ -14,7 +14,7 @@ import { HAT_COLOR_CATALOG, setHatColor } from '@/rendering/traits/hatColorCatal
 import { HEADWEAR_CATALOG, headwearIsSolid, setHeadwear } from '@/rendering/traits/headwearCatalog.js';
 import { SHIRT_CATALOG, setShirt } from '@/rendering/traits/shirtCatalog.js';
 import { SHIRT_COLOR_CATALOG, setShirtColor } from '@/rendering/traits/shirtColorCatalog.js';
-import { recolorEnabled } from '@/rendering/traits/recolorOptions.js';
+import { recolorEnabled, SOLID_ONLY_HAT_COLOR } from '@/rendering/traits/recolorOptions.js';
 
 /* === NameModal — the character-creator / name-entry splash screen === */
 /* v2.3.888: extracted verbatim from the `if (showNameModal) { ... }`
@@ -140,7 +140,7 @@ export function NameModal(props) {
        became a solid-colored second head.  Four hats are solid and keep it. */
     hat: { label: 'Hats', kind: 'thumb', spriteCat: 'headwear', catalog: HEADWEAR_CATALOG, sel: headwearSel,
       set: function (id) { setHeadwear(id); setHeadwearSel(id); },
-      colors: (recolorEnabled('hat') && headwearIsSolid(headwearSel)) ? HAT_COLOR_CATALOG : null,
+      colors: (recolorEnabled('hat') && (!SOLID_ONLY_HAT_COLOR || headwearIsSolid(headwearSel))) ? HAT_COLOR_CATALOG : null,
       colorSel: hatColorSel, setColor: function (id) { setHatColor(id); setHatColorSel(id); } },
     /* v2.3.1308 (round-7): 'Skin' → 'Skin Tone' — it recolors the whole
        body, and the plain label read as head-only inside the Head group. */

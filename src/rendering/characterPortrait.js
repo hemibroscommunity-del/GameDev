@@ -18,7 +18,8 @@
 import { skinTarget, pantsTarget, shoesTarget, recolorBodyToCanvas } from './playerSkins.js';
 import { SPRITE_VERSION } from './playerSprites.js';
 import { getHatRef } from './traits/hatColorCatalog.js';
-import { headwearIsSolid } from './traits/headwearCatalog.js'; /* v2.3.1109: shared per-hat recolour reference (call-time use; cyclic import is safe) */
+import { headwearIsSolid } from './traits/headwearCatalog.js';
+import { SOLID_ONLY_HAT_COLOR } from './traits/recolorOptions.js'; /* v2.3.1109: shared per-hat recolour reference (call-time use; cyclic import is safe) */
 import { upscaleToFrameHeight } from './spriteScale.js'; /* v2.3.1110: restore downscaled shirt sheet to 256 frame */
 
 const FRAME = 256;
@@ -188,7 +189,7 @@ export async function drawCharacterPortrait(canvas, opts) {
     wantHw ? loadImage(`/sprites/traits/headwear/${headwear}/hairmask/${DIR}.png?v=${TRAIT_VER}`).catch(() => null) : null,
     /* v2.3.1109: one shared recolour reference across the hat's facings so the
        preview's hat shade is identical per angle AND matches the in-game hat. */
-    (wantHw && hatColor && headwearIsSolid(headwear)) ? getHatRef(headwear).catch(() => 0) : 0,
+    (wantHw && hatColor && (!SOLID_ONLY_HAT_COLOR || headwearIsSolid(headwear))) ? getHatRef(headwear).catch(() => 0) : 0,
   ]);
   const crown = (bodyTops && bodyTops[`stand-${DIR}-0`]) || [FRAME / 2, 33];
 
@@ -285,7 +286,7 @@ export async function drawCharacterPortrait(canvas, opts) {
   /* v2.3.1493: same `solid` gate as getColoredHatTextures -- without it the
      creator preview would still show a recolored hat the game refuses to
      render, which is worse than not offering the color at all. */
-  const _hwCol = hatColor && headwearIsSolid(headwear);
+  const _hwCol = hatColor && (!SOLID_ONLY_HAT_COLOR || headwearIsSolid(headwear));
   if (hwImg && hwMeta) placeTrait(ctx, _hwCol ? recolorHairToCanvas(hwImg, hatColor, hatRef) : hwImg, hwMeta, crown, DIR);
   ctx.restore();
   if (canvas.__pseq !== seq) return;   /* a newer draw superseded this one */
