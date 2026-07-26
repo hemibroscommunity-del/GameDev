@@ -10,6 +10,7 @@
 
 import { Texture } from 'pixi.js';
 import { recolorHairToCanvas } from '../characterPortrait.js';
+import { headwearIsSolid } from './headwearCatalog.js';
 
 export const HAT_COLOR_CATALOG = [
   { id: 'default', name: 'Default', swatch: '#7c6cff', target: null },
@@ -154,6 +155,16 @@ function build(hatId, colorId) {
  *  color / while baking (caller falls back to the native-color textures). */
 export function getColoredHatTextures(hatId, colorId) {
   if (!hatId || hatId === 'none' || !colorId || colorId === 'default' || !hatColorTarget(colorId)) return null;
+  /* v2.3.1493: enforce what line 3 of this file has always claimed -- recolor
+     is for `solid` hats only.  It was never checked anywhere, so the picker was
+     offered on every hat, and the retint is a brightness-ratio pass over EVERY
+     opaque pixel: on a multi-tone hat it flattens the accents it was written to
+     preserve, and on the generated batch (v2.3.1488+), whose frames still carry
+     the head they were drawn on, it repaints that head a flat color and turns a
+     hidden passenger into a glaring second head.  Gating here rather than only
+     in the picker matters: hatColor persists in localStorage, so a player who
+     already chose one would keep seeing it long after the picker was hidden. */
+  if (!headwearIsSolid(hatId)) return null;
   const key = hatId + '/' + colorId;
   const e = _cache[key];
   if (e === undefined) { build(hatId, colorId); return null; }

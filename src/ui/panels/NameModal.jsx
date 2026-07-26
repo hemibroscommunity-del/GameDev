@@ -11,7 +11,7 @@ import { FACIALHAIR_COLOR_CATALOG, setFacialHairColor } from '@/rendering/traits
 import { HAIR_CATALOG, setHair } from '@/rendering/traits/hairCatalog.js';
 import { HAIR_COLOR_CATALOG, setHairColor } from '@/rendering/traits/hairColorCatalog.js';
 import { HAT_COLOR_CATALOG, setHatColor } from '@/rendering/traits/hatColorCatalog.js';
-import { HEADWEAR_CATALOG, setHeadwear } from '@/rendering/traits/headwearCatalog.js';
+import { HEADWEAR_CATALOG, headwearIsSolid, setHeadwear } from '@/rendering/traits/headwearCatalog.js';
 import { SHIRT_CATALOG, setShirt } from '@/rendering/traits/shirtCatalog.js';
 import { SHIRT_COLOR_CATALOG, setShirtColor } from '@/rendering/traits/shirtColorCatalog.js';
 
@@ -132,9 +132,15 @@ export function NameModal(props) {
     hair: { label: 'Hair', kind: 'thumb', spriteCat: 'hair', catalog: HAIR_CATALOG, sel: hairSel,
       set: function (id) { setHair(id); setHairSel(id); },
       colors: _hairColCat, colorSel: hairColorSel, setColor: function (id) { setHairColor(id); setHairColorSel(id); } },
+    /* v2.3.1493: the color row only appears for hats flagged `solid`.  It used
+       to appear for all of them, which is what the owner hit -- recoloring a
+       multi-tone hat flattens its accents, and recoloring one of the generated
+       hats repaints the head still baked into its frame, so the hidden head
+       became a solid-colored second head.  Four hats are solid and keep it. */
     hat: { label: 'Hats', kind: 'thumb', spriteCat: 'headwear', catalog: HEADWEAR_CATALOG, sel: headwearSel,
       set: function (id) { setHeadwear(id); setHeadwearSel(id); },
-      colors: HAT_COLOR_CATALOG, colorSel: hatColorSel, setColor: function (id) { setHatColor(id); setHatColorSel(id); } },
+      colors: headwearIsSolid(headwearSel) ? HAT_COLOR_CATALOG : null,
+      colorSel: hatColorSel, setColor: function (id) { setHatColor(id); setHatColorSel(id); } },
     /* v2.3.1308 (round-7): 'Skin' → 'Skin Tone' — it recolors the whole
        body, and the plain label read as head-only inside the Head group. */
     skin: { label: 'Skin Tone', kind: 'swatch', spriteCat: null, catalog: SKIN_CATALOG, sel: skinSel,
