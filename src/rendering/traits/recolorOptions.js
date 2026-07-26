@@ -16,19 +16,25 @@
  *
  * The shirt is nowhere near the head, so it is unaffected and stays on.
  *
- * This is a stopgap.  The real fix is to re-cut the hats from sheets whose head
- * has been painted a flat key color, at which point every flag here goes back
- * to true and the pickers return with nothing to break.  Flip them here -- the
- * pickers and the renderer both read this, so one edit restores an option
- * completely.
+ * RESOLVED in v2.3.1497 -- every flag is back on.  The hats that made this
+ * necessary are held dormant by pendingTraits.js, so nothing reaching players
+ * has a head baked into its frame and there is nothing left for a recolor to
+ * expose.  The file stays because the coupling is real and will matter again:
+ * if those traits are ever released before they are re-cut against a flat-key
+ * head, `skin`, `hair`, `beard` and `hat` have to come back off with them.
+ *
+ * Not the same thing as the `solid` gate in hatColorCatalog.  That one is
+ * unrelated and stays regardless: recolor is a brightness-ratio pass over every
+ * opaque pixel, so offering it on a multi-tone hat flattens the accents the
+ * flag was written to protect.  It was simply never enforced until v2.3.1493.
  */
 export const RECOLOR_ENABLED = {
-  skin: false,
-  hair: false,
-  beard: false,
-  hat: false,
-  pants: false,
-  shoes: false,
+  skin: true,
+  hair: true,
+  beard: true,
+  hat: true,
+  pants: true,
+  shoes: true,
   shirt: true,
 };
 
