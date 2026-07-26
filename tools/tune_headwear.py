@@ -86,10 +86,28 @@ def sheet_head(pose, d):
         a = im[:, i * fw:(i + 1) * fw, 3] > 40
         for depth in DEPTHS:
             r = int(round(cy + depth / sc))
-            if 0 <= r < fw:
-                xs = np.nonzero(a[r])[0]
-                if len(xs):
-                    acc.append((xs.max() - xs.min() + 1) * sc)
+            if not (0 <= r < fw):
+                continue
+            # v2.3.1492: the RUN THROUGH THE CROWN, not the row's full extent.
+            # min-to-max swallows whatever else the pose puts beside the head --
+            # the raised pickaxe in mine, the rod and both arms in fish, the
+            # recoiling arms in hit -- and reported the head as 1.6x, 2.5x and
+            # 1.9x its real size.  Measuring only the span the crown sits inside
+            # leaves a detached arm out of it.
+            cx = int(round(tops[key][0] / sc))
+            row = a[r]
+            if not (0 <= cx < fw) or not row[cx]:
+                near = np.nonzero(row)[0]
+                if not len(near):
+                    continue
+                cx = int(near[np.argmin(np.abs(near - cx))])
+            lo = cx
+            while lo > 0 and row[lo - 1]:
+                lo -= 1
+            hi = cx
+            while hi < fw - 1 and row[hi + 1]:
+                hi += 1
+            acc.append((hi - lo + 1) * sc)
     return float(np.median(acc)) if acc else None
 
 

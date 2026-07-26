@@ -1,7 +1,7 @@
 {
   "category": "headwear",
   "fullFrame": true,
-  "note": "Generated on the headwear mannequin (tools/make_headwear_mannequin.py) and imported by tools/import_headwear.py. The hat was drawn ON the head, so it lands in the 256 frame at its true position relative to the body: anchors are its own bbox top-centre, crownNudge is anchor minus body-tops stand-<dir>-0, scale is 1. No by-eye tuning \u2014 adjust only if on-device review disagrees. jog fitted by tools/tune_headwear.py --fit-pose jog: the jog sheets draw the head at a different size from the idle sheets, so scaleByPose carries headWidth(jog)/headWidth(stand) with the renderer's blanket poseTraitMul divided back out, and poseNudge scales the placement about the crown so the band does not slide down the face. v2.3.1491: the body that leaked in with the art was subtracted afterwards by tools/strip_body_from_headwear.py, and bboxes/anchors/crownNudge re-derived from what was left.",
+  "note": "Generated on the headwear mannequin (tools/make_headwear_mannequin.py) and imported by tools/import_headwear.py. The hat was drawn ON the head, so it lands in the 256 frame at its true position relative to the body: anchors are its own bbox top-centre, crownNudge is anchor minus body-tops stand-<dir>-0, scale is 1. No by-eye tuning \u2014 adjust only if on-device review disagrees. jog fitted by tools/tune_headwear.py --fit-pose jog: the jog sheets draw the head at a different size from the idle sheets, so scaleByPose carries headWidth(jog)/headWidth(stand) with the renderer's blanket poseTraitMul divided back out, and poseNudge scales the placement about the crown so the band does not slide down the face. mine fitted by tools/tune_headwear.py --fit-pose mine: the mine sheets draw the head at a different size from the idle sheets, so scaleByPose carries headWidth(mine)/headWidth(stand) with the renderer's blanket poseTraitMul divided back out, and poseNudge scales the placement about the crown so the band does not slide down the face. fish fitted by tools/tune_headwear.py --fit-pose fish: the fish sheets draw the head at a different size from the idle sheets, so scaleByPose carries headWidth(fish)/headWidth(stand) with the renderer's blanket poseTraitMul divided back out, and poseNudge scales the placement about the crown so the band does not slide down the face. hit fitted by tools/tune_headwear.py --fit-pose hit: the hit sheets draw the head at a different size from the idle sheets, so scaleByPose carries headWidth(hit)/headWidth(stand) with the renderer's blanket poseTraitMul divided back out, and poseNudge scales the placement about the crown so the band does not slide down the face. pickup fitted by tools/tune_headwear.py --fit-pose pickup: the pickup sheets draw the head at a different size from the idle sheets, so scaleByPose carries headWidth(pickup)/headWidth(stand) with the renderer's blanket poseTraitMul divided back out, and poseNudge scales the placement about the crown so the band does not slide down the face.",
   "bboxes": {
     "south": [
       100,
@@ -94,6 +94,22 @@
       "east": 0.889,
       "northeast": 0.955,
       "north": 1.024
+    },
+    "mine": {
+      "south": 1.116
+    },
+    "fish": {
+      "south": 1.023
+    },
+    "hit": {
+      "south": 1.233,
+      "southwest": 0.942,
+      "east": 1.022,
+      "northeast": 0.955,
+      "north": 1.0
+    },
+    "pickup": {
+      "south": 1.07
     }
   },
   "poseNudge": {
@@ -117,6 +133,46 @@
       "north": [
         0,
         -1
+      ]
+    },
+    "mine": {
+      "south": [
+        0,
+        -4
+      ]
+    },
+    "fish": {
+      "south": [
+        0,
+        -1
+      ]
+    },
+    "hit": {
+      "south": [
+        0,
+        -8
+      ],
+      "southwest": [
+        0,
+        2
+      ],
+      "east": [
+        0,
+        -1
+      ],
+      "northeast": [
+        0,
+        1
+      ],
+      "north": [
+        0,
+        0
+      ]
+    },
+    "pickup": {
+      "south": [
+        0,
+        -3
       ]
     }
   }

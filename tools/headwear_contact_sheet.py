@@ -23,6 +23,7 @@ import numpy as np
 from PIL import Image, ImageDraw
 
 BODY = 'public/sprites/player/stand-{dir}.png'
+BODY_POSE = 'public/sprites/player/{pose}-{dir}.png'
 BODY_TOPS = 'public/sprites/player/body-tops.json'
 HAT = 'public/sprites/traits/headwear/{id}'
 CATALOG = 'src/rendering/traits/headwearCatalog.js'
@@ -37,22 +38,34 @@ def catalog_ids():
     return [i for i in re.findall(r"id:\s*'([^']+)'", body) if i != 'none']
 
 
-def composite(hid, d, tops):
+def composite(hid, d, tops, pose='stand', frame=0):
     meta = json.load(open(f'{HAT.format(id=hid)}/meta.json'))
-    hat = np.array(Image.open(f'{HAT.format(id=hid)}/{d}.png').convert('RGBA')).astype(int)
-    body = np.array(Image.open(BODY.format(dir=d)).convert('RGBA')
-                    .crop((0, 0, FRAME, FRAME))).astype(int)
+    hat = Image.open(f'{HAT.format(id=hid)}/{d}.png').convert('RGBA')
+    sheet = Image.open(BODY_POSE.format(pose=pose, dir=d)).convert('RGBA')
+    fw = sheet.height
+    body = np.array(sheet.crop((frame * fw, 0, (frame + 1) * fw, fw))
+                    .resize((FRAME, FRAME), Image.NEAREST)).astype(int)
     a = meta['anchors'][d]
     n = meta.get('crownNudge', {}).get(d, [0, 0])
-    crown_in_frame = (a[0] - n[0], a[1] - n[1])
-    bx, by = tops[f'stand-{d}-0']
+    # the same three multipliers _placeTrait applies
+    sc = (meta.get('scale', {}).get(d, 1)
+          * meta.get('scaleByPose', {}).get(pose, {}).get(d, 1))
+    pn = meta.get('poseNudge', {}).get(pose, {}).get(d, [0, 0])
+    if sc != 1:
+        hat = hat.resize((max(1, round(FRAME * sc)), max(1, round(FRAME * sc))), Image.NEAREST)
+        a = [round(a[0] * sc), round(a[1] * sc)]
+        n = [round(n[0] * sc), round(n[1] * sc)]
+    hat = np.array(hat).astype(int)
+    crown_in_frame = (a[0] - n[0] - pn[0], a[1] - n[1] - pn[1])
+    bx, by = tops[f'{pose}-{d}-{frame}']
     dx, dy = bx - crown_in_frame[0], by - crown_in_frame[1]
 
+    hh = hat.shape[0]
     out = body.copy()
-    ys = slice(max(0, dy), min(FRAME, FRAME + dy))
-    xs = slice(max(0, dx), min(FRAME, FRAME + dx))
-    sy = slice(max(0, -dy), min(FRAME, FRAME - dy))
-    sx = slice(max(0, -dx), min(FRAME, FRAME - dx))
+    ys = slice(max(0, dy), min(FRAME, hh + dy))
+    xs = slice(max(0, dx), min(FRAME, hh + dx))
+    sy = slice(max(0, -dy), min(hh, FRAME - dy))
+    sx = slice(max(0, -dx), min(hh, FRAME - dx))
     sub, dst = hat[sy, sx], out[ys, xs]
     m = sub[:, :, 3] > ALPHA_T
     dst[m] = sub[m]
@@ -69,6 +82,8 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--ids', default=None)
     ap.add_argument('--dir', default='south')
+    ap.add_argument('--pose', default='stand')
+    ap.add_argument('--frame', type=int, default=0)
     ap.add_argument('--out', default='headwear-contact.png')
     ap.add_argument('--cols', type=int, default=8)
     ap.add_argument('--zoom', type=int, default=3)
@@ -77,7 +92,7 @@ def main():
     ids = args.ids.split(',') if args.ids else catalog_ids()
     ids = [i for i in ids if os.path.isdir(HAT.format(id=i))]
     tops = json.load(open(BODY_TOPS))
-    tiles = [(i, composite(i, args.dir, tops)) for i in ids]
+    tiles = [(i, composite(i, args.dir, tops, args.pose, args.frame)) for i in ids]
 
     cw = max(t.width for _, t in tiles) * args.zoom + 12
     ch = max(t.height for _, t in tiles) * args.zoom + 22
@@ -90,7 +105,7 @@ def main():
         sheet.paste(t, (x + (cw - t.width) // 2, y + 4), t)
         dr.text((x + 5, y + ch - 16), hid[:22], fill=(228, 228, 232, 255))
     sheet.save(args.out)
-    print('wrote', args.out, sheet.size, f'({len(tiles)} hats, {args.dir})')
+    print('wrote', args.out, sheet.size, f'({len(tiles)} hats, {args.pose} {args.dir})')
 
 
 if __name__ == '__main__':
