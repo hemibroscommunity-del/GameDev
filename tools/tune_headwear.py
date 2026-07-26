@@ -51,42 +51,46 @@ def pose_trait_mul(pose, d):
     return 1.0
 
 
-def head_width(alive):
-    """Widest row of the head, found by the neck pinch in the width profile.
-
-    Reliable on the upright sheets this is used for.  The erosion-based finder
-    in fit_hit_armor_art needs a population of frames to calibrate its target
-    size, so it degenerates on the single-frame stand sheets."""
-    w = alive.sum(axis=1)
-    rows = np.nonzero(w)[0]
-    wide = np.nonzero(w >= 10)[0]
-    if not len(rows) or not len(wide):
-        return None
-    h0 = int(wide[0])
-    lo, hi = h0 + 10, min(int(rows[-1]) - 1, h0 + 34)
-    if hi <= lo:
-        return None
-    band = w[lo:hi + 1]
-    neck = lo + int(np.max(np.nonzero(band == band.min())[0])) + 1
-    above = alive.copy()
-    above[neck:] = False
-    lbl, n = ndimage.label(ndimage.binary_fill_holes(above))
-    if not n:
-        return None
-    sizes = [int((lbl == k).sum()) for k in range(1, n + 1)]
-    ys, xs = np.nonzero(lbl == (int(np.argmax(sizes)) + 1))
-    return xs.max() - xs.min() + 1
+BODY_TOPS = 'public/sprites/player/body-tops.json'
+DEPTHS = (6, 10, 14, 18, 22)     # 256-space rows below the crown to sample
 
 
 def sheet_head(pose, d):
-    """Median head width across a sheet, normalised to 256-space."""
+    """How wide the head is DRAWN, measured at fixed depths below the crown.
+
+    Anchored on body-tops -- the exact point _placeTrait pins the hat to -- and
+    sampled at several depths, whose answers agree within a few percent.  Two
+    earlier methods were tried and both lied:
+
+      * the erosion finder from fit_hit_armor_art needs a population of frames
+        to calibrate its target size, so it degenerates on the single-frame
+        stand sheets (returned nothing at all for stand-east);
+      * a neck-pinch width profile truncated the stand-east head to 12 rows and
+        measured the width of its top sliver, which put the jog/stand ratio at
+        1.073 when it is really 0.927 -- the wrong SIGN, and the reason the
+        first jog fit came out visibly too big (owner: "jog east is still a bit
+        too large").
+
+    Neither needs to be right about where the neck is.  This one does not ask.
+    """
+    tops = json.load(open(BODY_TOPS))
     im = np.array(Image.open(BODY.format(pose=pose, dir=d)).convert('RGBA'))
     fw = im.shape[0]
     sc = 256 / fw
-    got = [head_width(im[:, i * fw:(i + 1) * fw, 3] > 40)
-           for i in range(im.shape[1] // fw)]
-    got = [g * sc for g in got if g]
-    return float(np.median(got)) if got else None
+    acc = []
+    for i in range(im.shape[1] // fw):
+        key = f'{pose}-{d}-{i}'
+        if key not in tops:
+            continue
+        cy = tops[key][1] / sc
+        a = im[:, i * fw:(i + 1) * fw, 3] > 40
+        for depth in DEPTHS:
+            r = int(round(cy + depth / sc))
+            if 0 <= r < fw:
+                xs = np.nonzero(a[r])[0]
+                if len(xs):
+                    acc.append((xs.max() - xs.min() + 1) * sc)
+    return float(np.median(acc)) if acc else None
 
 
 def fit_pose(meta, pose, path):
