@@ -46,7 +46,7 @@ _man = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_man)
 
 BODY_TOPS = 'public/sprites/player/body-tops.json'
-OUTDIR = 'public/sprites/traits/headwear/{id}'
+OUTDIR = 'public/sprites/traits/{cat}/{id}'
 FRAME = 256
 ALPHA_T = 16
 TOP_MARGIN = 6       # where the hat's top sits inside its own frame
@@ -69,6 +69,16 @@ def keys(rgb):
     mag = (r > 150) & (b > 150) & (g < 90) & (np.abs(r - b) < 60)
     grn = (g > 150) & ((g - np.maximum(r, b)) > 120)
     return mag, grn, ~(mag | grn)
+
+
+def panel_of(mag):
+    """The magenta panel's bbox — crops off the page margin the generator adds."""
+    lab, k = ndi.label(mag)
+    if not k:
+        raise SystemExit('no magenta panel found — is this a mannequin sheet?')
+    sizes = np.array(ndi.sum(mag, lab, range(1, k + 1)))
+    sl = ndi.find_objects(lab)[int(np.argmax(sizes))]
+    return sl[1].start, sl[0].start, sl[1].stop, sl[0].stop
 
 
 def dekey_fringe(rgb, hat, mag, grn):
@@ -103,32 +113,31 @@ def dekey_fringe(rgb, hat, mag, grn):
 
 
 def split_green(grn):
-    """The five silhouettes, and the green that is NOT one of them.
+    """The head mask, and the five cells' body slices.
 
-    Dominance alone cannot fully separate a green hat from a green key -- on the
-    Kermit sheet the two ranges overlap (key floor 153, hat ceiling 196).  What
-    does separate them is size: a silhouette is one flat region of 35-60k px,
-    while hat shading breaks into a hundred small ones.  So the head is defined
-    as the five big blobs, and every other green pixel goes back to the hat
-    where it belongs -- which holds no matter what colour the hat is."""
+    NOT simply "the five largest regions".  A hat that crosses the head splits
+    the silhouette in two: the Blue Bandana leaves the scalp above the band as
+    its own region, so a five-largest rule kept the five bodies, threw the five
+    scalps out of the head, and baked them into the hat -- 217 key-green pixels
+    sat inside the finished bandana frame.
+
+    Nor can every green region simply be kept, because a green HAT sheds green
+    regions of its own: the Kermit cap threw off 121 of them.
+
+    Size separates the two cleanly, and by a wide margin.  A split scalp is
+    5-9% of the biggest region; green-hat shading is under 1%.  The cut is at
+    3%, which is several times clear of both."""
     lab, k = ndi.label(grn, np.ones((3, 3)))
     if k < 5:
         raise SystemExit(f'found {k} green regions, expected at least 5 — did the '
                          'generator paint the person flat #00FF00?')
     sizes = np.array(ndi.sum(grn, lab, range(1, k + 1)))
     objs = ndi.find_objects(lab)
-    big = sorted(np.argsort(sizes)[::-1][:5], key=lambda i: objs[i][1].start)
-    heads = np.isin(lab, [i + 1 for i in big]) & grn
-    return heads, [((lab == i + 1), objs[i]) for i in big], int((grn & ~heads).sum())
-
-
-def panel_of(mag):
-    lab, k = ndi.label(mag)
-    if not k:
-        raise SystemExit('no magenta panel found — is this a mannequin sheet?')
-    sizes = np.array(ndi.sum(mag, lab, range(1, k + 1)))
-    sl = ndi.find_objects(lab)[int(np.argmax(sizes))]
-    return sl[1].start, sl[0].start, sl[1].stop, sl[0].stop
+    keep = [i for i in range(k) if sizes[i] >= 0.03 * sizes.max()]
+    heads = np.isin(lab, [i + 1 for i in keep]) & grn
+    bodies = sorted(np.argsort(sizes)[::-1][:5], key=lambda i: objs[i][1].start)
+    extra = len(keep) - 5
+    return heads, [((lab == i + 1), objs[i]) for i in bodies], extra, int((grn & ~heads).sum())
 
 
 def hat_of(ink, sl):
@@ -210,6 +219,11 @@ def main():
     ap.add_argument('--id', required=True)
     ap.add_argument('--name', required=True)
     ap.add_argument('--clips-hair', action='store_true')
+    # v2.3.1504: some of these sheets are hairstyles, not hats.  They are drawn
+    # on the same mannequin and share _placeTrait, so the only differences are
+    # which folder they land in and the category recorded in meta -- and hair is
+    # the thing that gets CLIPPED by a hat, so it never sets clipsHair.
+    ap.add_argument('--category', default='headwear', choices=['headwear', 'hair'])
     ap.add_argument('--debug', default=None)
     args = ap.parse_args()
 
@@ -217,7 +231,10 @@ def main():
     mag, grn, ink = keys(rgb)
     px0, py0, px1, py1 = panel_of(mag)
     rgb, grn = (a[py0:py1, px0:px1] for a in (rgb, grn))
-    heads, figs, reclaimed = split_green(grn)
+    heads, figs, extra, reclaimed = split_green(grn)
+    if extra:
+        print(f'note: the hat splits the silhouette — {extra} extra green region(s) '
+              f'kept as head (a scalp above a band)')
     pmag = mag[py0:py1, px0:px1]
     ink = dekey_fringe(rgb, ~(pmag | heads), pmag, heads)
     if reclaimed:
@@ -232,7 +249,7 @@ def main():
 
     cells = _man.layout(1)
     tops = json.load(open(BODY_TOPS))
-    outdir = OUTDIR.format(id=args.id)
+    outdir = OUTDIR.format(cat=args.category, id=args.id)
     os.makedirs(outdir, exist_ok=True)
     if args.clips_hair:
         os.makedirs(os.path.join(outdir, 'hairmask'), exist_ok=True)
@@ -341,7 +358,7 @@ def main():
     th_img.save(f'{outdir}/thumb.png')
 
     meta = {
-        'category': 'headwear',
+        'category': args.category,
         'fullFrame': True,
         'note': ('Imported by tools/import_headwear_green.py from a sheet whose '
                  'person was painted flat #00FF00. The hat is simply everything '
@@ -356,7 +373,7 @@ def main():
         'crownNudge': nudges,
         'scale': scales,
     }
-    if args.clips_hair:
+    if args.clips_hair and args.category == 'headwear':
         meta['clipsHair'] = True
     with open(f'{outdir}/meta.json', 'w') as fh:
         json.dump(meta, fh, indent=2)
