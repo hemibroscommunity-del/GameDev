@@ -86,11 +86,12 @@
     "north": 1
   },
   "clipsHair": true,
+  "poseFit": true,
   "scaleByPose": {
     "jog": {
       "south": 1.07,
       "southwest": 0.923,
-      "east": 1.327,
+      "east": 0.889,
       "northeast": 0.955,
       "north": 1.024
     }

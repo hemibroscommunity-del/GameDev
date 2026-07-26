@@ -107,6 +107,7 @@ def fit_pose(meta, pose, path):
     the face.  X is left at 0 deliberately: nudge X is multiplied by the mirror
     sign, so a non-zero value needs opposite entries per screen side."""
     print(f'{pose} vs stand — head width drawn in each sheet (256-space)\n')
+    meta['poseFit'] = True
     sbp = meta.setdefault('scaleByPose', {}).setdefault(pose, {})
     pn = meta.setdefault('poseNudge', {}).setdefault(pose, {})
     for d in DIRS:
@@ -119,13 +120,16 @@ def fit_pose(meta, pose, path):
             print(f'  {d:<11} measurement failed — skipped')
             continue
         r = wp / ws
-        mul = pose_trait_mul(pose, d)
+        # v2.3.1487: with poseFit set, the renderer skips its blanket
+        # poseTraitMul for this item, so scaleByPose is the measured head ratio
+        # itself rather than that ratio with 1/0.67 baked in to cancel a
+        # constant.  Same rendered size either way; this one is readable.
+        mul = 1.0
         sbp[d] = round(r / mul, 3)
         cn = meta['crownNudge'][d]
         pn[d] = [0, int(round(cn[1] * (r - 1)))]
         print(f'  {d:<11} stand {ws:5.1f}  {pose} {wp:5.1f}   ratio {r:.3f}'
-              f'   poseTraitMul {mul:g}   -> scaleByPose {sbp[d]:g}, '
-              f'poseNudge {pn[d]}')
+              f'   -> scaleByPose {sbp[d]:g}, poseNudge {pn[d]}')
     note = meta.get('note', '')
     tag = (f' {pose} fitted by tools/tune_headwear.py --fit-pose {pose}: the '
            f'{pose} sheets draw the head at a different size from the idle '

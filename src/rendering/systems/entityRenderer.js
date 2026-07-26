@@ -585,8 +585,20 @@ function _placeTrait(sprite, entry, display, pose, dir, mirror, frameIdx, bodySc
      it.  Owner: shrink the head + all headwear 33% on that facing.  Applied
      here so every trait AND the hair-clip mask shrink in lockstep around the
      crown anchor. */
-  const poseTraitMul = pose === 'mine' ? 1.21 : pose === 'fish' ? 0.88
-    : (pose === 'jog' && dir === 'east') ? 0.67 : 1;
+  /* v2.3.1487: LEGACY for anything without `poseFit`.  These three numbers are
+     blanket by-eye corrections from before per-item pose fitting existed, and
+     every trait authored under them — ten hats, plus all the hair and beards,
+     which share this function and have no scaleByPose of their own — is dialled
+     in AGAINST them.  Removing it outright would resize all of that at once
+     (owner: "keep the other hats looking the same").
+     An item that sets `poseFit: true` has had its scaleByPose MEASURED against
+     the head it is being placed on (tools/tune_headwear.py --fit-pose), so the
+     blanket guess would be applied on top of the real answer.  Those opt out,
+     and their scaleByPose reads as the true head ratio instead of that ratio
+     with 1/0.67 baked in to cancel a constant. */
+  const poseTraitMul = meta.poseFit ? 1
+    : pose === 'mine' ? 1.21 : pose === 'fish' ? 0.88
+      : (pose === 'jog' && dir === 'east') ? 0.67 : 1;
   const dscale = (_pick(meta.scale) || 1) * poseScale * poseTraitMul * ((tune && tune.mul) || 1);
   if (headwear.texture !== headwearTex) headwear.texture = headwearTex;
   /* Anchor the hat sprite on its own crown pixel, then pin that point to
