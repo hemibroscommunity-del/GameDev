@@ -306,6 +306,79 @@ function nodeWorldBox(S, n) {
   };
 }
 
+/* v2.3.1500 (owner): "make the player unable to walk over ore to mine, just
+   the base of trees ... and make ponds unwalkable."
+
+   v2.3.1501: MEASURED FROM THE SPRITE BOX, not from the node anchor.  The
+   first cut centred every shape on (n.x, n.y) and got ponds right and ore and
+   trees badly wrong, because a pond's art is centred on its anchor while ore
+   and tree art is anchored at the BASE and drawn upward.  A flat footprint at
+   the anchor therefore matched sideways and blocked nothing at all from the
+   north: tools/qa/qa-node-collision.mjs walked the player to within 30px of a
+   tier-1 vein whose rock is 132px tall, i.e. straight through it, and 28px into
+   a tree through both trunk and canopy.  The owner spotted it immediately and
+   guessed the cause exactly ("where the image sits relative to where you're
+   measuring from").  Everything below is derived from b.t/b.b/b.l/b.r so the
+   anchor convention cannot matter again.
+
+   Ellipses rather than the box: the movement code resolves each axis
+   separately, so a box catches on its corners and an ellipse lets you round it.
+
+   ORE blocks its whole drawn body -- the owner does not want it stood on.  That
+   puts the old "stand here" marker (one tile north) inside the blocker, so the
+   marker moves to the north edge of the art; mining reach is unaffected because
+   nodeReachDist measures from the sprite PERIMETER first and only falls back to
+   the marker radius.  TREES block a trunk-sized column at the foot only, per
+   the owner, so you walk under the canopy -- which now draws in front of you.
+   PONDS block the whole pool.  The campfire is deliberately absent: you cook
+   standing on it. */
+/* Fraction of each texture's CANVAS that the artwork actually occupies,
+   measured off the source webp (see tools/qa/qa-node-collision.mjs).  This is
+   the second half of the same lesson: even after measuring from the sprite BOX
+   rather than the node anchor, the box is mostly empty and each type fills a
+   different part of it.  The ore rock floats in the upper middle of its canvas
+   and its base sits 35px ABOVE the node anchor at tier 1; the pond is a shallow
+   ellipse across the middle; the tree fills a tall wedge whose trunk is a
+   narrow column at the bottom.  Sizing collision off the canvas therefore
+   over-blocks empty air in one direction and under-blocks the art in another,
+   which is what the owner was seeing. */
+var NODE_ART = {
+  oreVein:  { x0: 0.232, x1: 0.777, y0: 0.223, y1: 0.737 },
+  fishSpot: { x0: 0.179, x1: 0.816, y0: 0.348, y1: 0.686 },
+  /* tree: the whole silhouette, then the TRUNK alone (bottom 6% of it) --
+     the owner wants only the base solid, so the canopy is walk-under. */
+  tree:     { x0: 0.250, x1: 0.750, y0: 0.104, y1: 0.840,
+              tx0: 0.379, tx1: 0.613, ty0: 0.795, ty1: 0.840 },
+};
+
+/* The ellipse the player cannot walk into, in world pixels.  Ellipse rather
+   than a box because the movement code resolves each axis separately: a box
+   catches on its corners, an ellipse lets you round it -- and all three of
+   these shapes (a blobby rock, a round pond, a trunk) are closer to an ellipse
+   than to a rectangle anyway. */
+function nodeBlockEllipse(S, n) {
+  if (!n || !n.alive) return null;
+  if (n.respawnAt && Date.now() < n.respawnAt) return null;
+  var art = NODE_ART[n.nodeType];
+  if (!art) return null;          /* campfire and anything new: walkable */
+  var b = nodeWorldBox(S, n);
+  if (!b) return null;
+  var w = b.r - b.l, h = b.b - b.t;
+  var x0 = art.x0, x1 = art.x1, y0 = art.y0, y1 = art.y1;
+  if (n.nodeType === 'tree') { x0 = art.tx0; x1 = art.tx1; y0 = art.ty0; y1 = art.ty1; }
+  var l = b.l + w * x0, r = b.l + w * x1;
+  var t = b.t + h * y0, bt = b.t + h * y1;
+  return { x: (l + r) / 2, y: (t + bt) / 2, rx: (r - l) / 2, ry: (bt - t) / 2 };
+}
+
+/* Where to stand to mine a vein.  Was n.y - TILE, which v2.3.1501 put inside
+   the rock's collision -- it is now the north edge of the art, which is where
+   the player physically ends up when they walk into the vein from above. */
+function oreStandSpot(S, n) {
+  var b = nodeWorldBox(S, n);
+  return b ? { x: n.x, y: b.t - 14 } : { x: n.x, y: n.y - TILE };
+}
+
 /* `slack` widens every test by that many px — the walk-away cancel uses
    it so a harvest can't self-abort at the range it was started from
    (the v2.3.843 incident: "the button does nothing"). */
@@ -326,7 +399,8 @@ function nodeReachDist(S, n, slack) {
     return _dc < 80 + extra ? _dc : null;
   }
   if (n.nodeType === 'oreVein') {
-    var _ds = Math.sqrt(Math.pow(n.x - P.x, 2) + Math.pow((n.y - TILE) - P.y, 2));
+    var _sp = oreStandSpot(S, n);
+    var _ds = Math.sqrt(Math.pow(_sp.x - P.x, 2) + Math.pow(_sp.y - P.y, 2));
     if (_ds < MINE_SPOT_R + extra) return _ds;
   }
   var _baseH = n.nodeType === 'tree' ? 112 : 88;
@@ -3331,6 +3405,11 @@ export var BroTown = function BroTown(_ref0) {
            S.autoAttack is on. Backpedal flag still tracks "moving
            against aim direction" so the renderer can reverse the jog
            cycle and face the aim direction in that specific case. */
+        /* v2.3.1500 (owner): "disable attacks while life skills animations are
+           playing".  Held here as well as in swingAttack/specialAttack because
+           this loop is what fires bow and staff shots — gating only the tap
+           handlers would have left ranged builds shooting mid-chop. */
+        if (S._extraction) S.autoAttack = false;
         S._backpedaling = false;
         if (S.autoAttack) {
           finalSpd *= 0.5;
@@ -3449,14 +3528,34 @@ export var BroTown = function BroTown(_ref0) {
           }
           return false;
         };
-        if (!isSolid(nx - hs, P.y - hs) && !isSolid(nx + hs, P.y - hs) && !isSolid(nx - hs, P.y + hs) && !isSolid(nx + hs, P.y + hs) && !_monBlock(P.x, P.y, nx, P.y)) P.x = nx;
-        if (!isSolid(P.x - hs, ny - hs) && !isSolid(P.x + hs, ny - hs) && !isSolid(P.x - hs, ny + hs) && !isSolid(P.x + hs, ny + hs) && !_monBlock(P.x, P.y, P.x, ny)) P.y = ny;
+        /* v2.3.1500: resources are solid, same shape of rule as _monBlock --
+           per-axis so you slide around them, and only blocking motion that
+           goes DEEPER in, so a node that spawns (or grows a tier) on top of
+           you can always be walked back out of. */
+        var _nodeBlock = function (curX, curY, px, py) {
+          var ns = S.gatherNodes;
+          if (!ns) return false;
+          for (var _ni = 0; _ni < ns.length; _ni++) {
+            var _e = nodeBlockEllipse(S, ns[_ni]);
+            if (!_e) continue;
+            var _rx = _e.rx + hs, _ry = _e.ry + hs;
+            var _ex = (px - _e.x) / _rx, _ey = (py - _e.y) / _ry;
+            var _d2 = _ex * _ex + _ey * _ey;
+            if (_d2 < 1) {
+              var _cx = (curX - _e.x) / _rx, _cy = (curY - _e.y) / _ry;
+              if (_d2 < _cx * _cx + _cy * _cy) return true;
+            }
+          }
+          return false;
+        };
+        if (!isSolid(nx - hs, P.y - hs) && !isSolid(nx + hs, P.y - hs) && !isSolid(nx - hs, P.y + hs) && !isSolid(nx + hs, P.y + hs) && !_monBlock(P.x, P.y, nx, P.y) && !_nodeBlock(P.x, P.y, nx, P.y)) P.x = nx;
+        if (!isSolid(P.x - hs, ny - hs) && !isSolid(P.x + hs, ny - hs) && !isSolid(P.x - hs, ny + hs) && !isSolid(P.x + hs, ny + hs) && !_monBlock(P.x, P.y, P.x, ny) && !_nodeBlock(P.x, P.y, P.x, ny)) P.y = ny;
         /* Apply ice slide */
         if (S._slideVx || S._slideVy) {
           var sx = P.x + (S._slideVx || 0),
             sy = P.y + (S._slideVy || 0);
-          if (!isSolid(sx - hs, P.y - hs) && !isSolid(sx + hs, P.y + hs) && !_monBlock(P.x, P.y, sx, P.y)) P.x = sx;
-          if (!isSolid(P.x - hs, sy - hs) && !isSolid(P.x + hs, sy + hs) && !_monBlock(P.x, P.y, P.x, sy)) P.y = sy;
+          if (!isSolid(sx - hs, P.y - hs) && !isSolid(sx + hs, P.y + hs) && !_monBlock(P.x, P.y, sx, P.y) && !_nodeBlock(P.x, P.y, sx, P.y)) P.x = sx;
+          if (!isSolid(P.x - hs, sy - hs) && !isSolid(P.x + hs, sy + hs) && !_monBlock(P.x, P.y, P.x, sy) && !_nodeBlock(P.x, P.y, P.x, sy)) P.y = sy;
         }
         /* v2.3.1110: PUSH-OUT -- _monBlock only stops the player moving
            deeper; a server-driven monster can still walk INTO the player
@@ -3732,7 +3831,20 @@ export var BroTown = function BroTown(_ref0) {
                that could drift out of step with it.  This is what keeps
                the perimeter-based reach safe: a chop started while
                standing on the canopy stays alive there. */
-            if (nodeReachDist(S, _exNode, EXTRACT_CANCEL_R) == null) {
+            /* v2.3.1500 (owner): "disable whatever lifeskill animation is
+               happening when the player tries to walk away — this should
+               cancel it".  Cancels on the INPUT, not on the distance: the
+               radius check below only fired once you had actually travelled
+               EXTRACT_CANCEL_R, so pushing the stick left you jogging on the
+               spot mid-swing until you cleared it.  Threshold rather than
+               >0 because the value is joystick strength, which ramps from 0
+               at the edge of the 12px deadzone — a resting thumb must not
+               abort a harvest.  Both cancels stay: this one for deliberate
+               movement, the radius one for anything else that displaces you
+               (knockback, a dodge roll, a server correction). */
+            if (Math.abs(dx) > 0.2 || Math.abs(dy) > 0.2) {
+              S._extraction = null;
+            } else if (nodeReachDist(S, _exNode, EXTRACT_CANCEL_R) == null) {
               /* Walk-away cancel — no XP, no node damage, no popup. */
               S._extraction = null;
             } else if (_ex.status === 'waiting' && _exNow >= _ex.windowOpensAt) {

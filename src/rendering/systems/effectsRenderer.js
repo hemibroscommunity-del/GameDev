@@ -525,6 +525,8 @@ export class EffectsRenderer {
     this.lootLayer = layers.groundLoot;
     this.splatLayer = layers.groundSplatter;
     this.nodeLayer = layers.gatherNodes;
+    /* v2.3.1500: above the player — trees only (see _wantLayer below). */
+    this.nodeFrontLayer = layers.gatherNodesFront || layers.gatherNodes;
     this.projectileLayer = layers.projectiles;
     this.telegraphLayer = layers.telegraphs;
     this.overlayLayer = layers.overlayWorld;
@@ -2940,7 +2942,15 @@ export class EffectsRenderer {
          vein so the south-facing swing lines up over the rock. Twinkle the spot
          when the player is nearby; turns green once they're standing on it. */
       if (node.nodeType === 'oreVein') {
-        const sx = node.x, sy = node.y - TILE;
+        /* v2.3.1501: the marker follows the rock's north edge, not a fixed tile
+           offset -- the vein is solid now, so one tile north is INSIDE it (and
+           was 4x inside it on a tier-10 rock, whose art is 310px tall).  Same
+           derivation as oreStandSpot in BroTown.jsx. */
+        const _sp = node._pixiSprite;
+        const _top = (_sp && !_sp.destroyed && _sp.height > 2)
+          ? _sp.y - _sp.height * (_sp.anchor ? _sp.anchor.y : 0.5)
+          : node.y - TILE + 14;
+        const sx = node.x, sy = _top - 14;
         const sd2 = (px - sx) * (px - sx) + (py - sy) * (py - sy);
         if (sd2 < 180 * 180) {
           const tw = 0.55 + 0.45 * Math.sin(now / 200 + node.x);
@@ -2990,9 +3000,15 @@ export class EffectsRenderer {
            cover it (unlike trees/rocks, which stay in front since
            v2.3.1460).  groundLoot sits below entities; index 0 keeps
            dropped loot above the water. */
+        /* v2.3.1500 (owner): trees render IN FRONT of the character, so
+           walking behind one is occluded by it.  Only trees -- ore stays in
+           nodeLayer (it is waist-high and you now cannot walk onto it at all,
+           so there is nothing to occlude), and the active mining target keeps
+           its overlayLayer promotion. */
         const _wantLayer = _isMineTarget ? this.overlayLayer
           : node.nodeType === 'fishSpot' ? this.lootLayer
-            : this.nodeLayer;
+            : node.nodeType === 'tree' ? this.nodeFrontLayer
+              : this.nodeLayer;
         if (node._pixiSprite.parent !== _wantLayer) {
           if (_wantLayer === this.overlayLayer) _wantLayer.addChild(node._pixiSprite);
           else _wantLayer.addChildAt(node._pixiSprite, 0);

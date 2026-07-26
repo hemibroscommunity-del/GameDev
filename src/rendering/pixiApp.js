@@ -20,10 +20,17 @@ import { Application, Container } from 'pixi.js';
  * the bar/level/number are parented here while the BODY stays down in
  * entities and remains correctly hidden behind the resource.  Still
  * below damageNumbers, so damage popups keep reading over the bars.
+ * v2.3.1500 (owner): gatherNodesFront sits directly ABOVE player, for
+ * resources that should occlude the character rather than sit behind them --
+ * trees, so you can walk behind one and have it cover you.  Deliberately a
+ * SEPARATE layer rather than moving gatherNodes up: that would drag ponds and
+ * the harvest stand-ins along with it, and would put trees back over monster
+ * HP bars, undoing v2.3.1472.
  */
 const WORLD_LAYER_NAMES = [
   'tiles', 'groundDetails', 'groundSplatter', 'groundLoot',
   'telegraphs', 'entities', 'gatherNodes', 'monsterUi', 'player',
+  'gatherNodesFront',
   'projectiles', 'particles', 'damageNumbers', 'overlayWorld',
 ];
 const SCREEN_LAYER_NAMES = ['atmosphere', 'screenFX', 'hud'];
