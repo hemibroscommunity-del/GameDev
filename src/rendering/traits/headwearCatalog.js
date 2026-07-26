@@ -40,6 +40,51 @@ export const HEADWEAR_CATALOG = [
   { id: 'wizard-hat', name: 'Wizard Hat' },
   { id: 'mickey-ears', name: 'Mickey Ears' },
   { id: 'evil-crown', name: 'Evil Crown' },
+  /* v2.3.1489: the NFT-trait batch — 30 hats through the same generated
+     pipeline, all measured rather than eyeballed.  None are `solid`; every one
+     came back with at least two tones, and a brightness-ratio retint would
+     flatten them.
+     NOTE ON MEMORY: preloadTraits() loads every catalog entry x 5 directions
+     onto the startup gate, and a trait frame is a fixed 256x256 (the renderer
+     applies crownNudge in 256-space and does NOT normalise by texture size —
+     see _placeTrait — so the frame cannot simply be shrunk).  This batch adds
+     150 textures = 37.5MB, taking headwear from 13.8MB to 51.2MB.  If iPhone
+     memory becomes a problem again, the fix with the best ratio is to store
+     trait art in a 128 frame and teach _placeTrait to normalise — a 4x saving
+     across ALL traits — not to trim this list. */
+  { id: 'barbarian-helmet', name: 'Barbarian Helmet' },
+  { id: 'army-helmet', name: 'Army Helmet' },
+  { id: 'axe-head', name: 'Axe On Head' },
+  { id: 'golden-bucket', name: 'Golden Bucket' },
+  { id: 'arabian-robe', name: 'Arabian Robe' },
+  { id: 'headphones', name: 'Headphones' },
+  { id: 'devil-horns', name: 'Devil Horns' },
+  { id: 'cat-ears', name: 'Cat Ears' },
+  { id: 'split-hair', name: 'Split Hair' },
+  { id: 'new-idea', name: 'New Idea' },
+  /* the owner's names for these three collide with hats already above
+     (Bucket Hat, Bandana) or with each other (two cowboy hats), so the label
+     carries the colour that tells them apart in the picker. */
+  { id: 'bucket-hat-2', name: 'Dark Bucket Hat' },
+  { id: 'bandana-2', name: 'Red Bandana' },
+  { id: 'asian-hat', name: 'Asian Hat' },
+  { id: 'fez-hat', name: 'Fez Hat' },
+  { id: 'russian-hat', name: 'Russian Hat' },
+  { id: 'cowboy-hat', name: 'Brown Cowboy Hat' },
+  { id: 'folded-brim', name: 'Folded Brim' },
+  { id: 'gray-hat', name: 'Gray Hat' },
+  { id: 'safety-helmet', name: 'Safety Helmet' },
+  { id: 'dirty-blonde', name: 'Dirty Blonde' },
+  { id: 'slick-back-hair', name: 'Slick Back Hair' },
+  { id: 'afro', name: 'Afro' },
+  { id: 'naruto-headband', name: 'Naruto Headband' },
+  { id: 'cowboy-hat-2', name: 'Grey Cowboy Hat' },
+  { id: 'chinese-hat', name: 'Chinese Hat' },
+  { id: 'spartan-helmet', name: 'Spartan Helmet' },
+  { id: 'bandana-blue', name: 'Blue Bandana' },
+  { id: 'blonde-hair', name: 'Blonde Hair' },
+  { id: 'flat-top', name: 'Flat Top' },
+  { id: 'frog-cap', name: 'Frog Cap' },
 ];
 
 /** True if the hat can be recolored (single-color design). */

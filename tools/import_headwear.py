@@ -165,25 +165,20 @@ def find_figures(ink, rows, row):
     return out
 
 
-def register(fig, mcell_ink):
-    """Uniform scale + offset that lays the drawn figure back onto the
-    mannequin figure, fitted on the TORSO ONLY.
+BANDS = (0.42, 0.25)   # fractions of the figure height used as the fit region
+MIN_IOU = 0.88         # below this a cell is not trusted at all
+GOOD_IOU = 0.95        # below this the cell is reported as a soft warning
+TRUST_IOU = 0.98       # at or above this a cell keeps its own scale, siblings or not
+SCALE_TOL = 0.04       # how far one cell's scale may stray from its sheet's median
 
-    The lower 42% of the mannequin figure is below the jaw in every direction,
-    so no hat — however tall, however wide-brimmed — has any pixels there.  The
-    fit therefore cannot be pulled around by the very thing we are trying to
-    measure, which is the whole reason it is trustworthy."""
-    Mh, Mw = mcell_ink.shape
-    mys = np.nonzero(mcell_ink.any(axis=1))[0]
-    my0, my1 = mys.min(), mys.max() + 1
-    band = mcell_ink[int(my1 - 0.42 * (my1 - my0)):my1]
+
+def _fit(fig, band, mcx, Mw, my1, scales):
+    """Best (IoU, scale, dx, dy_origin) over the given candidate scales."""
     bh = band.shape[0]
-    mcx = np.nonzero(band.any(axis=0))[0].mean()
-
     ah, aw = fig.shape
     src = Image.fromarray((fig * 255).astype(np.uint8))
     best = None
-    for s in np.arange(0.45, 1.35, 0.0025):
+    for s in scales:
         th, tw = int(round(ah / s)), int(round(aw / s))
         if th < bh + 12 or tw < 8 or th > 4000 or tw > 4000:
             continue
@@ -206,14 +201,100 @@ def register(fig, mcell_ink):
                 iou = (sh & band).sum() / max(1, (sh | band).sum())
                 if best is None or iou > best[0]:
                     best = (iou, float(s), int(dx), int(my1 - th + dy))
-    if best is None or best[0] < 0.85:
-        raise SystemExit(f'could not register this cell (best torso IoU '
-                         f'{0 if best is None else best[0]:.3f}) — the art may '
-                         f'have been redrawn too loosely to trust')
     return best
 
 
-def cell_hat(art_rgb, art_ink, man_rgb, man_ink, fig, org, cell, crown256, debug=None):
+def register(fig, mcell_ink, pin=None):
+    """Uniform scale + offset that lays the drawn figure back onto the
+    mannequin figure, fitted on the TORSO ONLY.
+
+    The bottom of the mannequin figure is below the jaw in every direction, so
+    no hat — however tall, however wide-brimmed — has pixels there.  The fit
+    therefore cannot be pulled around by the very thing it exists to measure,
+    which is the whole reason it is trustworthy.
+
+    Two band heights are tried and the better kept.  The taller band (42%) has
+    more to grip and is preferred, but it reaches high enough that a hat which
+    hangs down the back of the head — an afro, a keffiyeh — spills into it on
+    the EAST cell, where the body below the jaw is only a sliver to begin with.
+    That cost three sheets a failed import at 0.81-0.85 IoU; the same cells fit
+    at 0.90-0.93 on the short band, and where the tall band already fits well
+    the two agree on scale to within 0.01, so nothing is lost by trying both.
+
+    `pin` fixes the scale and searches position only — used to repair one bad
+    cell from its sheet's median (see main)."""
+    Mh, Mw = mcell_ink.shape
+    mys = np.nonzero(mcell_ink.any(axis=1))[0]
+    my0, my1 = mys.min(), mys.max() + 1
+    best = None
+    for frac in BANDS:
+        band = mcell_ink[int(my1 - frac * (my1 - my0)):my1]
+        mcx = np.nonzero(band.any(axis=0))[0].mean()
+        if pin is not None:
+            got = _fit(fig, band, mcx, Mw, my1, [pin])
+        else:
+            coarse = _fit(fig, band, mcx, Mw, my1, np.arange(0.45, 1.35, 0.01))
+            if coarse is None:
+                continue
+            got = _fit(fig, band, mcx, Mw, my1,
+                       np.arange(coarse[1] - 0.012, coarse[1] + 0.013, 0.0025))
+        if got is not None and (best is None or got[0] > best[0]):
+            best = got
+    return best
+
+
+def _label_marks(ink, below):
+    """Centroids of the five direction captions, left to right.
+
+    They sit under the figures on their own row, so anything below the cells is
+    caption and nothing else."""
+    lab, k = ndi.label(ink[below:], np.ones((3, 3)))
+    if k < 5:
+        return None
+    objs = ndi.find_objects(lab)
+    xs = sorted(((o[1].start + o[1].stop) / 2, (o[0].start + o[0].stop) / 2 + below)
+                for o in objs)
+    # exactly five captions, so the four widest gaps between glyphs ARE the
+    # word breaks — no threshold to tune, and it survives a redrawn font
+    gaps = sorted(range(1, len(xs)), key=lambda i: xs[i][0] - xs[i - 1][0])[-4:]
+    cuts = [0] + sorted(gaps) + [len(xs)]
+    groups = [xs[a:b] for a, b in zip(cuts, cuts[1:])]
+    if any(not g for g in groups):
+        return None
+    return [(sum(g[0] for g in grp) / len(grp), sum(g[1] for g in grp) / len(grp))
+            for grp in groups]
+
+
+def register_by_labels(art_ink, man_ink, cells, figs):
+    """Per-cell fit derived from the sheet's own direction captions.
+
+    The torso fit is the good one and is always tried first, but it assumes the
+    hat leaves the torso alone — and some headwear simply does not.  The
+    Arabian keffiyeh drapes over both shoulders in all five directions and
+    swallows the east figure whole; its per-cell scales came back 0.66, 0.66,
+    0.99, 0.69, 0.75 for what must be a single number, because there was no
+    uncovered body left to measure.
+
+    The captions cannot be covered by a hat, so they give a transform that
+    holds however much of the body the art buries.  It is a WHOLE-SHEET
+    transform (one scale, one offset) rather than five independent fits, which
+    is also the truth about how these sheets come back."""
+    ma = _label_marks(man_ink, max(c['paste'][1] + c['size'][1] for c in cells) + 2)
+    aa = _label_marks(art_ink, max(o[1] + f.shape[0] for f, o in figs) + 2)
+    if ma is None or aa is None:
+        return None
+    span_m = ma[-1][0] - ma[0][0]
+    span_a = aa[-1][0] - aa[0][0]
+    if span_m <= 0 or span_a <= 0:
+        return None
+    s = span_a / span_m
+    ox = sum(m[0] - a[0] / s for m, a in zip(ma, aa)) / 5
+    oy = sum(m[1] - a[1] / s for m, a in zip(ma, aa)) / 5
+    return s, ox, oy
+
+
+def cell_hat(art_rgb, art_ink, man_rgb, man_ink, fig, org, cell, crown256, fit,
+             text_bottom=0, debug=None):
     """The hat from one cell as a 256x256 RGBA frame, plus where the body's
     crown falls inside that frame.
 
@@ -236,7 +317,7 @@ def cell_hat(art_rgb, art_ink, man_rgb, man_ink, fig, org, cell, crown256, debug
     over = OVERSHOOT * up
 
     M = man_ink[py:py + ch, px:px + cw]
-    iou, s, dx, dy = register(fig, M)
+    iou, s, dx, dy = fit
 
     # lay the drawn cell onto a canvas in mannequin space, OVERSHOOT rows tall
     fh, fw = fig.shape
@@ -255,6 +336,18 @@ def cell_hat(art_rgb, art_ink, man_rgb, man_ink, fig, org, cell, crown256, debug
         raise SystemExit(f"{cell['dir']}: the drawn figure landed off the cell")
     canvas[ty + sy0:ty + sy1, tx + sx0:tx + sx1] = Areg[sy0:sy1, sx0:sx1]
     ink[ty + sy0:ty + sy1, tx + sx0:tx + sx1] = Amsk[sy0:sy1, sx0:sx1]
+
+    # blank the sheet's own caption band.  The canvas reaches OVERSHOOT rows
+    # above the cell, which on the top row of a sheet reaches the title text.
+    # On a sheet that came back the same size the title cancels out in the
+    # diff, but a REDRAWN sheet moves it a few pixels and it lights up as hat
+    # — measured: 'DWEAR REFERENCE' was adopted onto the wizard hat.  The band
+    # is read off the rebuilt mannequin, so it is exactly the rows the caption
+    # occupies and nothing more; ~30 rows of clear margin remain above the
+    # cell for a tall hat (the tallest seen so far overshot by 32).
+    blank = text_bottom - (py - over)
+    if blank > 0:
+        ink[:min(blank, H)] = False
 
     body = np.zeros((H, W), bool)
     body[over:] = M
@@ -285,18 +378,20 @@ def cell_hat(art_rgb, art_ink, man_rgb, man_ink, fig, org, cell, crown256, debug
     hatm[max(0, chin):] = False
     hatm = ndi.binary_fill_holes(hatm)
 
-    # keep only what connects to the top of the head — every hat covers it, and
-    # this is what throws away redraw noise along the shoulders.  The core is a
-    # BAND, not "everything above": the sheet's own title sits in the overshoot
-    # margin above the south cell, and an open-topped test adopted it as hat.
+    # keep only what sits on or above the head — this is what throws away
+    # redraw noise along the shoulders.  Deliberately open at the top rather
+    # than a band around the skull: not every hat touches the head.  The
+    # lightbulb sheet draws a bulb on a stalk floating clear of the scalp, and
+    # a band that started at the crown row threw the whole thing away ("found
+    # no hat covering the head").  The caption blanking above is what makes an
+    # open top safe.
     head_h = (y1_256 - y0) - _man.PAD_ABOVE - _man.PAD_BELOW
-    core_top = over + _man.PAD_ABOVE * up
     core_row = over + int((_man.PAD_ABOVE + CORE_FRAC * head_h) * up)
     lab, k = ndi.label(hatm, np.ones((3, 3)))
     if not k:
         raise SystemExit(f"{cell['dir']}: nothing was drawn in this cell")
     keep = np.zeros(k + 1, bool)
-    for i in np.unique(lab[core_top:core_row]):
+    for i in np.unique(lab[:core_row]):
         if i:
             keep[i] = True
     sizes = np.array(ndi.sum(hatm, lab, range(1, k + 1)))
@@ -405,11 +500,72 @@ def main():
     if args.clips_hair:
         os.makedirs(os.path.join(outdir, 'hairmask'), exist_ok=True)
 
-    bboxes, anchors, nudges, scales = {}, {}, {}, {}
+    # Register every cell first, then repair only the cells that need it.
+    #
+    # The tempting rule is "a sheet is ONE image, so all five cells share one
+    # scale -- pin every outlier to the median".  Measured across 30 sheets,
+    # that is FALSE: the generator redraws each figure independently and its
+    # scale genuinely varies by up to 8% between cells.  Pinning made things
+    # worse where the cell's own fit was already perfect (bandana southwest
+    # 1.000 -> 0.922, frog cap south 1.000 -> 0.959).
+    #
+    # So the median is used only as a rescue.  A cell whose own overlap is at
+    # least TRUST_IOU has matched the full torso band almost exactly and cannot
+    # be wrong about its scale by any margin that matters -- it keeps what it
+    # measured.  A cell that fits poorly AND disagrees with its siblings is one
+    # where the hat has eaten the torso it was supposed to be measured against
+    # (the EAST cell, whose visible body is a sliver to begin with, is nearly
+    # always the one); there the four siblings are the better evidence, and
+    # pinning to their median is what rescued afro / russian-hat / new-idea.
+    # where this row's caption text ends, measured on the mannequin itself
+    top_paste = min(c['paste'][1] for c in cells)
+    above = np.nonzero(man_ink[:top_paste].any(axis=1))[0]
+    text_bottom = int(above.max()) + 3 if len(above) else 0
+
+    fits = []
     for c, (fig, org) in zip(cells, figs):
+        px, py = c['paste']
+        cw, ch = c['size']
+        got = register(fig, man_ink[py:py + ch, px:px + cw])
+        if got is None:
+            raise SystemExit(f"{c['dir']}: could not register this cell at all")
+        fits.append(got)
+    med = float(np.median([f[1] for f in fits]))
+    for i, (c, (fig, org)) in enumerate(zip(cells, figs)):
+        if fits[i][0] >= TRUST_IOU or abs(fits[i][1] - med) <= SCALE_TOL * med:
+            continue
+        px, py = c['paste']
+        cw, ch = c['size']
+        again = register(fig, man_ink[py:py + ch, px:px + cw], pin=med)
+        print(f"  {c['dir']}: scale {fits[i][1]:.3f} disagreed with the sheet's "
+              f'{med:.3f} — re-fitted pinned, IoU {fits[i][0]:.3f} -> '
+              f'{0 if again is None else again[0]:.3f}')
+        if again is not None:
+            fits[i] = again
+    if any(f[0] < MIN_IOU for f in fits):
+        bad = ', '.join(c['dir'] for c, f in zip(cells, fits) if f[0] < MIN_IOU)
+        byl = register_by_labels(art_ink, man_ink, cells, figs)
+        if byl is None:
+            raise SystemExit(f'torso fit failed on {bad} and the direction '
+                             'captions could not be read to fall back on')
+        s, ox, oy = byl
+        print(f'  torso fit failed on {bad} — this hat covers too much of the '
+              f'body to measure against it, so the whole sheet is placed from '
+              f'its direction captions instead (scale {s:.3f})')
+        fits = [(float('nan'), s, int(round(org[0] / s + ox - c['paste'][0])),
+                 int(round(org[1] / s + oy - c['paste'][1])))
+                for c, (fig, org) in zip(cells, figs)]
+    for i, f in enumerate(fits):
+        if f[0] == f[0] and f[0] < GOOD_IOU:
+            print(f"  warning: {cells[i]['dir']} torso fit {f[0]:.3f} is on the "
+                  'low side; check this direction in the preview')
+
+    bboxes, anchors, nudges, scales = {}, {}, {}, {}
+    for c, (fig, org), fit in zip(cells, figs, fits):
         d = c['dir']
         frame, crown, iou, s = cell_hat(art_rgb, art_ink, man_rgb, man_ink, fig, org,
-                                        c, tops[f'stand-{d}-0'], args.debug)
+                                        c, tops[f'stand-{d}-0'], fit,
+                                        text_bottom, args.debug)
         Image.fromarray(frame).save(f'{outdir}/{d}.png')
 
         bb = bbox_of(frame)
@@ -420,7 +576,8 @@ def main():
         # exact offset _placeTrait needs to put the art back where it was drawn
         nudges[d] = [int(anchor[0] - crown[0]), int(anchor[1] - crown[1])]
         scales[d] = 1
-        print(f'{d:<10} fit IoU {iou:.3f} @ {s:.3f}x   bbox {bb}  anchor {anchor}  '
+        how = 'caption-fit ' if iou != iou else f'fit IoU {iou:.3f} '
+        print(f'{d:<10} {how}@ {s:.3f}x   bbox {bb}  anchor {anchor}  '
               f'crown-in-frame {crown}  crownNudge {nudges[d]}')
 
         if args.clips_hair:
