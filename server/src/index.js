@@ -331,6 +331,67 @@ export const PRIVILEGED_EVENTS = new Set([
   'player_join', 'player_leave', 'player_update',
 ]);
 
+/* v2.3.1465: `track` IS COSMETICS ONLY -- the allowlist that makes that
+ * true.  This message predates the whole trust boundary (rules 13-21)
+ * and its handler did a raw `Object.assign(playerState[id], msg.data)`
+ * on a payload every client sends every 2 seconds.  One crafted track
+ * set coins to 999999999, power to 99999, level to 500, minted a
+ * weapon with tierMult 99 (the legit forge ceiling is ~2.6, so this
+ * walked straight past _sanitizeWeapon), and teleported the sender --
+ * all of it then persisted by the next _saveRpg from its fixed field
+ * list.  The identical jump sent as `move` was correctly REJECTED by
+ * the 500px/s cap in movement.js, which is what makes this the one
+ * hole left in an otherwise closed boundary: a message whose name
+ * reads as telemetry was never re-read as an input.  Handoff rule 16
+ * ("never trust client-supplied value blobs") applied at last.
+ *
+ * ALLOWLIST, not deny-list -- an unknown key is DROPPED, so a new
+ * client field has to be added here deliberately.  That is the rule-13
+ * posture (deny by default) applied to the c->s direction.  Iterating
+ * this fixed Set instead of the client's own keys also means
+ * '__proto__' can never be written: TRAPS #6 is avoided structurally
+ * rather than by a guard someone can forget.
+ *
+ * These are exactly the keys the live client sends (BroTown.jsx's
+ * 2-second track emit) -- display/appearance values whose names are
+ * deliberately DISJOINT from the authoritative playerState namespace
+ * (`rpgLv`/`rpgHp`/`rpgMaxHp`, not level/hp/maxHp; `dir`, not d; the
+ * stat block is nested under rpgData so it can never reach ps.power).
+ * That disjointness is why this fix changes nothing for an honest
+ * client -- only forged keys stop working. */
+export const TRACK_COSMETIC_KEYS = new Set([
+  // Position hint (relayed to peers; NOT merged into player state --
+  // see TRACK_STATE_EXCLUDED below).
+  'x', 'y',
+  // Identity + presence.  `name` must stay: friends.js, party.js and
+  // trade2.js all read ps.name for their notices.
+  'name', 'color', 'avatar', 'aw', 'dir', 'zone',
+  // Body / appearance.
+  'bt', 'bl', 'hw', 'fh', 'hr', 'sk', 'hc', 'htc', 'fhc', 'st', 'stc',
+  'pt', 'sh', 'bs', 'mask', 'cape', 'pet',
+  // Live equipment visuals (armour on/off for remote renderers).
+  'eqc', 'eql', 'eqs',
+  // Display-only mirrors of server-owned numbers (distinct key names
+  // from the real fields on purpose -- see the note above).
+  'rpgLv', 'rpgHp', 'rpgMaxHp',
+  // Weapon look + element tints, PvP reputation badge.
+  'wpnType', 'wpnE1', 'wpnE2', 'rep',
+  // Inspect-card blob (nested; display-only).
+  'rpgData',
+  // Clan cosmetics -- the server OVERWRITES these via _clanStampTag
+  // (v2.3.1125) after the copy, so they are listed to be stamped, not
+  // to be trusted.
+  'clanTag', 'clanColor1',
+]);
+
+/* v2.3.1465: keys that may be RELAYED to peers as a visual hint but
+ * must never merge into authoritative player state.  Position is
+ * owned by `move` alone, behind the anti-teleport speed cap; the
+ * client sends a move at >=1 Hz even standing still (the idle
+ * keepalive the client's ghost-sweep relies on), so track's copy was
+ * pure redundancy AND the cap bypass above. */
+export const TRACK_STATE_EXCLUDED = new Set(['x', 'y']);
+
 export class GameRoom {
   constructor(state, env) {
     this.state = state;
@@ -2264,13 +2325,35 @@ export class GameRoom {
 
       case 'track':
         if (session.id) {
+          // v2.3.1465: sanitize ONCE, then use the same clean copy for
+          // all three consumers.  Each of them used to receive the raw
+          // client blob, and all three were exploitable:
+          //   - session.data feeds getAllPlayerData(), which spreads
+          //     ...s.data LAST over playerState -- so a forged field
+          //     there overwrote real values in the state_sync every
+          //     joiner receives;
+          //   - playerState is the authoritative store (the coins /
+          //     stats / weapon forge documented at TRACK_COSMETIC_KEYS);
+          //   - the player_update relay paints peers' screens.
+          // Non-object payloads stay a no-op exactly as before.
+          if (!msg.data || typeof msg.data !== 'object') break;
+          const clean = Object.create(null);
+          for (const k of TRACK_COSMETIC_KEYS) {
+            if (Object.prototype.hasOwnProperty.call(msg.data, k)) clean[k] = msg.data[k];
+          }
           // v2.3.1125: the registry owns the clan tag -- override the
           // client-supplied cosmetics BEFORE they merge/broadcast (this
           // blind merge was the tag-forgery hole).
-          this._clanStampTag(session.id, msg.data);
-          session.data = { ...session.data, ...msg.data };
-          if (this.playerState[session.id]) Object.assign(this.playerState[session.id], msg.data);
-          this.broadcastExcept(ws, { type: 'player_update', id: session.id, data: msg.data });
+          this._clanStampTag(session.id, clean);
+          session.data = { ...session.data, ...clean };
+          const _trackPs = this.playerState[session.id];
+          if (_trackPs) {
+            for (const k of Object.keys(clean)) {
+              // Position is `move`'s alone -- see TRACK_STATE_EXCLUDED.
+              if (!TRACK_STATE_EXCLUDED.has(k)) _trackPs[k] = clean[k];
+            }
+          }
+          this.broadcastExcept(ws, { type: 'player_update', id: session.id, data: clean });
           this.reportToLeaderboard(session);
         }
         break;
@@ -2738,11 +2821,27 @@ export class GameRoom {
   async reportToLeaderboard(session) {
     try {
       const stub = this.env.LEADERBOARD.get(this.env.LEADERBOARD.idFromName('global'));
+      /* v2.3.1465: RANK COMES FROM THE SERVER.  This used to post
+         `session.data.rpgLv` -- a number the client typed into a track
+         message -- so any client could claim level 500 on the global
+         board.  v2.3.1178 closed exactly this forge on the public
+         POST /api/leaderboard route (see the router comment) and noted
+         the GameRoom reports "server-side" via the DO binding instead;
+         but the value it reported was still the client's.  ps.level is
+         the authoritative one (build-point gated in grids.js), so read
+         that and fall back to the claim only when there's no live
+         player state.  rpgData stays client-reported for now: it is the
+         inspect-card blob (gear names, kill tallies) and is vanity-only
+         once rank itself is authoritative -- rebuilding it from server
+         state is a follow-up, not a widening of this fix. */
+      const lbPs = this.playerState[session.id];
+      const lbLevel = (lbPs && typeof lbPs.level === 'number')
+        ? lbPs.level : (session.data?.rpgLv || 1);
       await stub.fetch(new Request('https://internal/api/leaderboard/update', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           playerId: session.id, name: session.name || session.data?.name || 'Anon',
-          color: session.data?.color || '#5b52ff', level: session.data?.rpgLv || 1,
+          color: session.data?.color || '#5b52ff', level: lbLevel,
           rpgData: session.data?.rpgData || {}, ts: Date.now(),
         }),
       }));

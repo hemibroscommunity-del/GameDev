@@ -144,3 +144,24 @@ longer. First-use texture loads are regressions, not optimizations.
 `src/rendering/preloadAnimations.js` (awaited by the intro gate) plus
 `window.__btPreloadReport` for verification; the v2.3.1119 lazy
 variant loading it retired is the pattern NOT to copy.
+
+## 13. Trusting a message because it's named like telemetry
+
+**Tempting:** `track` is analytics — cosmetics, appearance, an inspect
+card. It has been there since the prototype, every client sends it every
+2 seconds, and the trust-boundary work (rules 13–21) audited the
+*gameplay* handlers. **Wrong:** its handler ran
+`Object.assign(this.playerState[session.id], msg.data)` with no
+allowlist, so it was one of the most powerful write primitives in the
+room. A single crafted `track` set coins to 999999999, power to 99999,
+level to 500, minted `weapon.tierMult: 99` (legit ceiling ≈ 2.6, so it
+walked past `_sanitizeWeapon`), and teleported the sender — while the
+identical jump sent as `move` was correctly rejected by the 500 px/s
+cap. `_saveRpg` then persisted all of it. The v2.3.1125 clan-tag fix had
+already touched this exact line and hardened only `clanTag`. **The
+lesson:** audit a handler by what it WRITES, not by what it is named or
+by which era it came from; and prefer an allowlist, so the next
+unreviewed field is dropped instead of trusted. **Receipt:** v2.3.1465 —
+`TRACK_COSMETIC_KEYS` / `TRACK_STATE_EXCLUDED` in `server/src/index.js`,
+handoff rule 16, `anticheat.test.mjs` §7, WIRE-PROTOCOL "track is
+cosmetics-only".
