@@ -1,3 +1,4 @@
+import { withoutPending, PENDING_HEADWEAR } from './pendingTraits.js';
 /* Headwear trait catalog + active-selection store.
  *
  * To add a new headwear option:
@@ -13,7 +14,7 @@
    brightness-ratio retint of every opaque pixel).  Multi-color hats
    (top-hat's band, helmet's stripe) are left off so their accents stay
    intact -- they show no hat-color picker. */
-export const HEADWEAR_CATALOG = [
+const _ALL = [
   { id: 'none', name: 'None' },
   { id: 'old-school-helmet', name: 'Old School Helmet' },
   { id: 'top-hat', name: 'Top Hat' },
@@ -88,6 +89,13 @@ export const HEADWEAR_CATALOG = [
      all because the core test is open at the top (see import_headwear.py). */
   { id: 'halo', name: 'Halo' },
 ];
+
+/* v2.3.1497: entries stay in the list above -- they are merged, just not shown.
+   The export is what everything reads (pickers, RANDOMIZE, thumbnails, and the
+   startup preload), so filtering here holds them back completely, textures
+   included.  One flag in pendingTraits.js releases them. */
+export const HEADWEAR_CATALOG = withoutPending(_ALL, PENDING_HEADWEAR);
+
 
 /** True if the hat can be recolored (single-color design). */
 export function headwearIsSolid(id) {

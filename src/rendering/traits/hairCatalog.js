@@ -1,3 +1,4 @@
+import { withoutPending, PENDING_HAIR } from './pendingTraits.js';
 /* Hair trait catalog + active-selection store.
  *
  * Mirror of headwearCatalog.js / facialHairCatalog.js for the 'hair'
@@ -10,7 +11,7 @@
  *      direction PNGs + meta.json from tools/downscale_trait.py).
  *   2. Add one { id, name } entry to HAIR_CATALOG below.
  */
-export const HAIR_CATALOG = [
+const _ALL = [
   { id: 'none', name: 'None' },
   { id: 'wavy', name: 'Wavy' },
   { id: 'long', name: 'Long' },
@@ -27,6 +28,13 @@ export const HAIR_CATALOG = [
   { id: 'blonde-hair', name: 'Blonde Hair' },
   { id: 'flat-top', name: 'Flat Top' },
 ];
+
+/* v2.3.1497: entries stay in the list above -- they are merged, just not shown.
+   The export is what everything reads (pickers, RANDOMIZE, thumbnails, and the
+   startup preload), so filtering here holds them back completely, textures
+   included.  One flag in pendingTraits.js releases them. */
+export const HAIR_CATALOG = withoutPending(_ALL, PENDING_HAIR);
+
 
 const STORAGE_KEY = 'bt-hair';
 let _active = 'none';
