@@ -12,6 +12,7 @@
 
 import { Texture } from 'pixi.js';
 import { recolorHairToCanvas } from '../characterPortrait.js';
+import { recolorEnabled } from './recolorOptions.js';
 
 export const HAIR_COLOR_CATALOG = [
   { id: 'default', name: 'Default', swatch: '#5a3a22', target: null },
@@ -25,6 +26,7 @@ export const HAIR_COLOR_CATALOG = [
 ];
 
 export function hairColorTarget(id) {
+  if (!recolorEnabled('hair')) return null;  /* v2.3.1494 */
   const e = HAIR_COLOR_CATALOG.find(c => c.id === id);
   return (e && e.target) || null;
 }

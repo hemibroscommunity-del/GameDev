@@ -1,0 +1,179 @@
+{
+  "category": "headwear",
+  "fullFrame": true,
+  "note": "Generated on the headwear mannequin (tools/make_headwear_mannequin.py) and imported by tools/import_headwear.py, which registers each drawn cell back onto the mannequin before diffing. The hat was drawn ON the head, so it lands in the 256 frame at its true position relative to the body: anchors are its own bbox top-centre, crownNudge is anchor minus body-tops stand-<dir>-0, scale is 1. No by-eye tuning \u2014 adjust only if on-device review disagrees. jog fitted by tools/tune_headwear.py --fit-pose jog: the jog sheets draw the head at a different size from the idle sheets, so scaleByPose carries headWidth(jog)/headWidth(stand) with the renderer's blanket poseTraitMul divided back out, and poseNudge scales the placement about the crown so the band does not slide down the face. mine fitted by tools/tune_headwear.py --fit-pose mine: the mine sheets draw the head at a different size from the idle sheets, so scaleByPose carries headWidth(mine)/headWidth(stand) with the renderer's blanket poseTraitMul divided back out, and poseNudge scales the placement about the crown so the band does not slide down the face. fish fitted by tools/tune_headwear.py --fit-pose fish: the fish sheets draw the head at a different size from the idle sheets, so scaleByPose carries headWidth(fish)/headWidth(stand) with the renderer's blanket poseTraitMul divided back out, and poseNudge scales the placement about the crown so the band does not slide down the face. hit fitted by tools/tune_headwear.py --fit-pose hit: the hit sheets draw the head at a different size from the idle sheets, so scaleByPose carries headWidth(hit)/headWidth(stand) with the renderer's blanket poseTraitMul divided back out, and poseNudge scales the placement about the crown so the band does not slide down the face. pickup fitted by tools/tune_headwear.py --fit-pose pickup: the pickup sheets draw the head at a different size from the idle sheets, so scaleByPose carries headWidth(pickup)/headWidth(stand) with the renderer's blanket poseTraitMul divided back out, and poseNudge scales the placement about the crown so the band does not slide down the face.",
+  "bboxes": {
+    "south": [
+      100,
+      6,
+      57,
+      91
+    ],
+    "southwest": [
+      95,
+      6,
+      67,
+      92
+    ],
+    "east": [
+      102,
+      6,
+      53,
+      89
+    ],
+    "northeast": [
+      103,
+      6,
+      50,
+      93
+    ],
+    "north": [
+      101,
+      6,
+      55,
+      88
+    ]
+  },
+  "anchors": {
+    "south": [
+      128,
+      6
+    ],
+    "southwest": [
+      129,
+      6
+    ],
+    "east": [
+      128,
+      6
+    ],
+    "northeast": [
+      128,
+      6
+    ],
+    "north": [
+      129,
+      6
+    ]
+  },
+  "crownNudge": {
+    "south": [
+      -3,
+      -30
+    ],
+    "southwest": [
+      6,
+      -21
+    ],
+    "east": [
+      -1,
+      -28
+    ],
+    "northeast": [
+      5,
+      -20
+    ],
+    "north": [
+      1,
+      -27
+    ]
+  },
+  "scale": {
+    "south": 1,
+    "southwest": 1,
+    "east": 1,
+    "northeast": 1,
+    "north": 1
+  },
+  "poseFit": true,
+  "scaleByPose": {
+    "jog": {
+      "south": 1.07,
+      "southwest": 0.923,
+      "east": 0.889,
+      "northeast": 0.955,
+      "north": 1.024
+    },
+    "mine": {
+      "south": 1.116
+    },
+    "fish": {
+      "south": 1.023
+    },
+    "hit": {
+      "south": 1.233,
+      "southwest": 0.942,
+      "east": 1.022,
+      "northeast": 0.955,
+      "north": 1.0
+    },
+    "pickup": {
+      "south": 1.07
+    }
+  },
+  "poseNudge": {
+    "jog": {
+      "south": [
+        0,
+        -2
+      ],
+      "southwest": [
+        0,
+        2
+      ],
+      "east": [
+        0,
+        3
+      ],
+      "northeast": [
+        0,
+        1
+      ],
+      "north": [
+        0,
+        -1
+      ]
+    },
+    "mine": {
+      "south": [
+        0,
+        -3
+      ]
+    },
+    "fish": {
+      "south": [
+        0,
+        -1
+      ]
+    },
+    "hit": {
+      "south": [
+        0,
+        -7
+      ],
+      "southwest": [
+        0,
+        1
+      ],
+      "east": [
+        0,
+        -1
+      ],
+      "northeast": [
+        0,
+        1
+      ],
+      "north": [
+        0,
+        0
+      ]
+    },
+    "pickup": {
+      "south": [
+        0,
+        -2
+      ]
+    }
+  },
+  "clipsHair": true
+}

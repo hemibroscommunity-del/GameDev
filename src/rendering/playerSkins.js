@@ -22,6 +22,7 @@ import { Rectangle, Texture } from 'pixi.js';
 import { getFrame, SPRITE_VERSION, stripDetachedComponents } from './playerSprites.js';
 import { upscaleToFrameHeight, bakeDisplayCanvas, DISPLAY_DS } from './spriteScale.js'; /* v2.3.1108: normalize downscaled sheets to the 256px frame before recolour; v2.3.1120: downscale the final DISPLAY texture for VRAM; v2.3.1237: bakeDisplayCanvas smooths nearest-upscaled sheets at DISPLAY_DS=1 (jog-shimmer fix) */
 import { loadWebpOrPng } from './webpImage.js'; /* v2.3.1122: prefer lossless WebP, fall back to PNG */
+import { recolorEnabled } from './traits/recolorOptions.js';
 
 /* ── Catalogs ── `target` = the LIT color for that choice; null = native. */
 export const SKIN_CATALOG = [
@@ -66,9 +67,13 @@ function _target(catalog, id) {
   const e = catalog.find(c => c.id === id);
   return (e && e.target) || null;
 }
-export function skinTarget(id) { return _target(SKIN_CATALOG, id); }
-export function pantsTarget(id) { return _target(PANTS_CATALOG, id); }
-export function shoesTarget(id) { return _target(SHOES_CATALOG, id); }
+/* v2.3.1494: every recolor funnels through these three, so gating here
+   switches an option off everywhere at once -- local player, remote players,
+   creator portrait -- and, crucially, for a selection ALREADY SAVED in
+   localStorage.  Hiding a picker alone would leave old picks applying. */
+export function skinTarget(id) { return recolorEnabled('skin') ? _target(SKIN_CATALOG, id) : null; }
+export function pantsTarget(id) { return recolorEnabled('pants') ? _target(PANTS_CATALOG, id) : null; }
+export function shoesTarget(id) { return recolorEnabled('shoes') ? _target(SHOES_CATALOG, id) : null; }
 
 /* ── Selection stores (localStorage) ── */
 function makeStore(key, defId) {

@@ -9,6 +9,7 @@
 
 import { Texture } from 'pixi.js';
 import { recolorHairToCanvas } from '../characterPortrait.js';
+import { recolorEnabled } from './recolorOptions.js';
 
 export const FACIALHAIR_COLOR_CATALOG = [
   { id: 'default', name: 'Default', swatch: '#5a3a22', target: null },
@@ -22,6 +23,7 @@ export const FACIALHAIR_COLOR_CATALOG = [
 ];
 
 export function facialHairColorTarget(id) {
+  if (!recolorEnabled('beard')) return null;  /* v2.3.1494 */
   const e = FACIALHAIR_COLOR_CATALOG.find(c => c.id === id);
   return (e && e.target) || null;
 }
