@@ -302,6 +302,16 @@ def main():
                 px = canvas[v * up:(v + 1) * up, u * up:(u + 1) * up][blk].mean(axis=0)
                 art256[v, u] = (*np.round(px).astype(int), 255)
 
+        # v2.3.1505: last-ditch guard.  Nothing that survives to a finished frame
+        # should still BE the key colour -- no real hat is #00FF00 or the
+        # backdrop magenta.  A handful slip through per sheet (3 on the blonde
+        # hair) where a block's majority vote lands on blend pixels; drop them
+        # here rather than hope the earlier stages caught everything.
+        _r, _g, _b = art256[:, :, 0].astype(int), art256[:, :, 1].astype(int), art256[:, :, 2].astype(int)
+        _key = ((_g > 150) & ((_g - np.maximum(_r, _b)) > 120)) | \
+               ((_r > 150) & (_b > 150) & (_g < 90) & (np.abs(_r - _b) < 60))
+        art256[_key] = 0
+
         m = art256[:, :, 3] > ALPHA_T
         ys2, xs2 = np.nonzero(m)
         ay0, ay1, ax0, ax1 = ys2.min(), ys2.max() + 1, xs2.min(), xs2.max() + 1
