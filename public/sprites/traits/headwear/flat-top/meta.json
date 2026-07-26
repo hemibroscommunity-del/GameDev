@@ -1,50 +1,50 @@
 {
   "category": "headwear",
   "fullFrame": true,
-  "note": "Generated on the headwear mannequin (tools/make_headwear_mannequin.py) and imported by tools/import_headwear.py, which registers each drawn cell back onto the mannequin before diffing. The hat was drawn ON the head, so it lands in the 256 frame at its true position relative to the body: anchors are its own bbox top-centre, crownNudge is anchor minus body-tops stand-<dir>-0, scale is 1. No by-eye tuning \u2014 adjust only if on-device review disagrees. jog fitted by tools/tune_headwear.py --fit-pose jog: the jog sheets draw the head at a different size from the idle sheets, so scaleByPose carries headWidth(jog)/headWidth(stand) with the renderer's blanket poseTraitMul divided back out, and poseNudge scales the placement about the crown so the band does not slide down the face.",
+  "note": "Generated on the headwear mannequin (tools/make_headwear_mannequin.py) and imported by tools/import_headwear.py, which registers each drawn cell back onto the mannequin before diffing. The hat was drawn ON the head, so it lands in the 256 frame at its true position relative to the body: anchors are its own bbox top-centre, crownNudge is anchor minus body-tops stand-<dir>-0, scale is 1. No by-eye tuning \u2014 adjust only if on-device review disagrees. jog fitted by tools/tune_headwear.py --fit-pose jog: the jog sheets draw the head at a different size from the idle sheets, so scaleByPose carries headWidth(jog)/headWidth(stand) with the renderer's blanket poseTraitMul divided back out, and poseNudge scales the placement about the crown so the band does not slide down the face. v2.3.1491: the body that leaked in with the art was subtracted afterwards by tools/strip_body_from_headwear.py, and bboxes/anchors/crownNudge re-derived from what was left.",
   "bboxes": {
     "south": [
-      96,
+      103,
       6,
-      64,
-      89
+      47,
+      40
     ],
     "southwest": [
-      95,
+      98,
       6,
-      67,
-      97
+      55,
+      34
     ],
     "east": [
       105,
       6,
-      46,
-      68
+      44,
+      31
     ],
     "northeast": [
-      100,
-      6,
-      56,
-      86
-    ],
-    "north": [
       106,
       6,
       45,
-      70
+      45
+    ],
+    "north": [
+      108,
+      6,
+      40,
+      47
     ]
   },
   "anchors": {
     "south": [
-      128,
+      127,
       6
     ],
     "southwest": [
-      129,
+      126,
       6
     ],
     "east": [
-      128,
+      127,
       6
     ],
     "northeast": [
@@ -58,15 +58,15 @@
   },
   "crownNudge": {
     "south": [
-      1,
+      0,
       -19
     ],
     "southwest": [
-      6,
+      3,
       -16
     ],
     "east": [
-      1,
+      0,
       -7
     ],
     "northeast": [
