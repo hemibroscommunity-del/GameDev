@@ -32,6 +32,14 @@ export const HEADWEAR_CATALOG = [
      needed.  Not `solid`: the gold band, the darker points and the red gems
      are three tones, so a brightness-ratio retint would flatten them. */
   { id: 'crown', name: 'Crown' },
+  /* v2.3.1488: the first batch to come back REDRAWN rather than composited onto
+     the mannequin (see the registration note in tools/import_headwear.py).
+     None are `solid` — each is two or three tones (the wizard hat's brim
+     shading, the ears' red band, the evil crown's embers), and a
+     brightness-ratio retint would flatten them into one colour. */
+  { id: 'wizard-hat', name: 'Wizard Hat' },
+  { id: 'mickey-ears', name: 'Mickey Ears' },
+  { id: 'evil-crown', name: 'Evil Crown' },
 ];
 
 /** True if the hat can be recolored (single-color design). */
