@@ -11,6 +11,7 @@
 import { Texture } from 'pixi.js';
 import { recolorHairToCanvas } from '../characterPortrait.js';
 import { headwearIsSolid } from './headwearCatalog.js';
+import { recolorEnabled } from './recolorOptions.js';
 
 export const HAT_COLOR_CATALOG = [
   { id: 'default', name: 'Default', swatch: '#7c6cff', target: null },
@@ -28,6 +29,7 @@ export const HAT_COLOR_CATALOG = [
 ];
 
 export function hatColorTarget(id) {
+  if (!recolorEnabled('hat')) return null;  /* v2.3.1494 */
   const e = HAT_COLOR_CATALOG.find(c => c.id === id);
   return (e && e.target) || null;
 }

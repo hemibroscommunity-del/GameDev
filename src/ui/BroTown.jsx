@@ -233,6 +233,7 @@ const {
 import { _regenerator, _regeneratorDefine2, _asyncToGenerator, _typeof, _slicedToArray, _toConsumableArray, _objectSpread, _defineProperty, _toPropertyKey, _toPrimitive, ownKeys, _arrayWithHoles, _iterableToArrayLimit, _unsupportedIterableToArray, _arrayLikeToArray, _nonIterableRest, _arrayWithoutHoles, _iterableToArray, _nonIterableSpread, _createForOfIteratorHelper, asyncGeneratorStep } from '@/lib/babelHelpers.js';
 import { SpriteHpBar } from './SpriteHpBar.jsx'; /* v2.3.1273: owner's HP-bar art (desktop HUD row) */
 import { barHeight, navSlotSize, DASH_OVERLAP } from './mobile/sheet/sheetGeometry.js'; /* v2.3.1283; v2.3.1290 bar-height canvas; v2.3.1325 slot-derived bar */
+import { recolorEnabled } from '@/rendering/traits/recolorOptions.js';
 
 /* Expose all exports as globals for the pre-transpiled code.
    The original index.html had everything in one scope; this bridges the gap. */
@@ -1510,18 +1511,23 @@ export var BroTown = function BroTown(_ref0) {
      unchanged. */
   var randomizeAppearance = function () {
     var rpick = function (c) { return c[Math.floor(Math.random() * c.length)].id; };
-    var sk = rpick(SKIN_CATALOG); setSkin(sk); setSkinSel(sk);
-    var pt = rpick(PANTS_CATALOG); setPants(pt); setPantsSel(pt);
-    var sh = rpick(SHOES_CATALOG); setShoes(sh); setShoesSel(sh);
+    /* v2.3.1494: only roll what is still offered.  Rolling a disabled recolor
+       would look like a broken button -- the swatch changes, the character
+       does not -- and would still persist and broadcast the dead pick. */
+    if (recolorEnabled('skin')) { var sk = rpick(SKIN_CATALOG); setSkin(sk); setSkinSel(sk); }
+    if (recolorEnabled('pants')) { var pt = rpick(PANTS_CATALOG); setPants(pt); setPantsSel(pt); }
+    if (recolorEnabled('shoes')) { var sh = rpick(SHOES_CATALOG); setShoes(sh); setShoesSel(sh); }
     var hr = rpick(HAIR_CATALOG); setHair(hr); setHairSel(hr);
-    var hcCat = hr === 'long' ? HAIR_COLOR_CATALOG.filter(function (c) { return LONG_HAIR_COLORS.indexOf(c.id) >= 0; }) : HAIR_COLOR_CATALOG;
-    var hcc = rpick(hcCat); setHairColor(hcc); setHairColorSel(hcc);
+    if (recolorEnabled('hair')) {
+      var hcCat = hr === 'long' ? HAIR_COLOR_CATALOG.filter(function (c) { return LONG_HAIR_COLORS.indexOf(c.id) >= 0; }) : HAIR_COLOR_CATALOG;
+      var hcc = rpick(hcCat); setHairColor(hcc); setHairColorSel(hcc);
+    }
     var bd = rpick(FACIALHAIR_CATALOG); setFacialHair(bd); setFacialHairSel(bd);
-    var bcc = rpick(FACIALHAIR_COLOR_CATALOG); setFacialHairColor(bcc); setBeardColorSel(bcc);
+    if (recolorEnabled('beard')) { var bcc = rpick(FACIALHAIR_COLOR_CATALOG); setFacialHairColor(bcc); setBeardColorSel(bcc); }
     var st = rpick(SHIRT_CATALOG); setShirt(st); setShirtSel(st);
-    var stc = rpick(SHIRT_COLOR_CATALOG); setShirtColor(stc); setShirtColorSel(stc);
+    if (recolorEnabled('shirt')) { var stc = rpick(SHIRT_COLOR_CATALOG); setShirtColor(stc); setShirtColorSel(stc); }
     var ht = rpick(HEADWEAR_CATALOG); setHeadwear(ht); setHeadwearSel(ht);
-    var htc = rpick(HAT_COLOR_CATALOG); setHatColor(htc); setHatColorSel(htc);
+    if (recolorEnabled('hat')) { var htc = rpick(HAT_COLOR_CATALOG); setHatColor(htc); setHatColorSel(htc); }
   };
   /* v2.3.711: RANDOMIZE rolls a few quick looks before settling -- the
      slot-machine beat makes the button feel fun instead of a dry reroll. */

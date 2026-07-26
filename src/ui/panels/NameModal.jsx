@@ -14,6 +14,7 @@ import { HAT_COLOR_CATALOG, setHatColor } from '@/rendering/traits/hatColorCatal
 import { HEADWEAR_CATALOG, headwearIsSolid, setHeadwear } from '@/rendering/traits/headwearCatalog.js';
 import { SHIRT_CATALOG, setShirt } from '@/rendering/traits/shirtCatalog.js';
 import { SHIRT_COLOR_CATALOG, setShirtColor } from '@/rendering/traits/shirtColorCatalog.js';
+import { recolorEnabled } from '@/rendering/traits/recolorOptions.js';
 
 /* === NameModal — the character-creator / name-entry splash screen === */
 /* v2.3.888: extracted verbatim from the `if (showNameModal) { ... }`
@@ -131,7 +132,7 @@ export function NameModal(props) {
   var _typeDefs = {
     hair: { label: 'Hair', kind: 'thumb', spriteCat: 'hair', catalog: HAIR_CATALOG, sel: hairSel,
       set: function (id) { setHair(id); setHairSel(id); },
-      colors: _hairColCat, colorSel: hairColorSel, setColor: function (id) { setHairColor(id); setHairColorSel(id); } },
+      colors: recolorEnabled('hair') ? _hairColCat : null, colorSel: hairColorSel, setColor: function (id) { setHairColor(id); setHairColorSel(id); } },
     /* v2.3.1493: the color row only appears for hats flagged `solid`.  It used
        to appear for all of them, which is what the owner hit -- recoloring a
        multi-tone hat flattens its accents, and recoloring one of the generated
@@ -139,7 +140,7 @@ export function NameModal(props) {
        became a solid-colored second head.  Four hats are solid and keep it. */
     hat: { label: 'Hats', kind: 'thumb', spriteCat: 'headwear', catalog: HEADWEAR_CATALOG, sel: headwearSel,
       set: function (id) { setHeadwear(id); setHeadwearSel(id); },
-      colors: headwearIsSolid(headwearSel) ? HAT_COLOR_CATALOG : null,
+      colors: (recolorEnabled('hat') && headwearIsSolid(headwearSel)) ? HAT_COLOR_CATALOG : null,
       colorSel: hatColorSel, setColor: function (id) { setHatColor(id); setHatColorSel(id); } },
     /* v2.3.1308 (round-7): 'Skin' → 'Skin Tone' — it recolors the whole
        body, and the plain label read as head-only inside the Head group. */
@@ -147,10 +148,10 @@ export function NameModal(props) {
       set: function (id) { setSkin(id); setSkinSel(id); }, colors: null },
     beard: { label: 'Beard', kind: 'thumb', spriteCat: 'facialhair', catalog: FACIALHAIR_CATALOG, sel: facialHairSel,
       set: function (id) { setFacialHair(id); setFacialHairSel(id); },
-      colors: FACIALHAIR_COLOR_CATALOG, colorSel: beardColorSel, setColor: function (id) { setFacialHairColor(id); setBeardColorSel(id); } },
+      colors: recolorEnabled('beard') ? FACIALHAIR_COLOR_CATALOG : null, colorSel: beardColorSel, setColor: function (id) { setFacialHairColor(id); setBeardColorSel(id); } },
     shirt: { label: 'Shirts', kind: 'thumb', spriteCat: 'shirt', catalog: SHIRT_CATALOG, sel: shirtSel,
       set: function (id) { setShirt(id); setShirtSel(id); },
-      colors: SHIRT_COLOR_CATALOG, colorSel: shirtColorSel, setColor: function (id) { setShirtColor(id); setShirtColorSel(id); } },
+      colors: recolorEnabled('shirt') ? SHIRT_COLOR_CATALOG : null, colorSel: shirtColorSel, setColor: function (id) { setShirtColor(id); setShirtColorSel(id); } },
     pants: { label: 'Pants', kind: 'swatch', spriteCat: null, catalog: PANTS_CATALOG, sel: pantsSel,
       set: function (id) { setPants(id); setPantsSel(id); }, colors: null },
     shoes: { label: 'Shoes', kind: 'swatch', spriteCat: null, catalog: SHOES_CATALOG, sel: shoesSel,
@@ -163,14 +164,25 @@ export function NameModal(props) {
      and Face (skin/beard) merge into one HEAD group whose subtype row
      carries all four buttons; the garment groups drop the body-part
      names for the garment itself: Shirt / Pants / Shoes. */
+  /* v2.3.1494: Skin Tone, Pants and Shoes are recolor-only categories -- their
+     swatch row IS the picker, there is no separate garment to pick -- so a
+     disabled recolor leaves nothing for the tab to do and it is dropped rather
+     than shown empty.  Restoring them is the same one-line flip in
+     recolorOptions.js that restores the recolor itself. */
   var _GROUPS = [
-    { key: 'head', label: 'Head', icon: 'skin', types: ['hair', 'hat', 'skin', 'beard'] },
-    { key: 'shirt', label: 'Shirt', icon: 'shirt', types: ['shirt'] },
-    { key: 'pants', label: 'Pants', icon: 'pants', types: ['pants'] },
-    { key: 'shoes', label: 'Shoes', icon: 'shoes', types: ['shoes'] }
-  ];
+    { key: 'head', label: 'Head', icon: 'skin',
+      types: ['hair', 'hat'].concat(recolorEnabled('skin') ? ['skin'] : []).concat(['beard']) },
+    { key: 'shirt', label: 'Shirt', icon: 'shirt', types: ['shirt'] }
+  ].concat(recolorEnabled('pants') ? [{ key: 'pants', label: 'Pants', icon: 'pants', types: ['pants'] }] : [])
+   .concat(recolorEnabled('shoes') ? [{ key: 'shoes', label: 'Shoes', icon: 'shoes', types: ['shoes'] }] : []);
   var _groupOfType = {};
   _GROUPS.forEach(function (g) { g.types.forEach(function (t) { _groupOfType[t] = g.key; }); });
+  /* v2.3.1494: drop disabled recolor-only types from the defs too, not just
+     from the group lists -- activeCat is remembered across opens, so a stale
+     'skin' would otherwise still open the drawer the tab no longer offers. */
+  ['skin', 'pants', 'shoes'].forEach(function (t) {
+    if (!recolorEnabled(t)) delete _typeDefs[t];
+  });
   var _activeType = _typeDefs[activeCat] ? activeCat : 'hair';
   var _activeGroupKey = _groupOfType[_activeType];
   var _activeGroup = _GROUPS.find(function (g) { return g.key === _activeGroupKey; }) || _GROUPS[0];
