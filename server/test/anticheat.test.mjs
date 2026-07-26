@@ -427,5 +427,86 @@ const psB = room.playerState.pb;
     psG.inventory && Object.keys(psG.inventory).length === 0, psG.inventory);
 }
 
+// ── 7. `track` is cosmetics-only (v2.3.1465) ──
+//
+// The handler used to Object.assign the raw client blob into
+// authoritative playerState.  One crafted track forged coins/stats/
+// level/weapon and teleported the sender, and _saveRpg persisted it —
+// while the SAME jump sent as `move` was correctly rejected by §1's
+// cap above.  Pins the allowlist (TRACK_COSMETIC_KEYS) and the
+// position exclusion (TRACK_STATE_EXCLUDED) in index.js.
+{
+  const wsT = fakeWs('tracker');
+  room.sessions.set(wsT, baseSession());
+  await room.webSocketMessage(wsT, JSON.stringify({
+    type: 'join', id: 'pt', name: 'Tracker', protocolVersion: 2,
+    data: { x: -100000, y: -100000, z: 'meadow' },
+  }));
+  const psT = room.playerState.pt;
+  psT.coins = 25; psT.level = 7; psT.power = 3;
+  const honestMaxHp = psT.maxHp;
+  const honestX = psT.x, honestY = psT.y;
+  const honestWeapon = psT.weapon;
+
+  // The forgery: every one of these must bounce.
+  await room.webSocketMessage(wsT, JSON.stringify({
+    type: 'track',
+    data: {
+      coins: 999999999, power: 99999, maxHp: 999999, hp: 999999,
+      level: 500, unspentT2: 9999, xp: 1e9,
+      inventory: { 'dragon-scale': 9999 },
+      weaponStash: [{ name: 'Dupe' }],
+      weapon: { name: 'God Blade', type: 'greatsword', tierMult: 99 },
+      x: 9000, y: 9000,
+      // honest cosmetics riding along must still land
+      name: 'Tracker', color: '#abc', rpgLv: 500,
+    },
+  }));
+
+  check('track: coins not forgeable', psT.coins === 25, psT.coins);
+  check('track: power not forgeable', psT.power === 3, psT.power);
+  check('track: level not forgeable', psT.level === 7, psT.level);
+  check('track: maxHp not forgeable', psT.maxHp === honestMaxHp, psT.maxHp);
+  check('track: unspentT2 not forgeable', psT.unspentT2 !== 9999, psT.unspentT2);
+  check('track: inventory not forgeable',
+    !psT.inventory || psT.inventory['dragon-scale'] === undefined, psT.inventory);
+  check('track: weapon blob cannot bypass _sanitizeWeapon',
+    psT.weapon === honestWeapon, psT.weapon);
+  check('track: position not merged (move owns it behind the cap)',
+    psT.x === honestX && psT.y === honestY, { x: psT.x, y: psT.y });
+  check('track: honest cosmetics still land', psT.name === 'Tracker' && psT.rpgLv === 500,
+    { name: psT.name, rpgLv: psT.rpgLv });
+
+  // A forged rpgLv is fine as a DISPLAY value (above) but must never
+  // become the player's rank on the global board — v2.3.1178 closed
+  // this same forge on the public HTTP route; the WS path kept it.
+  let lbBody = null;
+  const RealRequest = globalThis.Request;
+  globalThis.Request = class extends RealRequest {
+    constructor(u, i) { super(u, i); this.__body = i && i.body; }
+  };
+  const origLb = room.env.LEADERBOARD;
+  room.env = { ...room.env, LEADERBOARD: { idFromName: () => 'x', get: () => ({ fetch: async (r) => { lbBody = JSON.parse(r.__body); return {}; } }) } };
+  await room.webSocketMessage(wsT, JSON.stringify({ type: 'track', data: { rpgLv: 500 } }));
+  globalThis.Request = RealRequest;
+  room.env = { ...room.env, LEADERBOARD: origLb };
+  check('track: leaderboard rank comes from server level, not the claim',
+    lbBody && lbBody.level === 7, lbBody && lbBody.level);
+
+  // TRAPS #6 — iterating the fixed allowlist means '__proto__' can
+  // never be a written key, structurally.
+  await room.webSocketMessage(wsT, JSON.stringify({
+    type: 'track', data: JSON.parse('{"__proto__":{"polluted":"yes"}}'),
+  }));
+  check('track: __proto__ payload is inert',
+    ({}).polluted === undefined && psT.polluted === undefined, ({}).polluted);
+
+  // A non-object payload stays the no-op it always was.
+  const beforeName = psT.name;
+  await room.webSocketMessage(wsT, JSON.stringify({ type: 'track' }));
+  await room.webSocketMessage(wsT, JSON.stringify({ type: 'track', data: 'nope' }));
+  check('track: missing / non-object data is a no-op', psT.name === beforeName, psT.name);
+}
+
 console.log(failures === 0 ? '\nALL TESTS PASSED' : `\n${failures} TEST(S) FAILED`);
 process.exit(failures === 0 ? 0 : 1);

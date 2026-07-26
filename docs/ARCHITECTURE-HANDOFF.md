@@ -161,6 +161,20 @@ extended.
 16. **Never trust client-supplied value blobs.** The marketplace ignores
     the request's `item` and takes from the server's own stash by index;
     imitate this shape (server's copy by reference, never the wire blob).
+    **v2.3.1465 — the surviving violation was `track`.** Its handler
+    `Object.assign`-ed the raw client blob into authoritative
+    `playerState`, so one crafted message forged coins/power/level,
+    minted a weapon past `_sanitizeWeapon`'s tierMult ceiling, and
+    teleported the sender (the same jump via `move` was correctly
+    rejected by the anti-teleport cap) — all persisted by the next
+    `_saveRpg`. Closed with an ALLOWLIST (`TRACK_COSMETIC_KEYS` /
+    `TRACK_STATE_EXCLUDED` in index.js): unknown keys are dropped, and
+    position stays `move`'s alone. It survived this long because the
+    message is *named* like telemetry, so nobody re-read it as an
+    input — audit by what a handler WRITES, not by what it is called
+    (TRAPS #13). Same pass moved the leaderboard's rank to the server's
+    `ps.level`, finishing the forge closure v2.3.1178 started on the
+    HTTP route.
 17. **PvP fails closed**: `_pvpAllowed` requires `ZONES[zone].lawless`
     (server/src/data.js) or a live consent pair. Town and unknown zones
     deny by default.

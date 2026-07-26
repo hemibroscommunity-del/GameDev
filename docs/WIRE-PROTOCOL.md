@@ -147,7 +147,7 @@ Server cases in `GameRoom.webSocketMessage`, `server/src/index.js`
 | `join` | Session start; negotiates `protocolVersion` | ~3418 |
 | `move` | Position/zone update (batched client-side, 33 ms) | ~3672 |
 | `pong` | Heartbeat reply | ~3811 |
-| `track` | Telemetry/analytics event | ~3819 |
+| `track` | **Cosmetics/appearance only** (2 s cadence) — allowlisted, see below | ~3819 |
 | `player_attack` | Attack swing (also relayed to peers — see Quirks) | ~3828 |
 | `monster_damage` | Damage claim against a monster (server validates; truth returns as `monster_hit`) | ~3834 |
 | `extraction_start` | Begin gather/extraction channel | ~3841 |
@@ -167,6 +167,31 @@ Server cases in `GameRoom.webSocketMessage`, `server/src/index.js`
 | `amulet_forge_request` | v2.3.1192 server amulet forge — `{op:'smelt'\|'craft'\|'gem', ...}` under `caps.amuletForge`; echo is `player_state` only (see `docs/specs/amulet-forge.md`) | amulet.js |
 | `gem_cut_request` | v2.3.1198 server gem cutting — `{gem}` under `caps.gems`; answers private `gem_cut_result` + `player_state` echo (see `docs/specs/amulet-forge.md` "Gem income") | amulet.js |
 | `quest_accept` / `quest_turn_in` | Quest lifecycle | ~4000 / ~4009 |
+
+### `track` is cosmetics-only (v2.3.1465)
+
+`track` carries appearance and display values, nothing authoritative. The
+handler copies **only** the keys in `TRACK_COSMETIC_KEYS`
+(`server/src/index.js`, beside `PRIVILEGED_EVENTS`) into `session.data`, the
+player state, and the `player_update` peer relay. An unknown key is dropped, so
+a new client field must be added to that Set deliberately — the deny-by-default
+posture of rule 13, applied to the c→s direction.
+
+Two properties make this safe and worth preserving:
+
+- The legit payload's key names are deliberately **disjoint** from the
+  authoritative namespace: `rpgLv`/`rpgHp`/`rpgMaxHp` (not `level`/`hp`/`maxHp`),
+  `dir` (not `d`), and the stat block nested under `rpgData` so it can never
+  reach `ps.power`. Keep new display fields disjoint the same way.
+- `x`/`y` are in the allowlist but in `TRACK_STATE_EXCLUDED`: relayed to peers
+  as a visual hint, **never** merged into player state. Position belongs to
+  `move` alone, behind the 500 px/s anti-teleport cap.
+
+Before v2.3.1465 the handler `Object.assign`-ed the raw blob into player state:
+one crafted `track` forged coins/power/level, minted a weapon past
+`_sanitizeWeapon`'s ceiling, and teleported the sender — all persisted by the
+next `_saveRpg`. `reportToLeaderboard` also now takes rank from the server's
+`ps.level`, not the client's `rpgLv`.
 
 ## Peer-relayed broadcast events (client ↔ client)
 
