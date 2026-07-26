@@ -58,17 +58,53 @@ FT = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf', 
 FS = ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf', 22)
 
 
-def head_cell(d, heads):
-    """Head + shoulders for one direction, cropped in 256-space and upscaled."""
-    im = Image.open(BODY.format(dir=d)).convert('RGBA').crop((0, 0, 256, 256))
+def crop_box(d, heads):
+    """The 256-space rect of stand-<dir> frame 0 that this cell shows.
+
+    Deterministic, and the whole reason the importer can be exact: it maps a
+    pixel in the generated cell straight back to 256-space with
+    p256 = box[:2] + p_cell / UPSCALE."""
     h = heads[f'stand-{d}-0']['head']
     top, bot = h['top'][1], h['bottom'][1]
     cx, w = h['center'][0], h['width']
     half = max(w, 56) // 2 + 18
-    box = (max(0, cx - half), max(0, top - PAD_ABOVE),
-           min(256, cx + half), min(256, bot + PAD_BELOW))
-    cell = im.crop(box)
+    return (max(0, cx - half), max(0, top - PAD_ABOVE),
+            min(256, cx + half), min(256, bot + PAD_BELOW))
+
+
+def head_cell(d, heads):
+    """Head + shoulders for one direction, cropped in 256-space and upscaled."""
+    im = Image.open(BODY.format(dir=d)).convert('RGBA').crop((0, 0, 256, 256))
+    cell = im.crop(crop_box(d, heads))
     return cell.resize((cell.width * UPSCALE, cell.height * UPSCALE), Image.NEAREST)
+
+
+def layout(rows=1):
+    """Where every cell sits in the sheet, and what 256-space rect it shows.
+
+    Shared with tools/import_headwear.py so the importer never has to guess at
+    the grid it is reading back."""
+    heads = json.load(open(ANCHORS))
+    cells = [head_cell(d, heads) for d in DIRS]
+    cw = max(c.width for c in cells) + 24
+    chh = max(c.height for c in cells) + 16
+    pad, head_h, cap, rowlab = 16, 62, 36, 34
+    out = []
+    for r in range(rows):
+        y = head_h + r * (chh + cap + pad + (rowlab if rows > 1 else 0))
+        if rows > 1:
+            y += rowlab
+        for i, (d, c) in enumerate(zip(DIRS, cells)):
+            x = pad + i * (cw + pad)
+            out.append({
+                'row': r, 'dir': d,
+                # top-left of the pasted head art inside the sheet
+                'paste': (x + (cw - c.width) // 2, y + (chh - c.height) // 2),
+                'size': (c.width, c.height),
+                'box': crop_box(d, heads),
+                'upscale': UPSCALE,
+            })
+    return out
 
 
 def main():

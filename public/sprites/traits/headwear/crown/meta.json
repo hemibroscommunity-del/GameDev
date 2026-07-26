@@ -1,0 +1,89 @@
+{
+  "category": "headwear",
+  "fullFrame": true,
+  "note": "Generated on the headwear mannequin (tools/make_headwear_mannequin.py) and imported by tools/import_headwear.py. The hat was drawn ON the head, so it lands in the 256 frame at its true position relative to the body: anchors are its own bbox top-centre, crownNudge is anchor minus body-tops stand-<dir>-0, scale is 1. No by-eye tuning \u2014 adjust only if on-device review disagrees.",
+  "bboxes": {
+    "south": [
+      100,
+      6,
+      57,
+      51
+    ],
+    "southwest": [
+      96,
+      6,
+      64,
+      47
+    ],
+    "east": [
+      104,
+      6,
+      48,
+      41
+    ],
+    "northeast": [
+      103,
+      6,
+      50,
+      40
+    ],
+    "north": [
+      104,
+      6,
+      48,
+      41
+    ]
+  },
+  "anchors": {
+    "south": [
+      128,
+      6
+    ],
+    "southwest": [
+      128,
+      6
+    ],
+    "east": [
+      128,
+      6
+    ],
+    "northeast": [
+      128,
+      6
+    ],
+    "north": [
+      128,
+      6
+    ]
+  },
+  "crownNudge": {
+    "south": [
+      0,
+      -36
+    ],
+    "southwest": [
+      0,
+      -27
+    ],
+    "east": [
+      1,
+      -25
+    ],
+    "northeast": [
+      1,
+      -23
+    ],
+    "north": [
+      1,
+      -24
+    ]
+  },
+  "scale": {
+    "south": 1,
+    "southwest": 1,
+    "east": 1,
+    "northeast": 1,
+    "north": 1
+  },
+  "clipsHair": true
+}
