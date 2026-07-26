@@ -60,8 +60,12 @@ export const HEADWEAR_CATALOG = [
   { id: 'headphones', name: 'Headphones' },
   { id: 'devil-horns', name: 'Devil Horns' },
   { id: 'cat-ears', name: 'Cat Ears' },
-  { id: 'split-hair', name: 'Split Hair' },
   { id: 'new-idea', name: 'New Idea' },
+  /* v2.3.1495: six hairstyles that arrived on this sheet run — Split Hair,
+     Dirty Blonde, Slick Back Hair, Afro, Blonde Hair, Flat Top — moved to
+     HAIR_CATALOG where they belong.  They are hair, not headwear, and the hair
+     layer renders BELOW headwear, so as hair they can also be worn under a
+     hat instead of competing with one for the same slot. */
   /* the owner's names for these three collide with hats already above
      (Bucket Hat, Bandana) or with each other (two cowboy hats), so the label
      carries the colour that tells them apart in the picker. */
@@ -74,16 +78,11 @@ export const HEADWEAR_CATALOG = [
   { id: 'folded-brim', name: 'Folded Brim' },
   { id: 'gray-hat', name: 'Gray Hat' },
   { id: 'safety-helmet', name: 'Safety Helmet' },
-  { id: 'dirty-blonde', name: 'Dirty Blonde' },
-  { id: 'slick-back-hair', name: 'Slick Back Hair' },
-  { id: 'afro', name: 'Afro' },
   { id: 'naruto-headband', name: 'Naruto Headband' },
   { id: 'cowboy-hat-2', name: 'Grey Cowboy Hat' },
   { id: 'chinese-hat', name: 'Chinese Hat' },
   { id: 'spartan-helmet', name: 'Spartan Helmet' },
   { id: 'bandana-blue', name: 'Blue Bandana' },
-  { id: 'blonde-hair', name: 'Blonde Hair' },
-  { id: 'flat-top', name: 'Flat Top' },
   { id: 'kermit-hat', name: 'Kermit Hat' },
   /* v2.3.1490: floats clear of the scalp, like new-idea — it only imports at
      all because the core test is open at the top (see import_headwear.py). */
@@ -100,7 +99,11 @@ const STORAGE_KEY = 'bt-headwear';
 let _active = 'none';
 try {
   const saved = typeof localStorage !== 'undefined' && localStorage.getItem(STORAGE_KEY);
-  if (saved) _active = saved;
+  /* v2.3.1495: only restore an id the catalog still has.  Six styles moved
+     from headwear to hair in this version, so a browser holding one of them
+     under the old key would otherwise restore a selection whose sprite
+     folder no longer exists there. */
+  if (saved && HEADWEAR_CATALOG.some(e => e.id === saved)) _active = saved;
 } catch (e) { /* localStorage unavailable (SSR / privacy mode) */ }
 
 const _listeners = new Set();

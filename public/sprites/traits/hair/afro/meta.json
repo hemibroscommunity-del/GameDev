@@ -1,37 +1,37 @@
 {
-  "category": "headwear",
+  "category": "hair",
   "fullFrame": true,
   "note": "Generated on the headwear mannequin (tools/make_headwear_mannequin.py) and imported by tools/import_headwear.py, which registers each drawn cell back onto the mannequin before diffing. The hat was drawn ON the head, so it lands in the 256 frame at its true position relative to the body: anchors are its own bbox top-centre, crownNudge is anchor minus body-tops stand-<dir>-0, scale is 1. No by-eye tuning \u2014 adjust only if on-device review disagrees. jog fitted by tools/tune_headwear.py --fit-pose jog: the jog sheets draw the head at a different size from the idle sheets, so scaleByPose carries headWidth(jog)/headWidth(stand) with the renderer's blanket poseTraitMul divided back out, and poseNudge scales the placement about the crown so the band does not slide down the face. mine fitted by tools/tune_headwear.py --fit-pose mine: the mine sheets draw the head at a different size from the idle sheets, so scaleByPose carries headWidth(mine)/headWidth(stand) with the renderer's blanket poseTraitMul divided back out, and poseNudge scales the placement about the crown so the band does not slide down the face. fish fitted by tools/tune_headwear.py --fit-pose fish: the fish sheets draw the head at a different size from the idle sheets, so scaleByPose carries headWidth(fish)/headWidth(stand) with the renderer's blanket poseTraitMul divided back out, and poseNudge scales the placement about the crown so the band does not slide down the face. hit fitted by tools/tune_headwear.py --fit-pose hit: the hit sheets draw the head at a different size from the idle sheets, so scaleByPose carries headWidth(hit)/headWidth(stand) with the renderer's blanket poseTraitMul divided back out, and poseNudge scales the placement about the crown so the band does not slide down the face. pickup fitted by tools/tune_headwear.py --fit-pose pickup: the pickup sheets draw the head at a different size from the idle sheets, so scaleByPose carries headWidth(pickup)/headWidth(stand) with the renderer's blanket poseTraitMul divided back out, and poseNudge scales the placement about the crown so the band does not slide down the face.",
   "bboxes": {
     "south": [
-      96,
+      90,
       6,
-      64,
-      84
+      76,
+      97
     ],
     "southwest": [
-      94,
+      86,
       6,
-      68,
-      88
+      85,
+      99
     ],
     "east": [
-      105,
+      93,
       6,
-      46,
-      69
+      71,
+      102
     ],
     "northeast": [
-      101,
+      91,
       6,
-      54,
-      84
+      74,
+      106
     ],
     "north": [
-      101,
+      90,
       6,
-      55,
-      79
+      76,
+      103
     ]
   },
   "anchors": {
@@ -44,7 +44,7 @@
       6
     ],
     "east": [
-      128,
+      129,
       6
     ],
     "northeast": [
@@ -52,30 +52,30 @@
       6
     ],
     "north": [
-      129,
+      128,
       6
     ]
   },
   "crownNudge": {
     "south": [
       1,
-      -14
+      -34
     ],
     "southwest": [
-      6,
-      -7
+      9,
+      -28
     ],
     "east": [
-      -1,
-      -8
+      -5,
+      -41
     ],
     "northeast": [
-      2,
-      -4
+      -1,
+      -26
     ],
     "north": [
       1,
-      -8
+      -32
     ]
   },
   "scale": {
@@ -115,53 +115,53 @@
     "jog": {
       "south": [
         0,
-        -1
+        -2
       ],
       "southwest": [
         0,
-        1
+        2
       ],
       "east": [
         0,
-        1
+        5
       ],
       "northeast": [
         0,
-        0
+        1
       ],
       "north": [
         0,
-        0
+        -1
       ]
     },
     "mine": {
       "south": [
         0,
-        -2
+        -4
       ]
     },
     "fish": {
       "south": [
         0,
-        0
+        -1
       ]
     },
     "hit": {
       "south": [
         0,
-        -3
+        -8
       ],
       "southwest": [
         0,
-        0
+        2
       ],
       "east": [
         0,
-        0
+        -1
       ],
       "northeast": [
         0,
-        0
+        1
       ],
       "north": [
         0,
@@ -171,7 +171,7 @@
     "pickup": {
       "south": [
         0,
-        -1
+        -2
       ]
     }
   },
