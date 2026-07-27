@@ -237,29 +237,34 @@ def register(fig, mcell):
         if th < bh + 12 or tw < 8 or th > 4000 or tw > 4000:
             continue
         am = np.array(src.resize((tw, th), Image.BOX)) > 110
+        # v2.3.1509: compare only the overlap that EXISTS IN BOTH.  A hat that
+        # covers the whole head leaves a green silhouette shorter than the
+        # mannequin's comparison band -- the Arabian Robe's north cell is just
+        # shoulders plus two ear slivers -- and scoring a short figure against a
+        # tall band never matched, so that cell aborted the whole import.
+        use = min(bh, th - 4)
+        if use < 12:
+            continue
+        band_u = band[bh - use:]
         for dy in range(-8, 9, 2):
-            top = am.shape[0] - bh + dy
-            if top < 0 or top + bh > am.shape[0]:
+            top = am.shape[0] - use + dy
+            if top < 0 or top + use > am.shape[0]:
                 continue
-            ba = am[top:top + bh]
+            ba = am[top:top + use]
             xs = np.nonzero(ba.any(axis=0))[0]
             if not len(xs):
                 continue
             d0 = int(round(mcx - xs.mean()))
             for dx in range(d0 - 10, d0 + 11):
-                sh = np.zeros_like(band)
+                sh = np.zeros_like(band_u)
                 lo, hi = max(0, dx), min(Mw, ba.shape[1] + dx)
                 if hi <= lo:
                     continue
                 sh[:, lo:hi] = ba[:, lo - dx:hi - dx]
-                iou = int((sh & band).sum()) / max(1, int((sh | band).sum()))
+                iou = int((sh & band_u).sum()) / max(1, int((sh | band_u).sum()))
                 if best is None or iou > best[0]:
                     best = (iou, float(s), int(dx), int(my1 - th + dy))
-    if best is None or best[0] < 0.70:
-        raise SystemExit(f'could not register a cell at all (best shoulder IoU '
-                         f'{0 if best is None else best[0]:.3f}) — is the green flat?')
-    iou, s, dx, oy = best
-    return iou, s, dx, oy
+    return best      # (iou, scale, dx, oy) or None
 
 
 def main():
@@ -305,8 +310,42 @@ def main():
     if args.debug:
         os.makedirs(args.debug, exist_ok=True)
 
-    bboxes, anchors, nudges, scales = {}, {}, {}, {}
+    # v2.3.1509: register every cell FIRST, so a cell that cannot be fitted can
+    # borrow the scale from the ones that could.  A hat covering the whole head
+    # leaves too little silhouette to fit -- the Arabian Robe's north cell is a
+    # strip of shoulder the robe drapes over -- and that used to abort the whole
+    # import.  Every cell on a sheet shares one scale (measured within 3% across
+    # 20 sheets), so the median of the successes is a sound stand-in, and the
+    # position still comes from that cell's own green.
+    fits = []
     for c, (fg, sl) in zip(cells, figs):
+        px, py = c['paste']
+        cw, ch = c['size']
+        fy0, fy1, fx0, fx1 = sl[0].start, sl[0].stop, sl[1].start, sl[1].stop
+        r = register(fg[fy0:fy1, fx0:fx1], mink[py:py + ch, px:px + cw])
+        fits.append(r if (r and r[0] >= 0.70) else None)
+    ok = [f[1] for f in fits if f]
+    if not ok:
+        raise SystemExit('could not register ANY cell — is the green flat?')
+    borrow = float(np.median(ok))
+    for i, (c, (fg, sl)) in enumerate(zip(cells, figs)):
+        if fits[i] is None:
+            # place it by its own green: bottom-aligned, centred on the mannequin
+            px, py = c['paste']
+            cw, ch = c['size']
+            M = mink[py:py + ch, px:px + cw]
+            mys = np.nonzero(M.any(axis=1))[0]
+            mxs = np.nonzero(M.any(axis=0))[0]
+            fy0, fy1, fx0, fx1 = sl[0].start, sl[0].stop, sl[1].start, sl[1].stop
+            th = int(round((fy1 - fy0) * borrow))
+            tw = int(round((fx1 - fx0) * borrow))
+            fits[i] = (0.0, borrow, int((mxs.min() + mxs.max()) // 2 - tw // 2),
+                       int(mys.max() + 1 - th))
+            print(f'{c["dir"]:<10} could not be fitted — using the sheet\'s own '
+                  f'scale {borrow:.3f} and this cell\'s green for position')
+
+    bboxes, anchors, nudges, scales = {}, {}, {}, {}
+    for (c, (fg, sl)), fit in zip(zip(cells, figs), fits):
         d = c['dir']
         cx, cy = c['paste']
         cw, ch = c['size']
@@ -314,7 +353,7 @@ def main():
         bx0, by0 = c['box'][0], c['box'][1]
         fy0, fy1, fx0, fx1 = sl[0].start, sl[0].stop, sl[1].start, sl[1].stop
 
-        iou, scale, ox, oy = register(fg[fy0:fy1, fx0:fx1], mink[cy:cy + ch, cx:cx + cw])
+        iou, scale, ox, oy = fit
         hat = hat_of(ink, sl)
         ys, xs = np.nonzero(hat)
         if not len(ys):
@@ -414,7 +453,8 @@ def main():
         # redrew that figure's torso off-model, so nothing lines up against the
         # real body.  Reported per cell so the owner can see which directions
         # are trustworthy and regenerate only those.
-        grade = 'good' if iou >= 0.95 else 'soft' if iou >= 0.90 else 'POOR — regenerate this direction'
+        grade = ('borrowed scale' if iou == 0 else 'good' if iou >= 0.95
+                 else 'soft' if iou >= 0.90 else 'POOR — regenerate this direction')
         print(f'{d:<10} fit {iou:.3f} @ {scale:.3f}x  {grade:<32} '
               f'bbox {bb}  crownNudge {nudges[d]}')
 
