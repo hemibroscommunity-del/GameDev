@@ -1,7 +1,7 @@
 {
   "category": "headwear",
   "fullFrame": true,
-  "note": "Imported by tools/import_headwear_green.py from a sheet whose person was painted flat #00FF00. The hat is simply everything that is neither the magenta backdrop nor the green person, so no head can leak into the frame and no colour heuristic can eat a hat pixel. The green silhouette also registers the cell against the mannequin on the WHOLE body rather than the torso alone. anchors are the hat bbox top-centre, crownNudge is anchor minus body-tops stand-<dir>-0, scale is 1. v2.3.1514: nudged by hand dx +0 dy +10 on south,east. v2.3.1514: nudged by hand dx -10 dy +0 on east. v2.3.1514: nudged by hand dx +7 dy +5 on south. v2.3.1514: nudged by hand dx +0 dy +7 on east.",
+  "note": "Imported by tools/import_headwear_green.py from a sheet whose person was painted flat #00FF00. The hat is simply everything that is neither the magenta backdrop nor the green person, so no head can leak into the frame and no colour heuristic can eat a hat pixel. The green silhouette also registers the cell against the mannequin on the WHOLE body rather than the torso alone. anchors are the hat bbox top-centre, crownNudge is anchor minus body-tops stand-<dir>-0, scale is 1. v2.3.1514: nudged by hand dx +0 dy +10 on south,east. v2.3.1514: nudged by hand dx -10 dy +0 on east. v2.3.1514: nudged by hand dx +7 dy +5 on south. v2.3.1514: nudged by hand dx +0 dy +7 on east. v2.3.1514: nudged by hand dx -10 dy +0 on south. v2.3.1514: nudged by hand dx +10 dy +0 on east.",
   "bboxes": {
     "south": [
       101,
@@ -58,7 +58,7 @@
   },
   "crownNudge": {
     "south": [
-      7,
+      -3,
       -29
     ],
     "southwest": [
@@ -66,7 +66,7 @@
       -44
     ],
     "east": [
-      -7,
+      3,
       -20
     ],
     "northeast": [
