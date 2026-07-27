@@ -51,6 +51,7 @@ FRAME = 256
 ALPHA_T = 16
 TOP_MARGIN = 6       # where the hat's top sits inside its own frame
 OVERSHOOT = 60       # 256-space rows sampled ABOVE the cell, for tall hats
+KEY_TOL = 60         # how far a green region may sit from the key and still be head
 TEXT_DROP = 0.30     # a real hat reaches at least this far down toward the crown
 
 
@@ -84,60 +85,86 @@ def panel_of(mag):
 def dekey_fringe(rgb, hat, mag, grn):
     """Drop the blend band where the hat meets a key colour.
 
-    A regenerated sheet has soft edges, so along every boundary there is a band
-    of pixels that are part key and part hat.  They match neither key test and
-    fall into the hat, where they survive the downscale as a visible coloured
-    rim -- a dark green line under each hat's brim and a magenta fringe over its
-    outline.  (I had assumed this was sub-pixel and harmless; at 10x it plainly
-    is not.)
+    A regenerated sheet has soft edges, so along every boundary sits a band that
+    is part key and part hat.  It matches neither key test, falls into the hat,
+    and survives the downscale as a coloured rim.
 
-    Dropping everything "tinted toward a key" would be wrong: the Kermit cap is
-    mint, and 1134 of its pixels read as green-tinted while being the actual
-    hat.  What separates a blend from real art is BRIGHTNESS.  These bands are
-    the key mixed with the near-black outline, so they land far darker than the
-    key itself -- measured (28,63,24) against a (12,246,16) key, and (53,15,50)
-    against a (245,5,244) backdrop -- while genuine hat colour does not.  So a
-    pixel is dropped only if it borders that key, leans toward it, AND is much
-    darker than it."""
+    The threshold has to be PER HAT, which took two goes to get right.  A fixed
+    "tinted toward the key" test is wrong because a hat may legitimately be that
+    colour -- 1134 of the Kermit cap's pixels read as green-tinted.  A brightness
+    test is wrong too, and that is the one that shipped: it assumed the blend is
+    the key mixed with the near-black OUTLINE, so it only caught dark ones, and
+    the Dirty Blonde's blends are the key mixed with pale hair -- bright, and
+    left a scatter of green speckles along every hair edge.
+
+    So the hat sets its own threshold.  Pixels far from the key show what this
+    hat's colour actually does (blonde hair sits at -60 green dominance, mint at
+    +58); anything hugging the key that exceeds that by a clear margin is a
+    blend, whatever the hat is made of."""
     r, g, b = rgb[:, :, 0], rgb[:, :, 1], rgb[:, :, 2]
-    lum = 0.299 * r + 0.587 * g + 0.114 * b
     out = hat.copy()
     st = ndi.generate_binary_structure(2, 2)
     for key, tint in ((grn, g - np.maximum(r, b)), (mag, np.minimum(r, b) - g)):
         if not key.any():
             continue
-        klum = lum[key].mean()
-        near = ndi.binary_dilation(key, st, iterations=3)
-        out &= ~(hat & near & (tint > 12) & (lum < 0.75 * klum))
+        # Reach is in ART pixels, and the art is ~3.5 art px per game pixel, so
+        # a one-game-pixel blend band is ~3.5 wide.  Searching 3 covered less
+        # than a game pixel of it and left the rest to survive the downscale.
+        near = ndi.binary_dilation(key, st, iterations=9)
+        far = hat & ~ndi.binary_dilation(key, st, iterations=16)
+        if far.sum() < 200:
+            continue
+        thresh = max(np.median(tint[far]) + 30, 15)
+        out &= ~(hat & near & (tint > thresh))
     return out
 
 
-def split_green(grn):
+def split_green(rgb, grn):
     """The head mask, and the five cells' body slices.
 
-    NOT simply "the five largest regions".  A hat that crosses the head splits
-    the silhouette in two: the Blue Bandana leaves the scalp above the band as
-    its own region, so a five-largest rule kept the five bodies, threw the five
-    scalps out of the head, and baked them into the hat -- 217 key-green pixels
-    sat inside the finished bandana frame.
+    Green regions come in three kinds and all three have bitten:
 
-    Nor can every green region simply be kept, because a green HAT sheds green
-    regions of its own: the Kermit cap threw off 121 of them.
+      * the five bodies;
+      * SPLITS of a body -- a hat that crosses the head cuts the scalp off as
+        its own region (Blue Bandana, Naruto Headband), and gaps between spiky
+        hair leave a scatter of small ones (Dirty Blonde, 1209px across 5 cells);
+      * a green HAT's own shading, which keys as green but is not head (the
+        Kermit cap threw off 121 regions).
 
-    Size separates the two cleanly, and by a wide margin.  A split scalp is
-    5-9% of the biggest region; green-hat shading is under 1%.  The cut is at
-    3%, which is several times clear of both."""
+    Sorting them by SIZE fails: a hair gap and a shading blob are both small.
+    Sorting by COLOUR works, because the first two kinds are the literal key
+    colour the generator painted, while a green hat is some other green.  Every
+    region is therefore compared against the colour of the five bodies: within
+    KEY_TOL it is head, beyond it is hat.  Kermit's mint sits ~150 away, hair
+    gaps sit at ~0.
+
+    Sizing was tried first and shipped the Dirty Blonde with green speckles
+    along every hair edge -- the final key guard could not catch them because a
+    5x5 block averaging gap-green with hair no longer matches the key."""
     lab, k = ndi.label(grn, np.ones((3, 3)))
     if k < 5:
         raise SystemExit(f'found {k} green regions, expected at least 5 — did the '
                          'generator paint the person flat #00FF00?')
     sizes = np.array(ndi.sum(grn, lab, range(1, k + 1)))
     objs = ndi.find_objects(lab)
-    keep = [i for i in range(k) if sizes[i] >= 0.03 * sizes.max()]
-    heads = np.isin(lab, [i + 1 for i in keep]) & grn
     bodies = sorted(np.argsort(sizes)[::-1][:5], key=lambda i: objs[i][1].start)
-    extra = len(keep) - 5
-    return heads, [((lab == i + 1), objs[i]) for i in bodies], extra, int((grn & ~heads).sum())
+    key_rgb = rgb[np.isin(lab, [i + 1 for i in bodies]) & grn].mean(axis=0)
+
+    keep, rejected = [], 0
+    for i in range(k):
+        m = (lab == i + 1)
+        # CLOSEST pixel to the key, not the average.  A gap between hair strands
+        # is only a few pixels and its edges blend into the hair, so its MEAN
+        # drifts far enough off-key to be mistaken for hat -- which is exactly
+        # how the Dirty Blonde kept green in its east and northeast frames after
+        # the mean-based test went in.  Any region that is really head contains
+        # at least one untouched key pixel; a green hat's shading contains none.
+        if np.abs(rgb[m] - key_rgb).max(axis=1).min() <= KEY_TOL:
+            keep.append(i)
+        else:
+            rejected += int(sizes[i])
+    heads = np.isin(lab, [i + 1 for i in keep]) & grn
+    return heads, [((lab == i + 1), objs[i]) for i in bodies], len(keep) - 5, rejected
 
 
 def hat_of(ink, sl):
@@ -231,15 +258,15 @@ def main():
     mag, grn, ink = keys(rgb)
     px0, py0, px1, py1 = panel_of(mag)
     rgb, grn = (a[py0:py1, px0:px1] for a in (rgb, grn))
-    heads, figs, extra, reclaimed = split_green(grn)
+    heads, figs, extra, reclaimed = split_green(rgb, grn)
     if extra:
-        print(f'note: the hat splits the silhouette — {extra} extra green region(s) '
-              f'kept as head (a scalp above a band)')
+        print(f'note: the silhouette is split into {extra} extra region(s) — kept as '
+              f'head (a scalp above a band, or gaps between hair spikes)')
     pmag = mag[py0:py1, px0:px1]
     ink = dekey_fringe(rgb, ~(pmag | heads), pmag, heads)
     if reclaimed:
-        print(f'note: {reclaimed}px of green were not part of a silhouette — '
-              f'returned to the hat (a green hat keys close to the backdrop)')
+        print(f'note: {reclaimed}px of green did not match the key colour — '
+              f'returned to the hat (the hat itself is green)')
 
     tmp = os.path.join(TOOLS, '.mannequin-rebuild.png')
     os.system(f'python3 {TOOLS}/make_headwear_mannequin.py --out {tmp} >/dev/null')
@@ -301,6 +328,28 @@ def main():
                     continue
                 px = canvas[v * up:(v + 1) * up, u * up:(u + 1) * up][blk].mean(axis=0)
                 art256[v, u] = (*np.round(px).astype(int), 255)
+
+        # v2.3.1506: speckle guard on the FINISHED frame.  dekey_fringe works in
+        # ART space, but a 5x5 block can average several mildly-green art pixels
+        # into one clearly-green game pixel that no single art pixel would have
+        # tripped -- which is how the Dirty Blonde kept its green edge speckles
+        # through two earlier fixes.  Threshold is the hat's own 99th percentile
+        # so a green hat keeps its colour, and only SMALL clusters are dropped so
+        # a deliberate green accent (a gem, a band) survives.
+        _m0 = art256[:, :, 3] > ALPHA_T
+        if _m0.sum() > 40:
+            _rr, _gg, _bb = (art256[:, :, i].astype(int) for i in range(3))
+            _dom = _gg - np.maximum(_rr, _bb)
+            # MEDIAN, not a high percentile: speckles sit inside the top 1% and
+            # would set their own threshold, which is why a p99 cut removed none
+            # of them.  The median is the hat's bulk colour and cannot be moved
+            # by a scatter of edge pixels.
+            _t = max(np.median(_dom[_m0]) + 30, 15)
+            _cand = _m0 & (_dom > _t)
+            if _cand.any():
+                _lb, _nk = ndi.label(_cand, np.ones((3, 3)))
+                _sz = np.array(ndi.sum(_cand, _lb, range(1, _nk + 1)))
+                art256[np.concatenate([[False], _sz < 6])[_lb]] = 0
 
         # v2.3.1505: last-ditch guard.  Nothing that survives to a finished frame
         # should still BE the key colour -- no real hat is #00FF00 or the
