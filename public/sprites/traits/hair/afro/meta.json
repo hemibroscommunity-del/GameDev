@@ -1,7 +1,7 @@
 {
   "category": "hair",
   "fullFrame": true,
-  "note": "Imported by tools/import_headwear_green.py from a sheet whose person was painted flat #00FF00. The hat is simply everything that is neither the magenta backdrop nor the green person, so no head can leak into the frame and no colour heuristic can eat a hat pixel. The green silhouette also registers the cell against the mannequin on the WHOLE body rather than the torso alone. anchors are the hat bbox top-centre, crownNudge is anchor minus body-tops stand-<dir>-0, scale is 1. v2.3.1510: floated clear of the head, so the whole hat was seated 2px lower by tools/seat_headwear.py.",
+  "note": "Imported by tools/import_headwear_green.py from a sheet whose person was painted flat #00FF00. The hat is simply everything that is neither the magenta backdrop nor the green person, so no head can leak into the frame and no colour heuristic can eat a hat pixel. The green silhouette also registers the cell against the mannequin on the WHOLE body rather than the torso alone. anchors are the hat bbox top-centre, crownNudge is anchor minus body-tops stand-<dir>-0, scale is 1.",
   "bboxes": {
     "south": [
       94,
@@ -59,23 +59,23 @@
   "crownNudge": {
     "south": [
       1,
-      -31
+      -33
     ],
     "southwest": [
       4,
-      -30
+      -32
     ],
     "east": [
       0,
-      -11
+      -13
     ],
     "northeast": [
       -2,
-      -22
+      -24
     ],
     "north": [
       -1,
-      -21
+      -23
     ]
   },
   "scale": {

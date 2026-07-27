@@ -60,6 +60,21 @@ The move is never upward and never less than it takes to close the largest
 float, so a hat that already touches the head in every direction is left
 completely alone.
 
+A pixel or two of air is not a float (v2.3.1511)
+------------------------------------------------
+The first cut of this fired on ANY positive gap, and it was wrong.  The New
+Idea -- a lightbulb standing on the scalp -- registered at 0.971-0.993, as good
+as anything here, measured a gap of 0, +2, +1, 0, 0, and got driven 15px down
+into the skull for it.
+
+At this size the hat is downscaled 5:1 out of the art, so a gap of one or two
+pixels is the rounding, not a finding.  Only a gap of FLOAT_T or more counts,
+which is where the two populations actually separate: everything genuinely
+lifted off the head sits at 6-9px (Golden Bucket 9, Axe On Head 9, Cat Ears 7,
+Blonde Hair 7, Army Helmet 6) and everything correctly placed sits at 0-2
+(New Idea 2, Flat Top 1, Devil Horns 1, Spartan Helmet 1, Afro 2, Slick Back 2,
+Headphones 2).  Nothing lands in between.
+
 Run from the repo root:
     python3 tools/seat_headwear.py                 # report only, every hat
     python3 tools/seat_headwear.py --apply
@@ -78,6 +93,7 @@ TRAITS = 'public/sprites/traits'
 FRAME = 256
 ALPHA_T = 16
 CENTRE = 0.25        # the middle half of the body's width is what "on the head" means
+FLOAT_T = 4          # px of air below which the gap is 5:1 downscale rounding
 # Median seating depth of the well-registered population, per direction.
 REF = {'south': -7, 'southwest': -13, 'east': -12, 'northeast': -23, 'north': -18}
 
@@ -146,7 +162,7 @@ def reseat(hid, meta, apply_it=True, quiet=False):
     Only crownNudge changes -- the artwork and its bbox are untouched, because
     the hat itself is correct, it is only being told where the head is."""
     gaps = measure(hid, meta)
-    floating = {d: g for d, g in gaps.items() if g > 0}
+    floating = {d: g for d, g in gaps.items() if g >= FLOAT_T}
     if not floating:
         return 0
     drop = int(round(max(np.median([g - REF[d] for d, g in gaps.items()]),
