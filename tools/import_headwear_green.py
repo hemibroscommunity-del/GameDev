@@ -26,6 +26,28 @@ conflict, so the fit runs against the whole body: far more constrained, and
 immune to the "redrawn at 73% and re-laid-out" sheets that forced registration
 into existence in the first place.
 
+What makes a good sheet (measured, v2.3.1506)
+--------------------------------------------
+Every cell is fitted by matching its green silhouette against the real body, so
+the fit score doubles as a fidelity check on how faithfully the generator
+redrew that figure.  Across 15 sheets:
+
+  * ONE AT A TIME BEATS BATCHING.  Ten sheets processed in one go all came back
+    with east fits of 0.767-0.880.  Sent individually, three of four landed at
+    0.947-0.967.  Not a guarantee -- Russian Hat still came back 0.809 -- but
+    clearly worth the extra effort.
+  * EAST IS ALWAYS THE WEAKEST CELL, on every sheet, however it was produced.
+  * A SECOND EDITING PASS IS NOT MEASURABLY WORSE.  Safety Helmet was sent
+    through twice (its outline was incomplete the first time) and came back at
+    the same drift as single-pass Russian Hat -- east 12% off that sheet's own
+    mean scale, 0.25 scale spread, against 0.02-0.16 for the well-behaved ones.
+    Two samples is not proof either way; recorded so the next person does not
+    assume re-editing is free OR that it is ruinous.
+
+  Correction: v2.3.1506's commit message called Safety Helmet the batched
+  control.  It was not -- it was a re-edit.  The case for one-at-a-time rests
+  on the four singles against the earlier ten-sheet batch, not on it.
+
 Run from the repo root:
     python3 tools/import_headwear_green.py --art sheet.png --id fez --name "Fez"
     [--clips-hair]  also emit hairmask/*.png
