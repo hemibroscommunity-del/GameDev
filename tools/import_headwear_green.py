@@ -47,6 +47,15 @@ redrew that figure.  Across 15 sheets:
   Correction: v2.3.1506's commit message called Safety Helmet the batched
   control.  It was not -- it was a re-edit.  The case for one-at-a-time rests
   on the four singles against the earlier ten-sheet batch, not on it.
+  * WHAT A BAD FIT ACTUALLY DOES TO THE HAT (v2.3.1510).  A poor sheet is one
+    drawn NARROW AND TALL: the fitter scales it up to match the shoulders, and
+    the extra height, with everything bottom-anchored, lifts the hat clear off
+    the head.  Four of the five sheets in the 2026-07-27 batch did this, all
+    five cells of the Axe On Head among them.  Sheets scoring 0.95+ land within
+    2px of where a hat should sit; sheets in the 0.78-0.92 band land 7-9px high.
+    tools/seat_headwear.py now measures and repairs that at the end of every
+    import, so a soft sheet is no longer a wasted one -- but a soft sheet is
+    still a soft sheet, and re-cutting it is still better.
 
 Run from the repo root:
     python3 tools/import_headwear_green.py --art sheet.png --id fez --name "Fez"
@@ -66,6 +75,10 @@ _spec = importlib.util.spec_from_file_location(
     'make_headwear_mannequin', os.path.join(TOOLS, 'make_headwear_mannequin.py'))
 _man = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_man)
+_sspec = importlib.util.spec_from_file_location(
+    'seat_headwear', os.path.join(TOOLS, 'seat_headwear.py'))
+_seat = importlib.util.module_from_spec(_sspec)
+_sspec.loader.exec_module(_seat)
 
 BODY_TOPS = 'public/sprites/player/body-tops.json'
 OUTDIR = 'public/sprites/traits/{cat}/{id}'
@@ -496,6 +509,19 @@ def main():
     }
     if args.clips_hair and args.category == 'headwear':
         meta['clipsHair'] = True
+
+    # v2.3.1510: the fit score does not catch every bad placement.  A sheet
+    # drawn narrow-and-tall gets scaled up to match the shoulders, overshoots in
+    # height, and -- because everything here is bottom-anchored -- lifts the hat
+    # clear off the head.  seat_headwear measures whether the hat is actually
+    # touching the skull and drops the whole hat back onto it if not; it is a
+    # no-op for a cell that registered properly.  See that file for why a hat
+    # resting on the art can never be hovering in the game.
+    drop = _seat.reseat(args.id, meta)
+    if drop:
+        meta['note'] += (f' v2.3.1510: the hat floated clear of the head, so it was '
+                         f'seated {drop}px lower by tools/seat_headwear.py.')
+
     with open(f'{outdir}/meta.json', 'w') as fh:
         json.dump(meta, fh, indent=2)
         fh.write('\n')

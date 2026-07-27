@@ -1,37 +1,37 @@
 {
   "category": "headwear",
   "fullFrame": true,
-  "note": "Imported by tools/import_headwear_green.py from a sheet whose person was painted flat #00FF00. The hat is simply everything that is neither the magenta backdrop nor the green person, so no head can leak into the frame and no colour heuristic can eat a hat pixel. The green silhouette also registers the cell against the mannequin on the WHOLE body rather than the torso alone. anchors are the hat bbox top-centre, crownNudge is anchor minus body-tops stand-<dir>-0, scale is 1.",
+  "note": "Imported by tools/import_headwear_green.py from a sheet whose person was painted flat #00FF00. The hat is simply everything that is neither the magenta backdrop nor the green person, so no head can leak into the frame and no colour heuristic can eat a hat pixel. The green silhouette also registers the cell against the mannequin on the WHOLE body rather than the torso alone. anchors are the hat bbox top-centre, crownNudge is anchor minus body-tops stand-<dir>-0, scale is 1. v2.3.1510: floated clear of the head, so the whole hat was seated 9px lower by tools/seat_headwear.py.",
   "bboxes": {
     "south": [
       101,
       6,
       54,
-      28
+      37
     ],
     "southwest": [
-      99,
+      100,
       6,
-      59,
-      33
+      57,
+      44
     ],
     "east": [
-      105,
+      100,
       6,
-      47,
-      27
+      56,
+      44
     ],
     "northeast": [
-      99,
+      100,
       6,
-      58,
-      32
+      56,
+      45
     ],
     "north": [
-      102,
+      101,
       6,
-      53,
-      30
+      54,
+      44
     ]
   },
   "anchors": {
@@ -40,11 +40,11 @@
       6
     ],
     "southwest": [
-      129,
+      128,
       6
     ],
     "east": [
-      129,
+      128,
       6
     ],
     "northeast": [
@@ -59,23 +59,23 @@
   "crownNudge": {
     "south": [
       0,
-      -21
+      -28
     ],
     "southwest": [
-      2,
-      -14
+      0,
+      -17
     ],
     "east": [
-      2,
-      -11
-    ],
-    "northeast": [
-      3,
-      -13
-    ],
-    "north": [
       0,
       -19
+    ],
+    "northeast": [
+      1,
+      -22
+    ],
+    "north": [
+      1,
+      -24
     ]
   },
   "scale": {
