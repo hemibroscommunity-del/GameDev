@@ -80,7 +80,10 @@ const _ALL = [
   { id: 'gray-hat', name: 'Gray Hat' },
   { id: 'safety-helmet', name: 'Safety Helmet' },
   { id: 'naruto-headband', name: 'Naruto Headband' },
-  { id: 'cowboy-hat-2', name: 'Grey Cowboy Hat' },
+  /* v2.3.1514: renamed from 'Grey Cowboy Hat' (owner). The id is deliberately
+     left alone -- a saved appearance stores the id, so changing it would drop
+     the hat off anyone already wearing it. */
+  { id: 'cowboy-hat-2', name: 'Sheriff Hat' },
   { id: 'chinese-hat', name: 'Chinese Hat' },
   { id: 'spartan-helmet', name: 'Spartan Helmet' },
   { id: 'bandana-blue', name: 'Blue Bandana' },

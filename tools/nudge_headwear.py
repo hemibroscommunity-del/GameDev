@@ -17,6 +17,9 @@ Only crownNudge changes.  The artwork, the bbox and the anchor are untouched:
 this is telling _placeTrait where the head is, not redrawing anything.
 
     [--dirs south,east]   default: all five
+    [--scale 1.5]         resize instead of move -- multiplies that direction's
+                          existing scale, about the anchor, which is the pivot
+                          _placeTrait scales around
     [--show]              print the current values and change nothing
 """
 import argparse
@@ -41,6 +44,7 @@ def main():
     ap.add_argument('--dx', type=int, default=0)
     ap.add_argument('--dy', type=int, default=0)
     ap.add_argument('--dirs', default=','.join(DIRS))
+    ap.add_argument('--scale', type=float, default=None)
     ap.add_argument('--show', action='store_true')
     args = ap.parse_args()
 
@@ -51,9 +55,10 @@ def main():
     if bad:
         raise SystemExit(f'not a direction: {",".join(bad)} (have {",".join(DIRS)})')
 
-    if args.show or (not args.dx and not args.dy):
+    if args.show or (not args.dx and not args.dy and args.scale is None):
         for d in DIRS:
-            print(f'  {d:<10} crownNudge {meta["crownNudge"][d]}')
+            print(f'  {d:<10} crownNudge {meta["crownNudge"][d]}  '
+                  f'scale {meta.get("scale", {}).get(d, 1)}')
         return
 
     for d in want:
@@ -61,12 +66,18 @@ def main():
         # the hat moves DOWN/RIGHT relative to the body when the point the frame
         # calls the crown moves UP/LEFT inside the frame
         meta['crownNudge'][d] = [int(x + args.dx), int(y + args.dy)]
-    meta['note'] = (meta.get('note', '') + f' v2.3.1512: nudged by hand '
-                    f'dx {args.dx:+d} dy {args.dy:+d} on {",".join(want)}.')
+        if args.scale is not None:
+            meta.setdefault('scale', {})
+            meta['scale'][d] = round(meta['scale'].get(d, 1) * args.scale, 4)
+    what = f'dx {args.dx:+d} dy {args.dy:+d}'
+    if args.scale is not None:
+        what += f' scale x{args.scale}'
+    meta['note'] = (meta.get('note', '') + f' v2.3.1514: nudged by hand '
+                    f'{what} on {",".join(want)}.')
     with open(path, 'w') as fh:
         json.dump(meta, fh, indent=2)
         fh.write('\n')
-    print(f'{args.id}: moved {args.dx:+d},{args.dy:+d} on {", ".join(want)}')
+    print(f'{args.id}: {what} on {", ".join(want)}')
 
 
 if __name__ == '__main__':
