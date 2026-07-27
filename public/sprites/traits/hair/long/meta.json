@@ -1,7 +1,7 @@
 {
   "category": "hair",
   "fullFrame": true,
-  "note": "Dark-brown long center-parted hair. Sources S=32FB0477, SW=9F060988, W=E65CA1F2(->east flip), NW=IMG_8854(1254 canvas, ->northeast flip), N=6336B110. All transparent bg. Keyed out stray warm skin/amber+cream patches on S/SW/W (binary_dilation of R>165 & R-B>50 warm mask). Symmetric, 5 dirs incl north. crownNudge/scale at defaults -- tune on-device.",
+  "note": "Dark-brown long center-parted hair. Sources S=32FB0477, SW=9F060988, W=E65CA1F2(->east flip), NW=IMG_8854(1254 canvas, ->northeast flip), N=6336B110. All transparent bg. Keyed out stray warm skin/amber+cream patches on S/SW/W (binary_dilation of R>165 & R-B>50 warm mask). Symmetric, 5 dirs incl north. crownNudge/scale at defaults -- tune on-device. v2.3.1514: nudged by hand dx -3 dy +0 on southwest.",
   "bboxes_source": {
     "south": [
       367,
@@ -94,7 +94,7 @@
       -7
     ],
     "southwest": [
-      0,
+      -3,
       0
     ],
     "east": [

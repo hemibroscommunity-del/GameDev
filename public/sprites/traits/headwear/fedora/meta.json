@@ -1,7 +1,7 @@
 {
   "category": "headwear",
   "fullFrame": true,
-  "note": "Gray wide-brim hat with a blue band. Single source 7F8C6100 used for ALL 5 base dirs (same from every angle). 1024 padded to 1254. NOT solid (gray body + blue band two-tone). crownNudge seeded -16 (wide-brim lift) -- tune on-device.",
+  "note": "Gray wide-brim hat with a blue band. Single source 7F8C6100 used for ALL 5 base dirs (same from every angle). 1024 padded to 1254. NOT solid (gray body + blue band two-tone). crownNudge seeded -16 (wide-brim lift) -- tune on-device. v2.3.1514: nudged by hand dx +0 dy +5 on northeast,north.",
   "bboxes_source": {
     "south": [
       417,
@@ -103,11 +103,11 @@
     ],
     "northeast": [
       0,
-      -16
+      -11
     ],
     "north": [
       0,
-      -16
+      -11
     ]
   },
   "scale": {

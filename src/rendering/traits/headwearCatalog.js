@@ -25,7 +25,9 @@ const _ALL = [
   { id: 'bandana', name: 'Bandana' },
   { id: 'sombrero', name: 'Sombrero' },
   { id: 'bucket-hat', name: 'Bucket Hat', solid: true },
-  { id: 'fedora', name: 'Fedora' },
+  /* v2.3.1522: renamed from 'Fedora' (owner). Id left alone, same reason as
+     the Sheriff Hat below — a saved appearance stores the id. */
+  { id: 'fedora', name: 'Derby' },
   /* v2.3.1483: first hat through the generated pipeline — drawn onto the
      mannequin (tools/make_headwear_mannequin.py) and imported by
      tools/import_headwear.py, which derives anchors/crownNudge/scale from the
