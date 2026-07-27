@@ -1,7 +1,7 @@
 {
   "category": "headwear",
   "fullFrame": true,
-  "note": "Imported by tools/import_headwear_green.py from a sheet whose person was painted flat #00FF00. The hat is simply everything that is neither the magenta backdrop nor the green person, so no head can leak into the frame and no colour heuristic can eat a hat pixel. The green silhouette also registers the cell against the mannequin on the WHOLE body rather than the torso alone. anchors are the hat bbox top-centre, crownNudge is anchor minus body-tops stand-<dir>-0, scale is 1. v2.3.1514: nudged by hand dx -5 dy +0 on south. v2.3.1518: 41 accent pixel(s) had the key green averaged into them by the downscale and were rebuilt by tools/degreen_accents.py. v2.3.1520: the accent band g/r 0.35-1.0 (604 px) was removed and healed from the surrounding body by tools/remove_accent_color.py.",
+  "note": "Imported by tools/import_headwear_green.py from a sheet whose person was painted flat #00FF00. The hat is simply everything that is neither the magenta backdrop nor the green person, so no head can leak into the frame and no colour heuristic can eat a hat pixel. The green silhouette also registers the cell against the mannequin on the WHOLE body rather than the torso alone. anchors are the hat bbox top-centre, crownNudge is anchor minus body-tops stand-<dir>-0, scale is 1. v2.3.1514: nudged by hand dx -5 dy +0 on south. v2.3.1518: 41 accent pixel(s) had the key green averaged into them by the downscale and were rebuilt by tools/degreen_accents.py. v2.3.1520: the accent band g/r 0.35-1.0 (604 px) was removed and healed from the surrounding body by tools/remove_accent_color.py. v2.3.1514: nudged by hand dx +1 dy +0 on south.",
   "bboxes": {
     "south": [
       94,
@@ -58,7 +58,7 @@
   },
   "crownNudge": {
     "south": [
-      -2,
+      -1,
       -30
     ],
     "southwest": [
