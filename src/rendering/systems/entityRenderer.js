@@ -539,6 +539,27 @@ const FULLSET_CROWN = {
 const FULLSET_HEAD_RES = {
   east: [0.0, -0.67, 0.22, -0.22, -0.67, -0.22, -0.67, -0.44, 0.22, -0.67, -0.89, 0.44, 0.0, 0.0, 0.0, 0.22, 0.67, 0.89, -0.67, 0.0, 0.44, 0.67, 0.67, 0.67, 0.67],
 };
+/* v2.3.1540: CONSTANT per-direction seat of the head overlay on the fullset,
+   in 256-space [dx, dy] (so 2 = one pixel of the 128px head sheet).  Distinct
+   from FULLSET_HEAD_RES above, which is a per-FRAME sub-pixel residual keeping
+   the head on the armour's smooth bob -- this is a fixed placement correction
+   for a direction whose head simply sits wrong on the plate.
+   Owner on the 3/4 front view: "southwest/southeast the head looks a little
+   receded inside the armor, like the head is a little too far back and
+   slightly under."  [-2,-2] is one sheet pixel forward (down-left is the
+   facing) and one up, chosen off a 3x3 grid of 0/-1/-2 on both axes: at -1,-1
+   the chin clears the collar cleanly, and by two sheet pixels a gap opens at
+   the side of the neck.
+   dx rides sb.scale.x, which carries the mirror sign, so SOUTHEAST -- drawn as
+   a mirrored southwest -- gets the correction mirrored for free, which is what
+   the owner asked for by naming both sides.
+   Jog-only in practice: _placePickupHead is gated on the fullset for jog, so an
+   unarmoured run is untouched.  tools/seal_jog_neck.py mirrors this table (in
+   SHEET px) so the neck seam is measured where the head LANDS. */
+const FULLSET_HEAD_SEAT = {
+  southwest: [-2, -2],
+};
+
 let _crownOverride = null;   // set around the trait placements when fullset is active
 function _fullsetCrown(dir, phase) {
   const t = FULLSET_CROWN[dir];
@@ -1903,6 +1924,14 @@ function _placePickupHead(display, sb, skinId, pantsId, shoesId, pose, dir, fram
   if (!t) return;
   if (hd.texture !== t) hd.texture = t;
   hd.x = sb.x; hd.y = sb.y;
+  /* v2.3.1540: constant per-direction seat (see FULLSET_HEAD_SEAT).  256-space
+     -> world by the same sb.scale / DISPLAY_DS factor the residual below uses;
+     dx rides sb.scale.x so a mirrored side flips with it. */
+  const _seat = FULLSET_HEAD_SEAT[dir];
+  if (_seat && pose === 'jog') {
+    hd.x = sb.x + _seat[0] * sb.scale.x / DISPLAY_DS;
+    hd.y = sb.y + _seat[1] * sb.scale.y / DISPLAY_DS;
+  }
   /* v2.3.1455: sub-pixel seam correction — the fractional shift the
      baked head sheet can't carry (see FULLSET_HEAD_RES).  Same
      phase->frame mapping as getPickupHeadFrame/getGearFramePhased, so
@@ -1913,7 +1942,10 @@ function _placePickupHead(display, sb, skinId, pantsId, shoesId, pose, dir, fram
     if (_res && _res.length) {
       const _p = ((phase % 1) + 1) % 1;
       const _ri = Math.min(_res.length - 1, Math.floor(_p * _res.length));
-      hd.y = sb.y + _res[_ri] * sb.scale.y / DISPLAY_DS;
+      /* v2.3.1540: ADD to whatever the seat above set rather than overwrite.
+         No direction has both today, but a later seat on east would lose its
+         y silently otherwise. */
+      hd.y += _res[_ri] * sb.scale.y / DISPLAY_DS;
     }
   }
   /* v2.3.1117: the head sheet is baked DOWNSCALED to save VRAM, so its frame is

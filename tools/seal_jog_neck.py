@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""v2.3.1538: seal the neck seam between the jog head overlay and the armour.
+"""v2.3.1540: seal the neck seam between the jog head overlay and the armour.
 
 THE HOLE
 --------
@@ -51,6 +51,20 @@ ALPHA_T = 16
 # seam rather than genuinely exposed neck.  3 covers every real sliver measured
 # (south 2, southwest 2, north 1) and excludes the east chin voids (10+).
 MAX_GAP = 3
+# v2.3.1540: the constant render-time seat applied to the head overlay per
+# direction (FULLSET_HEAD_SEAT in entityRenderer, expressed there in 256-space;
+# here in SHEET pixels, so half).  The seam has to be measured where the head
+# actually LANDS -- sealing southwest at the sheet position and then nudging it
+# at draw time reopened 171px of the seam that had just been closed.
+SEAT = {'southwest': (-1, -1)}
+
+
+def _shift(mask, dx, dy):
+    out = np.zeros_like(mask)
+    h, w = mask.shape
+    out[max(0, dy):h + min(0, dy), max(0, dx):w + min(0, dx)] = \
+        mask[max(0, -dy):h - max(0, dy), max(0, -dx):w - max(0, dx)]
+    return out
 
 
 def _grow(m):
@@ -92,6 +106,7 @@ def _short_gaps_only(gap, head, armour, max_gap):
 
 
 def seal_dir(d, band, apply_it):
+    dx_seat, dy_seat = SEAT.get(d, (0, 0))
     head = np.array(Image.open(HEAD.format(dir=d)).convert('RGBA'))
     body = np.array(Image.open(BODY.format(dir=d)).convert('RGBA'))
     full = np.array(Image.open(FULL.format(dir=d)).convert('RGBA'))
@@ -100,9 +115,11 @@ def seal_dir(d, band, apply_it):
     frames_touched = 0
     for i in range(n):
         sl = slice(i * FW, (i + 1) * FW)
-        h = head[:, sl, 3] > ALPHA_T
+        h_sheet = head[:, sl, 3] > ALPHA_T
         b = body[:, sl, 3] > ALPHA_T
         f = full[:, sl, 3] > ALPHA_T
+        # measure in SCREEN space: where the head overlay actually lands
+        h = _shift(h_sheet, dx_seat, dy_seat) if (dx_seat or dy_seat) else h_sheet
         rows = np.nonzero(h.any(axis=1))[0]
         if not len(rows):
             continue
@@ -134,7 +151,14 @@ def seal_dir(d, band, apply_it):
         if apply_it:
             sub_h = head[:, sl]
             sub_b = body[:, sl]
-            sub_h[gap] = sub_b[gap]
+            # gap is in SCREEN space; the sheet pixel that renders there is
+            # offset back by the seat, and its colour is the body's pixel at
+            # the screen location (the body draws unshifted).
+            ys, xs = np.nonzero(gap)
+            for y, x in zip(ys, xs):
+                sy, sx = y - dy_seat, x - dx_seat
+                if 0 <= sy < FW and 0 <= sx < FW:
+                    sub_h[sy, sx] = sub_b[y, x]
             head[:, sl] = sub_h
     if apply_it and filled_total:
         Image.fromarray(head).save(HEAD.format(dir=d))
