@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""v2.3.1537: seal the neck seam between the jog head overlay and the armour.
+"""v2.3.1538: seal the neck seam between the jog head overlay and the armour.
 
 THE HOLE
 --------
@@ -47,6 +47,10 @@ HEAD = 'public/sprites/player/jog-{dir}-head.png'
 BODY = 'public/sprites/player/jog-{dir}.png'
 FULL = 'public/sprites/gear/fullset/steel/jog-{dir}.png'
 ALPHA_T = 16
+# v2.3.1538: the tallest vertical run of empty pixels that still counts as a
+# seam rather than genuinely exposed neck.  3 covers every real sliver measured
+# (south 2, southwest 2, north 1) and excludes the east chin voids (10+).
+MAX_GAP = 3
 
 
 def _grow(m):
@@ -59,42 +63,31 @@ def _grow(m):
     return out
 
 
-def _seam_only(gap, head, armour):
-    """Keep only connected components of `gap` that touch BOTH sheets.
+def _short_gaps_only(gap, head, armour, max_gap):
+    """Keep only gap pixels in a SHORT vertical run bridging head -> armour.
 
-    That is the definition of the seam this tool exists to close: a run of
-    pixels with the head above it and the armour below it.  Anything touching
-    only one (or neither) is unrelated body the band happened to cover, and
-    filling it would paste a slab of arm or shoulder next to the head.
-    Labelling is a tiny iterative flood so the tool needs no scipy.
+    Walk each column.  A run of candidate pixels counts only if the pixel
+    directly above the run is head, the pixel directly below it is armour, and
+    the run is at most `max_gap` tall.  That is the precise shape of the
+    sliver this tool exists to close, and it structurally cannot produce a
+    blob: anything taller than a few pixels is left alone.
     """
-    hgrow, agrow = _grow(head), _grow(armour)
     keep = np.zeros_like(gap)
-    seen = np.zeros_like(gap)
-    ys, xs = np.nonzero(gap)
-    for y0, x0 in zip(ys, xs):
-        if seen[y0, x0]:
-            continue
-        stack = [(y0, x0)]
-        comp = []
-        seen[y0, x0] = True
-        touch_h = touch_a = False
-        while stack:
-            y, x = stack.pop()
-            comp.append((y, x))
-            if hgrow[y, x]:
-                touch_h = True
-            if agrow[y, x]:
-                touch_a = True
-            for dy, dx in ((1, 0), (-1, 0), (0, 1), (0, -1)):
-                ny, nx = y + dy, x + dx
-                if 0 <= ny < gap.shape[0] and 0 <= nx < gap.shape[1] \
-                        and gap[ny, nx] and not seen[ny, nx]:
-                    seen[ny, nx] = True
-                    stack.append((ny, nx))
-        if touch_h and touch_a:
-            for y, x in comp:
-                keep[y, x] = True
+    hgt, wid = gap.shape
+    for x in range(wid):
+        y = 0
+        while y < hgt:
+            if not gap[y, x]:
+                y += 1
+                continue
+            y0 = y
+            while y < hgt and gap[y, x]:
+                y += 1
+            run = y - y0
+            above_head = y0 > 0 and head[y0 - 1, x]
+            below_armour = y < hgt and armour[y, x]
+            if run <= max_gap and above_head and below_armour:
+                keep[y0:y, x] = True
     return keep
 
 
@@ -121,13 +114,19 @@ def seal_dir(d, band, apply_it):
         gap = region & (~h) & (~f) & b
         if not gap.any():
             continue
-        # v2.3.1537: keep only holes that are genuinely a SEAM -- bounded by
-        # the head on one side and the armour on the other.  Without this the
-        # band is just a rectangle, and on east (a profile, where the head's
-        # column span reaches past the shoulder) it swallowed a block of the
-        # raised arm and pasted it beside the jaw as a skin slab.  A real seam
-        # touches both sheets; a blob of unrelated body touches neither.
-        gap = _seam_only(gap, h, f)
+        # v2.3.1538: a SLIVER is a SHORT vertical gap -- head directly above,
+        # armour directly below, a pixel or three apart.  Fill only those.
+        #
+        # The v2.3.1537 rule filled any void between the two sheets, however
+        # deep.  On the east profile the armour's collar sits well below and
+        # behind the chin, so that void is 10+ rows tall, and packing it with
+        # skin produced a blocky tab in front of the mouth -- owner: "east jog
+        # now has tan pixels on some frames that stick out around the mouth
+        # like a tongue".  It was 16-29px on six frames, which is a slab, not
+        # a seam.  A deep void is exposed neck, not a seam artefact; covering
+        # it is an art decision, and guessing it with a rectangle of body
+        # pixels looks worse than the hole did.
+        gap = _short_gaps_only(gap, h, f, MAX_GAP)
         if not gap.any():
             continue
         frames_touched += 1
