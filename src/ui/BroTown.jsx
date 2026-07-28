@@ -1839,32 +1839,59 @@ export var BroTown = function BroTown(_ref0) {
     document.body.style.height = '100%';
 
     /* ═══ iOS KEYBOARD FIX ═══ */
-    /* Lock the game wrapper to the initial viewport height. When the iOS keyboard opens,
-       it fires a visualViewport resize — we ignore it and keep our fixed height.
-       The keyboard overlays on top; the game never moves. */
+    /* The wrapper must stay at the FULL viewport height while the iOS keyboard
+       is open, so the keyboard overlays the game instead of squashing it.
+       v2.3.1533: it used to do that by measuring window.innerHeight ONCE and
+       re-stamping that snapshot on every visualViewport resize AND scroll —
+       which fire constantly on iOS, so the snapshot won permanently. The
+       measurement is taken at the worst possible moment: this effect returns
+       early while the login/name modal is up (see the top of the effect), so
+       it runs the instant that modal CLOSES — i.e. while the keyboard the
+       player just typed their name on is still collapsing. A short reading
+       there froze the game into the top half of the screen for the whole
+       session, with the toolbar still pinned to the true bottom and black in
+       between (owner's friend, several logins in a row; her ~783pt viewport
+       was laid out at ~394pt).
+       The fix is to stop snapshotting. `100dvh` — already on the element from
+       its style prop — is exactly this rule expressed in CSS: it tracks
+       browser-chrome changes and does NOT shrink for the on-screen keyboard.
+       Where it is supported we simply clear the inline override and let it do
+       the work. iOS 14.0-15.3 predates dvh (the game's floor is iOS 14, see
+       the WebP note), so those keep a lock — but one that RE-MEASURES, and
+       only skips a reading it can tell is keyboard-shrunken, the same test the
+       canvas resizer below already uses. */
     var el = wrapRef.current;
-    var initialHeight = window.innerHeight;
-    if (el) el.style.height = initialHeight + 'px';
+    var hasDvh = !!(window.CSS && window.CSS.supports && window.CSS.supports('height', '100dvh'));
+    /* clear any px height a previous run of this effect left behind */
+    if (el) el.style.height = hasDvh ? '' : window.innerHeight + 'px';
 
-    /* On iOS, the visual viewport shrinks when keyboard opens. We counteract by
-       keeping our wrapper at the original height and scrolling the body to top. */
-    var handleResize = function handleResize() {
-      if (el) el.style.height = initialHeight + 'px';
+    var lockedHeight = window.innerHeight;
+    var relock = function relock(remeasure) {
+      if (!el || hasDvh) return;
+      var vv = window.visualViewport;
+      /* keyboard up: innerHeight stays tall while visualViewport shrinks.
+         Hold the last full-height value rather than trust this reading. */
+      var keyboardUp = !!(vv && window.innerHeight - vv.height > 100);
+      if (remeasure && !keyboardUp) lockedHeight = window.innerHeight;
+      el.style.height = lockedHeight + 'px';
     };
+    relock(true);
 
-    /* Also handle orientation changes — re-lock to new height */
+    var handleResize = function handleResize() { relock(true); };
+    /* orientation change: iOS reports the new size late, so re-measure again
+       after it settles as well as immediately. */
     var handleOrientationChange = function handleOrientationChange() {
-      setTimeout(function () {
-        var newHeight = window.innerHeight;
-        if (el) el.style.height = newHeight + 'px';
-      }, 300); /* delay for iOS to settle */
+      relock(true);
+      setTimeout(function () { relock(true); }, 300);
     };
-    if (window.visualViewport) {
+    if (!hasDvh && window.visualViewport) {
       window.visualViewport.addEventListener('resize', handleResize);
       window.visualViewport.addEventListener('scroll', handleResize);
     }
-    window.addEventListener('resize', handleOrientationChange);
-    window.addEventListener('orientationchange', handleOrientationChange);
+    if (!hasDvh) {
+      window.addEventListener('resize', handleOrientationChange);
+      window.addEventListener('orientationchange', handleOrientationChange);
+    }
     return function () {
       document.documentElement.style.overflow = orig.htmlOF;
       document.body.style.overflow = orig.bodyOF;
