@@ -1075,6 +1075,21 @@ export class GameRoom {
             const targetPs = this.playerState[nearest.id];
             const dmgResult = this._applyDamage(targetPs, m.dmg, false);
             const dmgTaken = dmgResult.dmgTaken;
+            /* v2.3.1569: THORN retaliation (Flora's status).  Every other
+               status is something that happens TO the monster over time;
+               thorn is the one that answers the monster's own aggression,
+               so it lands here — the moment the monster commits to an
+               attack — rather than on a passive timer.  A timer would just
+               make it a weaker Burn and lose the identity the GDD gives
+               Flora ("the only status that punishes enemies for
+               attacking").  Same power-snapshot pricing as burn/root, and
+               it routes through the normal kill-credit path so a monster
+               that thorns itself to death still pays out. */
+            if (m.statuses && m.statuses.thorn) {
+              const _th = m.statuses.thorn;
+              const _recoil = Math.round(4 + (_th.power || 0) * 0.25);
+              if (_recoil > 0) this._applyMonsterDot(zoneId, m, _recoil, _th.sourceId, 'thorn');
+            }
             // v2.3.1139 (item I): a hexer's landed hit curses the
             // victim -- -30% outgoing damage for 4s, consumed by
             // _computeAttackDamage (mirrors the client's
@@ -1212,23 +1227,7 @@ export class GameRoom {
         const dotEvents = tickElementStatuses(m, this.TICK_RATE / 1000, now);
         for (const ev of dotEvents) {
           if (m.hp <= 0) break;
-          const dotDmg = Math.min(ev.dmg, Math.max(0, m.hp));
-          if (dotDmg <= 0) continue;
-          m.hp -= dotDmg;
-          if (!m.dmgByPlayer) m.dmgByPlayer = Object.create(null); // v2.3.1202: player-id-keyed
-          m.dmgByPlayer[ev.sourceId] = (m.dmgByPlayer[ev.sourceId] || 0) + dotDmg;
-          this._markMonsterDirty(zoneId, m.id);
-          this.eventBuffer.push({
-            type: 'monster_hit',
-            payload: {
-              monsterId: m.id, zone: zoneId, dmg: dotDmg, isCrit: false,
-              attackerId: ev.sourceId, status: ev.statusId,
-              hpPct: Math.max(0, m.hp / m.maxHp),
-            },
-          });
-          if (m.hp <= 0) {
-            this._resolveMonsterKill(zoneId, m, ev.sourceId, this.playerState[ev.sourceId], 'dot');
-          }
+          this._applyMonsterDot(zoneId, m, ev.dmg, ev.sourceId, ev.statusId);
         }
       }
 
@@ -1578,6 +1577,37 @@ export class GameRoom {
     }
     this._saveRpg(session.id, ps);
     if (ws) this._sendPlayerState(ws, session.id);
+  }
+
+  /* v2.3.1569: status damage against a monster — overkill clamp,
+     contribution credit, dirty mark, monster_hit event and kill
+     resolution, all through the same pipeline a landed blow uses so a
+     status kill awards XP, gold and loot identically.  Extracted from
+     the elemental tick loop when Thorn arrived and needed to apply the
+     same damage from a DIFFERENT moment (the monster's own attack), and
+     a second copy of this pipeline is exactly how kill credit silently
+     diverges.  Kills resolve with slot 'dot' so melee lifesteal
+     correctly denies. */
+  _applyMonsterDot(zoneId, m, rawDmg, sourceId, statusId) {
+    if (!m || !m.alive || m.hp <= 0) return 0;
+    const dmg = Math.min(Math.max(0, Math.round(rawDmg || 0)), Math.max(0, m.hp));
+    if (dmg <= 0) return 0;
+    m.hp -= dmg;
+    if (!m.dmgByPlayer) m.dmgByPlayer = Object.create(null); // v2.3.1202: player-id-keyed
+    if (sourceId) m.dmgByPlayer[sourceId] = (m.dmgByPlayer[sourceId] || 0) + dmg;
+    this._markMonsterDirty(zoneId, m.id);
+    this.eventBuffer.push({
+      type: 'monster_hit',
+      payload: {
+        monsterId: m.id, zone: zoneId, dmg, isCrit: false,
+        attackerId: sourceId, status: statusId,
+        hpPct: Math.max(0, m.hp / m.maxHp),
+      },
+    });
+    if (m.hp <= 0) {
+      this._resolveMonsterKill(zoneId, m, sourceId, this.playerState[sourceId], 'dot');
+    }
+    return dmg;
   }
 
   // Player death.  Marks the player as dying for the respawn window;

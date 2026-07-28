@@ -3614,11 +3614,26 @@ export const STATUS_DEFS = {
     maxDur: 7.0,
     tick: null,
     type: 'debuff_heal'
+  },
+  /* v2.3.1569: Thorn — the "fight back" status.  tick: null because it
+     is NOT a passive DoT: the damage lands when the AFFLICTED MONSTER
+     ATTACKS (server _tickMonsters), which is what "retaliatory" means
+     in a game where statuses sit on monsters and the only thing hitting
+     them is you.  A passive tick here would just be a weaker Burn. */
+  thorn: {
+    dur: 6.0,
+    refresh: 1.0,
+    maxDur: 8.0,
+    tick: null,
+    type: 'retaliate'
   }
 };
 
 /* §10.2 Effectiveness Circle */
-export const EFFECTIVENESS = [['flame', 'frost'], ['frost', 'storm'], ['storm', 'stone'], ['stone', 'wind'], ['wind', 'venom'], ['venom', 'water'], ['water', 'flame']];
+/* v2.3.1569: Flora enters the wheel between Venom and Water (GDD §10.2).
+   Replaces the venom>water link with venom>flora>water — mirror of
+   server/src/elemental.js EFFECTIVENESS; the two MUST stay identical. */
+export const EFFECTIVENESS = [['flame', 'frost'], ['frost', 'storm'], ['storm', 'stone'], ['stone', 'wind'], ['wind', 'venom'], ['venom', 'flora'], ['flora', 'water'], ['water', 'flame']];
 export function getEffectiveness(attackElem, targetElem) {
   if (!attackElem || !targetElem || attackElem === targetElem) return 1.0;
   /* Dark <-> Light mutual bonus */
@@ -3637,7 +3652,9 @@ export function getEffectiveness(attackElem, targetElem) {
 
 /* Apply a status to a target. Returns true if applied. */
 export function applyStatus(target, statusId, source, now) {
-  if (!target.statuses) target.statuses = {};
+  if (!target.statuses) target.statuses = Object.create(null);  /* v2.3.1569: null-proto per CLAUDE.md rule 4 — status ids come from a
+     closed server table so there is no live exploit here, but the map is
+     id-keyed and the rule exists because that assumption keeps breaking. */
   var def = STATUS_DEFS[statusId];
   if (!def) return false;
   var existing = target.statuses[statusId];
@@ -3740,6 +3757,82 @@ export function getOldestStatusElement(target) {
 
 /* Collision lookup — maps "setupElement|triggerElement" to collision data */
 export const COLLISION_TABLE = {
+  /* v2.3.1569 Flora pairs (GDD §10.4 names).  Bases are calibrated
+     against comparable existing entries, not invented: Flora's identity
+     is sustain, so it sits low-to-mid on the curve, with Lightning Rod
+     as its one burst outlier. */
+  'flora|flame': {
+    id: 'wildfire',
+    name: 'Wildfire',
+    base: 45,
+    coeff: 0.8,
+    stat: 'power',
+    type: 'burst'
+  },
+  'flora|frost': {
+    id: 'thaw_bloom',
+    name: 'Thaw Bloom',
+    base: 25,
+    coeff: 0.5,
+    stat: 'vitality',
+    type: 'burst'
+  },
+  'flora|water': {
+    id: 'overgrowth',
+    name: 'Overgrowth',
+    base: 30,
+    coeff: 0.6,
+    stat: 'vitality',
+    type: 'burst'
+  },
+  'flora|venom': {
+    id: 'blight_garden',
+    name: 'Blight Garden',
+    base: 40,
+    coeff: 0.7,
+    stat: 'mind',
+    type: 'burst'
+  },
+  'flora|storm': {
+    id: 'lightning_rod',
+    name: 'Lightning Rod',
+    base: 65,
+    coeff: 1.1,
+    stat: 'agility',
+    type: 'burst'
+  },
+  'flora|stone': {
+    id: 'petrified_wood',
+    name: 'Petrified Wood',
+    base: 30,
+    coeff: 0.6,
+    stat: 'vitality',
+    type: 'burst'
+  },
+  'flora|wind': {
+    id: 'scatter_seed',
+    name: 'Scatter Seed',
+    base: 30,
+    coeff: 0.5,
+    stat: 'agility',
+    type: 'burst'
+  },
+  'flora|dark': {
+    id: 'withering',
+    name: 'Withering',
+    base: 45,
+    coeff: 0.8,
+    stat: 'mind',
+    type: 'burst'
+  },
+  'flora|light': {
+    id: 'purifying_bloom',
+    name: 'Purifying Bloom',
+    base: 50,
+    coeff: 0.9,
+    stat: 'vitality',
+    type: 'burst'
+  },
   'flame|frost': {
     id: 'steam',
     name: 'Steam',

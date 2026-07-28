@@ -7,6 +7,12 @@ export const ELEMENTS = {
   storm:  { status: 'shock',    shape: 'star',      color: '#8E44AD', type: 'palette' },
   stone:  { status: 'fracture', shape: 'square',    color: '#795548', type: 'palette' },
   wind:   { status: 'slow',     shape: 'triangle',  color: '#7F8C8D', type: 'palette' },
+  /* v2.3.1569 (owner: "add flora to the code"): the eighth palette
+     element the GDD always specified and the code never had — status
+     Thorn, the "fight back" status.  Its identity is sustain and
+     retaliation rather than burst, so its collisions sit low-to-mid on
+     the damage curve (the one exception is Lightning Rod). */
+  flora:  { status: 'thorn',    shape: 'leaf',      color: '#2ECC71', type: 'palette' },
   dark:   { status: 'curse',    shape: 'trefoil',   color: '#2C3E50', type: 'endgame' },
   light:  { status: 'reveal',   shape: 'starburst', color: '#F1C40F', type: 'endgame' },
 };
@@ -20,6 +26,7 @@ export const ELEMENT_FLAVOR = {
   storm: { adj: 'Thunder', fish: 'Spark', wood: 'Lightning', ore: 'Storm', spotAdj: 'Charged', treeAdj: 'Storm', veinAdj: 'Galvanic' },
   stone: { adj: 'Earth', fish: 'Cave', wood: 'Petrified', ore: 'Dense', spotAdj: 'Cavern', treeAdj: 'Stone', veinAdj: 'Tectonic' },
   wind:  { adj: 'Zephyr', fish: 'Cloud', wood: 'Sky', ore: 'Aero', spotAdj: 'Misty', treeAdj: 'Wind', veinAdj: 'Floating' },
+  flora: { adj: 'Verdant', fish: 'Bloom', wood: 'Living', ore: 'Mossy', spotAdj: 'Verdant', treeAdj: 'Ancient', veinAdj: 'Overgrown' },
   dark:  { adj: 'Shadow', fish: 'Void', wood: 'Shadow', ore: 'Dark', spotAdj: 'Shadow', treeAdj: 'Shade', veinAdj: 'Void' },
   light: { adj: 'Radiant', fish: 'Sun', wood: 'Gleam', ore: 'Celestial', spotAdj: 'Sacred', treeAdj: 'Gleam', veinAdj: 'Luminous' },
 };
