@@ -1,120 +1,120 @@
 {
- "category": "headwear",
- "fullFrame": true,
- "note": "Purple/pink camo bandana w/ knotted tails. Sources S=IMG_8927, N=IMG_8931, W=533AC228->east(flip), SE=IMG_8928->southwest(flip), NW=IMG_8930->northeast(flip). Renderer mirrors E/SW/NE back to W/SE/NW. Cleanup: morphological opening (iters=3) on the silhouette to strip tiny stringy black pixels + poorly-cropped edge fringe + detached black specks (<300px), keeping the chunky tie-tails and outline. W source was 1024 padded to 1254 -> scale.east 1.22. NOT solid (dark-purple base + pink spots two-tone). crownNudge at defaults -- tune on-device.",
- "bboxes_source": {
-  "south": [
-   484,
-   86,
-   276,
-   121
-  ],
-  "north": [
-   522,
-   153,
-   205,
-   232
-  ],
-  "east": [
-   473,
-   522,
-   268,
-   179
-  ],
-  "southwest": [
-   452,
-   86,
-   346,
-   179
-  ],
-  "northeast": [
-   467,
-   126,
-   264,
-   214
-  ]
- },
- "bboxes": {
-  "south": [
-   98,
-   17,
-   58,
-   26
-  ],
-  "north": [
-   106,
-   31,
-   43,
-   48
-  ],
-  "east": [
-   96,
-   106,
-   56,
-   38
-  ],
-  "southwest": [
-   92,
-   17,
-   71,
-   38
-  ],
-  "northeast": [
-   95,
-   25,
-   55,
-   45
-  ]
- },
- "anchors": {
-  "south": [
-   126,
-   17
-  ],
-  "north": [
-   127,
-   31
-  ],
-  "east": [
-   128,
-   106
-  ],
-  "southwest": [
-   122,
-   17
-  ],
-  "northeast": [
-   126,
-   25
-  ]
- },
- "crownNudge": {
-  "south": [
-   0,
-   -7
-  ],
-  "north": [
-   0,
-   -8
-  ],
-  "east": [
-   0,
-   -7
-  ],
-  "southwest": [
-   2,
-   -7
-  ],
-  "northeast": [
-   0,
-   -7
-  ]
- },
- "scale": {
-  "east": 1.22,
-  "north": 1.1,
-  "northeast": 1.15,
-  "south": 0.88
- },
- "clipsHair": true
+  "category": "headwear",
+  "fullFrame": true,
+  "note": "Purple/pink camo bandana w/ knotted tails. Sources S=IMG_8927, N=IMG_8931, W=533AC228->east(flip), SE=IMG_8928->southwest(flip), NW=IMG_8930->northeast(flip). Renderer mirrors E/SW/NE back to W/SE/NW. Cleanup: morphological opening (iters=3) on the silhouette to strip tiny stringy black pixels + poorly-cropped edge fringe + detached black specks (<300px), keeping the chunky tie-tails and outline. W source was 1024 padded to 1254 -> scale.east 1.22. NOT solid (dark-purple base + pink spots two-tone). crownNudge at defaults -- tune on-device. v2.3.1527: hair-clip mask rebuilt from the current art by tools/make_hairmask.py. v2.3.1529: hair-clip mask rebuilt from the current art by tools/make_hairmask.py.",
+  "bboxes_source": {
+    "south": [
+      484,
+      86,
+      276,
+      121
+    ],
+    "north": [
+      522,
+      153,
+      205,
+      232
+    ],
+    "east": [
+      473,
+      522,
+      268,
+      179
+    ],
+    "southwest": [
+      452,
+      86,
+      346,
+      179
+    ],
+    "northeast": [
+      467,
+      126,
+      264,
+      214
+    ]
+  },
+  "bboxes": {
+    "south": [
+      98,
+      17,
+      58,
+      26
+    ],
+    "north": [
+      106,
+      31,
+      43,
+      48
+    ],
+    "east": [
+      96,
+      106,
+      56,
+      38
+    ],
+    "southwest": [
+      92,
+      17,
+      71,
+      38
+    ],
+    "northeast": [
+      95,
+      25,
+      55,
+      45
+    ]
+  },
+  "anchors": {
+    "south": [
+      126,
+      17
+    ],
+    "north": [
+      127,
+      31
+    ],
+    "east": [
+      128,
+      106
+    ],
+    "southwest": [
+      122,
+      17
+    ],
+    "northeast": [
+      126,
+      25
+    ]
+  },
+  "crownNudge": {
+    "south": [
+      0,
+      -7
+    ],
+    "north": [
+      0,
+      -8
+    ],
+    "east": [
+      0,
+      -7
+    ],
+    "southwest": [
+      2,
+      -7
+    ],
+    "northeast": [
+      0,
+      -7
+    ]
+  },
+  "scale": {
+    "east": 1.22,
+    "north": 1.1,
+    "northeast": 1.15,
+    "south": 0.88
+  },
+  "clipsHair": true
 }

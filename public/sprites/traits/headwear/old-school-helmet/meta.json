@@ -123,5 +123,6 @@
       228
     ]
   },
-  "clipsHair": true
+  "clipsHair": true,
+  "note": " v2.3.1527: hair-clip mask rebuilt from the current art by tools/make_hairmask.py. v2.3.1529: hair-clip mask rebuilt from the current art by tools/make_hairmask.py."
 }

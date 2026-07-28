@@ -24,7 +24,7 @@ import { upscaleToFrameHeight } from './spriteScale.js'; /* v2.3.1110: restore d
 
 const FRAME = 256;
 const DEFAULT_LIT_LUM = 149;            // default lit-skin luminance (see playerSkins)
-const TRAIT_VER = '2.3.531';            // cache-bust for body-tops.json (matches entityRenderer)
+const TRAIT_VER = '2.3.1531';            // cache-bust for body-tops.json (matches entityRenderer)
 
 /* ── tiny async caches ── */
 const _imgCache = new Map();            // url -> Promise<HTMLImageElement>
@@ -119,11 +119,18 @@ function placeTrait(ctx, traitImg, meta, crown, dir) {
   const dscale = sc * sbp;
   const tx = crown[0] + cn[0] + pn[0];
   const ty = crown[1] + cn[1] + pn[1];
+  /* v2.3.1526: same normalisation as entityRenderer._placeTrait. meta is in
+     256-space; the texture is 128 now, so scale by 256/texWidth and offset the
+     anchor in texture pixels. A trait still stored at 256 gets norm=1. */
+  const norm = FRAME / ((traitImg.naturalWidth || traitImg.width) || FRAME);
   ctx.save();
-  ctx.imageSmoothingEnabled = true;
+  /* Nearest when we are enlarging: the trait is pixel art and the portrait is
+     itself displayed smaller than this canvas, so a smoothed 2x upscale here
+     only softens edges that the display-side downscale would have kept. */
+  ctx.imageSmoothingEnabled = norm <= 1;
   ctx.translate(tx, ty);
-  ctx.scale(dscale, dscale);
-  ctx.drawImage(traitImg, -anchor[0], -anchor[1]);
+  ctx.scale(dscale * norm, dscale * norm);
+  ctx.drawImage(traitImg, -anchor[0] / norm, -anchor[1] / norm);
   ctx.restore();
 }
 

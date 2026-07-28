@@ -1,7 +1,7 @@
 {
   "category": "headwear",
   "fullFrame": true,
-  "note": "Red beanie. Sources: S=IMG_8818, SW=IMG_8796 (detached bottom blob removed), N=IMG_8810 (bottom ghost cleaned). East built from West=IMG_8798 flipped; northeast from Northwest=IMG_8809 flipped (beanie is left-right symmetric, renderer mirrors E/NE back to W/NW). crownNudge/scale start at defaults -- tune per direction after on-device review.",
+  "note": "Red beanie. Sources: S=IMG_8818, SW=IMG_8796 (detached bottom blob removed), N=IMG_8810 (bottom ghost cleaned). East built from West=IMG_8798 flipped; northeast from Northwest=IMG_8809 flipped (beanie is left-right symmetric, renderer mirrors E/NE back to W/NW). crownNudge/scale start at defaults -- tune per direction after on-device review. v2.3.1527: hair-clip mask rebuilt from the current art by tools/make_hairmask.py. v2.3.1529: hair-clip mask rebuilt from the current art by tools/make_hairmask.py.",
   "bboxes_source": {
     "south": [
       487,

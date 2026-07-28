@@ -1,7 +1,7 @@
 {
   "category": "facialhair",
   "fullFrame": true,
-  "note": "Brown full beard. Sources S=IMG_8826, SW=IMG_8827, W=IMG_8828(->east flipped), NW=48A1494D(white bg keyed, ->northeast flipped). Symmetric. NO north view (back of head hides beard). Chin-anchored overlay -- crownNudge needs a large +Y to drop the beard from head-crown to chin once render path is wired.",
+  "note": "Brown full beard. Sources S=IMG_8826, SW=IMG_8827, W=IMG_8828(->east flipped). Symmetric. NO north view and NO northeast view -- the back and 3/4-back views turn the face away, so no beard is visible from them (northwest mirrors northeast, so it is covered too). v2.3.1530: the northeast frame is DELETED, not just unplaced. It came from a flipped NW source and landed dead centre on the back of the skull -- owner: \"the beard ... is showing partially behind the character instead of in front of him ... you can see it on the back of his head\". Its anchor is what made it render at all: meta.anchors is the authoritative list of directions a trait ships (_loadTraitDir designedMissing, _placeTrait/placeTrait both bail without one), so dropping the anchor is what hides it in the world AND in the login portrait, and stops the loader retrying a 404. v2.3.1531: east crownNudge X 0 -> 6 (owner: \"nudge it forward\"). Same flipped-source mismatch as the deleted northeast frame, milder -- east was flipped from a WEST photo, and with crownNudge X at 0 the art landed 10px behind where it was drawn, putting the moustache on the cheek and the beard mass off the back of the jaw. +6 lands it 4px back of the authored spot, which was the best of six offsets rendered on the real head: ear clear, moustache under the nose, no beard past the chin. West mirrors this (_placeTrait flips nudge X), so both sides move together. Chin-anchored overlay -- crownNudge carries a large +Y to drop the beard from head-crown to chin.",
   "bboxes_source": {
     "south": [
       505,
@@ -20,12 +20,6 @@
       262,
       174,
       250
-    ],
-    "northeast": [
-      637,
-      291,
-      97,
-      149
     ]
   },
   "bboxes": {
@@ -46,12 +40,6 @@
       53,
       36,
       52
-    ],
-    "northeast": [
-      130,
-      59,
-      20,
-      31
     ]
   },
   "anchors": {
@@ -66,10 +54,6 @@
     "east": [
       137,
       62
-    ],
-    "northeast": [
-      139,
-      76
     ]
   },
   "crownNudge": {
@@ -82,12 +66,8 @@
       40
     ],
     "east": [
-      0,
+      6,
       33
-    ],
-    "northeast": [
-      0,
-      38
     ]
   }
 }

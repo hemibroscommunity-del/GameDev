@@ -179,7 +179,7 @@ const TRAIT_NFT_ID = 'test-1';
 /* v2.3.708: bumped for the regenerated NE jog body-tops/body-anchors. */
 /* v2.3.1394: bumped — bandana gains hairmask/*.png + clipsHair in meta.json
    (owner: hair not clipped under the bandana on NE/NW). */
-const TRAIT_VER = '2.3.1394';
+const TRAIT_VER = '2.3.1531';
 
 /* v2.3.377: the on-back (sheathed) shield render is purely cosmetic and was
    a persistent source of per-facing z-order issues vs the body/arms/weapon/
@@ -273,7 +273,8 @@ function _loadTraitDir(e, category, id, dir, attempt) {
     .catch(() => {
       /* v2.3.1306: meta.anchors is the authoritative list of directions
          a trait SHIPS (e.g. facialhair/beard has no north.png and no
-         north anchor — by design, verified on disk).  The v2.3.1305
+         north anchor — by design, verified on disk; v2.3.1530 added
+         northeast to that list for the same reason).  The v2.3.1305
          sibling heuristic misread that as a per-session deterministic
          flake: every bearded session retried north 3x and pushed a bogus
          'sheet' entry into the 16-slot crash ring + beacon upload,
@@ -605,8 +606,18 @@ function _placeTrait(sprite, entry, display, pose, dir, mirror, frameIdx, bodySc
      the body crown's SCREEN position (mirror-correct) + the nudge, with
      only nudge X flipping under mirror.  Offset is a constant +/-nudgeX,
      independent of the per-frame crown sway. */
-  headwear.anchor.set(anchorPx[0] / headwearTex.width, anchorPx[1] / headwearTex.height);
   const W = 256;
+  /* v2.3.1526: normalise by the texture's own size. Everything in meta —
+     anchors, crownNudge, poseNudge — is expressed in the 256-space frame the
+     art was authored in, and until now the TEXTURE was also 256, so the two
+     were the same number and nothing had to convert. Trait frames are stored
+     at 128 now (a 4x texture-memory saving, tools/downscale_traits.py), so the
+     conversion becomes real: the anchor fraction is still measured against the
+     256 frame, and the draw scale is multiplied by 256/texWidth so a half-size
+     texture lands at exactly the same on-screen size. A trait still stored at
+     256 gets norm=1 and is untouched, so the two can coexist. */
+  const norm = W / (headwearTex.width || W);
+  headwear.anchor.set(anchorPx[0] / W, anchorPx[1] / W);
   const absBodyScale = Math.abs(bodyScale);
   const m = mirror ? -1 : 1;
   const bodyCrownX = spriteBody.x + (bodyTop[0] - W / 2) * absBodyScale * m;
@@ -615,8 +626,8 @@ function _placeTrait(sprite, entry, display, pose, dir, mirror, frameIdx, bodySc
   /* v2.3.1353: tune.dy is a SCREEN-pixel nudge (down-positive), applied
      unscaled so "10px down" means 10px on every device. */
   headwear.y = bodyCrownY + (nudge[1] + poseN[1]) * absBodyScale + ((tune && tune.dy) || 0);
-  headwear.scale.x = m * absBodyScale * dscale;
-  headwear.scale.y = absBodyScale * dscale;
+  headwear.scale.x = m * absBodyScale * dscale * norm;
+  headwear.scale.y = absBodyScale * dscale * norm;
   headwear.visible = true;
 }
 

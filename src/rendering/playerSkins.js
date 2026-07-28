@@ -25,14 +25,42 @@ import { loadWebpOrPng } from './webpImage.js'; /* v2.3.1122: prefer lossless We
 import { recolorEnabled } from './traits/recolorOptions.js';
 
 /* ── Catalogs ── `target` = the LIT color for that choice; null = native. */
+/* v2.3.1513: seven more tones at the light end (owner: "more white tan and
+   white tones").  The list was bottom-heavy -- one option above the default
+   tan and five below it -- so every pale character came out the same shade.
+   The additions fill the light half at even steps and give it some width as
+   well as height: Alabaster and Porcelain are cool, Rosy is pink-cast, Ivory
+   and Fair are warm, Sand and Honey close the gap down to Tan.
+
+   Ordered by measured luminance rather than by eye, which moved two of them:
+   Honey reads lighter than Tan (168 vs 151) because Tan is the more saturated
+   orange, and Ivory lighter than Pale.  Sorting on the swatch hex would have
+   put both in the wrong place.  Existing ids are
+   untouched and keep their exact targets, because a saved appearance stores
+   the id: renaming or re-tuning one would silently change a face someone
+   already picked.
+
+   Ceiling is deliberate.  _retint scales the chosen color by each pixel's own
+   luminance over SKIN_REF, and the sheets' brightest skin pixel runs k=1.10,
+   so any channel above 231 clips on the highlight rim.  Only Alabaster is
+   knowingly over that line -- near-white skin having a blown-out highlight is
+   what near-white skin looks like -- and the rest stay at or under it so their
+   shading keeps its hue. */
 export const SKIN_CATALOG = [
-  { id: 'default', name: 'Default', swatch: '#cd864b', target: null },
-  { id: 'pale',    name: 'Pale',    swatch: '#f0cdaa', target: [240, 205, 170] },
-  { id: 'tan',     name: 'Tan',     swatch: '#c88c50', target: [200, 140, 80] },
-  { id: 'olive',   name: 'Olive',   swatch: '#b18a5e', target: [178, 138, 94] },
-  { id: 'brown',   name: 'Brown',   swatch: '#9b6941', target: [155, 105, 65] },
-  { id: 'deep',    name: 'Deep',    swatch: '#6e4b32', target: [112, 76, 50] },
-  { id: 'ebony',   name: 'Ebony',   swatch: '#50382a', target: [82, 56, 39] },
+  { id: 'default',   name: 'Default',   swatch: '#cd864b', target: null },
+  { id: 'alabaster', name: 'Alabaster', swatch: '#f9ece2', target: [249, 236, 226] },
+  { id: 'porcelain', name: 'Porcelain', swatch: '#f5ddcd', target: [245, 221, 205] },
+  { id: 'ivory',     name: 'Ivory',     swatch: '#f2dabc', target: [242, 218, 188] },
+  { id: 'rosy',      name: 'Rosy',      swatch: '#f2c9b8', target: [242, 201, 184] },
+  { id: 'pale',      name: 'Pale',      swatch: '#f0cdaa', target: [240, 205, 170] },
+  { id: 'fair',      name: 'Fair',      swatch: '#e6c29b', target: [230, 194, 155] },
+  { id: 'sand',      name: 'Sand',      swatch: '#d9b184', target: [217, 177, 132] },
+  { id: 'honey',     name: 'Honey',     swatch: '#c9a271', target: [201, 162, 113] },
+  { id: 'tan',       name: 'Tan',       swatch: '#c88c50', target: [200, 140, 80] },
+  { id: 'olive',     name: 'Olive',     swatch: '#b18a5e', target: [178, 138, 94] },
+  { id: 'brown',     name: 'Brown',     swatch: '#9b6941', target: [155, 105, 65] },
+  { id: 'deep',      name: 'Deep',      swatch: '#6e4b32', target: [112, 76, 50] },
+  { id: 'ebony',     name: 'Ebony',     swatch: '#50382a', target: [82, 56, 39] },
 ];
 
 export const PANTS_CATALOG = [
