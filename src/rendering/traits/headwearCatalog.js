@@ -47,14 +47,12 @@ const _ALL = [
      pipeline, all measured rather than eyeballed.  None are `solid`; every one
      came back with at least two tones, and a brightness-ratio retint would
      flatten them.
-     NOTE ON MEMORY: preloadTraits() loads every catalog entry x 5 directions
-     onto the startup gate, and a trait frame is a fixed 256x256 (the renderer
-     applies crownNudge in 256-space and does NOT normalise by texture size —
-     see _placeTrait — so the frame cannot simply be shrunk).  This batch adds
-     150 textures = 37.5MB, taking headwear from 13.8MB to 51.2MB.  If iPhone
-     memory becomes a problem again, the fix with the best ratio is to store
-     trait art in a 128 frame and teach _placeTrait to normalise — a 4x saving
-     across ALL traits — not to trim this list. */
+     NOTE ON MEMORY (resolved v2.3.1526): preloadTraits() loads every catalog
+     entry x 5 directions onto the startup gate, and this batch of 30 was
+     37.5MB of texture on its own.  The fix this note called for is done —
+     trait art is stored in a 128 frame and _placeTrait normalises by texture
+     size — so all 48 traits now cost 15.7MB, less than the 14 non-dormant
+     ones cost at 256.  Trimming the list was never the answer. */
   { id: 'barbarian-helmet', name: 'Barbarian Helmet' },
   { id: 'army-helmet', name: 'Army Helmet' },
   { id: 'axe-head', name: 'Axe On Head' },

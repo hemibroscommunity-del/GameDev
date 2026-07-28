@@ -31,7 +31,24 @@
  * flat key color, and to turn the recolor options in recolorOptions.js back on
  * at the same time -- the two are the same underlying problem.
  */
-export const PENDING_TRAITS_LIVE = false;
+/* v2.3.1526: LIVE.  Both conditions this switch was waiting on are met.
+ *
+ * The hats are re-cut from flat-key sheets (v2.3.1502-1523), so none of them
+ * carries a head any more and there is nothing for a recolor to expose.
+ *
+ * And the memory cost that made releasing 34 frames a risk is paid rather than
+ * accepted.  Trait art is stored at 128 now and _placeTrait normalises by
+ * texture size (v2.3.1526, tools/downscale_traits.py), which is a straight 4x
+ * on every trait texture in the game.  Measured against what preloadTraits
+ * actually loads onto the startup gate:
+ *
+ *     before, 14 ids dormant at 256   18.4 MB
+ *     after,  48 ids live   at 128    15.7 MB
+ *     the same 48 ids at 256 would have been 62.9 MB
+ *
+ * So releasing everything LOWERS the startup texture cost by 2.6MB. That is
+ * the whole reason this could be flipped rather than argued about. */
+export const PENDING_TRAITS_LIVE = true;
 
 /* Exactly the ids this run added, against what main already had. Crown is NOT
    here: it shipped in v2.3.1483 and stays live. */
