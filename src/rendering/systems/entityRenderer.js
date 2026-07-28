@@ -540,7 +540,7 @@ const FULLSET_CROWN = {
      v2.3.1455: FLOAT precision + the sub-pixel head residual folded in
      (the old even-integer rounding quantized the track to 2px steps),
      so hats/hair glide with the same corrected head the player sees. */
-  east: [[134.6, 47.5], [135.6, 46.8], [134.6, 52.3], [135.0, 55.5], [134.6, 55.4], [134.4, 58.2], [133.9, 56.8], [134.0, 54.1], [134.1, 51.4], [135.6, 46.5], [134.6, 47.5], [135.6, 46.8], [134.6, 52.3], [135.0, 55.5], [134.6, 55.4], [134.4, 58.2], [133.9, 56.8], [134.0, 54.1], [134.1, 51.4], [135.6, 46.5]],
+  east: [[134.6, 47.5], [135.6, 46.8], [135.4, 47.8], [134.6, 52.3], [135.0, 55.5], [134.6, 55.4], [134.4, 58.2], [133.9, 56.8], [134.0, 54.1], [134.1, 51.4], [135.6, 46.5], [134.6, 47.5], [135.6, 46.8], [135.4, 47.8], [134.6, 52.3], [135.0, 55.5], [134.6, 55.4], [134.4, 58.2], [133.9, 56.8], [134.0, 54.1], [134.1, 51.4], [135.6, 46.5]],
 };
 /* v2.3.1455 (owner: "'slivering' effect like lines are slightly cut and
    moving while jogging where the head meets the torso armor"): the head
@@ -553,7 +553,7 @@ const FULLSET_CROWN = {
    _placePickupHead applies it as a sub-pixel y offset so the drawn head
    rides the armor's true smooth track and the seam stays put. */
 const FULLSET_HEAD_RES = {
-  east: [0.0, -0.67, -0.22, 0.0, 0.44, 0.22, -0.67, -0.89, 0.44, 0.0, 0.0, -0.67, -0.22, 0.0, 0.44, 0.22, -0.67, -0.89, 0.44, 0.0],
+  east: [0.0, -0.67, -0.22, -0.22, 0.0, 0.44, 0.22, -0.67, -0.89, 0.44, 0.0, 0.0, -0.67, -0.22, -0.22, 0.0, 0.44, 0.22, -0.67, -0.89, 0.44, 0.0],
 };
 /* v2.3.1540: CONSTANT per-direction seat of the head overlay on the fullset,
    in 256-space [dx, dy] (so 2 = one pixel of the 128px head sheet).  Distinct
@@ -2234,11 +2234,30 @@ function _orderTraitsAndWeapon(display, facingIdx) {
        child of `display` (a transient layout state), and this runs every frame
        during the loot freeze, so an unguarded throw freezes the whole game. */
     try {
-      let ref = -1;
-      for (const s of [display._spriteBody, display._gearLegs, display._gearChest, display._gearShoulders]) {
-        if (s && s.visible && s.parent === display) ref = Math.max(ref, display.getChildIndex(s));
+      /* v2.3.1553 (owner: "can you actually put the head behind the armor
+         shoulder for jog east?  The shoulder should be the layer in front if
+         you think about the perspective").  Correct: east/west is a PROFILE,
+         so the near pauldron and the collar are between the camera and the
+         neck.  Drawing the head over them put bare skin on top of steel that
+         is physically in front of it, which is what read as the head sitting
+         on the armour rather than in it.
+         The lift exists because the fullset used to carry a HELMET that would
+         swallow the face; the helmet has been cut off since v2.3.1368, so on
+         this facing there is nothing above the collar to hide behind and the
+         face stays fully visible with the head underneath -- only the jaw and
+         neck are occluded, which is the point.  Set per frame beside the head
+         placement; every other facing keeps the lift. */
+      if (display._headBehindGear && display._spriteBody
+          && display._spriteBody.parent === display && phead.parent === display) {
+        const bi = display.getChildIndex(display._spriteBody);
+        if (display.getChildIndex(phead) > bi) display.setChildIndex(phead, bi);
+      } else {
+        let ref = -1;
+        for (const s of [display._spriteBody, display._gearLegs, display._gearChest, display._gearShoulders]) {
+          if (s && s.visible && s.parent === display) ref = Math.max(ref, display.getChildIndex(s));
+        }
+        if (ref >= 0 && phead.parent === display) { const hi = display.getChildIndex(phead); if (hi < ref) display.setChildIndex(phead, ref); }
       }
-      if (ref >= 0 && phead.parent === display) { const hi = display.getChildIndex(phead); if (hi < ref) display.setChildIndex(phead, ref); }
     } catch (e) { /* leave head where it is this frame */ }
   }
   const beard = display._facialHairSprite;
@@ -4454,6 +4473,7 @@ export class EntityRenderer {
             /* v2.3.1394: jog overlay only over the fullset figure (see local path). */
             /* v2.3.1479: same armour gate as the local path. */
             if ((pose !== 'jog' || _fsR) && ((pose !== 'hit' && pose !== 'mine') || _rworn.length > 0)) _placePickupHead(display, spriteBody, other.skin, other.pants, other.shoes, pose, dir, frameIdx, _rJogPhase);
+            display._headBehindGear = (pose === 'jog' && dir === 'east' && !!_fsR); /* v2.3.1553 */
             spriteBody.visible = !(_rfull && !!getPickupHeadFrame(other.skin, other.pants, other.shoes, pose, dir, frameIdx));
             /* v2.3.1123: lift the angler's head above the fishing chest plate. */
             if (pose === 'fish' && _rworn.some(w => w.k && w.k.indexOf('chest:') === 0)) _placeFishHead(display, spriteBody, tex);
@@ -5277,6 +5297,7 @@ export class EntityRenderer {
              nothing that could cover the head in the first place. */
           const _needHead = (pose !== 'hit' && pose !== 'mine') || _worn.length > 0;
           if ((pose !== 'jog' || _fsT) && _needHead) _placePickupHead(display, spriteBody, getSkin(), getPants(), getShoes(), pose, dir, frameIdx, _jogPhase);
+          display._headBehindGear = (pose === 'jog' && dir === 'east' && !!_fsT); /* v2.3.1553 */
           spriteBody.visible = !(pose === 'pickup' && _legsW && _chestW && !!getPickupHeadFrame(getSkin(), getPants(), getShoes(), pose, dir, frameIdx));
           /* v2.3.1123: lift the angler's head above the fishing chest plate. */
           if (pose === 'fish' && _chestW) _placeFishHead(display, spriteBody, tex);
