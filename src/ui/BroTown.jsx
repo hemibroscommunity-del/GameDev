@@ -123,6 +123,7 @@ import { sendChatMessage } from '@/game/chat.js';
 import { handleZoneTransitions } from '@/game/zoneTransitions.js';
 /* v2.3.789: desktop keyboard handlers extracted behavior-frozen (REBUILD-PLAN Phase 7). */
 import { setupDesktopControls } from '@/game/desktopControls.js';
+import { actionBus } from './mobile/actionBus.js'; /* v2.3.1562: quick-bar weapon swap */
 /* v2.3.809: per-zone mechanics extracted behavior-frozen (REBUILD-PLAN Phase 8, slice 1). */
 import { updateZoneMechanics } from '@/game/zoneMechanics.js';
 /* v2.3.810: dungeon wave progression extracted behavior-frozen (REBUILD-PLAN Phase 8, slice 2). */
@@ -4747,6 +4748,10 @@ export var BroTown = function BroTown(_ref0) {
        src/game/desktopControls.js (REBUILD-PLAN Phase 7, behavior-frozen).
        The _desktop* helpers and the dodge resolver stay in this component
        (they're shared with the touch controls) and go in via deps. */
+    /* v2.3.1562: the quick bar's weapon cell fires the SAME cycle handler
+       the left-stick double-tap and the keyboard shortcut use — one swap
+       path, not three (see actionBus.js). */
+    var unregCycleWeapon = actionBus.registerCycleWeapon(_desktopCycleWeapon);
     var teardownDesktopControls = setupDesktopControls(S, {
       triggerContextualDodge: triggerContextualDodge,
       _desktopEnterBuilding: _desktopEnterBuilding,
@@ -4767,6 +4772,7 @@ export var BroTown = function BroTown(_ref0) {
     });
     return function () {
       cancelAnimationFrame(frameRef.current);
+      unregCycleWeapon(); /* v2.3.1562 */
       teardownDesktopControls();
       window.removeEventListener('resize', resize);
       if (resizeObs) resizeObs.disconnect();

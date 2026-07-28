@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import { COL } from './dash/common.js';
 import { getBagEntries } from './dash/bagModel.js';
 import { BagTile } from './dash/InventoryPanel.jsx';
@@ -12,6 +12,7 @@ import { dashboardPanelBus } from './dashboardPanelBus.js';
 import { requestT2Category } from './dash/T2Panel.jsx';
 import { STAT_TO_WEAPON_CAT } from '../../data/gameSystems.js';
 import { quickCellSize } from './sheet/sheetGeometry.js';
+import { actionBus } from './actionBus.js';
 
 /* v2.3.1560 (owner): the ULTRA-COMPACT QUICK BAR — a persistent nine-cell
    row sitting directly above the toolbar icons, inside the bottom
@@ -20,8 +21,10 @@ import { quickCellSize } from './sheet/sheetGeometry.js';
 
      1-3  the first three bag entries (bagModel order: anchored first,
           then most-recent) — tap opens the item's detail popup
-     4-6  the worn CHEST / LEGS / WEAPON — tap opens that slot's loadout
-          picker, exactly like the Bag's Equipped cards
+     4-5  the worn CHEST / LEGS — tap opens that slot's loadout picker,
+          exactly like the Bag's Equipped cards
+     6    the WEAPON — tap SWAPS to your next weapon, press-and-hold opens
+          the picker (v2.3.1562, owner)
      7    the last life skill you gained XP in — tap opens Skills on that
           skill's detail view
      8-9  the last two combat skills you trained — tap opens that
@@ -65,6 +68,74 @@ const withAnchor = (fn) => (e) => {
   fn(anchor);
 };
 
+/* v2.3.1562: the weapon cell is the one cell with two actions — a tap
+   swaps, a hold opens the picker.  Weapon swap moved here off the left
+   joystick's double-tap (owner): the gesture existed since v2.3.97 and
+   the game's own owner did not know it was there, which is the verdict on
+   hidden timing gestures.  It also had to be classified in under 220ms
+   against the movement thumb's own taps and drags — the window was cut
+   from 350ms in v2.3.98 precisely because "a quick re-press to start
+   moving after a swap was being counted as a second tap".  A visible
+   button has no window to miss and no gesture to lose a race with.
+   The double-tap still works; it is now a shortcut, not the only way. */
+const HOLD_MS = 420;
+
+const WeaponCell = ({ src, size, slotLabel, onHold }) => {
+  const timer = useRef(null);
+  const held = useRef(false);
+  const anchorRef = useRef(null);
+  const clear = () => { if (timer.current) { clearTimeout(timer.current); timer.current = null; } };
+  const rectOf = (el) => {
+    try {
+      const r = el.getBoundingClientRect();
+      return { left: r.left, top: r.top, right: r.right, bottom: r.bottom, width: r.width, height: r.height };
+    } catch (_e) { return null; }
+  };
+  return (
+    <div
+      title={slotLabel ? `${slotLabel} — tap to swap, hold to change` : 'Weapon'}
+      onPointerDown={(e) => {
+        e.stopPropagation();
+        held.current = false;
+        anchorRef.current = rectOf(e.currentTarget);
+        clear();
+        timer.current = setTimeout(() => {
+          held.current = true;
+          timer.current = null;
+          if (onHold) onHold(anchorRef.current);
+        }, HOLD_MS);
+      }}
+      onPointerUp={(e) => {
+        e.stopPropagation();
+        clear();
+        /* The hold already fired — a tap must not ALSO swap behind the
+           open picker. */
+        if (held.current) return;
+        actionBus.cycleWeapon();
+      }}
+      /* Cancel and leave both abort: sliding off the cell is how a player
+         backs out of a press they didn't mean. */
+      onPointerCancel={() => { clear(); held.current = true; }}
+      onPointerLeave={() => { clear(); held.current = true; }}
+      style={{ ...cellBase, width: size, height: size }}>
+      {src
+        ? <img src={src} alt="" draggable={false}
+            style={{ width: '82%', height: '82%', objectFit: 'contain', pointerEvents: 'none' }} />
+        : <span style={{ fontSize: Math.round(size * 0.42), opacity: 0.3, pointerEvents: 'none' }}>◇</span>}
+      {/* The affordance marker.  Without it this reads as "the weapon you
+          have" rather than "the weapon you can change" — which is the
+          discoverability failure the double-tap gesture had. */}
+      <span aria-hidden="true" style={{
+        position: 'absolute', right: 1, bottom: 0,
+        fontSize: 10, lineHeight: 1.2, fontWeight: 800,
+        color: COL.accent || '#D8A94D',
+        textShadow: '0 1px 2px rgba(9,14,17,.95)',
+        pointerEvents: 'none',
+      }}>⇄</span>
+    </div>
+  );
+};
+
 const IconCell = ({ src, alt, size, onTap, badge, dim, title }) => (
   <div onPointerUp={onTap ? withAnchor(onTap) : undefined} title={title || alt}
     style={{ ...cellBase, width: size, height: size, cursor: onTap ? 'pointer' : 'default' }}>
@@ -91,8 +162,11 @@ export const QuickBar = ({ R }) => {
   const bag = getBagEntries(R).slice(0, 3);
   const equipped = getEquippedSlots(R || {});
   const bySlot = (s) => equipped.find(e => e.slot === s);
-  /* Owner's order: chest, legs, weapon. */
-  const gear = ['chest', 'legs', 'weapon'].map(bySlot).filter(Boolean);
+  /* Owner's order: chest, legs, weapon.  Weapon is last so the cell with
+     the extra action sits at the group's edge, next to the divider —
+     hardest cell to hit by accident when reaching for the one beside it. */
+  const gear = ['chest', 'legs'].map(bySlot).filter(Boolean);
+  const wpnSlot = bySlot('weapon');
 
   const lifeKey = quickLifeSkill(R);
   const lifeSkill = lifeKey ? SKILL_ROSTER.find(s => s.key === lifeKey) : null;
@@ -141,6 +215,19 @@ export const QuickBar = ({ R }) => {
           alt={sl.label} title={sl.label}
           onTap={sl.pickerSlot ? openPicker(sl.pickerSlot) : undefined} />
       ))}
+
+      {/* v2.3.1562: weapon — tap swaps, hold opens the picker.  With no
+          weapon at all there is nothing to swap TO, so it falls back to
+          the plain picker cell. */}
+      {wpnSlot && !wpnSlot.ghost ? (
+        <WeaponCell size={size} src={wpnSlot.iconSrc}
+          slotLabel={R && R.activeSlot === 'ranged' ? 'Bow'
+            : R && R.activeSlot === 'staff' ? 'Staff' : 'Melee'}
+          onHold={openPicker('weapon')} />
+      ) : (
+        <IconCell size={size} src={GHOST_SRC.weapon} dim
+          alt="Weapon" title="Weapon" onTap={openPicker('weapon')} />
+      )}
 
       <span aria-hidden="true" style={{ width: 1, height: size - 8, background: COL.divider, flex: 'none', margin: '0 2px' }} />
 

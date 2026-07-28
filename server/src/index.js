@@ -1593,18 +1593,32 @@ export class GameRoom {
     // protected: no death pile, no inventory wipe, per the promise the
     // duel popup makes ("No item loss").  Any other death mid-duel
     // (monster, environment) still forfeits the pot but dies normally.
-    const _duelKill = this._duelOnDeath(playerId, cause);
+    /* v2.3.1562: every hook below is OPTIONAL bookkeeping (duel payout,
+       clan-war score, bounty, death pile).  The two things that are NOT
+       optional are the player_died send at the bottom and the dying flag
+       set above, which _tickPlayerRespawn reads to bring the player back.
+       Before this, a throw in any hook skipped the send AND left the
+       player marked dying — dead on screen with no notification and no
+       way back.  Each hook is isolated so the death itself always
+       completes. */
+    const _hook = (label, fn) => {
+      try { return fn(); } catch (e) {
+        try { console.error('[death] ' + label + ' threw:', e && e.message); } catch {}
+        return undefined;
+      }
+    };
+    const _duelKill = _hook('duel', () => this._duelOnDeath(playerId, cause));
     // v2.3.1125: clan-war scoring rides the same server-resolved death
     // (cause 'pvp:<attacker>'); duel kills are excluded inside the hook.
-    this._warOnDeath(playerId, cause);
+    _hook('war', () => this._warOnDeath(playerId, cause));
     // v2.3.1211 (item C): a killed threatener's guard-fine bounty pays
     // out to their killer here too (same server-observed 'pvp:' cause;
     // self / duel / same-clan / non-PvP excluded inside the hook).
-    this._bountyOnDeath(playerId, cause).catch(() => {});
+    _hook('bounty', () => this._bountyOnDeath(playerId, cause).catch(() => {}));
     // v2.3.1116: death ends any remaining threat consent this player
     // was party to -- the survivor can't keep hitting them through the
     // respawn.  (Duel pairs already cleared by the resolution above.)
-    this._clearPvpConsent(playerId);
+    _hook('pvpConsent', () => this._clearPvpConsent(playerId));
     if (!_duelKill) {
       // Spawn a pickable death pile at the death location carrying the
       // player's entire general inventory (mummy remains, fish, wood,
@@ -1612,7 +1626,7 @@ export class GameRoom {
       // armor / shield / amulet) and weaponStash are NOT included.
       // Anyone in the zone can pick the pile up; despawns after 60 s.
       // Spawn BEFORE the inventory wipe so we capture the items.
-      this._spawnDeathPile(ps, playerId);
+      _hook('deathPile', () => this._spawnDeathPile(ps, playerId));
       ps.inventory = {};
     }
     this._saveRpg(playerId, ps);
@@ -1635,6 +1649,19 @@ export class GameRoom {
   _tickPlayerRespawn() {
     const now = Date.now();
     for (const [id, ps] of Object.entries(this.playerState)) {
+      /* v2.3.1562: STUCK-AT-ZERO SWEEP.  The death flow only ever starts
+         at the instant damage is applied (the two _applyDamage callers).
+         Any other way a live player's hp reaches 0 — a path that writes
+         hp directly, a hook that threw before the flow finished, a state
+         restored from storage mid-death — leaves them at 0 HP with
+         dying=false, which is a permanent stuck state: no death, no
+         respawn, and the client happily keeps sending actions.  Starting
+         the flow from the tick closes that for every source at once
+         instead of chasing them one at a time.  Guarded on connected,
+         non-dying players so it cannot fire on a corpse mid-respawn. */
+      if (!ps.dying && !ps.disconnected && typeof ps.hp === 'number' && ps.hp <= 0) {
+        try { this._handlePlayerDeath(ps, id, 'stuck-at-zero'); } catch (e) {}
+      }
       if (!ps.dying) continue;
       if (now < (ps.respawnAt || 0)) continue;
       ps.hp = ps.maxHp || 100;

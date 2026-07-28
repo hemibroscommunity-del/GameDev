@@ -733,5 +733,52 @@ for (const m of meadowMonsters) m._wanderPausedUntil = Date.now() + 600000;
   check('sanitize: laststand key stored', spec && spec.laststand === 20, spec);
 }
 
+/* ── v2.3.1562: stuck-at-zero death recovery (owner: "I just died and it
+   didn't return me to town — stuck at 0 HP, could still mine") ── */
+{
+  const ws = fakeWs('stuck');
+  room._wsBySessionId = (id) => (id === 'stuck1' || id === 'stuck2' ? ws : null);
+
+  // A live player sitting at 0 HP that the damage-time death check never
+  // saw: the respawn tick must start the death flow for them.
+  room.playerState['stuck1'] = { hp: 0, maxHp: 100, z: 'frost', inventory: { ore: 3 }, x: 10, y: 10 };
+  room._tickPlayerRespawn();
+  const ps1 = room.playerState['stuck1'];
+  check('stuck-at-zero: respawn tick starts the death flow',
+    ps1.dying === true && ps1.respawnAt > Date.now(), { dying: ps1.dying, respawnAt: ps1.respawnAt });
+  check('stuck-at-zero: player_died reaches the client',
+    msgsOfType(ws, 'player_died').length === 1, ws.sent.map((m) => m.type));
+
+  // ...and the respawn itself still lands once the window elapses.
+  ps1.respawnAt = Date.now() - 1;
+  room._tickPlayerRespawn();
+  check('stuck-at-zero: respawn returns the player to town',
+    ps1.dying === false && ps1.hp === ps1.maxHp && ps1.z === 'town',
+    { dying: ps1.dying, hp: ps1.hp, z: ps1.z });
+
+  // A healthy player is never swept.
+  room.playerState['well'] = { hp: 50, maxHp: 100, z: 'frost' };
+  room._tickPlayerRespawn();
+  check('stuck-at-zero: a living player is left alone', !room.playerState['well'].dying);
+
+  // A throwing optional hook must not cost the player their death
+  // notification — that was the shape of the original outage.
+  const pileOrig = room._spawnDeathPile;
+  room._spawnDeathPile = () => { throw new Error('boom'); };
+  ws.sent.length = 0;
+  room.playerState['stuck2'] = { hp: 0, maxHp: 100, z: 'frost', inventory: { ore: 1 }, x: 1, y: 1 };
+  room._tickPlayerRespawn();
+  const ps2b = room.playerState['stuck2'];
+  check('death flow: a throwing hook still sends player_died',
+    msgsOfType(ws, 'player_died').length === 1 && ps2b.dying === true,
+    { sent: ws.sent.map((m) => m.type), dying: ps2b.dying });
+  check('death flow: inventory still wiped after a failing pile spawn',
+    Object.keys(ps2b.inventory || {}).length === 0, ps2b.inventory);
+  room._spawnDeathPile = pileOrig;
+  delete room.playerState['stuck1'];
+  delete room.playerState['stuck2'];
+  delete room.playerState['well'];
+}
+
 console.log(failures === 0 ? '\nALL TESTS PASSED' : `\n${failures} TEST(S) FAILED`);
 process.exit(failures === 0 ? 0 : 1);
