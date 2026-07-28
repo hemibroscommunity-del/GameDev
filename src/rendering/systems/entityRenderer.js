@@ -474,6 +474,22 @@ const JOG_EW_HAT_TUNE = {
   'sombrero':          { mul: 1.20, dy: 6 }, /* v2.3.1355: owner round 3, up 1px */
   'bucket-hat':        { mul: 1.20, dy: 6 },
   'fedora':            { mul: 1.20, dy: 6 },
+  /* v2.3.1542 (owner: "jog east makes the wizard hat fly off the head").  The
+     hat is pinned by its OWN crown pixel, which for the wizard hat is the tip
+     of the cone -- meta.anchors.east is the bbox top-centre and crownNudge.east
+     is -37, by far the largest lift in the set (next is evil-crown at -30).
+     The blanket jog-east 0.67 then shrinks the whole hat ABOUT THAT TIP, so the
+     brim -- 47px below the anchor -- rises by a third of that span while the
+     tip stays put.  Measured against the standing placement the brim landed
+     ~15px high in 256-space, which on a tall pointed hat reads as the hat
+     hovering over a bald head.  Every un-dialled hat has this to some degree;
+     the wizard hat is the one where the geometry makes it obvious.
+     mul 1.40 is the same correction hair got in v2.3.1454 (1.40 x 0.67 = 0.938,
+     the MEASURED jog-east/stand-east head ratio, 44px vs 47px), and dy 3 pays
+     back the last ~2px, which is the part of the -37 lift that _placeTrait
+     applies unscaled while the head around it is 6% smaller.  Verified frame by
+     frame against the standing reference over the whole 28-frame cycle. */
+  'wizard-hat':        { mul: 1.40, dy: 3 },
 };
 /* v2.3.1354: IDLE (stand pose, every facing — a hat that reads small
    idling east reads small on every idle facing; per-dir splits would
