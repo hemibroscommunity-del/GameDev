@@ -9,7 +9,12 @@
  * To add a new option:
  *   1. Drop its trait folder under public/sprites/traits/facialhair/<id>/
  *      (base direction PNGs + meta.json from tools/downscale_trait.py;
- *      north is optional -- omit it when the back view hides the trait).
+ *      a direction is optional -- omit BOTH its png and its meta.anchors
+ *      entry when that view hides the trait.  The anchor is what makes it
+ *      render: without one _placeTrait bails and the loader knows the 404
+ *      is by design.  v2.3.1530: beard ships neither north nor northeast,
+ *      because both turn the face away -- and northwest mirrors northeast,
+ *      so that side is covered by the same omission).
  *   2. Add one { id, name } entry to FACIALHAIR_CATALOG below.
  */
 export const FACIALHAIR_CATALOG = [

@@ -179,7 +179,7 @@ const TRAIT_NFT_ID = 'test-1';
 /* v2.3.708: bumped for the regenerated NE jog body-tops/body-anchors. */
 /* v2.3.1394: bumped — bandana gains hairmask/*.png + clipsHair in meta.json
    (owner: hair not clipped under the bandana on NE/NW). */
-const TRAIT_VER = '2.3.1529';
+const TRAIT_VER = '2.3.1530';
 
 /* v2.3.377: the on-back (sheathed) shield render is purely cosmetic and was
    a persistent source of per-facing z-order issues vs the body/arms/weapon/
@@ -273,7 +273,8 @@ function _loadTraitDir(e, category, id, dir, attempt) {
     .catch(() => {
       /* v2.3.1306: meta.anchors is the authoritative list of directions
          a trait SHIPS (e.g. facialhair/beard has no north.png and no
-         north anchor — by design, verified on disk).  The v2.3.1305
+         north anchor — by design, verified on disk; v2.3.1530 added
+         northeast to that list for the same reason).  The v2.3.1305
          sibling heuristic misread that as a per-session deterministic
          flake: every bearded session retried north 3x and pushed a bogus
          'sheet' entry into the 16-slot crash ring + beacon upload,
