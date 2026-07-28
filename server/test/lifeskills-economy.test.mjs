@@ -295,13 +295,38 @@ const nodes = room._ensureZoneNodes('meadow');
 // The rejection sampler falls back to best-spread when a zone is too
 // cramped, so assert against a slightly relaxed floor rather than the
 // exact MIN_NODE_GAP.
+//
+// v2.3.1555: the relaxed floor was still ABOVE what the sampler can
+// promise, so this failed ~1 run in 25 -- it went red on CI for a
+// sprite-only PR, which is how it was found.  Measured by replaying the
+// sampler's own arithmetic (meadow: 9 nodes, 512x512 placeable area,
+// MIN_NODE_GAP 192, 40 attempts, greedy sequential placement):
+//
+//   P(worst pair < 4 tiles) = 3.98% over 200,000 runs
+//   minimum worst-pair ever seen = 99px = 3.10 tiles over 100,000 runs
+//   minimum MEDIAN nearest-neighbour = 123px = 3.84 tiles
+//
+// Nine points at 192px apart do not comfortably fit 512x512, so the
+// best-spread fallback fires often and the tail runs well under 4 tiles.
+// The code never promised that bound -- MIN_NODE_GAP is documented as a
+// target with a fallback -- so the TEST was wrong, not the sampler.
+//
+// Floored at 3 tiles (never breached in 100k trials) and paired with a
+// median check, so a genuine sampler regression -- which would collapse
+// the whole distribution, not just the tail -- still fails this.
 {
+  const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
   let worst = Infinity;
   for (let i = 0; i < nodes.length; i++)
     for (let j = i + 1; j < nodes.length; j++)
-      worst = Math.min(worst, Math.hypot(nodes[i].x - nodes[j].x, nodes[i].y - nodes[j].y));
+      worst = Math.min(worst, dist(nodes[i], nodes[j]));
+  const nn = nodes.map((a, i) =>
+    Math.min(...nodes.filter((_, j) => j !== i).map((b) => dist(a, b))));
+  nn.sort((a, b) => a - b);
+  const median = nn[Math.floor(nn.length / 2)];
   check('spawn: nodes keep a minimum spacing (no stacked prompts)',
-    nodes.length >= 2 && worst >= 4 * room.TILE, { worstGap: Math.round(worst), tile: room.TILE });
+    nodes.length >= 2 && worst >= 3 * room.TILE && median >= 3.5 * room.TILE,
+    { worstGap: Math.round(worst), medianGap: Math.round(median), tile: room.TILE });
 }
 const n0 = nodes[0];
 n0.alive = true; n0.respawnAt = 0;
