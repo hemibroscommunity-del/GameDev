@@ -767,6 +767,46 @@ export const BottomDashboard = () => {
            default (owner: maximum world visibility).  The compact
            branch left with the compact state. */}
 
+      {/* v2.3.1563 (owner: "put coin count just above the first inventory
+          slot of the ultra compact menu — should be bottom left corner of
+          screen").  Pinned to the band's TOP-LEFT edge, out of flow and
+          out of the band's height: it sits over the world rather than
+          inside the bar, so --dash-h (and therefore the canvas, joystick
+          zones and every world-HUD anchor) is unchanged.  Hidden with the
+          quick bar while a panel is expanded — the Hero identity strip
+          owns the readout there and two live gold counts on one screen
+          disagree the moment one of them lags. */}
+      {mode !== 'expanded' && (() => {
+        const Rc = (window._gameState && window._gameState.current && window._gameState.current.rpg) || null;
+        const coins = (Rc && (Rc.coins || Rc.gold)) || 0;
+        return (
+          <div style={{
+            position: 'absolute',
+            left: 6,
+            bottom: 'calc(env(safe-area-inset-bottom, 0px) + var(--dash-h, 135px) - 1px)',
+            zIndex: 1,
+            display: 'flex', alignItems: 'center', gap: 3,
+            padding: '1px 6px 1px 4px',
+            borderRadius: '6px 6px 0 0',
+            background: 'rgba(13, 22, 27, 0.88)',
+            border: `1px solid ${COL.divider}`,
+            borderBottom: 'none',
+            pointerEvents: 'none',
+            /* Tabular figures so a changing balance doesn't jitter the
+               chip's width digit by digit. */
+            fontVariantNumeric: 'tabular-nums',
+            fontSize: 11.5, fontWeight: 800, lineHeight: 1.35,
+            color: '#F0C860',
+            textShadow: '0 1px 2px rgba(9,14,17,.9)',
+            whiteSpace: 'nowrap',
+          }}>
+            <img src="/icons/popups/gold.webp" alt="" draggable={false}
+              style={{ width: 12, height: 12, objectFit: 'contain' }} />
+            {coins.toLocaleString()}
+          </div>
+        );
+      })()}
+
       {/* v2.3.1560 (owner: "a persistent menu above the toolbar icons"):
           the ultra-compact quick bar.  Absolute-pinned directly on top of
           the ribbon for the same reason the ribbon itself is pinned
