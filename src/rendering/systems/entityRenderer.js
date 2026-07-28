@@ -19,7 +19,7 @@ import { getFrame, resolveDirection, cycleMs, hasPose, frameCount as playerFrame
 import { getShieldFrame } from '../shieldSprites.js';
 import { jogWaistRow } from '../jogWaist.js'; /* v2.3.1341: stable waist band */
 import { getFrame as getSlimeBaseFrame, hasState as hasSlimeState, frameCount as slimeFrameCount } from '../slimeSprites.js';
-import { getRecoloredFrame, hasRecoloredState } from '../slimeRecolor.js'; /* v2.3.1534 */
+import { getRecoloredFrame, hasRecoloredState } from '../monsterRecolor.js'; /* v2.3.1534; v2.3.1535 generalised */
 
 /* v2.3.1534: one place that decides whether a slime draws from the shared
    sheet or from its variant's RECOLOURED copy.  A variant with `recolor` gets
@@ -28,14 +28,14 @@ import { getRecoloredFrame, hasRecoloredState } from '../slimeRecolor.js'; /* v2
    recolour has finished building (or if it failed), both fall back to exactly
    what shipped before: base sheet + multiplicative tint. */
 function getSlimeFrame(state, frameIdx, variant) {
-  if (variant && variant.recolor && hasRecoloredState(variant.recolor, state)) {
-    const t = getRecoloredFrame(variant.recolor, state, frameIdx);
+  if (variant && variant.recolor && hasRecoloredState(variant, state)) {
+    const t = getRecoloredFrame(variant, state, frameIdx);
     if (t) return t;
   }
   return getSlimeBaseFrame(state, frameIdx);
 }
 function slimeTintFor(variant, state) {
-  if (variant && variant.recolor && hasRecoloredState(variant.recolor, state)) return 0xffffff;
+  if (variant && variant.recolor && hasRecoloredState(variant, state)) return 0xffffff;
   return (variant && variant.tint) || 0xffffff;
 }
 import { getFrame as getSnowmanFrame, hasFrames as hasSnowmanFrames, frameCount as snowmanFrameCount, getHitFrame as getSnowmanHitFrame, hitFrameCount as snowmanHitFrameCount, getDeathFrame as getSnowmanDeathFrame, deathFrameCount as snowmanDeathFrameCount } from '../snowmanSprites.js';

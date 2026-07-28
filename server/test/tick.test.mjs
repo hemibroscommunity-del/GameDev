@@ -227,8 +227,12 @@ check('player respawn: player_respawned sent to the victim',
 // band.  Pins: both zones spawn, levels stay inside band-floor-4
 // (entrance ramp) .. band-ceiling, and every spawn maps to one of the
 // new tinted variants.
+// v2.3.1534: verdant's brute (thornShambler, the rock monster) was removed
+// on owner request, so the zone is slimes only.
+// v2.3.1535: and ONE of those slimes is the fast/squishy blueSlime, pinned
+// by a per-spawn-entry variant override rather than the archetype map.
 const EXPECTED_VARIANTS = {
-  verdant: ['mossSlime', 'thornShambler'],
+  verdant: ['mossSlime', 'blueSlime'],
   mist: ['mireWisp', 'bogLurker'],
 };
 for (const zid of ['verdant', 'mist']) {
@@ -243,6 +247,30 @@ for (const zid of ['verdant', 'mist']) {
     [...new Set(zm.map((m) => m.variant))]);
   check(zid + ' variants have a server speed entry (client/server pace sync)',
     zm.every((m) => typeof m.spd === 'number' && m.spd > 0), zm.map((m) => m.spd));
+}
+// v2.3.1535: the blue slime is meant to be a SINGLE standout in Verdant
+// Wilds, and to actually be faster and squishier than the green ones it
+// stands next to.  Pin all three properties -- the count guards the
+// spawn-table override (a stray edit to ZONE_VARIANT_MAP would turn the
+// whole zone blue), and the stat comparisons guard the two multipliers,
+// which live in different functions and could drift apart.
+{
+  const zm = room._ensureZoneMonsters('verdant');
+  const blues = zm.filter((m) => m.variant === 'blueSlime');
+  const greens = zm.filter((m) => m.variant === 'mossSlime');
+  check('verdant: exactly ONE blue slime', blues.length === 1, blues.length);
+  check('verdant: the rest are green', greens.length === zm.length - 1,
+    { green: greens.length, total: zm.length });
+  check('blue slime is FASTER than the green ones',
+    blues[0] && greens[0] && blues[0].spd > greens[0].spd,
+    { blue: blues[0] && blues[0].spd, green: greens[0] && greens[0].spd });
+  check('blue slime is SQUISHIER (lower maxHp at the same level)',
+    blues[0] && greens.some((g) => g.level === blues[0].level)
+      ? blues[0].maxHp < greens.find((g) => g.level === blues[0].level).maxHp
+      : true,
+    { blue: blues[0] && blues[0].maxHp, greens: greens.map((g) => [g.level, g.maxHp]) });
+  check('blue slime maxHp stays >= 1 (multiplier can never zero it out)',
+    blues[0] && blues[0].maxHp >= 1, blues[0] && blues[0].maxHp);
 }
 // monster_transform joined the deny-list (pre-existing forgery hole).
 room.eventBuffer.length = 0;

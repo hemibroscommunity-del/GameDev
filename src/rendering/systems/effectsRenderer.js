@@ -18,7 +18,7 @@ import { ZONES } from '@/data/zones.js';
 import { TILE, MINE_SPOT_R, FISH_CUE_DY } from '@/data/constants.js';
 import { GS_INNER_RADIUS, GS_OUTER_RADIUS, GS_FORWARD_ARC, cleaveArcBonus } from '@/data/index.js';
 import { getFrame as getSlimeFrame, hasState as hasSlimeState } from '../slimeSprites.js';
-import { getRecoloredFrame, hasRecoloredState } from '../slimeRecolor.js'; /* v2.3.1534 */
+import { getRecoloredFrame, hasRecoloredState } from '../monsterRecolor.js'; /* v2.3.1534; v2.3.1535 generalised */
 import { getRemnantsTexture as getSnowmanRemnantsTex } from '../snowmanSprites.js';
 import { variantSpritesFor } from '../monsterVariantSprites.js';
 import { MONSTER_VARIANTS, ZONE_VARIANT_MAP } from '../../data/monsterVariants.js';
@@ -2710,8 +2710,8 @@ export class EffectsRenderer {
            leaves too, or a blue slime dies into a green puddle.  The splat
            rides the same recoloured sheet set, so it is already warm from
            preloadZoneAssets and needs no tint of its own. */
-        const recolorRemnTex = (variant && variant.recolor && hasRecoloredState(variant.recolor, 'remnants'))
-          ? getRecoloredFrame(variant.recolor, 'remnants', 0)
+        const recolorRemnTex = (variant && variant.recolor && hasRecoloredState(variant, 'remnants'))
+          ? getRecoloredFrame(variant, 'remnants', 0)
           : null;
         const slimeRemnantsTex = hasSlimeState('remnants') ? getSlimeFrame('remnants', 0) : null;
         const remnTex = variantRemnTex || recolorRemnTex || slimeRemnantsTex;

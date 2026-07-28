@@ -17,7 +17,7 @@ import { TOWN_EXITS } from './effects.js';
    this file is gone. */
 import { AMULET_TIERS, SALVAGE_RETURN_RATE, DEPTH_TIERS, ZONE_RESOURCES, getAmuletBonus, getShieldBonus, getShieldStats, skillXpRequired } from './items.js';
 import { FISHING_TIERS } from './lifeSkills.js';
-import { applyZoneVariant } from './monsterVariants.js';
+import { applyZoneVariant, hitShapeOf } from './monsterVariants.js';
 
 /* v2.3.1186: pure-display exports (BT_AUDIO, BT_ACHIEVEMENTS, MASKS,
    tile colors, generateZoneMap, emote/NPC tables) moved to
@@ -5678,6 +5678,9 @@ export const PVP_THREAT_DURATION = PVP_THREAT_BASE_COUNTDOWN; /* compat */
    feet-level m.y while the HIT test used the body centre, making locked
    bow shots fly under the hitbox.  Every consumer now reads this. */
 export function monsterBodyOffsetY(archOrType) {
+  /* v2.3.1535: resolve reskins to the shape they actually render as, or a
+     variant falls through to 0 = body centred on the FEET.  See hitShapeOf. */
+  archOrType = hitShapeOf(archOrType);
   return archOrType === 'fodder' ? 40
     : (archOrType === 'mummy' || archOrType === 'skeleton') ? 48
     : archOrType === 'fireGoblin' ? 28

@@ -625,11 +625,41 @@ export class GameRoom {
       // client/server speed disagreement documented in the client cfg;
       // left untouched to avoid changing shipped zones' feel).
       mossSlime: 0.5,
+      // v2.3.1535 (owner: "one fast squishier blue slime and the rest the
+      // regular green"): the rare Verdant Wilds spawn.  1.15 is 2.3x the
+      // fodder base 0.5 and sits below fireGoblin's 1.5, so it reads as
+      // genuinely fast without being unoutrunnable.  The matching
+      // squishiness is _variantHpMult below -- speed alone would just make
+      // the zone harder.  MIRROR: src/data/monsterVariants.js blueSlime.spd
+      // (mirror-audit.test.mjs pins it); a mismatch makes server-driven
+      // movement fight the client's prediction and the slime rubber-bands.
+      blueSlime: 1.15,
       mireWisp: 0.5,
       thornShambler: 0.5,
       bogLurker: 0.5,
     };
     return SPEEDS[variantKey];
+  }
+
+  // v2.3.1535: per-variant maxHp multiplier, applied at spawn on top of the
+  // base archetype's hpMult.  Until now variants were stats-identical to
+  // their base archetype and differed only in art and speed; this is the
+  // first one that trades a stat.  Server-only ON PURPOSE -- HP is
+  // authoritative here (handoff: the client renders maxHp from the server
+  // and never derives it), so there is no client mirror to drift.
+  //
+  // The multiplier lands in BOTH hp and maxHp at spawn, so the respawn path
+  // (m.hp = m.maxHp) carries it for free and needs no changes.
+  _variantHpMult(variantKey) {
+    const HP = {
+      // 0.55 = a bit under two thirds.  Paired with 2.3x speed it makes the
+      // blue slime a glass-cannon rush rather than a tankier chase: it
+      // reaches you fast and dies fast.  XP and gold are deliberately
+      // untouched -- they come off the level curve, and cutting them would
+      // make the rare spawn pay worse than the common one it stands next to.
+      blueSlime: 0.55,
+    };
+    return HP[variantKey];
   }
 
   // Variant transform thresholds + targets.  Mirrors the
@@ -678,7 +708,10 @@ export class GameRoom {
         const baseDmg = this._monsterStat(12, lvl, 1.045, 1.025, 1.018);
         const baseXp = this._monsterStat(10, lvl, 1.045, 1.025, 1.018);
         const baseGold = this._monsterStat(5, lvl, 1.035, 1.020, 1.015);
-        const variantKey = this._variantForArchInZone(spawn.arch, zoneId);
+        /* v2.3.1535: a spawn entry may pin its own variant (verdant's single
+           blueSlime among mossSlimes).  Falls back to the whole-archetype
+           zone map for every other spawn, so nothing else changes. */
+        const variantKey = spawn.variant || this._variantForArchInZone(spawn.arch, zoneId);
         // Variant speed override: if this (arch, zone) maps to a variant
         // with its own spd (e.g. ember fodder -> fireGoblin spd 1.5),
         // use it.  This is what makes server-driven AI move the variant
@@ -687,6 +720,12 @@ export class GameRoom {
         // hatch on the client side).
         const variantSpd = variantKey ? this._variantSpeed(variantKey) : null;
         const finalSpd = (variantSpd != null) ? variantSpd : (0.5 * a.spdMult);
+        /* v2.3.1535: variant HP trade (blue slime = fast but squishy).
+           Multiplies the archetype's own hpMult; absent for every other
+           variant, so they stay exactly as they spawned before. */
+        const variantHpMult = variantKey ? this._variantHpMult(variantKey) : null;
+        const hpMult = a.hpMult * ((variantHpMult != null) ? variantHpMult : 1);
+        const spawnHp = Math.max(1, Math.ceil(baseHp * hpMult) + monsterHpFlat(lvl));
         monsters.push({
           id: 'sm-' + zoneId + '-' + idx,
           arch: spawn.arch,
@@ -704,8 +743,8 @@ export class GameRoom {
           spawnSpd: finalSpd,
           level: lvl,
           element: zone.element || null,
-          hp: Math.ceil(baseHp * a.hpMult) + monsterHpFlat(lvl), /* v2.3.1364: Lv1-2 -> flatLow */
-          maxHp: Math.ceil(baseHp * a.hpMult) + monsterHpFlat(lvl),
+          hp: spawnHp, /* v2.3.1364: Lv1-2 -> flatLow; v2.3.1535: + variant hp mult */
+          maxHp: spawnHp,
           dmg: Math.ceil(baseDmg * a.dmgMult),
           xp: Math.ceil(baseXp),
           gold: Math.ceil(baseGold),

@@ -95,7 +95,13 @@ export const ZONES = {
        thornShambler stays defined in monsterVariants.js: nothing spawns
        it today, and deleting it would just have to be rewritten if a
        brute comes back here. */
-    spawns: [{ arch: 'fodder', count: 8 }],
+    /* v2.3.1535 (owner: "one fast squishier blue slime and the rest the
+       regular green"): the second entry's `variant` pins ONE spawn to
+       blueSlime; the other 7 take the ZONE_VARIANT_MAP default (mossSlime,
+       green).  A per-entry override is the only way to get a mixed
+       population -- ZONE_VARIANT_MAP maps a whole ARCHETYPE, so putting
+       blueSlime there would turn every slime in the zone blue. */
+    spawns: [{ arch: 'fodder', count: 7 }, { arch: 'fodder', count: 1, variant: 'blueSlime' }],
     atmosphere: { tint: 'rgba(60,160,60,0.05)', vignette: 'rgba(20,80,20,0.12)' },
     enemyEmoji: {}
   },

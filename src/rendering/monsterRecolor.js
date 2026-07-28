@@ -1,4 +1,8 @@
-/* v2.3.1534: recoloured copies of the shared slime sheets.
+/* v2.3.1534: recoloured copies of a monster's shared sprite sheets.
+ * v2.3.1535: generalised from slime-only (owner: "I'll be recoloring other
+ * monsters to add variants, not just slimes").  Adding a colour variant of an
+ * EXISTING monster is now a data change, not a new module -- see ADDING A
+ * FAMILY at the bottom of this header.
  *
  * WHY THIS EXISTS RATHER THAN A TINT
  * ----------------------------------
@@ -26,10 +30,24 @@
  * COST
  * ----
  * A recoloured colour costs one extra copy of the sheets it recolours
- * (~4MB of texture for the full set).  That is why this is per-zone: it is
+ * (~4MB of texture for the slime set).  That is why this is per-zone: it is
  * built from preloadZoneAssets(zoneId) for the zones whose variants ask for
  * it, and only for the colours they ask for -- not on the global gate.
- * Repeat calls for the same colour are the same promise.
+ * Repeat calls for the same (family, colour) are the same promise.
+ *
+ * ADDING A FAMILY
+ * ---------------
+ * 1. Add its sheet URLs to SHEET_SETS below, keyed by state name.  The state
+ *    names are whatever the renderer asks for -- they only have to match the
+ *    getRecoloredFrame() calls for that monster.
+ * 2. Give the variant in monsterVariants.js a `recolor: [r,g,b]` and a
+ *    `recolorFamily: '<key>'`.
+ * 3. Make sure the renderer's frame lookup for that monster consults
+ *    getRecoloredFrame() first (the slime path in entityRenderer is the
+ *    worked example), and that it stops applying the multiplicative `tint`
+ *    when a recolour is live -- otherwise the tint multiplies the recolour.
+ * Nothing else: preloadZoneAssets already builds any recolour a zone's
+ * variants declare, and every frame size is derived from the sheet.
  */
 
 import { Rectangle, Texture } from 'pixi.js';
@@ -37,23 +55,35 @@ import { Rectangle, Texture } from 'pixi.js';
 const FRAME_W = 128;
 const FRAME_H = 128;
 
-/* Same URLs as slimeSprites.js.  Kept as a local list rather than imported
-   because this module needs the raw IMAGE (to read pixels), not the Texture
-   the loader there produces. */
-const SHEET_URLS = {
-  idle:       '/sprites/monsters/slime-idle-v5.png',
-  shoot:      '/sprites/monsters/slime-shoot-v2.png',
-  hit:        '/sprites/monsters/slime-hit-v1.png',
-  death:      '/sprites/monsters/slime-death-v10.png',
-  remnants:   '/sprites/monsters/slime-remnants-v1.png',
-  projectile: '/sprites/monsters/slime-projectile-v1.png',
+/* family -> { state: url }.  Kept as local lists rather than imported from
+   each sprite loader because this module needs the raw IMAGE (to read
+   pixels), not the Textures those loaders produce. */
+const SHEET_SETS = {
+  slime: {
+    idle:       '/sprites/monsters/slime-idle-v5.png',
+    shoot:      '/sprites/monsters/slime-shoot-v2.png',
+    hit:        '/sprites/monsters/slime-hit-v1.png',
+    death:      '/sprites/monsters/slime-death-v10.png',
+    remnants:   '/sprites/monsters/slime-remnants-v1.png',
+    projectile: '/sprites/monsters/slime-projectile-v1.png',
+  },
 };
 
-/* key 'r,g,b' -> { promise, frames: { state: [Texture, ...] } } */
+/** The sheet family a variant recolours, or null if it declares no recolour.
+ *  `useSlimeSheets` implies the slime family so the existing slime variants
+ *  need no extra field. */
+export function recolorFamilyOf(variant) {
+  if (!variant || !variant.recolor) return null;
+  if (variant.recolorFamily) return variant.recolorFamily;
+  if (variant.useSlimeSheets) return 'slime';
+  return null;
+}
+
+/* key 'family|r,g,b' -> { promise, frames: { state: [Texture, ...] } } */
 const _cache = new Map();
 
-function keyOf(rgb) {
-  return rgb ? rgb[0] + ',' + rgb[1] + ',' + rgb[2] : '';
+function keyOf(family, rgb) {
+  return (family && rgb) ? family + '|' + rgb[0] + ',' + rgb[1] + ',' + rgb[2] : '';
 }
 
 function loadImg(url) {
@@ -99,18 +129,19 @@ function retintToCanvas(img, rgb) {
   return cv;
 }
 
-/** Build (once) the recoloured sheet set for `rgb`.  Returns a promise that
- *  resolves when every sheet is sliced, so preloadZoneAssets can await it and
- *  no slime is ever seen in the wrong colour. */
-export function loadSlimeRecolor(rgb) {
-  const key = keyOf(rgb);
-  if (!key) return Promise.resolve();
+/** Build (once) the recoloured sheet set for (family, rgb).  Returns a promise
+ *  that resolves when every sheet is sliced, so preloadZoneAssets can await it
+ *  and no monster is ever seen in the wrong colour. */
+export function loadMonsterRecolor(family, rgb) {
+  const key = keyOf(family, rgb);
+  const urls = SHEET_SETS[family];
+  if (!key || !urls) return Promise.resolve();
   const hit = _cache.get(key);
   if (hit) return hit.promise;
   const entry = { promise: null, frames: Object.create(null) };
-  entry.promise = Promise.all(Object.keys(SHEET_URLS).map(async (state) => {
+  entry.promise = Promise.all(Object.keys(urls).map(async (state) => {
     try {
-      const img = await loadImg(SHEET_URLS[state]);
+      const img = await loadImg(urls[state]);
       const cv = retintToCanvas(img, rgb);
       const base = Texture.from(cv);
       const count = Math.max(1, Math.floor((cv.width || 0) / FRAME_W));
@@ -131,17 +162,20 @@ export function loadSlimeRecolor(rgb) {
   return entry.promise;
 }
 
-/** True once `state` is sliced for this colour.  Callers use this to decide
- *  between the recoloured frame and the plain sheet, so a not-yet-built
- *  colour degrades to the old look instead of to nothing. */
-export function hasRecoloredState(rgb, state) {
-  const e = _cache.get(keyOf(rgb));
+/** True once `state` is sliced for this variant's colour.  Callers use this to
+ *  decide between the recoloured frame and the plain sheet, so a not-yet-built
+ *  colour degrades to the old look instead of to nothing.  Takes the VARIANT
+ *  so call sites don't each have to resolve the family. */
+export function hasRecoloredState(variant, state) {
+  const fam = recolorFamilyOf(variant);
+  const e = fam && _cache.get(keyOf(fam, variant.recolor));
   return !!(e && e.frames[state] && e.frames[state].length);
 }
 
-/** Recoloured frame Texture, or null if this colour/state isn't built. */
-export function getRecoloredFrame(rgb, state, frameIdx) {
-  const e = _cache.get(keyOf(rgb));
+/** Recoloured frame Texture for this variant, or null if it isn't built. */
+export function getRecoloredFrame(variant, state, frameIdx) {
+  const fam = recolorFamilyOf(variant);
+  const e = fam && _cache.get(keyOf(fam, variant.recolor));
   const list = e && e.frames[state];
   if (!list || !list.length) return null;
   const len = list.length;
