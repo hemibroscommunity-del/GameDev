@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""v2.3.1527: rebuild a hat's hair-clip mask from the hat it actually is now.
+"""v2.3.1529: rebuild a hat's hair-clip mask from the hat it actually is now.
 
 What a hairmask is for
 ----------------------
@@ -21,8 +21,18 @@ from what is on disk today.
 
 The mask
 --------
-For each column, everything from the hat's topmost pixel downward. That is the
-whole rule: hair above the hat's outline is cut, hair below it survives.
+Two parts, and the second one is v2.3.1529 (owner):
+
+  1. In a column the hat occupies, everything from the hat's topmost pixel
+     downward. Hair above the hat's outline is cut.
+  2. Everywhere BELOW the hat's lowest pixel, full width.
+
+Part 2 is what lets hair show beside a brim. Without it the mask was only ever
+as wide as the hat, so a Sombrero or a cowboy hat -- which leave the whole head
+below the brim in plain view -- showed no hair at all, which read as the hat
+shaving you. Filling below the hat's bottom edge means the brim still cuts
+everything that would poke up past it while the hair under and beside it
+survives.
 
 Run from the repo root:
     python3 tools/make_hairmask.py --all-with-masks [--apply]
@@ -55,6 +65,10 @@ def build(hid, apply_it, set_clips):
         m = a[:, :, 3] > ALPHA_T
         h, w = m.shape
         mask = np.zeros((h, w, 4), np.uint8)
+        rows = np.nonzero(m.any(axis=1))[0]
+        if len(rows):
+            # everything below the hat's lowest pixel, at full width
+            mask[rows.max() + 1:, :] = (255, 255, 255, 255)
         for x in range(w):
             col = np.nonzero(m[:, x])[0]
             if len(col):
@@ -66,7 +80,7 @@ def build(hid, apply_it, set_clips):
     was = bool(meta.get('clipsHair'))
     if apply_it and set_clips:
         meta['clipsHair'] = True
-        meta['note'] = (meta.get('note', '') + ' v2.3.1527: hair-clip mask rebuilt from '
+        meta['note'] = (meta.get('note', '') + ' v2.3.1529: hair-clip mask rebuilt from '
                         'the current art by tools/make_hairmask.py'
                         + ('' if was else ', and clipsHair switched on') + '.')
         with open(mp, 'w') as fh:

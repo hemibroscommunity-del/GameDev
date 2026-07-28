@@ -1,7 +1,7 @@
 {
   "category": "headwear",
   "fullFrame": true,
-  "note": "Gray wide-brim hat with a blue band. Single source 7F8C6100 used for ALL 5 base dirs (same from every angle). 1024 padded to 1254. NOT solid (gray body + blue band two-tone). crownNudge seeded -16 (wide-brim lift) -- tune on-device. v2.3.1514: nudged by hand dx +0 dy +5 on northeast,north. v2.3.1527: hair-clip mask rebuilt from the current art by tools/make_hairmask.py, and clipsHair switched on.",
+  "note": "Gray wide-brim hat with a blue band. Single source 7F8C6100 used for ALL 5 base dirs (same from every angle). 1024 padded to 1254. NOT solid (gray body + blue band two-tone). crownNudge seeded -16 (wide-brim lift) -- tune on-device. v2.3.1514: nudged by hand dx +0 dy +5 on northeast,north. v2.3.1527: hair-clip mask rebuilt from the current art by tools/make_hairmask.py, and clipsHair switched on. v2.3.1529: hair-clip mask rebuilt from the current art by tools/make_hairmask.py.",
   "bboxes_source": {
     "south": [
       417,

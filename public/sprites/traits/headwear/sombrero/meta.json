@@ -1,7 +1,7 @@
 {
   "category": "headwear",
   "fullFrame": true,
-  "note": "Wide-brim sombrero (orange straw + red/green/blue woven bands). Single source E53C2A09 used for ALL 5 base dirs (radially symmetric -- same from every angle, like top-hat). 1024 src padded to 1254. NOT solid (multi-color bands). crownNudge seeded -24 (wide-brim lift so the brim sits at head level, dome above) -- tune on-device. v2.3.1514: nudged by hand dx +0 dy +5 on north. v2.3.1527: hair-clip mask rebuilt from the current art by tools/make_hairmask.py, and clipsHair switched on.",
+  "note": "Wide-brim sombrero (orange straw + red/green/blue woven bands). Single source E53C2A09 used for ALL 5 base dirs (radially symmetric -- same from every angle, like top-hat). 1024 src padded to 1254. NOT solid (multi-color bands). crownNudge seeded -24 (wide-brim lift so the brim sits at head level, dome above) -- tune on-device. v2.3.1514: nudged by hand dx +0 dy +5 on north. v2.3.1527: hair-clip mask rebuilt from the current art by tools/make_hairmask.py, and clipsHair switched on. v2.3.1529: hair-clip mask rebuilt from the current art by tools/make_hairmask.py.",
   "bboxes_source": {
     "south": [
       380,

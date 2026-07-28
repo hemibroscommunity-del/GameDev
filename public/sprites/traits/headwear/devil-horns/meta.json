@@ -1,7 +1,7 @@
 {
   "category": "headwear",
   "fullFrame": true,
-  "note": "Imported by tools/import_headwear_green.py from a sheet whose person was painted flat #00FF00. The hat is simply everything that is neither the magenta backdrop nor the green person, so no head can leak into the frame and no colour heuristic can eat a hat pixel. The green silhouette also registers the cell against the mannequin on the WHOLE body rather than the torso alone. anchors are the hat bbox top-centre, crownNudge is anchor minus body-tops stand-<dir>-0, scale is 1. v2.3.1514: nudged by hand dx +0 dy +10 on south,east. v2.3.1514: nudged by hand dx +0 dy -5 on east. v2.3.1514: nudged by hand dx -5 dy +5 on northeast. v2.3.1514: nudged by hand dx +0 dy +5 on north. v2.3.1527: hair-clip mask rebuilt from the current art by tools/make_hairmask.py, and clipsHair switched on.",
+  "note": "Imported by tools/import_headwear_green.py from a sheet whose person was painted flat #00FF00. The hat is simply everything that is neither the magenta backdrop nor the green person, so no head can leak into the frame and no colour heuristic can eat a hat pixel. The green silhouette also registers the cell against the mannequin on the WHOLE body rather than the torso alone. anchors are the hat bbox top-centre, crownNudge is anchor minus body-tops stand-<dir>-0, scale is 1. v2.3.1514: nudged by hand dx +0 dy +10 on south,east. v2.3.1514: nudged by hand dx +0 dy -5 on east. v2.3.1514: nudged by hand dx -5 dy +5 on northeast. v2.3.1514: nudged by hand dx +0 dy +5 on north. v2.3.1527: hair-clip mask rebuilt from the current art by tools/make_hairmask.py, and clipsHair switched on. v2.3.1529: hair-clip mask rebuilt from the current art by tools/make_hairmask.py.",
   "bboxes": {
     "south": [
       97,
