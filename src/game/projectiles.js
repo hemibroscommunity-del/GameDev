@@ -17,7 +17,7 @@ import {
   WEAPON_TYPES, WELL_RESTED_XP_MULT, ZONES, applyStatus, awardWeaponXp, calcWeaponDmg,
   discoverCollision, getActiveWeapon, getCollisionDeathFX, getElementDeathFX, recalcDerived,
   getEvasionPts, resolveCollision, rollPassiveDodge, spawnWeaponHitFX, staffAoeMult,
-  monsterBodyY, monsterBodyOffsetY, trainDefense, applyIronSkin, applyResilience, /* v2.3.1314 */
+  monsterBodyY, monsterBodyOffsetY, monsterProceduralRadius, trainDefense, applyIronSkin, applyResilience, /* v2.3.1314 */
 } from '@/data/index.js';
 import { baseArchetypeOf, hitShapeOf, isRemnantSkull, maybeTransformMonster, xpMultFor } from '@/data/monsterVariants.js';
 import { getEquip } from '@/rendering/gearCatalog.js'; /* v2.3.1108: armoured-hit clang on projectile hits */
@@ -245,6 +245,16 @@ export function updateArrows(S, deps) {
                 _hitR = a.isStaff ? 44 : 32;
               } else if (_archProj === 'mummy' || _archProj === 'skeleton') {
                 _hitR = a.isStaff ? 50 : 40;
+              } else {
+                /* v2.3.1536: sprite-less archetypes (the dungeon roster --
+                   brute / swarm / sentinel / volatile / stalker / hexer)
+                   render as a 48px-radius circle but had no case here, so
+                   they kept the bare 18 default and a visibly-connecting
+                   shot passed through (owner: "the special arrow correctly
+                   hits the slime but not the procedural ones").  Match the
+                   drawn body; keep the default for anything that returns 0. */
+                var _procR = monsterProceduralRadius(_archProj);
+                if (_procR > 0) _hitR = Math.max(_hitR, _procR);
               }
               /* v2.3.1136: Detonation channel widens staff bolt blasts
                  (+0.7%/pt, cap +69.3%) before the special multiplier. */

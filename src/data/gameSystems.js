@@ -17,7 +17,7 @@ import { TOWN_EXITS } from './effects.js';
    this file is gone. */
 import { AMULET_TIERS, SALVAGE_RETURN_RATE, DEPTH_TIERS, ZONE_RESOURCES, getAmuletBonus, getShieldBonus, getShieldStats, skillXpRequired } from './items.js';
 import { FISHING_TIERS } from './lifeSkills.js';
-import { applyZoneVariant, hitShapeOf } from './monsterVariants.js';
+import { applyZoneVariant, hitShapeOf, variantForArchetype } from './monsterVariants.js';
 
 /* v2.3.1186: pure-display exports (BT_AUDIO, BT_ACHIEVEMENTS, MASKS,
    tile colors, generateZoneMap, emote/NPC tables) moved to
@@ -5681,11 +5681,56 @@ export function monsterBodyOffsetY(archOrType) {
   /* v2.3.1535: resolve reskins to the shape they actually render as, or a
      variant falls through to 0 = body centred on the FEET.  See hitShapeOf. */
   archOrType = hitShapeOf(archOrType);
-  return archOrType === 'fodder' ? 40
-    : (archOrType === 'mummy' || archOrType === 'skeleton') ? 48
-    : archOrType === 'fireGoblin' ? 28
-    : archOrType === 'snowman' ? 19
-    : 0;
+  if (archOrType === 'fodder') return 40;
+  if (archOrType === 'mummy' || archOrType === 'skeleton') return 48;
+  if (archOrType === 'fireGoblin') return 28;
+  if (archOrType === 'snowman') return 19;
+  /* v2.3.1536: every OTHER sprite-backed variant -- rockmonster, fishman,
+     thornShambler, bogLurker -- fell through to 0 here, i.e. its hitbox sat
+     at the feet exactly like the slime bug, and nobody had noticed because
+     they only appear in zones nobody was shooting at.  Their sprites are
+     anchored feet-to-the-circle and drawn liveScalePx tall, so the body
+     centre is half that above m.y.  The rule reproduces the two hand-tuned
+     96px cases above exactly (mummy/skeleton = 96/2 = 48), which is the
+     check that it is the right rule and not a coincidence. */
+  const v = variantForArchetype(archOrType);
+  if (v && v.liveScalePx) return Math.round(v.liveScalePx / 2);
+  return 0;
+}
+/* v2.3.1536: the on-screen RADIUS of a monster that has no sprite sheet and
+ * renders as a bare Graphics circle -- brute / swarm / sentinel / volatile /
+ * stalker / hexer, which is everything the dungeons spawn and nothing the
+ * wilderness does (every wilderness archetype maps to a sprite-backed variant).
+ *
+ * Owner: "the special arrow correctly hits the slime but not the procedural
+ * ones."  The circle is drawn at radius 32 inside a container scaled by
+ * MONSTER_SIZE_MULT 1.5 = 48 world px, but the projectile hit test had no case
+ * for these archetypes and fell to its bare default of 18 (54 for a special).
+ * So the visible body was 48 px across the middle while only the inner 18 px
+ * could be hit -- about an eighth of the area -- and a shot that visibly
+ * connected passed straight through.  A special at 54 covered it only just,
+ * and not once the arrow's own tip position is taken into account.
+ *
+ * Returns 0 for anything sprite-backed, whose radii are hand-tuned per
+ * archetype at the hit sites and must not be overridden here.
+ *
+ * MIRROR: entityRenderer.getMonsterSize (the 32) and MONSTER_SIZE_MULT (the
+ * 1.5).  Both live in the renderer because they are drawing constants; this is
+ * the hit-side copy, and the two have to move together. */
+const PROCEDURAL_BODY_RADIUS = 32 * 1.5;
+export function monsterProceduralRadius(archOrType) {
+  const shape = hitShapeOf(archOrType);
+  if (shape === 'fodder' || shape === 'snowman' || shape === 'fireGoblin'
+      || shape === 'mummy' || shape === 'skeleton') return 0;
+  /* v2.3.1536: a named variant renders from its own sheets, not a circle --
+     but it still needs a hit radius that matches the figure it draws, or it
+     keeps the bare 18 default.  Half its drawn height is the same rule
+     monsterBodyOffsetY uses, capped at the 40 the hand-tuned 96px cases
+     (mummy/skeleton) settled on so this can never make one LARGER than the
+     tuned value it reproduces. */
+  const v = variantForArchetype(shape);
+  if (v) return v.liveScalePx ? Math.min(40, Math.round(v.liveScalePx / 2)) : 0;
+  return PROCEDURAL_BODY_RADIUS;
 }
 export function monsterBodyY(m) {
   return m.y - monsterBodyOffsetY(m.archetype || m.type);

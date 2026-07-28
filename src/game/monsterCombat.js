@@ -33,7 +33,7 @@ import {
   getShieldStats, getWeaponCritDmgStat, getWeaponCritStat, meleeSwingSfx, recalcDerived, resolveCollision,
   getEvasionPts, poiseStunFlatMs, rollPassiveDodge, getWeaponCritFlat, spawnElementStatusFX, spawnWeaponHitFX, swingCooldownMult, tickStatuses, updateZoneDimensions,
   trainDefense, applyIronSkin, applyResilience, /* v2.3.1314 */
-  monsterBodyY,
+  monsterBodyY, monsterProceduralRadius,
 } from '@/data/index.js';
 import { MONSTER_VARIANTS, baseArchetypeOf, hitShapeOf, isFodderLike, isRemnantSkull, maybeTransformMonster, usesClientSideMovement, xpMultFor } from '@/data/monsterVariants.js';
 import { getEquip } from '@/rendering/gearCatalog.js'; /* v2.3.1104: armoured-hit SFX check */
@@ -1362,10 +1362,14 @@ export function updateMonsterCombat(S, deps) {
                  their hitbox was "way too small" so bump 40 -- the
                  effective vertical extent now covers the full body
                  from feet (m.y - 8) to crown (m.y - 88). */
+              /* v2.3.1536: the last branch was 0 for every sprite-less
+                 archetype -- the whole dungeon roster -- even though they
+                 draw as a 48px-radius circle.  Same miss the projectile
+                 path had; see monsterProceduralRadius. */
               var _hitR = _archHit === 'fodder' ? 20 :
                           _archHit === 'fireGoblin' ? 14 :
                           _archHit === 'mummy' || _archHit === 'skeleton' ? 40 :
-                          0;
+                          monsterProceduralRadius(_archHit);
               var mDist = Math.sqrt(Math.pow(m.x - P.x, 2) + Math.pow(_mHitY - P.y, 2)) - _hitR;
               if (mDist > _maxRange) return;
               var mAngle = Math.atan2(_mHitY - P.y, m.x - P.x);
