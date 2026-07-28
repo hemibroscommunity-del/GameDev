@@ -197,8 +197,11 @@ function _hpFillTexFor(holder, frac) {
 const TRAIT_NFT_ID = 'test-1';
 /* v2.3.708: bumped for the regenerated NE jog body-tops/body-anchors. */
 /* v2.3.1394: bumped — bandana gains hairmask/*.png + clipsHair in meta.json
-   (owner: hair not clipped under the bandana on NE/NW). */
-const TRAIT_VER = '2.3.1532';
+   (owner: hair not clipped under the bandana on NE/NW).
+   v2.3.1561: bumped — halo gains floatsAboveHair in meta.json.  A meta-only
+   change still needs the bust, or a returning browser serves the cached
+   meta and the halo goes on placing itself flat on the hair. */
+const TRAIT_VER = '2.3.1561';
 
 /* v2.3.377: the on-back (sheathed) shield render is purely cosmetic and was
    a persistent source of per-facing z-order issues vs the body/arms/weapon/
@@ -504,6 +507,53 @@ function hatPoseTune(hatId, pose, dir) {
   if (pose === 'stand') return STAND_HAT_TUNE[hatId] || null;
   return null;
 }
+
+/* v2.3.1561 (owner: "make the halo appear higher above the player's head —
+   it looks like it's almost laying flat on the hair").
+
+   Every other hat is WORN: its crownNudge pins it a fixed distance from the
+   bare crown, which is right because a hat sits on the skull and the hair
+   tucks under it.  A halo is the one piece that is not worn — it floats —
+   and a fixed crown offset cannot float, because the hair between the crown
+   and the halo varies by 18px across the set (measured: slick-back tops out
+   5px above the crown, the afro 23px).  The halo's authored placement put
+   its underside 3px above the BARE crown, so on anything but the flattest
+   hair it was inside the hair; on the afro it was 14px inside it.
+
+   So a trait with `floatsAboveHair` in its meta gets an extra lift computed
+   against the hair actually being worn: park its underside at least
+   FLOAT_BASE above the bare crown AND at least FLOAT_GAP above the worn
+   hair's top, whichever is higher.  The lift is only ever upward (never a
+   drop), and a hat without the flag is untouched — this cannot move the
+   other 38 hats.
+
+   Both numbers are 256-space, like everything else in trait meta, so they
+   scale with the body the same way crownNudge does. */
+const FLOAT_BASE = 12;   /* clearance over a bare scalp */
+const FLOAT_GAP = 5;     /* clearance over the top of the worn hair */
+
+function _floatAboveHairLift(meta, hairId, pose, dir, mirror) {
+  if (!(meta && meta.floatsAboveHair)) return 0;
+  const screenDir = mirror ? (MIRROR_SCREEN_DIR[dir] || dir) : dir;
+  const pick = (o) => o && (o[screenDir] != null ? o[screenDir] : o[dir]);
+  const topOf = (m) => {
+    /* anchors are the art's own bbox top-centre, so crownNudge Y IS the
+       trait's top edge relative to the body crown (negative = above). */
+    const cn = pick(m.crownNudge) || [0, 0];
+    const pn = pick(m.poseNudge && m.poseNudge[pose]) || [0, 0];
+    return cn[1] + pn[1];
+  };
+  const bbox = pick(meta.bboxes) || null;
+  const bottom = topOf(meta) + ((bbox && bbox[3]) || 0);
+  /* Bare head reads as hairTop 0 (the crown itself).  The hair entry is
+     already cached — _placeHair loads it every frame — so this is a map
+     lookup, not a load. */
+  let hairTop = 0;
+  const hairEntry = (hairId && hairId !== 'none') ? _ensureHairLoaded(hairId) : null;
+  if (hairEntry && hairEntry.meta) hairTop = topOf(hairEntry.meta);
+  const target = Math.min(-FLOAT_BASE, hairTop - FLOAT_GAP);
+  return Math.min(0, target - bottom);
+}
 /* v2.3.1454 (owner: east jog "hair sits up too high and is too small on
    the head", reading as an oval head): the v2.3.1349 global 0.67 was a
    hand-dialed "shrink 33%" against BODY_DIR_SCALE.jog.east = 1.25, and
@@ -681,7 +731,10 @@ function _placeTrait(sprite, entry, display, pose, dir, mirror, frameIdx, bodySc
   headwear.x = bodyCrownX + (nudge[0] + poseN[0]) * absBodyScale * m;
   /* v2.3.1353: tune.dy is a SCREEN-pixel nudge (down-positive), applied
      unscaled so "10px down" means 10px on every device. */
-  headwear.y = bodyCrownY + (nudge[1] + poseN[1]) * absBodyScale + ((tune && tune.dy) || 0);
+  /* v2.3.1561: tune.dy256 is a 256-space lift (the float-above-hair
+     clearance), so it scales with the body — unlike tune.dy above. */
+  headwear.y = bodyCrownY + (nudge[1] + poseN[1] + ((tune && tune.dy256) || 0)) * absBodyScale
+    + ((tune && tune.dy) || 0);
   headwear.scale.x = m * absBodyScale * dscale * norm;
   headwear.scale.y = absBodyScale * dscale * norm;
   headwear.visible = true;
@@ -691,15 +744,20 @@ function _placeTrait(sprite, entry, display, pose, dir, mirror, frameIdx, bodySc
    they differ only in which sprite layer + trait cache they use.  A beard
    is just a trait whose meta.crownNudge Y drops it from the head crown
    down to the chin (the inverse of the top-hat's large negative lift). */
-function _placeHeadwear(display, hatId, hatColorId, pose, dir, mirror, frameIdx, bodyScale) {
+function _placeHeadwear(display, hatId, hatColorId, pose, dir, mirror, frameIdx, bodyScale, hairId) {
   const baseEntry = _ensureHeadwearLoaded(hatId);
   /* v2.3.394: retint solid hats to the selected color (recolored textures
      reuse the base meta; fall back to native color while they bake). */
   let entry = baseEntry;
   const colored = getColoredHatTextures(hatId, hatColorId);
   if (colored && baseEntry) entry = { tex: colored, meta: baseEntry.meta, fallbackTex: baseEntry.tex }; /* v2.3.1305 */
-  _placeTrait(display._headwearSprite, entry, display, pose, dir, mirror, frameIdx, bodyScale,
-    hatPoseTune(hatId, pose, dir)); /* v2.3.1353/1354 */
+  /* v2.3.1561: a floating trait (the halo) rides above the WORN HAIR, so
+     its lift depends on which hair is on the head this frame — merged into
+     the pose tune rather than baked into meta, which cannot know. */
+  let tune = hatPoseTune(hatId, pose, dir); /* v2.3.1353/1354 */
+  const lift = _floatAboveHairLift(entry && entry.meta, hairId, pose, dir, mirror);
+  if (lift) tune = { ...(tune || {}), dy256: lift };
+  _placeTrait(display._headwearSprite, entry, display, pose, dir, mirror, frameIdx, bodyScale, tune);
 }
 function _placeFacialHair(display, fhId, fhColorId, pose, dir, mirror, frameIdx, bodyScale) {
   const baseEntry = _ensureFacialHairLoaded(fhId);
@@ -2105,7 +2163,7 @@ function _placeHair(display, hairId, hairColorId, hatId, pose, dir, mirror, fram
    stand-in's own transform), a scale, and the trait direction (south for the
    front-facing cook/fire, east for the side-facing chopper).  No 256-frame /
    spriteBody assumptions — placement is purely world-space. */
-function _placeStandaloneTrait(sprite, entry, dir, mirror, cwx, cwy, scaleVal) {
+function _placeStandaloneTrait(sprite, entry, dir, mirror, cwx, cwy, scaleVal, liftY) {
   if (!sprite) return;
   /* v2.3.1305: same native-color fallback as _placeTrait — see there. */
   const tex = entry && (entry.tex[dir] || (entry.fallbackTex && entry.fallbackTex[dir]));
@@ -2133,7 +2191,10 @@ function _placeStandaloneTrait(sprite, entry, dir, mirror, cwx, cwy, scaleVal) {
   const norm = W / (tex.width || W);
   sprite.anchor.set(anchorPx[0] / W, anchorPx[1] / W);
   sprite.x = cwx + nudge[0] * scaleVal * m;
-  sprite.y = cwy + nudge[1] * scaleVal;
+  /* v2.3.1561: liftY is the float-above-hair clearance (256-space, same
+     units as crownNudge) — the stand-in poses composite through here, so
+     without it the halo would sink back onto the hair mid-chop/mid-swing. */
+  sprite.y = cwy + (nudge[1] + (liftY || 0)) * scaleVal;
   sprite.scale.x = m * scaleVal * dscale * norm;
   sprite.scale.y = scaleVal * dscale * norm;
   sprite.visible = true;
@@ -2173,7 +2234,8 @@ export function placeSkillTraits(sprites, cwx, cwy, dir, mirror, scaleVal) {
   let hwEntry = _ensureHeadwearLoaded(getHeadwear());
   const hwCol = getColoredHatTextures(getHeadwear(), getHatColor());
   if (hwCol && hwEntry) hwEntry = { tex: hwCol, meta: hwEntry.meta, fallbackTex: hwEntry.tex }; /* v2.3.1305 */
-  _placeStandaloneTrait(sprites.hat, hwEntry, dir, mirror, cwx, cwy, scaleVal);
+  _placeStandaloneTrait(sprites.hat, hwEntry, dir, mirror, cwx, cwy, scaleVal,
+    _floatAboveHairLift(hwEntry && hwEntry.meta, getHair(), 'stand', dir, mirror)); /* v2.3.1561 */
 }
 
 /* v2.3.1011: like placeSkillTraits, but for an ARBITRARY player's appearance
@@ -2196,7 +2258,8 @@ export function placeSkillTraitsFor(sprites, looks, cwx, cwy, dir, mirror, scale
   let hwEntry2 = _ensureHeadwearLoaded(looks.headwear);
   const hwCol2 = getColoredHatTextures(looks.headwear, looks.hatColor);
   if (hwCol2 && hwEntry2) hwEntry2 = { tex: hwCol2, meta: hwEntry2.meta, fallbackTex: hwEntry2.tex }; /* v2.3.1305 */
-  _placeStandaloneTrait(sprites.hat, hwEntry2, dir, mirror, cwx, cwy, scaleVal);
+  _placeStandaloneTrait(sprites.hat, hwEntry2, dir, mirror, cwx, cwy, scaleVal,
+    _floatAboveHairLift(hwEntry2 && hwEntry2.meta, looks.hair, 'stand', dir, mirror)); /* v2.3.1561 */
 }
 
 /** Hide all three skill-trait sprites (no stand-in active this frame). */
@@ -4482,7 +4545,7 @@ export class EntityRenderer {
           if (display._shirtSprite) display._shirtSprite.visible = false;
           /* always show the remote's hair/hat/beard (no helmet to hide them). */
           _crownOverride = _fsR ? _fullsetCrown(dir, _rJogPhase) : null; /* v2.3.1389 */
-          _placeHeadwear(display, other.headwear, other.hatColor, pose, dir, mirror, frameIdx, sizeMul);
+          _placeHeadwear(display, other.headwear, other.hatColor, pose, dir, mirror, frameIdx, sizeMul, other.hair); /* v2.3.1561: hair id for the floating halo */
           _placeFacialHair(display, other.facialhair, other.facialHairColor, pose, dir, mirror, frameIdx, sizeMul);
           _placeHair(display, other.hair, other.hairColor, other.headwear, pose, dir, mirror, frameIdx, sizeMul);
           _crownOverride = null;
@@ -5333,7 +5396,7 @@ export class EntityRenderer {
            traits to the DRAWN head's crown (FULLSET_CROWN — armor-synced,
            left-shifted) instead of the body sheet's. */
         _crownOverride = _fsT ? _fullsetCrown(dir, _jogPhase) : null;
-        _placeHeadwear(display, getHeadwear(), getHatColor(), pose, dir, mirror, frameIdx, bodyScale);
+        _placeHeadwear(display, getHeadwear(), getHatColor(), pose, dir, mirror, frameIdx, bodyScale, getHair()); /* v2.3.1561: hair id for the floating halo */
         _placeFacialHair(display, getFacialHair(), getFacialHairColor(), pose, dir, mirror, frameIdx, bodyScale);
         _placeHair(display, getHair(), getHairColor(), getHeadwear(), pose, dir, mirror, frameIdx, bodyScale);
         _crownOverride = null;
