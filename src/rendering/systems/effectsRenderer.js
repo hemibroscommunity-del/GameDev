@@ -3581,6 +3581,26 @@ export class EffectsRenderer {
      (the plate isn't a strict superset of the shirt silhouette), tinted to the
      player's chosen shirt colour.  `place` is the caller's transform helper.
      Returns nothing; toggles the sprite's visibility/texture/tint. */
+  /* v2.3.1557 (owner: "when I just wear leg armor and use melee attack or bow
+     attack I go shirtless").  The shirt has TWO stores that can disagree: the
+     trait catalog (getShirt, localStorage 'bt-shirt') and the gear slot
+     (getEquip('shirt')).  entityRenderer draws the idle/jog shirt from the GEAR
+     SLOT (_placeGear is handed `shirt: getEquip('shirt')`), while every
+     swing/bow/chop/cook stand-in in this file read the CATALOG -- so a player
+     whose slot is set but whose catalog is not wears a shirt standing still and
+     loses it the moment they attack.  Only the toggle in ItemDetailPopup writes
+     both; character creation and trait restore write the catalog alone, so the
+     two drift apart in normal use.
+     Resolve from either store, preferring the catalog when it is set.  This can
+     only ADD a shirt where one was missing -- it can never remove one -- so no
+     existing look changes. */
+  _shirtId() {
+    const c = getShirt();
+    if (c && c !== 'none') return c;
+    const e = getEquip('shirt');
+    return (e && e !== 'none') ? e : 'none';
+  }
+
   _placeSwingShirt(spr, place, shirtId, chestId, gp, dir, fw, fi, colorId) {
     const hidden = chestId && chestId !== 'none';
     const tex = hidden ? null : this._gearStripFrame('shirt', shirtId, gp, dir, fw, fi);
@@ -4138,7 +4158,7 @@ export class EffectsRenderer {
       const gp = cfg.gearPose || 'swing';
       const chestTex = this._gearStripFrame('chest', getEquip('chest'), gp, fmap[0], cfg.fw, fi);
       const legsTex  = _jog ? null : this._gearStripFrame('legs',  getEquip('legs'),  gp, fmap[0], cfg.fw, fi);
-      this._placeSwingShirt(this.swordShirtSprite, place, getShirt(), getEquip('chest'), gp, fmap[0], cfg.fw, fi, getShirtColor());
+      this._placeSwingShirt(this.swordShirtSprite, place, this._shirtId(), getEquip('chest'), gp, fmap[0], cfg.fw, fi, getShirtColor());
       place(this.swordChestSprite, chestTex);
       place(this.swordLegsSprite, legsTex);
       place(this.swordWeaponSprite, weaponFrames && weaponFrames[fi]);
@@ -4278,7 +4298,7 @@ export class EffectsRenderer {
       }
       sp.texture = _jogLegs ? _torsoFrames[fi] : bodyFrames[fi];
       const gp = cfg.gearPose || 'bowshot';
-      this._placeSwingShirt(this.bowShirtSprite, place, getShirt(), getEquip('chest'), gp, fmap[0], cfg.fw, fi, getShirtColor());
+      this._placeSwingShirt(this.bowShirtSprite, place, this._shirtId(), getEquip('chest'), gp, fmap[0], cfg.fw, fi, getShirtColor());
       place(this.bowChestSprite, this._gearStripFrame('chest', getEquip('chest'), gp, fmap[0], cfg.fw, fi));
       place(this.bowLegsSprite,  _jogLegs ? null : this._gearStripFrame('legs', getEquip('legs'), gp, fmap[0], cfg.fw, fi));
       place(this.bowWeaponSprite, weaponFrames && weaponFrames[fi]);
@@ -4488,7 +4508,7 @@ export class EffectsRenderer {
       /* Shirt: paper-doll recolour -- the chop shirt art is a grayscale base, so
          _placeSwingShirt tints it to the player's chosen shirt colour (and hides
          it when a chest plate is worn, which replaces it). */
-      this._placeSwingShirt(this.chopShirtSprite, placeChopLayer, getShirt(), getEquip('chest'), 'chop', 'west', 480, k, getShirtColor());
+      this._placeSwingShirt(this.chopShirtSprite, placeChopLayer, this._shirtId(), getEquip('chest'), 'chop', 'west', 480, k, getShirtColor());
       placeChopLayer(this.chopLegsSprite,  _chopLegsTex);
       placeChopLayer(this.chopChestSprite, this._gearStripFrame('chest', getEquip('chest'), 'chop', 'west', 480, k));
       /* v2.3.847: chop hit sfx on the swing's strike frame (woodcutting had
@@ -4579,7 +4599,7 @@ export class EffectsRenderer {
         s.anchor.set(0.5, 1); s.texture = t;
         s.scale.set(sp.scale.x, sp.scale.y); s.x = sp.x; s.y = sp.y; s.visible = true;
       };
-      this._placeSwingShirt(this.cookShirtSprite, placeCookShirt, getShirt(), getEquip('chest'), 'cook', 'south', 213, cookFi, getShirtColor());
+      this._placeSwingShirt(this.cookShirtSprite, placeCookShirt, this._shirtId(), getEquip('chest'), 'cook', 'south', 213, cookFi, getShirtColor());
       /* v2.3.1114: equipped leg armour over the cook's legs (untinted; the
          greaves keep their own metal colour). _gearStripFrame returns null when
          no legs are equipped, so placeCookShirt hides the sprite. */
