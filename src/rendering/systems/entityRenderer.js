@@ -2783,6 +2783,80 @@ function createMonsterDisplay(monster) {
   return container;
 }
 
+/* ═══ v2.3.1564/1565: the name + level plate under a player's feet ═══
+
+   Owner: "a slick minimalist pill that shows player name and level
+   beneath that, beneath the character at all times", then "make it
+   consistent and beneath other players too".
+
+   The local player had NO world nameplate at all — the above-head one was
+   hidden in favour of a top-right identity card, and that card was retired
+   in v2.3.1294, so the readout silently went missing.  Remote players kept
+   a bare floating name above the head.  Both now use THIS, so there is one
+   plate implementation rather than two that drift.
+
+   Below the feet is also the safer anchor: the old above-head plates were
+   pushed to -38 / -42 specifically to clear a sword tip that pokes over
+   the head on extended-arm frames.  Nothing to collide with down here.
+
+   Planted, not bobbing.  Every other child of these containers adds bobY
+   so it rides the walk cycle; a label bouncing under the boots reads as
+   loose, so this one keeps a fixed y and stays stuck to the ground.
+
+   The Graphics is rebuilt ONLY when the text changes (_pillKey cache).
+   A rounded-rect rebuild at 60fps for a label that changes on level-up
+   would be pure waste — and with up to 50 players in a room it would be
+   50x that waste. */
+function _attachNamePill(container, nameSize) {
+  const pill = new Container();
+  /* Feet sit ~24 below centre (sheetGeometry FEET_OFFSET). */
+  pill.y = 30;
+  const bg = new Graphics();
+  pill.addChild(bg);
+  const nameT = new Text({ text: '', style: {
+    fontFamily: 'Source Sans 3, sans-serif', fontSize: nameSize, fontWeight: '700',
+    fill: '#F4F0E7', align: 'center',
+  } });
+  nameT.anchor.set(0.5, 0);
+  nameT.y = 3;
+  pill.addChild(nameT);
+  const lvlT = new Text({ text: '', style: {
+    fontFamily: 'Source Sans 3, sans-serif', fontSize: nameSize - 1, fontWeight: '800',
+    fill: '#D8AA58', align: 'center', letterSpacing: 0.5,
+  } });
+  lvlT.anchor.set(0.5, 0);
+  lvlT.y = nameSize + 4;
+  pill.addChild(lvlT);
+  pill.visible = false;
+  container.addChild(pill);
+  container._namePill = pill;
+  container._pillBg = bg;
+  container._pillName = nameT;
+  container._pillLevel = lvlT;
+  container._pillH = nameSize * 2 + 7;
+}
+
+/* Drive one plate.  `visible` false parks it without touching the cache,
+   so re-showing costs nothing. */
+function _updateNamePill(display, name, level, visible) {
+  if (!display || !display._namePill) return;
+  const key = name + '|' + level;
+  if (display._pillKey !== key) {
+    display._pillKey = key;
+    display._pillName.text = name;
+    display._pillLevel.text = 'LV ' + level;
+    /* Sized to whichever line is wider, so a long name and a two-digit
+       level both sit inside with equal padding. */
+    const w = Math.max(display._pillName.width, display._pillLevel.width) + 14;
+    const h = display._pillH;
+    display._pillBg.clear();
+    display._pillBg.roundRect(-w / 2, 0, w, h, 9);
+    display._pillBg.fill({ color: 0x0D161B, alpha: 0.82 });
+    display._pillBg.stroke({ color: 0xE5EDE9, alpha: 0.18, width: 1 });
+  }
+  display._namePill.visible = !!visible;
+}
+
 function createPlayerDisplay() {
   const container = new Container();
   container.label = 'localPlayer';
@@ -2976,47 +3050,11 @@ function createPlayerDisplay() {
   nameText.y = -38;
   container.addChild(nameText);
 
-  /* v2.3.1564 (owner: "a slick minimalist pill that shows player name and
-     level beneath that, beneath the character at all times").
-
-     The local player has had NO world nameplate since the above-head one
-     was hidden in favour of a top-right identity card — and that card was
-     itself retired in v2.3.1294, so the readout has been missing entirely
-     since then.  This is its replacement, and it goes BELOW the feet
-     (owner) where it can't occlude the sword tip that pokes over the head
-     on extended-arm frames, which is why the old plate sat at -38.
-
-     Planted, not bobbing: everything else anchored to this container adds
-     bobY so it rides the walk cycle, but a label that bounces under your
-     boots reads as loose.  Fixed y keeps it stuck to the ground.
-
-     The Graphics is redrawn ONLY when the text changes (_pillKey cache) —
-     a rounded-rect rebuild every frame at 60fps for a label that changes
-     on level-up would be pure waste. */
-  const namePill = new Container();
-  namePill.y = 30;   /* feet sit ~24 below centre (sheetGeometry FEET_OFFSET) */
-  const pillBg = new Graphics();
-  namePill.addChild(pillBg);
-  const pillName = new Text({ text: '', style: {
-    fontFamily: 'Source Sans 3, sans-serif', fontSize: 10, fontWeight: '700',
-    fill: '#F4F0E7', align: 'center',
-  } });
-  pillName.anchor.set(0.5, 0);
-  pillName.y = 3;
-  namePill.addChild(pillName);
-  const pillLevel = new Text({ text: '', style: {
-    fontFamily: 'Source Sans 3, sans-serif', fontSize: 9, fontWeight: '800',
-    fill: '#D8AA58', align: 'center', letterSpacing: 0.5,
-  } });
-  pillLevel.anchor.set(0.5, 0);
-  pillLevel.y = 14;
-  namePill.addChild(pillLevel);
-  namePill.visible = false;
-  container.addChild(namePill);
-  container._namePill = namePill;
-  container._pillBg = pillBg;
-  container._pillName = pillName;
-  container._pillLevel = pillLevel;
+  /* v2.3.1564: name + level pill below the feet — see _mintNamePill.
+     v2.3.1566 (owner: "make it consistent and beneath other players too"):
+     built by the shared factory so the local player and every remote
+     player render the SAME plate from one implementation. */
+  _attachNamePill(container, 10);
 
   /* v2.3.1193: the local player's own threat skull (red = my threat
      countdown is running, white = ignored/expired fight window).  One
@@ -3253,9 +3291,17 @@ function createOtherPlayerDisplay() {
   const nameText = new Text({ text: '', style: { ...NAME_STYLE, fontSize: 9 } });
   nameText.anchor.set(0.5, 1);
   /* Was -24; bumped to -34 to match the local player nameplate's
-     new offset (sword tip clearance — see createPlayerDisplay). */
+     new offset (sword tip clearance — see createPlayerDisplay).
+     v2.3.1566: no longer drawn — the plate below the feet replaced it.
+     The Text object stays so the party-marker change-cache and any
+     stale reference keep working; it is simply never made visible. */
   nameText.y = -34;
+  nameText.visible = false;
   container.addChild(nameText);
+
+  /* v2.3.1566 (owner): same plate the local player gets, one size down —
+     a remote name should not out-shout your own. */
+  _attachNamePill(container, 9);
 
   /* v2.3.1193: threat skull above the nameplate (red = active threat
      countdown, white = ignored/expired fight window — see
@@ -4838,9 +4884,11 @@ export class EntityRenderer {
         display._lastName = nextName;
         display._nameText.text = nextName;
       }
-      /* Raised from -24 to -42 so the name floats above the head
-         instead of sitting over the sprite's face. */
-      display._nameText.y = -42 + bobY;
+      /* v2.3.1566: the above-head text is retired (see the display
+         factory); the plate below the feet is the nameplate now.  Dead
+         peers lose it so it doesn't hover over a prone body — the same
+         rule the local player follows. */
+      _updateNamePill(display, nextName, other.rpgLv || 1, !other._isDead);
 
       /* v2.3.1193: threat skull above the nameplate — same change-cache
          pattern as the party marker.  S._threatMarks is written by
@@ -6383,26 +6431,8 @@ export class EntityRenderer {
        v2.3.1564: that card is long gone (retired v2.3.1294) — the readout
        lives in the pill below the feet now, built here. */
     if (display._nameText.visible) display._nameText.visible = false;
-    if (display._namePill) {
-      const _pName = (S.myName || 'Anon');
-      const _pLvl = (S.rpg && S.rpg.level) || 1;
-      const _pillKey = _pName + '|' + _pLvl;
-      if (display._pillKey !== _pillKey) {
-        display._pillKey = _pillKey;
-        display._pillName.text = _pName;
-        display._pillLevel.text = 'LV ' + _pLvl;
-        /* Capsule sized to whichever line is wider, so a long name and a
-           two-digit level both sit inside it with equal padding. */
-        const w = Math.max(display._pillName.width, display._pillLevel.width) + 14;
-        const h = 26;
-        display._pillBg.clear();
-        display._pillBg.roundRect(-w / 2, 0, w, h, 9);
-        display._pillBg.fill({ color: 0x0D161B, alpha: 0.82 });
-        display._pillBg.stroke({ color: 0xE5EDE9, alpha: 0.18, width: 1 });
-      }
-      /* Hidden while dying so the plate doesn't hover over a corpse. */
-      display._namePill.visible = !S._dying;
-    }
+    /* Hidden while dying so the plate doesn't hover over a corpse. */
+    _updateNamePill(display, S.myName || 'Anon', (S.rpg && S.rpg.level) || 1, !S._dying);
 
     /* v2.3.1193: my own threat skull — reads the formerly ORPHANED
        S._pvpSkullType / S._pvpSkullUntil anchors (InspectPlayerPanel
