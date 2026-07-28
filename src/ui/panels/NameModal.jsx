@@ -169,32 +169,38 @@ export function NameModal(props) {
      disabled recolor leaves nothing for the tab to do and it is dropped rather
      than shown empty.  Restoring them is the same one-line flip in
      recolorOptions.js that restores the recolor itself. */
-  var _GROUPS = [
-    { key: 'head', label: 'Head', icon: 'skin',
-      types: ['hair', 'hat'].concat(recolorEnabled('skin') ? ['skin'] : []).concat(['beard']) },
-    { key: 'shirt', label: 'Shirt', icon: 'shirt', types: ['shirt'] }
-  ].concat(recolorEnabled('pants') ? [{ key: 'pants', label: 'Pants', icon: 'pants', types: ['pants'] }] : [])
-   .concat(recolorEnabled('shoes') ? [{ key: 'shoes', label: 'Shoes', icon: 'shoes', types: ['shoes'] }] : []);
-  var _groupOfType = {};
-  _GROUPS.forEach(function (g) { g.types.forEach(function (t) { _groupOfType[t] = g.key; }); });
-  /* v2.3.1494: drop disabled recolor-only types from the defs too, not just
-     from the group lists -- activeCat is remembered across opens, so a stale
-     'skin' would otherwise still open the drawer the tab no longer offers. */
+  /* v2.3.1494: drop disabled recolor-only types from the defs -- activeCat is
+     remembered across sessions, so a stale 'skin' would otherwise select a tab
+     that is no longer offered. */
   ['skin', 'pants', 'shoes'].forEach(function (t) {
     if (!recolorEnabled(t)) delete _typeDefs[t];
   });
-  var _activeType = _typeDefs[activeCat] ? activeCat : 'hair';
-  var _activeGroupKey = _groupOfType[_activeType];
-  var _activeGroup = _GROUPS.find(function (g) { return g.key === _activeGroupKey; }) || _GROUPS[0];
-  /* Most-recently-used subtype per group (handoff: re-opening a group
-     lands on its last-used subtype; first-listed otherwise).  View-only
-     session memory — plain React state, keyed by OUR group keys, never
-     by client/network input. */
-  var _mruS = React.useState({}), typeMemo = _mruS[0], setTypeMemo = _mruS[1];
-  var _openType = function (g, t) {
-    setActiveCat(t);
-    setTypeMemo(function (p) { var n = Object.assign({}, p); n[g] = t; return n; });
+  /* v2.3.1525: the tabs are FLAT (owner). Head was a container for four
+     subtypes and nothing else -- one tap to open it, a second to pick what you
+     actually wanted -- so it is gone and Hair, Hats, Skin and Beard are tabs in
+     their own right alongside Shirt, Pants and Shoes. The subtype row, the
+     group<->type mapping and the most-recently-used-subtype memory all go with
+     it; activeCat was always a TYPE key, so nothing downstream changes.
+
+     Icons: Shirt/Pants/Shoes/Skin keep their painted art (the bald head reads
+     as skin tone better than it ever read as "Head"). Hair, Hats and Beard have
+     no painted icon and are not worth inventing one for -- they show the first
+     real entry from their own catalog, which is both self-explanatory and
+     stays correct if the catalogs change. */
+  var _firstThumb = function (cat, catalog) {
+    var e = catalog.find(function (o) { return o.id !== 'none'; });
+    return e ? '/sprites/traits/' + cat + '/' + e.id + '/thumb.png?v=' + BUILD_INFO.version : null;
   };
+  var _TABS = [
+    { t: 'hair', label: 'Hair', img: _firstThumb('hair', HAIR_CATALOG), pixel: true },
+    { t: 'hat', label: 'Hats', img: _firstThumb('headwear', HEADWEAR_CATALOG), pixel: true },
+    { t: 'skin', label: 'Skin', img: '/ui/welcome/cc/cc-head.webp?v=' + BUILD_INFO.version },
+    { t: 'beard', label: 'Beard', img: _firstThumb('facialhair', FACIALHAIR_CATALOG), pixel: true },
+    { t: 'shirt', label: 'Shirt', img: '/ui/welcome/cc/cc-shirt.webp?v=' + BUILD_INFO.version },
+    { t: 'pants', label: 'Pants', img: '/ui/welcome/cc/cc-pants.webp?v=' + BUILD_INFO.version },
+    { t: 'shoes', label: 'Shoes', img: '/ui/welcome/cc/cc-shoes.webp?v=' + BUILD_INFO.version }
+  ].filter(function (x) { return !!_typeDefs[x.t]; });
+  var _activeType = _typeDefs[activeCat] ? activeCat : 'hair';
   var _def = _typeDefs[_activeType];
   var _onPick = function (id) { _def.set(id); };
   var _items = _def.catalog.map(function (o) {
@@ -243,8 +249,9 @@ export function NameModal(props) {
   React.useEffect(function () { _measureMore(); }, [_def.sel]);
   /* v2.3.1143: Login Key overlay toggle (self-contained -- no BroTown prop). */
   var _acS = React.useState(false), showAccount = _acS[0], setShowAccount = _acS[1];
-  /* v2.3.1276: Customize drawer toggle (view-only, like showAccount). */
-  var _dwS = React.useState(false), drawerOpen = _dwS[0], setDrawerOpen = _dwS[1];
+  /* v2.3.1524: the Customize DRAWER is retired. The pickers are the point of
+     this screen (owner), so they now own a permanent right-hand column instead
+     of hiding behind a button; there is no open/closed state left to hold. */
   /* v2.3.1307 (ChatGPT round-7): preview zoom — tapping the character
      toggles full-body <-> close-up (swipes still rotate at either zoom;
      a tap is a pointer journey under 8px with no rotation fired). */
@@ -264,37 +271,12 @@ export function NameModal(props) {
      On the hero screen (no drawer to hide behind) the tap-zoom uses a
      full-body frame that stays entirely inside the stage. */
   var _stageRef = React.useRef(null);
-  var _drawerRef = React.useRef(null);
-  var _dbS = React.useState(null), drawerBpx = _dbS[0], setDrawerBpx = _dbS[1];
-  React.useLayoutEffect(function () {
-    var measure = function () {
-      var st = _stageRef.current, dr = _drawerRef.current;
-      if (!drawerOpen || !st || !dr || !dr.offsetParent) { setDrawerBpx(null); return; }
-      var stR = st.getBoundingClientRect();
-      var modalTop = dr.offsetParent.getBoundingClientRect().top;
-      var drawerTop = modalTop + dr.offsetTop;
-      /* CSS bottom for the canvas, relative to the STAGE's bottom edge
-         (negative = below it): canvas bottom lands 24px past the sheet. */
-      setDrawerBpx(Math.round(stR.bottom - (drawerTop + 24)));
-    };
-    measure();
-    window.addEventListener('resize', measure);
-    return function () { window.removeEventListener('resize', measure); };
-  }, [drawerOpen]);
-  var _frame = { h: 54.5, b: '18.2%' };                    /* full body (rest) */
-  /* drawerBpx IS the CSS bottom (stage-bottom-relative; negative =
-     below the stage, i.e. behind the sheet). */
-  var _behindDrawer = (drawerBpx != null) ? drawerBpx + 'px' : '-13%';
-  if (previewZoom) {
-    _frame = drawerOpen
-      ? { h: 96, b: _behindDrawer }                        /* close-up, legs behind drawer */
-      : { h: 92, b: '2%' };                                /* hero zoom: whole body, no crop */
-  } else if (drawerOpen) {
-    var _g = _activeGroupKey;
-    if (_g === 'head') _frame = { h: 96, b: _behindDrawer };   /* upper body, legs behind drawer */
-    else if (_g === 'shirt') _frame = { h: 78, b: _behindDrawer }; /* torso, dips behind the sheet */
-    /* pants/shoes: full body — the default frame already centers them. */
-  }
+  /* v2.3.1524: only two frames survive the two-column rebuild. The old
+     category-aware frames existed to slide the legs behind a drawer that
+     covered the character; the pickers now sit BESIDE it in their own column
+     and never overlap it, so there is nothing to hide behind and nothing to
+     measure. Rest, and the tap zoom. */
+  var _frame = previewZoom ? { h: 92, b: '2%' } : { h: 54.5, b: '18.2%' };
   /* v2.3.1307: name validity gates ENTER (round-7).  Local rules only:
      names are not unique server-side, so there is no availability
      check to run — trimmed length is the honest contract. */
@@ -348,6 +330,15 @@ export function NameModal(props) {
     autoPlay: true, muted: true, playsInline: true, loop: true, preload: 'auto',
     "aria-hidden": true
   }), /*#__PURE__*/React.createElement("div", {
+    /* v2.3.1524: the creator is one SHELL now — a title band across the top,
+       then two columns under it: the character (and everything that commits
+       you: name, ENTER, login key) on the left, the pickers on the right.
+       Owner's reasoning, and it is right: the character picker IS the purpose
+       of this screen, so it gets the room instead of a button that hides it. */
+    className: "bt-cc-shell"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "bt-cc-title"
+  }, /*#__PURE__*/React.createElement("div", {
     /* v2.3.801: painted gold BRO TOWN lettering.  v2.3.806: gem sword
        flanks the lettering.  v2.3.1251: ~22% smaller (handoff) — size
        lives in .bt-cc-logo; the sword tracks it via wrap-relative %. */
@@ -360,8 +351,10 @@ export function NameModal(props) {
     src: '/ui/welcome/logo-brotown.webp', alt: 'BRO TOWN', className: "bt-cc-logo"
   }), /*#__PURE__*/React.createElement("div", {
     className: "bt-cc-logo-shine", "aria-hidden": true
-  })), /*#__PURE__*/React.createElement("div", {
-    className: "bt-name-box bt-cc-box",
+  }))), /*#__PURE__*/React.createElement("div", {
+    className: "bt-cc-cols"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "bt-name-box bt-cc-box bt-cc-col-left",
     /* v2.3.1307: keyboard reservation — the box gives up its bottom to
        the iOS keyboard so the name field + hint stay visible. */
     style: kbPad ? { paddingBottom: kbPad } : undefined
@@ -465,30 +458,25 @@ export function NameModal(props) {
     type: 'button', title: 'Rotate left', onClick: function () { rotatePreview(1); },
     /* v2.3.1254: inset top-light / bottom-shade bevel — the hairline-
        gradient recipe reads as a sliver on a circle, so circles use
-       soft inset shadows instead. */
-    style: { position: 'absolute', left: 8, bottom: '3%', width: 50, height: 50, borderRadius: '50%', cursor: 'pointer',
-      background: 'rgba(17,25,29,.88)', border: '1px solid rgba(238,242,235,.24)', color: 'var(--txt)',
-      boxShadow: 'inset 0 1px 0 rgba(255,255,255,.10), inset 0 -2px 3px rgba(0,0,0,.38), 0 2px 6px rgba(3,8,12,.30)',
-      display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }
+       soft inset shadows instead.
+       v2.3.1524: size moves to .bt-cc-rot so it can track the character
+       column — two fixed 50px circles covered the whole stage once the
+       column narrowed on a 320-class screen. */
+    className: "bt-cc-rot bt-cc-rot--l"
   }, /*#__PURE__*/React.createElement("img", {
     /* v2.3.1307 (round-7): the owner's painted rotate icons replace the
        ↺/↻ glyphs, which read as Undo/Redo. */
-    src: '/ui/welcome/cc/cc-rotate-left.webp?v=' + BUILD_INFO.version, alt: 'Rotate left', draggable: false,
-    style: { width: 32, height: 32, objectFit: 'contain', pointerEvents: 'none' }
+    src: '/ui/welcome/cc/cc-rotate-left.webp?v=' + BUILD_INFO.version, alt: 'Rotate left', draggable: false
   })),
   /*#__PURE__*/React.createElement("button", {
     type: 'button', title: 'Rotate right', onClick: function () { rotatePreview(-1); },
-    style: { position: 'absolute', right: 8, bottom: '3%', width: 50, height: 50, borderRadius: '50%', cursor: 'pointer',
-      background: 'rgba(17,25,29,.88)', border: '1px solid rgba(238,242,235,.24)', color: 'var(--txt)',
-      boxShadow: 'inset 0 1px 0 rgba(255,255,255,.10), inset 0 -2px 3px rgba(0,0,0,.38), 0 2px 6px rgba(3,8,12,.30)',
-      display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }
+    className: "bt-cc-rot bt-cc-rot--r"
   }, /*#__PURE__*/React.createElement("img", {
-    src: '/ui/welcome/cc/cc-rotate-right.webp?v=' + BUILD_INFO.version, alt: 'Rotate right', draggable: false,
-    style: { width: 32, height: 32, objectFit: 'contain', pointerEvents: 'none' }
+    src: '/ui/welcome/cc/cc-rotate-right.webp?v=' + BUILD_INFO.version, alt: 'Rotate right', draggable: false
   }))),
-  /* v2.3.1276: the always-visible sheet (.bt-cc-menu) is retired — the
-     hero screen shows only the control cluster below; the pickers live
-     in the slide-up drawer after the box. */
+  /* v2.3.1276: the always-visible sheet (.bt-cc-menu) was retired for a
+     slide-up drawer.  v2.3.1524: the drawer is retired in turn — the pickers
+     are the permanent right-hand column (.bt-cc-panel) further down. */
   /*#__PURE__*/React.createElement("div", {
     /* Name row — the dice ICON rerolls the NAME only.  .bt-cc-namewrap's
        margin-top:auto pins the whole control cluster to the bottom, so
@@ -554,24 +542,13 @@ export function NameModal(props) {
       textAlign: 'center', paddingTop: 2,
       color: _nameValid ? '#55B98A' : '#8D9B98' }
   }, _trimmedName.length === 0 ? '' : _nameValid ? '✓ Ready to go' : 'At least 2 characters')), /*#__PURE__*/React.createElement("div", {
-    /* v2.3.1276: hero action row — Customize slides the drawer up;
-       Random rerolls the whole look (same randomizeWithFlair the
-       drawer's die cell uses). */
+    /* v2.3.1524: one action left. "Customize Appearance" opened the drawer,
+       and the drawer is now a permanent column, so the button had nothing to
+       open. Randomize rerolls the whole look. */
     className: "bt-cc-actions"
   }, /*#__PURE__*/React.createElement("button", {
-    type: 'button', className: "bt-cc-btn",
-    "aria-expanded": drawerOpen ? 'true' : 'false',
-    onClick: function () { setDrawerOpen(true); }
-  }, /*#__PURE__*/React.createElement("img", {
-    /* v2.3.1307 (round-7): "Customize Appearance" with the painted
-       brush-portrait icon — the shirt icon read clothing-specific. */
-    className: "bt-cc-action-icon", src: '/ui/welcome/cc/cc-customize.webp?v=' + BUILD_INFO.version, alt: '', draggable: false }),
-  /*#__PURE__*/React.createElement("span", null, "Customize Appearance")),
-  /*#__PURE__*/React.createElement("button", {
     type: 'button', className: "bt-cc-btn", onClick: randomizeWithFlair
   }, /*#__PURE__*/React.createElement("img", {
-    /* v2.3.1307: "Randomize Look" with the sparkle-character icon — a
-       second die next to the name die was the round-7 ambiguity. */
     className: "bt-cc-action-icon", src: '/ui/welcome/cc/cc-random-look.webp?v=' + BUILD_INFO.version, alt: '', draggable: false }),
   /*#__PURE__*/React.createElement("span", null, "Randomize Look"))),
   /*#__PURE__*/React.createElement("button", {
@@ -591,6 +568,7 @@ export function NameModal(props) {
        from footer text to a real secondary action \u2014 full-width 44px
        bordered row with the painted key icon. */
     type: 'button',
+    className: "bt-cc-login",
     onClick: function () { setShowAccount(true); },
     style: {
       width: '100%',
@@ -625,62 +603,29 @@ export function NameModal(props) {
     }
     /* v2.3.1307: the commit sha leaves the splash (round-7) \u2014 support
        reads it from the console BUILD_INFO when needed. */
-  }, "v" + BUILD_INFO.version)), drawerOpen && /*#__PURE__*/React.createElement("div", {
-    /* v2.3.1276: light tap-to-close scrim under the drawer — the world
-       stays visible; tapping it is the "put the drawer away" gesture. */
-    className: "bt-cc-drawer-scrim",
-    onClick: function () { setDrawerOpen(false); }
-  }), /*#__PURE__*/React.createElement("div", {
-    /* v2.3.1276: the Customize DRAWER — always mounted (the strip refs
-       and scroll positions persist), slid off-screen + pointer-inert
-       when closed (transform, not display: layout stays measurable for
-       _measureMore).  Absolute overlay: nothing in here can move the
-       stage. */
-    className: "bt-cc-drawer" + (drawerOpen ? " bt-cc-drawer--open" : ""),
-    ref: _drawerRef,
-    "aria-hidden": drawerOpen ? undefined : true
+  }, "v" + BUILD_INFO.version)), /*#__PURE__*/React.createElement("div", {
+    /* v2.3.1524: the picker COLUMN. Was the v2.3.1276 slide-up drawer, and
+       before that an always-visible sheet under the character; it is now a
+       permanent pane to the character's right, running from under the title
+       to the bottom of the screen. The tap-to-close scrim and the Done button
+       go with the drawer — there is nothing left to dismiss. */
+    className: "bt-cc-panel"
   }, /*#__PURE__*/React.createElement("nav", {
     className: "bt-cc-tabs", role: 'tablist', "aria-label": 'Appearance category'
-  }, _GROUPS.map(function (g) {
-    var on = g.key === _activeGroupKey;
-    /* Tapping a group opens its most-recently-used subtype (or the
-       first).  Tapping the active group is a no-op — the strip always
-       shows SOMETHING, so the layout never reflows under the CTA. */
+  }, _TABS.map(function (x) {
+    var on = x.t === _activeType;
     return /*#__PURE__*/React.createElement("button", {
-      key: g.key, type: 'button', role: 'tab', "aria-selected": on ? 'true' : 'false',
+      key: x.t, type: 'button', role: 'tab', "aria-selected": on ? 'true' : 'false',
       className: 'bt-cc-tab' + (on ? ' bt-cc-tab--on' : ''),
-      onClick: function () { _openType(g.key, typeMemo[g.key] || g.types[0]); }
-    }, /*#__PURE__*/React.createElement("img", {
-      /* v2.3.1308 (round-7): the generic white category art gives way to
-         the owner's painted set — same style as the in-game nav icons. */
-      className: "bt-cc-tab-icon", src: '/ui/welcome/cc/cc-' + g.key + '.webp?v=' + BUILD_INFO.version, alt: '', draggable: false }),
-    /*#__PURE__*/React.createElement("span", { className: "bt-cc-tab-label" }, g.label));
-  })
-  /* v2.3.1308 (round-7): the v2.3.1272 fifth Random die cell is retired
-     — randomization is an ACTION, not a body region, and the hero
-     screen's "Randomize Look" already owns it.  Four equal category
-     tabs remain. */
-  ), /*#__PURE__*/React.createElement("div", {
-    /* Secondary tabs — visible only for Head (Hair/Hats) and Face
-       (Skin/Beard).  v2.3.1252: single-type groups render the row as an
-       invisible GHOST instead of omitting it — the sheet is the flex
-       stage's height budget, so any row that comes and goes with the
-       category made the character preview grow/shrink on every tab
-       change (owner: keep the character ONE size, even if smaller). */
-    className: "bt-cc-subtabs" + (_activeGroup.types.length > 1 ? "" : " bt-cc-ghost"),
-    "aria-hidden": _activeGroup.types.length > 1 ? undefined : true
-  }, _activeGroup.types.length > 1
-    ? _activeGroup.types.map(function (t) {
-        var on = t === _activeType;
-        return /*#__PURE__*/React.createElement("button", {
-          key: t, type: 'button', "aria-pressed": on ? 'true' : 'false',
-          className: 'bt-cc-subtab' + (on ? ' bt-cc-subtab--on' : ''),
-          onClick: function () { _openType(_activeGroup.key, t); }
-        }, _typeDefs[t].label);
-      })
-    : /*#__PURE__*/React.createElement("button", {
-        type: 'button', className: "bt-cc-subtab", tabIndex: -1, disabled: true
-      }, " ")), /*#__PURE__*/React.createElement("div", { className: "bt-cc-scroll" },
+      onClick: function () { setActiveCat(x.t); }
+    }, x.img ? /*#__PURE__*/React.createElement("img", {
+      /* v2.3.1308: the owner's painted category art.  v2.3.1525: the three
+         catalog-thumb tabs render pixelated, like the tiles they stand for. */
+      className: "bt-cc-tab-icon" + (x.pixel ? " bt-cc-tab-icon--pixel" : ""),
+      src: x.img, alt: '', draggable: false, decoding: 'async'
+    }) : null,
+    /*#__PURE__*/React.createElement("span", { className: "bt-cc-tab-label" }, x.label));
+  })), /*#__PURE__*/React.createElement("div", { className: "bt-cc-scroll" },
   /*#__PURE__*/React.createElement("div", {
     /* Option strip — exactly five complete tiles at rest; extra options
        scroll horizontally (sizing in .bt-cc-strip, game.css).  The whole
@@ -709,12 +654,7 @@ export function NameModal(props) {
     className: "bt-cc-colors-row", ref: _colorRowRef, onScroll: _measureMore, role: _colors ? 'radiogroup' : undefined, "aria-label": _colors ? _def.label + ' colors' : undefined
   }, _colors || /*#__PURE__*/React.createElement("div", null)), /*#__PURE__*/React.createElement("span", {
     className: "bt-cc-more" + (scrollMore.colors ? " bt-cc-more--on" : ""), "aria-hidden": true
-  }, "›"))), /*#__PURE__*/React.createElement("button", {
-    /* v2.3.1276: closes the drawer; the hero screen (with ENTER) is
-       right behind it. */
-    type: 'button', className: "bt-cc-btn bt-cc-done",
-    onClick: function () { setDrawerOpen(false); }
-  }, "Done")), showAccount && /*#__PURE__*/React.createElement(AccountModal, {
+  }, "›")))))), showAccount && /*#__PURE__*/React.createElement(AccountModal, {
     onClose: function () { setShowAccount(false); }
   }));
 }
