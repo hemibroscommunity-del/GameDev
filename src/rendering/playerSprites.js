@@ -119,7 +119,7 @@ const POSES = ['stand', 'jog', 'hit', 'pickup', 'attack', 'mine', 'fish'];
    belt re-baked from chainbelt.png.  anchors.json NE hand positions are
    measured from the wristband marker per frame -- real data, replacing the
    stale 48-entry list from the pre-v2.3.6xx sheet. */
-const VERSION = 83; /* v2.3.1457: jog-southwest-head regenerated (SW re-cut).  v2.3.1456: jog body/leg sheets pinhole-filled (enclosed transparent speckles — the "background through the face/body" dots).  v2.3.1455: jog-east-head re-baked.  v2.3.1452: pickup defringe. */
+const VERSION = 84; /* v2.3.1537: all four jog-<dir>-head sheets grown down over the neck (tools/seal_jog_neck.py) — the head sheet was cut at the jaw and the fullset collar at the armour, so the neck rows belonged to NEITHER and the ground showed through a 1-7px wedge beside the neck on 72 of 94 jog frames (owner: "almost all jog directions still have slivering around the neck area").  Sealed from the BODY sheet's own neck pixels, only where the armour is absent and only in components that touch both sheets, so no armour is covered, no silhouette is invented, and the unarmoured composite is byte-identical (verified: every added pixel equals the body sheet's).  v2.3.1457: jog-southwest-head regenerated (SW re-cut).  v2.3.1456: jog body/leg sheets pinhole-filled (enclosed transparent speckles — the "background through the face/body" dots).  v2.3.1455: jog-east-head re-baked.  v2.3.1452: pickup defringe. */
 /* Re-exported so the skin-recolor pipeline (playerSkins.js) loads the same
    cache-busted sheet URLs and never drifts onto a stale cached image. */
 export const SPRITE_VERSION = VERSION;
