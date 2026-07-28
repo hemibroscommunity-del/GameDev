@@ -18,7 +18,26 @@ import { lookupCollision, PVP_THREAT_CONSENT_MS } from '@/data/gameSystems.js';
 import { getFrame, resolveDirection, cycleMs, hasPose, frameCount as playerFrameCount } from '../playerSprites.js';
 import { getShieldFrame } from '../shieldSprites.js';
 import { jogWaistRow } from '../jogWaist.js'; /* v2.3.1341: stable waist band */
-import { getFrame as getSlimeFrame, hasState as hasSlimeState, frameCount as slimeFrameCount } from '../slimeSprites.js';
+import { getFrame as getSlimeBaseFrame, hasState as hasSlimeState, frameCount as slimeFrameCount } from '../slimeSprites.js';
+import { getRecoloredFrame, hasRecoloredState } from '../slimeRecolor.js'; /* v2.3.1534 */
+
+/* v2.3.1534: one place that decides whether a slime draws from the shared
+   sheet or from its variant's RECOLOURED copy.  A variant with `recolor` gets
+   the retinted texture and NO tint -- the pixels are already the right colour,
+   and multiplying them again by the fallback green would undo it.  Until the
+   recolour has finished building (or if it failed), both fall back to exactly
+   what shipped before: base sheet + multiplicative tint. */
+function getSlimeFrame(state, frameIdx, variant) {
+  if (variant && variant.recolor && hasRecoloredState(variant.recolor, state)) {
+    const t = getRecoloredFrame(variant.recolor, state, frameIdx);
+    if (t) return t;
+  }
+  return getSlimeBaseFrame(state, frameIdx);
+}
+function slimeTintFor(variant, state) {
+  if (variant && variant.recolor && hasRecoloredState(variant.recolor, state)) return 0xffffff;
+  return (variant && variant.tint) || 0xffffff;
+}
 import { getFrame as getSnowmanFrame, hasFrames as hasSnowmanFrames, frameCount as snowmanFrameCount, getHitFrame as getSnowmanHitFrame, hitFrameCount as snowmanHitFrameCount, getDeathFrame as getSnowmanDeathFrame, deathFrameCount as snowmanDeathFrameCount } from '../snowmanSprites.js';
 import { variantSpritesFor } from '../monsterVariantSprites.js';
 import { MONSTER_VARIANTS, maybeTransformMonster } from '../../data/monsterVariants.js';
@@ -3252,7 +3271,7 @@ export class EntityRenderer {
             const fc = slimeFrameCount('death');
             const t = deathT / SLIME_DEATH_MS;
             const frameIdx = Math.max(0, Math.min(fc - 1, Math.floor(t * fc)));
-            const tex = getSlimeFrame('death', frameIdx);
+            const tex = getSlimeFrame('death', frameIdx, variant); /* v2.3.1534 */
             const sb = display._spriteBody;
             if (tex && (display._slimeState !== 'death' || display._slimeFrame !== frameIdx)) {
               display._slimeState = 'death';
@@ -3261,7 +3280,7 @@ export class EntityRenderer {
             }
             sb.scale.x = 96 / 128;
             sb.scale.y = 96 / 128;
-            sb.tint = (variant && variant.tint) || 0xffffff; /* v2.3.1147 */
+            sb.tint = slimeTintFor(variant, 'death'); /* v2.3.1147; v2.3.1534 */
             sb.visible = true;
             display.x = m.x;
             display.y = m.y;
@@ -3645,7 +3664,7 @@ export class EntityRenderer {
           /* Always look up + reassign texture — see player sprite
              notes; the cache-only-on-change pattern lost sprites
              after zone change. */
-          const tex = getSlimeFrame(state, frameIdx);
+          const tex = getSlimeFrame(state, frameIdx, variant); /* v2.3.1534 */
           if (tex && spriteBody.texture !== tex) {
             spriteBody.texture = tex;
           }
@@ -3673,8 +3692,10 @@ export class EntityRenderer {
           if (spriteBody.scale.x !== sx) spriteBody.scale.x = sx;
           if (spriteBody.scale.y !== sy) spriteBody.scale.y = sy;
           if (spriteBody.y !== size) spriteBody.y = size; /* feet at the circle's bottom edge */
-          /* v2.3.1147: tinted slime reskins (mossSlime/mireWisp). */
-          const wantTintS = (variant && variant.tint) || 0xffffff;
+          /* v2.3.1147: tinted slime reskins (mossSlime/mireWisp).
+             v2.3.1534: a recoloured variant reports white here — see
+             slimeTintFor. */
+          const wantTintS = slimeTintFor(variant, state);
           if (spriteBody.tint !== wantTintS) spriteBody.tint = wantTintS;
           if (!spriteBody.visible) spriteBody.visible = true;
           if (display._body.visible) display._body.visible = false;

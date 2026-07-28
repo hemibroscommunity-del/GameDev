@@ -221,7 +221,16 @@ export const MONSTER_VARIANTS = {
   mossSlime: {
     baseArchetype: 'fodder',
     useSlimeSheets: true,
-    tint: 0x55cc44, /* mossy green */
+    tint: 0x55cc44, /* mossy green -- FALLBACK only, see recolor below */
+    /* v2.3.1534 (owner: "recolor the slimes and slime remnants blue"):
+       `recolor` is a luminance RETINT, not the multiplicative `tint` above.
+       It exists because tint physically cannot do this: the slime art is
+       saturated green, so multiplying by a blue just darkens it to teal
+       (measured mean RGB (32,94,72) -- still green-dominant).  See
+       slimeRecolor.js.  `tint` is kept as the fallback for the frames
+       before the recolour finishes building, and for any renderer path
+       that hasn't been taught about `recolor`. */
+    recolor: [58, 122, 208], /* #3a7ad0 */
   },
   mireWisp: {
     baseArchetype: 'fodder',

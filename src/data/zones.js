@@ -86,8 +86,16 @@ export const ZONES = {
     element: null, secondary: null, level: [1, 2] /* band: [22,40] */, music: 'meadow', safe: false,
     palette: { ground: '#3d7a2e', path: '#7a6a45', accent: '#6abf4f' },
     /* v2.3.1147: populated (was empty) -- tinted reskins: fodder->
-       mossSlime green slime, brute->thornShambler mossy rockmonster. */
-    spawns: [{ arch: 'fodder', count: 8 }, { arch: 'brute', count: 4 }],
+       mossSlime green slime, brute->thornShambler mossy rockmonster.
+       v2.3.1534 (owner: "remove the rock monster from this level"): the
+       brute spawn is gone, so Verdant Wilds is slimes only.  Mirror of
+       server/src/data.js ZONES.verdant -- the SERVER decides what
+       spawns; this table only clamps levels and picks the skin, so both
+       have to drop the entry or the zone keeps its rockmonsters.
+       thornShambler stays defined in monsterVariants.js: nothing spawns
+       it today, and deleting it would just have to be rewritten if a
+       brute comes back here. */
+    spawns: [{ arch: 'fodder', count: 8 }],
     atmosphere: { tint: 'rgba(60,160,60,0.05)', vignette: 'rgba(20,80,20,0.12)' },
     enemyEmoji: {}
   },

@@ -19,7 +19,7 @@ import {
   getEvasionPts, resolveCollision, rollPassiveDodge, spawnWeaponHitFX, staffAoeMult,
   monsterBodyY, monsterBodyOffsetY, trainDefense, applyIronSkin, applyResilience, /* v2.3.1314 */
 } from '@/data/index.js';
-import { baseArchetypeOf, isRemnantSkull, maybeTransformMonster, xpMultFor } from '@/data/monsterVariants.js';
+import { MONSTER_VARIANTS, baseArchetypeOf, isRemnantSkull, maybeTransformMonster, xpMultFor } from '@/data/monsterVariants.js';
 import { getEquip } from '@/rendering/gearCatalog.js'; /* v2.3.1108: armoured-hit clang on projectile hits */
 import { rollMonsterShard } from '@/data/shards.js';
 import { addBuildUse, applyMeleeLifesteal, distributeKillXpToBuild, trackMonsterDamage, pushDmgPopup, monsterPopupY } from '@/game/combatHelpers.js';
@@ -511,7 +511,26 @@ export function updateArrows(S, deps) {
                        in the entry direction so the arrowhead is buried
                        in the body rather than floating off the edge. */
                     var _saArch = m.archetype || m.type;
-                    var _saIsFodder = _saArch === 'fodder';
+                    /* v2.3.1534: match on the SHEETS the monster renders with,
+                       not on its name.  applyZoneVariant overwrites BOTH
+                       m.type and m.archetype with the variant key, so a
+                       Verdant Wilds slime arrives here as 'mossSlime' and
+                       never matched 'fodder' -- it fell through to the generic
+                       6/6/0 branch below, which has NO y-anchor, so arrows
+                       planted at the slime's FEET instead of in its body
+                       (owner: "the arrows don't stick in the slimes at the
+                       correct hitbox").  fireGoblin only looks fine because
+                       somebody added a branch for it by name; every other
+                       variant had the same bug.  useSlimeSheets is the honest
+                       predicate -- it is exactly "this renders as the 50px
+                       slime", which is what the ellipse below was measured
+                       against -- and it covers mireWisp in the Poison Forest
+                       too.  Deliberately NOT baseArchetypeOf(): mummy and
+                       skeleton are base-'fodder' but render as 96px upright
+                       creatures, so slime anchors would be wrong for them. */
+                    var _saVariant = MONSTER_VARIANTS[_saArch] || null;
+                    var _saIsFodder = _saArch === 'fodder'
+                      || !!(_saVariant && _saVariant.useSlimeSheets);
                     /* Per-archetype stuck-arrow anchors -- arrows should
                        bury in the body silhouette, not float in space.
                        fireGoblin: taller upright creature (64 px sprite,

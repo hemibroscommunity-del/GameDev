@@ -41,7 +41,8 @@ import { effectsAnimationsReady, ensureImpactTex } from './systems/effectsRender
 import { preloadTraits } from './systems/entityRenderer.js';
 import { preloadFullsetFigures } from './gearSheets.js'; /* v2.3.1376: fullset knight figures */
 import { preloadJogHeadOverlays } from './playerSkins.js'; /* v2.3.1376: their head overlays */
-import { ZONE_VARIANT_MAP } from '../data/monsterVariants.js'; /* v2.3.1405: per-zone variant scoping */
+import { ZONE_VARIANT_MAP, MONSTER_VARIANTS } from '../data/monsterVariants.js'; /* v2.3.1405: per-zone variant scoping */
+import { loadSlimeRecolor } from './slimeRecolor.js'; /* v2.3.1534: per-zone slime recolour */
 
 /* v2.3.1405 (owner: "per zone loading instead of one long pregame loading
    screen"): ZONE-SPECIFIC textures moved OFF the blocking pre-game gate —
@@ -72,6 +73,18 @@ export async function preloadZoneAssets(zoneId) {
     for (const key of keys) {
       const v = variantSpritesFor(key); /* kicks the loader once (idempotent) */
       if (v && v.load) tasks.push(Promise.resolve(v.load()).catch(() => {}));
+      /* v2.3.1534: a slime variant asking for a luminance RECOLOUR (blue
+         mossSlime) builds its recoloured copy of the shared slime sheets
+         here — per-zone, per the ZONE-ASSET EXCEPTION in CLAUDE.md, because
+         a colour costs a full extra set of slime textures and only the zone
+         that uses it should pay.  Awaited with the rest, so the zone overlay
+         holds until it is ready and no slime is ever seen in the old colour
+         (a lazy first-sighting build is exactly what the preloading LAW
+         forbids). */
+      const mv = MONSTER_VARIANTS[key];
+      if (mv && mv.recolor && mv.useSlimeSheets) {
+        tasks.push(Promise.resolve(loadSlimeRecolor(mv.recolor)).catch(() => {}));
+      }
     }
   }
   /* frost is the only snowman zone — its sprites + the ice-burst impact

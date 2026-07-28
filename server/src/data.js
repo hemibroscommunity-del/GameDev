@@ -311,7 +311,11 @@ export const ZONES = {
        * brute->thornShambler; mist fodder->mireWisp, brute->bogLurker).
        * Base archetypes carry ALL the stats -- variants are visual. */
       mist:    { w:32, h:32, level:[1,2], element:'venom', secondary:'wind',  lawless:true, spawns:[{arch:'fodder',count:6},{arch:'brute',count:4}] },  /* band: [22,40] */
-      verdant: { w:32, h:32, level:[1,2], element:null,    secondary:null,    lawless:true, spawns:[{arch:'fodder',count:8},{arch:'brute',count:4}] }, /* band: [22,40] */
+      /* v2.3.1534 (owner: "remove the rock monster from this level"): the
+       * brute spawn -- which skinned as thornShambler, the mossy
+       * rockmonster -- is dropped, so Verdant Wilds is slimes only.  This
+       * table is authoritative; src/data/zones.js mirrors it. */
+      verdant: { w:32, h:32, level:[1,2], element:null,    secondary:null,    lawless:true, spawns:[{arch:'fodder',count:8}] }, /* band: [22,40] */
       frost:   { w:32, h:32, level:[1,2],  element:'frost', secondary:'storm', lawless:true, spawns:[{arch:'snowman',count:4}] },        /* band: [8,25] */
       thunder: { w:32, h:32, level:[1,2], element:'storm', secondary:'flame', lawless:true, spawns:[{arch:'fodder',count:6}] },          /* band: [55,80] */
       hollows: { w:32, h:32, level:[1,2], element:'stone', secondary:'venom', lawless:true, spawns:[{arch:'brute',count:4}] },           /* band: [38,58] */
