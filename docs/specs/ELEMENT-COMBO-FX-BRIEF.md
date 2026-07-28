@@ -101,3 +101,23 @@ THE EFFECT:
 | **Monsoon** | water + wind | `#3498DB` + `#7F8C8D` | Monsoon: slanted rain sheeting across with a wind curl. Palette built from #3498DB and #7F8C8D. |
 | **Permafrost** | frost + stone | `#2980B9` + `#795548` | Permafrost: frost creeping across stone in crystalline fingers. Palette built from #2980B9 and #795548. |
 | **Erosion** | stone + wind | `#795548` + `#7F8C8D` | Erosion: stone surface stripping away into blowing grit. Palette built from #795548 and #7F8C8D. |
+
+---
+
+## NOT IN THE CODE YET — Flora (9 more)  [v2.3.1567]
+
+The GDD names a tenth element, **Flora** (status Thorn, `#2ECC71`, leaf motif), and the code
+does not have it. These nine are its pairs. Generate them only if Flora is going to be built —
+otherwise they are art for a system that will never fire.
+
+| Name | Elements | Colours | Effect line to paste |
+|---|---|---|---|
+| **Wildfire** | flora + flame | `#2ECC71` + `#C0392B` | Wildfire: red flame racing along green vine lines, spreading outward through the foliage. Palette built from #2ECC71 and #C0392B. |
+| **Overgrowth** | flora + water | `#2ECC71` + `#3498DB` | Overgrowth: green vines bursting up out of a splash of water and knotting into a field. Palette built from #2ECC71 and #3498DB. |
+| **Blight Garden** | flora + venom | `#2ECC71` + `#27AE60` | Blight Garden: a wide sickly-green thorn cloud with dark spores boiling through it. Palette built from #2ECC71 and #27AE60. |
+| **Lightning Rod** | flora + storm | `#2ECC71` + `#8E44AD` | Lightning Rod: a single violet bolt striking down a green thorn spire, discharging at the base. Palette built from #2ECC71 and #8E44AD. |
+| **Petrified Wood** | flora + stone | `#2ECC71` + `#795548` | Petrified Wood: green branches hardening into grey petrified bark, cracking as they set. Palette built from #2ECC71 and #795548. |
+| **Scatter Seed** | flora + wind | `#2ECC71` + `#7F8C8D` | Scatter Seed: green seed pods flung outward on a wind spiral, trailing leaf motes. Palette built from #2ECC71 and #7F8C8D. |
+| **Thaw Bloom** | flora + frost | `#2ECC71` + `#2980B9` | Thaw Bloom: blue ice melting off a green bud that opens into a soft bloom. Palette built from #2ECC71 and #2980B9. |
+| **Withering** | flora + dark | `#2ECC71` + `#2C3E50` | Withering: green growth curling black from the edges inward and crumbling to ash. Palette built from #2ECC71 and #2C3E50. |
+| **Purifying Bloom** | flora + light | `#2ECC71` + `#F1C40F` | Purifying Bloom: a green flower opening into a burst of clean gold light. Palette built from #2ECC71 and #F1C40F. |
