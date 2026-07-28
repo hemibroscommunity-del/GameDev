@@ -58,9 +58,17 @@ export function navShelfHeight(vw, vh) {
 /* v2.3.1560 (owner: "an ultra compact bar ... a persistent menu above
    the toolbar icons"): nine cells across the full width — 3 bag slots,
    chest/legs/weapon, last life skill, last two combat skills.
-     fixed = 12 frame pad + 9 gaps x 2px + 2 group dividers x (1px + 2/2
-             margin) = 40
+     fixed = 12 frame pad + 6 within-group gaps x 1px + 2 between-group
+             gaps x 13px = 44
      cell  = floor((vw - fixed) / 9), clamped 28..44
+     v2.3.1572 (owner: "group the different groups of icons more closely
+     together so it's visually more easy to differentiate"): the row was
+     an even 2px gap throughout with hairline dividers doing all the
+     separating, which reads as nine identical cells with two lines in
+     it.  Proximity does the job better than lines: cells inside a group
+     are now nearly touching (1px) and the groups are pushed 13px apart,
+     and the dividers are gone.  The width budget is unchanged in total,
+     so the cell size does not move.
      row   = cell + 10 (4/4 pad + 2 border at the 1px non-retina worst
              case, matching navShelfHeight's reasoning)
    ~39px cells / 49px row at 390w.  FLOOR, and every term of the row's
@@ -73,7 +81,7 @@ export function navShelfHeight(vw, vh) {
    why the density is acceptable here and nowhere else. */
 export function quickCellSize(vw, vh) {
   const cap = vh && vh <= 720 ? 36 : 44;
-  return Math.floor(Math.min(Math.max((vw - 40) / 9, 28), cap));
+  return Math.floor(Math.min(Math.max((vw - 44) / 9, 28), cap));
 }
 export function quickRowHeight(vw, vh) {
   return quickCellSize(vw, vh) + 10;

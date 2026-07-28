@@ -80,6 +80,12 @@ const withAnchor = (fn) => (e) => {
    The double-tap still works; it is now a shortcut, not the only way. */
 const HOLD_MS = 420;
 
+/* v2.3.1572: the row's grouping rhythm.  Mirrored by sheetGeometry's
+   `fixed` width budget — change one and change the other. */
+const GAP_WITHIN = 1;
+const GAP_BETWEEN = 13;
+const groupStyle = { display: 'flex', alignItems: 'center', gap: GAP_WITHIN, flex: 'none' };
+
 const WeaponCell = ({ src, size, slotLabel, onHold }) => {
   const timer = useRef(null);
   const held = useRef(false);
@@ -184,31 +190,41 @@ export const QuickBar = ({ R }) => {
   return (
     <div className="bt-quickbar" style={{
       display: 'flex', alignItems: 'center', justifyContent: 'center',
-      gap: 2, padding: '4px 6px', boxSizing: 'border-box',
-      /* The divider is the ONLY chrome — the row must read as part of the
-         band, not as a second floating widget over the world. */
+      /* v2.3.1572 (owner: "group the different groups of icons more
+         closely together so it's visually more easy to differentiate"):
+         PROXIMITY carries the grouping now.  The row used to be an even
+         2px gap end to end with two hairlines doing the separating, which
+         reads as nine identical cells with lines in it — the eye counts
+         nine, not three.  Cells inside a group nearly touch and the
+         groups sit 13px apart, so the three functions separate before you
+         have looked at a single icon.  The hairlines are gone: with the
+         gap doing the work they were a second, weaker signal saying the
+         same thing.  GAP_BETWEEN must match sheetGeometry's width
+         budget or the ninth cell falls off the right edge. */
+      gap: GAP_BETWEEN, padding: '4px 6px', boxSizing: 'border-box',
+      /* The bottom rule is the ONLY chrome — the row must read as part of
+         the band, not as a second floating widget over the world. */
       borderBottom: `1px solid ${COL.divider}`,
     }}>
       {/* 1-3: bag.  BagTile carries the real tap behavior (detail popup,
           anchor badge, quantity badge) for both inventory and stash
           kinds; the style override drops its 100%-width aspect box for
           this row's fixed cell. */}
-      {[0, 1, 2].map(i => (
-        bag[i]
-          ? <div key={`q-bag-${i}`} style={{ width: size, height: size, flex: 'none' }}>
-              <BagTile entry={bag[i]} style={{ width: size, height: size, aspectRatio: 'auto' }} />
-            </div>
-          : <IconCell key={`q-bag-${i}`} size={size} src={null} alt="Empty bag slot"
-              onTap={() => dashboardPanelBus.open('bag')} title="Bag" />
-      ))}
-
-      {/* Hairline break so the three groups read as groups, not nine
-          identical cells (Lantern Slate: grouping by gap, not by boxes). */}
-      <span aria-hidden="true" style={{ width: 1, height: size - 8, background: COL.divider, flex: 'none', margin: '0 2px' }} />
+      <div style={groupStyle}>
+        {[0, 1, 2].map(i => (
+          bag[i]
+            ? <div key={`q-bag-${i}`} style={{ width: size, height: size, flex: 'none' }}>
+                <BagTile entry={bag[i]} style={{ width: size, height: size, aspectRatio: 'auto' }} />
+              </div>
+            : <IconCell key={`q-bag-${i}`} size={size} src={null} alt="Empty bag slot"
+                onTap={() => dashboardPanelBus.open('bag')} title="Bag" />
+        ))}
+      </div>
 
       {/* 4-6: worn chest / legs / weapon — ghost pictogram when empty,
           and the ghost still opens the picker (that IS the empty slot's
           normal behavior in the Bag). */}
+      <div style={groupStyle}>
       {gear.map(sl => (
         <IconCell key={`q-eq-${sl.slot}`} size={size}
           src={sl.iconSrc || GHOST_SRC[sl.slot]} dim={sl.ghost}
@@ -228,9 +244,9 @@ export const QuickBar = ({ R }) => {
         <IconCell size={size} src={GHOST_SRC.weapon} dim
           alt="Weapon" title="Weapon" onTap={openPicker('weapon')} />
       )}
+      </div>
 
-      <span aria-hidden="true" style={{ width: 1, height: size - 8, background: COL.divider, flex: 'none', margin: '0 2px' }} />
-
+      <div style={groupStyle}>
       {/* 7: last life skill used. */}
       <IconCell size={size}
         src={lifeSkill ? lifeSkill.iconSrc : null}
@@ -264,6 +280,7 @@ export const QuickBar = ({ R }) => {
             }} />
         );
       })}
+      </div>
     </div>
   );
 };
