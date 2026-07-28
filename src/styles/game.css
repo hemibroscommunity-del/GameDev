@@ -39,8 +39,14 @@
      slot-derived and viewport-dependent now — BroTown's resize() stamps
      BOTH vars below with sheetGeometry's JS-rounded values on every
      viewport change.  These are only boot fallbacks (390w values). */
+  /* v2.3.1560 (owner: ultra-compact quick bar): the band is TWO
+     persistent rows now — --dash-h is the whole band (still the ONE
+     number the canvas/joystick/HUD read), --nav-h is just the toolbar
+     ribbon.  Boot fallbacks are the 390w values: 87 ribbon + 50 quick
+     row = 135. */
   --nav-slot: 56px;
-  --dash-h:   87px;
+  --nav-h:    87px;
+  --dash-h:   135px;
   /* v2.3.1235: Lantern Slate CORRECTION PASS (owner-approved ChatGPT
      review of the v2.3.1234 screenshots).  Slightly brighter, greener
      slate; four depth roles only (sheet / raised / well / well-deep);

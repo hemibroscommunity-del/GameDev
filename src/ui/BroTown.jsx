@@ -232,7 +232,7 @@ const {
 
 import { _regenerator, _regeneratorDefine2, _asyncToGenerator, _typeof, _slicedToArray, _toConsumableArray, _objectSpread, _defineProperty, _toPropertyKey, _toPrimitive, ownKeys, _arrayWithHoles, _iterableToArrayLimit, _unsupportedIterableToArray, _arrayLikeToArray, _nonIterableRest, _arrayWithoutHoles, _iterableToArray, _nonIterableSpread, _createForOfIteratorHelper, asyncGeneratorStep } from '@/lib/babelHelpers.js';
 import { SpriteHpBar } from './SpriteHpBar.jsx'; /* v2.3.1273: owner's HP-bar art (desktop HUD row) */
-import { barHeight, navSlotSize, DASH_OVERLAP } from './mobile/sheet/sheetGeometry.js'; /* v2.3.1283; v2.3.1290 bar-height canvas; v2.3.1325 slot-derived bar */
+import { barHeight, navSlotSize, navShelfHeight, DASH_OVERLAP } from './mobile/sheet/sheetGeometry.js'; /* v2.3.1283; v2.3.1290 bar-height canvas; v2.3.1325 slot-derived bar; v2.3.1560 two-row band */
 import { recolorEnabled } from '@/rendering/traits/recolorOptions.js';
 
 /* Expose all exports as globals for the pre-transpiled code.
@@ -2094,6 +2094,11 @@ export var BroTown = function BroTown(_ref0) {
          game.css only carries boot fallbacks. */
       var bar = barHeight(vw, vhFull);
       document.documentElement.style.setProperty('--nav-slot', navSlotSize(vw, vhFull) + 'px');
+      /* v2.3.1560: --nav-h is the toolbar ribbon alone; --dash-h below is
+         the whole two-row band.  Both stamped here so the ribbon and the
+         quick bar can be pinned inside the band without either one
+         re-deriving geometry from CSS. */
+      document.documentElement.style.setProperty('--nav-h', navShelfHeight(vw, vhFull) + 'px');
       document.documentElement.style.setProperty('--dash-h', bar + 'px');
       var vh = Math.max(120, Math.round(vhFull - bar) + DASH_OVERLAP); /* v2.3.1290: bar is the resting band */
       /* v2.3.1283: short-circuit when nothing changed — the
