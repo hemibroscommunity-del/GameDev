@@ -24,7 +24,7 @@ import { upscaleToFrameHeight } from './spriteScale.js'; /* v2.3.1110: restore d
 
 const FRAME = 256;
 const DEFAULT_LIT_LUM = 149;            // default lit-skin luminance (see playerSkins)
-const TRAIT_VER = '2.3.1530';            // cache-bust for body-tops.json (matches entityRenderer)
+const TRAIT_VER = '2.3.1531';            // cache-bust for body-tops.json (matches entityRenderer)
 
 /* ── tiny async caches ── */
 const _imgCache = new Map();            // url -> Promise<HTMLImageElement>
