@@ -540,7 +540,7 @@ const FULLSET_CROWN = {
      v2.3.1455: FLOAT precision + the sub-pixel head residual folded in
      (the old even-integer rounding quantized the track to 2px steps),
      so hats/hair glide with the same corrected head the player sees. */
-  east: [[134.6, 47.5], [135.6, 46.8], [134.6, 52.3], [135.0, 54.8], [134.9, 57.1], [134.4, 58.2], [133.9, 56.8], [134.0, 54.1], [134.1, 51.4], [134.6, 48.0], [135.6, 46.5], [134.6, 47.5], [135.6, 46.8], [134.6, 52.3], [135.0, 54.8], [134.9, 57.1], [134.4, 58.2], [133.9, 56.8], [134.0, 54.1], [134.1, 51.4], [134.6, 48.0], [135.6, 46.5]],
+  east: [[134.6, 47.5], [135.6, 46.8], [134.6, 52.3], [135.0, 55.5], [134.6, 55.4], [134.4, 58.2], [133.9, 56.8], [134.0, 54.1], [134.1, 51.4], [135.6, 46.5], [134.6, 47.5], [135.6, 46.8], [134.6, 52.3], [135.0, 55.5], [134.6, 55.4], [134.4, 58.2], [133.9, 56.8], [134.0, 54.1], [134.1, 51.4], [135.6, 46.5]],
 };
 /* v2.3.1455 (owner: "'slivering' effect like lines are slightly cut and
    moving while jogging where the head meets the torso armor"): the head
@@ -553,7 +553,7 @@ const FULLSET_CROWN = {
    _placePickupHead applies it as a sub-pixel y offset so the drawn head
    rides the armor's true smooth track and the seam stays put. */
 const FULLSET_HEAD_RES = {
-  east: [0.0, -0.67, -0.22, -0.67, -0.44, 0.22, -0.67, -0.89, 0.44, 0.0, 0.0, 0.0, -0.67, -0.22, -0.67, -0.44, 0.22, -0.67, -0.89, 0.44, 0.0, 0.0],
+  east: [0.0, -0.67, -0.22, 0.0, 0.44, 0.22, -0.67, -0.89, 0.44, 0.0, 0.0, -0.67, -0.22, 0.0, 0.44, 0.22, -0.67, -0.89, 0.44, 0.0],
 };
 /* v2.3.1540: CONSTANT per-direction seat of the head overlay on the fullset,
    in 256-space [dx, dy] (so 2 = one pixel of the 128px head sheet).  Distinct
