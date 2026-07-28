@@ -1,7 +1,7 @@
 {
   "category": "headwear",
   "fullFrame": true,
-  "note": "Olive-drab wide-brim bucket/boonie hat. Single source DB207857 used for ALL 5 base dirs (same from every angle, like top-hat/sombrero). 1024 padded to 1254. solid:true (single olive color, recolorable). crownNudge seeded -16 (wide-brim lift) -- tune on-device. v2.3.1514: nudged by hand dx +0 dy +5 on northeast,north.",
+  "note": "Olive-drab wide-brim bucket/boonie hat. Single source DB207857 used for ALL 5 base dirs (same from every angle, like top-hat/sombrero). 1024 padded to 1254. solid:true (single olive color, recolorable). crownNudge seeded -16 (wide-brim lift) -- tune on-device. v2.3.1514: nudged by hand dx +0 dy +5 on northeast,north. v2.3.1527: hair-clip mask rebuilt from the current art by tools/make_hairmask.py, and clipsHair switched on.",
   "bboxes_source": {
     "south": [
       367,
@@ -116,5 +116,6 @@
     "east": 0.625,
     "northeast": 0.625,
     "north": 0.625
-  }
+  },
+  "clipsHair": true
 }
