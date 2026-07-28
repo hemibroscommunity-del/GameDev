@@ -179,7 +179,7 @@ const TRAIT_NFT_ID = 'test-1';
 /* v2.3.708: bumped for the regenerated NE jog body-tops/body-anchors. */
 /* v2.3.1394: bumped — bandana gains hairmask/*.png + clipsHair in meta.json
    (owner: hair not clipped under the bandana on NE/NW). */
-const TRAIT_VER = '2.3.1526';
+const TRAIT_VER = '2.3.1527';
 
 /* v2.3.377: the on-back (sheathed) shield render is purely cosmetic and was
    a persistent source of per-facing z-order issues vs the body/arms/weapon/

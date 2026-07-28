@@ -1,7 +1,7 @@
 {
   "category": "headwear",
   "fullFrame": true,
-  "note": "Top hat looks ~the same from all angles; one image fills all 5 base direction slots. Tall hat -> large negative crownNudge Y so the brim (not the hat top) sits at the head crown.",
+  "note": "Top hat looks ~the same from all angles; one image fills all 5 base direction slots. Tall hat -> large negative crownNudge Y so the brim (not the hat top) sits at the head crown. v2.3.1527: hair-clip mask rebuilt from the current art by tools/make_hairmask.py.",
   "anchors": {
     "east": [
       126,

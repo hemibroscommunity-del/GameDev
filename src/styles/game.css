@@ -873,12 +873,22 @@ input{font-family:inherit}
 /* v2.3.1524: the cap is the COLUMN's width, not the viewport's. The pedestal
    is height-driven and ~0.99xH wide, so a stage taller than its column is
    wide clips the platform's edges. */
-.bt-name-box.bt-cc-box>.bt-cc-stage{flex:1 1 auto;min-height:120px;max-height:min(var(--cc-leftw),420px);margin-block:auto}
+/* v2.3.1527: the cap also has to leave room for the 2x. On a wide desktop the
+   column is 360px, and 720px of pedestal reached down over the name field. */
+.bt-name-box.bt-cc-box>.bt-cc-stage{flex:1 1 auto;min-height:110px;max-height:min(var(--cc-leftw),34vh,420px);margin-block:auto}
 /* v2.3.1524: the hero cluster's margin-top:auto would put ALL the slack above
    the name field, leaving the character pinned to the top of a tall empty
    column. The stage's own auto margins split the slack instead, so it sits in
    the middle of the space between the title and the controls. */
 .bt-cc-col-left>.bt-cc-namewrap{margin-top:0}
+/* v2.3.1527: the bro is behind the PICKER, but he must not end up behind his
+   own controls either — at 2x he reaches down over them. Everything below the
+   stage in this column is lifted one layer so he passes behind it as well. */
+.bt-cc-col-left>.bt-cc-namewrap,
+.bt-cc-col-left>.bt-cc-actions,
+.bt-cc-col-left>.bt-cc-play,
+.bt-cc-col-left>.bt-cc-login,
+.bt-cc-col-left>div:last-child{position:relative;z-index:1}
 /* v2.3.803: menu goes ROW — vertical tab rail left, drawer right
    (owner: tabs span down vertically, the container expands to the
    right).
@@ -1087,7 +1097,7 @@ input{font-family:inherit}
 .bt-cc-logo-wrap{position:relative;z-index:3;pointer-events:none}
 /* v2.3.1251: ~22% smaller (approved mockup) — 32vw/150 → 25vw/117.  The
    sword + shines are wrap-relative %, so they track the new size. */
-.bt-cc-logo{position:relative;z-index:1;width:min(34vw,168px);height:auto;display:block;pointer-events:none}
+.bt-cc-logo{position:relative;z-index:1;width:min(var(--cc-leftw),168px);height:auto;display:block;pointer-events:none}
 .bt-cc-logo-sword{position:absolute;left:63.5%;top:19%;height:115%;width:auto;pointer-events:none;filter:drop-shadow(0 2px 5px rgba(0,0,0,.55))}
 @media (max-height:720px){
   .bt-cc-logo{width:min(20vw,94px)}
@@ -1308,12 +1318,35 @@ input{font-family:inherit}
    pane's shape, and nothing in it can ever move the character — the same
    constant-size guarantee v2.3.1252/1253 fought for, now for free, because
    the two columns are siblings rather than stacked. */
-.bt-cc-shell{position:relative;z-index:2;display:flex;flex-direction:column;gap:8px;width:100%;flex:1 1 auto;min-height:0;max-width:900px;margin:0 auto}
-.bt-cc-title{flex:0 0 auto;display:flex;align-items:center;justify-content:center;min-height:0;padding-bottom:calc(min(34vw,168px)*0.20)}
+.bt-cc-shell{position:relative;z-index:2;display:flex;flex-direction:column;width:100%;flex:1 1 auto;min-height:0;max-width:900px;margin:0 auto}
+/* v2.3.1527: the logo lives in the CHARACTER column now, not across the top. */
+.bt-cc-title{flex:0 0 auto;display:flex;align-items:center;justify-content:center;min-height:0;padding-bottom:calc(var(--cc-leftw)*0.16)}
 .bt-cc-cols{flex:1 1 auto;min-height:0;display:flex;flex-direction:row;align-items:stretch;gap:8px}
 /* Left column. The doubled class outranks .bt-name-box's max-width, same
    trick .bt-cc-box already uses. */
-.bt-name-box.bt-cc-box.bt-cc-col-left{flex:0 0 var(--cc-leftw);width:var(--cc-leftw);max-width:none;min-width:0;margin:0;padding:0;gap:6px}
+.bt-name-box.bt-cc-box.bt-cc-col-left{flex:0 0 var(--cc-leftw);width:var(--cc-leftw);max-width:none;min-width:0;margin:0;padding:0;gap:6px;overflow:visible;z-index:0}
+/* v2.3.1527: the bro doubles in size (owner) and is allowed to spill out of
+   his column, so the pedestal reads at a size worth looking at instead of
+   being squeezed into a third of the screen. He is scaled about his own
+   centre, so the layout box does not move and the controls under him stay
+   exactly where they were; the overflow is paint only.
+   The picker pane sits on a higher layer, so where the two meet the picker
+   wins and the bro passes behind it. */
+.bt-cc-col-left>.bt-cc-stage{transform:translateX(7%) scale(2);transform-origin:50% 50%;pointer-events:auto}
+/* The rotate circles ride inside the stage, so the 2x doubled both their size
+   AND their distance from its centre — they ended up half off the screen. They
+   are pulled in and counter-scaled, which lands them back on the pedestal at
+   the size they were. */
+/* The stage is forced SQUARE here so one percentage can place them on both a
+   phone and a desktop. The pedestal is height-driven and ~0.99x as wide as the
+   stage is tall, so on a square stage it always fills the same fraction of the
+   width — on a 360x238 desktop stage it filled two thirds, and any left/right
+   that sat on the pedestal there sat on the character's chest on a phone. */
+.bt-cc-col-left>.bt-cc-stage{aspect-ratio:1/1;max-width:100%;margin-inline:auto}
+.bt-cc-col-left .bt-cc-rot{transform:scale(.5);z-index:2;bottom:27%}
+.bt-cc-col-left .bt-cc-rot--l{left:22%}
+.bt-cc-col-left .bt-cc-rot--r{right:22%}
+.bt-cc-cols{overflow:visible}
 /* Right column — the picker pane. */
 /* v2.3.1524: rotate circles size off the character column instead of a fixed
    50px. At 320-class widths the column is ~130px and two fixed circles left
@@ -1322,7 +1355,8 @@ input{font-family:inherit}
 .bt-cc-rot--l{left:0}
 .bt-cc-rot--r{right:0}
 .bt-cc-rot img{width:64%;height:64%;object-fit:contain;pointer-events:none}
-.bt-cc-panel{flex:1 1 auto;min-width:0;min-height:0;display:flex;flex-direction:column;gap:7px;padding:8px;background:var(--ui-sheet);border:1px solid var(--ui-line-strong);border-radius:14px;box-shadow:0 2px 10px rgba(3,8,12,.28);box-sizing:border-box;overflow:hidden}
+.bt-cc-panel{position:relative;z-index:1;flex:1 1 auto;min-width:0;min-height:0;display:flex;flex-direction:column;gap:7px;padding:8px;background:var(--ui-sheet);border:1px solid var(--ui-line-strong);border-radius:14px;box-shadow:0 2px 10px rgba(3,8,12,.28);box-sizing:border-box;overflow:hidden}
+.bt-cc-panel-title{flex:0 0 auto;margin:0;padding:1px 2px 3px;font-family:'Source Sans 3',sans-serif;font-size:clamp(11px,3vw,14px);font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--ui-text-secondary);text-align:center}
 /* v2.3.1272: the two creator media blocks moved BELOW every base rule
    they override — they sat earlier in the file, so equal-specificity
    base declarations silently won and the 690/359 fallbacks were dead

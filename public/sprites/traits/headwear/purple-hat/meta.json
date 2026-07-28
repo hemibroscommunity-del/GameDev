@@ -1,7 +1,7 @@
 {
   "category": "headwear",
   "fullFrame": true,
-  "note": "Directional hat. All 5 base dirs from per-angle art (IMG_8786=S,8791=N,8789=E,8793=NW->NE flip,8785=SW). Snapback gap above the back snaps keyed transparent (bald head shows through).",
+  "note": "Directional hat. All 5 base dirs from per-angle art (IMG_8786=S,8791=N,8789=E,8793=NW->NE flip,8785=SW). Snapback gap above the back snaps keyed transparent (bald head shows through). v2.3.1527: hair-clip mask rebuilt from the current art by tools/make_hairmask.py.",
   "anchors": {
     "southwest": [
       126,

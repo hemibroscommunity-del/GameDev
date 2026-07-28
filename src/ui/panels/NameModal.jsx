@@ -337,6 +337,16 @@ export function NameModal(props) {
        of this screen, so it gets the room instead of a button that hides it. */
     className: "bt-cc-shell"
   }, /*#__PURE__*/React.createElement("div", {
+    className: "bt-cc-cols"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "bt-name-box bt-cc-box bt-cc-col-left",
+    /* v2.3.1307: keyboard reservation — the column gives up its bottom to the
+       iOS keyboard so the name field + hint stay visible. */
+    style: kbPad ? { paddingBottom: kbPad } : undefined
+  }, /*#__PURE__*/React.createElement("div", {
+    /* v2.3.1527: the logo sits over the CHARACTER column now (owner) rather
+       than spanning the whole screen — it belongs with the bro, and the space
+       it was taking across the top is space the picker can have. */
     className: "bt-cc-title"
   }, /*#__PURE__*/React.createElement("div", {
     /* v2.3.801: painted gold BRO TOWN lettering.  v2.3.806: gem sword
@@ -351,14 +361,7 @@ export function NameModal(props) {
     src: '/ui/welcome/logo-brotown.webp', alt: 'BRO TOWN', className: "bt-cc-logo"
   }), /*#__PURE__*/React.createElement("div", {
     className: "bt-cc-logo-shine", "aria-hidden": true
-  }))), /*#__PURE__*/React.createElement("div", {
-    className: "bt-cc-cols"
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "bt-name-box bt-cc-box bt-cc-col-left",
-    /* v2.3.1307: keyboard reservation — the box gives up its bottom to
-       the iOS keyboard so the name field + hint stay visible. */
-    style: kbPad ? { paddingBottom: kbPad } : undefined
-  }, /*#__PURE__*/React.createElement("section", {
+  }))), /*#__PURE__*/React.createElement("section", {
     /* Character SHOWCASE — the character is the star; flex-driven height
        (see .bt-cc-stage in game.css).  The pedestal group / braziers /
        canvas geometry is the v2.3.799-802 system, untouched except the
@@ -610,7 +613,11 @@ export function NameModal(props) {
        to the bottom of the screen. The tap-to-close scrim and the Done button
        go with the drawer — there is nothing left to dismiss. */
     className: "bt-cc-panel"
-  }, /*#__PURE__*/React.createElement("nav", {
+  }, /*#__PURE__*/React.createElement("h2", {
+    /* v2.3.1527: the pane says what it is (owner). It used to be introduced by
+       a "Customize Appearance" button; without that button it arrived unlabelled. */
+    className: "bt-cc-panel-title"
+  }, "Trait Picker"), /*#__PURE__*/React.createElement("nav", {
     className: "bt-cc-tabs", role: 'tablist', "aria-label": 'Appearance category'
   }, _TABS.map(function (x) {
     var on = x.t === _activeType;

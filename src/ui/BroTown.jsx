@@ -1530,7 +1530,12 @@ export var BroTown = function BroTown(_ref0) {
        tile made everything look selected — unselected tiles drop to a
        thin muted slate line; only the pick carries the 2px brass ring
        (+ the painted check badge below). */
-    return { width: size, height: size, flex: '0 0 auto', padding: 2, cursor: 'pointer', boxSizing: 'border-box',
+    /* v2.3.1527: a consistent inset on every tile (owner).  The art inside is
+       object-fit: contain, so a wide hat used to run edge to edge while a
+       narrow one floated in the middle — the tiles read as different sizes.
+       Padding is a share of the tile, not a fixed 2px, so the inset stays
+       proportional as --cc-tile changes with the viewport. */
+    return { width: size, height: size, flex: '0 0 auto', padding: '9%', cursor: 'pointer', boxSizing: 'border-box',
       position: 'relative', borderRadius: 8,
       background: 'linear-gradient(180deg,#f4f5f8,#cdd2dc)',
       border: sel ? '2px solid #D8AA58' : '1px solid rgba(238,242,235,.28)',

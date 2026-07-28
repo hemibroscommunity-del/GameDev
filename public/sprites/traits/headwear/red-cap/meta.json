@@ -1,7 +1,7 @@
 {
   "category": "headwear",
   "fullFrame": true,
-  "note": "Red baseball cap. Sources S=IMG_8904, SW=D7E08C71 (black hat-hole keyed out), N=IMG_8918. East built from West=IMG_8907 flipped (black string under brim removed first); northeast from Northwest=4FDF1D69 flipped (renderer mirrors E/NE back to W/NW). 1024 sources padded to 1254 before downscale for consistent scale. crownNudge/scale start at defaults -- tune per direction after on-device review.",
+  "note": "Red baseball cap. Sources S=IMG_8904, SW=D7E08C71 (black hat-hole keyed out), N=IMG_8918. East built from West=IMG_8907 flipped (black string under brim removed first); northeast from Northwest=4FDF1D69 flipped (renderer mirrors E/NE back to W/NW). 1024 sources padded to 1254 before downscale for consistent scale. crownNudge/scale start at defaults -- tune per direction after on-device review. v2.3.1527: hair-clip mask rebuilt from the current art by tools/make_hairmask.py.",
   "bboxes_source": {
     "south": [
       509,
