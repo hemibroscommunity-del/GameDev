@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""v2.3.1529: rebuild a hat's hair-clip mask from the hat it actually is now.
+"""v2.3.1532: rebuild a hat's hair-clip mask from the hat it actually is now.
 
 What a hairmask is for
 ----------------------
@@ -38,6 +38,8 @@ Run from the repo root:
     python3 tools/make_hairmask.py --all-with-masks [--apply]
     python3 tools/make_hairmask.py --ids beanie,top-hat --apply
     [--set-clips]   also switch clipsHair on (default when --apply)
+
+v2.3.1532: a hat that does not COVER the crown is REFUSED -- see bald_px().
 """
 import argparse
 import json
@@ -47,7 +49,74 @@ from PIL import Image
 
 DIRS = ['south', 'southwest', 'east', 'northeast', 'north']
 HEADWEAR = 'public/sprites/traits/headwear'
+BODY = 'public/sprites/player/stand-{dir}.png'
+BODY_TOPS = 'public/sprites/player/body-tops.json'
 ALPHA_T = 16
+FRAME = 256
+SKULL_ROWS = 26      # 256-space rows below the crown that count as scalp
+BALD_T = 150         # exposed scalp px above which a hat must NOT clip hair
+
+
+def _load256(p):
+    im = Image.open(p).convert('RGBA')
+    if im.width != FRAME:
+        im = im.resize((FRAME, round(im.height * FRAME / im.width)), Image.NEAREST)
+    return np.array(im)
+
+
+def _place(art, meta, d, tops):
+    """Where _placeTrait puts this frame on the standing body, in the 256 frame."""
+    a = meta['anchors'][d]
+    n = meta.get('crownNudge', {}).get(d, [0, 0])
+    sc = meta.get('scale', {}).get(d, 1)
+    if sc != 1:
+        art = np.array(Image.fromarray(art).resize((max(1, round(FRAME * sc)),) * 2, Image.NEAREST))
+        a = [a[0] * sc, a[1] * sc]
+        n = [n[0] * sc, n[1] * sc]
+    bx, by = tops[f'stand-{d}-0']
+    dx, dy = round(bx - (a[0] - n[0])), round(by - (a[1] - n[1]))
+    out = np.zeros((FRAME, FRAME, 4), np.uint8)
+    hh, hw = art.shape[:2]
+    ys, xs = slice(max(0, dy), min(FRAME, hh + dy)), slice(max(0, dx), min(FRAME, hw + dx))
+    sy, sx = slice(max(0, -dy), min(hh, FRAME - dy)), slice(max(0, -dx), min(hw, FRAME - dx))
+    out[ys, xs] = art[sy, sx]
+    return out
+
+
+def bald_px(hid, meta, masks):
+    """Worst-case scalp left bare if this hat clips hair to `masks`.
+
+    v2.3.1532.  A mask cuts hair everywhere it is transparent, so a hat that
+    does not COVER the crown shaves it: the Naruto Headband, the Red Bandana
+    and the Blue Bandana are bands across the forehead, and clipping to them
+    left a bare skin dome above the band (owner report, all three measured
+    380-603px against 65px for the worst real cap).  Refuse to switch the flag
+    on for that shape rather than trust "it has a mask folder, so it must
+    cover the skull".
+    """
+    if not os.path.isfile(BODY_TOPS):
+        return 0, ''       # can't judge without the crown table; don't block
+    tops = json.load(open(BODY_TOPS))
+    worst, worst_d = 0, ''
+    for d, mask in masks.items():
+        if d not in meta.get('anchors', {}):
+            continue
+        hat = _place(_load256(f'{HEADWEAR}/{hid}/{d}.png'), meta, d, tops)
+        # the mask is built at the ART's native size (128 since v2.3.1526); the
+        # hat and body here are in the 256 frame the meta is expressed in, so it
+        # has to come up to 256 too or it lands at half size and reads as bald
+        if mask.shape[0] != FRAME:
+            mask = np.array(Image.fromarray(mask).resize((FRAME, FRAME), Image.NEAREST))
+        msk = _place(mask, meta, d, tops)
+        body = _load256(BODY.format(dir=d))
+        by = tops[f'stand-{d}-0'][1]
+        skull = body[:, :, 3] > ALPHA_T
+        skull[:by, :] = False
+        skull[by + SKULL_ROWS:, :] = False
+        n = int((skull & (msk[:, :, 3] <= ALPHA_T) & (hat[:, :, 3] <= ALPHA_T)).sum())
+        if n > worst:
+            worst, worst_d = n, d
+    return worst, worst_d
 
 
 def build(hid, apply_it, set_clips):
@@ -57,6 +126,7 @@ def build(hid, apply_it, set_clips):
         raise SystemExit(f'no hat called {hid}')
     meta = json.load(open(mp))
     made = []
+    masks = {}
     for d in DIRS:
         p = f'{root}/{d}.png'
         if not os.path.isfile(p):
@@ -74,13 +144,19 @@ def build(hid, apply_it, set_clips):
             if len(col):
                 mask[col.min():, x] = (255, 255, 255, 255)
         made.append((d, int(m.sum()), int((mask[:, :, 3] > 0).sum()), w))
+        masks[d] = mask
         if apply_it:
             os.makedirs(f'{root}/hairmask', exist_ok=True)
             Image.fromarray(mask).save(f'{root}/hairmask/{d}.png')
     was = bool(meta.get('clipsHair'))
+    bald, bald_d = bald_px(hid, meta, masks) if masks else (0, '')
+    if bald >= BALD_T:
+        set_clips = False
+        print(f'  {hid:<20} REFUSING to clip: leaves {bald}px of bare scalp on {bald_d} '
+              f'(limit {BALD_T}) -- this is a band, not a cap; clipping would shave the crown')
     if apply_it and set_clips:
         meta['clipsHair'] = True
-        meta['note'] = (meta.get('note', '') + ' v2.3.1529: hair-clip mask rebuilt from '
+        meta['note'] = (meta.get('note', '') + ' v2.3.1532: hair-clip mask rebuilt from '
                         'the current art by tools/make_hairmask.py'
                         + ('' if was else ', and clipsHair switched on') + '.')
         with open(mp, 'w') as fh:

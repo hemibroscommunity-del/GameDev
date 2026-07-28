@@ -179,7 +179,7 @@ const TRAIT_NFT_ID = 'test-1';
 /* v2.3.708: bumped for the regenerated NE jog body-tops/body-anchors. */
 /* v2.3.1394: bumped — bandana gains hairmask/*.png + clipsHair in meta.json
    (owner: hair not clipped under the bandana on NE/NW). */
-const TRAIT_VER = '2.3.1531';
+const TRAIT_VER = '2.3.1532';
 
 /* v2.3.377: the on-back (sheathed) shield render is purely cosmetic and was
    a persistent source of per-facing z-order issues vs the body/arms/weapon/
@@ -2051,11 +2051,24 @@ function _placeStandaloneTrait(sprite, entry, dir, mirror, cwx, cwy, scaleVal) {
   const nudge = _pick(meta.crownNudge) || [0, 0];
   const dscale = (_pick(meta.scale) || 1);
   const m = mirror ? -1 : 1;
-  sprite.anchor.set(anchorPx[0] / tex.width, anchorPx[1] / tex.height);
+  /* v2.3.1532: the SAME 256-space normalisation _placeTrait got in v2.3.1526,
+     which this second placement path was missed by.  meta.anchors is in the
+     256 frame the art was authored in; trait art is stored at 128 now.  The
+     old line divided by the TEXTURE's width, so a 128 texture doubled the
+     anchor fraction — the pivot ran off the end of the sprite and the trait
+     flew off the head at half size on every stand-in pose (owner: "during the
+     attack animations for bow and sword the head customization flies off the
+     head" — the sword-swing and bow-shot stand-ins composite through here, as
+     do chop / cook / firemaking).  Divide by the 256 frame and multiply the
+     draw scale by 256/texWidth, so a trait still stored at 256 gets norm=1
+     and is untouched. */
+  const W = 256;
+  const norm = W / (tex.width || W);
+  sprite.anchor.set(anchorPx[0] / W, anchorPx[1] / W);
   sprite.x = cwx + nudge[0] * scaleVal * m;
   sprite.y = cwy + nudge[1] * scaleVal;
-  sprite.scale.x = m * scaleVal * dscale;
-  sprite.scale.y = scaleVal * dscale;
+  sprite.scale.x = m * scaleVal * dscale * norm;
+  sprite.scale.y = scaleVal * dscale * norm;
   sprite.visible = true;
 }
 

@@ -165,3 +165,35 @@ unreviewed field is dropped instead of trusted. **Receipt:** v2.3.1465 —
 `TRACK_COSMETIC_KEYS` / `TRACK_STATE_EXCLUDED` in `server/src/index.js`,
 handoff rule 16, `anticheat.test.mjs` §7, WIRE-PROTOCOL "track is
 cosmetics-only".
+
+## 14. Switching `clipsHair` on because a hat has a mask folder
+
+**Tempting:** `make_hairmask.py --all-with-masks` treats the presence of a
+`hairmask/` folder as the record that a hat was judged to cover the skull,
+so rebuilding every mask and setting the flag looks like a pure no-op
+cleanup. **Wrong:** a mask CUTS hair everywhere it is transparent, so the
+flag is only safe on a hat that actually covers the crown. The Naruto
+Headband, Red Bandana and Blue Bandana are bands across the forehead —
+clipping to them left a bare skin dome above the band (owner: "on some
+angles the hair is bald"). Measured exposed scalp: 603 / 393 / 380px,
+against 65px for the worst real cap, so the shapes separate cleanly.
+**Receipt:** v2.3.1532 — `bald_px()` in `tools/make_hairmask.py` now
+REFUSES to set the flag above `BALD_T`, and those three ship
+`clipsHair: false` with their mask folders DELETED (a folder left behind
+is exactly what `--all-with-masks` would use to turn it back on).
+
+## 15. Changing stored art size without auditing every placement path
+
+**Tempting:** `_placeTrait` normalises by texture size (v2.3.1526), so
+halving trait art to 128 is transparent to the renderer. **Wrong:** there
+are TWO placement paths. `_placeStandaloneTrait` — the one that composites
+hat/hair/beard onto the pre-drawn stand-in bodies for sword swing, bow
+shot, chopping, cooking and firemaking — divided the anchor by the
+TEXTURE's own width, so a 128 texture doubled the anchor fraction: the
+pivot ran off the end of the sprite and the trait flew off the head at
+half size (owner: "during the attack animations for bow and sword the head
+customization flies off the head"). It shipped green because nothing on
+the login screen or the idle/jog body goes through that path.
+**Receipt:** v2.3.1532 — the same `W = 256` / `norm = W / tex.width`
+normalisation, and `grep -n 'anchor.set('` over `src/rendering/` as the
+audit that finds every path at once.
