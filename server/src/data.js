@@ -319,7 +319,7 @@ export const ZONES = {
        * (fast + squishy); the other 7 take the zone default mossSlime.
        * MIRROR of src/data/zones.js verdant.spawns -- zones.test.mjs compares
        * these two arrays with JSON equality, so they move together. */
-      verdant: { w:32, h:32, level:[1,2], element:null,    secondary:null,    lawless:true, spawns:[{arch:'fodder',count:7},{arch:'fodder',count:1,variant:'blueSlime'}] }, /* band: [22,40] */
+      verdant: { w:32, h:32, level:[1,2], element:'flora',  secondary:'venom',    lawless:true, spawns:[{arch:'fodder',count:7},{arch:'fodder',count:1,variant:'blueSlime'}] }, /* band: [22,40] */
       frost:   { w:32, h:32, level:[1,2],  element:'frost', secondary:'storm', lawless:true, spawns:[{arch:'snowman',count:4}] },        /* band: [8,25] */
       thunder: { w:32, h:32, level:[1,2], element:'storm', secondary:'flame', lawless:true, spawns:[{arch:'fodder',count:6}] },          /* band: [55,80] */
       hollows: { w:32, h:32, level:[1,2], element:'stone', secondary:'venom', lawless:true, spawns:[{arch:'brute',count:4}] },           /* band: [38,58] */

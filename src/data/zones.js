@@ -82,8 +82,14 @@ export const ZONES = {
     id: 'verdant', name: 'Verdant Wilds', w: 32, h: 32,
     /* v2.3.856: new Flora spoke (band 2). element:null for now -- a real
        Flora element + sprite-backed monsters are a follow-up; reachable and
-       walkable as a zone today. */
-    element: null, secondary: null, level: [1, 2] /* band: [22,40] */, music: 'meadow', safe: false,
+       walkable as a zone today.
+       v2.3.1571 (owner: "add it to verdant wilds"): the follow-up landed.
+       Flora exists as of v2.3.1569, so the Flora spoke finally carries its
+       own element -- which is what makes Flora weapons droppable and the
+       nine Flora collisions reachable in play.  Secondary is venom: the
+       zone's own monsters are moss slimes and thorn shamblers, and venom
+       is the element Flora beats on the wheel. */
+    element: 'flora', secondary: 'venom', level: [1, 2] /* band: [22,40] */, music: 'meadow', safe: false,
     palette: { ground: '#3d7a2e', path: '#7a6a45', accent: '#6abf4f' },
     /* v2.3.1147: populated (was empty) -- tinted reskins: fodder->
        mossSlime green slime, brute->thornShambler mossy rockmonster.
