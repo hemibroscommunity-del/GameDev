@@ -29,11 +29,43 @@ helmet cannot come back -- the torso sheet has no helmet in it to restore.
 
 north loses 77px/frame to the cut, southwest 52, east 56, south 40.
 
-EAST IS SKIPPED by default: its fullset plays 25 frames against the chest
-sheet's 28 (the same re-cadencing rebuild_east_head_track.py deals with), so
-frame i is not the same pose in both and a union would smear two poses
-together.  Pass --east to map it through the cadence rule anyway, but check the
-result frame by frame first.
+EAST (v2.3.1548) -- owner: "you have the original jog east torso armor sprites
+still.  Retrieve it" ... "what if you took out the 3 frames from the torso
+sheet?"
+
+Both were right, and it took three wrong answers to find the correspondence
+that makes them work.
+
+East's fullset plays 25 frames against a 28-frame chest sheet, so the first
+attempt (v2.3.1546, reverted) paired them with the cycle-phase formula, and the
+second scored each pairing by "how much of the torso plate lands inside the
+fullset".  That score is meaningless here: the chest plate is a small piece and
+the fullset is a whole figure, so a small plate scores ~1.00 against ANY frame
+it fits inside.  Rendered side by side, the "matches" were unrelated poses.
+
+The correspondence has to be measured against something both sheets are
+registered to, and that is the BODY.  The chest sheet sits inside its own body
+frame at 0.94, index for index.  The fullset is the same figure at the same
+scale, just headless -- its bbox is 63px tall against the body's 84, and 84-63
+is 21, exactly the east head height.  So matching the fullset's silhouette to
+the head-stripped body's, frame against frame, gives the real answer:
+
+    fullset 0..13  ->  body 0..13, one to one
+    fullset 14..24 ->  body 0..13 WITH THREE FRAMES DROPPED (3, 10, 13)
+
+which is the owner's "take out the 3 frames", found rather than assumed.  The
+chest sheet is 14 unique frames doubled to 28, so chest frame j is the plate
+for body frame j and the map above reaches all of it.  Mean silhouette
+agreement 0.94 (worst 0.88) at a constant (0,+2) offset, against 0.93-0.97 for
+the three directions that restored cleanly.
+
+Even on the right map the additions include the chest sheet's sleeve edges,
+where the two arms differ by a pixel or two, so east stays BAND-LIMITED to
+EAST_BAND rows below the figure's own top edge -- the pauldron cap, which is
+what was razored.  177px over 15 frames.
+
+HONEST SCOPE: 38 of those 177px are visible in play; the head overlay covers
+the rest.  That is also why east never read as broken as north did.
 
 Run from the repo root:
     python3 tools/restore_fullset_pauldrons.py
@@ -48,7 +80,50 @@ FW = 128
 CHEST = 'public/sprites/gear/chest/steelplate/jog-{dir}.png'
 FULL = 'public/sprites/gear/fullset/steel/jog-{dir}.png'
 ALPHA_T = 16
-DIRS = ['south', 'southwest', 'north']
+DIRS = ['south', 'southwest', 'north', 'east']
+# v2.3.1548: derived, not assumed -- see the module docstring.  fullset frame i
+# takes its plate from chest frame EAST_MAP[i]; the second lap is the same cycle
+# with frames 3, 10 and 13 dropped.
+EAST_MAP = list(range(14)) + [0, 1, 2, 4, 5, 6, 7, 8, 9, 11, 12]
+EAST_OFF = (0, 2)   # constant offset that maximises silhouette agreement
+EAST_BAND = 8       # rows below the figure's top edge that count as the cap
+
+
+def _shift(a, dx, dy):
+    o = np.zeros_like(a)
+    h, w = a.shape[:2]
+    o[max(0, dy):min(h, h + dy), max(0, dx):min(w, w + dx)] = \
+        a[max(0, -dy):min(h, h - dy), max(0, -dx):min(w, w - dx)]
+    return o
+
+
+def restore_east(apply_it):
+    c = np.array(Image.open(CHEST.format(dir='east')).convert('RGBA'))
+    f = np.array(Image.open(FULL.format(dir='east')).convert('RGBA'))
+    dx, dy = EAST_OFF
+    add_total = frames = 0
+    ins = []
+    for i, j in enumerate(EAST_MAP):
+        sl = slice(i * FW, (i + 1) * FW)
+        fm = f[:, sl, 3] > ALPHA_T
+        ys = np.nonzero(fm.any(axis=1))[0]
+        if not len(ys):
+            continue
+        cf = _shift(c[:, j * FW:(j + 1) * FW], dx, dy)
+        cm = cf[:, :, 3] > ALPHA_T
+        ins.append((cm & fm).sum() / max(1, cm.sum()))
+        add = cm & ~fm
+        add[ys[0] + EAST_BAND:] = False          # the pauldron cap only
+        if add.any():
+            frames += 1
+        add_total += int(add.sum())
+        if apply_it:
+            f[:, sl][add] = cf[add]
+    if apply_it:
+        Image.fromarray(f).save(FULL.format(dir='east'))
+    print(f'  {"east":<11} silhouette agreement {np.mean(ins):.2f} (worst {min(ins):.2f}) '
+          f'at offset {EAST_OFF}, +{add_total} px over {frames}/{len(EAST_MAP)} frame(s) '
+          f'in the top {EAST_BAND} rows {"applied" if apply_it else "(dry run)"}')
 
 
 def restore(d, apply_it):
@@ -60,7 +135,8 @@ def restore(d, apply_it):
     f = np.array(Image.open(fp).convert('RGBA'))
     cn, fn = c.shape[1] // FW, f.shape[1] // FW
     if cn != fn:
-        print(f'  {d:<11} SKIPPED — {cn} torso frames vs {fn} fullset frames (re-timed)')
+        restore_east(apply_it) if d == 'east' else print(
+            f'  {d:<11} SKIPPED — {cn} torso frames vs {fn} fullset frames (re-timed)')
         return
     cm, fm = c[:, :, 3] > ALPHA_T, f[:, :, 3] > ALPHA_T
     inside = (cm & fm).sum() / max(1, cm.sum())
