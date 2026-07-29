@@ -1329,13 +1329,22 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
      To restore a track, re-add `<zoneId>: '/audio/music/<file>.mp3'` AND
      ship the file back into public/audio/music/. */
   ZONE_MUSIC: {},
-  /* v2.3.1577: the session track.  96 kbps CBR, 44.1 kHz stereo, 3.0 MB for
-     4m23s — 48% off the 5.76 MB source, chosen with the download budget in
-     mind (v2.3.1103 stripped ~40 MB of music for exactly that reason).
-     MP3 rather than the smaller AAC: decodeAudioData REFUSED the m4a in a
-     real browser check while the mp3 decoded cleanly, and this whole path is
-     decodeAudioData. */
-  GLOBAL_MUSIC: '/audio/music/neondrift.mp3',
+  /* v2.3.1578: the session track — starts at the login screen and plays for
+     the whole session (the owner picked this over v2.3.1577's neondrift,
+     which is removed rather than left to ship 3 MB nobody plays).
+
+     128 kbps CBR, 44.1 kHz stereo, 1.56 MB for 1m42s — 36% off the 2.43 MB
+     source.  A HIGHER bitrate than neondrift got, deliberately: this track is
+     far brighter (energy above 15 kHz measures -40.3 dB against neondrift's
+     -55.3), so the same 96 kbps cost 3.0 dB up there instead of 1.8, and the
+     file is small enough that the 0.4 MB saved was not worth an audible
+     trade.  80 kbps falls off a cliff (-6.5 dB) — do not go there for this
+     one.
+
+     MP3 rather than the smaller AAC: decodeAudioData REFUSED the m4a
+     candidates in a real browser check while the mp3 decoded cleanly, and
+     this whole path is decodeAudioData. */
+  GLOBAL_MUSIC: '/audio/music/login-theme.mp3',
   GLOBAL_MUSIC_VOL: 0.22,
   init: function init() {
     if (this.ctx) return;
