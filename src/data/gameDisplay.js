@@ -1334,7 +1334,15 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
     worldview: '/audio/music/world.mp3',
     frost: '/audio/music/frost.mp3',
     ember: '/audio/music/fire.mp3',   /* "fire zone" = Flame Fields */
+    sky: '/audio/music/desert.mp3',   /* "desert zone" = Wind Dunes; zones.js:44
+                                         calls it desert(sky) and its palette is
+                                         the v2.3.855 warm desert one */
   },
+  /* NOTE for whoever adds the remaining zones: every ZONES entry also carries a
+     `music: '<id>'` field.  It is read NOWHERE — dead early-design remnant, all
+     14 of them.  Do NOT "restore" it by wiring this map through it (the doc-trust
+     rule in CLAUDE.md: dormant systems need the owner first).  Keyed by zone id
+     here is the working path. */
   /* v2.3.1578: the session track — starts at the login screen and plays for
      the whole session (the owner picked this over v2.3.1577's neondrift,
      which is removed rather than left to ship 3 MB nobody plays).
@@ -1377,7 +1385,19 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
      than by luck — the just-decoded and currently-playing track are never
      evicted, so an oversized score stays resident and simply drops everything
      else (covered by the checks in the v2.3.1584 commit).  Do not "fix" it by
-     raising ZONE_MUSIC_CACHE_MB: 56 is deliberately below two full tracks. */
+     raising ZONE_MUSIC_CACHE_MB: 56 is deliberately below two full tracks.
+     v2.3.1585: sky (the "desert zone", Wind Dunes) gets desert.mp3 — 128 kbps,
+     3.23 MB for 3m32s off a 4.96 MB 196 kbps source.
+     FIRST TRACK TO EXCEED THE BUDGET, as v2.3.1584 predicted one eventually
+     would: 3m32s decodes to 71.3 MB against the 56 MB cap.  Shipped as-is
+     because the over-budget path is designed, not accidental — it stays
+     resident alone, evicts the others, and is itself freed on leaving the zone
+     (all four verified with these real sizes).  Still the heaviest zone in the
+     game for resident audio, so if the iPhone ever complains about the desert
+     specifically, the lever is this track: MONO halves it to 35.6 MB (measured)
+     and costs nothing in download — at 96k, LAME's joint stereo already
+     collapses so much that the mono file is byte-for-byte the same size — or a
+     shorter loop. NOT a bigger budget. */
   GLOBAL_MUSIC: '/audio/music/login-theme.mp3',
   GLOBAL_MUSIC_VOL: 0.22,
   /* v2.3.1582: the decoded-buffer cache is BUDGETED, not unbounded.
