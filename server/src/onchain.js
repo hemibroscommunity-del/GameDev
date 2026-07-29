@@ -34,12 +34,20 @@
  * test without touching the real collection.
  *
  * NOTE: HEMI_BROS is the collection the owner supplied.  It could not be
- * verified from the build sandbox (its network policy denies both the Hemi
- * RPC and the block explorers), and the address is not publicly indexed, so
- * `chainSelfTest()` below exists to confirm it on a live deploy. */
+ * verified from the build sandbox (its network policy denies every Hemi host
+ * — RPC, docs and explorer all answer 403 at the gateway) and the address is
+ * not publicly indexed.  Two ways to confirm it for real:
+ *   - explorer.hemi.xyz/address/0xEAB71F90235E6b885C05aFFF3BAF0E41244cf874
+ *   - `chainSelfTest(<a minted id>)` below, from a deployed Worker.
+ * Until then ERC-721 is an ASSUMPTION.  It is a safe one to hold: if the
+ * collection is ERC-1155 instead, ownerOf reverts and verification fails
+ * CLOSED — nobody is granted a badge they did not earn. */
+/* Confirmed against docs.hemi.xyz/discover/network-details (owner screenshot,
+   2026-07-29): chain 43111, this RPC, ETH as the gas token. */
 export const CHAIN = {
   id: 43111,
   rpc: 'https://rpc.hemi.network/rpc',
+  explorer: 'https://explorer.hemi.xyz',
   name: 'Hemi',
 };
 export const HEMI_BROS = '0xeab71f90235e6b885c05afff3baf0e41244cf874';
