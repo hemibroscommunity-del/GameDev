@@ -18,7 +18,26 @@ import { lookupCollision, PVP_THREAT_CONSENT_MS } from '@/data/gameSystems.js';
 import { getFrame, resolveDirection, cycleMs, hasPose, frameCount as playerFrameCount, dodgeSheetDir } from '../playerSprites.js';
 import { getShieldFrame } from '../shieldSprites.js';
 import { jogWaistRow } from '../jogWaist.js'; /* v2.3.1341: stable waist band */
-import { getFrame as getSlimeFrame, hasState as hasSlimeState, frameCount as slimeFrameCount } from '../slimeSprites.js';
+import { getFrame as getSlimeBaseFrame, hasState as hasSlimeState, frameCount as slimeFrameCount } from '../slimeSprites.js';
+import { getRecoloredFrame, hasRecoloredState } from '../monsterRecolor.js'; /* v2.3.1534; v2.3.1535 generalised */
+
+/* v2.3.1534: one place that decides whether a slime draws from the shared
+   sheet or from its variant's RECOLOURED copy.  A variant with `recolor` gets
+   the retinted texture and NO tint -- the pixels are already the right colour,
+   and multiplying them again by the fallback green would undo it.  Until the
+   recolour has finished building (or if it failed), both fall back to exactly
+   what shipped before: base sheet + multiplicative tint. */
+function getSlimeFrame(state, frameIdx, variant) {
+  if (variant && variant.recolor && hasRecoloredState(variant, state)) {
+    const t = getRecoloredFrame(variant, state, frameIdx);
+    if (t) return t;
+  }
+  return getSlimeBaseFrame(state, frameIdx);
+}
+function slimeTintFor(variant, state) {
+  if (variant && variant.recolor && hasRecoloredState(variant, state)) return 0xffffff;
+  return (variant && variant.tint) || 0xffffff;
+}
 import { getFrame as getSnowmanFrame, hasFrames as hasSnowmanFrames, frameCount as snowmanFrameCount, getHitFrame as getSnowmanHitFrame, hitFrameCount as snowmanHitFrameCount, getDeathFrame as getSnowmanDeathFrame, deathFrameCount as snowmanDeathFrameCount } from '../snowmanSprites.js';
 import { variantSpritesFor } from '../monsterVariantSprites.js';
 import { MONSTER_VARIANTS, maybeTransformMonster } from '../../data/monsterVariants.js';
@@ -178,8 +197,11 @@ function _hpFillTexFor(holder, frac) {
 const TRAIT_NFT_ID = 'test-1';
 /* v2.3.708: bumped for the regenerated NE jog body-tops/body-anchors. */
 /* v2.3.1394: bumped — bandana gains hairmask/*.png + clipsHair in meta.json
-   (owner: hair not clipped under the bandana on NE/NW). */
-const TRAIT_VER = '2.3.1532';
+   (owner: hair not clipped under the bandana on NE/NW).
+   v2.3.1561: bumped — halo gains floatsAboveHair in meta.json.  A meta-only
+   change still needs the bust, or a returning browser serves the cached
+   meta and the halo goes on placing itself flat on the hair. */
+const TRAIT_VER = '2.3.1561';
 
 /* v2.3.377: the on-back (sheathed) shield render is purely cosmetic and was
    a persistent source of per-facing z-order issues vs the body/arms/weapon/
@@ -455,6 +477,22 @@ const JOG_EW_HAT_TUNE = {
   'sombrero':          { mul: 1.20, dy: 6 }, /* v2.3.1355: owner round 3, up 1px */
   'bucket-hat':        { mul: 1.20, dy: 6 },
   'fedora':            { mul: 1.20, dy: 6 },
+  /* v2.3.1542 (owner: "jog east makes the wizard hat fly off the head").  The
+     hat is pinned by its OWN crown pixel, which for the wizard hat is the tip
+     of the cone -- meta.anchors.east is the bbox top-centre and crownNudge.east
+     is -37, by far the largest lift in the set (next is evil-crown at -30).
+     The blanket jog-east 0.67 then shrinks the whole hat ABOUT THAT TIP, so the
+     brim -- 47px below the anchor -- rises by a third of that span while the
+     tip stays put.  Measured against the standing placement the brim landed
+     ~15px high in 256-space, which on a tall pointed hat reads as the hat
+     hovering over a bald head.  Every un-dialled hat has this to some degree;
+     the wizard hat is the one where the geometry makes it obvious.
+     mul 1.40 is the same correction hair got in v2.3.1454 (1.40 x 0.67 = 0.938,
+     the MEASURED jog-east/stand-east head ratio, 44px vs 47px), and dy 3 pays
+     back the last ~2px, which is the part of the -37 lift that _placeTrait
+     applies unscaled while the head around it is 6% smaller.  Verified frame by
+     frame against the standing reference over the whole 28-frame cycle. */
+  'wizard-hat':        { mul: 1.40, dy: 3 },
 };
 /* v2.3.1354: IDLE (stand pose, every facing — a hat that reads small
    idling east reads small on every idle facing; per-dir splits would
@@ -468,6 +506,53 @@ function hatPoseTune(hatId, pose, dir) {
   if (pose === 'jog' && dir === 'east') return JOG_EW_HAT_TUNE[hatId] || null;
   if (pose === 'stand') return STAND_HAT_TUNE[hatId] || null;
   return null;
+}
+
+/* v2.3.1561 (owner: "make the halo appear higher above the player's head —
+   it looks like it's almost laying flat on the hair").
+
+   Every other hat is WORN: its crownNudge pins it a fixed distance from the
+   bare crown, which is right because a hat sits on the skull and the hair
+   tucks under it.  A halo is the one piece that is not worn — it floats —
+   and a fixed crown offset cannot float, because the hair between the crown
+   and the halo varies by 18px across the set (measured: slick-back tops out
+   5px above the crown, the afro 23px).  The halo's authored placement put
+   its underside 3px above the BARE crown, so on anything but the flattest
+   hair it was inside the hair; on the afro it was 14px inside it.
+
+   So a trait with `floatsAboveHair` in its meta gets an extra lift computed
+   against the hair actually being worn: park its underside at least
+   FLOAT_BASE above the bare crown AND at least FLOAT_GAP above the worn
+   hair's top, whichever is higher.  The lift is only ever upward (never a
+   drop), and a hat without the flag is untouched — this cannot move the
+   other 38 hats.
+
+   Both numbers are 256-space, like everything else in trait meta, so they
+   scale with the body the same way crownNudge does. */
+const FLOAT_BASE = 12;   /* clearance over a bare scalp */
+const FLOAT_GAP = 5;     /* clearance over the top of the worn hair */
+
+function _floatAboveHairLift(meta, hairId, pose, dir, mirror) {
+  if (!(meta && meta.floatsAboveHair)) return 0;
+  const screenDir = mirror ? (MIRROR_SCREEN_DIR[dir] || dir) : dir;
+  const pick = (o) => o && (o[screenDir] != null ? o[screenDir] : o[dir]);
+  const topOf = (m) => {
+    /* anchors are the art's own bbox top-centre, so crownNudge Y IS the
+       trait's top edge relative to the body crown (negative = above). */
+    const cn = pick(m.crownNudge) || [0, 0];
+    const pn = pick(m.poseNudge && m.poseNudge[pose]) || [0, 0];
+    return cn[1] + pn[1];
+  };
+  const bbox = pick(meta.bboxes) || null;
+  const bottom = topOf(meta) + ((bbox && bbox[3]) || 0);
+  /* Bare head reads as hairTop 0 (the crown itself).  The hair entry is
+     already cached — _placeHair loads it every frame — so this is a map
+     lookup, not a load. */
+  let hairTop = 0;
+  const hairEntry = (hairId && hairId !== 'none') ? _ensureHairLoaded(hairId) : null;
+  if (hairEntry && hairEntry.meta) hairTop = topOf(hairEntry.meta);
+  const target = Math.min(-FLOAT_BASE, hairTop - FLOAT_GAP);
+  return Math.min(0, target - bottom);
 }
 /* v2.3.1454 (owner: east jog "hair sits up too high and is too small on
    the head", reading as an oval head): the v2.3.1349 global 0.67 was a
@@ -520,6 +605,27 @@ const FULLSET_CROWN = {
 const FULLSET_HEAD_RES = {
   east: [0.0, -0.67, 0.22, -0.22, -0.67, -0.22, -0.67, -0.44, 0.22, -0.67, -0.89, 0.44, 0.0, 0.0, 0.0, 0.22, 0.67, 0.89, -0.67, 0.0, 0.44, 0.67, 0.67, 0.67, 0.67],
 };
+/* v2.3.1540: CONSTANT per-direction seat of the head overlay on the fullset,
+   in 256-space [dx, dy] (so 2 = one pixel of the 128px head sheet).  Distinct
+   from FULLSET_HEAD_RES above, which is a per-FRAME sub-pixel residual keeping
+   the head on the armour's smooth bob -- this is a fixed placement correction
+   for a direction whose head simply sits wrong on the plate.
+   Owner on the 3/4 front view: "southwest/southeast the head looks a little
+   receded inside the armor, like the head is a little too far back and
+   slightly under."  [-2,-2] is one sheet pixel forward (down-left is the
+   facing) and one up, chosen off a 3x3 grid of 0/-1/-2 on both axes: at -1,-1
+   the chin clears the collar cleanly, and by two sheet pixels a gap opens at
+   the side of the neck.
+   dx rides sb.scale.x, which carries the mirror sign, so SOUTHEAST -- drawn as
+   a mirrored southwest -- gets the correction mirrored for free, which is what
+   the owner asked for by naming both sides.
+   Jog-only in practice: _placePickupHead is gated on the fullset for jog, so an
+   unarmoured run is untouched.  tools/seal_jog_neck.py mirrors this table (in
+   SHEET px) so the neck seam is measured where the head LANDS. */
+const FULLSET_HEAD_SEAT = {
+  southwest: [-2, -2],
+};
+
 let _crownOverride = null;   // set around the trait placements when fullset is active
 function _fullsetCrown(dir, phase) {
   const t = FULLSET_CROWN[dir];
@@ -632,7 +738,10 @@ function _placeTrait(sprite, entry, display, pose, dir, mirror, frameIdx, bodySc
   headwear.x = bodyCrownX + (nudge[0] + poseN[0]) * absBodyScale * m;
   /* v2.3.1353: tune.dy is a SCREEN-pixel nudge (down-positive), applied
      unscaled so "10px down" means 10px on every device. */
-  headwear.y = bodyCrownY + (nudge[1] + poseN[1]) * absBodyScale + ((tune && tune.dy) || 0);
+  /* v2.3.1561: tune.dy256 is a 256-space lift (the float-above-hair
+     clearance), so it scales with the body — unlike tune.dy above. */
+  headwear.y = bodyCrownY + (nudge[1] + poseN[1] + ((tune && tune.dy256) || 0)) * absBodyScale
+    + ((tune && tune.dy) || 0);
   headwear.scale.x = m * absBodyScale * dscale * norm;
   headwear.scale.y = absBodyScale * dscale * norm;
   headwear.visible = true;
@@ -642,15 +751,20 @@ function _placeTrait(sprite, entry, display, pose, dir, mirror, frameIdx, bodySc
    they differ only in which sprite layer + trait cache they use.  A beard
    is just a trait whose meta.crownNudge Y drops it from the head crown
    down to the chin (the inverse of the top-hat's large negative lift). */
-function _placeHeadwear(display, hatId, hatColorId, pose, dir, mirror, frameIdx, bodyScale) {
+function _placeHeadwear(display, hatId, hatColorId, pose, dir, mirror, frameIdx, bodyScale, hairId) {
   const baseEntry = _ensureHeadwearLoaded(hatId);
   /* v2.3.394: retint solid hats to the selected color (recolored textures
      reuse the base meta; fall back to native color while they bake). */
   let entry = baseEntry;
   const colored = getColoredHatTextures(hatId, hatColorId);
   if (colored && baseEntry) entry = { tex: colored, meta: baseEntry.meta, fallbackTex: baseEntry.tex }; /* v2.3.1305 */
-  _placeTrait(display._headwearSprite, entry, display, pose, dir, mirror, frameIdx, bodyScale,
-    hatPoseTune(hatId, pose, dir)); /* v2.3.1353/1354 */
+  /* v2.3.1561: a floating trait (the halo) rides above the WORN HAIR, so
+     its lift depends on which hair is on the head this frame — merged into
+     the pose tune rather than baked into meta, which cannot know. */
+  let tune = hatPoseTune(hatId, pose, dir); /* v2.3.1353/1354 */
+  const lift = _floatAboveHairLift(entry && entry.meta, hairId, pose, dir, mirror);
+  if (lift) tune = { ...(tune || {}), dy256: lift };
+  _placeTrait(display._headwearSprite, entry, display, pose, dir, mirror, frameIdx, bodyScale, tune);
 }
 function _placeFacialHair(display, fhId, fhColorId, pose, dir, mirror, frameIdx, bodyScale) {
   const baseEntry = _ensureFacialHairLoaded(fhId);
@@ -1898,6 +2012,14 @@ function _placePickupHead(display, sb, skinId, pantsId, shoesId, pose, dir, fram
   if (!t) return;
   if (hd.texture !== t) hd.texture = t;
   hd.x = sb.x; hd.y = sb.y;
+  /* v2.3.1540: constant per-direction seat (see FULLSET_HEAD_SEAT).  256-space
+     -> world by the same sb.scale / DISPLAY_DS factor the residual below uses;
+     dx rides sb.scale.x so a mirrored side flips with it. */
+  const _seat = FULLSET_HEAD_SEAT[dir];
+  if (_seat && pose === 'jog') {
+    hd.x = sb.x + _seat[0] * sb.scale.x / DISPLAY_DS;
+    hd.y = sb.y + _seat[1] * sb.scale.y / DISPLAY_DS;
+  }
   /* v2.3.1455: sub-pixel seam correction — the fractional shift the
      baked head sheet can't carry (see FULLSET_HEAD_RES).  Same
      phase->frame mapping as getPickupHeadFrame/getGearFramePhased, so
@@ -1908,7 +2030,10 @@ function _placePickupHead(display, sb, skinId, pantsId, shoesId, pose, dir, fram
     if (_res && _res.length) {
       const _p = ((phase % 1) + 1) % 1;
       const _ri = Math.min(_res.length - 1, Math.floor(_p * _res.length));
-      hd.y = sb.y + _res[_ri] * sb.scale.y / DISPLAY_DS;
+      /* v2.3.1540: ADD to whatever the seat above set rather than overwrite.
+         No direction has both today, but a later seat on east would lose its
+         y silently otherwise. */
+      hd.y += _res[_ri] * sb.scale.y / DISPLAY_DS;
     }
   }
   /* v2.3.1117: the head sheet is baked DOWNSCALED to save VRAM, so its frame is
@@ -2052,7 +2177,7 @@ function _placeHair(display, hairId, hairColorId, hatId, pose, dir, mirror, fram
    stand-in's own transform), a scale, and the trait direction (south for the
    front-facing cook/fire, east for the side-facing chopper).  No 256-frame /
    spriteBody assumptions — placement is purely world-space. */
-function _placeStandaloneTrait(sprite, entry, dir, mirror, cwx, cwy, scaleVal) {
+function _placeStandaloneTrait(sprite, entry, dir, mirror, cwx, cwy, scaleVal, liftY) {
   if (!sprite) return;
   /* v2.3.1305: same native-color fallback as _placeTrait — see there. */
   const tex = entry && (entry.tex[dir] || (entry.fallbackTex && entry.fallbackTex[dir]));
@@ -2080,7 +2205,10 @@ function _placeStandaloneTrait(sprite, entry, dir, mirror, cwx, cwy, scaleVal) {
   const norm = W / (tex.width || W);
   sprite.anchor.set(anchorPx[0] / W, anchorPx[1] / W);
   sprite.x = cwx + nudge[0] * scaleVal * m;
-  sprite.y = cwy + nudge[1] * scaleVal;
+  /* v2.3.1561: liftY is the float-above-hair clearance (256-space, same
+     units as crownNudge) — the stand-in poses composite through here, so
+     without it the halo would sink back onto the hair mid-chop/mid-swing. */
+  sprite.y = cwy + (nudge[1] + (liftY || 0)) * scaleVal;
   sprite.scale.x = m * scaleVal * dscale * norm;
   sprite.scale.y = scaleVal * dscale * norm;
   sprite.visible = true;
@@ -2120,7 +2248,8 @@ export function placeSkillTraits(sprites, cwx, cwy, dir, mirror, scaleVal) {
   let hwEntry = _ensureHeadwearLoaded(getHeadwear());
   const hwCol = getColoredHatTextures(getHeadwear(), getHatColor());
   if (hwCol && hwEntry) hwEntry = { tex: hwCol, meta: hwEntry.meta, fallbackTex: hwEntry.tex }; /* v2.3.1305 */
-  _placeStandaloneTrait(sprites.hat, hwEntry, dir, mirror, cwx, cwy, scaleVal);
+  _placeStandaloneTrait(sprites.hat, hwEntry, dir, mirror, cwx, cwy, scaleVal,
+    _floatAboveHairLift(hwEntry && hwEntry.meta, getHair(), 'stand', dir, mirror)); /* v2.3.1561 */
 }
 
 /* v2.3.1011: like placeSkillTraits, but for an ARBITRARY player's appearance
@@ -2143,7 +2272,8 @@ export function placeSkillTraitsFor(sprites, looks, cwx, cwy, dir, mirror, scale
   let hwEntry2 = _ensureHeadwearLoaded(looks.headwear);
   const hwCol2 = getColoredHatTextures(looks.headwear, looks.hatColor);
   if (hwCol2 && hwEntry2) hwEntry2 = { tex: hwCol2, meta: hwEntry2.meta, fallbackTex: hwEntry2.tex }; /* v2.3.1305 */
-  _placeStandaloneTrait(sprites.hat, hwEntry2, dir, mirror, cwx, cwy, scaleVal);
+  _placeStandaloneTrait(sprites.hat, hwEntry2, dir, mirror, cwx, cwy, scaleVal,
+    _floatAboveHairLift(hwEntry2 && hwEntry2.meta, looks.hair, 'stand', dir, mirror)); /* v2.3.1561 */
 }
 
 /** Hide all three skill-trait sprites (no stand-in active this frame). */
@@ -2181,11 +2311,30 @@ function _orderTraitsAndWeapon(display, facingIdx) {
        child of `display` (a transient layout state), and this runs every frame
        during the loot freeze, so an unguarded throw freezes the whole game. */
     try {
-      let ref = -1;
-      for (const s of [display._spriteBody, display._gearLegs, display._gearChest, display._gearShoulders]) {
-        if (s && s.visible && s.parent === display) ref = Math.max(ref, display.getChildIndex(s));
+      /* v2.3.1553 (owner: "can you actually put the head behind the armor
+         shoulder for jog east?  The shoulder should be the layer in front if
+         you think about the perspective").  Correct: east/west is a PROFILE,
+         so the near pauldron and the collar are between the camera and the
+         neck.  Drawing the head over them put bare skin on top of steel that
+         is physically in front of it, which is what read as the head sitting
+         on the armour rather than in it.
+         The lift exists because the fullset used to carry a HELMET that would
+         swallow the face; the helmet has been cut off since v2.3.1368, so on
+         this facing there is nothing above the collar to hide behind and the
+         face stays fully visible with the head underneath -- only the jaw and
+         neck are occluded, which is the point.  Set per frame beside the head
+         placement; every other facing keeps the lift. */
+      if (display._headBehindGear && display._spriteBody
+          && display._spriteBody.parent === display && phead.parent === display) {
+        const bi = display.getChildIndex(display._spriteBody);
+        if (display.getChildIndex(phead) > bi) display.setChildIndex(phead, bi);
+      } else {
+        let ref = -1;
+        for (const s of [display._spriteBody, display._gearLegs, display._gearChest, display._gearShoulders]) {
+          if (s && s.visible && s.parent === display) ref = Math.max(ref, display.getChildIndex(s));
+        }
+        if (ref >= 0 && phead.parent === display) { const hi = display.getChildIndex(phead); if (hi < ref) display.setChildIndex(phead, ref); }
       }
-      if (ref >= 0 && phead.parent === display) { const hi = display.getChildIndex(phead); if (hi < ref) display.setChildIndex(phead, ref); }
     } catch (e) { /* leave head where it is this frame */ }
   }
   const beard = display._facialHairSprite;
@@ -2648,6 +2797,80 @@ function createMonsterDisplay(monster) {
   return container;
 }
 
+/* ═══ v2.3.1564/1565: the name + level plate under a player's feet ═══
+
+   Owner: "a slick minimalist pill that shows player name and level
+   beneath that, beneath the character at all times", then "make it
+   consistent and beneath other players too".
+
+   The local player had NO world nameplate at all — the above-head one was
+   hidden in favour of a top-right identity card, and that card was retired
+   in v2.3.1294, so the readout silently went missing.  Remote players kept
+   a bare floating name above the head.  Both now use THIS, so there is one
+   plate implementation rather than two that drift.
+
+   Below the feet is also the safer anchor: the old above-head plates were
+   pushed to -38 / -42 specifically to clear a sword tip that pokes over
+   the head on extended-arm frames.  Nothing to collide with down here.
+
+   Planted, not bobbing.  Every other child of these containers adds bobY
+   so it rides the walk cycle; a label bouncing under the boots reads as
+   loose, so this one keeps a fixed y and stays stuck to the ground.
+
+   The Graphics is rebuilt ONLY when the text changes (_pillKey cache).
+   A rounded-rect rebuild at 60fps for a label that changes on level-up
+   would be pure waste — and with up to 50 players in a room it would be
+   50x that waste. */
+function _attachNamePill(container, nameSize) {
+  const pill = new Container();
+  /* Feet sit ~24 below centre (sheetGeometry FEET_OFFSET). */
+  pill.y = 30;
+  const bg = new Graphics();
+  pill.addChild(bg);
+  const nameT = new Text({ text: '', style: {
+    fontFamily: 'Source Sans 3, sans-serif', fontSize: nameSize, fontWeight: '700',
+    fill: '#F4F0E7', align: 'center',
+  } });
+  nameT.anchor.set(0.5, 0);
+  nameT.y = 3;
+  pill.addChild(nameT);
+  const lvlT = new Text({ text: '', style: {
+    fontFamily: 'Source Sans 3, sans-serif', fontSize: nameSize - 1, fontWeight: '800',
+    fill: '#D8AA58', align: 'center', letterSpacing: 0.5,
+  } });
+  lvlT.anchor.set(0.5, 0);
+  lvlT.y = nameSize + 4;
+  pill.addChild(lvlT);
+  pill.visible = false;
+  container.addChild(pill);
+  container._namePill = pill;
+  container._pillBg = bg;
+  container._pillName = nameT;
+  container._pillLevel = lvlT;
+  container._pillH = nameSize * 2 + 7;
+}
+
+/* Drive one plate.  `visible` false parks it without touching the cache,
+   so re-showing costs nothing. */
+function _updateNamePill(display, name, level, visible) {
+  if (!display || !display._namePill) return;
+  const key = name + '|' + level;
+  if (display._pillKey !== key) {
+    display._pillKey = key;
+    display._pillName.text = name;
+    display._pillLevel.text = 'LV ' + level;
+    /* Sized to whichever line is wider, so a long name and a two-digit
+       level both sit inside with equal padding. */
+    const w = Math.max(display._pillName.width, display._pillLevel.width) + 14;
+    const h = display._pillH;
+    display._pillBg.clear();
+    display._pillBg.roundRect(-w / 2, 0, w, h, 9);
+    display._pillBg.fill({ color: 0x0D161B, alpha: 0.82 });
+    display._pillBg.stroke({ color: 0xE5EDE9, alpha: 0.18, width: 1 });
+  }
+  display._namePill.visible = !!visible;
+}
+
 function createPlayerDisplay() {
   const container = new Container();
   container.label = 'localPlayer';
@@ -2840,6 +3063,12 @@ function createPlayerDisplay() {
      is fully extended (W jog cycles, etc). */
   nameText.y = -38;
   container.addChild(nameText);
+
+  /* v2.3.1564: name + level pill below the feet — see _mintNamePill.
+     v2.3.1566 (owner: "make it consistent and beneath other players too"):
+     built by the shared factory so the local player and every remote
+     player render the SAME plate from one implementation. */
+  _attachNamePill(container, 10);
 
   /* v2.3.1193: the local player's own threat skull (red = my threat
      countdown is running, white = ignored/expired fight window).  One
@@ -3076,9 +3305,17 @@ function createOtherPlayerDisplay() {
   const nameText = new Text({ text: '', style: { ...NAME_STYLE, fontSize: 9 } });
   nameText.anchor.set(0.5, 1);
   /* Was -24; bumped to -34 to match the local player nameplate's
-     new offset (sword tip clearance — see createPlayerDisplay). */
+     new offset (sword tip clearance — see createPlayerDisplay).
+     v2.3.1566: no longer drawn — the plate below the feet replaced it.
+     The Text object stays so the party-marker change-cache and any
+     stale reference keep working; it is simply never made visible. */
   nameText.y = -34;
+  nameText.visible = false;
   container.addChild(nameText);
+
+  /* v2.3.1566 (owner): same plate the local player gets, one size down —
+     a remote name should not out-shout your own. */
+  _attachNamePill(container, 9);
 
   /* v2.3.1193: threat skull above the nameplate (red = active threat
      countdown, white = ignored/expired fight window — see
@@ -3266,7 +3503,7 @@ export class EntityRenderer {
             const fc = slimeFrameCount('death');
             const t = deathT / SLIME_DEATH_MS;
             const frameIdx = Math.max(0, Math.min(fc - 1, Math.floor(t * fc)));
-            const tex = getSlimeFrame('death', frameIdx);
+            const tex = getSlimeFrame('death', frameIdx, variant); /* v2.3.1534 */
             const sb = display._spriteBody;
             if (tex && (display._slimeState !== 'death' || display._slimeFrame !== frameIdx)) {
               display._slimeState = 'death';
@@ -3275,7 +3512,7 @@ export class EntityRenderer {
             }
             sb.scale.x = 96 / 128;
             sb.scale.y = 96 / 128;
-            sb.tint = (variant && variant.tint) || 0xffffff; /* v2.3.1147 */
+            sb.tint = slimeTintFor(variant, 'death'); /* v2.3.1147; v2.3.1534 */
             sb.visible = true;
             display.x = m.x;
             display.y = m.y;
@@ -3659,7 +3896,7 @@ export class EntityRenderer {
           /* Always look up + reassign texture — see player sprite
              notes; the cache-only-on-change pattern lost sprites
              after zone change. */
-          const tex = getSlimeFrame(state, frameIdx);
+          const tex = getSlimeFrame(state, frameIdx, variant); /* v2.3.1534 */
           if (tex && spriteBody.texture !== tex) {
             spriteBody.texture = tex;
           }
@@ -3687,8 +3924,10 @@ export class EntityRenderer {
           if (spriteBody.scale.x !== sx) spriteBody.scale.x = sx;
           if (spriteBody.scale.y !== sy) spriteBody.scale.y = sy;
           if (spriteBody.y !== size) spriteBody.y = size; /* feet at the circle's bottom edge */
-          /* v2.3.1147: tinted slime reskins (mossSlime/mireWisp). */
-          const wantTintS = (variant && variant.tint) || 0xffffff;
+          /* v2.3.1147: tinted slime reskins (mossSlime/mireWisp).
+             v2.3.1534: a recoloured variant reports white here — see
+             slimeTintFor. */
+          const wantTintS = slimeTintFor(variant, state);
           if (spriteBody.tint !== wantTintS) spriteBody.tint = wantTintS;
           if (!spriteBody.visible) spriteBody.visible = true;
           if (display._body.visible) display._body.visible = false;
@@ -4420,6 +4659,7 @@ export class EntityRenderer {
             /* v2.3.1394: jog overlay only over the fullset figure (see local path). */
             /* v2.3.1479: same armour gate as the local path. */
             if ((pose !== 'jog' || _fsR) && ((pose !== 'hit' && pose !== 'mine') || _rworn.length > 0)) _placePickupHead(display, spriteBody, other.skin, other.pants, other.shoes, pose, dir, frameIdx, _rJogPhase);
+            display._headBehindGear = (pose === 'jog' && dir === 'east' && !!_fsR); /* v2.3.1553 */
             spriteBody.visible = !(_rfull && !!getPickupHeadFrame(other.skin, other.pants, other.shoes, pose, dir, frameIdx));
             /* v2.3.1123: lift the angler's head above the fishing chest plate. */
             if (pose === 'fish' && _rworn.some(w => w.k && w.k.indexOf('chest:') === 0)) _placeFishHead(display, spriteBody, tex);
@@ -4428,7 +4668,7 @@ export class EntityRenderer {
           if (display._shirtSprite) display._shirtSprite.visible = false;
           /* always show the remote's hair/hat/beard (no helmet to hide them). */
           _crownOverride = _fsR ? _fullsetCrown(dir, _rJogPhase) : null; /* v2.3.1389 */
-          _placeHeadwear(display, other.headwear, other.hatColor, pose, dir, mirror, frameIdx, sizeMul);
+          _placeHeadwear(display, other.headwear, other.hatColor, pose, dir, mirror, frameIdx, sizeMul, other.hair); /* v2.3.1561: hair id for the floating halo */
           _placeFacialHair(display, other.facialhair, other.facialHairColor, pose, dir, mirror, frameIdx, sizeMul);
           _placeHair(display, other.hair, other.hairColor, other.headwear, pose, dir, mirror, frameIdx, sizeMul);
           _crownOverride = null;
@@ -4679,9 +4919,11 @@ export class EntityRenderer {
         display._lastName = nextName;
         display._nameText.text = nextName;
       }
-      /* Raised from -24 to -42 so the name floats above the head
-         instead of sitting over the sprite's face. */
-      display._nameText.y = -42 + bobY;
+      /* v2.3.1566: the above-head text is retired (see the display
+         factory); the plate below the feet is the nameplate now.  Dead
+         peers lose it so it doesn't hover over a prone body — the same
+         rule the local player follows. */
+      _updateNamePill(display, nextName, other.rpgLv || 1, !other._isDead);
 
       /* v2.3.1193: threat skull above the nameplate — same change-cache
          pattern as the party marker.  S._threatMarks is written by
@@ -5275,6 +5517,7 @@ export class EntityRenderer {
              nothing that could cover the head in the first place. */
           const _needHead = (pose !== 'hit' && pose !== 'mine') || _worn.length > 0;
           if ((pose !== 'jog' || _fsT) && _needHead) _placePickupHead(display, spriteBody, getSkin(), getPants(), getShoes(), pose, dir, frameIdx, _jogPhase);
+          display._headBehindGear = (pose === 'jog' && dir === 'east' && !!_fsT); /* v2.3.1553 */
           spriteBody.visible = !(pose === 'pickup' && _legsW && _chestW && !!getPickupHeadFrame(getSkin(), getPants(), getShoes(), pose, dir, frameIdx));
           /* v2.3.1123: lift the angler's head above the fishing chest plate. */
           if (pose === 'fish' && _chestW) _placeFishHead(display, spriteBody, tex);
@@ -5310,7 +5553,7 @@ export class EntityRenderer {
            traits to the DRAWN head's crown (FULLSET_CROWN — armor-synced,
            left-shifted) instead of the body sheet's. */
         _crownOverride = _fsT ? _fullsetCrown(dir, _jogPhase) : null;
-        _placeHeadwear(display, getHeadwear(), getHatColor(), pose, dir, mirror, frameIdx, bodyScale);
+        _placeHeadwear(display, getHeadwear(), getHatColor(), pose, dir, mirror, frameIdx, bodyScale, getHair()); /* v2.3.1561: hair id for the floating halo */
         _placeFacialHair(display, getFacialHair(), getFacialHairColor(), pose, dir, mirror, frameIdx, bodyScale);
         _placeHair(display, getHair(), getHairColor(), getHeadwear(), pose, dir, mirror, frameIdx, bodyScale);
         _crownOverride = null;
@@ -6251,8 +6494,12 @@ export class EntityRenderer {
 
     /* Local player's name + level now live in the top-right player card
        (BottomDashboard.jsx).  Hide the above-head plate so it doesn't
-       sit redundantly on top of the new HP heart. */
+       sit redundantly on top of the new HP heart.
+       v2.3.1564: that card is long gone (retired v2.3.1294) — the readout
+       lives in the pill below the feet now, built here. */
     if (display._nameText.visible) display._nameText.visible = false;
+    /* Hidden while dying so the plate doesn't hover over a corpse. */
+    _updateNamePill(display, S.myName || 'Anon', (S.rpg && S.rpg.level) || 1, !S._dying);
 
     /* v2.3.1193: my own threat skull — reads the formerly ORPHANED
        S._pvpSkullType / S._pvpSkullUntil anchors (InspectPlayerPanel

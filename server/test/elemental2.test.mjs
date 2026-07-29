@@ -19,7 +19,13 @@
  *      after; a hexer's landed hit stamps it.
  */
 import { GameRoom } from '../src/index.js';
-import { elementMoveMult, applyElementStatus, resolveElementCollision, STATUS_DEFS } from '../src/elemental.js';
+import { elementMoveMult, applyElementStatus, resolveElementCollision, STATUS_DEFS, COLLISION_TABLE, ELEMENT_STATUS, getEffectiveness } from '../src/elemental.js';
+/* v2.3.1569: the elemental tables are hand-mirrored between client and
+   server and were NOT covered by mirror-audit — the one pair of tables
+   most likely to drift, since every new element touches both.  Flora
+   made that concrete, so the conformance check lives here now. */
+import { COLLISION_TABLE as C_COLLISION, STATUS_DEFS as C_STATUS, EFFECTIVENESS as C_WHEEL, getEffectiveness as cGetEff } from '../../src/data/gameSystems.js';
+import { ELEMENTS } from '../../src/data/elements.js';
 
 function makeState() {
   const store = new Map();
@@ -254,6 +260,66 @@ mHex.statuses = {};
 ps.hp = 1000; ps.blocking = false;
 room._tickMonsters();
 check("a hexer's landed hit stamps the curse", ps._cursedUntil > Date.now(), ps._cursedUntil);
+
+/* ── v2.3.1569: Flora + client/server elemental mirror ── */
+{
+  // Flora exists on both sides with the Thorn status.
+  check('flora: element registered client-side', !!ELEMENTS.flora && ELEMENTS.flora.status === 'thorn', ELEMENTS.flora);
+  check('flora: server maps flora -> thorn', ELEMENT_STATUS.flora === 'thorn', ELEMENT_STATUS.flora);
+  check('flora: thorn is not a passive DoT (it answers the attack)',
+    STATUS_DEFS.thorn && STATUS_DEFS.thorn.tick === null, STATUS_DEFS.thorn);
+
+  // Every element pair has a collision, both sides, same key set.
+  const els = Object.keys(ELEMENTS);
+  const want = [];
+  for (let i = 0; i < els.length; i++) for (let j = i + 1; j < els.length; j++) want.push([els[i], els[j]]);
+  const missing = want.filter(([a, b]) => !(COLLISION_TABLE[a + '|' + b] || COLLISION_TABLE[b + '|' + a]));
+  check(`collisions: all ${want.length} element pairs resolve server-side`, missing.length === 0, missing);
+  const cMissing = want.filter(([a, b]) => !(C_COLLISION[a + '|' + b] || C_COLLISION[b + '|' + a]));
+  check('collisions: client table covers the same pairs', cMissing.length === 0, cMissing);
+
+  // MIRROR: ids and damage numbers must match across the wire boundary.
+  const drift = [];
+  for (const k of Object.keys(COLLISION_TABLE)) {
+    const srv = COLLISION_TABLE[k];
+    const [a, b] = k.split('|');
+    const cli = C_COLLISION[k] || C_COLLISION[b + '|' + a];
+    if (!cli) { drift.push({ k, why: 'absent client-side' }); continue; }
+    if (cli.id !== srv.id || cli.base !== srv.base || cli.coeff !== srv.coeff || cli.stat !== srv.stat) {
+      drift.push({ k, srv: [srv.id, srv.base, srv.coeff, srv.stat], cli: [cli.id, cli.base, cli.coeff, cli.stat] });
+    }
+  }
+  check('mirror: collision id/base/coeff/stat identical on both sides', drift.length === 0, drift.slice(0, 4));
+
+  const sDrift = Object.keys(STATUS_DEFS).filter((id) => {
+    const a = STATUS_DEFS[id], b = C_STATUS[id];
+    return !b || a.dur !== b.dur || a.maxDur !== b.maxDur || a.tick !== b.tick;
+  });
+  check('mirror: status definitions identical on both sides', sDrift.length === 0, sDrift);
+
+  // The wheel reroute: venom no longer beats water directly; it goes
+  // through flora.  Checked on BOTH implementations.
+  check('wheel: venom > flora > water (server)',
+    getEffectiveness('venom', 'flora') === 1.25 && getEffectiveness('flora', 'water') === 1.25
+    && getEffectiveness('venom', 'water') === 1.0);
+  check('wheel: venom > flora > water (client)',
+    cGetEff('venom', 'flora') === 1.25 && cGetEff('flora', 'water') === 1.25
+    && cGetEff('venom', 'water') === 1.0);
+  check('wheel: closed loop over all palette elements', C_WHEEL.length === 8, C_WHEEL.length);
+
+  // Thorn recoil fires when the afflicted monster attacks, and routes
+  // through the shared status-damage pipeline (credit + kill).
+  const room2 = new GameRoom(makeState(), mockEnv);
+  const mon = { id: 'm1', alive: true, hp: 100, maxHp: 100, statuses: {} };
+  applyElementStatus(mon, 'flora', 'p1', 20, Date.now(), 1);
+  check('thorn: applied by a flora hit', !!mon.statuses.thorn, mon.statuses);
+  const dealt = room2._applyMonsterDot('meadow', mon, 4 + 20 * 0.25, 'p1', 'thorn');
+  check('thorn: recoil damages the monster', dealt === 9 && mon.hp === 91, { dealt, hp: mon.hp });
+  check('thorn: recoil is credited to the flora attacker',
+    mon.dmgByPlayer && mon.dmgByPlayer.p1 === 9, mon.dmgByPlayer);
+  const over = room2._applyMonsterDot('meadow', mon, 9999, 'p1', 'thorn');
+  check('thorn: overkill is clamped to remaining hp', over === 91 && mon.hp === 0, { over, hp: mon.hp });
+}
 
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);
 process.exit(failures === 0 ? 0 : 1);

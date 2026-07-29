@@ -17,7 +17,16 @@
    zones (height: calc(100% - var(--dash-h))), and every
    bottom:calc(var(--dash-h)+N) world-HUD anchor NEVER move when a
    sheet opens.  Opening a sheet must not resize the canvas — a
-   canvas.width write reallocates the WebGL drawing buffer. */
+   canvas.width write reallocates the WebGL drawing buffer.
+
+   v2.3.1560: the bar is now TWO stacked persistent rows —
+     --dash-h = navShelfHeight + quickRowHeight   (the whole band)
+     --nav-h  = navShelfHeight                    (the toolbar ribbon)
+   The invariant above is unchanged: --dash-h is still the BAR height in
+   all modes and still the one number the canvas/zones/HUD read.  --nav-h
+   exists only for chrome pinned INSIDE the band (the ribbon, and the
+   reserve under an open panel) and must not be substituted for --dash-h
+   anywhere outside BottomDashboard. */
 
 /* v2.3.1325 (owner: bigger toolbar): the bar height derives from the
    compact bag grid's slot algebra instead of the old fixed 72, giving
@@ -38,8 +47,50 @@ export function navSlotSize(vw, vh) {
   const cap = vh && vh <= 720 ? 50 : 64;
   return Math.round(Math.min(Math.max((vw - 56) / 6, 40), cap));
 }
-export function barHeight(vw, vh) {
+/* v2.3.1560: the toolbar SHELF — what barHeight was through v2.3.1559.
+   Split out because the bar is now two stacked rows and the ribbon is
+   absolute-pinned to the band's bottom: it must be told its own height,
+   not the whole band's, or it would cover the quick bar above it. */
+export function navShelfHeight(vw, vh) {
   return navSlotSize(vw, vh) + 31;
+}
+
+/* v2.3.1560 (owner: "an ultra compact bar ... a persistent menu above
+   the toolbar icons"): nine cells across the full width — 3 bag slots,
+   chest/legs/weapon, last life skill, last two combat skills.
+     fixed = 12 frame pad + 6 within-group gaps x 1px + 2 between-group
+             gaps x 13px = 44
+     cell  = floor((vw - fixed) / 9), clamped 28..44
+     v2.3.1572 (owner: "group the different groups of icons more closely
+     together so it's visually more easy to differentiate"): the row was
+     an even 2px gap throughout with hairline dividers doing all the
+     separating, which reads as nine identical cells with two lines in
+     it.  Proximity does the job better than lines: cells inside a group
+     are now nearly touching (1px) and the groups are pushed 13px apart,
+     and the dividers are gone.  The width budget is unchanged in total,
+     so the cell size does not move.
+     row   = cell + 10 (4/4 pad + 2 border at the 1px non-retina worst
+             case, matching navShelfHeight's reasoning)
+   ~39px cells / 49px row at 390w.  FLOOR, and every term of the row's
+   own layout in `fixed` — a cell width that ignores the dividers
+   overflows the viewport by ~10px and the ninth cell gets clipped off
+   the right edge.  Cells are narrower than the 44pt
+   touch minimum (nine of them cannot be 44 wide on a 390px phone) —
+   the row's full height is the vertical target and every cell also has
+   its full-size counterpart one tap away in Bag/Hero/Skills, which is
+   why the density is acceptable here and nowhere else. */
+export function quickCellSize(vw, vh) {
+  const cap = vh && vh <= 720 ? 36 : 44;
+  return Math.floor(Math.min(Math.max((vw - 44) / 9, 28), cap));
+}
+export function quickRowHeight(vw, vh) {
+  return quickCellSize(vw, vh) + 10;
+}
+
+/* The BAND height every consumer keys off (canvas, joystick zones, world
+   HUD anchors) — both rows, since both are persistent chrome. */
+export function barHeight(vw, vh) {
+  return navShelfHeight(vw, vh) + quickRowHeight(vw, vh);
 }
 /* v2.3.1271: the band's 14px rounded top corners cut out to the page
    background; the canvas runs 14px UNDER the band so the notches show

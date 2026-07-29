@@ -18,6 +18,7 @@ import { ZONES } from '@/data/zones.js';
 import { TILE, MINE_SPOT_R, FISH_CUE_DY } from '@/data/constants.js';
 import { GS_INNER_RADIUS, GS_OUTER_RADIUS, GS_FORWARD_ARC, cleaveArcBonus } from '@/data/index.js';
 import { getFrame as getSlimeFrame, hasState as hasSlimeState } from '../slimeSprites.js';
+import { getRecoloredFrame, hasRecoloredState } from '../monsterRecolor.js'; /* v2.3.1534; v2.3.1535 generalised */
 import { getRemnantsTexture as getSnowmanRemnantsTex } from '../snowmanSprites.js';
 import { variantSpritesFor } from '../monsterVariantSprites.js';
 import { MONSTER_VARIANTS, ZONE_VARIANT_MAP } from '../../data/monsterVariants.js';
@@ -2704,8 +2705,16 @@ export class EffectsRenderer {
         if (variant && variant.noFodderRemnants) continue;
         const variantSprites = variant ? variantSpritesFor(l.skull) : null;
         const variantRemnTex = variantSprites && variantSprites.remnants ? variantSprites.remnants.get() : null;
+        /* v2.3.1534 (owner: "recolor the slimes AND slime remnants blue"):
+           a slime variant that recolours its body recolours the splat it
+           leaves too, or a blue slime dies into a green puddle.  The splat
+           rides the same recoloured sheet set, so it is already warm from
+           preloadZoneAssets and needs no tint of its own. */
+        const recolorRemnTex = (variant && variant.recolor && hasRecoloredState(variant, 'remnants'))
+          ? getRecoloredFrame(variant, 'remnants', 0)
+          : null;
         const slimeRemnantsTex = hasSlimeState('remnants') ? getSlimeFrame('remnants', 0) : null;
-        const remnTex = variantRemnTex || slimeRemnantsTex;
+        const remnTex = variantRemnTex || recolorRemnTex || slimeRemnantsTex;
         if (remnTex) {
           if (!l._pixiSprite || l._pixiSprite.destroyed) {
             const sp = new Sprite(remnTex);
@@ -3572,12 +3581,45 @@ export class EffectsRenderer {
      (the plate isn't a strict superset of the shirt silhouette), tinted to the
      player's chosen shirt colour.  `place` is the caller's transform helper.
      Returns nothing; toggles the sprite's visibility/texture/tint. */
-  _placeSwingShirt(spr, place, shirtId, chestId, gp, dir, fw, fi, colorId) {
+  /* v2.3.1557 (owner: "when I just wear leg armor and use melee attack or bow
+     attack I go shirtless").  The shirt has TWO stores that can disagree: the
+     trait catalog (getShirt, localStorage 'bt-shirt') and the gear slot
+     (getEquip('shirt')).  entityRenderer draws the idle/jog shirt from the GEAR
+     SLOT (_placeGear is handed `shirt: getEquip('shirt')`), while every
+     swing/bow/chop/cook stand-in in this file read the CATALOG -- so a player
+     whose slot is set but whose catalog is not wears a shirt standing still and
+     loses it the moment they attack.  Only the toggle in ItemDetailPopup writes
+     both; character creation and trait restore write the catalog alone, so the
+     two drift apart in normal use.
+     Resolve from either store, preferring the catalog when it is set.  This can
+     only ADD a shirt where one was missing -- it can never remove one -- so no
+     existing look changes. */
+  _shirtId() {
+    const c = getShirt();
+    if (c && c !== 'none') return c;
+    const e = getEquip('shirt');
+    return (e && e !== 'none') ? e : 'none';
+  }
+
+  _placeSwingShirt(spr, place, shirtId, chestId, gp, dir, fw, fi, colorId, tintId) {
     const hidden = chestId && chestId !== 'none';
     const tex = hidden ? null : this._gearStripFrame('shirt', shirtId, gp, dir, fw, fi);
     place(spr, tex);
     if (tex) {
-      const t = shirtFill(shirtId, colorId);
+      /* v2.3.1558 (owner: "he was wearing a white shirt and when he swung the
+         sword the shirt changed to blue") -- my own regression from v2.3.1557.
+         shirtFill returns NULL for a 'none' id, and a null tint means WHITE, so
+         the idle renderer draws a white tee whenever the CATALOG says 'none'
+         (entityRenderer resolves its tint as shirtFill(getShirt(),
+         getShirtColor()) even though it picks the SHEET from the gear slot).
+         v2.3.1557 made the swing fall back to the gear slot for the id, which
+         fixed the shirt vanishing but also made the id non-none HERE -- so
+         shirtFill stopped returning null and fell through to
+         SHIRT_DEFAULT_RGB, the #3a5bd0 blue.
+         So the two ids must stay separate: `shirtId` chooses which SHEET to
+         draw, `tintId` reproduces the idle path's colour exactly -- the catalog
+         id locally, the networked id for a remote player. */
+      const t = shirtFill(tintId !== undefined ? tintId : shirtId, colorId);
       spr.tint = t ? ((t[0] << 16) | (t[1] << 8) | t[2]) : 0xffffff;
     }
   }
@@ -3830,7 +3872,7 @@ export class EffectsRenderer {
       const gp = cfg.gearPose || 'swing';
       /* v2.3.1050: their tinted shirt under-layer (folder always 'tshirt' when shirted). */
       const oShirt = (eq.shirt !== undefined) ? eq.shirt : ((o.shirt && o.shirt !== 'none') ? 'tshirt' : 'none');
-      this._placeSwingShirt(set.shirt, place, oShirt, eq.chest, gp, cfgKey, cfg.fw, fi, o.shirtColor);
+      this._placeSwingShirt(set.shirt, place, oShirt, eq.chest, gp, cfgKey, cfg.fw, fi, o.shirtColor, o.shirt || 'tshirt');
       place(set.legs, _jog ? null : this._gearStripFrame('legs', eq.legs, gp, cfgKey, cfg.fw, fi));
       place(set.chest, this._gearStripFrame('chest', eq.chest, gp, cfgKey, cfg.fw, fi));
       const weaponFrames = this._swordWeaponFrames[cfgKey];
@@ -3963,7 +4005,7 @@ export class EffectsRenderer {
       const eq = o.equip || {};
       /* v2.3.1050: their tinted shirt under-layer (folder always 'tshirt' when shirted). */
       const oShirt = (eq.shirt !== undefined) ? eq.shirt : ((o.shirt && o.shirt !== 'none') ? 'tshirt' : 'none');
-      this._placeSwingShirt(set.shirt, place, oShirt, eq.chest, gp, cfgKey, cfg.fw, fi, o.shirtColor);
+      this._placeSwingShirt(set.shirt, place, oShirt, eq.chest, gp, cfgKey, cfg.fw, fi, o.shirtColor, o.shirt || 'tshirt');
       place(set.legs, _jog ? null : this._gearStripFrame('legs', eq.legs, gp, cfgKey, cfg.fw, fi));
       place(set.chest, this._gearStripFrame('chest', eq.chest, gp, cfgKey, cfg.fw, fi));
       const weaponFrames = this._bowWeaponFrames && this._bowWeaponFrames[cfgKey];
@@ -4129,7 +4171,7 @@ export class EffectsRenderer {
       const gp = cfg.gearPose || 'swing';
       const chestTex = this._gearStripFrame('chest', getEquip('chest'), gp, fmap[0], cfg.fw, fi);
       const legsTex  = _jog ? null : this._gearStripFrame('legs',  getEquip('legs'),  gp, fmap[0], cfg.fw, fi);
-      this._placeSwingShirt(this.swordShirtSprite, place, getShirt(), getEquip('chest'), gp, fmap[0], cfg.fw, fi, getShirtColor());
+      this._placeSwingShirt(this.swordShirtSprite, place, this._shirtId(), getEquip('chest'), gp, fmap[0], cfg.fw, fi, getShirtColor(), getShirt());
       place(this.swordChestSprite, chestTex);
       place(this.swordLegsSprite, legsTex);
       place(this.swordWeaponSprite, weaponFrames && weaponFrames[fi]);
@@ -4269,7 +4311,7 @@ export class EffectsRenderer {
       }
       sp.texture = _jogLegs ? _torsoFrames[fi] : bodyFrames[fi];
       const gp = cfg.gearPose || 'bowshot';
-      this._placeSwingShirt(this.bowShirtSprite, place, getShirt(), getEquip('chest'), gp, fmap[0], cfg.fw, fi, getShirtColor());
+      this._placeSwingShirt(this.bowShirtSprite, place, this._shirtId(), getEquip('chest'), gp, fmap[0], cfg.fw, fi, getShirtColor(), getShirt());
       place(this.bowChestSprite, this._gearStripFrame('chest', getEquip('chest'), gp, fmap[0], cfg.fw, fi));
       place(this.bowLegsSprite,  _jogLegs ? null : this._gearStripFrame('legs', getEquip('legs'), gp, fmap[0], cfg.fw, fi));
       place(this.bowWeaponSprite, weaponFrames && weaponFrames[fi]);
@@ -4479,7 +4521,7 @@ export class EffectsRenderer {
       /* Shirt: paper-doll recolour -- the chop shirt art is a grayscale base, so
          _placeSwingShirt tints it to the player's chosen shirt colour (and hides
          it when a chest plate is worn, which replaces it). */
-      this._placeSwingShirt(this.chopShirtSprite, placeChopLayer, getShirt(), getEquip('chest'), 'chop', 'west', 480, k, getShirtColor());
+      this._placeSwingShirt(this.chopShirtSprite, placeChopLayer, this._shirtId(), getEquip('chest'), 'chop', 'west', 480, k, getShirtColor(), getShirt());
       placeChopLayer(this.chopLegsSprite,  _chopLegsTex);
       placeChopLayer(this.chopChestSprite, this._gearStripFrame('chest', getEquip('chest'), 'chop', 'west', 480, k));
       /* v2.3.847: chop hit sfx on the swing's strike frame (woodcutting had
@@ -4570,7 +4612,7 @@ export class EffectsRenderer {
         s.anchor.set(0.5, 1); s.texture = t;
         s.scale.set(sp.scale.x, sp.scale.y); s.x = sp.x; s.y = sp.y; s.visible = true;
       };
-      this._placeSwingShirt(this.cookShirtSprite, placeCookShirt, getShirt(), getEquip('chest'), 'cook', 'south', 213, cookFi, getShirtColor());
+      this._placeSwingShirt(this.cookShirtSprite, placeCookShirt, this._shirtId(), getEquip('chest'), 'cook', 'south', 213, cookFi, getShirtColor(), getShirt());
       /* v2.3.1114: equipped leg armour over the cook's legs (untinted; the
          greaves keep their own metal colour). _gearStripFrame returns null when
          no legs are equipped, so placeCookShirt hides the sprite. */

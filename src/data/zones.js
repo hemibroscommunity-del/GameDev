@@ -82,12 +82,32 @@ export const ZONES = {
     id: 'verdant', name: 'Verdant Wilds', w: 32, h: 32,
     /* v2.3.856: new Flora spoke (band 2). element:null for now -- a real
        Flora element + sprite-backed monsters are a follow-up; reachable and
-       walkable as a zone today. */
-    element: null, secondary: null, level: [1, 2] /* band: [22,40] */, music: 'meadow', safe: false,
+       walkable as a zone today.
+       v2.3.1571 (owner: "add it to verdant wilds"): the follow-up landed.
+       Flora exists as of v2.3.1569, so the Flora spoke finally carries its
+       own element -- which is what makes Flora weapons droppable and the
+       nine Flora collisions reachable in play.  Secondary is venom: the
+       zone's own monsters are moss slimes and thorn shamblers, and venom
+       is the element Flora beats on the wheel. */
+    element: 'flora', secondary: 'venom', level: [1, 2] /* band: [22,40] */, music: 'meadow', safe: false,
     palette: { ground: '#3d7a2e', path: '#7a6a45', accent: '#6abf4f' },
     /* v2.3.1147: populated (was empty) -- tinted reskins: fodder->
-       mossSlime green slime, brute->thornShambler mossy rockmonster. */
-    spawns: [{ arch: 'fodder', count: 8 }, { arch: 'brute', count: 4 }],
+       mossSlime green slime, brute->thornShambler mossy rockmonster.
+       v2.3.1534 (owner: "remove the rock monster from this level"): the
+       brute spawn is gone, so Verdant Wilds is slimes only.  Mirror of
+       server/src/data.js ZONES.verdant -- the SERVER decides what
+       spawns; this table only clamps levels and picks the skin, so both
+       have to drop the entry or the zone keeps its rockmonsters.
+       thornShambler stays defined in monsterVariants.js: nothing spawns
+       it today, and deleting it would just have to be rewritten if a
+       brute comes back here. */
+    /* v2.3.1535 (owner: "one fast squishier blue slime and the rest the
+       regular green"): the second entry's `variant` pins ONE spawn to
+       blueSlime; the other 7 take the ZONE_VARIANT_MAP default (mossSlime,
+       green).  A per-entry override is the only way to get a mixed
+       population -- ZONE_VARIANT_MAP maps a whole ARCHETYPE, so putting
+       blueSlime there would turn every slime in the zone blue. */
+    spawns: [{ arch: 'fodder', count: 7 }, { arch: 'fodder', count: 1, variant: 'blueSlime' }],
     atmosphere: { tint: 'rgba(60,160,60,0.05)', vignette: 'rgba(20,80,20,0.12)' },
     enemyEmoji: {}
   },

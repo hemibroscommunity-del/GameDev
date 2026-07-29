@@ -36,44 +36,75 @@ export const tickMethods = {
         }
       }
 
+      /* v2.3.1562 (owner: "I just died and it didn't return me to town —
+         stuck at 0 HP, could still mine next to me").
+
+         Every subsystem below used to run as ONE unguarded sequence, and
+         the order is load-bearing: _tickPlayerRespawn sits DOWNSTREAM of
+         _tickMonsters.  Monster AI is also where player death is
+         triggered (_handlePlayerDeath, via the monster→player damage
+         path), so a throw anywhere in monster AI — including inside the
+         death flow it just started — aborts the rest of THAT tick, and
+         if the condition repeats it aborts every tick after it.  The
+         player is left marked dying with respawnAt set and nothing ever
+         reaches the code that clears it.  That is exactly the reported
+         shape: dead forever, world otherwise responsive (mining runs off
+         the message handler, which is a different code path entirely and
+         keeps working while the tick is broken).
+
+         `guard` isolates each system: one failing subsystem no longer
+         takes the other twelve down with it, and respawn in particular
+         can no longer be starved by anything upstream.  Failures are
+         counted rather than logged per-tick — at 45Hz a logging loop
+         would be its own outage. */
+      const guard = (label, fn) => {
+        try { fn(); } catch (e) {
+          this._tickErrs = this._tickErrs || Object.create(null);
+          this._tickErrs[label] = (this._tickErrs[label] || 0) + 1;
+          if (this._tickErrs[label] === 1) {
+            try { console.error('[tick] ' + label + ' threw:', e && e.message); } catch {}
+          }
+        }
+      };
+
       // Monster AI tick
-      this._tickMonsters();
+      guard('monsters', () => this._tickMonsters());
 
       // Gather-node respawn tick (cheap; iterates Object.keys(this.nodes))
-      this._tickNodes();
+      guard('nodes', () => this._tickNodes());
 
       // Loot pile expiry tick -- piles older than LOOT_EXPIRY_MS get
       // despawned with a broadcast event so clients drop them too.
-      this._tickLoot();
+      guard('loot', () => this._tickLoot());
 
       // Extraction state sweep -- walk-away cancel is silent on the
       // client so any extraction_start without a matching node_strike
       // sits in this.extractions until cleaned here.
-      this._sweepStaleExtractions(Date.now());
+      guard('extractions', () => this._sweepStaleExtractions(Date.now()));
 
       // Player respawn tick — flip dying=>alive when respawnAt elapses.
       // Cheap; iterates active player entries.
-      this._tickPlayerRespawn();
+      guard('respawn', () => this._tickPlayerRespawn());
 
       // v2.3.1121: duel housekeeping — expire stale challenges, enforce
       // the 15s reconnect-grace forfeit.  Cheap map walks.
-      this._tickDuels(Date.now());
+      guard('duels', () => this._tickDuels(Date.now()));
 
       // v2.3.1125: clan-war endings (30-min timer; also resolved lazily
       // on wake for wars that end in an empty room).
-      this._tickClanWars(Date.now());
+      guard('clanWars', () => this._tickClanWars(Date.now()));
 
       // v2.3.1126: arena housekeeping -- gather timer, deferred match
       // activation, post-completion cleanup.
-      this._tickArena(Date.now());
+      guard('arena', () => this._tickArena(Date.now()));
 
       // v2.3.1127: dungeon instances -- wave advancement on all-dead,
       // boss spawn, completion settlement, empty-instance sweep.
-      this._tickDungeons(Date.now());
+      guard('dungeons', () => this._tickDungeons(Date.now()));
 
       // v2.3.1129: unanswered threat countdowns expire as "ignored"
       // (consent pair granted, both sides notified).
-      this._tickThreats(Date.now());
+      guard('threats', () => this._tickThreats(Date.now()));
 
       // v2.3.1149: global cadence settlement -- rate-limited to one
       // storage read per ~60s per DO lifetime (the _opPruneMaybe
@@ -92,7 +123,7 @@ export const tickMethods = {
       }
 
       // v2.3.1132: expire idle two-sided trade sessions + invites.
-      this._tickTrades2(Date.now());
+      guard('trades2', () => this._tickTrades2(Date.now()));
 
       // v2.3.1185: party housekeeping -- expire invites, sweep members
       // past the offline grace, re-echo rosters at the vitals cadence

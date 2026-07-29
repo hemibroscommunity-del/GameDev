@@ -641,6 +641,15 @@ export const joinMethods = {
         x: m.x, y: m.y, hp: m.hp, maxHp: m.maxHp, dmg: m.dmg,
         xp: m.xp, gold: m.gold, spd: m.spd, emoji: m.emoji, color: m.color,
         alive: m.alive,
+        /* v2.3.1535: the variant this monster actually spawned as.  Until now
+           the client re-derived it from ZONE_VARIANT_MAP, which maps a whole
+           ARCHETYPE and so cannot express "7 green slimes and 1 blue one".
+           The server already picks the variant per spawn, so it just says so.
+           ADDITIVE and deploy-order safe both ways: an old client ignores the
+           field, and a new client against an old worker sees it undefined and
+           falls back to the archetype map exactly as before (every slime
+           green -- degraded, never broken). */
+        variant: m.variant || null,
       })),
       nodes: zoneNodes.map(n => ({
         id: n.id, nodeType: n.nodeType, x: n.x, y: n.y,

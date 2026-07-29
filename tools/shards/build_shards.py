@@ -12,6 +12,15 @@ Output: public/icons/shards/shard_<zone>.png x 8
 
 These are placeholders -- swap in art-team PNGs when ready, just
 match the file names.
+
+v2.3.1571: shard_verdant is deliberately NOT in the list below.  The
+art-team shards (import_real_shards.py) long ago replaced these
+hexagons, so regenerating a flat placeholder for a new zone would look
+nothing like its eight neighbours.  Verdant's was made instead by
+luminance-retinting shard_hollows to Flora green -- the same per-pixel
+target*brightness method the blue slime uses (v2.3.1535), which is the
+only one that can move a hue; multiply can merely darken.  It shares
+hollows' silhouette, so swap in real art when there is some.
 """
 import math
 import os

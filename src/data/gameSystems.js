@@ -17,7 +17,7 @@ import { TOWN_EXITS } from './effects.js';
    this file is gone. */
 import { AMULET_TIERS, SALVAGE_RETURN_RATE, DEPTH_TIERS, ZONE_RESOURCES, getAmuletBonus, getShieldBonus, getShieldStats, skillXpRequired } from './items.js';
 import { FISHING_TIERS } from './lifeSkills.js';
-import { applyZoneVariant } from './monsterVariants.js';
+import { applyZoneVariant, hitShapeOf, variantForArchetype } from './monsterVariants.js';
 
 /* v2.3.1186: pure-display exports (BT_AUDIO, BT_ACHIEVEMENTS, MASKS,
    tile colors, generateZoneMap, emote/NPC tables) moved to
@@ -3614,11 +3614,26 @@ export const STATUS_DEFS = {
     maxDur: 7.0,
     tick: null,
     type: 'debuff_heal'
+  },
+  /* v2.3.1569: Thorn — the "fight back" status.  tick: null because it
+     is NOT a passive DoT: the damage lands when the AFFLICTED MONSTER
+     ATTACKS (server _tickMonsters), which is what "retaliatory" means
+     in a game where statuses sit on monsters and the only thing hitting
+     them is you.  A passive tick here would just be a weaker Burn. */
+  thorn: {
+    dur: 6.0,
+    refresh: 1.0,
+    maxDur: 8.0,
+    tick: null,
+    type: 'retaliate'
   }
 };
 
 /* §10.2 Effectiveness Circle */
-export const EFFECTIVENESS = [['flame', 'frost'], ['frost', 'storm'], ['storm', 'stone'], ['stone', 'wind'], ['wind', 'venom'], ['venom', 'water'], ['water', 'flame']];
+/* v2.3.1569: Flora enters the wheel between Venom and Water (GDD §10.2).
+   Replaces the venom>water link with venom>flora>water — mirror of
+   server/src/elemental.js EFFECTIVENESS; the two MUST stay identical. */
+export const EFFECTIVENESS = [['flame', 'frost'], ['frost', 'storm'], ['storm', 'stone'], ['stone', 'wind'], ['wind', 'venom'], ['venom', 'flora'], ['flora', 'water'], ['water', 'flame']];
 export function getEffectiveness(attackElem, targetElem) {
   if (!attackElem || !targetElem || attackElem === targetElem) return 1.0;
   /* Dark <-> Light mutual bonus */
@@ -3637,7 +3652,9 @@ export function getEffectiveness(attackElem, targetElem) {
 
 /* Apply a status to a target. Returns true if applied. */
 export function applyStatus(target, statusId, source, now) {
-  if (!target.statuses) target.statuses = {};
+  if (!target.statuses) target.statuses = Object.create(null);  /* v2.3.1569: null-proto per CLAUDE.md rule 4 — status ids come from a
+     closed server table so there is no live exploit here, but the map is
+     id-keyed and the rule exists because that assumption keeps breaking. */
   var def = STATUS_DEFS[statusId];
   if (!def) return false;
   var existing = target.statuses[statusId];
@@ -3740,6 +3757,82 @@ export function getOldestStatusElement(target) {
 
 /* Collision lookup — maps "setupElement|triggerElement" to collision data */
 export const COLLISION_TABLE = {
+  /* v2.3.1569 Flora pairs (GDD §10.4 names).  Bases are calibrated
+     against comparable existing entries, not invented: Flora's identity
+     is sustain, so it sits low-to-mid on the curve, with Lightning Rod
+     as its one burst outlier. */
+  'flora|flame': {
+    id: 'wildfire',
+    name: 'Wildfire',
+    base: 45,
+    coeff: 0.8,
+    stat: 'power',
+    type: 'burst'
+  },
+  'flora|frost': {
+    id: 'thaw_bloom',
+    name: 'Thaw Bloom',
+    base: 25,
+    coeff: 0.5,
+    stat: 'vitality',
+    type: 'burst'
+  },
+  'flora|water': {
+    id: 'overgrowth',
+    name: 'Overgrowth',
+    base: 30,
+    coeff: 0.6,
+    stat: 'vitality',
+    type: 'burst'
+  },
+  'flora|venom': {
+    id: 'blight_garden',
+    name: 'Blight Garden',
+    base: 40,
+    coeff: 0.7,
+    stat: 'mind',
+    type: 'burst'
+  },
+  'flora|storm': {
+    id: 'lightning_rod',
+    name: 'Lightning Rod',
+    base: 65,
+    coeff: 1.1,
+    stat: 'agility',
+    type: 'burst'
+  },
+  'flora|stone': {
+    id: 'petrified_wood',
+    name: 'Petrified Wood',
+    base: 30,
+    coeff: 0.6,
+    stat: 'vitality',
+    type: 'burst'
+  },
+  'flora|wind': {
+    id: 'scatter_seed',
+    name: 'Scatter Seed',
+    base: 30,
+    coeff: 0.5,
+    stat: 'agility',
+    type: 'burst'
+  },
+  'flora|dark': {
+    id: 'withering',
+    name: 'Withering',
+    base: 45,
+    coeff: 0.8,
+    stat: 'mind',
+    type: 'burst'
+  },
+  'flora|light': {
+    id: 'purifying_bloom',
+    name: 'Purifying Bloom',
+    base: 50,
+    coeff: 0.9,
+    stat: 'vitality',
+    type: 'burst'
+  },
   'flame|frost': {
     id: 'steam',
     name: 'Steam',
@@ -5678,11 +5771,59 @@ export const PVP_THREAT_DURATION = PVP_THREAT_BASE_COUNTDOWN; /* compat */
    feet-level m.y while the HIT test used the body centre, making locked
    bow shots fly under the hitbox.  Every consumer now reads this. */
 export function monsterBodyOffsetY(archOrType) {
-  return archOrType === 'fodder' ? 40
-    : (archOrType === 'mummy' || archOrType === 'skeleton') ? 48
-    : archOrType === 'fireGoblin' ? 28
-    : archOrType === 'snowman' ? 19
-    : 0;
+  /* v2.3.1535: resolve reskins to the shape they actually render as, or a
+     variant falls through to 0 = body centred on the FEET.  See hitShapeOf. */
+  archOrType = hitShapeOf(archOrType);
+  if (archOrType === 'fodder') return 40;
+  if (archOrType === 'mummy' || archOrType === 'skeleton') return 48;
+  if (archOrType === 'fireGoblin') return 28;
+  if (archOrType === 'snowman') return 19;
+  /* v2.3.1536: every OTHER sprite-backed variant -- rockmonster, fishman,
+     thornShambler, bogLurker -- fell through to 0 here, i.e. its hitbox sat
+     at the feet exactly like the slime bug, and nobody had noticed because
+     they only appear in zones nobody was shooting at.  Their sprites are
+     anchored feet-to-the-circle and drawn liveScalePx tall, so the body
+     centre is half that above m.y.  The rule reproduces the two hand-tuned
+     96px cases above exactly (mummy/skeleton = 96/2 = 48), which is the
+     check that it is the right rule and not a coincidence. */
+  const v = variantForArchetype(archOrType);
+  if (v && v.liveScalePx) return Math.round(v.liveScalePx / 2);
+  return 0;
+}
+/* v2.3.1536: the on-screen RADIUS of a monster that has no sprite sheet and
+ * renders as a bare Graphics circle -- brute / swarm / sentinel / volatile /
+ * stalker / hexer, which is everything the dungeons spawn and nothing the
+ * wilderness does (every wilderness archetype maps to a sprite-backed variant).
+ *
+ * Owner: "the special arrow correctly hits the slime but not the procedural
+ * ones."  The circle is drawn at radius 32 inside a container scaled by
+ * MONSTER_SIZE_MULT 1.5 = 48 world px, but the projectile hit test had no case
+ * for these archetypes and fell to its bare default of 18 (54 for a special).
+ * So the visible body was 48 px across the middle while only the inner 18 px
+ * could be hit -- about an eighth of the area -- and a shot that visibly
+ * connected passed straight through.  A special at 54 covered it only just,
+ * and not once the arrow's own tip position is taken into account.
+ *
+ * Returns 0 for anything sprite-backed, whose radii are hand-tuned per
+ * archetype at the hit sites and must not be overridden here.
+ *
+ * MIRROR: entityRenderer.getMonsterSize (the 32) and MONSTER_SIZE_MULT (the
+ * 1.5).  Both live in the renderer because they are drawing constants; this is
+ * the hit-side copy, and the two have to move together. */
+const PROCEDURAL_BODY_RADIUS = 32 * 1.5;
+export function monsterProceduralRadius(archOrType) {
+  const shape = hitShapeOf(archOrType);
+  if (shape === 'fodder' || shape === 'snowman' || shape === 'fireGoblin'
+      || shape === 'mummy' || shape === 'skeleton') return 0;
+  /* v2.3.1536: a named variant renders from its own sheets, not a circle --
+     but it still needs a hit radius that matches the figure it draws, or it
+     keeps the bare 18 default.  Half its drawn height is the same rule
+     monsterBodyOffsetY uses, capped at the 40 the hand-tuned 96px cases
+     (mummy/skeleton) settled on so this can never make one LARGER than the
+     tuned value it reproduces. */
+  const v = variantForArchetype(shape);
+  if (v) return v.liveScalePx ? Math.min(40, Math.round(v.liveScalePx / 2)) : 0;
+  return PROCEDURAL_BODY_RADIUS;
 }
 export function monsterBodyY(m) {
   return m.y - monsterBodyOffsetY(m.archetype || m.type);
