@@ -1332,6 +1332,7 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
   ZONE_MUSIC: {
     town: '/audio/music/village.mp3',
     worldview: '/audio/music/world.mp3',
+    frost: '/audio/music/frost.mp3',
   },
   /* v2.3.1578: the session track — starts at the login screen and plays for
      the whole session (the owner picked this over v2.3.1577's neondrift,
@@ -1358,7 +1359,14 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
      v2.3.1582: worldview gets world.mp3 — 128 kbps, 2.25 MB for 2m27s off a
      3.31 MB 189 kbps source.  Brightest of the three (>15 kHz at -38.3 dB);
      96k costs 1.9 dB there to save 0.6 MB, 112k measures no better than 96k
-     (-1.87 vs -1.89 dB), so 128k again. */
+     (-1.87 vs -1.89 dB), so 128k again.
+     v2.3.1583: frost gets frost.mp3 — 128 kbps, 2.05 MB for 2m15s off a
+     3.06 MB 191 kbps source.  DARKEST of the four (>15 kHz at -47.3 dB), so
+     this was the closest 96k call yet: it costs only 1.5 dB, on content
+     already 47 dB down.  Still 128k — HF energy is a proxy that cannot see
+     mid-range artifacts, and 0.5 MB is not worth guessing with.  Above 128k
+     is measurement noise here (160k reads 0.1 dB WORSE), which is the ceiling
+     of what this proxy can resolve, not a reason to prefer 128k over 160k. */
   GLOBAL_MUSIC: '/audio/music/login-theme.mp3',
   GLOBAL_MUSIC_VOL: 0.22,
   /* v2.3.1582: the decoded-buffer cache is BUDGETED, not unbounded.
