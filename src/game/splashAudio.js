@@ -7,23 +7,21 @@
    [showNameModal] and return its result as the cleanup; both early-return
    (no cleanup) when the modal isn't showing, exactly as before. */
 
-/* Torch crackle — quiet looping ambience; stopped when the modal closes. */
+/* Torch crackle — DISABLED (v2.3.1580, owner: "disable the torch burning
+   noise on login screen").  Same treatment wireThemeMusic got in v2.3.1103
+   and for the same reason: a no-op that keeps its export and signature, so the
+   BroTown.jsx call site and its useEffect cleanup contract are untouched
+   (returning undefined means "no cleanup", which is exactly what the
+   not-showing branch already returned).
+
+   It had also become the wrong sound in the wrong place.  v2.3.1577 gave the
+   login screen a real music track that starts on the same first pointerdown
+   this crackle armed itself on, so the two layered — a looping 50KB fire
+   effect under the theme, both at roughly the same level.
+
+   The asset is deleted with it; nothing else references it. */
 export function wireTorchCrackle(showNameModal) {
-  if (!showNameModal) return;
-  var au = null;
-  var start = function () {
-    try {
-      au = new Audio('/ui/welcome/torch-crackle.m4a');
-      au.loop = true;
-      au.volume = 0.22;
-      au.play().catch(function () {});
-    } catch (e) {}
-  };
-  window.addEventListener('pointerdown', start, { once: true });
-  return function () {
-    window.removeEventListener('pointerdown', start);
-    try { if (au) { au.pause(); au.src = ''; au = null; } } catch (e) {}
-  };
+  return undefined;
 }
 
 /* Splash theme music — DISABLED (v2.3.1103). The owner removed all
