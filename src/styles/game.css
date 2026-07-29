@@ -1047,14 +1047,18 @@ input{font-family:inherit}
    keeps it on the right side of the Lantern Slate motion rule ("no
    ambient pulsing except finite alerts").  A dead button sitting there
    pulsing would be actively misleading.
-   Scale only — no opacity/colour cycling, nothing that reflows.  3.5%
-   at 2.6s reads as a slow breath, not a throb; the spec's motion easings
-   are for discrete transitions, so this uses a symmetric ease-in-out. */
+   Scale only — no opacity/colour cycling, nothing that reflows; the
+   spec's motion easings are for discrete transitions, so this uses a
+   symmetric ease-in-out.
+   v2.3.1578 (owner: "make the breathing a little more obvious"): 3.5%
+   → 6%, and 2600ms → 2200ms.  Amplitude is the direct answer, but a
+   larger scale held at the old slow tempo starts to read as a wobble
+   rather than a breath, so the cycle tightens with it. */
 .bt-cc-play-label{display:inline-block;will-change:transform}
-.bt-cc-play:not(:disabled) .bt-cc-play-label{animation:bt-cc-breathe 2600ms ease-in-out infinite}
+.bt-cc-play:not(:disabled) .bt-cc-play-label{animation:bt-cc-breathe 2200ms ease-in-out infinite}
 @keyframes bt-cc-breathe{
   0%,100%{transform:scale(1)}
-  50%{transform:scale(1.035)}
+  50%{transform:scale(1.06)}
 }
 /* Spec: "prefers-reduced-motion removes shimmer/overshoot/nudge."  An
    indefinitely looping scale is exactly the class of motion that
