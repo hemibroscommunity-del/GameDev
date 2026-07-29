@@ -1340,9 +1340,22 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
                                           slimes.  NOT mist, which is literally
                                           named Poison Forest but is a mid-game
                                           band with violet slime reskins. */
-    sky: '/audio/music/desert.mp3',   /* "desert zone" = Wind Dunes; zones.js:44
-                                         calls it desert(sky) and its palette is
-                                         the v2.3.855 warm desert one */
+    /* "desert zone" = Wind Dunes; zones.js:44 calls it desert(sky) and its
+       palette is the v2.3.855 warm desert one.
+       v2.3.1589: ?v= CACHE-BUSTER, and the reason it is on this entry alone.
+       The desert track's CONTENT has now been replaced twice at a stable
+       filename (v2.3.1587, v2.3.1589) — and unlike every image path in this
+       repo, the music fetch carries no version query, while `public/` is
+       copied verbatim by vite rather than content-hashed.  So the URL was
+       byte-identical across a swap and a returning player could keep playing
+       the OLD score out of their HTTP cache indefinitely.  The other six
+       entries have never had their bytes changed under them, so they are left
+       alone (edit only what the change makes true); add a bump here on every
+       future desert swap, or a `?v=` to any other entry the first time its
+       file is replaced.  Safe against the LRU: the map value is the cache key
+       AND the only thing `trackUrl` is ever compared to (_zoneMusicUrl), so
+       both sides move together. */
+    sky: '/audio/music/desert.mp3?v=2.3.1589',
   },
   /* NOTE for whoever adds the remaining zones: every ZONES entry also carries a
      `music: '<id>'` field.  It is read NOWHERE — dead early-design remnant, all
@@ -1408,6 +1421,30 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
      costs nothing in download — at 96k LAME's joint stereo already collapses
      so much that the mono file came out byte-for-byte the same size as the
      stereo one — or a shorter loop.  NOT a bigger budget.
+     v2.3.1589: THIRD desert pick, owner-supplied, same filename again (the
+     v2.3.1587 precedent — nothing else moves).  This one is the owner's own
+     file shipped VERBATIM, which makes it the one track that breaks the
+     encode convention above, deliberately and with no way around it here:
+     3.72 MB, 2m33s, 194.7 kbps VBR, 48 kHz stereo.  No encoder exists in the
+     build sandbox (no ffmpeg/lame/sox, and npm is blocked), so transcoding to
+     the house 128 kbps / 44.1 kHz was not on the table; re-encoding a lossy
+     source down would also have cost quality to save 1.0 MB.  Its ID3 tag is
+     168 bytes with no album art, so there was no lossless trim either.
+     Net effect, honestly: DOWNLOAD gets worse (3.72 MB vs 2.71 MB, +37% —
+     the largest music file in the game), RESIDENT memory gets BETTER, because
+     PCM cost is duration x rate x channels and this track is 24 s shorter.
+     Careful about that second figure: decodeAudioData resamples to the
+     AudioContext's OWN rate, not the file's, so the resident size is
+     51.1 MiB on a 44.1 kHz context and 56.0 MiB on a 48 kHz one — against
+     59.7 MB before.  On a 48 kHz device it therefore lands 24 KB OVER the
+     56 MiB cap: still nominally the one over-budget track, but by 0.04%
+     instead of 6.6%, and on a 44.1 kHz device it is comfortably inside for
+     the first time.  The designed over-budget path (oversized track stays
+     resident alone, evicts the rest, freed on leaving the zone) is unchanged
+     and still what covers it.  If download size ever matters more than
+     fidelity here, the lever is a 128 kbps / 44.1 kHz re-encode of the
+     owner's source on a machine that has LAME — which would also put it
+     firmly under the cap on every device.
      v2.3.1586: meadow gets forest.mp3 — 128 kbps, 1.90 MB for 2m05s off a
      2.98 MB 200 kbps source.  The clearest 128k call of the six: 96k costs
      3.3 dB above 15 kHz here, worse than any other track including
