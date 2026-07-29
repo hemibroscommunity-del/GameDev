@@ -45,6 +45,26 @@ function _setThreatMark(S, pid, type, until) {
   S._threatMarks[pid] = { type: type, until: until };
 }
 
+/* v2.3.1574 (owner: "combat attacks broadcast to every zone in multiplayer
+   where the other player is.  Keep it only where they are").
+   Combat FX ride the room-wide broadcast channel -- there is one GameRoom for
+   the whole world, and #327's tick scoping deliberately left this path alone
+   because it carries chat/clan/trade alongside combat.  So a peer swinging in
+   the Flame Fields sends their swing to everyone, in every zone.
+   The BODY renderers already drop out-of-zone peers (entityRenderer's remote
+   loop, this file's harvest stand-ins), which is why this never showed as a
+   floating torso -- but the effects that do NOT go through a peer's body
+   container still landed: their arrow flew across your screen, their dodge
+   smear painted your zone, their damage popup opened over your ground.
+   Peers carry their zone on every tick payload (wsClient sets `.zone` from
+   `data.z`), so gate on that.  An UNKNOWN sender is dropped too: we cannot
+   place them, and the renderers would not draw their body either. */
+function _peerInZone(S, id) {
+  var o = S && S.others && S.others[id];
+  if (!o) return false;
+  return (o.zone || o.z || 'town') === S.currentZone;
+}
+
 var _FACING8 = ['east', 'southeast', 'south', 'southwest', 'west', 'northwest', 'north', 'northeast'];
 function _reconcileFacing(other, ang) {
   if (!other || typeof ang !== 'number' || !isFinite(ang)) return;
@@ -625,7 +645,7 @@ export function processGameEvent(type, payload, S, deps) {
             }
           case 'player_swing':
             {
-              if (payload.id && S.others[payload.id]) {
+              if (payload.id && _peerInZone(S, payload.id)) {
                 S.others[payload.id]._swingTs = Date.now();
                 S.others[payload.id]._swingSpecial = !!payload.special;
                 /* v2.3.1011: weapon + angle let the remote render the full
@@ -641,6 +661,12 @@ export function processGameEvent(type, payload, S, deps) {
             {
               /* Another player fired an arrow or staff bolt */
               if (payload.id === S.myId) break;
+              /* v2.3.1574: the worst of the cross-zone leaks -- this pushes onto a
+                 GLOBAL array the projectile renderer walks without any zone
+                 test, so a peer's arrow really did fly across your screen from
+                 a zone away.  Every other combat case at least died at the
+                 body renderer's own filter. */
+              if (!_peerInZone(S, payload.id)) break;
               if (!S._remoteProjectiles) S._remoteProjectiles = [];
               S._remoteProjectiles.push({
                 x: payload.x, y: payload.y, ang: payload.ang,
@@ -660,7 +686,7 @@ export function processGameEvent(type, payload, S, deps) {
             }
           case 'player_shield':
             {
-              if (payload.id && S.others[payload.id]) {
+              if (payload.id && _peerInZone(S, payload.id)) {
                 S.others[payload.id]._shieldUp = payload.up;
                 S.others[payload.id]._shieldTs = Date.now();
               }
@@ -670,7 +696,7 @@ export function processGameEvent(type, payload, S, deps) {
             {
               /* v2.3.1011: another player dodged/lunged/retreated -- mirror the
                  local _dodgeRoll shape so the remote render shows the move. */
-              if (payload.id && S.others[payload.id]) {
+              if (payload.id && _peerInZone(S, payload.id)) {
                 S.others[payload.id]._dodgeRoll = {
                   angle: payload.angle, kind: payload.kind || 'dodge', startTime: Date.now()
                 };
@@ -1209,6 +1235,9 @@ export function processGameEvent(type, payload, S, deps) {
                  above already does this; this case covers anything
                  else.  Visual only. */
               if (payload.id === S.myId) break;
+              /* v2.3.1574: popup is drawn at THEIR world coords -- from another zone
+                 those land at an arbitrary spot on your map. */
+              if (!_peerInZone(S, payload.id)) break;
               var hurtOther = S.others && S.others[payload.id];
               if (!hurtOther) break;
               hurtOther._hitFlash = Date.now();

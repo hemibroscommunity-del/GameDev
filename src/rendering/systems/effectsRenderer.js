@@ -14,7 +14,7 @@ const _fxPreload = [];
 const _fxLoad = (url) => { const p = Assets.load(url); _fxPreload.push(p); return p; };
 export function effectsAnimationsReady() { return Promise.allSettled(_fxPreload); }
 import { ELEMENTS } from '@/data/elements.js';
-import { ZONES } from '@/data/zones.js';
+import { ZONES, zonePlayerScale } from '@/data/zones.js';
 import { TILE, MINE_SPOT_R, FISH_CUE_DY } from '@/data/constants.js';
 import { GS_INNER_RADIUS, GS_OUTER_RADIUS, GS_FORWARD_ARC, cleaveArcBonus } from '@/data/index.js';
 import { getFrame as getSlimeFrame, hasState as hasSlimeState } from '../slimeSprites.js';
@@ -3500,15 +3500,24 @@ export class EffectsRenderer {
       if (ent.chop) ent.chop.visible = false;
       if (ent.cook) ent.cook.visible = false;
       if (ent.fire) ent.fire.visible = false;
+      /* v2.3.1574: the head traits ride the same pool entry, so they have to
+         drop with the figure — otherwise a peer's hat hangs in the air after
+         they stop cooking, or follows them into another zone. */
+      if (ent.traits) hideSkillTraits(ent.traits);
     }
     /* drawn-height / frame cadence -- copied from the LOCAL figures so a remote
        gatherer reads at the same size: chopper (_updateExtractionCue, 112px @
        45ms; v2.3.1348 +33% with the local figure), cook (41px @ 60ms), fire
        (_updateFiremaking, 88px @ 55ms). */
+    /* v2.3.1574: traitDir mirrors the direction each LOCAL figure composites
+       its head traits at -- the chopper's source art faces EAST (see the
+       _placeSkillTraitsOn('chop', …, 'east') call in _updateExtractionCue),
+       cook and fire face south.  Getting this wrong puts a peer's hat on
+       sideways rather than not at all, which is harder to spot. */
     const SPEC = {
-      chop: { frames: this._chopFrames, h: 112, ms: 45 },
-      cook: { frames: this._cookFrames, h: 82, ms: 60 }, /* v2.3.1431: match the local 2x cook (v2.3.1429) */
-      fire: { frames: this._fireFrames, h: 154, ms: 55 }, /* v2.3.1435: 1.75x with the local figure */
+      chop: { frames: this._chopFrames, h: 112, ms: 45, traitDir: 'east' },
+      cook: { frames: this._cookFrames, h: 82, ms: 60, traitDir: 'south' }, /* v2.3.1431: match the local 2x cook (v2.3.1429) */
+      fire: { frames: this._fireFrames, h: 154, ms: 55, traitDir: 'south' }, /* v2.3.1435: 1.75x with the local figure */
     };
     for (const id in others) {
       const o = others[id];
@@ -3529,11 +3538,38 @@ export class EffectsRenderer {
       }
       const fi = Math.floor(now / spec.ms) % spec.frames.length;
       sp.texture = spec.frames[fi];
-      const s = spec.h / 220;
+      const ox = (o.renderX != null ? o.renderX : o.x) || 0;
+      const oy = (o.renderY != null ? o.renderY : o.y) || 0;
+      /* v2.3.1574 (owner: "the scale looks off for other players cooking and
+         starting fires - way too big").  The stand-in was sized in absolute
+         pixels while the peer's BODY is scaled by the zone's perspective
+         curve (entityRenderer applies _zonePscale to their container).  On a
+         vista zone that curve runs to 0.03, so their body shrank to a speck
+         and this figure stayed full size — a giant cook standing over a dot.
+         Same curve, same position, so the two now shrink together. */
+      const pscale = zonePlayerScale(zone, ox, oy, TILE);
+      const s = (spec.h / 220) * pscale;
       sp.scale.set(s, s);
-      sp.x = (o.renderX != null ? o.renderX : o.x) || 0;
-      sp.y = ((o.renderY != null ? o.renderY : o.y) || 0) + 6;
+      sp.x = ox;
+      sp.y = oy + 6 * pscale;                 /* foot offset shrinks with the figure */
       sp.visible = true;
+      /* v2.3.1574 (owner: "doesn't reflect any trait items worn by them").
+         The LOCAL figures composite the player's hair/beard/hat onto the
+         stand-in's crown (_updateFiremaking -> _placeSkillTraitsOn); the
+         remote path drew the bare strip, so a peer's whole head vanished
+         while they cooked.  _placeSkillTraitsOnFor is the already-existing
+         arbitrary-player form of that, used by the remote swing/bow
+         stand-ins — reused here rather than grown a second time. */
+      if (!ent.traits) {
+        const mk = () => { const t = new Sprite(); t.visible = false; this.nodeLayer.addChild(t); return t; };
+        ent.traits = { hair: mk(), beard: mk(), hat: mk() };
+      }
+      const looks = {
+        hair: o.hair, hairColor: o.hairColor,
+        facialhair: o.facialhair, facialHairColor: o.facialHairColor,
+        headwear: o.headwear, hatColor: o.hatColor,
+      };
+      this._placeSkillTraitsOnFor(code, sp, fi, spec.traitDir, false, looks, ent.traits);
     }
     /* reap sprites for peers who left the room. */
     for (const [id, ent] of pool) {
@@ -3541,6 +3577,9 @@ export class EffectsRenderer {
         if (ent.chop) ent.chop.destroy();
         if (ent.cook) ent.cook.destroy();
         if (ent.fire) ent.fire.destroy();
+        /* v2.3.1574: reap the trait sprites too — they are added to the same
+           layer, so leaking them on every peer who leaves is a slow leak. */
+        if (ent.traits) for (const k in ent.traits) { if (ent.traits[k]) ent.traits[k].destroy(); }
         pool.delete(id);
       }
     }

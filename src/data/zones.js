@@ -201,3 +201,33 @@ export const ZONES = {
     enemyEmoji: {}
   },
 };
+
+/* v2.3.1574: the ONE copy of the vista perspective curve.
+ *
+ * A zone may carry `playerScale` to sell depth on a zoomed-out map: a flat
+ * number, or { near, far, curve } scaling by distance from the zone centre so
+ * a figure on a distant trail renders as a speck (worldview: 0.55 at the
+ * plateau down to 0.03 at the rim).
+ *
+ * This math had drifted into THREE hand-copied sites -- entityRenderer's
+ * _zonePscale (local + remote bodies), BroTown's vistaSpeedMult (movement),
+ * and a fourth that was simply MISSING: the remote harvest stand-ins in
+ * effectsRenderer, which is why another player cooking or lighting a fire on
+ * the worldview drew at full size next to their own thumbnail-sized body.
+ * A shrink curve that only some of a character's parts obey is not a curve,
+ * so it lives here now and every site calls it.
+ */
+export function zonePlayerScale(zoneId, x, y, TILE) {
+  const z = ZONES[zoneId];
+  const ps = z && z.playerScale;
+  if (typeof ps === 'number') return ps;
+  if (ps && typeof ps === 'object') {
+    const cx = (z.w * TILE) / 2, cy = (z.h * TILE) / 2;
+    const d = Math.min(1, Math.hypot(x - cx, y - cy) / (Math.hypot(cx, cy) || 1));
+    const near = ps.near != null ? ps.near : 0.6;
+    const far = ps.far != null ? ps.far : 0.3;
+    const curve = ps.curve != null ? ps.curve : 1;   /* <1 shrinks faster off-centre */
+    return near + (far - near) * Math.pow(d, curve);
+  }
+  return 1;
+}

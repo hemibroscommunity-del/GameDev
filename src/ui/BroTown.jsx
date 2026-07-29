@@ -1,4 +1,5 @@
 ﻿import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { zonePlayerScale } from '@/data/zones.js'; /* v2.3.1574: the one copy of the vista perspective curve */
 import { ExtractionSwipeLayer } from './ExtractionSwipeLayer.jsx';
 /* v2.3.855: first UI-panel extraction — the info/online-count popup. */
 import { InfoPanel } from './panels/InfoPanel.jsx';
@@ -3427,15 +3428,22 @@ export var BroTown = function BroTown(_ref0) {
            (the Overlook), slow movement as the avatar shrinks toward the
            distance so a tiny speck on the trail also creeps like a far-off
            figure.  Full speed at the plateau centre, down to a 20% floor. */
+        /* v2.3.1574: the curve itself now comes from data/zones.js
+           (zonePlayerScale) instead of a third hand-copy of the same math —
+           the copies had already drifted apart, and the remote harvest
+           stand-ins were missing one entirely.
+           VISTA_SPEED_BOOST (owner: "make the players in world view move 2x
+           faster"): the depth illusion is worth keeping, but crossing the
+           worldview at a 0.2 floor was a slog.  Doubling the whole curve
+           keeps the near/far RATIO — so a distant figure still creeps
+           relative to a near one — while halving the crossing time. */
+        var VISTA_SPEED_BOOST = 2;
         var vistaSpeedMult = 1;
         var _vz = ZONES[S.currentZone];
         if (_vz && _vz.playerScale && typeof _vz.playerScale === 'object') {
-          var _vps = _vz.playerScale;
-          var _vcx = _vz.w * TILE / 2, _vcy = _vz.h * TILE / 2;
-          var _vd = Math.min(1, Math.hypot(S.player.x - _vcx, S.player.y - _vcy) / (Math.hypot(_vcx, _vcy) || 1));
-          var _vnear = _vps.near != null ? _vps.near : 0.6, _vfar = _vps.far != null ? _vps.far : 0.3, _vcurve = _vps.curve != null ? _vps.curve : 1;
-          var _vsc = _vnear + (_vfar - _vnear) * Math.pow(_vd, _vcurve);
-          vistaSpeedMult = Math.max(0.2, _vsc / _vnear);
+          var _vnear = _vz.playerScale.near != null ? _vz.playerScale.near : 0.6;
+          var _vsc = zonePlayerScale(S.currentZone, S.player.x, S.player.y, TILE);
+          vistaSpeedMult = VISTA_SPEED_BOOST * Math.max(0.2, _vsc / _vnear);
         }
         var finalSpd = S._sled ? 0 : baseSpd * terrainMult * spdBuff * amuletSpdMult * swimMult * shieldMult * vistaSpeedMult; /* sled overrides movement */
         /* v2.3.1405: per-zone loading gate — while a zone's assets warm
