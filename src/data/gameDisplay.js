@@ -1392,18 +1392,22 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
      evicted, so an oversized score stays resident and simply drops everything
      else (covered by the checks in the v2.3.1584 commit).  Do not "fix" it by
      raising ZONE_MUSIC_CACHE_MB: 56 is deliberately below two full tracks.
-     v2.3.1585: sky (the "desert zone", Wind Dunes) gets desert.mp3 — 128 kbps,
-     3.23 MB for 3m32s off a 4.96 MB 196 kbps source.
-     FIRST TRACK TO EXCEED THE BUDGET, as v2.3.1584 predicted one eventually
-     would: 3m32s decodes to 71.3 MB against the 56 MB cap.  Shipped as-is
-     because the over-budget path is designed, not accidental — it stays
-     resident alone, evicts the others, and is itself freed on leaving the zone
-     (all four verified with these real sizes).  Still the heaviest zone in the
-     game for resident audio, so if the iPhone ever complains about the desert
-     specifically, the lever is this track: MONO halves it to 35.6 MB (measured)
-     and costs nothing in download — at 96k, LAME's joint stereo already
-     collapses so much that the mono file is byte-for-byte the same size — or a
-     shorter loop. NOT a bigger budget.
+     v2.3.1585 / v2.3.1587: sky (the "desert zone", Wind Dunes) gets
+     desert.mp3 — 128 kbps, 2.71 MB for 2m57s off a 4.35 MB 206 kbps source.
+     v2.3.1587 swapped out v2.3.1585's first pick on the owner's call, at the
+     same filename, so nothing else had to move.
+     STILL THE ONE TRACK OVER THE BUDGET, though by far less than before:
+     2m57s decodes to 59.7 MB against the 56 MB cap, where the track it
+     replaced was 3m32s and 71.3 MB.  That is fine for the same reason it was
+     fine then — the over-budget path is designed rather than accidental: an
+     oversized track stays resident alone, evicts the others, and is itself
+     freed on leaving the zone (verified against both tracks' real sizes).
+     It is still the heaviest zone in the game for resident audio, so if the
+     iPhone ever complains about the desert specifically, the lever is this
+     track: MONO halves it (measured at 35.6 MB on the older, longer pick) and
+     costs nothing in download — at 96k LAME's joint stereo already collapses
+     so much that the mono file came out byte-for-byte the same size as the
+     stereo one — or a shorter loop.  NOT a bigger budget.
      v2.3.1586: meadow gets forest.mp3 — 128 kbps, 1.90 MB for 2m05s off a
      2.98 MB 200 kbps source.  The clearest 128k call of the six: 96k costs
      3.3 dB above 15 kHz here, worse than any other track including
