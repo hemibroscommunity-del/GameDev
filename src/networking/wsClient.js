@@ -624,6 +624,10 @@ export function setupWebSocket(ctx) {
                  the legacy client-side credit paths stay in place but
                  only run when the server hasn't claimed the job. */
               S._serverCaps = msg.caps || {};
+              /* v2.3.1576: the server's verified Hemi Bro for THIS player,
+                 restored from storage if the link is still fresh.  Server-owned
+                 — the client never writes it, it only renders from it. */
+              if (S.rpg) S.rpg._bro = msg.bro || null;
               /* v2.3.1178: this session's private token for the
                  mutating HTTP economy endpoints (market place/cancel,
                  arena join/leave). Sent as the x-bt-auth header by

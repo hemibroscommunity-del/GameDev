@@ -214,6 +214,10 @@ export const tickMethods = {
       const playerWire = (ps) => ({
         x: ps.x, y: ps.y, d: ps.d, z: ps.z, vx: ps.vx, vy: ps.vy,
         f: ps.f, eqc: ps.eqc, eql: ps.eql, eqs: ps.eqs, ex: ps.ex,
+        /* v2.3.1576: verified Hemi Bro token id, or undefined.  SERVER-OWNED
+           (broverify.js is the only writer) and absent from
+           TRACK_COSMETIC_KEYS, so a client cannot set it by sending it. */
+        bro: ps.bro,
       });
 
       // Dirty players bucketed by the zone they are standing in, so a

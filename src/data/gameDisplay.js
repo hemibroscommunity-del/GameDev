@@ -1309,15 +1309,159 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
      the oscillator drone played fine.) */
   _zoneMusicSource: null,
   _zoneMusicGain: null,
-  _zoneMusicBuffers: {}, /* { [trackUrl]: AudioBuffer } cache */
+  _zoneMusicBuffers: {}, /* { [trackUrl]: AudioBuffer } cache — BUDGETED, see below */
   _zoneMusicUrl: null,   /* current track url; abandons stale fetches */
+  _zoneMusicLru: [],     /* trackUrls, most-recently-used first */
+  /* v2.3.1577: GLOBAL music — one track that starts on the login screen and
+     plays unbroken for the whole session.  Deliberately NOT a ZONE_MUSIC
+     entry: that map is per-zone and startZoneAmbient stops the old track and
+     starts the new one on every zone change, so the same url in every zone
+     would RESTART the song at each boundary.  This lives in its own pair of
+     nodes that stopAmbient never touches, so zone ambience (and any future
+     per-zone track) can come and go underneath it. */
+  _globalMusicSource: null,
+  _globalMusicGain: null,
+  _globalMusicBuffer: null,
+  _globalMusicStarting: false,
   /* v2.3.1103: EMPTIED — the owner removed all background music tracks
      (~40 MB) to shrink the download. With no entry here, startZoneAmbient()
      falls through to the low-volume procedural oscillator drone (generated,
      zero bytes) for every zone, so there's no music fetch and nothing 404s.
      To restore a track, re-add `<zoneId>: '/audio/music/<file>.mp3'` AND
      ship the file back into public/audio/music/. */
-  ZONE_MUSIC: {},
+  ZONE_MUSIC: {
+    town: '/audio/music/village.mp3',
+    worldview: '/audio/music/world.mp3',
+    frost: '/audio/music/frost.mp3',
+    ember: '/audio/music/fire.mp3',   /* "fire zone" = Flame Fields */
+    meadow: '/audio/music/forest.mp3', /* owner: "forest meadow area where the
+                                          slimes are" — Starting Meadow, the
+                                          green zone that spawns 10 plain
+                                          slimes.  NOT mist, which is literally
+                                          named Poison Forest but is a mid-game
+                                          band with violet slime reskins. */
+    sky: '/audio/music/desert.mp3',   /* "desert zone" = Wind Dunes; zones.js:44
+                                         calls it desert(sky) and its palette is
+                                         the v2.3.855 warm desert one */
+  },
+  /* NOTE for whoever adds the remaining zones: every ZONES entry also carries a
+     `music: '<id>'` field.  It is read NOWHERE — dead early-design remnant, all
+     14 of them.  Do NOT "restore" it by wiring this map through it (the doc-trust
+     rule in CLAUDE.md: dormant systems need the owner first).  Keyed by zone id
+     here is the working path. */
+  /* v2.3.1578: the session track — starts at the login screen and plays for
+     the whole session (the owner picked this over v2.3.1577's neondrift,
+     which is removed rather than left to ship 3 MB nobody plays).
+
+     128 kbps CBR, 44.1 kHz stereo, 1.56 MB for 1m42s — 36% off the 2.43 MB
+     source.  A HIGHER bitrate than neondrift got, deliberately: this track is
+     far brighter (energy above 15 kHz measures -40.3 dB against neondrift's
+     -55.3), so the same 96 kbps cost 3.0 dB up there instead of 1.8, and the
+     file is small enough that the 0.4 MB saved was not worth an audible
+     trade.  80 kbps falls off a cliff (-6.5 dB) — do not go there for this
+     one.
+
+     MP3 rather than the smaller AAC: decodeAudioData REFUSED the m4a
+     candidates in a real browser check while the mp3 decoded cleanly, and
+     this whole path is decodeAudioData. */
+  /* v2.3.1581: town gets its own track.  A zone entry here TAKES OVER from
+     GLOBAL_MUSIC while the player is in that zone — see the ducking in
+     startZoneAmbient.  Without that they would simply play at once, because
+     the session track deliberately lives outside stopAmbient's reach.
+     128 kbps, 2.07 MB for 2m16s (37% off the 3.28 MB source); same bitrate
+     as login-theme and for the same measured reason — this track is bright
+     (>15 kHz at -42.7 dB), so 96k would cost 2.1 dB up there to save 0.5 MB.
+     v2.3.1582: worldview gets world.mp3 — 128 kbps, 2.25 MB for 2m27s off a
+     3.31 MB 189 kbps source.  Brightest of the three (>15 kHz at -38.3 dB);
+     96k costs 1.9 dB there to save 0.6 MB, 112k measures no better than 96k
+     (-1.87 vs -1.89 dB), so 128k again.
+     v2.3.1583: frost gets frost.mp3 — 128 kbps, 2.05 MB for 2m15s off a
+     3.06 MB 191 kbps source.  DARKEST of the four (>15 kHz at -47.3 dB), so
+     this was the closest 96k call yet: it costs only 1.5 dB, on content
+     already 47 dB down.  Still 128k — HF energy is a proxy that cannot see
+     mid-range artifacts, and 0.5 MB is not worth guessing with.  Above 128k
+     is measurement noise here (160k reads 0.1 dB WORSE), which is the ceiling
+     of what this proxy can resolve, not a reason to prefer 128k over 160k.
+     v2.3.1584: ember (the "fire zone", Flame Fields) gets fire.mp3 — 128 kbps,
+     2.42 MB for 2m39s off a 3.73 MB 197 kbps source.  96k costs 2.5 dB above
+     15 kHz, the worst of the four, so 128k is not a close call here.
+     LONGEST track so far and therefore the heaviest resident: 53.4 MB decoded,
+     against the 56 MB budget below.  It fits, but a track much past 2m40s
+     would sit alone ABOVE the budget.  That is safe by construction rather
+     than by luck — the just-decoded and currently-playing track are never
+     evicted, so an oversized score stays resident and simply drops everything
+     else (covered by the checks in the v2.3.1584 commit).  Do not "fix" it by
+     raising ZONE_MUSIC_CACHE_MB: 56 is deliberately below two full tracks.
+     v2.3.1585 / v2.3.1587: sky (the "desert zone", Wind Dunes) gets
+     desert.mp3 — 128 kbps, 2.71 MB for 2m57s off a 4.35 MB 206 kbps source.
+     v2.3.1587 swapped out v2.3.1585's first pick on the owner's call, at the
+     same filename, so nothing else had to move.
+     STILL THE ONE TRACK OVER THE BUDGET, though by far less than before:
+     2m57s decodes to 59.7 MB against the 56 MB cap, where the track it
+     replaced was 3m32s and 71.3 MB.  That is fine for the same reason it was
+     fine then — the over-budget path is designed rather than accidental: an
+     oversized track stays resident alone, evicts the others, and is itself
+     freed on leaving the zone (verified against both tracks' real sizes).
+     It is still the heaviest zone in the game for resident audio, so if the
+     iPhone ever complains about the desert specifically, the lever is this
+     track: MONO halves it (measured at 35.6 MB on the older, longer pick) and
+     costs nothing in download — at 96k LAME's joint stereo already collapses
+     so much that the mono file came out byte-for-byte the same size as the
+     stereo one — or a shorter loop.  NOT a bigger budget.
+     v2.3.1586: meadow gets forest.mp3 — 128 kbps, 1.90 MB for 2m05s off a
+     2.98 MB 200 kbps source.  The clearest 128k call of the six: 96k costs
+     3.3 dB above 15 kHz here, worse than any other track including
+     login-theme's 3.0.  Shortest track so far and so the lightest resident at
+     41.9 MB, comfortably inside the budget — a useful counterweight to the
+     desert next door. */
+  GLOBAL_MUSIC: '/audio/music/login-theme.mp3',
+  GLOBAL_MUSIC_VOL: 0.22,
+  /* v2.3.1582: the decoded-buffer cache is BUDGETED, not unbounded.
+     An AudioBuffer is raw float32 PCM, so a 2 MB mp3 is ~50 MB of RAM.
+     Measured in Chromium at 44.1 kHz stereo: login-theme 34.4 MB, village
+     45.8 MB, world 49.5 MB.  Keeping every one forever was deliberate and
+     free while ONE zone had a track; with a track in each of the 12 zones it
+     is ~550 MB of PCM accumulating as the player tours the world — the same
+     class of failure as the v2.3.1405 zone-art RAM problem, on the iPhone
+     this game targets.  DOWNLOAD is not the concern (2 MB each); resident
+     memory is.
+     Re-decoding is the cheap side of the trade: the mp3 stays in the HTTP
+     cache, so re-entry costs only a decode, hidden behind the zone-loading
+     overlay and the 600 ms fade-in.  Evicting mid-fade is safe too — a
+     playing AudioBufferSourceNode holds its own reference to the buffer, so
+     dropping ours never cuts audio short.
+     The budget is in MEGABYTES, not a track count, so it adapts to the art:
+     at 56 MB one full-length track is always resident, while short loops (a
+     1-minute track decodes to ~21 MB) keep two or three. */
+  ZONE_MUSIC_CACHE_MB: 56,
+  _bufBytes: function _bufBytes(buf) {
+    return buf ? buf.length * (buf.numberOfChannels || 1) * 4 : 0;
+  },
+  _touchZoneMusic: function _touchZoneMusic(url) {
+    if (!this._zoneMusicLru) this._zoneMusicLru = [];
+    var at = this._zoneMusicLru.indexOf(url);
+    if (at >= 0) this._zoneMusicLru.splice(at, 1);
+    this._zoneMusicLru.unshift(url);
+  },
+  _rememberZoneMusic: function _rememberZoneMusic(url, buf) {
+    if (!this._zoneMusicBuffers) this._zoneMusicBuffers = Object.create(null);
+    this._zoneMusicBuffers[url] = buf;
+    this._touchZoneMusic(url);
+    var budget = this.ZONE_MUSIC_CACHE_MB * 1048576;
+    var used = 0, i;
+    for (i = 0; i < this._zoneMusicLru.length; i++) {
+      used += this._bufBytes(this._zoneMusicBuffers[this._zoneMusicLru[i]]);
+    }
+    /* Drop from the cold end until inside budget.  Never the track just
+       decoded, and never the one the room is currently playing. */
+    for (i = this._zoneMusicLru.length - 1; i >= 0 && used > budget; i--) {
+      var u = this._zoneMusicLru[i];
+      if (u === url || u === this._zoneMusicUrl) continue;
+      used -= this._bufBytes(this._zoneMusicBuffers[u]);
+      delete this._zoneMusicBuffers[u];
+      this._zoneMusicLru.splice(i, 1);
+    }
+  },
   init: function init() {
     if (this.ctx) return;
     try {
@@ -1665,6 +1809,10 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
      uses). When a zone has a track in ZONE_MUSIC, it REPLACES the
      procedural drone so the two layers don't fight. */
   var trackUrl = this.ZONE_MUSIC && this.ZONE_MUSIC[zoneId];
+  /* v2.3.1581: hand over between the session track and a zone track.  Decided
+     BEFORE the fetch below so the duck rides the same 600 ms as the crossfade
+     rather than waiting on a download. */
+  this.duckGlobalMusic(!!trackUrl);
   if (trackUrl) {
     var self = this;
     self._zoneMusicUrl = trackUrl;
@@ -1694,6 +1842,7 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
       } catch (e) {}
     };
     if (self._zoneMusicBuffers && self._zoneMusicBuffers[trackUrl]) {
+      self._touchZoneMusic(trackUrl);   /* a cache HIT is a use — keep it warm */
       startWithBuffer(self._zoneMusicBuffers[trackUrl]);
     } else {
       try {
@@ -1701,8 +1850,7 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
           .then(function (r) { return r.ok ? r.arrayBuffer() : Promise.reject(new Error('http ' + r.status)); })
           .then(function (ab) { return self.ctx.decodeAudioData(ab); })
           .then(function (buf) {
-            if (!self._zoneMusicBuffers) self._zoneMusicBuffers = {};
-            self._zoneMusicBuffers[trackUrl] = buf;
+            self._rememberZoneMusic(trackUrl, buf);
             startWithBuffer(buf);
           })
           .catch(function () { /* fetch / decode failure — silent */ });
@@ -1737,8 +1885,9 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
     this._ambientGain2 = null;
     /* Zone music — stop the Web Audio source + drop refs so the
        buffer source can be GC'd. The decoded AudioBuffer cache
-       (_zoneMusicBuffers) is intentionally kept across zone hops
-       so re-entering a zone doesn't re-decode.
+       (_zoneMusicBuffers) is kept across zone hops so re-entering a
+       zone doesn't re-decode — within the MB budget enforced by
+       _rememberZoneMusic (v2.3.1582; it used to be unbounded).
 
        When fadeMusic is true, ramp the existing gain to 0 over
        600 ms and let the source play on until just past the ramp
@@ -1979,6 +2128,85 @@ BT_AUDIO.stopSfxLoop = function (key) {
     l.src.stop(now + 0.15);
   } catch (e) { try { l.src.stop(); } catch (_) {} }
 };
+/* v2.3.1577: start the session track, once.  Idempotent by design — it is
+   called from the first-gesture unlock AND from the background-resume path,
+   and a second call while one is already playing (or still fetching) must be
+   a no-op rather than a second overlapping copy of the song.
+
+   Fetched through the same decodeAudioData path as the zone tracks, for the
+   same reason the zone tracks use it: HTMLAudio has its own autoplay gate
+   that the AudioContext unlock does not satisfy (see the _zoneMusicSource
+   note above — `new Audio()` silently failed there while the oscillators
+   played fine). */
+BT_AUDIO.startGlobalMusic = function () {
+  var url = this.GLOBAL_MUSIC;
+  if (!url || !this.ctx) return;
+  if (this._globalMusicSource || this._globalMusicStarting) return;
+  var self = this;
+  var play = function (buf) {
+    /* Re-check: the fetch is async and a background-resume may have started
+       a source while it was in flight. */
+    if (self._globalMusicSource || !self.ctx) return;
+    try {
+      if (self.ctx.state === 'suspended') self.ctx.resume();
+      var src = self.ctx.createBufferSource();
+      var gain = self.ctx.createGain();
+      src.buffer = buf;
+      src.loop = true;
+      var t0 = self.ctx.currentTime;
+      /* v2.3.1581: start DUCKED if a zone track already owns the music.  This
+         path also runs on background-resume, so without the check a resume
+         while standing in town would fade the session track up over the top
+         of the town track. */
+      var startVol = (self._zoneMusicSource || self._globalMusicDucked) ? 0 : self.GLOBAL_MUSIC_VOL;
+      gain.gain.setValueAtTime(0, t0);
+      gain.gain.linearRampToValueAtTime(startVol, t0 + 1.2);
+      src.connect(gain);
+      gain.connect(self._out());
+      /* If iOS kills the source while backgrounded, drop the ref so
+         resumeFromBackground can start a fresh one. */
+      src.onended = function () {
+        if (self._globalMusicSource === src) { self._globalMusicSource = null; self._globalMusicGain = null; }
+      };
+      src.start(0);
+      self._globalMusicSource = src;
+      self._globalMusicGain = gain;
+    } catch (e) {}
+  };
+  if (this._globalMusicBuffer) return play(this._globalMusicBuffer);
+  this._globalMusicStarting = true;
+  try {
+    fetch(url).then(function (r) { return r.arrayBuffer(); })
+      .then(function (ab) { return self.ctx.decodeAudioData(ab); })
+      .then(function (buf) { self._globalMusicBuffer = buf; self._globalMusicStarting = false; play(buf); })
+      .catch(function () { self._globalMusicStarting = false; /* no music beats a broken boot */ });
+  } catch (e) { this._globalMusicStarting = false; }
+};
+
+/* v2.3.1581: duck the session track under a zone track.
+ *
+ * GLOBAL_MUSIC is deliberately outside stopAmbient's reach (that is what lets
+ * it survive zone changes), so the moment a zone gained a track of its own the
+ * two would have played SIMULTANEOUSLY.  This is the reconciliation.
+ *
+ * Ducking, not stopping: the buffer source keeps running at zero gain and
+ * keeps its POSITION, so leaving town returns to the session track where it
+ * would have been rather than restarting it from the top — which is the whole
+ * property v2.3.1577 exists to provide.  600 ms to match the zone crossfade
+ * ramp on both sides, so the handover reads as one gesture. */
+BT_AUDIO.duckGlobalMusic = function (down) {
+  var g = this._globalMusicGain;
+  if (!g || !this.ctx) return;
+  var target = down ? 0 : this.GLOBAL_MUSIC_VOL;
+  try {
+    var now = this.ctx.currentTime;
+    g.gain.cancelScheduledValues(now);
+    g.gain.setValueAtTime(g.gain.value, now);
+    g.gain.linearRampToValueAtTime(target, now + 0.6);
+  } catch (e) {}
+  this._globalMusicDucked = !!down;
+};
+
 BT_AUDIO.unlock = function () {
   if (!this.ctx) this.init();
   if (!this.ctx) return;
@@ -1992,6 +2220,11 @@ BT_AUDIO.unlock = function () {
   this._unlocked = true;
   if (firstUnlock) this.fadeIn(1.2);
   this.loadSfxManifest();
+  /* v2.3.1577: the session track starts here — this is the first gesture on
+     the LOGIN screen (GameApp registers the handler at app level), so the
+     music is playing before the player ever enters the world, and nothing
+     restarts it on the way in. */
+  this.startGlobalMusic();
 };
 /* v2.3.254: called from the visibilitychange handler in GameApp.jsx
    when the tab returns to foreground.  ctx.resume() alone is not
@@ -2006,6 +2239,11 @@ BT_AUDIO.resumeFromBackground = function () {
        first-gesture case, just mid-session). */
     this.fadeIn(0.8);
   }
+  /* v2.3.1577: iOS can implicitly stop a BufferSource during a long
+     backgrounding, and ctx.resume() does not restart it — the same reason
+     the zone track is re-kicked below.  onended clears the ref, so this
+     starts a fresh one only when the old one really died. */
+  this.startGlobalMusic();
   var zone = this._currentZoneAmbient;
   if (!zone) return;
   /* startZoneAmbient early-returns when _currentZoneAmbient already

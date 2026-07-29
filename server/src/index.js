@@ -118,6 +118,7 @@ import { httpAuthMethods } from './httpauth.js';
 // cross-zone vitals HUD; memory-only, no combat/XP changes -- see party.js.
 import { partyMethods } from './party.js';
 import { friendsMethods } from './friends.js';
+import { broVerifyMethods } from './broverify.js'; /* v2.3.1576: Hemi Bro ownership */
 // v2.3.1191 (P4 decomposition): the combat/damage core -- see combat.js.
 import { combatMethods } from './combat.js';
 // v2.3.1192: server amulet forge (handoff item I follow-up) -- smelt/
@@ -258,6 +259,10 @@ export const PRIVILEGED_EVENTS = new Set([
   // grant anything (credits are server-persisted before it's sent) but
   // it drives "you received X" UI, so don't let clients spoof it.
   'inbox_delivered', 'join_rejected',
+  /* v2.3.1576: Hemi Bro ownership. Both are server-emitted only -- a forged
+     bro_verify_result would let a client show peers a badge it never earned,
+     and a forged bro_nonce would let it choose the text it 'signed'. */
+  'bro_nonce', 'bro_verify_result',
   // v2.3.1121: duel resolution is server-emitted only.
   'duel_end',
   // v2.3.1124: gamble outcomes are server-rolled + privately sent;
@@ -2636,6 +2641,16 @@ export class GameRoom {
       // remove handshake (rule 14/15: accepts validated against stored
       // requests, forged accepts dropped) + friend-gated DMs on the
       // party_chat shape.  All own validated cases; none rebroadcast.
+      /* v2.3.1576: Hemi Bro ownership (broverify.js) -- server mints the
+         challenge, recovers the signer and asks the chain who holds the
+         token.  Own validated cases; neither rebroadcasts. */
+      case 'bro_nonce':
+        if (session.id) this._handleBroNonce(session, ws);
+        break;
+      case 'bro_verify':
+        if (session.id) await this._handleBroVerify(session, msg.payload || msg, ws);
+        break;
+
       case 'friend_request':
         if (session.id) await this._handleFriendRequest(session, msg.payload || msg);
         break;
@@ -2960,6 +2975,7 @@ export class GameRoom {
 
 // v2.3.1118: mix the marketplace methods into GameRoom (see the
 // market.js header for the fold rationale + re-extraction path).
+Object.assign(GameRoom.prototype, broVerifyMethods); /* v2.3.1576 */
 Object.assign(GameRoom.prototype, marketMethods);
 // v2.3.1119: trade settlement mixin (same pattern).
 Object.assign(GameRoom.prototype, tradeMethods);
