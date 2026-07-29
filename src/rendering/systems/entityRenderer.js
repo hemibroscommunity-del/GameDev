@@ -15,7 +15,7 @@ for (const el of Object.values(ELEMENTS || {})) {
   if (el && el.status) STATUS_TO_ELEMENT.set(el.status, el);
 }
 import { lookupCollision, PVP_THREAT_CONSENT_MS } from '@/data/gameSystems.js';
-import { getFrame, resolveDirection, cycleMs, hasPose, frameCount as playerFrameCount } from '../playerSprites.js';
+import { getFrame, resolveDirection, cycleMs, hasPose, frameCount as playerFrameCount, dodgeSheetDir } from '../playerSprites.js';
 import { getShieldFrame } from '../shieldSprites.js';
 import { jogWaistRow } from '../jogWaist.js'; /* v2.3.1341: stable waist band */
 import { getFrame as getSlimeFrame, hasState as hasSlimeState, frameCount as slimeFrameCount } from '../slimeSprites.js';
@@ -538,6 +538,13 @@ function _fullsetCrown(dir, phase) {
    from JOG_EW_HAT_TUNE; callers that know the hat id pass it. */
 function _placeTrait(sprite, entry, display, pose, dir, mirror, frameIdx, bodyScale, tune) {
   if (!sprite) return;
+  /* v2.3.1534: the dodge sheets ship no body-tops entries, and
+     _lookupBodyTop's miss path falls back to `stand-<dir>-0` — the STANDING
+     crown.  Placing a hat there while the body is a ball on the floor leaves
+     it hovering in mid-air for the whole roll.  Hide traits for the ~300ms
+     instead; derive dodge body-tops (tools/derive_body_tops.py) and drop this
+     branch when the pose gets its own gear pass. */
+  if (pose === 'dodge') { sprite.visible = false; return; }
   _ensureBodyData();
   /* v2.3.1305: fallbackTex = the NATIVE-color textures behind a recolored
      set.  The color catalogs cache a build as complete even when one
@@ -1535,10 +1542,17 @@ export const prewarmProgress = { done: 0, total: 0 };
    left lazy back in v2.3.1118 as "pure VRAM waste", which was true while the
    pose had no armour to bake against.  If iPhone context loss ever returns,
    this list is the first thing to trim back to ['stand', 'jog']. */
-const PREWARM_POSES = ['stand', 'jog', 'hit', 'mine'];
+/* v2.3.1534: + 'dodge'.  The recolored body sheets are baked HERE, during the
+   loading screen; a pose left off this list falls back to the un-recolored
+   base frame on its first use while the bake runs, which for dodge would be a
+   flash of default skin/pants the first time the player rolls.  That is the
+   first-use hitch class CLAUDE.md's animation-preloading law exists to stop.
+   Cost is 2 dirs x 9 frames = 18, against jog's ~140. */
+const PREWARM_POSES = ['stand', 'jog', 'hit', 'mine', 'dodge'];
 /* The gather poses are authored SOUTH-ONLY -- walking them through all five
-   dirs would bake four empty frames per pose and log four 404s per slot. */
-const prewarmDirs = (pose, dirs) => (pose === 'mine' ? ['south'] : dirs);
+   dirs would bake four empty frames per pose and log four 404s per slot.
+   Dodge is authored south + east for the same reason (see playerSprites). */
+const prewarmDirs = (pose, dirs) => (pose === 'mine' ? ['south'] : pose === 'dodge' ? ['south', 'east'] : dirs);
 
 /* v2.3.701: plan the WHOLE intro workload up front so the loading bar is
    monotonic.  Previously each pass added its own count to `total` when it
@@ -4267,9 +4281,16 @@ export class EntityRenderer {
       const _rexStandIn = _rex === 'chop' || _rex === 'cook' || _rex === 'fire';
       const _rexBodyPose = _rex === 'mine' ? 'mine' : _rex === 'fish' ? 'fish' : null;
       if (display.visible === _rexStandIn) display.visible = !_rexStandIn;
+      /* v2.3.1534: remote dodge roll.  other._dodgeRoll is already set from
+         the `player_dodge` broadcast (v2.3.1011) and drives the afterimage
+         trail in effectsRenderer; now it drives the body pose too, so a peer
+         rolling past reads as a roll and not a slide.  The broadcast carries
+         no duration (the roller's window is elastic), so this plays at the
+         cycleMs default. */
+      const _rDodge = other._dodgeRoll || null;
       const pose = _rexBodyPose
         ? _rexBodyPose
-        : (isHit ? 'hit' : (isMoving ? 'jog' : 'stand'));
+        : (_rDodge ? 'dodge' : (isHit ? 'hit' : (isMoving ? 'jog' : 'stand')));
       const spritesAvailable = hasPose(pose) || hasPose('stand');
       let useSprite = false;
       if (!_rexStandIn && spritesAvailable) {
@@ -4277,6 +4298,12 @@ export class EntityRenderer {
         let { dir, mirror } = resolveDirection(facing);
         /* mine/fish frames are authored south-only -> force south, no mirror. */
         if (pose === 'mine' || pose === 'fish') { dir = 'south'; mirror = false; }
+        /* v2.3.1534: dodge is authored south + east -> dominant-axis map, off
+           the broadcast roll angle rather than the peer's walk facing. */
+        if (pose === 'dodge') {
+          const _ds = Math.round((_rDodge.angle || 0) / (Math.PI / 4));
+          ({ dir, mirror } = dodgeSheetDir(SECTORS[((_ds % 8) + 8) % 8]));
+        }
         let frameIdx = 0;
         let _rJogPhase = null;  /* v2.3.1367: cycle phase for native-count fullset playback */
         if (pose === 'jog') {
@@ -4298,6 +4325,11 @@ export class EntityRenderer {
              as the local player's mine/fish pose. */
           const fc = playerFrameCount(pose, 'south') || (pose === 'mine' ? 14 : 32);
           frameIdx = Math.floor((now / cycleMs(pose, 'south')) * fc) % fc;
+        } else if (pose === 'dodge') {
+          /* One-shot, clamped — mirrors the local branch. */
+          const fc = playerFrameCount('dodge', dir) || 9;
+          const t = (now - (_rDodge.startTime || now)) / cycleMs('dodge', dir);
+          frameIdx = Math.max(0, Math.min(fc - 1, Math.floor(t * fc)));
         }
         /* v2.3.389: remote players render in their own skin tone.
            v2.3.399: + their pants / shoes colors.
@@ -4376,7 +4408,10 @@ export class EntityRenderer {
             _rfull = pose === 'pickup' && _rlegsW && _rchestW;   // v2.3.1057: hide body, head overlay + gear render it (no bake)
             /* v2.3.1361: fullset figure for remote players too. */
             _fsR = _fullsetFrame(other.equip && other.equip.chest, other.equip && other.equip.legs, pose, dir, frameIdx, _rJogPhase);
-            const _mt = _fsR || ((pose === 'pickup') ? tex : _maskedBodyFrame(tex, _rworn, 6, { pose, dir, frameIdx }));
+            /* v2.3.1534: 'dodge' joins pickup on the un-masked path — it has
+               no gear sheets yet, and masking the body against an empty worn
+               set just carves holes in a figure nothing is drawn over. */
+            const _mt = _fsR || ((pose === 'pickup' || pose === 'dodge') ? tex : _maskedBodyFrame(tex, _rworn, 6, { pose, dir, frameIdx }));
             if (spriteBody.texture !== _mt) spriteBody.texture = _mt;
           }
           /* v2.3.1055: pickup head overlay (drawn above gear in _orderTraitsAndWeapon).
@@ -4930,11 +4965,20 @@ export class EntityRenderer {
        the rod cast/sway reads and the dangling line lines up with the water
        hole drawn beneath the player (effectsRenderer._updateFishingHole). */
     const fishing = !!(S._extraction && S._extraction.skill === 'fishing');
+    /* v2.3.1534: the §5.8 dodge roll owns the body for its whole window. */
+    const dodging = !!S._dodgeRoll;
     let facing;
     if (lootFrozen) {
       facing = 'south';
     } else if (mining || fishing) {
       facing = 'south';
+    } else if (dodging) {
+      /* Face the direction of travel.  The roll moves the player by writing
+         x/y directly (BroTown.jsx), NOT through vx/vy, so the isMoving branch
+         below would miss it and the tumble would play toward whatever the
+         player happened to be facing when they swiped. */
+      const sector = Math.round(S._dodgeRoll.angle / (Math.PI / 4));
+      facing = SECTORS[((sector % 8) + 8) % 8];
     } else if (isShielding && S._shieldAngle != null) {
       const sector = Math.round(S._shieldAngle / (Math.PI / 4));
       facing = SECTORS[((sector % 8) + 8) % 8];
@@ -4972,20 +5016,30 @@ export class EntityRenderer {
        Procedural bamboo swing arc reads cleaner than the static
        windup-strike frames; body stays in jog/stand during the
        250 ms swing window and the weapon overlay handles the motion. */
+    /* v2.3.1534: 'dodge' sits ABOVE hit.  A standard dodge and a lunge grant
+       i-frames for the whole window, so a hit-react during one is either
+       impossible or (retreat_shot, which sets noIFrames) a hit taken while
+       already committed to the tumble — in both cases the roll is what the
+       body is actually doing, and cutting to the 250ms hit pose mid-roll
+       would strand the player upright and sliding. */
     const pose = lootFrozen
       ? 'pickup'
       : (mining
           ? 'mine'
           : (fishing
               ? 'fish'
-              : (isHit
-                  ? 'hit'
-                  : (isMoving ? 'jog' : 'stand'))));
+              : (dodging
+                  ? 'dodge'
+                  : (isHit
+                      ? 'hit'
+                      : (isMoving ? 'jog' : 'stand')))));
     /* Resolve to the unmirrored sheet direction + mirror flag.  Lifted
        to outer scope so the weapon-positioning code below can pin to
        the per-frame hand anchor regardless of whether the spritesheet
-       path drew this frame. */
-    const { dir, mirror } = resolveDirection(facing);
+       path drew this frame.
+       v2.3.1534: dodge ships only south + east, so it resolves through its
+       own dominant-axis map instead of the 8-way one. */
+    const { dir, mirror } = dodging ? dodgeSheetDir(facing) : resolveDirection(facing);
     const facingIdx = SECTORS.indexOf(facing);   // 0..7: E,SE,S,SW,W,NW,N,NE
     /* Per-direction body scale.  Hit-east is 0.88 (source frames the
        character bigger); jog/stand-NE is 1.03 (slightly smaller source).
@@ -5077,6 +5131,19 @@ export class EntityRenderer {
         const fc = playerFrameCount('fish', 'south') || 32;
         const cycle = cycleMs('fish', 'south');
         frameIdx = Math.floor((now / cycle) * fc) % fc;
+      } else if (pose === 'dodge') {
+        /* v2.3.1534: ONE-SHOT across the real roll window, clamped to the
+           last frame — never modulo, or the tumble would restart mid-roll.
+           durMs is published by the game loop (BroTown.jsx) because the
+           window is elastic: 250ms base + Endurance + the Reflexes T2 node,
+           up to ~500ms.  Recomputing that formula here would be a second
+           copy to drift out of sync, so the loop hands us the number it
+           actually used; DODGE_DURATION_MS covers the first frame before
+           it has been published. */
+        const fc = playerFrameCount('dodge', dir) || 9;
+        const dur = (S._dodgeRoll && S._dodgeRoll.durMs) || cycleMs('dodge', dir);
+        const t = (now - ((S._dodgeRoll && S._dodgeRoll.startTime) || now)) / dur;
+        frameIdx = Math.max(0, Math.min(fc - 1, Math.floor(t * fc)));
       }
       /* Kick off body-anchor + selected-hat asset loads early so they're
          ready by the time we place the headwear below. */
@@ -5186,7 +5253,7 @@ export class EntityRenderer {
           /* v2.3.1361: fullset figure replaces the bake when it ships for
              this (pose,dir); null -> classic masked path. */
           _fsT = _fullsetFrame(getEquip('chest'), getEquip('legs'), pose, dir, frameIdx, _jogPhase);
-          _bodyTex = _fsT || ((!_worn.length || pose === 'pickup') ? tex : _maskedBodyFrame(tex, _worn, 6, { pose, dir, frameIdx }));
+          _bodyTex = _fsT || ((!_worn.length || pose === 'pickup' || pose === 'dodge') ? tex : _maskedBodyFrame(tex, _worn, 6, { pose, dir, frameIdx }));
         } catch (e) { _bodyTex = tex; }
         if (spriteBody.texture !== _bodyTex) spriteBody.texture = _bodyTex;
         /* v2.3.1055: pickup head overlay (drawn above gear in _orderTraitsAndWeapon).

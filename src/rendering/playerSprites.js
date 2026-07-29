@@ -99,8 +99,33 @@ const MINE_DURATION_MS = 650;
    _updateFishingHole).  ~1.33 s = the source clip's natural cadence. */
 const FISH_DURATION_MS = 1333;
 
+/* v2.3.1534: fallback dodge-roll duration.  The LOCAL roll window is
+   elastic — 250ms base, stretched by Endurance and the Reflexes T2 node up
+   to ~500ms (BroTown.jsx) — so the local player drives frame selection off
+   the real window, published as S._dodgeRoll.durMs.  This constant is what
+   remote rolls use, since the player_dodge broadcast carries no duration. */
+const DODGE_DURATION_MS = 300;
+
 const SOURCE_DIRS = ['east', 'north', 'northeast', 'south', 'southwest'];
-const POSES = ['stand', 'jog', 'hit', 'pickup', 'attack', 'mine', 'fish'];
+/* v2.3.1534: 'dodge' — the §5.8 contextual-dodge roll finally has real art
+   instead of the player sliding along in the stand/jog pose.  Authored
+   SOUTH + EAST only (tools/repack-dodge-grid.mjs): for most of the tumble
+   the body is a curled ball, so azimuth reads far weaker than it does on an
+   upright pose like jog, and the roll's direction is already carried by the
+   6px/frame translation BroTown.jsx applies.  The renderer maps all eight
+   facings onto those two sheets by dominant axis (dodgeSheetDir), so no
+   facing renders un-posed.  One-shot, not a loop: frame 9 IS the stand pose,
+   so the roll hands back to `stand` without a pop. */
+const POSES = ['stand', 'jog', 'hit', 'pickup', 'attack', 'mine', 'fish', 'dodge'];
+/* Which source dirs actually ship a sheet.  A pose/dir NOT listed here is
+   skipped by loadPlayerSprites -- loadSheet treats a 404 as a flaked load,
+   burns the retry backoff on it and then files a `body-sheet-failed` crash
+   record (v2.3.1384), so quietly letting a deliberately-absent sheet 404 is
+   not free. */
+const POSE_DIRS = {
+  pickup: ['south'], mine: ['south'], fish: ['south'],
+  dodge: ['south', 'east'],
+};
 
 /* v68 (v2.3.705): jog-east + jog-northeast rebuilt as HALF-CYCLE LOOPS.  The
    AI armor pass couldn't keep limb identity through the second arm/leg
@@ -119,7 +144,7 @@ const POSES = ['stand', 'jog', 'hit', 'pickup', 'attack', 'mine', 'fish'];
    belt re-baked from chainbelt.png.  anchors.json NE hand positions are
    measured from the wristband marker per frame -- real data, replacing the
    stale 48-entry list from the pre-v2.3.6xx sheet. */
-const VERSION = 83; /* v2.3.1457: jog-southwest-head regenerated (SW re-cut).  v2.3.1456: jog body/leg sheets pinhole-filled (enclosed transparent speckles — the "background through the face/body" dots).  v2.3.1455: jog-east-head re-baked.  v2.3.1452: pickup defringe. */
+const VERSION = 84; /* v2.3.1534: NEW dodge-south/-east sheets (9 frames, one-shot roll).  v2.3.1457: jog-southwest-head regenerated (SW re-cut).  v2.3.1456: jog body/leg sheets pinhole-filled (enclosed transparent speckles — the "background through the face/body" dots).  v2.3.1455: jog-east-head re-baked.  v2.3.1452: pickup defringe. */
 /* Re-exported so the skin-recolor pipeline (playerSkins.js) loads the same
    cache-busted sheet URLs and never drifts onto a stale cached image. */
 export const SPRITE_VERSION = VERSION;
@@ -131,7 +156,7 @@ export const SPRITE_VERSION = VERSION;
  * Graphics until the manifest populates.
  */
 const manifest = {
-  stand: {}, jog: {}, hit: {}, pickup: {}, attack: {}, mine: {}, fish: {},
+  stand: {}, jog: {}, hit: {}, pickup: {}, attack: {}, mine: {}, fish: {}, dodge: {},
 };
 
 let loadPromise = null;
@@ -145,7 +170,7 @@ function spriteUrl(pose, dir) {
    so we can't hardcode.  Falls back to fixed counts for stand/hit. */
 function deriveFrameCount(pose, tex) {
   const width = (tex && tex.source && tex.source.width) || 0;
-  if (pose === 'jog' || pose === 'pickup' || pose === 'mine' || pose === 'fish') return Math.max(1, Math.floor(width / FRAME_W));
+  if (pose === 'jog' || pose === 'pickup' || pose === 'mine' || pose === 'fish' || pose === 'dodge') return Math.max(1, Math.floor(width / FRAME_W));
   if (pose === 'hit') return HIT_FRAMES;
   if (pose === 'attack') return ATTACK_FRAMES;
   return STAND_FRAMES;
@@ -289,8 +314,11 @@ async function loadSheet(pose, dir, attempt = 0) {
   }
 }
 
-/** Kick off all 15 sheet loads.  Idempotent; returns the same promise
- *  on subsequent calls so callers can `await loadPlayerSprites()`. */
+/** Kick off every (pose, dir) sheet load POSE_DIRS allows.  Idempotent;
+ *  returns the same promise on subsequent calls so callers can
+ *  `await loadPlayerSprites()` — pixiRenderer's preloadPlayerAssets does,
+ *  which is what keeps new poses inside the intro gate (CLAUDE.md
+ *  animation-preloading law) without a separate manifest entry. */
 export function loadPlayerSprites() {
   if (loadPromise) return loadPromise;
   const tasks = [];
@@ -298,8 +326,9 @@ export function loadPlayerSprites() {
     for (const dir of SOURCE_DIRS) {
       /* pickup, mine, and fish are south-only -- facing locks to 'down'
          during the loot-pickup freeze / mining / fishing gather, so we
-         only ship one sheet and skip the other dir slots to avoid 404s. */
-      if ((pose === 'pickup' || pose === 'mine' || pose === 'fish') && dir !== 'south') continue;
+         only ship one sheet and skip the other dir slots to avoid 404s.
+         v2.3.1534: generalized to POSE_DIRS (dodge ships south + east). */
+      if (POSE_DIRS[pose] && !POSE_DIRS[pose].includes(dir)) continue;
       tasks.push(loadSheet(pose, dir));
     }
   }
@@ -359,7 +388,23 @@ export function cycleMs(pose, dir, armored) {
   if (pose === 'attack') return ATTACK_DURATION_MS;
   if (pose === 'mine') return MINE_DURATION_MS;
   if (pose === 'fish') return FISH_DURATION_MS;
+  if (pose === 'dodge') return DODGE_DURATION_MS;
   return 1000;
+}
+
+/** Which authored dodge sheet a facing plays on, by dominant axis.
+ *  Only south + east exist (see POSES); N/S map to the south sheet and
+ *  E/W to the east sheet, with `mirror` set for the two western facings.
+ *  Diagonals pick the east sheet — a diagonal roll reads as travelling
+ *  sideways more than toward/away, and the east tumble is in profile. */
+export function dodgeSheetDir(facing) {
+  switch (facing) {
+    case 'north': case 'up': return { dir: 'south', mirror: false };
+    case 'south': case 'down': return { dir: 'south', mirror: false };
+    case 'west': case 'left': return { dir: 'east', mirror: true };
+    case 'northwest': case 'southwest': return { dir: 'east', mirror: true };
+    default: return { dir: 'east', mirror: false };
+  }
 }
 
 /** Frame count for a loaded (pose, dir) sheet.  Renderer uses this
