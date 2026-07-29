@@ -4,7 +4,7 @@
  */
 import { Assets, Container, Graphics, Rectangle, Sprite, Text, TextStyle, Texture } from 'pixi.js';
 import { TILE } from '@/data/constants.js';
-import { ZONES } from '@/data/zones.js';
+import { ZONES, zonePlayerScale } from '@/data/zones.js';
 import { ELEMENTS } from '@/data/elements.js';
 /* v2.3.1183: status-id -> element lookup, built once at import time.
    _updateMonsters used to run Object.values(ELEMENTS).find(...) per
@@ -4340,19 +4340,12 @@ export class EntityRenderer {
      shrinks together on a vista map. Previously only the local avatar shrank
      and other players stayed full size, dwarfing the tiny landscape. Absent
      playerScale => 1 (normal in-zone sizing, unchanged). */
+  /* v2.3.1574: delegates to the single copy in data/zones.js.  The curve was
+     hand-duplicated here, in BroTown's movement speed, and NOT AT ALL in the
+     remote harvest stand-ins — so a peer cooking on the worldview drew full
+     size beside their own speck-sized body. */
   _zonePscale(S, x, y) {
-    const _z = ZONES[S.currentZone];
-    const ps = _z && _z.playerScale;
-    if (typeof ps === 'number') return ps;
-    if (ps && typeof ps === 'object') {
-      const cx = (_z.w * TILE) / 2, cy = (_z.h * TILE) / 2;
-      const d = Math.min(1, Math.hypot(x - cx, y - cy) / (Math.hypot(cx, cy) || 1));
-      const near = ps.near != null ? ps.near : 0.6;
-      const far = ps.far != null ? ps.far : 0.3;
-      const curve = ps.curve != null ? ps.curve : 1; // <1 shrinks faster as you leave centre
-      return near + (far - near) * Math.pow(d, curve);
-    }
-    return 1;
+    return zonePlayerScale(S.currentZone, x, y, TILE);
   }
 
   _updateOtherPlayers(S, now) {
