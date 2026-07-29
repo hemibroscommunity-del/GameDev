@@ -42,12 +42,30 @@ command to get the assets.  Everything here is stdlib zlib + struct, and
 every frame written is decoded again and compared pixel-exact against the
 buffer it was meant to be (--verify, on by default).
 
-Why --amount defaults to 0.20, measured not guessed
----------------------------------------------------
-The first pass used 0.45 and it was WRONG -- caught only because the
-sharpen was measured before shipping.  Sweeping strength against the
-unclamped premultiplied excursion (how far a value wants to go past
-[0,255] before clamping, which is exactly what a halo is):
+Why --amount now defaults to 0 (v2.3.1588)
+------------------------------------------
+The sharpen is RETIRED.  It existed to compensate for 128px trait art
+being magnified on the login screen -- and v2.3.1579 (PR #336, landed in
+parallel with this tool's own v2.3.1579) solved that properly instead, by
+restoring real 256px art under `<id>/hi/<dir>.png` which ONLY the portrait
+compositor loads (`loadTraitBest`, characterPortrait.js).  Real resolution
+beats sharpening-to-fake-it every time.
+
+That inverted where the sharpen landed.  The 128px frames this tool writes
+are now consumed ONLY by the Pixi world path, where traits are MINIFIED --
+and pre-sharpening art that will be downscaled is counterproductive: the
+halos survive the minification as edge crunch while buying no detail.  So
+the sharpen went from "the point of this tool" to "active if small
+negative" the moment #336 merged.
+
+What remains, and is still worth having, is cause 1: the premultiplied
+downscale.  Keep --amount 0 unless the `hi/` tier is ever removed.
+
+The sweep is preserved below because it is the evidence for the ceiling if
+anyone reconsiders.  Note the first pass used 0.45 and it was WRONG --
+caught only because the sharpen was measured before shipping.  Sweeping
+strength against the unclamped premultiplied excursion (how far a value
+wants to go past [0,255] before clamping, which is exactly what a halo is):
 
     amount   detail gain   n overshoot   mean   p95    max
       0.10          +4%           243    1.5    5.8    7.0
@@ -69,7 +87,7 @@ of what is there, it does not create more.
 Run from the repo root:
     python3 tools/rebake_traits.py --from-rev 17755fe^          # report only
     python3 tools/rebake_traits.py --from-rev 17755fe^ --apply
-    [--amount 0.20]   unsharp strength, 0 disables
+    [--amount 0]      unsharp strength; RETIRED, see above — leave at 0
     [--to 128]        target edge
 """
 import argparse
@@ -298,7 +316,7 @@ def main():
     ap.add_argument('--from-rev', default='17755fe^',
                     help='revision holding the pre-downscale originals')
     ap.add_argument('--to', type=int, default=128)
-    ap.add_argument('--amount', type=float, default=0.20)
+    ap.add_argument('--amount', type=float, default=0.0)
     ap.add_argument('--apply', action='store_true')
     ap.add_argument('--limit', type=int, default=0)
     ap.add_argument('--cats', default='headwear,hair,facialhair,shirt',
