@@ -1333,6 +1333,7 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
     town: '/audio/music/village.mp3',
     worldview: '/audio/music/world.mp3',
     frost: '/audio/music/frost.mp3',
+    ember: '/audio/music/fire.mp3',   /* "fire zone" = Flame Fields */
   },
   /* v2.3.1578: the session track — starts at the login screen and plays for
      the whole session (the owner picked this over v2.3.1577's neondrift,
@@ -1366,7 +1367,17 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
      already 47 dB down.  Still 128k — HF energy is a proxy that cannot see
      mid-range artifacts, and 0.5 MB is not worth guessing with.  Above 128k
      is measurement noise here (160k reads 0.1 dB WORSE), which is the ceiling
-     of what this proxy can resolve, not a reason to prefer 128k over 160k. */
+     of what this proxy can resolve, not a reason to prefer 128k over 160k.
+     v2.3.1584: ember (the "fire zone", Flame Fields) gets fire.mp3 — 128 kbps,
+     2.42 MB for 2m39s off a 3.73 MB 197 kbps source.  96k costs 2.5 dB above
+     15 kHz, the worst of the four, so 128k is not a close call here.
+     LONGEST track so far and therefore the heaviest resident: 53.4 MB decoded,
+     against the 56 MB budget below.  It fits, but a track much past 2m40s
+     would sit alone ABOVE the budget.  That is safe by construction rather
+     than by luck — the just-decoded and currently-playing track are never
+     evicted, so an oversized score stays resident and simply drops everything
+     else (covered by the checks in the v2.3.1584 commit).  Do not "fix" it by
+     raising ZONE_MUSIC_CACHE_MB: 56 is deliberately below two full tracks. */
   GLOBAL_MUSIC: '/audio/music/login-theme.mp3',
   GLOBAL_MUSIC_VOL: 0.22,
   /* v2.3.1582: the decoded-buffer cache is BUDGETED, not unbounded.
