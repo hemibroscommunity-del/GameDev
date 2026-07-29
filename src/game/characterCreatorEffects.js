@@ -34,6 +34,16 @@ export function wireCharacterPortrait(previewCanvasRef, sel) {
     /* v2.3.1300: baked contact shadow — login preview only (exports and
        headshots keep a clean figure). */
     groundShadow: true,
+    /* v2.3.1580: composite at device resolution — login preview ONLY.
+       This canvas is displayed through .bt-cc-col-left>.bt-cc-stage's
+       scale(2), so a 3x phone was browser-stretching a finished 256
+       composite by ~3.75x: two chained resamples of the whole character.
+       The body sprite is natively 256, so that was discarding real detail
+       before it ever reached a pixel.  Capped at 3 in drawCharacterPortrait
+       (a 768 canvas; 4x would be 1024 for no visible gain).
+       Every other caller omits `scale` and keeps the exact 256 path,
+       because portraitDataUrl's headshot crop uses raw pixel coords. */
+    scale: Math.round(window.devicePixelRatio || 1),
   });
   /* v2.3.715: warm the other 7 angles for whatever is selected NOW, so
      rotating never waits on the network. */
