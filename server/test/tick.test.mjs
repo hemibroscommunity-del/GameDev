@@ -357,10 +357,31 @@ check('forged monster_transform dropped by deny-list',
   // extra entities mid-window and blur the v1-full / v2-delta contrast;
   // the players sit at -100000 so nothing aggros either.
   const freeze = (list) => { for (const m of list) m._wanderPausedUntil = Date.now() + 60000; };
+  /* v2.3.1576: freezing wander is NOT enough to hold a zone still.  The
+     de-overlap pass in _tickMonsters (index.js, MIN_SEP = 22) runs on every
+     tick regardless of the wander pause: any two monsters closer than 22px
+     shove each other apart and BOTH get marked dirty.  Spawn positions are
+     random, so whether a pair lands inside that radius varied run to run —
+     this section failed roughly 1 tick in 7 (measured 7/50 locally, and it
+     is what turned CI red on the Tier 0 branch).  The fix is to make the
+     precondition deterministic rather than to retry: lay the zone out on a
+     40px grid, well outside MIN_SEP, and move each monster's spawn anchor
+     with it so the 180px leash pull-back cannot fire either.  Both of the
+     only two things that can dirty an idle monster are now excluded, so the
+     assertions below see exactly what the test marks. */
+  const separate = (list) => {
+    list.forEach((m, i) => {
+      m.x = m.spawnX = -50000 + (i % 8) * 40;
+      m.y = m.spawnY = -50000 + Math.floor(i / 8) * 40;
+      m._wanderTx = null; m._wanderTy = null;
+    });
+  };
   const mMeadow = room3._ensureZoneMonsters('meadow')[0];
   const mFrost = room3._ensureZoneMonsters('frost')[0];
   freeze(room3.monsters.meadow);
   freeze(room3.monsters.frost);
+  separate(room3.monsters.meadow);
+  separate(room3.monsters.frost);
   room3.monsters['dungeon:secret'] = [{ ...mMeadow, id: 'dg-1' }];
   freeze(room3.monsters['dungeon:secret']);
   // _ensureZoneMonsters dirties the WHOLE zone on first spawn; reset so
