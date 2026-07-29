@@ -26,6 +26,40 @@ const FRAME = 256;
 const DEFAULT_LIT_LUM = 149;            // default lit-skin luminance (see playerSkins)
 const TRAIT_VER = '2.3.1561';            // cache-bust for body-tops.json (matches entityRenderer)
 
+/* v2.3.1579: the portrait prefers the 256px `hi/` art.
+ *
+ * v2.3.1526 halved every trait frame to 128 to save GPU texture memory, and
+ * that saving is real — preloadTraits() puts every catalog entry x 5 dirs on
+ * the Pixi startup gate, where a 256 frame costs 256KB of VRAM regardless of
+ * the PNG size (48 ids: ~62MB at 256, ~15.7MB at 128).  On the iPhone this
+ * game targets, that must not be undone.
+ *
+ * But THIS file is not part of that pipeline.  It is a 2D-canvas compositor
+ * that builds a 256x256 bitmap which NameModal then CSS-upscales to fill the
+ * stage with image-rendering: pixelated.  A 128px hat therefore gets enlarged
+ * twice — 2x into the bitmap, then again to the stage, the second one
+ * deliberately hard-edged — and sits next to a body drawn from 256-native art.
+ * That mismatch is what reads as low quality on the login screen (owner).
+ *
+ * So the portrait loads `<id>/hi/<dir>.png` when it exists and falls back to
+ * the shipped 128 otherwise.  Zero VRAM cost: nothing in the Pixi preload
+ * path looks in `hi/`.  placeTrait already normalises by texture width
+ * (`norm = FRAME / naturalWidth`), so 256 art needs no placement change — and
+ * it also flips imageSmoothingEnabled back on, since norm becomes 1 and there
+ * is no longer an upscale to keep crisp.  tools/restore-trait-hires.mjs
+ * recovers the art from the commit before the halving. */
+function traitUrl(cat, id, dir) {
+  return `/sprites/traits/${cat}/${id}/${dir}.png?v=${TRAIT_VER}`;
+}
+function traitUrlHi(cat, id, dir) {
+  return `/sprites/traits/${cat}/${id}/hi/${dir}.png?v=${TRAIT_VER}`;
+}
+/* Try hi-res, fall back to the shipped frame.  A missing hi/ file is an
+   expected, silent outcome — not every id has one. */
+function loadTraitBest(cat, id, dir) {
+  return loadImage(traitUrlHi(cat, id, dir)).catch(() => loadImage(traitUrl(cat, id, dir))).catch(() => null);
+}
+
 /* ── tiny async caches ── */
 const _imgCache = new Map();            // url -> Promise<HTMLImageElement>
 const _metaCache = new Map();           // 'cat/id' -> Promise<meta|null>
@@ -208,11 +242,11 @@ export async function drawCharacterPortrait(canvas, opts) {
        baked torso-retint shirt is retired, so the preview composites the
        same layer the game renders. */
     wantShirt ? loadImage(`/sprites/gear/shirt/tshirt/stand-${DIR}.png?v=2.3.760`).catch(() => null) : null,
-    wantHair ? loadImage(`/sprites/traits/hair/${hair}/${DIR}.png?v=${TRAIT_VER}`).catch(() => null) : null,
+    wantHair ? loadTraitBest('hair', hair, DIR) : null,
     wantHair ? loadMeta('hair', hair) : null,
-    wantFh ? loadImage(`/sprites/traits/facialhair/${facialHair}/${DIR}.png?v=${TRAIT_VER}`).catch(() => null) : null,
+    wantFh ? loadTraitBest('facialhair', facialHair, DIR) : null,
     wantFh ? loadMeta('facialhair', facialHair) : null,
-    wantHw ? loadImage(`/sprites/traits/headwear/${headwear}/${DIR}.png?v=${TRAIT_VER}`).catch(() => null) : null,
+    wantHw ? loadTraitBest('headwear', headwear, DIR) : null,
     wantHw ? loadMeta('headwear', headwear) : null,
     /* hat's hair-clip mask (downward-filled helmet silhouette) -- present
        only for hats with clipsHair; 404 -> null -> no clipping. */
@@ -334,10 +368,10 @@ export function prewarmPortraitDirs(opts) {
   loadBodyTops();
   for (const DIR of ['east', 'north', 'south', 'northeast', 'southwest']) {
     loadImage(`/sprites/player/stand-${DIR}.png?v=${SPRITE_VERSION}`).catch(() => {});
-    if (hair && hair !== 'none') loadImage(`/sprites/traits/hair/${hair}/${DIR}.png?v=${TRAIT_VER}`).catch(() => {});
-    if (facialHair && facialHair !== 'none') loadImage(`/sprites/traits/facialhair/${facialHair}/${DIR}.png?v=${TRAIT_VER}`).catch(() => {});
+    if (hair && hair !== 'none') loadTraitBest('hair', hair, DIR);
+    if (facialHair && facialHair !== 'none') loadTraitBest('facialhair', facialHair, DIR);
     if (headwear && headwear !== 'none') {
-      loadImage(`/sprites/traits/headwear/${headwear}/${DIR}.png?v=${TRAIT_VER}`).catch(() => {});
+      loadTraitBest('headwear', headwear, DIR);
       loadImage(`/sprites/traits/headwear/${headwear}/hairmask/${DIR}.png?v=${TRAIT_VER}`).catch(() => {});
     }
   }
