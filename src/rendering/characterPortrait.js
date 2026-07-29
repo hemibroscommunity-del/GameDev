@@ -24,7 +24,7 @@ import { upscaleToFrameHeight } from './spriteScale.js'; /* v2.3.1110: restore d
 
 const FRAME = 256;
 const DEFAULT_LIT_LUM = 149;            // default lit-skin luminance (see playerSkins)
-const TRAIT_VER = '2.3.1532';            // cache-bust for body-tops.json (matches entityRenderer)
+const TRAIT_VER = '2.3.1561';            // cache-bust for body-tops.json (matches entityRenderer)
 
 /* ── tiny async caches ── */
 const _imgCache = new Map();            // url -> Promise<HTMLImageElement>
@@ -107,9 +107,32 @@ export function recolorHairToCanvas(img, hairColor, refOverride) {
   return cv;
 }
 
+/* v2.3.1561: mirror of entityRenderer._floatAboveHairLift — the halo is not
+   worn, it floats, so its clearance has to be measured against the HAIR being
+   drawn under it rather than baked into its meta as a fixed crown offset.
+   entityRenderer.js is the source of truth for the two constants; this file
+   deliberately re-implements the placement math (see placeTrait below) and
+   this follows the same convention.  The character-creation preview is where
+   the owner spotted the halo sitting on the hair, so the portrait needs this
+   as much as the world renderer does. */
+const FLOAT_BASE = 12;
+const FLOAT_GAP = 5;
+function floatLift(meta, hairMeta, dir) {
+  if (!(meta && meta.floatsAboveHair)) return 0;
+  const topOf = (m) => {
+    const cn = (m.crownNudge && m.crownNudge[dir]) || [0, 0];
+    const pn = (m.poseNudge && m.poseNudge.stand && m.poseNudge.stand[dir]) || [0, 0];
+    return cn[1] + pn[1];
+  };
+  const bbox = (meta.bboxes && meta.bboxes[dir]) || null;
+  const bottom = topOf(meta) + ((bbox && bbox[3]) || 0);
+  const hairTop = hairMeta ? topOf(hairMeta) : 0;
+  return Math.min(0, Math.min(-FLOAT_BASE, hairTop - FLOAT_GAP) - bottom);
+}
+
 /* Place one trait sprite (already recolored if needed) onto ctx using the
    stand/<dir> meta math.  Mirrors entityRenderer._placeTrait. */
-function placeTrait(ctx, traitImg, meta, crown, dir) {
+function placeTrait(ctx, traitImg, meta, crown, dir, liftY) {
   if (!traitImg || !meta || !meta.fullFrame || !meta.anchors || !meta.anchors[dir]) return;
   const anchor = meta.anchors[dir];
   const cn = (meta.crownNudge && meta.crownNudge[dir]) || [0, 0];
@@ -118,7 +141,7 @@ function placeTrait(ctx, traitImg, meta, crown, dir) {
   const sbp = (meta.scaleByPose && meta.scaleByPose.stand && meta.scaleByPose.stand[dir]) || 1;
   const dscale = sc * sbp;
   const tx = crown[0] + cn[0] + pn[0];
-  const ty = crown[1] + cn[1] + pn[1];
+  const ty = crown[1] + cn[1] + pn[1] + (liftY || 0); /* v2.3.1561: float-above-hair clearance */
   /* v2.3.1526: same normalisation as entityRenderer._placeTrait. meta is in
      256-space; the texture is 128 now, so scale by 256/texWidth and offset the
      anchor in texture pixels. A trait still stored at 256 gets norm=1. */
@@ -294,7 +317,8 @@ export async function drawCharacterPortrait(canvas, opts) {
      creator preview would still show a recolored hat the game refuses to
      render, which is worse than not offering the color at all. */
   const _hwCol = hatColor && (!SOLID_ONLY_HAT_COLOR || headwearIsSolid(headwear));
-  if (hwImg && hwMeta) placeTrait(ctx, _hwCol ? recolorHairToCanvas(hwImg, hatColor, hatRef) : hwImg, hwMeta, crown, DIR);
+  if (hwImg && hwMeta) placeTrait(ctx, _hwCol ? recolorHairToCanvas(hwImg, hatColor, hatRef) : hwImg, hwMeta, crown, DIR,
+    floatLift(hwMeta, hairMeta, DIR)); /* v2.3.1561 */
   ctx.restore();
   if (canvas.__pseq !== seq) return;   /* a newer draw superseded this one */
   canvas.width = FRAME; canvas.height = FRAME;

@@ -33,9 +33,9 @@ import {
   getShieldStats, getWeaponCritDmgStat, getWeaponCritStat, meleeSwingSfx, recalcDerived, resolveCollision,
   getEvasionPts, poiseStunFlatMs, rollPassiveDodge, getWeaponCritFlat, spawnElementStatusFX, spawnWeaponHitFX, swingCooldownMult, tickStatuses, updateZoneDimensions,
   trainDefense, applyIronSkin, applyResilience, /* v2.3.1314 */
-  monsterBodyY,
+  monsterBodyY, monsterProceduralRadius,
 } from '@/data/index.js';
-import { MONSTER_VARIANTS, baseArchetypeOf, isFodderLike, isRemnantSkull, maybeTransformMonster, usesClientSideMovement, xpMultFor } from '@/data/monsterVariants.js';
+import { MONSTER_VARIANTS, baseArchetypeOf, hitShapeOf, isFodderLike, isRemnantSkull, maybeTransformMonster, usesClientSideMovement, xpMultFor } from '@/data/monsterVariants.js';
 import { getEquip } from '@/rendering/gearCatalog.js'; /* v2.3.1104: armoured-hit SFX check */
 import { rollMonsterShard } from '@/data/shards.js';
 import { addBuildUse, applyMeleeLifesteal, clearSwingHitFlags, distributeKillXpToBuild, trackMonsterDamage, pushDmgPopup, monsterPopupY, isPlayerDead } from '@/game/combatHelpers.js';
@@ -1338,7 +1338,13 @@ export function updateMonsterCombat(S, deps) {
                  -30 (v2.1.70) still missed the top; -50 (v2.1.71)
                  overshot.  -40 (v2.1.72, mid-frame) is the sweet spot
                  confirmed by user. */
-              var _archHit = m.archetype || m.type;
+              /* v2.3.1535: resolve reskins to the shape they render as.  A
+                 Verdant Wilds slime arrives as 'mossSlime', matched none of
+                 the cases below, and got _mHitY = m.y (the FEET) with _hitR
+                 = 0 -- so you had to swing at its shadow, with none of the
+                 slime's generous radius (owner: "the hitbox is at their
+                 shadow").  See hitShapeOf. */
+              var _archHit = hitShapeOf(m.archetype || m.type);
               /* Reference Y for hit math -- the monster's *body
                  center* on screen, not the feet anchor at m.y.
                  fodder (96 px slime sprite) is offset 40 px above
@@ -1356,10 +1362,14 @@ export function updateMonsterCombat(S, deps) {
                  their hitbox was "way too small" so bump 40 -- the
                  effective vertical extent now covers the full body
                  from feet (m.y - 8) to crown (m.y - 88). */
+              /* v2.3.1536: the last branch was 0 for every sprite-less
+                 archetype -- the whole dungeon roster -- even though they
+                 draw as a 48px-radius circle.  Same miss the projectile
+                 path had; see monsterProceduralRadius. */
               var _hitR = _archHit === 'fodder' ? 20 :
                           _archHit === 'fireGoblin' ? 14 :
                           _archHit === 'mummy' || _archHit === 'skeleton' ? 40 :
-                          0;
+                          monsterProceduralRadius(_archHit);
               var mDist = Math.sqrt(Math.pow(m.x - P.x, 2) + Math.pow(_mHitY - P.y, 2)) - _hitR;
               if (mDist > _maxRange) return;
               var mAngle = Math.atan2(_mHitY - P.y, m.x - P.x);

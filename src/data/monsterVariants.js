@@ -223,6 +223,34 @@ export const MONSTER_VARIANTS = {
     useSlimeSheets: true,
     tint: 0x55cc44, /* mossy green */
   },
+  /* v2.3.1535 (owner: "one fast squishier blue slime and the rest the regular
+     green"): the rare one.  Verdant Wilds spawns 7 mossSlime + 1 of these, so
+     it is a single standout in the zone rather than a reskin of the whole
+     population -- see the spawn table in zones.js / server data.js, which is
+     what picks it (this variant is deliberately NOT in ZONE_VARIANT_MAP,
+     because that maps a whole ARCHETYPE and would turn every slime blue).
+     Two things make it different from every earlier variant:
+       1. `recolor` is a luminance RETINT, not the multiplicative `tint` the
+          other reskins use.  tint physically cannot make green art blue -- it
+          only multiplies, and the slime sheet is saturated green, so a blue
+          tint lands at mean RGB (32,94,72), still green-dominant.  See
+          slimeRecolor.js.  `tint` below is kept purely as the fallback for
+          the frames before the recolour finishes building.
+       2. it is the first variant that TRADES A STAT rather than being purely
+          visual: fast and squishy.  spd 1.15 is 2.3x the fodder base 0.5 and
+          sits under fireGoblin's 1.5, so it reads as genuinely fast without
+          being unoutrunnable.  MIRRORS server _variantSpeed.blueSlime -- the
+          server drives movement, so a mismatch shows up as rubber-banding.
+          The other half (maxHp x0.55) is server-only by design: HP is
+          authoritative there and the client renders what it is sent, so
+          there is nothing to mirror and nothing to drift. */
+  blueSlime: {
+    baseArchetype: 'fodder',
+    useSlimeSheets: true,
+    tint: 0x4488cc,          /* fallback only -- see recolor */
+    recolor: [58, 122, 208], /* #3a7ad0 */
+    spd: 1.15,
+  },
   mireWisp: {
     baseArchetype: 'fodder',
     useSlimeSheets: true,
@@ -292,6 +320,51 @@ export function isFodderLike(arch) {
   return baseArchetypeOf(arch) === 'fodder';
 }
 
+/* v2.3.1535: every variant key a zone can put on screen.
+ *
+ * Two sources, because there are two ways to assign a variant: the
+ * whole-ARCHETYPE map (ZONE_VARIANT_MAP: "every fodder here is a mossSlime")
+ * and a per-SPAWN-ENTRY override (zones.js spawns[].variant: "one of these
+ * eight is a blueSlime").  Anything that has to warm a zone's variant art --
+ * preloadZoneAssets -- must see BOTH, or the per-entry ones load lazily on
+ * first sighting, which is exactly what the preloading LAW forbids. */
+export function variantsForZone(zoneId) {
+  const keys = new Set(Object.values(ZONE_VARIANT_MAP[zoneId] || {}));
+  const z = ZONES[zoneId];
+  for (const s of (z && z.spawns) || []) {
+    if (s && s.variant) keys.add(s.variant);
+  }
+  return keys;
+}
+
+/* v2.3.1535: the archetype whose HITBOX SHAPE this thing renders with.
+ *
+ * Every hit test in the game -- melee reach, the arrow/bolt collision, the
+ * body-centre table monsterBodyOffsetY -- keys off `m.archetype || m.type`
+ * and compares it to a literal like 'fodder'.  applyZoneVariant overwrites
+ * BOTH of those fields with the variant key, so a Verdant Wilds slime arrives
+ * as 'mossSlime', matches NOTHING, and falls to the default: body offset 0 and
+ * no radius bonus.  Body offset 0 means the hitbox sits at m.y -- the feet --
+ * so you had to aim at the slime's SHADOW to hit it (owner: "slimes are
+ * hitting way too low, the hitbox is at their shadow").  The same miss is why
+ * arrows planted at the feet before v2.3.1534.
+ *
+ * The rule is deliberately about SHEETS, not stats: a variant that renders
+ * with the slime sheets IS a slime for collision purposes, whatever its name
+ * or speed.  Everything else returns its own key unchanged, so the named
+ * cases that already exist (fireGoblin, mummy, skeleton, snowman) keep their
+ * hand-tuned numbers, and mummy/skeleton do NOT collapse to their 'fodder'
+ * base -- they render as 96px upright figures and have their own entries.
+ *
+ * Use this ANYWHERE a hitbox is chosen by archetype.  A new variant then
+ * inherits a correct hitbox for free instead of silently getting a
+ * feet-anchored one. */
+export function hitShapeOf(archOrType) {
+  const v = MONSTER_VARIANTS[archOrType];
+  if (v && v.useSlimeSheets) return 'fodder';
+  return archOrType;
+}
+
 /* Mutate a monster object in-place so its archetype/type/arch reflect
    the per-zone variant AND its level is clamped to the zone's
    level range.  Idempotent — calling twice is harmless.
@@ -316,6 +389,22 @@ export function applyZoneVariant(monster, zoneId) {
        floor in the shallowest 15% of a zone; clamping those back up
        would desync the displayed level from the authoritative stats. */
     if (monster.level < minLv - 4) monster.level = Math.max(1, minLv - 4);
+  }
+  /* v2.3.1535: the SERVER's per-monster variant wins when it sent one.
+     ZONE_VARIANT_MAP maps a whole ARCHETYPE, so it can only say "every
+     fodder in this zone is a mossSlime" -- it cannot express Verdant Wilds'
+     7 green slimes + 1 blue one.  The server picks the variant per spawn and
+     now ships it (join.js), so trust it and skip the archetype map.  A
+     monster from an OLD worker has no variant field and falls through to the
+     map below exactly as before. */
+  const sent = monster.variant;
+  if (sent && MONSTER_VARIANTS[sent]) {
+    monster.archetype = sent;
+    monster.type = sent;
+    if (monster.arch !== undefined) monster.arch = sent;
+    const sv = MONSTER_VARIANTS[sent];
+    if (sv && sv.spd != null) monster.spd = sv.spd;
+    return monster;
   }
   const overrides = ZONE_VARIANT_MAP[zoneId];
   if (!overrides) return monster;

@@ -17,9 +17,9 @@ import {
   WEAPON_TYPES, WELL_RESTED_XP_MULT, ZONES, applyStatus, awardWeaponXp, calcWeaponDmg,
   discoverCollision, getActiveWeapon, getCollisionDeathFX, getElementDeathFX, recalcDerived,
   getEvasionPts, resolveCollision, rollPassiveDodge, spawnWeaponHitFX, staffAoeMult,
-  monsterBodyY, monsterBodyOffsetY, trainDefense, applyIronSkin, applyResilience, /* v2.3.1314 */
+  monsterBodyY, monsterBodyOffsetY, monsterProceduralRadius, trainDefense, applyIronSkin, applyResilience, /* v2.3.1314 */
 } from '@/data/index.js';
-import { baseArchetypeOf, isRemnantSkull, maybeTransformMonster, xpMultFor } from '@/data/monsterVariants.js';
+import { baseArchetypeOf, hitShapeOf, isRemnantSkull, maybeTransformMonster, xpMultFor } from '@/data/monsterVariants.js';
 import { getEquip } from '@/rendering/gearCatalog.js'; /* v2.3.1108: armoured-hit clang on projectile hits */
 import { rollMonsterShard } from '@/data/shards.js';
 import { addBuildUse, applyMeleeLifesteal, distributeKillXpToBuild, trackMonsterDamage, pushDmgPopup, monsterPopupY } from '@/game/combatHelpers.js';
@@ -228,7 +228,11 @@ export function updateArrows(S, deps) {
               /* v2.3.1111: Y offsets now come from the shared body-centre
                  table (monsterBodyOffsetY -- same values this block carried
                  inline).  Radii stay per-archetype below. */
-              var _archProj = m.archetype || m.type;
+              /* v2.3.1535: same reskin resolution as the melee path -- a
+                 variant used to miss every case here and keep the bare
+                 default radius while monsterBodyOffsetY put its centre at
+                 the feet.  See hitShapeOf. */
+              var _archProj = hitShapeOf(m.archetype || m.type);
               var _hitR = a.isStaff ? 30 : 18;
               if (_archProj === 'fodder') {
                 /* Slime body is wider than the 18 px default — bump
@@ -241,6 +245,16 @@ export function updateArrows(S, deps) {
                 _hitR = a.isStaff ? 44 : 32;
               } else if (_archProj === 'mummy' || _archProj === 'skeleton') {
                 _hitR = a.isStaff ? 50 : 40;
+              } else {
+                /* v2.3.1536: sprite-less archetypes (the dungeon roster --
+                   brute / swarm / sentinel / volatile / stalker / hexer)
+                   render as a 48px-radius circle but had no case here, so
+                   they kept the bare 18 default and a visibly-connecting
+                   shot passed through (owner: "the special arrow correctly
+                   hits the slime but not the procedural ones").  Match the
+                   drawn body; keep the default for anything that returns 0. */
+                var _procR = monsterProceduralRadius(_archProj);
+                if (_procR > 0) _hitR = Math.max(_hitR, _procR);
               }
               /* v2.3.1136: Detonation channel widens staff bolt blasts
                  (+0.7%/pt, cap +69.3%) before the special multiplier. */
@@ -511,7 +525,24 @@ export function updateArrows(S, deps) {
                        in the entry direction so the arrowhead is buried
                        in the body rather than floating off the edge. */
                     var _saArch = m.archetype || m.type;
-                    var _saIsFodder = _saArch === 'fodder';
+                    /* v2.3.1534: match on the SHEETS the monster renders with,
+                       not on its name.  applyZoneVariant overwrites BOTH
+                       m.type and m.archetype with the variant key, so a
+                       Verdant Wilds slime arrives here as 'mossSlime' and
+                       never matched 'fodder' -- it fell through to the generic
+                       6/6/0 branch below, which has NO y-anchor, so arrows
+                       planted at the slime's FEET instead of in its body
+                       (owner: "the arrows don't stick in the slimes at the
+                       correct hitbox").  fireGoblin only looks fine because
+                       somebody added a branch for it by name; every other
+                       variant had the same bug.  useSlimeSheets is the honest
+                       predicate -- it is exactly "this renders as the 50px
+                       slime", which is what the ellipse below was measured
+                       against -- and it covers mireWisp in the Poison Forest
+                       too.  Deliberately NOT baseArchetypeOf(): mummy and
+                       skeleton are base-'fodder' but render as 96px upright
+                       creatures, so slime anchors would be wrong for them. */
+                    var _saIsFodder = hitShapeOf(_saArch) === 'fodder';
                     /* Per-archetype stuck-arrow anchors -- arrows should
                        bury in the body silhouette, not float in space.
                        fireGoblin: taller upright creature (64 px sprite,

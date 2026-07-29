@@ -26,6 +26,14 @@ export const ZONE_SHARDS = {
   hollows: { key: 'shard_hollows', color: '#b8946a', label: 'Stone Shard'    },
   sky:     { key: 'shard_sky',     color: '#9be0c9', label: 'Wind Shard'     },
   tidal:   { key: 'shard_tidal',   color: '#3a8acc', label: 'Tidal Shard'    },
+  /* v2.3.1571 (owner: "add it to the slime drop"): Verdant Wilds had NO
+     entry here, but the server has always rolled 'shard_' + zoneId on a
+     kill — so verdant slimes were already dropping a shard the client
+     could not name, colour or draw.  This closes that as much as it adds
+     Flora's shard.  NOTE the meadow shard is confusingly already labelled
+     "Verdant Shard"; renaming it would change an item players already
+     hold, so Flora's takes the Flora name and meadow's is left alone. */
+  verdant: { key: 'shard_verdant', color: '#2ECC71', label: 'Flora Shard'   },
 };
 
 const KEY_TO_DESC = Object.fromEntries(

@@ -19,6 +19,8 @@ import { getShirtColor, shirtColorTarget, onShirtColorChange } from '../../rende
 import { getEquip } from '../../rendering/gearCatalog.js';
 import { dashboardPanelBus } from './dashboardPanelBus.js';
 import { barHeight, expandedSheetHeight, drillSheetHeight } from './sheet/sheetGeometry.js'; /* v2.3.1283; v2.3.1350 two-state; v2.3.1311e drill height; v2.3.1325 slot-derived bar */
+import { QuickBar } from './QuickBar.jsx';                      /* v2.3.1560 */
+import { sampleQuickbar } from './sheet/quickbarModel.js';      /* v2.3.1560 */
 import { portraitStore } from './sheet/portraitStore.js';          /* v2.3.1294 */
 import { hasUnseenLevelUps } from './sheet/skillsModel.js';        /* v2.3.1296 */
 import { getFriendRows } from './sheet/friendsModel.js';           /* v2.3.1323 */
@@ -485,6 +487,11 @@ export const BottomDashboard = () => {
     const tick = () => {
       const S = window._gameState && window._gameState.current;
       if (!S || !S.rpg) return;
+      /* v2.3.1560: the quick bar's "last used" memory rides THIS tick —
+         the dashboard is mounted in every snap mode, so the sampler sees
+         every XP gain whether or not a panel is open (the same reason
+         the pickup watcher moved here in v2.3.1312). */
+      sampleQuickbar(S.rpg);
       const keys = getBagEntries(S.rpg).map(bagEntryKey);
       if (prev) for (const k of keys) { if (!prev.has(k)) bagUnseen.add(k); }
       prev = new Set(keys);
@@ -748,13 +755,77 @@ export const BottomDashboard = () => {
               is absolute-pinned to the band bottom now — the marginBottom
               reserves its height so panel content never hides under it
               (v2.3.1325: var — the shelf is slot-derived now). */}
-          <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', marginBottom: 'var(--dash-h, 87px)' }}>
+          {/* v2.3.1560: reserve the RIBBON's height, not the whole band's
+              — the quick bar hides while a panel is expanded, so the
+              panel gets those ~50px back (var(--dash-h) here would have
+              left a blank strip and cost the Bag its third item row). */}
+          <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', marginBottom: 'var(--nav-h, var(--dash-h, 87px))' }}>
             {Active && <Active />}
           </div>
         </>
       ) : null /* v2.3.1350: bar mode — toolbar only, the game's resting
            default (owner: maximum world visibility).  The compact
            branch left with the compact state. */}
+
+      {/* v2.3.1563 (owner: "put coin count just above the first inventory
+          slot of the ultra compact menu — should be bottom left corner of
+          screen").  Pinned to the band's TOP-LEFT edge, out of flow and
+          out of the band's height: it sits over the world rather than
+          inside the bar, so --dash-h (and therefore the canvas, joystick
+          zones and every world-HUD anchor) is unchanged.  Hidden with the
+          quick bar while a panel is expanded — the Hero identity strip
+          owns the readout there and two live gold counts on one screen
+          disagree the moment one of them lags. */}
+      {mode !== 'expanded' && (() => {
+        const Rc = (window._gameState && window._gameState.current && window._gameState.current.rpg) || null;
+        const coins = (Rc && (Rc.coins || Rc.gold)) || 0;
+        return (
+          <div style={{
+            position: 'absolute',
+            left: 6,
+            bottom: 'calc(env(safe-area-inset-bottom, 0px) + var(--dash-h, 135px) - 1px)',
+            zIndex: 1,
+            display: 'flex', alignItems: 'center', gap: 3,
+            padding: '1px 6px 1px 4px',
+            borderRadius: '6px 6px 0 0',
+            background: 'rgba(13, 22, 27, 0.88)',
+            border: `1px solid ${COL.divider}`,
+            borderBottom: 'none',
+            pointerEvents: 'none',
+            /* Tabular figures so a changing balance doesn't jitter the
+               chip's width digit by digit. */
+            fontVariantNumeric: 'tabular-nums',
+            fontSize: 11.5, fontWeight: 800, lineHeight: 1.35,
+            color: '#F0C860',
+            textShadow: '0 1px 2px rgba(9,14,17,.9)',
+            whiteSpace: 'nowrap',
+          }}>
+            <img src="/icons/popups/gold.webp" alt="" draggable={false}
+              style={{ width: 12, height: 12, objectFit: 'contain' }} />
+            {coins.toLocaleString()}
+          </div>
+        );
+      })()}
+
+      {/* v2.3.1560 (owner: "a persistent menu above the toolbar icons"):
+          the ultra-compact quick bar.  Absolute-pinned directly on top of
+          the ribbon for the same reason the ribbon itself is pinned
+          (v2.3.1307b): anything in the band's flex flow hops when a sheet
+          closes and the content unmounts.  Hidden while a panel is
+          expanded — the open destination already shows these cells at
+          full size, and the panel keeps its height. */}
+      {mode !== 'expanded' && (
+        <div style={{
+          position: 'absolute',
+          left: 0, right: 0,
+          bottom: 'calc(env(safe-area-inset-bottom, 0px) + var(--nav-h, 87px))',
+          zIndex: 2,
+          boxSizing: 'border-box',
+          height: 'calc(var(--dash-h, 87px) - var(--nav-h, 87px))',
+        }}>
+          <QuickBar R={(window._gameState && window._gameState.current && window._gameState.current.rpg) || null} />
+        </div>
+      )}
 
       {/* Navigation ribbon.  v2.3.1229: PERSISTENT in both modes.
           v2.3.1283 (nav-system): SIX destinations, each always one of
@@ -848,8 +919,13 @@ export const BottomDashboard = () => {
                (caught on the rig).
                v2.3.1325 (owner: slot-sized icons): the shelf is the
                slot-derived bar height — BroTown stamps --dash-h on
-               viewport changes; sheetGeometry.barHeight is the source. */
-            height: 'var(--dash-h, 87px)',
+               viewport changes; sheetGeometry.barHeight is the source.
+               v2.3.1560: --nav-h (navShelfHeight) replaces --dash-h here.
+               The band is two rows now; this frame is absolute-pinned to
+               its bottom, so keeping --dash-h would have made the ribbon
+               as tall as the whole band and drawn it over the quick bar
+               sitting above it. */
+            height: 'var(--nav-h, var(--dash-h, 87px))',
             minHeight: 56,
             flex: '0 0 auto',
             display: 'flex',

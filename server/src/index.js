@@ -625,11 +625,41 @@ export class GameRoom {
       // client/server speed disagreement documented in the client cfg;
       // left untouched to avoid changing shipped zones' feel).
       mossSlime: 0.5,
+      // v2.3.1535 (owner: "one fast squishier blue slime and the rest the
+      // regular green"): the rare Verdant Wilds spawn.  1.15 is 2.3x the
+      // fodder base 0.5 and sits below fireGoblin's 1.5, so it reads as
+      // genuinely fast without being unoutrunnable.  The matching
+      // squishiness is _variantHpMult below -- speed alone would just make
+      // the zone harder.  MIRROR: src/data/monsterVariants.js blueSlime.spd
+      // (mirror-audit.test.mjs pins it); a mismatch makes server-driven
+      // movement fight the client's prediction and the slime rubber-bands.
+      blueSlime: 1.15,
       mireWisp: 0.5,
       thornShambler: 0.5,
       bogLurker: 0.5,
     };
     return SPEEDS[variantKey];
+  }
+
+  // v2.3.1535: per-variant maxHp multiplier, applied at spawn on top of the
+  // base archetype's hpMult.  Until now variants were stats-identical to
+  // their base archetype and differed only in art and speed; this is the
+  // first one that trades a stat.  Server-only ON PURPOSE -- HP is
+  // authoritative here (handoff: the client renders maxHp from the server
+  // and never derives it), so there is no client mirror to drift.
+  //
+  // The multiplier lands in BOTH hp and maxHp at spawn, so the respawn path
+  // (m.hp = m.maxHp) carries it for free and needs no changes.
+  _variantHpMult(variantKey) {
+    const HP = {
+      // 0.55 = a bit under two thirds.  Paired with 2.3x speed it makes the
+      // blue slime a glass-cannon rush rather than a tankier chase: it
+      // reaches you fast and dies fast.  XP and gold are deliberately
+      // untouched -- they come off the level curve, and cutting them would
+      // make the rare spawn pay worse than the common one it stands next to.
+      blueSlime: 0.55,
+    };
+    return HP[variantKey];
   }
 
   // Variant transform thresholds + targets.  Mirrors the
@@ -678,7 +708,10 @@ export class GameRoom {
         const baseDmg = this._monsterStat(12, lvl, 1.045, 1.025, 1.018);
         const baseXp = this._monsterStat(10, lvl, 1.045, 1.025, 1.018);
         const baseGold = this._monsterStat(5, lvl, 1.035, 1.020, 1.015);
-        const variantKey = this._variantForArchInZone(spawn.arch, zoneId);
+        /* v2.3.1535: a spawn entry may pin its own variant (verdant's single
+           blueSlime among mossSlimes).  Falls back to the whole-archetype
+           zone map for every other spawn, so nothing else changes. */
+        const variantKey = spawn.variant || this._variantForArchInZone(spawn.arch, zoneId);
         // Variant speed override: if this (arch, zone) maps to a variant
         // with its own spd (e.g. ember fodder -> fireGoblin spd 1.5),
         // use it.  This is what makes server-driven AI move the variant
@@ -687,6 +720,12 @@ export class GameRoom {
         // hatch on the client side).
         const variantSpd = variantKey ? this._variantSpeed(variantKey) : null;
         const finalSpd = (variantSpd != null) ? variantSpd : (0.5 * a.spdMult);
+        /* v2.3.1535: variant HP trade (blue slime = fast but squishy).
+           Multiplies the archetype's own hpMult; absent for every other
+           variant, so they stay exactly as they spawned before. */
+        const variantHpMult = variantKey ? this._variantHpMult(variantKey) : null;
+        const hpMult = a.hpMult * ((variantHpMult != null) ? variantHpMult : 1);
+        const spawnHp = Math.max(1, Math.ceil(baseHp * hpMult) + monsterHpFlat(lvl));
         monsters.push({
           id: 'sm-' + zoneId + '-' + idx,
           arch: spawn.arch,
@@ -704,8 +743,8 @@ export class GameRoom {
           spawnSpd: finalSpd,
           level: lvl,
           element: zone.element || null,
-          hp: Math.ceil(baseHp * a.hpMult) + monsterHpFlat(lvl), /* v2.3.1364: Lv1-2 -> flatLow */
-          maxHp: Math.ceil(baseHp * a.hpMult) + monsterHpFlat(lvl),
+          hp: spawnHp, /* v2.3.1364: Lv1-2 -> flatLow; v2.3.1535: + variant hp mult */
+          maxHp: spawnHp,
           dmg: Math.ceil(baseDmg * a.dmgMult),
           xp: Math.ceil(baseXp),
           gold: Math.ceil(baseGold),
@@ -1036,6 +1075,21 @@ export class GameRoom {
             const targetPs = this.playerState[nearest.id];
             const dmgResult = this._applyDamage(targetPs, m.dmg, false);
             const dmgTaken = dmgResult.dmgTaken;
+            /* v2.3.1569: THORN retaliation (Flora's status).  Every other
+               status is something that happens TO the monster over time;
+               thorn is the one that answers the monster's own aggression,
+               so it lands here — the moment the monster commits to an
+               attack — rather than on a passive timer.  A timer would just
+               make it a weaker Burn and lose the identity the GDD gives
+               Flora ("the only status that punishes enemies for
+               attacking").  Same power-snapshot pricing as burn/root, and
+               it routes through the normal kill-credit path so a monster
+               that thorns itself to death still pays out. */
+            if (m.statuses && m.statuses.thorn) {
+              const _th = m.statuses.thorn;
+              const _recoil = Math.round(4 + (_th.power || 0) * 0.25);
+              if (_recoil > 0) this._applyMonsterDot(zoneId, m, _recoil, _th.sourceId, 'thorn');
+            }
             // v2.3.1139 (item I): a hexer's landed hit curses the
             // victim -- -30% outgoing damage for 4s, consumed by
             // _computeAttackDamage (mirrors the client's
@@ -1173,23 +1227,7 @@ export class GameRoom {
         const dotEvents = tickElementStatuses(m, this.TICK_RATE / 1000, now);
         for (const ev of dotEvents) {
           if (m.hp <= 0) break;
-          const dotDmg = Math.min(ev.dmg, Math.max(0, m.hp));
-          if (dotDmg <= 0) continue;
-          m.hp -= dotDmg;
-          if (!m.dmgByPlayer) m.dmgByPlayer = Object.create(null); // v2.3.1202: player-id-keyed
-          m.dmgByPlayer[ev.sourceId] = (m.dmgByPlayer[ev.sourceId] || 0) + dotDmg;
-          this._markMonsterDirty(zoneId, m.id);
-          this.eventBuffer.push({
-            type: 'monster_hit',
-            payload: {
-              monsterId: m.id, zone: zoneId, dmg: dotDmg, isCrit: false,
-              attackerId: ev.sourceId, status: ev.statusId,
-              hpPct: Math.max(0, m.hp / m.maxHp),
-            },
-          });
-          if (m.hp <= 0) {
-            this._resolveMonsterKill(zoneId, m, ev.sourceId, this.playerState[ev.sourceId], 'dot');
-          }
+          this._applyMonsterDot(zoneId, m, ev.dmg, ev.sourceId, ev.statusId);
         }
       }
 
@@ -1541,6 +1579,37 @@ export class GameRoom {
     if (ws) this._sendPlayerState(ws, session.id);
   }
 
+  /* v2.3.1569: status damage against a monster — overkill clamp,
+     contribution credit, dirty mark, monster_hit event and kill
+     resolution, all through the same pipeline a landed blow uses so a
+     status kill awards XP, gold and loot identically.  Extracted from
+     the elemental tick loop when Thorn arrived and needed to apply the
+     same damage from a DIFFERENT moment (the monster's own attack), and
+     a second copy of this pipeline is exactly how kill credit silently
+     diverges.  Kills resolve with slot 'dot' so melee lifesteal
+     correctly denies. */
+  _applyMonsterDot(zoneId, m, rawDmg, sourceId, statusId) {
+    if (!m || !m.alive || m.hp <= 0) return 0;
+    const dmg = Math.min(Math.max(0, Math.round(rawDmg || 0)), Math.max(0, m.hp));
+    if (dmg <= 0) return 0;
+    m.hp -= dmg;
+    if (!m.dmgByPlayer) m.dmgByPlayer = Object.create(null); // v2.3.1202: player-id-keyed
+    if (sourceId) m.dmgByPlayer[sourceId] = (m.dmgByPlayer[sourceId] || 0) + dmg;
+    this._markMonsterDirty(zoneId, m.id);
+    this.eventBuffer.push({
+      type: 'monster_hit',
+      payload: {
+        monsterId: m.id, zone: zoneId, dmg, isCrit: false,
+        attackerId: sourceId, status: statusId,
+        hpPct: Math.max(0, m.hp / m.maxHp),
+      },
+    });
+    if (m.hp <= 0) {
+      this._resolveMonsterKill(zoneId, m, sourceId, this.playerState[sourceId], 'dot');
+    }
+    return dmg;
+  }
+
   // Player death.  Marks the player as dying for the respawn window;
   // _tickPlayerRespawn flips them back when respawnAt elapses.
   _handlePlayerDeath(ps, playerId, cause) {
@@ -1554,18 +1623,32 @@ export class GameRoom {
     // protected: no death pile, no inventory wipe, per the promise the
     // duel popup makes ("No item loss").  Any other death mid-duel
     // (monster, environment) still forfeits the pot but dies normally.
-    const _duelKill = this._duelOnDeath(playerId, cause);
+    /* v2.3.1562: every hook below is OPTIONAL bookkeeping (duel payout,
+       clan-war score, bounty, death pile).  The two things that are NOT
+       optional are the player_died send at the bottom and the dying flag
+       set above, which _tickPlayerRespawn reads to bring the player back.
+       Before this, a throw in any hook skipped the send AND left the
+       player marked dying — dead on screen with no notification and no
+       way back.  Each hook is isolated so the death itself always
+       completes. */
+    const _hook = (label, fn) => {
+      try { return fn(); } catch (e) {
+        try { console.error('[death] ' + label + ' threw:', e && e.message); } catch {}
+        return undefined;
+      }
+    };
+    const _duelKill = _hook('duel', () => this._duelOnDeath(playerId, cause));
     // v2.3.1125: clan-war scoring rides the same server-resolved death
     // (cause 'pvp:<attacker>'); duel kills are excluded inside the hook.
-    this._warOnDeath(playerId, cause);
+    _hook('war', () => this._warOnDeath(playerId, cause));
     // v2.3.1211 (item C): a killed threatener's guard-fine bounty pays
     // out to their killer here too (same server-observed 'pvp:' cause;
     // self / duel / same-clan / non-PvP excluded inside the hook).
-    this._bountyOnDeath(playerId, cause).catch(() => {});
+    _hook('bounty', () => this._bountyOnDeath(playerId, cause).catch(() => {}));
     // v2.3.1116: death ends any remaining threat consent this player
     // was party to -- the survivor can't keep hitting them through the
     // respawn.  (Duel pairs already cleared by the resolution above.)
-    this._clearPvpConsent(playerId);
+    _hook('pvpConsent', () => this._clearPvpConsent(playerId));
     if (!_duelKill) {
       // Spawn a pickable death pile at the death location carrying the
       // player's entire general inventory (mummy remains, fish, wood,
@@ -1573,7 +1656,7 @@ export class GameRoom {
       // armor / shield / amulet) and weaponStash are NOT included.
       // Anyone in the zone can pick the pile up; despawns after 60 s.
       // Spawn BEFORE the inventory wipe so we capture the items.
-      this._spawnDeathPile(ps, playerId);
+      _hook('deathPile', () => this._spawnDeathPile(ps, playerId));
       ps.inventory = {};
     }
     this._saveRpg(playerId, ps);
@@ -1596,6 +1679,19 @@ export class GameRoom {
   _tickPlayerRespawn() {
     const now = Date.now();
     for (const [id, ps] of Object.entries(this.playerState)) {
+      /* v2.3.1562: STUCK-AT-ZERO SWEEP.  The death flow only ever starts
+         at the instant damage is applied (the two _applyDamage callers).
+         Any other way a live player's hp reaches 0 — a path that writes
+         hp directly, a hook that threw before the flow finished, a state
+         restored from storage mid-death — leaves them at 0 HP with
+         dying=false, which is a permanent stuck state: no death, no
+         respawn, and the client happily keeps sending actions.  Starting
+         the flow from the tick closes that for every source at once
+         instead of chasing them one at a time.  Guarded on connected,
+         non-dying players so it cannot fire on a corpse mid-respawn. */
+      if (!ps.dying && !ps.disconnected && typeof ps.hp === 'number' && ps.hp <= 0) {
+        try { this._handlePlayerDeath(ps, id, 'stuck-at-zero'); } catch (e) {}
+      }
       if (!ps.dying) continue;
       if (now < (ps.respawnAt || 0)) continue;
       ps.hp = ps.maxHp || 100;

@@ -1,4 +1,4 @@
-/* Build the dodge-roll GEAR sheets (v2.3.1535).
+/* Build the dodge-roll GEAR sheets (v2.3.1573).
  *
  * v2.3.1534 shipped the roll body-only: getGearFrame 404'd for the pose, so a
  * fully plated knight went BARE for the ~300ms tumble.  This emits the three
@@ -25,14 +25,22 @@
  * still shows bare legs, legs-only a bare chest.
  *
  * SEAL (owner, v2.3.1477: "make sure you remove the body beneath completely
- * ... otherwise AI drift will make the naked body beneath poke out").  The
- * enclosure test replaces that tool's neck-line rule, which does not survive a
- * pose where the body inverts: "below the neck" is meaningless on frame 5,
- * where the head is the LOWEST thing on screen.  Instead the background is
- * flooded inward through everything that is not armour -- any body pixel the
- * flood cannot reach is enclosed by plate and gets filled from the nearest
- * armour pixel.  Head and hands stay reachable from outside, so they stay
- * bare, which is what the runtime wants (it redraws the head over the plate).
+ * ... otherwise AI drift will make the naked body beneath poke out").  That
+ * tool's rule was "any body pixel BELOW THE NECK the art misses", which does
+ * not survive a pose where the body inverts: on frame 5 the head is the
+ * LOWEST thing on screen, so a neck line protects nothing.
+ *
+ * An enclosure test was tried first -- flood the background inward through
+ * everything that is not armour, seal whatever it cannot reach -- and it is
+ * WRONG in both directions.  It sealed the HEAD, because the gorget closes a
+ * ring around it and the face reads as an interior gap, and it left the edge
+ * slivers where the plate runs narrower than the body, which are reachable
+ * from outside and so exactly the pixels that poke through.
+ *
+ * What works is letting the plated art state it: the bare skin left in the
+ * ARMOURED figure IS the head and hands, and everything else is meant to be
+ * under plate.  So the protected set is that skin dilated 3px, and every
+ * other uncovered body pixel is sealed from the nearest armour pixel.
  *
  * The t-shirt is deliberately NOT split and NOT sealed (v2.3.1480: "a tee is
  * SUPPOSED to leave the forearms and belly bare"), and stays WHITE-BASE --

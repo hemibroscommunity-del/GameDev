@@ -13,6 +13,12 @@ the full steel set is worn (v2.3.1361).
 The board's frame count must equal the game body cycle's; frames are read
 row-major from a uniform grid (cols x rows given or guessed from count).
 
+v2.3.1549 WARNING: `bn` defaults to the GAME CYCLE, not the board's own frame
+count, and `rows` is derived from it -- so importing east's 25-frame board
+without the 4th arg slices a 5x6 grid over a 5x5 board and every frame after
+the first row is cut across two poses.  It does not error; it silently produces
+garbage from frame 10 on.  Always pass the board's real count for east.
+
 Usage: python3 tools/import_fullset_board.py <board.png> <dir> <cols>
 Do NOT pipe through `head` — SIGPIPE can kill the run before the save.
 """
