@@ -1309,8 +1309,9 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
      the oscillator drone played fine.) */
   _zoneMusicSource: null,
   _zoneMusicGain: null,
-  _zoneMusicBuffers: {}, /* { [trackUrl]: AudioBuffer } cache */
+  _zoneMusicBuffers: {}, /* { [trackUrl]: AudioBuffer } cache — BUDGETED, see below */
   _zoneMusicUrl: null,   /* current track url; abandons stale fetches */
+  _zoneMusicLru: [],     /* trackUrls, most-recently-used first */
   /* v2.3.1577: GLOBAL music — one track that starts on the login screen and
      plays unbroken for the whole session.  Deliberately NOT a ZONE_MUSIC
      entry: that map is per-zone and startZoneAmbient stops the old track and
@@ -1328,7 +1329,10 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
      zero bytes) for every zone, so there's no music fetch and nothing 404s.
      To restore a track, re-add `<zoneId>: '/audio/music/<file>.mp3'` AND
      ship the file back into public/audio/music/. */
-  ZONE_MUSIC: { town: '/audio/music/village.mp3' },
+  ZONE_MUSIC: {
+    town: '/audio/music/village.mp3',
+    worldview: '/audio/music/world.mp3',
+  },
   /* v2.3.1578: the session track — starts at the login screen and plays for
      the whole session (the owner picked this over v2.3.1577's neondrift,
      which is removed rather than left to ship 3 MB nobody plays).
@@ -1350,10 +1354,59 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
      the session track deliberately lives outside stopAmbient's reach.
      128 kbps, 2.07 MB for 2m16s (37% off the 3.28 MB source); same bitrate
      as login-theme and for the same measured reason — this track is bright
-     (>15 kHz at -42.7 dB), so 96k would cost 2.1 dB up there to save 0.5 MB. */
-  ZONE_MUSIC_TOWN: '/audio/music/village.mp3',
+     (>15 kHz at -42.7 dB), so 96k would cost 2.1 dB up there to save 0.5 MB.
+     v2.3.1582: worldview gets world.mp3 — 128 kbps, 2.25 MB for 2m27s off a
+     3.31 MB 189 kbps source.  Brightest of the three (>15 kHz at -38.3 dB);
+     96k costs 1.9 dB there to save 0.6 MB, 112k measures no better than 96k
+     (-1.87 vs -1.89 dB), so 128k again. */
   GLOBAL_MUSIC: '/audio/music/login-theme.mp3',
   GLOBAL_MUSIC_VOL: 0.22,
+  /* v2.3.1582: the decoded-buffer cache is BUDGETED, not unbounded.
+     An AudioBuffer is raw float32 PCM, so a 2 MB mp3 is ~50 MB of RAM.
+     Measured in Chromium at 44.1 kHz stereo: login-theme 34.4 MB, village
+     45.8 MB, world 49.5 MB.  Keeping every one forever was deliberate and
+     free while ONE zone had a track; with a track in each of the 12 zones it
+     is ~550 MB of PCM accumulating as the player tours the world — the same
+     class of failure as the v2.3.1405 zone-art RAM problem, on the iPhone
+     this game targets.  DOWNLOAD is not the concern (2 MB each); resident
+     memory is.
+     Re-decoding is the cheap side of the trade: the mp3 stays in the HTTP
+     cache, so re-entry costs only a decode, hidden behind the zone-loading
+     overlay and the 600 ms fade-in.  Evicting mid-fade is safe too — a
+     playing AudioBufferSourceNode holds its own reference to the buffer, so
+     dropping ours never cuts audio short.
+     The budget is in MEGABYTES, not a track count, so it adapts to the art:
+     at 56 MB one full-length track is always resident, while short loops (a
+     1-minute track decodes to ~21 MB) keep two or three. */
+  ZONE_MUSIC_CACHE_MB: 56,
+  _bufBytes: function _bufBytes(buf) {
+    return buf ? buf.length * (buf.numberOfChannels || 1) * 4 : 0;
+  },
+  _touchZoneMusic: function _touchZoneMusic(url) {
+    if (!this._zoneMusicLru) this._zoneMusicLru = [];
+    var at = this._zoneMusicLru.indexOf(url);
+    if (at >= 0) this._zoneMusicLru.splice(at, 1);
+    this._zoneMusicLru.unshift(url);
+  },
+  _rememberZoneMusic: function _rememberZoneMusic(url, buf) {
+    if (!this._zoneMusicBuffers) this._zoneMusicBuffers = Object.create(null);
+    this._zoneMusicBuffers[url] = buf;
+    this._touchZoneMusic(url);
+    var budget = this.ZONE_MUSIC_CACHE_MB * 1048576;
+    var used = 0, i;
+    for (i = 0; i < this._zoneMusicLru.length; i++) {
+      used += this._bufBytes(this._zoneMusicBuffers[this._zoneMusicLru[i]]);
+    }
+    /* Drop from the cold end until inside budget.  Never the track just
+       decoded, and never the one the room is currently playing. */
+    for (i = this._zoneMusicLru.length - 1; i >= 0 && used > budget; i--) {
+      var u = this._zoneMusicLru[i];
+      if (u === url || u === this._zoneMusicUrl) continue;
+      used -= this._bufBytes(this._zoneMusicBuffers[u]);
+      delete this._zoneMusicBuffers[u];
+      this._zoneMusicLru.splice(i, 1);
+    }
+  },
   init: function init() {
     if (this.ctx) return;
     try {
@@ -1734,6 +1787,7 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
       } catch (e) {}
     };
     if (self._zoneMusicBuffers && self._zoneMusicBuffers[trackUrl]) {
+      self._touchZoneMusic(trackUrl);   /* a cache HIT is a use — keep it warm */
       startWithBuffer(self._zoneMusicBuffers[trackUrl]);
     } else {
       try {
@@ -1741,8 +1795,7 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
           .then(function (r) { return r.ok ? r.arrayBuffer() : Promise.reject(new Error('http ' + r.status)); })
           .then(function (ab) { return self.ctx.decodeAudioData(ab); })
           .then(function (buf) {
-            if (!self._zoneMusicBuffers) self._zoneMusicBuffers = {};
-            self._zoneMusicBuffers[trackUrl] = buf;
+            self._rememberZoneMusic(trackUrl, buf);
             startWithBuffer(buf);
           })
           .catch(function () { /* fetch / decode failure — silent */ });
@@ -1777,8 +1830,9 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
     this._ambientGain2 = null;
     /* Zone music — stop the Web Audio source + drop refs so the
        buffer source can be GC'd. The decoded AudioBuffer cache
-       (_zoneMusicBuffers) is intentionally kept across zone hops
-       so re-entering a zone doesn't re-decode.
+       (_zoneMusicBuffers) is kept across zone hops so re-entering a
+       zone doesn't re-decode — within the MB budget enforced by
+       _rememberZoneMusic (v2.3.1582; it used to be unbounded).
 
        When fadeMusic is true, ramp the existing gain to 0 over
        600 ms and let the source play on until just past the ramp
