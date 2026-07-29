@@ -296,21 +296,10 @@ export function NameModal(props) {
     vv.addEventListener('resize', onR);
     return function () { vv.removeEventListener('resize', onR); };
   }, []);
-  /* v2.3.1235 rollout micro-fix §2's inline-SVG die (currentColor — no
-     new hex, no emoji, no asset), shared by the name dice + Randomize. */
-  var _dieSvg = function (sz) {
-    return /*#__PURE__*/React.createElement("svg", {
-      width: sz, height: sz, viewBox: "0 0 20 20", "aria-hidden": true,
-      style: { display: 'block', flexShrink: 0 }
-    }, /*#__PURE__*/React.createElement("rect", {
-      x: 2.5, y: 2.5, width: 15, height: 15, rx: 3.5,
-      fill: 'none', stroke: 'currentColor', strokeWidth: 1.6
-    }), /*#__PURE__*/React.createElement("circle", { cx: 6.8, cy: 6.8, r: 1.5, fill: 'currentColor' }),
-    /*#__PURE__*/React.createElement("circle", { cx: 13.2, cy: 6.8, r: 1.5, fill: 'currentColor' }),
-    /*#__PURE__*/React.createElement("circle", { cx: 10, cy: 10, r: 1.5, fill: 'currentColor' }),
-    /*#__PURE__*/React.createElement("circle", { cx: 6.8, cy: 13.2, r: 1.5, fill: 'currentColor' }),
-    /*#__PURE__*/React.createElement("circle", { cx: 13.2, cy: 13.2, r: 1.5, fill: 'currentColor' }));
-  };
+  /* v2.3.1576: the v2.3.1235 inline-SVG die is retired — its last caller
+     (the name-reroll button) now renders the owner's painted
+     cc-random-name.webp, matching cc-random-look.webp on the Randomize
+     button below it. */
   return /*#__PURE__*/React.createElement("div", {
     className: "bt-name-modal"
   }, /*#__PURE__*/React.createElement("video", {
@@ -535,7 +524,18 @@ export function NameModal(props) {
     /* v2.3.1272: 40px target inside the 44px name well. */
     style: { position: 'absolute', right: 2, top: '50%', transform: 'translateY(-50%)', width: 40, height: 40, borderRadius: 8, cursor: 'pointer',
       display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }
-  }, _dieSvg(18)), /*#__PURE__*/React.createElement("div", {
+    /* v2.3.1576: the owner PAINTED cc-random-name.webp and it was sitting
+       unreferenced in public/ui/welcome/cc/ while this button drew the
+       v2.3.1235 inline SVG die.  Its sibling cc-random-look.webp was
+       already wired to the Randomize Look button right below, so the two
+       reroll actions were rendering in two different visual languages.
+       Painted icon wins; _dieSvg is retired with its last caller. */
+  }, /*#__PURE__*/React.createElement("img", {
+    className: "bt-cc-action-icon",
+    src: '/ui/welcome/cc/cc-random-name.webp?v=' + BUILD_INFO.version,
+    alt: '', draggable: false,
+    style: { width: 22, height: 22, objectFit: 'contain' }
+  })), /*#__PURE__*/React.createElement("div", {
     /* v2.3.1307: inline validation line — green check once the name
        clears the local rules, quiet guidance otherwise.  Fixed height
        so the cluster never jumps.  (Names are not unique server-side,
@@ -573,15 +573,14 @@ export function NameModal(props) {
     type: 'button',
     className: "bt-cc-login",
     onClick: function () { setShowAccount(true); },
+    /* v2.3.1576: the fill/border/colour moved OUT of these inline styles
+       into .bt-cc-login (game.css).  They were inline, so the stylesheet
+       could not reach them — this row was painted rgba(17,25,29,.55),
+       DARKER than the pane behind it (1.26:1), which is why the
+       returning-player door was the hardest thing on the screen to find.
+       Layout-only properties stay here. */
     style: {
       width: '100%',
-      background: 'rgba(17,25,29,.55)',
-      border: '1px solid rgba(238,242,235,.22)',
-      borderRadius: 10,
-      color: '#E8E4DA',
-      fontFamily: 'Source Sans 3, sans-serif',
-      fontSize: 13,
-      fontWeight: 600,
       cursor: 'pointer',
       padding: '0 10px',
       minHeight: 44,

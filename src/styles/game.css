@@ -1013,7 +1013,29 @@ input{font-family:inherit}
 .bt-cc-play{background:linear-gradient(180deg,#E2B765,#D2A14D);border:1px solid var(--ui-brass-highlight);border-bottom:4px solid #9C742D;border-radius:12px;box-shadow:inset 0 1px 0 rgba(255,255,255,.30),0 2px 6px rgba(0,0,0,.22);color:#172126;min-height:52px;max-width:500px;margin-left:auto;margin-right:auto;font-family:'Source Sans 3',sans-serif;font-size:clamp(12px,3.3vw,18px);font-weight:800;letter-spacing:.05em;text-transform:uppercase;box-sizing:border-box}
 /* The returning-player row: two labels side by side needs to wrap and shrink
    in a column a third of the screen wide. */
-.bt-cc-login{flex-wrap:wrap;font-size:clamp(10px,2.6vw,13px)!important;line-height:1.15;text-align:center;padding:6px!important}
+/* v2.3.1576: the returning-player door is now a real secondary control
+   (was rgba(17,25,29,.55) inline — darker than its own pane, 1.26:1).
+   Same slate treatment as .bt-cc-btn so the two secondary actions in
+   this column read as siblings, with the brass "Log in with key" span
+   in the markup carrying the accent. */
+.bt-cc-login{flex-wrap:wrap;font-size:clamp(10px,2.6vw,13px)!important;line-height:1.15;text-align:center;padding:6px!important;
+  background:
+    linear-gradient(180deg,
+      rgba(255,255,255,.10) 0,
+      rgba(255,255,255,.10) var(--ui-hairline),
+      rgba(255,255,255,.045) var(--ui-hairline),
+      rgba(0,0,0,.10) calc(100% - var(--ui-hairline)),
+      rgba(0,0,0,.34) calc(100% - var(--ui-hairline)),
+      rgba(0,0,0,.34) 100%),
+    #3A5058;
+  border:var(--ui-hairline) solid rgba(229,237,233,.34);
+  border-radius:10px;
+  color:#F4F0E7;
+  font-family:'Source Sans 3',sans-serif;
+  font-weight:600;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.08),0 2px 6px rgba(5,8,10,.28);
+  transition:background 90ms cubic-bezier(.2,.8,.2,1),transform 90ms cubic-bezier(.2,.8,.2,1)}
+.bt-cc-login:active{transform:translateY(1px);box-shadow:inset 0 3px 7px rgba(0,0,0,.46)}
 .bt-cc-login img{width:16px!important;height:16px!important}
 .bt-cc-actions>button{font-size:clamp(11px,2.8vw,13px)}
 .bt-cc-play:active{transform:translateY(2px);border-bottom-width:2px;filter:brightness(1.05)}
@@ -1023,31 +1045,59 @@ input{font-family:inherit}
    buttons need a beveled appearance; same recipe as the dashboard nav,
    which replaced stacked box-shadow bevels that fattened on Retina).
    Pressed = reversed bevel over the raised-high fill. */
+/* v2.3.1576 (owner: "the buttons are flat gray and blend into the dark
+   background").  MEASURED, not eyeballed: the old #293B41 fill sat at
+   1.20:1 against the --ui-sheet #1E2E34 pane behind it, and the login
+   row at 1.26:1 — a control needs ~3:1 to read as its own surface, so
+   the whole screen had exactly ONE legible control (the gold ENTER, at
+   7.49:1) and everything else receded into the dark.
+
+   The fix is NOT just a brighter fill: pushing the slate light enough
+   to clear 3:1 on its own (~#4C6872) washes it out and fights the
+   Lantern Slate hard lock that the painterly world stays the brightest
+   thing on screen.  A control reads by its EDGE as much as its fill —
+   which is exactly what .bt-cc-play has (real border + 4px bevel +
+   shadow) and what these lacked.  So: a moderate fill lift (#3A5058,
+   1.65:1) plus a hairline at .34 alpha, which composites to 3.65:1
+   against the pane and does the actual separating, plus a genuine
+   drop shadow for lift.  Stays neutral slate — no new accent colour,
+   and brass remains selection-only (spec "Buttons & components":
+   Secondary = raised gradient + hairline + text-1). */
 .bt-cc-btn{
   background:
     linear-gradient(180deg,
-      rgba(255,255,255,.07) 0,
-      rgba(255,255,255,.07) var(--ui-hairline),
-      transparent var(--ui-hairline),
-      transparent calc(100% - var(--ui-hairline)),
-      rgba(0,0,0,.30) calc(100% - var(--ui-hairline)),
-      rgba(0,0,0,.30) 100%),
-    #293B41;
-  border:var(--ui-hairline) solid rgba(229,237,233,.22);
+      rgba(255,255,255,.10) 0,
+      rgba(255,255,255,.10) var(--ui-hairline),
+      rgba(255,255,255,.045) var(--ui-hairline),
+      rgba(0,0,0,.10) calc(100% - var(--ui-hairline)),
+      rgba(0,0,0,.34) calc(100% - var(--ui-hairline)),
+      rgba(0,0,0,.34) 100%),
+    #3A5058;
+  border:var(--ui-hairline) solid rgba(229,237,233,.34);
   color:#F4F0E7;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.08),0 2px 6px rgba(5,8,10,.28);
+  transition:background 90ms cubic-bezier(.2,.8,.2,1),transform 90ms cubic-bezier(.2,.8,.2,1);
 }
 .bt-cc-btn:active{
   transform:translateY(1px);
   background:
     linear-gradient(180deg,
-      rgba(0,0,0,.30) 0,
-      rgba(0,0,0,.30) var(--ui-hairline),
-      transparent var(--ui-hairline),
-      transparent calc(100% - var(--ui-hairline)),
-      rgba(255,255,255,.07) calc(100% - var(--ui-hairline)),
-      rgba(255,255,255,.07) 100%),
+      rgba(0,0,0,.34) 0,
+      rgba(0,0,0,.34) var(--ui-hairline),
+      rgba(0,0,0,.10) var(--ui-hairline),
+      rgba(255,255,255,.045) calc(100% - var(--ui-hairline)),
+      rgba(255,255,255,.10) calc(100% - var(--ui-hairline)),
+      rgba(255,255,255,.10) 100%),
     #32454C;
+  box-shadow:inset 0 3px 7px rgba(0,0,0,.46);
 }
+/* v2.3.1576: keyboard focus was invisible on every control here.  Spec
+   "Buttons & components": focus 2px #F0C878. */
+.bt-cc-btn:focus-visible,
+.bt-cc-login:focus-visible,
+.bt-cc-play:focus-visible,
+.bt-cc-tab:focus-visible,
+.bt-cc-subtab:focus-visible{outline:2px solid var(--ui-brass-highlight);outline-offset:2px}
 /* v2.3.718: name input on the owner's parchment scroll (3-slice border-
    image: rolled end caps stay fixed, the parchment middle stretches).
    Ink-dark text + placeholder; the quill img is an absolutely-positioned
@@ -1185,9 +1235,23 @@ input{font-family:inherit}
    row, so they wrap to a fixed two-row block — shorter than the tabs row plus
    the reserved two-row subtab row it replaces. */
 .bt-cc-tabs{flex:0 0 auto;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:4px}
-.bt-cc-tab{min-width:0;min-height:52px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:4px 2px;background:transparent;border:1px solid transparent;border-radius:8px;cursor:pointer;color:var(--ui-text-secondary);font-family:'Source Sans 3',sans-serif}
-.bt-cc-tab:active{transform:translateY(1px)}
-.bt-cc-tab--on{background:var(--ui-brass-soft);color:var(--ui-text);border-color:var(--ui-brass)}
+/* v2.3.1576: the unselected tabs were background:transparent with a
+   TRANSPARENT border — literally 1.00:1, so the category row read as
+   floating labels rather than a row of controls, and only the selected
+   one existed visually.  They get a quiet resting plate (a well, not a
+   raised button: they are a segmented control, and the selected one
+   must still be the raised/brass member).  Selection treatment is
+   unchanged — brass stays selection-only. */
+.bt-cc-tab{min-width:0;min-height:52px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:4px 2px;background:rgba(0,0,0,.22);border:1px solid rgba(229,237,233,.26);border-radius:8px;cursor:pointer;color:var(--ui-text-secondary);font-family:'Source Sans 3',sans-serif;
+  /* spec --shadow-well: an unselected tab is a RECESS, so it reads by
+     its inner shadow as much as its 1.91:1 rim — that pairing is what
+     lets the brass selected member (6.56:1) pop without shouting. */
+  box-shadow:inset 0 2px 4px rgba(0,0,0,.44),inset 0 1px 0 rgba(255,255,255,.035);
+  transition:background 90ms cubic-bezier(.2,.8,.2,1),border-color 90ms cubic-bezier(.2,.8,.2,1)}
+.bt-cc-tab:active{transform:translateY(1px);background:rgba(0,0,0,.30)}
+/* selected: raised off the row + brass edge, so the pair reads as
+   pressed-in siblings around one lifted member. */
+.bt-cc-tab--on{background:var(--ui-brass-soft);color:var(--ui-text);border-color:var(--ui-brass);box-shadow:inset 0 1px 0 rgba(255,255,255,.10),0 2px 6px rgba(5,8,10,.26)}
 .bt-cc-tab-icon{width:30px;height:30px;object-fit:contain;opacity:.92;pointer-events:none}
 /* the catalog-thumb tabs are sprite art, so they upscale nearest like the
    tiles they stand for rather than going soft next to the painted icons */
@@ -1198,16 +1262,20 @@ input{font-family:inherit}
    standard slate micro-bevel instead of the transparent tab rest state
    (re-stated here because .bt-cc-tab's transparent background is
    declared later in the file than .bt-cc-btn). */
+/* v2.3.1576: tracks the .bt-cc-btn lift above — this cell IS a slate
+   action button, so it must not stay on the old 1.20:1 fill while its
+   twin moves. */
 .bt-cc-tab--action{background:
   linear-gradient(180deg,
-    rgba(255,255,255,.07) 0,
-    rgba(255,255,255,.07) var(--ui-hairline),
-    transparent var(--ui-hairline),
-    transparent calc(100% - var(--ui-hairline)),
-    rgba(0,0,0,.30) calc(100% - var(--ui-hairline)),
-    rgba(0,0,0,.30) 100%),
-  #293B41;
-  border:var(--ui-hairline) solid rgba(229,237,233,.22);color:#F4F0E7}
+    rgba(255,255,255,.10) 0,
+    rgba(255,255,255,.10) var(--ui-hairline),
+    rgba(255,255,255,.045) var(--ui-hairline),
+    rgba(0,0,0,.10) calc(100% - var(--ui-hairline)),
+    rgba(0,0,0,.34) calc(100% - var(--ui-hairline)),
+    rgba(0,0,0,.34) 100%),
+  #3A5058;
+  border:var(--ui-hairline) solid rgba(229,237,233,.34);color:#F4F0E7;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.08),0 2px 6px rgba(5,8,10,.28)}
 /* v2.3.1251: compact secondary tabs.  v2.3.1256: only HEAD renders them
    — four chips (Hair/Hats/Skin/Beard), so min-width drops 72 → 56 to
    keep all four on one row inside a 320px viewport (4×56 + chrome ≈
@@ -1225,7 +1293,11 @@ input{font-family:inherit}
    flex stage can't resize the character on tab switches (owner: one
    consistent character size). */
 .bt-cc-ghost{visibility:hidden}
-.bt-cc-subtab{min-width:0;min-height:34px;padding:3px 8px;border:0;border-radius:7px;background:transparent;color:var(--ui-text-secondary);font-size:13px;font-weight:700;letter-spacing:.02em;font-family:'Source Sans 3',sans-serif;cursor:pointer}
+/* v2.3.1576: quiet resting chip.  Lighter touch than .bt-cc-tab because
+   these already sit inside the .bt-cc-subtabs well, which supplies the
+   grouping context the bare tab row was missing — this only needs to
+   say "tappable", not "distinct surface". */
+.bt-cc-subtab{min-width:0;min-height:34px;padding:3px 8px;border:1px solid rgba(229,237,233,.10);border-radius:7px;background:rgba(255,255,255,.035);color:var(--ui-text-secondary);font-size:13px;font-weight:700;letter-spacing:.02em;font-family:'Source Sans 3',sans-serif;cursor:pointer;transition:background 90ms cubic-bezier(.2,.8,.2,1)}
 /* v2.3.1254: selected subtab is a raised, micro-beveled chip. */
 .bt-cc-subtab--on{color:var(--ui-text);background:
   linear-gradient(180deg,
