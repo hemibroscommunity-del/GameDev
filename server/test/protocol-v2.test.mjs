@@ -352,27 +352,64 @@ check('v2 safe-zone change sends empty zone_state', zsTown.length === 1 && zsTow
 // ── v2.3.1092: harvest-activity (ex) relay ──
 // A stationary gatherer broadcasts an `ex` code on its move; the server stores
 // it and relays it in the tick `players` delta so peers can render the
-// activity.  Same store path covers v1 + v2 (one shared players object).
+// activity.
+//
+// v2.3.1502 (interest management): this relay is ZONE-SCOPED now.  The
+// peer who can actually RENDER the activity -- one standing in the same
+// zone -- still gets it at the full 45Hz tick rate.  A peer in another
+// zone (whose renderer skips the entity entirely, entityRenderer.js)
+// rides the 1 Hz presence roster instead.  Both paths are asserted: p2
+// has been sitting in 'town' since the zone-change block above, so it
+// exercises the roster; p2b joins into 'meadow' for the same-zone path.
 {
   // Same-position move (no teleport -> accepted) carrying ex='chop'.
   const p1 = room.playerState.p1;
+  const ws2b = fakeWs('v2-samezone');
+  room.sessions.set(ws2b, baseSession());
+  await room.webSocketMessage(ws2b, JSON.stringify({
+    type: 'join', id: 'p2b', name: 'V2same', protocolVersion: 2, data: { ...joinData },
+  }));
+  check('same-zone v2 peer is in meadow, p2 is not',
+    room.playerState.p2b.z === 'meadow' && room.playerState.p2.z !== 'meadow',
+    { p2b: room.playerState.p2b.z, p2: room.playerState.p2.z });
+
   await room.webSocketMessage(ws1, JSON.stringify({ type: 'move', x: p1.x, y: p1.y, z: 'meadow', ex: 'chop' }));
   check('move stores harvest activity on playerState', room.playerState.p1.ex === 'chop', room.playerState.p1.ex);
 
-  ws1.sent.length = 0; ws2.sent.length = 0;
+  const findP1 = (w) => msgsOfType(w, 'tick').find((t) => t.players && t.players.p1);
+
+  ws1.sent.length = 0; ws2b.sent.length = 0;
   room.startTickLoop();
   await new Promise((r) => setTimeout(r, 80));
   clearInterval(room.tickInterval); room.tickInterval = null;
-  const exTick1 = msgsOfType(ws1, 'tick').find((t) => t.players && t.players.p1);
-  const exTick2 = msgsOfType(ws2, 'tick').find((t) => t.players && t.players.p1);
+  const exTick1 = findP1(ws1);
+  const exTick2b = findP1(ws2b);
   check('v1 tick relays harvest activity', !!exTick1 && exTick1.players.p1.ex === 'chop',
     exTick1 && exTick1.players.p1 && exTick1.players.p1.ex);
-  check('v2 tick relays harvest activity', !!exTick2 && exTick2.players.p1.ex === 'chop',
-    exTick2 && exTick2.players.p1 && exTick2.players.p1.ex);
+  check('v2 tick relays harvest activity to a same-zone peer',
+    !!exTick2b && exTick2b.players.p1.ex === 'chop',
+    exTick2b && exTick2b.players.p1 && exTick2b.players.p1.ex);
+
+  /* v2.3.1502: the OUT-OF-ZONE peer must still receive the player, or
+     the client's 10 s ghost-sweep deletes it and the "N online" count
+     collapses to your own zone.  It arrives on the presence roster --
+     tickSeq 0 is a presence tick, so one short run covers it. */
+  ws2.sent.length = 0;
+  room.tickSeq = 0;
+  room.startTickLoop();
+  await new Promise((r) => setTimeout(r, 80));
+  clearInterval(room.tickInterval); room.tickInterval = null;
+  const rosterTick = findP1(ws2);
+  check('v2.3.1502 out-of-zone peer still arrives via the presence roster',
+    !!rosterTick && rosterTick.players.p1.ex === 'chop',
+    rosterTick && rosterTick.players.p1);
 
   // Clearing it (ex:null) relays the cleared value so peers stop the stand-in.
   await room.webSocketMessage(ws1, JSON.stringify({ type: 'move', x: p1.x, y: p1.y, z: 'meadow', ex: null }));
   check('move clears harvest activity', room.playerState.p1.ex === null, room.playerState.p1.ex);
+
+  room.sessions.delete(ws2b);
+  delete room.playerState.p2b;
 }
 
 // ── v2.3.1177: join must NOT fall through into the move handler ──

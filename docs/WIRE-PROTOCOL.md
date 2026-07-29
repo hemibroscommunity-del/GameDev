@@ -117,7 +117,7 @@ sends). All of these are in `PRIVILEGED_EVENTS` unless noted.
 
 | Type | Purpose / payload | Client handler (BroTown.jsx) |
 |---|---|---|
-| `tick` | Batched per-tick frame: `players` (id → x/y/dir/facing/zone/vx/vy + live equip fields), `events` (array fed to `_processGameEvent`), `monsters`/`nodes` (zone → entity list; v2 = dirty entities only) | ~2048 |
+| `tick` | Batched per-tick frame: `players` (id → x/y/dir/facing/zone/vx/vy + live equip fields), `events` (array fed to `_processGameEvent`), `monsters`/`nodes` (zone → entity list; v2 = dirty entities only). **Zone-scoped since v2.3.1502** — see below | ~2048 |
 | `state_sync` | Full room snapshot on join: players, zone monsters, etc. | ~2223 |
 | `zone_state` | v2 zone change: `{ zone, monsters, nodes, loot }` merged | ~2352 |
 | `zone_monsters` / `zone_nodes` / `zone_loot` | v1 legacy zone-change trio (kept as fallback) | ~2732 / ~2727 / ~2347 |
@@ -167,6 +167,24 @@ Server cases in `GameRoom.webSocketMessage`, `server/src/index.js`
 | `amulet_forge_request` | v2.3.1192 server amulet forge — `{op:'smelt'\|'craft'\|'gem', ...}` under `caps.amuletForge`; echo is `player_state` only (see `docs/specs/amulet-forge.md`) | amulet.js |
 | `gem_cut_request` | v2.3.1198 server gem cutting — `{gem}` under `caps.gems`; answers private `gem_cut_result` + `player_state` echo (see `docs/specs/amulet-forge.md` "Gem income") | amulet.js |
 | `quest_accept` / `quest_turn_in` | Quest lifecycle | ~4000 / ~4009 |
+
+### `tick` is zone-scoped (v2.3.1502)
+
+The tick no longer carries the whole room. Per receiving session:
+
+- `monsters` / `nodes` — **only the receiver's own zone** (the client already
+  read only `msg.monsters[myZone]`; everything else was discarded). Dungeon
+  instances therefore stop leaking to the room.
+- `players` — same-zone peers every tick; out-of-zone peers on a **1 Hz
+  presence roster** (all players, dirty or not). The roster is load-bearing:
+  the client's ghost-sweep deletes any peer silent for 10 s and counts the
+  survivors for "N online".
+- `events` — **unchanged, room-wide.** They are 1% of egress and mix zone-local
+  combat with social relays; do not scope them.
+
+The v1/v2 split is unchanged *within* a zone. No caps flag — nothing new is
+claimed, so it is deploy-order safe both ways. Full detail and the measurements:
+`docs/specs/interest-management.md`.
 
 ### `track` is cosmetics-only (v2.3.1465)
 

@@ -161,43 +161,88 @@ export const tickMethods = {
         }
       }
 
+      /* ═══ v2.3.1502: INTEREST MANAGEMENT ═══
+       *
+       * The tick used to fan EVERY dirty zone's entities out to EVERY
+       * socket in the room, and the client threw almost all of it away
+       * -- wsClient.js reads only `msg.monsters[myZone]`, and
+       * entityRenderer.js skips any peer whose zone differs.  Measured
+       * on the real GameRoom (7 zones x 25 monsters): monsters were
+       * 66% of all egress with only 14% of that the receiver's own
+       * zone, players another 31% room-wide, events just 1%.  ~85% of
+       * every byte sent was unusable by the receiver, which is why a
+       * player standing ALONE in a zone still pulled 204 KB/s
+       * (~1.5 Mbit/s) -- brutal on the primary platform, iPhone Safari
+       * on cellular.  CPU was never the problem (load-tick.mjs: 1 ms of
+       * a 22 ms budget at 120 players), so every prior optimization
+       * tuned the CONTENTS of the broadcast and none tuned its
+       * AUDIENCE.  This does the latter.
+       *
+       * Scoped: monsters + nodes, to the receiver's own zone.  This also
+       * stops dungeon instances leaking their contents to the whole room.
+       * NOT scoped: `events` -- they measured at 1% of egress, and the
+       * buffer mixes zone-local combat with room-wide social relays
+       * (chat/emote/clan), so filtering them buys ~nothing and risks
+       * silently dropping social traffic.  Left exactly as it was.
+       *
+       * Players: same-zone peers keep full 45Hz fidelity.  Out-of-zone
+       * peers ride a 1 Hz PRESENCE ROSTER instead of the per-tick dirty
+       * list -- they cannot be rendered (the renderer skips them), but
+       * the client's ghost-sweep DELETES any peer silent for 10 s and
+       * derives the online count from that map, so dropping them
+       * outright would collapse the roster to your own zone.  1 Hz
+       * gives that sweep 10x margin.  The roster is unconditional (all
+       * players, not just dirty) so an idle peer can never age out.
+       *
+       * Deploy-order safe with NO caps flag (rule 19): an old client
+       * already ignores other-zone entities and already tolerates a
+       * 1 Hz peer refresh, so nothing is claimed and nothing changes
+       * for it.  Serialization stays "build once, send many" -- now
+       * once per (zone, protocolVersion) group rather than once per
+       * protocol version. */
+      const presenceTick = (this.tickSeq % this.PRESENCE_REFRESH_TICKS) === 0;
+
       const hasDirty = this.dirtyPlayers.size > 0;
       const hasEvents = this.eventBuffer.length > 0;
       const hasMonsters = this.dirtyMonsters.size > 0;
       const hasNodes = this.dirtyNodes.size > 0;
-      if (!hasDirty && !hasEvents && !hasMonsters && !hasNodes) { this.tickSeq++; return; }
+      if (!hasDirty && !hasEvents && !hasMonsters && !hasNodes && !presenceTick) { this.tickSeq++; return; }
 
-      // Build single room-wide tick delta
-      const delta = { type: 'tick', seq: this.tickSeq++, ts: Date.now() };
+      const seq = this.tickSeq++;
+      const ts = Date.now();
 
-      // Batched player positions (only dirty)
-      if (hasDirty) {
-        const players = {}; // proto-ok: player-keyed outbound payload; join gate v2.3.1202
-        for (const id of this.dirtyPlayers) {
-          const ps = this.playerState[id];
-          if (ps) players[id] = { x: ps.x, y: ps.y, d: ps.d, z: ps.z, vx: ps.vx, vy: ps.vy, f: ps.f, eqc: ps.eqc, eql: ps.eql, eqs: ps.eqs, ex: ps.ex };
+      const playerWire = (ps) => ({
+        x: ps.x, y: ps.y, d: ps.d, z: ps.z, vx: ps.vx, vy: ps.vy,
+        f: ps.f, eqc: ps.eqc, eql: ps.eql, eqs: ps.eqs, ex: ps.ex,
+      });
+
+      // Dirty players bucketed by the zone they are standing in, so a
+      // group only pays for the peers its members can actually see.
+      const dirtyByZone = new Map();
+      for (const id of this.dirtyPlayers) {
+        const ps = this.playerState[id];
+        if (!ps) continue;
+        let arr = dirtyByZone.get(ps.z);
+        if (!arr) dirtyByZone.set(ps.z, arr = []);
+        arr.push([id, ps]);
+      }
+      this.dirtyPlayers.clear();
+
+      // 1 Hz presence roster -- EVERY connected player, dirty or not
+      // (see the ghost-sweep note above; an idle peer is never dirty).
+      let roster = null;
+      if (presenceTick) {
+        roster = Object.create(null);
+        for (const [id, ps] of Object.entries(this.playerState)) {
+          if (ps) roster[id] = playerWire(ps);
         }
-        delta.players = players;
-        this.dirtyPlayers.clear();
       }
 
       // Batched game events (capped).  v2.3.1163: overflow used to be
       // dropped (slice-then-wipe threw away everything past the cap);
       // splice keeps the remainder queued so a burst tick delays
       // events instead of losing them (handoff item L).
-      if (hasEvents) {
-        delta.events = this.eventBuffer.splice(0, this.EVENTS_PER_TICK_CAP);
-      }
-
-      // Monster + node deltas are protocol-versioned: v1 sessions get
-      // every entity in each dirty zone (legacy behavior); v2 sessions
-      // get only the entities marked dirty this tick (client merges by
-      // id, so unsent entries keep their last-known state).  Build each
-      // variant only when a session of that version is connected.
-      let hasV1 = false, hasV2 = false;
-      for (const [, s] of this.sessions) {
-        if (s.protocolVersion === 2) hasV2 = true; else hasV1 = true;
-      }
+      const events = hasEvents ? this.eventBuffer.splice(0, this.EVENTS_PER_TICK_CAP) : null;
 
       const monsterWire = (m) => ({
         id: m.id, x: Math.round(m.x), y: Math.round(m.y),
@@ -209,64 +254,95 @@ export const tickMethods = {
       // the position.
       const nodeWire = (n) => ({ id: n.id, alive: n.alive, respawnAt: n.respawnAt });
 
-      let msgV1 = null, msgV2 = null;
-      if (hasV1) {
-        const v1 = { ...delta };
-        if (hasMonsters) {
-          const mData = {}; // proto-ok: keyed by server zone names
-          for (const zoneId of this.dirtyMonsters) {
-            const monsters = this.monsters[zoneId];
-            if (!monsters) continue;
-            mData[zoneId] = monsters.map(monsterWire);
-          }
-          v1.monsters = mData;
+      /* Monster + node deltas stay protocol-versioned: v1 sessions get
+         every entity in the zone (legacy behavior); v2 sessions get
+         only the entities marked dirty this tick (client merges by id,
+         so unsent entries keep their last-known state). */
+      const buildFor = (zone, pv) => {
+        const d = { type: 'tick', seq, ts };
+        let any = false;
+
+        const players = Object.create(null);
+        let hasPlayers = false;
+        if (roster) {
+          for (const id of Object.keys(roster)) { players[id] = roster[id]; hasPlayers = true; }
         }
-        if (hasNodes) {
-          const nData = {}; // proto-ok: keyed by server zone names
-          for (const zoneId of this.dirtyNodes) {
-            const list = this.nodes[zoneId];
-            if (!list) continue;
-            nData[zoneId] = list.map(nodeWire);
-          }
-          v1.nodes = nData;
+        const dz = dirtyByZone.get(zone);
+        if (dz) {
+          for (const [id, ps] of dz) { players[id] = playerWire(ps); hasPlayers = true; }
         }
-        msgV1 = JSON.stringify(v1);
+        if (hasPlayers) { d.players = players; any = true; }
+
+        if (events) { d.events = events; any = true; }
+
+        // Zone-scoped entities.  A session with no resolved zone (still
+        // pre-join) simply gets none -- its state_sync carries the world.
+        if (zone) {
+          if (this.dirtyMonsters.has(zone)) {
+            const monsters = this.monsters[zone];
+            if (monsters) {
+              let list = null;
+              if (pv === 2) {
+                const ids = this.dirtyMonsterIds[zone];
+                if (ids) {
+                  const changed = monsters.filter((m) => ids.has(m.id));
+                  if (changed.length > 0) list = changed;
+                }
+              } else {
+                list = monsters;
+              }
+              if (list) {
+                const mData = Object.create(null);
+                mData[zone] = list.map(monsterWire);
+                d.monsters = mData;
+                any = true;
+              }
+            }
+          }
+          if (this.dirtyNodes.has(zone)) {
+            const nodes = this.nodes[zone];
+            if (nodes) {
+              let list = null;
+              if (pv === 2) {
+                const ids = this.dirtyNodeIds[zone];
+                if (ids) {
+                  const changed = nodes.filter((n) => ids.has(n.id));
+                  if (changed.length > 0) list = changed;
+                }
+              } else {
+                list = nodes;
+              }
+              if (list) {
+                const nData = Object.create(null);
+                nData[zone] = list.map(nodeWire);
+                d.nodes = nData;
+                any = true;
+              }
+            }
+          }
+        }
+
+        return any ? JSON.stringify(d) : null;
+      };
+
+      // One serialization per (zone, protocolVersion) group, reused
+      // across every socket in that group.
+      const groupCache = new Map();
+      for (const [ws, s] of this.sessions) {
+        const ps = s.id ? this.playerState[s.id] : null;
+        const zone = ps ? ps.z : null;
+        const pv = s.protocolVersion === 2 ? 2 : 1;
+        const key = pv + '|' + zone;
+        let msg = groupCache.get(key);
+        if (msg === undefined) { msg = buildFor(zone, pv); groupCache.set(key, msg); }
+        if (msg) { try { ws.send(msg); } catch {} }
       }
-      if (hasV2) {
-        const v2 = { ...delta };
-        if (hasMonsters) {
-          const mData = {}; // proto-ok: keyed by server zone names
-          for (const zoneId of this.dirtyMonsters) {
-            const monsters = this.monsters[zoneId];
-            const ids = this.dirtyMonsterIds[zoneId];
-            if (!monsters || !ids) continue;
-            const changed = monsters.filter((m) => ids.has(m.id));
-            if (changed.length > 0) mData[zoneId] = changed.map(monsterWire);
-          }
-          if (Object.keys(mData).length > 0) v2.monsters = mData;
-        }
-        if (hasNodes) {
-          const nData = {}; // proto-ok: keyed by server zone names
-          for (const zoneId of this.dirtyNodes) {
-            const list = this.nodes[zoneId];
-            const ids = this.dirtyNodeIds[zoneId];
-            if (!list || !ids) continue;
-            const changed = list.filter((n) => ids.has(n.id));
-            if (changed.length > 0) nData[zoneId] = changed.map(nodeWire);
-          }
-          if (Object.keys(nData).length > 0) v2.nodes = nData;
-        }
-        msgV2 = JSON.stringify(v2);
-      }
+
+      // Cleared AFTER the send loop -- buildFor reads them lazily.
       this.dirtyMonsters.clear();
       this.dirtyNodes.clear();
       this.dirtyMonsterIds = {};
       this.dirtyNodeIds = {};
-
-      for (const [ws, s] of this.sessions) {
-        const msg = s.protocolVersion === 2 ? msgV2 : msgV1;
-        if (msg) { try { ws.send(msg); } catch {} }
-      }
     }, this.TICK_RATE);
   },
 };
