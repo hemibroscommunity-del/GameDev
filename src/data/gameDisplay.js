@@ -1311,6 +1311,17 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
   _zoneMusicGain: null,
   _zoneMusicBuffers: {}, /* { [trackUrl]: AudioBuffer } cache */
   _zoneMusicUrl: null,   /* current track url; abandons stale fetches */
+  /* v2.3.1577: GLOBAL music — one track that starts on the login screen and
+     plays unbroken for the whole session.  Deliberately NOT a ZONE_MUSIC
+     entry: that map is per-zone and startZoneAmbient stops the old track and
+     starts the new one on every zone change, so the same url in every zone
+     would RESTART the song at each boundary.  This lives in its own pair of
+     nodes that stopAmbient never touches, so zone ambience (and any future
+     per-zone track) can come and go underneath it. */
+  _globalMusicSource: null,
+  _globalMusicGain: null,
+  _globalMusicBuffer: null,
+  _globalMusicStarting: false,
   /* v2.3.1103: EMPTIED — the owner removed all background music tracks
      (~40 MB) to shrink the download. With no entry here, startZoneAmbient()
      falls through to the low-volume procedural oscillator drone (generated,
@@ -1318,6 +1329,14 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
      To restore a track, re-add `<zoneId>: '/audio/music/<file>.mp3'` AND
      ship the file back into public/audio/music/. */
   ZONE_MUSIC: {},
+  /* v2.3.1577: the session track.  96 kbps CBR, 44.1 kHz stereo, 3.0 MB for
+     4m23s — 48% off the 5.76 MB source, chosen with the download budget in
+     mind (v2.3.1103 stripped ~40 MB of music for exactly that reason).
+     MP3 rather than the smaller AAC: decodeAudioData REFUSED the m4a in a
+     real browser check while the mp3 decoded cleanly, and this whole path is
+     decodeAudioData. */
+  GLOBAL_MUSIC: '/audio/music/neondrift.mp3',
+  GLOBAL_MUSIC_VOL: 0.22,
   init: function init() {
     if (this.ctx) return;
     try {
@@ -1979,6 +1998,56 @@ BT_AUDIO.stopSfxLoop = function (key) {
     l.src.stop(now + 0.15);
   } catch (e) { try { l.src.stop(); } catch (_) {} }
 };
+/* v2.3.1577: start the session track, once.  Idempotent by design — it is
+   called from the first-gesture unlock AND from the background-resume path,
+   and a second call while one is already playing (or still fetching) must be
+   a no-op rather than a second overlapping copy of the song.
+
+   Fetched through the same decodeAudioData path as the zone tracks, for the
+   same reason the zone tracks use it: HTMLAudio has its own autoplay gate
+   that the AudioContext unlock does not satisfy (see the _zoneMusicSource
+   note above — `new Audio()` silently failed there while the oscillators
+   played fine). */
+BT_AUDIO.startGlobalMusic = function () {
+  var url = this.GLOBAL_MUSIC;
+  if (!url || !this.ctx) return;
+  if (this._globalMusicSource || this._globalMusicStarting) return;
+  var self = this;
+  var play = function (buf) {
+    /* Re-check: the fetch is async and a background-resume may have started
+       a source while it was in flight. */
+    if (self._globalMusicSource || !self.ctx) return;
+    try {
+      if (self.ctx.state === 'suspended') self.ctx.resume();
+      var src = self.ctx.createBufferSource();
+      var gain = self.ctx.createGain();
+      src.buffer = buf;
+      src.loop = true;
+      var t0 = self.ctx.currentTime;
+      gain.gain.setValueAtTime(0, t0);
+      gain.gain.linearRampToValueAtTime(self.GLOBAL_MUSIC_VOL, t0 + 1.2);
+      src.connect(gain);
+      gain.connect(self._out());
+      /* If iOS kills the source while backgrounded, drop the ref so
+         resumeFromBackground can start a fresh one. */
+      src.onended = function () {
+        if (self._globalMusicSource === src) { self._globalMusicSource = null; self._globalMusicGain = null; }
+      };
+      src.start(0);
+      self._globalMusicSource = src;
+      self._globalMusicGain = gain;
+    } catch (e) {}
+  };
+  if (this._globalMusicBuffer) return play(this._globalMusicBuffer);
+  this._globalMusicStarting = true;
+  try {
+    fetch(url).then(function (r) { return r.arrayBuffer(); })
+      .then(function (ab) { return self.ctx.decodeAudioData(ab); })
+      .then(function (buf) { self._globalMusicBuffer = buf; self._globalMusicStarting = false; play(buf); })
+      .catch(function () { self._globalMusicStarting = false; /* no music beats a broken boot */ });
+  } catch (e) { this._globalMusicStarting = false; }
+};
+
 BT_AUDIO.unlock = function () {
   if (!this.ctx) this.init();
   if (!this.ctx) return;
@@ -1992,6 +2061,11 @@ BT_AUDIO.unlock = function () {
   this._unlocked = true;
   if (firstUnlock) this.fadeIn(1.2);
   this.loadSfxManifest();
+  /* v2.3.1577: the session track starts here — this is the first gesture on
+     the LOGIN screen (GameApp registers the handler at app level), so the
+     music is playing before the player ever enters the world, and nothing
+     restarts it on the way in. */
+  this.startGlobalMusic();
 };
 /* v2.3.254: called from the visibilitychange handler in GameApp.jsx
    when the tab returns to foreground.  ctx.resume() alone is not
@@ -2006,6 +2080,11 @@ BT_AUDIO.resumeFromBackground = function () {
        first-gesture case, just mid-session). */
     this.fadeIn(0.8);
   }
+  /* v2.3.1577: iOS can implicitly stop a BufferSource during a long
+     backgrounding, and ctx.resume() does not restart it — the same reason
+     the zone track is re-kicked below.  onended clears the ref, so this
+     starts a fresh one only when the old one really died. */
+  this.startGlobalMusic();
   var zone = this._currentZoneAmbient;
   if (!zone) return;
   /* startZoneAmbient early-returns when _currentZoneAmbient already
