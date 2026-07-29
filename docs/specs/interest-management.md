@@ -1,4 +1,4 @@
-# Interest management — zone-scoped tick broadcasts (v2.3.1502)
+# Interest management — zone-scoped tick broadcasts (v2.3.1575)
 
 Server-side only. No new message types, no client change, no caps flag.
 

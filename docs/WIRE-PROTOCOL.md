@@ -117,7 +117,7 @@ sends). All of these are in `PRIVILEGED_EVENTS` unless noted.
 
 | Type | Purpose / payload | Client handler (BroTown.jsx) |
 |---|---|---|
-| `tick` | Batched per-tick frame: `players` (id → x/y/dir/facing/zone/vx/vy + live equip fields), `events` (array fed to `_processGameEvent`), `monsters`/`nodes` (zone → entity list; v2 = dirty entities only). **Zone-scoped since v2.3.1502** — see below | ~2048 |
+| `tick` | Batched per-tick frame: `players` (id → x/y/dir/facing/zone/vx/vy + live equip fields), `events` (array fed to `_processGameEvent`), `monsters`/`nodes` (zone → entity list; v2 = dirty entities only). **Zone-scoped since v2.3.1575** — see below | ~2048 |
 | `state_sync` | Full room snapshot on join: players, zone monsters, etc. | ~2223 |
 | `zone_state` | v2 zone change: `{ zone, monsters, nodes, loot }` merged | ~2352 |
 | `zone_monsters` / `zone_nodes` / `zone_loot` | v1 legacy zone-change trio (kept as fallback) | ~2732 / ~2727 / ~2347 |
@@ -168,7 +168,7 @@ Server cases in `GameRoom.webSocketMessage`, `server/src/index.js`
 | `gem_cut_request` | v2.3.1198 server gem cutting — `{gem}` under `caps.gems`; answers private `gem_cut_result` + `player_state` echo (see `docs/specs/amulet-forge.md` "Gem income") | amulet.js |
 | `quest_accept` / `quest_turn_in` | Quest lifecycle | ~4000 / ~4009 |
 
-### `tick` is zone-scoped (v2.3.1502)
+### `tick` is zone-scoped (v2.3.1575)
 
 The tick no longer carries the whole room. Per receiving session:
 

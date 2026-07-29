@@ -161,7 +161,7 @@ export const tickMethods = {
         }
       }
 
-      /* ═══ v2.3.1502: INTEREST MANAGEMENT ═══
+      /* ═══ v2.3.1575: INTEREST MANAGEMENT ═══
        *
        * The tick used to fan EVERY dirty zone's entities out to EVERY
        * socket in the room, and the client threw almost all of it away

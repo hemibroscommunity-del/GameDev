@@ -408,7 +408,7 @@ export class GameRoom {
     this.TICK_RATE = 22; // 45Hz (22ms)
     this.MAX_PLAYERS = 60;
     this.EVENTS_PER_TICK_CAP = 500;
-    /* v2.3.1502 (interest management, tick.js): how often the tick
+    /* v2.3.1575 (interest management, tick.js): how often the tick
        carries the FULL player roster.  45 ticks ~= 1 s.  Out-of-zone
        peers ride this instead of the 45Hz dirty list -- they can't be
        rendered, but the client's ghost-sweep deletes any peer silent

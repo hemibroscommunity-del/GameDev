@@ -331,7 +331,7 @@ check('forged monster_transform dropped by deny-list',
   check('overflow: remainder arrives on a later tick', perTick.length >= 2 && perTick[perTick.length - 1] >= 1, perTick);
 }
 
-// ── 11. v2.3.1502: interest management (zone-scoped broadcasts) ──
+// ── 11. v2.3.1575: interest management (zone-scoped broadcasts) ──
 //
 // The tick used to fan every dirty zone's entities to every socket;
 // measured, ~85% of egress was data the receiver's own client threw

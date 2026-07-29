@@ -354,7 +354,7 @@ check('v2 safe-zone change sends empty zone_state', zsTown.length === 1 && zsTow
 // it and relays it in the tick `players` delta so peers can render the
 // activity.
 //
-// v2.3.1502 (interest management): this relay is ZONE-SCOPED now.  The
+// v2.3.1575 (interest management): this relay is ZONE-SCOPED now.  The
 // peer who can actually RENDER the activity -- one standing in the same
 // zone -- still gets it at the full 45Hz tick rate.  A peer in another
 // zone (whose renderer skips the entity entirely, entityRenderer.js)
@@ -390,7 +390,7 @@ check('v2 safe-zone change sends empty zone_state', zsTown.length === 1 && zsTow
     !!exTick2b && exTick2b.players.p1.ex === 'chop',
     exTick2b && exTick2b.players.p1 && exTick2b.players.p1.ex);
 
-  /* v2.3.1502: the OUT-OF-ZONE peer must still receive the player, or
+  /* v2.3.1575: the OUT-OF-ZONE peer must still receive the player, or
      the client's 10 s ghost-sweep deletes it and the "N online" count
      collapses to your own zone.  It arrives on the presence roster --
      tickSeq 0 is a presence tick, so one short run covers it. */
@@ -400,7 +400,7 @@ check('v2 safe-zone change sends empty zone_state', zsTown.length === 1 && zsTow
   await new Promise((r) => setTimeout(r, 80));
   clearInterval(room.tickInterval); room.tickInterval = null;
   const rosterTick = findP1(ws2);
-  check('v2.3.1502 out-of-zone peer still arrives via the presence roster',
+  check('v2.3.1575 out-of-zone peer still arrives via the presence roster',
     !!rosterTick && rosterTick.players.p1.ex === 'chop',
     rosterTick && rosterTick.players.p1);
 
