@@ -146,7 +146,19 @@ was built BEFORE the risky slices — do not reorder those steps.
 - ~~**Client damage-number helper**~~ **(done, v2.3.1188)**:
   `pushDmgPopup()` in combatHelpers.js replaced ~420 hand-rolled
   `S.dmgNumbers.push({...})` literals tree-wide.
-- **Runtime perf: nothing actionable now.** The monster-AI
-  nearest-player scan (`_tickMonsters`, still in index.js) is
-  O(monsters × players) per tick but only in player-occupied zones;
-  revisit with a spatial grid only if rooms approach the 60-player cap.
+- ~~**Runtime perf: nothing actionable now.**~~ **Re-measured 2026-07-26
+  (v2.3.1465 + v2.3.1575) — the CPU half is CLOSED, the bandwidth half is SHIPPED.**
+  The monster-AI nearest-player scan was the suspected risk; it is not one.
+  `server/test/load-tick.mjs` at **120 players** (double the 60-player cap),
+  175 real monsters, everyone moving and attacking: **~1.1 ms of the 22 ms
+  tick budget, 0% of ticks over**. The spatial-grid idea is retired — do not
+  build it; the v2.3.1183 slim-record pass plus dirty tracking already won.
+  What the CPU harness could NOT see was the wire: `fakeWs.send()` only
+  counts calls, so nobody had measured bytes. Doing so found the real
+  ceiling — **~85% of tick egress was data the receiving client discards**
+  (other zones' monsters and peers), costing 204 KB/s even for a player
+  alone in a zone. Fixed in v2.3.1575 by zone-scoping the broadcast
+  (`docs/specs/interest-management.md`): per-client egress **204 → 32 KB/s**,
+  room egress at the cap **24.5 → 4.0 MB/s**, for ~15% more tick CPU.
+  Lesson for the next perf pass: measure bytes AND cycles — this repo's
+  harness measured only cycles for a year, and the answer was in the bytes.

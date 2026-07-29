@@ -331,5 +331,109 @@ check('forged monster_transform dropped by deny-list',
   check('overflow: remainder arrives on a later tick', perTick.length >= 2 && perTick[perTick.length - 1] >= 1, perTick);
 }
 
+// ── 11. v2.3.1575: interest management (zone-scoped broadcasts) ──
+//
+// The tick used to fan every dirty zone's entities to every socket;
+// measured, ~85% of egress was data the receiver's own client threw
+// away (wsClient reads only msg.monsters[myZone]; entityRenderer skips
+// out-of-zone peers).  Entities are scoped to the receiver's zone now.
+// Pins: the scoping itself, the v1/v2 split SURVIVING the scoping, the
+// dungeon-leak closure, and that `events` stay room-wide on purpose.
+{
+  const state3 = makeState();
+  const room3 = new GameRoom(state3, mockEnv);
+  const wsM = fakeWs('in-meadow');       // v2, meadow
+  const wsF = fakeWs('in-frost');        // v2, frost
+  const wsL = fakeWs('legacy-meadow');   // v1, meadow
+  room3.sessions.set(wsM, baseSession());
+  room3.sessions.set(wsF, baseSession());
+  room3.sessions.set(wsL, baseSession());
+  await room3.webSocketMessage(wsM, JSON.stringify({ type: 'join', id: 'bp_zm', name: 'M', phrase: 'p-zm', protocolVersion: 2, data: { x: -100000, y: -100000, z: 'meadow' } }));
+  await room3.webSocketMessage(wsF, JSON.stringify({ type: 'join', id: 'bp_zf', name: 'F', phrase: 'p-zf', protocolVersion: 2, data: { x: -100000, y: -100000, z: 'frost' } }));
+  await room3.webSocketMessage(wsL, JSON.stringify({ type: 'join', id: 'bp_zl', name: 'L', phrase: 'p-zl', data: { x: -100000, y: -100000, z: 'meadow' } }));
+
+  // Dirty one monster in each zone, plus a private dungeon instance.
+  // Wander is frozen (the file-header convention) so the AI can't dirty
+  // extra entities mid-window and blur the v1-full / v2-delta contrast;
+  // the players sit at -100000 so nothing aggros either.
+  const freeze = (list) => { for (const m of list) m._wanderPausedUntil = Date.now() + 60000; };
+  const mMeadow = room3._ensureZoneMonsters('meadow')[0];
+  const mFrost = room3._ensureZoneMonsters('frost')[0];
+  freeze(room3.monsters.meadow);
+  freeze(room3.monsters.frost);
+  room3.monsters['dungeon:secret'] = [{ ...mMeadow, id: 'dg-1' }];
+  freeze(room3.monsters['dungeon:secret']);
+  // _ensureZoneMonsters dirties the WHOLE zone on first spawn; reset so
+  // the assertions below see exactly the one entity each test marks.
+  room3.dirtyMonsters.clear();
+  room3.dirtyNodes.clear();
+  room3.dirtyMonsterIds = {};
+  room3.dirtyNodeIds = {};
+  room3._markMonsterDirty('meadow', mMeadow.id);
+  room3._markMonsterDirty('frost', mFrost.id);
+  room3._markMonsterDirty('dungeon:secret', 'dg-1');
+  room3.eventBuffer.push({ type: 'qa_social', payload: { hi: 1 } });
+
+  wsM.sent.length = 0; wsF.sent.length = 0; wsL.sent.length = 0;
+  room3.tickSeq = 1; // not a presence tick -> pure zone-scoped frame
+  room3.startTickLoop();
+  await new Promise((r) => setTimeout(r, room3.TICK_RATE * 3));
+  clearInterval(room3.tickInterval); room3.tickInterval = null;
+
+  const zonesSeenBy = (w) => {
+    const z = new Set();
+    for (const m of w.sent) {
+      if (m.type === 'tick' && m.monsters) for (const k of Object.keys(m.monsters)) z.add(k);
+    }
+    return [...z];
+  };
+  const zM = zonesSeenBy(wsM), zF = zonesSeenBy(wsF), zL = zonesSeenBy(wsL);
+
+  check('scoping: meadow player receives ONLY meadow monsters',
+    zM.length === 1 && zM[0] === 'meadow', zM);
+  check('scoping: frost player receives ONLY frost monsters',
+    zF.length === 1 && zF[0] === 'frost', zF);
+  check('scoping: v1 legacy session is scoped the same way',
+    zL.length === 1 && zL[0] === 'meadow', zL);
+  check('scoping: dungeon instance no longer leaks to the room',
+    !zM.includes('dungeon:secret') && !zF.includes('dungeon:secret'),
+    { zM, zF });
+
+  // The v1/v2 contract must survive the scoping: v1 gets EVERY monster
+  // in its zone, v2 only the ones marked dirty this tick.
+  const monstersFor = (w) => {
+    for (const m of w.sent) {
+      if (m.type === 'tick' && m.monsters && m.monsters.meadow) return m.monsters.meadow;
+    }
+    return null;
+  };
+  const v2List = monstersFor(wsM), v1List = monstersFor(wsL);
+  check('scoping: v2 still gets per-entity deltas (dirty only)',
+    v2List && v2List.length === 1 && v2List[0].id === mMeadow.id, v2List && v2List.length);
+  check('scoping: v1 still gets the full zone list',
+    v1List && v1List.length === room3.monsters.meadow.length,
+    { got: v1List && v1List.length, want: room3.monsters.meadow.length });
+
+  // Events are deliberately NOT scoped -- they measured at 1% of
+  // egress and mix zone-local combat with room-wide social relays.
+  const gotSocial = (w) => w.sent.some((m) => m.type === 'tick'
+    && Array.isArray(m.events) && m.events.some((e) => e.type === 'qa_social'));
+  check('scoping: events stay room-wide (social relays unaffected)',
+    gotSocial(wsM) && gotSocial(wsF) && gotSocial(wsL),
+    { m: gotSocial(wsM), f: gotSocial(wsF), l: gotSocial(wsL) });
+
+  // Presence roster: tickSeq 0 carries EVERY player to EVERY session,
+  // which is what keeps the client's 10s ghost-sweep from deleting
+  // out-of-zone peers and collapsing the online count.
+  wsM.sent.length = 0;
+  room3.tickSeq = 0;
+  room3.startTickLoop();
+  await new Promise((r) => setTimeout(r, room3.TICK_RATE * 2));
+  clearInterval(room3.tickInterval); room3.tickInterval = null;
+  const rosterMsg = wsM.sent.find((m) => m.type === 'tick' && m.players && m.players.bp_zf);
+  check('presence roster: out-of-zone peer reaches the meadow session',
+    !!rosterMsg, rosterMsg && Object.keys(rosterMsg.players));
+}
+
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);
 process.exit(failures === 0 ? 0 : 1);

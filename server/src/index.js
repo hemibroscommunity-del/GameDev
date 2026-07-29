@@ -408,6 +408,14 @@ export class GameRoom {
     this.TICK_RATE = 22; // 45Hz (22ms)
     this.MAX_PLAYERS = 60;
     this.EVENTS_PER_TICK_CAP = 500;
+    /* v2.3.1575 (interest management, tick.js): how often the tick
+       carries the FULL player roster.  45 ticks ~= 1 s.  Out-of-zone
+       peers ride this instead of the 45Hz dirty list -- they can't be
+       rendered, but the client's ghost-sweep deletes any peer silent
+       for 10 s and counts the survivors for "N online", so they must
+       keep arriving.  10x margin on that sweep; do not raise past ~7 s
+       without revisiting the sweep window in wsClient.js. */
+    this.PRESENCE_REFRESH_TICKS = 45;
     this.WEAPON_STASH_CAP = 8; // mirrors WEAPON_STASH_MAX in src/data/gameSystems.js
     this.QUEST_AP_REWARD = 5;  // mirrors QUEST_AP_REWARD in src/data/items.js
     // §16.8 aggregated TickDelta.  Tick-path mutations (regen,
