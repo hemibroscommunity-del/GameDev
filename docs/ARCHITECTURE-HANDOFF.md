@@ -84,6 +84,7 @@ extended.
    | `metrics:<yyyymmdd>` | daily economy snapshot (ring of 30) | liveops.md |
    | `friends:<pid>` | `{list, reqIn, reqOut}` mutual-friend graph + pending requests | friends.md |
    | `friend_msg:<pid>` | offline DM backlog, capped 50, cleared on join delivery | friends.md |
+   | `bro_link:<pid>` | `{tokenId, address, ts}` last verified Hemi Bro ownership link; re-earned after RECHECK_MS | broverify.js |
 
    Naming convention going forward: **lowercase_snake prefixes**
    (`duelEscrow:` predates the rule; don't imitate it). Register every
