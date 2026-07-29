@@ -10,6 +10,7 @@
    - React setters + the effect-scoped _buildServerPile arrive via `deps`
      (destructured to the original names so the body is untouched).
    S is stateRef.current. */
+import { _onBroNonce, _onBroResult } from './broWallet.js'; /* v2.3.1576 */
 import { BT_AUDIO, ZONES, TILE, ARENA_CHAMPION_REWARD, ARENA_WIN_REWARD, CLAN_WAR_REWARDS, createDefaultCompStats, recalcDerived, DEATH_GOLD_PENALTY, PVP_THREAT_CONSENT_MS, updateZoneDimensions, generateZoneMap, trainDefense, getGuildRank, SKILL_GUILDS } from '@/data/index.js';
 import { MONSTER_VARIANTS, maybeTransformMonster, isRemnantSkull, xpMultFor } from '@/data/monsterVariants.js';
 import { rollMonsterShard } from '@/data/shards.js';
@@ -643,6 +644,20 @@ export function processGameEvent(type, payload, S, deps) {
               try { BT_AUDIO.beep(660, 0.08, 0.1, 'sine'); } catch (e) {}
               break;
             }
+          /* v2.3.1576: Hemi Bro ownership handshake.  Both are SERVER-emitted
+             (PRIVILEGED_EVENTS), so a peer cannot forge either one — a forged
+             result would paint a badge that was never earned.  The flow lives
+             in broWallet.js; this just hands the message over. */
+          case 'bro_nonce':
+            _onBroNonce(payload);
+            break;
+          case 'bro_verify_result':
+            _onBroResult(payload);
+            /* The badge itself comes from the authoritative echo, not from
+               here — this only unblocks the UI's spinner. */
+            if (payload && payload.ok && S.rpg) S.rpg._bro = payload.tokenId;
+            break;
+
           case 'player_swing':
             {
               if (payload.id && _peerInZone(S, payload.id)) {

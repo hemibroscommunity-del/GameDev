@@ -2847,6 +2847,18 @@ function _attachNamePill(container, nameSize) {
   lvlT.anchor.set(0.5, 0);
   lvlT.y = nameSize + 4;
   pill.addChild(lvlT);
+  /* v2.3.1576: verified-Hemi-Bro badge, drawn to the LEFT of the name.
+     Hidden unless the SERVER says this player owns the Bro they wear —
+     `bro` is server-owned (broverify.js is its only writer) and is not in
+     TRACK_COSMETIC_KEYS, so a client cannot light this up by sending it.
+     The small art variant is used because the full badge collapses into an
+     unreadable blob at pill size (measured at 11px). */
+  const broBadge = new Sprite();
+  broBadge.anchor.set(0.5, 0.5);
+  broBadge.visible = false;
+  pill.addChild(broBadge);
+  container._broBadge = broBadge;
+
   pill.visible = false;
   container.addChild(pill);
   container._namePill = pill;
@@ -2856,19 +2868,49 @@ function _attachNamePill(container, nameSize) {
   container._pillH = nameSize * 2 + 7;
 }
 
+/* v2.3.1576: the verified-Bro badge texture, loaded once and shared by every
+   plate on screen.  Loaded lazily rather than through the preload manifest on
+   purpose: this is a single 64px icon, not an animation, and the
+   animation-preloading law (CLAUDE.md) is about frames that hitch mid-play.
+   Until it resolves the sprite simply stays untextured, so a slow fetch
+   delays a badge rather than stalling the loading screen. */
+let _broBadgeTex = null;
+function _broBadgeTexture() {
+  if (!_broBadgeTex) _broBadgeTex = Texture.from('/icons/ui/verified-bro-small.png');
+  return _broBadgeTex;
+}
+
 /* Drive one plate.  `visible` false parks it without touching the cache,
    so re-showing costs nothing. */
-function _updateNamePill(display, name, level, visible) {
+function _updateNamePill(display, name, level, visible, broId) {
   if (!display || !display._namePill) return;
-  const key = name + '|' + level;
+  const key = name + '|' + level + '|' + (broId ? 'v' : '');
   if (display._pillKey !== key) {
     display._pillKey = key;
     display._pillName.text = name;
     display._pillLevel.text = 'LV ' + level;
     /* Sized to whichever line is wider, so a long name and a two-digit
        level both sit inside with equal padding. */
-    const w = Math.max(display._pillName.width, display._pillLevel.width) + 14;
+    /* v2.3.1576: the badge sits inside the plate, so it has to be paid for
+       in the width — otherwise it overhangs a short name. */
+    const badge = display._broBadge;
+    const bSize = Math.max(11, display._pillH - 9);
+    const bPad = broId ? bSize + 4 : 0;
+    const w = Math.max(display._pillName.width, display._pillLevel.width) + 14 + bPad;
     const h = display._pillH;
+    if (badge) {
+      badge.visible = !!broId;
+      if (broId) {
+        if (!badge.texture || badge.texture === Texture.EMPTY) badge.texture = _broBadgeTexture();
+        badge.width = badge.height = bSize;
+        /* Left edge of the plate, vertically centred on it. */
+        badge.x = -w / 2 + bSize / 2 + 4;
+        badge.y = h / 2;
+      }
+    }
+    /* Text re-centres in the space the badge left. */
+    display._pillName.x = bPad / 2;
+    display._pillLevel.x = bPad / 2;
     display._pillBg.clear();
     display._pillBg.roundRect(-w / 2, 0, w, h, 9);
     display._pillBg.fill({ color: 0x0D161B, alpha: 0.82 });
@@ -4924,7 +4966,7 @@ export class EntityRenderer {
          factory); the plate below the feet is the nameplate now.  Dead
          peers lose it so it doesn't hover over a prone body — the same
          rule the local player follows. */
-      _updateNamePill(display, nextName, other.rpgLv || 1, !other._isDead);
+      _updateNamePill(display, nextName, other.rpgLv || 1, !other._isDead, other.bro);
 
       /* v2.3.1193: threat skull above the nameplate — same change-cache
          pattern as the party marker.  S._threatMarks is written by
@@ -6500,7 +6542,7 @@ export class EntityRenderer {
        lives in the pill below the feet now, built here. */
     if (display._nameText.visible) display._nameText.visible = false;
     /* Hidden while dying so the plate doesn't hover over a corpse. */
-    _updateNamePill(display, S.myName || 'Anon', (S.rpg && S.rpg.level) || 1, !S._dying);
+    _updateNamePill(display, S.myName || 'Anon', (S.rpg && S.rpg.level) || 1, !S._dying, S.rpg && S.rpg._bro);
 
     /* v2.3.1193: my own threat skull — reads the formerly ORPHANED
        S._pvpSkullType / S._pvpSkullUntil anchors (InspectPlayerPanel

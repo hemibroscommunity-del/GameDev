@@ -1,5 +1,6 @@
 import React from 'react';
 import { BT_AUDIO } from '@/data/index.js';
+import { verifyBro, hasWallet, broVerifySupported, onBroState, getBroState, BRO_PENDING, BRO_OK } from '@/networking/broWallet.js';
 
 /* ═══ InfoPanel — online-count + mute/close utility popup ═══ */
 /* v2.3.855: moved verbatim from BroTown.jsx's JSX tree (first UI-panel
@@ -10,6 +11,53 @@ import { BT_AUDIO } from '@/data/index.js';
 /* v2.3.1232: Lantern Slate restyle — world-card surface, backdrop-filter
    REMOVED (spec hard lock: no blur on iOS Safari), 44px mute row, quiet
    close. Handlers untouched. */
+/* v2.3.1576: verified-Hemi-Bro row.  Lives here because InfoPanel is the
+   game's utility popup and proving ownership is a utility action, not part of
+   play.  Deliberately conservative about when it appears: the worker must
+   advertise it can settle the check (rule 19), a wallet must exist in this
+   browser, and the player must actually be wearing a Bro — a control that
+   cannot succeed is worse than no control. */
+function BroVerifyRow(props) {
+  var stateRef = props.stateRef;
+  var S = stateRef.current;
+  var _st = React.useState(getBroState());
+  var bro = _st[0], setBro = _st[1];
+  React.useEffect(function () { return onBroState(setBro); }, []);
+
+  var wornId = S && S.myBroData && S.myBroData.ID;
+  if (!broVerifySupported(S) || !wornId) return null;
+
+  var verified = !!(S && S.rpg && S.rpg._bro) || bro.status === BRO_OK;
+  var busy = bro.status === BRO_PENDING;
+
+  var label = verified ? '\u2713 Hemi Bro #' + wornId + ' verified'
+    : busy ? 'Check your wallet\u2026'
+      : hasWallet() ? 'Verify Hemi Bro #' + wornId
+        : 'No wallet in this browser';
+
+  return React.createElement('div', {
+    style: { marginTop: 8, paddingTop: 8, borderTop: '1px solid rgba(238,242,235,.10)' },
+  },
+  React.createElement('button', {
+    disabled: busy || verified || !hasWallet(),
+    onClick: function () { verifyBro(S, wornId); },
+    style: {
+      minHeight: 44, padding: '8px 12px', borderRadius: 11,
+      background: verified ? '#22323A' : '#2B3940',
+      border: '1px solid ' + (verified ? 'rgba(216,170,88,.55)' : 'rgba(238,242,235,.14)'),
+      color: verified ? '#D8AA58' : '#F7F2E7',
+      fontSize: 12, fontWeight: 700,
+      cursor: (busy || verified || !hasWallet()) ? 'default' : 'pointer',
+      width: '100%', opacity: hasWallet() ? 1 : 0.6,
+    },
+  }, label),
+  /* Failures are shown in place rather than thrown away — "not owner" and
+     "chain unreachable" mean very different things to the player. */
+  bro.error ? React.createElement('div', {
+    style: { marginTop: 6, fontSize: 10, lineHeight: 1.35, color: '#D95C54' },
+  }, bro.error) : null);
+}
+
 export function InfoPanel(props) {
   var playerCount = props.playerCount,
     setPlayerCount = props.setPlayerCount,
@@ -89,5 +137,5 @@ export function InfoPanel(props) {
       cursor: 'pointer',
       width: '100%'
     }
-  }, "Close"));
+  }, "Close"), /*#__PURE__*/React.createElement(BroVerifyRow, { stateRef: stateRef }));
 }

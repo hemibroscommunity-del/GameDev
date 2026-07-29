@@ -176,6 +176,12 @@ export const joinMethods = {
       // parachute that never existed.  Throttled to one per ~20h
       // inside; never blocks the join (see admin.js).
       if (stored) await this._rpgSnapshotMaybe(msg.id, stored);
+      /* v2.3.1576: restore a still-fresh Hemi Bro ownership link so a
+         reconnect does not re-prompt the wallet.  Never re-checks the chain
+         here — join is latency-sensitive and must not wait on an RPC; a link
+         past RECHECK_MS is simply dropped and the player re-verifies when
+         they next want the badge (broverify.js). */
+      try { await this._restoreBroLink(msg.id); } catch { /* badge is cosmetic — never block a join */ }
       if (stored) {
         this.playerState[msg.id].coins = stored.coins || 0;
         this.playerState[msg.id].inventory = stored.inventory || {};
@@ -630,10 +636,16 @@ export const joinMethods = {
       // an old worker the client keeps the full legacy t2Accel math so
       // its numbers keep matching that worker's authoritative rolls
       // and echoes (deploy-order safety, rule 19).
-      caps: { trade: true, questTrack: true, gamble: true, clans: true, arena: true, dungeon: true, sponsor: true, guilds: true, pets: true, harden: true, trade2: true, weaponDrops: true, botfp: true, jackpot: true, hpEndGrids: true, t2uniform: true, httpAuth: true, party: true, amuletForge: true, gems: true, petLoot: true, gemExtract: true, partyChat: true, trade2Weapons: true, laststand: true, friends: true /* v2.3.1323 */, t2simple: true /* v2.3.1342: level = T2 points placed (cap 1000); client gates its level derivation + spend celebration on this so an old worker's player_state echo can't stomp the new formula */, t2bench: true, ..._liveFlags },
+      caps: { trade: true, questTrack: true, gamble: true, clans: true, arena: true, dungeon: true, sponsor: true, guilds: true, pets: true, harden: true, trade2: true, weaponDrops: true, botfp: true, jackpot: true, hpEndGrids: true, t2uniform: true, httpAuth: true, party: true, amuletForge: true, gems: true, petLoot: true, gemExtract: true, partyChat: true, trade2Weapons: true, laststand: true, friends: true /* v2.3.1323 */, t2simple: true /* v2.3.1342: level = T2 points placed (cap 1000); client gates its level derivation + spend celebration on this so an old worker's player_state echo can't stomp the new formula */, t2bench: true, broVerify: true /* v2.3.1576: Hemi Bro ownership. Gates the client's wallet control (broWallet.broVerifySupported) so it only appears against a worker that can settle it; an old client never sends the types. Safe in either deploy order (rule 19). */, ..._liveFlags },
       // v2.3.1178: this session's private economy-endpoint token.
       // state_sync goes to the joining socket ONLY -- never broadcast.
       httpToken: session.httpToken,
+      /* v2.3.1576: this player's verified Hemi Bro, restored above if the
+         link is still fresh.  Sent on the joining socket so the badge
+         survives a reconnect without re-prompting the wallet; peers learn it
+         from the tick's playerWire instead.  ADDITIVE — an old client ignores
+         the field. */
+      bro: (this.playerState[session.id] && this.playerState[session.id].bro) || null,
       players: this.getAllPlayerData(),
       playerCount: this.getPlayerCount(),
       monsters: zoneMonsters.map(m => ({

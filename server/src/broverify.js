@@ -34,14 +34,13 @@
  * by sending it, the way it can set its own shirt colour.  bro_verify_result
  * is in PRIVILEGED_EVENTS so a client cannot forge a success to its peers.
  *
- * Deploy-order (rule 19): caps.broVerify will gate the client's wallet UI.
- * The flag is NOT advertised yet, on purpose — test/caps-audit.test.mjs fails
- * any advertised flag no client reads, and it is right to: a gate that gates
- * nothing misleads the next person cleaning up legacy paths.  It ships in the
- * same change as the client that reads it.  Nothing is lost by waiting: the
- * cap exists to tell a NEW client the server supports this, and until that
- * client exists there is nobody to tell.  An old client never sends these
- * types, so the handlers below are unreachable for it either way.
+ * Deploy-order (rule 19): caps.broVerify gates the client's wallet control
+ * (broWallet.broVerifySupported), so it appears only against a worker that can
+ * settle it.  The flag and its reader landed together on purpose —
+ * test/caps-audit.test.mjs fails BOTH halves of that pairing, an advertised
+ * flag nobody reads and a read flag nobody advertises, and it caught this
+ * change in each direction while it was being built.  An old client never
+ * sends these types; an old worker never advertises the cap.  Safe either way.
  */
 import { verifyBroOwnership, CHAIN, HEMI_BROS } from './onchain.js';
 
