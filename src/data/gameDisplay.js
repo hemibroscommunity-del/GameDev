@@ -1334,6 +1334,12 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
     worldview: '/audio/music/world.mp3',
     frost: '/audio/music/frost.mp3',
     ember: '/audio/music/fire.mp3',   /* "fire zone" = Flame Fields */
+    meadow: '/audio/music/forest.mp3', /* owner: "forest meadow area where the
+                                          slimes are" — Starting Meadow, the
+                                          green zone that spawns 10 plain
+                                          slimes.  NOT mist, which is literally
+                                          named Poison Forest but is a mid-game
+                                          band with violet slime reskins. */
     sky: '/audio/music/desert.mp3',   /* "desert zone" = Wind Dunes; zones.js:44
                                          calls it desert(sky) and its palette is
                                          the v2.3.855 warm desert one */
@@ -1397,7 +1403,13 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
      specifically, the lever is this track: MONO halves it to 35.6 MB (measured)
      and costs nothing in download — at 96k, LAME's joint stereo already
      collapses so much that the mono file is byte-for-byte the same size — or a
-     shorter loop. NOT a bigger budget. */
+     shorter loop. NOT a bigger budget.
+     v2.3.1586: meadow gets forest.mp3 — 128 kbps, 1.90 MB for 2m05s off a
+     2.98 MB 200 kbps source.  The clearest 128k call of the six: 96k costs
+     3.3 dB above 15 kHz here, worse than any other track including
+     login-theme's 3.0.  Shortest track so far and so the lightest resident at
+     41.9 MB, comfortably inside the budget — a useful counterweight to the
+     desert next door. */
   GLOBAL_MUSIC: '/audio/music/login-theme.mp3',
   GLOBAL_MUSIC_VOL: 0.22,
   /* v2.3.1582: the decoded-buffer cache is BUDGETED, not unbounded.
