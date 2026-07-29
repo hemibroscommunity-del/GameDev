@@ -1039,6 +1039,30 @@ input{font-family:inherit}
 .bt-cc-login img{width:16px!important;height:16px!important}
 .bt-cc-actions>button{font-size:clamp(11px,2.8vw,13px)}
 .bt-cc-play:active{transform:translateY(2px);border-bottom-width:2px;filter:brightness(1.05)}
+/* v2.3.1577 (owner request): the ENTER label breathes.
+   Gated on :not(:disabled) ON PURPOSE — the button is disabled until the
+   name passes the v2.3.1307 rules, so the breath starts the moment the
+   player becomes able to leave.  That turns it into a readiness cue
+   ("you're good, go") instead of idle decoration, which is also what
+   keeps it on the right side of the Lantern Slate motion rule ("no
+   ambient pulsing except finite alerts").  A dead button sitting there
+   pulsing would be actively misleading.
+   Scale only — no opacity/colour cycling, nothing that reflows.  3.5%
+   at 2.6s reads as a slow breath, not a throb; the spec's motion easings
+   are for discrete transitions, so this uses a symmetric ease-in-out. */
+.bt-cc-play-label{display:inline-block;will-change:transform}
+.bt-cc-play:not(:disabled) .bt-cc-play-label{animation:bt-cc-breathe 2600ms ease-in-out infinite}
+@keyframes bt-cc-breathe{
+  0%,100%{transform:scale(1)}
+  50%{transform:scale(1.035)}
+}
+/* Spec: "prefers-reduced-motion removes shimmer/overshoot/nudge."  An
+   indefinitely looping scale is exactly the class of motion that
+   triggers vestibular discomfort, so it goes away entirely rather than
+   merely slowing down. */
+@media (prefers-reduced-motion:reduce){
+  .bt-cc-play:not(:disabled) .bt-cc-play-label{animation:none}
+}
 /* v2.3.1254: creator slate buttons (dice, Randomize) share one class
    carrying the v2.3.1241 edge-parity MICRO-BEVEL — a hairline top
    highlight + bottom shade painted INSIDE the fill gradient (owner:

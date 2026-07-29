@@ -566,7 +566,14 @@ export function NameModal(props) {
       cursor: _nameValid ? 'pointer' : 'default',
       opacity: _nameValid ? 1 : 0.55
     }
-  }, "Enter Bro Town"), /*#__PURE__*/React.createElement("button", {
+    /* v2.3.1577 (owner: "make the Enter Bro Town text subtly grow and
+       shrink").  The label is wrapped so the breath animates the TEXT
+       rather than the button: scaling the button itself would fight its
+       own :active translateY(2px), and scaling a child by transform
+       reflows nothing.  See .bt-cc-play-label in game.css for why it
+       only breathes once the name is valid. */
+  }, /*#__PURE__*/React.createElement("span", { className: "bt-cc-play-label" }, "Enter Bro Town")),
+  /*#__PURE__*/React.createElement("button", {
     /* v2.3.1143: returning-player door.  v2.3.1307 (round-7): promoted
        from footer text to a real secondary action \u2014 full-width 44px
        bordered row with the painted key icon. */
