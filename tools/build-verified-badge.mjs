@@ -22,6 +22,10 @@ const SRC = argv.find(a => !a.startsWith('--'));
 const flag = (n, d) => { const h = argv.find(a => a.startsWith('--' + n + '=')); return h ? h.slice(n.length + 3) : d; };
 const OUT = flag('out', 'public/icons/ui/verified-bro.png');
 const SIZE = parseInt(flag('size', '64'), 10);
+/* --crop=x0,y0,x1,y1 in source pixels.  The small variant's source sheet also
+   carries a size ladder and its px labels underneath the real art; cropping to
+   the art band keeps the keyer from trimming to the whole sheet. */
+const CROP = flag('crop', null);
 /* A pixel is background-black if every channel is at or under this.  The
    badge's darkest art pixel measures well above it (the keylines carry the
    art's own shading), so this only claims the field. */
@@ -32,9 +36,17 @@ if (!SRC) { console.error('usage: node tools/build-verified-badge.mjs <source.pn
 const img = decode(readFileSync(SRC));
 const { width: W, height: H, data } = img;
 console.log(`source ${W}x${H}`);
+/* Region the keyer is allowed to see.  Everything outside is treated as
+   background, so a trim lands on the art alone. */
+const [CX0, CY0, CX1, CY1] = CROP
+  ? CROP.split(',').map((n) => parseInt(n, 10))
+  : [0, 0, W, H];
+if (CROP) console.log(`crop      x ${CX0}..${CX1}  y ${CY0}..${CY1}`);
 
 /* ── flood the black field inward from the border ────────────────────────── */
-const isBlack = (i) => data[i * 4] <= BLACK_MAX && data[i * 4 + 1] <= BLACK_MAX && data[i * 4 + 2] <= BLACK_MAX;
+const inCrop = (i) => { const x = i % W, y = (i / W) | 0; return x >= CX0 && x < CX1 && y >= CY0 && y < CY1; };
+const isBlack = (i) => !inCrop(i)
+  || (data[i * 4] <= BLACK_MAX && data[i * 4 + 1] <= BLACK_MAX && data[i * 4 + 2] <= BLACK_MAX);
 const bg = new Uint8Array(W * H);
 const stack = [];
 const seed = (x, y) => {
