@@ -3347,6 +3347,11 @@ export var BroTown = function BroTown(_ref0) {
              v2.3.1343 (kid-simple reprice): +2ms/pt, cap +200ms. */
           var _dodgeMs = 250 + Math.min(((S.rpg && S.rpg.endurance) || 0), 250)
             + Math.min(200, 2 * ((S.rpg && S.rpg.enduranceSpec && S.rpg.enduranceSpec.reflexes) || 0));
+          /* v2.3.1534: publish the window the roll ACTUALLY got so the dodge
+             sprite plays its 9 frames across exactly it (entityRenderer).
+             Written here rather than at the three _dodgeRoll creation sites
+             in game/dodge.js so the elastic formula stays in one place. */
+          S._dodgeRoll.durMs = _dodgeMs;
           if (rollAge < _dodgeMs) {
             S.player.x += Math.cos(S._dodgeRoll.angle) * 6;
             S.player.y += Math.sin(S._dodgeRoll.angle) * 6;
