@@ -207,6 +207,28 @@ function renderTraitCanvas(traitImg, meta, crown, dir) {
 export async function drawCharacterPortrait(canvas, opts) {
   if (!canvas) return;
   const { skin, pants, shoes, hair, hairColor, facialHair, facialHairColor, headwear, hatColor, shirt, shirtColor, dir } = opts || {};
+  /* v2.3.1580 (owner: traits still soft after the v2.3.1579 re-bake).
+     OPT-IN supersampling.  This canvas has always composited at a fixed
+     256 with no devicePixelRatio scaling -- the WORLD canvas is DPR-aware
+     (BroTown.jsx) but this one never was.  On the login screen the result
+     is then displayed through .bt-cc-col-left>.bt-cc-stage's scale(2), so
+     a 3x phone browser-stretches the finished 256 composite by ~3.75x.
+     That is TWO chained resamples of everything -- body, hair, shirt,
+     hats -- and the body sprite is natively 256, so real detail was being
+     thrown away before it ever reached the screen.
+
+     Compositing at FRAME*scale instead makes it ONE resample.  It cannot
+     invent detail in a 128px trait, but it stops the composite itself
+     being blurred, which is why this sharpens the WHOLE character rather
+     than only the hats.
+
+     Deliberately opt-in and defaulted to 1: portraitDataUrl's headshot
+     path crops with RAW PIXEL coordinates (HEAD_CROP), and the inspect
+     panel, friend portraits and the dashboard profile picture all ride
+     that path.  Scaling the canvas globally would silently crop the wrong
+     region in three places.  Only the login preview passes a scale; every
+     other caller keeps byte-identical behaviour. */
+  const S = Math.max(1, Math.min(3, Math.round(Number(opts && opts.scale) || 1)));
   /* v2.3.715: composite OFFSCREEN and blit at the end.  This used to set
      canvas.width up front, which blanks the visible canvas synchronously --
      then the awaits below yield at least a frame, so every rotation /
@@ -215,8 +237,16 @@ export async function drawCharacterPortrait(canvas, opts) {
      async draws that would land out of order during rapid rotation. */
   const seq = (canvas.__pseq = (canvas.__pseq || 0) + 1);
   const work = document.createElement('canvas');
-  work.width = FRAME; work.height = FRAME;
+  work.width = FRAME * S; work.height = FRAME * S;
   const ctx = work.getContext('2d');
+  /* Every draw below stays in 256-space; the base transform rasterises it
+     at device resolution.  Nothing in this file calls setTransform or
+     resetTransform, and the save()/restore() pair around the figure
+     preserves this, so the anchor/crown/zoom maths is untouched. */
+  if (S !== 1) ctx.setTransform(S, 0, 0, S, 0, 0);
+  if (typeof ctx.imageSmoothingQuality === 'string' || 'imageSmoothingQuality' in ctx) {
+    ctx.imageSmoothingQuality = 'high';
+  }
 
   /* Preview angle -- any of the 8 compass directions (default southwest 3/4).
      The 3 mirrored views (west / northwest / southeast) reuse the opposite
@@ -355,7 +385,10 @@ export async function drawCharacterPortrait(canvas, opts) {
     floatLift(hwMeta, hairMeta, DIR)); /* v2.3.1561 */
   ctx.restore();
   if (canvas.__pseq !== seq) return;   /* a newer draw superseded this one */
-  canvas.width = FRAME; canvas.height = FRAME;
+  /* v2.3.1580: blit 1:1 -- `work` is already FRAME*S, so this adds no
+     further resample.  At S=1 (every caller except the login preview) the
+     canvas is still exactly 256 and this line is unchanged. */
+  canvas.width = FRAME * S; canvas.height = FRAME * S;
   canvas.getContext('2d').drawImage(work, 0, 0);
 }
 
