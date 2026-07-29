@@ -19,7 +19,7 @@ import { getFrame, resolveDirection, cycleMs, hasPose, frameCount as playerFrame
 import { getShieldFrame } from '../shieldSprites.js';
 import { jogWaistRow } from '../jogWaist.js'; /* v2.3.1341: stable waist band */
 import { getFrame as getSlimeBaseFrame, hasState as hasSlimeState, frameCount as slimeFrameCount } from '../slimeSprites.js';
-import { getRecoloredFrame, hasRecoloredState } from '../monsterRecolor.js'; /* v2.3.1534; v2.3.1535 generalised */
+import { getRecoloredFrame, hasRecoloredState } from '../monsterRecolor.js'; /* v2.3.1534; v2.3.1573 generalised */
 
 /* v2.3.1534: one place that decides whether a slime draws from the shared
    sheet or from its variant's RECOLOURED copy.  A variant with `recolor` gets
@@ -647,9 +647,15 @@ function _placeTrait(sprite, entry, display, pose, dir, mirror, frameIdx, bodySc
   /* v2.3.1534: the dodge sheets ship no body-tops entries, and
      _lookupBodyTop's miss path falls back to `stand-<dir>-0` — the STANDING
      crown.  Placing a hat there while the body is a ball on the floor leaves
-     it hovering in mid-air for the whole roll.  Hide traits for the ~300ms
-     instead; derive dodge body-tops (tools/derive_body_tops.py) and drop this
-     branch when the pose gets its own gear pass. */
+     it hovering in mid-air for the whole roll, so traits are hidden.
+     v2.3.1573 (gear pass) deliberately does NOT lift this.  Gear could be
+     fitted because a plate covers a REGION, and a region maps through the
+     body's own pixels.  A hat sits on a POINT, and the point body-tops
+     records is the topmost opaque pixel — which on frames 3-6 is a boot, not
+     a crown, because the body is upside down.  Deriving body-tops for this
+     pose would place hats on feet.  Re-enabling traits needs a real per-frame
+     head anchor (the head IS separable — it is the bare skin blob left in the
+     armoured art, which is how the seal below finds it), not a bodyTop. */
   if (pose === 'dodge') { sprite.visible = false; return; }
   _ensureBodyData();
   /* v2.3.1305: fallbackTex = the NATIVE-color textures behind a recolored
@@ -4647,10 +4653,12 @@ export class EntityRenderer {
             _rfull = pose === 'pickup' && _rlegsW && _rchestW;   // v2.3.1057: hide body, head overlay + gear render it (no bake)
             /* v2.3.1361: fullset figure for remote players too. */
             _fsR = _fullsetFrame(other.equip && other.equip.chest, other.equip && other.equip.legs, pose, dir, frameIdx, _rJogPhase);
-            /* v2.3.1534: 'dodge' joins pickup on the un-masked path — it has
-               no gear sheets yet, and masking the body against an empty worn
-               set just carves holes in a figure nothing is drawn over. */
-            const _mt = _fsR || ((pose === 'pickup' || pose === 'dodge') ? tex : _maskedBodyFrame(tex, _rworn, 6, { pose, dir, frameIdx }));
+            /* v2.3.1573: 'dodge' comes OFF the un-masked path — v2.3.1534 put
+               it there because the pose shipped no gear sheets, and it now
+               has all three slots (tools/build-dodge-gear.mjs).  The plate is
+               sealed against the body, so the mask is what stops the bare
+               figure showing through at its edges. */
+            const _mt = _fsR || ((pose === 'pickup') ? tex : _maskedBodyFrame(tex, _rworn, 6, { pose, dir, frameIdx }));
             if (spriteBody.texture !== _mt) spriteBody.texture = _mt;
           }
           /* v2.3.1055: pickup head overlay (drawn above gear in _orderTraitsAndWeapon).
@@ -5495,7 +5503,7 @@ export class EntityRenderer {
           /* v2.3.1361: fullset figure replaces the bake when it ships for
              this (pose,dir); null -> classic masked path. */
           _fsT = _fullsetFrame(getEquip('chest'), getEquip('legs'), pose, dir, frameIdx, _jogPhase);
-          _bodyTex = _fsT || ((!_worn.length || pose === 'pickup' || pose === 'dodge') ? tex : _maskedBodyFrame(tex, _worn, 6, { pose, dir, frameIdx }));
+          _bodyTex = _fsT || ((!_worn.length || pose === 'pickup') ? tex : _maskedBodyFrame(tex, _worn, 6, { pose, dir, frameIdx }));
         } catch (e) { _bodyTex = tex; }
         if (spriteBody.texture !== _bodyTex) spriteBody.texture = _bodyTex;
         /* v2.3.1055: pickup head overlay (drawn above gear in _orderTraitsAndWeapon).
