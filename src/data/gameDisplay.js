@@ -1328,7 +1328,7 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
      zero bytes) for every zone, so there's no music fetch and nothing 404s.
      To restore a track, re-add `<zoneId>: '/audio/music/<file>.mp3'` AND
      ship the file back into public/audio/music/. */
-  ZONE_MUSIC: {},
+  ZONE_MUSIC: { town: '/audio/music/village.mp3' },
   /* v2.3.1578: the session track — starts at the login screen and plays for
      the whole session (the owner picked this over v2.3.1577's neondrift,
      which is removed rather than left to ship 3 MB nobody plays).
@@ -1344,6 +1344,14 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
      MP3 rather than the smaller AAC: decodeAudioData REFUSED the m4a
      candidates in a real browser check while the mp3 decoded cleanly, and
      this whole path is decodeAudioData. */
+  /* v2.3.1581: town gets its own track.  A zone entry here TAKES OVER from
+     GLOBAL_MUSIC while the player is in that zone — see the ducking in
+     startZoneAmbient.  Without that they would simply play at once, because
+     the session track deliberately lives outside stopAmbient's reach.
+     128 kbps, 2.07 MB for 2m16s (37% off the 3.28 MB source); same bitrate
+     as login-theme and for the same measured reason — this track is bright
+     (>15 kHz at -42.7 dB), so 96k would cost 2.1 dB up there to save 0.5 MB. */
+  ZONE_MUSIC_TOWN: '/audio/music/village.mp3',
   GLOBAL_MUSIC: '/audio/music/login-theme.mp3',
   GLOBAL_MUSIC_VOL: 0.22,
   init: function init() {
@@ -1693,6 +1701,10 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
      uses). When a zone has a track in ZONE_MUSIC, it REPLACES the
      procedural drone so the two layers don't fight. */
   var trackUrl = this.ZONE_MUSIC && this.ZONE_MUSIC[zoneId];
+  /* v2.3.1581: hand over between the session track and a zone track.  Decided
+     BEFORE the fetch below so the duck rides the same 600 ms as the crossfade
+     rather than waiting on a download. */
+  this.duckGlobalMusic(!!trackUrl);
   if (trackUrl) {
     var self = this;
     self._zoneMusicUrl = trackUrl;
@@ -2033,8 +2045,13 @@ BT_AUDIO.startGlobalMusic = function () {
       src.buffer = buf;
       src.loop = true;
       var t0 = self.ctx.currentTime;
+      /* v2.3.1581: start DUCKED if a zone track already owns the music.  This
+         path also runs on background-resume, so without the check a resume
+         while standing in town would fade the session track up over the top
+         of the town track. */
+      var startVol = (self._zoneMusicSource || self._globalMusicDucked) ? 0 : self.GLOBAL_MUSIC_VOL;
       gain.gain.setValueAtTime(0, t0);
-      gain.gain.linearRampToValueAtTime(self.GLOBAL_MUSIC_VOL, t0 + 1.2);
+      gain.gain.linearRampToValueAtTime(startVol, t0 + 1.2);
       src.connect(gain);
       gain.connect(self._out());
       /* If iOS kills the source while backgrounded, drop the ref so
@@ -2055,6 +2072,30 @@ BT_AUDIO.startGlobalMusic = function () {
       .then(function (buf) { self._globalMusicBuffer = buf; self._globalMusicStarting = false; play(buf); })
       .catch(function () { self._globalMusicStarting = false; /* no music beats a broken boot */ });
   } catch (e) { this._globalMusicStarting = false; }
+};
+
+/* v2.3.1581: duck the session track under a zone track.
+ *
+ * GLOBAL_MUSIC is deliberately outside stopAmbient's reach (that is what lets
+ * it survive zone changes), so the moment a zone gained a track of its own the
+ * two would have played SIMULTANEOUSLY.  This is the reconciliation.
+ *
+ * Ducking, not stopping: the buffer source keeps running at zero gain and
+ * keeps its POSITION, so leaving town returns to the session track where it
+ * would have been rather than restarting it from the top — which is the whole
+ * property v2.3.1577 exists to provide.  600 ms to match the zone crossfade
+ * ramp on both sides, so the handover reads as one gesture. */
+BT_AUDIO.duckGlobalMusic = function (down) {
+  var g = this._globalMusicGain;
+  if (!g || !this.ctx) return;
+  var target = down ? 0 : this.GLOBAL_MUSIC_VOL;
+  try {
+    var now = this.ctx.currentTime;
+    g.gain.cancelScheduledValues(now);
+    g.gain.setValueAtTime(g.gain.value, now);
+    g.gain.linearRampToValueAtTime(target, now + 0.6);
+  } catch (e) {}
+  this._globalMusicDucked = !!down;
 };
 
 BT_AUDIO.unlock = function () {
