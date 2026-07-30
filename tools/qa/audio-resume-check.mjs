@@ -37,8 +37,8 @@ function grabProp(name) {
 const body = [
   ...['_teardownGlobalMusic', 'resumeFromBackground', 'startGlobalMusic'].map(grab),
   ...['_ctxLive', '_wakeCtx', '_whenRunning', 'fadeIn', '_ensureAudible',
-      '_ensureAnalyser', '_masterIsSilent', '_audioHealthCheck',
-      '_ensureAnalyser', '_masterIsSilent', '_audioHealthCheck'].map(grabProp),
+      '_ensureAnalyser', '_masterIsSilent', '_audioHealthCheck', '_rebuildContext',
+      '_ensureAnalyser', '_masterIsSilent', '_audioHealthCheck', '_rebuildContext'].map(grabProp),
 ].join(',\n');
 
 globalThis.document = { hidden: false };
@@ -365,6 +365,56 @@ function makeAudio(opts = {}) {
   A._zoneMusicStartingAt = 0;                    /* no stamp */
   for (let i = 0; i < 3; i++) A._audioHealthCheck();
   ck('unstamped flag: guard still respected', starts, 0);
+}
+
+// ── 22. A CLOSED context is terminal — rebuild, don't retry forever ────
+//   After a long absence iOS closes the context outright. resume() rejects
+//   for ever, and init() refuses to replace an existing ctx, so every prior
+//   recovery path retried a dead object until reload.
+{
+  const { A, ctx } = makeAudio();
+  let rebuilt = 0;
+  A.init = function () { rebuilt++; this.ctx = { state: 'suspended', resume: () => Promise.resolve(), addEventListener() {}, removeEventListener() {} }; };
+  ctx.state = 'closed';
+  A._audioHealthCheck();
+  ck('closed ctx: graph rebuilt', rebuilt, 1);
+  ck('closed ctx: a fresh context is installed', A.ctx !== ctx, true);
+}
+
+// ── 23. Rebuild drops buffers decoded against the dead context ─────────
+{
+  const { A, ctx } = makeAudio();
+  A.init = function () { this.ctx = { state: 'suspended', resume: () => Promise.resolve(), addEventListener() {}, removeEventListener() {} }; };
+  A._globalMusicBuffer = { duration: 100 };
+  A._zoneMusicBuffers = { '/a.mp3': {} };
+  A._zoneMusicStarting = true;
+  ctx.state = 'closed';
+  A._audioHealthCheck();
+  ck('rebuild: stale global buffer dropped', A._globalMusicBuffer, null);
+  ck('rebuild: stale zone buffer cache emptied', Object.keys(A._zoneMusicBuffers).length, 0);
+  ck('rebuild: in-flight flags cleared', A._zoneMusicStarting, false);
+}
+
+// ── 24. A context that never wakes escalates to a rebuild — but slowly ─
+{
+  const { A } = makeAudio({ state: 'interrupted', refuseResume: true });
+  let rebuilt = 0;
+  A.init = function () { rebuilt++; this.ctx = { state: 'suspended', resume: () => Promise.reject(new Error('no')), addEventListener() {}, removeEventListener() {} }; };
+  for (let i = 0; i < 29; i++) A._audioHealthCheck();
+  ck('29s of failed wakes: no rebuild yet (gestures may still come)', rebuilt, 0);
+  A._audioHealthCheck();
+  ck('30s of failed wakes: escalates to a rebuild', rebuilt, 1);
+}
+
+// ── 25. A healthy context never escalates ──────────────────────────────
+{
+  const { A } = makeAudio();
+  A._currentZoneAmbient = 'hollows';
+  A.startGlobalMusic();
+  let rebuilt = 0;
+  A.init = function () { rebuilt++; };
+  for (let i = 0; i < 60; i++) A._audioHealthCheck();
+  ck('60s healthy: never rebuilt', rebuilt, 0);
 }
 
 console.log(fail ? `\n${fail} FAILED` : '\nall pass');

@@ -1665,16 +1665,75 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
   /* One convergence step.  Safe to call as often as you like — every branch
      is idempotent, and it is also what a touch now runs (a tap is just an
      extra opportunity to converge, not a special code path). */
+  /* v2.3.1600: REBUILD THE WHOLE GRAPH.  Every recovery up to here assumed the
+     AudioContext could be woken.  After a LONG absence iOS does not suspend or
+     interrupt it — it CLOSES it, and a closed context can never be resumed:
+     resume() rejects for ever.  init() guards on `if (this.ctx) return`, so the
+     dead context was kept for the life of the page and _wakeCtx retried it once
+     a second until reload.  That is the owner's "after leaving and not
+     returning for a while", and it is invisible to every state-based and
+     output-based check before this, because the graph is not asleep or
+     detached — it is gone.
+     Decoded buffers belong to the context that decoded them, so the caches are
+     dropped too and re-decode against the new one; the mp3s are still in the
+     HTTP cache, so that costs a decode, not a download.  The fresh context
+     starts suspended on iOS and needs a gesture, which the watchdog and the
+     touch handler both already supply — the point is that recovery becomes
+     POSSIBLE, where before it was not. */
+  _rebuildContext: function _rebuildContext() {
+    var old = this.ctx;
+    this.ctx = null;
+    this._master = null;
+    this._analyser = null;
+    this._analyserBuf = null;
+    this._fadeUntil = 0;
+    this._globalMusicSource = null;
+    this._globalMusicGain = null;
+    this._globalMusicStarting = false;
+    this._globalMusicBuffer = null;      /* decoded against the dead context */
+    this._zoneMusicSource = null;
+    this._zoneMusicGain = null;
+    this._zoneMusicUrl = null;
+    this._zoneMusicStarting = false;
+    this._zoneMusicBuffers = Object.create(null);
+    this._zoneMusicLru = [];
+    this._samples = {};
+    this._sampleLoading = {};
+    this._sfxLoops = {};
+    this._loadedManifest = false;
+    this._unlocked = false;
+    this._silentTicks = 0;
+    this._asleepTicks = 0;
+    try { if (old && old.close && old.state !== 'closed') old.close(); } catch (e) {}
+    try { this.init(); } catch (e) {}
+    if (this.ctx) {
+      this._wakeCtx();
+      try { this.loadSfxManifest(); } catch (e) {}
+    }
+  },
   _audioHealthCheck: function _audioHealthCheck() {
     if (!this.ctx || this.muted) return;
+    /* v2.3.1600: closed is terminal — rebuild rather than retry for ever. */
+    if (this.ctx.state === 'closed') { this._rebuildContext(); return; }
     /* Never fight iOS while we are actually backgrounded — resuming there is
        refused anyway and would just burn the retry. */
     if (typeof document !== 'undefined' && document.hidden) { this._silentTicks = 0; return; }
     if (!this._ctxLive()) {
       this._wakeCtx();            /* refused outside a gesture? try again next tick */
       this._silentTicks = 0;
+      /* v2.3.1600: escalation.  A context that will not wake after 30 straight
+         seconds of trying, while the page is VISIBLE (hidden pages returned
+         above), is not going to — WebKit can leave one wedged in a state it
+         never reports as 'closed'.  Rebuild rather than retry the same dead
+         object until the player reloads.  30s is deliberately long: iOS
+         legitimately refuses resume() outside a user gesture, and a player
+         who is simply looking at the screen without touching must not trigger
+         a rebuild loop. */
+      this._asleepTicks = (this._asleepTicks || 0) + 1;
+      if (this._asleepTicks >= 30) { this._asleepTicks = 0; this._rebuildContext(); }
       return;
     }
+    this._asleepTicks = 0;
     this._ensureAudible();
     var z = this._currentZoneAmbient;
     var zoneWants = !!(z && this.ZONE_MUSIC && this.ZONE_MUSIC[z]);
