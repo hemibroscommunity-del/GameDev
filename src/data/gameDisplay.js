@@ -2225,8 +2225,15 @@ BT_AUDIO.startGlobalMusic = function () {
       /* v2.3.1581: start DUCKED if a zone track already owns the music.  This
          path also runs on background-resume, so without the check a resume
          while standing in town would fade the session track up over the top
-         of the town track. */
-      var startVol = (self._zoneMusicSource || self._globalMusicDucked) ? 0 : self.GLOBAL_MUSIC_VOL;
+         of the town track.
+         v2.3.1593: ask the ZONE TABLE, not _zoneMusicSource.  On the resume
+         path that ref can still point at the source iOS already killed, and
+         once most zones had tracks it was also null for a beat mid-rebuild —
+         either way the old test could answer "nobody owns the music" while
+         standing in town and fade the session track up over the top. */
+      var zoneOwnsMusic = !!(self.ZONE_MUSIC && self._currentZoneAmbient
+        && self.ZONE_MUSIC[self._currentZoneAmbient]);
+      var startVol = (zoneOwnsMusic || self._globalMusicDucked) ? 0 : self.GLOBAL_MUSIC_VOL;
       gain.gain.setValueAtTime(0, t0);
       gain.gain.linearRampToValueAtTime(startVol, t0 + 1.2);
       src.connect(gain);
@@ -2236,7 +2243,18 @@ BT_AUDIO.startGlobalMusic = function () {
       src.onended = function () {
         if (self._globalMusicSource === src) { self._globalMusicSource = null; self._globalMusicGain = null; }
       };
-      src.start(0);
+      /* v2.3.1593: resume at POSITION rather than from the top.  The session
+         track's whole point is that it plays unbroken for the session, so a
+         rebuild after a background must not restart the song — the epoch is
+         wall-clock (Date.now), which keeps advancing while the AudioContext
+         is suspended and ctx.currentTime does not. */
+      if (!self._globalMusicEpoch) self._globalMusicEpoch = Date.now();
+      var offset = 0;
+      if (buf.duration > 0) {
+        offset = ((Date.now() - self._globalMusicEpoch) / 1000) % buf.duration;
+        if (!(offset >= 0)) offset = 0;          /* NaN guard */
+      }
+      src.start(0, offset);
       self._globalMusicSource = src;
       self._globalMusicGain = gain;
     } catch (e) {}
@@ -2299,9 +2317,39 @@ BT_AUDIO.unlock = function () {
    enough on iOS Safari -- long backgrounding can implicitly stop
    the zone-music BufferSource, and resume() doesn't restart it.
    Re-kick the music for the zone we were last in. */
+/* v2.3.1593: tear the session track down so startGlobalMusic will genuinely
+   rebuild it.  Needed because the ONLY thing that cleared _globalMusicSource
+   was src.onended, and iOS does not reliably fire it for a source it stopped
+   during a backgrounding — the exact unreliability v2.3.254 already worked
+   around for the zone track by clearing _currentZoneAmbient by hand.  Without
+   this the stale ref made startGlobalMusic early-return forever and the
+   session track never came back; _globalMusicGain went stale with it, so a
+   later duckGlobalMusic(false) on leaving a scored zone ramped a dead node
+   and the game stayed silent until reload.  ("Music doesn't work when I
+   return to the game.") */
+BT_AUDIO._teardownGlobalMusic = function () {
+  var src = this._globalMusicSource;
+  this._globalMusicSource = null;
+  this._globalMusicGain = null;
+  if (src) {
+    /* Detach onended first: it would otherwise fire during stop() and null
+       out the refs of whatever source has since replaced this one. */
+    try { src.onended = null; } catch (e) {}
+    try { src.stop(); } catch (e) {}
+  }
+};
+
 BT_AUDIO.resumeFromBackground = function () {
   if (!this.ctx) return;
-  if (this.ctx.state === 'suspended' && this.ctx.resume) {
+  /* v2.3.1593: capture this BEFORE resuming.  A suspended context is the only
+     state in which iOS silently stops our sources, so it is also the only
+     state that justifies rebuilding them — and this handler is wired to
+     `focus` and `pageshow` as well as visibilitychange, which fire routinely
+     while audio is perfectly healthy.  Rebuilding unconditionally (what the
+     zone track did) restarted the zone song from the top on every window
+     focus. */
+  var wasSuspended = this.ctx.state === 'suspended';
+  if (wasSuspended && this.ctx.resume) {
     try { this.ctx.resume(); } catch (e) {}
     /* v2.3.786: ease back in after a background resume (same pop as the
        first-gesture case, just mid-session). */
@@ -2310,8 +2358,13 @@ BT_AUDIO.resumeFromBackground = function () {
   /* v2.3.1577: iOS can implicitly stop a BufferSource during a long
      backgrounding, and ctx.resume() does not restart it — the same reason
      the zone track is re-kicked below.  onended clears the ref, so this
-     starts a fresh one only when the old one really died. */
+     starts a fresh one only when the old one really died.
+     v2.3.1593: ...and when onended did NOT fire, the teardown above forces
+     it.  startGlobalMusic resumes at position, so this costs continuity
+     nothing. */
+  if (wasSuspended) this._teardownGlobalMusic();
   this.startGlobalMusic();
+  if (!wasSuspended) return;
   var zone = this._currentZoneAmbient;
   if (!zone) return;
   /* startZoneAmbient early-returns when _currentZoneAmbient already
