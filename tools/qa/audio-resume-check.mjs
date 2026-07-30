@@ -26,17 +26,32 @@ function grab(name) {
   const end = SRC.indexOf('\n};', i);
   return SRC.slice(i + `BT_AUDIO.`.length, end + 2).replace(/^(\w+) = /, '$1: ');
 }
-const body = ['_teardownGlobalMusic', 'resumeFromBackground', 'startGlobalMusic'].map(grab).join(',\n');
+/* Object-literal members (`name: function name() {`) rather than the
+   `BT_AUDIO.name = function` form grab() handles. */
+function grabProp(name) {
+  const marker = `  ${name}: function ${name}(`;
+  const i = SRC.indexOf(marker);
+  if (i < 0) throw new Error('not found (prop): ' + name);
+  return SRC.slice(i, SRC.indexOf('\n  },', i) + 4);
+}
+const body = [
+  ...['_teardownGlobalMusic', 'resumeFromBackground', 'startGlobalMusic'].map(grab),
+  ...['_ctxLive', '_wakeCtx', '_whenRunning', 'fadeIn', '_ensureAudible'].map(grabProp),
+].join(',\n');
 
 let fail = 0;
 const ck = (l, got, want) => { const ok = String(got) === String(want); if (!ok) fail++; console.log(`${ok ? 'PASS' : 'FAIL'}  ${l}: ${got}${ok ? '' : `  (want ${want})`}`); };
 
 function makeAudio(opts = {}) {
   const started = [];
+  const listeners = [];
   const ctx = {
     state: opts.state || 'running',
     currentTime: 0,
-    resume() { this.state = 'running'; },
+    addEventListener(t, fn) { if (t === 'statechange') listeners.push(fn); },
+    removeEventListener(t, fn) { const i = listeners.indexOf(fn); if (i >= 0) listeners.splice(i, 1); },
+    _setState(v) { this.state = v; listeners.slice().forEach((f) => f()); },
+    resume() { if (opts.refuseResume) return Promise.reject(new Error('nope')); this._setState('running'); return Promise.resolve(); },
     createGain: () => ({ gain: { setValueAtTime() {}, linearRampToValueAtTime(v) { this._v = v; }, cancelScheduledValues() {}, value: 0 } , connect() {} }),
     createBufferSource: () => {
       const s = { buffer: null, loop: false, onended: null, _stopped: false,
@@ -44,7 +59,7 @@ function makeAudio(opts = {}) {
       return s;
     },
   };
-  const A = eval(`({\n${body},\n  GLOBAL_MUSIC: '/audio/music/login-theme.mp3',\n  GLOBAL_MUSIC_VOL: 0.22,\n  ZONE_MUSIC: { town: '/x.mp3' },\n  ctx: null, _globalMusicSource: null, _globalMusicGain: null,\n  _globalMusicBuffer: { duration: 100 }, _globalMusicStarting: false,\n  _globalMusicDucked: false, _currentZoneAmbient: null, _zoneMusicSource: null,\n  _out() { return {}; }, fadeIn() {}, _zoneRekicks: 0,\n  startZoneAmbient() { this._zoneRekicks++; },\n})`);
+  const A = eval(`({\n${body},\n  GLOBAL_MUSIC: '/audio/music/login-theme.mp3',\n  GLOBAL_MUSIC_VOL: 0.22,\n  ZONE_MUSIC: { town: '/x.mp3' },\n  ctx: null, _globalMusicSource: null, _globalMusicGain: null,\n  _globalMusicBuffer: { duration: 100 }, _globalMusicStarting: false,\n  _globalMusicDucked: false, _currentZoneAmbient: null, _zoneMusicSource: null,\n  _out() { return {}; }, _zoneRekicks: 0,\n  _master: { gain: { value: 1, _ramps: [], cancelScheduledValues() {}, setValueAtTime(v) { this.value = v; }, exponentialRampToValueAtTime(v) { this._target = v; } } },\n  startZoneAmbient() { this._zoneRekicks++; },\n})`);
   A.ctx = ctx;
   Object.assign(A, opts.state ? {} : {});
   return { A, ctx, started };
@@ -120,6 +135,57 @@ function makeAudio(opts = {}) {
   A.resumeFromBackground();
   ck('teardown detaches onended before stopping', firedAfter, false);
   ck('replacement survives the teardown', !!A._globalMusicSource, true);
+}
+
+// ── 6. iOS "interrupted": the state every check used to miss ────────────
+{
+  const { A, ctx, started } = makeAudio();
+  A._currentZoneAmbient = 'town';
+  A.startGlobalMusic();
+  const dead = A._globalMusicSource;
+  dead.onended = null;                    /* silently killed, as iOS does */
+  ctx.state = 'interrupted';              /* NOT 'suspended' — the whole bug */
+  A.resumeFromBackground(true);
+  ck('interrupted: context is woken', ctx.state, 'running');
+  ck('interrupted: session track rebuilt', started.length, 2);
+  ck('interrupted: zone track re-kicked', A._zoneRekicks, 1);
+}
+
+// ── 7. The `hard` flag: a real hide/show rebuilds, a bare focus does not ──
+{
+  const { A, started } = makeAudio();       /* ctx healthy throughout */
+  A._currentZoneAmbient = 'town';
+  A.startGlobalMusic();
+  A.resumeFromBackground(false);            /* window focus */
+  ck('soft resume: no rebuild', started.length, 1);
+  ck('soft resume: zone song not restarted', A._zoneRekicks, 0);
+  A.resumeFromBackground(true);             /* visibilitychange / pageshow */
+  ck('hard resume: rebuilds even though ctx reads healthy', started.length, 2);
+  ck('hard resume: zone song re-kicked', A._zoneRekicks, 1);
+}
+
+// ── 8. fadeIn must not schedule against a FROZEN clock ──────────────────
+{
+  const { A, ctx } = makeAudio({ state: 'interrupted' });
+  A.fadeIn(0.8);
+  ck('fadeIn defers while not running (bus untouched)', A._master.gain.value, 1);
+  ctx._setState('running');
+  ck('fadeIn applies once running', A._master.gain.value, 0.001);
+  ck('fadeIn targets full volume', A._master.gain._target, 1);
+}
+
+// ── 9. A stranded master bus self-heals ────────────────────────────────
+{
+  const { A } = makeAudio();
+  A._master.gain.value = 0.001;             /* stuck silent, no fade pending */
+  A._ensureAudible();
+  ck('stranded bus ramps back to full', A._master.gain._target, 1);
+  const before = A._master.gain._target;
+  A._master.gain.value = 1;
+  A._master.gain._target = null;
+  A._ensureAudible();
+  ck('healthy bus is left alone', A._master.gain._target, null);
+  void before;
 }
 
 console.log(fail ? `\n${fail} FAILED` : '\nall pass');

@@ -1545,17 +1545,84 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
   _out: function _out() {
     return this._master || this.ctx.destination;
   },
+  /* ═══ v2.3.1594: THE THIRD AUDIOCONTEXT STATE ═══════════════════════════
+     iOS Safari has a WebKit-only state, 'interrupted', that a context enters
+     on a phone call, a backgrounding, or another app taking the audio
+     session.  It is NOT 'suspended', and it produces no sound.
+     Every resume check in this file (and the tap-retry in GameApp.jsx) used
+     to test `state === 'suspended'` exactly, so on iOS an interrupted context
+     was invisible: nothing resumed it, nothing rebuilt the dead sources, and
+     the tap-to-recover path never fired because it too asked for 'suspended'.
+     Result: SFX AND music silent until a reload — the owner reported it twice,
+     and the v2.3.1593 fix missed it because that fix's own gate was
+     `=== 'suspended'` as well.
+     Treat anything that is not 'running' as needing a wake.  That covers
+     'suspended', 'interrupted', 'closed' (harmless no-op) and whatever WebKit
+     adds next — the safe default is to try, since resume() on a healthy
+     context is free. */
+  _ctxLive: function _ctxLive() {
+    return !!this.ctx && this.ctx.state === 'running';
+  },
+  /* Returns true if a wake was attempted. resume() rejects outside a user
+     gesture on iOS (v2.3.780) — swallow it, the tap retry will come again. */
+  _wakeCtx: function _wakeCtx() {
+    if (!this.ctx || this.ctx.state === 'running' || !this.ctx.resume) return false;
+    try {
+      var p = this.ctx.resume();
+      if (p && p.catch) p.catch(function () {});
+    } catch (e) {}
+    return true;
+  },
+  /* Run cb once the context is genuinely running.  Anything that schedules
+     against ctx.currentTime MUST go through here: while the context is
+     suspended or interrupted that clock is FROZEN, so a ramp scheduled then
+     is pinned to a timestamp that may already be in the past when audio
+     comes back — which is how the master bus got stuck near zero. */
+  _whenRunning: function _whenRunning(cb) {
+    if (!this.ctx) return;
+    if (this.ctx.state === 'running') { cb(); return; }
+    var self = this;
+    var onState = function () {
+      if (!self.ctx || self.ctx.state !== 'running') return;
+      try { self.ctx.removeEventListener('statechange', onState); } catch (e) {}
+      cb();
+    };
+    try { self.ctx.addEventListener('statechange', onState); } catch (e) { cb(); }
+  },
   /* Ramp the master bus from silent to full over `dur` seconds.  Called
      when the AudioContext (re)starts so queued/looping voices ease in
      instead of popping. */
   fadeIn: function fadeIn(dur) {
     if (!this.ctx || !this._master) return;
+    var self = this;
+    /* v2.3.1594: deferred until actually running — see _whenRunning. */
+    this._whenRunning(function () {
+      try {
+        var t = self.ctx.currentTime;
+        var g = self._master.gain;
+        g.cancelScheduledValues(t);
+        g.setValueAtTime(0.001, t);
+        g.exponentialRampToValueAtTime(1, t + (dur || 1.2));
+        self._fadeUntil = t + (dur || 1.2);
+      } catch (e) {}
+    });
+  },
+  /* v2.3.1594: last-resort self-heal for the master bus.  fadeIn is the only
+     thing that writes it, and a fade interrupted by a state change used to be
+     able to strand it at 0.001 with no path back — silent game, reload the
+     only cure.  Cheap enough to call from the SFX path: it no-ops unless the
+     context is live, the bus is genuinely down, and no fade is in flight. */
+  _ensureAudible: function _ensureAudible() {
+    if (!this._ctxLive() || !this._master) return;
     try {
       var t = this.ctx.currentTime;
+      if (this._fadeUntil && t < this._fadeUntil) return;   /* fade in flight */
       var g = this._master.gain;
+      if (g.value >= 0.999) return;
       g.cancelScheduledValues(t);
-      g.setValueAtTime(0.001, t);
-      g.exponentialRampToValueAtTime(1, t + (dur || 1.2));
+      g.setValueAtTime(Math.max(0.001, g.value), t);
+      g.exponentialRampToValueAtTime(1, t + 0.25);
+      this._fadeUntil = t + 0.25;
     } catch (e) {}
   },
   beep: function beep(freq, dur, vol, type) {
@@ -1886,7 +1953,7 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
          no-op without leaking a source node. */
       if (self._zoneMusicUrl !== trackUrl) return;
       try {
-        if (self.ctx.state === 'suspended') self.ctx.resume();
+        self._wakeCtx();   /* v2.3.1594: 'interrupted' counts too */
         var src = self.ctx.createBufferSource();
         var gain = self.ctx.createGain();
         src.buffer = buf;
@@ -2216,7 +2283,7 @@ BT_AUDIO.startGlobalMusic = function () {
        a source while it was in flight. */
     if (self._globalMusicSource || !self.ctx) return;
     try {
-      if (self.ctx.state === 'suspended') self.ctx.resume();
+      self._wakeCtx();     /* v2.3.1594: 'interrupted' counts too */
       var src = self.ctx.createBufferSource();
       var gain = self.ctx.createGain();
       src.buffer = buf;
@@ -2300,9 +2367,10 @@ BT_AUDIO.unlock = function () {
      scratch (fresh boot or post-exit reload).  Ease the master bus in so
      the ambient/zone music doesn't pop in loud on the first gesture. */
   var firstUnlock = !this._unlocked;
-  if (this.ctx.state === 'suspended' && this.ctx.resume) {
-    try { this.ctx.resume(); } catch (e) {}
-  }
+  /* v2.3.1594: not-'running', so an iOS 'interrupted' context is woken by the
+     first gesture like a suspended one.  unlock() runs inside a real user
+     gesture, which is the ONE moment iOS reliably honours resume(). */
+  this._wakeCtx();
   this._unlocked = true;
   if (firstUnlock) this.fadeIn(1.2);
   this.loadSfxManifest();
@@ -2339,7 +2407,15 @@ BT_AUDIO._teardownGlobalMusic = function () {
   }
 };
 
-BT_AUDIO.resumeFromBackground = function () {
+/* `hard` = we know the page really went away and came back (visibilitychange
+   / pageshow), as opposed to a bare window focus.
+   v2.3.1594: needed because the ctx-state test is necessary but not
+   sufficient — iOS can interrupt the audio session, kill our BufferSources,
+   and have the context back at 'running' by the time visibilitychange fires.
+   The state check then says "nothing happened" and the dead sources are never
+   rebuilt.  A genuine hide/show cycle is the reliable signal; focus is not,
+   which is why focus stays soft and cannot restart the zone song. */
+BT_AUDIO.resumeFromBackground = function (hard) {
   if (!this.ctx) return;
   /* v2.3.1593: capture this BEFORE resuming.  A suspended context is the only
      state in which iOS silently stops our sources, so it is also the only
@@ -2348,9 +2424,12 @@ BT_AUDIO.resumeFromBackground = function () {
      while audio is perfectly healthy.  Rebuilding unconditionally (what the
      zone track did) restarted the zone song from the top on every window
      focus. */
-  var wasSuspended = this.ctx.state === 'suspended';
-  if (wasSuspended && this.ctx.resume) {
-    try { this.ctx.resume(); } catch (e) {}
+  /* v2.3.1594: was `=== 'suspended'`, which on iOS is exactly the check that
+     misses an INTERRUPTED context — so the rebuild below never ran on the one
+     platform that needs it.  Anything not 'running' counts as asleep. */
+  var wasSuspended = !this._ctxLive() || !!hard;
+  if (wasSuspended) {
+    this._wakeCtx();
     /* v2.3.786: ease back in after a background resume (same pop as the
        first-gesture case, just mid-session). */
     this.fadeIn(0.8);
@@ -2384,19 +2463,27 @@ BT_AUDIO.play = function (key, opts) {
      play() call self-heals.  Also log once per resume-cycle to the
      in-game debug overlay so we can confirm this is the cause in
      the field. */
-  if (this.ctx.state === 'suspended') {
-    if (this.ctx.resume) { try { this.ctx.resume(); } catch (e) {} }
+  /* v2.3.1594: not-'running' rather than =='suspended', so an iOS
+     'interrupted' context self-heals here too — this is the highest-traffic
+     recovery path in the game, and it was blind to the one state iOS actually
+     uses.  The log now carries the real state, which is the evidence that
+     would have pointed at 'interrupted' the first time. */
+  if (!this._ctxLive()) {
+    var _st = this.ctx.state;
+    this._wakeCtx();
     /* v2.3.786: same anti-pop ease as unlock/resumeFromBackground —
        short ramp so the self-heal path doesn't blast either. */
     this.fadeIn(0.6);
     if (!this._suspendLogged && typeof window !== 'undefined' && window.debug && window.debug.pushLog) {
-      try { window.debug.pushLog('warn', ['BT_AUDIO ctx was suspended (key=' + key + '); resuming']); } catch (e) {}
+      try { window.debug.pushLog('warn', ['BT_AUDIO ctx was ' + _st + ' (key=' + key + '); resuming']); } catch (e) {}
       this._suspendLogged = true;
     }
-  } else if (this.ctx.state === 'running') {
+  } else {
     /* Reset the once-per-cycle guard so we'd log again if the ctx
        gets suspended a second time. */
     this._suspendLogged = false;
+    /* v2.3.1594: bus stuck low with no fade in flight — restore it. */
+    this._ensureAudible();
   }
   var buf = this._samples[key];
   if (!buf) {
