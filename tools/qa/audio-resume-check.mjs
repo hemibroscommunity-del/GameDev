@@ -281,5 +281,43 @@ function makeAudio(opts = {}) {
   ck('asleep ctx: wake retried every tick, not once', attempts, 4);
 }
 
+// ── 17. THE STACKING BUG: a slow zone fetch must be started ONCE ───────
+//   Reported in the wild: "it played the town music 3 times, staggered".
+//   The watchdog polls every second; a zone fetch takes a second or two;
+//   _zoneMusicSource is legitimately null the whole time.
+{
+  const { A } = makeAudio();
+  A._currentZoneAmbient = 'town';                /* town has a track */
+  A._globalMusicSource = {};                     /* session track already fine */
+  let starts = 0;
+  A.startZoneAmbient = function (z) {
+    starts++;
+    this._currentZoneAmbient = z;
+    this._zoneMusicStarting = true;              /* fetch begins */
+  };
+  for (let i = 0; i < 4; i++) A._audioHealthCheck();   /* 4 seconds of download */
+  ck('slow zone fetch: started exactly once, not once per tick', starts, 1);
+  /* fetch lands */
+  A._zoneMusicStarting = false;
+  A._zoneMusicSource = {};
+  for (let i = 0; i < 3; i++) A._audioHealthCheck();
+  ck('after it lands: no further starts', starts, 1);
+}
+
+// ── 18. A pending start that never lands must not wedge the watchdog ───
+{
+  const { A } = makeAudio();
+  A._currentZoneAmbient = 'town';
+  A._globalMusicSource = {};
+  let starts = 0;
+  A.startZoneAmbient = function (z) { starts++; this._currentZoneAmbient = z; this._zoneMusicStarting = true; };
+  A._audioHealthCheck();
+  ck('one start requested', starts, 1);
+  /* the fetch fails — the catch clears the flag, as the real code does */
+  A._zoneMusicStarting = false;
+  A._audioHealthCheck();
+  ck('after a failed fetch the watchdog retries', starts, 2);
+}
+
 console.log(fail ? `\n${fail} FAILED` : '\nall pass');
 process.exit(fail ? 1 : 0);

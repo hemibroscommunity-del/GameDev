@@ -1683,7 +1683,11 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
     if (this.GLOBAL_MUSIC && !this._globalMusicSource && !this._globalMusicStarting) {
       this.startGlobalMusic();
     }
-    if (zoneWants && !this._zoneMusicSource) {
+    /* v2.3.1597: _zoneMusicStarting is the whole reason this does not stack.
+       A zone fetch takes a second or two, during which _zoneMusicSource is
+       legitimately null — without the guard this branch fires every tick and
+       every pending start eventually plays. */
+    if (zoneWants && !this._zoneMusicSource && !this._zoneMusicStarting) {
       this._currentZoneAmbient = null;
       try { this.startZoneAmbient(z); } catch (e) {}
     }
@@ -2048,9 +2052,23 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
     var startWithBuffer = function (buf) {
       /* Bail if the user changed zones during the fetch — the
          _zoneMusicUrl != trackUrl guard makes the stale promise a
-         no-op without leaking a source node. */
-      if (self._zoneMusicUrl !== trackUrl) return;
+         no-op without leaking a source node.
+         v2.3.1597: note what this guard does NOT catch — two starts for the
+         SAME url.  It compares urls, so racing starts on one zone all pass. */
+      if (self._zoneMusicUrl !== trackUrl) { self._zoneMusicStarting = false; return; }
+      self._zoneMusicStarting = false;
       try {
+        /* v2.3.1597: LAST-DITCH ANTI-STACK.  Whatever raced to get here, only
+           one zone source may be audible: stop whatever is already playing
+           before taking the slot.  Without this the previous source keeps
+           running with nothing referencing it — unstoppable for the rest of
+           the session, which is what "the town music played 3 times, staggered"
+           actually was. */
+        if (self._zoneMusicSource) {
+          try { self._zoneMusicSource.stop(); } catch (e) {}
+          self._zoneMusicSource = null;
+          self._zoneMusicGain = null;
+        }
         self._wakeCtx();   /* v2.3.1594: 'interrupted' counts too */
         var src = self.ctx.createBufferSource();
         var gain = self.ctx.createGain();
@@ -2093,16 +2111,26 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
       self._touchZoneMusic(trackUrl);   /* a cache HIT is a use — keep it warm */
       startWithBuffer(self._zoneMusicBuffers[trackUrl]);
     } else {
+      /* v2.3.1597: mark the start IN FLIGHT.  A zone track is fetched and
+         decoded asynchronously, so _zoneMusicSource stays null for a second or
+         two after the start is requested.  Nothing minded until v2.3.1596 gave
+         this a caller that fires every second: the watchdog saw a null source,
+         concluded the music was missing, and requested another start — once per
+         second for the whole download.  Every one of them then resolved and
+         played, which is the owner's "town music played 3 times, staggered".
+         Global music has had this guard (_globalMusicStarting) since v2.3.1577;
+         zone music simply never had a caller impatient enough to need one. */
+      self._zoneMusicStarting = true;
       try {
         fetch(trackUrl)
           .then(function (r) { return r.ok ? r.arrayBuffer() : Promise.reject(new Error('http ' + r.status)); })
           .then(function (ab) { return self.ctx.decodeAudioData(ab); })
           .then(function (buf) {
             self._rememberZoneMusic(trackUrl, buf);
-            startWithBuffer(buf);
+            startWithBuffer(buf);        /* clears _zoneMusicStarting */
           })
-          .catch(function () { /* fetch / decode failure — silent */ });
-      } catch (e) {}
+          .catch(function () { self._zoneMusicStarting = false; /* fetch / decode failure — silent */ });
+      } catch (e) { self._zoneMusicStarting = false; }
     }
     return;
   }
@@ -2162,6 +2190,11 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
     }
     this._zoneMusicGain = null;
     this._zoneMusicUrl = null;
+    /* v2.3.1597: cancel any pending start.  Nulling _zoneMusicUrl already makes
+       an in-flight startWithBuffer bail (it compares urls), so the flag must
+       clear with it or a zone change during a download would leave it stuck
+       true and the watchdog would never start music again. */
+    this._zoneMusicStarting = false;
   } catch (e) {}
 }), "setCombatIntensity", function setCombatIntensity(inCombat) {
   if (!this._ambientGain || !this.ctx) return;
