@@ -1966,9 +1966,24 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
            constant beside GLOBAL_MUSIC_VOL, and both were cut to a
            quarter on the owner's call. */
         var TARGET_VOL = self.ZONE_MUSIC_VOL;
-        var t0 = self.ctx.currentTime;
-        gain.gain.setValueAtTime(0, t0);
-        gain.gain.linearRampToValueAtTime(TARGET_VOL, t0 + 0.6);
+        /* v2.3.1595: set the value DIRECTLY, then schedule the ramp only once
+           the clock is moving.  This is the same frozen-clock fault v2.3.1594
+           fixed in fadeIn — and missed here and in startGlobalMusic, which is
+           why music still did not come back on tab-return.  A rebuild happens
+           precisely when the context is suspended or interrupted, so
+           ctx.currentTime is FROZEN: `setValueAtTime(0, t0)` pinned the gain at
+           zero and the ramp to TARGET_VOL was scheduled against a timestamp
+           that had already passed by the time audio resumed.  The source was
+           genuinely playing — at volume zero. */
+        gain.gain.value = 0;
+        self._whenRunning(function () {
+          try {
+            var t0 = self.ctx.currentTime;
+            gain.gain.cancelScheduledValues(t0);
+            gain.gain.setValueAtTime(0, t0);
+            gain.gain.linearRampToValueAtTime(TARGET_VOL, t0 + 0.6);
+          } catch (e) { try { gain.gain.value = TARGET_VOL; } catch (_e) {} }
+        });
         src.connect(gain);
         gain.connect(self._out());
         src.start(0);
@@ -2288,7 +2303,6 @@ BT_AUDIO.startGlobalMusic = function () {
       var gain = self.ctx.createGain();
       src.buffer = buf;
       src.loop = true;
-      var t0 = self.ctx.currentTime;
       /* v2.3.1581: start DUCKED if a zone track already owns the music.  This
          path also runs on background-resume, so without the check a resume
          while standing in town would fade the session track up over the top
@@ -2301,8 +2315,18 @@ BT_AUDIO.startGlobalMusic = function () {
       var zoneOwnsMusic = !!(self.ZONE_MUSIC && self._currentZoneAmbient
         && self.ZONE_MUSIC[self._currentZoneAmbient]);
       var startVol = (zoneOwnsMusic || self._globalMusicDucked) ? 0 : self.GLOBAL_MUSIC_VOL;
-      gain.gain.setValueAtTime(0, t0);
-      gain.gain.linearRampToValueAtTime(startVol, t0 + 1.2);
+      /* v2.3.1595: direct value + deferred ramp — see the zone-music note in
+         startZoneAmbient.  Scheduling against the frozen clock left the
+         session track running at gain zero after a tab-return. */
+      gain.gain.value = 0;
+      self._whenRunning(function () {
+        try {
+          var tr = self.ctx.currentTime;
+          gain.gain.cancelScheduledValues(tr);
+          gain.gain.setValueAtTime(0, tr);
+          gain.gain.linearRampToValueAtTime(startVol, tr + 1.2);
+        } catch (e) { try { gain.gain.value = startVol; } catch (_e) {} }
+      });
       src.connect(gain);
       gain.connect(self._out());
       /* If iOS kills the source while backgrounded, drop the ref so
@@ -2399,6 +2423,12 @@ BT_AUDIO._teardownGlobalMusic = function () {
   var src = this._globalMusicSource;
   this._globalMusicSource = null;
   this._globalMusicGain = null;
+  /* v2.3.1595: also clear the in-flight guard.  If the page froze mid-fetch
+     that promise may never settle, leaving _globalMusicStarting true forever —
+     and startGlobalMusic early-returns on it, so the session track could never
+     be rebuilt again no matter how many times the player returned.  The buffer
+     is cached separately, so a redundant refetch costs nothing. */
+  this._globalMusicStarting = false;
   if (src) {
     /* Detach onended first: it would otherwise fire during stop() and null
        out the refs of whatever source has since replaced this one. */

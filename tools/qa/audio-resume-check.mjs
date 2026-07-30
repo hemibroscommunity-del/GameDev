@@ -45,6 +45,7 @@ const ck = (l, got, want) => { const ok = String(got) === String(want); if (!ok)
 function makeAudio(opts = {}) {
   const started = [];
   const listeners = [];
+  const mkGain = () => ({ gain: { value: 1, _sched: null, cancelScheduledValues() {}, setValueAtTime(v) { this._sched = v; }, linearRampToValueAtTime(v) { this._ramped = v; }, exponentialRampToValueAtTime(v) { this._target = v; } }, connect() {} });
   const ctx = {
     state: opts.state || 'running',
     currentTime: 0,
@@ -52,7 +53,7 @@ function makeAudio(opts = {}) {
     removeEventListener(t, fn) { const i = listeners.indexOf(fn); if (i >= 0) listeners.splice(i, 1); },
     _setState(v) { this.state = v; listeners.slice().forEach((f) => f()); },
     resume() { if (opts.refuseResume) return Promise.reject(new Error('nope')); this._setState('running'); return Promise.resolve(); },
-    createGain: () => ({ gain: { setValueAtTime() {}, linearRampToValueAtTime(v) { this._v = v; }, cancelScheduledValues() {}, value: 0 } , connect() {} }),
+    createGain: () => mkGain(),
     createBufferSource: () => {
       const s = { buffer: null, loop: false, onended: null, _stopped: false,
         connect() {}, start(when, off) { s._offset = off; started.push(s); }, stop() { s._stopped = true; if (s.onended) s.onended(); } };
@@ -113,13 +114,13 @@ function makeAudio(opts = {}) {
   A._currentZoneAmbient = 'town';       /* town has a track */
   A._zoneMusicSource = null;            /* ...but the ref is momentarily null */
   A.startGlobalMusic();
-  ck('in a scored zone: session track starts silent', started[0].__gain ?? A._globalMusicGain.gain._v, 0);
+  ck('in a scored zone: session track starts silent', A._globalMusicGain.gain._ramped, 0);
 }
 {
   const { A, started } = makeAudio();
   A._currentZoneAmbient = 'hollows';    /* no track for this zone */
   A.startGlobalMusic();
-  ck('in an unscored zone: session track starts audible', A._globalMusicGain.gain._v, 0.22);
+  ck('in an unscored zone: session track starts audible', A._globalMusicGain.gain._ramped, 0.22);
   void started;
 }
 
@@ -186,6 +187,31 @@ function makeAudio(opts = {}) {
   A._ensureAudible();
   ck('healthy bus is left alone', A._master.gain._target, null);
   void before;
+}
+
+// ── 10. A rebuild must not leave the track playing at gain ZERO ─────────
+//   The v2.3.1594 fix rebuilt the sources but scheduled their fade-in ramps
+//   against ctx.currentTime, which is FROZEN during exactly that rebuild.
+{
+  const { A, ctx, started } = makeAudio({ state: 'interrupted', refuseResume: true });
+  A._currentZoneAmbient = 'hollows';        /* unscored: session track audible */
+  A.startGlobalMusic();
+  ck('asleep: a source was created', started.length, 1);
+  ck('asleep: gain held at 0, ramp NOT scheduled against a frozen clock',
+    A._globalMusicGain.gain.value === 0 && A._globalMusicGain.gain._ramped === undefined, true);
+  ctx._setState('running');
+  ck('on wake: the ramp finally runs, to full volume',
+    A._globalMusicGain.gain._ramped, 0.22);
+}
+
+// ── 11. A frozen mid-fetch must not wedge the session track forever ────
+{
+  const { A, started } = makeAudio();
+  A._globalMusicStarting = true;            /* fetch in flight when we froze */
+  A._globalMusicBuffer = { duration: 100 };
+  A.resumeFromBackground(true);
+  ck('stuck in-flight guard is cleared by teardown', A._globalMusicStarting, false);
+  ck('session track rebuilt despite the stuck guard', started.length, 1);
 }
 
 console.log(fail ? `\n${fail} FAILED` : '\nall pass');
