@@ -82,7 +82,12 @@ function makeAudio(opts = {}) {
   const dead = A._globalMusicSource;
   dead.onended = null;             /* iOS killed it silently — no callback */
   ctx.state = 'suspended';         /* which is what a backgrounding looks like */
-  A.resumeFromBackground();
+  A._silent = true;                /* a dead source produces no output */
+  A.resumeFromBackground(true);
+  /* v2.3.1601: resumeFromBackground no longer tears anything down — a silently
+     killed source still LOOKS present, so it is the watchdog's silence
+     detection that catches it, within ~3s. */
+  A._audioHealthCheck(); A._audioHealthCheck(); A._audioHealthCheck();
   ck('after silent kill + resume: a NEW source is running', started.length, 2);
   ck('after silent kill + resume: ref points at the new source',
     A._globalMusicSource !== dead && !!A._globalMusicSource, true);
@@ -94,6 +99,7 @@ function makeAudio(opts = {}) {
 {
   const { A, started } = makeAudio();
   A._currentZoneAmbient = 'town';  /* standing in a scored zone, music healthy */
+  A._zoneMusicSource = {};         /* v2.3.1601: and its track really is playing */
   A.startGlobalMusic();
   const first = A._globalMusicSource;
   A.resumeFromBackground();        /* ctx still 'running' — focus/pageshow */
@@ -156,8 +162,11 @@ function makeAudio(opts = {}) {
   ctx.state = 'interrupted';              /* NOT 'suspended' — the whole bug */
   A.resumeFromBackground(true);
   ck('interrupted: context is woken', ctx.state, 'running');
+  /* v2.3.1601: waking is resumeFromBackground's whole job now; repairing the
+     dead sources belongs to the watchdog, which hears the silence. */
+  A._silent = true;
+  A._audioHealthCheck(); A._audioHealthCheck(); A._audioHealthCheck();
   ck('interrupted: session track rebuilt', started.length, 2);
-  ck('interrupted: zone track re-kicked', A._zoneRekicks, 1);
 }
 
 // ── 7. The `hard` flag: a real hide/show rebuilds, a bare focus does not ──
@@ -165,12 +174,15 @@ function makeAudio(opts = {}) {
   const { A, started } = makeAudio();       /* ctx healthy throughout */
   A._currentZoneAmbient = 'town';
   A.startGlobalMusic();
+  A._zoneMusicSource = {};                  /* zone track playing fine */
   A.resumeFromBackground(false);            /* window focus */
   ck('soft resume: no rebuild', started.length, 1);
   ck('soft resume: zone song not restarted', A._zoneRekicks, 0);
+  /* v2.3.1601: `hard` no longer authorises destruction.  Tearing healthy audio
+     down on every visibilitychange WAS the quick-tab-switch regression. */
   A.resumeFromBackground(true);             /* visibilitychange / pageshow */
-  ck('hard resume: rebuilds even though ctx reads healthy', started.length, 2);
-  ck('hard resume: zone song re-kicked', A._zoneRekicks, 1);
+  ck('hard resume: healthy audio left alone', started.length, 1);
+  ck('hard resume: zone song not restarted either', A._zoneRekicks, 0);
 }
 
 // ── 8. fadeIn must not schedule against a FROZEN clock ──────────────────
@@ -217,8 +229,11 @@ function makeAudio(opts = {}) {
   const { A, started } = makeAudio();
   A._globalMusicStarting = true;            /* fetch in flight when we froze */
   A._globalMusicBuffer = { duration: 100 };
+  /* v2.3.1601: resumeFromBackground no longer tears down, so the stuck guard is
+     cleared by the v2.3.1599 staleness expiry in the watchdog instead. */
+  A._globalMusicStartingAt = Date.now() - 9000;
   A.resumeFromBackground(true);
-  ck('stuck in-flight guard is cleared by teardown', A._globalMusicStarting, false);
+  ck('stuck in-flight guard is cleared by staleness expiry', A._globalMusicStarting, false);
   ck('session track rebuilt despite the stuck guard', started.length, 1);
 }
 
@@ -415,6 +430,52 @@ function makeAudio(opts = {}) {
   A.init = function () { rebuilt++; };
   for (let i = 0; i < 60; i++) A._audioHealthCheck();
   ck('60s healthy: never rebuilt', rebuilt, 0);
+}
+
+// ── 26. A QUICK tab switch must not destroy healthy audio ──────────────
+//   The regression: `hard` is true for every visibilitychange, and it used to
+//   authorise a full teardown + restart even when iOS had done nothing.
+{
+  const { A, started } = makeAudio();          /* ctx healthy throughout */
+  A._currentZoneAmbient = 'town';
+  A.startGlobalMusic();
+  const src = A._globalMusicSource;
+  let zoneRestarts = 0;
+  A.startZoneAmbient = function () { zoneRestarts++; };
+  A._zoneMusicSource = {};                     /* zone track playing fine */
+  A._silent = false;                           /* and audibly so */
+  A.resumeFromBackground(true);                /* quick switch back */
+  ck('quick switch: session track NOT torn down', A._globalMusicSource === src, true);
+  ck('quick switch: no extra source started', started.length, 1);
+  ck('quick switch: zone song NOT restarted', zoneRestarts, 0);
+}
+
+// ── 27. ...but a genuinely dead graph is still repaired ────────────────
+{
+  const { A, started } = makeAudio();
+  A._currentZoneAmbient = 'hollows';
+  A.startGlobalMusic();
+  A._globalMusicSource = null;                 /* really died */
+  A.resumeFromBackground(true);
+  ck('dead source: repaired on the way back', started.length, 2);
+}
+
+// ── 28. A fading master must never read as silence ─────────────────────
+//   fadeIn starts at 0.001, which quantises to exactly 128 in the analyser's
+//   8-bit data — indistinguishable from true silence. Judging during a fade
+//   made the watchdog rebuild, which re-faded, which looked silent again.
+{
+  /* the REAL _masterIsSilent, not the harness stub — build it its own object */
+  const mkAnalyser = () => ({ fftSize: 256, getByteTimeDomainData(buf) { buf.fill(128); } });
+  const S = eval(`({\n${body}\n})`);
+  S.ctx = { currentTime: 0, createAnalyser: mkAnalyser };
+  S._master = { connect() {} };
+  S._fadeUntil = 0;
+  ck('all-128 bus with no fade: correctly reads as silence', S._masterIsSilent(), true);
+  S._fadeUntil = 1;                              /* a fade is in flight */
+  ck('same bus mid-fade: NOT judged as silence', S._masterIsSilent(), false);
+  S.ctx.currentTime = 2;                         /* fade has finished */
+  ck('after the fade ends: judged again', S._masterIsSilent(), true);
 }
 
 console.log(fail ? `\n${fail} FAILED` : '\nall pass');

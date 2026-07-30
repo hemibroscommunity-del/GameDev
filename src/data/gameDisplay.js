@@ -1654,6 +1654,15 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
   _masterIsSilent: function _masterIsSilent() {
     var a = this._ensureAnalyser();
     if (!a || !this._analyserBuf) return false;
+    /* v2.3.1601: a master bus mid-FADE is not evidence of a dead graph.
+       fadeIn starts at 0.001, and getByteTimeDomainData is 8-bit — 0.001
+       amplitude quantises to exactly 128, the same value true silence gives.
+       So a perfectly healthy fade-in read as "provable silence", the watchdog
+       rebuilt on it, and the rebuild called fadeIn again: a loop that could
+       keep the game silent indefinitely.  Never judge during a fade. */
+    try {
+      if (this._fadeUntil && this.ctx && this.ctx.currentTime < this._fadeUntil) return false;
+    } catch (e) {}
     try {
       a.getByteTimeDomainData(this._analyserBuf);
       for (var i = 0; i < this._analyserBuf.length; i++) {
@@ -2664,41 +2673,33 @@ BT_AUDIO._teardownGlobalMusic = function () {
    which is why focus stays soft and cannot restart the zone song. */
 BT_AUDIO.resumeFromBackground = function (hard) {
   if (!this.ctx) return;
-  /* v2.3.1593: capture this BEFORE resuming.  A suspended context is the only
-     state in which iOS silently stops our sources, so it is also the only
-     state that justifies rebuilding them — and this handler is wired to
-     `focus` and `pageshow` as well as visibilitychange, which fire routinely
-     while audio is perfectly healthy.  Rebuilding unconditionally (what the
-     zone track did) restarted the zone song from the top on every window
-     focus. */
-  /* v2.3.1594: was `=== 'suspended'`, which on iOS is exactly the check that
-     misses an INTERRUPTED context — so the rebuild below never ran on the one
-     platform that needs it.  Anything not 'running' counts as asleep. */
-  var wasSuspended = !this._ctxLive() || !!hard;
-  if (wasSuspended) {
+  /* v2.3.1601: THE WATCHDOG IS THE ONLY REPAIRMAN NOW.
+     This used to tear the audio down and rebuild it on every visibilitychange,
+     because `hard` is true for all of them.  On a QUICK tab switch — where iOS
+     did nothing at all and the audio was perfectly healthy — that meant
+     dipping the master to 0.001 via fadeIn, stopping a working session track,
+     and restarting a working zone track, purely on the assumption that
+     something must have broken.  Nothing had.
+     Worse, it could sustain itself: a master sitting at 0.001 reads as EXACTLY
+     the silence midpoint through the analyser's 8-bit time-domain data, so the
+     watchdog saw "provable silence", rebuilt, and called fadeIn again.
+     So this no longer repairs anything.  It wakes the context — idempotent and
+     safe — and runs one health check.  If audio is fine, nothing is touched.
+     If it is genuinely dead, the watchdog notices within ~3s by LISTENING,
+     which is the one method that does not have to guess what iOS did.
+     `hard` now only distinguishes "the page really went away" for the fade;
+     it no longer authorises destruction. */
+  var wasAsleep = !this._ctxLive();
+  if (wasAsleep) {
     this._wakeCtx();
-    /* v2.3.786: ease back in after a background resume (same pop as the
-       first-gesture case, just mid-session). */
+    /* v2.3.786: ease back in after a real resume.  Only when the context was
+       actually asleep — fading a healthy bus was half of the bug above. */
     this.fadeIn(0.8);
   }
-  /* v2.3.1577: iOS can implicitly stop a BufferSource during a long
-     backgrounding, and ctx.resume() does not restart it — the same reason
-     the zone track is re-kicked below.  onended clears the ref, so this
-     starts a fresh one only when the old one really died.
-     v2.3.1593: ...and when onended did NOT fire, the teardown above forces
-     it.  startGlobalMusic resumes at position, so this costs continuity
-     nothing. */
-  if (wasSuspended) this._teardownGlobalMusic();
-  this.startGlobalMusic();
-  if (!wasSuspended) return;
-  var zone = this._currentZoneAmbient;
-  if (!zone) return;
-  /* startZoneAmbient early-returns when _currentZoneAmbient already
-     matches the requested zone; clear the flag so it actually
-     re-runs and gets us a fresh BufferSource. */
-  this._currentZoneAmbient = null;
-  try { this.startZoneAmbient(zone); } catch (e) {}
+  void hard;
+  try { this._audioHealthCheck(); } catch (e) {}
 };
+
 BT_AUDIO.play = function (key, opts) {
   if (this.muted || !this.ctx) return null;
   /* v2.3.130: iOS Safari suspends the AudioContext on tab-switch,
