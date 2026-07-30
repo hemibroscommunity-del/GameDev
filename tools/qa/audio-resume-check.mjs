@@ -35,7 +35,7 @@ function grabProp(name) {
   return SRC.slice(i, SRC.indexOf('\n  },', i) + 4);
 }
 const body = [
-  ...['_teardownGlobalMusic', 'resumeFromBackground', 'startGlobalMusic'].map(grab),
+  ...['_teardownGlobalMusic', 'resumeFromBackground', '_rebuildSources', 'startGlobalMusic'].map(grab),
   ...['_ctxLive', '_wakeCtx', '_whenRunning', 'fadeIn', '_ensureAudible',
       '_ensureAnalyser', '_masterIsSilent', '_audioHealthCheck', '_rebuildContext',
       '_ensureAnalyser', '_masterIsSilent', '_audioHealthCheck', '_rebuildContext'].map(grabProp),
@@ -213,12 +213,14 @@ function makeAudio(opts = {}) {
   const { A, ctx, started } = makeAudio({ state: 'interrupted', refuseResume: true });
   A._currentZoneAmbient = 'hollows';        /* unscored: session track audible */
   A.startGlobalMusic();
-  ck('asleep: a source was created', started.length, 1);
-  ck('asleep: gain held at 0, ramp NOT scheduled against a frozen clock',
-    A._globalMusicGain.gain.value === 0 && A._globalMusicGain.gain._ramped === undefined, true);
+  /* v2.3.1603: nothing is BUILT while the context is asleep.  A BufferSource
+     created and started against a suspended or interrupted context is the
+     unreliable case — it was the "playing, inaudibly" state.  Construction now
+     waits for the context to actually run. */
+  ck('asleep: no source built on a dead context', started.length, 0);
   ctx._setState('running');
-  ck('on wake: the ramp finally runs, to full volume',
-    A._globalMusicGain.gain._ramped, 0.22);
+  ck('on wake: the source is built', started.length, 1);
+  ck('on wake: and ramps to full volume', A._globalMusicGain.gain._ramped, 0.22);
 }
 
 // ── 11. A frozen mid-fetch must not wedge the session track forever ────

@@ -2175,6 +2175,14 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
          SAME url.  It compares urls, so racing starts on one zone all pass. */
       if (self._zoneMusicUrl !== trackUrl) { self._zoneMusicStarting = false; return; }
       self._zoneMusicStarting = false;
+      /* v2.3.1603: never build a source on a context that is not running.  A
+         BufferSource created and started against a suspended or interrupted
+         context is the unreliable case that leaves music "playing" inaudibly;
+         _whenRunning defers to the statechange after the player's first touch,
+         which is the moment iOS actually honours the wake.  The url re-check
+         inside guards a zone change while we waited. */
+      self._whenRunning(function () {
+      if (self._zoneMusicUrl !== trackUrl) return;
       try {
         /* v2.3.1597: LAST-DITCH ANTI-STACK.  Whatever raced to get here, only
            one zone source may be audible: stop whatever is already playing
@@ -2232,6 +2240,7 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
         self._zoneMusicSource = src;
         self._zoneMusicGain = gain;
       } catch (e) {}
+      });
     };
     if (self._zoneMusicBuffers && self._zoneMusicBuffers[trackUrl]) {
       self._touchZoneMusic(trackUrl);   /* a cache HIT is a use — keep it warm */
@@ -2555,8 +2564,12 @@ BT_AUDIO.startGlobalMusic = function () {
     /* Re-check: the fetch is async and a background-resume may have started
        a source while it was in flight. */
     if (self._globalMusicSource || !self.ctx) return;
-    try {
-      self._wakeCtx();     /* v2.3.1594: 'interrupted' counts too */
+    self._wakeCtx();
+    /* v2.3.1603: same invariant as the zone track — only build on a live
+       context.  Re-checked inside because the wait can be arbitrarily long. */
+    self._whenRunning(function () {
+      if (self._globalMusicSource || !self.ctx) return;
+      try {
       var src = self.ctx.createBufferSource();
       var gain = self.ctx.createGain();
       src.buffer = buf;
@@ -2606,7 +2619,8 @@ BT_AUDIO.startGlobalMusic = function () {
       src.start(0, offset);
       self._globalMusicSource = src;
       self._globalMusicGain = gain;
-    } catch (e) {}
+      } catch (e) {}
+    });
   };
   if (this._globalMusicBuffer) return play(this._globalMusicBuffer);
   this._globalMusicStarting = true;
@@ -2747,14 +2761,33 @@ BT_AUDIO.resumeFromBackground = function (hard) {
      `hard` is true only for visibilitychange and pageshow — a bare window focus
      still does nothing, so ordinary desktop clicking about costs nothing. */
   if (hard) {
-    this._teardownGlobalMusic();
-    var z = this._currentZoneAmbient;
-    if (z && this.ZONE_MUSIC && this.ZONE_MUSIC[z]) {
-      this._currentZoneAmbient = null;          /* defeat the same-zone early-return */
-      try { this.startZoneAmbient(z); } catch (e) {}
-    }
+    /* v2.3.1603: DEFER THE REBUILD UNTIL THE CONTEXT IS ACTUALLY RUNNING.
+       On a quick switch iOS refuses resume() outside a user gesture, so this
+       used to tear both tracks down and immediately build their replacements
+       on a context that was still asleep — and a BufferSource created and
+       started against a suspended context is exactly the unreliable case.  The
+       old sources were gone, the new ones never sounded, and nothing rebuilt
+       again until something else woke the context.
+       _whenRunning fires immediately when the context is live and otherwise on
+       the statechange that follows the player's first touch, so the rebuild now
+       happens at the one moment it can succeed. */
+    var self = this;
+    this._whenRunning(function () { self._rebuildSources(); });
   }
   try { this._audioHealthCheck(); } catch (e) {}
+};
+
+/* v2.3.1603: the single rebuild-the-sources step, extracted so both the resume
+   path and the watchdog use identical logic.  Assumes a running context —
+   every caller goes through _whenRunning or checks _ctxLive first. */
+BT_AUDIO._rebuildSources = function () {
+  this._teardownGlobalMusic();
+  var z = this._currentZoneAmbient;
+  if (z && this.ZONE_MUSIC && this.ZONE_MUSIC[z]) {
+    this._currentZoneAmbient = null;            /* defeat the same-zone early-return */
+    try { this.startZoneAmbient(z); } catch (e) {}
+  }
+  try { this.startGlobalMusic(); } catch (e) {}
 };
 
 BT_AUDIO.play = function (key, opts) {
