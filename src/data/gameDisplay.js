@@ -1612,6 +1612,108 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
      able to strand it at 0.001 with no path back — silent game, reload the
      only cure.  Cheap enough to call from the SFX path: it no-ops unless the
      context is live, the bus is genuinely down, and no fade is in flight. */
+  /* ═══ v2.3.1596: STOP GUESSING, LISTEN ═══════════════════════════════════
+     Every fix from v2.3.1593 to v2.3.1595 was event-driven: catch
+     visibilitychange / pageshow / a tap, decide from ctx.state what iOS did to
+     us, act.  The owner's report killed that approach outright —
+
+       "if you quickly return to the tab the music and audio won't work, but
+        if you wait at least 30 seconds it'll resume upon touch"
+
+     — because on a QUICK return iOS does not suspend the context at all.  It
+     stays 'running' with its output detached: the sources are dead, but every
+     state check says healthy, and the tap handler is gated on
+     `state !== 'running'` so touching deliberately did nothing.  Only after
+     ~30s does iOS actually suspend, which is the one case all that machinery
+     could see.  No amount of state-reading fixes the quick case, because the
+     state is a lie.
+
+     So: tap the master bus with an AnalyserNode and ask the only question that
+     cannot lie — is sound actually coming out?  If music should be audible and
+     the bus reads pure digital silence for several seconds running, the graph
+     is dead whatever ctx.state claims, and we rebuild.
+
+     An analyser is a pure tap (nothing connects to its output), fftSize 256,
+     read once a second.  Negligible cost, and it converges instead of
+     depending on catching exactly the right event at exactly the right moment
+     — which is what has failed four times. */
+  _ensureAnalyser: function _ensureAnalyser() {
+    if (this._analyser || !this.ctx || !this._master) return this._analyser;
+    try {
+      var a = this.ctx.createAnalyser();
+      a.fftSize = 256;
+      this._master.connect(a);      /* tap only — no onward connection */
+      this._analyser = a;
+      this._analyserBuf = new Uint8Array(a.fftSize);
+    } catch (e) {}
+    return this._analyser;
+  },
+  /* True only for PROVABLE silence: every sample sitting exactly on the 128
+     midpoint.  Real music never does that, so this cannot false-positive on
+     a quiet passage. */
+  _masterIsSilent: function _masterIsSilent() {
+    var a = this._ensureAnalyser();
+    if (!a || !this._analyserBuf) return false;
+    try {
+      a.getByteTimeDomainData(this._analyserBuf);
+      for (var i = 0; i < this._analyserBuf.length; i++) {
+        if (this._analyserBuf[i] !== 128) return false;
+      }
+      return true;
+    } catch (e) { return false; }
+  },
+  /* One convergence step.  Safe to call as often as you like — every branch
+     is idempotent, and it is also what a touch now runs (a tap is just an
+     extra opportunity to converge, not a special code path). */
+  _audioHealthCheck: function _audioHealthCheck() {
+    if (!this.ctx || this.muted) return;
+    /* Never fight iOS while we are actually backgrounded — resuming there is
+       refused anyway and would just burn the retry. */
+    if (typeof document !== 'undefined' && document.hidden) { this._silentTicks = 0; return; }
+    if (!this._ctxLive()) {
+      this._wakeCtx();            /* refused outside a gesture? try again next tick */
+      this._silentTicks = 0;
+      return;
+    }
+    this._ensureAudible();
+    var z = this._currentZoneAmbient;
+    var zoneWants = !!(z && this.ZONE_MUSIC && this.ZONE_MUSIC[z]);
+    if (!zoneWants && !this.GLOBAL_MUSIC) { this._silentTicks = 0; return; }
+    /* Missing sources need no listening — just start them. */
+    if (this.GLOBAL_MUSIC && !this._globalMusicSource && !this._globalMusicStarting) {
+      this.startGlobalMusic();
+    }
+    /* v2.3.1597: _zoneMusicStarting is the whole reason this does not stack.
+       A zone fetch takes a second or two, during which _zoneMusicSource is
+       legitimately null — without the guard this branch fires every tick and
+       every pending start eventually plays. */
+    if (zoneWants && !this._zoneMusicSource && !this._zoneMusicStarting) {
+      this._currentZoneAmbient = null;
+      try { this.startZoneAmbient(z); } catch (e) {}
+    }
+    /* Sources present but nothing coming out = the quick-return case. */
+    if (this._masterIsSilent()) {
+      this._silentTicks = (this._silentTicks || 0) + 1;
+      if (this._silentTicks >= 3) {         /* ~3s of provable silence */
+        this._silentTicks = 0;
+        this._teardownGlobalMusic();
+        this.startGlobalMusic();
+        if (zoneWants) {
+          this._currentZoneAmbient = null;
+          try { this.startZoneAmbient(z); } catch (e) {}
+        }
+      }
+    } else {
+      this._silentTicks = 0;
+    }
+  },
+  startAudioWatchdog: function startAudioWatchdog() {
+    if (this._watchdogTimer || typeof setInterval !== 'function') return;
+    var self = this;
+    this._watchdogTimer = setInterval(function () {
+      try { self._audioHealthCheck(); } catch (e) {}
+    }, 1000);
+  },
   _ensureAudible: function _ensureAudible() {
     if (!this._ctxLive() || !this._master) return;
     try {
@@ -1950,9 +2052,23 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
     var startWithBuffer = function (buf) {
       /* Bail if the user changed zones during the fetch — the
          _zoneMusicUrl != trackUrl guard makes the stale promise a
-         no-op without leaking a source node. */
-      if (self._zoneMusicUrl !== trackUrl) return;
+         no-op without leaking a source node.
+         v2.3.1597: note what this guard does NOT catch — two starts for the
+         SAME url.  It compares urls, so racing starts on one zone all pass. */
+      if (self._zoneMusicUrl !== trackUrl) { self._zoneMusicStarting = false; return; }
+      self._zoneMusicStarting = false;
       try {
+        /* v2.3.1597: LAST-DITCH ANTI-STACK.  Whatever raced to get here, only
+           one zone source may be audible: stop whatever is already playing
+           before taking the slot.  Without this the previous source keeps
+           running with nothing referencing it — unstoppable for the rest of
+           the session, which is what "the town music played 3 times, staggered"
+           actually was. */
+        if (self._zoneMusicSource) {
+          try { self._zoneMusicSource.stop(); } catch (e) {}
+          self._zoneMusicSource = null;
+          self._zoneMusicGain = null;
+        }
         self._wakeCtx();   /* v2.3.1594: 'interrupted' counts too */
         var src = self.ctx.createBufferSource();
         var gain = self.ctx.createGain();
@@ -1966,9 +2082,24 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
            constant beside GLOBAL_MUSIC_VOL, and both were cut to a
            quarter on the owner's call. */
         var TARGET_VOL = self.ZONE_MUSIC_VOL;
-        var t0 = self.ctx.currentTime;
-        gain.gain.setValueAtTime(0, t0);
-        gain.gain.linearRampToValueAtTime(TARGET_VOL, t0 + 0.6);
+        /* v2.3.1595: set the value DIRECTLY, then schedule the ramp only once
+           the clock is moving.  This is the same frozen-clock fault v2.3.1594
+           fixed in fadeIn — and missed here and in startGlobalMusic, which is
+           why music still did not come back on tab-return.  A rebuild happens
+           precisely when the context is suspended or interrupted, so
+           ctx.currentTime is FROZEN: `setValueAtTime(0, t0)` pinned the gain at
+           zero and the ramp to TARGET_VOL was scheduled against a timestamp
+           that had already passed by the time audio resumed.  The source was
+           genuinely playing — at volume zero. */
+        gain.gain.value = 0;
+        self._whenRunning(function () {
+          try {
+            var t0 = self.ctx.currentTime;
+            gain.gain.cancelScheduledValues(t0);
+            gain.gain.setValueAtTime(0, t0);
+            gain.gain.linearRampToValueAtTime(TARGET_VOL, t0 + 0.6);
+          } catch (e) { try { gain.gain.value = TARGET_VOL; } catch (_e) {} }
+        });
         src.connect(gain);
         gain.connect(self._out());
         src.start(0);
@@ -1980,16 +2111,26 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
       self._touchZoneMusic(trackUrl);   /* a cache HIT is a use — keep it warm */
       startWithBuffer(self._zoneMusicBuffers[trackUrl]);
     } else {
+      /* v2.3.1597: mark the start IN FLIGHT.  A zone track is fetched and
+         decoded asynchronously, so _zoneMusicSource stays null for a second or
+         two after the start is requested.  Nothing minded until v2.3.1596 gave
+         this a caller that fires every second: the watchdog saw a null source,
+         concluded the music was missing, and requested another start — once per
+         second for the whole download.  Every one of them then resolved and
+         played, which is the owner's "town music played 3 times, staggered".
+         Global music has had this guard (_globalMusicStarting) since v2.3.1577;
+         zone music simply never had a caller impatient enough to need one. */
+      self._zoneMusicStarting = true;
       try {
         fetch(trackUrl)
           .then(function (r) { return r.ok ? r.arrayBuffer() : Promise.reject(new Error('http ' + r.status)); })
           .then(function (ab) { return self.ctx.decodeAudioData(ab); })
           .then(function (buf) {
             self._rememberZoneMusic(trackUrl, buf);
-            startWithBuffer(buf);
+            startWithBuffer(buf);        /* clears _zoneMusicStarting */
           })
-          .catch(function () { /* fetch / decode failure — silent */ });
-      } catch (e) {}
+          .catch(function () { self._zoneMusicStarting = false; /* fetch / decode failure — silent */ });
+      } catch (e) { self._zoneMusicStarting = false; }
     }
     return;
   }
@@ -2049,6 +2190,11 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
     }
     this._zoneMusicGain = null;
     this._zoneMusicUrl = null;
+    /* v2.3.1597: cancel any pending start.  Nulling _zoneMusicUrl already makes
+       an in-flight startWithBuffer bail (it compares urls), so the flag must
+       clear with it or a zone change during a download would leave it stuck
+       true and the watchdog would never start music again. */
+    this._zoneMusicStarting = false;
   } catch (e) {}
 }), "setCombatIntensity", function setCombatIntensity(inCombat) {
   if (!this._ambientGain || !this.ctx) return;
@@ -2288,7 +2434,6 @@ BT_AUDIO.startGlobalMusic = function () {
       var gain = self.ctx.createGain();
       src.buffer = buf;
       src.loop = true;
-      var t0 = self.ctx.currentTime;
       /* v2.3.1581: start DUCKED if a zone track already owns the music.  This
          path also runs on background-resume, so without the check a resume
          while standing in town would fade the session track up over the top
@@ -2301,8 +2446,18 @@ BT_AUDIO.startGlobalMusic = function () {
       var zoneOwnsMusic = !!(self.ZONE_MUSIC && self._currentZoneAmbient
         && self.ZONE_MUSIC[self._currentZoneAmbient]);
       var startVol = (zoneOwnsMusic || self._globalMusicDucked) ? 0 : self.GLOBAL_MUSIC_VOL;
-      gain.gain.setValueAtTime(0, t0);
-      gain.gain.linearRampToValueAtTime(startVol, t0 + 1.2);
+      /* v2.3.1595: direct value + deferred ramp — see the zone-music note in
+         startZoneAmbient.  Scheduling against the frozen clock left the
+         session track running at gain zero after a tab-return. */
+      gain.gain.value = 0;
+      self._whenRunning(function () {
+        try {
+          var tr = self.ctx.currentTime;
+          gain.gain.cancelScheduledValues(tr);
+          gain.gain.setValueAtTime(0, tr);
+          gain.gain.linearRampToValueAtTime(startVol, tr + 1.2);
+        } catch (e) { try { gain.gain.value = startVol; } catch (_e) {} }
+      });
       src.connect(gain);
       gain.connect(self._out());
       /* If iOS kills the source while backgrounded, drop the ref so
@@ -2379,6 +2534,9 @@ BT_AUDIO.unlock = function () {
      music is playing before the player ever enters the world, and nothing
      restarts it on the way in. */
   this.startGlobalMusic();
+  /* v2.3.1596: from the first gesture on, converge once a second instead of
+     trusting any single event to be delivered. */
+  this.startAudioWatchdog();
 };
 /* v2.3.254: called from the visibilitychange handler in GameApp.jsx
    when the tab returns to foreground.  ctx.resume() alone is not
@@ -2399,6 +2557,12 @@ BT_AUDIO._teardownGlobalMusic = function () {
   var src = this._globalMusicSource;
   this._globalMusicSource = null;
   this._globalMusicGain = null;
+  /* v2.3.1595: also clear the in-flight guard.  If the page froze mid-fetch
+     that promise may never settle, leaving _globalMusicStarting true forever —
+     and startGlobalMusic early-returns on it, so the session track could never
+     be rebuilt again no matter how many times the player returned.  The buffer
+     is cached separately, so a redundant refetch costs nothing. */
+  this._globalMusicStarting = false;
   if (src) {
     /* Detach onended first: it would otherwise fire during stop() and null
        out the refs of whatever source has since replaced this one. */

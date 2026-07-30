@@ -188,11 +188,33 @@ export const GameApp = () => {
        the same check: it is the tap-to-recover path, the player's only way
        back without a reload, and it silently declined to fire on the exact
        platform the retry exists for.  Anything not 'running' now retries. */
+    /* v2.3.1596: NO state gate.  This used to run only when
+       `ctx.state !== 'running'`, which is exactly why a quick tab-return could
+       not be fixed by touching: iOS leaves the context reading 'running' with
+       its output detached, so the one handler that could have recovered it
+       declined to.  A touch is now simply an extra convergence opportunity —
+       _audioHealthCheck is idempotent and cheap, and it decides by LISTENING
+       to the master bus rather than by believing ctx.state.
+       onResume still runs when the state does say asleep, because a real user
+       gesture is the only moment iOS reliably honours resume() (v2.3.780). */
     const onGesture = () => {
-      if (BT_AUDIO && BT_AUDIO.ctx && BT_AUDIO.ctx.state !== 'running') onResume();
+      if (!BT_AUDIO || !BT_AUDIO.ctx) return;
+      if (BT_AUDIO.ctx.state !== 'running') onResume(true);
+      else { try { BT_AUDIO._audioHealthCheck(); } catch (e) {} }
     };
-    document.addEventListener('pointerdown', onGesture, { passive: true });
-    document.addEventListener('touchstart', onGesture, { passive: true });
+    /* v2.3.1596: CAPTURE phase, and touchend as well as touchstart.
+       Confirmed on the owner's iPhone: iOS refuses ctx.resume() outside a user
+       gesture (v2.3.780), so after a tab-return the game is silent until the
+       first touch — this handler IS the recovery, not a backstop.  It was
+       registered on document in the BUBBLE phase, so any canvas or overlay
+       handler calling stopPropagation would swallow the one event that
+       restores audio.  Capture runs before any of them can.  The one-shot
+       `unlock` listeners above already use capture for the same reason.
+       touchend is added because a touch that turns into a drag (the joystick,
+       a swipe) can have its touchstart consumed by the input layer. */
+    document.addEventListener('pointerdown', onGesture, { capture: true, passive: true });
+    document.addEventListener('touchstart', onGesture, { capture: true, passive: true });
+    document.addEventListener('touchend', onGesture, { capture: true, passive: true });
     /* pageshow fires on iOS Safari when restoring from the bfcache
        (back/forward navigation or returning from a backgrounded tab
        that the browser unloaded).  visibilitychange does not always
@@ -208,8 +230,9 @@ export const GameApp = () => {
     window.addEventListener('focus', onFocus);
     return () => {
       document.removeEventListener('visibilitychange', onVis);
-      document.removeEventListener('pointerdown', onGesture);
-      document.removeEventListener('touchstart', onGesture);
+      document.removeEventListener('pointerdown', onGesture, { capture: true });
+      document.removeEventListener('touchstart', onGesture, { capture: true });
+      document.removeEventListener('touchend', onGesture, { capture: true });
       window.removeEventListener('pageshow', onPageShow);
       window.removeEventListener('focus', onFocus);
     };

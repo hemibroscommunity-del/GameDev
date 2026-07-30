@@ -36,15 +36,19 @@ function grabProp(name) {
 }
 const body = [
   ...['_teardownGlobalMusic', 'resumeFromBackground', 'startGlobalMusic'].map(grab),
-  ...['_ctxLive', '_wakeCtx', '_whenRunning', 'fadeIn', '_ensureAudible'].map(grabProp),
+  ...['_ctxLive', '_wakeCtx', '_whenRunning', 'fadeIn', '_ensureAudible',
+      '_ensureAnalyser', '_masterIsSilent', '_audioHealthCheck',
+      '_ensureAnalyser', '_masterIsSilent', '_audioHealthCheck'].map(grabProp),
 ].join(',\n');
 
+globalThis.document = { hidden: false };
 let fail = 0;
 const ck = (l, got, want) => { const ok = String(got) === String(want); if (!ok) fail++; console.log(`${ok ? 'PASS' : 'FAIL'}  ${l}: ${got}${ok ? '' : `  (want ${want})`}`); };
 
 function makeAudio(opts = {}) {
   const started = [];
   const listeners = [];
+  const mkGain = () => ({ gain: { value: 1, _sched: null, cancelScheduledValues() {}, setValueAtTime(v) { this._sched = v; }, linearRampToValueAtTime(v) { this._ramped = v; }, exponentialRampToValueAtTime(v) { this._target = v; } }, connect() {} });
   const ctx = {
     state: opts.state || 'running',
     currentTime: 0,
@@ -52,14 +56,19 @@ function makeAudio(opts = {}) {
     removeEventListener(t, fn) { const i = listeners.indexOf(fn); if (i >= 0) listeners.splice(i, 1); },
     _setState(v) { this.state = v; listeners.slice().forEach((f) => f()); },
     resume() { if (opts.refuseResume) return Promise.reject(new Error('nope')); this._setState('running'); return Promise.resolve(); },
-    createGain: () => ({ gain: { setValueAtTime() {}, linearRampToValueAtTime(v) { this._v = v; }, cancelScheduledValues() {}, value: 0 } , connect() {} }),
+    createGain: () => mkGain(),
     createBufferSource: () => {
       const s = { buffer: null, loop: false, onended: null, _stopped: false,
         connect() {}, start(when, off) { s._offset = off; started.push(s); }, stop() { s._stopped = true; if (s.onended) s.onended(); } };
       return s;
     },
   };
-  const A = eval(`({\n${body},\n  GLOBAL_MUSIC: '/audio/music/login-theme.mp3',\n  GLOBAL_MUSIC_VOL: 0.22,\n  ZONE_MUSIC: { town: '/x.mp3' },\n  ctx: null, _globalMusicSource: null, _globalMusicGain: null,\n  _globalMusicBuffer: { duration: 100 }, _globalMusicStarting: false,\n  _globalMusicDucked: false, _currentZoneAmbient: null, _zoneMusicSource: null,\n  _out() { return {}; }, _zoneRekicks: 0,\n  _master: { gain: { value: 1, _ramps: [], cancelScheduledValues() {}, setValueAtTime(v) { this.value = v; }, exponentialRampToValueAtTime(v) { this._target = v; } } },\n  startZoneAmbient() { this._zoneRekicks++; },\n})`);
+  const A = eval(`({\n${body},\n  GLOBAL_MUSIC: '/audio/music/login-theme.mp3',\n  GLOBAL_MUSIC_VOL: 0.22,\n  ZONE_MUSIC: { town: '/x.mp3' },\n  ctx: null, _globalMusicSource: null, _globalMusicGain: null,\n  _globalMusicBuffer: { duration: 100 }, _globalMusicStarting: false,\n  _globalMusicDucked: false, _currentZoneAmbient: null, _zoneMusicSource: null,\n  _out() { return {}; }, _zoneRekicks: 0,
+  _silent: false,
+  /* the harness answers the analyser question directly — what matters is
+     that _audioHealthCheck ACTS on provable silence, not how the bytes
+     are read (that part is a browser API with no node equivalent). */
+  _masterIsSilent() { return !!this._silent; },\n  _master: { gain: { value: 1, _ramps: [], cancelScheduledValues() {}, setValueAtTime(v) { this.value = v; }, exponentialRampToValueAtTime(v) { this._target = v; } } },\n  startZoneAmbient() { this._zoneRekicks++; },\n})`);
   A.ctx = ctx;
   Object.assign(A, opts.state ? {} : {});
   return { A, ctx, started };
@@ -113,13 +122,13 @@ function makeAudio(opts = {}) {
   A._currentZoneAmbient = 'town';       /* town has a track */
   A._zoneMusicSource = null;            /* ...but the ref is momentarily null */
   A.startGlobalMusic();
-  ck('in a scored zone: session track starts silent', started[0].__gain ?? A._globalMusicGain.gain._v, 0);
+  ck('in a scored zone: session track starts silent', A._globalMusicGain.gain._ramped, 0);
 }
 {
   const { A, started } = makeAudio();
   A._currentZoneAmbient = 'hollows';    /* no track for this zone */
   A.startGlobalMusic();
-  ck('in an unscored zone: session track starts audible', A._globalMusicGain.gain._v, 0.22);
+  ck('in an unscored zone: session track starts audible', A._globalMusicGain.gain._ramped, 0.22);
   void started;
 }
 
@@ -186,6 +195,128 @@ function makeAudio(opts = {}) {
   A._ensureAudible();
   ck('healthy bus is left alone', A._master.gain._target, null);
   void before;
+}
+
+// ── 10. A rebuild must not leave the track playing at gain ZERO ─────────
+//   The v2.3.1594 fix rebuilt the sources but scheduled their fade-in ramps
+//   against ctx.currentTime, which is FROZEN during exactly that rebuild.
+{
+  const { A, ctx, started } = makeAudio({ state: 'interrupted', refuseResume: true });
+  A._currentZoneAmbient = 'hollows';        /* unscored: session track audible */
+  A.startGlobalMusic();
+  ck('asleep: a source was created', started.length, 1);
+  ck('asleep: gain held at 0, ramp NOT scheduled against a frozen clock',
+    A._globalMusicGain.gain.value === 0 && A._globalMusicGain.gain._ramped === undefined, true);
+  ctx._setState('running');
+  ck('on wake: the ramp finally runs, to full volume',
+    A._globalMusicGain.gain._ramped, 0.22);
+}
+
+// ── 11. A frozen mid-fetch must not wedge the session track forever ────
+{
+  const { A, started } = makeAudio();
+  A._globalMusicStarting = true;            /* fetch in flight when we froze */
+  A._globalMusicBuffer = { duration: 100 };
+  A.resumeFromBackground(true);
+  ck('stuck in-flight guard is cleared by teardown', A._globalMusicStarting, false);
+  ck('session track rebuilt despite the stuck guard', started.length, 1);
+}
+
+// ── 12. THE QUICK-RETURN CASE: ctx lies, so listen to the bus instead ───
+//   iOS leaves the context 'running' with its output detached. Every state
+//   check says healthy; no sound comes out; touching used to do nothing.
+{
+  const { A, started } = makeAudio();            /* ctx 'running' throughout */
+  A._currentZoneAmbient = 'hollows';
+  A.startGlobalMusic();
+  ck('quick-return setup: one source', started.length, 1);
+  A._silent = true;                              /* bus reads digital silence */
+  A._audioHealthCheck();
+  ck('1s of silence: not yet rebuilt (no twitchy restarts)', started.length, 1);
+  A._audioHealthCheck();
+  A._audioHealthCheck();
+  ck('3s of PROVABLE silence: rebuilt despite ctx saying running', started.length, 2);
+}
+
+// ── 13. Real audio must never trigger a rebuild ────────────────────────
+{
+  const { A, started } = makeAudio();
+  A._currentZoneAmbient = 'hollows';
+  A.startGlobalMusic();
+  A._silent = false;                             /* music genuinely playing */
+  for (let i = 0; i < 10; i++) A._audioHealthCheck();
+  ck('audible bus: never rebuilt across 10s', started.length, 1);
+  ck('silent-tick counter stays clear', A._silentTicks || 0, 0);
+}
+
+// ── 14. A missing source is restarted without waiting to listen ────────
+{
+  const { A, started } = makeAudio();
+  A._currentZoneAmbient = 'hollows';
+  A.startGlobalMusic();
+  A._globalMusicSource = null;                   /* died, onended fired */
+  A._audioHealthCheck();
+  ck('missing source restarted immediately', started.length, 2);
+}
+
+// ── 15. Backgrounded: do not fight iOS while hidden ────────────────────
+{
+  const { A, started } = makeAudio();
+  A._currentZoneAmbient = 'hollows';
+  A.startGlobalMusic();
+  globalThis.document = { hidden: true };
+  A._silent = true;
+  for (let i = 0; i < 5; i++) A._audioHealthCheck();
+  globalThis.document = { hidden: false };
+  ck('hidden: no rebuild attempts', started.length, 1);
+}
+
+// ── 16. A suspended ctx keeps retrying the wake every tick ─────────────
+{
+  const { A, ctx } = makeAudio({ state: 'interrupted', refuseResume: true });
+  let attempts = 0;
+  const realResume = ctx.resume.bind(ctx);
+  ctx.resume = () => { attempts++; return realResume(); };
+  for (let i = 0; i < 4; i++) A._audioHealthCheck();
+  ck('asleep ctx: wake retried every tick, not once', attempts, 4);
+}
+
+// ── 17. THE STACKING BUG: a slow zone fetch must be started ONCE ───────
+//   Reported in the wild: "it played the town music 3 times, staggered".
+//   The watchdog polls every second; a zone fetch takes a second or two;
+//   _zoneMusicSource is legitimately null the whole time.
+{
+  const { A } = makeAudio();
+  A._currentZoneAmbient = 'town';                /* town has a track */
+  A._globalMusicSource = {};                     /* session track already fine */
+  let starts = 0;
+  A.startZoneAmbient = function (z) {
+    starts++;
+    this._currentZoneAmbient = z;
+    this._zoneMusicStarting = true;              /* fetch begins */
+  };
+  for (let i = 0; i < 4; i++) A._audioHealthCheck();   /* 4 seconds of download */
+  ck('slow zone fetch: started exactly once, not once per tick', starts, 1);
+  /* fetch lands */
+  A._zoneMusicStarting = false;
+  A._zoneMusicSource = {};
+  for (let i = 0; i < 3; i++) A._audioHealthCheck();
+  ck('after it lands: no further starts', starts, 1);
+}
+
+// ── 18. A pending start that never lands must not wedge the watchdog ───
+{
+  const { A } = makeAudio();
+  A._currentZoneAmbient = 'town';
+  A._globalMusicSource = {};
+  let starts = 0;
+  A.startZoneAmbient = function (z) { starts++; this._currentZoneAmbient = z; this._zoneMusicStarting = true; };
+  A._audioHealthCheck();
+  ck('one start requested', starts, 1);
+  /* the fetch fails — the catch clears the flag, as the real code does */
+  A._zoneMusicStarting = false;
+  A._audioHealthCheck();
+  ck('after a failed fetch the watchdog retries', starts, 2);
 }
 
 console.log(fail ? `\n${fail} FAILED` : '\nall pass');
