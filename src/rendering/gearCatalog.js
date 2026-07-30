@@ -88,6 +88,19 @@ export function gearInventoryItems() {
 onShirtChange((id) => setEquip('shirt', id === 'none' ? 'none' : 'tshirt'));
 
 export function getEquip(slot) { return _stores[slot] ? _stores[slot].get() : 'none'; }
+/* v2.3.1598: "is the player wearing a piece of armour?" — the test that picks
+   the metallic armor-hit clang over the bare-flesh thud (BT_AUDIO.monsterHitHero).
+   It was written out longhand at five call sites in monsterCombat.js and
+   projectiles.js, and the server-authoritative hit path needed a sixth.  One
+   definition instead, because the subtlety is easy to get wrong when copying:
+   SHIRT IS DELIBERATELY EXCLUDED.  It is in GEAR_SLOTS and is worn by every
+   new player by default (the tshirt above), so including it would make every
+   character permanently "armoured" and the bare-hit sound unreachable. */
+export function isWearingArmor() {
+  return getEquip('chest') !== 'none'
+    || getEquip('legs') !== 'none'
+    || getEquip('shoulders') !== 'none';
+}
 export function setEquip(slot, id) { if (_stores[slot]) _stores[slot].set(id); }
 export function onEquipChange(slot, fn) { return _stores[slot] ? _stores[slot].on(fn) : () => {}; }
 

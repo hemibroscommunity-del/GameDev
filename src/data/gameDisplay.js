@@ -1680,6 +1680,28 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
     var zoneWants = !!(z && this.ZONE_MUSIC && this.ZONE_MUSIC[z]);
     if (!zoneWants && !this.GLOBAL_MUSIC) { this._silentTicks = 0; return; }
     /* Missing sources need no listening — just start them. */
+    /* v2.3.1599: EXPIRE STALE IN-FLIGHT FLAGS before trusting them.
+       The v2.3.1597 guards are cleared only when their fetch promise settles —
+       and a promise on a page iOS has frozen may never settle at all: the
+       request dies at the network layer without rejecting, and queued
+       microtasks can be discarded outright.  A tab backgrounded mid-download
+       therefore left the flag stuck true, and BOTH restart branches below are
+       gated on it, so the watchdog went quiet permanently and only a reload
+       brought audio back.  Intermittent by nature — it depends on whether a
+       fetch happened to be in flight when the tab was switched away, which is
+       exactly why it survived three clean tab-switch tests and then failed.
+       A real fetch+decode of a 2-3 MB track completes in 1-3s, so anything
+       still "in flight" after 8s is not coming back.  Clearing it merely lets
+       the next tick retry; the anti-stacking property is untouched. */
+    var _now = Date.now();
+    if (this._zoneMusicStarting && this._zoneMusicStartingAt
+        && (_now - this._zoneMusicStartingAt) > 8000) {
+      this._zoneMusicStarting = false;
+    }
+    if (this._globalMusicStarting && this._globalMusicStartingAt
+        && (_now - this._globalMusicStartingAt) > 8000) {
+      this._globalMusicStarting = false;
+    }
     if (this.GLOBAL_MUSIC && !this._globalMusicSource && !this._globalMusicStarting) {
       this.startGlobalMusic();
     }
@@ -2121,6 +2143,7 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
          Global music has had this guard (_globalMusicStarting) since v2.3.1577;
          zone music simply never had a caller impatient enough to need one. */
       self._zoneMusicStarting = true;
+      self._zoneMusicStartingAt = Date.now();   /* v2.3.1599: staleness clock */
       try {
         fetch(trackUrl)
           .then(function (r) { return r.ok ? r.arrayBuffer() : Promise.reject(new Error('http ' + r.status)); })
@@ -2483,6 +2506,7 @@ BT_AUDIO.startGlobalMusic = function () {
   };
   if (this._globalMusicBuffer) return play(this._globalMusicBuffer);
   this._globalMusicStarting = true;
+  this._globalMusicStartingAt = Date.now();     /* v2.3.1599: staleness clock */
   try {
     fetch(url).then(function (r) { return r.arrayBuffer(); })
       .then(function (ab) { return self.ctx.decodeAudioData(ab); })

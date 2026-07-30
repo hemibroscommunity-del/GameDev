@@ -319,5 +319,53 @@ function makeAudio(opts = {}) {
   ck('after a failed fetch the watchdog retries', starts, 2);
 }
 
+// ── 19. THE WEDGE: a fetch promise that NEVER settles ──────────────────
+//   iOS freezes the page mid-download; the request dies without rejecting and
+//   queued microtasks can be discarded, so the v2.3.1597 in-flight flag is
+//   never cleared. Both watchdog restart branches are gated on it.
+{
+  const { A } = makeAudio();
+  A._currentZoneAmbient = 'town';
+  A._globalMusicSource = {};
+  let starts = 0;
+  A.startZoneAmbient = function (z) { starts++; this._currentZoneAmbient = z; this._zoneMusicStarting = true; this._zoneMusicStartingAt = Date.now(); };
+  A.startZoneAmbient('town');                    /* fetch begins... and dies */
+  ck('wedge setup: one start, flag left in flight', starts === 1 && A._zoneMusicStarting, true);
+  for (let i = 0; i < 5; i++) A._audioHealthCheck();
+  ck('inside the 8s window: guard still holds (no stacking)', starts, 1);
+  /* pretend 9 seconds passed with the promise never settling */
+  A._zoneMusicStartingAt = Date.now() - 9000;
+  A._audioHealthCheck();
+  ck('past 8s: stale flag expired and the watchdog retries', starts, 2);
+}
+
+// ── 20. Same for the session track ─────────────────────────────────────
+{
+  const { A, started } = makeAudio();
+  A._currentZoneAmbient = 'hollows';
+  A._globalMusicStarting = true;                 /* frozen mid-fetch */
+  A._globalMusicStartingAt = Date.now();
+  A._audioHealthCheck();
+  ck('session track: guard holds inside the window', started.length, 0);
+  A._globalMusicStartingAt = Date.now() - 9000;
+  A._audioHealthCheck();
+  ck('session track: stale guard expires and it starts', started.length, 1);
+}
+
+// ── 21. A flag with no timestamp must not expire instantly ─────────────
+//   Defensive: an older stored state, or a set site that forgot the stamp,
+//   should keep the anti-stacking guard rather than lose it.
+{
+  const { A } = makeAudio();
+  A._currentZoneAmbient = 'town';
+  A._globalMusicSource = {};
+  let starts = 0;
+  A.startZoneAmbient = function () { starts++; };
+  A._zoneMusicStarting = true;
+  A._zoneMusicStartingAt = 0;                    /* no stamp */
+  for (let i = 0; i < 3; i++) A._audioHealthCheck();
+  ck('unstamped flag: guard still respected', starts, 0);
+}
+
 console.log(fail ? `\n${fail} FAILED` : '\nall pass');
 process.exit(fail ? 1 : 0);
