@@ -1452,7 +1452,22 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
      41.9 MB, comfortably inside the budget — a useful counterweight to the
      desert next door. */
   GLOBAL_MUSIC: '/audio/music/login-theme.mp3',
-  GLOBAL_MUSIC_VOL: 0.22,
+  /* v2.3.1590 (owner: "make the music play 75% quieter") — BOTH music
+     volumes cut to a quarter, together, so the session track and the zone
+     tracks keep their existing relationship to each other and to SFX:
+       GLOBAL_MUSIC_VOL  0.22  -> 0.055
+       ZONE_MUSIC_VOL    0.275 -> 0.06875
+     Note this is a 75% cut in GAIN, which is about -12 dB.  Perceived
+     loudness is not linear with gain — the rough rule is that -10 dB reads
+     as "half as loud" — so this lands a little past half, not at a quarter,
+     of the apparent volume.  If the owner wants it to SOUND 75% quieter,
+     that is roughly -20 dB, i.e. another factor of ~2.5 on both numbers.
+     SFX are deliberately untouched: the ask was the music. */
+  GLOBAL_MUSIC_VOL: 0.055,
+  /* v2.3.1590: was a bare `var TARGET_VOL` inside startZoneAmbient, which
+     made the one number the owner actually tunes invisible next to its
+     sibling above.  Promoted to a real constant; startZoneAmbient reads it. */
+  ZONE_MUSIC_VOL: 0.06875,
   /* v2.3.1582: the decoded-buffer cache is BUDGETED, not unbounded.
      An AudioBuffer is raw float32 PCM, so a 2 MB mp3 is ~50 MB of RAM.
      Measured in Chromium at 44.1 kHz stereo: login-theme 34.4 MB, village
@@ -1864,10 +1879,14 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
         var gain = self.ctx.createGain();
         src.buffer = buf;
         src.loop = true;
-        /* Fade in from 0 to 0.275 over 600 ms.  Pairs with the
+        /* Fade in from 0 to ZONE_MUSIC_VOL over 600 ms.  Pairs with the
            600 ms fade-out scheduled by stopAmbient(true) for a
-           soft crossfade across zone boundaries. */
-        var TARGET_VOL = 0.275; /* halved 0.55 → 0.275 so zone music sits as ambient under SFX */
+           soft crossfade across zone boundaries.
+           v2.3.1590: the literal 0.275 (itself halved from 0.55 so zone
+           music sits as ambient under SFX) moved to the ZONE_MUSIC_VOL
+           constant beside GLOBAL_MUSIC_VOL, and both were cut to a
+           quarter on the owner's call. */
+        var TARGET_VOL = self.ZONE_MUSIC_VOL;
         var t0 = self.ctx.currentTime;
         gain.gain.setValueAtTime(0, t0);
         gain.gain.linearRampToValueAtTime(TARGET_VOL, t0 + 0.6);
