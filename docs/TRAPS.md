@@ -197,3 +197,42 @@ the login screen or the idle/jog body goes through that path.
 **Receipt:** v2.3.1532 — the same `W = 256` / `norm = W / tex.width`
 normalisation, and `grep -n 'anchor.set('` over `src/rendering/` as the
 audit that finds every path at once.
+
+## 16. Trusting the session brief's version high-water
+
+**Tempting:** the SessionStart brief prints "version high-water on
+origin/main" and the next free tag — claim it and go. **Wrong:** that
+scan reads COMMIT MESSAGES, and a squash-merged PR whose message states a
+RANGE ("v2.3.1576–1587") hides every individual tag inside it. On
+2026-07-29 the brief reported high-water 1580 while the tree already
+contained 1587, so a parallel session claimed 1576–1580 — every one of
+them a duplicate of #336's range — and only noticed AFTER both merges.
+`grep -rhoE 'v2\.3\.1[0-9]{3}' src/ server/src/ tools/ | sort -t. -k3 -n
+| tail -1` is the honest high-water: the tree, not the log.
+
+`precheck.mjs` gets this RIGHT — it reads the tree and would have failed
+the push. The real hole is TIMING, not tooling: #336 merged after that
+session branched and before it merged, so every local gate it ran was
+honestly green against the base it started from. The lesson is to
+re-check the high-water immediately BEFORE merging, not only before
+branching — precheck's verdict expires the moment anything else lands.
+**Receipt:** v2.3.1588 — the collision itself; #336 vs #337 both
+shipping a v2.3.1579, and both independently diagnosing the same login
+trait-resolution problem because neither could see the other in flight.
+
+## 17. Sharpening art that is about to be minified
+
+**Tempting:** downscaled art looks soft where it is enlarged, and
+downsample-then-sharpen is standard practice — so bake a mild unsharp
+into the smaller frames. **Wrong** once anything else supplies real
+resolution: v2.3.1579 (#336) restored 256px `hi/` art for the portrait,
+which is the only surface that MAGNIFIES traits. The 128px frames are
+consumed solely by the Pixi world path, where traits are MINIFIED, and a
+pre-sharpened texture carries its halos into the downscale as edge crunch
+while buying no detail. Sharpening is a function of the DISPLAY size, so
+it stops being valid the moment a different tier serves the magnifying
+surface. Check who actually consumes the file before baking display
+compensation into it. **Receipt:** v2.3.1588 — `tools/rebake_traits.py`
+`--amount` defaulted back to 0, keeping only the premultiplied-alpha
+correctness fix; the strength sweep is preserved in its docstring as the
+evidence if the `hi/` tier is ever removed.
