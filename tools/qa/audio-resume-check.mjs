@@ -36,9 +36,12 @@ function grabProp(name) {
 }
 const body = [
   ...['_teardownGlobalMusic', 'resumeFromBackground', 'startGlobalMusic'].map(grab),
-  ...['_ctxLive', '_wakeCtx', '_whenRunning', 'fadeIn', '_ensureAudible'].map(grabProp),
+  ...['_ctxLive', '_wakeCtx', '_whenRunning', 'fadeIn', '_ensureAudible',
+      '_ensureAnalyser', '_masterIsSilent', '_audioHealthCheck',
+      '_ensureAnalyser', '_masterIsSilent', '_audioHealthCheck'].map(grabProp),
 ].join(',\n');
 
+globalThis.document = { hidden: false };
 let fail = 0;
 const ck = (l, got, want) => { const ok = String(got) === String(want); if (!ok) fail++; console.log(`${ok ? 'PASS' : 'FAIL'}  ${l}: ${got}${ok ? '' : `  (want ${want})`}`); };
 
@@ -60,7 +63,12 @@ function makeAudio(opts = {}) {
       return s;
     },
   };
-  const A = eval(`({\n${body},\n  GLOBAL_MUSIC: '/audio/music/login-theme.mp3',\n  GLOBAL_MUSIC_VOL: 0.22,\n  ZONE_MUSIC: { town: '/x.mp3' },\n  ctx: null, _globalMusicSource: null, _globalMusicGain: null,\n  _globalMusicBuffer: { duration: 100 }, _globalMusicStarting: false,\n  _globalMusicDucked: false, _currentZoneAmbient: null, _zoneMusicSource: null,\n  _out() { return {}; }, _zoneRekicks: 0,\n  _master: { gain: { value: 1, _ramps: [], cancelScheduledValues() {}, setValueAtTime(v) { this.value = v; }, exponentialRampToValueAtTime(v) { this._target = v; } } },\n  startZoneAmbient() { this._zoneRekicks++; },\n})`);
+  const A = eval(`({\n${body},\n  GLOBAL_MUSIC: '/audio/music/login-theme.mp3',\n  GLOBAL_MUSIC_VOL: 0.22,\n  ZONE_MUSIC: { town: '/x.mp3' },\n  ctx: null, _globalMusicSource: null, _globalMusicGain: null,\n  _globalMusicBuffer: { duration: 100 }, _globalMusicStarting: false,\n  _globalMusicDucked: false, _currentZoneAmbient: null, _zoneMusicSource: null,\n  _out() { return {}; }, _zoneRekicks: 0,
+  _silent: false,
+  /* the harness answers the analyser question directly — what matters is
+     that _audioHealthCheck ACTS on provable silence, not how the bytes
+     are read (that part is a browser API with no node equivalent). */
+  _masterIsSilent() { return !!this._silent; },\n  _master: { gain: { value: 1, _ramps: [], cancelScheduledValues() {}, setValueAtTime(v) { this.value = v; }, exponentialRampToValueAtTime(v) { this._target = v; } } },\n  startZoneAmbient() { this._zoneRekicks++; },\n})`);
   A.ctx = ctx;
   Object.assign(A, opts.state ? {} : {});
   return { A, ctx, started };
@@ -212,6 +220,65 @@ function makeAudio(opts = {}) {
   A.resumeFromBackground(true);
   ck('stuck in-flight guard is cleared by teardown', A._globalMusicStarting, false);
   ck('session track rebuilt despite the stuck guard', started.length, 1);
+}
+
+// ── 12. THE QUICK-RETURN CASE: ctx lies, so listen to the bus instead ───
+//   iOS leaves the context 'running' with its output detached. Every state
+//   check says healthy; no sound comes out; touching used to do nothing.
+{
+  const { A, started } = makeAudio();            /* ctx 'running' throughout */
+  A._currentZoneAmbient = 'hollows';
+  A.startGlobalMusic();
+  ck('quick-return setup: one source', started.length, 1);
+  A._silent = true;                              /* bus reads digital silence */
+  A._audioHealthCheck();
+  ck('1s of silence: not yet rebuilt (no twitchy restarts)', started.length, 1);
+  A._audioHealthCheck();
+  A._audioHealthCheck();
+  ck('3s of PROVABLE silence: rebuilt despite ctx saying running', started.length, 2);
+}
+
+// ── 13. Real audio must never trigger a rebuild ────────────────────────
+{
+  const { A, started } = makeAudio();
+  A._currentZoneAmbient = 'hollows';
+  A.startGlobalMusic();
+  A._silent = false;                             /* music genuinely playing */
+  for (let i = 0; i < 10; i++) A._audioHealthCheck();
+  ck('audible bus: never rebuilt across 10s', started.length, 1);
+  ck('silent-tick counter stays clear', A._silentTicks || 0, 0);
+}
+
+// ── 14. A missing source is restarted without waiting to listen ────────
+{
+  const { A, started } = makeAudio();
+  A._currentZoneAmbient = 'hollows';
+  A.startGlobalMusic();
+  A._globalMusicSource = null;                   /* died, onended fired */
+  A._audioHealthCheck();
+  ck('missing source restarted immediately', started.length, 2);
+}
+
+// ── 15. Backgrounded: do not fight iOS while hidden ────────────────────
+{
+  const { A, started } = makeAudio();
+  A._currentZoneAmbient = 'hollows';
+  A.startGlobalMusic();
+  globalThis.document = { hidden: true };
+  A._silent = true;
+  for (let i = 0; i < 5; i++) A._audioHealthCheck();
+  globalThis.document = { hidden: false };
+  ck('hidden: no rebuild attempts', started.length, 1);
+}
+
+// ── 16. A suspended ctx keeps retrying the wake every tick ─────────────
+{
+  const { A, ctx } = makeAudio({ state: 'interrupted', refuseResume: true });
+  let attempts = 0;
+  const realResume = ctx.resume.bind(ctx);
+  ctx.resume = () => { attempts++; return realResume(); };
+  for (let i = 0; i < 4; i++) A._audioHealthCheck();
+  ck('asleep ctx: wake retried every tick, not once', attempts, 4);
 }
 
 console.log(fail ? `\n${fail} FAILED` : '\nall pass');

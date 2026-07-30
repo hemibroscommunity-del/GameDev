@@ -1612,6 +1612,104 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
      able to strand it at 0.001 with no path back — silent game, reload the
      only cure.  Cheap enough to call from the SFX path: it no-ops unless the
      context is live, the bus is genuinely down, and no fade is in flight. */
+  /* ═══ v2.3.1596: STOP GUESSING, LISTEN ═══════════════════════════════════
+     Every fix from v2.3.1593 to v2.3.1595 was event-driven: catch
+     visibilitychange / pageshow / a tap, decide from ctx.state what iOS did to
+     us, act.  The owner's report killed that approach outright —
+
+       "if you quickly return to the tab the music and audio won't work, but
+        if you wait at least 30 seconds it'll resume upon touch"
+
+     — because on a QUICK return iOS does not suspend the context at all.  It
+     stays 'running' with its output detached: the sources are dead, but every
+     state check says healthy, and the tap handler is gated on
+     `state !== 'running'` so touching deliberately did nothing.  Only after
+     ~30s does iOS actually suspend, which is the one case all that machinery
+     could see.  No amount of state-reading fixes the quick case, because the
+     state is a lie.
+
+     So: tap the master bus with an AnalyserNode and ask the only question that
+     cannot lie — is sound actually coming out?  If music should be audible and
+     the bus reads pure digital silence for several seconds running, the graph
+     is dead whatever ctx.state claims, and we rebuild.
+
+     An analyser is a pure tap (nothing connects to its output), fftSize 256,
+     read once a second.  Negligible cost, and it converges instead of
+     depending on catching exactly the right event at exactly the right moment
+     — which is what has failed four times. */
+  _ensureAnalyser: function _ensureAnalyser() {
+    if (this._analyser || !this.ctx || !this._master) return this._analyser;
+    try {
+      var a = this.ctx.createAnalyser();
+      a.fftSize = 256;
+      this._master.connect(a);      /* tap only — no onward connection */
+      this._analyser = a;
+      this._analyserBuf = new Uint8Array(a.fftSize);
+    } catch (e) {}
+    return this._analyser;
+  },
+  /* True only for PROVABLE silence: every sample sitting exactly on the 128
+     midpoint.  Real music never does that, so this cannot false-positive on
+     a quiet passage. */
+  _masterIsSilent: function _masterIsSilent() {
+    var a = this._ensureAnalyser();
+    if (!a || !this._analyserBuf) return false;
+    try {
+      a.getByteTimeDomainData(this._analyserBuf);
+      for (var i = 0; i < this._analyserBuf.length; i++) {
+        if (this._analyserBuf[i] !== 128) return false;
+      }
+      return true;
+    } catch (e) { return false; }
+  },
+  /* One convergence step.  Safe to call as often as you like — every branch
+     is idempotent, and it is also what a touch now runs (a tap is just an
+     extra opportunity to converge, not a special code path). */
+  _audioHealthCheck: function _audioHealthCheck() {
+    if (!this.ctx || this.muted) return;
+    /* Never fight iOS while we are actually backgrounded — resuming there is
+       refused anyway and would just burn the retry. */
+    if (typeof document !== 'undefined' && document.hidden) { this._silentTicks = 0; return; }
+    if (!this._ctxLive()) {
+      this._wakeCtx();            /* refused outside a gesture? try again next tick */
+      this._silentTicks = 0;
+      return;
+    }
+    this._ensureAudible();
+    var z = this._currentZoneAmbient;
+    var zoneWants = !!(z && this.ZONE_MUSIC && this.ZONE_MUSIC[z]);
+    if (!zoneWants && !this.GLOBAL_MUSIC) { this._silentTicks = 0; return; }
+    /* Missing sources need no listening — just start them. */
+    if (this.GLOBAL_MUSIC && !this._globalMusicSource && !this._globalMusicStarting) {
+      this.startGlobalMusic();
+    }
+    if (zoneWants && !this._zoneMusicSource) {
+      this._currentZoneAmbient = null;
+      try { this.startZoneAmbient(z); } catch (e) {}
+    }
+    /* Sources present but nothing coming out = the quick-return case. */
+    if (this._masterIsSilent()) {
+      this._silentTicks = (this._silentTicks || 0) + 1;
+      if (this._silentTicks >= 3) {         /* ~3s of provable silence */
+        this._silentTicks = 0;
+        this._teardownGlobalMusic();
+        this.startGlobalMusic();
+        if (zoneWants) {
+          this._currentZoneAmbient = null;
+          try { this.startZoneAmbient(z); } catch (e) {}
+        }
+      }
+    } else {
+      this._silentTicks = 0;
+    }
+  },
+  startAudioWatchdog: function startAudioWatchdog() {
+    if (this._watchdogTimer || typeof setInterval !== 'function') return;
+    var self = this;
+    this._watchdogTimer = setInterval(function () {
+      try { self._audioHealthCheck(); } catch (e) {}
+    }, 1000);
+  },
   _ensureAudible: function _ensureAudible() {
     if (!this._ctxLive() || !this._master) return;
     try {
@@ -2403,6 +2501,9 @@ BT_AUDIO.unlock = function () {
      music is playing before the player ever enters the world, and nothing
      restarts it on the way in. */
   this.startGlobalMusic();
+  /* v2.3.1596: from the first gesture on, converge once a second instead of
+     trusting any single event to be delivered. */
+  this.startAudioWatchdog();
 };
 /* v2.3.254: called from the visibilitychange handler in GameApp.jsx
    when the tab returns to foreground.  ctx.resume() alone is not
