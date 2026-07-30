@@ -87,7 +87,6 @@ function makeAudio(opts = {}) {
   /* v2.3.1601: resumeFromBackground no longer tears anything down — a silently
      killed source still LOOKS present, so it is the watchdog's silence
      detection that catches it, within ~3s. */
-  A._audioHealthCheck(); A._audioHealthCheck(); A._audioHealthCheck();
   ck('after silent kill + resume: a NEW source is running', started.length, 2);
   ck('after silent kill + resume: ref points at the new source',
     A._globalMusicSource !== dead && !!A._globalMusicSource, true);
@@ -164,8 +163,6 @@ function makeAudio(opts = {}) {
   ck('interrupted: context is woken', ctx.state, 'running');
   /* v2.3.1601: waking is resumeFromBackground's whole job now; repairing the
      dead sources belongs to the watchdog, which hears the silence. */
-  A._silent = true;
-  A._audioHealthCheck(); A._audioHealthCheck(); A._audioHealthCheck();
   ck('interrupted: session track rebuilt', started.length, 2);
 }
 
@@ -181,8 +178,8 @@ function makeAudio(opts = {}) {
   /* v2.3.1601: `hard` no longer authorises destruction.  Tearing healthy audio
      down on every visibilitychange WAS the quick-tab-switch regression. */
   A.resumeFromBackground(true);             /* visibilitychange / pageshow */
-  ck('hard resume: healthy audio left alone', started.length, 1);
-  ck('hard resume: zone song not restarted either', A._zoneRekicks, 0);
+  ck('hard resume: rebuilds (inaudibly — position preserved)', started.length, 2);
+  ck('hard resume: zone song re-kicked', A._zoneRekicks, 1);
 }
 
 // ── 8. fadeIn must not schedule against a FROZEN clock ──────────────────
@@ -444,10 +441,20 @@ function makeAudio(opts = {}) {
   A.startZoneAmbient = function () { zoneRestarts++; };
   A._zoneMusicSource = {};                     /* zone track playing fine */
   A._silent = false;                           /* and audibly so */
+  A._master.gain.value = 1;
+  A._globalMusicEpoch = Date.now() - 30000;    /* 30s into the session track */
   A.resumeFromBackground(true);                /* quick switch back */
-  ck('quick switch: session track NOT torn down', A._globalMusicSource === src, true);
-  ck('quick switch: no extra source started', started.length, 1);
-  ck('quick switch: zone song NOT restarted', zoneRestarts, 0);
+  /* v2.3.1602: a hide/show cycle DOES rebuild — the v2.3.1601 "leave it alone"
+     rule relied on the watchdog noticing breakage, and its analyser tap never
+     fires in WebKit.  What made the old rebuild bad was its COST, and that is
+     what these assertions now pin instead. */
+  ck('quick switch: session track rebuilt', started.length, 2);
+  ck('quick switch: rebuild resumes at position, not from the top',
+    started[1]._offset >= 29 && started[1]._offset <= 32, true);
+  ck('quick switch: zone song restarted (at position, see below)', zoneRestarts, 1);
+  ck('quick switch: master bus NOT dipped on a healthy context',
+    A._master.gain.value, 1);
+  void src;
 }
 
 // ── 27. ...but a genuinely dead graph is still repaired ────────────────
@@ -471,7 +478,13 @@ function makeAudio(opts = {}) {
   S.ctx = { currentTime: 0, createAnalyser: mkAnalyser };
   S._master = { connect() {} };
   S._fadeUntil = 0;
-  ck('all-128 bus with no fade: correctly reads as silence', S._masterIsSilent(), true);
+  /* v2.3.1602: an UNPROVEN tap is not evidence.  A Uint8Array starts at zero and
+     WebKit does not reliably pull an analyser with no output connected, so
+     "looks like silence" from a tap that has never produced a real sample means
+     nothing — that false confidence is why the watchdog never rebuilt. */
+  ck('unproven tap: silence is not actionable', S._masterIsSilent(), false);
+  S._analyserProven = true;                      /* the tap has produced real audio */
+  ck('proven tap, all-128 bus: correctly reads as silence', S._masterIsSilent(), true);
   S._fadeUntil = 1;                              /* a fade is in flight */
   ck('same bus mid-fade: NOT judged as silence', S._masterIsSilent(), false);
   S.ctx.currentTime = 2;                         /* fade has finished */

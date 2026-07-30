@@ -1645,6 +1645,15 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
       this._master.connect(a);      /* tap only — no onward connection */
       this._analyser = a;
       this._analyserBuf = new Uint8Array(a.fftSize);
+      /* v2.3.1602: PREFILL WITH THE SILENCE MIDPOINT.  A Uint8Array starts at
+         ZERO, and an AnalyserNode with no output connected is not reliably
+         pulled through the graph in WebKit — getByteTimeDomainData can leave
+         the buffer untouched.  All-zero then failed the `!== 128` test on the
+         very first sample, so _masterIsSilent answered "not silent" ALWAYS and
+         the watchdog's rebuild branch could never fire.  Prefilled, an
+         unwritten buffer reads as silence instead: the failure now points
+         toward recovery rather than away from it. */
+      this._analyserBuf.fill(128);
     } catch (e) {}
     return this._analyser;
   },
@@ -1666,8 +1675,16 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
     try {
       a.getByteTimeDomainData(this._analyserBuf);
       for (var i = 0; i < this._analyserBuf.length; i++) {
-        if (this._analyserBuf[i] !== 128) return false;
+        if (this._analyserBuf[i] !== 128) {
+          /* v2.3.1602: proof the tap works.  Until we have seen ONE real
+             non-midpoint sample we cannot distinguish "silent" from "this
+             analyser is never pulled", so silence is not actionable evidence
+             and _masterIsSilent stays false below. */
+          this._analyserProven = true;
+          return false;
+        }
       }
+      if (!this._analyserProven) return false;   /* unproven tap: no evidence */
       return true;
     } catch (e) { return false; }
   },
@@ -2139,6 +2156,17 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
   if (trackUrl) {
     var self = this;
     self._zoneMusicUrl = trackUrl;
+    /* v2.3.1602: POSITION EPOCH for the zone track, mirroring the session
+       track's since v2.3.1593.  This is what makes a rebuild inaudible: a
+       restarted zone track picks up where it would have been instead of
+       jumping to the top of the song.  Reset only when the TRACK changes, so
+       entering a new zone still starts its music from the beginning.
+       Wall-clock, because ctx.currentTime freezes while the page is asleep and
+       the whole point is to survive that. */
+    if (self._zoneMusicEpochUrl !== trackUrl) {
+      self._zoneMusicEpochUrl = trackUrl;
+      self._zoneMusicEpoch = Date.now();
+    }
     var startWithBuffer = function (buf) {
       /* Bail if the user changed zones during the fetch — the
          _zoneMusicUrl != trackUrl guard makes the stale promise a
@@ -2192,7 +2220,15 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
         });
         src.connect(gain);
         gain.connect(self._out());
-        src.start(0);
+        /* v2.3.1602: resume at position — see the epoch note above. */
+        var zOff = 0;
+        try {
+          if (buf.duration > 0 && self._zoneMusicEpoch) {
+            zOff = ((Date.now() - self._zoneMusicEpoch) / 1000) % buf.duration;
+            if (!(zOff >= 0)) zOff = 0;
+          }
+        } catch (e) { zOff = 0; }
+        src.start(0, zOff);
         self._zoneMusicSource = src;
         self._zoneMusicGain = gain;
       } catch (e) {}
@@ -2693,10 +2729,31 @@ BT_AUDIO.resumeFromBackground = function (hard) {
   if (wasAsleep) {
     this._wakeCtx();
     /* v2.3.786: ease back in after a real resume.  Only when the context was
-       actually asleep — fading a healthy bus was half of the bug above. */
+       actually asleep — fading a healthy bus was half of the v2.3.1601 bug. */
     this.fadeIn(0.8);
   }
-  void hard;
+  /* v2.3.1602: a real hide/show cycle DOES rebuild the sources again — but for
+     a different reason than v2.3.1594's version, and without its cost.
+     v2.3.1601 removed that rebuild and left recovery entirely to the watchdog's
+     silence detection, which turns out never to have fired: the analyser tap is
+     not reliably pulled in WebKit, so it always answered "not silent" (see
+     _ensureAnalyser).  The quick-switch recovery that worked at v2.3.1596 was
+     the rebuild, not the listening — removing it removed the only thing working.
+     What made the old rebuild painful was that it dipped the master and
+     restarted the zone song from the top.  Neither happens now: the fade is
+     gated on the context actually having been asleep, and BOTH tracks resume at
+     position, so a rebuild the player did not need is inaudible rather than
+     jarring.  That is what makes it safe to do unconditionally.
+     `hard` is true only for visibilitychange and pageshow — a bare window focus
+     still does nothing, so ordinary desktop clicking about costs nothing. */
+  if (hard) {
+    this._teardownGlobalMusic();
+    var z = this._currentZoneAmbient;
+    if (z && this.ZONE_MUSIC && this.ZONE_MUSIC[z]) {
+      this._currentZoneAmbient = null;          /* defeat the same-zone early-return */
+      try { this.startZoneAmbient(z); } catch (e) {}
+    }
+  }
   try { this._audioHealthCheck(); } catch (e) {}
 };
 
