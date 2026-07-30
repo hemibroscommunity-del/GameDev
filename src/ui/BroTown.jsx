@@ -71,7 +71,10 @@ import { MINE_SPOT_R, WORLD_ZOOM, FARM_BED_TILE } from '@/data/constants.js';
    NPC_DATA is empty. */
 import { CLAN_WAR_REWARDS, PET_LOOT_RADIUS, TOWN_W, TOWN_H, calcDisplayHeal } from '@/data/index.js';
 import { IntroVideo } from './IntroVideo.jsx';
-import { MayorGreeting, mayorWelcomeSeen } from './MayorGreeting.jsx';
+/* v2.3.1593: mayorWelcomeSeen dropped — its only caller was the greeting
+   trigger the owner asked to remove.  MayorGreeting itself stays imported
+   because the (now unreachable) render branch below still references it. */
+import { MayorGreeting } from './MayorGreeting.jsx';
 import { BUILD_INFO } from './BuildBadge.jsx';
 import { pushHudPopup } from './XpFlyOverlay.jsx';
 
@@ -1185,13 +1188,15 @@ export var BroTown = function BroTown(_ref0) {
      never nags again.  Veterans (flag already set — including anyone
      mid-tutorial under the old auto model) get neither the prompt nor the
      banners, exactly as before. */
-  var _tourPromptInit = (function () {
-    try {
-      return localStorage.getItem('bt_tutorial') == null;
-    } catch (_unusedTour) {
-      return false;
-    }
-  })();
+  /* v2.3.1593 (owner: "remove the tutorial and the mayor bro pop up and
+     greeting").  Hard-false instead of the localStorage probe, which is the
+     whole removal: no prompt means nobody can tap "Start tour", tourStarted
+     stays false, and the teach-by-doing step machine and its banners never
+     run — they were already gated on it by v2.3.1239.  So one constant
+     retires the entire onboarding flow without touching the step machine.
+     The manual controls tutorial in Settings is deliberately untouched: it
+     only opens on an explicit tap, so it is not a pop-up. */
+  var _tourPromptInit = false;
   var _useStateTourP = useState(_tourPromptInit),
     _useStateTourP2 = _slicedToArray(_useStateTourP, 2),
     showTourPrompt = _useStateTourP2[0],
@@ -6575,10 +6580,15 @@ export var BroTown = function BroTown(_ref0) {
     themeAudio: themeAudioRef,
     /* v2.3.1219: when the loading intro fades, greet a brand-new player with
        the Mayor's welcome (once per browser).  Returning players — whose
-       localStorage flag is already set — drop straight into town. */
+       localStorage flag is already set — drop straight into town.
+       v2.3.1593 (owner: "remove the tutorial and the mayor bro pop up and
+       greeting"): the trigger is gone, so EVERY player now drops straight
+       into town.  showMayorGreeting stays wired below rather than being
+       ripped out — it is a plain boolean that nothing else sets, so the
+       component is simply unreachable, and restoring the greeting is this
+       one line.  Same treatment wireThemeMusic got in v2.3.1103. */
     onComplete: function onComplete() {
       setShowIntro(false);
-      try { if (!mayorWelcomeSeen()) setShowMayorGreeting(true); } catch (e) {}
     }
   }), showMayorGreeting && /*#__PURE__*/React.createElement(MayorGreeting, {
     onComplete: function onComplete() { return setShowMayorGreeting(false); }

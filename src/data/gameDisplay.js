@@ -1333,7 +1333,15 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
     town: '/audio/music/village.mp3',
     worldview: '/audio/music/world.mp3',
     frost: '/audio/music/frost.mp3',
-    ember: '/audio/music/fire.mp3',   /* "fire zone" = Flame Fields */
+    /* "fire zone" = Flame Fields, and the "lava zone" too — gameDisplay.js:916
+       describes it as lava rivers cutting through scorched earth.
+       v2.3.1591: ?v= added because this file's CONTENT was replaced (owner
+       swapped the score), which is precisely the case the v2.3.1589 note below
+       says to bump for — the first time an entry's bytes change under a stable
+       filename.  Without it a returning player keeps the old track out of their
+       HTTP cache forever, since public/ is copied verbatim by vite rather than
+       content-hashed. */
+    ember: '/audio/music/fire.mp3?v=2.3.1591',
     meadow: '/audio/music/forest.mp3', /* owner: "forest meadow area where the
                                           slimes are" — Starting Meadow, the
                                           green zone that spawns 10 plain
@@ -1395,16 +1403,20 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
      mid-range artifacts, and 0.5 MB is not worth guessing with.  Above 128k
      is measurement noise here (160k reads 0.1 dB WORSE), which is the ceiling
      of what this proxy can resolve, not a reason to prefer 128k over 160k.
-     v2.3.1584: ember (the "fire zone", Flame Fields) gets fire.mp3 — 128 kbps,
-     2.42 MB for 2m39s off a 3.73 MB 197 kbps source.  96k costs 2.5 dB above
-     15 kHz, the worst of the four, so 128k is not a close call here.
-     LONGEST track so far and therefore the heaviest resident: 53.4 MB decoded,
-     against the 56 MB budget below.  It fits, but a track much past 2m40s
-     would sit alone ABOVE the budget.  That is safe by construction rather
-     than by luck — the just-decoded and currently-playing track are never
-     evicted, so an oversized score stays resident and simply drops everything
-     else (covered by the checks in the v2.3.1584 commit).  Do not "fix" it by
-     raising ZONE_MUSIC_CACHE_MB: 56 is deliberately below two full tracks.
+     v2.3.1584 / v2.3.1591: ember (the "fire zone" / "lava zone", Flame Fields)
+     gets fire.mp3 — 128 kbps, 2.35 MB for 2m34s off a 3.66 MB 199 kbps source.
+     v2.3.1591 replaced v2.3.1584's score on the owner's call, at the same
+     filename plus a ?v= bump (see the entry itself for why).
+     96k costs 3.5 dB above 15 kHz on this one — the widest 96k-vs-128k gap of
+     any track in the set, wider even than meadow's 3.3 — so 128k is not close.
+     Resident cost 51.7 MB against the 56 MB budget below, slightly lighter than
+     the 53.4 MB score it replaces.  It fits, but note how little headroom that
+     leaves: a track much past 2m40s sits alone ABOVE the budget, as sky's does.
+     That is safe by construction rather than by luck — the just-decoded and
+     currently-playing track are never evicted, so an oversized score stays
+     resident and simply drops everything else (covered by the checks in the
+     v2.3.1584 and v2.3.1585 commits).  Do not "fix" it by raising
+     ZONE_MUSIC_CACHE_MB: 56 is deliberately below two full tracks.
      v2.3.1585 / v2.3.1587: sky (the "desert zone", Wind Dunes) gets
      desert.mp3 — 128 kbps, 2.71 MB for 2m57s off a 4.35 MB 206 kbps source.
      v2.3.1587 swapped out v2.3.1585's first pick on the owner's call, at the
@@ -2213,8 +2225,15 @@ BT_AUDIO.startGlobalMusic = function () {
       /* v2.3.1581: start DUCKED if a zone track already owns the music.  This
          path also runs on background-resume, so without the check a resume
          while standing in town would fade the session track up over the top
-         of the town track. */
-      var startVol = (self._zoneMusicSource || self._globalMusicDucked) ? 0 : self.GLOBAL_MUSIC_VOL;
+         of the town track.
+         v2.3.1593: ask the ZONE TABLE, not _zoneMusicSource.  On the resume
+         path that ref can still point at the source iOS already killed, and
+         once most zones had tracks it was also null for a beat mid-rebuild —
+         either way the old test could answer "nobody owns the music" while
+         standing in town and fade the session track up over the top. */
+      var zoneOwnsMusic = !!(self.ZONE_MUSIC && self._currentZoneAmbient
+        && self.ZONE_MUSIC[self._currentZoneAmbient]);
+      var startVol = (zoneOwnsMusic || self._globalMusicDucked) ? 0 : self.GLOBAL_MUSIC_VOL;
       gain.gain.setValueAtTime(0, t0);
       gain.gain.linearRampToValueAtTime(startVol, t0 + 1.2);
       src.connect(gain);
@@ -2224,7 +2243,18 @@ BT_AUDIO.startGlobalMusic = function () {
       src.onended = function () {
         if (self._globalMusicSource === src) { self._globalMusicSource = null; self._globalMusicGain = null; }
       };
-      src.start(0);
+      /* v2.3.1593: resume at POSITION rather than from the top.  The session
+         track's whole point is that it plays unbroken for the session, so a
+         rebuild after a background must not restart the song — the epoch is
+         wall-clock (Date.now), which keeps advancing while the AudioContext
+         is suspended and ctx.currentTime does not. */
+      if (!self._globalMusicEpoch) self._globalMusicEpoch = Date.now();
+      var offset = 0;
+      if (buf.duration > 0) {
+        offset = ((Date.now() - self._globalMusicEpoch) / 1000) % buf.duration;
+        if (!(offset >= 0)) offset = 0;          /* NaN guard */
+      }
+      src.start(0, offset);
       self._globalMusicSource = src;
       self._globalMusicGain = gain;
     } catch (e) {}
@@ -2287,9 +2317,39 @@ BT_AUDIO.unlock = function () {
    enough on iOS Safari -- long backgrounding can implicitly stop
    the zone-music BufferSource, and resume() doesn't restart it.
    Re-kick the music for the zone we were last in. */
+/* v2.3.1593: tear the session track down so startGlobalMusic will genuinely
+   rebuild it.  Needed because the ONLY thing that cleared _globalMusicSource
+   was src.onended, and iOS does not reliably fire it for a source it stopped
+   during a backgrounding — the exact unreliability v2.3.254 already worked
+   around for the zone track by clearing _currentZoneAmbient by hand.  Without
+   this the stale ref made startGlobalMusic early-return forever and the
+   session track never came back; _globalMusicGain went stale with it, so a
+   later duckGlobalMusic(false) on leaving a scored zone ramped a dead node
+   and the game stayed silent until reload.  ("Music doesn't work when I
+   return to the game.") */
+BT_AUDIO._teardownGlobalMusic = function () {
+  var src = this._globalMusicSource;
+  this._globalMusicSource = null;
+  this._globalMusicGain = null;
+  if (src) {
+    /* Detach onended first: it would otherwise fire during stop() and null
+       out the refs of whatever source has since replaced this one. */
+    try { src.onended = null; } catch (e) {}
+    try { src.stop(); } catch (e) {}
+  }
+};
+
 BT_AUDIO.resumeFromBackground = function () {
   if (!this.ctx) return;
-  if (this.ctx.state === 'suspended' && this.ctx.resume) {
+  /* v2.3.1593: capture this BEFORE resuming.  A suspended context is the only
+     state in which iOS silently stops our sources, so it is also the only
+     state that justifies rebuilding them — and this handler is wired to
+     `focus` and `pageshow` as well as visibilitychange, which fire routinely
+     while audio is perfectly healthy.  Rebuilding unconditionally (what the
+     zone track did) restarted the zone song from the top on every window
+     focus. */
+  var wasSuspended = this.ctx.state === 'suspended';
+  if (wasSuspended && this.ctx.resume) {
     try { this.ctx.resume(); } catch (e) {}
     /* v2.3.786: ease back in after a background resume (same pop as the
        first-gesture case, just mid-session). */
@@ -2298,8 +2358,13 @@ BT_AUDIO.resumeFromBackground = function () {
   /* v2.3.1577: iOS can implicitly stop a BufferSource during a long
      backgrounding, and ctx.resume() does not restart it — the same reason
      the zone track is re-kicked below.  onended clears the ref, so this
-     starts a fresh one only when the old one really died. */
+     starts a fresh one only when the old one really died.
+     v2.3.1593: ...and when onended did NOT fire, the teardown above forces
+     it.  startGlobalMusic resumes at position, so this costs continuity
+     nothing. */
+  if (wasSuspended) this._teardownGlobalMusic();
   this.startGlobalMusic();
+  if (!wasSuspended) return;
   var zone = this._currentZoneAmbient;
   if (!zone) return;
   /* startZoneAmbient early-returns when _currentZoneAmbient already

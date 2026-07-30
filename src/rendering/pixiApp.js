@@ -26,10 +26,18 @@ import { Application, Container } from 'pixi.js';
  * SEPARATE layer rather than moving gatherNodes up: that would drag ponds and
  * the harvest stand-ins along with it, and would put trees back over monster
  * HP bars, undoing v2.3.1472.
+ * v2.3.1593 (owner): "make monsters appear in front of ore" — gatherNodesBack
+ * sits BELOW entities, and ore veins move into it.  This unwinds v2.3.1460
+ * for ore ONLY, which is all that is left of that decision: trees went up to
+ * gatherNodesFront in v2.3.1500 and fishing holes went down to groundLoot in
+ * v2.3.1464, so ore was the last node type still covering monsters.  Again a
+ * separate layer rather than moving gatherNodes down — that container also
+ * holds the chop/cook/sword harvest stand-ins, which must keep drawing above
+ * entities.
  */
 const WORLD_LAYER_NAMES = [
   'tiles', 'groundDetails', 'groundSplatter', 'groundLoot',
-  'telegraphs', 'entities', 'gatherNodes', 'monsterUi', 'player',
+  'telegraphs', 'gatherNodesBack', 'entities', 'gatherNodes', 'monsterUi', 'player',
   'gatherNodesFront',
   'projectiles', 'particles', 'damageNumbers', 'overlayWorld',
 ];

@@ -528,6 +528,9 @@ export class EffectsRenderer {
     this.nodeLayer = layers.gatherNodes;
     /* v2.3.1500: above the player — trees only (see _wantLayer below). */
     this.nodeFrontLayer = layers.gatherNodesFront || layers.gatherNodes;
+    /* v2.3.1593: below entities — ore only, so monsters walk in front of it.
+       Falls back to nodeLayer so an older scene graph still renders ore. */
+    this.nodeBackLayer = layers.gatherNodesBack || layers.gatherNodes;
     this.projectileLayer = layers.projectiles;
     this.telegraphLayer = layers.telegraphs;
     this.overlayLayer = layers.overlayWorld;
@@ -3010,14 +3013,19 @@ export class EffectsRenderer {
            v2.3.1460).  groundLoot sits below entities; index 0 keeps
            dropped loot above the water. */
         /* v2.3.1500 (owner): trees render IN FRONT of the character, so
-           walking behind one is occluded by it.  Only trees -- ore stays in
-           nodeLayer (it is waist-high and you now cannot walk onto it at all,
-           so there is nothing to occlude), and the active mining target keeps
-           its overlayLayer promotion. */
+           walking behind one is occluded by it.  Only trees -- the active
+           mining target keeps its overlayLayer promotion.
+           v2.3.1593 (owner): "make monsters appear in front of ore" — ore
+           moves from nodeLayer (above entities) to nodeBackLayer (below
+           them).  Every node type now names its layer explicitly and the
+           fallthrough is gone: with trees up, fish down and ore down, nothing
+           was left on the old default, so an unnamed type silently landing
+           above monsters would be a bug rather than a default. */
         const _wantLayer = _isMineTarget ? this.overlayLayer
           : node.nodeType === 'fishSpot' ? this.lootLayer
             : node.nodeType === 'tree' ? this.nodeFrontLayer
-              : this.nodeLayer;
+              : node.nodeType === 'oreVein' ? this.nodeBackLayer
+                : this.nodeBackLayer;
         if (node._pixiSprite.parent !== _wantLayer) {
           if (_wantLayer === this.overlayLayer) _wantLayer.addChild(node._pixiSprite);
           else _wantLayer.addChildAt(node._pixiSprite, 0);

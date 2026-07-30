@@ -27,7 +27,7 @@ export const ZONES = {
     id: 'meadow', name: 'Starting Meadow', w: 32, h: 32,
     element: null, level: [1, 2] /* band: [1,10] */, music: 'meadow', safe: false,
     palette: { ground: '#3d6b2e', path: '#7a6a45', accent: '#5a9a40' },
-    spawns: [{ arch: 'fodder', count: 10 }]
+    spawns: [{ arch: 'fodder', count: 3 }]
   },
   ember: {
     id: 'ember', name: 'Flame Fields' /* v2.3.1438: element-first names (owner) */, w: 32, h: 32,
@@ -60,7 +60,7 @@ export const ZONES = {
        ember spawns -- user clearing placeholders before authoring
        sprite-backed monsters one at a time. Only fodder remains
        because it variants to fireGoblin (sprite-backed) here. */
-    spawns: [{ arch: 'fodder', count: 6 }],
+    spawns: [{ arch: 'fodder', count: 3 }],
     atmosphere: { tint: 'rgba(180,60,20,0.06)', vignette: 'rgba(120,30,0,0.12)' },
     enemyEmoji: { fodder: '🔥', brute: '🌋', swarm: '🦎', volatile: '💣', hexer: '🧙', sentinel: '⚔️' }
   },
@@ -74,7 +74,7 @@ export const ZONES = {
        existed.  v2.3.1147: populated with tinted reskins of existing
        sheets (fodder->mireWisp violet slime, brute->bogLurker murky
        fishman -- see ZONE_VARIANT_MAP).  Closes the L25-38 dead band. */
-    spawns: [{ arch: 'fodder', count: 6 }, { arch: 'brute', count: 4 }],
+    spawns: [{ arch: 'fodder', count: 2 }, { arch: 'brute', count: 1 }],
     atmosphere: { tint: 'rgba(30,90,30,0.05)', vignette: 'rgba(10,50,10,0.15)' },
     enemyEmoji: { fodder: '🍄', brute: '🌿', swarm: '🪲', hexer: '🧪', sentinel: '🪵' }
   },
@@ -107,7 +107,7 @@ export const ZONES = {
        green).  A per-entry override is the only way to get a mixed
        population -- ZONE_VARIANT_MAP maps a whole ARCHETYPE, so putting
        blueSlime there would turn every slime in the zone blue. */
-    spawns: [{ arch: 'fodder', count: 7 }, { arch: 'fodder', count: 1, variant: 'blueSlime' }],
+    spawns: [{ arch: 'fodder', count: 2 }, { arch: 'fodder', count: 1, variant: 'blueSlime' }],
     atmosphere: { tint: 'rgba(60,160,60,0.05)', vignette: 'rgba(20,80,20,0.12)' },
     enemyEmoji: {}
   },
@@ -116,7 +116,7 @@ export const ZONES = {
     /* Elemental zone 1 — see ember note. */
     element: 'frost', secondary: 'storm', level: [1, 2] /* band: [8,25] */, music: 'frost', safe: false,
     palette: { ground: '#5a6a7a', path: '#8a9aaa', accent: '#3a5a8a' },
-    spawns: [{ arch: 'snowman', count: 4 }],
+    spawns: [{ arch: 'snowman', count: 3 }],
     atmosphere: { tint: 'rgba(140,180,220,0.06)', vignette: 'rgba(60,100,160,0.10)' },
     enemyEmoji: { fodder: '❄️', brute: '🐻‍❄️', swarm: '🦅', volatile: '🧊', stalker: '🐺', hexer: '🌀', sentinel: '🏔️', snowman: '⛄' }
   },
@@ -127,7 +127,7 @@ export const ZONES = {
     palette: { ground: '#4a4a5a', path: '#6a6a7a', accent: '#7a5aaa' },
     /* v2.3.214: dropped volatile + stalker (emoji-only). Slime
        (fodder) still spawns in Thunder Peaks. */
-    spawns: [{ arch: 'fodder', count: 6 }],
+    spawns: [{ arch: 'fodder', count: 3 }],
     atmosphere: { tint: 'rgba(100,70,170,0.05)', vignette: 'rgba(50,30,100,0.12)' },
     enemyEmoji: { fodder: '⚡', brute: '🗿', swarm: '🦇', hexer: '🌩️', sentinel: '⛰️' }
   },
@@ -138,7 +138,7 @@ export const ZONES = {
     palette: { ground: '#3a3a3a', path: '#5a5a5a', accent: '#6a5a4a' },
     /* v2.3.214: dropped sentinel + swarm (emoji-only). brute is
        sprite-backed here via rockmonster variant. */
-    spawns: [{ arch: 'brute', count: 4 }],
+    spawns: [{ arch: 'brute', count: 3 }],
     atmosphere: { tint: 'rgba(80,70,50,0.06)', vignette: 'rgba(30,25,15,0.18)' },
     enemyEmoji: { fodder: 'rubble', brute: 'rock', swarm: 'scorp', volatile: 'gem', hexer: 'urn' }
   },
@@ -154,7 +154,7 @@ export const ZONES = {
        the server table (authoritative for spawns since server monsters
        shipped) never had it, so MP players already saw the 10-monster mix;
        zones.test.mjs now asserts the two tables stay in lockstep. */
-    spawns: [{ arch: 'stalker', count: 4 }, { arch: 'hexer', count: 3 }, { arch: 'volatile', count: 3 }],
+    spawns: [{ arch: 'stalker', count: 1 }, { arch: 'hexer', count: 1 }, { arch: 'volatile', count: 1 }],
     atmosphere: { tint: 'rgba(210,165,90,0.05)', vignette: 'rgba(150,100,40,0.08)' },
     enemyEmoji: { fodder: '🌬️', brute: '🦅', swarm: '🕊️', volatile: '🌪️', stalker: '🦉', hexer: '☁️', sentinel: '🗼' }
   },

@@ -44,8 +44,16 @@ export const gatheringMethods = {
     // v2.3.1346 (owner): EVERY resource appears 3 times in EVERY zone —
     // one uniform config replaces the per-zone table (client
     // lifeSkills.js DEPTH node config mirrors this; keep together).
+    // v2.3.1592 (owner: "one resource per zone but with quick respawn"):
+    // 3 of each -> ONE of each.  Read as "every resource appears ONCE in
+    // every zone", the direct inverse of the v2.3.1346 line above, rather
+    // than "one node total" — that would leave two of the three gathering
+    // skills unharvestable in any given zone and undo the whole point of
+    // v2.3.1346 (and of the 2026-07-06 "add fishing spots to each zone"
+    // request), which is that every skill is playable wherever you stand.
+    // The speed comes from NODE_RESPAWN_TIME (index.js), not from count.
     void zoneId;
-    return { treeCt: 3, fishCt: 3, oreCt: 3 };
+    return { treeCt: 1, fishCt: 1, oreCt: 1 };
   },
 
   // Spawn the static node layout for a zone.  Positions are randomized
