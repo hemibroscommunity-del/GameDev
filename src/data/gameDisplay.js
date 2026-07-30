@@ -1340,9 +1340,22 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
                                           slimes.  NOT mist, which is literally
                                           named Poison Forest but is a mid-game
                                           band with violet slime reskins. */
-    sky: '/audio/music/desert.mp3',   /* "desert zone" = Wind Dunes; zones.js:44
-                                         calls it desert(sky) and its palette is
-                                         the v2.3.855 warm desert one */
+    /* "desert zone" = Wind Dunes; zones.js:44 calls it desert(sky) and its
+       palette is the v2.3.855 warm desert one.
+       v2.3.1589: ?v= CACHE-BUSTER, and the reason it is on this entry alone.
+       The desert track's CONTENT has now been replaced twice at a stable
+       filename (v2.3.1587, v2.3.1589) — and unlike every image path in this
+       repo, the music fetch carries no version query, while `public/` is
+       copied verbatim by vite rather than content-hashed.  So the URL was
+       byte-identical across a swap and a returning player could keep playing
+       the OLD score out of their HTTP cache indefinitely.  The other six
+       entries have never had their bytes changed under them, so they are left
+       alone (edit only what the change makes true); add a bump here on every
+       future desert swap, or a `?v=` to any other entry the first time its
+       file is replaced.  Safe against the LRU: the map value is the cache key
+       AND the only thing `trackUrl` is ever compared to (_zoneMusicUrl), so
+       both sides move together. */
+    sky: '/audio/music/desert.mp3?v=2.3.1589',
   },
   /* NOTE for whoever adds the remaining zones: every ZONES entry also carries a
      `music: '<id>'` field.  It is read NOWHERE — dead early-design remnant, all
@@ -1408,6 +1421,30 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
      costs nothing in download — at 96k LAME's joint stereo already collapses
      so much that the mono file came out byte-for-byte the same size as the
      stereo one — or a shorter loop.  NOT a bigger budget.
+     v2.3.1589: THIRD desert pick, owner-supplied, same filename again (the
+     v2.3.1587 precedent — nothing else moves).  This one is the owner's own
+     file shipped VERBATIM, which makes it the one track that breaks the
+     encode convention above, deliberately and with no way around it here:
+     3.72 MB, 2m33s, 194.7 kbps VBR, 48 kHz stereo.  No encoder exists in the
+     build sandbox (no ffmpeg/lame/sox, and npm is blocked), so transcoding to
+     the house 128 kbps / 44.1 kHz was not on the table; re-encoding a lossy
+     source down would also have cost quality to save 1.0 MB.  Its ID3 tag is
+     168 bytes with no album art, so there was no lossless trim either.
+     Net effect, honestly: DOWNLOAD gets worse (3.72 MB vs 2.71 MB, +37% —
+     the largest music file in the game), RESIDENT memory gets BETTER, because
+     PCM cost is duration x rate x channels and this track is 24 s shorter.
+     Careful about that second figure: decodeAudioData resamples to the
+     AudioContext's OWN rate, not the file's, so the resident size is
+     51.1 MiB on a 44.1 kHz context and 56.0 MiB on a 48 kHz one — against
+     59.7 MB before.  On a 48 kHz device it therefore lands 24 KB OVER the
+     56 MiB cap: still nominally the one over-budget track, but by 0.04%
+     instead of 6.6%, and on a 44.1 kHz device it is comfortably inside for
+     the first time.  The designed over-budget path (oversized track stays
+     resident alone, evicts the rest, freed on leaving the zone) is unchanged
+     and still what covers it.  If download size ever matters more than
+     fidelity here, the lever is a 128 kbps / 44.1 kHz re-encode of the
+     owner's source on a machine that has LAME — which would also put it
+     firmly under the cap on every device.
      v2.3.1586: meadow gets forest.mp3 — 128 kbps, 1.90 MB for 2m05s off a
      2.98 MB 200 kbps source.  The clearest 128k call of the six: 96k costs
      3.3 dB above 15 kHz here, worse than any other track including
@@ -1415,7 +1452,22 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
      41.9 MB, comfortably inside the budget — a useful counterweight to the
      desert next door. */
   GLOBAL_MUSIC: '/audio/music/login-theme.mp3',
-  GLOBAL_MUSIC_VOL: 0.22,
+  /* v2.3.1590 (owner: "make the music play 75% quieter") — BOTH music
+     volumes cut to a quarter, together, so the session track and the zone
+     tracks keep their existing relationship to each other and to SFX:
+       GLOBAL_MUSIC_VOL  0.22  -> 0.055
+       ZONE_MUSIC_VOL    0.275 -> 0.06875
+     Note this is a 75% cut in GAIN, which is about -12 dB.  Perceived
+     loudness is not linear with gain — the rough rule is that -10 dB reads
+     as "half as loud" — so this lands a little past half, not at a quarter,
+     of the apparent volume.  If the owner wants it to SOUND 75% quieter,
+     that is roughly -20 dB, i.e. another factor of ~2.5 on both numbers.
+     SFX are deliberately untouched: the ask was the music. */
+  GLOBAL_MUSIC_VOL: 0.055,
+  /* v2.3.1590: was a bare `var TARGET_VOL` inside startZoneAmbient, which
+     made the one number the owner actually tunes invisible next to its
+     sibling above.  Promoted to a real constant; startZoneAmbient reads it. */
+  ZONE_MUSIC_VOL: 0.06875,
   /* v2.3.1582: the decoded-buffer cache is BUDGETED, not unbounded.
      An AudioBuffer is raw float32 PCM, so a 2 MB mp3 is ~50 MB of RAM.
      Measured in Chromium at 44.1 kHz stereo: login-theme 34.4 MB, village
@@ -1827,10 +1879,14 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
         var gain = self.ctx.createGain();
         src.buffer = buf;
         src.loop = true;
-        /* Fade in from 0 to 0.275 over 600 ms.  Pairs with the
+        /* Fade in from 0 to ZONE_MUSIC_VOL over 600 ms.  Pairs with the
            600 ms fade-out scheduled by stopAmbient(true) for a
-           soft crossfade across zone boundaries. */
-        var TARGET_VOL = 0.275; /* halved 0.55 → 0.275 so zone music sits as ambient under SFX */
+           soft crossfade across zone boundaries.
+           v2.3.1590: the literal 0.275 (itself halved from 0.55 so zone
+           music sits as ambient under SFX) moved to the ZONE_MUSIC_VOL
+           constant beside GLOBAL_MUSIC_VOL, and both were cut to a
+           quarter on the owner's call. */
+        var TARGET_VOL = self.ZONE_MUSIC_VOL;
         var t0 = self.ctx.currentTime;
         gain.gain.setValueAtTime(0, t0);
         gain.gain.linearRampToValueAtTime(TARGET_VOL, t0 + 0.6);
