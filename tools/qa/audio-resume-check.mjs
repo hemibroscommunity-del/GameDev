@@ -38,7 +38,9 @@ const body = [
   ...['_teardownGlobalMusic', 'resumeFromBackground', '_rebuildSources', 'startGlobalMusic'].map(grab),
   ...['_ctxLive', '_wakeCtx', '_whenRunning', 'fadeIn', '_ensureAudible',
       '_ensureAnalyser', '_masterIsSilent', '_audioHealthCheck', '_rebuildContext',
-      '_ensureAnalyser', '_masterIsSilent', '_audioHealthCheck', '_rebuildContext'].map(grabProp),
+      '_reclaimSession', 'noteHidden', 'noteVisible', 'reclaimIfNeeded',
+      '_ensureAnalyser', '_masterIsSilent', '_audioHealthCheck', '_rebuildContext',
+      '_reclaimSession', 'noteHidden', 'noteVisible', 'reclaimIfNeeded'].map(grabProp),
 ].join(',\n');
 
 globalThis.document = { hidden: false };
@@ -491,6 +493,41 @@ function makeAudio(opts = {}) {
   ck('same bus mid-fade: NOT judged as silence', S._masterIsSilent(), false);
   S.ctx.currentTime = 2;                         /* fade has finished */
   ck('after the fade ends: judged again', S._masterIsSilent(), true);
+}
+
+// ── 29. THE AUDIO SESSION: back from another app ───────────────────────
+//   Reported symptom: speaker icon showing in Safari's URL bar, ctx running,
+//   sources alive, graph producing signal — and nothing audible. The session
+//   went to the other app and was never handed back. No state check and no
+//   analyser can see this: the analyser taps the master bus, which is UPSTREAM
+//   of the destination, so it reads perfectly healthy audio.
+{
+  const { A } = makeAudio();
+  let wavs = 0, ctxRebuilds = 0, srcRebuilds = 0;
+  globalThis.Audio = function () { wavs++; return { setAttribute() {}, play: () => Promise.resolve() }; };
+  A.init = function () { ctxRebuilds++; this.ctx = { state: 'suspended', resume: () => Promise.resolve(), addEventListener() {}, removeEventListener() {} }; };
+  A._rebuildSources = function () { srcRebuilds++; };
+
+  /* a flick between tabs — session was never lost */
+  A.noteHidden();
+  A._hiddenAt = Date.now() - 500;
+  A.noteVisible();
+  ck('short hide: no reclaim armed', !!A._needsSessionReclaim, false);
+  ck('short hide: a touch does nothing special', A.reclaimIfNeeded(), false);
+  ck('short hide: nothing rebuilt', ctxRebuilds + srcRebuilds + wavs, 0);
+
+  /* an app switch — long enough for another app to have taken the session */
+  A.noteHidden();
+  A._hiddenAt = Date.now() - 5000;
+  A.noteVisible();
+  ck('app switch: reclaim armed', !!A._needsSessionReclaim, true);
+  ck('app switch: touch performs the reclaim', A.reclaimIfNeeded(), true);
+  ck('app switch: silent WAV replayed to re-claim the session', wavs, 1);
+  ck('app switch: context rebuilt to re-negotiate its route', ctxRebuilds, 1);
+  ck('app switch: sources rebuilt on the new context', srcRebuilds, 1);
+  ck('app switch: flag cleared', !!A._needsSessionReclaim, false);
+  ck('app switch: a second touch does not reclaim again', A.reclaimIfNeeded(), false);
+  ck('app switch: and nothing extra was rebuilt', ctxRebuilds, 1);
 }
 
 console.log(fail ? `\n${fail} FAILED` : '\nall pass');

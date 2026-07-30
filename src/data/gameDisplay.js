@@ -1706,6 +1706,66 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
      starts suspended on iOS and needs a gesture, which the watchdog and the
      touch handler both already supply — the point is that recovery becomes
      POSSIBLE, where before it was not. */
+  /* ═══ v2.3.1604: THE iOS AUDIO SESSION ════════════════════════════════════
+     Owner, after leaving Safari for another app and returning: "the music
+     wouldn't return even with touch input.  I saw the speaker icon near the
+     browser url so it's like it thought something was playing but nothing was."
+
+     That symptom is diagnostic.  The speaker icon means Safari believes the
+     page is producing audio — so the context is RUNNING, the sources are alive,
+     and the graph really is generating signal.  Nothing is asleep, closed, or
+     missing.  The signal simply never reaches the speaker, because switching to
+     another app hands the iOS AUDIO SESSION to that app, and returning does not
+     hand it back.
+
+     Every detector built so far is blind to this by construction:
+       - ctx.state says 'running', because it is;
+       - the analyser taps the MASTER BUS, which is upstream of the
+         destination, so it sees the signal and reports healthy audio;
+       - the sources exist, so the missing-source branches never fire.
+     The graph is perfect.  The output path is not part of the graph.
+
+     The only thing that has ever re-claimed the session in this codebase is the
+     silent-WAV HTMLAudio play in GameApp's unlock() — and that is one-shot per
+     page load (`done = true`), so it has never run a second time.  Playing an
+     HTMLAudioElement re-asserts the audio session category; a fresh
+     AudioContext then re-negotiates its route to the hardware.  Both must
+     happen inside a user gesture, which is why this is armed on visibility and
+     fired on the next touch rather than attempted on the visibilitychange
+     itself, where iOS would refuse it. */
+  SILENT_WAV: 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=',
+  /* Re-assert the audio session category.  Cheap, silent, and safe to repeat. */
+  _reclaimSession: function _reclaimSession() {
+    try {
+      var a = new Audio(this.SILENT_WAV);
+      a.setAttribute('playsinline', '');
+      a.setAttribute('webkit-playsinline', '');
+      var pr = a.play();
+      if (pr && pr.catch) pr.catch(function () {});
+    } catch (e) {}
+  },
+  noteHidden: function noteHidden() { this._hiddenAt = Date.now(); },
+  /* Arm a reclaim if we were away long enough for another app to have taken the
+     session.  A flick between tabs comes back in well under 2s and keeps its
+     session, so it stays on the cheap path and is not disturbed. */
+  noteVisible: function noteVisible() {
+    var away = this._hiddenAt ? (Date.now() - this._hiddenAt) : 0;
+    this._hiddenAt = 0;
+    if (away >= 2000) this._needsSessionReclaim = true;
+  },
+  /* Called from the touch handler.  A gesture is the only moment iOS honours
+     either half of this. */
+  reclaimIfNeeded: function reclaimIfNeeded() {
+    if (!this._needsSessionReclaim) return false;
+    this._needsSessionReclaim = false;
+    this._reclaimSession();
+    /* A context whose route to the hardware was taken away cannot be repaired
+       in place — build a new one, which re-negotiates it.  Cheap enough: the
+       mp3s stay in the HTTP cache, so this costs decodes, not downloads. */
+    try { this._rebuildContext(); } catch (e) {}
+    try { this._rebuildSources(); } catch (e) {}
+    return true;
+  },
   _rebuildContext: function _rebuildContext() {
     var old = this.ctx;
     this.ctx = null;
