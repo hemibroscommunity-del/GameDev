@@ -1333,7 +1333,15 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
     town: '/audio/music/village.mp3',
     worldview: '/audio/music/world.mp3',
     frost: '/audio/music/frost.mp3',
-    ember: '/audio/music/fire.mp3',   /* "fire zone" = Flame Fields */
+    /* "fire zone" = Flame Fields, and the "lava zone" too — gameDisplay.js:916
+       describes it as lava rivers cutting through scorched earth.
+       v2.3.1591: ?v= added because this file's CONTENT was replaced (owner
+       swapped the score), which is precisely the case the v2.3.1589 note below
+       says to bump for — the first time an entry's bytes change under a stable
+       filename.  Without it a returning player keeps the old track out of their
+       HTTP cache forever, since public/ is copied verbatim by vite rather than
+       content-hashed. */
+    ember: '/audio/music/fire.mp3?v=2.3.1591',
     meadow: '/audio/music/forest.mp3', /* owner: "forest meadow area where the
                                           slimes are" — Starting Meadow, the
                                           green zone that spawns 10 plain
@@ -1395,16 +1403,20 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
      mid-range artifacts, and 0.5 MB is not worth guessing with.  Above 128k
      is measurement noise here (160k reads 0.1 dB WORSE), which is the ceiling
      of what this proxy can resolve, not a reason to prefer 128k over 160k.
-     v2.3.1584: ember (the "fire zone", Flame Fields) gets fire.mp3 — 128 kbps,
-     2.42 MB for 2m39s off a 3.73 MB 197 kbps source.  96k costs 2.5 dB above
-     15 kHz, the worst of the four, so 128k is not a close call here.
-     LONGEST track so far and therefore the heaviest resident: 53.4 MB decoded,
-     against the 56 MB budget below.  It fits, but a track much past 2m40s
-     would sit alone ABOVE the budget.  That is safe by construction rather
-     than by luck — the just-decoded and currently-playing track are never
-     evicted, so an oversized score stays resident and simply drops everything
-     else (covered by the checks in the v2.3.1584 commit).  Do not "fix" it by
-     raising ZONE_MUSIC_CACHE_MB: 56 is deliberately below two full tracks.
+     v2.3.1584 / v2.3.1591: ember (the "fire zone" / "lava zone", Flame Fields)
+     gets fire.mp3 — 128 kbps, 2.35 MB for 2m34s off a 3.66 MB 199 kbps source.
+     v2.3.1591 replaced v2.3.1584's score on the owner's call, at the same
+     filename plus a ?v= bump (see the entry itself for why).
+     96k costs 3.5 dB above 15 kHz on this one — the widest 96k-vs-128k gap of
+     any track in the set, wider even than meadow's 3.3 — so 128k is not close.
+     Resident cost 51.7 MB against the 56 MB budget below, slightly lighter than
+     the 53.4 MB score it replaces.  It fits, but note how little headroom that
+     leaves: a track much past 2m40s sits alone ABOVE the budget, as sky's does.
+     That is safe by construction rather than by luck — the just-decoded and
+     currently-playing track are never evicted, so an oversized score stays
+     resident and simply drops everything else (covered by the checks in the
+     v2.3.1584 and v2.3.1585 commits).  Do not "fix" it by raising
+     ZONE_MUSIC_CACHE_MB: 56 is deliberately below two full tracks.
      v2.3.1585 / v2.3.1587: sky (the "desert zone", Wind Dunes) gets
      desert.mp3 — 128 kbps, 2.71 MB for 2m57s off a 4.35 MB 206 kbps source.
      v2.3.1587 swapped out v2.3.1585's first pick on the owner's call, at the
