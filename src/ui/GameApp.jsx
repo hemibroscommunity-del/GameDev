@@ -161,15 +161,20 @@ export const GameApp = () => {
      method has a defensive resume too; this listener is the
      proactive one so the first hit after returning isn't silent. */
   useEffect(() => {
-    const onResume = () => {
+    /* v2.3.1594: `hard` distinguishes a real hide/show cycle (visibilitychange,
+       pageshow) from a bare focus.  Only the former is allowed to rebuild the
+       audio sources — iOS can kill them while reporting the context healthy,
+       so the ctx-state check alone misses it; but rebuilding on every focus
+       restarts the zone song from the top, which v2.3.1593 fixed. */
+    const onResume = (hard) => {
       if (!BT_AUDIO || !BT_AUDIO.ctx) return;
       /* v2.3.254: resume ctx AND re-kick the zone music if it was
          playing.  ctx.resume() by itself doesn't restart a stopped
          BufferSource -- iOS Safari can stop the source during long
          backgrounds, leaving the game silent on return. */
-      try { BT_AUDIO.resumeFromBackground(); } catch (e) {}
+      try { BT_AUDIO.resumeFromBackground(!!hard); } catch (e) {}
     };
-    const onVis = () => { if (document.visibilityState === 'visible') onResume(); };
+    const onVis = () => { if (document.visibilityState === 'visible') onResume(true); };
     document.addEventListener('visibilitychange', onVis);
     /* v2.3.780: iOS Safari often REJECTS ctx.resume() outside a user
        gesture after a long background -- the visibilitychange resume
@@ -177,8 +182,14 @@ export const GameApp = () => {
        ('music stopped' after switching between two game windows).
        Retry inside every tap: the first gesture after returning
        restores the context AND re-kicks the zone music. */
+    /* v2.3.1594: was `state === 'suspended'`, which on iOS never matches an
+       INTERRUPTED context (phone call / backgrounding / another app taking the
+       audio session).  That made this the most damaging of the six copies of
+       the same check: it is the tap-to-recover path, the player's only way
+       back without a reload, and it silently declined to fire on the exact
+       platform the retry exists for.  Anything not 'running' now retries. */
     const onGesture = () => {
-      if (BT_AUDIO && BT_AUDIO.ctx && BT_AUDIO.ctx.state === 'suspended') onResume();
+      if (BT_AUDIO && BT_AUDIO.ctx && BT_AUDIO.ctx.state !== 'running') onResume();
     };
     document.addEventListener('pointerdown', onGesture, { passive: true });
     document.addEventListener('touchstart', onGesture, { passive: true });
@@ -186,14 +197,21 @@ export const GameApp = () => {
        (back/forward navigation or returning from a backgrounded tab
        that the browser unloaded).  visibilitychange does not always
        fire in that case. */
-    window.addEventListener('pageshow', onResume);
-    window.addEventListener('focus', onResume);
+    /* v2.3.1594: WRAPPED, not passed straight to addEventListener.  onResume
+       now takes a `hard` flag, and a raw listener would hand it the Event
+       object — truthy — making every window focus a hard rebuild and undoing
+       the v2.3.1593 no-restart-on-focus fix.  pageshow IS a real restore, so
+       it stays hard; focus is not, so it stays soft. */
+    const onPageShow = () => onResume(true);
+    const onFocus = () => onResume(false);
+    window.addEventListener('pageshow', onPageShow);
+    window.addEventListener('focus', onFocus);
     return () => {
       document.removeEventListener('visibilitychange', onVis);
       document.removeEventListener('pointerdown', onGesture);
       document.removeEventListener('touchstart', onGesture);
-      window.removeEventListener('pageshow', onResume);
-      window.removeEventListener('focus', onResume);
+      window.removeEventListener('pageshow', onPageShow);
+      window.removeEventListener('focus', onFocus);
     };
   }, []);
 
