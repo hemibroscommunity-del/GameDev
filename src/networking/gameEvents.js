@@ -14,6 +14,7 @@ import { _onBroNonce, _onBroResult } from './broWallet.js'; /* v2.3.1576 */
 import { BT_AUDIO, ZONES, TILE, ARENA_CHAMPION_REWARD, ARENA_WIN_REWARD, CLAN_WAR_REWARDS, createDefaultCompStats, recalcDerived, DEATH_GOLD_PENALTY, PVP_THREAT_CONSENT_MS, updateZoneDimensions, generateZoneMap, trainDefense, getGuildRank, SKILL_GUILDS } from '@/data/index.js';
 import { MONSTER_VARIANTS, maybeTransformMonster, isRemnantSkull, xpMultFor } from '@/data/monsterVariants.js';
 import { rollMonsterShard } from '@/data/shards.js';
+import { isWearingArmor } from '@/rendering/gearCatalog.js'; /* v2.3.1598: armoured-hit SFX check */
 /* BT_API_BASE: same window.BROTOWN_WS_URL-derived value BroTown computes at
    its own module scope — the barrel export is the canonical copy. */
 import { BT_API_BASE } from '@/networking/index.js';
@@ -1176,7 +1177,19 @@ export function processGameEvent(type, payload, S, deps) {
                 life: 0.6, color: '#ff5e6c', size: 2
               });
               S.screenShake = 3;
-              BT_AUDIO.beep(200, 0.1, 0.15, 'sawtooth');
+              /* v2.3.1598 (owner): the armour clang, not a dead beep.
+                 This is the SERVER-AUTHORITATIVE hit path — the one that
+                 actually runs, since the game is 100% server-based — and it
+                 still called beep(), which has been a no-op since v2.3.1103
+                 removed all synthesised audio.  So being hit by a monster has
+                 been SILENT ever since.  The real sound existed the whole
+                 time: monsterHitHero() picks the metallic armor-hit-1/2 when
+                 armoured and falls back to the bare 'monster-hit' thud, and
+                 the legacy client-local combat path in monsterCombat.js has
+                 called it since v2.3.1108.  Only the network path was missed,
+                 and the network path is the only one players hear.
+                 vol 0.85 matches the four monsterCombat.js call sites. */
+              try { BT_AUDIO.monsterHitHero(isWearingArmor(), { vol: 0.85 }); } catch (e) {}
               /* Death path: in MP the worker fires player_died (which
                  handles the death animation + popup) and player_respawned
                  (which teleports to town) -- both wired in the WS switch

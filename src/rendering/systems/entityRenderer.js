@@ -57,7 +57,7 @@ import { getShirt } from '../traits/shirtCatalog.js';
 import { getShirtColor, shirtFill } from '../traits/shirtColorCatalog.js';
 import { getGearFrame, getGearFramePhased, getLoadedGearSources } from '../gearSheets.js';
 import { combatGearUrls } from '../combatGear.js';
-import { getEquip, onEquipChange } from '../gearCatalog.js'; /* v2.3.1407: GEAR_CATALOG import dropped with the speculative all-states prewarm */
+import { getEquip, onEquipChange, isWearingArmor } from '../gearCatalog.js'; /* v2.3.1407: GEAR_CATALOG import dropped with the speculative all-states prewarm */
 import { recordCrash } from '../../debug/crashTrap.js'; /* v2.3.1305: trait-sheet load-failure telemetry */
 
 /* §9.2.1 Collision-opportunity weapon edge glow — proximity radius (≈20u). */
@@ -5389,7 +5389,7 @@ export class EntityRenderer {
            frame (works forward + backpedal; the jog advances <=1 frame/tick). */
         if (display._prevJogFrame !== frameIdx) {
           if (_contacts.indexOf(frameIdx) !== -1 && typeof window !== 'undefined' && window.BT_AUDIO) {
-            window.BT_AUDIO.footstep(getEquip('chest') !== 'none' || getEquip('legs') !== 'none' || getEquip('shoulders') !== 'none');
+            window.BT_AUDIO.footstep(isWearingArmor());
           }
           display._prevJogFrame = frameIdx;
         }
