@@ -174,7 +174,14 @@ export const GameApp = () => {
          backgrounds, leaving the game silent on return. */
       try { BT_AUDIO.resumeFromBackground(!!hard); } catch (e) {}
     };
-    const onVis = () => { if (document.visibilityState === 'visible') onResume(true); };
+    /* v2.3.1604: record how long we were away.  An app switch (>=2s) means
+       another app took the iOS audio session; a flick between tabs did not. */
+    const onVis = () => {
+      if (!BT_AUDIO) return;
+      if (document.visibilityState === 'hidden') { try { BT_AUDIO.noteHidden(); } catch (e) {} return; }
+      try { BT_AUDIO.noteVisible(); } catch (e) {}
+      onResume(true);
+    };
     document.addEventListener('visibilitychange', onVis);
     /* v2.3.780: iOS Safari often REJECTS ctx.resume() outside a user
        gesture after a long background -- the visibilitychange resume
@@ -199,6 +206,14 @@ export const GameApp = () => {
        gesture is the only moment iOS reliably honours resume() (v2.3.780). */
     const onGesture = () => {
       if (!BT_AUDIO || !BT_AUDIO.ctx) return;
+      /* v2.3.1604: FIRST, re-claim the iOS audio session if we came back from
+         another app.  This has to run inside the gesture — it is the only
+         moment iOS honours either the silent-WAV session claim or a fresh
+         AudioContext.  It also has to run BEFORE the state checks below,
+         because in this failure mode the context reports 'running' and the
+         graph looks perfectly healthy; the sound simply has no route to the
+         speaker, and nothing downstream of here can tell. */
+      try { if (BT_AUDIO.reclaimIfNeeded()) return; } catch (e) {}
       if (BT_AUDIO.ctx.state !== 'running') onResume(true);
       else { try { BT_AUDIO._audioHealthCheck(); } catch (e) {} }
     };

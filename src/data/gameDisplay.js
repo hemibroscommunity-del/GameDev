@@ -1645,6 +1645,15 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
       this._master.connect(a);      /* tap only — no onward connection */
       this._analyser = a;
       this._analyserBuf = new Uint8Array(a.fftSize);
+      /* v2.3.1602: PREFILL WITH THE SILENCE MIDPOINT.  A Uint8Array starts at
+         ZERO, and an AnalyserNode with no output connected is not reliably
+         pulled through the graph in WebKit — getByteTimeDomainData can leave
+         the buffer untouched.  All-zero then failed the `!== 128` test on the
+         very first sample, so _masterIsSilent answered "not silent" ALWAYS and
+         the watchdog's rebuild branch could never fire.  Prefilled, an
+         unwritten buffer reads as silence instead: the failure now points
+         toward recovery rather than away from it. */
+      this._analyserBuf.fill(128);
     } catch (e) {}
     return this._analyser;
   },
@@ -1654,27 +1663,163 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
   _masterIsSilent: function _masterIsSilent() {
     var a = this._ensureAnalyser();
     if (!a || !this._analyserBuf) return false;
+    /* v2.3.1601: a master bus mid-FADE is not evidence of a dead graph.
+       fadeIn starts at 0.001, and getByteTimeDomainData is 8-bit — 0.001
+       amplitude quantises to exactly 128, the same value true silence gives.
+       So a perfectly healthy fade-in read as "provable silence", the watchdog
+       rebuilt on it, and the rebuild called fadeIn again: a loop that could
+       keep the game silent indefinitely.  Never judge during a fade. */
+    try {
+      if (this._fadeUntil && this.ctx && this.ctx.currentTime < this._fadeUntil) return false;
+    } catch (e) {}
     try {
       a.getByteTimeDomainData(this._analyserBuf);
       for (var i = 0; i < this._analyserBuf.length; i++) {
-        if (this._analyserBuf[i] !== 128) return false;
+        if (this._analyserBuf[i] !== 128) {
+          /* v2.3.1602: proof the tap works.  Until we have seen ONE real
+             non-midpoint sample we cannot distinguish "silent" from "this
+             analyser is never pulled", so silence is not actionable evidence
+             and _masterIsSilent stays false below. */
+          this._analyserProven = true;
+          return false;
+        }
       }
+      if (!this._analyserProven) return false;   /* unproven tap: no evidence */
       return true;
     } catch (e) { return false; }
   },
   /* One convergence step.  Safe to call as often as you like — every branch
      is idempotent, and it is also what a touch now runs (a tap is just an
      extra opportunity to converge, not a special code path). */
+  /* v2.3.1600: REBUILD THE WHOLE GRAPH.  Every recovery up to here assumed the
+     AudioContext could be woken.  After a LONG absence iOS does not suspend or
+     interrupt it — it CLOSES it, and a closed context can never be resumed:
+     resume() rejects for ever.  init() guards on `if (this.ctx) return`, so the
+     dead context was kept for the life of the page and _wakeCtx retried it once
+     a second until reload.  That is the owner's "after leaving and not
+     returning for a while", and it is invisible to every state-based and
+     output-based check before this, because the graph is not asleep or
+     detached — it is gone.
+     Decoded buffers belong to the context that decoded them, so the caches are
+     dropped too and re-decode against the new one; the mp3s are still in the
+     HTTP cache, so that costs a decode, not a download.  The fresh context
+     starts suspended on iOS and needs a gesture, which the watchdog and the
+     touch handler both already supply — the point is that recovery becomes
+     POSSIBLE, where before it was not. */
+  /* ═══ v2.3.1604: THE iOS AUDIO SESSION ════════════════════════════════════
+     Owner, after leaving Safari for another app and returning: "the music
+     wouldn't return even with touch input.  I saw the speaker icon near the
+     browser url so it's like it thought something was playing but nothing was."
+
+     That symptom is diagnostic.  The speaker icon means Safari believes the
+     page is producing audio — so the context is RUNNING, the sources are alive,
+     and the graph really is generating signal.  Nothing is asleep, closed, or
+     missing.  The signal simply never reaches the speaker, because switching to
+     another app hands the iOS AUDIO SESSION to that app, and returning does not
+     hand it back.
+
+     Every detector built so far is blind to this by construction:
+       - ctx.state says 'running', because it is;
+       - the analyser taps the MASTER BUS, which is upstream of the
+         destination, so it sees the signal and reports healthy audio;
+       - the sources exist, so the missing-source branches never fire.
+     The graph is perfect.  The output path is not part of the graph.
+
+     The only thing that has ever re-claimed the session in this codebase is the
+     silent-WAV HTMLAudio play in GameApp's unlock() — and that is one-shot per
+     page load (`done = true`), so it has never run a second time.  Playing an
+     HTMLAudioElement re-asserts the audio session category; a fresh
+     AudioContext then re-negotiates its route to the hardware.  Both must
+     happen inside a user gesture, which is why this is armed on visibility and
+     fired on the next touch rather than attempted on the visibilitychange
+     itself, where iOS would refuse it. */
+  SILENT_WAV: 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=',
+  /* Re-assert the audio session category.  Cheap, silent, and safe to repeat. */
+  _reclaimSession: function _reclaimSession() {
+    try {
+      var a = new Audio(this.SILENT_WAV);
+      a.setAttribute('playsinline', '');
+      a.setAttribute('webkit-playsinline', '');
+      var pr = a.play();
+      if (pr && pr.catch) pr.catch(function () {});
+    } catch (e) {}
+  },
+  noteHidden: function noteHidden() { this._hiddenAt = Date.now(); },
+  /* Arm a reclaim if we were away long enough for another app to have taken the
+     session.  A flick between tabs comes back in well under 2s and keeps its
+     session, so it stays on the cheap path and is not disturbed. */
+  noteVisible: function noteVisible() {
+    var away = this._hiddenAt ? (Date.now() - this._hiddenAt) : 0;
+    this._hiddenAt = 0;
+    if (away >= 2000) this._needsSessionReclaim = true;
+  },
+  /* Called from the touch handler.  A gesture is the only moment iOS honours
+     either half of this. */
+  reclaimIfNeeded: function reclaimIfNeeded() {
+    if (!this._needsSessionReclaim) return false;
+    this._needsSessionReclaim = false;
+    this._reclaimSession();
+    /* A context whose route to the hardware was taken away cannot be repaired
+       in place — build a new one, which re-negotiates it.  Cheap enough: the
+       mp3s stay in the HTTP cache, so this costs decodes, not downloads. */
+    try { this._rebuildContext(); } catch (e) {}
+    try { this._rebuildSources(); } catch (e) {}
+    return true;
+  },
+  _rebuildContext: function _rebuildContext() {
+    var old = this.ctx;
+    this.ctx = null;
+    this._master = null;
+    this._analyser = null;
+    this._analyserBuf = null;
+    this._fadeUntil = 0;
+    this._globalMusicSource = null;
+    this._globalMusicGain = null;
+    this._globalMusicStarting = false;
+    this._globalMusicBuffer = null;      /* decoded against the dead context */
+    this._zoneMusicSource = null;
+    this._zoneMusicGain = null;
+    this._zoneMusicUrl = null;
+    this._zoneMusicStarting = false;
+    this._zoneMusicBuffers = Object.create(null);
+    this._zoneMusicLru = [];
+    this._samples = {};
+    this._sampleLoading = {};
+    this._sfxLoops = {};
+    this._loadedManifest = false;
+    this._unlocked = false;
+    this._silentTicks = 0;
+    this._asleepTicks = 0;
+    try { if (old && old.close && old.state !== 'closed') old.close(); } catch (e) {}
+    try { this.init(); } catch (e) {}
+    if (this.ctx) {
+      this._wakeCtx();
+      try { this.loadSfxManifest(); } catch (e) {}
+    }
+  },
   _audioHealthCheck: function _audioHealthCheck() {
     if (!this.ctx || this.muted) return;
+    /* v2.3.1600: closed is terminal — rebuild rather than retry for ever. */
+    if (this.ctx.state === 'closed') { this._rebuildContext(); return; }
     /* Never fight iOS while we are actually backgrounded — resuming there is
        refused anyway and would just burn the retry. */
     if (typeof document !== 'undefined' && document.hidden) { this._silentTicks = 0; return; }
     if (!this._ctxLive()) {
       this._wakeCtx();            /* refused outside a gesture? try again next tick */
       this._silentTicks = 0;
+      /* v2.3.1600: escalation.  A context that will not wake after 30 straight
+         seconds of trying, while the page is VISIBLE (hidden pages returned
+         above), is not going to — WebKit can leave one wedged in a state it
+         never reports as 'closed'.  Rebuild rather than retry the same dead
+         object until the player reloads.  30s is deliberately long: iOS
+         legitimately refuses resume() outside a user gesture, and a player
+         who is simply looking at the screen without touching must not trigger
+         a rebuild loop. */
+      this._asleepTicks = (this._asleepTicks || 0) + 1;
+      if (this._asleepTicks >= 30) { this._asleepTicks = 0; this._rebuildContext(); }
       return;
     }
+    this._asleepTicks = 0;
     this._ensureAudible();
     var z = this._currentZoneAmbient;
     var zoneWants = !!(z && this.ZONE_MUSIC && this.ZONE_MUSIC[z]);
@@ -2071,6 +2216,17 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
   if (trackUrl) {
     var self = this;
     self._zoneMusicUrl = trackUrl;
+    /* v2.3.1602: POSITION EPOCH for the zone track, mirroring the session
+       track's since v2.3.1593.  This is what makes a rebuild inaudible: a
+       restarted zone track picks up where it would have been instead of
+       jumping to the top of the song.  Reset only when the TRACK changes, so
+       entering a new zone still starts its music from the beginning.
+       Wall-clock, because ctx.currentTime freezes while the page is asleep and
+       the whole point is to survive that. */
+    if (self._zoneMusicEpochUrl !== trackUrl) {
+      self._zoneMusicEpochUrl = trackUrl;
+      self._zoneMusicEpoch = Date.now();
+    }
     var startWithBuffer = function (buf) {
       /* Bail if the user changed zones during the fetch — the
          _zoneMusicUrl != trackUrl guard makes the stale promise a
@@ -2079,6 +2235,14 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
          SAME url.  It compares urls, so racing starts on one zone all pass. */
       if (self._zoneMusicUrl !== trackUrl) { self._zoneMusicStarting = false; return; }
       self._zoneMusicStarting = false;
+      /* v2.3.1603: never build a source on a context that is not running.  A
+         BufferSource created and started against a suspended or interrupted
+         context is the unreliable case that leaves music "playing" inaudibly;
+         _whenRunning defers to the statechange after the player's first touch,
+         which is the moment iOS actually honours the wake.  The url re-check
+         inside guards a zone change while we waited. */
+      self._whenRunning(function () {
+      if (self._zoneMusicUrl !== trackUrl) return;
       try {
         /* v2.3.1597: LAST-DITCH ANTI-STACK.  Whatever raced to get here, only
            one zone source may be audible: stop whatever is already playing
@@ -2124,10 +2288,19 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
         });
         src.connect(gain);
         gain.connect(self._out());
-        src.start(0);
+        /* v2.3.1602: resume at position — see the epoch note above. */
+        var zOff = 0;
+        try {
+          if (buf.duration > 0 && self._zoneMusicEpoch) {
+            zOff = ((Date.now() - self._zoneMusicEpoch) / 1000) % buf.duration;
+            if (!(zOff >= 0)) zOff = 0;
+          }
+        } catch (e) { zOff = 0; }
+        src.start(0, zOff);
         self._zoneMusicSource = src;
         self._zoneMusicGain = gain;
       } catch (e) {}
+      });
     };
     if (self._zoneMusicBuffers && self._zoneMusicBuffers[trackUrl]) {
       self._touchZoneMusic(trackUrl);   /* a cache HIT is a use — keep it warm */
@@ -2451,8 +2624,12 @@ BT_AUDIO.startGlobalMusic = function () {
     /* Re-check: the fetch is async and a background-resume may have started
        a source while it was in flight. */
     if (self._globalMusicSource || !self.ctx) return;
-    try {
-      self._wakeCtx();     /* v2.3.1594: 'interrupted' counts too */
+    self._wakeCtx();
+    /* v2.3.1603: same invariant as the zone track — only build on a live
+       context.  Re-checked inside because the wait can be arbitrarily long. */
+    self._whenRunning(function () {
+      if (self._globalMusicSource || !self.ctx) return;
+      try {
       var src = self.ctx.createBufferSource();
       var gain = self.ctx.createGain();
       src.buffer = buf;
@@ -2502,7 +2679,8 @@ BT_AUDIO.startGlobalMusic = function () {
       src.start(0, offset);
       self._globalMusicSource = src;
       self._globalMusicGain = gain;
-    } catch (e) {}
+      } catch (e) {}
+    });
   };
   if (this._globalMusicBuffer) return play(this._globalMusicBuffer);
   this._globalMusicStarting = true;
@@ -2605,41 +2783,73 @@ BT_AUDIO._teardownGlobalMusic = function () {
    which is why focus stays soft and cannot restart the zone song. */
 BT_AUDIO.resumeFromBackground = function (hard) {
   if (!this.ctx) return;
-  /* v2.3.1593: capture this BEFORE resuming.  A suspended context is the only
-     state in which iOS silently stops our sources, so it is also the only
-     state that justifies rebuilding them — and this handler is wired to
-     `focus` and `pageshow` as well as visibilitychange, which fire routinely
-     while audio is perfectly healthy.  Rebuilding unconditionally (what the
-     zone track did) restarted the zone song from the top on every window
-     focus. */
-  /* v2.3.1594: was `=== 'suspended'`, which on iOS is exactly the check that
-     misses an INTERRUPTED context — so the rebuild below never ran on the one
-     platform that needs it.  Anything not 'running' counts as asleep. */
-  var wasSuspended = !this._ctxLive() || !!hard;
-  if (wasSuspended) {
+  /* v2.3.1601: THE WATCHDOG IS THE ONLY REPAIRMAN NOW.
+     This used to tear the audio down and rebuild it on every visibilitychange,
+     because `hard` is true for all of them.  On a QUICK tab switch — where iOS
+     did nothing at all and the audio was perfectly healthy — that meant
+     dipping the master to 0.001 via fadeIn, stopping a working session track,
+     and restarting a working zone track, purely on the assumption that
+     something must have broken.  Nothing had.
+     Worse, it could sustain itself: a master sitting at 0.001 reads as EXACTLY
+     the silence midpoint through the analyser's 8-bit time-domain data, so the
+     watchdog saw "provable silence", rebuilt, and called fadeIn again.
+     So this no longer repairs anything.  It wakes the context — idempotent and
+     safe — and runs one health check.  If audio is fine, nothing is touched.
+     If it is genuinely dead, the watchdog notices within ~3s by LISTENING,
+     which is the one method that does not have to guess what iOS did.
+     `hard` now only distinguishes "the page really went away" for the fade;
+     it no longer authorises destruction. */
+  var wasAsleep = !this._ctxLive();
+  if (wasAsleep) {
     this._wakeCtx();
-    /* v2.3.786: ease back in after a background resume (same pop as the
-       first-gesture case, just mid-session). */
+    /* v2.3.786: ease back in after a real resume.  Only when the context was
+       actually asleep — fading a healthy bus was half of the v2.3.1601 bug. */
     this.fadeIn(0.8);
   }
-  /* v2.3.1577: iOS can implicitly stop a BufferSource during a long
-     backgrounding, and ctx.resume() does not restart it — the same reason
-     the zone track is re-kicked below.  onended clears the ref, so this
-     starts a fresh one only when the old one really died.
-     v2.3.1593: ...and when onended did NOT fire, the teardown above forces
-     it.  startGlobalMusic resumes at position, so this costs continuity
-     nothing. */
-  if (wasSuspended) this._teardownGlobalMusic();
-  this.startGlobalMusic();
-  if (!wasSuspended) return;
-  var zone = this._currentZoneAmbient;
-  if (!zone) return;
-  /* startZoneAmbient early-returns when _currentZoneAmbient already
-     matches the requested zone; clear the flag so it actually
-     re-runs and gets us a fresh BufferSource. */
-  this._currentZoneAmbient = null;
-  try { this.startZoneAmbient(zone); } catch (e) {}
+  /* v2.3.1602: a real hide/show cycle DOES rebuild the sources again — but for
+     a different reason than v2.3.1594's version, and without its cost.
+     v2.3.1601 removed that rebuild and left recovery entirely to the watchdog's
+     silence detection, which turns out never to have fired: the analyser tap is
+     not reliably pulled in WebKit, so it always answered "not silent" (see
+     _ensureAnalyser).  The quick-switch recovery that worked at v2.3.1596 was
+     the rebuild, not the listening — removing it removed the only thing working.
+     What made the old rebuild painful was that it dipped the master and
+     restarted the zone song from the top.  Neither happens now: the fade is
+     gated on the context actually having been asleep, and BOTH tracks resume at
+     position, so a rebuild the player did not need is inaudible rather than
+     jarring.  That is what makes it safe to do unconditionally.
+     `hard` is true only for visibilitychange and pageshow — a bare window focus
+     still does nothing, so ordinary desktop clicking about costs nothing. */
+  if (hard) {
+    /* v2.3.1603: DEFER THE REBUILD UNTIL THE CONTEXT IS ACTUALLY RUNNING.
+       On a quick switch iOS refuses resume() outside a user gesture, so this
+       used to tear both tracks down and immediately build their replacements
+       on a context that was still asleep — and a BufferSource created and
+       started against a suspended context is exactly the unreliable case.  The
+       old sources were gone, the new ones never sounded, and nothing rebuilt
+       again until something else woke the context.
+       _whenRunning fires immediately when the context is live and otherwise on
+       the statechange that follows the player's first touch, so the rebuild now
+       happens at the one moment it can succeed. */
+    var self = this;
+    this._whenRunning(function () { self._rebuildSources(); });
+  }
+  try { this._audioHealthCheck(); } catch (e) {}
 };
+
+/* v2.3.1603: the single rebuild-the-sources step, extracted so both the resume
+   path and the watchdog use identical logic.  Assumes a running context —
+   every caller goes through _whenRunning or checks _ctxLive first. */
+BT_AUDIO._rebuildSources = function () {
+  this._teardownGlobalMusic();
+  var z = this._currentZoneAmbient;
+  if (z && this.ZONE_MUSIC && this.ZONE_MUSIC[z]) {
+    this._currentZoneAmbient = null;            /* defeat the same-zone early-return */
+    try { this.startZoneAmbient(z); } catch (e) {}
+  }
+  try { this.startGlobalMusic(); } catch (e) {}
+};
+
 BT_AUDIO.play = function (key, opts) {
   if (this.muted || !this.ctx) return null;
   /* v2.3.130: iOS Safari suspends the AudioContext on tab-switch,

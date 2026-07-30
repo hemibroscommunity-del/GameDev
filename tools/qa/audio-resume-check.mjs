@@ -35,10 +35,12 @@ function grabProp(name) {
   return SRC.slice(i, SRC.indexOf('\n  },', i) + 4);
 }
 const body = [
-  ...['_teardownGlobalMusic', 'resumeFromBackground', 'startGlobalMusic'].map(grab),
+  ...['_teardownGlobalMusic', 'resumeFromBackground', '_rebuildSources', 'startGlobalMusic'].map(grab),
   ...['_ctxLive', '_wakeCtx', '_whenRunning', 'fadeIn', '_ensureAudible',
-      '_ensureAnalyser', '_masterIsSilent', '_audioHealthCheck',
-      '_ensureAnalyser', '_masterIsSilent', '_audioHealthCheck'].map(grabProp),
+      '_ensureAnalyser', '_masterIsSilent', '_audioHealthCheck', '_rebuildContext',
+      '_reclaimSession', 'noteHidden', 'noteVisible', 'reclaimIfNeeded',
+      '_ensureAnalyser', '_masterIsSilent', '_audioHealthCheck', '_rebuildContext',
+      '_reclaimSession', 'noteHidden', 'noteVisible', 'reclaimIfNeeded'].map(grabProp),
 ].join(',\n');
 
 globalThis.document = { hidden: false };
@@ -82,7 +84,11 @@ function makeAudio(opts = {}) {
   const dead = A._globalMusicSource;
   dead.onended = null;             /* iOS killed it silently — no callback */
   ctx.state = 'suspended';         /* which is what a backgrounding looks like */
-  A.resumeFromBackground();
+  A._silent = true;                /* a dead source produces no output */
+  A.resumeFromBackground(true);
+  /* v2.3.1601: resumeFromBackground no longer tears anything down — a silently
+     killed source still LOOKS present, so it is the watchdog's silence
+     detection that catches it, within ~3s. */
   ck('after silent kill + resume: a NEW source is running', started.length, 2);
   ck('after silent kill + resume: ref points at the new source',
     A._globalMusicSource !== dead && !!A._globalMusicSource, true);
@@ -94,6 +100,7 @@ function makeAudio(opts = {}) {
 {
   const { A, started } = makeAudio();
   A._currentZoneAmbient = 'town';  /* standing in a scored zone, music healthy */
+  A._zoneMusicSource = {};         /* v2.3.1601: and its track really is playing */
   A.startGlobalMusic();
   const first = A._globalMusicSource;
   A.resumeFromBackground();        /* ctx still 'running' — focus/pageshow */
@@ -156,8 +163,9 @@ function makeAudio(opts = {}) {
   ctx.state = 'interrupted';              /* NOT 'suspended' — the whole bug */
   A.resumeFromBackground(true);
   ck('interrupted: context is woken', ctx.state, 'running');
+  /* v2.3.1601: waking is resumeFromBackground's whole job now; repairing the
+     dead sources belongs to the watchdog, which hears the silence. */
   ck('interrupted: session track rebuilt', started.length, 2);
-  ck('interrupted: zone track re-kicked', A._zoneRekicks, 1);
 }
 
 // ── 7. The `hard` flag: a real hide/show rebuilds, a bare focus does not ──
@@ -165,11 +173,14 @@ function makeAudio(opts = {}) {
   const { A, started } = makeAudio();       /* ctx healthy throughout */
   A._currentZoneAmbient = 'town';
   A.startGlobalMusic();
+  A._zoneMusicSource = {};                  /* zone track playing fine */
   A.resumeFromBackground(false);            /* window focus */
   ck('soft resume: no rebuild', started.length, 1);
   ck('soft resume: zone song not restarted', A._zoneRekicks, 0);
+  /* v2.3.1601: `hard` no longer authorises destruction.  Tearing healthy audio
+     down on every visibilitychange WAS the quick-tab-switch regression. */
   A.resumeFromBackground(true);             /* visibilitychange / pageshow */
-  ck('hard resume: rebuilds even though ctx reads healthy', started.length, 2);
+  ck('hard resume: rebuilds (inaudibly — position preserved)', started.length, 2);
   ck('hard resume: zone song re-kicked', A._zoneRekicks, 1);
 }
 
@@ -204,12 +215,14 @@ function makeAudio(opts = {}) {
   const { A, ctx, started } = makeAudio({ state: 'interrupted', refuseResume: true });
   A._currentZoneAmbient = 'hollows';        /* unscored: session track audible */
   A.startGlobalMusic();
-  ck('asleep: a source was created', started.length, 1);
-  ck('asleep: gain held at 0, ramp NOT scheduled against a frozen clock',
-    A._globalMusicGain.gain.value === 0 && A._globalMusicGain.gain._ramped === undefined, true);
+  /* v2.3.1603: nothing is BUILT while the context is asleep.  A BufferSource
+     created and started against a suspended or interrupted context is the
+     unreliable case — it was the "playing, inaudibly" state.  Construction now
+     waits for the context to actually run. */
+  ck('asleep: no source built on a dead context', started.length, 0);
   ctx._setState('running');
-  ck('on wake: the ramp finally runs, to full volume',
-    A._globalMusicGain.gain._ramped, 0.22);
+  ck('on wake: the source is built', started.length, 1);
+  ck('on wake: and ramps to full volume', A._globalMusicGain.gain._ramped, 0.22);
 }
 
 // ── 11. A frozen mid-fetch must not wedge the session track forever ────
@@ -217,8 +230,11 @@ function makeAudio(opts = {}) {
   const { A, started } = makeAudio();
   A._globalMusicStarting = true;            /* fetch in flight when we froze */
   A._globalMusicBuffer = { duration: 100 };
+  /* v2.3.1601: resumeFromBackground no longer tears down, so the stuck guard is
+     cleared by the v2.3.1599 staleness expiry in the watchdog instead. */
+  A._globalMusicStartingAt = Date.now() - 9000;
   A.resumeFromBackground(true);
-  ck('stuck in-flight guard is cleared by teardown', A._globalMusicStarting, false);
+  ck('stuck in-flight guard is cleared by staleness expiry', A._globalMusicStarting, false);
   ck('session track rebuilt despite the stuck guard', started.length, 1);
 }
 
@@ -365,6 +381,153 @@ function makeAudio(opts = {}) {
   A._zoneMusicStartingAt = 0;                    /* no stamp */
   for (let i = 0; i < 3; i++) A._audioHealthCheck();
   ck('unstamped flag: guard still respected', starts, 0);
+}
+
+// ── 22. A CLOSED context is terminal — rebuild, don't retry forever ────
+//   After a long absence iOS closes the context outright. resume() rejects
+//   for ever, and init() refuses to replace an existing ctx, so every prior
+//   recovery path retried a dead object until reload.
+{
+  const { A, ctx } = makeAudio();
+  let rebuilt = 0;
+  A.init = function () { rebuilt++; this.ctx = { state: 'suspended', resume: () => Promise.resolve(), addEventListener() {}, removeEventListener() {} }; };
+  ctx.state = 'closed';
+  A._audioHealthCheck();
+  ck('closed ctx: graph rebuilt', rebuilt, 1);
+  ck('closed ctx: a fresh context is installed', A.ctx !== ctx, true);
+}
+
+// ── 23. Rebuild drops buffers decoded against the dead context ─────────
+{
+  const { A, ctx } = makeAudio();
+  A.init = function () { this.ctx = { state: 'suspended', resume: () => Promise.resolve(), addEventListener() {}, removeEventListener() {} }; };
+  A._globalMusicBuffer = { duration: 100 };
+  A._zoneMusicBuffers = { '/a.mp3': {} };
+  A._zoneMusicStarting = true;
+  ctx.state = 'closed';
+  A._audioHealthCheck();
+  ck('rebuild: stale global buffer dropped', A._globalMusicBuffer, null);
+  ck('rebuild: stale zone buffer cache emptied', Object.keys(A._zoneMusicBuffers).length, 0);
+  ck('rebuild: in-flight flags cleared', A._zoneMusicStarting, false);
+}
+
+// ── 24. A context that never wakes escalates to a rebuild — but slowly ─
+{
+  const { A } = makeAudio({ state: 'interrupted', refuseResume: true });
+  let rebuilt = 0;
+  A.init = function () { rebuilt++; this.ctx = { state: 'suspended', resume: () => Promise.reject(new Error('no')), addEventListener() {}, removeEventListener() {} }; };
+  for (let i = 0; i < 29; i++) A._audioHealthCheck();
+  ck('29s of failed wakes: no rebuild yet (gestures may still come)', rebuilt, 0);
+  A._audioHealthCheck();
+  ck('30s of failed wakes: escalates to a rebuild', rebuilt, 1);
+}
+
+// ── 25. A healthy context never escalates ──────────────────────────────
+{
+  const { A } = makeAudio();
+  A._currentZoneAmbient = 'hollows';
+  A.startGlobalMusic();
+  let rebuilt = 0;
+  A.init = function () { rebuilt++; };
+  for (let i = 0; i < 60; i++) A._audioHealthCheck();
+  ck('60s healthy: never rebuilt', rebuilt, 0);
+}
+
+// ── 26. A QUICK tab switch must not destroy healthy audio ──────────────
+//   The regression: `hard` is true for every visibilitychange, and it used to
+//   authorise a full teardown + restart even when iOS had done nothing.
+{
+  const { A, started } = makeAudio();          /* ctx healthy throughout */
+  A._currentZoneAmbient = 'town';
+  A.startGlobalMusic();
+  const src = A._globalMusicSource;
+  let zoneRestarts = 0;
+  A.startZoneAmbient = function () { zoneRestarts++; };
+  A._zoneMusicSource = {};                     /* zone track playing fine */
+  A._silent = false;                           /* and audibly so */
+  A._master.gain.value = 1;
+  A._globalMusicEpoch = Date.now() - 30000;    /* 30s into the session track */
+  A.resumeFromBackground(true);                /* quick switch back */
+  /* v2.3.1602: a hide/show cycle DOES rebuild — the v2.3.1601 "leave it alone"
+     rule relied on the watchdog noticing breakage, and its analyser tap never
+     fires in WebKit.  What made the old rebuild bad was its COST, and that is
+     what these assertions now pin instead. */
+  ck('quick switch: session track rebuilt', started.length, 2);
+  ck('quick switch: rebuild resumes at position, not from the top',
+    started[1]._offset >= 29 && started[1]._offset <= 32, true);
+  ck('quick switch: zone song restarted (at position, see below)', zoneRestarts, 1);
+  ck('quick switch: master bus NOT dipped on a healthy context',
+    A._master.gain.value, 1);
+  void src;
+}
+
+// ── 27. ...but a genuinely dead graph is still repaired ────────────────
+{
+  const { A, started } = makeAudio();
+  A._currentZoneAmbient = 'hollows';
+  A.startGlobalMusic();
+  A._globalMusicSource = null;                 /* really died */
+  A.resumeFromBackground(true);
+  ck('dead source: repaired on the way back', started.length, 2);
+}
+
+// ── 28. A fading master must never read as silence ─────────────────────
+//   fadeIn starts at 0.001, which quantises to exactly 128 in the analyser's
+//   8-bit data — indistinguishable from true silence. Judging during a fade
+//   made the watchdog rebuild, which re-faded, which looked silent again.
+{
+  /* the REAL _masterIsSilent, not the harness stub — build it its own object */
+  const mkAnalyser = () => ({ fftSize: 256, getByteTimeDomainData(buf) { buf.fill(128); } });
+  const S = eval(`({\n${body}\n})`);
+  S.ctx = { currentTime: 0, createAnalyser: mkAnalyser };
+  S._master = { connect() {} };
+  S._fadeUntil = 0;
+  /* v2.3.1602: an UNPROVEN tap is not evidence.  A Uint8Array starts at zero and
+     WebKit does not reliably pull an analyser with no output connected, so
+     "looks like silence" from a tap that has never produced a real sample means
+     nothing — that false confidence is why the watchdog never rebuilt. */
+  ck('unproven tap: silence is not actionable', S._masterIsSilent(), false);
+  S._analyserProven = true;                      /* the tap has produced real audio */
+  ck('proven tap, all-128 bus: correctly reads as silence', S._masterIsSilent(), true);
+  S._fadeUntil = 1;                              /* a fade is in flight */
+  ck('same bus mid-fade: NOT judged as silence', S._masterIsSilent(), false);
+  S.ctx.currentTime = 2;                         /* fade has finished */
+  ck('after the fade ends: judged again', S._masterIsSilent(), true);
+}
+
+// ── 29. THE AUDIO SESSION: back from another app ───────────────────────
+//   Reported symptom: speaker icon showing in Safari's URL bar, ctx running,
+//   sources alive, graph producing signal — and nothing audible. The session
+//   went to the other app and was never handed back. No state check and no
+//   analyser can see this: the analyser taps the master bus, which is UPSTREAM
+//   of the destination, so it reads perfectly healthy audio.
+{
+  const { A } = makeAudio();
+  let wavs = 0, ctxRebuilds = 0, srcRebuilds = 0;
+  globalThis.Audio = function () { wavs++; return { setAttribute() {}, play: () => Promise.resolve() }; };
+  A.init = function () { ctxRebuilds++; this.ctx = { state: 'suspended', resume: () => Promise.resolve(), addEventListener() {}, removeEventListener() {} }; };
+  A._rebuildSources = function () { srcRebuilds++; };
+
+  /* a flick between tabs — session was never lost */
+  A.noteHidden();
+  A._hiddenAt = Date.now() - 500;
+  A.noteVisible();
+  ck('short hide: no reclaim armed', !!A._needsSessionReclaim, false);
+  ck('short hide: a touch does nothing special', A.reclaimIfNeeded(), false);
+  ck('short hide: nothing rebuilt', ctxRebuilds + srcRebuilds + wavs, 0);
+
+  /* an app switch — long enough for another app to have taken the session */
+  A.noteHidden();
+  A._hiddenAt = Date.now() - 5000;
+  A.noteVisible();
+  ck('app switch: reclaim armed', !!A._needsSessionReclaim, true);
+  ck('app switch: touch performs the reclaim', A.reclaimIfNeeded(), true);
+  ck('app switch: silent WAV replayed to re-claim the session', wavs, 1);
+  ck('app switch: context rebuilt to re-negotiate its route', ctxRebuilds, 1);
+  ck('app switch: sources rebuilt on the new context', srcRebuilds, 1);
+  ck('app switch: flag cleared', !!A._needsSessionReclaim, false);
+  ck('app switch: a second touch does not reclaim again', A.reclaimIfNeeded(), false);
+  ck('app switch: and nothing extra was rebuilt', ctxRebuilds, 1);
 }
 
 console.log(fail ? `\n${fail} FAILED` : '\nall pass');
