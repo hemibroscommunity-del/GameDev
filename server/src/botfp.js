@@ -81,9 +81,19 @@ export const BOTFP = {
   FLEET_ACTIVE_MIN: 3,           // of which this many harvested heavily this hour
   FLEET_ACTIVE_STRIKES: 30,
   // ── economic hourly caps (ANTICHEAT-SPEC §6, owner-approved clamps) ──
-  // World supply per gathering skill is 6 nodes × 30 respawns/hour = 180 —
-  // a teleporting bot cannot exceed it, a human cannot reach it.  270 sits
-  // 50% above the physical ceiling: zero false-positive risk by design.
+  // World supply per gathering skill is 180/hour — a teleporting bot cannot
+  // exceed it, a human cannot reach it.  270 sits 50% above that physical
+  // ceiling: zero false-positive risk by design.
+  // v2.3.1592: the ceiling is UNCHANGED at 180, but it is now reached a
+  // different way.  It used to be 6 nodes × 30 respawns/hour (a 2-minute
+  // timer); the owner's "one resource per zone, quick respawn" pass made it
+  // 1 node × 180 respawns/hour (a 20-second timer).  Same product, so this
+  // cap and its margin needed no edit — but the DERIVATION did, because a
+  // future session reading "6 nodes × 30" would have no idea which half of
+  // it they were allowed to change.  Whoever touches NODE_RESPAWN_TIME or
+  // _getZoneNodeConfig owns this number: nodes × (3600 / respawnSeconds)
+  // must stay well under HARVEST_HOUR_CAP.  node-respawn.test.mjs asserts
+  // exactly that against the live constants, so the two cannot drift.
   HARVEST_HOUR_CAP: 270,
   // Sustained human cooking ≈ 450/h (one ~8s minigame each incl. open
   // delay); the only prior bound was _cookRateOk's 20/min = 1200/h.

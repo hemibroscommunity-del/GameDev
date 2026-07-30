@@ -88,6 +88,21 @@ await join(ws, 'bp_el_p');
 const ps = room.playerState['bp_el_p'];
 ps.z = 'meadow';
 const meadow = room._ensureZoneMonsters('meadow');
+/* v2.3.1592: meadow dropped from 10 monsters to 3, but this suite reaches for
+   meadow[0..4] so each element case gets an untouched target.  Top the list up
+   with real spawns under unique ids instead of sharing three monsters across
+   cases — status effects persist on the monster, so reuse would leak burn/
+   freeze state between checks.  Same idiom as combat-lifecycle.test.mjs;
+   node-respawn.test.mjs owns the population number. */
+while (meadow.length < 5) {
+  const extra = room._spawnZoneMonsters('meadow');
+  if (!extra.length) break;                    /* never loop forever */
+  for (const m of extra) {
+    if (meadow.length >= 5) break;
+    m.id = 'sm-meadow-x' + meadow.length;      /* ids repeat per spawn call */
+    meadow.push(m);
+  }
+}
 const mFrozen = meadow[0], mControl = meadow[1], mSlow = meadow[2];
 // place the player near all three, outside ATTACK_RANGE (45) to force chase
 ps.x = 500; ps.y = 500;

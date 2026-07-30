@@ -64,6 +64,23 @@ const psB = room.playerState.pb;
 
 // Freeze the idle-wander AI so monster positions/dirty sets stay put.
 const meadowMonsters = room.monsters.meadow;
+/* v2.3.1592: meadow fielded 10 monsters when this suite was written and now
+   fields 3, but the sections below each reach for their OWN monster (indices
+   up to [9]) precisely so they cannot interfere with one another.  Top the
+   live list up with real spawns under unique ids rather than re-pointing
+   every section at the surviving three: this suite is about the combat
+   lifecycle, not zone density, and it should not have to change again the
+   next time the owner retunes the population.  node-respawn.test.mjs owns
+   that number. */
+while (meadowMonsters.length < 10) {
+  const extra = room._spawnZoneMonsters('meadow');
+  if (!extra.length) break;                       /* never loop forever */
+  for (const m of extra) {
+    if (meadowMonsters.length >= 10) break;
+    m.id = 'sm-meadow-x' + meadowMonsters.length; /* ids repeat per spawn call */
+    meadowMonsters.push(m);
+  }
+}
 for (const m of meadowMonsters) m._wanderPausedUntil = Date.now() + 600000;
 
 // ── 1 + 2. Server damage roll, overkill clamp, kill credit ──
@@ -280,8 +297,12 @@ for (const m of meadowMonsters) m._wanderPausedUntil = Date.now() + 600000;
     m.x = 200 + i * 100; m.y = 200;
     m.spawnX = m.x; m.spawnY = m.y; // stay inside the wander leash
   });
-  const m1 = meadowMonsters[3];
-  const m2 = meadowMonsters[4];
+  /* v2.3.1592: was [3] and [4].  Meadow fielded 10 monsters when this was
+     written and now fields 3, so those indices are undefined.  Any two
+     distinct monsters prove the separation push — the indices were never the
+     point, only that they are not the "far" monster at [0]. */
+  const m1 = meadowMonsters[1];
+  const m2 = meadowMonsters[2];
   m1.alive = true; m2.alive = true;
   m1.x = 5000; m1.y = 5000; m2.x = 5002; m2.y = 5000;   // overlapping (2 px apart)
   m1.spawnX = 5000; m1.spawnY = 5000; m2.spawnX = 5002; m2.spawnY = 5000;

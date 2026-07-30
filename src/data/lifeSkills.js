@@ -185,7 +185,11 @@ export function spawnGatherNodes(zoneId, depth) {
      keep both for belt + suspenders. */
   if (!zone || zone.safe || zoneId === 'town') return [];
   /* v2.3.1346 (owner): uniform 3-of-each for every combat zone. */
-  const cfg = ZONE_NODE_CONFIG[zoneId] || { treeCt: 3, fishCt: 3, oreCt: 3 };
+  /* v2.3.1592: one of each resource per zone (owner).  MIRROR of the server's
+     gathering.js _getZoneNodeConfig — that one is authoritative for what
+     actually spawns; this default only shapes the legacy client-local layout.
+     Keep the two together. */
+  const cfg = ZONE_NODE_CONFIG[zoneId] || { treeCt: 1, fishCt: 1, oreCt: 1 };
   const nodes = [];
   const W = zone.w * TILE, H = zone.h * TILE;
   /* 8-tile inset from every edge so harvestable resources stay

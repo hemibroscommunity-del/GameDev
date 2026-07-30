@@ -449,7 +449,16 @@ export class GameRoom {
     // at all" — the id sets only narrow the v2 payload.
     this.dirtyMonsterIds = {}; // zoneId -> Set(monsterId)
     this.dirtyNodeIds = {};    // zoneId -> Set(nodeId)
-    this.RESPAWN_TIME = 15000; // 15s respawn
+    /* v2.3.1592 (owner: "only 3 monsters per zone ... but with quick
+       respawn"): 15s -> 5s.  The two halves of that request are one change —
+       zone populations dropped to 3 (data.js ZONES.spawns), so at the old
+       15s a cleared zone stood empty and the kill cadence fell by roughly the
+       same factor the population did.  5s restores it: 3 monsters on a 5s
+       clock is the same steady-state supply as 9 on 15s.  There is no
+       hourly kill cap to breach — botfp caps harvesting and cooking only —
+       so unlike the node timer below this one is bounded by feel, not by an
+       anticheat ceiling. */
+    this.RESPAWN_TIME = 5000; // 5s respawn
     this.MONSTER_AGGRO_RANGE = 120; // pixels
     /* Monster stop + attack distance.  Bumped 25 -> 55 over a couple
        tuning passes so monsters halt about ~30 px away from the
@@ -468,7 +477,22 @@ export class GameRoom {
     // tick respawns alongside _tickMonsters().
     this.nodes = {}; // zoneId -> [node, ...]
     this.dirtyNodes = new Set(); // zoneIds with changed node state
-    this.NODE_RESPAWN_TIME = 120000; // 2 min — matches client v2.3.30
+    /* v2.3.1592 (owner: "one resource per zone but with quick respawn"):
+       2 min -> 20s, paired with the 9-nodes-per-zone -> 3 drop in
+       gathering.js _getZoneNodeConfig.
+       THE 20s IS PINNED BY THE ANTICHEAT, NOT BY TASTE.  botfp's
+       HARVEST_HOUR_CAP (270/skill/hour) is justified as "50% above the
+       PHYSICAL ceiling" — the most a teleporting bot could take if it
+       harvested every node the instant it respawned.  Drop the count to one
+       node per skill per zone and that ceiling becomes 3600/RESPAWN_SECONDS.
+       At 20s it is 180/hour, which is exactly the ceiling the cap was
+       written against, so the 50% margin survives verbatim.  At 10s it
+       would be 360 — ABOVE the cap — and legitimate players would start
+       tripping an anticheat that is documented as having zero false-positive
+       risk by design.  If this ever needs to be faster, raise
+       HARVEST_HOUR_CAP in the same commit and redo that arithmetic;
+       node-respawn.test.mjs fails if the two drift apart. */
+    this.NODE_RESPAWN_TIME = 20000; // 20s — see the ceiling note above
 
     // ═══ Resource-extraction validation (client v2.3.229 windowed-swipe) ═══
     //
