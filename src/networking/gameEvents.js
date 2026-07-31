@@ -1512,7 +1512,30 @@ export function processGameEvent(type, payload, S, deps) {
               if (payload.target !== S.myId) {
                 // Not targeted at us — if we're the attacker, show hit confirmation
                 if (payload.attacker === S.myId) {
-                  pushDmgPopup(S, S.player.x + 20, S.player.y - 20, payload.blocked ? 'Blocked!' : 'Hit!', payload.blocked ? '#888' : '#fbbf24');
+                  /* v2.3.1605 (owner: "all it says is hit when I hit the other
+                     player ... needs to actually show HP damage numbers").
+                     This used to float the literal word "Hit!" over the
+                     ATTACKER'S OWN HEAD — the wrong text in the wrong place.
+                     The server has always sent the resolved dmgTaken on this
+                     payload (combat.js builds it); nothing read it on the
+                     attacker's side.  Now the real number floats over the
+                     TARGET, matching how PvE damage reads, with crit and the
+                     block/dodge outcomes distinguished. */
+                  var _pvTgt = S.others && S.others[payload.target];
+                  var _pvX = _pvTgt ? (_pvTgt.x != null ? _pvTgt.x : _pvTgt.renderX) : S.player.x + 20;
+                  var _pvY = (_pvTgt ? (_pvTgt.y != null ? _pvTgt.y : _pvTgt.renderY) : S.player.y) - 30;
+                  if (payload.dodged) {
+                    pushDmgPopup(S, _pvX, _pvY, 'Dodged', '#9ca3af');
+                  } else if (payload.blocked) {
+                    pushDmgPopup(S, _pvX, _pvY, 'Blocked', '#607D8B');
+                  } else if (typeof payload.dmgTaken === 'number') {
+                    pushDmgPopup(S, _pvX, _pvY,
+                      '-' + Math.ceil(payload.dmgTaken) + (payload.isCrit ? '!' : ''),
+                      payload.isCrit ? '#f5c542' : '#ff5e6c');
+                  }
+                  /* Flash the opponent so a hit reads even off-centre, the same
+                     feedback a monster gets. */
+                  if (_pvTgt && !_pvTgt._isDead) _pvTgt._hitFlash = Date.now();
                 }
                 break;
               }
@@ -1555,7 +1578,11 @@ export function processGameEvent(type, payload, S, deps) {
                 size: 2
               });
               S.screenShake = payload.blocked ? 2 : 4;
-              BT_AUDIO.beep(200, 0.1, 0.15, 'sawtooth');
+              /* v2.3.1605: real hit sound, not the beep() that has been a no-op
+                 since v2.3.1103 — the same dead call the monster hit carried
+                 until v2.3.1598.  Being hit by a PLAYER was silent for the same
+                 reason and is fixed the same way. */
+              try { BT_AUDIO.monsterHitHero(isWearingArmor(), { vol: 0.85 }); } catch (e) {}
               /* Predict "Killed by X" popup from the (server-resolved
                  or locally-computed) dmgTaken vs current local hp.  HP
                  doesn't mutate locally in MP anymore, so checking

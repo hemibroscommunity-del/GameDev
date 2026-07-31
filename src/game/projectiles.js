@@ -757,8 +757,17 @@ export function updateArrows(S, deps) {
                the real authority; this is just the report.  The server
                damage popup arrives via pvp_hit (gameEvents), so no
                local damage number here — impact FX only. */
-            if (!hit && S.others && !((ZONES[S.currentZone] || {}).safe)
-                && (S._inDuel || (S.lockedTarget && S.lockedTarget.type === 'player' && S.lockedTarget.id))) {
+            /* v2.3.1605: same duel-in-town fix as the melee gate
+               (monsterCombat.js).  The safe-zone test sat AHEAD of the duel
+               test, so arrows and bolts were dropped in town exactly as swings
+               were — which is why "dueling only works with sword" understated
+               it: in town nothing worked, and outside town only melee had ever
+               been wired before v2.3.1302.  Consent overrides the zone rule;
+               free-fire still needs a lawless zone and a deliberate lock-on. */
+            if (!hit && S.others
+                && (S._inDuel
+                    || (!((ZONES[S.currentZone] || {}).safe)
+                        && S.lockedTarget && S.lockedTarget.type === 'player' && S.lockedTarget.id))) {
               var _pvpTid = S._inDuel ? S._inDuel.opponent : S.lockedTarget.id;
               var _pvpO = _pvpTid != null ? S.others[_pvpTid] : null;
               if (_pvpO && !a.hitIds.has('p_' + _pvpTid)) {
