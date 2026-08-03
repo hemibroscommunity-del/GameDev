@@ -1270,7 +1270,11 @@ export const ARENA_POLL_INTERVAL = 3000; /* check server every 3s */
    (BroTown.jsx §BET) -- a spectator who bet without entering would never be
    credited if the poll stopped entirely.  The panel itself stays live at the
    fast rate independently: PartyPanel polls on its own while it is open. */
-export const ARENA_IDLE_POLL_INTERVAL = 60000; /* 60s when uninvolved */
+/* v2.3.1635: 60s -> 5 min.  A player with NO arena involvement has
+   nothing this poll can tell them -- entering the arena goes through the
+   panel, which polls at the fast rate on its own, and anyone holding an
+   unsettled bet counts as involved and stays on the 3 s path. */
+export const ARENA_IDLE_POLL_INTERVAL = 300000; /* 5 min when uninvolved */
 
 /* ═══ LIFE SKILL GUILDS — §GUILD ═══ */
 /* Each life skill has its own guild with NPC guildmaster, rank progression, quests, titles */
