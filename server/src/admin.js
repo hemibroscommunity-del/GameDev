@@ -29,12 +29,12 @@
  * blob (rule 1); every await in here is a storage await, so the DO
  * input gate stays closed between validation and commit (rule 9). */
 
-/* v2.3.1605: every non-dated `rpgsnap:<pid>:` suffix in the repo.  These are
+/* v2.3.1617: every non-dated `rpgsnap:<pid>:` suffix in the repo.  These are
    "parachute" snapshots -- taken immediately before something destructive --
    and they prune as their OWN ring, separately from the dated dailies, for
    the sort-order reason documented at the prune site.  A writer that is not
    listed here silently lands in the daily class and evicts real snapshots,
-   which is exactly what `prereset-` did between v2.3.1347 and v2.3.1605.
+   which is exactly what `prereset-` did between v2.3.1347 and v2.3.1617.
      :prerestore-  admin.js, before an operator restore
      :prereset-    persistence.js, before a self-service character restart */
 export const PARACHUTE_TAGS = [':prerestore-', ':prereset-'];
@@ -90,7 +90,7 @@ export const adminMethods = {
       // lived forever -- exactly inverted from the rollback-parachute
       // intent.  Within each class, lexical sort IS age order (fixed-
       // width yyyymmdd; fixed-width ms timestamps until year 2286).
-      /* v2.3.1605: the v2.3.1179 fix above covered ONE parachute prefix and
+      /* v2.3.1617: the v2.3.1179 fix above covered ONE parachute prefix and
          the class test was written as a literal.  v2.3.1347 then added a
          SECOND parachute writer -- persistence.js `_handleCharacterReset`
          puts `rpgsnap:<pid>:prereset-<ts>` before wiping a character -- and

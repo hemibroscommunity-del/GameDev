@@ -180,7 +180,7 @@ state._store.set('rpg:bp_adm_rich', { coins: 5000, level: 40 });
   const snaps3 = [...state._store.keys()].filter((k) => k.startsWith('rpgsnap:bp_adm_a:'));
   check('ring prunes to SNAPSHOT.KEEP', snaps3.length === SNAPSHOT.KEEP, snaps3.length);
 
-  /* v2.3.1605: BOTH parachute prefixes prune as their own ring.
+  /* v2.3.1617: BOTH parachute prefixes prune as their own ring.
      `:prereset-` (persistence.js, self-service character restart) was
      added in v2.3.1347 and never registered with the v2.3.1179 class
      test, which matched the literal ':prerestore-' only.  It therefore
