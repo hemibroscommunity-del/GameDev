@@ -1,0 +1,79 @@
+/* Headless MULTIPLAYER test runner — v2.3.1609.
+ *
+ * Owner: "headlessly test all UI interactions in multiplayer (trading, duel,
+ * party, etc)."
+ *
+ * Starts ONE worker, ONE static server and ONE browser, then runs each
+ * scenario with its own freshly-joined pair of players.  Scenarios are
+ * deliberately isolated from each other by identity, not by cleanup: every
+ * scenario creates new browser contexts, so it gets new bp_ passphrases and
+ * therefore untouched server-side players.  Nothing a scenario does can make a
+ * later one pass — which is the property that makes "the trade settled" mean
+ * something.
+ *
+ *   node tools/qa/mp/run.mjs                 # everything
+ *   node tools/qa/mp/run.mjs trade duel      # named scenarios only
+ *
+ * Exits non-zero if any assertion failed, so it can gate a push.
+ */
+import * as H from './harness.mjs';
+
+const WS = await H.freePort(), WEB = await H.freePort();
+
+const SCENARIOS = {
+  presence: () => import('./mp-presence.mjs'),
+  trade: () => import('./mp-trade.mjs'),
+  duel: () => import('./mp-duel.mjs'),
+  party: () => import('./mp-party.mjs'),
+  social: () => import('./mp-social.mjs'),
+  friends: () => import('./mp-friends.mjs'),
+  chat: () => import('./mp-chat.mjs'),
+  clan: () => import('./mp-clan.mjs'),
+};
+
+const want = process.argv.slice(2).filter((a) => !a.startsWith('-'));
+const names = want.length ? want : Object.keys(SCENARIOS);
+for (const n of names) {
+  if (!SCENARIOS[n]) { console.error(`unknown scenario "${n}"; have: ${Object.keys(SCENARIOS).join(', ')}`); process.exit(2); }
+}
+
+console.log(`booting worker + dist for ${names.length} scenario(s): ${names.join(', ')}`);
+const t0 = Date.now();
+const worker = await H.startWorker(WS);
+const srv = await H.serveDist(WEB);
+const browser = await H.launch();
+/* A crash or a Ctrl-C must not leave wrangler + workerd holding the port. */
+let cleaned = false;
+const cleanup = () => { if (!cleaned) { cleaned = true; try { H.stopWorker(worker); } catch { /* best effort */ } } };
+process.on('SIGINT', () => { cleanup(); process.exit(130); });
+process.on('SIGTERM', () => { cleanup(); process.exit(143); });
+process.on('uncaughtException', (e) => { console.error(e); cleanup(); process.exit(1); });
+console.log(`up in ${((Date.now() - t0) / 1000).toFixed(0)}s\n`);
+
+const all = [];
+for (const name of names) {
+  const rec = H.recorder(name);
+  const started = Date.now();
+  console.log(`── ${name} ──────────────────────────────────`);
+  try {
+    const mod = await SCENARIOS[name]();
+    await mod.run({ browser, wsPort: WS, webPort: WEB, rec });
+  } catch (e) {
+    /* A thrown scenario is a failure with a name, not a crashed run: record it
+       and keep going, so one broken flow never hides the state of the rest. */
+    rec.ok('scenario completed', false, String(e).slice(0, 400));
+  }
+  console.log(`   (${((Date.now() - started) / 1000).toFixed(0)}s)\n`);
+  all.push(...rec.rows());
+}
+
+await browser.close();
+srv.close();
+await H.stopWorker(worker);
+
+const failed = all.filter((r) => !r.pass);
+console.log('═══════════════════════════════════════════');
+console.log(`${all.length} assertions, ${all.length - failed.length} passed, ${failed.length} failed`
+  + `  (${((Date.now() - t0) / 1000).toFixed(0)}s total)`);
+for (const f of failed) console.log(`  FAIL  ${f.suite} :: ${f.name}  ${JSON.stringify(f.detail)}`);
+process.exit(failed.length ? 1 : 0);
