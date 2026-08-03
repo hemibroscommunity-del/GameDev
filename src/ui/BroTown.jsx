@@ -99,6 +99,7 @@ import { controlsTutorialBus } from './mobile/controlsTutorialBus.js';
 import { initPixiRenderer, preloadPlayerAssets } from '@/rendering/pixiRenderer.js';
 import { IMAGE_ZONE_MAPS } from '@/rendering/tiledMaps.js';
 import { perfTracker } from '@/debug/perfTracker.js';
+import { t1StatsPayload } from '@/game/t1Sync.js'; /* v2.3.1633: shared T1 report gate */
 import * as DATA from '@/data/index.js';
 import { syncRpgToServer, wsrvUrl, btRpc, getBtPlayerId, getBtPassphrase, generatePassphrase, passphraseToId } from '@/networking/index.js';
 import { HEADWEAR_CATALOG, getHeadwear, setHeadwear } from '@/rendering/traits/headwearCatalog.js';
@@ -277,52 +278,6 @@ Object.assign(globalThis, { _regenerator, _regeneratorDefine2, _asyncToGenerator
    just beside the resource counts.  The old anchor-radius tests are kept
    as a floor underneath so nothing that used to be reachable stopped
    being reachable — this change only ever ADDS reach. */
-/* v2.3.1630: the T1 half of the stats_update payload.
- *
- * Returns the five raw stats ONLY when this client has actually learned
- * them -- from its localStorage cache, or from a player_state echo
- * (wsClient.js sets S._t1Seeded on adopt).  Otherwise it returns {} and
- * the keys are simply absent from the wire.
- *
- * WHY OMISSION AND NOT ZERO: the client is the sole REPORTER of these
- * and the server the sole STORE, so a client that does not know them
- * reporting 0 is indistinguishable from a genuine reset -- exactly the
- * new-device character wipe of audit C-2.  v2.3.1624 guards the server
- * side, but that only helps on workers that HAVE the guard; a rollback
- * below it (the documented CLAUDE.md procedure) or a worker mid-deploy
- * is unprotected, and it is the CLIENT doing the wiping.  Gating here
- * closes it against every worker version ever shipped, because
- * _handleStatsUpdate skips absent keys (`typeof payload[s] === 'number'`)
- * -- so an omission is a true no-op, not a new wire contract.  No caps
- * flag needed for the same reason (rule 19 satisfied by omission). */
-function _t1StatsPayload(S, rpgState) {
-  /* v2.3.1632: "has this client got real values?" is the question, and
-     a stored key is NOT the answer.  wsClient writes bt_rpg on every
-     player_state, so a first session that never learned its stats
-     still persists power:0 -- and on the next reload `power !== undefined`
-     was true, the client called itself seeded, reported 0, and wiped the
-     character after all.  The v2.3.1630 gate therefore only protected
-     session ONE against an old or rolled-back worker.
-     A non-zero value is proof the client knows something worth
-     reporting; the echo flag covers the case where the server has
-     legitimately told us zeros.  A brand-new character reports nothing
-     until it trains its first point, which is correct -- the server's
-     copy is zeros too, so there is nothing to say. */
-  if (!S) return {};
-  var known = !!S._t1Seeded
-    || (rpgState.power || 0) > 0 || (rpgState.vitality || 0) > 0
-    || (rpgState.endurance || 0) > 0 || (rpgState.agility || 0) > 0
-    || (rpgState.mind || 0) > 0;
-  if (!known) return {};
-  return {
-    power: rpgState.power || 0,
-    vitality: rpgState.vitality || 0,
-    endurance: rpgState.endurance || 0,
-    agility: rpgState.agility || 0,
-    mind: rpgState.mind || 0,
-  };
-}
-
 var NODE_REACH_PAD = 56;   /* px of slack outside the sprite box */
 
 /* The node's art box in WORLD px.  Prefers the renderer's live Pixi
@@ -2095,7 +2050,7 @@ export var BroTown = function BroTown(_ref0) {
              a true no-op on every worker version ever shipped.
              _t1Seeded is set when the localStorage cache carried stats
              or when a player_state echo delivered them (wsClient.js). */
-          ..._t1StatsPayload(stateRef.current, rpgState),
+          ...t1StatsPayload(stateRef.current, rpgState),
           /* v2.3.1155: the five retired T2 stats are off the wire —
              the worker ignores the keys either way. */
           /* v2.3.912: per-weapon-category build channels.  The worker clamps
