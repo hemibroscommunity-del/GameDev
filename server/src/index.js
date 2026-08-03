@@ -2651,7 +2651,27 @@ export class GameRoom {
           if (!msg.data || typeof msg.data !== 'object') break;
           const clean = Object.create(null);
           for (const k of TRACK_COSMETIC_KEYS) {
-            if (Object.prototype.hasOwnProperty.call(msg.data, k)) clean[k] = msg.data[k];
+            if (!Object.prototype.hasOwnProperty.call(msg.data, k)) continue;
+            const _tv = msg.data[k];
+            /* v2.3.1631: bound the cosmetic STRINGS, matching the caps
+               _sanitizeJoinData applies on the join path.  Without this
+               the join caps were trivially bypassable: `track` copies
+               the same keys every 2 s, and both session.data and
+               playerState are spread into the state_sync EVERY later
+               joiner receives -- so one 15 KB avatar (comfortably inside
+               MAX_INBOUND_BYTES) is re-sent to every arrival, twice
+               over, indefinitely.  Truncate rather than drop, for the
+               same reason as the join path: a clipped string degrades
+               visibly, a missing one reads as a broken feature.
+               `rpgData` is a nested display blob, not a string, and
+               stays as-is -- it is a documented client-reported posture
+               (see reportToLeaderboard), out of scope here. */
+            if (typeof _tv === 'string') {
+              const _tcap = (k === 'avatar') ? 512 : 64;
+              clean[k] = _tv.length > _tcap ? _tv.slice(0, _tcap) : _tv;
+            } else {
+              clean[k] = _tv;
+            }
           }
           // v2.3.1125: the registry owns the clan tag -- override the
           // client-supplied cosmetics BEFORE they merge/broadcast (this

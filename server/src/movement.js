@@ -22,52 +22,77 @@ export const movementMethods = {
    * (this.monsters / nodes / loot), which is what turned z:'__proto__'
    * into a room-wide monster-AI outage (see data.js VALID_ZONE_IDS).
    *
-   * Dungeon instances are checked against the LIVE instance map, not
-   * just the id shape: a well-formed 'dungeon:' string for an instance
-   * that does not exist is still a forged zone, and letting one in
-   * would re-open the unbounded-key growth this gate closes.
+   * DUNGEON ZONES ARE ACCEPTED BY SHAPE, NOT BY LIVENESS.
+   * v2.3.1631 -- requiring a live instance FROZE real players.  DO
+   * memory is wiped by every deploy (rule 11) and `this._dungeons` is
+   * in-memory by design, so a player mid-dungeon when any server/**
+   * merge lands reconnects claiming z:'dungeon:<id>' for an instance
+   * that no longer exists.  The join path dropped the zone (falling
+   * back to town) while their client went on believing it was in the
+   * dungeon, so every subsequent `move` carried the dead id -- and the
+   * v2.3.1629 "unlisted zone is a whole-message no-op" rule then made
+   * each one do nothing at all.  Reproduced against the real GameRoom:
+   * position never advanced. That is a hard freeze after every deploy,
+   * which is far worse than the exploit the gate was closing.
+   * The shape check still carries the weight that matters: the regex
+   * bounds charset and length, so '__proto__' and friends cannot get
+   * through and the room-wide monster-AI outage stays closed.  Cost of
+   * accepting a dead id: a client could mint distinct 'dungeon:xxx'
+   * keys in the zone-keyed maps.  Bounded per message, cheap
+   * (_ensureZoneMonsters stores an empty array for an unknown zone),
+   * and strictly preferable to freezing a paying player.
    *
-   * EXISTENCE, NOT OWNERSHIP -- deliberately.  Instances carry only
-   * {id, zone, ownerId, cfg, ...} with no member list, because they are
-   * SHARED by design: _dungeonPullPartyMembers (v2.3.1218) just re-sends
-   * dungeon_started to co-located party members and their normal entry
-   * path takes it from there, and rewards + boss HP already scale to
-   * everyone present (dungeon.js).  Gating on ownerId would therefore
-   * strand every non-leader party member at the entrance -- a worse bug
-   * than the one being fixed, and a behavior change this audit did not
-   * ask for.  Tighten only alongside a real membership roster. */
+   * NOT OWNERSHIP either -- instances carry only {id, zone, ownerId,
+   * cfg, ...} with no member list, because they are SHARED by design:
+   * _dungeonPullPartyMembers (v2.3.1218) re-sends dungeon_started to
+   * co-located party members and their normal entry path takes it from
+   * there, and rewards + boss HP already scale to everyone present.
+   * Gating on ownerId would strand every non-leader party member at the
+   * entrance.  (Review notes that instance ids are broadcast in the 1 Hz
+   * roster, so a stranger can walk into someone's dungeon -- true, and
+   * PRE-EXISTING: shared instances are the documented design.  Written
+   * up in the audit doc rather than changed here.) */
   _validZone(z) {
     if (typeof z !== 'string' || z.length === 0 || z.length > 40) return false;
     if (VALID_ZONE_IDS.has(z)) return true;
-    if (!DUNGEON_ZONE_RE.test(z)) return false;
-    if (!this._dungeons) return false;
-    return this._dungeons.has(z.slice('dungeon:'.length));
+    return DUNGEON_ZONE_RE.test(z);
   },
 
   _handleMove(session, ws, msg) {
     if (!session.id || !this.playerState[session.id]) return;
     const ps = this.playerState[session.id];
     const oldZone = ps.z;
-    /* v2.3.1625: an unlisted zone id is DROPPED, not adopted -- the
-       player simply stays where they are (the client's next move snaps
-       back off the broadcast tick, the same recovery the rejected-move
-       path below relies on).  Silently keeping the old zone beats
-       closing the socket: a legitimate client that somehow sends an
-       unknown zone keeps playing instead of being kicked. */
-    /* v2.3.1629: an unlisted zone id makes the WHOLE message a no-op --
-       we return rather than fall through treating it as a same-zone
-       move.  The v2.3.1625 version kept ps.z and carried on, which made
-       zoneChanged false and applied the ordinary 500 px/s cap between
-       the OLD zone's coordinates and the new zone's -- and since
-       ps.lastMoveAt is refreshed on every processed move, dt never grew,
-       so a client that kept sending the rejected zone was pinned
-       PERMANENTLY rather than transiently.  Today the allowlist is
-       verified complete against the client table (zones.test.mjs §7), so
-       this is latent -- but "latent until someone ships a zone" is
-       exactly how a freeze reaches a player, and returning early costs
-       nothing: the client's next legit move is unaffected. */
-    if (msg.z !== undefined && msg.z !== null && !this._validZone(msg.z)) return;
-    const newZone = (msg.z === undefined || msg.z === null) ? ps.z : msg.z;
+    /* v2.3.1631: an unlisted zone id drops the ZONE, never the whole
+       message.
+       Three shapes of this were wrong before this one, each looking
+       correct in isolation:
+         v2.3.1625 kept ps.z and fell through, so the move was judged as
+         a SAME-zone one and the cap ran between two different maps'
+         coordinates -- always rejecting, and lastMoveAt refreshes on
+         every processed move so dt never grew: a permanent pin.
+         v2.3.1629 returned early instead: no pin, but a client that
+         keeps sending a rejected zone stops moving entirely.
+         The first version of THIS fix accepted msg.x/msg.y while
+         keeping ps.z -- which writes another map's coordinates into the
+         current zone, i.e. hands the client exactly the intra-zone
+         teleport the cap exists to refuse, and can strand them far from
+         anywhere they can legitimately walk back from.
+       What actually works: drop the zone, do NOT write the position
+       (those coordinates belong to a map the server does not agree the
+       player is on), and clear lastMoveAt so the NEXT move is treated
+       as a first move and skips the cap.  That is what stops the pin --
+       the client resynchronises in one message from wherever it really
+       is, without a foreign position ever being persisted.  The v2.3.1629 early-return was itself a freeze (see
+       _validZone above): any client that keeps sending a zone the server
+       rejects stops moving entirely.  Instead we keep the server's zone
+       and still accept the position, with the cap bypassed for this
+       message -- the coordinates belong to a different map, so judging
+       them against the current one is meaningless and would reject
+       forever (the v2.3.1625 pin).  The player stays mobile in the zone
+       the server believes they are in, which is the state their next
+       legitimate transition corrects. */
+    const _zoneRejected = (msg.z !== undefined && msg.z !== null && !this._validZone(msg.z));
+    const newZone = (msg.z === undefined || msg.z === null || _zoneRejected) ? ps.z : msg.z;
 
     // ═══ Movement validation (anti-teleport) ═══
     //
@@ -101,7 +126,13 @@ export const movementMethods = {
     const zoneChanged = newZone !== oldZone;
     const firstMove = typeof ps.lastMoveAt !== 'number';
     let accept = true;
-    if (!zoneChanged && !firstMove && typeof ps.x === 'number' && typeof ps.y === 'number') {
+    if (_zoneRejected) {
+      /* No position write, and arm the next move to bypass the cap. */
+      ps.lastMoveAt = undefined;
+      return;
+    }
+    if (!zoneChanged && !firstMove
+        && typeof ps.x === 'number' && typeof ps.y === 'number') {
       const dt = Math.max(0.001, (_now - ps.lastMoveAt) / 1000);
       const maxDist = 500 * dt + 80;
       const dx = msg.x - ps.x;

@@ -638,8 +638,30 @@ const psB = room.playerState.pb;
   check('zone: real zones and hubs are accepted',
     room._validZone('meadow') && room._validZone('town')
     && room._validZone('shadow') && room._validZone('worldview'));
-  check('zone: a dungeon zone with no live instance is rejected',
-    room._validZone('dungeon:deadbeef') === false);
+  /* v2.3.1631: dungeon zones are accepted BY SHAPE, not by liveness.
+     Requiring a live instance froze every player who was mid-dungeon
+     when a deploy wiped this._dungeons (rule 11) -- their client keeps
+     claiming the dead id and every move became a no-op.  The shape
+     regex still bounds charset and length, so the prototype hazard
+     stays closed; a dead id costs at most an empty zone-keyed entry. */
+  check('zone: a well-formed dungeon id is accepted even with no live instance',
+    room._validZone('dungeon:deadbeef') === true);
+  check('zone: a malformed dungeon id is still rejected',
+    room._validZone('dungeon:a:b') === false
+    && room._validZone('dungeon:') === false
+    && room._validZone('dungeon:../../x') === false
+    && room._validZone('dungeon:' + 'x'.repeat(33)) === false);
+  /* 'dungeon:__proto__' DOES pass the shape check, and that is fine:
+     the key that reaches the zone-keyed maps is the whole prefixed
+     string, which is an ordinary own property.  The prototype hazard
+     needs the key to BE '__proto__', which the prefix makes impossible. */
+  check('zone: a prefixed proto-looking dungeon id is harmless',
+    room._validZone('dungeon:__proto__') === true);
+  room._ensureZoneMonsters('dungeon:__proto__');
+  check('zone: ...and it creates a normal own key, not a prototype write',
+    Object.prototype.hasOwnProperty.call(room.monsters, 'dungeon:__proto__')
+    && Object.getPrototypeOf(room.monsters) === null
+    && ({}).polluted === undefined);
 
   const zonesBefore = Object.keys(room.monsters).length;
   await room.webSocketMessage(wsJ, JSON.stringify({
@@ -681,14 +703,24 @@ const psB = room.playerState.pb;
   await room.webSocketMessage(wsJ, JSON.stringify({ type: 'move', x: 640, y: 400, z: 'town' }));
   check('move: the town<->worldview hub bounce is never rejected',
     psJ.z === 'town' && psJ.x === 640 && psJ.y === 400, { x: psJ.x, y: psJ.y, z: psJ.z });
-  /* An unlisted zone id makes the whole message a no-op -- it must NOT
-     fall through and be judged as a same-zone move, which is what
-     pinned a player permanently before v2.3.1629. */
+  /* An unlisted zone id must neither FREEZE the player (v2.3.1629's
+     early return) nor write the foreign coordinates into the current
+     zone (the first v2.3.1631 attempt).  It drops the zone, skips the
+     position, and arms the next move to bypass the cap so the client
+     resynchronises in one message. */
   psJ.x = 640; psJ.y = 400; psJ.z = 'town'; psJ.lastMoveAt = Date.now() - 50;
   await room.webSocketMessage(wsJ, JSON.stringify({ type: 'move', x: 9000, y: 9000, z: 'nowhere' }));
+  check('move: a rejected zone never writes its foreign coordinates',
+    psJ.x === 640 && psJ.y === 400 && psJ.z === 'town', { x: psJ.x, y: psJ.y, z: psJ.z });
   await room.webSocketMessage(wsJ, JSON.stringify({ type: 'move', x: 660, y: 410, z: 'town' }));
   check('move: a rejected zone id does not pin the player',
     psJ.x === 660 && psJ.y === 410 && psJ.z === 'town', { x: psJ.x, y: psJ.y, z: psJ.z });
+  /* And the post-deploy dungeon case that started all this: the
+     instance is gone from memory, the client still claims it. */
+  psJ.z = 'town'; psJ.x = 100; psJ.y = 100; psJ.lastMoveAt = Date.now() - 50;
+  await room.webSocketMessage(wsJ, JSON.stringify({ type: 'move', x: 220, y: 100, z: 'dungeon:abcd1234' }));
+  check('move: a player whose dungeon died in a deploy is not frozen',
+    psJ.z === 'dungeon:abcd1234' && psJ.x === 220, { x: psJ.x, z: psJ.z });
 }
 
 {
