@@ -277,6 +277,35 @@ Object.assign(globalThis, { _regenerator, _regeneratorDefine2, _asyncToGenerator
    just beside the resource counts.  The old anchor-radius tests are kept
    as a floor underneath so nothing that used to be reachable stopped
    being reachable — this change only ever ADDS reach. */
+/* v2.3.1630: the T1 half of the stats_update payload.
+ *
+ * Returns the five raw stats ONLY when this client has actually learned
+ * them -- from its localStorage cache, or from a player_state echo
+ * (wsClient.js sets S._t1Seeded on adopt).  Otherwise it returns {} and
+ * the keys are simply absent from the wire.
+ *
+ * WHY OMISSION AND NOT ZERO: the client is the sole REPORTER of these
+ * and the server the sole STORE, so a client that does not know them
+ * reporting 0 is indistinguishable from a genuine reset -- exactly the
+ * new-device character wipe of audit C-2.  v2.3.1624 guards the server
+ * side, but that only helps on workers that HAVE the guard; a rollback
+ * below it (the documented CLAUDE.md procedure) or a worker mid-deploy
+ * is unprotected, and it is the CLIENT doing the wiping.  Gating here
+ * closes it against every worker version ever shipped, because
+ * _handleStatsUpdate skips absent keys (`typeof payload[s] === 'number'`)
+ * -- so an omission is a true no-op, not a new wire contract.  No caps
+ * flag needed for the same reason (rule 19 satisfied by omission). */
+function _t1StatsPayload(S, rpgState) {
+  if (!S || !S._t1Seeded) return {};
+  return {
+    power: rpgState.power || 0,
+    vitality: rpgState.vitality || 0,
+    endurance: rpgState.endurance || 0,
+    agility: rpgState.agility || 0,
+    mind: rpgState.mind || 0,
+  };
+}
+
 var NODE_REACH_PAD = 56;   /* px of slack outside the sprite box */
 
 /* The node's art box in WORLD px.  Prefers the renderer's live Pixi
@@ -2032,12 +2061,24 @@ export var BroTown = function BroTown(_ref0) {
           /* Raw stats — worker clamps each to level * 10 + 20.  Cheater
              pushing R.vitality = 99999 gets clamped on the server,
              which then recomputes maxHp from the clamped value.  T1
-             use-trained increments + amulet stat bonuses still land. */
-          power: rpgState.power || 0,
-          vitality: rpgState.vitality || 0,
-          endurance: rpgState.endurance || 0,
-          agility: rpgState.agility || 0,
-          mind: rpgState.mind || 0,
+             use-trained increments + amulet stat bonuses still land.
+
+             v2.3.1630: ...but ONLY once this client actually KNOWS them.
+             These five are the client's to report and the server's to
+             store, which means an uninformed client reporting 0 is
+             indistinguishable from a real reset -- that is precisely
+             the new-device character wipe audit C-2 describes.  The
+             server-side guard (grids.js, v2.3.1624) only protects
+             against workers that HAVE it; a rollback below that version,
+             or any worker still deploying, is unprotected, and it is
+             this client that would do the wiping.  So the honest gate
+             lives here too: no seed, no report.  The keys are OMITTED
+             rather than zeroed, because _handleStatsUpdate skips absent
+             keys (`typeof payload[s] === 'number'`), so an omission is
+             a true no-op on every worker version ever shipped.
+             _t1Seeded is set when the localStorage cache carried stats
+             or when a player_state echo delivered them (wsClient.js). */
+          ..._t1StatsPayload(stateRef.current, rpgState),
           /* v2.3.1155: the five retired T2 stats are off the wire —
              the worker ignores the keys either way. */
           /* v2.3.912: per-weapon-category build channels.  The worker clamps
@@ -2303,6 +2344,10 @@ export var BroTown = function BroTown(_ref0) {
       if (savedRpg && savedRpg.power !== undefined) {
         /* New stat system — load directly */
         S.rpg = savedRpg;
+        /* v2.3.1630: this cache carries real T1 stats, so the client is
+           entitled to report them.  See the _t1Seeded gate on the
+           stats_update payload below. */
+        S._t1Seeded = true;
         /* v2.3.224: retire the legacy "snow" inventory placeholder
            from any save written before the auto-collection was
            removed, so the bag no longer renders a ◇ for it. */
