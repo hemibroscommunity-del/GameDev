@@ -1057,7 +1057,14 @@ export class GameRoom {
               const staminaCost = Math.max(1, Math.round(15 * this._blockStaminaMult(blockerPs)));
               if (blockerPs && typeof blockerPs.stamina === 'number') {
                 blockerPs.stamina = Math.max(0, blockerPs.stamina - staminaCost);
-                this._saveRpg(nearest.id, blockerPs);
+                /* v2.3.1607b: stamina only -> coalesced (see
+                   _saveRpgPools).  This fires on the monster-attack
+                   cadence, so a player holding a shield in a fight was
+                   writing a full rpg blob every 1.5 s per engaged
+                   monster.  The wire is unchanged -- the flush below
+                   still runs every time, so the stamina bar drops
+                   exactly as before. */
+                this._saveRpgPools(nearest.id, blockerPs);
                 this._queuePlayerStateFlush(nearest.id);
               }
               // v2.3.1137: THORNS — reflect 1%/pt of the monster's attack
@@ -1619,7 +1626,13 @@ export class GameRoom {
     } else {
       ps.stamina = Math.max(0, have - cost);
     }
-    this._saveRpg(session.id, ps);
+    /* v2.3.1607b: the ONLY durable change here is a pool number, so it
+       coalesces (see _saveRpgPools).  Ability use is one of the highest-
+       frequency events in the game -- dodge, lunge, retreat and swipe
+       all land here -- and each one was writing the whole rpg blob.
+       The immediate _sendPlayerState below is untouched: this handler
+       answers the client synchronously exactly as before. */
+    this._saveRpgPools(session.id, ps);
     if (ws) this._sendPlayerState(ws, session.id);
   }
 
@@ -1904,6 +1917,15 @@ export class GameRoom {
         } else {
           ps._regenDirty = true;
         }
+      } else if (ps._regenDirty && (!ps._regenSaveAt || now - ps._regenSaveAt >= this.REGEN_SAVE_MS)) {
+        /* v2.3.1607b: DRAIN ARM.  _regenDirty is now also set by the
+           combat pool paths (_saveRpgPools), and those can leave it set
+           on a player whose pools then stop moving -- e.g. a shield
+           blocker whose stamina is drained to 0 and held there, so
+           `changed` is false on every subsequent tick.  Without this the
+           flag would sit unflushed until disconnect.  No wire emit here:
+           nothing changed, so there is nothing to tell the client. */
+        this._saveRpg(id, ps);
       }
     }
   }

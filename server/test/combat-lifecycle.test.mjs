@@ -879,6 +879,57 @@ for (const m of meadowMonsters) m._wanderPausedUntil = Date.now() + 600000;
   check('regen throttle: a clean disconnect writes nothing',
     rpgPuts('py').length === 0, puts.map(([k]) => k));
 
+  // ── v2.3.1607b: the COMBAT pool writes coalesce too ──
+  //
+  // Three combat paths persisted a whole rpg blob whose only durable
+  // change was a stamina or mana number: the block cost, the ability
+  // cost (dodge/lunge/retreat/swipe), and the resonance mana refund.
+  // They fire on a monster-attack cadence, so a player in a fight was
+  // writing thousands of rows an hour to record a stamina value.
+  // HP is deliberately NOT in this deal — see the last assertion.
+  {
+    psA.z = 'meadow'; psA.dying = false; psA.dead = false; psA.disconnected = false;
+    psA.maxStamina = 100000; psA.stamina = 100000; // never hit the "can't afford" branch
+    psA.maxMana = 100000; psA.mana = 100000;
+    psA._regenSaveAt = 0; psA._regenDirty = false;
+
+    // 40 abilities inside one window.
+    puts.length = 0;
+    const sessA = room.sessions.get(wsA);
+    for (let i = 0; i < 40; i++) room._handleAbilityUse(sessA, { type: 'dodge' });
+    check('pool coalesce: 40 ability uses inside the window write storage ONCE',
+      rpgPuts('pa').length === 1, rpgPuts('pa').length);
+    check('pool coalesce: the stamina actually came off every time',
+      psA.stamina < 100000, psA.stamina);
+
+    // The drain arm: _regenDirty must not be able to sit unflushed on a
+    // player whose pools then stop moving (a blocker held at 0 stamina
+    // makes `changed` false on every later regen tick).
+    psA._regenDirty = true;
+    psA._regenSaveAt = Date.now() - room.REGEN_SAVE_MS - 1;
+    psA.z = 'meadow';                 // not a hub: no top-off
+    psA.hp = psA.maxHp;               // nothing to regen
+    psA.stamina = psA.maxStamina; psA.mana = psA.maxMana;
+    puts.length = 0;
+    room._tickPlayerRegen();
+    check('pool coalesce: a dirty player with no pool movement is still drained',
+      rpgPuts('pa').length === 1 && psA._regenDirty === false,
+      { puts: rpgPuts('pa').length, dirty: psA._regenDirty });
+
+    /* THE SAFETY PROPERTY.  HP moves DOWN from damage and cannot be
+       recomputed from maxima, so it must keep writing immediately —
+       coalescing it would undo real damage across a restart, and every
+       server deploy restarts the room.  If this assertion ever fails,
+       someone has widened the coalescing too far. */
+    psA._regenSaveAt = Date.now(); psA._regenDirty = false; // mid-window
+    psA.hp = 500; psA.maxHp = 1000;
+    puts.length = 0;
+    room._applyDamage(psA, 100, false);
+    room._saveRpg('pa', psA);  // the monster-damage site's call, verbatim
+    check('pool coalesce: an HP write is NOT coalesced (damage persists at once)',
+      rpgPuts('pa').length === 1, rpgPuts('pa').length);
+  }
+
   mockState.storage.put = origPut;
   for (const k of others) room.playerState[k] = parked[k];
 }
