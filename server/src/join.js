@@ -683,6 +683,11 @@ export const joinMethods = {
     // survive.  Also clears this member's 'away' grace flag.
     this._partyOnRejoin(msg.id);
     this.broadcastAll({ type: 'player_count', count: this.getPlayerCount() });
-    this.reportToLeaderboard(session);
+    /* v2.3.1620: force=true.  The `track` path is throttled now, so this
+       is what guarantees a joining player shows on the board at once
+       instead of waiting out the first interval -- and it primes
+       session._lbSig, so the next track only writes if something really
+       moved. */
+    this.reportToLeaderboard(session, true);
   },
 };

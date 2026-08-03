@@ -455,7 +455,7 @@ export const dungeonMethods = {
         zone, attackerX: m.x, attackerY: m.y,
       },
     });
-    this._saveRpg(pid, ps);
+    this._saveRpgVitals(pid, ps); // v2.3.1623: coalesced unless near death
     this._queuePlayerStateFlush(pid);
     if (ps.hp <= 0 && !ps.dying) {
       this._handlePlayerDeath(ps, pid, 'monster:' + m.id);

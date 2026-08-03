@@ -456,5 +456,88 @@ check('forged monster_transform dropped by deny-list',
     !!rosterMsg, rosterMsg && Object.keys(rosterMsg.players));
 }
 
+// ── 12. v2.3.1621: the AFK sweep actually evicts ──
+//
+// The sweep called ws.close() and nothing else, leaving the session in
+// the map.  For the case it exists to handle — a peer that has stopped
+// answering — the TCP close never completes, so webSocketClose never
+// fired and the session leaked forever: the tick's setInterval was
+// never cleared (a DO with a live interval cannot hibernate, so it
+// bills wall-clock GB-s with nobody playing), MAX_PLAYERS kept counting
+// corpses, and peers never saw player_leave.
+//
+// Ticks are driven synchronously by capturing the interval callback
+// (the load-tick.mjs convention) — the AFK branch only runs on every
+// 90th tick, so a real 22 ms interval would make this a 2-second test.
+{
+  const state4 = makeState();
+  const room4 = new GameRoom(state4, mockEnv);
+
+  // A ws that counts close() calls — the old code re-closed dead
+  // sockets every ~3 s forever.
+  const countingWs = (label) => {
+    const w = fakeWs(label);
+    w.closes = 0;
+    w.close = () => { w.closes++; };
+    return w;
+  };
+  const wsIdle = countingWs('afk');
+  const wsLive = countingWs('active');
+
+  let tickFn = null;
+  let cleared = null;
+  const realSetInterval = globalThis.setInterval;
+  const realClearInterval = globalThis.clearInterval;
+  globalThis.setInterval = (fn, ms) => {
+    // Truthy sentinel: startTickLoop stores this in room.tickInterval,
+    // and webSocketClose's teardown is gated on it being truthy — a 0
+    // handle would skip the very branch under test.
+    if (ms === room4.TICK_RATE && !tickFn) { tickFn = fn; return 987654; }
+    return realSetInterval(fn, ms);
+  };
+  globalThis.clearInterval = (h) => { if (h === 987654) { cleared = h; return; } return realClearInterval(h); };
+
+  room4.sessions.set(wsIdle, baseSession());
+  room4.sessions.set(wsLive, baseSession());
+  await room4.webSocketMessage(wsIdle, JSON.stringify({ type: 'join', id: 'bp_afk', name: 'Afk', phrase: 'p-afk', data: { x: -100000, y: -100000, z: 'town' } }));
+  await room4.webSocketMessage(wsLive, JSON.stringify({ type: 'join', id: 'bp_live', name: 'Live', phrase: 'p-live', data: { x: -100000, y: -100000, z: 'town' } }));
+  room4.startTickLoop();
+
+  // Age the idle one past the timeout; keep the other fresh.
+  const drive = (n) => { for (let i = 0; i < n; i++) tickFn(); };
+  room4.sessions.get(wsIdle).lastRecv = Date.now() - room4.IDLE_TIMEOUT_MS - 1;
+  wsLive.sent.length = 0;
+  drive(90); // the AFK branch runs on the 90th tick
+
+  check('afk sweep: the idle session is REMOVED from the map',
+    !room4.sessions.has(wsIdle), [...room4.sessions.values()].map((s) => s.id));
+  check('afk sweep: the active session survives', room4.sessions.has(wsLive));
+  check('afk sweep: the idle player\'s state is released',
+    room4.playerState['bp_afk'] === undefined, Object.keys(room4.playerState));
+  check('afk sweep: peers are told the player left',
+    wsLive.sent.some((m) => m.type === 'player_leave' && m.id === 'bp_afk'),
+    wsLive.sent.map((m) => m.type).slice(0, 12));
+  check('afk sweep: the socket is closed exactly once', wsIdle.closes === 1, wsIdle.closes);
+
+  // The bug's signature: the old code re-closed the same dead socket on
+  // every sweep, forever.  Three more sweeps must not touch it again.
+  drive(270);
+  check('afk sweep: a removed socket is never re-closed', wsIdle.closes === 1, wsIdle.closes);
+
+  // The billing property: evicting the LAST session must stop the tick
+  // interval, or the DO can never hibernate.
+  check('afk sweep: tick still running while a live session remains',
+    cleared === null && room4.tickInterval === 987654, { cleared, handle: room4.tickInterval });
+  room4.sessions.get(wsLive).lastRecv = Date.now() - room4.IDLE_TIMEOUT_MS - 1;
+  drive(90);
+  check('afk sweep: evicting the last session clears the tick interval (DO can hibernate)',
+    room4.sessions.size === 0 && cleared === 987654, { size: room4.sessions.size, cleared });
+
+  globalThis.setInterval = realSetInterval;
+  globalThis.clearInterval = realClearInterval;
+  if (room4.tickInterval && room4.tickInterval !== 987654) realClearInterval(room4.tickInterval);
+  room4.tickInterval = null;
+}
+
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);
 process.exit(failures === 0 ? 0 : 1);

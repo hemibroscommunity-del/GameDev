@@ -206,7 +206,7 @@ const {
   RARE_DROP_CHANCE, RARE_DROP_ITEMS, QUEST_AP_REWARD,
   FEEDBACK_CATEGORIES, FEEDBACK_TOPICS,
   ARENA_ENTRY_FEE, ARENA_BET_MIN, ARENA_BET_MAX,
-  ARENA_WIN_REWARD, ARENA_POLL_INTERVAL,
+  ARENA_WIN_REWARD, ARENA_POLL_INTERVAL, ARENA_IDLE_POLL_INTERVAL,
 
   SLED_WOOD_COST, SLED_SPEED_MULT, SLED_DURATION,
   SNOWBALL_DMG_BASE, SNOWBALL_STUN_MS, SNOWBALL_CD, SNOWBALL_RANGE, SNOWBALL_SPEED,
@@ -5021,7 +5021,26 @@ export var BroTown = function BroTown(_ref0) {
       /* §ARENA — Background polling for arena match status */
       var S3 = stateRef.current;
       if (!S3._arenaLastBgPoll) S3._arenaLastBgPoll = 0;
-      if (Date.now() - S3._arenaLastBgPoll > ARENA_POLL_INTERVAL) {
+      /* v2.3.1623: only poll FAST when this player actually has arena
+         business.  This ran at 3 s for every player in the world forever,
+         arena or not — 1,028 HTTP requests per player-hour, ~a third of an
+         idle player's entire request bill and billed 1:1 (no WS discount).
+         "Business" is: in the queue or a live tournament (set from the last
+         response below), or holding a bet that has not paid out yet.
+         The bet case is why this stays a slow poll instead of stopping —
+         the §BET payout below fires ONLY from this callback, so a spectator
+         who bet without entering must keep checking or they never get paid.
+         Panel liveness is unaffected: PartyPanel runs its own 3 s poll
+         while it is open. */
+      var _arenaBusy = !!(S3._arenaMatch || S3._arenaInvolved);
+      if (!_arenaBusy) {
+        var _R3 = S3.rpg;
+        var _bets = (_R3 && _R3._arenaBets) || [];
+        for (var _bi = 0; _bi < _bets.length; _bi++) {
+          if (!S3._betsPaidOut || !S3._betsPaidOut[_bets[_bi].tournamentId]) { _arenaBusy = true; break; }
+        }
+      }
+      if (Date.now() - S3._arenaLastBgPoll > (_arenaBusy ? ARENA_POLL_INTERVAL : ARENA_IDLE_POLL_INTERVAL)) {
         S3._arenaLastBgPoll = Date.now();
         fetch(BT_API_BASE + '/api/arena/status?playerId=' + encodeURIComponent(S3.myId)).then(function (r) {
           return r.json();
@@ -5030,6 +5049,22 @@ export var BroTown = function BroTown(_ref0) {
           if (!d.ok) return;
           setArenaStatus(d);
           if (d.tournament) setArenaTournament(d.tournament);
+          /* v2.3.1623: latch "this player has arena business" from the
+             authoritative response, so the gate above can pick the fast or
+             idle rate on the NEXT pass.  Queue entries carry playerId; the
+             tournament roster carries both playerId and id (gladiator.js
+             emits a superset of the old and new shapes — see _arenaWire).
+             A completed tournament still lists its players, which is what
+             keeps a just-finished player polling fast through the payout. */
+          var _meId = S3.myId;
+          var _inQueue = Array.isArray(d.queue) && d.queue.some(function (p) {
+            return p && p.playerId === _meId;
+          });
+          var _tPlayers = d.tournament && d.tournament.players;
+          var _inTourney = Array.isArray(_tPlayers) && _tPlayers.some(function (p) {
+            return p && (p.playerId === _meId || p.id === _meId);
+          });
+          S3._arenaInvolved = !!(_inQueue || _inTourney);
           /* Store current match on stateRef for PvP kill hook */
           if (d.status === 'fighting' && d.currentMatch) {
             var _d$tournament2;

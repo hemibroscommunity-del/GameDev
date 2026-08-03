@@ -64,8 +64,81 @@ export const persistenceMethods = {
     }
   },
 
+  /* v2.3.1619b: POOL-ONLY SAVE.  Same coalescing deal as the regen tick,
+     for the combat paths whose ONLY durable change is a stamina or mana
+     number: the block-cost deduction, the ability-cost deduction, and
+     the resonance mana refund.  Each of those used to write the whole
+     ~1 KB rpg blob per event, and they fire on a monster-attack cadence
+     (MONSTER_ATTACK_CD is 1500 ms per engaged monster), so a player
+     standing in a fight was writing thousands of rows an hour to record
+     a stamina number.
+     Same reasoning as _tickPlayerRegen: stamina and mana are
+     deterministic, regenerate from maxima, and losing ten seconds of
+     drift to a DO restart is invisible.  The wire is untouched -- every
+     caller still flushes player_state, so bars move identically.
+     HP does not call this one directly -- it goes through
+     _saveRpgVitals below, which adds the near-death carve-out. */
+  _saveRpgPools(playerId, ps) {
+    if (!playerId || !ps) return;
+    const now = Date.now();
+    if (!ps._regenSaveAt || now - ps._regenSaveAt >= this.REGEN_SAVE_MS) {
+      this._saveRpg(playerId, ps); // stamps _regenSaveAt / clears _regenDirty
+    } else {
+      ps._regenDirty = true;
+    }
+  },
+
+  /* v2.3.1623: HP JOINS THE DEAL, with a near-death carve-out (owner
+     decision: "the free heal is worth the cost savings").
+     v2.3.1619 deliberately left HP writing immediately, because HP moves
+     DOWN from damage and cannot be recomputed from maxima the way the
+     pools can -- so coalescing it means a DO restart inside the window
+     gives every player in combat back up to REGEN_SAVE_MS of damage.
+     Every merge touching server/** restarts the room, so that is a real
+     event, not a theoretical one.  It is small, it is in the player's
+     favour, and after v2.3.1619/1620 the HP write was the single largest
+     remaining source of billed rows -- roughly 1,200 of a residual 1,367
+     per active player-hour.  The owner took the trade.
+     THE CARVE-OUT is what keeps it honest.  Coalescing is only ever
+     applied while the player is comfortably alive; at or below
+     HP_URGENT_SAVE_FRAC of max HP the write goes through IMMEDIATELY.
+     So the states that actually matter -- nearly dead, one hit from
+     losing your bag -- are never the ones sitting unsaved, and a restart
+     can never rewind a player from "about to die" back to healthy.
+     Death itself is untouched: _handlePlayerDeath saves immediately on
+     its own path, as does respawn.
+     Checked AFTER damage is applied, so crossing INTO the danger band is
+     itself an immediate write -- there is no way to slip past the gate
+     by taking one big hit. */
+  _saveRpgVitals(playerId, ps) {
+    if (!playerId || !ps) return;
+    const maxHp = typeof ps.maxHp === 'number' && ps.maxHp > 0 ? ps.maxHp : 100;
+    const hp = typeof ps.hp === 'number' ? ps.hp : maxHp;
+    if (hp <= maxHp * this.HP_URGENT_SAVE_FRAC) {
+      this._saveRpg(playerId, ps); // near death: persist now, no coalescing
+      return;
+    }
+    this._saveRpgPools(playerId, ps);
+  },
+
   async _saveRpg(playerId, ps) {
     if (!playerId || !ps) return;
+    /* v2.3.1619: regen-write bookkeeping, owned centrally HERE rather
+       than at the regen tick's call site, because ANY durable write
+       persists the pools too (this function rewrites the whole blob
+       from its fixed field list).  So a coins/loot/forge save inside
+       the throttle window also satisfies the regen tick -- it must not
+       then write a second, redundant blob 200 ms later.
+       _regenSaveAt: when the pools last reached storage.
+       _regenDirty:  pools have moved since.  webSocketClose flushes it.
+       Both are underscore-prefixed in-memory scratch and are NOT in the
+       field list below, so nothing new is persisted and no storage-key
+       registry entry is needed.  Stamped synchronously (before the
+       await) so two regen ticks can't race a slow put into a double
+       write; a failed put self-heals, since the next moving pool sets
+       _regenDirty again.  See _tickPlayerRegen in index.js. */
+    ps._regenSaveAt = Date.now();
+    ps._regenDirty = false;
     this._pruneBuffs(ps);
     try {
       await this.state.storage.put('rpg:' + playerId, {

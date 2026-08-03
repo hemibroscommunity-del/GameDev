@@ -197,5 +197,38 @@ check('last leave dissolves the clan', !room._clans.has(redClan.id) && !state._s
   check('recent ended war retained by the sweep', kept.length === 1, kept);
 }
 
+// ── 8. v2.3.1622: pending invites expire, and the key is bounded ──
+//
+// CLANS.INVITE_TTL was only read to REJECT a late accept — nothing ever
+// deleted the entry, so an invite nobody answers stayed resident for the
+// life of the DO, keyed by a client-supplied string of unbounded length.
+// Every sibling invite map (_t2Invites, _partyInvites, _duelChallenges)
+// already swept; this one and _pendingTradeOffers were the two missed.
+{
+  // NB: RED was dissolved at the last-leave check above, so this uses
+  // BLU's leader (bob), who is still a leader of a live clan.
+  room._clanInvites = new Map();
+  await room._observeClanInvite('bp_cl_bob', { payload: { target: 'bp_cl_fresh' } });
+  await room._observeClanInvite('bp_cl_bob', { payload: { target: 'bp_cl_stale' } });
+  check('invite sweep: both invites recorded', room._clanInvites.size === 2,
+    [...room._clanInvites.keys()]);
+
+  room._clanInvites.get('bp_cl_bob>bp_cl_stale').ts = Date.now() - CLANS.INVITE_TTL - 1;
+  room._tickClanInvites(Date.now());
+  check('invite sweep: the expired invite is evicted',
+    !room._clanInvites.has('bp_cl_bob>bp_cl_stale'), [...room._clanInvites.keys()]);
+  check('invite sweep: a live invite survives the sweep',
+    room._clanInvites.has('bp_cl_bob>bp_cl_fresh'), [...room._clanInvites.keys()]);
+
+  const before = room._clanInvites.size;
+  await room._observeClanInvite('bp_cl_bob', { payload: { target: 'x'.repeat(5000) } });
+  check('invite sweep: an oversized target is refused outright',
+    room._clanInvites.size === before, { size: room._clanInvites.size, before });
+
+  await room._observeClanInvite('bp_cl_bob', { payload: { target: 'b'.repeat(64) } });
+  check('invite sweep: a 64-char target is still accepted',
+    room._clanInvites.size === before + 1, { size: room._clanInvites.size, before });
+}
+
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);
 process.exit(failures === 0 ? 0 : 1);

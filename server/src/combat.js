@@ -503,7 +503,8 @@ export const combatMethods = {
               const restore = Math.round(0.04 * (attackerPs.maxMana || 100) * streakMult);
               if (restore > 0) {
                 attackerPs.mana = Math.min(attackerPs.maxMana || 100, (attackerPs.mana || 0) + restore);
-                this._saveRpg(session.id, attackerPs);
+                // v2.3.1619b: mana only -> coalesced (see _saveRpgPools).
+                this._saveRpgPools(session.id, attackerPs);
                 this._queuePlayerStateFlush(session.id);
               }
             }
@@ -993,7 +994,7 @@ export const combatMethods = {
       this.eventBuffer.push(hitEvent);
 
       // Echo authoritative hp + death check.
-      this._saveRpg(targetId, targetPs);
+      this._saveRpgVitals(targetId, targetPs); // v2.3.1623: coalesced unless near death
       this._queuePlayerStateFlush(targetId);
       if (targetPs.hp <= 0 && !targetPs.dying) {
         this._handlePlayerDeath(targetPs, targetId, 'pvp:' + attackerId);
