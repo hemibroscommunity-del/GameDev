@@ -432,6 +432,13 @@ export class GameRoom {
     this.RELAY_BURST = 8;
     this.RELAY_REFILL_PER_S = 4;
     this.EVENT_BYTES_PER_TICK = 64 * 1024;
+    /* v2.3.1619: how often the regen tick may durably persist.  The regen
+       loop itself still runs every ~670 ms and still flushes player_state
+       to the wire every time -- this throttles ONLY the storage write.
+       10 s costs a player at most ~10 s of pool regeneration across a DO
+       restart (deterministic, recomputes from maxima, invisible) and cut
+       measured storage writes by ~93%.  See _tickPlayerRegen. */
+    this.REGEN_SAVE_MS = 10000;
     /* v2.3.1575 (interest management, tick.js): how often the tick
        carries the FULL player roster.  45 ticks ~= 1 s.  Out-of-zone
        peers ride this instead of the 45Hz dirty list -- they can't be
@@ -1069,7 +1076,14 @@ export class GameRoom {
               const staminaCost = Math.max(1, Math.round(15 * this._blockStaminaMult(blockerPs)));
               if (blockerPs && typeof blockerPs.stamina === 'number') {
                 blockerPs.stamina = Math.max(0, blockerPs.stamina - staminaCost);
-                this._saveRpg(nearest.id, blockerPs);
+                /* v2.3.1619b: stamina only -> coalesced (see
+                   _saveRpgPools).  This fires on the monster-attack
+                   cadence, so a player holding a shield in a fight was
+                   writing a full rpg blob every 1.5 s per engaged
+                   monster.  The wire is unchanged -- the flush below
+                   still runs every time, so the stamina bar drops
+                   exactly as before. */
+                this._saveRpgPools(nearest.id, blockerPs);
                 this._queuePlayerStateFlush(nearest.id);
               }
               // v2.3.1137: THORNS — reflect 1%/pt of the monster's attack
@@ -1631,7 +1645,13 @@ export class GameRoom {
     } else {
       ps.stamina = Math.max(0, have - cost);
     }
-    this._saveRpg(session.id, ps);
+    /* v2.3.1619b: the ONLY durable change here is a pool number, so it
+       coalesces (see _saveRpgPools).  Ability use is one of the highest-
+       frequency events in the game -- dodge, lunge, retreat and swipe
+       all land here -- and each one was writing the whole rpg blob.
+       The immediate _sendPlayerState below is untouched: this handler
+       answers the client synchronously exactly as before. */
+    this._saveRpgPools(session.id, ps);
     if (ws) this._sendPlayerState(ws, session.id);
   }
 
@@ -1927,8 +1947,42 @@ export class GameRoom {
       }
 
       if (changed) {
-        this._saveRpg(id, ps);
+        /* v2.3.1619: COALESCED, not per-tick.  This loop runs every 30
+           ticks (~670 ms) and used to call _saveRpg on every player whose
+           pools moved -- which, since pools are almost always regenerating,
+           meant a full rpg-blob write per player per 670 ms.  Measured on
+           the real room: 5,855 storage writes per player-hour, of which
+           93% (600 of 644) came from exactly here.
+           That matters twice.  Cloudflare bills key-value puts as ROWS
+           WRITTEN -- 100,000/day on the free tier, which 5,855/player-hour
+           exhausts in ~17 player-hours, marginally BEFORE the request
+           limit; and on the paid plan rows are $1.00/million against
+           requests' $0.15, so at scale this line was the single most
+           expensive thing the server did.
+           Regen is also the cheapest possible thing to lose: it is
+           deterministic and recomputes from maxima, so a DO restart
+           costing a player a few seconds of stamina is invisible.  The
+           wire is unaffected -- _queuePlayerStateFlush still runs every
+           time, so the client's bars move at the same 670 ms cadence.
+           Only the DURABLE write is coalesced.
+           Any value-bearing mutation (coins, inventory, loot, forge,
+           trade) calls _saveRpg directly on its own path and is untouched
+           by this -- rule 7's money-at-rest guarantee is not weakened. */
         this._queuePlayerStateFlush(id);
+        if (!ps._regenSaveAt || now - ps._regenSaveAt >= this.REGEN_SAVE_MS) {
+          this._saveRpg(id, ps); // stamps _regenSaveAt / clears _regenDirty
+        } else {
+          ps._regenDirty = true;
+        }
+      } else if (ps._regenDirty && (!ps._regenSaveAt || now - ps._regenSaveAt >= this.REGEN_SAVE_MS)) {
+        /* v2.3.1619b: DRAIN ARM.  _regenDirty is now also set by the
+           combat pool paths (_saveRpgPools), and those can leave it set
+           on a player whose pools then stop moving -- e.g. a shield
+           blocker whose stamina is drained to 0 and held there, so
+           `changed` is false on every subsequent tick.  Without this the
+           flag would sit unflushed until disconnect.  No wire emit here:
+           nothing changed, so there is nothing to tell the client. */
+        this._saveRpg(id, ps);
       }
     }
   }
@@ -3048,6 +3102,17 @@ export class GameRoom {
     const session = this.sessions.get(ws);
     if (session?.id) {
       if (this.playerState[session.id]) this.playerState[session.id].disconnected = true;
+      /* v2.3.1619: flush coalesced regen before the in-memory blob is
+         dropped.  The regen tick only writes durably every
+         REGEN_SAVE_MS, so a player who regenerated inside that window
+         and then left would reload the PRE-regen pools on their next
+         join -- visible as HP/stamina snapping backwards at the worst
+         possible moment.  Awaited: this is the last chance to persist,
+         a disconnect is not latency-critical, and an unawaited put can
+         be lost to DO eviction.  No-ops (_regenDirty false) for every
+         player whose last write was value-bearing. */
+      const _ps = this.playerState[session.id];
+      if (_ps && _ps._regenDirty) await this._saveRpg(session.id, _ps);
       delete this.playerState[session.id];
       delete this.stateHistory[session.id];
       delete this.extractions[session.id];
