@@ -158,6 +158,7 @@ export const clanMethods = {
     await this._clansEnsure();
     const target = msg.payload && msg.payload.target;
     if (!target || typeof target !== 'string' || target === fromId) return;
+    if (target.length > 64) return; // v2.3.1622: bound the map key (friends.js:116 precedent)
     const clan = this._clanOf(fromId);
     if (!clan || clan.leaderId !== fromId) return;          // only leaders invite
     if (clan.members.length >= CLANS.MAX_MEMBERS) return;
@@ -301,6 +302,21 @@ export const clanMethods = {
     if (!this._clanWars) return;
     for (const war of [...this._clanWars.values()]) {
       if (war.status === 'active' && now >= war.endTime) this._resolveClanWar(war);
+    }
+  },
+
+  /* v2.3.1622: expire pending clan invites.  CLANS.INVITE_TTL was only
+     read to REJECT a late accept (_handleClanJoinAccept) -- nothing ever
+     deleted the entry, so an invite nobody answers stayed resident for
+     the life of the DO.  Same omission as _pendingTradeOffers; every
+     other invite map in the room already sweeps.
+     ADDITIVE: the single-shot delete on accept stays, and an entry
+     removed here was already past the point where accepting it would
+     have worked, so no reachable behaviour changes. */
+  _tickClanInvites(now) {
+    if (!this._clanInvites) return;
+    for (const [k, inv] of this._clanInvites) {
+      if (now - inv.ts > CLANS.INVITE_TTL) this._clanInvites.delete(k);
     }
   },
 
