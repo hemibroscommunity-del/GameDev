@@ -1086,11 +1086,23 @@ export function setupWebSocket(ctx) {
                  client reported them), so it stays idempotent and never
                  stomps live use-training -- same posture as the
                  weaponSkills block above. */
-              if (typeof msg.payload.power === 'number') S.rpg.power = msg.payload.power;
-              if (typeof msg.payload.vitality === 'number') S.rpg.vitality = msg.payload.vitality;
-              if (typeof msg.payload.endurance === 'number') S.rpg.endurance = msg.payload.endurance;
-              if (typeof msg.payload.agility === 'number') S.rpg.agility = msg.payload.agility;
-              if (typeof msg.payload.mind === 'number') S.rpg.mind = msg.payload.mind;
+              var _t1Changed = false;
+              if (typeof msg.payload.power === 'number' && S.rpg.power !== msg.payload.power) { S.rpg.power = msg.payload.power; _t1Changed = true; }
+              if (typeof msg.payload.vitality === 'number' && S.rpg.vitality !== msg.payload.vitality) { S.rpg.vitality = msg.payload.vitality; _t1Changed = true; }
+              if (typeof msg.payload.endurance === 'number' && S.rpg.endurance !== msg.payload.endurance) { S.rpg.endurance = msg.payload.endurance; _t1Changed = true; }
+              if (typeof msg.payload.agility === 'number' && S.rpg.agility !== msg.payload.agility) { S.rpg.agility = msg.payload.agility; _t1Changed = true; }
+              if (typeof msg.payload.mind === 'number' && S.rpg.mind !== msg.payload.mind) { S.rpg.mind = msg.payload.mind; _t1Changed = true; }
+              /* v2.3.1606: maxHp / stamina / mana and the display formulas
+                 are all derived from these five, so recompute on a real
+                 change -- the same reason the armor adopt above calls it.
+                 Gated on an ACTUAL change (not mere presence) so the
+                 steady-state echo, where the server is just repeating what
+                 this client reported, stays a no-op and cannot feed the
+                 stats_update effect in BroTown.jsx a fresh signature every
+                 tick -- that shape was the v2.3.1158 "coins flashing"
+                 storm, and the server's own mutation gate is the other
+                 half of the brake. */
+              if (_t1Changed) recalcDerived(S.rpg);
               setRpgState(_objectSpread({}, S.rpg));
               try { localStorage.setItem('bt_rpg', JSON.stringify(S.rpg)); } catch (e) {}
               break;
