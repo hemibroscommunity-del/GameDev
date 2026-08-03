@@ -558,7 +558,7 @@ export class GameRoom {
     // consuming a session slot + tick bandwidth.
     this.IDLE_TIMEOUT_MS = 120000; // 2 minutes
 
-    /* v2.3.1608: leaderboard report throttle.  See reportToLeaderboard
+    /* v2.3.1620: leaderboard report throttle.  See reportToLeaderboard
        for the full rationale -- in short, `track` arrives every 2 s and
        the Leaderboard DO writes a row unconditionally, so this used to
        cost 1,800 rows + 1,800 cross-DO requests per player-hour to
@@ -3036,7 +3036,7 @@ export class GameRoom {
       const color = session.data?.color || '#5b52ff';
       const rpgData = session.data?.rpgData || {};
 
-      /* v2.3.1608: REPORT ONLY WHAT CHANGED.  The client sends `track`
+      /* v2.3.1620: REPORT ONLY WHAT CHANGED.  The client sends `track`
          every 2 s (BroTown.jsx:4592) and this fired on every one of them,
          so each player drove 1,800 cross-DO fetches AND 1,800
          Leaderboard storage.put calls per hour -- updatePlayer

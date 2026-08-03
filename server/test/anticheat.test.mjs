@@ -487,7 +487,7 @@ const psB = room.playerState.pb;
   };
   const origLb = room.env.LEADERBOARD;
   room.env = { ...room.env, LEADERBOARD: { idFromName: () => 'x', get: () => ({ fetch: async (r) => { lbBody = JSON.parse(r.__body); return {}; } }) } };
-  /* v2.3.1608: the join above already reported (force=true), and the
+  /* v2.3.1620: the join above already reported (force=true), and the
      track path is throttled now, so clear the stamp to let THIS report
      through. The property under test — that a report carries the SERVER's
      level and not the client's claim — is orthogonal to the throttle;
@@ -514,7 +514,7 @@ const psB = room.playerState.pb;
   check('track: missing / non-object data is a no-op', psT.name === beforeName, psT.name);
 }
 
-// ── 7b. v2.3.1608: the leaderboard report is throttled ──
+// ── 7b. v2.3.1620: the leaderboard report is throttled ──
 //
 // `track` arrives every 2 s and used to drive one cross-DO fetch AND one
 // unconditional Leaderboard storage.put per message — 1,800 billed rows
