@@ -2401,12 +2401,30 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
 });
 
 /* ─── Sample-based SFX (real audio files) ──────────────────────────────────
-   Loaded on demand from /sfx/<group>/<name>.m4a (AAC; re-encoded from the
-   original uncompressed .wav by the compress-media workflow to shrink the
-   download — decodeAudioData on iOS Safari decodes AAC natively). Playback is gated by the
-   audio context unlocking (mobile/Safari require a user gesture before any
-   audio plays). BT_AUDIO.unlock() should be called from the first touch /
-   click and is idempotent. */
+   Loaded on demand from /sfx/<group>/<name>.mp3, re-encoded from the original
+   uncompressed .wav by the compress-media workflow to shrink the download.
+   Playback is gated by the audio context unlocking (mobile/Safari require a
+   user gesture before any audio plays). BT_AUDIO.unlock() should be called
+   from the first touch / click and is idempotent.
+
+   v2.3.1610: EVERY SFX IS mp3, AND MUST STAY mp3.  19 of these 30 entries
+   shipped as .m4a (AAC).  decodeAudioData — the only path playFile uses — is
+   the one place AAC is NOT universally supported: measured in a real Chromium
+   against this very manifest, all 19 m4a entries threw EncodingError and all
+   11 mp3 entries decoded.  A perfect split by container.  So on Chrome, Edge
+   and every Android browser, each sword swing and hit, the bow, all magic,
+   every monster hit and death, the shield block and the fishing set were
+   SILENT — and no amount of testing on an iPhone could reveal it, because
+   iOS Safari decodes AAC natively.  That asymmetry is exactly the trap
+   v2.3.1578 hit for MUSIC (AAC won on quality-per-byte, then would not decode,
+   so the track shipped as mp3); the sfx were never re-checked, so this is the
+   same bug twice.
+   The re-encode is 96 kbps CBR, chosen by measurement: on sword-swing (the
+   sharpest transient in the set) it loses 0.45 dB above 12 kHz against the m4a
+   source and lands at 6099 B versus the source's 6423 — SMALLER than what it
+   replaces, so the fix costs no download.  If you ever add a sound here,
+   ship it as mp3 and prove it with tools/qa/mp/audio-formats.mjs, which fails
+   on any manifest entry a Chromium-class decoder refuses. */
 BT_AUDIO._samples = {};
 BT_AUDIO._sampleLoading = {};
 BT_AUDIO._unlocked = false;
@@ -2447,31 +2465,31 @@ BT_AUDIO.SFX_MANIFEST = {
      cook-success: 0.7s sizzle sting when the cook completes. */
   'catch-splash':     '/sfx/fishing/catch-splash.mp3',
   'cook-success':     '/sfx/cooking/cook-success.mp3',
-  'sword-swing':   '/sfx/sword/sword-swing.m4a',
+  'sword-swing':   '/sfx/sword/sword-swing.mp3',
   /* v2.3.254: wood-tier sword (the bamboo stick) gets its own swing
      SFX -- airier whoosh sourced from the user-uploaded mov. */
-  'bamboo-swing':  '/sfx/sword/bamboo-swing.m4a',
-  'sword-hit':     '/sfx/sword/sword-hit.m4a',   /* reserved for grand-slam hits only */
-  'sword-hit2':    '/sfx/sword/sword-hit2.m4a', /* regular hit alternation */
-  'sword-hit3':    '/sfx/sword/sword-hit3.m4a',  /* regular hit alternation */
-  'bow-pullback':  '/sfx/bow/bow-pullback.m4a',
-  'arrow-fly':     '/sfx/bow/arrow-fly.m4a',
-  'arrow-hit':     '/sfx/bow/arrow-hit.m4a',
-  'magic-cast':    '/sfx/magic/magic-cast.m4a',
-  'magic-hit':     '/sfx/magic/magic-hit.m4a',
-  'magic-hit2':    '/sfx/magic/magic-hit2.m4a',
-  'monster-death': '/sfx/monster/Monster death-bony.m4a',
-  'slime-projectile-hit': '/sfx/monster/slime-projectile-hit.m4a',
-  'monster-hit':   '/sfx/monster/monster-hit.m4a',
+  'bamboo-swing':  '/sfx/sword/bamboo-swing.mp3',
+  'sword-hit':     '/sfx/sword/sword-hit.mp3',   /* reserved for grand-slam hits only */
+  'sword-hit2':    '/sfx/sword/sword-hit2.mp3', /* regular hit alternation */
+  'sword-hit3':    '/sfx/sword/sword-hit3.mp3',  /* regular hit alternation */
+  'bow-pullback':  '/sfx/bow/bow-pullback.mp3',
+  'arrow-fly':     '/sfx/bow/arrow-fly.mp3',
+  'arrow-hit':     '/sfx/bow/arrow-hit.mp3',
+  'magic-cast':    '/sfx/magic/magic-cast.mp3',
+  'magic-hit':     '/sfx/magic/magic-hit.mp3',
+  'magic-hit2':    '/sfx/magic/magic-hit2.mp3',
+  'monster-death': '/sfx/monster/Monster death-bony.mp3',
+  'slime-projectile-hit': '/sfx/monster/slime-projectile-hit.mp3',
+  'monster-hit':   '/sfx/monster/monster-hit.mp3',
   /* v2.3.1104: owner-supplied metallic CLANG for when a monster strikes the
      hero while WEARING ARMOUR. Two variants alternated by monsterHitHero() for
      variety; leading silence trimmed via offset so the hit lands immediately. */
   'armor-hit-1':   '/sfx/monster/armor-hit-1.mp3',
   'armor-hit-2':   '/sfx/monster/armor-hit-2.mp3',
-  'shield-block':  '/sfx/shield/shield-block.m4a?v=2',
-  'fishing-lure-drop':   '/sfx/fishing/lure-drop.m4a',
-  'fishing-fish-on-hook': '/sfx/fishing/fish-on-hook.m4a',
-  'fishing-reeling':     '/sfx/fishing/reeling.m4a',
+  'shield-block':  '/sfx/shield/shield-block.mp3?v=2',
+  'fishing-lure-drop':   '/sfx/fishing/lure-drop.mp3',
+  'fishing-fish-on-hook': '/sfx/fishing/fish-on-hook.mp3',
+  'fishing-reeling':     '/sfx/fishing/reeling.mp3',
   /* Slime death splat — routed through Web Audio so it plays without
      hitting the per-element HTMLAudio autoplay policy that was
      blocking new Audio().play() in the render loop. */
@@ -2482,7 +2500,7 @@ BT_AUDIO.SFX_MANIFEST = {
      out) so it matches deathMs and doesn't trail past the bone-
      pile settle.  Plays via BT_AUDIO.monsterDeath. */
   'skeleton-death': '/audio/skeleton-death.mp3?v=2',
-  'snowman-hit':   '/sfx/monster/snowman-hit.m4a?v=3',
+  'snowman-hit':   '/sfx/monster/snowman-hit.mp3?v=3',
   /* v2.3.849: timber crash for a felled tree (woodcutting success) — the
      "great" cut-down sound; wired into the extraction reward in
      lifeSkillRewards.js. */
