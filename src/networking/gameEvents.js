@@ -87,6 +87,7 @@ export function processGameEvent(type, payload, S, deps) {
     setParty = deps.setParty,
     setArenaTournament = deps.setArenaTournament,
     setArenaBets = deps.setArenaBets,
+    setClanData = deps.setClanData, /* v2.3.1611 */
     _buildServerPile = deps._buildServerPile;
         switch (type) {
           case 'loot_drop':
@@ -1366,6 +1367,25 @@ export function processGameEvent(type, payload, S, deps) {
                 if (payload.clan) localStorage.setItem('bt_clan', JSON.stringify(payload.clan));
                 else localStorage.removeItem('bt_clan');
               } catch (e) {}
+              /* v2.3.1611: ...and into REACT state, which is what the UI
+                 actually renders from.  Every clan surface reads the
+                 `clanData` prop, and setClanData was called from exactly two
+                 places: the mount-time bt_clan restore, and ClanPanel's
+                 LEGACY local-mint create path.  Against a real (caps.clans)
+                 worker the create path returns early after sending
+                 clan_create, so this echo was the only thing that could
+                 update the UI — and it didn't.  Founding a clan therefore
+                 charged the 500g, created the clan server-side, and left the
+                 screen insisting you had no clan: the panel still offered
+                 "Create Clan (500g)", and the inspect card's
+                 "Invite to [TAG]" button — gated on clanData — never
+                 appeared, so a founder could not invite anyone.  Only a page
+                 reload (which reads bt_clan) fixed it.  The same echo lands a
+                 JOIN, so an accepted invite was equally invisible.
+                 Found by the headless clan scenario (tools/qa/mp): the clan
+                 existed in S._clanData with the fee debited, while the UI
+                 offered no way to act on it. */
+              if (setClanData) setClanData(payload.clan || null);
               break;
             }
           case 'clan_error':

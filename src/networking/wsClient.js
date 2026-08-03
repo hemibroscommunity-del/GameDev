@@ -69,6 +69,7 @@ export function setupWebSocket(ctx) {
     setParty = ctx.setParty,
     setArenaTournament = ctx.setArenaTournament,
     setArenaBets = ctx.setArenaBets,
+    setClanData = ctx.setClanData, /* v2.3.1611 */
     pixiRef = ctx.pixiRef;
     if (showNameModal || showLogin) return;
     var S = stateRef.current;
@@ -1641,6 +1642,7 @@ export function setupWebSocket(ctx) {
         setParty: setParty,
         setArenaTournament: setArenaTournament,
         setArenaBets: setArenaBets,
+        setClanData: setClanData, /* v2.3.1611 */
         pixiRef: pixiRef,
         _buildServerPile: _buildServerPile
       };
