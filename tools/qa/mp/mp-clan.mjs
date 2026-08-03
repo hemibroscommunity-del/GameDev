@@ -55,11 +55,21 @@ export async function run({ browser, wsPort, webPort, rec }) {
     [...document.querySelectorAll('button')].some((b) => b.offsetParent && /Create Clan/.test(b.textContent)));
   rec.ok('the clan panel stops offering "Create Clan" once you have one', !stillOffering,
     await H.buttonTexts(A));
-  rec.ok('the clan panel shows the clan you just founded', await H.seesText(A, 'Harness Crew'));
+  const panelText = await H.bodyText(A);
+  rec.ok('the clan panel shows the clan you just founded',
+    /\[HQA\]/.test(panelText) && /Harness Crew/.test(panelText), panelText.slice(0, 200));
 
-  /* ── invite ── */
-  await A.page.evaluate(() => window.__broLegacyUI && window.__broLegacyUI.clan());  /* close the panel */
-  await A.page.waitForTimeout(500);
+  /* ── invite ──
+     Close the panel first: __broLegacyUI.clan() TOGGLES, so calling it blind
+     can just as easily re-open it.  Drive it until the owned-clan view is
+     actually gone. */
+  for (let i = 0; i < 3; i++) {
+    const open = await A.page.evaluate(() =>
+      [...document.querySelectorAll('button')].some((b) => b.offsetParent && /Logo Editor/.test(b.textContent)));
+    if (!open) break;
+    await A.page.evaluate(() => window.__broLegacyUI && window.__broLegacyUI.clan());
+    await A.page.waitForTimeout(700);
+  }
   await H.openInspect(A, bId);
   const btns = await H.buttonTexts(A);
   rec.ok('a clan member can invite from the inspect card',

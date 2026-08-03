@@ -303,5 +303,39 @@ const hit10f = room.eventBuffer.find((e) => e.type === 'pvp_hit');
 check('lethal hit carries died:true', hit10f && hit10f.payload.died === true && psB.hp === 0, hit10f && hit10f.payload);
 psB.hp = 100; psB.dying = false; psB.dead = false;
 
+// ── 11. town HP regen is gated DURING a duel (v2.3.1613) ──
+// Hub regen restores 10% of maxHp every ~670 ms, roughly 15 hp/s at maxHp
+// 100, while a melee swing lands ~4 damage on a 300 ms cadence.  Ungated,
+// healing beat damage by more than an order of magnitude and a duel in town
+// could never move either health bar -- the exact failure the owner reported
+// ("this was a duel in town").  The arena already had this gate for the same
+// reason (v2.3.1126); duels were never added to it.
+psA.z = psB.z = 'town';
+psA.hp = 40; psA.maxHp = 100;
+psB.hp = 40; psB.maxHp = 100;
+delete psA._arenaMatch; delete psB._arenaMatch;
+await room._interceptDuel('bp_duel_a', chalMsg('bp_duel_b', 0));
+const accRegen = await room._interceptDuel('bp_duel_b', acceptMsg('bp_duel_a', 0));
+check('duel started for the regen check', accRegen !== null && !!room._duelFor('bp_duel_a'));
+room._tickPlayerRegen();
+check('town HP regen gated for BOTH duellists', psA.hp === 40 && psB.hp === 40, { a: psA.hp, b: psB.hp });
+
+// A bystander in the same town keeps healing -- the gate is per-duellist.
+room.playerState['bp_duel_c'].z = 'town';
+room.playerState['bp_duel_c'].hp = 40;
+room.playerState['bp_duel_c'].maxHp = 100;
+delete room.playerState['bp_duel_c']._arenaMatch;
+room._tickPlayerRegen();
+check('a bystander in town still regenerates', room.playerState['bp_duel_c'].hp > 40, room.playerState['bp_duel_c'].hp);
+
+// And once the duel ends, the duellists heal again.
+const dR = room._duelFor('bp_duel_a');
+await room._resolveDuel(dR, 'bp_duel_a', 'bp_duel_b', 'kill');
+check('duel cleared before the post-duel regen check', !room._duelFor('bp_duel_a'));
+psA.hp = 40; psA.dying = false; psA.dead = false;
+psB.hp = 40; psB.dying = false; psB.dead = false;
+room._tickPlayerRegen();
+check('regen resumes once the duel is over', psA.hp > 40, psA.hp);
+
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);
 process.exit(failures === 0 ? 0 : 1);

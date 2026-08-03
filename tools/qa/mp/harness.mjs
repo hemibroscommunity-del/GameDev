@@ -266,10 +266,15 @@ export async function grant(wsPort, playerId, kind, payload) {
  *  every combat decision is made against these numbers — so anything that
  *  depends on geometry has to check here, not in the browser. */
 export async function serverPlayer(wsPort, playerId) {
+  return (await adminPlayer(wsPort, playerId)).live || null;
+}
+
+/** The whole operator view: `live` (the in-memory playerState summary) plus
+ *  `rpg` (the persisted blob, which is where inventory lives). */
+export async function adminPlayer(wsPort, playerId) {
   const res = await fetch(`http://127.0.0.1:${wsPort}/api/admin/player?id=${encodeURIComponent(playerId)}`,
     { headers: { 'Authorization': `Bearer ${ADMIN_KEY}` } });
-  const j = await res.json();
-  return j && j.live ? j.live : null;
+  return (await res.json()) || {};
 }
 
 /* ── UI drivers ────────────────────────────────────────────────────────── */
@@ -279,11 +284,31 @@ export async function serverPlayer(wsPort, playerId) {
  * the dash Friends views already use to open the same card the world-tap flow
  * opens.  Driving it keeps the test on the shipped path while avoiding
  * pixel-accurate canvas taps, which would be testing the camera, not the UI. */
-export async function openInspect(P, peerId) {
-  const ok = await P.page.evaluate((id) => !!(window.__broInspectPlayer && window.__broInspectPlayer(id)), peerId);
-  if (!ok) throw new Error(`__broInspectPlayer(${peerId}) returned false — peer not in S.others`);
-  await P.page.waitForSelector('.bt-inspect-card', { timeout: 5000 });
-  return true;
+export async function openInspect(P, peerId, { timeout = 15000 } = {}) {
+  const t0 = Date.now();
+  let lastOk = null;
+  while (Date.now() - t0 < timeout) {
+    lastOk = await P.page.evaluate((id) => {
+      if (!window.__broInspectPlayer) return 'no-bridge';
+      return window.__broInspectPlayer(id) ? 'ok' : 'not-in-others';
+    }, peerId);
+    if (lastOk === 'ok') {
+      /* The card can take a beat to mount, and another panel may be sitting on
+         top; retry the whole thing rather than failing on the first miss. */
+      const shown = await P.page.waitForSelector('.bt-inspect-card', { timeout: 3000 })
+        .then(() => true).catch(() => false);
+      if (shown) return true;
+    }
+    await P.page.waitForTimeout(500);
+  }
+  throw new Error(`openInspect(${peerId}) failed (${lastOk}); visible buttons = `
+    + JSON.stringify(await buttonTexts(P)));
+}
+
+/** All rendered text on the page — for "is this on screen at all" checks where
+ *  the exact element structure is not the point. */
+export function bodyText(P) {
+  return P.page.evaluate(() => (document.body.textContent || '').replace(/\s+/g, ' '));
 }
 
 /** Click the first visible button whose text contains `text`. */

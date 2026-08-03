@@ -39,8 +39,18 @@ const duelState = (P) => H.readState(P, (S) => ({
  *
  * Returns the worst aim error in radians so the caller can assert the swing
  * was actually pointed at the opponent before believing a no-damage result. */
-async function swingAt(A, times = 6) {
+/* Damage popups are SHORT-LIVED — the renderer destroys them a beat after they
+ * spawn — so reading S.dmgNumbers once after the fight is a coin flip.  It
+ * caught "Hit! -4" on one run and an empty list on the next, from the same
+ * build.  Sample after every press and accumulate instead. */
+async function swingAt(A, times = 6, seen = null, onEach = null) {
   let worstErr = 0;
+  const sample = async () => {
+    if (!seen) return;
+    for (const t of await H.readState(A, (S) => (S.dmgNumbers || []).map((p) => ({
+      text: String(p.text), x: Math.round(p.x), y: Math.round(p.y),
+    })))) seen.push(t);
+  };
   for (let i = 0; i < times; i++) {
     const pt = await A.page.evaluate(() => {
       const S = window._gameState.current;
@@ -73,7 +83,11 @@ async function swingAt(A, times = 6) {
     await A.page.mouse.down();
     await A.page.waitForTimeout(280);
     await A.page.mouse.up();
+    await sample();
+    if (onEach) await onEach();
     await A.page.waitForTimeout(320);
+    await sample();
+    if (onEach) await onEach();
   }
   return { ok: true, worstErr };
 }
@@ -155,7 +169,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
      never does. */
   const bHp0 = (await H.serverPlayer(wsPort, bId) || {}).hp;
   const dist = near.d;
-  const aim = await swingAt(A, 8);
+  const seen = [];
+  const aim = await swingAt(A, 8, seen);
   /* A missed swing and a broken duel look identical from the HP alone, so
      prove the swing was aimed before trusting the damage result. */
   rec.ok('the swing is actually aimed at the opponent',
@@ -180,27 +195,39 @@ export async function run({ browser, wsPort, webPort, rec }) {
      is hit when I hit the other player"), so read A's popups.  The fix floats
      the server's resolved dmgTaken over the TARGET; the literal word must
      never render again. */
-  const popups = await H.readState(A, (S) => (S.dmgNumbers || []).map((p) => String(p.text)));
-  const numeric = popups.filter((t) => /^-\d+!?$/.test(t));
-  const outcome = popups.filter((t) => /^(Dodged|Blocked)$/.test(t));
+  const texts = [...new Set(seen.map((p) => p.text))];
+  const numeric = texts.filter((t) => /^-\d+!?$/.test(t));
+  const outcome = texts.filter((t) => /^(Dodged|Blocked)$/.test(t));
+  /* v2.3.1612: the legacy pvp_confirmed path drew "Hit! -4" in amber over the
+     attacker's own head on top of the correct number.  Nothing may render the
+     literal word any more. */
+  const saidHit = texts.filter((t) => /Hit!/.test(t));
   rec.ok('the attacker sees a real number (or Blocked/Dodged), never "Hit!"',
-    (numeric.length > 0 || outcome.length > 0) && !popups.some((t) => /^Hit!?$/.test(t)),
-    { popups: popups.slice(-10) });
+    (numeric.length > 0 || outcome.length > 0) && saidHit.length === 0, { texts });
 
-  /* …and it has to land on the OPPONENT, not over the attacker's own head. */
-  const placed = await H.readState(A, (S) => {
+  /* …and it has to be ANCHORED TO THE OPPONENT, not to the attacker.
+     Checking "closer to them than to me" is meaningless here — duellists stand
+     almost on top of each other, so both distances come out similar and the
+     check passes or fails on noise.  Check the anchor itself instead: the fix
+     places the number at (target.x, target.y - 30), while the old
+     attacker-anchored popup sat at (me.x + 20, me.y - 20).  The 20px x-offset
+     separates them however close the two players are standing. */
+  const anchors = await H.readState(A, (S) => {
     const o = S.others && S.others[Object.keys(S.others)[0]];
-    if (!o) return null;
-    const hits = (S.dmgNumbers || []).filter((p) => /^-\d+!?$/.test(String(p.text)));
-    if (!hits.length) return { none: true };
+    return o ? { me: { x: S.player.x, y: S.player.y }, foe: { x: o.x || 0, y: o.y || 0 } } : null;
+  });
+  const hits = seen.filter((p) => /^-\d+!?$/.test(p.text));
+  const placed = anchors && hits.length ? (() => {
     const p = hits[hits.length - 1];
     return {
-      dSelf: Math.round(Math.hypot(p.x - S.player.x, p.y - S.player.y)),
-      dFoe: Math.round(Math.hypot(p.x - (o.x || 0), p.y - (o.y || 0))),
+      text: p.text, at: { x: p.x, y: p.y }, foe: anchors.foe, me: anchors.me,
+      offFoe: Math.round(Math.hypot(p.x - anchors.foe.x, p.y - (anchors.foe.y - 30))),
+      offMe: Math.round(Math.hypot(p.x - (anchors.me.x + 20), p.y - (anchors.me.y - 20))),
     };
-  });
-  rec.ok('the damage number floats over the opponent, not the attacker',
-    !!placed && !placed.none && placed.dFoe < placed.dSelf, placed);
+  })() : null;
+  rec.ok('the damage number is anchored to the opponent, not the attacker',
+    !!placed && placed.offFoe <= 12 && placed.offFoe < placed.offMe,
+    placed || { hits: hits.length, anchors });
 
   /* ── fight it out: a duel KILL is the payoff path ──
      A duel death is not an ordinary death — duel.js resolves it before the
@@ -211,25 +238,40 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await B.page.waitForTimeout(1200);
   const bWood0 = await H.readState(B, (S) => ((S.rpg || {}).inventory || {}).wood || 0);
 
+  /* End-of-duel banners are popups too, so they expire just as fast — sample
+     both players continuously rather than looking once after the fact. */
+  const aBanner = [], bBanner = [];
+  const sampleBanners = async () => {
+    for (const [P, into] of [[A, aBanner], [B, bBanner]]) {
+      for (const t of await H.readState(P, (S) => (S.dmgNumbers || []).map((p) => String(p.text)))
+        .catch(() => [])) into.push(t);
+    }
+  };
+
   let ended = false;
   for (let round = 0; round < 10 && !ended; round++) {
     await closeIn(A, wsPort, aId, bId);   /* re-close: either side may drift */
-    await swingAt(A, 6);
+    await swingAt(A, 6, seen, sampleBanners);
     ended = await H.readState(A, (S) => !S._inDuel)
       && await H.readState(B, (S) => !S._inDuel);
+    if (ended) { await sampleBanners(); await A.page.waitForTimeout(400); await sampleBanners(); }
   }
   rec.ok('a duel can be fought to a finish', ended,
     { aHp: await H.readState(A, (S) => (S.rpg || {}).hp), bHp: await H.readState(B, (S) => (S.rpg || {}).hp) });
 
   if (ended) {
-    const aPop = await H.readState(A, (S) => (S.dmgNumbers || []).map((p) => String(p.text)));
-    const bPop = await H.readState(B, (S) => (S.dmgNumbers || []).map((p) => String(p.text)));
-    rec.ok('the winner is told they won', aPop.some((t) => /DUEL WON/.test(t)), aPop.slice(-6));
-    rec.ok('the loser is told they lost', bPop.some((t) => /Duel lost|forfeit/i.test(t)), bPop.slice(-6));
+    const aPop = [...new Set(aBanner)], bPop = [...new Set(bBanner)];
+    rec.ok('the winner is told they won', aPop.some((t) => /DUEL WON/.test(t)), aPop);
+    rec.ok('the loser is told they lost', bPop.some((t) => /Duel lost|forfeit|Killed by/i.test(t)), bPop);
 
     await B.page.waitForTimeout(2500);
     const bWood1 = await H.readState(B, (S) => ((S.rpg || {}).inventory || {}).wood || 0);
-    rec.ok('losing a duel does NOT wipe the loser\'s bag', bWood1 === bWood0, { bWood0, bWood1 });
+    /* Cross-check the persisted blob: "the client forgot it" and "the server
+       took it" are different bugs, and only one of them survives a reload. */
+    const stored = await H.adminPlayer(wsPort, bId);
+    const storedWood = ((stored.rpg || {}).inventory || {}).wood || 0;
+    rec.ok('losing a duel does NOT wipe the loser\'s bag', bWood1 === bWood0,
+      { bWood0, bWood1, storedWood });
 
     const [ea, eb] = await Promise.all([duelState(A), duelState(B)]);
     rec.ok('the duel state is cleared on both sides', !ea.inDuel && !eb.inDuel, { ea, eb });

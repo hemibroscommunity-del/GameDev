@@ -1800,7 +1800,25 @@ export class GameRoom {
          + mana below (the hub block after the normal regen paths), so a
          few seconds in any hub returns a full expedition kit. */
       const inHub = ps.z === 'town' || ps.z === 'worldview' || ps.z === 'farm_home';
-      if (!ps._arenaMatch && inHub && ps.hp < ps.maxHp) {
+      /* v2.3.1613 (owner: "dueling ... this was a duel in town"): a DUEL gets
+         the same regen gate an arena match already has, and for exactly the
+         reason the v2.3.1126 comment above gives.  Hub regen is 10% of maxHp
+         every ~670 ms — about 15 hp/s at 100 maxHp — while a melee swing lands
+         ~4 damage on a 300 ms cadence.  Healing therefore beat damage by more
+         than an order of magnitude and a town duel could never move either
+         health bar: the two players hit each other until one gave up.  The
+         arena was gated for this in v2.3.1126 ("literally unendable for
+         non-burst builds"); duels are the same fight in the same place and
+         were simply never added.  Measured headlessly (tools/qa/mp/run.mjs
+         duel): confirmed hits for 4 damage each, target pinned at 100/100.
+         DERIVED from this._duels rather than mirrored onto ps: a flag would
+         need clearing on every duel exit (kill, forfeit, disconnect, timeout,
+         deploy) and a missed one leaves a player who can never heal in town.
+         _duelFor is a walk of a map that holds a handful of entries, once per
+         player per 670 ms tick.  Only HP is gated, matching the arena: stamina
+         and mana keep regenerating below, so blocking still works. */
+      const inDuel = this._duelFor ? !!this._duelFor(id) : false;
+      if (!ps._arenaMatch && !inDuel && inHub && ps.hp < ps.maxHp) {
         const heal = Math.max(1, Math.ceil(ps.maxHp * 0.10));
         const beforeHp = ps.hp;
         ps.hp = Math.min(ps.maxHp, ps.hp + heal);
