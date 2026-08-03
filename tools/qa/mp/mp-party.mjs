@@ -52,13 +52,21 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const pchat = await H.readState(A, (S) => !!(S._serverCaps && S._serverCaps.partyChat));
   rec.ok('the worker advertises party chat', pchat);
   if (pchat) {
-    await A.page.evaluate(() => window.__broLegacyUI && window.__broLegacyUI.chat());
-    await A.page.waitForFunction(() =>
-      [...document.querySelectorAll('button')].some((b) => b.offsetParent && b.textContent.trim() === 'Send'),
-    null, { timeout: 8000 }).catch(() => {});
+    /* __broLegacyUI.chat() TOGGLES, so opening it blind can close it — drive
+       it until the Send button is actually there. */
+    const chatOpen = () => A.page.evaluate(() =>
+      [...document.querySelectorAll('button')].some((b) => b.offsetParent && b.textContent.trim() === 'Send'));
+    for (let i = 0; i < 3 && !(await chatOpen()); i++) {
+      await A.page.evaluate(() => window.__broLegacyUI && window.__broLegacyUI.chat());
+      await A.page.waitForTimeout(600);
+    }
+    rec.ok('the chat bar opens', await chatOpen());
     await A.page.locator('button:has-text("Send")').locator('xpath=preceding-sibling::input[1]')
       .first().fill('/p party line');
     await H.clickText(A, 'Send');
+    /* and close it again so it cannot sit over the party HUD checks below */
+    await A.page.waitForTimeout(400);
+    if (await chatOpen()) await A.page.evaluate(() => window.__broLegacyUI && window.__broLegacyUI.chat());
     const gotP = await H.waitFor(B, (S) => (S.chatLog || []).map((c) => c.text),
       (l) => l.some((t) => /party line/.test(t)), { timeout: 15000, label: 'party chat' })
       .then(() => true).catch(() => false);
@@ -67,8 +75,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
   }
 
   /* ── the HUD shows it ── */
-  const hud = await H.waitUi(A, () => /PARTY/i.test(document.body.innerText),
-    { label: 'party HUD', timeout: 10000 }).then(() => true).catch(() => false);
+  /* textContent, not innerText: innerText depends on layout and has come back
+     empty here under load, which reads as "the HUD never rendered". */
+  const hud = await H.waitUi(A, () => /PARTY/i.test(document.body.textContent || ''),
+    { label: 'party HUD', timeout: 15000 }).then(() => true).catch(() => false);
   rec.ok('the party HUD renders for the inviter', hud);
 
   /* ── leaving clears it on BOTH sides ── */

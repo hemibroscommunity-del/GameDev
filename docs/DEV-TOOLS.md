@@ -89,6 +89,25 @@ Notes for anyone extending it:
   middle of the window can be tens of degrees off, and the server's arc
   check (`±arc/2`, default ±34°) then drops it — which reads exactly
   like a broken duel.
+- **Melee reach is 50px, checked against the SERVER's copy of both
+  positions.** `waitMutualSight` nudges the two players apart to make
+  them dirty, which leaves them ~58px apart — every swing was dropped
+  as out of range while the client's stale mirror of the peer still
+  read 8px. Anything geometric: walk into range and confirm the
+  distance via `serverPlayer()` before asserting.
+- **Damage popups expire.** The renderer destroys them a beat after
+  they spawn, so a single read after the fact is a coin flip — the same
+  build gave `["Hit! -4"]` on one run and `[]` on the next. Sample
+  continuously and accumulate.
+- Anything the server owns (hp, coins, inventory, position) should be
+  read from the server (`serverPlayer` / `adminPlayer`), not from a
+  one-shot client read that races the echo. Assert the client too when
+  the point is that the PLAYER can see it — but as a separate check, so
+  "the server didn't do it" and "the screen didn't show it" stay
+  distinguishable.
+- Ports are OS-assigned per run, and the worker is spawned detached and
+  killed by process group. Both exist because a leaked wrangler used to
+  poison the next run before a single assertion ran.
 
 ## `.claude/settings.json`
 
