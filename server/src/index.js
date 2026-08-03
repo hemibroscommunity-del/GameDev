@@ -472,16 +472,34 @@ export class GameRoom {
     this.LAGCOMP_RTT_CAP = 300;
     this.LAGCOMP_RTT_ALPHA = 0.3;
 
-    // Server-authoritative monsters
-    this.monsters = {}; // zoneId -> [monster, ...]
+    /* v2.3.1629: PvE melee proximity bound for monster_damage
+       (combat.js).  400, not the 250 the PvP path uses: this one has to
+       survive client/server position lag on iPhone Safari over cellular
+       on top of the swing's own reach (GS_OUTER_RADIUS 72 + monster
+       body), and 250 left only ~46 px of slack -- about 105 ms of
+       movement at the legit max speed.  Still far inside a 32-40 tile
+       zone, so it keeps doing the one job it has: no cross-map melee.
+       Ranged/staff are deliberately NOT bounded here -- see the comment
+       at the call site. */
+    this.PVE_MELEE_RANGE = 400;
+
+    /* Server-authoritative monsters.
+       v2.3.1625: null-prototype, like every other map keyed by a
+       client-supplied string (TRAPS #6).  The zone allowlist in
+       _validZone is the real gate -- an unlisted id never reaches these
+       maps now -- but these stay null-proto as defence in depth, so the
+       NEXT path that forgets to validate degrades into a harmless own
+       key instead of returning Object.prototype and making
+       _tickMonsters throw room-wide, every tick. */
+    this.monsters = Object.create(null); // zoneId -> [monster, ...]
     this.dirtyMonsters = new Set(); // zoneIds with changed monsters
     // Protocol v2 per-entity dirty tracking.  v1 sessions still get the
     // full dirty-zone entity list; v2 sessions get only the entities in
     // these id sets (client merges by id).  Zone-level dirtyMonsters /
     // dirtyNodes stay authoritative for "does this tick carry a delta
     // at all" — the id sets only narrow the v2 payload.
-    this.dirtyMonsterIds = {}; // zoneId -> Set(monsterId)
-    this.dirtyNodeIds = {};    // zoneId -> Set(nodeId)
+    this.dirtyMonsterIds = Object.create(null); // zoneId -> Set(monsterId)  /* v2.3.1625: null-proto (TRAPS #6) */
+    this.dirtyNodeIds = Object.create(null);    // zoneId -> Set(nodeId)     /* v2.3.1625: null-proto (TRAPS #6) */
     /* v2.3.1592 (owner: "only 3 monsters per zone ... but with quick
        respawn"): 15s -> 5s.  The two halves of that request are one change —
        zone populations dropped to 3 (data.js ZONES.spawns), so at the old
@@ -508,7 +526,7 @@ export class GameRoom {
     // Parallel to the monster pattern above: lazy-spawn on first player
     // entry per zone, store in this.nodes, mark dirty on state change,
     // tick respawns alongside _tickMonsters().
-    this.nodes = {}; // zoneId -> [node, ...]
+    this.nodes = Object.create(null); // zoneId -> [node, ...]  /* v2.3.1625: null-proto (TRAPS #6) */
     this.dirtyNodes = new Set(); // zoneIds with changed node state
     /* v2.3.1592 (owner: "one resource per zone but with quick respawn"):
        2 min -> 20s, paired with the 9-nodes-per-zone -> 3 drop in
@@ -558,7 +576,7 @@ export class GameRoom {
     // requests via loot_pickup.  Server validates each pickup (range,
     // recipient, single-claim) and emits a private loot_credit back to
     // the picker with their authorized share + any one-of inventory.
-    this.loot = {}; // zoneId -> [pile, ...]
+    this.loot = Object.create(null); // zoneId -> [pile, ...]  /* v2.3.1625: null-proto (TRAPS #6) */
     this.LOOT_EXPIRY_MS = 60000;
     // Death-drop timing: dying player has DEATH_PILE_OWNER_MS alone
     // to recover their dropped inventory; after that anyone in zone
@@ -1383,7 +1401,11 @@ export class GameRoom {
   // greatsword shares the 'sword' (melee) category, per WEAPON_CATEGORY.
   _wpnCat(type) {
     const C = { greatsword: 'sword', sword: 'sword', bow: 'bow', staff: 'staff' };
-    return C[type] || 'sword';
+    /* v2.3.1626: own-property lookup -- C['constructor'] is a truthy
+       inherited FUNCTION, which would be returned as the category and
+       then used as a key into the channel tables (TRAPS #6, same sweep
+       as gear.js _weaponBase). */
+    return Object.prototype.hasOwnProperty.call(C, type) ? C[type] : 'sword';
   }
   // Damage-channel POINT total for the type's category (edge / drawPower /
   // spellPower) — mirror gameSystems.js weaponDamageBonusFor.
@@ -2632,7 +2654,27 @@ export class GameRoom {
           if (!msg.data || typeof msg.data !== 'object') break;
           const clean = Object.create(null);
           for (const k of TRACK_COSMETIC_KEYS) {
-            if (Object.prototype.hasOwnProperty.call(msg.data, k)) clean[k] = msg.data[k];
+            if (!Object.prototype.hasOwnProperty.call(msg.data, k)) continue;
+            const _tv = msg.data[k];
+            /* v2.3.1631: bound the cosmetic STRINGS, matching the caps
+               _sanitizeJoinData applies on the join path.  Without this
+               the join caps were trivially bypassable: `track` copies
+               the same keys every 2 s, and both session.data and
+               playerState are spread into the state_sync EVERY later
+               joiner receives -- so one 15 KB avatar (comfortably inside
+               MAX_INBOUND_BYTES) is re-sent to every arrival, twice
+               over, indefinitely.  Truncate rather than drop, for the
+               same reason as the join path: a clipped string degrades
+               visibly, a missing one reads as a broken feature.
+               `rpgData` is a nested display blob, not a string, and
+               stays as-is -- it is a documented client-reported posture
+               (see reportToLeaderboard), out of scope here. */
+            if (typeof _tv === 'string') {
+              const _tcap = (k === 'avatar') ? 512 : 64;
+              clean[k] = _tv.length > _tcap ? _tv.slice(0, _tcap) : _tv;
+            } else {
+              clean[k] = _tv;
+            }
           }
           // v2.3.1125: the registry owns the clan tag -- override the
           // client-supplied cosmetics BEFORE they merge/broadcast (this

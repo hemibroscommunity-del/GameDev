@@ -311,6 +311,27 @@ export const persistenceMethods = {
           goldBars: Math.max(0, Math.floor(ps.goldBars || 0)),
           level: ps.level || 1,
           xp: ps.xp || 0,
+          /* v2.3.1624: the five T1 raw stats.  They were in _saveRpg's
+             fixed field list since forever but NEVER in this echo, and
+             no other channel carried them to the client -- so the
+             server was the only holder of a value the client is the
+             only reporter of.  On any client with no localStorage copy
+             (new device, Login Key, cleared site data, private tab) the
+             round trip zeroed the character: join restores the stored
+             stats into ps (join.js RAW_STATS), the client never learns
+             them, BroTown.jsx's stats_update effect emits
+             `rpgState.power || 0` -> 0, and _handleStatsUpdate
+             (grids.js) accepts the number with only an UPPER clamp and
+             _saveRpg persists it.  Echoing them closes the loop: the
+             client adopts these present-gated (wsClient.js) before its
+             first stats_update, so it reports back what it was told.
+             Old clients ignore the unknown fields (deploy-order safe);
+             protocol-v2 delta handles them like every other field. */
+          power: ps.power || 0,
+          vitality: ps.vitality || 0,
+          endurance: ps.endurance || 0,
+          agility: ps.agility || 0,
+          mind: ps.mind || 0,
           unspentT2: ps.unspentT2 || 0,
           buildPointsThisLvl: ps.buildPointsThisLvl || 0,
           hp: typeof ps.hp === 'number' ? ps.hp : (ps.maxHp || 100),

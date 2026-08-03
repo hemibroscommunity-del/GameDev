@@ -1074,6 +1074,77 @@ export function setupWebSocket(ctx) {
                  identical and this is a no-op; after a clamp,
                  truncation, or stale-echo scale they converge here. */
               if (msg.payload.t2Flat && typeof msg.payload.t2Flat === 'object') S.rpg.t2Flat = msg.payload.t2Flat;
+              /* v2.3.1624: the five T1 raw stats, adopted present-gated.
+                 The server has always PERSISTED these but never echoed
+                 them, so a client with no localStorage copy (new device,
+                 Login Key, cleared data) started at 0, reported 0 back in
+                 its very first stats_update, and the worker wrote the 0
+                 over the stored value -- a character wipe triggered by
+                 nothing more than logging in somewhere new.  Adopting the
+                 echo BEFORE that first emit is what closes the loop.
+                 Mid-session these only arrive in a v2 delta when they
+                 actually changed server-side (i.e. right after this
+                 client reported them), so it stays idempotent and never
+                 stomps live use-training -- same posture as the
+                 weaponSkills block above. */
+              /* v2.3.1630: ADOPT UPWARD ONLY.
+                 The naive "adopt whatever arrives" version made a
+                 long-standing SILENT server clamp suddenly visible as a
+                 stat collapse at login.  _statCap is level*10+20 and,
+                 since v2.3.1342, level = 1 + T2 points PLACED -- so a
+                 player who has never opened the grid-spend UI sits at
+                 level 1, cap 30, while their client has use-trained
+                 power to 58.  The server has always settled damage on
+                 30; the client has always displayed 58.  Adopting the
+                 echo unconditionally would drop the dashboard 58 -> 30
+                 on the next login and read as "the update stole my
+                 stats", when nothing was actually lost -- the 58 was
+                 never real.
+                 That divergence is a genuine issue, but it is a DISPLAY
+                 vs SETTLEMENT problem that predates this change, and
+                 surfacing it as a one-time visible loss is not something
+                 an audit follow-up should do by surprise.  It is written
+                 up separately instead.
+                 So: adopt when the client has no value (the new-device
+                 case audit C-2 is actually about -- local 0, echo 47),
+                 and never adopt a value LOWER than the client's, which
+                 is only ever the invisible clamp talking. */
+              var _t1Changed = false;
+              var _adoptT1 = function (k) {
+                var v = msg.payload[k];
+                if (typeof v !== 'number') return;
+                var cur = S.rpg[k];
+                var unset = typeof cur !== 'number' || cur === 0;
+                if (!unset && v <= cur) return;   // clamp echo: ignore
+                if (cur === v) return;
+                S.rpg[k] = v;
+                _t1Changed = true;
+              };
+              _adoptT1('power'); _adoptT1('vitality'); _adoptT1('endurance');
+              _adoptT1('agility'); _adoptT1('mind');
+              /* Seeing ANY of the five (even one we chose not to adopt)
+                 proves this worker echoes them, which is what entitles
+                 the client to report them at all -- see _t1StatsPayload
+                 in BroTown.jsx.  Without this an old-worker session
+                 would stay unseeded forever and never sync T1 again. */
+              if (typeof msg.payload.power === 'number'
+                  || typeof msg.payload.vitality === 'number'
+                  || typeof msg.payload.endurance === 'number'
+                  || typeof msg.payload.agility === 'number'
+                  || typeof msg.payload.mind === 'number') {
+                S._t1Seeded = true;
+              }
+              /* v2.3.1624: maxHp / stamina / mana and the display formulas
+                 are all derived from these five, so recompute on a real
+                 change -- the same reason the armor adopt above calls it.
+                 Gated on an ACTUAL change (not mere presence) so the
+                 steady-state echo, where the server is just repeating what
+                 this client reported, stays a no-op and cannot feed the
+                 stats_update effect in BroTown.jsx a fresh signature every
+                 tick -- that shape was the v2.3.1158 "coins flashing"
+                 storm, and the server's own mutation gate is the other
+                 half of the brake. */
+              if (_t1Changed) recalcDerived(S.rpg);
               setRpgState(_objectSpread({}, S.rpg));
               try { localStorage.setItem('bt_rpg', JSON.stringify(S.rpg)); } catch (e) {}
               break;

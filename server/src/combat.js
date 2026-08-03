@@ -392,6 +392,70 @@ export const combatMethods = {
     const attackerPs = this.playerState[session.id];
     const isSpecial = !!payload.special;
 
+    /* ═══ v2.3.1628: attacker gates -- the ones every SIBLING handler
+       already had and this one never did (gathering.js _handleNodeStrike,
+       index.js _handleLootPickup).  The monster is resolved from the
+       CLIENT-SUPPLIED `zone`, so without these a player standing in town
+       could kill monsters in any zone -- including inside another
+       player's live dungeon instance, draining its wave -- and a dead or
+       disconnected player could keep swinging.
+       Fail closed on a missing playerState: no attacker, no damage. */
+    if (!attackerPs) return;
+    /* Death: use the SERVER's own view, not ps.dead.  ps.dead is written
+       straight from the client's `move` payload (movement.js
+       `if (msg.dead !== undefined) ps.dead = !!msg.dead`), so gating on
+       it lets a client whose LOCAL hp hit 0 -- while the server still
+       has it at full, e.g. client-side dungeon-wave damage -- silently
+       lose all PvE combat with no delta to correct it.  ps.dying and
+       ps.respawnAt are set by _handlePlayerDeath, which is server-sole-
+       writer, so they are the authoritative pair. */
+    if (attackerPs.dying || attackerPs.disconnected) return;
+    /* THE ACTUAL FIX: the attacker must be in the zone they claim.  The
+       monster is resolved from the CLIENT-SUPPLIED `zone`, so without
+       this a player standing in town kills monsters in any zone --
+       including inside another player's live dungeon instance, draining
+       its waves out from under them. */
+    if (attackerPs.z !== zone) return;
+    /* Slot resolution mirrors _computeAttackDamage's (and the volatile
+       block further down): an unrecognised slot falls back to the
+       server's own activeSlot rather than being trusted. */
+    const _effSlot = (slot === 'melee' || slot === 'ranged' || slot === 'staff')
+      ? slot : (attackerPs.activeSlot || 'melee');
+    /* PROXIMITY: MELEE ONLY, and deliberately loose.
+       v2.3.1629 -- the v2.3.1628 version of this gate reused
+       PVP_TUNING.RANGE_CAP wholesale (950 for ranged/staff) and was
+       WRONG in both directions for PvE:
+         - Too tight for legitimate play.  A bow plants at
+           675 * bowRangeMult (projectiles.js) and bowRangeMult caps at
+           x2.0 (gameSystems.js, +1%/pt to 100), so a maxed Longshot
+           build legitimately connects at 1350 px -- every hit between
+           950 and 1350 was silently dropped, arrow visibly connecting
+           and the local popup printing a number the server never
+           settled.
+         - Unfixable by raising the number.  The bow special STICKS in
+           the monster and chips every 500 ms for 4 s (projectiles.js
+           `stuckIn`, sent as ordinary monster_damage with noKb), and
+           ground hazards tick the same way -- while the player kites
+           away at up to 441 px/s.  The distance at TICK time is
+           unbounded relative to the distance at FIRING time, so no
+           static cap can separate that from a cheat.
+       Ranged/staff therefore get no proximity gate at all.  That costs
+       nothing real: the zone gate above is what closed the reported
+       exploit, and at zone scale (32-40 tiles) any cap wide enough to
+       be safe is "anywhere in this zone" anyway.  Melee keeps a bound
+       because its geometry IS local -- but at 400 px, not 250: the
+       swing's own reach is GS_OUTER_RADIUS 72 plus monster body plus
+       client/server position lag on iPhone Safari over cellular, and
+       the 250 px PvP figure left only ~46 px of slack, which is ~105 ms
+       of movement at the legit max speed. */
+    if (_effSlot === 'melee'
+        && typeof attackerPs.x === 'number' && typeof attackerPs.y === 'number'
+        && typeof m.x === 'number' && typeof m.y === 'number') {
+      const _rdx = attackerPs.x - m.x;
+      const _rdy = attackerPs.y - m.y;
+      if (_rdx * _rdx + _rdy * _rdy > this.PVE_MELEE_RANGE * this.PVE_MELEE_RANGE) return;
+    }
+
     // v2.3.1134: HIT-CADENCE FLOOR.  Until now damage-per-hit was capped
     // but hit FREQUENCY was not -- a hacked client could spam
     // monster_damage far faster than any weapon swings.  Now that Tempo

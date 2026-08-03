@@ -188,7 +188,12 @@ export const dungeonMethods = {
   _dungeonSanitizeConfig(raw, ps) {
     raw = raw && typeof raw === 'object' ? raw : {};
     const lvlCap = Math.max(1, Math.min(ps.level || 1, DUNGEONS.LEVEL_HARD_CAP));
-    const arch = (a) => (typeof a === 'string' && ARCHETYPES[a]) ? a : 'fodder';
+    /* v2.3.1626: own-property gate -- ARCHETYPES['constructor'] is a
+       truthy inherited member, so a crafted archetype survived this
+       sanitizer and _getArchetype later read undefined stats off it,
+       spawning NaN-hp monsters that can never be killed and permanently
+       wedge the owner's dungeon slot (TRAPS #6). */
+    const arch = (a) => (typeof a === 'string' && Object.prototype.hasOwnProperty.call(ARCHETYPES, a)) ? a : 'fodder';
     const elem = (e) => DUNGEONS.VALID_ELEMENTS.includes(e) ? e : null;
     const groupsIn = Array.isArray(raw.monsters) ? raw.monsters.slice(0, DUNGEONS.MAX_GROUPS) : [];
     const groups = groupsIn.map((g) => ({

@@ -29,6 +29,8 @@ const SCENARIOS = {
   friends: () => import('./mp-friends.mjs'),
   chat: () => import('./mp-chat.mjs'),
   clan: () => import('./mp-clan.mjs'),
+  market: () => import('./mp-market.mjs'),
+  arena: () => import('./mp-arena.mjs'),
 };
 
 const want = process.argv.slice(2).filter((a) => !a.startsWith('-'));
@@ -71,9 +73,15 @@ await browser.close();
 srv.close();
 await H.stopWorker(worker);
 
-const failed = all.filter((r) => !r.pass);
+const skipped = all.filter((r) => r.skip);
+const failed = all.filter((r) => !r.pass && !r.skip);
+const checks = all.filter((r) => !r.skip);
 console.log('═══════════════════════════════════════════');
-console.log(`${all.length} assertions, ${all.length - failed.length} passed, ${failed.length} failed`
+console.log(`${checks.length} assertions, ${checks.length - failed.length} passed, ${failed.length} failed`
+  + (skipped.length ? `, ${skipped.length} skipped` : '')
   + `  (${((Date.now() - t0) / 1000).toFixed(0)}s total)`);
 for (const f of failed) console.log(`  FAIL  ${f.suite} :: ${f.name}  ${JSON.stringify(f.detail)}`);
+/* Skips are printed at the end too — a screen with no way in is a finding, and
+   burying it in the scroll is how it stays unnoticed. */
+for (const s of skipped) console.log(`  SKIP  ${s.suite} :: ${s.name}  — ${s.detail}`);
 process.exit(failed.length ? 1 : 0);

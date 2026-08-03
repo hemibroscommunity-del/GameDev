@@ -62,6 +62,43 @@ await room.webSocketMessage(wsB, JSON.stringify({ type: 'join', id: 'pb', name: 
 const psA = room.playerState.pa;
 const psB = room.playerState.pb;
 
+/* ═══ v2.3.1628: monster_damage proximity shim (TEST HARNESS ONLY) ═══
+ *
+ * _handleMonsterDamage now enforces the attacker gates every sibling
+ * handler already had -- same zone, alive, and within the range clamp
+ * (250 px melee, the figure monsterCombat.js itself calls "the server's
+ * clamp"; the wider projectile caps need the matching weapon).  This
+ * suite joins at (-100000,-100000) ON PURPOSE so monsters stay idle and
+ * the dirty sets / contribution shares stay deterministic, which makes
+ * every swing below legitimately ~100k px out of range.
+ *
+ * Rather than restate the far spawn at 15+ call sites, stand the
+ * attacker on their target for the duration of each monster_damage and
+ * put them straight back.  Nothing else in the suite is about range, and
+ * the idle-AI determinism the far spawn buys is preserved.
+ *
+ * This shim does NOT weaken coverage of the gate itself: the gate is
+ * pinned positively in anticheat.test.mjs §8 (wrong-zone, dead and
+ * out-of-range attacks all denied).  If that section is ever deleted,
+ * this shim becomes a blind spot -- keep them together. */
+const _origWsm = room.webSocketMessage.bind(room);
+room.webSocketMessage = async function (ws, raw) {
+  let parsed = null;
+  try { parsed = JSON.parse(raw); } catch { /* not JSON: pass through */ }
+  if (!parsed || parsed.type !== 'monster_damage' || !parsed.payload) {
+    return _origWsm(ws, raw);
+  }
+  const sid = room.sessions.get(ws)?.id;
+  const ps = sid ? room.playerState[sid] : null;
+  const mon = (room.monsters[parsed.payload.zone] || [])
+    .find((x) => x.id === parsed.payload.monsterId);
+  if (!ps || !mon) return _origWsm(ws, raw);
+  const home = { x: ps.x, y: ps.y };
+  ps.x = mon.x; ps.y = mon.y;
+  try { return await _origWsm(ws, raw); }
+  finally { ps.x = home.x; ps.y = home.y; }
+};
+
 // Freeze the idle-wander AI so monster positions/dirty sets stay put.
 const meadowMonsters = room.monsters.meadow;
 /* v2.3.1592: meadow fielded 10 monsters when this suite was written and now
@@ -944,7 +981,21 @@ for (const m of meadowMonsters) m._wanderPausedUntil = Date.now() + 600000;
     psA._regenSaveAt = Date.now(); psA._regenDirty = false;
     psA.hp = 1000;
     puts.length = 0;
+    /* v2.3.1625: DEFLAKE.  psA carries agility 200 by this point, so
+       _applyDamage rolls a 16% passive dodge (Math.random) -- a dodged
+       hit leaves hp at 1000, no write happens, and this assertion fails.
+       Measured on an isolated checkout of origin/main at v2.3.1623:
+       4 failures in 20 runs.  It is a real intermittent red on a
+       BLOCKING check, which the repo already treats as worse than no
+       check at all (handoff backlog item F).
+       This block is about SAVE COALESCING, not about dodge, so pin the
+       roll off rather than retry: zero the dodge inputs for the one
+       call and restore them after, leaving every later assertion with
+       the stats it expects. */
+    const _agiSave = psA.agility, _especSave = psA.enduranceSpec, _evAccSave = psA._evadeAcc;
+    psA.agility = 0; psA.enduranceSpec = {}; psA._evadeAcc = 0;
     room._applyDamage(psA, 800, false); // 1000 -> 200, straight into the band
+    psA.agility = _agiSave; psA.enduranceSpec = _especSave; psA._evadeAcc = _evAccSave;
     room._saveRpgVitals('pa', psA);
     check('hp coalesce: a hit that crosses into the band writes immediately',
       rpgPuts('pa').length === 1 && psA.hp <= psA.maxHp * room.HP_URGENT_SAVE_FRAC,
