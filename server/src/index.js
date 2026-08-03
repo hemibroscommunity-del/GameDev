@@ -439,6 +439,13 @@ export class GameRoom {
        restart (deterministic, recomputes from maxima, invisible) and cut
        measured storage writes by ~93%.  See _tickPlayerRegen. */
     this.REGEN_SAVE_MS = 10000;
+    /* v2.3.1623: below this fraction of max HP, a damage write bypasses
+       the coalescing and persists immediately.  25% is roughly "one or
+       two more hits from death" across the damage curve -- the band
+       where a rolled-back HP value would actually change what happens to
+       a player.  Above it, the worst a restart costs is a few seconds of
+       damage given back.  See _saveRpgVitals. */
+    this.HP_URGENT_SAVE_FRAC = 0.25;
     /* v2.3.1575 (interest management, tick.js): how often the tick
        carries the FULL player roster.  45 ticks ~= 1 s.  Out-of-zone
        peers ride this instead of the 45Hz dirty list -- they can't be
@@ -1212,7 +1219,7 @@ export class GameRoom {
             // Echo authoritative hp to the victim + persist.  Death
             // check feeds the player_died event below.
             if (targetPs) {
-              this._saveRpg(nearest.id, targetPs);
+              this._saveRpgVitals(nearest.id, targetPs); // v2.3.1623: coalesced unless near death
               this._queuePlayerStateFlush(nearest.id);
               if (targetPs.hp <= 0 && !targetPs.dying) {
                 this._handlePlayerDeath(targetPs, nearest.id, 'monster:' + m.id);

@@ -916,18 +916,56 @@ for (const m of meadowMonsters) m._wanderPausedUntil = Date.now() + 600000;
       rpgPuts('pa').length === 1 && psA._regenDirty === false,
       { puts: rpgPuts('pa').length, dirty: psA._regenDirty });
 
-    /* THE SAFETY PROPERTY.  HP moves DOWN from damage and cannot be
-       recomputed from maxima, so it must keep writing immediately —
-       coalescing it would undo real damage across a restart, and every
-       server deploy restarts the room.  If this assertion ever fails,
-       someone has widened the coalescing too far. */
+    /* v2.3.1623: HP now coalesces too (owner decision — the free heal on
+       a deploy is worth the row saving), but ONLY while the player is
+       comfortably alive.  The carve-out below HP_URGENT_SAVE_FRAC is the
+       whole safety argument: a restart must never rewind a player from
+       "about to die" back to healthy.  If the near-death assertions
+       below ever fail, the coalescing has been widened too far. */
     psA._regenSaveAt = Date.now(); psA._regenDirty = false; // mid-window
-    psA.hp = 500; psA.maxHp = 1000;
+    psA.maxHp = 1000; psA.hp = 900;
     puts.length = 0;
     room._applyDamage(psA, 100, false);
-    room._saveRpg('pa', psA);  // the monster-damage site's call, verbatim
-    check('pool coalesce: an HP write is NOT coalesced (damage persists at once)',
+    room._saveRpgVitals('pa', psA); // the damage sites' call, verbatim
+    check('hp coalesce: a healthy player\'s damage write is coalesced',
+      rpgPuts('pa').length === 0 && psA._regenDirty === true,
+      { puts: rpgPuts('pa').length, dirty: psA._regenDirty });
+
+    // At/below the fraction: immediate, no matter where we are in the window.
+    psA._regenSaveAt = Date.now(); psA._regenDirty = false;
+    psA.hp = 240; // 24% of 1000
+    puts.length = 0;
+    room._saveRpgVitals('pa', psA);
+    check('hp coalesce: a near-death player writes IMMEDIATELY',
       rpgPuts('pa').length === 1, rpgPuts('pa').length);
+
+    // Crossing INTO the band on one big hit must also write at once —
+    // the check runs after damage, so there is no way to slip past it.
+    psA._regenSaveAt = Date.now(); psA._regenDirty = false;
+    psA.hp = 1000;
+    puts.length = 0;
+    room._applyDamage(psA, 800, false); // 1000 -> 200, straight into the band
+    room._saveRpgVitals('pa', psA);
+    check('hp coalesce: a hit that crosses into the band writes immediately',
+      rpgPuts('pa').length === 1 && psA.hp <= psA.maxHp * room.HP_URGENT_SAVE_FRAC,
+      { puts: rpgPuts('pa').length, hp: psA.hp });
+
+    // Exactly at the boundary counts as urgent (<=, not <).
+    psA._regenSaveAt = Date.now(); psA._regenDirty = false;
+    psA.hp = psA.maxHp * room.HP_URGENT_SAVE_FRAC;
+    puts.length = 0;
+    room._saveRpgVitals('pa', psA);
+    check('hp coalesce: exactly at the threshold is urgent',
+      rpgPuts('pa').length === 1, rpgPuts('pa').length);
+
+    // Death still persists on its own path, never coalesced.
+    psA._regenSaveAt = Date.now(); psA._regenDirty = false;
+    psA.hp = 0; psA.dying = false; psA.dead = false; psA.inventory = { ore: 3 };
+    puts.length = 0;
+    room._handlePlayerDeath(psA, 'pa', 'monster:test');
+    check('hp coalesce: death is never coalesced',
+      rpgPuts('pa').length >= 1, rpgPuts('pa').length);
+    psA.dying = false; psA.dead = false; psA.hp = psA.maxHp;
   }
 
   mockState.storage.put = origPut;
