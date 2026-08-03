@@ -159,15 +159,21 @@ def analyse(path):
     return out
 
 
+# .webp too: the v2.3.1325 UI icon batch is webp, and defringe_gray.py already
+# round-trips it LOSSLESSLY.  Collecting png only meant the sweep silently
+# considered 13 files where 331 exist — a whole tree missed by an extension.
+IMG_EXT = ('.png', '.webp')
+
+
 def walk(paths):
     files = []
     for p in paths:
         if os.path.isdir(p):
             for root, _, names in os.walk(p):
                 for n in sorted(names):
-                    if n.lower().endswith('.png'):
+                    if n.lower().endswith(IMG_EXT):
                         files.append(os.path.join(root, n))
-        elif p.lower().endswith('.png'):
+        elif p.lower().endswith(IMG_EXT):
             files.append(p)
     return files
 

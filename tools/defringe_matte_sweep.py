@@ -38,6 +38,7 @@ Run:
   python3 tools/defringe_matte_sweep.py public/sprites
 """
 import argparse
+import os
 import subprocess
 import sys
 
@@ -104,10 +105,65 @@ def main():
     if not picked:
         return
     files = [r['path'] for r, _ in picked]
+
+    # PRESERVE EACH FILE'S ENCODING.  defringe_gray.py always writes webp
+    # LOSSLESS — correct for the flat-colour icons it was built for in
+    # v2.3.1452, but 140 of the UI icons ship LOSSY (VP8X) and re-saving those
+    # lossless costs 2.3x their size: +1.4 MB across this sweep, on assets that
+    # load during the startup gate.  Since the source is already lossy, one more
+    # pass at q95 is measurably invisible — on bldg-exchange.webp, mean error
+    # 2.2/255 over visible pixels, 0.47% above 8, and indistinguishable rendered
+    # at the 64px the UI actually draws — while landing within a few hundred
+    # bytes of the original.  So: remember the container tag first, and put
+    # lossy files back the way they were.  Files that already shipped lossless
+    # stay lossless.
+    was_lossy = {}
+    for f in files:
+        if f.lower().endswith('.webp'):
+            try:
+                with open(f, 'rb') as fh:
+                    was_lossy[f] = fh.read(16)[12:16] != b'VP8L'
+            except OSError:
+                pass
+
     print(f'\nde-fringing {len(files)} file(s) via tools/defringe_gray.py…')
     for i in range(0, len(files), 60):                  # keep argv sane
         subprocess.run([sys.executable, 'tools/defringe_gray.py', *files[i:i + 60]],
                        check=True, stdout=subprocess.DEVNULL)
+
+    n_re = 0
+    for f, lossy in was_lossy.items():
+        if not lossy:
+            continue
+        from PIL import Image                            # noqa: PLC0415
+        Image.open(f).convert('RGBA').save(f, 'WEBP', quality=95, method=6)
+        n_re += 1
+    if n_re:
+        print(f're-encoded {n_re} lossy webp(s) at q95 to preserve their size')
+
+    # READABILITY GUARD.  A batch image pass interrupted mid-save leaves a
+    # TRUNCATED or ZERO-BYTE asset, and nothing else in this repo would catch
+    # it: lint and the server suite never open a sprite, and a 0-byte webp
+    # simply renders as nothing in game.  It happened during the v2.3.1607 run
+    # (public/icons/ui/cur-gold.webp, killed at 0 bytes by a command timeout),
+    # which is exactly the failure this refuses to ship.
+    from PIL import Image                                # noqa: PLC0415
+    broken = []
+    for f in files:
+        try:
+            im = Image.open(f)
+            im.convert('RGBA').load()
+            if os.path.getsize(f) == 0:
+                broken.append(f)
+        except Exception:                                # noqa: BLE001
+            broken.append(f)
+    if broken:
+        print(f'\n!! {len(broken)} file(s) UNREADABLE after processing — restore these '
+              f'from git before committing:')
+        for f in broken:
+            print(f'   git checkout -- {f}')
+        raise SystemExit(1)
+    print(f'verified {len(files)} file(s) still decode')
     print('done')
 
 
