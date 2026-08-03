@@ -801,5 +801,138 @@ for (const m of meadowMonsters) m._wanderPausedUntil = Date.now() + 600000;
   delete room.playerState['well'];
 }
 
+// ── 11. v2.3.1619: the regen tick coalesces its DURABLE writes ──
+// The regen loop runs every ~670 ms and used to _saveRpg on every
+// player whose pools moved — measured at 5,855 storage writes per
+// player-hour, 93% of them from that one line.  Cloudflare bills those
+// as rows written (100k/day free, $1.00/M paid), so it was the single
+// most expensive thing the server did.  It now writes at most once per
+// REGEN_SAVE_MS.  These assertions pin BOTH halves of the deal: far
+// fewer storage writes, and an unchanged wire cadence.
+{
+  const puts = [];
+  const origPut = mockState.storage.put;
+  mockState.storage.put = async (k, v) => { puts.push([k, v]); return origPut(k, v); };
+  const rpgPuts = (id) => puts.filter(([k]) => k === 'rpg:' + id);
+
+  // Park every other player so only 'pa' can produce a regen write.
+  const others = Object.keys(room.playerState).filter((k) => k !== 'pa');
+  const parked = Object.create(null);
+  for (const k of others) { parked[k] = room.playerState[k]; delete room.playerState[k]; }
+
+  psA.z = 'town'; psA.dying = false; psA.dead = false; psA.disconnected = false;
+  psA.maxHp = 100; psA.maxStamina = 100; psA.maxMana = 100; psA.blocking = false;
+  psA._arenaMatch = null; psA._regenSaveAt = 0; psA._regenDirty = false;
+  room.pendingPlayerStateFlush.clear();
+
+  // 20 regen ticks (~13 s of game time) crammed into one window.
+  for (let i = 0; i < 20; i++) { psA.hp = 50; room._tickPlayerRegen(); }
+  check('regen throttle: 20 regen ticks inside the window write storage ONCE',
+    rpgPuts('pa').length === 1, rpgPuts('pa').length);
+  check('regen throttle: the WIRE cadence is untouched — still queued every tick',
+    room.pendingPlayerStateFlush.has('pa'), [...room.pendingPlayerStateFlush]);
+  check('regen throttle: the skipped ticks are remembered as dirty',
+    psA._regenDirty === true, psA._regenDirty);
+  check('regen throttle: the scratch bookkeeping never reaches storage',
+    !!rpgPuts('pa')[0] && !('_regenSaveAt' in rpgPuts('pa')[0][1]) && !('_regenDirty' in rpgPuts('pa')[0][1]),
+    rpgPuts('pa')[0] && Object.keys(rpgPuts('pa')[0][1]).filter((k) => k.startsWith('_regen')));
+
+  // Past the window, writes resume — this is a throttle, not a mute.
+  puts.length = 0;
+  psA._regenSaveAt = Date.now() - room.REGEN_SAVE_MS - 1;
+  psA.hp = 50; room._tickPlayerRegen();
+  check('regen throttle: a tick past REGEN_SAVE_MS writes again',
+    rpgPuts('pa').length === 1, puts.map(([k]) => k));
+  check('regen throttle: that write clears the dirty flag',
+    psA._regenDirty === false, psA._regenDirty);
+
+  // A value-bearing save inside the window already persisted the pools
+  // (_saveRpg rewrites the whole blob), so the regen tick must not add
+  // a second, redundant one.
+  puts.length = 0;
+  psA.coins = (psA.coins || 0) + 5;
+  await room._saveRpg('pa', psA);
+  psA.hp = 50; room._tickPlayerRegen();
+  check('regen throttle: a value-bearing save inside the window blocks a redundant regen write',
+    rpgPuts('pa').length === 1, puts.map(([k]) => k));
+
+  // Disconnect flush: pools that moved inside the window must not roll
+  // back on the next join.  This is the ONE place coalescing could be
+  // felt by a player, so it is closed explicitly.
+  const wsZ = fakeWs('dirty-leaver');
+  room.sessions.set(wsZ, { ...baseSession(), id: 'pz' });
+  room.playerState['pz'] = { hp: 40, maxHp: 100, z: 'town', coins: 7, _regenDirty: true };
+  puts.length = 0;
+  await room.webSocketClose(wsZ);
+  check('regen throttle: disconnect flushes coalesced regen',
+    rpgPuts('pz').length === 1, puts.map(([k]) => k));
+  check('regen throttle: the flushed blob carries the regenerated pools',
+    rpgPuts('pz')[0] && rpgPuts('pz')[0][1].hp === 40, rpgPuts('pz')[0] && rpgPuts('pz')[0][1].hp);
+
+  // …and a clean disconnect stays free: no write amplification on the
+  // common path, where the last save was value-bearing anyway.
+  const wsY = fakeWs('clean-leaver');
+  room.sessions.set(wsY, { ...baseSession(), id: 'py' });
+  room.playerState['py'] = { hp: 40, maxHp: 100, z: 'town', coins: 7, _regenDirty: false };
+  puts.length = 0;
+  await room.webSocketClose(wsY);
+  check('regen throttle: a clean disconnect writes nothing',
+    rpgPuts('py').length === 0, puts.map(([k]) => k));
+
+  // ── v2.3.1619b: the COMBAT pool writes coalesce too ──
+  //
+  // Three combat paths persisted a whole rpg blob whose only durable
+  // change was a stamina or mana number: the block cost, the ability
+  // cost (dodge/lunge/retreat/swipe), and the resonance mana refund.
+  // They fire on a monster-attack cadence, so a player in a fight was
+  // writing thousands of rows an hour to record a stamina value.
+  // HP is deliberately NOT in this deal — see the last assertion.
+  {
+    psA.z = 'meadow'; psA.dying = false; psA.dead = false; psA.disconnected = false;
+    psA.maxStamina = 100000; psA.stamina = 100000; // never hit the "can't afford" branch
+    psA.maxMana = 100000; psA.mana = 100000;
+    psA._regenSaveAt = 0; psA._regenDirty = false;
+
+    // 40 abilities inside one window.
+    puts.length = 0;
+    const sessA = room.sessions.get(wsA);
+    for (let i = 0; i < 40; i++) room._handleAbilityUse(sessA, { type: 'dodge' });
+    check('pool coalesce: 40 ability uses inside the window write storage ONCE',
+      rpgPuts('pa').length === 1, rpgPuts('pa').length);
+    check('pool coalesce: the stamina actually came off every time',
+      psA.stamina < 100000, psA.stamina);
+
+    // The drain arm: _regenDirty must not be able to sit unflushed on a
+    // player whose pools then stop moving (a blocker held at 0 stamina
+    // makes `changed` false on every later regen tick).
+    psA._regenDirty = true;
+    psA._regenSaveAt = Date.now() - room.REGEN_SAVE_MS - 1;
+    psA.z = 'meadow';                 // not a hub: no top-off
+    psA.hp = psA.maxHp;               // nothing to regen
+    psA.stamina = psA.maxStamina; psA.mana = psA.maxMana;
+    puts.length = 0;
+    room._tickPlayerRegen();
+    check('pool coalesce: a dirty player with no pool movement is still drained',
+      rpgPuts('pa').length === 1 && psA._regenDirty === false,
+      { puts: rpgPuts('pa').length, dirty: psA._regenDirty });
+
+    /* THE SAFETY PROPERTY.  HP moves DOWN from damage and cannot be
+       recomputed from maxima, so it must keep writing immediately —
+       coalescing it would undo real damage across a restart, and every
+       server deploy restarts the room.  If this assertion ever fails,
+       someone has widened the coalescing too far. */
+    psA._regenSaveAt = Date.now(); psA._regenDirty = false; // mid-window
+    psA.hp = 500; psA.maxHp = 1000;
+    puts.length = 0;
+    room._applyDamage(psA, 100, false);
+    room._saveRpg('pa', psA);  // the monster-damage site's call, verbatim
+    check('pool coalesce: an HP write is NOT coalesced (damage persists at once)',
+      rpgPuts('pa').length === 1, rpgPuts('pa').length);
+  }
+
+  mockState.storage.put = origPut;
+  for (const k of others) room.playerState[k] = parked[k];
+}
+
 console.log(failures === 0 ? '\nALL TESTS PASSED' : `\n${failures} TEST(S) FAILED`);
 process.exit(failures === 0 ? 0 : 1);
