@@ -1935,6 +1935,9 @@ export var BroTown = function BroTown(_ref0) {
       setIncomingTrade: setIncomingTrade,
       setArenaTournament: setArenaTournament,
       setArenaBets: setArenaBets,
+      /* v2.3.1611: the clan_state echo had nowhere to land in React state --
+         see the handler in gameEvents.js for what that broke. */
+      setClanData: setClanData,
       pixiRef: pixiRef
     });
   }, [showNameModal, showLogin]);

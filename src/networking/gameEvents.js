@@ -87,6 +87,7 @@ export function processGameEvent(type, payload, S, deps) {
     setParty = deps.setParty,
     setArenaTournament = deps.setArenaTournament,
     setArenaBets = deps.setArenaBets,
+    setClanData = deps.setClanData, /* v2.3.1611 */
     _buildServerPile = deps._buildServerPile;
         switch (type) {
           case 'loot_drop':
@@ -1366,6 +1367,25 @@ export function processGameEvent(type, payload, S, deps) {
                 if (payload.clan) localStorage.setItem('bt_clan', JSON.stringify(payload.clan));
                 else localStorage.removeItem('bt_clan');
               } catch (e) {}
+              /* v2.3.1611: ...and into REACT state, which is what the UI
+                 actually renders from.  Every clan surface reads the
+                 `clanData` prop, and setClanData was called from exactly two
+                 places: the mount-time bt_clan restore, and ClanPanel's
+                 LEGACY local-mint create path.  Against a real (caps.clans)
+                 worker the create path returns early after sending
+                 clan_create, so this echo was the only thing that could
+                 update the UI — and it didn't.  Founding a clan therefore
+                 charged the 500g, created the clan server-side, and left the
+                 screen insisting you had no clan: the panel still offered
+                 "Create Clan (500g)", and the inspect card's
+                 "Invite to [TAG]" button — gated on clanData — never
+                 appeared, so a founder could not invite anyone.  Only a page
+                 reload (which reads bt_clan) fixed it.  The same echo lands a
+                 JOIN, so an accepted invite was equally invisible.
+                 Found by the headless clan scenario (tools/qa/mp): the clan
+                 existed in S._clanData with the fee debited, while the UI
+                 offered no way to act on it. */
+              if (setClanData) setClanData(payload.clan || null);
               break;
             }
           case 'clan_error':
@@ -1512,7 +1532,30 @@ export function processGameEvent(type, payload, S, deps) {
               if (payload.target !== S.myId) {
                 // Not targeted at us — if we're the attacker, show hit confirmation
                 if (payload.attacker === S.myId) {
-                  pushDmgPopup(S, S.player.x + 20, S.player.y - 20, payload.blocked ? 'Blocked!' : 'Hit!', payload.blocked ? '#888' : '#fbbf24');
+                  /* v2.3.1605 (owner: "all it says is hit when I hit the other
+                     player ... needs to actually show HP damage numbers").
+                     This used to float the literal word "Hit!" over the
+                     ATTACKER'S OWN HEAD — the wrong text in the wrong place.
+                     The server has always sent the resolved dmgTaken on this
+                     payload (combat.js builds it); nothing read it on the
+                     attacker's side.  Now the real number floats over the
+                     TARGET, matching how PvE damage reads, with crit and the
+                     block/dodge outcomes distinguished. */
+                  var _pvTgt = S.others && S.others[payload.target];
+                  var _pvX = _pvTgt ? (_pvTgt.x != null ? _pvTgt.x : _pvTgt.renderX) : S.player.x + 20;
+                  var _pvY = (_pvTgt ? (_pvTgt.y != null ? _pvTgt.y : _pvTgt.renderY) : S.player.y) - 30;
+                  if (payload.dodged) {
+                    pushDmgPopup(S, _pvX, _pvY, 'Dodged', '#9ca3af');
+                  } else if (payload.blocked) {
+                    pushDmgPopup(S, _pvX, _pvY, 'Blocked', '#607D8B');
+                  } else if (typeof payload.dmgTaken === 'number') {
+                    pushDmgPopup(S, _pvX, _pvY,
+                      '-' + Math.ceil(payload.dmgTaken) + (payload.isCrit ? '!' : ''),
+                      payload.isCrit ? '#f5c542' : '#ff5e6c');
+                  }
+                  /* Flash the opponent so a hit reads even off-centre, the same
+                     feedback a monster gets. */
+                  if (_pvTgt && !_pvTgt._isDead) _pvTgt._hitFlash = Date.now();
                 }
                 break;
               }
@@ -1555,7 +1598,11 @@ export function processGameEvent(type, payload, S, deps) {
                 size: 2
               });
               S.screenShake = payload.blocked ? 2 : 4;
-              BT_AUDIO.beep(200, 0.1, 0.15, 'sawtooth');
+              /* v2.3.1605: real hit sound, not the beep() that has been a no-op
+                 since v2.3.1103 — the same dead call the monster hit carried
+                 until v2.3.1598.  Being hit by a PLAYER was silent for the same
+                 reason and is fixed the same way. */
+              try { BT_AUDIO.monsterHitHero(isWearingArmor(), { vol: 0.85 }); } catch (e) {}
               /* Predict "Killed by X" popup from the (server-resolved
                  or locally-computed) dmgTaken vs current local hp.  HP
                  doesn't mutate locally in MP anymore, so checking
@@ -1585,7 +1632,14 @@ export function processGameEvent(type, payload, S, deps) {
                   isCrit: payload.isCrit,
                   died: _wouldDiePvp,
                   name: S.myName,
-                  blocked: payload.blocked
+                  blocked: payload.blocked,
+                  /* v2.3.1612: "this one came from the SERVER's pvp_hit".  The
+                     attacker uses it to skip the legacy hit popup, which would
+                     otherwise double up on the real damage number — see the
+                     pvp_confirmed handler below.  Old clients ignore the
+                     field; old workers never produce a pvp_hit for us to set
+                     it on, so both deploy orders keep working (rule 19). */
+                  srv: true
                 }
               });
               setRpgState(_objectSpread({}, _R2));
@@ -1658,7 +1712,26 @@ export function processGameEvent(type, payload, S, deps) {
           case 'pvp_confirmed':
             {
               if (payload.target !== S.myId) break;
-              pushDmgPopup(S, S.player.x + 20, S.player.y - 20, 'Hit! -' + Math.ceil(payload.dmg), '#fbbf24');
+              /* v2.3.1612 (owner, again: "all it says is hit when I hit the
+                 other player").  v2.3.1605 fixed the pvp_hit popup — the real
+                 number now floats over the TARGET — but it never touched this
+                 one, and this is the one the owner was looking at: bright
+                 amber, over your OWN head, led by the literal word "Hit!".
+                 Both fire on every single server-resolved hit, because the
+                 defender answers pvp_hit with a pvp_confirmed for kill
+                 tracking, and the attacker drew a second popup off that
+                 bookkeeping message.  Caught by the headless duel scenario,
+                 which read the attacker's popups and found "Hit! -4".
+                 pvp_confirmed carries no damage information the attacker did
+                 not already receive on pvp_hit, so on a server-resolved hit it
+                 draws nothing and stays what it is: kill/clan-war/arena
+                 bookkeeping.  Against a LEGACY worker that resolves no PvP
+                 there is no pvp_hit, the defender sends no `srv`, and this
+                 popup remains the attacker's only feedback — so it still
+                 shows, exactly as before. */
+              if (!payload.srv) {
+                pushDmgPopup(S, S.player.x + 20, S.player.y - 20, 'Hit! -' + Math.ceil(payload.dmg), '#fbbf24');
+              }
               if (payload.died) {
                 pushDmgPopup(S, S.player.x, S.player.y - 50, 'KILL!', '#3dd497');
                 BT_AUDIO.collect();
