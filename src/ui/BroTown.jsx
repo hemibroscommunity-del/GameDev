@@ -296,7 +296,24 @@ Object.assign(globalThis, { _regenerator, _regeneratorDefine2, _asyncToGenerator
  * -- so an omission is a true no-op, not a new wire contract.  No caps
  * flag needed for the same reason (rule 19 satisfied by omission). */
 function _t1StatsPayload(S, rpgState) {
-  if (!S || !S._t1Seeded) return {};
+  /* v2.3.1632: "has this client got real values?" is the question, and
+     a stored key is NOT the answer.  wsClient writes bt_rpg on every
+     player_state, so a first session that never learned its stats
+     still persists power:0 -- and on the next reload `power !== undefined`
+     was true, the client called itself seeded, reported 0, and wiped the
+     character after all.  The v2.3.1630 gate therefore only protected
+     session ONE against an old or rolled-back worker.
+     A non-zero value is proof the client knows something worth
+     reporting; the echo flag covers the case where the server has
+     legitimately told us zeros.  A brand-new character reports nothing
+     until it trains its first point, which is correct -- the server's
+     copy is zeros too, so there is nothing to say. */
+  if (!S) return {};
+  var known = !!S._t1Seeded
+    || (rpgState.power || 0) > 0 || (rpgState.vitality || 0) > 0
+    || (rpgState.endurance || 0) > 0 || (rpgState.agility || 0) > 0
+    || (rpgState.mind || 0) > 0;
+  if (!known) return {};
   return {
     power: rpgState.power || 0,
     vitality: rpgState.vitality || 0,
@@ -2344,10 +2361,15 @@ export var BroTown = function BroTown(_ref0) {
       if (savedRpg && savedRpg.power !== undefined) {
         /* New stat system — load directly */
         S.rpg = savedRpg;
-        /* v2.3.1630: this cache carries real T1 stats, so the client is
-           entitled to report them.  See the _t1Seeded gate on the
-           stats_update payload below. */
-        S._t1Seeded = true;
+        /* v2.3.1632: seeded only if the cache carries a REAL value.  A
+           stored 0 proves nothing -- bt_rpg is rewritten on every
+           player_state, so an unseeded session persists zeros and the
+           next boot would otherwise mistake them for knowledge. */
+        if ((savedRpg.power || 0) > 0 || (savedRpg.vitality || 0) > 0
+            || (savedRpg.endurance || 0) > 0 || (savedRpg.agility || 0) > 0
+            || (savedRpg.mind || 0) > 0) {
+          S._t1Seeded = true;
+        }
         /* v2.3.224: retire the legacy "snow" inventory placeholder
            from any save written before the auto-collection was
            removed, so the bag no longer renders a ◇ for it. */
