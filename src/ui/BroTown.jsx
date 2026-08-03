@@ -99,6 +99,7 @@ import { controlsTutorialBus } from './mobile/controlsTutorialBus.js';
 import { initPixiRenderer, preloadPlayerAssets } from '@/rendering/pixiRenderer.js';
 import { IMAGE_ZONE_MAPS } from '@/rendering/tiledMaps.js';
 import { perfTracker } from '@/debug/perfTracker.js';
+import { t1StatsPayload } from '@/game/t1Sync.js'; /* v2.3.1633: shared T1 report gate */
 import * as DATA from '@/data/index.js';
 import { syncRpgToServer, wsrvUrl, btRpc, getBtPlayerId, getBtPassphrase, generatePassphrase, passphraseToId } from '@/networking/index.js';
 import { HEADWEAR_CATALOG, getHeadwear, setHeadwear } from '@/rendering/traits/headwearCatalog.js';
@@ -2032,12 +2033,24 @@ export var BroTown = function BroTown(_ref0) {
           /* Raw stats — worker clamps each to level * 10 + 20.  Cheater
              pushing R.vitality = 99999 gets clamped on the server,
              which then recomputes maxHp from the clamped value.  T1
-             use-trained increments + amulet stat bonuses still land. */
-          power: rpgState.power || 0,
-          vitality: rpgState.vitality || 0,
-          endurance: rpgState.endurance || 0,
-          agility: rpgState.agility || 0,
-          mind: rpgState.mind || 0,
+             use-trained increments + amulet stat bonuses still land.
+
+             v2.3.1630: ...but ONLY once this client actually KNOWS them.
+             These five are the client's to report and the server's to
+             store, which means an uninformed client reporting 0 is
+             indistinguishable from a real reset -- that is precisely
+             the new-device character wipe audit C-2 describes.  The
+             server-side guard (grids.js, v2.3.1624) only protects
+             against workers that HAVE it; a rollback below that version,
+             or any worker still deploying, is unprotected, and it is
+             this client that would do the wiping.  So the honest gate
+             lives here too: no seed, no report.  The keys are OMITTED
+             rather than zeroed, because _handleStatsUpdate skips absent
+             keys (`typeof payload[s] === 'number'`), so an omission is
+             a true no-op on every worker version ever shipped.
+             _t1Seeded is set when the localStorage cache carried stats
+             or when a player_state echo delivered them (wsClient.js). */
+          ...t1StatsPayload(stateRef.current, rpgState),
           /* v2.3.1155: the five retired T2 stats are off the wire —
              the worker ignores the keys either way. */
           /* v2.3.912: per-weapon-category build channels.  The worker clamps
@@ -2303,6 +2316,15 @@ export var BroTown = function BroTown(_ref0) {
       if (savedRpg && savedRpg.power !== undefined) {
         /* New stat system — load directly */
         S.rpg = savedRpg;
+        /* v2.3.1632: seeded only if the cache carries a REAL value.  A
+           stored 0 proves nothing -- bt_rpg is rewritten on every
+           player_state, so an unseeded session persists zeros and the
+           next boot would otherwise mistake them for knowledge. */
+        if ((savedRpg.power || 0) > 0 || (savedRpg.vitality || 0) > 0
+            || (savedRpg.endurance || 0) > 0 || (savedRpg.agility || 0) > 0
+            || (savedRpg.mind || 0) > 0) {
+          S._t1Seeded = true;
+        }
         /* v2.3.224: retire the legacy "snow" inventory placeholder
            from any save written before the auto-collection was
            removed, so the bag no longer renders a ◇ for it. */

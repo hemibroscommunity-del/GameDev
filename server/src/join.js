@@ -16,7 +16,140 @@
 import { healLifeSkills } from './migrations.js';
 import { t2ReplayFlat } from './data.js';
 
+/* ═══ v2.3.1627: the JOIN DATA ALLOWLIST ═══
+ *
+ * `_handleJoin` used to build authoritative state as
+ * `{ ...defaults, ...msg.data }` and set `session.data = msg.data`.
+ * The explicit ingest below re-assigns only the rpg*-derived keys, so
+ * EVERY other field a client invented survived verbatim into
+ * `playerState` -- and, because `getAllPlayerData()` (index.js) spreads
+ * `...s.data` LAST, into the state_sync every other player receives,
+ * where it shadowed the server's own values.
+ *
+ * That made `join` a bigger write primitive than `track` ever was.  The
+ * worst instance: `_zoneEntryGraceUntil`, which `_applyDamage`
+ * (combat.js -- "the ONE place player hp goes down") reads to
+ * short-circuit damage to zero.  A single join carrying a far-future
+ * stamp bought PERMANENT immunity to monsters, all PvP, duels, arena
+ * matches and dungeon bosses, on an id needing no passphrase (rule 21's
+ * legacy-client path).  It also forged `ps.bro`, the Hemi Bro ownership
+ * badge that broverify.js documents in three places as server-owned.
+ *
+ * This is v2.3.1465's `track` remedy applied one message earlier, and
+ * deliberately in the same SHAPE: an ALLOWLIST, iterated as a fixed set
+ * rather than over the client's own keys.  An unreviewed field is
+ * DROPPED, not trusted -- and '__proto__' can never be written, because
+ * we never iterate a client-chosen key (TRAPS #6 avoided structurally,
+ * not by a guard someone can forget).
+ *
+ * A denylist of today's known internals was rejected: it closes the
+ * instances we happen to know about and re-opens the moment anyone adds
+ * a new `ps` field, which is exactly the failure mode TRAPS #13 records.
+ *
+ * Contents mirror what the live client actually sends in join.data
+ * (wsClient.js): presence + the cosmetic block.  The bootstrap values
+ * all use the `rpg*` prefix and are admitted by pattern below -- that
+ * namespace is DISJOINT from the authoritative one on purpose (the same
+ * disjointness TRACK_COSMETIC_KEYS relies on: `rpgLv`/`rpgHp`, never
+ * `level`/`hp`), so no rpg* key can collide with a real ps field.
+ * Cosmetics overlap TRACK_COSMETIC_KEYS in index.js; join carries
+ * `eqst` in addition, and does not carry mask/cape/pet. */
+const JOIN_PRESENCE_KEYS = ['x', 'y', 'd', 'z'];
+const JOIN_COSMETIC_KEYS = [
+  'name', 'color', 'avatar',
+  'bt', 'bl', 'hw', 'fh', 'hr', 'sk', 'hc', 'htc', 'fhc', 'st', 'stc',
+  'eqc', 'eql', 'eqs', 'eqst', 'pt', 'sh', 'bs',
+];
+/* rpg* bootstrap seeds: admitted by prefix, then re-read and clamped by
+ * the explicit ingest in _handleJoin (stored-wins on every reconnect).
+ * Anchored + capitalised so a crafted 'rpg' or 'rpgo' can't sneak in. */
+const JOIN_RPG_PREFIX_RE = /^rpg[A-Z][A-Za-z0-9]*$/;
+/* v2.3.1629: ceiling on a single rpg* container value.
+ * SIZED AGAINST THE FRAME GATE, deliberately.  v2.3.1618 caps the whole
+ * inbound frame at MAX_INBOUND_BYTES = 16 KB (index.js), which is the
+ * primary bound and already makes a megabyte-scale join impossible --
+ * this guard was first written at 64 KB, which no frame can ever reach,
+ * i.e. dead code.  At 8 KB it actually binds: it stops ONE rpg* key
+ * eating the entire frame budget, and it is still generous next to the
+ * real payloads (a full weaponStash at cap plus inventory plus the quest
+ * maps sit in the low kilobytes).  Defence in depth, not the main gate:
+ * if MAX_INBOUND_BYTES is ever raised, this keeps a single value from
+ * scaling with it. */
+const JOIN_RPG_MAX_BYTES = 8 * 1024;
+
 export const joinMethods = {
+  /* v2.3.1627: build a clean copy of join.data.  Never mutates the
+     caller's object, never iterates client keys, and drops anything not
+     named above.  `z` is additionally validated against the zone
+     allowlist (_validZone, movement.js) -- an unlisted zone id here
+     reaches _ensureZoneMonsters exactly as it does from `move`, so the
+     room-wide monster-AI outage (v2.3.1625) is joinable too. */
+  _sanitizeJoinData(raw) {
+    const out = {};
+    if (!raw || typeof raw !== 'object') return out;
+    for (const k of JOIN_PRESENCE_KEYS) {
+      const v = raw[k];
+      if (v === undefined || v === null) continue;
+      if (k === 'x' || k === 'y') {
+        if (typeof v === 'number' && Number.isFinite(v)) out[k] = v;
+      } else if (k === 'z') {
+        if (this._validZone(v)) out.z = v;
+      } else if (typeof v === 'string' && v.length <= 16) {
+        out[k] = v;
+      }
+    }
+    for (const k of JOIN_COSMETIC_KEYS) {
+      const v = raw[k];
+      if (v === undefined || v === null) continue;
+      /* Cosmetics are strings the client renders back at peers; cap the
+         length so one join can't push an unbounded blob into every
+         other player's state_sync.
+         v2.3.1629: TRUNCATE, never drop -- and `avatar` gets its own
+         much larger bound.  The flat 64-char DROP silently removed the
+         avatar of every verified Hemi Bro holder, because S.myAvatar is
+         a wsrv.nl proxy URL whose prefix and suffix alone are ~52 chars
+         and which runs 150-250 in practice: they rendered as a generic
+         body in the state_sync every joiner receives, until their first
+         2 s `track` relay healed it.  A silent drop is the wrong shape
+         for a cosmetic anyway -- a truncated string degrades visibly,
+         a missing one looks like the feature is broken. */
+      const _cap = (k === 'avatar') ? 512 : 64;
+      if (typeof v === 'string') out[k] = v.length > _cap ? v.slice(0, _cap) : v;
+      else if (typeof v === 'number' && Number.isFinite(v)) out[k] = v;
+    }
+    /* rpg* seeds: copy by pattern from the client's OWN keys, but only
+       own properties, and never the magic names (belt to the regex's
+       braces -- '__proto__' cannot match JOIN_RPG_PREFIX_RE anyway). */
+    for (const k of Object.getOwnPropertyNames(raw)) {
+      if (!JOIN_RPG_PREFIX_RE.test(k)) continue;
+      const v = raw[k];
+      if (v === undefined) continue;
+      /* v2.3.1629: bound the VALUE, not just the key.  The pattern
+         branch used to copy whatever the client sent, so a phraseless
+         join (rule 21's legacy path, no passphrase) could park a
+         multi-megabyte array on playerState under e.g. rpgWeaponStash
+         -- and playerState is spread into the state_sync EVERY
+         subsequent joiner receives, which is exactly the blob channel
+         the cosmetic cap above exists to close.  The explicit ingest
+         below re-reads and clamps each of these properly; this is only
+         the size guard that stops the raw copy being a weapon.
+         Cheap structural bound: scalars pass, containers are capped by
+         serialized size. */
+      const t = typeof v;
+      if (v === null || t === 'number' || t === 'string' || t === 'boolean') {
+        if (t === 'string' && v.length > 4096) continue;
+        out[k] = v;
+        continue;
+      }
+      if (t !== 'object') continue;             // functions/symbols: drop
+      let approx = 0;
+      try { approx = JSON.stringify(v).length; } catch { continue; } // cyclic: drop
+      if (approx > JOIN_RPG_MAX_BYTES) continue;
+      out[k] = v;
+    }
+    return out;
+  },
+
   /* ═══ v2.3.1116: PERSISTENT IDENTITY (PR1 of the heavy-systems plan) ═══
    * The auth record lives in its OWN storage key ('auth:<id>'), NOT inside
    * the rpg blob -- _saveRpg rewrites the blob from a fixed field list and
@@ -140,7 +273,15 @@ export const joinMethods = {
     }
     session.id = msg.id;
     session.name = msg.name || 'Anon';
-    session.data = msg.data || {};
+    /* v2.3.1627: sanitize ONCE, here, and use the clean copy for both
+       consumers.  session.data must be the filtered object too, not
+       just the playerState spread below: getAllPlayerData() (index.js)
+       spreads `...s.data` LAST over playerState, so a field left in
+       session.data would still override authoritative values in the
+       state_sync every joiner receives -- the same three-consumer shape
+       the v2.3.1465 `track` comment documents. */
+    const cleanJoinData = this._sanitizeJoinData(msg.data);
+    session.data = cleanJoinData;
     // Protocol v2 opt-in.  v2 sessions get delta player_state emits,
     // per-entity monster/node tick deltas, and the merged zone_state
     // message on zone change.  Anything else (older clients) stays
@@ -155,7 +296,8 @@ export const joinMethods = {
     this.playerState[msg.id] = {
       x: 0, y: 0, d: 'down', z: 'town', vx: 0, vy: 0,
       dodging: false, blocking: false, dead: false, disconnected: false,
-      ...msg.data
+      /* v2.3.1627: the ALLOWLISTED copy, never the raw wire blob. */
+      ...cleanJoinData
     };
     this.stateHistory[msg.id] = [];
     // v2.3.1146: capture join.device (sent by clients since v2.3.694,
@@ -563,12 +705,28 @@ export const joinMethods = {
     // broadcast all read).  Also the lazy war-resolve hook, and the
     // clan snapshot echo so the client's panel has server truth.
     await this._clansEnsure();
-    this._clanStampTag(msg.id, msg.data);
+    /* v2.3.1629: stamp the SANITIZED copy -- it is the object that now
+       feeds both session.data and the player_join relay below. */
+    this._clanStampTag(msg.id, cleanJoinData);
     this._clanStampTag(msg.id, this.playerState[msg.id]);
     this._clanSendState(msg.id);
-    this.broadcastExcept(ws, { type: 'player_join', id: msg.id, name: msg.name, data: msg.data });
+    /* v2.3.1629: the THIRD consumer.  v2.3.1627 claimed msg.data was
+       "filtered once and used for BOTH consumers" -- it was three.  This
+       relay still shipped the raw client blob to every peer, so a forged
+       field reached other players' S.others[] even though playerState
+       and session.data were clean (e.g. a z the server itself rejected,
+       which peers would then use to filter that player out of the zone
+       they are actually standing in).  No live exploit today -- the peer
+       handler picks fields by name -- but it is the same shape as the
+       one the allowlist exists to close, and it re-opens the moment any
+       client merges player_join data wholesale, the way player_update
+       already does for track relays. */
+    this.broadcastExcept(ws, { type: 'player_join', id: msg.id, name: msg.name, data: cleanJoinData });
     // Send current state + monsters for player's zone
-    const joinZone = msg.data?.z || 'town';
+    /* v2.3.1627: read the zone off the SANITIZED state, not the raw
+       wire blob -- _sanitizeJoinData already dropped an unlisted id, so
+       this can no longer hand _ensureZoneMonsters a forged zone. */
+    const joinZone = this.playerState[msg.id]?.z || 'town';
     const zoneMonsters = (joinZone !== 'town' && joinZone !== 'farm_home') ? this._ensureZoneMonsters(joinZone) : [];
     const zoneNodes = (joinZone !== 'town' && joinZone !== 'farm_home') ? this._ensureZoneNodes(joinZone) : [];
     const zoneLootForJoin = (joinZone !== 'town' && joinZone !== 'farm_home') ? this._zoneLootForWire(joinZone) : [];

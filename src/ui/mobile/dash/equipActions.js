@@ -10,6 +10,7 @@
    InventoryPanel — importing back would create a cycle. */
 
 import { getState } from './common.js';
+import { t1StatsPayload } from '@/game/t1Sync.js'; /* v2.3.1633: one gate, every sender */
 import { GEAR_CATALOG, getEquip, setEquip } from '../../../rendering/gearCatalog.js';
 import { recalcDerived } from '../../../data/gameSystems.js';
 
@@ -72,14 +73,18 @@ export function syncArmorChange(R) {
   const S = getState();
   if (S && S.channel) {
     try {
+      /* v2.3.1633: the five raw stats ride the SHARED gate now.  This
+         push is a second, direct sender (these flows mutate S.rpg
+         without setRpgState, so BroTown's React-driven stats_update
+         never fires for them) and it reported the stats unconditionally
+         -- so a client that had not yet learned them wiped the character
+         by doing nothing more than unequipping a piece of armour, on any
+         worker without the v2.3.1624 server-side guard.  See
+         src/game/t1Sync.js. */
       S.channel.send({ type: 'stats_update', payload: {
         armor: R.armor || null,
         maxHp: R.maxHp || 100,
-        vitality: R.vitality || 0,
-        power: R.power || 0,
-        endurance: R.endurance || 0,
-        agility: R.agility || 0,
-        mind: R.mind || 0,
+        ...t1StatsPayload(S, R),
         /* v2.3.1155: the five retired T2 stats are off the wire. */
       }});
     } catch (e) {}

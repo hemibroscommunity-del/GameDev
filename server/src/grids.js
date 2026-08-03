@@ -585,6 +585,38 @@ export const gridMethods = {
     for (const s of T1_STATS) {
       if (typeof payload[s] === 'number') {
         const clamped = this._clampStat(payload[s], lvl);
+        /* v2.3.1624: a reported 0 against a stored non-zero is the
+           "I don't know this value" signal from a client that has no
+           copy -- NOT a real stat change.  T1 stats only grow (use-
+           training); nothing in the game lowers one to 0.  The real
+           character restart deletes playerState outright
+           (persistence.js _handleCharacterReset), so this handler
+           early-returns on !ps there and can never block a legitimate
+           reset.
+           This guards the deploy window rule 19/20 leaves open: the
+           worker echoing these stats (v2.3.1624, persistence.js) only
+           helps a client that has SHIPPED the matching adopt block, and
+           Pages/worker deploy independently -- an old cached client
+           meeting a new worker would still report 0 and wipe the
+           character without this.  Deletable once every client in
+           production adopts the echo; until then it is the belt to the
+           echo's braces.
+
+           v2.3.1634: widened from "reported 0" to "reported BELOW the
+           stored value", because 0 was never the only harmful number.
+           A client with no copy starts at 0 and use-trains from there
+           (combatHelpers.js `R[stat] = (R[stat]||0)+1` is ungated), so
+           its FIRST trained point reports 1 against a stored 47 -- the
+           zero-guard waves that through and 46 points are gone. Same
+           wipe, one tick later. This is what the comment above already
+           asserts as invariant ("T1 stats only grow"), now actually
+           enforced.
+           Compared against the RAW reported value, not the clamped one,
+           on purpose: if the per-level cap ever falls below a stored
+           stat, `clamped` is legitimately lower than `ps[s]` and that
+           clamp must still land. Only a client CLAIMING less than the
+           server holds is refused. */
+        if (payload[s] < (ps[s] || 0)) continue;
         if (ps[s] !== clamped) {
           ps[s] = clamped;
           statsChanged = true;

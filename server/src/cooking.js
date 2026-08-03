@@ -226,6 +226,14 @@ export const cookingMethods = {
   // timer); no server tracking needed for that one.
   _getShopItem(itemId) {
 
+    /* v2.3.1626: own-property gate.  SHOP_ITEMS['constructor'] is a
+       truthy inherited member, so a crafted itemId returned a "shop
+       item" whose cost was undefined -- `(ps.coins||0) < item.cost`
+       is false against undefined, so the purchase passed the coin gate
+       and then `ps.coins -= undefined` set the buyer's PERSISTED gold
+       to NaN.  Self-inflicted, but it destroys a real balance and
+       _saveRpg writes it (TRAPS #6). */
+    if (!Object.prototype.hasOwnProperty.call(SHOP_ITEMS, itemId)) return null;
     return SHOP_ITEMS[itemId] || null;
   },
 

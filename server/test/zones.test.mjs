@@ -18,7 +18,7 @@
  */
 import { ZONES as CLIENT_ZONES } from '../../src/data/zones.js';
 import { monsterStat, createMonster, MONSTER_HP_CURVE as CLIENT_CURVE } from '../../src/data/gameSystems.js';
-import { ZONES as SERVER_ZONES, MONSTER_HP_CURVE as SERVER_CURVE } from '../src/data.js';
+import { ZONES as SERVER_ZONES, MONSTER_HP_CURVE as SERVER_CURVE, VALID_ZONE_IDS, DUNGEON_ZONE_RE } from '../src/data.js';
 import { GameRoom } from '../src/index.js';
 
 let failures = 0;
@@ -146,6 +146,47 @@ const room = new GameRoom(mockState, {});
     Array.isArray(z.level) && z.level[0] === 1 && z.level[1] === 2);
   check('demo directive: every server zone band is exactly [1,2]', flat,
     Object.fromEntries(Object.entries(SERVER_ZONES).map(([k, z]) => [k, z.level])));
+}
+
+/* ── 7. v2.3.1625: VALID_ZONE_IDS covers every zone the client can
+ *    actually put a player in.
+ *
+ *    This is the tripwire for the real hazard the zone allowlist
+ *    introduces.  The gate closes a room-wide monster-AI outage (a
+ *    client-chosen z of '__proto__' made _tickMonsters throw every
+ *    tick), but an allowlist that MISSES a zone is worse than the bug:
+ *    the player walks to the entrance and is silently held in place,
+ *    with nothing in the log.  So: every client zone id must be
+ *    accepted, and the fixture below must stay rejected. */
+{
+  const clientIds = Object.keys(CLIENT_ZONES);
+  const missing = clientIds.filter((id) => !VALID_ZONE_IDS.has(id));
+  check('zone allowlist: every client zone id is accepted server-side',
+    missing.length === 0, missing);
+  const extra = [...VALID_ZONE_IDS].filter((id) => !CLIENT_ZONES[id]);
+  check('zone allowlist: carries no id the client does not know',
+    extra.length === 0, extra);
+  /* v2.3.1631: the assertion that used to sit here ("every server
+     wilderness zone is included") was a TAUTOLOGY -- VALID_ZONE_IDS is
+     literally built by spreading Object.keys(ZONES), so it tested the
+     spread operator, not the code.  The two directions above (every
+     CLIENT id accepted, no id the client does not know) are the ones
+     that can actually fail, and they are what protects a player from
+     being frozen at an unlisted zone's entrance. */
+  for (const magic of ['__proto__', 'constructor', 'prototype', 'toString', 'valueOf']) {
+    check(`zone allowlist: rejects ${magic}`, !VALID_ZONE_IDS.has(magic));
+  }
+  check('zone allowlist: rejects an invented id', !VALID_ZONE_IDS.has('nowhere'));
+  check('dungeon zone shape: accepts a real instance id',
+    DUNGEON_ZONE_RE.test('dungeon:a1b2c3d4'));
+  /* The shape gate is only half of it -- _validZone also requires a LIVE
+     instance -- but it must still refuse anything with a separator, a
+     traversal, or an over-long id on its own. */
+  check('dungeon zone shape: rejects separators and traversal',
+    !DUNGEON_ZONE_RE.test('dungeon:a:b')
+    && !DUNGEON_ZONE_RE.test('dungeon:../x')
+    && !DUNGEON_ZONE_RE.test('dungeon:')
+    && !DUNGEON_ZONE_RE.test('dungeon:' + 'x'.repeat(33)));
 }
 
 console.log(failures === 0 ? '\nALL TESTS PASSED' : `\n${failures} TEST(S) FAILED`);

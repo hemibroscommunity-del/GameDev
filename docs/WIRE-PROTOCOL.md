@@ -211,6 +211,42 @@ one crafted `track` forged coins/power/level, minted a weapon past
 next `_saveRpg`. `reportToLeaderboard` also now takes rank from the server's
 `ps.level`, not the client's `rpgLv`.
 
+### `join.data` is allowlisted too (v2.3.1627)
+
+**If you add a field to `join.data` and it does not appear on other
+players' screens, this section is why.** The server copies only named
+keys out of the join payload; anything else is dropped silently, with no
+error and no failing test.
+
+`_handleJoin` used to build authoritative state as
+`{...defaults, ...msg.data}` and set `session.data = msg.data`, so every
+field a client invented survived into `playerState` — and, because
+`getAllPlayerData()` spreads `...s.data` LAST, into the `state_sync`
+every other player receives, where it shadowed the server's own values.
+A forged `_zoneEntryGraceUntil` bought permanent immunity to all damage
+(`_applyDamage` short-circuits on it) on an id that needs no passphrase.
+It was the same primitive as `track`, one message earlier, and the
+v2.3.1465 pass did not reach it.
+
+`_sanitizeJoinData` (`server/src/join.js`) now admits exactly:
+
+| Group | Keys | Bound |
+|---|---|---|
+| Presence | `x`, `y` (finite numbers), `d` (≤16 chars), `z` | `z` must pass `_validZone` |
+| Cosmetics | `name`, `color`, `avatar`, `bt`, `bl`, `hw`, `fh`, `hr`, `sk`, `hc`, `htc`, `fhc`, `st`, `stc`, `eqc`, `eql`, `eqs`, `eqst`, `pt`, `sh`, `bs` | truncated to 64 chars, `avatar` to 512 |
+| Bootstrap | anything matching `/^rpg[A-Z][A-Za-z0-9]*$/` | scalars pass; containers capped at 8 KB |
+
+Three consumers share the sanitized copy — `session.data`, the
+`playerState` spread, and the `player_join` broadcast. All three must
+keep using it; the broadcast was missed on the first pass (v2.3.1629)
+and relayed the raw blob to every peer.
+
+**To add a cosmetic:** put it in `JOIN_COSMETIC_KEYS` *and* in
+`TRACK_COSMETIC_KEYS` (`server/src/index.js`) — the two lists overlap but
+are not identical (join carries `eqst`; track carries `mask`, `cape`,
+`pet`). Both paths truncate strings to the same bounds, so a value can be
+clipped but never dropped.
+
 ## Peer-relayed broadcast events (client ↔ client)
 
 Sent via `channelShim.send({...})`, hit the server's default branch, pass the
