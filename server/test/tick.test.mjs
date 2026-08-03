@@ -456,7 +456,7 @@ check('forged monster_transform dropped by deny-list',
     !!rosterMsg, rosterMsg && Object.keys(rosterMsg.players));
 }
 
-// ── 12. v2.3.1609: the AFK sweep actually evicts ──
+// ── 12. v2.3.1621: the AFK sweep actually evicts ──
 //
 // The sweep called ws.close() and nothing else, leaving the session in
 // the map.  For the case it exists to handle — a peer that has stopped

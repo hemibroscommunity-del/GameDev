@@ -153,7 +153,7 @@ export const tickMethods = {
         const pingMsg = JSON.stringify({ type: 'ping', ts: nowMs });
         for (const [ws, session] of this.sessions) {
           if (nowMs - session.lastRecv > this.IDLE_TIMEOUT_MS) {
-            /* v2.3.1609: EVICTING MEANS REMOVING IT.  This used to call
+            /* v2.3.1621: EVICTING MEANS REMOVING IT.  This used to call
                ws.close() and nothing else, delegating all cleanup to
                webSocketClose -- but this repo's own note at index.js:568
                says that handler "only fires on TCP close", and the whole
