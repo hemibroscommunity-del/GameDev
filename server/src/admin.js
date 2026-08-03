@@ -29,6 +29,16 @@
  * blob (rule 1); every await in here is a storage await, so the DO
  * input gate stays closed between validation and commit (rule 9). */
 
+/* v2.3.1617: every non-dated `rpgsnap:<pid>:` suffix in the repo.  These are
+   "parachute" snapshots -- taken immediately before something destructive --
+   and they prune as their OWN ring, separately from the dated dailies, for
+   the sort-order reason documented at the prune site.  A writer that is not
+   listed here silently lands in the daily class and evicts real snapshots,
+   which is exactly what `prereset-` did between v2.3.1347 and v2.3.1617.
+     :prerestore-  admin.js, before an operator restore
+     :prereset-    persistence.js, before a self-service character restart */
+export const PARACHUTE_TAGS = [':prerestore-', ':prereset-'];
+
 export const SNAPSHOT = {
   INTERVAL_MS: 20 * 3600 * 1000, // one snapshot per ~day (20h so a
                                  // daily-ish login cadence never skips)
@@ -80,8 +90,23 @@ export const adminMethods = {
       // lived forever -- exactly inverted from the rollback-parachute
       // intent.  Within each class, lexical sort IS age order (fixed-
       // width yyyymmdd; fixed-width ms timestamps until year 2286).
+      /* v2.3.1617: the v2.3.1179 fix above covered ONE parachute prefix and
+         the class test was written as a literal.  v2.3.1347 then added a
+         SECOND parachute writer -- persistence.js `_handleCharacterReset`
+         puts `rpgsnap:<pid>:prereset-<ts>` before wiping a character -- and
+         nothing here was updated, so `:prereset-` failed the `:prerestore-`
+         test and fell into the DAILY class.  That reproduces the exact
+         inversion this block exists to prevent: 'p' > '9', so every
+         prereset key sorts after every yyyymmdd key, and slicing the
+         excess off the FRONT deleted real daily snapshots while the
+         prereset keys lived forever.  A player who restarts their
+         character and keeps playing loses their rollback history to the
+         very key that was supposed to be the parachute.
+         Matched by PREFIX SET now rather than one literal, so a third
+         writer is a one-line registration instead of a silent repeat.  Any
+         future `rpgsnap:<pid>:<something-non-numeric>` MUST be added here. */
       const snaps = await this.state.storage.list({ prefix: 'rpgsnap:' + playerId + ':' });
-      const _isPre = (k) => k.includes(':prerestore-');
+      const _isPre = (k) => PARACHUTE_TAGS.some((t) => k.includes(t));
       for (const cls of [
         [...snaps.keys()].filter((k) => !_isPre(k)).sort(),
         [...snaps.keys()].filter(_isPre).sort(),
