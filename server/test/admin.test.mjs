@@ -179,6 +179,36 @@ state._store.set('rpg:bp_adm_rich', { coins: 5000, level: 40 });
   await join(wsS3, 'bp_adm_a');
   const snaps3 = [...state._store.keys()].filter((k) => k.startsWith('rpgsnap:bp_adm_a:'));
   check('ring prunes to SNAPSHOT.KEEP', snaps3.length === SNAPSHOT.KEEP, snaps3.length);
+
+  /* v2.3.1617: BOTH parachute prefixes prune as their own ring.
+     `:prereset-` (persistence.js, self-service character restart) was
+     added in v2.3.1347 and never registered with the v2.3.1179 class
+     test, which matched the literal ':prerestore-' only.  It therefore
+     fell into the DAILY class, and because 'p' > '9' it sorted after
+     every yyyymmdd key while the excess slice comes off the FRONT — so
+     a player who restarted their character had their real daily
+     snapshots deleted to make room, and the prereset key never expired.
+     This asserts the dailies SURVIVE and the parachutes are bounded;
+     against the pre-fix code the dailies get eaten and it fails. */
+  const store = state._store;
+  for (const k of [...store.keys()]) if (k.startsWith('rpgsnap:bp_adm_a:')) store.delete(k);
+  for (let i = 0; i < SNAPSHOT.KEEP; i++) store.set('rpgsnap:bp_adm_a:2026020' + i, { day: i });
+  for (let i = 0; i < SNAPSHOT.KEEP + 3; i++) store.set('rpgsnap:bp_adm_a:prereset-17900000000' + i, { pre: i });
+  store.set('rpgsnap_at:bp_adm_a', Date.now() - SNAPSHOT.INTERVAL_MS - 1000);
+  const wsS4 = fakeWs('s4');
+  await join(wsS4, 'bp_adm_a');
+  const after = [...store.keys()].filter((k) => k.startsWith('rpgsnap:bp_adm_a:'));
+  const dailies = after.filter((k) => !k.includes(':prereset-') && !k.includes(':prerestore-'));
+  const presets = after.filter((k) => k.includes(':prereset-'));
+  /* the join itself writes today's daily, so the daily class is KEEP after
+     its own prune — the point is that NONE of them were evicted by the
+     prereset keys, which is what the old code did. */
+  check('prereset keys do NOT evict the real daily snapshots',
+    dailies.length === SNAPSHOT.KEEP, { dailies: dailies.length, want: SNAPSHOT.KEEP });
+  check('prereset keys prune as their OWN bounded ring',
+    presets.length === SNAPSHOT.KEEP, { presets: presets.length, want: SNAPSHOT.KEEP });
+  check('the surviving prereset keys are the NEWEST ones (oldest evicted)',
+    presets.sort()[0] === 'rpgsnap:bp_adm_a:prereset-179000000003', presets.sort()[0]);
 }
 
 // ── 8. restore ──

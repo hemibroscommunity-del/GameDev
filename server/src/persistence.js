@@ -64,8 +64,50 @@ export const persistenceMethods = {
     }
   },
 
+  /* v2.3.1619b: POOL-ONLY SAVE.  Same coalescing deal as the regen tick,
+     for the combat paths whose ONLY durable change is a stamina or mana
+     number: the block-cost deduction, the ability-cost deduction, and
+     the resonance mana refund.  Each of those used to write the whole
+     ~1 KB rpg blob per event, and they fire on a monster-attack cadence
+     (MONSTER_ATTACK_CD is 1500 ms per engaged monster), so a player
+     standing in a fight was writing thousands of rows an hour to record
+     a stamina number.
+     Same reasoning as _tickPlayerRegen: stamina and mana are
+     deterministic, regenerate from maxima, and losing ten seconds of
+     drift to a DO restart is invisible.  The wire is untouched -- every
+     caller still flushes player_state, so bars move identically.
+     HP DELIBERATELY DOES NOT USE THIS.  Damage moves HP DOWN and cannot
+     be recomputed, so coalescing it would undo real damage across a
+     restart -- and every server deploy restarts the room.  The monster-
+     damage site keeps its immediate _saveRpg. */
+  _saveRpgPools(playerId, ps) {
+    if (!playerId || !ps) return;
+    const now = Date.now();
+    if (!ps._regenSaveAt || now - ps._regenSaveAt >= this.REGEN_SAVE_MS) {
+      this._saveRpg(playerId, ps); // stamps _regenSaveAt / clears _regenDirty
+    } else {
+      ps._regenDirty = true;
+    }
+  },
+
   async _saveRpg(playerId, ps) {
     if (!playerId || !ps) return;
+    /* v2.3.1619: regen-write bookkeeping, owned centrally HERE rather
+       than at the regen tick's call site, because ANY durable write
+       persists the pools too (this function rewrites the whole blob
+       from its fixed field list).  So a coins/loot/forge save inside
+       the throttle window also satisfies the regen tick -- it must not
+       then write a second, redundant blob 200 ms later.
+       _regenSaveAt: when the pools last reached storage.
+       _regenDirty:  pools have moved since.  webSocketClose flushes it.
+       Both are underscore-prefixed in-memory scratch and are NOT in the
+       field list below, so nothing new is persisted and no storage-key
+       registry entry is needed.  Stamped synchronously (before the
+       await) so two regen ticks can't race a slow put into a double
+       write; a failed put self-heals, since the next moving pool sets
+       _regenDirty again.  See _tickPlayerRegen in index.js. */
+    ps._regenSaveAt = Date.now();
+    ps._regenDirty = false;
     this._pruneBuffs(ps);
     try {
       await this.state.storage.put('rpg:' + playerId, {
