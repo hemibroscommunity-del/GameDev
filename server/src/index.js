@@ -413,6 +413,25 @@ export class GameRoom {
     this.TICK_RATE = 22; // 45Hz (22ms)
     this.MAX_PLAYERS = 60;
     this.EVENTS_PER_TICK_CAP = 500;
+    /* ═══ v2.3.1618: inbound abuse bounds ═══
+       Sized from the real client, not guessed.
+       MAX_INBOUND_BYTES 16 KB: the largest legitimate message is `join`,
+       whose `data` carries the full appearance set, and `track`, whose
+       rpgData inspect blob is the widest recurring one -- both are well
+       under 2 KB.  Chat is capped at 200 chars client-side
+       (ChatPanel.jsx). 16 KB leaves an order of magnitude of headroom
+       while refusing the ~900 KB fan-out bomb.
+       RELAY_BURST / RELAY_REFILL_PER_S: the token bucket on the default
+       relay branch -- the only path a client can push into the room-wide
+       eventBuffer.  8 burst + 4/s absorbs a human hammering chat and
+       emotes together, and is far below the rate needed to outrun the
+       tick drain.  EVENT_BYTES_PER_TICK: a BYTE ceiling to sit beside
+       EVENTS_PER_TICK_CAP, which only ever bounded the COUNT -- 500
+       events of unbounded size was a legal tick payload. */
+    this.MAX_INBOUND_BYTES = 16 * 1024;
+    this.RELAY_BURST = 8;
+    this.RELAY_REFILL_PER_S = 4;
+    this.EVENT_BYTES_PER_TICK = 64 * 1024;
     /* v2.3.1619: how often the regen tick may durably persist.  The regen
        loop itself still runs every ~670 ms and still flushes player_state
        to the wire every time -- this throttles ONLY the storage write.
@@ -2510,6 +2529,32 @@ export class GameRoom {
   async webSocketMessage(ws, message) {
     const session = this.sessions.get(ws);
     if (!session) return;
+    /* ═══ v2.3.1618: INBOUND SIZE GATE ═══
+     *
+     * There was no size check anywhere in this file, and the default
+     * branch at the bottom of this switch pushes the ENTIRE parsed object
+     * by reference into this.eventBuffer, which the tick fans out to every
+     * socket in the room.  `chat` and `emote` have no case here and are
+     * not in PRIVILEGED_EVENTS, so they relay byte-for-byte, uncapped.
+     *
+     * One authenticated socket looping a ~900 KB message therefore cost:
+     * a parse, permanent retention in eventBuffer (v2.3.1163 made overflow
+     * DELAY rather than drop, which turns bounded loss into unbounded
+     * memory), a fan-out to all 60 sockets (~54 MB egress per message),
+     * and a re-stringify per zone-group on the single DO thread every
+     * 22 ms.  EVENTS_PER_TICK_CAP bounds the COUNT of events, never bytes.
+     *
+     * Checked BEFORE JSON.parse: parsing is itself the work we are
+     * refusing to do.  `message` is a string for text frames; ArrayBuffer
+     * carries byteLength.  Silent drop, no reply -- same posture as the
+     * v2.3.1134 cadence lanes: a cheater learns nothing from a refusal,
+     * and a legitimate client never approaches this. */
+    const _len = typeof message === 'string' ? message.length
+      : (message && message.byteLength) || 0;
+    if (_len > this.MAX_INBOUND_BYTES) {
+      session.oversize = (session.oversize || 0) + 1;
+      return;
+    }
     let msg;
     try { msg = JSON.parse(message); } catch { return; }
     // Reset the AFK clock on real input only.  Pong replies are
@@ -2978,6 +3023,37 @@ export class GameRoom {
         // still flow through here -- they hit the deny-list miss and
         // get rebroadcast normally.
         if (PRIVILEGED_EVENTS.has(msg.type)) break;
+        /* ═══ v2.3.1618: RELAY BUDGET ═══
+         *
+         * The size gate at the top of this method bounds ONE message; this
+         * bounds the RATE at which a session may push into the room-wide
+         * eventBuffer, which is the amplifying resource (every push is
+         * fanned to every socket, and events are the one tick section
+         * v2.3.1575's interest management deliberately did NOT zone-scope).
+         *
+         * A token bucket rather than a fixed window: the legitimate traffic
+         * here is bursty and human (a chat line, an emote, a trade offer),
+         * so a burst allowance with a slow refill fits it exactly, while a
+         * sustained flood cannot outrun the refill.  RELAY_BURST is sized
+         * well above any human rate -- the client's own PRIORITY_EVENTS
+         * flush is the fastest legitimate producer and it is nowhere near.
+         *
+         * Silent drop, deliberately (the v2.3.1134 posture): no reject
+         * event, because a reject is both a signal to a cheater and a
+         * second message to fan out.  Gated on session.id so the pre-join
+         * path is untouched. */
+        if (session.id) {
+          const _now = Date.now();
+          if (session.relayTokens === undefined) {
+            session.relayTokens = this.RELAY_BURST;
+            session.relayAt = _now;
+          }
+          session.relayTokens = Math.min(this.RELAY_BURST,
+            session.relayTokens + ((_now - session.relayAt) / 1000) * this.RELAY_REFILL_PER_S);
+          session.relayAt = _now;
+          if (session.relayTokens < 1) { session.relayDropped = (session.relayDropped || 0) + 1; break; }
+          session.relayTokens -= 1;
+        }
         if (session.id) {
           // v2.3.1119: trades keep the relay handshake but the room now
           // settles them -- the intercept validates at commit, moves the

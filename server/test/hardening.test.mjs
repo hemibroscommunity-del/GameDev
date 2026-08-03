@@ -300,5 +300,78 @@ const wdStrict = room._sanitizeWeapon({ type: 'sword', tierMult: 3, quality: 'go
 check('strict sanitize still strips quality on client blobs (drops are server-minted now)',
   wdStrict.quality === undefined && wdStrict.hardness === undefined);
 
+/* ── v2.3.1618: inbound abuse bounds ──
+ *
+ * Before this, one authenticated socket could loop a ~900 KB message:
+ * parsed, retained by reference in the room-wide eventBuffer (v2.3.1163
+ * made overflow DELAY rather than drop), fanned to every socket, and
+ * re-stringified per zone-group on the single DO thread every 22 ms.
+ * EVENTS_PER_TICK_CAP bounded the COUNT of events and never the bytes.
+ * Each check below fails against the pre-v2.3.1618 server. */
+{
+  const wsAb = fakeWs('abuse');
+  await join(wsAb, 'bp_hd_abuse');
+  room.eventBuffer.length = 0;
+
+  // 1. oversize is refused BEFORE parse, and costs the room nothing.
+  const huge = JSON.stringify({ type: 'qa_flood', text: 'A'.repeat(room.MAX_INBOUND_BYTES) });
+  await room.webSocketMessage(wsAb, huge);
+  check('oversize inbound message is dropped, never relayed',
+    room.eventBuffer.length === 0, room.eventBuffer.length);
+  check('oversize drop is counted on the session (evidence, not silence)',
+    room.sessions.get(wsAb).oversize === 1, room.sessions.get(wsAb).oversize);
+
+  // 2. a normal chat still relays — the cap must sit ABOVE real traffic.
+  //    ChatPanel.jsx caps the input at 200 chars; this is that, exactly.
+  room.eventBuffer.length = 0;
+  const sess = room.sessions.get(wsAb);
+  sess.relayTokens = room.RELAY_BURST; sess.relayAt = Date.now();
+  await room.webSocketMessage(wsAb, JSON.stringify({ type: 'chat', payload: { text: 'x'.repeat(200) } }));
+  check('a real 200-char chat line still relays',
+    room.eventBuffer.length === 1 && room.eventBuffer[0].from === 'bp_hd_abuse',
+    room.eventBuffer.length);
+
+  // 3. the relay token bucket bounds the RATE into the shared buffer.
+  room.eventBuffer.length = 0;
+  sess.relayTokens = room.RELAY_BURST; sess.relayAt = Date.now();
+  for (let i = 0; i < 60; i++) {
+    await room.webSocketMessage(wsAb, JSON.stringify({ type: 'chat', payload: { text: 'spam' + i } }));
+  }
+  check('relay bucket caps a burst at RELAY_BURST',
+    room.eventBuffer.length === room.RELAY_BURST, room.eventBuffer.length);
+  check('excess relays are counted as dropped',
+    sess.relayDropped === 60 - room.RELAY_BURST, sess.relayDropped);
+
+  // 4. the bucket REFILLS — this is a throttle, not a permanent lockout.
+  room.eventBuffer.length = 0;
+  sess.relayAt = Date.now() - 1000; // simulate one second elapsed
+  await room.webSocketMessage(wsAb, JSON.stringify({ type: 'chat', payload: { text: 'after refill' } }));
+  check('the bucket refills over time (throttle, not a ban)',
+    room.eventBuffer.length === 1, room.eventBuffer.length);
+
+  // 5. the tick drain has a BYTE ceiling, and honors v2.3.1163: the
+  //    remainder must stay QUEUED, not be discarded.
+  room.eventBuffer.length = 0;
+  const chunk = 'B'.repeat(8000);
+  for (let i = 0; i < 40; i++) room.eventBuffer.push({ type: 'qa_bytes', payload: { i, chunk } });
+  const queuedBefore = room.eventBuffer.length;
+  let drained = 0, bytes = 0;
+  {
+    const cap = Math.min(room.eventBuffer.length, room.EVENTS_PER_TICK_CAP);
+    let take = 0, b = 0;
+    while (take < cap) {
+      const sz = JSON.stringify(room.eventBuffer[take]).length;
+      if (take > 0 && b + sz > room.EVENT_BYTES_PER_TICK) break;
+      b += sz; take++;
+    }
+    drained = take; bytes = b;
+  }
+  check('tick drain stops on the BYTE ceiling, not just the count',
+    drained < queuedBefore && bytes <= room.EVENT_BYTES_PER_TICK,
+    { drained, queuedBefore, bytes, ceiling: room.EVENT_BYTES_PER_TICK });
+  check('at least one event always drains (a huge entry cannot wedge the queue)',
+    drained >= 1, drained);
+}
+
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);
 process.exit(failures === 0 ? 0 : 1);
