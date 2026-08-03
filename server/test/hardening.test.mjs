@@ -300,14 +300,14 @@ const wdStrict = room._sanitizeWeapon({ type: 'sword', tierMult: 3, quality: 'go
 check('strict sanitize still strips quality on client blobs (drops are server-minted now)',
   wdStrict.quality === undefined && wdStrict.hardness === undefined);
 
-/* ── v2.3.1606: inbound abuse bounds ──
+/* ── v2.3.1618: inbound abuse bounds ──
  *
  * Before this, one authenticated socket could loop a ~900 KB message:
  * parsed, retained by reference in the room-wide eventBuffer (v2.3.1163
  * made overflow DELAY rather than drop), fanned to every socket, and
  * re-stringified per zone-group on the single DO thread every 22 ms.
  * EVENTS_PER_TICK_CAP bounded the COUNT of events and never the bytes.
- * Each check below fails against the pre-v2.3.1606 server. */
+ * Each check below fails against the pre-v2.3.1618 server. */
 {
   const wsAb = fakeWs('abuse');
   await join(wsAb, 'bp_hd_abuse');

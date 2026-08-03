@@ -413,7 +413,7 @@ export class GameRoom {
     this.TICK_RATE = 22; // 45Hz (22ms)
     this.MAX_PLAYERS = 60;
     this.EVENTS_PER_TICK_CAP = 500;
-    /* ═══ v2.3.1606: inbound abuse bounds ═══
+    /* ═══ v2.3.1618: inbound abuse bounds ═══
        Sized from the real client, not guessed.
        MAX_INBOUND_BYTES 16 KB: the largest legitimate message is `join`,
        whose `data` carries the full appearance set, and `track`, whose
@@ -2475,7 +2475,7 @@ export class GameRoom {
   async webSocketMessage(ws, message) {
     const session = this.sessions.get(ws);
     if (!session) return;
-    /* ═══ v2.3.1606: INBOUND SIZE GATE ═══
+    /* ═══ v2.3.1618: INBOUND SIZE GATE ═══
      *
      * There was no size check anywhere in this file, and the default
      * branch at the bottom of this switch pushes the ENTIRE parsed object
@@ -2969,7 +2969,7 @@ export class GameRoom {
         // still flow through here -- they hit the deny-list miss and
         // get rebroadcast normally.
         if (PRIVILEGED_EVENTS.has(msg.type)) break;
-        /* ═══ v2.3.1606: RELAY BUDGET ═══
+        /* ═══ v2.3.1618: RELAY BUDGET ═══
          *
          * The size gate at the top of this method bounds ONE message; this
          * bounds the RATE at which a session may push into the room-wide

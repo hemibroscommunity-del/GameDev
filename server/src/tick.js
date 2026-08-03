@@ -247,7 +247,7 @@ export const tickMethods = {
          splice keeps the remainder queued so a burst tick delays
          events instead of losing them (handoff item L).
 
-         v2.3.1606: that cap counts ENTRIES, never bytes -- 500 events of
+         v2.3.1618: that cap counts ENTRIES, never bytes -- 500 events of
          unbounded size was a legal tick payload, and this array is
          re-stringified once per (zone, protocolVersion) group below, so
          an oversized frame is paid for repeatedly on the single DO
