@@ -584,6 +584,19 @@ export class GameRoom {
     // consuming a session slot + tick bandwidth.
     this.IDLE_TIMEOUT_MS = 120000; // 2 minutes
 
+    /* v2.3.1620: leaderboard report throttle.  See reportToLeaderboard
+       for the full rationale -- in short, `track` arrives every 2 s and
+       the Leaderboard DO writes a row unconditionally, so this used to
+       cost 1,800 rows + 1,800 cross-DO requests per player-hour to
+       rewrite a mostly-identical record.
+       MIN_MS       -- floor between reports when the record CHANGED.
+       HEARTBEAT_MS -- ceiling: report even when unchanged, so `lastSeen`
+                       stays fresh against getTop's 7-day staleness
+                       filter (leaderboard.js:51).  Do not raise this
+                       anywhere near 7 days. */
+    this.LEADERBOARD_MIN_MS = 60000;        // 1 min
+    this.LEADERBOARD_HEARTBEAT_MS = 600000; // 10 min
+
     // On DO wake, close any hibernated sockets we don't have a session for.
     // These are orphans from prior wakes (crashed tabs, expired clients, etc.)
     // and would otherwise leak forever since webSocketClose only fires on TCP close.
@@ -3140,8 +3153,9 @@ export class GameRoom {
   // heartbeat lives in tickMethods, mixed into this prototype
   // below.  Start/stop call sites above are unchanged.
 
-  async reportToLeaderboard(session) {
+  async reportToLeaderboard(session, force) {
     try {
+      if (!session || !session.id) return;
       const stub = this.env.LEADERBOARD.get(this.env.LEADERBOARD.idFromName('global'));
       /* v2.3.1465: RANK COMES FROM THE SERVER.  This used to post
          `session.data.rpgLv` -- a number the client typed into a track
@@ -3159,12 +3173,57 @@ export class GameRoom {
       const lbPs = this.playerState[session.id];
       const lbLevel = (lbPs && typeof lbPs.level === 'number')
         ? lbPs.level : (session.data?.rpgLv || 1);
+      const name = session.name || session.data?.name || 'Anon';
+      const color = session.data?.color || '#5b52ff';
+      const rpgData = session.data?.rpgData || {};
+
+      /* v2.3.1620: REPORT ONLY WHAT CHANGED.  The client sends `track`
+         every 2 s (BroTown.jsx:4592) and this fired on every one of them,
+         so each player drove 1,800 cross-DO fetches AND 1,800
+         Leaderboard storage.put calls per hour -- updatePlayer
+         (leaderboard.js:41) writes unconditionally, never comparing.
+         Measured: only ~3.4% of those rows differed in content from the
+         row before them.  That is 1,800 billed rows + 1,800 billed
+         requests per player-hour to mostly rewrite an identical record;
+         for scale, it is over 5x the whole regen writer after v2.3.1607.
+         The signature below covers EXACTLY the fields updatePlayer
+         persists -- not the whole rpgData blob, so churn in fields the
+         leaderboard ignores can never trigger a write.  `ts`/`lastSeen`
+         are deliberately excluded: including them would make every
+         signature unique and defeat the compare entirely.
+         Three ways through the gate:
+           - force        : the join path (join.js), so a fresh joiner
+                            appears on the board immediately.
+           - MIN_MS       : content genuinely changed, and it has been
+                            long enough.  Dropping a change here is safe
+                            -- `track` returns in 2 s and the next one
+                            re-evaluates, so a real change lands within
+                            one MIN_MS window at worst.
+           - HEARTBEAT_MS : nothing changed, but refresh `lastSeen` so a
+                            long-lived session can't age out of getTop's
+                            7-day staleness filter (leaderboard.js:51).
+                            10 min leaves ~1000x margin on that window.
+         Worst case per player-hour is now 60 rows (a changed record every
+         MIN_MS); a steady one costs 6. */
+      const sig = JSON.stringify([
+        name, color, lbLevel,
+        rpgData.lifeTotal || 0, rpgData.ap || 0, rpgData.kills || 0,
+        rpgData.dungeons || 0, rpgData.goldEarned || 0, rpgData.playtime || 0,
+        rpgData.clanTag || null,
+      ]);
+      const now = Date.now();
+      const since = now - (session._lbAt || 0);
+      if (!force
+        && since < this.LEADERBOARD_HEARTBEAT_MS
+        && !(sig !== session._lbSig && since >= this.LEADERBOARD_MIN_MS)) return;
+      session._lbSig = sig;
+      session._lbAt = now;
+
       await stub.fetch(new Request('https://internal/api/leaderboard/update', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          playerId: session.id, name: session.name || session.data?.name || 'Anon',
-          color: session.data?.color || '#5b52ff', level: lbLevel,
-          rpgData: session.data?.rpgData || {}, ts: Date.now(),
+          playerId: session.id, name, color, level: lbLevel,
+          rpgData, ts: now,
         }),
       }));
     } catch {}
