@@ -3,12 +3,18 @@
 v2.3.1201. Countermeasures for the three failure modes the 2026-07-07
 post-mortem found in parallel AI sessions: (1) sessions can't see each
 other's in-flight work (five claimed the same version tag, two built
-the same feature); (2) the sandbox blocks npm installs, so client code
-was pushed half-verified; (3) the plain-`{}`-keyed-by-client-id bug
+the same feature); (2) client code was pushed half-verified, on the belief
+that the sandbox blocked npm installs -- it does NOT (verified
+2026-08-03; see CLAUDE.md), so client changes can and should be
+smoke-tested locally now; (3) the plain-`{}`-keyed-by-client-id bug
 class recurred three times in one day.
 
-Both scripts are ZERO-DEPENDENCY (node + git only) so they run in the
-build sandbox where `npm install` is blocked (handoff rule 26).
+Both scripts are ZERO-DEPENDENCY (node + git only) so they run before
+any install has happened -- which is still worth keeping, because it
+makes them usable as a pre-push gate in a cold checkout.  (Note: the
+sandbox does NOT block `npm install`, contrary to what this file said
+until 2026-08-03; the zero-dependency property is a convenience now,
+not a necessity.)
 
 ## `tools/dev/session-brief.mjs`  (`npm run session-brief`)
 

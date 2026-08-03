@@ -56,8 +56,22 @@ feature. A SessionStart hook now runs `tools/dev/session-brief.mjs`
 (version high-water, next free `v2.3.N` tag, in-flight `claude/*`
 branches): claim ONE tag above high-water, check the branch list for
 your topic first. Run `node tools/dev/precheck.mjs` before EVERY push —
-the sandbox blocks npm install, so it is your only local gate (syntax,
-dup switch cases, tag collisions, storage-key registry, server suite).
+it is the fast local gate (syntax, dup switch cases, tag collisions,
+storage-key registry, server suite).
+
+**`npm install` WORKS in this sandbox (verified 2026-08-03).** This file
+said for a long time that it was blocked, and that claim was load-bearing
+in the wrong direction: it is why client changes were treated as
+unbuildable and unverifiable, and shipped on reasoning alone. They are
+not. `npm install && npm run build && npx vite preview --port 4173` all
+run, `playwright-core` drives the Chromium at `/opt/pw-browsers`, and
+`cd server && npx wrangler dev --port 8787 --local` gives you a real
+worker on localhost. That means a client change CAN be smoke-tested here
+before it ships — see `tools/qa/qa-ui-shots.mjs` (captures every menu)
+and `tools/qa/qa-move-rate.mjs` (drives two real clients against a real
+worker). Do not re-add the "blocked" claim without re-testing it.
+What is NOT reachable is the open internet: the agent proxy denies
+`*.pages.dev` and the production worker, so test against localhost.
 Maps keyed by client-supplied ids must be `Object.create(null)` or
 `Map` — plain `{}` silently no-ops on `'__proto__'` (fixed 3× in one
 day: duel.away v2.3.1175, party meta v2.3.1185, amulet tiers

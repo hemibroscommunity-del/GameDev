@@ -952,10 +952,6 @@ export var BroTown = function BroTown(_ref0) {
     _useState16 = _slicedToArray(_useState15, 2),
     chatLog = _useState16[0],
     setChatLog = _useState16[1];
-  var _useState17 = useState(false),
-    _useState18 = _slicedToArray(_useState17, 2),
-    showChatLog = _useState18[0],
-    setShowChatLog = _useState18[1];
   var _useState19 = useState(0),
     _useState20 = _slicedToArray(_useState19, 2),
     unreadChats = _useState20[0],
@@ -1068,14 +1064,6 @@ export var BroTown = function BroTown(_ref0) {
     _useState74 = _slicedToArray(_useState73, 2),
     showFurniture = _useState74[0],
     setShowFurniture = _useState74[1];
-  var _useState75 = useState(false),
-    _useState76 = _slicedToArray(_useState75, 2),
-    showClanWar = _useState76[0],
-    setShowClanWar = _useState76[1];
-  var _useState77 = useState(false),
-    _useState78 = _slicedToArray(_useState77, 2),
-    showArena = _useState78[0],
-    setShowArena = _useState78[1];
   var _useState79 = useState(null),
     _useState80 = _slicedToArray(_useState79, 2),
     arenaStatus = _useState80[0],
@@ -1934,11 +1922,11 @@ export var BroTown = function BroTown(_ref0) {
     building: setBuildingPanel,
     inventory: setShowInventory, skills: setShowSkills, stats: setShowStatScreen,
     shop: setShowShop, social: setShowSocialPanel, leaderboard: setShowLeaderboard,
-    encyclopedia: setShowEncyclopedia, info: setShowInfo, chat: setShowChatLog,
-    emotes: setShowEmotes, clan: setShowClanPanel, clanWar: setShowClanWar,
+    encyclopedia: setShowEncyclopedia, info: setShowInfo,
+    emotes: setShowEmotes, clan: setShowClanPanel,
     guild: setShowGuildPanel, feedback: setShowFeedback, petHouse: setShowPetHouse,
     furniture: setShowFurniture, playerList: setShowPlayerList,
-    dungeonCreatorShow: setShowDungeonCreator, tradeShow: setShowTrade, arena: setShowArena,
+    dungeonCreatorShow: setShowDungeonCreator, tradeShow: setShowTrade,
     quest: setQuestPanel, inspect: setInspectPlayer, incomingTrade: setIncomingTrade,
     trade2: setTrade2, duelRequest: setDuelRequest, threat: setThreatIncoming,
     clanData: setClanData, party: setParty, welcome: setShowWelcome,
@@ -1950,13 +1938,13 @@ export var BroTown = function BroTown(_ref0) {
     dungeonCreator: setDungeonCreator,  // paired with showDungeonCreator
     tradeTarget: setTradeTarget,        // paired with showTrade
   };
-  /* v2.3.1637, found while wiring the capture above: showChatLog,
-     showClanWar and showArena are DECLARED AND NEVER READ — three dead
-     useState pairs. Chat really renders off `chatOpen`, the war banners
-     off stateRef.current._activeClanWar, and the arena UI is PartyPanel
-     under buildingPanel==='party'. Left in place rather than deleted in
-     a screenshot-tooling change; noted so the next reader doesn't wire a
-     new panel to a flag that does nothing. */
+  /* v2.3.1638: showChatLog, showClanWar and showArena USED TO LIVE HERE
+     and were declared but never read — three dead useState pairs whose
+     setters nothing called either. Removed. If you are looking for those
+     names: chat renders off `chatOpen`, the war banners off
+     stateRef.current._activeClanWar, and the arena UI is PartyPanel under
+     buildingPanel === 'party'. Wire new panels to those, not to a fresh
+     boolean that nothing reads. */
   useEffect(function () {
     return setupWebSocket({
       stateRef: stateRef,
