@@ -1856,15 +1856,79 @@ export function setupWebSocket(ctx) {
        as trade2; invite/accept clicks should not sit in a batch. */
     'party_invite', 'party_accept', 'party_decline', 'party_leave', 'party_kick', 'party_chat']);
     var INPUT_BATCH_WINDOW = 33; // ms — match server tick rate for smooth remote movement
+    /* ═══ v2.3.1624: ADAPTIVE POSITION RATE ═══
+       Position updates were ~87% of this game's entire Cloudflare request
+       bill: one every INPUT_BATCH_WINDOW while in motion, ~30/s, and
+       inbound WebSocket messages bill at 20 messages = 1 request.
+       The insight is that a position update is only worth sending if
+       SOMEBODY CAN SEE IT.  Peers render each other only when zones match
+       (entityRenderer: `(other.zone || other.z || 'town') !== S.currentZone`
+       -> skip), so while you are alone in a zone that 30 Hz stream is
+       smoothness delivered to an empty room.
+       So: full rate whenever any peer shares your zone, SOLO rate when
+       none does.  Your own movement is unaffected either way -- it is
+       client-predicted (_pendingMove is OVERWRITTEN below, "only latest
+       position matters") and the server never echoes your position back,
+       so this changes nothing you can feel.
+       FAILS TOWARD FULL FIDELITY: any uncertainty -- no state, no peer
+       map, a throw -- returns the fast rate.  The cost of guessing wrong
+       in that direction is a few requests; guessing wrong the other way
+       is visibly choppy multiplayer.
+       Held-back moves are not queued: _pendingMove is overwritten by the
+       next frame, so what eventually goes out is always the FRESHEST
+       position, never a stale backlog.  The batch timer keeps firing
+       while a move is pending, so a player who stops mid-window still
+       has their final position flushed within SOLO_MS. */
+    /* Both gaps are MULTIPLES OF INPUT_BATCH_WINDOW on purpose.  The
+       check below only runs on a batch boundary, so any gap is silently
+       rounded UP to the next multiple of 33 -- a naive 200 would really
+       be 231 (4.33 Hz), which is a surprise waiting to be rediscovered.
+       198 = 6 windows = 5.05 Hz, and it is also the worst-case delay
+       before the rate ramps back up when a peer walks into your zone. */
+    var MOVE_GAP_SEEN_MS = 33;   // 1 window — unchanged when a peer shares your zone
+    var MOVE_GAP_SOLO_MS = 198;  // 6 windows (~5 Hz) when nobody can see you
+    var _lastMoveSentAt = 0;
+    function moveGapMs() {
+      try {
+        var _S = stateRef.current;
+        if (!_S || !_S.others) return MOVE_GAP_SEEN_MS;
+        /* PvP is belt-and-braces: an opponent is in your zone by
+           definition, so the peer scan below already returns fast. */
+        if (_S._arenaMatch) return MOVE_GAP_SEEN_MS;
+        var _zone = _S.currentZone;
+        if (!_zone) return MOVE_GAP_SEEN_MS;
+        for (var _pid in _S.others) {
+          var _o = _S.others[_pid];
+          if (!_o) continue;
+          var _oz = _o.zone || _o.z;
+          /* A peer whose zone has not landed yet (v2.3.1112 creates
+             placeholder entries from a tick delta before the roster
+             fills them in) counts as VISIBLE.  Defaulting those to
+             'town' the way the renderer does would fail toward the slow
+             rate for up to a second every time someone appears -- the
+             one direction this must never fail. */
+          if (!_oz || _oz === _zone) return MOVE_GAP_SEEN_MS;
+        }
+        return MOVE_GAP_SOLO_MS;
+      } catch (e) {
+        return MOVE_GAP_SEEN_MS;
+      }
+    }
     var _inputBuffer = [];
     var _pendingMove = null;
     var _batchTimer = null;
     function flushInputBuffer() {
       if (!ws || ws.readyState !== WebSocket.OPEN) return;
-      // Send pending move if any
+      // Send pending move if any, subject to the adaptive rate above.
       if (_pendingMove) {
-        ws.send(JSON.stringify(_pendingMove));
-        _pendingMove = null;
+        var _nowMv = Date.now();
+        if (_nowMv - _lastMoveSentAt >= moveGapMs()) {
+          ws.send(JSON.stringify(_pendingMove));
+          _pendingMove = null;
+          _lastMoveSentAt = _nowMv;
+        }
+        /* else: hold it.  The next frame overwrites it with a fresher
+           position and the timer re-checks in INPUT_BATCH_WINDOW ms. */
       }
       // Send all buffered events
       for (var i = 0; i < _inputBuffer.length; i++) {
