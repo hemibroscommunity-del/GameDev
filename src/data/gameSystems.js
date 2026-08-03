@@ -1258,6 +1258,19 @@ export const ARENA_WIN_REWARD = {
   ap: 10
 }; /* per round win */
 export const ARENA_POLL_INTERVAL = 3000; /* check server every 3s */
+/* v2.3.1623: the IDLE background rate.  BroTown.jsx polls /api/arena/status
+   from the 500 ms game loop for every player in the world, forever, whether
+   or not they have ever touched the arena -- measured at 1,028 requests per
+   player-hour, about a third of an idle player's entire request bill, and it
+   is HTTP so it bills 1:1 with no WebSocket discount.
+   Players who are actually involved (queued, in a live tournament, or
+   holding a bet that hasn't paid out) keep the 3 s rate.  Everyone else
+   drops to this, a ~95% cut.  It is a slow poll rather than none at all
+   because the arena BET PAYOUT fires only from inside that poll's callback
+   (BroTown.jsx §BET) -- a spectator who bet without entering would never be
+   credited if the poll stopped entirely.  The panel itself stays live at the
+   fast rate independently: PartyPanel polls on its own while it is open. */
+export const ARENA_IDLE_POLL_INTERVAL = 60000; /* 60s when uninvolved */
 
 /* ═══ LIFE SKILL GUILDS — §GUILD ═══ */
 /* Each life skill has its own guild with NPC guildmaster, rank progression, quests, titles */

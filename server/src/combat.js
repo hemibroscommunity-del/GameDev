@@ -994,7 +994,7 @@ export const combatMethods = {
       this.eventBuffer.push(hitEvent);
 
       // Echo authoritative hp + death check.
-      this._saveRpg(targetId, targetPs);
+      this._saveRpgVitals(targetId, targetPs); // v2.3.1623: coalesced unless near death
       this._queuePlayerStateFlush(targetId);
       if (targetPs.hp <= 0 && !targetPs.dying) {
         this._handlePlayerDeath(targetPs, targetId, 'pvp:' + attackerId);

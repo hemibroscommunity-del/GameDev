@@ -76,10 +76,8 @@ export const persistenceMethods = {
      deterministic, regenerate from maxima, and losing ten seconds of
      drift to a DO restart is invisible.  The wire is untouched -- every
      caller still flushes player_state, so bars move identically.
-     HP DELIBERATELY DOES NOT USE THIS.  Damage moves HP DOWN and cannot
-     be recomputed, so coalescing it would undo real damage across a
-     restart -- and every server deploy restarts the room.  The monster-
-     damage site keeps its immediate _saveRpg. */
+     HP does not call this one directly -- it goes through
+     _saveRpgVitals below, which adds the near-death carve-out. */
   _saveRpgPools(playerId, ps) {
     if (!playerId || !ps) return;
     const now = Date.now();
@@ -88,6 +86,39 @@ export const persistenceMethods = {
     } else {
       ps._regenDirty = true;
     }
+  },
+
+  /* v2.3.1623: HP JOINS THE DEAL, with a near-death carve-out (owner
+     decision: "the free heal is worth the cost savings").
+     v2.3.1619 deliberately left HP writing immediately, because HP moves
+     DOWN from damage and cannot be recomputed from maxima the way the
+     pools can -- so coalescing it means a DO restart inside the window
+     gives every player in combat back up to REGEN_SAVE_MS of damage.
+     Every merge touching server/** restarts the room, so that is a real
+     event, not a theoretical one.  It is small, it is in the player's
+     favour, and after v2.3.1619/1620 the HP write was the single largest
+     remaining source of billed rows -- roughly 1,200 of a residual 1,367
+     per active player-hour.  The owner took the trade.
+     THE CARVE-OUT is what keeps it honest.  Coalescing is only ever
+     applied while the player is comfortably alive; at or below
+     HP_URGENT_SAVE_FRAC of max HP the write goes through IMMEDIATELY.
+     So the states that actually matter -- nearly dead, one hit from
+     losing your bag -- are never the ones sitting unsaved, and a restart
+     can never rewind a player from "about to die" back to healthy.
+     Death itself is untouched: _handlePlayerDeath saves immediately on
+     its own path, as does respawn.
+     Checked AFTER damage is applied, so crossing INTO the danger band is
+     itself an immediate write -- there is no way to slip past the gate
+     by taking one big hit. */
+  _saveRpgVitals(playerId, ps) {
+    if (!playerId || !ps) return;
+    const maxHp = typeof ps.maxHp === 'number' && ps.maxHp > 0 ? ps.maxHp : 100;
+    const hp = typeof ps.hp === 'number' ? ps.hp : maxHp;
+    if (hp <= maxHp * this.HP_URGENT_SAVE_FRAC) {
+      this._saveRpg(playerId, ps); // near death: persist now, no coalescing
+      return;
+    }
+    this._saveRpgPools(playerId, ps);
   },
 
   async _saveRpg(playerId, ps) {
