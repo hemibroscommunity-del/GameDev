@@ -242,11 +242,32 @@ export const tickMethods = {
         }
       }
 
-      // Batched game events (capped).  v2.3.1163: overflow used to be
-      // dropped (slice-then-wipe threw away everything past the cap);
-      // splice keeps the remainder queued so a burst tick delays
-      // events instead of losing them (handoff item L).
-      const events = hasEvents ? this.eventBuffer.splice(0, this.EVENTS_PER_TICK_CAP) : null;
+      /* Batched game events (capped).  v2.3.1163: overflow used to be
+         dropped (slice-then-wipe threw away everything past the cap);
+         splice keeps the remainder queued so a burst tick delays
+         events instead of losing them (handoff item L).
+
+         v2.3.1606: that cap counts ENTRIES, never bytes -- 500 events of
+         unbounded size was a legal tick payload, and this array is
+         re-stringified once per (zone, protocolVersion) group below, so
+         an oversized frame is paid for repeatedly on the single DO
+         thread.  A byte ceiling now runs alongside the count.  The
+         v2.3.1163 property is preserved exactly: whatever does not fit
+         STAYS QUEUED for the next tick rather than being discarded, so
+         this delays a burst, it does not lose it.  At least one event
+         always goes through, so a single oversized entry can never wedge
+         the queue behind it. */
+      let events = null;
+      if (hasEvents) {
+        const cap = Math.min(this.eventBuffer.length, this.EVENTS_PER_TICK_CAP);
+        let take = 0, bytes = 0;
+        while (take < cap) {
+          const b = JSON.stringify(this.eventBuffer[take]).length;
+          if (take > 0 && bytes + b > this.EVENT_BYTES_PER_TICK) break;
+          bytes += b; take++;
+        }
+        events = this.eventBuffer.splice(0, take);
+      }
 
       const monsterWire = (m) => ({
         id: m.id, x: Math.round(m.x), y: Math.round(m.y),
