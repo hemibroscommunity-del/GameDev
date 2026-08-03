@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Find and remove the LIGHT halo left on wearable art by the background key.
 
-v2.3.1635 (owner: "some assets still have an outline like the south facing
+v2.3.1636 (owner: "some assets still have an outline like the south facing
 backwards cap or top hat.  Try to remove any headwear or other wearable that
 has outlines stuck during keying out removal from original background").
 
