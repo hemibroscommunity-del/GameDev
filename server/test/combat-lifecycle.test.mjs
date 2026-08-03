@@ -801,5 +801,87 @@ for (const m of meadowMonsters) m._wanderPausedUntil = Date.now() + 600000;
   delete room.playerState['well'];
 }
 
+// ── 11. v2.3.1607: the regen tick coalesces its DURABLE writes ──
+// The regen loop runs every ~670 ms and used to _saveRpg on every
+// player whose pools moved — measured at 5,855 storage writes per
+// player-hour, 93% of them from that one line.  Cloudflare bills those
+// as rows written (100k/day free, $1.00/M paid), so it was the single
+// most expensive thing the server did.  It now writes at most once per
+// REGEN_SAVE_MS.  These assertions pin BOTH halves of the deal: far
+// fewer storage writes, and an unchanged wire cadence.
+{
+  const puts = [];
+  const origPut = mockState.storage.put;
+  mockState.storage.put = async (k, v) => { puts.push([k, v]); return origPut(k, v); };
+  const rpgPuts = (id) => puts.filter(([k]) => k === 'rpg:' + id);
+
+  // Park every other player so only 'pa' can produce a regen write.
+  const others = Object.keys(room.playerState).filter((k) => k !== 'pa');
+  const parked = Object.create(null);
+  for (const k of others) { parked[k] = room.playerState[k]; delete room.playerState[k]; }
+
+  psA.z = 'town'; psA.dying = false; psA.dead = false; psA.disconnected = false;
+  psA.maxHp = 100; psA.maxStamina = 100; psA.maxMana = 100; psA.blocking = false;
+  psA._arenaMatch = null; psA._regenSaveAt = 0; psA._regenDirty = false;
+  room.pendingPlayerStateFlush.clear();
+
+  // 20 regen ticks (~13 s of game time) crammed into one window.
+  for (let i = 0; i < 20; i++) { psA.hp = 50; room._tickPlayerRegen(); }
+  check('regen throttle: 20 regen ticks inside the window write storage ONCE',
+    rpgPuts('pa').length === 1, rpgPuts('pa').length);
+  check('regen throttle: the WIRE cadence is untouched — still queued every tick',
+    room.pendingPlayerStateFlush.has('pa'), [...room.pendingPlayerStateFlush]);
+  check('regen throttle: the skipped ticks are remembered as dirty',
+    psA._regenDirty === true, psA._regenDirty);
+  check('regen throttle: the scratch bookkeeping never reaches storage',
+    !!rpgPuts('pa')[0] && !('_regenSaveAt' in rpgPuts('pa')[0][1]) && !('_regenDirty' in rpgPuts('pa')[0][1]),
+    rpgPuts('pa')[0] && Object.keys(rpgPuts('pa')[0][1]).filter((k) => k.startsWith('_regen')));
+
+  // Past the window, writes resume — this is a throttle, not a mute.
+  puts.length = 0;
+  psA._regenSaveAt = Date.now() - room.REGEN_SAVE_MS - 1;
+  psA.hp = 50; room._tickPlayerRegen();
+  check('regen throttle: a tick past REGEN_SAVE_MS writes again',
+    rpgPuts('pa').length === 1, puts.map(([k]) => k));
+  check('regen throttle: that write clears the dirty flag',
+    psA._regenDirty === false, psA._regenDirty);
+
+  // A value-bearing save inside the window already persisted the pools
+  // (_saveRpg rewrites the whole blob), so the regen tick must not add
+  // a second, redundant one.
+  puts.length = 0;
+  psA.coins = (psA.coins || 0) + 5;
+  await room._saveRpg('pa', psA);
+  psA.hp = 50; room._tickPlayerRegen();
+  check('regen throttle: a value-bearing save inside the window blocks a redundant regen write',
+    rpgPuts('pa').length === 1, puts.map(([k]) => k));
+
+  // Disconnect flush: pools that moved inside the window must not roll
+  // back on the next join.  This is the ONE place coalescing could be
+  // felt by a player, so it is closed explicitly.
+  const wsZ = fakeWs('dirty-leaver');
+  room.sessions.set(wsZ, { ...baseSession(), id: 'pz' });
+  room.playerState['pz'] = { hp: 40, maxHp: 100, z: 'town', coins: 7, _regenDirty: true };
+  puts.length = 0;
+  await room.webSocketClose(wsZ);
+  check('regen throttle: disconnect flushes coalesced regen',
+    rpgPuts('pz').length === 1, puts.map(([k]) => k));
+  check('regen throttle: the flushed blob carries the regenerated pools',
+    rpgPuts('pz')[0] && rpgPuts('pz')[0][1].hp === 40, rpgPuts('pz')[0] && rpgPuts('pz')[0][1].hp);
+
+  // …and a clean disconnect stays free: no write amplification on the
+  // common path, where the last save was value-bearing anyway.
+  const wsY = fakeWs('clean-leaver');
+  room.sessions.set(wsY, { ...baseSession(), id: 'py' });
+  room.playerState['py'] = { hp: 40, maxHp: 100, z: 'town', coins: 7, _regenDirty: false };
+  puts.length = 0;
+  await room.webSocketClose(wsY);
+  check('regen throttle: a clean disconnect writes nothing',
+    rpgPuts('py').length === 0, puts.map(([k]) => k));
+
+  mockState.storage.put = origPut;
+  for (const k of others) room.playerState[k] = parked[k];
+}
+
 console.log(failures === 0 ? '\nALL TESTS PASSED' : `\n${failures} TEST(S) FAILED`);
 process.exit(failures === 0 ? 0 : 1);

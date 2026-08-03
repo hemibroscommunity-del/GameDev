@@ -66,6 +66,22 @@ export const persistenceMethods = {
 
   async _saveRpg(playerId, ps) {
     if (!playerId || !ps) return;
+    /* v2.3.1607: regen-write bookkeeping, owned centrally HERE rather
+       than at the regen tick's call site, because ANY durable write
+       persists the pools too (this function rewrites the whole blob
+       from its fixed field list).  So a coins/loot/forge save inside
+       the throttle window also satisfies the regen tick -- it must not
+       then write a second, redundant blob 200 ms later.
+       _regenSaveAt: when the pools last reached storage.
+       _regenDirty:  pools have moved since.  webSocketClose flushes it.
+       Both are underscore-prefixed in-memory scratch and are NOT in the
+       field list below, so nothing new is persisted and no storage-key
+       registry entry is needed.  Stamped synchronously (before the
+       await) so two regen ticks can't race a slow put into a double
+       write; a failed put self-heals, since the next moving pool sets
+       _regenDirty again.  See _tickPlayerRegen in index.js. */
+    ps._regenSaveAt = Date.now();
+    ps._regenDirty = false;
     this._pruneBuffs(ps);
     try {
       await this.state.storage.put('rpg:' + playerId, {
