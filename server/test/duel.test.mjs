@@ -96,6 +96,25 @@ room._handlePlayerDeath(psB, 'bp_duel_b', 'pvp:bp_duel_a');
 await new Promise((r) => setTimeout(r, 20)); // fire-and-forget pot settle
 check('winner takes the pot', psA.coins === 60 + 80, psA.coins);
 check('clean duel kill spawns no pile and keeps inventory', Object.keys(psB.inventory).length === 1 && psB.inventory.fish === 2, psB.inventory);
+// v2.3.1616: ...and it must SURVIVE THE RESPAWN.  _tickPlayerRespawn wipes the
+// inventory again five seconds later as defence-in-depth, and that second wipe
+// was unconditional -- so a duel kill kept the bag for exactly the length of
+// this assertion and then lost it.  Checking only the line above is why the
+// suite stayed green while every real duel loser was robbed.
+psB.respawnAt = Date.now() - 1;
+room._tickPlayerRespawn();
+check('a duel loser still has their bag AFTER respawning', psB.inventory.fish === 2, psB.inventory);
+check('respawn cleared the one-shot exemption flag', psB._duelDeathKeepsBag === undefined, psB._duelDeathKeepsBag);
+// An ORDINARY death still wipes on respawn -- the exemption is duel-only.
+psB.inventory = { fish: 2 };
+psB.hp = 0; psB.dying = false; psB.dead = false;
+room._handlePlayerDeath(psB, 'bp_duel_b', 'monster:m1');
+check('a monster death still wipes the bag at death', Object.keys(psB.inventory).length === 0, psB.inventory);
+psB.inventory = { fish: 2 };            // re-seed to prove the respawn wipe still fires
+psB.respawnAt = Date.now() - 1;
+room._tickPlayerRespawn();
+check('a monster death still wipes the bag on respawn', Object.keys(psB.inventory).length === 0, psB.inventory);
+psB.hp = psB.maxHp || 100; psB.dying = false; psB.dead = false;
 check('escrow record cleaned after settle', !state._store.has('duelEscrow:' + duel.id));
 check('duel_end emitted', room.eventBuffer.some((e) => e.type === 'duel_end' && e.payload.winner === 'bp_duel_a' && e.payload.how === 'kill'), room.eventBuffer.map((e) => e.type));
 check('consent pair cleared on resolution', room._pvpAllowed('bp_duel_a', 'bp_duel_b', 'town') === false);
