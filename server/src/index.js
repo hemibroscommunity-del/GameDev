@@ -472,12 +472,16 @@ export class GameRoom {
     this.LAGCOMP_RTT_CAP = 300;
     this.LAGCOMP_RTT_ALPHA = 0.3;
 
-    /* v2.3.1625: how long a remembered per-zone position stays
-       authoritative for the re-entry speed check in _handleMove.  Long
-       enough to catch a flip-out-flip-back teleport (which needs to be
-       fast to be useful), short enough that a genuine round trip is
-       always inside the speed budget by the time it returns. */
-    this.ZONE_REENTRY_MS = 5000;
+    /* v2.3.1629: PvE melee proximity bound for monster_damage
+       (combat.js).  400, not the 250 the PvP path uses: this one has to
+       survive client/server position lag on iPhone Safari over cellular
+       on top of the swing's own reach (GS_OUTER_RADIUS 72 + monster
+       body), and 250 left only ~46 px of slack -- about 105 ms of
+       movement at the legit max speed.  Still far inside a 32-40 tile
+       zone, so it keeps doing the one job it has: no cross-map melee.
+       Ranged/staff are deliberately NOT bounded here -- see the comment
+       at the call site. */
+    this.PVE_MELEE_RANGE = 400;
 
     /* Server-authoritative monsters.
        v2.3.1625: null-prototype, like every other map keyed by a

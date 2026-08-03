@@ -657,24 +657,38 @@ const psB = room.playerState.pb;
   try { room._tickMonsters(); } catch { tickThrew = true; }
   check('zone: _tickMonsters does not throw after a forged zone attempt', !tickThrew);
 
-  /* ── C-6: the zone-flip anti-teleport bypass ─────────────────────
-     The cap is skipped on z-change for a real reason, but nothing
-     re-validated on the way BACK, so flip-out + flip-back wrote an
-     arbitrary position into the original zone. */
-  psJ.x = 100; psJ.y = 100; psJ.z = 'meadow';
-  psJ.lastMoveAt = Date.now() - 50;
-  await room.webSocketMessage(wsJ, JSON.stringify({ type: 'move', x: 100, y: 100, z: 'tidal' }));
-  await room.webSocketMessage(wsJ, JSON.stringify({ type: 'move', x: 9000, y: 9000, z: 'meadow' }));
-  const flipped = (psJ.x === 9000 && psJ.y === 9000);
-  check('move: zone-flip teleport back into the origin zone is rejected',
-    !flipped, { x: psJ.x, y: psJ.y, z: psJ.z });
-  /* ...while an honest transition is untouched: a player who leaves and
-     returns lands near the border they left from, well inside budget. */
-  psJ.x = 100; psJ.y = 100; psJ.z = 'meadow'; psJ.lastMoveAt = Date.now();
+  /* ── C-6: ORDINARY ZONE TRAVEL MUST NEVER BE REJECTED ────────────
+     v2.3.1625 tried to close the zone-flip position bypass with a
+     per-zone re-entry speed budget.  Adversarial review showed it
+     rejected ordinary play -- the town<->worldview hub bounce covers
+     528-720 px in 0.5-1.0 s against a 330-580 px budget, and a dungeon
+     exit re-enters at a fixed tile unrelated to where the player left
+     -- so v2.3.1629 removed it (see the long note in movement.js).
+     C-6 is therefore MITIGATED, NOT CLOSED: the zone-validation half
+     stands, the position bypass does not.  These assertions pin the
+     property that actually matters for players -- that legitimate
+     travel always lands -- so a future attempt at C-6 cannot
+     reintroduce the freeze without going red here. */
+  psJ.x = 100; psJ.y = 100; psJ.z = 'meadow'; psJ.lastMoveAt = Date.now() - 50;
   await room.webSocketMessage(wsJ, JSON.stringify({ type: 'move', x: 100, y: 100, z: 'tidal' }));
   await room.webSocketMessage(wsJ, JSON.stringify({ type: 'move', x: 130, y: 120, z: 'meadow' }));
   check('move: an honest leave-and-return transition still lands',
     psJ.z === 'meadow' && psJ.x === 130, { x: psJ.x, z: psJ.z });
+  /* The hub bounce the removed budget used to reject: ~620 px of
+     displacement inside ~0.6 s, which is the map's own geometry. */
+  psJ.x = 640; psJ.y = 400; psJ.z = 'town'; psJ.lastMoveAt = Date.now() - 50;
+  await room.webSocketMessage(wsJ, JSON.stringify({ type: 'move', x: 300, y: 900, z: 'worldview' }));
+  await room.webSocketMessage(wsJ, JSON.stringify({ type: 'move', x: 640, y: 400, z: 'town' }));
+  check('move: the town<->worldview hub bounce is never rejected',
+    psJ.z === 'town' && psJ.x === 640 && psJ.y === 400, { x: psJ.x, y: psJ.y, z: psJ.z });
+  /* An unlisted zone id makes the whole message a no-op -- it must NOT
+     fall through and be judged as a same-zone move, which is what
+     pinned a player permanently before v2.3.1629. */
+  psJ.x = 640; psJ.y = 400; psJ.z = 'town'; psJ.lastMoveAt = Date.now() - 50;
+  await room.webSocketMessage(wsJ, JSON.stringify({ type: 'move', x: 9000, y: 9000, z: 'nowhere' }));
+  await room.webSocketMessage(wsJ, JSON.stringify({ type: 'move', x: 660, y: 410, z: 'town' }));
+  check('move: a rejected zone id does not pin the player',
+    psJ.x === 660 && psJ.y === 410 && psJ.z === 'town', { x: psJ.x, y: psJ.y, z: psJ.z });
 }
 
 {
@@ -782,12 +796,26 @@ const psB = room.playerState.pb;
   }));
   check('monster_damage: an out-of-range attacker is denied', tgt.hp === hp0, tgt.hp);
 
-  /* In range but dead. */
-  psM.x = tgt.x; psM.y = tgt.y; psM.dead = true;
+  /* In range but SERVER-dead.  v2.3.1629: the gate reads ps.dying, not
+     ps.dead -- ps.dead is written straight from the client's own move
+     payload, so gating on it let a client whose LOCAL hp hit 0 (while
+     the server still had it alive) silently lose all PvE combat. */
+  psM.x = tgt.x; psM.y = tgt.y; psM.dying = true;
   await room.webSocketMessage(wsM, JSON.stringify({
     type: 'monster_damage', payload: { monsterId: tgt.id, zone: 'meadow', slot: 'melee' },
   }));
-  check('monster_damage: a dead attacker is denied', tgt.hp === hp0, tgt.hp);
+  check('monster_damage: a server-dead (dying) attacker is denied', tgt.hp === hp0, tgt.hp);
+
+  /* ...and the converse: a client-claimed `dead` must NOT lock a player
+     out of combat the server believes they are alive for. */
+  psM.dying = false; psM.dead = true; psM.disconnected = false;
+  delete psM._monHitCad;
+  await room.webSocketMessage(wsM, JSON.stringify({
+    type: 'monster_damage', payload: { monsterId: tgt.id, zone: 'meadow', slot: 'melee' },
+  }));
+  check('monster_damage: a client-claimed dead flag does not deny a live attacker',
+    tgt.hp < hp0, tgt.hp);
+  tgt.hp = hp0;
 
   /* Alive, in zone, in range -- must still work. */
   psM.dead = false; psM.dying = false; psM.disconnected = false;
@@ -796,6 +824,84 @@ const psB = room.playerState.pb;
     type: 'monster_damage', payload: { monsterId: tgt.id, zone: 'meadow', slot: 'melee' },
   }));
   check('monster_damage: a legitimate in-range hit still lands', tgt.hp < hp0, tgt.hp);
+
+  /* ── v2.3.1629 (adversarial-review fixes to the v2.3.1628 gate) ──
+     The first version reused PVP_TUNING.RANGE_CAP, so ranged capped at
+     950 px.  A maxed Longshot bow legitimately connects at 1350
+     (projectiles.js plants at 675 * bowRangeMult; bowRangeMult caps at
+     x2.0), and the bow special's stuck-arrow chips every 500 ms for 4 s
+     while the player kites away -- so the distance at TICK time is
+     unbounded relative to firing distance and no static cap can be
+     right.  Ranged/staff therefore have no proximity gate; the ZONE
+     gate is what closed the reported exploit. */
+  psM.dead = false; psM.dying = false; psM.disconnected = false;
+  psM.z = 'meadow'; psM.x = tgt.x + 1300; psM.y = tgt.y;
+  psM.rangedWeapon = { type: 'bow', tierMult: 1 };
+  tgt.hp = hp0; delete psM._monHitCad;
+  await room.webSocketMessage(wsM, JSON.stringify({
+    type: 'monster_damage', payload: { monsterId: tgt.id, zone: 'meadow', slot: 'ranged' },
+  }));
+  check('monster_damage: a 1300px Longshot bow hit still lands (no ranged cap)',
+    tgt.hp < hp0, { hp: tgt.hp, hp0 });
+
+  /* A far-away chip tick from a stuck arrow, after the player kited. */
+  psM.x = tgt.x + 2600; tgt.hp = hp0; delete psM._monHitCad;
+  await room.webSocketMessage(wsM, JSON.stringify({
+    type: 'monster_damage', payload: { monsterId: tgt.id, zone: 'meadow', slot: 'ranged', noKb: true },
+  }));
+  check('monster_damage: a stuck-arrow chip tick from far away still lands',
+    tgt.hp < hp0, { hp: tgt.hp, hp0 });
+
+  /* Melee still bounded -- the one job proximity keeps. */
+  psM.x = tgt.x + 900; tgt.hp = hp0; delete psM._monHitCad;
+  await room.webSocketMessage(wsM, JSON.stringify({
+    type: 'monster_damage', payload: { monsterId: tgt.id, zone: 'meadow', slot: 'melee' },
+  }));
+  check('monster_damage: cross-map MELEE is still denied', tgt.hp === hp0, tgt.hp);
+}
+
+{
+  /* ── v2.3.1629: the three join-allowlist findings from review ── */
+  /* A peer that is ALREADY in the room, so broadcastExcept delivers the
+     player_join relay to it (the relay is the third consumer of the raw
+     blob that v2.3.1627 missed). */
+  const wsPeer = fakeWs('joinPeer');
+  room.sessions.set(wsPeer, baseSession());
+  await room.webSocketMessage(wsPeer, JSON.stringify({
+    type: 'join', id: 'p_peer', name: 'Peer', protocolVersion: 2,
+    data: { x: 0, y: 0, z: 'town' },
+  }));
+  wsPeer.sent.length = 0;
+  const wsV = fakeWs('joinFix');
+  room.sessions.set(wsV, baseSession());
+  const AVATAR = 'https://wsrv.nl/?url=https%3A%2F%2Fexample.test%2Fbros%2F' + '9'.repeat(120) + '.png&w=128&h=128&fit=cover';
+  /* Sized to slip UNDER the v2.3.1618 16 KB frame gate (index.js
+     MAX_INBOUND_BYTES) while exceeding the 8 KB per-value bound -- if
+     it were bigger the frame gate would drop the whole join and this
+     would assert nothing. */
+  const bigStash = new Array(200).fill({ type: 'sword', tierMult: 1, name: 'junk-padding-value' });
+  await room.webSocketMessage(wsV, JSON.stringify({
+    type: 'join', id: 'p_jf', name: 'JF', protocolVersion: 2,
+    data: { x: 1, y: 2, z: 'town', avatar: AVATAR, rpgWeaponStash: bigStash, rpgCoins: 7 },
+  }));
+  const psV = room.playerState.p_jf;
+  /* avatar is a ~150-250 char proxy URL; the flat 64-char DROP removed
+     it outright for every Hemi Bro holder.  Truncate, never drop. */
+  check('join: a long avatar URL survives (truncated, not dropped)',
+    typeof psV.avatar === 'string' && psV.avatar.length > 64, psV.avatar && psV.avatar.length);
+  /* rpg* values were copied with no size check -- a phraseless join
+     could park megabytes on playerState, which is spread into the
+     state_sync EVERY later joiner receives. */
+  check('join: an oversized rpg* container is dropped',
+    psV.rpgWeaponStash === undefined,
+    psV.rpgWeaponStash && psV.rpgWeaponStash.length);
+  check('join: a normal rpg* scalar still lands', psV.rpgCoins === 7, psV.rpgCoins);
+  /* The THIRD consumer: player_join relayed the RAW blob to peers. */
+  const relay = wsPeer.sent.filter((m) => m.type === 'player_join' && m.id === 'p_jf').pop();
+  check('join: the player_join relay carries the SANITIZED data',
+    !!relay && relay.data && relay.data._zoneEntryGraceUntil === undefined
+      && relay.data.rpgWeaponStash === undefined,
+    relay && Object.keys(relay.data || {}).length);
 }
 
 console.log(failures === 0 ? '\nALL TESTS PASSED' : `\n${failures} TEST(S) FAILED`);

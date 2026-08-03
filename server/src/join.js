@@ -64,6 +64,18 @@ const JOIN_COSMETIC_KEYS = [
  * the explicit ingest in _handleJoin (stored-wins on every reconnect).
  * Anchored + capitalised so a crafted 'rpg' or 'rpgo' can't sneak in. */
 const JOIN_RPG_PREFIX_RE = /^rpg[A-Z][A-Za-z0-9]*$/;
+/* v2.3.1629: ceiling on a single rpg* container value.
+ * SIZED AGAINST THE FRAME GATE, deliberately.  v2.3.1618 caps the whole
+ * inbound frame at MAX_INBOUND_BYTES = 16 KB (index.js), which is the
+ * primary bound and already makes a megabyte-scale join impossible --
+ * this guard was first written at 64 KB, which no frame can ever reach,
+ * i.e. dead code.  At 8 KB it actually binds: it stops ONE rpg* key
+ * eating the entire frame budget, and it is still generous next to the
+ * real payloads (a full weaponStash at cap plus inventory plus the quest
+ * maps sit in the low kilobytes).  Defence in depth, not the main gate:
+ * if MAX_INBOUND_BYTES is ever raised, this keeps a single value from
+ * scaling with it. */
+const JOIN_RPG_MAX_BYTES = 8 * 1024;
 
 export const joinMethods = {
   /* v2.3.1627: build a clean copy of join.data.  Never mutates the
@@ -91,8 +103,18 @@ export const joinMethods = {
       if (v === undefined || v === null) continue;
       /* Cosmetics are strings the client renders back at peers; cap the
          length so one join can't push an unbounded blob into every
-         other player's state_sync. */
-      if (typeof v === 'string') { if (v.length <= 64) out[k] = v; }
+         other player's state_sync.
+         v2.3.1629: TRUNCATE, never drop -- and `avatar` gets its own
+         much larger bound.  The flat 64-char DROP silently removed the
+         avatar of every verified Hemi Bro holder, because S.myAvatar is
+         a wsrv.nl proxy URL whose prefix and suffix alone are ~52 chars
+         and which runs 150-250 in practice: they rendered as a generic
+         body in the state_sync every joiner receives, until their first
+         2 s `track` relay healed it.  A silent drop is the wrong shape
+         for a cosmetic anyway -- a truncated string degrades visibly,
+         a missing one looks like the feature is broken. */
+      const _cap = (k === 'avatar') ? 512 : 64;
+      if (typeof v === 'string') out[k] = v.length > _cap ? v.slice(0, _cap) : v;
       else if (typeof v === 'number' && Number.isFinite(v)) out[k] = v;
     }
     /* rpg* seeds: copy by pattern from the client's OWN keys, but only
@@ -101,7 +123,29 @@ export const joinMethods = {
     for (const k of Object.getOwnPropertyNames(raw)) {
       if (!JOIN_RPG_PREFIX_RE.test(k)) continue;
       const v = raw[k];
-      if (v !== undefined) out[k] = v;
+      if (v === undefined) continue;
+      /* v2.3.1629: bound the VALUE, not just the key.  The pattern
+         branch used to copy whatever the client sent, so a phraseless
+         join (rule 21's legacy path, no passphrase) could park a
+         multi-megabyte array on playerState under e.g. rpgWeaponStash
+         -- and playerState is spread into the state_sync EVERY
+         subsequent joiner receives, which is exactly the blob channel
+         the cosmetic cap above exists to close.  The explicit ingest
+         below re-reads and clamps each of these properly; this is only
+         the size guard that stops the raw copy being a weapon.
+         Cheap structural bound: scalars pass, containers are capped by
+         serialized size. */
+      const t = typeof v;
+      if (v === null || t === 'number' || t === 'string' || t === 'boolean') {
+        if (t === 'string' && v.length > 4096) continue;
+        out[k] = v;
+        continue;
+      }
+      if (t !== 'object') continue;             // functions/symbols: drop
+      let approx = 0;
+      try { approx = JSON.stringify(v).length; } catch { continue; } // cyclic: drop
+      if (approx > JOIN_RPG_MAX_BYTES) continue;
+      out[k] = v;
     }
     return out;
   },
@@ -661,10 +705,23 @@ export const joinMethods = {
     // broadcast all read).  Also the lazy war-resolve hook, and the
     // clan snapshot echo so the client's panel has server truth.
     await this._clansEnsure();
-    this._clanStampTag(msg.id, msg.data);
+    /* v2.3.1629: stamp the SANITIZED copy -- it is the object that now
+       feeds both session.data and the player_join relay below. */
+    this._clanStampTag(msg.id, cleanJoinData);
     this._clanStampTag(msg.id, this.playerState[msg.id]);
     this._clanSendState(msg.id);
-    this.broadcastExcept(ws, { type: 'player_join', id: msg.id, name: msg.name, data: msg.data });
+    /* v2.3.1629: the THIRD consumer.  v2.3.1627 claimed msg.data was
+       "filtered once and used for BOTH consumers" -- it was three.  This
+       relay still shipped the raw client blob to every peer, so a forged
+       field reached other players' S.others[] even though playerState
+       and session.data were clean (e.g. a z the server itself rejected,
+       which peers would then use to filter that player out of the zone
+       they are actually standing in).  No live exploit today -- the peer
+       handler picks fields by name -- but it is the same shape as the
+       one the allowlist exists to close, and it re-opens the moment any
+       client merges player_join data wholesale, the way player_update
+       already does for track relays. */
+    this.broadcastExcept(ws, { type: 'player_join', id: msg.id, name: msg.name, data: cleanJoinData });
     // Send current state + monsters for player's zone
     /* v2.3.1627: read the zone off the SANITIZED state, not the raw
        wire blob -- _sanitizeJoinData already dropped an unlisted id, so

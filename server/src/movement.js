@@ -54,9 +54,20 @@ export const movementMethods = {
        path below relies on).  Silently keeping the old zone beats
        closing the socket: a legitimate client that somehow sends an
        unknown zone keeps playing instead of being kicked. */
-    const newZone = (msg.z !== undefined && msg.z !== null && this._validZone(msg.z))
-      ? msg.z
-      : ps.z;
+    /* v2.3.1629: an unlisted zone id makes the WHOLE message a no-op --
+       we return rather than fall through treating it as a same-zone
+       move.  The v2.3.1625 version kept ps.z and carried on, which made
+       zoneChanged false and applied the ordinary 500 px/s cap between
+       the OLD zone's coordinates and the new zone's -- and since
+       ps.lastMoveAt is refreshed on every processed move, dt never grew,
+       so a client that kept sending the rejected zone was pinned
+       PERMANENTLY rather than transiently.  Today the allowlist is
+       verified complete against the client table (zones.test.mjs §7), so
+       this is latent -- but "latent until someone ships a zone" is
+       exactly how a freeze reaches a player, and returning early costs
+       nothing: the client's next legit move is unaffected. */
+    if (msg.z !== undefined && msg.z !== null && !this._validZone(msg.z)) return;
+    const newZone = (msg.z === undefined || msg.z === null) ? ps.z : msg.z;
 
     // ═══ Movement validation (anti-teleport) ═══
     //
@@ -102,40 +113,46 @@ export const movementMethods = {
         // via the broadcast tick.
         accept = false;
       }
-    } else if (zoneChanged && !firstMove) {
-      /* v2.3.1625: close the zone-flip bypass.  The cap above is
-         skipped on z-change for a real reason (a transition genuinely
-         teleports you to the destination's entry point), but nothing
-         re-validated on the way BACK -- so two messages, one to any
-         other zone at the target coords and one straight back, wrote an
-         arbitrary position into the original zone.  That defeated every
-         range check downstream (loot pickup, node strike,
-         _resolvePvPAttack, monster aggro) -- the exact bypasses this cap
-         was written to close, and the control TRAPS #13 cites as having
-         HELD while `track` was open.  It did not.
-         Fix: remember where the player stood in each zone this session,
-         and on RE-ENTRY within ZONE_REENTRY_MS hold them to the same
-         speed budget measured from that remembered spot.  Legitimate
-         travel is untouched -- edge-based transitions put you back near
-         the border you left from, and at a 4 s round trip the budget is
-         ~2000 px against a ~1500 px map, so it cannot fire; a sub-second
-         flip gets ~180 px, which is exactly the exploit.
-         Keyed by client-supplied zone id -> Map, not {} (TRAPS #6).
-         Lives on the SESSION, so it is never persisted or echoed, and a
-         genuine reconnect legitimately re-places the player. */
-      if (!session._zonePos) session._zonePos = new Map();
-      if (typeof ps.x === 'number' && typeof ps.y === 'number') {
-        session._zonePos.set(oldZone, { x: ps.x, y: ps.y, at: _now });
-      }
-      const prior = session._zonePos.get(newZone);
-      if (prior && (_now - prior.at) < this.ZONE_REENTRY_MS) {
-        const dt = Math.max(0.001, (_now - prior.at) / 1000);
-        const maxDist = 500 * dt + 80;
-        const dx = msg.x - prior.x;
-        const dy = msg.y - prior.y;
-        if (dx * dx + dy * dy > maxDist * maxDist) accept = false;
-      }
     }
+    /* ═══ v2.3.1629: THE ZONE-FLIP BYPASS IS *NOT* CLOSED HERE ═══
+     *
+     * The cap above is skipped on z-change for a real reason -- a
+     * transition genuinely teleports you to the destination's entry
+     * point -- and nothing re-validates on the way BACK, so two
+     * messages (out to any zone at the target coords, then straight
+     * back) still write an arbitrary position into the origin zone.
+     * Audit C-6, docs/AUDIT-2026-08-03.md.
+     *
+     * v2.3.1625 tried to close it with a per-zone re-entry speed
+     * budget: remember where the player stood in each zone, and hold a
+     * re-entry within 5 s to the same 500 px/s bound. Adversarial review
+     * of that change found it REJECTS ORDINARY PLAY, twice over:
+     *   - the town <-> worldview hub bounce covers 528-720 px in
+     *     0.5-1.0 s (the map deliberately places those markers apart)
+     *     against a 330-580 px budget, so a player who steps into the
+     *     world view and straight back is held in the previous hub;
+     *   - leaving a dungeon re-enters the origin zone at a fixed exit
+     *     tile that has no relation to where the player stood when they
+     *     entered, so the budget fires there too -- and while ps.z is
+     *     held back, the new monster_damage zone gate denies every
+     *     attack for up to the window, with no feedback.
+     * Freezing a real player is strictly worse than the exploit it
+     * prevents, and the repo's own posture on this is explicit (a
+     * flaky BLOCKING gate is worse than none -- handoff item F).
+     *
+     * So the budget is REMOVED rather than tuned: a bound generous
+     * enough for the hub geometry is ~1200 px, which inside a 32-40
+     * tile zone permits essentially the whole map and buys nothing.
+     * The zone-VALIDATION half of C-6 stays (above) -- that is what
+     * closes the '__proto__' room-wide outage and bounds the zone-keyed
+     * maps, and it is sound.
+     *
+     * THE REAL FIX, when someone picks this up: make zone entry
+     * server-placed. The server already knows the destination and the
+     * exit edge; having it WRITE the entry position instead of
+     * accepting msg.x/msg.y removes the bypass entirely and needs no
+     * heuristic. That is a bigger change than an audit follow-up should
+     * smuggle in, so it is written down instead of guessed at. */
     ps.lastMoveAt = _now;
 
     // Position + velocity + flags update only on accept -- and ps.z is
