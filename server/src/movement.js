@@ -77,12 +77,28 @@ export const movementMethods = {
          current zone, i.e. hands the client exactly the intra-zone
          teleport the cap exists to refuse, and can strand them far from
          anywhere they can legitimately walk back from.
-       What actually works: drop the zone, do NOT write the position
-       (those coordinates belong to a map the server does not agree the
-       player is on), and clear lastMoveAt so the NEXT move is treated
-       as a first move and skips the cap.  That is what stops the pin --
-       the client resynchronises in one message from wherever it really
-       is, without a foreign position ever being persisted.  The v2.3.1629 early-return was itself a freeze (see
+       What ships: drop the zone, do NOT write the position (those
+       coordinates belong to a map the server does not agree the player
+       is on), and clear lastMoveAt so the next move is treated as a
+       first move and skips the cap.
+
+       BE HONEST ABOUT WHAT THIS DOES NOT SOLVE.  A client that sends a
+       rejected zone ONCE resynchronises fine.  A client that sends it
+       PERSISTENTLY still has its position frozen server-side, because
+       every such message returns before the write -- peers see it at a
+       stale coordinate and combat.js's zone gate denies its attacks.
+       The realistic trigger for that (a dungeon instance wiped by a
+       deploy) is closed by accepting dungeon ids on shape, so what
+       remains needs a zone shipped client-side that the server does not
+       know -- and zones.test.mjs §7 fails CI on exactly that drift, now
+       that server-ci.yml also watches src/data/** (v2.3.1634; filtered
+       on server/** alone the tripwire could not fire on the client-only
+       PR that would cause it).
+       The real fix is server-placed zone entry: the server already
+       knows the destination and the exit edge, so having it WRITE the
+       position removes both this and the C-6 bypass with no heuristic.
+       Four attempts at heuristics here produced three different
+       freezes; the next person should build that instead.  The v2.3.1629 early-return was itself a freeze (see
        _validZone above): any client that keeps sending a zone the server
        rejects stops moving entirely.  Instead we keep the server's zone
        and still accept the position, with the cap bypassed for this

@@ -6,14 +6,28 @@ name: Server CI
 # the safety property that lets client and server deploy in either order
 # (see CLAUDE.md "Wire protocol").  The client has its own workflow
 # (client-ci.yml); deploys stay in deploy-worker.yml.
+# v2.3.1634: the path filter also watches the CLIENT tables this suite
+# asserts against. zones.test.mjs §7 pins VALID_ZONE_IDS against
+# src/data/zones.js in BOTH directions, and that tripwire exists to stop
+# a zone shipping client-side that the server then rejects -- which
+# freezes every player who walks to its entrance (movement.js). Filtered
+# on 'server/**' alone, a client-only PR adding a zone never ran the
+# suite, so the one check that would have caught it was structurally
+# unable to fire on the change that causes it. Same reasoning for the
+# other client files this suite imports across the boundary
+# (mirror-audit, display-dps, zones, t1sync).
 on:
   pull_request:
     paths:
       - 'server/**'
+      - 'src/data/**'
+      - 'src/game/t1Sync.js'
   push:
     branches: [main]
     paths:
       - 'server/**'
+      - 'src/data/**'
+      - 'src/game/t1Sync.js'
 
 jobs:
   test:
