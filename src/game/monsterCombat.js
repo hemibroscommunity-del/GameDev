@@ -2347,7 +2347,18 @@ export function updateMonsterCombat(S, deps) {
               /* §19 PvP only works outside town and safe zones */
               var inSafeZone = (_ZONES$S$currentZone7 = ZONES[S.currentZone]) === null || _ZONES$S$currentZone7 === void 0 ? void 0 : _ZONES$S$currentZone7.safe;
               var pvpLocked = S.lockedTarget && S.lockedTarget.type === 'player' && S.lockedTarget.ref;
-              if (!inSafeZone && (pvpLocked || S._inDuel)) {
+              /* v2.3.1605 (owner: "dueling only works with sword ... this was a
+                 duel in town").  This gate was `!inSafeZone && (...)`, and town
+                 is safe:true — so during a town duel the client sent NO melee
+                 attack at all.  The server has always allowed it: _pvpAllowed
+                 permits a consented duel pair anywhere, and its comment says so
+                 outright ("Duels still work in town via the pair").  The client
+                 was the only thing refusing.
+                 A DUEL is consent, so it overrides the zone rule; free-fire
+                 still requires a lawless zone AND a deliberate lock-on.  The
+                 server gate remains the authority and still fails closed —
+                 this only decides what is worth reporting. */
+              if (S._inDuel || (!inSafeZone && pvpLocked)) {
                 var pvpAngle = pvpLocked ? Math.atan2((S.lockedTarget.ref.y || S.lockedTarget.ref.renderY || P.y) - P.y, (S.lockedTarget.ref.x || S.lockedTarget.ref.renderX || P.x) - P.x) : baseAngle;
                 /* Track threat — attacking a player starts the threat counter */
                 S._pvpThreat = Date.now() + PVP_THREAT_DURATION;
