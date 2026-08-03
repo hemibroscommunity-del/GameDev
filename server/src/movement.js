@@ -13,12 +13,50 @@
  * `pong` / `track` stay inline in the router (session-local, two
  * lines each). */
 
+import { VALID_ZONE_IDS, DUNGEON_ZONE_RE } from './data.js';
+
 export const movementMethods = {
+  /* v2.3.1607: the ONE zone gate.  Every path that lets a client choose
+   * ps.z must run this -- `move` and `join` today.  Membership, not
+   * shape: an unlisted string never reaches the zone-keyed maps
+   * (this.monsters / nodes / loot), which is what turned z:'__proto__'
+   * into a room-wide monster-AI outage (see data.js VALID_ZONE_IDS).
+   *
+   * Dungeon instances are checked against the LIVE instance map, not
+   * just the id shape: a well-formed 'dungeon:' string for an instance
+   * that does not exist is still a forged zone, and letting one in
+   * would re-open the unbounded-key growth this gate closes.
+   *
+   * EXISTENCE, NOT OWNERSHIP -- deliberately.  Instances carry only
+   * {id, zone, ownerId, cfg, ...} with no member list, because they are
+   * SHARED by design: _dungeonPullPartyMembers (v2.3.1218) just re-sends
+   * dungeon_started to co-located party members and their normal entry
+   * path takes it from there, and rewards + boss HP already scale to
+   * everyone present (dungeon.js).  Gating on ownerId would therefore
+   * strand every non-leader party member at the entrance -- a worse bug
+   * than the one being fixed, and a behavior change this audit did not
+   * ask for.  Tighten only alongside a real membership roster. */
+  _validZone(z) {
+    if (typeof z !== 'string' || z.length === 0 || z.length > 40) return false;
+    if (VALID_ZONE_IDS.has(z)) return true;
+    if (!DUNGEON_ZONE_RE.test(z)) return false;
+    if (!this._dungeons) return false;
+    return this._dungeons.has(z.slice('dungeon:'.length));
+  },
+
   _handleMove(session, ws, msg) {
     if (!session.id || !this.playerState[session.id]) return;
     const ps = this.playerState[session.id];
     const oldZone = ps.z;
-    const newZone = msg.z || ps.z;
+    /* v2.3.1607: an unlisted zone id is DROPPED, not adopted -- the
+       player simply stays where they are (the client's next move snaps
+       back off the broadcast tick, the same recovery the rejected-move
+       path below relies on).  Silently keeping the old zone beats
+       closing the socket: a legitimate client that somehow sends an
+       unknown zone keeps playing instead of being kicked. */
+    const newZone = (msg.z !== undefined && msg.z !== null && this._validZone(msg.z))
+      ? msg.z
+      : ps.z;
 
     // ═══ Movement validation (anti-teleport) ═══
     //
@@ -64,14 +102,50 @@ export const movementMethods = {
         // via the broadcast tick.
         accept = false;
       }
+    } else if (zoneChanged && !firstMove) {
+      /* v2.3.1607: close the zone-flip bypass.  The cap above is
+         skipped on z-change for a real reason (a transition genuinely
+         teleports you to the destination's entry point), but nothing
+         re-validated on the way BACK -- so two messages, one to any
+         other zone at the target coords and one straight back, wrote an
+         arbitrary position into the original zone.  That defeated every
+         range check downstream (loot pickup, node strike,
+         _resolvePvPAttack, monster aggro) -- the exact bypasses this cap
+         was written to close, and the control TRAPS #13 cites as having
+         HELD while `track` was open.  It did not.
+         Fix: remember where the player stood in each zone this session,
+         and on RE-ENTRY within ZONE_REENTRY_MS hold them to the same
+         speed budget measured from that remembered spot.  Legitimate
+         travel is untouched -- edge-based transitions put you back near
+         the border you left from, and at a 4 s round trip the budget is
+         ~2000 px against a ~1500 px map, so it cannot fire; a sub-second
+         flip gets ~180 px, which is exactly the exploit.
+         Keyed by client-supplied zone id -> Map, not {} (TRAPS #6).
+         Lives on the SESSION, so it is never persisted or echoed, and a
+         genuine reconnect legitimately re-places the player. */
+      if (!session._zonePos) session._zonePos = new Map();
+      if (typeof ps.x === 'number' && typeof ps.y === 'number') {
+        session._zonePos.set(oldZone, { x: ps.x, y: ps.y, at: _now });
+      }
+      const prior = session._zonePos.get(newZone);
+      if (prior && (_now - prior.at) < this.ZONE_REENTRY_MS) {
+        const dt = Math.max(0.001, (_now - prior.at) / 1000);
+        const maxDist = 500 * dt + 80;
+        const dx = msg.x - prior.x;
+        const dy = msg.y - prior.y;
+        if (dx * dx + dy * dy > maxDist * maxDist) accept = false;
+      }
     }
     ps.lastMoveAt = _now;
 
-    // Position + velocity + flags update only on accept.  On
-    // reject, ps.z is still updated for zone-change bypasses
-    // (those always set accept=true); for non-zone-change
-    // rejections, we drop EVERYTHING so a cheater can't flip
+    // Position + velocity + flags update only on accept -- and ps.z is
+    // INSIDE this block, so a rejected move never changes zone either.
+    // We drop EVERYTHING on reject so a cheater can't flip
     // blocking/dodging/dead while teleporting.
+    // v2.3.1607: the old note here said zone changes "always set
+    // accept=true".  That is no longer so -- a re-entry that fails the
+    // budget above is rejected like any other teleport, and the player
+    // stays put in the zone they were already in.
     if (accept) {
       ps.x = msg.x; ps.y = msg.y;
       /* v2.3.1107: accept any DEFINED d/f, not just truthy -- today

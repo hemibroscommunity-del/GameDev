@@ -345,8 +345,11 @@ export const tickMethods = {
       // Cleared AFTER the send loop -- buildFor reads them lazily.
       this.dirtyMonsters.clear();
       this.dirtyNodes.clear();
-      this.dirtyMonsterIds = {};
-      this.dirtyNodeIds = {};
+      /* v2.3.1607: null-proto on RESET too -- these are rebuilt every
+         tick, so a plain {} here would quietly undo the constructor's
+         null-proto guarantee one tick later (TRAPS #6). */
+      this.dirtyMonsterIds = Object.create(null);
+      this.dirtyNodeIds = Object.create(null);
     }, this.TICK_RATE);
   },
 };

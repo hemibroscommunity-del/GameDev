@@ -303,5 +303,66 @@ const hit10f = room.eventBuffer.find((e) => e.type === 'pvp_hit');
 check('lethal hit carries died:true', hit10f && hit10f.payload.died === true && psB.hp === 0, hit10f && hit10f.payload);
 psB.hp = 100; psB.dying = false; psB.dead = false;
 
+/* ── v2.3.1610: a PROTECTED duel kill must keep the inventory all the
+ *    way through the RESPAWN.
+ *
+ * The death side was already pinned above ("clean duel kill spawns no
+ * pile and keeps inventory").  What nothing covered was the other end:
+ * _tickPlayerRespawn wiped ps.inventory unconditionally 5 s later, and
+ * because the protected path deliberately spawns NO pile, the items
+ * were DESTROYED rather than transferred -- strictly worse than an
+ * ordinary death, where the killer or a bystander can at least pick the
+ * pile up. */
+{
+  const psP = room.playerState.bp_duel_b;
+  psA.coins = 200; psP.coins = 200;
+  psA.hp = 100; psA.dying = false; psA.dead = false;
+  psP.hp = 100; psP.dying = false; psP.dead = false; psP.respawnAt = 0;
+
+  await room._interceptDuel('bp_duel_a', chalMsg('bp_duel_b', 10));
+  await room._interceptDuel('bp_duel_b', acceptMsg('bp_duel_a', 10));
+  const d2 = room._duelFor('bp_duel_b');
+  /* HARD check, not a conditional: an earlier version of this block
+     guarded the assertions behind "is the duel protected?", and when the
+     setup silently failed the whole section skipped and still reported
+     green.  A test that passes over its own subject is worse than none. */
+  check('protected kill: a fresh duel is actually active for the setup', !!d2, d2);
+
+  psP.inventory = { mummyRemains: 3, oakLog: 7 };
+  const pilesBefore = Object.values(room.loot || {}).reduce((n, l) => n + (l ? l.length : 0), 0);
+  psP.hp = 0;
+  room._handlePlayerDeath(psP, 'bp_duel_b', 'pvp:bp_duel_a');
+  await new Promise((r) => setTimeout(r, 20)); // fire-and-forget pot settle
+
+  check('protected kill: inventory survives the death itself',
+    psP.inventory && psP.inventory.mummyRemains === 3, psP.inventory);
+  const pilesAfter = Object.values(room.loot || {}).reduce((n, l) => n + (l ? l.length : 0), 0);
+  check('protected kill: no death pile is spawned',
+    pilesAfter === pilesBefore, { before: pilesBefore, after: pilesAfter });
+  check('protected kill: the no-drop flag is stamped for the respawn tick',
+    psP._noDropDeath === true, psP._noDropDeath);
+
+  /* THE REGRESSION: the respawn tick used to wipe it here. */
+  psP.respawnAt = Date.now() - 1;
+  psP.dying = true;
+  room._tickPlayerRespawn();
+  check('protected kill: inventory ALSO survives the respawn tick',
+    psP.inventory && psP.inventory.mummyRemains === 3 && psP.inventory.oakLog === 7,
+    psP.inventory);
+  check('protected kill: the no-drop flag is cleared after one respawn',
+    psP._noDropDeath === undefined, psP._noDropDeath);
+
+  /* An ORDINARY death must still lose the inventory on respawn -- the
+     defence-in-depth re-wipe stays intact for everyone else. */
+  psP.hp = 100; psP.dying = false; psP.dead = false;
+  psP.inventory = { mummyRemains: 5 };
+  room._handlePlayerDeath(psP, 'bp_duel_b', 'monster:fodder');
+  psP.respawnAt = Date.now() - 1;
+  psP.dying = true;
+  room._tickPlayerRespawn();
+  check('ordinary death: inventory is still wiped on respawn',
+    Object.keys(psP.inventory || {}).length === 0, psP.inventory);
+}
+
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);
 process.exit(failures === 0 ? 0 : 1);

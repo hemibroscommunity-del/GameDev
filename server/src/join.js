@@ -16,7 +16,96 @@
 import { healLifeSkills } from './migrations.js';
 import { t2ReplayFlat } from './data.js';
 
+/* ═══ v2.3.1609: the JOIN DATA ALLOWLIST ═══
+ *
+ * `_handleJoin` used to build authoritative state as
+ * `{ ...defaults, ...msg.data }` and set `session.data = msg.data`.
+ * The explicit ingest below re-assigns only the rpg*-derived keys, so
+ * EVERY other field a client invented survived verbatim into
+ * `playerState` -- and, because `getAllPlayerData()` (index.js) spreads
+ * `...s.data` LAST, into the state_sync every other player receives,
+ * where it shadowed the server's own values.
+ *
+ * That made `join` a bigger write primitive than `track` ever was.  The
+ * worst instance: `_zoneEntryGraceUntil`, which `_applyDamage`
+ * (combat.js -- "the ONE place player hp goes down") reads to
+ * short-circuit damage to zero.  A single join carrying a far-future
+ * stamp bought PERMANENT immunity to monsters, all PvP, duels, arena
+ * matches and dungeon bosses, on an id needing no passphrase (rule 21's
+ * legacy-client path).  It also forged `ps.bro`, the Hemi Bro ownership
+ * badge that broverify.js documents in three places as server-owned.
+ *
+ * This is v2.3.1465's `track` remedy applied one message earlier, and
+ * deliberately in the same SHAPE: an ALLOWLIST, iterated as a fixed set
+ * rather than over the client's own keys.  An unreviewed field is
+ * DROPPED, not trusted -- and '__proto__' can never be written, because
+ * we never iterate a client-chosen key (TRAPS #6 avoided structurally,
+ * not by a guard someone can forget).
+ *
+ * A denylist of today's known internals was rejected: it closes the
+ * instances we happen to know about and re-opens the moment anyone adds
+ * a new `ps` field, which is exactly the failure mode TRAPS #13 records.
+ *
+ * Contents mirror what the live client actually sends in join.data
+ * (wsClient.js): presence + the cosmetic block.  The bootstrap values
+ * all use the `rpg*` prefix and are admitted by pattern below -- that
+ * namespace is DISJOINT from the authoritative one on purpose (the same
+ * disjointness TRACK_COSMETIC_KEYS relies on: `rpgLv`/`rpgHp`, never
+ * `level`/`hp`), so no rpg* key can collide with a real ps field.
+ * Cosmetics overlap TRACK_COSMETIC_KEYS in index.js; join carries
+ * `eqst` in addition, and does not carry mask/cape/pet. */
+const JOIN_PRESENCE_KEYS = ['x', 'y', 'd', 'z'];
+const JOIN_COSMETIC_KEYS = [
+  'name', 'color', 'avatar',
+  'bt', 'bl', 'hw', 'fh', 'hr', 'sk', 'hc', 'htc', 'fhc', 'st', 'stc',
+  'eqc', 'eql', 'eqs', 'eqst', 'pt', 'sh', 'bs',
+];
+/* rpg* bootstrap seeds: admitted by prefix, then re-read and clamped by
+ * the explicit ingest in _handleJoin (stored-wins on every reconnect).
+ * Anchored + capitalised so a crafted 'rpg' or 'rpgo' can't sneak in. */
+const JOIN_RPG_PREFIX_RE = /^rpg[A-Z][A-Za-z0-9]*$/;
+
 export const joinMethods = {
+  /* v2.3.1609: build a clean copy of join.data.  Never mutates the
+     caller's object, never iterates client keys, and drops anything not
+     named above.  `z` is additionally validated against the zone
+     allowlist (_validZone, movement.js) -- an unlisted zone id here
+     reaches _ensureZoneMonsters exactly as it does from `move`, so the
+     room-wide monster-AI outage (v2.3.1607) is joinable too. */
+  _sanitizeJoinData(raw) {
+    const out = {};
+    if (!raw || typeof raw !== 'object') return out;
+    for (const k of JOIN_PRESENCE_KEYS) {
+      const v = raw[k];
+      if (v === undefined || v === null) continue;
+      if (k === 'x' || k === 'y') {
+        if (typeof v === 'number' && Number.isFinite(v)) out[k] = v;
+      } else if (k === 'z') {
+        if (this._validZone(v)) out.z = v;
+      } else if (typeof v === 'string' && v.length <= 16) {
+        out[k] = v;
+      }
+    }
+    for (const k of JOIN_COSMETIC_KEYS) {
+      const v = raw[k];
+      if (v === undefined || v === null) continue;
+      /* Cosmetics are strings the client renders back at peers; cap the
+         length so one join can't push an unbounded blob into every
+         other player's state_sync. */
+      if (typeof v === 'string') { if (v.length <= 64) out[k] = v; }
+      else if (typeof v === 'number' && Number.isFinite(v)) out[k] = v;
+    }
+    /* rpg* seeds: copy by pattern from the client's OWN keys, but only
+       own properties, and never the magic names (belt to the regex's
+       braces -- '__proto__' cannot match JOIN_RPG_PREFIX_RE anyway). */
+    for (const k of Object.getOwnPropertyNames(raw)) {
+      if (!JOIN_RPG_PREFIX_RE.test(k)) continue;
+      const v = raw[k];
+      if (v !== undefined) out[k] = v;
+    }
+    return out;
+  },
+
   /* ═══ v2.3.1116: PERSISTENT IDENTITY (PR1 of the heavy-systems plan) ═══
    * The auth record lives in its OWN storage key ('auth:<id>'), NOT inside
    * the rpg blob -- _saveRpg rewrites the blob from a fixed field list and
@@ -140,7 +229,15 @@ export const joinMethods = {
     }
     session.id = msg.id;
     session.name = msg.name || 'Anon';
-    session.data = msg.data || {};
+    /* v2.3.1609: sanitize ONCE, here, and use the clean copy for both
+       consumers.  session.data must be the filtered object too, not
+       just the playerState spread below: getAllPlayerData() (index.js)
+       spreads `...s.data` LAST over playerState, so a field left in
+       session.data would still override authoritative values in the
+       state_sync every joiner receives -- the same three-consumer shape
+       the v2.3.1465 `track` comment documents. */
+    const cleanJoinData = this._sanitizeJoinData(msg.data);
+    session.data = cleanJoinData;
     // Protocol v2 opt-in.  v2 sessions get delta player_state emits,
     // per-entity monster/node tick deltas, and the merged zone_state
     // message on zone change.  Anything else (older clients) stays
@@ -155,7 +252,8 @@ export const joinMethods = {
     this.playerState[msg.id] = {
       x: 0, y: 0, d: 'down', z: 'town', vx: 0, vy: 0,
       dodging: false, blocking: false, dead: false, disconnected: false,
-      ...msg.data
+      /* v2.3.1609: the ALLOWLISTED copy, never the raw wire blob. */
+      ...cleanJoinData
     };
     this.stateHistory[msg.id] = [];
     // v2.3.1146: capture join.device (sent by clients since v2.3.694,
@@ -568,7 +666,10 @@ export const joinMethods = {
     this._clanSendState(msg.id);
     this.broadcastExcept(ws, { type: 'player_join', id: msg.id, name: msg.name, data: msg.data });
     // Send current state + monsters for player's zone
-    const joinZone = msg.data?.z || 'town';
+    /* v2.3.1609: read the zone off the SANITIZED state, not the raw
+       wire blob -- _sanitizeJoinData already dropped an unlisted id, so
+       this can no longer hand _ensureZoneMonsters a forged zone. */
+    const joinZone = this.playerState[msg.id]?.z || 'town';
     const zoneMonsters = (joinZone !== 'town' && joinZone !== 'farm_home') ? this._ensureZoneMonsters(joinZone) : [];
     const zoneNodes = (joinZone !== 'town' && joinZone !== 'farm_home') ? this._ensureZoneNodes(joinZone) : [];
     const zoneLootForJoin = (joinZone !== 'town' && joinZone !== 'farm_home') ? this._zoneLootForWire(joinZone) : [];

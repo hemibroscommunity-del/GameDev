@@ -62,6 +62,43 @@ await room.webSocketMessage(wsB, JSON.stringify({ type: 'join', id: 'pb', name: 
 const psA = room.playerState.pa;
 const psB = room.playerState.pb;
 
+/* ═══ v2.3.1610: monster_damage proximity shim (TEST HARNESS ONLY) ═══
+ *
+ * _handleMonsterDamage now enforces the attacker gates every sibling
+ * handler already had -- same zone, alive, and within the range clamp
+ * (250 px melee, the figure monsterCombat.js itself calls "the server's
+ * clamp"; the wider projectile caps need the matching weapon).  This
+ * suite joins at (-100000,-100000) ON PURPOSE so monsters stay idle and
+ * the dirty sets / contribution shares stay deterministic, which makes
+ * every swing below legitimately ~100k px out of range.
+ *
+ * Rather than restate the far spawn at 15+ call sites, stand the
+ * attacker on their target for the duration of each monster_damage and
+ * put them straight back.  Nothing else in the suite is about range, and
+ * the idle-AI determinism the far spawn buys is preserved.
+ *
+ * This shim does NOT weaken coverage of the gate itself: the gate is
+ * pinned positively in anticheat.test.mjs §8 (wrong-zone, dead and
+ * out-of-range attacks all denied).  If that section is ever deleted,
+ * this shim becomes a blind spot -- keep them together. */
+const _origWsm = room.webSocketMessage.bind(room);
+room.webSocketMessage = async function (ws, raw) {
+  let parsed = null;
+  try { parsed = JSON.parse(raw); } catch { /* not JSON: pass through */ }
+  if (!parsed || parsed.type !== 'monster_damage' || !parsed.payload) {
+    return _origWsm(ws, raw);
+  }
+  const sid = room.sessions.get(ws)?.id;
+  const ps = sid ? room.playerState[sid] : null;
+  const mon = (room.monsters[parsed.payload.zone] || [])
+    .find((x) => x.id === parsed.payload.monsterId);
+  if (!ps || !mon) return _origWsm(ws, raw);
+  const home = { x: ps.x, y: ps.y };
+  ps.x = mon.x; ps.y = mon.y;
+  try { return await _origWsm(ws, raw); }
+  finally { ps.x = home.x; ps.y = home.y; }
+};
+
 // Freeze the idle-wander AI so monster positions/dirty sets stay put.
 const meadowMonsters = room.monsters.meadow;
 /* v2.3.1592: meadow fielded 10 monsters when this suite was written and now

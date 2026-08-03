@@ -53,7 +53,19 @@ export const gearMethods = {
     // the _maxWeaponDmg cap, and _weaponSellValue -- sell values scale
     // down 4.8x in lockstep with the client (coins are NOT rescaled).
     const T = { greatsword: 10, sword: 6.67, bow: 7.29, staff: 8.54 };
-    return T[type] || 6.25;          // fists fallback (was 30)
+    /* v2.3.1608: own-property lookup.  The comment below used to
+       justify not validating `type` on the grounds that an unknown one
+       "already falls back to the fists base" -- true for 'banana',
+       FALSE for 'constructor'/'toString'/'valueOf', which resolve to
+       truthy INHERITED members and were returned as the base damage.
+       A function where a number belongs makes every downstream product
+       NaN, and _sanitizeWeapon preserves `type` in both strict and
+       default modes, so the poison reached _computeAttackDamage, the
+       _maxWeaponDmg cap and _weaponSellValue -- and NaN damage lands in
+       SHARED monster hp, so one crafted weapon is everyone's problem.
+       Same class as the quests.js AP-farm hole handoff item H closed;
+       this table was missed in that sweep (TRAPS #6). */
+    return Object.prototype.hasOwnProperty.call(T, type) ? T[type] : 6.25;  // fists fallback (was 30)
   },
 
   // v2.3.1104: weapon-blob sanitizer (P2 of docs/OPTIMIZATION-ROADMAP.md).
@@ -135,7 +147,15 @@ export const gearMethods = {
   // (+10.5%) -- accepted until a server amulet-forge handler exists.
   _sanitizeAmulet(a) {
     if (!a || typeof a !== 'object') return null;
-    if (!AMULET_TIER_POWER[a.tier]) return null;
+    /* v2.3.1608: own-property gate -- what the comment above already
+       PROMISED ("we can't trust the blob -> drop the whole amulet", so a
+       forged tier "can't ride the || 1.0 fallback").  Truthiness broke
+       that promise: AMULET_TIER_POWER['constructor'] is a truthy
+       inherited member, so the amulet was KEPT with tier:'constructor'
+       and rode into the authoritative damage roll as NaN.  Also heals
+       an already-poisoned stored blob on the next reconnect, per the
+       v2.3.1104 sanitize-on-load posture (TRAPS #6). */
+    if (!Object.prototype.hasOwnProperty.call(AMULET_TIER_POWER, a.tier)) return null;
     const gem = (typeof a.gem === 'string' && AMULET_GEMS.has(a.gem)) ? a.gem : null;
     const out = { tier: a.tier, gem };
     if (typeof a.name === 'string') out.name = a.name.slice(0, 40);
@@ -241,6 +261,17 @@ export const gearMethods = {
     if (wantWw !== !!isWoodwork) return;
 
     const table = wantWw ? this._WOODWORKING_TIERS_DATA() : this._BLACKSMITH_TIERS_DATA();
+    /* v2.3.1608: own-property gate.  With a truthiness check a tierKey
+       of 'constructor' resolved to a truthy inherited member, and then
+       EVERY gate below compared against undefined and passed:
+         skillLvl < tier.minLvl        -> n < undefined -> false
+         ps[reqStat] < (tier.statReq||0) -> n < 0       -> false
+         (ps.coins||0) < tier.goldCost -> n < undefined -> false
+       i.e. a free, unlimited weapon mint with no level, stat, coin or
+       resource cost, plus the unconditional crafting XP.  Identical to
+       the hole handoff item H closed in quests.js / amulet.js:139 --
+       the forge was missed there (TRAPS #6). */
+    if (!Object.prototype.hasOwnProperty.call(table, tierKey)) return;
     const tier = table[tierKey];
     if (!tier) return;
 

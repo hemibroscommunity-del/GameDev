@@ -1073,6 +1073,24 @@ export function setupWebSocket(ctx) {
                  identical and this is a no-op; after a clamp,
                  truncation, or stale-echo scale they converge here. */
               if (msg.payload.t2Flat && typeof msg.payload.t2Flat === 'object') S.rpg.t2Flat = msg.payload.t2Flat;
+              /* v2.3.1606: the five T1 raw stats, adopted present-gated.
+                 The server has always PERSISTED these but never echoed
+                 them, so a client with no localStorage copy (new device,
+                 Login Key, cleared data) started at 0, reported 0 back in
+                 its very first stats_update, and the worker wrote the 0
+                 over the stored value -- a character wipe triggered by
+                 nothing more than logging in somewhere new.  Adopting the
+                 echo BEFORE that first emit is what closes the loop.
+                 Mid-session these only arrive in a v2 delta when they
+                 actually changed server-side (i.e. right after this
+                 client reported them), so it stays idempotent and never
+                 stomps live use-training -- same posture as the
+                 weaponSkills block above. */
+              if (typeof msg.payload.power === 'number') S.rpg.power = msg.payload.power;
+              if (typeof msg.payload.vitality === 'number') S.rpg.vitality = msg.payload.vitality;
+              if (typeof msg.payload.endurance === 'number') S.rpg.endurance = msg.payload.endurance;
+              if (typeof msg.payload.agility === 'number') S.rpg.agility = msg.payload.agility;
+              if (typeof msg.payload.mind === 'number') S.rpg.mind = msg.payload.mind;
               setRpgState(_objectSpread({}, S.rpg));
               try { localStorage.setItem('bt_rpg', JSON.stringify(S.rpg)); } catch (e) {}
               break;

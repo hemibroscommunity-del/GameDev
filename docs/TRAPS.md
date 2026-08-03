@@ -166,6 +166,21 @@ unreviewed field is dropped instead of trusted. **Receipt:** v2.3.1465 —
 handoff rule 16, `anticheat.test.mjs` §7, WIRE-PROTOCOL "track is
 cosmetics-only".
 
+**Second receipt, v2.3.1609 — `join` was the same primitive, bigger, and
+survived the v2.3.1465 pass by four months.** `_handleJoin` spread the
+raw blob into authoritative `playerState` AND into `session.data`, which
+`getAllPlayerData()` spreads LAST over `playerState` — so a forged field
+also overrode real state in the `state_sync` every other player got. One
+join carrying `_zoneEntryGraceUntil` bought permanent immunity to
+monsters, all PvP, duels, arena and dungeon bosses, on an id that needs
+no passphrase. **The compounding lesson:** fixing the handler you were
+looking at is not fixing the CLASS. After closing a trust hole, grep for
+every other handler with the same write shape — `...msg.data`,
+`Object.assign(ps, …)`, a spread into authoritative state — and close
+them in the same pass, or the next audit finds the one you walked past.
+Closed with `_sanitizeJoinData` (join.js), same allowlist shape;
+`anticheat.test.mjs` §8.
+
 ## 14. Switching `clipsHair` on because a hat has a mask folder
 
 **Tempting:** `make_hairmask.py --all-with-masks` treats the presence of a

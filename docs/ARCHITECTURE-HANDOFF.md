@@ -162,7 +162,19 @@ extended.
 16. **Never trust client-supplied value blobs.** The marketplace ignores
     the request's `item` and takes from the server's own stash by index;
     imitate this shape (server's copy by reference, never the wire blob).
-    **v2.3.1465 — the surviving violation was `track`.** Its handler
+    **v2.3.1609 — `join` was a SECOND, larger instance of the same
+    primitive, and the v2.3.1465 pass did not reach it.** `_handleJoin`
+    built authoritative state as `{...defaults, ...msg.data}` and set
+    `session.data = msg.data`, so every unreviewed field survived into
+    `playerState` — and, because `getAllPlayerData()` spreads `...s.data`
+    LAST, into the `state_sync` every other player receives. A forged
+    `_zoneEntryGraceUntil` bought permanent immunity to all damage
+    (`_applyDamage` short-circuits on it) on an id needing no passphrase.
+    Closed with the same allowlist shape as `track`
+    (`_sanitizeJoinData`, join.js), pinned by `anticheat.test.mjs` §8.
+    The lesson generalises: when you close a trust hole, grep for OTHER
+    handlers with the same WRITE shape before declaring the class shut.
+    **v2.3.1465 — the first violation was `track`.** Its handler
     `Object.assign`-ed the raw client blob into authoritative
     `playerState`, so one crafted message forged coins/power/level,
     minted a weapon past `_sanitizeWeapon`'s tierMult ceiling, and

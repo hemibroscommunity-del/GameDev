@@ -392,6 +392,34 @@ export const combatMethods = {
     const attackerPs = this.playerState[session.id];
     const isSpecial = !!payload.special;
 
+    /* ═══ v2.3.1610: attacker gates -- the ones every SIBLING handler
+       already had and this one never did (gathering.js _handleNodeStrike,
+       index.js _handleLootPickup).  The monster is resolved from the
+       CLIENT-SUPPLIED `zone`, so without these a player standing in town
+       could kill monsters in any zone -- including inside another
+       player's live dungeon instance, draining its wave -- and a dead or
+       disconnected player could keep swinging.
+       Fail closed on a missing playerState: no attacker, no damage. */
+    if (!attackerPs) return;
+    if (attackerPs.dead || attackerPs.dying || attackerPs.disconnected) return;
+    if (attackerPs.z !== zone) return;
+    /* Proximity, mirroring the PvP posture (combat.js PVP_TUNING):
+       the widened projectile caps are honored only when the server knows
+       the attacker actually CARRIES the matching weapon, otherwise we
+       fall back to the tight melee clamp.  Same reasoning as v2.3.1306 --
+       a bare slot:'ranged' claim from a weaponless attacker must not buy
+       zone-scale reach. */
+    const _rKind = (payload.slot === 'ranged' && attackerPs.rangedWeapon) ? 'ranged'
+      : (payload.slot === 'staff' && attackerPs.staffWeapon) ? 'staff'
+      : 'melee';
+    const _rCap = this.PVP_TUNING.RANGE_CAP[_rKind];
+    if (typeof attackerPs.x === 'number' && typeof attackerPs.y === 'number'
+        && typeof m.x === 'number' && typeof m.y === 'number') {
+      const _rdx = attackerPs.x - m.x;
+      const _rdy = attackerPs.y - m.y;
+      if (_rdx * _rdx + _rdy * _rdy > _rCap * _rCap) return;
+    }
+
     // v2.3.1134: HIT-CADENCE FLOOR.  Until now damage-per-hit was capped
     // but hit FREQUENCY was not -- a hacked client could spam
     // monster_damage far faster than any weapon swings.  Now that Tempo

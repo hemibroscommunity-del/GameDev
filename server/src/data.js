@@ -327,6 +327,49 @@ export const ZONES = {
       tidal:   { w:32, h:32, level:[1,2],  element:'water', secondary:'venom', lawless:true, spawns:[{arch:'brute',count:3}] },          /* band: [8,25] */
     };
 
+/* v2.3.1607: the ZONE ID ALLOWLIST -- the only zone strings a client may
+ * put in ps.z.  ZONES above lists only the zones the SERVER spawns
+ * monsters for; a player also legitimately stands in the three hubs and
+ * in the two endgame zones the server has no spawn config for, so those
+ * five are named here explicitly.
+ *
+ * WHY THIS EXISTS.  ps.z came straight off the wire with no validation,
+ * and this.monsters / this.nodes / this.loot are keyed by it.  A `move`
+ * carrying z:'__proto__' made _ensureZoneMonsters return Object.prototype
+ * (truthy, so the spawn guard never fired), whose .length is undefined,
+ * so _tickMonsters' `length === 0` continue-guard fell through into
+ * `for (const m of monsters)` on a non-iterable -- a throw every tick,
+ * swallowed by the v2.3.1562 guard(), which left monster AI, respawn,
+ * monster->player damage and monster deltas DEAD FOR THE WHOLE SHARED
+ * ROOM for as long as that one player's ps.z stayed poisoned.  ps.z is
+ * written before the throw, so a single unauthenticated message was a
+ * permanent room-wide outage.  Membership validation also bounds the
+ * zone-keyed maps, which arbitrary strings could otherwise grow without
+ * limit (one key per invented zone, walked by _tickNodes at 45Hz).
+ *
+ * MIRROR of src/data/zones.js -- test/zones.test.mjs compares the two
+ * key sets and FAILS if they drift.  That test is the safety net for the
+ * real hazard here: a zone added client-side but not listed here would
+ * strand a player at its entrance, which is worse than the bug this
+ * closes.  Add new zones to BOTH files in the same PR. */
+export const VALID_ZONE_IDS = new Set([
+      ...Object.keys(ZONES),
+      /* Hubs -- no monsters, no spawn config, special-cased all over the
+         server (the `z !== 'town' && z !== 'farm_home'` guards). */
+      'town', 'farm_home', 'worldview',
+      /* v2.3.1438 endgame pair.  Client-side ZONES has them (BroTown.jsx
+         sets currentZone directly); the server has no spawn entry, so
+         _spawnZoneMonsters returns [] and they tick empty -- legal, and
+         they must NOT be rejected or the endgame is unreachable. */
+      'shadow', 'radiant',
+    ]);
+
+/* v2.3.1607: dungeon instance zones are minted server-side as
+ * 'dungeon:' + id (dungeon.js).  Validated by SHAPE here and by
+ * live-instance membership at the call site -- never by the client's
+ * say-so alone. */
+export const DUNGEON_ZONE_RE = /^dungeon:[A-Za-z0-9_-]{1,32}$/;
+
 export const FISH_TIERS = [
       { lvl: 1,  name: 'minnow' },
       { lvl: 6,  name: 'clownfish' },

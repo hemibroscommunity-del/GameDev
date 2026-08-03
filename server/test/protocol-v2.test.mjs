@@ -98,7 +98,20 @@ meadowMonsters.forEach((m, i) => {
   // displaced monster home, dirtying it.
 });
 const target = meadowMonsters[0];
+/* v2.3.1610: _handleMonsterDamage now enforces the attacker gates every
+   sibling handler already had (same zone, alive, in range -- the melee
+   clamp is the 250 px the client itself calls "the server's clamp" in
+   monsterCombat.js).  This suite joins at (-100000,-100000) ON PURPOSE,
+   to keep monster AI idle so the dirty sets stay deterministic, so the
+   attack is legitimately 100k px out of range.  Stand p1 on the target
+   for the swing and put it straight back -- the delta assertions below
+   are about protocol-v2 narrowing, not about combat range, and the
+   idle-AI determinism the far spawn buys must survive. */
+const _p1 = room.playerState.p1;
+const _p1Home = { x: _p1.x, y: _p1.y };
+_p1.x = target.x; _p1.y = target.y;
 await room.webSocketMessage(ws1, JSON.stringify({ type: 'monster_damage', payload: { monsterId: target.id, zone: 'meadow', dmg: 3 } }));
+_p1.x = _p1Home.x; _p1.y = _p1Home.y;
 const meadowNodes = room._ensureZoneNodes('meadow');
 meadowNodes[2].alive = false;
 meadowNodes[2].respawnAt = Date.now() - 1;

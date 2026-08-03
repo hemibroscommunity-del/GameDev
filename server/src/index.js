@@ -439,16 +439,30 @@ export class GameRoom {
     this.LAGCOMP_RTT_CAP = 300;
     this.LAGCOMP_RTT_ALPHA = 0.3;
 
-    // Server-authoritative monsters
-    this.monsters = {}; // zoneId -> [monster, ...]
+    /* v2.3.1607: how long a remembered per-zone position stays
+       authoritative for the re-entry speed check in _handleMove.  Long
+       enough to catch a flip-out-flip-back teleport (which needs to be
+       fast to be useful), short enough that a genuine round trip is
+       always inside the speed budget by the time it returns. */
+    this.ZONE_REENTRY_MS = 5000;
+
+    /* Server-authoritative monsters.
+       v2.3.1607: null-prototype, like every other map keyed by a
+       client-supplied string (TRAPS #6).  The zone allowlist in
+       _validZone is the real gate -- an unlisted id never reaches these
+       maps now -- but these stay null-proto as defence in depth, so the
+       NEXT path that forgets to validate degrades into a harmless own
+       key instead of returning Object.prototype and making
+       _tickMonsters throw room-wide, every tick. */
+    this.monsters = Object.create(null); // zoneId -> [monster, ...]
     this.dirtyMonsters = new Set(); // zoneIds with changed monsters
     // Protocol v2 per-entity dirty tracking.  v1 sessions still get the
     // full dirty-zone entity list; v2 sessions get only the entities in
     // these id sets (client merges by id).  Zone-level dirtyMonsters /
     // dirtyNodes stay authoritative for "does this tick carry a delta
     // at all" — the id sets only narrow the v2 payload.
-    this.dirtyMonsterIds = {}; // zoneId -> Set(monsterId)
-    this.dirtyNodeIds = {};    // zoneId -> Set(nodeId)
+    this.dirtyMonsterIds = Object.create(null); // zoneId -> Set(monsterId)  /* v2.3.1607: null-proto (TRAPS #6) */
+    this.dirtyNodeIds = Object.create(null);    // zoneId -> Set(nodeId)     /* v2.3.1607: null-proto (TRAPS #6) */
     /* v2.3.1592 (owner: "only 3 monsters per zone ... but with quick
        respawn"): 15s -> 5s.  The two halves of that request are one change —
        zone populations dropped to 3 (data.js ZONES.spawns), so at the old
@@ -475,7 +489,7 @@ export class GameRoom {
     // Parallel to the monster pattern above: lazy-spawn on first player
     // entry per zone, store in this.nodes, mark dirty on state change,
     // tick respawns alongside _tickMonsters().
-    this.nodes = {}; // zoneId -> [node, ...]
+    this.nodes = Object.create(null); // zoneId -> [node, ...]  /* v2.3.1607: null-proto (TRAPS #6) */
     this.dirtyNodes = new Set(); // zoneIds with changed node state
     /* v2.3.1592 (owner: "one resource per zone but with quick respawn"):
        2 min -> 20s, paired with the 9-nodes-per-zone -> 3 drop in
@@ -525,7 +539,7 @@ export class GameRoom {
     // requests via loot_pickup.  Server validates each pickup (range,
     // recipient, single-claim) and emits a private loot_credit back to
     // the picker with their authorized share + any one-of inventory.
-    this.loot = {}; // zoneId -> [pile, ...]
+    this.loot = Object.create(null); // zoneId -> [pile, ...]  /* v2.3.1607: null-proto (TRAPS #6) */
     this.LOOT_EXPIRY_MS = 60000;
     // Death-drop timing: dying player has DEATH_PILE_OWNER_MS alone
     // to recover their dropped inventory; after that anyone in zone
@@ -1327,7 +1341,11 @@ export class GameRoom {
   // greatsword shares the 'sword' (melee) category, per WEAPON_CATEGORY.
   _wpnCat(type) {
     const C = { greatsword: 'sword', sword: 'sword', bow: 'bow', staff: 'staff' };
-    return C[type] || 'sword';
+    /* v2.3.1608: own-property lookup -- C['constructor'] is a truthy
+       inherited FUNCTION, which would be returned as the category and
+       then used as a key into the channel tables (TRAPS #6, same sweep
+       as gear.js _weaponBase). */
+    return Object.prototype.hasOwnProperty.call(C, type) ? C[type] : 'sword';
   }
   // Damage-channel POINT total for the type's category (edge / drawPower /
   // spellPower) — mirror gameSystems.js weaponDamageBonusFor.
@@ -1696,6 +1714,16 @@ export class GameRoom {
       _hook('deathPile', () => this._spawnDeathPile(ps, playerId));
       ps.inventory = {};
     }
+    /* v2.3.1610: remember that this death was inventory-PROTECTED, so
+       the respawn tick's defence-in-depth wipe below doesn't undo the
+       protection five seconds later.  A clean duel/arena kill
+       deliberately spawns NO death pile and skips the wipe here -- but
+       _tickPlayerRespawn wiped ps.inventory unconditionally anyway, so
+       the items were DESTROYED rather than transferred: strictly worse
+       than a normal death, where at least the killer or a bystander
+       could pick the pile up.  Set on the state (not a closure) because
+       the wipe happens in a later tick, in another function. */
+    ps._noDropDeath = !!_duelKill;
     this._saveRpg(playerId, ps);
     this._queuePlayerStateFlush(playerId);
     const ws = this._wsBySessionId(playerId);
@@ -1743,7 +1771,13 @@ export class GameRoom {
       // re-seeded inventory or dmgFromMonster between death and
       // respawn (e.g., a late monster_attack tick).  Matches the
       // wipe in _handlePlayerDeath.
-      ps.inventory = {};
+      // v2.3.1610: ...but NOT when the death was inventory-protected
+      // (clean duel / arena kill).  That path spawns no pile on
+      // purpose, so wiping here destroyed the items outright.  The flag
+      // is cleared here regardless, so it protects exactly one respawn
+      // and every ordinary death still gets the re-wipe.
+      if (!ps._noDropDeath) ps.inventory = {};
+      delete ps._noDropDeath;
       ps.dmgFromMonster = {};
       this._saveRpg(id, ps);
       const ws = this._wsBySessionId(id);

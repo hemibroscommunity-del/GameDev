@@ -508,5 +508,220 @@ const psB = room.playerState.pb;
   check('track: missing / non-object data is a no-op', psT.name === beforeName, psT.name);
 }
 
+/* ══════════════════════════════════════════════════════════════════
+ * §8 — v2.3.1606-1610 audit fixes (docs/AUDIT-2026-08-03.md)
+ * ══════════════════════════════════════════════════════════════════ */
+{
+  const wsJ = fakeWs('joinAllow');
+  room.sessions.set(wsJ, baseSession());
+
+  /* ── C-1: join is an ALLOWLIST, not a raw spread ──────────────────
+     A forged _zoneEntryGraceUntil used to buy permanent immunity to
+     every damage source, because _applyDamage short-circuits on it.
+     The field must reach NEITHER playerState NOR session.data (the
+     latter is spread LAST over playerState by getAllPlayerData, so it
+     would still ship in every joiner's state_sync). */
+  await room.webSocketMessage(wsJ, JSON.stringify({
+    type: 'join', id: 'p_allow', name: 'Allow', protocolVersion: 2,
+    data: {
+      x: 10, y: 20, z: 'meadow', name: 'Allow', sk: 'pale',
+      _zoneEntryGraceUntil: 4102444800000,
+      bro: { tokenId: '999', address: '0xdead' },
+      _evadeAcc: 999, coins: 999999999, level: 500, power: 99999,
+      rpgCoins: 42,
+    },
+  }));
+  const psJ = room.playerState.p_allow;
+  check('join: forged _zoneEntryGraceUntil is dropped from playerState',
+    psJ && psJ._zoneEntryGraceUntil === undefined, psJ && psJ._zoneEntryGraceUntil);
+  check('join: forged _zoneEntryGraceUntil is dropped from session.data',
+    room.sessions.get(wsJ).data._zoneEntryGraceUntil === undefined);
+  const allData = room.getAllPlayerData();
+  check('join: forged field cannot ride session.data into state_sync',
+    allData.p_allow && allData.p_allow._zoneEntryGraceUntil === undefined,
+    allData.p_allow && allData.p_allow._zoneEntryGraceUntil);
+  check('join: forged bro badge is dropped (broverify is server-owned)',
+    psJ && psJ.bro === undefined, psJ && psJ.bro);
+  check('join: unknown internal (_evadeAcc) is dropped',
+    psJ && psJ._evadeAcc === undefined, psJ && psJ._evadeAcc);
+  check('join: allowlisted cosmetics + presence still land',
+    psJ && psJ.sk === 'pale' && psJ.x === 10 && psJ.z === 'meadow',
+    psJ && { sk: psJ.sk, x: psJ.x, z: psJ.z });
+  /* The damage short-circuit must actually be gone. */
+  const dmgRes = room._applyDamage(psJ, 500, false);
+  check('join: a forged grace stamp no longer zeroes incoming damage',
+    dmgRes.dmgTaken > 0 && !dmgRes.graced, dmgRes);
+
+  /* ── C-3: an unlisted zone id never reaches the zone-keyed maps ───
+     z:'__proto__' made _ensureZoneMonsters return Object.prototype,
+     whose .length is undefined, so _tickMonsters' `length === 0`
+     guard fell through into a for-of on a non-iterable -- a throw
+     every tick, swallowed by guard(), killing monster AI room-wide. */
+  check('zone: __proto__ is rejected by _validZone', room._validZone('__proto__') === false);
+  check('zone: constructor is rejected by _validZone', room._validZone('constructor') === false);
+  check('zone: an invented zone is rejected', room._validZone('nowhere') === false);
+  check('zone: real zones and hubs are accepted',
+    room._validZone('meadow') && room._validZone('town')
+    && room._validZone('shadow') && room._validZone('worldview'));
+  check('zone: a dungeon zone with no live instance is rejected',
+    room._validZone('dungeon:deadbeef') === false);
+
+  const zonesBefore = Object.keys(room.monsters).length;
+  await room.webSocketMessage(wsJ, JSON.stringify({
+    type: 'move', x: 12, y: 22, z: '__proto__',
+  }));
+  check('zone: a __proto__ move leaves ps.z on the last good zone',
+    psJ.z === 'meadow', psJ.z);
+  check('zone: a __proto__ move creates no zone-keyed entry',
+    Object.keys(room.monsters).length === zonesBefore
+    && !Object.prototype.hasOwnProperty.call(room.monsters, '__proto__'));
+  check('zone: this.monsters is null-prototype (TRAPS #6 defence in depth)',
+    Object.getPrototypeOf(room.monsters) === null);
+  /* The whole point: the tick must survive it. */
+  let tickThrew = false;
+  try { room._tickMonsters(); } catch { tickThrew = true; }
+  check('zone: _tickMonsters does not throw after a forged zone attempt', !tickThrew);
+
+  /* ── C-6: the zone-flip anti-teleport bypass ─────────────────────
+     The cap is skipped on z-change for a real reason, but nothing
+     re-validated on the way BACK, so flip-out + flip-back wrote an
+     arbitrary position into the original zone. */
+  psJ.x = 100; psJ.y = 100; psJ.z = 'meadow';
+  psJ.lastMoveAt = Date.now() - 50;
+  await room.webSocketMessage(wsJ, JSON.stringify({ type: 'move', x: 100, y: 100, z: 'tidal' }));
+  await room.webSocketMessage(wsJ, JSON.stringify({ type: 'move', x: 9000, y: 9000, z: 'meadow' }));
+  const flipped = (psJ.x === 9000 && psJ.y === 9000);
+  check('move: zone-flip teleport back into the origin zone is rejected',
+    !flipped, { x: psJ.x, y: psJ.y, z: psJ.z });
+  /* ...while an honest transition is untouched: a player who leaves and
+     returns lands near the border they left from, well inside budget. */
+  psJ.x = 100; psJ.y = 100; psJ.z = 'meadow'; psJ.lastMoveAt = Date.now();
+  await room.webSocketMessage(wsJ, JSON.stringify({ type: 'move', x: 100, y: 100, z: 'tidal' }));
+  await room.webSocketMessage(wsJ, JSON.stringify({ type: 'move', x: 130, y: 120, z: 'meadow' }));
+  check('move: an honest leave-and-return transition still lands',
+    psJ.z === 'meadow' && psJ.x === 130, { x: psJ.x, z: psJ.z });
+}
+
+{
+  /* ── C-4 / C-5: prototype keys in config-table lookups ───────────
+     Same class handoff item H closed in quests.js / amulet.js; these
+     four tables were missed by that sweep. */
+  check('gear: _weaponBase("constructor") returns the fists number, not a function',
+    typeof room._weaponBase('constructor') === 'number'
+    && !Number.isNaN(room._weaponBase('constructor') * 2), room._weaponBase('constructor'));
+  check('gear: _weaponBase("toString") is NaN-free',
+    !Number.isNaN(room._weaponBase('toString') * 2));
+  check('gear: _wpnCat("constructor") falls back to sword',
+    room._wpnCat('constructor') === 'sword', room._wpnCat('constructor'));
+  check('gear: _sanitizeAmulet drops a prototype tier',
+    room._sanitizeAmulet({ tier: 'constructor' }) === null);
+  check('gear: _sanitizeAmulet still accepts a real tier',
+    room._sanitizeAmulet({ tier: 'mythic' }) !== null
+    || room._sanitizeAmulet({ tier: 'common' }) !== null);
+  check('cooking: _getShopItem("constructor") is not a shop item',
+    room._getShopItem('constructor') === null);
+
+  /* forge_weapon with a prototype tierKey used to pass EVERY gate,
+     because each compared against undefined. */
+  const wsF = fakeWs('forge');
+  room.sessions.set(wsF, baseSession());
+  await room.webSocketMessage(wsF, JSON.stringify({
+    type: 'join', id: 'p_forge', name: 'Forge', protocolVersion: 2,
+    data: { x: 0, y: 0, z: 'town' },
+  }));
+  const psF = room.playerState.p_forge;
+  psF.coins = 0;
+  const stashBefore = (psF.weaponStash || []).length;
+  await room.webSocketMessage(wsF, JSON.stringify({
+    type: 'forge_weapon', payload: { tierKey: 'constructor', weaponType: 'sword' },
+  }));
+  await room.webSocketMessage(wsF, JSON.stringify({
+    type: 'forge_weapon', payload: { tierKey: '__proto__', weaponType: 'sword' },
+  }));
+  check('forge: a prototype tierKey mints nothing',
+    (psF.weaponStash || []).length === stashBefore
+    && !psF.weapon, { stash: (psF.weaponStash || []).length });
+  check('forge: a prototype tierKey does not NaN the coin balance',
+    !Number.isNaN(psF.coins), psF.coins);
+}
+
+{
+  /* ── C-2: T1 raw stats must be ECHOED, and a client 0 must not
+     overwrite a stored non-zero (the new-device character wipe). ── */
+  const wsS = fakeWs('stats');
+  room.sessions.set(wsS, baseSession());
+  await room.webSocketMessage(wsS, JSON.stringify({
+    type: 'join', id: 'p_stats', name: 'Stats', protocolVersion: 2,
+    data: { x: 0, y: 0, z: 'town' },
+  }));
+  const psS = room.playerState.p_stats;
+  psS.level = 40; psS.power = 55; psS.vitality = 44;
+  psS.endurance = 33; psS.agility = 22; psS.mind = 11;
+  wsS.sent.length = 0;
+  room.sessions.get(wsS).lastPlayerStateSent = {};
+  room._sendPlayerState(wsS, 'p_stats');
+  const echo = msgsOfType(wsS, 'player_state').pop();
+  check('player_state: the five T1 raw stats are echoed',
+    echo && echo.payload.power === 55 && echo.payload.vitality === 44
+    && echo.payload.endurance === 33 && echo.payload.agility === 22
+    && echo.payload.mind === 11, echo && echo.payload);
+
+  /* An old cached client with no localStorage copy reports zeros. */
+  room._handleStatsUpdate(room.sessions.get(wsS), {
+    power: 0, vitality: 0, endurance: 0, agility: 0, mind: 0,
+  });
+  check('stats_update: a reported 0 never overwrites a stored non-zero stat',
+    psS.power === 55 && psS.vitality === 44 && psS.mind === 11,
+    { power: psS.power, vitality: psS.vitality, mind: psS.mind });
+  /* ...but a real change still lands. */
+  room._handleStatsUpdate(room.sessions.get(wsS), { power: 60 });
+  check('stats_update: a genuine stat change still applies', psS.power === 60, psS.power);
+}
+
+{
+  /* ── H-1: monster_damage attacker gates.  This section is what keeps
+     combat-lifecycle.test.mjs's proximity shim honest -- if you delete
+     this, that shim becomes a blind spot. ── */
+  const wsM = fakeWs('mdmg');
+  room.sessions.set(wsM, baseSession());
+  await room.webSocketMessage(wsM, JSON.stringify({
+    type: 'join', id: 'p_mdmg', name: 'MD', protocolVersion: 2,
+    data: { x: 0, y: 0, z: 'town' },
+  }));
+  const psM = room.playerState.p_mdmg;
+  const mons = room._ensureZoneMonsters('meadow');
+  const tgt = mons[0];
+  tgt.alive = true; tgt.hp = tgt.maxHp; tgt.x = 400; tgt.y = 400;
+
+  /* Standing in town, hitting a meadow monster. */
+  const hp0 = tgt.hp;
+  await room.webSocketMessage(wsM, JSON.stringify({
+    type: 'monster_damage', payload: { monsterId: tgt.id, zone: 'meadow', slot: 'melee' },
+  }));
+  check('monster_damage: an out-of-zone attacker is denied', tgt.hp === hp0, tgt.hp);
+
+  /* In the right zone but across the map. */
+  psM.z = 'meadow'; psM.x = 40000; psM.y = 40000;
+  await room.webSocketMessage(wsM, JSON.stringify({
+    type: 'monster_damage', payload: { monsterId: tgt.id, zone: 'meadow', slot: 'melee' },
+  }));
+  check('monster_damage: an out-of-range attacker is denied', tgt.hp === hp0, tgt.hp);
+
+  /* In range but dead. */
+  psM.x = tgt.x; psM.y = tgt.y; psM.dead = true;
+  await room.webSocketMessage(wsM, JSON.stringify({
+    type: 'monster_damage', payload: { monsterId: tgt.id, zone: 'meadow', slot: 'melee' },
+  }));
+  check('monster_damage: a dead attacker is denied', tgt.hp === hp0, tgt.hp);
+
+  /* Alive, in zone, in range -- must still work. */
+  psM.dead = false; psM.dying = false; psM.disconnected = false;
+  delete psM._monHitCad;
+  await room.webSocketMessage(wsM, JSON.stringify({
+    type: 'monster_damage', payload: { monsterId: tgt.id, zone: 'meadow', slot: 'melee' },
+  }));
+  check('monster_damage: a legitimate in-range hit still lands', tgt.hp < hp0, tgt.hp);
+}
+
 console.log(failures === 0 ? '\nALL TESTS PASSED' : `\n${failures} TEST(S) FAILED`);
 process.exit(failures === 0 ? 0 : 1);
