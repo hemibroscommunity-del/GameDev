@@ -487,6 +487,12 @@ const psB = room.playerState.pb;
   };
   const origLb = room.env.LEADERBOARD;
   room.env = { ...room.env, LEADERBOARD: { idFromName: () => 'x', get: () => ({ fetch: async (r) => { lbBody = JSON.parse(r.__body); return {}; } }) } };
+  /* v2.3.1608: the join above already reported (force=true), and the
+     track path is throttled now, so clear the stamp to let THIS report
+     through. The property under test — that a report carries the SERVER's
+     level and not the client's claim — is orthogonal to the throttle;
+     this just guarantees a report actually happens to inspect. */
+  room.sessions.get(wsT)._lbAt = 0;
   await room.webSocketMessage(wsT, JSON.stringify({ type: 'track', data: { rpgLv: 500 } }));
   globalThis.Request = RealRequest;
   room.env = { ...room.env, LEADERBOARD: origLb };
@@ -506,6 +512,75 @@ const psB = room.playerState.pb;
   await room.webSocketMessage(wsT, JSON.stringify({ type: 'track' }));
   await room.webSocketMessage(wsT, JSON.stringify({ type: 'track', data: 'nope' }));
   check('track: missing / non-object data is a no-op', psT.name === beforeName, psT.name);
+}
+
+// ── 7b. v2.3.1608: the leaderboard report is throttled ──
+//
+// `track` arrives every 2 s and used to drive one cross-DO fetch AND one
+// unconditional Leaderboard storage.put per message — 1,800 billed rows
+// and 1,800 billed requests per player-hour to mostly rewrite the same
+// record. This pins the gate: identical records don't report, real
+// changes do (once past the floor), and lastSeen still gets refreshed.
+{
+  const wsL = fakeWs('lb');
+  room.sessions.set(wsL, baseSession());
+  let reports = 0;
+  const RealRequest = globalThis.Request;
+  globalThis.Request = class extends RealRequest {
+    constructor(u, i) { super(u, i); this.__body = i && i.body; }
+  };
+  const origLb = room.env.LEADERBOARD;
+  room.env = { ...room.env, LEADERBOARD: { idFromName: () => 'x', get: () => ({ fetch: async () => { reports++; return {}; } }) } };
+
+  await room.webSocketMessage(wsL, JSON.stringify({
+    type: 'join', id: 'plb', name: 'Board', protocolVersion: 2,
+    data: { x: -100000, y: -100000, z: 'meadow' },
+  }));
+  check('lb throttle: join reports immediately (force)', reports === 1, reports);
+
+  // 30 identical tracks — a full minute of real client cadence.
+  const sess = room.sessions.get(wsL);
+  for (let i = 0; i < 30; i++) {
+    await room.webSocketMessage(wsL, JSON.stringify({ type: 'track', data: { name: 'Board', color: '#abc' } }));
+  }
+  check('lb throttle: 30 identical tracks report ZERO times', reports === 1, reports);
+
+  // A real change still has to wait out the floor…
+  await room.webSocketMessage(wsL, JSON.stringify({
+    type: 'track', data: { name: 'Board', color: '#abc', rpgData: { kills: 5 } },
+  }));
+  check('lb throttle: a change inside the floor is deferred, not lost', reports === 1, reports);
+
+  // …and lands on the next track once the floor has passed.
+  sess._lbAt = Date.now() - room.LEADERBOARD_MIN_MS - 1;
+  await room.webSocketMessage(wsL, JSON.stringify({
+    type: 'track', data: { name: 'Board', color: '#abc', rpgData: { kills: 5 } },
+  }));
+  check('lb throttle: a changed record reports once past the floor', reports === 2, reports);
+
+  // Unchanged again: the floor alone must NOT let it through.
+  sess._lbAt = Date.now() - room.LEADERBOARD_MIN_MS - 1;
+  await room.webSocketMessage(wsL, JSON.stringify({
+    type: 'track', data: { name: 'Board', color: '#abc', rpgData: { kills: 5 } },
+  }));
+  check('lb throttle: unchanged record does not report on the floor alone', reports === 2, reports);
+
+  // The heartbeat is what keeps lastSeen fresh vs getTop's 7-day filter.
+  sess._lbAt = Date.now() - room.LEADERBOARD_HEARTBEAT_MS - 1;
+  await room.webSocketMessage(wsL, JSON.stringify({
+    type: 'track', data: { name: 'Board', color: '#abc', rpgData: { kills: 5 } },
+  }));
+  check('lb throttle: heartbeat reports an unchanged record', reports === 3, reports);
+
+  // Fields the Leaderboard DO does not persist must not trigger a write.
+  sess._lbAt = Date.now() - room.LEADERBOARD_MIN_MS - 1;
+  await room.webSocketMessage(wsL, JSON.stringify({
+    type: 'track', data: { name: 'Board', color: '#abc', avatar: 'changed-every-time', rpgData: { kills: 5 } },
+  }));
+  check('lb throttle: churn in a non-leaderboard field does not report', reports === 3, reports);
+
+  globalThis.Request = RealRequest;
+  room.env = { ...room.env, LEADERBOARD: origLb };
 }
 
 console.log(failures === 0 ? '\nALL TESTS PASSED' : `\n${failures} TEST(S) FAILED`);
