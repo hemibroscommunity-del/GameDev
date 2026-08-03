@@ -1918,6 +1918,45 @@ export var BroTown = function BroTown(_ref0) {
      v2.3.784: the ~1,560-line effect body moved verbatim to
      src/networking/wsClient.js setupWebSocket (REBUILD-PLAN Phase 5);
      ctx carries the closure captures it used to take from this scope. */
+  /* v2.3.1637: UI PANEL REGISTRY for headless capture (tools/qa/qa-ui-shots.mjs).
+     Panel visibility lives in React useState, so an automated pass had no
+     way to open a menu without walking the player to the right building and
+     clicking it -- which cannot reach panels gated on state a fresh account
+     does not have (a clan, a party, an incoming trade).
+     Same posture as the window._gameState / window._gameFns autotest hooks
+     that have been here since the early harnesses: this exposes ONLY
+     client-local VIEW state.  Every setter below toggles what is drawn on
+     this device; none of them grants anything.  The server validates every
+     action independently and treats this client as hostile regardless
+     (docs/ARCHITECTURE-HANDOFF.md rule zero), so opening a panel you have
+     not earned shows you an empty panel, not a capability. */
+  window._uiPanels = {
+    building: setBuildingPanel,
+    inventory: setShowInventory, skills: setShowSkills, stats: setShowStatScreen,
+    shop: setShowShop, social: setShowSocialPanel, leaderboard: setShowLeaderboard,
+    encyclopedia: setShowEncyclopedia, info: setShowInfo, chat: setShowChatLog,
+    emotes: setShowEmotes, clan: setShowClanPanel, clanWar: setShowClanWar,
+    guild: setShowGuildPanel, feedback: setShowFeedback, petHouse: setShowPetHouse,
+    furniture: setShowFurniture, playerList: setShowPlayerList,
+    dungeonCreatorShow: setShowDungeonCreator, tradeShow: setShowTrade, arena: setShowArena,
+    quest: setQuestPanel, inspect: setInspectPlayer, incomingTrade: setIncomingTrade,
+    trade2: setTrade2, duelRequest: setDuelRequest, threat: setThreatIncoming,
+    clanData: setClanData, party: setParty, welcome: setShowWelcome,
+    mayorGreeting: setShowMayorGreeting, tourPrompt: setShowTourPrompt,
+    intro: setShowIntro,
+    /* These three panels are gated on a COMPANION value, not just their
+       boolean — capturing them needs both halves set. */
+    chatOpen: setChatOpen,              // the real chat gate (showChatLog is dead state, below)
+    dungeonCreator: setDungeonCreator,  // paired with showDungeonCreator
+    tradeTarget: setTradeTarget,        // paired with showTrade
+  };
+  /* v2.3.1637, found while wiring the capture above: showChatLog,
+     showClanWar and showArena are DECLARED AND NEVER READ — three dead
+     useState pairs. Chat really renders off `chatOpen`, the war banners
+     off stateRef.current._activeClanWar, and the arena UI is PartyPanel
+     under buildingPanel==='party'. Left in place rather than deleted in
+     a screenshot-tooling change; noted so the next reader doesn't wire a
+     new panel to a flag that does nothing. */
   useEffect(function () {
     return setupWebSocket({
       stateRef: stateRef,
