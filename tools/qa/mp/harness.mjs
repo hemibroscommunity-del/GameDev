@@ -277,6 +277,36 @@ export async function adminPlayer(wsPort, playerId) {
   return (await res.json()) || {};
 }
 
+/** v2.3.1624: can this player reach a town building panel (marketplace,
+ *  vendor, arena…)?
+ *
+ *  Today the answer is NO for all twelve, and has been since v2.3.823: BroTown.jsx force-sets
+ *  S.nearBuilding = null every frame ("town building entrances removed — the
+ *  town buildings have no in-game art yet"), and the only caller of
+ *  enterBuilding() is the prompt gated on nearBuilding !== null.  Verified by
+ *  standing dead-centre on each building rect: no prompt, no panel, and no
+ *  bridge exposes them either.  Scenarios call this so they SKIP loudly with a
+ *  reason instead of failing on a screen that cannot be opened — and so they
+ *  start working by themselves the day the proximity scan comes back. */
+export async function buildingReachable(P, buildingIndex) {
+  return P.page.evaluate((i) => {
+    const F = window._gameFns || {};
+    const B = F.BUILDINGS || F.TOWN_BUILDINGS;
+    const S = window._gameState && window._gameState.current;
+    if (!B || !B[i] || !S) return false;
+    const b = B[i];
+    S.player.x = (b.bx + b.bw / 2) * 32;
+    S.player.y = (b.by + b.bh / 2) * 32;
+    return false;   // caller re-reads after a frame
+  }, buildingIndex).then(async () => {
+    await P.page.waitForTimeout(500);
+    return P.page.evaluate(() => {
+      const S = window._gameState.current;
+      return S.nearBuilding !== null && S.nearBuilding !== undefined;
+    });
+  });
+}
+
 /* ── UI drivers ────────────────────────────────────────────────────────── */
 /** Open the real inspect card for a live peer.
  *
@@ -390,8 +420,16 @@ export function recorder(suite) {
       console.log(`${cond ? 'PASS' : 'FAIL'}  ${suite} :: ${name}${cond ? '' : '  ' + JSON.stringify(detail)}`);
       return !!cond;
     },
+    /* Something the suite WOULD check but cannot reach — loud in the output,
+     * not counted as a pass or a failure.  A skip is a statement about the
+     * game ("this screen has no way in"), so it must not be silent, and it
+     * must not be dressed up as a pass either. */
+    skip(name, why) {
+      rows.push({ suite, name, skip: true, detail: why });
+      console.log(`SKIP  ${suite} :: ${name}  — ${why}`);
+    },
     rows: () => rows,
-    failed: () => rows.filter((r) => !r.pass).length,
+    failed: () => rows.filter((r) => !r.pass && !r.skip).length,
   };
 }
 
