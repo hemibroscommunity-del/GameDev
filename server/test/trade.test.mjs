@@ -16,6 +16,7 @@
  *   7. Sender disconnect before accept -> reject, no crash.
  */
 import { GameRoom } from '../src/index.js';
+import { TRADE_OFFER_TTL } from '../src/trade.js'; // v2.3.1610 (§9 sweep)
 
 function makeState() {
   const store = new Map();
@@ -127,6 +128,57 @@ const relayed = room.eventBuffer.filter((e) => e.type === 'trade_accept');
 check('relay path settles and annotates', relayed.length === 1 && relayed[0].payload.settled === true
   && room.playerState['bp_tr_carol'].coins === 0 && room.playerState['bp_tr_dave'].coins === 30,
   { relayed: relayed.length, c: room.playerState['bp_tr_carol'].coins, d: room.playerState['bp_tr_dave'].coins });
+
+// ── 9. v2.3.1610: pending offers expire, and the key is bounded ──
+//
+// TRADE_OFFER_TTL was only ever read to REJECT a late accept — nothing
+// deleted the entry, so the only exit from this map was a matching
+// trade_accept.  An offer nobody answers stayed resident for the life of
+// the DO, keyed by a client-supplied string of unbounded length.
+{
+  room._pendingTradeOffers = new Map();
+  room.playerState['bp_tr_sender'] = room.playerState['bp_tr_sender']
+    || { coins: 0, inventory: {}, z: 'town' };
+
+  await room._interceptTrade('bp_tr_sender', offerMsg({ wood: 1 }, 'bp_tr_fresh'));
+  await room._interceptTrade('bp_tr_sender', offerMsg({ wood: 1 }, 'bp_tr_stale'));
+  check('offer sweep: both offers recorded', room._pendingTradeOffers.size === 2,
+    room._pendingTradeOffers.size);
+
+  // Age one past the TTL, leave the other fresh.
+  room._pendingTradeOffers.get('bp_tr_sender>bp_tr_stale').ts = Date.now() - TRADE_OFFER_TTL - 1;
+  room._tickTradeOffers(Date.now());
+  check('offer sweep: the expired offer is evicted',
+    !room._pendingTradeOffers.has('bp_tr_sender>bp_tr_stale'),
+    [...room._pendingTradeOffers.keys()]);
+  check('offer sweep: a live offer survives the sweep',
+    room._pendingTradeOffers.has('bp_tr_sender>bp_tr_fresh'),
+    [...room._pendingTradeOffers.keys()]);
+
+  // The sweep is ADDITIVE — the single-shot delete is what makes a
+  // replayed accept find nothing, and it must still be the thing doing
+  // that job.
+  room.playerState['bp_tr_fresh'] = { coins: 0, inventory: {}, z: 'town' };
+  room.playerState['bp_tr_sender'].inventory = { wood: 5 };
+  await room._interceptTrade('bp_tr_fresh', acceptMsg('bp_tr_sender'));
+  check('offer sweep: accept still single-shot (entry consumed, not left to the sweep)',
+    !room._pendingTradeOffers.has('bp_tr_sender>bp_tr_fresh'),
+    [...room._pendingTradeOffers.keys()]);
+
+  // An unbounded key is the DoS: 16 KB (the inbound frame cap) per
+  // offer, minted as fast as the relay bucket allows, is a walk to the
+  // 128 MB DO ceiling.
+  const before = room._pendingTradeOffers.size;
+  const huge = 'x'.repeat(5000);
+  const rejected = await room._interceptTrade('bp_tr_sender', offerMsg({ wood: 1 }, huge));
+  check('offer sweep: an oversized target is refused outright',
+    rejected === null && room._pendingTradeOffers.size === before,
+    { rejected, size: room._pendingTradeOffers.size, before });
+
+  // A 64-char id is still fine — the cap must not break real ids.
+  const ok = await room._interceptTrade('bp_tr_sender', offerMsg({ wood: 1 }, 'b'.repeat(64)));
+  check('offer sweep: a 64-char target is still accepted', ok !== null, ok);
+}
 
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);
 process.exit(failures === 0 ? 0 : 1);

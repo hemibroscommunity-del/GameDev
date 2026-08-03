@@ -69,6 +69,13 @@ export const tradeMethods = {
     const payload = msg.payload || {};
     const target = payload.target;
     if (!target || typeof target !== 'string' || target === fromId) return null;
+    /* v2.3.1610: bound the KEY.  `target` is client-supplied and lands
+       verbatim in the map key below, and nothing checked its length --
+       a single client could mint 16 KB keys (the inbound frame cap) as
+       fast as the relay bucket allows and walk the room's 128 MB DO
+       into the ground.  64 chars matches the existing precedent at
+       friends.js:116; real ids are 'bp_<base36>_<words>', far shorter. */
+    if (target.length > 64) return null;
     if (!this._pendingTradeOffers) this._pendingTradeOffers = new Map(); // 'sender>recipient' -> {offer, fromName, ts, id}
 
     if (msg.type === 'trade_offer') {
@@ -122,5 +129,25 @@ export const tradeMethods = {
     }
     payload.settled = true; // modern clients skip their legacy mint paths
     return msg;
+  },
+
+  /* v2.3.1610: expire pending offers.  TRADE_OFFER_TTL existed but was
+     only ever read to REJECT a late accept -- nothing deleted the entry,
+     so the only way out of this map was a matching trade_accept.  An
+     offer to someone who never answers (the common case: the target
+     declines, closes the tab, or was never online) stayed resident for
+     the life of the DO.
+     Every sibling map already sweeps -- _t2Invites (trade2.js:249),
+     _partyInvites (party.js:289), _duelChallenges, _threats -- this one
+     and _clanInvites were the two that were missed.
+     ADDITIVE ONLY: the single-shot delete in _interceptTrade stays.  It
+     is what makes a replayed accept find nothing, and this sweep must
+     not be mistaken for a replacement for it.  Removing an entry the
+     server had already decided to reject changes no behaviour. */
+  _tickTradeOffers(now) {
+    if (!this._pendingTradeOffers) return;
+    for (const [k, p] of this._pendingTradeOffers) {
+      if (now - p.ts > TRADE_OFFER_TTL) this._pendingTradeOffers.delete(k);
+    }
   },
 };
