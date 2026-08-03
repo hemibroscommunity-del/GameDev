@@ -1632,7 +1632,14 @@ export function processGameEvent(type, payload, S, deps) {
                   isCrit: payload.isCrit,
                   died: _wouldDiePvp,
                   name: S.myName,
-                  blocked: payload.blocked
+                  blocked: payload.blocked,
+                  /* v2.3.1612: "this one came from the SERVER's pvp_hit".  The
+                     attacker uses it to skip the legacy hit popup, which would
+                     otherwise double up on the real damage number — see the
+                     pvp_confirmed handler below.  Old clients ignore the
+                     field; old workers never produce a pvp_hit for us to set
+                     it on, so both deploy orders keep working (rule 19). */
+                  srv: true
                 }
               });
               setRpgState(_objectSpread({}, _R2));
@@ -1705,7 +1712,26 @@ export function processGameEvent(type, payload, S, deps) {
           case 'pvp_confirmed':
             {
               if (payload.target !== S.myId) break;
-              pushDmgPopup(S, S.player.x + 20, S.player.y - 20, 'Hit! -' + Math.ceil(payload.dmg), '#fbbf24');
+              /* v2.3.1612 (owner, again: "all it says is hit when I hit the
+                 other player").  v2.3.1605 fixed the pvp_hit popup — the real
+                 number now floats over the TARGET — but it never touched this
+                 one, and this is the one the owner was looking at: bright
+                 amber, over your OWN head, led by the literal word "Hit!".
+                 Both fire on every single server-resolved hit, because the
+                 defender answers pvp_hit with a pvp_confirmed for kill
+                 tracking, and the attacker drew a second popup off that
+                 bookkeeping message.  Caught by the headless duel scenario,
+                 which read the attacker's popups and found "Hit! -4".
+                 pvp_confirmed carries no damage information the attacker did
+                 not already receive on pvp_hit, so on a server-resolved hit it
+                 draws nothing and stays what it is: kill/clan-war/arena
+                 bookkeeping.  Against a LEGACY worker that resolves no PvP
+                 there is no pvp_hit, the defender sends no `srv`, and this
+                 popup remains the attacker's only feedback — so it still
+                 shows, exactly as before. */
+              if (!payload.srv) {
+                pushDmgPopup(S, S.player.x + 20, S.player.y - 20, 'Hit! -' + Math.ceil(payload.dmg), '#fbbf24');
+              }
               if (payload.died) {
                 pushDmgPopup(S, S.player.x, S.player.y - 50, 'KILL!', '#3dd497');
                 BT_AUDIO.collect();

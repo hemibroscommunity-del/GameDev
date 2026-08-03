@@ -2,15 +2,23 @@
  *
  * The two reports were: "dueling only works with sword" and "all it says is
  * hit when I hit the other player… this was a duel in town".  v2.3.1605 fixed
- * both (the client's melee gate refused to fire in a safe zone even during a
- * consented duel, and the popup read a literal 'Hit!' over the attacker).  So
- * this scenario asserts the things those bugs would have failed:
+ * the client's melee gate (it refused to fire in a safe zone even during a
+ * consented duel) and the pvp_hit popup.  Running this scenario then found
+ * that the SECOND half of the popup complaint was still live: the attacker
+ * also got "Hit! -4" in amber over their own head, from the legacy
+ * pvp_confirmed bookkeeping path — fixed in v2.3.1612.
+ *
+ * What this asserts, and why each one is here:
  *
  *   - BOTH sides get _inDuel, not just the accepter (v2.3.1306's half-fix)
- *   - a duel started IN TOWN lets attacks through, i.e. a safe zone does not
- *     veto consent
- *   - a real swing produces a real HP drop on the target — a number, not a word
+ *   - a duel started IN TOWN lets attacks through: a safe zone does not veto
+ *     consent
+ *   - a swing drops the target's SERVER-side HP, and the target's own client
+ *     shows it too
+ *   - the attacker's popup is a NUMBER over the OPPONENT, and the literal word
+ *     "Hit!" appears nowhere
  *   - declining leaves nobody in a duel
+ *   - a duel fought to a finish ends cleanly and does NOT wipe the loser's bag
  */
 import * as H from './harness.mjs';
 
@@ -142,7 +150,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
   /* ── a real swing has to do real damage, in town ── */
   const near = await closeIn(A, wsPort, aId, bId);
   rec.ok('the duellists can be walked into melee reach', near.ok, near);
-  const bHp0 = await H.readState(B, (S) => (S.rpg || {}).hp);
+  /* HP off the SERVER, not the client.  The server owns hp and echoes it, so a
+     single client read races the echo and regen; the authoritative number
+     never does. */
+  const bHp0 = (await H.serverPlayer(wsPort, bId) || {}).hp;
   const dist = near.d;
   const aim = await swingAt(A, 8);
   /* A missed swing and a broken duel look identical from the HP alone, so
@@ -154,10 +165,16 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const wire = await H.wireCounts(A);
   rec.ok('the client sends PvP attacks during a town duel', (wire.player_attack || 0) > 0, wire);
 
-  await A.page.waitForTimeout(1500);
-  const bHp1 = await H.readState(B, (S) => (S.rpg || {}).hp);
+  await A.page.waitForTimeout(1200);
+  const bHp1 = (await H.serverPlayer(wsPort, bId) || {}).hp;
   rec.ok('a duel swing in town damages the target', bHp1 != null && bHp0 != null && bHp1 < bHp0,
     { bHp0, bHp1, dist, aimErr: aim.worstErr });
+  /* And the DEFENDER's screen has to agree — a server-side HP drop the client
+     never renders is still a broken duel from where the player is sitting. */
+  const bSees = await H.waitFor(B, (S) => (S.rpg || {}).hp, (h) => h != null && h < bHp0,
+    { timeout: 10000, label: 'B sees their own HP drop' }).then(() => true).catch(() => false);
+  rec.ok('the target\'s own HP bar reflects the hit', bSees,
+    { bHp0, clientHp: await H.readState(B, (S) => (S.rpg || {}).hp) });
 
   /* THE ATTACKER'S OWN SCREEN is what the owner complained about ("all it says
      is hit when I hit the other player"), so read A's popups.  The fix floats
@@ -195,7 +212,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const bWood0 = await H.readState(B, (S) => ((S.rpg || {}).inventory || {}).wood || 0);
 
   let ended = false;
-  for (let round = 0; round < 8 && !ended; round++) {
+  for (let round = 0; round < 10 && !ended; round++) {
     await closeIn(A, wsPort, aId, bId);   /* re-close: either side may drift */
     await swingAt(A, 6);
     ended = await H.readState(A, (S) => !S._inDuel)
