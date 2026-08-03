@@ -153,7 +153,44 @@ export const tickMethods = {
         const pingMsg = JSON.stringify({ type: 'ping', ts: nowMs });
         for (const [ws, session] of this.sessions) {
           if (nowMs - session.lastRecv > this.IDLE_TIMEOUT_MS) {
+            /* v2.3.1621: EVICTING MEANS REMOVING IT.  This used to call
+               ws.close() and nothing else, delegating all cleanup to
+               webSocketClose -- but this repo's own note at index.js:568
+               says that handler "only fires on TCP close", and the whole
+               point of the AFK sweep is the case where the peer has
+               STOPPED ANSWERING (crashed tab, slept phone, half-open
+               TCP).  Exactly then the close handshake never completes,
+               so the session stayed in the map forever and:
+                 - sessions.size never reached 0, so the tick's
+                   setInterval was never cleared (index.js webSocketClose)
+                   -- and a DO with a live interval cannot hibernate, so
+                   it bills wall-clock GB-s indefinitely with nobody
+                   playing.  That is the most expensive shape available
+                   on this axis: 0.125 GB x 86,400 s = 10,800 GB-s/day.
+                 - this branch re-ran every ~3 s forever, re-closing the
+                   same dead socket (measured: 50,940 redundant close()
+                   calls against 60 sockets over 30 simulated minutes).
+                 - the MAX_PLAYERS admission gate kept counting the
+                   corpse, so real players got "Room full" 503s.
+                 - playerState[id] was never released, and peers never
+                   got player_leave.
+               The v2.3.702 reconnect eviction (join.js:136) already does
+               exactly this -- sessions.delete BEFORE close -- so the
+               convention exists; this path just never adopted it.
+               webSocketClose does the real work (playerState, duel/party/
+               trade disconnect, botfp flush, player_leave) and is
+               idempotent: if the runtime DOES later fire it on TCP close,
+               the second call finds no session and returns immediately.
+               So this is correct under either runtime behavior, which is
+               why it is worth doing without settling which one holds.
+               Unawaited, matching webSocketError (index.js) -- with the
+               rejection swallowed, since we are inside setInterval. */
             try { ws.close(1000, 'idle timeout'); } catch {}
+            try {
+              const _p = this.webSocketClose(ws);
+              if (_p && _p.catch) _p.catch(() => {});
+            } catch {}
+            this.sessions.delete(ws); // belt-and-braces: deterministic in both paths
             continue;
           }
           session.lastPing = nowMs;
