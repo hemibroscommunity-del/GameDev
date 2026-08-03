@@ -197,7 +197,7 @@ check('last leave dissolves the clan', !room._clans.has(redClan.id) && !state._s
   check('recent ended war retained by the sweep', kept.length === 1, kept);
 }
 
-// ── 8. v2.3.1610: pending invites expire, and the key is bounded ──
+// ── 8. v2.3.1622: pending invites expire, and the key is bounded ──
 //
 // CLANS.INVITE_TTL was only read to REJECT a late accept — nothing ever
 // deleted the entry, so an invite nobody answers stayed resident for the

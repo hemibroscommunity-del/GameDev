@@ -94,7 +94,7 @@ export const tickMethods = {
       // on wake for wars that end in an empty room).
       guard('clanWars', () => this._tickClanWars(Date.now()));
 
-      // v2.3.1610: expire pending clan invites + trade offers.  Both
+      // v2.3.1622: expire pending clan invites + trade offers.  Both
       // maps had a TTL that was only ever used to reject a late accept;
       // nothing deleted the entries, so they grew for the life of the
       // DO.  Cheap map walks, same slot shape as trades2/party below.

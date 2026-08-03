@@ -69,7 +69,7 @@ export const tradeMethods = {
     const payload = msg.payload || {};
     const target = payload.target;
     if (!target || typeof target !== 'string' || target === fromId) return null;
-    /* v2.3.1610: bound the KEY.  `target` is client-supplied and lands
+    /* v2.3.1622: bound the KEY.  `target` is client-supplied and lands
        verbatim in the map key below, and nothing checked its length --
        a single client could mint 16 KB keys (the inbound frame cap) as
        fast as the relay bucket allows and walk the room's 128 MB DO
@@ -131,7 +131,7 @@ export const tradeMethods = {
     return msg;
   },
 
-  /* v2.3.1610: expire pending offers.  TRADE_OFFER_TTL existed but was
+  /* v2.3.1622: expire pending offers.  TRADE_OFFER_TTL existed but was
      only ever read to REJECT a late accept -- nothing deleted the entry,
      so the only way out of this map was a matching trade_accept.  An
      offer to someone who never answers (the common case: the target

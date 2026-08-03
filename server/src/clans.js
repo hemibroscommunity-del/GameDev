@@ -158,7 +158,7 @@ export const clanMethods = {
     await this._clansEnsure();
     const target = msg.payload && msg.payload.target;
     if (!target || typeof target !== 'string' || target === fromId) return;
-    if (target.length > 64) return; // v2.3.1610: bound the map key (friends.js:116 precedent)
+    if (target.length > 64) return; // v2.3.1622: bound the map key (friends.js:116 precedent)
     const clan = this._clanOf(fromId);
     if (!clan || clan.leaderId !== fromId) return;          // only leaders invite
     if (clan.members.length >= CLANS.MAX_MEMBERS) return;
@@ -305,7 +305,7 @@ export const clanMethods = {
     }
   },
 
-  /* v2.3.1610: expire pending clan invites.  CLANS.INVITE_TTL was only
+  /* v2.3.1622: expire pending clan invites.  CLANS.INVITE_TTL was only
      read to REJECT a late accept (_handleClanJoinAccept) -- nothing ever
      deleted the entry, so an invite nobody answers stayed resident for
      the life of the DO.  Same omission as _pendingTradeOffers; every

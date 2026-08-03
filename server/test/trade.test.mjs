@@ -16,7 +16,7 @@
  *   7. Sender disconnect before accept -> reject, no crash.
  */
 import { GameRoom } from '../src/index.js';
-import { TRADE_OFFER_TTL } from '../src/trade.js'; // v2.3.1610 (§9 sweep)
+import { TRADE_OFFER_TTL } from '../src/trade.js'; // v2.3.1622 (§9 sweep)
 
 function makeState() {
   const store = new Map();
@@ -129,7 +129,7 @@ check('relay path settles and annotates', relayed.length === 1 && relayed[0].pay
   && room.playerState['bp_tr_carol'].coins === 0 && room.playerState['bp_tr_dave'].coins === 30,
   { relayed: relayed.length, c: room.playerState['bp_tr_carol'].coins, d: room.playerState['bp_tr_dave'].coins });
 
-// ── 9. v2.3.1610: pending offers expire, and the key is bounded ──
+// ── 9. v2.3.1622: pending offers expire, and the key is bounded ──
 //
 // TRADE_OFFER_TTL was only ever read to REJECT a late accept — nothing
 // deleted the entry, so the only exit from this map was a matching
