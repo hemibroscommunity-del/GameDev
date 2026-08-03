@@ -76,9 +76,9 @@ async function join(ws, id) {
 }
 const clearDirty = () => {
   room.dirtyMonsters.clear();
-  room.dirtyMonsterIds = {};
+  room.dirtyMonsterIds = Object.create(null); /* v2.3.1631: mirror production (TRAPS #6) */
   room.dirtyNodes.clear();
-  room.dirtyNodeIds = {};
+  room.dirtyNodeIds = Object.create(null); /* v2.3.1631: mirror production (TRAPS #6) */
   room.eventBuffer.length = 0;
 };
 const FAR = 5000; // isolated corner, far from every random spawn
@@ -388,8 +388,8 @@ check('forged monster_transform dropped by deny-list',
   // the assertions below see exactly the one entity each test marks.
   room3.dirtyMonsters.clear();
   room3.dirtyNodes.clear();
-  room3.dirtyMonsterIds = {};
-  room3.dirtyNodeIds = {};
+  room3.dirtyMonsterIds = Object.create(null);
+  room3.dirtyNodeIds = Object.create(null);
   room3._markMonsterDirty('meadow', mMeadow.id);
   room3._markMonsterDirty('frost', mFrost.id);
   room3._markMonsterDirty('dungeon:secret', 'dg-1');
@@ -537,6 +537,37 @@ check('forged monster_transform dropped by deny-list',
   globalThis.clearInterval = realClearInterval;
   if (room4.tickInterval && room4.tickInterval !== 987654) realClearInterval(room4.tickInterval);
   room4.tickInterval = null;
+}
+
+/* ── v2.3.1631: the per-tick dirty maps must stay NULL-PROTOTYPE ──
+ *
+ * Review caught that this was unpinned: reverting tick.js's reset from
+ * Object.create(null) back to {} left all 42 suites green.  The maps are
+ * keyed by zone id, which is client-chosen, and they are REBUILT EVERY
+ * TICK -- so a plain {} here quietly undoes the constructor's guarantee
+ * one tick later, which is the whole defence-in-depth behind TRAPS #6.
+ * This suite also used to assign plain {} to these maps in four places,
+ * modelling the very pattern production removed; those now mirror
+ * production so a future copy-paste carries the right idiom. */
+{
+  const rProto = new GameRoom(makeState(), mockEnv);
+  rProto.startTickLoop();
+  await new Promise((r) => setTimeout(r, 60));
+  clearInterval(rProto.tickInterval); rProto.tickInterval = null;
+  check('tick: dirtyMonsterIds is null-prototype after a tick reset',
+    Object.getPrototypeOf(rProto.dirtyMonsterIds) === null);
+  check('tick: dirtyNodeIds is null-prototype after a tick reset',
+    Object.getPrototypeOf(rProto.dirtyNodeIds) === null);
+  check('tick: the constructor maps are null-prototype too',
+    Object.getPrototypeOf(rProto.monsters) === null
+    && Object.getPrototypeOf(rProto.nodes) === null
+    && Object.getPrototypeOf(rProto.loot) === null);
+  /* A '__proto__'-shaped zone key must land as an ordinary own key
+     rather than writing through to Object.prototype. */
+  rProto.dirtyMonsterIds['__proto__'] = new Set(['m1']);
+  check('tick: a __proto__ zone key becomes a normal own entry',
+    Object.prototype.hasOwnProperty.call(rProto.dirtyMonsterIds, '__proto__')
+    && ({}).m1 === undefined);
 }
 
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);

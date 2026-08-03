@@ -166,8 +166,13 @@ const room = new GameRoom(mockState, {});
   const extra = [...VALID_ZONE_IDS].filter((id) => !CLIENT_ZONES[id]);
   check('zone allowlist: carries no id the client does not know',
     extra.length === 0, extra);
-  check('zone allowlist: every server wilderness zone is included',
-    Object.keys(SERVER_ZONES).every((id) => VALID_ZONE_IDS.has(id)));
+  /* v2.3.1631: the assertion that used to sit here ("every server
+     wilderness zone is included") was a TAUTOLOGY -- VALID_ZONE_IDS is
+     literally built by spreading Object.keys(ZONES), so it tested the
+     spread operator, not the code.  The two directions above (every
+     CLIENT id accepted, no id the client does not know) are the ones
+     that can actually fail, and they are what protects a player from
+     being frozen at an unlisted zone's entrance. */
   for (const magic of ['__proto__', 'constructor', 'prototype', 'toString', 'valueOf']) {
     check(`zone allowlist: rejects ${magic}`, !VALID_ZONE_IDS.has(magic));
   }

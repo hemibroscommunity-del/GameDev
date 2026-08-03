@@ -741,6 +741,20 @@ const psB = room.playerState.pb;
     || room._sanitizeAmulet({ tier: 'common' }) !== null);
   check('cooking: _getShopItem("constructor") is not a shop item',
     room._getShopItem('constructor') === null);
+  /* v2.3.1631: the dungeon archetype guard was the one C-4/C-5 site with
+     no coverage -- reverting it to the old truthiness check left the
+     whole 42-suite run green.  A prototype archetype survived the
+     sanitizer, _getArchetype then read hpMult/dmgMult off a function,
+     and the wave spawned NaN-hp monsters that can never be killed,
+     permanently wedging the owner's dungeon slot. */
+  {
+    const cfg = room._dungeonSanitizeConfig(
+      { monsters: [{ archetype: 'constructor', count: 3 }] },
+      { level: 5 });
+    const arch = cfg && cfg.monsters && cfg.monsters[0] && cfg.monsters[0].archetype;
+    check('dungeon: a prototype archetype collapses to fodder',
+      arch === 'fodder', arch);
+  }
 
   /* forge_weapon with a prototype tierKey used to pass EVERY gate,
      because each compared against undefined. */
