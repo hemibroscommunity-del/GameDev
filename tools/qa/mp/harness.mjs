@@ -277,7 +277,7 @@ export async function adminPlayer(wsPort, playerId) {
   return (await res.json()) || {};
 }
 
-/** v2.3.1617: can this player reach a town building panel (marketplace,
+/** v2.3.1624: can this player reach a town building panel (marketplace,
  *  vendor, arena…)?
  *
  *  Today the answer is NO for all twelve, and has been since v2.3.823: BroTown.jsx force-sets
