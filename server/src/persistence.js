@@ -64,7 +64,7 @@ export const persistenceMethods = {
     }
   },
 
-  /* v2.3.1607b: POOL-ONLY SAVE.  Same coalescing deal as the regen tick,
+  /* v2.3.1619b: POOL-ONLY SAVE.  Same coalescing deal as the regen tick,
      for the combat paths whose ONLY durable change is a stamina or mana
      number: the block-cost deduction, the ability-cost deduction, and
      the resonance mana refund.  Each of those used to write the whole
@@ -92,7 +92,7 @@ export const persistenceMethods = {
 
   async _saveRpg(playerId, ps) {
     if (!playerId || !ps) return;
-    /* v2.3.1607: regen-write bookkeeping, owned centrally HERE rather
+    /* v2.3.1619: regen-write bookkeeping, owned centrally HERE rather
        than at the regen tick's call site, because ANY durable write
        persists the pools too (this function rewrites the whole blob
        from its fixed field list).  So a coins/loot/forge save inside

@@ -801,7 +801,7 @@ for (const m of meadowMonsters) m._wanderPausedUntil = Date.now() + 600000;
   delete room.playerState['well'];
 }
 
-// ── 11. v2.3.1607: the regen tick coalesces its DURABLE writes ──
+// ── 11. v2.3.1619: the regen tick coalesces its DURABLE writes ──
 // The regen loop runs every ~670 ms and used to _saveRpg on every
 // player whose pools moved — measured at 5,855 storage writes per
 // player-hour, 93% of them from that one line.  Cloudflare bills those
@@ -879,7 +879,7 @@ for (const m of meadowMonsters) m._wanderPausedUntil = Date.now() + 600000;
   check('regen throttle: a clean disconnect writes nothing',
     rpgPuts('py').length === 0, puts.map(([k]) => k));
 
-  // ── v2.3.1607b: the COMBAT pool writes coalesce too ──
+  // ── v2.3.1619b: the COMBAT pool writes coalesce too ──
   //
   // Three combat paths persisted a whole rpg blob whose only durable
   // change was a stamina or mana number: the block cost, the ability

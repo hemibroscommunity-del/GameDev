@@ -94,7 +94,7 @@ extended.
    returns false for exactly this case) — pushing past cap silently
    destroys the weapon.
 4. **The regen tick's durable write is COALESCED, and that is deliberate**
-   (v2.3.1607). `_tickPlayerRegen` runs every ~670 ms but calls `_saveRpg`
+   (v2.3.1619). `_tickPlayerRegen` runs every ~670 ms but calls `_saveRpg`
    at most once per `REGEN_SAVE_MS` (10 s); the skipped ticks set
    `ps._regenDirty`, which `webSocketClose` flushes. It still calls
    `_queuePlayerStateFlush` every tick, so the **wire** cadence is

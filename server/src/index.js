@@ -413,7 +413,7 @@ export class GameRoom {
     this.TICK_RATE = 22; // 45Hz (22ms)
     this.MAX_PLAYERS = 60;
     this.EVENTS_PER_TICK_CAP = 500;
-    /* v2.3.1607: how often the regen tick may durably persist.  The regen
+    /* v2.3.1619: how often the regen tick may durably persist.  The regen
        loop itself still runs every ~670 ms and still flushes player_state
        to the wire every time -- this throttles ONLY the storage write.
        10 s costs a player at most ~10 s of pool regeneration across a DO
@@ -1057,7 +1057,7 @@ export class GameRoom {
               const staminaCost = Math.max(1, Math.round(15 * this._blockStaminaMult(blockerPs)));
               if (blockerPs && typeof blockerPs.stamina === 'number') {
                 blockerPs.stamina = Math.max(0, blockerPs.stamina - staminaCost);
-                /* v2.3.1607b: stamina only -> coalesced (see
+                /* v2.3.1619b: stamina only -> coalesced (see
                    _saveRpgPools).  This fires on the monster-attack
                    cadence, so a player holding a shield in a fight was
                    writing a full rpg blob every 1.5 s per engaged
@@ -1626,7 +1626,7 @@ export class GameRoom {
     } else {
       ps.stamina = Math.max(0, have - cost);
     }
-    /* v2.3.1607b: the ONLY durable change here is a pool number, so it
+    /* v2.3.1619b: the ONLY durable change here is a pool number, so it
        coalesces (see _saveRpgPools).  Ability use is one of the highest-
        frequency events in the game -- dodge, lunge, retreat and swipe
        all land here -- and each one was writing the whole rpg blob.
@@ -1928,7 +1928,7 @@ export class GameRoom {
       }
 
       if (changed) {
-        /* v2.3.1607: COALESCED, not per-tick.  This loop runs every 30
+        /* v2.3.1619: COALESCED, not per-tick.  This loop runs every 30
            ticks (~670 ms) and used to call _saveRpg on every player whose
            pools moved -- which, since pools are almost always regenerating,
            meant a full rpg-blob write per player per 670 ms.  Measured on
@@ -1956,7 +1956,7 @@ export class GameRoom {
           ps._regenDirty = true;
         }
       } else if (ps._regenDirty && (!ps._regenSaveAt || now - ps._regenSaveAt >= this.REGEN_SAVE_MS)) {
-        /* v2.3.1607b: DRAIN ARM.  _regenDirty is now also set by the
+        /* v2.3.1619b: DRAIN ARM.  _regenDirty is now also set by the
            combat pool paths (_saveRpgPools), and those can leave it set
            on a player whose pools then stop moving -- e.g. a shield
            blocker whose stamina is drained to 0 and held there, so
@@ -3026,7 +3026,7 @@ export class GameRoom {
     const session = this.sessions.get(ws);
     if (session?.id) {
       if (this.playerState[session.id]) this.playerState[session.id].disconnected = true;
-      /* v2.3.1607: flush coalesced regen before the in-memory blob is
+      /* v2.3.1619: flush coalesced regen before the in-memory blob is
          dropped.  The regen tick only writes durably every
          REGEN_SAVE_MS, so a player who regenerated inside that window
          and then left would reload the PRE-regen pools on their next
