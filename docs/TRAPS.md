@@ -166,7 +166,7 @@ unreviewed field is dropped instead of trusted. **Receipt:** v2.3.1465 —
 handoff rule 16, `anticheat.test.mjs` §7, WIRE-PROTOCOL "track is
 cosmetics-only".
 
-**Second receipt, v2.3.1609 — `join` was the same primitive, bigger, and
+**Second receipt, v2.3.1627 — `join` was the same primitive, bigger, and
 survived the v2.3.1465 pass by four months.** `_handleJoin` spread the
 raw blob into authoritative `playerState` AND into `session.data`, which
 `getAllPlayerData()` spreads LAST over `playerState` — so a forged field

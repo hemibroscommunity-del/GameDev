@@ -327,7 +327,7 @@ export const ZONES = {
       tidal:   { w:32, h:32, level:[1,2],  element:'water', secondary:'venom', lawless:true, spawns:[{arch:'brute',count:3}] },          /* band: [8,25] */
     };
 
-/* v2.3.1607: the ZONE ID ALLOWLIST -- the only zone strings a client may
+/* v2.3.1625: the ZONE ID ALLOWLIST -- the only zone strings a client may
  * put in ps.z.  ZONES above lists only the zones the SERVER spawns
  * monsters for; a player also legitimately stands in the three hubs and
  * in the two endgame zones the server has no spawn config for, so those
@@ -364,7 +364,7 @@ export const VALID_ZONE_IDS = new Set([
       'shadow', 'radiant',
     ]);
 
-/* v2.3.1607: dungeon instance zones are minted server-side as
+/* v2.3.1625: dungeon instance zones are minted server-side as
  * 'dungeon:' + id (dungeon.js).  Validated by SHAPE here and by
  * live-instance membership at the call site -- never by the client's
  * say-so alone. */

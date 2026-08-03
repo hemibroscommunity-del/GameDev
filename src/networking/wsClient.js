@@ -69,6 +69,7 @@ export function setupWebSocket(ctx) {
     setParty = ctx.setParty,
     setArenaTournament = ctx.setArenaTournament,
     setArenaBets = ctx.setArenaBets,
+    setClanData = ctx.setClanData, /* v2.3.1611 */
     pixiRef = ctx.pixiRef;
     if (showNameModal || showLogin) return;
     var S = stateRef.current;
@@ -1073,7 +1074,7 @@ export function setupWebSocket(ctx) {
                  identical and this is a no-op; after a clamp,
                  truncation, or stale-echo scale they converge here. */
               if (msg.payload.t2Flat && typeof msg.payload.t2Flat === 'object') S.rpg.t2Flat = msg.payload.t2Flat;
-              /* v2.3.1606: the five T1 raw stats, adopted present-gated.
+              /* v2.3.1624: the five T1 raw stats, adopted present-gated.
                  The server has always PERSISTED these but never echoed
                  them, so a client with no localStorage copy (new device,
                  Login Key, cleared data) started at 0, reported 0 back in
@@ -1092,7 +1093,7 @@ export function setupWebSocket(ctx) {
               if (typeof msg.payload.endurance === 'number' && S.rpg.endurance !== msg.payload.endurance) { S.rpg.endurance = msg.payload.endurance; _t1Changed = true; }
               if (typeof msg.payload.agility === 'number' && S.rpg.agility !== msg.payload.agility) { S.rpg.agility = msg.payload.agility; _t1Changed = true; }
               if (typeof msg.payload.mind === 'number' && S.rpg.mind !== msg.payload.mind) { S.rpg.mind = msg.payload.mind; _t1Changed = true; }
-              /* v2.3.1606: maxHp / stamina / mana and the display formulas
+              /* v2.3.1624: maxHp / stamina / mana and the display formulas
                  are all derived from these five, so recompute on a real
                  change -- the same reason the armor adopt above calls it.
                  Gated on an ACTUAL change (not mere presence) so the
@@ -1671,6 +1672,7 @@ export function setupWebSocket(ctx) {
         setParty: setParty,
         setArenaTournament: setArenaTournament,
         setArenaBets: setArenaBets,
+        setClanData: setClanData, /* v2.3.1611 */
         pixiRef: pixiRef,
         _buildServerPile: _buildServerPile
       };

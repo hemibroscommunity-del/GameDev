@@ -148,7 +148,7 @@ const room = new GameRoom(mockState, {});
     Object.fromEntries(Object.entries(SERVER_ZONES).map(([k, z]) => [k, z.level])));
 }
 
-/* ── 7. v2.3.1607: VALID_ZONE_IDS covers every zone the client can
+/* ── 7. v2.3.1625: VALID_ZONE_IDS covers every zone the client can
  *    actually put a player in.
  *
  *    This is the tripwire for the real hazard the zone allowlist

@@ -158,6 +158,22 @@ export function ClanPanel(props) {
     stateRef = props.stateRef;
   var _clanData$members, _clanData$members2;
   var createDefaultClan; /* phantom: undefined in BroTown too — see header */
+  /* v2.3.1614: A SERVER-CREATED CLAN HAS NO LOGO, and this panel used to
+     assume one.  clans.js stores `logo: Array.isArray(payload.logo) ? … : null`
+     and clan_create never sends one, so the clan_state echo (and therefore the
+     bt_clan cache the boot path restores from) carries `logo: null` — while the
+     logo editor below did a bare `clanData.logo.map(...)`.  That threw
+     "Cannot read properties of null (reading 'map')", which in React means the
+     WHOLE TREE UNMOUNTS: blank screen, WebGL context lost, game over until
+     reload.  It was reachable before v2.3.1611 too — found a clan, reload, open
+     the panel — and the v2.3.1611 echo makes it immediate, so it is fixed here
+     in the same change.  The display badge above keeps its own `clanData.logo &&`
+     guard; the EDITOR needs a real paintable grid, so give it an empty one
+     (-1 = blank cell, the same value the display treats as transparent). */
+  var logoGrid = (clanData && Array.isArray(clanData.logo)) ? clanData.logo
+    : Array.from({ length: CLAN_LOGO_SIZE }, function () {
+      return new Array(CLAN_LOGO_SIZE).fill(-1);
+    });
   return React.createElement("div", {
     className: "bt-inspect",
     onClick: function onClick() {
@@ -474,7 +490,7 @@ export function ClanPanel(props) {
       borderRadius: 10,
       boxShadow: 'inset 0 2px 5px rgba(0,0,0,0.32), inset 0 1px 0 rgba(255,255,255,0.025)'
     }
-  }, clanData.logo.map(function (row, ri) {
+  }, logoGrid.map(function (row, ri) {
     return row.map(function (ci, ci2) {
       return /*#__PURE__*/React.createElement("div", {
         key: ri + '-' + ci2,
@@ -491,7 +507,7 @@ export function ClanPanel(props) {
         onClick: function onClick() {
           var _stateRef$current$_cl;
           var paint = (_stateRef$current$_cl = stateRef.current._clanPaintColor) !== null && _stateRef$current$_cl !== void 0 ? _stateRef$current$_cl : 0;
-          var newLogo = clanData.logo.map(function (r) {
+          var newLogo = logoGrid.map(function (r) {
             return _toConsumableArray(r);
           });
           newLogo[ri][ci2] = paint;
@@ -511,7 +527,7 @@ export function ClanPanel(props) {
           var _stateRef$current$_cl2;
           if (!stateRef.current._clanPainting) return;
           var paint = (_stateRef$current$_cl2 = stateRef.current._clanPaintColor) !== null && _stateRef$current$_cl2 !== void 0 ? _stateRef$current$_cl2 : 0;
-          var newLogo = clanData.logo.map(function (r) {
+          var newLogo = logoGrid.map(function (r) {
             return _toConsumableArray(r);
           });
           newLogo[ri][ci2] = paint;

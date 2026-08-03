@@ -98,7 +98,7 @@ meadowMonsters.forEach((m, i) => {
   // displaced monster home, dirtying it.
 });
 const target = meadowMonsters[0];
-/* v2.3.1610: _handleMonsterDamage now enforces the attacker gates every
+/* v2.3.1628: _handleMonsterDamage now enforces the attacker gates every
    sibling handler already had (same zone, alive, in range -- the melee
    clamp is the 250 px the client itself calls "the server's clamp" in
    monsterCombat.js).  This suite joins at (-100000,-100000) ON PURPOSE,

@@ -16,7 +16,7 @@
 import { healLifeSkills } from './migrations.js';
 import { t2ReplayFlat } from './data.js';
 
-/* ═══ v2.3.1609: the JOIN DATA ALLOWLIST ═══
+/* ═══ v2.3.1627: the JOIN DATA ALLOWLIST ═══
  *
  * `_handleJoin` used to build authoritative state as
  * `{ ...defaults, ...msg.data }` and set `session.data = msg.data`.
@@ -66,12 +66,12 @@ const JOIN_COSMETIC_KEYS = [
 const JOIN_RPG_PREFIX_RE = /^rpg[A-Z][A-Za-z0-9]*$/;
 
 export const joinMethods = {
-  /* v2.3.1609: build a clean copy of join.data.  Never mutates the
+  /* v2.3.1627: build a clean copy of join.data.  Never mutates the
      caller's object, never iterates client keys, and drops anything not
      named above.  `z` is additionally validated against the zone
      allowlist (_validZone, movement.js) -- an unlisted zone id here
      reaches _ensureZoneMonsters exactly as it does from `move`, so the
-     room-wide monster-AI outage (v2.3.1607) is joinable too. */
+     room-wide monster-AI outage (v2.3.1625) is joinable too. */
   _sanitizeJoinData(raw) {
     const out = {};
     if (!raw || typeof raw !== 'object') return out;
@@ -229,7 +229,7 @@ export const joinMethods = {
     }
     session.id = msg.id;
     session.name = msg.name || 'Anon';
-    /* v2.3.1609: sanitize ONCE, here, and use the clean copy for both
+    /* v2.3.1627: sanitize ONCE, here, and use the clean copy for both
        consumers.  session.data must be the filtered object too, not
        just the playerState spread below: getAllPlayerData() (index.js)
        spreads `...s.data` LAST over playerState, so a field left in
@@ -252,7 +252,7 @@ export const joinMethods = {
     this.playerState[msg.id] = {
       x: 0, y: 0, d: 'down', z: 'town', vx: 0, vy: 0,
       dodging: false, blocking: false, dead: false, disconnected: false,
-      /* v2.3.1609: the ALLOWLISTED copy, never the raw wire blob. */
+      /* v2.3.1627: the ALLOWLISTED copy, never the raw wire blob. */
       ...cleanJoinData
     };
     this.stateHistory[msg.id] = [];
@@ -666,7 +666,7 @@ export const joinMethods = {
     this._clanSendState(msg.id);
     this.broadcastExcept(ws, { type: 'player_join', id: msg.id, name: msg.name, data: msg.data });
     // Send current state + monsters for player's zone
-    /* v2.3.1609: read the zone off the SANITIZED state, not the raw
+    /* v2.3.1627: read the zone off the SANITIZED state, not the raw
        wire blob -- _sanitizeJoinData already dropped an unlisted id, so
        this can no longer hand _ensureZoneMonsters a forged zone. */
     const joinZone = this.playerState[msg.id]?.z || 'town';
@@ -784,6 +784,11 @@ export const joinMethods = {
     // survive.  Also clears this member's 'away' grace flag.
     this._partyOnRejoin(msg.id);
     this.broadcastAll({ type: 'player_count', count: this.getPlayerCount() });
-    this.reportToLeaderboard(session);
+    /* v2.3.1620: force=true.  The `track` path is throttled now, so this
+       is what guarantees a joining player shows on the board at once
+       instead of waiting out the first interval -- and it primes
+       session._lbSig, so the next track only writes if something really
+       moved. */
+    this.reportToLeaderboard(session, true);
   },
 };

@@ -188,7 +188,7 @@ export const dungeonMethods = {
   _dungeonSanitizeConfig(raw, ps) {
     raw = raw && typeof raw === 'object' ? raw : {};
     const lvlCap = Math.max(1, Math.min(ps.level || 1, DUNGEONS.LEVEL_HARD_CAP));
-    /* v2.3.1608: own-property gate -- ARCHETYPES['constructor'] is a
+    /* v2.3.1626: own-property gate -- ARCHETYPES['constructor'] is a
        truthy inherited member, so a crafted archetype survived this
        sanitizer and _getArchetype later read undefined stats off it,
        spawning NaN-hp monsters that can never be killed and permanently
@@ -460,7 +460,7 @@ export const dungeonMethods = {
         zone, attackerX: m.x, attackerY: m.y,
       },
     });
-    this._saveRpg(pid, ps);
+    this._saveRpgVitals(pid, ps); // v2.3.1623: coalesced unless near death
     this._queuePlayerStateFlush(pid);
     if (ps.hp <= 0 && !ps.dying) {
       this._handlePlayerDeath(ps, pid, 'monster:' + m.id);

@@ -413,6 +413,39 @@ export class GameRoom {
     this.TICK_RATE = 22; // 45Hz (22ms)
     this.MAX_PLAYERS = 60;
     this.EVENTS_PER_TICK_CAP = 500;
+    /* ═══ v2.3.1618: inbound abuse bounds ═══
+       Sized from the real client, not guessed.
+       MAX_INBOUND_BYTES 16 KB: the largest legitimate message is `join`,
+       whose `data` carries the full appearance set, and `track`, whose
+       rpgData inspect blob is the widest recurring one -- both are well
+       under 2 KB.  Chat is capped at 200 chars client-side
+       (ChatPanel.jsx). 16 KB leaves an order of magnitude of headroom
+       while refusing the ~900 KB fan-out bomb.
+       RELAY_BURST / RELAY_REFILL_PER_S: the token bucket on the default
+       relay branch -- the only path a client can push into the room-wide
+       eventBuffer.  8 burst + 4/s absorbs a human hammering chat and
+       emotes together, and is far below the rate needed to outrun the
+       tick drain.  EVENT_BYTES_PER_TICK: a BYTE ceiling to sit beside
+       EVENTS_PER_TICK_CAP, which only ever bounded the COUNT -- 500
+       events of unbounded size was a legal tick payload. */
+    this.MAX_INBOUND_BYTES = 16 * 1024;
+    this.RELAY_BURST = 8;
+    this.RELAY_REFILL_PER_S = 4;
+    this.EVENT_BYTES_PER_TICK = 64 * 1024;
+    /* v2.3.1619: how often the regen tick may durably persist.  The regen
+       loop itself still runs every ~670 ms and still flushes player_state
+       to the wire every time -- this throttles ONLY the storage write.
+       10 s costs a player at most ~10 s of pool regeneration across a DO
+       restart (deterministic, recomputes from maxima, invisible) and cut
+       measured storage writes by ~93%.  See _tickPlayerRegen. */
+    this.REGEN_SAVE_MS = 10000;
+    /* v2.3.1623: below this fraction of max HP, a damage write bypasses
+       the coalescing and persists immediately.  25% is roughly "one or
+       two more hits from death" across the damage curve -- the band
+       where a rolled-back HP value would actually change what happens to
+       a player.  Above it, the worst a restart costs is a few seconds of
+       damage given back.  See _saveRpgVitals. */
+    this.HP_URGENT_SAVE_FRAC = 0.25;
     /* v2.3.1575 (interest management, tick.js): how often the tick
        carries the FULL player roster.  45 ticks ~= 1 s.  Out-of-zone
        peers ride this instead of the 45Hz dirty list -- they can't be
@@ -439,7 +472,7 @@ export class GameRoom {
     this.LAGCOMP_RTT_CAP = 300;
     this.LAGCOMP_RTT_ALPHA = 0.3;
 
-    /* v2.3.1607: how long a remembered per-zone position stays
+    /* v2.3.1625: how long a remembered per-zone position stays
        authoritative for the re-entry speed check in _handleMove.  Long
        enough to catch a flip-out-flip-back teleport (which needs to be
        fast to be useful), short enough that a genuine round trip is
@@ -447,7 +480,7 @@ export class GameRoom {
     this.ZONE_REENTRY_MS = 5000;
 
     /* Server-authoritative monsters.
-       v2.3.1607: null-prototype, like every other map keyed by a
+       v2.3.1625: null-prototype, like every other map keyed by a
        client-supplied string (TRAPS #6).  The zone allowlist in
        _validZone is the real gate -- an unlisted id never reaches these
        maps now -- but these stay null-proto as defence in depth, so the
@@ -461,8 +494,8 @@ export class GameRoom {
     // these id sets (client merges by id).  Zone-level dirtyMonsters /
     // dirtyNodes stay authoritative for "does this tick carry a delta
     // at all" — the id sets only narrow the v2 payload.
-    this.dirtyMonsterIds = Object.create(null); // zoneId -> Set(monsterId)  /* v2.3.1607: null-proto (TRAPS #6) */
-    this.dirtyNodeIds = Object.create(null);    // zoneId -> Set(nodeId)     /* v2.3.1607: null-proto (TRAPS #6) */
+    this.dirtyMonsterIds = Object.create(null); // zoneId -> Set(monsterId)  /* v2.3.1625: null-proto (TRAPS #6) */
+    this.dirtyNodeIds = Object.create(null);    // zoneId -> Set(nodeId)     /* v2.3.1625: null-proto (TRAPS #6) */
     /* v2.3.1592 (owner: "only 3 monsters per zone ... but with quick
        respawn"): 15s -> 5s.  The two halves of that request are one change —
        zone populations dropped to 3 (data.js ZONES.spawns), so at the old
@@ -489,7 +522,7 @@ export class GameRoom {
     // Parallel to the monster pattern above: lazy-spawn on first player
     // entry per zone, store in this.nodes, mark dirty on state change,
     // tick respawns alongside _tickMonsters().
-    this.nodes = Object.create(null); // zoneId -> [node, ...]  /* v2.3.1607: null-proto (TRAPS #6) */
+    this.nodes = Object.create(null); // zoneId -> [node, ...]  /* v2.3.1625: null-proto (TRAPS #6) */
     this.dirtyNodes = new Set(); // zoneIds with changed node state
     /* v2.3.1592 (owner: "one resource per zone but with quick respawn"):
        2 min -> 20s, paired with the 9-nodes-per-zone -> 3 drop in
@@ -539,7 +572,7 @@ export class GameRoom {
     // requests via loot_pickup.  Server validates each pickup (range,
     // recipient, single-claim) and emits a private loot_credit back to
     // the picker with their authorized share + any one-of inventory.
-    this.loot = Object.create(null); // zoneId -> [pile, ...]  /* v2.3.1607: null-proto (TRAPS #6) */
+    this.loot = Object.create(null); // zoneId -> [pile, ...]  /* v2.3.1625: null-proto (TRAPS #6) */
     this.LOOT_EXPIRY_MS = 60000;
     // Death-drop timing: dying player has DEATH_PILE_OWNER_MS alone
     // to recover their dropped inventory; after that anyone in zone
@@ -571,6 +604,19 @@ export class GameRoom {
     // open but idle still gets booted instead of pinging forever and
     // consuming a session slot + tick bandwidth.
     this.IDLE_TIMEOUT_MS = 120000; // 2 minutes
+
+    /* v2.3.1620: leaderboard report throttle.  See reportToLeaderboard
+       for the full rationale -- in short, `track` arrives every 2 s and
+       the Leaderboard DO writes a row unconditionally, so this used to
+       cost 1,800 rows + 1,800 cross-DO requests per player-hour to
+       rewrite a mostly-identical record.
+       MIN_MS       -- floor between reports when the record CHANGED.
+       HEARTBEAT_MS -- ceiling: report even when unchanged, so `lastSeen`
+                       stays fresh against getTop's 7-day staleness
+                       filter (leaderboard.js:51).  Do not raise this
+                       anywhere near 7 days. */
+    this.LEADERBOARD_MIN_MS = 60000;        // 1 min
+    this.LEADERBOARD_HEARTBEAT_MS = 600000; // 10 min
 
     // On DO wake, close any hibernated sockets we don't have a session for.
     // These are orphans from prior wakes (crashed tabs, expired clients, etc.)
@@ -1064,7 +1110,14 @@ export class GameRoom {
               const staminaCost = Math.max(1, Math.round(15 * this._blockStaminaMult(blockerPs)));
               if (blockerPs && typeof blockerPs.stamina === 'number') {
                 blockerPs.stamina = Math.max(0, blockerPs.stamina - staminaCost);
-                this._saveRpg(nearest.id, blockerPs);
+                /* v2.3.1619b: stamina only -> coalesced (see
+                   _saveRpgPools).  This fires on the monster-attack
+                   cadence, so a player holding a shield in a fight was
+                   writing a full rpg blob every 1.5 s per engaged
+                   monster.  The wire is unchanged -- the flush below
+                   still runs every time, so the stamina bar drops
+                   exactly as before. */
+                this._saveRpgPools(nearest.id, blockerPs);
                 this._queuePlayerStateFlush(nearest.id);
               }
               // v2.3.1137: THORNS — reflect 1%/pt of the monster's attack
@@ -1180,7 +1233,7 @@ export class GameRoom {
             // Echo authoritative hp to the victim + persist.  Death
             // check feeds the player_died event below.
             if (targetPs) {
-              this._saveRpg(nearest.id, targetPs);
+              this._saveRpgVitals(nearest.id, targetPs); // v2.3.1623: coalesced unless near death
               this._queuePlayerStateFlush(nearest.id);
               if (targetPs.hp <= 0 && !targetPs.dying) {
                 this._handlePlayerDeath(targetPs, nearest.id, 'monster:' + m.id);
@@ -1341,7 +1394,7 @@ export class GameRoom {
   // greatsword shares the 'sword' (melee) category, per WEAPON_CATEGORY.
   _wpnCat(type) {
     const C = { greatsword: 'sword', sword: 'sword', bow: 'bow', staff: 'staff' };
-    /* v2.3.1608: own-property lookup -- C['constructor'] is a truthy
+    /* v2.3.1626: own-property lookup -- C['constructor'] is a truthy
        inherited FUNCTION, which would be returned as the category and
        then used as a key into the channel tables (TRAPS #6, same sweep
        as gear.js _weaponBase). */
@@ -1630,7 +1683,13 @@ export class GameRoom {
     } else {
       ps.stamina = Math.max(0, have - cost);
     }
-    this._saveRpg(session.id, ps);
+    /* v2.3.1619b: the ONLY durable change here is a pool number, so it
+       coalesces (see _saveRpgPools).  Ability use is one of the highest-
+       frequency events in the game -- dodge, lunge, retreat and swipe
+       all land here -- and each one was writing the whole rpg blob.
+       The immediate _sendPlayerState below is untouched: this handler
+       answers the client synchronously exactly as before. */
+    this._saveRpgPools(session.id, ps);
     if (ws) this._sendPlayerState(ws, session.id);
   }
 
@@ -1714,16 +1773,15 @@ export class GameRoom {
       _hook('deathPile', () => this._spawnDeathPile(ps, playerId));
       ps.inventory = {};
     }
-    /* v2.3.1610: remember that this death was inventory-PROTECTED, so
-       the respawn tick's defence-in-depth wipe below doesn't undo the
-       protection five seconds later.  A clean duel/arena kill
-       deliberately spawns NO death pile and skips the wipe here -- but
-       _tickPlayerRespawn wiped ps.inventory unconditionally anyway, so
-       the items were DESTROYED rather than transferred: strictly worse
-       than a normal death, where at least the killer or a bystander
-       could pick the pile up.  Set on the state (not a closure) because
-       the wipe happens in a later tick, in another function. */
-    ps._noDropDeath = !!_duelKill;
+    /* v2.3.1616: carry the duel exemption forward to the RESPAWN wipe, which
+       is a second, unconditional `ps.inventory = {}` five seconds from now
+       (_tickPlayerRespawn).  Without this the protection above is cosmetic: a
+       duel kill correctly keeps the bag, and then the respawn empties it
+       anyway.  In-memory only, and it needs to survive exactly the 5 s between
+       death and respawn — _saveRpg's fixed field list ignores it, which is
+       what we want (rule 11: losing it costs a bag on a mid-death reconnect,
+       where the duel forfeits regardless). */
+    ps._duelDeathKeepsBag = !!_duelKill;
     this._saveRpg(playerId, ps);
     this._queuePlayerStateFlush(playerId);
     const ws = this._wsBySessionId(playerId);
@@ -1771,13 +1829,18 @@ export class GameRoom {
       // re-seeded inventory or dmgFromMonster between death and
       // respawn (e.g., a late monster_attack tick).  Matches the
       // wipe in _handlePlayerDeath.
-      // v2.3.1610: ...but NOT when the death was inventory-protected
-      // (clean duel / arena kill).  That path spawns no pile on
-      // purpose, so wiping here destroyed the items outright.  The flag
-      // is cleared here regardless, so it protects exactly one respawn
-      // and every ordinary death still gets the re-wipe.
-      if (!ps._noDropDeath) ps.inventory = {};
-      delete ps._noDropDeath;
+      /* v2.3.1616: ...and it has to match the EXEMPTION there too.  The death
+         wipe is inside `if (!_duelKill)`; this one was unconditional, so a
+         duel kill kept the loser's bag for exactly five seconds and then the
+         respawn emptied it anyway — the duel's "no item loss" promise broken
+         by the very code meant to back up the wipe.  It read as flaky rather
+         than broken because whether you saw items depended on whether you
+         looked before or after the respawn.  server/test/duel.test.mjs
+         asserted the inventory right after _handlePlayerDeath, which is
+         precisely the window where it was still intact, so the suite was
+         green throughout. */
+      if (ps._duelDeathKeepsBag) delete ps._duelDeathKeepsBag;
+      else ps.inventory = {};
       ps.dmgFromMonster = {};
       this._saveRpg(id, ps);
       const ws = this._wsBySessionId(id);
@@ -1834,7 +1897,25 @@ export class GameRoom {
          + mana below (the hub block after the normal regen paths), so a
          few seconds in any hub returns a full expedition kit. */
       const inHub = ps.z === 'town' || ps.z === 'worldview' || ps.z === 'farm_home';
-      if (!ps._arenaMatch && inHub && ps.hp < ps.maxHp) {
+      /* v2.3.1613 (owner: "dueling ... this was a duel in town"): a DUEL gets
+         the same regen gate an arena match already has, and for exactly the
+         reason the v2.3.1126 comment above gives.  Hub regen is 10% of maxHp
+         every ~670 ms — about 15 hp/s at 100 maxHp — while a melee swing lands
+         ~4 damage on a 300 ms cadence.  Healing therefore beat damage by more
+         than an order of magnitude and a town duel could never move either
+         health bar: the two players hit each other until one gave up.  The
+         arena was gated for this in v2.3.1126 ("literally unendable for
+         non-burst builds"); duels are the same fight in the same place and
+         were simply never added.  Measured headlessly (tools/qa/mp/run.mjs
+         duel): confirmed hits for 4 damage each, target pinned at 100/100.
+         DERIVED from this._duels rather than mirrored onto ps: a flag would
+         need clearing on every duel exit (kill, forfeit, disconnect, timeout,
+         deploy) and a missed one leaves a player who can never heal in town.
+         _duelFor is a walk of a map that holds a handful of entries, once per
+         player per 670 ms tick.  Only HP is gated, matching the arena: stamina
+         and mana keep regenerating below, so blocking still works. */
+      const inDuel = this._duelFor ? !!this._duelFor(id) : false;
+      if (!ps._arenaMatch && !inDuel && inHub && ps.hp < ps.maxHp) {
         const heal = Math.max(1, Math.ceil(ps.maxHp * 0.10));
         const beforeHp = ps.hp;
         ps.hp = Math.min(ps.maxHp, ps.hp + heal);
@@ -1904,8 +1985,42 @@ export class GameRoom {
       }
 
       if (changed) {
-        this._saveRpg(id, ps);
+        /* v2.3.1619: COALESCED, not per-tick.  This loop runs every 30
+           ticks (~670 ms) and used to call _saveRpg on every player whose
+           pools moved -- which, since pools are almost always regenerating,
+           meant a full rpg-blob write per player per 670 ms.  Measured on
+           the real room: 5,855 storage writes per player-hour, of which
+           93% (600 of 644) came from exactly here.
+           That matters twice.  Cloudflare bills key-value puts as ROWS
+           WRITTEN -- 100,000/day on the free tier, which 5,855/player-hour
+           exhausts in ~17 player-hours, marginally BEFORE the request
+           limit; and on the paid plan rows are $1.00/million against
+           requests' $0.15, so at scale this line was the single most
+           expensive thing the server did.
+           Regen is also the cheapest possible thing to lose: it is
+           deterministic and recomputes from maxima, so a DO restart
+           costing a player a few seconds of stamina is invisible.  The
+           wire is unaffected -- _queuePlayerStateFlush still runs every
+           time, so the client's bars move at the same 670 ms cadence.
+           Only the DURABLE write is coalesced.
+           Any value-bearing mutation (coins, inventory, loot, forge,
+           trade) calls _saveRpg directly on its own path and is untouched
+           by this -- rule 7's money-at-rest guarantee is not weakened. */
         this._queuePlayerStateFlush(id);
+        if (!ps._regenSaveAt || now - ps._regenSaveAt >= this.REGEN_SAVE_MS) {
+          this._saveRpg(id, ps); // stamps _regenSaveAt / clears _regenDirty
+        } else {
+          ps._regenDirty = true;
+        }
+      } else if (ps._regenDirty && (!ps._regenSaveAt || now - ps._regenSaveAt >= this.REGEN_SAVE_MS)) {
+        /* v2.3.1619b: DRAIN ARM.  _regenDirty is now also set by the
+           combat pool paths (_saveRpgPools), and those can leave it set
+           on a player whose pools then stop moving -- e.g. a shield
+           blocker whose stamina is drained to 0 and held there, so
+           `changed` is false on every subsequent tick.  Without this the
+           flag would sit unflushed until disconnect.  No wire emit here:
+           nothing changed, so there is nothing to tell the client. */
+        this._saveRpg(id, ps);
       }
     }
   }
@@ -2452,6 +2567,32 @@ export class GameRoom {
   async webSocketMessage(ws, message) {
     const session = this.sessions.get(ws);
     if (!session) return;
+    /* ═══ v2.3.1618: INBOUND SIZE GATE ═══
+     *
+     * There was no size check anywhere in this file, and the default
+     * branch at the bottom of this switch pushes the ENTIRE parsed object
+     * by reference into this.eventBuffer, which the tick fans out to every
+     * socket in the room.  `chat` and `emote` have no case here and are
+     * not in PRIVILEGED_EVENTS, so they relay byte-for-byte, uncapped.
+     *
+     * One authenticated socket looping a ~900 KB message therefore cost:
+     * a parse, permanent retention in eventBuffer (v2.3.1163 made overflow
+     * DELAY rather than drop, which turns bounded loss into unbounded
+     * memory), a fan-out to all 60 sockets (~54 MB egress per message),
+     * and a re-stringify per zone-group on the single DO thread every
+     * 22 ms.  EVENTS_PER_TICK_CAP bounds the COUNT of events, never bytes.
+     *
+     * Checked BEFORE JSON.parse: parsing is itself the work we are
+     * refusing to do.  `message` is a string for text frames; ArrayBuffer
+     * carries byteLength.  Silent drop, no reply -- same posture as the
+     * v2.3.1134 cadence lanes: a cheater learns nothing from a refusal,
+     * and a legitimate client never approaches this. */
+    const _len = typeof message === 'string' ? message.length
+      : (message && message.byteLength) || 0;
+    if (_len > this.MAX_INBOUND_BYTES) {
+      session.oversize = (session.oversize || 0) + 1;
+      return;
+    }
     let msg;
     try { msg = JSON.parse(message); } catch { return; }
     // Reset the AFK clock on real input only.  Pong replies are
@@ -2920,6 +3061,37 @@ export class GameRoom {
         // still flow through here -- they hit the deny-list miss and
         // get rebroadcast normally.
         if (PRIVILEGED_EVENTS.has(msg.type)) break;
+        /* ═══ v2.3.1618: RELAY BUDGET ═══
+         *
+         * The size gate at the top of this method bounds ONE message; this
+         * bounds the RATE at which a session may push into the room-wide
+         * eventBuffer, which is the amplifying resource (every push is
+         * fanned to every socket, and events are the one tick section
+         * v2.3.1575's interest management deliberately did NOT zone-scope).
+         *
+         * A token bucket rather than a fixed window: the legitimate traffic
+         * here is bursty and human (a chat line, an emote, a trade offer),
+         * so a burst allowance with a slow refill fits it exactly, while a
+         * sustained flood cannot outrun the refill.  RELAY_BURST is sized
+         * well above any human rate -- the client's own PRIORITY_EVENTS
+         * flush is the fastest legitimate producer and it is nowhere near.
+         *
+         * Silent drop, deliberately (the v2.3.1134 posture): no reject
+         * event, because a reject is both a signal to a cheater and a
+         * second message to fan out.  Gated on session.id so the pre-join
+         * path is untouched. */
+        if (session.id) {
+          const _now = Date.now();
+          if (session.relayTokens === undefined) {
+            session.relayTokens = this.RELAY_BURST;
+            session.relayAt = _now;
+          }
+          session.relayTokens = Math.min(this.RELAY_BURST,
+            session.relayTokens + ((_now - session.relayAt) / 1000) * this.RELAY_REFILL_PER_S);
+          session.relayAt = _now;
+          if (session.relayTokens < 1) { session.relayDropped = (session.relayDropped || 0) + 1; break; }
+          session.relayTokens -= 1;
+        }
         if (session.id) {
           // v2.3.1119: trades keep the relay handshake but the room now
           // settles them -- the intercept validates at commit, moves the
@@ -2968,6 +3140,17 @@ export class GameRoom {
     const session = this.sessions.get(ws);
     if (session?.id) {
       if (this.playerState[session.id]) this.playerState[session.id].disconnected = true;
+      /* v2.3.1619: flush coalesced regen before the in-memory blob is
+         dropped.  The regen tick only writes durably every
+         REGEN_SAVE_MS, so a player who regenerated inside that window
+         and then left would reload the PRE-regen pools on their next
+         join -- visible as HP/stamina snapping backwards at the worst
+         possible moment.  Awaited: this is the last chance to persist,
+         a disconnect is not latency-critical, and an unawaited put can
+         be lost to DO eviction.  No-ops (_regenDirty false) for every
+         player whose last write was value-bearing. */
+      const _ps = this.playerState[session.id];
+      if (_ps && _ps._regenDirty) await this._saveRpg(session.id, _ps);
       delete this.playerState[session.id];
       delete this.stateHistory[session.id];
       delete this.extractions[session.id];
@@ -2995,8 +3178,9 @@ export class GameRoom {
   // heartbeat lives in tickMethods, mixed into this prototype
   // below.  Start/stop call sites above are unchanged.
 
-  async reportToLeaderboard(session) {
+  async reportToLeaderboard(session, force) {
     try {
+      if (!session || !session.id) return;
       const stub = this.env.LEADERBOARD.get(this.env.LEADERBOARD.idFromName('global'));
       /* v2.3.1465: RANK COMES FROM THE SERVER.  This used to post
          `session.data.rpgLv` -- a number the client typed into a track
@@ -3014,12 +3198,57 @@ export class GameRoom {
       const lbPs = this.playerState[session.id];
       const lbLevel = (lbPs && typeof lbPs.level === 'number')
         ? lbPs.level : (session.data?.rpgLv || 1);
+      const name = session.name || session.data?.name || 'Anon';
+      const color = session.data?.color || '#5b52ff';
+      const rpgData = session.data?.rpgData || {};
+
+      /* v2.3.1620: REPORT ONLY WHAT CHANGED.  The client sends `track`
+         every 2 s (BroTown.jsx:4592) and this fired on every one of them,
+         so each player drove 1,800 cross-DO fetches AND 1,800
+         Leaderboard storage.put calls per hour -- updatePlayer
+         (leaderboard.js:41) writes unconditionally, never comparing.
+         Measured: only ~3.4% of those rows differed in content from the
+         row before them.  That is 1,800 billed rows + 1,800 billed
+         requests per player-hour to mostly rewrite an identical record;
+         for scale, it is over 5x the whole regen writer after v2.3.1607.
+         The signature below covers EXACTLY the fields updatePlayer
+         persists -- not the whole rpgData blob, so churn in fields the
+         leaderboard ignores can never trigger a write.  `ts`/`lastSeen`
+         are deliberately excluded: including them would make every
+         signature unique and defeat the compare entirely.
+         Three ways through the gate:
+           - force        : the join path (join.js), so a fresh joiner
+                            appears on the board immediately.
+           - MIN_MS       : content genuinely changed, and it has been
+                            long enough.  Dropping a change here is safe
+                            -- `track` returns in 2 s and the next one
+                            re-evaluates, so a real change lands within
+                            one MIN_MS window at worst.
+           - HEARTBEAT_MS : nothing changed, but refresh `lastSeen` so a
+                            long-lived session can't age out of getTop's
+                            7-day staleness filter (leaderboard.js:51).
+                            10 min leaves ~1000x margin on that window.
+         Worst case per player-hour is now 60 rows (a changed record every
+         MIN_MS); a steady one costs 6. */
+      const sig = JSON.stringify([
+        name, color, lbLevel,
+        rpgData.lifeTotal || 0, rpgData.ap || 0, rpgData.kills || 0,
+        rpgData.dungeons || 0, rpgData.goldEarned || 0, rpgData.playtime || 0,
+        rpgData.clanTag || null,
+      ]);
+      const now = Date.now();
+      const since = now - (session._lbAt || 0);
+      if (!force
+        && since < this.LEADERBOARD_HEARTBEAT_MS
+        && !(sig !== session._lbSig && since >= this.LEADERBOARD_MIN_MS)) return;
+      session._lbSig = sig;
+      session._lbAt = now;
+
       await stub.fetch(new Request('https://internal/api/leaderboard/update', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          playerId: session.id, name: session.name || session.data?.name || 'Anon',
-          color: session.data?.color || '#5b52ff', level: lbLevel,
-          rpgData: session.data?.rpgData || {}, ts: Date.now(),
+          playerId: session.id, name, color, level: lbLevel,
+          rpgData, ts: now,
         }),
       }));
     } catch {}

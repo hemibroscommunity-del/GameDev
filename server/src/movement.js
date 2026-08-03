@@ -16,7 +16,7 @@
 import { VALID_ZONE_IDS, DUNGEON_ZONE_RE } from './data.js';
 
 export const movementMethods = {
-  /* v2.3.1607: the ONE zone gate.  Every path that lets a client choose
+  /* v2.3.1625: the ONE zone gate.  Every path that lets a client choose
    * ps.z must run this -- `move` and `join` today.  Membership, not
    * shape: an unlisted string never reaches the zone-keyed maps
    * (this.monsters / nodes / loot), which is what turned z:'__proto__'
@@ -48,7 +48,7 @@ export const movementMethods = {
     if (!session.id || !this.playerState[session.id]) return;
     const ps = this.playerState[session.id];
     const oldZone = ps.z;
-    /* v2.3.1607: an unlisted zone id is DROPPED, not adopted -- the
+    /* v2.3.1625: an unlisted zone id is DROPPED, not adopted -- the
        player simply stays where they are (the client's next move snaps
        back off the broadcast tick, the same recovery the rejected-move
        path below relies on).  Silently keeping the old zone beats
@@ -103,7 +103,7 @@ export const movementMethods = {
         accept = false;
       }
     } else if (zoneChanged && !firstMove) {
-      /* v2.3.1607: close the zone-flip bypass.  The cap above is
+      /* v2.3.1625: close the zone-flip bypass.  The cap above is
          skipped on z-change for a real reason (a transition genuinely
          teleports you to the destination's entry point), but nothing
          re-validated on the way BACK -- so two messages, one to any
@@ -142,7 +142,7 @@ export const movementMethods = {
     // INSIDE this block, so a rejected move never changes zone either.
     // We drop EVERYTHING on reject so a cheater can't flip
     // blocking/dodging/dead while teleporting.
-    // v2.3.1607: the old note here said zone changes "always set
+    // v2.3.1625: the old note here said zone changes "always set
     // accept=true".  That is no longer so -- a re-entry that fails the
     // budget above is rejected like any other teleport, and the player
     // stays put in the zone they were already in.

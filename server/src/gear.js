@@ -53,7 +53,7 @@ export const gearMethods = {
     // the _maxWeaponDmg cap, and _weaponSellValue -- sell values scale
     // down 4.8x in lockstep with the client (coins are NOT rescaled).
     const T = { greatsword: 10, sword: 6.67, bow: 7.29, staff: 8.54 };
-    /* v2.3.1608: own-property lookup.  The comment below used to
+    /* v2.3.1626: own-property lookup.  The comment below used to
        justify not validating `type` on the grounds that an unknown one
        "already falls back to the fists base" -- true for 'banana',
        FALSE for 'constructor'/'toString'/'valueOf', which resolve to
@@ -147,7 +147,7 @@ export const gearMethods = {
   // (+10.5%) -- accepted until a server amulet-forge handler exists.
   _sanitizeAmulet(a) {
     if (!a || typeof a !== 'object') return null;
-    /* v2.3.1608: own-property gate -- what the comment above already
+    /* v2.3.1626: own-property gate -- what the comment above already
        PROMISED ("we can't trust the blob -> drop the whole amulet", so a
        forged tier "can't ride the || 1.0 fallback").  Truthiness broke
        that promise: AMULET_TIER_POWER['constructor'] is a truthy
@@ -261,7 +261,7 @@ export const gearMethods = {
     if (wantWw !== !!isWoodwork) return;
 
     const table = wantWw ? this._WOODWORKING_TIERS_DATA() : this._BLACKSMITH_TIERS_DATA();
-    /* v2.3.1608: own-property gate.  With a truthiness check a tierKey
+    /* v2.3.1626: own-property gate.  With a truthiness check a tierKey
        of 'constructor' resolved to a truthy inherited member, and then
        EVERY gate below compared against undefined and passed:
          skillLvl < tier.minLvl        -> n < undefined -> false

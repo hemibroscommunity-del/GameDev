@@ -93,6 +93,22 @@ extended.
    weapons must check capacity or partial-drain (`_applyCreditToPs`
    returns false for exactly this case) — pushing past cap silently
    destroys the weapon.
+4. **The regen tick's durable write is COALESCED, and that is deliberate**
+   (v2.3.1619). `_tickPlayerRegen` runs every ~670 ms but calls `_saveRpg`
+   at most once per `REGEN_SAVE_MS` (10 s); the skipped ticks set
+   `ps._regenDirty`, which `webSocketClose` flushes. It still calls
+   `_queuePlayerStateFlush` every tick, so the **wire** cadence is
+   unchanged — only the storage write is throttled. Measured: 5,455 → 341
+   rows written per player-hour (−93.7%), which is the difference between
+   ~18 and ~135 player-hours/day on the free tier's 100k-rows/day limit
+   (rows bind before requests, and cost $1.00/M vs $0.15/M when paid).
+   Do NOT "restore" the per-tick save — regen is deterministic and
+   recomputes from maxima, so it is the one thing that is cheap to lose.
+   `_regenSaveAt` / `_regenDirty` are in-memory scratch, stamped centrally
+   in `_saveRpg` so that ANY value-bearing write also satisfies the regen
+   tick; they are not in the fixed field list and are never persisted.
+   Money-at-rest is untouched: every value-bearing path still saves
+   immediately on its own.
 
 ### Settlement and idempotency
 
@@ -162,7 +178,7 @@ extended.
 16. **Never trust client-supplied value blobs.** The marketplace ignores
     the request's `item` and takes from the server's own stash by index;
     imitate this shape (server's copy by reference, never the wire blob).
-    **v2.3.1609 — `join` was a SECOND, larger instance of the same
+    **v2.3.1627 — `join` was a SECOND, larger instance of the same
     primitive, and the v2.3.1465 pass did not reach it.** `_handleJoin`
     built authoritative state as `{...defaults, ...msg.data}` and set
     `session.data = msg.data`, so every unreviewed field survived into

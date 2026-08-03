@@ -138,12 +138,25 @@ export function PartyPanel(props) {
         if (d.ok) {
           setArenaStatus(d);
           if (d.tournament) setArenaTournament(d.tournament);
+          /* v2.3.1623: the /tournament round-trip used to fire
+             UNCONDITIONALLY beside this one, doubling the panel's arena
+             requests.  Against the settled GameRoom route it is pure
+             duplication: gladiator.js builds BOTH responses from the same
+             _arenaWire(), so /status already carried the tournament above.
+             It is NOT redundant against the legacy Arena DO, which put
+             `tournament` in /status only when the caller was IN the
+             tournament (arena.js getStatus) -- a spectator there gets
+             nothing, which is why this fetch existed. So: keep it, but only
+             when /status came back without one. Modern worker pays zero,
+             legacy worker behaves exactly as before. */
+          if (!d.tournament) {
+            fetch(BT_API_BASE + '/api/arena/tournament').then(function (r2) {
+              return r2.json();
+            }).then(function (d2) {
+              if (d2.ok && d2.tournament) setArenaTournament(d2.tournament);
+            }).catch(function () {});
+          }
         }
-      }).catch(function () {});
-      fetch(BT_API_BASE + '/api/arena/tournament').then(function (r) {
-        return r.json();
-      }).then(function (d) {
-        if (d.ok && d.tournament) setArenaTournament(d.tournament);
       }).catch(function () {});
     }
     return null;

@@ -96,6 +96,25 @@ room._handlePlayerDeath(psB, 'bp_duel_b', 'pvp:bp_duel_a');
 await new Promise((r) => setTimeout(r, 20)); // fire-and-forget pot settle
 check('winner takes the pot', psA.coins === 60 + 80, psA.coins);
 check('clean duel kill spawns no pile and keeps inventory', Object.keys(psB.inventory).length === 1 && psB.inventory.fish === 2, psB.inventory);
+// v2.3.1616: ...and it must SURVIVE THE RESPAWN.  _tickPlayerRespawn wipes the
+// inventory again five seconds later as defence-in-depth, and that second wipe
+// was unconditional -- so a duel kill kept the bag for exactly the length of
+// this assertion and then lost it.  Checking only the line above is why the
+// suite stayed green while every real duel loser was robbed.
+psB.respawnAt = Date.now() - 1;
+room._tickPlayerRespawn();
+check('a duel loser still has their bag AFTER respawning', psB.inventory.fish === 2, psB.inventory);
+check('respawn cleared the one-shot exemption flag', psB._duelDeathKeepsBag === undefined, psB._duelDeathKeepsBag);
+// An ORDINARY death still wipes on respawn -- the exemption is duel-only.
+psB.inventory = { fish: 2 };
+psB.hp = 0; psB.dying = false; psB.dead = false;
+room._handlePlayerDeath(psB, 'bp_duel_b', 'monster:m1');
+check('a monster death still wipes the bag at death', Object.keys(psB.inventory).length === 0, psB.inventory);
+psB.inventory = { fish: 2 };            // re-seed to prove the respawn wipe still fires
+psB.respawnAt = Date.now() - 1;
+room._tickPlayerRespawn();
+check('a monster death still wipes the bag on respawn', Object.keys(psB.inventory).length === 0, psB.inventory);
+psB.hp = psB.maxHp || 100; psB.dying = false; psB.dead = false;
 check('escrow record cleaned after settle', !state._store.has('duelEscrow:' + duel.id));
 check('duel_end emitted', room.eventBuffer.some((e) => e.type === 'duel_end' && e.payload.winner === 'bp_duel_a' && e.payload.how === 'kill'), room.eventBuffer.map((e) => e.type));
 check('consent pair cleared on resolution', room._pvpAllowed('bp_duel_a', 'bp_duel_b', 'town') === false);
@@ -303,66 +322,39 @@ const hit10f = room.eventBuffer.find((e) => e.type === 'pvp_hit');
 check('lethal hit carries died:true', hit10f && hit10f.payload.died === true && psB.hp === 0, hit10f && hit10f.payload);
 psB.hp = 100; psB.dying = false; psB.dead = false;
 
-/* ── v2.3.1610: a PROTECTED duel kill must keep the inventory all the
- *    way through the RESPAWN.
- *
- * The death side was already pinned above ("clean duel kill spawns no
- * pile and keeps inventory").  What nothing covered was the other end:
- * _tickPlayerRespawn wiped ps.inventory unconditionally 5 s later, and
- * because the protected path deliberately spawns NO pile, the items
- * were DESTROYED rather than transferred -- strictly worse than an
- * ordinary death, where the killer or a bystander can at least pick the
- * pile up. */
-{
-  const psP = room.playerState.bp_duel_b;
-  psA.coins = 200; psP.coins = 200;
-  psA.hp = 100; psA.dying = false; psA.dead = false;
-  psP.hp = 100; psP.dying = false; psP.dead = false; psP.respawnAt = 0;
+// ── 11. town HP regen is gated DURING a duel (v2.3.1613) ──
+// Hub regen restores 10% of maxHp every ~670 ms, roughly 15 hp/s at maxHp
+// 100, while a melee swing lands ~4 damage on a 300 ms cadence.  Ungated,
+// healing beat damage by more than an order of magnitude and a duel in town
+// could never move either health bar -- the exact failure the owner reported
+// ("this was a duel in town").  The arena already had this gate for the same
+// reason (v2.3.1126); duels were never added to it.
+psA.z = psB.z = 'town';
+psA.hp = 40; psA.maxHp = 100;
+psB.hp = 40; psB.maxHp = 100;
+delete psA._arenaMatch; delete psB._arenaMatch;
+await room._interceptDuel('bp_duel_a', chalMsg('bp_duel_b', 0));
+const accRegen = await room._interceptDuel('bp_duel_b', acceptMsg('bp_duel_a', 0));
+check('duel started for the regen check', accRegen !== null && !!room._duelFor('bp_duel_a'));
+room._tickPlayerRegen();
+check('town HP regen gated for BOTH duellists', psA.hp === 40 && psB.hp === 40, { a: psA.hp, b: psB.hp });
 
-  await room._interceptDuel('bp_duel_a', chalMsg('bp_duel_b', 10));
-  await room._interceptDuel('bp_duel_b', acceptMsg('bp_duel_a', 10));
-  const d2 = room._duelFor('bp_duel_b');
-  /* HARD check, not a conditional: an earlier version of this block
-     guarded the assertions behind "is the duel protected?", and when the
-     setup silently failed the whole section skipped and still reported
-     green.  A test that passes over its own subject is worse than none. */
-  check('protected kill: a fresh duel is actually active for the setup', !!d2, d2);
+// A bystander in the same town keeps healing -- the gate is per-duellist.
+room.playerState['bp_duel_c'].z = 'town';
+room.playerState['bp_duel_c'].hp = 40;
+room.playerState['bp_duel_c'].maxHp = 100;
+delete room.playerState['bp_duel_c']._arenaMatch;
+room._tickPlayerRegen();
+check('a bystander in town still regenerates', room.playerState['bp_duel_c'].hp > 40, room.playerState['bp_duel_c'].hp);
 
-  psP.inventory = { mummyRemains: 3, oakLog: 7 };
-  const pilesBefore = Object.values(room.loot || {}).reduce((n, l) => n + (l ? l.length : 0), 0);
-  psP.hp = 0;
-  room._handlePlayerDeath(psP, 'bp_duel_b', 'pvp:bp_duel_a');
-  await new Promise((r) => setTimeout(r, 20)); // fire-and-forget pot settle
-
-  check('protected kill: inventory survives the death itself',
-    psP.inventory && psP.inventory.mummyRemains === 3, psP.inventory);
-  const pilesAfter = Object.values(room.loot || {}).reduce((n, l) => n + (l ? l.length : 0), 0);
-  check('protected kill: no death pile is spawned',
-    pilesAfter === pilesBefore, { before: pilesBefore, after: pilesAfter });
-  check('protected kill: the no-drop flag is stamped for the respawn tick',
-    psP._noDropDeath === true, psP._noDropDeath);
-
-  /* THE REGRESSION: the respawn tick used to wipe it here. */
-  psP.respawnAt = Date.now() - 1;
-  psP.dying = true;
-  room._tickPlayerRespawn();
-  check('protected kill: inventory ALSO survives the respawn tick',
-    psP.inventory && psP.inventory.mummyRemains === 3 && psP.inventory.oakLog === 7,
-    psP.inventory);
-  check('protected kill: the no-drop flag is cleared after one respawn',
-    psP._noDropDeath === undefined, psP._noDropDeath);
-
-  /* An ORDINARY death must still lose the inventory on respawn -- the
-     defence-in-depth re-wipe stays intact for everyone else. */
-  psP.hp = 100; psP.dying = false; psP.dead = false;
-  psP.inventory = { mummyRemains: 5 };
-  room._handlePlayerDeath(psP, 'bp_duel_b', 'monster:fodder');
-  psP.respawnAt = Date.now() - 1;
-  psP.dying = true;
-  room._tickPlayerRespawn();
-  check('ordinary death: inventory is still wiped on respawn',
-    Object.keys(psP.inventory || {}).length === 0, psP.inventory);
-}
+// And once the duel ends, the duellists heal again.
+const dR = room._duelFor('bp_duel_a');
+await room._resolveDuel(dR, 'bp_duel_a', 'bp_duel_b', 'kill');
+check('duel cleared before the post-duel regen check', !room._duelFor('bp_duel_a'));
+psA.hp = 40; psA.dying = false; psA.dead = false;
+psB.hp = 40; psB.dying = false; psB.dead = false;
+room._tickPlayerRegen();
+check('regen resumes once the duel is over', psA.hp > 40, psA.hp);
 
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);
 process.exit(failures === 0 ? 0 : 1);

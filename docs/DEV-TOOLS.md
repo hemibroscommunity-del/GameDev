@@ -46,6 +46,69 @@ register them by hand); check 6 is a heuristic, review each hit; the
 JSX balance check tolerates prose apostrophes but can't catch every
 malformation `vite build` would (CI still runs lint + build).
 
+## `tools/qa/mp/` — headless MULTIPLAYER tests (v2.3.1609)
+
+Two real Chromium browsers driving the real React UI against a real
+GameRoom Durable Object. Not mocks: `wrangler dev --local` serves the
+actual worker over a real WebSocket, and each browser CONTEXT is a
+separate browser profile, so the two players get separate `bp_`
+passphrases — the headless equivalent of the manual `?guest=1` trick.
+
+```
+npm run build                    # the tests serve dist/, so build first
+node tools/qa/mp/run.mjs         # every scenario
+node tools/qa/mp/run.mjs trade duel
+node tools/qa/mp/audio-formats.mjs   # every SFX decodes in Chromium
+```
+
+Exits non-zero on any failed assertion. Roughly a minute per scenario;
+most of that is the loading screen honouring the animation-preloading
+law, which is correct behaviour, not slowness to optimise away.
+
+Notes for anyone extending it:
+
+- **CLAUDE.md says the sandbox blocks `npm install`. That is stale** —
+  it succeeds for both the client and `server/`, which is the only
+  reason any of this is possible.
+- `window._gameState` is a **ref**; the live state is `.current`.
+  Reading the ref yields `undefined` for every field and looks exactly
+  like "the player never joined".
+- Join **sequentially** (`joinPair`): open B's context only once A is
+  fully in-world. Opening both first left `S.others` empty every time.
+- A player who never moves is never marked dirty, so per-player tick
+  deltas never mention them and a peer waits forever — `waitMutualSight`
+  nudges both.
+- Actions go through the DOM (that is the point), but three shipped
+  bridges save the tests from pixel-accurate canvas taps:
+  `__broInspectPlayer(id)` opens the real inspect card,
+  `__broLegacyUI.chat()/.clan()` toggle those panels, and the operator
+  endpoint `POST /api/admin/grant` seeds gold and items through
+  `_creditPlayer` — the same path market, mail and duel payouts use.
+- Aim from the **camera**, not the window centre: `worldX = screenX +
+  camera.x`, and the camera clamps at map edges. A swing aimed at the
+  middle of the window can be tens of degrees off, and the server's arc
+  check (`±arc/2`, default ±34°) then drops it — which reads exactly
+  like a broken duel.
+- **Melee reach is 50px, checked against the SERVER's copy of both
+  positions.** `waitMutualSight` nudges the two players apart to make
+  them dirty, which leaves them ~58px apart — every swing was dropped
+  as out of range while the client's stale mirror of the peer still
+  read 8px. Anything geometric: walk into range and confirm the
+  distance via `serverPlayer()` before asserting.
+- **Damage popups expire.** The renderer destroys them a beat after
+  they spawn, so a single read after the fact is a coin flip — the same
+  build gave `["Hit! -4"]` on one run and `[]` on the next. Sample
+  continuously and accumulate.
+- Anything the server owns (hp, coins, inventory, position) should be
+  read from the server (`serverPlayer` / `adminPlayer`), not from a
+  one-shot client read that races the echo. Assert the client too when
+  the point is that the PLAYER can see it — but as a separate check, so
+  "the server didn't do it" and "the screen didn't show it" stay
+  distinguishable.
+- Ports are OS-assigned per run, and the worker is spawned detached and
+  killed by process group. Both exist because a leaked wrangler used to
+  poison the next run before a single assertion ran.
+
 ## `.claude/settings.json`
 
 Holds the SessionStart hook wiring only. If you add settings, keep the

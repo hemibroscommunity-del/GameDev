@@ -585,7 +585,7 @@ export const gridMethods = {
     for (const s of T1_STATS) {
       if (typeof payload[s] === 'number') {
         const clamped = this._clampStat(payload[s], lvl);
-        /* v2.3.1606: a reported 0 against a stored non-zero is the
+        /* v2.3.1624: a reported 0 against a stored non-zero is the
            "I don't know this value" signal from a client that has no
            copy -- NOT a real stat change.  T1 stats only grow (use-
            training); nothing in the game lowers one to 0.  The real
@@ -594,7 +594,7 @@ export const gridMethods = {
            early-returns on !ps there and can never block a legitimate
            reset.
            This guards the deploy window rule 19/20 leaves open: the
-           worker echoing these stats (v2.3.1606, persistence.js) only
+           worker echoing these stats (v2.3.1624, persistence.js) only
            helps a client that has SHIPPED the matching adopt block, and
            Pages/worker deploy independently -- an old cached client
            meeting a new worker would still report 0 and wipe the
