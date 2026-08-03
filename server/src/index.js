@@ -619,7 +619,7 @@ export class GameRoom {
                        stays fresh against getTop's 7-day staleness
                        filter (leaderboard.js:51).  Do not raise this
                        anywhere near 7 days. */
-    /* v2.3.1624: 1 min -> 5 min.  Rank on a polled panel that already
+    /* v2.3.1635: 1 min -> 5 min.  Rank on a polled panel that already
        shows week-old data does not need minute freshness, and this is a
        cross-DO fetch that bills 1:1 with no WebSocket discount. */
     this.LEADERBOARD_MIN_MS = 300000;       // 5 min

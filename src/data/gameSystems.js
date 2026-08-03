@@ -1270,7 +1270,7 @@ export const ARENA_POLL_INTERVAL = 3000; /* check server every 3s */
    (BroTown.jsx §BET) -- a spectator who bet without entering would never be
    credited if the poll stopped entirely.  The panel itself stays live at the
    fast rate independently: PartyPanel polls on its own while it is open. */
-/* v2.3.1624: 60s -> 5 min.  A player with NO arena involvement has
+/* v2.3.1635: 60s -> 5 min.  A player with NO arena involvement has
    nothing this poll can tell them -- entering the arena goes through the
    panel, which polls at the fast rate on its own, and anyone holding an
    unsettled bet counts as involved and stays on the 3 s path. */

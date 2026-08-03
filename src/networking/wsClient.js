@@ -1927,7 +1927,7 @@ export function setupWebSocket(ctx) {
        as trade2; invite/accept clicks should not sit in a batch. */
     'party_invite', 'party_accept', 'party_decline', 'party_leave', 'party_kick', 'party_chat']);
     var INPUT_BATCH_WINDOW = 33; // ms — match server tick rate for smooth remote movement
-    /* ═══ v2.3.1624: ADAPTIVE POSITION RATE ═══
+    /* ═══ v2.3.1635: ADAPTIVE POSITION RATE ═══
        Position updates were ~87% of this game's entire Cloudflare request
        bill: one every INPUT_BATCH_WINDOW while in motion, ~30/s, and
        inbound WebSocket messages bill at 20 messages = 1 request.
