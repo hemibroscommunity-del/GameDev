@@ -325,10 +325,23 @@ function pushDmgPopup(S, x, y, text, color, extra) {
    real bar geometry (variant/snowman/fodder sprite tops all differ);
    `fallback` is the site's old hand-tuned offset, used until the first
    render stamp (freshly spawned monster) or in headless paths. */
+/* v2.3.1638: floor for the no-stamp path.  The stamp is missing only
+   transiently — a monster minted fresh by a zone snapshot before the
+   renderer's first frame, or before the HP-bar texture resolves — but the
+   per-site `fallback` values (-10, -20, -22, -30, -35) were hand-tuned in
+   the renderer's LOCAL space back when the stamp was too, so on their own
+   they now spawn the popup ON the monster.  Real stamped values run
+   -102 (procedural) to -189 (fodder slime); -120 clears a typical bar
+   without flinging the number off the top of a short one. */
+var POPUP_NO_STAMP_Y = -120;
 function monsterPopupY(m, fallback) {
   var y = (m.y != null ? m.y : m.renderY) || 0;
-  var off = m._popupTopOff != null ? m._popupTopOff : (fallback != null ? fallback : -30);
-  return y + off;
+  if (m._popupTopOff != null) return y + m._popupTopOff;
+  var off = fallback != null ? fallback : -30;
+  /* min, not max: these are negative offsets, so the LOWER number is the
+     higher popup.  A site that deliberately passes something taller than
+     the floor keeps its own value. */
+  return y + Math.min(off, POPUP_NO_STAMP_Y);
 }
 
 /* v2.3.1421: clear the per-swing melee dedup flags on every entity.
