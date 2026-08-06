@@ -1,5 +1,26 @@
 name: Deploy worker
+# v2.3.1641: workflow_dispatch added after a REAL miss.  On 2026-08-06 the
+# squash-merge of PR #360 (45dbc50, server/** changed) produced NO Actions
+# run at all — neither this workflow nor Server CI — while the Cloudflare
+# Pages integration built the same commit seconds later, so the push
+# unambiguously happened and GitHub simply dropped the Actions events.
+# The server half of that merge (monster AI) therefore sat in main, unshipped,
+# with no way to notice except reading the run list.
+#
+# Before this, the ONLY path to production was the push trigger below, so a
+# dropped event had no recovery: there is no run to re-run, and CLAUDE.md
+# forbids deploying the worker from a laptop (a stale local deploy on
+# 2026-06-10 rolled back three weeks of server work and broke combat in
+# production — the reason this repo is a monorepo).  The remaining options
+# were both bad: push a no-op commit to main purely to re-trigger, or deploy
+# by hand.
+#
+# Dispatching this deploys whatever `main` currently holds, which is exactly
+# what the push trigger would have done — same code, same wrangler, same
+# secret.  It adds no new authority: anyone who can dispatch it can already
+# merge to main and trigger it that way.
 on:
+  workflow_dispatch:
   push:
     branches: [main]
     paths: ['server/**']
