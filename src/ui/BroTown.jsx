@@ -238,7 +238,7 @@ const {
 
 import { _regenerator, _regeneratorDefine2, _asyncToGenerator, _typeof, _slicedToArray, _toConsumableArray, _objectSpread, _defineProperty, _toPropertyKey, _toPrimitive, ownKeys, _arrayWithHoles, _iterableToArrayLimit, _unsupportedIterableToArray, _arrayLikeToArray, _nonIterableRest, _arrayWithoutHoles, _iterableToArray, _nonIterableSpread, _createForOfIteratorHelper, asyncGeneratorStep } from '@/lib/babelHelpers.js';
 import { SpriteHpBar } from './SpriteHpBar.jsx'; /* v2.3.1273: owner's HP-bar art (desktop HUD row) */
-import { barHeight, navSlotSize, navShelfHeight, DASH_OVERLAP } from './mobile/sheet/sheetGeometry.js'; /* v2.3.1283; v2.3.1290 bar-height canvas; v2.3.1325 slot-derived bar; v2.3.1560 two-row band */
+import { barHeight, navSlotSize, navShelfHeight, quickRowHeight, DASH_OVERLAP } from './mobile/sheet/sheetGeometry.js'; /* v2.3.1283; v2.3.1290 bar-height canvas; v2.3.1325 slot-derived bar; v2.3.1560 two-row band; v2.3.1635 three-row band */
 import { recolorEnabled } from '@/rendering/traits/recolorOptions.js';
 
 /* Expose all exports as globals for the pre-transpiled code.
@@ -2122,6 +2122,12 @@ export var BroTown = function BroTown(_ref0) {
          quick bar can be pinned inside the band without either one
          re-deriving geometry from CSS. */
       document.documentElement.style.setProperty('--nav-h', navShelfHeight(vw, vhFull) + 'px');
+      /* v2.3.1635: --quick-h joins for the same reason --nav-h exists.
+         The band is THREE rows now, so the quick bar can no longer size
+         itself as calc(--dash-h - --nav-h) — that arithmetic silently
+         became "quick row + identity row" and would have stretched the
+         quick bar over both.  Each pinned row is told its own height. */
+      document.documentElement.style.setProperty('--quick-h', quickRowHeight(vw, vhFull) + 'px');
       document.documentElement.style.setProperty('--dash-h', bar + 'px');
       var vh = Math.max(120, Math.round(vhFull - bar) + DASH_OVERLAP); /* v2.3.1290: bar is the resting band */
       /* v2.3.1283: short-circuit when nothing changed — the

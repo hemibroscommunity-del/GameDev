@@ -62,13 +62,19 @@ async function swingAt(A, times = 6, seen = null, onEach = null) {
          (bigger radius = less rounding error in the readback angle). */
       const px = S.player.x - S.camera.x, py = S.player.y - S.camera.y;
       const c = Math.cos(th), s = Math.sin(th);
-      /* largest R that keeps the point inside the canvas along this ray
-         (bottom margin clears the dashboard, which would eat the press) */
+      /* largest R that keeps the point inside the canvas along this ray.
+         The bottom margin must clear the DASHBOARD, which would swallow
+         the press — and the band's height is not a constant: it is
+         viewport-derived and grew again in v2.3.1635 when the identity
+         row landed.  Read the live --dash-h rather than hardcoding a
+         margin that silently stops clearing it. */
+      const dashH = parseFloat(
+        getComputedStyle(document.documentElement).getPropertyValue('--dash-h')) || 135;
       const lim = (comp, toLow, toHigh) => Math.abs(comp) < 1e-3 ? Infinity
         : (comp > 0 ? toHigh : toLow) / Math.abs(comp);
       const R = Math.max(40, Math.min(180,
         lim(c, px - 24, innerWidth - 24 - px),
-        lim(s, py - 24, innerHeight - 150 - py)));
+        lim(s, py - 24, innerHeight - dashH - 16 - py)));
       return { sx: px + Math.cos(th) * R, sy: py + Math.sin(th) * R, th };
     });
     if (!pt) return { ok: false, worstErr };

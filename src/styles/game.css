@@ -44,9 +44,19 @@
      number the canvas/joystick/HUD read), --nav-h is just the toolbar
      ribbon.  Boot fallbacks are the 390w values: 87 ribbon + 50 quick
      row = 135. */
+  /* v2.3.1635 (owner "option C"): THREE persistent rows — the identity
+     row (portrait / level / XP / unspent points / weapon / gold) joins
+     above the quick bar.  --dash-h is still the whole band and still the
+     ONE number the canvas, joystick zones and world-HUD anchors read.
+     --quick-h joins --nav-h so each pinned row is told its own height:
+     the quick bar used to size itself as calc(--dash-h - --nav-h), which
+     silently became two rows once a third existed.
+     Boot fallbacks at 390w: 87 ribbon + 50 quick + 52 identity = 189.
+     JS source of truth stays sheetGeometry.js; these are boot only. */
   --nav-slot: 56px;
   --nav-h:    87px;
-  --dash-h:   135px;
+  --quick-h:  50px;
+  --dash-h:   189px;
   /* v2.3.1235: Lantern Slate CORRECTION PASS (owner-approved ChatGPT
      review of the v2.3.1234 screenshots).  Slightly brighter, greener
      slate; four depth roles only (sheet / raised / well / well-deep);

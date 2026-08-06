@@ -3,7 +3,7 @@
    calcDisplayDps return to this import (r3 §1 had dropped them with the
    DMG/DPS/DEF footer): the readout is reinstated as the icon-based line
    in the Loadout column's freed third row. */
-import { xpRequired, calcMaxHp, calcMaxStam, calcMaxMana, calcCritChance, calcBlockReduction, getDefenseBlockBonus, WEAPON_TYPES, getActiveWeapon, getWeaponCritStat, buildSkillUnspent, STAT_TO_WEAPON_CAT, calcDisplayDmgRange, calcDisplayDps } from '../../data/gameSystems.js';
+import { xpRequired, calcMaxHp, calcMaxStam, calcMaxMana, calcCritChance, calcBlockReduction, getDefenseBlockBonus, WEAPON_TYPES, getActiveWeapon, getWeaponCritStat, STAT_TO_WEAPON_CAT, calcDisplayDmgRange, calcDisplayDps } from '../../data/gameSystems.js';
 import { skillXpRequired } from '../../data/items.js';
 import { ZONES } from '../../data/zones.js';
 import { portraitDataUrl } from '../../rendering/characterPortrait.js';
@@ -28,7 +28,8 @@ import { friendsSrv } from './sheet/friendsSync.js';               /* v2.3.1324 
 import { readyQuestCount } from './sheet/questModel.js';           /* v2.3.1298 */
 import { sheetTransition } from './sheet/motion.js';            /* v2.3.1283 */
 import { bagUnseen, bagEntryKey } from './sheet/bagUnseenModel.js'; /* v2.3.1312 */
-import { COMBAT_SKILLS } from './sheet/heroModel.js';           /* v2.3.1311: hero toolbar badge */
+import { COMBAT_SKILLS, unspentPointsTotal } from './sheet/heroModel.js'; /* v2.3.1311: hero toolbar badge; v2.3.1635: shared unspent total */
+import { IdentityStrip } from './sheet/IdentityStrip.jsx';      /* v2.3.1635: persistent identity row */
 import { HeroExpanded } from './sheet/HeroExpanded.jsx';        /* v2.3.1286 */
 import { InventoryPanel }              from './dash/InventoryPanel.jsx';
 import { ItemDetailPopup }             from './dash/ItemDetailPopup.jsx';
@@ -767,45 +768,41 @@ export const BottomDashboard = () => {
            default (owner: maximum world visibility).  The compact
            branch left with the compact state. */}
 
-      {/* v2.3.1563 (owner: "put coin count just above the first inventory
-          slot of the ultra compact menu — should be bottom left corner of
-          screen").  Pinned to the band's TOP-LEFT edge, out of flow and
-          out of the band's height: it sits over the world rather than
-          inside the bar, so --dash-h (and therefore the canvas, joystick
-          zones and every world-HUD anchor) is unchanged.  Hidden with the
-          quick bar while a panel is expanded — the Hero identity strip
-          owns the readout there and two live gold counts on one screen
-          disagree the moment one of them lags. */}
-      {mode !== 'expanded' && (() => {
-        const Rc = (window._gameState && window._gameState.current && window._gameState.current.rpg) || null;
-        const coins = (Rc && (Rc.coins || Rc.gold)) || 0;
-        return (
-          <div style={{
-            position: 'absolute',
-            left: 6,
-            bottom: 'calc(env(safe-area-inset-bottom, 0px) + var(--dash-h, 135px) - 1px)',
-            zIndex: 1,
-            display: 'flex', alignItems: 'center', gap: 3,
-            padding: '1px 6px 1px 4px',
-            borderRadius: '6px 6px 0 0',
-            background: 'rgba(13, 22, 27, 0.88)',
-            border: `1px solid ${COL.divider}`,
-            borderBottom: 'none',
-            pointerEvents: 'none',
-            /* Tabular figures so a changing balance doesn't jitter the
-               chip's width digit by digit. */
-            fontVariantNumeric: 'tabular-nums',
-            fontSize: 11.5, fontWeight: 800, lineHeight: 1.35,
-            color: '#F0C860',
-            textShadow: '0 1px 2px rgba(9,14,17,.9)',
-            whiteSpace: 'nowrap',
-          }}>
-            <img src="/icons/popups/gold.webp" alt="" draggable={false}
-              style={{ width: 12, height: 12, objectFit: 'contain' }} />
-            {coins.toLocaleString()}
-          </div>
-        );
-      })()}
+      {/* v2.3.1635 (owner "option C"): the PERSISTENT IDENTITY ROW —
+          portrait, name, level, exact XP to the next one, unspent build
+          points, active weapon, gold.  Third persistent row, pinned
+          above the quick bar for the same reason that one is pinned
+          (v2.3.1307b): anything in the band's flex flow hops when a
+          sheet closes and its content unmounts.
+
+          THIS RETIRES THE v2.3.1563 FLOATING GOLD CHIP.  That chip put a
+          coin count over the world precisely because the band had
+          nowhere to show one, and its own comment records the rule that
+          makes keeping both impossible: "two live gold counts on one
+          screen disagree the moment one of them lags".  The row carries
+          gold in the same corner of the screen and reads it from the
+          same rpg blob, so the chip is redundant, not merely duplicated.
+
+          Hidden while a panel is expanded, exactly like the quick bar
+          and the old chip: Hero's own IdentityStrip owns the readout
+          there, and that is the same one-count rule.  --dash-h does NOT
+          change when it hides (the BAR-height invariant) — the row just
+          isn't drawn, so the canvas is never reallocated. */}
+      {mode !== 'expanded' && (
+        <div style={{
+          position: 'absolute',
+          left: 0, right: 0,
+          bottom: 'calc(env(safe-area-inset-bottom, 0px) + var(--nav-h, 87px) + var(--quick-h, 50px))',
+          height: 'calc(var(--dash-h, 189px) - var(--nav-h, 87px) - var(--quick-h, 50px))',
+          zIndex: 2,
+          boxSizing: 'border-box',
+          padding: '0 10px',
+          display: 'flex', alignItems: 'center',
+          borderBottom: `1px solid ${COL.divider}`,
+        }}>
+          <IdentityStrip band />
+        </div>
+      )}
 
       {/* v2.3.1560 (owner: "a persistent menu above the toolbar icons"):
           the ultra-compact quick bar.  Absolute-pinned directly on top of
@@ -821,7 +818,10 @@ export const BottomDashboard = () => {
           bottom: 'calc(env(safe-area-inset-bottom, 0px) + var(--nav-h, 87px))',
           zIndex: 2,
           boxSizing: 'border-box',
-          height: 'calc(var(--dash-h, 87px) - var(--nav-h, 87px))',
+          /* v2.3.1635: its OWN height, not calc(--dash-h - --nav-h).  With
+             the identity row added that subtraction became "quick row +
+             identity row" and would have stretched this over both. */
+          height: 'var(--quick-h, 50px)',
         }}>
           <QuickBar R={(window._gameState && window._gameState.current && window._gameState.current.rpg) || null} />
         </div>
@@ -863,11 +863,10 @@ export const BottomDashboard = () => {
              unspent-point total — actionable only; XP/health/stat
              gains never badge (world popups carry those).  A number
              here renders as a count badge, not a dot (IconButton). */
-          hero: (() => {
-            const Rb = Sb && Sb.rpg;
-            if (!Rb) return 0;
-            return COMBAT_SKILLS.reduce((n, s) => n + buildSkillUnspent(Rb, s.key), 0);
-          })(),
+          /* v2.3.1635: one definition (heroModel.unspentPointsTotal) —
+             the persistent identity row shows this same number a few
+             pixels away, and two inline reduces drift. */
+          hero: unspentPointsTotal(Sb && Sb.rpg),
           /* v2.3.1323 (Friends spec): green dot when a friend is online.
              v2.3.1324: a NUMBER (count badge) for actionable social
              state — pending requests + unread DMs — which always

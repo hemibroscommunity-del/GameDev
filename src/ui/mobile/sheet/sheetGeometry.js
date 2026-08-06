@@ -26,7 +26,17 @@
    all modes and still the one number the canvas/zones/HUD read.  --nav-h
    exists only for chrome pinned INSIDE the band (the ribbon, and the
    reserve under an open panel) and must not be substituted for --dash-h
-   anywhere outside BottomDashboard. */
+   anywhere outside BottomDashboard.
+
+   v2.3.1635 (owner "option C"): THREE stacked persistent rows —
+     --dash-h  = identityRowHeight + quickRowHeight + navShelfHeight
+     --quick-h = quickRowHeight     (the ultra-compact bar)
+     --nav-h   = navShelfHeight     (the toolbar ribbon)
+   --quick-h joins for the same reason --nav-h did: the quick bar sized
+   itself as calc(--dash-h - --nav-h), which was exact while the band had
+   two rows and silently became "quick + identity" once it had three.
+   Each pinned row is told its own height; none of them derives another's.
+   The BAR-height invariant above is unchanged. */
 
 /* v2.3.1325 (owner: bigger toolbar): the bar height derives from the
    compact bag grid's slot algebra instead of the old fixed 72, giving
@@ -87,10 +97,26 @@ export function quickRowHeight(vw, vh) {
   return quickCellSize(vw, vh) + 10;
 }
 
+/* v2.3.1635 (owner: bring back a persistent sense of identity and
+   progress, "option C"): the IDENTITY ROW — the third persistent row,
+   stacked above the quick bar.  One row carrying portrait, name, level,
+   exact XP-to-next, unspent build points, active weapon and gold.
+   Height is the 40px portrait IdentityStrip already renders (it is
+   shared with Hero compact/expanded and must stay pixel-identical
+   there) plus 5/6 padding and the 1px bottom hairline.
+   SHORT VIEWPORTS get the tighter pad for the same reason navSlotSize
+   and quickCellSize carry caps: an SE-class phone has to keep its world
+   view, and this row is the third thing competing for it. */
+export function identityRowHeight(vw, vh) {
+  return 40 + (vh && vh <= 720 ? 8 : 12);
+}
+
 /* The BAND height every consumer keys off (canvas, joystick zones, world
-   HUD anchors) — both rows, since both are persistent chrome. */
+   HUD anchors) — all three rows, since all three are persistent chrome.
+   v2.3.1635: identity row joins.  187px at 390x844 (was 135: 87 shelf +
+   48 quick).  NB 87 is --nav-h, the ribbon ALONE — not the band. */
 export function barHeight(vw, vh) {
-  return navShelfHeight(vw, vh) + quickRowHeight(vw, vh);
+  return identityRowHeight(vw, vh) + quickRowHeight(vw, vh) + navShelfHeight(vw, vh);
 }
 /* v2.3.1271: the band's 14px rounded top corners cut out to the page
    background; the canvas runs 14px UNDER the band so the notches show

@@ -2,6 +2,7 @@ import {
   calcCritChance, calcBlockReduction, calcDisplayDmgRange, calcDisplayDps,
   calcMoveSpeed, passiveDodgeChance, getActiveWeapon, getWeaponCritStat,
   getEvasionPts, getDefenseBlockBonus, xpRequired, weaponXpRequired,
+  buildSkillUnspent,
 } from '../../../data/gameSystems.js';
 
 /* v2.3.1286: data model for the Hero destination (nav-system spec) —
@@ -34,6 +35,17 @@ export const COMBAT_SKILLS = [
   { key: 'defense',   label: 'Defense',  iconSrc: '/icons/ui/hero/defense.webp?v=2.3.1311', t2: true },
   { key: 'endurance', label: 'Stamina',  iconSrc: '/icons/ui/hero/endurance.webp?v=2.3.1311' },
 ];
+
+/* v2.3.1635: the GLOBAL unspent-point total, in one place.  The Hero
+   toolbar badge (v2.3.1311) computed this inline in BottomDashboard, and
+   the persistent identity row now shows the same number a few pixels
+   away — two inline copies of the same reduce is exactly how a badge and
+   a chip end up disagreeing after someone adds a seventh skill.  One
+   definition; both read it. */
+export function unspentPointsTotal(R) {
+  if (!R) return 0;
+  return COMBAT_SKILLS.reduce((n, s) => n + buildSkillUnspent(R, s.key), 0);
+}
 
 export function skillLevel(R, key) {
   if (key === 'defense') return (R.defenseSkill && R.defenseSkill.level) || 0;
