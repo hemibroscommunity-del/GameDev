@@ -952,10 +952,6 @@ export var BroTown = function BroTown(_ref0) {
     _useState16 = _slicedToArray(_useState15, 2),
     chatLog = _useState16[0],
     setChatLog = _useState16[1];
-  var _useState17 = useState(false),
-    _useState18 = _slicedToArray(_useState17, 2),
-    showChatLog = _useState18[0],
-    setShowChatLog = _useState18[1];
   var _useState19 = useState(0),
     _useState20 = _slicedToArray(_useState19, 2),
     unreadChats = _useState20[0],
@@ -1068,14 +1064,6 @@ export var BroTown = function BroTown(_ref0) {
     _useState74 = _slicedToArray(_useState73, 2),
     showFurniture = _useState74[0],
     setShowFurniture = _useState74[1];
-  var _useState75 = useState(false),
-    _useState76 = _slicedToArray(_useState75, 2),
-    showClanWar = _useState76[0],
-    setShowClanWar = _useState76[1];
-  var _useState77 = useState(false),
-    _useState78 = _slicedToArray(_useState77, 2),
-    showArena = _useState78[0],
-    setShowArena = _useState78[1];
   var _useState79 = useState(null),
     _useState80 = _slicedToArray(_useState79, 2),
     arenaStatus = _useState80[0],
@@ -1918,6 +1906,45 @@ export var BroTown = function BroTown(_ref0) {
      v2.3.784: the ~1,560-line effect body moved verbatim to
      src/networking/wsClient.js setupWebSocket (REBUILD-PLAN Phase 5);
      ctx carries the closure captures it used to take from this scope. */
+  /* v2.3.1642: UI PANEL REGISTRY for headless capture (tools/qa/qa-ui-shots.mjs).
+     Panel visibility lives in React useState, so an automated pass had no
+     way to open a menu without walking the player to the right building and
+     clicking it -- which cannot reach panels gated on state a fresh account
+     does not have (a clan, a party, an incoming trade).
+     Same posture as the window._gameState / window._gameFns autotest hooks
+     that have been here since the early harnesses: this exposes ONLY
+     client-local VIEW state.  Every setter below toggles what is drawn on
+     this device; none of them grants anything.  The server validates every
+     action independently and treats this client as hostile regardless
+     (docs/ARCHITECTURE-HANDOFF.md rule zero), so opening a panel you have
+     not earned shows you an empty panel, not a capability. */
+  window._uiPanels = {
+    building: setBuildingPanel,
+    inventory: setShowInventory, skills: setShowSkills, stats: setShowStatScreen,
+    shop: setShowShop, social: setShowSocialPanel, leaderboard: setShowLeaderboard,
+    encyclopedia: setShowEncyclopedia, info: setShowInfo,
+    emotes: setShowEmotes, clan: setShowClanPanel,
+    guild: setShowGuildPanel, feedback: setShowFeedback, petHouse: setShowPetHouse,
+    furniture: setShowFurniture, playerList: setShowPlayerList,
+    dungeonCreatorShow: setShowDungeonCreator, tradeShow: setShowTrade,
+    quest: setQuestPanel, inspect: setInspectPlayer, incomingTrade: setIncomingTrade,
+    trade2: setTrade2, duelRequest: setDuelRequest, threat: setThreatIncoming,
+    clanData: setClanData, party: setParty, welcome: setShowWelcome,
+    mayorGreeting: setShowMayorGreeting, tourPrompt: setShowTourPrompt,
+    intro: setShowIntro,
+    /* These three panels are gated on a COMPANION value, not just their
+       boolean — capturing them needs both halves set. */
+    chatOpen: setChatOpen,              // the real chat gate (showChatLog is dead state, below)
+    dungeonCreator: setDungeonCreator,  // paired with showDungeonCreator
+    tradeTarget: setTradeTarget,        // paired with showTrade
+  };
+  /* v2.3.1643: showChatLog, showClanWar and showArena USED TO LIVE HERE
+     and were declared but never read — three dead useState pairs whose
+     setters nothing called either. Removed. If you are looking for those
+     names: chat renders off `chatOpen`, the war banners off
+     stateRef.current._activeClanWar, and the arena UI is PartyPanel under
+     buildingPanel === 'party'. Wire new panels to those, not to a fresh
+     boolean that nothing reads. */
   useEffect(function () {
     return setupWebSocket({
       stateRef: stateRef,
