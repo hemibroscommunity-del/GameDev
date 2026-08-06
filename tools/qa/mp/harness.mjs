@@ -349,6 +349,25 @@ export async function clickText(P, text, { timeout = 6000 } = {}) {
   return true;
 }
 
+/** Open a dashboard destination by tapping its NAV RAIL button.
+ *
+ *  v2.3.1637: the toolbar ribbon carried a text label under every icon, so
+ *  scenarios opened panels with clickText(P, 'Friends').  The rail that
+ *  replaced it is icon-only — that call matched nothing and every
+ *  friends-panel assertion would have failed as a UI regression that
+ *  wasn't one.  The rail buttons carry their name as aria-label, which is
+ *  the accessible name of the control a real player taps, so this stays a
+ *  genuine UI path rather than a bus call that would pass even if the rail
+ *  were broken or absent.  Labels: Dashboard / Bag / Skills / Friends /
+ *  Quests / More (Hero is the identity row's portrait, not a rail button).
+ */
+export async function openDest(P, label, { timeout = 6000 } = {}) {
+  const btn = P.page.locator(`.bt-navrail [aria-label="${label}"]`).first();
+  await btn.waitFor({ state: 'visible', timeout });
+  await btn.click();
+  return true;
+}
+
 /** Every visible button's text — the authoritative selector list at runtime. */
 export function buttonTexts(P) {
   return P.page.evaluate(() => [...document.querySelectorAll('button')]

@@ -12,7 +12,10 @@
 import * as H from './harness.mjs';
 
 const openFriends = async (P) => {
-  await H.clickText(P, 'Friends');
+  /* v2.3.1637: the nav rail is icon-only, so the old clickText(P,
+     'Friends') matched nothing — openDest taps the rail button by its
+     accessible name, which is still a real tap on the real control. */
+  await H.openDest(P, 'Friends');
   await P.page.waitForTimeout(900);
 };
 
