@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { COL, getState } from '../dash/common.js';
 import { combatLevelProgress, unspentPointsTotal } from './heroModel.js';
-import { getActiveWeapon } from '../../../data/gameSystems.js';
+import { getActiveWeapon, calcDisplayDmgRange, calcDisplayDps } from '../../../data/gameSystems.js';
 import { portraitStore } from './portraitStore.js';
+import { dashboardPanelBus } from '../dashboardPanelBus.js';
 
 /* v2.3.1294 (ChatGPT round-4): the identity strip — one compact row
    that replaces the retired top-right world card.  Portrait (with the
@@ -36,7 +37,22 @@ import { portraitStore } from './portraitStore.js';
      - active weapon: the one piece of the retired LOADOUT column worth
        carrying full-time.
    Vitals are deliberately absent: HP/stamina/mana already live on the
-   world HUD, which is where they matter during a fight. */
+   world HUD, which is where they matter during a fight.
+
+   v2.3.1637 (owner: "put the dmg and DPS up on the character row above
+   the dashboard columns"): DMG/DPS moves here off the EQUIPPED column,
+   which frees that column's whole body for its six slots.  It takes the
+   WEAPON CHIP's place rather than adding width: the chip named the
+   weapon in text while the EQUIPPED column right below now shows that
+   same weapon as art, and of the two the numbers are the thing you
+   cannot get anywhere else at a glance.
+
+   v2.3.1637 (owner: the rail "doesn't need its own button" for Hero):
+   the PORTRAIT is the Hero button now.  It is the same v2.3.1294
+   reasoning the ribbon's Hero icon used — nothing says "my character"
+   better than the character — so the rail drops from seven buttons to
+   six and each of the survivors gets more height.  Band mode only: in
+   Hero's own sheet the portrait would open the screen you are on. */
 export const IdentityStrip = ({ band = false }) => {
   const [, force] = useState(0);
   useEffect(() => portraitStore.subscribe(() => force(v => v + 1)), []);
@@ -54,7 +70,9 @@ export const IdentityStrip = ({ band = false }) => {
   /* v2.3.1635: band-only extras. */
   const unspent = band ? unspentPointsTotal(R) : 0;
   const wpn = band ? getActiveWeapon(R) : null;
-  const wpnName = (wpn && (wpn.name || wpn.label)) || null;
+  /* v2.3.1637: the numbers the EQUIPPED column used to carry. */
+  const dmgRange = wpn ? calcDisplayDmgRange(R, wpn) : null;
+  const dps = dmgRange ? Math.round(calcDisplayDps(R, wpn) * 10) / 10 : 0;
 
   return (
     <div style={{
@@ -64,8 +82,17 @@ export const IdentityStrip = ({ band = false }) => {
       fontFamily: 'Source Sans 3, sans-serif',
     }}>
       {/* Portrait + presence dot (connection status — lived on the old
-          world card; the identity strip keeps it). */}
-      <div style={{ position: 'relative', width: 40, height: 40, flexShrink: 0 }}>
+          world card; the identity strip keeps it).
+          v2.3.1637: in the band it is also the Hero button. */}
+      <div
+        role={band ? 'button' : undefined}
+        aria-label={band ? 'Hero' : undefined}
+        title={band ? 'Hero' : undefined}
+        onPointerUp={band ? (e) => { e.stopPropagation(); dashboardPanelBus.open('hero'); } : undefined}
+        style={{
+          position: 'relative', width: 40, height: 40, flexShrink: 0,
+          cursor: band ? 'pointer' : 'default', touchAction: band ? 'manipulation' : undefined,
+        }}>
         <img
           src={portrait || (S && S.myAvatar) || '/icons/ui/profile.webp?v=2.3.128'}
           alt="Portrait"
@@ -122,19 +149,22 @@ export const IdentityStrip = ({ band = false }) => {
           }}
         >+{unspent}</span>
       )}
-      {/* v2.3.1635: what you are actually swinging.  Truncates rather
-          than wraps — the row's height is load-bearing (it is a term of
-          barHeight, and therefore of the canvas size), so nothing in it
-          may grow to two lines. */}
-      {band && wpnName && (
+      {/* v2.3.1637: DMG / DPS, in the weapon chip's slot.  Truncates
+          rather than wraps — the row's height is load-bearing (it is a
+          term of barHeight, and therefore of the canvas size), so
+          nothing in it may grow to two lines. */}
+      {band && dmgRange && (
         <span style={{
-          flex: '0 1 auto', minWidth: 0, maxWidth: 104,
-          display: 'inline-flex', alignItems: 'center', gap: 4,
+          flex: 'none',
+          display: 'inline-flex', alignItems: 'center', gap: 6,
           padding: '2px 8px', borderRadius: 999,
           background: COL.slot, border: '1px solid ' + COL.tileBor,
-          color: COL.text2, fontSize: 11, fontWeight: 700, lineHeight: 1.4,
-          whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-        }}>{wpnName}</span>
+          color: COL.muted, fontSize: 10, fontWeight: 700, lineHeight: 1.4,
+          whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums',
+        }}>
+          <span>DMG <b style={{ color: COL.text }}>{dmgRange.text}</b></span>
+          <span>DPS <b style={{ color: COL.text }}>{dps}</b></span>
+        </span>
       )}
       {/* Gold — coin icon + number as one compact unit, right-aligned. */}
       <span style={{

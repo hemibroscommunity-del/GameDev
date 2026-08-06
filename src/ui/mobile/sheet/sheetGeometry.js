@@ -96,12 +96,24 @@ export function navShelfHeight(vw, vh) {
    on a 390px phone — and the same mitigation applies: every tile has a
    full-size counterpart one tap away in Bag/Hero. */
 export function dashTileSize(vw) {
-  const column = (vw - 16 - 12) / 3;
-  return Math.round(Math.min(Math.max((column - 20) / 3, 22), 34));
+  /* v2.3.1637 FIX: subtract the rail.  This measured the FULL viewport
+     through v2.3.1636b, which was right when the columns spanned it —
+     but the rail now takes ~48px off their left, so the tiles came out
+     ~34 wide inside a ~95px column that fits 30, and the outer two in
+     every row were clipped by the column's own overflow:hidden. */
+  const inner = vw - railWidth(vw);
+  const column = (inner - 12 - 10) / 3;
+  return Math.round(Math.min(Math.max((column - 18) / 3, 20), 34));
 }
 export function columnsRowHeight(vw, vh) {
   const tile = dashTileSize(vw);
-  return Math.round(17 + 10 + 2 * (tile + 11) + 4 + (vh && vh <= 720 ? 8 : 10) + 2);
+  const content = Math.round(17 + 10 + 2 * (tile + 11) + 4 + (vh && vh <= 720 ? 8 : 10) + 2);
+  /* v2.3.1637: the rail runs the FULL band height beside these rows, so
+     whichever needs more vertical room sets the band.  Six stacked
+     buttons beat three columns of tiles at every viewport we ship, but
+     taking the max rather than assuming that keeps a future shorter rail
+     (or a taller column) from silently clipping the other. */
+  return Math.max(content, railHeight(vw, vh) - identityRowHeight(vw, vh));
 }
 
 /* v2.3.1635 (owner: bring back a persistent sense of identity and
@@ -118,6 +130,39 @@ export function identityRowHeight(vw, vh) {
   return 40 + (vh && vh <= 720 ? 8 : 12);
 }
 
+/* v2.3.1637 (owner mockup): the NAV RAIL — the six destinations leave the
+   full-width bottom ribbon and become icon-only buttons stacked down the
+   band's LEFT edge, plus one at the top for the dashboard itself ("it
+   should be a new icon that represent a dashboard").
+   v2.3.1637b (owner: "the hero can just be pressing on the icon of the
+   hero up top, doesn't need its own button on that side"): SIX buttons,
+   not seven — Hero moved onto the identity row's portrait, and the
+   height that freed went to the five destinations that stayed.  The rail spans
+   the WHOLE band height, so the identity row and the columns row both
+   start to its right.
+
+   Owner on the width: "just the size of the icons" — the rail is sized by
+   its icon and nothing else, not as an equal fourth column.  Buttons are
+   rail-WIDE and short: a 48x28 target is far easier to hit than the 28x28
+   a square button would give, and seven square ones could not fit the
+   band at any usable size.
+
+   The rail is why the band cannot simply shrink by the ribbon's 87px.
+   Six buttons still need vertical room, so the band's floor is whichever
+   is taller: what the three columns need, or what the rail needs. */
+export const RAIL_COUNT = 6;
+const RAIL_GAP = 3;
+const RAIL_PAD = 6;
+export function railButtonSize(vw, vh) {
+  return vh && vh <= 720 ? 24 : 28;
+}
+export function railWidth(vw) {
+  return Math.round(Math.min(Math.max(vw * 0.123, 40), 56));
+}
+export function railHeight(vw, vh) {
+  return railButtonSize(vw, vh) * RAIL_COUNT + RAIL_GAP * (RAIL_COUNT - 1) + RAIL_PAD;
+}
+
 /* The BAND height every consumer keys off (canvas, joystick zones, world
    HUD anchors) — all three rows, since all three are persistent chrome.
    v2.3.1635: identity row joins.  187px at 390x844 (was 135: 87 shelf +
@@ -128,7 +173,13 @@ export function identityRowHeight(vw, vh) {
    187px one-row version rendered to scale: the columns are the ask, and
    the identity row stays because no column carries name/level/XP/gold. */
 export function barHeight(vw, vh) {
-  return identityRowHeight(vw, vh) + columnsRowHeight(vw, vh) + navShelfHeight(vw, vh);
+  /* v2.3.1637: the toolbar ribbon is GONE — its six destinations moved
+     into the left rail, which runs beside these two rows rather than
+     under them and so adds no height of its own.  230px at 390x844
+     (52 identity + 178 columns), down from 272.  navShelfHeight and
+     navSlotSize stay exported: the ribbon's buttons are retired but the
+     slot algebra is still the compact bag grid's. */
+  return identityRowHeight(vw, vh) + columnsRowHeight(vw, vh);
 }
 /* v2.3.1271: the band's 14px rounded top corners cut out to the page
    background; the canvas runs 14px UNDER the band so the notches show

@@ -20,6 +20,7 @@ import { getEquip } from '../../rendering/gearCatalog.js';
 import { dashboardPanelBus } from './dashboardPanelBus.js';
 import { barHeight, expandedSheetHeight, drillSheetHeight } from './sheet/sheetGeometry.js'; /* v2.3.1283; v2.3.1350 two-state; v2.3.1311e drill height; v2.3.1325 slot-derived bar */
 import { DashColumns } from './dash/DashColumns.jsx';           /* v2.3.1636 */
+import { NavRail } from './dash/NavRail.jsx';                   /* v2.3.1637 */
 import { portraitStore } from './sheet/portraitStore.js';          /* v2.3.1294 */
 import { hasUnseenLevelUps } from './sheet/skillsModel.js';        /* v2.3.1296 */
 import { getFriendRows } from './sheet/friendsModel.js';           /* v2.3.1323 */
@@ -468,6 +469,25 @@ const DESTINATIONS = [
   { id: 'more',   label: 'More',    icon: '/icons/ui/nav-more.webp?v=2.3.1224' },
 ];
 
+/* v2.3.1637 (owner correction to their own mockup: "it should be a new
+   icon that represent a dashboard"): the rail's SEVENTH button, first in
+   the stack.  The resting three-column band is a destination like any
+   other and was the one state the toolbar could never light, because bar
+   mode lights nothing.  panel-stats is the painted set's bar-chart-with-
+   rising-arrow -- the only "your numbers" glyph in it, and used on one
+   legacy screen otherwise, so it costs no collision.  Tapping it closes
+   to rest (toBar) rather than opening a panel; there is no 'dashboard'
+   entry in DESTINATIONS and the bus never sees the id. */
+/* v2.3.1637b (owner): HERO is not in the rail — "the hero can just be
+   pressing on the icon of the hero up top".  IdentityStrip's portrait
+   carries it in band mode, which is the v2.3.1294 rule the ribbon's own
+   Hero button already followed (the icon WAS the player's bust).  One
+   fewer rail button is also ~32px of band height back. */
+const RAIL_ITEMS = [
+  { id: 'dashboard', label: 'Dashboard', icon: '/icons/ui/panel-stats.webp?v=2.3.1637' },
+  ...DESTINATIONS.filter(d => d.id !== 'hero'),
+];
+
 /* v2.3.1350 (owner): the COMPACT_VIEWS registry and the six compact
    glance views are RETIRED — bar and expanded are the only two nav
    states now (files deleted; git history has them). */
@@ -770,7 +790,11 @@ export const BottomDashboard = () => {
               — the quick bar hides while a panel is expanded, so the
               panel gets those ~50px back (var(--dash-h) here would have
               left a blank strip and cost the Bag its third item row). */}
-          <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', marginBottom: 'var(--nav-h, var(--dash-h, 87px))' }}>
+          {/* v2.3.1637: reserve the RAIL's width, not the retired
+              ribbon's height.  Same purpose as the v2.3.1307b
+              marginBottom it replaces -- panel content must never slide
+              under the persistent navigation. */}
+          <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', marginLeft: 'var(--rail-w, 48px)' }}>
             {Active && <Active />}
           </div>
         </>
@@ -801,9 +825,9 @@ export const BottomDashboard = () => {
       {mode !== 'expanded' && (
         <div style={{
           position: 'absolute',
-          left: 0, right: 0,
-          bottom: 'calc(env(safe-area-inset-bottom, 0px) + var(--nav-h, 87px) + var(--cols-h, 133px))',
-          height: 'calc(var(--dash-h, 272px) - var(--nav-h, 87px) - var(--cols-h, 133px))',
+          left: 'var(--rail-w, 48px)', right: 0,
+          bottom: 'calc(env(safe-area-inset-bottom, 0px) + var(--cols-h, 178px))',
+          height: 'calc(var(--dash-h, 230px) - var(--cols-h, 178px))',
           zIndex: 2,
           boxSizing: 'border-box',
           padding: '0 10px',
@@ -825,14 +849,14 @@ export const BottomDashboard = () => {
       {mode !== 'expanded' && (
         <div style={{
           position: 'absolute',
-          left: 0, right: 0,
-          bottom: 'calc(env(safe-area-inset-bottom, 0px) + var(--nav-h, 87px))',
+          left: 'var(--rail-w, 48px)', right: 0,
+          bottom: 'env(safe-area-inset-bottom, 0px)',
           zIndex: 2,
           boxSizing: 'border-box',
           /* v2.3.1635: its OWN height, not calc(--dash-h - --nav-h).  With
              the identity row added that subtraction became "middle row +
              identity row" and would have stretched this over both. */
-          height: 'var(--cols-h, 133px)',
+          height: 'var(--cols-h, 178px)',
         }}>
           <DashColumns R={(window._gameState && window._gameState.current && window._gameState.current.rpg) || null} />
         </div>
@@ -891,96 +915,24 @@ export const BottomDashboard = () => {
           })(),
         };
         return (
-          <div className="bt-dashboard-toolbar-frame" ref={toolbarRef} style={{
-            /* v2.3.1307b (owner: "toolbar bounces ~20-30px after closing"):
-               the ribbon is pinned OUT OF FLOW to the band's bottom edge.
-               In flex flow it sat BELOW the content (at the band bottom)
-               while a sheet was open, but the instant a close settled the
-               content unmounted and the ribbon reflowed to the TOP of the
-               still-tall band — hopping up by the leftover height (the
-               released drag's residual, ~20-30px) and then riding the
-               shrinking band back down over the 220ms ease.  That ride-back
-               IS the bounce, and its size varies with where the collapse
-               starts (the earlier full-height "rubber band" reports were
-               the same mechanism at bigger amplitude).  Absolute-pinned to
-               the band's bottom it cannot move, in any mode, ever.  The
-               env() offset keeps it above an iOS home indicator; content
-               wrappers reserve the 72px below (marginBottom) so panels
-               never slide under it. */
-            position: 'absolute',
-            left: 0,
-            right: 0,
-            bottom: 'env(safe-area-inset-bottom, 0px)',
-            zIndex: 2,
-            boxSizing: 'border-box',
-            /* v2.3.1229b: fixed 68px shelf in panel mode (30% of the
-               grown band would balloon); 30% of the resting 28vh band
-               ≈ the same 68px, so the shelf never visibly jumps. */
-            /* v2.3.1241: edge-parity — the RESTING shelf is now a fixed 68
-               (was '30%' of the fractional band), so the ribbon frame never
-               lands on a sub-pixel vertical coord that would resample its
-               contour on Retina.  Panel mode was already 68. */
-            /* v2.3.1258: 68 -> 72 — the taller-dashboard pass adds 4px of
-               breathing room between the panels and the nav row via the
-               frame's top padding; the shelf grows by the same 4 so the
-               ribbon (and the buttons' rendered height) stay EXACTLY as
-               before.  A fixed +4 inside the fixed shelf would instead
-               squeeze the buttons to their 44px floor and clip the labels
-               (caught on the rig).
-               v2.3.1325 (owner: slot-sized icons): the shelf is the
-               slot-derived bar height — BroTown stamps --dash-h on
-               viewport changes; sheetGeometry.barHeight is the source.
-               v2.3.1560: --nav-h (navShelfHeight) replaces --dash-h here.
-               The band is two rows now; this frame is absolute-pinned to
-               its bottom, so keeping --dash-h would have made the ribbon
-               as tall as the whole band and drawn it over the quick bar
-               sitting above it. */
-            height: 'var(--nav-h, var(--dash-h, 87px))',
-            minHeight: 56,
-            flex: '0 0 auto',
-            display: 'flex',
-            alignItems: 'stretch',
-          }}>
-            {/* v2.3.1283: owner — SIX buttons (Bag · Hero · Skills ·
-                Friends · Quests · More).  Chat left the toolbar: the
-                composer opens by tapping your own character (the
-                over-head bubble flow is otherwise unchanged).  Hero and
-                Skills reuse panel-self/panel-skills art until dedicated
-                nav-* icons are generated. */}
-            <div className="bt-dashboard-toolbar-ribbon">
-              {DESTINATIONS.map(d => (
-                <IconButton key={d.id} src={d.icon} label={d.label}
-                  tut={d.id === 'more' ? 'dash-more' : undefined}
-                  /* v2.3.1294 (round-4): the Hero icon is the player's
-                     own portrait bust — now that Hero owns the whole
-                     character HUD, nothing says "my character" better
-                     than the character (replaces the magnifier art;
-                     falls back to it until the bust renders). */
-                  node={d.id === 'hero' && profilePortrait ? (
-                    <img src={profilePortrait} alt="Hero" draggable={false}
-                      style={{
-                        /* v2.3.1326: back to the classic 30px bust
-                           (owner shrank the icons again). */
-                        width: 30, height: 30, objectFit: 'cover',
-                        imageRendering: 'pixelated', borderRadius: 8,
-                      }} />
-                  ) : undefined}
-                  active={litId === d.id}
-                  snap={litId === d.id ? mode : null}
-                  dot={dots[d.id]} /* v2.3.1311: raw — numbers render as count badges */
-                  /* v2.3.1312: one restrained pulse per NEW pickup (the
-                     epoch key replays the animation); gated on unseen
-                     count so inspecting the item retires the motion. */
-                  pulse={d.id === 'bag' && bagUnseen.count() > 0 ? bagUnseen.epoch() : 0}
-                  onClick={() => dashboardPanelBus.tapDestination(d.id)}
-                  /* v2.3.1318: icon swipes -> discrete one-state moves
-                     (this session's contract, owner-selected). */
-                  onSwipe={(dir) => dir === 'up'
-                    ? dashboardPanelBus.advance(d.id)
-                    : dashboardPanelBus.retreat(d.id)} />
-              ))}
-            </div>
-          </div>
+          /* v2.3.1637 (owner): the toolbar RIBBON is retired — its six
+             destinations are now icon-only buttons in the left rail, plus
+             a seventh for the dashboard itself.  The old frame was
+             absolute-pinned to the band's BOTTOM and reserved
+             var(--nav-h) of every expanded panel; the rail is pinned to
+             the band's LEFT and reserves var(--rail-w) instead, which is
+             why the band lost 87px of height and gained ~48 of inset.
+             IconButton, its swipe classifier and the ribbon CSS classes
+             go with it — a rail button is a tap target, and swipe-to-open
+             on a 28px-tall button would fight the sheet's own drag. */
+          <NavRail
+            items={RAIL_ITEMS}
+            litId={litId}
+            atRest={mode === 'bar'}
+            vw={typeof window !== 'undefined' ? window.innerWidth : 390}
+            vh={typeof window !== 'undefined' ? window.innerHeight : 844}
+            dots={dots}
+            profilePortrait={profilePortrait} />
         );
       })()}
     </div>

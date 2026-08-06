@@ -57,10 +57,17 @@
      new row with the retired row's number).
      Boot fallbacks at 390w: 87 ribbon + 133 columns + 52 identity = 272.
      JS source of truth stays sheetGeometry.js; these are boot only. */
+  /* v2.3.1637 (owner mockup): the bottom ribbon is gone.  Its six
+     destinations are icon-only buttons in a left RAIL that spans the
+     band's full height, so --nav-h (a height) becomes --rail-w (a
+     width) and the band drops to two rows.  The rail needs vertical
+     room for seven buttons, which is what sets --cols-h now.
+     Boot fallbacks at 390w: 52 identity + 178 columns = 230 band,
+     48 rail.  JS source of truth stays sheetGeometry.js. */
   --nav-slot: 56px;
-  --nav-h:    87px;
-  --cols-h:   133px;
-  --dash-h:   272px;
+  --rail-w:   48px;
+  --cols-h:   178px;
+  --dash-h:   230px;
   /* v2.3.1235: Lantern Slate CORRECTION PASS (owner-approved ChatGPT
      review of the v2.3.1234 screenshots).  Slightly brighter, greener
      slate; four depth roles only (sheet / raised / well / well-deep);

@@ -85,8 +85,14 @@ const Column = ({ title, children, onTap }) => (
     }}>{title}</div>
     <div style={{
       flex: 1, minHeight: 0, minWidth: 0,
-      display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-      padding: '5px 4px', gap: 4,
+      /* v2.3.1637 (owner: "it needs to fill the space better (the
+         slots)"): space-evenly, not centre.  The rail's six buttons set
+         a taller band than three columns of tiles need, and centring
+         left that surplus as one dead block under the tiles instead of
+         spreading it between them. */
+      display: 'flex', flexDirection: 'column', alignItems: 'center',
+      justifyContent: 'space-evenly',
+      padding: '4px 3px', gap: 3,
     }}>{children}</div>
   </div>
 );
@@ -94,7 +100,7 @@ const Column = ({ title, children, onTap }) => (
 /* Both grid columns lay their tiles out three across, two down — the same
    rhythm, so the eye reads one row of six per column rather than three
    different grids. */
-const tileRow = { display: 'flex', gap: 4, justifyContent: 'center' };
+const tileRow = { display: 'flex', gap: 3, justifyContent: 'center' };
 
 export const DashColumns = ({ R }) => {
   const vw = typeof window !== 'undefined' ? window.innerWidth : 390;
@@ -250,14 +256,11 @@ export const DashColumns = ({ R }) => {
       </Column>
 
       <Column title="EQUIPPED">
-        <div style={{
-          fontSize: 10, lineHeight: 1, color: COL.muted,
-          fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap',
-        }}>
-          {range
-            ? <>DMG <b style={{ color: COL.text }}>{range.text}</b> · DPS <b style={{ color: COL.text }}>{dpsText}</b></>
-            : <>No weapon</>}
-        </div>
+        {/* v2.3.1637: DMG/DPS left this column for the identity row
+            (owner: "put the dmg and DPS up on the character row above the
+            dashboard columns").  It is NOT also drawn here — the band's
+            one-count rule, the same one that retired the floating gold
+            chip at v2.3.1635.  The whole body is the six slots now. */}
         <div style={tileRow}>{loadoutRow1.map(equipCell)}</div>
         <div style={tileRow}>{loadoutRow2.map(equipCell)}</div>
       </Column>
