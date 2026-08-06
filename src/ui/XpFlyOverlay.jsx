@@ -7,7 +7,7 @@ import { activeWeaponCategory, weaponXpRequired, WEAPON_LEVEL_CAP } from '@/data
    S._hudPopups by the combat-XP and gold-drop paths.
    Each entry has { id, target, text, color, ts }.
      target = 'xpBar'    -> the combat-XP message + progress bar (below)
-     target = 'goldIcon' -> the gold pickup number, top-right
+     target = 'goldIcon' -> the gold pickup number, at the coin chip
    Mounted once from GameApp.jsx.  z-index 90 (see src/ui/zLayers.js).
 
    ═══ v2.3.1638 (owner: "there's also no XP gain message after a
@@ -259,7 +259,17 @@ const XpFlyMessage = ({ pop, stackIdx }) => {
   );
 };
 
-/* Gold pickups keep the in-place top-right float they have always had. */
+/* Gold pickups, anchored to the coin chip they actually change.
+   v2.3.1638: this popup was orphaned the same way the XP one was, just
+   later.  It floated in the TOP-RIGHT corner because that is where the
+   retired identity card kept the gold readout — but at v2.3.1563 the
+   owner moved the live coin count to the BOTTOM-LEFT band edge
+   (mobile/BottomDashboard.jsx, "should be bottom left corner of screen").
+   So "+N G" was animating in the opposite corner of the screen from the
+   number it was announcing.  It now rises out of the chip.
+   Bottom-anchored via calc(var(--dash-h) + Npx) per rule 2 in
+   src/ui/zLayers.js — a high z alone would float it OVER the dashboard
+   instead of clearing the band. */
 const HudPopup = ({ pop, stackIdx }) => {
   const [phase, setPhase] = useState(0); /* 0 = mounted, 1 = drifted */
   useEffect(() => {
@@ -274,17 +284,20 @@ const HudPopup = ({ pop, stackIdx }) => {
     <div
       style={{
         position: 'fixed',
-        right: 'calc(env(safe-area-inset-right, 0px) + 12px)',
-        top: 'calc(env(safe-area-inset-top, 0px) + 60px + ' + (stackIdx * STACK_SPACING_PX) + 'px)',
-        textAlign: 'right',
-        transform: 'translateY(' + (phase === 1 ? 8 : 0) + 'px)',
+        left: 8,
+        bottom: 'calc(env(safe-area-inset-bottom, 0px) + var(--dash-h, 135px) + 20px + '
+          + (stackIdx * STACK_SPACING_PX) + 'px)',
+        textAlign: 'left',
+        /* Rises out of the chip and fades — a gain moving up off the
+           counter it just incremented. */
+        transform: 'translateY(' + (phase === 1 ? -14 : 0) + 'px)',
         opacity: phase === 1 ? 0 : 1,
         /* v2.3.1233: Lantern Slate semantic fallback — coin gold #D8A94D. */
         color: pop.color || '#D8A94D',
         fontFamily: 'Source Sans 3, sans-serif',
-        fontWeight: 700,
-        fontSize: 20,
-        textShadow: '0 1px 2px rgba(0,0,0,.85), 0 0 4px rgba(0,0,0,.5)',
+        fontWeight: 800,
+        fontSize: 17,
+        textShadow: '0 1px 2px rgba(0,0,0,.9), 0 0 4px rgba(0,0,0,.55)',
         transition: 'transform ' + LIFE_MS + 'ms ease-out, opacity ' + LIFE_MS + 'ms ease-in',
         pointerEvents: 'none',
         whiteSpace: 'nowrap',
