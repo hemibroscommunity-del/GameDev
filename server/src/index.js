@@ -324,6 +324,11 @@ export const PRIVILEGED_EVENTS = new Set([
   'friend_dm', 'friend_dm_backlog',
   // Combat resolution
   'monster_attack', 'monster_hit', 'monster_kill', 'pvp_hit',
+  /* v2.3.1640: display-only snowball. Carries no damage (the authoritative
+     hit rides monster_attack on the impact tick), but a forged one would
+     let a client paint fake incoming projectiles on every screen in the
+     zone, so it is server-emitted only like the rest of this family. */
+  'monster_projectile',
   // v2.3.1147: server-emitted since the mummy->skeleton transform moved
   // server-side (v2.3.856 era) but never deny-listed -- a client could
   // forge cosmetic transforms on everyone's screen.  Closed.
@@ -511,6 +516,49 @@ export class GameRoom {
        anticheat ceiling. */
     this.RESPAWN_TIME = 5000; // 5s respawn
     this.MONSTER_AGGRO_RANGE = 120; // pixels
+    /* v2.3.1639: per-archetype aggro overrides.  Absent = the 120 default,
+       so nothing but the listed archetype changes behaviour.  Scoped the
+       same way _atkRange already is a few hundred lines down
+       (`m.arch === 'snowman' ? 70 : ATTACK_RANGE`), and deliberately NOT a
+       bump to MONSTER_AGGRO_RANGE itself: that constant is read inside
+       _tickMonsters, which loops _activeZones() — dungeon instances ride
+       ordinary zone ids through the same loop, so a global bump would
+       re-pull every archetype in every open-world zone AND inside every
+       dungeon.
+       Snowman 120 -> 300 (owner: "way too passive"): at 120px an unprovoked
+       monster does not react until the player is roughly one body-length
+       away, which reads as "it ignores me".  300 is still well inside a
+       phone screen and still leaves the player free to walk away — a
+       snowman closes at 18 px/s against a 150 px/s walk, so this changes
+       when it ENGAGES, never whether the player can disengage. */
+    this.MONSTER_AGGRO_BY_ARCH = { snowman: 300 };
+    /* v2.3.1639: px/tick a chasing monster repays knockback debt on top of
+       its normal step (server/src/combat.js records the debt).  1.1 px/tick
+       x the 27.3 ticks in one player swing (SWING_COOLDOWN 600ms /
+       TICK_RATE 22ms) = 30px, i.e. exactly one normal hit's shove undone
+       per swing.  Chosen from that identity, not tuned by feel. */
+    this.KB_RECOVER_PX_PER_TICK = 1.1;
+    /* v2.3.1640: per-archetype RANGED attack profiles.  Absent = melee
+       only, so this changes exactly one archetype.
+       Snowman: fires in the 100..300px band — outside its own 70px swing
+       ring (so closing to melee still switches it back to swinging) and
+       inside its 300px aggro radius (so it never throws at something it
+       has not noticed).  travelMs 900 is a deliberately slow, readable
+       arc: a big lobbed snowball you can see coming and walk out of,
+       which is the whole point of giving the SLOW archetype the ranged
+       attack.  cd 2600 vs the 1500 melee cooldown keeps it from
+       out-DPSing a swing — range is the reward, not damage.  Damage
+       itself is untouched: the impact uses the same m.dmg the swing
+       does, so the [1,2] demo band is unaffected. */
+    this.MONSTER_RANGED_BY_ARCH = {
+      snowman: { range: 300, minRange: 100, travelMs: 900, cd: 2600 },
+    };
+    /* v2.3.1640: how far a player may drift from the aim point and still be
+       hit.  40px against a ~34px body is roughly "you didn't really move",
+       so walking out of the arc dodges while standing still never loses a
+       hit to client/server position drift.  Paired with travelMs: a longer
+       flight with the same radius is strictly easier to dodge. */
+    this.SNOWBALL_HIT_RADIUS = 40;
     /* Monster stop + attack distance.  Bumped 25 -> 55 over a couple
        tuning passes so monsters halt about ~30 px away from the
        player, leaving plenty of room to face the threat and raise
@@ -901,6 +949,103 @@ export class GameRoom {
   }
 
   // Tick monster AI and respawns
+  /* v2.3.1640: the damage half of a monster attack, shared by the melee
+     swing in _tickMonsters and the ranged snowball impact.  Extracted
+     rather than copied: a second copy of the thorn/hexer/lifesteal/death
+     sequence would drift, and this repo has been bitten by exactly that
+     (the client/server zone tables, which now need a lockstep test).
+
+     atkX/atkY become the event's attackerX/attackerY.  For melee that is
+     the monster's own position.  For a snowball it is the IMPACT POINT,
+     and that distinction is load-bearing: the client drops any
+     monster_attack whose attacker is more than 160px away
+     (src/networking/gameEvents.js) — a deliberate guard against "mystery
+     damage with no visible attacker".  A ranged hit reported from the
+     thrower's position would trip that guard and the player would lose HP
+     with no popup, no flash, and no defense XP.  Reported from the impact
+     point it passes cleanly, and every visible effect the client draws
+     (popup, hit flash, particles, shake, defense XP) is anchored on the
+     PLAYER anyway — so this renders correctly on clients that are already
+     deployed, with no client change and no caps flag. */
+  _monsterStrikePlayer(zoneId, m, targetId, atkX, atkY) {
+    const now = Date.now();
+    // Apply HP damage server-side BEFORE emitting the event so
+    // dmgTaken rides on the wire and the client renders the
+    // exact number the server applied.  Block is handled by the
+    // caller (the server skips the attack entirely while shielded),
+    // but pass !blocking to be defensive in case the path changes.
+    const targetPs = this.playerState[targetId];
+    const dmgResult = this._applyDamage(targetPs, m.dmg, false);
+    const dmgTaken = dmgResult.dmgTaken;
+    /* v2.3.1569: THORN retaliation (Flora's status).  Every other
+       status is something that happens TO the monster over time;
+       thorn is the one that answers the monster's own aggression,
+       so it lands here — the moment the monster commits to an
+       attack — rather than on a passive timer.  A timer would just
+       make it a weaker Burn and lose the identity the GDD gives
+       Flora ("the only status that punishes enemies for
+       attacking").  Same power-snapshot pricing as burn/root, and
+       it routes through the normal kill-credit path so a monster
+       that thorns itself to death still pays out. */
+    if (m.statuses && m.statuses.thorn) {
+      const _th = m.statuses.thorn;
+      const _recoil = Math.round(4 + (_th.power || 0) * 0.25);
+      if (_recoil > 0) this._applyMonsterDot(zoneId, m, _recoil, _th.sourceId, 'thorn');
+    }
+    // v2.3.1139 (item I): a hexer's landed hit curses the
+    // victim -- -30% outgoing damage for 4s, consumed by
+    // _computeAttackDamage (mirrors the client's
+    // S._cursedUntil, which only ever dimmed the DISPLAY
+    // number while the server rolled full damage).
+    if (targetPs && m.arch === 'hexer' && !dmgResult.dodged) {
+      targetPs._cursedUntil = now + 4000;
+    }
+    // Don't credit lifesteal damage on a dodge -- nothing to
+    // refund since no HP was taken.  But DO track during the
+    // zone-entry grace window so the next kill produces a
+    // refund instead of silently failing with 'no-this-mon'.
+    if (!dmgResult.dodged) {
+      const trackAmt = dmgResult.graced ? (dmgResult.dmgIntent || 0) : dmgTaken;
+      this._trackMonsterDamage(targetPs, m.id, trackAmt);
+    }
+    this.eventBuffer.push({
+      type: 'monster_attack',
+      payload: {
+        monsterId: m.id,
+        targetId,
+        dmg: m.dmg,
+        dmgTaken,
+        dodged: dmgResult.dodged,
+        // v2.3.1137: Second Wind heal rides the attack event so the
+        // client pops the green number without a round-trip (the
+        // authoritative hp echo arrives via player_state anyway).
+        // v2.3.1314: Last Stand survival flag rides the same way.
+        lastStand: dmgResult.lastStand || undefined,
+        // undefined when 0 -- JSON.stringify drops it from the wire.
+        secondWind: dmgResult.secondWind || undefined,
+        zone: zoneId,
+        attackerX: atkX,
+        attackerY: atkY,
+      }
+    });
+    // Echo authoritative hp to the victim + persist.  Death
+    // check feeds the player_died event below.
+    if (targetPs) {
+      this._saveRpgVitals(targetId, targetPs); // v2.3.1623: coalesced unless near death
+      this._queuePlayerStateFlush(targetId);
+      if (targetPs.hp <= 0 && !targetPs.dying) {
+        this._handlePlayerDeath(targetPs, targetId, 'monster:' + m.id);
+      }
+    }
+    // Mark zone dirty so the monster's position is included in the
+    // outgoing tick delta. Without this, a stationary monster that
+    // attacks a stationary player produces attack events but no
+    // position broadcast, so any client that missed the initial sync
+    // never registers the monster locally — leading to "ghost hit"
+    // damage reports with no visible attacker.
+    this._markMonsterDirty(zoneId, m.id);
+  }
+
   _tickMonsters() {
     const now = Date.now();
     const activeZones = this._activeZones();
@@ -991,6 +1136,60 @@ export class GameRoom {
         // while the authoritative monster kept chasing at full speed.
         const ccMoveMult = elementMoveMult(m);
 
+        /* v2.3.1640: resolve an in-flight snowball.  Deliberately OUTSIDE
+           the aggro branch and ahead of it — a thrown ball is already in
+           the air, so it must land even if the target walked out of aggro
+           range, died, or the monster lost interest.  Gating this on aggro
+           would make walking backwards delete incoming damage, which is
+           exactly the "monsters can't touch me" problem the whole change
+           exists to fix. */
+        if (m._projImpactAt && now >= m._projImpactAt) {
+          const _pt = m._projTargetId;
+          const _ptx = m._projTx;
+          const _pty = m._projTy;
+          m._projImpactAt = 0;
+          m._projTargetId = null;
+          const _tps = _pt ? this.playerState[_pt] : null;
+          /* DODGE: the ball lands where it was aimed.  A player who moved
+             more than SNOWBALL_HIT_RADIUS from that point in the 900ms
+             flight is missed outright — that is what makes the telegraph a
+             real mechanic rather than decoration, and it is the honest
+             counterpart to the client visual, which flies to the aim point
+             and sails past a player who stepped aside.  Radius is generous
+             (the client despawns its visual at 16px) so ordinary
+             client/server position drift never steals a hit the player
+             believed they took. */
+          const _hit = _tps && (typeof _ptx !== 'number' ||
+            Math.hypot((_tps.x || 0) - _ptx, (_tps.y || 0) - _pty) <= this.SNOWBALL_HIT_RADIUS);
+          /* Still in the same zone, alive, and not mid-respawn. */
+          if (_hit && _tps.z === zoneId && !_tps.dying && (_tps.hp || 0) > 0) {
+            if (_tps.blocking) {
+              /* Blocked. Evaluated at IMPACT, not at throw — raising the
+                 shield while the ball is in the air has to work, or the
+                 telegraph is decoration.  Emits a blocked monster_attack
+                 so the client shows the same BLOCK feedback a blocked
+                 swing gives; no stamina drain, since that cost is tied to
+                 the melee cadence and adding a second drain source would
+                 be a balance change smuggled in with a feature. */
+              this.eventBuffer.push({
+                type: 'monster_attack',
+                payload: {
+                  monsterId: m.id,
+                  targetId: _pt,
+                  dmg: m.dmg,
+                  dmgTaken: 0,
+                  blocked: true,
+                  zone: zoneId,
+                  attackerX: _tps.x,
+                  attackerY: _tps.y,
+                }
+              });
+            } else {
+              this._monsterStrikePlayer(zoneId, m, _pt, _tps.x, _tps.y);
+            }
+          }
+        }
+
         // Find nearest player for aggro.  If the monster has a recent
         // sticky-aggro override (someone shot it with a bow, etc.),
         // prefer that target even if they're outside proximity range.
@@ -1068,7 +1267,15 @@ export class GameRoom {
         // pulls the monster.  Without the bump the monster could be
         // damaged but still wouldn't pass the proximity gate to enter
         // the chase branch.
-        const effAggroRange = stickyAggroActive ? 1200 : this.MONSTER_AGGRO_RANGE;
+        /* v2.3.1639: per-archetype base range (MONSTER_AGGRO_BY_ARCH),
+           falling back to the 120 default for every archetype not listed.
+           Object.create(null)-safe: `m.arch` is a server-authored spawn
+           field, never client-supplied, but read it defensively anyway so a
+           future client-fed arch can't reach Object.prototype. */
+        const _archAggro = Object.prototype.hasOwnProperty.call(this.MONSTER_AGGRO_BY_ARCH, m.arch)
+          ? this.MONSTER_AGGRO_BY_ARCH[m.arch]
+          : this.MONSTER_AGGRO_RANGE;
+        const effAggroRange = stickyAggroActive ? 1200 : _archAggro;
         if (nearest && nearestDist < effAggroRange) {
           m.targetId = nearest.id;
           const dxA = nearest.x - m.x;
@@ -1085,10 +1292,87 @@ export class GameRoom {
             const dy = nearest.y - m.y;
             const dist = Math.sqrt(dx * dx + dy * dy);
             if (dist > 0) {
-              m.x += (dx / dist) * m.spd * ccMoveMult;
-              m.y += (dy / dist) * m.spd * ccMoveMult;
+              /* v2.3.1639: walk off knockback debt (server/src/combat.js).
+                 A shove is recorded rather than reduced, and repaid here at
+                 KB_RECOVER_PX_PER_TICK on top of the normal chase step, so
+                 a 30px hit is undone in ~600ms — one player swing — instead
+                 of the ~2.8s a snowman's 0.4 px/tick would take on its own.
+                 Repaid only while CHASING and only toward the target: a
+                 monster that loses aggro or wanders keeps its ground rather
+                 than gliding, and the debt is dropped on aggro loss below. */
+              let step = m.spd * ccMoveMult;
+              if (m._kbDebt > 0) {
+                const repay = Math.min(m._kbDebt, this.KB_RECOVER_PX_PER_TICK) * ccMoveMult;
+                step += repay;
+                m._kbDebt -= repay;
+                if (m._kbDebt < 0.01) m._kbDebt = 0;
+              }
+              m.x += (dx / dist) * step;
+              m.y += (dy / dist) * step;
               this._markMonsterDirty(zoneId, m.id);
             }
+          }
+
+          /* ═══ v2.3.1640: RANGED ATTACK (the snowman's snowball) ═══
+             Owner: "the snow men are way too passive ... might be good to
+             make a snowball projectile or more aggressive."
+
+             This is the design answer to a monster that is too slow to
+             ever close.  A snowman chases at 18 px/s against a 150 px/s
+             walk — it can NEVER reach a player who doesn't want to be
+             reached, so melee-only means its threat is entirely opt-in.
+             Giving the slow, tanky archetype a ranged attack turns that
+             slowness from a bug into its identity: you can always walk
+             away from a snowman, but not for free.
+
+             Fires only in the band BETWEEN melee reach and the aggro
+             radius, so closing to melee still switches it back to
+             swinging and the two never compete for the same tick. */
+          const _rangedCfg = Object.prototype.hasOwnProperty.call(this.MONSTER_RANGED_BY_ARCH, m.arch)
+            ? this.MONSTER_RANGED_BY_ARCH[m.arch]
+            : null;
+          if (_rangedCfg
+              && !m._projImpactAt                      /* one ball in the air at a time */
+              && attackDist > Math.max(_atkRange, _rangedCfg.minRange)
+              && attackDist <= _rangedCfg.range
+              && now > m.atkCd
+              && ccMoveMult > 0                        /* frozen/rooted can't throw either */
+              && !nearest.blocking) {
+            m.atkCd = now + _rangedCfg.cd;
+            m._attackingUntil = now + 400;
+            m._projImpactAt = now + _rangedCfg.travelMs;
+            m._projTargetId = nearest.id;
+            /* Where the ball is aimed.  Stored so the impact can MISS: the
+               ball flies to this point, not to wherever the player ends up,
+               which is what makes the 900ms telegraph mean something.
+               Without it the throw would be an undodgeable homing hit and
+               the slow readable arc would be pure decoration. */
+            m._projTx = nearest.x;
+            m._projTy = nearest.y;
+            /* Display-only event: it carries NO damage and the client
+               applies none.  The authoritative hit lands on the impact
+               tick via _monsterStrikePlayer.  Registered in
+               PRIVILEGED_EVENTS so a client can't forge incoming balls.
+               Deploy-order safe in both directions with no caps flag: an
+               OLD client ignores an unknown event type (its message
+               switch has no default side effects) and simply sees the
+               damage arrive as it always did, while a NEW client against
+               an OLD worker never receives one because the old worker
+               never throws. */
+            this.eventBuffer.push({
+              type: 'monster_projectile',
+              payload: {
+                monsterId: m.id,
+                kind: 'snowball',
+                zone: zoneId,
+                x: m.x,
+                y: m.y,
+                tx: nearest.x,
+                ty: nearest.y,
+                travelMs: _rangedCfg.travelMs,
+              }
+            });
+            this._markMonsterDirty(zoneId, m.id);
           }
 
           // Attack player if in range.  v2.3.1139: frozen/rooted
@@ -1177,82 +1461,12 @@ export class GameRoom {
             }
             m.atkCd = now + this.MONSTER_ATTACK_CD;
             m._attackingUntil = now + 400;
-            // Apply HP damage server-side BEFORE emitting the event so
-            // dmgTaken rides on the wire and the client renders the
-            // exact number the server applied.  Block already handled
-            // by the early-continue above (server skips the attack
-            // entirely while shielded), but pass !blocking to be
-            // defensive in case the path changes.
-            const targetPs = this.playerState[nearest.id];
-            const dmgResult = this._applyDamage(targetPs, m.dmg, false);
-            const dmgTaken = dmgResult.dmgTaken;
-            /* v2.3.1569: THORN retaliation (Flora's status).  Every other
-               status is something that happens TO the monster over time;
-               thorn is the one that answers the monster's own aggression,
-               so it lands here — the moment the monster commits to an
-               attack — rather than on a passive timer.  A timer would just
-               make it a weaker Burn and lose the identity the GDD gives
-               Flora ("the only status that punishes enemies for
-               attacking").  Same power-snapshot pricing as burn/root, and
-               it routes through the normal kill-credit path so a monster
-               that thorns itself to death still pays out. */
-            if (m.statuses && m.statuses.thorn) {
-              const _th = m.statuses.thorn;
-              const _recoil = Math.round(4 + (_th.power || 0) * 0.25);
-              if (_recoil > 0) this._applyMonsterDot(zoneId, m, _recoil, _th.sourceId, 'thorn');
-            }
-            // v2.3.1139 (item I): a hexer's landed hit curses the
-            // victim -- -30% outgoing damage for 4s, consumed by
-            // _computeAttackDamage (mirrors the client's
-            // S._cursedUntil, which only ever dimmed the DISPLAY
-            // number while the server rolled full damage).
-            if (targetPs && m.arch === 'hexer' && !dmgResult.dodged) {
-              targetPs._cursedUntil = now + 4000;
-            }
-            // Don't credit lifesteal damage on a dodge -- nothing to
-            // refund since no HP was taken.  But DO track during the
-            // zone-entry grace window so the next kill produces a
-            // refund instead of silently failing with 'no-this-mon'.
-            if (!dmgResult.dodged) {
-              const trackAmt = dmgResult.graced ? (dmgResult.dmgIntent || 0) : dmgTaken;
-              this._trackMonsterDamage(targetPs, m.id, trackAmt);
-            }
-            this.eventBuffer.push({
-              type: 'monster_attack',
-              payload: {
-                monsterId: m.id,
-                targetId: nearest.id,
-                dmg: m.dmg,
-                dmgTaken,
-                dodged: dmgResult.dodged,
-                // v2.3.1137: Second Wind heal rides the attack event so the
-                // client pops the green number without a round-trip (the
-                // authoritative hp echo arrives via player_state anyway).
-                // v2.3.1314: Last Stand survival flag rides the same way.
-                lastStand: dmgResult.lastStand || undefined,
-                // undefined when 0 -- JSON.stringify drops it from the wire.
-                secondWind: dmgResult.secondWind || undefined,
-                zone: zoneId,
-                attackerX: m.x,
-                attackerY: m.y,
-              }
-            });
-            // Echo authoritative hp to the victim + persist.  Death
-            // check feeds the player_died event below.
-            if (targetPs) {
-              this._saveRpgVitals(nearest.id, targetPs); // v2.3.1623: coalesced unless near death
-              this._queuePlayerStateFlush(nearest.id);
-              if (targetPs.hp <= 0 && !targetPs.dying) {
-                this._handlePlayerDeath(targetPs, nearest.id, 'monster:' + m.id);
-              }
-            }
-            // Mark zone dirty so the monster's position is included in the
-            // outgoing tick delta. Without this, a stationary monster that
-            // attacks a stationary player produces attack events but no
-            // position broadcast, so any client that missed the initial sync
-            // never registers the monster locally — leading to "ghost hit"
-            // damage reports with no visible attacker.
-            this._markMonsterDirty(zoneId, m.id);
+            /* v2.3.1640: the damage half of a monster attack now lives in
+               _monsterStrikePlayer so the melee swing here and the ranged
+               snowball impact share ONE implementation.  attackerX/Y is the
+               melee monster's own position; the ranged path passes the impact
+               point instead (see the method for why that matters). */
+            this._monsterStrikePlayer(zoneId, m, nearest.id, m.x, m.y);
           }
         } else {
           // Idle wander -- pick a random target ~30-80 px from the
@@ -1268,6 +1482,10 @@ export class GameRoom {
           // limited" symptom.  Targets now persist until reached or
           // the leash pull-back overrides.
           m.targetId = null;
+          /* v2.3.1639: drop any unpaid knockback debt on aggro loss, so a
+             monster shoved and then abandoned doesn't bank it and glide on
+             its next engagement. */
+          m._kbDebt = 0;
           const WANDER_STEP_MIN = 30;
           const WANDER_STEP_MAX = 80;
           const WANDER_REACH = 6;

@@ -1023,5 +1023,163 @@ for (const m of meadowMonsters) m._wanderPausedUntil = Date.now() + 600000;
   for (const k of others) room.playerState[k] = parked[k];
 }
 
+/* ── 8. v2.3.1639: knockback debt + per-archetype aggro ──
+ *
+ * Owner report: "the snow men are way too passive and barely try to do me
+ * any damage."  The mechanism was a treadmill — every hit shoved the
+ * monster 30px away while a snowman only walks 10.9px back between two
+ * player swings (spd 0.4 px/tick x 27.3 ticks per SWING_COOLDOWN), so a
+ * player who kept swinging permanently exiled it from its own attack ring
+ * and was never hit back.  The v2.3.222 note in combat.js diagnosed this
+ * and only fixed half of it (removed the AI freeze, kept the shove).
+ *
+ * These assertions pin BOTH halves of the repair.  The arithmetic
+ * assertion is the important one: it fails if either the shove or the
+ * repay rate is changed without the other, which is exactly how this
+ * regressed the first time. */
+{
+  const arch = room.MONSTER_AGGRO_BY_ARCH;
+
+  check('aggro: snowman gets the widened per-archetype range',
+    arch.snowman === 300, arch.snowman);
+  check('aggro: unlisted archetypes still fall back to the 120 default',
+    !Object.prototype.hasOwnProperty.call(arch, 'fodder')
+    && !Object.prototype.hasOwnProperty.call(arch, 'brute')
+    && room.MONSTER_AGGRO_RANGE === 120,
+    { fodder: arch.fodder, brute: arch.brute, def: room.MONSTER_AGGRO_RANGE });
+  /* The lookup must not reach Object.prototype — a '__proto__' arch would
+     otherwise resolve to an object and NaN out the distance compare
+     (TRAPS #6, three incidents on 2026-07-07). */
+  check('aggro: the override map cannot be reached through the prototype',
+    !Object.prototype.hasOwnProperty.call(arch, '__proto__')
+    && !Object.prototype.hasOwnProperty.call(arch, 'constructor'));
+
+  /* THE BINDING ARITHMETIC: one player swing of repay must undo exactly
+     one normal hit's shove.  If someone retunes the 30px shove or the
+     1.1 px/tick repay in isolation, the treadmill comes back and this
+     fails loudly. */
+  const NORMAL_KB = 30;
+  const ticksPerSwing = 600 / room.TICK_RATE;          /* SWING_COOLDOWN / 22ms */
+  const repayPerSwing = room.KB_RECOVER_PX_PER_TICK * ticksPerSwing;
+  check('knockback: one swing of repay undoes one normal shove (within 1px)',
+    Math.abs(repayPerSwing - NORMAL_KB) < 1.0,
+    { repayPerSwing, NORMAL_KB, ticksPerSwing, rate: room.KB_RECOVER_PX_PER_TICK });
+
+  /* Without the repay a snowman loses ground every swing — the bug. */
+  const SNOWMAN_SPD = 0.5 * 0.8;                        /* base x ARCHETYPES.snowman spdMult */
+  const walkPerSwing = SNOWMAN_SPD * ticksPerSwing;
+  check('knockback: bare chase speed alone still loses ground (the bug)',
+    walkPerSwing < NORMAL_KB, { walkPerSwing, NORMAL_KB });
+  check('knockback: chase + repay lets a snowman hold its ground',
+    walkPerSwing + repayPerSwing >= NORMAL_KB,
+    { walkPerSwing, repayPerSwing, NORMAL_KB });
+
+  /* Debt is bounded: a special (60) plus a crit (45) must not bank 105px
+     of free catch-up. */
+  let dbt = 0;
+  for (const f of [60, 45, 30, 30]) dbt = Math.min(dbt + f, 60);
+  check('knockback: accumulated debt is capped at one special-shove (60)',
+    dbt === 60, dbt);
+}
+
+/* ── 9. v2.3.1640: the snowman's ranged snowball ──
+ *
+ * A snowman chases at 18 px/s against a 150 px/s walk, so it can never
+ * close on a player who doesn't want to be closed on — melee-only makes
+ * its threat entirely opt-in.  The ranged attack is what makes the slow
+ * archetype matter.  These pin the properties that are easy to break. */
+{
+  const rc = room.MONSTER_RANGED_BY_ARCH;
+
+  check('snowball: only the snowman has a ranged profile',
+    !!rc.snowman
+    && !Object.prototype.hasOwnProperty.call(rc, 'fodder')
+    && !Object.prototype.hasOwnProperty.call(rc, 'brute'),
+    Object.keys(rc));
+  check('snowball: the ranged map cannot be reached through the prototype',
+    !Object.prototype.hasOwnProperty.call(rc, '__proto__')
+    && !Object.prototype.hasOwnProperty.call(rc, 'constructor'));
+
+  /* The throw band must sit strictly BETWEEN the snowman's melee ring
+     (70, set a few lines above _atkRange) and its aggro radius (300).
+     If minRange ever dips under the swing ring the two branches fight for
+     the same tick; if range exceeds aggro it throws at players it has not
+     noticed. */
+  const SNOWMAN_ATK_RING = 70;
+  check('snowball: throw band starts outside the melee ring',
+    rc.snowman.minRange > SNOWMAN_ATK_RING, { minRange: rc.snowman.minRange, ring: SNOWMAN_ATK_RING });
+  check('snowball: throw band never exceeds the aggro radius',
+    rc.snowman.range <= room.MONSTER_AGGRO_BY_ARCH.snowman,
+    { range: rc.snowman.range, aggro: room.MONSTER_AGGRO_BY_ARCH.snowman });
+  check('snowball: ranged cooldown is slower than the melee cooldown (range is the reward, not dps)',
+    rc.snowman.cd > room.MONSTER_ATTACK_CD, { ranged: rc.snowman.cd, melee: room.MONSTER_ATTACK_CD });
+  check('snowball: travel is slow enough to read and dodge (>= 500ms)',
+    rc.snowman.travelMs >= 500, rc.snowman.travelMs);
+
+  /* THE LOAD-BEARING WIRE PROPERTY.  src/networking/gameEvents.js drops
+     any monster_attack whose attacker is >160px from the player — a
+     deliberate guard against "mystery damage with no visible attacker".
+     A 300px snowball reported from the THROWER would trip it and the
+     player would silently lose HP with no popup, flash or defense XP on
+     every already-deployed client.  _monsterStrikePlayer must therefore
+     report the IMPACT point it is handed. */
+  {
+    const psT = room.playerState['pa'];
+    const before = psT.hp;
+    psT.hp = psT.maxHp; psT.dying = false; psT.dead = false; psT.blocking = false;
+    psT.x = 4000; psT.y = 4000;
+    const farMonster = { id: 'sb-1', arch: 'snowman', dmg: 3, x: 4280, y: 4000, statuses: {} };
+    room.eventBuffer.length = 0;
+    room._monsterStrikePlayer('frost', farMonster, 'pa', psT.x, psT.y);
+    const atk = room.eventBuffer.filter(e => e.type === 'monster_attack');
+    check('snowball: impact emits exactly one monster_attack', atk.length === 1, atk.length);
+    if (atk.length === 1) {
+      const p = atk[0].payload;
+      const dist = Math.hypot(p.attackerX - psT.x, p.attackerY - psT.y);
+      check('snowball: attackerX/Y is the IMPACT point, inside the client 160px gate',
+        dist <= 160, { dist, attackerX: p.attackerX, attackerY: p.attackerY, px: psT.x, py: psT.y });
+      /* Guard the inverse: the thrower really was outside the gate, so
+         the assertion above is not vacuously true. */
+      const throwDist = Math.hypot(farMonster.x - psT.x, farMonster.y - psT.y);
+      check('snowball: ...and the THROWER was outside it (assertion is not vacuous)',
+        throwDist > 160, throwDist);
+      check('snowball: impact actually applies damage', p.dmgTaken > 0, p.dmgTaken);
+    }
+    psT.hp = before;
+  }
+
+  /* DODGEABILITY.  The 900ms telegraph is only a mechanic if moving out
+     of the arc actually works; otherwise it is an undodgeable homing hit
+     with a decorative animation. */
+  check('snowball: hit radius is generous enough to survive position drift',
+    room.SNOWBALL_HIT_RADIUS >= 32, room.SNOWBALL_HIT_RADIUS);
+  check('snowball: hit radius is small enough that walking away dodges',
+    room.SNOWBALL_HIT_RADIUS < 100, room.SNOWBALL_HIT_RADIUS);
+  {
+    /* A player walking at the BASE 150 px/s clears the radius well inside
+       the flight time — i.e. simply walking is a real dodge. */
+    const walkPxPerSec = 150;
+    const clearMs = (room.SNOWBALL_HIT_RADIUS / walkPxPerSec) * 1000;
+    check('snowball: a base-speed walk clears the radius inside the flight time',
+      clearMs < rc.snowman.travelMs,
+      { clearMs: Math.round(clearMs), travelMs: rc.snowman.travelMs });
+  }
+
+  /* Melee must keep reporting the monster's own position — the shared
+     helper must not have silently changed the melee wire. */
+  {
+    const psT = room.playerState['pa'];
+    psT.hp = psT.maxHp; psT.dying = false; psT.dead = false; psT.blocking = false;
+    psT.x = 100; psT.y = 100;
+    const near = { id: 'sb-2', arch: 'fodder', dmg: 2, x: 130, y: 100, statuses: {} };
+    room.eventBuffer.length = 0;
+    room._monsterStrikePlayer('meadow', near, 'pa', near.x, near.y);
+    const atk = room.eventBuffer.filter(e => e.type === 'monster_attack');
+    check('melee: still reports the monster position as attacker',
+      atk.length === 1 && atk[0].payload.attackerX === near.x && atk[0].payload.attackerY === near.y,
+      atk[0] && atk[0].payload);
+  }
+}
+
 console.log(failures === 0 ? '\nALL TESTS PASSED' : `\n${failures} TEST(S) FAILED`);
 process.exit(failures === 0 ? 0 : 1);

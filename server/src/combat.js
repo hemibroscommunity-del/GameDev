@@ -608,11 +608,37 @@ export const combatMethods = {
        chip ticks declare noKb:true and get no shove.  Player-benefit
        only shrinks (knockback pushes monsters away), so honoring the
        client flag is cheat-neutral. */
+    /* v2.3.1639 (owner: "the snow men are way too passive and barely try
+       to do me any damage") — THE OTHER HALF OF THE v2.3.222 FIX.
+       The note above got the diagnosis exactly right and then only fixed
+       one side of it: it removed the 200ms AI freeze but LEFT the 30px
+       shove, so the treadmill it describes never actually stopped.
+       Do the arithmetic with the real numbers.  A snowman moves
+       spd 0.4 px/tick (ARCHETYPES.snowman spdMult 0.8 x the 0.5 base,
+       server/src/index.js) at TICK_RATE 22ms, so between two player
+       swings (SWING_COOLDOWN 600ms = 27.3 ticks) it walks back
+       0.4 * 27.3 = 10.9 px.  The shove is 30.  Net -19 px per swing,
+       monotonic, for the entire fight: every hit ejects the monster
+       further out of its own attack ring than it can possibly recover,
+       so a player who simply keeps swinging is never hit back.  That is
+       the whole "passive" report, and it applies to every slow archetype
+       (brute 0.35, mummy 0.4), not just snowmen — snowmen just show it
+       worst because hpMult 1.3 makes theirs the longest fight in the
+       band, so they absorb the most shoves per kill.
+       FIX: keep the full shove (it is the hit-impact feedback, and
+       shrinking it would flatten every weapon's feel), but record it as
+       a DEBT the monster walks off at extra pace while chasing — see
+       _tickMonsters.  The player still gets their moment of space; the
+       monster is no longer permanently exiled by landing in its face. */
     if (attackerPs && payload.noKb !== true) {
       const kbForce = payload.special ? 60 : (rolled.isCrit ? 45 : 30);
       const kbAng = Math.atan2(m.y - attackerPs.y, m.x - attackerPs.x);
       m.x += Math.cos(kbAng) * kbForce;
       m.y += Math.sin(kbAng) * kbForce;
+      /* Capped so a special (60) or a crit chain can't bank a debt the
+         monster then sprints off — one swing's worth of catch-up is the
+         most it can ever be owed. */
+      m._kbDebt = Math.min((m._kbDebt || 0) + kbForce, 60);
       const zoneCfg = this._getZoneConfig(zone);
       if (zoneCfg) {
         const W = zoneCfg.w * this.TILE;
