@@ -727,6 +727,49 @@ export function processGameEvent(type, payload, S, deps) {
               }
               break;
             }
+          case 'monster_projectile':
+            {
+              /* v2.3.1640: server-thrown snowball — VISUAL ONLY.
+                 The server owns the damage entirely: it scheduled the
+                 impact when it threw, and delivers it as an ordinary
+                 monster_attack on the impact tick (reported from the
+                 impact point so the existing 160px attacker-distance
+                 gate passes).  This entry exists purely so the player can
+                 SEE the ball coming and step out of it.
+
+                 It rides the existing S.slimeProjectiles pipeline —
+                 already simulated in game/projectiles.js and drawn by
+                 effectsRenderer — so it needs no new renderer and no new
+                 art.  The `displayOnly` flag is what keeps it honest:
+                 that simulator normally applies client-side damage on
+                 contact, which for a server monster would double-hit and
+                 violate server authority (rule zero). */
+              if (payload && payload.zone === S.currentZone && S.player) {
+                if (!S.slimeProjectiles) S.slimeProjectiles = [];
+                var _sbDx = (payload.tx || 0) - (payload.x || 0);
+                var _sbDy = (payload.ty || 0) - (payload.y || 0);
+                var _sbDist = Math.sqrt(_sbDx * _sbDx + _sbDy * _sbDy);
+                var _sbMs = Math.max(1, payload.travelMs || 900);
+                /* Derive the per-frame step from the server's own travel
+                   time rather than a hard-coded speed, so the visual
+                   always lands when the authoritative hit does even if
+                   the server retunes travelMs. ~60fps assumed, matching
+                   the rest of this simulator's frame-based life/speed. */
+                var _sbFrames = Math.max(1, Math.round((_sbMs / 1000) * 60));
+                S.slimeProjectiles.push({
+                  x: payload.x || 0,
+                  y: payload.y || 0,
+                  ang: Math.atan2(_sbDy, _sbDx),
+                  speed: _sbDist / _sbFrames,
+                  life: _sbFrames,
+                  displayOnly: true,
+                  ownerId: payload.monsterId,
+                  rawDmg: 0,
+                  ts: Date.now(),
+                });
+              }
+              break;
+            }
           case 'monster_transform':
             {
               /* Server-driven variant transform (currently just

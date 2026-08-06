@@ -124,39 +124,122 @@ three times on 2026-07-07 (TRAPS #6), so the guard is structural.
   symptom without redefining what a snowman is.
 - **A snowball projectile.** See §5.
 
-## 5. Open: the snowball
+## 5. The snowball (v2.3.1640)
 
-The owner's alternative suggestion. Deliberately not built here, because it
-is a genuinely new subsystem rather than a tuning change, and the aggression
-fix should be evaluated on its own first.
+The owner's alternative suggestion, and the design answer to the problem
+§1 describes. Knockback debt fixes the fight you *chose*; it does nothing
+about the fact that a snowman **cannot close at all**. At 18 px/s against a
+150 px/s walk its threat is entirely opt-in — you are never in danger unless
+you volunteer. Giving the slow, tanky archetype a ranged attack turns that
+slowness from a defect into its identity: you can always walk away from a
+snowman, but not for free.
 
-What the investigation found, for whoever picks it up:
+### Behaviour
 
-- **No server-owned projectile exists.** Every boss ability in `dungeon.js`
-  (slam / sweep / charge / summon) is an instantaneous radius test with no
-  travel time. A snowball would be the first traveling entity the server owns.
-- **A client-side snowball already exists and is switched off** —
-  `SNOWBALL_DMG_BASE/STUN_MS/CD/RANGE/SPEED` in `src/data/items.js`,
-  `S._snowballs` in `BroTown.jsx`, and a full simulation in
-  `src/game/zoneMechanics.js`, behind three `false &&` gates with the comment
-  *"UI disabled per user request … Flip the false back to enable."* It is
-  **player-thrown**, applies damage **client-side**, and has **no renderer**
-  (`grep _snowballs src/rendering/` → 0 hits). It cannot simply be
-  re-enabled: client-applied damage violates rule zero.
-  `docs/REBUILD-PLAN.md` records it as an open owner revive-or-remove call.
-- **The render pipeline is reusable.** `S.slimeProjectiles` +
-  `effectsRenderer.js` already draws monster orbs; a server-driven snowball
-  could feed it as **display-only** (no client damage), which also means no
-  new art is required.
-- **Damage attribution is cheaper than it looks.** `monster_attack` already
-  carries server-authored `attackerX/attackerY`, and after the client's
-  160 px sanity gate those coordinates are used nowhere except a debug
-  object — every visible effect (popup, hit flash, particles, shake, defense
-  XP) anchors on the *player*. Reporting the impact point therefore lets a
-  ranged hit render correctly on already-deployed clients.
-- Would still need: a travel/impact scheduler in `_tickMonsters` (tick-driven
-  — rule 12 forbids alarms), a display-only `monster_projectile` event
-  **registered in `PRIVILEGED_EVENTS`**, a client handler, and suite coverage.
+| | |
+|---|---|
+| band | `minRange 100` .. `range 300` |
+| travel | `travelMs 900` — a slow, readable lob you can step out of |
+| cooldown | `cd 2600` vs the 1500 ms melee cooldown |
+| damage | the same `m.dmg` a swing does — **unchanged** |
+| in flight | one ball at a time per monster (`m._projImpactAt`) |
+| dodge | miss if the player drifts > `SNOWBALL_HIT_RADIUS` (40 px) from the aim point |
+
+The band sits strictly *between* the snowman's 70 px swing ring and its
+300 px aggro radius, so closing to melee switches it back to swinging (the
+two branches can never contend for a tick) and it never throws at a player
+it has not noticed. Range is the reward; it deliberately does **not** also
+out-DPS a swing.
+
+### Server authority
+
+Two events, and only one of them carries damage:
+
+- `monster_projectile` — **display only**. `{monsterId, kind, zone, x, y,
+  tx, ty, travelMs}`. No damage field, and the client applies none.
+  Registered in `PRIVILEGED_EVENTS`: a forged one would let a client paint
+  fake incoming balls on every screen in the zone.
+- `monster_attack` — the authoritative hit, emitted on the impact tick
+  through the shared `_monsterStrikePlayer`.
+
+Impact is scheduled at throw time (`m._projImpactAt`) and resolved from the
+tick loop — tick-driven, never an alarm (rule 12). It is deliberately
+resolved **outside and ahead of the aggro branch**: a thrown ball is already
+in the air, so it must land even if the target walked out of aggro range or
+the monster lost interest. Gating it on aggro would mean walking backwards
+deletes incoming damage — precisely the "monsters can't touch me" problem
+this whole change exists to fix.
+
+**The ball lands where it was aimed, not on the player.** `m._projTx/_projTy`
+are stored at throw time and the impact misses outright if the player has
+drifted more than 40 px from that point during the 900 ms flight. Without
+that the throw would be an undodgeable homing hit and the readable arc would
+be decoration. 40 px against a base 150 px/s walk clears in 270 ms — a third
+of the flight — so simply walking is a real dodge, while standing still never
+loses a hit to client/server position drift.
+
+**Blocking is evaluated at impact, not at throw**, so raising the shield
+while the ball is in the air works. A blocked ball emits a
+`blocked: true` `monster_attack` (same feedback a blocked swing gives) and
+no damage. No stamina drain: that cost is tied to the melee cadence, and
+adding a second drain source would be a balance change smuggled in with a
+feature.
+
+### The load-bearing wire detail
+
+`src/networking/gameEvents.js` **drops any `monster_attack` whose attacker
+is more than 160 px from the player** — a deliberate guard against "mystery
+damage with no visible attacker". A 300 px snowball reported from the
+*thrower* would trip that guard, and the player would silently lose HP with
+no popup, no hit flash and no defense XP, on every client already deployed.
+
+So `_monsterStrikePlayer` takes the attacker coordinates as parameters and
+the ranged path passes the **impact point**. That is legitimate rather than
+a dodge: after the gate, those coordinates are read nowhere except a debug
+object — every visible effect the client draws (popup, hit flash,
+particles, shake, defense XP) is anchored on the *player*. Reporting the
+impact point is both truthful (it is where the hit happened) and renders
+correctly with **no client change and no caps flag**.
+
+`_monsterStrikePlayer` is shared by the melee swing and the ranged impact
+rather than copied. A second copy of the thorn / hexer / lifesteal / death
+sequence would drift, and this repo has been bitten by exactly that before.
+
+### Deploy-order safety (rule 19/20)
+
+Safe in both directions with no caps flag:
+
+- **Old client, new worker** — ignores the unknown `monster_projectile`
+  type (its message switch has no default side effects) and receives the
+  damage as an ordinary `monster_attack`, exactly as it always did. Worst
+  case: the ball is invisible, the hit still reads correctly.
+- **New client, old worker** — never receives one, because an old worker
+  never throws.
+
+### No new art
+
+The ball rides the existing `S.slimeProjectiles` pipeline — already
+simulated in `src/game/projectiles.js` and drawn by `effectsRenderer` — so
+it needs no renderer and no asset, and therefore raises no
+animation-preload obligation (CLAUDE.md). The `displayOnly` flag is what
+keeps it honest: that simulator normally rolls its own client-side damage,
+block and hit-react on contact, which for a server monster would double-hit
+the player and hand damage authority back to the client (rule zero). A
+`displayOnly` entry despawns on contact and lets the server's own event
+draw the feedback.
+
+### Still open: the PLAYER-thrown snowball
+
+Unrelated to the above, and **an owner decision, not a code one**. A
+complete player-thrown snowball already exists and is switched off:
+`SNOWBALL_DMG_BASE/STUN_MS/CD/RANGE/SPEED` (`src/data/items.js`),
+`S._snowballs` (`BroTown.jsx`), a full simulation in
+`src/game/zoneMechanics.js`, and three throw buttons behind `false &&`
+gates — one commented *"UI disabled per user request … Flip the false back
+to enable."* It applies damage **client-side** and has **no renderer at
+all** (`grep _snowballs src/rendering/` → 0 hits), so it cannot simply be
+re-enabled; it would need the same server-authority port. `REBUILD-PLAN.md`
+records it as an open revive-or-remove call.
 
 ## 6. Test coverage
 
@@ -173,3 +256,23 @@ What the investigation found, for whoever picks it up:
 
 All six were mutation-tested: reverting `KB_RECOVER_PX_PER_TICK` to 0 fails
 two of them, and emptying `MONSTER_AGGRO_BY_ARCH` fails a third.
+
+§9 pins the snowball:
+
+- only the snowman has a ranged profile; the map is not prototype-reachable
+- the throw band starts outside the 70 px melee ring and never exceeds the
+  300 px aggro radius
+- the ranged cooldown is slower than melee (range is the reward, not DPS)
+- travel is slow enough to read and dodge (≥ 500 ms)
+- **impact reports the IMPACT point, inside the client's 160 px gate** —
+  plus the inverse assertion that the thrower really was outside it, so the
+  test cannot pass vacuously
+- the hit radius is generous enough to survive position drift, small enough
+  that walking away dodges, and a base-speed walk clears it inside the
+  flight time
+- melee still reports the monster's own position (the shared helper did not
+  silently change the melee wire)
+
+Mutation-tested: reporting the thrower instead of the impact point fails
+the gate assertion with `dist: 280`, and deleting the snowman's ranged
+profile fails the profile assertion.
