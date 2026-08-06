@@ -40,7 +40,16 @@ SELECTION IS SELF-VALIDATING
 ----------------------------
 A threshold on haloScore alone would still be a guess.  So every candidate is
 REPAIRED INTO A TEMPORARY COPY and re-measured, and the file is only rewritten
-when the repair actually drops the score by MIN_DROP.  Art whose bright ring is
+when the repair actually drops the score by MIN_DROP.
+
+HALO_MIN IS ONLY A PRE-FILTER, AND IT MUST STAY LOW (v2.3.1637).  The first
+pass set it to 18 and that silently missed red-cap/south.png -- the 128px frame
+that renders in the WORLD, and the exact asset the owner named -- because it
+scored 17.1, i.e. 0.9 under the cut, so it was never even tested.  Repairing it drops the score
+23.1, far past MIN_DROP.  A raw score is a weak predictor of whether a halo is
+present (a dark-outlined sprite dilutes the mean), so anything that pre-filters
+on it is doing the drop test's job badly.  8.0 costs a few seconds of probing
+and lets the measurement decide.  Do not raise it.  Art whose bright ring is
 genuine shading barely moves and is left alone — the tool cannot flatten
 legitimate edge shading, because a file it would not improve is a file it does
 not touch.  (shark-hat is the worked example: its white belly trips the raw
@@ -77,7 +86,7 @@ import numpy as np
 from PIL import Image
 from scipy.ndimage import binary_dilation
 
-HALO_MIN = 18.0     # raw score below this is ordinary anti-aliasing
+HALO_MIN = 8.0      # pre-filter only -- the drop test below is the real gate
 MIN_DROP = 8.0      # the repair must remove at least this much of it
 MIN_SEMI = 12       # too few edge pixels to judge, or to matter
 REPAIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'defringe_gray.py')
