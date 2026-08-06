@@ -19,8 +19,7 @@ import { getShirtColor, shirtColorTarget, onShirtColorChange } from '../../rende
 import { getEquip } from '../../rendering/gearCatalog.js';
 import { dashboardPanelBus } from './dashboardPanelBus.js';
 import { barHeight, expandedSheetHeight, drillSheetHeight } from './sheet/sheetGeometry.js'; /* v2.3.1283; v2.3.1350 two-state; v2.3.1311e drill height; v2.3.1325 slot-derived bar */
-import { QuickBar } from './QuickBar.jsx';                      /* v2.3.1560 */
-import { sampleQuickbar } from './sheet/quickbarModel.js';      /* v2.3.1560 */
+import { DashColumns } from './dash/DashColumns.jsx';           /* v2.3.1636 */
 import { portraitStore } from './sheet/portraitStore.js';          /* v2.3.1294 */
 import { hasUnseenLevelUps } from './sheet/skillsModel.js';        /* v2.3.1296 */
 import { getFriendRows } from './sheet/friendsModel.js';           /* v2.3.1323 */
@@ -57,9 +56,17 @@ import { T2Panel, requestT2Category } from './dash/T2Panel.jsx';
 import { SpendPointConfirm }   from './dash/SpendPointConfirm.jsx';
 
 // Bottom-of-screen dashboard.  Replaces the radial UtilityWheel.
-// When idle it renders the Bag / Loadout / Build overview above a
-// persistent 6-destination navigation ribbon.  Opening a destination
-// grows the band into a sheet while the ribbon remains available.
+// Opening a destination grows the band into a sheet while the ribbon
+// remains available.
+/* v2.3.1636: this header described the pre-v2.3.1287 "Bag / Loadout /
+   Build overview" for ~350 versions after that row was deleted.  The
+   resting band is now THREE pinned rows, top to bottom:
+     identity row   IdentityStrip band  (v2.3.1635) -- 52px
+     columns row    DashColumns         (v2.3.1636) -- 133px
+     nav ribbon     the 6 destinations              -- 87px
+   The columns row is the old three-column overview restored at the
+   owner's request, renamed BAG / EQUIPPED / COMBAT.  Keep this list
+   honest -- it is the first thing anyone reads about this file. */
 
 /* v2.3.1227: Lantern Slate (docs/LANTERN-SLATE-SPEC.md) — dark
    mineral charcoal shelf, warm-white text, one lantern-brass accent.
@@ -156,7 +163,11 @@ const ICON_SRC = {
    edge-to-edge through the column's 4px inset.  Verified by pixel-diff
    against the pre-change build. */
 /* v2.3.1287: ColHeader retired with the 3-panel row (headers left the
-   band in v2.3.1280; the sheet header strip is the one title now). */
+   band in v2.3.1280; the sheet header strip is the one title now).
+   v2.3.1636: column headers are BACK in the band with the three-column
+   row, but they are NOT this component — DashColumns renders its own
+   plain bgStrong strip.  This one carried the v2.3.1249 raster texture
+   caps, which Lantern Slate no longer uses; it stays retired. */
 
 // Tooltip popup module — taps on stat / skill rows show a short
 // description above the dashboard.  One active tooltip at a time;
@@ -488,11 +499,10 @@ export const BottomDashboard = () => {
     const tick = () => {
       const S = window._gameState && window._gameState.current;
       if (!S || !S.rpg) return;
-      /* v2.3.1560: the quick bar's "last used" memory rides THIS tick —
-         the dashboard is mounted in every snap mode, so the sampler sees
-         every XP gain whether or not a panel is open (the same reason
-         the pickup watcher moved here in v2.3.1312). */
-      sampleQuickbar(S.rpg);
+      /* v2.3.1636: sampleQuickbar retired with the quick bar.  It existed
+         to remember which life skill and which two combat skills you last
+         trained, so nine cells could pick three to show; the COMBAT
+         column shows all six parents and needs no such memory. */
       const keys = getBagEntries(S.rpg).map(bagEntryKey);
       if (prev) for (const k of keys) { if (!prev.has(k)) bagUnseen.add(k); }
       prev = new Set(keys);
@@ -792,8 +802,8 @@ export const BottomDashboard = () => {
         <div style={{
           position: 'absolute',
           left: 0, right: 0,
-          bottom: 'calc(env(safe-area-inset-bottom, 0px) + var(--nav-h, 87px) + var(--quick-h, 50px))',
-          height: 'calc(var(--dash-h, 189px) - var(--nav-h, 87px) - var(--quick-h, 50px))',
+          bottom: 'calc(env(safe-area-inset-bottom, 0px) + var(--nav-h, 87px) + var(--cols-h, 133px))',
+          height: 'calc(var(--dash-h, 272px) - var(--nav-h, 87px) - var(--cols-h, 133px))',
           zIndex: 2,
           boxSizing: 'border-box',
           padding: '0 10px',
@@ -804,13 +814,14 @@ export const BottomDashboard = () => {
         </div>
       )}
 
-      {/* v2.3.1560 (owner: "a persistent menu above the toolbar icons"):
-          the ultra-compact quick bar.  Absolute-pinned directly on top of
-          the ribbon for the same reason the ribbon itself is pinned
-          (v2.3.1307b): anything in the band's flex flow hops when a sheet
-          closes and the content unmounts.  Hidden while a panel is
-          expanded — the open destination already shows these cells at
-          full size, and the panel keeps its height. */}
+      {/* v2.3.1636 (owner, with a reference shot): the THREE-COLUMN ROW —
+          BAG / EQUIPPED / COMBAT — in the slot the v2.3.1560 quick bar
+          held.  Absolute-pinned directly on top of the ribbon for the
+          same reason the ribbon itself is pinned (v2.3.1307b): anything
+          in the band's flex flow hops when a sheet closes and the content
+          unmounts.  Hidden while a panel is expanded — the open
+          destination already shows all of this at full size, and the
+          panel keeps its height. */}
       {mode !== 'expanded' && (
         <div style={{
           position: 'absolute',
@@ -819,11 +830,11 @@ export const BottomDashboard = () => {
           zIndex: 2,
           boxSizing: 'border-box',
           /* v2.3.1635: its OWN height, not calc(--dash-h - --nav-h).  With
-             the identity row added that subtraction became "quick row +
+             the identity row added that subtraction became "middle row +
              identity row" and would have stretched this over both. */
-          height: 'var(--quick-h, 50px)',
+          height: 'var(--cols-h, 133px)',
         }}>
-          <QuickBar R={(window._gameState && window._gameState.current && window._gameState.current.rpg) || null} />
+          <DashColumns R={(window._gameState && window._gameState.current && window._gameState.current.rpg) || null} />
         </div>
       )}
 

@@ -29,14 +29,21 @@
    anywhere outside BottomDashboard.
 
    v2.3.1635 (owner "option C"): THREE stacked persistent rows —
-     --dash-h  = identityRowHeight + quickRowHeight + navShelfHeight
-     --quick-h = quickRowHeight     (the ultra-compact bar)
+     --dash-h  = identityRowHeight + <middle row> + navShelfHeight
+     --cols-h  = the middle row's own height
      --nav-h   = navShelfHeight     (the toolbar ribbon)
-   --quick-h joins for the same reason --nav-h did: the quick bar sized
+   --cols-h joins for the same reason --nav-h did: the middle row sized
    itself as calc(--dash-h - --nav-h), which was exact while the band had
-   two rows and silently became "quick + identity" once it had three.
+   two rows and silently became "middle + identity" once it had three.
    Each pinned row is told its own height; none of them derives another's.
-   The BAR-height invariant above is unchanged. */
+   The BAR-height invariant above is unchanged.
+
+   v2.3.1636 (owner reference shot): the middle row is now the
+   three-column BAG / EQUIPPED / COMBAT block (columnsRowHeight); the
+   nine-cell quick bar it replaced is gone.  The var was --quick-h
+   through v2.3.1635 and is --cols-h from here — renamed rather than
+   reused so a stale stylesheet cannot silently size the new row with the
+   old row's number. */
 
 /* v2.3.1325 (owner: bigger toolbar): the bar height derives from the
    compact bag grid's slot algebra instead of the old fixed 72, giving
@@ -65,36 +72,36 @@ export function navShelfHeight(vw, vh) {
   return navSlotSize(vw, vh) + 31;
 }
 
-/* v2.3.1560 (owner: "an ultra compact bar ... a persistent menu above
-   the toolbar icons"): nine cells across the full width — 3 bag slots,
-   chest/legs/weapon, last life skill, last two combat skills.
-     fixed = 12 frame pad + 6 within-group gaps x 1px + 2 between-group
-             gaps x 13px = 44
-     cell  = floor((vw - fixed) / 9), clamped 28..44
-     v2.3.1572 (owner: "group the different groups of icons more closely
-     together so it's visually more easy to differentiate"): the row was
-     an even 2px gap throughout with hairline dividers doing all the
-     separating, which reads as nine identical cells with two lines in
-     it.  Proximity does the job better than lines: cells inside a group
-     are now nearly touching (1px) and the groups are pushed 13px apart,
-     and the dividers are gone.  The width budget is unchanged in total,
-     so the cell size does not move.
-     row   = cell + 10 (4/4 pad + 2 border at the 1px non-retina worst
-             case, matching navShelfHeight's reasoning)
-   ~39px cells / 49px row at 390w.  FLOOR, and every term of the row's
-   own layout in `fixed` — a cell width that ignores the dividers
-   overflows the viewport by ~10px and the ninth cell gets clipped off
-   the right edge.  Cells are narrower than the 44pt
-   touch minimum (nine of them cannot be 44 wide on a 390px phone) —
-   the row's full height is the vertical target and every cell also has
-   its full-size counterpart one tap away in Bag/Hero/Skills, which is
-   why the density is acceptable here and nowhere else. */
-export function quickCellSize(vw, vh) {
-  const cap = vh && vh <= 720 ? 36 : 44;
-  return Math.floor(Math.min(Math.max((vw - 44) / 9, 28), cap));
+/* v2.3.1636 (owner, with a reference shot of the pre-v2.3.1287 band):
+   the THREE-COLUMN ROW — BAG / EQUIPPED / COMBAT — replaces the
+   v2.3.1560 nine-cell quick bar in the same slot (quickCellSize and
+   quickRowHeight retired with it; their algebra is in git history).
+
+   EVEN THIRDS is the owner's explicit correction to the original, and it
+   is why the tile size derives from a column's width rather than each
+   column sizing its own tiles: one third of the row, minus that column's
+   padding, minus the two gaps between its three tiles.
+     column = (vw - 16 frame pad - 2 gaps x 6) / 3
+     tile   = round(clamp((column - 12 col pad - 8 tile gaps) / 3, 22..34))
+   ~34px tiles at 390w.
+
+   The row's height is set by its TALLEST column, which is COMBAT: two
+   rows of (tile + an 11px level line) with a 4px gap, versus EQUIPPED's
+   DMG/DPS line + two bare tile rows.  Sizing to anything else clips one
+   column and leaves the other two floating in dead space.
+     header strip 17 + body pad 10 + 2 x (tile + 11) + 4 row gap
+     + frame pad 8/10 + 2 border at the 1px non-retina worst case
+   ~133px at 390x844.  Tiles are under the 44pt touch minimum for the
+   same reason the quick bar's were — eighteen of them cannot be 44 wide
+   on a 390px phone — and the same mitigation applies: every tile has a
+   full-size counterpart one tap away in Bag/Hero. */
+export function dashTileSize(vw) {
+  const column = (vw - 16 - 12) / 3;
+  return Math.round(Math.min(Math.max((column - 20) / 3, 22), 34));
 }
-export function quickRowHeight(vw, vh) {
-  return quickCellSize(vw, vh) + 10;
+export function columnsRowHeight(vw, vh) {
+  const tile = dashTileSize(vw);
+  return Math.round(17 + 10 + 2 * (tile + 11) + 4 + (vh && vh <= 720 ? 8 : 10) + 2);
 }
 
 /* v2.3.1635 (owner: bring back a persistent sense of identity and
@@ -105,7 +112,7 @@ export function quickRowHeight(vw, vh) {
    shared with Hero compact/expanded and must stay pixel-identical
    there) plus 5/6 padding and the 1px bottom hairline.
    SHORT VIEWPORTS get the tighter pad for the same reason navSlotSize
-   and quickCellSize carry caps: an SE-class phone has to keep its world
+   and dashTileSize carry caps: an SE-class phone has to keep its world
    view, and this row is the third thing competing for it. */
 export function identityRowHeight(vw, vh) {
   return 40 + (vh && vh <= 720 ? 8 : 12);
@@ -114,9 +121,14 @@ export function identityRowHeight(vw, vh) {
 /* The BAND height every consumer keys off (canvas, joystick zones, world
    HUD anchors) — all three rows, since all three are persistent chrome.
    v2.3.1635: identity row joins.  187px at 390x844 (was 135: 87 shelf +
-   48 quick).  NB 87 is --nav-h, the ribbon ALONE — not the band. */
+   48 quick).  NB 87 is --nav-h, the ribbon ALONE — not the band.
+   v2.3.1636: the columns row replaces the quick row in the same slot —
+   ~272px at 390x844 (52 identity + 133 columns + 87 shelf), 32% of the
+   screen.  That is the owner's chosen trade, made with both this and the
+   187px one-row version rendered to scale: the columns are the ask, and
+   the identity row stays because no column carries name/level/XP/gold. */
 export function barHeight(vw, vh) {
-  return identityRowHeight(vw, vh) + quickRowHeight(vw, vh) + navShelfHeight(vw, vh);
+  return identityRowHeight(vw, vh) + columnsRowHeight(vw, vh) + navShelfHeight(vw, vh);
 }
 /* v2.3.1271: the band's 14px rounded top corners cut out to the page
    background; the canvas runs 14px UNDER the band so the notches show

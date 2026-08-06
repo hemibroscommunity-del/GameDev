@@ -48,15 +48,19 @@
      row (portrait / level / XP / unspent points / weapon / gold) joins
      above the quick bar.  --dash-h is still the whole band and still the
      ONE number the canvas, joystick zones and world-HUD anchors read.
-     --quick-h joins --nav-h so each pinned row is told its own height:
-     the quick bar used to size itself as calc(--dash-h - --nav-h), which
+     a third var joins --nav-h so each pinned row is told its own height:
+     the middle row used to size itself as calc(--dash-h - --nav-h), which
      silently became two rows once a third existed.
-     Boot fallbacks at 390w: 87 ribbon + 50 quick + 52 identity = 189.
+     v2.3.1636 (owner reference shot): the middle row is the three-column
+     BAG / EQUIPPED / COMBAT block, and the var is --cols-h (renamed from
+     --quick-h rather than reused, so a cached stylesheet cannot size the
+     new row with the retired row's number).
+     Boot fallbacks at 390w: 87 ribbon + 133 columns + 52 identity = 272.
      JS source of truth stays sheetGeometry.js; these are boot only. */
   --nav-slot: 56px;
   --nav-h:    87px;
-  --quick-h:  50px;
-  --dash-h:   189px;
+  --cols-h:   133px;
+  --dash-h:   272px;
   /* v2.3.1235: Lantern Slate CORRECTION PASS (owner-approved ChatGPT
      review of the v2.3.1234 screenshots).  Slightly brighter, greener
      slate; four depth roles only (sheet / raised / well / well-deep);
