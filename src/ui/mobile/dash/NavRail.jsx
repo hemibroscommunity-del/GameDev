@@ -40,8 +40,15 @@ export const NavRail = ({ items, litId, atRest, vw, vh, dots, profilePortrait })
       width: 'var(--rail-w, 48px)',
       zIndex: 3,
       boxSizing: 'border-box',
+      /* v2.3.1637b: BOTTOM-anchored, not centred.  The rail is 189px tall
+         at rest and ~439 with a panel open, so centring moved every
+         button ~110px up the screen the moment you opened one — the
+         controls sliding out from under the thumb that just tapped them.
+         This is the same failure v2.3.1307b pinned the old ribbon to fix
+         ("toolbar bounces ~20-30px after closing"); bottom-anchoring puts
+         each button at the SAME screen position in both modes. */
       display: 'flex', flexDirection: 'column',
-      alignItems: 'center', justifyContent: 'center',
+      alignItems: 'center', justifyContent: 'flex-end',
       gap: 3, padding: '3px 4px',
       borderRight: `1px solid ${COL.divider}`,
     }}>
