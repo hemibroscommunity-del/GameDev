@@ -511,6 +511,28 @@ export class GameRoom {
        anticheat ceiling. */
     this.RESPAWN_TIME = 5000; // 5s respawn
     this.MONSTER_AGGRO_RANGE = 120; // pixels
+    /* v2.3.1639: per-archetype aggro overrides.  Absent = the 120 default,
+       so nothing but the listed archetype changes behaviour.  Scoped the
+       same way _atkRange already is a few hundred lines down
+       (`m.arch === 'snowman' ? 70 : ATTACK_RANGE`), and deliberately NOT a
+       bump to MONSTER_AGGRO_RANGE itself: that constant is read inside
+       _tickMonsters, which loops _activeZones() — dungeon instances ride
+       ordinary zone ids through the same loop, so a global bump would
+       re-pull every archetype in every open-world zone AND inside every
+       dungeon.
+       Snowman 120 -> 300 (owner: "way too passive"): at 120px an unprovoked
+       monster does not react until the player is roughly one body-length
+       away, which reads as "it ignores me".  300 is still well inside a
+       phone screen and still leaves the player free to walk away — a
+       snowman closes at 18 px/s against a 150 px/s walk, so this changes
+       when it ENGAGES, never whether the player can disengage. */
+    this.MONSTER_AGGRO_BY_ARCH = { snowman: 300 };
+    /* v2.3.1639: px/tick a chasing monster repays knockback debt on top of
+       its normal step (server/src/combat.js records the debt).  1.1 px/tick
+       x the 27.3 ticks in one player swing (SWING_COOLDOWN 600ms /
+       TICK_RATE 22ms) = 30px, i.e. exactly one normal hit's shove undone
+       per swing.  Chosen from that identity, not tuned by feel. */
+    this.KB_RECOVER_PX_PER_TICK = 1.1;
     /* Monster stop + attack distance.  Bumped 25 -> 55 over a couple
        tuning passes so monsters halt about ~30 px away from the
        player, leaving plenty of room to face the threat and raise
@@ -1068,7 +1090,15 @@ export class GameRoom {
         // pulls the monster.  Without the bump the monster could be
         // damaged but still wouldn't pass the proximity gate to enter
         // the chase branch.
-        const effAggroRange = stickyAggroActive ? 1200 : this.MONSTER_AGGRO_RANGE;
+        /* v2.3.1639: per-archetype base range (MONSTER_AGGRO_BY_ARCH),
+           falling back to the 120 default for every archetype not listed.
+           Object.create(null)-safe: `m.arch` is a server-authored spawn
+           field, never client-supplied, but read it defensively anyway so a
+           future client-fed arch can't reach Object.prototype. */
+        const _archAggro = Object.prototype.hasOwnProperty.call(this.MONSTER_AGGRO_BY_ARCH, m.arch)
+          ? this.MONSTER_AGGRO_BY_ARCH[m.arch]
+          : this.MONSTER_AGGRO_RANGE;
+        const effAggroRange = stickyAggroActive ? 1200 : _archAggro;
         if (nearest && nearestDist < effAggroRange) {
           m.targetId = nearest.id;
           const dxA = nearest.x - m.x;
@@ -1085,8 +1115,23 @@ export class GameRoom {
             const dy = nearest.y - m.y;
             const dist = Math.sqrt(dx * dx + dy * dy);
             if (dist > 0) {
-              m.x += (dx / dist) * m.spd * ccMoveMult;
-              m.y += (dy / dist) * m.spd * ccMoveMult;
+              /* v2.3.1639: walk off knockback debt (server/src/combat.js).
+                 A shove is recorded rather than reduced, and repaid here at
+                 KB_RECOVER_PX_PER_TICK on top of the normal chase step, so
+                 a 30px hit is undone in ~600ms — one player swing — instead
+                 of the ~2.8s a snowman's 0.4 px/tick would take on its own.
+                 Repaid only while CHASING and only toward the target: a
+                 monster that loses aggro or wanders keeps its ground rather
+                 than gliding, and the debt is dropped on aggro loss below. */
+              let step = m.spd * ccMoveMult;
+              if (m._kbDebt > 0) {
+                const repay = Math.min(m._kbDebt, this.KB_RECOVER_PX_PER_TICK) * ccMoveMult;
+                step += repay;
+                m._kbDebt -= repay;
+                if (m._kbDebt < 0.01) m._kbDebt = 0;
+              }
+              m.x += (dx / dist) * step;
+              m.y += (dy / dist) * step;
               this._markMonsterDirty(zoneId, m.id);
             }
           }
@@ -1268,6 +1313,10 @@ export class GameRoom {
           // limited" symptom.  Targets now persist until reached or
           // the leash pull-back overrides.
           m.targetId = null;
+          /* v2.3.1639: drop any unpaid knockback debt on aggro loss, so a
+             monster shoved and then abandoned doesn't bank it and glide on
+             its next engagement. */
+          m._kbDebt = 0;
           const WANDER_STEP_MIN = 30;
           const WANDER_STEP_MAX = 80;
           const WANDER_REACH = 6;

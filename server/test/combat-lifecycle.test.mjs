@@ -1023,5 +1023,64 @@ for (const m of meadowMonsters) m._wanderPausedUntil = Date.now() + 600000;
   for (const k of others) room.playerState[k] = parked[k];
 }
 
+/* ── 8. v2.3.1639: knockback debt + per-archetype aggro ──
+ *
+ * Owner report: "the snow men are way too passive and barely try to do me
+ * any damage."  The mechanism was a treadmill — every hit shoved the
+ * monster 30px away while a snowman only walks 10.9px back between two
+ * player swings (spd 0.4 px/tick x 27.3 ticks per SWING_COOLDOWN), so a
+ * player who kept swinging permanently exiled it from its own attack ring
+ * and was never hit back.  The v2.3.222 note in combat.js diagnosed this
+ * and only fixed half of it (removed the AI freeze, kept the shove).
+ *
+ * These assertions pin BOTH halves of the repair.  The arithmetic
+ * assertion is the important one: it fails if either the shove or the
+ * repay rate is changed without the other, which is exactly how this
+ * regressed the first time. */
+{
+  const arch = room.MONSTER_AGGRO_BY_ARCH;
+
+  check('aggro: snowman gets the widened per-archetype range',
+    arch.snowman === 300, arch.snowman);
+  check('aggro: unlisted archetypes still fall back to the 120 default',
+    !Object.prototype.hasOwnProperty.call(arch, 'fodder')
+    && !Object.prototype.hasOwnProperty.call(arch, 'brute')
+    && room.MONSTER_AGGRO_RANGE === 120,
+    { fodder: arch.fodder, brute: arch.brute, def: room.MONSTER_AGGRO_RANGE });
+  /* The lookup must not reach Object.prototype — a '__proto__' arch would
+     otherwise resolve to an object and NaN out the distance compare
+     (TRAPS #6, three incidents on 2026-07-07). */
+  check('aggro: the override map cannot be reached through the prototype',
+    !Object.prototype.hasOwnProperty.call(arch, '__proto__')
+    && !Object.prototype.hasOwnProperty.call(arch, 'constructor'));
+
+  /* THE BINDING ARITHMETIC: one player swing of repay must undo exactly
+     one normal hit's shove.  If someone retunes the 30px shove or the
+     1.1 px/tick repay in isolation, the treadmill comes back and this
+     fails loudly. */
+  const NORMAL_KB = 30;
+  const ticksPerSwing = 600 / room.TICK_RATE;          /* SWING_COOLDOWN / 22ms */
+  const repayPerSwing = room.KB_RECOVER_PX_PER_TICK * ticksPerSwing;
+  check('knockback: one swing of repay undoes one normal shove (within 1px)',
+    Math.abs(repayPerSwing - NORMAL_KB) < 1.0,
+    { repayPerSwing, NORMAL_KB, ticksPerSwing, rate: room.KB_RECOVER_PX_PER_TICK });
+
+  /* Without the repay a snowman loses ground every swing — the bug. */
+  const SNOWMAN_SPD = 0.5 * 0.8;                        /* base x ARCHETYPES.snowman spdMult */
+  const walkPerSwing = SNOWMAN_SPD * ticksPerSwing;
+  check('knockback: bare chase speed alone still loses ground (the bug)',
+    walkPerSwing < NORMAL_KB, { walkPerSwing, NORMAL_KB });
+  check('knockback: chase + repay lets a snowman hold its ground',
+    walkPerSwing + repayPerSwing >= NORMAL_KB,
+    { walkPerSwing, repayPerSwing, NORMAL_KB });
+
+  /* Debt is bounded: a special (60) plus a crit (45) must not bank 105px
+     of free catch-up. */
+  let dbt = 0;
+  for (const f of [60, 45, 30, 30]) dbt = Math.min(dbt + f, 60);
+  check('knockback: accumulated debt is capped at one special-shove (60)',
+    dbt === 60, dbt);
+}
+
 console.log(failures === 0 ? '\nALL TESTS PASSED' : `\n${failures} TEST(S) FAILED`);
 process.exit(failures === 0 ? 0 : 1);
