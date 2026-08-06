@@ -1,4 +1,4 @@
-/* v2.3.1641: TWO-CLIENT POSITION-RATE CHECK
+/* v2.3.1643: TWO-CLIENT POSITION-RATE CHECK
  *
  * Verifies the v2.3.1635 adaptive position rate on the REAL shipped code
  * path, against a REAL worker, with TWO real clients -- the check that was
