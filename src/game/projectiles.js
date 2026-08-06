@@ -869,6 +869,16 @@ export function updateSlimeProjectiles(S) {
             proj.y += Math.sin(proj.ang) * proj.speed;
             var pdx = P.x - proj.x, pdy = P.y - proj.y;
             if (pdx * pdx + pdy * pdy > 16 * 16) return true;
+            /* v2.3.1640: a server-thrown projectile (the snowman's
+               snowball) is a VISUAL ONLY — the worker scheduled its
+               impact when it threw and delivers the damage itself as a
+               monster_attack.  Everything below this line is the legacy
+               client-authoritative slime path: it rolls its own damage,
+               block and hit-react, which for a server monster would
+               double-hit the player and take damage authority back to the
+               client (rule zero).  Despawn on contact and let the
+               server's own event draw the popup, flash and particles. */
+            if (proj.displayOnly) return false;
             if (_pInvuln) return false;
             /* Shield blocks slime projectiles outright — no damage,
                no hit-react, plays the metal-clang shield-block SFX,

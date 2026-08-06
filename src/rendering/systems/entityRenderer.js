@@ -117,6 +117,16 @@ const MONSTER_HPBAR_H = Math.round(MONSTER_HPBAR_W * HPBAR_ASPECT); /* 13 */
 const PLAYER_HPBAR_W = 76;
 const PLAYER_HPBAR_H = Math.round(PLAYER_HPBAR_W * HPBAR_ASPECT);   /* 22 */
 const HPBAR_FLASH_MS = 160;   /* white flash on damage */
+/* v2.3.1638: world-space gap between the TOP EDGE of a monster's HP bar
+   and the centre of a damage popup spawned over it.  Must clear the two
+   things that stick up out of that edge:
+     - the centred HP NUMBER, 17px font in the 1.5x-scaled _hpUi, so it
+       reaches 12.8 world px above the bar centre = 3px past the top edge;
+     - the popup's own spawn pop, 1.6x for 120ms, whose half-height is
+       16.8px normal / 21.6px crit.
+   34 leaves ~9px of visual air on the worst case (a crit).  Consumed via
+   m._popupTopOff -> combatHelpers.monsterPopupY(). */
+const POPUP_BAR_CLEAR = 34;
 
 /* v2.3.1274: size experiment (owner directive) — characters render 33%
    bigger and world monsters 50% bigger.  Applied at the CONTAINER level
@@ -4155,8 +4165,31 @@ export class EntityRenderer {
         /* v2.3.1402 (owner: "damage numbers are still over monster HP bars"):
            24 -> 40.  v2.3.1403 (owner, still overlapping on the tall snowman
            bar): 40 -> 62 — clears even the tallest monster's bar + the 1.6x
-           spawn pop. */
-        m._popupTopOff = barY - MONSTER_HPBAR_H / 2 - 62;
+           spawn pop.
+           v2.3.1638 — THE BUMPS WERE NEVER THE FIX.  Third owner report of
+           the same overlap.  `barY` is LOCAL to _hpUi, and _hpUi is scaled
+           by MONSTER_SIZE_MULT (1.5) every frame at line ~3668 — but
+           combatHelpers.monsterPopupY() adds this stamp straight onto the
+           WORLD y (the popup Text is a child of the unscaled damageNumbers
+           layer).  Handing a local value to a world consumer meant half the
+           intended clearance was eaten by the 0.5x scale gap, and the amount
+           eaten GREW with the monster's bar height:
+               real clearance = 0.5 * barTopLocal + 62
+           which is 10.5px on a fodder slime (bar sits highest,
+           visualTopY = size - 96) but 39.5px on a procedural monster.  ONE
+           constant producing FOUR different clearances is the signature of
+           two scale spaces.  The slime is the game's most common monster and
+           its 10.5px is smaller than the popup's own popped half-height
+           (16.8px normal, 21.6px crit), so the glyph rendered straight
+           through the centred HP number — every hit, which is exactly what
+           the owner keeps seeing.  Each bump helped the tall-bar archetypes
+           and never reached the slime.
+           Stamp in WORLD space instead, reading the scale off the container
+           so the two can never drift apart again.  62 must come DOWN to 34 in
+           the same move: it was compensating for the missing 1.5x, and left
+           as-is would fling popups ~50px too high on slimes. */
+        const _uiScale = (display._hpUi && display._hpUi.scale && display._hpUi.scale.y) || MONSTER_SIZE_MULT;
+        m._popupTopOff = (barY - MONSTER_HPBAR_H / 2) * _uiScale - POPUP_BAR_CLEAR;
         display._hpHeart.width = MONSTER_HPBAR_W;
         display._hpHeart.height = MONSTER_HPBAR_H;
         display._hpHeart.x = 0;  /* anchor already centered at creation */

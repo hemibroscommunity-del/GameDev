@@ -1282,12 +1282,36 @@ export class EffectsRenderer {
         } else if (/^\+\d+\s*G$/.test(t)) {
           displayColor = '#f5c542';
         }
-        /* Anti-overlap: place new popup below the lowest existing nearby one
-           so kill-shot popups (damage, XP, gold spawned in one frame at slightly
-           different Y) don't visually overlap. We compute a target Y rather
-           than just adding a fixed offset, because the spawn Ys differ. */
+        /* Anti-overlap: separate a new popup from nearby live ones so
+           kill-shot popups (damage, XP, gold spawned in one frame at
+           slightly different Y) don't visually overlap. We compute a
+           target Y rather than adding a fixed offset, because the spawn
+           Ys differ.
+
+           v2.3.1638 — STACK UPWARD, AND NEVER BELOW SPAWN.  This is the
+           real fix for "damage numbers appear over the monster HP
+           number", reported three times.  The previous two fixes both
+           raised the SPAWN clearance in entityRenderer
+           (_popupTopOff: 24 -> 40 in v2.3.1402, 40 -> 62 in v2.3.1403)
+           and the owner kept seeing it, because the spawn was never the
+           mechanism — THIS loop was.  It placed each new popup
+           SPACING px BELOW the lowest live neighbour, i.e. walking the
+           stack back DOWN toward the bar it had just been raised above.
+           A neighbour qualifies while it is within 50 px of the spawn Y,
+           so the worst-case placement was spawn + 50 + 26 = spawn + 76 —
+           and with only 62 px of clearance that lands 14 px past the bar's
+           top edge, right on the centred HP number (bar is 44x13).  That
+           is why sustained fights overlapped and single hits didn't, and
+           why each clearance bump reduced the overlap (52 -> 36 -> 14 px
+           past the bar) without ever removing it.
+           Stacking AWAY from the monster fixes it structurally: the
+           Math.min(0, ...) clamp makes _stackOffset provably <= 0, and
+           since the float only ever subtracts (age * 40), a popup can now
+           never render below its spawn Y.  The clearance in
+           entityRenderer.js is therefore a true floor rather than a
+           starting point, and no future clearance bump can be eaten. */
         const SPACING = 26;
-        let lowestY = -Infinity;
+        let highestY = Infinity;
         let hasNeighbor = false;
         /* v2.3.1347: the neighbor scan is O(n) per NEW popup (O(n²) in a
            burst). Past ~40 live popups the field is dense chaos where
@@ -1303,9 +1327,12 @@ export class EffectsRenderer {
           const oY = o.y + (o._stackOffset || 0) - oAge * 40;
           if (Math.abs(oY - dmg.y) > 50) continue;
           hasNeighbor = true;
-          if (oY > lowestY) lowestY = oY;
+          if (oY < highestY) highestY = oY;
         }
-        dmg._stackOffset = hasNeighbor ? (lowestY + SPACING) - dmg.y : 0;
+        /* Clamp to <= 0: a neighbour sitting BELOW this popup's spawn
+           would otherwise push the offset positive and re-open the exact
+           hole this fix closes. */
+        dmg._stackOffset = hasNeighbor ? Math.min(0, (highestY - SPACING) - dmg.y) : 0;
         const baseFontSize = dmg.crit ? 27 : 21;
         /* Special-attack hits used to render at 2x to read as "heavy", but
            that crowded the screen and hid the normal-hit cadence. They now
