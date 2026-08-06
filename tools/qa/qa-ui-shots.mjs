@@ -1,4 +1,4 @@
-/* v2.3.1637: HEADLESS UI MENU CAPTURE
+/* v2.3.1640: HEADLESS UI MENU CAPTURE
  *
  * Screenshots every menu in the game so they can be reviewed side by side
  * (owner ask: "screenshots of every UI menu ... so I can upload it to
@@ -55,7 +55,7 @@ const BUILDING_LABEL = {
   forge: 'forge', woodwork: 'woodworker', gemcut: 'gem-cutter',
 };
 
-/* Dropped from this list on purpose (v2.3.1637): 'chat', 'clanWar' and
+/* Dropped from this list on purpose (v2.3.1640): 'chat', 'clanWar' and
    'arena' are dead useState pairs nothing reads, and 'welcome' just
    aliases the name modal already captured as 00-login.  The real chat and
    war-banner surfaces are captured via COMPOSITE below. */

@@ -1906,7 +1906,7 @@ export var BroTown = function BroTown(_ref0) {
      v2.3.784: the ~1,560-line effect body moved verbatim to
      src/networking/wsClient.js setupWebSocket (REBUILD-PLAN Phase 5);
      ctx carries the closure captures it used to take from this scope. */
-  /* v2.3.1637: UI PANEL REGISTRY for headless capture (tools/qa/qa-ui-shots.mjs).
+  /* v2.3.1640: UI PANEL REGISTRY for headless capture (tools/qa/qa-ui-shots.mjs).
      Panel visibility lives in React useState, so an automated pass had no
      way to open a menu without walking the player to the right building and
      clicking it -- which cannot reach panels gated on state a fresh account
@@ -1938,7 +1938,7 @@ export var BroTown = function BroTown(_ref0) {
     dungeonCreator: setDungeonCreator,  // paired with showDungeonCreator
     tradeTarget: setTradeTarget,        // paired with showTrade
   };
-  /* v2.3.1638: showChatLog, showClanWar and showArena USED TO LIVE HERE
+  /* v2.3.1641: showChatLog, showClanWar and showArena USED TO LIVE HERE
      and were declared but never read — three dead useState pairs whose
      setters nothing called either. Removed. If you are looking for those
      names: chat renders off `chatOpen`, the war banners off
