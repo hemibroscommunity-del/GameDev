@@ -16,7 +16,12 @@ name: Server CI
 # unable to fire on the change that causes it. Same reasoning for the
 # other client files this suite imports across the boundary
 # (mirror-audit, display-dps, zones, t1sync).
+# v2.3.1641: workflow_dispatch, for the same reason it was added to
+# deploy-worker.yml — the 2026-08-06 merge of PR #360 produced no run for
+# EITHER workflow, so the suite that gates the deploy was as unrunnable as
+# the deploy itself.  Client CI already had one.
 on:
+  workflow_dispatch:
   pull_request:
     paths:
       - 'server/**'
