@@ -76,7 +76,12 @@ export const IdentityStrip = ({ band = false }) => {
 
   return (
     <div style={{
-      display: 'flex', alignItems: 'center', gap: 8,
+      /* v2.3.1642: gap 8 -> 6.  The nav group took ~103px off this row's
+         left, and measured end-to-end the strip's content ran to 413px in
+         a 390px viewport — gold, the last element, fell off the screen
+         entirely.  Six pixels x3 gaps plus the tighter chip below buys it
+         back without dropping anything the owner asked to see. */
+      display: 'flex', alignItems: 'center', gap: 6,
       padding: '2px 0 4px',
       flex: '0 0 auto',
       fontFamily: 'Source Sans 3, sans-serif',
@@ -156,10 +161,10 @@ export const IdentityStrip = ({ band = false }) => {
       {band && dmgRange && (
         <span style={{
           flex: 'none',
-          display: 'inline-flex', alignItems: 'center', gap: 6,
-          padding: '2px 8px', borderRadius: 999,
+          display: 'inline-flex', alignItems: 'center', gap: 4,
+          padding: '2px 6px', borderRadius: 999,
           background: COL.slot, border: '1px solid ' + COL.tileBor,
-          color: COL.muted, fontSize: 10, fontWeight: 700, lineHeight: 1.4,
+          color: COL.muted, fontSize: 9, fontWeight: 700, lineHeight: 1.4,
           whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums',
         }}>
           <span>DMG <b style={{ color: COL.text }}>{dmgRange.text}</b></span>

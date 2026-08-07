@@ -683,6 +683,36 @@ export const BottomDashboard = () => {
   const activeId = stack.length ? stack[stack.length - 1] : null;
   const active = mode === 'expanded' ? (PANELS[activeId] || PANELS[rootId] || PANELS.bag) : null;
 
+  /* v2.3.1642: litId and the badge counts were computed inside the
+     retired ribbon's render IIFE.  The nav group needs them one level up
+     now that it lives in the top row, so they are hoisted verbatim —
+     same rules, same sources, just evaluated before the return. */
+  /* v2.3.1290: bar mode = NOTHING lit — the resting state has no open
+     destination (the remembered root only matters for resume). */
+  const litId = mode === 'bar' ? null
+    : DESTINATIONS.map(d => d.id).includes(rootId) ? rootId
+    /* legacy drill roots (inventory push, tutorial ids...) light More */
+    : (rootId ? 'more' : 'bag');
+  const Sb = (typeof window !== 'undefined') && window._gameState && window._gameState.current;
+  /* v2.3.1296 (round-5): actionable badges only — skills: unviewed
+     level-ups; quests: READY turn-ins (v2.3.1298); hero: the GLOBAL
+     unspent-point total (v2.3.1311, one definition since v2.3.1635);
+     social: pending requests + unread DMs, else an online dot.  The Bag's
+     circle dot was removed at v2.3.1315 (owner) — the pickup pulse and
+     the in-bag sparkles stay. */
+  const dots = {
+    skills: hasUnseenLevelUps((Sb && Sb.rpg) || {}),
+    quests: readyQuestCount(Sb) > 0,
+    hero: unspentPointsTotal(Sb && Sb.rpg),
+    social: (() => {
+      try {
+        const actionable = friendsSrv.requestsIn().length + friendsSrv.unreadTotal();
+        if (actionable > 0) return actionable;
+        return getFriendRows(Sb).some(r => r.online) ? 'online' : false;
+      } catch (_e) { return false; }
+    })(),
+  };
+
   /* v2.3.1294: the card's level/gold reads and the v2.3.131 gold
      count-up left with the card — the Hero identity strip owns the
      readouts now (its coin keeps the glimmer class; the RAF count-up
@@ -814,7 +844,9 @@ export const BottomDashboard = () => {
               ribbon's height.  Same purpose as the v2.3.1307b
               marginBottom it replaces -- panel content must never slide
               under the persistent navigation. */}
-          <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', marginLeft: 'var(--rail-w, 48px)' }}>
+          {/* v2.3.1642: reserve the nav group's ROW at the band's top,
+              not the retired rail's width down its left. */}
+          <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', marginTop: 'calc(var(--dash-h, 145px) - var(--cols-h, 93px))' }}>
             {Active && <Active />}
           </div>
         </>
@@ -842,21 +874,44 @@ export const BottomDashboard = () => {
           there, and that is the same one-count rule.  --dash-h does NOT
           change when it hides (the BAR-height invariant) — the row just
           isn't drawn, so the canvas is never reallocated. */}
-      {mode !== 'expanded' && (
-        <div style={{
-          position: 'absolute',
-          left: 'var(--rail-w, 48px)', right: 0,
-          bottom: 'calc(env(safe-area-inset-bottom, 0px) + var(--cols-h, 178px))',
-          height: 'calc(var(--dash-h, 230px) - var(--cols-h, 178px))',
-          zIndex: 2,
-          boxSizing: 'border-box',
-          padding: '0 10px',
-          display: 'flex', alignItems: 'center',
-          borderBottom: `1px solid ${COL.divider}`,
-        }}>
-          <IdentityStrip band />
-        </div>
-      )}
+      {/* v2.3.1642 (owner: "put the rail buttons on the top to the left
+          of the character in its own little section up there"): the TOP
+          ROW is the nav group and the identity strip, side by side.
+
+          THE GROUP IS OUTSIDE the `mode !== 'expanded'` gate on purpose.
+          The strip hides when a panel opens (Hero's own header owns that
+          readout — the one-count rule), but navigation cannot hide with
+          it: the ribbon this descends from stayed visible under an open
+          sheet because it was the only way to switch destination or get
+          out, and putting the buttons inside the strip would have
+          restored exactly that trap.  Keeping it mounted also holds it at
+          one screen position in both modes, so nothing slides out from
+          under the thumb that just tapped it (the v2.3.1637b rule). */}
+      <div style={{
+        position: 'absolute',
+        left: 0, right: 0,
+        bottom: 'calc(env(safe-area-inset-bottom, 0px) + var(--cols-h, 93px))',
+        height: 'calc(var(--dash-h, 145px) - var(--cols-h, 93px))',
+        zIndex: 3,
+        boxSizing: 'border-box',
+        padding: '0 4px',
+        display: 'flex', alignItems: 'center', gap: 6,
+        borderBottom: mode === 'expanded' ? 'none' : `1px solid ${COL.divider}`,
+      }}>
+        <NavRail
+          items={RAIL_ITEMS}
+          litId={litId}
+          atRest={mode === 'bar'}
+          vw={typeof window !== 'undefined' ? window.innerWidth : 390}
+          vh={typeof window !== 'undefined' ? window.innerHeight : 844}
+          dots={dots}
+          profilePortrait={profilePortrait} />
+        {mode !== 'expanded' && (
+          <div style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center' }}>
+            <IdentityStrip band />
+          </div>
+        )}
+      </div>
 
       {/* v2.3.1636 (owner, with a reference shot): the THREE-COLUMN ROW —
           BAG / EQUIPPED / COMBAT — in the slot the v2.3.1560 quick bar
@@ -869,92 +924,20 @@ export const BottomDashboard = () => {
       {mode !== 'expanded' && (
         <div style={{
           position: 'absolute',
-          left: 'var(--rail-w, 48px)', right: 0,
+          left: 0, right: 0,
           bottom: 'env(safe-area-inset-bottom, 0px)',
           zIndex: 2,
           boxSizing: 'border-box',
           /* v2.3.1635: its OWN height, not calc(--dash-h - --nav-h).  With
              the identity row added that subtraction became "middle row +
              identity row" and would have stretched this over both. */
-          height: 'var(--cols-h, 178px)',
+          height: 'var(--cols-h, 93px)',
         }}>
           <DashColumns R={(window._gameState && window._gameState.current && window._gameState.current.rpg) || null} />
         </div>
       )}
 
-      {/* Navigation ribbon.  v2.3.1229: PERSISTENT in both modes.
-          v2.3.1283 (nav-system): SIX destinations, each always one of
-          the DESTINATIONS roots; the active root carries the brass edge
-          in BOTH snap modes.  Vertical swipes on the icons resize one
-          snap per swipe (IconButton onSwipe -> bus advance/retreat,
-          v2.3.1318).  v2.3.1316 (owner round-8b): taps CYCLE —
-          inactive -> compact, active compact -> expanded -> bar
-          (dashboardPanelBus.tapDestination).
-          rootId (stack[0]) keeps a destination selected while one of
-          its drill children (Settings, T2, ...) is open. */}
-      {(() => {
-        const knownRoots = DESTINATIONS.map(d => d.id);
-        /* v2.3.1290: bar mode = NOTHING lit — the resting state has no
-           open destination (the remembered root only matters for
-           resume, not for display). */
-        const litId = mode === 'bar' ? null
-          : knownRoots.includes(rootId) ? rootId
-          /* legacy drill roots (inventory push, tutorial ids...) light More */
-          : (rootId ? 'more' : 'bag');
-        /* v2.3.1296: actionable badges (round-5) — skills: unviewed
-           level-ups (cleared when the expanded panel opens); quests:
-           READY turn-ins (v2.3.1298; available quests never badge).
-           The 200ms interval keeps these live. */
-        const Sb = (typeof window !== 'undefined') && window._gameState && window._gameState.current;
-        /* v2.3.1315 (owner round-8b): the Bag's circle dot is REMOVED —
-           "remove the little circle indicator for new items."  The
-           one-shot pickup pulse and the in-bag sparkle markers stay;
-           skills/quests keep their dots (level-ups and turn-ins, not
-           items). */
-        const dots = {
-          skills: hasUnseenLevelUps((Sb && Sb.rpg) || {}),
-          quests: readyQuestCount(Sb) > 0,
-          /* v2.3.1311 (owner spec): the Hero icon badges the GLOBAL
-             unspent-point total — actionable only; XP/health/stat
-             gains never badge (world popups carry those).  A number
-             here renders as a count badge, not a dot (IconButton). */
-          /* v2.3.1635: one definition (heroModel.unspentPointsTotal) —
-             the persistent identity row shows this same number a few
-             pixels away, and two inline reduces drift. */
-          hero: unspentPointsTotal(Sb && Sb.rpg),
-          /* v2.3.1323 (Friends spec): green dot when a friend is online.
-             v2.3.1324: a NUMBER (count badge) for actionable social
-             state — pending requests + unread DMs — which always
-             outranks the dot.  Never the total friend count. */
-          social: (() => {
-            try {
-              const actionable = friendsSrv.requestsIn().length + friendsSrv.unreadTotal();
-              if (actionable > 0) return actionable;
-              return getFriendRows(Sb).some(r => r.online) ? 'online' : false;
-            } catch (_e) { return false; }
-          })(),
-        };
-        return (
-          /* v2.3.1637 (owner): the toolbar RIBBON is retired — its six
-             destinations are now icon-only buttons in the left rail, plus
-             a seventh for the dashboard itself.  The old frame was
-             absolute-pinned to the band's BOTTOM and reserved
-             var(--nav-h) of every expanded panel; the rail is pinned to
-             the band's LEFT and reserves var(--rail-w) instead, which is
-             why the band lost 87px of height and gained ~48 of inset.
-             IconButton, its swipe classifier and the ribbon CSS classes
-             go with it — a rail button is a tap target, and swipe-to-open
-             on a 28px-tall button would fight the sheet's own drag. */
-          <NavRail
-            items={RAIL_ITEMS}
-            litId={litId}
-            atRest={mode === 'bar'}
-            vw={typeof window !== 'undefined' ? window.innerWidth : 390}
-            vh={typeof window !== 'undefined' ? window.innerHeight : 844}
-            dots={dots}
-            profilePortrait={profilePortrait} />
-        );
-      })()}
+
     </div>
     </>
   );

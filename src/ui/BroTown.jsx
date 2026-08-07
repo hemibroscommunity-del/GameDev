@@ -238,7 +238,7 @@ const {
 
 import { _regenerator, _regeneratorDefine2, _asyncToGenerator, _typeof, _slicedToArray, _toConsumableArray, _objectSpread, _defineProperty, _toPropertyKey, _toPrimitive, ownKeys, _arrayWithHoles, _iterableToArrayLimit, _unsupportedIterableToArray, _arrayLikeToArray, _nonIterableRest, _arrayWithoutHoles, _iterableToArray, _nonIterableSpread, _createForOfIteratorHelper, asyncGeneratorStep } from '@/lib/babelHelpers.js';
 import { SpriteHpBar } from './SpriteHpBar.jsx'; /* v2.3.1273: owner's HP-bar art (desktop HUD row) */
-import { barHeight, navSlotSize, columnsRowHeight, railWidth, DASH_OVERLAP } from './mobile/sheet/sheetGeometry.js'; /* v2.3.1283; v2.3.1290 bar-height canvas; v2.3.1325 slot-derived bar; v2.3.1560 two-row band; v2.3.1635 three-row band; v2.3.1636 columns row */
+import { barHeight, navSlotSize, columnsRowHeight, DASH_OVERLAP } from './mobile/sheet/sheetGeometry.js'; /* v2.3.1283; v2.3.1290 bar-height canvas; v2.3.1325 slot-derived bar; v2.3.1560 two-row band; v2.3.1635 three-row band; v2.3.1636 columns row */
 import { recolorEnabled } from '@/rendering/traits/recolorOptions.js';
 
 /* Expose all exports as globals for the pre-transpiled code.
@@ -2121,10 +2121,11 @@ export var BroTown = function BroTown(_ref0) {
          the whole band.  Both stamped here so the ribbon and the rows
          above it can be pinned inside the band without any one of them
          re-deriving geometry from CSS. */
-      /* v2.3.1637: --nav-h retired with the bottom ribbon.  The rail
-         runs down the band's LEFT edge, so what the rows and the
-         expanded panel have to reserve is a WIDTH now, not a height. */
-      document.documentElement.style.setProperty('--rail-w', railWidth(vw) + 'px');
+      /* v2.3.1637: --nav-h retired with the bottom ribbon.
+         v2.3.1642: --rail-w retired too — the nav buttons moved to the
+         band's top-left, beside the identity strip, so the rows reserve
+         nothing on their left and the top row's own height is simply
+         --dash-h minus --cols-h.  Two stamped numbers again. */
       /* v2.3.1635: a third var joins for the same reason --nav-h exists.
          The band is THREE rows now, so the middle row can no longer size
          itself as calc(--dash-h - --nav-h) — that arithmetic silently

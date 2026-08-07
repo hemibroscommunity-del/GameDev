@@ -111,7 +111,7 @@ export function navShelfHeight(vw, vh) {
 export const DASH_GAP = 4;
 
 export function dashTileSize(vw) {
-  const column = (vw - railWidth(vw) - 4 * DASH_GAP) / 3;
+  const column = (vw - 4 * DASH_GAP) / 3;
   return Math.floor(Math.min(Math.max((column - 2 - 4 * DASH_GAP) / 3, 18), 40));
 }
 
@@ -177,23 +177,36 @@ export function identityRowHeight(vw, vh) {
    Six buttons still need vertical room, so the band's floor is whichever
    is taller: what the three columns need, or what the rail needs. */
 export const RAIL_COUNT = 3;
-const RAIL_GAP = 4;
-const RAIL_PAD = 8;
+const NAV_GAP = 4;
 
-/* v2.3.1640: the rail no longer sets the band — it FILLS it.  Its button
-   height is whatever three buttons plus their gaps can be inside
-   barHeight, which the slots now decide.  Reversing this dependency is
-   what let the panels hold exactly even padding (see columnsRowHeight);
-   the pill stays vertical because railWidth is narrower than this. */
-export function railWidth(vw) {
-  return Math.round(Math.min(Math.max(vw * 0.092, 32), 44));
+/* v2.3.1642 (owner: "put the rail buttons on the top to the left of the
+   character in its own little section up there"): the LEFT RAIL becomes a
+   top-left NAV GROUP — three buttons in a row, in their own bordered
+   section, with the identity strip beside them.
+
+   The band's left edge is free again, so the three slot panels span the
+   full width and the squares grow from 31px to 35 — the rail was the
+   binding constraint on tile width from v2.3.1637 onward.
+
+   IT STILL PERSISTS THROUGH AN OPEN PANEL, and that is not decoration.
+   The rail replaced a toolbar ribbon that stayed visible under an
+   expanded sheet because it was the only way to switch destination or
+   get out; moving navigation into the identity row — which HIDES when a
+   panel opens — would have restored that trap.  The group is rendered
+   separately from the strip for exactly this reason: the strip hides,
+   the group does not, and it holds the same screen position in both
+   modes so nothing moves under the thumb (the v2.3.1637b rule). */
+export function navButtonSize(vw, vh) {
+  /* v2.3.1642b: 0.068 -> 0.063 of the viewport (27 -> 25 at 390w).  With
+     27 the identity strip's last element — gold — still ended 5px past
+     the right edge, measured; three buttons two pixels narrower is the
+     cheapest place to find it, and 25x44 stays a bigger target than the
+     24x40 the vertical rail had. */
+  const w = Math.round(Math.min(Math.max(vw * 0.063, 24), 34));
+  return { w, h: identityRowHeight(vw, vh) - 2 * NAV_GAP };
 }
-export function railButtonSize(vw, vh) {
-  const avail = barHeight(vw, vh) - RAIL_PAD - RAIL_GAP * (RAIL_COUNT - 1);
-  return Math.max(24, Math.floor(avail / RAIL_COUNT));
-}
-export function railHeight(vw, vh) {
-  return barHeight(vw, vh);
+export function navGroupWidth(vw, vh) {
+  return navButtonSize(vw, vh).w * RAIL_COUNT + NAV_GAP * (RAIL_COUNT - 1) + 2 * NAV_GAP + 2;
 }
 
 /* The BAND height every consumer keys off (canvas, joystick zones, world

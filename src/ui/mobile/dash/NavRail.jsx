@@ -1,7 +1,7 @@
 import React from 'react';
 import { COL } from './common.js';
 import { dashboardPanelBus } from '../dashboardPanelBus.js';
-import { railButtonSize } from '../sheet/sheetGeometry.js';
+import { navButtonSize } from '../sheet/sheetGeometry.js';
 
 /* v2.3.1637 (owner mockup): the NAV RAIL — the destinations as icon-only
    buttons down the band's left edge, replacing the full-width bottom
@@ -32,14 +32,16 @@ import { railButtonSize } from '../sheet/sheetGeometry.js';
    the rest of the band would leave an open panel with no navigation. */
 
 export const NavRail = ({ items, litId, atRest, vw, vh, dots, profilePortrait }) => {
-  const size = railButtonSize(vw, vh);
+  const size = navButtonSize(vw, vh);
   return (
     <div className="bt-navrail" style={{
-      position: 'absolute',
-      left: 0, top: 0, bottom: 0,
-      width: 'var(--rail-w, 48px)',
-      zIndex: 3,
+      /* v2.3.1642: a ROW at the band's top-left, in its own bordered
+         section, with the identity strip beside it. */
+      flex: 'none',
       boxSizing: 'border-box',
+      background: COL.well,
+      border: `1px solid ${COL.tileBor}`,
+      borderRadius: 9,
       /* v2.3.1637b: BOTTOM-anchored, not centred.  The rail is 189px tall
          at rest and ~439 with a panel open, so centring moved every
          button ~110px up the screen the moment you opened one — the
@@ -47,10 +49,9 @@ export const NavRail = ({ items, litId, atRest, vw, vh, dots, profilePortrait })
          This is the same failure v2.3.1307b pinned the old ribbon to fix
          ("toolbar bounces ~20-30px after closing"); bottom-anchoring puts
          each button at the SAME screen position in both modes. */
-      display: 'flex', flexDirection: 'column',
-      alignItems: 'center', justifyContent: 'flex-end',
-      gap: 3, padding: '3px 4px',
-      borderRight: `1px solid ${COL.divider}`,
+      display: 'flex', flexDirection: 'row',
+      alignItems: 'center', justifyContent: 'center',
+      gap: 4, padding: 4,
     }}>
       {items.map((d) => {
         const on = d.id === 'dashboard' ? atRest : (!atRest && litId === d.id);
@@ -66,11 +67,11 @@ export const NavRail = ({ items, litId, atRest, vw, vh, dots, profilePortrait })
             style={{
               position: 'relative',
               /* v2.3.1639 (owner): VERTICAL PILL — taller than wide with
-                 fully-rounded ends, icon centred on both axes.  The 88%
-                 width keeps the pill narrower than its own height at
-                 every viewport, which is what makes it read as a pill
-                 standing up rather than a rounded square. */
-              width: '88%', height: size, flex: 'none',
+                 fully-rounded ends, icon centred on both axes.
+                 v2.3.1642: still a vertical pill, now in a horizontal
+                 row — navButtonSize returns {w,h} with h from the
+                 identity row so the shape survives the move. */
+              width: size.w, height: size.h, flex: 'none',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               background: on ? COL.accentFill : COL.wellSoft,
               border: `1px solid ${on ? COL.accent : COL.tileBor}`,
@@ -97,12 +98,14 @@ export const NavRail = ({ items, litId, atRest, vw, vh, dots, profilePortrait })
                 the mockup's chevron.  Drawn outside the button so it
                 never crowds the icon. */}
             {on && (
+              /* v2.3.1642: the marker points DOWN now, not right — the
+                 group sits above what it opens rather than beside it. */
               <span aria-hidden="true" style={{
-                position: 'absolute', right: -5, top: '50%',
-                width: 0, height: 0, transform: 'translateY(-50%)',
-                borderTop: '4px solid transparent',
-                borderBottom: '4px solid transparent',
-                borderLeft: `5px solid ${COL.accent}`,
+                position: 'absolute', bottom: -5, left: '50%',
+                width: 0, height: 0, transform: 'translateX(-50%)',
+                borderLeft: '4px solid transparent',
+                borderRight: '4px solid transparent',
+                borderTop: `5px solid ${COL.accent}`,
                 pointerEvents: 'none',
               }} />
             )}
