@@ -92,7 +92,7 @@ const Column = ({ title, children, onTap }) => (
          spreading it between them. */
       display: 'flex', flexDirection: 'column', alignItems: 'center',
       justifyContent: 'space-evenly',
-      padding: '4px 3px', gap: 3,
+      padding: '4px 2px', gap: 3,
     }}>{children}</div>
   </div>
 );
@@ -235,9 +235,9 @@ export const DashColumns = ({ R }) => {
       display: 'grid',
       /* The owner's correction, in one line: three equal thirds, one gap. */
       gridTemplateColumns: 'repeat(3, 1fr)',
-      gap: 6,
+      gap: 8,
       height: '100%', boxSizing: 'border-box',
-      padding: '0 8px 5px',
+      padding: '0 4px 4px',
       /* The bottom rule is the ONLY chrome — the row must read as part of
          the band, not as three floating widgets over the world. */
       borderBottom: `1px solid ${COL.divider}`,

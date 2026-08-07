@@ -102,8 +102,20 @@ export function dashTileSize(vw) {
      ~34 wide inside a ~95px column that fits 30, and the outer two in
      every row were clipped by the column's own overflow:hidden. */
   const inner = vw - railWidth(vw);
-  const column = (inner - 12 - 10) / 3;
-  return Math.round(Math.min(Math.max((column - 18) / 3, 20), 34));
+  /* v2.3.1638 (owner: "make the slots make better use of the space"):
+     frame padding and the inter-column gaps come down, and every pixel
+     taken off chrome goes straight into tile width.  Width is the binding
+     constraint here and always was — three tiles across a ~107px column —
+     so height was never what limited them.  The cap goes 34 -> 40 so a
+     wider phone can actually use the room. */
+  /* v2.3.1638 (owner: "make the slots make better use of the space"):
+     frame padding 12 -> 8 and the two inter-column gaps 10 -> 8, and the
+     column's own padding + tile gaps 18 -> 12.  Every pixel taken off
+     chrome goes straight into tile width, which is the binding
+     constraint here — the tiles are three-across in a ~107px column, so
+     height was never what limited them. */
+  const column = (inner - 8 - 8) / 3;
+  return Math.round(Math.min(Math.max((column - 12) / 3, 20), 40));
 }
 export function columnsRowHeight(vw, vh) {
   const tile = dashTileSize(vw);
@@ -112,7 +124,10 @@ export function columnsRowHeight(vw, vh) {
      whichever needs more vertical room sets the band.  Six stacked
      buttons beat three columns of tiles at every viewport we ship, but
      taking the max rather than assuming that keeps a future shorter rail
-     (or a taller column) from silently clipping the other. */
+     (or a taller column) from silently clipping the other.
+     v2.3.1638: with the rail down to FOUR buttons the columns win — the
+     row sits at its own content height and the dead space the rail used
+     to force is gone, which is the other half of "use the space better". */
   return Math.max(content, railHeight(vw, vh) - identityRowHeight(vw, vh));
 }
 
@@ -150,7 +165,7 @@ export function identityRowHeight(vw, vh) {
    The rail is why the band cannot simply shrink by the ribbon's 87px.
    Six buttons still need vertical room, so the band's floor is whichever
    is taller: what the three columns need, or what the rail needs. */
-export const RAIL_COUNT = 6;
+export const RAIL_COUNT = 5;
 const RAIL_GAP = 3;
 const RAIL_PAD = 6;
 export function railButtonSize(vw, vh) {
@@ -205,15 +220,40 @@ export const FEET_OFFSET = 24;
    (v2.3.1317 merge: #288's 44px rule supersedes this branch's
    equivalent round-8 40px/42-48% version — same intent, later owner
    directive wins.) */
+/* v2.3.1638 (owner: "shorten the expanded view to be the exact same size
+   as the default dashboard view"): expanded IS the bar height now.  The
+   v2.3.1311 feet rule (sheet top ~36px below the boots) and the 40/52%vh
+   clamp are retired — the band no longer grows at all, in any mode.
+
+   This makes the BAR-height invariant above trivially true rather than
+   carefully maintained: --dash-h was already pinned to barHeight in every
+   mode, and now the sheet's own height matches it, so nothing about the
+   band moves when a panel opens.  The world you can see never shrinks.
+
+   THE COST, stated plainly: a panel gets ~177px of height at 390x844
+   instead of ~439.  Every destination has to scroll inside that, and the
+   T2 spend screen's "five categories on one screen" goal (v2.3.1311e) is
+   no longer reachable — drillSheetHeight matches too, because a drill
+   that grew to 56vh while its parent stayed at 177 would be the exact
+   band-resize jump this change exists to remove. */
+/* v2.3.1638 (owner: "shorten the expanded view to be the exact same size
+   as the default dashboard view"): expanded IS the bar height now.  The
+   v2.3.1311 feet rule (sheet top ~36px below the boots) and the
+   40/52%vh clamp are retired — the band no longer grows in any mode.
+
+   That makes the BAR-height invariant above trivially true rather than
+   carefully maintained: --dash-h was already pinned to barHeight in every
+   mode, and now the sheet's own height matches it, so nothing about the
+   band moves when a panel opens and the visible world never shrinks.
+
+   THE COST, stated plainly: a panel gets ~177px at 390x844 instead of
+   ~439, so every destination has to scroll inside that, and the T2 spend
+   screen's "five categories on one screen" goal (v2.3.1311e) is no longer
+   reachable.  drillSheetHeight matches for the same reason — a drill that
+   grew to 56vh while its parent stayed at 177 would be exactly the band
+   jump this change exists to remove. */
 export function expandedSheetHeight(vw, vh) {
-  const canvasH = vh - barHeight(vw, vh) + DASH_OVERLAP;
-  const feetY = canvasH / 2 + FEET_OFFSET;
-  /* v2.3.1352 (owner: fit a third bag row without shrinking anything):
-     ground allowance 44 -> 36px — still inside the owner's original
-     "leave ~32-48px of visible ground" band (v2.3.1311), and the extra
-     8px goes to every root sheet's content. */
-  const feetRule = vh - (feetY + 36);
-  return Math.round(Math.min(vh * 0.52, Math.max(vh * 0.40, feetRule)));
+  return barHeight(vw, vh);
 }
 
 /* v2.3.1311e (owner: the T2 spend screen's 5 categories must fit one
@@ -223,6 +263,10 @@ export function expandedSheetHeight(vw, vh) {
    destination sheets; a drill is a focused task where content beats
    world visibility.  The band animates between the two heights on
    push/pop, which doubles as a depth cue. */
+/* v2.3.1638: drills match expanded, which matches the bar.  One height,
+   always — see expandedSheetHeight. */
+/* v2.3.1638: drills match expanded, which matches the bar.  One height,
+   always — see expandedSheetHeight. */
 export function drillSheetHeight(vw, vh) {
-  return Math.round(vh * 0.56);
+  return barHeight(vw, vh);
 }

@@ -483,9 +483,25 @@ const DESTINATIONS = [
    carries it in band mode, which is the v2.3.1294 rule the ribbon's own
    Hero button already followed (the icon WAS the player's bust).  One
    fewer rail button is also ~32px of band height back. */
+/* v2.3.1638 (owner): FOUR buttons — "just keep the dashboard, bag,
+   quests, and friends buttons on that left side".  Hero was already the
+   identity row's portrait (v2.3.1637b); Skills and More leave the rail
+   here.
+   MORE IS PINNED LAST, at the rail's bottom (owner: "you can add the
+   more at bottom", immediately after the four-button cut).  It has to be
+   somewhere: 'more' is the ONLY entry to Journey, Codex, Ranks, Clan,
+   Guild and Settings — and Settings is the only route to Account, which
+   holds the login key for device transfer.  Dropping it would have
+   stranded all seven behind a screen nothing opens.
+
+   STILL STRANDED, and the one thing left to place: 'skills'.  The life
+   skill tree (cooking / fishing / mining) lost its last entry point when
+   the quick bar went at v2.3.1636 — the destination works, MorePanel
+   does not list it, and nothing on screen opens it. */
+const RAIL_ORDER = ['bag', 'quests', 'social', 'more'];
 const RAIL_ITEMS = [
   { id: 'dashboard', label: 'Dashboard', icon: '/icons/ui/panel-stats.webp?v=2.3.1637' },
-  ...DESTINATIONS.filter(d => d.id !== 'hero'),
+  ...RAIL_ORDER.map(id => DESTINATIONS.find(d => d.id === id)).filter(Boolean),
 ];
 
 /* v2.3.1350 (owner): the COMPACT_VIEWS registry and the six compact
