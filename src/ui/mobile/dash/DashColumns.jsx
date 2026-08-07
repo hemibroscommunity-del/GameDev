@@ -9,7 +9,7 @@ import { COMBAT_SKILLS, skillLevel } from '../sheet/heroModel.js';
 import { dashboardPanelBus } from '../dashboardPanelBus.js';
 import { requestT2Category } from './T2Panel.jsx';
 import { buildSkillUnspent, STAT_TO_WEAPON_CAT, calcDisplayDmgRange, calcDisplayDps, getActiveWeapon } from '../../../data/gameSystems.js';
-import { dashTileSize } from '../sheet/sheetGeometry.js';
+import { dashTileSize, dashColumnWidth, DASH_GAP } from '../sheet/sheetGeometry.js';
 
 /* v2.3.1636 (owner, with a reference screenshot of the pre-v2.3.1287
    dashboard): the THREE-COLUMN ROW — BAG / LOADOUT / BUILD restored as
@@ -83,8 +83,14 @@ const Column = ({ children, onTap, label }) => (
       border: `1px solid ${COL.border}`,
       borderRadius: 9,
       display: 'flex', flexDirection: 'column',
-      alignItems: 'center', justifyContent: 'space-evenly',
-      padding: '3px 2px', gap: 3,
+      /* v2.3.1640: ONE gap value on every axis — the panel's own padding
+         and the space between its two tile rows are the same DASH_GAP the
+         frame and the tile rows use.  space-evenly is gone with it: the
+         panel is now exactly as tall as its contents, so there is no
+         surplus left to distribute and 'evenly' would only reintroduce
+         the uneven edges this removes. */
+      alignItems: 'center', justifyContent: 'center',
+      padding: DASH_GAP, gap: DASH_GAP,
       minWidth: 0, overflow: 'hidden',
       cursor: onTap ? 'pointer' : 'default',
     }}>{children}</div>
@@ -93,7 +99,7 @@ const Column = ({ children, onTap, label }) => (
 /* Both grid columns lay their tiles out three across, two down — the same
    rhythm, so the eye reads one row of six per column rather than three
    different grids. */
-const tileRow = { display: 'flex', gap: 3, justifyContent: 'center' };
+const tileRow = { display: 'flex', gap: DASH_GAP, justifyContent: 'center' };
 
 export const DashColumns = ({ R }) => {
   const vw = typeof window !== 'undefined' ? window.innerWidth : 390;
@@ -236,10 +242,11 @@ export const DashColumns = ({ R }) => {
     <div className="bt-dashcols" style={{
       display: 'grid',
       /* The owner's correction, in one line: three equal thirds, one gap. */
-      gridTemplateColumns: 'repeat(3, 1fr)',
-      gap: 8,
+      gridTemplateColumns: `repeat(3, ${dashColumnWidth(vw)}px)`,
+      justifyContent: 'center',
+      gap: DASH_GAP,
       height: '100%', boxSizing: 'border-box',
-      padding: '0 4px 4px',
+      padding: DASH_GAP,
       /* The bottom rule is the ONLY chrome — the row must read as part of
          the band, not as three floating widgets over the world. */
       borderBottom: `1px solid ${COL.divider}`,

@@ -95,44 +95,51 @@ export function navShelfHeight(vw, vh) {
    same reason the quick bar's were — eighteen of them cannot be 44 wide
    on a 390px phone — and the same mitigation applies: every tile has a
    full-size counterpart one tap away in Bag/Hero. */
+/* v2.3.1640 (owner: "make the spacing for all of the slots even padding
+   between the container's edge and between each slot square"): ONE gap
+   value, used for every gap on the row — the frame's own left/right
+   padding, the space between the three panels, each panel's inner
+   padding, and the space between squares.  Nothing on this row may use
+   any other number.
+
+   That makes the geometry solvable rather than approximate.  Across a
+   panel: pad + tile + gap + tile + gap + tile + pad, so four G and three
+   tiles fill its inner width exactly.  Down it: pad + tile + gap + tile +
+   pad, so three G and two tiles ARE the panel's height — not a minimum it
+   floats inside.  FLOOR the tile: rounding up overflows the panel and the
+   outer squares clip against overflow:hidden (the v2.3.1637 bug). */
+export const DASH_GAP = 4;
+
 export function dashTileSize(vw) {
-  /* v2.3.1637 FIX: subtract the rail.  This measured the FULL viewport
-     through v2.3.1636b, which was right when the columns spanned it —
-     but the rail now takes ~48px off their left, so the tiles came out
-     ~34 wide inside a ~95px column that fits 30, and the outer two in
-     every row were clipped by the column's own overflow:hidden. */
-  const inner = vw - railWidth(vw);
-  /* v2.3.1638 (owner: "make the slots make better use of the space"):
-     frame padding and the inter-column gaps come down, and every pixel
-     taken off chrome goes straight into tile width.  Width is the binding
-     constraint here and always was — three tiles across a ~107px column —
-     so height was never what limited them.  The cap goes 34 -> 40 so a
-     wider phone can actually use the room. */
-  /* v2.3.1638 (owner: "make the slots make better use of the space"):
-     frame padding 12 -> 8 and the two inter-column gaps 10 -> 8, and the
-     column's own padding + tile gaps 18 -> 12.  Every pixel taken off
-     chrome goes straight into tile width, which is the binding
-     constraint here — the tiles are three-across in a ~107px column, so
-     height was never what limited them. */
-  const column = (inner - 8 - 8) / 3;
-  return Math.round(Math.min(Math.max((column - 12) / 3, 20), 40));
+  const column = (vw - railWidth(vw) - 4 * DASH_GAP) / 3;
+  return Math.floor(Math.min(Math.max((column - 2 - 4 * DASH_GAP) / 3, 18), 40));
 }
-export function columnsRowHeight(vw, vh) {
-  const tile = dashTileSize(vw);
-  /* v2.3.1639: no header strip (-17) and no level line under each tile
-     (-11 per row, -22), because the combat level moved into the tile's
-     bottom-right corner.  A panel is now its own padding plus two rows
-     of squares, and nothing else. */
-  const content = Math.round(6 + 2 * tile + 3 + (vh && vh <= 720 ? 8 : 10) + 2);
-  /* v2.3.1637: the rail runs the FULL band height beside these rows, so
-     whichever needs more vertical room sets the band.  Six stacked
-     buttons beat three columns of tiles at every viewport we ship, but
-     taking the max rather than assuming that keeps a future shorter rail
-     (or a taller column) from silently clipping the other.
-     v2.3.1638: with the rail down to FOUR buttons the columns win — the
-     row sits at its own content height and the dead space the rail used
-     to force is gone, which is the other half of "use the space better". */
-  return Math.max(content, railHeight(vw, vh) - identityRowHeight(vw, vh));
+
+/* v2.3.1640: the columns row is EXACTLY its content now — two tile rows,
+   three gaps, the panel border and the frame's own vertical padding.  It
+   is no longer max(content, whatever the rail needs), because that max
+   was what put slack inside the panels: the rail demanded a taller band
+   than two rows of width-limited squares fill, and the surplus had to go
+   somewhere.  The dependency is inverted below — the SLOTS set the band
+   and the rail sizes itself to fit, which is the only arrangement where
+   "even padding" can be exactly true rather than nearly. */
+/* v2.3.1640b: the panel's width is an EXACT integer — border + four gaps
+   + three whole tiles — instead of a 1fr third.  With 1fr the column came
+   out fractional (112.7 at 390w), the floored tile left ~1.7px over, and
+   centring split it onto the two OUTER edges: measured 4.8 / 4 / 4 / 4.8,
+   edges 20% wider than the gaps between squares.  Pinning the width moves
+   that remainder out to the row's own margins, where it is one shared
+   number rather than a visible asymmetry inside every panel. */
+export function dashColumnWidth(vw) {
+  return 2 + 4 * DASH_GAP + 3 * dashTileSize(vw);
+}
+
+export function columnsRowHeight(vw) {
+  /* +1 for the ROW's own bottom hairline.  The row is box-sizing:border-box
+     at height:100% of this number, so that 1px rule comes out of the
+     content box — measured as 3.5 / 4 / 3.5 vertically (the half-pixels
+     being the shortfall split by centring) until it was accounted for. */
+  return 2 * dashTileSize(vw) + 3 * DASH_GAP + 2 + 2 * DASH_GAP + 1;
 }
 
 /* v2.3.1635 (owner: bring back a persistent sense of identity and
@@ -172,19 +179,21 @@ export function identityRowHeight(vw, vh) {
 export const RAIL_COUNT = 3;
 const RAIL_GAP = 4;
 const RAIL_PAD = 8;
-/* v2.3.1639 (owner: "make the buttons vertical pill shape with the icons
-   centered in middle"): the button is TALLER than the rail is wide now,
-   so this is its HEIGHT and railWidth sets the other axis.  A vertical
-   pill needs the long axis to read as long — at the old 28 it would have
-   been a rounded square. */
-export function railButtonSize(vw, vh) {
-  return vh && vh <= 720 ? 38 : 46;
-}
+
+/* v2.3.1640: the rail no longer sets the band — it FILLS it.  Its button
+   height is whatever three buttons plus their gaps can be inside
+   barHeight, which the slots now decide.  Reversing this dependency is
+   what let the panels hold exactly even padding (see columnsRowHeight);
+   the pill stays vertical because railWidth is narrower than this. */
 export function railWidth(vw) {
-  return Math.round(Math.min(Math.max(vw * 0.123, 40), 56));
+  return Math.round(Math.min(Math.max(vw * 0.092, 32), 44));
+}
+export function railButtonSize(vw, vh) {
+  const avail = barHeight(vw, vh) - RAIL_PAD - RAIL_GAP * (RAIL_COUNT - 1);
+  return Math.max(24, Math.floor(avail / RAIL_COUNT));
 }
 export function railHeight(vw, vh) {
-  return railButtonSize(vw, vh) * RAIL_COUNT + RAIL_GAP * (RAIL_COUNT - 1) + RAIL_PAD;
+  return barHeight(vw, vh);
 }
 
 /* The BAND height every consumer keys off (canvas, joystick zones, world
@@ -203,7 +212,7 @@ export function barHeight(vw, vh) {
      (52 identity + 178 columns), down from 272.  navShelfHeight and
      navSlotSize stay exported: the ribbon's buttons are retired but the
      slot algebra is still the compact bag grid's. */
-  return identityRowHeight(vw, vh) + columnsRowHeight(vw, vh);
+  return identityRowHeight(vw, vh) + columnsRowHeight(vw);
 }
 /* v2.3.1271: the band's 14px rounded top corners cut out to the page
    background; the canvas runs 14px UNDER the band so the notches show
