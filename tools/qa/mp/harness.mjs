@@ -361,10 +361,59 @@ export async function clickText(P, text, { timeout = 6000 } = {}) {
  *  were broken or absent.  Labels: Dashboard / Bag / Skills / Friends /
  *  Quests / More (Hero is the identity row's portrait, not a rail button).
  */
+/** Tap an element, having FIRST proved it is the topmost thing at its own
+ *  centre.
+ *
+ *  v2.3.1641: the rail's buttons respond to pointerup (they are divs with
+ *  role=button, like every tile in this UI), and Playwright's click()
+ *  actionability check reports "<div></div> intercepts pointer events" for
+ *  them even when document.elementFromPoint returns the button itself —
+ *  measured directly, three deep: [the button, .bt-navrail, .bt-dashboard].
+ *  Rather than paper over that with a blind force-click, this does the
+ *  covering check EXPLICITLY in the page and only then forces the tap.  A
+ *  real overlay still fails the test, and names itself in the error, which
+ *  is the property that mattered when the rail replaced the ribbon. */
+async function tapTop(page, selector, timeout) {
+  const loc = page.locator(selector).first();
+  await loc.waitFor({ state: 'visible', timeout });
+  /* Hit-test the RESOLVED element, not the selector string: `:has-text()`
+     is a Playwright pseudo-class and document.querySelector throws on it. */
+  const verdict = await loc.evaluate((el) => {
+    if (!el) return 'missing';
+    el.scrollIntoView({ block: 'nearest' });
+    const r = el.getBoundingClientRect();
+    const top = document.elementFromPoint(Math.round(r.left + r.width / 2), Math.round(r.top + r.height / 2));
+    if (!top) return 'nothing at its centre (off-screen?)';
+    if (el === top || el.contains(top)) return 'ok';
+    return `covered by <${top.tagName.toLowerCase()} class="${top.className || ''}">`;
+  });
+  if (verdict !== 'ok') throw new Error(`${selector} is not tappable: ${verdict}`);
+  await loc.click({ force: true });
+}
+
+/** Open a dashboard destination the way a player reaches it.
+ *
+ *  v2.3.1637: the toolbar ribbon carried a text label under every icon, so
+ *  scenarios opened panels with clickText(P, 'Friends').  The rail that
+ *  replaced it is icon-only — that call matched nothing.  Rail buttons
+ *  carry their name as aria-label, the accessible name of the control.
+ *  v2.3.1641: and not every destination is ON the rail any more.  It shrank
+ *  to Dashboard / Bag / More, with Quests, Friends and Life Skills moved
+ *  into the More panel, so this falls through to More and taps the tile —
+ *  the same two taps a player makes.  Still a UI path end to end: nothing
+ *  here calls the bus, so a broken rail or a missing tile fails the test.
+ */
 export async function openDest(P, label, { timeout = 6000 } = {}) {
-  const btn = P.page.locator(`.bt-navrail [aria-label="${label}"]`).first();
-  await btn.waitFor({ state: 'visible', timeout });
-  await btn.click();
+  const railSel = `.bt-navrail [aria-label="${label}"]`;
+  if (await P.page.locator(railSel).first().isVisible().catch(() => false)) {
+    await tapTop(P.page, railSel, timeout);
+    return true;
+  }
+  await tapTop(P.page, '.bt-navrail [aria-label="More"]', timeout);
+  await P.page.waitForTimeout(700);
+  /* More's tiles are real <button>s (className bt-more-card), not
+     role=button divs like the rail — hence two selectors, not one. */
+  await tapTop(P.page, `.bt-dashboard button:has-text("${label}")`, timeout);
   return true;
 }
 

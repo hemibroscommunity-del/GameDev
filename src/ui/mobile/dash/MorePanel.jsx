@@ -1,6 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { dashboardPanelBus } from '../dashboardPanelBus.js';
 import { COL, panelStyle, getState } from './common.js';
+/* v2.3.1641: live status lines for the three destinations re-homed here. */
+import { readyQuestCount } from '../sheet/questModel.js';
+import { getFriendRows } from '../sheet/friendsModel.js';
+import { friendsSrv } from '../sheet/friendsSync.js';
+import { hasUnseenLevelUps } from '../sheet/skillsModel.js';
 
 // v2.3.1224: swapped to the UI Bible icon set (docs/UI-BIBLE.md Part 4,
 // sliced by tools/process_icon_sheets.py); every tile has a real icon.
@@ -11,10 +16,24 @@ import { COL, panelStyle, getState } from './common.js';
    v2.3.1299 (round-6): per-tile iconScale (the journey asset carries
    more padding and rendered visibly smaller) and iconFilter (the
    settings gear needed a touch more contrast on the dark tile). */
+/* v2.3.1641 (owner: "add skills, quests, and friends to more panel"):
+   QUESTS, FRIENDS and LIFE SKILLS join.  They are not secondary systems —
+   they are here because the nav rail shrank to Dashboard / Bag / More
+   across v2.3.1638-1639 and these three lost their only entry point.
+   Quests and Friends in particular were unreachable, not merely demoted.
+
+   'Life Skills', not 'Skills'.  That collision is exactly why COMBAT
+   could not be called Skills back at v2.3.1636: one word pointed at two
+   different panels.  With the combat parents on the dashboard and the
+   cooking/fishing/mining tree in here, spelling it out costs one word and
+   removes the ambiguity for good. */
 export const TILES = [
+  { id: 'quests',      src: '/icons/ui/panel-quests.webp?v=2.3.1224',      label: 'Quests',   glyph: '📜', group: 'Progress',  iconScale: 1 },
+  { id: 'skills',      src: '/icons/ui/nav-lifeskills.webp?v=2.3.1331',    label: 'Life Skills', glyph: '⛏', group: 'Progress', iconScale: 1 },
   { id: 'journey',     src: '/icons/ui/journey.webp?v=2.3.1224',           label: 'Journey',  glyph: '🛤', group: 'Progress',  iconScale: 1.18 },
   { id: 'encyclopedia', src: '/icons/ui/panel-encyclopedia.webp?v=2.3.1224', label: 'Codex',  glyph: '📚', group: 'Progress',  iconScale: 1 },
   { id: 'leaderboard', src: '/icons/ui/panel-leaderboard.webp?v=2.3.1224', label: 'Ranks',    glyph: '🏆', group: 'Progress',  iconScale: 1 },
+  { id: 'social',      src: '/icons/ui/nav-friends.webp?v=2.3.1224',      label: 'Friends',  glyph: '👥', group: 'Community', iconScale: 1 },
   { id: 'clan',        src: '/icons/ui/panel-clan.webp?v=2.3.1224',        label: 'Clan',     glyph: '🛡', group: 'Community', iconScale: 1 },
   { id: 'guild',       src: '/icons/ui/panel-guild.webp?v=2.3.1224',       label: 'Guild',    glyph: '⚒', group: 'Community', iconScale: 1 },
   { id: 'settings',    src: '/icons/ui/panel-settings.webp?v=2.3.1224',    label: 'Settings', glyph: '⚙', group: 'System',    iconScale: 1, iconFilter: 'brightness(1.18) contrast(1.05)' },
@@ -40,6 +59,23 @@ function statusFor(id, S) {
       return n > 0 ? `${n} discovered` : 'Discover monsters & materials';
     }
     case 'leaderboard': return 'View the leaderboards';
+    /* v2.3.1641: same rule as every line above — real state only. */
+    case 'quests': {
+      const ready = readyQuestCount(S);
+      return ready > 0 ? `${ready} ready to turn in` : 'Track your quests';
+    }
+    case 'skills':
+      return hasUnseenLevelUps(R) ? 'New level-ups to view' : 'Cooking · Fishing · Mining';
+    case 'social': {
+      try {
+        const actionable = friendsSrv.requestsIn().length + friendsSrv.unreadTotal();
+        if (actionable > 0) return `${actionable} waiting`;
+        const rows = getFriendRows(S);
+        const online = rows.filter(r => r.online).length;
+        if (online > 0) return `${online} online`;
+        return rows.length > 0 ? `${rows.length} friend${rows.length === 1 ? '' : 's'}` : 'Add friends · direct messages';
+      } catch (_e) { return 'Add friends · direct messages'; }
+    }
     case 'clan': {
       const c = S?._clanData;
       return c && (c.name || c.tag) ? (c.name || c.tag) : 'Not joined · player clans';
@@ -114,7 +150,11 @@ export const MorePanel = () => {
         <div>
           <div style={secHdr}>Progress</div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6 }}>
-            {['journey', 'encyclopedia', 'leaderboard'].map(id => {
+            {/* v2.3.1641: these lists are the render, NOT the TILES array
+                above — adding a tile to TILES alone renders nothing, which
+                is exactly what happened on the first pass here.  Quests and
+                Life Skills join Progress; Friends joins Community below. */}
+            {['quests', 'skills', 'journey', 'encyclopedia', 'leaderboard'].map(id => {
               const t = tile(id);
               return (
                 <button key={id} className="bt-more-card"
@@ -136,7 +176,7 @@ export const MorePanel = () => {
         <div>
           <div style={secHdr}>Community</div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 6 }}>
-            {['clan', 'guild'].map(id => {
+            {['social', 'clan', 'guild'].map(id => {
               const t = tile(id);
               return (
                 <button key={id} className="bt-more-card"
