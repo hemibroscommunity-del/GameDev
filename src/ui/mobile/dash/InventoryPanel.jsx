@@ -370,7 +370,8 @@ export const InventoryPanel = () => {
          10->2 (the tray's own 18px fade is the bottom edge treatment;
          dead margin above the toolbar bought nothing).  Local override
          only: other panels keep panelStyle's padding. */
-      padding: '6px 12px 2px' }}>
+      /* v2.3.1643: the Bag's local override tightens with panelStyle. */
+      padding: '4px 6px 2px' }}>
 
       {/* v2.3.1639 (owner: "remove 'items' and 'equipped' buttons since
           equipped is visible from the dashboard view").  The v2.3.1326
@@ -687,9 +688,13 @@ export const InventoryPanel = () => {
               className="bt-chisel bt-chisel--chip"
               style={{
                 position: 'relative',
-                flex: '1 1 0', minWidth: 0,
+                /* v2.3.1643 (owner: "make the tabbed buttons larger").
+                   minHeight 34 with a real 4px pad — these were a 2px-pad
+                   chip about 24px tall, well under any touch guidance,
+                   and they are the only control in the panel. */
+                flex: '1 1 0', minWidth: 0, minHeight: 34,
                 display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 1,
-                padding: '2px 0',
+                padding: '4px 0',
                 color: active ? COL.text : COL.text2,
                 fontFamily: 'inherit',
               }}
@@ -810,8 +815,11 @@ export const InventoryPanel = () => {
             overflowY: 'auto',
             touchAction: 'pan-y',
             WebkitOverflowScrolling: 'touch',
-            WebkitMaskImage: 'linear-gradient(180deg, #000 calc(100% - 18px), transparent)',
-            maskImage: 'linear-gradient(180deg, #000 calc(100% - 18px), transparent)',
+            /* v2.3.1643: the fade was 18px of a 93px panel — a fifth of
+               the tray permanently dimmed.  10 still reads as "more
+               below" without eating a whole item row. */
+            WebkitMaskImage: 'linear-gradient(180deg, #000 calc(100% - 10px), transparent)',
+            maskImage: 'linear-gradient(180deg, #000 calc(100% - 10px), transparent)',
           }}>
           <div style={{
             display: 'grid',
@@ -828,7 +836,9 @@ export const InventoryPanel = () => {
                must clear the edge fade at scroll end.  v2.3.1352:
                14 -> 10 (tighter budget; still holds the last row off
                the 18px fade at scroll end). */
-            paddingBottom: 10,
+            /* v2.3.1643: 10 -> 4.  Scroll clearance still holds the last
+               row off the edge fade, which also shrinks below. */
+            paddingBottom: 4,
           }}>
             {(() => {
               /* v2.3.1350: with measured rows the tiles fill their row

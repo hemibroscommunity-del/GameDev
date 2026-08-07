@@ -83,7 +83,13 @@ export const IdentityStrip = ({ band = false }) => {
          back without dropping anything the owner asked to see. */
       display: 'flex', alignItems: 'center', gap: 6,
       padding: '2px 0 4px',
-      flex: '0 0 auto',
+      /* v2.3.1643: in the BAND the strip must fill the width its row
+         gives it — measured, stacking DMG/DPS freed ~50px and the row
+         simply left it empty on the right, because this root is
+         flex:0 0 auto and the wrapper is a flex container.  Hero's own
+         sheet keeps the content-sized behaviour it has always had. */
+      flex: band ? '1 1 auto' : '0 0 auto',
+      minWidth: 0,
       fontFamily: 'Source Sans 3, sans-serif',
     }}>
       {/* Portrait + presence dot (connection status — lived on the old
@@ -154,17 +160,21 @@ export const IdentityStrip = ({ band = false }) => {
           }}
         >+{unspent}</span>
       )}
-      {/* v2.3.1637: DMG / DPS, in the weapon chip's slot.  Truncates
-          rather than wraps — the row's height is load-bearing (it is a
-          term of barHeight, and therefore of the canvas size), so
-          nothing in it may grow to two lines. */}
+      {/* v2.3.1637: DMG / DPS, in the retired weapon chip's slot.
+          v2.3.1643 (owner: "put the dmg and DPS on their own lines
+          instead of both horizontal").  Stacked, the chip drops from
+          ~120px wide to ~56 — which is what buys the name and XP bar
+          beside it room to breathe, after the nav group took ~103px off
+          this row's left at v2.3.1642.  Two 10px lines still fit inside
+          the 40px portrait's height, so the row's own height — a term of
+          barHeight, and therefore of the canvas size — does not move. */}
       {band && dmgRange && (
         <span style={{
           flex: 'none',
-          display: 'inline-flex', alignItems: 'center', gap: 4,
-          padding: '2px 6px', borderRadius: 999,
+          display: 'inline-flex', flexDirection: 'column', alignItems: 'flex-end', gap: 1,
+          padding: '2px 6px', borderRadius: 8,
           background: COL.slot, border: '1px solid ' + COL.tileBor,
-          color: COL.muted, fontSize: 9, fontWeight: 700, lineHeight: 1.4,
+          color: COL.muted, fontSize: 9, fontWeight: 700, lineHeight: 1.25,
           whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums',
         }}>
           <span>DMG <b style={{ color: COL.text }}>{dmgRange.text}</b></span>
