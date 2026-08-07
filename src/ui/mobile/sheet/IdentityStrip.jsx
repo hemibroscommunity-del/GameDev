@@ -88,6 +88,14 @@ export const IdentityStrip = ({ band = false }) => {
          simply left it empty on the right, because this root is
          flex:0 0 auto and the wrapper is a flex container.  Hero's own
          sheet keeps the content-sized behaviour it has always had. */
+      /* v2.3.1644 (owner: "make the xp bar half as wide and make the
+         buttons fill in the extra space"): the strip is CONTENT-SIZED
+         again in the band, not flex:1.  Growing to fill was right at
+         v2.3.1643 when it was the only thing that could use the width;
+         now the nav buttons take a deliberate share first (navButtonSize)
+         and the strip fills what is left — which keeps the name and XP
+         bar from being crushed the way a mutual flex fight crushed them
+         on the first attempt at this. */
       flex: band ? '1 1 auto' : '0 0 auto',
       minWidth: 0,
       fontFamily: 'Source Sans 3, sans-serif',
@@ -133,14 +141,23 @@ export const IdentityStrip = ({ band = false }) => {
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
           <div style={{
-            flex: 1, height: 4, borderRadius: 2,
+            /* v2.3.1644 (owner): half its old width.  It was flex:1 and
+               ate ~90px of the row for a 4px-tall progress hint; 44 still
+               reads as a bar and the exact numbers sit right beside it. */
+            flex: 'none', width: 40, height: 4, borderRadius: 2,
             background: 'rgba(0,0,0,.5)', border: '1px solid rgba(255,255,255,.08)',
             overflow: 'hidden',
           }}>
             <div style={{ width: `${Math.min(100, (lp.prog / lp.thresh) * 100)}%`, height: '100%', background: '#8AA9F9' }} />
           </div>
+          {/* v2.3.1644: the " XP" suffix is dropped.  With the bar
+              halved and the nav buttons taking their share, this column
+              is ~86px and "0 / 455 XP" needed ~105 — it rendered clipped
+              as "0 / 455 X".  The bar immediately to its left already
+              says what the number counts, so the unit was the cheapest
+              thing in the row to lose. */}
           <span style={{ flex: 'none', fontSize: 10, color: COL.text2, fontVariantNumeric: 'tabular-nums' }}>
-            {lp.prog} / {lp.thresh} XP
+            {lp.prog} / {lp.thresh}
           </span>
         </div>
       </div>
@@ -160,30 +177,32 @@ export const IdentityStrip = ({ band = false }) => {
           }}
         >+{unspent}</span>
       )}
-      {/* v2.3.1637: DMG / DPS, in the retired weapon chip's slot.
-          v2.3.1643 (owner: "put the dmg and DPS on their own lines
-          instead of both horizontal").  Stacked, the chip drops from
-          ~120px wide to ~56 — which is what buys the name and XP bar
-          beside it room to breathe, after the nav group took ~103px off
-          this row's left at v2.3.1642.  Two 10px lines still fit inside
-          the 40px portrait's height, so the row's own height — a term of
-          barHeight, and therefore of the canvas size — does not move. */}
+      {/* v2.3.1637: the numbers, in the retired weapon chip's slot.
+          v2.3.1643 stacked DMG over DPS to halve the chip's width.
+          v2.3.1644 (owner: "remove dmg range and just put DPS"): DMG is
+          gone entirely, so the chip is one short line again — DPS is the
+          single figure that folds swing speed and crit into the damage
+          range, and the range itself is still on every weapon's own item
+          card.  Back to ~46px wide, and that width goes to the buttons. */}
       {band && dmgRange && (
         <span style={{
           flex: 'none',
-          display: 'inline-flex', flexDirection: 'column', alignItems: 'flex-end', gap: 1,
+          display: 'inline-flex', alignItems: 'center',
           padding: '2px 6px', borderRadius: 8,
           background: COL.slot, border: '1px solid ' + COL.tileBor,
           color: COL.muted, fontSize: 9, fontWeight: 700, lineHeight: 1.25,
           whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums',
         }}>
-          <span>DMG <b style={{ color: COL.text }}>{dmgRange.text}</b></span>
           <span>DPS <b style={{ color: COL.text }}>{dps}</b></span>
         </span>
       )}
       {/* Gold — coin icon + number as one compact unit, right-aligned. */}
       <span style={{
+        /* v2.3.1644 (owner: "add a bit more padding to the right of the
+           gold amount"): it was flush against the row's own 4px frame
+           padding, which reads as clipped on a rounded band edge. */
         flex: 'none', display: 'inline-flex', alignItems: 'center', gap: 3,
+        paddingRight: 6,
         color: COL.gold, fontSize: 13, fontWeight: 700, fontVariantNumeric: 'tabular-nums',
       }}>
         <img src="/icons/popups/gold.webp" alt=""

@@ -37,6 +37,14 @@ export const NavRail = ({ items, litId, atRest, vw, vh, dots, profilePortrait })
     <div className="bt-navrail" style={{
       /* v2.3.1642: a ROW at the band's top-left, in its own bordered
          section, with the identity strip beside it. */
+      /* v2.3.1644 (owner: "make the buttons fill in the extra space").
+         The group is CONTENT-SIZED and its buttons carry the new width
+         explicitly (navButtonSize).  Letting the group flex:1 and the
+         buttons flex inside it was the obvious reading and it was wrong:
+         measured, the buttons took every spare pixel and grew to 58 while
+         the name and XP bar were crushed to a 25px column.  A number the
+         geometry owns can be balanced against what the strip needs; a
+         flex grab cannot. */
       flex: 'none',
       boxSizing: 'border-box',
       background: COL.well,

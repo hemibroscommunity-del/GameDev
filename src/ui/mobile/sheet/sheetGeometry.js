@@ -202,7 +202,13 @@ export function navButtonSize(vw, vh) {
      the right edge, measured; three buttons two pixels narrower is the
      cheapest place to find it, and 25x44 stays a bigger target than the
      24x40 the vertical rail had. */
-  const w = Math.round(Math.min(Math.max(vw * 0.063, 24), 34));
+  /* v2.3.1644 (owner: "make the buttons fill in the extra space", after
+     the XP bar halved and DMG left the row): 0.063 -> 0.097 of the
+     viewport, 25 -> 38 at 390w.  Balanced against what the strip still
+     needs — portrait 40, the DPS chip ~60, gold ~46 and a readable
+     name/XP column — rather than let flex take it all: at 58 wide
+     (measured) the buttons crushed that column to 25px. */
+  const w = Math.round(Math.min(Math.max(vw * 0.097, 30), 48));
   return { w, h: identityRowHeight(vw, vh) - 2 * NAV_GAP };
 }
 export function navGroupWidth(vw, vh) {
