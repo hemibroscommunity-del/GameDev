@@ -64,37 +64,30 @@ import { dashTileSize } from '../sheet/sheetGeometry.js';
    drift from the panels it summarises.  Nothing here can change game
    state on its own; it is read-only state plus a bus call. */
 
-const Column = ({ title, children, onTap }) => (
+/* v2.3.1639 (owner: "get rid of the labels for bag, equipped, and combat
+   and use the extra space to fit the 6 slots as evenly as you can").  The
+   header strip is gone; each panel is now nothing but its six slots.
+
+   The labels were doing real work at v2.3.1636 — they are how you learn
+   which third is which — but they cost 17px of a ~85px panel to say
+   something the CONTENTS say once you have looked twice: items, worn
+   gear, skill icons.  With them gone the grid distributes over the whole
+   panel instead of a strip beneath a caption. */
+const Column = ({ children, onTap, label }) => (
   <div
+    role={onTap ? 'button' : undefined}
+    aria-label={label}
     onPointerUp={onTap ? (e) => { e.stopPropagation(); onTap(); } : undefined}
     style={{
       background: COL.raised,
       border: `1px solid ${COL.border}`,
       borderRadius: 9,
       display: 'flex', flexDirection: 'column',
+      alignItems: 'center', justifyContent: 'space-evenly',
+      padding: '3px 2px', gap: 3,
       minWidth: 0, overflow: 'hidden',
       cursor: onTap ? 'pointer' : 'default',
-    }}>
-    <div style={{
-      flex: 'none',
-      background: COL.bgStrong,
-      borderBottom: `1px solid ${COL.border}`,
-      textAlign: 'center',
-      fontSize: 9, fontWeight: 800, letterSpacing: '.14em',
-      color: COL.muted, lineHeight: 1, padding: '4px 0',
-    }}>{title}</div>
-    <div style={{
-      flex: 1, minHeight: 0, minWidth: 0,
-      /* v2.3.1637 (owner: "it needs to fill the space better (the
-         slots)"): space-evenly, not centre.  The rail's six buttons set
-         a taller band than three columns of tiles need, and centring
-         left that surplus as one dead block under the tiles instead of
-         spreading it between them. */
-      display: 'flex', flexDirection: 'column', alignItems: 'center',
-      justifyContent: 'space-evenly',
-      padding: '4px 2px', gap: 3,
     }}>{children}</div>
-  </div>
 );
 
 /* Both grid columns lay their tiles out three across, two down — the same
@@ -220,12 +213,21 @@ export const DashColumns = ({ R }) => {
         }}>
           <img src={s.iconSrc} alt="" draggable={false}
             style={{ width: '80%', height: '80%', objectFit: 'contain', pointerEvents: 'none' }} />
+          {/* v2.3.1639 (owner: "put the combat level numbers in the bottom
+              right of each square").  It sat on its own line under the
+              tile through v2.3.1638, which cost 11px of panel height per
+              ROW — 22 across the two — for a one-or-two digit number.
+              In the corner it costs nothing and the tiles grow into what
+              it gave back.  Same corner, same treatment as the quick
+              bar's count badge (v2.3.1560) and the bag's quantity. */}
+          <span aria-hidden="true" style={{
+            position: 'absolute', right: 1, bottom: 0,
+            fontSize: 9, fontWeight: 800, lineHeight: 1.3,
+            color: unspent > 0 ? COL.accent : COL.text2,
+            textShadow: '0 1px 2px rgba(9,14,17,.95)',
+            fontVariantNumeric: 'tabular-nums', pointerEvents: 'none',
+          }}>{unspent > 0 ? `+${unspent}` : skillLevel(rpg, s.key)}</span>
         </div>
-        <span style={{
-          fontSize: 10, fontWeight: 800, lineHeight: 1,
-          color: unspent > 0 ? COL.accent : COL.text2,
-          fontVariantNumeric: 'tabular-nums', pointerEvents: 'none',
-        }}>{unspent > 0 ? `+${unspent}` : skillLevel(rpg, s.key)}</span>
       </div>
     );
   };
@@ -242,20 +244,19 @@ export const DashColumns = ({ R }) => {
          the band, not as three floating widgets over the world. */
       borderBottom: `1px solid ${COL.divider}`,
     }}>
-      <Column title="BAG" onTap={entries.length ? undefined : openBag}>
-        {entries.length === 0 ? (
-          <div style={{ textAlign: 'center', color: COL.muted, fontSize: 11, lineHeight: 1.35 }}>
-            Empty.<br />Tap to open.
-          </div>
-        ) : (
-          <>
-            <div style={tileRow}>{bagCells.slice(0, 3)}</div>
-            <div style={tileRow}>{bagCells.slice(3, 6)}</div>
-          </>
-        )}
+      {/* v2.3.1639 (owner: "display inventory slots on dashboard and bag
+          window views, remove empty bag message placeholder").  The six
+          slots render unconditionally — an empty bag now reads as six
+          empty slots, the same shape as a full one, which is also how the
+          Bag panel itself has always drawn it.  The old two-line message
+          made the empty state a DIFFERENT layout from every other state,
+          so the column changed shape the moment you picked something up. */}
+      <Column label="Bag" onTap={openBag}>
+        <div style={tileRow}>{bagCells.slice(0, 3)}</div>
+        <div style={tileRow}>{bagCells.slice(3, 6)}</div>
       </Column>
 
-      <Column title="EQUIPPED">
+      <Column label="Equipped">
         {/* v2.3.1637: DMG/DPS left this column for the identity row
             (owner: "put the dmg and DPS up on the character row above the
             dashboard columns").  It is NOT also drawn here — the band's
@@ -265,7 +266,7 @@ export const DashColumns = ({ R }) => {
         <div style={tileRow}>{loadoutRow2.map(equipCell)}</div>
       </Column>
 
-      <Column title="COMBAT">
+      <Column label="Combat">
         <div style={tileRow}>{COMBAT_SKILLS.slice(0, 3).map(buildTile)}</div>
         <div style={tileRow}>{COMBAT_SKILLS.slice(3, 6).map(buildTile)}</div>
       </Column>

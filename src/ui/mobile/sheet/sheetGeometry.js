@@ -119,7 +119,11 @@ export function dashTileSize(vw) {
 }
 export function columnsRowHeight(vw, vh) {
   const tile = dashTileSize(vw);
-  const content = Math.round(17 + 10 + 2 * (tile + 11) + 4 + (vh && vh <= 720 ? 8 : 10) + 2);
+  /* v2.3.1639: no header strip (-17) and no level line under each tile
+     (-11 per row, -22), because the combat level moved into the tile's
+     bottom-right corner.  A panel is now its own padding plus two rows
+     of squares, and nothing else. */
+  const content = Math.round(6 + 2 * tile + 3 + (vh && vh <= 720 ? 8 : 10) + 2);
   /* v2.3.1637: the rail runs the FULL band height beside these rows, so
      whichever needs more vertical room sets the band.  Six stacked
      buttons beat three columns of tiles at every viewport we ship, but
@@ -165,11 +169,16 @@ export function identityRowHeight(vw, vh) {
    The rail is why the band cannot simply shrink by the ribbon's 87px.
    Six buttons still need vertical room, so the band's floor is whichever
    is taller: what the three columns need, or what the rail needs. */
-export const RAIL_COUNT = 5;
-const RAIL_GAP = 3;
-const RAIL_PAD = 6;
+export const RAIL_COUNT = 3;
+const RAIL_GAP = 4;
+const RAIL_PAD = 8;
+/* v2.3.1639 (owner: "make the buttons vertical pill shape with the icons
+   centered in middle"): the button is TALLER than the rail is wide now,
+   so this is its HEIGHT and railWidth sets the other axis.  A vertical
+   pill needs the long axis to read as long — at the old 28 it would have
+   been a rounded square. */
 export function railButtonSize(vw, vh) {
-  return vh && vh <= 720 ? 24 : 28;
+  return vh && vh <= 720 ? 38 : 46;
 }
 export function railWidth(vw) {
   return Math.round(Math.min(Math.max(vw * 0.123, 40), 56));

@@ -65,11 +65,16 @@ export const NavRail = ({ items, litId, atRest, vw, vh, dots, profilePortrait })
             }}
             style={{
               position: 'relative',
-              width: '100%', height: size, flex: 'none',
+              /* v2.3.1639 (owner): VERTICAL PILL — taller than wide with
+                 fully-rounded ends, icon centred on both axes.  The 88%
+                 width keeps the pill narrower than its own height at
+                 every viewport, which is what makes it read as a pill
+                 standing up rather than a rounded square. */
+              width: '88%', height: size, flex: 'none',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               background: on ? COL.accentFill : COL.wellSoft,
               border: `1px solid ${on ? COL.accent : COL.tileBor}`,
-              borderRadius: 7,
+              borderRadius: 999,
               cursor: 'pointer', touchAction: 'manipulation',
             }}>
             {/* The Hero button is the player's own bust when it has
@@ -78,13 +83,13 @@ export const NavRail = ({ items, litId, atRest, vw, vh, dots, profilePortrait })
             {d.id === 'hero' && profilePortrait ? (
               <img src={profilePortrait} alt="" draggable={false}
                 style={{
-                  width: size - 10, height: size - 10, objectFit: 'cover',
+                  width: 24, height: 24, objectFit: 'cover',
                   imageRendering: 'pixelated', borderRadius: 5, pointerEvents: 'none',
                 }} />
             ) : (
               <img src={d.icon} alt="" draggable={false}
                 style={{
-                  width: size - 8, height: size - 8, objectFit: 'contain',
+                  width: 24, height: 24, objectFit: 'contain',
                   opacity: on ? 1 : 0.82, pointerEvents: 'none',
                 }} />
             )}

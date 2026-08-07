@@ -194,6 +194,12 @@ let _lastFilter = 'all';
 /* v2.3.1326 (owner: "bag [gets] two tabs at top — one for items in
    inventory and another for equipped items; keeps the views cleaner"):
    the active tab survives leaving the destination, same as the filter. */
+/* v2.3.1639: pinned — the tab bar that set this is gone (see the render).
+   Kept as a constant rather than deleted so the 'equipped' branch below
+   stays compiling and reviewable for whoever re-homes those stat cards. */
+/* v2.3.1639: see the render — an empty bag draws empty slots now. */
+const SHOW_EMPTY_PLACEHOLDER = false;
+
 let _lastBagTab = 'items';
 
 /* v2.3.1328: stat glyphs for the EQUIPPED TOTAL cells.
@@ -366,58 +372,19 @@ export const InventoryPanel = () => {
          only: other panels keep panelStyle's padding. */
       padding: '6px 12px 2px' }}>
 
-      {/* v2.3.1326 (owner): Items / Equipped segmented tabs — the
-          equipped row no longer shares the screen with the item grid;
-          each view gets the full sheet.  Same segmented-track pattern
-          as the Friends panel's tabs. */}
-      <div className="bt-well" style={{
-        /* v2.3.1352: marginTop 2->0 / marginBottom 8->6 — spacing-only
-           trim feeding the third item row. */
-        display: 'flex', gap: 2, marginTop: 0, marginBottom: 6, flex: 'none',
-      }}>
-        {[
-          { id: 'items', label: 'Items', icon: '/icons/ui/nav-inventory.webp?v=2.3.1224' },
-          /* v2.3.1339 (owner): the checkmark art becomes the same green
-             gradient dot as the per-item worn marker. */
-          { id: 'equipped', label: 'Equipped', dot: true },
-        ].map(t => (
-          <button key={t.id}
-            onClick={() => setBagTab(t.id)}
-            aria-pressed={bagTab === t.id}
-            className="bt-chisel bt-chisel--chip"
-            style={{
-              flex: 1, minHeight: 36,
-              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-              color: bagTab === t.id ? COL.text : COL.text2,
-              fontFamily: 'inherit', fontSize: 12, fontWeight: 700,
-            }}>
-            {!t.dot && (
-              <img src={t.icon} alt="" draggable={false}
-                style={{ width: 16, height: 16, objectFit: 'contain' }} />
-            )}
-            {t.label}
-            {/* v2.3.1339b (owner): dot AFTER the word. */}
-            {t.dot && (
-              <span aria-hidden="true" style={{
-                width: 12, height: 12, borderRadius: '50%', flex: 'none',
-                background: 'linear-gradient(180deg,#7FE3A0 0%,#2E9B57 100%)',
-                boxShadow: '0 0 0 1.5px rgba(9,14,17,.55), inset 0 1px 1px rgba(255,255,255,.35)',
-              }} />
-            )}
-          </button>
-        ))}
-      </div>
+      {/* v2.3.1639 (owner: "remove 'items' and 'equipped' buttons since
+          equipped is visible from the dashboard view").  The v2.3.1326
+          segmented tabs are gone and the Bag is the item grid, full stop.
+          The equipped block below still exists but bagTab is pinned to
+          'items', so it never renders — the six worn slots live in the
+          dashboard's middle panel now, one tap from anywhere, and a tab
+          bar costing 42px of a 181px sheet to reach a second copy of them
+          was the most expensive chrome on the screen.
 
-      {/* v2.3.1328 (owner mockup): left ~64% — six QUIET equipment
-          cards (2-col x 3-row, fixed order, art + slot label only);
-          right ~36% — one FIXED display window.
-          v2.3.1328b (owner: "don't display the stats of each item
-          unless it's tapped"): the window shows the loadout AGGREGATE
-          when nothing is selected and the tapped item's contribution
-          when a card is; tapping the already-selected card opens the
-          existing equip modal (management stays one tap deeper), and
-          tapping the window returns it to the aggregate.  Empty slots
-          keep their old behavior (straight to the picker). */}
+          NOTE: the per-item stat CONTRIBUTION cards and the EQUIPPED
+          TOTAL readout (getEquipContribs, v2.3.1328) only ever rendered
+          in that tab.  The dashboard panel shows the slots, not the
+          numbers, so those cards are currently unreachable. */}
       {bagTab === 'equipped' && (() => {
         const contribs = getEquipContribs(R);
         const wornCount = equipped.filter(sl => !sl.ghost).length;
@@ -762,7 +729,19 @@ export const InventoryPanel = () => {
           scrolling on every current phone anyway.  (v2.3.1235 dropped
           the tray for empty state; the tray reads fine now that the
           headers above give the panel structure.) */}
-      {usedTiles === 0
+      {/* v2.3.1639 (owner: "display inventory slots on dashboard and bag
+          window views (remove empty bag message placeholder)").  The grid
+          branch below ALREADY draws `totalCells - usedTiles` empty slots,
+          so an empty bag renders as a full grid of empty squares — the
+          same shape as a full one — the moment this stops short-circuiting
+          to the placeholder.  That is the whole fix: an empty bag was the
+          one state with a different layout, so the panel changed shape
+          under you on your first pickup.
+          The placeholder is kept behind the flag rather than deleted: it
+          carries the per-filter copy ("No potion items yet.") that has no
+          equivalent in a grid of blanks, and re-homing that is a separate
+          call.  Flip to true to get it back. */}
+      {SHOW_EMPTY_PLACEHOLDER && usedTiles === 0
         ? (
           <div style={{
             background: COL.well,

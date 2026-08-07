@@ -494,11 +494,15 @@ const DESTINATIONS = [
    holds the login key for device transfer.  Dropping it would have
    stranded all seven behind a screen nothing opens.
 
-   STILL STRANDED, and the one thing left to place: 'skills'.  The life
+   v2.3.1639 (owner: "change left navigation to just dashboard, bag, and
+   more"): Quests and Friends leave the rail too.  Neither is listed in
+   MorePanel, so they join the stranded set below.
+
+   STILL STRANDED, and now three: 'skills', 'quests' and 'social'.  The life
    skill tree (cooking / fishing / mining) lost its last entry point when
    the quick bar went at v2.3.1636 — the destination works, MorePanel
    does not list it, and nothing on screen opens it. */
-const RAIL_ORDER = ['bag', 'quests', 'social', 'more'];
+const RAIL_ORDER = ['bag', 'more'];
 const RAIL_ITEMS = [
   { id: 'dashboard', label: 'Dashboard', icon: '/icons/ui/panel-stats.webp?v=2.3.1637' },
   ...RAIL_ORDER.map(id => DESTINATIONS.find(d => d.id === id)).filter(Boolean),
