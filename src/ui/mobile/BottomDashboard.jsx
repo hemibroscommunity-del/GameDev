@@ -21,7 +21,6 @@ import { dashboardPanelBus } from './dashboardPanelBus.js';
 import { barHeight, expandedSheetHeight, drillSheetHeight, dashPanelWidths, navGroupWidth, DASH_GAP } from './sheet/sheetGeometry.js'; /* v2.3.1283; v2.3.1350 two-state; v2.3.1311e drill height; v2.3.1325 slot-derived bar */
 import { DashColumns } from './dash/DashColumns.jsx';           /* v2.3.1636 */
 import { NavRail } from './dash/NavRail.jsx';                   /* v2.3.1637 */
-import { BagFilterChips } from './dash/BagFilterChips.jsx';     /* v2.3.1649 */
 import { portraitStore } from './sheet/portraitStore.js';          /* v2.3.1294 */
 import { hasUnseenLevelUps } from './sheet/skillsModel.js';        /* v2.3.1296 */
 import { getFriendRows } from './sheet/friendsModel.js';           /* v2.3.1323 */
@@ -732,7 +731,6 @@ export const BottomDashboard = () => {
   const dashCols = dashPanelWidths(typeof window !== 'undefined' ? window.innerWidth : 390);
   /* How far the nav group overhangs track 3 to its left — 38px at 390w.
      Anything else placed on tracks 1-2 has to stop short of it. */
-  const bagChipsOpen = mode === 'expanded' && (rootId === 'bag' || rootId === 'inventory');
   const navOverhang = Math.max(0, navGroupWidth(
     typeof window !== 'undefined' ? window.innerWidth : 390,
     typeof window !== 'undefined' ? window.innerHeight : 844,
@@ -947,8 +945,13 @@ export const BottomDashboard = () => {
             the owner's, v2.3.1649) take the strip's place there.  Two
             things cannot occupy one row, and in the Bag the chips win
             because they are controls and the strip is a readout. */}
-        {!bagChipsOpen && <IdentityStrip band gutter={navOverhang} trackW={dashCols.wide} />}
-        {bagChipsOpen && <BagFilterChips height="100%" gutter={navOverhang} />}
+        {/* v2.3.1652 (owner: "make the player HUD on the dashboard on the
+            expanded bag view too"): no exceptions left.  The strip renders
+            in EVERY mode and destination, including the Bag — the filter
+            chips that displaced it here have moved into the Bag panel as
+            their own header row, so the two are no longer competing for
+            one row and the HUD never moves or disappears. */}
+        <IdentityStrip band gutter={navOverhang} trackW={dashCols.wide} />
         {/* Track 3, right-aligned.  The group is WIDER than the narrow
             track (132 vs 90 at 390w) and deliberately overflows it to the
             LEFT: track 2 holds only the DPS anchor box, which is pinned to

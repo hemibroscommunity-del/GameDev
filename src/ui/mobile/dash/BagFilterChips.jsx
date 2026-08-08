@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { COL } from './common.js';
-import { CATEGORIES } from './InventoryPanel.jsx';
-import { bagFilterBus } from './bagFilterBus.js';
+import { bagFilterBus, CATEGORIES } from './bagFilterBus.js';
+import { DASH_GAP } from '../sheet/sheetGeometry.js';
 
 /* v2.3.1649: the bag's category filter, restored (retired at v2.3.1645 for
    want of room) and re-homed into the band's top row — the space the
@@ -18,19 +18,42 @@ import { bagFilterBus } from './bagFilterBus.js';
 
    The chips fill their row: no fixed width, so five categories or eight
    both divide the space evenly instead of overflowing it. */
-export const BagFilterChips = ({ height, gutter }) => {
+export const BagFilterChips = ({ height, gutter, width }) => {
   const [sel, setSel] = useState(bagFilterBus.get());
   useEffect(() => bagFilterBus.subscribe(setSel), []);
   return (
     <div style={{
-      gridColumn: '1 / 3', minWidth: 0,
+      /* v2.3.1652 (owner: "put the filters on their own header row above
+         the inventory slots but spanning the whole width of the slot rows
+         — in my view it's 5 slots wide"): the chips left the band's top
+         row for the Bag panel itself, so `width` is the slot grid's own
+         width and the flex:1 chips below divide it into exactly as many
+         parts as there are slot columns.  Each chip lands one slot wide,
+         and the header lines up with the grid it filters instead of
+         merely sitting near it.
+         gridColumn survives for the retired top-row placement only when
+         no width is given — there are no callers left, but the prop is
+         the switch, not a second component. */
+      ...(width ? {
+        width, flex: 'none',
+        /* Measured: without this the header sat at x 6..342 while the slot
+           cells ran 27..363 — the grid CENTRES its columns inside a tray
+           that is wider than they are, so matching the grid's width is not
+           the same as matching its position.  Centre in the same box and
+           the two line up by construction. */
+        alignSelf: 'center',
+      } : { gridColumn: '1 / 3' }),
+      minWidth: 0,
       /* v2.3.1649: the nav group is wider than its own track and overhangs
          this one from the right (see BottomDashboard).  Measured, that
          buried the fifth chip under the Dashboard button — the chips are
          drawn first and lose.  `gutter` is exactly that overhang, so the
          track the chips actually get is the track that is actually free. */
       marginRight: gutter || 0,
-      display: 'flex', alignItems: 'center', gap: 4,
+      display: 'flex', alignItems: 'center',
+      /* One slot per chip: the SAME gap the grid puts between columns and
+         no padding of its own, so chip N sits exactly over column N. */
+      gap: width ? DASH_GAP : 4,
       /* v2.3.1650 (owner: "remove darker background behind filter buttons
          on bag full view"): transparent, matching the nav group opposite
          it in the same row — the two ends of this row must read as the
@@ -39,7 +62,7 @@ export const BagFilterChips = ({ height, gutter }) => {
          like two different components. */
       background: 'transparent',
       border: 'none',
-      padding: 4, boxSizing: 'border-box',
+      padding: width ? 0 : 4, boxSizing: 'border-box',
       height: height || '100%',
     }}>
       {CATEGORIES.map((c) => {

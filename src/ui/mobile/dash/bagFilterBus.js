@@ -35,3 +35,18 @@ export const bagFilterBus = {
     return () => subs.delete(fn);
   },
 };
+
+/* v2.3.1652: the category roster lives HERE, not in InventoryPanel.  The
+   chips moved into the Bag panel, so InventoryPanel imports BagFilterChips
+   while BagFilterChips needs the roster — importing it back would have made
+   a module cycle whose resolution depends on which file React renders
+   first.  The bus is the one module both already depend on and neither
+   owns, which makes it the roster's home too.  InventoryPanel re-exports
+   the name so nothing that imported it from there has to change. */
+export const CATEGORIES = [
+  { id: 'all',      glyph: '\u25CE', iconSrc: '/icons/bag/bag-all.webp?v=2.3.1312',      label: 'All' },
+  { id: 'weapon',   glyph: '\u2694', iconSrc: '/icons/bag/bag-weapons.webp?v=2.3.1312',  label: 'Weapon' },
+  { id: 'armor',    glyph: '\uD83D\uDEE1', iconSrc: '/icons/bag/bag-armor.webp?v=2.3.1312',    label: 'Armor' },
+  { id: 'potion',   glyph: '\uD83E\uDDEA', iconSrc: '/icons/bag/bag-potions.webp?v=2.3.1312',  label: 'Potion' },
+  { id: 'crafting', glyph: '\u2692', iconSrc: '/icons/bag/bag-crafting.webp?v=2.3.1312', label: 'Crafting' },
+];

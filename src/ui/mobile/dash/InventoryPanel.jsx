@@ -6,8 +6,9 @@ import { isLocked as itemIsLocked } from './inventoryLocks.js';
 import { reconcileGearStash } from '../../../rendering/gearCatalog.js';
 import { getBagEntries } from './bagModel.js';
 import { getEquippedSlots, getEquipContribs, GHOST_SRC } from '../sheet/equipModel.js';
-import { dashTileSize, DASH_GAP, DASH_ROWS } from '../sheet/sheetGeometry.js'; /* v2.3.1646 */ /* v2.3.1328: contribs */
-import { bagFilterBus } from './bagFilterBus.js'; /* v2.3.1649 */
+import { dashTileSize, DASH_GAP, DASH_ROWS, BAG_HEADER_H } from '../sheet/sheetGeometry.js'; /* v2.3.1646 */ /* v2.3.1328: contribs */
+import { bagFilterBus, CATEGORIES } from './bagFilterBus.js'; /* v2.3.1649 */
+import { BagFilterChips } from './BagFilterChips.jsx'; /* v2.3.1652 */
 import { unequipWeaponSlot, unequipShieldDirect, unequipArmorDirect, unequipGearDirect } from './equipActions.js'; /* v2.3.1330 */
 import { getEquip } from '../../../rendering/gearCatalog.js';
 
@@ -18,13 +19,9 @@ import { getEquip } from '../../../rendering/gearCatalog.js';
 // v2.3.1312 (round-8): the owner's dedicated bag filter set replaces
 // the borrowed nav/combat/skill art — Potion finally gets a real
 // potion instead of the soak droplets.
-export const CATEGORIES = [
-  { id: 'all',      glyph: '◎', iconSrc: '/icons/bag/bag-all.webp?v=2.3.1312',      label: 'All' },
-  { id: 'weapon',   glyph: '⚔', iconSrc: '/icons/bag/bag-weapons.webp?v=2.3.1312',  label: 'Weapon' },
-  { id: 'armor',    glyph: '🛡', iconSrc: '/icons/bag/bag-armor.webp?v=2.3.1312',    label: 'Armor' },
-  { id: 'potion',   glyph: '🧪', iconSrc: '/icons/bag/bag-potions.webp?v=2.3.1312',  label: 'Potion' },
-  { id: 'crafting', glyph: '⚒', iconSrc: '/icons/bag/bag-crafting.webp?v=2.3.1312', label: 'Crafting' },
-];
+/* v2.3.1652: the roster moved to bagFilterBus (see there); re-exported
+   so every existing importer of InventoryPanel.CATEGORIES still works. */
+export { CATEGORIES } from './bagFilterBus.js';
 
 // Light heuristic — classify an inventory key into one of the four
 // category filters.  Items the heuristic doesn't recognise fall through
@@ -766,7 +763,19 @@ export const InventoryPanel = () => {
              here too (spec hard lock: leather removed EVERYWHERE — the
              v2.3.1227 sweep caught the preview grid but missed this one,
              owner-reported with a screenshot). */
+          <>
+          {/* v2.3.1652 (owner: "put the filters on their own header row
+              above the inventory slots but spanning the whole width of the
+              slot rows").  Its width is the grid's own width — COLS tiles
+              and the gaps between them — so the header is exactly as wide
+              as the rows it filters and each chip is one slot across.
+              Both numbers come from the same COLS/TILE the grid uses, so
+              they cannot drift on a viewport where COLS changes. */}
+          <BagFilterChips
+            width={COLS * TILE + (COLS - 1) * DASH_GAP}
+            height={BAG_HEADER_H} />
           <div ref={itemsBoxRef} style={{
+            marginTop: DASH_GAP,
             /* v2.3.1651 (owner: "remove the dark background behind the
                expanded bag pane slots").  The recessed tray — well fill,
                hairline and inset shadow — is gone; the slots sit straight
@@ -863,6 +872,7 @@ export const InventoryPanel = () => {
             })()}
           </div>
           </div>
+          </>
         )}
       </> /* v2.3.1326: end Items tab */}
     </div>

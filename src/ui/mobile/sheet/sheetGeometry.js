@@ -204,8 +204,31 @@ export function equipCellSize(vw) {
 /* The height of one of `rows` stacked children inside a panel whose inner
    box is panelInnerHeight — the single place the "three equipped rows and
    three combat pills line up with two bag rows" promise is kept. */
+/* v2.3.1652 (owner: "put the filters on their own header row above the
+   inventory slots"): the band grows by exactly one filter-chip row.
+
+   This is arithmetic, not taste.  The open Bag's body is var(--cols-h)
+   tall (the v2.3.1638 one-height rule), and three standing asks now
+   compete for it: 64px slots (v2.3.1649, "about 50% larger"), TWO fully
+   visible rows (v2.3.1649), and now a chip header.  At 151px the first
+   two alone spend 141 of it — there is no padding left anywhere to find
+   the header in, and the three ways out were all worse:
+     - shrink the bag-view tile: breaks "make the bag slots on bag view the
+       same size as the slots on the dashboard view" (owner, v2.3.1646).
+     - one visible row instead of two: breaks the v2.3.1649 ask directly.
+     - make the EXPANDED sheet taller than the bar: the sheet is
+       bottom-anchored, so it grows UPWARD, which moves the nav buttons
+       30px whenever the Bag opens.  That is precisely the "controls
+       sliding out from under the thumb" failure v2.3.1637b exists to
+       prevent, and the reason the rail is bottom-anchored at all.
+   So the BAND grows, in both modes, and the nav row does not move.
+   203 -> 233px at 390x844.  --dash-h grows with it, so the joystick and
+   every world-HUD anchor ride up together and the 70px clearance above
+   the band is unchanged (TouchControls keys off --dash-h). */
+export const BAG_HEADER_H = 26;
+
 export function panelInnerHeight(vw) {
-  return DASH_ROWS * dashTileSize(vw) + (DASH_ROWS - 1) * DASH_GAP;
+  return DASH_ROWS * dashTileSize(vw) + (DASH_ROWS - 1) * DASH_GAP + BAG_HEADER_H + DASH_GAP;
 }
 export function panelRowHeight(vw, rows) {
   return Math.floor((panelInnerHeight(vw) - (rows - 1) * DASH_GAP) / rows);
