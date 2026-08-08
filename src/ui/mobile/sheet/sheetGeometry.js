@@ -110,51 +110,90 @@ export function navShelfHeight(vw, vh) {
    outer squares clip against overflow:hidden (the v2.3.1637 bug). */
 export const DASH_GAP = 4;
 
-export function dashTileSize(vw) {
-  const column = (vw - 4 * DASH_GAP) / 3;
-  return Math.floor(Math.min(Math.max((column - 2 - 4 * DASH_GAP) / 3, 18), 40));
+/* v2.3.1648 (owner: "the current problem is that the slots and info
+   displayed currently don't meet a minimum size where users who can't see
+   at smaller sizes struggle with it").  LEGIBILITY now outranks the
+   equal-thirds rule from v2.3.1636, and it is the owner's own reason:
+   three equal columns each holding three squares across a 390px phone
+   caps the square at 35px, and no amount of padding arithmetic moves that
+   number.  The cap is the LAYOUT, so the layout changes.
+
+   COMBAT no longer needs a third of the row.  It went from six parents to
+   three — melee / bow / magic — because HP, defense and stamina "can just
+   be reflected in total hp, energy points" (owner), and those already
+   read live on the world HUD.  Three items in a column do not want three
+   squares across; they want three wide rows.  So COMBAT takes a NARROW
+   column and BAG / EQUIPPED split what it gives up, which is what pays
+   for the bigger squares: 35 -> 41px, a 17% gain in every dimension that
+   matters for seeing an item.
+
+   THE EQUAL-THIRDS RULE IS DELIBERATELY RELAXED HERE, not forgotten.  It
+   existed because three columns of six squares each read as three
+   unrelated widgets when their widths were content-derived; that reason
+   does not apply to a column whose content is a different shape on
+   purpose.  Reverting is one constant: set NARROW_SHARE to 1/3. */
+const NARROW_SHARE = 0.24;
+
+export function dashPanelWidths(vw) {
+  const avail = vw - 4 * DASH_GAP;
+  const target = Math.round(Math.min(Math.max(avail * NARROW_SHARE, 76), 130));
+  /* The wide panel is SNAPPED to exactly what three whole squares need, and
+     the rounding remainder goes to the narrow one.  Taking the naive half
+     instead left 1px over inside each wide panel, and centring split it —
+     measured 4.5 / 4 / 4 / 4.5 across the bag's top row, which is the same
+     half-pixel asymmetry v2.3.1640 was created to kill.  A panel may only
+     be a width its own contents tile exactly. */
+  const t = dashTileSizeFor(Math.floor((avail - target) / 2));
+  const wide = 3 * t + 2 + 4 * DASH_GAP;
+  return { wide, narrow: avail - 2 * wide, avail };
 }
 
-/* v2.3.1640: the columns row is EXACTLY its content now — two tile rows,
-   three gaps, the panel border and the frame's own vertical padding.  It
-   is no longer max(content, whatever the rail needs), because that max
-   was what put slack inside the panels: the rail demanded a taller band
-   than two rows of width-limited squares fill, and the surplus had to go
-   somewhere.  The dependency is inverted below — the SLOTS set the band
-   and the rail sizes itself to fit, which is the only arrangement where
-   "even padding" can be exactly true rather than nearly. */
-/* v2.3.1640b: the panel's width is an EXACT integer — border + four gaps
-   + three whole tiles — instead of a 1fr third.  With 1fr the column came
-   out fractional (112.7 at 390w), the floored tile left ~1.7px over, and
-   centring split it onto the two OUTER edges: measured 4.8 / 4 / 4 / 4.8,
-   edges 20% wider than the gaps between squares.  Pinning the width moves
-   that remainder out to the row's own margins, where it is one shared
-   number rather than a visible asymmetry inside every panel. */
-export function dashColumnWidth(vw) {
-  return 2 + 4 * DASH_GAP + 3 * dashTileSize(vw);
+function dashTileSizeFor(wide) {
+  /* three squares across a WIDE panel: its border, its own padding on both
+     sides and the two gaps between them all come off first. */
+  return Math.floor(Math.min(Math.max((wide - 2 - 4 * DASH_GAP) / 3, 24), 56));
+}
+
+export function dashTileSize(vw) {
+  return dashTileSizeFor(dashPanelWidths(vw).wide);
+}
+
+/* v2.3.1648: the EQUIPPED cell — TWO across, THREE rows, and WIDER THAN
+   TALL.  It was three across / two rows of the same square the bag uses,
+   and measured that left 26.5px of dead panel above and below the block
+   (the bag's third row had nothing to pair with, since there are exactly
+   six equip slots and no seventh).  Two-by-three fills the panel to the
+   pixel, puts all three panels on the SAME three baselines, and grows each
+   worn-gear target from 41x41 to 66x41 — 60% more area for the thumb,
+   which is the half of "too small to use" that a bigger icon can't fix.
+   The icon itself is still bound by the 41px height; at three across on a
+   390px phone nothing can make it bigger, which is stated plainly rather
+   than worked around. */
+export function equipCellSize(vw) {
+  const { wide } = dashPanelWidths(vw);
+  return {
+    w: Math.floor((wide - 2 - 3 * DASH_GAP) / 2),
+    h: dashTileSize(vw),
+  };
+}
+
+/* v2.3.1648: a COMBAT pill's width — the narrow panel's whole inner width,
+   because there is only one per row.  It is the shape change the owner
+   asked for ("make the three combat skills a different shape that fits the
+   space better, does not need to be square"): 80x41 at 390w instead of a
+   35px square, which is what lets the icon, the skill's NAME and its level
+   all be legible at once.  Three squares in a narrow column could show
+   none of that. */
+export function combatPillWidth(vw) {
+  const { narrow } = dashPanelWidths(vw);
+  return narrow - 2 - 2 * DASH_GAP;
 }
 
 /* v2.3.1647 (owner: "increase the size of the dashboard by about 50% of
-   the space between its current height and the joysticks area ... the
-   exact height can be determined by whatever slot spacing that could use
-   the extra room makes the most sense"): THREE tile rows, not two.
-
-   The 50% is a real measurement, not a guess.  The joystick disc anchors
-   at calc(var(--dash-h) + 70px) (TouchControls), so the clear gap between
-   the band's top edge and the disc is a fixed 70px that rides with the
-   band — half of it is 35, putting the target at 145 + 35 = ~180.
-
-   A third ROW is the only thing that can spend it.  The tile is capped by
-   WIDTH — three across a 124.7px column at 390w is 35px and no larger —
-   so extra height cannot make the squares bigger, only add another line
-   of them.  Three rows lands at 132 (band 184), 4px past the target and
-   the nearest height where the spacing still works out exactly.
-
-   ROWS ARE PER-PANEL, though.  Only BAG has more to show: EQUIPPED has
-   exactly six worn slots and COMBAT exactly six parents, so a third row
-   there would be three empty squares reading as "slots you have not
-   filled" and "skills you have not found" — both false.  Those two centre
-   their six in the taller panel instead; see DashColumns. */
+   the space between its current height and the joysticks area — the exact
+   height can be determined by whatever slot spacing that could use the
+   extra room makes the most sense"): THREE tile rows, not two.  The extra
+   room buys a whole row of bag slots rather than padding. */
 export const DASH_ROWS = 3;
 
 export function columnsRowHeight(vw) {

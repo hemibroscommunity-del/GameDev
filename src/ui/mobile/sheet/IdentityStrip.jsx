@@ -137,7 +137,13 @@ export const IdentityStrip = ({ band = false }) => {
             whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
             minWidth: 0,
           }}>{(S && S.myName) || 'Anon'}</span>
-          <span style={{ flex: 'none', fontSize: 11, fontWeight: 600, color: COL.text2 }}>Lv {level}</span>
+          {/* v2.3.1648 (owner: "the slots and info displayed currently don't
+              meet a minimum size where users who can't see at smaller sizes
+              struggle with it"): every band-mode readout goes up a step.
+              BAND ONLY — Hero compact/expanded must stay pixel-identical to
+              each other (the header rule at the top of this file), and they
+              pass no `band`, so their row is unchanged. */}
+          <span style={{ flex: 'none', fontSize: band ? 12 : 11, fontWeight: 600, color: COL.text2 }}>Lv {level}</span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
           <div style={{
@@ -156,7 +162,7 @@ export const IdentityStrip = ({ band = false }) => {
               as "0 / 455 X".  The bar immediately to its left already
               says what the number counts, so the unit was the cheapest
               thing in the row to lose. */}
-          <span style={{ flex: 'none', fontSize: 10, color: COL.text2, fontVariantNumeric: 'tabular-nums' }}>
+          <span style={{ flex: 'none', fontSize: band ? 11 : 10, color: COL.text2, fontVariantNumeric: 'tabular-nums' }}>
             {lp.prog} / {lp.thresh}
           </span>
         </div>
@@ -190,7 +196,10 @@ export const IdentityStrip = ({ band = false }) => {
           display: 'inline-flex', alignItems: 'center',
           padding: '2px 6px', borderRadius: 8,
           background: COL.slot, border: '1px solid ' + COL.tileBor,
-          color: COL.muted, fontSize: 9, fontWeight: 700, lineHeight: 1.25,
+          /* v2.3.1648: 9px -> 11.  A 9px chip was the single least legible
+             thing in the band, and it carries the one number here that a
+             player checks mid-fight. */
+          color: COL.muted, fontSize: 11, fontWeight: 700, lineHeight: 1.25,
           whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums',
         }}>
           <span>DPS <b style={{ color: COL.text }}>{dps}</b></span>

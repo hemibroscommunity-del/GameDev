@@ -164,11 +164,20 @@ export const MorePanel = () => {
           cannot coexist with seeing all nine at once.  Grouping goes too
           — headings cost a row each and the icons carry the distinction
           well enough at this count. */}
+      {/* v2.3.1648 (owner: "the slots and info displayed currently don't meet
+          a minimum size where users who can't see at smaller sizes struggle
+          with it"): the band grew a third row at v2.3.1647 and this grid
+          kept its v2.3.1645 sizes, so it drew two rows of 20px icons and
+          left ~50px of the panel blank underneath.  The rows now STRETCH to
+          fill the panel (gridAutoRows 1fr) and the icon goes 20 -> 30 with
+          an 11px label — using the height the band already paid for rather
+          than staying compact inside it. */}
       <div style={{
         display: 'grid',
         gridTemplateColumns: 'repeat(5, 1fr)',
-        gap: 3,
-        alignContent: 'start',
+        gridAutoRows: '1fr',
+        gap: 4,
+        height: '100%', boxSizing: 'border-box',
       }}>
         {['quests', 'skills', 'social', 'clan', 'guild',
           'journey', 'encyclopedia', 'leaderboard', 'settings'].map(id => {
@@ -180,12 +189,13 @@ export const MorePanel = () => {
               title={`${t.label} — ${statusFor(id, S)}`}
               style={{
                 ...cardBase,
-                flexDirection: 'column', gap: 1, padding: '3px 2px',
+                flexDirection: 'column', gap: 2, padding: '4px 2px',
+                justifyContent: 'center',
                 minWidth: 0,
               }}>
-              <Icon t={t} px={20} />
+              <Icon t={t} px={30} />
               <span style={{
-                fontSize: 9, fontWeight: 700, color: COL.text,
+                fontSize: 11, fontWeight: 700, color: COL.text,
                 lineHeight: 1.1, textAlign: 'center',
                 maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
               }}>{t.label}</span>

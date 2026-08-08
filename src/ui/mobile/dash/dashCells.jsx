@@ -45,7 +45,11 @@ export const withAnchor = (fn) => (e) => {
 
 const HOLD_MS = 420;
 
-export const WeaponCell = ({ src, size, slotLabel, onHold }) => {
+/* v2.3.1648: `h` is optional and defaults to `size`, so every existing
+   caller still gets the square it asked for.  It exists because the
+   EQUIPPED column's cells are 66x41 now (equipCellSize) — the cell chrome
+   and the gestures are identical, only the box is not a square. */
+export const WeaponCell = ({ src, size, h, slotLabel, onHold }) => {
   const timer = useRef(null);
   const held = useRef(false);
   const anchorRef = useRef(null);
@@ -82,7 +86,7 @@ export const WeaponCell = ({ src, size, slotLabel, onHold }) => {
          backs out of a press they didn't mean. */
       onPointerCancel={() => { clear(); held.current = true; }}
       onPointerLeave={() => { clear(); held.current = true; }}
-      style={{ ...cellBase, width: size, height: size }}>
+      style={{ ...cellBase, width: size, height: h || size }}>
       {src
         ? <img src={src} alt="" draggable={false}
             style={{ width: '82%', height: '82%', objectFit: 'contain', pointerEvents: 'none' }} />
@@ -101,9 +105,9 @@ export const WeaponCell = ({ src, size, slotLabel, onHold }) => {
   );
 };
 
-export const IconCell = ({ src, alt, size, onTap, badge, dim, title }) => (
+export const IconCell = ({ src, alt, size, h, onTap, badge, dim, title }) => (
   <div onPointerUp={onTap ? withAnchor(onTap) : undefined} title={title || alt}
-    style={{ ...cellBase, width: size, height: size, cursor: onTap ? 'pointer' : 'default' }}>
+    style={{ ...cellBase, width: size, height: h || size, cursor: onTap ? 'pointer' : 'default' }}>
     {src
       ? <img src={src} alt="" draggable={false}
           style={{ width: '82%', height: '82%', objectFit: 'contain', opacity: dim ? 0.3 : 1, pointerEvents: 'none' }} />

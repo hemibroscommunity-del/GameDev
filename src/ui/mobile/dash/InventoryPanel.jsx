@@ -6,7 +6,7 @@ import { isLocked as itemIsLocked } from './inventoryLocks.js';
 import { reconcileGearStash } from '../../../rendering/gearCatalog.js';
 import { getBagEntries } from './bagModel.js';
 import { getEquippedSlots, getEquipContribs, GHOST_SRC } from '../sheet/equipModel.js';
-import { dashTileSize, DASH_GAP } from '../sheet/sheetGeometry.js'; /* v2.3.1646 */ /* v2.3.1328: contribs */
+import { dashTileSize, DASH_GAP, DASH_ROWS } from '../sheet/sheetGeometry.js'; /* v2.3.1646 */ /* v2.3.1328: contribs */
 import { unequipWeaponSlot, unequipShieldDirect, unequipArmorDirect, unequipGearDirect } from './equipActions.js'; /* v2.3.1330 */
 import { getEquip } from '../../../rendering/gearCatalog.js';
 
@@ -345,7 +345,11 @@ export const InventoryPanel = () => {
      matter how much room the retired filter track gave back.  The row
      measurement above guarantees two rows fit; this is what actually puts
      slots in them. */
-  const totalCells = Math.max(COLS * 2, Math.ceil(usedTiles / COLS) * COLS);
+  /* v2.3.1648: the floor is DASH_ROWS — the same three rows the dashboard's
+     own panels get, because the open panel's body is exactly as tall as the
+     columns row it replaces (the v2.3.1638 one-height rule).  At two rows
+     the tray left ~40px of its own height blank, measured. */
+  const totalCells = Math.max(COLS * DASH_ROWS, Math.ceil(usedTiles / COLS) * COLS);
 
   const R = (S && S.rpg) || {};
   const equipped = getEquippedSlots(R);

@@ -9,7 +9,7 @@ import { COMBAT_SKILLS, skillLevel } from '../sheet/heroModel.js';
 import { dashboardPanelBus } from '../dashboardPanelBus.js';
 import { requestT2Category } from './T2Panel.jsx';
 import { buildSkillUnspent, STAT_TO_WEAPON_CAT, calcDisplayDmgRange, calcDisplayDps, getActiveWeapon } from '../../../data/gameSystems.js';
-import { dashTileSize, dashColumnWidth, DASH_GAP, DASH_ROWS } from '../sheet/sheetGeometry.js';
+import { dashTileSize, dashPanelWidths, combatPillWidth, equipCellSize, DASH_GAP, DASH_ROWS } from '../sheet/sheetGeometry.js';
 
 /* v2.3.1636 (owner, with a reference screenshot of the pre-v2.3.1287
    dashboard): the THREE-COLUMN ROW — BAG / LOADOUT / BUILD restored as
@@ -104,6 +104,8 @@ const tileRow = { display: 'flex', gap: DASH_GAP, justifyContent: 'center' };
 export const DashColumns = ({ R }) => {
   const vw = typeof window !== 'undefined' ? window.innerWidth : 390;
   const t = dashTileSize(vw);
+  const panelW = dashPanelWidths(vw);
+  const eq = equipCellSize(vw);
   const rpg = R || {};
 
   /* ── BAG ── */
@@ -163,79 +165,110 @@ export const DashColumns = ({ R }) => {
     itemDetailBus.open({ kind: 'loadout', slot, anchor, panel: null });
   };
   const wpnSlot = bySlot('weapon');
-  /* The reference's order, kept: worn armour reads left-to-right on the
-     top row with the weapon in the middle where the eye lands first. */
-  const loadoutRow1 = ['chest', 'weapon', 'shield'];
-  const loadoutRow2 = ['legs', 'amulet', 'cape'];
+  /* v2.3.1648: TWO per row over THREE rows, not three over two — see
+     equipCellSize.  Weapon leads the top-left, where the eye lands first
+     (it led the top-MIDDLE under the old three-across order, for the same
+     reason); armour then reads down in worn order. */
+  const loadoutRows = [
+    ['weapon', 'shield'],
+    ['chest', 'legs'],
+    ['amulet', 'cape'],
+  ];
   const equipCell = (slotName) => {
     const sl = bySlot(slotName);
-    if (!sl) return <div key={`eq-${slotName}`} style={{ width: t, height: t, flex: 'none' }} />;
+    if (!sl) return <div key={`eq-${slotName}`} style={{ width: eq.w, height: eq.h, flex: 'none' }} />;
     /* Weapon keeps the tap-swaps / hold-picks gesture from v2.3.1562.
        With no weapon there is nothing to swap TO, so it falls back to the
        plain picker cell — the quick bar's own fallback. */
     if (slotName === 'weapon' && wpnSlot && !wpnSlot.ghost) {
       return (
-        <WeaponCell key="eq-weapon" size={t} src={wpnSlot.iconSrc}
+        <WeaponCell key="eq-weapon" size={eq.w} h={eq.h} src={wpnSlot.iconSrc}
           slotLabel={rpg.activeSlot === 'ranged' ? 'Bow' : rpg.activeSlot === 'staff' ? 'Staff' : 'Melee'}
           onHold={openPicker('weapon')} />
       );
     }
     return (
-      <IconCell key={`eq-${slotName}`} size={t}
+      <IconCell key={`eq-${slotName}`} size={eq.w} h={eq.h}
         src={sl.iconSrc || GHOST_SRC[slotName]} dim={sl.ghost}
         alt={sl.label} title={sl.label}
         onTap={sl.pickerSlot ? openPicker(sl.pickerSlot) : undefined} />
     );
   };
 
-  /* ── BUILD ── */
-  const buildTile = (s) => {
+  /* ── COMBAT ── */
+  /* v2.3.1648 (owner: "the combat skills can be changed into just 3: bow,
+     melee, and magic.  The hp, defense, and stamina/energy can just be
+     reflected in total hp, energy points ... make the three combat skills a
+     different shape that fits the space better, does not need to be
+     square"):  THREE WIDE PILLS, one per row, replacing six 35px squares.
+
+     WHY THE THREE THAT LEFT ARE NOT MISSED: Vitality, Defense and Stamina
+     are the three whose whole output is a resource number, and those
+     numbers already read live on the world HUD (the HP and energy bars) —
+     which is the owner's own reasoning.  Melee / Bow / Magic are the three
+     that answer a question no bar can: which weapon class am I actually
+     built for.
+
+     COMBAT_SKILLS ITSELF STILL HAS ALL SIX and must keep them — Hero's
+     build cards and the T2 spend screens enumerate that array, and dropping
+     entries there would make three skills unspendable.  This is a
+     presentation slice (0..3), nothing more.
+
+     THE PILL IS WHERE THE LEGIBILITY COMES FROM.  A square in a narrow
+     column held a 28px icon and a 9px corner digit; the pill's 82px of
+     width holds a 33px icon AND the level at 16px — bigger than anything
+     else on the band, for the one number this panel exists to tell you.
+
+     NO TEXT LABEL, tried and measured: "MELEE" at 10px beside a 26px icon
+     needed ~87px and rendered ellipsised to "M…" — which is worse than no
+     label at all, since Melee and Magic both truncate to the same letter.
+     Widening the column enough to fit the words costs the bag squares 3px
+     each, and the squares are what the owner's complaint is about.  The
+     three glyphs (sword / bow / wand) are the same ones Hero's build cards
+     label in full, one tap away, and both aria-label and title spell it
+     out here for anyone who needs it read aloud. */
+  const pillW = combatPillWidth(vw);
+  const combatPill = (s) => {
     const unspent = buildSkillUnspent(rpg, s.key);
-    /* v2.3.1313's map: Vitality and Stamina are 'hp' and 'endurance', not
-       their stat keys — getting this wrong makes the tile a dead button. */
-    const cat = s.key === 'defense' ? 'defense'
-      : s.key === 'vitality' ? 'hp'
-      : s.key === 'endurance' ? 'endurance'
-      : STAT_TO_WEAPON_CAT[s.key];
+    const lvl = skillLevel(rpg, s.key);
+    const cat = STAT_TO_WEAPON_CAT[s.key];
     return (
       <div key={s.key}
+        role="button"
         className={unspent > 0 ? 'bt-build-flash' : undefined}
         onPointerUp={(e) => {
           e.stopPropagation();
           dashboardPanelBus.open('hero');
           if (cat) { requestT2Category(cat); dashboardPanelBus.push('t2'); }
         }}
-        title={`${s.label} — Lv ${skillLevel(rpg, s.key)}${unspent > 0 ? `, ${unspent} unspent` : ''}`}
+        aria-label={`${s.label} level ${lvl}`}
+        title={`${s.label} — Lv ${lvl}${unspent > 0 ? `, ${unspent} unspent` : ''}`}
         style={{
-          width: t, flex: 'none',
-          display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1,
-          cursor: 'pointer', touchAction: 'manipulation',
-        }}>
-        <div style={{
-          position: 'relative',
-          width: t, height: t,
+          width: pillW, height: t, flex: 'none', boxSizing: 'border-box',
+          display: 'flex', flexDirection: 'row', alignItems: 'center',
+          justifyContent: 'space-between', gap: 4, padding: '0 8px 0 4px',
           background: unspent > 0 ? COL.accentFill : COL.wellSoft,
           border: `1px solid ${unspent > 0 ? COL.accent : COL.tileBor}`,
-          borderRadius: 6,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          /* Fully-rounded ends: the same pill the nav buttons use, so the
+             one non-square thing on the row reads as deliberate rather
+             than as a square that failed to fit. */
+          borderRadius: 999,
+          cursor: 'pointer', touchAction: 'manipulation',
         }}>
-          <img src={s.iconSrc} alt="" draggable={false}
-            style={{ width: '80%', height: '80%', objectFit: 'contain', pointerEvents: 'none' }} />
-          {/* v2.3.1639 (owner: "put the combat level numbers in the bottom
-              right of each square").  It sat on its own line under the
-              tile through v2.3.1638, which cost 11px of panel height per
-              ROW — 22 across the two — for a one-or-two digit number.
-              In the corner it costs nothing and the tiles grow into what
-              it gave back.  Same corner, same treatment as the quick
-              bar's count badge (v2.3.1560) and the bag's quantity. */}
-          <span aria-hidden="true" style={{
-            position: 'absolute', right: 1, bottom: 0,
-            fontSize: 9, fontWeight: 800, lineHeight: 1.3,
-            color: unspent > 0 ? COL.accent : COL.text2,
-            textShadow: '0 1px 2px rgba(9,14,17,.95)',
-            fontVariantNumeric: 'tabular-nums', pointerEvents: 'none',
-          }}>{unspent > 0 ? `+${unspent}` : skillLevel(rpg, s.key)}</span>
-        </div>
+        <img src={s.iconSrc} alt="" draggable={false}
+          style={{
+            width: t - 8, height: t - 8,
+            flex: 'none', objectFit: 'contain', pointerEvents: 'none',
+          }} />
+        {/* The level, at 16px on its own — it was a 9px corner digit through
+            v2.3.1647, which is the exact kind of number the owner said a
+            player with weaker sight cannot read. */}
+        <span aria-hidden="true" style={{
+          flex: 'none',
+          fontSize: 16, fontWeight: 900, lineHeight: 1,
+          color: unspent > 0 ? COL.accent : COL.text,
+          fontVariantNumeric: 'tabular-nums', pointerEvents: 'none',
+        }}>{unspent > 0 ? `+${unspent}` : lvl}</span>
       </div>
     );
   };
@@ -243,8 +276,13 @@ export const DashColumns = ({ R }) => {
   return (
     <div className="bt-dashcols" style={{
       display: 'grid',
-      /* The owner's correction, in one line: three equal thirds, one gap. */
-      gridTemplateColumns: `repeat(3, ${dashColumnWidth(vw)}px)`,
+      /* v2.3.1636's "three equal thirds" is now WIDE / WIDE / NARROW — see
+         dashPanelWidths.  Equal thirds capped the bag square at 35px, and
+         the owner's legibility complaint outranks the visual rule the
+         equality was there to serve.  The two panels that hold squares are
+         still exactly equal to each other; only COMBAT, whose contents are
+         a different shape on purpose, is narrower. */
+      gridTemplateColumns: `${panelW.wide}px ${panelW.wide}px ${panelW.narrow}px`,
       justifyContent: 'center',
       gap: DASH_GAP,
       height: '100%', boxSizing: 'border-box',
@@ -272,13 +310,16 @@ export const DashColumns = ({ R }) => {
             dashboard columns").  It is NOT also drawn here — the band's
             one-count rule, the same one that retired the floating gold
             chip at v2.3.1635.  The whole body is the six slots now. */}
-        <div style={tileRow}>{loadoutRow1.map(equipCell)}</div>
-        <div style={tileRow}>{loadoutRow2.map(equipCell)}</div>
+        {loadoutRows.map((row, i) => (
+          <div key={`eqrow-${i}`} style={tileRow}>{row.map(equipCell)}</div>
+        ))}
       </Column>
 
+      {/* v2.3.1648: three pills, one per tile ROW, so COMBAT lines up with
+          the bag's three rows exactly — the row rhythm the other two panels
+          set is what makes the different shape read as intentional. */}
       <Column label="Combat">
-        <div style={tileRow}>{COMBAT_SKILLS.slice(0, 3).map(buildTile)}</div>
-        <div style={tileRow}>{COMBAT_SKILLS.slice(3, 6).map(buildTile)}</div>
+        {COMBAT_SKILLS.slice(0, 3).map(combatPill)}
       </Column>
     </div>
   );
