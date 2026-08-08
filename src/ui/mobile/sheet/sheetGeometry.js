@@ -291,7 +291,7 @@ export function identityRowHeight(vw, vh) {
    The rail is why the band cannot simply shrink by the ribbon's 87px.
    Six buttons still need vertical room, so the band's floor is whichever
    is taller: what the three columns need, or what the rail needs. */
-export const RAIL_COUNT = 3;
+export const RAIL_COUNT = 4; /* v2.3.1651: Quests joins */
 const NAV_GAP = 4;
 
 /* v2.3.1642 (owner: "put the rail buttons on the top to the left of the
@@ -323,11 +323,31 @@ export function navButtonSize(vw, vh) {
      needs — portrait 40, the DPS chip ~60, gold ~46 and a readable
      name/XP column — rather than let flex take it all: at 58 wide
      (measured) the buttons crushed that column to 25px. */
-  const w = Math.round(Math.min(Math.max(vw * 0.097, 30), 48));
-  return { w, h: identityRowHeight(vw, vh) - 2 * NAV_GAP };
+  /* v2.3.1651: the width is DERIVED now, not a share of the viewport.
+     A fourth button (Quests) at the old 38 made the group 172 wide, and
+     right-aligned that starts at 214 — four pixels INSIDE the DPS
+     readout, which ends at 224.  The rule that replaces the fraction is
+     the one the collision taught: the group may have everything from the
+     DPS readout's right edge to the frame's inner edge, and no more.
+     34px at 390w, 31 at 360, 26 at 320 — where the floor is a 24px icon
+     plus its borders, the smallest this button can be and still show the
+     glyph it is. */
+  const budget = (vw - DASH_GAP) - navGroupLeftLimit(vw) - DASH_GAP;
+  const w = Math.floor((budget - NAV_GAP * (RAIL_COUNT - 1) - 2 * NAV_GAP) / RAIL_COUNT);
+  return { w: Math.min(Math.max(w, 26), 48), h: identityRowHeight(vw, vh) - 2 * NAV_GAP };
 }
+
+/* The leftmost x the nav group may start at: the right edge of the weapon
+   anchor box, which is what carries DPS on the identity row's lower line. */
+function navGroupLeftLimit(vw) {
+  return 2 * DASH_GAP + dashPanelWidths(vw).wide + weaponAnchorWidth(vw);
+}
+
 export function navGroupWidth(vw, vh) {
-  return navButtonSize(vw, vh).w * RAIL_COUNT + NAV_GAP * (RAIL_COUNT - 1) + 2 * NAV_GAP + 2;
+  /* v2.3.1650 removed the group's 1px border with its background, so the
+     +2 that accounted for it goes too — it was overstating the overhang
+     the identity strip and the filter chips have to keep clear of. */
+  return navButtonSize(vw, vh).w * RAIL_COUNT + NAV_GAP * (RAIL_COUNT - 1) + 2 * NAV_GAP;
 }
 
 /* The BAND height every consumer keys off (canvas, joystick zones, world

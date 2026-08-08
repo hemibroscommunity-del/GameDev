@@ -503,7 +503,13 @@ const DESTINATIONS = [
    skill tree (cooking / fishing / mining) lost its last entry point when
    the quick bar went at v2.3.1636 — the destination works, MorePanel
    does not list it, and nothing on screen opens it. */
-const RAIL_ORDER = ['bag', 'more'];
+/* v2.3.1651 (owner: "add one more button to the dashboard navigation to
+   the right of bag for quests — I think those are the main buttons people
+   will use").  FOUR now: Dashboard, Bag, Quests, More.  Quests slots in
+   before More rather than after it, so More stays the last thing in the
+   row — it is the overflow, and an overflow that is not on the end reads
+   as just another destination. */
+const RAIL_ORDER = ['bag', 'quests', 'more'];
 const RAIL_ITEMS = [
   { id: 'dashboard', label: 'Dashboard', icon: '/icons/ui/panel-stats.webp?v=2.3.1637' },
   ...RAIL_ORDER.map(id => DESTINATIONS.find(d => d.id === id)).filter(Boolean),

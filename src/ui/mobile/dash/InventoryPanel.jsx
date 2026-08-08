@@ -767,10 +767,18 @@ export const InventoryPanel = () => {
              v2.3.1227 sweep caught the preview grid but missed this one,
              owner-reported with a screenshot). */
           <div ref={itemsBoxRef} style={{
-            background: COL.well,
-            border: `1px solid ${COL.tileBor}`,
-            boxShadow: 'inset 0 2px 4px rgba(0,0,0,.44), inset 0 1px 0 rgba(255,255,255,.035)',
-            borderRadius: 10,
+            /* v2.3.1651 (owner: "remove the dark background behind the
+               expanded bag pane slots").  The recessed tray — well fill,
+               hairline and inset shadow — is gone; the slots sit straight
+               on the panel.  It is the same call as v2.3.1650's on the nav
+               group and the filter chips, and the same reasoning: every
+               slot already draws its own well and border, so the tray was
+               a darker box behind thirty darker boxes, and at two rows of
+               64px tiles it read as a frame around a frame.
+               The scroll fade below is now the ONLY edge treatment, which
+               makes it easier to see rather than harder. */
+            background: 'transparent',
+            border: 'none',
             /* v2.3.1236: owner feedback — LARGER slots, same 32 capacity.
                32 is display-only (no server or pickup enforcement — see
                PR notes), but capacity is a game-balance call for the
