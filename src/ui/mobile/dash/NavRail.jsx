@@ -47,9 +47,15 @@ export const NavRail = ({ items, litId, atRest, vw, vh, dots, profilePortrait })
          flex grab cannot. */
       flex: 'none',
       boxSizing: 'border-box',
-      background: COL.well,
-      border: `1px solid ${COL.tileBor}`,
-      borderRadius: 9,
+      /* v2.3.1650 (owner: "remove the darker background behind the 3
+         dashboard buttons").  The well + border + radius were the
+         "its own little section" from v2.3.1642, and they have stopped
+         earning their keep: the buttons carry their own fill, their own
+         border and a brass active state, so the container was a second
+         box drawn around three boxes.  Padding and gap stay — they are
+         what keeps the group off the frame edge and off each other. */
+      background: 'transparent',
+      border: 'none',
       /* v2.3.1637b: BOTTOM-anchored, not centred.  The rail is 189px tall
          at rest and ~439 with a panel open, so centring moved every
          button ~110px up the screen the moment you opened one — the

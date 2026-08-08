@@ -31,9 +31,14 @@ export const BagFilterChips = ({ height, gutter }) => {
          track the chips actually get is the track that is actually free. */
       marginRight: gutter || 0,
       display: 'flex', alignItems: 'center', gap: 4,
-      background: COL.well,
-      border: `1px solid ${COL.tileBor}`,
-      borderRadius: 9,
+      /* v2.3.1650 (owner: "remove darker background behind filter buttons
+         on bag full view"): transparent, matching the nav group opposite
+         it in the same row — the two ends of this row must read as the
+         same kind of thing, and one of them having a recessed tray while
+         the other floats is exactly the mismatch that made this row look
+         like two different components. */
+      background: 'transparent',
+      border: 'none',
       padding: 4, boxSizing: 'border-box',
       height: height || '100%',
     }}>
@@ -44,6 +49,7 @@ export const BagFilterChips = ({ height, gutter }) => {
             role="button" aria-label={c.label} aria-pressed={on} title={c.label}
             onPointerUp={(e) => { e.stopPropagation(); bagFilterBus.set(c.id); }}
             style={{
+              position: 'relative',
               flex: '1 1 0', minWidth: 0, height: '100%',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               background: on ? COL.accentFill : COL.wellSoft,
@@ -51,6 +57,22 @@ export const BagFilterChips = ({ height, gutter }) => {
               borderRadius: 7,
               cursor: 'pointer', touchAction: 'manipulation',
             }}>
+            {/* v2.3.1650 (owner: "put the little filter icon next to each
+                filter button").  This is v2.3.1320's funnel mark, restored
+                verbatim from the design it shipped in — the owner's own
+                suggestion at the time, for the reason recorded then:
+                "understood without using language".  Five category
+                pictograms in a row do not say WHAT they do to the list;
+                the funnel does, in nine pixels and no words.  Brass on the
+                active chip, so it doubles as the selected marker now that
+                the recessed track is gone. */}
+            <svg viewBox="0 0 10 10" width="9" height="9" aria-hidden="true" style={{
+              position: 'absolute', top: 2, right: 2, pointerEvents: 'none',
+            }}>
+              <path d="M1 1.5 H9 L6.2 5 V8.6 L3.8 7.4 V5 Z"
+                fill={on ? COL.accent : 'none'}
+                stroke={on ? COL.accent : COL.muted} strokeWidth="1.1" strokeLinejoin="round" />
+            </svg>
             <img src={c.iconSrc} alt="" draggable={false}
               style={{
                 width: 24, height: 24, objectFit: 'contain',

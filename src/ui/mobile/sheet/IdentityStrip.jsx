@@ -4,7 +4,7 @@ import { combatLevelProgress, unspentPointsTotal } from './heroModel.js';
 import { getActiveWeapon, calcDisplayDmgRange, calcDisplayDps } from '../../../data/gameSystems.js';
 import { portraitStore } from './portraitStore.js';
 import { dashboardPanelBus } from '../dashboardPanelBus.js';
-import { weaponAnchorWidth } from './sheetGeometry.js'; /* v2.3.1649 */
+import { weaponAnchorWidth, dashPanelWidths, DASH_GAP } from './sheetGeometry.js'; /* v2.3.1649 */
 
 /* v2.3.1294 (ChatGPT round-4): the identity strip — one compact row
    that replaces the retired top-right world card.  Portrait (with the
@@ -54,7 +54,7 @@ import { weaponAnchorWidth } from './sheetGeometry.js'; /* v2.3.1649 */
    better than the character — so the rail drops from seven buttons to
    six and each of the survivors gets more height.  Band mode only: in
    Hero's own sheet the portrait would open the screen you are on. */
-export const IdentityStrip = ({ band = false }) => {
+export const IdentityStrip = ({ band = false, gutter = 0, trackW = null }) => {
   const [, force] = useState(0);
   useEffect(() => portraitStore.subscribe(() => force(v => v + 1)), []);
 
@@ -94,6 +94,9 @@ export const IdentityStrip = ({ band = false }) => {
      unchanged flex row below — the pixel-identical rule at the top of this
      file is why this is a branch and not an edit. */
   if (band) {
+    /* Track 1 minus the portrait and its gap: the block on line 2 whose
+       right edge must land on the bag panel's right edge. */
+    const leftLineW = (trackW || dashPanelWidths(vwNow).wide) - 40 - 6;
     const portraitNode = (
       <div
         role="button" aria-label="Hero" title="Hero"
@@ -140,46 +143,52 @@ export const IdentityStrip = ({ band = false }) => {
       </div>
     );
     return (
-      <>
-        {/* TRACK 1 — over the BAG panel.  Portrait, then two lines: who you
-            are on top, what you have underneath. */}
-        <div style={{
-          gridColumn: 1, minWidth: 0,
-          display: 'flex', alignItems: 'center', gap: 6,
-          fontFamily: 'Source Sans 3, sans-serif',
-        }}>
-          {portraitNode}
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, minWidth: 0 }}>
-              <span style={{
-                flex: 1, minWidth: 0,
-                /* v2.3.1649: 13 -> 14.  The row lost the DMG chip and the
-                   floating +N, and the owner's standing note is that the
-                   band's text is too small — the freed width goes into type
-                   size, not into more elements. */
-                fontSize: 14, fontWeight: 700, color: COL.text,
-                whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-              }}>{(S && S.myName) || 'Anon'}</span>
-              <span style={{ flex: 'none', fontSize: 12, fontWeight: 600, color: COL.text2 }}>Lv {level}</span>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 3 }}>
+      <div style={{
+        /* v2.3.1650 (owner: "move DPS down a bit so player name can display
+           longer").  The strip was TWO grid items, one per track, and that
+           put a hard 96px wall at the end of track 1 — the name could not
+           borrow the empty space over EQUIPPED even though nothing was
+           using it.  It is ONE item spanning both tracks now, and the two
+           alignment promises are kept by the LINE BELOW instead: that line
+           is a fixed 96px block (so gold still ends on the bag's right
+           edge) followed by the weapon anchor (so DPS still centres over
+           the weapon).  Same pixels, one row lower, and the name line above
+           is free to run the full width.
+
+           `gutter` is the nav group's overhang into these tracks — the name
+           may use everything up to it and not one pixel more. */
+        gridColumn: '1 / 3', minWidth: 0, marginRight: gutter,
+        display: 'flex', alignItems: 'center', gap: 6,
+        fontFamily: 'Source Sans 3, sans-serif',
+      }}>
+        {portraitNode}
+        <div style={{ flex: 1, minWidth: 0 }}>
+          {/* LINE 1 — name and level, across both tracks. */}
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, minWidth: 0 }}>
+            <span style={{
+              flex: '0 1 auto', minWidth: 0,
+              fontSize: 14, fontWeight: 700, color: COL.text,
+              whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+            }}>{(S && S.myName) || 'Anon'}</span>
+            <span style={{ flex: 'none', fontSize: 12, fontWeight: 600, color: COL.text2 }}>Lv {level}</span>
+          </div>
+          {/* LINE 2 — the two anchored blocks.  Neither may flex: their
+              widths ARE the alignment. */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: DASH_GAP, marginTop: 3 }}>
+            <div style={{
+              width: leftLineW, flex: 'none', minWidth: 0,
+              display: 'flex', alignItems: 'center', gap: 6,
+            }}>
               <div title={`${lp.prog} / ${lp.thresh} XP`} style={{
-                /* v2.3.1649: the bar goes back to flex — it shares this
-                   line with gold now instead of with the exact numbers,
-                   and it is the element that can give up width gracefully.
-                   THE EXACT XP NUMBERS LEAVE THE BAND: 96px of track 1 does
-                   not hold a bar, "0 / 455" and a coin count at sizes the
-                   owner can read, and of the three the numbers are the one
-                   Hero already shows in full. */
                 flex: '1 1 auto', minWidth: 20, height: 5, borderRadius: 3,
                 background: 'rgba(0,0,0,.5)', border: '1px solid rgba(255,255,255,.08)',
                 overflow: 'hidden',
               }}>
                 <div style={{ width: `${Math.min(100, (lp.prog / lp.thresh) * 100)}%`, height: '100%', background: '#8AA9F9' }} />
               </div>
-              {/* GOLD — "above the inventory preview slots" (owner).  It sat
-                  at the row's far right through v2.3.1648, which is over the
-                  COMBAT pills; here it is over the bag it counts for. */}
+              {/* GOLD — "above the inventory preview slots" (owner,
+                  v2.3.1649).  The block it sits in is exactly track 1 minus
+                  the portrait, so its right edge IS the bag panel's. */}
               <span style={{
                 flex: 'none', display: 'inline-flex', alignItems: 'center', gap: 3,
                 color: COL.gold, fontSize: 14, fontWeight: 700, fontVariantNumeric: 'tabular-nums',
@@ -189,26 +198,23 @@ export const IdentityStrip = ({ band = false }) => {
                 <span className="bt-coin-glimmer">{Number(gold).toLocaleString()}</span>
               </span>
             </div>
+            <div style={{
+              width: weaponAnchorWidth(vwNow), flex: 'none',
+              display: 'flex', justifyContent: 'center',
+            }}>
+              {dmgRange && (
+                <span style={{
+                  display: 'inline-flex', alignItems: 'baseline', gap: 4,
+                  padding: '1px 7px', borderRadius: 8,
+                  background: COL.slot, border: '1px solid ' + COL.tileBor,
+                  color: COL.muted, fontSize: 11, fontWeight: 700, lineHeight: 1.25,
+                  whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums',
+                }}>DPS <b style={{ color: COL.text, fontSize: 14 }}>{dps}</b></span>
+              )}
+            </div>
           </div>
         </div>
-
-        {/* TRACK 2 — over the EQUIPPED panel.  The anchor box is exactly the
-            weapon cell plus the panel inset on either side, so centring
-            inside it puts DPS dead over the weapon. */}
-        <div style={{ gridColumn: 2, minWidth: 0, display: 'flex', fontFamily: 'Source Sans 3, sans-serif' }}>
-          {dmgRange && (
-            <div style={{ width: weaponAnchorWidth(vwNow), flex: 'none', display: 'flex', justifyContent: 'center' }}>
-              <span style={{
-                display: 'inline-flex', alignItems: 'baseline', gap: 4,
-                padding: '2px 7px', borderRadius: 8,
-                background: COL.slot, border: '1px solid ' + COL.tileBor,
-                color: COL.muted, fontSize: 11, fontWeight: 700, lineHeight: 1.25,
-                whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums',
-              }}>DPS <b style={{ color: COL.text, fontSize: 14 }}>{dps}</b></span>
-            </div>
-          )}
-        </div>
-      </>
+      </div>
     );
   }
 

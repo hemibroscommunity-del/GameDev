@@ -726,6 +726,7 @@ export const BottomDashboard = () => {
   const dashCols = dashPanelWidths(typeof window !== 'undefined' ? window.innerWidth : 390);
   /* How far the nav group overhangs track 3 to its left — 38px at 390w.
      Anything else placed on tracks 1-2 has to stop short of it. */
+  const bagChipsOpen = mode === 'expanded' && (rootId === 'bag' || rootId === 'inventory');
   const navOverhang = Math.max(0, navGroupWidth(
     typeof window !== 'undefined' ? window.innerWidth : 390,
     typeof window !== 'undefined' ? window.innerHeight : 844,
@@ -927,13 +928,21 @@ export const BottomDashboard = () => {
         alignItems: 'center',
         borderBottom: mode === 'expanded' ? 'none' : `1px solid ${COL.divider}`,
       }}>
-        {mode !== 'expanded' && <IdentityStrip band />}
-        {/* The Bag's category filter, in the space the strip vacates.  Only
-            for the Bag: every other destination leaves it empty, which is
-            what the row looked like in every mode before this. */}
-        {mode === 'expanded' && (rootId === 'bag' || rootId === 'inventory') && (
-          <BagFilterChips height="100%" gutter={navOverhang} />
-        )}
+        {/* v2.3.1650 (owner: "put player HUD in same spot when the 'more
+            options' pane is displayed on the dashboard").  The strip used to
+            hide the moment ANY panel opened, which is why the More pane
+            arrived with the top row suddenly empty and your name, level, XP
+            and gold gone.  It stays now, in the same place, for every
+            destination — the row is band chrome, and the panel below it has
+            its own body either way.
+
+            THE ONE EXCEPTION IS THE BAG, and only because the Bag is the
+            destination that asked for this space: its category chips (also
+            the owner's, v2.3.1649) take the strip's place there.  Two
+            things cannot occupy one row, and in the Bag the chips win
+            because they are controls and the strip is a readout. */}
+        {!bagChipsOpen && <IdentityStrip band gutter={navOverhang} trackW={dashCols.wide} />}
+        {bagChipsOpen && <BagFilterChips height="100%" gutter={navOverhang} />}
         {/* Track 3, right-aligned.  The group is WIDER than the narrow
             track (132 vs 90 at 390w) and deliberately overflows it to the
             LEFT: track 2 holds only the DPS anchor box, which is pinned to
