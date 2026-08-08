@@ -9,7 +9,7 @@ import { COMBAT_SKILLS, skillLevel } from '../sheet/heroModel.js';
 import { dashboardPanelBus } from '../dashboardPanelBus.js';
 import { requestT2Category } from './T2Panel.jsx';
 import { buildSkillUnspent, STAT_TO_WEAPON_CAT, calcDisplayDmgRange, calcDisplayDps, getActiveWeapon } from '../../../data/gameSystems.js';
-import { dashTileSize, dashColumnWidth, DASH_GAP } from '../sheet/sheetGeometry.js';
+import { dashTileSize, dashColumnWidth, DASH_GAP, DASH_ROWS } from '../sheet/sheetGeometry.js';
 
 /* v2.3.1636 (owner, with a reference screenshot of the pre-v2.3.1287
    dashboard): the THREE-COLUMN ROW — BAG / LOADOUT / BUILD restored as
@@ -109,13 +109,15 @@ export const DashColumns = ({ R }) => {
   /* ── BAG ── */
   const entries = getBagEntries(R);
   const openBag = () => dashboardPanelBus.open('bag');
-  /* Six tiles fit the two-row rhythm; a seventh item becomes a +N on the
-     last one rather than a third row nobody has the height for. */
-  const shown = entries.length > 6 ? entries.slice(0, 5) : entries.slice(0, 6);
-  const overflow = entries.length > 6 ? entries.length - 5 : 0;
+  /* v2.3.1647: the bag fills EVERY row the panel has — nine at three rows
+     — because it is the only panel with more to show than six.  The +N
+     still rides the last cell when there is more than even that. */
+  const BAG_CELLS = 3 * DASH_ROWS;
+  const shown = entries.length > BAG_CELLS ? entries.slice(0, BAG_CELLS - 1) : entries.slice(0, BAG_CELLS);
+  const overflow = entries.length > BAG_CELLS ? entries.length - (BAG_CELLS - 1) : 0;
   const bagCells = [];
-  for (let i = 0; i < 6; i++) {
-    if (i === 5 && overflow > 0) {
+  for (let i = 0; i < BAG_CELLS; i++) {
+    if (i === BAG_CELLS - 1 && overflow > 0) {
       bagCells.push(
         <div key="bag-more" onPointerUp={(e) => { e.stopPropagation(); openBag(); }}
           title={`${overflow} more — open the Bag`}
@@ -259,8 +261,9 @@ export const DashColumns = ({ R }) => {
           made the empty state a DIFFERENT layout from every other state,
           so the column changed shape the moment you picked something up. */}
       <Column label="Bag" onTap={openBag}>
-        <div style={tileRow}>{bagCells.slice(0, 3)}</div>
-        <div style={tileRow}>{bagCells.slice(3, 6)}</div>
+        {Array.from({ length: DASH_ROWS }, (_, r) => (
+          <div key={`bagrow-${r}`} style={tileRow}>{bagCells.slice(r * 3, r * 3 + 3)}</div>
+        ))}
       </Column>
 
       <Column label="Equipped">

@@ -134,12 +134,35 @@ export function dashColumnWidth(vw) {
   return 2 + 4 * DASH_GAP + 3 * dashTileSize(vw);
 }
 
+/* v2.3.1647 (owner: "increase the size of the dashboard by about 50% of
+   the space between its current height and the joysticks area ... the
+   exact height can be determined by whatever slot spacing that could use
+   the extra room makes the most sense"): THREE tile rows, not two.
+
+   The 50% is a real measurement, not a guess.  The joystick disc anchors
+   at calc(var(--dash-h) + 70px) (TouchControls), so the clear gap between
+   the band's top edge and the disc is a fixed 70px that rides with the
+   band — half of it is 35, putting the target at 145 + 35 = ~180.
+
+   A third ROW is the only thing that can spend it.  The tile is capped by
+   WIDTH — three across a 124.7px column at 390w is 35px and no larger —
+   so extra height cannot make the squares bigger, only add another line
+   of them.  Three rows lands at 132 (band 184), 4px past the target and
+   the nearest height where the spacing still works out exactly.
+
+   ROWS ARE PER-PANEL, though.  Only BAG has more to show: EQUIPPED has
+   exactly six worn slots and COMBAT exactly six parents, so a third row
+   there would be three empty squares reading as "slots you have not
+   filled" and "skills you have not found" — both false.  Those two centre
+   their six in the taller panel instead; see DashColumns. */
+export const DASH_ROWS = 3;
+
 export function columnsRowHeight(vw) {
   /* +1 for the ROW's own bottom hairline.  The row is box-sizing:border-box
      at height:100% of this number, so that 1px rule comes out of the
      content box — measured as 3.5 / 4 / 3.5 vertically (the half-pixels
      being the shortfall split by centring) until it was accounted for. */
-  return 2 * dashTileSize(vw) + 3 * DASH_GAP + 2 + 2 * DASH_GAP + 1;
+  return DASH_ROWS * dashTileSize(vw) + (DASH_ROWS + 1) * DASH_GAP + 2 + 2 * DASH_GAP + 1;
 }
 
 /* v2.3.1635 (owner: bring back a persistent sense of identity and
