@@ -226,8 +226,9 @@ const StatGlyph = ({ k, size }) => (
 
 export const InventoryPanel = () => {
   const [, force] = useState(0);
-  const [filter, setFilterState] = useState(_lastFilter);
-  const setFilter = (f) => { _lastFilter = f; setFilterState(f); };
+  /* v2.3.1645: pinned to whatever was last chosen (in practice 'all') —
+     the chips that called setFilter are retired; see the render. */
+  const [filter] = useState(_lastFilter);
   /* v2.3.1328b (owner: "don't display the stats of each item unless
      it's tapped"): which equipped card is selected — the right pane is
      a FIXED display window showing the aggregate when nothing is
@@ -292,17 +293,24 @@ export const InventoryPanel = () => {
   const [itemRowH, setItemRowH] = useState(0);
   const bagIsEmpty = getBagEntries(S?.rpg).length === 0;
   useEffect(() => {
-    if (bagTab !== 'items' || bagIsEmpty) return;
+    /* v2.3.1645: the bagIsEmpty bail-out is GONE.  It was correct while
+       an empty bag rendered a placeholder instead of a grid — but since
+       v2.3.1639 it renders six empty slots, so bailing left itemRowH at 0,
+       the tiles fell back to square 1:1, and an empty bag showed ONE row
+       of 54px slots with ~22px of the tray unused underneath.  Measuring
+       unconditionally is what makes "two full rows always fit" true in
+       the state a new player actually sees first. */
+    if (bagTab !== 'items') return;
     const measure = () => {
       const el = itemsBoxRef.current;
       if (!el || !el.clientHeight) return;
       /* Width budget: tray padding 6+6 + 5 gaps of 8 = 52.  Height
          budget around the two guaranteed rows: tray padding 6+6 + the
-         grid's 10px scroll-clearance paddingBottom + 1 inter-row gap
-         of 8 = 30 (v2.3.1352: clearance 14 -> 10 with the tighter
-         vertical budget). */
+         grid's scroll-clearance paddingBottom + 1 inter-row gap of 8.
+         v2.3.1645: clearance is 4 since v2.3.1643, so 30 -> 24 — leaving
+         it at 30 costs 3px off every row for padding that is not there. */
       const tileW = (el.clientWidth - 52) / 6;
-      const half = Math.floor((el.clientHeight - 30) / 2);
+      const half = Math.floor((el.clientHeight - 24) / 2);
       const clamped = Math.max(36, Math.min(Math.floor(tileW), half));
       setItemRowH(prev => (Math.abs(prev - clamped) > 1 ? clamped : prev));
     };
@@ -314,7 +322,7 @@ export const InventoryPanel = () => {
       if (obs) obs.disconnect();
       window.removeEventListener('resize', measure);
     };
-  }, [bagTab, bagIsEmpty]);
+  }, [bagTab]);
 
   /* v2.3.687: self-healing gear stash -- restore any orphaned steel piece
      (e.g. unequipped via the Equipment menu's toggle, which predates the
@@ -345,7 +353,13 @@ export const InventoryPanel = () => {
   const COLS = 6;
   const shownItems = filtered;
   const usedTiles = shownItems.length;
-  const totalCells = Math.max(COLS, Math.ceil(usedTiles / COLS) * COLS);
+  /* v2.3.1645 (owner: "without filters to make room for extra slots"):
+     the floor is TWO rows, not one.  It was max(COLS, ...) — so an empty
+     bag drew exactly six slots and left the rest of the tray blank no
+     matter how much room the retired filter track gave back.  The row
+     measurement above guarantees two rows fit; this is what actually puts
+     slots in them. */
+  const totalCells = Math.max(COLS * 2, Math.ceil(usedTiles / COLS) * COLS);
 
   const R = (S && S.rpg) || {};
   const equipped = getEquippedSlots(R);
@@ -657,69 +671,18 @@ export const InventoryPanel = () => {
           "N / 32" counter it carried now sits at the right end of this
           row, OUTSIDE the scrollable chip strip so it never scrolls
           away; the freed row height goes to larger slot tiles below. */}
-      {/* v2.3.1312 (round-8 §6): fixed five-chip row, no horizontal
-          scroll, icons 20px.
-          v2.3.1317 (owner): recessed segmented track = the filter
-          affordance, with a LIVE result readout that reacts to the
-          active chip.
-          v2.3.1319 (owner): the readout became a CornerTag riding the
-          track's top edge.
-          v2.3.1320 (owner: "understood without using language"): the
-          FILTER text rail is gone — every chip carries a tiny funnel
-          glyph in its top-right corner instead (per the owner's own
-          suggestion).
-          v2.3.1325 (owner): the count CornerTag that rode this track's
-          top edge is REMOVED — it visually landed on one of the filter
-          chips and read as chip info; "not the right place for
-          inventory item info".  The equipped row's N/6 tag (a slot
-          gauge the owner asked for in round 8b) stays. */}
-      <div style={{ position: 'relative', marginTop: 0, marginBottom: 4, flex: 'none' /* v2.3.1352: 2/6 -> 0/4 */ }}>
-        <div className="bt-well" style={{
-          minWidth: 0,
-          display: 'flex', alignItems: 'stretch', gap: 2,
-        }}>
-        {CATEGORIES.map(c => {
-          const active = c.id === filter;
-          return (
-            <button key={c.id}
-              onClick={() => setFilter(c.id)}
-              title={c.label}
-              aria-pressed={active}
-              className="bt-chisel bt-chisel--chip"
-              style={{
-                position: 'relative',
-                /* v2.3.1643 (owner: "make the tabbed buttons larger").
-                   minHeight 34 with a real 4px pad — these were a 2px-pad
-                   chip about 24px tall, well under any touch guidance,
-                   and they are the only control in the panel. */
-                flex: '1 1 0', minWidth: 0, minHeight: 34,
-                display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 1,
-                padding: '4px 0',
-                color: active ? COL.text : COL.text2,
-                fontFamily: 'inherit',
-              }}
-            >
-              {/* v2.3.1320: the language-free filter mark — a tiny
-                  funnel on every chip's top-right corner (owner's
-                  suggestion); brass on the active chip. */}
-              <svg viewBox="0 0 10 10" width="9" height="9" aria-hidden="true" style={{
-                position: 'absolute', top: 2, right: 2, pointerEvents: 'none',
-              }}>
-                <path d="M1 1.5 H9 L6.2 5 V8.6 L3.8 7.4 V5 Z"
-                  fill={active ? COL.accent : 'none'}
-                  stroke={active ? COL.accent : COL.muted} strokeWidth="1.1" strokeLinejoin="round" />
-              </svg>
-              {c.iconSrc
-                ? <img src={c.iconSrc} alt="" draggable={false}
-                    style={{ width: 18, height: 18, objectFit: 'contain' }}
-                    onError={(e) => { e.currentTarget.replaceWith(document.createTextNode(c.glyph)); }} />
-                : <span style={{ fontSize: 14, lineHeight: 1 }}>{c.glyph}</span>}
-              <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: '.02em', whiteSpace: 'nowrap' }}>{c.label}</span>
-            </button>
-          );
-        })}
-        </div>
-      </div>
+      {/* v2.3.1645 (owner: "let me see what the bag looks like without
+          filters to make room for extra slots"): the All / Weapon / Armor
+          / Potion / Crafting track is GONE.  It was ~46px of a 93px panel
+          — half the sheet — spent narrowing a grid that only holds a
+          couple of rows to begin with, and `filter` is pinned to 'all',
+          so everything is in that grid anyway.
+          The CATEGORIES roster and the filtering logic stay: the chips
+          are what was cut, not the capability, so a taller sheet or a
+          search field can bring it back without re-deriving any of it.
+          v2.3.1317's recessed track and v2.3.1320's funnel glyphs go with
+          them; git has both. */}
+
       {/* v2.3.1285: the fictional "N / 32" counter is retired with the
           display cap (nav-system plan §0.3); the bag has no real limit. */}
 
