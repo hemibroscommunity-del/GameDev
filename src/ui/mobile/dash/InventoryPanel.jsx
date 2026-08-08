@@ -5,7 +5,8 @@ import { itemDetailBus } from './itemDetailBus.js';
 import { isLocked as itemIsLocked } from './inventoryLocks.js';
 import { reconcileGearStash } from '../../../rendering/gearCatalog.js';
 import { getBagEntries } from './bagModel.js';
-import { getEquippedSlots, getEquipContribs, GHOST_SRC } from '../sheet/equipModel.js'; /* v2.3.1328: contribs */
+import { getEquippedSlots, getEquipContribs, GHOST_SRC } from '../sheet/equipModel.js';
+import { dashTileSize, DASH_GAP } from '../sheet/sheetGeometry.js'; /* v2.3.1646 */ /* v2.3.1328: contribs */
 import { unequipWeaponSlot, unequipShieldDirect, unequipArmorDirect, unequipGearDirect } from './equipActions.js'; /* v2.3.1330 */
 import { getEquip } from '../../../rendering/gearCatalog.js';
 
@@ -289,40 +290,14 @@ export const InventoryPanel = () => {
      always.  Same ResizeObserver pattern as the equipped tab's eqCard
      (the sheet ANIMATES open over 220ms — a mount-time measure would
      stick at the mid-animation height). */
+  /* v2.3.1646: itemRowH and its ResizeObserver are RETIRED.  They
+     existed to fit two rows into whatever height the sheet really had —
+     necessary while the bag chose its own tile size, and the source of
+     two bugs on the way here (a bail-out that outlived the empty-state it
+     guarded, and a height budget that outlived the padding it reserved).
+     The tile size is shared with the dashboard now (dashTileSize), so
+     there is nothing left to measure and nothing left to drift. */
   const itemsBoxRef = useRef(null);
-  const [itemRowH, setItemRowH] = useState(0);
-  const bagIsEmpty = getBagEntries(S?.rpg).length === 0;
-  useEffect(() => {
-    /* v2.3.1645: the bagIsEmpty bail-out is GONE.  It was correct while
-       an empty bag rendered a placeholder instead of a grid — but since
-       v2.3.1639 it renders six empty slots, so bailing left itemRowH at 0,
-       the tiles fell back to square 1:1, and an empty bag showed ONE row
-       of 54px slots with ~22px of the tray unused underneath.  Measuring
-       unconditionally is what makes "two full rows always fit" true in
-       the state a new player actually sees first. */
-    if (bagTab !== 'items') return;
-    const measure = () => {
-      const el = itemsBoxRef.current;
-      if (!el || !el.clientHeight) return;
-      /* Width budget: tray padding 6+6 + 5 gaps of 8 = 52.  Height
-         budget around the two guaranteed rows: tray padding 6+6 + the
-         grid's scroll-clearance paddingBottom + 1 inter-row gap of 8.
-         v2.3.1645: clearance is 4 since v2.3.1643, so 30 -> 24 — leaving
-         it at 30 costs 3px off every row for padding that is not there. */
-      const tileW = (el.clientWidth - 52) / 6;
-      const half = Math.floor((el.clientHeight - 24) / 2);
-      const clamped = Math.max(36, Math.min(Math.floor(tileW), half));
-      setItemRowH(prev => (Math.abs(prev - clamped) > 1 ? clamped : prev));
-    };
-    measure();
-    const obs = window.ResizeObserver ? new ResizeObserver(measure) : null;
-    if (obs && itemsBoxRef.current) obs.observe(itemsBoxRef.current);
-    window.addEventListener('resize', measure);
-    return () => {
-      if (obs) obs.disconnect();
-      window.removeEventListener('resize', measure);
-    };
-  }, [bagTab]);
 
   /* v2.3.687: self-healing gear stash -- restore any orphaned steel piece
      (e.g. unequipped via the Equipment menu's toggle, which predates the
@@ -350,7 +325,18 @@ export const InventoryPanel = () => {
      v2.3.1312 (round-8 §7): empty cells only COMPLETE the final row
      (min one row) — the old 4-row minimum padded a small bag with
      rows of dead cells that read as fake capacity. */
-  const COLS = 6;
+  /* v2.3.1646 (owner: "make the bag slots on bag view the same size as
+     the slots on the dashboard view"): ONE tile size for both surfaces —
+     dashTileSize, the same function the three dashboard panels use.
+     The grid was repeat(6, 1fr) with a separately MEASURED row height,
+     which made the bag's cells 54 wide by 36 tall: not the dashboard's
+     size, and not even square.  Fixed columns of that shared size with
+     the shared gap, and as many as fit — nine at 390w, so the bag also
+     goes from 12 visible slots to 18. */
+  const vwNow = typeof window !== 'undefined' ? window.innerWidth : 390;
+  const TILE = dashTileSize(vwNow);
+  /* panel padding 6+6 and tray padding 6+6 come off the usable width. */
+  const COLS = Math.max(4, Math.floor((vwNow - 24 + DASH_GAP) / (TILE + DASH_GAP)));
   const shownItems = filtered;
   const usedTiles = shownItems.length;
   /* v2.3.1645 (owner: "without filters to make room for extra slots"):
@@ -789,12 +775,15 @@ export const InventoryPanel = () => {
             /* v2.3.1285: 8 -> 6 columns — the same slot rhythm as the
                retired compact grid (Recent order is the shared bagModel
                sort). */
-            gridTemplateColumns: `repeat(${COLS}, 1fr)`,
-            /* v2.3.1350: measured row height — two full rows always fit
-               (see the itemRowH effect above).  0 until first measure:
-               fall back to square tiles for that frame. */
-            ...(itemRowH ? { gridAutoRows: `${itemRowH}px` } : {}),
-            gap: 8,
+            gridTemplateColumns: `repeat(${COLS}, ${TILE}px)`,
+            justifyContent: 'center',
+            /* v2.3.1646: SQUARE rows at the shared size — no measurement,
+               no first-frame fallback, and no way for the two surfaces to
+               drift apart.  The v2.3.1350 itemRowH effect is retired with
+               it (and with it the class of bug that had it bail out on an
+               empty bag; see v2.3.1645). */
+            gridAutoRows: `${TILE}px`,
+            gap: DASH_GAP,
             /* v2.3.1312 (round-8 §7): scroll clearance — the last row
                must clear the edge fade at scroll end.  v2.3.1352:
                14 -> 10 (tighter budget; still holds the last row off
@@ -808,7 +797,9 @@ export const InventoryPanel = () => {
                  instead of forcing 1:1 (squat-not-clipped on short
                  viewports; rowH is width-capped so they stay square
                  whenever the height allows). */
-              const rowFit = itemRowH ? { aspectRatio: 'auto', height: '100%' } : null;
+              /* v2.3.1646: the row IS the tile size now, so the tile just
+                 fills its cell — square by construction. */
+              const rowFit = { aspectRatio: 'auto', height: '100%' };
               return (<>
             {shownItems.map((e, i) => (
               <BagTile key={e.kind === 'item' ? `i-${e.key}` : `${e.kind}-${e.index}-${i}`} entry={e} style={rowFit} />

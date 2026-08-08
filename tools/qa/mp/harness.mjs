@@ -44,20 +44,36 @@ const MIME = {
 /* ── static server for dist/ ───────────────────────────────────────────── */
 export async function serveDist(port) {
   const DIST = join(REPO, 'dist');
+  /* v2.3.1646 FIX: read FIRST, write once.  The old shape wrote the 200
+     header and then read inside the same try, so any failure after the
+     header — a client that had already gone away mid-response, most
+     often — fell into the catch and called writeHead a second time.  That
+     throws ERR_HTTP_HEADERS_SENT out of an async request handler, which
+     is unhandled and takes the whole node process with it: a suite run
+     died at the arena scenario this way with 106 assertions passed and no
+     summary, which reads exactly like a product failure and is not one.
+     Reading before writing means the fallback decision is made while no
+     bytes have been committed, and headersSent guards the last resort. */
   const srv = createServer(async (q, s) => {
     let p = decodeURIComponent(q.url.split('?')[0]);
     if (p === '/') p = '/index.html';
+    let body = null;
+    let type = MIME[extname(p)] || 'application/octet-stream';
     try {
-      const b = await readFile(join(DIST, p));
-      s.writeHead(200, { 'content-type': MIME[extname(p)] || 'application/octet-stream' });
-      s.end(b);
+      body = await readFile(join(DIST, p));
     } catch {
       /* SPA fallback */
       try {
-        s.writeHead(200, { 'content-type': 'text/html' });
-        s.end(await readFile(join(DIST, 'index.html')));
-      } catch { s.writeHead(404); s.end(); }
+        body = await readFile(join(DIST, 'index.html'));
+        type = 'text/html';
+      } catch { body = null; }
     }
+    try {
+      if (s.headersSent) return;
+      if (body === null) { s.writeHead(404); s.end(); return; }
+      s.writeHead(200, { 'content-type': type });
+      s.end(body);
+    } catch { /* client vanished mid-write; nothing left to say */ }
   });
   await new Promise((r) => srv.listen(port, r));
   return srv;
