@@ -18,9 +18,10 @@ import { getShirt, onShirtChange } from '../../rendering/traits/shirtCatalog.js'
 import { getShirtColor, shirtColorTarget, onShirtColorChange } from '../../rendering/traits/shirtColorCatalog.js';
 import { getEquip } from '../../rendering/gearCatalog.js';
 import { dashboardPanelBus } from './dashboardPanelBus.js';
-import { barHeight, expandedSheetHeight, drillSheetHeight } from './sheet/sheetGeometry.js'; /* v2.3.1283; v2.3.1350 two-state; v2.3.1311e drill height; v2.3.1325 slot-derived bar */
+import { barHeight, expandedSheetHeight, drillSheetHeight, dashPanelWidths, navGroupWidth, DASH_GAP } from './sheet/sheetGeometry.js'; /* v2.3.1283; v2.3.1350 two-state; v2.3.1311e drill height; v2.3.1325 slot-derived bar */
 import { DashColumns } from './dash/DashColumns.jsx';           /* v2.3.1636 */
 import { NavRail } from './dash/NavRail.jsx';                   /* v2.3.1637 */
+import { BagFilterChips } from './dash/BagFilterChips.jsx';     /* v2.3.1649 */
 import { portraitStore } from './sheet/portraitStore.js';          /* v2.3.1294 */
 import { hasUnseenLevelUps } from './sheet/skillsModel.js';        /* v2.3.1296 */
 import { getFriendRows } from './sheet/friendsModel.js';           /* v2.3.1323 */
@@ -719,6 +720,16 @@ export const BottomDashboard = () => {
      retired with its anchor). */
 
   const Active = active?.Component;
+  /* v2.3.1649: the top row shares the columns row's tracks — see the grid
+     below.  One call, so the two rows can never disagree about where a
+     column starts. */
+  const dashCols = dashPanelWidths(typeof window !== 'undefined' ? window.innerWidth : 390);
+  /* How far the nav group overhangs track 3 to its left — 38px at 390w.
+     Anything else placed on tracks 1-2 has to stop short of it. */
+  const navOverhang = Math.max(0, navGroupWidth(
+    typeof window !== 'undefined' ? window.innerWidth : 390,
+    typeof window !== 'undefined' ? window.innerHeight : 844,
+  ) - dashCols.narrow - DASH_GAP);
 
   /* v2.3.1236: owner dashboard feedback §6 — the build-points XP strip
      (v2.3.114 bottom trim -> v2.3.152 BP progress -> v2.3.821/v2.3.1227
@@ -887,6 +898,20 @@ export const BottomDashboard = () => {
           restored exactly that trap.  Keeping it mounted also holds it at
           one screen position in both modes, so nothing slides out from
           under the thumb that just tapped it (the v2.3.1637b rule). */}
+      {/* v2.3.1649 (owner: "shift the player HUD data to the left ... move
+          the navigation buttons all the way to the right in that little
+          ribbon area"): the top row is a GRID on the columns row's own
+          three tracks, not a flex row.
+
+          That is what makes the two alignment promises in the same message
+          keepable — gold "above the inventory preview slots" and DPS
+          "aligned above the weapon" are claims about specific columns, and
+          the only honest way to keep them at every viewport is to lay this
+          row out with the same dashPanelWidths the columns use.  The strip
+          renders straight into tracks 1 and 2; the nav group takes track 3
+          and right-aligns, which is the "all the way to the right" ask and
+          also frees the LEFT of this row — where the bag's filter chips now
+          go while the Bag is open. */}
       <div style={{
         position: 'absolute',
         left: 0, right: 0,
@@ -894,23 +919,39 @@ export const BottomDashboard = () => {
         height: 'calc(var(--dash-h, 145px) - var(--cols-h, 93px))',
         zIndex: 3,
         boxSizing: 'border-box',
-        padding: '0 4px',
-        display: 'flex', alignItems: 'center', gap: 6,
+        padding: `0 ${DASH_GAP}px`,
+        display: 'grid',
+        gridTemplateColumns: `${dashCols.wide}px ${dashCols.wide}px ${dashCols.narrow}px`,
+        justifyContent: 'center',
+        gap: DASH_GAP,
+        alignItems: 'center',
         borderBottom: mode === 'expanded' ? 'none' : `1px solid ${COL.divider}`,
       }}>
-        <NavRail
-          items={RAIL_ITEMS}
-          litId={litId}
-          atRest={mode === 'bar'}
-          vw={typeof window !== 'undefined' ? window.innerWidth : 390}
-          vh={typeof window !== 'undefined' ? window.innerHeight : 844}
-          dots={dots}
-          profilePortrait={profilePortrait} />
-        {mode !== 'expanded' && (
-          <div style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center' }}>
-            <IdentityStrip band />
-          </div>
+        {mode !== 'expanded' && <IdentityStrip band />}
+        {/* The Bag's category filter, in the space the strip vacates.  Only
+            for the Bag: every other destination leaves it empty, which is
+            what the row looked like in every mode before this. */}
+        {mode === 'expanded' && (rootId === 'bag' || rootId === 'inventory') && (
+          <BagFilterChips height="100%" gutter={navOverhang} />
         )}
+        {/* Track 3, right-aligned.  The group is WIDER than the narrow
+            track (132 vs 90 at 390w) and deliberately overflows it to the
+            LEFT: track 2 holds only the DPS anchor box, which is pinned to
+            that track's left edge over the weapon cell, so the overflow
+            crosses empty space and never the readout.  Sizing the buttons
+            down to fit the track instead would have put them back at 24px
+            wide — the size the owner asked to grow away from at
+            v2.3.1644. */}
+        <div style={{ gridColumn: 3, justifySelf: 'end', display: 'flex', alignItems: 'center' }}>
+          <NavRail
+            items={RAIL_ITEMS}
+            litId={litId}
+            atRest={mode === 'bar'}
+            vw={typeof window !== 'undefined' ? window.innerWidth : 390}
+            vh={typeof window !== 'undefined' ? window.innerHeight : 844}
+            dots={dots}
+            profilePortrait={profilePortrait} />
+        </div>
       </div>
 
       {/* v2.3.1636 (owner, with a reference shot): the THREE-COLUMN ROW —

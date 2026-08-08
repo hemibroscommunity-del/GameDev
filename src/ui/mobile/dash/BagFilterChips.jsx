@@ -1,0 +1,64 @@
+import React, { useEffect, useState } from 'react';
+import { COL } from './common.js';
+import { CATEGORIES } from './InventoryPanel.jsx';
+import { bagFilterBus } from './bagFilterBus.js';
+
+/* v2.3.1649: the bag's category filter, restored (retired at v2.3.1645 for
+   want of room) and re-homed into the band's top row — the space the
+   identity strip vacates whenever a panel is open.  Owner: "you can put
+   all of the filter chips there to sort the inventory items".
+
+   ICON-ONLY, and that is a size decision rather than a minimalism one.
+   Five chips share ~240px beside the nav group; with a caption each they
+   would be 44px-wide columns holding 8px text, which is the exact
+   too-small-to-read failure this whole pass exists to fix.  Without one
+   each chip is a 24px icon on a 44pt-tall target — the same icon-only
+   language the nav buttons beside them already use, with the label carried
+   by aria-label and title for anyone who needs it announced.
+
+   The chips fill their row: no fixed width, so five categories or eight
+   both divide the space evenly instead of overflowing it. */
+export const BagFilterChips = ({ height, gutter }) => {
+  const [sel, setSel] = useState(bagFilterBus.get());
+  useEffect(() => bagFilterBus.subscribe(setSel), []);
+  return (
+    <div style={{
+      gridColumn: '1 / 3', minWidth: 0,
+      /* v2.3.1649: the nav group is wider than its own track and overhangs
+         this one from the right (see BottomDashboard).  Measured, that
+         buried the fifth chip under the Dashboard button — the chips are
+         drawn first and lose.  `gutter` is exactly that overhang, so the
+         track the chips actually get is the track that is actually free. */
+      marginRight: gutter || 0,
+      display: 'flex', alignItems: 'center', gap: 4,
+      background: COL.well,
+      border: `1px solid ${COL.tileBor}`,
+      borderRadius: 9,
+      padding: 4, boxSizing: 'border-box',
+      height: height || '100%',
+    }}>
+      {CATEGORIES.map((c) => {
+        const on = c.id === sel;
+        return (
+          <div key={c.id}
+            role="button" aria-label={c.label} aria-pressed={on} title={c.label}
+            onPointerUp={(e) => { e.stopPropagation(); bagFilterBus.set(c.id); }}
+            style={{
+              flex: '1 1 0', minWidth: 0, height: '100%',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              background: on ? COL.accentFill : COL.wellSoft,
+              border: `1px solid ${on ? COL.accent : COL.tileBor}`,
+              borderRadius: 7,
+              cursor: 'pointer', touchAction: 'manipulation',
+            }}>
+            <img src={c.iconSrc} alt="" draggable={false}
+              style={{
+                width: 24, height: 24, objectFit: 'contain',
+                opacity: on ? 1 : 0.7, pointerEvents: 'none',
+              }} />
+          </div>
+        );
+      })}
+    </div>
+  );
+};

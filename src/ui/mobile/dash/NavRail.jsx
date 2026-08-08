@@ -102,21 +102,13 @@ export const NavRail = ({ items, litId, atRest, vw, vh, dots, profilePortrait })
                   opacity: on ? 1 : 0.82, pointerEvents: 'none',
                 }} />
             )}
-            {/* The active marker points INTO the content it opened —
-                the mockup's chevron.  Drawn outside the button so it
-                never crowds the icon. */}
-            {on && (
-              /* v2.3.1642: the marker points DOWN now, not right — the
-                 group sits above what it opens rather than beside it. */
-              <span aria-hidden="true" style={{
-                position: 'absolute', bottom: -5, left: '50%',
-                width: 0, height: 0, transform: 'translateX(-50%)',
-                borderLeft: '4px solid transparent',
-                borderRight: '4px solid transparent',
-                borderTop: `5px solid ${COL.accent}`,
-                pointerEvents: 'none',
-              }} />
-            )}
+            {/* v2.3.1649 (owner: "on the active navigation button remove
+                the tiny arrow chip but leave the active gold/yellow
+                circle"): the chevron is gone.  It was a second active
+                marker on a button that already states the same thing three
+                ways — brass fill, brass border, aria-pressed — and a 8x5px
+                triangle is precisely the size of detail the owner has been
+                asking this band to stop relying on. */}
             {count ? (
               <span aria-hidden="true" style={{
                 position: 'absolute', top: -3, right: -3,

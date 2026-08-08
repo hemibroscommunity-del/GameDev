@@ -3,13 +3,13 @@ import { COL } from './common.js';
 import { getBagEntries } from './bagModel.js';
 import { BagTile } from './InventoryPanel.jsx';
 import { itemDetailBus } from './itemDetailBus.js';
-import { IconCell, WeaponCell } from './dashCells.jsx';
+import { IconCell } from './dashCells.jsx';
 import { getEquippedSlots, GHOST_SRC } from '../sheet/equipModel.js';
 import { COMBAT_SKILLS, skillLevel } from '../sheet/heroModel.js';
 import { dashboardPanelBus } from '../dashboardPanelBus.js';
 import { requestT2Category } from './T2Panel.jsx';
-import { buildSkillUnspent, STAT_TO_WEAPON_CAT, calcDisplayDmgRange, calcDisplayDps, getActiveWeapon } from '../../../data/gameSystems.js';
-import { dashTileSize, dashPanelWidths, combatPillWidth, equipCellSize, DASH_GAP, DASH_ROWS } from '../sheet/sheetGeometry.js';
+import { buildSkillUnspent, STAT_TO_WEAPON_CAT } from '../../../data/gameSystems.js';
+import { dashTileSize, dashPanelWidths, combatPillWidth, combatPillHeight, equipCellSize, BAG_COLS, DASH_GAP, DASH_ROWS } from '../sheet/sheetGeometry.js';
 
 /* v2.3.1636 (owner, with a reference screenshot of the pre-v2.3.1287
    dashboard): the THREE-COLUMN ROW — BAG / LOADOUT / BUILD restored as
@@ -111,10 +111,13 @@ export const DashColumns = ({ R }) => {
   /* ── BAG ── */
   const entries = getBagEntries(R);
   const openBag = () => dashboardPanelBus.open('bag');
-  /* v2.3.1647: the bag fills EVERY row the panel has — nine at three rows
-     — because it is the only panel with more to show than six.  The +N
-     still rides the last cell when there is more than even that. */
-  const BAG_CELLS = 3 * DASH_ROWS;
+  /* v2.3.1649 (owner: "I think 4 slots can only be visible on the
+     dashboard.  The rest can be put into full bag view"): FOUR cells —
+     BAG_COLS across, DASH_ROWS down.  The +N overflow chip still rides the
+     last cell, and it is doing more work than it used to: with four
+     previews instead of nine it is the honest "there is more in here"
+     marker AND the tap target that opens the full bag. */
+  const BAG_CELLS = BAG_COLS * DASH_ROWS;
   const shown = entries.length > BAG_CELLS ? entries.slice(0, BAG_CELLS - 1) : entries.slice(0, BAG_CELLS);
   const overflow = entries.length > BAG_CELLS ? entries.length - (BAG_CELLS - 1) : 0;
   const bagCells = [];
@@ -127,7 +130,7 @@ export const DashColumns = ({ R }) => {
             width: t, height: t, flex: 'none',
             background: COL.wellSoft, border: `1px solid ${COL.tileBor}`, borderRadius: 6,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: 10, fontWeight: 800, color: COL.text2,
+            fontSize: 15, fontWeight: 800, color: COL.text2,
             fontVariantNumeric: 'tabular-nums', cursor: 'pointer',
           }}>+{overflow}</div>
       );
@@ -152,10 +155,11 @@ export const DashColumns = ({ R }) => {
   /* ── LOADOUT ── */
   const equipped = getEquippedSlots(rpg);
   const bySlot = (s) => equipped.find(e => e.slot === s);
-  const wpn = getActiveWeapon(rpg);
-  const range = wpn ? calcDisplayDmgRange(rpg, wpn) : null;
-  const dps = range ? calcDisplayDps(rpg, wpn) : 0;
-  const dpsText = Math.round(dps * 10) / 10;
+  /* v2.3.1649: the weapon/DMG/DPS locals are gone with the last thing that
+     read them.  DMG/DPS left this column for the identity row at v2.3.1637
+     and the tap-to-cycle WeaponCell left at v2.3.1649, so all that remained
+     was three computed numbers nothing rendered — recomputed every 200ms
+     tick by the band's force-update timer. */
   const openPicker = (slot) => (anchor) => {
     const st = itemDetailBus.state;
     if (st && st.open && st.target && st.target.kind === 'loadout' && st.target.slot === slot) {
@@ -164,7 +168,6 @@ export const DashColumns = ({ R }) => {
     }
     itemDetailBus.open({ kind: 'loadout', slot, anchor, panel: null });
   };
-  const wpnSlot = bySlot('weapon');
   /* v2.3.1648: TWO per row over THREE rows, not three over two — see
      equipCellSize.  Weapon leads the top-left, where the eye lands first
      (it led the top-MIDDLE under the old three-across order, for the same
@@ -174,19 +177,28 @@ export const DashColumns = ({ R }) => {
     ['chest', 'legs'],
     ['amulet', 'cape'],
   ];
+  /* v2.3.1649 (owner: "change the equipped weapon action upon tap so that
+     it doesn't automatically switch but brings up the standard equip menu
+     like how the equip chest armor and shirt currently work together").
+     The WeaponCell special case is GONE and weapon falls through to the
+     same IconCell every other slot uses — it already carries
+     pickerSlot:'weapon' (equipModel), so this is a deletion, not a new
+     path, and the weapon now behaves like its neighbours by construction
+     rather than by a parallel implementation kept in step by hand.
+
+     WHAT THIS RETIRES, stated plainly because it was deliberate: v2.3.1562
+     put a tap-to-CYCLE gesture on this cell (with hold for the picker)
+     because the left-joystick double-tap was the only way to swap weapons
+     and nobody could find it — "the game's own owner did not know it was
+     there".  Swapping is NOT lost: the picker this now opens equips any
+     weapon you own, which is the same outcome in one extra tap, and the
+     joystick double-tap still works.  What is lost is the one-tap cycle,
+     and that is the owner's call — a tap that silently changes your weapon
+     is exactly the accident this cell was most likely to cause once the
+     cells grew to 64px and got easy to hit. */
   const equipCell = (slotName) => {
     const sl = bySlot(slotName);
     if (!sl) return <div key={`eq-${slotName}`} style={{ width: eq.w, height: eq.h, flex: 'none' }} />;
-    /* Weapon keeps the tap-swaps / hold-picks gesture from v2.3.1562.
-       With no weapon there is nothing to swap TO, so it falls back to the
-       plain picker cell — the quick bar's own fallback. */
-    if (slotName === 'weapon' && wpnSlot && !wpnSlot.ghost) {
-      return (
-        <WeaponCell key="eq-weapon" size={eq.w} h={eq.h} src={wpnSlot.iconSrc}
-          slotLabel={rpg.activeSlot === 'ranged' ? 'Bow' : rpg.activeSlot === 'staff' ? 'Staff' : 'Melee'}
-          onHold={openPicker('weapon')} />
-      );
-    }
     return (
       <IconCell key={`eq-${slotName}`} size={eq.w} h={eq.h}
         src={sl.iconSrc || GHOST_SRC[slotName]} dim={sl.ghost}
@@ -228,6 +240,7 @@ export const DashColumns = ({ R }) => {
      label in full, one tap away, and both aria-label and title spell it
      out here for anyone who needs it read aloud. */
   const pillW = combatPillWidth(vw);
+  const pillH = combatPillHeight(vw);
   const combatPill = (s) => {
     const unspent = buildSkillUnspent(rpg, s.key);
     const lvl = skillLevel(rpg, s.key);
@@ -244,7 +257,7 @@ export const DashColumns = ({ R }) => {
         aria-label={`${s.label} level ${lvl}`}
         title={`${s.label} — Lv ${lvl}${unspent > 0 ? `, ${unspent} unspent` : ''}`}
         style={{
-          width: pillW, height: t, flex: 'none', boxSizing: 'border-box',
+          width: pillW, height: pillH, flex: 'none', boxSizing: 'border-box',
           display: 'flex', flexDirection: 'row', alignItems: 'center',
           justifyContent: 'space-between', gap: 4, padding: '0 8px 0 4px',
           background: unspent > 0 ? COL.accentFill : COL.wellSoft,
@@ -257,7 +270,7 @@ export const DashColumns = ({ R }) => {
         }}>
         <img src={s.iconSrc} alt="" draggable={false}
           style={{
-            width: t - 8, height: t - 8,
+            width: pillH - 8, height: pillH - 8,
             flex: 'none', objectFit: 'contain', pointerEvents: 'none',
           }} />
         {/* The level, at 16px on its own — it was a 9px corner digit through
@@ -300,7 +313,7 @@ export const DashColumns = ({ R }) => {
           so the column changed shape the moment you picked something up. */}
       <Column label="Bag" onTap={openBag}>
         {Array.from({ length: DASH_ROWS }, (_, r) => (
-          <div key={`bagrow-${r}`} style={tileRow}>{bagCells.slice(r * 3, r * 3 + 3)}</div>
+          <div key={`bagrow-${r}`} style={tileRow}>{bagCells.slice(r * BAG_COLS, r * BAG_COLS + BAG_COLS)}</div>
         ))}
       </Column>
 
@@ -315,9 +328,9 @@ export const DashColumns = ({ R }) => {
         ))}
       </Column>
 
-      {/* v2.3.1648: three pills, one per tile ROW, so COMBAT lines up with
-          the bag's three rows exactly — the row rhythm the other two panels
-          set is what makes the different shape read as intentional. */}
+      {/* v2.3.1648: three pills stacked over the same inner height the
+          bag's rows occupy, so all three panels end on one baseline even
+          though none of them holds the same number of things (4 / 6 / 3). */}
       <Column label="Combat">
         {COMBAT_SKILLS.slice(0, 3).map(combatPill)}
       </Column>

@@ -134,24 +134,42 @@ export const DASH_GAP = 4;
    purpose.  Reverting is one constant: set NARROW_SHARE to 1/3. */
 const NARROW_SHARE = 0.24;
 
+/* v2.3.1649 (owner: "the inventory slots need to be about 50% larger.  I
+   think 4 slots can only be visible on the dashboard.  The rest can be put
+   into full bag view").  THE SLOT SIZE IS THE COLUMN COUNT.  Panel widths
+   did not change here at all — the bag simply stopped putting three
+   squares across a 142px panel and started putting TWO, and the tile that
+   falls out of the same padding algebra is 64px instead of 41.  That is
+   the "about 50%" the owner asked for (+56%), derived rather than dialled
+   in, and it is why there is no magic multiplier anywhere below.
+
+   FOUR VISIBLE SLOTS is the arithmetic consequence the owner already
+   anticipated: two across, and the band's height affords two rows.  What
+   used to be nine cramped previews is four you can actually identify, and
+   the tenth-and-beyond were already only reachable by opening the Bag. */
+export const BAG_COLS = 2;
+
 export function dashPanelWidths(vw) {
   const avail = vw - 4 * DASH_GAP;
   const target = Math.round(Math.min(Math.max(avail * NARROW_SHARE, 76), 130));
-  /* The wide panel is SNAPPED to exactly what three whole squares need, and
+  /* The wide panel is SNAPPED to exactly what its whole squares need, and
      the rounding remainder goes to the narrow one.  Taking the naive half
      instead left 1px over inside each wide panel, and centring split it —
      measured 4.5 / 4 / 4 / 4.5 across the bag's top row, which is the same
      half-pixel asymmetry v2.3.1640 was created to kill.  A panel may only
      be a width its own contents tile exactly. */
   const t = dashTileSizeFor(Math.floor((avail - target) / 2));
-  const wide = 3 * t + 2 + 4 * DASH_GAP;
+  const wide = BAG_COLS * t + 2 + (BAG_COLS + 1) * DASH_GAP;
   return { wide, narrow: avail - 2 * wide, avail };
 }
 
 function dashTileSizeFor(wide) {
-  /* three squares across a WIDE panel: its border, its own padding on both
-     sides and the two gaps between them all come off first. */
-  return Math.floor(Math.min(Math.max((wide - 2 - 4 * DASH_GAP) / 3, 24), 56));
+  /* BAG_COLS squares across a WIDE panel: its border, its own padding on
+     both sides and the gaps between them all come off first.
+     v2.3.1649: the 56 cap is lifted to 76 — it existed to stop a tablet
+     blowing up 3-across tiles, and at 2-across it would have clamped the
+     phone case itself (64) and quietly undone the whole change. */
+  return Math.floor(Math.min(Math.max((wide - 2 - (BAG_COLS + 1) * DASH_GAP) / BAG_COLS, 36), 76));
 }
 
 export function dashTileSize(vw) {
@@ -169,12 +187,28 @@ export function dashTileSize(vw) {
    The icon itself is still bound by the 41px height; at three across on a
    390px phone nothing can make it bigger, which is stated plainly rather
    than worked around. */
+/* v2.3.1649: the equipped block keeps its 2x3 shape, but its cell height
+   is now derived from the PANEL rather than borrowed from the bag tile.
+   The bag went to two rows; six equip slots still want three, so the two
+   numbers parted company and the old `h: dashTileSize(vw)` would have made
+   the equipped block 64*3 tall inside a 132px panel and clipped the bottom
+   row against overflow:hidden — the v2.3.1637 bug, one layout later. */
 export function equipCellSize(vw) {
   const { wide } = dashPanelWidths(vw);
   return {
     w: Math.floor((wide - 2 - 3 * DASH_GAP) / 2),
-    h: dashTileSize(vw),
+    h: panelRowHeight(vw, 3),
   };
+}
+
+/* The height of one of `rows` stacked children inside a panel whose inner
+   box is panelInnerHeight — the single place the "three equipped rows and
+   three combat pills line up with two bag rows" promise is kept. */
+export function panelInnerHeight(vw) {
+  return DASH_ROWS * dashTileSize(vw) + (DASH_ROWS - 1) * DASH_GAP;
+}
+export function panelRowHeight(vw, rows) {
+  return Math.floor((panelInnerHeight(vw) - (rows - 1) * DASH_GAP) / rows);
 }
 
 /* v2.3.1648: a COMBAT pill's width — the narrow panel's whole inner width,
@@ -188,20 +222,39 @@ export function combatPillWidth(vw) {
   const { narrow } = dashPanelWidths(vw);
   return narrow - 2 - 2 * DASH_GAP;
 }
+/* Three pills over the same inner height two bag rows occupy, so all three
+   panels end on the same baseline. */
+export function combatPillHeight(vw) {
+  return panelRowHeight(vw, 3);
+}
+
+/* v2.3.1649 (owner: "shift the DPS number data to be aligned above the
+   weapon").  The weapon is the EQUIPPED panel's top-LEFT cell, so this is
+   the width of the box the identity row must centre DPS inside: the
+   panel's border + padding on the left, the cell, and the mirror of that
+   inset on the right.  Centring content in it puts DPS dead over the
+   weapon at every viewport, which an eyeballed left-offset would not. */
+export function weaponAnchorWidth(vw) {
+  return equipCellSize(vw).w + 2 * (1 + DASH_GAP);
+}
 
 /* v2.3.1647 (owner: "increase the size of the dashboard by about 50% of
    the space between its current height and the joysticks area — the exact
    height can be determined by whatever slot spacing that could use the
    extra room makes the most sense"): THREE tile rows, not two.  The extra
-   room buys a whole row of bag slots rather than padding. */
-export const DASH_ROWS = 3;
+   room buys a whole row of bag slots rather than padding.
+   v2.3.1649: TWO rows of the new 64px tile.  The band's height is
+   essentially unchanged (151 vs 150 at 390x844) — the same vertical budget
+   now buys four big slots instead of nine small ones, which is the trade
+   the owner asked for in as many words. */
+export const DASH_ROWS = 2;
 
 export function columnsRowHeight(vw) {
   /* +1 for the ROW's own bottom hairline.  The row is box-sizing:border-box
      at height:100% of this number, so that 1px rule comes out of the
      content box — measured as 3.5 / 4 / 3.5 vertically (the half-pixels
      being the shortfall split by centring) until it was accounted for. */
-  return DASH_ROWS * dashTileSize(vw) + (DASH_ROWS + 1) * DASH_GAP + 2 + 2 * DASH_GAP + 1;
+  return panelInnerHeight(vw) + 2 * DASH_GAP + 2 + 2 * DASH_GAP + 1;
 }
 
 /* v2.3.1635 (owner: bring back a persistent sense of identity and

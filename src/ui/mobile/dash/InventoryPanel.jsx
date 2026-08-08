@@ -7,6 +7,7 @@ import { reconcileGearStash } from '../../../rendering/gearCatalog.js';
 import { getBagEntries } from './bagModel.js';
 import { getEquippedSlots, getEquipContribs, GHOST_SRC } from '../sheet/equipModel.js';
 import { dashTileSize, DASH_GAP, DASH_ROWS } from '../sheet/sheetGeometry.js'; /* v2.3.1646 */ /* v2.3.1328: contribs */
+import { bagFilterBus } from './bagFilterBus.js'; /* v2.3.1649 */
 import { unequipWeaponSlot, unequipShieldDirect, unequipArmorDirect, unequipGearDirect } from './equipActions.js'; /* v2.3.1330 */
 import { getEquip } from '../../../rendering/gearCatalog.js';
 
@@ -188,10 +189,13 @@ export const ItemTile = ({ ikey, count, style: styleOverride }) => {
   );
 };
 
-/* v2.3.1293 (ChatGPT round-3 §6): the selected filter survives leaving
-   the destination — module-scoped, session-only.  Switching to Hero
-   and back should not silently reset a Weapon filter to All. */
-let _lastFilter = 'all';
+/* v2.3.1293 (ChatGPT round-3 §6): the selected filter survives leaving the
+   destination — module-scoped, session-only.  Switching to Hero and back
+   should not silently reset a Weapon filter to All.
+   v2.3.1649: that state moved to bagFilterBus, because the chips that set
+   it now live in the band's top row and this module is no longer the only
+   thing that needs to read it.  The RULE is unchanged and the bus is
+   module-scoped for exactly the same reason. */
 /* v2.3.1326 (owner: "bag [gets] two tabs at top — one for items in
    inventory and another for equipped items; keeps the views cleaner"):
    the active tab survives leaving the destination, same as the filter. */
@@ -227,9 +231,14 @@ const StatGlyph = ({ k, size }) => (
 
 export const InventoryPanel = () => {
   const [, force] = useState(0);
-  /* v2.3.1645: pinned to whatever was last chosen (in practice 'all') —
-     the chips that called setFilter are retired; see the render. */
-  const [filter] = useState(_lastFilter);
+  /* v2.3.1649 (owner: "you can put all of the filter chips there to sort
+     the inventory items"): the filter is LIVE again, driven by the chips
+     that now live in the band's top row (BagFilterChips) through
+     bagFilterBus.  The v2.3.1293 "survives leaving the destination" rule is
+     unchanged — the bus is module-scoped, so it holds the choice exactly as
+     the local _lastFilter did while the chips were retired. */
+  const [filter, setFilter] = useState(bagFilterBus.get());
+  useEffect(() => bagFilterBus.subscribe(setFilter), []);
   /* v2.3.1328b (owner: "don't display the stats of each item unless
      it's tapped"): which equipped card is selected — the right pane is
      a FIXED display window showing the aggregate when nothing is
@@ -335,8 +344,12 @@ export const InventoryPanel = () => {
      goes from 12 visible slots to 18. */
   const vwNow = typeof window !== 'undefined' ? window.innerWidth : 390;
   const TILE = dashTileSize(vwNow);
-  /* panel padding 6+6 and tray padding 6+6 come off the usable width. */
-  const COLS = Math.max(4, Math.floor((vwNow - 24 + DASH_GAP) / (TILE + DASH_GAP)));
+  /* panel padding 6+6 and tray padding 3+3 come off the usable width.
+     v2.3.1649: the floor drops from 4 columns to 3 — at the new 64px tile a
+     390px phone fits five, but a 320-class screen fits four and the old
+     floor of 4 would have forced a horizontal overflow on anything
+     narrower rather than simply showing fewer, bigger slots. */
+  const COLS = Math.max(3, Math.floor((vwNow - 18 + DASH_GAP) / (TILE + DASH_GAP)));
   const shownItems = filtered;
   const usedTiles = shownItems.length;
   /* v2.3.1645 (owner: "without filters to make room for extra slots"):
@@ -345,11 +358,14 @@ export const InventoryPanel = () => {
      matter how much room the retired filter track gave back.  The row
      measurement above guarantees two rows fit; this is what actually puts
      slots in them. */
-  /* v2.3.1648: the floor is DASH_ROWS — the same three rows the dashboard's
-     own panels get, because the open panel's body is exactly as tall as the
-     columns row it replaces (the v2.3.1638 one-height rule).  At two rows
-     the tray left ~40px of its own height blank, measured. */
-  const totalCells = Math.max(COLS * DASH_ROWS, Math.ceil(usedTiles / COLS) * COLS);
+  /* v2.3.1649 (owner: "2 rows should be fully visible keeping the shading
+     effect on the very bottom row to indicate scrolling is possible"): the
+     floor is DASH_ROWS + 1.  Two rows is what the tray's height affords in
+     full; the extra row is what the fade at the tray's bottom edge is
+     FADING — without it a bag holding eight items showed a fade over blank
+     tray, which reads as a rendering artifact rather than as "keep
+     scrolling".  A partial third row of empty slots is the affordance. */
+  const totalCells = Math.max(COLS * (DASH_ROWS + 1), Math.ceil(usedTiles / COLS) * COLS);
 
   const R = (S && S.rpg) || {};
   const equipped = getEquippedSlots(R);
@@ -374,8 +390,12 @@ export const InventoryPanel = () => {
          10->2 (the tray's own 18px fade is the bottom edge treatment;
          dead margin above the toolbar bought nothing).  Local override
          only: other panels keep panelStyle's padding. */
-      /* v2.3.1643: the Bag's local override tightens with panelStyle. */
-      padding: '4px 6px 2px' }}>
+      /* v2.3.1643: the Bag's local override tightens with panelStyle.
+         v2.3.1649: 4/2 -> 2/2 vertical.  The budget is exact now and every
+         pixel is spoken for: the panel body is var(--cols-h) tall (the
+         v2.3.1638 one-height rule), and TWO whole 64px rows plus the 9px
+         edge fade need all but four of them. */
+      padding: '2px 6px 2px' }}>
 
       {/* v2.3.1639 (owner: "remove 'items' and 'equipped' buttons since
           equipped is visible from the dashboard view").  The v2.3.1326
@@ -758,7 +778,11 @@ export const InventoryPanel = () => {
                padding 8→6 and grid gap 6→4 hand each of the 8 columns
                ~2.3px more width (tiles are square, so height follows),
                and the removed BAG label row absorbs the taller rows. */
-            padding: 6,
+            /* v2.3.1649: 6 -> 3.  See the panel padding above — the two
+               full rows the owner asked for do not fit at 6, and inset
+               padding is the cheapest of the three things competing for
+               that height (the others being a row and the scroll cue). */
+            padding: 3,
             flex: 1,
             minHeight: 0,
             /* v2.3.1285: overflow rows scroll inside the tray; the
@@ -770,9 +794,14 @@ export const InventoryPanel = () => {
             WebkitOverflowScrolling: 'touch',
             /* v2.3.1643: the fade was 18px of a 93px panel — a fifth of
                the tray permanently dimmed.  10 still reads as "more
-               below" without eating a whole item row. */
-            WebkitMaskImage: 'linear-gradient(180deg, #000 calc(100% - 10px), transparent)',
-            maskImage: 'linear-gradient(180deg, #000 calc(100% - 10px), transparent)',
+               below" without eating a whole item row.
+               v2.3.1649 (owner: "keeping the shading effect on the very
+               bottom row to indicate scrolling is possible"): 9px, and the
+               height budget above now guarantees it falls BELOW row two
+               rather than across it — the shading is on the partial third
+               row, which is the row that is actually cut off. */
+            WebkitMaskImage: 'linear-gradient(180deg, #000 calc(100% - 9px), transparent)',
+            maskImage: 'linear-gradient(180deg, #000 calc(100% - 9px), transparent)',
           }}>
           <div style={{
             display: 'grid',
@@ -793,8 +822,10 @@ export const InventoryPanel = () => {
                14 -> 10 (tighter budget; still holds the last row off
                the 18px fade at scroll end). */
             /* v2.3.1643: 10 -> 4.  Scroll clearance still holds the last
-               row off the edge fade, which also shrinks below. */
-            paddingBottom: 4,
+               row off the edge fade, which also shrinks below.
+               v2.3.1649: 0 — the fade IS the bottom treatment now and the
+               partial third row is meant to meet it. */
+            paddingBottom: 0,
           }}>
             {(() => {
               /* v2.3.1350: with measured rows the tiles fill their row

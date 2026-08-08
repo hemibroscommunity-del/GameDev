@@ -4,6 +4,7 @@ import { combatLevelProgress, unspentPointsTotal } from './heroModel.js';
 import { getActiveWeapon, calcDisplayDmgRange, calcDisplayDps } from '../../../data/gameSystems.js';
 import { portraitStore } from './portraitStore.js';
 import { dashboardPanelBus } from '../dashboardPanelBus.js';
+import { weaponAnchorWidth } from './sheetGeometry.js'; /* v2.3.1649 */
 
 /* v2.3.1294 (ChatGPT round-4): the identity strip — one compact row
    that replaces the retired top-right world card.  Portrait (with the
@@ -73,6 +74,143 @@ export const IdentityStrip = ({ band = false }) => {
   /* v2.3.1637: the numbers the EQUIPPED column used to carry. */
   const dmgRange = wpn ? calcDisplayDmgRange(R, wpn) : null;
   const dps = dmgRange ? Math.round(calcDisplayDps(R, wpn) * 10) / 10 : 0;
+  const vwNow = typeof window !== 'undefined' ? window.innerWidth : 390;
+
+  /* v2.3.1649 (owner: "shift the player HUD data to the left and have the
+     coin amount above the inventory preview slots ... shift the DPS number
+     data to be aligned above the weapon").  In the BAND the strip stops
+     being a flex row of chips and becomes TWO GRID ITEMS placed on the
+     columns row's own tracks — track 1 over BAG, track 2 over EQUIPPED.
+     The parent (BottomDashboard's top row) owns the track definition and
+     puts the nav group in track 3.
+
+     ALIGNMENT IS STRUCTURAL, NOT EYEBALLED.  "Above the bag" and "above the
+     weapon" are promises about two different columns at every viewport
+     width, and the only way to keep them is to share the geometry that
+     places those columns (dashPanelWidths / weaponAnchorWidth).  A tuned
+     left-offset would have been right at 390 and wrong at 360 and 430.
+
+     Hero compact/expanded do NOT pass `band` and fall through to the
+     unchanged flex row below — the pixel-identical rule at the top of this
+     file is why this is a branch and not an edit. */
+  if (band) {
+    const portraitNode = (
+      <div
+        role="button" aria-label="Hero" title="Hero"
+        onPointerUp={(e) => { e.stopPropagation(); dashboardPanelBus.open('hero'); }}
+        style={{
+          position: 'relative', width: 40, height: 40, flex: 'none',
+          cursor: 'pointer', touchAction: 'manipulation',
+        }}>
+        <img
+          src={portrait || (S && S.myAvatar) || '/icons/ui/profile.webp?v=2.3.128'}
+          alt="Portrait" draggable={false}
+          style={{
+            width: '100%', height: '100%',
+            objectFit: 'cover', imageRendering: 'pixelated',
+            borderRadius: 8, userSelect: 'none', pointerEvents: 'none',
+          }} />
+        <span style={{
+          position: 'absolute', right: -2, bottom: -2,
+          width: 7, height: 7, borderRadius: '50%',
+          background: (S && S._realtimeStatus === 'connected') ? '#55B98A' : '#D95C54',
+          border: '2px solid #202C32',
+        }} />
+        {/* v2.3.1649: the unspent-points nag moves ONTO the portrait.  It
+            was a standalone brass chip in the flex row, and track 1 has no
+            width to spare for one — but the portrait IS the Hero button
+            (v2.3.1637), Hero is where points are spent, and a count badge
+            on the control that opens the screen is a truer place for it
+            than a chip floating beside the name.
+            This also keeps the GLOBAL total visible.  The COMBAT pills
+            show per-skill unspent, but only for melee/bow/magic — after
+            v2.3.1648 dropped the other three parents from the band, points
+            waiting in Vitality/Defense/Stamina would otherwise have had no
+            signal anywhere on the resting screen. */}
+        {unspent > 0 && (
+          <span aria-label={unspent + ' unspent build points'} style={{
+            position: 'absolute', top: -4, right: -6,
+            minWidth: 17, height: 17, padding: '0 4px',
+            borderRadius: 9, background: COL.accent, color: COL.onAccent,
+            fontSize: 11, fontWeight: 900, lineHeight: '17px', textAlign: 'center',
+            fontVariantNumeric: 'tabular-nums', pointerEvents: 'none',
+            border: '1px solid rgba(9,14,17,.55)',
+          }}>+{unspent}</span>
+        )}
+      </div>
+    );
+    return (
+      <>
+        {/* TRACK 1 — over the BAG panel.  Portrait, then two lines: who you
+            are on top, what you have underneath. */}
+        <div style={{
+          gridColumn: 1, minWidth: 0,
+          display: 'flex', alignItems: 'center', gap: 6,
+          fontFamily: 'Source Sans 3, sans-serif',
+        }}>
+          {portraitNode}
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, minWidth: 0 }}>
+              <span style={{
+                flex: 1, minWidth: 0,
+                /* v2.3.1649: 13 -> 14.  The row lost the DMG chip and the
+                   floating +N, and the owner's standing note is that the
+                   band's text is too small — the freed width goes into type
+                   size, not into more elements. */
+                fontSize: 14, fontWeight: 700, color: COL.text,
+                whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+              }}>{(S && S.myName) || 'Anon'}</span>
+              <span style={{ flex: 'none', fontSize: 12, fontWeight: 600, color: COL.text2 }}>Lv {level}</span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 3 }}>
+              <div title={`${lp.prog} / ${lp.thresh} XP`} style={{
+                /* v2.3.1649: the bar goes back to flex — it shares this
+                   line with gold now instead of with the exact numbers,
+                   and it is the element that can give up width gracefully.
+                   THE EXACT XP NUMBERS LEAVE THE BAND: 96px of track 1 does
+                   not hold a bar, "0 / 455" and a coin count at sizes the
+                   owner can read, and of the three the numbers are the one
+                   Hero already shows in full. */
+                flex: '1 1 auto', minWidth: 20, height: 5, borderRadius: 3,
+                background: 'rgba(0,0,0,.5)', border: '1px solid rgba(255,255,255,.08)',
+                overflow: 'hidden',
+              }}>
+                <div style={{ width: `${Math.min(100, (lp.prog / lp.thresh) * 100)}%`, height: '100%', background: '#8AA9F9' }} />
+              </div>
+              {/* GOLD — "above the inventory preview slots" (owner).  It sat
+                  at the row's far right through v2.3.1648, which is over the
+                  COMBAT pills; here it is over the bag it counts for. */}
+              <span style={{
+                flex: 'none', display: 'inline-flex', alignItems: 'center', gap: 3,
+                color: COL.gold, fontSize: 14, fontWeight: 700, fontVariantNumeric: 'tabular-nums',
+              }}>
+                <img src="/icons/popups/gold.webp" alt=""
+                  style={{ width: 14, height: 14, imageRendering: 'pixelated', display: 'block' }} />
+                <span className="bt-coin-glimmer">{Number(gold).toLocaleString()}</span>
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* TRACK 2 — over the EQUIPPED panel.  The anchor box is exactly the
+            weapon cell plus the panel inset on either side, so centring
+            inside it puts DPS dead over the weapon. */}
+        <div style={{ gridColumn: 2, minWidth: 0, display: 'flex', fontFamily: 'Source Sans 3, sans-serif' }}>
+          {dmgRange && (
+            <div style={{ width: weaponAnchorWidth(vwNow), flex: 'none', display: 'flex', justifyContent: 'center' }}>
+              <span style={{
+                display: 'inline-flex', alignItems: 'baseline', gap: 4,
+                padding: '2px 7px', borderRadius: 8,
+                background: COL.slot, border: '1px solid ' + COL.tileBor,
+                color: COL.muted, fontSize: 11, fontWeight: 700, lineHeight: 1.25,
+                whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums',
+              }}>DPS <b style={{ color: COL.text, fontSize: 14 }}>{dps}</b></span>
+            </div>
+          )}
+        </div>
+      </>
+    );
+  }
 
   return (
     <div style={{
