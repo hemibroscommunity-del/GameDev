@@ -208,8 +208,21 @@ export function dashTileSize(vw) {
    the band is unchanged (TouchControls keys off --dash-h). */
 export const BAG_HEADER_H = 26;
 
+/* v2.3.1654 (owner: "make the bag slots scrollable downward same as bag
+   view was").  The sliver of a THIRD row that proves the grid continues.
+   Without it the dashboard's two rows exactly fill their scroller and the
+   panel looks complete when it is not — the same lie the open Bag view
+   told before v2.3.1649 gave it this peek.  It is also what the bottom
+   fade fades: a gradient over blank tray reads as a rendering artifact,
+   a gradient over half a row reads as "keep going". */
+export const BAG_PEEK_H = 12;
+/* 12, not 9: at 9 the sliver of row three came to 5px (measured) and the
+   9px fade sat entirely on top of it, so the cue it exists to give was
+   the one thing it could not give.  12 leaves 8px of row showing — the
+   same peek the open Bag view has had since v2.3.1649. */
+
 export function panelInnerHeight(vw) {
-  return DASH_ROWS * dashTileSize(vw) + (DASH_ROWS - 1) * DASH_GAP + BAG_HEADER_H + DASH_GAP;
+  return DASH_ROWS * dashTileSize(vw) + (DASH_ROWS - 1) * DASH_GAP + BAG_HEADER_H + DASH_GAP + BAG_PEEK_H;
 }
 export function panelRowHeight(vw, rows) {
   return Math.floor((panelInnerHeight(vw) - (rows - 1) * DASH_GAP) / rows);

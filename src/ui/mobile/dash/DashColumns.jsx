@@ -72,7 +72,7 @@ import { dashTileSize, dashPanelWidths, combatPillWidth, combatPillHeight, BAG_V
    something the CONTENTS say once you have looked twice: items, worn
    gear, skill icons.  With them gone the grid distributes over the whole
    panel instead of a strip beneath a caption. */
-const Column = ({ children, onTap, label }) => (
+const Column = ({ children, onTap, label, stretch }) => (
   <div
     role={onTap ? 'button' : undefined}
     aria-label={label}
@@ -88,7 +88,10 @@ const Column = ({ children, onTap, label }) => (
          panel is now exactly as tall as its contents, so there is no
          surplus left to distribute and 'evenly' would only reintroduce
          the uneven edges this removes. */
-      alignItems: 'center', justifyContent: 'center',
+      /* v2.3.1654: `stretch` opts the BAG panel out of centring — its
+         scroller has to be told a height to scroll inside, and a centred
+         flex child sizes to its content instead. */
+      alignItems: 'center', justifyContent: stretch ? 'flex-start' : 'center',
       padding: DASH_GAP, gap: DASH_GAP,
       minWidth: 0, overflow: 'hidden',
       cursor: onTap ? 'pointer' : 'default',
@@ -113,47 +116,23 @@ export const DashColumns = ({ R }) => {
      its own header sets — a header that changed a different screen's list
      would be the worst of both. */
   const entries = getBagEntries(R).filter(e => bagFilter === 'all' || e.cat === bagFilter);
-  const openBag = () => dashboardPanelBus.open('bag');
-  /* v2.3.1649 (owner: "I think 4 slots can only be visible on the
-     dashboard.  The rest can be put into full bag view"): FOUR cells —
-     BAG_COLS across, DASH_ROWS down.  The +N overflow chip still rides the
-     last cell, and it is doing more work than it used to: with four
-     previews instead of nine it is the honest "there is more in here"
-     marker AND the tap target that opens the full bag. */
-  const BAG_CELLS = BAG_VIEW_COLS * DASH_ROWS;
-  const shown = entries.length > BAG_CELLS ? entries.slice(0, BAG_CELLS - 1) : entries.slice(0, BAG_CELLS);
-  const overflow = entries.length > BAG_CELLS ? entries.length - (BAG_CELLS - 1) : 0;
-  const bagCells = [];
-  for (let i = 0; i < BAG_CELLS; i++) {
-    if (i === BAG_CELLS - 1 && overflow > 0) {
-      bagCells.push(
-        <div key="bag-more" onPointerUp={(e) => { e.stopPropagation(); openBag(); }}
-          title={`${overflow} more — open the Bag`}
-          style={{
-            width: t, height: t, flex: 'none',
-            background: COL.wellSoft, border: `1px solid ${COL.tileBor}`, borderRadius: 6,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: 15, fontWeight: 800, color: COL.text2,
-            fontVariantNumeric: 'tabular-nums', cursor: 'pointer',
-          }}>+{overflow}</div>
-      );
-    } else if (shown[i]) {
-      bagCells.push(
-        <div key={`bag-${i}`} style={{ width: t, height: t, flex: 'none' }}>
-          <BagTile entry={shown[i]} style={{ width: t, height: t, aspectRatio: 'auto' }} />
-        </div>
-      );
-    } else {
-      bagCells.push(
-        <div key={`bag-${i}`} onPointerUp={(e) => { e.stopPropagation(); openBag(); }}
-          style={{
-            width: t, height: t, flex: 'none',
-            background: COL.well, border: `1px solid ${COL.tileBor}`, borderRadius: 6,
-            cursor: 'pointer',
-          }} />
-      );
-    }
-  }
+  /* v2.3.1654 (owner: "make the bag slots scrollable downward same as bag
+     view was").  The dashboard's bag stops being a PREVIEW with a +N
+     overflow chip and becomes the list itself: every entry renders, two
+     rows are visible, and the rest is a scroll away behind the same bottom
+     fade the open Bag view uses.
+
+     THE +N CHIP IS GONE WITH THE TRUNCATION IT ANNOUNCED.  It existed to
+     say "there are more items than fit"; when the answer to that is
+     "scroll", a cell that spends a slot saying so is a slot not showing an
+     item.  The peek row under the fade says the same thing and costs
+     nothing.
+
+     A FLOOR OF THREE ROWS, not two: with only two the grid exactly fills
+     its scroller, nothing moves, and the fade sits over blank tray. */
+  const bagRows = Math.max(DASH_ROWS + 1, Math.ceil(entries.length / BAG_VIEW_COLS));
+  const bagCellCount = bagRows * BAG_VIEW_COLS;
+  const gridW = BAG_VIEW_COLS * t + (BAG_VIEW_COLS - 1) * DASH_GAP;
 
   /* ── LOADOUT ── */
   /* v2.3.1653 (owner: "move the equipped view to be merged with the
@@ -273,13 +252,32 @@ export const DashColumns = ({ R }) => {
           dashboard view's bag slots also get the filters as the headers"
           in one panel.  The header is sized from the same COLS/TILE the
           rows use, so each chip lands one slot wide. */}
-      <Column label="Bag" onTap={openBag}>
-        <BagFilterChips
-          width={BAG_VIEW_COLS * t + (BAG_VIEW_COLS - 1) * DASH_GAP}
-          height={BAG_HEADER_H} />
-        {Array.from({ length: DASH_ROWS }, (_, r) => (
-          <div key={`bagrow-${r}`} style={tileRow}>{bagCells.slice(r * BAG_VIEW_COLS, r * BAG_VIEW_COLS + BAG_VIEW_COLS)}</div>
-        ))}
+      <Column label="Bag" stretch>
+        <BagFilterChips width={gridW} height={BAG_HEADER_H} />
+        {/* The scroller.  It is the ONLY thing on this row that scrolls —
+            the world behind never does (the v2.3.1285 rule), and the panel
+            itself stays exactly as tall as the band. */}
+        <div style={{
+          width: gridW, flex: 1, minHeight: 0,
+          overflowY: 'auto', touchAction: 'pan-y', WebkitOverflowScrolling: 'touch',
+          WebkitMaskImage: 'linear-gradient(180deg, #000 calc(100% - 9px), transparent)',
+          maskImage: 'linear-gradient(180deg, #000 calc(100% - 9px), transparent)',
+        }}>
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: `repeat(${BAG_VIEW_COLS}, ${t}px)`,
+            gridAutoRows: `${t}px`,
+            gap: DASH_GAP,
+          }}>
+            {Array.from({ length: bagCellCount }, (_, i) => (
+              entries[i]
+                ? <BagTile key={`bag-${i}`} entry={entries[i]} style={{ aspectRatio: 'auto', height: '100%' }} />
+                : <div key={`bag-${i}`} aria-hidden="true" style={{
+                    background: COL.well, border: `1px solid ${COL.tileBor}`, borderRadius: 6,
+                  }} />
+            ))}
+          </div>
+        </div>
       </Column>
 
       {/* v2.3.1648: three pills stacked over the same inner height the

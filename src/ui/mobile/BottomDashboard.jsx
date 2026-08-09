@@ -460,7 +460,7 @@ const PANELS = {
    gone (the bus keeps the mechanism, registered empty). */
 const DESTINATIONS = [
   { id: 'bag',    label: 'Bag',     icon: '/icons/ui/nav-inventory.webp?v=2.3.1224' },
-  { id: 'hero',   label: 'Hero',    icon: '/icons/ui/panel-self.webp?v=2.3.1224' },
+  { id: 'hero',   label: 'Character', icon: '/icons/ui/panel-self.webp?v=2.3.1224' },
   /* v2.3.1331 (owner art drop): dedicated life-skills crest replaces
      the borrowed panel-skills art (magenta knocked out, 256px webp). */
   { id: 'skills', label: 'Skills',  icon: '/icons/ui/nav-lifeskills.webp?v=2.3.1331' },
@@ -508,7 +508,16 @@ const DESTINATIONS = [
    before More rather than after it, so More stays the last thing in the
    row — it is the overflow, and an overflow that is not on the end reads
    as just another destination. */
-const RAIL_ORDER = ['bag', 'quests', 'more'];
+/* v2.3.1654 (owner: "you can replace bag view navigation with the
+   character view").  Dashboard, Character, Quests, More.
+
+   Bag's button had nothing left to open.  Since v2.3.1653 the resting
+   dashboard IS the bag — four columns, its own filter header, and now its
+   own scroll — so a Bag destination would have been a second, slightly
+   wider copy of the screen you are already looking at.  The character
+   view is what actually gained content in that trade (Hero > Overview
+   took the equipped slots and their stat cards), so it takes the button. */
+const RAIL_ORDER = ['hero', 'quests', 'more'];
 const RAIL_ITEMS = [
   { id: 'dashboard', label: 'Dashboard', icon: '/icons/ui/panel-stats.webp?v=2.3.1637' },
   ...RAIL_ORDER.map(id => DESTINATIONS.find(d => d.id === id)).filter(Boolean),
