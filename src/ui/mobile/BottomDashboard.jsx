@@ -18,7 +18,7 @@ import { getShirt, onShirtChange } from '../../rendering/traits/shirtCatalog.js'
 import { getShirtColor, shirtColorTarget, onShirtColorChange } from '../../rendering/traits/shirtColorCatalog.js';
 import { getEquip } from '../../rendering/gearCatalog.js';
 import { dashboardPanelBus } from './dashboardPanelBus.js';
-import { barHeight, expandedSheetHeight, drillSheetHeight, dashPanelWidths, navGroupWidth, DASH_GAP } from './sheet/sheetGeometry.js'; /* v2.3.1283; v2.3.1350 two-state; v2.3.1311e drill height; v2.3.1325 slot-derived bar */
+import { barHeight, expandedSheetHeight, drillSheetHeight, dashPanelWidths, DASH_GAP } from './sheet/sheetGeometry.js'; /* v2.3.1283; v2.3.1350 two-state; v2.3.1311e drill height; v2.3.1325 slot-derived bar */
 import { DashColumns } from './dash/DashColumns.jsx';           /* v2.3.1636 */
 import { NavRail } from './dash/NavRail.jsx';                   /* v2.3.1637 */
 import { portraitStore } from './sheet/portraitStore.js';          /* v2.3.1294 */
@@ -729,12 +729,6 @@ export const BottomDashboard = () => {
      below.  One call, so the two rows can never disagree about where a
      column starts. */
   const dashCols = dashPanelWidths(typeof window !== 'undefined' ? window.innerWidth : 390);
-  /* How far the nav group overhangs track 3 to its left — 38px at 390w.
-     Anything else placed on tracks 1-2 has to stop short of it. */
-  const navOverhang = Math.max(0, navGroupWidth(
-    typeof window !== 'undefined' ? window.innerWidth : 390,
-    typeof window !== 'undefined' ? window.innerHeight : 844,
-  ) - dashCols.narrow - DASH_GAP);
 
   /* v2.3.1236: owner dashboard feedback §6 — the build-points XP strip
      (v2.3.114 bottom trim -> v2.3.152 BP progress -> v2.3.821/v2.3.1227
@@ -925,11 +919,11 @@ export const BottomDashboard = () => {
         zIndex: 3,
         boxSizing: 'border-box',
         padding: `0 ${DASH_GAP}px`,
-        display: 'grid',
-        gridTemplateColumns: `${dashCols.wide}px ${dashCols.wide}px ${dashCols.narrow}px`,
-        justifyContent: 'center',
-        gap: DASH_GAP,
-        alignItems: 'center',
+        /* v2.3.1653: a flex row again.  The grid existed to put the strip
+           on the columns row's tracks; with two panels below and no weapon
+           cell to align to, there is nothing left for the tracks to keep
+           in register — see IdentityStrip. */
+        display: 'flex', alignItems: 'center', gap: DASH_GAP,
         borderBottom: mode === 'expanded' ? 'none' : `1px solid ${COL.divider}`,
       }}>
         {/* v2.3.1650 (owner: "put player HUD in same spot when the 'more
@@ -951,7 +945,7 @@ export const BottomDashboard = () => {
             chips that displaced it here have moved into the Bag panel as
             their own header row, so the two are no longer competing for
             one row and the HUD never moves or disappears. */}
-        <IdentityStrip band gutter={navOverhang} trackW={dashCols.wide} />
+        <IdentityStrip band />
         {/* Track 3, right-aligned.  The group is WIDER than the narrow
             track (132 vs 90 at 390w) and deliberately overflows it to the
             LEFT: track 2 holds only the DPS anchor box, which is pinned to
@@ -960,7 +954,7 @@ export const BottomDashboard = () => {
             down to fit the track instead would have put them back at 24px
             wide — the size the owner asked to grow away from at
             v2.3.1644. */}
-        <div style={{ gridColumn: 3, justifySelf: 'end', display: 'flex', alignItems: 'center' }}>
+        <div style={{ flex: 'none', display: 'flex', alignItems: 'center' }}>
           <NavRail
             items={RAIL_ITEMS}
             litId={litId}

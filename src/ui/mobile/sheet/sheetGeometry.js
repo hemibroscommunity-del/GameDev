@@ -131,75 +131,56 @@ export const DASH_GAP = 4;
    existed because three columns of six squares each read as three
    unrelated widgets when their widths were content-derived; that reason
    does not apply to a column whose content is a different shape on
-   purpose.  Reverting is one constant: set NARROW_SHARE to 1/3. */
-const NARROW_SHARE = 0.24;
+   purpose.
 
-/* v2.3.1649 (owner: "the inventory slots need to be about 50% larger.  I
-   think 4 slots can only be visible on the dashboard.  The rest can be put
-   into full bag view").  THE SLOT SIZE IS THE COLUMN COUNT.  Panel widths
-   did not change here at all — the bag simply stopped putting three
-   squares across a 142px panel and started putting TWO, and the tile that
-   falls out of the same padding algebra is 64px instead of 41.  That is
-   the "about 50%" the owner asked for (+56%), derived rather than dialled
-   in, and it is why there is no magic multiplier anywhere below.
+   v2.3.1653: EQUIPPED left the band entirely (see below), so there is no
+   third column left to relax the rule against — the rule and the constant
+   that reverted it are both gone. */
 
-   FOUR VISIBLE SLOTS is the arithmetic consequence the owner already
-   anticipated: two across, and the band's height affords two rows.  What
-   used to be nine cramped previews is four you can actually identify, and
-   the tenth-and-beyond were already only reachable by opening the Bag. */
-export const BAG_COLS = 2;
+/* v2.3.1653 (owner: "make the dashboard view the main bag view and move
+   the equipped view to be merged with the character overview ... the
+   combat stats stay on the right in their own column").  TWO panels, not
+   three: BAG and COMBAT.
+
+   EQUIPPED did not shrink — it LEFT, for the screen where its numbers
+   finally have room (Hero > Overview).  What it hands the bag is its
+   whole 142px column, and the bag spends it on columns: four slots across
+   instead of two, so the resting band shows EIGHT items with a working
+   filter header rather than four with none.  That is the "main bag view"
+   in one sentence.
+
+   The bag panel is SNAPPED to exactly what four whole slots need and the
+   remainder goes to COMBAT, the same rule v2.3.1648 set: a panel may only
+   be a width its own contents tile exactly, or centring splits the
+   leftover into half-pixels at the edges. */
+export const BAG_VIEW_COLS = 4;
 
 export function dashPanelWidths(vw) {
-  const avail = vw - 4 * DASH_GAP;
-  const target = Math.round(Math.min(Math.max(avail * NARROW_SHARE, 76), 130));
-  /* The wide panel is SNAPPED to exactly what its whole squares need, and
-     the rounding remainder goes to the narrow one.  Taking the naive half
-     instead left 1px over inside each wide panel, and centring split it —
-     measured 4.5 / 4 / 4 / 4.5 across the bag's top row, which is the same
-     half-pixel asymmetry v2.3.1640 was created to kill.  A panel may only
-     be a width its own contents tile exactly. */
-  const t = dashTileSizeFor(Math.floor((avail - target) / 2));
-  const wide = BAG_COLS * t + 2 + (BAG_COLS + 1) * DASH_GAP;
-  return { wide, narrow: avail - 2 * wide, avail };
+  /* Two panels: two frame paddings and ONE gap between them. */
+  const avail = vw - 3 * DASH_GAP;
+  const wide = BAG_VIEW_COLS * dashTileSize(vw) + (BAG_VIEW_COLS - 1) * DASH_GAP + 2 * DASH_GAP + 2;
+  return { wide, narrow: avail - wide, avail };
 }
 
-function dashTileSizeFor(wide) {
-  /* BAG_COLS squares across a WIDE panel: its border, its own padding on
-     both sides and the gaps between them all come off first.
-     v2.3.1649: the 56 cap is lifted to 76 — it existed to stop a tablet
-     blowing up 3-across tiles, and at 2-across it would have clamped the
-     phone case itself (64) and quietly undone the whole change. */
-  return Math.floor(Math.min(Math.max((wide - 2 - (BAG_COLS + 1) * DASH_GAP) / BAG_COLS, 36), 76));
-}
-
+/* The bag TILE keeps the width it has had since v2.3.1649 — the owner's
+   "about 50% larger", and the size the open Bag view matches (v2.3.1646).
+   It is anchored to the viewport now rather than divided out of a panel,
+   because the panel is derived FROM it in the two-panel layout above. */
 export function dashTileSize(vw) {
-  return dashTileSizeFor(dashPanelWidths(vw).wide);
+  return Math.floor(Math.min(Math.max(vw * 0.164, 40), 76));
 }
 
-/* v2.3.1648: the EQUIPPED cell — TWO across, THREE rows, and WIDER THAN
-   TALL.  It was three across / two rows of the same square the bag uses,
-   and measured that left 26.5px of dead panel above and below the block
-   (the bag's third row had nothing to pair with, since there are exactly
-   six equip slots and no seventh).  Two-by-three fills the panel to the
-   pixel, puts all three panels on the SAME three baselines, and grows each
-   worn-gear target from 41x41 to 66x41 — 60% more area for the thumb,
-   which is the half of "too small to use" that a bigger icon can't fix.
-   The icon itself is still bound by the 41px height; at three across on a
-   390px phone nothing can make it bigger, which is stated plainly rather
-   than worked around. */
-/* v2.3.1649: the equipped block keeps its 2x3 shape, but its cell height
-   is now derived from the PANEL rather than borrowed from the bag tile.
-   The bag went to two rows; six equip slots still want three, so the two
-   numbers parted company and the old `h: dashTileSize(vw)` would have made
-   the equipped block 64*3 tall inside a 132px panel and clipped the bottom
-   row against overflow:hidden — the v2.3.1637 bug, one layout later. */
-export function equipCellSize(vw) {
-  const { wide } = dashPanelWidths(vw);
-  return {
-    w: Math.floor((wide - 2 - 3 * DASH_GAP) / 2),
-    h: panelRowHeight(vw, 3),
-  };
-}
+/* v2.3.1653: the three-panel algebra (dashTileSizeFor, BAG_COLS,
+   NARROW_SHARE) is deleted with the third panel.  It sized BAG and
+   EQUIPPED as equal wide columns against a narrow COMBAT; with EQUIPPED
+   gone to Hero there is nothing left to be equal TO, and keeping it would
+   have left two ways to compute a panel width with only one of them true.
+   Git history has it at v2.3.1652. */
+
+/* v2.3.1653: equipCellSize is retired.  It sized the band's EQUIPPED
+   panel, and Hero > Overview — where those slots now live — sizes its own
+   grid against that screen's left column rather than the band's.  Its 2x3
+   / 66x41 history is at v2.3.1652. */
 
 /* The height of one of `rows` stacked children inside a panel whose inner
    box is panelInnerHeight — the single place the "three equipped rows and
@@ -257,9 +238,11 @@ export function combatPillHeight(vw) {
    panel's border + padding on the left, the cell, and the mirror of that
    inset on the right.  Centring content in it puts DPS dead over the
    weapon at every viewport, which an eyeballed left-offset would not. */
-export function weaponAnchorWidth(vw) {
-  return equipCellSize(vw).w + 2 * (1 + DASH_GAP);
-}
+/* v2.3.1653: RETIRED.  It centred DPS over the EQUIPPED panel's weapon
+   cell, and there is no equipped panel on the band any more.  DPS now
+   right-aligns at the end of the identity row's lower line — see
+   IdentityStrip.  Kept as a stub only so a stale import fails loudly at
+   build time rather than silently returning a plausible number. */
 
 /* v2.3.1647 (owner: "increase the size of the dashboard by about 50% of
    the space between its current height and the joysticks area — the exact
@@ -360,10 +343,15 @@ export function navButtonSize(vw, vh) {
   return { w: Math.min(Math.max(w, 26), 48), h: identityRowHeight(vw, vh) - 2 * NAV_GAP };
 }
 
-/* The leftmost x the nav group may start at: the right edge of the weapon
-   anchor box, which is what carries DPS on the identity row's lower line. */
+/* v2.3.1653: the leftmost x the nav group may start at.  It WAS the weapon
+   anchor's right edge; with EQUIPPED gone from the band there is no weapon
+   to anchor to, so the limit is what the identity row itself needs —
+   the portrait, and a lower line that still fits an XP bar, the gold count
+   and the DPS chip at the sizes v2.3.1649 set.  Same 34px button at 390w
+   as the weapon rule gave, now for a reason that survives the change. */
+const IDENTITY_MIN_LINE = 40 + 6 + 40 + 6 + 60 + 6 + 68; /* portrait, XP, gold, DPS */
 function navGroupLeftLimit(vw) {
-  return 2 * DASH_GAP + dashPanelWidths(vw).wide + weaponAnchorWidth(vw);
+  return DASH_GAP + IDENTITY_MIN_LINE;
 }
 
 export function navGroupWidth(vw, vh) {

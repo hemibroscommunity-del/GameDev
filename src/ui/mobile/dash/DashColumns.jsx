@@ -2,14 +2,13 @@ import React from 'react';
 import { COL } from './common.js';
 import { getBagEntries } from './bagModel.js';
 import { BagTile } from './InventoryPanel.jsx';
-import { itemDetailBus } from './itemDetailBus.js';
-import { IconCell } from './dashCells.jsx';
-import { getEquippedSlots, GHOST_SRC } from '../sheet/equipModel.js';
+import { BagFilterChips } from './BagFilterChips.jsx';
+import { bagFilterBus } from './bagFilterBus.js';
 import { COMBAT_SKILLS, skillLevel } from '../sheet/heroModel.js';
 import { dashboardPanelBus } from '../dashboardPanelBus.js';
 import { requestT2Category } from './T2Panel.jsx';
 import { buildSkillUnspent, STAT_TO_WEAPON_CAT } from '../../../data/gameSystems.js';
-import { dashTileSize, dashPanelWidths, combatPillWidth, combatPillHeight, equipCellSize, BAG_COLS, DASH_GAP, DASH_ROWS } from '../sheet/sheetGeometry.js';
+import { dashTileSize, dashPanelWidths, combatPillWidth, combatPillHeight, BAG_VIEW_COLS, DASH_GAP, DASH_ROWS, BAG_HEADER_H } from '../sheet/sheetGeometry.js';
 
 /* v2.3.1636 (owner, with a reference screenshot of the pre-v2.3.1287
    dashboard): the THREE-COLUMN ROW — BAG / LOADOUT / BUILD restored as
@@ -105,11 +104,15 @@ export const DashColumns = ({ R }) => {
   const vw = typeof window !== 'undefined' ? window.innerWidth : 390;
   const t = dashTileSize(vw);
   const panelW = dashPanelWidths(vw);
-  const eq = equipCellSize(vw);
   const rpg = R || {};
+  const [bagFilter, setBagFilter] = React.useState(bagFilterBus.get());
+  React.useEffect(() => bagFilterBus.subscribe(setBagFilter), []);
 
   /* ── BAG ── */
-  const entries = getBagEntries(R);
+  /* v2.3.1653: the dashboard's bag IS the bag now, so it obeys the filter
+     its own header sets — a header that changed a different screen's list
+     would be the worst of both. */
+  const entries = getBagEntries(R).filter(e => bagFilter === 'all' || e.cat === bagFilter);
   const openBag = () => dashboardPanelBus.open('bag');
   /* v2.3.1649 (owner: "I think 4 slots can only be visible on the
      dashboard.  The rest can be put into full bag view"): FOUR cells —
@@ -117,7 +120,7 @@ export const DashColumns = ({ R }) => {
      last cell, and it is doing more work than it used to: with four
      previews instead of nine it is the honest "there is more in here"
      marker AND the tap target that opens the full bag. */
-  const BAG_CELLS = BAG_COLS * DASH_ROWS;
+  const BAG_CELLS = BAG_VIEW_COLS * DASH_ROWS;
   const shown = entries.length > BAG_CELLS ? entries.slice(0, BAG_CELLS - 1) : entries.slice(0, BAG_CELLS);
   const overflow = entries.length > BAG_CELLS ? entries.length - (BAG_CELLS - 1) : 0;
   const bagCells = [];
@@ -153,59 +156,19 @@ export const DashColumns = ({ R }) => {
   }
 
   /* ── LOADOUT ── */
-  const equipped = getEquippedSlots(rpg);
-  const bySlot = (s) => equipped.find(e => e.slot === s);
-  /* v2.3.1649: the weapon/DMG/DPS locals are gone with the last thing that
-     read them.  DMG/DPS left this column for the identity row at v2.3.1637
-     and the tap-to-cycle WeaponCell left at v2.3.1649, so all that remained
-     was three computed numbers nothing rendered — recomputed every 200ms
-     tick by the band's force-update timer. */
-  const openPicker = (slot) => (anchor) => {
-    const st = itemDetailBus.state;
-    if (st && st.open && st.target && st.target.kind === 'loadout' && st.target.slot === slot) {
-      itemDetailBus.close();
-      return;
-    }
-    itemDetailBus.open({ kind: 'loadout', slot, anchor, panel: null });
-  };
-  /* v2.3.1648: TWO per row over THREE rows, not three over two — see
-     equipCellSize.  Weapon leads the top-left, where the eye lands first
-     (it led the top-MIDDLE under the old three-across order, for the same
-     reason); armour then reads down in worn order. */
-  const loadoutRows = [
-    ['weapon', 'shield'],
-    ['chest', 'legs'],
-    ['amulet', 'cape'],
-  ];
-  /* v2.3.1649 (owner: "change the equipped weapon action upon tap so that
-     it doesn't automatically switch but brings up the standard equip menu
-     like how the equip chest armor and shirt currently work together").
-     The WeaponCell special case is GONE and weapon falls through to the
-     same IconCell every other slot uses — it already carries
-     pickerSlot:'weapon' (equipModel), so this is a deletion, not a new
-     path, and the weapon now behaves like its neighbours by construction
-     rather than by a parallel implementation kept in step by hand.
+  /* v2.3.1653 (owner: "move the equipped view to be merged with the
+     character overview so the equipped slots are grouped on the left and
+     the player stats are shown on the right").  The EQUIPPED panel is gone
+     from the band; its slots, its picker wiring and its stat cards now
+     live in Hero > Overview (HeroExpanded), where there is width for the
+     numbers that were never shown beside them here.
 
-     WHAT THIS RETIRES, stated plainly because it was deliberate: v2.3.1562
-     put a tap-to-CYCLE gesture on this cell (with hold for the picker)
-     because the left-joystick double-tap was the only way to swap weapons
-     and nobody could find it — "the game's own owner did not know it was
-     there".  Swapping is NOT lost: the picker this now opens equips any
-     weapon you own, which is the same outcome in one extra tap, and the
-     joystick double-tap still works.  What is lost is the one-tap cycle,
-     and that is the owner's call — a tap that silently changes your weapon
-     is exactly the accident this cell was most likely to cause once the
-     cells grew to 64px and got easy to hit. */
-  const equipCell = (slotName) => {
-    const sl = bySlot(slotName);
-    if (!sl) return <div key={`eq-${slotName}`} style={{ width: eq.w, height: eq.h, flex: 'none' }} />;
-    return (
-      <IconCell key={`eq-${slotName}`} size={eq.w} h={eq.h}
-        src={sl.iconSrc || GHOST_SRC[slotName]} dim={sl.ghost}
-        alt={sl.label} title={sl.label}
-        onTap={sl.pickerSlot ? openPicker(sl.pickerSlot) : undefined} />
-    );
-  };
+     THAT MOVE REVIVES DEAD CODE rather than writing new: getEquipContribs
+     (v2.3.1328) built per-item contribution cards and an equipment TOTALS
+     readout that have not rendered anywhere since the Bag's Equipped tab
+     was retired at v2.3.1639.  They are what "the player stats ...
+     contextually changes if you are selecting an equipped item" asks for,
+     and they were already correct — only unreachable. */
 
   /* ── COMBAT ── */
   /* v2.3.1648 (owner: "the combat skills can be changed into just 3: bow,
@@ -295,7 +258,7 @@ export const DashColumns = ({ R }) => {
          equality was there to serve.  The two panels that hold squares are
          still exactly equal to each other; only COMBAT, whose contents are
          a different shape on purpose, is narrower. */
-      gridTemplateColumns: `${panelW.wide}px ${panelW.wide}px ${panelW.narrow}px`,
+      gridTemplateColumns: `${panelW.wide}px ${panelW.narrow}px`,
       justifyContent: 'center',
       gap: DASH_GAP,
       height: '100%', boxSizing: 'border-box',
@@ -304,33 +267,26 @@ export const DashColumns = ({ R }) => {
          the band, not as three floating widgets over the world. */
       borderBottom: `1px solid ${COL.divider}`,
     }}>
-      {/* v2.3.1639 (owner: "display inventory slots on dashboard and bag
-          window views, remove empty bag message placeholder").  The six
-          slots render unconditionally — an empty bag now reads as six
-          empty slots, the same shape as a full one, which is also how the
-          Bag panel itself has always drawn it.  The old two-line message
-          made the empty state a DIFFERENT layout from every other state,
-          so the column changed shape the moment you picked something up. */}
+      {/* v2.3.1653: the BAG panel is the dashboard's main event now —
+          BAG_VIEW_COLS across with its own filter header, which is the
+          "make the dashboard view the main bag view" ask plus "the
+          dashboard view's bag slots also get the filters as the headers"
+          in one panel.  The header is sized from the same COLS/TILE the
+          rows use, so each chip lands one slot wide. */}
       <Column label="Bag" onTap={openBag}>
+        <BagFilterChips
+          width={BAG_VIEW_COLS * t + (BAG_VIEW_COLS - 1) * DASH_GAP}
+          height={BAG_HEADER_H} />
         {Array.from({ length: DASH_ROWS }, (_, r) => (
-          <div key={`bagrow-${r}`} style={tileRow}>{bagCells.slice(r * BAG_COLS, r * BAG_COLS + BAG_COLS)}</div>
-        ))}
-      </Column>
-
-      <Column label="Equipped">
-        {/* v2.3.1637: DMG/DPS left this column for the identity row
-            (owner: "put the dmg and DPS up on the character row above the
-            dashboard columns").  It is NOT also drawn here — the band's
-            one-count rule, the same one that retired the floating gold
-            chip at v2.3.1635.  The whole body is the six slots now. */}
-        {loadoutRows.map((row, i) => (
-          <div key={`eqrow-${i}`} style={tileRow}>{row.map(equipCell)}</div>
+          <div key={`bagrow-${r}`} style={tileRow}>{bagCells.slice(r * BAG_VIEW_COLS, r * BAG_VIEW_COLS + BAG_VIEW_COLS)}</div>
         ))}
       </Column>
 
       {/* v2.3.1648: three pills stacked over the same inner height the
-          bag's rows occupy, so all three panels end on one baseline even
-          though none of them holds the same number of things (4 / 6 / 3). */}
+          bag's rows occupy, so both panels end on one baseline even though
+          neither holds the same number of things.
+          v2.3.1653 (owner: "the combat stats stay on the right in their own
+          column"): unchanged, and now the only company the bag has. */}
       <Column label="Combat">
         {COMBAT_SKILLS.slice(0, 3).map(combatPill)}
       </Column>

@@ -4,8 +4,10 @@ import { buildSkillUnspent, STAT_TO_WEAPON_CAT } from '../../../data/gameSystems
 import { requestT2Category } from '../dash/T2Panel.jsx';
 import { dashboardPanelBus } from '../dashboardPanelBus.js';
 import { COMBAT_SKILLS, skillLevel, skillProgressPct, skillProgress, deriveHeroStats } from './heroModel.js';
-import { IdentityStrip } from './IdentityStrip.jsx';
 import { VitalBar, VITAL_ICONS } from './VitalBar.jsx'; /* v2.3.1311 */
+import { getEquippedSlots, getEquipContribs, GHOST_SRC } from './equipModel.js'; /* v2.3.1653 */
+import { itemDetailBus } from '../dash/itemDetailBus.js';                        /* v2.3.1653 */
+import { DASH_GAP } from './sheetGeometry.js';                                   /* v2.3.1653 */
 
 /* v2.3.1286: Hero expanded — the detailed character sheet.
    v2.3.1295 (ChatGPT round-4, owner-approved): no longer one long
@@ -21,7 +23,24 @@ import { VitalBar, VITAL_ICONS } from './VitalBar.jsx'; /* v2.3.1311 */
    vitals unified on VitalBar; the selected section resets to Overview
    when the sheet fully closes to the bar (it still survives compact
    dips and destination switches).
-   Equipment management intentionally lives in Bag, not here. */
+   v2.3.1653 (owner: "move the equipped view to be merged with the
+   character overview so the equipped slots are grouped on the left and
+   the player stats are shown on the right (aggregate of stats) and
+   contextually changes if you are selecting an equipped item").  The
+   line below — "equipment management intentionally lives in Bag, not
+   here" — is RETIRED, and by the owner's own instruction.  It was true
+   when the Bag had an Equipped tab; that tab went at v2.3.1639 and the
+   band's EQUIPPED column went at v2.3.1653, so Overview is now the only
+   place the worn six exist.
+
+   WHAT THIS SCREEN GAINS THAT THE BAND NEVER HAD: the right-hand column.
+   getEquipContribs (v2.3.1328) has always produced both an equipment
+   TOTALS readout and a per-item contribution card, and neither has
+   rendered anywhere since v2.3.1639 — the band showed slots without
+   numbers because a 142px column had no room for them.  Selecting a slot
+   here swaps the aggregate for that item's card, which is the
+   "contextually changes" half of the ask, and it is wiring rather than
+   new maths. */
 
 const SECTIONS = ['Overview', 'Build', 'Records'];
 /* v2.3.1323 (owner icon sheet): each section tab gets its art —
@@ -55,6 +74,7 @@ const seg = (active) => ({
 
 export const HeroExpanded = () => {
   const [, force] = useState(0);
+  const [eqSel, setEqSel] = useState(null);
   const [section, setSectionState] = useState(_lastSection);
   const setSection = (s) => { _lastSection = s; setSectionState(s); };
   useEffect(() => {
@@ -79,6 +99,25 @@ export const HeroExpanded = () => {
     </div>
   );
 
+  /* v2.3.1653: the COMPACT vitals row — the same three bars, side by side
+     instead of stacked, at 22px total instead of 60.  Overview's body is
+     181px and the equipped + stats block the owner asked for needs 140 of
+     them; three full-width labelled rows would have pushed that block below
+     the fold, which is the one thing this screen must not do.
+     Nothing is lost that the world HUD does not already show live — the
+     exact numbers stay, under the bar rather than beside it. */
+  const compactVital = (kind, cur, max) => (
+    <div key={kind} style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 4 }}>
+      <img src={VITAL_ICONS[kind]} alt="" draggable={false}
+        style={{ width: 13, height: 13, objectFit: 'contain', flex: 'none', pointerEvents: 'none' }} />
+      <VitalBar kind={kind} cur={cur} max={max} thick={9} />
+      <span style={{
+        flex: 'none', fontSize: 10, fontWeight: 700, color: COL.text2,
+        fontVariantNumeric: 'tabular-nums',
+      }}>{Math.ceil(cur)}</span>
+    </div>
+  );
+
   /* Overview derived pills — v2.3.1311b (owner): ALL SIX on ONE ROW,
      no scrolling anywhere in the subtab.  ~55px per pill at 390w:
      centered 8.5px label over a 13px value.  Values stay neutral
@@ -99,6 +138,54 @@ export const HeroExpanded = () => {
 
   const totalUnspent = COMBAT_SKILLS.reduce((n, s) => n + buildSkillUnspent(R, s.key), 0);
 
+  /* ── the worn six, and what they are worth ── */
+  const equipped = getEquippedSlots(R);
+  const contribs = getEquipContribs(R);
+  const selSlot = eqSel ? equipped.find(sl => sl.slot === eqSel) : null;
+  const selCard = selSlot ? contribs.cards[selSlot.slot] : null;
+  /* THREE across, TWO down.  Two-by-three was the shape the band's EQUIPPED
+     panel settled on at v2.3.1648 and the obvious reading of "grouped on
+     the left", but measured it did not fit: three rows of 46 is 146px, and
+     Overview's body has 106 to give once the tabs and vitals are paid for —
+     the Cape slot landed 35px BELOW the band, invisible.  The only way to
+     keep 2x3 was 32px slots, which is the size this whole pass exists to
+     move away from.  Three across keeps the cells big and the group still
+     reads as one block on the left; it is simply a wider block. */
+  const EQ_W = 46;
+  const eqCell = (slotName) => {
+    const sl = equipped.find(e => e.slot === slotName);
+    if (!sl) return <div key={slotName} style={{ width: EQ_W, height: EQ_W }} />;
+    const on = eqSel === slotName;
+    return (
+      <div key={slotName}
+        role="button" aria-label={sl.label} aria-pressed={on} title={sl.label}
+        onPointerUp={(e) => { e.stopPropagation(); setEqSel(on ? null : slotName); }}
+        style={{
+          width: EQ_W, height: EQ_W, flex: 'none', position: 'relative',
+          background: on ? COL.accentFill : COL.wellSoft,
+          border: `1px solid ${on ? COL.accent : COL.tileBor}`,
+          borderRadius: 7,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          cursor: 'pointer', touchAction: 'manipulation',
+        }}>
+        <img src={sl.iconSrc || GHOST_SRC[slotName]} alt="" draggable={false}
+          style={{
+            width: '80%', height: '80%', objectFit: 'contain',
+            opacity: sl.ghost ? 0.3 : 1, pointerEvents: 'none',
+          }} />
+      </div>
+    );
+  };
+  const kv = (k, v, big) => (
+    <div key={k} style={{
+      background: COL.wellSoft, border: `1px solid ${COL.tileBor}`, borderRadius: 8,
+      padding: '4px 2px 5px', minWidth: 0, textAlign: 'center',
+    }}>
+      <div style={{ fontSize: 8.5, fontWeight: 700, letterSpacing: '.04em', textTransform: 'uppercase', color: COL.muted, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{k}</div>
+      <div style={{ fontSize: big ? 15 : 13, fontWeight: 800, color: COL.text, fontVariantNumeric: 'tabular-nums', marginTop: 1, whiteSpace: 'nowrap' }}>{v}</div>
+    </div>
+  );
+
   return (
     <div style={{
       ...panelStyle, overflowY: 'auto', display: 'flex', flexDirection: 'column', paddingBottom: 10,
@@ -108,7 +195,13 @@ export const HeroExpanded = () => {
          so the mask only dimmed the flush last row.  Off here. */
       WebkitMaskImage: 'none', maskImage: 'none',
     }}>
-      <IdentityStrip />
+      {/* v2.3.1653: Hero's OWN identity strip is gone.  Since v2.3.1652 the
+          band's top row carries name, level, XP, gold and DPS on every
+          screen including this one, so rendering the strip again inside the
+          panel put the same five numbers on screen twice — the band's
+          one-count rule — and spent ~50px of a 181px body doing it.  That
+          50px is exactly what Overview needed to show the equipped block
+          above the fold. */}
 
       {/* Sticky segmented control — content scrolls under it.
           v2.3.1311: Build carries an actionable count (Build · N);
@@ -131,21 +224,93 @@ export const HeroExpanded = () => {
 
       {section === 'Overview' && (
         <>
-          <div style={{ padding: '6px 0 4px' }}>
-            {labeledBar('hp', 'HP', R.hp || 0, R.maxHp || 100)}
-            {labeledBar('stamina', 'Stamina', R.stamina || 0, R.maxStamina || 100)}
-            {labeledBar('mana', 'Mana', R.mana || 0, R.maxMana || 100)}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 0 6px' }}>
+            {compactVital('hp', R.hp || 0, R.maxHp || 100)}
+            {compactVital('stamina', R.stamina || 0, R.maxStamina || 100)}
+            {compactVital('mana', R.mana || 0, R.maxMana || 100)}
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 5 }}>
-            {cell('Damage', d.dmgText)}
-            {cell('DPS', d.dps.toFixed(1))}
-            {/* v2.3.1311: it's BLOCK — the number is calcBlockReduction
-                (shield block %), not armor/Iron-Skin mitigation, so
-                "Damage Reduction" would overclaim. */}
-            {cell('Block', `${Math.round(d.block * 100)}%`)}
-            {cell('Crit', `${Math.round(d.crit * 100)}%`)}
-            {cell('Dodge', `${Math.round(d.dodge * 100)}%`)}
-            {cell('Speed', d.speed.toFixed(1))}
+
+          {/* v2.3.1653: EQUIPPED LEFT, STATS RIGHT — the owner's layout,
+              literally.  The left column is fixed at what two cells need so
+              the right column gets every remaining pixel; the numbers are
+              the thing that was missing, so the numbers get the space. */}
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+            <div style={{
+              flex: 'none', width: 3 * EQ_W + 2 * DASH_GAP,
+              display: 'flex', flexWrap: 'wrap', gap: DASH_GAP,
+            }}>
+              {['weapon', 'shield', 'chest', 'legs', 'amulet', 'cape'].map(eqCell)}
+            </div>
+
+            <div style={{ flex: 1, minWidth: 0 }}>
+              {/* The header names what the numbers below are ABOUT, which is
+                  the whole point of a contextual panel: without it, a card
+                  that changes when you tap a slot reads as the screen
+                  glitching rather than as an answer to the tap. */}
+              <div style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                gap: 6, marginBottom: 4, minHeight: 18,
+              }}>
+                <span style={{
+                  fontSize: 9.5, fontWeight: 800, letterSpacing: '.06em',
+                  textTransform: 'uppercase',
+                  color: selCard ? COL.accent : COL.muted,
+                  whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                }}>{selSlot ? (selCard ? selCard.title : selSlot.label) : 'Your stats'}</span>
+                {selSlot && selSlot.pickerSlot && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      let anchor = null;
+                      try {
+                        const r = e.currentTarget.getBoundingClientRect();
+                        anchor = { left: r.left, top: r.top, right: r.right, bottom: r.bottom, width: r.width, height: r.height };
+                      } catch (_e) {}
+                      itemDetailBus.open({ kind: 'loadout', slot: selSlot.pickerSlot, anchor, panel: null });
+                    }}
+                    style={{
+                      flex: 'none', padding: '2px 8px', borderRadius: 999,
+                      background: COL.accentFill, border: `1px solid ${COL.accent}`,
+                      color: COL.accent, fontFamily: 'inherit',
+                      fontSize: 10, fontWeight: 800, letterSpacing: '.04em',
+                      cursor: 'pointer',
+                    }}>CHANGE</button>
+                )}
+              </div>
+
+              {selSlot ? (
+                /* CONTEXTUAL — this one item's contribution.  An equipped
+                   slot with no stat data (legs and cape carry none, by
+                   v2.3.1328's own note) says so rather than showing an
+                   empty frame that looks broken. */
+                selCard ? (
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 5 }}>
+                    {kv(selCard.primary.k, selCard.primary.v, true)}
+                    {selCard.secondary ? kv(selCard.secondary.k, selCard.secondary.v, true) : <div />}
+                  </div>
+                ) : (
+                  <div style={{
+                    padding: '10px 8px', borderRadius: 8,
+                    background: COL.wellSoft, border: `1px solid ${COL.tileBor}`,
+                    fontSize: 11, fontWeight: 600, color: COL.muted, textAlign: 'center',
+                  }}>{selSlot.ghost ? 'Nothing equipped here.' : 'No stat bonuses.'}</div>
+                )
+              ) : (
+                /* AGGREGATE — the whole character, which is what you see
+                   when nothing is selected. */
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 5 }}>
+                  {cell('Damage', d.dmgText)}
+                  {cell('DPS', d.dps.toFixed(1))}
+                  {/* v2.3.1311: it's BLOCK — the number is calcBlockReduction
+                      (shield block %), not armor/Iron-Skin mitigation, so
+                      "Damage Reduction" would overclaim. */}
+                  {cell('Block', `${Math.round(d.block * 100)}%`)}
+                  {cell('Crit', `${Math.round(d.crit * 100)}%`)}
+                  {cell('Dodge', `${Math.round(d.dodge * 100)}%`)}
+                  {cell('Speed', d.speed.toFixed(1))}
+                </div>
+              )}
+            </div>
           </div>
         </>
       )}
