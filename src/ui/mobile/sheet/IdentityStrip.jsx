@@ -71,7 +71,9 @@ export const IdentityStrip = ({ band = false, gutter = 0, trackW = null }) => {
   /* v2.3.1635: band-only extras. */
   const unspent = band ? unspentPointsTotal(R) : 0;
   const wpn = band ? getActiveWeapon(R) : null;
-  /* v2.3.1637: the numbers the EQUIPPED column used to carry. */
+  /* v2.3.1637: the numbers the EQUIPPED column used to carry.
+     v2.3.1655: band mode no longer renders them — see the note by the
+     retired chip below.  Kept for the non-band caller. */
   const dmgRange = wpn ? calcDisplayDmgRange(R, wpn) : null;
   const dps = dmgRange ? Math.round(calcDisplayDps(R, wpn) * 10) / 10 : 0;
   const vwNow = typeof window !== 'undefined' ? window.innerWidth : 390;
@@ -187,16 +189,14 @@ export const IdentityStrip = ({ band = false, gutter = 0, trackW = null }) => {
                 style={{ width: 14, height: 14, imageRendering: 'pixelated', display: 'block' }} />
               <span className="bt-coin-glimmer">{Number(gold).toLocaleString()}</span>
             </span>
-            {dmgRange && (
-              <span style={{
-                flex: 'none',
-                display: 'inline-flex', alignItems: 'baseline', gap: 4,
-                padding: '1px 7px', borderRadius: 8,
-                background: COL.slot, border: '1px solid ' + COL.tileBor,
-                color: COL.muted, fontSize: 11, fontWeight: 700, lineHeight: 1.25,
-                whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums',
-              }}>DPS <b style={{ color: COL.text, fontSize: 14 }}>{dps}</b></span>
-            )}
+            {/* v2.3.1653's DPS chip is GONE (owner, v2.3.1655: "remove DPS
+                on character HUD area within dashboard to make room for one
+                more navigation button for lifeskills").  It is not lost —
+                Hero > Overview carries DPS in the aggregate stat grid, and
+                since v2.3.1653 that screen is one tap away on the Character
+                button this trade helps pay for.  The band keeps the two
+                numbers no other screen shows at a glance: progress to the
+                next level, and what you can spend. */}
           </div>
         </div>
       </div>

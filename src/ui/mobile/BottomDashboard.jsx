@@ -517,7 +517,11 @@ const DESTINATIONS = [
    wider copy of the screen you are already looking at.  The character
    view is what actually gained content in that trade (Hero > Overview
    took the equipped slots and their stat cards), so it takes the button. */
-const RAIL_ORDER = ['hero', 'quests', 'more'];
+/* v2.3.1655 (owner: "make room for one more navigation button for
+   lifeskills"): FIVE — Dashboard, Character, Quests, Skills, More.  Skills
+   goes before More for the same reason Quests did at v2.3.1651: More is
+   the overflow and has to stay on the end. */
+const RAIL_ORDER = ['hero', 'quests', 'skills', 'more'];
 const RAIL_ITEMS = [
   { id: 'dashboard', label: 'Dashboard', icon: '/icons/ui/panel-stats.webp?v=2.3.1637' },
   ...RAIL_ORDER.map(id => DESTINATIONS.find(d => d.id === id)).filter(Boolean),

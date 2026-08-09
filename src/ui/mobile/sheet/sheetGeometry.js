@@ -310,7 +310,7 @@ export function identityRowHeight(vw, vh) {
    The rail is why the band cannot simply shrink by the ribbon's 87px.
    Six buttons still need vertical room, so the band's floor is whichever
    is taller: what the three columns need, or what the rail needs. */
-export const RAIL_COUNT = 4; /* v2.3.1651: Quests joins */
+export const RAIL_COUNT = 5; /* v2.3.1651: Quests; v2.3.1655: Life Skills */
 const NAV_GAP = 4;
 
 /* v2.3.1642 (owner: "put the rail buttons on the top to the left of the
@@ -353,7 +353,12 @@ export function navButtonSize(vw, vh) {
      glyph it is. */
   const budget = (vw - DASH_GAP) - navGroupLeftLimit(vw) - DASH_GAP;
   const w = Math.floor((budget - NAV_GAP * (RAIL_COUNT - 1) - 2 * NAV_GAP) / RAIL_COUNT);
-  return { w: Math.min(Math.max(w, 26), 48), h: identityRowHeight(vw, vh) - 2 * NAV_GAP };
+  /* v2.3.1655: the ceiling drops 48 -> 36.  With five buttons the derived
+     budget comes out at 40 each, and taking it would have spent the freed
+     DPS width on buttons that were already big enough — while the NAME,
+     which the owner widened deliberately at v2.3.1650, paid for it.  The
+     surplus goes back to the identity row instead. */
+  return { w: Math.min(Math.max(w, 26), 36), h: identityRowHeight(vw, vh) - 2 * NAV_GAP };
 }
 
 /* v2.3.1653: the leftmost x the nav group may start at.  It WAS the weapon
@@ -362,7 +367,11 @@ export function navButtonSize(vw, vh) {
    the portrait, and a lower line that still fits an XP bar, the gold count
    and the DPS chip at the sizes v2.3.1649 set.  Same 34px button at 390w
    as the weapon rule gave, now for a reason that survives the change. */
-const IDENTITY_MIN_LINE = 40 + 6 + 40 + 6 + 60 + 6 + 68; /* portrait, XP, gold, DPS */
+/* v2.3.1655: DPS left the identity row, and its 68px (plus the gap before
+   it) is exactly what pays for the fifth nav button — the owner's trade,
+   made explicit here rather than absorbed silently.  What the line still
+   has to fit: the portrait, an XP bar, and the gold count. */
+const IDENTITY_MIN_LINE = 40 + 6 + 40 + 6 + 60; /* portrait, XP, gold */
 function navGroupLeftLimit(vw) {
   return DASH_GAP + IDENTITY_MIN_LINE;
 }
