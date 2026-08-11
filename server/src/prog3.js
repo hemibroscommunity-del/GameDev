@@ -46,16 +46,33 @@ export const PROG3 = {
   LEVEL_CAP: 100,                    // per trained skill
   CHAR_LEVEL_CAP: 300,               // Σ trained levels
   XP_PER_DMG: 1.0,                   // mirrors the legacy WEAPON_XP_PER_DMG
-  // §4-A per-point values + hard caps (approved table).  Fractions are
-  // the per-point rate; the alloc endpoint enforces the point caps.
-  STATS: {
+  /* ═══ v2.3.1668: BODY vs ATK (owner, 2026-08-11) ═══
+   *
+   * "The attack power (crit chance, attack speed, etc) are specific to the
+   * combat type (bow melee or magic)."  v2.3.1659 shipped all seven as one
+   * global set, following the design paper's §4 collapse table, which
+   * folded the three per-weapon crit channels into one.  That reads wrong
+   * in play: a bow build's crit has nothing to do with a staff, and the
+   * old T2 system was per-weapon for exactly that reason.
+   *
+   * BODY stats are global — they describe your character, not the thing in
+   * your hands, and "Melee HP vs Bow HP" is not a distinction anyone can
+   * justify.  ATK stats are allocated PER COMBAT TYPE, so specialising in
+   * Bow means investing in Bow's crit specifically.
+   *
+   * The point pool stays SINGLE and shared, which is what keeps the choice
+   * sharp: points spent on Melee's crit are points not spent on Magic's.
+   */
+  BODY: {
     def:     { cap: 100, per: 0.004 },  // −0.4% damage taken/pt → −40%
     hp:      { cap: 100, per: 8 },      // +8 max HP/pt → +800
     dodge:   { cap: 75,  per: 0.004 },  // +0.4%/pt → 30%
     stam:    { cap: 100, per: 3 },      // +3 max stamina/pt → +300
-    crit:    { cap: 75,  per: 0.004 },  // +0.4%/pt → 30%
-    critDmg: { cap: 100, per: 2 },      // +2 flat on crits/pt → +200
-    aspd:    { cap: 100, per: 0.0035 }, // −0.35% swing period/pt → −35%
+  },
+  ATK: {
+    crit:    { cap: 75,  per: 0.004 },  // +0.4%/pt → 30%, PER TYPE
+    critDmg: { cap: 100, per: 2 },      // +2 flat on crits/pt → +200, PER TYPE
+    aspd:    { cap: 100, per: 0.0035 }, // −0.35% swing period/pt → −35%, PER TYPE
     // aspd note: 600ms base × 0.65 × the 0.7 lag headroom = 273ms >
     // the 210ms server cadence floor (combat.js), so the existing
     // floor already covers a maxed prog3 build.  If the per-point
@@ -78,8 +95,25 @@ export function prog3XpRequired(level) {
   return Math.ceil(280 * Math.pow(1.16, Math.max(0, (level || 1) - 1)));
 }
 
+/* v2.3.1668: the global BODY allocation. */
 export function prog3FreshAlloc() {
-  return { def: 0, hp: 0, dodge: 0, stam: 0, crit: 0, critDmg: 0, aspd: 0 };
+  return { def: 0, hp: 0, dodge: 0, stam: 0 };
+}
+/* v2.3.1668: the per-combat-type OFFENSE allocation, one block per skill.
+ * Object.create(null) is not needed here — the keys are OUR constants, not
+ * client-supplied — but the shape must always carry all three so every
+ * read site can index it without a presence check. */
+export function prog3FreshAtk() {
+  const out = {};
+  for (const cat of PROG3.SKILLS) out[cat] = { crit: 0, critDmg: 0, aspd: 0 };
+  return out;
+}
+/* Which table owns a stat name.  Returns null for anything unknown, which
+ * is what the allocation endpoint's whitelist leans on. */
+export function prog3StatDef(stat) {
+  if (Object.prototype.hasOwnProperty.call(PROG3.BODY, stat)) return { def: PROG3.BODY[stat], scope: 'body' };
+  if (Object.prototype.hasOwnProperty.call(PROG3.ATK, stat)) return { def: PROG3.ATK[stat], scope: 'atk' };
+  return null;
 }
 
 /* The respec (§8-B, approved): recompute from carried XP.  New trained
@@ -105,7 +139,35 @@ export function prog3FromLegacy(src) {
     pool += oldLevel;
   }
   pool += clampLvl(src && src.defenseSkill && src.defenseSkill.level);
-  return { sk, alloc: prog3FreshAlloc(), pool };
+  return { sk, alloc: prog3FreshAlloc(), atk: prog3FreshAtk(), pool };
+}
+
+/* v2.3.1668: fold a v10-shaped prog3 (one global alloc holding all seven
+ * stats) into the BODY/ATK split.  The three offense stats are REFUNDED to
+ * the pool rather than copied into each type: copying would multiply a
+ * player's investment by three for free, and picking one type to receive
+ * them would be guessing.  Refunding hands the choice back — which is the
+ * whole point of the change.  Idempotent: a blob already carrying `atk` is
+ * returned untouched. */
+export function prog3SplitAtk(p3) {
+  if (!p3 || typeof p3 !== 'object') return p3;
+  if (p3.atk && typeof p3.atk === 'object') return p3;
+  const a = (p3.alloc && typeof p3.alloc === 'object') ? p3.alloc : {};
+  let refund = 0;
+  for (const k of Object.keys(PROG3.ATK)) {
+    const n = Number(a[k]);
+    if (Number.isFinite(n) && n > 0) refund += Math.floor(n);
+    delete a[k];
+  }
+  p3.atk = prog3FreshAtk();
+  p3.alloc = {
+    def: Math.max(0, Math.floor(Number(a.def) || 0)),
+    hp: Math.max(0, Math.floor(Number(a.hp) || 0)),
+    dodge: Math.max(0, Math.floor(Number(a.dodge) || 0)),
+    stam: Math.max(0, Math.floor(Number(a.stam) || 0)),
+  };
+  p3.pool = Math.max(0, Math.floor(Number(p3.pool) || 0)) + refund;
+  return p3;
 }
 
 export const prog3Methods = {
@@ -116,6 +178,15 @@ export const prog3Methods = {
   _sanitizeProg3(src) {
     const out = prog3FromLegacy(null);
     if (!src || typeof src !== 'object') return out;
+    /* v2.3.1668 BOUNDARY HEAL (the v2.3.1152 pattern).  Migration v11 folds
+       v10-shaped blobs into the BODY/ATK split, but migrations FAIL OPEN —
+       and if v11 didn't run, the loops below would read a missing `atk`,
+       write zeros, and the player's offense points would vanish with no
+       refund.  Splitting here too makes that unreachable.  Idempotent:
+       prog3SplitAtk returns immediately when `atk` already exists.
+       Mutates a shallow copy so a caller's stored object is never edited
+       as a side effect of sanitizing it. */
+    if (!src.atk) src = prog3SplitAtk({ ...src, alloc: { ...(src.alloc || {}) } });
     for (const cat of PROG3.SKILLS) {
       const s = src.sk && src.sk[cat];
       if (s && typeof s === 'object') {
@@ -125,20 +196,46 @@ export const prog3Methods = {
     }
     for (const k of Object.keys(out.alloc)) {
       const n = src.alloc && Number(src.alloc[k]);
-      if (Number.isFinite(n) && n > 0) out.alloc[k] = Math.min(PROG3.STATS[k].cap, Math.floor(n));
+      if (Number.isFinite(n) && n > 0) out.alloc[k] = Math.min(PROG3.BODY[k].cap, Math.floor(n));
+    }
+    /* v2.3.1668: per-type offense.  Unknown categories and unknown stat
+       keys are dropped by construction — the loops walk OUR constants. */
+    for (const cat of PROG3.SKILLS) {
+      const s = src.atk && src.atk[cat];
+      if (!s || typeof s !== 'object') continue;
+      for (const k of Object.keys(PROG3.ATK)) {
+        const n = Number(s[k]);
+        if (Number.isFinite(n) && n > 0) out.atk[cat][k] = Math.min(PROG3.ATK[k].cap, Math.floor(n));
+      }
     }
     const p = Number(src.pool);
     if (Number.isFinite(p) && p > 0) out.pool = Math.min(999, Math.floor(p));
     return out;
   },
 
+  /* Allocated points in a PER-TYPE offense stat, bounded read. */
+  _prog3AtkPts(ps, cat, stat) {
+    const a = ps && ps.prog3 && ps.prog3.atk && ps.prog3.atk[cat];
+    const v = a && a[stat];
+    const def = PROG3.ATK[stat];
+    return (typeof v === 'number' && def) ? Math.max(0, Math.min(def.cap, v)) : 0;
+  },
+
+  /* The offense stats for the weapon TYPE being swung.  greatsword shares
+     the sword/melee category, matching _wpnCat. */
+  _prog3CatFor(type) {
+    return type === 'bow' ? 'bow' : type === 'staff' ? 'staff' : 'sword';
+  },
+
   // Allocated points in a stat, bounded read (the caps are enforced at
   // spend time; this re-clamps so a corrupt snapshot stays bounded at
   // every consumption site).
+  /* Allocated points in a GLOBAL body stat (def/hp/dodge/stam). */
   _prog3Pts(ps, stat) {
     const p3 = ps && ps.prog3;
     const v = p3 && p3.alloc && p3.alloc[stat];
-    return (typeof v === 'number') ? Math.max(0, Math.min(PROG3.STATS[stat].cap, v)) : 0;
+    const def = PROG3.BODY[stat];
+    return (typeof v === 'number' && def) ? Math.max(0, Math.min(def.cap, v)) : 0;
   },
 
   _prog3CharLevel(ps) {
@@ -167,8 +264,8 @@ export const prog3Methods = {
       armorHp = Math.floor(20 * Math.min(8, tmRaw));
     }
     ps.maxHp = Math.floor(100 + ps.level * PROG3.HP_PER_LEVEL
-      + this._prog3Pts(ps, 'hp') * PROG3.STATS.hp.per + armorHp);
-    ps.maxStamina = Math.floor(100 + this._prog3Pts(ps, 'stam') * PROG3.STATS.stam.per);
+      + this._prog3Pts(ps, 'hp') * PROG3.BODY.hp.per + armorHp);
+    ps.maxStamina = Math.floor(100 + this._prog3Pts(ps, 'stam') * PROG3.BODY.stam.per);
     const magicLvl = (ps.prog3.sk && ps.prog3.sk.staff && ps.prog3.sk.staff.level) || 1;
     ps.maxMana = Math.floor(100 + magicLvl * PROG3.MANA_PER_MAGIC_LEVEL);
     if (typeof ps.hp !== 'number') ps.hp = ps.maxHp;
@@ -201,14 +298,14 @@ export const prog3Methods = {
   // Per-hit dodge chance (§4: replaces agility×0.0008 + the evasion
   // accumulator; cap 30% at the 75-pt stat cap).
   _prog3DodgePct(ps) {
-    return this._prog3Pts(ps, 'dodge') * PROG3.STATS.dodge.per;
+    return this._prog3Pts(ps, 'dodge') * PROG3.BODY.dodge.per;
   },
 
   // Incoming-damage multiplier (§4 decision 9-B: % reduction, the
   // game's first real mitigation stat; cap −40%).  Consumed in
   // _applyDamage AFTER the resist buff, floor 1 preserved there.
   _prog3DefMult(ps) {
-    return 1 - this._prog3Pts(ps, 'def') * PROG3.STATS.def.per;
+    return 1 - this._prog3Pts(ps, 'def') * PROG3.BODY.def.per;
   },
 
   // ═══ Trained XP accrual (§9-A: server-authoritative) ═══
@@ -266,10 +363,17 @@ export const prog3Methods = {
 
   // ═══ Allocation endpoint (§9: server-validated spend) ═══
   //
-  // Wire: prog3_allocate { stat }.  Gates: prog3 present, stat in the
-  // seven-key whitelist (own-property check — '__proto__' etc. fail),
-  // pool ≥ 1, and the §6-C double cap: the stat's own hard cap AND
+  // Wire: prog3_allocate { stat, cat? }.  Gates: prog3 present, stat in
+  // the BODY or ATK whitelist (own-property check — '__proto__' etc.
+  // fail), pool ≥ 1, and the §6-C double cap: the stat's own hard cap AND
   // min(100, character level) — replaces _statCap for prog3 players.
+  //
+  // v2.3.1668: an ATK stat additionally requires `cat` (sword|bow|staff),
+  // because offense is allocated PER COMBAT TYPE.  A missing or unknown
+  // cat is a REJECT, not a default — silently spending a point into Melee
+  // because the client forgot to say which weapon it meant is exactly the
+  // kind of "helpful" fallback a player would experience as theft.
+  //
   // Invalid spends are silently dropped (the stat_allocate posture);
   // success acks with prog3_allocated + a full player_state echo.
   _handleProg3Allocate(session, payload) {
@@ -278,12 +382,30 @@ export const prog3Methods = {
     const p3 = ps && ps.prog3;
     if (!p3) return;
     const stat = payload && payload.stat;
-    if (typeof stat !== 'string' || !Object.prototype.hasOwnProperty.call(PROG3.STATS, stat)) return;
+    if (typeof stat !== 'string') return;
+    const sd = prog3StatDef(stat);
+    if (!sd) return;
     if (!(p3.pool >= 1)) return;
-    const cur = (typeof p3.alloc[stat] === 'number') ? p3.alloc[stat] : 0;
-    const cap = Math.min(PROG3.STATS[stat].cap, ps.level || this._prog3CharLevel(ps));
-    if (cur >= cap) return;
-    p3.alloc[stat] = cur + 1;
+
+    const levelCap = ps.level || this._prog3CharLevel(ps);
+    const cap = Math.min(sd.def.cap, levelCap);
+
+    let cur, apply;
+    if (sd.scope === 'atk') {
+      const cat = payload && payload.cat;
+      if (typeof cat !== 'string' || PROG3.SKILLS.indexOf(cat) < 0) return;
+      if (!p3.atk || typeof p3.atk !== 'object') p3.atk = prog3FreshAtk();
+      if (!p3.atk[cat] || typeof p3.atk[cat] !== 'object') p3.atk[cat] = { crit: 0, critDmg: 0, aspd: 0 };
+      cur = (typeof p3.atk[cat][stat] === 'number') ? p3.atk[cat][stat] : 0;
+      if (cur >= cap) return;
+      apply = () => { p3.atk[cat][stat] = cur + 1; return { stat, cat, pts: cur + 1 }; };
+    } else {
+      cur = (typeof p3.alloc[stat] === 'number') ? p3.alloc[stat] : 0;
+      if (cur >= cap) return;
+      apply = () => { p3.alloc[stat] = cur + 1; return { stat, cat: null, pts: cur + 1 }; };
+    }
+
+    const applied = apply();
     p3.pool -= 1;
     this._prog3Recompute(ps);
     this._saveRpg(session.id, ps);
@@ -292,7 +414,7 @@ export const prog3Methods = {
       try {
         ws.send(JSON.stringify({
           type: 'prog3_allocated',
-          payload: { stat, pts: p3.alloc[stat], pool: p3.pool },
+          payload: { ...applied, pool: p3.pool },
         }));
       } catch (e) {}
       this._sendPlayerState(ws, session.id);

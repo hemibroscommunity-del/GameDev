@@ -7,12 +7,13 @@ import { COMBAT_SKILLS, skillLevel, skillProgressPct, skillProgress, deriveHeroS
 /* v2.3.1660: trained-skill rebuild — the Build section becomes the
    seven-stat allocation menu when the worker owns prog3. */
 import {
-  prog3Live, prog3Pool, prog3Pts, prog3StatCap, prog3SkillLevel,
-  prog3XpRequired, PROG3, PROG3_STAT_META, PROG3_SKILL_META,
+  prog3Live, prog3Pts, prog3AtkPts, prog3StatCap, prog3SkillLevel,
+  prog3ActiveCat, PROG3_ATK_META, PROG3_BODY_META, PROG3_SKILL_META,
 } from '../../../data/prog3.js';
 import { VitalBar, VITAL_ICONS } from './VitalBar.jsx'; /* v2.3.1311 */
 import { getEquippedSlots, getEquipContribs, GHOST_SRC } from './equipModel.js'; /* v2.3.1653 */
 import { itemDetailBus } from '../dash/itemDetailBus.js';                        /* v2.3.1653 */
+import { heroSectionBus } from './heroSectionBus.js';                            /* v2.3.1668 */
 import { DASH_GAP, HERO_TAB_H } from './sheetGeometry.js';                      /* v2.3.1653; v2.3.1657 tabs */
 
 /* v2.3.1286: Hero expanded — the detailed character sheet.
@@ -72,11 +73,24 @@ export const HeroExpanded = () => {
   const [, force] = useState(0);
   const [eqSel, setEqSel] = useState(null);
   const [section, setSectionState] = useState(_lastSection);
+  /* v2.3.1668: which combat type the Build grid is allocating into.
+     Defaults to whatever you are actually holding, so opening Build
+     mid-fight lands on the weapon you were just swinging. */
+  const [buildCatState, setBuildCat] = useState(null);
   const setSection = (s) => { _lastSection = s; setSectionState(s); };
   useEffect(() => {
     const id = setInterval(() => force(v => v + 1), 400);
     return () => clearInterval(id);
   }, []);
+
+  /* v2.3.1668: consume a pending "open Hero on this section" request
+     from the band's COMBAT pills.  One-shot (take() clears it), so a
+     later manual visit to Hero isn't dragged back to Build. */
+  const _req = heroSectionBus.take();
+  if (_req) {
+    if (_req.section && _req.section !== _lastSection) { _lastSection = _req.section; setSectionState(_req.section); }
+    if (_req.cat) setBuildCat(_req.cat);
+  }
 
   const S = getState();
   const R = (S && S.rpg) || {};
@@ -118,6 +132,12 @@ export const HeroExpanded = () => {
      no scrolling anywhere in the subtab.  ~55px per pill at 390w:
      centered 8.5px label over a 13px value.  Values stay neutral
      (round-4: green is reserved for deltas/bonuses). */
+  /* One decimal below 10%, whole numbers above — a 0.4%/point stat needs
+     the decimal to show any movement at all, and a 38.4% doesn't. */
+  const pct1 = (v) => {
+    const n = (v || 0) * 100;
+    return n > 0 && n < 10 ? n.toFixed(1) : Math.round(n);
+  };
   const cell = (label, value) => (
     <div key={label} style={{
       background: COL.wellSoft,
@@ -136,6 +156,7 @@ export const HeroExpanded = () => {
      pool, so the tab badge and the points chip both show it. */
   const totalUnspent = unspentPointsTotal(R);
   const p3 = prog3Live(R);
+  const buildCat = buildCatState || prog3ActiveCat(R);
 
   /* ── the worn six, and what they are worth ── */
   const equipped = getEquippedSlots(R);
@@ -341,15 +362,23 @@ export const HeroExpanded = () => {
                 /* AGGREGATE — the whole character, which is what you see
                    when nothing is selected. */
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 5 }}>
+                  {/* v2.3.1668: every cell here now moves when you spend
+                      a point.  Block and Speed were removed — Speed was
+                      the constant 5.0 and Block read a fixed 25% from a
+                      `return 0` stub while describing a mechanic that is
+                      actually full invulnerability (see heroModel).
+                      Defense and Crit Dmg take their places: both are
+                      real allocated stats, and Defense had no readout
+                      anywhere in the game before this.
+                      One decimal on the percentages, because the caps are
+                      30-40% and whole numbers made a 1-point investment
+                      render as "0%" — which reads as "that did nothing". */}
                   {cell('Damage', d.dmgText)}
                   {cell('DPS', d.dps.toFixed(1))}
-                  {/* v2.3.1311: it's BLOCK — the number is calcBlockReduction
-                      (shield block %), not armor/Iron-Skin mitigation, so
-                      "Damage Reduction" would overclaim. */}
-                  {cell('Block', `${Math.round(d.block * 100)}%`)}
-                  {cell('Crit', `${Math.round(d.crit * 100)}%`)}
-                  {cell('Dodge', `${Math.round(d.dodge * 100)}%`)}
-                  {cell('Speed', d.speed.toFixed(1))}
+                  {cell('Crit', `${pct1(d.crit)}%`)}
+                  {cell('Crit Dmg', p3 ? `+${Math.round(d.critDmg)}` : '—')}
+                  {cell('Defense', p3 ? `${pct1(d.defPct)}%` : '—')}
+                  {cell('Dodge', `${pct1(d.dodge)}%`)}
                 </div>
               )}
             </div>
@@ -357,99 +386,112 @@ export const HeroExpanded = () => {
         </>
       )}
 
-      {/* ═══ v2.3.1660: PROG3 BUILD — the trained-skill rebuild's
-          allocation screen (PROGRESSION-REDESIGN, owner-approved).
-          Three trained skills level by fighting (server-awarded); every
-          trained level grants ONE point to spend on the seven-stat menu
-          below.  Spends are server-validated (prog3_allocate → the
-          prog3_allocated ack applies the authoritative numbers); the
-          [+] disables at exactly the cap the server would refuse:
-          min(stat cap, character level).  This section may scroll —
-          seven rows outgrow the no-scroll budget and, unlike Overview,
-          a spend list reads fine cut at the fold. */}
+      {/* ═══ v2.3.1668: PROG3 BUILD — one screen, no scrolling ═══
+          Owner: "all stats allocable within the active primary combat
+          stat can be seen all at once without scrolling."
+
+          The v2.3.1660 version was a vertical list of 7 rows plus a
+          points chip plus 3 skill cards — measured at 352px against a
+          145px body (≈111px once a real iPhone's home-indicator inset is
+          paid), so FIVE of the seven stats sat below a fold that has no
+          scroll cue (the panel's edge-fade mask is deliberately off).
+          A list cannot be made to fit; this is a grid.
+
+          Layout: one 28px row carrying the combat-type selector AND the
+          point count, then a 3-column grid. The first row of cells is
+          the SELECTED TYPE's offense (accented); the rest are the shared
+          body stats. Whole cells are the tap target — a separate [+]
+          button costs width three columns cannot spare, and a 120x30
+          cell is a better thumb target than a 30px button anyway. */}
       {section === 'Build' && p3 && (
         <>
           <div style={{
-            margin: '5px 0 4px',
-            padding: '3px 10px',
-            borderRadius: 7,
-            background: totalUnspent > 0 ? COL.accentFill : COL.wellSoft,
-            border: `1px solid ${totalUnspent > 0 ? COL.accent : COL.tileBor}`,
-            display: 'flex', alignItems: 'baseline', justifyContent: 'space-between',
-            fontSize: 10.5, fontWeight: 700, letterSpacing: '.06em',
-            color: totalUnspent > 0 ? COL.accent : COL.text2,
-            flex: 'none',
+            display: 'flex', gap: DASH_GAP, height: HERO_TAB_H,
+            flex: 'none', marginBottom: 4,
           }}>
-            <span>POINTS</span>
-            <span style={{ fontVariantNumeric: 'tabular-nums' }}>{totalUnspent} AVAILABLE</span>
-          </div>
-          {/* The three trained skills — level + progress to the next
-              point.  Read-only: you train these by fighting. */}
-          <div style={{ display: 'flex', gap: 5, flex: 'none', marginBottom: 5 }}>
             {PROG3_SKILL_META.map(sk => {
+              const on = buildCat === sk.key;
               const lvl = prog3SkillLevel(R, sk.key);
-              const xp = Math.floor((R.prog3.sk[sk.key] && R.prog3.sk[sk.key].xp) || 0);
-              const thresh = prog3XpRequired(lvl);
-              const pct = lvl >= PROG3.LEVEL_CAP ? 100 : Math.max(0, Math.min(100, (xp / thresh) * 100));
               return (
-                <div key={sk.key} style={{
-                  flex: 1, minWidth: 0, position: 'relative',
-                  display: 'flex', alignItems: 'center', gap: 5,
-                  padding: '5px 7px 8px',
-                  background: COL.wellSoft, border: `1px solid ${COL.tileBor}`, borderRadius: 7,
-                }}>
+                <div key={sk.key}
+                  role="button" aria-label={`${sk.label}, level ${lvl}`} aria-pressed={on} title={sk.label}
+                  onPointerUp={(e) => { e.stopPropagation(); setBuildCat(sk.key); }}
+                  style={{
+                    flex: '1 1 0', minWidth: 0, height: '100%',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4,
+                    background: on ? COL.accentFill : COL.wellSoft,
+                    border: `1px solid ${on ? COL.accent : COL.tileBor}`,
+                    borderRadius: 7, cursor: 'pointer', touchAction: 'manipulation',
+                  }}>
                   <img src={sk.iconSrc} alt="" draggable={false}
-                    style={{ width: 24, height: 24, objectFit: 'contain', flex: 'none', pointerEvents: 'none' }} />
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 11.5, fontWeight: 700, color: COL.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', lineHeight: 1.15 }}>{sk.label}</div>
-                    <div style={{ fontSize: 11, fontWeight: 800, color: COL.text2, fontVariantNumeric: 'tabular-nums', lineHeight: 1.15 }}>Lv {lvl}</div>
-                  </div>
-                  <div style={{ position: 'absolute', left: 7, right: 7, bottom: 3, height: 3, borderRadius: 999, overflow: 'hidden', background: '#0B1216', pointerEvents: 'none' }}>
-                    <div style={{ width: pct + '%', height: '100%', background: '#D8A85F' }} />
-                  </div>
+                    style={{ width: 18, height: 18, objectFit: 'contain', flex: 'none', opacity: on ? 1 : 0.7, pointerEvents: 'none' }} />
+                  <span style={{
+                    fontSize: 11, fontWeight: 800, color: on ? COL.accent : COL.text2,
+                    fontVariantNumeric: 'tabular-nums',
+                  }}>{lvl}</span>
                 </div>
               );
             })}
+            {/* The pool sits in the selector row rather than owning a
+                line of its own — 30px of the budget for one number. */}
+            <div style={{
+              flex: 'none', minWidth: 46, padding: '0 8px',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              background: totalUnspent > 0 ? COL.accentFill : COL.wellSoft,
+              border: `1px solid ${totalUnspent > 0 ? COL.accent : COL.tileBor}`,
+              borderRadius: 7,
+              fontSize: 12, fontWeight: 900,
+              color: totalUnspent > 0 ? COL.accent : COL.muted,
+              fontVariantNumeric: 'tabular-nums',
+            }} aria-label={`${totalUnspent} points available`}>+{totalUnspent}</div>
           </div>
-          {/* The seven-stat spend menu. */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-            {PROG3_STAT_META.map(st => {
-              const pts = prog3Pts(R, st.key);
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 4 }}>
+            {[
+              ...PROG3_ATK_META.map(m => ({ ...m, atk: true })),
+              ...PROG3_BODY_META.map(m => ({ ...m, atk: false })),
+            ].map(st => {
+              const pts = st.atk ? prog3AtkPts(R, buildCat, st.key) : prog3Pts(R, st.key);
               const cap = prog3StatCap(R, st.key);
               const canSpend = totalUnspent > 0 && pts < cap;
               return (
-                <div key={st.key} style={{
-                  display: 'flex', alignItems: 'center', gap: 8,
-                  padding: '4px 6px 4px 9px',
-                  background: COL.wellSoft, border: `1px solid ${COL.tileBor}`, borderRadius: 7,
-                }}>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 11.5, fontWeight: 700, color: COL.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', lineHeight: 1.2 }}>{st.label}</div>
-                    <div style={{ fontSize: 8.5, fontWeight: 700, color: COL.muted, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', lineHeight: 1.2 }}>{st.perText} per point</div>
-                  </div>
-                  <span style={{ flex: 'none', fontSize: 12, fontWeight: 800, color: COL.text2, fontVariantNumeric: 'tabular-nums' }}>
-                    {pts}<span style={{ color: COL.muted, fontWeight: 700, fontSize: 10 }}>/{cap}</span>
-                  </span>
-                  <div
-                    role="button" aria-label={`Add a point to ${st.label}`}
-                    aria-disabled={!canSpend}
-                    onPointerUp={(e) => {
-                      e.stopPropagation();
-                      if (!canSpend || !S || !S.channel) return;
-                      S.channel.send({ type: 'prog3_allocate', payload: { stat: st.key } });
-                    }}
-                    style={{
-                      flex: 'none', width: 30, height: 26,
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      background: canSpend ? COL.accentFill : COL.wellSoft,
-                      border: `1px solid ${canSpend ? COL.accent : COL.tileBor}`,
-                      borderRadius: 7,
-                      color: canSpend ? COL.accent : COL.muted,
-                      fontSize: 15, fontWeight: 900, lineHeight: 1,
-                      cursor: canSpend ? 'pointer' : 'default',
-                      opacity: canSpend ? 1 : 0.55,
-                      touchAction: 'manipulation',
-                    }}>+</div>
+                <div key={(st.atk ? buildCat + ':' : '') + st.key}
+                  role="button"
+                  aria-label={`${st.label}${st.atk ? ' for ' + buildCat : ''}, ${pts} of ${cap}. ${st.perText} per point.`}
+                  aria-disabled={!canSpend}
+                  title={`${st.label} — ${st.perText} per point`}
+                  onPointerUp={(e) => {
+                    e.stopPropagation();
+                    if (!canSpend || !S || !S.channel) return;
+                    /* An offense stat MUST name its category — the server
+                       rejects a category-less offense spend rather than
+                       guessing which weapon you meant. */
+                    S.channel.send({
+                      type: 'prog3_allocate',
+                      payload: st.atk ? { stat: st.key, cat: buildCat } : { stat: st.key },
+                    });
+                  }}
+                  style={{
+                    minWidth: 0, padding: '3px 5px 4px',
+                    background: canSpend ? COL.accentFill : COL.wellSoft,
+                    border: `1px solid ${canSpend ? COL.accent : COL.tileBor}`,
+                    borderRadius: 7,
+                    textAlign: 'center',
+                    cursor: canSpend ? 'pointer' : 'default',
+                    opacity: canSpend ? 1 : 0.75,
+                    touchAction: 'manipulation',
+                  }}>
+                  <div style={{
+                    fontSize: 8, fontWeight: 700, letterSpacing: '.03em',
+                    textTransform: 'uppercase',
+                    color: st.atk ? (canSpend ? COL.accent : COL.text2) : COL.muted,
+                    whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                  }}>{st.label}</div>
+                  <div style={{
+                    fontSize: 13, fontWeight: 800, color: COL.text,
+                    fontVariantNumeric: 'tabular-nums', lineHeight: 1.15,
+                    whiteSpace: 'nowrap',
+                  }}>{pts}<span style={{ color: COL.muted, fontWeight: 700, fontSize: 9 }}>/{cap}</span></div>
                 </div>
               );
             })}

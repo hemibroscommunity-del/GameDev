@@ -39,14 +39,6 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('a fresh character is not issued leg armor',
     gear.legs === null || gear.legs === 'none', gear);
 
-  /* Mayor Bro's welcome video is the FIRST thing a new browser sees and it
-     sits over the nav rail (MayorGreeting.jsx, once per browser).  It is
-     self-limiting for a real player — a SKIP button plus a 9s safety
-     dismiss — but a headless tap lands on the <video> instead of the rail,
-     so clear it the way a player would. */
-  await H.clickText(P, 'SKIP').catch(() => {});
-  await P.page.waitForTimeout(600);
-
   /* ── the quest is offered ── */
   await H.openDest(P, 'Quests');
   await P.page.waitForTimeout(800);

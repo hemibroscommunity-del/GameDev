@@ -7,8 +7,8 @@ import {
 /* v2.3.1660: trained-skill rebuild mirrors — display branches only;
    the legacy formulas stay for old workers (rule 19). */
 import {
-  prog3Live, prog3Pool, prog3CritPct, prog3DodgePct, prog3SkillLevel,
-  prog3XpRequired, PROG3,
+  prog3Live, prog3Pool, prog3CritPct, prog3CritFlat, prog3DodgePct,
+  prog3DefPct, prog3SkillLevel, prog3XpRequired, PROG3,
 } from '../../../data/prog3.js';
 
 /* v2.3.1286: data model for the Hero destination (nav-system spec) —
@@ -172,9 +172,27 @@ export function deriveHeroStats(R) {
     dps: wpn ? calcDisplayDps(R, wpn) : 0,
     /* v2.3.1660 (prog3): crit/dodge come from the allocated stats —
        the same numbers the server rolls.  Damage/DPS already branch
-       inside calcDisplayDmgRange/Dps. */
+       inside calcDisplayDmgRange/Dps.
+       v2.3.1668: crit reads the ACTIVE weapon's block (offense is
+       per-type now), and two genuinely-informative numbers join it —
+       see the honesty note below. */
     crit: prog3Live(R) ? prog3CritPct(R) : calcCritChance(R.power || 0, getWeaponCritStat(R)),
+    critDmg: prog3Live(R) ? prog3CritFlat(R) : 0,
+    defPct: prog3Live(R) ? prog3DefPct(R) : 0,
     dodge: prog3Live(R) ? prog3DodgePct(R) : passiveDodgeChance(R.agility || 0, getEvasionPts(R)),
+    /* v2.3.1668: `speed` and `block` are RETAINED for legacy readers but
+       are no longer shown on the Hero pane, because under prog3 neither
+       tells the truth:
+         - speed was calcMoveSpeed(0,0) — the literal constant 5.0,
+           forever, since agility died with T1.  A stat cell that can
+           never change value is decoration.
+         - block was calcBlockReduction(getDefenseBlockBonus(R), shield),
+           and getDefenseBlockBonus is a `return 0` stub, so it read a
+           fixed 25% (27% holding any shield).  Worse, blocking in this
+           game is FULL invulnerability (v2.3.232), so "25%" was not
+           merely stale, it described the wrong mechanic.
+       The prog3 `def` stat — real, allocated, and previously shown
+       NOWHERE — takes their place on the pane. */
     speed: prog3Live(R) ? calcMoveSpeed(0, 0) : calcMoveSpeed(R.agility || 0, (R.enduranceSpec || {}).swiftness || 0),
     block: calcBlockReduction(getDefenseBlockBonus(R), R.shield),
     gold: R.coins || 0,

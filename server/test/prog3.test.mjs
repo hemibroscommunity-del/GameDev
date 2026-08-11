@@ -17,7 +17,7 @@
  */
 import { GameRoom } from '../src/index.js';
 import { runRpgMigrations, RPG_SCHEMA_VERSION } from '../src/migrations.js';
-import { PROG3, prog3XpRequired, prog3FromLegacy } from '../src/prog3.js';
+import { PROG3, prog3XpRequired, prog3FromLegacy, prog3SplitAtk } from '../src/prog3.js';
 import { BLACKSMITH_TIERS } from '../src/data.js';
 
 const mockState = {
@@ -47,7 +47,7 @@ function check(name, cond, detail) {
 
 // ── 1. Migration v10: the respec ──
 {
-  check('schema version is 10', RPG_SCHEMA_VERSION === 10, RPG_SCHEMA_VERSION);
+  check('schema version is 11', RPG_SCHEMA_VERSION === 11, RPG_SCHEMA_VERSION);
   const blob = {
     _v: 9,
     weaponSkills: {
@@ -59,15 +59,21 @@ function check(name, cond, detail) {
     t2Flat: { defense: { ironskin: 300 } },
   };
   const res = runRpgMigrations(blob);
-  check('v10 runs clean', res.failed === null && res.version === 10, res);
+  check('v10+v11 run clean', res.failed === null && res.version === 11, res);
   check('sword level = legacy+1, xp carried',
     blob.prog3.sk.sword.level === 8 && blob.prog3.sk.sword.xp === 500, blob.prog3.sk.sword);
   check('bow floors at level 1', blob.prog3.sk.bow.level === 1 && blob.prog3.sk.bow.xp === 10, blob.prog3.sk.bow);
   check('staff caps at 100, xp zeroed', blob.prog3.sk.staff.level === 100 && blob.prog3.sk.staff.xp === 0, blob.prog3.sk.staff);
   check('pool = Σ weapon levels + defense level', blob.prog3.pool === 7 + 0 + 100 + 12, blob.prog3.pool);
-  check('alloc starts zeroed',
+  /* v2.3.1668: alloc is the BODY set only; offense lives in atk, keyed
+     by combat type. */
+  check('body alloc starts zeroed',
     Object.values(blob.prog3.alloc).every((v) => v === 0)
-      && Object.keys(blob.prog3.alloc).sort().join(',') === 'aspd,crit,critDmg,def,dodge,hp,stam', blob.prog3.alloc);
+      && Object.keys(blob.prog3.alloc).sort().join(',') === 'def,dodge,hp,stam', blob.prog3.alloc);
+  check('per-type offense starts zeroed for all three skills',
+    PROG3.SKILLS.every((c) => blob.prog3.atk[c]
+      && blob.prog3.atk[c].crit === 0 && blob.prog3.atk[c].critDmg === 0 && blob.prog3.atk[c].aspd === 0),
+    blob.prog3.atk);
   check('legacy fields kept for rollback', blob.weaponSkills.sword.level === 7 && blob.t2Flat.defense.ironskin === 300);
   // Absent-only: a second pass (or a hand-reset _v) never re-derives.
   blob.prog3.sk.sword.level = 42;
@@ -216,7 +222,9 @@ const psA = room.playerState.pa;
   psA.weapon = { type: 'sword', tierMult: 6, isVolatile: true };
   psA.rangedWeapon = { type: 'bow', tierMult: 6 };
   psA.staffWeapon = { type: 'staff', tierMult: 6 };
-  psA.prog3.alloc.crit = 75; psA.prog3.alloc.critDmg = 100;
+  /* v2.3.1668: offense is per type — invest in every category so each
+     candidate weapon in the ceiling loop is genuinely maxed. */
+  for (const c of PROG3.SKILLS) { psA.prog3.atk[c].crit = 75; psA.prog3.atk[c].critDmg = 100; }
   psA._cursedUntil = 0; psA.amulet = null;
   for (const special of [false, true]) {
     const cap = room._maxDmgForAttacker(psA, special);
@@ -242,13 +250,17 @@ const psA = room.playerState.pa;
 {
   const dirty = room._sanitizeProg3({
     sk: { sword: { level: 999, xp: -5 }, bow: 'nope' },
-    alloc: { hp: 5000, dodge: 999, bogus: 9, aspd: -3 },
+    alloc: { hp: 5000, dodge: 999, bogus: 9 },
+    atk: { sword: { crit: 999, critDmg: -3, bogus: 4 }, nosuchcat: { crit: 50 } },
     pool: 1e9,
   });
   check('sanitize clamps sk levels to [1,100]', dirty.sk.sword.level === 100 && dirty.sk.bow.level === 1, dirty.sk);
   check('sanitize floors xp at 0', dirty.sk.sword.xp === 0, dirty.sk.sword);
-  check('sanitize clamps alloc to stat caps, drops unknown keys',
-    dirty.alloc.hp === 100 && dirty.alloc.dodge === 75 && dirty.alloc.aspd === 0 && !('bogus' in dirty.alloc), dirty.alloc);
+  check('sanitize clamps body alloc to caps, drops unknown keys',
+    dirty.alloc.hp === 100 && dirty.alloc.dodge === 75 && !('bogus' in dirty.alloc), dirty.alloc);
+  check('sanitize clamps per-type offense and drops unknown cats/keys',
+    dirty.atk.sword.crit === 75 && dirty.atk.sword.critDmg === 0
+      && !('bogus' in dirty.atk.sword) && !('nosuchcat' in dirty.atk), dirty.atk);
   check('sanitize bounds pool', dirty.pool === 999, dirty.pool);
 }
 
@@ -322,8 +334,75 @@ const psA = room.playerState.pa;
   let lastPut = null;
   room.state.storage.put = async (k, v) => { if (String(k).startsWith('rpg:')) lastPut = v; };
   await room._saveRpg('pa', psA);
-  check('_saveRpg persists prog3', lastPut && !!lastPut.prog3 && lastPut._v === 10,
+  check('_saveRpg persists prog3', lastPut && !!lastPut.prog3 && lastPut._v === 11,
     lastPut && { hasProg3: !!lastPut.prog3, _v: lastPut._v });
+}
+
+// ── 9. v2.3.1668: per-type offense — the split, the endpoint, the roll ──
+{
+  const sess = { id: 'pa' };
+  const p3 = psA.prog3;
+
+  /* The refund, in isolation: a v10 blob's offense points come back to
+     the pool rather than being copied into all three types (which would
+     triple them) or dropped (which would steal them). */
+  const v10 = { sk: {}, alloc: { def: 5, hp: 3, crit: 10, critDmg: 4, aspd: 2 }, pool: 1 };
+  const split = prog3SplitAtk(v10);
+  check('v11 refunds global offense points to the pool (1 + 16)', split.pool === 17, split.pool);
+  check('v11 keeps body points where they were',
+    split.alloc.def === 5 && split.alloc.hp === 3, split.alloc);
+  check('v11 leaves every type at zero offense',
+    PROG3.SKILLS.every((c) => split.atk[c].crit === 0), split.atk);
+  check('v11 is idempotent (no double refund)', prog3SplitAtk(split).pool === 17);
+
+  /* The endpoint: an offense stat REQUIRES a category. */
+  p3.pool = 50;
+  for (const c of PROG3.SKILLS) p3.atk[c] = { crit: 0, critDmg: 0, aspd: 0 };
+  const poolBefore = p3.pool;
+  room._handleProg3Allocate(sess, { stat: 'crit' });                 // no cat
+  room._handleProg3Allocate(sess, { stat: 'crit', cat: 'trebuchet' }); // unknown cat
+  room._handleProg3Allocate(sess, { stat: 'crit', cat: '__proto__' });
+  check('an offense spend without a valid category is refused',
+    p3.pool === poolBefore && p3.atk.sword.crit === 0,
+    { pool: p3.pool, sword: p3.atk.sword });
+
+  room._handleProg3Allocate(sess, { stat: 'crit', cat: 'bow' });
+  check('an offense spend lands on the NAMED type only',
+    p3.atk.bow.crit === 1 && p3.atk.sword.crit === 0 && p3.atk.staff.crit === 0, p3.atk);
+  check('the offense spend debited the shared pool', p3.pool === poolBefore - 1, p3.pool);
+  const ack = msgsOfType(wsA, 'prog3_allocated').pop();
+  check('the ack names the category', ack && ack.payload.cat === 'bow' && ack.payload.stat === 'crit',
+    ack && ack.payload);
+
+  /* A body stat still works with no category, and ignores a stray one. */
+  room._handleProg3Allocate(sess, { stat: 'def', cat: 'bow' });
+  check('a body spend ignores a stray category', p3.alloc.def === 1, p3.alloc);
+
+  /* THE POINT OF THE CHANGE: investing in one type must not arm another. */
+  psA.weapon = { type: 'greatsword', tierMult: 1 };
+  psA.rangedWeapon = { type: 'bow', tierMult: 1 };
+  psA.staffWeapon = null;
+  psA.amulet = null; psA._cursedUntil = 0;
+  for (const c of PROG3.SKILLS) p3.atk[c] = { crit: 0, critDmg: 0, aspd: 0 };
+  p3.atk.bow.crit = 75;                       // maxed BOW crit only
+  const origRandom = Math.random;
+  Math.random = () => 0.10;                   // inside 30%, outside 0%
+  const bowRoll = room._computeAttackDamage(psA, 'ranged', false);
+  const meleeRoll = room._computeAttackDamage(psA, 'melee', false);
+  Math.random = origRandom;
+  check('maxed BOW crit crits with a bow', bowRoll.isCrit === true, bowRoll);
+  check('maxed BOW crit does NOTHING for melee', meleeRoll.isCrit === false, meleeRoll);
+
+  /* The ceiling must cover the best type, not the active one. */
+  for (const c of PROG3.SKILLS) p3.atk[c] = { crit: 75, critDmg: 100, aspd: 0 };
+  let over = 0;
+  const cap = room._maxDmgForAttacker(psA, false);
+  for (let i = 0; i < 300; i++) {
+    for (const slot of ['melee', 'ranged']) {
+      if (room._computeAttackDamage(psA, slot, false).dmg > cap) over++;
+    }
+  }
+  check('per-type crit damage stays under the anticheat ceiling', over === 0, { over, cap });
 }
 
 console.log(failures === 0 ? '\nprog3: ALL PASS' : `\nprog3: ${failures} FAILURE(S)`);

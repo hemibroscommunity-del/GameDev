@@ -299,8 +299,14 @@ export const combatMethods = {
     // across the three categories (the candidate loop in
     // _maxWeaponDmg doesn't know which weapon wins, so cover the
     // largest).  Server-owned accumulator — see _maxWeaponDmg note.
+    /* v2.3.1668: crit damage is PER COMBAT TYPE now, and _maxWeaponDmg's
+       candidate loop doesn't report which weapon won — so the ceiling
+       takes the LARGEST of the three, exactly as the legacy branch below
+       does across its three banked channels.  Over-covering here is safe
+       (a loose ceiling rejects nothing); under-covering would reject a
+       legitimate maxed hit, which is the failure that matters. */
     const critFlatCeil = ps.prog3
-      ? this._prog3Pts(ps, 'critDmg') * PROG3.STATS.critDmg.per
+      ? Math.max(...PROG3.SKILLS.map((c) => this._prog3AtkPts(ps, c, 'critDmg'))) * PROG3.ATK.critDmg.per
       : Math.max(
         this._t2Flat(ps, 'sword', 'executioner'),
         this._t2Flat(ps, 'bow', 'headshot'),
@@ -409,8 +415,11 @@ export const combatMethods = {
     // %, for the §7 anti-compounding reason).
     let isCrit;
     if (_p3) {
-      isCrit = Math.random() < this._prog3Pts(ps, 'crit') * PROG3.STATS.crit.per;
-      if (isCrit) base = base * 1.5 + this._prog3Pts(ps, 'critDmg') * PROG3.STATS.critDmg.per;
+      /* v2.3.1668: read the offense block for the weapon ACTUALLY being
+         swung — investing in Bow's crit must do nothing for a staff. */
+      const _atkCat = this._prog3CatFor(type);
+      isCrit = Math.random() < this._prog3AtkPts(ps, _atkCat, 'crit') * PROG3.ATK.crit.per;
+      if (isCrit) base = base * 1.5 + this._prog3AtkPts(ps, _atkCat, 'critDmg') * PROG3.ATK.critDmg.per;
     } else {
       const P = ps.power || 0;
       const baseCrit = Math.max(0, Math.min(1, 40 * P / (P + 200) / 100));

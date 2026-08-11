@@ -44,14 +44,38 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await P.page.locator('[aria-label="Build"], [aria-label^="Build —"]').first()
     .click({ timeout: 8000 }).catch(() => {});
   await P.page.waitForTimeout(500);
-  const plusBtns = await P.page.locator('[aria-label^="Add a point to"]').count().catch(() => 0);
-  rec.ok('the Build tab shows the seven-stat spend menu', plusBtns === 7, { plusBtns });
-  const disabled = await P.page.locator('[aria-label^="Add a point to"][aria-disabled="true"]').count().catch(() => 0);
-  rec.ok('every [+] is disabled with an empty pool', disabled === 7, { disabled });
-  const body = await H.bodyText(P);
-  rec.ok('the trained skills render with their levels', /Melee/.test(body) && /Magic/.test(body) && /Lv 1/.test(body),
-    body.slice(0, 300));
-  rec.ok('the points chip shows the pool', /0 AVAILABLE/.test(body), null);
+  const disabled = await P.page.locator('[role="button"][aria-disabled="true"][aria-label*=" of "]').count().catch(() => 0);
+  rec.ok('every stat is unspendable with an empty pool', disabled === 7, { disabled });
+  /* The selector is icon+level chips, so the type names live in
+     aria-label rather than in the text — same icon-only recipe as the
+     Hero section tabs.  Assert the accessible names, which is also what
+     a screen reader gets. */
+  const typeLabels = await P.page.locator('[role="button"][aria-label*="level"]')
+    .evaluateAll((els) => els.map((e) => e.getAttribute('aria-label'))).catch(() => []);
+  rec.ok('the combat-type selector offers all three types',
+    ['Melee', 'Bow', 'Magic'].every((n) => typeLabels.some((l) => l && l.startsWith(n))), typeLabels);
+
+  /* ═══ THE OWNER'S ACTUAL REQUIREMENT ═══
+     "all stats allocable within the active primary combat stat can be
+     seen all at once without scrolling."  Measured, not eyeballed: the
+     Build section's content must not exceed its own scroll viewport.
+     The v2.3.1660 list needed 352px against a 145px body, so five of
+     seven stats sat below a fold with no scroll cue — this assertion is
+     what stops that regressing quietly. */
+  const fit = await P.page.evaluate(() => {
+    const btn = document.querySelector('[aria-label*="Crit"], [aria-label*="Defense"]');
+    if (!btn) return { err: 'no stat cell found' };
+    /* Walk up to the scrolling panel (the one with overflow-y auto). */
+    let el = btn.parentElement;
+    while (el && getComputedStyle(el).overflowY !== 'auto') el = el.parentElement;
+    if (!el) return { err: 'no scroll container' };
+    return { scrollH: el.scrollHeight, clientH: el.clientHeight };
+  });
+  rec.ok('the Build screen fits without scrolling',
+    !fit.err && fit.scrollH <= fit.clientH + 1, fit);
+
+  const cells = await P.page.locator('[aria-disabled][role="button"][aria-label*=" of "]').count().catch(() => 0);
+  rec.ok('all seven allocatable stats are present at once', cells === 7, { cells });
 
   /* ── an empty-pool spend is refused SERVER-side, not just greyed out ── */
   await P.page.evaluate(() => {
