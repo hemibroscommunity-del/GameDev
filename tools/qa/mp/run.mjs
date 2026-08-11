@@ -32,6 +32,7 @@ const SCENARIOS = {
   market: () => import('./mp-market.mjs'),
   arena: () => import('./mp-arena.mjs'),
   prog3: () => import('./mp-prog3.mjs'), /* v2.3.1660: trained-skill rebuild */
+  tutorial: () => import('./mp-tutorial.mjs'), /* v2.3.1665: the completable arc */
 };
 
 const want = process.argv.slice(2).filter((a) => !a.startsWith('-'));
