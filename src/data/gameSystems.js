@@ -23,7 +23,8 @@ import { applyZoneVariant, hitShapeOf, variantForArchetype } from './monsterVari
    (rule 19) and for any blob the v10 respec fail-opened on. */
 import {
   PROG3, prog3Live, prog3CharLevel, prog3SkillLevel, prog3Pts,
-  prog3DodgePct, prog3CritPct, prog3CritFlat, prog3DmgTerm,
+  prog3AtkPts, prog3CatFor, prog3DodgePct, prog3CritPct, prog3CritFlat,
+  prog3DmgTerm,
 } from './prog3.js';
 
 /* v2.3.1186: pure-display exports (BT_AUDIO, BT_ACHIEVEMENTS, MASKS,
@@ -3059,7 +3060,12 @@ export function swingCooldownMultFor(rpg, weaponType) {
      headroom = 273ms), so no server change was needed; raise the
      per-point value and the floor together or fast swings get
      rejected (the lockstep rule below). */
-  if (prog3Live(rpg)) return Math.max(0.50, 1 - prog3Pts(rpg, 'aspd') * PROG3.STATS.aspd.per);
+  /* v2.3.1668: attack speed is PER COMBAT TYPE, and this function is
+     already called with the weaponType being previewed/swung — so it
+     reads that type's block.  A stash bow's readout shows the Bow
+     investment even while a sword is in hand, which is the same
+     behaviour the legacy per-weapon Tempo channel had. */
+  if (prog3Live(rpg)) return Math.max(0.50, 1 - prog3AtkPts(rpg, prog3CatFor(weaponType), 'aspd') * PROG3.ATK.aspd.per);
   /* v2.3.1343 (kid-simple reprice): -0.5%/pt, floor 0.50 — swing twice
      as fast at the 100-pt cap.  SERVER LOCKSTEP: the worker's
      monster_damage hit-cadence floor is sized to THIS cap (600 × 0.50
@@ -4762,12 +4768,15 @@ export function calcDisplayDps(rpg, wpn) {
      the Power baseline — same call pair as the loadout readout. */
   /* v2.3.1660 (prog3): crit is the allocated pair — chance crit×0.4%,
      mult a plain 1.5×, flat critDmg×2 (mirrors the server roll). */
-  var critChance = prog3Live(rpg) ? prog3CritPct(rpg)
+  /* v2.3.1668: this computes DPS for the weapon PASSED IN, which may be
+     a stash item being previewed — so the crit pair must read that
+     weapon's category, not whatever is currently in hand. */
+  var critChance = prog3Live(rpg) ? prog3CritPct(rpg, prog3CatFor(wpn.type))
     : calcCritChance((rpg && rpg.power) || 0, weaponCritStatFor(rpg, wpn.type));
   var critMult = prog3Live(rpg) ? 1.5 : calcCritMult((rpg && rpg.power) || 0);
   /* v2.3.1345: crit-dmg channel is a FLAT bonus on lucky hits — fold
      its expected value on top of the power multiplier. */
-  var critFlat = prog3Live(rpg) ? prog3CritFlat(rpg) : weaponCritFlatFor(rpg, wpn.type);
+  var critFlat = prog3Live(rpg) ? prog3CritFlat(rpg, prog3CatFor(wpn.type)) : weaponCritFlatFor(rpg, wpn.type);
   return ((r.min + r.max) / 2 * (1 + critChance * (critMult - 1)) + critChance * critFlat) / (r.cdMs / 1000);
 }
 
@@ -5020,8 +5029,8 @@ export function recalcDerived(rpg) {
       var p3tm = (typeof rpg.armor.tierMult === 'number' && rpg.armor.tierMult > 0) ? rpg.armor.tierMult : 1.0;
       p3armor = Math.floor(20 * Math.min(8, p3tm)); /* vitality term dropped (§4 audit) */
     }
-    rpg.maxHp = Math.floor(100 + p3lvl * PROG3.HP_PER_LEVEL + prog3Pts(rpg, 'hp') * PROG3.STATS.hp.per + p3armor);
-    rpg.maxStamina = Math.floor(100 + prog3Pts(rpg, 'stam') * PROG3.STATS.stam.per);
+    rpg.maxHp = Math.floor(100 + p3lvl * PROG3.HP_PER_LEVEL + prog3Pts(rpg, 'hp') * PROG3.BODY.hp.per + p3armor);
+    rpg.maxStamina = Math.floor(100 + prog3Pts(rpg, 'stam') * PROG3.BODY.stam.per);
     rpg.maxMana = Math.floor(100 + prog3SkillLevel(rpg, 'staff') * PROG3.MANA_PER_MAGIC_LEVEL);
     rpg._amuletBonus = (rpg.amulet && rpg.amulet.gem) ? getAmuletBonus(rpg.amulet) : null;
     rpg._shieldBonus = (rpg.shield && rpg.shield.gem) ? getShieldBonus(rpg.shield) : null;

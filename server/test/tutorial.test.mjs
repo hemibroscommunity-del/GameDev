@@ -109,13 +109,13 @@ const sess = { id: 'bp_t' };
   // tut_2 pays armor after 5 meadow kills.
   room._handleQuestAccept(sess, { questId: 'tut_2' });
   for (let i = 0; i < 4; i++) room._creditQuestObjective('bp_t', 'kill', 'fodder', 'meadow');
-  room._handleQuestTurnIn(sess, { questId: 'tut_2' });
+  room._handleQuestTurnIn(sess, { questId: 'tut_2', xpCat: 'sword' });
   check('an unmet objective pays nothing and stays active',
     ps._quests.tut_2 === 'active' && ps.coins === 0 && ps.armor === null,
     { st: ps._quests.tut_2, coins: ps.coins, armor: ps.armor });
 
   room._creditQuestObjective('bp_t', 'kill', 'fodder', 'meadow');   // the 5th
-  room._handleQuestTurnIn(sess, { questId: 'tut_2' });
+  room._handleQuestTurnIn(sess, { questId: 'tut_2', xpCat: 'sword' });
   check('a met objective turns the quest in', ps._quests.tut_2 === 'turnedIn', ps._quests.tut_2);
   check('gold is paid', ps.coins === QUEST_REWARDS.tut_2.gold, ps.coins);
   check('the armor reward is granted and named',
@@ -125,13 +125,13 @@ const sess = { id: 'bp_t' };
   check('the next quest unlocks as available', ps._quests.tut_3 === 'available', ps._quests.tut_3);
 
   const coinsAfter = ps.coins;
-  room._handleQuestTurnIn(sess, { questId: 'tut_2' });
+  room._handleQuestTurnIn(sess, { questId: 'tut_2', xpCat: 'sword' });
   check('a turned-in quest cannot be claimed twice', ps.coins === coinsAfter, ps.coins);
 
   // Armor already worn: the grant must not silently replace the player's.
   ps._quests.tut_2 = 'active';
   ps.armor = { name: 'Player Choice', tierMult: 3 };
-  room._handleQuestTurnIn(sess, { questId: 'tut_2' });
+  room._handleQuestTurnIn(sess, { questId: 'tut_2', xpCat: 'sword' });
   check('an armor grant never overwrites armor the player is wearing',
     ps.armor.name === 'Player Choice', ps.armor);
 }
@@ -144,7 +144,7 @@ const sess = { id: 'bp_t' };
 
   room._handleQuestAccept(sess, { questId: 'tut_3' });
   for (let i = 0; i < 5; i++) room._creditQuestObjective('bp_t', 'kill', 'snowman', 'frost');
-  room._handleQuestTurnIn(sess, { questId: 'tut_3' });
+  room._handleQuestTurnIn(sess, { questId: 'tut_3', xpCat: 'bow' });
   check('an empty weapon slot receives the granted weapon',
     ps.weapon && ps.weapon.name === "Bro's Blade" && ps.weapon.type === 'greatsword', ps.weapon);
   check('the granted weapon has a forge-shaped blob',
@@ -162,7 +162,7 @@ const sess = { id: 'bp_t' };
   ps.coins = 0;
   room._handleQuestAccept(sess, { questId: 'tut_3' });
   for (let i = 0; i < 5; i++) room._creditQuestObjective('bp_t', 'kill', 'snowman', 'frost');
-  room._handleQuestTurnIn(sess, { questId: 'tut_3' });
+  room._handleQuestTurnIn(sess, { questId: 'tut_3', xpCat: 'bow' });
   check('a full stash does not destroy the equipped weapon',
     ps.weapon.name === 'Keeper', ps.weapon);
   check('a full stash stays at cap (rule 3: no silent overflow)',
@@ -185,6 +185,36 @@ const sess = { id: 'bp_t' };
   check('an inventory grant lands',
     room._grantQuestItem(ps, { kind: 'inv', key: 'ore_copper_ore', n: 3 }) === true
     && ps.inventory.ore_copper_ore === 3, { before, after: ps.inventory });
+}
+
+// ── 6. v2.3.1669: quest XP must name a trained skill ──
+{
+  const sess = { id: 'bp_t' };
+  ps._quests = Object.create(null);
+  ps._questKills = Object.create(null);
+  ps.coins = 0; ps.armor = null;
+
+  room._handleQuestAccept(sess, { questId: 'tut_1' });
+  for (let i = 0; i < 3; i++) room._creditQuestObjective('bp_t', 'kill', 'fodder', 'meadow');
+
+  /* No category, unknown category, prototype key — all refused, and
+     refused WHOLE: the quest must stay claimable, not end up turnedIn
+     with the reward unpaid. */
+  for (const bad of [undefined, 'trebuchet', '__proto__', 42]) {
+    room._handleQuestTurnIn(sess, { questId: 'tut_1', xpCat: bad });
+  }
+  check('an XP-paying turn-in with no valid skill is refused',
+    ps._quests.tut_1 === 'active' && ps.coins === 0, { st: ps._quests.tut_1, coins: ps.coins });
+
+  const bowBefore = ps.prog3.sk.bow.level + ps.prog3.sk.bow.xp;
+  const swordBefore = ps.prog3.sk.sword.level + ps.prog3.sk.sword.xp;
+  room._handleQuestTurnIn(sess, { questId: 'tut_1', xpCat: 'bow' });
+  check('naming a skill completes the turn-in', ps._quests.tut_1 === 'turnedIn', ps._quests.tut_1);
+  check('the XP went into the NAMED skill',
+    ps.prog3.sk.bow.level + ps.prog3.sk.bow.xp > bowBefore, ps.prog3.sk.bow);
+  check('the XP did NOT go anywhere else',
+    ps.prog3.sk.sword.level + ps.prog3.sk.sword.xp === swordBefore, ps.prog3.sk.sword);
+  check('gold is still paid alongside', ps.coins === QUEST_REWARDS.tut_1.gold, ps.coins);
 }
 
 console.log(failures === 0 ? '\ntutorial: ALL PASS' : `\ntutorial: ${failures} FAILURE(S)`);

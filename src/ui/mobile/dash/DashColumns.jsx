@@ -7,6 +7,8 @@ import { bagFilterBus } from './bagFilterBus.js';
 import { COMBAT_SKILLS, skillLevel } from '../sheet/heroModel.js';
 import { dashboardPanelBus } from '../dashboardPanelBus.js';
 import { requestT2Category } from './T2Panel.jsx';
+import { heroSectionBus } from '../sheet/heroSectionBus.js';
+import { prog3Live, prog3Pool, prog3SkillLevel, prog3CatFor } from '../../../data/prog3.js';
 import { buildSkillUnspent, STAT_TO_WEAPON_CAT } from '../../../data/gameSystems.js';
 import { dashTileSize, dashPanelWidths, combatPillWidth, combatPillHeight, BAG_VIEW_COLS, DASH_GAP, DASH_ROWS, BAG_HEADER_H } from '../sheet/sheetGeometry.js';
 
@@ -184,9 +186,24 @@ export const DashColumns = ({ R }) => {
   const pillW = combatPillWidth(vw);
   const pillH = combatPillHeight(vw);
   const combatPill = (s) => {
-    const unspent = buildSkillUnspent(rpg, s.key);
-    const lvl = skillLevel(rpg, s.key);
+    /* ═══ v2.3.1668: these pills were the last live route into the
+       retired tier-2 screen ═══
+       They were entirely prog3-blind: the level came from the frozen
+       legacy T1 stats (R.power/agility/mind), the badge from the frozen
+       legacy per-weapon pools, and the tap pushed T2Panel — which still
+       SPENDS from those pools and persists the result client-side.  So
+       under prog3 a player could tap Melee and pour points into a
+       system nothing reads.
+       Now: real trained level, the real shared pool, and a tap that
+       opens Hero's Build section with this combat type selected. */
+    const p3 = prog3Live(rpg);
     const cat = STAT_TO_WEAPON_CAT[s.key];
+    const p3cat = cat ? prog3CatFor(cat) : null;
+    const lvl = (p3 && p3cat) ? prog3SkillLevel(rpg, p3cat) : skillLevel(rpg, s.key);
+    /* One shared pool under prog3, so every pill shows the same number —
+       which is honest: the points ARE interchangeable until you spend
+       them, and that is the choice the Build grid asks you to make. */
+    const unspent = p3 ? prog3Pool(rpg) : buildSkillUnspent(rpg, s.key);
     return (
       <div key={s.key}
         role="button"
@@ -194,7 +211,11 @@ export const DashColumns = ({ R }) => {
         onPointerUp={(e) => {
           e.stopPropagation();
           dashboardPanelBus.open('hero');
-          if (cat) { requestT2Category(cat); dashboardPanelBus.push('t2'); }
+          if (p3) {
+            heroSectionBus.request('Build', p3cat);
+          } else if (cat) {
+            requestT2Category(cat); dashboardPanelBus.push('t2');
+          }
         }}
         aria-label={`${s.label} level ${lvl}`}
         title={`${s.label} — Lv ${lvl}${unspent > 0 ? `, ${unspent} unspent` : ''}`}

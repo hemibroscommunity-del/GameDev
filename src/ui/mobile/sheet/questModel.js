@@ -35,6 +35,15 @@ export function deriveQuestLog(S) {
     const r = getNpcQuest(R, npc);
     if (r && r.status === QUEST_STATUS.available) upcoming.push(r.quest);
   }
+  /* v2.3.1669 (owner: "the quests need to be given one at a time").
+     One row per quest-giving NPC meant eight offers on a fresh character,
+     which reads as a job board rather than someone sending you somewhere
+     — and eight of them are from chains whose givers do not exist in the
+     world yet.  QUEST_CHAINS' insertion order puts the tutorial's tut_1
+     first, so slicing to one naturally yields the intended opener; the
+     sort makes that a guarantee rather than a property of key order. */
+  upcoming.sort((a, b) => (a.npc === 'Mayor Bro' ? -1 : 0) - (b.npc === 'Mayor Bro' ? -1 : 0));
+  upcoming.length = Math.min(upcoming.length, 1);
 
   return { active, upcoming, done };
 }

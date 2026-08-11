@@ -3201,4 +3201,41 @@ export const BT_ACHIEVEMENTS = [{
    a time to light each NPC up.  v2.3.788: the ferryman-portal code and
    the wasteland zone it led to were removed for good (owner decision,
    2026-06-12) -- don't re-add The Ferryman without rebuilding both. */
-export const NPC_DATA = [];
+/* v2.3.1669 (owner): Mayor Bro is back, one NPC, standing on the path at
+   the foot of his own steps.  Position measured off the painted town art
+   (/maps/town_v15.webp, stretched to 48x32 tiles = 1536 world px): the
+   door arch sits at ~(757, 317) and the bottom of the staircase at
+   ~(757, 410), so (758, 448) puts him on the path just clear of the
+   steps.  The player spawns at the fountain (768, 768), 320 px south —
+   he is on screen at spawn on a 390x844 phone, with the house behind
+   him.
+   pathRadius 0 pins him: a quest giver who wanders is a quest giver you
+   have to hunt for.  `phrases` is REQUIRED — the AI loop indexes it
+   unguarded and an empty array throws. */
+export const NPC_DATA = [{
+  id: 'mayor_bro',
+  name: 'Mayor Bro',          /* MUST equal QUEST_CHAINS[].npc — getNpcQuest keys on it */
+  avatar: '🧔',
+  color: '#f5c542',
+  x: 758, y: 448,
+  spawnX: 758, spawnY: 448,
+  renderX: 758, renderY: 448,
+  hp: 100, maxHp: 100,
+  alive: true,
+  respawnAt: 0,
+  pathRadius: 0,
+  moveTimer: 0,
+  targetX: 758, targetY: 448,
+  chatTimer: 8000,
+  chatBubble: null,
+  phrases: [
+    'Another one washes ashore.',
+    "There's work, if you want it.",
+    'Mind the Hollows.',
+  ],
+  canFollow: false,
+  followZones: [],
+  _facing: 'down',
+  _questMarker: null,
+  _hitThisSwing: false,
+}];

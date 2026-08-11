@@ -170,6 +170,27 @@ export async function enterWorld(P, timeout = 90000) {
     const S = window._gameState && window._gameState.current;
     return !!(S && S.myId && S.currentZone);
   }, null, { timeout, polling: 500 });
+  /* v2.3.1668: dismiss Mayor Bro's welcome video (MayorGreeting.jsx —
+     once per browser context, over the nav rail).  It is self-limiting
+     for a real player (a SKIP button plus a 9s safety dismiss), but a
+     headless tap that lands within those 9 seconds hits the <video>
+     instead of the control underneath and the scenario dies with
+     "not tappable: covered by <video>".  Which scenario loses that race
+     depends on boot timing, so it was an intermittent failure in ANY
+     scenario whose first action is a tap — dismiss it here, once, for
+     everyone, exactly as a player would. */
+  /* v2.3.1668: WAIT FOR THE INTRO VIDEO TO LIFT.
+     `S.myId && S.currentZone` means the world is live, but the intro clip
+     (/intro/loading-ashore.mp4) is still painted full-screen over it for
+     a couple of seconds — so the first tap of a scenario landed on the
+     <video> and Playwright failed it as "not tappable: covered by
+     <video>".  Whichever scenario tapped first lost, which is why it read
+     as an unrelated intermittent failure.
+     Measured: the element is gone by ~4s.  Waited for, not slept through,
+     with a generous ceiling and a catch — a scenario that genuinely has
+     no intro must not hang here. */
+  await page.waitForFunction(() => document.querySelectorAll('video').length === 0,
+    null, { timeout: 15000, polling: 200 }).catch(() => {});
   return page.evaluate(() => {
     const S = window._gameState.current;
     return { myId: S.myId, zone: S.currentZone };

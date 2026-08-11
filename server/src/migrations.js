@@ -41,9 +41,9 @@
  */
 
 import { t2ReplayFlat } from './data.js';
-import { prog3FromLegacy } from './prog3.js';
+import { prog3FromLegacy, prog3SplitAtk } from './prog3.js';
 
-export const RPG_SCHEMA_VERSION = 10;
+export const RPG_SCHEMA_VERSION = 11;
 
 /* Pure version of the v2.3.769 heal (was GameRoom._healLifeSkills):
  * records bootstrapped from pre-fix clients carry lifeSkills with
@@ -396,6 +396,33 @@ export const MIGRATIONS = [
       if (!blob || typeof blob !== 'object') return false;
       if (blob.prog3 && typeof blob.prog3 === 'object') return false;
       blob.prog3 = prog3FromLegacy(blob);
+      return true;
+    },
+  },
+  {
+    v: 11,
+    name: 'prog3-per-type-offense',
+    /* v2.3.1668 (owner: "the attack power ... are specific to the combat
+       type").  v10 gave every character ONE global set of seven allocated
+       stats.  Offense (crit / critDmg / aspd) is now allocated per combat
+       type, so a v10-shaped blob has to be folded into the BODY/ATK split.
+
+       prog3SplitAtk REFUNDS the three offense stats to the pool rather
+       than copying them into each type: copying would triple a player's
+       investment for free, and choosing one type to receive them would be
+       guessing on their behalf.  Refunding hands the choice back, which is
+       the entire point of the change.  Body stats (def/hp/dodge/stam) are
+       untouched — they did not move.
+
+       Absent-only by construction: prog3SplitAtk returns immediately when
+       `atk` already exists, so a re-run cannot double-refund.  A blob with
+       no prog3 at all is left for v10 above to build (migrations run in
+       order, so that has already happened by the time we get here). */
+    run(blob) {
+      if (!blob || typeof blob !== 'object') return false;
+      if (!blob.prog3 || typeof blob.prog3 !== 'object') return false;
+      if (blob.prog3.atk && typeof blob.prog3.atk === 'object') return false;
+      prog3SplitAtk(blob.prog3);
       return true;
     },
   },

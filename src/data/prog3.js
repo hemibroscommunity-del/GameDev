@@ -19,14 +19,19 @@ export const PROG3 = {
   SKILLS: ['sword', 'bow', 'staff'], // storage keys; displayed Melee / Bow / Magic
   LEVEL_CAP: 100,
   CHAR_LEVEL_CAP: 300,
-  STATS: {
+  /* v2.3.1668: BODY is global, ATK is allocated per combat type — see
+     the server's PROG3 block for the reasoning.  Mirror both or the
+     readouts drift from the rolls. */
+  BODY: {
     def:     { cap: 100, per: 0.004 },  // −0.4% damage taken/pt
     hp:      { cap: 100, per: 8 },      // +8 max HP/pt
     dodge:   { cap: 75,  per: 0.004 },  // +0.4% dodge/pt
     stam:    { cap: 100, per: 3 },      // +3 max stamina/pt
-    crit:    { cap: 75,  per: 0.004 },  // +0.4% crit/pt
-    critDmg: { cap: 100, per: 2 },      // +2 flat on crits/pt
-    aspd:    { cap: 100, per: 0.0035 }, // −0.35% swing period/pt
+  },
+  ATK: {
+    crit:    { cap: 75,  per: 0.004 },  // +0.4% crit/pt, PER TYPE
+    critDmg: { cap: 100, per: 2 },      // +2 flat on crits/pt, PER TYPE
+    aspd:    { cap: 100, per: 0.0035 }, // −0.35% swing period/pt, PER TYPE
   },
   DMG_PER_LEVEL: { sword: 0.18, bow: 0.18, staff: 0.22 },
   HP_PER_LEVEL: 2,
@@ -36,14 +41,18 @@ export const PROG3 = {
 /* The Build screen's row order + copy.  `perText` states the per-point
    value in the player's language (LANTERN-SLATE: say what a point
    buys, no jargon). */
-export const PROG3_STAT_META = [
-  { key: 'def',     label: 'Defense',     perText: '−0.4% damage taken' },
-  { key: 'hp',      label: 'Max HP',      perText: '+8 max HP' },
-  { key: 'dodge',   label: 'Dodge',       perText: '+0.4% dodge' },
-  { key: 'stam',    label: 'Stamina',     perText: '+3 max stamina' },
-  { key: 'crit',    label: 'Crit Chance', perText: '+0.4% crit' },
-  { key: 'critDmg', label: 'Crit Damage', perText: '+2 dmg on crits' },
-  { key: 'aspd',    label: 'Attack Speed', perText: '−0.35% swing time' },
+/* v2.3.1668: two menus.  ATK rows belong to the selected combat type;
+   BODY rows are shared across all three. */
+export const PROG3_ATK_META = [
+  { key: 'crit',    label: 'Crit',      perText: '+0.4% crit chance' },
+  { key: 'critDmg', label: 'Crit Dmg',  perText: '+2 damage on crits' },
+  { key: 'aspd',    label: 'Atk Speed', perText: '−0.35% swing time' },
+];
+export const PROG3_BODY_META = [
+  { key: 'def',   label: 'Defense', perText: '−0.4% damage taken' },
+  { key: 'hp',    label: 'Max HP',  perText: '+8 max HP' },
+  { key: 'dodge', label: 'Dodge',   perText: '+0.4% dodge' },
+  { key: 'stam',  label: 'Stamina', perText: '+3 max stamina' },
 ];
 
 export const PROG3_SKILL_META = [
@@ -82,11 +91,28 @@ export function prog3CharLevel(rpg) {
   return Math.min(PROG3.CHAR_LEVEL_CAP, sum);
 }
 
+/* A GLOBAL body stat. */
 export function prog3Pts(rpg, stat) {
   var a = rpg && rpg.prog3 && rpg.prog3.alloc;
   var v = a && a[stat];
-  var cap = PROG3.STATS[stat] ? PROG3.STATS[stat].cap : 0;
+  var cap = PROG3.BODY[stat] ? PROG3.BODY[stat].cap : 0;
   return (typeof v === 'number') ? Math.max(0, Math.min(cap, v)) : 0;
+}
+/* A PER-TYPE offense stat. cat is 'sword' | 'bow' | 'staff'. */
+export function prog3AtkPts(rpg, cat, stat) {
+  var a = rpg && rpg.prog3 && rpg.prog3.atk && rpg.prog3.atk[cat];
+  var v = a && a[stat];
+  var cap = PROG3.ATK[stat] ? PROG3.ATK[stat].cap : 0;
+  return (typeof v === 'number') ? Math.max(0, Math.min(cap, v)) : 0;
+}
+/* greatsword shares the sword/melee category, matching the server. */
+export function prog3CatFor(weaponType) {
+  return weaponType === 'bow' ? 'bow' : weaponType === 'staff' ? 'staff' : 'sword';
+}
+/* The category whose offense stats apply to what you are holding. */
+export function prog3ActiveCat(rpg) {
+  var slot = rpg && rpg.activeSlot;
+  return slot === 'ranged' ? 'bow' : slot === 'staff' ? 'staff' : 'sword';
 }
 
 export function prog3Pool(rpg) {
@@ -98,14 +124,19 @@ export function prog3Pool(rpg) {
    mirrors the server's allocation gate so the [+] button disables at
    exactly the point the server would refuse. */
 export function prog3StatCap(rpg, stat) {
-  var hard = PROG3.STATS[stat] ? PROG3.STATS[stat].cap : 0;
-  return Math.min(hard, prog3CharLevel(rpg));
+  var d = PROG3.BODY[stat] || PROG3.ATK[stat];
+  return Math.min(d ? d.cap : 0, prog3CharLevel(rpg));
+}
+export function prog3IsAtkStat(stat) {
+  return !!PROG3.ATK[stat];
 }
 
-export function prog3DodgePct(rpg) { return prog3Pts(rpg, 'dodge') * PROG3.STATS.dodge.per; }
-export function prog3CritPct(rpg) { return prog3Pts(rpg, 'crit') * PROG3.STATS.crit.per; }
-export function prog3CritFlat(rpg) { return prog3Pts(rpg, 'critDmg') * PROG3.STATS.critDmg.per; }
-export function prog3DefPct(rpg) { return prog3Pts(rpg, 'def') * PROG3.STATS.def.per; }
+export function prog3DodgePct(rpg) { return prog3Pts(rpg, 'dodge') * PROG3.BODY.dodge.per; }
+/* v2.3.1668: crit/critDmg read the ACTIVE weapon's block unless a
+   category is named (loadout previews pass one explicitly). */
+export function prog3CritPct(rpg, cat) { return prog3AtkPts(rpg, cat || prog3ActiveCat(rpg), 'crit') * PROG3.ATK.crit.per; }
+export function prog3CritFlat(rpg, cat) { return prog3AtkPts(rpg, cat || prog3ActiveCat(rpg), 'critDmg') * PROG3.ATK.critDmg.per; }
+export function prog3DefPct(rpg) { return prog3Pts(rpg, 'def') * PROG3.BODY.def.per; }
 
 /* The trained-level damage term replacing stat × 0.1667 — mirrors the
    server's _computeAttackDamage branch (specials scale on Magic and
