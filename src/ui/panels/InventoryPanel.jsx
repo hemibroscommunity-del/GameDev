@@ -812,9 +812,12 @@ export function InventoryPanel(props) {
         color: 'var(--ui-text-muted)'
       }
     }, "No elements"), function () {
-      var req = getEquipReqLabel(sw, sw.type);
+      /* v2.3.1661 (prog3): pass rpg — req carries have/met when the
+         rebuild is live (trained level / defense points). */
+      var req = getEquipReqLabel(sw, sw.type, rpgState);
       if (!req) return null;
-      var met = (rpgState[req.stat] || 0) >= req.req;
+      var have = req.prog3 ? req.have : (rpgState[req.stat] || 0);
+      var met = req.prog3 ? req.met : (rpgState[req.stat] || 0) >= req.req;
       return /*#__PURE__*/React.createElement("span", {
         /* v2.3.1235: batch-2 rollout — the stat requirement is the
            "show the requirement" line the locked contract protects:
@@ -824,7 +827,7 @@ export function InventoryPanel(props) {
           color: met ? '#55B98A' : '#D8635D',
           marginLeft: 4
         }
-      }, req.label, " ", rpgState[req.stat] || 0, "/", req.req, " ", met ? '✓' : '✗');
+      }, req.label, " ", have, "/", req.req, " ", met ? '✓' : '✗');
     }()), /*#__PURE__*/React.createElement("div", {
       style: {
         display: 'flex',
@@ -854,8 +857,9 @@ export function InventoryPanel(props) {
         var swapWpn = R.weaponStash[si];
         /* Check stat requirement */
         if (!canEquipItem(R, swapWpn, swapWpn.type)) {
-          var req = getEquipReqLabel(swapWpn, swapWpn.type);
-          pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'Need ' + req.req + ' ' + req.label + ' (have ' + (R[req.stat] || 0) + ')', '#D95C54');
+          var req = getEquipReqLabel(swapWpn, swapWpn.type, R); /* v2.3.1661: prog3-aware */
+          var _reqHave = req && (req.prog3 ? req.have : (R[req.stat] || 0));
+          if (req) pushDmgPopup(stateRef.current, stateRef.current.player.x, stateRef.current.player.y - 30, 'Need ' + req.label + ' ' + req.req + ' (have ' + _reqHave + ')', '#D95C54');
           return;
         }
         var wDef = WEAPON_TYPES[swapWpn.type];

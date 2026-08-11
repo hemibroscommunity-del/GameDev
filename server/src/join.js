@@ -15,6 +15,7 @@
 
 import { healLifeSkills } from './migrations.js';
 import { t2ReplayFlat } from './data.js';
+import { prog3FromLegacy } from './prog3.js';
 
 /* ═══ v2.3.1627: the JOIN DATA ALLOWLIST ═══
  *
@@ -376,6 +377,11 @@ export const joinMethods = {
         this.playerState[msg.id]._questFlags = (stored._questFlags && typeof stored._questFlags === 'object') ? { ...stored._questFlags } : {};
         this.playerState[msg.id]._questKills = (stored._questKills && typeof stored._questKills === 'object') ? { ...stored._questKills } : {};
         this.playerState[msg.id].achievementPoints = stored.achievementPoints || 0;
+        /* v2.3.1664: server-verified kills.  MUST be restored here or a
+           reconnect resets the counter to 0 and the next on-chain
+           attestation would report fewer kills than the last one — which
+           the contract's monotonic guard rejects, silently costing gas. */
+        this.playerState[msg.id].svKills = Math.max(0, Math.floor(stored.svKills || 0));
         // Restore the perfect-claim history so the rate-limit
         // window survives reconnects.  Stale entries (>60s old)
         // get pruned on the next _ratedHarvestAccuracy call.
@@ -640,6 +646,27 @@ export const joinMethods = {
           _ps.t2Flat = (stored && stored.t2Flat && typeof stored.t2Flat === 'object')
             ? this._sanitizeT2Flat(stored.t2Flat)
             : t2ReplayFlat(_ps);
+          // v2.3.1659: prog3 trained-skill track.  Stored wins (the
+          // v10 migration respecced it once; live trained levels are
+          // the truth).  Everything else — first connect, pre-v10 blob
+          // whose migration fail-opened — gets the boundary heal:
+          // respec from the legacy tracks ingested above
+          // (prog3FromLegacy, the same computation migration v10
+          // runs).  The join payload is NEVER a source: prog3 feeds
+          // the authoritative damage roll and the anticheat ceiling,
+          // so a client-supplied copy would raise its own cap (the
+          // t2Flat/v2.3.1131 rule).
+          const _p3Adopted = !!(stored && stored.prog3 && typeof stored.prog3 === 'object');
+          _ps.prog3 = _p3Adopted
+            ? this._sanitizeProg3(stored.prog3)
+            : prog3FromLegacy(_ps);
+          // A freshly-derived respec tops off every pool after the
+          // recompute below: the announced "full respec" moment, and
+          // the pool formulas just changed under the player (a
+          // carried hp of 100 against a prog3 maxHp of 106 would
+          // otherwise leave every fresh character permanently
+          // part-damaged until their first level-up).
+          _ps._p3FreshRespec = !_p3Adopted;
         }
         // Server-owned max values: compute from clamped raw stats
         // (v2.3.1154: and the grid specs ingested just above --
@@ -647,6 +674,16 @@ export const joinMethods = {
         // Persisted hp / stamina / mana already loaded above; clamp
         // them to the recomputed maxes here.
         this._recomputeMaxes(_ps);
+        // v2.3.1659: see _p3FreshRespec above — first prog3 adoption
+        // restores the pools to the new maxes (in-memory flag only,
+        // consumed here; never persisted — _saveRpg's field list
+        // drops it by construction).
+        if (_ps._p3FreshRespec) {
+          delete _ps._p3FreshRespec;
+          if (typeof _ps.maxHp === 'number') _ps.hp = _ps.maxHp;
+          if (typeof _ps.maxStamina === 'number') _ps.stamina = _ps.maxStamina;
+          if (typeof _ps.maxMana === 'number') _ps.mana = _ps.maxMana;
+        }
         this._saveRpg(msg.id, _ps);
       }
     }
@@ -794,7 +831,7 @@ export const joinMethods = {
       // an old worker the client keeps the full legacy t2Accel math so
       // its numbers keep matching that worker's authoritative rolls
       // and echoes (deploy-order safety, rule 19).
-      caps: { trade: true, questTrack: true, gamble: true, clans: true, arena: true, dungeon: true, sponsor: true, guilds: true, pets: true, harden: true, trade2: true, weaponDrops: true, botfp: true, jackpot: true, hpEndGrids: true, t2uniform: true, httpAuth: true, party: true, amuletForge: true, gems: true, petLoot: true, gemExtract: true, partyChat: true, trade2Weapons: true, laststand: true, friends: true /* v2.3.1323 */, t2simple: true /* v2.3.1342: level = T2 points placed (cap 1000); client gates its level derivation + spend celebration on this so an old worker's player_state echo can't stomp the new formula */, t2bench: true, broVerify: true /* v2.3.1576: Hemi Bro ownership. Gates the client's wallet control (broWallet.broVerifySupported) so it only appears against a worker that can settle it; an old client never sends the types. Safe in either deploy order (rule 19). */, ..._liveFlags },
+      caps: { trade: true, questTrack: true, gamble: true, clans: true, arena: true, dungeon: true, sponsor: true, guilds: true, pets: true, harden: true, trade2: true, weaponDrops: true, botfp: true, jackpot: true, hpEndGrids: true, t2uniform: true, httpAuth: true, party: true, amuletForge: true, gems: true, petLoot: true, gemExtract: true, partyChat: true, trade2Weapons: true, laststand: true, friends: true /* v2.3.1323 */, t2simple: true /* v2.3.1342: level = T2 points placed (cap 1000); client gates its level derivation + spend celebration on this so an old worker's player_state echo can't stomp the new formula */, t2bench: true, broVerify: true /* v2.3.1576: Hemi Bro ownership. Gates the client's wallet control (broWallet.broVerifySupported) so it only appears against a worker that can settle it; an old client never sends the types. Safe in either deploy order (rule 19). */, prog3: true /* v2.3.1659: the trained-skill combat rebuild (prog3.js). The client gates its new Build UI, prog3_allocate sends, trained-level readouts, and the retirement of its local _buildProg/weapon-XP accrual on this flag — an old worker would relay prog3_allocate as an unknown type and its player_state echoes would stomp prog3-derived pools (deploy-order safety, rule 19). */, ..._liveFlags },
       // v2.3.1178: this session's private economy-endpoint token.
       // state_sync goes to the joining socket ONLY -- never broadcast.
       httpToken: session.httpToken,

@@ -68,6 +68,14 @@ async function join(ws, id, data) {
 const ws = fakeWs('g');
 await join(ws, 'bp_gr_a');
 const ps = room.playerState['bp_gr_a'];
+
+/* v2.3.1659 (prog3): every joining player is respecced onto the
+   trained-skill track now.  THIS SUITE PINS THE LEGACY GRID PATH —
+   still live code for any blob whose v10 migration fail-opens — so
+   the fixture opts out of prog3 and re-derives the legacy pools.
+   The new path's coverage lives in prog3.test.mjs. */
+delete ps.prog3;
+room._recomputeMaxes(ps);
 const session = [...room.sessions.values()].find((s) => s.id === 'bp_gr_a');
 
 // ── 1. sanitizers ──

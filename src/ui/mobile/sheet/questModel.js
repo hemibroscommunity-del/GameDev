@@ -62,6 +62,13 @@ export function readyQuestCount(S) {
 
 /* One reward string, shared by every quest row. */
 export function rewardText(q) {
-  return [q.reward?.gold ? `${q.reward.gold}g` : null, q.reward?.xp ? `${q.reward.xp} XP` : null]
-    .filter(Boolean).join(' · ');
+  /* v2.3.1665: quests can now pay an ITEM as well (the tutorial arc hands
+     out armor and a weapon).  `reward.item` is the display name only — the
+     SERVER's QUEST_REWARDS entry holds the real grant, so this string can
+     never over-promise what the turn-in will actually deliver. */
+  return [
+    q.reward?.gold ? `${q.reward.gold}g` : null,
+    q.reward?.xp ? `${q.reward.xp} XP` : null,
+    q.reward?.item ? String(q.reward.item) : null,
+  ].filter(Boolean).join(' · ');
 }

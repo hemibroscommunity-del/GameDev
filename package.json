@@ -1,7 +1,7 @@
 {
   "name": "hemi-bros-arpg",
   "version": "2.3.1201",
-  "private": true,
+  "license": "MIT",
   "type": "module",
   "scripts": {
     "dev": "vite",

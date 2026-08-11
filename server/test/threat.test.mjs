@@ -120,6 +120,11 @@ wss.b.sent.length = 0;
 room.eventBuffer.length = 0;
 await respond(wss.t, P('b'), 'guards'); // answers b's pending threat
 const psB = room.playerState[P('b')];
+/* v2.3.1661 (prog3): the equip fixtures below use tiered gear a fresh
+   respec (trained levels 1, defense 0) would legitimately be refused —
+   this suite is about the THREAT gear lock, not tier gates, so opt the
+   fixture out of prog3.  prog3.test.mjs owns the tier-gate coverage. */
+delete psB.prog3;
 const pen = msgsOfType(wss.b, 'threat_penalty');
 check('guards fines exactly 10%', psB.coins === 900 && pen.length === 1 && pen[0].payload.levy === 100, { coins: psB.coins, pen: pen.map((p) => p.payload) });
 check('gear lock stamped + storage-backed', psB._gearLockUntil > Date.now() && state._store.get('gearlock:' + P('b')) === psB._gearLockUntil);

@@ -86,6 +86,15 @@ const FAR = 5000; // isolated corner, far from every random spawn
 const ws = fakeWs('t');
 await join(ws, 'bp_tk_a');
 const ps = room.playerState['bp_tk_a'];
+
+/* v2.3.1659 (prog3): every joining player is respecced onto the
+   trained-skill track now.  THIS SUITE PINS THE LEGACY PATH (bulwark
+   block costs, channel regen flats) — still live code for any blob
+   whose v10 migration fail-opens — so the fixture opts out of prog3
+   and re-derives the legacy pools.  prog3.test.mjs covers the new
+   path. */
+delete ps.prog3;
+room._recomputeMaxes(ps);
 ps.z = 'meadow';
 ps.x = -100000; ps.y = -100000; // out of everyone's aggro until placed
 ps.dead = false;

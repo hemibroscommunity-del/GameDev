@@ -18,7 +18,7 @@
 import { processGameEvent } from '@/networking/gameEvents.js';
 import { stashPendingZoneNodes } from '@/networking/nodeSync.js'; /* v2.3.1301: node self-heal */
 import { getDeviceNonce, generatePassphrase, passphraseToId } from '@/networking/index.js';
-import { createGatherNode, spawnMonstersForZone, BT_AUDIO, ZONES, TILE, DEATH_GOLD_PENALTY, RARITY_TIERS, ZONE_RESOURCES, createDefaultCompStats, generateZoneMap, recalcDerived, updateZoneDimensions, setGridCapsEnabled, setT2SimpleEnabled, setT2BenchEnabled } from '@/data/index.js';
+import { createGatherNode, spawnMonstersForZone, BT_AUDIO, ZONES, TILE, DEATH_GOLD_PENALTY, RARITY_TIERS, ZONE_RESOURCES, createDefaultCompStats, generateZoneMap, recalcDerived, updateZoneDimensions, setGridCapsEnabled, setT2SimpleEnabled, setT2BenchEnabled, setProg3Enabled, PROG3_SKILL_META } from '@/data/index.js';
 import { _objectSpread, _slicedToArray, _toConsumableArray } from '@/lib/babelHelpers.js';
 import { usesClientSideMovement, MONSTER_VARIANTS, isRemnantSkull, applyZoneVariant } from '@/data/monsterVariants.js';
 import { rollMonsterShard, shardByKey } from '@/data/shards.js';
@@ -661,6 +661,14 @@ export function setupWebSocket(ctx) {
                    legacy t2Accel math that matches the old worker's
                    authoritative rolls and echoes. */
                 setT2BenchEnabled(!!(S._serverCaps && S._serverCaps.t2bench));
+                /* v2.3.1660: prog3 deploy-order gate — the trained-
+                   skill rebuild's Build UI, allocation sends, pool
+                   formulas and damage readouts all run only while
+                   THIS worker claims caps.prog3 (its player_state
+                   carries the server-owned rpg.prog3 blob).  Against
+                   an old worker everything keeps the legacy T2 math
+                   that matches that worker's rolls and echoes. */
+                setProg3Enabled(!!(S._serverCaps && S._serverCaps.prog3));
                 if (S.rpg) recalcDerived(S.rpg);
               } catch (e) {}
               var others = {};
@@ -1074,6 +1082,13 @@ export function setupWebSocket(ctx) {
                  identical and this is a no-op; after a clamp,
                  truncation, or stale-echo scale they converge here. */
               if (msg.payload.t2Flat && typeof msg.payload.t2Flat === 'object') S.rpg.t2Flat = msg.payload.t2Flat;
+              /* v2.3.1660: prog3 trained-skill track — adopted
+                 WHOLESALE, presence-gated.  Server-owned end to end
+                 (the worker never reads it back from us), so the echo
+                 IS the state: trained levels/xp, the seven-stat
+                 alloc, and the point pool all land here and the
+                 recalc below re-derives level + pools from them. */
+              if (msg.payload.prog3 && typeof msg.payload.prog3 === 'object') { S.rpg.prog3 = msg.payload.prog3; recalcDerived(S.rpg); }
               /* v2.3.1624: the five T1 raw stats, adopted present-gated.
                  The server has always PERSISTED these but never echoed
                  them, so a client with no localStorage copy (new device,
@@ -1332,6 +1347,69 @@ export function setupWebSocket(ctx) {
               recalcDerived(Rsa);
               setRpgState(_objectSpread({}, Rsa));
               try { localStorage.setItem('bt_rpg', JSON.stringify(Rsa)); } catch (e) {}
+              break;
+            }
+          case 'prog3_level':
+            {
+              /* v2.3.1660: a TRAINED skill leveled server-side — under
+                 the rebuild this IS the character level-up (level = Σ
+                 trained), so the celebration fires here instead of the
+                 retired client award path.  The worker restored the
+                 pools and queued a player_state flush with the new
+                 prog3 blob; this event exists for the banner + SFX so
+                 they don't wait a round-trip. */
+              if (!msg.payload || !S.rpg) break;
+              var p3l = msg.payload;
+              var p3meta = PROG3_SKILL_META.find(function (m) { return m.key === p3l.skill; });
+              setLevelUpMsg({
+                kind: 'combat',
+                level: p3l.charLevel || ((S.rpg && S.rpg.level) || 3),
+                skillLabel: p3meta ? p3meta.label : null,
+                skillLevel: p3l.level,
+                ts: Date.now(),
+              });
+              try { BT_AUDIO.levelUp && BT_AUDIO.levelUp(); } catch (e) {}
+              break;
+            }
+          case 'chain_score_recorded':
+            {
+              /* v2.3.1664: the server wrote this run's milestone to Hemi
+                 (contracts/BroTownScores.sol).  Server-emitted only — it is
+                 in PRIVILEGED_EVENTS, because a forged one would paint a
+                 fake block-explorer link.
+                 Kept on S.rpg so it rides the existing localStorage
+                 persistence and the Records tab can offer the link long
+                 after the popup has faded; the chain is the durable copy,
+                 this is just the receipt. */
+              if (!msg.payload || !S.rpg) break;
+              var cs = msg.payload;
+              if (!cs.txHash) break;
+              S.rpg._chainScore = {
+                level: cs.level, kills: cs.kills, milestone: cs.milestone,
+                txHash: cs.txHash, explorer: cs.explorer, at: Date.now(),
+              };
+              if (S.player) {
+                pushDmgPopup(S, S.player.x, S.player.y - 70,
+                  'ON-CHAIN ✓ Lv ' + cs.level, '#8FD3C7');
+              }
+              setRpgState(_objectSpread({}, S.rpg));
+              try { localStorage.setItem('bt_rpg', JSON.stringify(S.rpg)); } catch (e) {}
+              break;
+            }
+          case 'prog3_allocated':
+            {
+              /* v2.3.1660: server confirmed a prog3_allocate spend.
+                 Apply the authoritative pts + pool (the player_state
+                 that follows carries the same numbers; the explicit
+                 ack avoids any race, the stat_allocated pattern). */
+              if (!msg.payload || !S.rpg || !S.rpg.prog3) break;
+              var p3a = msg.payload;
+              if (!p3a.stat || !S.rpg.prog3.alloc) break;
+              if (typeof p3a.pts === 'number') S.rpg.prog3.alloc[p3a.stat] = p3a.pts;
+              if (typeof p3a.pool === 'number') S.rpg.prog3.pool = p3a.pool;
+              recalcDerived(S.rpg);
+              setRpgState(_objectSpread({}, S.rpg));
+              try { localStorage.setItem('bt_rpg', JSON.stringify(S.rpg)); } catch (e) {}
               break;
             }
           case 'zone_nodes':
@@ -2036,6 +2114,10 @@ export function setupWebSocket(ctx) {
           return;
         }
         if (msg.type === 'stat_allocate') {
+          ws.send(JSON.stringify(msg));
+          return;
+        }
+        if (msg.type === 'prog3_allocate') { /* v2.3.1660: trained-rebuild point spend */
           ws.send(JSON.stringify(msg));
           return;
         }

@@ -3,7 +3,7 @@
    calcDisplayDps return to this import (r3 §1 had dropped them with the
    DMG/DPS/DEF footer): the readout is reinstated as the icon-based line
    in the Loadout column's freed third row. */
-import { xpRequired, calcMaxHp, calcMaxStam, calcMaxMana, calcCritChance, calcBlockReduction, getDefenseBlockBonus, WEAPON_TYPES, getActiveWeapon, getWeaponCritStat, buildSkillUnspent, STAT_TO_WEAPON_CAT, calcDisplayDmgRange, calcDisplayDps } from '../../data/gameSystems.js';
+import { xpRequired, calcMaxHp, calcMaxStam, calcMaxMana, calcCritChance, calcBlockReduction, getDefenseBlockBonus, WEAPON_TYPES, getActiveWeapon, getWeaponCritStat, STAT_TO_WEAPON_CAT, calcDisplayDmgRange, calcDisplayDps } from '../../data/gameSystems.js';
 import { skillXpRequired } from '../../data/items.js';
 import { ZONES } from '../../data/zones.js';
 import { portraitDataUrl } from '../../rendering/characterPortrait.js';
@@ -18,9 +18,9 @@ import { getShirt, onShirtChange } from '../../rendering/traits/shirtCatalog.js'
 import { getShirtColor, shirtColorTarget, onShirtColorChange } from '../../rendering/traits/shirtColorCatalog.js';
 import { getEquip } from '../../rendering/gearCatalog.js';
 import { dashboardPanelBus } from './dashboardPanelBus.js';
-import { barHeight, expandedSheetHeight, drillSheetHeight } from './sheet/sheetGeometry.js'; /* v2.3.1283; v2.3.1350 two-state; v2.3.1311e drill height; v2.3.1325 slot-derived bar */
-import { QuickBar } from './QuickBar.jsx';                      /* v2.3.1560 */
-import { sampleQuickbar } from './sheet/quickbarModel.js';      /* v2.3.1560 */
+import { barHeight, expandedSheetHeight, drillSheetHeight, dashPanelWidths, DASH_GAP } from './sheet/sheetGeometry.js'; /* v2.3.1283; v2.3.1350 two-state; v2.3.1311e drill height; v2.3.1325 slot-derived bar */
+import { DashColumns } from './dash/DashColumns.jsx';           /* v2.3.1636 */
+import { NavRail } from './dash/NavRail.jsx';                   /* v2.3.1637 */
 import { portraitStore } from './sheet/portraitStore.js';          /* v2.3.1294 */
 import { hasUnseenLevelUps } from './sheet/skillsModel.js';        /* v2.3.1296 */
 import { getFriendRows } from './sheet/friendsModel.js';           /* v2.3.1323 */
@@ -28,7 +28,8 @@ import { friendsSrv } from './sheet/friendsSync.js';               /* v2.3.1324 
 import { readyQuestCount } from './sheet/questModel.js';           /* v2.3.1298 */
 import { sheetTransition } from './sheet/motion.js';            /* v2.3.1283 */
 import { bagUnseen, bagEntryKey } from './sheet/bagUnseenModel.js'; /* v2.3.1312 */
-import { COMBAT_SKILLS } from './sheet/heroModel.js';           /* v2.3.1311: hero toolbar badge */
+import { COMBAT_SKILLS, unspentPointsTotal } from './sheet/heroModel.js'; /* v2.3.1311: hero toolbar badge; v2.3.1635: shared unspent total */
+import { IdentityStrip } from './sheet/IdentityStrip.jsx';      /* v2.3.1635: persistent identity row */
 import { HeroExpanded } from './sheet/HeroExpanded.jsx';        /* v2.3.1286 */
 import { InventoryPanel }              from './dash/InventoryPanel.jsx';
 import { ItemDetailPopup }             from './dash/ItemDetailPopup.jsx';
@@ -56,9 +57,17 @@ import { T2Panel, requestT2Category } from './dash/T2Panel.jsx';
 import { SpendPointConfirm }   from './dash/SpendPointConfirm.jsx';
 
 // Bottom-of-screen dashboard.  Replaces the radial UtilityWheel.
-// When idle it renders the Bag / Loadout / Build overview above a
-// persistent 6-destination navigation ribbon.  Opening a destination
-// grows the band into a sheet while the ribbon remains available.
+// Opening a destination grows the band into a sheet while the ribbon
+// remains available.
+/* v2.3.1636: this header described the pre-v2.3.1287 "Bag / Loadout /
+   Build overview" for ~350 versions after that row was deleted.  The
+   resting band is now THREE pinned rows, top to bottom:
+     identity row   IdentityStrip band  (v2.3.1635) -- 52px
+     columns row    DashColumns         (v2.3.1636) -- 133px
+     nav ribbon     the 6 destinations              -- 87px
+   The columns row is the old three-column overview restored at the
+   owner's request, renamed BAG / EQUIPPED / COMBAT.  Keep this list
+   honest -- it is the first thing anyone reads about this file. */
 
 /* v2.3.1227: Lantern Slate (docs/LANTERN-SLATE-SPEC.md) — dark
    mineral charcoal shelf, warm-white text, one lantern-brass accent.
@@ -155,7 +164,11 @@ const ICON_SRC = {
    edge-to-edge through the column's 4px inset.  Verified by pixel-diff
    against the pre-change build. */
 /* v2.3.1287: ColHeader retired with the 3-panel row (headers left the
-   band in v2.3.1280; the sheet header strip is the one title now). */
+   band in v2.3.1280; the sheet header strip is the one title now).
+   v2.3.1636: column headers are BACK in the band with the three-column
+   row, but they are NOT this component — DashColumns renders its own
+   plain bgStrong strip.  This one carried the v2.3.1249 raster texture
+   caps, which Lantern Slate no longer uses; it stays retired. */
 
 // Tooltip popup module — taps on stat / skill rows show a short
 // description above the dashboard.  One active tooltip at a time;
@@ -447,13 +460,71 @@ const PANELS = {
    gone (the bus keeps the mechanism, registered empty). */
 const DESTINATIONS = [
   { id: 'bag',    label: 'Bag',     icon: '/icons/ui/nav-inventory.webp?v=2.3.1224' },
-  { id: 'hero',   label: 'Hero',    icon: '/icons/ui/panel-self.webp?v=2.3.1224' },
+  { id: 'hero',   label: 'Character', icon: '/icons/ui/panel-self.webp?v=2.3.1224' },
   /* v2.3.1331 (owner art drop): dedicated life-skills crest replaces
      the borrowed panel-skills art (magenta knocked out, 256px webp). */
   { id: 'skills', label: 'Skills',  icon: '/icons/ui/nav-lifeskills.webp?v=2.3.1331' },
   { id: 'social', label: 'Friends', icon: '/icons/ui/nav-friends.webp?v=2.3.1224' },
   { id: 'quests', label: 'Quests',  icon: '/icons/ui/panel-quests.webp?v=2.3.1224' },
   { id: 'more',   label: 'More',    icon: '/icons/ui/nav-more.webp?v=2.3.1224' },
+];
+
+/* v2.3.1637 (owner correction to their own mockup: "it should be a new
+   icon that represent a dashboard"): the rail's SEVENTH button, first in
+   the stack.  The resting three-column band is a destination like any
+   other and was the one state the toolbar could never light, because bar
+   mode lights nothing.  panel-stats is the painted set's bar-chart-with-
+   rising-arrow -- the only "your numbers" glyph in it, and used on one
+   legacy screen otherwise, so it costs no collision.  Tapping it closes
+   to rest (toBar) rather than opening a panel; there is no 'dashboard'
+   entry in DESTINATIONS and the bus never sees the id. */
+/* v2.3.1637b (owner): HERO is not in the rail — "the hero can just be
+   pressing on the icon of the hero up top".  IdentityStrip's portrait
+   carries it in band mode, which is the v2.3.1294 rule the ribbon's own
+   Hero button already followed (the icon WAS the player's bust).  One
+   fewer rail button is also ~32px of band height back. */
+/* v2.3.1638 (owner): FOUR buttons — "just keep the dashboard, bag,
+   quests, and friends buttons on that left side".  Hero was already the
+   identity row's portrait (v2.3.1637b); Skills and More leave the rail
+   here.
+   MORE IS PINNED LAST, at the rail's bottom (owner: "you can add the
+   more at bottom", immediately after the four-button cut).  It has to be
+   somewhere: 'more' is the ONLY entry to Journey, Codex, Ranks, Clan,
+   Guild and Settings — and Settings is the only route to Account, which
+   holds the login key for device transfer.  Dropping it would have
+   stranded all seven behind a screen nothing opens.
+
+   v2.3.1639 (owner: "change left navigation to just dashboard, bag, and
+   more"): Quests and Friends leave the rail too.  Neither is listed in
+   MorePanel, so they join the stranded set below.
+
+   STILL STRANDED, and now three: 'skills', 'quests' and 'social'.  The life
+   skill tree (cooking / fishing / mining) lost its last entry point when
+   the quick bar went at v2.3.1636 — the destination works, MorePanel
+   does not list it, and nothing on screen opens it. */
+/* v2.3.1651 (owner: "add one more button to the dashboard navigation to
+   the right of bag for quests — I think those are the main buttons people
+   will use").  FOUR now: Dashboard, Bag, Quests, More.  Quests slots in
+   before More rather than after it, so More stays the last thing in the
+   row — it is the overflow, and an overflow that is not on the end reads
+   as just another destination. */
+/* v2.3.1654 (owner: "you can replace bag view navigation with the
+   character view").  Dashboard, Character, Quests, More.
+
+   Bag's button had nothing left to open.  Since v2.3.1653 the resting
+   dashboard IS the bag — four columns, its own filter header, and now its
+   own scroll — so a Bag destination would have been a second, slightly
+   wider copy of the screen you are already looking at.  The character
+   view is what actually gained content in that trade (Hero > Overview
+   took the equipped slots and their stat cards), so it takes the button. */
+/* v2.3.1655 (owner: "make room for one more navigation button for
+   lifeskills"): FIVE — Dashboard, Character, Quests, Skills, More.  Skills
+   goes before More for the same reason Quests did at v2.3.1651: More is
+   the overflow and has to stay on the end. */
+const RAIL_ORDER = ['hero', 'quests', 'skills', 'more'];
+const RAIL_ITEMS = [
+  { id: 'dashboard', label: 'Dashboard', icon: '/icons/ui/panel-stats.webp?v=2.3.1637' },
+  ...RAIL_ORDER.map(id => DESTINATIONS.find(d => d.id === id)).filter(Boolean),
 ];
 
 /* v2.3.1350 (owner): the COMPACT_VIEWS registry and the six compact
@@ -487,11 +558,10 @@ export const BottomDashboard = () => {
     const tick = () => {
       const S = window._gameState && window._gameState.current;
       if (!S || !S.rpg) return;
-      /* v2.3.1560: the quick bar's "last used" memory rides THIS tick —
-         the dashboard is mounted in every snap mode, so the sampler sees
-         every XP gain whether or not a panel is open (the same reason
-         the pickup watcher moved here in v2.3.1312). */
-      sampleQuickbar(S.rpg);
+      /* v2.3.1636: sampleQuickbar retired with the quick bar.  It existed
+         to remember which life skill and which two combat skills you last
+         trained, so nine cells could pick three to show; the COMBAT
+         column shows all six parents and needs no such memory. */
       const keys = getBagEntries(S.rpg).map(bagEntryKey);
       if (prev) for (const k of keys) { if (!prev.has(k)) bagUnseen.add(k); }
       prev = new Set(keys);
@@ -632,12 +702,46 @@ export const BottomDashboard = () => {
   const activeId = stack.length ? stack[stack.length - 1] : null;
   const active = mode === 'expanded' ? (PANELS[activeId] || PANELS[rootId] || PANELS.bag) : null;
 
+  /* v2.3.1642: litId and the badge counts were computed inside the
+     retired ribbon's render IIFE.  The nav group needs them one level up
+     now that it lives in the top row, so they are hoisted verbatim —
+     same rules, same sources, just evaluated before the return. */
+  /* v2.3.1290: bar mode = NOTHING lit — the resting state has no open
+     destination (the remembered root only matters for resume). */
+  const litId = mode === 'bar' ? null
+    : DESTINATIONS.map(d => d.id).includes(rootId) ? rootId
+    /* legacy drill roots (inventory push, tutorial ids...) light More */
+    : (rootId ? 'more' : 'bag');
+  const Sb = (typeof window !== 'undefined') && window._gameState && window._gameState.current;
+  /* v2.3.1296 (round-5): actionable badges only — skills: unviewed
+     level-ups; quests: READY turn-ins (v2.3.1298); hero: the GLOBAL
+     unspent-point total (v2.3.1311, one definition since v2.3.1635);
+     social: pending requests + unread DMs, else an online dot.  The Bag's
+     circle dot was removed at v2.3.1315 (owner) — the pickup pulse and
+     the in-bag sparkles stay. */
+  const dots = {
+    skills: hasUnseenLevelUps((Sb && Sb.rpg) || {}),
+    quests: readyQuestCount(Sb) > 0,
+    hero: unspentPointsTotal(Sb && Sb.rpg),
+    social: (() => {
+      try {
+        const actionable = friendsSrv.requestsIn().length + friendsSrv.unreadTotal();
+        if (actionable > 0) return actionable;
+        return getFriendRows(Sb).some(r => r.online) ? 'online' : false;
+      } catch (_e) { return false; }
+    })(),
+  };
+
   /* v2.3.1294: the card's level/gold reads and the v2.3.131 gold
      count-up left with the card — the Hero identity strip owns the
      readouts now (its coin keeps the glimmer class; the RAF count-up
      retired with its anchor). */
 
   const Active = active?.Component;
+  /* v2.3.1649: the top row shares the columns row's tracks — see the grid
+     below.  One call, so the two rows can never disagree about where a
+     column starts. */
+  const dashCols = dashPanelWidths(typeof window !== 'undefined' ? window.innerWidth : 390);
 
   /* v2.3.1236: owner dashboard feedback §6 — the build-points XP strip
      (v2.3.114 bottom trim -> v2.3.152 BP progress -> v2.3.821/v2.3.1227
@@ -759,7 +863,13 @@ export const BottomDashboard = () => {
               — the quick bar hides while a panel is expanded, so the
               panel gets those ~50px back (var(--dash-h) here would have
               left a blank strip and cost the Bag its third item row). */}
-          <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', marginBottom: 'var(--nav-h, var(--dash-h, 87px))' }}>
+          {/* v2.3.1637: reserve the RAIL's width, not the retired
+              ribbon's height.  Same purpose as the v2.3.1307b
+              marginBottom it replaces -- panel content must never slide
+              under the persistent navigation. */}
+          {/* v2.3.1642: reserve the nav group's ROW at the band's top,
+              not the retired rail's width down its left. */}
+          <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', marginTop: 'calc(var(--dash-h, 145px) - var(--cols-h, 93px))' }}>
             {Active && <Active />}
           </div>
         </>
@@ -767,212 +877,133 @@ export const BottomDashboard = () => {
            default (owner: maximum world visibility).  The compact
            branch left with the compact state. */}
 
-      {/* v2.3.1563 (owner: "put coin count just above the first inventory
-          slot of the ultra compact menu — should be bottom left corner of
-          screen").  Pinned to the band's TOP-LEFT edge, out of flow and
-          out of the band's height: it sits over the world rather than
-          inside the bar, so --dash-h (and therefore the canvas, joystick
-          zones and every world-HUD anchor) is unchanged.  Hidden with the
-          quick bar while a panel is expanded — the Hero identity strip
-          owns the readout there and two live gold counts on one screen
-          disagree the moment one of them lags. */}
-      {mode !== 'expanded' && (() => {
-        const Rc = (window._gameState && window._gameState.current && window._gameState.current.rpg) || null;
-        const coins = (Rc && (Rc.coins || Rc.gold)) || 0;
-        return (
-          <div style={{
-            position: 'absolute',
-            left: 6,
-            bottom: 'calc(env(safe-area-inset-bottom, 0px) + var(--dash-h, 135px) - 1px)',
-            zIndex: 1,
-            display: 'flex', alignItems: 'center', gap: 3,
-            padding: '1px 6px 1px 4px',
-            borderRadius: '6px 6px 0 0',
-            background: 'rgba(13, 22, 27, 0.88)',
-            border: `1px solid ${COL.divider}`,
-            borderBottom: 'none',
-            pointerEvents: 'none',
-            /* Tabular figures so a changing balance doesn't jitter the
-               chip's width digit by digit. */
-            fontVariantNumeric: 'tabular-nums',
-            fontSize: 11.5, fontWeight: 800, lineHeight: 1.35,
-            color: '#F0C860',
-            textShadow: '0 1px 2px rgba(9,14,17,.9)',
-            whiteSpace: 'nowrap',
-          }}>
-            <img src="/icons/popups/gold.webp" alt="" draggable={false}
-              style={{ width: 12, height: 12, objectFit: 'contain' }} />
-            {coins.toLocaleString()}
-          </div>
-        );
-      })()}
+      {/* v2.3.1635 (owner "option C"): the PERSISTENT IDENTITY ROW —
+          portrait, name, level, exact XP to the next one, unspent build
+          points, active weapon, gold.  Third persistent row, pinned
+          above the quick bar for the same reason that one is pinned
+          (v2.3.1307b): anything in the band's flex flow hops when a
+          sheet closes and its content unmounts.
 
-      {/* v2.3.1560 (owner: "a persistent menu above the toolbar icons"):
-          the ultra-compact quick bar.  Absolute-pinned directly on top of
-          the ribbon for the same reason the ribbon itself is pinned
-          (v2.3.1307b): anything in the band's flex flow hops when a sheet
-          closes and the content unmounts.  Hidden while a panel is
-          expanded — the open destination already shows these cells at
-          full size, and the panel keeps its height. */}
+          THIS RETIRES THE v2.3.1563 FLOATING GOLD CHIP.  That chip put a
+          coin count over the world precisely because the band had
+          nowhere to show one, and its own comment records the rule that
+          makes keeping both impossible: "two live gold counts on one
+          screen disagree the moment one of them lags".  The row carries
+          gold in the same corner of the screen and reads it from the
+          same rpg blob, so the chip is redundant, not merely duplicated.
+
+          Hidden while a panel is expanded, exactly like the quick bar
+          and the old chip: Hero's own IdentityStrip owns the readout
+          there, and that is the same one-count rule.  --dash-h does NOT
+          change when it hides (the BAR-height invariant) — the row just
+          isn't drawn, so the canvas is never reallocated. */}
+      {/* v2.3.1642 (owner: "put the rail buttons on the top to the left
+          of the character in its own little section up there"): the TOP
+          ROW is the nav group and the identity strip, side by side.
+
+          THE GROUP IS OUTSIDE the `mode !== 'expanded'` gate on purpose.
+          The strip hides when a panel opens (Hero's own header owns that
+          readout — the one-count rule), but navigation cannot hide with
+          it: the ribbon this descends from stayed visible under an open
+          sheet because it was the only way to switch destination or get
+          out, and putting the buttons inside the strip would have
+          restored exactly that trap.  Keeping it mounted also holds it at
+          one screen position in both modes, so nothing slides out from
+          under the thumb that just tapped it (the v2.3.1637b rule). */}
+      {/* v2.3.1649 (owner: "shift the player HUD data to the left ... move
+          the navigation buttons all the way to the right in that little
+          ribbon area"): the top row is a GRID on the columns row's own
+          three tracks, not a flex row.
+
+          That is what makes the two alignment promises in the same message
+          keepable — gold "above the inventory preview slots" and DPS
+          "aligned above the weapon" are claims about specific columns, and
+          the only honest way to keep them at every viewport is to lay this
+          row out with the same dashPanelWidths the columns use.  The strip
+          renders straight into tracks 1 and 2; the nav group takes track 3
+          and right-aligns, which is the "all the way to the right" ask and
+          also frees the LEFT of this row — where the bag's filter chips now
+          go while the Bag is open. */}
+      <div style={{
+        position: 'absolute',
+        left: 0, right: 0,
+        bottom: 'calc(env(safe-area-inset-bottom, 0px) + var(--cols-h, 93px))',
+        height: 'calc(var(--dash-h, 145px) - var(--cols-h, 93px))',
+        zIndex: 3,
+        boxSizing: 'border-box',
+        padding: `0 ${DASH_GAP}px`,
+        /* v2.3.1653: a flex row again.  The grid existed to put the strip
+           on the columns row's tracks; with two panels below and no weapon
+           cell to align to, there is nothing left for the tracks to keep
+           in register — see IdentityStrip. */
+        display: 'flex', alignItems: 'center', gap: DASH_GAP,
+        borderBottom: mode === 'expanded' ? 'none' : `1px solid ${COL.divider}`,
+      }}>
+        {/* v2.3.1650 (owner: "put player HUD in same spot when the 'more
+            options' pane is displayed on the dashboard").  The strip used to
+            hide the moment ANY panel opened, which is why the More pane
+            arrived with the top row suddenly empty and your name, level, XP
+            and gold gone.  It stays now, in the same place, for every
+            destination — the row is band chrome, and the panel below it has
+            its own body either way.
+
+            THE ONE EXCEPTION IS THE BAG, and only because the Bag is the
+            destination that asked for this space: its category chips (also
+            the owner's, v2.3.1649) take the strip's place there.  Two
+            things cannot occupy one row, and in the Bag the chips win
+            because they are controls and the strip is a readout. */}
+        {/* v2.3.1652 (owner: "make the player HUD on the dashboard on the
+            expanded bag view too"): no exceptions left.  The strip renders
+            in EVERY mode and destination, including the Bag — the filter
+            chips that displaced it here have moved into the Bag panel as
+            their own header row, so the two are no longer competing for
+            one row and the HUD never moves or disappears. */}
+        <IdentityStrip band />
+        {/* Track 3, right-aligned.  The group is WIDER than the narrow
+            track (132 vs 90 at 390w) and deliberately overflows it to the
+            LEFT: track 2 holds only the DPS anchor box, which is pinned to
+            that track's left edge over the weapon cell, so the overflow
+            crosses empty space and never the readout.  Sizing the buttons
+            down to fit the track instead would have put them back at 24px
+            wide — the size the owner asked to grow away from at
+            v2.3.1644. */}
+        <div style={{ flex: 'none', display: 'flex', alignItems: 'center' }}>
+          <NavRail
+            items={RAIL_ITEMS}
+            litId={litId}
+            atRest={mode === 'bar'}
+            vw={typeof window !== 'undefined' ? window.innerWidth : 390}
+            vh={typeof window !== 'undefined' ? window.innerHeight : 844}
+            dots={dots}
+            profilePortrait={profilePortrait} />
+        </div>
+      </div>
+
+      {/* v2.3.1636 (owner, with a reference shot): the THREE-COLUMN ROW —
+          BAG / EQUIPPED / COMBAT — in the slot the v2.3.1560 quick bar
+          held.  Absolute-pinned directly on top of the ribbon for the
+          same reason the ribbon itself is pinned (v2.3.1307b): anything
+          in the band's flex flow hops when a sheet closes and the content
+          unmounts.  Hidden while a panel is expanded — the open
+          destination already shows all of this at full size, and the
+          panel keeps its height. */}
       {mode !== 'expanded' && (
         <div style={{
           position: 'absolute',
           left: 0, right: 0,
-          bottom: 'calc(env(safe-area-inset-bottom, 0px) + var(--nav-h, 87px))',
+          bottom: 'env(safe-area-inset-bottom, 0px)',
           zIndex: 2,
           boxSizing: 'border-box',
-          height: 'calc(var(--dash-h, 87px) - var(--nav-h, 87px))',
+          /* v2.3.1635: its OWN height, not calc(--dash-h - --nav-h).  With
+             the identity row added that subtraction became "middle row +
+             identity row" and would have stretched this over both. */
+          height: 'var(--cols-h, 93px)',
         }}>
-          <QuickBar R={(window._gameState && window._gameState.current && window._gameState.current.rpg) || null} />
+          <DashColumns R={(window._gameState && window._gameState.current && window._gameState.current.rpg) || null} />
         </div>
       )}
 
-      {/* Navigation ribbon.  v2.3.1229: PERSISTENT in both modes.
-          v2.3.1283 (nav-system): SIX destinations, each always one of
-          the DESTINATIONS roots; the active root carries the brass edge
-          in BOTH snap modes.  Vertical swipes on the icons resize one
-          snap per swipe (IconButton onSwipe -> bus advance/retreat,
-          v2.3.1318).  v2.3.1316 (owner round-8b): taps CYCLE —
-          inactive -> compact, active compact -> expanded -> bar
-          (dashboardPanelBus.tapDestination).
-          rootId (stack[0]) keeps a destination selected while one of
-          its drill children (Settings, T2, ...) is open. */}
-      {(() => {
-        const knownRoots = DESTINATIONS.map(d => d.id);
-        /* v2.3.1290: bar mode = NOTHING lit — the resting state has no
-           open destination (the remembered root only matters for
-           resume, not for display). */
-        const litId = mode === 'bar' ? null
-          : knownRoots.includes(rootId) ? rootId
-          /* legacy drill roots (inventory push, tutorial ids...) light More */
-          : (rootId ? 'more' : 'bag');
-        /* v2.3.1296: actionable badges (round-5) — skills: unviewed
-           level-ups (cleared when the expanded panel opens); quests:
-           READY turn-ins (v2.3.1298; available quests never badge).
-           The 200ms interval keeps these live. */
-        const Sb = (typeof window !== 'undefined') && window._gameState && window._gameState.current;
-        /* v2.3.1315 (owner round-8b): the Bag's circle dot is REMOVED —
-           "remove the little circle indicator for new items."  The
-           one-shot pickup pulse and the in-bag sparkle markers stay;
-           skills/quests keep their dots (level-ups and turn-ins, not
-           items). */
-        const dots = {
-          skills: hasUnseenLevelUps((Sb && Sb.rpg) || {}),
-          quests: readyQuestCount(Sb) > 0,
-          /* v2.3.1311 (owner spec): the Hero icon badges the GLOBAL
-             unspent-point total — actionable only; XP/health/stat
-             gains never badge (world popups carry those).  A number
-             here renders as a count badge, not a dot (IconButton). */
-          hero: (() => {
-            const Rb = Sb && Sb.rpg;
-            if (!Rb) return 0;
-            return COMBAT_SKILLS.reduce((n, s) => n + buildSkillUnspent(Rb, s.key), 0);
-          })(),
-          /* v2.3.1323 (Friends spec): green dot when a friend is online.
-             v2.3.1324: a NUMBER (count badge) for actionable social
-             state — pending requests + unread DMs — which always
-             outranks the dot.  Never the total friend count. */
-          social: (() => {
-            try {
-              const actionable = friendsSrv.requestsIn().length + friendsSrv.unreadTotal();
-              if (actionable > 0) return actionable;
-              return getFriendRows(Sb).some(r => r.online) ? 'online' : false;
-            } catch (_e) { return false; }
-          })(),
-        };
-        return (
-          <div className="bt-dashboard-toolbar-frame" ref={toolbarRef} style={{
-            /* v2.3.1307b (owner: "toolbar bounces ~20-30px after closing"):
-               the ribbon is pinned OUT OF FLOW to the band's bottom edge.
-               In flex flow it sat BELOW the content (at the band bottom)
-               while a sheet was open, but the instant a close settled the
-               content unmounted and the ribbon reflowed to the TOP of the
-               still-tall band — hopping up by the leftover height (the
-               released drag's residual, ~20-30px) and then riding the
-               shrinking band back down over the 220ms ease.  That ride-back
-               IS the bounce, and its size varies with where the collapse
-               starts (the earlier full-height "rubber band" reports were
-               the same mechanism at bigger amplitude).  Absolute-pinned to
-               the band's bottom it cannot move, in any mode, ever.  The
-               env() offset keeps it above an iOS home indicator; content
-               wrappers reserve the 72px below (marginBottom) so panels
-               never slide under it. */
-            position: 'absolute',
-            left: 0,
-            right: 0,
-            bottom: 'env(safe-area-inset-bottom, 0px)',
-            zIndex: 2,
-            boxSizing: 'border-box',
-            /* v2.3.1229b: fixed 68px shelf in panel mode (30% of the
-               grown band would balloon); 30% of the resting 28vh band
-               ≈ the same 68px, so the shelf never visibly jumps. */
-            /* v2.3.1241: edge-parity — the RESTING shelf is now a fixed 68
-               (was '30%' of the fractional band), so the ribbon frame never
-               lands on a sub-pixel vertical coord that would resample its
-               contour on Retina.  Panel mode was already 68. */
-            /* v2.3.1258: 68 -> 72 — the taller-dashboard pass adds 4px of
-               breathing room between the panels and the nav row via the
-               frame's top padding; the shelf grows by the same 4 so the
-               ribbon (and the buttons' rendered height) stay EXACTLY as
-               before.  A fixed +4 inside the fixed shelf would instead
-               squeeze the buttons to their 44px floor and clip the labels
-               (caught on the rig).
-               v2.3.1325 (owner: slot-sized icons): the shelf is the
-               slot-derived bar height — BroTown stamps --dash-h on
-               viewport changes; sheetGeometry.barHeight is the source.
-               v2.3.1560: --nav-h (navShelfHeight) replaces --dash-h here.
-               The band is two rows now; this frame is absolute-pinned to
-               its bottom, so keeping --dash-h would have made the ribbon
-               as tall as the whole band and drawn it over the quick bar
-               sitting above it. */
-            height: 'var(--nav-h, var(--dash-h, 87px))',
-            minHeight: 56,
-            flex: '0 0 auto',
-            display: 'flex',
-            alignItems: 'stretch',
-          }}>
-            {/* v2.3.1283: owner — SIX buttons (Bag · Hero · Skills ·
-                Friends · Quests · More).  Chat left the toolbar: the
-                composer opens by tapping your own character (the
-                over-head bubble flow is otherwise unchanged).  Hero and
-                Skills reuse panel-self/panel-skills art until dedicated
-                nav-* icons are generated. */}
-            <div className="bt-dashboard-toolbar-ribbon">
-              {DESTINATIONS.map(d => (
-                <IconButton key={d.id} src={d.icon} label={d.label}
-                  tut={d.id === 'more' ? 'dash-more' : undefined}
-                  /* v2.3.1294 (round-4): the Hero icon is the player's
-                     own portrait bust — now that Hero owns the whole
-                     character HUD, nothing says "my character" better
-                     than the character (replaces the magnifier art;
-                     falls back to it until the bust renders). */
-                  node={d.id === 'hero' && profilePortrait ? (
-                    <img src={profilePortrait} alt="Hero" draggable={false}
-                      style={{
-                        /* v2.3.1326: back to the classic 30px bust
-                           (owner shrank the icons again). */
-                        width: 30, height: 30, objectFit: 'cover',
-                        imageRendering: 'pixelated', borderRadius: 8,
-                      }} />
-                  ) : undefined}
-                  active={litId === d.id}
-                  snap={litId === d.id ? mode : null}
-                  dot={dots[d.id]} /* v2.3.1311: raw — numbers render as count badges */
-                  /* v2.3.1312: one restrained pulse per NEW pickup (the
-                     epoch key replays the animation); gated on unseen
-                     count so inspecting the item retires the motion. */
-                  pulse={d.id === 'bag' && bagUnseen.count() > 0 ? bagUnseen.epoch() : 0}
-                  onClick={() => dashboardPanelBus.tapDestination(d.id)}
-                  /* v2.3.1318: icon swipes -> discrete one-state moves
-                     (this session's contract, owner-selected). */
-                  onSwipe={(dir) => dir === 'up'
-                    ? dashboardPanelBus.advance(d.id)
-                    : dashboardPanelBus.retreat(d.id)} />
-              ))}
-            </div>
-          </div>
-        );
-      })()}
+
     </div>
     </>
   );

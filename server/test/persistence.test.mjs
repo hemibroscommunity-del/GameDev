@@ -165,7 +165,10 @@ const ps2 = room.playerState['bp_pt_a'];
 // canonical summation ignores).  The blob's stored `level` is a
 // snapshot for legacy readers; the join bootstrap recomputes.  Coins
 // must come from the store, not the join payload.
-check('reconnect restores stored coins; level re-derives as 1 + placed T2 points', ps2.coins === 1234 && ps2.level === 4, { coins: ps2.coins, level: ps2.level });
+// v2.3.1659 (prog3): the reconnect runs migration v10, so this legacy
+// blob (no trained weapon skills, no defense levels) respecs to trained
+// levels 1/1/1 — level re-derives as Σ trained = 3, not points-placed.
+check('reconnect restores stored coins; level re-derives as Σ prog3 trained levels', ps2.coins === 1234 && ps2.level === 3, { coins: ps2.coins, level: ps2.level });
 check('reconnect stash passes the NON-strict clamp (server-minted quality kept)', ps2.weaponStash.length === 1 && ps2.weaponStash[0].quality === 'rare', ps2.weaponStash);
 check('reconnect restores the defense track', ps2.defenseSkill && ps2.defenseSkill.level === 2 && ps2.defenseSpec && ps2.defenseSpec.ironskin === 1);
 
@@ -193,7 +196,10 @@ check('reconnect restores the defense track', ps2.defenseSkill && ps2.defenseSki
   const ws3 = fakeWs('p3');
   await join(ws3, 'bp_pt_a');
   const ps3 = room.playerState['bp_pt_a'];
-  check('rejoin after reset is a fresh level-1 bootstrap', ps3 && ps3.level === 1 && (ps3.coins || 0) === 0 && Object.keys(ps3.inventory || {}).length === 0, ps3 && { level: ps3.level, coins: ps3.coins });
+  // v2.3.1659 (prog3): a fresh character is level 3 now — Σ of the
+  // three trained skills at their level-1 floor (PROGRESSION-REDESIGN
+  // §2; the §11 "new-player first hour" invariant).
+  check('rejoin after reset is a fresh level-3 bootstrap', ps3 && ps3.level === 3 && (ps3.coins || 0) === 0 && Object.keys(ps3.inventory || {}).length === 0, ps3 && { level: ps3.level, coins: ps3.coins });
 }
 
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);

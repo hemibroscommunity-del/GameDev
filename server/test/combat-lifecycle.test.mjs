@@ -62,6 +62,14 @@ await room.webSocketMessage(wsB, JSON.stringify({ type: 'join', id: 'pb', name: 
 const psA = room.playerState.pa;
 const psB = room.playerState.pb;
 
+/* v2.3.1659 (prog3): every joining player is respecced onto the
+   trained-skill track now.  THIS SUITE PINS THE LEGACY PATH — still
+   live code for any blob whose v10 migration fail-opens — so the
+   fixtures opt out of prog3 and re-derive the legacy pools.  The new
+   path's coverage lives in prog3.test.mjs. */
+delete psA.prog3; delete psB.prog3;
+room._recomputeMaxes(psA); room._recomputeMaxes(psB);
+
 /* ═══ v2.3.1628: monster_damage proximity shim (TEST HARNESS ONLY) ═══
  *
  * _handleMonsterDamage now enforces the attacker gates every sibling

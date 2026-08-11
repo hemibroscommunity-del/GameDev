@@ -150,8 +150,10 @@ export function WoodworkPanel(props) {
         var hasGold = rpgState.coins >= wt.goldCost;
         var craftType = ((_stateRef$current16 = stateRef.current) === null || _stateRef$current16 === void 0 ? void 0 : _stateRef$current16._wwType) || 'bow';
         var wwFullIdx = Object.keys(WOODWORKING_TIERS).indexOf(key);
-        var wwStatReq = getGearStatReq(craftType, wwFullIdx);
-        var wwMeetsStat = wwStatReq.value === 0 || (rpgState[wwStatReq.stat] || 0) >= wwStatReq.value;
+        /* v2.3.1661 (prog3): rpg passed — the rebuild gates on the
+           trained skill at tierIndex × 5 (met carried on the req). */
+        var wwStatReq = getGearStatReq(craftType, wwFullIdx, rpgState);
+        var wwMeetsStat = wwStatReq.value === 0 || (wwStatReq.prog3 ? wwStatReq.met : (rpgState[wwStatReq.stat] || 0) >= wwStatReq.value);
         var canCraft = canCraftSkill && wwMeetsStat;
         return /*#__PURE__*/React.createElement("div", {
           key: key,
@@ -221,7 +223,7 @@ export function WoodworkPanel(props) {
           style: {
             marginRight: 3
           }
-        }), !canCraftSkill ? "Woodworking Lv".concat(wt.minLvl) : "".concat(STAT_LABELS[wwStatReq.stat] || wwStatReq.stat, " ").concat(wwStatReq.value)))), /*#__PURE__*/React.createElement("button", {
+        }), !canCraftSkill ? "Woodworking Lv".concat(wt.minLvl) : "".concat(wwStatReq.prog3 ? wwStatReq.label : STAT_LABELS[wwStatReq.stat] || wwStatReq.stat, " ").concat(wwStatReq.value)))), /*#__PURE__*/React.createElement("button", {
           /* v2.3.1235: state-correction — disabled recipe is #1A292F fill +
              #8D9B98 label + .11 hairline at full opacity; real disabled
              prop added around the untouched handler; blocked buttons carry

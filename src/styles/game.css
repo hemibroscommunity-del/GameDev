@@ -44,9 +44,32 @@
      number the canvas/joystick/HUD read), --nav-h is just the toolbar
      ribbon.  Boot fallbacks are the 390w values: 87 ribbon + 50 quick
      row = 135. */
+  /* v2.3.1635 (owner "option C"): THREE persistent rows — the identity
+     row (portrait / level / XP / unspent points / weapon / gold) joins
+     above the quick bar.  --dash-h is still the whole band and still the
+     ONE number the canvas, joystick zones and world-HUD anchors read.
+     a third var joins --nav-h so each pinned row is told its own height:
+     the middle row used to size itself as calc(--dash-h - --nav-h), which
+     silently became two rows once a third existed.
+     v2.3.1636 (owner reference shot): the middle row is the three-column
+     BAG / EQUIPPED / COMBAT block, and the var is --cols-h (renamed from
+     --quick-h rather than reused, so a cached stylesheet cannot size the
+     new row with the retired row's number).
+     Boot fallbacks at 390w: 87 ribbon + 133 columns + 52 identity = 272.
+     JS source of truth stays sheetGeometry.js; these are boot only. */
+  /* v2.3.1637 (owner mockup): the bottom ribbon is gone.  Its six
+     destinations are icon-only buttons in a left RAIL that spans the
+     band's full height, so --nav-h (a height) becomes --rail-w (a
+     width) and the band drops to two rows.  The rail needs vertical
+     room for seven buttons, which is what sets --cols-h now.
+     v2.3.1642: --rail-w retired — the nav buttons sit at the band's
+     top-left beside the identity strip, so nothing reserves a left
+     inset and the top row is --dash-h minus --cols-h.
+     Boot fallbacks at 390w: 52 identity + 93 columns = 145 band.
+     JS source of truth stays sheetGeometry.js. */
   --nav-slot: 56px;
-  --nav-h:    87px;
-  --dash-h:   135px;
+  --cols-h:   93px;
+  --dash-h:   145px;
   /* v2.3.1235: Lantern Slate CORRECTION PASS (owner-approved ChatGPT
      review of the v2.3.1234 screenshots).  Slightly brighter, greener
      slate; four depth roles only (sheet / raised / well / well-deep);

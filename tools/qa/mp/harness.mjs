@@ -44,20 +44,36 @@ const MIME = {
 /* ── static server for dist/ ───────────────────────────────────────────── */
 export async function serveDist(port) {
   const DIST = join(REPO, 'dist');
+  /* v2.3.1646 FIX: read FIRST, write once.  The old shape wrote the 200
+     header and then read inside the same try, so any failure after the
+     header — a client that had already gone away mid-response, most
+     often — fell into the catch and called writeHead a second time.  That
+     throws ERR_HTTP_HEADERS_SENT out of an async request handler, which
+     is unhandled and takes the whole node process with it: a suite run
+     died at the arena scenario this way with 106 assertions passed and no
+     summary, which reads exactly like a product failure and is not one.
+     Reading before writing means the fallback decision is made while no
+     bytes have been committed, and headersSent guards the last resort. */
   const srv = createServer(async (q, s) => {
     let p = decodeURIComponent(q.url.split('?')[0]);
     if (p === '/') p = '/index.html';
+    let body = null;
+    let type = MIME[extname(p)] || 'application/octet-stream';
     try {
-      const b = await readFile(join(DIST, p));
-      s.writeHead(200, { 'content-type': MIME[extname(p)] || 'application/octet-stream' });
-      s.end(b);
+      body = await readFile(join(DIST, p));
     } catch {
       /* SPA fallback */
       try {
-        s.writeHead(200, { 'content-type': 'text/html' });
-        s.end(await readFile(join(DIST, 'index.html')));
-      } catch { s.writeHead(404); s.end(); }
+        body = await readFile(join(DIST, 'index.html'));
+        type = 'text/html';
+      } catch { body = null; }
     }
+    try {
+      if (s.headersSent) return;
+      if (body === null) { s.writeHead(404); s.end(); return; }
+      s.writeHead(200, { 'content-type': type });
+      s.end(body);
+    } catch { /* client vanished mid-write; nothing left to say */ }
   });
   await new Promise((r) => srv.listen(port, r));
   return srv;
@@ -346,6 +362,74 @@ export async function clickText(P, text, { timeout = 6000 } = {}) {
   const btn = P.page.locator(`button:visible`, { hasText: text }).first();
   await btn.waitFor({ state: 'visible', timeout });
   await btn.click();
+  return true;
+}
+
+/** Open a dashboard destination by tapping its NAV RAIL button.
+ *
+ *  v2.3.1637: the toolbar ribbon carried a text label under every icon, so
+ *  scenarios opened panels with clickText(P, 'Friends').  The rail that
+ *  replaced it is icon-only — that call matched nothing and every
+ *  friends-panel assertion would have failed as a UI regression that
+ *  wasn't one.  The rail buttons carry their name as aria-label, which is
+ *  the accessible name of the control a real player taps, so this stays a
+ *  genuine UI path rather than a bus call that would pass even if the rail
+ *  were broken or absent.  Labels: Dashboard / Bag / Skills / Friends /
+ *  Quests / More (Hero is the identity row's portrait, not a rail button).
+ */
+/** Tap an element, having FIRST proved it is the topmost thing at its own
+ *  centre.
+ *
+ *  v2.3.1641: the rail's buttons respond to pointerup (they are divs with
+ *  role=button, like every tile in this UI), and Playwright's click()
+ *  actionability check reports "<div></div> intercepts pointer events" for
+ *  them even when document.elementFromPoint returns the button itself —
+ *  measured directly, three deep: [the button, .bt-navrail, .bt-dashboard].
+ *  Rather than paper over that with a blind force-click, this does the
+ *  covering check EXPLICITLY in the page and only then forces the tap.  A
+ *  real overlay still fails the test, and names itself in the error, which
+ *  is the property that mattered when the rail replaced the ribbon. */
+async function tapTop(page, selector, timeout) {
+  const loc = page.locator(selector).first();
+  await loc.waitFor({ state: 'visible', timeout });
+  /* Hit-test the RESOLVED element, not the selector string: `:has-text()`
+     is a Playwright pseudo-class and document.querySelector throws on it. */
+  const verdict = await loc.evaluate((el) => {
+    if (!el) return 'missing';
+    el.scrollIntoView({ block: 'nearest' });
+    const r = el.getBoundingClientRect();
+    const top = document.elementFromPoint(Math.round(r.left + r.width / 2), Math.round(r.top + r.height / 2));
+    if (!top) return 'nothing at its centre (off-screen?)';
+    if (el === top || el.contains(top)) return 'ok';
+    return `covered by <${top.tagName.toLowerCase()} class="${top.className || ''}">`;
+  });
+  if (verdict !== 'ok') throw new Error(`${selector} is not tappable: ${verdict}`);
+  await loc.click({ force: true });
+}
+
+/** Open a dashboard destination the way a player reaches it.
+ *
+ *  v2.3.1637: the toolbar ribbon carried a text label under every icon, so
+ *  scenarios opened panels with clickText(P, 'Friends').  The rail that
+ *  replaced it is icon-only — that call matched nothing.  Rail buttons
+ *  carry their name as aria-label, the accessible name of the control.
+ *  v2.3.1641: and not every destination is ON the rail any more.  It shrank
+ *  to Dashboard / Bag / More, with Quests, Friends and Life Skills moved
+ *  into the More panel, so this falls through to More and taps the tile —
+ *  the same two taps a player makes.  Still a UI path end to end: nothing
+ *  here calls the bus, so a broken rail or a missing tile fails the test.
+ */
+export async function openDest(P, label, { timeout = 6000 } = {}) {
+  const railSel = `.bt-navrail [aria-label="${label}"]`;
+  if (await P.page.locator(railSel).first().isVisible().catch(() => false)) {
+    await tapTop(P.page, railSel, timeout);
+    return true;
+  }
+  await tapTop(P.page, '.bt-navrail [aria-label="More"]', timeout);
+  await P.page.waitForTimeout(700);
+  /* More's tiles are real <button>s (className bt-more-card), not
+     role=button divs like the rail — hence two selectors, not one. */
+  await tapTop(P.page, `.bt-dashboard button:has-text("${label}")`, timeout);
   return true;
 }
 

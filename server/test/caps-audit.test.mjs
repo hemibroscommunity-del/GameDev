@@ -50,6 +50,9 @@ function check(name, cond, detail) {
  * real client gate must be deleted (checked below). */
 const CAPS_ALLOWLIST = new Map([
   ['httpAuth', 'handshake negotiation field, not a feature gate — the client SENDS httpAuth:true in join (wsClient.js) rather than reading it from caps'],
+  /* v2.3.1660: the prog3 entry added at v2.3.1659 is deleted — the
+     client gate shipped (wsClient setProg3Enabled), so the audit
+     enforces it for real now. */
 ]);
 
 const here = dirname(fileURLToPath(import.meta.url));

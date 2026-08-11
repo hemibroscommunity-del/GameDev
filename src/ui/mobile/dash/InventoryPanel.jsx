@@ -5,7 +5,10 @@ import { itemDetailBus } from './itemDetailBus.js';
 import { isLocked as itemIsLocked } from './inventoryLocks.js';
 import { reconcileGearStash } from '../../../rendering/gearCatalog.js';
 import { getBagEntries } from './bagModel.js';
-import { getEquippedSlots, getEquipContribs, GHOST_SRC } from '../sheet/equipModel.js'; /* v2.3.1328: contribs */
+import { getEquippedSlots, getEquipContribs, GHOST_SRC } from '../sheet/equipModel.js';
+import { dashTileSize, DASH_GAP, DASH_ROWS, BAG_HEADER_H } from '../sheet/sheetGeometry.js'; /* v2.3.1646 */ /* v2.3.1328: contribs */
+import { bagFilterBus, CATEGORIES } from './bagFilterBus.js'; /* v2.3.1649 */
+import { BagFilterChips } from './BagFilterChips.jsx'; /* v2.3.1652 */
 import { unequipWeaponSlot, unequipShieldDirect, unequipArmorDirect, unequipGearDirect } from './equipActions.js'; /* v2.3.1330 */
 import { getEquip } from '../../../rendering/gearCatalog.js';
 
@@ -16,13 +19,9 @@ import { getEquip } from '../../../rendering/gearCatalog.js';
 // v2.3.1312 (round-8): the owner's dedicated bag filter set replaces
 // the borrowed nav/combat/skill art — Potion finally gets a real
 // potion instead of the soak droplets.
-export const CATEGORIES = [
-  { id: 'all',      glyph: '◎', iconSrc: '/icons/bag/bag-all.webp?v=2.3.1312',      label: 'All' },
-  { id: 'weapon',   glyph: '⚔', iconSrc: '/icons/bag/bag-weapons.webp?v=2.3.1312',  label: 'Weapon' },
-  { id: 'armor',    glyph: '🛡', iconSrc: '/icons/bag/bag-armor.webp?v=2.3.1312',    label: 'Armor' },
-  { id: 'potion',   glyph: '🧪', iconSrc: '/icons/bag/bag-potions.webp?v=2.3.1312',  label: 'Potion' },
-  { id: 'crafting', glyph: '⚒', iconSrc: '/icons/bag/bag-crafting.webp?v=2.3.1312', label: 'Crafting' },
-];
+/* v2.3.1652: the roster moved to bagFilterBus (see there); re-exported
+   so every existing importer of InventoryPanel.CATEGORIES still works. */
+export { CATEGORIES } from './bagFilterBus.js';
 
 // Light heuristic — classify an inventory key into one of the four
 // category filters.  Items the heuristic doesn't recognise fall through
@@ -187,13 +186,22 @@ export const ItemTile = ({ ikey, count, style: styleOverride }) => {
   );
 };
 
-/* v2.3.1293 (ChatGPT round-3 §6): the selected filter survives leaving
-   the destination — module-scoped, session-only.  Switching to Hero
-   and back should not silently reset a Weapon filter to All. */
-let _lastFilter = 'all';
+/* v2.3.1293 (ChatGPT round-3 §6): the selected filter survives leaving the
+   destination — module-scoped, session-only.  Switching to Hero and back
+   should not silently reset a Weapon filter to All.
+   v2.3.1649: that state moved to bagFilterBus, because the chips that set
+   it now live in the band's top row and this module is no longer the only
+   thing that needs to read it.  The RULE is unchanged and the bus is
+   module-scoped for exactly the same reason. */
 /* v2.3.1326 (owner: "bag [gets] two tabs at top — one for items in
    inventory and another for equipped items; keeps the views cleaner"):
    the active tab survives leaving the destination, same as the filter. */
+/* v2.3.1639: pinned — the tab bar that set this is gone (see the render).
+   Kept as a constant rather than deleted so the 'equipped' branch below
+   stays compiling and reviewable for whoever re-homes those stat cards. */
+/* v2.3.1639: see the render — an empty bag draws empty slots now. */
+const SHOW_EMPTY_PLACEHOLDER = false;
+
 let _lastBagTab = 'items';
 
 /* v2.3.1328: stat glyphs for the EQUIPPED TOTAL cells.
@@ -220,8 +228,14 @@ const StatGlyph = ({ k, size }) => (
 
 export const InventoryPanel = () => {
   const [, force] = useState(0);
-  const [filter, setFilterState] = useState(_lastFilter);
-  const setFilter = (f) => { _lastFilter = f; setFilterState(f); };
+  /* v2.3.1649 (owner: "you can put all of the filter chips there to sort
+     the inventory items"): the filter is LIVE again, driven by the chips
+     that now live in the band's top row (BagFilterChips) through
+     bagFilterBus.  The v2.3.1293 "survives leaving the destination" rule is
+     unchanged — the bus is module-scoped, so it holds the choice exactly as
+     the local _lastFilter did while the chips were retired. */
+  const [filter, setFilter] = useState(bagFilterBus.get());
+  useEffect(() => bagFilterBus.subscribe(setFilter), []);
   /* v2.3.1328b (owner: "don't display the stats of each item unless
      it's tapped"): which equipped card is selected — the right pane is
      a FIXED display window showing the aggregate when nothing is
@@ -282,33 +296,14 @@ export const InventoryPanel = () => {
      always.  Same ResizeObserver pattern as the equipped tab's eqCard
      (the sheet ANIMATES open over 220ms — a mount-time measure would
      stick at the mid-animation height). */
+  /* v2.3.1646: itemRowH and its ResizeObserver are RETIRED.  They
+     existed to fit two rows into whatever height the sheet really had —
+     necessary while the bag chose its own tile size, and the source of
+     two bugs on the way here (a bail-out that outlived the empty-state it
+     guarded, and a height budget that outlived the padding it reserved).
+     The tile size is shared with the dashboard now (dashTileSize), so
+     there is nothing left to measure and nothing left to drift. */
   const itemsBoxRef = useRef(null);
-  const [itemRowH, setItemRowH] = useState(0);
-  const bagIsEmpty = getBagEntries(S?.rpg).length === 0;
-  useEffect(() => {
-    if (bagTab !== 'items' || bagIsEmpty) return;
-    const measure = () => {
-      const el = itemsBoxRef.current;
-      if (!el || !el.clientHeight) return;
-      /* Width budget: tray padding 6+6 + 5 gaps of 8 = 52.  Height
-         budget around the two guaranteed rows: tray padding 6+6 + the
-         grid's 10px scroll-clearance paddingBottom + 1 inter-row gap
-         of 8 = 30 (v2.3.1352: clearance 14 -> 10 with the tighter
-         vertical budget). */
-      const tileW = (el.clientWidth - 52) / 6;
-      const half = Math.floor((el.clientHeight - 30) / 2);
-      const clamped = Math.max(36, Math.min(Math.floor(tileW), half));
-      setItemRowH(prev => (Math.abs(prev - clamped) > 1 ? clamped : prev));
-    };
-    measure();
-    const obs = window.ResizeObserver ? new ResizeObserver(measure) : null;
-    if (obs && itemsBoxRef.current) obs.observe(itemsBoxRef.current);
-    window.addEventListener('resize', measure);
-    return () => {
-      if (obs) obs.disconnect();
-      window.removeEventListener('resize', measure);
-    };
-  }, [bagTab, bagIsEmpty]);
 
   /* v2.3.687: self-healing gear stash -- restore any orphaned steel piece
      (e.g. unequipped via the Equipment menu's toggle, which predates the
@@ -336,10 +331,38 @@ export const InventoryPanel = () => {
      v2.3.1312 (round-8 §7): empty cells only COMPLETE the final row
      (min one row) — the old 4-row minimum padded a small bag with
      rows of dead cells that read as fake capacity. */
-  const COLS = 6;
+  /* v2.3.1646 (owner: "make the bag slots on bag view the same size as
+     the slots on the dashboard view"): ONE tile size for both surfaces —
+     dashTileSize, the same function the three dashboard panels use.
+     The grid was repeat(6, 1fr) with a separately MEASURED row height,
+     which made the bag's cells 54 wide by 36 tall: not the dashboard's
+     size, and not even square.  Fixed columns of that shared size with
+     the shared gap, and as many as fit — nine at 390w, so the bag also
+     goes from 12 visible slots to 18. */
+  const vwNow = typeof window !== 'undefined' ? window.innerWidth : 390;
+  const TILE = dashTileSize(vwNow);
+  /* panel padding 6+6 and tray padding 3+3 come off the usable width.
+     v2.3.1649: the floor drops from 4 columns to 3 — at the new 64px tile a
+     390px phone fits five, but a 320-class screen fits four and the old
+     floor of 4 would have forced a horizontal overflow on anything
+     narrower rather than simply showing fewer, bigger slots. */
+  const COLS = Math.max(3, Math.floor((vwNow - 18 + DASH_GAP) / (TILE + DASH_GAP)));
   const shownItems = filtered;
   const usedTiles = shownItems.length;
-  const totalCells = Math.max(COLS, Math.ceil(usedTiles / COLS) * COLS);
+  /* v2.3.1645 (owner: "without filters to make room for extra slots"):
+     the floor is TWO rows, not one.  It was max(COLS, ...) — so an empty
+     bag drew exactly six slots and left the rest of the tray blank no
+     matter how much room the retired filter track gave back.  The row
+     measurement above guarantees two rows fit; this is what actually puts
+     slots in them. */
+  /* v2.3.1649 (owner: "2 rows should be fully visible keeping the shading
+     effect on the very bottom row to indicate scrolling is possible"): the
+     floor is DASH_ROWS + 1.  Two rows is what the tray's height affords in
+     full; the extra row is what the fade at the tray's bottom edge is
+     FADING — without it a bag holding eight items showed a fade over blank
+     tray, which reads as a rendering artifact rather than as "keep
+     scrolling".  A partial third row of empty slots is the affordance. */
+  const totalCells = Math.max(COLS * (DASH_ROWS + 1), Math.ceil(usedTiles / COLS) * COLS);
 
   const R = (S && S.rpg) || {};
   const equipped = getEquippedSlots(R);
@@ -364,60 +387,26 @@ export const InventoryPanel = () => {
          10->2 (the tray's own 18px fade is the bottom edge treatment;
          dead margin above the toolbar bought nothing).  Local override
          only: other panels keep panelStyle's padding. */
-      padding: '6px 12px 2px' }}>
+      /* v2.3.1643: the Bag's local override tightens with panelStyle.
+         v2.3.1649: 4/2 -> 2/2 vertical.  The budget is exact now and every
+         pixel is spoken for: the panel body is var(--cols-h) tall (the
+         v2.3.1638 one-height rule), and TWO whole 64px rows plus the 9px
+         edge fade need all but four of them. */
+      padding: '2px 6px 2px' }}>
 
-      {/* v2.3.1326 (owner): Items / Equipped segmented tabs — the
-          equipped row no longer shares the screen with the item grid;
-          each view gets the full sheet.  Same segmented-track pattern
-          as the Friends panel's tabs. */}
-      <div className="bt-well" style={{
-        /* v2.3.1352: marginTop 2->0 / marginBottom 8->6 — spacing-only
-           trim feeding the third item row. */
-        display: 'flex', gap: 2, marginTop: 0, marginBottom: 6, flex: 'none',
-      }}>
-        {[
-          { id: 'items', label: 'Items', icon: '/icons/ui/nav-inventory.webp?v=2.3.1224' },
-          /* v2.3.1339 (owner): the checkmark art becomes the same green
-             gradient dot as the per-item worn marker. */
-          { id: 'equipped', label: 'Equipped', dot: true },
-        ].map(t => (
-          <button key={t.id}
-            onClick={() => setBagTab(t.id)}
-            aria-pressed={bagTab === t.id}
-            className="bt-chisel bt-chisel--chip"
-            style={{
-              flex: 1, minHeight: 36,
-              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-              color: bagTab === t.id ? COL.text : COL.text2,
-              fontFamily: 'inherit', fontSize: 12, fontWeight: 700,
-            }}>
-            {!t.dot && (
-              <img src={t.icon} alt="" draggable={false}
-                style={{ width: 16, height: 16, objectFit: 'contain' }} />
-            )}
-            {t.label}
-            {/* v2.3.1339b (owner): dot AFTER the word. */}
-            {t.dot && (
-              <span aria-hidden="true" style={{
-                width: 12, height: 12, borderRadius: '50%', flex: 'none',
-                background: 'linear-gradient(180deg,#7FE3A0 0%,#2E9B57 100%)',
-                boxShadow: '0 0 0 1.5px rgba(9,14,17,.55), inset 0 1px 1px rgba(255,255,255,.35)',
-              }} />
-            )}
-          </button>
-        ))}
-      </div>
+      {/* v2.3.1639 (owner: "remove 'items' and 'equipped' buttons since
+          equipped is visible from the dashboard view").  The v2.3.1326
+          segmented tabs are gone and the Bag is the item grid, full stop.
+          The equipped block below still exists but bagTab is pinned to
+          'items', so it never renders — the six worn slots live in the
+          dashboard's middle panel now, one tap from anywhere, and a tab
+          bar costing 42px of a 181px sheet to reach a second copy of them
+          was the most expensive chrome on the screen.
 
-      {/* v2.3.1328 (owner mockup): left ~64% — six QUIET equipment
-          cards (2-col x 3-row, fixed order, art + slot label only);
-          right ~36% — one FIXED display window.
-          v2.3.1328b (owner: "don't display the stats of each item
-          unless it's tapped"): the window shows the loadout AGGREGATE
-          when nothing is selected and the tapped item's contribution
-          when a card is; tapping the already-selected card opens the
-          existing equip modal (management stays one tap deeper), and
-          tapping the window returns it to the aggregate.  Empty slots
-          keep their old behavior (straight to the picker). */}
+          NOTE: the per-item stat CONTRIBUTION cards and the EQUIPPED
+          TOTAL readout (getEquipContribs, v2.3.1328) only ever rendered
+          in that tab.  The dashboard panel shows the slots, not the
+          numbers, so those cards are currently unreachable. */}
       {bagTab === 'equipped' && (() => {
         const contribs = getEquipContribs(R);
         const wornCount = equipped.filter(sl => !sl.ghost).length;
@@ -689,65 +678,18 @@ export const InventoryPanel = () => {
           "N / 32" counter it carried now sits at the right end of this
           row, OUTSIDE the scrollable chip strip so it never scrolls
           away; the freed row height goes to larger slot tiles below. */}
-      {/* v2.3.1312 (round-8 §6): fixed five-chip row, no horizontal
-          scroll, icons 20px.
-          v2.3.1317 (owner): recessed segmented track = the filter
-          affordance, with a LIVE result readout that reacts to the
-          active chip.
-          v2.3.1319 (owner): the readout became a CornerTag riding the
-          track's top edge.
-          v2.3.1320 (owner: "understood without using language"): the
-          FILTER text rail is gone — every chip carries a tiny funnel
-          glyph in its top-right corner instead (per the owner's own
-          suggestion).
-          v2.3.1325 (owner): the count CornerTag that rode this track's
-          top edge is REMOVED — it visually landed on one of the filter
-          chips and read as chip info; "not the right place for
-          inventory item info".  The equipped row's N/6 tag (a slot
-          gauge the owner asked for in round 8b) stays. */}
-      <div style={{ position: 'relative', marginTop: 0, marginBottom: 4, flex: 'none' /* v2.3.1352: 2/6 -> 0/4 */ }}>
-        <div className="bt-well" style={{
-          minWidth: 0,
-          display: 'flex', alignItems: 'stretch', gap: 2,
-        }}>
-        {CATEGORIES.map(c => {
-          const active = c.id === filter;
-          return (
-            <button key={c.id}
-              onClick={() => setFilter(c.id)}
-              title={c.label}
-              aria-pressed={active}
-              className="bt-chisel bt-chisel--chip"
-              style={{
-                position: 'relative',
-                flex: '1 1 0', minWidth: 0,
-                display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 1,
-                padding: '2px 0',
-                color: active ? COL.text : COL.text2,
-                fontFamily: 'inherit',
-              }}
-            >
-              {/* v2.3.1320: the language-free filter mark — a tiny
-                  funnel on every chip's top-right corner (owner's
-                  suggestion); brass on the active chip. */}
-              <svg viewBox="0 0 10 10" width="9" height="9" aria-hidden="true" style={{
-                position: 'absolute', top: 2, right: 2, pointerEvents: 'none',
-              }}>
-                <path d="M1 1.5 H9 L6.2 5 V8.6 L3.8 7.4 V5 Z"
-                  fill={active ? COL.accent : 'none'}
-                  stroke={active ? COL.accent : COL.muted} strokeWidth="1.1" strokeLinejoin="round" />
-              </svg>
-              {c.iconSrc
-                ? <img src={c.iconSrc} alt="" draggable={false}
-                    style={{ width: 18, height: 18, objectFit: 'contain' }}
-                    onError={(e) => { e.currentTarget.replaceWith(document.createTextNode(c.glyph)); }} />
-                : <span style={{ fontSize: 14, lineHeight: 1 }}>{c.glyph}</span>}
-              <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: '.02em', whiteSpace: 'nowrap' }}>{c.label}</span>
-            </button>
-          );
-        })}
-        </div>
-      </div>
+      {/* v2.3.1645 (owner: "let me see what the bag looks like without
+          filters to make room for extra slots"): the All / Weapon / Armor
+          / Potion / Crafting track is GONE.  It was ~46px of a 93px panel
+          — half the sheet — spent narrowing a grid that only holds a
+          couple of rows to begin with, and `filter` is pinned to 'all',
+          so everything is in that grid anyway.
+          The CATEGORIES roster and the filtering logic stay: the chips
+          are what was cut, not the capability, so a taller sheet or a
+          search field can bring it back without re-deriving any of it.
+          v2.3.1317's recessed track and v2.3.1320's funnel glyphs go with
+          them; git has both. */}
+
       {/* v2.3.1285: the fictional "N / 32" counter is retired with the
           display cap (nav-system plan §0.3); the bag has no real limit. */}
 
@@ -762,7 +704,19 @@ export const InventoryPanel = () => {
           scrolling on every current phone anyway.  (v2.3.1235 dropped
           the tray for empty state; the tray reads fine now that the
           headers above give the panel structure.) */}
-      {usedTiles === 0
+      {/* v2.3.1639 (owner: "display inventory slots on dashboard and bag
+          window views (remove empty bag message placeholder)").  The grid
+          branch below ALREADY draws `totalCells - usedTiles` empty slots,
+          so an empty bag renders as a full grid of empty squares — the
+          same shape as a full one — the moment this stops short-circuiting
+          to the placeholder.  That is the whole fix: an empty bag was the
+          one state with a different layout, so the panel changed shape
+          under you on your first pickup.
+          The placeholder is kept behind the flag rather than deleted: it
+          carries the per-filter copy ("No potion items yet.") that has no
+          equivalent in a grid of blanks, and re-homing that is a separate
+          call.  Flip to true to get it back. */}
+      {SHOW_EMPTY_PLACEHOLDER && usedTiles === 0
         ? (
           <div style={{
             background: COL.well,
@@ -809,11 +763,31 @@ export const InventoryPanel = () => {
              here too (spec hard lock: leather removed EVERYWHERE — the
              v2.3.1227 sweep caught the preview grid but missed this one,
              owner-reported with a screenshot). */
+          <>
+          {/* v2.3.1652 (owner: "put the filters on their own header row
+              above the inventory slots but spanning the whole width of the
+              slot rows").  Its width is the grid's own width — COLS tiles
+              and the gaps between them — so the header is exactly as wide
+              as the rows it filters and each chip is one slot across.
+              Both numbers come from the same COLS/TILE the grid uses, so
+              they cannot drift on a viewport where COLS changes. */}
+          <BagFilterChips
+            width={COLS * TILE + (COLS - 1) * DASH_GAP}
+            height={BAG_HEADER_H} />
           <div ref={itemsBoxRef} style={{
-            background: COL.well,
-            border: `1px solid ${COL.tileBor}`,
-            boxShadow: 'inset 0 2px 4px rgba(0,0,0,.44), inset 0 1px 0 rgba(255,255,255,.035)',
-            borderRadius: 10,
+            marginTop: DASH_GAP,
+            /* v2.3.1651 (owner: "remove the dark background behind the
+               expanded bag pane slots").  The recessed tray — well fill,
+               hairline and inset shadow — is gone; the slots sit straight
+               on the panel.  It is the same call as v2.3.1650's on the nav
+               group and the filter chips, and the same reasoning: every
+               slot already draws its own well and border, so the tray was
+               a darker box behind thirty darker boxes, and at two rows of
+               64px tiles it read as a frame around a frame.
+               The scroll fade below is now the ONLY edge treatment, which
+               makes it easier to see rather than harder. */
+            background: 'transparent',
+            border: 'none',
             /* v2.3.1236: owner feedback — LARGER slots, same 32 capacity.
                32 is display-only (no server or pickup enforcement — see
                PR notes), but capacity is a game-balance call for the
@@ -821,7 +795,11 @@ export const InventoryPanel = () => {
                padding 8→6 and grid gap 6→4 hand each of the 8 columns
                ~2.3px more width (tiles are square, so height follows),
                and the removed BAG label row absorbs the taller rows. */
-            padding: 6,
+            /* v2.3.1649: 6 -> 3.  See the panel padding above — the two
+               full rows the owner asked for do not fit at 6, and inset
+               padding is the cheapest of the three things competing for
+               that height (the others being a row and the scroll cue). */
+            padding: 3,
             flex: 1,
             minHeight: 0,
             /* v2.3.1285: overflow rows scroll inside the tray; the
@@ -831,32 +809,49 @@ export const InventoryPanel = () => {
             overflowY: 'auto',
             touchAction: 'pan-y',
             WebkitOverflowScrolling: 'touch',
-            WebkitMaskImage: 'linear-gradient(180deg, #000 calc(100% - 18px), transparent)',
-            maskImage: 'linear-gradient(180deg, #000 calc(100% - 18px), transparent)',
+            /* v2.3.1643: the fade was 18px of a 93px panel — a fifth of
+               the tray permanently dimmed.  10 still reads as "more
+               below" without eating a whole item row.
+               v2.3.1649 (owner: "keeping the shading effect on the very
+               bottom row to indicate scrolling is possible"): 9px, and the
+               height budget above now guarantees it falls BELOW row two
+               rather than across it — the shading is on the partial third
+               row, which is the row that is actually cut off. */
+            WebkitMaskImage: 'linear-gradient(180deg, #000 calc(100% - 9px), transparent)',
+            maskImage: 'linear-gradient(180deg, #000 calc(100% - 9px), transparent)',
           }}>
           <div style={{
             display: 'grid',
             /* v2.3.1285: 8 -> 6 columns — the same slot rhythm as the
                retired compact grid (Recent order is the shared bagModel
                sort). */
-            gridTemplateColumns: `repeat(${COLS}, 1fr)`,
-            /* v2.3.1350: measured row height — two full rows always fit
-               (see the itemRowH effect above).  0 until first measure:
-               fall back to square tiles for that frame. */
-            ...(itemRowH ? { gridAutoRows: `${itemRowH}px` } : {}),
-            gap: 8,
+            gridTemplateColumns: `repeat(${COLS}, ${TILE}px)`,
+            justifyContent: 'center',
+            /* v2.3.1646: SQUARE rows at the shared size — no measurement,
+               no first-frame fallback, and no way for the two surfaces to
+               drift apart.  The v2.3.1350 itemRowH effect is retired with
+               it (and with it the class of bug that had it bail out on an
+               empty bag; see v2.3.1645). */
+            gridAutoRows: `${TILE}px`,
+            gap: DASH_GAP,
             /* v2.3.1312 (round-8 §7): scroll clearance — the last row
                must clear the edge fade at scroll end.  v2.3.1352:
                14 -> 10 (tighter budget; still holds the last row off
                the 18px fade at scroll end). */
-            paddingBottom: 10,
+            /* v2.3.1643: 10 -> 4.  Scroll clearance still holds the last
+               row off the edge fade, which also shrinks below.
+               v2.3.1649: 0 — the fade IS the bottom treatment now and the
+               partial third row is meant to meet it. */
+            paddingBottom: 0,
           }}>
             {(() => {
               /* v2.3.1350: with measured rows the tiles fill their row
                  instead of forcing 1:1 (squat-not-clipped on short
                  viewports; rowH is width-capped so they stay square
                  whenever the height allows). */
-              const rowFit = itemRowH ? { aspectRatio: 'auto', height: '100%' } : null;
+              /* v2.3.1646: the row IS the tile size now, so the tile just
+                 fills its cell — square by construction. */
+              const rowFit = { aspectRatio: 'auto', height: '100%' };
               return (<>
             {shownItems.map((e, i) => (
               <BagTile key={e.kind === 'item' ? `i-${e.key}` : `${e.kind}-${e.index}-${i}`} entry={e} style={rowFit} />
@@ -877,6 +872,7 @@ export const InventoryPanel = () => {
             })()}
           </div>
           </div>
+          </>
         )}
       </> /* v2.3.1326: end Items tab */}
     </div>

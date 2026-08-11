@@ -11,6 +11,12 @@
 > and `docs/specs/*.md` (implementation specs for shipped features).
 > Read this file only for what it is: a record of early creative and
 > systems thinking.
+>
+> **The shipped game is free to play.** §32 of this document sketches a
+> paid "Supporter Pass" — it is design thinking that was never built.
+> There is no payment code, no paywall, and no purchasable item anywhere
+> in `src/` or `server/src/`; the section is marked `[spec-only]` in the
+> index above. Play costs nothing.
 
 
 > Vite + React + PixiJS · WebGL renderer · Real-Time ARPG · 50 players/room · 4-player dungeon parties.

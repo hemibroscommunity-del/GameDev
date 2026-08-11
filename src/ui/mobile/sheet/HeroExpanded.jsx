@@ -3,9 +3,17 @@ import { COL, panelStyle, getState } from '../dash/common.js';
 import { buildSkillUnspent, STAT_TO_WEAPON_CAT } from '../../../data/gameSystems.js';
 import { requestT2Category } from '../dash/T2Panel.jsx';
 import { dashboardPanelBus } from '../dashboardPanelBus.js';
-import { COMBAT_SKILLS, skillLevel, skillProgressPct, skillProgress, deriveHeroStats } from './heroModel.js';
-import { IdentityStrip } from './IdentityStrip.jsx';
+import { COMBAT_SKILLS, skillLevel, skillProgressPct, skillProgress, deriveHeroStats, unspentPointsTotal } from './heroModel.js';
+/* v2.3.1660: trained-skill rebuild — the Build section becomes the
+   seven-stat allocation menu when the worker owns prog3. */
+import {
+  prog3Live, prog3Pool, prog3Pts, prog3StatCap, prog3SkillLevel,
+  prog3XpRequired, PROG3, PROG3_STAT_META, PROG3_SKILL_META,
+} from '../../../data/prog3.js';
 import { VitalBar, VITAL_ICONS } from './VitalBar.jsx'; /* v2.3.1311 */
+import { getEquippedSlots, getEquipContribs, GHOST_SRC } from './equipModel.js'; /* v2.3.1653 */
+import { itemDetailBus } from '../dash/itemDetailBus.js';                        /* v2.3.1653 */
+import { DASH_GAP, HERO_TAB_H } from './sheetGeometry.js';                      /* v2.3.1653; v2.3.1657 tabs */
 
 /* v2.3.1286: Hero expanded — the detailed character sheet.
    v2.3.1295 (ChatGPT round-4, owner-approved): no longer one long
@@ -21,7 +29,24 @@ import { VitalBar, VITAL_ICONS } from './VitalBar.jsx'; /* v2.3.1311 */
    vitals unified on VitalBar; the selected section resets to Overview
    when the sheet fully closes to the bar (it still survives compact
    dips and destination switches).
-   Equipment management intentionally lives in Bag, not here. */
+   v2.3.1653 (owner: "move the equipped view to be merged with the
+   character overview so the equipped slots are grouped on the left and
+   the player stats are shown on the right (aggregate of stats) and
+   contextually changes if you are selecting an equipped item").  The
+   line below — "equipment management intentionally lives in Bag, not
+   here" — is RETIRED, and by the owner's own instruction.  It was true
+   when the Bag had an Equipped tab; that tab went at v2.3.1639 and the
+   band's EQUIPPED column went at v2.3.1653, so Overview is now the only
+   place the worn six exist.
+
+   WHAT THIS SCREEN GAINS THAT THE BAND NEVER HAD: the right-hand column.
+   getEquipContribs (v2.3.1328) has always produced both an equipment
+   TOTALS readout and a per-item contribution card, and neither has
+   rendered anywhere since v2.3.1639 — the band showed slots without
+   numbers because a 142px column had no room for them.  Selecting a slot
+   here swaps the aggregate for that item's card, which is the
+   "contextually changes" half of the ask, and it is wiring rather than
+   new maths. */
 
 const SECTIONS = ['Overview', 'Build', 'Records'];
 /* v2.3.1323 (owner icon sheet): each section tab gets its art —
@@ -40,21 +65,12 @@ dashboardPanelBus.subscribe(() => {
   if (dashboardPanelBus.state.mode === 'bar') _lastSection = 'Overview';
 });
 
-/* v2.3.1332 (owner: chiseled frames everywhere): segments wear the
-   chip frame; gold ridge marks the active section (segCls pairs with
-   seg at the call site). */
-const segCls = (active) => 'bt-chisel bt-chisel--chip' + (active ? ' bt-chisel--on' : '');
-const seg = (active) => ({
-  flex: 1,
-  minHeight: 36,
-  color: active ? COL.text : COL.text2,
-  fontFamily: 'inherit',
-  fontSize: 12,
-  fontWeight: 700,
-});
+/* v2.3.1657: the v2.3.1332 chiseled text segments (segCls/seg) are retired
+   with the text — see the icon chip row in the render. */
 
 export const HeroExpanded = () => {
   const [, force] = useState(0);
+  const [eqSel, setEqSel] = useState(null);
   const [section, setSectionState] = useState(_lastSection);
   const setSection = (s) => { _lastSection = s; setSectionState(s); };
   useEffect(() => {
@@ -79,6 +95,25 @@ export const HeroExpanded = () => {
     </div>
   );
 
+  /* v2.3.1653: the COMPACT vitals row — the same three bars, side by side
+     instead of stacked, at 22px total instead of 60.  Overview's body is
+     181px and the equipped + stats block the owner asked for needs 140 of
+     them; three full-width labelled rows would have pushed that block below
+     the fold, which is the one thing this screen must not do.
+     Nothing is lost that the world HUD does not already show live — the
+     exact numbers stay, under the bar rather than beside it. */
+  const compactVital = (kind, cur, max) => (
+    <div key={kind} style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 4 }}>
+      <img src={VITAL_ICONS[kind]} alt="" draggable={false}
+        style={{ width: 13, height: 13, objectFit: 'contain', flex: 'none', pointerEvents: 'none' }} />
+      <VitalBar kind={kind} cur={cur} max={max} thick={9} />
+      <span style={{
+        flex: 'none', fontSize: 10, fontWeight: 700, color: COL.text2,
+        fontVariantNumeric: 'tabular-nums',
+      }}>{Math.ceil(cur)}</span>
+    </div>
+  );
+
   /* Overview derived pills — v2.3.1311b (owner): ALL SIX on ONE ROW,
      no scrolling anywhere in the subtab.  ~55px per pill at 390w:
      centered 8.5px label over a 13px value.  Values stay neutral
@@ -97,7 +132,58 @@ export const HeroExpanded = () => {
     </div>
   );
 
-  const totalUnspent = COMBAT_SKILLS.reduce((n, s) => n + buildSkillUnspent(R, s.key), 0);
+  /* v2.3.1660: one definition (heroModel) — under prog3 this is THE
+     pool, so the tab badge and the points chip both show it. */
+  const totalUnspent = unspentPointsTotal(R);
+  const p3 = prog3Live(R);
+
+  /* ── the worn six, and what they are worth ── */
+  const equipped = getEquippedSlots(R);
+  const contribs = getEquipContribs(R);
+  const selSlot = eqSel ? equipped.find(sl => sl.slot === eqSel) : null;
+  const selCard = selSlot ? contribs.cards[selSlot.slot] : null;
+  /* THREE across, TWO down.  Two-by-three was the shape the band's EQUIPPED
+     panel settled on at v2.3.1648 and the obvious reading of "grouped on
+     the left", but measured it did not fit: three rows of 46 is 146px, and
+     Overview's body has 106 to give once the tabs and vitals are paid for —
+     the Cape slot landed 35px BELOW the band, invisible.  The only way to
+     keep 2x3 was 32px slots, which is the size this whole pass exists to
+     move away from.  Three across keeps the cells big and the group still
+     reads as one block on the left; it is simply a wider block. */
+  const EQ_W = 46;
+  const eqCell = (slotName) => {
+    const sl = equipped.find(e => e.slot === slotName);
+    if (!sl) return <div key={slotName} style={{ width: EQ_W, height: EQ_W }} />;
+    const on = eqSel === slotName;
+    return (
+      <div key={slotName}
+        role="button" aria-label={sl.label} aria-pressed={on} title={sl.label}
+        onPointerUp={(e) => { e.stopPropagation(); setEqSel(on ? null : slotName); }}
+        style={{
+          width: EQ_W, height: EQ_W, flex: 'none', position: 'relative',
+          background: on ? COL.accentFill : COL.wellSoft,
+          border: `1px solid ${on ? COL.accent : COL.tileBor}`,
+          borderRadius: 7,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          cursor: 'pointer', touchAction: 'manipulation',
+        }}>
+        <img src={sl.iconSrc || GHOST_SRC[slotName]} alt="" draggable={false}
+          style={{
+            width: '80%', height: '80%', objectFit: 'contain',
+            opacity: sl.ghost ? 0.3 : 1, pointerEvents: 'none',
+          }} />
+      </div>
+    );
+  };
+  const kv = (k, v, big) => (
+    <div key={k} style={{
+      background: COL.wellSoft, border: `1px solid ${COL.tileBor}`, borderRadius: 8,
+      padding: '4px 2px 5px', minWidth: 0, textAlign: 'center',
+    }}>
+      <div style={{ fontSize: 8.5, fontWeight: 700, letterSpacing: '.04em', textTransform: 'uppercase', color: COL.muted, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{k}</div>
+      <div style={{ fontSize: big ? 15 : 13, fontWeight: 800, color: COL.text, fontVariantNumeric: 'tabular-nums', marginTop: 1, whiteSpace: 'nowrap' }}>{v}</div>
+    </div>
+  );
 
   return (
     <div style={{
@@ -108,49 +194,270 @@ export const HeroExpanded = () => {
          so the mask only dimmed the flush last row.  Off here. */
       WebkitMaskImage: 'none', maskImage: 'none',
     }}>
-      <IdentityStrip />
+      {/* v2.3.1653: Hero's OWN identity strip is gone.  Since v2.3.1652 the
+          band's top row carries name, level, XP, gold and DPS on every
+          screen including this one, so rendering the strip again inside the
+          panel put the same five numbers on screen twice — the band's
+          one-count rule — and spent ~50px of a 181px body doing it.  That
+          50px is exactly what Overview needed to show the equipped block
+          above the fold. */}
 
-      {/* Sticky segmented control — content scrolls under it.
-          v2.3.1311: Build carries an actionable count (Build · N);
-          Overview/Records never badge (spec). */}
-      <div className="bt-well" style={{
+      {/* v2.3.1657 (owner: "condense it into a navigation similar to the
+          dashboard navigation buttons without any text but still below
+          those main buttons"): ICON-ONLY section chips, the BagFilterChips
+          recipe — same fills, same borders, same 24px icon, labels carried
+          by aria-label/title.  Sitting as the panel's first child they are
+          already directly below the band's nav row (the panel body's
+          marginTop reserves that row), which is the "below" the owner
+          asked for; the band's top row itself is spoken for (v2.3.1652).
+
+          28px against the old control's 40 (36 chip + well lips) returns
+          ~12px to the body — see the budget notes in Overview below.
+          Sticky so a scrolling section keeps its navigation.
+
+          The "Build · N" TEXT becomes the nav-rail count pill INSIDE the
+          chip at top/right 2 — NavRail hangs its badge at -3, but this row
+          tops an overflow:auto panel where a negative overhang clips.  The
+          count also rides the Build chip's aria-label, so nothing the text
+          carried is lost to a screen reader. */}
+      <div style={{
         position: 'sticky', top: 0, zIndex: 2,
-        display: 'flex', gap: 2,
+        display: 'flex', gap: DASH_GAP,
+        height: HERO_TAB_H, flex: '0 0 auto',
+        marginBottom: 4,
         background: COL.bg, /* sticky: keep opaque so content scrolls UNDER */
-        flex: '0 0 auto',
       }}>
-        {SECTIONS.map(s => (
-          <button key={s} onClick={() => setSection(s)} className={segCls(section === s)}
-            style={{ ...seg(section === s), display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5 }}>
-            <img src={SECTION_ICONS[s]} alt="" draggable={false}
-              style={{ width: 17, height: 17, objectFit: 'contain', flex: 'none', pointerEvents: 'none' }} />
-            {s === 'Build' && totalUnspent > 0 ? `Build · ${totalUnspent}` : s}
-          </button>
-        ))}
+        {SECTIONS.map(s => {
+          const on = section === s;
+          const badge = s === 'Build' && totalUnspent > 0 ? totalUnspent : 0;
+          return (
+            <div key={s}
+              role="button"
+              aria-label={badge ? `Build — ${badge} points` : s}
+              aria-pressed={on} title={s}
+              onPointerUp={(e) => { e.stopPropagation(); setSection(s); }}
+              style={{
+                position: 'relative',
+                flex: '1 1 0', minWidth: 0, height: '100%',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                background: on ? COL.accentFill : COL.wellSoft,
+                border: `1px solid ${on ? COL.accent : COL.tileBor}`,
+                borderRadius: 7,
+                cursor: 'pointer', touchAction: 'manipulation',
+              }}>
+              <img src={SECTION_ICONS[s]} alt="" draggable={false}
+                style={{
+                  width: 24, height: 24, objectFit: 'contain',
+                  opacity: on ? 1 : 0.7, pointerEvents: 'none',
+                }} />
+              {badge > 0 && (
+                <span aria-hidden="true" style={{
+                  position: 'absolute', top: 2, right: 2,
+                  minWidth: 13, height: 13, padding: '0 3px',
+                  borderRadius: 7, background: COL.accent, color: COL.onAccent,
+                  fontSize: 9, fontWeight: 900, lineHeight: '13px', textAlign: 'center',
+                  fontVariantNumeric: 'tabular-nums', pointerEvents: 'none',
+                }}>{badge > 9 ? '9+' : badge}</span>
+              )}
+            </div>
+          );
+        })}
       </div>
 
       {section === 'Overview' && (
         <>
-          <div style={{ padding: '6px 0 4px' }}>
-            {labeledBar('hp', 'HP', R.hp || 0, R.maxHp || 100)}
-            {labeledBar('stamina', 'Stamina', R.stamina || 0, R.maxStamina || 100)}
-            {labeledBar('mana', 'Mana', R.mana || 0, R.maxMana || 100)}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 0 6px' }}>
+            {compactVital('hp', R.hp || 0, R.maxHp || 100)}
+            {compactVital('stamina', R.stamina || 0, R.maxStamina || 100)}
+            {compactVital('mana', R.mana || 0, R.maxMana || 100)}
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 5 }}>
-            {cell('Damage', d.dmgText)}
-            {cell('DPS', d.dps.toFixed(1))}
-            {/* v2.3.1311: it's BLOCK — the number is calcBlockReduction
-                (shield block %), not armor/Iron-Skin mitigation, so
-                "Damage Reduction" would overclaim. */}
-            {cell('Block', `${Math.round(d.block * 100)}%`)}
-            {cell('Crit', `${Math.round(d.crit * 100)}%`)}
-            {cell('Dodge', `${Math.round(d.dodge * 100)}%`)}
-            {cell('Speed', d.speed.toFixed(1))}
+
+          {/* v2.3.1653: EQUIPPED LEFT, STATS RIGHT — the owner's layout,
+              literally.  The left column is fixed at what two cells need so
+              the right column gets every remaining pixel; the numbers are
+              the thing that was missing, so the numbers get the space. */}
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+            <div style={{
+              flex: 'none', width: 3 * EQ_W + 2 * DASH_GAP,
+              display: 'flex', flexWrap: 'wrap', gap: DASH_GAP,
+            }}>
+              {['weapon', 'shield', 'chest', 'legs', 'amulet', 'cape'].map(eqCell)}
+            </div>
+
+            <div style={{ flex: 1, minWidth: 0 }}>
+              {/* The header names what the numbers below are ABOUT, which is
+                  the whole point of a contextual panel: without it, a card
+                  that changes when you tap a slot reads as the screen
+                  glitching rather than as an answer to the tap. */}
+              <div style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                gap: 6, marginBottom: 4, minHeight: 18,
+              }}>
+                <span style={{
+                  fontSize: 9.5, fontWeight: 800, letterSpacing: '.06em',
+                  textTransform: 'uppercase',
+                  color: selCard ? COL.accent : COL.muted,
+                  whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                }}>{selSlot ? (selCard ? selCard.title : selSlot.label) : 'Your stats'}</span>
+                {selSlot && selSlot.pickerSlot && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      let anchor = null;
+                      try {
+                        const r = e.currentTarget.getBoundingClientRect();
+                        anchor = { left: r.left, top: r.top, right: r.right, bottom: r.bottom, width: r.width, height: r.height };
+                      } catch (_e) {}
+                      itemDetailBus.open({ kind: 'loadout', slot: selSlot.pickerSlot, anchor, panel: null });
+                    }}
+                    style={{
+                      flex: 'none', padding: '2px 8px', borderRadius: 999,
+                      background: COL.accentFill, border: `1px solid ${COL.accent}`,
+                      color: COL.accent, fontFamily: 'inherit',
+                      fontSize: 10, fontWeight: 800, letterSpacing: '.04em',
+                      cursor: 'pointer',
+                    }}>CHANGE</button>
+                )}
+              </div>
+
+              {selSlot ? (
+                /* CONTEXTUAL — this one item's contribution.  An equipped
+                   slot with no stat data (legs and cape carry none, by
+                   v2.3.1328's own note) says so rather than showing an
+                   empty frame that looks broken. */
+                selCard ? (
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 5 }}>
+                    {kv(selCard.primary.k, selCard.primary.v, true)}
+                    {selCard.secondary ? kv(selCard.secondary.k, selCard.secondary.v, true) : <div />}
+                  </div>
+                ) : (
+                  <div style={{
+                    padding: '10px 8px', borderRadius: 8,
+                    background: COL.wellSoft, border: `1px solid ${COL.tileBor}`,
+                    fontSize: 11, fontWeight: 600, color: COL.muted, textAlign: 'center',
+                  }}>{selSlot.ghost ? 'Nothing equipped here.' : 'No stat bonuses.'}</div>
+                )
+              ) : (
+                /* AGGREGATE — the whole character, which is what you see
+                   when nothing is selected. */
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 5 }}>
+                  {cell('Damage', d.dmgText)}
+                  {cell('DPS', d.dps.toFixed(1))}
+                  {/* v2.3.1311: it's BLOCK — the number is calcBlockReduction
+                      (shield block %), not armor/Iron-Skin mitigation, so
+                      "Damage Reduction" would overclaim. */}
+                  {cell('Block', `${Math.round(d.block * 100)}%`)}
+                  {cell('Crit', `${Math.round(d.crit * 100)}%`)}
+                  {cell('Dodge', `${Math.round(d.dodge * 100)}%`)}
+                  {cell('Speed', d.speed.toFixed(1))}
+                </div>
+              )}
+            </div>
           </div>
         </>
       )}
 
-      {section === 'Build' && (
+      {/* ═══ v2.3.1660: PROG3 BUILD — the trained-skill rebuild's
+          allocation screen (PROGRESSION-REDESIGN, owner-approved).
+          Three trained skills level by fighting (server-awarded); every
+          trained level grants ONE point to spend on the seven-stat menu
+          below.  Spends are server-validated (prog3_allocate → the
+          prog3_allocated ack applies the authoritative numbers); the
+          [+] disables at exactly the cap the server would refuse:
+          min(stat cap, character level).  This section may scroll —
+          seven rows outgrow the no-scroll budget and, unlike Overview,
+          a spend list reads fine cut at the fold. */}
+      {section === 'Build' && p3 && (
+        <>
+          <div style={{
+            margin: '5px 0 4px',
+            padding: '3px 10px',
+            borderRadius: 7,
+            background: totalUnspent > 0 ? COL.accentFill : COL.wellSoft,
+            border: `1px solid ${totalUnspent > 0 ? COL.accent : COL.tileBor}`,
+            display: 'flex', alignItems: 'baseline', justifyContent: 'space-between',
+            fontSize: 10.5, fontWeight: 700, letterSpacing: '.06em',
+            color: totalUnspent > 0 ? COL.accent : COL.text2,
+            flex: 'none',
+          }}>
+            <span>POINTS</span>
+            <span style={{ fontVariantNumeric: 'tabular-nums' }}>{totalUnspent} AVAILABLE</span>
+          </div>
+          {/* The three trained skills — level + progress to the next
+              point.  Read-only: you train these by fighting. */}
+          <div style={{ display: 'flex', gap: 5, flex: 'none', marginBottom: 5 }}>
+            {PROG3_SKILL_META.map(sk => {
+              const lvl = prog3SkillLevel(R, sk.key);
+              const xp = Math.floor((R.prog3.sk[sk.key] && R.prog3.sk[sk.key].xp) || 0);
+              const thresh = prog3XpRequired(lvl);
+              const pct = lvl >= PROG3.LEVEL_CAP ? 100 : Math.max(0, Math.min(100, (xp / thresh) * 100));
+              return (
+                <div key={sk.key} style={{
+                  flex: 1, minWidth: 0, position: 'relative',
+                  display: 'flex', alignItems: 'center', gap: 5,
+                  padding: '5px 7px 8px',
+                  background: COL.wellSoft, border: `1px solid ${COL.tileBor}`, borderRadius: 7,
+                }}>
+                  <img src={sk.iconSrc} alt="" draggable={false}
+                    style={{ width: 24, height: 24, objectFit: 'contain', flex: 'none', pointerEvents: 'none' }} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 11.5, fontWeight: 700, color: COL.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', lineHeight: 1.15 }}>{sk.label}</div>
+                    <div style={{ fontSize: 11, fontWeight: 800, color: COL.text2, fontVariantNumeric: 'tabular-nums', lineHeight: 1.15 }}>Lv {lvl}</div>
+                  </div>
+                  <div style={{ position: 'absolute', left: 7, right: 7, bottom: 3, height: 3, borderRadius: 999, overflow: 'hidden', background: '#0B1216', pointerEvents: 'none' }}>
+                    <div style={{ width: pct + '%', height: '100%', background: '#D8A85F' }} />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          {/* The seven-stat spend menu. */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            {PROG3_STAT_META.map(st => {
+              const pts = prog3Pts(R, st.key);
+              const cap = prog3StatCap(R, st.key);
+              const canSpend = totalUnspent > 0 && pts < cap;
+              return (
+                <div key={st.key} style={{
+                  display: 'flex', alignItems: 'center', gap: 8,
+                  padding: '4px 6px 4px 9px',
+                  background: COL.wellSoft, border: `1px solid ${COL.tileBor}`, borderRadius: 7,
+                }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 11.5, fontWeight: 700, color: COL.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', lineHeight: 1.2 }}>{st.label}</div>
+                    <div style={{ fontSize: 8.5, fontWeight: 700, color: COL.muted, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', lineHeight: 1.2 }}>{st.perText} per point</div>
+                  </div>
+                  <span style={{ flex: 'none', fontSize: 12, fontWeight: 800, color: COL.text2, fontVariantNumeric: 'tabular-nums' }}>
+                    {pts}<span style={{ color: COL.muted, fontWeight: 700, fontSize: 10 }}>/{cap}</span>
+                  </span>
+                  <div
+                    role="button" aria-label={`Add a point to ${st.label}`}
+                    aria-disabled={!canSpend}
+                    onPointerUp={(e) => {
+                      e.stopPropagation();
+                      if (!canSpend || !S || !S.channel) return;
+                      S.channel.send({ type: 'prog3_allocate', payload: { stat: st.key } });
+                    }}
+                    style={{
+                      flex: 'none', width: 30, height: 26,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      background: canSpend ? COL.accentFill : COL.wellSoft,
+                      border: `1px solid ${canSpend ? COL.accent : COL.tileBor}`,
+                      borderRadius: 7,
+                      color: canSpend ? COL.accent : COL.muted,
+                      fontSize: 15, fontWeight: 900, lineHeight: 1,
+                      cursor: canSpend ? 'pointer' : 'default',
+                      opacity: canSpend ? 1 : 0.55,
+                      touchAction: 'manipulation',
+                    }}>+</div>
+                </div>
+              );
+            })}
+          </div>
+        </>
+      )}
+
+      {section === 'Build' && !p3 && (
         <>
           {/* v2.3.1311c: single-line points chip — the two-cell header
               banner cost ~14px the no-scroll budget doesn't have on a
@@ -243,8 +550,9 @@ export const HeroExpanded = () => {
       )}
 
       {section === 'Records' && (
-        /* v2.3.1311c: 3x2 (was 2x3) — two card rows fit the real device
-           budget without scrolling; three didn't. */
+        <>
+        {/* v2.3.1311c: 3x2 (was 2x3) — two card rows fit the real device
+            budget without scrolling; three didn't. */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 5, paddingTop: 6 }}>
           {[
             /* v2.3.1323 (owner icon sheet): each record card gets its
@@ -252,7 +560,12 @@ export const HeroExpanded = () => {
                v2.3.1341 (owner art drop): rec-kills replaced with the
                new sword-and-skull art (green-screen sheet, chroma
                knocked out); shared ?v bumped to bust the old cache. */
-            ['Kills', cs.monstersKilled ?? cs.kills ?? 0, 'rec-kills'],
+            /* v2.3.1664: prefer the SERVER-verified kill count when the
+               worker sends it (svKills, counted in _resolveMonsterKill).
+               The client's own _compStats tally stays the fallback for old
+               workers.  This is the number the on-chain attestation
+               carries, so the two must not disagree on screen. */
+            ['Kills', R.svKills ?? cs.monstersKilled ?? cs.kills ?? 0, 'rec-kills'],
             ['Deaths', cs.deaths ?? 0, 'rec-deaths'],
             /* Renamed from "Gold Earned" so it can't be confused with
                the current balance in the identity strip (round-4). */
@@ -280,6 +593,47 @@ export const HeroExpanded = () => {
             </div>
           ))}
         </div>
+        {/* v2.3.1664: the on-chain receipt.  Appears only once a milestone
+            has actually been written to Hemi, so it is never a promise the
+            game hasn't kept — and it is a real link, because a claim of
+            "verified on-chain" that you cannot go and check is just a
+            badge.  The popup at the moment of writing fades; this stays. */}
+        {R._chainScore && R._chainScore.explorer && (
+          <a
+            href={R._chainScore.explorer}
+            target="_blank"
+            rel="noopener noreferrer"
+            onPointerUp={(e) => e.stopPropagation()}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 8,
+              marginTop: 6, padding: '7px 9px',
+              background: COL.accentFill,
+              border: `1px solid ${COL.accent}`,
+              borderRadius: 7,
+              textDecoration: 'none',
+              touchAction: 'manipulation',
+            }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{
+                fontSize: 12, fontWeight: 800, color: COL.accent,
+                whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+              }}>
+                Level {R._chainScore.level} recorded on Hemi
+              </div>
+              <div style={{
+                fontSize: 8.5, fontWeight: 700, letterSpacing: '.04em',
+                textTransform: 'uppercase', color: COL.muted, marginTop: 1,
+                whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+              }}>
+                Tap to view the transaction
+              </div>
+            </div>
+            <span aria-hidden="true" style={{
+              flex: 'none', fontSize: 13, fontWeight: 800, color: COL.accent, lineHeight: 1,
+            }}>↗</span>
+          </a>
+        )}
+        </>
       )}
     </div>
   );

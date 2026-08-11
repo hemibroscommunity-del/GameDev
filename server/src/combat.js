@@ -40,6 +40,7 @@ import {
 } from './elemental.js';
 import { AMULET_TIER_POWER, t2CounterRate } from './data.js'; // v2.3.1451: t2Accel/T2_UNITS reads replaced by the ps.t2Flat accumulator
 import { LIVEOPS } from './liveops.js';
+import { PROG3 } from './prog3.js'; // v2.3.1659: the trained-skill combat rebuild config
 
 export const combatMethods = {
   // ═══ HP store + damage application (server-authoritative) ═══
@@ -81,12 +82,20 @@ export const combatMethods = {
     // hit MISSES you every N hits", rate 0.005/pt (every 2nd at the
     // cap).  In-memory only (rule 11).  Mirrors client
     // passiveDodgeChance's expected value.
-    const dodgePct = Math.min((ps.agility || 0) * 0.0008, 0.50);
+    // v2.3.1659 (prog3): respecced players roll the allocated `dodge`
+    // stat instead (+0.4%/pt, 30% at the 75-pt cap — PROGRESSION-
+    // REDESIGN §4); agility dies with T1 and the evasion accumulator
+    // dies with the channel grid.
+    const _p3 = ps.prog3;
+    const dodgePct = _p3 ? this._prog3DodgePct(ps)
+      : Math.min((ps.agility || 0) * 0.0008, 0.50);
     let dodged = Math.random() < dodgePct;
-    const _evRate = t2CounterRate((ps.enduranceSpec && ps.enduranceSpec.evasion) || 0);
-    if (!dodged && _evRate > 0) {
-      ps._evadeAcc = (ps._evadeAcc || 0) + _evRate;
-      if (ps._evadeAcc >= 1) { ps._evadeAcc -= 1; dodged = true; }
+    if (!_p3) {
+      const _evRate = t2CounterRate((ps.enduranceSpec && ps.enduranceSpec.evasion) || 0);
+      if (!dodged && _evRate > 0) {
+        ps._evadeAcc = (ps._evadeAcc || 0) + _evRate;
+        if (ps._evadeAcc >= 1) { ps._evadeAcc -= 1; dodged = true; }
+      }
     }
     if (dodged) {
       ps.lastDamageAt = Date.now();
@@ -98,6 +107,15 @@ export const combatMethods = {
     // fractional reduction; mirror the client's intent here.
     if (this._buffActive(ps, 'resist')) {
       dmgTaken = Math.max(1, Math.ceil(dmgTaken * (1 - 0.05)));
+    }
+    // v2.3.1659 (prog3): the allocated `defense` stat is the game's
+    // first real mitigation dial — −0.4% damage taken per point, cap
+    // −40% at 100 points (decision 9-B).  Applies to monster AND PvP
+    // damage (this is the ONE place player hp goes down); floor 1 so
+    // a maxed tank still takes chip damage.
+    if (_p3) {
+      const _defMult = this._prog3DefMult(ps);
+      if (_defMult < 1) dmgTaken = Math.max(1, Math.round(dmgTaken * _defMult));
     }
     // v2.3.1113: Iron Skin (defense channel, -0.5%/pt, cap -25%) -- mirror
     // of applyIronSkin in src/data/gameSystems.js.  ps.defenseSpec is
@@ -125,7 +143,9 @@ export const combatMethods = {
     // then top up from 1 (they stack — both are defensive celebrations).
     // _lastStandReadyAt is in-memory only (rule 11): a deploy re-arms it.
     let lastStand = false;
-    const _ls = (ps.hpSpec && ps.hpSpec.laststand) || 0;
+    // v2.3.1659 (prog3): laststand is a dropped channel for respecced
+    // players — the stored points must not keep saving them.
+    const _ls = (!_p3 && ps.hpSpec && ps.hpSpec.laststand) || 0;
     if (_ls > 0 && dmgTaken >= ps.hp) {
       const _nowLs = Date.now();
       if (!ps._lastStandReadyAt || _nowLs >= ps._lastStandReadyAt) {
@@ -147,7 +167,9 @@ export const combatMethods = {
     // _secondWindReadyAt is in-memory only (rule 11): a DO restart just
     // re-arms it.
     let secondWind = 0;
-    const _sw = (ps.defenseSpec && ps.defenseSpec.secondwind) || 0;
+    // v2.3.1659 (prog3): secondwind dropped too (its banked heal reads
+    // 0 via _t2Flat's gate anyway; gating the trigger keeps it clear).
+    const _sw = (!_p3 && ps.defenseSpec && ps.defenseSpec.secondwind) || 0;
     if (ps.hp > 0 && _sw > 0) {
       const _nowSw = Date.now();
       if (!ps._secondWindReadyAt || _nowSw >= ps._secondWindReadyAt) {
@@ -226,6 +248,12 @@ export const combatMethods = {
     // Phase 4a of the T1/T2 spec: Mind scales special attacks; Power
     // still scales normal swings.  Coefficient baseline-10 rescaled
     // (0.8 ÷ 4.8 = 0.1667) so the cap tracks the new damage scale.
+    // v2.3.1659 (prog3): the ceiling mirrors _computeAttackDamage's
+    // prog3 branch IN LOCKSTEP — trained level × K per candidate
+    // weapon's own skill (specials on Magic), computed per candidate
+    // below.  prog3 is server-owned like t2Flat, so tracking the
+    // exact term is safe (a client can't move its own cap).
+    const _p3 = ps.prog3;
     const statBonus = isSpecial ? ((ps.mind || 0) * 0.1667) : ((ps.power || 0) * 0.1667);
     // v2.3.1451 (bench-locked T2): the ceiling reads the attacker's
     // ACTUAL banked damage flat per candidate weapon — the exact
@@ -242,8 +270,16 @@ export const combatMethods = {
       // quality, BEFORE stat/channel/tierMult.  Identity for legacy
       // weapons (H0/Normal); keeps godly/hardened hits from being
       // rejected as cheats.
-      const channelFlat = isSpecial ? 0 : this._wpnDmgFlat(ps, w.type);
-      const base = (this._weaponEffBase(w.type, w) + statBonus) * (w.tierMult || 1) + channelFlat;
+      let bonus = statBonus;
+      if (_p3 && _p3.sk) {
+        const _cat = w.type === 'bow' ? 'bow' : w.type === 'staff' ? 'staff' : 'sword';
+        const _skLvl = isSpecial
+          ? ((_p3.sk.staff && _p3.sk.staff.level) || 1)
+          : ((_p3.sk[_cat] && _p3.sk[_cat].level) || 1);
+        bonus = _skLvl * (isSpecial ? PROG3.DMG_PER_LEVEL.staff : PROG3.DMG_PER_LEVEL[_cat]);
+      }
+      const channelFlat = isSpecial ? 0 : this._wpnDmgFlat(ps, w.type); // reads 0 under prog3 (_t2Flat gate)
+      const base = (this._weaponEffBase(w.type, w) + bonus) * (w.tierMult || 1) + channelFlat;
       if (base > max) max = base;
     }
     return max;
@@ -255,15 +291,20 @@ export const combatMethods = {
     // v2.3.1345: crit is power-mult + a FLAT accelerating bonus; the
     // ceiling assumes both MAXED (the v2.3.1133 pattern) — forgetting
     // either term rejects legit maxed-build hits.
-    const critMult = 1.5 + (ps.power || 0) * 0.001;
+    // v2.3.1659 (prog3): the roll's crit is a plain 1.5× plus the
+    // allocated critDmg flat — the ceiling mirrors both exactly
+    // (server-owned stat, lockstep by construction).
+    const critMult = ps.prog3 ? 1.5 : 1.5 + (ps.power || 0) * 0.001;
     // v2.3.1451: the attacker's ACTUAL banked crit-dmg flat, max
     // across the three categories (the candidate loop in
     // _maxWeaponDmg doesn't know which weapon wins, so cover the
     // largest).  Server-owned accumulator — see _maxWeaponDmg note.
-    const critFlatCeil = Math.max(
-      this._t2Flat(ps, 'sword', 'executioner'),
-      this._t2Flat(ps, 'bow', 'headshot'),
-      this._t2Flat(ps, 'staff', 'focus'));
+    const critFlatCeil = ps.prog3
+      ? this._prog3Pts(ps, 'critDmg') * PROG3.STATS.critDmg.per
+      : Math.max(
+        this._t2Flat(ps, 'sword', 'executioner'),
+        this._t2Flat(ps, 'bow', 'headshot'),
+        this._t2Flat(ps, 'staff', 'focus'));
     const comboBoost = 5; // covers combo + status amplifier + amulet elemDmg + lunge mult
     // v2.3.1397: per-weapon special mult (client specialAtkMultFor) —
     // melee/bow 3.0, staff 2.0.  The cap covers the LARGEST so no legit
@@ -324,7 +365,23 @@ export const combatMethods = {
     // layers, BALANCE-PLAN §4.4 order: pre-stat, pre-tier).  Reduces
     // exactly to the old formula at Hardness 0 / Normal quality --
     // tools/balance-sim.mjs asserts that equivalence.
-    let base = (this._weaponEffBase(type, w) + stat * 0.1667) * tierMult; // 0.8 ÷ 4.8
+    // v2.3.1659 (prog3): respecced players scale on their TRAINED
+    // level instead of the dying T1 stat — +K damage per level in the
+    // weapon's own skill (PROGRESSION-REDESIGN §7-A; K sim-tuned
+    // first-guess).  Specials scale on Magic (§3: specials credit and
+    // scale on the staff skill, succeeding the old Mind coupling).
+    // dmgFlat above reads 0 for prog3 (the _t2Flat gate), and the
+    // anticheat ceiling (_maxWeaponDmg) carries this same branch.
+    const _p3 = ps.prog3;
+    let statTerm = stat * 0.1667; // 0.8 ÷ 4.8
+    if (_p3 && _p3.sk) {
+      const _cat = type === 'bow' ? 'bow' : type === 'staff' ? 'staff' : 'sword';
+      const _skLvl = isSpecial
+        ? ((_p3.sk.staff && _p3.sk.staff.level) || 1)
+        : ((_p3.sk[_cat] && _p3.sk[_cat].level) || 1);
+      statTerm = _skLvl * (isSpecial ? PROG3.DMG_PER_LEVEL.staff : PROG3.DMG_PER_LEVEL[_cat]);
+    }
+    let base = (this._weaponEffBase(type, w) + statTerm) * tierMult;
     // Per-type variance -- same rolls as the client.
     const v = type === 'staff' ? (0.5  + Math.random() * 1.0)
             : type === 'bow'   ? (0.6  + Math.random() * 0.2)
@@ -344,17 +401,29 @@ export const combatMethods = {
     // per-player accumulator and GUARANTEES a lucky hit each time it
     // crosses 1 (every 2nd hit at the 100-pt cap).  In-memory only
     // (rule 11): a deploy just restarts the count.
-    const P = ps.power || 0;
-    const baseCrit = Math.max(0, Math.min(1, 40 * P / (P + 200) / 100));
-    let isCrit = Math.random() < baseCrit;
-    const _critRate = t2CounterRate(this._wpnCritPts(ps, type));
-    if (_critRate > 0) {
-      ps._luckyAcc = (ps._luckyAcc || 0) + _critRate;
-      if (ps._luckyAcc >= 1) { ps._luckyAcc -= 1; isCrit = true; }
+    // v2.3.1659 (prog3): crit collapses to two allocated stats — a
+    // plain dice roll at +0.4%/pt (30% at the 75-pt cap; power's
+    // rational curve dies with T1, the lucky accumulator dies with the
+    // per-weapon channels — _wpnCritPts reads 0 for prog3) and a flat
+    // +2/pt on the 1.5× multiplier (+200 at the 100-pt cap; flat, not
+    // %, for the §7 anti-compounding reason).
+    let isCrit;
+    if (_p3) {
+      isCrit = Math.random() < this._prog3Pts(ps, 'crit') * PROG3.STATS.crit.per;
+      if (isCrit) base = base * 1.5 + this._prog3Pts(ps, 'critDmg') * PROG3.STATS.critDmg.per;
+    } else {
+      const P = ps.power || 0;
+      const baseCrit = Math.max(0, Math.min(1, 40 * P / (P + 200) / 100));
+      isCrit = Math.random() < baseCrit;
+      const _critRate = t2CounterRate(this._wpnCritPts(ps, type));
+      if (_critRate > 0) {
+        ps._luckyAcc = (ps._luckyAcc || 0) + _critRate;
+        if (ps._luckyAcc >= 1) { ps._luckyAcc -= 1; isCrit = true; }
+      }
+      // v2.3.1451: the crit-DMG channel adds its BANKED bench-locked
+      // flat on lucky hits (after the power multiplier) — was t2Accel.
+      if (isCrit) base = base * (1.5 + P * 0.001) + this._wpnCritDmgFlat(ps, type);
     }
-    // v2.3.1451: the crit-DMG channel adds its BANKED bench-locked
-    // flat on lucky hits (after the power multiplier) — was t2Accel.
-    if (isCrit) base = base * (1.5 + P * 0.001) + this._wpnCritDmgFlat(ps, type);
     // v2.3.1139 (item I): the two multipliers the v2.3.912 scope note
     // deliberately omitted, now server-side (the client applies both
     // locally and its numbers finally match the wire truth):
@@ -516,6 +585,20 @@ export const combatMethods = {
     // without it stay compatible.
     if (!m.dmgByPlayer) m.dmgByPlayer = Object.create(null); // v2.3.1202: player-id-keyed
     m.dmgByPlayer[session.id] = (m.dmgByPlayer[session.id] || 0) + actualDmg;
+
+    // v2.3.1659 (prog3): server-authoritative trained XP (§9-A) — the
+    // skill that swung earns damage-proportional XP at hit time, from
+    // the CREDITED amount (overkill clamped above, so grinding a
+    // low-hp monster's corpse can't inflate the rate).  Slot mapping
+    // uses the server-resolved _effSlot, never the raw wire string;
+    // specials credit Magic (§3).  Level-ups persist + notify inside
+    // _prog3AwardXp; ordinary xp ticks ride the kill-path _saveRpg.
+    if (attackerPs.prog3) {
+      const _xpCat = isSpecial ? 'staff'
+        : _effSlot === 'ranged' ? 'bow'
+        : _effSlot === 'staff' ? 'staff' : 'sword';
+      this._prog3AwardXp(session.id, attackerPs, _xpCat, actualDmg);
+    }
 
     // v2.3.1114: SERVER-AUTHORITATIVE ELEMENTAL.  The wire already carried
     // `element` (destructured above) but the server ignored it -- burns,
@@ -761,7 +844,11 @@ export const combatMethods = {
         // were advancing trader_2, a gathering quest).  Quest-id keyed,
         // exactly the shape the client predicates read; the flush below
         // echoes it, so the progress UI updates on the same tick.
-        this._creditQuestObjective(rid, 'kill', m.arch);
+        /* v2.3.1665: pass the zone -- it was always in scope here and the
+           credit loop simply never received it, which is why no kill quest
+           could say WHERE.  The tutorial arc's zone-scoped objectives are
+           the first consumer. */
+        this._creditQuestObjective(rid, 'kill', m.arch, zone);
         const share = shares[rid] || 0;
         // v2.3.1150: xp_mult live-ops flag -- the "2x weekend" lever.
         // Clamped [1,4] at read; monster_kill's payload.xp stays base
@@ -786,6 +873,15 @@ export const combatMethods = {
         // site (monsterCombat.js "GOLD NUGGET DROP", now gated off under
         // caps.amuletForge).  Rides this recipient's _saveRpg +
         // player_state flush below.
+        /* v2.3.1664: SERVER-VERIFIED kill count.  This function is the one
+           place a monster actually dies — it pays the XP and spawns the
+           loot — so counting here is as authoritative as the kill itself.
+           Distinct from the client-reported `_compStats.monstersKilled`
+           that feeds the leaderboard's vanity columns: only this number is
+           eligible to be attested on-chain (chainscore.js), because putting
+           a client-reported figure on a permanent public ledger would make
+           it LOOK verified while being no better than the client's word. */
+        if (rid === killerId) recipPs.svKills = (recipPs.svKills || 0) + 1;
         if (rid === killerId) this._amuletNuggetOnKill(recipPs);
         // v2.3.1198 (gem income): raw-gem drop roll, server-rolled now
         // that gems feed the server-settled Gem Cutter + amulet gem op

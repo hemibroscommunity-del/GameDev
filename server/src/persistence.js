@@ -230,6 +230,16 @@ export const persistenceMethods = {
         // v9 migration replays it for pre-slice blobs).  Server-owned:
         // the client never supplies it, only receives it.
         t2Flat: ps.t2Flat || null,
+        // v2.3.1659: prog3 trained-skill track (prog3.js) — the combat
+        // rebuild's server-owned progression (trained sk levels/xp,
+        // seven-stat alloc, point pool).  Never client-suppliable: it
+        // feeds the damage roll AND the anticheat ceiling (the t2Flat
+        // rule).
+        prog3: ps.prog3 || null,
+        // v2.3.1664: server-verified lifetime kills (combat.js
+        // _resolveMonsterKill).  The only kill figure eligible for an
+        // on-chain attestation -- see chainscore.js.
+        svKills: ps.svKills || 0,
         // v2.3.1152: schema stamp -- the ONE field allowed beyond the
         // gameplay list (ARCHITECTURE-HANDOFF rule 1 exception).  The
         // CONSTANT, never ps._v: a blob written by current code is
@@ -382,6 +392,14 @@ export const persistenceMethods = {
           // Old clients ignore the unknown field (deploy-order safe);
           // protocol-v2 delta handles it like every other field.
           t2Flat: ps.t2Flat || null,
+          // v2.3.1659: prog3 echo — trained levels / xp / alloc / pool
+          // for the new Build UI (caps.prog3 client slice).  Old
+          // clients ignore the unknown field (deploy-order safe);
+          // protocol-v2 delta handles it like every other field.
+          prog3: ps.prog3 || null,
+          // v2.3.1664: server-verified kills, echoed so the client can show
+          // the same number the chain attestation carries.
+          svKills: ps.svKills || 0,
       };
       const session = this.sessions.get(ws);
       let payload = full;

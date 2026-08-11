@@ -124,6 +124,12 @@ import { combatMethods } from './combat.js';
 // v2.3.1192: server amulet forge (handoff item I follow-up) -- smelt/
 // craft/gem ops + the server-owned nugget/bar ledger -- see amulet.js.
 import { amuletMethods } from './amulet.js';
+// v2.3.1659: the trained-skill combat rebuild (PROGRESSION-REDESIGN) --
+// XP accrual, seven-stat allocation, prog3 pool recompute -- see prog3.js.
+import { prog3Methods } from './prog3.js';
+// v2.3.1664: on-chain score checkpoints to Hemi (contracts/BroTownScores.sol);
+// signing/encoding lives in chainwriter.js -- see chainscore.js.
+import { chainScoreMethods } from './chainscore.js';
 
 export default {
   async fetch(request, env) {
@@ -255,6 +261,13 @@ export const PRIVILEGED_EVENTS = new Set([
   // but can't actually revive themselves server-side.
   'combat_credit', 'harvest_credit', 'loot_credit', 'lifesteal_credit', 'loot_pickup_rejected',
   'stat_allocated', 'ability_rejected',
+  // v2.3.1659: prog3 combat-rebuild emissions (prog3.js) — the trained
+  // level-up celebration and the allocation ack are both server-truth;
+  // forging either would paint fake levels/points on the client.
+  'prog3_level', 'prog3_allocated',
+  // v2.3.1664: the on-chain checkpoint receipt (chainscore.js).  Server-sent
+  // only -- a forged one would paint a fake block-explorer link.
+  'chain_score_recorded',
   // v2.3.1117: inbox/mail delivery notification -- forging it wouldn't
   // grant anything (credits are server-persisted before it's sent) but
   // it drives "you received X" UI, so don't let clients spoof it.
@@ -1418,7 +1431,11 @@ export class GameRoom {
               // kill pays XP/loot/quests through the shared pipeline.
               // slot 'thorns' denies melee lifesteal exactly like 'dot'
               // (you didn't swing — nothing to refund).
-              const _thornsPts = (blockerPs && blockerPs.defenseSpec && blockerPs.defenseSpec.thorns) || 0;
+              // v2.3.1659 (prog3): thorns is a dropped channel for
+              // respecced players — the stored points must not keep
+              // firing (the banked flat already reads 0 via _t2Flat's
+              // prog3 gate, but the trigger reads raw points).
+              const _thornsPts = (blockerPs && !blockerPs.prog3 && blockerPs.defenseSpec && blockerPs.defenseSpec.thorns) || 0;
               if (_thornsPts > 0 && m.hp > 0) {
                 const reflect = Math.min(Math.max(0, m.hp),
                   Math.max(1, this._t2Flat(blockerPs, 'defense', 'thorns'))); // v2.3.1451: bench-locked banked payback (was t2Accel)
@@ -1640,7 +1657,12 @@ export class GameRoom {
     return (ps && ps.weaponSpecs && ps.weaponSpecs[cat] && ps.weaponSpecs[cat][K[cat]]) || 0;
   }
   // Crit-channel point total (precision / marksmanship / overload).
+  // v2.3.1659 (prog3): 0 for respecced players — the three per-weapon
+  // crit channels collapsed into the global `crit` allocated stat, so
+  // the deterministic lucky-hit accumulator retires with them (the
+  // spec points stay stored for rollback and must not keep paying).
   _wpnCritPts(ps, type) {
+    if (ps && ps.prog3) return 0;
     const K = { sword: 'precision', bow: 'marksmanship', staff: 'overload' };
     const cat = this._wpnCat(type);
     return (ps && ps.weaponSpecs && ps.weaponSpecs[cat] && ps.weaponSpecs[cat][K[cat]]) || 0;
@@ -1677,6 +1699,9 @@ export class GameRoom {
     // v2.3.1343 (kid-simple reprice): +1%/pt, ceiling ×2.00 — fire &
     // ice last twice as long at the 100-pt cap.  elemental.js's
     // durMult clamp rises in lockstep.
+    // v2.3.1659 (prog3): ×1 for respecced players — attunement is on
+    // the dropped-channel casualty list (PROGRESSION-REDESIGN §4).
+    if (ps && ps.prog3) return 1;
     const pts = (ps && ps.weaponSpecs && ps.weaponSpecs.staff && ps.weaponSpecs.staff.attunement) || 0;
     return 1 + Math.min(100, pts) * 0.01;
   }
@@ -1693,6 +1718,9 @@ export class GameRoom {
     // at max.  Safe ONLY because both cost sites keep their
     // Math.max(1, …) floor (a block always drains at least 1 stamina —
     // no permanent-invuln turtle; hardening.test pins the floor).
+    // v2.3.1659 (prog3): ×1 for respecced players — bulwark is a
+    // dropped channel; block costs return to full price.
+    if (ps && ps.prog3) return 1;
     const pts = (ps && ps.defenseSpec && ps.defenseSpec.bulwark) || 0;
     return 1 - Math.min(1.00, Math.min(100, pts) * 0.01);
   }
@@ -2967,6 +2995,15 @@ export class GameRoom {
         }
         break;
 
+      case 'prog3_allocate':
+        // v2.3.1659: spend 1 prog3 pool point on one of the seven
+        // allocated stats (prog3.js — pool + per-stat caps validated
+        // server-side; ack via prog3_allocated + player_state echo).
+        if (session.id) {
+          this._handleProg3Allocate(session, msg.payload || msg);
+        }
+        break;
+
       case 'cook_request':
         // Cooking minigame finished; client reports the outcome (kind)
         // and the raw fish key.  Server validates the player has the
@@ -3571,3 +3608,5 @@ Object.assign(GameRoom.prototype, combatMethods);
 Object.assign(GameRoom.prototype, amuletMethods);
 // v2.3.1323: mutual friendships + requests + DMs -- see friends.js.
 Object.assign(GameRoom.prototype, friendsMethods);
+Object.assign(GameRoom.prototype, prog3Methods); /* v2.3.1659 */
+Object.assign(GameRoom.prototype, chainScoreMethods); /* v2.3.1664 */

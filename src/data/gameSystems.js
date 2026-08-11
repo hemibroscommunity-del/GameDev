@@ -18,6 +18,13 @@ import { TOWN_EXITS } from './effects.js';
 import { AMULET_TIERS, SALVAGE_RETURN_RATE, DEPTH_TIERS, ZONE_RESOURCES, getAmuletBonus, getShieldBonus, getShieldStats, skillXpRequired } from './items.js';
 import { FISHING_TIERS } from './lifeSkills.js';
 import { applyZoneVariant, hitShapeOf, variantForArchetype } from './monsterVariants.js';
+/* v2.3.1660: the trained-skill combat rebuild's client mirror — every
+   prog3Live(rpg) branch below keeps its legacy body for old workers
+   (rule 19) and for any blob the v10 respec fail-opened on. */
+import {
+  PROG3, prog3Live, prog3CharLevel, prog3SkillLevel, prog3Pts,
+  prog3DodgePct, prog3CritPct, prog3CritFlat, prog3DmgTerm,
+} from './prog3.js';
 
 /* v2.3.1186: pure-display exports (BT_AUDIO, BT_ACHIEVEMENTS, MASKS,
    tile colors, generateZoneMap, emote/NPC tables) moved to
@@ -327,6 +334,16 @@ export function canEquipItem(rpg, item, slotType) {
   /* Amulet uses AMULET_TIERS */
   if (slotType === 'amulet') tier = AMULET_TIERS[item.tier];
   if (!tier || !tier.statReq) return true;
+  /* v2.3.1661 (prog3): tables carry statReq = tierIndex × 10, and the
+     rebuild's requirement is tierIndex × 5 — statReq / 2 against the
+     trained level (weapons/amulet) or defense points (armor/shield). */
+  if (prog3Live(rpg)) {
+    var p3req = Math.ceil((tier.statReq || 0) / 2);
+    if (slotType === 'armor' || slotType === 'shield') return prog3Pts(rpg, 'def') >= p3req;
+    if (slotType === 'amulet') return prog3SkillLevel(rpg, 'staff') >= p3req;
+    var p3cat = item.type === 'bow' ? 'bow' : item.type === 'staff' ? 'staff' : 'sword';
+    return prog3SkillLevel(rpg, p3cat) >= p3req;
+  }
   var reqStat, playerVal;
   if (slotType === 'shield') {
     reqStat = SHIELD_EQUIP_STAT;
@@ -344,7 +361,7 @@ export function canEquipItem(rpg, item, slotType) {
   }
   return playerVal >= tier.statReq;
 }
-export function getEquipReqLabel(item, slotType) {
+export function getEquipReqLabel(item, slotType, rpg) {
   var _item$gearBase3;
   if (!item || !item.gearBase) return null;
   var isWood = (_item$gearBase3 = item.gearBase) === null || _item$gearBase3 === void 0 ? void 0 : _item$gearBase3.startsWith('ww_');
@@ -353,6 +370,19 @@ export function getEquipReqLabel(item, slotType) {
   var tier = tierTable[tierKey];
   if (slotType === 'amulet') tier = AMULET_TIERS[item.tier];
   if (!tier || !tier.statReq) return null;
+  /* v2.3.1661 (prog3): pass rpg to get the trained-skill requirement —
+     `have`/`met` carried so callers stop reading rpg[stat] themselves. */
+  if (rpg && prog3Live(rpg)) {
+    var p3q = Math.ceil((tier.statReq || 0) / 2);
+    if (slotType === 'armor' || slotType === 'shield') {
+      return { stat: 'defensePts', req: p3q, label: 'Defense', have: prog3Pts(rpg, 'def'), met: prog3Pts(rpg, 'def') >= p3q, prog3: true };
+    }
+    var p3cat = slotType === 'amulet' ? 'staff'
+      : item.type === 'bow' ? 'bow' : item.type === 'staff' ? 'staff' : 'sword';
+    var p3lbl = (p3cat === 'sword' ? 'Melee' : p3cat === 'bow' ? 'Bow' : 'Magic') + ' Lv';
+    var p3have = prog3SkillLevel(rpg, p3cat);
+    return { stat: p3cat, req: p3q, label: p3lbl, have: p3have, met: p3have >= p3q, prog3: true };
+  }
   var reqStat;
   if (slotType === 'shield') reqStat = SHIELD_EQUIP_STAT;else if (slotType === 'amulet') reqStat = AMULET_EQUIP_STAT;else if (slotType === 'armor') reqStat = ARMOR_EQUIP_STAT;else reqStat = EQUIP_STAT_MAP[item.type] || 'power';
   return {
@@ -2339,9 +2369,35 @@ export const GEAR_STAT_REQ = {
   amulet: 'mind' /* Enhancement/utility */
 };
 
+/* ═══ v2.3.1661 (prog3 tier gates, PROGRESSION-REDESIGN §6) ═══
+   Weapons gate on the matching TRAINED skill at tierIndex × 5 (20
+   tiers → 0..95 against the level-100 cap) — this also FIXES the
+   standing sword mismatch (GEAR_STAT_REQ said agility, EQUIP_STAT_MAP
+   said power; both are Melee now).  Armor + shield gate on allocated
+   DEFENSE POINTS (the owner's literal ask; the min(100, level)
+   per-stat cap is what stops a fresh account outrunning its level).
+   Amulets follow Magic.  SERVER LOCKSTEP: gear.js forge/equip gates +
+   grids.js armor ingest apply the same rule — legacy tables carry
+   statReq = tierIndex × 10, so the prog3 requirement is statReq / 2
+   wherever only the table row is in hand. */
+export function prog3GearReq(rpg, gearType, tierIndex) {
+  var value = tierIndex * 5;
+  if (gearType === 'armor' || gearType === 'shield') {
+    var defPts = prog3Pts(rpg, 'def');
+    return { stat: 'defensePts', label: 'Defense', value: value, have: defPts, met: defPts >= value, prog3: true };
+  }
+  var cat = gearType === 'bow' ? 'bow' : (gearType === 'staff' || gearType === 'amulet') ? 'staff' : 'sword';
+  var label = (cat === 'sword' ? 'Melee' : cat === 'bow' ? 'Bow' : 'Magic') + ' Lv';
+  var lvl = prog3SkillLevel(rpg, cat);
+  return { stat: cat, label: label, value: value, have: lvl, met: lvl >= value, prog3: true };
+}
+
 /* Calculate the stat requirement for a given crafting tier */
-/* tierIndex: 0-based position in the tier table (0=first tier, 19=last) */
-export function getGearStatReq(gearType, tierIndex) {
+/* tierIndex: 0-based position in the tier table (0=first tier, 19=last)
+   v2.3.1661: pass rpg to get the prog3 requirement when the rebuild is
+   live — the returned {label, value, met} drive both gate and display. */
+export function getGearStatReq(gearType, tierIndex, rpg) {
+  if (rpg && prog3Live(rpg)) return prog3GearReq(rpg, gearType, tierIndex);
   var stat = GEAR_STAT_REQ[gearType];
   if (!stat) return {
     stat: 'power',
@@ -2349,13 +2405,15 @@ export function getGearStatReq(gearType, tierIndex) {
   };
   return {
     stat: stat,
-    value: tierIndex * 10
+    value: tierIndex * 10,
+    label: stat.charAt(0).toUpperCase() + stat.slice(1)
   };
 }
 
 /* Check if player meets the stat requirement for a piece of gear */
 export function meetsGearReq(rpg, gearType, tierIndex) {
-  var req = getGearStatReq(gearType, tierIndex);
+  var req = getGearStatReq(gearType, tierIndex, rpg);
+  if (req.prog3) return req.met;
   return (rpg[req.stat] || 0) >= req.value;
 }
 
@@ -2386,6 +2444,8 @@ export function meetsStatReq(rpg, item, weaponType) {
     var table = isWW ? WOODWORKING_TIERS : BLACKSMITH_TIERS;
     var tierIdx = Object.keys(table).indexOf(tierKey);
     if (tierIdx < 0) return true;
+    /* v2.3.1661 (prog3): trained level ≥ tierIndex × 5 (§6). */
+    if (prog3Live(rpg)) return prog3GearReq(rpg, gearType, tierIdx).met;
     return (rpg[stat] || 0) >= tierIdx * 10;
   }
 
@@ -2393,6 +2453,10 @@ export function meetsStatReq(rpg, item, weaponType) {
   var tierMult = item.tierMult || 1;
   /* Approximate: tierMult 1.0=tier0, 1.5=tier5, 2.0=tier8, 3.0=tier12, 6.0=tier19 */
   var estIdx = Math.max(0, Math.round((tierMult - 1) * 6));
+  /* v2.3.1661: capped at index 19 for prog3 — the raw curve reads 30
+     at tierMult 6, demanding level 150 on a 100-cap skill (server
+     mirror: gear.js _prog3EquipOk). */
+  if (prog3Live(rpg)) return prog3GearReq(rpg, gearType, Math.min(19, estIdx)).met;
   return (rpg[stat] || 0) >= estIdx * 10;
 }
 
@@ -2989,6 +3053,13 @@ export function swingCooldownMult(rpg) {
    the sword category has an atkspd channel today — bow/staff resolve
    to 0 pts (mult 1), identical to before. */
 export function swingCooldownMultFor(rpg, weaponType) {
+  /* v2.3.1660 (prog3): the allocated attack-speed stat is GLOBAL
+     (tempo was sword-only) — −0.35%/pt, cap −35% at 100 pts.  Stays
+     INSIDE the worker's 210ms cadence floor (600 × 0.65 × 0.7 lag
+     headroom = 273ms), so no server change was needed; raise the
+     per-point value and the floor together or fast swings get
+     rejected (the lockstep rule below). */
+  if (prog3Live(rpg)) return Math.max(0.50, 1 - prog3Pts(rpg, 'aspd') * PROG3.STATS.aspd.per);
   /* v2.3.1343 (kid-simple reprice): -0.5%/pt, floor 0.50 — swing twice
      as fast at the 100-pt cap.  SERVER LOCKSTEP: the worker's
      monster_damage hit-cadence floor is sized to THIS cap (600 × 0.50
@@ -3053,6 +3124,12 @@ export function cleaveArcBonus(rpg) {
    else null, so callers can surface a toast. */
 export function awardWeaponXp(rpg, dmg) {
   if (!rpg || !(dmg > 0)) return null;
+  /* v2.3.1660 (prog3): trained XP is SERVER-owned now — the worker
+     awards it at hit time from credited damage (_prog3AwardXp) and
+     announces level-ups via prog3_level.  A local award here would
+     double-celebrate and desync the legacy track the server keeps
+     frozen for rollback. */
+  if (prog3Live(rpg)) return null;
   var cat = activeWeaponCategory(rpg);
   if (!rpg.weaponSkills) rpg.weaponSkills = {};
   var sk = rpg.weaponSkills[cat] || (rpg.weaponSkills[cat] = { level: 0, xp: 0 });
@@ -3226,6 +3303,10 @@ export function poiseStunFlatMs(rpg) {
    Returns {level, points} on a level-up (for a toast), else null. */
 export function awardDefenseXp(rpg, weightedAmount) {
   if (!rpg || !(weightedAmount > 0)) return null;
+  /* v2.3.1660 (prog3): tanking trains nothing under the rebuild
+     (decision 6-A) — the defense SKILL retired into the allocation
+     pool at respec time. */
+  if (prog3Live(rpg)) return null;
   if (!rpg.defenseSkill) rpg.defenseSkill = { level: 0, xp: 0 };
   var sk = rpg.defenseSkill;
   if (sk.level >= DEFENSE_LEVEL_CAP) return null;
@@ -4518,10 +4599,17 @@ export function calcWeaponDmg(weaponType, statValOrRpg, tierMult, wpn) {
      tier AND variance, before crit — "+N damage on every swing", the
      same number the panel promises, on every roll.  Mirrors server
      _computeAttackDamage / DAMAGE_CHANNEL_FLAT. */
-  var base = (weaponEffBase(w.base, wpn) + statVal * 0.1667) * tierMult; // baseline-10: 0.8 ÷ 4.8
+  /* v2.3.1660 (prog3): trained level × K replaces stat × 0.1667, and
+     the channel flat dies — mirrors server _computeAttackDamage's
+     branch.  Only the rpg-object call shape can carry prog3; primitive
+     callers keep legacy math (they are legacy-path readouts). */
+  var _p3 = (statValOrRpg && typeof statValOrRpg === 'object' && prog3Live(statValOrRpg)) ? statValOrRpg : null;
+  var statTerm = _p3 ? prog3DmgTerm(_p3, weaponType) : statVal * 0.1667;
+  var base = (weaponEffBase(w.base, wpn) + statTerm) * tierMult; // baseline-10: 0.8 ÷ 4.8
   /* v2.3.1451: bench-locked banked flat when live (rpg object passed
      + worker capability); legacy accelerating flat otherwise. */
-  var flat = (statValOrRpg && typeof statValOrRpg === 'object' && t2BenchLive(statValOrRpg))
+  var flat = _p3 ? 0
+    : (statValOrRpg && typeof statValOrRpg === 'object' && t2BenchLive(statValOrRpg))
     ? t2WpnBankedFlat(statValOrRpg, weaponType, 'damage')
     : t2Accel(dmgChannel, T2_UNITS.damage);
   /* Per-type variance: staff widest, melee mid, bow tightest. */
@@ -4643,10 +4731,14 @@ export function calcDisplayDmgRange(rpg, wpn) {
      added after tier and variance (mirrors calcWeaponDmg). */
   var dmgPts = weaponDamageBonusFor(rpg, wpn.type);
   /* v2.3.1451: banked bench-locked flat when live; legacy otherwise. */
-  var flat = t2BenchLive(rpg)
+  var flat = prog3Live(rpg) ? 0
+    : t2BenchLive(rpg)
     ? t2WpnBankedFlat(rpg, wpn.type, 'damage')
     : t2Accel(dmgPts, T2_UNITS.damage);
-  var base = (weaponEffBase(w.base, wpn) + statVal * 0.1667) * (wpn.tierMult || 1);
+  /* v2.3.1660 (prog3): trained level × K replaces the stat term —
+     the readout mirrors the server roll it predicts. */
+  var base = (weaponEffBase(w.base, wpn)
+    + (prog3Live(rpg) ? prog3DmgTerm(rpg, wpn.type) : statVal * 0.1667)) * (wpn.tierMult || 1);
   /* v2.3.1207: Tempo folds into the period (see header); the staff's
      +300ms cast penalty is added AFTER the mult, unscaled, matching
      the auto-attack gate. */
@@ -4668,11 +4760,14 @@ export function calcDisplayDps(rpg, wpn) {
   /* Crit fold: chance × extra multiplier, both resolved for THIS
      weapon's category channels (Precision/Executioner etc.) on top of
      the Power baseline — same call pair as the loadout readout. */
-  var critChance = calcCritChance((rpg && rpg.power) || 0, weaponCritStatFor(rpg, wpn.type));
-  var critMult = calcCritMult((rpg && rpg.power) || 0);
+  /* v2.3.1660 (prog3): crit is the allocated pair — chance crit×0.4%,
+     mult a plain 1.5×, flat critDmg×2 (mirrors the server roll). */
+  var critChance = prog3Live(rpg) ? prog3CritPct(rpg)
+    : calcCritChance((rpg && rpg.power) || 0, weaponCritStatFor(rpg, wpn.type));
+  var critMult = prog3Live(rpg) ? 1.5 : calcCritMult((rpg && rpg.power) || 0);
   /* v2.3.1345: crit-dmg channel is a FLAT bonus on lucky hits — fold
      its expected value on top of the power multiplier. */
-  var critFlat = weaponCritFlatFor(rpg, wpn.type);
+  var critFlat = prog3Live(rpg) ? prog3CritFlat(rpg) : weaponCritFlatFor(rpg, wpn.type);
   return ((r.min + r.max) / 2 * (1 + critChance * (critMult - 1)) + critChance * critFlat) / (r.cdMs / 1000);
 }
 
@@ -4908,6 +5003,33 @@ export function createDefaultRpg() {
 
 /* Recalculate derived stats from allocations */
 export function recalcDerived(rpg) {
+  /* v2.3.1660 (prog3): respecced characters derive level + every pool
+     from the trained-skill track — the exact server _prog3Recompute
+     formulas (prog3.js mirror), so the player_state echo lands on the
+     number already showing.  Amulet maxHp/maxMana adds are deliberately
+     NOT applied here: the server's recompute never included them, so
+     adding them locally would flicker against every echo (they were
+     already echo-stomped under the legacy path).  _amuletBonus /
+     _shieldBonus caches still populate below for the point-of-use
+     combat lookups. */
+  if (prog3Live(rpg)) {
+    var p3lvl = prog3CharLevel(rpg);
+    rpg.level = p3lvl;
+    var p3armor = 0;
+    if (rpg.armor) {
+      var p3tm = (typeof rpg.armor.tierMult === 'number' && rpg.armor.tierMult > 0) ? rpg.armor.tierMult : 1.0;
+      p3armor = Math.floor(20 * Math.min(8, p3tm)); /* vitality term dropped (§4 audit) */
+    }
+    rpg.maxHp = Math.floor(100 + p3lvl * PROG3.HP_PER_LEVEL + prog3Pts(rpg, 'hp') * PROG3.STATS.hp.per + p3armor);
+    rpg.maxStamina = Math.floor(100 + prog3Pts(rpg, 'stam') * PROG3.STATS.stam.per);
+    rpg.maxMana = Math.floor(100 + prog3SkillLevel(rpg, 'staff') * PROG3.MANA_PER_MAGIC_LEVEL);
+    rpg._amuletBonus = (rpg.amulet && rpg.amulet.gem) ? getAmuletBonus(rpg.amulet) : null;
+    rpg._shieldBonus = (rpg.shield && rpg.shield.gem) ? getShieldBonus(rpg.shield) : null;
+    rpg.hp = Math.min(rpg.hp, rpg.maxHp);
+    rpg.stamina = Math.min(rpg.stamina, rpg.maxStamina);
+    rpg.mana = Math.min(rpg.mana, rpg.maxMana);
+    return rpg;
+  }
   /* v2.3.910: combat level was DERIVED as the sum of the use-trained
      build-skill levels (v2.3.1138 added Defense as the 6th), cap 500.
      v2.3.1342: level = total T2 points PLACED, cap LEVEL_CAP=1000
@@ -5166,6 +5288,73 @@ export const QUEST_STATUS = {
   turnedIn: 'turnedIn'
 };
 export const QUEST_CHAINS = {
+  /* ═══ v2.3.1665: THE TUTORIAL ARC — Mayor Bro walks you through it ═══
+     Mirrors QUEST_REWARDS in server/src/data.js; the SERVER is what pays,
+     so if these two disagree the turn-in silently refuses.  Change both.
+     Accepted and turned in from the Quests panel (the town NPC entities
+     are still disabled, v2.3.214), so the arc is reachable on a phone with
+     no world dependency. */
+  tut_1: {
+    id: 'tut_1', npc: 'Mayor Bro', title: 'First Blood',
+    desc: 'Defeat 3 monsters in the Starting Meadow.',
+    check: function (rpg) { return ((rpg._questKills || {}).tut_1 || 0) >= 3; },
+    reward: { gold: 25, xp: 40 },
+    next: 'tut_2',
+    dialogue: {
+      start: "You'll want a few fights under your belt before anything else. Three monsters in the Meadow. Off you go.",
+      progress: 'Three of them. The Meadow. Still waiting.',
+      complete: "That's the hard part done — the starting part.",
+    },
+  },
+  tut_2: {
+    id: 'tut_2', npc: 'Mayor Bro', title: 'Suit Up',
+    desc: 'Defeat 5 more monsters in the Starting Meadow.',
+    check: function (rpg) { return ((rpg._questKills || {}).tut_2 || 0) >= 5; },
+    reward: { gold: 40, xp: 60, item: "Scout's Vest" },
+    next: 'tut_3',
+    dialogue: {
+      start: "Five more and I'll get you something to wear that isn't a shirt.",
+      progress: 'Five. Meadow. I did say.',
+      complete: "Here — Scout's Vest. It'll stop something.",
+    },
+  },
+  tut_3: {
+    id: 'tut_3', npc: 'Mayor Bro', title: 'Cold Reception',
+    desc: 'Defeat 5 monsters in Frost Ridge.',
+    check: function (rpg) { return ((rpg._questKills || {}).tut_3 || 0) >= 5; },
+    reward: { gold: 60, xp: 100, item: "Bro's Blade" },
+    next: 'tut_4',
+    dialogue: {
+      start: 'Frost Ridge next. Colder, meaner. Five of them.',
+      progress: "Frost Ridge. The white one. You'll know it.",
+      complete: "Take the blade. You've earned the weight of it.",
+    },
+  },
+  tut_4: {
+    id: 'tut_4', npc: 'Mayor Bro', title: 'Into the Green',
+    desc: 'Defeat 6 monsters in the Verdant Wilds.',
+    check: function (rpg) { return ((rpg._questKills || {}).tut_4 || 0) >= 6; },
+    reward: { gold: 150, xp: 150 },
+    next: 'tut_5',
+    dialogue: {
+      start: 'The Verdant Wilds are thick with them. Six should thin it out.',
+      progress: 'Six, in the green.',
+      complete: 'You move like someone who knows the place now.',
+    },
+  },
+  tut_5: {
+    id: 'tut_5', npc: 'Mayor Bro', title: 'Bro Ascendant',
+    desc: 'Defeat 8 monsters in the Stone Hollows.',
+    check: function (rpg) { return ((rpg._questKills || {}).tut_5 || 0) >= 8; },
+    reward: { gold: 400, xp: 300 },
+    next: null,
+    dialogue: {
+      start: 'Last one from me. The Stone Hollows. Eight. Then you outrank my advice.',
+      progress: 'The Hollows. Eight of them.',
+      complete: "That's the tour. Everything past here is yours to find.",
+    },
+  },
+
   /* ═══ MAYOR BRO — World Progression Gates ═══ */
   mayor_1: {
     id: 'mayor_1',

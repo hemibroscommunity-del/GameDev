@@ -126,9 +126,65 @@ export const QuestDetailPanel = () => {
           }}
         >{tracked ? '★ Tracked — tap to untrack' : '☆ Track this quest'}</button>
       )}
-      {status === 'Available' && (
-        <div style={{ marginTop: 8, fontSize: 12, lineHeight: 1.45, color: COL.text2 }}>
-          Speak with {quest.npc} in the world to accept this quest.
+      {/* ═══ v2.3.1665: ACCEPT / TURN IN from the panel ═══
+          The header above used to say "accepting/turning-in stays with the
+          NPCs — this page never adds wire surface."  That was true and it
+          made the quest system UNREACHABLE: town NPC entities have been
+          disabled since v2.3.214 (S.npcs = []), and the town spawn is also
+          gated on the zone not carrying a walkability grid, which town now
+          does.  So the only door into quests was a door that no longer
+          exists.
+
+          These two buttons send the SAME two events the NPC dialogue modal
+          sent (quest_accept / quest_turn_in) — no new wire surface, just a
+          reachable trigger.  The server validates state transitions and the
+          declarative objective either way (server/src/quests.js), so the
+          panel cannot mint a reward the NPC path couldn't. */}
+      {(status === 'Available' || status === 'Ready') && (
+        <button
+          onPointerUp={(e) => {
+            e.stopPropagation();
+            const St = getState();
+            if (!St || !St.channel) return;
+            St.channel.send({
+              type: status === 'Ready' ? 'quest_turn_in' : 'quest_accept',
+              payload: { questId: quest.id },
+            });
+            force(v => v + 1);
+          }}
+          style={{
+            width: '100%',
+            minHeight: 44,
+            marginTop: 8,
+            background: COL.accentFill,
+            border: `1px solid ${COL.accent}`,
+            borderRadius: 10,
+            color: COL.accent,
+            fontFamily: 'inherit',
+            fontSize: 13, fontWeight: 800,
+            cursor: 'pointer',
+            touchAction: 'manipulation',
+          }}
+        >{status === 'Ready' ? 'Turn in — claim your reward' : `Accept from ${quest.npc}`}</button>
+      )}
+
+      {/* The giver's own words, so the arc reads as someone sending you
+          somewhere rather than a checklist appearing. */}
+      {quest.dialogue && (status === 'Available' || status === 'Active' || status === 'Ready') && (
+        <div style={{
+          marginTop: 8, padding: '8px 10px',
+          background: COL.wellSoft, border: `1px solid ${COL.tileBor}`,
+          borderRadius: 8,
+        }}>
+          <div style={{
+            fontSize: 8.5, fontWeight: 700, letterSpacing: '.06em',
+            textTransform: 'uppercase', color: COL.muted, marginBottom: 3,
+          }}>{quest.npc}</div>
+          <div style={{ fontSize: 12, lineHeight: 1.45, color: COL.text2, fontStyle: 'italic' }}>
+            “{status === 'Ready' ? quest.dialogue.complete
+              : status === 'Active' ? quest.dialogue.progress
+              : quest.dialogue.start}”
+          </div>
         </div>
       )}
     </div>

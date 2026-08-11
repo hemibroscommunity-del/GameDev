@@ -26,7 +26,24 @@
    all modes and still the one number the canvas/zones/HUD read.  --nav-h
    exists only for chrome pinned INSIDE the band (the ribbon, and the
    reserve under an open panel) and must not be substituted for --dash-h
-   anywhere outside BottomDashboard. */
+   anywhere outside BottomDashboard.
+
+   v2.3.1635 (owner "option C"): THREE stacked persistent rows —
+     --dash-h  = identityRowHeight + <middle row> + navShelfHeight
+     --cols-h  = the middle row's own height
+     --nav-h   = navShelfHeight     (the toolbar ribbon)
+   --cols-h joins for the same reason --nav-h did: the middle row sized
+   itself as calc(--dash-h - --nav-h), which was exact while the band had
+   two rows and silently became "middle + identity" once it had three.
+   Each pinned row is told its own height; none of them derives another's.
+   The BAR-height invariant above is unchanged.
+
+   v2.3.1636 (owner reference shot): the middle row is now the
+   three-column BAG / EQUIPPED / COMBAT block (columnsRowHeight); the
+   nine-cell quick bar it replaced is gone.  The var was --quick-h
+   through v2.3.1635 and is --cols-h from here — renamed rather than
+   reused so a stale stylesheet cannot silently size the new row with the
+   old row's number. */
 
 /* v2.3.1325 (owner: bigger toolbar): the bar height derives from the
    compact bag grid's slot algebra instead of the old fixed 72, giving
@@ -55,42 +72,344 @@ export function navShelfHeight(vw, vh) {
   return navSlotSize(vw, vh) + 31;
 }
 
-/* v2.3.1560 (owner: "an ultra compact bar ... a persistent menu above
-   the toolbar icons"): nine cells across the full width — 3 bag slots,
-   chest/legs/weapon, last life skill, last two combat skills.
-     fixed = 12 frame pad + 6 within-group gaps x 1px + 2 between-group
-             gaps x 13px = 44
-     cell  = floor((vw - fixed) / 9), clamped 28..44
-     v2.3.1572 (owner: "group the different groups of icons more closely
-     together so it's visually more easy to differentiate"): the row was
-     an even 2px gap throughout with hairline dividers doing all the
-     separating, which reads as nine identical cells with two lines in
-     it.  Proximity does the job better than lines: cells inside a group
-     are now nearly touching (1px) and the groups are pushed 13px apart,
-     and the dividers are gone.  The width budget is unchanged in total,
-     so the cell size does not move.
-     row   = cell + 10 (4/4 pad + 2 border at the 1px non-retina worst
-             case, matching navShelfHeight's reasoning)
-   ~39px cells / 49px row at 390w.  FLOOR, and every term of the row's
-   own layout in `fixed` — a cell width that ignores the dividers
-   overflows the viewport by ~10px and the ninth cell gets clipped off
-   the right edge.  Cells are narrower than the 44pt
-   touch minimum (nine of them cannot be 44 wide on a 390px phone) —
-   the row's full height is the vertical target and every cell also has
-   its full-size counterpart one tap away in Bag/Hero/Skills, which is
-   why the density is acceptable here and nowhere else. */
-export function quickCellSize(vw, vh) {
-  const cap = vh && vh <= 720 ? 36 : 44;
-  return Math.floor(Math.min(Math.max((vw - 44) / 9, 28), cap));
+/* v2.3.1636 (owner, with a reference shot of the pre-v2.3.1287 band):
+   the THREE-COLUMN ROW — BAG / EQUIPPED / COMBAT — replaces the
+   v2.3.1560 nine-cell quick bar in the same slot (quickCellSize and
+   quickRowHeight retired with it; their algebra is in git history).
+
+   EVEN THIRDS is the owner's explicit correction to the original, and it
+   is why the tile size derives from a column's width rather than each
+   column sizing its own tiles: one third of the row, minus that column's
+   padding, minus the two gaps between its three tiles.
+     column = (vw - 16 frame pad - 2 gaps x 6) / 3
+     tile   = round(clamp((column - 12 col pad - 8 tile gaps) / 3, 22..34))
+   ~34px tiles at 390w.
+
+   The row's height is set by its TALLEST column, which is COMBAT: two
+   rows of (tile + an 11px level line) with a 4px gap, versus EQUIPPED's
+   DMG/DPS line + two bare tile rows.  Sizing to anything else clips one
+   column and leaves the other two floating in dead space.
+     header strip 17 + body pad 10 + 2 x (tile + 11) + 4 row gap
+     + frame pad 8/10 + 2 border at the 1px non-retina worst case
+   ~133px at 390x844.  Tiles are under the 44pt touch minimum for the
+   same reason the quick bar's were — eighteen of them cannot be 44 wide
+   on a 390px phone — and the same mitigation applies: every tile has a
+   full-size counterpart one tap away in Bag/Hero. */
+/* v2.3.1640 (owner: "make the spacing for all of the slots even padding
+   between the container's edge and between each slot square"): ONE gap
+   value, used for every gap on the row — the frame's own left/right
+   padding, the space between the three panels, each panel's inner
+   padding, and the space between squares.  Nothing on this row may use
+   any other number.
+
+   That makes the geometry solvable rather than approximate.  Across a
+   panel: pad + tile + gap + tile + gap + tile + pad, so four G and three
+   tiles fill its inner width exactly.  Down it: pad + tile + gap + tile +
+   pad, so three G and two tiles ARE the panel's height — not a minimum it
+   floats inside.  FLOOR the tile: rounding up overflows the panel and the
+   outer squares clip against overflow:hidden (the v2.3.1637 bug). */
+export const DASH_GAP = 4;
+
+/* v2.3.1648 (owner: "the current problem is that the slots and info
+   displayed currently don't meet a minimum size where users who can't see
+   at smaller sizes struggle with it").  LEGIBILITY now outranks the
+   equal-thirds rule from v2.3.1636, and it is the owner's own reason:
+   three equal columns each holding three squares across a 390px phone
+   caps the square at 35px, and no amount of padding arithmetic moves that
+   number.  The cap is the LAYOUT, so the layout changes.
+
+   COMBAT no longer needs a third of the row.  It went from six parents to
+   three — melee / bow / magic — because HP, defense and stamina "can just
+   be reflected in total hp, energy points" (owner), and those already
+   read live on the world HUD.  Three items in a column do not want three
+   squares across; they want three wide rows.  So COMBAT takes a NARROW
+   column and BAG / EQUIPPED split what it gives up, which is what pays
+   for the bigger squares: 35 -> 41px, a 17% gain in every dimension that
+   matters for seeing an item.
+
+   THE EQUAL-THIRDS RULE IS DELIBERATELY RELAXED HERE, not forgotten.  It
+   existed because three columns of six squares each read as three
+   unrelated widgets when their widths were content-derived; that reason
+   does not apply to a column whose content is a different shape on
+   purpose.
+
+   v2.3.1653: EQUIPPED left the band entirely (see below), so there is no
+   third column left to relax the rule against — the rule and the constant
+   that reverted it are both gone. */
+
+/* v2.3.1653 (owner: "make the dashboard view the main bag view and move
+   the equipped view to be merged with the character overview ... the
+   combat stats stay on the right in their own column").  TWO panels, not
+   three: BAG and COMBAT.
+
+   EQUIPPED did not shrink — it LEFT, for the screen where its numbers
+   finally have room (Hero > Overview).  What it hands the bag is its
+   whole 142px column, and the bag spends it on columns: four slots across
+   instead of two, so the resting band shows EIGHT items with a working
+   filter header rather than four with none.  That is the "main bag view"
+   in one sentence.
+
+   The bag panel is SNAPPED to exactly what four whole slots need and the
+   remainder goes to COMBAT, the same rule v2.3.1648 set: a panel may only
+   be a width its own contents tile exactly, or centring splits the
+   leftover into half-pixels at the edges. */
+export const BAG_VIEW_COLS = 4;
+
+export function dashPanelWidths(vw) {
+  /* Two panels: two frame paddings and ONE gap between them. */
+  const avail = vw - 3 * DASH_GAP;
+  const wide = BAG_VIEW_COLS * dashTileSize(vw) + (BAG_VIEW_COLS - 1) * DASH_GAP + 2 * DASH_GAP + 2;
+  return { wide, narrow: avail - wide, avail };
 }
-export function quickRowHeight(vw, vh) {
-  return quickCellSize(vw, vh) + 10;
+
+/* The bag TILE keeps the width it has had since v2.3.1649 — the owner's
+   "about 50% larger", and the size the open Bag view matches (v2.3.1646).
+   It is anchored to the viewport now rather than divided out of a panel,
+   because the panel is derived FROM it in the two-panel layout above. */
+export function dashTileSize(vw) {
+  return Math.floor(Math.min(Math.max(vw * 0.164, 40), 76));
+}
+
+/* v2.3.1653: the three-panel algebra (dashTileSizeFor, BAG_COLS,
+   NARROW_SHARE) is deleted with the third panel.  It sized BAG and
+   EQUIPPED as equal wide columns against a narrow COMBAT; with EQUIPPED
+   gone to Hero there is nothing left to be equal TO, and keeping it would
+   have left two ways to compute a panel width with only one of them true.
+   Git history has it at v2.3.1652. */
+
+/* v2.3.1653: equipCellSize is retired.  It sized the band's EQUIPPED
+   panel, and Hero > Overview — where those slots now live — sizes its own
+   grid against that screen's left column rather than the band's.  Its 2x3
+   / 66x41 history is at v2.3.1652. */
+
+/* The height of one of `rows` stacked children inside a panel whose inner
+   box is panelInnerHeight — the single place the "three equipped rows and
+   three combat pills line up with two bag rows" promise is kept. */
+/* v2.3.1652 (owner: "put the filters on their own header row above the
+   inventory slots"): the band grows by exactly one filter-chip row.
+
+   This is arithmetic, not taste.  The open Bag's body is var(--cols-h)
+   tall (the v2.3.1638 one-height rule), and three standing asks now
+   compete for it: 64px slots (v2.3.1649, "about 50% larger"), TWO fully
+   visible rows (v2.3.1649), and now a chip header.  At 151px the first
+   two alone spend 141 of it — there is no padding left anywhere to find
+   the header in, and the three ways out were all worse:
+     - shrink the bag-view tile: breaks "make the bag slots on bag view the
+       same size as the slots on the dashboard view" (owner, v2.3.1646).
+     - one visible row instead of two: breaks the v2.3.1649 ask directly.
+     - make the EXPANDED sheet taller than the bar: the sheet is
+       bottom-anchored, so it grows UPWARD, which moves the nav buttons
+       30px whenever the Bag opens.  That is precisely the "controls
+       sliding out from under the thumb" failure v2.3.1637b exists to
+       prevent, and the reason the rail is bottom-anchored at all.
+   So the BAND grows, in both modes, and the nav row does not move.
+   203 -> 233px at 390x844.  --dash-h grows with it, so the joystick and
+   every world-HUD anchor ride up together and the 70px clearance above
+   the band is unchanged (TouchControls keys off --dash-h). */
+export const BAG_HEADER_H = 26;
+
+/* v2.3.1657 (owner: "the character view (overview, build, records) can use
+   the space better.  Condense it into a navigation similar to the dashboard
+   navigation buttons without any text but still below those main buttons"):
+   the Hero section tabs' height.  28 = a 24px icon + 1px borders + air,
+   the BAG_HEADER_H idiom one size up.  Deliberately NOT part of
+   panelInnerHeight: the Hero panel flexes inside a fixed body, so this
+   number costs the band nothing — it only decides how much of the panel
+   the tabs spend, down from the 40px the text segmented control took. */
+export const HERO_TAB_H = 28;
+
+/* v2.3.1654 (owner: "make the bag slots scrollable downward same as bag
+   view was").  The sliver of a THIRD row that proves the grid continues.
+   Without it the dashboard's two rows exactly fill their scroller and the
+   panel looks complete when it is not — the same lie the open Bag view
+   told before v2.3.1649 gave it this peek.  It is also what the bottom
+   fade fades: a gradient over blank tray reads as a rendering artifact,
+   a gradient over half a row reads as "keep going". */
+export const BAG_PEEK_H = 12;
+/* 12, not 9: at 9 the sliver of row three came to 5px (measured) and the
+   9px fade sat entirely on top of it, so the cue it exists to give was
+   the one thing it could not give.  12 leaves 8px of row showing — the
+   same peek the open Bag view has had since v2.3.1649. */
+
+export function panelInnerHeight(vw) {
+  return DASH_ROWS * dashTileSize(vw) + (DASH_ROWS - 1) * DASH_GAP + BAG_HEADER_H + DASH_GAP + BAG_PEEK_H;
+}
+export function panelRowHeight(vw, rows) {
+  return Math.floor((panelInnerHeight(vw) - (rows - 1) * DASH_GAP) / rows);
+}
+
+/* v2.3.1648: a COMBAT pill's width — the narrow panel's whole inner width,
+   because there is only one per row.  It is the shape change the owner
+   asked for ("make the three combat skills a different shape that fits the
+   space better, does not need to be square"): 80x41 at 390w instead of a
+   35px square, which is what lets the icon, the skill's NAME and its level
+   all be legible at once.  Three squares in a narrow column could show
+   none of that. */
+export function combatPillWidth(vw) {
+  const { narrow } = dashPanelWidths(vw);
+  return narrow - 2 - 2 * DASH_GAP;
+}
+/* Three pills over the same inner height two bag rows occupy, so all three
+   panels end on the same baseline. */
+export function combatPillHeight(vw) {
+  return panelRowHeight(vw, 3);
+}
+
+/* v2.3.1649 (owner: "shift the DPS number data to be aligned above the
+   weapon").  The weapon is the EQUIPPED panel's top-LEFT cell, so this is
+   the width of the box the identity row must centre DPS inside: the
+   panel's border + padding on the left, the cell, and the mirror of that
+   inset on the right.  Centring content in it puts DPS dead over the
+   weapon at every viewport, which an eyeballed left-offset would not. */
+/* v2.3.1653: RETIRED.  It centred DPS over the EQUIPPED panel's weapon
+   cell, and there is no equipped panel on the band any more.  DPS now
+   right-aligns at the end of the identity row's lower line — see
+   IdentityStrip.  Kept as a stub only so a stale import fails loudly at
+   build time rather than silently returning a plausible number. */
+
+/* v2.3.1647 (owner: "increase the size of the dashboard by about 50% of
+   the space between its current height and the joysticks area — the exact
+   height can be determined by whatever slot spacing that could use the
+   extra room makes the most sense"): THREE tile rows, not two.  The extra
+   room buys a whole row of bag slots rather than padding.
+   v2.3.1649: TWO rows of the new 64px tile.  The band's height is
+   essentially unchanged (151 vs 150 at 390x844) — the same vertical budget
+   now buys four big slots instead of nine small ones, which is the trade
+   the owner asked for in as many words. */
+export const DASH_ROWS = 2;
+
+export function columnsRowHeight(vw) {
+  /* +1 for the ROW's own bottom hairline.  The row is box-sizing:border-box
+     at height:100% of this number, so that 1px rule comes out of the
+     content box — measured as 3.5 / 4 / 3.5 vertically (the half-pixels
+     being the shortfall split by centring) until it was accounted for. */
+  return panelInnerHeight(vw) + 2 * DASH_GAP + 2 + 2 * DASH_GAP + 1;
+}
+
+/* v2.3.1635 (owner: bring back a persistent sense of identity and
+   progress, "option C"): the IDENTITY ROW — the third persistent row,
+   stacked above the quick bar.  One row carrying portrait, name, level,
+   exact XP-to-next, unspent build points, active weapon and gold.
+   Height is the 40px portrait IdentityStrip already renders (it is
+   shared with Hero compact/expanded and must stay pixel-identical
+   there) plus 5/6 padding and the 1px bottom hairline.
+   SHORT VIEWPORTS get the tighter pad for the same reason navSlotSize
+   and dashTileSize carry caps: an SE-class phone has to keep its world
+   view, and this row is the third thing competing for it. */
+export function identityRowHeight(vw, vh) {
+  return 40 + (vh && vh <= 720 ? 8 : 12);
+}
+
+/* v2.3.1637 (owner mockup): the NAV RAIL — the six destinations leave the
+   full-width bottom ribbon and become icon-only buttons stacked down the
+   band's LEFT edge, plus one at the top for the dashboard itself ("it
+   should be a new icon that represent a dashboard").
+   v2.3.1637b (owner: "the hero can just be pressing on the icon of the
+   hero up top, doesn't need its own button on that side"): SIX buttons,
+   not seven — Hero moved onto the identity row's portrait, and the
+   height that freed went to the five destinations that stayed.  The rail spans
+   the WHOLE band height, so the identity row and the columns row both
+   start to its right.
+
+   Owner on the width: "just the size of the icons" — the rail is sized by
+   its icon and nothing else, not as an equal fourth column.  Buttons are
+   rail-WIDE and short: a 48x28 target is far easier to hit than the 28x28
+   a square button would give, and seven square ones could not fit the
+   band at any usable size.
+
+   The rail is why the band cannot simply shrink by the ribbon's 87px.
+   Six buttons still need vertical room, so the band's floor is whichever
+   is taller: what the three columns need, or what the rail needs. */
+export const RAIL_COUNT = 5; /* v2.3.1651: Quests; v2.3.1655: Life Skills */
+const NAV_GAP = 4;
+
+/* v2.3.1642 (owner: "put the rail buttons on the top to the left of the
+   character in its own little section up there"): the LEFT RAIL becomes a
+   top-left NAV GROUP — three buttons in a row, in their own bordered
+   section, with the identity strip beside them.
+
+   The band's left edge is free again, so the three slot panels span the
+   full width and the squares grow from 31px to 35 — the rail was the
+   binding constraint on tile width from v2.3.1637 onward.
+
+   IT STILL PERSISTS THROUGH AN OPEN PANEL, and that is not decoration.
+   The rail replaced a toolbar ribbon that stayed visible under an
+   expanded sheet because it was the only way to switch destination or
+   get out; moving navigation into the identity row — which HIDES when a
+   panel opens — would have restored that trap.  The group is rendered
+   separately from the strip for exactly this reason: the strip hides,
+   the group does not, and it holds the same screen position in both
+   modes so nothing moves under the thumb (the v2.3.1637b rule). */
+export function navButtonSize(vw, vh) {
+  /* v2.3.1642b: 0.068 -> 0.063 of the viewport (27 -> 25 at 390w).  With
+     27 the identity strip's last element — gold — still ended 5px past
+     the right edge, measured; three buttons two pixels narrower is the
+     cheapest place to find it, and 25x44 stays a bigger target than the
+     24x40 the vertical rail had. */
+  /* v2.3.1644 (owner: "make the buttons fill in the extra space", after
+     the XP bar halved and DMG left the row): 0.063 -> 0.097 of the
+     viewport, 25 -> 38 at 390w.  Balanced against what the strip still
+     needs — portrait 40, the DPS chip ~60, gold ~46 and a readable
+     name/XP column — rather than let flex take it all: at 58 wide
+     (measured) the buttons crushed that column to 25px. */
+  /* v2.3.1651: the width is DERIVED now, not a share of the viewport.
+     A fourth button (Quests) at the old 38 made the group 172 wide, and
+     right-aligned that starts at 214 — four pixels INSIDE the DPS
+     readout, which ends at 224.  The rule that replaces the fraction is
+     the one the collision taught: the group may have everything from the
+     DPS readout's right edge to the frame's inner edge, and no more.
+     34px at 390w, 31 at 360, 26 at 320 — where the floor is a 24px icon
+     plus its borders, the smallest this button can be and still show the
+     glyph it is. */
+  const budget = (vw - DASH_GAP) - navGroupLeftLimit(vw) - DASH_GAP;
+  const w = Math.floor((budget - NAV_GAP * (RAIL_COUNT - 1) - 2 * NAV_GAP) / RAIL_COUNT);
+  /* v2.3.1655: the ceiling drops 48 -> 36.  With five buttons the derived
+     budget comes out at 40 each, and taking it would have spent the freed
+     DPS width on buttons that were already big enough — while the NAME,
+     which the owner widened deliberately at v2.3.1650, paid for it.  The
+     surplus goes back to the identity row instead. */
+  return { w: Math.min(Math.max(w, 26), 36), h: identityRowHeight(vw, vh) - 2 * NAV_GAP };
+}
+
+/* v2.3.1653: the leftmost x the nav group may start at.  It WAS the weapon
+   anchor's right edge; with EQUIPPED gone from the band there is no weapon
+   to anchor to, so the limit is what the identity row itself needs —
+   the portrait, and a lower line that still fits an XP bar, the gold count
+   and the DPS chip at the sizes v2.3.1649 set.  Same 34px button at 390w
+   as the weapon rule gave, now for a reason that survives the change. */
+/* v2.3.1655: DPS left the identity row, and its 68px (plus the gap before
+   it) is exactly what pays for the fifth nav button — the owner's trade,
+   made explicit here rather than absorbed silently.  What the line still
+   has to fit: the portrait, an XP bar, and the gold count. */
+const IDENTITY_MIN_LINE = 40 + 6 + 40 + 6 + 60; /* portrait, XP, gold */
+function navGroupLeftLimit(vw) {
+  return DASH_GAP + IDENTITY_MIN_LINE;
+}
+
+export function navGroupWidth(vw, vh) {
+  /* v2.3.1650 removed the group's 1px border with its background, so the
+     +2 that accounted for it goes too — it was overstating the overhang
+     the identity strip and the filter chips have to keep clear of. */
+  return navButtonSize(vw, vh).w * RAIL_COUNT + NAV_GAP * (RAIL_COUNT - 1) + 2 * NAV_GAP;
 }
 
 /* The BAND height every consumer keys off (canvas, joystick zones, world
-   HUD anchors) — both rows, since both are persistent chrome. */
+   HUD anchors) — all three rows, since all three are persistent chrome.
+   v2.3.1635: identity row joins.  187px at 390x844 (was 135: 87 shelf +
+   48 quick).  NB 87 is --nav-h, the ribbon ALONE — not the band.
+   v2.3.1636: the columns row replaces the quick row in the same slot —
+   ~272px at 390x844 (52 identity + 133 columns + 87 shelf), 32% of the
+   screen.  That is the owner's chosen trade, made with both this and the
+   187px one-row version rendered to scale: the columns are the ask, and
+   the identity row stays because no column carries name/level/XP/gold. */
 export function barHeight(vw, vh) {
-  return navShelfHeight(vw, vh) + quickRowHeight(vw, vh);
+  /* v2.3.1637: the toolbar ribbon is GONE — its six destinations moved
+     into the left rail, which runs beside these two rows rather than
+     under them and so adds no height of its own.  230px at 390x844
+     (52 identity + 178 columns), down from 272.  navShelfHeight and
+     navSlotSize stay exported: the ribbon's buttons are retired but the
+     slot algebra is still the compact bag grid's. */
+  return identityRowHeight(vw, vh) + columnsRowHeight(vw);
 }
 /* v2.3.1271: the band's 14px rounded top corners cut out to the page
    background; the canvas runs 14px UNDER the band so the notches show
@@ -116,15 +435,40 @@ export const FEET_OFFSET = 24;
    (v2.3.1317 merge: #288's 44px rule supersedes this branch's
    equivalent round-8 40px/42-48% version — same intent, later owner
    directive wins.) */
+/* v2.3.1638 (owner: "shorten the expanded view to be the exact same size
+   as the default dashboard view"): expanded IS the bar height now.  The
+   v2.3.1311 feet rule (sheet top ~36px below the boots) and the 40/52%vh
+   clamp are retired — the band no longer grows at all, in any mode.
+
+   This makes the BAR-height invariant above trivially true rather than
+   carefully maintained: --dash-h was already pinned to barHeight in every
+   mode, and now the sheet's own height matches it, so nothing about the
+   band moves when a panel opens.  The world you can see never shrinks.
+
+   THE COST, stated plainly: a panel gets ~177px of height at 390x844
+   instead of ~439.  Every destination has to scroll inside that, and the
+   T2 spend screen's "five categories on one screen" goal (v2.3.1311e) is
+   no longer reachable — drillSheetHeight matches too, because a drill
+   that grew to 56vh while its parent stayed at 177 would be the exact
+   band-resize jump this change exists to remove. */
+/* v2.3.1638 (owner: "shorten the expanded view to be the exact same size
+   as the default dashboard view"): expanded IS the bar height now.  The
+   v2.3.1311 feet rule (sheet top ~36px below the boots) and the
+   40/52%vh clamp are retired — the band no longer grows in any mode.
+
+   That makes the BAR-height invariant above trivially true rather than
+   carefully maintained: --dash-h was already pinned to barHeight in every
+   mode, and now the sheet's own height matches it, so nothing about the
+   band moves when a panel opens and the visible world never shrinks.
+
+   THE COST, stated plainly: a panel gets ~177px at 390x844 instead of
+   ~439, so every destination has to scroll inside that, and the T2 spend
+   screen's "five categories on one screen" goal (v2.3.1311e) is no longer
+   reachable.  drillSheetHeight matches for the same reason — a drill that
+   grew to 56vh while its parent stayed at 177 would be exactly the band
+   jump this change exists to remove. */
 export function expandedSheetHeight(vw, vh) {
-  const canvasH = vh - barHeight(vw, vh) + DASH_OVERLAP;
-  const feetY = canvasH / 2 + FEET_OFFSET;
-  /* v2.3.1352 (owner: fit a third bag row without shrinking anything):
-     ground allowance 44 -> 36px — still inside the owner's original
-     "leave ~32-48px of visible ground" band (v2.3.1311), and the extra
-     8px goes to every root sheet's content. */
-  const feetRule = vh - (feetY + 36);
-  return Math.round(Math.min(vh * 0.52, Math.max(vh * 0.40, feetRule)));
+  return barHeight(vw, vh);
 }
 
 /* v2.3.1311e (owner: the T2 spend screen's 5 categories must fit one
@@ -134,6 +478,10 @@ export function expandedSheetHeight(vw, vh) {
    destination sheets; a drill is a focused task where content beats
    world visibility.  The band animates between the two heights on
    push/pop, which doubles as a depth cue. */
+/* v2.3.1638: drills match expanded, which matches the bar.  One height,
+   always — see expandedSheetHeight. */
+/* v2.3.1638: drills match expanded, which matches the bar.  One height,
+   always — see expandedSheetHeight. */
 export function drillSheetHeight(vw, vh) {
-  return Math.round(vh * 0.56);
+  return barHeight(vw, vh);
 }

@@ -66,7 +66,13 @@ export const panelStyle = {
      collapsing the expanded menus" report; the band's own writers and
      easing were already single-writer and non-overshooting). */
   overscrollBehavior: 'contain',
-  padding: '8px 12px 10px',
+  /* v2.3.1643 (owner: "make the other menus that pop up (bag, etc) make
+     better use of the space available").  An expanded panel is 93px tall
+     now — the sheet matches the resting band since v2.3.1638 — and this
+     padding alone was taking 18 of them vertically and 24px horizontally.
+     4/6/4 keeps the content off the frame without spending a fifth of
+     every panel on air. */
+  padding: '4px 6px 4px',
   color: COL.text,
   fontFamily: 'Source Sans 3, sans-serif',
   fontSize: 15,
