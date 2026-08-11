@@ -818,7 +818,11 @@ export const combatMethods = {
         // were advancing trader_2, a gathering quest).  Quest-id keyed,
         // exactly the shape the client predicates read; the flush below
         // echoes it, so the progress UI updates on the same tick.
-        this._creditQuestObjective(rid, 'kill', m.arch);
+        /* v2.3.1665: pass the zone -- it was always in scope here and the
+           credit loop simply never received it, which is why no kill quest
+           could say WHERE.  The tutorial arc's zone-scoped objectives are
+           the first consumer. */
+        this._creditQuestObjective(rid, 'kill', m.arch, zone);
         const share = shares[rid] || 0;
         // v2.3.1150: xp_mult live-ops flag -- the "2x weekend" lever.
         // Clamped [1,4] at read; monster_kill's payload.xp stays base

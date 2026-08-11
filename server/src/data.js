@@ -403,6 +403,36 @@ export const SHOP_ITEMS = {
  *   NOTE flag-type must NOT be wired to server _questFlags writes until
  *   flags are server-owned (see docs/specs/quests.md clobber hazard). */
 export const QUEST_REWARDS = {
+      /* ═══ v2.3.1665: THE TUTORIAL ARC ═══
+       * The one chain a new player can follow start to finish, and the
+       * reason the demo is completable rather than merely playable.  Every
+       * step is SERVER-VERIFIED (`objective`), zone-scoped, and pays out
+       * through the same _handleQuestTurnIn path as everything else.
+       *
+       * ITEM TIERS ARE DELIBERATELY THE LOWEST.  Since v2.3.1661 weapons
+       * gate on the matching trained skill and armor on allocated defense
+       * points, both at tierIndex x 5.  A generous mid-tier gift would be
+       * granted and then refused at the equip gate -- the worst possible
+       * new-player moment.  `wood` is tierIndex 0 and tierMult 1.0 armor
+       * estimates to tierIndex 0, so both require 0 and can never block.
+       * If you retier these, re-check gear.js _prog3EquipOk first.
+       *
+       * The zone order follows the map's geography, not difficulty: live
+       * spawn bands are all flattened to [1,2] (v2.3.1160), so this teaches
+       * TRAVEL rather than gating on power. */
+      tut_1: {gold:25,  xp:40,  next:'tut_2',
+              objective:{type:'kill', arch:null, zone:'meadow', count:3}},
+      tut_2: {gold:40,  xp:60,  next:'tut_3',
+              objective:{type:'kill', arch:null, zone:'meadow', count:5},
+              item:{kind:'armor', name:"Scout's Vest", tierMult:1.0}},
+      tut_3: {gold:60,  xp:100, next:'tut_4',
+              objective:{type:'kill', arch:null, zone:'frost', count:5},
+              item:{kind:'weapon', weaponType:'greatsword', tierKey:'wood', name:"Bro's Blade"}},
+      tut_4: {gold:150, xp:150, next:'tut_5',
+              objective:{type:'kill', arch:null, zone:'verdant', count:6}},
+      tut_5: {gold:400, xp:300, next:null,
+              objective:{type:'kill', arch:null, zone:'hollows', count:8}},
+
       mayor_1:    {gold:50,  xp:30,  next:'mayor_2'},
       mayor_2:    {gold:100, xp:80,  next:'mayor_3', objective:{type:'kill', arch:null, count:5}},
       mayor_3:    {gold:300, xp:200, next:null},

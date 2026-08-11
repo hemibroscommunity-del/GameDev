@@ -5284,6 +5284,73 @@ export const QUEST_STATUS = {
   turnedIn: 'turnedIn'
 };
 export const QUEST_CHAINS = {
+  /* ═══ v2.3.1665: THE TUTORIAL ARC — Mayor Bro walks you through it ═══
+     Mirrors QUEST_REWARDS in server/src/data.js; the SERVER is what pays,
+     so if these two disagree the turn-in silently refuses.  Change both.
+     Accepted and turned in from the Quests panel (the town NPC entities
+     are still disabled, v2.3.214), so the arc is reachable on a phone with
+     no world dependency. */
+  tut_1: {
+    id: 'tut_1', npc: 'Mayor Bro', title: 'First Blood',
+    desc: 'Defeat 3 monsters in the Starting Meadow.',
+    check: function (rpg) { return ((rpg._questKills || {}).tut_1 || 0) >= 3; },
+    reward: { gold: 25, xp: 40 },
+    next: 'tut_2',
+    dialogue: {
+      start: "You'll want a few fights under your belt before anything else. Three monsters in the Meadow. Off you go.",
+      progress: 'Three of them. The Meadow. Still waiting.',
+      complete: "That's the hard part done — the starting part.",
+    },
+  },
+  tut_2: {
+    id: 'tut_2', npc: 'Mayor Bro', title: 'Suit Up',
+    desc: 'Defeat 5 more monsters in the Starting Meadow.',
+    check: function (rpg) { return ((rpg._questKills || {}).tut_2 || 0) >= 5; },
+    reward: { gold: 40, xp: 60, item: "Scout's Vest" },
+    next: 'tut_3',
+    dialogue: {
+      start: "Five more and I'll get you something to wear that isn't a shirt.",
+      progress: 'Five. Meadow. I did say.',
+      complete: "Here — Scout's Vest. It'll stop something.",
+    },
+  },
+  tut_3: {
+    id: 'tut_3', npc: 'Mayor Bro', title: 'Cold Reception',
+    desc: 'Defeat 5 monsters in Frost Ridge.',
+    check: function (rpg) { return ((rpg._questKills || {}).tut_3 || 0) >= 5; },
+    reward: { gold: 60, xp: 100, item: "Bro's Blade" },
+    next: 'tut_4',
+    dialogue: {
+      start: 'Frost Ridge next. Colder, meaner. Five of them.',
+      progress: "Frost Ridge. The white one. You'll know it.",
+      complete: "Take the blade. You've earned the weight of it.",
+    },
+  },
+  tut_4: {
+    id: 'tut_4', npc: 'Mayor Bro', title: 'Into the Green',
+    desc: 'Defeat 6 monsters in the Verdant Wilds.',
+    check: function (rpg) { return ((rpg._questKills || {}).tut_4 || 0) >= 6; },
+    reward: { gold: 150, xp: 150 },
+    next: 'tut_5',
+    dialogue: {
+      start: 'The Verdant Wilds are thick with them. Six should thin it out.',
+      progress: 'Six, in the green.',
+      complete: 'You move like someone who knows the place now.',
+    },
+  },
+  tut_5: {
+    id: 'tut_5', npc: 'Mayor Bro', title: 'Bro Ascendant',
+    desc: 'Defeat 8 monsters in the Stone Hollows.',
+    check: function (rpg) { return ((rpg._questKills || {}).tut_5 || 0) >= 8; },
+    reward: { gold: 400, xp: 300 },
+    next: null,
+    dialogue: {
+      start: 'Last one from me. The Stone Hollows. Eight. Then you outrank my advice.',
+      progress: 'The Hollows. Eight of them.',
+      complete: "That's the tour. Everything past here is yours to find.",
+    },
+  },
+
   /* ═══ MAYOR BRO — World Progression Gates ═══ */
   mayor_1: {
     id: 'mayor_1',
