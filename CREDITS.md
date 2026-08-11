@@ -26,36 +26,41 @@ this repository.
 | Press Start 2P | SIL Open Font License 1.1 |
 | Source Sans 3 | SIL Open Font License 1.1 |
 
-## Art and audio — ⚠️ PROVENANCE TO BE COMPLETED BY THE PROJECT OWNER
+## Art and audio
 
-**This section is deliberately unfinished, and it must be completed before the
-repository can be represented as fully licensed.**
+Most of the game's art and audio was **generated for this project** with AI
+tools whose terms assign the output to the person who generated it and permit
+commercial use. Those assets are the project's own work, not third-party
+material licensed in — but the tool is credited here anyway, because saying
+where something came from costs nothing and guessing later costs a lot.
 
-The repository contains art and audio whose origin is not documented anywhere
-in the source tree. Nothing here should be read as a claim that these assets
-are owned by this project or licensed for redistribution. Each row below needs
-its actual source and license filled in — or the asset removed and replaced.
+| Asset group | Path | Source | Terms |
+|---|---|---|---|
+| Character / monster / weapon art and animation frames | `assets/character animations/`, `assets/monster animations/`, `assets/weapons/`, `assets/armor boards/`, `assets/skill-anim-src/`, `public/sprites/` | Generated with **OpenAI ChatGPT** image generation | Output is owned by the generating user under the OpenAI Terms of Use; commercial use permitted |
+| UI icons | `public/icons/`, `public/ui/`, `assets/icons-source/` | Generated with **OpenAI ChatGPT** image generation | As above |
+| Music | `public/audio/music/` (`village`, `forest`, `frost`, `desert`, `fire`, `world`, `login-theme`) | Generated with **Suno** on a paid plan | Paid-plan output carries full commercial rights, held by the account owner |
 
-| Asset group | Path | Source | License | Status |
-|---|---|---|---|---|
-| Village tileset (`TX_*` naming) | `public/assets/tilesets/village/` | *(to be filled)* | *(to be filled)* | ❓ unverified |
-| Character / monster / weapon animations | `assets/`, `public/sprites/` | *(to be filled)* | *(to be filled)* | ❓ unverified |
-| UI icons | `public/icons/` | *(to be filled)* | *(to be filled)* | ❓ unverified |
-| Sound effects | `public/sfx/`, `assets/sound effects/` | *(to be filled)* | *(to be filled)* | ❓ unverified |
-| Music | `public/audio/music/` | *(to be filled)* | *(to be filled)* | ❓ unverified |
-| Monster / ambient audio | `public/audio/` | *(to be filled)* | *(to be filled)* | ❓ unverified |
+### ⚠️ Still to confirm
 
-For each group, record one of:
+Two groups are **not** covered by the above and still need their origin
+recorded before the repository can be represented as fully licensed:
 
-- **Original work** — created for this project (by the owner, or generated with
-  an AI tool whose terms permit commercial/open release). Say which.
-- **Licensed pack** — name the pack, the author, the store link and the license
-  (e.g. CC0, CC-BY 4.0, Kenney, an itch.io asset licence). CC-BY requires the
-  author be credited *by name* here.
-- **Unknown / unlicensed** — must be replaced before release. CC0 sources like
-  Kenney.nl and OpenGameArt are the fastest substitutions.
+| Asset group | Path | Why it is flagged |
+|---|---|---|
+| Village tileset (`TX_*`) | `public/assets/tilesets/village/Texture/` | The `TX_Tileset_Grass` / `TX_Village_Props` / `TX_Village_Building` naming scheme matches a **downloaded pixel-art tileset pack**, not generated art. It appears to be *Pixel Art Top Down — Basic* by **Cainos**, which is free to use commercially **but requires the author be credited by name**. This has not been confirmed by the owner, so it is recorded as a question, not a fact. |
+| Sound effects and creature/ambient audio | `public/sfx/`, `assets/sound effects/`, `public/audio/*.mp3` (`slime-idle`, `slime-death-v2`, `skeleton-death`, `snowman-death`, `tree-fall`, `wood-chop`) | Not covered by the Suno music answer, and no source is documented anywhere in the tree. |
+
+For each, record one of:
+
+- **Original work** — created for this project, or generated with an AI tool
+  whose terms permit commercial release. Say which tool.
+- **Licensed pack** — name the pack, the author, the store link and the
+  license (CC0, CC-BY 4.0, a Kenney or itch.io asset licence). CC-BY requires
+  the author be credited *by name* in this file.
+- **Unknown / unlicensed** — replace it before release. Kenney.nl and
+  OpenGameArt (CC0) are the fastest substitutions.
 
 Contest note: the Hemi Arcade rules require that "all third-party assets (art,
 audio, music, fonts, and similar materials) must be properly licensed and
-credited where required." An unverified row is a submission risk, not a
+credited where required." An unconfirmed row is a submission risk, not a
 formality.
