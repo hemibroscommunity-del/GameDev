@@ -235,6 +235,55 @@ for (const cfg of Object.values(GESTURE_TOOLS)) {
    below. Source PNGs are ~1000-1250 px; in-game node footprints are
    tier-sized (tier.size ≈ 6-12 px), so each sprite is scaled to a target
    pixel height tuned to feel right next to the player sprite. */
+/* ═══ v2.3.1667: ONE finger cue, and it POINTS WHERE IT IS GOING ═══
+ *
+ * Owner: "the lifeskills movement cues should replace the simple white blob
+ * with a finger icon that moves in the direction of where the blob moved."
+ *
+ * The cue was already finger-SHAPED in all four skills, but only fishing
+ * actually rotated: it derives a tangent from its orbit, so its finger
+ * sweeps around pointing along the path.  Mining, cooking and woodcutting
+ * drew axis-aligned `roundRect` capsules that TRANSLATED without ever
+ * turning, so on the up-stroke the finger slid backwards — which is what
+ * read as a blob drifting rather than a hand making a gesture.
+ *
+ * These two helpers take an ANGLE, so every skill can point its finger
+ * along its own direction of travel.  The construction is fishing's
+ * (stroke with a round cap + a tip circle + a knuckle dot), because that
+ * one is already rotation-general — this generalises the version that
+ * worked instead of inventing a new one.
+ *
+ * Deliberately procedural, not a sprite: no finger/hand asset exists in
+ * the repo, and a Graphics draw costs no load, no cache-bust and no
+ * per-zone preload registration (the animation-preloading law).  If a
+ * painted finger is ever authored, swap these two bodies for a rotated
+ * Sprite and every call site keeps working.
+ */
+/* The shared size sheet (v2.3.1435/1436 sizing, owner-tuned frame by frame
+   with headless screenshots).  Module scope so the helper and the cue code
+   read the SAME numbers — duplicating them is how a retune silently applies
+   to three skills and not the fourth. */
+export const CUE_FINGER_LEN = 30, CUE_FINGER_W = 19;
+function drawFingerCue(gfx, x, y, angle, alpha, scale) {
+  const s = scale || 1;
+  const len = CUE_FINGER_LEN * s, w = CUE_FINGER_W * s;
+  const dx = Math.cos(angle), dy = Math.sin(angle);
+  /* Body trails BACK from the fingertip at (x,y) along -angle. */
+  gfx.moveTo(x - dx * len, y - dy * len);
+  gfx.lineTo(x, y);
+  gfx.stroke({ color: 0xffffff, width: w, cap: 'round', alpha });
+  gfx.circle(x, y, w / 2 + 0.5);
+  gfx.fill({ color: 0xffffff, alpha });
+  gfx.circle(x - dx * (len + 4 * s), y - dy * (len + 4 * s), 8 * s);
+  gfx.fill({ color: 0xe6e6ee, alpha });
+}
+/* The motion streak, trailing the fingertip along -angle. */
+function drawFingerStreak(gfx, x, y, angle, length, width, alpha) {
+  gfx.moveTo(x - Math.cos(angle) * length, y - Math.sin(angle) * length);
+  gfx.lineTo(x, y);
+  gfx.stroke({ color: 0xffffff, width, alpha });
+}
+
 const NODE_SPRITE_SOURCES = {
   tree:     '/sprites/trees/tree-pine.webp',
   fishSpot: '/sprites/world/fish-spot.webp',
@@ -4873,7 +4922,8 @@ export class EffectsRenderer {
        — stroke 4 -> 6, reach 20 -> 30, finger 21x13 -> 30x19. */
     const HINT_W = 6;          /* stroke width everywhere */
     const HINT_REACH = 30;     /* arrow half-length / streak length basis */
-    const FINGER_LEN = 30, FINGER_W = 19;
+    /* v2.3.1667: the finger sizes moved to module scope (CUE_FINGER_*) so
+       drawFingerCue and this block cannot drift apart. */
     if (ex.skill === 'fishing') {
       /* v2.3.1442 (owner: cues "still not consistent in color or size"):
          the gold arc-arrow becomes the SAME white finger every skill
@@ -4890,7 +4940,6 @@ export class EffectsRenderer {
       /* v2.3.1470 (owner): 2x with the marker — 0.3 -> 0.6. */
       const F_S = 0.6;
       const rA = 78 * F_S;   /* v2.3.1436: ENCIRCLES the reel art instead of hiding behind it */
-      const fLen = FINGER_LEN * F_S, fW = FINGER_W * F_S;
       const a = (now / 900) % (Math.PI * 2);
       gfx.circle(x, y, rA);
       gfx.stroke({ color: 0xffffff, width: Math.max(1, 2.5 * F_S), alpha: hintAlpha * 0.28 });
@@ -4898,14 +4947,10 @@ export class EffectsRenderer {
       gfx.arc(x, y, rA, a - 0.85, a);
       gfx.stroke({ color: 0xffffff, width: Math.max(1, HINT_W * F_S), alpha: hintAlpha * 0.5 });
       const fx = x + Math.cos(a) * rA, fy = y + Math.sin(a) * rA;
-      const tx = -Math.sin(a), ty = Math.cos(a);   /* clockwise tangent */
-      gfx.moveTo(fx - tx * fLen, fy - ty * fLen);
-      gfx.lineTo(fx, fy);
-      gfx.stroke({ color: 0xffffff, width: fW, cap: 'round', alpha: hintAlpha });
-      gfx.circle(fx, fy, fW / 2 + 0.5);
-      gfx.fill({ color: 0xffffff, alpha: hintAlpha });
-      gfx.circle(fx - tx * (fLen + 4 * F_S), fy - ty * (fLen + 4 * F_S), 8 * F_S);
-      gfx.fill({ color: 0xe6e6ee, alpha: hintAlpha });
+      /* v2.3.1667: the clockwise tangent IS the direction of travel, so it
+         is simply the angle now (a + PI/2).  Same drawing as before —
+         this branch is where drawFingerCue's construction came from. */
+      drawFingerCue(gfx, fx, fy, a + Math.PI / 2, hintAlpha, F_S);
     } else if (ex.skill === 'woodcutting') {
       /* v2.3.843: a finger demonstrates the chop gesture — wind UP away
          from the tree, then SWIPE back toward it, on a loop ("do this a
@@ -4925,23 +4970,15 @@ export class EffectsRenderer {
       const fy = y + 26;
       const fx = x + off;
       const chopping = p >= 0.5 && p < 0.68;
-      /* swipe streak during the chop, trailing back from the fingertip
-         (v2.3.1435: shared HINT_W/HINT_REACH sizes). */
+      /* v2.3.1667: point along TRAVEL, not at the tree.  Winding up moves
+         away (-dir) and the chop moves toward it (+dir), so the finger
+         now turns over on the backswing instead of sliding backwards
+         while still aimed forwards. */
+      const wcAngle = (chopping ? dir : -dir) > 0 ? 0 : Math.PI;
       if (chopping) {
-        gfx.moveTo(fx - dir * (HINT_REACH + 8), fy);
-        gfx.lineTo(fx, fy);
-        gfx.stroke({ color: 0xffffff, width: HINT_W, alpha: hintAlpha * 0.5 });   /* v2.3.1442: white everywhere */
+        drawFingerStreak(gfx, fx, fy, wcAngle, HINT_REACH + 8, HINT_W, hintAlpha * 0.5);
       }
-      /* finger: a capsule body pointing toward the tree + a rounded tip;
-         a knuckle dot at the back reads it as a hand. */
-      const len = FINGER_LEN, w = FINGER_W;
-      const bodyL = dir > 0 ? fx - len : fx;
-      gfx.roundRect(bodyL, fy - w / 2, len, w, w / 2);
-      gfx.fill({ color: 0xffffff, alpha: hintAlpha });
-      gfx.circle(fx, fy, w / 2 + 0.5);        // fingertip toward the tree
-      gfx.fill({ color: 0xffffff, alpha: hintAlpha });
-      gfx.circle(fx - dir * (len + 2), fy, 8);// knuckle
-      gfx.fill({ color: 0xe6e6ee, alpha: hintAlpha });
+      drawFingerCue(gfx, fx, fy, wcAngle, hintAlpha, 1);
     } else if (ex.skill === 'cooking') {
       /* v2.3.853: a finger flicks UP to flip the fish, on a loop — dip down,
          flick up, recover. */
@@ -4954,18 +4991,14 @@ export class EffectsRenderer {
       else { const t = (p - 0.68) / 0.32; off = -UP * (1 - (t * t * (3 - 2 * t))); }  // recover
       const fx = x, fy = y + 30 + off;
       const flicking = p >= 0.5 && p < 0.68;
-      if (flicking) {                          // upward swipe streak (v2.3.1435: shared sizes)
-        gfx.moveTo(fx, fy + HINT_REACH + 8);
-        gfx.lineTo(fx, fy);
-        gfx.stroke({ color: 0xffffff, width: HINT_W, alpha: hintAlpha * 0.5 });   /* v2.3.1442: white everywhere */
+      /* v2.3.1667: settling DOWN points down (+PI/2), the flick points up
+         (-PI/2) — the finger turns over at the bottom of the dip, which
+         is what makes the gesture read as a flip rather than a bob. */
+      const ckAngle = flicking ? -Math.PI / 2 : Math.PI / 2;
+      if (flicking) {
+        drawFingerStreak(gfx, fx, fy, ckAngle, HINT_REACH + 8, HINT_W, hintAlpha * 0.5);
       }
-      const len = FINGER_LEN, w = FINGER_W;
-      gfx.roundRect(fx - w / 2, fy, w, len, w / 2);  // finger body (below the tip)
-      gfx.fill({ color: 0xffffff, alpha: hintAlpha });
-      gfx.circle(fx, fy, w / 2 + 0.5);               // fingertip (pointing up)
-      gfx.fill({ color: 0xffffff, alpha: hintAlpha });
-      gfx.circle(fx, fy + len + 2, 8);               // knuckle
-      gfx.fill({ color: 0xe6e6ee, alpha: hintAlpha });
+      drawFingerCue(gfx, fx, fy, ckAngle, hintAlpha, 1);
     } else {
       /* v2.3.1442: the gold double-arrow becomes the SAME white finger,
          pumping up-down on the mining axis (x+44 keeps it clear of the
@@ -4975,18 +5008,14 @@ export class EffectsRenderer {
       const off = -Math.cos(p * Math.PI * 2) * HINT_REACH;
       const vel = Math.sin(p * Math.PI * 2);
       const ax = x + 44, ay = y + off;
+      /* v2.3.1667: the pump now points along its own velocity — down on
+         the down-stroke, up on the up-stroke.  Previously the finger was
+         pinned pointing up and slid backwards for half of every cycle. */
+      const mnAngle = vel > 0 ? Math.PI / 2 : -Math.PI / 2;
       if (Math.abs(vel) > 0.35) {                 /* streak while moving */
-        const trailY = vel > 0 ? -(HINT_REACH - 4) : (HINT_REACH - 4);
-        gfx.moveTo(ax, ay + trailY);
-        gfx.lineTo(ax, ay);
-        gfx.stroke({ color: 0xffffff, width: HINT_W, alpha: hintAlpha * 0.5 });
+        drawFingerStreak(gfx, ax, ay, mnAngle, HINT_REACH - 4, HINT_W, hintAlpha * 0.5);
       }
-      gfx.roundRect(ax - FINGER_W / 2, ay, FINGER_W, FINGER_LEN, FINGER_W / 2);
-      gfx.fill({ color: 0xffffff, alpha: hintAlpha });
-      gfx.circle(ax, ay, FINGER_W / 2 + 0.5);
-      gfx.fill({ color: 0xffffff, alpha: hintAlpha });
-      gfx.circle(ax, ay + FINGER_LEN + 2, 8);
-      gfx.fill({ color: 0xe6e6ee, alpha: hintAlpha });
+      drawFingerCue(gfx, ax, ay, mnAngle, hintAlpha, 1);
     }
     /* Progress as a horizontal pip row beneath the tool (no ring — the old
        circling ring read as a stray diagonal line and the user prefers just
