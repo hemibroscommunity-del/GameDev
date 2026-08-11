@@ -85,6 +85,16 @@ Send a **small** amount of gas to the relayer address — a couple of dollars
 is far more than nine transactions per player will need. For testnet, use the
 Hemi faucet.
 
+> **Which token pays the gas?** Whatever MetaMask shows as the network's
+> native currency once you've added Hemi — that field is the authority, and it
+> is what the relayer's balance must be denominated in. Note that Hemi's
+> ERC-20 governance token is a *different* thing from the native gas currency;
+> holding the former does not let you send a transaction. Getting funds onto
+> the network means bridging from L1 (bridge.hemi.network) or withdrawing from
+> an exchange that supports Hemi directly. Check the balance shows up in
+> MetaMask *before* deploying — an unfunded relayer fails silently by design,
+> which is the slowest possible way to discover it.
+
 ## Step 3 — Deploy the contract (browser, no terminal)
 
 1. Open **https://remix.ethereum.org**.
