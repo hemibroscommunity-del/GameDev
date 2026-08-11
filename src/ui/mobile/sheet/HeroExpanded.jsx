@@ -7,7 +7,7 @@ import { COMBAT_SKILLS, skillLevel, skillProgressPct, skillProgress, deriveHeroS
 import { VitalBar, VITAL_ICONS } from './VitalBar.jsx'; /* v2.3.1311 */
 import { getEquippedSlots, getEquipContribs, GHOST_SRC } from './equipModel.js'; /* v2.3.1653 */
 import { itemDetailBus } from '../dash/itemDetailBus.js';                        /* v2.3.1653 */
-import { DASH_GAP } from './sheetGeometry.js';                                   /* v2.3.1653 */
+import { DASH_GAP, HERO_TAB_H } from './sheetGeometry.js';                      /* v2.3.1653; v2.3.1657 tabs */
 
 /* v2.3.1286: Hero expanded — the detailed character sheet.
    v2.3.1295 (ChatGPT round-4, owner-approved): no longer one long
@@ -59,18 +59,8 @@ dashboardPanelBus.subscribe(() => {
   if (dashboardPanelBus.state.mode === 'bar') _lastSection = 'Overview';
 });
 
-/* v2.3.1332 (owner: chiseled frames everywhere): segments wear the
-   chip frame; gold ridge marks the active section (segCls pairs with
-   seg at the call site). */
-const segCls = (active) => 'bt-chisel bt-chisel--chip' + (active ? ' bt-chisel--on' : '');
-const seg = (active) => ({
-  flex: 1,
-  minHeight: 36,
-  color: active ? COL.text : COL.text2,
-  fontFamily: 'inherit',
-  fontSize: 12,
-  fontWeight: 700,
-});
+/* v2.3.1657: the v2.3.1332 chiseled text segments (segCls/seg) are retired
+   with the text — see the icon chip row in the render. */
 
 export const HeroExpanded = () => {
   const [, force] = useState(0);
@@ -203,23 +193,66 @@ export const HeroExpanded = () => {
           50px is exactly what Overview needed to show the equipped block
           above the fold. */}
 
-      {/* Sticky segmented control — content scrolls under it.
-          v2.3.1311: Build carries an actionable count (Build · N);
-          Overview/Records never badge (spec). */}
-      <div className="bt-well" style={{
+      {/* v2.3.1657 (owner: "condense it into a navigation similar to the
+          dashboard navigation buttons without any text but still below
+          those main buttons"): ICON-ONLY section chips, the BagFilterChips
+          recipe — same fills, same borders, same 24px icon, labels carried
+          by aria-label/title.  Sitting as the panel's first child they are
+          already directly below the band's nav row (the panel body's
+          marginTop reserves that row), which is the "below" the owner
+          asked for; the band's top row itself is spoken for (v2.3.1652).
+
+          28px against the old control's 40 (36 chip + well lips) returns
+          ~12px to the body — see the budget notes in Overview below.
+          Sticky so a scrolling section keeps its navigation.
+
+          The "Build · N" TEXT becomes the nav-rail count pill INSIDE the
+          chip at top/right 2 — NavRail hangs its badge at -3, but this row
+          tops an overflow:auto panel where a negative overhang clips.  The
+          count also rides the Build chip's aria-label, so nothing the text
+          carried is lost to a screen reader. */}
+      <div style={{
         position: 'sticky', top: 0, zIndex: 2,
-        display: 'flex', gap: 2,
+        display: 'flex', gap: DASH_GAP,
+        height: HERO_TAB_H, flex: '0 0 auto',
+        marginBottom: 4,
         background: COL.bg, /* sticky: keep opaque so content scrolls UNDER */
-        flex: '0 0 auto',
       }}>
-        {SECTIONS.map(s => (
-          <button key={s} onClick={() => setSection(s)} className={segCls(section === s)}
-            style={{ ...seg(section === s), display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5 }}>
-            <img src={SECTION_ICONS[s]} alt="" draggable={false}
-              style={{ width: 17, height: 17, objectFit: 'contain', flex: 'none', pointerEvents: 'none' }} />
-            {s === 'Build' && totalUnspent > 0 ? `Build · ${totalUnspent}` : s}
-          </button>
-        ))}
+        {SECTIONS.map(s => {
+          const on = section === s;
+          const badge = s === 'Build' && totalUnspent > 0 ? totalUnspent : 0;
+          return (
+            <div key={s}
+              role="button"
+              aria-label={badge ? `Build — ${badge} points` : s}
+              aria-pressed={on} title={s}
+              onPointerUp={(e) => { e.stopPropagation(); setSection(s); }}
+              style={{
+                position: 'relative',
+                flex: '1 1 0', minWidth: 0, height: '100%',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                background: on ? COL.accentFill : COL.wellSoft,
+                border: `1px solid ${on ? COL.accent : COL.tileBor}`,
+                borderRadius: 7,
+                cursor: 'pointer', touchAction: 'manipulation',
+              }}>
+              <img src={SECTION_ICONS[s]} alt="" draggable={false}
+                style={{
+                  width: 24, height: 24, objectFit: 'contain',
+                  opacity: on ? 1 : 0.7, pointerEvents: 'none',
+                }} />
+              {badge > 0 && (
+                <span aria-hidden="true" style={{
+                  position: 'absolute', top: 2, right: 2,
+                  minWidth: 13, height: 13, padding: '0 3px',
+                  borderRadius: 7, background: COL.accent, color: COL.onAccent,
+                  fontSize: 9, fontWeight: 900, lineHeight: '13px', textAlign: 'center',
+                  fontVariantNumeric: 'tabular-nums', pointerEvents: 'none',
+                }}>{badge > 9 ? '9+' : badge}</span>
+              )}
+            </div>
+          );
+        })}
       </div>
 
       {section === 'Overview' && (

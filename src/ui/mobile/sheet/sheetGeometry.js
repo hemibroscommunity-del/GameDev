@@ -208,6 +208,16 @@ export function dashTileSize(vw) {
    the band is unchanged (TouchControls keys off --dash-h). */
 export const BAG_HEADER_H = 26;
 
+/* v2.3.1657 (owner: "the character view (overview, build, records) can use
+   the space better.  Condense it into a navigation similar to the dashboard
+   navigation buttons without any text but still below those main buttons"):
+   the Hero section tabs' height.  28 = a 24px icon + 1px borders + air,
+   the BAG_HEADER_H idiom one size up.  Deliberately NOT part of
+   panelInnerHeight: the Hero panel flexes inside a fixed body, so this
+   number costs the band nothing — it only decides how much of the panel
+   the tabs spend, down from the 40px the text segmented control took. */
+export const HERO_TAB_H = 28;
+
 /* v2.3.1654 (owner: "make the bag slots scrollable downward same as bag
    view was").  The sliver of a THIRD row that proves the grid continues.
    Without it the dashboard's two rows exactly fill their scroller and the
