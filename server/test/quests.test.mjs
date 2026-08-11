@@ -89,20 +89,20 @@ check('harvest does not advance kill quests', ps._questKills.mayor_2 === 1, ps._
 
 // ── 3. unmet objective: turn-in refuses to pay ──
 const coinsBefore = ps.coins || 0;
-await room.webSocketMessage(ws, JSON.stringify({ type: 'quest_turn_in', payload: { questId: 'mayor_2' } }));
+await room.webSocketMessage(ws, JSON.stringify({ type: 'quest_turn_in', payload: { questId: 'mayor_2', xpCat: 'sword' } }));
 check('unmet turn-in pays nothing and stays active', ps._quests.mayor_2 === 'active' && (ps.coins || 0) === coinsBefore, { q: ps._quests.mayor_2, coins: ps.coins });
 
 // ── 4. met objective: turn-in pays once ──
 ps._questKills.mayor_2 = 5;
-await room.webSocketMessage(ws, JSON.stringify({ type: 'quest_turn_in', payload: { questId: 'mayor_2' } }));
+await room.webSocketMessage(ws, JSON.stringify({ type: 'quest_turn_in', payload: { questId: 'mayor_2', xpCat: 'sword' } }));
 check('met turn-in pays and completes', ps._quests.mayor_2 === 'turnedIn' && (ps.coins || 0) === coinsBefore + 100, { q: ps._quests.mayor_2, coins: ps.coins });
 check('turn-in unlocks the next chain entry', ps._quests.mayor_3 === 'available', ps._quests);
 const coinsAfter = ps.coins;
-await room.webSocketMessage(ws, JSON.stringify({ type: 'quest_turn_in', payload: { questId: 'mayor_2' } }));
+await room.webSocketMessage(ws, JSON.stringify({ type: 'quest_turn_in', payload: { questId: 'mayor_2', xpCat: 'sword' } }));
 check('replayed turn-in pays nothing', ps.coins === coinsAfter);
 
 // ── 5. objective-less quests stay client-trusted ──
-await room.webSocketMessage(ws, JSON.stringify({ type: 'quest_turn_in', payload: { questId: 'trader_1' } }));
+await room.webSocketMessage(ws, JSON.stringify({ type: 'quest_turn_in', payload: { questId: 'trader_1', xpCat: 'sword' } }));
 check('objective-less quest turns in as before', ps._quests.trader_1 === 'turnedIn' && ps.coins === coinsAfter + 25, { q: ps._quests.trader_1, coins: ps.coins });
 
 // ── 7. v2.3.1214 (item H): an inherited-property questId can't farm the

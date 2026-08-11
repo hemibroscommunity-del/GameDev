@@ -3,6 +3,7 @@ import { COL, panelStyle, getState } from './common.js';
 import { QUEST_CHAINS } from '../../../data/gameSystems.js';
 import { deriveQuestLog, trackedQuestId, setTrackedQuest, rewardText } from '../sheet/questModel.js';
 import { questDetailBus } from '../sheet/questDetailBus.js';
+import { prog3Live, PROG3_SKILL_META } from '../../../data/prog3.js';
 
 /* v2.3.1298 (ChatGPT round-5 Quests): the focused quest page — pushed
    into the sheet from any quest row.  Status, objective, quest giver,
@@ -14,6 +15,11 @@ import { questDetailBus } from '../sheet/questDetailBus.js';
 
 export const QuestDetailPanel = () => {
   const [, force] = useState(0);
+  /* v2.3.1669: which skill the turn-in XP should feed.  Null = not yet
+     chosen, which is the state the Turn In button waits in — the server
+     refuses an XP-paying turn-in with no category, so asking here is the
+     mechanism rather than a courtesy. */
+  const [xpCat, setXpCat] = useState(null);
   useEffect(() => {
     const id = setInterval(() => force(v => v + 1), 1000);
     return () => clearInterval(id);
@@ -35,6 +41,7 @@ export const QuestDetailPanel = () => {
   const tracked = trackedQuestId() === quest.id;
   const gold = quest.reward?.gold || 0;
   const xp = quest.reward?.xp || 0;
+  const needsXpChoice = prog3Live((getState() || {}).rpg) && xp > 0;
 
   const statusTone = status === 'Ready' ? COL.accent
     : status === 'Active' ? '#5B99DE'
@@ -128,28 +135,77 @@ export const QuestDetailPanel = () => {
       )}
       {/* ═══ v2.3.1665: ACCEPT / TURN IN from the panel ═══
           The header above used to say "accepting/turning-in stays with the
-          NPCs — this page never adds wire surface."  That was true and it
-          made the quest system UNREACHABLE: town NPC entities have been
-          disabled since v2.3.214 (S.npcs = []), and the town spawn is also
-          gated on the zone not carrying a walkability grid, which town now
-          does.  So the only door into quests was a door that no longer
-          exists.
+          NPCs — this page never adds wire surface."  That was true, and it
+          made the quest system UNREACHABLE: town NPC entities had been
+          disabled since v2.3.214 (S.npcs = []), so the only door into
+          quests was a door that no longer existed.
 
-          These two buttons send the SAME two events the NPC dialogue modal
-          sent (quest_accept / quest_turn_in) — no new wire surface, just a
-          reachable trigger.  The server validates state transitions and the
-          declarative objective either way (server/src/quests.js), so the
-          panel cannot mint a reward the NPC path couldn't. */}
+          v2.3.1669 CORRECTION: an earlier version of this comment blamed
+          the town walkability grid for the spawn being gated off.  That
+          was wrong — town has no walkability grid at all (tiledMaps.js has
+          its .walk.json commented out), so that clause was always true and
+          never gated anything.  Mayor Bro is back in the world now, but
+          these buttons STAY: a panel route means the arc does not depend on
+          finding an NPC on a small screen, and both paths send the same two
+          events.
+
+          The server validates state transitions and the declarative
+          objective either way (server/src/quests.js), so the panel cannot
+          mint a reward the NPC path couldn't. */}
+      {/* v2.3.1669: XP has to go SOMEWHERE.  Under prog3 there is no
+          generic XP bar — every point belongs to Melee, Bow or Magic —
+          so a quest that pays XP asks which one first.  The server
+          enforces it (an XP-paying turn-in naming no category is refused
+          outright), so this picker is the mechanism, not a courtesy:
+          without a choice there is no reward. */}
+      {status === 'Ready' && needsXpChoice && (
+        <div style={{ marginTop: 8 }}>
+          <div style={{
+            fontSize: 9, fontWeight: 700, letterSpacing: '.06em',
+            textTransform: 'uppercase', color: COL.muted, marginBottom: 4,
+          }}>Train {xp} XP into</div>
+          <div style={{ display: 'flex', gap: 5 }}>
+            {PROG3_SKILL_META.map(sk => {
+              const on = xpCat === sk.key;
+              return (
+                <button key={sk.key}
+                  aria-pressed={on}
+                  onPointerUp={(e) => { e.stopPropagation(); setXpCat(sk.key); }}
+                  style={{
+                    flex: '1 1 0', minWidth: 0, minHeight: 40,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
+                    background: on ? COL.accentFill : 'transparent',
+                    border: `1px solid ${on ? COL.accent : COL.border}`,
+                    borderRadius: 10,
+                    color: on ? COL.accent : COL.text,
+                    fontFamily: 'inherit', fontSize: 12, fontWeight: 700,
+                    cursor: 'pointer', touchAction: 'manipulation',
+                  }}>
+                  <img src={sk.iconSrc} alt="" draggable={false}
+                    style={{ width: 18, height: 18, objectFit: 'contain', flex: 'none', pointerEvents: 'none' }} />
+                  {sk.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {(status === 'Available' || status === 'Ready') && (
         <button
+          aria-disabled={status === 'Ready' && needsXpChoice && !xpCat}
           onPointerUp={(e) => {
             e.stopPropagation();
             const St = getState();
             if (!St || !St.channel) return;
+            if (status === 'Ready' && needsXpChoice && !xpCat) return;
             St.channel.send({
               type: status === 'Ready' ? 'quest_turn_in' : 'quest_accept',
-              payload: { questId: quest.id },
+              payload: status === 'Ready'
+                ? { questId: quest.id, xpCat: xpCat || undefined }
+                : { questId: quest.id },
             });
+            setXpCat(null);
             force(v => v + 1);
           }}
           style={{
@@ -163,9 +219,12 @@ export const QuestDetailPanel = () => {
             fontFamily: 'inherit',
             fontSize: 13, fontWeight: 800,
             cursor: 'pointer',
+            opacity: (status === 'Ready' && needsXpChoice && !xpCat) ? 0.5 : 1,
             touchAction: 'manipulation',
           }}
-        >{status === 'Ready' ? 'Turn in — claim your reward' : `Accept from ${quest.npc}`}</button>
+        >{status === 'Ready'
+          ? (needsXpChoice && !xpCat ? 'Choose a skill to train' : 'Turn in — claim your reward')
+          : `Accept from ${quest.npc}`}</button>
       )}
 
       {/* The giver's own words, so the arc reads as someone sending you

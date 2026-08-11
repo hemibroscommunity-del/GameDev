@@ -25,6 +25,7 @@
  * QUEST_AP_REWARD in src/data/items.js -- 5 AP per quest.) */
 
 import { QUEST_REWARDS } from './data.js';
+import { PROG3 } from './prog3.js';
 
 export const questMethods = {
   _QUEST_REWARDS_DATA() {
@@ -95,7 +96,7 @@ export const questMethods = {
     const ps = this.playerState[session.id];
     if (!ps) return;
     if (ps.dying || ps.dead || ps.disconnected) return;
-    const { questId } = payload || {};
+    const { questId, xpCat } = payload || {};
     if (typeof questId !== 'string') return;
     const rewards = this._QUEST_REWARDS_DATA();
     // Own-property check (see _handleQuestAccept): an inherited key
@@ -105,6 +106,16 @@ export const questMethods = {
     if (!Object.prototype.hasOwnProperty.call(rewards, questId)) return;
     const reward = rewards[questId];
     if (!reward) return;
+    /* v2.3.1669 (owner: "the xp needs to be funneled within one of the
+       three primary combat stats so the player must choose which one").
+       A prog3 character has no generic XP bar to pay into — every point
+       of XP belongs to Melee, Bow or Magic — so the turn-in must name
+       one.  Validated BEFORE any mutation: a turn-in that would pay XP
+       with nowhere to put it is refused whole rather than half-applied,
+       which is what would strand the quest in 'turnedIn' with the reward
+       unpaid and no way to retry. */
+    const _needsCat = !!(ps.prog3 && reward.xp > 0);
+    if (_needsCat && (typeof xpCat !== 'string' || PROG3.SKILLS.indexOf(xpCat) < 0)) return;
     if (!ps._quests) ps._quests = Object.create(null); // rule 4: client-id-keyed map
     // Must be 'active' to turn in.  This is the spam-defeat:
     // a cheater can't reclaim the reward by spamming the event,
@@ -130,12 +141,20 @@ export const questMethods = {
     // XP via _addCombatXp so level-up logic runs (including
     // pool restores via _recomputeMaxes inside).
     if (reward.xp > 0) {
-      const { leveled } = this._addCombatXp(ps, reward.xp);
-      if (leveled) {
-        this._recomputeMaxes(ps);
-        if (typeof ps.maxHp === 'number') ps.hp = ps.maxHp;
-        if (typeof ps.maxStamina === 'number') ps.stamina = ps.maxStamina;
-        if (typeof ps.maxMana === 'number') ps.mana = ps.maxMana;
+      if (_needsCat) {
+        /* Straight into the chosen trained skill — same path a monster
+           kill uses, so a quest that pushes you over a threshold levels
+           you, grants the point, restores your pools and fires
+           prog3_level exactly like fighting for it would. */
+        this._prog3AwardXp(session.id, ps, xpCat, reward.xp);
+      } else {
+        const { leveled } = this._addCombatXp(ps, reward.xp);
+        if (leveled) {
+          this._recomputeMaxes(ps);
+          if (typeof ps.maxHp === 'number') ps.hp = ps.maxHp;
+          if (typeof ps.maxStamina === 'number') ps.stamina = ps.maxStamina;
+          if (typeof ps.maxMana === 'number') ps.mana = ps.maxMana;
+        }
       }
     }
     ps.achievementPoints = (ps.achievementPoints || 0) + this.QUEST_AP_REWARD;

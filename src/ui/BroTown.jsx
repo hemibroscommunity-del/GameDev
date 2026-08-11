@@ -451,6 +451,15 @@ function nodeAtScreen(S, cssX, cssY) {
   return best;
 }
 
+/* v2.3.1669: build a FRESH copy of the active NPC list.  The AI loop
+   mutates x/y/hp/chatTimer in place, so handing out the shared module
+   literal would let one town visit's state leak into the next. */
+function _spawnTownNpcs() {
+  var ACTIVE_NPCS = ['Mayor Bro'];
+  return NPC_DATA.filter(function (n) { return ACTIVE_NPCS.indexOf(n.name) >= 0; })
+    .map(function (npc) { return _objectSpread({}, npc); });
+}
+
 export var BroTown = function BroTown(_ref0) {
   var _stateRef$current, _stateRef$current2, _minigameInstance$win, _minigameInstance$win2, _rpgState$lifeSkills3, _rpgState$lifeSkills4, _rpgState$lifeSkills5, _rpgState$lifeSkills6, _rpgState$lifeSkills0, _rpgState$weapon, _rpgState$rangedWeapo, _rpgState$armor, _rpgState$lifeSkills1, _ELEMENTS$rpgState$am2, _ELEMENTS$rpgState$sh2, _rpgState$lifeSkills14, _rpgState$lifeSkills18, _stateRef$current7, _rpgState$_compStats, _rpgState$_compStats2, _rpgState$_compStats3, _rpgState$_compStats4, _rpgState$_compStats5, _rpgState$_compStats6, _rpgState$_compStats7, _rpgState$_compStats8, _arenaStatus$currentM, _arenaStatus$currentM2, _arenaTournament$play5, _MKT_CATEGORIES$mktCa, _rpgState$lifeSkills21, _rpgState$lifeSkills29, _rpgState$lifeSkills33, _rpgState$lifeSkills36, _stateRef$current18, _stateRef$current19, _stateRef$current20, _stateRef$current$_sl, _stateRef$current21, _stateRef$current22, _stateRef$current$_fe, _stateRef$current23, _stateRef$current24, _stateRef$current$_sl2, _stateRef$current25, _clanData$members, _clanData$members2, _questPanel$npcRef, _incomingTrade$offer, _RARITY_TIERS$rpgStat, _rpgState$armor2, _rpgState$armor3, _rpgState$armor4, _AMULET_TIERS$rpgStat, _ELEMENTS$rpgState$am4, _ELEMENTS$rpgState$am5, _ELEMENTS$rpgState$am6, _BLACKSMITH_TIERS$rpg, _BLACKSMITH_TIERS$rpg2, _rpgState$lifeSkills37, _rpgState$lifeSkills38, _rpgState$lifeSkills39, _rpgState$lifeSkills40, _rpgState$lifeSkills42, _stateRef$current30, _REPUTATION$stateRef$, _REPUTATION$stateRef$2, _stateRef$current31, _ZONES, _stateRef$current33, _REPUTATION$inspectPl, _REPUTATION$inspectPl2, _inspectPlayer$bro$di, _inspectPlayer$rpgDat, _stateRef$current40, _stateRef$current41, _stateRef$current42, _stateRef$current43, _stateRef$current44, _stateRef$current45, _stateRef$current46, _stateRef$current47, _stateRef$current48, _stateRef$current49, _stateRef$current50, _stateRef$current51, _stateRef$current52, _stateRef$current53, _stateRef$current54, _stateRef$current55, _stateRef$current56, _stateRef$current57, _stateRef$current58, _stateRef$current$_ne, _stateRef$current$_ne2, _stateRef$current$_ne3, _stateRef$current$_ne4, _window$matchMedia, _window;
   var nfts = _ref0.nfts,
@@ -2586,15 +2595,14 @@ export var BroTown = function BroTown(_ref0) {
     /* Monsters spawned with zone map — see S.map init above */
     /* Initialize NPCs — only in town, and only when the Tiled brotown
        map isn't authoring its own town content. */
-    if (!S.npcs && S.currentZone === 'town' && !(S._tiledWalkable && S._tiledWalkable.town)) {
-      /* v2.3.214: NPC spawn disabled -- user is re-introducing NPCs
-         one at a time. To re-enable, filter NPC_DATA to the names
-         you want, e.g.
-           const ACTIVE_NPCS = ['Mayor Bro'];
-           S.npcs = NPC_DATA.filter(n => ACTIVE_NPCS.includes(n.name))
-             .map((npc, i) => _objectSpread(...));
-         NPC_DATA in src/data/gameSystems.js still has all entries. */
-      S.npcs = [];
+    /* v2.3.1669: the walkability clause is GONE.  It read "spawn NPCs
+       only when the Tiled map isn't authoring town content", but town has
+       no walkability grid at all (tiledMaps.js has town's .walk.json
+       commented out), so the clause was always TRUE — it never gated
+       anything and only obscured why the array was empty.  Keeping it
+       would also make NPCs silently vanish the day a town mask ships. */
+    if (!S.npcs && S.currentZone === 'town') {
+      S.npcs = _spawnTownNpcs();
     }
 
     /* Loaded avatar images cache */
@@ -3366,10 +3374,10 @@ export var BroTown = function BroTown(_ref0) {
         }
 
         /* Re-initialize NPCs when entering town (they get nulled on zone transitions) */
-        if (!S.npcs && S.currentZone === 'town' && !(S._tiledWalkable && S._tiledWalkable.town)) {
-          /* v2.3.214: NPC spawn disabled (see init-block comment near
-             line 4467 for the re-enable recipe). */
-          S.npcs = [];
+        /* Both spawn sites must agree, or the NPC survives the first town
+           visit and vanishes on re-entry (zone transitions null S.npcs). */
+        if (!S.npcs && S.currentZone === 'town') {
+          S.npcs = _spawnTownNpcs();
         }
         /* Active weapon — available to all render/combat sections */
         var activeWpn = S.rpg ? getActiveWeapon(S.rpg) : {
@@ -4295,10 +4303,29 @@ export var BroTown = function BroTown(_ref0) {
             npc.renderY += (npc.y - npc.renderY) * 0.12;
             if (npc.chatBubble && Date.now() - npc.chatBubble.ts > 5000) npc.chatBubble = null;
 
-            /* Quest marker above NPC head — ! for available, ? for turn-in ready */
+            /* Quest marker above the NPC's head.
+               v2.3.1669 (owner): THREE states, not two.
+                 ❗ a quest is waiting to be taken
+                 ❓ you are carrying one you can now turn in
+                 ✅ everything this NPC has is done
+               getNpcQuest returns null once every quest of theirs is
+               turnedIn, which is exactly why the all-done state was
+               previously unreachable: the old code only looked INSIDE
+               `if (npcQuest)`.  The renderer already tints any non-❗
+               glyph green, so no renderer change is needed.
+               quest.check() runs arbitrary predicate code against live
+               state — questModel wraps it in try/catch and this site did
+               not, so one bad predicate would kill the whole NPC loop
+               mid-frame. */
             npc._questMarker = null;
-            if (npcQuest) {
-              if (npcQuest.status === 'available') npc._questMarker = '❗';else if (npcQuest.status === 'active' && npcQuest.quest.check(S.rpg, S)) npc._questMarker = '❓';
+            if (!npcQuest) {
+              npc._questMarker = '✅';
+            } else if (npcQuest.status === 'available') {
+              npc._questMarker = '❗';
+            } else if (npcQuest.status === 'active') {
+              var _qReady = false;
+              try { _qReady = !!(npcQuest.quest.check && npcQuest.quest.check(S.rpg, S)); } catch (_e) { _qReady = false; }
+              if (_qReady) npc._questMarker = '❓';
             }
           });
         }
