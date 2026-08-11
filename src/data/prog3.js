@@ -1,0 +1,116 @@
+/* ═══ v2.3.1660: PROG3 client mirror — the trained-skill combat rebuild ═══
+ *
+ * Client half of the owner-approved combat redesign
+ * (docs/PROGRESSION-REDESIGN.md; server core v2.3.1659 in
+ * server/src/prog3.js — THE source of truth).  Every constant below
+ * MIRRORS the server's PROG3 config: the server computes the
+ * authoritative rolls, pools and levels; these mirrors exist so
+ * displays and local predictions print the same numbers the wire will
+ * confirm.  Change server and client TOGETHER or every readout drifts.
+ *
+ * Deploy-order gate (the setT2SimpleEnabled pattern): wsClient flips
+ * _enabled from state_sync caps.prog3.  Against an old worker the flag
+ * stays off and every branch keeps the full legacy math, so the client
+ * keeps matching THAT worker's rolls and echoes (rule 19).  prog3Live
+ * additionally requires rpg.prog3 itself (adopted from player_state —
+ * server-owned, never written locally except by the ack handlers). */
+
+export const PROG3 = {
+  SKILLS: ['sword', 'bow', 'staff'], // storage keys; displayed Melee / Bow / Magic
+  LEVEL_CAP: 100,
+  CHAR_LEVEL_CAP: 300,
+  STATS: {
+    def:     { cap: 100, per: 0.004 },  // −0.4% damage taken/pt
+    hp:      { cap: 100, per: 8 },      // +8 max HP/pt
+    dodge:   { cap: 75,  per: 0.004 },  // +0.4% dodge/pt
+    stam:    { cap: 100, per: 3 },      // +3 max stamina/pt
+    crit:    { cap: 75,  per: 0.004 },  // +0.4% crit/pt
+    critDmg: { cap: 100, per: 2 },      // +2 flat on crits/pt
+    aspd:    { cap: 100, per: 0.0035 }, // −0.35% swing period/pt
+  },
+  DMG_PER_LEVEL: { sword: 0.18, bow: 0.18, staff: 0.22 },
+  HP_PER_LEVEL: 2,
+  MANA_PER_MAGIC_LEVEL: 1.2,
+};
+
+/* The Build screen's row order + copy.  `perText` states the per-point
+   value in the player's language (LANTERN-SLATE: say what a point
+   buys, no jargon). */
+export const PROG3_STAT_META = [
+  { key: 'def',     label: 'Defense',     perText: '−0.4% damage taken' },
+  { key: 'hp',      label: 'Max HP',      perText: '+8 max HP' },
+  { key: 'dodge',   label: 'Dodge',       perText: '+0.4% dodge' },
+  { key: 'stam',    label: 'Stamina',     perText: '+3 max stamina' },
+  { key: 'crit',    label: 'Crit Chance', perText: '+0.4% crit' },
+  { key: 'critDmg', label: 'Crit Damage', perText: '+2 dmg on crits' },
+  { key: 'aspd',    label: 'Attack Speed', perText: '−0.35% swing time' },
+];
+
+export const PROG3_SKILL_META = [
+  { key: 'sword', label: 'Melee', iconSrc: '/icons/ui/hero/melee.webp?v=2.3.1311' },
+  { key: 'bow',   label: 'Bow',   iconSrc: '/icons/ui/hero/bow.webp?v=2.3.1311' },
+  { key: 'staff', label: 'Magic', iconSrc: '/icons/ui/hero/magic.webp?v=2.3.1311' },
+];
+
+/* XP to go from trained level L to L+1 — the legacy weapon curve
+   (280 × 1.16^L) shifted one because prog3 levels are 1-based.
+   Mirrors server prog3XpRequired. */
+export function prog3XpRequired(level) {
+  return Math.ceil(280 * Math.pow(1.16, Math.max(0, (level || 1) - 1)));
+}
+
+var _enabled = false;
+export function setProg3Enabled(on) { _enabled = !!on; }
+export function isProg3Enabled() { return _enabled; }
+
+/* The one gate every branch reads: worker capability AND an adopted
+   server-owned prog3 blob.  Either alone is a half-migrated state that
+   must keep the legacy math (a caps-on worker still sends the blob in
+   the same state_sync/player_state pair, so the window is one tick). */
+export function prog3Live(rpg) {
+  return !!(_enabled && rpg && rpg.prog3 && rpg.prog3.sk);
+}
+
+export function prog3SkillLevel(rpg, cat) {
+  var sk = rpg && rpg.prog3 && rpg.prog3.sk && rpg.prog3.sk[cat];
+  return sk ? Math.max(1, Math.min(PROG3.LEVEL_CAP, sk.level || 1)) : 1;
+}
+
+export function prog3CharLevel(rpg) {
+  var sum = 0;
+  for (var i = 0; i < PROG3.SKILLS.length; i++) sum += prog3SkillLevel(rpg, PROG3.SKILLS[i]);
+  return Math.min(PROG3.CHAR_LEVEL_CAP, sum);
+}
+
+export function prog3Pts(rpg, stat) {
+  var a = rpg && rpg.prog3 && rpg.prog3.alloc;
+  var v = a && a[stat];
+  var cap = PROG3.STATS[stat] ? PROG3.STATS[stat].cap : 0;
+  return (typeof v === 'number') ? Math.max(0, Math.min(cap, v)) : 0;
+}
+
+export function prog3Pool(rpg) {
+  var p = rpg && rpg.prog3 && rpg.prog3.pool;
+  return (typeof p === 'number' && p > 0) ? Math.floor(p) : 0;
+}
+
+/* §6-C double cap: the stat's own hard cap AND min(100, char level) —
+   mirrors the server's allocation gate so the [+] button disables at
+   exactly the point the server would refuse. */
+export function prog3StatCap(rpg, stat) {
+  var hard = PROG3.STATS[stat] ? PROG3.STATS[stat].cap : 0;
+  return Math.min(hard, prog3CharLevel(rpg));
+}
+
+export function prog3DodgePct(rpg) { return prog3Pts(rpg, 'dodge') * PROG3.STATS.dodge.per; }
+export function prog3CritPct(rpg) { return prog3Pts(rpg, 'crit') * PROG3.STATS.crit.per; }
+export function prog3CritFlat(rpg) { return prog3Pts(rpg, 'critDmg') * PROG3.STATS.critDmg.per; }
+export function prog3DefPct(rpg) { return prog3Pts(rpg, 'def') * PROG3.STATS.def.per; }
+
+/* The trained-level damage term replacing stat × 0.1667 — mirrors the
+   server's _computeAttackDamage branch (specials scale on Magic and
+   are handled at the call sites that know isSpecial). */
+export function prog3DmgTerm(rpg, weaponType) {
+  var cat = weaponType === 'bow' ? 'bow' : weaponType === 'staff' ? 'staff' : 'sword';
+  return prog3SkillLevel(rpg, cat) * PROG3.DMG_PER_LEVEL[cat];
+}

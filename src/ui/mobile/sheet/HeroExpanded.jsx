@@ -3,7 +3,13 @@ import { COL, panelStyle, getState } from '../dash/common.js';
 import { buildSkillUnspent, STAT_TO_WEAPON_CAT } from '../../../data/gameSystems.js';
 import { requestT2Category } from '../dash/T2Panel.jsx';
 import { dashboardPanelBus } from '../dashboardPanelBus.js';
-import { COMBAT_SKILLS, skillLevel, skillProgressPct, skillProgress, deriveHeroStats } from './heroModel.js';
+import { COMBAT_SKILLS, skillLevel, skillProgressPct, skillProgress, deriveHeroStats, unspentPointsTotal } from './heroModel.js';
+/* v2.3.1660: trained-skill rebuild — the Build section becomes the
+   seven-stat allocation menu when the worker owns prog3. */
+import {
+  prog3Live, prog3Pool, prog3Pts, prog3StatCap, prog3SkillLevel,
+  prog3XpRequired, PROG3, PROG3_STAT_META, PROG3_SKILL_META,
+} from '../../../data/prog3.js';
 import { VitalBar, VITAL_ICONS } from './VitalBar.jsx'; /* v2.3.1311 */
 import { getEquippedSlots, getEquipContribs, GHOST_SRC } from './equipModel.js'; /* v2.3.1653 */
 import { itemDetailBus } from '../dash/itemDetailBus.js';                        /* v2.3.1653 */
@@ -126,7 +132,10 @@ export const HeroExpanded = () => {
     </div>
   );
 
-  const totalUnspent = COMBAT_SKILLS.reduce((n, s) => n + buildSkillUnspent(R, s.key), 0);
+  /* v2.3.1660: one definition (heroModel) — under prog3 this is THE
+     pool, so the tab badge and the points chip both show it. */
+  const totalUnspent = unspentPointsTotal(R);
+  const p3 = prog3Live(R);
 
   /* ── the worn six, and what they are worth ── */
   const equipped = getEquippedSlots(R);
@@ -348,7 +357,107 @@ export const HeroExpanded = () => {
         </>
       )}
 
-      {section === 'Build' && (
+      {/* ═══ v2.3.1660: PROG3 BUILD — the trained-skill rebuild's
+          allocation screen (PROGRESSION-REDESIGN, owner-approved).
+          Three trained skills level by fighting (server-awarded); every
+          trained level grants ONE point to spend on the seven-stat menu
+          below.  Spends are server-validated (prog3_allocate → the
+          prog3_allocated ack applies the authoritative numbers); the
+          [+] disables at exactly the cap the server would refuse:
+          min(stat cap, character level).  This section may scroll —
+          seven rows outgrow the no-scroll budget and, unlike Overview,
+          a spend list reads fine cut at the fold. */}
+      {section === 'Build' && p3 && (
+        <>
+          <div style={{
+            margin: '5px 0 4px',
+            padding: '3px 10px',
+            borderRadius: 7,
+            background: totalUnspent > 0 ? COL.accentFill : COL.wellSoft,
+            border: `1px solid ${totalUnspent > 0 ? COL.accent : COL.tileBor}`,
+            display: 'flex', alignItems: 'baseline', justifyContent: 'space-between',
+            fontSize: 10.5, fontWeight: 700, letterSpacing: '.06em',
+            color: totalUnspent > 0 ? COL.accent : COL.text2,
+            flex: 'none',
+          }}>
+            <span>POINTS</span>
+            <span style={{ fontVariantNumeric: 'tabular-nums' }}>{totalUnspent} AVAILABLE</span>
+          </div>
+          {/* The three trained skills — level + progress to the next
+              point.  Read-only: you train these by fighting. */}
+          <div style={{ display: 'flex', gap: 5, flex: 'none', marginBottom: 5 }}>
+            {PROG3_SKILL_META.map(sk => {
+              const lvl = prog3SkillLevel(R, sk.key);
+              const xp = Math.floor((R.prog3.sk[sk.key] && R.prog3.sk[sk.key].xp) || 0);
+              const thresh = prog3XpRequired(lvl);
+              const pct = lvl >= PROG3.LEVEL_CAP ? 100 : Math.max(0, Math.min(100, (xp / thresh) * 100));
+              return (
+                <div key={sk.key} style={{
+                  flex: 1, minWidth: 0, position: 'relative',
+                  display: 'flex', alignItems: 'center', gap: 5,
+                  padding: '5px 7px 8px',
+                  background: COL.wellSoft, border: `1px solid ${COL.tileBor}`, borderRadius: 7,
+                }}>
+                  <img src={sk.iconSrc} alt="" draggable={false}
+                    style={{ width: 24, height: 24, objectFit: 'contain', flex: 'none', pointerEvents: 'none' }} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 11.5, fontWeight: 700, color: COL.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', lineHeight: 1.15 }}>{sk.label}</div>
+                    <div style={{ fontSize: 11, fontWeight: 800, color: COL.text2, fontVariantNumeric: 'tabular-nums', lineHeight: 1.15 }}>Lv {lvl}</div>
+                  </div>
+                  <div style={{ position: 'absolute', left: 7, right: 7, bottom: 3, height: 3, borderRadius: 999, overflow: 'hidden', background: '#0B1216', pointerEvents: 'none' }}>
+                    <div style={{ width: pct + '%', height: '100%', background: '#D8A85F' }} />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          {/* The seven-stat spend menu. */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            {PROG3_STAT_META.map(st => {
+              const pts = prog3Pts(R, st.key);
+              const cap = prog3StatCap(R, st.key);
+              const canSpend = totalUnspent > 0 && pts < cap;
+              return (
+                <div key={st.key} style={{
+                  display: 'flex', alignItems: 'center', gap: 8,
+                  padding: '4px 6px 4px 9px',
+                  background: COL.wellSoft, border: `1px solid ${COL.tileBor}`, borderRadius: 7,
+                }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 11.5, fontWeight: 700, color: COL.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', lineHeight: 1.2 }}>{st.label}</div>
+                    <div style={{ fontSize: 8.5, fontWeight: 700, color: COL.muted, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', lineHeight: 1.2 }}>{st.perText} per point</div>
+                  </div>
+                  <span style={{ flex: 'none', fontSize: 12, fontWeight: 800, color: COL.text2, fontVariantNumeric: 'tabular-nums' }}>
+                    {pts}<span style={{ color: COL.muted, fontWeight: 700, fontSize: 10 }}>/{cap}</span>
+                  </span>
+                  <div
+                    role="button" aria-label={`Add a point to ${st.label}`}
+                    aria-disabled={!canSpend}
+                    onPointerUp={(e) => {
+                      e.stopPropagation();
+                      if (!canSpend || !S || !S.channel) return;
+                      S.channel.send({ type: 'prog3_allocate', payload: { stat: st.key } });
+                    }}
+                    style={{
+                      flex: 'none', width: 30, height: 26,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      background: canSpend ? COL.accentFill : COL.wellSoft,
+                      border: `1px solid ${canSpend ? COL.accent : COL.tileBor}`,
+                      borderRadius: 7,
+                      color: canSpend ? COL.accent : COL.muted,
+                      fontSize: 15, fontWeight: 900, lineHeight: 1,
+                      cursor: canSpend ? 'pointer' : 'default',
+                      opacity: canSpend ? 1 : 0.55,
+                      touchAction: 'manipulation',
+                    }}>+</div>
+                </div>
+              );
+            })}
+          </div>
+        </>
+      )}
+
+      {section === 'Build' && !p3 && (
         <>
           {/* v2.3.1311c: single-line points chip — the two-cell header
               banner cost ~14px the no-scroll budget doesn't have on a

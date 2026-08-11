@@ -7,4 +7,5 @@ export * from './lifeSkills.js';
 export * from './effects.js';
 export * from './items.js';
 export * from './gameSystems.js';
+export * from './prog3.js'; /* v2.3.1660: trained-skill combat rebuild mirror */
 export * from './shards.js';

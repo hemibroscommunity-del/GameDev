@@ -18,6 +18,13 @@ import { TOWN_EXITS } from './effects.js';
 import { AMULET_TIERS, SALVAGE_RETURN_RATE, DEPTH_TIERS, ZONE_RESOURCES, getAmuletBonus, getShieldBonus, getShieldStats, skillXpRequired } from './items.js';
 import { FISHING_TIERS } from './lifeSkills.js';
 import { applyZoneVariant, hitShapeOf, variantForArchetype } from './monsterVariants.js';
+/* v2.3.1660: the trained-skill combat rebuild's client mirror — every
+   prog3Live(rpg) branch below keeps its legacy body for old workers
+   (rule 19) and for any blob the v10 respec fail-opened on. */
+import {
+  PROG3, prog3Live, prog3CharLevel, prog3SkillLevel, prog3Pts,
+  prog3DodgePct, prog3CritPct, prog3CritFlat, prog3DmgTerm,
+} from './prog3.js';
 
 /* v2.3.1186: pure-display exports (BT_AUDIO, BT_ACHIEVEMENTS, MASKS,
    tile colors, generateZoneMap, emote/NPC tables) moved to
@@ -2985,6 +2992,13 @@ export function swingCooldownMult(rpg) {
    the sword category has an atkspd channel today — bow/staff resolve
    to 0 pts (mult 1), identical to before. */
 export function swingCooldownMultFor(rpg, weaponType) {
+  /* v2.3.1660 (prog3): the allocated attack-speed stat is GLOBAL
+     (tempo was sword-only) — −0.35%/pt, cap −35% at 100 pts.  Stays
+     INSIDE the worker's 210ms cadence floor (600 × 0.65 × 0.7 lag
+     headroom = 273ms), so no server change was needed; raise the
+     per-point value and the floor together or fast swings get
+     rejected (the lockstep rule below). */
+  if (prog3Live(rpg)) return Math.max(0.50, 1 - prog3Pts(rpg, 'aspd') * PROG3.STATS.aspd.per);
   /* v2.3.1343 (kid-simple reprice): -0.5%/pt, floor 0.50 — swing twice
      as fast at the 100-pt cap.  SERVER LOCKSTEP: the worker's
      monster_damage hit-cadence floor is sized to THIS cap (600 × 0.50
@@ -3049,6 +3063,12 @@ export function cleaveArcBonus(rpg) {
    else null, so callers can surface a toast. */
 export function awardWeaponXp(rpg, dmg) {
   if (!rpg || !(dmg > 0)) return null;
+  /* v2.3.1660 (prog3): trained XP is SERVER-owned now — the worker
+     awards it at hit time from credited damage (_prog3AwardXp) and
+     announces level-ups via prog3_level.  A local award here would
+     double-celebrate and desync the legacy track the server keeps
+     frozen for rollback. */
+  if (prog3Live(rpg)) return null;
   var cat = activeWeaponCategory(rpg);
   if (!rpg.weaponSkills) rpg.weaponSkills = {};
   var sk = rpg.weaponSkills[cat] || (rpg.weaponSkills[cat] = { level: 0, xp: 0 });
@@ -3222,6 +3242,10 @@ export function poiseStunFlatMs(rpg) {
    Returns {level, points} on a level-up (for a toast), else null. */
 export function awardDefenseXp(rpg, weightedAmount) {
   if (!rpg || !(weightedAmount > 0)) return null;
+  /* v2.3.1660 (prog3): tanking trains nothing under the rebuild
+     (decision 6-A) — the defense SKILL retired into the allocation
+     pool at respec time. */
+  if (prog3Live(rpg)) return null;
   if (!rpg.defenseSkill) rpg.defenseSkill = { level: 0, xp: 0 };
   var sk = rpg.defenseSkill;
   if (sk.level >= DEFENSE_LEVEL_CAP) return null;
@@ -4514,10 +4538,17 @@ export function calcWeaponDmg(weaponType, statValOrRpg, tierMult, wpn) {
      tier AND variance, before crit — "+N damage on every swing", the
      same number the panel promises, on every roll.  Mirrors server
      _computeAttackDamage / DAMAGE_CHANNEL_FLAT. */
-  var base = (weaponEffBase(w.base, wpn) + statVal * 0.1667) * tierMult; // baseline-10: 0.8 ÷ 4.8
+  /* v2.3.1660 (prog3): trained level × K replaces stat × 0.1667, and
+     the channel flat dies — mirrors server _computeAttackDamage's
+     branch.  Only the rpg-object call shape can carry prog3; primitive
+     callers keep legacy math (they are legacy-path readouts). */
+  var _p3 = (statValOrRpg && typeof statValOrRpg === 'object' && prog3Live(statValOrRpg)) ? statValOrRpg : null;
+  var statTerm = _p3 ? prog3DmgTerm(_p3, weaponType) : statVal * 0.1667;
+  var base = (weaponEffBase(w.base, wpn) + statTerm) * tierMult; // baseline-10: 0.8 ÷ 4.8
   /* v2.3.1451: bench-locked banked flat when live (rpg object passed
      + worker capability); legacy accelerating flat otherwise. */
-  var flat = (statValOrRpg && typeof statValOrRpg === 'object' && t2BenchLive(statValOrRpg))
+  var flat = _p3 ? 0
+    : (statValOrRpg && typeof statValOrRpg === 'object' && t2BenchLive(statValOrRpg))
     ? t2WpnBankedFlat(statValOrRpg, weaponType, 'damage')
     : t2Accel(dmgChannel, T2_UNITS.damage);
   /* Per-type variance: staff widest, melee mid, bow tightest. */
@@ -4639,10 +4670,14 @@ export function calcDisplayDmgRange(rpg, wpn) {
      added after tier and variance (mirrors calcWeaponDmg). */
   var dmgPts = weaponDamageBonusFor(rpg, wpn.type);
   /* v2.3.1451: banked bench-locked flat when live; legacy otherwise. */
-  var flat = t2BenchLive(rpg)
+  var flat = prog3Live(rpg) ? 0
+    : t2BenchLive(rpg)
     ? t2WpnBankedFlat(rpg, wpn.type, 'damage')
     : t2Accel(dmgPts, T2_UNITS.damage);
-  var base = (weaponEffBase(w.base, wpn) + statVal * 0.1667) * (wpn.tierMult || 1);
+  /* v2.3.1660 (prog3): trained level × K replaces the stat term —
+     the readout mirrors the server roll it predicts. */
+  var base = (weaponEffBase(w.base, wpn)
+    + (prog3Live(rpg) ? prog3DmgTerm(rpg, wpn.type) : statVal * 0.1667)) * (wpn.tierMult || 1);
   /* v2.3.1207: Tempo folds into the period (see header); the staff's
      +300ms cast penalty is added AFTER the mult, unscaled, matching
      the auto-attack gate. */
@@ -4664,11 +4699,14 @@ export function calcDisplayDps(rpg, wpn) {
   /* Crit fold: chance × extra multiplier, both resolved for THIS
      weapon's category channels (Precision/Executioner etc.) on top of
      the Power baseline — same call pair as the loadout readout. */
-  var critChance = calcCritChance((rpg && rpg.power) || 0, weaponCritStatFor(rpg, wpn.type));
-  var critMult = calcCritMult((rpg && rpg.power) || 0);
+  /* v2.3.1660 (prog3): crit is the allocated pair — chance crit×0.4%,
+     mult a plain 1.5×, flat critDmg×2 (mirrors the server roll). */
+  var critChance = prog3Live(rpg) ? prog3CritPct(rpg)
+    : calcCritChance((rpg && rpg.power) || 0, weaponCritStatFor(rpg, wpn.type));
+  var critMult = prog3Live(rpg) ? 1.5 : calcCritMult((rpg && rpg.power) || 0);
   /* v2.3.1345: crit-dmg channel is a FLAT bonus on lucky hits — fold
      its expected value on top of the power multiplier. */
-  var critFlat = weaponCritFlatFor(rpg, wpn.type);
+  var critFlat = prog3Live(rpg) ? prog3CritFlat(rpg) : weaponCritFlatFor(rpg, wpn.type);
   return ((r.min + r.max) / 2 * (1 + critChance * (critMult - 1)) + critChance * critFlat) / (r.cdMs / 1000);
 }
 
@@ -4904,6 +4942,33 @@ export function createDefaultRpg() {
 
 /* Recalculate derived stats from allocations */
 export function recalcDerived(rpg) {
+  /* v2.3.1660 (prog3): respecced characters derive level + every pool
+     from the trained-skill track — the exact server _prog3Recompute
+     formulas (prog3.js mirror), so the player_state echo lands on the
+     number already showing.  Amulet maxHp/maxMana adds are deliberately
+     NOT applied here: the server's recompute never included them, so
+     adding them locally would flicker against every echo (they were
+     already echo-stomped under the legacy path).  _amuletBonus /
+     _shieldBonus caches still populate below for the point-of-use
+     combat lookups. */
+  if (prog3Live(rpg)) {
+    var p3lvl = prog3CharLevel(rpg);
+    rpg.level = p3lvl;
+    var p3armor = 0;
+    if (rpg.armor) {
+      var p3tm = (typeof rpg.armor.tierMult === 'number' && rpg.armor.tierMult > 0) ? rpg.armor.tierMult : 1.0;
+      p3armor = Math.floor(20 * Math.min(8, p3tm)); /* vitality term dropped (§4 audit) */
+    }
+    rpg.maxHp = Math.floor(100 + p3lvl * PROG3.HP_PER_LEVEL + prog3Pts(rpg, 'hp') * PROG3.STATS.hp.per + p3armor);
+    rpg.maxStamina = Math.floor(100 + prog3Pts(rpg, 'stam') * PROG3.STATS.stam.per);
+    rpg.maxMana = Math.floor(100 + prog3SkillLevel(rpg, 'staff') * PROG3.MANA_PER_MAGIC_LEVEL);
+    rpg._amuletBonus = (rpg.amulet && rpg.amulet.gem) ? getAmuletBonus(rpg.amulet) : null;
+    rpg._shieldBonus = (rpg.shield && rpg.shield.gem) ? getShieldBonus(rpg.shield) : null;
+    rpg.hp = Math.min(rpg.hp, rpg.maxHp);
+    rpg.stamina = Math.min(rpg.stamina, rpg.maxStamina);
+    rpg.mana = Math.min(rpg.mana, rpg.maxMana);
+    return rpg;
+  }
   /* v2.3.910: combat level was DERIVED as the sum of the use-trained
      build-skill levels (v2.3.1138 added Defense as the 6th), cap 500.
      v2.3.1342: level = total T2 points PLACED, cap LEVEL_CAP=1000

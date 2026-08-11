@@ -4,6 +4,12 @@ import {
   getEvasionPts, getDefenseBlockBonus, xpRequired, weaponXpRequired,
   buildSkillUnspent,
 } from '../../../data/gameSystems.js';
+/* v2.3.1660: trained-skill rebuild mirrors — display branches only;
+   the legacy formulas stay for old workers (rule 19). */
+import {
+  prog3Live, prog3Pool, prog3CritPct, prog3DodgePct, prog3SkillLevel,
+  prog3XpRequired, PROG3,
+} from '../../../data/prog3.js';
 
 /* v2.3.1286: data model for the Hero destination (nav-system spec) —
    the combat/character dashboard that replaces the retired Build panel
@@ -44,6 +50,9 @@ export const COMBAT_SKILLS = [
    definition; both read it. */
 export function unspentPointsTotal(R) {
   if (!R) return 0;
+  /* v2.3.1660 (prog3): the rebuild has ONE pool — the badge and the
+     identity chip both show it. */
+  if (prog3Live(R)) return prog3Pool(R);
   return COMBAT_SKILLS.reduce((n, s) => n + buildSkillUnspent(R, s.key), 0);
 }
 
@@ -91,6 +100,21 @@ export function skillProgress(R, key) {
    can never exceed the denominator, per the spec.  Lifetime XP moved
    to Records. */
 export function combatLevelProgress(R) {
+  /* v2.3.1660 (prog3): the next character level arrives when the
+     best-progressed TRAINED skill crosses its threshold (level = Σ
+     trained) — same "best track" idea, new tracks. */
+  if (prog3Live(R)) {
+    let bestP3 = null;
+    for (const cat of PROG3.SKILLS) {
+      const lvl = prog3SkillLevel(R, cat);
+      if (lvl >= PROG3.LEVEL_CAP) continue;
+      const sk = (R.prog3.sk && R.prog3.sk[cat]) || {};
+      const p = { prog: Math.floor(sk.xp || 0), thresh: Math.max(1, prog3XpRequired(lvl)) };
+      if (!bestP3 || p.prog / p.thresh > bestP3.prog / bestP3.thresh) bestP3 = p;
+    }
+    if (!bestP3) return { prog: 1, thresh: 1 }; // all three maxed
+    return { prog: Math.min(bestP3.prog, bestP3.thresh), thresh: bestP3.thresh };
+  }
   let best = null;
   for (const s of COMBAT_SKILLS) {
     const p = skillProgress(R, s.key);
@@ -146,9 +170,12 @@ export function deriveHeroStats(R) {
     wpn,
     dmgText: range ? range.text : '0',
     dps: wpn ? calcDisplayDps(R, wpn) : 0,
-    crit: calcCritChance(R.power || 0, getWeaponCritStat(R)),
-    dodge: passiveDodgeChance(R.agility || 0, getEvasionPts(R)),
-    speed: calcMoveSpeed(R.agility || 0, (R.enduranceSpec || {}).swiftness || 0),
+    /* v2.3.1660 (prog3): crit/dodge come from the allocated stats —
+       the same numbers the server rolls.  Damage/DPS already branch
+       inside calcDisplayDmgRange/Dps. */
+    crit: prog3Live(R) ? prog3CritPct(R) : calcCritChance(R.power || 0, getWeaponCritStat(R)),
+    dodge: prog3Live(R) ? prog3DodgePct(R) : passiveDodgeChance(R.agility || 0, getEvasionPts(R)),
+    speed: prog3Live(R) ? calcMoveSpeed(0, 0) : calcMoveSpeed(R.agility || 0, (R.enduranceSpec || {}).swiftness || 0),
     block: calcBlockReduction(getDefenseBlockBonus(R), R.shield),
     gold: R.coins || 0,
   };
