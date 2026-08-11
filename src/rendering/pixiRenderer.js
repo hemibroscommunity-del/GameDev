@@ -7,7 +7,6 @@ import { TileRenderer } from './systems/tileRenderer.js';
 import { EntityRenderer, prewarmMaskedBodyFrames, prewarmAltWornSets, planPrewarmProgress, uploadBakedTextures, uploadGearTextures, registerPrewarmRenderer } from './systems/entityRenderer.js';
 import { EffectsRenderer, prewarmDmgFontPipe } from './systems/effectsRenderer.js';
 import { FpsOverlay } from './systems/fpsOverlay.js';
-import { loadTileAssets } from './tileAssets.js';
 import { loadPlayerSprites } from './playerSprites.js';
 import { loadPlayerAnchors } from './playerAnchors.js';
 import { loadSlimeSprites } from './slimeSprites.js';
@@ -139,16 +138,18 @@ export async function initPixiRenderer(canvas) {
   const _devUI = typeof window !== 'undefined' && /[?&]dev=1\b/.test(window.location.search);
   const fpsOverlay = _devUI ? new FpsOverlay() : null;
 
-  // Load tile sprite assets (non-blocking — tiles render procedurally until loaded)
-  loadTileAssets()
-    .then((assets) => {
-      tileRenderer.setAssets(assets);
-      // Force rebuild if a zone is already active
-      if (currentZone && currentMap) {
-        tileRenderer.rebuild(app, currentMap, currentZone);
-      }
-    })
-    .catch((err) => console.warn('Tile assets failed to load, using procedural fallback:', err));
+  /* v2.3.1670: the village-tileset load that used to sit here is GONE.
+     It fetched a 32x32 tileset (grass, dirt, plants) plus 20 building PNGs
+     on every startup and handed them to tileRenderer.setAssets(), but the
+     branch that drew them — _rebuildWithSprites — was unreachable: it only
+     ever applied to town / meadow / farm_home, and all three have painted
+     single-image maps, whose path returns before the sprite branch is
+     considered.  So this was ~1.4MB downloaded and 23 textures GPU-uploaded
+     at startup to render nothing, on a game whose startup memory on iPhone
+     is the thing we keep fighting (see the v2.3.1405 per-zone work).
+     The art itself was a purchased pixel-art pack from an earlier version of
+     the game, fully replaced by the painted maps; it is deleted from the
+     repo along with its loader. */
 
   // Load player sprite sheets (non-blocking — entityRenderer falls back
   // to procedural Graphics on the first few frames before sheets resolve).

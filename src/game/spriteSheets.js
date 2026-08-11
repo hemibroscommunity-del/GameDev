@@ -123,8 +123,10 @@ export function wireSpriteSheets(stateRef, refs) {
     /* Zone swatch + tree-sprite loaders removed — those were used
        only by the Canvas 2D rendering path (gather-node procedural
        tree replacement, ground-tile pattern fill).  The Pixi tile
-       renderer pulls art from public/maps/<zone>_v4.jpg directly
-       and the gather nodes are sprite-based via tileAssets. */
+       renderer pulls art from public/maps/<zone>_*.webp directly.
+       v2.3.1670: this used to end "and the gather nodes are
+       sprite-based via tileAssets" — tileAssets.js is deleted; its
+       tileset only ever fed an unreachable render branch. */
 
     /* Tiled maps — fire-and-forget preload so the renderer can pick
        them up as soon as they arrive. Once each map resolves, stash

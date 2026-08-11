@@ -40,27 +40,32 @@ where something came from costs nothing and guessing later costs a lot.
 | UI icons | `public/icons/`, `public/ui/`, `assets/icons-source/` | Generated with **OpenAI ChatGPT** image generation | As above |
 | Music | `public/audio/music/` (`village`, `forest`, `frost`, `desert`, `fire`, `world`, `login-theme`) | Generated with **Suno** on a paid plan | Paid-plan output carries full commercial rights, held by the account owner |
 
-### ⚠️ Still to confirm
+### Third-party assets
 
-Two groups are **not** covered by the above and still need their origin
-recorded before the repository can be represented as fully licensed:
+| Asset group | Path | Source | License |
+|---|---|---|---|
+| Sound effects, and creature / ambient audio | `public/sfx/`, `assets/sound effects/`, `public/audio/*.mp3` (`slime-idle`, `slime-death-v2`, `skeleton-death`, `snowman-death`, `tree-fall`, `wood-chop`) | **Pixabay** (https://pixabay.com) | [Pixabay Content License](https://pixabay.com/service/license-summary/) — free for commercial use, no attribution required. Credited here anyway. |
 
-| Asset group | Path | Why it is flagged |
-|---|---|---|
-| Village tileset (`TX_*`) | `public/assets/tilesets/village/Texture/` | The `TX_Tileset_Grass` / `TX_Village_Props` / `TX_Village_Building` naming scheme matches a **downloaded pixel-art tileset pack**, not generated art. It appears to be *Pixel Art Top Down — Basic* by **Cainos**, which is free to use commercially **but requires the author be credited by name**. This has not been confirmed by the owner, so it is recorded as a question, not a fact. |
-| Sound effects and creature/ambient audio | `public/sfx/`, `assets/sound effects/`, `public/audio/*.mp3` (`slime-idle`, `slime-death-v2`, `skeleton-death`, `snowman-death`, `tree-fall`, `wood-chop`) | Not covered by the Suno music answer, and no source is documented anywhere in the tree. |
+> **Note on the Pixabay license.** It permits commercial use and modification
+> without attribution, but it does *not* permit redistributing the audio "as a
+> standalone file" for others to download. Bundling the clips inside a game is
+> squarely the intended use. A public source repository is a greyer area, since
+> the `.mp3`s are individually fetchable from it — this is worth knowing, not
+> worth panicking over, and it is the reason the clips are credited by source
+> rather than passed off as original work.
 
-For each, record one of:
+### Removed rather than credited
 
-- **Original work** — created for this project, or generated with an AI tool
-  whose terms permit commercial release. Say which tool.
-- **Licensed pack** — name the pack, the author, the store link and the
-  license (CC0, CC-BY 4.0, a Kenney or itch.io asset licence). CC-BY requires
-  the author be credited *by name* in this file.
-- **Unknown / unlicensed** — replace it before release. Kenney.nl and
-  OpenGameArt (CC0) are the fastest substitutions.
+The game previously used a purchased **32×32 pixel-art village tileset**
+(`TX_Tileset_Grass`, `TX_Village_Building_-_House_*`, …). That art belonged to
+an earlier version of the game and was wholly replaced by the painted
+single-image zone maps. Its render branch had been unreachable for a long time
+while the files were still downloaded at startup, so as of **v2.3.1670** both
+the art and its loader (`src/rendering/tileAssets.js`) are deleted from the
+repository. Nothing in the shipped game draws from it, and there is no
+third-party art here to license.
 
 Contest note: the Hemi Arcade rules require that "all third-party assets (art,
 audio, music, fonts, and similar materials) must be properly licensed and
-credited where required." An unconfirmed row is a submission risk, not a
-formality.
+credited where required." Every asset group in the repository is now accounted
+for above.
