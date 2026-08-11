@@ -1371,6 +1371,31 @@ export function setupWebSocket(ctx) {
               try { BT_AUDIO.levelUp && BT_AUDIO.levelUp(); } catch (e) {}
               break;
             }
+          case 'chain_score_recorded':
+            {
+              /* v2.3.1664: the server wrote this run's milestone to Hemi
+                 (contracts/BroTownScores.sol).  Server-emitted only — it is
+                 in PRIVILEGED_EVENTS, because a forged one would paint a
+                 fake block-explorer link.
+                 Kept on S.rpg so it rides the existing localStorage
+                 persistence and the Records tab can offer the link long
+                 after the popup has faded; the chain is the durable copy,
+                 this is just the receipt. */
+              if (!msg.payload || !S.rpg) break;
+              var cs = msg.payload;
+              if (!cs.txHash) break;
+              S.rpg._chainScore = {
+                level: cs.level, kills: cs.kills, milestone: cs.milestone,
+                txHash: cs.txHash, explorer: cs.explorer, at: Date.now(),
+              };
+              if (S.player) {
+                pushDmgPopup(S, S.player.x, S.player.y - 70,
+                  'ON-CHAIN ✓ Lv ' + cs.level, '#8FD3C7');
+              }
+              setRpgState(_objectSpread({}, S.rpg));
+              try { localStorage.setItem('bt_rpg', JSON.stringify(S.rpg)); } catch (e) {}
+              break;
+            }
           case 'prog3_allocated':
             {
               /* v2.3.1660: server confirmed a prog3_allocate spend.

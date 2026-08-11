@@ -843,6 +843,15 @@ export const combatMethods = {
         // site (monsterCombat.js "GOLD NUGGET DROP", now gated off under
         // caps.amuletForge).  Rides this recipient's _saveRpg +
         // player_state flush below.
+        /* v2.3.1664: SERVER-VERIFIED kill count.  This function is the one
+           place a monster actually dies — it pays the XP and spawns the
+           loot — so counting here is as authoritative as the kill itself.
+           Distinct from the client-reported `_compStats.monstersKilled`
+           that feeds the leaderboard's vanity columns: only this number is
+           eligible to be attested on-chain (chainscore.js), because putting
+           a client-reported figure on a permanent public ledger would make
+           it LOOK verified while being no better than the client's word. */
+        if (rid === killerId) recipPs.svKills = (recipPs.svKills || 0) + 1;
         if (rid === killerId) this._amuletNuggetOnKill(recipPs);
         // v2.3.1198 (gem income): raw-gem drop roll, server-rolled now
         // that gems feed the server-settled Gem Cutter + amulet gem op

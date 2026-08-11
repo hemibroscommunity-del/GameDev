@@ -255,6 +255,12 @@ export const prog3Methods = {
         } catch (e) {}
       }
       this._queuePlayerStateFlush(playerId);
+      /* v2.3.1664: a level-up is the only moment a chain milestone can be
+         crossed, so this is where the on-chain checkpoint is considered.
+         FIRE-AND-FORGET BY CONTRACT — this is a combat path, and nothing in
+         it may await the network.  A chain outage, an unfunded relayer or a
+         missing secret all no-op silently and retry on the next level-up. */
+      this._chainScoreOnLevelUp(playerId, ps);
     }
   },
 

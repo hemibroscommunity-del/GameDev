@@ -550,8 +550,9 @@ export const HeroExpanded = () => {
       )}
 
       {section === 'Records' && (
-        /* v2.3.1311c: 3x2 (was 2x3) — two card rows fit the real device
-           budget without scrolling; three didn't. */
+        <>
+        {/* v2.3.1311c: 3x2 (was 2x3) — two card rows fit the real device
+            budget without scrolling; three didn't. */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 5, paddingTop: 6 }}>
           {[
             /* v2.3.1323 (owner icon sheet): each record card gets its
@@ -559,7 +560,12 @@ export const HeroExpanded = () => {
                v2.3.1341 (owner art drop): rec-kills replaced with the
                new sword-and-skull art (green-screen sheet, chroma
                knocked out); shared ?v bumped to bust the old cache. */
-            ['Kills', cs.monstersKilled ?? cs.kills ?? 0, 'rec-kills'],
+            /* v2.3.1664: prefer the SERVER-verified kill count when the
+               worker sends it (svKills, counted in _resolveMonsterKill).
+               The client's own _compStats tally stays the fallback for old
+               workers.  This is the number the on-chain attestation
+               carries, so the two must not disagree on screen. */
+            ['Kills', R.svKills ?? cs.monstersKilled ?? cs.kills ?? 0, 'rec-kills'],
             ['Deaths', cs.deaths ?? 0, 'rec-deaths'],
             /* Renamed from "Gold Earned" so it can't be confused with
                the current balance in the identity strip (round-4). */
@@ -587,6 +593,47 @@ export const HeroExpanded = () => {
             </div>
           ))}
         </div>
+        {/* v2.3.1664: the on-chain receipt.  Appears only once a milestone
+            has actually been written to Hemi, so it is never a promise the
+            game hasn't kept — and it is a real link, because a claim of
+            "verified on-chain" that you cannot go and check is just a
+            badge.  The popup at the moment of writing fades; this stays. */}
+        {R._chainScore && R._chainScore.explorer && (
+          <a
+            href={R._chainScore.explorer}
+            target="_blank"
+            rel="noopener noreferrer"
+            onPointerUp={(e) => e.stopPropagation()}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 8,
+              marginTop: 6, padding: '7px 9px',
+              background: COL.accentFill,
+              border: `1px solid ${COL.accent}`,
+              borderRadius: 7,
+              textDecoration: 'none',
+              touchAction: 'manipulation',
+            }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{
+                fontSize: 12, fontWeight: 800, color: COL.accent,
+                whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+              }}>
+                Level {R._chainScore.level} recorded on Hemi
+              </div>
+              <div style={{
+                fontSize: 8.5, fontWeight: 700, letterSpacing: '.04em',
+                textTransform: 'uppercase', color: COL.muted, marginTop: 1,
+                whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+              }}>
+                Tap to view the transaction
+              </div>
+            </div>
+            <span aria-hidden="true" style={{
+              flex: 'none', fontSize: 13, fontWeight: 800, color: COL.accent, lineHeight: 1,
+            }}>↗</span>
+          </a>
+        )}
+        </>
       )}
     </div>
   );

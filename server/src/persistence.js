@@ -236,6 +236,10 @@ export const persistenceMethods = {
         // feeds the damage roll AND the anticheat ceiling (the t2Flat
         // rule).
         prog3: ps.prog3 || null,
+        // v2.3.1664: server-verified lifetime kills (combat.js
+        // _resolveMonsterKill).  The only kill figure eligible for an
+        // on-chain attestation -- see chainscore.js.
+        svKills: ps.svKills || 0,
         // v2.3.1152: schema stamp -- the ONE field allowed beyond the
         // gameplay list (ARCHITECTURE-HANDOFF rule 1 exception).  The
         // CONSTANT, never ps._v: a blob written by current code is
@@ -393,6 +397,9 @@ export const persistenceMethods = {
           // clients ignore the unknown field (deploy-order safe);
           // protocol-v2 delta handles it like every other field.
           prog3: ps.prog3 || null,
+          // v2.3.1664: server-verified kills, echoed so the client can show
+          // the same number the chain attestation carries.
+          svKills: ps.svKills || 0,
       };
       const session = this.sessions.get(ws);
       let payload = full;

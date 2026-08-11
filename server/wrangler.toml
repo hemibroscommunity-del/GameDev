@@ -2,6 +2,25 @@ name = "brotown-server"
 main = "src/index.js"
 compatibility_date = "2024-12-01"
 
+# ── v2.3.1664: on-chain score checkpoints (contracts/BroTownScores.sol) ──
+# The feature is OFF until both of these are set, and the game is entirely
+# unaffected while it is off (chainscore.js `_chainScoreConfigured`).
+#
+#   SCORES_CONTRACT — the deployed BroTownScores address.  Public data, so
+#                     it lives here as a plain var.  Empty = feature off.
+#   RELAYER_KEY     — the relayer's private key.  A SECRET, never in this
+#                     file and never in git.  Set it with:
+#                       npx wrangler secret put RELAYER_KEY
+#                     or via the Cloudflare dashboard (Workers → Settings →
+#                     Variables → Encrypt).  The Worker reads it, signs with
+#                     it, and never logs or transmits it.
+#   CHAIN_ID        — override only to point at Hemi testnet (743111) while
+#                     rehearsing.  Defaults to mainnet 43111 (onchain.js).
+#
+# Operator runbook: docs/specs/progression-onchain.md
+[vars]
+SCORES_CONTRACT = ""
+
 # Durable Objects bindings
 [[durable_objects.bindings]]
 name = "GAME_ROOM"

@@ -377,6 +377,11 @@ export const joinMethods = {
         this.playerState[msg.id]._questFlags = (stored._questFlags && typeof stored._questFlags === 'object') ? { ...stored._questFlags } : {};
         this.playerState[msg.id]._questKills = (stored._questKills && typeof stored._questKills === 'object') ? { ...stored._questKills } : {};
         this.playerState[msg.id].achievementPoints = stored.achievementPoints || 0;
+        /* v2.3.1664: server-verified kills.  MUST be restored here or a
+           reconnect resets the counter to 0 and the next on-chain
+           attestation would report fewer kills than the last one — which
+           the contract's monotonic guard rejects, silently costing gas. */
+        this.playerState[msg.id].svKills = Math.max(0, Math.floor(stored.svKills || 0));
         // Restore the perfect-claim history so the rate-limit
         // window survives reconnects.  Stale entries (>60s old)
         // get pruned on the next _ratedHarvestAccuracy call.

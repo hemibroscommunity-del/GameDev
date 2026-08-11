@@ -127,6 +127,9 @@ import { amuletMethods } from './amulet.js';
 // v2.3.1659: the trained-skill combat rebuild (PROGRESSION-REDESIGN) --
 // XP accrual, seven-stat allocation, prog3 pool recompute -- see prog3.js.
 import { prog3Methods } from './prog3.js';
+// v2.3.1664: on-chain score checkpoints to Hemi (contracts/BroTownScores.sol);
+// signing/encoding lives in chainwriter.js -- see chainscore.js.
+import { chainScoreMethods } from './chainscore.js';
 
 export default {
   async fetch(request, env) {
@@ -262,6 +265,9 @@ export const PRIVILEGED_EVENTS = new Set([
   // level-up celebration and the allocation ack are both server-truth;
   // forging either would paint fake levels/points on the client.
   'prog3_level', 'prog3_allocated',
+  // v2.3.1664: the on-chain checkpoint receipt (chainscore.js).  Server-sent
+  // only -- a forged one would paint a fake block-explorer link.
+  'chain_score_recorded',
   // v2.3.1117: inbox/mail delivery notification -- forging it wouldn't
   // grant anything (credits are server-persisted before it's sent) but
   // it drives "you received X" UI, so don't let clients spoof it.
@@ -3382,3 +3388,4 @@ Object.assign(GameRoom.prototype, amuletMethods);
 // v2.3.1323: mutual friendships + requests + DMs -- see friends.js.
 Object.assign(GameRoom.prototype, friendsMethods);
 Object.assign(GameRoom.prototype, prog3Methods); /* v2.3.1659 */
+Object.assign(GameRoom.prototype, chainScoreMethods); /* v2.3.1664 */
