@@ -201,6 +201,41 @@ export const gearMethods = {
         || slot === 'armor' || slot === 'shield' || slot === 'amulet';
   },
 
+  // ═══ v2.3.1661: THE server equip gate (PROGRESSION-REDESIGN §6) ═══
+  //
+  // The tier gate was CLIENT-ONLY until now (canEquipItem /
+  // meetsStatReq in gameSystems.js) — a modified client could equip
+  // any tier at level 1 and the worker's damage roll would happily
+  // multiply the forged tierMult.  Resolution order mirrors the
+  // client's meetsStatReq: a known gearBase resolves its exact tier
+  // index; anything else estimates from tierMult (the same ×6 curve).
+  // Weapons gate on the matching trained skill, armor + shield on
+  // allocated defense points, amulets on Magic — requirement =
+  // tierIndex × 5.  Applies to prog3 players only (_prog3GearOk
+  // passes legacy blobs; their client-side gates stay as they were).
+  _prog3EquipOk(ps, slot, item) {
+    if (!ps || !ps.prog3 || !item || typeof item !== 'object') return true;
+    let tierIdx = -1;
+    if (typeof item.gearBase === 'string') {
+      const isWw = item.gearBase.startsWith('ww_');
+      const key = isWw ? item.gearBase.slice(3) : item.gearBase;
+      const table = isWw ? this._WOODWORKING_TIERS_DATA() : this._BLACKSMITH_TIERS_DATA();
+      if (Object.prototype.hasOwnProperty.call(table, key)) tierIdx = Object.keys(table).indexOf(key);
+    }
+    if (tierIdx < 0) {
+      const tm = (typeof item.tierMult === 'number' && item.tierMult > 0) ? item.tierMult : 1;
+      // Capped at index 19 (20-tier tables): the raw ×6 curve reads
+      // 30 at tierMult 6, which would demand trained level 150 on a
+      // 100-cap skill — the top tier must stay reachable (req 95).
+      tierIdx = Math.max(0, Math.min(19, Math.round((tm - 1) * 6)));
+    }
+    const req = tierIdx * 5;
+    if (slot === 'armor' || slot === 'shield') return this._prog3GearOk(ps, 'defense', req);
+    if (slot === 'amulet') return this._prog3GearOk(ps, 'magic', req);
+    const cat = item.type === 'bow' ? 'bow' : item.type === 'staff' ? 'staff' : 'sword';
+    return this._prog3GearOk(ps, cat, req);
+  },
+
   // ═══ Weapon crafting (blacksmith + woodworker) ═══
   //
   // Mirrors BLACKSMITH_TIERS + WOODWORKING_TIERS from src/data/
@@ -281,8 +316,18 @@ export const gearMethods = {
     if (skillLvl < tier.minLvl) return;
 
     // Stat gate (per EQUIP_STAT_MAP)
-    const reqStat = this._equipStatFor(weaponType);
-    if ((ps[reqStat] || 0) < (tier.statReq || 0)) return;
+    // v2.3.1661 (prog3): the rebuild gates on the matching TRAINED
+    // skill at tierIndex × 5 (§6) — this is also where the standing
+    // sword mismatch dies (agility vs power: both are Melee now).
+    // Client mirror: getGearStatReq/meetsGearReq (gameSystems.js).
+    if (ps.prog3) {
+      const tierIdx = Object.keys(table).indexOf(tierKey);
+      const cat = weaponType === 'bow' ? 'bow' : weaponType === 'staff' ? 'staff' : 'sword';
+      if (!this._prog3GearOk(ps, cat, tierIdx * 5)) return;
+    } else {
+      const reqStat = this._equipStatFor(weaponType);
+      if ((ps[reqStat] || 0) < (tier.statReq || 0)) return;
+    }
 
     // Coin + resource validation.
     if ((ps.coins || 0) < tier.goldCost) return;
@@ -410,6 +455,10 @@ export const gearMethods = {
     // splice-on-empty logic existed).  Without this, a cheater
     // could equip a "null" stash entry to wipe the active slot.
     if (!stashItem) return;
+    // v2.3.1661 (prog3): the tier gate, server-enforced at last —
+    // see _prog3EquipOk above.  Silent reject (the stat_allocate
+    // posture); the client's own gate shows the requirement.
+    if (!this._prog3EquipOk(ps, slot, stashItem)) return;
     const activeItem = ps[slot] || null;
     ps[slot] = stashItem;
     if (activeItem) {

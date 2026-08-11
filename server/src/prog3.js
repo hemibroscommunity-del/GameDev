@@ -179,6 +179,25 @@ export const prog3Methods = {
     ps.mana = Math.min(ps.mana, ps.maxMana);
   },
 
+  // ═══ v2.3.1661: tier-gate primitive (PROGRESSION-REDESIGN §6) ═══
+  //
+  // kind 'sword'|'bow'|'staff' → the trained skill's level;
+  // 'defense' → allocated defense POINTS; 'magic' → the staff skill
+  // (amulets).  reqValue = tierIndex × 5 (20 tiers → 0..95 against
+  // the level-100 cap).  Gates apply AT EQUIP/FORGE TIME only —
+  // already-equipped gear is grandfathered (the respec zeroed
+  // everyone's defense points; stripping worn armor for it would
+  // read as theft).  Non-prog3 players pass (legacy gates apply).
+  _prog3GearOk(ps, kind, reqValue) {
+    if (!(reqValue > 0)) return true;
+    const p3 = ps && ps.prog3;
+    if (!p3) return true;
+    if (kind === 'defense') return this._prog3Pts(ps, 'def') >= reqValue;
+    const cat = kind === 'magic' ? 'staff' : kind;
+    const lvl = (p3.sk && p3.sk[cat] && p3.sk[cat].level) || 1;
+    return lvl >= reqValue;
+  },
+
   // Per-hit dodge chance (§4: replaces agility×0.0008 + the evasion
   // accumulator; cap 30% at the 75-pt stat cap).
   _prog3DodgePct(ps) {

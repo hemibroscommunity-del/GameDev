@@ -224,8 +224,10 @@ export function ForgePanel(props) {
     var bsMelee = ((_stateRef$current1 = stateRef.current) === null || _stateRef$current1 === void 0 ? void 0 : _stateRef$current1._bsType) || 'greatsword';
     var gearType = bsMelee === 'shield' ? 'shield' : bsMelee;
     var fullIdx = Object.keys(BLACKSMITH_TIERS).indexOf(key);
-    var statReq = getGearStatReq(gearType, fullIdx);
-    var meetsStat = statReq.value === 0 || (rpgState[statReq.stat] || 0) >= statReq.value;
+    /* v2.3.1661 (prog3): rpg passed — under the rebuild the gate is the
+       trained skill at tierIndex × 5 (met carried on the req). */
+    var statReq = getGearStatReq(gearType, fullIdx, rpgState);
+    var meetsStat = statReq.value === 0 || (statReq.prog3 ? statReq.met : (rpgState[statReq.stat] || 0) >= statReq.value);
     var canForge = canForgeSkill && meetsStat;
     var bsType = ((_stateRef$current10 = stateRef.current) === null || _stateRef$current10 === void 0 ? void 0 : _stateRef$current10._bsType) || 'greatsword';
     var reqStat = EQUIP_STAT_MAP[bsType] || 'power';
@@ -291,18 +293,15 @@ export function ForgePanel(props) {
       style: {
         marginRight: 3
       }
-    }), !canForgeSkill ? "Blacksmith Lv".concat(bt.minLvl).concat(bt.statReq > 0 ? " \xB7 " + reqStat.charAt(0).toUpperCase() + reqStat.slice(1) + " " + bt.statReq : "") : "".concat(statReq.stat.charAt(0).toUpperCase() + statReq.stat.slice(1), " ").concat(statReq.value)), bt.statReq > 0 && function (_stateRef$current11) {
-      var bsType = ((_stateRef$current11 = stateRef.current) === null || _stateRef$current11 === void 0 ? void 0 : _stateRef$current11._bsType) || 'greatsword';
-      var reqStat = bsType === 'shield' ? SHIELD_EQUIP_STAT : EQUIP_STAT_MAP[bsType] || 'power';
-      var playerVal = rpgState[reqStat] || 0;
-      var met = playerVal >= bt.statReq;
-      return /*#__PURE__*/React.createElement("span", {
-        style: {
-          /* v2.3.1235: batch-3 rollout — positive/danger tokens */
-          color: met ? '#55B98A' : '#D8635D'
-        }
-      }, " \xB7 ", bt.statReq, " ", reqStat, " ", met ? '✓' : '✗');
-    }())), /*#__PURE__*/React.createElement("button", {
+    }), !canForgeSkill ? "Blacksmith Lv".concat(bt.minLvl).concat(statReq.value > 0 ? " \xB7 " + statReq.label + " " + statReq.value : "") : "".concat(statReq.label, " ").concat(statReq.value)), statReq.value > 0 && /*#__PURE__*/React.createElement("span", {
+      /* v2.3.1661 (prog3): the requirement line reads the SAME req
+         object as the gate — Melee/Bow/Magic level (or the legacy
+         stat) instead of re-deriving from bt.statReq. */
+      style: {
+        /* v2.3.1235: batch-3 rollout — positive/danger tokens */
+        color: meetsStat ? '#55B98A' : '#D8635D'
+      }
+    }, " \xB7 ", statReq.value, " ", statReq.label, " ", meetsStat ? '✓' : '✗'))), /*#__PURE__*/React.createElement("button", {
       /* v2.3.1235: state-correction — disabled recipe is #1A292F fill +
          #8D9B98 label + .11 hairline at full opacity (was #24363C/#667875);
          real disabled prop added around the untouched handler. */
@@ -807,8 +806,12 @@ export function ForgePanel(props) {
     var oreKey = 'ore_' + bt.oreName + '_ore';
     var hasOre = (((_rpgState$inventory2 = rpgState.inventory) === null || _rpgState$inventory2 === void 0 ? void 0 : _rpgState$inventory2[oreKey]) || 0) >= bt.oreCost;
     var hasGold = rpgState.coins >= bt.goldCost;
-    var shieldStatVal = rpgState[SHIELD_EQUIP_STAT] || 0;
-    var shieldMeetsStat = !bt.statReq || shieldStatVal >= bt.statReq;
+    /* v2.3.1661 (prog3): shields gate on DEFENSE POINTS under the
+       rebuild (armor-class gear, §6); the req object carries both
+       worlds so the strings below stay honest. */
+    var shReq = getGearStatReq('shield', Object.keys(BLACKSMITH_TIERS).indexOf(key), rpgState);
+    var shieldStatVal = shReq.prog3 ? (shReq.have || 0) : rpgState[SHIELD_EQUIP_STAT] || 0;
+    var shieldMeetsStat = shReq.value === 0 || (shReq.prog3 ? shReq.met : shieldStatVal >= bt.statReq);
     return /*#__PURE__*/React.createElement("div", {
       key: key,
       /* v2.3.1232: 44px well row, hairline divider between rows */
@@ -865,12 +868,12 @@ export function ForgePanel(props) {
         /* v2.3.1235: batch-3 rollout — muted/danger tokens */
         color: shieldMeetsStat ? '#8D9B98' : '#D8635D'
       }
-    }, " \xB7 ", SHIELD_EQUIP_STAT.charAt(0).toUpperCase() + SHIELD_EQUIP_STAT.slice(1), " ", bt.statReq, shieldMeetsStat ? '✓' : '')), !(canForge && shieldMeetsStat) && /*#__PURE__*/React.createElement("span", null, bt.oreCost, "\xD7 ", bt.oreName, " ore + ", bt.goldCost, "g \xB7 ", /*#__PURE__*/React.createElement("span", {
+    }, " \xB7 ", shReq.label, " ", shReq.value, shieldMeetsStat ? '✓' : '')), !(canForge && shieldMeetsStat) && /*#__PURE__*/React.createElement("span", null, bt.oreCost, "\xD7 ", bt.oreName, " ore + ", bt.goldCost, "g \xB7 ", /*#__PURE__*/React.createElement("span", {
       className: "ls-lock",
       style: {
         marginRight: 3
       }
-    }), (!canForge ? "Blacksmith Lv" + bt.minLvl : "") + (!canForge && !shieldMeetsStat ? " \xB7 " : "") + (!shieldMeetsStat ? SHIELD_EQUIP_STAT.charAt(0).toUpperCase() + SHIELD_EQUIP_STAT.slice(1) + " " + bt.statReq : "")))), /*#__PURE__*/React.createElement("button", {
+    }), (!canForge ? "Blacksmith Lv" + bt.minLvl : "") + (!canForge && !shieldMeetsStat ? " \xB7 " : "") + (!shieldMeetsStat ? shReq.label + " " + shReq.value : "")))), /*#__PURE__*/React.createElement("button", {
       /* v2.3.1235: state-correction — disabled recipe is #1A292F fill +
          #8D9B98 label + .11 hairline at full opacity (was #24363C/#667875);
          real disabled prop added around the untouched handler. */

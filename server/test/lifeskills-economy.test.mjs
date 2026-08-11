@@ -89,6 +89,11 @@ const econSnap = (ps) => JSON.stringify({
 const ws = fakeWs('e');
 await join(ws, 'bp_ls_a');
 const ps = room.playerState['bp_ls_a'];
+/* v2.3.1661 (prog3): this suite pins the LEGACY forge economy (stat
+   gates via _equipStatFor) — still live for fail-open blobs — so the
+   fixture opts out of the respec.  prog3.test.mjs owns the trained-
+   level forge gate. */
+delete ps.prog3;
 
 // ── 1. forge happy path (iron sword: minLvl 11, 4 ore, 35g) ──
 const IRON = BLACKSMITH_TIERS.iron;

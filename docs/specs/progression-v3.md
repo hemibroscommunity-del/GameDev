@@ -121,18 +121,41 @@ is **inert, not deleted**:
 - `player_state` / `_saveRpg` carry `prog3` (`{ sk, alloc, pool }`);
   `RPG_SCHEMA_VERSION` = 10.
 
+## Tier / equip gates (v2.3.1661, §6 — SHIPPED)
+
+- Requirement = **tierIndex × 5** (20-tier tables → 0..95): weapons on
+  the matching trained skill (greatsword AND sword → Melee — the
+  standing `GEAR_STAT_REQ.sword='agility'` vs `EQUIP_STAT_MAP.sword=
+  'power'` mismatch dies here), armor + shield on allocated **defense
+  points**, amulets on Magic. Items without a known `gearBase` estimate
+  their tier from `tierMult` (the legacy ×6 curve, capped at index 19
+  so the top tier stays reachable on a 100-cap skill).
+- **The server equip gate exists now** (it was client-only):
+  `_prog3EquipOk` (gear.js) gates `equip_request`, the forge stat gate
+  branches to trained levels, and the `stats_update` armor ingest
+  (grids.js) rejects over-tier swaps — reject keeps the old armor and
+  the echo snaps the client back (the threat-lock pattern).
+- **Grandfather rule:** gates apply at equip/forge time only —
+  already-worn gear survives the respec (everyone's defense points
+  start at 0; stripping worn armor would read as theft). Unequip
+  always passes.
+- Client mirrors: `prog3GearReq` / `getGearStatReq(…, rpg)` /
+  `canEquipItem` / `meetsStatReq` / `getEquipReqLabel(…, rpg)` in
+  gameSystems.js; Forge/Woodwork/Inventory panels print the same
+  Melee/Bow/Magic/Defense requirements the gate enforces.
+- Shield forging/equipping remains client-local (as in legacy) — its
+  server gate lands if shields ever route through a server flow.
+
 ## Known deviations / follow-ups
 
 - PvP: the legacy equipment-`def` mitigation (`100/(100+def)`) still
   applies on top of the new defense reduction for prog3 targets —
   bounded (DEF_CAP 150) and deliberately untouched; the PvP re-base is
-  §11 sim work for the tier-gate slice.
-- Tier/equip gates (weapon `tierIndex × 5` on the matching trained
-  skill, armor on defense points; the missing SERVER equip gate; the
-  sword agility/power mismatch fix) ship with the client slice.
+  §11 sim work.
 - K values and the §11 balance-sim gates are first-guess; the sim
   retune runs before the flag is considered settled.
 - Suites that pin the legacy path (anticheat, grids, tick,
-  combat-lifecycle, protocol-v2, part of persistence) opt their
-  fixtures out of prog3 with a tagged comment — that coverage guards
-  the fail-open path until the cleanup PR deletes it.
+  combat-lifecycle, protocol-v2, threat, lifeskills-economy, part of
+  persistence) opt their fixtures out of prog3 with a tagged comment —
+  that coverage guards the fail-open path until the cleanup PR deletes
+  it.

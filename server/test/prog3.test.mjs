@@ -18,6 +18,7 @@
 import { GameRoom } from '../src/index.js';
 import { runRpgMigrations, RPG_SCHEMA_VERSION } from '../src/migrations.js';
 import { PROG3, prog3XpRequired, prog3FromLegacy } from '../src/prog3.js';
+import { BLACKSMITH_TIERS } from '../src/data.js';
 
 const mockState = {
   storage: {
@@ -249,6 +250,71 @@ const psA = room.playerState.pa;
   check('sanitize clamps alloc to stat caps, drops unknown keys',
     dirty.alloc.hp === 100 && dirty.alloc.dodge === 75 && dirty.alloc.aspd === 0 && !('bogus' in dirty.alloc), dirty.alloc);
   check('sanitize bounds pool', dirty.pool === 999, dirty.pool);
+}
+
+// ── 8b. Tier/equip gates (v2.3.1661, §6) ──
+{
+  const sess = { id: 'pa' };
+  const p3 = psA.prog3;
+  psA.dying = false; psA.dead = false; psA.disconnected = false;
+  // Reset the trained/alloc state the earlier sections inflated.
+  p3.sk.sword.level = 1; p3.sk.bow.level = 1; p3.sk.staff.level = 1;
+  p3.alloc.def = 0;
+  room._prog3Recompute(psA);
+
+  check('gate primitive: trained level gates weapons',
+    room._prog3GearOk(psA, 'sword', 5) === false
+    && (p3.sk.sword.level = 10, room._prog3GearOk(psA, 'sword', 5) === true), p3.sk.sword);
+  check('gate primitive: defense points gate armor-class gear',
+    room._prog3GearOk(psA, 'defense', 10) === false
+    && (p3.alloc.def = 10, room._prog3GearOk(psA, 'defense', 10) === true), p3.alloc.def);
+  check('gate primitive: legacy (non-prog3) players pass',
+    room._prog3GearOk({ }, 'sword', 95) === true);
+
+  // equip_request: THE previously-missing server gate.  A dropped
+  // high-tier bow (tierMult 6 → est tier 19 → req 95) with Bow Lv 1.
+  psA.weaponStash = [{ type: 'bow', tierMult: 6 }];
+  psA.rangedWeapon = null;
+  room._handleEquipRequest(sess, { stashIdx: 0, slot: 'rangedWeapon' });
+  check('equip_request: over-tier weapon rejected server-side',
+    psA.rangedWeapon === null && psA.weaponStash.length === 1,
+    { slot: psA.rangedWeapon, stash: psA.weaponStash.length });
+  p3.sk.bow.level = 95;
+  room._handleEquipRequest(sess, { stashIdx: 0, slot: 'rangedWeapon' });
+  check('equip_request: trained level unlocks the tier',
+    !!psA.rangedWeapon && psA.rangedWeapon.type === 'bow' && psA.weaponStash.length === 0,
+    { slot: psA.rangedWeapon, stash: psA.weaponStash.length });
+
+  // forge_weapon: the stat gate reads the trained skill now.  Tier
+  // index 1 (statReq 10 legacy) → prog3 requirement Melee 5.
+  const tierKey = Object.keys(BLACKSMITH_TIERS)[1];
+  const tier = BLACKSMITH_TIERS[tierKey];
+  psA.lifeSkills = { blacksmithing: { level: 99, xp: 0 } };
+  psA.coins = 100000;
+  psA.inventory = { ['ore_' + tier.oreName + '_ore']: 999 };
+  psA.weapon = null; psA.weaponStash = [];
+  p3.sk.sword.level = 1;
+  room._handleForgeWeapon(sess, { weaponType: 'sword', tierKey, isWoodwork: false });
+  check('forge: under-trained mint rejected', psA.weapon === null, psA.weapon);
+  p3.sk.sword.level = 5;
+  room._handleForgeWeapon(sess, { weaponType: 'sword', tierKey, isWoodwork: false });
+  check('forge: trained level unlocks the mint',
+    !!psA.weapon && psA.weapon.gearBase === tierKey, psA.weapon);
+
+  // stats_update armor ingest: gates on defense POINTS; rejection
+  // keeps the old armor (echo snaps the client back).
+  psA.armor = null;
+  p3.alloc.def = 10;
+  room._handleStatsUpdate(sess, { armor: { name: 'Test Plate', tierMult: 4 } }); // est tier 18 → req 90
+  check('armor ingest: over-tier swap rejected (defense points too low)', psA.armor === null, psA.armor);
+  p3.alloc.def = 90;
+  room._handleStatsUpdate(sess, { armor: { name: 'Test Plate', tierMult: 4 } });
+  check('armor ingest: defense allocation unlocks the tier',
+    !!psA.armor && psA.armor.name === 'Test Plate', psA.armor);
+  // Unequip always passes (grandfather rule: only SWAPS are gated).
+  p3.alloc.def = 0;
+  room._handleStatsUpdate(sess, { armor: null });
+  check('armor ingest: unequip always passes', psA.armor === null, psA.armor);
 }
 
 // ── 8. _saveRpg carries prog3 + the v10 stamp ──

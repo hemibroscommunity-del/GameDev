@@ -799,6 +799,15 @@ export const gridMethods = {
         // self-correction behavior).
         if (this._threatGearLocked(session.id, ps)) {
           // locked: keep the old armor
+        } else if (newArmor && !this._prog3EquipOk(ps, 'armor', newArmor)) {
+          // v2.3.1661 (prog3): armor tiers gate on allocated DEFENSE
+          // POINTS (§6) and armor swaps ride stats_update, not
+          // equip_request — so the new server gate must sit HERE too.
+          // Reject = keep the old armor; the player_state echo snaps
+          // the client's local armorStash mutation back (the exact
+          // threat-lock behavior above).  Unequip (null) always
+          // passes; already-worn armor is grandfathered (only swaps
+          // are gated).
         } else {
           ps.armor = newArmor;
           statsChanged = true;

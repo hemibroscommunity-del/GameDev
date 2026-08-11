@@ -334,6 +334,16 @@ export function canEquipItem(rpg, item, slotType) {
   /* Amulet uses AMULET_TIERS */
   if (slotType === 'amulet') tier = AMULET_TIERS[item.tier];
   if (!tier || !tier.statReq) return true;
+  /* v2.3.1661 (prog3): tables carry statReq = tierIndex × 10, and the
+     rebuild's requirement is tierIndex × 5 — statReq / 2 against the
+     trained level (weapons/amulet) or defense points (armor/shield). */
+  if (prog3Live(rpg)) {
+    var p3req = Math.ceil((tier.statReq || 0) / 2);
+    if (slotType === 'armor' || slotType === 'shield') return prog3Pts(rpg, 'def') >= p3req;
+    if (slotType === 'amulet') return prog3SkillLevel(rpg, 'staff') >= p3req;
+    var p3cat = item.type === 'bow' ? 'bow' : item.type === 'staff' ? 'staff' : 'sword';
+    return prog3SkillLevel(rpg, p3cat) >= p3req;
+  }
   var reqStat, playerVal;
   if (slotType === 'shield') {
     reqStat = SHIELD_EQUIP_STAT;
@@ -351,7 +361,7 @@ export function canEquipItem(rpg, item, slotType) {
   }
   return playerVal >= tier.statReq;
 }
-export function getEquipReqLabel(item, slotType) {
+export function getEquipReqLabel(item, slotType, rpg) {
   var _item$gearBase3;
   if (!item || !item.gearBase) return null;
   var isWood = (_item$gearBase3 = item.gearBase) === null || _item$gearBase3 === void 0 ? void 0 : _item$gearBase3.startsWith('ww_');
@@ -360,6 +370,19 @@ export function getEquipReqLabel(item, slotType) {
   var tier = tierTable[tierKey];
   if (slotType === 'amulet') tier = AMULET_TIERS[item.tier];
   if (!tier || !tier.statReq) return null;
+  /* v2.3.1661 (prog3): pass rpg to get the trained-skill requirement —
+     `have`/`met` carried so callers stop reading rpg[stat] themselves. */
+  if (rpg && prog3Live(rpg)) {
+    var p3q = Math.ceil((tier.statReq || 0) / 2);
+    if (slotType === 'armor' || slotType === 'shield') {
+      return { stat: 'defensePts', req: p3q, label: 'Defense', have: prog3Pts(rpg, 'def'), met: prog3Pts(rpg, 'def') >= p3q, prog3: true };
+    }
+    var p3cat = slotType === 'amulet' ? 'staff'
+      : item.type === 'bow' ? 'bow' : item.type === 'staff' ? 'staff' : 'sword';
+    var p3lbl = (p3cat === 'sword' ? 'Melee' : p3cat === 'bow' ? 'Bow' : 'Magic') + ' Lv';
+    var p3have = prog3SkillLevel(rpg, p3cat);
+    return { stat: p3cat, req: p3q, label: p3lbl, have: p3have, met: p3have >= p3q, prog3: true };
+  }
   var reqStat;
   if (slotType === 'shield') reqStat = SHIELD_EQUIP_STAT;else if (slotType === 'amulet') reqStat = AMULET_EQUIP_STAT;else if (slotType === 'armor') reqStat = ARMOR_EQUIP_STAT;else reqStat = EQUIP_STAT_MAP[item.type] || 'power';
   return {
@@ -2342,9 +2365,35 @@ export const GEAR_STAT_REQ = {
   amulet: 'mind' /* Enhancement/utility */
 };
 
+/* ═══ v2.3.1661 (prog3 tier gates, PROGRESSION-REDESIGN §6) ═══
+   Weapons gate on the matching TRAINED skill at tierIndex × 5 (20
+   tiers → 0..95 against the level-100 cap) — this also FIXES the
+   standing sword mismatch (GEAR_STAT_REQ said agility, EQUIP_STAT_MAP
+   said power; both are Melee now).  Armor + shield gate on allocated
+   DEFENSE POINTS (the owner's literal ask; the min(100, level)
+   per-stat cap is what stops a fresh account outrunning its level).
+   Amulets follow Magic.  SERVER LOCKSTEP: gear.js forge/equip gates +
+   grids.js armor ingest apply the same rule — legacy tables carry
+   statReq = tierIndex × 10, so the prog3 requirement is statReq / 2
+   wherever only the table row is in hand. */
+export function prog3GearReq(rpg, gearType, tierIndex) {
+  var value = tierIndex * 5;
+  if (gearType === 'armor' || gearType === 'shield') {
+    var defPts = prog3Pts(rpg, 'def');
+    return { stat: 'defensePts', label: 'Defense', value: value, have: defPts, met: defPts >= value, prog3: true };
+  }
+  var cat = gearType === 'bow' ? 'bow' : (gearType === 'staff' || gearType === 'amulet') ? 'staff' : 'sword';
+  var label = (cat === 'sword' ? 'Melee' : cat === 'bow' ? 'Bow' : 'Magic') + ' Lv';
+  var lvl = prog3SkillLevel(rpg, cat);
+  return { stat: cat, label: label, value: value, have: lvl, met: lvl >= value, prog3: true };
+}
+
 /* Calculate the stat requirement for a given crafting tier */
-/* tierIndex: 0-based position in the tier table (0=first tier, 19=last) */
-export function getGearStatReq(gearType, tierIndex) {
+/* tierIndex: 0-based position in the tier table (0=first tier, 19=last)
+   v2.3.1661: pass rpg to get the prog3 requirement when the rebuild is
+   live — the returned {label, value, met} drive both gate and display. */
+export function getGearStatReq(gearType, tierIndex, rpg) {
+  if (rpg && prog3Live(rpg)) return prog3GearReq(rpg, gearType, tierIndex);
   var stat = GEAR_STAT_REQ[gearType];
   if (!stat) return {
     stat: 'power',
@@ -2352,13 +2401,15 @@ export function getGearStatReq(gearType, tierIndex) {
   };
   return {
     stat: stat,
-    value: tierIndex * 10
+    value: tierIndex * 10,
+    label: stat.charAt(0).toUpperCase() + stat.slice(1)
   };
 }
 
 /* Check if player meets the stat requirement for a piece of gear */
 export function meetsGearReq(rpg, gearType, tierIndex) {
-  var req = getGearStatReq(gearType, tierIndex);
+  var req = getGearStatReq(gearType, tierIndex, rpg);
+  if (req.prog3) return req.met;
   return (rpg[req.stat] || 0) >= req.value;
 }
 
@@ -2389,6 +2440,8 @@ export function meetsStatReq(rpg, item, weaponType) {
     var table = isWW ? WOODWORKING_TIERS : BLACKSMITH_TIERS;
     var tierIdx = Object.keys(table).indexOf(tierKey);
     if (tierIdx < 0) return true;
+    /* v2.3.1661 (prog3): trained level ≥ tierIndex × 5 (§6). */
+    if (prog3Live(rpg)) return prog3GearReq(rpg, gearType, tierIdx).met;
     return (rpg[stat] || 0) >= tierIdx * 10;
   }
 
@@ -2396,6 +2449,10 @@ export function meetsStatReq(rpg, item, weaponType) {
   var tierMult = item.tierMult || 1;
   /* Approximate: tierMult 1.0=tier0, 1.5=tier5, 2.0=tier8, 3.0=tier12, 6.0=tier19 */
   var estIdx = Math.max(0, Math.round((tierMult - 1) * 6));
+  /* v2.3.1661: capped at index 19 for prog3 — the raw curve reads 30
+     at tierMult 6, demanding level 150 on a 100-cap skill (server
+     mirror: gear.js _prog3EquipOk). */
+  if (prog3Live(rpg)) return prog3GearReq(rpg, gearType, Math.min(19, estIdx)).met;
   return (rpg[stat] || 0) >= estIdx * 10;
 }
 
