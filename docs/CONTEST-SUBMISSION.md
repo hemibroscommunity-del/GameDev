@@ -46,7 +46,7 @@ getting disqualified after judging costs the entry and looks worse.
 | Hosted on Cloudflare | ✅ Pages (client) + Workers (server) |
 | JS / TS / Solidity | ✅ JavaScript + Solidity |
 | Fully playable & completable | ✅ Five-quest tutorial arc, verified end-to-end in the headless suite |
-| Third-party assets licensed + credited | ❌ **`CREDITS.md` has unfilled rows — this is the remaining blocker** |
+| Third-party assets licensed + credited | ⚠️ Art (ChatGPT) and music (Suno, paid plan) recorded in `CREDITS.md`; **the village tileset and the sound effects are still unconfirmed** |
 | Permission to feature in future HAIR Games | State it in the post (below) |
 | One entry per person | ✅ |
 
@@ -57,15 +57,20 @@ getting disqualified after judging costs the entry and looks worse.
    Until `SCORES_CONTRACT` and `RELAYER_KEY` are set the feature is simply
    off, and "onchain" would rest on the read-only NFT check alone — thin
    against the Aug 9 clarification.
-2. **Fill in `CREDITS.md`.** Every art/audio row needs a real source and
-   license. If anything turns out to be unlicensed, replace it — Kenney.nl
-   and OpenGameArt (CC0) are the fastest substitutions. The rules make this
-   explicit, and an MIT license over art you don't own is a bigger problem
-   than a missing asset.
+2. **Two rows left in `CREDITS.md`.** The owner confirmed the art is
+   ChatGPT-generated and the music is Suno on a paid plan (full commercial
+   rights) — both are recorded and both are the project's own work, not
+   third-party material. Two groups are still open:
+   - the **village tileset** (`public/assets/tilesets/village/`), whose
+     `TX_*` naming says downloaded pack rather than generated art — it looks
+     like Cainos' *Pixel Art Top Down — Basic*, which is commercially free
+     **but requires crediting the author by name**;
+   - the **sound effects** (`public/sfx/`, the creature/ambient `.mp3`s),
+     which the music answer does not cover.
 
-**Also: merge PR #362 to `main`.** All of this work lives on
-`claude/dodge-roll-grok-prompt-xb24zn`. Cloudflare Pages builds `main`, so
-until it merges the judges are playing the old build.
+   If either turns out to be unlicensed, replace it — Kenney.nl and
+   OpenGameArt (CC0) are the fastest substitutions. An MIT license over art
+   you don't own is a bigger problem than a missing asset.
 
 ---
 

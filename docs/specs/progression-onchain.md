@@ -104,6 +104,18 @@ Hemi faucet.
 
 1. `server/wrangler.toml` → set `SCORES_CONTRACT = "0x…"` to the address from
    Step 3, and commit that (it's public data).
+
+   > **Do not set this one in the dashboard.** `wrangler.toml` declares
+   > `SCORES_CONTRACT = ""`, and every auto-deploy pushes that config — so a
+   > dashboard-set address gets overwritten with the empty string on the next
+   > merge to `main` that touches `server/**`, and the feature silently
+   > switches off with no error anywhere. It has to be in the file.
+   > **Secrets are not affected** — Cloudflare preserves `RELAYER_KEY` across
+   > deploys, which is why step 2 *is* a dashboard action.
+   >
+   > If you'd rather not edit a file: paste the contract address into the
+   > session and it can be committed for you as a one-line PR.
+
 2. Add the private key as an **encrypted secret** — never in the repo:
    - Cloudflare dashboard → Workers & Pages → `brotown-server` → **Settings**
      → **Variables and Secrets** → **Add** → name `RELAYER_KEY`, value the
