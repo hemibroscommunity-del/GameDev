@@ -205,6 +205,11 @@ check('v2 safe-zone change sends empty zone_state', zsTown.length === 1 && zsTow
 // 2026-07-16: every point spent = +1 level = a felt power gain) ──
 {
   const ps = room.playerState.p2;
+  /* v2.3.1659 (prog3): this block and the ones below pin the LEGACY
+     level/damage-channel math — still live for any blob whose v10
+     migration fail-opens — so the fixture opts out of the respec.
+     prog3.test.mjs covers the new path. */
+  delete ps.prog3;
   ps.armor = null;
   ps.power = 10; ps.vitality = 8; ps.endurance = 0; ps.agility = 4; ps.mind = 3;
   // 25 points placed across three grids -> level 25 (stat levels no

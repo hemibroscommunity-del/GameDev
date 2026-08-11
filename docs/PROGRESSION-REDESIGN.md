@@ -1,6 +1,6 @@
 # Combat Progression Redesign — Options & Decisions (v2.3.1658)
 
-**Status: PROPOSAL — nothing in this document is implemented.**
+**Status: APPROVED (owner, 2026-08-13: "Go recommended") — implementation in progress per §10.**
 This is the options paper the owner asked for ("still thinking through it,
 help me plan some potential options here"). Each design axis below offers
 2–3 concrete options with the math sketched out, and a recommendation.
@@ -21,17 +21,17 @@ default — mark your picks and the rest of the document explains each row.
 | 2 | Trained vs allocated | 3 trained + 7 allocated | LOCKED | ✅ |
 | 3 | Character level formula | Σ trained levels (cap 300) | LOCKED | ✅ |
 | 4 | Migration | full respec | LOCKED | ✅ |
-| 5 | XP curve for melee/bow/magic | A: reuse today's weapon curve · B: OSRS curve · C: two-slope | **A** | |
-| 6 | Does tanking train anything? | A: no · B: generic XP trickle | **A** | |
-| 7 | Old defense-skill XP converts to | A: bonus points · B: head-start XP · C: dormant | **A** | |
-| 8 | Per-point stat values | A: linear + hard caps · B: diminishing curves · C: soft-cap tiers | **A** | |
-| 9 | What the defense stat DOES | A: flat HP · B: % damage reduction (cap ~40%) · C: hybrid | **B** | |
-| 10 | The ~15 unmapped T2 channels | A: dropped (casualty list below) · B: perk layer later · C: fold into gear | **A** | |
-| 11 | HP per character level | A: keep endpoint (~8.3/lvl) · B: shrink it, HP lives in the hp stat | **B** | |
-| 12 | Armor tier gate | A: raw defense points · B: char level · C: defense points + per-stat level cap | **C** | |
-| 13 | Damage per trained level | A: linear +K/level (sim-tuned) · B: %-multiplicative · C: OSRS max-hit | **A** | |
-| 14 | Respec point count | A: convert old placed points · B: recompute from carried XP | **B** | |
-| 15 | Trained XP authority | A: server-owned · B: client-report-clamped | **A** | |
+| 5 | XP curve for melee/bow/magic | A: reuse today's weapon curve · B: OSRS curve · C: two-slope | **A** | ✅ A (rec) |
+| 6 | Does tanking train anything? | A: no · B: generic XP trickle | **A** | ✅ A (rec) |
+| 7 | Old defense-skill XP converts to | A: bonus points · B: head-start XP · C: dormant | **A** | ✅ A (rec) |
+| 8 | Per-point stat values | A: linear + hard caps · B: diminishing curves · C: soft-cap tiers | **A** | ✅ A (rec) |
+| 9 | What the defense stat DOES | A: flat HP · B: % damage reduction (cap ~40%) · C: hybrid | **B** | ✅ B (rec) |
+| 10 | The ~15 unmapped T2 channels | A: dropped (casualty list below) · B: perk layer later · C: fold into gear | **A** | ✅ A (rec) |
+| 11 | HP per character level | A: keep endpoint (~8.3/lvl) · B: shrink it, HP lives in the hp stat | **B** | ✅ B (rec) |
+| 12 | Armor tier gate | A: raw defense points · B: char level · C: defense points + per-stat level cap | **C** | ✅ C (rec) |
+| 13 | Damage per trained level | A: linear +K/level (sim-tuned) · B: %-multiplicative · C: OSRS max-hit | **A** | ✅ A (rec) |
+| 14 | Respec point count | A: convert old placed points · B: recompute from carried XP | **B** | ✅ B (rec) |
+| 15 | Trained XP authority | A: server-owned · B: client-report-clamped | **A** | ✅ A (rec) |
 
 ---
 

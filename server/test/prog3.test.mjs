@@ -1,0 +1,264 @@
+/* Prog3 combat-rebuild test (v2.3.1659; spec:
+ * docs/specs/progression-v3.md, design: docs/PROGRESSION-REDESIGN.md).
+ *
+ * Pins the server core of the trained-skill progression:
+ *   1. Migration v10 respec: levels from carried XP (legacy+1), pool =
+ *      Σ legacy weapon levels + defense level, alloc zeroed, absent-only.
+ *   2. Fresh-join bootstrap: levels 1/1/1, char level 3, §5-B pools.
+ *   3. Trained XP accrual at hit time (melee→sword, special→staff) and
+ *      the level-up: +1 pool, +1 char level, full restore, prog3_level.
+ *   4. Allocation endpoint: pool gate, stat whitelist ('__proto__'
+ *      rejected), the §6-C double cap (stat cap AND min(100, level)).
+ *   5. Combat math: defense % reduction, dodge from the allocated stat,
+ *      dropped channels inert (laststand/thorns/bulwark/attunement/
+ *      conditioning/t2Flat) while legacy players keep them.
+ *   6. Anticheat ceiling lockstep: every prog3 roll ≤ _maxDmgForAttacker.
+ *   7. _sanitizeProg3 bounds corrupt stored shapes.
+ */
+import { GameRoom } from '../src/index.js';
+import { runRpgMigrations, RPG_SCHEMA_VERSION } from '../src/migrations.js';
+import { PROG3, prog3XpRequired, prog3FromLegacy } from '../src/prog3.js';
+
+const mockState = {
+  storage: {
+    get: async () => undefined,
+    put: async () => {},
+    list: async () => new Map(),
+    delete: async () => {},
+  },
+  getWebSockets: () => [],
+  acceptWebSocket: () => {},
+};
+const mockEnv = {
+  LEADERBOARD: { idFromName: () => 'x', get: () => ({ fetch: async () => ({}) }) },
+};
+
+function fakeWs(label) {
+  return { label, sent: [], send(s) { this.sent.push(JSON.parse(s)); }, close() {} };
+}
+function msgsOfType(ws, type) { return ws.sent.filter((m) => m.type === type); }
+
+let failures = 0;
+function check(name, cond, detail) {
+  if (cond) { console.log('PASS', name); }
+  else { failures++; console.log('FAIL', name, detail !== undefined ? JSON.stringify(detail) : ''); }
+}
+
+// ── 1. Migration v10: the respec ──
+{
+  check('schema version is 10', RPG_SCHEMA_VERSION === 10, RPG_SCHEMA_VERSION);
+  const blob = {
+    _v: 9,
+    weaponSkills: {
+      sword: { level: 7, xp: 500 },
+      bow: { level: 0, xp: 10 },
+      staff: { level: 100, xp: 12345 },
+    },
+    defenseSkill: { level: 12, xp: 40 },
+    t2Flat: { defense: { ironskin: 300 } },
+  };
+  const res = runRpgMigrations(blob);
+  check('v10 runs clean', res.failed === null && res.version === 10, res);
+  check('sword level = legacy+1, xp carried',
+    blob.prog3.sk.sword.level === 8 && blob.prog3.sk.sword.xp === 500, blob.prog3.sk.sword);
+  check('bow floors at level 1', blob.prog3.sk.bow.level === 1 && blob.prog3.sk.bow.xp === 10, blob.prog3.sk.bow);
+  check('staff caps at 100, xp zeroed', blob.prog3.sk.staff.level === 100 && blob.prog3.sk.staff.xp === 0, blob.prog3.sk.staff);
+  check('pool = Σ weapon levels + defense level', blob.prog3.pool === 7 + 0 + 100 + 12, blob.prog3.pool);
+  check('alloc starts zeroed',
+    Object.values(blob.prog3.alloc).every((v) => v === 0)
+      && Object.keys(blob.prog3.alloc).sort().join(',') === 'aspd,crit,critDmg,def,dodge,hp,stam', blob.prog3.alloc);
+  check('legacy fields kept for rollback', blob.weaponSkills.sword.level === 7 && blob.t2Flat.defense.ironskin === 300);
+  // Absent-only: a second pass (or a hand-reset _v) never re-derives.
+  blob.prog3.sk.sword.level = 42;
+  blob._v = 9;
+  runRpgMigrations(blob);
+  check('v10 is absent-only (live prog3 wins)', blob.prog3.sk.sword.level === 42, blob.prog3.sk.sword);
+  const empty = {};
+  runRpgMigrations(empty);
+  check('empty blob gets fresh prog3', empty.prog3.sk.sword.level === 1 && empty.prog3.pool === 0, empty.prog3);
+  const fresh = prog3FromLegacy(null);
+  check('prog3FromLegacy(null) is the fresh shape',
+    fresh.sk.bow.level === 1 && fresh.pool === 0 && fresh.alloc.def === 0, fresh);
+}
+
+// ── 2. Fresh-join bootstrap ──
+const room = new GameRoom(mockState, mockEnv);
+const wsA = fakeWs('pa');
+const baseSession = () => ({ id: null, name: 'Anon', data: {}, rtt: 80, lastPing: 0, lastRecv: Date.now() });
+room.sessions.set(wsA, baseSession());
+const joinData = { x: -100000, y: -100000, z: 'meadow' };
+await room.webSocketMessage(wsA, JSON.stringify({ type: 'join', id: 'pa', name: 'Trainee', protocolVersion: 2, data: { ...joinData } }));
+const psA = room.playerState.pa;
+{
+  check('fresh join seeds prog3', !!psA.prog3 && psA.prog3.sk.sword.level === 1 && psA.prog3.pool === 0, psA.prog3);
+  check('char level = Σ trained = 3', psA.level === 3, psA.level);
+  check('maxHp = 100 + level×2 (no armor, no hp pts)', psA.maxHp === 106, psA.maxHp);
+  check('maxStamina = 100 flat', psA.maxStamina === 100, psA.maxStamina);
+  check('maxMana = floor(100 + magic×1.2)', psA.maxMana === 101, psA.maxMana);
+  const sync = msgsOfType(wsA, 'state_sync')[0];
+  check('caps.prog3 advertised', sync && sync.caps && sync.caps.prog3 === true, sync && sync.caps && sync.caps.prog3);
+  const st = msgsOfType(wsA, 'player_state')[0];
+  check('player_state echoes prog3', st && st.payload && !!st.payload.prog3, st && Object.keys(st.payload || {}));
+}
+
+// ── 3. Trained XP accrual + level-up ──
+{
+  psA.hp = 5; psA.stamina = 5; psA.mana = 5;
+  room._prog3AwardXp('pa', psA, 'sword', prog3XpRequired(1) - 1);
+  check('xp below threshold: no level', psA.prog3.sk.sword.level === 1 && psA.prog3.pool === 0, psA.prog3.sk.sword);
+  room._prog3AwardXp('pa', psA, 'sword', 1);
+  check('level-up: sword 2, pool 1, char level 4',
+    psA.prog3.sk.sword.level === 2 && psA.prog3.pool === 1 && psA.level === 4,
+    { sk: psA.prog3.sk.sword, pool: psA.prog3.pool, level: psA.level });
+  check('level-up restores resources', psA.hp === psA.maxHp && psA.stamina === psA.maxStamina && psA.mana === psA.maxMana,
+    { hp: psA.hp, maxHp: psA.maxHp });
+  const lvlMsgs = msgsOfType(wsA, 'prog3_level');
+  check('prog3_level notification sent', lvlMsgs.length === 1
+    && lvlMsgs[0].payload.skill === 'sword' && lvlMsgs[0].payload.level === 2 && lvlMsgs[0].payload.charLevel === 4,
+    lvlMsgs.map((m) => m.payload));
+
+  // Hit-time accrual through the real monster_damage handler:
+  // melee → sword, special → staff (§3: specials credit Magic).
+  const m = (room.monsters.meadow || []).find((x) => x.alive);
+  check('harness found a live meadow monster', !!m);
+  if (m) {
+    m.hp = 100000; m.maxHp = 100000; m.atkCd = Date.now() + 1e9;
+    psA.x = m.x; psA.y = m.y; psA.z = 'meadow';
+    const sess = [...room.sessions.values()].find((s) => s.id === 'pa');
+    const xpBefore = psA.prog3.sk.sword.xp;
+    room._handleMonsterDamage(sess, { monsterId: m.id, zone: 'meadow', slot: 'melee' });
+    check('melee hit trains sword (xp = credited damage)', psA.prog3.sk.sword.xp > xpBefore,
+      { before: xpBefore, after: psA.prog3.sk.sword.xp });
+    const staffBefore = psA.prog3.sk.staff.xp + psA.prog3.sk.staff.level;
+    room._handleMonsterDamage(sess, { monsterId: m.id, zone: 'meadow', slot: 'melee', special: true });
+    check('special hit trains staff/Magic', psA.prog3.sk.staff.xp + psA.prog3.sk.staff.level > staffBefore,
+      psA.prog3.sk.staff);
+  }
+}
+
+// ── 4. Allocation endpoint ──
+{
+  const sess = { id: 'pa' };
+  const p3 = psA.prog3;
+  p3.pool = 0;
+  room._handleProg3Allocate(sess, { stat: 'hp' });
+  check('empty pool rejects', p3.alloc.hp === 0 && p3.pool === 0, p3);
+  p3.pool = 10;
+  room._handleProg3Allocate(sess, { stat: 'coins' });
+  room._handleProg3Allocate(sess, { stat: '__proto__' });
+  room._handleProg3Allocate(sess, {});
+  check('bad stat names reject (pool untouched)', p3.pool === 10 && p3.alloc.hp === 0, p3);
+  // §6-C: per-stat cap = min(stat cap, character level).  Char level is
+  // 4 here, so the 5th hp point must bounce.
+  for (let i = 0; i < 5; i++) room._handleProg3Allocate(sess, { stat: 'hp' });
+  check('per-stat cap = min(100, char level)', p3.alloc.hp === 4 && p3.pool === 6,
+    { hp: p3.alloc.hp, pool: p3.pool, level: psA.level });
+  check('hp points land in maxHp (+8/pt)', psA.maxHp === 100 + psA.level * 2 + 4 * 8, psA.maxHp);
+  const acks = msgsOfType(wsA, 'prog3_allocated');
+  check('prog3_allocated acks each landed point', acks.length === 4
+    && acks[3].payload.stat === 'hp' && acks[3].payload.pts === 4 && acks[3].payload.pool === 6,
+    acks.map((a) => a.payload));
+  // Dodge's own hard cap (75) binds even with level headroom.
+  psA.prog3.sk.sword.level = 100; psA.prog3.sk.bow.level = 100; psA.prog3.sk.staff.level = 100;
+  room._prog3Recompute(psA);
+  check('char level caps at 300', psA.level === 300, psA.level);
+  p3.pool = 200; p3.alloc.dodge = 75;
+  room._handleProg3Allocate(sess, { stat: 'dodge' });
+  check('dodge hard cap 75 binds', p3.alloc.dodge === 75 && p3.pool === 200, p3.alloc.dodge);
+}
+
+// ── 5. Combat math: defense, dodge, dropped channels ──
+{
+  const p3 = psA.prog3;
+  psA._zoneEntryGraceUntil = 0; psA._buffs = {};
+  psA.maxHp = 1000; psA.hp = 1000;
+  p3.alloc.dodge = 0; p3.alloc.def = 50;
+  const r = room._applyDamage(psA, 100, false);
+  check('defense: −0.4%/pt (50 pts → ×0.8)', r.dmgTaken === 80, r);
+  p3.alloc.def = 100;
+  const r2 = room._applyDamage(psA, 100, false);
+  check('defense caps at −40%', r2.dmgTaken === 60, r2);
+  p3.alloc.dodge = 75;
+  check('dodge pct = 0.4%/pt (75 → 30%)', Math.abs(room._prog3DodgePct(psA) - 0.30) < 1e-9, room._prog3DodgePct(psA));
+  const origRandom = Math.random;
+  Math.random = () => 0.29;
+  const rd = room._applyDamage(psA, 100, false);
+  Math.random = origRandom;
+  check('dodge roll consumes the allocated stat', rd.dodged === true && rd.dmgTaken === 0, rd);
+  p3.alloc.dodge = 0; p3.alloc.def = 0;
+
+  // Dropped channels are inert for prog3 players...
+  psA.hpSpec = { laststand: 100 };
+  psA.defenseSpec = { thorns: 100, bulwark: 100, secondwind: 100 };
+  psA.enduranceSpec = { conditioning: 100, evasion: 100 };
+  psA.weaponSpecs = { staff: { attunement: 100 }, sword: { precision: 100 } };
+  psA.t2Flat = { defense: { ironskin: 500 } };
+  check('t2Flat reads 0 under prog3', room._t2Flat(psA, 'defense', 'ironskin') === 0);
+  check('bulwark inert under prog3', room._blockStaminaMult(psA) === 1);
+  check('attunement inert under prog3', room._attuneMult(psA) === 1);
+  check('conditioning inert under prog3', room._conditioningFlat(psA) === 0);
+  check('crit-counter channel inert under prog3', room._wpnCritPts(psA, 'sword') === 0);
+  psA.hp = 10;
+  const kill = room._applyDamage(psA, 9999, false);
+  check('laststand inert under prog3 (killing blow kills)', psA.hp === 0 && !kill.lastStand, { hp: psA.hp, kill });
+  psA.hp = psA.maxHp;
+
+  // ...while legacy (non-prog3) state keeps the old reads.
+  const legacy = { t2Flat: { defense: { ironskin: 42 } }, defenseSpec: { bulwark: 50 }, weaponSpecs: { sword: { precision: 100 } } };
+  check('legacy t2Flat still reads banked value', room._t2Flat(legacy, 'defense', 'ironskin') === 42);
+  check('legacy bulwark still discounts', room._blockStaminaMult(legacy) === 0.5);
+  check('legacy crit counter still reads points', room._wpnCritPts(legacy, 'sword') === 100);
+}
+
+// ── 6. Damage roll ≤ anticheat ceiling (lockstep) ──
+{
+  psA.weapon = { type: 'sword', tierMult: 6, isVolatile: true };
+  psA.rangedWeapon = { type: 'bow', tierMult: 6 };
+  psA.staffWeapon = { type: 'staff', tierMult: 6 };
+  psA.prog3.alloc.crit = 75; psA.prog3.alloc.critDmg = 100;
+  psA._cursedUntil = 0; psA.amulet = null;
+  for (const special of [false, true]) {
+    const cap = room._maxDmgForAttacker(psA, special);
+    let maxSeen = 0;
+    for (let i = 0; i < 400; i++) {
+      for (const slot of ['melee', 'ranged', 'staff']) {
+        const { dmg } = room._computeAttackDamage(psA, slot, special);
+        if (dmg > maxSeen) maxSeen = dmg;
+        if (dmg > cap) { maxSeen = Infinity; break; }
+      }
+    }
+    check(`prog3 ${special ? 'special' : 'normal'} rolls stay under the ceiling`, maxSeen <= cap, { maxSeen, cap });
+  }
+  // Deterministic crit: rate 30% at 75 pts, flat +200 at 100 critDmg.
+  const origRandom = Math.random;
+  Math.random = () => 0.0;
+  const critRoll = room._computeAttackDamage(psA, 'melee', false);
+  Math.random = origRandom;
+  check('prog3 crit fires from the allocated stat', critRoll.isCrit === true, critRoll);
+}
+
+// ── 7. Sanitizer bounds corrupt stored shapes ──
+{
+  const dirty = room._sanitizeProg3({
+    sk: { sword: { level: 999, xp: -5 }, bow: 'nope' },
+    alloc: { hp: 5000, dodge: 999, bogus: 9, aspd: -3 },
+    pool: 1e9,
+  });
+  check('sanitize clamps sk levels to [1,100]', dirty.sk.sword.level === 100 && dirty.sk.bow.level === 1, dirty.sk);
+  check('sanitize floors xp at 0', dirty.sk.sword.xp === 0, dirty.sk.sword);
+  check('sanitize clamps alloc to stat caps, drops unknown keys',
+    dirty.alloc.hp === 100 && dirty.alloc.dodge === 75 && dirty.alloc.aspd === 0 && !('bogus' in dirty.alloc), dirty.alloc);
+  check('sanitize bounds pool', dirty.pool === 999, dirty.pool);
+}
+
+// ── 8. _saveRpg carries prog3 + the v10 stamp ──
+{
+  let lastPut = null;
+  room.state.storage.put = async (k, v) => { if (String(k).startsWith('rpg:')) lastPut = v; };
+  await room._saveRpg('pa', psA);
+  check('_saveRpg persists prog3', lastPut && !!lastPut.prog3 && lastPut._v === 10,
+    lastPut && { hasProg3: !!lastPut.prog3, _v: lastPut._v });
+}
+
+console.log(failures === 0 ? '\nprog3: ALL PASS' : `\nprog3: ${failures} FAILURE(S)`);
+if (failures > 0) process.exit(1);

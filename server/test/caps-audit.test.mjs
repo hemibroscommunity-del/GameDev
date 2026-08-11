@@ -50,6 +50,12 @@ function check(name, cond, detail) {
  * real client gate must be deleted (checked below). */
 const CAPS_ALLOWLIST = new Map([
   ['httpAuth', 'handshake negotiation field, not a feature gate — the client SENDS httpAuth:true in join (wsClient.js) rather than reading it from caps'],
+  // v2.3.1659: prog3 ships server-first (PROGRESSION-REDESIGN §10 —
+  // the trained-skill combat rebuild).  The client gate (new Build UI,
+  // prog3_allocate sends, local XP-accrual retirement) lands in the
+  // next client slice; DELETE this entry in that PR so the audit
+  // starts enforcing the real gate.
+  ['prog3', 'server-first rollout: client gate ships in the v2.3.1660+ Build-UI slice'],
 ]);
 
 const here = dirname(fileURLToPath(import.meta.url));

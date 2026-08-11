@@ -41,8 +41,9 @@
  */
 
 import { t2ReplayFlat } from './data.js';
+import { prog3FromLegacy } from './prog3.js';
 
-export const RPG_SCHEMA_VERSION = 9;
+export const RPG_SCHEMA_VERSION = 10;
 
 /* Pure version of the v2.3.769 heal (was GameRoom._healLifeSkills):
  * records bootstrapped from pre-fix clients carry lifeSkills with
@@ -365,6 +366,36 @@ export const MIGRATIONS = [
       if (!blob || typeof blob !== 'object') return false;
       if (blob.t2Flat && typeof blob.t2Flat === 'object') return false;
       blob.t2Flat = t2ReplayFlat(blob);
+      return true;
+    },
+  },
+  {
+    v: 10,
+    name: 'prog3-respec',
+    // v2.3.1659: THE COMBAT REBUILD RESPEC (docs/PROGRESSION-REDESIGN.md,
+    // owner-approved 2026-08-13).  Every stored character gets the new
+    // trained-skill track: prog3FromLegacy (prog3.js) recomputes from
+    // carried XP — trained level = legacy weapon-skill level + 1 (same
+    // curve, 1-based now), leftover xp carried, allocation pool = Σ
+    // legacy weapon levels + legacy defense level, all seven allocated
+    // stats zeroed (the full respec: players re-choose their build).
+    // Absent-only fill (the v4/v9 idempotency pattern): a blob already
+    // carrying prog3 was respecced once and its live trained levels are
+    // the truth — never re-derive from the frozen legacy fields.
+    // The legacy fields themselves (weaponSkills/weaponSpecs/defense*/
+    // hpSpec/enduranceSpec/t2Flat/T1 stats) are deliberately KEPT: the
+    // rollback path needs them, and every prog3 read of them is gated
+    // off at the choke points instead (_t2Flat and the point-count
+    // helpers return neutral for prog3 players — that IS the doc's
+    // "ratchet zeroed" invariant, enforced at the single read site so a
+    // rollback recovers the real accumulator instead of an estimate).
+    // The join bootstrap runs prog3FromLegacy on first-connect payloads
+    // (the boundary heal — join.js).  Cleanup PR retires the legacy
+    // fields after soak (§10 PR-6).
+    run(blob) {
+      if (!blob || typeof blob !== 'object') return false;
+      if (blob.prog3 && typeof blob.prog3 === 'object') return false;
+      blob.prog3 = prog3FromLegacy(blob);
       return true;
     },
   },

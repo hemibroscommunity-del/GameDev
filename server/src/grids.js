@@ -297,7 +297,17 @@ export const gridMethods = {
 
   // Safe read for every consumption site (combat.js, index.js,
   // _recomputeMaxes below).  Missing shapes read as 0 — never throw.
+  // v2.3.1659 (prog3): reads 0 for respecced players — this is THE
+  // choke point that retires every banked channel (ironskin,
+  // secondwind, thorns, vigor, stamina, recovery, lifeblood, the
+  // weapon damage/crit flats) under the combat rebuild.  The doc's
+  // "t2Flat ratchet zeroed" invariant is enforced HERE rather than by
+  // zeroing storage, so a rollback recovers the real accumulator
+  // instead of a replay estimate.  The prog3 anticheat-ceiling branch
+  // (combat.js) moves in lockstep by construction: it never reads the
+  // accumulator.
   _t2Flat(ps, grid, key) {
+    if (ps && ps.prog3) return 0;
     return (ps && ps.t2Flat && ps.t2Flat[grid] && typeof ps.t2Flat[grid][key] === 'number')
       ? ps.t2Flat[grid][key] : 0;
   },
@@ -409,9 +419,11 @@ export const gridMethods = {
     return this._t2Flat(ps, 'endurance', 'stamina');
   },
   _conditioningFlat(ps) {
+    if (ps && ps.prog3) return 0; // v2.3.1659: channel dropped under prog3
     return Math.floor(Math.min(100, ((ps && ps.enduranceSpec && ps.enduranceSpec.conditioning) || 0)) / 2);
   },
   _evasionDodge(ps) {
+    if (ps && ps.prog3) return 0; // v2.3.1659: dodge is the allocated stat now
     return t2CounterRate((ps && ps.enduranceSpec && ps.enduranceSpec.evasion) || 0);
   },
   _lifebloodFlat(ps) {
@@ -501,6 +513,12 @@ export const gridMethods = {
 
   _recomputeMaxes(ps) {
     if (!ps) return;
+    // v2.3.1659 (prog3): respecced players derive level + every pool
+    // from the trained-skill track (prog3.js _prog3Recompute — level =
+    // Σ trained levels cap 300, hp/stamina from the allocated stats,
+    // mana from Magic level).  The legacy math below keeps serving any
+    // blob the prog3 adoption couldn't produce (fail-open safety).
+    if (ps.prog3) return this._prog3Recompute(ps);
     // v2.3.910: combat level was DERIVED as the sum of the use-trained
     // build-skill levels, clamped to 500 (replacing the old
     // 5-build-point gate; v2.3.1138 added defenseSkill as the 6th).
@@ -582,7 +600,15 @@ export const gridMethods = {
     // blobs; nothing re-injects them).
     const T1_STATS = ['power', 'vitality', 'endurance', 'agility', 'mind'];
     let statsChanged = false;
-    for (const s of T1_STATS) {
+    /* v2.3.1659 (prog3): the T1 stats are dead inputs for respecced
+       players (every consumer branches to the trained/allocated track)
+       but they stay STORED for rollback — and this loop would now
+       CORRUPT them: _statCap reads ps.level, which prog3 shrinks from
+       the 1..1000 points-placed scale to 3..300, so the next client
+       re-report of a legitimately-large stored stat would clamp it
+       down and _saveRpg the loss.  Freeze them instead: skip the whole
+       loop under prog3. */
+    for (const s of (ps.prog3 ? [] : T1_STATS)) {
       if (typeof payload[s] === 'number') {
         const clamped = this._clampStat(payload[s], lvl);
         /* v2.3.1624: a reported 0 against a stored non-zero is the
