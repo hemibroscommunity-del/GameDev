@@ -292,3 +292,25 @@ export const WORLDVIEW_EXITS = [
   { zoneId: 'verdant', tx: 7,  ty: 20, dir: 'nw',    label: 'Verdant Wilds',   color: '#6abf4f' },
   { zoneId: 'frost',   tx: 13, ty: 13, dir: 'nw',    label: 'Frost Ridge',    color: ELEMENTS.frost.color },
 ];
+
+/* ═══ v2.3.1677: PAINTED, NOT PLAYABLE ═══
+ * Owner: "put 'coming soon' over all buildings in town and over all zone
+ * entry points that don't have a portal."
+ *
+ * The worldview art paints nine regions; only five have a live trail-head in
+ * WORLDVIEW_EXITS above.  The other four are commented out up there — their
+ * coordinates are kept HERE rather than left as dead comments, because a
+ * commented-out exit tells a reader nothing and tells the PLAYER nothing at
+ * all: they walk to a painted volcano and bounce off empty ground with no
+ * explanation.  A label is the honest version of a disabled feature.
+ *
+ * To ship one of these, move it back into WORLDVIEW_EXITS and delete it here.
+ * If both lists ever carry the same zone the exit wins — a live portal must
+ * never be labelled "coming soon" — which the renderer enforces rather than
+ * trusting these two lists to stay disjoint. */
+export const COMING_SOON_MARKS = [
+  { zoneId: 'hollows', tx: 43, ty: 22, label: 'Stone Hollows' },
+  { zoneId: 'thunder', tx: 42, ty: 36, label: 'Electric Foundry' },
+  { zoneId: 'tidal',   tx: 24, ty: 40, label: 'Water Caves' },
+  { zoneId: 'mist',    tx: 8,  ty: 32, label: 'Poison Forest' },
+];
