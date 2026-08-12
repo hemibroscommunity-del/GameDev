@@ -16,7 +16,7 @@ export function effectsAnimationsReady() { return Promise.allSettled(_fxPreload)
 import { ELEMENTS } from '@/data/elements.js';
 import { ZONES, zonePlayerScale } from '@/data/zones.js';
 import { TILE, MINE_SPOT_R, FISH_CUE_DY } from '@/data/constants.js';
-import { GS_INNER_RADIUS, GS_OUTER_RADIUS, GS_FORWARD_ARC, cleaveArcBonus } from '@/data/index.js';
+import { GS_INNER_RADIUS, GS_OUTER_RADIUS, GS_FORWARD_ARC, cleaveArcBonus, hasGatherTool} from '@/data/index.js';
 import { getFrame as getSlimeFrame, hasState as hasSlimeState } from '../slimeSprites.js';
 import { getRecoloredFrame, hasRecoloredState } from '../monsterRecolor.js'; /* v2.3.1534; v2.3.1535 generalised */
 import { getRemnantsTexture as getSnowmanRemnantsTex } from '../snowmanSprites.js';
@@ -2995,7 +2995,16 @@ export class EffectsRenderer {
     const gfx = this.nodeGfx;
     gfx.clear();
 
-    const nodes = S.gatherNodes || [];
+    /* v2.3.1680: HIDE what you cannot work.  A node you have no tool for is
+       not drawn at all — the owner's "it only becomes visible after giving
+       you the quest and equipment".  Filtered here rather than at the point
+       the server payload is applied (nodeSync) so picking up the pickaxe
+       makes rocks appear THAT FRAME, instead of on the next zone entry.
+       The dispose pass below sees the filtered list too, so a node that
+       becomes hidden tears its sprite down properly rather than orphaning it. */
+    const _allNodes = S.gatherNodes || [];
+    const _rpg = S.rpg || null;
+    const nodes = _allNodes.filter((n) => hasGatherTool(_rpg, n.nodeType));
 
     /* v2.3.216: dispose orphaned sprites from the previous zone.
        _disposeNode only fires for nodes that are STILL in the array

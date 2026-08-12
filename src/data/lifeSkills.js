@@ -235,3 +235,41 @@ export function spawnGatherNodes(zoneId, depth) {
 }
 
 /* ZONE_RESOURCES is in items.js */
+
+/* ═══ v2.3.1680: TOOLS GATE GATHERING ═══
+ * Owner: "gate and hide resource extraction for woodcutting, fishing, and
+ * mining behind a mayor bro quest where it only becomes visible after giving
+ * you the quest and equipment."
+ *
+ * One tool per gathering skill, held as an ordinary inventory item.  MIRRORS
+ * server/src/gathering.js _GATHER_TOOL_FOR_SKILL — the server refuses the
+ * harvest, this decides whether the node is drawn or tappable at all.  Two
+ * halves of one rule: hiding without refusing would be a lie a modified
+ * client could walk through, and refusing without hiding would be a node that
+ * looks harvestable and silently does nothing.
+ *
+ * Anything not listed is UNGATED, so a future gathering skill is not silently
+ * locked out by omission. */
+export const GATHER_TOOL_FOR_SKILL = {
+  woodcutting: 'woodcutting_axe',
+  fishing: 'fishing_pole',
+  mining: 'mining_pickaxe',
+};
+
+/** Node type -> the skill that works it.  Mirrors the server's
+ *  _harvestSkillName. */
+export function gatherSkillForNodeType(nodeType) {
+  if (nodeType === 'tree') return 'woodcutting';
+  if (nodeType === 'fishSpot') return 'fishing';
+  return 'mining';
+}
+
+/** Can this player work this node type yet?  True when the skill is not
+ *  tool-gated at all. */
+export function hasGatherTool(rpg, nodeType) {
+  const skill = gatherSkillForNodeType(nodeType);
+  const key = Object.prototype.hasOwnProperty.call(GATHER_TOOL_FOR_SKILL, skill)
+    ? GATHER_TOOL_FOR_SKILL[skill] : null;
+  if (!key) return true;
+  return !!(rpg && rpg.inventory && (rpg.inventory[key] || 0) > 0);
+}

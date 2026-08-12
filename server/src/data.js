@@ -464,6 +464,42 @@ export const QUEST_REWARDS = {
               objective:{type:'collect', invKey:'fire-goblin-remnants', count:6, consume:true, zone:'ember'},
               item:{kind:'armor', name:"Scout's Vest", tierMult:1.0}},
 
+      /* ═══ v2.3.1680: THE LIFESKILL CHAIN ═══
+         Owner: "gate and hide resource extraction for woodcutting, fishing,
+         and mining behind a mayor bro quest where it only becomes visible
+         after giving you the quest and equipment.  Two different quests.
+         woodcutting axe for chopping tree and fishing pole for fishing.  He
+         wants you to bring him cooked fish.  After doing that he'll give you a
+         pickaxe.  After bringing him ore he'll award you the upper and lower
+         body armor."
+
+         The tools are ordinary inventory items, so they persist, show in the
+         bag, and need no new storage field.  `invPrefix` matches a FAMILY:
+         cooked fish are `cooked_fish_<species>` and ore is `ore_<name>`, so
+         "bring me cooked fish" cannot be one key without picking a favourite
+         species and rejecting the rest of the sea.
+
+         Note the fish quest requires COOKED fish, which means the player has
+         to fish AND cook — two skills out of one quest, and the reason the
+         axe rides along with the pole: firewood.  Counts are small on purpose;
+         this is a tutorial, not a grind. */
+      life_1: {gold:60,  xp:80,  next:'life_2',
+               objective:{type:'collect', invPrefix:'cooked_fish_', count:2, consume:true},
+               grantOnAccept:[
+                 {kind:'inv', key:'woodcutting_axe', n:1},
+                 {kind:'inv', key:'fishing_pole', n:1},
+               ],
+               item:{kind:'inv', key:'mining_pickaxe', n:1}},
+      life_2: {gold:200, xp:200, next:null,
+               objective:{type:'collect', invPrefix:'ore_', count:5, consume:true},
+               /* Both body pieces, and they are the first armor in the game
+                  that actually does anything per hit (v2.3.1679: torso 30%,
+                  legs 20%). */
+               item:{kind:'armorSet', pieces:[
+                 {kind:'armor', name:"Prospector's Vest", tierMult:1.0},
+                 {kind:'legs',  name:"Prospector's Greaves", tierMult:1.0},
+               ]}},
+
       mayor_1:    {gold:50,  xp:30,  next:'mayor_2'},
       mayor_2:    {gold:100, xp:80,  next:'mayor_3', objective:{type:'kill', arch:null, count:5}},
       mayor_3:    {gold:300, xp:200, next:null},

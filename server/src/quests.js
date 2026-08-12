@@ -32,6 +32,41 @@ export const questMethods = {
     return QUEST_REWARDS;
   },
 
+  /* v2.3.1680: how many of a `collect` objective's items the player holds.
+     A single `invKey` is an exact match; `invPrefix` sums a FAMILY — cooked
+     fish are `cooked_fish_<species>` and ore is `ore_<name>`, so "bring me
+     cooked fish" cannot be one key without picking a favourite species and
+     rejecting the rest of the sea. */
+  _collectHeld(ps, obj) {
+    const inv = (ps && ps.inventory) || null;
+    if (!inv || !obj) return 0;
+    if (obj.invKey) return inv[obj.invKey] || 0;
+    if (!obj.invPrefix) return 0;
+    let n = 0;
+    for (const k of Object.keys(inv)) {
+      if (k.startsWith(obj.invPrefix)) n += inv[k] || 0;
+    }
+    return n;
+  },
+
+  /* Take `count` items matching the objective, oldest-key-first.  Spreads the
+     spend across a family so a player holding three species hands over a mix
+     rather than having one stack singled out. */
+  _collectConsume(ps, obj, count) {
+    const inv = (ps && ps.inventory) || null;
+    if (!inv || !obj) return;
+    let left = Math.max(0, Math.floor(count));
+    const keys = obj.invKey ? [obj.invKey]
+      : Object.keys(inv).filter((k) => obj.invPrefix && k.startsWith(obj.invPrefix)).sort();
+    for (const k of keys) {
+      if (left <= 0) break;
+      const have = inv[k] || 0;
+      const take = Math.min(have, left);
+      left -= take;
+      if (have - take > 0) inv[k] = have - take; else delete inv[k];
+    }
+  },
+
   _handleQuestAccept(session, payload) {
     if (!session || !session.id) return;
     const ps = this.playerState[session.id];
@@ -144,7 +179,7 @@ export const questMethods = {
       if (_obj.type === 'kill' || _obj.type === 'gather') {
         if (((ps._questKills && ps._questKills[questId]) || 0) < (_obj.count || 1)) return;
       } else if (_obj.type === 'collect') {
-        if (((ps.inventory && ps.inventory[_obj.invKey]) || 0) < (_obj.count || 1)) return;
+        if (this._collectHeld(ps, _obj) < (_obj.count || 1)) return;
       } else if (_obj.type === 'flag') {
         if (!(ps._questFlags && ps._questFlags[_obj.flag])) return;
       }
@@ -161,10 +196,7 @@ export const questMethods = {
        between the check above and here; going negative would turn a bag into
        a debt that no drop can ever pay off. */
     if (_obj && _obj.type === 'collect' && _obj.consume && ps.inventory) {
-      const have = ps.inventory[_obj.invKey] || 0;
-      const left = Math.max(0, have - (_obj.count || 1));
-      if (left > 0) ps.inventory[_obj.invKey] = left;
-      else delete ps.inventory[_obj.invKey];
+      this._collectConsume(ps, _obj, _obj.count || 1);
     }
     ps._quests[questId] = 'turnedIn';
     ps.coins = (ps.coins || 0) + (reward.gold || 0);
@@ -276,6 +308,15 @@ export const questMethods = {
         if (ps.weaponStash.length >= this.WEAPON_STASH_CAP) return false;
         ps.weaponStash.push(minted);
         return true;
+      }
+      /* v2.3.1680: a SET — several pieces in one reward slot, so the mining
+         quest can pay upper AND lower body.  Each piece goes through this same
+         function, so each keeps the empty-slot-only rule independently: a
+         player already wearing a chest piece still receives the legs. */
+      if (item.kind === 'armorSet' && Array.isArray(item.pieces)) {
+        let any = false;
+        for (const piece of item.pieces) { if (this._grantQuestItem(ps, piece)) any = true; }
+        return any;
       }
       if (item.kind === 'inv' && typeof item.key === 'string') {
         if (!ps.inventory) ps.inventory = Object.create(null);

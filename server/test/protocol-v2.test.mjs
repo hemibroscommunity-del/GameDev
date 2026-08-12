@@ -152,6 +152,24 @@ check('v2 tick carries only the respawned node', !!ntick2 && ntick2.nodes.meadow
     ps.z = 'meadow'; ps.dead = false; ps.disconnected = false;
     ps.x = node.x + 52; ps.y = node.y - 43;          // ~67 px stance (snap offset)
     const fishKey = room._harvestInvKey(node.nodeType, node.tierLvl);
+
+    /* v2.3.1680: gathering is TOOL-GATED now (owner: extraction hidden behind
+       a Mayor Bro quest that hands over the equipment).  Prove the gate first
+       — an unarmed strike must credit nothing — then hand over the pole and
+       let the original stance/window regression assertion run.  Without the
+       pole this whole section silently passed as "no fish credited", which is
+       the right behaviour for the wrong reason. */
+    if (!ps.inventory) ps.inventory = {};
+    delete ps.inventory.fishing_pole;
+    const noToolBefore = ps.inventory[fishKey] || 0;
+    await room.webSocketMessage(ws1, JSON.stringify({ type: 'extraction_start', payload: { nodeId: node.id, zone: 'meadow', skill: 'fishing' } }));
+    await room.webSocketMessage(ws1, JSON.stringify({ type: 'node_strike', payload: { id: node.id, zone: 'meadow', accuracy: 'perfect' } }));
+    check('fishing without a pole credits NOTHING (tool gate)',
+      ((ps.inventory && ps.inventory[fishKey]) || 0) === noToolBefore,
+      { fishKey, before: noToolBefore, after: ps.inventory && ps.inventory[fishKey] });
+    check('...and the node survives the refused attempt', node.alive === true, node.alive);
+
+    ps.inventory.fishing_pole = 1;
     const before = (ps.inventory && ps.inventory[fishKey]) || 0;
     await room.webSocketMessage(ws1, JSON.stringify({ type: 'extraction_start', payload: { nodeId: node.id, zone: 'meadow', skill: 'fishing' } }));
     const ex = room.extractions.p1;

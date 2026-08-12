@@ -5352,6 +5352,54 @@ export const QUEST_CHAINS = {
     },
   },
 
+  /* ═══ v2.3.1680: THE LIFESKILL CHAIN ═══
+     Owner: "gate and hide resource extraction for woodcutting, fishing, and
+     mining behind a mayor bro quest ... he wants you to bring him cooked
+     fish.  After doing that he'll give you a pickaxe.  After bringing him ore
+     he'll award you the upper and lower body armor."
+     The nodes are HIDDEN until you hold the matching tool (see
+     hasGatherTool), so accepting life_1 is the moment trees and fishing spots
+     appear in the world at all.
+     `check` counts a FAMILY of inventory keys, mirroring the server's
+     invPrefix objective — cooked fish are cooked_fish_<species> and ore is
+     ore_<name>, so a single key would mean picking a favourite species. */
+  life_1: {
+    id: 'life_1', npc: 'Mayor Bro', title: 'Learn a Trade',
+    desc: 'Cook 2 fish and bring them to Mayor Bro.',
+    check: function (rpg) {
+      var inv = rpg.inventory || {};
+      var n = 0;
+      for (var k in inv) if (k.indexOf('cooked_fish_') === 0) n += inv[k] || 0;
+      return n >= 2;
+    },
+    reward: { gold: 60, xp: 80, item: 'Pickaxe' },
+    next: 'life_2',
+    dialogue: {
+      start: "Take the axe and the pole — nobody's cutting or casting without them.\n\n"
+        + '🪓 Trees and fishing spots only show up once you can work them.\n'
+        + '🔥 Catch two fish, chop wood, cook them, and bring them back.',
+      progress: 'Two cooked fish. Raw ones do not count — find a fire.',
+      complete: "That's a trade. Here — a pickaxe. The rocks are yours now.",
+    },
+  },
+  life_2: {
+    id: 'life_2', npc: 'Mayor Bro', title: 'Rock Bottom',
+    desc: 'Bring 5 Ore to Mayor Bro.',
+    check: function (rpg) {
+      var inv = rpg.inventory || {};
+      var n = 0;
+      for (var k in inv) if (k.indexOf('ore_') === 0) n += inv[k] || 0;
+      return n >= 5;
+    },
+    reward: { gold: 200, xp: 200, item: "Prospector's Vest + Greaves" },
+    next: null,
+    dialogue: {
+      start: 'Ore next. Five lumps, any kind — the rocks in every zone will do.',
+      progress: 'Five ore. Swing the pickaxe.',
+      complete: "Vest and greaves, both. That's real armor — it'll take the edge off a hit, not just pad your health.",
+    },
+  },
+
   /* ═══ MAYOR BRO — World Progression Gates ═══ */
   mayor_1: {
     id: 'mayor_1',

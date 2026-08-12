@@ -69,7 +69,8 @@ import { MINE_SPOT_R, WORLD_ZOOM, FARM_BED_TILE } from '@/data/constants.js';
    import reads the CURRENT value, where the globalThis copy was frozen
    at boot; the only reader is the NPC wander clamp, dormant while
    NPC_DATA is empty. */
-import { CLAN_WAR_REWARDS, PET_LOOT_RADIUS, TOWN_W, TOWN_H, calcDisplayHeal } from '@/data/index.js';
+import { CLAN_WAR_REWARDS, PET_LOOT_RADIUS, TOWN_W, TOWN_H, calcDisplayHeal,
+  hasGatherTool} from '@/data/index.js';
 import { IntroVideo } from './IntroVideo.jsx';
 /* v2.3.1593: mayorWelcomeSeen dropped — its only caller was the greeting
    trigger the owner asked to remove.  MayorGreeting itself stays imported
@@ -3820,10 +3821,18 @@ export var BroTown = function BroTown(_ref0) {
         }
         var _tapN = S._tapNode || null;
         if (_tapN) {
-          var _tapLive = _tapN === S._campfire
+          /* v2.3.1680: a node you have no tool for is not tappable either.
+             The renderer already hides it, so reaching here means a tap that
+             was registered before the tool was spent, or a node revived under
+             a bag that changed — either way, drop it rather than opening a
+             minigame the server will refuse. */
+          if (_tapN !== S._campfire && _tapN.nodeType && !hasGatherTool(S.rpg, _tapN.nodeType)) {
+            S._tapNode = null; _tapN = null;
+          }
+          var _tapLive = _tapN && (_tapN === S._campfire
             ? !!(S._campfire && S._campfire.alive)
             : !!(S.gatherNodes && S.gatherNodes.indexOf(_tapN) >= 0 && _tapN.alive
-                 && !(_tapN.respawnAt && Date.now() < _tapN.respawnAt));
+                 && !(_tapN.respawnAt && Date.now() < _tapN.respawnAt)));
           if (!_tapLive || nodeReachDist(S, _tapN) == null) { S._tapNode = null; _tapN = null; }
         }
         S._nearNode = _tapN;
