@@ -1,5 +1,14 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.20;
+/* v2.3.1682: pragma PINNED to the exact compiler every fixture came from.
+   The digest constant in server/test/chainwriter.test.mjs, the recordScore
+   selector (0xfc9f73a9) and the measured gas numbers were all produced by
+   solc 0.8.26 via tools/dev/evm-conformance.mjs; a floating ^0.8.20 meant
+   Remix could legally deploy bytecode no fixture had ever seen.  One
+   compiler, stated once, used everywhere: Remix, the conformance harness,
+   and the explorer's source verification form.
+   CANONICAL BUILD SETTINGS (needed again, verbatim, when verifying the
+   source on explorer.hemi.xyz): solc 0.8.26, optimizer ENABLED, runs 200. */
+pragma solidity 0.8.26;
 
 /**
  * @title  BroTownScores
@@ -19,13 +28,36 @@ pragma solidity ^0.8.20;
  *     the operator still wants it there.
  *   - The server relays by default and pays the gas, so playing stays free.
  *
- * The signer is immutable and there is no owner, no pause, no upgrade path and
- * no withdrawal function.  The contract holds no funds and cannot be rewritten
- * — the deployment IS the commitment.
+ * There is no owner, no pause, no upgrade path and no withdrawal function.
+ * The contract holds no funds and cannot be rewritten — the deployment IS
+ * the commitment.
  *
- * Levels are monotonic per skill: a value may only ever increase.  A
- * compromised or buggy server can therefore inflate a level but can never
- * erase or roll one back.
+ * ── THE TRUST MODEL, PLAINLY (v2.3.1682) ──────────────────────────────────
+ *
+ * Nobody can change anything except which key signs NEW scores, and only the
+ * guardian holds that switch.  History is untouchable by everyone:
+ *
+ *   - The GUARDIAN (an address fixed forever at deploy — the operator's
+ *     personal wallet, never stored on any server) has exactly one power:
+ *     `rotateSigner`.  It cannot write scores, cannot erase them, cannot
+ *     pause the contract, cannot move funds (there are none), and cannot
+ *     hand its role to anyone else.
+ *   - Rotation exists because the SIGNER key must live on a server to sign
+ *     attestations, and server keys can leak.  Before v2.3.1682 the signer
+ *     was immutable, so a leaked key meant fake scores at this address
+ *     forever and the only remedy was redeploying — stranding every score
+ *     ever written.  Now a leak is a five-minute fix: the guardian rotates,
+ *     the new key signs, the old key is dead HERE, and history stays put.
+ *   - Worst case if the guardian key itself leaks: the thief can rotate the
+ *     signer to a key they control — i.e. gain the power the signer already
+ *     had.  They still cannot touch a single recorded score.  Adding the
+ *     guardian therefore strictly reduces risk; it does not concentrate it.
+ *
+ * Levels are monotonic per skill: a value may only ever increase — enforced
+ * against live storage at the moment of each write (v2.3.1682), so not even
+ * a maliciously crafted attestation with duplicate keys can end a skill
+ * below the highest value it attests.  A compromised or buggy server can
+ * therefore inflate a level but can never erase or roll one back.
  *
  * ── WHY SKILLS ARE NAMES, NOT FIELDS ───────────────────────────────────────
  *
@@ -52,8 +84,14 @@ pragma solidity ^0.8.20;
  * actually cares about.
  */
 contract BroTownScores {
-    /// @notice The game server's attestation key.  Immutable by design.
-    address public immutable signer;
+    /// @notice The game server's attestation key.  Rotatable by the guardian
+    /// alone (see the trust model above); every other property of the
+    /// contract is fixed at deploy.
+    address public signer;
+
+    /// @notice The one address that can rotate `signer`.  Immutable: the
+    /// guardian role itself can never move, be renounced, or be widened.
+    address public immutable guardian;
 
     /// @notice player key => skill key => level.  The player key is
     /// keccak256(bytes(playerId)) — the game's stable `bp_` identity, hashed so
@@ -85,15 +123,34 @@ contract BroTownScores {
         address relayer
     );
 
+    /// @notice The signer changed.  Indexed both ways so an explorer can
+    /// answer "when did key X stop signing" without scanning bodies.
+    event SignerRotated(address indexed prev, address indexed next);
+
     error BadSignature();
     error StaleNonce();
     error NotMonotonic();
     error LengthMismatch();
     error EmptyUpdate();
 
-    constructor(address _signer) {
+    constructor(address _signer, address _guardian) {
         require(_signer != address(0), "signer required");
+        require(_guardian != address(0), "guardian required");
         signer = _signer;
+        guardian = _guardian;
+    }
+
+    /// @notice Replace the attestation key.  Guardian only.
+    /// Require-with-string rather than a custom error, deliberately: this is
+    /// a cold path a human operator drives from an explorer's Write tab in
+    /// an emergency, and "not guardian" in the wallet popup beats a four-byte
+    /// selector they would have to look up.
+    function rotateSigner(address next) external {
+        require(msg.sender == guardian, "not guardian");
+        require(next != address(0), "signer required");
+        address prev = signer;
+        signer = next;
+        emit SignerRotated(prev, next);
     }
 
     function playerCount() external view returns (uint256) {
@@ -161,10 +218,16 @@ contract BroTownScores {
         if (skillKeys.length == 0) revert EmptyUpdate();
         if (nonce <= nonces[player]) revert StaleNonce();
 
-        for (uint256 i = 0; i < skillKeys.length; i++) {
-            if (values[i] < levels[player][skillKeys[i]]) revert NotMonotonic();
-        }
-
+        /* v2.3.1682: signature verified BEFORE any storage loop.  Two wins:
+           an unauthenticated spam call now reverts before paying for a pass
+           of SLOADs, and — the real one — the monotonic guard below can run
+           against LIVE storage at the moment of each write.  The old shape
+           (a read-only pre-pass, then a write loop) had a hole: duplicate
+           keys in one call, e.g. ("melee",50),("melee",45) over a stored 40,
+           passed the pre-pass (both >= 40) and last-write-wins stored 45 —
+           BELOW the 50 the very same message attested.  Only the signer
+           could craft that message, but "values only ever increase" should
+           be a property of the contract, not a courtesy of the server. */
         if (_recover(digest(player, skillKeys, values, nonce), sig) != signer) {
             revert BadSignature();
         }
@@ -176,6 +239,7 @@ contract BroTownScores {
 
         for (uint256 i = 0; i < skillKeys.length; i++) {
             bytes32 k = skillKeys[i];
+            if (values[i] < levels[player][k]) revert NotMonotonic();
             if (!_seenSkill[k]) {
                 _seenSkill[k] = true;
                 skills.push(k);

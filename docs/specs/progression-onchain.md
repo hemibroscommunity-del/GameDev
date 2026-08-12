@@ -1,6 +1,6 @@
 # On-chain score attestations (Hemi) — spec + operator runbook
 
-**Version:** v2.3.1671 · **Contract:** `contracts/BroTownScores.sol` ·
+**Version:** v2.3.1682 (guardian rotation, receipt-confirmed writes, chainstatus) · **Contract:** `contracts/BroTownScores.sol` ·
 **Server:** `server/src/chainwriter.js` (signing/encoding),
 `server/src/chainscore.js` (game integration),
 `server/src/leaderboard.js` (the in-game board over the same series) ·
@@ -82,6 +82,16 @@ themselves, forever. The contract has no owner, no pause, no upgrade path and
 no withdrawal function. Scores are monotonic, so a compromised server could
 inflate a score but never erase one.
 
+The one moving part (v2.3.1682): a **guardian** — an address fixed forever at
+deploy, held in the operator's personal wallet — can replace the *signing
+key*, and can do nothing else. It exists because the signer's key must live
+on a server to sign, and server keys can leak; before the guardian, a leak
+meant fake scores at this address forever, with redeployment (and a stranded
+history) as the only remedy. The guardian cannot touch a single recorded
+score, so the trust statement stays one sentence: **nobody can change
+anything except which key signs new scores, and only the guardian holds that
+switch.**
+
 ## Failure posture (load-bearing)
 
 A chain problem must never be a game problem. Every path is fire-and-forget
@@ -94,118 +104,235 @@ While `SCORES_CONTRACT` or `RELAYER_KEY` is unset, the feature is simply off.
 
 ---
 
-# Operator runbook
+# Operator runbook — deploying to Hemi mainnet, no experience assumed
 
-Do the testnet rehearsal first. It costs nothing and catches a wrong address
-or an unfunded wallet before mainnet does.
+Written for someone who has never deployed a contract. Every click is named.
+Nothing on the happy path needs a terminal. Total time: about 30 minutes,
+most of it waiting for MetaMask popups.
 
-## Step 1 — Create the relayer wallet
+**What you will end up with:** two wallet accounts in MetaMask (one whose key
+lives in Cloudflare and signs scores, one that stays yours and can replace
+that key if it ever leaks), a contract on Hemi with its source publicly
+verified, and a worker that writes real scores to it.
 
-Make a **brand-new wallet used for nothing else**. It signs score
-attestations and pays their gas. It never holds player funds, and the
-contract has no withdrawal function, so the only value at risk is the gas you
-put in it.
+## Step 1 — Create TWO wallet accounts
 
-1. In MetaMask: account menu → **Add account** → name it `brotown-relayer`.
-2. Copy its **address** (`0x…`) — you'll fund this.
+Both are ordinary MetaMask accounts. They have different jobs; do not merge
+them into one.
+
+**The relayer** — signs score attestations and pays their gas. Its private
+key goes into Cloudflare, which is exactly why it must be a fresh account
+used for nothing else.
+
+1. MetaMask → account menu → **Add account** → name it `brotown-relayer`.
+2. Copy its **address** (`0x…`) somewhere handy — you'll need it twice.
 3. Copy its **private key** (⋮ → Account details → Show private key). Treat
-   this like a password: it goes into Cloudflare and nowhere else. Never
-   paste it into a file in the repo, a chat, or a commit.
+   it like a password: it goes into Cloudflare in Step 5 and NOWHERE else —
+   never into a file in the repo, a chat message, or a commit.
+
+**The guardian** — your personal switch. If the relayer key ever leaks, the
+guardian is the one address allowed to replace it (and that is ALL it can
+do — it cannot touch scores or funds). Its key never leaves your MetaMask.
+
+1. MetaMask → **Add account** → name it `brotown-guardian`. Your existing
+   main account works too, if you'd rather not add one.
+2. Copy its **address**. You will never need this account's private key for
+   anything in this runbook — the address alone goes into the contract.
 
 ## Step 2 — Add Hemi to MetaMask and fund the relayer
 
-| | Mainnet | Testnet (rehearsal) |
-|---|---|---|
-| Network name | Hemi | Hemi Sepolia |
-| RPC URL | `https://rpc.hemi.network/rpc` | `https://testnet.rpc.hemi.network/rpc` |
-| Chain ID | `43111` | `743111` |
-| Explorer | `https://explorer.hemi.xyz` | (testnet explorer) |
+MetaMask → network picker → **Add a custom network**:
 
-Send a **small** amount of gas to the relayer address — a couple of dollars
-is far more than nine transactions per player will need. For testnet, use the
-Hemi faucet.
+| Field | Value |
+|---|---|
+| Network name | Hemi |
+| RPC URL | `https://rpc.hemi.network/rpc` |
+| Chain ID | `43111` |
+| Currency symbol | `ETH` |
+| Explorer | `https://explorer.hemi.xyz` |
 
-> **Which token pays the gas?** Whatever MetaMask shows as the network's
-> native currency once you've added Hemi — that field is the authority, and it
-> is what the relayer's balance must be denominated in. Note that Hemi's
-> ERC-20 governance token is a *different* thing from the native gas currency;
-> holding the former does not let you send a transaction. Getting funds onto
-> the network means bridging from L1 (bridge.hemi.network) or withdrawing from
-> an exchange that supports Hemi directly. Check the balance shows up in
-> MetaMask *before* deploying — an unfunded relayer fails silently by design,
-> which is the slowest possible way to discover it.
+**The gas token is ETH.** (Hemi also has a HEMI governance token — that is a
+different thing and cannot pay for transactions.) Get ETH onto Hemi by
+bridging from Ethereum at **bridge.hemi.network**, or withdrawing from an
+exchange that supports Hemi directly.
 
-## Step 3 — Deploy the contract (browser, no terminal)
+**How much:** load about **$5–10 of ETH**. The math: the most expensive
+write the game can make (a brand-new player, all fourteen skills) is
+~1.09 million gas, and Hemi's gas prices are L2-cheap — fractions of a cent
+per write. $5 covers the deploy plus thousands of score writes. Before
+moving on, confirm the balance actually shows in MetaMask **on the Hemi
+network, in the relayer account** — an unfunded relayer fails silently by
+design, which is the slowest possible way to discover it.
 
-1. Open **https://remix.ethereum.org**.
-2. In the File Explorer, create `BroTownScores.sol` and paste the contents of
-   `contracts/BroTownScores.sol` from this repo.
-3. **Solidity Compiler** tab → compiler **0.8.20 or newer** → **Compile**.
-4. **Deploy & Run** tab → Environment: **Injected Provider – MetaMask** →
-   confirm MetaMask is on **Hemi** (or Hemi Sepolia for the rehearsal).
-5. Next to the orange **Deploy** button there is a `_SIGNER` field. Paste the
-   **relayer's address** (the `0x…` from Step 1, *not* the private key).
-6. **Deploy**, confirm in MetaMask, and copy the deployed contract address.
+## Step 3 — Deploy the contract (browser only)
 
-> The signer is immutable. Deploying with the wrong address means deploying
-> again — cheap, but check it now.
+1. Open **https://remix.ethereum.org** (an in-browser Solidity IDE — nothing
+   to install).
+2. In the File Explorer (left edge), create a file `BroTownScores.sol` and
+   paste the entire contents of `contracts/BroTownScores.sol` from this repo.
+3. **Solidity Compiler** tab (the "S" icon):
+   - Compiler: **0.8.26** — exactly. The contract's pragma is pinned to it
+     and Remix will refuse anything else, which is intended.
+   - Open **Advanced Configurations** → tick **Enable optimization**, runs
+     **200**. (Write these down mentally — the explorer verification in
+     Step 4 asks for the same two answers.)
+   - **Compile BroTownScores.sol.** A green check appears on the icon.
+4. **Deploy & Run Transactions** tab (Ethereum logo icon):
+   - Environment: **Injected Provider – MetaMask**. A MetaMask popup asks to
+     connect — use the **relayer or guardian, either is fine** (whoever
+     deploys just pays this one fee), and check the network says **Hemi**.
+   - Next to the orange **Deploy** button, expand the arrow. Two fields:
+     - `_SIGNER`: the **relayer's address** (not its private key!)
+     - `_GUARDIAN`: the **guardian's address**
+   - **Deploy** → confirm in MetaMask.
+5. The contract appears under "Deployed Contracts" at the bottom left.
+   **Copy its address NOW** (copy icon beside the name) — Remix forgets this
+   list when the tab closes, and this address is the single output of the
+   whole step.
 
-## Step 4 — Configure the Worker
+> Wrong `_SIGNER` or `_GUARDIAN`? Deploying again costs cents. What you
+> cannot do is edit a deployed contract — check both fields before clicking.
 
-1. `server/wrangler.toml` → set `SCORES_CONTRACT = "0x…"` to the address from
-   Step 3, and commit that (it's public data).
+## Step 4 — Verify the source on the explorer
 
-   > **Do not set this one in the dashboard.** `wrangler.toml` declares
-   > `SCORES_CONTRACT = ""`, and every auto-deploy pushes that config — so a
-   > dashboard-set address gets overwritten with the empty string on the next
-   > merge to `main` that touches `server/**`, and the feature silently
-   > switches off with no error anywhere. It has to be in the file.
-   > **Secrets are not affected** — Cloudflare preserves `RELAYER_KEY` across
-   > deploys, which is why step 2 *is* a dashboard action.
-   >
-   > If you'd rather not edit a file: paste the contract address into the
-   > session and it can be committed for you as a one-line PR.
+This makes the contract's source code publicly readable at its address —
+judges (and players) see the real code instead of raw bytecode, and it
+unlocks the explorer's "Write Contract" tab, which the key-leak playbook
+below depends on.
 
-2. Add the private key as an **encrypted secret** — never in the repo:
-   - Cloudflare dashboard → Workers & Pages → `brotown-server` → **Settings**
-     → **Variables and Secrets** → **Add** → name `RELAYER_KEY`, value the
-     private key, type **Secret** → Save.
-   - Or: `npx wrangler secret put RELAYER_KEY` from `server/`.
-3. For the testnet rehearsal only, also add `CHAIN_ID = 743111`. Remove it
-   for mainnet (it defaults to 43111).
+1. Open `https://explorer.hemi.xyz/address/<your contract address>`.
+2. Find **Verify & Publish** (on Blockscout explorers it's under the
+   Contract tab → "Verify & publish").
+3. Choose **Solidity (single file)** and answer with the Step-3 settings:
+   - Compiler: **v0.8.26**
+   - Optimization: **Yes**, runs **200**
+   - License: MIT
+   - Paste the same complete source you pasted into Remix.
+4. Submit. When it flips to verified, the Contract tab shows readable source
+   plus **Read Contract** / **Write Contract** panels.
 
-Deploys happen automatically on merge to `main` (`.github/workflows/deploy-worker.yml`).
-**Never deploy the worker from a laptop** — see CLAUDE.md.
+## Step 5 — Wire up the worker
 
-## Step 5 — Verify
+Two values, two very different destinations. Getting these two backwards is
+the classic failure, so: the ADDRESS goes in the repo, the KEY goes in the
+dashboard.
 
-1. Play until a character reaches **level 5** (the first milestone).
-2. The client shows a receipt with a block-explorer link.
-3. Open the link: the transaction should be a `recordScore` call to your
-   contract that succeeded.
-4. In Remix, expand the deployed contract and call `playerCount` — it should
-   read `1`. Call `scores` with the player key to read the row back.
+1. **`SCORES_CONTRACT` (public, lives in the repo).** Paste the contract
+   address from Step 3 into this session and it gets committed to
+   `server/wrangler.toml` as a one-line PR for you to merge.
 
-If nothing happens, the feature failed **silently by design**. Check, in
-order: is `SCORES_CONTRACT` set and non-empty; is `RELAYER_KEY` present and a
-valid 32-byte hex key; does the relayer address hold gas on the right
-network; does the Worker's `CHAIN_ID` match the network the contract is on.
+   > **Never set this in the Cloudflare dashboard.** Every auto-deploy
+   > re-applies `wrangler.toml`'s `[vars]` block wholesale, so a
+   > dashboard-set value is silently erased on the next merge to `main`
+   > touching `server/**` — and the feature turns itself off with no error
+   > anywhere. The same rule covers `CHAIN_ID` and `CHAIN_RPC`, which now
+   > also live in the file. **Secrets are the one exception**: Cloudflare
+   > preserves them across deploys, which is why the next step IS a
+   > dashboard action.
+
+2. **`RELAYER_KEY` (secret, never in the repo).** Cloudflare dashboard →
+   **Workers & Pages** → `brotown-server` → **Settings** → **Variables and
+   Secrets** → **Add** → name `RELAYER_KEY`, value = the relayer's private
+   key from Step 1, type **Secret** → Save.
+   (Terminal alternative, if you ever prefer it: `npx wrangler secret put
+   RELAYER_KEY` from `server/`.)
+
+The worker deploys automatically when the `SCORES_CONTRACT` PR merges
+(`.github/workflows/deploy-worker.yml`). **Never deploy the worker from a
+laptop** — see CLAUDE.md for the incident that rule comes from.
+
+## Step 6 — Did it work? (three layers, friendliest first)
+
+1. **The explorer.** Your contract's address page shows the deployment
+   transaction immediately, and each score write appears as a `Record Score`
+   call as they happen.
+2. **The game.** Play a fresh character to **level 5** (the first
+   milestone). Within a minute or so of the level-up, the client shows a
+   "recorded on Hemi" receipt in the Hero sheet's **Records** section, with
+   a link to the transaction. Since v2.3.1682 that receipt is trustworthy by
+   construction: the server now waits for the transaction to actually
+   CONFIRM on-chain before telling anyone — a reverted or stuck transaction
+   shows nothing and retries itself on the next level-up.
+3. **The status page** (diagnosis, if 1–2 disagree with you). The worker
+   answers `GET /api/admin/chainstatus` with everything at once: whether
+   both values are set, whether real contract code exists at the address,
+   whether the contract's signer matches the key in Cloudflare, the
+   relayer's ETH balance, and the last write. It needs the `ADMIN_KEY`
+   bearer token, so the easy path is: **ask a Claude session to check
+   chainstatus** and it will read it for you. (Direct form, for reference:
+   `curl -H "Authorization: Bearer <ADMIN_KEY>"
+   https://<worker>/api/admin/chainstatus`.)
+
+   | `problem` says | It means | Fix |
+   |---|---|---|
+   | `contract-malformed` / `contract-zero` | `SCORES_CONTRACT` isn't a real address | Re-paste the address from Step 3 |
+   | `no-contract-code` | The address has no contract on it (typo, or wrong network) | Check the address on the explorer; redo Step 5.1 |
+   | `signer-mismatch` | The contract's signer ≠ the key in Cloudflare | Re-check Step 1/5.2 — or rotate the signer (below) to the address Cloudflare holds |
+   | `missing: RELAYER_KEY` | The secret was never saved | Step 5.2 |
+   | balance `0.0000` | The relayer has no gas | Step 2 |
 
 ## Cost
 
-Nine transactions per character over its whole lifetime. Measured in a local
-EVM against the compiled contract (`tools/dev/evm-conformance.mjs`): a
-first-ever write covering all fourteen series costs **1,087,613 gas** of
-execution; later checkpoints send only what changed and cost about **23,000**.
-On an OP-Stack L2 like Hemi these are fractions of a cent. A thousand players reaching level 10
-is two thousand transactions — still trivial. If you ever want a hard ceiling,
-add a daily cap in `chainscore.js`; there is intentionally none today because
-the milestone list already bounds it.
+Nine transactions per character, lifetime. Measured against the compiled
+contract in a local EVM (`tools/dev/evm-conformance.mjs`): a first-ever
+fourteen-series write costs **1,088,021 gas**; later checkpoints send only
+what changed, about **23,000**. On Hemi these are fractions of a cent. A
+thousand players reaching level 10 is two thousand transactions — still
+pocket change. The milestone list itself is the spending cap.
 
-## If the relayer key leaks
+## When something goes wrong
 
-The blast radius is the gas in that wallet plus the ability to sign fake
-scores. There is no player-fund exposure and nothing to drain. Response:
-deploy a new contract with a new signer address and update
-`SCORES_CONTRACT`. Old attestations stay on-chain (that is the point); new
-ones are written under the new key.
+### The relayer key leaks
+
+Blast radius: the gas in that wallet, plus the ability to sign FAKE scores.
+No player funds exist anywhere in this system, and no one — not even the
+leaked key — can erase or roll back a score already written. Since
+v2.3.1682 this is a rotation, not a redeploy:
+
+1. MetaMask → **Add account** → `brotown-relayer-2`. Copy its address and
+   private key.
+2. Open your contract on the explorer → **Write Contract** → **Connect
+   wallet** as the **guardian** → `rotateSigner` → paste the NEW relayer
+   address → Write → confirm. The old key is now worthless at this
+   contract: anything it signs is rejected.
+3. Cloudflare dashboard → `brotown-server` → Settings → Variables and
+   Secrets → edit `RELAYER_KEY` → paste the NEW private key.
+4. In MetaMask, send the old relayer account's remaining ETH to the new one.
+
+History is untouched throughout; scores keep flowing under the new key.
+
+### A transaction seems stuck
+
+Symptom: chainstatus shows the config healthy but a write never confirms.
+Since v2.3.1682 nothing corrupts — an unconfirmed write is simply not
+recorded and retries at the next level-up. If the relayer's transaction
+queue itself is jammed (visible as a "pending" transaction for the relayer
+address on the explorer), clear it from MetaMask: select the relayer
+account → send **0 ETH to itself** → in the fee screen pick a higher/faster
+fee → confirm. That replaces the stuck transaction and unclogs everything
+behind it.
+
+### The guardian wallet
+
+It is the only thing that can replace the signing key, so treat its seed
+phrase like the valuables drawer: written down offline, never typed into
+anything except MetaMask itself. If you lose it, nothing breaks — you just
+lose the ability to rotate, putting you back where the contract was before
+v2.3.1682 (a future key leak would then need a redeploy).
+
+### Adding a skill later
+
+No contract change, no redeploy — that is the whole point of the
+name-addressed design. Two lists to extend, both in this repo:
+`LIFE_SKILL_KEYS` in `server/src/chainscore.js` (what gets attested) and
+`CATS` in `src/ui/mobile/dash/LeaderboardPanel.jsx` (what the in-game board
+shows). The chain accepts the new name the first time the server signs it.
+
+### Testnet, if you ever want a rehearsal
+
+Hemi Sepolia: chain ID `743111`, RPC `https://testnet.rpc.hemi.network/rpc`,
+free gas from the Hemi faucet. Set `CHAIN_ID = "743111"` in
+`server/wrangler.toml` (NOT the dashboard — same wipe rule as above), deploy
+the contract there via Steps 3–4 on that network, and remember the repo has
+ONE worker: pointing it at testnet points production at testnet, so flip
+`CHAIN_ID` back in the same sitting.

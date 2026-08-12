@@ -40,13 +40,13 @@ getting disqualified after judging costs the entry and looks worse.
 | Requirement | State |
 |---|---|
 | Free to play | ✅ No payment code anywhere; on-chain writes are server-paid |
-| Onchain, **Hemi mainnet** | ⚠️ Code ready, **contract not deployed yet** — follow `docs/specs/progression-onchain.md` |
+| Onchain, **Hemi mainnet** | ⚠️ Code ready and hardened (v2.3.1682: guardian key-rotation, receipt-confirmed writes), **contract not deployed yet** — follow the beginner runbook in `docs/specs/progression-onchain.md`: two wallet accounts → fund with ETH → Remix (solc 0.8.26, optimizer 200, TWO constructor addresses) → **verify the source on explorer.hemi.xyz** (the submission links judges there — unverified bytecode looks abandoned) → SCORES_CONTRACT into wrangler.toml + RELAYER_KEY secret |
 | Open source on GitHub | ✅ Public |
 | MIT or ISC | ✅ MIT (`LICENSE`) |
 | Hosted on Cloudflare | ✅ Pages (client) + Workers (server) |
 | JS / TS / Solidity | ✅ JavaScript + Solidity |
 | Fully playable & completable | ✅ Five-quest tutorial arc, verified end-to-end in the headless suite |
-| Third-party assets licensed + credited | ⚠️ Art (ChatGPT) and music (Suno, paid plan) recorded in `CREDITS.md`; **the village tileset and the sound effects are still unconfirmed** |
+| Third-party assets licensed + credited | ✅ All recorded in `CREDITS.md` — art (ChatGPT), music (Suno paid plan), SFX (Pixabay); the unused village tileset was deleted outright (v2.3.1670) |
 | Permission to feature in future HAIR Games | State it in the post (below) |
 | One entry per person | ✅ |
 

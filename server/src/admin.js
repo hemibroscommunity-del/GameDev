@@ -270,6 +270,11 @@ export const adminMethods = {
       const lo = await this._liveopsRoutes(request, url, path, json);
       if (lo) return lo;
 
+      // v2.3.1682: on-chain relayer health (chainscore.js) -- same contract:
+      // null for paths it doesn't own.
+      const cs = await this._chainScoreAdminRoute(request, url, path, json);
+      if (cs) return cs;
+
       return json({ ok: false, error: 'Not found' }, 404);
     } catch (err) {
       return json({ ok: false, error: err.message }, 500);
