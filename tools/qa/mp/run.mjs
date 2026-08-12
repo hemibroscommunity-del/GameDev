@@ -34,6 +34,7 @@ const SCENARIOS = {
   prog3: () => import('./mp-prog3.mjs'), /* v2.3.1660: trained-skill rebuild */
   tutorial: () => import('./mp-tutorial.mjs'), /* v2.3.1665: the completable arc */
   onboarding: () => import('./mp-onboarding.mjs'), /* v2.3.1668: the first-run greeting */
+  hiscores: () => import('./mp-hiscores.mjs'), /* v2.3.1671: the per-skill board */
 };
 
 const want = process.argv.slice(2).filter((a) => !a.startsWith('-'));

@@ -16,7 +16,7 @@
  *     contract's monotonic guard would reject it, silently wasting gas
  */
 import { GameRoom } from '../src/index.js';
-import { CHAIN_SCORE } from '../src/chainscore.js';
+import { CHAIN_SCORE, LIFE_SKILL_KEYS, COMBAT_SKILL_KEYS } from '../src/chainscore.js';
 import { privToAddress, normalizePrivKey } from '../src/chainwriter.js';
 
 let failures = 0;
@@ -58,6 +58,17 @@ function stubNode(log) {
       : null;
     return { ok: true, json: async () => ({ jsonrpc: '2.0', id: body.id, result }) };
   };
+}
+
+/** A configured room wired to the stub node, with the RPC call log.  Same
+ *  shape the older sections build inline; extracted here because the series
+ *  sections (7-8) need several independent rooms. */
+function mk() {
+  const state = makeState();
+  const rpc = [];
+  const room = new GameRoom(state, { LEADERBOARD, RELAYER_KEY: TEST_KEY, SCORES_CONTRACT: CONTRACT });
+  room._chainRpcOpts = { fetchImpl: stubNode(rpc), rpc: 'http://test' };
+  return { room, state, rpc };
 }
 
 // ── 1. Configuration gate: absent secrets = feature off, game unaffected ──
@@ -229,7 +240,90 @@ function stubNode(log) {
     echo && echo.payload && echo.payload.svKills);
 }
 
-// ── 7. The relayer address is derivable (operator sanity: fund THIS one) ──
+// ── 7. THE SERIES: every server-owned number, and only those ──
+{
+  const { room } = mk();
+  const ps = {
+    level: 25,
+    svKills: 40,
+    prog3: { sk: { sword: { level: 12 }, bow: { level: 8 }, staff: { level: 5 } } },
+    lifeSkills: {
+      fishing: { level: 31 }, mining: { level: 4 },
+      woodcutting: { level: 0 },              // untouched
+      gems: { ruby: 3 },                       // NOT a skill — the amulet bag
+    },
+  };
+  const series = room._chainScoreSeries(ps);
+
+  /* Combat skills are stored as sword/bow/staff but have always been SHOWN as
+     Melee/Bow/Magic.  The chain record is a presentation surface — a reader
+     should not need the repo's glossary to read a column. */
+  check('sword is attested as "melee"', series.melee === 12, series);
+  check('bow is attested as "bow"', series.bow === 8, series);
+  check('staff is attested as "magic"', series.magic === 5, series);
+  check('no raw sword/staff keys leak into the series',
+    series.sword === undefined && series.staff === undefined, series);
+
+  check('life skills are attested by name', series.fishing === 31 && series.mining === 4, series);
+  check('kills rides along as a series', series.kills === 40, series);
+  check('a zero life skill is omitted (noise on a permanent ledger)',
+    series.woodcutting === undefined, series);
+  check('the gems bag is not mistaken for a skill', series.gems === undefined, series);
+
+  /* The whole point of the redesign: adding a skill to LIFE_SKILL_KEYS is the
+     only change needed — the contract addresses skills by NAME and needs no
+     redeploy.  Guard the two lists against silent drift instead. */
+  check('every LIFE_SKILL_KEY fits in a bytes32 key',
+    LIFE_SKILL_KEYS.every((k) => new TextEncoder().encode(k).length <= 32), LIFE_SKILL_KEYS);
+  check('LIFE_SKILL_KEYS has no duplicates',
+    new Set(LIFE_SKILL_KEYS).size === LIFE_SKILL_KEYS.length);
+  check('the three combat keys do not collide with a life skill',
+    Object.values(COMBAT_SKILL_KEYS).every((k) => !LIFE_SKILL_KEYS.includes(k)));
+
+  /* Client-reported vanity must never reach a permanent public ledger: it
+     would LOOK verified while being worth the client's word. */
+  const vain = { ...ps, goldEarned: 999999, playtime: 42, dungeons: 7 };
+  const s2 = room._chainScoreSeries(vain);
+  check('client-reported gold/playtime/dungeons are NOT attested',
+    s2.goldEarned === undefined && s2.playtime === undefined && s2.dungeons === undefined, s2);
+}
+
+// ── 8. Only what CHANGED is sent (calldata + a cold SSTORE per skill) ──
+{
+  const { room, state, rpc } = mk();
+  const ps = {
+    level: 25, svKills: 40,
+    prog3: { sk: { sword: { level: 12 }, bow: { level: 8 }, staff: { level: 5 } } },
+    lifeSkills: { fishing: { level: 31 } },
+  };
+  const first = await room._chainScoreCheckpoint('bp_s', ps);
+  check('first checkpoint sends every non-zero series', first.ok === true
+    && first.skills.length === 5, first.skills);
+  check('the stored record remembers the series it wrote',
+    state._store.get(CHAIN_SCORE.KEY('bp_s')).series.fishing === 31,
+    state._store.get(CHAIN_SCORE.KEY('bp_s')).series);
+
+  // Cross a new milestone with only ONE number moved.
+  ps.level = 50; ps.prog3.sk.sword.level = 30;
+  rpc.length = 0;
+  const second = await room._chainScoreCheckpoint('bp_s', ps);
+  check('the next checkpoint sends ONLY the changed skills',
+    second.ok === true && second.skills.length === 1 && second.skills[0] === 'melee',
+    second.skills);
+  check('the unchanged skills are still in the stored series',
+    state._store.get(CHAIN_SCORE.KEY('bp_s')).series.fishing === 31);
+
+  /* A milestone crossed with literally nothing moved must not spend gas on an
+     empty write — the contract would revert with EmptyUpdate anyway. */
+  ps.level = 100;
+  rpc.length = 0;
+  const third = await room._chainScoreCheckpoint('bp_s', ps);
+  check('a checkpoint with nothing changed sends no transaction',
+    third.ok === false && third.reason === 'nothing-changed', third);
+  check('...and really broadcast nothing', !rpc.includes('eth_sendRawTransaction'), rpc);
+}
+
+// ── 9. The relayer address is derivable (operator sanity: fund THIS one) ──
 {
   const addr = privToAddress(normalizePrivKey(TEST_KEY));
   check('a relayer key yields a checksum-shaped address', /^0x[0-9a-f]{40}$/.test(addr), addr);

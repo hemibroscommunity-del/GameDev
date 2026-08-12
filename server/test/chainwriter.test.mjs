@@ -23,7 +23,7 @@
  */
 import {
   rlpEncode, uintToBytes, normalizePrivKey, privToAddress, playerKey,
-  scoreDigest, signDigest, selector, encodeRecordScore, buildSignedTx,
+  scoreDigest, signDigest, selector, encodeRecordScore, buildSignedTx, skillKey,
   sendRecordScore, RECORD_SCORE_SIG,
 } from '../src/chainwriter.js';
 import { keccak256, toHex, fromHex } from '../src/onchain.js';
@@ -89,53 +89,122 @@ const hex = (b) => '0x' + toHex(b);
   check('selector: balanceOf(address) == 0x70a08231',
     hex(selector('balanceOf(address)')) === '0x70a08231', hex(selector('balanceOf(address)')));
 
+  /* v2.3.1671: the ABI is now recordScore(bytes32,bytes32[],uint32[],uint64,
+     bytes) — two DYNAMIC arrays, so three of the five head words are offsets
+     measured from the start of the arguments (i.e. AFTER the selector).
+     Getting that base wrong yields calldata that broadcasts happily and then
+     reverts on decode, which is why the offsets are asserted by value.
+     The selector below is not self-referential: tools/dev/evm-conformance.mjs
+     compiled the contract with solc 0.8.26 and read 0xfc9f73a9 out of its
+     methodIdentifiers. */
+  check('recordScore selector == 0xfc9f73a9 (from compiled solc output)',
+    hex(selector(RECORD_SCORE_SIG)) === '0xfc9f73a9', hex(selector(RECORD_SCORE_SIG)));
+
   const player = playerKey('bp_testplayer');
   const sig = new Uint8Array(65).fill(0xab);
-  const data = encodeRecordScore({ player, level: 42, kills: 1337, nonce: 7, sig });
-  // 4 selector + 5*32 head + 32 length + 96 padded signature
-  check('recordScore calldata length is 292', data.length === 292, data.length);
+  const data = encodeRecordScore({
+    player, skills: ['melee', 'fishing'], values: [42, 1337], nonce: 7, sig,
+  });
+  const word = (i) => data.slice(4 + i * 32, 4 + (i + 1) * 32);
+  const wordNum = (i) => Number(BigInt('0x' + toHex(word(i)).slice(2)));
+
+  // 4 selector + 5*32 head + (32+64) keys + (32+64) values + (32+96) signature
+  check('recordScore calldata length is 484', data.length === 484, data.length);
   check('recordScore calldata starts with its selector',
     toHex(data.slice(0, 4)) === toHex(selector(RECORD_SCORE_SIG)));
-  check('recordScore: player occupies word 0', toHex(data.slice(4, 36)) === toHex(player));
-  check('recordScore: level right-aligned in word 1', data[4 + 63] === 42, data[4 + 63]);
-  check('recordScore: bytes offset word is 160', data[4 + 5 * 32 - 1] === 160, data[4 + 5 * 32 - 1]);
-  check('recordScore: declared signature length is 65', data[4 + 6 * 32 - 1] === 65, data[4 + 6 * 32 - 1]);
+  check('recordScore: player occupies word 0', toHex(word(0)) === toHex(player));
+  check('recordScore: skillKeys offset is 160', wordNum(1) === 160, wordNum(1));
+  check('recordScore: values offset is 256', wordNum(2) === 256, wordNum(2));
+  check('recordScore: nonce right-aligned in word 3', wordNum(3) === 7, wordNum(3));
+  check('recordScore: signature offset is 352', wordNum(4) === 352, wordNum(4));
+  check('recordScore: skillKeys length is 2', wordNum(5) === 2, wordNum(5));
+  check('recordScore: values length is 2', wordNum(8) === 2, wordNum(8));
+  check('recordScore: first value is 42', wordNum(9) === 42, wordNum(9));
+  check('recordScore: declared signature length is 65', wordNum(11) === 65, wordNum(11));
+
+  /* Skill keys are RIGHT-padded ASCII, matching Solidity's bytes32("melee")
+     literal — so a block-explorer reader sees the word, and the padding is
+     zero bytes, the cheap kind of calldata. */
+  check('skillKey is right-padded ASCII',
+    hex(skillKey('melee')) === '0x6d656c6565' + '00'.repeat(27), hex(skillKey('melee')));
+  check('skillKey rejects a name too long for bytes32',
+    (() => { try { skillKey('x'.repeat(33)); return false; } catch { return true; } })());
 }
 
-// ── 4. Attestation digest vs an independent construction ──
+// ── 4. Attestation digest ──
 {
   const chainId = 43111;
   const contract = '0x1234567890abcdef1234567890abcdef12345678';
   const player = playerKey('bp_abc');
-  const level = 300, kills = 65535, nonce = 12345678n;
+  const skills = ['melee', 'fishing', 'kills'];
+  const values = [300, 65535, 4271];
+  const nonce = 12345678n;
 
-  // Second implementation, built literally with a DataView — a transposed
-  // field or wrong width cannot satisfy both this and scoreDigest().
-  const inner = new Uint8Array(100);
+  /* Second implementation, built literally with a DataView — a transposed
+     field or a wrong width cannot satisfy both this and scoreDigest().
+     Note the two array hashes: abi.encodePacked pads ARRAY ELEMENTS to a full
+     32-byte word even when the element type is narrower, so uint32[] hashes
+     at 32 bytes per element, not 4.  That is the single assumption most
+     likely to be wrong in a hand-written encoder, and it is pinned here and
+     independently by tools/dev/evm-conformance.mjs. */
+  const keysPacked = new Uint8Array(32 * skills.length);
+  skills.forEach((k, i) => keysPacked.set(skillKey(k), i * 32));
+  const valsPacked = new Uint8Array(32 * values.length);
+  values.forEach((v, i) => new DataView(valsPacked.buffer).setUint32(i * 32 + 28, v));
+
+  const inner = new Uint8Array(156);
   const dv = new DataView(inner.buffer);
   dv.setBigUint64(24, BigInt(chainId));                  // uint256, low 8 bytes
   inner.set(fromHex(contract), 32);                      // address, 20 bytes
-  inner.set(player, 52);                                 // bytes32
-  dv.setUint32(84, level);                               // uint32
-  dv.setUint32(88, kills);                               // uint32
-  dv.setBigUint64(92, BigInt(nonce));                    // uint64
+  inner.set(player, 52);                                 // bytes32 player
+  inner.set(keccak256(keysPacked), 84);                  // bytes32 keys hash
+  inner.set(keccak256(valsPacked), 116);                 // bytes32 values hash
+  dv.setBigUint64(148, BigInt(nonce));                   // uint64
   const expectedInner = keccak256(inner);
   const prefix = utf8('\x19Ethereum Signed Message:\n32');
   const wrapped = new Uint8Array(prefix.length + 32);
   wrapped.set(prefix); wrapped.set(expectedInner, prefix.length);
   const expected = keccak256(wrapped);
 
-  const got = scoreDigest({ chainId, contract, player, level, kills, nonce });
-  check('scoreDigest matches an independent 100-byte construction',
+  const got = scoreDigest({ chainId, contract, player, skills, values, nonce });
+  check('scoreDigest matches an independent 156-byte construction',
     toHex(got) === toHex(expected), { got: hex(got), expected: hex(expected) });
   check('EIP-191 prefix is 28 bytes', prefix.length === 28, prefix.length);
 
+  /* ══ THE ONE THAT MATTERS ══
+     Everything above only proves chainwriter.js agrees with itself.  This
+     vector was produced by tools/dev/evm-conformance.mjs, which compiled
+     contracts/BroTownScores.sol with solc 0.8.26 and CALLED digest() on the
+     real bytecode in a local EVM.  If this line ever fails, the server is
+     signing something the deployed contract will not accept, and every
+     checkpoint reverts with BadSignature — on mainnet, for real gas.
+     Regenerate with the harness rather than "fixing" the constant. */
+  check('scoreDigest byte-matches compiled Solidity digest()',
+    hex(scoreDigest({
+      chainId: 1,
+      contract: '0xabababababababababababababababababababab',
+      player: playerKey('bp_fixture'),
+      skills: ['melee', 'fishing', 'kills'],
+      values: [12, 5, 900],
+      nonce: 7,
+    })) === '0x0a978c0e260556ba911d34a9a675ccb4537f54d2eec4e721594785aea5ccdf30');
+
   // Binding: a different chain or contract must produce a different digest,
   // or attestations replay across deployments.
-  const otherChain = scoreDigest({ chainId: 1, contract, player, level, kills, nonce });
-  const otherAddr = scoreDigest({ chainId, contract: '0x' + 'ff'.repeat(20), player, level, kills, nonce });
+  const otherChain = scoreDigest({ chainId: 1, contract, player, skills, values, nonce });
+  const otherAddr = scoreDigest({ chainId, contract: '0x' + 'ff'.repeat(20), player, skills, values, nonce });
   check('digest is bound to chainId', toHex(otherChain) !== toHex(got));
   check('digest is bound to the contract address', toHex(otherAddr) !== toHex(got));
+
+  /* Boundary safety: hashing the arrays SEPARATELY is what stops an attacker
+     sliding the split between them.  Moving one element across the boundary
+     must change the digest. */
+  const shifted = scoreDigest({
+    chainId, contract, player,
+    skills: ['melee', 'fishing'], values: [300, 65535], nonce,
+  });
+  check('digest changes when a skill moves across the array boundary',
+    toHex(shifted) !== toHex(got));
 }
 
 // ── 5. Signing + transaction round-trip (recover the sender) ──
@@ -145,7 +214,7 @@ const hex = (b) => '0x' + toHex(b);
 
   const digest = scoreDigest({
     chainId: 43111, contract: '0x' + '11'.repeat(20),
-    player: playerKey('bp_round'), level: 10, kills: 20, nonce: 1,
+    player: playerKey('bp_round'), skills: ['melee'], values: [10], nonce: 1,
   });
   const sig = await signDigest(digest, priv);
   check('attestation signature is 65 bytes', sig.length === 65, sig.length);
@@ -163,7 +232,7 @@ const hex = (b) => '0x' + toHex(b);
     chainId: 43111n, nonce: 5n, maxPriorityFeePerGas: 1000000n,
     maxFeePerGas: 20000000n, gasLimit: 200000n,
     to: '0x' + 'ab'.repeat(20), value: 0n,
-    data: encodeRecordScore({ player: playerKey('bp_round'), level: 10, kills: 20, nonce: 1, sig }),
+    data: encodeRecordScore({ player: playerKey('bp_round'), skills: ['melee'], values: [10], nonce: 1, sig }),
   };
   const { raw, sighash } = await buildSignedTx(tx, priv);
   check('raw transaction is typed 0x02', raw.startsWith('0x02'), raw.slice(0, 6));
@@ -195,7 +264,7 @@ const hex = (b) => '0x' + toHex(b);
   };
 
   const res = await sendRecordScore({
-    playerId: 'bp_send', level: 12, kills: 34, nonce: 1,
+    playerId: 'bp_send', skills: ['melee', 'kills'], values: [12, 34], nonce: 1,
     contract: '0x' + 'ab'.repeat(20), priv, chainId: 43111,
     opts: { fetchImpl: fakeFetch, rpc: 'http://test' },
   });
@@ -209,7 +278,7 @@ const hex = (b) => '0x' + toHex(b);
   // THE failure posture: a dead node must not throw into a game path.
   const deadFetch = async () => { throw new Error('ECONNREFUSED'); };
   const bad = await sendRecordScore({
-    playerId: 'bp_send', level: 1, kills: 1, nonce: 1,
+    playerId: 'bp_send', skills: ['melee'], values: [1], nonce: 1,
     contract: '0x' + 'ab'.repeat(20), priv, chainId: 43111,
     opts: { fetchImpl: deadFetch },
   });
@@ -222,7 +291,7 @@ const hex = (b) => '0x' + toHex(b);
     json: async () => ({ jsonrpc: '2.0', id: 1, error: { message: 'nonce too low' } }),
   });
   const rejected = await sendRecordScore({
-    playerId: 'bp_send', level: 1, kills: 1, nonce: 1,
+    playerId: 'bp_send', skills: ['melee'], values: [1], nonce: 1,
     contract: '0x' + 'ab'.repeat(20), priv, chainId: 43111,
     opts: { fetchImpl: rejecting },
   });

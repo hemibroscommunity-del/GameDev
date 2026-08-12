@@ -3512,11 +3512,28 @@ export class GameRoom {
                             10 min leaves ~1000x margin on that window.
          Worst case per player-hour is now 60 rows (a changed record every
          MIN_MS); a steady one costs 6. */
+      /* v2.3.1671: the per-skill board is SERVER-AUTHORITATIVE.  Combat
+         levels come from ps.prog3, life-skill levels from ps.lifeSkills and
+         kills from svKills — the exact same object `_chainScoreSeries`
+         signs for the chain, so the in-game hiscores and the public ledger
+         are computed once and can never tell different stories.
+         The `rpgData` columns below stay client-reported: they feed the
+         legacy desktop panel only, and the new categories never read them.
+         Falls back to an empty series when there is no live player state
+         (the join path can report before `ps` exists), which just means the
+         row carries no skill columns until the next report. */
+      const series = lbPs ? this._chainScoreSeries(lbPs) : {};
+
       const sig = JSON.stringify([
         name, color, lbLevel,
         rpgData.lifeTotal || 0, rpgData.ap || 0, rpgData.kills || 0,
         rpgData.dungeons || 0, rpgData.goldEarned || 0, rpgData.playtime || 0,
         rpgData.clanTag || null,
+        /* The series MUST be inside the change signature or a level-up would
+           never reach the board: the throttle below only writes when this
+           string differs, and a fishing level moving is exactly the kind of
+           change the old signature could not see. */
+        series,
       ]);
       const now = Date.now();
       const since = now - (session._lbAt || 0);
@@ -3530,7 +3547,7 @@ export class GameRoom {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           playerId: session.id, name, color, level: lbLevel,
-          rpgData, ts: now,
+          rpgData, series, ts: now,
         }),
       }));
     } catch {}

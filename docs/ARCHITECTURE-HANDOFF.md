@@ -85,7 +85,7 @@ extended.
    | `friends:<pid>` | `{list, reqIn, reqOut}` mutual-friend graph + pending requests | friends.md |
    | `friend_msg:<pid>` | offline DM backlog, capped 50, cleared on join delivery | friends.md |
    | `bro_link:<pid>` | `{tokenId, address, ts}` last verified Hemi Bro ownership link; re-earned after RECHECK_MS | broverify.js |
-   | `chain_score:<pid>` | `{milestone, nonce, level, kills, txHash, at}` last score attestation written to the BroTownScores contract on Hemi | progression-onchain.md |
+   | `chain_score:<pid>` | `{milestone, nonce, level, series, kills, txHash, at}` last score attestation written to the BroTownScores contract on Hemi. `series` (v2.3.1671) is the `{skillName: level}` map that was written, so the next checkpoint can send only what CHANGED | progression-onchain.md |
 
    Naming convention going forward: **lowercase_snake prefixes**
    (`duelEscrow:` predates the rule; don't imitate it). Register every

@@ -1,12 +1,42 @@
 import React, { useEffect, useState } from 'react';
 import { COL, panelStyle, getState } from './common.js';
+import { BT_API_BASE } from '@/networking/index.js';
 
+/* v2.3.1671: a TRADITIONAL HISCORES BOARD — one ranking per skill.
+   Owner: "a traditional high scores system that ranks each skill... I want
+   all of the lifeskills to be added on the high scores too."
+
+   Two things were wrong before this.
+
+   1. THIS PANEL NEVER FETCHED ANYTHING.  It read `S._leaderboard[cat]`, and
+      nothing in the entire client ever wrote `S._leaderboard`.  So the panel
+      the player actually sees (BottomDashboard mounts THIS one; the desktop
+      panel in ui/panels is behind the legacy menu) has been rendering its
+      "No leaderboard data yet." empty state permanently.  It now fetches
+      /api/leaderboard/top itself, per category, like the old panel did.
+   2. THE COLUMNS WERE CLIENT-REPORTED.  Kills, Skills and Gold came out of
+      the rpgData blob the client sends, so they were claims, not facts.  The
+      categories below read the server's `series` — combat levels from prog3,
+      life-skill levels from ps.lifeSkills, kills from svKills — which is the
+      same object the on-chain attestation signs.  `ap` and `gold` are gone
+      from the chip row for exactly that reason; the legacy endpoints still
+      serve them for the old desktop panel. */
 const CATS = [
-  { id: 'level',      label: 'Level' },
-  { id: 'lifeskills', label: 'Skills' },
-  { id: 'ap',         label: 'AP' },
-  { id: 'kills',      label: 'Kills' },
-  { id: 'gold',       label: 'Gold' },
+  { id: 'combat',       label: 'Combat' },
+  { id: 'melee',        label: 'Melee' },
+  { id: 'bow',          label: 'Bow' },
+  { id: 'magic',        label: 'Magic' },
+  { id: 'kills',        label: 'Kills' },
+  { id: 'woodcutting',  label: 'Woodcutting' },
+  { id: 'fishing',      label: 'Fishing' },
+  { id: 'mining',       label: 'Mining' },
+  { id: 'farming',      label: 'Farming' },
+  { id: 'cooking',      label: 'Cooking' },
+  { id: 'blacksmithing', label: 'Blacksmithing' },
+  { id: 'woodworking',  label: 'Woodworking' },
+  { id: 'gemCutting',   label: 'Gem Cutting' },
+  { id: 'enchanting',   label: 'Enchanting' },
+  { id: 'trapping',     label: 'Trapping' },
 ];
 
 /* v2.3.1232: Lantern Slate pass (docs/LANTERN-SLATE-SPEC.md) — category
@@ -47,15 +77,39 @@ const chip = (active) => ({
 });
 
 export const LeaderboardPanel = () => {
-  const [cat, setCat] = useState('level');
-  const [, force] = useState(0);
+  const [cat, setCat] = useState('combat');
+  const [boards, setBoards] = useState(() => Object.create(null));
+  const [loading, setLoading] = useState(true);
+
+  /* Fetch per category, cache per category, refresh on a slow timer.  A
+     hiscores page is not a live readout — the server's own report throttle
+     means a row changes at most once a minute — so 20s is generous and 1.5s
+     (what the old force-rerender interval used) would have been fifteen
+     wasted requests per minute per open panel.
+     `boards` is Object.create(null): the keys are category ids that ride in
+     from a fetch response, and a plain {} silently no-ops on '__proto__'
+     (CLAUDE.md — three incidents in one day). */
   useEffect(() => {
-    const id = setInterval(() => force(v => v + 1), 1500);
-    return () => clearInterval(id);
-  }, []);
+    let alive = true;
+    const load = () => {
+      fetch(BT_API_BASE + '/api/leaderboard/top?category=' + encodeURIComponent(cat) + '&limit=50')
+        .then(r => r.json())
+        .then(d => {
+          if (!alive || !d || !d.ok) return;
+          setBoards(prev => { const next = Object.create(null); Object.assign(next, prev); next[cat] = d.results || []; return next; });
+        })
+        .catch(() => {})
+        .finally(() => { if (alive) setLoading(false); });
+    };
+    setLoading(!boards[cat]);
+    load();
+    const id = setInterval(load, 20000);
+    return () => { alive = false; clearInterval(id); };
+  }, [cat]);
 
   const S = getState();
-  const board = (S?._leaderboard && S._leaderboard[cat]) || [];
+  const meId = S && S.myId;
+  const board = boards[cat] || [];
 
   return (
     <div style={panelStyle}>
@@ -74,17 +128,20 @@ export const LeaderboardPanel = () => {
             style={{ width: 40, height: 40, objectFit: 'contain', opacity: 0.4, margin: '0 auto' /* v2.3.1233: img{display:block} in game.css defeats textAlign centering */ }}
             onError={(e) => { e.currentTarget.replaceWith(document.createTextNode('🏆')); }} />
           <div style={{ fontSize: 13, fontWeight: 700, color: COL.text2, marginTop: 6 }}>
-            No leaderboard data yet.
+            {loading ? 'Loading…' : 'Nobody has trained this yet.'}
           </div>
         </div>
       ) : board.slice(0, 30).map((r, i) => (
-        <div key={i} style={{
+        <div key={r.id || i} style={{
           display: 'flex',
           alignItems: 'center',
           gap: 8,
           minHeight: 44,
           padding: '0 8px',
           borderBottom: `1px solid ${COL.divider}`,
+          /* Finding yourself on a fifty-row board is the whole reason to open
+             it; without this you scan every name. */
+          background: (meId && r.id === meId) ? COL.accentFill : 'transparent',
         }}>
           {/* v2.3.1235: batch-1 rollout — contract allows rank as a key
               number (16/700 tabular, brass text for top-3 only — never a
