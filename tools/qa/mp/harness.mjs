@@ -27,6 +27,7 @@
  * ACTIONS go through the DOM, because the point is testing the UI.
  */
 import { chromium } from 'playwright';
+import zlib from 'node:zlib';
 import { createServer } from 'node:http';
 import { spawn } from 'node:child_process';
 import { readFile, mkdtemp, rm } from 'node:fs/promises';
@@ -452,6 +453,85 @@ export async function openDest(P, label, { timeout = 6000 } = {}) {
      role=button divs like the rail — hence two selectors, not one. */
   await tapTop(P.page, `.bt-dashboard button:has-text("${label}")`, timeout);
   return true;
+}
+
+/* ── PIXELS ────────────────────────────────────────────────────────────────
+ * Some things can only be proven by looking at the screen.  The obvious way —
+ * getImageData on the game canvas — returns BLANK: the WebGL context has no
+ * preserveDrawingBuffer, so the buffer is gone by the time script runs.  A
+ * Playwright screenshot does capture it, but it arrives as a PNG and there is
+ * no image decoder in this repo (sharp/jimp are not installed, and the QA
+ * harness earning a native dependency for one assertion is a bad trade).
+ *
+ * So: decode it here.  Playwright emits a non-interlaced 8-bit truecolour PNG,
+ * which is a short parse over zlib — which Node already ships.  This is
+ * deliberately minimal and asserts the shape it expects rather than trying to
+ * be a general decoder.
+ */
+export async function screenshotPixels(P, clip) {
+  const buf = await P.page.screenshot(clip ? { clip } : {});
+  return decodePng(buf);
+}
+
+export function decodePng(buf) {
+  if (buf.readUInt32BE(0) !== 0x89504e47) throw new Error('not a PNG');
+  let off = 8, width = 0, height = 0, bitDepth = 0, colorType = 0;
+  const idat = [];
+  while (off < buf.length) {
+    const len = buf.readUInt32BE(off);
+    const type = buf.toString('ascii', off + 4, off + 8);
+    const data = buf.subarray(off + 8, off + 8 + len);
+    if (type === 'IHDR') {
+      width = data.readUInt32BE(0); height = data.readUInt32BE(4);
+      bitDepth = data[8]; colorType = data[9];
+      if (data[12] !== 0) throw new Error('interlaced PNG unsupported');
+    } else if (type === 'IDAT') idat.push(data);
+    else if (type === 'IEND') break;
+    off += 12 + len;
+  }
+  if (bitDepth !== 8 || (colorType !== 6 && colorType !== 2)) {
+    throw new Error(`unsupported PNG: depth ${bitDepth} colour ${colorType}`);
+  }
+  const ch = colorType === 6 ? 4 : 3;
+  const raw = zlib.inflateSync(Buffer.concat(idat));
+  const stride = width * ch;
+  const out = Buffer.alloc(height * stride);
+  let pos = 0;
+  for (let y = 0; y < height; y++) {
+    const filter = raw[pos++];
+    const line = raw.subarray(pos, pos + stride); pos += stride;
+    const cur = out.subarray(y * stride, (y + 1) * stride);
+    const prev = y > 0 ? out.subarray((y - 1) * stride, y * stride) : null;
+    for (let i = 0; i < stride; i++) {
+      const a = i >= ch ? cur[i - ch] : 0;
+      const b = prev ? prev[i] : 0;
+      const c = (prev && i >= ch) ? prev[i - ch] : 0;
+      let v = line[i];
+      if (filter === 1) v += a;
+      else if (filter === 2) v += b;
+      else if (filter === 3) v += (a + b) >> 1;
+      else if (filter === 4) {
+        const pp = a + b - c, pa = Math.abs(pp - a), pb = Math.abs(pp - b), pc = Math.abs(pp - c);
+        v += (pa <= pb && pa <= pc) ? a : (pb <= pc ? b : c);
+      } else if (filter !== 0) throw new Error('bad PNG filter ' + filter);
+      cur[i] = v & 0xff;
+    }
+  }
+  return {
+    width, height, channels: ch, data: out,
+    at(x, y) { const i = y * stride + x * ch; return [out[i], out[i + 1], out[i + 2]]; },
+    /* How many pixels satisfy a colour predicate.  The point of all this. */
+    count(pred) {
+      let n = 0;
+      for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
+          const i = y * stride + x * ch;
+          if (pred(out[i], out[i + 1], out[i + 2], x, y)) n++;
+        }
+      }
+      return n;
+    },
+  };
 }
 
 /** Every visible button's text — the authoritative selector list at runtime. */

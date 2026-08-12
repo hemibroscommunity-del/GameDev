@@ -35,6 +35,7 @@ const SCENARIOS = {
   tutorial: () => import('./mp-tutorial.mjs'), /* v2.3.1665: the completable arc */
   onboarding: () => import('./mp-onboarding.mjs'), /* v2.3.1668: the first-run greeting */
   hiscores: () => import('./mp-hiscores.mjs'), /* v2.3.1671: the per-skill board */
+  mayorart: () => import('./mp-mayorart.mjs'), /* v2.3.1672: the mayor's real art */
 };
 
 const want = process.argv.slice(2).filter((a) => !a.startsWith('-'));

@@ -43,6 +43,7 @@ import { preloadFullsetFigures } from './gearSheets.js'; /* v2.3.1376: fullset k
 import { preloadJogHeadOverlays } from './playerSkins.js'; /* v2.3.1376: their head overlays */
 import { ZONE_VARIANT_MAP, MONSTER_VARIANTS, variantsForZone } from '../data/monsterVariants.js'; /* v2.3.1405: per-zone variant scoping */
 import { loadMonsterRecolor, recolorFamilyOf } from './monsterRecolor.js'; /* v2.3.1534: per-zone recolour */
+import { loadNpcSprites } from './npcSprites.js'; /* v2.3.1672: NPC figure art */
 
 /* v2.3.1405 (owner: "per zone loading instead of one long pregame loading
    screen"): ZONE-SPECIFIC textures moved OFF the blocking pre-game gate —
@@ -104,6 +105,17 @@ export async function preloadWorldAnimations() {
     walkability: loadWalkabilityMaps(),
     fx: effectsAnimationsReady(),
     traits: preloadTraits(),
+    /* v2.3.1672: NPC art.  GLOBAL, not per-zone: the only NPC art today is
+       Mayor Bro, who stands in town — and town is a resident hub that is
+       never freed (see the ZONE-ASSET EXCEPTION in CLAUDE.md), so there is no
+       per-zone eviction to hang him off.  He is one 256px texture, ~18KB.
+       Registered HERE rather than loaded on first sighting because the
+       renderer's lookup is cache-only by design: if this line is removed the
+       mayor silently falls back to his emoji stand-in forever, which is a
+       visible bug rather than a silent hitch — deliberately the louder
+       failure of the two.  If NPC art ever grows past a handful of figures,
+       move it to preloadZoneAssets and free it on zone exit. */
+    npcArt: loadNpcSprites(),
   };
 
   const names = Object.keys(groups);

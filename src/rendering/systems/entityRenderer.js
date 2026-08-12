@@ -3,6 +3,7 @@
  * Uses PixiJS Graphics for procedural shapes (matching the original Canvas 2D look).
  */
 import { Assets, Container, Graphics, Rectangle, Sprite, Text, TextStyle, Texture } from 'pixi.js';
+import { getNpcTexture } from '../npcSprites.js'; /* v2.3.1672: NPC figure art */
 import { TILE } from '@/data/constants.js';
 import { ZONES, zonePlayerScale } from '@/data/zones.js';
 import { ELEMENTS } from '@/data/elements.js';
@@ -137,6 +138,16 @@ const POPUP_BAR_CLEAR = 34;
    exactly the pre-experiment size; keep the knob for further tuning. */
 const PLAYER_SIZE_MULT = 1.0;
 const MONSTER_SIZE_MULT = 1.5;
+/* v2.3.1672: NPC art draw scale.  NPC art is one 256px frame (not a sheet),
+   and 96 world px per frame is what this renderer already treats as "reads at
+   player scale" — see the 96/128 baseScale at the harvest stand-in, whose
+   comment says exactly that.  96/256 = 0.375.
+   Measured the hard way: the first attempt reasoned from the body sprite's
+   0.5-on-a-128-texture and landed on 0.25, and a screenshot showed the mayor
+   about two thirds the player's height standing right next to him.  Trust the
+   96px convention, not the arithmetic. */
+const NPC_SPRITE_SCALE = 96 / 256;
+
 /* v2.3.1300: shared ground-shadow texture — ONE 64x32 radial-gradient
    ellipse minted lazily on a canvas and reused by every entity shadow
    sprite, so all shadows batch into a single draw call (same recipe as
@@ -6714,6 +6725,23 @@ export class EntityRenderer {
         display.addChild(avatarText);
         display._avatar = avatarText;
 
+        /* v2.3.1672: real ART for an NPC that has it.  `npc.sprite` is a
+           256x256 frame normalised to the PLAYER's stand pose — figure ~200px
+           tall with its feet on the y=223 baseline — so the two read at the
+           same scale standing next to each other.
+           anchor (0.5, 223/256) puts those feet exactly on npc.y, which is the
+           point the walk/interaction code already treats as where the NPC is
+           standing; anchoring at the frame centre instead would float him half
+           a body above the street. */
+        if (npc.sprite) {
+          const fig = new Sprite(getNpcTexture(npc.sprite) || Texture.EMPTY);
+          fig.anchor.set(0.5, 223 / 256);
+          fig.scale.set(NPC_SPRITE_SCALE);
+          display.addChildAt(fig, 0);      // behind the bars and labels
+          display._fig = fig;
+          display._figSrc = npc.sprite;
+        }
+
         this.entityLayer.addChild(display);
         this.npcDisplays.set(npc.id, display);
       }
@@ -6721,9 +6749,44 @@ export class EntityRenderer {
       display.x = npc.x;
       display.y = npc.y;
 
+      /* v2.3.1672: label headroom.  The stock offsets (-14 star, -17 name,
+         -22 hp bar, -36 quest marker) were laid out around an 11px body
+         circle; a full figure is ~50 world px tall, so every one of them
+         would land ON him — the quest marker, the whole point of which is to
+         be visible from across the street, would sit in his chest.  Lift the
+         set by the figure's height the first time we know it. */
+      if (display._fig && !display._lifted && display._fig.texture !== Texture.EMPTY) {
+        display._lifted = true;
+        const lift = NPC_SPRITE_SCALE * 223;          // feet-to-frame-top, world px
+        display._nameText.y -= lift;
+        display._questMarker._baseY = -36 - lift;
+        for (const c of display.children) {
+          if (c === display._fig || c === display._nameText || c === display._questMarker) continue;
+          if (c === display._body || c === display._avatar) continue;
+          c.y -= lift;
+        }
+      }
+
+      /* v2.3.1672: the art path.  The texture may still be loading on the
+         first frames (the preload manifest awaits it behind the loading
+         screen, but a cache miss after a GL-loss rebuild can land here), so
+         bind it whenever it becomes available rather than once at creation. */
+      const fig = display._fig;
+      if (fig) {
+        if (fig.texture === Texture.EMPTY) {
+          const t = getNpcTexture(display._figSrc);
+          if (t) fig.texture = t;
+        }
+        /* Only hide the emoji stand-in once real art is actually on screen —
+           otherwise a failed load leaves an NPC you cannot see at all. */
+        const drawn = fig.texture !== Texture.EMPTY;
+        if (display._avatar.visible !== !drawn) display._avatar.visible = !drawn;
+        display._suppressBody = drawn;
+      }
+
       /* Body — only redraw when color changes (NPCs are static). */
       const body = display._body;
-      const isSkull = npc.avatar === '💀';
+      const isSkull = npc.avatar === '💀' || !!display._suppressBody;
       if (display._lastColor !== npc.color || display._lastSkull !== isSkull) {
         display._lastColor = npc.color;
         display._lastSkull = isSkull;
@@ -6762,7 +6825,7 @@ export class EntityRenderer {
         const targetFill = qmStr === '❗' ? '#f5c542' : '#3dd497';
         if (qm.style.fill !== targetFill) qm.style.fill = targetFill;
         const pulse = Math.sin(now / 300) * 3;
-        qm.y = -36 + pulse;
+        qm.y = (qm._baseY !== undefined ? qm._baseY : -36) + pulse;
         qm.visible = true;
       } else if (qm.visible) {
         qm.visible = false;
