@@ -1038,9 +1038,34 @@ export function setupWebSocket(ctx) {
                  shield. Pre-v2.3.188 saves on the worker may have
                  shield=null, which would erase the client default
                  added in the load-time migration. If the server's
-                 value is falsy, keep whatever the client has. */
+                 value is falsy, keep whatever the client has.
+                 v2.3.1683 (owner: "I want it to be received in inventory
+                 first not automatically equipped"): a shield the server
+                 reports goes into the BAG, never straight onto the arm.
+                 The server's `shield` field is an OWNERSHIP record — there
+                 is no server-side shield stash (handoff rule 1 forbids a new
+                 rpg-blob field) so equipped-vs-stashed has always been the
+                 client's to decide, and this line decided it wrong: it wrote
+                 the server's value into the EQUIPPED slot every time.
+                 "Do I already hold this?" is what makes that safe to repeat:
+                 the full player_state on every reconnect re-reports the same
+                 shield, so an unconditional push would hand out a fresh copy
+                 per reload, and a player who already had it equipped before
+                 this version would get a second one in the bag.  Matching by
+                 value means a shield we already hold — on the arm OR in the
+                 bag — is recognised and ignored, and only a genuinely new
+                 grant lands. */
               if ('shield' in msg.payload && msg.payload.shield) {
-                S.rpg.shield = msg.payload.shield;
+                var _svShield = msg.payload.shield;
+                var _shSig = function (sh) {
+                  return !sh ? '' : [sh.name || '', sh.gearBase || '',
+                    sh.tierMult == null ? '' : sh.tierMult, sh.tier || ''].join('|');
+                };
+                var _wantSig = _shSig(_svShield);
+                if (!Array.isArray(S.rpg.shieldStash)) S.rpg.shieldStash = [];
+                var _held = _shSig(S.rpg.shield) === _wantSig
+                  || S.rpg.shieldStash.some(function (sh) { return _shSig(sh) === _wantSig; });
+                if (!_held) S.rpg.shieldStash.push(_svShield);
               }
               if ('amulet' in msg.payload) S.rpg.amulet = msg.payload.amulet;
               /* v2.3.227 (Phase 1): armor swaps change maxHp via
