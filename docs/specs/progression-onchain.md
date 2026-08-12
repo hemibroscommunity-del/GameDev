@@ -38,7 +38,9 @@ server-computed. So a life-skill level is authoritative going forward but
 could, on an old account, have started from a claim. Combat levels and kills
 have no such path.
 
-**When:** on combat-level milestones — 5, 10, 25, 50, 100, 150, 200, 250, 300.
+**When:** on combat-level milestones — 4, 10, 25, 50, 100, 150, 200, 250, 300.
+(v2.3.1683: the first milestone is 4 — a fresh character is level 3, so the
+very first level-up puts the run on-chain within minutes of play.)
 Nine transactions per character, for the lifetime of the account. This is not
 a per-kill ledger and must not become one; gas is real. Life-skill levels ride
 along on those same nine writes rather than triggering their own — ten more
@@ -246,7 +248,7 @@ laptop** — see CLAUDE.md for the incident that rule comes from.
 1. **The explorer.** Your contract's address page shows the deployment
    transaction immediately, and each score write appears as a `Record Score`
    call as they happen.
-2. **The game.** Play a fresh character to **level 5** (the first
+2. **The game.** Play a fresh character to **level 4** (the first
    milestone). Within a minute or so of the level-up, the client shows a
    "recorded on Hemi" receipt in the Hero sheet's **Records** section, with
    a link to the transaction. Since v2.3.1682 that receipt is trustworthy by

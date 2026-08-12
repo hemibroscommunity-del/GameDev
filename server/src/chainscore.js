@@ -29,7 +29,7 @@
  * could, for an old account, have started from a claim.  Combat levels and
  * kills have no such path.
  *
- * WHEN.  On combat-level milestone crossings only — levels 5, 10, 25, 50,
+ * WHEN.  On combat-level milestone crossings only — levels 4, 10, 25, 50,
  * 100, 150, 200, 250, 300.  A write costs real gas, so the cadence is bounded
  * at nine transactions per character for the lifetime of the account, and the
  * stored `chain_score:<pid>` record makes a repeat write impossible even
@@ -69,9 +69,15 @@ export const COMBAT_SKILL_KEYS = { sword: 'melee', bow: 'bow', staff: 'magic' };
 
 export const CHAIN_SCORE = {
   /* Nine lifetime checkpoints against a 300 cap.  Level 3 is a fresh prog3
-     character (three level-1 trained skills), so 5 is the first that means
-     anything actually happened. */
-  MILESTONES: [5, 10, 25, 50, 100, 150, 200, 250, 300],
+     character (three level-1 trained skills), so 4 — the very first
+     level-up — is the earliest crossing that means anything happened.
+     v2.3.1683 (owner: "does the character need to play to level 5 though?
+     that will take a long time"): the first milestone dropped from 5 to 4
+     so a player's run lands on-chain within their first minutes, which is
+     also exactly what a contest judge needs to see.  Cost: nothing — the
+     count of lifetime checkpoints is unchanged, one write just happens
+     earlier. */
+  MILESTONES: [4, 10, 25, 50, 100, 150, 200, 250, 300],
   KEY: (pid) => 'chain_score:' + pid,
 };
 
