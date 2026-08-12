@@ -58,7 +58,12 @@ export function acceptQuest(S, questPanel, deps) {
   BT_AUDIO.collect();
 }
 
-export function turnInQuest(S, questPanel, deps) {
+/* v2.3.1685: `xpCat` — which trained skill this turn-in's XP goes into
+   ('sword' | 'bow' | 'staff'), supplied by the dialogue's picker
+   (QuestPanel's XpChooser). Optional so any caller for a quest that pays no
+   XP, or a pre-prog3 character, can keep omitting it; the worker only
+   requires it when it would otherwise have XP with nowhere to put it. */
+export function turnInQuest(S, questPanel, deps, xpCat) {
   var setRpgState = deps.setRpgState,
     setQuestPanel = deps.setQuestPanel;
   var R = S.rpg;
@@ -75,15 +80,20 @@ export function turnInQuest(S, questPanel, deps) {
        tutorial arc stands in TOWN, so this message was mute exactly where it
        was needed -- the client self-credited the gold and XP locally and the
        worker never paid, so the reward evaporated on the next player_state.
-       NOTE (v2.3.1684, reported separately): sending it is necessary but not
-       sufficient for a prog3 character.  _handleQuestTurnIn refuses a turn-in
-       that pays XP without an `xpCat` naming Melee/Bow/Magic, and this world
-       dialogue has no skill chooser to supply one -- only the quest log's
-       detail panel does.  Fixing the gate makes the turn-in REACH the worker;
-       the missing chooser is a UI gap tracked with the owner rather than
-       papered over with a silently-picked skill. */
+       v2.3.1685 closes the other half: _handleQuestTurnIn refuses a turn-in
+       that pays XP without an `xpCat` naming Melee/Bow/Magic, so fixing the
+       gate alone only got the message REFUSED instead of unsent.  The
+       dialogue now carries a picker (QuestPanel's XpChooser) and passes its
+       choice through here, matching what the quest log has sent since
+       v2.3.1669.  Never guessed on the player's behalf: with no choice the
+       button does not fire at all. */
     if (_Sqt.channel) {
-      try { _Sqt.channel.send({ type: 'quest_turn_in', payload: { questId: questPanel.quest.id } }); } catch (e) {}
+      try {
+        _Sqt.channel.send({ type: 'quest_turn_in', payload: {
+          questId: questPanel.quest.id,
+          xpCat: typeof xpCat === 'string' ? xpCat : undefined,
+        } });
+      } catch (e) {}
     }
   }
   R._quests[questPanel.quest.id] = QUEST_STATUS.turnedIn;
