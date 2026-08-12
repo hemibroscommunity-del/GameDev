@@ -8,7 +8,7 @@
 import { Container, Graphics, Sprite, Text, TextStyle, Texture, Rectangle, Assets } from 'pixi.js';
 import { TILE } from '@/data/constants.js';
 import { ZONES } from '@/data/zones.js';
-import { TOWN_EXITS, WORLDVIEW_EXITS } from '@/data/effects.js';
+import { TOWN_EXITS, WORLDVIEW_EXITS, COMING_SOON_MARKS, TOWN_SOON_MARKS } from '@/data/effects.js';
 import { getLoadedTiledMap, getTilesetImage, IMAGE_ZONE_MAPS, VIDEO_ZONE_MAPS } from '../tiledMaps.js';
 
 const ZONE_LABEL_STYLE = new TextStyle({
@@ -182,6 +182,46 @@ export class TileRenderer {
         }
       }
     }
+    /* ═══ v2.3.1677: COMING SOON ═══
+       Owner: "put 'coming soon' over all buildings in town and over all zone
+       entry points that don't have a portal."
+
+       Both cases are the same problem: the ART promises somewhere to go, and
+       walking there does nothing.  Town's twelve buildings have had no
+       entrances since v2.3.823 (S.nearBuilding is force-set to null every
+       frame), and the worldview paints nine regions of which five have a live
+       trail-head.  A player cannot tell "not built yet" from "I can't find
+       the door", and spends the difference hunting.  A label costs one Text
+       each and ends the hunt.
+
+       The exit list WINS over the coming-soon list: a zone with a live portal
+       is never labelled, even if someone leaves a stale entry in
+       COMING_SOON_MARKS.  Enforced here rather than trusted to two hand-kept
+       lists staying disjoint — the failure mode otherwise is a working zone
+       that looks shut. */
+    if (zoneId === 'town') {
+      /* v2.3.1681: driven off TOWN_SOON_MARKS (measured off the painted map),
+         NOT TOWN_BUILDINGS (collision boxes rescaled from the old tile
+         village, which put seven of these labels on empty cobblestone —
+         owner: "a whole bunch of invisible buildings with coming soon"). */
+      for (const b of TOWN_SOON_MARKS) {
+        labelsForFrame.push({
+          text: 'Coming soon',
+          x: b.tx * TILE, y: b.ty * TILE,
+          rotation: 0, soon: true,
+        });
+      }
+    } else if (zoneId === 'worldview') {
+      const live = new Set(WORLDVIEW_EXITS.map((e) => e.zoneId));
+      for (const m of COMING_SOON_MARKS) {
+        if (live.has(m.zoneId)) continue;      // a real portal shipped; never label it
+        labelsForFrame.push({
+          text: (m.label ? m.label + '\n' : '') + 'Coming soon',
+          x: m.tx * TILE, y: m.ty * TILE, rotation: 0, soon: true,
+        });
+      }
+    }
+
     /* Apply pooled labels.  Grow the pool if needed; hide extras. */
     while (this._zoneLabels.length < labelsForFrame.length) {
       const t = new Text({ text: '', style: ZONE_LABEL_STYLE });
@@ -197,6 +237,15 @@ export class TileRenderer {
       t.x = spec.x;
       t.y = spec.y;
       t.rotation = spec.rotation || 0;
+      /* Coming-soon marks read QUIETER than a destination you can actually
+         reach: smaller, dimmed, centred on the thing rather than floating
+         beside it.  They are an explanation, not an invitation — styling them
+         like a live exit would send players toward them. */
+      const wantAlpha = spec.soon ? 0.72 : 1;
+      const wantScale = spec.soon ? 0.62 : 1;
+      if (t.alpha !== wantAlpha) t.alpha = wantAlpha;
+      if (t.scale.x !== wantScale) t.scale.set(wantScale);
+      if (t.anchor.y !== 0.5) t.anchor.set(0.5, 0.5);
       t.visible = true;
     }
 

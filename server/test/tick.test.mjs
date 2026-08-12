@@ -241,7 +241,7 @@ check('player respawn: player_respawned sent to the victim',
 // v2.3.1535: and ONE of those slimes is the fast/squishy blueSlime, pinned
 // by a per-spawn-entry variant override rather than the archetype map.
 const EXPECTED_VARIANTS = {
-  verdant: ['mossSlime', 'blueSlime'],
+  verdant: ['blueSlime'],
   mist: ['mireWisp', 'bogLurker'],
 };
 for (const zid of ['verdant', 'mist']) {
@@ -257,29 +257,34 @@ for (const zid of ['verdant', 'mist']) {
   check(zid + ' variants have a server speed entry (client/server pace sync)',
     zm.every((m) => typeof m.spd === 'number' && m.spd > 0), zm.map((m) => m.spd));
 }
-// v2.3.1535: the blue slime is meant to be a SINGLE standout in Verdant
-// Wilds, and to actually be faster and squishier than the green ones it
-// stands next to.  Pin all three properties -- the count guards the
-// spawn-table override (a stray edit to ZONE_VARIANT_MAP would turn the
-// whole zone blue), and the stat comparisons guard the two multipliers,
-// which live in different functions and could drift apart.
+/* v2.3.1675 (owner: "make the slimes in verdant wilds blue ... this is to make
+   them stand out against the background").  The zone is ALL blue now — the
+   mossy green reskin was camouflage against a green forest floor, which is
+   fine for a slime and useless for a player trying to find one.
+   The v2.3.1535 shape this replaces pinned "exactly ONE blue standout among
+   greens".  That is deliberately gone, and the checks below are the ones that
+   still mean something: the whole zone really is blue (which guards BOTH the
+   spawn table and ZONE_VARIANT_MAP — either one left on mossSlime and the
+   zone goes green again), and blueSlime's two stat multipliers still apply,
+   since they live in different functions and could drift apart.
+   Note this makes the WHOLE zone fast-and-squishy rather than one standout in
+   a slow crowd; that is a real difficulty change and it is intended. */
 {
   const zm = room._ensureZoneMonsters('verdant');
   const blues = zm.filter((m) => m.variant === 'blueSlime');
-  const greens = zm.filter((m) => m.variant === 'mossSlime');
-  check('verdant: exactly ONE blue slime', blues.length === 1, blues.length);
-  check('verdant: the rest are green', greens.length === zm.length - 1,
-    { green: greens.length, total: zm.length });
-  check('blue slime is FASTER than the green ones',
-    blues[0] && greens[0] && blues[0].spd > greens[0].spd,
-    { blue: blues[0] && blues[0].spd, green: greens[0] && greens[0].spd });
-  check('blue slime is SQUISHIER (lower maxHp at the same level)',
-    blues[0] && greens.some((g) => g.level === blues[0].level)
-      ? blues[0].maxHp < greens.find((g) => g.level === blues[0].level).maxHp
-      : true,
-    { blue: blues[0] && blues[0].maxHp, greens: greens.map((g) => [g.level, g.maxHp]) });
+  check('verdant: every slime is blue', blues.length === zm.length,
+    { blue: blues.length, total: zm.length, variants: [...new Set(zm.map((m) => m.variant))] });
+  check('verdant: no green slimes remain',
+    !zm.some((m) => m.variant === 'mossSlime'), zm.map((m) => m.variant));
+  /* The stat multipliers, compared against the BASE fodder the Meadow spawns
+     — the green ones are gone, so the meaningful comparison moved zones. */
+  const meadow = room._ensureZoneMonsters('meadow');
+  const plain = meadow.filter((m) => m.arch === 'fodder');
+  check('blue slime is FASTER than a plain slime',
+    blues[0] && plain[0] && blues[0].spd > plain[0].spd,
+    { blue: blues[0] && blues[0].spd, plain: plain[0] && plain[0].spd });
   check('blue slime maxHp stays >= 1 (multiplier can never zero it out)',
-    blues[0] && blues[0].maxHp >= 1, blues[0] && blues[0].maxHp);
+    blues.every((b) => b.maxHp >= 1), blues.map((b) => b.maxHp));
 }
 // monster_transform joined the deny-list (pre-existing forgery hole).
 room.eventBuffer.length = 0;

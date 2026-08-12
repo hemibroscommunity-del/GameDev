@@ -112,6 +112,50 @@ const room = Object.create(GameRoom.prototype);
   check('QUEST_REWARDS <-> QUEST_CHAINS gold/xp/next mirror, both directions', bad.length === 0, bad);
 }
 
+// ── 5b. v2.3.1681: the quest dialog's item THUMBNAILS (`gives`) are display
+// only, but showing a player a picture of a sword the server will not hand
+// over is the worst kind of wrong.  Assert that a promised payout moment
+// really exists server-side: when:'accept' needs grantOnAccept, when:'complete'
+// needs reward.item.  (The reverse is deliberately NOT asserted — a granted
+// item with no art in the repo, like the axe, is allowed to go unillustrated.)
+{
+  const bad = [];
+  for (const [k, c] of Object.entries(QUEST_CHAINS)) {
+    if (!Array.isArray(c.gives) || !c.gives.length) continue;
+    const sv = SRV.QUEST_REWARDS[k];
+    if (!sv) { bad.push({ quest: k, missing: 'server' }); continue; }
+    for (const g of c.gives) {
+      if (!g || !g.icon) { bad.push({ quest: k, reason: 'gives entry has no icon' }); continue; }
+      if (g.when === 'accept' && !Array.isArray(sv.grantOnAccept)) {
+        bad.push({ quest: k, icon: g.icon, reason: 'promises an item on accept, server has no grantOnAccept' });
+      }
+      if (g.when === 'complete' && !sv.item) {
+        bad.push({ quest: k, icon: g.icon, reason: 'promises an item on turn-in, server pays no item' });
+      }
+      if (g.when !== 'accept' && g.when !== 'complete') {
+        bad.push({ quest: k, when: g.when, reason: "when must be 'accept' or 'complete'" });
+      }
+    }
+  }
+  check('QUEST_CHAINS.gives thumbnails match a real server payout moment', bad.length === 0, bad);
+}
+
+// ── 5c. Every icon named by `gives` is a file that exists.  A 404 here is a
+// blank square in the tutorial's first dialogue, which no unit test over data
+// alone would ever notice.
+{
+  const bad = [];
+  const pub = join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'public');
+  for (const [k, c] of Object.entries(QUEST_CHAINS)) {
+    for (const g of (c.gives || [])) {
+      if (!g || !g.icon) continue;
+      try { readFileSync(join(pub, g.icon.replace(/^\//, '').split('?')[0])); }
+      catch (_e) { bad.push({ quest: k, icon: g.icon }); }
+    }
+  }
+  check('QUEST_CHAINS.gives icons exist on disk', bad.length === 0, bad);
+}
+
 // ── 6. BLACKSMITH/WOODWORKING: every server field of every tier (the
 // client entries carry extra label/color/desc presentation) ──
 function tierMirror(name, srv, cli) {

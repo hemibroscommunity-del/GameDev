@@ -107,7 +107,18 @@ export const ZONES = {
        green).  A per-entry override is the only way to get a mixed
        population -- ZONE_VARIANT_MAP maps a whole ARCHETYPE, so putting
        blueSlime there would turn every slime in the zone blue. */
-    spawns: [{ arch: 'fodder', count: 2 }, { arch: 'fodder', count: 1, variant: 'blueSlime' }],
+    /* v2.3.1675 (owner: "make the slimes in verdant wilds blue ... this is to
+       make them stand out against the background").  Every spawn is blueSlime
+       now — the mossy green reskin was the problem: a green slime on a green
+       forest floor is camouflage, which is fine for a slime and terrible for
+       a player trying to find one.  Blue is the only recolour in the set that
+       is not somewhere in this zone's palette.
+       mossSlime stays defined in monsterVariants.js: nothing spawns it today
+       and deleting it would only have to be rewritten if a second Flora zone
+       ever wants it.  MIRROR of server/src/data.js ZONES.verdant — the SERVER
+       decides what spawns; this table only clamps levels and picks the skin,
+       so both have to change or the zone keeps its green slimes. */
+    spawns: [{ arch: 'fodder', count: 3, variant: 'blueSlime' }],
     atmosphere: { tint: 'rgba(60,160,60,0.05)', vignette: 'rgba(20,80,20,0.12)' },
     enemyEmoji: {}
   },

@@ -172,6 +172,50 @@ export function handleZoneTransitions(S, ptx, pty, _zone, W, H) {
                within 10 s passes (informed consent, not a wall).  The
                +5 threshold mirrors the ±5 valid-threat convention.
                MAP-REDESIGN lists hard gating as a possible follow-up. */
+            /* ═══ v2.3.1676: TALK TO THE MAYOR FIRST ═══
+               Owner: "not be allowed to leave town without speaking to mayor
+               bro first.  He'll give you the sword and shield."
+               A HARD gate, unlike the level-band warning below it — that one
+               is informed consent (walk in again to pass), this one is not,
+               because on the other side of it you are unarmed.  Accepting
+               tut_1 is what grants the sword and shield, so "has talked to
+               him" and "is equipped to leave" are the same fact; gating on
+               the quest record rather than on a separate flag means the two
+               can never disagree.
+               Any status counts — active, complete, turnedIn — so a returning
+               player is never re-gated, and the worldview is gated too (its
+               exits run through this same block), or you could hop the wall
+               by going up to the map first. */
+            var _tutR = S.rpg || {};
+            var _spokeToMayor = !!(_tutR._quests && _tutR._quests.tut_1);
+            if (!_spokeToMayor) {
+              if (!S._mayorGateAt || Date.now() - S._mayorGateAt > 2500) {
+                S._mayorGateAt = Date.now();
+                if (typeof window !== 'undefined' && typeof window._setLevelUpMsg === 'function') {
+                  window._setLevelUpMsg({
+                    kind: 'warning',
+                    text: 'Speak to Mayor Bro first',
+                    sub: "He's outside the Mayor's House — he'll arm you",
+                    ts: Date.now(),
+                  });
+                } else {
+                  pushDmgPopup(S, P.x, P.y - 30, 'Speak to Mayor Bro first', '#f5c542', { ttl: 3 });
+                }
+                try { BT_AUDIO.beep(220, 0.08, 0.08, 'square'); } catch (e) {}
+              }
+              /* Nudge back toward the hub centre, exactly as the level gate
+                 does: without it the proximity test re-fires every frame and
+                 the banner never stops. */
+              var _mhz = ZONES[S.currentZone];
+              if (_mhz) {
+                var _mcx = (_mhz.w * TILE) / 2, _mcy = (_mhz.h * TILE) / 2;
+                var _mang = Math.atan2(_mcy - P.y, _mcx - P.x);
+                P.x += Math.cos(_mang) * TILE * 2;
+                P.y += Math.sin(_mang) * TILE * 2;
+              }
+              return;
+            }
+
             var _gzone = ZONES[bestExit.zoneId];
             var _gfloor = (_gzone && Array.isArray(_gzone.level)) ? _gzone.level[0] : 0;
             var _plvl = (S.rpg && S.rpg.level) || 1;

@@ -15,8 +15,15 @@
    S is stateRef.current. */
 import { perfTracker } from '@/debug/perfTracker.js';
 import { WORLD_ZOOM } from '@/data/constants.js';
+import { checkQuestComplete } from './questComplete.js'; /* v2.3.1675 */
 
 export function renderFrame(S, deps) {
+  /* v2.3.1675: quest-completion watcher.  Self-throttled to 2 Hz inside, and
+     it never throws — see questComplete.js for why this is a poll rather than
+     an event (nothing on the wire marks the moment a bag count crosses a
+     quest threshold). */
+  try { checkQuestComplete(S); } catch (e) { /* never breaks the frame */ }
+
   var pixiRef = deps.pixiRef,
     canvas = deps.canvas,
     nfts = deps.nfts,

@@ -603,6 +603,18 @@ export function NameModal(props) {
   /*#__PURE__*/React.createElement("span", {
     style: { color: '#EAC675', fontWeight: 700 }
   }, "Log in with key")), /*#__PURE__*/React.createElement("div", {
+    /* v2.3.1675 (owner: "put the little Hemi bros logo to the left of the
+       version number").  Mark and version share one baseline row now — it
+       reads as a single signature line rather than two stacked scraps, which
+       is what it looked like when the mark sat above on its own. */
+    style: { display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7 }
+  }, /*#__PURE__*/React.createElement("img", {
+    /* v2.3.1674: the HEMI BROS maker's mark.  Its glow is baked into the art
+       (the black was keyed out by LUMINANCE, so the halo feathers to
+       transparent instead of leaving a box) — hence no CSS glow here. */
+    src: '/ui/hemi-bros-logo.webp?v=' + BUILD_INFO.version,
+    alt: 'Hemi Bros', className: "bt-cc-hemi", draggable: false
+  }), /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 11,
       color: 'var(--txt2)',
@@ -612,7 +624,7 @@ export function NameModal(props) {
     }
     /* v2.3.1307: the commit sha leaves the splash (round-7) \u2014 support
        reads it from the console BUILD_INFO when needed. */
-  }, "v" + BUILD_INFO.version)), /*#__PURE__*/React.createElement("div", {
+  }, "v" + BUILD_INFO.version))), /*#__PURE__*/React.createElement("div", {
     /* v2.3.1524: the picker COLUMN. Was the v2.3.1276 slide-up drawer, and
        before that an always-visible sheet under the character; it is now a
        permanent pane to the character's right, running from under the title

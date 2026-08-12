@@ -4,6 +4,15 @@ import { QUEST_CHAINS } from '../../../data/gameSystems.js';
 import { deriveQuestLog, trackedQuestId, setTrackedQuest, rewardText } from '../sheet/questModel.js';
 import { questDetailBus } from '../sheet/questDetailBus.js';
 import { prog3Live, PROG3_SKILL_META } from '../../../data/prog3.js';
+import { NPC_DATA } from '../../../data/gameDisplay.js';
+
+/* v2.3.1673: the quest giver's portrait, looked up by the NAME the quest
+   chain stores — the same key getNpcQuest already matches on, so there is no
+   second id to keep in sync.  Returns null for a giver with no art. */
+const npcPortrait = (name) => {
+  const npc = (NPC_DATA || []).find((n) => n && n.name === name);
+  return (npc && npc.portrait) || null;
+};
 
 /* v2.3.1298 (ChatGPT round-5 Quests): the focused quest page — pushed
    into the sheet from any quest row.  Status, objective, quest giver,
@@ -234,15 +243,39 @@ export const QuestDetailPanel = () => {
           marginTop: 8, padding: '8px 10px',
           background: COL.wellSoft, border: `1px solid ${COL.tileBor}`,
           borderRadius: 8,
+          display: 'flex', gap: 10, alignItems: 'flex-start',
         }}>
-          <div style={{
-            fontSize: 8.5, fontWeight: 700, letterSpacing: '.06em',
-            textTransform: 'uppercase', color: COL.muted, marginBottom: 3,
-          }}>{quest.npc}</div>
-          <div style={{ fontSize: 12, lineHeight: 1.45, color: COL.text2, fontStyle: 'italic' }}>
-            “{status === 'Ready' ? quest.dialogue.complete
-              : status === 'Active' ? quest.dialogue.progress
-              : quest.dialogue.start}”
+          {/* v2.3.1673 (owner: "show his head in the dialogue window").  The
+              portrait is a crop of the same sprite standing in town, so the
+              face you are reading is the face you walked up to.  Falls back to
+              text-only if the NPC has no art — most givers still don't. */}
+          {npcPortrait(quest.npc) && (
+            <img src={npcPortrait(quest.npc)} alt="" draggable={false}
+              style={{
+                width: 44, height: 44, flex: 'none', objectFit: 'contain',
+                imageRendering: 'pixelated',   /* it is pixel art; do not smooth it */
+                borderRadius: 6, background: COL.well,
+                border: `1px solid ${COL.tileBor}`,
+              }} />
+          )}
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{
+              fontSize: 8.5, fontWeight: 700, letterSpacing: '.06em',
+              textTransform: 'uppercase', color: COL.muted, marginBottom: 3,
+            }}>{quest.npc}</div>
+            <div style={{
+              fontSize: 12, lineHeight: 1.45, color: COL.text2, fontStyle: 'italic',
+              /* v2.3.1676: the starter-kit line carries the control
+                 instructions as its own paragraphs.  Without pre-wrap the \n\n
+                 collapses and three separate controls run together into one
+                 unreadable sentence — which is exactly the "controls are not
+                 obvious" problem this text exists to solve. */
+              whiteSpace: 'pre-wrap',
+            }}>
+              “{status === 'Ready' ? quest.dialogue.complete
+                : status === 'Active' ? quest.dialogue.progress
+                : quest.dialogue.start}”
+            </div>
           </div>
         </div>
       )}

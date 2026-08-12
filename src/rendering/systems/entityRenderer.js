@@ -3,6 +3,7 @@
  * Uses PixiJS Graphics for procedural shapes (matching the original Canvas 2D look).
  */
 import { Assets, Container, Graphics, Rectangle, Sprite, Text, TextStyle, Texture } from 'pixi.js';
+import { getNpcTexture } from '../npcSprites.js'; /* v2.3.1672: NPC figure art */
 import { TILE } from '@/data/constants.js';
 import { ZONES, zonePlayerScale } from '@/data/zones.js';
 import { ELEMENTS } from '@/data/elements.js';
@@ -137,6 +138,49 @@ const POPUP_BAR_CLEAR = 34;
    exactly the pre-experiment size; keep the knob for further tuning. */
 const PLAYER_SIZE_MULT = 1.0;
 const MONSTER_SIZE_MULT = 1.5;
+/* NPC art draw scale.  96 world px per frame is what this renderer treats as
+   player scale (see the 96/128 baseScale at the harvest stand-in, commented
+   exactly that).
+   v2.3.1673 doubled this to 192 ("he needs to be twice as large");
+   v2.3.1675 halves it back ("reduce his size by 50%") — so the mayor stood
+   at the same height as the player again;
+   v2.3.1681 adds a quarter on top ("Mayor bro is about 25% too small"), which
+   is the owner eyeballing him against the buildings and the player rather
+   than against the old placeholder circle.  120/256 = 96 x 1.25.  Everything
+   positional below derives from this constant, so the quest marker and name
+   follow the figure automatically rather than needing their own pass. */
+const NPC_SPRITE_SCALE = 120 / 256;
+
+/* The sprite frame's own geometry, in frame pixels: the figure's feet sit on
+   y=223 and its top (hat) on y=23 — see the asset note in gameDisplay.js
+   NPC_DATA.  Kept as named constants because three different offsets are
+   derived from them, and a magic 223 in four places is how they drift. */
+const NPC_FRAME_FEET_Y = 223;
+const NPC_FRAME_TOP_Y = 23;
+/** Height of the drawn figure above the NPC's feet, in world px. */
+const npcFigureHeight = () => NPC_SPRITE_SCALE * (NPC_FRAME_FEET_Y - NPC_FRAME_TOP_Y);
+
+/* v2.3.1681: the quest badge behind the '!' (owner: "thick white outline or
+   something to be more attention grabbing").  Radius in world px — the label
+   stack above the NPC's head is laid out from it, so changing this one number
+   moves the name out of the way too. */
+const QUEST_BADGE_R = 16;
+/** Three concentric rings, drawn outside in.  `fill` carries the state
+ *  (gold = quest to offer, green = ready to turn in). */
+function _drawQuestBadge(g, fill) {
+  g.clear();
+  /* Dark hairline first: without it the white ring dissolves into the town's
+     pale cobblestones, which is the exact background the owner reported the
+     marker disappearing against. */
+  g.circle(0, 0, QUEST_BADGE_R);
+  g.fill({ color: 0x1A1207, alpha: 0.9 });
+  /* The thick white ring the owner asked for. */
+  g.circle(0, 0, QUEST_BADGE_R - 2);
+  g.fill({ color: 0xFFFFFF });
+  g.circle(0, 0, QUEST_BADGE_R - 5.5);
+  g.fill({ color: fill });
+}
+
 /* v2.3.1300: shared ground-shadow texture — ONE 64x32 radial-gradient
    ellipse minted lazily on a canvas and reused by every entity shadow
    sprite, so all shadows batch into a single draw call (same recipe as
@@ -3126,7 +3170,10 @@ function createPlayerDisplay() {
      v2.3.1566 (owner: "make it consistent and beneath other players too"):
      built by the shared factory so the local player and every remote
      player render the SAME plate from one implementation. */
-  _attachNamePill(container, 10);
+  /* v2.3.1681 (owner: "Player name and level in the pill beneath character
+     need to be slightly larger for legibility").  10 -> 13; the plate sizes
+     itself off this number, so the background grows with the text. */
+  _attachNamePill(container, 13);
 
   /* v2.3.1193: the local player's own threat skull (red = my threat
      countdown is running, white = ignored/expired fight window).  One
@@ -3373,7 +3420,7 @@ function createOtherPlayerDisplay() {
 
   /* v2.3.1566 (owner): same plate the local player gets, one size down —
      a remote name should not out-shout your own. */
-  _attachNamePill(container, 9);
+  _attachNamePill(container, 12);   /* v2.3.1681: 9 -> 12, still one down from your own */
 
   /* v2.3.1193: threat skull above the nameplate (red = active threat
      countdown, white = ignored/expired fight window — see
@@ -6692,17 +6739,41 @@ export class EntityRenderer {
         display.addChild(nameText);
         display._nameText = nameText;
 
-        /* Quest marker — text overlay above the head, pulses vertically.
+        /* Quest marker — badge above the head, pulses vertically.
            Hidden by default; populated when npc._questMarker is set. */
-        const questMarkerText = new Text({
+        /* v2.3.1675 (owner: "I can't see the exclamation point on mayor bro it
+           blends into background") made it a bigger white glyph with a dark
+           stroke.  v2.3.1681: still not enough — "it needs to have a thick
+           white outline or something to be more attention grabbing".
+           A STROKED GLYPH IS THE WRONG SHAPE for this problem.  An outline
+           only ever traces the letterform, so a '!' offers the eye a 4px-wide
+           stick to find against a map painted with cobbles, flowers, fence
+           posts and roof tiles — all of which are high-frequency detail at
+           exactly that scale.  A BADGE gives it a solid ~33px disc instead:
+           one large uniform shape, which is what actually pops out of visual
+           clutter.  Three concentric rings, outside in — dark hairline (holds
+           against pale cobble), thick white ring (the owner's ask, and what
+           holds against dark roofs), state-coloured fill.  Because both a
+           light and a dark ring are always present, the badge cannot vanish
+           into any background, which a single-colour outline can. */
+        const questMarker = new Container();
+        const qmBadge = new Graphics();
+        questMarker.addChild(qmBadge);
+        const qmGlyph = new Text({
           text: '',
-          style: { fontFamily: 'sans-serif', fontSize: 16, fontWeight: '700',
-                   fill: '#f5c542', align: 'center' },
+          style: { fontFamily: 'Baloo 2, sans-serif', fontSize: 22, fontWeight: '900',
+                   fill: '#2A1B06', align: 'center' },
         });
-        questMarkerText.anchor.set(0.5, 0.5);
-        questMarkerText.visible = false;
-        display.addChild(questMarkerText);
-        display._questMarker = questMarkerText;
+        qmGlyph.anchor.set(0.5, 0.5);
+        /* Optical centring: '!' and '?' both sit high in their em box, so a
+           geometric centre leaves the glyph looking like it is floating. */
+        qmGlyph.y = 1;
+        questMarker.addChild(qmGlyph);
+        questMarker.visible = false;
+        display.addChild(questMarker);
+        display._questMarker = questMarker;
+        display._qmBadge = qmBadge;
+        display._qmGlyph = qmGlyph;
 
         /* Avatar — emoji rendered at the body center.  Special-case
            '💀' for the Ferryman: no body circle, just the skull. */
@@ -6714,6 +6785,23 @@ export class EntityRenderer {
         display.addChild(avatarText);
         display._avatar = avatarText;
 
+        /* v2.3.1672: real ART for an NPC that has it.  `npc.sprite` is a
+           256x256 frame normalised to the PLAYER's stand pose — figure ~200px
+           tall with its feet on the y=223 baseline — so the two read at the
+           same scale standing next to each other.
+           anchor (0.5, 223/256) puts those feet exactly on npc.y, which is the
+           point the walk/interaction code already treats as where the NPC is
+           standing; anchoring at the frame centre instead would float him half
+           a body above the street. */
+        if (npc.sprite) {
+          const fig = new Sprite(getNpcTexture(npc.sprite) || Texture.EMPTY);
+          fig.anchor.set(0.5, NPC_FRAME_FEET_Y / 256);
+          fig.scale.set(NPC_SPRITE_SCALE);
+          display.addChildAt(fig, 0);      // behind the bars and labels
+          display._fig = fig;
+          display._figSrc = npc.sprite;
+        }
+
         this.entityLayer.addChild(display);
         this.npcDisplays.set(npc.id, display);
       }
@@ -6721,9 +6809,61 @@ export class EntityRenderer {
       display.x = npc.x;
       display.y = npc.y;
 
+      /* v2.3.1673: label headroom, POSITIONED rather than nudged.
+         v2.3.1672 shifted every label up by the figure height, which kept the
+         old relative spacing — so the ❗ ended up floating a long way over his
+         hat with the name between them (owner: "face the exclamation point
+         over his head").  Now each element is placed against the top of the
+         drawn figure: marker just above the hat, name above the marker, HP bar
+         and star tucked above that.  Recomputed if the scale ever changes,
+         and only once the texture is bound so we know he is actually drawn. */
+      if (display._fig && !display._lifted && display._fig.texture !== Texture.EMPTY) {
+        display._lifted = true;
+        const top = npcFigureHeight();          // world px above the feet
+        /* The marker is anchored at its CENTRE, so clearing the hat needs half
+           its own glyph height on top of the gap — the first attempt used the
+           gap alone and the ❗ sat down inside the hat brim. */
+        const MARK_PX = QUEST_BADGE_R * 2;      // matches the marker's own art
+        /* v2.3.1681: gaps tightened from 8 to 3.  The badge is 32px where the
+           bare glyph was 22, and the stack is measured UPWARD from the hat —
+           so keeping the old gaps pushed the name clean off the top of the
+           screen when you stand south of him, which is where the tutorial
+           puts you (he lives near the town's north edge and the camera clamps
+           there).  A tighter stack also just reads better: badge, then name,
+           both plainly his. */
+        const GAP = 3;
+
+        display._questMarker._baseY = -(top + GAP + MARK_PX / 2);
+        /* Name is anchored at its BOTTOM (0.5, 1), so this is where its
+           underside sits: clear above the marker's top edge. */
+        display._nameText.y = -(top + GAP + MARK_PX + GAP);
+        for (const c of display.children) {
+          if (c === display._fig || c === display._nameText || c === display._questMarker) continue;
+          if (c === display._body || c === display._avatar) continue;
+          c.y -= (top + MARK_PX + 24);
+        }
+      }
+
+      /* v2.3.1672: the art path.  The texture may still be loading on the
+         first frames (the preload manifest awaits it behind the loading
+         screen, but a cache miss after a GL-loss rebuild can land here), so
+         bind it whenever it becomes available rather than once at creation. */
+      const fig = display._fig;
+      if (fig) {
+        if (fig.texture === Texture.EMPTY) {
+          const t = getNpcTexture(display._figSrc);
+          if (t) fig.texture = t;
+        }
+        /* Only hide the emoji stand-in once real art is actually on screen —
+           otherwise a failed load leaves an NPC you cannot see at all. */
+        const drawn = fig.texture !== Texture.EMPTY;
+        if (display._avatar.visible !== !drawn) display._avatar.visible = !drawn;
+        display._suppressBody = drawn;
+      }
+
       /* Body — only redraw when color changes (NPCs are static). */
       const body = display._body;
-      const isSkull = npc.avatar === '💀';
+      const isSkull = npc.avatar === '💀' || !!display._suppressBody;
       if (display._lastColor !== npc.color || display._lastSkull !== isSkull) {
         display._lastColor = npc.color;
         display._lastSkull = isSkull;
@@ -6735,8 +6875,16 @@ export class EntityRenderer {
         }
       }
 
-      /* HP bar (24x3 above the head, color by remaining HP). */
+      /* HP bar (24x3 above the head, color by remaining HP).
+         v2.3.1675 (owner: "remove his health bar he doesn't need one"): an
+         NPC flagged `noHp` never draws one.  A full green bar over a quest
+         giver in a safe town reads as "this is a thing you fight", which is
+         the opposite of the invitation the ❗ is making right above it. */
       const hpBar = display._hpBar;
+      if (npc.noHp) {
+        if (hpBar.visible) { hpBar.clear(); hpBar.visible = false; }
+      } else if (!hpBar.visible) { hpBar.visible = true; display._lastHpKey = null; }
+      if (!npc.noHp) {
       const maxHp = npc.maxHp || 1;
       const hp = Math.max(0, npc.hp || 0);
       const hpPct = hp / maxHp;
@@ -6752,17 +6900,29 @@ export class EntityRenderer {
           hpBar.fill({ color: c });
         }
       }
+      }
 
       /* Quest marker — `npc._questMarker` is '❗' (available) or '❓'
          (turn-in) or null.  Pulses vertically when visible. */
       const qm = display._questMarker;
       const qmStr = npc._questMarker || '';
       if (qmStr) {
-        if (qm.text !== qmStr) qm.text = qmStr;
-        const targetFill = qmStr === '❗' ? '#f5c542' : '#3dd497';
-        if (qm.style.fill !== targetFill) qm.style.fill = targetFill;
+        /* Redrawn ONLY when the state flips, not per frame — same reasoning as
+           the name pill's _pillKey: a three-ring rebuild at 60fps for a value
+           that changes when you accept a quest is pure waste. */
+        if (display._qmKey !== qmStr) {
+          display._qmKey = qmStr;
+          /* '❗'/'❓' are the wire values, but they are EMOJI: on most platforms
+             they render from a colour font that ignores `fill`, so the glyph
+             would arrive in its own red/blue regardless of the badge under it.
+             Drawing plain ASCII instead is what makes the dark-on-gold
+             contrast actually happen. */
+          display._qmGlyph.text = qmStr === '❓' ? '?' : '!';
+          _drawQuestBadge(display._qmBadge,
+            qmStr === '❗' ? 0xFFC93C : qmStr === '❓' ? 0xFFE58A : 0x4BD98A);
+        }
         const pulse = Math.sin(now / 300) * 3;
-        qm.y = -36 + pulse;
+        qm.y = (qm._baseY !== undefined ? qm._baseY : -36) + pulse;
         qm.visible = true;
       } else if (qm.visible) {
         qm.visible = false;

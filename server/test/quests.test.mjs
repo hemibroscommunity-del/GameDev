@@ -83,6 +83,15 @@ check('kill does not touch objective-less quests', !ps._questKills.trader_1 && !
 const nodes = room._ensureZoneNodes('meadow');
 const node = nodes.find((n) => n.alive !== false) || nodes[0];
 node.alive = true; node.x = ps.x; node.y = ps.y;
+/* v2.3.1680: gathering is TOOL-GATED (owner: extraction hidden behind a Mayor
+   Bro quest that hands over the equipment).  This section is about QUEST
+   CREDIT, not the gate, so hand over every tool rather than letting the strike
+   be refused for an unrelated reason — a silent refusal here would read as
+   "quest credit broken". */
+if (!ps.inventory) ps.inventory = {};
+ps.inventory.woodcutting_axe = 1;
+ps.inventory.fishing_pole = 1;
+ps.inventory.mining_pickaxe = 1;
 await room.webSocketMessage(ws, JSON.stringify({ type: 'node_strike', payload: { id: node.id, zone: 'meadow', accuracy: 'good' } }));
 check('harvest increments the gather-objective quest', ps._questKills.trader_2 === 1, ps._questKills);
 check('harvest does not advance kill quests', ps._questKills.mayor_2 === 1, ps._questKills);

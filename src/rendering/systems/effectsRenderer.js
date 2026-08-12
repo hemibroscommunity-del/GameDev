@@ -16,7 +16,7 @@ export function effectsAnimationsReady() { return Promise.allSettled(_fxPreload)
 import { ELEMENTS } from '@/data/elements.js';
 import { ZONES, zonePlayerScale } from '@/data/zones.js';
 import { TILE, MINE_SPOT_R, FISH_CUE_DY } from '@/data/constants.js';
-import { GS_INNER_RADIUS, GS_OUTER_RADIUS, GS_FORWARD_ARC, cleaveArcBonus } from '@/data/index.js';
+import { GS_INNER_RADIUS, GS_OUTER_RADIUS, GS_FORWARD_ARC, cleaveArcBonus, hasGatherTool} from '@/data/index.js';
 import { getFrame as getSlimeFrame, hasState as hasSlimeState } from '../slimeSprites.js';
 import { getRecoloredFrame, hasRecoloredState } from '../monsterRecolor.js'; /* v2.3.1534; v2.3.1535 generalised */
 import { getRemnantsTexture as getSnowmanRemnantsTex } from '../snowmanSprites.js';
@@ -1115,36 +1115,16 @@ export class EffectsRenderer {
     const gfx = this.particleGfx;
     gfx.clear();
 
-    /* v2.3.1360 (owner): World View player beacon — the avatar renders
-       as a distant speck on the overworld and gets lost against the
-       painted terrain.  v2.3.1361 (owner: "more like a reticle circle,
-       not a blurry light"): crisp stroked ring + ticks + dot.
-       v2.3.1410 (owner: "I don't want a literal reticle, I just want a
-       ring of light around the player"): the ticks/dot/crisp stroke are
-       gone — a soft luminous ring instead, feathered by LAYERED
-       translucent strokes of the same circle (widest+faintest under,
-       narrowest+brightest on top).  No filters (iOS WebGL static,
-       CLAUDE.md) — the layering IS the glow.  Warm lantern-light tint
-       (Lantern Slate) with a white core so it reads as light, not UI;
-       a faint wide dark underlay keeps it visible over bright snow.
-       Gentle radius pulse so the eye still finds it. */
-    if (S.currentZone === 'worldview' && S.player) {
-      const px = S.player.x, py = S.player.y;
-      const r = 13 + 1.2 * Math.sin(now / 500);
-      /* contrast underlay — soft, so it darkens snow without outlining */
-      gfx.circle(px, py, r);
-      gfx.stroke({ width: 9, color: 0x1c2430, alpha: 0.10 });
-      /* feathered glow: wide->narrow, faint->bright, warm->white */
-      gfx.circle(px, py, r);
-      gfx.stroke({ width: 7, color: 0xffdf9e, alpha: 0.10 });
-      gfx.circle(px, py, r);
-      gfx.stroke({ width: 4.5, color: 0xffe9bd, alpha: 0.18 });
-      gfx.circle(px, py, r);
-      gfx.stroke({ width: 2.2, color: 0xfff6e0, alpha: 0.32 });
-      /* faint pool of light inside the ring, cupping the character */
-      gfx.circle(px, py, r - 2);
-      gfx.fill({ color: 0xffedc4, alpha: 0.05 });
-    }
+    /* v2.3.1674 (owner: "remove the glowing ring around the character").
+       The World View player beacon is GONE.  History, so nobody re-adds it by
+       accident: v2.3.1360 added it because the avatar reads as a distant
+       speck on the overworld, v2.3.1361 made it a crisp reticle, v2.3.1410
+       softened it to a ring of light.  Three rounds of tuning and the answer
+       is that the overworld is a painted vista and the ring sat on top of it
+       as UI.  The avatar is still findable: it is the only thing that moves,
+       and the same v2.3.1674 pass halves worldview speed so it no longer
+       streaks across the map.  If it ever needs marking again, mark it in the
+       art, not with a stroked circle. */
 
     // Hit particles
     const parts = S.hitParticles || [];
@@ -1882,8 +1862,36 @@ export class EffectsRenderer {
          clearly visible, still smaller than the slime body. */
       projScale = 0.2;
     }
+    /* v2.3.1678: SNOWBALLS ARE NOT SLIME ORBS.
+       The texture lookup above resolves ONE art for the whole zone, from the
+       zone's variant map — which is right for a zone whose fodder is reskinned
+       (ember's fire goblins) and wrong for a ball whose thrower is a different
+       archetype entirely.  Frost Ridge has no variant-map entry at all, so the
+       snowman's ball fell through to the slime orb: a green blob against snow,
+       which is why it read as invisible.
+       There is no snowball sprite in the repo (the snowman folder has facings,
+       a death, a hit and an IMPACT splash — no ball), so this draws one:
+       a white orb with a soft rim, procedural, on the same Graphics the rest
+       of this pass uses.  No filters — iOS WebGL, CLAUDE.md — so the softness
+       is two stacked circles, the same trick the lantern ring used. */
+    const snowballs = slimeProjs.filter((sp) => sp.kind === 'snowball');
+    if (snowballs.length) {
+      for (const sp of snowballs) {
+        /* Shed the pooled Sprite if this ball was previously drawn as an orb
+           (kind can only be set at spawn, but a stale sprite would linger). */
+        if (sp._pixiSprite && !sp._pixiSprite.destroyed) { sp._pixiSprite.visible = false; }
+        const r = 7;
+        gfx.circle(sp.x, sp.y, r + 2.5);
+        gfx.fill({ color: 0x9fc7e8, alpha: 0.30 });   /* cold rim */
+        gfx.circle(sp.x, sp.y, r);
+        gfx.fill({ color: 0xffffff, alpha: 0.96 });   /* packed snow */
+        gfx.circle(sp.x - r * 0.3, sp.y - r * 0.3, r * 0.42);
+        gfx.fill({ color: 0xffffff, alpha: 1 });      /* highlight, reads as round */
+      }
+    }
     if (projTex) {
       for (const sp of slimeProjs) {
+        if (sp.kind === 'snowball') continue;   /* drawn above */
         let sprite = sp._pixiSprite;
         if (!sprite || sprite.destroyed) {
           sprite = new Sprite(projTex);
@@ -2987,7 +2995,16 @@ export class EffectsRenderer {
     const gfx = this.nodeGfx;
     gfx.clear();
 
-    const nodes = S.gatherNodes || [];
+    /* v2.3.1680: HIDE what you cannot work.  A node you have no tool for is
+       not drawn at all — the owner's "it only becomes visible after giving
+       you the quest and equipment".  Filtered here rather than at the point
+       the server payload is applied (nodeSync) so picking up the pickaxe
+       makes rocks appear THAT FRAME, instead of on the next zone entry.
+       The dispose pass below sees the filtered list too, so a node that
+       becomes hidden tears its sprite down properly rather than orphaning it. */
+    const _allNodes = S.gatherNodes || [];
+    const _rpg = S.rpg || null;
+    const nodes = _allNodes.filter((n) => hasGatherTool(_rpg, n.nodeType));
 
     /* v2.3.216: dispose orphaned sprites from the previous zone.
        _disposeNode only fires for nodes that are STILL in the array

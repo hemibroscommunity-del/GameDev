@@ -1099,11 +1099,24 @@ for (const m of meadowMonsters) m._wanderPausedUntil = Date.now() + 600000;
 {
   const rc = room.MONSTER_RANGED_BY_ARCH;
 
-  check('snowball: only the snowman has a ranged profile',
-    !!rc.snowman
-    && !Object.prototype.hasOwnProperty.call(rc, 'fodder')
-    && !Object.prototype.hasOwnProperty.call(rc, 'brute'),
+  /* v2.3.1678 (owner: "make sure they can throw their slime projectiles like
+     the snowmen"): fodder joined the ranged map, so "only the snowman" is no
+     longer the property.  What still matters is that the list is DELIBERATE —
+     brutes and the rest stay melee, or every archetype in the game turns into
+     artillery and closing distance stops meaning anything. */
+  check('snowball: snowmen and slimes throw; nothing else does',
+    !!rc.snowman && !!rc.fodder
+    && !Object.prototype.hasOwnProperty.call(rc, 'brute')
+    && !Object.prototype.hasOwnProperty.call(rc, 'stalker')
+    && !Object.prototype.hasOwnProperty.call(rc, 'hexer'),
     Object.keys(rc));
+  /* A slime is FAST (spd 1.15 blue), so its ball must not also outrange the
+     snowman's — the slow archetype's identity is its reach. */
+  check('snowball: the slime throws SHORTER and quicker than the snowman',
+    rc.fodder.range < rc.snowman.range && rc.fodder.travelMs < rc.snowman.travelMs
+    && rc.fodder.cd < rc.snowman.cd, { fodder: rc.fodder, snowman: rc.snowman });
+  check('snowball: the slime band is still strictly outside its melee ring',
+    rc.fodder.minRange > 55 && rc.fodder.minRange < rc.fodder.range, rc.fodder);
   check('snowball: the ranged map cannot be reached through the prototype',
     !Object.prototype.hasOwnProperty.call(rc, '__proto__')
     && !Object.prototype.hasOwnProperty.call(rc, 'constructor'));
@@ -1136,6 +1149,17 @@ for (const m of meadowMonsters) m._wanderPausedUntil = Date.now() + 600000;
     const before = psT.hp;
     psT.hp = psT.maxHp; psT.dying = false; psT.dead = false; psT.blocking = false;
     psT.x = 4000; psT.y = 4000;
+    /* v2.3.1673: PIN THE DODGE ROLL.  `_applyDamage` rolls a random passive
+       dodge, so "impact actually applies damage" below failed roughly one run
+       in twenty — it blocked the push gate twice on 2026-08-12 and passed on
+       re-run both times, which is the worst kind of test: it trains you to
+       re-roll until green, and a real regression rides through on the same
+       habit.  The assertion is about the IMPACT POINT plumbing, not about the
+       dodge table, so zero the inputs that feed the roll and it becomes
+       deterministic without weakening what it checks. */
+    psT.agility = 0;
+    if (psT.prog3 && psT.prog3.alloc) psT.prog3.alloc.dodge = 0;
+    psT._evadeAcc = 0;
     const farMonster = { id: 'sb-1', arch: 'snowman', dmg: 3, x: 4280, y: 4000, statuses: {} };
     room.eventBuffer.length = 0;
     room._monsterStrikePlayer('frost', farMonster, 'pa', psT.x, psT.y);

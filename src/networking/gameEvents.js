@@ -765,6 +765,14 @@ export function processGameEvent(type, payload, S, deps) {
                   displayOnly: true,
                   ownerId: payload.monsterId,
                   rawDmg: 0,
+                  /* v2.3.1678: carry the KIND through to the renderer.  Owner:
+                     "I couldn't see the snowman projectile."  It was drawing —
+                     as the green slime orb, because the renderer picks its
+                     texture from the zone's variant map and Frost Ridge has no
+                     entry, so every ball fell through to the slime fallback.
+                     A green blob against snow at 25px is invisible in the way
+                     that matters: you cannot tell it is coming at you. */
+                  kind: payload.kind || 'slime',
                   ts: Date.now(),
                 });
               }

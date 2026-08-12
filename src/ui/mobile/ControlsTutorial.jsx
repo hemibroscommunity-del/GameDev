@@ -25,7 +25,7 @@ import { dashboardPanelBus } from './dashboardPanelBus.js';
    simply advances past it. */
 const STEPS = [
   { key: 'move', shape: 'circle', sels: ['.bt-joystick-zone'],
-    label: 'Move', body: 'Drag the left stick to move.' },
+    label: 'Move', body: 'Drag the left joystick to move.' },
   /* v2.3.1667: this said "hold for special", and it was WRONG — there is
      no hold gesture.  The special fires on a FLICK: BroTown.jsx's right-
      stick release handler measures the release speed and triggers when it
@@ -34,7 +34,7 @@ const STEPS = [
      control that does not exist.  (Double-tap-and-hold is the SHIELD,
      which the ring covers separately.) */
   { key: 'attack', shape: 'circle', sels: ['.bt-rjoy-base'],
-    label: 'Attack', body: 'Drag the right stick to attack. Flick it and let go for a special.' },
+    label: 'Attack', body: 'Drag the right joystick to attack. A quick swipe triggers a special attack.' },
   /* v2.3.1285: the 3-panel row is retired — the home view is the Bag
      compact grid (equipped row over recent items). */
   { key: 'dashboard', shape: 'rect',

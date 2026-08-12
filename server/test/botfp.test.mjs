@@ -93,7 +93,14 @@ ps1.z = 'meadow';
 const nodes = room._ensureZoneNodes('meadow');
 const n0 = nodes[0];
 ps1.x = n0.x; ps1.y = n0.y;
-ps1.inventory = {}; ps1.lifeSkills = {};
+/* v2.3.1680: gathering is TOOL-GATED (owner: extraction hidden behind a Mayor
+   Bro quest that hands over the equipment).  Every player in this suite
+   harvests, and this suite is about BOT FINGERPRINTING, not the tool gate — so
+   each bag starts stocked.  Left empty, every strike below would be refused
+   before the fingerprint code ran, and the counters would read zero: the
+   assertions would fail loudly here, but a laxer assertion elsewhere could
+   just as easily have passed for the wrong reason. */
+ps1.inventory = { woodcutting_axe: 1, fishing_pole: 1, mining_pickaxe: 1 }; ps1.lifeSkills = {};
 const skillName = room._harvestSkillName(n0.nodeType);
 const invKey = room._harvestInvKey(n0.nodeType, n0.tierLvl);
 
@@ -134,7 +141,7 @@ const invKey = room._harvestInvKey(n0.nodeType, n0.tierLvl);
   const ws2 = fakeWs('b');
   await join(ws2, 'bp_bot_b', { id: 'devnonce2', env: 'envhash1' });
   const ps2 = room.playerState.bp_bot_b;
-  ps2.z = 'meadow'; ps2.x = n0.x; ps2.y = n0.y; ps2.inventory = {};
+  ps2.z = 'meadow'; ps2.x = n0.x; ps2.y = n0.y; ps2.inventory = { woodcutting_axe: 1, fishing_pole: 1, mining_pickaxe: 1 };
   for (let i = 0; i < 6; i++) {
     await strike(ws2, 'bp_bot_b', n0, { len: 400, n: 40, dur: 900, ent: 0.01, tv: 0, vc: 0.004, h: 'sb-' + i });
   }
@@ -148,7 +155,7 @@ const invKey = room._harvestInvKey(n0.nodeType, n0.tierLvl);
   const ws3 = fakeWs('c');
   await join(ws3, 'bp_bot_c');
   const ps3 = room.playerState.bp_bot_c;
-  ps3.z = 'meadow'; ps3.x = n0.x; ps3.y = n0.y; ps3.inventory = {};
+  ps3.z = 'meadow'; ps3.x = n0.x; ps3.y = n0.y; ps3.inventory = { woodcutting_axe: 1, fishing_pole: 1, mining_pickaxe: 1 };
   for (let i = 0; i < 5; i++) {
     const fp = humanFp();
     fp.tv = 0;                          // frame-locked iPhone timing
@@ -164,7 +171,7 @@ const invKey = room._harvestInvKey(n0.nodeType, n0.tierLvl);
   const wsD = fakeWs('d');
   await join(wsD, 'bp_bot_d');
   const psD = room.playerState.bp_bot_d;
-  psD.z = 'meadow'; psD.x = n0.x; psD.y = n0.y; psD.inventory = {};
+  psD.z = 'meadow'; psD.x = n0.x; psD.y = n0.y; psD.inventory = { woodcutting_axe: 1, fishing_pole: 1, mining_pickaxe: 1 };
   for (let i = 0; i < 50; i++) {
     // human-VALUED but machine-CONSTANT: no floor trips, variance ≈ 0
     await strike(wsD, 'bp_bot_d', n0, { len: 800, n: 90, dur: 1500, ent: 0.15, tv: 42, vc: 0.3, h: 'd-' + i });
@@ -175,7 +182,7 @@ const invKey = room._harvestInvKey(n0.nodeType, n0.tierLvl);
   const wsE = fakeWs('e');
   await join(wsE, 'bp_bot_e');
   const psE = room.playerState.bp_bot_e;
-  psE.z = 'meadow'; psE.x = n0.x; psE.y = n0.y; psE.inventory = {};
+  psE.z = 'meadow'; psE.x = n0.x; psE.y = n0.y; psE.inventory = { woodcutting_axe: 1, fishing_pole: 1, mining_pickaxe: 1 };
   for (let i = 0; i < 50; i++) {
     await strike(wsE, 'bp_bot_e', n0, humanFp());
   }
@@ -190,7 +197,7 @@ const invKey = room._harvestInvKey(n0.nodeType, n0.tierLvl);
   const wsF = fakeWs('f');
   await join(wsF, 'bp_bot_f');
   const psF = room.playerState.bp_bot_f;
-  psF.z = 'meadow'; psF.x = n0.x; psF.y = n0.y; psF.inventory = {};
+  psF.z = 'meadow'; psF.x = n0.x; psF.y = n0.y; psF.inventory = { woodcutting_axe: 1, fishing_pole: 1, mining_pickaxe: 1 };
   for (let i = 0; i < 20; i++) await strike(wsF, 'bp_bot_f', n0, null);
   const recF = room._botfp.get('bp_bot_f');
   check('legacy: 20 fp-less strikes fully granted, counted, unscored',
@@ -218,7 +225,7 @@ const invKey = room._harvestInvKey(n0.nodeType, n0.tierLvl);
   const rec0 = room._botfpRecord('bp_fleet_0', Date.now());
   rec0.strikeCount = 24;
   const psF0 = room.playerState.bp_fleet_0;
-  psF0.z = 'meadow'; psF0.x = n0.x; psF0.y = n0.y; psF0.inventory = {};
+  psF0.z = 'meadow'; psF0.x = n0.x; psF0.y = n0.y; psF0.inventory = { woodcutting_axe: 1, fishing_pole: 1, mining_pickaxe: 1 };
   await strike(fleet[0], 'bp_fleet_0', n0, humanFp());
   check('fleet: many-identities-one-device flag written',
     rec0.flags.some((f) => f.kind === 'device-fleet'), rec0.flags.map((f) => f.kind));
@@ -231,7 +238,7 @@ const invKey = room._harvestInvKey(n0.nodeType, n0.tierLvl);
   const wsG = fakeWs('g');
   await join(wsG, 'bp_bot_g');
   const psG = room.playerState.bp_bot_g;
-  psG.z = 'meadow'; psG.x = n0.x; psG.y = n0.y; psG.inventory = {};
+  psG.z = 'meadow'; psG.x = n0.x; psG.y = n0.y; psG.inventory = { woodcutting_axe: 1, fishing_pole: 1, mining_pickaxe: 1 };
   const recG = room._botfpRecord('bp_bot_g', Date.now());
   recG.hour.bySkill[skillName] = 270;
   await strike(wsG, 'bp_bot_g', n0, humanFp());

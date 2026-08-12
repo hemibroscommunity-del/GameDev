@@ -34,6 +34,12 @@ const SCENARIOS = {
   prog3: () => import('./mp-prog3.mjs'), /* v2.3.1660: trained-skill rebuild */
   tutorial: () => import('./mp-tutorial.mjs'), /* v2.3.1665: the completable arc */
   onboarding: () => import('./mp-onboarding.mjs'), /* v2.3.1668: the first-run greeting */
+  hiscores: () => import('./mp-hiscores.mjs'), /* v2.3.1671: the per-skill board */
+  mayorart: () => import('./mp-mayorart.mjs'), /* v2.3.1672: the mayor's real art */
+  townlock: () => import('./mp-townlock.mjs'), /* v2.3.1676: unarmed start + town gate */
+  proj: () => import('./mp-proj.mjs'), /* v2.3.1678: the snowball is visible */
+  lifeskill: () => import('./mp-lifeskill.mjs'), /* v2.3.1680: tool-gated gathering */
+  questui: () => import('./mp-questui.mjs'), /* v2.3.1681: the world dialogue's art + the offer filter */
 };
 
 const want = process.argv.slice(2).filter((a) => !a.startsWith('-'));

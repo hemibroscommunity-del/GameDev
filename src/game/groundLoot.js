@@ -10,7 +10,7 @@
    the player; `pixiRef`, `setRpgState`, `setLevelUpMsg` arrive via deps;
    everything else is a module import below. S is stateRef.current. */
 import { BT_AUDIO, WEAPON_STASH_MAX, WEAPON_TYPES, ZONES, meetsStatReq, recalcDerived } from '@/data/index.js';
-import { isRemnantSkull } from '@/data/monsterVariants.js';
+import { isRemnantSkull, remnantInvKey } from '@/data/monsterVariants.js';
 import { shardByKey } from '@/data/shards.js';
 import { syncRpgToServer } from '@/networking/index.js';
 import { pushHudPopup } from '@/ui/XpFlyOverlay.jsx';
@@ -252,12 +252,11 @@ export function updateGroundLootPickup(S, deps) {
               if (loot.coins && S.rpg._compStats) S.rpg._compStats.totalGoldEarned += loot.coins;
               syncRpgToServer(S.rpg);
               if (loot.skull && S.rpg.inventory) {
-                var _invKey =
-                  loot.skull === 'fodder'     ? 'slime-remnants' :
-                  loot.skull === 'fireGoblin' ? 'fire-goblin-remnants' :
-                  loot.skull === 'skeleton'   ? 'skeleton-remnants' :
-                  loot.skull === 'mummy'      ? 'skeleton-remnants' :
-                  loot.skull;
+                /* v2.3.1673: one shared resolver with the server (see
+                   remnantInvKey).  The chain that used to live here fell
+                   through to the raw variant name, so a Verdant Wilds moss
+                   slime credited a 'mossSlime' key nothing reads. */
+                var _invKey = remnantInvKey(loot.skull);
                 S.rpg.inventory[_invKey] = (S.rpg.inventory[_invKey] || 0) + 1;
               }
               if (loot.shard && S.rpg.inventory) {

@@ -336,7 +336,11 @@ const nodes = room._ensureZoneNodes('meadow');
 const n0 = nodes[0];
 n0.alive = true; n0.respawnAt = 0;
 ps.x = n0.x; ps.y = n0.y;
-ps.inventory = {};
+/* v2.3.1680: gathering is TOOL-GATED, so the bag starts with the tools rather
+   than empty — this section tests the TIMING gate, and an empty bag would make
+   every strike below fail for the wrong reason (the assertions would still
+   pass, which is worse: a timing test that never exercises timing). */
+ps.inventory = { woodcutting_axe: 1, fishing_pole: 1, mining_pickaxe: 1 };
 ps.lifeSkills = {};
 const skillName = room._harvestSkillName(n0.nodeType);
 const invKey = room._harvestInvKey(n0.nodeType, n0.tierLvl);

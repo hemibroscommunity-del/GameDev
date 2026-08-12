@@ -4952,40 +4952,23 @@ export function createDefaultRpg() {
     mana: 100,
     maxMana: 100,
     /* Equipment */
-    /* Equipment — start with basic wood-tier weapons.
-       v2.3.943: the starter melee weapon is a greatsword (was the Bamboo
-       Stick / type 'sword') so the per-facing held greatsword art shows and
-       the wild swing reads as a big sword. */
-    weapon: {
-      type: 'greatsword',
-      tier: 'common',
-      tierMult: 1.0,
-      element1: null,
-      element2: null,
-      name: 'Great Sword',
-      isVolatile: false,
-      gearBase: 'wood'
-    },
-    rangedWeapon: {
-      type: 'bow',
-      tier: 'common',
-      tierMult: 1.0,
-      element1: null,
-      element2: null,
-      name: 'Wood Bow',
-      isVolatile: false,
-      gearBase: 'wood'
-    },
-    staffWeapon: {
-      type: 'staff',
-      tier: 'common',
-      tierMult: 1.0,
-      element1: null,
-      element2: null,
-      name: 'Wood Staff',
-      isVolatile: false,
-      gearBase: 'wood'
-    },
+    /* v2.3.1676 (owner: "You'll need to start the game without a weapon and
+       not be allowed to leave town without speaking to mayor bro first.  He'll
+       give you the sword and shield").  All three slots start EMPTY.
+       History, because this has swung before: v2.3.943 made the starter melee
+       weapon a greatsword so the held art would show.  Handing a new player a
+       full melee/ranged/magic loadout before they had met anyone left the
+       tutorial with nothing to give and the weapon-swap bar with nothing to
+       teach — every reward Mayor Bro hands over was already in the bag.
+       The empty slots are what make the arc mean something: sword+shield on
+       accepting his first quest, bow on turning it in, staff on the next.
+       Safe to be null: calcWeaponDmg returns the unarmed base for a missing
+       weapon (`if (!wpn) return rawBase`), the HUD already falls back to
+       'Fists', and the town gate above stops anyone reaching a monster
+       before the mayor arms them. */
+    weapon: null,
+    rangedWeapon: null,
+    staffWeapon: null,
     /* v2.3.249: Leather Armor removed from the game entirely per
        user request.  Armor + stash both empty by default.  Players
        acquire armor through other paths (forge / drops / etc.). */
@@ -4995,12 +4978,9 @@ export function createDefaultRpg() {
        v2.3.187 shield-on-back render has something to draw without
        requiring a pickup. Existing saves with shield=null get the
        same default via the migration in BroTown.jsx ~4352. */
-    shield: {
-      tier: 'common',
-      tierMult: 1.0,
-      gearBase: 'wood',
-      name: 'Wood Shield',
-    },
+    /* v2.3.1676: the shield comes from Mayor Bro with the sword, so it starts
+       empty too — a shield you already own is not a reward. */
+    shield: null,
     /* {tier, tierMult, gearBase, gem, name, reforgeBonus, hardenBonus} */
     /* v2.3.228: armor stash mirrors weaponStash/shieldStash so the
        chest slot supports equip/unequip via the item-detail popup. */
@@ -5303,64 +5283,161 @@ export const QUEST_CHAINS = {
      Accepted and turned in from the Quests panel (the town NPC entities
      are still disabled, v2.3.214), so the arc is reachable on a phone with
      no world dependency. */
+  /* v2.3.1675 (owner: "the monster to kill should be blue slimes, snowmen,
+     fire goblins, and mummies in separate quests.  No other monster types").
+     One monster per step, still asking for the REMNANTS they drop rather than
+     a kill count (v2.3.1673), ordered by the zones' own level bands so the
+     arc climbs: frost [8,25] -> verdant [22,40] -> sky [38,58] -> ember
+     [55,80].
+     `check` reads the bag, mirroring the server's `collect` objective; the
+     server still decides, and it CONSUMES the remnants on turn-in, which is
+     what stops one stack clearing the whole arc.  Keep counts in lockstep
+     with QUEST_REWARDS in server/src/data.js — a mismatch shows up as a Turn
+     In button that refuses without saying why. */
+
+  /* ═══ v2.3.1681: WHAT HE ACTUALLY HANDS YOU ═══
+     Owner: "also thumbnail of the quest items (sword and shield)".
+     `gives` is DISPLAY ONLY — the SERVER's QUEST_REWARDS entry is the sole
+     authority on what is granted, so nothing here can conjure an item.  Its
+     job is to show the player the picture of the thing before they commit.
+     `when` mirrors the server's two payout moments: 'accept' = grantOnAccept
+     (you get it for saying yes), 'complete' = reward.item (you get it for
+     coming back).  mirror-audit.test.mjs asserts that a quest promising an
+     'accept' icon really has a grantOnAccept server-side and likewise for
+     'complete', so this can go stale loudly rather than quietly. */
   tut_1: {
-    id: 'tut_1', npc: 'Mayor Bro', title: 'First Blood',
-    desc: 'Defeat 3 monsters in the Starting Meadow.',
-    check: function (rpg) { return ((rpg._questKills || {}).tut_1 || 0) >= 3; },
+    id: 'tut_1', npc: 'Mayor Bro', title: 'Cold Reception',
+    desc: 'Bring 4 Snowman Remnants from Frost Ridge.',
+    check: function (rpg) { return ((rpg.inventory || {}).snowman || 0) >= 4; },
     reward: { gold: 25, xp: 40 },
     next: 'tut_2',
+    gives: [
+      /* great-sword, not sword: weaponType 'sword' at wood tier is the
+         bamboo stick, and the server now grants a greatsword (see
+         server/src/data.js tut_1) so bag, hand and dialogue agree. */
+      { when: 'accept',   icon: '/icons/items/great-sword.webp', label: "Bro's Sword" },
+      { when: 'accept',   icon: '/icons/items/shield.webp', label: "Bro's Shield" },
+      { when: 'complete', icon: '/icons/items/bow.webp',    label: "Bro's Bow" },
+    ],
     dialogue: {
-      start: "You'll want a few fights under your belt before anything else. Three monsters in the Meadow. Off you go.",
-      progress: 'Three of them. The Meadow. Still waiting.',
-      complete: "That's the hard part done — the starting part.",
+      /* v2.3.1676 (owner: "He'll give you the sword and shield (with
+         instructions on how to use)").  The controls live in the START line
+         because that is the moment the kit is handed over — the gate will not
+         let you out of town until you have read it. */
+      /* v2.3.1681 (owner: "the instructions on mayor bro's dialog for
+         beginning the quest are wrong.  It should say a quick swipe on right
+         joystick to trigger a special attack").  "Flick it and let go" was
+         describing the right gesture in the wrong words — the handler measures
+         release SPEED, so a quick swipe is exactly it, and that is what the
+         line should say.  Also "joystick" throughout, matching what the owner
+         and the on-screen control are actually called. */
+      start: "Take the sword and the shield — you're not walking out of my town without them.\n\n"
+        + '⚔️ Hold the right joystick to aim and swing.\n'
+        + '✨ A quick swipe on the right joystick triggers a special attack.\n'
+        /* v2.3.1681b (owner): the HOLD is the gesture, not a detail.  The
+           handler only raises the shield on the second tap of a double-tap
+           and keeps it up for as long as that touch lasts; dragging during
+           the hold is what steers the arc.  "Double-tap to raise the shield"
+           alone describes a tap-toggle that does not exist, and a player who
+           lets go mid-fight is unshielded without knowing why. */
+        + '🛡️ Double-tap the right joystick and HOLD to raise the shield, then aim it at the enemy.\n\n'
+        + 'Now: snowmen up on Frost Ridge, and they throw first. Four wrecks, and mind the snowballs.',
+      progress: 'Frost Ridge. The white one. Four of them.',
+      complete: "Cold work. Here — a bow. Double-tap the LEFT joystick to switch weapons.",
     },
   },
   tut_2: {
-    id: 'tut_2', npc: 'Mayor Bro', title: 'Suit Up',
-    desc: 'Defeat 5 more monsters in the Starting Meadow.',
-    check: function (rpg) { return ((rpg._questKills || {}).tut_2 || 0) >= 5; },
-    reward: { gold: 40, xp: 60, item: "Scout's Vest" },
+    id: 'tut_2', npc: 'Mayor Bro', title: 'Into the Blue',
+    desc: 'Bring 6 Slime Remnants from the Verdant Wilds.',
+    check: function (rpg) { return ((rpg.inventory || {})['slime-remnants'] || 0) >= 6; },
+    reward: { gold: 60, xp: 100 },
     next: 'tut_3',
+    gives: [{ when: 'complete', icon: '/icons/items/staff.webp', label: "Bro's Staff" }],
     dialogue: {
-      start: "Five more and I'll get you something to wear that isn't a shirt.",
-      progress: 'Five. Meadow. I did say.',
-      complete: "Here — Scout's Vest. It'll stop something.",
+      start: 'The Verdant Wilds went blue. Fast little things, and they spit. Six remnants.\n\n'
+        + '🏹 That bow works at range — double-tap the LEFT joystick to swap to it.',
+      progress: 'Six, from the blue ones.',
+      complete: 'You move like someone who knows the place now. Take the staff — same swap, one more slot.',
     },
   },
   tut_3: {
-    id: 'tut_3', npc: 'Mayor Bro', title: 'Cold Reception',
-    desc: 'Defeat 5 monsters in Frost Ridge.',
-    check: function (rpg) { return ((rpg._questKills || {}).tut_3 || 0) >= 5; },
-    reward: { gold: 60, xp: 100, item: "Bro's Blade" },
+    id: 'tut_3', npc: 'Mayor Bro', title: 'Bad Wind',
+    desc: 'Bring 5 Skeleton Remnants from the Wind Dunes.',
+    check: function (rpg) { return ((rpg.inventory || {})['skeleton-remnants'] || 0) >= 5; },
+    reward: { gold: 150, xp: 150 },
     next: 'tut_4',
     dialogue: {
-      start: 'Frost Ridge next. Colder, meaner. Five of them.',
-      progress: "Frost Ridge. The white one. You'll know it.",
-      complete: "Take the blade. You've earned the weight of it.",
+      start: 'Mummies out in the Wind Dunes. Hit them hard enough and the wrappings come off — what is underneath is faster. Five sets of bones.',
+      progress: 'Five, from the dunes.',
+      complete: "Bones on the counter. Good.",
     },
   },
   tut_4: {
-    id: 'tut_4', npc: 'Mayor Bro', title: 'Into the Green',
-    desc: 'Defeat 6 monsters in the Verdant Wilds.',
-    check: function (rpg) { return ((rpg._questKills || {}).tut_4 || 0) >= 6; },
-    reward: { gold: 150, xp: 150 },
-    next: 'tut_5',
+    id: 'tut_4', npc: 'Mayor Bro', title: 'Bro Ascendant',
+    desc: 'Bring 6 Fire Goblin Remnants from the Flame Fields.',
+    check: function (rpg) { return ((rpg.inventory || {})['fire-goblin-remnants'] || 0) >= 6; },
+    reward: { gold: 400, xp: 300, item: "Scout's Vest" },
+    next: null,
+    gives: [{ when: 'complete', icon: '/icons/items/chest-plate.webp', label: "Scout's Vest" }],
     dialogue: {
-      start: 'The Verdant Wilds are thick with them. Six should thin it out.',
-      progress: 'Six, in the green.',
-      complete: 'You move like someone who knows the place now.',
+      start: 'Last one from me. Flame Fields. Goblins, and they are quick about it. Six.',
+      progress: 'Six, out of the fire.',
+      complete: "That's the tour. Everything past here is yours to find.",
     },
   },
-  tut_5: {
-    id: 'tut_5', npc: 'Mayor Bro', title: 'Bro Ascendant',
-    desc: 'Defeat 8 monsters in the Stone Hollows.',
-    check: function (rpg) { return ((rpg._questKills || {}).tut_5 || 0) >= 8; },
-    reward: { gold: 400, xp: 300 },
-    next: null,
+
+  /* ═══ v2.3.1680: THE LIFESKILL CHAIN ═══
+     Owner: "gate and hide resource extraction for woodcutting, fishing, and
+     mining behind a mayor bro quest ... he wants you to bring him cooked
+     fish.  After doing that he'll give you a pickaxe.  After bringing him ore
+     he'll award you the upper and lower body armor."
+     The nodes are HIDDEN until you hold the matching tool (see
+     hasGatherTool), so accepting life_1 is the moment trees and fishing spots
+     appear in the world at all.
+     `check` counts a FAMILY of inventory keys, mirroring the server's
+     invPrefix objective — cooked fish are cooked_fish_<species> and ore is
+     ore_<name>, so a single key would mean picking a favourite species. */
+  life_1: {
+    id: 'life_1', npc: 'Mayor Bro', title: 'Learn a Trade',
+    desc: 'Cook 2 fish and bring them to Mayor Bro.',
+    check: function (rpg) {
+      var inv = rpg.inventory || {};
+      var n = 0;
+      for (var k in inv) if (k.indexOf('cooked_fish_') === 0) n += inv[k] || 0;
+      return n >= 2;
+    },
+    reward: { gold: 60, xp: 80, item: 'Pickaxe' },
+    next: 'life_2',
+    /* No axe or pickaxe art exists in /icons/items, so those two go
+       unillustrated rather than borrowing a picture of something else. */
+    gives: [{ when: 'accept', icon: '/icons/items/fishing-pole.webp', label: 'Fishing Pole' }],
     dialogue: {
-      start: 'Last one from me. The Stone Hollows. Eight. Then you outrank my advice.',
-      progress: 'The Hollows. Eight of them.',
-      complete: "That's the tour. Everything past here is yours to find.",
+      start: "Take the axe and the pole — nobody's cutting or casting without them.\n\n"
+        + '🪓 Trees and fishing spots only show up once you can work them.\n'
+        + '🔥 Catch two fish, chop wood, cook them, and bring them back.',
+      progress: 'Two cooked fish. Raw ones do not count — find a fire.',
+      complete: "That's a trade. Here — a pickaxe. The rocks are yours now.",
+    },
+  },
+  life_2: {
+    id: 'life_2', npc: 'Mayor Bro', title: 'Rock Bottom',
+    desc: 'Bring 5 Ore to Mayor Bro.',
+    check: function (rpg) {
+      var inv = rpg.inventory || {};
+      var n = 0;
+      for (var k in inv) if (k.indexOf('ore_') === 0) n += inv[k] || 0;
+      return n >= 5;
+    },
+    reward: { gold: 200, xp: 200, item: "Prospector's Vest + Greaves" },
+    next: null,
+    gives: [
+      { when: 'complete', icon: '/icons/items/chest-plate.webp', label: "Prospector's Vest" },
+      { when: 'complete', icon: '/icons/items/greaves.webp',     label: "Prospector's Greaves" },
+    ],
+    dialogue: {
+      start: 'Ore next. Five lumps, any kind — the rocks in every zone will do.',
+      progress: 'Five ore. Swing the pickaxe.',
+      complete: "Vest and greaves, both. That's real armor — it'll take the edge off a hit, not just pad your health.",
     },
   },
 

@@ -32,6 +32,41 @@ export const questMethods = {
     return QUEST_REWARDS;
   },
 
+  /* v2.3.1680: how many of a `collect` objective's items the player holds.
+     A single `invKey` is an exact match; `invPrefix` sums a FAMILY — cooked
+     fish are `cooked_fish_<species>` and ore is `ore_<name>`, so "bring me
+     cooked fish" cannot be one key without picking a favourite species and
+     rejecting the rest of the sea. */
+  _collectHeld(ps, obj) {
+    const inv = (ps && ps.inventory) || null;
+    if (!inv || !obj) return 0;
+    if (obj.invKey) return inv[obj.invKey] || 0;
+    if (!obj.invPrefix) return 0;
+    let n = 0;
+    for (const k of Object.keys(inv)) {
+      if (k.startsWith(obj.invPrefix)) n += inv[k] || 0;
+    }
+    return n;
+  },
+
+  /* Take `count` items matching the objective, oldest-key-first.  Spreads the
+     spend across a family so a player holding three species hands over a mix
+     rather than having one stack singled out. */
+  _collectConsume(ps, obj, count) {
+    const inv = (ps && ps.inventory) || null;
+    if (!inv || !obj) return;
+    let left = Math.max(0, Math.floor(count));
+    const keys = obj.invKey ? [obj.invKey]
+      : Object.keys(inv).filter((k) => obj.invPrefix && k.startsWith(obj.invPrefix)).sort();
+    for (const k of keys) {
+      if (left <= 0) break;
+      const have = inv[k] || 0;
+      const take = Math.min(have, left);
+      left -= take;
+      if (have - take > 0) inv[k] = have - take; else delete inv[k];
+    }
+  },
+
   _handleQuestAccept(session, payload) {
     if (!session || !session.id) return;
     const ps = this.playerState[session.id];
@@ -56,6 +91,19 @@ export const questMethods = {
     // active / turnedIn.
     if (cur === 'active' || cur === 'turnedIn') return;
     ps._quests[questId] = 'active';
+    /* v2.3.1676 (owner: "He'll give you the sword and shield (with
+       instructions on how to use)").  A reward paid on ACCEPT, not turn-in —
+       the whole point of the starter kit is that you cannot do the quest
+       without it, so paying it at the end would be a joke.  Same
+       _grantQuestItem path and the same non-fatal posture as turn-in
+       rewards: a failed grant (occupied slot, full stash) must not stop the
+       quest being accepted, or a player with a full bag could never start.
+       Only ever fires on the accept that MOVES the quest into 'active', so
+       it cannot be farmed by re-accepting. */
+    if (Array.isArray(reward.grantOnAccept)) {
+      for (const it of reward.grantOnAccept) this._grantQuestItem(ps, it);
+      this._recomputeMaxes(ps);
+    }
     this._saveRpg(session.id, ps);
     const ws = this._wsBySessionId(session.id);
     if (ws) this._sendPlayerState(ws, session.id);
@@ -131,10 +179,24 @@ export const questMethods = {
       if (_obj.type === 'kill' || _obj.type === 'gather') {
         if (((ps._questKills && ps._questKills[questId]) || 0) < (_obj.count || 1)) return;
       } else if (_obj.type === 'collect') {
-        if (((ps.inventory && ps.inventory[_obj.invKey]) || 0) < (_obj.count || 1)) return;
+        if (this._collectHeld(ps, _obj) < (_obj.count || 1)) return;
       } else if (_obj.type === 'flag') {
         if (!(ps._questFlags && ps._questFlags[_obj.flag])) return;
       }
+    }
+    /* v2.3.1673: HAND THE ITEMS OVER.  `collect` used to only CHECK that you
+       held the items, never take them — which for the tutorial arc would mean
+       one stack of remnants satisfying every step at once, and the whole
+       five-quest chain collapsing into a single turn-in.  Opt-in via
+       `consume` so any future "just prove you own it" collect quest keeps the
+       old behaviour.
+       Placed AFTER every gate and BEFORE any payout, so a refused turn-in can
+       never take the items, and a paid one can never fail to.  Clamped at 0
+       because a concurrent path could in principle have drained the stack
+       between the check above and here; going negative would turn a bag into
+       a debt that no drop can ever pay off. */
+    if (_obj && _obj.type === 'collect' && _obj.consume && ps.inventory) {
+      this._collectConsume(ps, _obj, _obj.count || 1);
     }
     ps._quests[questId] = 'turnedIn';
     ps.coins = (ps.coins || 0) + (reward.gold || 0);
@@ -194,12 +256,28 @@ export const questMethods = {
   _grantQuestItem(ps, item) {
     if (!ps || !item || typeof item !== 'object') return false;
     try {
-      if (item.kind === 'armor') {
-        /* Only fills an EMPTY slot.  Silently replacing armor the player
+      if (item.kind === 'armor' || item.kind === 'legs') {
+        /* v2.3.1679: two slots now — chest ('armor') and legs ('legs'), the
+           upper and lower body pieces the mining quest pays out.  Same
+           empty-slot-only rule for both: silently replacing armor the player
            chose would be a reward that takes something away. */
-        if (ps.armor) return false;
+        const slot = item.kind === 'legs' ? 'legsArmor' : 'armor';
+        if (ps[slot]) return false;
         const tm = Math.max(0, Math.min(8, Number(item.tierMult) || 1));
-        ps.armor = { name: String(item.name || 'Quest Armor'), tierMult: tm };
+        ps[slot] = { name: String(item.name || 'Quest Armor'), tierMult: tm };
+        this._recomputeMaxes(ps);
+        return true;
+      }
+      if (item.kind === 'shield') {
+        /* v2.3.1676: same empty-slot-only rule as armor — a gift must never
+           take away something the player chose. */
+        if (ps.shield) return false;
+        ps.shield = {
+          tier: 'common',
+          tierMult: Math.max(0, Math.min(8, Number(item.tierMult) || 1)),
+          gearBase: String(item.gearBase || 'wood'),
+          name: String(item.name || 'Quest Shield'),
+        };
         this._recomputeMaxes(ps);
         return true;
       }
@@ -230,6 +308,15 @@ export const questMethods = {
         if (ps.weaponStash.length >= this.WEAPON_STASH_CAP) return false;
         ps.weaponStash.push(minted);
         return true;
+      }
+      /* v2.3.1680: a SET — several pieces in one reward slot, so the mining
+         quest can pay upper AND lower body.  Each piece goes through this same
+         function, so each keeps the empty-slot-only rule independently: a
+         player already wearing a chest piece still receives the legs. */
+      if (item.kind === 'armorSet' && Array.isArray(item.pieces)) {
+        let any = false;
+        for (const piece of item.pieces) { if (this._grantQuestItem(ps, piece)) any = true; }
+        return any;
       }
       if (item.kind === 'inv' && typeof item.key === 'string') {
         if (!ps.inventory) ps.inventory = Object.create(null);

@@ -565,6 +565,17 @@ export class GameRoom {
        does, so the [1,2] demo band is unaffected. */
     this.MONSTER_RANGED_BY_ARCH = {
       snowman: { range: 300, minRange: 100, travelMs: 900, cd: 2600 },
+      /* v2.3.1678 (owner: "make sure they can throw their slime projectiles
+         like the snowmen").  Slimes get the same ranged band the snowman has
+         — and unlike the snowman, this is not compensation for being slow: a
+         blue slime is FAST (spd 1.15), so its ball is a second threat while
+         it closes rather than its only one.  Tuned shorter and quicker
+         accordingly: less reach, a faster ball, a shorter cooldown than the
+         snowman's artillery lob.
+         `kind` rides on the wire so the client can pick the right art — the
+         snowball was falling back to the green slime orb, which is how it
+         ended up invisible against snow. */
+      fodder: { range: 220, minRange: 70, travelMs: 650, cd: 2000 },
     };
     /* v2.3.1640: how far a player may drift from the aim point and still be
        hit.  40px against a ~34px body is roughly "you didn't really move",
@@ -758,7 +769,7 @@ export class GameRoom {
       // v2.3.1147: verdant/mist populated -- tinted reskins of existing
       // sheets (client MONSTER_VARIANTS carries the tint; stats stay
       // 100% base-archetype).  Keep in sync with ZONE_VARIANT_MAP.
-      verdant: { fodder: 'mossSlime', brute: 'thornShambler' },
+      verdant: { fodder: 'blueSlime', brute: 'thornShambler' },   /* v2.3.1675: all blue (owner) */
       mist: { fodder: 'mireWisp', brute: 'bogLurker' },
     };
     const zm = MAP[zoneId];
@@ -1376,7 +1387,9 @@ export class GameRoom {
               type: 'monster_projectile',
               payload: {
                 monsterId: m.id,
-                kind: 'snowball',
+                /* v2.3.1678: the archetype decides the look.  A snowman
+                   throws a snowball; a slime spits an orb. */
+                kind: m.arch === 'snowman' ? 'snowball' : 'slime',
                 zone: zoneId,
                 x: m.x,
                 y: m.y,
@@ -1766,8 +1779,19 @@ export class GameRoom {
   // server checks position + recipient + not-already-claimed and emits
   // a private loot_credit to the picker with their share.  Public
   // loot_claimed broadcasts visibility changes; loot_despawn finalises.
-  _isRemnantSkullArch(arch) {
-    return arch === 'fodder' || arch === 'snowman' || arch === 'fireGoblin' || arch === 'mummy' || arch === 'skeleton';
+  /* v2.3.1673: BASE-ARCHETYPE FALLBACK — a real drop bug, not a tidy-up.
+     This took the SKULL name, which is `monster.variant || monster.arch`, and
+     matched it against a hand-written list of five names.  Every zone-flavoured
+     slime reskin therefore failed the test and dropped NOTHING: Verdant Wilds
+     (mossSlime + blueSlime — and it is slimes ONLY since v2.3.1534) and Poison
+     Forest (mireWisp) have been dropping no remnants at all.  Nobody noticed
+     because the pile still spawns for the gold.
+     Passing the base archetype fixes those AND every future reskin, because a
+     variant of `fodder` is a slime whatever it is painted. */
+  _isRemnantSkullArch(arch, baseArch) {
+    if (arch === 'fireGoblin' || arch === 'mummy' || arch === 'skeleton') return true;
+    const b = baseArch || arch;
+    return b === 'fodder' || b === 'snowman';
   }
 
   _rollShardForKill(zoneId) {
@@ -1788,13 +1812,20 @@ export class GameRoom {
   // payload as the initial value.  Cheat surface (one-time, at first
   // connect only); after that the server is the source.
 
-  _invKeyForSkull(skull) {
-    if (skull === 'fodder') return 'slime-remnants';
+  _invKeyForSkull(skull, baseArch) {
     if (skull === 'fireGoblin') return 'fire-goblin-remnants';
     // Mummy and skeleton both stack into 'skeleton-remnants' (matches
     // the client's local-pickup mapping at BroTown.jsx ~9071).  Skeleton
     // is the runtime transform target of mummy; both map the same way.
     if (skull === 'mummy' || skull === 'skeleton') return 'skeleton-remnants';
+    /* v2.3.1673: fall back to the BASE archetype, so mossSlime / blueSlime /
+       mireWisp all stack into the same 'slime-remnants' the plain meadow
+       fodder drops.  They are slimes — the paint should not decide what falls
+       out of them, and a tutorial that asks for slime remnants from the
+       Verdant Wilds is only possible if it does not. */
+    const b = baseArch || skull;
+    if (skull === 'fodder' || b === 'fodder') return 'slime-remnants';
+    if (skull === 'snowman' || b === 'snowman') return 'snowman';
     return skull;
   }
 
@@ -2355,7 +2386,9 @@ export class GameRoom {
     // inventory key on pickup.  Falls back to the base archetype
     // for monsters with no variant override.
     const skullSource = monster.variant || monster.arch;
-    const skull = this._isRemnantSkullArch(skullSource) ? skullSource : null;
+    /* monster.arch is always the TRUE base archetype (the server runs AI on it
+       and only the skin is per-zone), so it is the honest fallback. */
+    const skull = this._isRemnantSkullArch(skullSource, monster.arch) ? skullSource : null;
     const shard = this._rollShardForKill(zone);
     // v2.3.1141: weapon rides the pile; only rolled when someone can
     // actually claim it (the claim is recipient-gated below).
@@ -2377,6 +2410,13 @@ export class GameRoom {
       y: monster.y,
       coins: monster.gold || 0,
       skull,
+      /* v2.3.1673: the skull's BASE archetype rides along.  The pickup site
+         (which credits the inventory) only ever saw the skull NAME, and a
+         variant name alone cannot say whether the thing was a slime — that is
+         exactly how the reskinned slimes ended up dropping nothing.  Memory-
+         only (rule 11): loot piles live in this.loot[zone] and never persist,
+         so there is no stored shape to migrate. */
+      skullArch: monster.arch,
       shard,
       recipients: recipients.slice(),
       shares: { ...shares },
@@ -2709,7 +2749,7 @@ export class GameRoom {
     ps.coins = (ps.coins || 0) + coinsForMe;
     if (skullForMe) {
       if (!ps.inventory) ps.inventory = {};
-      const invKey = this._invKeyForSkull(skullForMe);
+      const invKey = this._invKeyForSkull(skullForMe, pile.skullArch);
       ps.inventory[invKey] = (ps.inventory[invKey] || 0) + 1;
     }
     if (shardForMe) {
@@ -3512,11 +3552,28 @@ export class GameRoom {
                             10 min leaves ~1000x margin on that window.
          Worst case per player-hour is now 60 rows (a changed record every
          MIN_MS); a steady one costs 6. */
+      /* v2.3.1671: the per-skill board is SERVER-AUTHORITATIVE.  Combat
+         levels come from ps.prog3, life-skill levels from ps.lifeSkills and
+         kills from svKills — the exact same object `_chainScoreSeries`
+         signs for the chain, so the in-game hiscores and the public ledger
+         are computed once and can never tell different stories.
+         The `rpgData` columns below stay client-reported: they feed the
+         legacy desktop panel only, and the new categories never read them.
+         Falls back to an empty series when there is no live player state
+         (the join path can report before `ps` exists), which just means the
+         row carries no skill columns until the next report. */
+      const series = lbPs ? this._chainScoreSeries(lbPs) : {};
+
       const sig = JSON.stringify([
         name, color, lbLevel,
         rpgData.lifeTotal || 0, rpgData.ap || 0, rpgData.kills || 0,
         rpgData.dungeons || 0, rpgData.goldEarned || 0, rpgData.playtime || 0,
         rpgData.clanTag || null,
+        /* The series MUST be inside the change signature or a level-up would
+           never reach the board: the throttle below only writes when this
+           string differs, and a fishing level moving is exactly the kind of
+           change the old signature could not see. */
+        series,
       ]);
       const now = Date.now();
       const since = now - (session._lbAt || 0);
@@ -3530,7 +3587,7 @@ export class GameRoom {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           playerId: session.id, name, color, level: lbLevel,
-          rpgData, ts: now,
+          rpgData, series, ts: now,
         }),
       }));
     } catch {}

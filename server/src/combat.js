@@ -60,6 +60,32 @@ export const combatMethods = {
   // Returns { dmgTaken, dodged } -- dmgTaken is 0 for both block and
   // dodge, dodged disambiguates so the caller can route to the right
   // popup.
+  /* v2.3.1679: damage MULTIPLIER from worn armor (1 = no armor, 0.56 = both
+     pieces at base tier).  Exported as its own method so the client mirror and
+     the anticheat ceiling read one definition.
+
+     Base: torso 30%, legs 20% (owner).  Tier scaling is ADDITIVE and modest —
+     +5% / +3.5% per tier step — rather than multiplying the base, because
+     multiplying 30% by an 8x tierMult lands at 240% and every value after
+     that is a clamp doing the real work.  At the tierMult 8 ceiling this
+     reaches 65% / 44.5%, i.e. 0.806 combined, which the cap then holds at
+     0.75.  Cap is the LAST word: no combination of tiers makes a player
+     immune. */
+  _armorDrMult(ps) {
+    if (!ps) return 1;
+    const MAX_DR = 0.75;
+    const piece = (a, base, perTier) => {
+      if (!a) return 0;
+      const tm = Math.max(0, Math.min(8, Number(a.tierMult) || 1));
+      return base + perTier * (tm - 1);
+    };
+    const chest = piece(ps.armor, 0.30, 0.05);
+    const legs = piece(ps.legsArmor, 0.20, 0.035);
+    if (chest <= 0 && legs <= 0) return 1;
+    const combined = 1 - (1 - chest) * (1 - legs);
+    return 1 - Math.min(MAX_DR, combined);
+  },
+
   _applyDamage(ps, rawDmg, isBlock) {
     if (!ps) return { dmgTaken: 0, dodged: false, graced: false };
     const r = Math.max(1, Math.round(rawDmg || 0));
@@ -117,6 +143,27 @@ export const combatMethods = {
       const _defMult = this._prog3DefMult(ps);
       if (_defMult < 1) dmgTaken = Math.max(1, Math.round(dmgTaken * _defMult));
     }
+    /* ═══ v2.3.1679: WORN ARMOR IS REAL MITIGATION ═══
+       Owner: "make the effect when worn (after getting awards from quest) 30%
+       damage reduction on torso and 20% damage reduction on legs.  Higher
+       tiers will go up from there."
+
+       Until now armor did NOTHING per hit — Phase 1 (see the header) retired
+       `def` reduction and folded armor into maxHp instead, so a chest piece
+       was a bigger health bar and nothing else.  That is why the tutorial's
+       armor reward felt like a number going up rather than a thing you put
+       on.
+
+       The two layers stack MULTIPLICATIVELY, which is the only stacking that
+       cannot reach 100%: 30% + 20% additive is 50%, but 1-(0.7x0.8) is 44%,
+       and the gap widens as tiers climb.  A hard cap on top of that is belt
+       and braces against a tierMult that gets away from us.
+       Ordering: after the flat resist/defense cuts and BEFORE the floor-1
+       clamp below, so a fully armoured player still takes chip damage — an
+       enemy that literally cannot hurt you is a bug, not a build. */
+    const _armorDr = this._armorDrMult(ps);
+    if (_armorDr < 1) dmgTaken = Math.max(1, Math.round(dmgTaken * _armorDr));
+
     // v2.3.1113: Iron Skin (defense channel, -0.5%/pt, cap -25%) -- mirror
     // of applyIronSkin in src/data/gameSystems.js.  ps.defenseSpec is
     // client-trained but server-clamped [0,50] via _sanitizeDefenseSpec,

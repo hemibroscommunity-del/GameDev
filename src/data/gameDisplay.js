@@ -3215,12 +3215,27 @@ export const BT_ACHIEVEMENTS = [{
 export const NPC_DATA = [{
   id: 'mayor_bro',
   name: 'Mayor Bro',          /* MUST equal QUEST_CHAINS[].npc — getNpcQuest keys on it */
+  /* v2.3.1672: real art (owner-supplied).  `sprite` wins over `avatar` in the
+     renderer; the emoji stays as the fallback for the frames before the
+     texture resolves and for any NPC that never gets art.
+     The frame is normalised to the PLAYER's stand frame — 256x256, figure
+     ~200px tall, feet on the same y=223 baseline — so he reads as a person
+     standing in the street rather than a prop at some arbitrary size. */
+  sprite: '/sprites/npc/mayor-bro.webp',
+  /* v2.3.1673 (owner: "show his head in the dialogue window").  A head crop
+     of the same sprite, so the portrait can never drift from the figure
+     standing in the street.  Square and small (96px) because it renders as a
+     chip beside the dialogue text, not a splash. */
+  portrait: '/sprites/npc/mayor-bro-head.webp',
   avatar: '🧔',
   color: '#f5c542',
   x: 758, y: 448,
   spawnX: 758, spawnY: 448,
   renderX: 758, renderY: 448,
   hp: 100, maxHp: 100,
+  /* v2.3.1675 (owner: "remove his health bar he doesn't need one").  He is a
+     quest giver in a safe town; a health bar over him reads as "fight this". */
+  noHp: true,
   alive: true,
   respawnAt: 0,
   pathRadius: 0,

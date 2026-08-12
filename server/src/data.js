@@ -319,7 +319,7 @@ export const ZONES = {
        * (fast + squishy); the other 7 take the zone default mossSlime.
        * MIRROR of src/data/zones.js verdant.spawns -- zones.test.mjs compares
        * these two arrays with JSON equality, so they move together. */
-      verdant: { w:32, h:32, level:[1,2], element:'flora',  secondary:'venom',    lawless:true, spawns:[{arch:'fodder',count:2},{arch:'fodder',count:1,variant:'blueSlime'}] }, /* band: [22,40] */
+      verdant: { w:32, h:32, level:[1,2], element:'flora',  secondary:'venom',    lawless:true, spawns:[{arch:'fodder',count:3,variant:'blueSlime'}] }, /* band: [22,40]; v2.3.1675: all blue (owner) -- mirror of src/data/zones.js */
       frost:   { w:32, h:32, level:[1,2],  element:'frost', secondary:'storm', lawless:true, spawns:[{arch:'snowman',count:3}] },        /* band: [8,25] */
       thunder: { w:32, h:32, level:[1,2], element:'storm', secondary:'flame', lawless:true, spawns:[{arch:'fodder',count:3}] },          /* band: [55,80] */
       hollows: { w:32, h:32, level:[1,2], element:'stone', secondary:'venom', lawless:true, spawns:[{arch:'brute',count:3}] },           /* band: [38,58] */
@@ -420,18 +420,96 @@ export const QUEST_REWARDS = {
        * The zone order follows the map's geography, not difficulty: live
        * spawn bands are all flattened to [1,2] (v2.3.1160), so this teaches
        * TRAVEL rather than gating on power. */
+      /* v2.3.1675 (owner: "the monster to kill should be blue slimes,
+         snowmen, fire goblins, and mummies in separate quests.  No other
+         monster types").  Four combat steps, one monster each, still asking
+         for REMNANTS rather than a kill count (v2.3.1673).
+         Ordered by the zones' own level bands so the arc climbs:
+           frost   [ 8,25]  snowmen      -> snowman             (frost only)
+           verdant [22,40]  BLUE slimes  -> slime-remnants
+           sky     [38,58]  mummies      -> skeleton-remnants   (sky only)
+           ember   [55,80]  fire goblins -> fire-goblin-remnants (ember only)
+         Three of the four are pinned to their zone by the ITEM — those
+         remnants drop nowhere else — which is real enforcement rather than a
+         zone string the `collect` gate cannot check.  Verdant is the
+         exception: slime remnants also come from the Meadow and the Foundry,
+         so its zone line is flavour.  Written down rather than implied.
+         The Starting Meadow's plain slimes are deliberately NOT a step: the
+         owner named four monsters and meant four.
+         `consume:true` is what makes this an arc — without it one stack of
+         remnants satisfies every step at once. */
+      /* WEAPON REWARDS (owner: "next quest he awards a different weapon (bow)
+         then staff").  Tier 0 / `wood` on both, deliberately: gear is gated on
+         trained level since v2.3.1661, so a generous gift would be granted and
+         then refused at the equip check — a reward the player can see and not
+         use is worse than no reward.  The sword+shield that come BEFORE these,
+         on first contact, are the next slice. */
       tut_1: {gold:25,  xp:40,  next:'tut_2',
-              objective:{type:'kill', arch:null, zone:'meadow', count:3}},
-      tut_2: {gold:40,  xp:60,  next:'tut_3',
-              objective:{type:'kill', arch:null, zone:'meadow', count:5},
+              objective:{type:'collect', invKey:'snowman', count:4, consume:true, zone:'frost'},
+              /* v2.3.1676 (owner: "He'll give you the sword and shield").  Paid
+                 on ACCEPT, not turn-in — you cannot do the quest without them,
+                 and the town gate will not let you leave until you have talked
+                 to him, so this IS the moment you get armed. */
+              /* v2.3.1681 (owner: "for bros sword the thumbnail is of the
+                 bamboo stick.  It needs to be the great sword").  weaponType
+                 'sword' at gearBase 'wood' IS the bamboo stick — that is its
+                 art everywhere (icons/items/sword.webp, and the in-hand
+                 sprite's isWoodSwordNudge case), not just in the new quest
+                 thumbnail.  Swapping only the picture would have left the bag
+                 and the player's hand disagreeing with the dialogue, so the
+                 GRANT changes instead.  'greatsword' is equally safe at this
+                 point in the arc: _prog3EquipOk maps both types to the same
+                 'sword' trained skill and wood is tier index 0, so the
+                 requirement is 0 either way. */
+              grantOnAccept:[
+                {kind:'weapon', weaponType:'greatsword', tierKey:'wood', name:"Bro's Sword"},
+                {kind:'shield', gearBase:'wood', tierMult:1.0, name:"Bro's Shield"},
+              ],
+              item:{kind:'weapon', weaponType:'bow', tierKey:'wood', name:"Bro's Bow"}},
+      tut_2: {gold:60,  xp:100, next:'tut_3',
+              objective:{type:'collect', invKey:'slime-remnants', count:6, consume:true, zone:'verdant'},
+              item:{kind:'weapon', weaponType:'staff', tierKey:'wood', name:"Bro's Staff"}},
+      tut_3: {gold:150, xp:150, next:'tut_4',
+              objective:{type:'collect', invKey:'skeleton-remnants', count:5, consume:true, zone:'sky'}},
+      tut_4: {gold:400, xp:300, next:null,
+              objective:{type:'collect', invKey:'fire-goblin-remnants', count:6, consume:true, zone:'ember'},
               item:{kind:'armor', name:"Scout's Vest", tierMult:1.0}},
-      tut_3: {gold:60,  xp:100, next:'tut_4',
-              objective:{type:'kill', arch:null, zone:'frost', count:5},
-              item:{kind:'weapon', weaponType:'greatsword', tierKey:'wood', name:"Bro's Blade"}},
-      tut_4: {gold:150, xp:150, next:'tut_5',
-              objective:{type:'kill', arch:null, zone:'verdant', count:6}},
-      tut_5: {gold:400, xp:300, next:null,
-              objective:{type:'kill', arch:null, zone:'hollows', count:8}},
+
+      /* ═══ v2.3.1680: THE LIFESKILL CHAIN ═══
+         Owner: "gate and hide resource extraction for woodcutting, fishing,
+         and mining behind a mayor bro quest where it only becomes visible
+         after giving you the quest and equipment.  Two different quests.
+         woodcutting axe for chopping tree and fishing pole for fishing.  He
+         wants you to bring him cooked fish.  After doing that he'll give you a
+         pickaxe.  After bringing him ore he'll award you the upper and lower
+         body armor."
+
+         The tools are ordinary inventory items, so they persist, show in the
+         bag, and need no new storage field.  `invPrefix` matches a FAMILY:
+         cooked fish are `cooked_fish_<species>` and ore is `ore_<name>`, so
+         "bring me cooked fish" cannot be one key without picking a favourite
+         species and rejecting the rest of the sea.
+
+         Note the fish quest requires COOKED fish, which means the player has
+         to fish AND cook — two skills out of one quest, and the reason the
+         axe rides along with the pole: firewood.  Counts are small on purpose;
+         this is a tutorial, not a grind. */
+      life_1: {gold:60,  xp:80,  next:'life_2',
+               objective:{type:'collect', invPrefix:'cooked_fish_', count:2, consume:true},
+               grantOnAccept:[
+                 {kind:'inv', key:'woodcutting_axe', n:1},
+                 {kind:'inv', key:'fishing_pole', n:1},
+               ],
+               item:{kind:'inv', key:'mining_pickaxe', n:1}},
+      life_2: {gold:200, xp:200, next:null,
+               objective:{type:'collect', invPrefix:'ore_', count:5, consume:true},
+               /* Both body pieces, and they are the first armor in the game
+                  that actually does anything per hit (v2.3.1679: torso 30%,
+                  legs 20%). */
+               item:{kind:'armorSet', pieces:[
+                 {kind:'armor', name:"Prospector's Vest", tierMult:1.0},
+                 {kind:'legs',  name:"Prospector's Greaves", tierMult:1.0},
+               ]}},
 
       mayor_1:    {gold:50,  xp:30,  next:'mayor_2'},
       mayor_2:    {gold:100, xp:80,  next:'mayor_3', objective:{type:'kill', arch:null, count:5}},

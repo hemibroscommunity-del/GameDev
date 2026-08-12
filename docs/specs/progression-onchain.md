@@ -1,9 +1,13 @@
 # On-chain score attestations (Hemi) — spec + operator runbook
 
-**Version:** v2.3.1664 · **Contract:** `contracts/BroTownScores.sol` ·
+**Version:** v2.3.1671 · **Contract:** `contracts/BroTownScores.sol` ·
 **Server:** `server/src/chainwriter.js` (signing/encoding),
-`server/src/chainscore.js` (game integration) ·
-**Suites:** `server/test/chainwriter.test.mjs`, `server/test/chainscore.test.mjs`
+`server/src/chainscore.js` (game integration),
+`server/src/leaderboard.js` (the in-game board over the same series) ·
+**Suites:** `server/test/chainwriter.test.mjs`, `server/test/chainscore.test.mjs`,
+`server/test/hiscores.test.mjs`, `tools/qa/mp/mp-hiscores.mjs` ·
+**Conformance:** `tools/dev/evm-conformance.mjs` (compiles the contract and
+runs it in a local EVM; off the test path)
 
 ## What this is
 
@@ -12,22 +16,58 @@ BroTown writes a small, permanent, public record of player milestones to
 read-only: `broverify.js` checks Hemi Bros NFT ownership to grant a cosmetic
 badge. Nothing was ever written.
 
-**What is attested:** character level and kill count. Both are
-server-computed — level from `_prog3Recompute` (the sum of trained skills),
-kills from `svKills`, incremented in `_resolveMonsterKill`, the same function
-that pays the XP and drops the loot.
+**What is attested (v2.3.1671):** every server-computed progression number —
+the three trained combat skills (melee / bow / magic) from `ps.prog3.sk`, all
+ten life skills from `ps.lifeSkills`, and `kills` from `svKills`. Fourteen
+series, each a monotonic counter the server owns. Combat levels come from
+`_prog3AwardXp`; life-skill levels from `_addLifeSkillXp` in gathering.js;
+kills from `_resolveMonsterKill`, the same function that pays the XP and drops
+the loot.
 
 **What is deliberately NOT attested:** gold earned, playtime, dungeon clears.
 Those leaderboard columns are still client-reported, and putting a
 client-reported number on a permanent public ledger would make it *look*
-verified while being worth exactly the client's word. Widen the attestation
-only when those become server-owned.
+verified while being worth exactly the client's word. Widen `_chainScoreSeries`
+only when those become server-owned — the contract needs no change to accept a
+new key.
 
-**When:** on level milestones — 5, 10, 25, 50, 100, 150, 200, 250, 300. Nine
-transactions per character, for the lifetime of the account. This is not a
-per-kill ledger and must not become one; gas is real.
+**Known soft spot, recorded rather than hidden:** `join.js` can bootstrap
+`lifeSkills` from a client-sent blob on a legacy record's *first* join (the
+pre-server-ownership migration path). Everything after that first join is
+server-computed. So a life-skill level is authoritative going forward but
+could, on an old account, have started from a claim. Combat levels and kills
+have no such path.
 
-## The design decision worth defending
+**When:** on combat-level milestones — 5, 10, 25, 50, 100, 150, 200, 250, 300.
+Nine transactions per character, for the lifetime of the account. This is not
+a per-kill ledger and must not become one; gas is real. Life-skill levels ride
+along on those same nine writes rather than triggering their own — ten more
+skills must not mean ten times the gas — and each write sends only the series
+that actually *changed* since the last one.
+
+## Two design decisions worth defending
+
+### 1. Skills are names, not fields
+
+The store is `player => skill => level`, where the skill key is its short name
+written straight into a `bytes32` — `"melee"`, `"fishing"`, `"trapping"`.
+
+The first draft of this contract had a fixed struct (`level`, `kills`). For
+something that can never be upgraded, that was a mistake: adding per-skill
+boards or the ten life skills would have meant deploying a **second** contract
+and stranding every score already written at the old address. Naming the skills
+instead means a skill added years from now needs no contract change at all —
+the game starts signing a new name and it works. There is no id registry to
+keep in sync, so the repo and the chain cannot disagree about what id 7 meant.
+Short ASCII names are also mostly zero bytes (the cheap kind of calldata) and
+render as readable text in a block explorer: a reader sees `fishing`, not
+`skillId: 7`.
+
+`kills` rides along as just another key. It is not a level, but it is a
+server-computed monotonic counter, which is the only property the contract
+cares about.
+
+### 2. Submission is permissionless
 
 `recordScore` is **permissionless**. The server signs an attestation
 off-chain; *anyone* holding that signature can submit it. The server relays by
@@ -84,6 +124,16 @@ put in it.
 Send a **small** amount of gas to the relayer address — a couple of dollars
 is far more than nine transactions per player will need. For testnet, use the
 Hemi faucet.
+
+> **Which token pays the gas?** Whatever MetaMask shows as the network's
+> native currency once you've added Hemi — that field is the authority, and it
+> is what the relayer's balance must be denominated in. Note that Hemi's
+> ERC-20 governance token is a *different* thing from the native gas currency;
+> holding the former does not let you send a transaction. Getting funds onto
+> the network means bridging from L1 (bridge.hemi.network) or withdrawing from
+> an exchange that supports Hemi directly. Check the balance shows up in
+> MetaMask *before* deploying — an unfunded relayer fails silently by design,
+> which is the slowest possible way to discover it.
 
 ## Step 3 — Deploy the contract (browser, no terminal)
 
@@ -143,8 +193,11 @@ network; does the Worker's `CHAIN_ID` match the network the contract is on.
 
 ## Cost
 
-Nine transactions per character over its whole lifetime. On an OP-Stack L2
-like Hemi these are fractions of a cent. A thousand players reaching level 10
+Nine transactions per character over its whole lifetime. Measured in a local
+EVM against the compiled contract (`tools/dev/evm-conformance.mjs`): a
+first-ever write covering all fourteen series costs **1,087,613 gas** of
+execution; later checkpoints send only what changed and cost about **23,000**.
+On an OP-Stack L2 like Hemi these are fractions of a cent. A thousand players reaching level 10
 is two thousand transactions — still trivial. If you ever want a hard ceiling,
 add a daily cap in `chainscore.js`; there is intentionally none today because
 the milestone list already bounds it.

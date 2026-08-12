@@ -1114,23 +1114,44 @@ input{font-family:inherit}
    drop shadow for lift.  Stays neutral slate — no new accent colour,
    and brass remains selection-only (spec "Buttons & components":
    Secondary = raised gradient + hairline + text-1). */
+/* v2.3.1674 (owner: "the buttons for randomize, etc blend in a little too
+   much with background. They don't pop").  They didn't: a #3A5058 slate on a
+   dark creator backdrop, a 34%-white hairline, and a 6px shadow — every edge
+   within a few percent of what sits behind it, so the eye read one flat
+   surface with words on it.
+
+   Three changes, none of which break the Lantern Slate rule that brass is an
+   accent and never a slab (spec "Buttons & components": secondary = raised
+   gradient + hairline + text-1):
+     1. LIFT THE FILL.  #3A5058 -> #445C66 top / #35474F bottom.  The gradient
+        is the shape; a flat swatch reads as a hole.
+     2. WARM THE EDGE.  The hairline picks up --ui-edge-warm, so the border
+        separates from a cold background instead of vanishing into it.  Still
+        a 1px edge, not a brass fill.
+     3. GIVE IT GROUND.  A real drop shadow plus a brighter inset top edge, so
+        the button sits ON the screen rather than in it.  This is what makes
+        something "pop" — separation from the plane behind, not more colour. */
 .bt-cc-btn{
   background:
     linear-gradient(180deg,
-      rgba(255,255,255,.10) 0,
-      rgba(255,255,255,.10) var(--ui-hairline),
-      rgba(255,255,255,.045) var(--ui-hairline),
-      rgba(0,0,0,.10) calc(100% - var(--ui-hairline)),
-      rgba(0,0,0,.34) calc(100% - var(--ui-hairline)),
-      rgba(0,0,0,.34) 100%),
-    #3A5058;
-  border:var(--ui-hairline) solid rgba(229,237,233,.34);
-  color:#F4F0E7;
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.08),0 2px 6px rgba(5,8,10,.28);
-  transition:background 90ms cubic-bezier(.2,.8,.2,1),transform 90ms cubic-bezier(.2,.8,.2,1);
+      rgba(255,255,255,.16) 0,
+      rgba(255,255,255,.16) var(--ui-hairline),
+      rgba(255,255,255,.06) var(--ui-hairline),
+      rgba(0,0,0,.12) calc(100% - var(--ui-hairline)),
+      rgba(0,0,0,.40) calc(100% - var(--ui-hairline)),
+      rgba(0,0,0,.40) 100%),
+    linear-gradient(180deg,#445C66 0%,#35474F 100%);
+  border:1px solid var(--ui-edge-warm);
+  color:#F7F2E7;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.16),
+    0 3px 0 rgba(0,0,0,.30),          /* a lip, so it reads as a raised key */
+    0 6px 14px rgba(5,8,10,.45);
+  transition:background 90ms cubic-bezier(.2,.8,.2,1),transform 90ms cubic-bezier(.2,.8,.2,1),box-shadow 90ms cubic-bezier(.2,.8,.2,1);
 }
 .bt-cc-btn:active{
-  transform:translateY(1px);
+  /* Press travels the full height of the 3px lip, so the key visibly lands. */
+  transform:translateY(3px);
   background:
     linear-gradient(180deg,
       rgba(0,0,0,.34) 0,
@@ -1140,7 +1161,7 @@ input{font-family:inherit}
       rgba(255,255,255,.10) calc(100% - var(--ui-hairline)),
       rgba(255,255,255,.10) 100%),
     #32454C;
-  box-shadow:inset 0 3px 7px rgba(0,0,0,.46);
+  box-shadow:inset 0 3px 7px rgba(0,0,0,.46),0 0 0 rgba(0,0,0,0),0 2px 6px rgba(5,8,10,.35);
 }
 /* v2.3.1576: keyboard focus was invisible on every control here.  Spec
    "Buttons & components": focus 2px #F0C878. */
@@ -1202,6 +1223,14 @@ input{font-family:inherit}
 /* v2.3.1524: the logo was an absolute corner badge over the hero; it is the
    title band across the top of the shell now, so it sits in flow. */
 .bt-cc-logo-wrap{position:relative;z-index:3;pointer-events:none}
+/* v2.3.1674: the HEMI BROS maker's mark under the title.  Sized off the same
+   --cc-leftw the logo uses, so it scales in lockstep with it on every screen
+   instead of needing its own breakpoints.  Deliberately ~52% of the logo's
+   width: present, clearly secondary. */
+/* v2.3.1675: inline beside the version number, so it sits on that baseline
+   rather than stacking above it.  Sized to the text, not the column. */
+.bt-cc-hemi{width:auto;height:15px;display:block;flex:0 0 auto;pointer-events:none;opacity:.9}
+@media (max-height:560px){.bt-cc-hemi{height:12px}}
 /* v2.3.1251: ~22% smaller (approved mockup) — 32vw/150 → 25vw/117.  The
    sword + shines are wrap-relative %, so they track the new size. */
 .bt-cc-logo{position:relative;z-index:1;width:min(var(--cc-leftw),168px);height:auto;display:block;pointer-events:none}

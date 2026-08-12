@@ -281,6 +281,35 @@ export const gatheringMethods = {
   // we need to validate the eventual node_strike (the swipe-landed
   // event).  Server also captures skillLevel + nodeTier at the start so
   // a mid-attempt level-up doesn't shift the expected window.
+  /* ═══ v2.3.1680: TOOLS GATE GATHERING ═══
+   * Owner: "gate and hide resource extraction for woodcutting, fishing, and
+   * mining behind a mayor bro quest where it only becomes visible after
+   * giving you the quest and equipment."
+   *
+   * One tool per gathering skill, held as an ordinary inventory item so it
+   * persists, shows up in the bag, and needs no new storage field.  The CLIENT
+   * hides nodes it has no tool for; this is the half that makes it true — a
+   * modified client that draws them anyway still cannot harvest.
+   *
+   * Deliberately NOT applied to farming/cooking/the crafting skills: those are
+   * not node extraction and the owner named three.  Anything absent from this
+   * map is ungated, so adding a fourth gathering skill later does not silently
+   * lock it. */
+  _GATHER_TOOL_FOR_SKILL: {
+    woodcutting: 'woodcutting_axe',
+    fishing: 'fishing_pole',
+    mining: 'mining_pickaxe',
+  },
+
+  /** Does this player hold the tool for a gathering skill?  True for any skill
+   *  that is not tool-gated at all. */
+  _hasGatherTool(ps, skill) {
+    const key = Object.prototype.hasOwnProperty.call(this._GATHER_TOOL_FOR_SKILL, skill)
+      ? this._GATHER_TOOL_FOR_SKILL[skill] : null;
+    if (!key) return true;
+    return !!(ps && ps.inventory && (ps.inventory[key] || 0) > 0);
+  },
+
   _handleExtractionStart(session, payload) {
     if (!session || !session.id) return;
     const { nodeId, zone, skill } = payload || {};
@@ -291,6 +320,11 @@ export const gatheringMethods = {
     if (!list) return;
     const n = list.find((x) => x.id === nodeId);
     if (!n || !n.alive) return;
+    /* v2.3.1680: no tool, no extraction.  Refused SILENTLY — the client hides
+       these nodes, so a request for one is either a stale tap from before the
+       tool was spent or a modified client, and neither deserves a reply that
+       tells it what it is missing. */
+    if (!this._hasGatherTool(ps, skill)) return;
     const skillLevel = (ps.lifeSkills && ps.lifeSkills[skill] && ps.lifeSkills[skill].level) || 0;
     const nodeTier = n.tierLvl || 1;
     this.extractions[session.id] = {
@@ -314,6 +348,11 @@ export const gatheringMethods = {
        handcrafted node_strike would; check anyway. */
     const ps = this.playerState[session.id];
     if (!ps || ps.z !== zone || ps.dead || ps.disconnected) return;
+    /* v2.3.1680: the tool gate again, on the PAYING path.  extraction_start
+       already refuses, but that only records intent — a handcrafted
+       node_strike skips it entirely, and this is the call that credits the
+       harvest.  Gate both or the gate is decorative. */
+    if (!this._hasGatherTool(ps, this._harvestSkillName(n.nodeType))) return;
     const dx = ps.x - n.x;
     const dy = ps.y - n.y;
     if (dx * dx + dy * dy > this.NODE_STRIKE_RANGE * this.NODE_STRIKE_RANGE) return;
