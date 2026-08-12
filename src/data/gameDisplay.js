@@ -3233,6 +3233,9 @@ export const NPC_DATA = [{
   spawnX: 758, spawnY: 448,
   renderX: 758, renderY: 448,
   hp: 100, maxHp: 100,
+  /* v2.3.1675 (owner: "remove his health bar he doesn't need one").  He is a
+     quest giver in a safe town; a health bar over him reads as "fight this". */
+  noHp: true,
   alive: true,
   respawnAt: 0,
   pathRadius: 0,

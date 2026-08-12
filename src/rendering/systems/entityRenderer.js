@@ -138,13 +138,15 @@ const POPUP_BAR_CLEAR = 34;
    exactly the pre-experiment size; keep the knob for further tuning. */
 const PLAYER_SIZE_MULT = 1.0;
 const MONSTER_SIZE_MULT = 1.5;
-/* v2.3.1673 (owner: "he needs to be twice as large").  96 world px per frame
-   is what this renderer treats as player scale (see the 96/128 baseScale at
-   the harvest stand-in, commented exactly that), so 192 is deliberately DOUBLE
-   a person — the mayor reads as the landmark you walk toward, not another
-   pedestrian.  Everything positional below derives from this constant, so the
-   quest marker and name follow the figure automatically. */
-const NPC_SPRITE_SCALE = 192 / 256;
+/* NPC art draw scale.  96 world px per frame is what this renderer treats as
+   player scale (see the 96/128 baseScale at the harvest stand-in, commented
+   exactly that).
+   v2.3.1673 doubled this to 192 ("he needs to be twice as large");
+   v2.3.1675 halves it back ("reduce his size by 50%") — so the mayor stands
+   at the same height as the player again.  Everything positional below
+   derives from this constant, so the quest marker and name follow the figure
+   automatically rather than needing their own pass. */
+const NPC_SPRITE_SCALE = 96 / 256;
 
 /* The sprite frame's own geometry, in frame pixels: the figure's feet sit on
    y=223 and its top (hat) on y=23 — see the asset note in gameDisplay.js
@@ -6712,10 +6714,21 @@ export class EntityRenderer {
 
         /* Quest marker — text overlay above the head, pulses vertically.
            Hidden by default; populated when npc._questMarker is set. */
+        /* v2.3.1675 (owner: "I can't see the exclamation point on mayor bro it
+           blends into background").  It was a bare 16px glyph in the same
+           warm gold as the town's sunlit cobbles, with nothing behind it.
+           Now: bigger, pure white core, and a heavy dark STROKE — an outline
+           is what makes a glyph survive an arbitrary background, because it
+           guarantees contrast against whatever is behind rather than hoping
+           the fill happens to differ.  The colour still carries the meaning
+           (gold = offer, green = turn in) via the stroke's companion fill
+           below. */
         const questMarkerText = new Text({
           text: '',
-          style: { fontFamily: 'sans-serif', fontSize: 16, fontWeight: '700',
-                   fill: '#f5c542', align: 'center' },
+          style: { fontFamily: 'sans-serif', fontSize: 22, fontWeight: '900',
+                   fill: '#ffffff', align: 'center',
+                   stroke: { color: '#1a1207', width: 5, join: 'round' },
+                   dropShadow: { color: '#000000', alpha: 0.6, blur: 4, distance: 2, angle: Math.PI / 2 } },
         });
         questMarkerText.anchor.set(0.5, 0.5);
         questMarkerText.visible = false;
@@ -6770,8 +6783,8 @@ export class EntityRenderer {
         /* The marker is anchored at its CENTRE, so clearing the hat needs half
            its own glyph height on top of the gap — the first attempt used the
            gap alone and the ❗ sat down inside the hat brim. */
-        const MARK_PX = 26;                     // he doubled; so does the cue
-        display._questMarker.style.fontSize = MARK_PX;
+        const MARK_PX = 22;                     // matches the marker's own style
+
         display._questMarker._baseY = -(top + 8 + MARK_PX / 2);
         /* Name is anchored at its BOTTOM (0.5, 1), so this is where its
            underside sits: clear above the marker's top edge. */
@@ -6814,8 +6827,16 @@ export class EntityRenderer {
         }
       }
 
-      /* HP bar (24x3 above the head, color by remaining HP). */
+      /* HP bar (24x3 above the head, color by remaining HP).
+         v2.3.1675 (owner: "remove his health bar he doesn't need one"): an
+         NPC flagged `noHp` never draws one.  A full green bar over a quest
+         giver in a safe town reads as "this is a thing you fight", which is
+         the opposite of the invitation the ❗ is making right above it. */
       const hpBar = display._hpBar;
+      if (npc.noHp) {
+        if (hpBar.visible) { hpBar.clear(); hpBar.visible = false; }
+      } else if (!hpBar.visible) { hpBar.visible = true; display._lastHpKey = null; }
+      if (!npc.noHp) {
       const maxHp = npc.maxHp || 1;
       const hp = Math.max(0, npc.hp || 0);
       const hpPct = hp / maxHp;
@@ -6831,6 +6852,7 @@ export class EntityRenderer {
           hpBar.fill({ color: c });
         }
       }
+      }
 
       /* Quest marker — `npc._questMarker` is '❗' (available) or '❓'
          (turn-in) or null.  Pulses vertically when visible. */
@@ -6838,8 +6860,12 @@ export class EntityRenderer {
       const qmStr = npc._questMarker || '';
       if (qmStr) {
         if (qm.text !== qmStr) qm.text = qmStr;
-        const targetFill = qmStr === '❗' ? '#f5c542' : '#3dd497';
-        if (qm.style.fill !== targetFill) qm.style.fill = targetFill;
+        /* Tint rather than restyle: changing style.fill rebuilds the text
+           texture every time the marker flips state, and it would also wash
+           out the white core the stroke is protecting.  A tint multiplies the
+           white glyph to the state colour and leaves the dark outline alone. */
+        const targetTint = qmStr === '❗' ? 0xffd257 : qmStr === '❓' ? 0xffe58a : 0x6ef2ae;
+        if (qm.tint !== targetTint) qm.tint = targetTint;
         const pulse = Math.sin(now / 300) * 3;
         qm.y = (qm._baseY !== undefined ? qm._baseY : -36) + pulse;
         qm.visible = true;

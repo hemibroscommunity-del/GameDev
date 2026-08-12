@@ -278,7 +278,13 @@ export const ZONE_VARIANT_MAP = {
   tidal: { brute: 'fishman' },
   hollows: { brute: 'rockmonster' },
   /* v2.3.1147: keep in sync with server _variantForArchInZone. */
-  verdant: { fodder: 'mossSlime', brute: 'thornShambler' },
+  /* v2.3.1675 (owner: "make the slimes in verdant wilds blue"): the zone-wide
+     fodder skin is BLUE now.  This map remaps a whole ARCHETYPE, and the
+     per-spawn `variant` override in zones.js only covers spawns that carry
+     it — so leaving mossSlime here would repaint anything the spawn table did
+     not explicitly pin, and the zone would go back to green the moment a
+     spawn entry is edited.  Both places say blue; neither can drift alone. */
+  verdant: { fodder: 'blueSlime', brute: 'thornShambler' },
   mist: { fodder: 'mireWisp', brute: 'bogLurker' },
   /* sky / Desert Winds: every server archetype remaps to 'mummy' so
      MP players see mummies regardless of whether the server seeds

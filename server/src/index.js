@@ -758,7 +758,7 @@ export class GameRoom {
       // v2.3.1147: verdant/mist populated -- tinted reskins of existing
       // sheets (client MONSTER_VARIANTS carries the tint; stats stay
       // 100% base-archetype).  Keep in sync with ZONE_VARIANT_MAP.
-      verdant: { fodder: 'mossSlime', brute: 'thornShambler' },
+      verdant: { fodder: 'blueSlime', brute: 'thornShambler' },   /* v2.3.1675: all blue (owner) */
       mist: { fodder: 'mireWisp', brute: 'bogLurker' },
     };
     const zm = MAP[zoneId];

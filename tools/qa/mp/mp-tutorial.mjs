@@ -49,21 +49,21 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await P.page.waitForTimeout(500);
   const questsBody = await H.bodyText(P);
   rec.ok('the Quests panel offers the first tutorial quest',
-    /First Blood/.test(questsBody), questsBody.slice(0, 400));
+    /Cold Reception/.test(questsBody), questsBody.slice(0, 400));
 
-  const opened = await H.clickText(P, 'First Blood').then(() => true).catch(() => false);
+  const opened = await H.clickText(P, 'Cold Reception').then(() => true).catch(() => false);
   rec.ok('the quest row opens its detail page', opened);
   await P.page.waitForTimeout(500);
 
   const detail = await H.bodyText(P);
   rec.ok('the detail page states the objective and the zone',
-    /Starting Meadow/.test(detail), detail.slice(0, 400));
+    /Frost Ridge/.test(detail), detail.slice(0, 400));
   /* v2.3.1673: the arc asks for REMNANTS now, not a kill count.  Pinned here
      because the client `check` and the server objective are two tables that
      have to agree, and the symptom of disagreement is a Turn In button that
      refuses without saying why. */
   rec.ok('the objective asks for remnants, not a kill count',
-    /Slime Remnants/i.test(detail) && !/Defeat \d/i.test(detail), detail.slice(0, 400));
+    /Snowman Remnants/i.test(detail) && !/Defeat \d/i.test(detail), detail.slice(0, 400));
   rec.ok("the quest giver's portrait is shown in the dialogue block",
     await P.page.evaluate(() => !!document.querySelector('img[src*="mayor-bro-head"]')));
   rec.ok('the detail page shows the quest giver speaking',

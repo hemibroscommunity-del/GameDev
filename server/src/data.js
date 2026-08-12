@@ -319,7 +319,7 @@ export const ZONES = {
        * (fast + squishy); the other 7 take the zone default mossSlime.
        * MIRROR of src/data/zones.js verdant.spawns -- zones.test.mjs compares
        * these two arrays with JSON equality, so they move together. */
-      verdant: { w:32, h:32, level:[1,2], element:'flora',  secondary:'venom',    lawless:true, spawns:[{arch:'fodder',count:2},{arch:'fodder',count:1,variant:'blueSlime'}] }, /* band: [22,40] */
+      verdant: { w:32, h:32, level:[1,2], element:'flora',  secondary:'venom',    lawless:true, spawns:[{arch:'fodder',count:3,variant:'blueSlime'}] }, /* band: [22,40]; v2.3.1675: all blue (owner) -- mirror of src/data/zones.js */
       frost:   { w:32, h:32, level:[1,2],  element:'frost', secondary:'storm', lawless:true, spawns:[{arch:'snowman',count:3}] },        /* band: [8,25] */
       thunder: { w:32, h:32, level:[1,2], element:'storm', secondary:'flame', lawless:true, spawns:[{arch:'fodder',count:3}] },          /* band: [55,80] */
       hollows: { w:32, h:32, level:[1,2], element:'stone', secondary:'venom', lawless:true, spawns:[{arch:'brute',count:3}] },           /* band: [38,58] */
@@ -420,40 +420,41 @@ export const QUEST_REWARDS = {
        * The zone order follows the map's geography, not difficulty: live
        * spawn bands are all flattened to [1,2] (v2.3.1160), so this teaches
        * TRAVEL rather than gating on power. */
-      /* v2.3.1673 (owner: "use actual zones and monsters (e.g. slimes in
-         verdant wilds) and require the number of slime remnants instead of
-         certain number killed").
-         Each step now asks for the REMNANTS the named zone's real monsters
-         actually drop, verified against the live spawn tables:
-           meadow  -> fodder slimes           -> slime-remnants
-           frost   -> snowmen                 -> snowman        (frost only)
-           verdant -> moss + blue slimes      -> slime-remnants
-           mist    -> mire wisps              -> slime-remnants
-           sky     -> mummies                 -> skeleton-remnants (sky only)
-         Two of the five are pinned to their zone by the ITEM ITSELF — snowman
-         wrecks and skeleton remnants drop nowhere else — which is real
-         enforcement rather than a zone string the server cannot check.  The
-         three slime steps name their zone as flavour: remnants carry no zone
-         tag, so a player could farm them anywhere.  Said plainly here rather
-         than implied, because `collect` cannot enforce it and pretending
-         otherwise is how a check gets trusted that was never made.
-         `consume:true` is what makes this an ARC: the remnants are handed
-         over, so one stack of five cannot satisfy every step at once.
-         Difficulty tracks the zone bands — [1,10] -> [8,25] -> [22,40] ->
-         [22,40] -> [38,58] — the same ceiling the previous kill arc ended on,
-         so it stays completable by a judge who starts from scratch. */
+      /* v2.3.1675 (owner: "the monster to kill should be blue slimes,
+         snowmen, fire goblins, and mummies in separate quests.  No other
+         monster types").  Four combat steps, one monster each, still asking
+         for REMNANTS rather than a kill count (v2.3.1673).
+         Ordered by the zones' own level bands so the arc climbs:
+           frost   [ 8,25]  snowmen      -> snowman             (frost only)
+           verdant [22,40]  BLUE slimes  -> slime-remnants
+           sky     [38,58]  mummies      -> skeleton-remnants   (sky only)
+           ember   [55,80]  fire goblins -> fire-goblin-remnants (ember only)
+         Three of the four are pinned to their zone by the ITEM — those
+         remnants drop nowhere else — which is real enforcement rather than a
+         zone string the `collect` gate cannot check.  Verdant is the
+         exception: slime remnants also come from the Meadow and the Foundry,
+         so its zone line is flavour.  Written down rather than implied.
+         The Starting Meadow's plain slimes are deliberately NOT a step: the
+         owner named four monsters and meant four.
+         `consume:true` is what makes this an arc — without it one stack of
+         remnants satisfies every step at once. */
+      /* WEAPON REWARDS (owner: "next quest he awards a different weapon (bow)
+         then staff").  Tier 0 / `wood` on both, deliberately: gear is gated on
+         trained level since v2.3.1661, so a generous gift would be granted and
+         then refused at the equip check — a reward the player can see and not
+         use is worse than no reward.  The sword+shield that come BEFORE these,
+         on first contact, are the next slice. */
       tut_1: {gold:25,  xp:40,  next:'tut_2',
-              objective:{type:'collect', invKey:'slime-remnants', count:3, consume:true, zone:'meadow'}},
-      tut_2: {gold:40,  xp:60,  next:'tut_3',
               objective:{type:'collect', invKey:'snowman', count:4, consume:true, zone:'frost'},
-              item:{kind:'armor', name:"Scout's Vest", tierMult:1.0}},
-      tut_3: {gold:60,  xp:100, next:'tut_4',
+              item:{kind:'weapon', weaponType:'bow', tierKey:'wood', name:"Bro's Bow"}},
+      tut_2: {gold:60,  xp:100, next:'tut_3',
               objective:{type:'collect', invKey:'slime-remnants', count:6, consume:true, zone:'verdant'},
-              item:{kind:'weapon', weaponType:'greatsword', tierKey:'wood', name:"Bro's Blade"}},
-      tut_4: {gold:150, xp:150, next:'tut_5',
-              objective:{type:'collect', invKey:'slime-remnants', count:8, consume:true, zone:'mist'}},
-      tut_5: {gold:400, xp:300, next:null,
+              item:{kind:'weapon', weaponType:'staff', tierKey:'wood', name:"Bro's Staff"}},
+      tut_3: {gold:150, xp:150, next:'tut_4',
               objective:{type:'collect', invKey:'skeleton-remnants', count:5, consume:true, zone:'sky'}},
+      tut_4: {gold:400, xp:300, next:null,
+              objective:{type:'collect', invKey:'fire-goblin-remnants', count:6, consume:true, zone:'ember'},
+              item:{kind:'armor', name:"Scout's Vest", tierMult:1.0}},
 
       mayor_1:    {gold:50,  xp:30,  next:'mayor_2'},
       mayor_2:    {gold:100, xp:80,  next:'mayor_3', objective:{type:'kill', arch:null, count:5}},

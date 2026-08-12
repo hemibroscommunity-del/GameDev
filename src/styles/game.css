@@ -1227,8 +1227,10 @@ input{font-family:inherit}
    --cc-leftw the logo uses, so it scales in lockstep with it on every screen
    instead of needing its own breakpoints.  Deliberately ~52% of the logo's
    width: present, clearly secondary. */
-.bt-cc-hemi{width:min(calc(var(--cc-leftw) * 0.46),76px);height:auto;display:block;margin:2px auto -2px;pointer-events:none;opacity:.9}
-@media (max-height:560px){.bt-cc-hemi{width:min(10vw,48px)}}
+/* v2.3.1675: inline beside the version number, so it sits on that baseline
+   rather than stacking above it.  Sized to the text, not the column. */
+.bt-cc-hemi{width:auto;height:15px;display:block;flex:0 0 auto;pointer-events:none;opacity:.9}
+@media (max-height:560px){.bt-cc-hemi{height:12px}}
 /* v2.3.1251: ~22% smaller (approved mockup) — 32vw/150 → 25vw/117.  The
    sword + shines are wrap-relative %, so they track the new size. */
 .bt-cc-logo{position:relative;z-index:1;width:min(var(--cc-leftw),168px);height:auto;display:block;pointer-events:none}
