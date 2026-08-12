@@ -53,6 +53,21 @@ export async function run({ browser, wsPort, webPort, rec }) {
     after === 'town', { stillIn: after, triedToEnter: TOWN_EXIT.zoneId });
   rec.ok('...and says why', await H.seesText(P, 'Speak to Mayor Bro'));
 
+  /* v2.3.1682 — the unarmed TAP.  The auto-attack loop has refused to fire
+     on an empty slot since v2.3.212, but the manual tap handler never
+     checked, so a weaponless character got exactly one free swing before the
+     loop took over the follow-ups.  Tap twice with a gap wider than the
+     600ms cooldown so a passing result can't just be the cooldown talking. */
+  await H.callFn(P, 'swingAttack');
+  const swungUnarmed = await H.readState(P, (S) => ({
+    swinging: !!S.isSwinging, timer: S.swingTimer || 0,
+  }));
+  rec.ok('an unarmed tap does not start a swing', !swungUnarmed.swinging, swungUnarmed);
+  await P.page.waitForTimeout(800);
+  await H.callFn(P, 'swingAttack');
+  rec.ok('...not on a second tap past the cooldown either',
+    !(await H.readState(P, (S) => !!S.isSwinging)));
+
   /* Accept the first quest — the moment the mayor arms you. */
   await H.openDest(P, 'Quests');
   await P.page.waitForTimeout(900);
@@ -77,6 +92,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
     armed.weapon === 'greatsword', armed);
   rec.ok('...and a shield', !!armed.shield, armed);
   rec.ok('the quest is active server-side', armed.quest === 'active', armed);
+
+  /* v2.3.1682: and the gate opens with the grant -- the tap check must be
+     "no weapon", not "attacking is off in town", or the sword would be
+     cosmetic.  autoAttack is left alone; this is the manual path only. */
+  await H.callFn(P, 'swingAttack');
+  rec.ok('with the sword in hand the same tap DOES swing',
+    await H.readState(P, (S) => !!S.isSwinging));
 
   await P.ctx.close().catch(() => {});
 }

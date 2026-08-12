@@ -719,7 +719,13 @@ export var BroTown = function BroTown(_ref0) {
     GEM_DROP_RATES: GEM_DROP_RATES,
     STAT_POINTS_PER_LEVEL: STAT_POINTS_PER_LEVEL,
     RESOURCE_TIERS: RESOURCE_TIERS,
-    canAccessDepth: canAccessDepth
+    canAccessDepth: canAccessDepth,
+    /* v2.3.1682: drive the MANUAL tap-attack from the QA harness so the
+       unarmed-start rule can be tested on the path a finger actually takes.
+       This is the same call the doSwing useCallback makes below -- written
+       as a thunk because doSwing is not assigned yet at this point in the
+       component body (this object literal runs first). */
+    swingAttack: function () { swingAttack(stateRef.current); }
   };
   /* Restore persisted player on mount and after login */
   useEffect(function () {

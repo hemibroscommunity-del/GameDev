@@ -31,6 +31,18 @@ export function swingAttack(S) {
        swingTimer here would force a melee swing AND delay the projectile
        by the full swing cooldown. */
     if (slot === 'ranged' || slot === 'staff') return;
+    /* v2.3.1682 (owner: "the character can still make an initial swing
+       without a sword").  The auto-attack loop has refused to fire on an
+       empty slot since v2.3.212 (monsterCombat's `_eqWpn` gate), but this
+       MANUAL tap path never checked -- so a weaponless character could tap
+       out one full swing (animation, sfx, hit sweep) and only the FOLLOW-UP
+       swings were suppressed by the loop.  That read as "the first swing is
+       free" and became visible to everyone once v2.3.1676 made every fresh
+       character start with all three weapon slots empty.
+       Only the melee arm needs the check here: ranged/staff returned above
+       and are gated in the loop.  S.rpg.weapon mirrors what getActiveWeapon
+       resolves for the melee slot. */
+    if (!S.rpg.weapon) return;
     S.swingTimer = Date.now();
     S.isSwinging = true;
     S._specialAttack = false;
