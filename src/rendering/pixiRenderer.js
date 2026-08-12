@@ -386,6 +386,24 @@ export async function initPixiRenderer(canvas) {
        the Pixi children tear down the same tick the pile is
        claimed, instead of waiting one frame for the orphan sweep. */
     disposeLootById: (lootId) => effectsRenderer.disposeLootById(lootId),
+    /* v2.3.1682: read-only probe of the in-world player HP bar, for the QA
+       harness.  The contextual-display rule (reveal on damage or healing,
+       always fade back out) is a fade played out over time against state
+       that lives on the Pixi display object -- reading window._gameState
+       cannot see it, so a test can only check what the renderer actually
+       put on screen.  Returns nothing the game itself consumes. */
+    hudHpProbe: () => {
+      const pd = entityRenderer.playerDisplay;
+      const ring = pd && pd._hudHpRing;
+      if (!ring) return null;
+      return {
+        alpha: ring.alpha,
+        barAlpha: pd._hudHpBarFrame ? pd._hudHpBarFrame.alpha : 0,
+        fillAlpha: pd._hudHpBarFill ? pd._hudHpBarFill.alpha : 0,
+        eventAt: ring._hpEventAt || 0,
+        lastHp: ring._lastHpCur,
+      };
+    },
     /* v2.3.138: dispose a single loot pile by direct object reference.
        Local SP pickups don't always set lootId (legacy melee/bow/DoT
        push paths) so disposeLootById can't reach them. The pickup

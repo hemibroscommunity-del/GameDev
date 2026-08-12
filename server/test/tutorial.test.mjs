@@ -214,33 +214,40 @@ const sess = { id: 'bp_t' };
   room._handleQuestTurnIn(sess, { questId: 'tut_1', xpCat: 'bow' });
   /* v2.3.1676: accepting tut_1 hands over the sword+shield (grantOnAccept),
      and turning it in pays the bow.  So after this sequence the player holds
-     BOTH — and each is in its own slot, which is the routing worth pinning. */
+     BOTH.
+     v2.3.1683 (owner: "I want it to be received in inventory first not
+     automatically equipped"): the routing worth pinning is no longer "each in
+     its own slot" — it is that quest weapons reach the STASH and leave every
+     equipped slot alone.  A fresh character's slots are all empty, so the old
+     empty-slot-first rule auto-equipped every single grant in the arc. */
   /* v2.3.1681: the melee grant is a GREATSWORD.  weaponType 'sword' at wood
      tier is the bamboo stick (its icon and its in-hand sprite both), which is
      not what "he gives you a sword" should put in your hand.  Pinned by type
      rather than just by name so the art can't quietly revert. */
-  check('accepting the first quest arms you with the sword and shield',
-    ps.weapon && ps.weapon.type === 'greatsword' && ps.weapon.name === "Bro's Sword"
-    && ps.shield && ps.shield.name === "Bro's Shield",
-    { w: ps.weapon, sh: ps.shield });
-  check('a granted BOW lands in the ranged slot, not the melee one',
-    ps.rangedWeapon && ps.rangedWeapon.name === "Bro's Bow"
-    && ps.rangedWeapon.type === 'bow' && ps.weapon.type === 'greatsword',
-    { r: ps.rangedWeapon, w: ps.weapon });
+  const _stashed = (n) => ps.weaponStash.find((w) => w && w.name === n);
+  check('accepting the first quest puts the sword in the BAG, not in your hand',
+    _stashed("Bro's Sword") && _stashed("Bro's Sword").type === 'greatsword'
+    && !ps.weapon,
+    { stash: ps.weaponStash, equipped: ps.weapon });
+  check('...and the shield is granted too', ps.shield && ps.shield.name === "Bro's Shield", ps.shield);
+  check('a granted BOW also lands in the bag, with its own slot left empty',
+    _stashed("Bro's Bow") && _stashed("Bro's Bow").type === 'bow' && !ps.rangedWeapon,
+    { stash: ps.weaponStash, equipped: ps.rangedWeapon });
   check('the granted weapon has a forge-shaped blob',
-    ps.rangedWeapon && ps.rangedWeapon.gearBase === 'ww_wood' && ps.rangedWeapon.hardness === 0
-    && ps.rangedWeapon.tier === 'common', ps.rangedWeapon);
+    _stashed("Bro's Bow").gearBase === 'ww_wood' && _stashed("Bro's Bow").hardness === 0
+    && _stashed("Bro's Bow").tier === 'common', _stashed("Bro's Bow"));
   check('the granted weapon quality is FIXED, not rolled',
-    ps.rangedWeapon.quality === 'normal', ps.rangedWeapon.quality);
+    _stashed("Bro's Bow").quality === 'normal', _stashed("Bro's Bow").quality);
   check('the granted weapon is equippable under the prog3 tier gate',
-    room._prog3EquipOk(ps, 'weapon', ps.rangedWeapon) === true);
+    room._prog3EquipOk(ps, 'weapon', _stashed("Bro's Bow")) === true);
 
   /* And the STAFF from the next step goes somewhere else again. */
   ps.inventory = { 'slime-remnants': 6 };
   room._handleQuestAccept(sess, { questId: 'tut_2' });
   room._handleQuestTurnIn(sess, { questId: 'tut_2', xpCat: 'staff' });
-  check('a granted STAFF lands in the staff slot',
-    ps.staffWeapon && ps.staffWeapon.type === 'staff', ps.staffWeapon);
+  check('a granted STAFF reaches the bag as well, staff slot untouched',
+    ps.weaponStash.some((w) => w && w.type === 'staff') && !ps.staffWeapon,
+    { stash: ps.weaponStash, equipped: ps.staffWeapon });
 
   // Occupied slot + full stash: the grant fails but must NOT eat the rest.
   ps._quests = Object.create(null); ps._questKills = Object.create(null);
@@ -248,8 +255,10 @@ const sess = { id: 'bp_t' };
   ps.shield = { name: 'Own Shield' };   /* occupied: grantOnAccept must not replace it */
   ps.weaponStash = new Array(room.WEAPON_STASH_CAP).fill(0).map(() => ({ type: 'sword', tierMult: 1 }));
   ps.coins = 0;
-  /* The bow's own slot must be OCCUPIED too, or the grant simply lands there
-     and never reaches the stash-full path this section exists to test. */
+  /* v2.3.1683: the equipped slots are filled here to prove the OPPOSITE of
+     what they used to. Before, an empty slot swallowed the grant and the
+     stash-full path was unreachable; now every grant goes to the stash, so
+     these two exist to show a failed grant leaves held gear alone. */
   ps.rangedWeapon = { type: 'bow', tierMult: 1, name: 'Old Bow' };
   ps.inventory = { snowman: 9 };
   room._handleQuestAccept(sess, { questId: 'tut_1' });

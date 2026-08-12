@@ -270,7 +270,17 @@ export const questMethods = {
       }
       if (item.kind === 'shield') {
         /* v2.3.1676: same empty-slot-only rule as armor — a gift must never
-           take away something the player chose. */
+           take away something the player chose.
+           v2.3.1683: `ps.shield` is the server's OWNERSHIP record, not a
+           statement about what is strapped to the arm.  There is no
+           server-side shield stash and handoff rule 1 forbids adding one to
+           the rpg blob, so equipped-vs-stashed placement stays where it has
+           always lived — the client's `shieldStash` — and wsClient routes a
+           newly-granted shield into the BAG rather than onto the arm (the
+           owner's "received in inventory first").  Nothing server-side reads
+           this field for combat (blocking is computed client-side from
+           R._shieldBonus), so the two views cannot disagree about anything
+           that affects damage. */
         if (ps.shield) return false;
         ps.shield = {
           tier: 'common',
@@ -298,12 +308,24 @@ export const questMethods = {
           quality: 'normal',                      // fixed, not rolled -- see header
           hardness: 0, temper: 0,
         };
-        const slot = item.weaponType === 'bow' ? 'rangedWeapon'
-          : item.weaponType === 'staff' ? 'staffWeapon' : 'weapon';
-        if (!ps[slot]) { ps[slot] = minted; return true; }
-        /* Stash it instead -- but ONLY if there is room.  Rule 3 of the
-           handoff: _saveRpg truncates weaponStash at cap, so pushing past
-           it destroys the weapon silently. */
+        /* v2.3.1683 (owner: "I want it to be received in inventory first not
+           automatically equipped").  This used to drop the weapon straight
+           into its matching equipped slot whenever that slot was empty, and
+           only fall back to the stash when it was taken.  For the tutorial
+           arc that meant EVERY grant auto-equipped, because a fresh character
+           has all three slots empty by design (v2.3.1676) -- so the player
+           never saw the sword arrive in their bag and never chose to wield
+           it.  Quest weapons now always land in the STASH; equipping is the
+           player's move.
+           Note this also removes the last auto-equip on the accept path, so
+           the town gate is now the only thing standing between a new player
+           and walking out with the sword still in the bag.  The gate keys on
+           the QUEST RECORD, not on what is equipped (zoneTransitions.js), so
+           it still opens -- that is a deliberate design call to raise with
+           the owner, not something to "fix" here by tightening the gate.
+           Rule 3 of the handoff still applies: check capacity FIRST --
+           _saveRpg truncates weaponStash at cap, so pushing past it destroys
+           the weapon silently. */
         if (!Array.isArray(ps.weaponStash)) ps.weaponStash = [];
         if (ps.weaponStash.length >= this.WEAPON_STASH_CAP) return false;
         ps.weaponStash.push(minted);

@@ -40,6 +40,7 @@ const SCENARIOS = {
   proj: () => import('./mp-proj.mjs'), /* v2.3.1678: the snowball is visible */
   lifeskill: () => import('./mp-lifeskill.mjs'), /* v2.3.1680: tool-gated gathering */
   questui: () => import('./mp-questui.mjs'), /* v2.3.1681: the world dialogue's art + the offer filter */
+  hpbar: () => import('./mp-hpbar.mjs'), /* v2.3.1682: the contextual player HP bar */
 };
 
 const want = process.argv.slice(2).filter((a) => !a.startsWith('-'));

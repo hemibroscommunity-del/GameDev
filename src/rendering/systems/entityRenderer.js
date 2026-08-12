@@ -6944,8 +6944,11 @@ export class EntityRenderer {
      XP bar in the dashboard.  A small dim overlay on the right
      portion of each pill shows the unfilled fraction.  No backdrop
      -- the pills float directly on the canvas.
-     Visibility: each bar fades in when its resource is below max,
-     holds for HOLD_MS at full, then fades out. */
+     Visibility: the ENERGY readout fades in while it is below max, holds
+     for HOLD_MS at full, then fades out.  HP does NOT follow that rule --
+     since v2.3.1682 it is contextual: it reveals on a change in current HP
+     (damage or healing) and fades out HOLD_MS later no matter how full it
+     is.  See the HP block below for why. */
   _updatePlayerHud(S, now) {
     const R = S && S.rpg;
     const d = this.playerDisplay;
@@ -7030,10 +7033,25 @@ export class EntityRenderer {
     if (ring && heartText && maxText) {
       const hpMax = R.maxHp || 1;
       const hpCur = Math.max(0, Math.min(hpMax, R.hp || 0));
-      const hpFull = hpCur >= hpMax - 0.01;
-      if (!hpFull) ring._lastNotFullAt = now;
-      const hpSinceFull = now - (ring._lastNotFullAt || 0);
-      const hpTargetAlpha = (!hpFull || hpSinceFull < HOLD_MS) ? 1 : 0;
+      /* v2.3.1682 (owner: "the character hp bar is supposed to contextually
+         display -- only when damage is taken or healing occurs").  The old
+         rule was "visible while BELOW max, hold HOLD_MS once refilled" --
+         which is not contextual at all: one hit in the first zone left the
+         bar parked over the character's head for the whole session, because
+         nothing but a top-off back to full ever hid it again.  The reveal is
+         now driven by the EVENT (any change in current HP -- damage down or
+         heal up), and it always fades out HOLD_MS later regardless of how
+         full the bar is.
+         Keyed on absolute hpCur, not the fraction: a level-up raises maxHp
+         and would move the fraction on its own, and that is not damage or
+         healing.  `_lastHpCur` seeds on the first frame so spawning in at
+         partial HP doesn't flash the bar for no reason. */
+      if (ring._lastHpCur == null) ring._lastHpCur = hpCur;
+      if (Math.abs(hpCur - ring._lastHpCur) > 0.01) {
+        ring._lastHpCur = hpCur;
+        ring._hpEventAt = now;
+      }
+      const hpTargetAlpha = (now - (ring._hpEventAt || 0) < HOLD_MS) ? 1 : 0;
       const hpA = (ring.alpha != null) ? ring.alpha : 0;
       const hpDelta = hpTargetAlpha - hpA;
       const hpNewAlpha = hpA + Math.max(-FADE_STEP, Math.min(FADE_STEP, hpDelta));
