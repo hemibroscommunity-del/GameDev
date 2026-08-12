@@ -311,5 +311,59 @@ const sess = { id: 'bp_t' };
   check('gold is still paid alongside', ps.coins === QUEST_REWARDS.tut_1.gold, ps.coins);
 }
 
+// ── 7. v2.3.1679: WORN ARMOR IS REAL MITIGATION ──
+{
+  /* Owner: "30% damage reduction on torso and 20% damage reduction on legs.
+     Higher tiers will go up from there."
+     Before this, armor did nothing per hit — Phase 1 retired `def` reduction
+     and folded armor into maxHp, so a chest piece was a bigger health bar and
+     nothing else.  These pin the numbers AND the properties that keep them
+     safe: multiplicative stacking, a hard cap, and a floor of 1. */
+  const mk = () => ({ hp: 10000, maxHp: 10000, level: 1 });
+  const dr = (ps) => room._armorDrMult(ps);
+
+  const bare = mk();
+  check('no armor = no reduction', dr(bare) === 1, dr(bare));
+
+  const chest = mk(); chest.armor = { name: 'Vest', tierMult: 1 };
+  check('a base torso piece cuts 30%', Math.abs(dr(chest) - 0.70) < 1e-9, dr(chest));
+
+  const legs = mk(); legs.legsArmor = { name: 'Greaves', tierMult: 1 };
+  check('a base legs piece cuts 20%', Math.abs(dr(legs) - 0.80) < 1e-9, dr(legs));
+
+  const both = mk();
+  both.armor = { name: 'Vest', tierMult: 1 };
+  both.legsArmor = { name: 'Greaves', tierMult: 1 };
+  /* MULTIPLICATIVE, not additive: 1 - 0.7*0.8 = 0.44, not 0.50.  The whole
+     reason to stack this way is that it cannot reach 100% however many
+     layers are added. */
+  check('both pieces stack multiplicatively (44%, not 50%)',
+    Math.abs(dr(both) - 0.56) < 1e-9, dr(both));
+
+  const hiChest = mk(); hiChest.armor = { name: 'Vest', tierMult: 3 };
+  check('higher tiers reduce more', dr(hiChest) < dr(chest), { t3: dr(hiChest), t1: dr(chest) });
+
+  const maxed = mk();
+  maxed.armor = { name: 'Vest', tierMult: 99 };        // clamped to 8 inside
+  maxed.legsArmor = { name: 'Greaves', tierMult: 99 };
+  check('the cap holds at 75% however absurd the tier', dr(maxed) >= 0.25 - 1e-9, dr(maxed));
+  check('...and armor can never make a player immune', dr(maxed) > 0, dr(maxed));
+
+  /* End to end through the real damage path: the reduction must actually
+     reach hp, and a floor of 1 must survive it. */
+  const ps = mk();
+  ps.armor = { name: 'Vest', tierMult: 1 };
+  ps.legsArmor = { name: 'Greaves', tierMult: 1 };
+  const r1 = room._applyDamage(ps, 100, false);
+  check('a 100-damage hit lands for ~56 through both pieces',
+    r1.dodged || (r1.dmgTaken >= 50 && r1.dmgTaken <= 60), r1);
+  const tiny = mk();
+  tiny.armor = { name: 'Vest', tierMult: 8 };
+  tiny.legsArmor = { name: 'Greaves', tierMult: 8 };
+  const r2 = room._applyDamage(tiny, 1, false);
+  check('a 1-damage hit still lands for at least 1 (chip damage survives)',
+    r2.dodged || r2.dmgTaken >= 1, r2);
+}
+
 console.log(failures === 0 ? '\ntutorial: ALL PASS' : `\ntutorial: ${failures} FAILURE(S)`);
 if (failures > 0) process.exit(1);

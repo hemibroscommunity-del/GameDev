@@ -193,6 +193,10 @@ export const persistenceMethods = {
         staffWeapon: ps.staffWeapon || null,
         activeSlot: ps.activeSlot || 'melee',
         armor: ps.armor || null,
+        /* v2.3.1679: the LEGS slot.  Rule 1 — this list is fixed and both
+           sites must carry it, or the piece survives until the next save and
+           then silently vanishes. */
+        legsArmor: ps.legsArmor || null,
         shield: ps.shield || null,
         amulet: ps.amulet || null,
         weaponStash: Array.isArray(ps.weaponStash) ? ps.weaponStash.slice(0, this.WEAPON_STASH_CAP) : [],
@@ -362,6 +366,7 @@ export const persistenceMethods = {
           staffWeapon: ps.staffWeapon || null,
           activeSlot: ps.activeSlot || 'melee',
           armor: ps.armor || null,
+          legsArmor: ps.legsArmor || null,   /* v2.3.1679: echoed with armor */
           shield: ps.shield || null,
           amulet: ps.amulet || null,
           weaponStash: Array.isArray(ps.weaponStash) ? ps.weaponStash.slice(0, this.WEAPON_STASH_CAP) : [],

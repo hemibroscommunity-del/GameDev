@@ -224,12 +224,15 @@ export const questMethods = {
   _grantQuestItem(ps, item) {
     if (!ps || !item || typeof item !== 'object') return false;
     try {
-      if (item.kind === 'armor') {
-        /* Only fills an EMPTY slot.  Silently replacing armor the player
+      if (item.kind === 'armor' || item.kind === 'legs') {
+        /* v2.3.1679: two slots now — chest ('armor') and legs ('legs'), the
+           upper and lower body pieces the mining quest pays out.  Same
+           empty-slot-only rule for both: silently replacing armor the player
            chose would be a reward that takes something away. */
-        if (ps.armor) return false;
+        const slot = item.kind === 'legs' ? 'legsArmor' : 'armor';
+        if (ps[slot]) return false;
         const tm = Math.max(0, Math.min(8, Number(item.tierMult) || 1));
-        ps.armor = { name: String(item.name || 'Quest Armor'), tierMult: tm };
+        ps[slot] = { name: String(item.name || 'Quest Armor'), tierMult: tm };
         this._recomputeMaxes(ps);
         return true;
       }

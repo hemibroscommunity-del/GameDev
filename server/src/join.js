@@ -355,6 +355,9 @@ export const joinMethods = {
         // so it is already migrated.  The bootstrap branch below
         // KEEPS its strip (client payloads are unmigrated writers).
         this.playerState[msg.id].armor = stored.armor || null;
+        /* v2.3.1679: the legs piece restores alongside the chest one.  Absent
+           on every pre-v2.3.1679 record, which is correct — nobody had one. */
+        this.playerState[msg.id].legsArmor = stored.legsArmor || null;
         this.playerState[msg.id].shield = stored.shield || null;
         // v2.3.1180: amulet gem/tier feed the authoritative damage roll
         // (_computeAttackDamage) -- whitelist even the stored blob, so a
