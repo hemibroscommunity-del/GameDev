@@ -1136,6 +1136,17 @@ for (const m of meadowMonsters) m._wanderPausedUntil = Date.now() + 600000;
     const before = psT.hp;
     psT.hp = psT.maxHp; psT.dying = false; psT.dead = false; psT.blocking = false;
     psT.x = 4000; psT.y = 4000;
+    /* v2.3.1673: PIN THE DODGE ROLL.  `_applyDamage` rolls a random passive
+       dodge, so "impact actually applies damage" below failed roughly one run
+       in twenty — it blocked the push gate twice on 2026-08-12 and passed on
+       re-run both times, which is the worst kind of test: it trains you to
+       re-roll until green, and a real regression rides through on the same
+       habit.  The assertion is about the IMPACT POINT plumbing, not about the
+       dodge table, so zero the inputs that feed the roll and it becomes
+       deterministic without weakening what it checks. */
+    psT.agility = 0;
+    if (psT.prog3 && psT.prog3.alloc) psT.prog3.alloc.dodge = 0;
+    psT._evadeAcc = 0;
     const farMonster = { id: 'sb-1', arch: 'snowman', dmg: 3, x: 4280, y: 4000, statuses: {} };
     room.eventBuffer.length = 0;
     room._monsterStrikePlayer('frost', farMonster, 'pa', psT.x, psT.y);

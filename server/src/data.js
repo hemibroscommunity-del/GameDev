@@ -420,18 +420,40 @@ export const QUEST_REWARDS = {
        * The zone order follows the map's geography, not difficulty: live
        * spawn bands are all flattened to [1,2] (v2.3.1160), so this teaches
        * TRAVEL rather than gating on power. */
+      /* v2.3.1673 (owner: "use actual zones and monsters (e.g. slimes in
+         verdant wilds) and require the number of slime remnants instead of
+         certain number killed").
+         Each step now asks for the REMNANTS the named zone's real monsters
+         actually drop, verified against the live spawn tables:
+           meadow  -> fodder slimes           -> slime-remnants
+           frost   -> snowmen                 -> snowman        (frost only)
+           verdant -> moss + blue slimes      -> slime-remnants
+           mist    -> mire wisps              -> slime-remnants
+           sky     -> mummies                 -> skeleton-remnants (sky only)
+         Two of the five are pinned to their zone by the ITEM ITSELF — snowman
+         wrecks and skeleton remnants drop nowhere else — which is real
+         enforcement rather than a zone string the server cannot check.  The
+         three slime steps name their zone as flavour: remnants carry no zone
+         tag, so a player could farm them anywhere.  Said plainly here rather
+         than implied, because `collect` cannot enforce it and pretending
+         otherwise is how a check gets trusted that was never made.
+         `consume:true` is what makes this an ARC: the remnants are handed
+         over, so one stack of five cannot satisfy every step at once.
+         Difficulty tracks the zone bands — [1,10] -> [8,25] -> [22,40] ->
+         [22,40] -> [38,58] — the same ceiling the previous kill arc ended on,
+         so it stays completable by a judge who starts from scratch. */
       tut_1: {gold:25,  xp:40,  next:'tut_2',
-              objective:{type:'kill', arch:null, zone:'meadow', count:3}},
+              objective:{type:'collect', invKey:'slime-remnants', count:3, consume:true, zone:'meadow'}},
       tut_2: {gold:40,  xp:60,  next:'tut_3',
-              objective:{type:'kill', arch:null, zone:'meadow', count:5},
+              objective:{type:'collect', invKey:'snowman', count:4, consume:true, zone:'frost'},
               item:{kind:'armor', name:"Scout's Vest", tierMult:1.0}},
       tut_3: {gold:60,  xp:100, next:'tut_4',
-              objective:{type:'kill', arch:null, zone:'frost', count:5},
+              objective:{type:'collect', invKey:'slime-remnants', count:6, consume:true, zone:'verdant'},
               item:{kind:'weapon', weaponType:'greatsword', tierKey:'wood', name:"Bro's Blade"}},
       tut_4: {gold:150, xp:150, next:'tut_5',
-              objective:{type:'kill', arch:null, zone:'verdant', count:6}},
+              objective:{type:'collect', invKey:'slime-remnants', count:8, consume:true, zone:'mist'}},
       tut_5: {gold:400, xp:300, next:null,
-              objective:{type:'kill', arch:null, zone:'hollows', count:8}},
+              objective:{type:'collect', invKey:'skeleton-remnants', count:5, consume:true, zone:'sky'}},
 
       mayor_1:    {gold:50,  xp:30,  next:'mayor_2'},
       mayor_2:    {gold:100, xp:80,  next:'mayor_3', objective:{type:'kill', arch:null, count:5}},

@@ -30,7 +30,17 @@ let _done = null;
  *  new NPC sprite is registered by adding the field and nothing else — a
  *  second hand-maintained list is how an asset gets forgotten. */
 export function npcSpriteSources() {
-  return [...new Set((NPC_DATA || []).map((n) => n && n.sprite).filter(Boolean))];
+  /* Both the world figure AND the dialogue portrait (v2.3.1673).  The portrait
+     is a DOM <img>, not a Pixi texture, so Assets.load only warms the HTTP
+     cache for it — which is the point: the quest panel must not pop a blank
+     square on the frame it opens. */
+  const out = [];
+  for (const n of NPC_DATA || []) {
+    if (!n) continue;
+    if (n.sprite) out.push(n.sprite);
+    if (n.portrait) out.push(n.portrait);
+  }
+  return [...new Set(out)];
 }
 
 export function loadNpcSprites() {

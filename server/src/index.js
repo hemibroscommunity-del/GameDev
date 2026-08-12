@@ -1766,8 +1766,19 @@ export class GameRoom {
   // server checks position + recipient + not-already-claimed and emits
   // a private loot_credit to the picker with their share.  Public
   // loot_claimed broadcasts visibility changes; loot_despawn finalises.
-  _isRemnantSkullArch(arch) {
-    return arch === 'fodder' || arch === 'snowman' || arch === 'fireGoblin' || arch === 'mummy' || arch === 'skeleton';
+  /* v2.3.1673: BASE-ARCHETYPE FALLBACK — a real drop bug, not a tidy-up.
+     This took the SKULL name, which is `monster.variant || monster.arch`, and
+     matched it against a hand-written list of five names.  Every zone-flavoured
+     slime reskin therefore failed the test and dropped NOTHING: Verdant Wilds
+     (mossSlime + blueSlime — and it is slimes ONLY since v2.3.1534) and Poison
+     Forest (mireWisp) have been dropping no remnants at all.  Nobody noticed
+     because the pile still spawns for the gold.
+     Passing the base archetype fixes those AND every future reskin, because a
+     variant of `fodder` is a slime whatever it is painted. */
+  _isRemnantSkullArch(arch, baseArch) {
+    if (arch === 'fireGoblin' || arch === 'mummy' || arch === 'skeleton') return true;
+    const b = baseArch || arch;
+    return b === 'fodder' || b === 'snowman';
   }
 
   _rollShardForKill(zoneId) {
@@ -1788,13 +1799,20 @@ export class GameRoom {
   // payload as the initial value.  Cheat surface (one-time, at first
   // connect only); after that the server is the source.
 
-  _invKeyForSkull(skull) {
-    if (skull === 'fodder') return 'slime-remnants';
+  _invKeyForSkull(skull, baseArch) {
     if (skull === 'fireGoblin') return 'fire-goblin-remnants';
     // Mummy and skeleton both stack into 'skeleton-remnants' (matches
     // the client's local-pickup mapping at BroTown.jsx ~9071).  Skeleton
     // is the runtime transform target of mummy; both map the same way.
     if (skull === 'mummy' || skull === 'skeleton') return 'skeleton-remnants';
+    /* v2.3.1673: fall back to the BASE archetype, so mossSlime / blueSlime /
+       mireWisp all stack into the same 'slime-remnants' the plain meadow
+       fodder drops.  They are slimes — the paint should not decide what falls
+       out of them, and a tutorial that asks for slime remnants from the
+       Verdant Wilds is only possible if it does not. */
+    const b = baseArch || skull;
+    if (skull === 'fodder' || b === 'fodder') return 'slime-remnants';
+    if (skull === 'snowman' || b === 'snowman') return 'snowman';
     return skull;
   }
 
@@ -2355,7 +2373,9 @@ export class GameRoom {
     // inventory key on pickup.  Falls back to the base archetype
     // for monsters with no variant override.
     const skullSource = monster.variant || monster.arch;
-    const skull = this._isRemnantSkullArch(skullSource) ? skullSource : null;
+    /* monster.arch is always the TRUE base archetype (the server runs AI on it
+       and only the skin is per-zone), so it is the honest fallback. */
+    const skull = this._isRemnantSkullArch(skullSource, monster.arch) ? skullSource : null;
     const shard = this._rollShardForKill(zone);
     // v2.3.1141: weapon rides the pile; only rolled when someone can
     // actually claim it (the claim is recipient-gated below).
@@ -2377,6 +2397,13 @@ export class GameRoom {
       y: monster.y,
       coins: monster.gold || 0,
       skull,
+      /* v2.3.1673: the skull's BASE archetype rides along.  The pickup site
+         (which credits the inventory) only ever saw the skull NAME, and a
+         variant name alone cannot say whether the thing was a slime — that is
+         exactly how the reskinned slimes ended up dropping nothing.  Memory-
+         only (rule 11): loot piles live in this.loot[zone] and never persist,
+         so there is no stored shape to migrate. */
+      skullArch: monster.arch,
       shard,
       recipients: recipients.slice(),
       shares: { ...shares },
@@ -2709,7 +2736,7 @@ export class GameRoom {
     ps.coins = (ps.coins || 0) + coinsForMe;
     if (skullForMe) {
       if (!ps.inventory) ps.inventory = {};
-      const invKey = this._invKeyForSkull(skullForMe);
+      const invKey = this._invKeyForSkull(skullForMe, pile.skullArch);
       ps.inventory[invKey] = (ps.inventory[invKey] || 0) + 1;
     }
     if (shardForMe) {

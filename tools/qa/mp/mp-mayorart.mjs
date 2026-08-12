@@ -52,18 +52,20 @@ export async function run({ browser, wsPort, webPort, rec }) {
      the art stops loading and cannot pass on a stray pixel or two. */
   rec.ok('his art is actually painted on the canvas', purple > 60, { purplePx: purple });
 
-  /* Scale: he must read as a person standing in the street, not a doll.  The
-     first attempt drew him at two thirds player height because the draw scale
-     was reasoned from the wrong constant; this pins the fix.  His figure is
-     200/256 of a 96px frame = 75 world px, and the purple band is a quarter of
-     the figure, so ~19 world px of shorts before camera zoom. */
+  /* Scale.  v2.3.1672 pinned "roughly player height" after the first attempt
+     drew him at two thirds of it.  v2.3.1673 (owner: "he needs to be twice as
+     large") makes DOUBLE the intent, so the band moves with it — the point of
+     the check is unchanged: catch a draw scale derived from the wrong
+     constant, in either direction.
+     His figure is 200/256 of a 192px frame = 150 world px, the purple band is
+     a quarter of the figure, so ~37 world px of shorts before camera zoom. */
   const rows = new Set();
   shot.count((r, g, b, x, y) => {
     if (b > 70 && r > 40 && b - g > 40 && r - g > 15) rows.add(y);
     return false;
   });
-  rec.ok('he is drawn at roughly player scale, not doll scale',
-    rows.size >= 12 && rows.size <= 40, { shortsRows: rows.size });
+  rec.ok('he is drawn at DOUBLE player scale (owner request), not doll scale',
+    rows.size >= 30 && rows.size <= 70, { shortsRows: rows.size });
 
   await A.ctx.close().catch(() => {});
 }

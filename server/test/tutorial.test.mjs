@@ -1,10 +1,22 @@
-/* Tutorial-arc test (v2.3.1665) — zone-scoped objectives + item rewards.
+/* Tutorial-arc test (v2.3.1665; rewritten v2.3.1673) — remnant objectives
+ * and item rewards.
+ *
+ * v2.3.1673 (owner: "use actual zones and monsters ... and require the number
+ * of slime remnants instead of certain number killed"): the arc no longer
+ * counts kills.  Each step asks for the REMNANTS the named zone's real
+ * monsters drop, and the turn-in CONSUMES them — which is the property that
+ * makes it an arc at all, since without it a single stack of remnants would
+ * satisfy every step at once and the five-quest chain would collapse into one
+ * turn-in.  That is the headline thing pinned below.
+ *
+ * The zone-scoped KILL machinery is still live (legacy chains use it) and is
+ * still covered here, because the tutorial no longer exercising it is exactly
+ * how it would rot unnoticed.
  *
  * The arc is what makes the demo "completable by judges" rather than
  * merely playable, so the properties worth pinning are the ones that would
  * quietly break the run-through:
- *   - a kill in the WRONG zone must not count (otherwise "go to Frost
- *     Ridge" is a lie the player can ignore, and the tour collapses)
+ *   - a kill in the WRONG zone must not count (legacy chains rely on it)
  *   - a legacy zone-less quest must keep counting kills anywhere
  *   - item rewards land, and their tiers are LOW ENOUGH TO EQUIP (since
  *     v2.3.1661 gear is gated on trained level / defense points, so a
@@ -13,7 +25,34 @@
  *   - the chain unlocks step by step and pays each step exactly once
  */
 import { GameRoom } from '../src/index.js';
-import { QUEST_REWARDS, BLACKSMITH_TIERS } from '../src/data.js';
+import { QUEST_REWARDS, BLACKSMITH_TIERS, ZONES } from '../src/data.js';
+
+/* Can each named zone actually yield the remnant its step asks for?  Resolved
+   from the LIVE spawn table + the same variant map the drop path uses, so a
+   content edit that empties a zone (as v2.3.1534 did to Verdant's brutes)
+   fails here instead of shipping an impossible quest. */
+function ZONE_DROPS_OK() {
+  const VAR = {
+    ember: { fodder: 'fireGoblin' },
+    sky: { fodder: 'mummy', stalker: 'mummy', hexer: 'mummy', volatile: 'mummy', brute: 'mummy' },
+    verdant: { fodder: 'mossSlime' },
+    mist: { fodder: 'mireWisp' },
+  };
+  const keyFor = (arch, zone) => {
+    const v = (VAR[zone] && VAR[zone][arch]) || arch;
+    if (v === 'fireGoblin') return 'fire-goblin-remnants';
+    if (v === 'mummy' || v === 'skeleton') return 'skeleton-remnants';
+    if (arch === 'fodder') return 'slime-remnants';
+    if (arch === 'snowman') return 'snowman';
+    return null;
+  };
+  return ['tut_1', 'tut_2', 'tut_3', 'tut_4', 'tut_5'].every((id) => {
+    const o = QUEST_REWARDS[id].objective;
+    const z = ZONES[o.zone];
+    if (!z || !z.spawns) return false;
+    return z.spawns.some((sp) => keyFor(sp.arch, o.zone) === o.invKey);
+  });
+}
 
 let failures = 0;
 function check(name, cond, detail) {
@@ -61,6 +100,21 @@ const sess = { id: 'bp_t' };
     ids.every((id) => !!QUEST_REWARDS[id].objective));
   check('every tutorial step names a zone',
     ids.every((id) => typeof QUEST_REWARDS[id].objective.zone === 'string'));
+
+  /* v2.3.1673: every step is a remnant hand-in, and every remnant key it asks
+     for must be one the game can ACTUALLY drop — a typo here is a quest that
+     can never be completed, and no other test would catch it. */
+  const DROPPABLE = ['slime-remnants', 'snowman', 'fire-goblin-remnants', 'skeleton-remnants'];
+  check('every tutorial step collects remnants rather than counting kills',
+    ids.every((id) => QUEST_REWARDS[id].objective.type === 'collect'),
+    ids.map((id) => QUEST_REWARDS[id].objective.type));
+  check('every requested remnant key is one the game actually drops',
+    ids.every((id) => DROPPABLE.includes(QUEST_REWARDS[id].objective.invKey)),
+    ids.map((id) => QUEST_REWARDS[id].objective.invKey));
+  check('every step consumes what it asks for (or one stack clears the arc)',
+    ids.every((id) => QUEST_REWARDS[id].objective.consume === true));
+  check('the named zone can actually drop the key it asks for',
+    ZONE_DROPS_OK(), ids.map((id) => [QUEST_REWARDS[id].objective.zone, QUEST_REWARDS[id].objective.invKey]));
   /* The gate hazard: granted-then-unequippable is the worst new-player
      moment.  tierIndex 0 => requirement 0 under _prog3EquipOk. */
   check('the granted weapon is tierIndex 0 (equippable at any trained level)',
@@ -75,16 +129,22 @@ const sess = { id: 'bp_t' };
 {
   ps._quests = Object.create(null);
   ps._questKills = Object.create(null);
-  room._handleQuestAccept(sess, { questId: 'tut_3' });     // "5 kills in frost"
-  check('accept marks the quest active', ps._quests.tut_3 === 'active', ps._quests);
+  /* v2.3.1673: the tutorial steps are `collect` now, so the zone-scoped KILL
+     path needs a kill quest to exercise.  Injected here rather than pointed at
+     a live chain, so this section keeps testing the machinery even as content
+     moves around. */
+  QUEST_REWARDS.__zonetest = { gold: 0, xp: 0, next: null,
+    objective: { type: 'kill', arch: null, zone: 'frost', count: 5 } };
+  room._handleQuestAccept(sess, { questId: '__zonetest' });
+  check('accept marks the quest active', ps._quests.__zonetest === 'active', ps._quests);
 
   room._creditQuestObjective('bp_t', 'kill', 'fodder', 'meadow');
   room._creditQuestObjective('bp_t', 'kill', 'fodder', 'verdant');
   check('kills in the wrong zone do not count',
-    (ps._questKills.tut_3 || 0) === 0, ps._questKills.tut_3);
+    (ps._questKills.__zonetest || 0) === 0, ps._questKills.__zonetest);
 
   room._creditQuestObjective('bp_t', 'kill', 'snowman', 'frost');
-  check('a kill in the named zone counts', ps._questKills.tut_3 === 1, ps._questKills.tut_3);
+  check('a kill in the named zone counts', ps._questKills.__zonetest === 1, ps._questKills.__zonetest);
 
   // A legacy quest with no zone must still count anywhere.
   room._handleQuestAccept(sess, { questId: 'mayor_2' });
@@ -97,7 +157,8 @@ const sess = { id: 'bp_t' };
   check('an omitted zone argument still credits zone-less quests',
     ps._questKills.mayor_2 === 2, ps._questKills.mayor_2);
   check('an omitted zone argument does NOT credit zone-scoped quests',
-    ps._questKills.tut_3 === 1, ps._questKills.tut_3);
+    ps._questKills.__zonetest === 1, ps._questKills.__zonetest);
+  delete QUEST_REWARDS.__zonetest;
 }
 
 // ── 3. Turn-in gating and item grants ──
@@ -106,15 +167,17 @@ const sess = { id: 'bp_t' };
   ps._questKills = Object.create(null);
   ps.coins = 0; ps.armor = null; ps.weapon = null; ps.weaponStash = [];
 
-  // tut_2 pays armor after 5 meadow kills.
+  // tut_2 pays armor for 4 snowman remnants.
+  ps.inventory = { snowman: 3 };
   room._handleQuestAccept(sess, { questId: 'tut_2' });
-  for (let i = 0; i < 4; i++) room._creditQuestObjective('bp_t', 'kill', 'fodder', 'meadow');
   room._handleQuestTurnIn(sess, { questId: 'tut_2', xpCat: 'sword' });
   check('an unmet objective pays nothing and stays active',
     ps._quests.tut_2 === 'active' && ps.coins === 0 && ps.armor === null,
     { st: ps._quests.tut_2, coins: ps.coins, armor: ps.armor });
+  check('a REFUSED turn-in does not take the items',
+    ps.inventory.snowman === 3, ps.inventory);
 
-  room._creditQuestObjective('bp_t', 'kill', 'fodder', 'meadow');   // the 5th
+  ps.inventory.snowman = 5;            // one spare, to prove exact deduction
   room._handleQuestTurnIn(sess, { questId: 'tut_2', xpCat: 'sword' });
   check('a met objective turns the quest in', ps._quests.tut_2 === 'turnedIn', ps._quests.tut_2);
   check('gold is paid', ps.coins === QUEST_REWARDS.tut_2.gold, ps.coins);
@@ -123,6 +186,8 @@ const sess = { id: 'bp_t' };
   check('granted armor raises maxHp (it went through _recomputeMaxes)',
     ps.maxHp > 100, ps.maxHp);
   check('the next quest unlocks as available', ps._quests.tut_3 === 'available', ps._quests.tut_3);
+  check('the remnants were handed over, exactly the count required',
+    ps.inventory.snowman === 1, ps.inventory);
 
   const coinsAfter = ps.coins;
   room._handleQuestTurnIn(sess, { questId: 'tut_2', xpCat: 'sword' });
@@ -142,8 +207,8 @@ const sess = { id: 'bp_t' };
   ps._questKills = Object.create(null);
   ps.weapon = null; ps.weaponStash = [];
 
+  ps.inventory = { 'slime-remnants': 6 };
   room._handleQuestAccept(sess, { questId: 'tut_3' });
-  for (let i = 0; i < 5; i++) room._creditQuestObjective('bp_t', 'kill', 'snowman', 'frost');
   room._handleQuestTurnIn(sess, { questId: 'tut_3', xpCat: 'bow' });
   check('an empty weapon slot receives the granted weapon',
     ps.weapon && ps.weapon.name === "Bro's Blade" && ps.weapon.type === 'greatsword', ps.weapon);
@@ -160,8 +225,8 @@ const sess = { id: 'bp_t' };
   ps.weapon = { type: 'sword', tierMult: 1, name: 'Keeper' };
   ps.weaponStash = new Array(room.WEAPON_STASH_CAP).fill(0).map(() => ({ type: 'sword', tierMult: 1 }));
   ps.coins = 0;
+  ps.inventory = { 'slime-remnants': 6 };
   room._handleQuestAccept(sess, { questId: 'tut_3' });
-  for (let i = 0; i < 5; i++) room._creditQuestObjective('bp_t', 'kill', 'snowman', 'frost');
   room._handleQuestTurnIn(sess, { questId: 'tut_3', xpCat: 'bow' });
   check('a full stash does not destroy the equipped weapon',
     ps.weapon.name === 'Keeper', ps.weapon);
@@ -194,8 +259,8 @@ const sess = { id: 'bp_t' };
   ps._questKills = Object.create(null);
   ps.coins = 0; ps.armor = null;
 
+  ps.inventory = { 'slime-remnants': 3 };
   room._handleQuestAccept(sess, { questId: 'tut_1' });
-  for (let i = 0; i < 3; i++) room._creditQuestObjective('bp_t', 'kill', 'fodder', 'meadow');
 
   /* No category, unknown category, prototype key — all refused, and
      refused WHOLE: the quest must stay claimable, not end up turnedIn
@@ -205,6 +270,11 @@ const sess = { id: 'bp_t' };
   }
   check('an XP-paying turn-in with no valid skill is refused',
     ps._quests.tut_1 === 'active' && ps.coins === 0, { st: ps._quests.tut_1, coins: ps.coins });
+  /* v2.3.1673: and a refusal at the XP-category gate must not eat the
+     remnants either — that gate fires BEFORE the consume step, which is the
+     ordering this pins. */
+  check('a turn-in refused for a missing skill keeps the items',
+    ps.inventory['slime-remnants'] === 3, ps.inventory);
 
   const bowBefore = ps.prog3.sk.bow.level + ps.prog3.sk.bow.xp;
   const swordBefore = ps.prog3.sk.sword.level + ps.prog3.sk.sword.xp;

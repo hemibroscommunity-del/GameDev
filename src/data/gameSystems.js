@@ -5303,63 +5303,72 @@ export const QUEST_CHAINS = {
      Accepted and turned in from the Quests panel (the town NPC entities
      are still disabled, v2.3.214), so the arc is reachable on a phone with
      no world dependency. */
+  /* v2.3.1673 (owner: "use actual zones and monsters (e.g. slimes in verdant
+     wilds) and require the number of slime remnants instead of certain number
+     killed").  Each step names the zone's REAL monsters and asks for the
+     remnants they actually drop — verified against the live spawn tables, not
+     invented.  `check` reads the bag, mirroring the server's `collect`
+     objective; the server is still the one that decides, and it CONSUMES the
+     remnants on turn-in, which is what stops one stack clearing the whole arc.
+     Keep counts in lockstep with QUEST_REWARDS in server/src/data.js — a
+     mismatch shows as a Turn In button that refuses without saying why. */
   tut_1: {
     id: 'tut_1', npc: 'Mayor Bro', title: 'First Blood',
-    desc: 'Defeat 3 monsters in the Starting Meadow.',
-    check: function (rpg) { return ((rpg._questKills || {}).tut_1 || 0) >= 3; },
+    desc: 'Bring 3 Slime Remnants from the Starting Meadow.',
+    check: function (rpg) { return ((rpg.inventory || {})['slime-remnants'] || 0) >= 3; },
     reward: { gold: 25, xp: 40 },
     next: 'tut_2',
     dialogue: {
-      start: "You'll want a few fights under your belt before anything else. Three monsters in the Meadow. Off you go.",
-      progress: 'Three of them. The Meadow. Still waiting.',
-      complete: "That's the hard part done — the starting part.",
+      start: "Slimes in the Meadow, just past the gate. Pop three and bring me what's left of them.",
+      progress: 'Three slimes. The Meadow. Bring the remnants.',
+      complete: "Sticky. But that's the hard part done — the starting part.",
     },
   },
   tut_2: {
-    id: 'tut_2', npc: 'Mayor Bro', title: 'Suit Up',
-    desc: 'Defeat 5 more monsters in the Starting Meadow.',
-    check: function (rpg) { return ((rpg._questKills || {}).tut_2 || 0) >= 5; },
+    id: 'tut_2', npc: 'Mayor Bro', title: 'Cold Reception',
+    desc: 'Bring 4 Snowman Remnants from Frost Ridge.',
+    check: function (rpg) { return ((rpg.inventory || {}).snowman || 0) >= 4; },
     reward: { gold: 40, xp: 60, item: "Scout's Vest" },
     next: 'tut_3',
     dialogue: {
-      start: "Five more and I'll get you something to wear that isn't a shirt.",
-      progress: 'Five. Meadow. I did say.',
+      start: 'Frost Ridge next. Snowmen up there, and they do not go quietly. Four wrecks and I will get you something to wear.',
+      progress: 'Frost Ridge. The white one. Four of them.',
       complete: "Here — Scout's Vest. It'll stop something.",
     },
   },
   tut_3: {
-    id: 'tut_3', npc: 'Mayor Bro', title: 'Cold Reception',
-    desc: 'Defeat 5 monsters in Frost Ridge.',
-    check: function (rpg) { return ((rpg._questKills || {}).tut_3 || 0) >= 5; },
+    id: 'tut_3', npc: 'Mayor Bro', title: 'Into the Green',
+    desc: 'Bring 6 Slime Remnants from the Verdant Wilds.',
+    check: function (rpg) { return ((rpg.inventory || {})['slime-remnants'] || 0) >= 6; },
     reward: { gold: 60, xp: 100, item: "Bro's Blade" },
     next: 'tut_4',
     dialogue: {
-      start: 'Frost Ridge next. Colder, meaner. Five of them.',
-      progress: "Frost Ridge. The white one. You'll know it.",
+      start: 'The Verdant Wilds are thick with moss slimes — and one blue one that moves faster than it has any right to. Six remnants.',
+      progress: 'Six, from the green ones.',
       complete: "Take the blade. You've earned the weight of it.",
     },
   },
   tut_4: {
-    id: 'tut_4', npc: 'Mayor Bro', title: 'Into the Green',
-    desc: 'Defeat 6 monsters in the Verdant Wilds.',
-    check: function (rpg) { return ((rpg._questKills || {}).tut_4 || 0) >= 6; },
+    id: 'tut_4', npc: 'Mayor Bro', title: 'Bad Air',
+    desc: 'Bring 8 Slime Remnants from the Poison Forest.',
+    check: function (rpg) { return ((rpg.inventory || {})['slime-remnants'] || 0) >= 8; },
     reward: { gold: 150, xp: 150 },
     next: 'tut_5',
     dialogue: {
-      start: 'The Verdant Wilds are thick with them. Six should thin it out.',
-      progress: 'Six, in the green.',
+      start: 'Mire wisps in the Poison Forest. Same slime, worse manners. Eight.',
+      progress: 'Eight, out of the swamp.',
       complete: 'You move like someone who knows the place now.',
     },
   },
   tut_5: {
     id: 'tut_5', npc: 'Mayor Bro', title: 'Bro Ascendant',
-    desc: 'Defeat 8 monsters in the Stone Hollows.',
-    check: function (rpg) { return ((rpg._questKills || {}).tut_5 || 0) >= 8; },
+    desc: 'Bring 5 Skeleton Remnants from the Wind Dunes.',
+    check: function (rpg) { return ((rpg.inventory || {})['skeleton-remnants'] || 0) >= 5; },
     reward: { gold: 400, xp: 300 },
     next: null,
     dialogue: {
-      start: 'Last one from me. The Stone Hollows. Eight. Then you outrank my advice.',
-      progress: 'The Hollows. Eight of them.',
+      start: 'Last one from me. Wind Dunes. The mummies out there shed their wrappings and come at you faster. Five sets of bones.',
+      progress: 'Five, from the dunes.',
       complete: "That's the tour. Everything past here is yours to find.",
     },
   },

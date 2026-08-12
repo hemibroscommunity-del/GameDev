@@ -136,6 +136,23 @@ export const questMethods = {
         if (!(ps._questFlags && ps._questFlags[_obj.flag])) return;
       }
     }
+    /* v2.3.1673: HAND THE ITEMS OVER.  `collect` used to only CHECK that you
+       held the items, never take them — which for the tutorial arc would mean
+       one stack of remnants satisfying every step at once, and the whole
+       five-quest chain collapsing into a single turn-in.  Opt-in via
+       `consume` so any future "just prove you own it" collect quest keeps the
+       old behaviour.
+       Placed AFTER every gate and BEFORE any payout, so a refused turn-in can
+       never take the items, and a paid one can never fail to.  Clamped at 0
+       because a concurrent path could in principle have drained the stack
+       between the check above and here; going negative would turn a bag into
+       a debt that no drop can ever pay off. */
+    if (_obj && _obj.type === 'collect' && _obj.consume && ps.inventory) {
+      const have = ps.inventory[_obj.invKey] || 0;
+      const left = Math.max(0, have - (_obj.count || 1));
+      if (left > 0) ps.inventory[_obj.invKey] = left;
+      else delete ps.inventory[_obj.invKey];
+    }
     ps._quests[questId] = 'turnedIn';
     ps.coins = (ps.coins || 0) + (reward.gold || 0);
     // XP via _addCombatXp so level-up logic runs (including

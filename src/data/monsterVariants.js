@@ -455,6 +455,29 @@ export function isRemnantSkull(skull) {
       || !!(skull && MONSTER_VARIANTS[skull]);
 }
 
+/* v2.3.1673: which inventory key a skull's remnants stack into.
+ *
+ * MIRRORS server _invKeyForSkull.  The server owns the inventory, so a
+ * mismatch here shows up as the bag briefly showing one thing and then being
+ * corrected by the next player_state — confusing, and the reason this is one
+ * function rather than an inline chain in the pickup handler.
+ *
+ * The base-archetype fallback is the fix: every zone-flavoured slime reskin
+ * (mossSlime, blueSlime, mireWisp) is a `fodder` underneath and stacks into
+ * the same 'slime-remnants'.  Before this they fell through to their own
+ * variant name, so Verdant Wilds slime drops landed under a 'mossSlime' key
+ * that nothing in the game reads — and the SERVER dropped nothing at all.
+ */
+export function remnantInvKey(skull) {
+  if (!skull) return null;
+  if (skull === 'fireGoblin') return 'fire-goblin-remnants';
+  if (skull === 'mummy' || skull === 'skeleton') return 'skeleton-remnants';
+  const base = (MONSTER_VARIANTS[skull] && MONSTER_VARIANTS[skull].baseArchetype) || skull;
+  if (skull === 'fodder' || base === 'fodder') return 'slime-remnants';
+  if (skull === 'snowman' || base === 'snowman') return 'snowman';
+  return skull;
+}
+
 /* Per-kill XP multiplier for a variant.  Server-mode XP rolls
    through the base archetype, so the client scales it on receipt
    in the monster_kill handler.  Returns 1 for raw archetypes and

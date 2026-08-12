@@ -58,6 +58,14 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const detail = await H.bodyText(P);
   rec.ok('the detail page states the objective and the zone',
     /Starting Meadow/.test(detail), detail.slice(0, 400));
+  /* v2.3.1673: the arc asks for REMNANTS now, not a kill count.  Pinned here
+     because the client `check` and the server objective are two tables that
+     have to agree, and the symptom of disagreement is a Turn In button that
+     refuses without saying why. */
+  rec.ok('the objective asks for remnants, not a kill count',
+    /Slime Remnants/i.test(detail) && !/Defeat \d/i.test(detail), detail.slice(0, 400));
+  rec.ok("the quest giver's portrait is shown in the dialogue block",
+    await P.page.evaluate(() => !!document.querySelector('img[src*="mayor-bro-head"]')));
   rec.ok('the detail page shows the quest giver speaking',
     /Mayor Bro/.test(detail), detail.slice(0, 400));
 

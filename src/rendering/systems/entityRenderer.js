@@ -138,15 +138,22 @@ const POPUP_BAR_CLEAR = 34;
    exactly the pre-experiment size; keep the knob for further tuning. */
 const PLAYER_SIZE_MULT = 1.0;
 const MONSTER_SIZE_MULT = 1.5;
-/* v2.3.1672: NPC art draw scale.  NPC art is one 256px frame (not a sheet),
-   and 96 world px per frame is what this renderer already treats as "reads at
-   player scale" — see the 96/128 baseScale at the harvest stand-in, whose
-   comment says exactly that.  96/256 = 0.375.
-   Measured the hard way: the first attempt reasoned from the body sprite's
-   0.5-on-a-128-texture and landed on 0.25, and a screenshot showed the mayor
-   about two thirds the player's height standing right next to him.  Trust the
-   96px convention, not the arithmetic. */
-const NPC_SPRITE_SCALE = 96 / 256;
+/* v2.3.1673 (owner: "he needs to be twice as large").  96 world px per frame
+   is what this renderer treats as player scale (see the 96/128 baseScale at
+   the harvest stand-in, commented exactly that), so 192 is deliberately DOUBLE
+   a person — the mayor reads as the landmark you walk toward, not another
+   pedestrian.  Everything positional below derives from this constant, so the
+   quest marker and name follow the figure automatically. */
+const NPC_SPRITE_SCALE = 192 / 256;
+
+/* The sprite frame's own geometry, in frame pixels: the figure's feet sit on
+   y=223 and its top (hat) on y=23 — see the asset note in gameDisplay.js
+   NPC_DATA.  Kept as named constants because three different offsets are
+   derived from them, and a magic 223 in four places is how they drift. */
+const NPC_FRAME_FEET_Y = 223;
+const NPC_FRAME_TOP_Y = 23;
+/** Height of the drawn figure above the NPC's feet, in world px. */
+const npcFigureHeight = () => NPC_SPRITE_SCALE * (NPC_FRAME_FEET_Y - NPC_FRAME_TOP_Y);
 
 /* v2.3.1300: shared ground-shadow texture — ONE 64x32 radial-gradient
    ellipse minted lazily on a canvas and reused by every entity shadow
@@ -6735,7 +6742,7 @@ export class EntityRenderer {
            a body above the street. */
         if (npc.sprite) {
           const fig = new Sprite(getNpcTexture(npc.sprite) || Texture.EMPTY);
-          fig.anchor.set(0.5, 223 / 256);
+          fig.anchor.set(0.5, NPC_FRAME_FEET_Y / 256);
           fig.scale.set(NPC_SPRITE_SCALE);
           display.addChildAt(fig, 0);      // behind the bars and labels
           display._fig = fig;
@@ -6749,21 +6756,30 @@ export class EntityRenderer {
       display.x = npc.x;
       display.y = npc.y;
 
-      /* v2.3.1672: label headroom.  The stock offsets (-14 star, -17 name,
-         -22 hp bar, -36 quest marker) were laid out around an 11px body
-         circle; a full figure is ~50 world px tall, so every one of them
-         would land ON him — the quest marker, the whole point of which is to
-         be visible from across the street, would sit in his chest.  Lift the
-         set by the figure's height the first time we know it. */
+      /* v2.3.1673: label headroom, POSITIONED rather than nudged.
+         v2.3.1672 shifted every label up by the figure height, which kept the
+         old relative spacing — so the ❗ ended up floating a long way over his
+         hat with the name between them (owner: "face the exclamation point
+         over his head").  Now each element is placed against the top of the
+         drawn figure: marker just above the hat, name above the marker, HP bar
+         and star tucked above that.  Recomputed if the scale ever changes,
+         and only once the texture is bound so we know he is actually drawn. */
       if (display._fig && !display._lifted && display._fig.texture !== Texture.EMPTY) {
         display._lifted = true;
-        const lift = NPC_SPRITE_SCALE * 223;          // feet-to-frame-top, world px
-        display._nameText.y -= lift;
-        display._questMarker._baseY = -36 - lift;
+        const top = npcFigureHeight();          // world px above the feet
+        /* The marker is anchored at its CENTRE, so clearing the hat needs half
+           its own glyph height on top of the gap — the first attempt used the
+           gap alone and the ❗ sat down inside the hat brim. */
+        const MARK_PX = 26;                     // he doubled; so does the cue
+        display._questMarker.style.fontSize = MARK_PX;
+        display._questMarker._baseY = -(top + 8 + MARK_PX / 2);
+        /* Name is anchored at its BOTTOM (0.5, 1), so this is where its
+           underside sits: clear above the marker's top edge. */
+        display._nameText.y = -(top + 8 + MARK_PX + 8);
         for (const c of display.children) {
           if (c === display._fig || c === display._nameText || c === display._questMarker) continue;
           if (c === display._body || c === display._avatar) continue;
-          c.y -= lift;
+          c.y -= (top + MARK_PX + 24);
         }
       }
 

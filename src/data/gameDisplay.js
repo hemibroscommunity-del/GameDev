@@ -3222,6 +3222,11 @@ export const NPC_DATA = [{
      ~200px tall, feet on the same y=223 baseline — so he reads as a person
      standing in the street rather than a prop at some arbitrary size. */
   sprite: '/sprites/npc/mayor-bro.webp',
+  /* v2.3.1673 (owner: "show his head in the dialogue window").  A head crop
+     of the same sprite, so the portrait can never drift from the figure
+     standing in the street.  Square and small (96px) because it renders as a
+     chip beside the dialogue text, not a splash. */
+  portrait: '/sprites/npc/mayor-bro-head.webp',
   avatar: '🧔',
   color: '#f5c542',
   x: 758, y: 448,
