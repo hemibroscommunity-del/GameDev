@@ -4952,40 +4952,23 @@ export function createDefaultRpg() {
     mana: 100,
     maxMana: 100,
     /* Equipment */
-    /* Equipment — start with basic wood-tier weapons.
-       v2.3.943: the starter melee weapon is a greatsword (was the Bamboo
-       Stick / type 'sword') so the per-facing held greatsword art shows and
-       the wild swing reads as a big sword. */
-    weapon: {
-      type: 'greatsword',
-      tier: 'common',
-      tierMult: 1.0,
-      element1: null,
-      element2: null,
-      name: 'Great Sword',
-      isVolatile: false,
-      gearBase: 'wood'
-    },
-    rangedWeapon: {
-      type: 'bow',
-      tier: 'common',
-      tierMult: 1.0,
-      element1: null,
-      element2: null,
-      name: 'Wood Bow',
-      isVolatile: false,
-      gearBase: 'wood'
-    },
-    staffWeapon: {
-      type: 'staff',
-      tier: 'common',
-      tierMult: 1.0,
-      element1: null,
-      element2: null,
-      name: 'Wood Staff',
-      isVolatile: false,
-      gearBase: 'wood'
-    },
+    /* v2.3.1676 (owner: "You'll need to start the game without a weapon and
+       not be allowed to leave town without speaking to mayor bro first.  He'll
+       give you the sword and shield").  All three slots start EMPTY.
+       History, because this has swung before: v2.3.943 made the starter melee
+       weapon a greatsword so the held art would show.  Handing a new player a
+       full melee/ranged/magic loadout before they had met anyone left the
+       tutorial with nothing to give and the weapon-swap bar with nothing to
+       teach — every reward Mayor Bro hands over was already in the bag.
+       The empty slots are what make the arc mean something: sword+shield on
+       accepting his first quest, bow on turning it in, staff on the next.
+       Safe to be null: calcWeaponDmg returns the unarmed base for a missing
+       weapon (`if (!wpn) return rawBase`), the HUD already falls back to
+       'Fists', and the town gate above stops anyone reaching a monster
+       before the mayor arms them. */
+    weapon: null,
+    rangedWeapon: null,
+    staffWeapon: null,
     /* v2.3.249: Leather Armor removed from the game entirely per
        user request.  Armor + stash both empty by default.  Players
        acquire armor through other paths (forge / drops / etc.). */
@@ -4995,12 +4978,9 @@ export function createDefaultRpg() {
        v2.3.187 shield-on-back render has something to draw without
        requiring a pickup. Existing saves with shield=null get the
        same default via the migration in BroTown.jsx ~4352. */
-    shield: {
-      tier: 'common',
-      tierMult: 1.0,
-      gearBase: 'wood',
-      name: 'Wood Shield',
-    },
+    /* v2.3.1676: the shield comes from Mayor Bro with the sword, so it starts
+       empty too — a shield you already own is not a reward. */
+    shield: null,
     /* {tier, tierMult, gearBase, gem, name, reforgeBonus, hardenBonus} */
     /* v2.3.228: armor stash mirrors weaponStash/shieldStash so the
        chest slot supports equip/unequip via the item-detail popup. */
@@ -5321,9 +5301,17 @@ export const QUEST_CHAINS = {
     reward: { gold: 25, xp: 40 },
     next: 'tut_2',
     dialogue: {
-      start: 'Snowmen up on Frost Ridge, and they throw first. Four wrecks, and mind the snowballs.',
+      /* v2.3.1676 (owner: "He'll give you the sword and shield (with
+         instructions on how to use)").  The controls live in the START line
+         because that is the moment the kit is handed over — the gate will not
+         let you out of town until you have read it. */
+      start: "Take the sword and the shield — you're not walking out of my town without them.\n\n"
+        + '⚔️ Hold the right stick to aim and swing.\n'
+        + '✨ Flick it and let go for a special.\n'
+        + '🛡️ Double-tap the right stick to raise the shield, then point it at what is hitting you.\n\n'
+        + 'Now: snowmen up on Frost Ridge, and they throw first. Four wrecks, and mind the snowballs.',
       progress: 'Frost Ridge. The white one. Four of them.',
-      complete: "Cold work. You held up better than most.",
+      complete: "Cold work. Here — a bow. Double-tap the LEFT stick to switch weapons.",
     },
   },
   tut_2: {
@@ -5333,9 +5321,10 @@ export const QUEST_CHAINS = {
     reward: { gold: 60, xp: 100 },
     next: 'tut_3',
     dialogue: {
-      start: 'The Verdant Wilds went blue. Fast little things, and they spit. Six remnants.',
+      start: 'The Verdant Wilds went blue. Fast little things, and they spit. Six remnants.\n\n'
+        + '🏹 That bow works at range — double-tap the LEFT stick to swap to it.',
       progress: 'Six, from the blue ones.',
-      complete: 'You move like someone who knows the place now.',
+      complete: 'You move like someone who knows the place now. Take the staff — same swap, one more slot.',
     },
   },
   tut_3: {

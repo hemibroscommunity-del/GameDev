@@ -263,7 +263,15 @@ export const QuestDetailPanel = () => {
               fontSize: 8.5, fontWeight: 700, letterSpacing: '.06em',
               textTransform: 'uppercase', color: COL.muted, marginBottom: 3,
             }}>{quest.npc}</div>
-            <div style={{ fontSize: 12, lineHeight: 1.45, color: COL.text2, fontStyle: 'italic' }}>
+            <div style={{
+              fontSize: 12, lineHeight: 1.45, color: COL.text2, fontStyle: 'italic',
+              /* v2.3.1676: the starter-kit line carries the control
+                 instructions as its own paragraphs.  Without pre-wrap the \n\n
+                 collapses and three separate controls run together into one
+                 unreadable sentence — which is exactly the "controls are not
+                 obvious" problem this text exists to solve. */
+              whiteSpace: 'pre-wrap',
+            }}>
               “{status === 'Ready' ? quest.dialogue.complete
                 : status === 'Active' ? quest.dialogue.progress
                 : quest.dialogue.start}”

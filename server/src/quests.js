@@ -56,6 +56,19 @@ export const questMethods = {
     // active / turnedIn.
     if (cur === 'active' || cur === 'turnedIn') return;
     ps._quests[questId] = 'active';
+    /* v2.3.1676 (owner: "He'll give you the sword and shield (with
+       instructions on how to use)").  A reward paid on ACCEPT, not turn-in —
+       the whole point of the starter kit is that you cannot do the quest
+       without it, so paying it at the end would be a joke.  Same
+       _grantQuestItem path and the same non-fatal posture as turn-in
+       rewards: a failed grant (occupied slot, full stash) must not stop the
+       quest being accepted, or a player with a full bag could never start.
+       Only ever fires on the accept that MOVES the quest into 'active', so
+       it cannot be farmed by re-accepting. */
+    if (Array.isArray(reward.grantOnAccept)) {
+      for (const it of reward.grantOnAccept) this._grantQuestItem(ps, it);
+      this._recomputeMaxes(ps);
+    }
     this._saveRpg(session.id, ps);
     const ws = this._wsBySessionId(session.id);
     if (ws) this._sendPlayerState(ws, session.id);
@@ -217,6 +230,19 @@ export const questMethods = {
         if (ps.armor) return false;
         const tm = Math.max(0, Math.min(8, Number(item.tierMult) || 1));
         ps.armor = { name: String(item.name || 'Quest Armor'), tierMult: tm };
+        this._recomputeMaxes(ps);
+        return true;
+      }
+      if (item.kind === 'shield') {
+        /* v2.3.1676: same empty-slot-only rule as armor — a gift must never
+           take away something the player chose. */
+        if (ps.shield) return false;
+        ps.shield = {
+          tier: 'common',
+          tierMult: Math.max(0, Math.min(8, Number(item.tierMult) || 1)),
+          gearBase: String(item.gearBase || 'wood'),
+          name: String(item.name || 'Quest Shield'),
+        };
         this._recomputeMaxes(ps);
         return true;
       }

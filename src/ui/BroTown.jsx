@@ -2423,50 +2423,19 @@ export var BroTown = function BroTown(_ref0) {
       if (!S.rpg._statLocks) S.rpg._statLocks = { power: false, vitality: false, endurance: false, agility: false, mind: false };
       if (S.rpg.influence === undefined) S.rpg.influence = 0;
       if (S.rpg.power === undefined) S.rpg.power = 0;
-      if (!S.rpg.weapon) S.rpg.weapon = {
-        type: 'sword',
-        tier: 'common',
-        tierMult: 1.0,
-        element1: null,
-        element2: null,
-        name: 'Wood Sword',
-        gearBase: 'wood',
-        isVolatile: false
-      };
-      /* v2.3.943: swap the untouched starter melee weapon (Bamboo Stick /
-         Wood Sword, type 'sword', wood, common) for a wood-tier greatsword so
-         existing saves get the held greatsword art + the wild swing.  A player
-         who found / forged a different melee weapon keeps it. */
-      if (S.rpg.weapon && S.rpg.weapon.type === 'sword' && S.rpg.weapon.gearBase === 'wood'
-          && S.rpg.weapon.tier === 'common'
-          && (S.rpg.weapon.name === 'Bamboo Stick' || S.rpg.weapon.name === 'Wood Sword')) {
-        S.rpg.weapon = {
-          type: 'greatsword', tier: 'common', tierMult: 1.0,
-          element1: null, element2: null, name: 'Great Sword',
-          gearBase: 'wood', isVolatile: false
-        };
-        recalcDerived(S.rpg);
-      }
-      if (!S.rpg.rangedWeapon) S.rpg.rangedWeapon = {
-        type: 'bow',
-        tier: 'common',
-        tierMult: 1.0,
-        element1: null,
-        element2: null,
-        name: 'Wood Bow',
-        gearBase: 'wood',
-        isVolatile: false
-      };
-      if (!S.rpg.staffWeapon) S.rpg.staffWeapon = {
-        type: 'staff',
-        tier: 'common',
-        tierMult: 1.0,
-        element1: null,
-        element2: null,
-        name: 'Wood Staff',
-        gearBase: 'wood',
-        isVolatile: false
-      };
+      /* ═══ v2.3.1676: THE STARTER-LOADOUT MIGRATIONS ARE GONE ═══
+         Three `if (!S.rpg.X) S.rpg.X = {...}` blocks used to re-grant a
+         melee weapon, a bow and a staff to any save whose slots were empty —
+         plus a v2.3.943 pass that upgraded an untouched starter sword to a
+         greatsword.  As of this version EVERY fresh character has all three
+         empty on purpose (owner: "start the game without a weapon"), so these
+         would have handed the whole loadout straight back on the first load
+         and quietly undone it, with nothing in the diff to point at.
+         Mayor Bro's arc is what fills these slots now: sword+shield when you
+         accept his first quest, bow when you turn it in, staff on the next.
+         Existing saves keep whatever they already had — these blocks only
+         ever fired on an EMPTY slot, so removing them takes nothing away from
+         anyone who owns a weapon. */
       if (!S.rpg.activeSlot) S.rpg.activeSlot = 'melee';
       /* v2.3.249: Leather Armor removed from the game.  Migration
          strips it from the equipped slot AND any stash entries so
@@ -2483,12 +2452,13 @@ export var BroTown = function BroTown(_ref0) {
          Matches the default in createDefaultRpg. If a player intentionally
          unequips, the popup's Unequip path can clear shield to null
          AGAIN -- that path doesn't re-default. */
-      if (!S.rpg.shield) S.rpg.shield = {
-        tier: 'common',
-        tierMult: 1.0,
-        gearBase: 'wood',
-        name: 'Wood Shield',
-      };
+      /* v2.3.1676: the "everyone gets a Wood Shield" migration is GONE.
+         It re-granted a shield to any save whose slot was empty, which as of
+         this version is every FRESH character — the shield is Mayor Bro's to
+         give now, and this line would have handed it back on the next load,
+         silently undoing the change with nothing in the diff to show it.
+         Nothing replaces it: an empty shield slot is a valid state (the
+         unequip path has always produced one). */
       if (S.rpg.goldNuggets === undefined) S.rpg.goldNuggets = 0;
       if (S.rpg.goldBars === undefined) S.rpg.goldBars = 0;
       if (S.rpg.achievementPoints === undefined) S.rpg.achievementPoints = 0;

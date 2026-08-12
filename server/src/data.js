@@ -446,6 +446,14 @@ export const QUEST_REWARDS = {
          on first contact, are the next slice. */
       tut_1: {gold:25,  xp:40,  next:'tut_2',
               objective:{type:'collect', invKey:'snowman', count:4, consume:true, zone:'frost'},
+              /* v2.3.1676 (owner: "He'll give you the sword and shield").  Paid
+                 on ACCEPT, not turn-in — you cannot do the quest without them,
+                 and the town gate will not let you leave until you have talked
+                 to him, so this IS the moment you get armed. */
+              grantOnAccept:[
+                {kind:'weapon', weaponType:'sword', tierKey:'wood', name:"Bro's Sword"},
+                {kind:'shield', gearBase:'wood', tierMult:1.0, name:"Bro's Shield"},
+              ],
               item:{kind:'weapon', weaponType:'bow', tierKey:'wood', name:"Bro's Bow"}},
       tut_2: {gold:60,  xp:100, next:'tut_3',
               objective:{type:'collect', invKey:'slime-remnants', count:6, consume:true, zone:'verdant'},

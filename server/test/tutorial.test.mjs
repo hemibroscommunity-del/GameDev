@@ -212,9 +212,16 @@ const sess = { id: 'bp_t' };
   ps.inventory = { snowman: 9 };
   room._handleQuestAccept(sess, { questId: 'tut_1' });
   room._handleQuestTurnIn(sess, { questId: 'tut_1', xpCat: 'bow' });
+  /* v2.3.1676: accepting tut_1 hands over the sword+shield (grantOnAccept),
+     and turning it in pays the bow.  So after this sequence the player holds
+     BOTH — and each is in its own slot, which is the routing worth pinning. */
+  check('accepting the first quest arms you with the sword and shield',
+    ps.weapon && ps.weapon.type === 'sword' && ps.shield && ps.shield.name === "Bro's Shield",
+    { w: ps.weapon, sh: ps.shield });
   check('a granted BOW lands in the ranged slot, not the melee one',
     ps.rangedWeapon && ps.rangedWeapon.name === "Bro's Bow"
-    && ps.rangedWeapon.type === 'bow' && ps.weapon === null, { r: ps.rangedWeapon, w: ps.weapon });
+    && ps.rangedWeapon.type === 'bow' && ps.weapon.type === 'sword',
+    { r: ps.rangedWeapon, w: ps.weapon });
   check('the granted weapon has a forge-shaped blob',
     ps.rangedWeapon && ps.rangedWeapon.gearBase === 'ww_wood' && ps.rangedWeapon.hardness === 0
     && ps.rangedWeapon.tier === 'common', ps.rangedWeapon);
@@ -233,6 +240,7 @@ const sess = { id: 'bp_t' };
   // Occupied slot + full stash: the grant fails but must NOT eat the rest.
   ps._quests = Object.create(null); ps._questKills = Object.create(null);
   ps.weapon = { type: 'sword', tierMult: 1, name: 'Keeper' };
+  ps.shield = { name: 'Own Shield' };   /* occupied: grantOnAccept must not replace it */
   ps.weaponStash = new Array(room.WEAPON_STASH_CAP).fill(0).map(() => ({ type: 'sword', tierMult: 1 }));
   ps.coins = 0;
   /* The bow's own slot must be OCCUPIED too, or the grant simply lands there
@@ -244,6 +252,8 @@ const sess = { id: 'bp_t' };
   check('a full stash does not destroy the equipped weapon',
     ps.weapon.name === 'Keeper' && ps.rangedWeapon.name === 'Old Bow',
     { w: ps.weapon, r: ps.rangedWeapon });
+  check('the accept-time grant never replaces gear the player is holding',
+    ps.shield.name === 'Own Shield', ps.shield);
   check('a full stash stays at cap (rule 3: no silent overflow)',
     ps.weaponStash.length === room.WEAPON_STASH_CAP, ps.weaponStash.length);
   check('a failed item grant still pays the gold and completes the quest',
