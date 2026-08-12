@@ -5294,24 +5294,56 @@ export const QUEST_CHAINS = {
      what stops one stack clearing the whole arc.  Keep counts in lockstep
      with QUEST_REWARDS in server/src/data.js — a mismatch shows up as a Turn
      In button that refuses without saying why. */
+
+  /* ═══ v2.3.1681: WHAT HE ACTUALLY HANDS YOU ═══
+     Owner: "also thumbnail of the quest items (sword and shield)".
+     `gives` is DISPLAY ONLY — the SERVER's QUEST_REWARDS entry is the sole
+     authority on what is granted, so nothing here can conjure an item.  Its
+     job is to show the player the picture of the thing before they commit.
+     `when` mirrors the server's two payout moments: 'accept' = grantOnAccept
+     (you get it for saying yes), 'complete' = reward.item (you get it for
+     coming back).  mirror-audit.test.mjs asserts that a quest promising an
+     'accept' icon really has a grantOnAccept server-side and likewise for
+     'complete', so this can go stale loudly rather than quietly. */
   tut_1: {
     id: 'tut_1', npc: 'Mayor Bro', title: 'Cold Reception',
     desc: 'Bring 4 Snowman Remnants from Frost Ridge.',
     check: function (rpg) { return ((rpg.inventory || {}).snowman || 0) >= 4; },
     reward: { gold: 25, xp: 40 },
     next: 'tut_2',
+    gives: [
+      /* great-sword, not sword: weaponType 'sword' at wood tier is the
+         bamboo stick, and the server now grants a greatsword (see
+         server/src/data.js tut_1) so bag, hand and dialogue agree. */
+      { when: 'accept',   icon: '/icons/items/great-sword.webp', label: "Bro's Sword" },
+      { when: 'accept',   icon: '/icons/items/shield.webp', label: "Bro's Shield" },
+      { when: 'complete', icon: '/icons/items/bow.webp',    label: "Bro's Bow" },
+    ],
     dialogue: {
       /* v2.3.1676 (owner: "He'll give you the sword and shield (with
          instructions on how to use)").  The controls live in the START line
          because that is the moment the kit is handed over — the gate will not
          let you out of town until you have read it. */
+      /* v2.3.1681 (owner: "the instructions on mayor bro's dialog for
+         beginning the quest are wrong.  It should say a quick swipe on right
+         joystick to trigger a special attack").  "Flick it and let go" was
+         describing the right gesture in the wrong words — the handler measures
+         release SPEED, so a quick swipe is exactly it, and that is what the
+         line should say.  Also "joystick" throughout, matching what the owner
+         and the on-screen control are actually called. */
       start: "Take the sword and the shield — you're not walking out of my town without them.\n\n"
-        + '⚔️ Hold the right stick to aim and swing.\n'
-        + '✨ Flick it and let go for a special.\n'
-        + '🛡️ Double-tap the right stick to raise the shield, then point it at what is hitting you.\n\n'
+        + '⚔️ Hold the right joystick to aim and swing.\n'
+        + '✨ A quick swipe on the right joystick triggers a special attack.\n'
+        /* v2.3.1681b (owner): the HOLD is the gesture, not a detail.  The
+           handler only raises the shield on the second tap of a double-tap
+           and keeps it up for as long as that touch lasts; dragging during
+           the hold is what steers the arc.  "Double-tap to raise the shield"
+           alone describes a tap-toggle that does not exist, and a player who
+           lets go mid-fight is unshielded without knowing why. */
+        + '🛡️ Double-tap the right joystick and HOLD to raise the shield, then aim it at the enemy.\n\n'
         + 'Now: snowmen up on Frost Ridge, and they throw first. Four wrecks, and mind the snowballs.',
       progress: 'Frost Ridge. The white one. Four of them.',
-      complete: "Cold work. Here — a bow. Double-tap the LEFT stick to switch weapons.",
+      complete: "Cold work. Here — a bow. Double-tap the LEFT joystick to switch weapons.",
     },
   },
   tut_2: {
@@ -5320,9 +5352,10 @@ export const QUEST_CHAINS = {
     check: function (rpg) { return ((rpg.inventory || {})['slime-remnants'] || 0) >= 6; },
     reward: { gold: 60, xp: 100 },
     next: 'tut_3',
+    gives: [{ when: 'complete', icon: '/icons/items/staff.webp', label: "Bro's Staff" }],
     dialogue: {
       start: 'The Verdant Wilds went blue. Fast little things, and they spit. Six remnants.\n\n'
-        + '🏹 That bow works at range — double-tap the LEFT stick to swap to it.',
+        + '🏹 That bow works at range — double-tap the LEFT joystick to swap to it.',
       progress: 'Six, from the blue ones.',
       complete: 'You move like someone who knows the place now. Take the staff — same swap, one more slot.',
     },
@@ -5345,6 +5378,7 @@ export const QUEST_CHAINS = {
     check: function (rpg) { return ((rpg.inventory || {})['fire-goblin-remnants'] || 0) >= 6; },
     reward: { gold: 400, xp: 300, item: "Scout's Vest" },
     next: null,
+    gives: [{ when: 'complete', icon: '/icons/items/chest-plate.webp', label: "Scout's Vest" }],
     dialogue: {
       start: 'Last one from me. Flame Fields. Goblins, and they are quick about it. Six.',
       progress: 'Six, out of the fire.',
@@ -5374,6 +5408,9 @@ export const QUEST_CHAINS = {
     },
     reward: { gold: 60, xp: 80, item: 'Pickaxe' },
     next: 'life_2',
+    /* No axe or pickaxe art exists in /icons/items, so those two go
+       unillustrated rather than borrowing a picture of something else. */
+    gives: [{ when: 'accept', icon: '/icons/items/fishing-pole.webp', label: 'Fishing Pole' }],
     dialogue: {
       start: "Take the axe and the pole — nobody's cutting or casting without them.\n\n"
         + '🪓 Trees and fishing spots only show up once you can work them.\n'
@@ -5393,6 +5430,10 @@ export const QUEST_CHAINS = {
     },
     reward: { gold: 200, xp: 200, item: "Prospector's Vest + Greaves" },
     next: null,
+    gives: [
+      { when: 'complete', icon: '/icons/items/chest-plate.webp', label: "Prospector's Vest" },
+      { when: 'complete', icon: '/icons/items/greaves.webp',     label: "Prospector's Greaves" },
+    ],
     dialogue: {
       start: 'Ore next. Five lumps, any kind — the rocks in every zone will do.',
       progress: 'Five ore. Swing the pickaxe.',

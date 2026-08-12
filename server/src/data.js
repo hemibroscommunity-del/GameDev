@@ -450,8 +450,19 @@ export const QUEST_REWARDS = {
                  on ACCEPT, not turn-in — you cannot do the quest without them,
                  and the town gate will not let you leave until you have talked
                  to him, so this IS the moment you get armed. */
+              /* v2.3.1681 (owner: "for bros sword the thumbnail is of the
+                 bamboo stick.  It needs to be the great sword").  weaponType
+                 'sword' at gearBase 'wood' IS the bamboo stick — that is its
+                 art everywhere (icons/items/sword.webp, and the in-hand
+                 sprite's isWoodSwordNudge case), not just in the new quest
+                 thumbnail.  Swapping only the picture would have left the bag
+                 and the player's hand disagreeing with the dialogue, so the
+                 GRANT changes instead.  'greatsword' is equally safe at this
+                 point in the arc: _prog3EquipOk maps both types to the same
+                 'sword' trained skill and wood is tier index 0, so the
+                 requirement is 0 either way. */
               grantOnAccept:[
-                {kind:'weapon', weaponType:'sword', tierKey:'wood', name:"Bro's Sword"},
+                {kind:'weapon', weaponType:'greatsword', tierKey:'wood', name:"Bro's Sword"},
                 {kind:'shield', gearBase:'wood', tierMult:1.0, name:"Bro's Shield"},
               ],
               item:{kind:'weapon', weaponType:'bow', tierKey:'wood', name:"Bro's Bow"}},

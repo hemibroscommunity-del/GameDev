@@ -142,11 +142,14 @@ const MONSTER_SIZE_MULT = 1.5;
    player scale (see the 96/128 baseScale at the harvest stand-in, commented
    exactly that).
    v2.3.1673 doubled this to 192 ("he needs to be twice as large");
-   v2.3.1675 halves it back ("reduce his size by 50%") — so the mayor stands
-   at the same height as the player again.  Everything positional below
-   derives from this constant, so the quest marker and name follow the figure
-   automatically rather than needing their own pass. */
-const NPC_SPRITE_SCALE = 96 / 256;
+   v2.3.1675 halves it back ("reduce his size by 50%") — so the mayor stood
+   at the same height as the player again;
+   v2.3.1681 adds a quarter on top ("Mayor bro is about 25% too small"), which
+   is the owner eyeballing him against the buildings and the player rather
+   than against the old placeholder circle.  120/256 = 96 x 1.25.  Everything
+   positional below derives from this constant, so the quest marker and name
+   follow the figure automatically rather than needing their own pass. */
+const NPC_SPRITE_SCALE = 120 / 256;
 
 /* The sprite frame's own geometry, in frame pixels: the figure's feet sit on
    y=223 and its top (hat) on y=23 — see the asset note in gameDisplay.js
@@ -156,6 +159,27 @@ const NPC_FRAME_FEET_Y = 223;
 const NPC_FRAME_TOP_Y = 23;
 /** Height of the drawn figure above the NPC's feet, in world px. */
 const npcFigureHeight = () => NPC_SPRITE_SCALE * (NPC_FRAME_FEET_Y - NPC_FRAME_TOP_Y);
+
+/* v2.3.1681: the quest badge behind the '!' (owner: "thick white outline or
+   something to be more attention grabbing").  Radius in world px — the label
+   stack above the NPC's head is laid out from it, so changing this one number
+   moves the name out of the way too. */
+const QUEST_BADGE_R = 16;
+/** Three concentric rings, drawn outside in.  `fill` carries the state
+ *  (gold = quest to offer, green = ready to turn in). */
+function _drawQuestBadge(g, fill) {
+  g.clear();
+  /* Dark hairline first: without it the white ring dissolves into the town's
+     pale cobblestones, which is the exact background the owner reported the
+     marker disappearing against. */
+  g.circle(0, 0, QUEST_BADGE_R);
+  g.fill({ color: 0x1A1207, alpha: 0.9 });
+  /* The thick white ring the owner asked for. */
+  g.circle(0, 0, QUEST_BADGE_R - 2);
+  g.fill({ color: 0xFFFFFF });
+  g.circle(0, 0, QUEST_BADGE_R - 5.5);
+  g.fill({ color: fill });
+}
 
 /* v2.3.1300: shared ground-shadow texture — ONE 64x32 radial-gradient
    ellipse minted lazily on a canvas and reused by every entity shadow
@@ -3146,7 +3170,10 @@ function createPlayerDisplay() {
      v2.3.1566 (owner: "make it consistent and beneath other players too"):
      built by the shared factory so the local player and every remote
      player render the SAME plate from one implementation. */
-  _attachNamePill(container, 10);
+  /* v2.3.1681 (owner: "Player name and level in the pill beneath character
+     need to be slightly larger for legibility").  10 -> 13; the plate sizes
+     itself off this number, so the background grows with the text. */
+  _attachNamePill(container, 13);
 
   /* v2.3.1193: the local player's own threat skull (red = my threat
      countdown is running, white = ignored/expired fight window).  One
@@ -3393,7 +3420,7 @@ function createOtherPlayerDisplay() {
 
   /* v2.3.1566 (owner): same plate the local player gets, one size down —
      a remote name should not out-shout your own. */
-  _attachNamePill(container, 9);
+  _attachNamePill(container, 12);   /* v2.3.1681: 9 -> 12, still one down from your own */
 
   /* v2.3.1193: threat skull above the nameplate (red = active threat
      countdown, white = ignored/expired fight window — see
@@ -6712,28 +6739,41 @@ export class EntityRenderer {
         display.addChild(nameText);
         display._nameText = nameText;
 
-        /* Quest marker — text overlay above the head, pulses vertically.
+        /* Quest marker — badge above the head, pulses vertically.
            Hidden by default; populated when npc._questMarker is set. */
         /* v2.3.1675 (owner: "I can't see the exclamation point on mayor bro it
-           blends into background").  It was a bare 16px glyph in the same
-           warm gold as the town's sunlit cobbles, with nothing behind it.
-           Now: bigger, pure white core, and a heavy dark STROKE — an outline
-           is what makes a glyph survive an arbitrary background, because it
-           guarantees contrast against whatever is behind rather than hoping
-           the fill happens to differ.  The colour still carries the meaning
-           (gold = offer, green = turn in) via the stroke's companion fill
-           below. */
-        const questMarkerText = new Text({
+           blends into background") made it a bigger white glyph with a dark
+           stroke.  v2.3.1681: still not enough — "it needs to have a thick
+           white outline or something to be more attention grabbing".
+           A STROKED GLYPH IS THE WRONG SHAPE for this problem.  An outline
+           only ever traces the letterform, so a '!' offers the eye a 4px-wide
+           stick to find against a map painted with cobbles, flowers, fence
+           posts and roof tiles — all of which are high-frequency detail at
+           exactly that scale.  A BADGE gives it a solid ~33px disc instead:
+           one large uniform shape, which is what actually pops out of visual
+           clutter.  Three concentric rings, outside in — dark hairline (holds
+           against pale cobble), thick white ring (the owner's ask, and what
+           holds against dark roofs), state-coloured fill.  Because both a
+           light and a dark ring are always present, the badge cannot vanish
+           into any background, which a single-colour outline can. */
+        const questMarker = new Container();
+        const qmBadge = new Graphics();
+        questMarker.addChild(qmBadge);
+        const qmGlyph = new Text({
           text: '',
-          style: { fontFamily: 'sans-serif', fontSize: 22, fontWeight: '900',
-                   fill: '#ffffff', align: 'center',
-                   stroke: { color: '#1a1207', width: 5, join: 'round' },
-                   dropShadow: { color: '#000000', alpha: 0.6, blur: 4, distance: 2, angle: Math.PI / 2 } },
+          style: { fontFamily: 'Baloo 2, sans-serif', fontSize: 22, fontWeight: '900',
+                   fill: '#2A1B06', align: 'center' },
         });
-        questMarkerText.anchor.set(0.5, 0.5);
-        questMarkerText.visible = false;
-        display.addChild(questMarkerText);
-        display._questMarker = questMarkerText;
+        qmGlyph.anchor.set(0.5, 0.5);
+        /* Optical centring: '!' and '?' both sit high in their em box, so a
+           geometric centre leaves the glyph looking like it is floating. */
+        qmGlyph.y = 1;
+        questMarker.addChild(qmGlyph);
+        questMarker.visible = false;
+        display.addChild(questMarker);
+        display._questMarker = questMarker;
+        display._qmBadge = qmBadge;
+        display._qmGlyph = qmGlyph;
 
         /* Avatar — emoji rendered at the body center.  Special-case
            '💀' for the Ferryman: no body circle, just the skull. */
@@ -6783,12 +6823,20 @@ export class EntityRenderer {
         /* The marker is anchored at its CENTRE, so clearing the hat needs half
            its own glyph height on top of the gap — the first attempt used the
            gap alone and the ❗ sat down inside the hat brim. */
-        const MARK_PX = 22;                     // matches the marker's own style
+        const MARK_PX = QUEST_BADGE_R * 2;      // matches the marker's own art
+        /* v2.3.1681: gaps tightened from 8 to 3.  The badge is 32px where the
+           bare glyph was 22, and the stack is measured UPWARD from the hat —
+           so keeping the old gaps pushed the name clean off the top of the
+           screen when you stand south of him, which is where the tutorial
+           puts you (he lives near the town's north edge and the camera clamps
+           there).  A tighter stack also just reads better: badge, then name,
+           both plainly his. */
+        const GAP = 3;
 
-        display._questMarker._baseY = -(top + 8 + MARK_PX / 2);
+        display._questMarker._baseY = -(top + GAP + MARK_PX / 2);
         /* Name is anchored at its BOTTOM (0.5, 1), so this is where its
            underside sits: clear above the marker's top edge. */
-        display._nameText.y = -(top + 8 + MARK_PX + 8);
+        display._nameText.y = -(top + GAP + MARK_PX + GAP);
         for (const c of display.children) {
           if (c === display._fig || c === display._nameText || c === display._questMarker) continue;
           if (c === display._body || c === display._avatar) continue;
@@ -6859,13 +6907,20 @@ export class EntityRenderer {
       const qm = display._questMarker;
       const qmStr = npc._questMarker || '';
       if (qmStr) {
-        if (qm.text !== qmStr) qm.text = qmStr;
-        /* Tint rather than restyle: changing style.fill rebuilds the text
-           texture every time the marker flips state, and it would also wash
-           out the white core the stroke is protecting.  A tint multiplies the
-           white glyph to the state colour and leaves the dark outline alone. */
-        const targetTint = qmStr === '❗' ? 0xffd257 : qmStr === '❓' ? 0xffe58a : 0x6ef2ae;
-        if (qm.tint !== targetTint) qm.tint = targetTint;
+        /* Redrawn ONLY when the state flips, not per frame — same reasoning as
+           the name pill's _pillKey: a three-ring rebuild at 60fps for a value
+           that changes when you accept a quest is pure waste. */
+        if (display._qmKey !== qmStr) {
+          display._qmKey = qmStr;
+          /* '❗'/'❓' are the wire values, but they are EMOJI: on most platforms
+             they render from a colour font that ignores `fill`, so the glyph
+             would arrive in its own red/blue regardless of the badge under it.
+             Drawing plain ASCII instead is what makes the dark-on-gold
+             contrast actually happen. */
+          display._qmGlyph.text = qmStr === '❓' ? '?' : '!';
+          _drawQuestBadge(display._qmBadge,
+            qmStr === '❗' ? 0xFFC93C : qmStr === '❓' ? 0xFFE58A : 0x4BD98A);
+        }
         const pulse = Math.sin(now / 300) * 3;
         qm.y = (qm._baseY !== undefined ? qm._baseY : -36) + pulse;
         qm.visible = true;

@@ -68,7 +68,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
     shield: S.rpg && S.rpg.shield && S.rpg.shield.name,
     quest: S.rpg && S.rpg._quests && S.rpg._quests.tut_1,
   }));
-  rec.ok('accepting his first quest grants a SWORD', armed.weapon === 'sword', armed);
+  /* v2.3.1681: 'greatsword', not 'sword'.  weaponType 'sword' at wood tier is
+     the BAMBOO STICK — that is its icon and its in-hand sprite — so the grant
+     was changed rather than just its picture (owner: "it needs to be the great
+     sword").  Both types gate on the same trained skill, so nothing about the
+     unarmed-start rule moves. */
+  rec.ok('accepting his first quest grants a real SWORD, not the bamboo stick',
+    armed.weapon === 'greatsword', armed);
   rec.ok('...and a shield', !!armed.shield, armed);
   rec.ok('the quest is active server-side', armed.quest === 'active', armed);
 

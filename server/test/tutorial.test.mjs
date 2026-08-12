@@ -215,12 +215,17 @@ const sess = { id: 'bp_t' };
   /* v2.3.1676: accepting tut_1 hands over the sword+shield (grantOnAccept),
      and turning it in pays the bow.  So after this sequence the player holds
      BOTH — and each is in its own slot, which is the routing worth pinning. */
+  /* v2.3.1681: the melee grant is a GREATSWORD.  weaponType 'sword' at wood
+     tier is the bamboo stick (its icon and its in-hand sprite both), which is
+     not what "he gives you a sword" should put in your hand.  Pinned by type
+     rather than just by name so the art can't quietly revert. */
   check('accepting the first quest arms you with the sword and shield',
-    ps.weapon && ps.weapon.type === 'sword' && ps.shield && ps.shield.name === "Bro's Shield",
+    ps.weapon && ps.weapon.type === 'greatsword' && ps.weapon.name === "Bro's Sword"
+    && ps.shield && ps.shield.name === "Bro's Shield",
     { w: ps.weapon, sh: ps.shield });
   check('a granted BOW lands in the ranged slot, not the melee one',
     ps.rangedWeapon && ps.rangedWeapon.name === "Bro's Bow"
-    && ps.rangedWeapon.type === 'bow' && ps.weapon.type === 'sword',
+    && ps.rangedWeapon.type === 'bow' && ps.weapon.type === 'greatsword',
     { r: ps.rangedWeapon, w: ps.weapon });
   check('the granted weapon has a forge-shaped blob',
     ps.rangedWeapon && ps.rangedWeapon.gearBase === 'ww_wood' && ps.rangedWeapon.hardness === 0

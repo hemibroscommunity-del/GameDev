@@ -8,8 +8,7 @@
 import { Container, Graphics, Sprite, Text, TextStyle, Texture, Rectangle, Assets } from 'pixi.js';
 import { TILE } from '@/data/constants.js';
 import { ZONES } from '@/data/zones.js';
-import { TOWN_EXITS, WORLDVIEW_EXITS, COMING_SOON_MARKS } from '@/data/effects.js';
-import { TOWN_BUILDINGS } from '@/data/buildings.js'; /* v2.3.1677: coming-soon marks */
+import { TOWN_EXITS, WORLDVIEW_EXITS, COMING_SOON_MARKS, TOWN_SOON_MARKS } from '@/data/effects.js';
 import { getLoadedTiledMap, getTilesetImage, IMAGE_ZONE_MAPS, VIDEO_ZONE_MAPS } from '../tiledMaps.js';
 
 const ZONE_LABEL_STYLE = new TextStyle({
@@ -201,11 +200,14 @@ export class TileRenderer {
        lists staying disjoint — the failure mode otherwise is a working zone
        that looks shut. */
     if (zoneId === 'town') {
-      for (const b of TOWN_BUILDINGS) {
+      /* v2.3.1681: driven off TOWN_SOON_MARKS (measured off the painted map),
+         NOT TOWN_BUILDINGS (collision boxes rescaled from the old tile
+         village, which put seven of these labels on empty cobblestone —
+         owner: "a whole bunch of invisible buildings with coming soon"). */
+      for (const b of TOWN_SOON_MARKS) {
         labelsForFrame.push({
           text: 'Coming soon',
-          x: (b.bx + b.bw / 2) * TILE,
-          y: (b.by + b.bh / 2) * TILE,
+          x: b.tx * TILE, y: b.ty * TILE,
           rotation: 0, soon: true,
         });
       }

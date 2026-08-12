@@ -314,3 +314,36 @@ export const COMING_SOON_MARKS = [
   { zoneId: 'tidal',   tx: 24, ty: 40, label: 'Water Caves' },
   { zoneId: 'mist',    tx: 8,  ty: 32, label: 'Poison Forest' },
 ];
+
+/* ═══ v2.3.1681: WHERE THE TOWN'S BUILDINGS ACTUALLY ARE ═══
+ * Owner: "There's a whole bunch of invisible buildings with coming soon on
+ * them."
+ *
+ * v2.3.1677 placed the town labels at the centre of every TOWN_BUILDINGS
+ * rectangle.  Those rectangles are COLLISION boxes inherited from the old
+ * 40x30 tile village and linearly rescaled into the 48x48 grid — their own
+ * file header says outright that "they don't have to line up perfectly with
+ * the new town image".  There are twelve of them; the painted town has seven
+ * buildings, in different places.  So the labels landed on bare cobblestone,
+ * which is exactly what an "invisible building" looks like.
+ *
+ * These coordinates are measured off the art instead (/maps/town_v15.webp,
+ * 1254x1254, stretched to 48x48 tiles = 1536 world px), so each label sits on
+ * a roof you can actually see.  Cross-checked against the one landmark
+ * already measured independently: NPC_DATA puts the Mayor's House door arch
+ * at world (757, 317), and the house entry below lands its label at world
+ * (752, 250) — on the roof, just above that door.
+ *
+ * Deliberately unlabelled beyond "Coming soon": naming buildings the art
+ * doesn't name would be inventing content, and the one building whose sign a
+ * player can read is the Mayor's House — which must NOT read as "the mayor is
+ * coming soon" when he is standing right below it handing out the tutorial. */
+export const TOWN_SOON_MARKS = [
+  { tx: 23.5, ty: 7.8 },    /* Mayor's House — top centre, blue roof */
+  { tx: 12.7, ty: 17.5 },   /* General Store — upper left, awning */
+  { tx: 34.2, ty: 16.9 },   /* red-roof house — upper right */
+  { tx: 8.0,  ty: 25.2 },   /* blue-roof house — mid left */
+  { tx: 39.0, ty: 25.7 },   /* blacksmith — mid right, anvil + forge chimney */
+  { tx: 15.4, ty: 34.1 },   /* purple-roof house — lower left */
+  { tx: 32.8, ty: 34.5 },   /* green-roof house — lower right */
+];
