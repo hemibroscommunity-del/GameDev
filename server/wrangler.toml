@@ -14,12 +14,23 @@ compatibility_date = "2024-12-01"
 #                     or via the Cloudflare dashboard (Workers → Settings →
 #                     Variables → Encrypt).  The Worker reads it, signs with
 #                     it, and never logs or transmits it.
-#   CHAIN_ID        — override only to point at Hemi testnet (743111) while
-#                     rehearsing.  Defaults to mainnet 43111 (onchain.js).
+#   CHAIN_ID        — 43111 is Hemi mainnet; 743111 is the testnet.  Lives
+#                     HERE, not the dashboard (see the warning below).
+#   CHAIN_RPC       — optional RPC URL override; empty = the default
+#                     https://rpc.hemi.network/rpc baked into onchain.js.
+#
+# v2.3.1682: EVERY plain var must live in this file.  Any value set in the
+# Cloudflare dashboard is DELETED on the next auto-deploy, because deploys
+# apply this [vars] block wholesale — a dashboard-set CHAIN_ID=743111 would
+# silently flip back to mainnet on the next merge.  Secrets are the one
+# exception: they survive deploys, which is why RELAYER_KEY goes in the
+# dashboard/CLI and everything else goes here.
 #
 # Operator runbook: docs/specs/progression-onchain.md
 [vars]
 SCORES_CONTRACT = ""
+CHAIN_ID = "43111"
+CHAIN_RPC = ""
 
 # Durable Objects bindings
 [[durable_objects.bindings]]

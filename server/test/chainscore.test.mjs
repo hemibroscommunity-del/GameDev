@@ -47,15 +47,44 @@ function fakeWs(label) {
   return { label, sent: [], send(s) { this.sent.push(JSON.parse(s)); }, close() {} };
 }
 
-/** A node stub that records what it was asked and always accepts. */
-function stubNode(log) {
+/* v2.3.1682: selectors the hardened path calls via eth_call, pinned as
+   literals against solc's methodIdentifiers (printed by
+   tools/dev/evm-conformance.mjs — the 0xfc9f73a9 precedent).  The stub
+   dispatches on them, which is also an implicit assertion: derive the wrong
+   selector in production code and every happy-path test fails. */
+const SEL_SIGNER = '0x238ac933';        // signer()
+const SEL_NONCES = '0x9e317f12';        // nonces(bytes32)
+
+/** A node stub that records what it was asked and always accepts.
+ *  v2.3.1682: grew eth_getCode / eth_call / eth_getTransactionReceipt
+ *  branches — the checkpoint path now preflights the contract, reads the
+ *  player's on-chain nonce, and refuses to report ok without a status-0x1
+ *  receipt, so a stub that answers only the broadcast trio fails everything.
+ *  `over` lets one case override a single method's behaviour. */
+function stubNode(log, over = {}) {
   return async (url, init) => {
     const body = JSON.parse(init.body);
     if (log) log.push(body.method);
-    const result = body.method === 'eth_getTransactionCount' ? '0x0'
-      : body.method === 'eth_gasPrice' ? '0x3b9aca00'
-      : body.method === 'eth_sendRawTransaction' ? '0x' + 'ee'.repeat(32)
-      : null;
+    if (over[body.method]) {
+      const r = over[body.method](body);
+      if (r && r.error) return { ok: true, json: async () => ({ jsonrpc: '2.0', id: body.id, error: r.error }) };
+      return { ok: true, json: async () => ({ jsonrpc: '2.0', id: body.id, result: r ? r.result : null }) };
+    }
+    let result = null;
+    if (body.method === 'eth_getTransactionCount') result = '0x0';
+    else if (body.method === 'eth_gasPrice') result = '0x3b9aca00';
+    else if (body.method === 'eth_sendRawTransaction') result = '0x' + 'ee'.repeat(32);
+    else if (body.method === 'eth_getCode') result = '0x6080604052';
+    else if (body.method === 'eth_getBalance') result = '0xde0b6b3a7640000';   // 1 ETH
+    else if (body.method === 'eth_getTransactionReceipt') result = { status: '0x1', blockNumber: '0x10' };
+    else if (body.method === 'eth_call') {
+      const data = String((body.params && body.params[0] && body.params[0].data) || '');
+      if (data.startsWith(SEL_SIGNER)) {
+        result = '0x' + '00'.repeat(12) + privToAddress(normalizePrivKey(TEST_KEY)).slice(2);
+      } else if (data.startsWith(SEL_NONCES)) {
+        result = '0x' + '00'.repeat(32);
+      }
+    }
     return { ok: true, json: async () => ({ jsonrpc: '2.0', id: body.id, result }) };
   };
 }
@@ -63,11 +92,11 @@ function stubNode(log) {
 /** A configured room wired to the stub node, with the RPC call log.  Same
  *  shape the older sections build inline; extracted here because the series
  *  sections (7-8) need several independent rooms. */
-function mk() {
+function mk(over) {
   const state = makeState();
   const rpc = [];
   const room = new GameRoom(state, { LEADERBOARD, RELAYER_KEY: TEST_KEY, SCORES_CONTRACT: CONTRACT });
-  room._chainRpcOpts = { fetchImpl: stubNode(rpc), rpc: 'http://test' };
+  room._chainRpcOpts = { fetchImpl: stubNode(rpc, over), rpc: 'http://test', receiptIntervalMs: 0 };
   return { room, state, rpc };
 }
 
@@ -104,7 +133,7 @@ function mk() {
   const state = makeState();
   const calls = [];
   const room = new GameRoom(state, { LEADERBOARD, RELAYER_KEY: TEST_KEY, SCORES_CONTRACT: CONTRACT });
-  room._chainRpcOpts = { fetchImpl: stubNode(calls), rpc: 'http://test' };
+  room._chainRpcOpts = { fetchImpl: stubNode(calls), rpc: 'http://test', receiptIntervalMs: 0 };
   const ws = fakeWs('p');
   room.sessions.set(ws, { id: 'bp_c', name: 'C', data: {}, rtt: 0, lastPing: 0, lastRecv: Date.now() });
 
@@ -151,9 +180,12 @@ function mk() {
   check('a failed write stores NOTHING (so it retries next time)',
     state._store.get(CHAIN_SCORE.KEY('bp_d')) === undefined);
 
-  room._chainRpcOpts = { fetchImpl: async (u, i) => ({
-    ok: true,
-    json: async () => ({ jsonrpc: '2.0', id: JSON.parse(i.body).id, error: { message: 'insufficient funds' } }),
+  /* v2.3.1682: the stub answers the preflight and nonce reads normally and
+     errors only the broadcast — 'insufficient funds' is a SEND failure, and
+     with a preflight in front of the send an error-everything stub would be
+     testing the preflight instead. */
+  room._chainRpcOpts = { receiptIntervalMs: 0, fetchImpl: stubNode(null, {
+    eth_sendRawTransaction: () => ({ error: { message: 'insufficient funds' } }),
   }) };
   const broke = await room._chainScoreCheckpoint('bp_e', { level: 10, svKills: 1 });
   check('an unfunded relayer is reported, not thrown',
@@ -175,14 +207,15 @@ function mk() {
   let release;
   const gate = new Promise((r) => { release = r; });
   let sends = 0;
-  room._chainRpcOpts = { fetchImpl: async (url, init) => {
+  /* v2.3.1682: gate the whole flight but answer the hardened protocol —
+     preflight (getCode + signer()), nonce read, receipt — or the first
+     checkpoint dies in preflight and the case tests nothing. */
+  const base = stubNode(null);
+  room._chainRpcOpts = { receiptIntervalMs: 0, fetchImpl: async (url, init) => {
     const body = JSON.parse(init.body);
     if (body.method === 'eth_sendRawTransaction') sends++;
     await gate;                                   // hold both calls mid-flight
-    const result = body.method === 'eth_getTransactionCount' ? '0x0'
-      : body.method === 'eth_gasPrice' ? '0x3b9aca00'
-      : '0x' + 'ee'.repeat(32);
-    return { ok: true, json: async () => ({ jsonrpc: '2.0', id: body.id, result }) };
+    return base(url, init);
   } };
 
   const ps = { level: 100, svKills: 7 };
@@ -327,6 +360,217 @@ function mk() {
 {
   const addr = privToAddress(normalizePrivKey(TEST_KEY));
   check('a relayer key yields a checksum-shaped address', /^0x[0-9a-f]{40}$/.test(addr), addr);
+}
+
+// ── 10. v2.3.1682: ok means CONFIRMED — a revert is a failure, not a receipt ──
+{
+  /* First attempt's receipt reverts; the retry's succeeds — the stateful
+     stub is the point, because the property under test is that a revert
+     leaves the door OPEN. */
+  let receipts = 0;
+  const { room, state } = mk({
+    eth_getTransactionReceipt: () => (++receipts === 1
+      ? { result: { status: '0x0', blockNumber: '0x10' } }
+      : { result: { status: '0x1', blockNumber: '0x11' } }),
+  });
+  const ws = fakeWs('r');
+  room.sessions.set(ws, { id: 'bp_r', name: 'R', data: {}, rtt: 0, lastPing: 0, lastRecv: Date.now() });
+  const res = await room._chainScoreCheckpoint('bp_r', { level: 25, svKills: 3 });
+  check('a REVERTED transaction is reported as a failure', res.ok === false && res.reason === 'reverted', res);
+  check('a reverted write stores NOTHING', state._store.get(CHAIN_SCORE.KEY('bp_r')) === undefined);
+  check('a reverted write sends the player NO receipt',
+    ws.sent.filter((m) => m.type === 'chain_score_recorded').length === 0, ws.sent);
+  /* THE point: before v2.3.1682 this next call returned 'already-recorded'
+     and the score was lost forever. */
+  const retry = await room._chainScoreCheckpoint('bp_r', { level: 25, svKills: 3 });
+  check('the milestone is NOT latched by the failure — it retries', retry.ok === true, retry);
+}
+{
+  const { room, state } = mk({
+    eth_getTransactionReceipt: () => ({ result: null }),   // never mined
+  });
+  const res = await room._chainScoreCheckpoint('bp_u', { level: 25, svKills: 3 });
+  check('a never-mined transaction reports unconfirmed', res.ok === false && res.reason === 'unconfirmed', res);
+  check('an unconfirmed write stores nothing (retry converges via >= guard)',
+    state._store.get(CHAIN_SCORE.KEY('bp_u')) === undefined);
+}
+
+// ── 11. v2.3.1682: the attestation nonce is anchored to the CONTRACT ──
+{
+  /* The resurrection case: DO storage lost, chain remembers nonce 3.  The
+     old `stored+1` restarts at 1 and every write reverts StaleNonce forever;
+     the fix reads the chain and continues at 4. */
+  const { room, state } = mk({
+    eth_call: (body) => {
+      const data = String(body.params[0].data || '');
+      if (data.startsWith(SEL_NONCES)) return { result: '0x' + '3'.padStart(64, '0') };
+      if (data.startsWith(SEL_SIGNER)) return { result: '0x' + '00'.repeat(12) + privToAddress(normalizePrivKey(TEST_KEY)).slice(2) };
+      return { result: null };
+    },
+  });
+  const res = await room._chainScoreCheckpoint('bp_n', { level: 25, svKills: 9 });
+  check('a lost DO record resumes AFTER the chain nonce', res.ok === true, res);
+  check('the stored nonce is chain+1, not 1',
+    state._store.get(CHAIN_SCORE.KEY('bp_n')).nonce === 4,
+    state._store.get(CHAIN_SCORE.KEY('bp_n')).nonce);
+}
+{
+  /* Fail CLOSED: if the nonce read fails, do not sign with a guess. */
+  const { room, state, rpc } = mk({
+    eth_call: (body) => {
+      const data = String(body.params[0].data || '');
+      if (data.startsWith(SEL_NONCES)) return { error: { message: 'node melted' } };
+      if (data.startsWith(SEL_SIGNER)) return { result: '0x' + '00'.repeat(12) + privToAddress(normalizePrivKey(TEST_KEY)).slice(2) };
+      return { result: null };
+    },
+  });
+  const res = await room._chainScoreCheckpoint('bp_n2', { level: 25, svKills: 9 });
+  check('a failed nonce read fails closed', res.ok === false && res.reason === 'nonce-read-failed', res);
+  check('...without broadcasting', !rpc.includes('eth_sendRawTransaction'), rpc);
+  check('...and stores nothing', state._store.get(CHAIN_SCORE.KEY('bp_n2')) === undefined);
+}
+
+// ── 12. v2.3.1682: preflight — burn zero gas on a config that cannot work ──
+{
+  const bad = new GameRoom(makeState(), { LEADERBOARD, RELAYER_KEY: TEST_KEY, SCORES_CONTRACT: 'banana' });
+  const rpc = [];
+  bad._chainRpcOpts = { fetchImpl: stubNode(rpc), rpc: 'http://test', receiptIntervalMs: 0 };
+  const res = await bad._chainScoreCheckpoint('bp_p', { level: 25, svKills: 1 });
+  check('a malformed contract address is a pure failure', res.ok === false && res.reason === 'contract-malformed', res);
+  check('...with ZERO RPC calls', rpc.length === 0, rpc);
+
+  const zero = new GameRoom(makeState(), { LEADERBOARD, RELAYER_KEY: TEST_KEY, SCORES_CONTRACT: '0x' + '00'.repeat(20) });
+  zero._chainRpcOpts = { fetchImpl: stubNode(), rpc: 'http://test', receiptIntervalMs: 0 };
+  const zres = await zero._chainScoreCheckpoint('bp_p', { level: 25, svKills: 1 });
+  check('the zero address is refused', zres.ok === false && zres.reason === 'contract-zero', zres);
+}
+{
+  const { room, rpc } = mk({ eth_getCode: () => ({ result: '0x' }) });
+  const res = await room._chainScoreCheckpoint('bp_p2', { level: 25, svKills: 1 });
+  check('an address with no code is named as the problem',
+    res.ok === false && res.reason === 'no-contract-code', res);
+  check('...and no gas was spent on it', !rpc.includes('eth_sendRawTransaction'), rpc);
+}
+{
+  const { room, rpc } = mk({
+    eth_call: (body) => String(body.params[0].data || '').startsWith(SEL_SIGNER)
+      ? { result: '0x' + '00'.repeat(12) + 'cc'.repeat(20) }   // some OTHER signer
+      : { result: '0x' + '00'.repeat(32) },
+  });
+  const res = await room._chainScoreCheckpoint('bp_p3', { level: 25, svKills: 1 });
+  check('a signer mismatch is caught BEFORE any gas is spent',
+    res.ok === false && res.reason === 'signer-mismatch', res);
+  check('...no broadcast happened', !rpc.includes('eth_sendRawTransaction'), rpc);
+}
+{
+  /* The verdict is cached for the DO lifetime: one getCode across two
+     checkpoints proves it (env can only change via a deploy, which wipes
+     the DO and the cache with it). */
+  const { room, rpc } = mk();
+  await room._chainScoreCheckpoint('bp_p4', { level: 25, svKills: 1 });
+  await room._chainScoreCheckpoint('bp_p4', { level: 50, svKills: 2 });
+  check('the preflight verdict is cached (one eth_getCode for two checkpoints)',
+    rpc.filter((m) => m === 'eth_getCode').length === 1, rpc);
+}
+
+// ── 13. v2.3.1682: one send in flight per DO — cross-PLAYER serialization ──
+{
+  const room = new GameRoom(makeState(), { LEADERBOARD, RELAYER_KEY: TEST_KEY, SCORES_CONTRACT: CONTRACT });
+  let release;
+  const gate = new Promise((r) => { release = r; });
+  const order = [];
+  let txCount = 0;
+  const base = stubNode(null);
+  room._chainRpcOpts = { receiptIntervalMs: 0, fetchImpl: async (url, init) => {
+    const body = JSON.parse(init.body);
+    order.push(body.method);
+    if (body.method === 'eth_getTransactionCount') {
+      /* An incrementing count models the real node: if the two sends were
+         concurrent they would both read the SAME value and collide. */
+      const r = '0x' + (txCount++).toString(16);
+      if (txCount === 1) await gate;   // hold the FIRST flight mid-air
+      return { ok: true, json: async () => ({ jsonrpc: '2.0', id: body.id, result: r }) };
+    }
+    return base(url, init);
+  } };
+
+  const a = room._chainScoreCheckpoint('bp_qa', { level: 25, svKills: 1 });
+  const b = room._chainScoreCheckpoint('bp_qb', { level: 25, svKills: 2 });
+  await new Promise((r) => setTimeout(r, 20));
+  const sendsBeforeRelease = order.filter((m) => m === 'eth_sendRawTransaction').length;
+  const countsBeforeRelease = order.filter((m) => m === 'eth_getTransactionCount').length;
+  release();
+  const [ra, rb] = await Promise.all([a, b]);
+  check('both players\' checkpoints eventually succeed', ra.ok === true && rb.ok === true, { ra, rb });
+  check('the second player did not read a tx nonce while the first was in flight',
+    countsBeforeRelease === 1, { countsBeforeRelease, sendsBeforeRelease });
+  check('the two transactions used DIFFERENT relayer nonces', txCount === 2, txCount);
+}
+
+// ── 14. v2.3.1682: GET /api/admin/chainstatus — the operator's one page ──
+{
+  const { room, state } = mk();
+  room.env = { ...room.env, ADMIN_KEY: 'sesame' };
+  const call = (path, auth) => room._adminFetch(new Request('http://x/api/admin' + path, {
+    headers: auth ? { Authorization: 'Bearer ' + auth } : {},
+  }));
+
+  let r = await call('/chainstatus');
+  check('chainstatus without a key is denied', r.status === 401, r.status);
+
+  r = await call('/chainstatus', 'sesame');
+  let j = await r.json();
+  check('chainstatus reports a healthy config', j.ok === true && j.configured === true
+    && j.signerMatch === true && j.codePresent === true, j);
+  check('chainstatus names the relayer address and balance',
+    /^0x[0-9a-f]{40}$/.test(j.relayerAddress) && j.balanceEth === '1.0000', j);
+
+  await room._chainScoreCheckpoint('bp_st', { level: 25, svKills: 6 });
+  r = await call('/chainstatus?id=bp_st', 'sesame');
+  j = await r.json();
+  check('chainstatus?id returns the stored write with an explorer link',
+    j.player && j.player.milestone === 25 && /\/tx\/0x/.test(j.player.explorer), j.player);
+  check('chainstatus?id hands the operator the player key (no by-hand keccak)',
+    j.player && /^0x[0-9a-f]{64}$/.test(j.player.playerKey), j.player && j.player.playerKey);
+
+  r = await call('/chainstatus', 'sesame');
+  j = await r.json();
+  check('the aggregate view counts writes and shows the newest',
+    j.writes === 1 && j.lastWrite && j.lastWrite.milestone === 25, j);
+
+  const noAdmin = new GameRoom(makeState(), { LEADERBOARD });
+  const r404 = await noAdmin._adminFetch(new Request('http://x/api/admin/chainstatus'));
+  check('with no ADMIN_KEY configured the surface does not exist', r404.status === 404, r404.status);
+}
+
+// ── 15. v2.3.1682: CHAIN_RPC override reaches every call site ──
+{
+  const state = makeState();
+  const urls = new Set();
+  const room = new GameRoom(state, {
+    LEADERBOARD, RELAYER_KEY: TEST_KEY, SCORES_CONTRACT: CONTRACT,
+    CHAIN_RPC: 'http://override.example',
+  });
+  /* No _chainRpcOpts here — production path, only fetch is stubbed.  The
+     helper must route EVERY call (preflight, nonce, send, receipt) to the
+     env override; a single call escaping to the hardcoded default is the
+     bug. */
+  const base = stubNode(null);
+  const origFetch = globalThis.fetch;
+  globalThis.fetch = async (url, init) => { urls.add(String(url)); return base(url, init); };
+  try {
+    /* receipt polling at production interval would stall the suite — inject
+       only the interval, keeping the rpc/fetch resolution on the env path. */
+    room._chainRpcOpts = null;
+    const orig = room._chainRpcOptions.bind(room);
+    room._chainRpcOptions = () => ({ ...orig(), receiptIntervalMs: 0 });
+    const res = await room._chainScoreCheckpoint('bp_o', { level: 25, svKills: 2 });
+    check('the env-override path completes', res.ok === true, res);
+    check('every RPC call hit the CHAIN_RPC override',
+      urls.size === 1 && urls.has('http://override.example'), [...urls]);
+  } finally {
+    globalThis.fetch = origFetch;
+  }
 }
 
 console.log(failures === 0 ? '\nchainscore: ALL PASS' : `\nchainscore: ${failures} FAILURE(S)`);

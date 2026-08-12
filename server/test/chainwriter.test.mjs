@@ -25,6 +25,7 @@ import {
   rlpEncode, uintToBytes, normalizePrivKey, privToAddress, playerKey,
   scoreDigest, signDigest, selector, encodeRecordScore, buildSignedTx, skillKey,
   sendRecordScore, RECORD_SCORE_SIG,
+  waitForReceipt, readPlayerNonce, readContractSigner, NONCES_SIG, SIGNER_SIG,
 } from '../src/chainwriter.js';
 import { keccak256, toHex, fromHex } from '../src/onchain.js';
 import * as secp from '../src/vendor/noble-secp256k1.js';
@@ -256,9 +257,12 @@ const hex = (b) => '0x' + toHex(b);
   const fakeFetch = async (url, init) => {
     const body = JSON.parse(init.body);
     calls.push(body.method);
+    /* v2.3.1682: the stub must answer the receipt poll too — sendRecordScore
+       no longer reports ok at broadcast. */
     const result = body.method === 'eth_getTransactionCount' ? '0x3'
       : body.method === 'eth_gasPrice' ? '0x3b9aca00'
       : body.method === 'eth_sendRawTransaction' ? '0x' + 'cd'.repeat(32)
+      : body.method === 'eth_getTransactionReceipt' ? { status: '0x1', blockNumber: '0x2a' }
       : null;
     return { ok: true, json: async () => ({ jsonrpc: '2.0', id: body.id, result }) };
   };
@@ -266,7 +270,7 @@ const hex = (b) => '0x' + toHex(b);
   const res = await sendRecordScore({
     playerId: 'bp_send', skills: ['melee', 'kills'], values: [12, 34], nonce: 1,
     contract: '0x' + 'ab'.repeat(20), priv, chainId: 43111,
-    opts: { fetchImpl: fakeFetch, rpc: 'http://test' },
+    opts: { fetchImpl: fakeFetch, rpc: 'http://test', receiptIntervalMs: 0 },
   });
   check('sendRecordScore succeeds against a stub node', res.ok === true, res);
   check('sendRecordScore returns the tx hash', res.txHash === '0x' + 'cd'.repeat(32), res.txHash);
@@ -274,6 +278,9 @@ const hex = (b) => '0x' + toHex(b);
   check('sendRecordScore queries nonce, gas price, then broadcasts',
     calls.includes('eth_getTransactionCount') && calls.includes('eth_gasPrice')
     && calls.includes('eth_sendRawTransaction'), calls);
+  check('v2.3.1682: ...and then polls for the receipt before reporting ok',
+    calls.includes('eth_getTransactionReceipt'), calls);
+  check('v2.3.1682: a confirmed send carries the block number', res.block === 42, res.block);
 
   // THE failure posture: a dead node must not throw into a game path.
   const deadFetch = async () => { throw new Error('ECONNREFUSED'); };
@@ -297,6 +304,82 @@ const hex = (b) => '0x' + toHex(b);
   });
   check('an RPC-level rejection is reported, not thrown',
     rejected.ok === false && /nonce too low/.test(rejected.reason), rejected);
+}
+
+// ── 7. v2.3.1682: receipt semantics — ok means CONFIRMED, not broadcast ──
+{
+  const mkFetch = (answers) => {
+    let i = 0;
+    const log = [];
+    const f = async (url, init) => {
+      const body = JSON.parse(init.body);
+      log.push(body.method);
+      const a = answers[Math.min(i++, answers.length - 1)];
+      return { ok: true, json: async () => ({ jsonrpc: '2.0', id: body.id, result: a }) };
+    };
+    f.log = log;
+    return f;
+  };
+
+  /* Two empty polls, then a success — the loop keeps asking. */
+  let f = mkFetch([null, null, { status: '0x1', blockNumber: '0x1c8' }]);
+  let r = await waitForReceipt('0x' + 'aa'.repeat(32), { fetchImpl: f, rpc: 'http://t', receiptIntervalMs: 0 });
+  check('a pending tx is polled until mined', r.status === 'success' && r.block === 456, r);
+  check('...taking exactly three polls', f.log.length === 3, f.log.length);
+
+  f = mkFetch([{ status: '0x0', blockNumber: '0x10' }]);
+  r = await waitForReceipt('0x' + 'aa'.repeat(32), { fetchImpl: f, rpc: 'http://t', receiptIntervalMs: 0 });
+  check('a reverted receipt is a verdict, not a retry', r.status === 'reverted' && f.log.length === 1, r);
+
+  f = mkFetch([null]);
+  r = await waitForReceipt('0x' + 'aa'.repeat(32), { fetchImpl: f, rpc: 'http://t', receiptIntervalMs: 0, receiptTries: 3 });
+  check('a tx that never mines resolves unknown after the try budget',
+    r.status === 'unknown' && f.log.length === 3, { r, polls: f.log.length });
+
+  /* A flaky poll (thrown fetch) is not a verdict — the loop continues. */
+  let n = 0;
+  const flaky = async (url, init) => {
+    const body = JSON.parse(init.body);
+    if (++n === 1) throw new Error('socket reset');
+    return { ok: true, json: async () => ({ jsonrpc: '2.0', id: body.id, result: { status: '0x1' } }) };
+  };
+  r = await waitForReceipt('0x' + 'aa'.repeat(32), { fetchImpl: flaky, rpc: 'http://t', receiptIntervalMs: 0 });
+  check('one flaky poll does not fail the confirmation', r.status === 'success', r);
+}
+
+// ── 8. v2.3.1682: contract-read helpers + their selectors, pinned ──
+{
+  /* Like recordScore/0xfc9f73a9: literals read out of solc 0.8.26's
+     methodIdentifiers via tools/dev/evm-conformance.mjs, which also asserts
+     the runtime selector() derivation matches.  If either constant changes,
+     the chainscore suite's stub dispatch changes with it. */
+  check('nonces(bytes32) selector == 0x9e317f12 (from compiled solc output)',
+    hex(selector(NONCES_SIG)) === '0x9e317f12', hex(selector(NONCES_SIG)));
+  check('signer() selector == 0x238ac933 (from compiled solc output)',
+    hex(selector(SIGNER_SIG)) === '0x238ac933', hex(selector(SIGNER_SIG)));
+
+  const seen = [];
+  const f = async (url, init) => {
+    const body = JSON.parse(init.body);
+    seen.push(body.params[0].data);
+    const data = String(body.params[0].data);
+    const result = data.startsWith('0x9e317f12') ? '0x' + '5'.padStart(64, '0')
+      : '0x' + '00'.repeat(12) + 'ee'.repeat(20);
+    return { ok: true, json: async () => ({ jsonrpc: '2.0', id: body.id, result }) };
+  };
+  const nonce = await readPlayerNonce({
+    contract: '0x' + 'ab'.repeat(20), player: playerKey('bp_x'),
+    opts: { fetchImpl: f, rpc: 'http://t' },
+  });
+  check('readPlayerNonce decodes the uint64 word', nonce === 5, nonce);
+  check('readPlayerNonce sends selector + 32-byte player key',
+    seen[0].length === 2 + 8 + 64 && seen[0].slice(10) === toHex(playerKey('bp_x')), seen[0]);
+
+  const signer = await readContractSigner({
+    contract: '0x' + 'ab'.repeat(20), opts: { fetchImpl: f, rpc: 'http://t' },
+  });
+  check('readContractSigner decodes the right-aligned address',
+    signer === '0x' + 'ee'.repeat(20), signer);
 }
 
 console.log(failures === 0 ? '\nchainwriter: ALL PASS' : `\nchainwriter: ${failures} FAILURE(S)`);

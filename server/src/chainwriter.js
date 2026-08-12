@@ -256,6 +256,78 @@ export async function buildSignedTx(tx, priv) {
   };
 }
 
+/* ── contract reads (v2.3.1682) ─────────────────────────────────────────
+ * eth_call getters the hardening layer needs.  Selectors are derived at
+ * RUNTIME from the signature string via the vector-pinned selector() — no
+ * hand-typed hex — and the literals are pinned in chainwriter.test.mjs
+ * against solc's methodIdentifiers (the recordScore/0xfc9f73a9 precedent):
+ *   nonces(bytes32) = 9e317f12, signer() = 238ac933. */
+
+export const NONCES_SIG = 'nonces(bytes32)';
+export const SIGNER_SIG = 'signer()';
+
+function ethCallData(sigStr, argBytes) {
+  const sel = selector(sigStr);
+  const out = new Uint8Array(4 + (argBytes ? argBytes.length : 0));
+  out.set(sel, 0);
+  if (argBytes) out.set(argBytes, 4);
+  return '0x' + toHex(out);
+}
+
+/** The contract's stored attestation nonce for one player.
+ *  This is what heals the lost-DO-record trap: sign with anything lower and
+ *  every future write reverts StaleNonce forever, silently. */
+export async function readPlayerNonce({ contract, player, opts = {} }) {
+  const key = player instanceof Uint8Array ? player : fromHex(player);
+  const hex = await rpcCall('eth_call',
+    [{ to: contract, data: ethCallData(NONCES_SIG, key) }, 'latest'], opts);
+  /* uint64 right-aligned in one return word; lifetime max is 9 writes, so
+     Number() is safe by a comfortable nine orders of magnitude. */
+  return Number(BigInt(hex));
+}
+
+/** The signer address the deployed contract will actually accept. */
+export async function readContractSigner({ contract, opts = {} }) {
+  const hex = await rpcCall('eth_call',
+    [{ to: contract, data: ethCallData(SIGNER_SIG) }, 'latest'], opts);
+  const h = String(hex || '').replace(/^0x/, '').padStart(64, '0');
+  return '0x' + h.slice(24).toLowerCase();
+}
+
+/* ── receipt confirmation (v2.3.1682) ───────────────────────────────────
+ * eth_sendRawTransaction returning a hash proves a node HEARD the
+ * transaction, nothing more.  Before this, a tx that broadcast and then
+ * REVERTED (signer mismatch, out of gas) — or fell out of the mempool —
+ * was treated as success: the milestone was stored as recorded forever and
+ * the player got a "✓" receipt pointing at a failed transaction.  Nothing
+ * may be marked recorded until a status-0x1 receipt exists; that single
+ * property makes every interrupted/evicted/timed-out path safe, because
+ * "we don't know" now degrades to a retry instead of a lie. */
+
+export const RECEIPT = {
+  /* ~60s of patience ≈ five blocks at Hemi's ~12s cadence.  A DO poll this
+     long is fine: the path is fire-and-forget (nothing in combat awaits it)
+     and the per-player lane just reports 'in-flight' meanwhile. */
+  TRIES: 10,
+  INTERVAL_MS: 6000,
+};
+
+export async function waitForReceipt(txHash, opts = {}) {
+  const tries = opts.receiptTries || RECEIPT.TRIES;
+  const interval = opts.receiptIntervalMs !== undefined ? opts.receiptIntervalMs : RECEIPT.INTERVAL_MS;
+  for (let i = 0; i < tries; i++) {
+    if (i > 0 && interval > 0) await new Promise((r) => setTimeout(r, interval));
+    let rec = null;
+    try {
+      rec = await rpcCall('eth_getTransactionReceipt', [txHash], opts);
+    } catch (e) { continue; /* a flaky poll is not a verdict */ }
+    if (!rec) continue;                      // not mined yet
+    if (rec.status === '0x1') return { status: 'success', block: rec.blockNumber ? Number(BigInt(rec.blockNumber)) : undefined };
+    return { status: 'reverted' };
+  }
+  return { status: 'unknown' };
+}
+
 /* ── the send path ──────────────────────────────────────────────────────*/
 
 /** Pull nonce + fee data and broadcast. Returns {ok, txHash} | {ok:false,
@@ -290,7 +362,9 @@ export async function sendRecordScore({
       maxFeePerGas,
       /* MEASURED, not guessed.  tools/dev/evm-conformance.mjs runs the real
          compiled contract in a local EVM: a first-ever 14-skill write costs
-         1,087,613 gas of execution.  The worst case per skill is THREE cold
+         1,088,021 gas of execution (v2.3.1682: +408 over the pre-guardian
+         measurement — `signer` is an SLOAD now that it can rotate).  The
+         worst case per skill is THREE cold
          SSTOREs (the level itself, the `_seenSkill` flag, and the push onto
          `skills`) ≈ 66k, not the one I first assumed — an earlier version of
          this line budgeted 45k per skill and would have run out of gas on
@@ -305,7 +379,14 @@ export async function sendRecordScore({
     }, priv);
 
     const txHash = await rpcCall('eth_sendRawTransaction', [raw], opts);
-    return { ok: true, txHash, from };
+
+    /* v2.3.1682: ok means CONFIRMED, not broadcast.  See waitForReceipt's
+       header for why — the one-line summary is that a hash proves a node
+       heard us, and 'heard' was being stored as 'recorded forever'. */
+    const receipt = await waitForReceipt(txHash, opts);
+    if (receipt.status === 'success') return { ok: true, txHash, from, block: receipt.block };
+    if (receipt.status === 'reverted') return { ok: false, reason: 'reverted', txHash };
+    return { ok: false, reason: 'unconfirmed', txHash };
   } catch (e) {
     /* Message only — never the key, and never the raw transaction. */
     return { ok: false, reason: (e && e.message) ? String(e.message).slice(0, 200) : 'send failed' };
