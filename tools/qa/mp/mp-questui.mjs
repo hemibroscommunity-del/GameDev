@@ -156,5 +156,101 @@ export async function run({ browser, wsPort, webPort, rec }) {
   });
   rec.ok('the accepted quest is his tutorial opener', !!log && log.tut_1 === 'active', log);
 
+  /* ═══ v2.3.1685: TURNING IN AT THE GIVER, INCLUDING THE XP CHOICE ═══
+     Owner: "Add chooser to dialog".  Under prog3 every point of XP belongs to
+     Melee, Bow or Magic, and the worker REFUSES an XP-paying turn-in that
+     names none — so before this version the world dialogue could not complete
+     a quest at all: v2.3.1684 got the message to the worker, and the worker
+     threw it away for the missing category.  Meanwhile the client had already
+     applied gold, XP and 'turnedIn' locally, so it LOOKED paid until the next
+     player_state took it back.  This walks the whole thing at the giver. */
+  const pid = await H.readState(P, (S) => S.myId);
+  await H.grant(wsPort, pid, 'item', { invKey: 'snowman', count: 4 });
+  await P.page.waitForTimeout(2000);
+
+  const tapMayor = async () => {
+    await P.page.evaluate(() => {
+      const S = window._gameState && window._gameState.current;
+      const npc = (S && S.npcs || []).find((n) => n && n.id === 'mayor_bro');
+      const cv = document.querySelector('canvas');
+      if (!S || !npc || !cv || !S.camera) return;
+      if (S.player) { S.player.x = npc.x; S.player.y = npc.y + 40; }
+      const rect = cv.getBoundingClientRect();
+      const cx = rect.left + (npc.x - S.camera.x) * (S._worldScaleX || 1);
+      const cy = rect.top + (npc.y - S.camera.y) * (S._worldScaleY || 1);
+      for (const type of ['pointerdown', 'pointerup', 'click']) {
+        cv.dispatchEvent(new PointerEvent(type, {
+          clientX: cx, clientY: cy, bubbles: true, cancelable: true, pointerId: 1, pointerType: 'touch',
+        }));
+      }
+    });
+    await P.page.waitForTimeout(900);
+  };
+  /* Leave the quest log first — the dialogue opens over the world. */
+  await H.openDest(P, 'Dashboard').catch(() => {});
+  await P.page.waitForTimeout(800);
+  await tapMayor();
+
+  let dlg = await H.bodyText(P);
+  rec.ok('with the remnants in hand the giver offers the turn-in',
+    /Turn In Quest|Choose a skill to train/.test(dlg), dlg.slice(0, 300));
+  rec.ok('the dialogue asks where the XP should go', /Train 40 XP into/.test(dlg), dlg.slice(0, 300));
+  rec.ok('...naming the three trained skills',
+    /Melee/.test(dlg) && /Bow/.test(dlg) && /Magic/.test(dlg), dlg.slice(0, 300));
+  rec.ok('...and the turn-in button is held until one is chosen',
+    /Choose a skill to train/.test(dlg), dlg.slice(0, 300));
+
+  /* Pressing the held button must do NOTHING — not even locally.  A local
+     'turnedIn' here would strand the quest: the worker never saw it, and the
+     client will not offer a turn-in twice. */
+  const beforePress = await H.readState(P, (S) => ({ q: S.rpg._quests.tut_1, coins: S.rpg.coins }));
+  await H.clickText(P, 'Choose a skill to train').catch(() => {});
+  await P.page.waitForTimeout(900);
+  const afterPress = await H.readState(P, (S) => ({ q: S.rpg._quests.tut_1, coins: S.rpg.coins }));
+  rec.ok('pressing it with no choice made changes nothing at all',
+    afterPress.q === beforePress.q && afterPress.coins === beforePress.coins,
+    { beforePress, afterPress });
+
+  /* Choose BOW deliberately — the melee skill would also be raised by the
+     starter sword, so bow is the one whose XP can only have come from here. */
+  await H.clickText(P, 'Bow').catch(() => {});
+  await P.page.waitForTimeout(600);
+  dlg = await H.bodyText(P);
+  rec.ok('choosing a skill arms the turn-in button',
+    /Turn In Quest/.test(dlg) && !/Choose a skill to train/.test(dlg), dlg.slice(0, 300));
+
+  const bowXpBefore = await H.readState(P, (S) =>
+    (S.rpg.prog3 && S.rpg.prog3.sk && S.rpg.prog3.sk.bow && S.rpg.prog3.sk.bow.xp) || 0);
+  /* The client's OWN coin figure is not evidence: turnInQuest adds the gold
+     locally as prediction, so it goes up even when the worker refuses the
+     turn-in outright (verified — with the xpCat removed, every client-side
+     number still said "paid" while nothing had been). Take the baseline from
+     the persisted blob and compare against that instead. */
+  const svrCoinsBefore = await H.adminPlayer(wsPort, pid)
+    .then((a) => (a && a.rpg && a.rpg.coins) || 0).catch(() => null);
+  await H.clickText(P, 'Turn In Quest').catch(() => {});
+  await P.page.waitForTimeout(3000);
+
+  const paid = await H.readState(P, (S) => ({
+    quest: S.rpg._quests.tut_1,
+    coins: S.rpg.coins,
+    bowXp: (S.rpg.prog3 && S.rpg.prog3.sk && S.rpg.prog3.sk.bow && S.rpg.prog3.sk.bow.xp) || 0,
+    wstash: (S.rpg.weaponStash || []).map((w) => w && w.name),
+    snowman: (S.rpg.inventory || {}).snowman || 0,
+  }));
+  rec.ok('the turn-in completes', paid.quest === 'turnedIn', paid);
+  /* weaponStash and prog3 are server-owned — the client only ever receives
+     them — so these are the assertions that prove the WORKER paid, rather
+     than the client congratulating itself as it used to. */
+  rec.ok('the worker pays the bow into the bag', paid.wstash.includes("Bro's Bow"), paid);
+  rec.ok('the XP lands in the skill that was chosen', paid.bowXp > bowXpBefore,
+    { before: bowXpBefore, after: paid.bowXp });
+  const svrCoinsAfter = await H.adminPlayer(wsPort, pid)
+    .then((a) => (a && a.rpg && a.rpg.coins) || 0).catch(() => null);
+  rec.ok('the gold is paid in the STORED blob, not just on screen',
+    svrCoinsBefore != null && svrCoinsAfter >= svrCoinsBefore + 25,
+    { before: svrCoinsBefore, after: svrCoinsAfter, clientSays: paid.coins });
+  rec.ok('and the remnants are consumed', paid.snowman === 0, paid);
+
   await P.ctx.close().catch(() => {});
 }

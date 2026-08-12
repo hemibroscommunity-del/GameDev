@@ -1,6 +1,7 @@
 import React from 'react';
 import { acceptQuest, turnInQuest } from '@/game/quests.js';
 import { NPC_DATA } from '@/data/gameDisplay.js';
+import { prog3Live, PROG3_SKILL_META } from '@/data/prog3.js';
 
 /* v2.3.1681 (owner: "Add thumbnail of mayor bro's profile picture in quest
    dialog box and also thumbnail of the quest items (sword and shield)").
@@ -50,6 +51,53 @@ function ItemChip(props) {
    stateRef, questPanel, setQuestPanel, setRpgState). The
    `_questPanel$npcRef` babel optional-chaining temp was hoisted to
    BroTown top; declared locally. */
+/* ═══ v2.3.1685: THE XP CHOOSER (owner: "Add chooser to dialog") ═══
+   Under prog3 there is no generic XP bar — every point of XP belongs to
+   Melee, Bow or Magic — so an XP-paying turn-in has to name one, and the
+   worker REFUSES one that doesn't (`_needsCat`, server/src/quests.js).
+   The quest LOG has had this picker since v2.3.1669; this in-world dialogue
+   never did, so turning in at the giver could not succeed: before v2.3.1684
+   the message never reached the worker at all, and after it was refused for
+   the missing category. Either way the reward silently never arrived while
+   the client had already congratulated you locally.
+   Same keys, labels and icons as the log's picker so the two doors into one
+   action agree. This is the mechanism, not a courtesy — with no choice
+   there is no reward — so the Turn In button below stays inert until one of
+   these is pressed, rather than firing a turn-in that cannot pay. */
+function XpChooser(props) {
+  var xp = props.xp, xpCat = props.xpCat, setXpCat = props.setXpCat;
+  return React.createElement("div", {
+    style: { marginTop: 2, marginBottom: 10 },
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11, fontWeight: 600, letterSpacing: '.06em',
+      textTransform: 'uppercase', color: 'rgba(238,242,235,.55)', marginBottom: 5,
+    },
+  }, 'Train ' + xp + ' XP into'), /*#__PURE__*/React.createElement("div", {
+    style: { display: 'flex', gap: 5 },
+  }, PROG3_SKILL_META.map(function (sk) {
+    var on = xpCat === sk.key;
+    return /*#__PURE__*/React.createElement("button", {
+      key: sk.key,
+      'aria-pressed': on,
+      onClick: function onClick(e) { e.stopPropagation(); setXpCat(sk.key); },
+      style: {
+        flex: '1 1 0', minWidth: 0, minHeight: 44,
+        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
+        background: on ? 'rgba(216,168,95,.18)' : 'transparent',
+        border: '1px solid ' + (on ? '#D8A85F' : 'rgba(238,242,235,.18)'),
+        borderRadius: 10,
+        color: on ? '#D8A85F' : '#EEF2EB',
+        fontFamily: 'inherit', fontSize: 12, fontWeight: 700,
+        cursor: 'pointer', touchAction: 'manipulation',
+      },
+    }, /*#__PURE__*/React.createElement("img", {
+      src: sk.iconSrc, alt: "", draggable: false,
+      style: { width: 18, height: 18, objectFit: 'contain', flex: 'none', pointerEvents: 'none' },
+    }), sk.label);
+  })));
+}
+
 /* v2.3.1232: Lantern Slate restyle (docs/LANTERN-SLATE-SPEC.md) — panel
    surface + 11/600 section headers + recessed objective well + 44px
    brass primary. Styles/structure only; handlers untouched. */
@@ -59,6 +107,18 @@ export function QuestPanel(props) {
     questPanel = props.questPanel,
     setQuestPanel = props.setQuestPanel,
     setRpgState = props.setRpgState;
+  /* v2.3.1685: which skill this turn-in's XP trains (see XpChooser). Local
+     to the open dialogue — closing it and coming back asks again, which is
+     right: it is a decision about THIS payout, not a saved preference. */
+  var _xpCatState = React.useState(null),
+    xpCat = _xpCatState[0],
+    setXpCat = _xpCatState[1];
+  var _xpAmt = (questPanel.quest.reward && questPanel.quest.reward.xp) || 0;
+  /* Read the LIVE rpg (stateRef), not the React copy: prog3 arrives on a
+     player_state and the copy can lag a tick, which would render the wrong
+     branch for exactly the character the picker exists for. */
+  var _liveRpg = (stateRef && stateRef.current && stateRef.current.rpg) || rpgState;
+  var _needsXpChoice = prog3Live(_liveRpg) && _xpAmt > 0;
   var _questPanel$npcRef;
   /* v2.3.1681: the giver's face, and the kit on offer. */
   var _portrait = npcPortrait(questPanel.npc);
@@ -81,6 +141,16 @@ export function QuestPanel(props) {
     },
     style: {
       width: 'min(360px, calc(100vw - 24px))', /* v2.3.1234: was 300 fixed — fill narrow phones, never overflow */
+      /* v2.3.1685: the card's height is left to the stylesheet's
+         `max-height:100%` (game.css .bt-inspect-card) ON PURPOSE — that
+         resolves against the overlay region ABOVE the dashboard, so the card
+         never slides under the band.  An explicit taller cap was tried and
+         put the primary button behind the dashboard, which is worse than
+         scrolling.  What this card needed instead was for its ACTION to stay
+         reachable while the body scrolls — see the sticky button below.
+         `overscrollBehavior` keeps that scroll from chaining into the page
+         behind it on iOS. */
+      overscrollBehavior: 'contain',
       /* v2.3.1232: override legacy navy card with Lantern panel surface */
       background: '#202C32',
       border: '1px solid rgba(238,242,235,.14)',
@@ -313,7 +383,14 @@ export function QuestPanel(props) {
       /* v2.3.782: body moved to src/game/quests.js (Phase 3). */
       acceptQuest(stateRef.current, questPanel, { setRpgState: setRpgState, setQuestPanel: setQuestPanel });
     }
-  }, "Accept Quest"), questPanel.status === 'active' && questPanel.quest.check(rpgState, stateRef.current) && /*#__PURE__*/React.createElement("button", {
+  }, "Accept Quest"), questPanel.status === 'active' && questPanel.quest.check(rpgState, stateRef.current) && /*#__PURE__*/React.createElement(React.Fragment, null,
+    /* v2.3.1685: the picker sits ABOVE the button it unlocks, so the reason
+       the button is dim is the thing you just read. */
+    _needsXpChoice && /*#__PURE__*/React.createElement(XpChooser, {
+      xp: _xpAmt, xpCat: xpCat, setXpCat: setXpCat,
+    }),
+    /*#__PURE__*/React.createElement("button", {
+    'aria-disabled': _needsXpChoice && !xpCat,
     style: {
       /* v2.3.1232: brass primary (only one button renders per status) */
       width: '100%',
@@ -325,11 +402,28 @@ export function QuestPanel(props) {
       color: '#20170D',
       fontWeight: 700,
       fontSize: 13,
-      cursor: 'pointer'
+      cursor: 'pointer',
+      /* v2.3.1685: dimmed until a skill is picked — a turn-in the worker
+         would refuse must not look ready to press. */
+      opacity: (_needsXpChoice && !xpCat) ? 0.5 : 1,
+      /* v2.3.1685: PINNED.  This dialogue's content already overflowed its
+         box before the picker existed (441px of content in 423px on main —
+         the rewards row was the casualty), and the picker adds ~74px more.
+         Sticky keeps the one action the card exists for on screen while the
+         body scrolls under it, which beats both a button below the fold and
+         a taller card sliding under the dashboard.  The brass fill is opaque,
+         so scrolled content passes behind it cleanly. */
+      position: 'sticky',
+      bottom: 0
     },
     onClick: function onClick() {
+      /* v2.3.1685: refuse locally what the worker would refuse anyway.
+         Without this the client runs its own congratulation path — gold,
+         XP and 'turnedIn' all applied locally — for a turn-in the worker
+         throws away, and the next player_state quietly takes it all back. */
+      if (_needsXpChoice && !xpCat) return;
       /* v2.3.782: body moved to src/game/quests.js (Phase 3). */
-      turnInQuest(stateRef.current, questPanel, { setRpgState: setRpgState, setQuestPanel: setQuestPanel });
+      turnInQuest(stateRef.current, questPanel, { setRpgState: setRpgState, setQuestPanel: setQuestPanel }, xpCat);
     }
-  }, "Turn In Quest"))));
+  }, _needsXpChoice && !xpCat ? "Choose a skill to train" : "Turn In Quest")))));
 }
