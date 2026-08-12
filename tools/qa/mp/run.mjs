@@ -37,6 +37,7 @@ const SCENARIOS = {
   hiscores: () => import('./mp-hiscores.mjs'), /* v2.3.1671: the per-skill board */
   mayorart: () => import('./mp-mayorart.mjs'), /* v2.3.1672: the mayor's real art */
   townlock: () => import('./mp-townlock.mjs'), /* v2.3.1676: unarmed start + town gate */
+  proj: () => import('./mp-proj.mjs'), /* v2.3.1678: the snowball is visible */
 };
 
 const want = process.argv.slice(2).filter((a) => !a.startsWith('-'));

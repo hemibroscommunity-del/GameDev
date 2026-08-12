@@ -565,6 +565,17 @@ export class GameRoom {
        does, so the [1,2] demo band is unaffected. */
     this.MONSTER_RANGED_BY_ARCH = {
       snowman: { range: 300, minRange: 100, travelMs: 900, cd: 2600 },
+      /* v2.3.1678 (owner: "make sure they can throw their slime projectiles
+         like the snowmen").  Slimes get the same ranged band the snowman has
+         — and unlike the snowman, this is not compensation for being slow: a
+         blue slime is FAST (spd 1.15), so its ball is a second threat while
+         it closes rather than its only one.  Tuned shorter and quicker
+         accordingly: less reach, a faster ball, a shorter cooldown than the
+         snowman's artillery lob.
+         `kind` rides on the wire so the client can pick the right art — the
+         snowball was falling back to the green slime orb, which is how it
+         ended up invisible against snow. */
+      fodder: { range: 220, minRange: 70, travelMs: 650, cd: 2000 },
     };
     /* v2.3.1640: how far a player may drift from the aim point and still be
        hit.  40px against a ~34px body is roughly "you didn't really move",
@@ -1376,7 +1387,9 @@ export class GameRoom {
               type: 'monster_projectile',
               payload: {
                 monsterId: m.id,
-                kind: 'snowball',
+                /* v2.3.1678: the archetype decides the look.  A snowman
+                   throws a snowball; a slime spits an orb. */
+                kind: m.arch === 'snowman' ? 'snowball' : 'slime',
                 zone: zoneId,
                 x: m.x,
                 y: m.y,

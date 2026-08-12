@@ -1862,8 +1862,36 @@ export class EffectsRenderer {
          clearly visible, still smaller than the slime body. */
       projScale = 0.2;
     }
+    /* v2.3.1678: SNOWBALLS ARE NOT SLIME ORBS.
+       The texture lookup above resolves ONE art for the whole zone, from the
+       zone's variant map — which is right for a zone whose fodder is reskinned
+       (ember's fire goblins) and wrong for a ball whose thrower is a different
+       archetype entirely.  Frost Ridge has no variant-map entry at all, so the
+       snowman's ball fell through to the slime orb: a green blob against snow,
+       which is why it read as invisible.
+       There is no snowball sprite in the repo (the snowman folder has facings,
+       a death, a hit and an IMPACT splash — no ball), so this draws one:
+       a white orb with a soft rim, procedural, on the same Graphics the rest
+       of this pass uses.  No filters — iOS WebGL, CLAUDE.md — so the softness
+       is two stacked circles, the same trick the lantern ring used. */
+    const snowballs = slimeProjs.filter((sp) => sp.kind === 'snowball');
+    if (snowballs.length) {
+      for (const sp of snowballs) {
+        /* Shed the pooled Sprite if this ball was previously drawn as an orb
+           (kind can only be set at spawn, but a stale sprite would linger). */
+        if (sp._pixiSprite && !sp._pixiSprite.destroyed) { sp._pixiSprite.visible = false; }
+        const r = 7;
+        gfx.circle(sp.x, sp.y, r + 2.5);
+        gfx.fill({ color: 0x9fc7e8, alpha: 0.30 });   /* cold rim */
+        gfx.circle(sp.x, sp.y, r);
+        gfx.fill({ color: 0xffffff, alpha: 0.96 });   /* packed snow */
+        gfx.circle(sp.x - r * 0.3, sp.y - r * 0.3, r * 0.42);
+        gfx.fill({ color: 0xffffff, alpha: 1 });      /* highlight, reads as round */
+      }
+    }
     if (projTex) {
       for (const sp of slimeProjs) {
+        if (sp.kind === 'snowball') continue;   /* drawn above */
         let sprite = sp._pixiSprite;
         if (!sprite || sprite.destroyed) {
           sprite = new Sprite(projTex);
