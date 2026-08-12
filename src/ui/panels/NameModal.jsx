@@ -602,7 +602,19 @@ export function NameModal(props) {
   }), /*#__PURE__*/React.createElement("span", null, "Already have a Bro?"),
   /*#__PURE__*/React.createElement("span", {
     style: { color: '#EAC675', fontWeight: 700 }
-  }, "Log in with key")), /*#__PURE__*/React.createElement("div", {
+  }, "Log in with key")), /*#__PURE__*/React.createElement("img", {
+    /* v2.3.1674 (owner: "add this little logo somewhere on the login
+       screen").  Sits at the FOOT of the character column, above the version
+       line — the maker's-mark slot.  It started under the BRO TOWN lettering
+       and the gem sword's blade ran straight through the word: the title
+       block is already a logo, a sword and a shine, and a fourth element in
+       it was clutter.  Down here it has air, and it reads as whose game this
+       is rather than as part of the name.
+       Its glow is baked into the art (the black was keyed out by luminance so
+       the halo feathers instead of leaving a box), hence no CSS glow. */
+    src: '/ui/hemi-bros-logo.webp?v=' + BUILD_INFO.version,
+    alt: 'Hemi Bros', className: "bt-cc-hemi", draggable: false
+  }), /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 11,
       color: 'var(--txt2)',

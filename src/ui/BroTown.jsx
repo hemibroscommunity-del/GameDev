@@ -3512,8 +3512,15 @@ export var BroTown = function BroTown(_ref0) {
            faster"): the depth illusion is worth keeping, but crossing the
            worldview at a 0.2 floor was a slog.  Doubling the whole curve
            keeps the near/far RATIO — so a distant figure still creeps
-           relative to a near one — while halving the crossing time. */
-        var VISTA_SPEED_BOOST = 2;
+           relative to a near one — while halving the crossing time.
+           v2.3.1674 (owner: "slow movement speed by 50% while in worldview"):
+           back to 1.  This multiplies the WHOLE curve, so halving it halves
+           the speed everywhere on the map while leaving the near/far ratio —
+           the depth illusion the curve exists for — exactly as it was.
+           Landing on 1 also means the vista no longer scales speed at all
+           beyond its own depth curve, which is the same thing the pre-1574
+           code did; the boost was the outlier, not this. */
+        var VISTA_SPEED_BOOST = 1;
         var vistaSpeedMult = 1;
         var _vz = ZONES[S.currentZone];
         if (_vz && _vz.playerScale && typeof _vz.playerScale === 'object') {

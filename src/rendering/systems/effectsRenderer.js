@@ -1115,36 +1115,16 @@ export class EffectsRenderer {
     const gfx = this.particleGfx;
     gfx.clear();
 
-    /* v2.3.1360 (owner): World View player beacon — the avatar renders
-       as a distant speck on the overworld and gets lost against the
-       painted terrain.  v2.3.1361 (owner: "more like a reticle circle,
-       not a blurry light"): crisp stroked ring + ticks + dot.
-       v2.3.1410 (owner: "I don't want a literal reticle, I just want a
-       ring of light around the player"): the ticks/dot/crisp stroke are
-       gone — a soft luminous ring instead, feathered by LAYERED
-       translucent strokes of the same circle (widest+faintest under,
-       narrowest+brightest on top).  No filters (iOS WebGL static,
-       CLAUDE.md) — the layering IS the glow.  Warm lantern-light tint
-       (Lantern Slate) with a white core so it reads as light, not UI;
-       a faint wide dark underlay keeps it visible over bright snow.
-       Gentle radius pulse so the eye still finds it. */
-    if (S.currentZone === 'worldview' && S.player) {
-      const px = S.player.x, py = S.player.y;
-      const r = 13 + 1.2 * Math.sin(now / 500);
-      /* contrast underlay — soft, so it darkens snow without outlining */
-      gfx.circle(px, py, r);
-      gfx.stroke({ width: 9, color: 0x1c2430, alpha: 0.10 });
-      /* feathered glow: wide->narrow, faint->bright, warm->white */
-      gfx.circle(px, py, r);
-      gfx.stroke({ width: 7, color: 0xffdf9e, alpha: 0.10 });
-      gfx.circle(px, py, r);
-      gfx.stroke({ width: 4.5, color: 0xffe9bd, alpha: 0.18 });
-      gfx.circle(px, py, r);
-      gfx.stroke({ width: 2.2, color: 0xfff6e0, alpha: 0.32 });
-      /* faint pool of light inside the ring, cupping the character */
-      gfx.circle(px, py, r - 2);
-      gfx.fill({ color: 0xffedc4, alpha: 0.05 });
-    }
+    /* v2.3.1674 (owner: "remove the glowing ring around the character").
+       The World View player beacon is GONE.  History, so nobody re-adds it by
+       accident: v2.3.1360 added it because the avatar reads as a distant
+       speck on the overworld, v2.3.1361 made it a crisp reticle, v2.3.1410
+       softened it to a ring of light.  Three rounds of tuning and the answer
+       is that the overworld is a painted vista and the ring sat on top of it
+       as UI.  The avatar is still findable: it is the only thing that moves,
+       and the same v2.3.1674 pass halves worldview speed so it no longer
+       streaks across the map.  If it ever needs marking again, mark it in the
+       art, not with a stroked circle. */
 
     // Hit particles
     const parts = S.hitParticles || [];
