@@ -119,7 +119,28 @@ export async function run({ browser, wsPort, webPort, rec }) {
   /* ── accept, then re-check the leak ── */
   const accepted = await H.clickText(P, 'Accept Quest').then(() => true).catch(() => false);
   rec.ok('the offer can be accepted from the world dialogue', accepted);
-  await P.page.waitForTimeout(1400);
+  await P.page.waitForTimeout(2600);
+
+  /* ═══ v2.3.1684: DID THE WORKER HEAR IT? ═══
+     Owner: "I am NOT receiving the sword and shield after accepting the
+     quest still ... I tried on a fresh character using a private browser."
+     Accepting from THIS dialogue used to set the quest active on the client
+     and send the worker nothing, because the send was gated on
+     `_serverMonsters` — false in town, where every quest giver stands. The
+     grant never ran, so the gear was never minted.
+     Reading `_quests` alone could not see that: the client writes that map
+     itself, so it says 'active' either way. weaponStash is the honest
+     witness — the client only ever gets it FROM a player_state, so an item
+     in it is proof the worker processed the accept. Any future assertion
+     about a server-side effect belongs on a server-owned field like this
+     one, not on a field the client can write. */
+  const granted = await H.readState(P, (S) => ({
+    wstash: (S.rpg.weaponStash || []).map((w) => w && w.name),
+    sstash: (S.rpg.shieldStash || []).map((sh) => sh && sh.name),
+  }));
+  rec.ok('accepting from the world dialogue really reaches the worker (the sword is minted)',
+    granted.wstash.includes("Bro's Sword"), granted);
+  rec.ok('...and the shield with it', granted.sstash.includes("Bro's Shield"), granted);
 
   await H.openDest(P, 'Quests');
   await P.page.waitForTimeout(700);

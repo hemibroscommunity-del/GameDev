@@ -100,7 +100,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('...into the BAG, with the hand still empty', !armed.weapon, armed);
   rec.ok('...and a shield, also in the bag rather than on the arm',
     armed.shieldBag.includes("Bro's Shield") && !armed.shield, armed);
-  rec.ok('the quest is active server-side', armed.quest === 'active', armed);
+  /* v2.3.1684: this used to be labelled "active server-side" while reading
+     S.rpg._quests — a map the CLIENT writes on accept, so it said 'active'
+     whether or not the worker ever heard about it. That mislabel is how the
+     v2.3.1683 grant shipped looking verified while the in-world accept path
+     was silently mute. The stash assertions above are the server-side proof;
+     this one only claims what it can see. */
+  rec.ok('the quest reads active on the client', armed.quest === 'active', armed);
 
   /* v2.3.1683: an unequipped sword is still no sword — the tap must stay
      dead until the player actually equips it. */

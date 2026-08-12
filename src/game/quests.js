@@ -26,7 +26,24 @@ export function acceptQuest(S, questPanel, deps) {
      feedback; player_state arrives with authoritative _quests. */
   {
     var _Sqa = S;
-    if (_Sqa._serverMonsters && _Sqa.channel) {
+    /* ═══ v2.3.1684: THE GATE WAS `_serverMonsters`, AND IT IS FALSE IN TOWN ═══
+       Owner: "The character never receives the sword and shield ... I tried on
+       a fresh character using a private browser."
+       `_serverMonsters` means "this zone's monsters are server-driven"; it is
+       set from `zone_state.monsters.length > 0` (wsClient) and TOWN HAS NO
+       MONSTERS, so it is false there.  Every quest giver in the tutorial arc
+       stands in town -- so accepting from the IN-WORLD dialogue set the quest
+       active on the client and told the worker NOTHING.  The worker therefore
+       never ran grantOnAccept, and the sword and shield were never minted at
+       all: not misplaced, never created.
+       It read as a multiplayer check because it usually coincides with one,
+       which is exactly the legacy client-local remnant rule zero warns about
+       (ARCHITECTURE-HANDOFF: a "SP mode" proxy is never a reason to skip a
+       server message).  The quest-log path (QuestDetailPanel) always sent
+       unconditionally, which is why the Quests panel worked and tapping the
+       Mayor did not -- the same button, two code paths, one of them mute.
+       Gate on the CHANNEL only, like the panel does. */
+    if (_Sqa.channel) {
       try { _Sqa.channel.send({ type: 'quest_accept', payload: { questId: questPanel.quest.id } }); } catch (e) {}
     }
   }
@@ -53,7 +70,19 @@ export function turnInQuest(S, questPanel, deps) {
      arrives with authoritative _quests + coins + xp + level. */
   {
     var _Sqt = S;
-    if (_Sqt._serverMonsters && _Sqt.channel) {
+    /* v2.3.1684: same dead `_serverMonsters` gate as accept above (see the
+       block there).  Turn-ins happen at the giver, and every giver in the
+       tutorial arc stands in TOWN, so this message was mute exactly where it
+       was needed -- the client self-credited the gold and XP locally and the
+       worker never paid, so the reward evaporated on the next player_state.
+       NOTE (v2.3.1684, reported separately): sending it is necessary but not
+       sufficient for a prog3 character.  _handleQuestTurnIn refuses a turn-in
+       that pays XP without an `xpCat` naming Melee/Bow/Magic, and this world
+       dialogue has no skill chooser to supply one -- only the quest log's
+       detail panel does.  Fixing the gate makes the turn-in REACH the worker;
+       the missing chooser is a UI gap tracked with the owner rather than
+       papered over with a silently-picked skill. */
+    if (_Sqt.channel) {
       try { _Sqt.channel.send({ type: 'quest_turn_in', payload: { questId: questPanel.quest.id } }); } catch (e) {}
     }
   }
