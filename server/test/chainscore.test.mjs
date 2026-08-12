@@ -119,8 +119,10 @@ function mk(over) {
   const room = new GameRoom(makeState(), { LEADERBOARD });
   check('level 3 (a fresh prog3 character) is below the first milestone',
     room._chainScoreMilestone(3) === 0, room._chainScoreMilestone(3));
-  check('level 5 hits the first milestone', room._chainScoreMilestone(5) === 5);
-  check('level 9 stays on milestone 5', room._chainScoreMilestone(9) === 5);
+  /* v2.3.1683: first milestone is 4 — one level-up from a fresh character
+     (level 3), so the chain shows something within minutes of play. */
+  check('level 4 (the FIRST level-up) hits the first milestone', room._chainScoreMilestone(4) === 4);
+  check('level 9 stays on milestone 4', room._chainScoreMilestone(9) === 4);
   check('level 10 advances to 10', room._chainScoreMilestone(10) === 10);
   check('level 137 resolves to 100', room._chainScoreMilestone(137) === 100, room._chainScoreMilestone(137));
   check('level 300 (the cap) resolves to 300', room._chainScoreMilestone(300) === 300);
