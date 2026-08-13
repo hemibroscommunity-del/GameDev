@@ -38,9 +38,40 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('maxHp re-derives to the prog3 formula (100 + level×2)', adopted && adopted.maxHp === 106, adopted);
   rec.ok('the allocation pool starts empty', adopted && adopted.pool === 0 && adopted.sword === 1, adopted);
 
-  /* ── the Build tab renders the allocation screen ── */
+  /* ── v2.3.1697: the Overview aggregate grid (Character opens here) ──
+     Armour became a SEVENTH cell in a grid that had six, and the fix for
+     "seven into a 3-wide grid" was a fourth COLUMN rather than a third row
+     — this panel's body is measured in single pixels and its scroll-edge
+     fade is deliberately off, so anything below the fold is invisible with
+     no cue.  Narrower columns move the risk from vertical to HORIZONTAL,
+     so both are measured here: the grid must not overflow its column, and
+     no cell's own text may overflow the cell. */
   await H.openDest(P, 'Character');
   await P.page.waitForTimeout(700);
+  const armourCell = await P.page.evaluate(() => {
+    const label = [...document.querySelectorAll('div')]
+      .find((d) => d.children.length === 0 && d.textContent.trim() === 'Armour');
+    if (!label) return { err: 'no ARMOUR cell on the Overview grid' };
+    const cell = label.parentElement;
+    const grid = cell.parentElement;
+    const over = [...grid.children]
+      .flatMap((c) => [...c.children])
+      .filter((t) => t.scrollWidth > t.clientWidth + 1)
+      .map((t) => t.textContent.trim());
+    return {
+      value: (cell.lastElementChild || {}).textContent,
+      cells: grid.children.length,
+      gridOverflowX: grid.scrollWidth - grid.clientWidth,
+      clipped: over,
+    };
+  });
+  rec.ok('the Overview grid shows an ARMOUR cell with a real percentage',
+    !armourCell.err && /^\d+(\.\d)?%$/.test(String(armourCell.value || '')), armourCell);
+  rec.ok('...and the seven-cell grid still fits its column, uncropped',
+    !armourCell.err && armourCell.cells === 7
+    && armourCell.gridOverflowX <= 1 && armourCell.clipped.length === 0, armourCell);
+
+  /* ── the Build tab renders the allocation screen ── */
   await P.page.locator('[aria-label="Build"], [aria-label^="Build —"]').first()
     .click({ timeout: 8000 }).catch(() => {});
   await P.page.waitForTimeout(500);

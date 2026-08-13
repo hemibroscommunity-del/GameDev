@@ -422,5 +422,50 @@ const sess = { id: 'bp_t' };
     r2.dodged || r2.dmgTaken >= 1, r2);
 }
 
+// ── 8. v2.3.1697: ARMOR PAYS ONCE — MITIGATION, NOT MAX HP ──
+{
+  /* Owner: "It shouldn't add max hp contribution anymore, just surface real
+     damage mitigation — that was an earlier build where armor increased hp,
+     it doesn't anymore."
+
+     Section 7 gave armor a real per-hit cut, which left the Phase-1 flat-HP
+     fold (_armorHp) quietly paying for the same item a SECOND time: a chest
+     piece was both a bigger health bar and a mitigation stat.  The fold is
+     gone from BOTH maxHp formulas — the legacy _recomputeMaxes and the
+     prog3 twin — because a respecced player is served by the second one, so
+     fixing only the first would have left the live path untouched.  That
+     two-formula split is the trap this section exists to catch.
+
+     Deliberately relative (armored vs bare) rather than pinning a literal:
+     the pool coefficients are balance dials and move on their own schedule;
+     what must never come back is the DIFFERENCE. */
+  const heavy = { name: 'Vest', tierMult: 8 };   // the biggest fold there was
+
+  const legacyBare = { level: 1, vitality: 0, hp: 100, armor: null };
+  room._recomputeMaxes(legacyBare);
+  const legacyArmored = { level: 1, vitality: 0, hp: 100, armor: heavy };
+  room._recomputeMaxes(legacyArmored);
+  check('legacy pools: armor no longer raises maxHp',
+    legacyArmored.maxHp === legacyBare.maxHp,
+    { bare: legacyBare.maxHp, armored: legacyArmored.maxHp });
+
+  const p3Bare = { prog3: { sk: {}, alloc: {} }, hp: 100, armor: null };
+  room._recomputeMaxes(p3Bare);
+  const p3Armored = { prog3: { sk: {}, alloc: {} }, hp: 100, armor: heavy };
+  room._recomputeMaxes(p3Armored);
+  check('prog3 pools: armor no longer raises maxHp either',
+    p3Armored.maxHp === p3Bare.maxHp,
+    { bare: p3Bare.maxHp, armored: p3Armored.maxHp });
+
+  /* ...and what armor DOES buy must survive the removal.  Deleting a stat's
+     only visible effect and its real one in the same pass is the failure
+     mode this pairing guards against. */
+  check('the same armor still reduces incoming damage',
+    room._armorDrMult(p3Armored) < 1, room._armorDrMult(p3Armored));
+  const hit = room._applyDamage({ ...p3Armored, hp: 10000, maxHp: 10000 }, 100, false);
+  check('a 100-damage hit through that armor still lands reduced but non-zero',
+    hit.dodged || (hit.dmgTaken >= 1 && hit.dmgTaken < 100), hit);
+}
+
 console.log(failures === 0 ? '\ntutorial: ALL PASS' : `\ntutorial: ${failures} FAILURE(S)`);
 if (failures > 0) process.exit(1);

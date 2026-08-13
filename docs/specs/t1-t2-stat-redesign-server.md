@@ -24,6 +24,30 @@ Tier 2 also gains an allocation pool the client now spends through a new UI; the
 
 ### 1. `maxHp` formula — fold in armor HP
 
+> **REVERSED v2.3.1697 — this section is history, not the current build.**
+> Owner: *"It shouldn't add max hp contribution anymore, just surface real
+> damage mitigation — that was an earlier build where armor increased hp, it
+> doesn't anymore."*
+>
+> The armor→maxHp fold below is **removed** from every site: the server's
+> `_recomputeMaxes` and `_prog3Recompute` (grids.js / prog3.js) and the
+> client's `recalcDerived` (both branches). `_armorHp` / `getArmorHp` /
+> `calcDisplayArmorHp` survive as retired-in-place functions with no live
+> caller.
+>
+> What armor does instead, since v2.3.1679: **real per-hit damage
+> reduction** — `_armorDrMult` (server/src/combat.js), consumed by
+> `_applyDamage`. Torso 30% / legs 20% at base tier, +5% / +3.5% per tier
+> step, stacked multiplicatively, hard cap 75%, floor of 1 damage. The
+> client mirror is `getArmorDrPct` / `getArmorPieceDr`
+> (src/data/gameSystems.js), pinned against the server function itself by
+> `server/test/display-dps.test.mjs` §10; the removal of the HP fold is
+> pinned by `server/test/tutorial.test.mjs` §8. Armor's readouts (Hero
+> Overview grid, equipped cards, item popups) all print the reduction now.
+>
+> Section 2 below (`def` retired) still stands — that channel never came
+> back; the new reduction is armor's own, not `def`'s.
+
 Old:
 ```js
 maxHp = BASE_HP(100) + (level - 1) * 12 + vitality * 10;
