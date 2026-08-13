@@ -3,7 +3,7 @@
  * projectiles, telegraphs, lock-on, ambient particles, chat bubbles, building signs.
  * Uses PixiJS Graphics for procedural particles and Text for damage numbers.
  */
-import { Assets, BitmapFont, BitmapText, Container, Graphics, Rectangle, Sprite, Text, Texture, TextStyle } from 'pixi.js';
+import { Assets, BitmapFont, BitmapText, CanvasTextMetrics, Container, Graphics, Rectangle, Sprite, Text, Texture, TextStyle } from 'pixi.js';
 
 /* v2.3.1358 (owner directive: ALL animations ready before first use —
    see CLAUDE.md "Animation preloading is LAW"): every Assets.load in
@@ -2649,11 +2649,23 @@ export class EffectsRenderer {
           fontFamily: hasEmoji
             ? '"Source Sans 3","Apple Color Emoji","Segoe UI Emoji",sans-serif'
             : 'Source Sans 3, sans-serif',
-          fontSize: 11,
+          /* v2.3.1719 (owner: "chat feature had a bit larger font"): 11 -> 14.
+             This is the text you read across the world at a glance, and 11
+             sat below every step of the documented type scale (11 caption /
+             13 body / 15 emphasized, UI-BIBLE Part 2) once you account for
+             it being drawn at the world scale (0.8), i.e. ~8.8 effective px.
+             14 lands near the body step after that scaling. */
+          fontSize: 14,
           fill: '#000000',
           align: 'center',
           wordWrap: true,
-          wordWrapWidth: 140,
+          /* v2.3.1719: 140 -> 220 (owner: the bubble should size to however
+             long the message is).  A 200-char message — the input's maxLength
+             — wrapped into a narrow tall column at 140 while the bubble stayed
+             the same width, so length showed up as HEIGHT only.  220 lets a
+             long line actually get wider before it wraps, and still leaves
+             room on a 390px phone. */
+          wordWrapWidth: 220,
         },
       });
       txt.anchor.set(0.5, 0);
@@ -2666,10 +2678,28 @@ export class EffectsRenderer {
     if (entry.lastText !== text) {
       entry.lastText = text;
       entry.text.text = text;
-      const tw = entry.text.width;
+      /* ═══ v2.3.1719: MEASURE THE TEXT, NOT THE WRAP BOX ═══
+         Owner: the bubble should size to however long the message is.  It
+         never did — every bubble came out the same width, short or long.
+         With wordWrap on, Text.width is the WRAP WIDTH, not the width of the
+         laid-out lines, so `tw` was effectively constant and the bubble was
+         always wordWrapWidth + padding.  Verified by screenshot: "hey bro"
+         and a 130-character message produced boxes of identical width.
+         CanvasTextMetrics gives the real per-line widths; the longest line
+         is what the bubble has to hold. */
+      const _m = CanvasTextMetrics.measureText(text, entry.text.style);
+      const tw = (_m && _m.lineWidths && _m.lineWidths.length)
+        ? Math.max.apply(null, _m.lineWidths)
+        : entry.text.width;
       const th = entry.text.height;
       const padX = 8, padY = 6, tipH = 6, radius = 8;
-      const bw = Math.min(160, tw + padX * 2);
+      /* v2.3.1719: 160 -> 240.  This cap, not the wrap width, was what
+         actually pinned the bubble's size: a message wider than 160-2*padX
+         got a bubble clamped to 160 while its text wrapped at 140, so every
+         long message produced an identically-sized box.  The cap now sits
+         just above the wrap width (220 + 2*8 = 236) so the bubble hugs a
+         short message and grows with a long one up to the wrap point. */
+      const bw = Math.min(240, tw + padX * 2);
       const bh = th + padY * 2;
       entry.bg.clear();
       entry.bg.roundRect(-bw / 2, -bh - tipH, bw, bh, radius);
