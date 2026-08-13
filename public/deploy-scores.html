@@ -1,0 +1,1187 @@
+<!doctype html>
+<!-- ═══ v2.3.1684: THE 5-MINUTE DEPLOY ═══
+
+  One page, one job: put contracts/BroTownScores.sol on Hemi mainnet with
+  three wallet taps, for an operator with no crypto experience.  This
+  replaces the 30-minute Remix runbook whose every step was a transcription
+  error waiting to happen (compiler version, optimizer flag, two address
+  fields, a private key carried by hand).
+
+  SELF-CONTAINED BY CONSTRUCTION.  No external scripts, styles, fonts or
+  fetches — the ONLY network traffic goes through the wallet's own provider
+  (window.ethereum), which is also the only way the deploy can be signed.
+  tools/qa/deploy-page.mjs holds this as a tested property (zero page
+  requests) rather than a promise, and also executes the exact transaction
+  bytes this page produces in a local EVM to prove they deploy the real
+  contract with the right signer and guardian.
+
+  THE EMBEDDED BYTECODE is contracts/BroTownScores.sol compiled with
+  solc 0.8.26, optimizer enabled, runs 200 — the pinned settings from
+  tools/dev/evm-conformance.mjs.  If the contract file changes, regenerate
+  via the QA harness's byte-equality check (it fails loudly on drift).
+
+  KEY SAFETY.  The relayer keypair is generated HERE, on the operator's own
+  device, with crypto.getRandomValues.  It lives in page memory only: never
+  localStorage, never a cookie, never any request.  The operator copies it
+  straight into a Cloudflare secret.  If it is lost after deploy, the
+  guardian can rotate to a fresh key (rotateSigner) — that is what the
+  guardian exists for.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<meta name="robots" content="noindex">
+<title>BroTown — put the hiscores on Hemi</title>
+<style>
+  :root { --bg:#121B20; --card:#202C32; --line:rgba(238,242,235,.14); --ink:#F7F2E7;
+          --mut:#96A2A0; --brass:#D8A85F; --ok:#59BF91; --bad:#E06A5E; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink);
+         font:16px/1.5 -apple-system, "Segoe UI", Roboto, sans-serif; padding:16px; }
+  .wrap { max-width:520px; margin:0 auto; }
+  h1 { font-size:20px; margin:8px 0 2px; }
+  .sub { color:var(--mut); font-size:13.5px; margin:0 0 18px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:14px;
+          padding:16px; margin-bottom:14px; }
+  .card.locked { opacity:.45; pointer-events:none; }
+  .step { font-size:11px; font-weight:700; letter-spacing:.12em; text-transform:uppercase;
+          color:var(--mut); margin-bottom:6px; }
+  .card h2 { font-size:16px; margin:0 0 8px; }
+  .card p { font-size:13.5px; color:#B9C1BF; margin:6px 0; }
+  button.go { width:100%; min-height:48px; border:none; border-radius:11px;
+              background:var(--brass); color:#20170D; font-weight:700; font-size:15px;
+              cursor:pointer; margin-top:10px; }
+  button.go:disabled { opacity:.5; }
+  .mono { font-family:ui-monospace, Menlo, monospace; font-size:12.5px; word-break:break-all;
+          background:var(--bg); border-radius:8px; padding:10px;
+          box-shadow: inset 0 2px 4px rgba(0,0,0,.44); }
+  .row { display:flex; gap:8px; align-items:center; margin-top:8px; }
+  .row .mono { flex:1; }
+  button.copy { min-height:44px; min-width:72px; border-radius:9px; border:1px solid var(--line);
+                background:transparent; color:var(--ink); font-weight:600; cursor:pointer; }
+  .ok { color:var(--ok); font-weight:700; }
+  .bad { color:var(--bad); font-weight:700; }
+  .warn { border-left:3px solid var(--brass); padding:2px 0 2px 10px; margin:10px 0;
+          font-size:13px; color:#E8DFC9; }
+  .done { border-color:var(--ok); }
+  .status { font-size:13.5px; margin-top:8px; min-height:1.4em; }
+  input.amt { width:110px; min-height:44px; border-radius:9px; border:1px solid var(--line);
+              background:var(--bg); color:var(--ink); font-size:15px; padding:0 10px; }
+  a { color:var(--brass); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Put BroTown's hiscores on Hemi</h1>
+  <p class="sub">Four taps, two copy-pastes, about five minutes. Open this page
+  <b>inside your wallet's browser</b> (MetaMask app &rarr; the browser tab) so it can
+  ask your wallet to sign.</p>
+
+  <div class="card" id="c1">
+    <div class="step">Step 1</div>
+    <h2>Connect your wallet</h2>
+    <p>Your connected account becomes the <b>guardian</b> — the one address that can
+    ever replace the game's signing key. It also pays the two transactions
+    (well under a dollar total). The page will switch your wallet to the Hemi
+    network, adding it first if it's new.</p>
+    <button class="go" id="btnConnect">Connect</button>
+    <div class="status" id="s1"></div>
+  </div>
+
+  <div class="card locked" id="c2">
+    <div class="step">Step 2</div>
+    <h2>Create the game's signing key</h2>
+    <p>Generated on <b>this device, right now</b> — it never leaves this page except
+    when you copy it. The game's server uses it to sign score attestations.</p>
+    <button class="go" id="btnKey">Create signing key</button>
+    <div id="keyOut" style="display:none">
+      <p style="margin-top:12px"><b>Private key</b> — copy it into Cloudflare <i>now</i>:</p>
+      <div class="row"><div class="mono" id="privHex"></div>
+        <button class="copy" data-copy="privHex">Copy</button></div>
+      <div class="warn">Cloudflare dashboard &rarr; <b>Workers &amp; Pages</b> &rarr;
+      <b>brotown-server</b> &rarr; <b>Settings</b> &rarr; <b>Variables and Secrets</b> &rarr;
+      <b>Add</b> &rarr; name <span class="mono" style="display:inline;padding:2px 6px">RELAYER_KEY</span>,
+      paste the key, type <b>Secret</b>, Save. Do this before you close this page.
+      (If you ever lose the key after deploying, you're not stuck — the guardian
+      can rotate to a new one.)</div>
+      <p><b>Its address</b> (the contract will only accept scores signed by this):</p>
+      <div class="row"><div class="mono" id="relayerAddr"></div>
+        <button class="copy" data-copy="relayerAddr">Copy</button></div>
+    </div>
+    <div class="status" id="s2"></div>
+  </div>
+
+  <div class="card locked" id="c3">
+    <div class="step">Step 3</div>
+    <h2>Deploy the contract</h2>
+    <p>One wallet approval. The signing key's address and your guardian address are
+    already filled in — there is nothing to type.</p>
+    <button class="go" id="btnDeploy">Deploy to Hemi</button>
+    <div class="status" id="s3"></div>
+    <div id="deployOut" style="display:none">
+      <p><b>Contract address</b> — paste this back to Claude:</p>
+      <div class="row"><div class="mono" id="contractAddr"></div>
+        <button class="copy" data-copy="contractAddr">Copy</button></div>
+      <div class="status" id="verify"></div>
+    </div>
+  </div>
+
+  <div class="card locked" id="c4">
+    <div class="step">Step 4</div>
+    <h2>Give the signing key some gas</h2>
+    <p>The game's server pays for score writes from the signing key's address, so it
+    needs a little ETH. This sends it from your wallet:</p>
+    <div class="row">
+      <input class="amt" id="fundAmt" value="0.002" inputmode="decimal"> <span>ETH (&asymp; dozens of writes)</span>
+    </div>
+    <button class="go" id="btnFund">Send gas to the signing key</button>
+    <div class="status" id="s4"></div>
+  </div>
+
+  <div class="card locked" id="c5">
+    <div class="step">Done</div>
+    <h2>Two pastes and you're finished</h2>
+    <p>1. The <b>private key</b> from Step 2 &rarr; Cloudflare secret <b>RELAYER_KEY</b>
+    (path shown above).</p>
+    <p>2. The <b>contract address</b> from Step 3 &rarr; paste it to Claude, who commits
+    it to the server config and the feature switches on by itself.</p>
+    <p>Then play a fresh character to level 4 and watch your run land on Hemi.</p>
+  </div>
+</div>
+
+<script>
+'use strict';
+/* ── keccak-256 + hex, verbatim from server/src/onchain.js (MIT, this repo) ── */
+const RC = [
+  0x00000001, 0x00000000, 0x00008082, 0x00000000, 0x0000808a, 0x80000000,
+  0x80008000, 0x80000000, 0x0000808b, 0x00000000, 0x80000001, 0x00000000,
+  0x80008081, 0x80000000, 0x00008009, 0x80000000, 0x0000008a, 0x00000000,
+  0x00000088, 0x00000000, 0x80008009, 0x00000000, 0x8000000a, 0x00000000,
+  0x8000808b, 0x00000000, 0x0000008b, 0x80000000, 0x00008089, 0x80000000,
+  0x00008003, 0x80000000, 0x00008002, 0x80000000, 0x00000080, 0x80000000,
+  0x0000800a, 0x00000000, 0x8000000a, 0x80000000, 0x80008081, 0x80000000,
+  0x00008080, 0x80000000, 0x80000001, 0x00000000, 0x80008008, 0x80000000,
+];
+/* ρ offsets in lane order (x + 5y) — 25 entries.  Getting this table wrong
+   is silent: the sponge still runs and still returns 32 plausible bytes, it
+   just isn't Keccak.  Pinned by the official vectors in the suite. */
+const ROT = [
+  0, 1, 62, 28, 27,
+  36, 44, 6, 55, 20,
+  3, 10, 43, 25, 39,
+  41, 45, 15, 21, 8,
+  18, 2, 61, 56, 14,
+];
+
+function keccakF(s) {
+  const C = new Int32Array(10), D = new Int32Array(10), B = new Int32Array(50);
+  for (let round = 0; round < 24; round++) {
+    /* θ */
+    for (let x = 0; x < 5; x++) {
+      C[x * 2] = s[x * 2] ^ s[(x + 5) * 2] ^ s[(x + 10) * 2] ^ s[(x + 15) * 2] ^ s[(x + 20) * 2];
+      C[x * 2 + 1] = s[x * 2 + 1] ^ s[(x + 5) * 2 + 1] ^ s[(x + 10) * 2 + 1] ^ s[(x + 15) * 2 + 1] ^ s[(x + 20) * 2 + 1];
+    }
+    for (let x = 0; x < 5; x++) {
+      const x1 = ((x + 1) % 5) * 2, x4 = ((x + 4) % 5) * 2;
+      D[x * 2] = C[x4] ^ (((C[x1] << 1) | (C[x1 + 1] >>> 31)) | 0);
+      D[x * 2 + 1] = C[x4 + 1] ^ (((C[x1 + 1] << 1) | (C[x1] >>> 31)) | 0);
+      for (let y = 0; y < 25; y += 5) {
+        s[(x + y) * 2] ^= D[x * 2];
+        s[(x + y) * 2 + 1] ^= D[x * 2 + 1];
+      }
+    }
+    /* ρ + π */
+    for (let i = 0; i < 25; i++) {
+      const r = ROT[i];
+      const x = i % 5, y = (i / 5) | 0;
+      const j = y + ((2 * x + 3 * y) % 5) * 5;   /* π destination */
+      let lo = s[i * 2], hi = s[i * 2 + 1];
+      if (r > 0) {
+        if (r < 32) { const nlo = (lo << r) | (hi >>> (32 - r)); const nhi = (hi << r) | (lo >>> (32 - r)); lo = nlo; hi = nhi; }
+        else if (r === 32) { const t = lo; lo = hi; hi = t; }
+        else { const rr = r - 32; const nlo = (hi << rr) | (lo >>> (32 - rr)); const nhi = (lo << rr) | (hi >>> (32 - rr)); lo = nlo; hi = nhi; }
+      }
+      B[j * 2] = lo | 0; B[j * 2 + 1] = hi | 0;
+    }
+    /* χ */
+    for (let y = 0; y < 25; y += 5) {
+      for (let x = 0; x < 5; x++) {
+        const i = y + x, a = y + ((x + 1) % 5), b = y + ((x + 2) % 5);
+        s[i * 2] = B[i * 2] ^ (~B[a * 2] & B[b * 2]);
+        s[i * 2 + 1] = B[i * 2 + 1] ^ (~B[a * 2 + 1] & B[b * 2 + 1]);
+      }
+    }
+    /* ι */
+    s[0] ^= RC[round * 2];
+    s[1] ^= RC[round * 2 + 1];
+  }
+}
+
+/** keccak-256 over a Uint8Array, returning 32 bytes. */
+function keccak256(bytes) {
+  const RATE = 136;                                  /* 1088 bits */
+  const s = new Int32Array(50);
+  const padded = new Uint8Array(Math.ceil((bytes.length + 1) / RATE) * RATE);
+  padded.set(bytes);
+  padded[bytes.length] = 0x01;                       /* Keccak padding */
+  padded[padded.length - 1] |= 0x80;
+  for (let off = 0; off < padded.length; off += RATE) {
+    for (let i = 0; i < RATE; i += 4) {
+      const w = padded[off + i] | (padded[off + i + 1] << 8) | (padded[off + i + 2] << 16) | (padded[off + i + 3] << 24);
+      s[i / 4] ^= w;
+    }
+    keccakF(s);
+  }
+  const out = new Uint8Array(32);
+  for (let i = 0; i < 32; i += 4) {
+    const w = s[i / 4];
+    out[i] = w & 0xff; out[i + 1] = (w >>> 8) & 0xff; out[i + 2] = (w >>> 16) & 0xff; out[i + 3] = (w >>> 24) & 0xff;
+  }
+  return out;
+}
+
+/* ── hex helpers ──────────────────────────────────────────────────────────*/
+function toHex(bytes) {
+  let h = '';
+  for (let i = 0; i < bytes.length; i++) h += bytes[i].toString(16).padStart(2, '0');
+  return h;
+}
+function fromHex(hex) {
+  const h = hex.startsWith('0x') ? hex.slice(2) : hex;
+  const out = new Uint8Array(h.length >> 1);
+  for (let i = 0; i < out.length; i++) out[i] = parseInt(h.substr(i * 2, 2), 16);
+  return out;
+}
+
+/* ── noble-secp256k1 (MIT, Paul Miller), vendored from server/src/vendor/ ── */
+/*! noble-secp256k1 - MIT License (c) 2019 Paul Miller (paulmillr.com) */
+/**
+ * 4KB JS implementation of secp256k1 ECDSA / Schnorr signatures & ECDH.
+ * Compliant with RFC6979 & BIP340.
+ * @module
+ */
+/**
+ * Curve params. secp256k1 is short weierstrass / koblitz curve. Equation is y² == x³ + ax + b.
+ * * P = `2n**256n-2n**32n-2n**977n` // field over which calculations are done
+ * * N = `2n**256n - 0x14551231950b75fc4402da1732fc9bebfn` // group order, amount of curve points
+ * * h = `1n` // cofactor
+ * * a = `0n` // equation param
+ * * b = `7n` // equation param
+ * * Gx, Gy are coordinates of Generator / base point
+ */
+const secp256k1_CURVE = {
+    p: 0xfffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc2fn,
+    n: 0xfffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141n,
+    h: 1n,
+    a: 0n,
+    b: 7n,
+    Gx: 0x79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798n,
+    Gy: 0x483ada7726a3c4655da4fbfc0e1108a8fd17b448a68554199c47d08ffb10d4b8n,
+};
+const { p: P, n: N, Gx, Gy, b: _b } = secp256k1_CURVE;
+const L = 32; // field / group byte length
+const L2 = 64;
+// Helpers and Precomputes sections are reused between libraries
+// ## Helpers
+// ----------
+// error helper, messes-up stack trace
+const err = (m = '') => {
+    throw new Error(m);
+};
+const isBig = (n) => typeof n === 'bigint'; // is big integer
+const isStr = (s) => typeof s === 'string'; // is string
+const isBytes = (a) => a instanceof Uint8Array || (ArrayBuffer.isView(a) && a.constructor.name === 'Uint8Array');
+/** assert is Uint8Array (of specific length) */
+const abytes = (a, l) => !isBytes(a) || (typeof l === 'number' && l > 0 && a.length !== l)
+    ? err('Uint8Array expected')
+    : a;
+/** create Uint8Array */
+const u8n = (len) => new Uint8Array(len);
+const u8fr = (buf) => Uint8Array.from(buf);
+const padh = (n, pad) => n.toString(16).padStart(pad, '0');
+const bytesToHex = (b) => Array.from(abytes(b))
+    .map((e) => padh(e, 2))
+    .join('');
+const C = { _0: 48, _9: 57, A: 65, F: 70, a: 97, f: 102 }; // ASCII characters
+const _ch = (ch) => {
+    if (ch >= C._0 && ch <= C._9)
+        return ch - C._0; // '2' => 50-48
+    if (ch >= C.A && ch <= C.F)
+        return ch - (C.A - 10); // 'B' => 66-(65-10)
+    if (ch >= C.a && ch <= C.f)
+        return ch - (C.a - 10); // 'b' => 98-(97-10)
+    return;
+};
+const hexToBytes = (hex) => {
+    const e = 'hex invalid';
+    if (!isStr(hex))
+        return err(e);
+    const hl = hex.length;
+    const al = hl / 2;
+    if (hl % 2)
+        return err(e);
+    const array = u8n(al);
+    for (let ai = 0, hi = 0; ai < al; ai++, hi += 2) {
+        // treat each char as ASCII
+        const n1 = _ch(hex.charCodeAt(hi)); // parse first char, multiply it by 16
+        const n2 = _ch(hex.charCodeAt(hi + 1)); // parse second char
+        if (n1 === undefined || n2 === undefined)
+            return err(e);
+        array[ai] = n1 * 16 + n2; // example: 'A9' => 10*16 + 9
+    }
+    return array;
+};
+/** normalize hex or ui8a to ui8a */
+const toU8 = (a, len) => abytes(isStr(a) ? hexToBytes(a) : u8fr(abytes(a)), len);
+const cr = () => globalThis?.crypto; // WebCrypto is available in all modern environments
+const subtle = () => cr()?.subtle ?? err('crypto.subtle must be defined');
+// prettier-ignore
+const concatBytes = (...arrs) => {
+    const r = u8n(arrs.reduce((sum, a) => sum + abytes(a).length, 0)); // create u8a of summed length
+    let pad = 0; // walk through each array,
+    arrs.forEach(a => { r.set(a, pad); pad += a.length; }); // ensure they have proper type
+    return r;
+};
+/** WebCrypto OS-level CSPRNG (random number generator). Will throw when not available. */
+const randomBytes = (len = L) => {
+    const c = cr();
+    return c.getRandomValues(u8n(len));
+};
+const big = BigInt;
+const arange = (n, min, max, msg = 'bad number: out of range') => isBig(n) && min <= n && n < max ? n : err(msg);
+/** modular division */
+const M = (a, b = P) => {
+    const r = a % b;
+    return r >= 0n ? r : b + r;
+};
+const modN = (a) => M(a, N);
+/** Modular inversion using eucledian GCD (non-CT). No negative exponent for now. */
+// prettier-ignore
+const invert = (num, md) => {
+    if (num === 0n || md <= 0n)
+        err('no inverse n=' + num + ' mod=' + md);
+    let a = M(num, md), b = md, x = 0n, y = 1n, u = 1n, v = 0n;
+    while (a !== 0n) {
+        const q = b / a, r = b % a;
+        const m = x - u * q, n = y - v * q;
+        b = a, a = r, x = u, y = v, u = m, v = n;
+    }
+    return b === 1n ? M(x, md) : err('no inverse'); // b is gcd at this point
+};
+const callHash = (name) => {
+    // @ts-ignore
+    const fn = etc[name];
+    if (typeof fn !== 'function')
+        err('hashes.' + name + ' not set');
+    return fn;
+};
+const apoint = (p) => (p instanceof Point ? p : err('Point expected'));
+// ## End of Helpers
+// -----------------
+/** secp256k1 formula. Koblitz curves are subclass of weierstrass curves with a=0, making it x³+b */
+const koblitz = (x) => M(M(x * x) * x + _b);
+/** assert is field element or 0 */
+const afield0 = (n) => arange(n, 0n, P);
+/** assert is field element */
+const afield = (n) => arange(n, 1n, P);
+/** assert is group elem */
+const agroup = (n) => arange(n, 1n, N);
+const isEven = (y) => (y & 1n) === 0n;
+/** create Uint8Array of byte n */
+const u8of = (n) => Uint8Array.of(n);
+const getPrefix = (y) => u8of(isEven(y) ? 0x02 : 0x03);
+/** lift_x from BIP340 calculates square root. Validates x, then validates root*root. */
+const lift_x = (x) => {
+    // Let c = x³ + 7 mod p. Fail if x ≥ p. (also fail if x < 1)
+    const c = koblitz(afield(x));
+    // c = √y
+    // y = c^((p+1)/4) mod p
+    // This formula works for fields p = 3 mod 4 -- a special, fast case.
+    // Paper: "Square Roots from 1;24,51,10 to Dan Shanks".
+    let r = 1n;
+    for (let num = c, e = (P + 1n) / 4n; e > 0n; e >>= 1n) {
+        // powMod: modular exponentiation.
+        if (e & 1n)
+            r = (r * num) % P; // Uses exponentiation by squaring.
+        num = (num * num) % P; // Not constant-time.
+    }
+    return M(r * r) === c ? r : err('sqrt invalid'); // check if result is valid
+};
+/** Point in 3d xyz projective coordinates. 3d takes less inversions than 2d. */
+class Point {
+    static BASE;
+    static ZERO;
+    px;
+    py;
+    pz;
+    constructor(px, py, pz) {
+        this.px = afield0(px);
+        this.py = afield(py); // y can't be 0 in Projective
+        this.pz = afield0(pz);
+        Object.freeze(this);
+    }
+    /** Convert Uint8Array or hex string to Point. */
+    static fromBytes(bytes) {
+        abytes(bytes);
+        let p = undefined;
+        // First byte is prefix, rest is data. There are 2 kinds: compressed & uncompressed:
+        // * [0x02 or 0x03][32-byte x coordinate]
+        // * [0x04]        [32-byte x coordinate][32-byte y coordinate]
+        const head = bytes[0];
+        const tail = bytes.subarray(1);
+        const x = sliceBytesNumBE(tail, 0, L);
+        const len = bytes.length;
+        // Compressed 33-byte point, 0x02 or 0x03 prefix
+        if (len === L + 1 && [0x02, 0x03].includes(head)) {
+            // Equation is y² == x³ + ax + b. We calculate y from x.
+            // y = √y²; there are two solutions: y, -y. Determine proper solution based on prefix
+            let y = lift_x(x);
+            const evenY = isEven(y);
+            const evenH = isEven(big(head));
+            if (evenH !== evenY)
+                y = M(-y);
+            p = new Point(x, y, 1n);
+        }
+        // Uncompressed 65-byte point, 0x04 prefix
+        if (len === L2 + 1 && head === 0x04)
+            p = new Point(x, sliceBytesNumBE(tail, L, L2), 1n);
+        // Validate point
+        return p ? p.assertValidity() : err('bad point: not on curve');
+    }
+    /** Equality check: compare points P&Q. */
+    equals(other) {
+        const { px: X1, py: Y1, pz: Z1 } = this;
+        const { px: X2, py: Y2, pz: Z2 } = apoint(other); // checks class equality
+        const X1Z2 = M(X1 * Z2);
+        const X2Z1 = M(X2 * Z1);
+        const Y1Z2 = M(Y1 * Z2);
+        const Y2Z1 = M(Y2 * Z1);
+        return X1Z2 === X2Z1 && Y1Z2 === Y2Z1;
+    }
+    is0() {
+        return this.equals(I);
+    }
+    /** Flip point over y coordinate. */
+    negate() {
+        return new Point(this.px, M(-this.py), this.pz);
+    }
+    /** Point doubling: P+P, complete formula. */
+    double() {
+        return this.add(this);
+    }
+    /**
+     * Point addition: P+Q, complete, exception-free formula
+     * (Renes-Costello-Batina, algo 1 of [2015/1060](https://eprint.iacr.org/2015/1060)).
+     * Cost: `12M + 0S + 3*a + 3*b3 + 23add`.
+     */
+    // prettier-ignore
+    add(other) {
+        const { px: X1, py: Y1, pz: Z1 } = this;
+        const { px: X2, py: Y2, pz: Z2 } = apoint(other);
+        const a = 0n;
+        const b = _b;
+        let X3 = 0n, Y3 = 0n, Z3 = 0n;
+        const b3 = M(b * 3n);
+        let t0 = M(X1 * X2), t1 = M(Y1 * Y2), t2 = M(Z1 * Z2), t3 = M(X1 + Y1); // step 1
+        let t4 = M(X2 + Y2); // step 5
+        t3 = M(t3 * t4);
+        t4 = M(t0 + t1);
+        t3 = M(t3 - t4);
+        t4 = M(X1 + Z1);
+        let t5 = M(X2 + Z2); // step 10
+        t4 = M(t4 * t5);
+        t5 = M(t0 + t2);
+        t4 = M(t4 - t5);
+        t5 = M(Y1 + Z1);
+        X3 = M(Y2 + Z2); // step 15
+        t5 = M(t5 * X3);
+        X3 = M(t1 + t2);
+        t5 = M(t5 - X3);
+        Z3 = M(a * t4);
+        X3 = M(b3 * t2); // step 20
+        Z3 = M(X3 + Z3);
+        X3 = M(t1 - Z3);
+        Z3 = M(t1 + Z3);
+        Y3 = M(X3 * Z3);
+        t1 = M(t0 + t0); // step 25
+        t1 = M(t1 + t0);
+        t2 = M(a * t2);
+        t4 = M(b3 * t4);
+        t1 = M(t1 + t2);
+        t2 = M(t0 - t2); // step 30
+        t2 = M(a * t2);
+        t4 = M(t4 + t2);
+        t0 = M(t1 * t4);
+        Y3 = M(Y3 + t0);
+        t0 = M(t5 * t4); // step 35
+        X3 = M(t3 * X3);
+        X3 = M(X3 - t0);
+        t0 = M(t3 * t1);
+        Z3 = M(t5 * Z3);
+        Z3 = M(Z3 + t0); // step 40
+        return new Point(X3, Y3, Z3);
+    }
+    /**
+     * Point-by-scalar multiplication. Scalar must be in range 1 <= n < CURVE.n.
+     * Uses {@link wNAF} for base point.
+     * Uses fake point to mitigate side-channel leakage.
+     * @param n scalar by which point is multiplied
+     * @param safe safe mode guards against timing attacks; unsafe mode is faster
+     */
+    multiply(n, safe = true) {
+        if (!safe && n === 0n)
+            return I;
+        agroup(n);
+        if (n === 1n)
+            return this;
+        if (this.equals(G))
+            return wNAF(n).p;
+        // init result point & fake point
+        let p = I;
+        let f = G;
+        for (let d = this; n > 0n; d = d.double(), n >>= 1n) {
+            // if bit is present, add to point
+            // if not present, add to fake, for timing safety
+            if (n & 1n)
+                p = p.add(d);
+            else if (safe)
+                f = f.add(d);
+        }
+        return p;
+    }
+    /** Convert point to 2d xy affine point. (X, Y, Z) ∋ (x=X/Z, y=Y/Z) */
+    toAffine() {
+        const { px: x, py: y, pz: z } = this;
+        // fast-paths for ZERO point OR Z=1
+        if (this.equals(I))
+            return { x: 0n, y: 0n };
+        if (z === 1n)
+            return { x, y };
+        const iz = invert(z, P);
+        // (Z * Z^-1) must be 1, otherwise bad math
+        if (M(z * iz) !== 1n)
+            err('inverse invalid');
+        // x = X*Z^-1; y = Y*Z^-1
+        return { x: M(x * iz), y: M(y * iz) };
+    }
+    /** Checks if the point is valid and on-curve. */
+    assertValidity() {
+        const { x, y } = this.toAffine(); // convert to 2d xy affine point.
+        afield(x); // must be in range 1 <= x,y < P
+        afield(y);
+        // y² == x³ + ax + b, equation sides must be equal
+        return M(y * y) === koblitz(x) ? this : err('bad point: not on curve');
+    }
+    /** Converts point to 33/65-byte Uint8Array. */
+    toBytes(isCompressed = true) {
+        const { x, y } = this.assertValidity().toAffine();
+        const x32b = numTo32b(x);
+        if (isCompressed)
+            return concatBytes(getPrefix(y), x32b);
+        return concatBytes(u8of(0x04), x32b, numTo32b(y));
+    }
+    /** Create 3d xyz point from 2d xy. (0, 0) => (0, 1, 0), not (0, 0, 1) */
+    static fromAffine(ap) {
+        const { x, y } = ap;
+        return x === 0n && y === 0n ? I : new Point(x, y, 1n);
+    }
+    toHex(isCompressed) {
+        return bytesToHex(this.toBytes(isCompressed));
+    }
+    static fromPrivateKey(k) {
+        return G.multiply(toPrivScalar(k));
+    }
+    static fromHex(hex) {
+        return Point.fromBytes(toU8(hex));
+    }
+    get x() {
+        return this.toAffine().x;
+    }
+    get y() {
+        return this.toAffine().y;
+    }
+    toRawBytes(isCompressed) {
+        return this.toBytes(isCompressed);
+    }
+}
+/** Generator / base point */
+const G = new Point(Gx, Gy, 1n);
+/** Identity / zero point */
+const I = new Point(0n, 1n, 0n);
+// Static aliases
+Point.BASE = G;
+Point.ZERO = I;
+/** `Q = u1⋅G + u2⋅R`. Verifies Q is not ZERO. Unsafe: non-CT. */
+const doubleScalarMulUns = (R, u1, u2) => {
+    return G.multiply(u1, false).add(R.multiply(u2, false)).assertValidity();
+};
+const bytesToNumBE = (b) => big('0x' + (bytesToHex(b) || '0'));
+const sliceBytesNumBE = (b, from, to) => bytesToNumBE(b.subarray(from, to));
+const B256 = 2n ** 256n; // secp256k1 is weierstrass curve. Equation is x³ + ax + b.
+/** Number to 32b. Must be 0 <= num < B256. validate, pad, to bytes. */
+const numTo32b = (num) => hexToBytes(padh(arange(num, 0n, B256), L2));
+/** Normalize private key to scalar (bigint). Verifies scalar is in range 1<s<N */
+const toPrivScalar = (pr) => {
+    const num = isBig(pr) ? pr : bytesToNumBE(toU8(pr, L));
+    return arange(num, 1n, N, 'private key invalid 3');
+};
+/** For Signature malleability, validates sig.s is bigger than N/2. */
+const highS = (n) => n > N >> 1n;
+/** Creates 33/65-byte public key from 32-byte private key. */
+const getPublicKey = (privKey, isCompressed = true) => {
+    return G.multiply(toPrivScalar(privKey)).toBytes(isCompressed);
+};
+/** ECDSA Signature class. Supports only compact 64-byte representation, not DER. */
+class Signature {
+    r;
+    s;
+    recovery;
+    constructor(r, s, recovery) {
+        this.r = agroup(r); // 1 <= r < N
+        this.s = agroup(s); // 1 <= s < N
+        if (recovery != null)
+            this.recovery = recovery;
+        Object.freeze(this);
+    }
+    /** Create signature from 64b compact (r || s) representation. */
+    static fromBytes(b) {
+        abytes(b, L2);
+        const r = sliceBytesNumBE(b, 0, L);
+        const s = sliceBytesNumBE(b, L, L2);
+        return new Signature(r, s);
+    }
+    toBytes() {
+        const { r, s } = this;
+        return concatBytes(numTo32b(r), numTo32b(s));
+    }
+    /** Copy signature, with newly added recovery bit. */
+    addRecoveryBit(bit) {
+        return new Signature(this.r, this.s, bit);
+    }
+    hasHighS() {
+        return highS(this.s);
+    }
+    toCompactRawBytes() {
+        return this.toBytes();
+    }
+    toCompactHex() {
+        return bytesToHex(this.toBytes());
+    }
+    recoverPublicKey(msg) {
+        return recoverPublicKey(this, msg);
+    }
+    static fromCompact(hex) {
+        return Signature.fromBytes(toU8(hex, L2));
+    }
+    assertValidity() {
+        return this;
+    }
+    normalizeS() {
+        const { r, s, recovery } = this;
+        return highS(s) ? new Signature(r, modN(-s), recovery) : this;
+    }
+}
+/**
+ * RFC6979: ensure ECDSA msg is X bytes, convert to BigInt.
+ * RFC suggests optional truncating via bits2octets.
+ * FIPS 186-4 4.6 suggests the leftmost min(nBitLen, outLen) bits,
+ * which matches bits2int. bits2int can produce res>N.
+ */
+const bits2int = (bytes) => {
+    const delta = bytes.length * 8 - 256;
+    if (delta > 1024)
+        err('msg invalid'); // our CUSTOM check, "just-in-case": prohibit long inputs
+    const num = bytesToNumBE(bytes);
+    return delta > 0 ? num >> big(delta) : num;
+};
+/** int2octets can't be used; pads small msgs with 0: BAD for truncation as per RFC vectors */
+const bits2int_modN = (bytes) => modN(bits2int(abytes(bytes)));
+const signOpts = { lowS: true };
+const veriOpts = { lowS: true };
+// RFC6979 signature generation, preparation step.
+const prepSig = (msgh, priv, opts = signOpts) => {
+    if (['der', 'recovered', 'canonical'].some((k) => k in opts))
+        // legacy opts
+        err('option not supported');
+    let { lowS, extraEntropy } = opts; // generates low-s sigs by default
+    if (lowS == null)
+        lowS = true; // RFC6979 3.2: we skip step A
+    const i2o = numTo32b; // int to octets
+    const h1i = bits2int_modN(toU8(msgh)); // msg bigint
+    const h1o = i2o(h1i); // msg octets
+    const d = toPrivScalar(priv); // validate private key, convert to bigint
+    const seed = [i2o(d), h1o]; // Step D of RFC6979 3.2
+    /** RFC6979 3.6: additional k' (optional). See {@link ExtraEntropy}. */
+    // K = HMAC_K(V || 0x00 || int2octets(x) || bits2octets(h1) || k')
+    if (extraEntropy)
+        seed.push(extraEntropy === true ? randomBytes(L) : toU8(extraEntropy));
+    const m = h1i; // convert msg to bigint
+    // Converts signature params into point w r/s, checks result for validity.
+    // To transform k => Signature:
+    // q = k⋅G
+    // r = q.x mod n
+    // s = k^-1(m + rd) mod n
+    const k2sig = (kBytes) => {
+        // RFC 6979 Section 3.2, step 3: k = bits2int(T)
+        // Important: all mod() calls here must be done over N
+        const k = bits2int(kBytes);
+        if (!(1n <= k && k < N))
+            return; // Check 0 < k < CURVE.n
+        const q = G.multiply(k).toAffine(); // q = k⋅G
+        const r = modN(q.x); // r = q.x mod n
+        if (r === 0n)
+            return;
+        const ik = invert(k, N); // k^-1 mod n, NOT mod P
+        const s = modN(ik * modN(m + modN(d * r))); // s = k^-1(m + rd) mod n
+        if (s === 0n)
+            return;
+        let normS = s; // normalized S
+        let recovery = (q.x === r ? 0 : 2) | Number(q.y & 1n); // recovery bit (2 or 3, when q.x > n)
+        if (lowS && highS(s)) {
+            // if lowS was passed, ensure s is always
+            normS = modN(-s); // in the bottom half of CURVE.n
+            recovery ^= 1;
+        }
+        return new Signature(r, normS, recovery); // use normS, not s
+    };
+    return { seed: concatBytes(...seed), k2sig };
+};
+// HMAC-DRBG from NIST 800-90. Minimal, non-full-spec - used for RFC6979 signatures.
+const hmacDrbg = (asynchronous) => {
+    let v = u8n(L); // Steps B, C of RFC6979 3.2: set hashLen
+    let k = u8n(L); // In our case, it's always equal to L
+    let i = 0; // Iterations counter, will throw when over max
+    const NULL = u8n(0);
+    const reset = () => {
+        v.fill(1);
+        k.fill(0);
+        i = 0;
+    };
+    const max = 1000;
+    const _e = 'drbg: tried 1000 values';
+    if (asynchronous) {
+        // asynchronous=true
+        // h = hmac(K || V || ...)
+        const h = (...b) => etc.hmacSha256Async(k, v, ...b);
+        const reseed = async (seed = NULL) => {
+            // HMAC-DRBG reseed() function. Steps D-G
+            k = await h(u8of(0x00), seed); // k = hmac(K || V || 0x00 || seed)
+            v = await h(); // v = hmac(K || V)
+            if (seed.length === 0)
+                return;
+            k = await h(u8of(0x01), seed); // k = hmac(K || V || 0x01 || seed)
+            v = await h(); // v = hmac(K || V)
+        };
+        // HMAC-DRBG generate() function
+        const gen = async () => {
+            if (i++ >= max)
+                err(_e);
+            v = await h(); // v = hmac(K || V)
+            return v; // this diverges from noble-curves: we don't allow arbitrary output len!
+        };
+        // Do not reuse returned fn for more than 1 sig:
+        // 1) it's slower (JIT screws up). 2. unsafe (async race conditions)
+        return async (seed, pred) => {
+            reset();
+            await reseed(seed); // Steps D-G
+            let res = undefined; // Step H: grind until k is in [1..n-1]
+            while (!(res = pred(await gen())))
+                await reseed(); // test predicate until it returns ok
+            reset();
+            return res;
+        };
+    }
+    else {
+        // asynchronous=false; same as above, but synchronous
+        // h = hmac(K || V || ...)
+        const h = (...b) => callHash('hmacSha256Sync')(k, v, ...b);
+        const reseed = (seed = NULL) => {
+            // HMAC-DRBG reseed() function. Steps D-G
+            k = h(u8of(0x00), seed); // k = hmac(k || v || 0x00 || seed)
+            v = h(); // v = hmac(k || v)
+            if (seed.length === 0)
+                return;
+            k = h(u8of(0x01), seed); // k = hmac(k || v || 0x01 || seed)
+            v = h(); // v = hmac(k || v)
+        };
+        // HMAC-DRBG generate() function
+        const gen = () => {
+            if (i++ >= max)
+                err(_e);
+            v = h(); // v = hmac(k || v)
+            return v; // this diverges from noble-curves: we don't allow arbitrary output len!
+        };
+        // Do not reuse returned fn for more than 1 sig:
+        // 1) it's slower (JIT screws up). 2. unsafe (async race conditions)
+        return (seed, pred) => {
+            reset();
+            reseed(seed); // Steps D-G
+            let res = undefined; // Step H: grind until k is in [1..n-1]
+            while (!(res = pred(gen())))
+                reseed(); // test predicate until it returns ok
+            reset();
+            return res;
+        };
+    }
+};
+/**
+ * Sign a msg hash using secp256k1. Async.
+ * Follows [SEC1](https://secg.org/sec1-v2.pdf) 4.1.2 & RFC6979.
+ * It's suggested to enable hedging ({@link ExtraEntropy}) to prevent fault attacks.
+ * @param msgh - message HASH, not message itself e.g. sha256(message)
+ * @param priv - private key
+ * @param opts - `lowS: true` prevents malleability, `extraEntropy: true` enables hedging
+ */
+const signAsync = async (msgh, priv, opts = signOpts) => {
+    // Re-run drbg until k2sig returns ok
+    const { seed, k2sig } = prepSig(msgh, priv, opts);
+    const sig = await hmacDrbg(true)(seed, k2sig);
+    return sig;
+};
+/**
+ * Sign a msg hash using secp256k1.
+ * Follows [SEC1](https://secg.org/sec1-v2.pdf) 4.1.2 & RFC6979.
+ * It's suggested to enable hedging ({@link ExtraEntropy}) to prevent fault attacks.
+ * @param msgh - message HASH, not message itself e.g. sha256(message)
+ * @param priv - private key
+ * @param opts - `lowS: true` prevents malleability, `extraEntropy: true` enables hedging
+ * @example
+ * const sig = sign(sha256('hello'), privKey, { extraEntropy: true }).toBytes();
+ */
+const sign = (msgh, priv, opts = signOpts) => {
+    // Re-run drbg until k2sig returns ok
+    const { seed, k2sig } = prepSig(msgh, priv, opts);
+    const sig = hmacDrbg(false)(seed, k2sig);
+    return sig;
+};
+/**
+ * Verify a signature using secp256k1.
+ * Follows [SEC1](https://secg.org/sec1-v2.pdf) 4.1.4.
+ * Default lowS=true, prevents malleability.
+ * @param sig - signature, 64-byte or Signature instance
+ * @param msgh - message HASH, not message itself e.g. sha256(message)
+ * @param pub - public key
+ * @param opts - { lowS: true } is default, prohibits s >= CURVE.n/2 to prevent malleability
+ */
+const verify = (sig, msgh, pub, opts = veriOpts) => {
+    let { lowS } = opts;
+    if (lowS == null)
+        lowS = true;
+    if ('strict' in opts)
+        err('option not supported');
+    let sigg;
+    // Previous ver supported DER sigs.
+    // We throw error when DER is suspected now.
+    const rs = sig && typeof sig === 'object' && 'r' in sig;
+    if (!rs && toU8(sig).length !== L2)
+        err('signature must be 64 bytes');
+    try {
+        sigg = rs ? new Signature(sig.r, sig.s) : Signature.fromCompact(sig);
+        const h = bits2int_modN(toU8(msgh)); // Truncate hash
+        const P = Point.fromBytes(toU8(pub)); // Validate public key
+        const { r, s } = sigg;
+        if (lowS && highS(s))
+            return false; // lowS bans sig.s >= CURVE.n/2
+        const is = invert(s, N); // s^-1
+        const u1 = modN(h * is); // u1 = hs^-1 mod n
+        const u2 = modN(r * is); // u2 = rs^-1 mod n
+        const R = doubleScalarMulUns(P, u1, u2).toAffine(); // R = u1⋅G + u2⋅P
+        // Stop if R is identity / zero point. Check is done inside `doubleScalarMulUns`
+        const v = modN(R.x); // R.x must be in N's field, not P's
+        return v === r; // mod(R.x, n) == r
+    }
+    catch (error) {
+        return false;
+    }
+};
+/**
+ * ECDSA public key recovery. Requires msg hash and recovery id.
+ * Follows [SEC1](https://secg.org/sec1-v2.pdf) 4.1.6.
+ */
+const recoverPublicKey = (sig, msgh) => {
+    const { r, s, recovery } = sig;
+    // 0 or 1 recovery id determines sign of "y" coordinate.
+    // 2 or 3 means q.x was >N.
+    if (![0, 1, 2, 3].includes(recovery))
+        err('recovery id invalid');
+    const h = bits2int_modN(toU8(msgh, L)); // Truncate hash
+    const radj = recovery === 2 || recovery === 3 ? r + N : r;
+    afield(radj); // ensure q.x is still a field element
+    const head = getPrefix(big(recovery)); // head is 0x02 or 0x03
+    const Rb = concatBytes(head, numTo32b(radj)); // concat head + r
+    const R = Point.fromBytes(Rb);
+    const ir = invert(radj, N); // r^-1
+    const u1 = modN(-h * ir); // -hr^-1
+    const u2 = modN(s * ir); // sr^-1
+    return doubleScalarMulUns(R, u1, u2); // (sr^-1)R-(hr^-1)G = -(hr^-1)G + (sr^-1)
+};
+/**
+ * Elliptic Curve Diffie-Hellman (ECDH) on secp256k1.
+ * Result is **NOT hashed**. Use hash or KDF on it if you need.
+ * @param privA private key A
+ * @param pubB public key B
+ * @param isCompressed 33-byte (true) or 65-byte (false) output
+ * @returns public key C
+ */
+const getSharedSecret = (privA, pubB, isCompressed = true) => {
+    return Point.fromBytes(toU8(pubB)).multiply(toPrivScalar(privA)).toBytes(isCompressed);
+};
+// FIPS 186 B.4.1 compliant key generation produces private keys with modulo bias being neglible.
+// takes >N+8 bytes, returns (hash mod n-1)+1
+const hashToPrivateKey = (hash) => {
+    hash = toU8(hash);
+    if (hash.length < L + 8 || hash.length > 1024)
+        err('expected 40-1024b');
+    const num = M(bytesToNumBE(hash), N - 1n);
+    return numTo32b(num + 1n);
+};
+const randomPrivateKey = () => hashToPrivateKey(randomBytes(L + 16)); // FIPS 186 B.4.1.
+const _sha = 'SHA-256';
+/** Math, hex, byte helpers. Not in `utils` because utils share API with noble-curves. */
+const etc = {
+    hexToBytes: hexToBytes,
+    bytesToHex: bytesToHex,
+    concatBytes: concatBytes,
+    bytesToNumberBE: bytesToNumBE,
+    numberToBytesBE: numTo32b,
+    mod: M,
+    invert: invert, // math utilities
+    hmacSha256Async: async (key, ...msgs) => {
+        const s = subtle();
+        const name = 'HMAC';
+        const k = await s.importKey('raw', key, { name, hash: { name: _sha } }, false, ['sign']);
+        return u8n(await s.sign(name, k, concatBytes(...msgs)));
+    },
+    hmacSha256Sync: undefined, // For TypeScript. Actual logic is below
+    hashToPrivateKey: hashToPrivateKey,
+    randomBytes: randomBytes,
+};
+/** Curve-specific utilities for private keys. */
+const utils = {
+    normPrivateKeyToScalar: toPrivScalar,
+    isValidPrivateKey: (key) => {
+        try {
+            return !!toPrivScalar(key);
+        }
+        catch (e) {
+            return false;
+        }
+    },
+    randomPrivateKey: randomPrivateKey,
+    precompute: (w = 8, p = G) => {
+        p.multiply(3n);
+        w;
+        return p;
+    },
+};
+// ## Precomputes
+// --------------
+const W = 8; // W is window size
+const scalarBits = 256;
+const pwindows = Math.ceil(scalarBits / W) + 1; // 33 for W=8
+const pwindowSize = 2 ** (W - 1); // 128 for W=8
+const precompute = () => {
+    const points = [];
+    let p = G;
+    let b = p;
+    for (let w = 0; w < pwindows; w++) {
+        b = p;
+        points.push(b);
+        for (let i = 1; i < pwindowSize; i++) {
+            b = b.add(p);
+            points.push(b);
+        } // i=1, bc we skip 0
+        p = b.double();
+    }
+    return points;
+};
+let Gpows = undefined; // precomputes for base point G
+// const-time negate
+const ctneg = (cnd, p) => {
+    const n = p.negate();
+    return cnd ? n : p;
+};
+/**
+ * Precomputes give 12x faster getPublicKey(), 10x sign(), 2x verify() by
+ * caching multiples of G (base point). Cache is stored in 32MB of RAM.
+ * Any time `G.multiply` is done, precomputes are used.
+ * Not used for getSharedSecret, which instead multiplies random pubkey `P.multiply`.
+ *
+ * w-ary non-adjacent form (wNAF) precomputation method is 10% slower than windowed method,
+ * but takes 2x less RAM. RAM reduction is possible by utilizing `.subtract`.
+ *
+ * !! Precomputes can be disabled by commenting-out call of the wNAF() inside Point#multiply().
+ */
+const wNAF = (n) => {
+    const comp = Gpows || (Gpows = precompute());
+    let p = I;
+    let f = G; // f must be G, or could become I in the end
+    const pow_2_w = 2 ** W; // 256 for W=8
+    const maxNum = pow_2_w; // 256 for W=8
+    const mask = big(pow_2_w - 1); // 255 for W=8 == mask 0b11111111
+    const shiftBy = big(W); // 8 for W=8
+    for (let w = 0; w < pwindows; w++) {
+        let wbits = Number(n & mask); // extract W bits.
+        n >>= shiftBy; // shift number by W bits.
+        if (wbits > pwindowSize) {
+            wbits -= maxNum;
+            n += 1n;
+        } // split if bits > max: +224 => 256-32
+        const off = w * pwindowSize;
+        const offF = off; // offsets, evaluate both
+        const offP = off + Math.abs(wbits) - 1;
+        const isEven = w % 2 !== 0; // conditions, evaluate both
+        const isNeg = wbits < 0;
+        if (wbits === 0) {
+            // off == I: can't add it. Adding random offF instead.
+            f = f.add(ctneg(isEven, comp[offF])); // bits are 0: add garbage to fake point
+        }
+        else {
+            p = p.add(ctneg(isNeg, comp[offP])); // bits are 1: add to result point
+        }
+    }
+    return { p, f }; // return both real and fake points for JIT
+};
+// !! Remove the export below to easily use in REPL / browser console
+
+/* ── the compiled contract: solc 0.8.26, optimizer on, runs 200 ── */
+const BYTECODE = '60a060405234801561000f575f80fd5b506040516111f93803806111f983398101604081905261002e91610104565b6001600160a01b03821661007b5760405162461bcd60e51b815260206004820152600f60248201526e1cda59db995c881c995c5d5a5c9959608a1b60448201526064015b60405180910390fd5b6001600160a01b0381166100c55760405162461bcd60e51b815260206004820152601160248201527019dd585c991a585b881c995c5d5a5c9959607a1b6044820152606401610072565b5f80546001600160a01b0319166001600160a01b0393841617905516608052610135565b80516001600160a01b03811681146100ff575f80fd5b919050565b5f8060408385031215610115575f80fd5b61011e836100e9565b915061012c602084016100e9565b90509250929050565b6080516110a56101545f395f8181610180015261046701526110a55ff3fe608060405234801561000f575f80fd5b50600436106100e5575f3560e01c8063717c246511610088578063b82c1b4a11610063578063b82c1b4a1461025a578063cd83d56614610262578063f71d96cb1461028a578063fc9f73a91461029d575f80fd5b8063717c2465146101b55780639e317f12146101d5578063a9eb19b514610215575f80fd5b806328900306116100c35780632890030614610152578063302bcc5714610173578063452a93201461017b57806350d15fbe146101a2575f80fd5b806319b34e8f146100e95780631d06f69514610113578063238ac93314610128575b5f80fd5b6100fc6100f7366004610b7b565b6102b0565b60405161010a929190610be4565b60405180910390f35b610126610121366004610c3b565b61045c565b005b5f5461013a906001600160a01b031681565b6040516001600160a01b03909116815260200161010a565b610165610160366004610cc3565b61055f565b60405190815260200161010a565b600454610165565b61013a7f000000000000000000000000000000000000000000000000000000000000000081565b6101656101b0366004610d49565b610677565b6101c86101c3366004610d60565b610696565b60405161010a9190610da7565b6101fd6101e3366004610d49565b60026020525f90815260409020546001600160401b031681565b6040516001600160401b03909116815260200161010a565b610245610223366004610db9565b600160209081525f928352604080842090915290825290205463ffffffff1681565b60405163ffffffff909116815260200161010a565b600654610165565b6101fd610270366004610d49565b60036020525f90815260409020546001600160401b031681565b610165610298366004610d49565b610761565b6101266102ab366004610dd9565b610770565b60045460609081908085106102dd575050604080515f808252602082019081528183019092529150610454565b5f6102e88587610ee3565b9050818111156102f55750805b5f6103008783610efc565b9050806001600160401b0381111561031a5761031a610ebb565b604051908082528060200260200182016040528015610343578160200160208202803683370190505b509450806001600160401b0381111561035e5761035e610ebb565b604051908082528060200260200182016040528015610387578160200160208202803683370190505b5093505f5b8181101561044f5760046103a0828a610ee3565b815481106103b0576103b0610f0f565b905f5260205f2001548682815181106103cb576103cb610f0f565b60200260200101818152505060015f8783815181106103ec576103ec610f0f565b602002602001015181526020019081526020015f205f8a81526020019081526020015f205f9054906101000a900463ffffffff1685828151811061043257610432610f0f565b63ffffffff9092166020928302919091019091015260010161038c565b505050505b935093915050565b336001600160a01b037f000000000000000000000000000000000000000000000000000000000000000016146104c85760405162461bcd60e51b815260206004820152600c60248201526b3737ba1033bab0b93234b0b760a11b60448201526064015b60405180910390fd5b6001600160a01b0381166105105760405162461bcd60e51b815260206004820152600f60248201526e1cda59db995c881c995c5d5a5c9959608a1b60448201526064016104bf565b5f80546001600160a01b038381166001600160a01b0319831681178455604051919092169283917f6296f2c03e939addc50f67bbb5731c01fd0fa8f5bb6e94466c4dc09428dbdf3b9190a35050565b5f804630898989604051602001610577929190610f23565b6040516020818303038152906040528051906020012088886040516020016105a0929190610f5d565b604051602081830303815290604052805190602001208760405160200161060e9695949392919095865260609490941b6bffffffffffffffffffffffff1916602086015260348501929092526054840152607483015260c01b6001600160c01b0319166094820152609c0190565b60408051808303601f1901815282825280516020918201207f19457468657265756d205369676e6564204d6573736167653a0a33320000000082850152603c8085019190915282518085039091018152605c909301909152815191012098975050505050505050565b60068181548110610686575f80fd5b5f91825260209091200154905081565b6060816001600160401b038111156106b0576106b0610ebb565b6040519080825280602002602001820160405280156106d9578160200160208202803683370190505b5090505f5b82811015610759575f8581526001602052604081209085858481811061070657610706610f0f565b9050602002013581526020019081526020015f205f9054906101000a900463ffffffff1682828151811061073c5761073c610f0f565b63ffffffff909216602092830291909101909101526001016106de565b509392505050565b60048181548110610686575f80fd5b858414610793576040516001621398b960e31b0319815260040160405180910390fd5b5f8690036107b45760405163a095e7e160e01b815260040160405180910390fd5b5f888152600260205260409020546001600160401b03908116908416116107ee57604051630d8d01cf60e41b815260040160405180910390fd5b5f546001600160a01b031661081161080a8a8a8a8a8a8a61055f565b8484610a84565b6001600160a01b03161461083857604051635cd5d23360e01b815260040160405180910390fd5b5f8881526005602052604090205460ff1661089a575f888152600560205260408120805460ff191660019081179091556004805491820181559091527f8a35acfbc15ff81a39ae7d344fd709f28e8600b4aa8c65c6b64bfe7fe36bd19b018890555b5f5b868110156109f0575f8888838181106108b7576108b7610f0f565b5f8d8152600160209081526040808320938202959095013580835292905292909220549192505063ffffffff168787848181106108f6576108f6610f0f565b905060200201602081019061090b9190610f99565b63ffffffff161015610930576040516324ee703d60e21b815260040160405180910390fd5b5f8181526007602052604090205460ff16610992575f818152600760205260408120805460ff191660019081179091556006805491820181559091527ff652222313e28459528d920b65115c16c04f3efc82aaedc97be59f3f377c0d3f018190555b8686838181106109a4576109a4610f0f565b90506020020160208101906109b99190610f99565b5f8b8152600160208181526040808420958452949052929020805463ffffffff191663ffffffff929092169190911790550161089c565b505f88815260026020908152604080832080546001600160401b0380891667ffffffffffffffff1992831617909255600390935292819020805442909416939092169290921790555188907f3bd0215a042dd19ad11f11fbb7e787a6c74ce0d3a580e4ecbadbe56a1c12c75390610a72908a908a908a908a908a903390610fb2565b60405180910390a25050505050505050565b5f60418214610a9457505f610b74565b8235602084013560408501355f1a601b811015610ab957610ab6601b82611056565b90505b8060ff16601b14158015610ad157508060ff16601c14155b15610ae1575f9350505050610b74565b7f7fffffffffffffffffffffffffffffff5d576e7357a4501ddfe92f46681b20a0821115610b14575f9350505050610b74565b604080515f81526020810180835289905260ff831691810191909152606081018490526080810183905260019060a0016020604051602081039080840390855afa158015610b64573d5f803e3d5ffd5b5050506020604051035193505050505b9392505050565b5f805f60608486031215610b8d575f80fd5b505081359360208301359350604090920135919050565b5f8151808452602084019350602083015f5b82811015610bda57815163ffffffff16865260209586019590910190600101610bb6565b5093949350505050565b604080825283519082018190525f9060208501906060840190835b81811015610c1d578351835260209384019390920191600101610bff565b50508381036020850152610c318186610ba4565b9695505050505050565b5f60208284031215610c4b575f80fd5b81356001600160a01b0381168114610b74575f80fd5b5f8083601f840112610c71575f80fd5b5081356001600160401b03811115610c87575f80fd5b6020830191508360208260051b8501011115610ca1575f80fd5b9250929050565b80356001600160401b0381168114610cbe575f80fd5b919050565b5f805f805f8060808789031215610cd8575f80fd5b8635955060208701356001600160401b03811115610cf4575f80fd5b610d0089828a01610c61565b90965094505060408701356001600160401b03811115610d1e575f80fd5b610d2a89828a01610c61565b9094509250610d3d905060608801610ca8565b90509295509295509295565b5f60208284031215610d59575f80fd5b5035919050565b5f805f60408486031215610d72575f80fd5b8335925060208401356001600160401b03811115610d8e575f80fd5b610d9a86828701610c61565b9497909650939450505050565b602081525f610b746020830184610ba4565b5f8060408385031215610dca575f80fd5b50508035926020909101359150565b5f805f805f805f8060a0898b031215610df0575f80fd5b8835975060208901356001600160401b03811115610e0c575f80fd5b610e188b828c01610c61565b90985096505060408901356001600160401b03811115610e36575f80fd5b610e428b828c01610c61565b9096509450610e55905060608a01610ca8565b925060808901356001600160401b03811115610e6f575f80fd5b8901601f81018b13610e7f575f80fd5b80356001600160401b03811115610e94575f80fd5b8b6020828401011115610ea5575f80fd5b989b979a50959850939692959194602001935050565b634e487b7160e01b5f52604160045260245ffd5b634e487b7160e01b5f52601160045260245ffd5b80820180821115610ef657610ef6610ecf565b92915050565b81810381811115610ef657610ef6610ecf565b634e487b7160e01b5f52603260045260245ffd5b5f6001600160fb1b03831115610f37575f80fd5b8260051b80858437919091019392505050565b803563ffffffff81168114610cbe575f80fd5b5f8184825b85811015610f8e5763ffffffff610f7883610f4a565b1683526020928301929190910190600101610f62565b509095945050505050565b5f60208284031215610fa9575f80fd5b610b7482610f4a565b608080825281018690525f6001600160fb1b03871115610fd0575f80fd5b8660051b808960a0850137820182810360a09081016020850152810186905286905f9060c0015b878210156110235763ffffffff61100d84610f4a565b1681526020928301926001929092019101610ff7565b6001600160401b0387166040860152925061103c915050565b6001600160a01b0383166060830152979650505050505050565b60ff8181168382160190811115610ef657610ef6610ecf56fea26469706673582212202deae29ca552754953d9d3418caf8be5eee9eff416a214f469ddd10be5b537ca64736f6c634300081a0033';
+
+const CHAIN = {
+  chainId: '0xa867',                       // 43111
+  chainName: 'Hemi',
+  rpcUrls: ['https://rpc.hemi.network/rpc'],
+  nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
+  blockExplorerUrls: ['https://explorer.hemi.xyz'],
+};
+
+const $ = (id) => document.getElementById(id);
+const eth = () => window.ethereum;
+let guardian = null, relayerPriv = null, relayerAddr = null, contractAddr = null;
+
+function unlock(id) { $(id).classList.remove('locked'); }
+function done(id) { $(id).classList.add('done'); }
+function say(id, msg, cls) { const el = $(id); el.textContent = msg; el.className = 'status' + (cls ? ' ' + cls : ''); }
+
+function privToAddress(priv) {
+  const pub = getPublicKey(priv, false).slice(1);
+  return '0x' + toHex(keccak256(pub).slice(12));
+}
+function selector(sig) { return toHex(keccak256(new TextEncoder().encode(sig))).slice(0, 8); }
+function pad32(addr) { return '0'.repeat(24) + addr.toLowerCase().replace('0x',''); }
+
+document.querySelectorAll('button.copy').forEach((b) => {
+  b.addEventListener('click', async () => {
+    try { await navigator.clipboard.writeText($(b.dataset.copy).textContent); b.textContent = 'Copied'; }
+    catch (e) { /* iOS may need the fallback */ 
+      const r = document.createRange(); r.selectNode($(b.dataset.copy));
+      getSelection().removeAllRanges(); getSelection().addRange(r);
+      document.execCommand('copy'); b.textContent = 'Copied';
+    }
+    setTimeout(() => { b.textContent = 'Copy'; }, 1500);
+  });
+});
+
+/* ── Step 1: connect + network ── */
+$('btnConnect').addEventListener('click', async () => {
+  if (!eth()) { say('s1', 'No wallet found. Open this page inside the MetaMask app: MetaMask \u2192 browser tab \u2192 this URL.', 'bad'); return; }
+  try {
+    say('s1', 'Asking your wallet\u2026');
+    const accts = await eth().request({ method: 'eth_requestAccounts' });
+    guardian = accts[0];
+    try {
+      await eth().request({ method: 'wallet_switchEthereumChain', params: [{ chainId: CHAIN.chainId }] });
+    } catch (e) {
+      if (e && (e.code === 4902 || String(e.message||'').includes('Unrecognized'))) {
+        await eth().request({ method: 'wallet_addEthereumChain', params: [CHAIN] });
+      } else { throw e; }
+    }
+    say('s1', 'Connected as ' + guardian.slice(0, 8) + '\u2026' + guardian.slice(-6) + ' on Hemi \u2713 (this is the guardian)', 'ok');
+    done('c1'); unlock('c2');
+  } catch (e) {
+    say('s1', e && e.code === 4001 ? 'You dismissed the popup \u2014 tap Connect to try again.' : 'Wallet said: ' + (e && e.message || e), 'bad');
+  }
+});
+
+/* ── Step 2: keygen, on-device ── */
+$('btnKey').addEventListener('click', () => {
+  try {
+    const N = BigInt('0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141');
+    let k, kn;
+    do {
+      k = new Uint8Array(32); crypto.getRandomValues(k);
+      kn = BigInt('0x' + toHex(k));
+    } while (kn === 0n || kn >= N);
+    relayerPriv = k;
+    relayerAddr = privToAddress(k);
+    $('privHex').textContent = '0x' + toHex(k);
+    $('relayerAddr').textContent = relayerAddr;
+    $('keyOut').style.display = 'block';
+    $('btnKey').disabled = true;
+    say('s2', 'Key created on this device. Copy it into Cloudflare before deploying.', 'ok');
+    done('c2'); unlock('c3');
+  } catch (e) { say('s2', 'Key generation failed: ' + (e && e.message || e), 'bad'); }
+});
+
+/* ── Step 3: deploy + read-back verification ── */
+async function waitReceipt(txHash) {
+  for (let i = 0; i < 60; i++) {
+    const r = await eth().request({ method: 'eth_getTransactionReceipt', params: [txHash] });
+    if (r) return r;
+    await new Promise((res) => setTimeout(res, 3000));
+  }
+  return null;
+}
+async function readAddr(at, sig) {
+  const out = await eth().request({ method: 'eth_call', params: [{ to: at, data: '0x' + selector(sig) }, 'latest'] });
+  return '0x' + String(out).replace('0x','').padStart(64,'0').slice(24).toLowerCase();
+}
+$('btnDeploy').addEventListener('click', async () => {
+  if (!guardian || !relayerAddr) return;
+  try {
+    $('btnDeploy').disabled = true;
+    say('s3', 'Confirm in your wallet\u2026');
+    const data = '0x' + BYTECODE + pad32(relayerAddr) + pad32(guardian);
+    const txHash = await eth().request({ method: 'eth_sendTransaction', params: [{ from: guardian, data }] });
+    say('s3', 'Deploying\u2026 (waiting for Hemi to confirm, ~15s)');
+    const rec = await waitReceipt(txHash);
+    if (!rec) { say('s3', 'Still pending \u2014 check the transaction in your wallet, then reload and re-check.', 'bad'); $('btnDeploy').disabled = false; return; }
+    if (rec.status !== '0x1' || !rec.contractAddress) { say('s3', 'The deployment reverted. Nothing was charged beyond gas \u2014 tap Deploy to retry.', 'bad'); $('btnDeploy').disabled = false; return; }
+    contractAddr = rec.contractAddress;
+    $('contractAddr').textContent = contractAddr;
+    $('deployOut').style.display = 'block';
+    say('s3', 'Deployed \u2713', 'ok');
+    /* Read the two roles straight back off the chain — a wrong deploy is
+       caught HERE, not three days later as a silent signer-mismatch. */
+    try {
+      const s = await readAddr(contractAddr, 'signer()');
+      const g = await readAddr(contractAddr, 'guardian()');
+      const okS = s === relayerAddr.toLowerCase(), okG = g === guardian.toLowerCase();
+      $('verify').innerHTML = (okS ? '<span class="ok">\u2713 signing key registered</span>' : '<span class="bad">\u2717 signer readback mismatch</span>')
+        + ' &nbsp; ' + (okG ? '<span class="ok">\u2713 you are the guardian</span>' : '<span class="bad">\u2717 guardian readback mismatch</span>');
+    } catch (e) { $('verify').textContent = '(readback skipped: ' + (e && e.message || e) + ')'; }
+    done('c3'); unlock('c4'); unlock('c5');
+  } catch (e) {
+    $('btnDeploy').disabled = false;
+    say('s3', e && e.code === 4001 ? 'You dismissed the popup \u2014 tap Deploy when ready.' : 'Wallet said: ' + (e && e.message || e), 'bad');
+  }
+});
+
+/* ── Step 4: fund the relayer ── */
+$('btnFund').addEventListener('click', async () => {
+  try {
+    const ethAmt = parseFloat($('fundAmt').value);
+    if (!(ethAmt > 0 && ethAmt < 1)) { say('s4', 'Enter an amount between 0 and 1 ETH.', 'bad'); return; }
+    const wei = BigInt(Math.round(ethAmt * 1e9)) * 1000000000n;
+    say('s4', 'Confirm in your wallet\u2026');
+    await eth().request({ method: 'eth_sendTransaction', params: [{ from: guardian, to: relayerAddr, value: '0x' + wei.toString(16) }] });
+    say('s4', 'Gas sent \u2713 \u2014 the game can now pay for score writes.', 'ok');
+    done('c4');
+  } catch (e) {
+    say('s4', e && e.code === 4001 ? 'You dismissed the popup \u2014 tap again when ready.' : 'Wallet said: ' + (e && e.message || e), 'bad');
+  }
+});
+</script>
+</body>
+</html>

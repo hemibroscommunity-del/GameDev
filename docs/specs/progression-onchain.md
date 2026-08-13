@@ -108,6 +108,43 @@ While `SCORES_CONTRACT` or `RELAYER_KEY` is unset, the feature is simply off.
 
 # Operator runbook — deploying to Hemi mainnet, no experience assumed
 
+## The 5-minute path (v2.3.1684 — use this one)
+
+Everything below in "the full walkthrough" still works, but it has been
+compressed into ONE page served from the game's own domain:
+
+> **https://gamedev-aix.pages.dev/deploy-scores.html**
+> (open it INSIDE your wallet's browser — MetaMask app → browser tab)
+
+The page does the compiling, the constructor fields, the key generation and
+the read-back verification itself; it is proven headlessly by
+`tools/qa/deploy-page.mjs`, which executes the exact transaction bytes the
+page produces in a local EVM.  What's left for a human:
+
+1. **Connect** (one tap — the page adds/switches to Hemi; your account
+   becomes the guardian and pays two sub-dollar transactions).
+2. **Create signing key** (one tap — generated on your device).  Copy the
+   private key → Cloudflare dashboard → Workers & Pages → `brotown-server`
+   → Settings → Variables and Secrets → Add → name `RELAYER_KEY`, type
+   **Secret**, Save.
+3. **Deploy** (one tap + one wallet approval).  The page waits for the
+   receipt and reads `signer()`/`guardian()` back off the chain — both show
+   ✓ or you find out on the spot.
+4. **Send gas to the signing key** (one tap + one approval, prefilled
+   0.002 ETH).
+5. Copy the **contract address** → paste it to a Claude session, which
+   commits it to `server/wrangler.toml` (never the dashboard — see the wipe
+   warning below) and the auto-deploy switches the feature on.
+
+Prerequisite: a little ETH on Hemi in your wallet.  Optional, any time
+later: verify the contract source on explorer.hemi.xyz (settings for that
+are in Step 4 of the full walkthrough below — solc 0.8.26, optimizer on,
+runs 200).
+
+---
+
+## The full walkthrough (manual fallback — only if the page is unavailable)
+
 Written for someone who has never deployed a contract. Every click is named.
 Nothing on the happy path needs a terminal. Total time: about 30 minutes,
 most of it waiting for MetaMask popups.
