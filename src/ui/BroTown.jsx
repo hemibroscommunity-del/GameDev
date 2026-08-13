@@ -951,6 +951,17 @@ export var BroTown = function BroTown(_ref0) {
     _useState4 = _slicedToArray(_useState3, 2),
     chatOpen = _useState4[0],
     setChatOpen = _useState4[1];
+  /* v2.3.1714: the top-left quest reminder collapses to its title on tap.
+     Owner: "some users might prefer that view to save screen space."
+     Read from storage in the INITIALISER, not in an effect — an effect would
+     paint the expanded card for one frame on every load and then snap it
+     shut, which looks like a glitch rather than a remembered preference. */
+  var _useQuestHudFold = useState(function () {
+    try { return localStorage.getItem('bt_quest_hud_collapsed') === '1'; } catch (e) { return false; }
+  }),
+    _useQuestHudFold2 = _slicedToArray(_useQuestHudFold, 2),
+    questHudFolded = _useQuestHudFold2[0],
+    setQuestHudFolded = _useQuestHudFold2[1];
   var _useState5 = useState(null),
     _useState6 = _slicedToArray(_useState5, 2),
     nearBuilding = _useState6[0],
@@ -7887,11 +7898,31 @@ export var BroTown = function BroTown(_ref0) {
     var q = activeQuests[0];
     var done = q.check(rpgState, stateRef.current);
     return /*#__PURE__*/React.createElement("div", {
+      /* v2.3.1714: tap to fold the objective away, leaving just the title.
+         onPointerDown stops the tap BEFORE it reaches the canvas — a bare
+         onClick would fold the card and ALSO order the character to walk to
+         the top-left corner, because the world listens for taps underneath
+         this overlay (same reason the tour prompt does it). */
+      onPointerDown: function onPointerDown(e) { e.stopPropagation(); },
+      onClick: function onClick(e) {
+        e.stopPropagation();
+        setQuestHudFolded(function (v) {
+          var next = !v;
+          try { localStorage.setItem('bt_quest_hud_collapsed', next ? '1' : '0'); } catch (e2) { /* private mode */ }
+          return next;
+        });
+      },
+      title: questHudFolded ? 'Show the objective' : 'Hide the objective',
       style: {
         position: 'absolute',
         top: 56,
         left: 8,
         zIndex: 17,
+        /* An ancestor turns pointer events off so the world stays tappable
+           through the HUD layer; this card has to opt back in to be tapped. */
+        pointerEvents: 'auto',
+        cursor: 'pointer',
+        WebkitTapHighlightColor: 'transparent',
         background: 'rgba(17,25,29,.85)' /* v2.3.1233: was rgba(0,0,0,.6)+blur */,        padding: '4px 10px',
         borderRadius: 6,
         border: "1px solid ".concat(done ? 'rgba(61,220,151,.3)' : 'rgba(255,255,255,.1)'),
@@ -7911,9 +7942,33 @@ export var BroTown = function BroTown(_ref0) {
         fontSize: 13,
         fontWeight: 700,
         lineHeight: 1.25,
+        display: 'flex',
+        alignItems: 'center',
+        gap: 6,
         color: done ? '#59BF91' : '#D8A94D'
       }
-    }, "\uD83D\uDCDC ", q.title, " ", done ? '✓' : ''), /*#__PURE__*/React.createElement("div", {
+    }, /*#__PURE__*/React.createElement("span", {
+      style: { flex: 1, minWidth: 0 }
+    }, "\uD83D\uDCDC ", q.title, " ", done ? '✓' : ''),
+    /* v2.3.1714: the fold affordance.  Without it a collapsed card is just a
+       card that quietly lost its second line, with nothing on screen saying
+       the title can be tapped to get it back. */
+    /*#__PURE__*/React.createElement("span", {
+      style: { fontSize: 9, opacity: 0.55, flex: '0 0 auto' }
+    }, questHudFolded ? '▸' : '▾')),
+    /* v2.3.1714: FOLDED, the card is only ~26px tall, and UI-BIBLE Part 2 is
+       explicit — "44x44pt minimum for anything tappable.  Visuals may be
+       smaller; the hit area may not."  So the pill keeps its small look and
+       this invisible child carries the hit area down to 44.  Anchored at
+       top:0 and grown DOWNWARD on purpose: centring it would push 9px up
+       under the 46px ZoneHeader rail and start eating taps meant for the
+       rail.  Only rendered when folded — expanded, the card is 56px and
+       already clears the floor, and this would be a dead strip over the
+       world for nothing. */
+    questHudFolded && /*#__PURE__*/React.createElement("div", {
+      'aria-hidden': true,
+      style: { position: 'absolute', left: 0, right: 0, top: 0, height: 44 }
+    }), !questHudFolded && /*#__PURE__*/React.createElement("div", {
       style: {
         fontSize: 11,
         lineHeight: 1.3,
