@@ -47,9 +47,13 @@ export const combatMethods = {
   //
   // Server owns current hp; clamps to [0, maxHp].  Damage flows through
   // Per docs/specs/t1-t2-stat-redesign-server.md:
-  //   - Phase 1: `def` reduction retired -- armor now folds into maxHp
-  //     via _armorHp, no per-hit damage reduction.  Resist cooking buff
+  //   - Phase 1: `def` reduction retired -- armor folded into maxHp via
+  //     _armorHp, no per-hit damage reduction.  Resist cooking buff
   //     still applies (separate mechanic).
+  //     SUPERSEDED TWICE: v2.3.1679 gave armor real per-hit reduction
+  //     (_armorDrMult below), and v2.3.1697 removed the maxHp fold that
+  //     Phase 1 introduced (owner directive -- armor pays ONCE, as
+  //     mitigation).  _armorHp is retired in place; see grids.js.
   //   - Phase 4: Agility rolls a per-hit passive dodge, capped at 30%.
   //     A successful roll zeros the hit; the caller emits a dodged: true
   //     event so the client can render the popup.

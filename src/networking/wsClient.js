@@ -977,8 +977,13 @@ export function setupWebSocket(ctx) {
                  next takes damage, at which point HP resyncs. */
               /* v2.3.237: worker now mirrors getArmorHp() per the
                  t1-t2-stat-redesign-server spec.  The v2.3.231 client
-                 fold is retired -- server's hp / maxHp are authoritative
-                 and already include the armor bonus. */
+                 fold is retired -- server's hp / maxHp are authoritative.
+                 v2.3.1697: ...and there is no armor bonus in maxHp on
+                 EITHER side any more (owner directive; armor pays out as
+                 damage reduction).  The echo staying authoritative is what
+                 makes that deploy-order safe: a worker still running the
+                 old fold just sends its higher number and the client shows
+                 it, instead of the two formulas fighting. */
               if (typeof msg.payload.hp === 'number') {
                 S.rpg.hp = msg.payload.hp;
               }
@@ -1068,9 +1073,20 @@ export function setupWebSocket(ctx) {
                 if (!_held) S.rpg.shieldStash.push(_svShield);
               }
               if ('amulet' in msg.payload) S.rpg.amulet = msg.payload.amulet;
-              /* v2.3.227 (Phase 1): armor swaps change maxHp via
-                 getArmorHp() in recalcDerived.  Recompute so HP stays
-                 consistent after server-echoed equipment changes. */
+              /* v2.3.1697: adopt the worker's legs piece.  ps.legsArmor has
+                 been a real persisted field + echo since v2.3.1679, but no
+                 client ever read it -- so the Hero pane's new armour
+                 readout would have shown the chest half of a two-piece
+                 formula and quietly disagreed with the damage the server
+                 actually deals.  Read-only (there is no client legs-armour
+                 equip path yet); the worker owns the slot. */
+              if ('legsArmor' in msg.payload) S.rpg.legsArmor = msg.payload.legsArmor;
+              /* v2.3.227 (Phase 1): armor swaps changed maxHp via
+                 getArmorHp() in recalcDerived.
+                 v2.3.1697: armor no longer touches maxHp, so this recompute
+                 is no longer load-bearing for HP -- kept because it is the
+                 one re-derive after a server-echoed equipment change and
+                 also refreshes the amulet/shield bonus caches. */
               if (_armorChanged) recalcDerived(S.rpg);
               if (Array.isArray(msg.payload.weaponStash)) S.rpg.weaponStash = msg.payload.weaponStash;
               /* Quest state mirror (slice 17).  Worker is authoritative

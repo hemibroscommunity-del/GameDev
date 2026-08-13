@@ -4567,14 +4567,68 @@ export function calcMaxMana(mind) {
   return 100 + mind * 3.5;
 }
 
-/* v2.3.227 (Phase 1 stat redesign): armor now contributes flat HP.
-   Damage-reduction `def` retires.  Each tier's tierMult scales the
-   20 HP base, and Vitality acts as a 1%/point multiplier on top. */
+/* v2.3.227 (Phase 1 stat redesign): armor contributed flat HP.
+   Damage-reduction `def` retired.  Each tier's tierMult scaled the
+   20 HP base, and Vitality acted as a 1%/point multiplier on top.
+
+   RETIRED v2.3.1697 — no longer folded into maxHp anywhere (recalcDerived
+   below dropped the term, as did the server's _recomputeMaxes and
+   _prog3Recompute).  Owner: "It shouldn't add max hp contribution anymore,
+   just surface real damage mitigation — that was an earlier build where
+   armor increased hp, it doesn't anymore."  Kept exported because the
+   conformance suite (server/test/display-dps.test.mjs) still pins the old
+   formula's shape and an old rpg blob's maxHp can be reproduced from it.
+   Do NOT re-wire it into a pool: armor pays out ONCE now, as mitigation. */
 export const ARMOR_HP_BASE = 20;
 export function getArmorHp(armor, vitality) {
   if (!armor) return 0;
   var tm = (typeof armor.tierMult === 'number') ? armor.tierMult : 1.0;
   return Math.floor(ARMOR_HP_BASE * tm * (1 + (vitality || 0) * 0.01));
+}
+
+/* ═══ v2.3.1697: THE ARMOR NUMBER THE PLAYER ACTUALLY FEELS ═══
+
+   EXACT display mirror of server/src/combat.js `_armorDrMult` — the
+   function _applyDamage runs on every incoming hit, and therefore the only
+   armor number that means anything since v2.3.1679.
+
+   Torso 30% / legs 20% at base tier, scaling +5% / +3.5% per tier STEP.
+   Tier scaling is ADDITIVE on the base rather than multiplying it, because
+   30% × an 8x tierMult lands at 240% and every value after that is a clamp
+   doing the real work.  The two layers stack MULTIPLICATIVELY —
+   1 − 0.7×0.8 = 44%, not the 50% additive would give — which is the only
+   stacking that cannot reach 100% however many layers get added, and a hard
+   75% cap sits on top as belt and braces.  tierMult is clamped to 8, the
+   same ceiling the server's armor sanitizer (grids.js) enforces.
+
+   Why it lives here and not in the Hero pane: heroModel's old note said
+   "armor mitigation was never wired... placeholders must not masquerade as
+   real values".  That was true when written and is now false — but the way
+   it becomes false safely is ONE formula, next to the pools it replaced,
+   that the server conformance suite can import and pin.  A second copy
+   inside a component is how a readout and the server drift apart.
+   Display-only: the server settles every hit. */
+export const ARMOR_DR = {
+  MAX: 0.75,
+  chest: { base: 0.30, perTier: 0.05 },
+  legs: { base: 0.20, perTier: 0.035 },
+};
+
+/* One worn piece's own reduction, before stacking (for per-item cards). */
+export function getArmorPieceDr(item, slot) {
+  var cfg = ARMOR_DR[slot];
+  if (!item || !cfg) return 0;
+  var tm = Math.max(0, Math.min(8, Number(item.tierMult) || 1));
+  return cfg.base + cfg.perTier * (tm - 1);
+}
+
+/* Total incoming-damage reduction from worn armor, 0..0.75. */
+export function getArmorDrPct(rpg) {
+  if (!rpg) return 0;
+  var chest = getArmorPieceDr(rpg.armor, 'chest');
+  var legs = getArmorPieceDr(rpg.legsArmor, 'legs');
+  if (chest <= 0 && legs <= 0) return 0;
+  return Math.min(ARMOR_DR.MAX, 1 - (1 - chest) * (1 - legs));
 }
 
 /* §4.4 Weapon Damage.  Second arg accepts either:
@@ -4798,7 +4852,12 @@ export function calcDisplayHeal(rpg, invKey) {
    armor HP, so an armor card's "+X Max HP" must carry the vigor mult
    or it under-reports for Vigor builds by up to 25%.  (A ±1 drift vs
    the exact pool delta is possible from the server's single outer
-   floor; this is a preview — the recalc/echo product is the truth.) */
+   floor; this is a preview — the recalc/echo product is the truth.)
+
+   RETIRED v2.3.1697 alongside getArmorHp: armor contributes no maxHp on
+   either side now, so this returns a pool delta that does not exist.  Every
+   armor readout moved to getArmorDrPct / getArmorPieceDr above.  Kept
+   exported only for the conformance suite that pins the old formula. */
 export function calcDisplayArmorHp(rpg, armor) {
   /* v2.3.1343: Vigor is flat now, so armor HP no longer scales with
      it — the raw armor contribution IS the pool delta. */
@@ -5004,12 +5063,13 @@ export function recalcDerived(rpg) {
   if (prog3Live(rpg)) {
     var p3lvl = prog3CharLevel(rpg);
     rpg.level = p3lvl;
-    var p3armor = 0;
-    if (rpg.armor) {
-      var p3tm = (typeof rpg.armor.tierMult === 'number' && rpg.armor.tierMult > 0) ? rpg.armor.tierMult : 1.0;
-      p3armor = Math.floor(20 * Math.min(8, p3tm)); /* vitality term dropped (§4 audit) */
-    }
-    rpg.maxHp = Math.floor(100 + p3lvl * PROG3.HP_PER_LEVEL + prog3Pts(rpg, 'hp') * PROG3.BODY.hp.per + p3armor);
+    /* v2.3.1697: the armor flat-HP term left this line (owner directive) —
+       exact mirror of the server's _prog3Recompute, which dropped it in the
+       same version.  Armor's payout is the per-hit damage reduction
+       (getArmorDrPct / _armorDrMult), and it should not ALSO be a bigger
+       health bar.  There are two maxHp formulas on each side; both lost the
+       term together, or a respecced player would keep the old fold. */
+    rpg.maxHp = Math.floor(100 + p3lvl * PROG3.HP_PER_LEVEL + prog3Pts(rpg, 'hp') * PROG3.BODY.hp.per);
     rpg.maxStamina = Math.floor(100 + prog3Pts(rpg, 'stam') * PROG3.BODY.stam.per);
     rpg.maxMana = Math.floor(100 + prog3SkillLevel(rpg, 'staff') * PROG3.MANA_PER_MAGIC_LEVEL);
     rpg._amuletBonus = (rpg.amulet && rpg.amulet.gem) ? getAmuletBonus(rpg.amulet) : null;
@@ -5040,12 +5100,20 @@ export function recalcDerived(rpg) {
       + (rpg.agility || 0) + (rpg.mind || 0)
       + ((rpg.defenseSkill && rpg.defenseSkill.level) || 0)));
   rpg.maxHp = calcMaxHp(rpg.level, rpg.vitality);
-  /* v2.3.227: armor contributes flat HP scaled by Vitality (1% per pt). */
-  rpg.maxHp += getArmorHp(rpg.armor, rpg.vitality);
+  /* v2.3.227: armor contributed flat HP scaled by Vitality (1% per pt).
+     v2.3.1697: REMOVED (owner directive) — mirrors the server dropping
+     _armorHp from _recomputeMaxes in the same version.  Worn armor is
+     damage reduction now (getArmorDrPct), and paying it out as max HP as
+     well was the earlier build's mechanic still running underneath.
+     Existing characters LOSE this HP; that is the intended correction.
+     Deploy-order safe with no caps flag: maxHp is server-computed and
+     echoed in player_state, and the echo is the tiebreaker (handoff
+     rule 20), so an old worker's number simply wins until it updates. */
   rpg.maxStamina = calcMaxStam(rpg.endurance);
   /* v2.3.1154: HP-grid Vigor and Endurance-grid Stamina adjust the
-     pools (matching the server's _recomputeMaxes order: after armor HP,
-     before the amulet flat bonus below).  Gated on the worker's
+     pools (matching the server's _recomputeMaxes order: before the amulet
+     flat bonus below — v2.3.1697 removed the armor term that used to sit
+     ahead of them on both sides).  Gated on the worker's
      caps.hpEndGrids so an old worker's echo can't fight the local
      value — see setGridCapsEnabled.
      v2.3.1343: Vigor is FLAT +10 HP/pt now (kid-simple reprice). */

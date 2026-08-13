@@ -425,9 +425,12 @@ export const gearMethods = {
         || (slot === 'staffWeapon' && ps.activeSlot === 'staff')) {
       ps.activeSlot = 'melee';
     }
-    // Recompute pool maxes when armor changes -- per the T1/T2 stat
-    // redesign spec, armor folds into maxHp via _armorHp.  Cheap call;
-    // covers future armor-affecting equipment too.
+    // v2.3.1697: armor no longer folds into maxHp (the _armorHp term left
+    // _recomputeMaxes this version — armor pays out as damage reduction
+    // now, _armorDrMult).  The recompute is KEPT anyway: it is cheap, it
+    // is the one place the pools are re-derived after any equipment
+    // mutation, and dropping it would leave a stale maxHp behind the day
+    // some future armor piece does carry a pool stat.
     if (slot === 'armor') this._recomputeMaxes(ps);
     this._saveRpg(session.id, ps);
     const ws = this._wsBySessionId(session.id);
@@ -471,7 +474,9 @@ export const gearMethods = {
     if (ps.weaponStash.length > this.WEAPON_STASH_CAP) {
       ps.weaponStash.length = this.WEAPON_STASH_CAP;
     }
-    // Armor swap changes maxHp via _armorHp; recompute pool maxes.
+    // v2.3.1697: armor no longer changes maxHp (see _handleUnequipRequest
+    // above and grids.js _recomputeMaxes) — the recompute stays as the
+    // single post-equipment re-derive of the pools.
     if (slot === 'armor') this._recomputeMaxes(ps);
     this._saveRpg(session.id, ps);
     const ws = this._wsBySessionId(session.id);

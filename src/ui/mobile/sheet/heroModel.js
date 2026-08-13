@@ -2,7 +2,7 @@ import {
   calcCritChance, calcBlockReduction, calcDisplayDmgRange, calcDisplayDps,
   calcMoveSpeed, passiveDodgeChance, getActiveWeapon, getWeaponCritStat,
   getEvasionPts, getDefenseBlockBonus, xpRequired, weaponXpRequired,
-  buildSkillUnspent,
+  buildSkillUnspent, getArmorDrPct,
 } from '../../../data/gameSystems.js';
 /* v2.3.1660: trained-skill rebuild mirrors — display branches only;
    the legacy formulas stay for old workers (rule 19). */
@@ -17,10 +17,19 @@ import {
    authoritative helpers combat actually rolls (mirrors
    StatScreenPanel/GameApp call patterns); nothing is re-derived here.
 
-   NOTE the retired loadout's `armorDef` (chest+legs x5) is NOT revived:
-   armor mitigation was never wired (v2.3.1069 note) and the spec says
-   placeholders must not masquerade as real values.  Block% is the real
-   defensive number. */
+   ARMOUR (v2.3.1697 — this note used to say the opposite).  For years the
+   pane deliberately showed NO armour number, because the retired loadout's
+   `armorDef` (chest+legs x5) was invented arithmetic: armor mitigation was
+   never wired (v2.3.1069), armor bought max HP instead, and the sheet spec
+   forbids placeholders masquerading as real values.
+   That reason expired.  v2.3.1679 wired REAL per-hit mitigation
+   (`_armorDrMult`, consumed by the server's `_applyDamage`), and v2.3.1697
+   removed the max-HP fold on the owner's instruction, leaving mitigation as
+   armour's only effect — and nothing in the game displayed it.  `armorDr`
+   below is that number, from `getArmorDrPct`, an exact mirror of the server
+   function rather than a second formula.  Block% is NOT the defensive
+   number any more (it was never even shown here — see the v2.3.1668 note
+   further down for why it was pulled). */
 
 /* The six combat skills (ported from the retired Build column's
    CHAR_STATS).  defense levels live on R.defenseSkill; the rest are
@@ -179,6 +188,12 @@ export function deriveHeroStats(R) {
     crit: prog3Live(R) ? prog3CritPct(R) : calcCritChance(R.power || 0, getWeaponCritStat(R)),
     critDmg: prog3Live(R) ? prog3CritFlat(R) : 0,
     defPct: prog3Live(R) ? prog3DefPct(R) : 0,
+    /* v2.3.1697: worn armour's real damage reduction — the exact multiplier
+       the server applies per hit (getArmorDrPct mirrors _armorDrMult).  Not
+       prog3-gated: armour mitigation is server-side for EVERY player, old
+       blob or respecced, so gating it would hide a live effect from half
+       the playerbase. */
+    armorDr: getArmorDrPct(R),
     dodge: prog3Live(R) ? prog3DodgePct(R) : passiveDodgeChance(R.agility || 0, getEvasionPts(R)),
     /* v2.3.1668: `speed` and `block` are RETAINED for legacy readers but
        are no longer shown on the Hero pane, because under prog3 neither
