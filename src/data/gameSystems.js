@@ -4897,11 +4897,25 @@ export function calcMoveSpeed(agility, swiftnessPts) {
    anchor; Mind drives the linear scale.  Variance per weapon stays the
    same so staff specials still feel high-variance vs bow tight + sword
    medium. */
+/* ═══ v2.3.1710: UNDER PROG3, A SPECIAL SCALES ON ITS OWN WEAPON ═══
+   Owner, after a full playthrough: "I thought at one point I was shooting a
+   bow at a fire goblin and it levelled up my magic combat skill instead."  It
+   did, deliberately — §3 of progression-v3 had every special credit AND scale
+   on Magic whatever you were holding.  Asked directly: "I want magic to keep
+   its cross weapon purpose but also have specials belong to their weapon.
+   Within the magic stat allocation is the only way to grow your mana that's
+   required for special attacks."  So Magic's cross-weapon job is the MANA
+   POOL every special spends (maxMana = 100 + magicLevel x 1.2), and the
+   special's own damage follows the weapon — same prog3DmgTerm a normal hit
+   uses, which is what keeps this prediction agreeing with the worker's
+   _computeAttackDamage.  The legacy Mind branch stays for pre-prog3 saves. */
 export function calcSpecialDmg(weaponType, rpg, tierMult, wpn) {
   var w = WEAPON_TYPES[weaponType];
   if (!w) return 0;
   var mind = (rpg && rpg.mind) || 0;
-  var base = (weaponEffBase(w.base, wpn) + mind * 0.1667) * (tierMult || 1); // baseline-10: 0.8 ÷ 4.8
+  var _p3s = (rpg && prog3Live(rpg)) ? rpg : null;
+  var _term = _p3s ? prog3DmgTerm(_p3s, weaponType) : mind * 0.1667;
+  var base = (weaponEffBase(w.base, wpn) + _term) * (tierMult || 1); // baseline-10: 0.8 ÷ 4.8
   if (weaponType === 'staff') return base * (0.5 + Math.random() * 1.0);
   if (weaponType === 'bow')   return base * (0.6 + Math.random() * 0.2);
   return base * (0.75 + Math.random() * 0.5);

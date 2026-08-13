@@ -108,6 +108,46 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const cells = await P.page.locator('[aria-disabled][role="button"][aria-label*=" of "]').count().catch(() => 0);
   rec.ok('all seven allocatable stats are present at once', cells === 7, { cells });
 
+  /* ═══ v2.3.1710: AND ALL SEVEN ARE THE SAME SIZE ═══
+     Owner: "Character build stat allocation pills should all be the same
+     size."  v2.3.1703 had laid them out as two grids — the three attack
+     stats 3-wide, the four body stats 2-wide — which made a body pill 187px
+     against an attack pill's 123px on this viewport.
+     Measured rather than eyeballed, because the failure mode is a SECOND
+     grid appearing next time someone needs to buy one group more width; the
+     no-scroll assertion above would stay green through exactly that change.
+     Label clipping is measured with it: uniformity bought by squeezing every
+     pill down to the widest label's breaking point would satisfy the letter
+     of the owner's ask and lose the point of v2.3.1703 (an 8px label nobody
+     could read). */
+  const pillGeom = await P.page.evaluate(() => {
+    const pills = [...document.querySelectorAll('[role="button"][aria-label*=" of "]')];
+    const box = pills.map((p) => {
+      const r = p.getBoundingClientRect();
+      return { w: Math.round(r.width), h: Math.round(r.height),
+        stat: (p.getAttribute('aria-label') || '').split(',')[0] };
+    });
+    const clipped = pills
+      .flatMap((p) => [...p.querySelectorAll('div')])
+      .filter((t) => t.children.length === 0 && t.scrollWidth > t.clientWidth + 1)
+      .map((t) => t.textContent.trim());
+    const fonts = pills
+      .flatMap((p) => [...p.querySelectorAll('div')])
+      .filter((t) => t.children.length === 0)
+      .map((t) => parseFloat(getComputedStyle(t).fontSize));
+    return { box, clipped, minFont: fonts.length ? Math.min(...fonts) : null };
+  });
+  const widths = [...new Set((pillGeom.box || []).map((b) => b.w))];
+  const heights = [...new Set((pillGeom.box || []).map((b) => b.h))];
+  rec.ok('every allocation pill is exactly one size',
+    pillGeom.box.length === 7 && widths.length === 1 && heights.length === 1, pillGeom.box);
+  rec.ok('...with no label cropped to buy that uniformity',
+    (pillGeom.clipped || []).length === 0, pillGeom.clipped);
+  /* The 10px floor is this project's own (v2.3.1239), and v2.3.1703 exists
+     because it had been broken here. */
+  rec.ok('...and nothing on a pill below the 10px font floor',
+    pillGeom.minFont !== null && pillGeom.minFont >= 10, { minFont: pillGeom.minFont });
+
   /* ── an empty-pool spend is refused SERVER-side, not just greyed out ── */
   await P.page.evaluate(() => {
     const S = window._gameState && window._gameState.current;

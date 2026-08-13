@@ -467,29 +467,50 @@ export const HeroExpanded = () => {
             }} aria-label={`${totalUnspent} points available`}>+{totalUnspent}</div>
           </div>
 
-          {/* ═══ v2.3.1703: PILLS, AND TWO GRIDS INSTEAD OF ONE ═══
+          {/* ═══ v2.3.1703: PILLS ═══
               Owner: "the character star point allocation menu is hard to
               see (tiny font small thumbnails) maybe you can make it a pill
               shape or something easier on the eyes."
 
-              The v2.3.1668 grid was seven cells in one 3-wide run, which
-              gave every stat a 123px cell on an iPhone and forced an 8px
-              label to fit "ATK SPEED" into it — below this project's own
-              10px font floor (v2.3.1239), with a 16px icon beside it.  It
-              also left the seventh stat alone on a ragged third row.
-
-              Splitting the run by what the stats ARE fixes both at no cost
-              in height: the three OFFENSE stats keep a 3-wide row (they
-              are a triplet, and they are the ones that change with the
-              selected combat type), and the four BODY stats sit in a
-              2-wide grid underneath, which nearly doubles their width.
-              Row count is unchanged at three — the v2.3.1660
-              five-below-the-fold incident is what mp-prog3's no-scroll
-              assertion guards, and this must not spend that budget — so
-              the extra width pays for a 20px icon, a 10px label and a
-              15px value instead of buying rows.
+              The v2.3.1668 cells were text-only with an 8px label — below
+              this project's own 10px font floor (v2.3.1239).  A pill with a
+              20px icon, a 10px label and a 15px value replaced them.
               Fully-rounded (the owner's "pill"), which also reads as
-              "tap me" next to the square read-only cells on Overview. */}
+              "tap me" next to the square read-only cells on Overview.
+
+              ═══ v2.3.1710: ONE GRID AGAIN, SO EVERY PILL IS ONE SIZE ═══
+              Owner: "Character build stat allocation pills should all be
+              the same size."
+
+              v2.3.1703 had split the run into TWO grids by what the stats
+              ARE — the three offense stats 3-wide, the four body stats
+              2-wide underneath — to buy the body stats width.  It bought
+              them too much: a 187px body pill beside a 123px attack pill,
+              which is the mismatch the owner is looking at.  Both grids
+              collapse back into ONE `repeat(3, 1fr)` run, so all seven
+              pills are literally the same grid track and cannot drift.
+
+              WHY 3-WIDE and not 2- or 4-.  The height budget here is not a
+              preference, it is the v2.3.1660 incident: five of seven stats
+              once sat below a fold with no scroll cue, and mp-prog3 has
+              measured the Build screen against its own scroll viewport ever
+              since — 191px of content into a 191px body on a 390x844
+              iPhone, i.e. no headroom at all.
+                • 2-wide needs FOUR rows for seven pills. That is a new row
+                  the budget does not have.
+                • 4-wide fits in two rows but leaves ~91px per pill, which
+                  cannot hold a 20px icon AND "ATK SPEED" at the 10px floor
+                  on one line; it only works as a stacked icon-over-text
+                  cell, which is taller per row and lands back over budget.
+                • 3-wide is 3 rows x 34px + 2 gaps = 110px — to the pixel
+                  what the two grids cost (34 + 4 + 72) — and 123px per
+                  pill, the width the attack pills already prove legible.
+              Seven into three leaves the last row ragged (STAMINA alone,
+              two empty cells after it).  That is the price of a uniform
+              size with a prime number of stats, and it is paid at the END
+              of the reading order where a short last line is ordinary.
+              The order still groups: offense triplet fills row 1, the four
+              body stats follow. */}
           {(() => {
             const pill = (st) => {
               const pts = st.atk ? prog3AtkPts(R, buildCat, st.key) : prog3Pts(R, st.key);
@@ -551,15 +572,15 @@ export const HeroExpanded = () => {
                 </div>
               );
             };
+            /* v2.3.1710: ONE grid — see the note above.  Every pill is a
+               cell of the same `1fr` track, which is the only way "all the
+               same size" can be true by construction rather than by two
+               layouts happening to agree. */
             return (
-              <>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 4 }}>
-                  {PROG3_ATK_META.map(m => pill({ ...m, atk: true }))}
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 4, marginTop: 4 }}>
-                  {PROG3_BODY_META.map(m => pill({ ...m, atk: false }))}
-                </div>
-              </>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 4 }}>
+                {PROG3_ATK_META.map(m => pill({ ...m, atk: true }))}
+                {PROG3_BODY_META.map(m => pill({ ...m, atk: false }))}
+              </div>
             );
           })()}
         </>

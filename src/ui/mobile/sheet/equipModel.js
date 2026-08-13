@@ -35,7 +35,11 @@ export const GHOST_SRC = {
    set — one consistent style with the stash and inventory tiles.
    Weapon art keys off wpn.type (greatsword vs sword are distinct drop
    types that shared one icon since v2.3.173). */
-const ITEMS_V = '?v=2.3.1703'; /* v2.3.1703: bumped for the blue slime-remnants thumbnail */
+/* v2.3.1710: bumped so a browser holding the cached bag drops the emoji-vest
+   render and fetches the real chest-plate torso art (owner: "it's an emoji
+   vest").  Lives in THREE files — keep them in lockstep or one surface serves
+   stale thumbnails while its neighbour serves fresh ones. */
+const ITEMS_V = '?v=2.3.1710';
 const wpnIconSrc = (R, wpn) => {
   if (!wpn) return null;
   const slot = R.activeSlot || 'melee';
@@ -56,8 +60,21 @@ export function getEquippedSlots(R) {
   const gearShirtId = getEquip('shirt');
   const gearLegsId = getEquip('legs');
   const chestEquipped = gearChestId !== 'none' || gearShirtId !== 'none' || !!R.armor;
+  /* v2.3.1710: ...and if NEITHER cosmetic layer is on, fall back to the
+     STAT-BEARING piece's art (R.armor — the Iron Torso the life_2 quest pays
+     out).  Found while fixing the owner's "iron torso icon is an emoji vest"
+     report: chestEquipped has always counted R.armor, so a player wearing
+     only the quest torso got a NON-ghosted cell with iconSrc null — an
+     empty box, neither art nor silhouette.  Exactly the hole v2.3.1701
+     closed one entry down for legs; the chest half was missed then.
+     Ordering is deliberately unchanged — the two cosmetic layers still win,
+     because this cell shows what you are WEARING and v2.3.1703 already
+     derives the steelplate render layer from a worn torso, so the normal
+     equip path resolves to chest-plate.webp through gearIconSrc above.
+     This branch is the bare-cosmetics case that path does not cover. */
   const chestIcon = gearChestId !== 'none' ? gearIconSrc(gearChestId)
-    : gearShirtId !== 'none' ? gearIconSrc(gearShirtId) : null;
+    : gearShirtId !== 'none' ? gearIconSrc(gearShirtId)
+    : R && R.armor ? `/icons/items/chest-plate.webp${ITEMS_V}` : null;
   return [
     { slot: 'weapon', label: 'Weapon', item: wpn, iconSrc: wpnIconSrc(R, wpn),
       ghost: !wpn, quality: wpn && wpn.quality, pickerSlot: 'weapon' },

@@ -606,6 +606,20 @@ export function handleZoneTransitions(S, ptx, pty, _zone, W, H) {
               S.deathExplosions = [];
               S.arrows = [];
               S.slimeProjectiles = []; /* v2.3.1181: slime orbs kept flying across zone loads (absolute coords, no zone check) and could hit the player in the new zone */
+              /* v2.3.1710 (owner: "locking on a monster (tap to target) continues
+                 to follow the monster even when you exit the zone").  Same class
+                 of leak as the slime orbs above and fixed in the same place: the
+                 lock holds a direct REF to a monster object from the zone you
+                 just left, so the reticle, the aim assist (playerActions aims at
+                 the locked target instead of the stick) and the auto-attack all
+                 keep pointing at a monster that is not in this zone — and it
+                 never self-clears, because the only teardown is "the target
+                 died" (monsterCombat) and a monster you walked away from is
+                 still alive.  Cleared on EVERY zone change rather than at one
+                 call site: there are five wipe blocks in this file (hub exit,
+                 spoke return, dungeon entry/exit) and a lock surviving any one
+                 of them is the same bug. */
+              S.lockedTarget = null;
               /* §5.5 Restore death-scattered items if returning to death zone */
               if (S._deathDrops) {
                 var zoneDrops = S._deathDrops.filter(function (d) {
@@ -697,6 +711,20 @@ export function handleZoneTransitions(S, ptx, pty, _zone, W, H) {
             S.deathExplosions = [];
             S.arrows = [];
             S.slimeProjectiles = []; /* v2.3.1181: slime orbs kept flying across zone loads (absolute coords, no zone check) and could hit the player in the new zone */
+            /* v2.3.1710 (owner: "locking on a monster (tap to target) continues
+               to follow the monster even when you exit the zone").  Same class
+               of leak as the slime orbs above and fixed in the same place: the
+               lock holds a direct REF to a monster object from the zone you
+               just left, so the reticle, the aim assist (playerActions aims at
+               the locked target instead of the stick) and the auto-attack all
+               keep pointing at a monster that is not in this zone — and it
+               never self-clears, because the only teardown is "the target
+               died" (monsterCombat) and a monster you walked away from is
+               still alive.  Cleared on EVERY zone change rather than at one
+               call site: there are five wipe blocks in this file (hub exit,
+               spoke return, dungeon entry/exit) and a lock surviving any one
+               of them is the same bug. */
+            S.lockedTarget = null;
             S._zoneWipe = Date.now();
             S._ambientParticles = [];
             /* Snap camera to player — keep them centered, no edge clamp. */
@@ -752,6 +780,20 @@ export function handleZoneTransitions(S, ptx, pty, _zone, W, H) {
               S.deathExplosions = [];
               S.arrows = [];
               S.slimeProjectiles = []; /* v2.3.1181: slime orbs kept flying across zone loads (absolute coords, no zone check) and could hit the player in the new zone */
+              /* v2.3.1710 (owner: "locking on a monster (tap to target) continues
+                 to follow the monster even when you exit the zone").  Same class
+                 of leak as the slime orbs above and fixed in the same place: the
+                 lock holds a direct REF to a monster object from the zone you
+                 just left, so the reticle, the aim assist (playerActions aims at
+                 the locked target instead of the stick) and the auto-attack all
+                 keep pointing at a monster that is not in this zone — and it
+                 never self-clears, because the only teardown is "the target
+                 died" (monsterCombat) and a monster you walked away from is
+                 still alive.  Cleared on EVERY zone change rather than at one
+                 call site: there are five wipe blocks in this file (hub exit,
+                 spoke return, dungeon entry/exit) and a lock surviving any one
+                 of them is the same bug. */
+              S.lockedTarget = null;
               S._ambientParticles = [];
               S._zoneWipe = Date.now();
               var lvlRange = dc.lvlRange || [1, 10];
@@ -820,6 +862,20 @@ export function handleZoneTransitions(S, ptx, pty, _zone, W, H) {
               S.deathExplosions = [];
               S.arrows = [];
               S.slimeProjectiles = []; /* v2.3.1181: slime orbs kept flying across zone loads (absolute coords, no zone check) and could hit the player in the new zone */
+              /* v2.3.1710 (owner: "locking on a monster (tap to target) continues
+                 to follow the monster even when you exit the zone").  Same class
+                 of leak as the slime orbs above and fixed in the same place: the
+                 lock holds a direct REF to a monster object from the zone you
+                 just left, so the reticle, the aim assist (playerActions aims at
+                 the locked target instead of the stick) and the auto-attack all
+                 keep pointing at a monster that is not in this zone — and it
+                 never self-clears, because the only teardown is "the target
+                 died" (monsterCombat) and a monster you walked away from is
+                 still alive.  Cleared on EVERY zone change rather than at one
+                 call site: there are five wipe blocks in this file (hub exit,
+                 spoke return, dungeon entry/exit) and a lock surviving any one
+                 of them is the same bug. */
+              S.lockedTarget = null;
               P.x = dMX * TILE;
               P.y = (dH - 3) * TILE;
 
@@ -887,6 +943,20 @@ export function handleZoneTransitions(S, ptx, pty, _zone, W, H) {
             S.deathExplosions = [];
             S.arrows = [];
             S.slimeProjectiles = []; /* v2.3.1181: slime orbs kept flying across zone loads (absolute coords, no zone check) and could hit the player in the new zone */
+            /* v2.3.1710 (owner: "locking on a monster (tap to target) continues
+               to follow the monster even when you exit the zone").  Same class
+               of leak as the slime orbs above and fixed in the same place: the
+               lock holds a direct REF to a monster object from the zone you
+               just left, so the reticle, the aim assist (playerActions aims at
+               the locked target instead of the stick) and the auto-attack all
+               keep pointing at a monster that is not in this zone — and it
+               never self-clears, because the only teardown is "the target
+               died" (monsterCombat) and a monster you walked away from is
+               still alive.  Cleared on EVERY zone change rather than at one
+               call site: there are five wipe blocks in this file (hub exit,
+               spoke return, dungeon entry/exit) and a lock surviving any one
+               of them is the same bug. */
+            S.lockedTarget = null;
             S._ambientParticles = [];
             /* Spawn south of the dungeon entrance — the entrance sits at
                (MX, 2) and the path runs along column MX down to the

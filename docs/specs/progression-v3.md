@@ -46,7 +46,13 @@ The OSRS-inspired progression the design paper locked:
 
 - damage: `(effBase + trainedLevel × K) × tierMult` — K = 0.18
   melee/bow, 0.22 staff (§7-A first guess, balance-sim retune pending);
-  specials use Magic level × 0.22. Variance / special mults / volatile
+  specials use the SAME term as a normal hit with that weapon
+  (v2.3.1710 — superseding "specials use Magic level × 0.22"; owner:
+  "I want magic to keep its cross weapon purpose but also have specials
+  belong to their weapon.  Within the magic stat allocation is the only
+  way to grow your mana that's required for special attacks", so Magic's
+  cross-weapon value is the MANA POOL every special spends, not the
+  special's damage). Variance / special mults / volatile
   / buffs / amulet / curse unchanged.
 - crit: plain roll `crit × 0.4%`; on crit `× 1.5 + critDmg × 2`
   (power's rational curve, the lucky-hit accumulator, and the banked

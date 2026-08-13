@@ -13,6 +13,41 @@ const npcPortrait = (name) => {
   return (npc && npc.portrait) || null;
 };
 
+/* ═══ v2.3.1710: THE REWARD, PICTURED, ON THIS PAGE TOO ═══
+   Owner: "Quest item thumbnail rewards are not shown in the quest panel until
+   after you accept the quest (only xp and gold are shown)."
+   The in-world dialogue has had item art since v2.3.1681; this page — the one
+   you reach by tapping a row in the quest log — never did. It listed gold, XP
+   and at most the item's NAME as text, so the two surfaces gave different
+   answers about the same quest, and on an OFFER the picture of what you are
+   working toward existed nowhere.
+   Same 40px chip the dialogue draws (src/ui/panels/QuestPanel.jsx), rebuilt
+   here on this pane's own COL tokens rather than imported across the
+   panels/ ↔ mobile/dash boundary — `npcPortrait` above is duplicated for the
+   same reason. A file that 404s removes its own chip rather than leaving a
+   broken-image glyph in the middle of the rewards. */
+const RewardChip = ({ item }) => (
+  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, width: 52 }}>
+    <img
+      src={item.icon}
+      alt={item.label || ''}
+      draggable={false}
+      style={{
+        width: 40, height: 40, objectFit: 'contain',
+        borderRadius: 9, background: COL.well, padding: 3,
+        boxShadow: 'inset 0 2px 4px rgba(0,0,0,.44), inset 0 1px 0 rgba(255,255,255,.035)',
+      }}
+      onError={(e) => {
+        const box = e.currentTarget.parentNode;
+        if (box && box.parentNode) box.parentNode.removeChild(box);
+      }}
+    />
+    <div style={{ fontSize: 9, lineHeight: 1.15, color: COL.muted, textAlign: 'center' }}>
+      {item.label || ''}
+    </div>
+  </div>
+);
+
 /* v2.3.1298 (ChatGPT round-5 Quests): the focused quest page — pushed
    into the sheet from any quest row.  Status, objective, quest giver,
    rewards (with the coin sprite, not just an abbreviation), and a
@@ -56,6 +91,14 @@ export const QuestDetailPanel = () => {
      two different answers about what the same quest pays: the dialogue showed
      four item pictures, the pane showed a money figure and no items at all. */
   const item = quest.reward?.item ? String(quest.reward.item) : null;
+  /* v2.3.1710: the same DISPLAY-ONLY `gives` table the in-world dialogue
+     reads (src/data/gameSystems.js; mirror-audit.test.mjs pins every entry to
+     a real server payout moment, so nothing here can promise an item the
+     worker will not hand over).  Split by moment for the same reason the
+     dialogue splits it — a picture with no "when" beside it is the confusion
+     v2.3.1704 was about. */
+  const givesAccept = (quest.gives || []).filter((g) => g && g.icon && g.when === 'accept');
+  const givesFinish = (quest.gives || []).filter((g) => g && g.icon && g.when === 'complete');
 
   const statusTone = status === 'Ready' ? COL.accent
     : status === 'Active' ? '#5B99DE'
@@ -135,7 +178,23 @@ export const QuestDetailPanel = () => {
           The item joins the line for the same reason: it is part of what
           finishing pays, and listing gold and XP alone made this pane and the
           dialogue disagree about the same quest. */}
-      {(gold > 0 || xp > 0 || item) && (
+      {/* v2.3.1710: what he hands over for SAYING YES, shown only while the
+          quest is still on offer — once it is active this kit is already in
+          the bag, and re-drawing it would read as a second payout.  It sits
+          ABOVE the finishing rewards because that is the order the player
+          meets them in. */}
+      {status === 'Available' && givesAccept.length > 0 && (
+        <>
+          <div style={{ padding: '6px 2px 2px', fontSize: 11, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: COL.muted }}>
+            He hands you now
+          </div>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', padding: '2px 2px 4px' }}>
+            {givesAccept.map((g, i) => <RewardChip key={g.icon + i} item={g} />)}
+          </div>
+        </>
+      )}
+
+      {(gold > 0 || xp > 0 || item || givesFinish.length > 0) && (
         <>
           <div style={{ padding: '6px 2px 2px', fontSize: 11, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: COL.muted }}>
             For finishing &ldquo;{quest.title}&rdquo;
@@ -153,10 +212,21 @@ export const QuestDetailPanel = () => {
                 +{xp} XP
               </span>
             )}
-            {item && (
+            {/* v2.3.1710: the NAME only when there is no picture of it.  With
+                a chip below carrying the same words under the art, printing
+                the name here too says "Iron Greaves" twice in four lines —
+                and life_1's pickaxe is the case that keeps this branch alive:
+                the server grants it, no art for it exists in the repo, so
+                text is the only way it appears at all. */}
+            {item && givesFinish.length === 0 && (
               <span style={{ fontSize: 13.5, fontWeight: 700, color: COL.text }}>{item}</span>
             )}
           </div>
+          {givesFinish.length > 0 && (
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', padding: '2px 2px 4px' }}>
+              {givesFinish.map((g, i) => <RewardChip key={g.icon + i} item={g} />)}
+            </div>
+          )}
           {/* The one line that removes the ambiguity outright: this quest's
               reward is paid when THIS quest is handed in, not before. */}
           <div style={{ fontSize: 11, color: COL.muted, padding: '0 2px 8px' }}>

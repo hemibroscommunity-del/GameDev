@@ -122,29 +122,52 @@ export function QuestPanel(props) {
   var _questPanel$npcRef;
   /* v2.3.1681: the giver's face, and the kit on offer. */
   var _portrait = npcPortrait(questPanel.npc);
-  /* Which payout to illustrate: an offer shows what saying yes hands over,
-     an accepted quest shows what coming back pays.  Showing both at once
-     would promise the turn-in reward as if it were already yours. */
-  var _giveWhen = questPanel.status === 'available' ? 'accept' : 'complete';
-  var _gives = (questPanel.quest.gives || []).filter(function (g) {
-    return g && g.icon && g.when === _giveWhen;
-  });
+  /* ═══ v2.3.1710: THE OFFER SHOWS WHAT YOU ARE WORKING TOWARD ═══
+     Owner: "Quest item thumbnail rewards are not shown in the quest panel
+     until after you accept the quest (only xp and gold are shown)."
+
+     Until now this card illustrated ONE payout moment: `accept` while the
+     quest was on offer, `complete` once it was active.  The reasoning
+     (v2.3.1681) was that drawing the turn-in reward on an offer "would
+     promise a reward you have not earned".  The owner has now looked at the
+     other side of that: on tut_4 and life_2 every `gives` entry is a
+     turn-in reward, so their offer cards showed NO art at all — gold and XP
+     and nothing else — and on tut_1 the bow and staff appeared out of
+     nowhere after accepting.  You could not see what the job paid before
+     taking it, which is the one thing a quest offer is for.
+
+     So the offer draws BOTH moments — but as two separately captioned
+     groups, never as one row.  That distinction is the whole v2.3.1704
+     lesson ("say WHEN, not who"): the same chip style in the same slot has
+     to state its payout moment or a player cannot tell a promise from a
+     hand-over.  The accept group keeps its existing caption; the turn-in
+     group carries the same "for finishing this quest" wording it already
+     has on the active card, so one string means one thing on both cards.
+     An ACTIVE card still shows only the turn-in group — the kit is already
+     in your bag by then, and re-drawing it would read as a second payout. */
+  var _byWhen = function (when) {
+    return (questPanel.quest.gives || []).filter(function (g) {
+      return g && g.icon && g.when === when;
+    });
+  };
+  var _giveGroups = (questPanel.status === 'available'
+    ? [{ when: 'accept', label: 'He hands you now', items: _byWhen('accept') },
+       { when: 'complete', label: 'For finishing this quest', items: _byWhen('complete') }]
+    : [{ when: 'complete', label: 'For finishing this quest', items: _byWhen('complete') }]
+  ).filter(function (g) { return g.items.length > 0; });
   /* ═══ v2.3.1704: SAY WHEN, NOT WHO ═══
      Owner: "The quest UI is a little confusing what's rewards for the next
      quests vs what's rewarded for the current quest."
-     This card draws BOTH of a quest's payout moments in the SAME slot, in the
-     same chip style, one after the other across a play session: the offer
-     shows a sword and a shield, and the very next time the same card opens it
-     shows a bow and a staff.  The only thing distinguishing them was the
-     caption, and the captions were "He gives you" and "You receive" — two
-     phrasings of the giver's grammar that say nothing at all about WHEN, so a
-     player who saw a sword promised and later received a bow had no way to
-     tell whether the bow belonged to this quest or the next one.
-     Timing is the distinction that matters, so the captions state it.  Kept to
-     one chip row (v2.3.1681's rule stands: showing every payout at once would
-     promise a reward you have not earned — mp-questui pins that the bow is
-     absent from the offer), so this costs no height. */
-  var _givesLabel = _giveWhen === 'accept' ? 'He hands you now' : 'For finishing this quest';
+     This card draws a quest's payout moments in the SAME slot, in the same
+     chip style: a sword and a shield on the way out, a bow and a staff on the
+     way back.  The only thing distinguishing them was the caption, and the
+     captions were "He gives you" and "You receive" — two phrasings of the
+     giver's grammar that say nothing at all about WHEN, so a player who saw a
+     sword promised and later received a bow had no way to tell whether the bow
+     belonged to this quest or the next one.
+     Timing is the distinction that matters, so the captions state it — and
+     since v2.3.1710 the offer shows both moments at once, which is only
+     readable BECAUSE each group states its own. */
   return React.createElement("div", {
     className: "bt-inspect",
     onClick: function onClick() {
@@ -268,12 +291,15 @@ export function QuestPanel(props) {
       fontSize: 11,
       color: '#96A2A0'
     }
-  }, questPanel.status === 'available' ? 'New Quest!' : questPanel.status === 'active' ? 'Quest Active' : ''))), _gives.length > 0 && /*#__PURE__*/React.createElement("div", {
+  }, questPanel.status === 'available' ? 'New Quest!' : questPanel.status === 'active' ? 'Quest Active' : ''))), _giveGroups.length > 0 && /*#__PURE__*/React.createElement("div", {
     /* v2.3.1681: the kit, pictured.  Sits high — directly under his name,
        above the dialogue — because the card scrolls on a phone and anything
        below the quest text is behind the fold.  The owner asked to SEE the
        sword and shield; putting them where the reward line goes would have
-       meant scrolling to find them. */
+       meant scrolling to find them.  v2.3.1710 keeps them here for the same
+       reason, and it is the reason the second group is affordable: "what does
+       this quest pay" has to be answerable without scrolling, or it has not
+       been answered. */
     /* v2.3.1704: the caption moved from BESIDE the chips to ABOVE them.  It
        used to be a `flexShrink:0` column next to them, which was fine for two
        words ("You receive") and would have eaten most of a 390px card now that
@@ -281,24 +307,40 @@ export function QuestPanel(props) {
        chips keep the full width, and the paddingTop:12 that was faking optical
        centring against the chips is no longer needed — so this costs about six
        pixels, not a row. */
+    /* v2.3.1710: now a LIST of captioned groups (usually one; two on an offer
+       that pays at both moments).  The 8px gap between groups is deliberately
+       tighter than the 12px below the block, so the two groups read as one
+       "what this pays" region rather than as two unrelated rows. */
     style: {
       marginBottom: 12,
-      paddingTop: 2
+      paddingTop: 2,
+      display: 'flex',
+      flexDirection: 'column',
+      gap: 8
     }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 11,
-      fontWeight: 600,
-      textTransform: 'uppercase',
-      letterSpacing: '.12em',
-      color: '#96A2A0',
-      marginBottom: 5
-    }
-  }, _givesLabel), /*#__PURE__*/React.createElement("div", {
-    style: { display: 'flex', gap: 8, flexWrap: 'wrap' }
-  }, _gives.map(function (g, i) {
-    return /*#__PURE__*/React.createElement(ItemChip, { key: g.icon + i, item: g });
-  }))), /*#__PURE__*/React.createElement("div", {
+  }, _giveGroups.map(function (grp) {
+    return /*#__PURE__*/React.createElement("div", {
+      key: grp.when,
+      /* A stable hook for mp-questui, which has to prove the bow is drawn
+         under the FINISHING caption and not under the hand-over one — the
+         two groups are otherwise identical markup and a text search of the
+         card cannot tell which chip belongs to which caption. */
+      'data-gives': grp.when,
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 11,
+        fontWeight: 600,
+        textTransform: 'uppercase',
+        letterSpacing: '.12em',
+        color: '#96A2A0',
+        marginBottom: 5
+      }
+    }, grp.label), /*#__PURE__*/React.createElement("div", {
+      style: { display: 'flex', gap: 8, flexWrap: 'wrap' }
+    }, grp.items.map(function (g, i) {
+      return /*#__PURE__*/React.createElement(ItemChip, { key: g.icon + i, item: g });
+    })));
+  })), /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 14,
       fontWeight: 700,
