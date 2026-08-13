@@ -45,6 +45,14 @@ import { freeZoneMap, isZoneMapResident } from '@/rendering/tiledMaps.js'; /* v2
    them today) are left alone: nothing covers the top of the screen. */
 var PORTAL_EDGE_INSET = 3;
 
+/* v2.3.1708: how long the trail-head you just arrived through ignores you.
+   Long enough to swallow the momentum of the walk that brought you here
+   (the owner's "continuing the downward run makes the character run into the
+   portal into town again"), short enough that a deliberate turn-around is
+   never refused — the previous 8-tile distance latch refused it for as long
+   as you stayed near the portal, which read as the portal being broken. */
+var HUB_EXIT_DEAF_MS = 2500;
+
 /* v2.3.1347: fixed directional entry spawns don't consult the painted
    walkability masks, so zones whose mask blocks the spawn point strand
    the player on unwalkable ground — Desert Winds ('sky') stuck every
@@ -162,28 +170,37 @@ export function handleZoneTransitions(S, ptx, pty, _zone, W, H) {
           : (S.currentZone === 'worldview' ? WORLDVIEW_EXITS : null);
         if (_hubExits) {
           var TOWN_EXIT_R = 2;
-          /* ═══ v2.3.1703: THE MARKER YOU JUST CAME OUT OF IS DISARMED ═══
-             You arrive on a hub standing near the trail-head you came
-             through, and on the World View that trail-head (town, at 24,28)
-             sits between the arrival point and EVERY open spoke — frost
-             (13,13), ember (25,10), sky (39,12) are all north of it.  So
-             "walk from where I landed to a zone" crossed the way home and
-             warped you straight back, which is the whole reason v2.3.1700
-             moved the spawn to the far side of it.  Moving the spawn only
-             ever trades one bad geometry for another (the owner's report:
-             landing north of it and running south back in), so the rule is
-             the fix instead: that ONE marker cannot fire until the player
-             has got clear of it.
-             DISARM_CLEAR_R is comfortably wider than TOWN_EXIT_R so the
-             re-arm happens well past the marker, not on its rim where a
-             single step could flip it back and forth.  It clears itself as
-             soon as the player is clear, so a deliberate walk back in works
-             normally — and it is scoped to one marker in one zone, so every
-             other exit on the hub stays live the whole time. */
-          var DISARM_CLEAR_R = 8;
+          /* ═══ v2.3.1708: THE MARKER YOU CAME OUT OF IS DEAF FOR A MOMENT ═══
+             Owner: "the portal from worldview back into town doesn't work."
+
+             My fault, and worth writing down properly because I got it wrong
+             in both directions first.
+
+             v2.3.1703 made this a DISTANCE latch (8 tiles) and spawned the
+             player on the far side of the trail-head, to satisfy "spawn below
+             the town portal".  Both halves were wrong together: you land 4
+             tiles from the marker, so the latch is still armed, and walking
+             straight back into town does nothing until you have wandered 8
+             tiles away first.  From the seat, the portal home is simply
+             broken — which is exactly what got reported.
+
+             And the spawn cannot stay below it either.  Flame Fields (25,10)
+             is almost due north of the town marker (24,28), so ANY arrival
+             point south of the marker puts it on the straight line to that
+             spoke: that is the v2.3.1700 bug, and no offset dodges it — I
+             checked the other three spokes too, and ember is the one that
+             cannot be dodged.
+
+             So the spawn goes back INSIDE (north of the marker, toward the
+             hub centre), where no spoke route crosses the marker at all, and
+             the latch only has to do the one job the owner actually asked
+             for: stop the momentum of walking south out of town from carrying
+             you straight back in.  That is a moment, not a distance — hence a
+             short timer.  Nothing else on the map is behind this marker, so a
+             brief deafness costs nothing, and after it the portal home works
+             from anywhere including standing right on top of it. */
           var _dis = S._hubExitDisarm;
-          if (_dis && (_dis.zone !== S.currentZone
-              || Math.abs(ptx - _dis.tx) + Math.abs(pty - _dis.ty) > DISARM_CLEAR_R)) {
+          if (_dis && (_dis.zone !== S.currentZone || Date.now() > _dis.until)) {
             S._hubExitDisarm = null;
             _dis = null;
           }
@@ -445,32 +462,23 @@ export function handleZoneTransitions(S, ptx, pty, _zone, W, H) {
                  Falls back to the old centre-south spawn when no reciprocal
                  marker exists, so an unexpected hub pairing can never strand
                  anyone at (0,0). */
-              /* ═══ v2.3.1703: COME OUT THE FAR SIDE, AND DON'T BOUNCE ═══
-                 Owner: "the character spawns above the town after exiting the
-                 town into the worldview so continuing the downward run makes
-                 the character run into the portal into town again.  Make the
-                 character spawn below the town portal instead of above it."
-                 v2.3.1700 emerged 4 tiles toward the hub CENTRE, which on the
-                 World View is 4 tiles NORTH of the town trail-head (24,28) —
-                 you leave town walking south, arrive still walking south, and
-                 the portal home is now directly in your path.
-                 So the offset flips: emerge on the far side of the marker,
-                 continuing the direction you were already travelling.
-                 That alone would reinstate the bug v2.3.1700 fixed — every
-                 spoke on the World View (frost 13,13 / ember 25,10 / sky
-                 39,12) is NORTH of the town marker, so walking to one from
-                 below it crosses the marker and warps you back to town.  The
-                 latch below is the actual fix for that, and it is a better
-                 one than spawn geometry could ever be: the marker you just
-                 came THROUGH cannot fire again until you have got clear of
-                 it, so walking out over it is free and walking back to it
-                 later still works.  See _hubExitDisarm in the proximity scan.
-                 EDGE GUARD: town's own World View marker sits at ty 41 of 48
-                 rows, and its far side (ty 45) is under the dashboard
-                 (v2.3.1693).  When the far side lands that close to an edge,
-                 fall back to the inside offset — the bounce it was protecting
-                 against is the World View's, and town's approach is from the
-                 north anyway. */
+              /* ═══ v2.3.1708: EMERGE INSIDE THE TRAIL-HEAD ═══
+                 Owner asked (v2.3.1703) to "spawn below the town portal
+                 instead of above it", because running on after arriving took
+                 them straight back into town.  Shipped literally, and it
+                 broke the portal home — see the long note on the latch in the
+                 proximity scan above.  The complaint was real; "below" just
+                 was not the cure, because Flame Fields sits due north of the
+                 town marker and every arrival south of it lands on the line
+                 to that spoke.
+                 So the offset is the v2.3.1700 one again — 4 tiles toward the
+                 hub centre, on the inside of the marker you arrived through —
+                 and the accidental walk-back-in is handled by the latch
+                 instead, which is what the owner was describing rather than a
+                 request about geometry.
+                 Falls back to the old centre-south spawn when no reciprocal
+                 marker exists, so an unexpected hub pairing can never strand
+                 anyone at (0,0). */
               if (bestExit.zoneId === 'worldview' || bestExit.zoneId === 'town') {
                 P.x = midX; P.y = midY + TILE * 7;
                 var _dstExits = bestExit.zoneId === 'town' ? TOWN_EXITS : WORLDVIEW_EXITS;
@@ -482,17 +490,14 @@ export function handleZoneTransitions(S, ptx, pty, _zone, W, H) {
                   var _hcx = newZone.w / 2, _hcy = newZone.h / 2;
                   var _hdx = _hcx - _backMark.tx, _hdy = _hcy - _backMark.ty;
                   var _hlen = Math.max(0.001, Math.sqrt(_hdx * _hdx + _hdy * _hdy));
-                  /* Far side first (continue travelling), inside as the
-                     edge-safe fallback. */
-                  var _outTx = _backMark.tx - _hdx / _hlen * 4;
-                  var _outTy = _backMark.ty - _hdy / _hlen * 4;
-                  var _edge = 4 + PORTAL_EDGE_INSET;
-                  var _outOk = _outTx >= _edge && _outTy >= _edge
-                    && _outTx <= newZone.w - _edge && _outTy <= newZone.h - _edge;
-                  P.x = (_outOk ? _outTx : _backMark.tx + _hdx / _hlen * 4) * TILE;
-                  P.y = (_outOk ? _outTy : _backMark.ty + _hdy / _hlen * 4) * TILE;
-                  /* Arm the latch on the marker we came through. */
-                  S._hubExitDisarm = { zone: bestExit.zoneId, tx: _backMark.tx, ty: _backMark.ty };
+                  P.x = (_backMark.tx + _hdx / _hlen * 4) * TILE;
+                  P.y = (_backMark.ty + _hdy / _hlen * 4) * TILE;
+                  /* Deaf for a moment, so the walk that brought you here
+                     cannot carry you straight back through. */
+                  S._hubExitDisarm = {
+                    zone: bestExit.zoneId, tx: _backMark.tx, ty: _backMark.ty,
+                    until: Date.now() + HUB_EXIT_DEAF_MS,
+                  };
                 }
               }
               /* v2.3.1347: snap the chosen spawn onto walkable ground

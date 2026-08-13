@@ -165,6 +165,47 @@ for (const m of meadowMonsters) m._wanderPausedUntil = Date.now() + 600000;
     !!kill && kill.payload.recipients.includes('pa') && kill.payload.shares.pa === 1,
     kill && { recipients: kill.payload.recipients, shares: kill.payload.shares });
 
+  /* ═══ v2.3.1709: A RESPAWNED MONSTER COMES BACK CLEAN ═══
+     Owner, playtesting before judging: "the slimes were apparently brand new
+     ones that I had freshly killed in that zone.  I saw no damage from any
+     other person on them.  And new ones that spawned still attributed the
+     loot to that other person."
+
+     m.statuses was created and never cleared — not on death, not on respawn
+     — so a burn another player landed outlived the monster it was on.  The
+     corpse came back still burning, still stamped with THEIR sourceId, and
+     every DoT tick credited them through _applyMonsterDot, which writes into
+     dmgByPlayer.  Once that stale credit outgrew the §7 gold cutoff the real
+     killer fell out of goldRecipients and could not pick up their own loot.
+
+     Reproduced here in the order it actually happened: burn it, kill it,
+     respawn it, and demand a clean sheet. */
+  {
+    const mR = meadowMonsters[4];
+    mR.alive = true; mR.hp = mR.maxHp;
+    /* Another player's DoT, exactly as elemental.js stamps it. */
+    mR.statuses = { burn: { sourceId: 'pb', power: 40, endsAt: Date.now() + 60000, nextTickAt: 0 } };
+    mR.dmgByPlayer = { pb: 500 };
+    mR.alive = false; mR.respawnAt = Date.now() - 1;   // due to come back
+    room._tickMonsters();
+    check('respawn: the monster comes back alive',
+      mR.alive === true && mR.hp === mR.maxHp, { alive: mR.alive, hp: mR.hp });
+    check('respawn: another player\'s DoT does NOT outlive the corpse',
+      !mR.statuses || Object.keys(mR.statuses).length === 0, mR.statuses);
+    check('respawn: and neither does their damage credit',
+      !mR.dmgByPlayer || Object.keys(mR.dmgByPlayer).length === 0, mR.dmgByPlayer);
+    /* The whole point: kill the fresh one solo and OWN the loot. */
+    psA.z = 'meadow'; psA.dead = false; psA.dying = false;
+    mR.hp = 1;
+    room.eventBuffer.length = 0;
+    await room.webSocketMessage(wsA, JSON.stringify({ type: 'monster_damage', payload: { monsterId: mR.id, zone: 'meadow', slot: 'melee' } }));
+    const killR = room.eventBuffer.find((e) => e.type === 'monster_kill');
+    check('respawn: the fresh kill credits ONLY the player who made it',
+      !!killR && killR.payload.goldRecipients.length === 1
+      && killR.payload.goldRecipients[0] === 'pa',
+      killR && { gold: killR.payload.goldRecipients, shares: killR.payload.shares });
+  }
+
   // Two-contributor kill: shares split by damage contribution, and a
   // contributor who left the zone forfeits.
   const m3 = meadowMonsters[2];

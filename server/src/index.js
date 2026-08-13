@@ -1216,6 +1216,35 @@ export class GameRoom {
             m.y = m.spawnY;
             m.targetId = null;
             m.atkCd = 0;
+            /* ═══ v2.3.1709: A RESPAWNED MONSTER COMES BACK CLEAN ═══
+               Owner, playtesting before judging: "the slimes were apparently
+               brand new ones that I had freshly killed in that zone.  I saw
+               no damage from any other person on them.  And new ones that
+               spawned still attributed the loot to that other person."
+
+               `m.statuses` was created (elemental.js) and never cleared —
+               not on death, not here.  So a burn or a thorn another player
+               landed OUTLIVED the monster it was on: the corpse respawned
+               still burning, still stamped with THEIR sourceId, and every
+               DoT tick after that credited them through _applyMonsterDot,
+               which writes straight into dmgByPlayer.  A slime the owner
+               killed single-handedly therefore listed a contributor they had
+               never seen touch it, and once that stale credit outgrew the
+               GDD §7 gold cutoff (share < 0.05) the owner dropped out of
+               `goldRecipients` entirely — so the pile said it was somebody
+               else's and `_handleLootPickup` refused the grab with
+               'not-recipient'.  It compounded across lives, which is why it
+               looked like a curse that followed them rather than one bad
+               kill.
+
+               dmgByPlayer is reset at the end of _resolveMonsterKill, but it
+               is cleared HERE too on purpose: that reset only runs on the
+               kill path, and anything that lands damage between the kill and
+               the respawn (a DoT tick resolving after death, a reflect) puts
+               credit back onto a corpse.  Belt and braces on the field that
+               decides who owns the loot. */
+            m.statuses = Object.create(null); // v2.3.1709: null-proto, rule 4
+            m.dmgByPlayer = Object.create(null);
             // Revert any in-life variant transform (mummy -> skeleton)
             // so a respawned monster comes back in its original form
             // with the original spd.  Stamped at spawn time and
