@@ -72,8 +72,19 @@ export function specialAttack(S) {
        damage via SPECIAL_ATK_MULT downstream; it no longer affects
        cost.  Old formula was `15 + tierIdx * 3` (15-24). */
     var activeWpn = getActiveWeapon(R);
-    /* v2.3.212: no weapon equipped in active slot -> special disabled. */
-    if (!activeWpn) return;
+    /* v2.3.212: no weapon equipped in active slot -> special disabled.
+       v2.3.1716: ...but SAY SO.  This returned in total silence, and since
+       v2.3.1715 the desktop hints strip advertises "R-Click Special" and
+       "F Special" on screen, so a new player reads those, presses them at
+       spawn with an empty slot, and gets nothing at all -- indistinguishable
+       from a broken game.  A fresh character IS bare (weapons start in the
+       bag, unequipped), so this is the FIRST thing a new player hits.  The
+       no-mana branch a few lines below already floats a popup; this is the
+       same courtesy for the other refusal. */
+    if (!activeWpn) {
+      pushDmgPopup(S, S.player.x, S.player.y - 30, 'No weapon equipped!', '#D8A94D', { ts: now });
+      return;
+    }
     var tierIdx = {
       common: 0,
       elemental: 1,
