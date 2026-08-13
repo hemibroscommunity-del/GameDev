@@ -32,3 +32,18 @@ tools/_*.png
 
 # Gear-art contact sheets (tools/qa/qa-gear-sheet.mjs output — v2.3.1195)
 tools/qa/out/
+
+# v2.3.1710: throwaway QA probe scripts at the REPO ROOT.
+#
+# The headless harness (tools/qa/mp/harness.mjs) can only be imported from a
+# script sitting at the repo root — playwright-core does not resolve from /tmp
+# — so every session that needs a one-off probe (screenshot this panel, dump
+# that state, diff those pixels) writes a scratch .mjs here and deletes it
+# afterwards.  Sessions forget, and in-flight parallel agents cannot have
+# theirs deleted out from under them, so these keep landing in `git status`
+# and inviting someone to commit them.
+#
+# Anchored to the root on purpose: `/*.mjs` does NOT match tools/**.mjs,
+# server/**.mjs or anything else real.  Zero root-level .mjs files are tracked
+# today, and a genuinely permanent one belongs in tools/ anyway.
+/*.mjs
