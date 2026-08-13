@@ -1094,8 +1094,16 @@ export function processGameEvent(type, payload, S, deps) {
                 pushDmgPopup(S, S.player.x, S.player.y - 20, 'Blocked!', '#60a5fa');
                 var _staminaDrainBlock = typeof payload.staminaDrain === 'number' ? payload.staminaDrain : 15;
                 if (_staminaDrainBlock > 0) {
-                  /* stamina yellow; ts+1 stacks it under the Blocked! popup */
-                  pushDmgPopup(S, S.player.x + 18, S.player.y - 4, '-' + _staminaDrainBlock, '#facc15', { ts: Date.now() + 1 });
+                  /* v2.3.1686 (owner: "I see negative numbers during blocks.
+                     I don't know what that refers to").  This is the STAMINA
+                     the block cost, and it said so only in yellow — next to a
+                     red "-N" HP number that looks identical apart from hue,
+                     during the one moment the player is being hit.  Colour was
+                     carrying the whole meaning and it could not.  The ⚡ is the
+                     same mark the energy readout under the character uses
+                     (entityRenderer's stamina label), so the number now names
+                     the bar it came out of. */
+                  pushDmgPopup(S, S.player.x + 18, S.player.y - 4, '-' + _staminaDrainBlock + '⚡', '#facc15', { ts: Date.now() + 1 });
                 }
                 addBuildUse(R2, 'endurance', 3);
                 /* v2.3.1113: DEFENSE LOOP REVIVAL -- awardDefenseXp/

@@ -1213,5 +1213,80 @@ for (const m of meadowMonsters) m._wanderPausedUntil = Date.now() + 600000;
   }
 }
 
+/* ── v2.3.1686: a raised shield STOPS a snowball, it does not cancel it ──
+ *
+ * Owner: "it seems like snowman don't launch projectiles while the character
+ * is blocking, which isn't the correct behavior. It should still launch
+ * projectiles."
+ *
+ * The ranged-throw gate carried `!nearest.blocking`, so raising a shield
+ * stopped the ball being CREATED — blocking deleted the attack instead of
+ * stopping it, and the snowman read as frozen. The throw is now unconditional
+ * and the block is resolved when the ball lands, which is also the only point
+ * at which it can be honest: the ball is 900ms in the air, so a shield raised
+ * or dropped mid-flight has to count.
+ */
+{
+  const psB = room.playerState['pa'];
+  psB.z = 'frost'; psB.hp = psB.maxHp = 200; psB.dying = false; psB.dead = false;
+  psB.disconnected = false; psB.stamina = 100; psB.maxStamina = 100;
+  psB.x = 1000; psB.y = 1000;
+  psB.blocking = true;
+
+  /* _spawnZoneMonsters RETURNS the list; it does not install it (the live
+     server assigns on zone activation), so the fixture has to. */
+  if (!room.monsters.frost || !room.monsters.frost.length) {
+    room.monsters.frost = room._spawnZoneMonsters('frost');
+  }
+  const frost = room.monsters.frost || [];
+  const sm = frost.find((m) => m.arch === 'snowman') || frost[0];
+  check('frost fields a snowman to throw with', !!sm && sm.arch === 'snowman', sm && sm.arch);
+  if (sm) {
+    /* Park every other frost monster far away so only this one is in range. */
+    for (const other of frost) { if (other !== sm) { other.x = 9000; other.y = 9000; } }
+    /* 200px: past the 100px minRange, inside the 300px range. */
+    sm.alive = true; sm.hp = sm.maxHp || 50; sm.x = psB.x + 200; sm.y = psB.y;
+    sm.atkCd = 0; sm._projImpactAt = 0; sm.statuses = undefined;
+
+    room.eventBuffer.length = 0;
+    room._tickMonsters();
+    const thrown = room.eventBuffer.filter((e) => e.type === 'monster_projectile');
+    check('a blocking player still gets thrown at', thrown.length >= 1,
+      { thrown: thrown.length, types: room.eventBuffer.map((e) => e.type) });
+    check('...and it is a SNOWBALL, aimed at the blocker',
+      thrown.length >= 1 && thrown[0].payload.kind === 'snowball'
+      && thrown[0].payload.travelMs > 0,
+      thrown[0] && thrown[0].payload);
+  }
+
+  /* Impact while blocking: zero damage, a Blocked! event, stamina spent. */
+  const hpBefore = psB.hp, stamBefore = psB.stamina;
+  const ball = { id: 'sb-frost-1', arch: 'snowman', dmg: 40, x: psB.x, y: psB.y, statuses: {} };
+  room.eventBuffer.length = 0;
+  room._monsterStrikePlayer('frost', ball, 'pa', psB.x, psB.y);
+  const blockedAtk = room.eventBuffer.filter((e) => e.type === 'monster_attack');
+  check('a snowball that lands on a raised shield deals no damage',
+    psB.hp === hpBefore, { before: hpBefore, after: psB.hp });
+  check('...and reports itself as BLOCKED, not as a zero hit',
+    blockedAtk.length === 1 && blockedAtk[0].payload.blocked === true
+    && blockedAtk[0].payload.dmgTaken === 0,
+    blockedAtk[0] && blockedAtk[0].payload);
+  check('...and costs stamina, like blocking a swing does',
+    psB.stamina < stamBefore && blockedAtk[0].payload.staminaDrain > 0,
+    { before: stamBefore, after: psB.stamina, drain: blockedAtk[0] && blockedAtk[0].payload.staminaDrain });
+
+  /* And with the shield DOWN the same ball hurts -- the block has to be a
+     block, not a blanket immunity to the ranged path. */
+  psB.blocking = false;
+  const hpBefore2 = psB.hp;
+  room.eventBuffer.length = 0;
+  room._monsterStrikePlayer('frost', ball, 'pa', psB.x, psB.y);
+  const openAtk = room.eventBuffer.filter((e) => e.type === 'monster_attack');
+  const _dodged = openAtk[0] && openAtk[0].payload.dodged;
+  check('with the shield down the same snowball lands',
+    _dodged || (psB.hp < hpBefore2 && !openAtk[0].payload.blocked),
+    { before: hpBefore2, after: psB.hp, payload: openAtk[0] && openAtk[0].payload });
+}
+
 console.log(failures === 0 ? '\nALL TESTS PASSED' : `\n${failures} TEST(S) FAILED`);
 process.exit(failures === 0 ? 0 : 1);

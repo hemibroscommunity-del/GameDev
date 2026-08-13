@@ -995,12 +995,36 @@ export class GameRoom {
     const now = Date.now();
     // Apply HP damage server-side BEFORE emitting the event so
     // dmgTaken rides on the wire and the client renders the
-    // exact number the server applied.  Block is handled by the
-    // caller (the server skips the attack entirely while shielded),
-    // but pass !blocking to be defensive in case the path changes.
+    // exact number the server applied.
     const targetPs = this.playerState[targetId];
-    const dmgResult = this._applyDamage(targetPs, m.dmg, false);
+    /* ═══ v2.3.1686: THE BLOCK IS RESOLVED HERE, AT IMPACT ═══
+       Owner: "it seems like snowman don't launch projectiles while the
+       character is blocking, which isn't the correct behavior. It should
+       still launch projectiles."
+       The throw used to be gated on `!nearest.blocking`, so raising a shield
+       stopped snowballs being created at all — a block that deleted the
+       attack rather than stopping it, and it read as the monster freezing.
+       That gate is gone; the ball now flies whatever the player is doing.
+       Which moves the question to WHEN the block counts, and impact is the
+       only correct answer: the ball is ~900ms in the air, so a shield raised
+       (or dropped) mid-flight has to matter.  Reading `targetPs.blocking`
+       here rather than trusting the caller is what makes that true, and it
+       matches what the client has always done for slime orbs ("Block/shield
+       is recomputed at impact since the player can raise shield mid-flight",
+       monsterCombat.js).
+       The melee path still short-circuits on its own blocking branch before
+       reaching this method, so nothing is handled twice. */
+    const _blocking = !!(targetPs && targetPs.blocking);
+    const dmgResult = this._applyDamage(targetPs, m.dmg, _blocking);
     const dmgTaken = dmgResult.dmgTaken;
+    /* Same block cost the melee branch charges (15 × Bulwark efficiency),
+       so blocking a snowball and blocking a swing cost the same stamina. */
+    let _blockStamina = 0;
+    if (_blocking && targetPs && typeof targetPs.stamina === 'number') {
+      _blockStamina = Math.max(1, Math.round(15 * this._blockStaminaMult(targetPs)));
+      targetPs.stamina = Math.max(0, targetPs.stamina - _blockStamina);
+      this._saveRpgPools(targetId, targetPs);
+    }
     /* v2.3.1569: THORN retaliation (Flora's status).  Every other
        status is something that happens TO the monster over time;
        thorn is the one that answers the monster's own aggression,
@@ -1040,6 +1064,12 @@ export class GameRoom {
         dmg: m.dmg,
         dmgTaken,
         dodged: dmgResult.dodged,
+        /* v2.3.1686: tells the client to show "Blocked!" + the stamina cost
+           instead of an HP number.  undefined when not blocking, so
+           JSON.stringify drops both and the wire is unchanged for every
+           existing hit — an old client simply sees dmgTaken 0. */
+        blocked: _blocking || undefined,
+        staminaDrain: _blocking ? _blockStamina : undefined,
         // v2.3.1137: Second Wind heal rides the attack event so the
         // client pops the green number without a round-trip (the
         // authoritative hp echo arrives via player_state anyway).
@@ -1361,7 +1391,13 @@ export class GameRoom {
               && attackDist <= _rangedCfg.range
               && now > m.atkCd
               && ccMoveMult > 0                        /* frozen/rooted can't throw either */
-              && !nearest.blocking) {
+              /* v2.3.1686: the `!nearest.blocking` term that used to sit here
+                 is GONE (owner: "it should still launch projectiles").  A
+                 raised shield stopped the ball being created at all, so
+                 blocking deleted the attack instead of stopping it and the
+                 monster looked frozen.  The block is now resolved when the
+                 ball LANDS — see _monsterStrikePlayer. */
+              ) {
             m.atkCd = now + _rangedCfg.cd;
             m._attackingUntil = now + 400;
             m._projImpactAt = now + _rangedCfg.travelMs;
