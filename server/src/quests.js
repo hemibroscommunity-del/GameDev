@@ -240,16 +240,19 @@ export const questMethods = {
       /* v2.3.1692: `item` may be an ARRAY (tut_1 pays the bow AND the staff).
          Granted one at a time so each keeps its own slot rules. */
       const _items = Array.isArray(reward.item) ? reward.item : [reward.item];
-      let _gave = false;
-      for (const _it of _items) { if (this._grantQuestItem(ps, _it)) _gave = true; }
-      const _over = ps._questGrantOverflow;
-      if (!_gave && _over) {
+      for (const _it of _items) { this._grantQuestItem(ps, _it); }
+      /* v2.3.1695: every armour piece that overflowed to the bag is announced,
+         not just the last one (armorSet pays two). */
+      const _over = Array.isArray(ps._questGrantOverflow) ? ps._questGrantOverflow : null;
+      if (_over && _over.length) {
         const ws0 = this._wsBySessionId(session.id);
         if (ws0) {
           try {
-            ws0.send(JSON.stringify({ type: 'quest_reward_stashed', payload: {
-              questId, item: _over,
-            } }));
+            for (const _piece of _over) {
+              ws0.send(JSON.stringify({ type: 'quest_reward_stashed', payload: {
+                questId, item: _piece,
+              } }));
+            }
           } catch (e) { /* best effort — the turn-in itself still stands */ }
         }
       }
@@ -286,37 +289,28 @@ export const questMethods = {
     if (!ps || !item || typeof item !== 'object') return false;
     try {
       if (item.kind === 'armor' || item.kind === 'legs') {
-        /* v2.3.1679: two slots now — chest ('armor') and legs ('legs'), the
-           upper and lower body pieces the mining quest pays out.  Same
-           empty-slot-only rule for both: silently replacing armor the player
-           chose would be a reward that takes something away. */
+        /* ═══ v2.3.1695: ARMOUR GOES TO THE BAG, LIKE EVERYTHING ELSE ═══
+           Owner: "Yes make armor behave like a sword."
+           Quest weapons have gone to the stash since v2.3.1683 and the shield
+           since the same version; armour was the last grant still dressing the
+           player itself, and only when the slot happened to be empty — which
+           is how the fire-goblin reward ended up ON the character instead of
+           in the bag, contradicting the rule the owner set for the sword.
+           Now it ALWAYS overflows to the client's armourStash (there is no
+           server-side armour stash and handoff rule 1 forbids adding one to
+           the rpg blob), and the player equips it themselves.  The worker
+           still learns what is worn: equipping sends stats_update, which
+           grids.js adopts through the prog3 tier gate.
+           An ARRAY because kind:'armorSet' recurses through here — a two-piece
+           set must not report only its last piece. */
         const slot = item.kind === 'legs' ? 'legsArmor' : 'armor';
-        /* v2.3.1687 (owner: "I turned in the fire goblin remnants and never
-           received the quest reward").  THIS is where it went: an occupied
-           slot refuses the grant and returns false, and nothing anywhere
-           tells the player — the quest completes, the gold arrives, and the
-           armour simply never exists.  Weapons stopped having this problem in
-           v2.3.1683 when they started going to the bag, but armour has no
-           server-side stash to go to and handoff rule 1 forbids adding one to
-           the rpg blob, so the refusal itself has to stay for now.
-           What changes is that it stops being SILENT: the caller now knows,
-           and _handleQuestTurnIn tells the player their reward could not be
-           handed over instead of leaving them to notice its absence.
-           The real fix is a server-owned armour stash (its own storage key +
-           migration) — a schema slice, not something to smuggle into a
-           bug-fix change. Flagged with the owner. */
-        if (ps[slot]) {
-          ps._questGrantOverflow = {
-            name: String(item.name || 'Quest Armor'),
-            tierMult: Math.max(0, Math.min(8, Number(item.tierMult) || 1)),
-            slot,
-          };
-          return false;
-        }
-        const tm = Math.max(0, Math.min(8, Number(item.tierMult) || 1));
-        ps[slot] = { name: String(item.name || 'Quest Armor'), tierMult: tm };
-        this._recomputeMaxes(ps);
-        return true;
+        if (!Array.isArray(ps._questGrantOverflow)) ps._questGrantOverflow = [];
+        ps._questGrantOverflow.push({
+          name: String(item.name || 'Quest Armor'),
+          tierMult: Math.max(0, Math.min(8, Number(item.tierMult) || 1)),
+          slot,
+        });
+        return false;
       }
       if (item.kind === 'shield') {
         /* v2.3.1676: same empty-slot-only rule as armor — a gift must never

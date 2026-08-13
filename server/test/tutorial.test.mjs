@@ -188,12 +188,20 @@ const sess = { id: 'bp_t' };
   check('a met objective turns the quest in', ps._quests.tut_4 === 'turnedIn', ps._quests.tut_4);
   check('gold is paid', ps.coins === QUEST_REWARDS.tut_4.gold, ps.coins);
   /* v2.3.1687 (owner): "Scout's Vest" -> "Iron Torso". */
-  /* v2.3.1692 (owner: "I'd rather it be the leg armor first since animations
-     look better with legs only"): the tut_4 payout is LEGS now. */
-  check('the armor reward is granted and named',
-    ps.legsArmor && ps.legsArmor.name === 'Iron Greaves', ps.legsArmor);
-  check('granted armor raises maxHp (it went through _recomputeMaxes)',
-    ps.maxHp > 100, ps.maxHp);
+  /* v2.3.1692: the tut_4 payout is LEGS now.
+     v2.3.1695 (owner: "make armor behave like a sword"): and it goes to the
+     BAG, never onto the character — so the legs slot stays empty and the
+     piece is announced via quest_reward_stashed. */
+  check('the armor reward does NOT dress the player', !ps.legsArmor, ps.legsArmor);
+  {
+    const wsA = room._wsBySessionId(sess.id);
+    const stA = wsA ? wsA.sent.filter((m) => m.type === 'quest_reward_stashed') : [];
+    check('the armor reward is handed to the bag and named',
+      stA.length >= 1 && stA[stA.length - 1].payload.item.name === 'Iron Greaves'
+      && stA[stA.length - 1].payload.item.slot === 'legsArmor',
+      stA.map((m) => m.payload.item));
+  }
+
 
   check('the remnants were handed over, exactly the count required',
     ps.inventory['fire-goblin-remnants'] === 1, ps.inventory);
