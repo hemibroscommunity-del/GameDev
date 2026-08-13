@@ -1,4 +1,4 @@
-import { getActiveWeapon, calcDisplayDmgRange, calcDisplayDps, calcDisplayArmorHp } from '../../../data/gameSystems.js';
+import { getActiveWeapon, calcDisplayDmgRange, calcDisplayDps, getArmorPieceDr, getArmorDrPct } from '../../../data/gameSystems.js';
 import { getShieldStats, getAmuletBonus } from '../../../data/items.js';
 import { getEquip } from '../../../rendering/gearCatalog.js';
 
@@ -87,6 +87,13 @@ export function getEquippedSlots(R) {
    honest core rows are DMG / DPS / BLOCK / HP / GEM.  Display mirrors
    only — the server-echoed player_state is the truth (CLAUDE.md).
 
+   v2.3.1697: the mockup's DEF number is no longer illustrative — armor
+   reduces damage for real (server `_armorDrMult`, v2.3.1679) — and the
+   HP it used to buy is GONE (owner directive; the maxHp fold left both
+   sides this version).  So the chest/legs cards and the sixth total show
+   DAMAGE REDUCTION, and continuing to print "+40 HP" would have been the
+   only genuinely false number on this screen.
+
    Cards carry at most primary + secondary (brief: two stats max; the
    item modal keeps full details).  Cosmetic-only pieces (steel legs,
    shirt-only chest) contribute nothing and honestly show NO stat
@@ -113,7 +120,12 @@ export function getEquipContribs(R) {
   const range = wpn ? calcDisplayDmgRange(R, wpn) : null;
   const dps = range ? calcDisplayDps(R, wpn) : 0;
   const ss = R && R.shield ? getShieldStats(R.shield) : null;
-  const armorHp = R && R.armor ? calcDisplayArmorHp(R, R.armor) : 0;
+  /* v2.3.1697: each worn piece's OWN reduction for its card, and the
+     multiplicatively-stacked total for the totals grid — the same split
+     the server makes inside _armorDrMult. */
+  const chestDr = R ? getArmorPieceDr(R.armor, 'chest') : 0;
+  const legsDr = R ? getArmorPieceDr(R.legsArmor, 'legs') : 0;
+  const armorDr = getArmorDrPct(R);
   const am = R && R.amulet ? getAmuletBonus(R.amulet) : null;
 
   const dmgText = range ? range.text.replace('-', '–') : null;
@@ -130,8 +142,13 @@ export function getEquipContribs(R) {
       primary: { k: 'BLOCK', v: '+' + fmt1(ss.blockBonus) + '%' },
       secondary: ss.gemBonus ? gemOf(ss.gemBonus) : { k: 'STAM', v: '+' + ss.staminaBonus },
     } : null,
-    chest: armorHp ? { title: 'CHEST', primary: { k: 'HP', v: '+' + armorHp }, secondary: null } : null,
-    legs: null,   /* steel greaves are cosmetic — no stat data */
+    chest: chestDr ? { title: 'CHEST', primary: { k: 'DMG RED', v: fmt1(chestDr * 100) + '%' }, secondary: null } : null,
+    /* v2.3.1697: legs are no longer stat-less.  The old note ("steel
+       greaves are cosmetic") described the gearCatalog cosmetic, but
+       R.legsArmor is a real worn piece cutting 20%+ of every hit since
+       v2.3.1679 — cosmetic greaves with no armour piece still show
+       nothing, which is the honest reading. */
+    legs: legsDr ? { title: 'LEGS', primary: { k: 'DMG RED', v: fmt1(legsDr * 100) + '%' }, secondary: null } : null,
     cape: null,   /* Phase-2: no data field */
     amulet: am ? { title: 'AMULET', primary: gemOf(am), secondary: null } : null,
   };
@@ -140,13 +157,15 @@ export function getEquipContribs(R) {
      move).  v2.3.1329 (widget grid, 2-col x 3-row): pairs DMG|DPS,
      BLOCK|HP, GEM|STAM.  The feedback's SPD cell has no equipment
      source in this game's data — STAM (the shield's real stamina
-     bonus) takes the sixth cell instead. */
+     bonus) takes the sixth cell instead.
+     v2.3.1697: the HP cell became ARMOUR — same position, same worn
+     pieces feeding it, but the number armour actually pays out now. */
   const D = '—';
   const totals = [
     { k: 'DMG',   v: dmgText || D },
     { k: 'DPS',   v: range ? fmt1(dps) : D },
     { k: 'BLOCK', v: ss ? '+' + fmt1(ss.blockBonus) + '%' : D },
-    { k: 'HP',    v: armorHp ? '+' + armorHp : D },
+    { k: 'ARMOUR', v: armorDr ? fmt1(armorDr * 100) + '%' : D },
     { k: 'GEM',   v: am ? '+' + fmt1(am.value) + (am.unit || '') : D },
     { k: 'STAM',  v: ss ? '+' + ss.staminaBonus : D },
   ];

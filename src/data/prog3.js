@@ -43,16 +43,31 @@ export const PROG3 = {
    buys, no jargon). */
 /* v2.3.1668: two menus.  ATK rows belong to the selected combat type;
    BODY rows are shared across all three. */
+/* v2.3.1694 (owner: "add little thumbnails that represent each thing …
+   all of that has been added to the game before and were stripped
+   out"): the allocation cells are back on the owner's hero-stat art,
+   the same `iconSrc` contract PROG3_SKILL_META and heroModel's
+   COMBAT_SKILLS already use.  The rebuild's cells shipped text-only at
+   v2.3.1660 because the seven-stat grid was fighting for every pixel of
+   the no-scroll budget — the icons return in the row that already
+   exists (icon left, label+points stacked right, the v2.3.1311f tile
+   recipe), so cell height is unchanged and mp-prog3's "fits without
+   scrolling" assertion still holds.
+   EVERY path below is a file that exists on disk — a missing thumbnail
+   renders as a broken-image glyph inside the tap target, which is worse
+   than no icon at all.  `aspd` borrows the t2 Tempo art (the repo's
+   only attack-speed drawing, role 'atkspd'); it is sword-flavoured, so
+   swap it the day a type-neutral swing-speed icon exists. */
 export const PROG3_ATK_META = [
-  { key: 'crit',    label: 'Crit',      perText: '+0.4% crit chance' },
-  { key: 'critDmg', label: 'Crit Dmg',  perText: '+2 damage on crits' },
-  { key: 'aspd',    label: 'Atk Speed', perText: '−0.35% swing time' },
+  { key: 'crit',    label: 'Crit',      perText: '+0.4% crit chance',  iconSrc: '/icons/ui/hero/crit.webp?v=2.3.1694' },
+  { key: 'critDmg', label: 'Crit Dmg',  perText: '+2 damage on crits', iconSrc: '/icons/ui/hero/damage.webp?v=2.3.1694' },
+  { key: 'aspd',    label: 'Atk Speed', perText: '−0.35% swing time',  iconSrc: '/icons/ui/t2/sword-tempo.webp?v=2.3.1694' },
 ];
 export const PROG3_BODY_META = [
-  { key: 'def',   label: 'Defense', perText: '−0.4% damage taken' },
-  { key: 'hp',    label: 'Max HP',  perText: '+8 max HP' },
-  { key: 'dodge', label: 'Dodge',   perText: '+0.4% dodge' },
-  { key: 'stam',  label: 'Stamina', perText: '+3 max stamina' },
+  { key: 'def',   label: 'Defense', perText: '−0.4% damage taken', iconSrc: '/icons/ui/hero/defense.webp?v=2.3.1694' },
+  { key: 'hp',    label: 'Max HP',  perText: '+8 max HP',          iconSrc: '/icons/ui/hero/hp.webp?v=2.3.1694' },
+  { key: 'dodge', label: 'Dodge',   perText: '+0.4% dodge',        iconSrc: '/icons/ui/hero/dodge.webp?v=2.3.1694' },
+  { key: 'stam',  label: 'Stamina', perText: '+3 max stamina',     iconSrc: '/icons/ui/hero/stamina.webp?v=2.3.1694' },
 ];
 
 export const PROG3_SKILL_META = [

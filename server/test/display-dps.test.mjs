@@ -17,7 +17,15 @@
  *   calcDisplayHeal    — cooking.js _handleEatRequest's
  *                        ceil(fishHeal × Recovery mult)
  *   calcDisplayArmorHp — grids.js's Vigor-multiplied armor HP pool
- *                        contribution
+ *                        contribution (RETIRED v2.3.1697 — armor adds no
+ *                        maxHp on either side now; §9 keeps pinning the
+ *                        old formula's shape, §10 pins its replacement)
+ *
+ * v2.3.1697 adds the twin that MATTERS now: getArmorDrPct is checked
+ * against the server's own _armorDrMult, imported live from
+ * server/src/combat.js rather than restated — a hand-copied expectation
+ * would drift the moment someone repriced a tier, which is precisely the
+ * drift this whole suite exists to catch (§10).
  *
  * Zero-dep plain-node import of the client module — the mirror-audit
  * and tick suites established that every client data module loads
@@ -27,9 +35,14 @@
 import {
   calcDisplayDmgRange, calcDisplayDps, calcDisplayHeal, calcDisplayArmorHp,
   getFishHealAmount, getArmorHp,
+  getArmorDrPct, getArmorPieceDr, ARMOR_DR, /* v2.3.1697 */
   WEAPON_CHANNELS, WEAPON_CATEGORY, SWING_COOLDOWN,
   T2_UNITS, /* v2.3.1415: critDmg fixture derives from the unit table */
 } from '../../src/data/gameSystems.js';
+/* v2.3.1697: the SERVER side of the armour-mitigation mirror.  combatMethods
+   is a plain method bag (rule 22), and _armorDrMult touches no `this`, so it
+   can be called directly without standing up a GameRoom. */
+import { combatMethods } from '../src/combat.js';
 
 let failures = 0;
 function check(name, cond, detail) {
@@ -235,10 +248,14 @@ const STAFF = { type: 'staff', tierMult: 1.5 };
     calcDisplayHeal(null, KEY) === raw, calcDisplayHeal(null, KEY));
 }
 
-// ── 9. calcDisplayArmorHp mirrors the server's maxHp pool line
+// ── 9. calcDisplayArmorHp mirrored the server's maxHp pool line
 // (grids.js).  v2.3.1343: Vigor is FLAT +10 HP/pt now and no longer
 // scales armor HP — the display returns the raw armor contribution at
-// every point count. ──
+// every point count.
+// v2.3.1697: BOTH sides retired the armor→maxHp fold entirely, so this
+// no longer mirrors anything live.  Kept as a shape-pin on the retired
+// formula (an old blob's maxHp is reproducible from it) — the armour
+// number the game actually uses is pinned in §10 below. ──
 {
   const armor = { tierMult: 2.0 };
   const vit = 40;
@@ -250,6 +267,50 @@ const STAFF = { type: 'staff', tierMult: 1.5 };
   check('calcDisplayArmorHp degrades on null rpg/armor',
     calcDisplayArmorHp(null, armor) === getArmorHp(armor, 0)
     && calcDisplayArmorHp({ vitality: vit }, null) === 0);
+}
+
+// ── 10. v2.3.1697: getArmorDrPct IS server/src/combat.js _armorDrMult ──
+//
+// The Hero pane, the equipped cards and the item popup all print armour's
+// damage reduction now that it is armour's ONLY effect (the maxHp fold left
+// both sides this version, on the owner's instruction).  heroModel's old
+// note refused to show an armour number precisely because a displayed stat
+// the server does not apply is a lie; the way that becomes safe is this
+// test — every fixture is compared against the server function itself, so a
+// tier reprice on one side fails here instead of shipping a false readout.
+{
+  const drOf = (ps) => 1 - combatMethods._armorDrMult(ps);
+  const cases = [
+    ['nothing worn', {}],
+    ['chest only, base tier', { armor: { tierMult: 1 } }],
+    ['legs only, base tier', { legsArmor: { tierMult: 1 } }],
+    ['both, base tier', { armor: { tierMult: 1 }, legsArmor: { tierMult: 1 } }],
+    ['both, mid tier', { armor: { tierMult: 3 }, legsArmor: { tierMult: 2.5 } }],
+    ['tierMult at the x8 ceiling', { armor: { tierMult: 8 }, legsArmor: { tierMult: 8 } }],
+    ['forged tierMult past the ceiling', { armor: { tierMult: 999 }, legsArmor: { tierMult: 999 } }],
+    ['missing tierMult falls back to 1', { armor: {}, legsArmor: {} }],
+    ['a client that never learned legsArmor', { armor: { tierMult: 4 } }],
+  ];
+  for (const [label, ps] of cases) {
+    check(`armour DR mirror: ${label}`,
+      Math.abs(getArmorDrPct(ps) - drOf(ps)) < 1e-12,
+      { client: getArmorDrPct(ps), server: drOf(ps) });
+  }
+  /* The properties the numbers rest on, stated once on the client side so
+     a future edit to the mirror alone still trips something. */
+  check('armour DR: base torso is 30%, base legs 20%',
+    Math.abs(getArmorPieceDr({ tierMult: 1 }, 'chest') - 0.30) < 1e-12
+    && Math.abs(getArmorPieceDr({ tierMult: 1 }, 'legs') - 0.20) < 1e-12,
+    { chest: getArmorPieceDr({ tierMult: 1 }, 'chest'), legs: getArmorPieceDr({ tierMult: 1 }, 'legs') });
+  check('armour DR: two pieces stack multiplicatively (44%, not 50%)',
+    Math.abs(getArmorDrPct({ armor: { tierMult: 1 }, legsArmor: { tierMult: 1 } }) - 0.44) < 1e-12,
+    getArmorDrPct({ armor: { tierMult: 1 }, legsArmor: { tierMult: 1 } }));
+  check('armour DR: the 75% cap is the last word',
+    getArmorDrPct({ armor: { tierMult: 999 }, legsArmor: { tierMult: 999 } }) === ARMOR_DR.MAX);
+  check('armour DR: nothing worn reads exactly 0 (not a rounding artefact)',
+    getArmorDrPct({}) === 0 && getArmorDrPct(null) === 0);
+  check('armour DR: an unknown slot contributes nothing',
+    getArmorPieceDr({ tierMult: 8 }, 'cape') === 0);
 }
 
 // ── v2.3.1451: bench-locked accumulator drives the display mirrors ──

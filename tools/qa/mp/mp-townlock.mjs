@@ -21,7 +21,9 @@ import * as H from './harness.mjs';
    test can reach them would widen the app's surface for the harness's
    convenience.  If the marker ever moves, this test fails loudly with the
    player still standing in town — which is the correct way to find out. */
-const TOWN_EXIT = { tx: 24, ty: 44, zoneId: 'worldview' };
+/* v2.3.1693: ty 44 -> 41, tracking the marker's move 3 tiles up off the
+   bottom edge (it was rendering under the dashboard). */
+const TOWN_EXIT = { tx: 24, ty: 41, zoneId: 'worldview' };
 
 export async function run({ browser, wsPort, webPort, rec }) {
   const P = await H.newPlayer(browser, { name: 'Rookie', wsPort, webPort });
@@ -33,6 +35,28 @@ export async function run({ browser, wsPort, webPort, rec }) {
     staff: S.rpg && S.rpg.staffWeapon, shield: S.rpg && S.rpg.shield,
     zone: S.currentZone,
   }));
+  /* ═══ v2.3.1698: THE CLIENT AND THE WORKER AGREE ABOUT HP ═══
+     Found by playtest: a brand-new character stood in town reading 100/106
+     while the worker's blob said 106/106 — and since the worker thought it
+     was full, it never regenerated and never sent another player_state, so
+     the six HP were gone for good.  Cause: the join player_state applied
+     the server's hp, and then `if (_armorChanged) recalcDerived()` — which
+     runs BEFORE `rpg.prog3` is adopted from the same payload — took
+     recalcDerived's LEGACY branch and clamped hp to calcMaxHp(1, 0) = 100.
+     The clamp target is that CONSTANT, so this was not a 6-HP rounding
+     nit: any prog3 character with a real maxHp above 100 joined at 100.
+     Asserted against the WORKER, not against 106, because the number is
+     derived (100 + level*2) and a balance change to HP_PER_LEVEL must not
+     fail this test — what is under test is that the two sides agree. */
+  const svrVitals = await H.adminPlayer(wsPort, await H.readState(P, (S) => S.myId))
+    .then((a) => (a && a.rpg) || {}).catch(() => ({}));
+  const cliVitals = await H.readState(P, (S) => ({ hp: S.rpg.hp, maxHp: S.rpg.maxHp }));
+  rec.ok('the client\'s HP is the worker\'s HP, not a locally re-derived one',
+    cliVitals.hp === svrVitals.hp && cliVitals.maxHp === svrVitals.maxHp,
+    { client: cliVitals, worker: { hp: svrVitals.hp, maxHp: svrVitals.maxHp } });
+  rec.ok('...and a character who has never been hit is at FULL health',
+    cliVitals.hp === cliVitals.maxHp, cliVitals);
+
   rec.ok('a fresh character starts with NO melee weapon', !start.weapon, start.weapon);
   rec.ok('...no bow and no staff', !start.ranged && !start.staff, { r: start.ranged, s: start.staff });
   rec.ok('...and no shield', !start.shield, start.shield);
@@ -155,6 +179,25 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await H.callFn(P, 'swingAttack');
   rec.ok('once EQUIPPED from the bag, the same tap DOES swing',
     await H.readState(P, (S) => !!S.isSwinging));
+
+  /* ═══ v2.3.1698: THE EQUIP CARD DIES WITH ITS PANEL ═══
+     The Shield picker above is still open right now — equipping flips its
+     button to Unequip and leaves the card up.  In a playtest it then
+     survived leaving the Character panel, TWO zone changes, and came back
+     to town still floating mid-screen, where it covered Mayor Bro's
+     "Turn In Quest" button and made the first quest impossible to hand in.
+     Its scrim also eats the tap that would dismiss it, so the player's
+     next tap anywhere is spent on a ghost.  Driven through openDest —
+     the real nav path — rather than by poking the bus, so this fails if
+     the card outlives a destination change for any reason. */
+  rec.ok('the equip card is on screen before we navigate away',
+    await P.page.evaluate(() => !!(window._itemDetailBus && window._itemDetailBus.state.open)));
+  await H.openDest(P, 'Bag').catch(() => {});
+  await P.page.waitForTimeout(900);
+  rec.ok('leaving the panel that opened it closes the equip card',
+    !(await P.page.evaluate(() => !!(window._itemDetailBus && window._itemDetailBus.state.open))));
+  rec.ok('...and nothing of it is left painted over the world',
+    !(await H.seesText(P, 'Unequip')));
 
   /* ═══ v2.3.1687: THE EQUIP HAS TO REACH THE WORKER ═══
      Owner: "Every time you turn in a quest it unequips all your weapons."

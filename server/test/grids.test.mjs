@@ -7,7 +7,9 @@
  *   2.  stats_update: grid fields land, vigor/stamina flip statsChanged
  *       (pools recompute the same tick), pools clamp [0,999].
  *   3.  Vigor: maxHp = floor((calcMaxHp + armorHp) × (1+pts×0.005)),
- *       cap +25%.
+ *       cap +25%.  (Historical: Vigor went flat in v2.3.1343 and the
+ *       armorHp term left the pool entirely in v2.3.1697 — armor is
+ *       damage reduction now, pinned by tutorial.test §8.)
  *   4.  Stamina channel: maxStamina × (1+pts×0.01), cap +50%.
  *   5.  Conditioning: regen tick × (1+pts×0.01).
  *   6.  Recovery: multiplies the fish-eat heal and Second Wind — but

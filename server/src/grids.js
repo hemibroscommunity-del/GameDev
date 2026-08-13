@@ -489,11 +489,29 @@ export const gridMethods = {
     return Math.floor(100 + ((level || 1) - 1) * 2.5 + (vitality || 0) * 10);
   },
 
-  // Armor HP contribution -- mirrors getArmorHp() in
-  // src/data/gameSystems.js per docs/specs/t1-t2-stat-redesign-server.md.
-  // Phase 1: armor went from damage-reduction (def) to flat-HP.
-  // tierMult is clamped to a defensive ceiling (8) so a forged-shape
-  // armor with `tierMult: 999` can't inflate maxHp out of bounds.
+  // RETIRED v2.3.1697 -- nothing calls this any more.
+  //
+  // Owner: "It shouldn't add max hp contribution anymore, just surface real
+  // damage mitigation -- that was an earlier build where armor increased hp,
+  // it doesn't anymore."  v2.3.1679 gave worn armor genuine per-hit damage
+  // reduction (_armorDrMult, combat.js), which made the Phase-1 flat-HP fold
+  // a SECOND, invisible payout for the same item: a chest piece was both a
+  // bigger health bar and a mitigation stat, and the health bar half is what
+  // made "armor" read as a number going up instead of a thing you put on.
+  // The fold is gone from _recomputeMaxes (and from _prog3Recompute, and from
+  // the client's recalcDerived) -- existing players LOSE that HP, which is
+  // the intended correction, not a regression.
+  //
+  // Left defined rather than deleted so the old formula stays legible next to
+  // the mirror that replaced it (src/data/gameSystems.js getArmorDrPct) and
+  // so a future audit of an old rpg blob's maxHp can reproduce what it used
+  // to be.  Do NOT re-wire it into a pool: mitigation is armor's whole job now.
+  //
+  // Historical note: mirrored getArmorHp() in src/data/gameSystems.js per
+  // docs/specs/t1-t2-stat-redesign-server.md.  Phase 1 moved armor from
+  // damage-reduction (def) to flat-HP; tierMult was clamped to a defensive
+  // ceiling (8) so a forged-shape armor with `tierMult: 999` couldn't
+  // inflate maxHp out of bounds.
   _armorHp(armor, vitality) {
     if (!armor) return 0;
     const ARMOR_HP_BASE = 20;
@@ -546,7 +564,15 @@ export const gridMethods = {
     // pools.  Mirrors recalcDerived on the client.
     // v2.3.1343: Vigor is FLAT +10 HP/pt (kid-simple reprice) — it no
     // longer multiplies armor HP (deliberate simplification).
-    ps.maxHp = Math.floor(this._calcMaxHp(lvl, ps.vitality || 0) + this._armorHp(ps.armor, ps.vitality || 0) + this._vigorFlat(ps));
+    // v2.3.1697: ...and armor no longer contributes HP AT ALL (owner
+    // directive).  Since v2.3.1679 worn armor is real per-hit damage
+    // reduction (_armorDrMult); paying it out as maxHp as well was the
+    // earlier build's mechanic left running underneath the new one.
+    // Client mirror: recalcDerived in src/data/gameSystems.js dropped the
+    // same term in the same version.  Deploy order is safe either way —
+    // maxHp is server-computed and echoed in player_state, and the echo is
+    // the tiebreaker (handoff rule 20), so no caps flag is needed.
+    ps.maxHp = Math.floor(this._calcMaxHp(lvl, ps.vitality || 0) + this._vigorFlat(ps));
     ps.maxStamina = Math.floor(this._calcMaxStamina(ps.endurance || 0) + this._staminaFlat(ps)); // v2.3.1345: flat
     ps.maxMana = this._calcMaxMana(ps.mind || 0);
     // Clamp current values into the new ranges.
@@ -779,8 +805,11 @@ export const gridMethods = {
       const incoming = payload.armor;
       let newArmor = null;
       if (incoming && typeof incoming === 'object' && incoming.name !== 'Leather Armor') {
-        // Shallow copy + clamp tierMult.  Mirror the cap from _armorHp
-        // so a forged blob with tierMult: 999 can't inflate maxHp.
+        // Shallow copy + clamp tierMult to 8.  v2.3.1697: the cap used to
+        // mirror _armorHp's (stop a forged tierMult: 999 inflating maxHp);
+        // now that armor pays out as mitigation instead, it mirrors
+        // _armorDrMult's identical ×8 clamp — same ceiling, and the DR cap
+        // (75%) still sits above it as the last word.  Keep the two in step.
         // Leather Armor rejected outright per v2.3.249 removal.
         newArmor = { ...incoming };
         if (typeof newArmor.tierMult === 'number') {

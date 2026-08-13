@@ -18,7 +18,7 @@ import {
   calcDisplayDmgRange,
   calcDisplayDps,
   calcDisplayHeal,
-  calcDisplayArmorHp,
+  getArmorPieceDr, /* v2.3.1697: replaced calcDisplayArmorHp — armor buys mitigation, not HP */
   calcBlockReduction,
   BLACKSMITH_TIERS,
   WOODWORKING_TIERS,
@@ -207,17 +207,19 @@ function resolveTarget(target) {
     const ar = target.armor;
     if (!ar) return null;
     /* v2.3.228: HP contribution at the player's current Vitality.
-       v2.3.1207: × HP-grid Vigor (calcDisplayArmorHp) — the server
-       multiplies the WHOLE pool including armor HP (grids.js), so the
-       raw getArmorHp figure under-reported for Vigor builds. */
-    const S = getState();
-    const hp = calcDisplayArmorHp(S && S.rpg, ar);
+       v2.3.1207: × HP-grid Vigor (calcDisplayArmorHp).
+       v2.3.1697: BOTH retired — armor adds no maxHp on either side now
+       (owner directive).  What it does add is per-hit damage reduction
+       (server _armorDrMult since v2.3.1679), so that is what the card
+       says.  Piece-only, not the stacked total: this popup is about the
+       one item you tapped. */
+    const dr = getArmorPieceDr(ar, 'chest');
     return {
       lockKey: 'armor',
       thumb: null,
       glyph: '\u{1F9BA}',
       name: ar.name || 'Armor',
-      info: '+' + hp + ' Max HP',
+      info: Math.round(dr * 100) + '% damage reduced',
       desc: (ar.gearBase === 'wood' ? 'Leather' : tierLabel(ar)) + ' · Chest',
       actions: { unequip: true },
     };
@@ -225,20 +227,22 @@ function resolveTarget(target) {
   if (target.kind === 'stashArmor') {
     const ar = target.armor;
     if (!ar) return null;
-    /* v2.3.1207: × Vigor, same as the equipped-armor card above. */
+    /* v2.3.1697: damage reduction, same as the equipped-armor card above. */
     const S = getState();
-    const hp = calcDisplayArmorHp(S && S.rpg, ar);
-    /* v2.3.1313: Max-HP delta vs the equipped chest armor. */
+    const dr = getArmorPieceDr(ar, 'chest');
+    /* v2.3.1313: delta vs the equipped chest armor — mitigation now, not
+       Max HP.  One decimal: the tier step is 5 points of a percent, so
+       whole numbers would render a real upgrade as "+0%". */
     const eqAr = S && S.rpg && S.rpg.armor;
     const delta = eqAr
-      ? statDelta(hp - calcDisplayArmorHp(S.rpg, eqAr), 'Max HP', 0)
+      ? statDelta((dr - getArmorPieceDr(eqAr, 'chest')) * 100, '% Damage Reduced', 1)
       : null;
     return {
       lockKey: 'stashArmor_' + (target.index || 0),
       thumb: null,
       glyph: '\u{1F9BA}',
       name: ar.name || 'Armor',
-      info: '+' + hp + ' Max HP',
+      info: Math.round(dr * 100) + '% damage reduced',
       delta,
       desc: (ar.gearBase === 'wood' ? 'Leather' : tierLabel(ar)) + ' · Chest',
       actions: { equip: true },

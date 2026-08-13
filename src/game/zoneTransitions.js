@@ -28,6 +28,23 @@ import { onZoneEntered } from '@/networking/nodeSync.js'; /* v2.3.1301: gather-n
 import { preloadZoneAssets } from '@/rendering/preloadAnimations.js'; /* v2.3.1405: per-zone asset gate */
 import { freeZoneMap, isZoneMapResident } from '@/rendering/tiledMaps.js'; /* v2.3.1405: map eviction + sync residency check */
 
+/* ═══ v2.3.1693: KEEP PORTALS OFF THE MAP EDGE ═══
+   Owner: "move the portals (to and from the worldview to the zones) a bit
+   closer inside the map.  They're getting cut off by the dashboard a bit so
+   they barely poke out."
+   Every live hub exit today enters a zone heading north/ne/nw, and all three
+   of those put the return marker (tile 9) on the LAST row of the zone map.
+   With the camera clamped to the map bottom, that row sits under the bottom
+   dashboard — the same occlusion v2.3.823 already worked around by making the
+   return a proximity trigger instead of a step-on tile, because the player's
+   foot margin couldn't reach those rows either.  The portal was always there;
+   you just couldn't see it.  Pull the bottom-edge markers this many tiles up.
+   The bottom-edge ENTRY SPAWNS move up by the same amount, or the arrival
+   would land inside RETURN_R (2) of the marker and bounce the player straight
+   back to the hub.  Top-edge markers (south/se/sw entries — no live exit uses
+   them today) are left alone: nothing covers the top of the screen. */
+var PORTAL_EDGE_INSET = 3;
+
 /* v2.3.1347: fixed directional entry spawns don't consult the painted
    walkability masks, so zones whose mask blocks the spawn point strand
    the player on unwalkable ground — Desert Winds ('sky') stuck every
@@ -355,15 +372,21 @@ export function handleZoneTransitions(S, ptx, pty, _zone, W, H) {
                  spawn on the dungeon-approach path facing the
                  entrance.  For 'se' / 'sw' / 'south' that share the
                  north-area band, also tuck them a bit deeper. */
-              if (bestExit.dir === 'north')      { P.x = midX;             P.y = nH - TILE * 5; }
+              /* v2.3.1693: the four bottom-edge spawns keep their 5-tile
+                 clearance from the return marker, which itself moved
+                 PORTAL_EDGE_INSET tiles up off the bottom edge — so they move
+                 up with it (5 -> 8 tiles in). Without this the arrival lands
+                 within RETURN_R of the marker and warps straight back. */
+              var _botSpawnY = nH - TILE * (5 + PORTAL_EDGE_INSET);
+              if (bestExit.dir === 'north')      { P.x = midX;             P.y = _botSpawnY; }
               else if (bestExit.dir === 'south') { P.x = midX - TILE * 5;  P.y = TILE * 8;       }
               else if (bestExit.dir === 'east')  { P.x = TILE * 5;         P.y = midY;           }
               else if (bestExit.dir === 'west')  { P.x = nW - TILE * 5;    P.y = midY;           }
-              else if (bestExit.dir === 'ne')    { P.x = TILE * 5;         P.y = nH - TILE * 5;  }
-              else if (bestExit.dir === 'nw')    { P.x = nW - TILE * 5;    P.y = nH - TILE * 5;  }
+              else if (bestExit.dir === 'ne')    { P.x = TILE * 5;         P.y = _botSpawnY;  }
+              else if (bestExit.dir === 'nw')    { P.x = nW - TILE * 5;    P.y = _botSpawnY;  }
               else if (bestExit.dir === 'se')    { P.x = TILE * 5;         P.y = TILE * 8;       }
               else if (bestExit.dir === 'sw')    { P.x = nW - TILE * 5;    P.y = TILE * 8;       }
-              else                                { P.x = midX;             P.y = nH - TILE * 5; }
+              else                                { P.x = midX;             P.y = _botSpawnY; }
               /* v2.3.860: entering the World View, spawn by the central town
                  circle (just south of centre), not flung to the ocean edge. */
               /* v2.3.948: hub destinations (worldview AND town) drop the player
@@ -423,10 +446,13 @@ export function handleZoneTransitions(S, ptx, pty, _zone, W, H) {
                  from each so the player has a walkable tile to step on.
                  Diagonals get tile placements at corners with paths
                  carved along both adjacent cardinals. */
+              /* v2.3.1693: bottom-edge return row, pulled PORTAL_EDGE_INSET
+                 tiles up out from under the dashboard (see the constant). */
+              var mapRetY = mapH - 1 - PORTAL_EDGE_INSET;
               if (bestExit.dir === 'north') {
-                S.map[mapH-1][mapMX] = 9; S.map[mapH-1][mapMX+1] = 9;
+                S.map[mapRetY][mapMX] = 9; S.map[mapRetY][mapMX+1] = 9;
                 S.map[2][mapMX] = 10; S.map[2][mapMX+1] = 10;
-                carvePath(mapMX, mapH-1, 0, -1, 4);
+                carvePath(mapMX, mapRetY, 0, -1, 4);
                 carvePath(mapMX, 2, 0, 1, 4);
               } else if (bestExit.dir === 'south') {
                 S.map[0][mapMX] = 9; S.map[0][mapMX+1] = 9;
@@ -446,15 +472,15 @@ export function handleZoneTransitions(S, ptx, pty, _zone, W, H) {
               } else if (bestExit.dir === 'ne') {
                 /* Entered from town's NE → spawned in zone's SW corner.
                    Return tile at SW; dungeon at NE. */
-                S.map[mapH-1][1] = 9; S.map[mapH-1][2] = 9;
+                S.map[mapRetY][1] = 9; S.map[mapRetY][2] = 9;
                 S.map[2][mapW-3] = 10; S.map[2][mapW-2] = 10;
-                carvePath(2, mapH-1, 0, -1, 4); carvePath(2, mapH-1, 1, 0, 4);
+                carvePath(2, mapRetY, 0, -1, 4); carvePath(2, mapRetY, 1, 0, 4);
                 carvePath(mapW-3, 2, 0, 1, 4); carvePath(mapW-3, 2, -1, 0, 4);
               } else if (bestExit.dir === 'nw') {
                 /* SE corner spawn → return SE, dungeon NW. */
-                S.map[mapH-1][mapW-3] = 9; S.map[mapH-1][mapW-2] = 9;
+                S.map[mapRetY][mapW-3] = 9; S.map[mapRetY][mapW-2] = 9;
                 S.map[2][1] = 10; S.map[2][2] = 10;
-                carvePath(mapW-3, mapH-1, 0, -1, 4); carvePath(mapW-3, mapH-1, -1, 0, 4);
+                carvePath(mapW-3, mapRetY, 0, -1, 4); carvePath(mapW-3, mapRetY, -1, 0, 4);
                 carvePath(2, 2, 0, 1, 4); carvePath(2, 2, 1, 0, 4);
               } else if (bestExit.dir === 'se') {
                 /* NW corner spawn → return NW, dungeon SE. */

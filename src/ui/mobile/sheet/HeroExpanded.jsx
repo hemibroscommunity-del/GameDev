@@ -138,7 +138,10 @@ export const HeroExpanded = () => {
     const n = (v || 0) * 100;
     return n > 0 && n < 10 ? n.toFixed(1) : Math.round(n);
   };
-  const cell = (label, value) => (
+  /* v2.3.1697: `span` lets one cell take two of the grid's columns —
+     see the aggregate grid below, where DAMAGE keeps its old width while
+     the rest halve to make room for the armour readout. */
+  const cell = (label, value, span) => (
     <div key={label} style={{
       background: COL.wellSoft,
       border: `1px solid ${COL.tileBor}`,
@@ -146,6 +149,7 @@ export const HeroExpanded = () => {
       padding: '4px 2px 5px',
       minWidth: 0,
       textAlign: 'center',
+      gridColumn: span ? `span ${span}` : undefined,
     }}>
       <div style={{ fontSize: 8.5, fontWeight: 700, letterSpacing: '.04em', textTransform: 'uppercase', color: COL.muted, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{label}</div>
       <div style={{ fontSize: 13, fontWeight: 800, color: COL.text, fontVariantNumeric: 'tabular-nums', marginTop: 1, whiteSpace: 'nowrap' }}>{value}</div>
@@ -361,7 +365,7 @@ export const HeroExpanded = () => {
               ) : (
                 /* AGGREGATE — the whole character, which is what you see
                    when nothing is selected. */
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 5 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 5 }}>
                   {/* v2.3.1668: every cell here now moves when you spend
                       a point.  Block and Speed were removed — Speed was
                       the constant 5.0 and Block read a fixed 25% from a
@@ -372,13 +376,30 @@ export const HeroExpanded = () => {
                       anywhere in the game before this.
                       One decimal on the percentages, because the caps are
                       30-40% and whole numbers made a 1-point investment
-                      render as "0%" — which reads as "that did nothing". */}
-                  {cell('Damage', d.dmgText)}
+                      render as "0%" — which reads as "that did nothing".
+
+                      v2.3.1697: ARMOUR joins them — worn armour has cut
+                      incoming damage for real since v2.3.1679 and no
+                      screen in the game said so, which is the same
+                      invisible-stat problem Defense had.
+                      THREE columns became FOUR rather than three columns
+                      becoming three ROWS, deliberately: this panel's body
+                      is measured in single pixels (v2.3.1653 note above),
+                      its scroll-edge fade is off, and a third row would
+                      have pushed the last cells below a fold with no cue
+                      that they exist.  DAMAGE spans two columns so a
+                      wide range ("120–160") keeps the width it had; every
+                      other value is five characters or fewer. */}
+                  {cell('Damage', d.dmgText, 2)}
                   {cell('DPS', d.dps.toFixed(1))}
                   {cell('Crit', `${pct1(d.crit)}%`)}
                   {cell('Crit Dmg', p3 ? `+${Math.round(d.critDmg)}` : '—')}
                   {cell('Defense', p3 ? `${pct1(d.defPct)}%` : '—')}
                   {cell('Dodge', `${pct1(d.dodge)}%`)}
+                  {/* Not prog3-gated and never '—': armour mitigation
+                      applies to every player the server damages, and 0%
+                      is the honest reading when nothing is worn. */}
+                  {cell('Armour', `${pct1(d.armorDr)}%`)}
                 </div>
               )}
             </div>
@@ -481,17 +502,43 @@ export const HeroExpanded = () => {
                     opacity: canSpend ? 1 : 0.75,
                     touchAction: 'manipulation',
                   }}>
+                  {/* v2.3.1694 (owner: "add little thumbnails that
+                      represent each thing … they were stripped out at
+                      some point"): the stat art rides BESIDE the two
+                      text lines, not above them — the same icon-left /
+                      label-above-number tile the legacy Build launchers
+                      use (v2.3.1311f).  A 16px icon is shorter than the
+                      25px label+value stack it sits next to, so the cell
+                      is exactly as tall as it was text-only and
+                      mp-prog3's "fits without scrolling" assertion (the
+                      v2.3.1660 five-below-the-fold incident) is not
+                      spent on decoration.  A stat with no art on disk
+                      simply renders without one. */}
                   <div style={{
-                    fontSize: 8, fontWeight: 700, letterSpacing: '.03em',
-                    textTransform: 'uppercase',
-                    color: st.atk ? (canSpend ? COL.accent : COL.text2) : COL.muted,
-                    whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-                  }}>{st.label}</div>
-                  <div style={{
-                    fontSize: 13, fontWeight: 800, color: COL.text,
-                    fontVariantNumeric: 'tabular-nums', lineHeight: 1.15,
-                    whiteSpace: 'nowrap',
-                  }}>{pts}<span style={{ color: COL.muted, fontWeight: 700, fontSize: 9 }}>/{cap}</span></div>
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    gap: 4, minWidth: 0,
+                  }}>
+                    {st.iconSrc && (
+                      <img src={st.iconSrc} alt="" draggable={false}
+                        style={{
+                          width: 16, height: 16, objectFit: 'contain', flex: 'none',
+                          opacity: canSpend ? 1 : 0.8, pointerEvents: 'none',
+                        }} />
+                    )}
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{
+                        fontSize: 8, fontWeight: 700, letterSpacing: '.03em',
+                        textTransform: 'uppercase',
+                        color: st.atk ? (canSpend ? COL.accent : COL.text2) : COL.muted,
+                        whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                      }}>{st.label}</div>
+                      <div style={{
+                        fontSize: 13, fontWeight: 800, color: COL.text,
+                        fontVariantNumeric: 'tabular-nums', lineHeight: 1.15,
+                        whiteSpace: 'nowrap',
+                      }}>{pts}<span style={{ color: COL.muted, fontWeight: 700, fontSize: 9 }}>/{cap}</span></div>
+                    </div>
+                  </div>
                 </div>
               );
             })}

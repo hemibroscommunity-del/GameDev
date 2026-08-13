@@ -977,26 +977,43 @@ export function setupWebSocket(ctx) {
                  next takes damage, at which point HP resyncs. */
               /* v2.3.237: worker now mirrors getArmorHp() per the
                  t1-t2-stat-redesign-server spec.  The v2.3.231 client
-                 fold is retired -- server's hp / maxHp are authoritative
-                 and already include the armor bonus. */
-              if (typeof msg.payload.hp === 'number') {
-                S.rpg.hp = msg.payload.hp;
-              }
-              if (typeof msg.payload.maxHp === 'number') {
-                S.rpg.maxHp = msg.payload.maxHp;
-              }
-              if (typeof msg.payload.stamina === 'number') {
-                S.rpg.stamina = msg.payload.stamina;
-              }
-              if (typeof msg.payload.maxStamina === 'number') {
-                S.rpg.maxStamina = msg.payload.maxStamina;
-              }
-              if (typeof msg.payload.mana === 'number') {
-                S.rpg.mana = msg.payload.mana;
-              }
-              if (typeof msg.payload.maxMana === 'number') {
-                S.rpg.maxMana = msg.payload.maxMana;
-              }
+                 fold is retired -- server's hp / maxHp are authoritative.
+                 v2.3.1697: ...and there is no armor bonus in maxHp on
+                 EITHER side any more (owner directive; armor pays out as
+                 damage reduction).  The echo staying authoritative is what
+                 makes that deploy-order safe: a worker still running the
+                 old fold just sends its higher number and the client shows
+                 it, instead of the two formulas fighting. */
+              /* ═══ v2.3.1698: THE POOLS ARE APPLIED LAST, NOT HERE ═══
+                 Owner: headless playtest — a brand-new character stood in
+                 town at 100/106 HP forever, while the worker's stored blob
+                 said 106/106 and therefore never regenerated or re-emitted.
+                 Measured with a property watcher on S.rpg.hp: this handler
+                 wrote the server's 106, and then `if (_armorChanged)
+                 recalcDerived(S.rpg)` (~120 lines below) wrote it back to
+                 100.  That recalc runs BEFORE `S.rpg.prog3` is adopted from
+                 this same payload, so prog3Live() is false and recalcDerived
+                 takes its LEGACY branch: it recomputes rpg.level from the
+                 frozen T1 stats (all 0 under prog3 => level 1), sets
+                 maxHp = calcMaxHp(1, 0) = 100, and clamps hp down to it.
+                 `'armor' in msg.payload` is true in every full join
+                 snapshot, so this fired on EVERY join for EVERY prog3
+                 player — and the clamp target is the constant 100, so a
+                 character with a real maxHp of 300 joined showing 100.
+                 The comment above already states the rule this broke: the
+                 server's hp/maxHp are AUTHORITATIVE.  So the assignments
+                 move to the end of the handler, after every recalcDerived
+                 it can run, instead of racing them.  Captured here (rather
+                 than re-read down there) purely so the payload guard and
+                 the write stay next to the comment explaining them. */
+              var _poolsFromServer = {
+                hp: typeof msg.payload.hp === 'number' ? msg.payload.hp : null,
+                maxHp: typeof msg.payload.maxHp === 'number' ? msg.payload.maxHp : null,
+                stamina: typeof msg.payload.stamina === 'number' ? msg.payload.stamina : null,
+                maxStamina: typeof msg.payload.maxStamina === 'number' ? msg.payload.maxStamina : null,
+                mana: typeof msg.payload.mana === 'number' ? msg.payload.mana : null,
+                maxMana: typeof msg.payload.maxMana === 'number' ? msg.payload.maxMana : null,
+              };
               /* Food buff timers -- worker is authoritative for the
                  endsAt timestamps so a cheater can't extend their
                  _dmgBuff by writing it locally.  Mirror onto the
@@ -1068,9 +1085,20 @@ export function setupWebSocket(ctx) {
                 if (!_held) S.rpg.shieldStash.push(_svShield);
               }
               if ('amulet' in msg.payload) S.rpg.amulet = msg.payload.amulet;
-              /* v2.3.227 (Phase 1): armor swaps change maxHp via
-                 getArmorHp() in recalcDerived.  Recompute so HP stays
-                 consistent after server-echoed equipment changes. */
+              /* v2.3.1697: adopt the worker's legs piece.  ps.legsArmor has
+                 been a real persisted field + echo since v2.3.1679, but no
+                 client ever read it -- so the Hero pane's new armour
+                 readout would have shown the chest half of a two-piece
+                 formula and quietly disagreed with the damage the server
+                 actually deals.  Read-only (there is no client legs-armour
+                 equip path yet); the worker owns the slot. */
+              if ('legsArmor' in msg.payload) S.rpg.legsArmor = msg.payload.legsArmor;
+              /* v2.3.227 (Phase 1): armor swaps changed maxHp via
+                 getArmorHp() in recalcDerived.
+                 v2.3.1697: armor no longer touches maxHp, so this recompute
+                 is no longer load-bearing for HP -- kept because it is the
+                 one re-derive after a server-echoed equipment change and
+                 also refreshes the amulet/shield bonus caches. */
               if (_armorChanged) recalcDerived(S.rpg);
               if (Array.isArray(msg.payload.weaponStash)) S.rpg.weaponStash = msg.payload.weaponStash;
               /* Quest state mirror (slice 17).  Worker is authoritative
@@ -1185,6 +1213,13 @@ export function setupWebSocket(ctx) {
                  storm, and the server's own mutation gate is the other
                  half of the brake. */
               if (_t1Changed) recalcDerived(S.rpg);
+              /* v2.3.1698: the server's pools land HERE — after every
+                 recalcDerived this handler can run — so a local formula can
+                 never clamp away the number the worker just told us.  See
+                 the block near the top of this case for the incident. */
+              for (var _pk in _poolsFromServer) {
+                if (_poolsFromServer[_pk] !== null) S.rpg[_pk] = _poolsFromServer[_pk];
+              }
               setRpgState(_objectSpread({}, S.rpg));
               try { localStorage.setItem('bt_rpg', JSON.stringify(S.rpg)); } catch (e) {}
               break;

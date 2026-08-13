@@ -69,7 +69,16 @@ const ORE_THUMBS = {
   ore_copper_ore: `/icons/items/ore-copper.webp${ITEMS_V}`,
 };
 const ORE_THUMB_DEFAULT = `/icons/items/ore-copper.webp${ITEMS_V}`;
-const FISHING_POLE_THUMB = `/icons/items/fishing-pole.webp${ITEMS_V}`;
+/* v2.3.1696 (owner: "the fishing pole sprite has some of the background that
+   failed to get keyed out in the holes between the fishing line and the
+   fishing pole").  Confirmed by counting: of 256x256, 51,876 px were already
+   transparent and 1,188 opaque near-white ones remained — the enclosed gaps
+   between the line and the rod, which a border-flood keyer can never reach
+   because they don't touch the outside.  Re-keyed on NEAR-WHITE + NEAR-NEUTRAL
+   wherever it sits, so coloured highlights (the red float) survive.
+   PNG because the source is webp and there is no webp ENCODER here — Chromium
+   did the decoding, which is why this was fixable at all. */
+const FISHING_POLE_THUMB = `/icons/items/fishing-pole.png${ITEMS_V}`;
 /* v2.3.1689 (owner: "use these sprites for the woodcutting axe and the
    pickaxe ... You currently just have a log thumbnail for the woodcutting
    axe").  The owner's two-tool sheet, split into one square icon each,

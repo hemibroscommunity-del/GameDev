@@ -251,20 +251,21 @@ export const prog3Methods = {
   // The prog3 twin of _recomputeMaxes (grids.js delegates here when
   // ps.prog3 exists).  §5-B pools: level term shrinks to 2 HP/level
   // and the hp stat carries the rest; stamina/mana lose their T1 stat
-  // terms (endurance→stam points, mind→Magic level).  Armor keeps its
-  // flat-HP identity but DROPS the vitality multiplier (§4 audit
-  // table) — same 20 × tierMult base, same ×8 forged-tierMult clamp
-  // as _armorHp.
+  // terms (endurance→stam points, mind→Magic level).
+  //
+  // v2.3.1697: the armor flat-HP term is GONE from this line too (owner:
+  // armor "shouldn't add max hp contribution anymore, just surface real
+  // damage mitigation").  It was easy to miss that there are TWO maxHp
+  // formulas — this one serves every respecced player, so dropping the
+  // fold only in grids.js would have left the live path still paying
+  // armor twice (HP here, mitigation in _armorDrMult since v2.3.1679).
+  // Mirrored by the prog3 branch of recalcDerived (client) in the same
+  // version.  Armor's ONLY combat effect is now the damage reduction.
   _prog3Recompute(ps) {
     if (!ps || !ps.prog3) return;
     ps.level = this._prog3CharLevel(ps);
-    let armorHp = 0;
-    if (ps.armor) {
-      const tmRaw = (typeof ps.armor.tierMult === 'number' && ps.armor.tierMult > 0) ? ps.armor.tierMult : 1.0;
-      armorHp = Math.floor(20 * Math.min(8, tmRaw));
-    }
     ps.maxHp = Math.floor(100 + ps.level * PROG3.HP_PER_LEVEL
-      + this._prog3Pts(ps, 'hp') * PROG3.BODY.hp.per + armorHp);
+      + this._prog3Pts(ps, 'hp') * PROG3.BODY.hp.per);
     ps.maxStamina = Math.floor(100 + this._prog3Pts(ps, 'stam') * PROG3.BODY.stam.per);
     const magicLvl = (ps.prog3.sk && ps.prog3.sk.staff && ps.prog3.sk.staff.level) || 1;
     ps.maxMana = Math.floor(100 + magicLvl * PROG3.MANA_PER_MAGIC_LEVEL);

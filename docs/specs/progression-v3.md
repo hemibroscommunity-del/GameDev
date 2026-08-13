@@ -55,9 +55,14 @@ The OSRS-inspired progression the design paper locked:
   floor 1 — applies in `_applyDamage`, so monsters AND PvP.
 - dodge: `dodge × 0.4%` replaces agility's roll + the evasion
   accumulator.
-- pools: `maxHp = 100 + level×2 + hp×8 + armorHp` (armor = `20 ×
-  min(8, tierMult)`, vitality term dropped); `maxStamina = 100 +
-  stam×3`; `maxMana = 100 + magicLevel×1.2`.
+- pools: `maxHp = 100 + level×2 + hp×8`; `maxStamina = 100 + stam×3`;
+  `maxMana = 100 + magicLevel×1.2`.
+  *(v2.3.1697: the `+ armorHp` term — `20 × min(8, tierMult)` — is GONE,
+  here and in the legacy `_recomputeMaxes`, on the owner's directive.
+  Armor pays out as per-hit damage reduction (`_armorDrMult`, v2.3.1679)
+  and must not ALSO be a bigger health bar. Both maxHp formulas had to
+  lose it: this one serves every respecced player, so dropping it only
+  from the legacy path would have changed nothing live.)*
 - XP curve: `prog3XpRequired(L) = ceil(280 × 1.16^(L−1))` — the legacy
   weapon curve verbatim, shifted one because prog3 levels are 1-based.
 
