@@ -1750,8 +1750,14 @@ input{font-family:inherit}
 @media (pointer:fine) and (min-width:1000px) {
   html, body { background:#070D11; }
   #root {
-    width:50%;
-    min-width:600px;
+    /* v2.3.1715: 50% -> 25% (owner: "force shrink the game area another 50%
+       ... including the dashboard").  480px at 1920, which lands close to the
+       390px phone width the whole UI was designed against — the dashboard
+       follows for free because it sizes from playVw(), not from the window.
+       The floor drops with it: 600 would have overridden 25% at every width
+       under 2400 and quietly cancelled the change. */
+    width:25%;
+    min-width:380px;
     max-width:100%;
     height:100%;
     margin:0 auto;
