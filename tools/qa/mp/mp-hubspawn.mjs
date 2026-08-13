@@ -81,43 +81,51 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const landed = await where(P);
   rec.ok('walking onto the town trail-head reaches the World View',
     landed.zone === 'worldview', landed);
-  /* THE OWNER'S REPORT.  ty greater than the marker's is south of it on this
-     map (y grows downward), so this is literally "below the town portal". */
-  rec.ok('...landing BELOW the town portal, not above it',
-    landed.zone === 'worldview' && landed.ty > marks.townMark.ty,
-    { landed, townMark: marks.townMark });
-  /* And far enough below that the arrival is not already inside the trigger
-     it just came out of. */
-  rec.ok('...clear of the portal rather than standing on it',
-    Math.abs(landed.tx - marks.townMark.tx) + Math.abs(landed.ty - marks.townMark.ty) >= 3,
+  /* v2.3.1708: INSIDE the marker (toward the hub centre), not past it.  The
+     owner asked for "below the town portal" and it shipped literally in
+     v2.3.1703 — which broke the portal home, because Flame Fields sits due
+     north of this marker and no arrival south of it can reach that spoke
+     without crossing it.  The accidental walk-back-in they were describing is
+     handled by the deafness timer instead. */
+  rec.ok('...landing clear of the portal rather than on top of it',
+    landed.zone === 'worldview'
+    && Math.abs(landed.tx - marks.townMark.tx) + Math.abs(landed.ty - marks.townMark.ty) >= 3,
     { landed, townMark: marks.townMark });
 
-  /* Hold still for a few ticks: an arrival that immediately re-triggers is
-     the exact bounce v2.3.948 and v2.3.1700 were both chasing. */
-  await P.page.waitForTimeout(2500);
-  rec.ok('and it stays there instead of bouncing straight back to town',
-    (await where(P)).zone === 'worldview');
-
-  /* ── 2. the latch: walking out over the marker must not warp you home ──
-     Step onto the town marker itself — the worst case, and the exact tile a
-     straight walk from the arrival point to any northern spoke crosses. */
+  /* ── 2. the momentum that brought you here must not carry you back ──
+     This is the owner's v2.3.1703 report: they walked south out of town, kept
+     walking, and went straight back in. */
   await stand(P, marks.townMark.tx, marks.townMark.ty);
-  await P.page.waitForTimeout(1800);
-  const overIt = await where(P);
-  rec.ok('crossing the town portal on the way out does NOT warp you back',
-    overIt.zone === 'worldview', { overIt, townMark: marks.townMark });
+  await P.page.waitForTimeout(700);              // well inside the deaf window
+  rec.ok('walking straight on into the portal does NOT bounce you back to town',
+    (await where(P)).zone === 'worldview', await where(P));
 
-  /* ── 3. …and it re-arms once you have got clear of it ──
-     Walk well away (past DISARM_CLEAR_R), then come back onto it. */
-  const spoke = marks.spokes[0];
-  await stand(P, spoke ? spoke.tx : 4, spoke ? spoke.ty : 4);
-  await P.page.waitForTimeout(400);
-  /* That may have entered the spoke zone, which is fine — it proves the walk
-     works.  Either way, get back to the World View and try the town portal
-     for real. */
-  const atSpoke = await where(P);
-  rec.ok('a straight walk from the arrival point reaches a spoke zone',
-    !!spoke && atSpoke.zone === spoke.zoneId, { atSpoke, spoke });
+  /* ── 3. …AND A MOMENT LATER THE PORTAL HOME WORKS ──
+     Owner: "the portal from worldview back into town doesn't work."  The
+     v2.3.1703 latch released on DISTANCE (8 tiles) and the arrival sat 4
+     tiles away, so the way home stayed dead until you had wandered off and
+     come back — which is indistinguishable, from the seat, from a broken
+     portal.  This is the assertion that would have caught it. */
+  await P.page.waitForTimeout(2600);             // past HUB_EXIT_DEAF_MS
+  await stand(P, marks.townMark.tx, marks.townMark.ty);
+  const home = await H.waitFor(P, (S) => S.currentZone, (z) => z === 'town',
+    { timeout: 15000, label: 'the portal home fires' }).catch(() => null);
+  rec.ok('a moment later, walking into the town portal DOES take you home',
+    home === 'town', await where(P));
+
+  /* ── 4. and the spokes are reachable from the arrival point ──
+     The reason the spawn cannot sit south of the marker: Flame Fields is
+     almost due north of it, so a southern arrival puts the marker on the
+     straight line there.  Walk it and prove the line is clear. */
+  await stand(P, marks.townExit.tx, marks.townExit.ty);
+  await H.waitFor(P, (S) => S.currentZone, (z) => z === 'worldview',
+    { timeout: 30000, label: 'back out to the World View' }).catch(() => {});
+  const spoke = marks.spokes.find((s2) => s2.zoneId === 'ember') || marks.spokes[0];
+  await stand(P, spoke.tx, spoke.ty);
+  const atSpoke = await H.waitFor(P, (S) => S.currentZone, (z) => z === spoke.zoneId,
+    { timeout: 15000, label: 'reach ' + spoke.zoneId }).catch(() => null);
+  rec.ok('a straight walk from the arrival point still reaches the spoke zones',
+    atSpoke === spoke.zoneId, { atSpoke, spoke });
 
   await P.ctx.close().catch(() => {});
 }
