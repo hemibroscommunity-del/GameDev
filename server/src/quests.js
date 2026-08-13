@@ -237,7 +237,11 @@ export const questMethods = {
        list, so it never persists — read once here and cleared. */
     if (reward.item) {
       ps._questGrantOverflow = null;
-      const _gave = this._grantQuestItem(ps, reward.item);
+      /* v2.3.1692: `item` may be an ARRAY (tut_1 pays the bow AND the staff).
+         Granted one at a time so each keeps its own slot rules. */
+      const _items = Array.isArray(reward.item) ? reward.item : [reward.item];
+      let _gave = false;
+      for (const _it of _items) { if (this._grantQuestItem(ps, _it)) _gave = true; }
       const _over = ps._questGrantOverflow;
       if (!_gave && _over) {
         const ws0 = this._wsBySessionId(session.id);
