@@ -1,4 +1,4 @@
-import { TILED_ZONE_MAPS, getWalkability, loadWalkabilityMaps, preloadAllTiledMaps } from '@/rendering/tiledMaps.js';
+import { TILED_ZONE_MAPS, getWalkability, loadWalkabilityMaps, preloadAllTiledMaps, WALK_MASKS_ENABLED } from '@/rendering/tiledMaps.js';
 
 /* === spriteSheets — mount-time player/slime/weapon sheet + walkability loader ===
    v2.3.900: extracted verbatim from a BroTown.jsx mount useEffect (empty
@@ -135,6 +135,11 @@ export function wireSpriteSheets(stateRef, refs) {
       var S = stateRef.current;
       if (!S) return;
       S._tiledWalkable = S._tiledWalkable || {};
+      /* v2.3.1693: the owner's walk-mask kill switch covers the Tiled-derived
+         grids too, not just the painted .walk.json ones — TILED_ZONE_MAPS is
+         empty today, so this is only guarding the day a Tiled zone comes back
+         and quietly re-arms collision behind a flag that says it's off. */
+      if (!WALK_MASKS_ENABLED) return;
       Object.keys(TILED_ZONE_MAPS).forEach(function (zid) {
         var grid = getWalkability(zid);
         if (grid) S._tiledWalkable[zid] = grid;

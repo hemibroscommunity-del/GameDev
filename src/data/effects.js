@@ -260,8 +260,18 @@ export function getCollisionDeathFX(deathX, deathY, collisionId, killAngle, body
    buildings/services) has ONE exit -- the north trail up to the World View,
    the zoomed-out hub where the spokes branch. WORLDVIEW_EXITS holds those
    branches plus the way back down to town (the central town circle). */
+/* v2.3.1693 (owner: "move the portals to and from the worldview to the zones a
+   bit closer inside the map -- they're getting cut off by the dashboard a bit
+   so they barely poke out"): the World View trail-head sat at ty 44 of town's
+   48 rows, i.e. 4 tiles off the bottom edge.  The camera clamps to the map
+   bottom, so those last rows render UNDER the bottom dashboard and the portal
+   halo only half-showed.  Pulled 3 tiles inward (44 -> 41), which is the same
+   PORTAL_EDGE_INSET the zone-side return markers now use (zoneTransitions.js).
+   Still on the painted southern trail, just further up it.
+   NOTE: tools/qa/mp/mp-townlock.mjs hardcodes this marker — keep them in
+   step (it says so itself, and fails loudly if they drift). */
 export const TOWN_EXITS = [
-  { zoneId: 'worldview', tx: 24, ty: 44, dir: 'south', label: 'World View ↓', color: '#cdb27a' },
+  { zoneId: 'worldview', tx: 24, ty: 41, dir: 'south', label: 'World View ↓', color: '#cdb27a' },
 ];
 
 /* The World View is the second hub (see zoneTransitions hub logic). Trails

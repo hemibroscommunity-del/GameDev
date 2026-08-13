@@ -21,7 +21,9 @@ import * as H from './harness.mjs';
    test can reach them would widen the app's surface for the harness's
    convenience.  If the marker ever moves, this test fails loudly with the
    player still standing in town — which is the correct way to find out. */
-const TOWN_EXIT = { tx: 24, ty: 44, zoneId: 'worldview' };
+/* v2.3.1693: ty 44 -> 41, tracking the marker's move 3 tiles up off the
+   bottom edge (it was rendering under the dashboard). */
+const TOWN_EXIT = { tx: 24, ty: 41, zoneId: 'worldview' };
 
 export async function run({ browser, wsPort, webPort, rec }) {
   const P = await H.newPlayer(browser, { name: 'Rookie', wsPort, webPort });

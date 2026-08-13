@@ -65,6 +65,27 @@ export const VIDEO_ZONE_MAPS = {
      IMAGE_ZONE_MAPS still image (town_v8.jpg) as its only map. */
 };
 
+/** ═══ v2.3.1693: WALK MASKS ARE OFF ═══
+ *  Owner: "disable the walk masks on the zones they're too messed up right
+ *  now."  The painted magenta=blocked masks below no longer line up with the
+ *  art they were traced from — the per-zone notes in WALKABILITY_MAPS are a
+ *  list of the damage already known (frost's north ice flat over-blocked,
+ *  tidal's open sea left walkable, ember leaking lava cells, farm's mask a
+ *  wider aspect than its art), and town + worldview had already been disabled
+ *  one at a time for the same reason.  Rather than keep commenting them out
+ *  zone by zone, ONE flag now turns the whole system off: loadWalkabilityMaps
+ *  returns nothing, `S._tiledWalkable` stays empty, and isSolid() falls
+ *  through to its "image-mapped zones are fully walkable" default — so every
+ *  zone is walk-anywhere and nobody gets wedged on a bad cell.
+ *
+ *  NOTHING was deleted: the .walk.json files, the table below, the loader and
+ *  the spawn-nudge that reads the grids are all intact.  Flip this back to
+ *  true once the masks are repainted and every zone that has one gets its
+ *  collision back in the same instant.  (The nodes/monsters/zone-bounds
+ *  collision in BroTown.jsx is separate and unaffected — ore and trees still
+ *  block.) */
+export const WALK_MASKS_ENABLED = false;
+
 /** Per-zone walkability JSON.  Each url returns
  *  `{ width, height, grid: bool[h][w] }` where grid[ty][tx]=false marks
  *  a blocked tile.  Used as `S._tiledWalkable[zoneId]` so isSolid()
@@ -172,6 +193,11 @@ export async function freeZoneMap(zoneId) {
  *  walkability when a zone's mask isn't available. */
 export async function loadWalkabilityMaps() {
   const out = {};
+  /* v2.3.1693: masks disabled by the owner (see WALK_MASKS_ENABLED above).
+     Returning the empty map here — rather than editing the table or the
+     callers — keeps this the ONE place the feature is switched, and keeps
+     the fetch off the wire entirely while it's off. */
+  if (!WALK_MASKS_ENABLED) return out;
   await Promise.all(Object.entries(WALKABILITY_MAPS).map(async ([zoneId, url]) => {
     try {
       const res = await fetch(url);
