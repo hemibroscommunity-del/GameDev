@@ -481,17 +481,43 @@ export const HeroExpanded = () => {
                     opacity: canSpend ? 1 : 0.75,
                     touchAction: 'manipulation',
                   }}>
+                  {/* v2.3.1694 (owner: "add little thumbnails that
+                      represent each thing … they were stripped out at
+                      some point"): the stat art rides BESIDE the two
+                      text lines, not above them — the same icon-left /
+                      label-above-number tile the legacy Build launchers
+                      use (v2.3.1311f).  A 16px icon is shorter than the
+                      25px label+value stack it sits next to, so the cell
+                      is exactly as tall as it was text-only and
+                      mp-prog3's "fits without scrolling" assertion (the
+                      v2.3.1660 five-below-the-fold incident) is not
+                      spent on decoration.  A stat with no art on disk
+                      simply renders without one. */}
                   <div style={{
-                    fontSize: 8, fontWeight: 700, letterSpacing: '.03em',
-                    textTransform: 'uppercase',
-                    color: st.atk ? (canSpend ? COL.accent : COL.text2) : COL.muted,
-                    whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-                  }}>{st.label}</div>
-                  <div style={{
-                    fontSize: 13, fontWeight: 800, color: COL.text,
-                    fontVariantNumeric: 'tabular-nums', lineHeight: 1.15,
-                    whiteSpace: 'nowrap',
-                  }}>{pts}<span style={{ color: COL.muted, fontWeight: 700, fontSize: 9 }}>/{cap}</span></div>
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    gap: 4, minWidth: 0,
+                  }}>
+                    {st.iconSrc && (
+                      <img src={st.iconSrc} alt="" draggable={false}
+                        style={{
+                          width: 16, height: 16, objectFit: 'contain', flex: 'none',
+                          opacity: canSpend ? 1 : 0.8, pointerEvents: 'none',
+                        }} />
+                    )}
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{
+                        fontSize: 8, fontWeight: 700, letterSpacing: '.03em',
+                        textTransform: 'uppercase',
+                        color: st.atk ? (canSpend ? COL.accent : COL.text2) : COL.muted,
+                        whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                      }}>{st.label}</div>
+                      <div style={{
+                        fontSize: 13, fontWeight: 800, color: COL.text,
+                        fontVariantNumeric: 'tabular-nums', lineHeight: 1.15,
+                        whiteSpace: 'nowrap',
+                      }}>{pts}<span style={{ color: COL.muted, fontWeight: 700, fontSize: 9 }}>/{cap}</span></div>
+                    </div>
+                  </div>
                 </div>
               );
             })}
