@@ -2262,6 +2262,17 @@ export function setupWebSocket(ctx) {
           ws.send(JSON.stringify(msg));
           return;
         }
+        /* v2.3.1702: firemaking (light a campfire from a wood_* log).  THIS
+           SHIM IS AN ALLOWLIST -- a message type with no case here does not
+           reach the worker, it falls through to the broadcast/drop tail
+           below.  A new client->server type therefore needs BOTH a server
+           `case` and a line here, and the failure mode is silent: the send
+           looks fine from the client, the worker simply never hears it.
+           Caught in the headless run for this exact message. */
+        if (msg.type === 'firemaking_request') {
+          ws.send(JSON.stringify(msg));
+          return;
+        }
         if (msg.type === 'shop_purchase') {
           ws.send(JSON.stringify(msg));
           return;

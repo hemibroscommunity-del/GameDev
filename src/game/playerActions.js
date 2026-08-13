@@ -93,7 +93,14 @@ export function specialAttack(S) {
          validates + applies.  player_state arrives shortly with the
          authoritative value. */
       R.mana -= manaCost;
-      if (S._serverMonsters && S.channel) {
+      /* v2.3.1702: `_serverMonsters` removed — it is a "this zone's monsters
+         are server-driven" flag, FALSE in town and in every hub, so the
+         worker never heard about a special / dodge / lunge / retreat used
+         there.  The client predicted the spend, the worker's pool never
+         moved, and its next player_state echo refunded it: a free ability
+         anywhere outside a spoke zone.  _handleAbilityUse is zone-agnostic
+         (it only reads the pool), so `S.channel` is the whole gate. */
+      if (S.channel) {
         try { S.channel.send({ type: 'ability_use', payload: { type: 'swipe', tier: tierIdx } }); } catch (e) {}
       }
       /* GDD §1.2 Mind: spending mana on swipe triggers. */

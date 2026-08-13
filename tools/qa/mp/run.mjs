@@ -43,6 +43,7 @@ const SCENARIOS = {
   hpbar: () => import('./mp-hpbar.mjs'), /* v2.3.1682: the contextual player HP bar */
   questprox: () => import('./mp-questprox.mjs'), /* v2.3.1701: the giver's dialogue opens on approach */
   questlegs: () => import('./mp-questlegs.mjs'), /* v2.3.1701: the quest greaves equip to the LEGS */
+  authority: () => import('./mp-authority.mjs'), /* v2.3.1702: ability spends, firemaking + local-AI HP */
 };
 
 const want = process.argv.slice(2).filter((a) => !a.startsWith('-'));

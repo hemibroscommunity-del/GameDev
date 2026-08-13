@@ -45,7 +45,9 @@ export var doStandardDodge = function (S, R, ang) {
        player_state arrives shortly with the authoritative value.  In SP
        the local mutation is the only writer. */
     R.stamina -= dodgeCost;
-    if (S._serverMonsters && S.channel) {
+    /* v2.3.1702: see the note in playerActions.js — `_serverMonsters` is
+       false in town, so the worker never saw this spend and refunded it. */
+    if (S.channel) {
       try { S.channel.send({ type: 'ability_use', payload: { type: 'dodge' } }); } catch (e) {}
     }
     /* GDD §1.2 Endurance + Agility — tracked as use-frequency and
@@ -54,7 +56,9 @@ export var doStandardDodge = function (S, R, ang) {
     addBuildUse(R, 'agility', dodgeCost);
     S._dodgeRoll = { angle: ang, startTime: Date.now() };
     /* v2.3.1011: broadcast so peers see the dodge (trail + movement). */
-    if (S._serverMonsters && S.channel) {
+    /* v2.3.1702: `_serverMonsters` dropped here too — it is false in town, so
+       nobody standing in the hub ever saw anybody else dodge. */
+    if (S.channel) {
       try { S.channel.send({ type: 'broadcast', event: 'player_dodge', payload: { id: S.myId, kind: 'dodge', angle: ang, ts: Date.now() } }); } catch (e) {}
     }
     S._hasDodged = true;
@@ -70,7 +74,9 @@ export var doLunge = function (S, R, ang) {
     if (!lt || !lt.alive) return doStandardDodge(S, R, ang);
     /* Server-authoritative stamina in MP — see doStandardDodge note. */
     R.stamina -= lungeCost;
-    if (S._serverMonsters && S.channel) {
+    /* v2.3.1702: see the note in playerActions.js — `_serverMonsters` is
+       false in town, so the worker never saw this spend and refunded it. */
+    if (S.channel) {
       try { S.channel.send({ type: 'ability_use', payload: { type: 'lunge' } }); } catch (e) {}
     }
     addBuildUse(R, 'endurance', lungeCost);
@@ -85,7 +91,9 @@ export var doLunge = function (S, R, ang) {
        the post-dash hit fires on landing. */
     S._dodgeRoll = { angle: dirAng, startTime: Date.now(), kind: 'lunge', targetId: lt.id || null };
     /* v2.3.1011: broadcast the lunge so peers see it. */
-    if (S._serverMonsters && S.channel) {
+    /* v2.3.1702: `_serverMonsters` dropped here too — it is false in town, so
+       nobody standing in the hub ever saw anybody else dodge. */
+    if (S.channel) {
       try { S.channel.send({ type: 'broadcast', event: 'player_dodge', payload: { id: S.myId, kind: 'lunge', angle: dirAng, ts: Date.now() } }); } catch (e) {}
     }
     S._lungeIFramesUntil = Date.now() + (LUNGE_IFRAMES_MS || 150);
@@ -123,7 +131,9 @@ export var doRetreatShot = function (S, R, ang) {
     if (!lt || !lt.alive) return doStandardDodge(S, R, ang);
     /* Server-authoritative stamina in MP — see doStandardDodge note. */
     R.stamina -= retCost;
-    if (S._serverMonsters && S.channel) {
+    /* v2.3.1702: see the note in playerActions.js — `_serverMonsters` is
+       false in town, so the worker never saw this spend and refunded it. */
+    if (S.channel) {
       try { S.channel.send({ type: 'ability_use', payload: { type: 'retreat' } }); } catch (e) {}
     }
     addBuildUse(R, 'endurance', retCost);
@@ -135,7 +145,9 @@ export var doRetreatShot = function (S, R, ang) {
        interceptor can skip i-frames when checked. */
     S._dodgeRoll = { angle: ang, startTime: Date.now(), kind: 'retreat_shot', noIFrames: true };
     /* v2.3.1011: broadcast the retreat shot so peers see it. */
-    if (S._serverMonsters && S.channel) {
+    /* v2.3.1702: `_serverMonsters` dropped here too — it is false in town, so
+       nobody standing in the hub ever saw anybody else dodge. */
+    if (S.channel) {
       try { S.channel.send({ type: 'broadcast', event: 'player_dodge', payload: { id: S.myId, kind: 'retreat_shot', angle: ang, ts: Date.now() } }); } catch (e) {}
     }
     S._dodgeFlash = Date.now();

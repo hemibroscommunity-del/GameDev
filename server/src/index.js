@@ -3203,6 +3203,17 @@ export class GameRoom {
         }
         break;
 
+      case 'firemaking_request':
+        // v2.3.1702: player tapped a wood_* log in the Bag to light a
+        // campfire.  Server validates ownership, consumes 1, emits
+        // player_state.  Without this the client's local delete was
+        // refunded by the next inventory echo -- one log, unlimited
+        // fires.  See _handleFiremakingRequest in cooking.js.
+        if (session.id) {
+          this._handleFiremakingRequest(session, msg.payload || msg);
+        }
+        break;
+
       case 'shop_purchase':
         // Player clicked Buy on the NPC vendor.  Server validates
         // coins + applies effect (pool restore or inventory grant).

@@ -370,6 +370,41 @@ export function isPlayerDead(S) {
   return !!(S && (S._dying || (S.rpg && S.rpg.hp <= 0)));
 }
 
+/* ═══ v2.3.1702: THE WORKER OWNS PLAYER HP IN SERVER ZONES ═══
+   Headless measurement (Ember Hollow, one fire goblin, no input): the
+   client's S.rpg.hp read 66 while the worker's stored blob read 96, and
+   a later run played a whole local death sequence — skeleton animation,
+   respawn timer — for a character the worker still had alive at 40 HP.
+
+   Cause: the local monster AI in monsterCombat.js subtracts player HP
+   itself, and it has no `_serverMonsters` gate.  In a server zone the
+   worker is ALSO running its own copy of that monster and applying its
+   own damage (_monsterStrikePlayer), so the hit lands twice — once on
+   the worker's number, once on the client's.  It goes unnoticed for
+   ordinary monsters only because the local AI early-returns for them
+   (`S._serverMonsters && !usesClientSideMovement(m)`).  The variants
+   that DO run their AI locally in MP — fireGoblin, skeleton — take the
+   full double.  Between player_state echoes the client drifts down at
+   twice the real rate, and if it crosses 0 first the player watches
+   themselves die while the server never agrees.
+
+   The network path already did this right: the monster_attack handler
+   in gameEvents.js has carried `if (!S._serverMonsters)` around its HP
+   write since the MP port, and monster HP has the twin gate
+   (`if (!S._serverMonsters) m.curHp -= dmg`).  This is the same rule for
+   the local-AI side of player HP, in one place so the eight call sites
+   can't drift apart again.
+
+   Everything ELSE the local AI does on a hit — popup, flash, screen
+   shake, SFX, defense XP, build-use tracking — still runs.  Only the
+   number is deferred to the authoritative echo. */
+export function hurtPlayerLocal(S, R, amount) {
+  var amt = Number(amount) || 0;
+  if (!R || amt <= 0) return;
+  if (S && S._serverMonsters) return; /* player_state carries the truth */
+  R.hp -= amt;
+}
+
 export {
   clearSwingHitFlags,
   pushDmgPopup,

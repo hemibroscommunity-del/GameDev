@@ -728,7 +728,14 @@ export var BroTown = function BroTown(_ref0) {
        This is the same call the doSwing useCallback makes below -- written
        as a thunk because doSwing is not assigned yet at this point in the
        component body (this object literal runs first). */
-    swingAttack: function () { swingAttack(stateRef.current); }
+    swingAttack: function () { swingAttack(stateRef.current); },
+    /* v2.3.1702: the same hook for the two other pool-spending actions.
+       Their `ability_use` send was gated on _serverMonsters (false in town),
+       so the worker never saw a special or a dodge used in the hub and its
+       next player_state refunded the spend.  Driven from the harness here so
+       the fix is checked on the wire, on the path the finger takes. */
+    specialAttack: function () { specialAttack(stateRef.current); },
+    contextualDodge: function (ang) { triggerContextualDodge(stateRef.current, stateRef.current.rpg, ang || 0); }
   };
   /* Restore persisted player on mount and after login */
   useEffect(function () {
@@ -5578,6 +5585,15 @@ export var BroTown = function BroTown(_ref0) {
       var R = S && S.rpg;
       if (!R || !R.inventory || (R.inventory[key] || 0) <= 0) return;
       if (S._firemaking) return;  // already lighting one
+      /* v2.3.1702: the local delete below is a PREDICTION (rule 20) — the
+         worker owns the bag, and until this message existed it never heard
+         that the log was spent, so the next player_state echo handed it
+         back and one log lit unlimited campfires.  Sent BEFORE the local
+         mutation so a throw on send can't leave the client short a log the
+         worker still holds. */
+      if (S.channel) {
+        try { S.channel.send({ type: 'firemaking_request', payload: { invKey: key } }); } catch (e) {}
+      }
       R.inventory[key] -= 1;
       if (R.inventory[key] <= 0) delete R.inventory[key];
       var now = Date.now();

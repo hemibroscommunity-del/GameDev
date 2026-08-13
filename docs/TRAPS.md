@@ -251,3 +251,33 @@ compensation into it. **Receipt:** v2.3.1588 — `tools/rebake_traits.py`
 `--amount` defaulted back to 0, keeping only the premultiplied-alpha
 correctness fix; the strength sweep is preserved in its docstring as the
 evidence if the `hi/` tier is ever removed.
+
+## 18. Assuming a new client→server message reaches the worker
+
+**Tempting:** you add a `case 'my_request'` to the switch in
+`server/src/index.js`, call `S.channel.send({ type: 'my_request', … })`
+from the client, and the round trip is done — that is how every other
+handler in the file looks. **Wrong:** `channelShim.send` in
+`src/networking/wsClient.js` is an ALLOWLIST, not a transport. It is a
+ladder of `if (msg.type === '…') { ws.send(…); return; }` passthroughs,
+and anything that falls off the bottom is treated as a broadcast (or
+dropped). A type with no line there never leaves the browser, and the
+failure is silent in both directions: the client's send returns
+normally, the worker simply never hears it, and a client-side assertion
+on the local prediction passes happily. So a new client→server type
+needs THREE things, not two — the server `case`, the handler, and a
+passthrough line in the shim.
+
+The tell is a headless check that reads the WORKER (`H.adminPlayer`) and
+disagrees with the client's own copy of the same fact. That is also why
+`H.instrumentWire` counts what the client *tried* to send: a wire count
+of 1 with an unchanged server blob localises the break to the shim
+immediately.
+
+**Receipt:** v2.3.1702 — `firemaking_request` shipped with a server case,
+a tested handler (`_handleFiremakingRequest`, green in
+`lifeskills-economy.test.mjs` against mocked storage) and a client send,
+and consumed nothing: the worker's blob still read `{ wood_oak: 2 }`
+after the fire was lit. The unit suite could not see it, because the
+missing piece was between the two things it mocks. Caught by
+`tools/qa/mp/mp-authority.mjs`, which asks the worker.

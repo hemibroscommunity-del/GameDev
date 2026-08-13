@@ -80,6 +80,49 @@ export const cookingMethods = {
     if (ws) this._sendPlayerState(ws, session.id);
   },
 
+  /* ═══ v2.3.1702: FIREMAKING BURNS A REAL LOG ═══
+   *
+   * Tapping a wood_* log in the Bag lights the campfire you cook at
+   * (client v2.3.853, the firemakingBus effect in BroTown.jsx).  That
+   * handler deleted the log from R.inventory and sent NOTHING -- there
+   * was no wire message for it at all -- so the worker still held the
+   * log, and its next player_state echo (inventory rides every one)
+   * handed it straight back.  Light a fire, gain a fire, keep the log:
+   * one log lit unlimited campfires.  Headless: a character with a
+   * single wood_oak lit three fires in a row and the worker's blob
+   * still read `{ wood_oak: 1 }`.
+   *
+   * Same shape as _handleEatRequest above -- validate ownership,
+   * consume one, persist, echo -- because it is the same kind of
+   * action: a client-initiated consume of a stackable bag item.  The
+   * campfire itself stays client-side (it is a 45s local prop with no
+   * server state); only the LOG is server-owned, and the log is the
+   * part that duplicates.
+   *
+   * Deploy-order safe in both directions: an old worker ignores the
+   * unknown message type and the client behaves exactly as it does
+   * today (log refunded), while a new worker simply never hears from
+   * an old client. */
+  _handleFiremakingRequest(session, payload) {
+    if (!session || !session.id) return;
+    const { invKey } = payload || {};
+    if (typeof invKey !== 'string') return;
+    /* Also the __proto__ guard (rule 4): ps.inventory is a plain object
+       and invKey is client-supplied, so the prefix test is what keeps a
+       crafted key off Object.prototype. */
+    if (!invKey.startsWith('wood_')) return;
+    const ps = this.playerState[session.id];
+    if (!ps) return;
+    if (ps.dying || ps.dead || ps.disconnected) return;
+    if (!ps.inventory) ps.inventory = {};
+    if ((ps.inventory[invKey] || 0) <= 0) return;
+    ps.inventory[invKey] -= 1;
+    if (ps.inventory[invKey] <= 0) delete ps.inventory[invKey];
+    this._saveRpg(session.id, ps);
+    const ws = this._wsBySessionId(session.id);
+    if (ws) this._sendPlayerState(ws, session.id);
+  },
+
   // ═══ Cooking recipes (multi-ingredient -> buff or heal) ═══
   //
   // Mirrors COOKING_RECIPES in src/data/gameSystems.js.  Client sends
