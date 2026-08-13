@@ -131,9 +131,23 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await H.grant(wsPort, myId, 'item', { invKey: 'snowman', count: 4 });
   await P.page.waitForTimeout(2200);
 
-  await place(420, 0);                  // clear the latch, then walk back in
-  await P.page.waitForTimeout(800);
-  await place(0, 34);
+  /* v2.3.1706: CLOSE anything already open before walking back in.  Standing
+     next to the giver while the Quests sheet was dismissed opens his dialogue
+     immediately — i.e. BEFORE the accept echo lands — and the proximity scan
+     deliberately will not re-fire while a dialogue is already up (`!S._uiBusy`
+     in the gate), so that first, stale card just stays there reading "New
+     Quest!".  The game is right in both halves: getNpcQuest returns 'active'
+     the whole time.  Walk away, close the card, and let it open fresh. */
+  await place(420, 0);                  // clear the latch first
+  await P.page.waitForTimeout(600);
+  await P.page.evaluate(() => {
+    const b = document.querySelector('.bt-inspect-close');
+    if (b) b.click();
+  });
+  await P.page.waitForTimeout(600);
+  rec.ok('the giver dialogue is closed before the approach that must re-open it',
+    !(await open()));
+  await place(0, 34);                   // …then walk back in
   await P.page.waitForTimeout(1200);
   rec.ok('with a READY quest, walking up opens his dialogue', await open());
   const readyDlg = await P.page.evaluate(() => {

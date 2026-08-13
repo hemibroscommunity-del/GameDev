@@ -123,11 +123,47 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
   /* ── stand at whatever node the worker rolled, and press the prompt a
         finger would press ── */
+  /* ═══ CLOSE THE DISTANCE IN ACCEPTED HOPS, DO NOT TELEPORT ═══
+     v2.3.1706: this used to write S.player.x/y straight onto the node, and
+     that is why the worker never saw the harvest.  movement.js caps a move at
+     `500 * dt + 80` px and, on reject, "drops EVERYTHING so a cheater can't
+     flip blocking/dodging/dead while teleporting" — `ex` rides that same
+     packet, so the rejected jump took the harvest activity code with it.
+     Worse, a reject does NOT write ps.x, so every later stationary move is
+     still the same illegal distance from the server's stale idea of where the
+     player is: once rejected, rejected forever.  The client looked perfectly
+     healthy throughout (_lastBroadcastEx was 'chop'), which is exactly the
+     kind of disagreement this file exists to catch — it just caught the
+     harness first.
+     Hops of 100px with a beat between them sit well inside the cap. */
+  const hopTo = async (tx, ty) => {
+    for (let i = 0; i < 40; i++) {
+      const done = await P.page.evaluate(({ x, y }) => {
+        const S = window._gameState.current;
+        const dx = x - S.player.x, dy = y - S.player.y;
+        const d = Math.hypot(dx, dy);
+        if (d < 6) { S.player.vx = 0; S.player.vy = 0; return true; }
+        const step = Math.min(100, d);
+        S.player.x += (dx / d) * step;
+        S.player.y += (dy / d) * step;
+        return false;
+      }, { x: tx, y: ty });
+      await P.page.waitForTimeout(260);   /* > the 198ms solo move gap */
+      if (done) return true;
+    }
+    return false;
+  };
+  const nodeTarget = await H.readState(P, (S) => {
+    const n = (S.gatherNodes || []).find((g) => g.alive);
+    return n ? { x: n.x, y: n.y - 24 } : null;
+  });
+  if (nodeTarget) await hopTo(nodeTarget.x, nodeTarget.y);
+  await P.page.waitForTimeout(600);
   const nodeAt = await P.page.evaluate(() => {
     const S = window._gameState.current;
     const n = (S.gatherNodes || []).find((g) => g.alive);
     if (!n) return null;
-    S.player.x = n.x; S.player.y = n.y - 24; S.player.vx = 0; S.player.vy = 0;
+    S.player.vx = 0; S.player.vy = 0;
     /* Since v2.3.1448 proximity alone does not open the shell — "only when a
        user touches the resource on screen does the resource extraction menu
        pop up" — so the tap is what publishes S._nearNode.  Set the same way
@@ -145,7 +181,22 @@ export async function run({ browser, wsPort, webPort, rec }) {
     { timeout: 15000, label: 'the tree becomes interactable' }).catch(() => {});
   const prompted = await P.page.locator('#bt-node-prompt').count().catch(() => 0);
   rec.ok('the node offers its harvest prompt', prompted >= 1, { prompted, nodeAt });
-  await P.page.locator('#bt-node-prompt').first().click({ timeout: 5000 }).catch(() => {});
+  /* Dispatched IN PAGE rather than through Playwright's .click().  The prompt
+     is anchored over the node, which on a phone-sized viewport puts it under
+     the bottom dashboard — Playwright refuses to click an element another
+     element intercepts, and this scenario's original `.catch(() => {})`
+     swallowed that refusal, so every assertion below it failed for a reason
+     that had nothing to do with the code under test.  A real finger reaches
+     the button (the loop re-anchors it above the dashboard on a real phone);
+     the harness is the thing that cannot.  Its onClick is still the code
+     path being exercised. */
+  const clicked = await P.page.evaluate(() => {
+    const el = document.getElementById('bt-node-prompt');
+    if (!el) return false;
+    el.click();
+    return true;
+  });
+  rec.ok('the harvest prompt could be pressed', clicked);
   await P.page.waitForTimeout(1200);
 
   const clientEx = await H.readState(P, (S) => (S._extraction ? S._extraction.skill : null));

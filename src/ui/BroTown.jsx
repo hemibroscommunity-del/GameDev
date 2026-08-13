@@ -754,6 +754,11 @@ export var BroTown = function BroTown(_ref0) {
        that the cone on screen and the arc the worker tests are ONE number
        rather than two that happen to match today. */
     BLOCK_ARC_HALF: BLOCK_ARC_HALF,
+    /* v2.3.1706: which quest the walk-up dialogue would show, and in what
+       state.  The proximity dialogue is the ONLY route to a turn-in since
+       v2.3.1704, so "what does the giver think you are here for" is worth
+       being able to ask directly rather than inferring from rendered text. */
+    getNpcQuest: getNpcQuest,
     /* v2.3.1702: the same hook for the two other pool-spending actions.
        Their `ability_use` send was gated on _serverMonsters (false in town),
        so the worker never saw a special or a dodge used in the hub and its
