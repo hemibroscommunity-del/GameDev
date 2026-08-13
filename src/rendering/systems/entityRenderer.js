@@ -3042,29 +3042,15 @@ function createPlayerDisplay() {
   container._bodyHead = bodyHead; container._bodyTorso = bodyTorso; container._bodyLegs = bodyLegs;
 
   /* v2.3.503: layered gear (paper-doll).  One sprite per slot, drawn above the
-     body with the body's exact transform, all below the head traits.
+     body with the body's exact transform.  Order shirt < legs < chest <
+     shoulders, all above the body and below the head traits.
      v2.3.748: gearShirt = the layered t-shirt (tinted white-base sheet),
-     under the armour so a chest plate covers it.
-     ═══ v2.3.1710: ORDER IS legs < shirt < chest < shoulders ═══
-     Owner: "While woodcutting and doing other things the shirt should be
-     layered in front of the leg armor."  It was shirt < legs, so the greaves'
-     waistband was painted over the shirt's hem and the tee looked tucked
-     INSIDE the armour — visible on every pose that shows both, standing
-     included.  Adding gearLegs first is the whole fix; child order IS the
-     z-order here.
-     Why this cannot disturb the v2.3.748 "the plate covers the shirt" rule:
-     _placeGear hides the shirt outright whenever a chest piece is worn
-     (`hiddenUnderChest`), and _placeSwingShirt does the same for the stand-ins
-     — shirt and chest are NEVER both visible, so their relative index is
-     unobservable.  Only shirt-vs-legs was ever on screen together.
-     The two reorder passes in _placePlayerTraits (beard / head-behind-gear)
-     take a max() over these sprites' live indices rather than assuming a
-     fixed order, so both keep working unchanged. */
-  const gearLegs = new Sprite(); gearLegs.anchor.set(0.5, 0.5); gearLegs.visible = false; container.addChild(gearLegs);
+     under the armour so a chest plate covers it. */
+  const gearShirt = new Sprite(); gearShirt.anchor.set(0.5, 0.5); gearShirt.visible = false; container.addChild(gearShirt);
   /* v2.3.1347: no belt sprite — the jog chain is painted onto the exposed
      waist inside the masked-body bake (see _maskedBodyFrame), which gives
      the art's own hand-drawn depth for free. */
-  const gearShirt = new Sprite(); gearShirt.anchor.set(0.5, 0.5); gearShirt.visible = false; container.addChild(gearShirt);
+  const gearLegs = new Sprite(); gearLegs.anchor.set(0.5, 0.5); gearLegs.visible = false; container.addChild(gearLegs);
   const gearChest = new Sprite(); gearChest.anchor.set(0.5, 0.5); gearChest.visible = false; container.addChild(gearChest);
   const gearShoulders = new Sprite(); gearShoulders.anchor.set(0.5, 0.5); gearShoulders.visible = false; container.addChild(gearShoulders);
   /* v2.3.602: helmet is its own slot now; drawn topmost (over the hair + chest collar). */
@@ -3393,16 +3379,11 @@ function createOtherPlayerDisplay() {
 
   /* v2.3.504: layered gear for remote players (above body, below head traits).
      Driven by other.equip; placement copies the body transform.
-     v2.3.748: + shirt under-layer (see local display).
-     v2.3.1710: legs BEFORE shirt, mirroring the local display — the owner's
-     "the shirt should be layered in front of the leg armor" is about what a
-     character looks like, and a peer is a character too.  Leaving the two
-     stacks out of step is how this kind of fix comes back as "it's fixed for
-     me but not for other players". */
-  const gearLegs = new Sprite(); gearLegs.anchor.set(0.5, 0.5); gearLegs.visible = false; container.addChild(gearLegs);
+     v2.3.748: + shirt under-layer (see local display). */
+  const gearShirt = new Sprite(); gearShirt.anchor.set(0.5, 0.5); gearShirt.visible = false; container.addChild(gearShirt);
   /* v2.3.1347: no belt sprite for remote players either — chain is painted in
      the masked-body bake (see local display). */
-  const gearShirt = new Sprite(); gearShirt.anchor.set(0.5, 0.5); gearShirt.visible = false; container.addChild(gearShirt);
+  const gearLegs = new Sprite(); gearLegs.anchor.set(0.5, 0.5); gearLegs.visible = false; container.addChild(gearLegs);
   const gearChest = new Sprite(); gearChest.anchor.set(0.5, 0.5); gearChest.visible = false; container.addChild(gearChest);
   const gearShoulders = new Sprite(); gearShoulders.anchor.set(0.5, 0.5); gearShoulders.visible = false; container.addChild(gearShoulders);
   /* v2.3.602: helmet is its own slot now; drawn topmost (over the hair + chest collar). */

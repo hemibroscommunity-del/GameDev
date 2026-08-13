@@ -91,17 +91,6 @@ export const SHOES_CATALOG = [
   { id: 'blue',    name: 'Blue',    swatch: '#3a5bd0', target: [72, 98, 192] },
 ];
 
-/* v2.3.1710 (owner: the cooking character "has the wrong skin color").  The
-   catalog's 'default' entry carries `target: null`, which means "leave the art
-   alone" — correct for the PLAYER sheets, because their skin IS this colour.
-   The pre-drawn skill stand-ins are a different painting: measured, the cook's
-   skin is a saturated #e88838 while the player body sheets are #cd864b.  So
-   "default" has to be an explicit RGB for them, or the cook stays orange next to
-   a tan avatar for every player who never touched the skin picker.  Receipt that
-   this IS the art's own tan: luminance(205,134,75) = 148.6, i.e. SKIN_REF, so
-   retinting a real player sheet to it is a no-op to within a rounding step. */
-export const DEFAULT_SKIN_TARGET = [205, 134, 75];
-
 function _target(catalog, id) {
   const e = catalog.find(c => c.id === id);
   return (e && e.target) || null;
@@ -530,74 +519,6 @@ export function recolorBodyToCanvas(img, skinT, pantsT, shoesT, shirtT, targetH)
         /* boots (flat gray) */ if (shoesT) _retint(d, i, shoesT, SHOES_REF);
       }
     }
-  }
-  ctx.putImageData(imgData, 0, 0);
-  return cv;
-}
-
-/* ═══ v2.3.1710: SKIN-ONLY RECOLOUR FOR THE PRE-DRAWN SKILL STAND-INS ═══
- *
- * Owner, on the cooking animation: "has the wrong skin color."  The cook is not
- * the trait-composed body -- it is a whole pre-drawn figure (cook-strip.webp)
- * that REPLACES the avatar at the campfire, and it was loaded raw, so it always
- * showed the artist's skin no matter what the player picked at the login menu.
- *
- * WHY NOT JUST CALL recolorBodyToCanvas.  That is what the sword/bow stand-ins
- * do (_loadRecoloredBody, v2.3.975) and it is wrong for THIS sheet, because the
- * cook holds a PROP.  Measured on cook-strip.webp with the shipped classifiers:
- *   - the pan's rim/handle is flat mid-gray, which the boot test accepts, so a
- *     player in red boots would have cooked with a red frying pan;
- *   - the raw fish in the pan is the same warm orange as the painted skin, so
- *     _isSkin accepts it and an ebony player's dinner turned dark brown.
- * Hence SKIN ONLY (pants/shoes are left as painted -- nobody asked for those,
- * and the pan is the thing they would break), plus a connected-component floor
- * that drops small skin-coloured islands.  The body's skin is ONE blob of
- * 9462-10773 px per frame; the next largest island is the fish at 224-523, so
- * STANDIN_MIN_BLOB sits an order of magnitude clear of both.
- *
- * Returns a canvas; the caller slices it into frames and rebakes on skin change. */
-const STANDIN_MIN_BLOB = 1500;   /* px; body >= 9462, fish <= 523 (measured) */
-export function recolorStandInSkin(img, skinT, targetH) {
-  if (targetH) img = upscaleToFrameHeight(img, targetH);
-  const cv = document.createElement('canvas');
-  cv.width = img.naturalWidth || img.width;
-  cv.height = img.naturalHeight || img.height;
-  const ctx = cv.getContext('2d');
-  ctx.drawImage(img, 0, 0);
-  if (!skinT) return cv;
-  const w = cv.width, h = cv.height;
-  const imgData = ctx.getImageData(0, 0, w, h);
-  const d = imgData.data;
-  /* pass 1: classify, with the SAME test the body pipeline uses */
-  const skin = new Uint8Array(w * h);
-  for (let p = 0, i = 0; p < w * h; p++, i += 4) {
-    if (_isSkin(d[i], d[i + 1], d[i + 2], d[i + 3])) skin[p] = 1;
-  }
-  /* pass 2: label 4-connected skin blobs and record each one's size.  An
-     EXPLICIT stack, not recursion -- a body blob spans ~10k px per frame,
-     deep enough to blow the call stack. */
-  const label = new Int32Array(w * h);   /* 0 = unlabelled */
-  const stack = new Int32Array(w * h);
-  const size = [0];                      /* size[id]; id 0 unused */
-  for (let start = 0; start < w * h; start++) {
-    if (!skin[start] || label[start]) continue;
-    const id = size.length;
-    let sp = 0, n = 0;
-    stack[sp++] = start; label[start] = id;
-    while (sp > 0) {
-      const q = stack[--sp];
-      n++;
-      const qx = q % w;
-      if (qx > 0 && skin[q - 1] && !label[q - 1]) { label[q - 1] = id; stack[sp++] = q - 1; }
-      if (qx < w - 1 && skin[q + 1] && !label[q + 1]) { label[q + 1] = id; stack[sp++] = q + 1; }
-      if (q >= w && skin[q - w] && !label[q - w]) { label[q - w] = id; stack[sp++] = q - w; }
-      if (q + w < w * h && skin[q + w] && !label[q + w]) { label[q + w] = id; stack[sp++] = q + w; }
-    }
-    size.push(n);
-  }
-  /* pass 3: retint the CHARACTER's skin; leave the small islands (props) */
-  for (let p = 0, i = 0; p < w * h; p++, i += 4) {
-    if (label[p] && size[label[p]] >= STANDIN_MIN_BLOB) _retint(d, i, skinT, SKIN_REF);
   }
   ctx.putImageData(imgData, 0, 0);
   return cv;
