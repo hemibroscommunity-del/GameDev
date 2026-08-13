@@ -1092,35 +1092,45 @@ export class EffectsRenderer {
    * Nothing here is lazy: a first-cook hitch would be the regression TRAPS #12
    * describes. */
   _loadCookStrips() {
+    _fxPreload.push(this._fetchAndBakeCook());
+    /* The character menu can change the skin mid-session, so rebake on it the
+       way the sword/bow stand-ins do (_rebakeBodies, v2.3.975). */
+    onSkinChange(() => { this._fetchAndBakeCook(); });
+  }
+
+  /* Fetch both cook sheets, bake the player's skin in, and let the decoded
+     source images go.
+     THE SOURCES ARE DELIBERATELY NOT CACHED, unlike _bodyImgCache in the
+     sword/bow path.  These two strips are 5112x220, i.e. ~4.5MB of decoded
+     RGBA each — holding both just to make a rebake cheaper would add ~9MB of
+     resident CPU memory for a menu action, on the platform whose OOM history
+     is written up in spriteScale.js (v2.3.1408: iPhone Safari killing the page
+     under GPU+canvas pressure).  A rebake instead re-fetches, which the HTTP
+     cache serves from disk, and it happens behind the character menu — never
+     mid-play, so the preloading LAW is not in tension with it. */
+  _fetchAndBakeCook() {
     const load = (url) => new Promise((res, rej) => {
       const im = new Image();
       im.onload = () => res(im);
       im.onerror = rej;
       im.src = url;
     });
-    const p = Promise.all([
+    return Promise.all([
       load('/sprites/skills/cook-strip.webp'),
       load('/sprites/skills/cook-strip-legless.webp'),
     ]).then(([body, legless]) => {
-      this._cookImgs = { body, legless };
-      this._bakeCookStrips();
+      this._bakeCookStrips(body, legless);
     }).catch((err) => console.warn('[cook-strip] load failed', err));
-    _fxPreload.push(p);
-    /* The login menu can change the skin after this bake; rebake like the
-       sword/bow stand-ins do (_rebakeBodies, v2.3.975). */
-    onSkinChange(() => this._bakeCookStrips());
   }
 
-  _bakeCookStrips() {
-    const imgs = this._cookImgs;
-    if (!imgs) return;
+  _bakeCookStrips(bodyImg, leglessImg) {
     /* skinTarget() returns null for the 'default' pick, which for the PLAYER
        sheets means "the art is already this colour".  It is not true of this
        painting, so default falls back to the explicit tan — that is the whole
        point of the fix for anyone who never opened the skin picker. */
     const skinT = skinTarget(getSkin()) || DEFAULT_SKIN_TARGET;
     const FW = 213, FH = 220;
-    for (const [key, img] of [['_cookFrames', imgs.body], ['_cookLeglessFrames', imgs.legless]]) {
+    for (const [key, img] of [['_cookFrames', bodyImg], ['_cookLeglessFrames', leglessImg]]) {
       const cv = recolorStandInSkin(img, skinT, FH);
       const source = Texture.from(cv).source;
       source.scaleMode = 'linear';
