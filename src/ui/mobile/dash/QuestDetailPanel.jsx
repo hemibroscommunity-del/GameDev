@@ -1,9 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { COL, panelStyle, getState } from './common.js';
 import { QUEST_CHAINS } from '../../../data/gameSystems.js';
-import { deriveQuestLog, trackedQuestId, setTrackedQuest, rewardText } from '../sheet/questModel.js';
+import { deriveQuestLog, trackedQuestId, setTrackedQuest } from '../sheet/questModel.js';
 import { questDetailBus } from '../sheet/questDetailBus.js';
-import { prog3Live, PROG3_SKILL_META } from '../../../data/prog3.js';
 import { NPC_DATA } from '../../../data/gameDisplay.js';
 
 /* v2.3.1673: the quest giver's portrait, looked up by the NAME the quest
@@ -24,11 +23,10 @@ const npcPortrait = (name) => {
 
 export const QuestDetailPanel = () => {
   const [, force] = useState(0);
-  /* v2.3.1669: which skill the turn-in XP should feed.  Null = not yet
-     chosen, which is the state the Turn In button waits in — the server
-     refuses an XP-paying turn-in with no category, so asking here is the
-     mechanism rather than a courtesy. */
-  const [xpCat, setXpCat] = useState(null);
+  /* v2.3.1704: the turn-in XP picker used to live here — see the long note by
+     the action button below for why it is gone.  The picker itself is NOT
+     dead: the in-world dialogue (src/ui/panels/QuestPanel.jsx) still carries
+     it, and that is now the only door a turn-in goes through. */
   useEffect(() => {
     const id = setInterval(() => force(v => v + 1), 1000);
     return () => clearInterval(id);
@@ -50,7 +48,14 @@ export const QuestDetailPanel = () => {
   const tracked = trackedQuestId() === quest.id;
   const gold = quest.reward?.gold || 0;
   const xp = quest.reward?.xp || 0;
-  const needsXpChoice = prog3Live((getState() || {}).rpg) && xp > 0;
+  /* v2.3.1704 (Task 3, owner: "The quest UI is a little confusing what's
+     rewards for the next quests vs what's rewarded for the current quest").
+     `reward.item` is the DISPLAY name of the piece the turn-in pays (the
+     server's QUEST_REWARDS entry is the authority — see questModel.rewardText).
+     This page listed gold and XP only, so it and the in-world dialogue gave
+     two different answers about what the same quest pays: the dialogue showed
+     four item pictures, the pane showed a money figure and no items at all. */
+  const item = quest.reward?.item ? String(quest.reward.item) : null;
 
   const statusTone = status === 'Ready' ? COL.accent
     : status === 'Active' ? '#5B99DE'
@@ -69,6 +74,19 @@ export const QuestDetailPanel = () => {
       </div>
 
       {/* READY: the destination is the dominant instruction. */}
+      {/* ═══ v2.3.1704: THIS IS THE WHOLE OF THE READY STATE NOW ═══
+          Owner: "Disable turning in quest rewards (completion) through the
+          quest pane.  It's getting messed up."
+          There used to be a Turn In button (and an XP-skill picker) directly
+          under this banner, so the banner said "go and see him" while the
+          control underneath offered to skip the walk — two contradictory
+          instructions, one of which is the one the owner wants gone.  With the
+          button removed the banner is no longer decoration next to an action;
+          it IS the action, so it says where to go and what happens there,
+          calmly and in full.
+          Proximity is what makes this reasonable: since v2.3.1701 his dialogue
+          opens on its own when you walk up to him, so "go and see him" costs a
+          walk and no tapping. */}
       {status === 'Ready' && (
         <div style={{
           margin: '6px 0 8px',
@@ -76,9 +94,14 @@ export const QuestDetailPanel = () => {
           borderRadius: 8,
           background: COL.accentFill,
           border: `1px solid ${COL.accent}`,
-          fontSize: 14, fontWeight: 700, color: COL.accent,
         }}>
-          Ready to turn in — return to {quest.npc}.
+          <div style={{ fontSize: 14, fontWeight: 700, color: COL.accent }}>
+            Ready to hand in — go and see {quest.npc}.
+          </div>
+          <div style={{ fontSize: 12, lineHeight: 1.45, color: COL.text2, marginTop: 3 }}>
+            Walk up to {quest.npc} in town and he&rsquo;ll open the conversation
+            himself. He pays the reward there.
+          </div>
         </div>
       )}
 
@@ -97,12 +120,27 @@ export const QuestDetailPanel = () => {
       <div style={{ fontSize: 13.5, color: COL.text, padding: '0 2px 6px' }}>{quest.npc}</div>
 
       {/* Rewards — coin sprite, not just abbreviations (round-5). */}
-      {(gold > 0 || xp > 0) && (
+      {/* ═══ v2.3.1704: SAY WHICH QUEST, AND SAY WHEN ═══
+          Owner: "The quest UI is a little confusing what's rewards for the
+          next quests vs what's rewarded for the current quest."
+          The heading was the bare word "Rewards" over two numbers, on a page
+          the player reached by tapping a row in a list of several quests — so
+          nothing on screen tied the figures to the quest they belonged to.
+          Naming the quest in the heading is the cheapest possible fix and the
+          only one that survives the player arriving here from anywhere.
+          It also states the MOMENT ("for finishing"), because a quest has two
+          payout moments — the kit the giver hands over when you say yes, and
+          the payout for coming back — and this block has only ever described
+          the second one while the in-world dialogue draws both.
+          The item joins the line for the same reason: it is part of what
+          finishing pays, and listing gold and XP alone made this pane and the
+          dialogue disagree about the same quest. */}
+      {(gold > 0 || xp > 0 || item) && (
         <>
           <div style={{ padding: '6px 2px 2px', fontSize: 11, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: COL.muted }}>
-            Rewards
+            For finishing &ldquo;{quest.title}&rdquo;
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '2px 2px 8px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '2px 2px 4px', flexWrap: 'wrap' }}>
             {gold > 0 && (
               <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 14, fontWeight: 700, color: COL.gold, fontVariantNumeric: 'tabular-nums' }}>
                 <img src="/icons/popups/gold.webp" alt="gold"
@@ -115,6 +153,14 @@ export const QuestDetailPanel = () => {
                 +{xp} XP
               </span>
             )}
+            {item && (
+              <span style={{ fontSize: 13.5, fontWeight: 700, color: COL.text }}>{item}</span>
+            )}
+          </div>
+          {/* The one line that removes the ambiguity outright: this quest's
+              reward is paid when THIS quest is handed in, not before. */}
+          <div style={{ fontSize: 11, color: COL.muted, padding: '0 2px 8px' }}>
+            Paid by {quest.npc} when you hand this quest in.
           </div>
         </>
       )}
@@ -142,7 +188,7 @@ export const QuestDetailPanel = () => {
           }}
         >{tracked ? '★ Tracked — tap to untrack' : '☆ Track this quest'}</button>
       )}
-      {/* ═══ v2.3.1665: ACCEPT / TURN IN from the panel ═══
+      {/* ═══ v2.3.1665: ACCEPT from the panel ═══
           The header above used to say "accepting/turning-in stays with the
           NPCs — this page never adds wire surface."  That was true, and it
           made the quest system UNREACHABLE: town NPC entities had been
@@ -154,67 +200,51 @@ export const QuestDetailPanel = () => {
           was wrong — town has no walkability grid at all (tiledMaps.js has
           its .walk.json commented out), so that clause was always true and
           never gated anything.  Mayor Bro is back in the world now, but
-          these buttons STAY: a panel route means the arc does not depend on
-          finding an NPC on a small screen, and both paths send the same two
-          events.
+          this button STAYS: a panel route means the arc does not depend on
+          finding an NPC on a small screen.
 
           The server validates state transitions and the declarative
           objective either way (server/src/quests.js), so the panel cannot
           mint a reward the NPC path couldn't. */}
-      {/* v2.3.1669: XP has to go SOMEWHERE.  Under prog3 there is no
-          generic XP bar — every point belongs to Melee, Bow or Magic —
-          so a quest that pays XP asks which one first.  The server
-          enforces it (an XP-paying turn-in naming no category is refused
-          outright), so this picker is the mechanism, not a courtesy:
-          without a choice there is no reward. */}
-      {status === 'Ready' && needsXpChoice && (
-        <div style={{ marginTop: 8 }}>
-          <div style={{
-            fontSize: 9, fontWeight: 700, letterSpacing: '.06em',
-            textTransform: 'uppercase', color: COL.muted, marginBottom: 4,
-          }}>Train {xp} XP into</div>
-          <div style={{ display: 'flex', gap: 5 }}>
-            {PROG3_SKILL_META.map(sk => {
-              const on = xpCat === sk.key;
-              return (
-                <button key={sk.key}
-                  aria-pressed={on}
-                  onPointerUp={(e) => { e.stopPropagation(); setXpCat(sk.key); }}
-                  style={{
-                    flex: '1 1 0', minWidth: 0, minHeight: 40,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
-                    background: on ? COL.accentFill : 'transparent',
-                    border: `1px solid ${on ? COL.accent : COL.border}`,
-                    borderRadius: 10,
-                    color: on ? COL.accent : COL.text,
-                    fontFamily: 'inherit', fontSize: 12, fontWeight: 700,
-                    cursor: 'pointer', touchAction: 'manipulation',
-                  }}>
-                  <img src={sk.iconSrc} alt="" draggable={false}
-                    style={{ width: 18, height: 18, objectFit: 'contain', flex: 'none', pointerEvents: 'none' }} />
-                  {sk.label}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      )}
+      {/* ═══ v2.3.1704: THE TURN-IN HALF IS GONE FROM THIS PANE ═══
+          Owner: "Disable turning in quest rewards (completion) through the
+          quest pane.  It's getting messed up."
 
-      {(status === 'Available' || status === 'Ready') && (
+          What used to be here: a `status === 'Ready'` branch of this same
+          button that sent `quest_turn_in`, plus the XP-skill picker above it
+          (v2.3.1669) that the worker requires before it will pay XP.  Both
+          are removed.  ACCEPT is deliberately untouched — the reachability
+          argument above still holds for it, and taking it away would put the
+          whole arc back behind finding an NPC.
+
+          WHY REMOVED RATHER THAN FIXED.  Two doors sent the same message and
+          they were never the same door.  This one is a LIST page: it renders
+          whichever quest `questDetailBus` last selected, refreshes on a 1 Hz
+          timer, and derives `status` from a re-derived quest log every tick —
+          so the quest under the button can change out from under a thumb that
+          is already moving.  Its optimistic paint also lives on the client
+          (`turnInQuest` predicts gold/XP), so a refusal shows as a reward that
+          appears and is then taken back by the next player_state — the exact
+          "getting messed up" shape reported before, in v2.3.1685's incident.
+          The in-world dialogue has none of that: it is opened by, and bound
+          to, one specific giver standing in front of you.
+
+          Nothing was removed from the wire.  `quest_turn_in` is unchanged, and
+          the client still sends it — from src/game/quests.js, via the
+          dialogue's Turn In button.  This is a UI door being closed, not a
+          protocol change, so no allowlist/passthrough work applies here
+          (docs/TRAPS.md #18 is about the opposite direction).
+
+          If the pane ever needs the action back, the honest way is to open the
+          giver's dialogue from here rather than to re-add a second sender. */}
+
+      {status === 'Available' && (
         <button
-          aria-disabled={status === 'Ready' && needsXpChoice && !xpCat}
           onPointerUp={(e) => {
             e.stopPropagation();
             const St = getState();
             if (!St || !St.channel) return;
-            if (status === 'Ready' && needsXpChoice && !xpCat) return;
-            St.channel.send({
-              type: status === 'Ready' ? 'quest_turn_in' : 'quest_accept',
-              payload: status === 'Ready'
-                ? { questId: quest.id, xpCat: xpCat || undefined }
-                : { questId: quest.id },
-            });
-            setXpCat(null);
+            St.channel.send({ type: 'quest_accept', payload: { questId: quest.id } });
             force(v => v + 1);
           }}
           style={{
@@ -228,12 +258,9 @@ export const QuestDetailPanel = () => {
             fontFamily: 'inherit',
             fontSize: 13, fontWeight: 800,
             cursor: 'pointer',
-            opacity: (status === 'Ready' && needsXpChoice && !xpCat) ? 0.5 : 1,
             touchAction: 'manipulation',
           }}
-        >{status === 'Ready'
-          ? (needsXpChoice && !xpCat ? 'Choose a skill to train' : 'Turn in — claim your reward')
-          : `Accept from ${quest.npc}`}</button>
+        >{`Accept from ${quest.npc}`}</button>
       )}
 
       {/* The giver's own words, so the arc reads as someone sending you
@@ -260,7 +287,11 @@ export const QuestDetailPanel = () => {
           )}
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{
-              fontSize: 8.5, fontWeight: 700, letterSpacing: '.06em',
+              /* v2.3.1704: was 8.5 — below the 10px floor the UI has had since
+                 v2.3.1239, and this is the label that says WHOSE words these
+                 are, which Task 3's whole "which quest is this" problem needs
+                 legible.  The row it sits in already reserves the height. */
+              fontSize: 10, fontWeight: 700, letterSpacing: '.06em',
               textTransform: 'uppercase', color: COL.muted, marginBottom: 3,
             }}>{quest.npc}</div>
             <div style={{

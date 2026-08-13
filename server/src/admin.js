@@ -181,7 +181,20 @@ export const adminMethods = {
         return json({
           ok: true,
           rpg: rpg || null,
-          live: ps ? { coins: ps.coins, level: ps.level, hp: ps.hp, zone: ps.z, x: ps.x, y: ps.y, dead: !!ps.dead, disconnected: !!ps.disconnected } : null,
+          /* v2.3.1704: `ex` / `extracting` / `harvestShield` are the operator
+             view of the harvest shield.  Read-only, and they exist because the
+             bug this shield had (extraction_start never reaching the worker —
+             TRAPS #18) is invisible from the client: the browser's own state
+             says "I am extracting" whether or not the worker ever heard about
+             it.  A headless check that asks HERE disagrees with the client
+             immediately, which is exactly the tell TRAPS #18 describes.
+               ex             — the harvest activity code the client is
+                                broadcasting on `move` (mine|chop|fish|cook|fire)
+               extracting     — the worker holds a validated extraction record
+               harvestShield  — the record is currently granting immunity
+                                (all of _extractionShielded's clauses hold) */
+          live: ps ? { coins: ps.coins, level: ps.level, hp: ps.hp, zone: ps.z, x: ps.x, y: ps.y, dead: !!ps.dead, disconnected: !!ps.disconnected,
+            ex: ps.ex || null, extracting: !!this.extractions[id], harvestShield: !!this._extractionShielded(id) } : null,
           online: !!this._wsBySessionId(id),
           auth: auth2 ? { createdAt: auth2.createdAt } : null,
           frozen: frozen || null,

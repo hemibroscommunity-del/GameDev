@@ -352,17 +352,108 @@ export const gatheringMethods = {
    *  extracting resources (fishing, mining, etc) it's really annoying and
    *  glitchy."
    *
-   *  Deliberately NOT "an extraction record exists".  That record lives for
-   *  EXTRACTION_TIMEOUT_MS — ten minutes, since v2.3.1416 let the ready phase
-   *  hold indefinitely — so tying immunity to it would hand out a ten-minute
-   *  shield for one tap on a tree, which is a better exploit than it is a
-   *  fix.  Bounded to the part the owner is actually describing: the wind-up
-   *  plus a normal swipe.  Stand in a monster zone past that and you are back
-   *  on the menu. */
+   *  ═══ v2.3.1704: THE SHIELD IS NO LONGER A STOPWATCH ═══
+   *  Owner, a second time: "the monsters keep attacking you while harvesting
+   *  resources.  I wanted monsters to ignore you during resource extraction."
+   *
+   *  The v2.3.1690 version had two problems and one of them made it a total
+   *  no-op:
+   *
+   *   1. THE MESSAGE NEVER ARRIVED.  `extraction_start` is sent by the client
+   *      (lifeSkillRewards.js) but had no passthrough line in `channelShim.send`
+   *      (src/networking/wsClient.js), which is an ALLOWLIST, not a transport —
+   *      TRAPS #18, the same trap that ate `firemaking_request` in v2.3.1702.
+   *      So `this.extractions` was empty in production for EVERY player,
+   *      `_extractionShielded` always returned false, and the timing anticheat
+   *      below (`session._extractionMissing`) counted every strike in the game.
+   *      The server suite never saw it because its fixtures send the message
+   *      straight down a socket, bypassing the shim.
+   *   2. THE CLOCK WAS WRONG ANYWAY.  12 s was reasoned as "the wind-up plus a
+   *      normal swipe", but v2.3.1416 had already removed the harvest timeout
+   *      (owner: "all resources NOT have a time out window — it'll just stay on
+   *      the phase where the resource can be harvested"), so the ready phase
+   *      holds for as long as the player takes.  The shield expired UNDER them,
+   *      mid-harvest, which is exactly the reported symptom.
+   *
+   *  So the mechanism is now the player's actual state rather than a timer.
+   *  Every clause is an END condition the owner named ("make sure it ends"),
+   *  and each maps to a real way an extraction stops — cross-checked against
+   *  the client state machine in src/ui/BroTown.jsx (search `S._extraction`):
+   *
+   *   • no record          — success (`_handleNodeStrike` deletes it), the
+   *                          10-minute stale sweep, disconnect (webSocketClose),
+   *                          or an attack (`_endExtraction`, below).
+   *   • ceiling            — EXTRACT_SHIELD_MS backstop for a client that stops
+   *                          telling the truth.  Bounded on purpose.
+   *   • dead / dying / gone — you are not harvesting, you are respawning.
+   *   • zone changed       — the client's own tick cancels on zone change
+   *                          (the node vanishes from S.gatherNodes).
+   *   • node died          — depleted by you or by anyone else; the client
+   *                          cancels silently on `!_exNode.alive`.
+   *   • walked off the node — the radius backstop.  See EXTRACT_SHIELD_RANGE.
+   *   • ps.ex went null    — THE FAST ONE, and the reason no new wire message
+   *                          was invented for this.  `ex` is the harvest
+   *                          activity code (mine|chop|fish|cook|fire) that has
+   *                          ridden on every `move` packet since v2.3.1092: the
+   *                          client sends it the instant the extraction status
+   *                          changes and re-sends on a 500 ms heartbeat while
+   *                          it holds.  It therefore goes null within one move
+   *                          throttle (~22 ms) of EVERY client-side cancel —
+   *                          the joystick nudge (v2.3.1500), the walk-away
+   *                          radius, node death, tapping a different node, a
+   *                          missed swipe — including the ones that displace
+   *                          the player by nothing at all and so are invisible
+   *                          to the radius test.  It is client-supplied and
+   *                          forgeable, which is why it is an ADDITIONAL
+   *                          condition and never a sufficient one.
+   *
+   *  What a modified client can still buy by lying on all of the above: standing
+   *  perfectly still next to a live node it holds the tool for, taking no monster
+   *  damage, for up to two minutes, unable to attack (see `_endExtraction`).
+   *  That is worth strictly less than walking away, so it is not worth more
+   *  machinery.
+   *
+   *  DELIBERATELY NOT COVERED: cooking and firemaking.  Both set `ps.ex`
+   *  ('cook'/'fire') but neither has a server-known node, so there is no anchor
+   *  to bind a shield to and the record would have to be minted from an
+   *  unverifiable client claim.  The owner's report is about resource
+   *  extraction; if campfire cooking needs the same treatment later, the honest
+   *  way is to make the campfire a server object first. */
   _extractionShielded(playerId, now) {
     const e = this.extractions[playerId];
     if (!e) return false;
-    return (now || Date.now()) - e.startedAt < this.EXTRACT_SHIELD_MS;
+    const t = now || Date.now();
+    if (t - e.startedAt >= this.EXTRACT_SHIELD_MS) return false;
+    const ps = this.playerState[playerId];
+    if (!ps || ps.dead || ps.dying || ps.disconnected) return false;
+    if (ps.z !== e.zone) return false;
+    if (!ps.ex) return false;
+    /* The node has to still be there.  Cheap linear scan: node lists are a
+       handful of entries per zone and this runs once per player per tick. */
+    const list = this.nodes[e.zone];
+    const n = list ? list.find((x) => x.id === e.nodeId) : null;
+    if (!n || !n.alive) return false;
+    /* Anchored on the NODE, not on where the player stood at extraction_start:
+       the client SNAPS the player onto the gather stance (startExtraction moves
+       mining/fishing by up to 86 px) and that snap can land either side of the
+       start message. */
+    const dx = (ps.x || 0) - n.x;
+    const dy = (ps.y || 0) - n.y;
+    return dx * dx + dy * dy <= this.EXTRACT_SHIELD_RANGE * this.EXTRACT_SHIELD_RANGE;
+  },
+
+  /** v2.3.1704: end an extraction because the player did something that is not
+   *  harvesting.  Called from the two attack handlers.
+   *
+   *  A real client CANNOT attack mid-extraction — src/game/playerActions.js
+   *  opens both `attack` and `specialAttack` with `if (S._extraction) return;`
+   *  — so this never fires in honest play.  It exists to close the one thing
+   *  the state-based shield above would otherwise permit: parking on a node,
+   *  holding `ex` up forever, and tanking a pack for free while still swinging.
+   *  Deleting the record also correctly restores the timing anticheat, since
+   *  the next strike then has no window to be validated against. */
+  _endExtraction(playerId) {
+    if (playerId && this.extractions[playerId]) delete this.extractions[playerId];
   },
 
   /** Does this player hold the tool for a gathering skill?  True for any skill

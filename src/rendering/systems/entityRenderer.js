@@ -2771,13 +2771,6 @@ function createMonsterDisplay(monster) {
     body.stroke({ color: 0xff5e6c, width: 2 });
   }
   container.addChild(body);
-  /* v2.3.1300: ground shadow at child 0 — feet are at y=size (the
-     circle's bottom edge / the sprite's bottom-center anchor line).
-     Inherits the container-level MONSTER_SIZE_MULT. */
-  const shadow = _mintShadow(size * 2.2);
-  shadow.y = size;
-  container.addChildAt(shadow, 0);
-  container._shadow = shadow;
 
   /* Sprite-sheet body for fodder slimes.  Only created here for the
      fodder archetype so non-slime monsters skip the extra display
@@ -2793,6 +2786,51 @@ function createMonsterDisplay(monster) {
     || !!(MONSTER_VARIANTS[archKey] && MONSTER_VARIANTS[archKey].useSlimeSheets);
   const variantKey = MONSTER_VARIANTS[archKey] ? archKey : null;
   const isSnowman = archKey === 'snowman';
+
+  /* v2.3.1300: ground shadow at child 0 — feet are at y=size (the
+     circle's bottom edge / the sprite's bottom-center anchor line).
+     Inherits the container-level MONSTER_SIZE_MULT.
+
+     ═══ v2.3.1704: NO SHADOW UNDER A SLIME ═══
+     Owner (playtest): "Remove the shadow beneath the slimes (blue slimes)
+     it's way beneath the monster."
+
+     WHY IT LANDED THERE, measured rather than guessed.  The slime sheet is
+     128px cells and the blob's opaque pixels stop at row ~85 — every frame
+     of slime-idle-v5 has ~42px of empty cell BELOW the body.  The sprite is
+     anchored bottom-centre at the feet line, so the shadow, which is pinned
+     to that same line, sits 42 * (96/128) * MONSTER_SIZE_MULT ≈ 48 world px
+     under the blob.  Screenshotted at 390x844: blob bottom at y=255, an 8px-
+     tall ellipse centred at y=294 — a detached smudge in the middle of the
+     road, which is exactly what the owner is describing.
+
+     WHY REMOVE RATHER THAN RE-ANCHOR.  Two reasons, and the first is the
+     stronger: v2.3.1365 already deleted the PLAYER's ground shadow at this
+     owner's request ("do not re-add one here"), so a shadowless slime is the
+     game's existing visual language, not a new look invented here.  Second,
+     the art carries no baked shadow of its own to match against — decoded
+     the sheet to check, there is no soft low-alpha ellipse under the body —
+     so re-anchoring would mean AUTHORING a shadow the owner just asked to be
+     rid of.  The offset fix is one line (`shadow.y = size - 32`) if they
+     ever want the grounding back; this is the deliberate cheaper answer to
+     what they actually said.
+
+     GATED PER-VARIANT, deliberately: `isFodder` is the useSlimeSheets test,
+     so it covers ALL FOUR slimes — plain fodder, blueSlime (the Verdant
+     Wilds one the owner was looking at), mossSlime and mireWisp — because
+     they share the sheet and therefore share the empty-cell geometry.
+     Everything else (mummy/skeleton/fireGoblin/snowman/the procedural
+     circles) keeps its shadow untouched; their art fills its cell and their
+     shadows are not what was reported. */
+  if (!isFodder) {
+    const shadow = _mintShadow(size * 2.2);
+    shadow.y = size;
+    container.addChildAt(shadow, 0);
+    container._shadow = shadow;
+  } else {
+    container._shadow = null;
+  }
+
   const spriteBody = (isFodder || variantKey || isSnowman) ? new Sprite() : null;
   if (spriteBody) {
     spriteBody.anchor.set(0.5, 1.0);

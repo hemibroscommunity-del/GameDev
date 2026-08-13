@@ -129,6 +129,22 @@ export function QuestPanel(props) {
   var _gives = (questPanel.quest.gives || []).filter(function (g) {
     return g && g.icon && g.when === _giveWhen;
   });
+  /* ═══ v2.3.1704: SAY WHEN, NOT WHO ═══
+     Owner: "The quest UI is a little confusing what's rewards for the next
+     quests vs what's rewarded for the current quest."
+     This card draws BOTH of a quest's payout moments in the SAME slot, in the
+     same chip style, one after the other across a play session: the offer
+     shows a sword and a shield, and the very next time the same card opens it
+     shows a bow and a staff.  The only thing distinguishing them was the
+     caption, and the captions were "He gives you" and "You receive" — two
+     phrasings of the giver's grammar that say nothing at all about WHEN, so a
+     player who saw a sword promised and later received a bow had no way to
+     tell whether the bow belonged to this quest or the next one.
+     Timing is the distinction that matters, so the captions state it.  Kept to
+     one chip row (v2.3.1681's rule stands: showing every payout at once would
+     promise a reward you have not earned — mp-questui pins that the bow is
+     absent from the offer), so this costs no height. */
+  var _givesLabel = _giveWhen === 'accept' ? 'He hands you now' : 'For finishing this quest';
   return React.createElement("div", {
     className: "bt-inspect",
     onClick: function onClick() {
@@ -258,10 +274,14 @@ export function QuestPanel(props) {
        below the quest text is behind the fold.  The owner asked to SEE the
        sword and shield; putting them where the reward line goes would have
        meant scrolling to find them. */
+    /* v2.3.1704: the caption moved from BESIDE the chips to ABOVE them.  It
+       used to be a `flexShrink:0` column next to them, which was fine for two
+       words ("You receive") and would have eaten most of a 390px card now that
+       it states the payout moment.  Stacked, the caption gets a full line, the
+       chips keep the full width, and the paddingTop:12 that was faking optical
+       centring against the chips is no longer needed — so this costs about six
+       pixels, not a row. */
     style: {
-      display: 'flex',
-      alignItems: 'flex-start',
-      gap: 10,
       marginBottom: 12,
       paddingTop: 2
     }
@@ -272,10 +292,9 @@ export function QuestPanel(props) {
       textTransform: 'uppercase',
       letterSpacing: '.12em',
       color: '#96A2A0',
-      paddingTop: 12,
-      flexShrink: 0
+      marginBottom: 5
     }
-  }, _giveWhen === 'accept' ? 'He gives you' : 'You receive'), /*#__PURE__*/React.createElement("div", {
+  }, _givesLabel), /*#__PURE__*/React.createElement("div", {
     style: { display: 'flex', gap: 8, flexWrap: 'wrap' }
   }, _gives.map(function (g, i) {
     return /*#__PURE__*/React.createElement(ItemChip, { key: g.icon + i, item: g });
@@ -324,9 +343,23 @@ export function QuestPanel(props) {
       marginTop: 4
     }
   }, "✓ Complete!")), /*#__PURE__*/React.createElement("div", {
+    /* ═══ v2.3.1704: THE NUMBERS NAME THEIR OWN QUEST ═══
+       Owner: "The quest UI is a little confusing what's rewards for the next
+       quests vs what's rewarded for the current quest."
+       This line said "REWARD  💰25g · ⭐40XP" and nothing else.  On an OFFER
+       card it sits below the chip row that has just shown a sword and a shield
+       under a caption of its own, so the card holds two payouts with only one
+       of them attributed — and because tut_1's dialogue carries the whole
+       control tutorial, this line is below the fold on a 390px phone, so the
+       only "reward" a new player ever actually sees for the quest they are
+       accepting is the accept kit.  Saying WHICH quest and WHEN, right here on
+       the numbers, is what makes the two unmistakable; it wraps to a second
+       line on a narrow card rather than truncating, which is why the row is
+       `flexWrap` now instead of a single baseline run. */
     style: {
       display: 'flex',
       alignItems: 'baseline',
+      flexWrap: 'wrap',
       gap: 6,
       marginBottom: 12
     }
@@ -338,7 +371,7 @@ export function QuestPanel(props) {
       letterSpacing: '.12em',
       color: '#96A2A0'
     }
-  }, "Reward"), /*#__PURE__*/React.createElement("span", {
+  }, 'For finishing “' + questPanel.quest.title + '”'), /*#__PURE__*/React.createElement("span", {
     style: {
       fontSize: 14,
       fontWeight: 700,

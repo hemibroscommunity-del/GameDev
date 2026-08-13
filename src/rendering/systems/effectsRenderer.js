@@ -2310,14 +2310,75 @@ export class EffectsRenderer {
       }
     }
 
-    // Shield arc
-    if (S.isBlocking && S._shieldAngle != null) {
+    /* ═══ v2.3.1704: THE SHIELD CONE ═══
+       Owner: "add a subtle cone of light effect while shield is held to show
+       direction of where shield is pointed and where it protect you from
+       damage."
+
+       There WAS a shield indicator here — a 22px stroked arc — and it has
+       never once been drawn: it gated on `S.isBlocking`, a flag nothing in
+       this codebase has ever set (the real ones are `S._shieldUp` and the
+       rolling `S.shieldEnd` window, BroTown.jsx).  So "the shield has no
+       on-screen direction" was not a missing feature, it was a dead branch,
+       which is why nobody noticed it rot.
+
+       The cone is built as four nested wedges of falling alpha rather than a
+       gradient, because Pixi Graphics has no radial fill: near the body it
+       reads as a soft glow, and it thins out toward the rim instead of
+       ending on a hard edge.  A brighter leading arc caps it so the
+       direction is legible at a glance on a phone, and the whole thing
+       breathes on a slow sine so a held shield looks live rather than
+       painted on.
+
+       DIRECTION, NOT PROTECTION.  Blocking has been OMNIDIRECTIONAL since
+       v2.3.1110 (owner decision, unified with the server rule) — a hit from
+       behind is blocked exactly as well as one from the front.  So this cone
+       honestly shows where the shield is POINTED and cannot honestly show
+       "where it protects you", and it is deliberately drawn as a soft light
+       spill rather than as a hard protected sector that would imply a limit
+       that is not there.  If the arc should start mattering again, the place
+       to change it is the block resolution (server `_monsterStrikePlayer` +
+       the client's block checks), and then this cone becomes the truthful
+       picture of it for free. */
+    if (S._shieldUp && S.player) {
       const P = S.player;
-      const shR = 22;
-      const startA = S._shieldAngle - 0.6;
-      const endA = S._shieldAngle + 0.6;
-      gfx.arc(P.x, P.y, shR, startA, endA);
-      gfx.stroke({ color: 0x3498db, width: 3, alpha: 0.6 });
+      const ang = (S._shieldAngle != null) ? S._shieldAngle
+        : (S._facingAngle != null ? S._facingAngle : 0);
+      const half = 0.62;                      /* ~71° of spill, the old arc's width */
+      const breathe = 0.86 + Math.sin(now / 420) * 0.14;
+      /* Anchored just in front of the body so the wedge does not paint over
+         the character's own sprite. */
+      const ox = P.x + Math.cos(ang) * 6;
+      const oy = P.y + Math.sin(ang) * 6;
+      /* Alphas tuned ON the brightest ground in the game (town's pale sand,
+         headless at a 390x844 iPhone viewport) — a 0.20 top band that looked
+         right in isolation was very nearly invisible there, and the town
+         fountain is exactly where a player first raises a shield. */
+      const BANDS = [
+        { r: 30, a: 0.50 },
+        { r: 46, a: 0.34 },
+        { r: 62, a: 0.21 },
+        { r: 80, a: 0.11 },
+      ];
+      /* Longest first: each shorter band is drawn ON TOP, so the alphas
+         accumulate toward the body and the spill fades outward. */
+      for (let i = BANDS.length - 1; i >= 0; i--) {
+        const b = BANDS[i];
+        gfx.moveTo(ox, oy);
+        gfx.arc(ox, oy, b.r, ang - half, ang + half);
+        gfx.closePath();
+        gfx.fill({ color: 0x9fd4ff, alpha: b.a * breathe });
+      }
+      /* The leading edge — thin, brighter, and the part that actually
+         reads as "this way" in a glance. */
+      gfx.arc(ox, oy, 80, ang - half, ang + half);
+      gfx.stroke({ color: 0xbfe4ff, width: 2, alpha: 0.7 * breathe });
+      /* A short bar across the shield hand at the cone's mouth: the cone
+         alone floats, and this roots it to the character. */
+      const px = Math.cos(ang + Math.PI / 2), py = Math.sin(ang + Math.PI / 2);
+      gfx.moveTo(ox + px * 13, oy + py * 13);
+      gfx.lineTo(ox - px * 13, oy - py * 13);
+      gfx.stroke({ color: 0xdff0ff, width: 3, alpha: 0.7 * breathe });
     }
 
     /* v2.3.120: player Lv badge removed below the sprite per user

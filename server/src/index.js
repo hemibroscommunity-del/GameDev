@@ -664,9 +664,29 @@ export class GameRoom {
     this.EXTRACT_JITTER    = 0.15;
     /* v2.3.1690 (owner: "monsters don't attack you while you're extracting
        resources ... it's really annoying and glitchy").  How long a started
-       extraction keeps monsters off you.  Short on purpose — see
-       _extractionShielded for why this is not EXTRACTION_TIMEOUT_MS. */
-    this.EXTRACT_SHIELD_MS = 12000;
+       extraction keeps monsters off you.
+       v2.3.1704 (owner, again: "the monsters keep attacking you while
+       harvesting resources.  I wanted monsters to ignore you during resource
+       extraction"): 12s -> 120s.  12s was picked as "the wind-up plus a normal
+       swipe", but v2.3.1416 had ALREADY made the ready phase hold indefinitely
+       (owner: "all resources NOT have a time out window") — so the shield
+       routinely lapsed while the player was still standing there mid-harvest,
+       which is precisely the report.  This is now a CEILING, not the mechanism:
+       _extractionShielded ends the shield on the player's live harvest signal,
+       on walking off the node, on zone change, on death and on attacking, and
+       the ceiling is only the backstop for a client that stops telling the
+       truth.  Not unbounded, because "tap a tree, become invulnerable forever"
+       is a worse bug than the one being fixed. */
+    this.EXTRACT_SHIELD_MS = 120000;
+    /* v2.3.1704: how far you may drift from the node and still count as
+       harvesting it.  The CLIENT cancels an extraction much sooner (walk-away
+       at nodeReachDist + EXTRACT_CANCEL_R = 90, and since v2.3.1500 on the
+       joystick itself), so for an honest client this never fires — it exists so
+       a modified client cannot carry the shield around the zone.  Generously
+       above NODE_STRIKE_RANGE (110) because the gather STANCE already sits ~86
+       px off the node (startExtraction's mining/fishing snap) and the server's
+       view of a position lags the client's by up to a move throttle. */
+    this.EXTRACT_SHIELD_RANGE = 200;
     this.EXTRACTION_TIMEOUT_MS = 600000;    // walk-away cancel is silent; sweep stale state after this.  v2.3.1416: 15s -> 10min — the harvest phase no longer times out client-side, so a strike minutes after extraction_start is legitimate; the record must outlive the player's patience (one small record per session, bounded by session count).
     this.EXTRACTION_GRACE_MS = 250;         // forgiveness on both ends to absorb network jitter
     this.SWIPE_FP_CAP_PER_SESSION = 100;    // ring-buffer the fp samples for offline analysis
@@ -1028,6 +1048,19 @@ export class GameRoom {
     // dmgTaken rides on the wire and the client renders the
     // exact number the server applied.
     const targetPs = this.playerState[targetId];
+    /* ═══ v2.3.1704: A HARVESTER TAKES NO MONSTER DAMAGE, FULL STOP ═══
+       Owner: "the monsters keep attacking you while harvesting resources."
+       The aggro filter in _tickMonsters is the primary fix (the monster never
+       comes over), but this method is the ONE choke point every monster→player
+       hit funnels through, and one caller sits deliberately outside the aggro
+       branch: the in-flight snowball resolved at the top of the monster loop,
+       which lands even on a target the monster has since lost interest in
+       (v2.3.1640, and rightly so — a ball in the air is committed).  Without
+       this line, tapping a tree while a snowball was airborne still knocked
+       the swipe out from under you, which is the exact interruption being
+       fixed.  Silent, like a dodge: no monster_attack event, so the client
+       draws nothing rather than a "0" it would have to explain. */
+    if (this._extractionShielded(targetId, now)) return;
     /* ═══ v2.3.1686: THE BLOCK IS RESOLVED HERE, AT IMPACT ═══
        Owner: "it seems like snowman don't launch projectiles while the
        character is blocking, which isn't the correct behavior. It should
@@ -1284,25 +1317,45 @@ export class GameRoom {
         // This is what makes ranged attacks actually pull a monster
         // off its wander -- previously aggro was proximity-only so a
         // sniped mummy just took the hit and kept patrolling.
+        /* ═══ v2.3.1704: A HARVESTER IS NOT A TARGET ═══
+           Owner: "I wanted monsters to IGNORE you during resource extraction."
+           v2.3.1690 only suppressed the swing and the throw, which left the
+           monster free to acquire the harvester, walk over and stand on top of
+           them for the whole extraction — silent, but it reads as being
+           attacked, and it is not what was asked for.  Extracting players are
+           now invisible to target acquisition outright: the monster keeps its
+           distance and falls through to idle wander (which clears m.targetId),
+           and it re-acquires the instant the shield ends.
+           This also drops a sticky aggro override that points at a harvester —
+           a bow-snipe followed by a tap on a tree would otherwise have dragged
+           the monster across the zone to hover.  Dropping rather than parking
+           the override is deliberate: re-provoking is one arrow, whereas a
+           held override would make the monster pounce the instant the swipe
+           lands, which is the interruption the owner is complaining about. */
         let nearest = null;
         let nearestDist = Infinity;
         const stickyAggroActive = m._aggroOverrideUntil && now < m._aggroOverrideUntil;
         if (stickyAggroActive) {
-          const stickyP = playersInZone.find(p => p.id === m._aggroOverrideTarget);
+          const _sticky = playersInZone.find(p => p.id === m._aggroOverrideTarget);
+          const stickyP = (_sticky && _sticky.extracting) ? null : _sticky;
           if (stickyP) {
             const dxS = stickyP.x - m.x;
             const dyS = stickyP.y - m.y;
             nearest = stickyP;
             nearestDist = Math.sqrt(dxS * dxS + dyS * dyS);
           } else {
-            // Sticky target left the zone -- drop the override and
-            // fall through to proximity.
+            // Sticky target left the zone (or started harvesting, v2.3.1704)
+            // -- drop the override and fall through to proximity.
             m._aggroOverrideTarget = null;
             m._aggroOverrideUntil = 0;
           }
         }
         if (!nearest) {
           for (const p of playersInZone) {
+            /* v2.3.1704: harvesters are skipped, not merely spared.  If every
+               player in the zone is extracting, `nearest` stays null and the
+               monster wanders — which is the whole point. */
+            if (p.extracting) continue;
             const dx = p.x - m.x;
             const dy = p.y - m.y;
             const dist = Math.sqrt(dx * dx + dy * dy);
@@ -1433,7 +1486,13 @@ export class GameRoom {
                  ball LANDS — see _monsterStrikePlayer. */
               /* v2.3.1690: ...but a harvester IS left alone — the whole point
                  is not interrupting the swipe, and a ball in the air lands on
-                 it just as rudely as a swing. */
+                 it just as rudely as a swing.
+                 v2.3.1704: unreachable by construction now (an extracting
+                 player is filtered out of target acquisition above, so
+                 `nearest` can never be one).  Kept as the second line of
+                 defence — if a future change ever lets monsters target a
+                 harvester again for movement or telegraph reasons, the throw
+                 must still not fire. */
               && !nearest.extracting) {
             m.atkCd = now + _rangedCfg.cd;
             m._attackingUntil = now + 400;
@@ -1491,8 +1550,11 @@ export class GameRoom {
                still stamped so the monster does not queue one up for the
                instant the swipe lands.  Placed ABOVE the blocking branch so a
                harvester is left alone whether or not a shield happens to be
-               up.  Bounded by EXTRACT_SHIELD_MS, not by the extraction record
-               (_extractionShielded explains why). */
+               up.
+               v2.3.1704: like the throw gate above, this is now unreachable by
+               construction (harvesters are filtered out of aggro entirely) and
+               is kept as the second line of defence.  The line that actually
+               guarantees no damage is in _monsterStrikePlayer. */
             if (nearest.extracting) {
               m.atkCd = now + this.MONSTER_ATTACK_CD;
               m._attackingUntil = 0;

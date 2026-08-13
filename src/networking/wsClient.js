@@ -2239,6 +2239,29 @@ export function setupWebSocket(ctx) {
           ws.send(JSON.stringify(msg));
           return;
         }
+        /* v2.3.1704: THE HARVEST HANDSHAKE'S MISSING HALF.  TRAPS #18 again,
+           and this one had been silently dead since v2.3.229: the client has
+           always sent `extraction_start` (lifeSkillRewards.js startExtraction)
+           and the worker has always had a `case` for it, but there was never a
+           line HERE — so the message fell off the bottom of this allowlist and
+           never left the browser.  Two systems were quietly running on nothing
+           as a result:
+             1. the swipe-timing anticheat (gathering.js) — with no
+                extraction_start record, EVERY node_strike in production took
+                the permissive "legacy client" branch and just incremented
+                session._extractionMissing;
+             2. the v2.3.1690 harvest shield, whose whole job is to stop
+                monsters interrupting a harvest — `this.extractions` was empty
+                for every player, so it never once engaged.  That is the owner's
+                report ("the monsters keep attacking you while harvesting
+                resources") in one missing line.
+           Invisible to server/test/*, which send this straight down a socket
+           and so never exercise the shim; caught by mp-harvest.mjs, which asks
+           the worker. */
+        if (msg.type === 'extraction_start') {
+          ws.send(JSON.stringify(msg));
+          return;
+        }
         if (msg.type === 'node_strike') {
           ws.send(JSON.stringify(msg));
           return;

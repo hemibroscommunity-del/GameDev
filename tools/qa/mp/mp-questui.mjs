@@ -39,6 +39,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('the quest pane offers Mayor Bro\'s first quest', /Cold Reception/.test(pane), pane.slice(0, 300));
   rec.ok('...and does NOT offer quests from givers who are not in the world',
     !/First Purchase|First Spark/i.test(pane), pane.slice(0, 600));
+  /* v2.3.1704 (owner: "The quest UI is a little confusing what's rewards for
+     the next quests vs what's rewarded for the current quest").  An offer row's
+     payout used to be a bare money figure floating at the right edge — the same
+     shape an ACTIVE row carries — so nothing said whether "25g · 40 XP" was
+     what this new quest pays or a leftover from the one you are already on. */
+  rec.ok('an offered quest\'s reward is labelled as a payout, not a bare figure',
+    /pays 25g · 40 XP/.test(pane), pane.slice(0, 400));
 
   /* ── tap him in the world ── */
   /* Screen position computed from the same camera + world scale the tap
@@ -100,6 +107,21 @@ export async function run({ browser, wsPort, webPort, rec }) {
      showing every payout at once would promise a reward you have not earned. */
   rec.ok('...but NOT the bow, which is the turn-in reward',
     !!art && !art.imgs.some((s) => /items\/bow\.webp/.test(s)), art && art.imgs);
+
+  /* ═══ v2.3.1704: THE TWO PAYOUT MOMENTS SAY WHEN, NOT WHO ═══
+     Owner: "The quest UI is a little confusing what's rewards for the next
+     quests vs what's rewarded for the current quest."
+     This one card draws both of a quest's payouts in the SAME slot in the same
+     chip style — a sword and a shield on the way out, a bow and a staff on the
+     way back — and the only thing separating them was a caption reading "He
+     gives you" or "You receive": two phrasings of the giver's grammar that say
+     nothing about WHEN.  A player who saw a sword promised and later received
+     a bow had no way to tell which quest the bow belonged to.
+     Pinned as text rather than as a screenshot because the fix IS the wording. */
+  rec.ok('the offer card says the kit is handed over NOW',
+    !!art && /He hands you now/i.test(art.text), art && art.text.slice(0, 300));
+  rec.ok('...and the gold/XP line names the quest it is the reward for',
+    !!art && /For finishing “Cold Reception”/.test(art.text), art && art.text.slice(0, 600));
 
   /* ── the control instructions ── */
   rec.ok('the special-attack instruction says a quick swipe, not a flick-and-let-go',
@@ -194,6 +216,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
   let dlg = await H.bodyText(P);
   rec.ok('with the remnants in hand the giver offers the turn-in',
     /Turn In Quest|Choose a skill to train/.test(dlg), dlg.slice(0, 300));
+  /* v2.3.1704: the SAME slot that showed the sword and shield now shows the
+     bow and staff, so the caption has to say which moment these belong to. */
+  rec.ok('the ready card says these items are what FINISHING pays',
+    /For finishing this quest/i.test(dlg), dlg.slice(0, 400));
   rec.ok('the dialogue asks where the XP should go', /Train 40 XP into/.test(dlg), dlg.slice(0, 300));
   rec.ok('...naming the three trained skills',
     /Melee/.test(dlg) && /Bow/.test(dlg) && /Magic/.test(dlg), dlg.slice(0, 300));

@@ -282,6 +282,17 @@ Object.assign(globalThis, { _regenerator, _regeneratorDefine2, _asyncToGenerator
    just beside the resource counts.  The old anchor-radius tests are kept
    as a floor underneath so nothing that used to be reachable stopped
    being reachable — this change only ever ADDS reach. */
+/* ═══ v2.3.1704: THE DEMO'S FREE BLOCK ═══
+   Owner: "make it so holding shield doesn't drain energy.  I need to figure
+   out what to do with that.  For the demo I want you to be able to block as
+   much as you want."
+   One named flag rather than deleted code, because the owner said they still
+   have to decide what stamina is FOR — this is a suspension, not a verdict.
+   Its twin is BLOCK_COSTS_STAMINA in server/src/index.js, and the worker is
+   the side that actually owns stamina, so flip both together or the bar will
+   drain on the server while the client thinks it is full. */
+var BLOCK_COSTS_STAMINA = false;
+
 var NODE_REACH_PAD = 56;   /* px of slack outside the sprite box */
 
 /* The node's art box in WORLD px.  Prefers the renderer's live Pixi
@@ -4863,14 +4874,21 @@ export var BroTown = function BroTown(_ref0) {
            "losing its hold" while finger was still down — auto-release
            on stamina-out happening sooner than expected). */
         if (S._shieldUp && S.rpg) {
-          /* 10 stamina/sec at 60fps = 0.167/frame.  In MP the worker
-             runs the drain on its tick (5/tick at ~1.5 Hz ≈ 7.5/sec),
-             so skip the local mutation -- player_state will sync the
-             bar.  Local predict still helps the auto-release feel
-             responsive at 0, so we keep the <=0 release branch.
-             v2.3.1153: × Bulwark block-stamina efficiency, mirroring
-             the worker's _blockStaminaMult on this legacy path. */
-          if (!S._serverMonsters) {
+          /* ═══ v2.3.1704: HOLDING A SHIELD IS FREE ═══
+             Owner: "make it so holding shield doesn't drain energy.  I need
+             to figure out what to do with that.  For the demo I want you to
+             be able to block as much as you want."
+             So this is a DELIBERATE, TEMPORARY suspension of a balance rule,
+             not a bug fix — the drain and the auto-release-at-zero it feeds
+             are switched off behind one named flag rather than deleted, and
+             the same flag exists on the worker (BLOCK_COSTS_STAMINA in
+             server/src/index.js), which is the side that actually owns
+             stamina.  Flip BOTH back to true to restore the old economy; the
+             maths either side of the flag is untouched and still correct.
+             (Old rule, for whoever flips it: 10 stamina/sec at 60fps =
+             0.167/frame on this legacy client-authoritative path, × Bulwark
+             block-stamina efficiency; the worker ran 5/tick at ~1.5 Hz.) */
+          if (BLOCK_COSTS_STAMINA && !S._serverMonsters) {
             S.rpg.stamina = Math.max(0, (S.rpg.stamina || 0) - 0.167 * getBlockStaminaMult(S.rpg));
           }
           /* v2.3.1110: 100 -> 250 ms rolling window.  Every client-side
@@ -4880,7 +4898,7 @@ export var BroTown = function BroTown(_ref0) {
              shield was still up.  250 ms rides out hitches; release paths
              still zero it immediately. */
           S.shieldEnd = Date.now() + 250;
-          if (S.rpg.stamina <= 0) {
+          if (BLOCK_COSTS_STAMINA && S.rpg.stamina <= 0) {
             S.rpg.stamina = 0;
             S._shieldUp = false;
             S._shieldCdUntil = Date.now() + 2000;

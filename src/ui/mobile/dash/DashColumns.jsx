@@ -132,7 +132,24 @@ export const DashColumns = ({ R }) => {
 
      A FLOOR OF THREE ROWS, not two: with only two the grid exactly fills
      its scroller, nothing moves, and the fade sits over blank tray. */
-  const bagRows = Math.max(DASH_ROWS + 1, Math.ceil(entries.length / BAG_VIEW_COLS));
+  /* v2.3.1704 (owner: "you can add two more rows of inventory space (it's
+     just scrollable so it shouldn't change the look)"): the floor goes from
+     three rows to FIVE.
+
+     THIS IS THE SURFACE THE OWNER IS LOOKING AT.  v2.3.1654 retired the Bag
+     destination — "the resting dashboard IS the bag" — so nothing opens the
+     expanded InventoryPanel any more and this grid is the bag a player
+     actually sees.  Its twin floor in InventoryPanel.jsx moves by the same
+     two rows in the same change, so the surfaces stay identical if that
+     button ever comes back.
+
+     THE PANEL'S FOOTPRINT IS UNCHANGED, which is the half of the request
+     that matters: the scroller below is `flex: 1; minHeight: 0; overflowY:
+     auto` inside a band sized by the sheet geometry, so more rows means more
+     to scroll, not a taller band.  Measured before/after at 390x844: the
+     dashboard band stays 390x243 and the scroller stays 142px tall; only the
+     grid's own height grows (197 -> 331). */
+  const bagRows = Math.max(DASH_ROWS + 3, Math.ceil(entries.length / BAG_VIEW_COLS));
   const bagCellCount = bagRows * BAG_VIEW_COLS;
   const gridW = BAG_VIEW_COLS * t + (BAG_VIEW_COLS - 1) * DASH_GAP;
 

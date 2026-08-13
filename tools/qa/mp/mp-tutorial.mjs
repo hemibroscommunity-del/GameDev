@@ -69,6 +69,20 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('the detail page shows the quest giver speaking',
     /Mayor Bro/.test(detail), detail.slice(0, 400));
 
+  /* ═══ v2.3.1704: THE REWARD BLOCK NAMES ITS OWN QUEST ═══
+     Owner: "The quest UI is a little confusing what's rewards for the next
+     quests vs what's rewarded for the current quest."
+     This page is reached by tapping a row in a list of quests and its reward
+     block was headed with the bare word "Rewards" over two numbers, so nothing
+     on screen tied the figures to the quest they belonged to, nor said WHEN
+     they are paid — and a quest has two payout moments (the kit handed over on
+     accept, and the payout for coming back).  Asserting the quest TITLE
+     appears in the heading is what stops it drifting back to a bare label. */
+  rec.ok('the reward block says which quest the figures belong to',
+    /For finishing “Cold Reception”/.test(detail), detail.slice(0, 600));
+  rec.ok('...and who pays them, and when',
+    /Paid by Mayor Bro when you hand this quest in/.test(detail), detail.slice(0, 600));
+
   /* ── accept reaches the SERVER, not just the client ── */
   const acceptTapped = await H.clickText(P, 'Accept from Mayor Bro').then(() => true).catch(() => false);
   rec.ok('the Accept button exists and is tappable', acceptTapped);
@@ -95,6 +109,50 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('the refused turn-in paid no gold',
     ((after.rpg && after.rpg.coins) || 0) === coinsBefore,
     { before: coinsBefore, after: after.rpg && after.rpg.coins });
+
+  /* ═══ v2.3.1704: THE PANE SHOWS THE HAND-IN, IT DOES NOT PERFORM IT ═══
+     Owner: "Disable turning in quest rewards (completion) through the quest
+     pane.  It's getting messed up."
+     The pane had a `Turn in — claim your reward` button and an XP-skill
+     picker beside the "return to Mayor Bro" banner: two contradictory
+     instructions, and the button was the one the owner wants gone.  The
+     dialogue at the giver is the only door now (mp-questui walks it end to
+     end).
+     Both halves are pinned, because either alone is a bad test: that the
+     CONTROL is gone, and that the pane still says a hand-in is waiting and
+     names the person to see.  A pane that just dropped the button would be a
+     quest with no visible way to finish. */
+  await H.grant(wsPort, myId, 'item', { invKey: 'snowman', count: 4 });
+  await P.page.waitForTimeout(2200);
+  await H.openDest(P, 'Quests');
+  await P.page.waitForTimeout(800);
+  await H.clickText(P, 'Active').catch(() => {});
+  await P.page.waitForTimeout(500);
+  await H.clickText(P, 'Cold Reception').catch(() => {});
+  await P.page.waitForTimeout(700);
+
+  const readyPane = await H.bodyText(P);
+  const paneButtons = await H.buttonTexts(P);
+  rec.ok('the pane still says the quest is ready to hand in',
+    /Ready to hand in/i.test(readyPane), readyPane.slice(0, 500));
+  rec.ok('...and names the person to go and see',
+    /go and see Mayor Bro/i.test(readyPane), readyPane.slice(0, 500));
+  rec.ok('...and says he is the one who pays',
+    /He pays the reward there/i.test(readyPane), readyPane.slice(0, 600));
+  /* The button list is the honest witness: bodyText would still match a
+     button rendered but disabled, and "disabled" is not what was asked for. */
+  rec.ok('the pane offers NO turn-in button any more',
+    !paneButtons.some((t) => /turn in/i.test(t)), paneButtons);
+  rec.ok('...and no XP-skill picker either (it belongs to the dialogue now)',
+    !/Train 40 XP into/.test(readyPane)
+    && !paneButtons.some((t) => /Choose a skill to train/i.test(t)),
+    { paneButtons, pane: readyPane.slice(0, 500) });
+  /* The quest must be untouched by all of that — a pane that quietly turned
+     it in anyway would pass every assertion above. */
+  const stillActive = await H.adminPlayer(wsPort, myId);
+  rec.ok('and the quest is still ACTIVE — the pane settled nothing',
+    ((stillActive.rpg && stillActive.rpg._quests) || {}).tut_1 === 'active',
+    stillActive.rpg && stillActive.rpg._quests);
 
   await P.ctx.close().catch(() => {});
 }

@@ -518,14 +518,29 @@ export const QUEST_REWARDS = {
                ],
                item:{kind:'inv', key:'mining_pickaxe', n:1}},
       life_2: {gold:200, xp:200, next:null,
+               /* v2.3.1704 (owner: "Prospectors vest and prospectors greaves are
+                  the wrong description of quest awards for iron torso and iron
+                  legs for mining quest.  Also the legs were an earlier reward
+                  already so it would just be torso").
+                  Two separate faults in one line, and only one of them was the
+                  name.  The LEGS had already been paid out by tut_4 since
+                  v2.3.1692 ("Iron Greaves"), so this quest was handing a second
+                  pair to a player who owned one — and since v2.3.1695 every
+                  armour grant overflows to the bag rather than dressing you,
+                  the duplicate did not even collide with anything: it just sat
+                  there as a second, identical pair of legs.  So life_2 is the
+                  TORSO only now, and it is named in the same Iron family as the
+                  greaves, because "Prospector's" was a family invented for one
+                  quest and matched nothing else the player owns.
+                  Deliberately NOT a kind:'armorSet' with one piece — a set of
+                  one is a lie about the reward's shape, and the client's
+                  `gives` row mirrors this exactly (src/data/gameSystems.js).
+                  The armorSet path in quests.js STAYS: this was its only
+                  consumer, but it is tested, cheap, and the next multi-piece
+                  reward will want it.  Still the first armour in the game that
+                  does anything per hit (v2.3.1679: torso 30%). */
                objective:{type:'collect', invPrefix:'ore_', count:5, consume:true},
-               /* Both body pieces, and they are the first armor in the game
-                  that actually does anything per hit (v2.3.1679: torso 30%,
-                  legs 20%). */
-               item:{kind:'armorSet', pieces:[
-                 {kind:'armor', name:"Prospector's Vest", tierMult:1.0},
-                 {kind:'legs',  name:"Prospector's Greaves", tierMult:1.0},
-               ]}},
+               item:{kind:'armor', name:"Iron Torso", tierMult:1.0}},
 
       mayor_1:    {gold:50,  xp:30,  next:'mayor_2'},
       mayor_2:    {gold:100, xp:80,  next:'mayor_3', objective:{type:'kill', arch:null, count:5}},

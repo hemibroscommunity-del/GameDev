@@ -5502,16 +5502,27 @@ export const QUEST_CHAINS = {
       for (var k in inv) if (k.indexOf('ore_') === 0) n += inv[k] || 0;
       return n >= 5;
     },
-    reward: { gold: 200, xp: 200, item: "Prospector's Vest + Greaves" },
+    /* v2.3.1704 (owner: "Prospectors vest and prospectors greaves are the wrong
+       description of quest awards for iron torso and iron legs for mining
+       quest.  Also the legs were an earlier reward already so it would just be
+       torso").  Mirrors server/src/data.js life_2 — see the long note there for
+       WHY (tut_4 already pays "Iron Greaves", so this was a second identical
+       pair of legs, under a "Prospector's" family that matched nothing else).
+       Every string a player can read about this reward changes together: the
+       reward line, the thumbnail row, and the giver's own words.  The
+       thumbnail is DISPLAY ONLY — mirror-audit.test.mjs asserts a
+       when:'complete' chip really has a server-side reward.item behind it, so
+       a one-sided edit here fails loudly instead of promising armour nobody
+       will hand over. */
+    reward: { gold: 200, xp: 200, item: 'Iron Torso' },
     next: null,
     gives: [
-      { when: 'complete', icon: '/icons/items/chest-plate.webp', label: "Prospector's Vest" },
-      { when: 'complete', icon: '/icons/items/greaves.webp',     label: "Prospector's Greaves" },
+      { when: 'complete', icon: '/icons/items/chest-plate.webp', label: 'Iron Torso' },
     ],
     dialogue: {
       start: 'Ore next. Five lumps, any kind — the rocks in every zone will do.',
       progress: 'Five ore. Swing the pickaxe.',
-      complete: "Vest and greaves, both. That's real armor — it'll take the edge off a hit, not just pad your health.",
+      complete: "Iron for the chest, to go with the greaves you already earned. That's real armor — it'll take the edge off a hit, not just pad your health.",
     },
   },
 

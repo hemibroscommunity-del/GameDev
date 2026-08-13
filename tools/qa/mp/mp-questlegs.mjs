@@ -19,6 +19,12 @@
  * The last assertion is the one that matters most: the server's own blob has
  * `legsArmor` set.  ps.legsArmor is what _armorDrMult reads, so a greave that
  * only exists on the client is a cosmetic that mitigates nothing.
+ *
+ * v2.3.1704 EXTENSION — the MINING quest's half of the same wardrobe.  Owner:
+ * "Also the legs were an earlier reward already so it would just be torso."
+ * life_2 was paying a second pair of legs on top of tut_4's, which is a fault
+ * only visible from a run that walks BOTH arcs and then counts what is in the
+ * bag — so the tail of this scenario now does exactly that.
  */
 import * as H from './harness.mjs';
 
@@ -137,6 +143,56 @@ export async function run({ browser, wsPort, webPort, rec }) {
   });
   rec.ok('unequipping puts the greaves back in the bag', !bare.legsArmor && bare.legsStash.includes('Iron Greaves'), bare);
   rec.ok('...and takes the art back off the character', bare.legs === 'none', bare);
+
+  /* ═══ v2.3.1704: AND THE MINING QUEST PAYS THE OTHER HALF, ONCE ═══
+     Owner: "Prospectors vest and prospectors greaves are the wrong description
+     of quest awards for iron torso and iron legs for mining quest.  Also the
+     legs were an earlier reward already so it would just be torso."
+     life_2 paid a two-piece armorSet — a "Prospector's Vest" AND a
+     "Prospector's Greaves" — while tut_4 above had already paid Iron Greaves
+     since v2.3.1692.  Nothing errored: armour overflows to the bag rather
+     than dressing you (v2.3.1695), so the second pair of legs simply appeared
+     in the stash next to the first, under a name from a family that matched
+     nothing else the player owned.
+     This belongs in THIS scenario rather than a new one precisely because the
+     bug is a relationship BETWEEN the two quests — the assertion that matters
+     is that the legs stash still holds exactly the one pair tut_4 paid after
+     the mining quest has also been turned in, which only a run that walks
+     both arcs can make.
+     Driven over the wire (the DOM paths for accept/turn-in are covered by
+     mp-tutorial and mp-questui); what is under test here is the payout. */
+  const LIFE = [
+    { id: 'life_1', invKey: 'cooked_fish_minnow', count: 2 },
+    { id: 'life_2', invKey: 'ore_copper', count: 5 },
+  ];
+  for (const step of LIFE) {
+    await send({ type: 'quest_accept', payload: { questId: step.id } });
+    await P.page.waitForTimeout(900);
+    await H.grant(wsPort, myId, 'item', { invKey: step.invKey, count: step.count });
+    await P.page.waitForTimeout(1200);
+    await send({ type: 'quest_turn_in', payload: { questId: step.id, xpCat: 'sword' } });
+    await P.page.waitForTimeout(1600);
+  }
+  const mining = await H.adminPlayer(wsPort, myId);
+  rec.ok('the mining quest completed server-side',
+    !!(mining && mining.rpg && mining.rpg._quests && mining.rpg._quests.life_2 === 'turnedIn'),
+    mining && mining.rpg && mining.rpg._quests);
+
+  const after2 = await H.readState(P, (S) => ({
+    chest: (S.rpg.armorStash || []).map((a) => a && a.name),
+    legs: (S.rpg.legsStash || []).map((a) => a && a.name),
+    wornLegs: S.rpg.legsArmor && S.rpg.legsArmor.name,
+  }));
+  rec.ok('the mining quest pays an IRON TORSO into the chest bag',
+    after2.chest.includes('Iron Torso'), after2);
+  /* The name is half the report — "Prospector's" was the family that did not
+     exist, so its absence is worth asserting rather than assuming. */
+  rec.ok('...and nothing is called "Prospector\'s" anything any more',
+    !after2.chest.concat(after2.legs).some((n) => /Prospector/i.test(String(n))), after2);
+  /* The headline: ONE pair of legs in the whole arc, and it is tut_4's. */
+  rec.ok('the mining quest pays NO second pair of legs',
+    after2.legs.filter((n) => n === 'Iron Greaves').length === 1
+    && after2.legs.length === 1, after2);
 
   await P.ctx.close().catch(() => {});
 }

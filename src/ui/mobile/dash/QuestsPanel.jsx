@@ -115,8 +115,16 @@ export const QuestsPanel = () => {
                   {/* round-5: objective + giver, raised contrast (text2,
                       was muted). */}
                   <span style={{ display: 'block', fontSize: 12, color: COL.text2, marginTop: 1 }}>{quest.desc}</span>
+                  {/* v2.3.1704 (owner: "The quest UI is a little confusing
+                      what's rewards for the next quests vs what's rewarded for
+                      the current quest").  This read "Mayor Bro · 25g · 40 XP"
+                      — the giver and the payout joined by the SAME middot the
+                      payout uses internally, so it scanned as one undifferentiated
+                      run of facts with no word anywhere saying which part was a
+                      reward.  Naming it costs six characters and makes an active
+                      quest's payout impossible to confuse with an offer's. */}
                   <span style={{ display: 'block', fontSize: 11, color: COL.text2, marginTop: 1 }}>
-                    {quest.npc}{rewardText(quest) ? ` · ${rewardText(quest)}` : ''}
+                    {quest.npc}{rewardText(quest) ? ` · pays ${rewardText(quest)}` : ''}
                   </span>
                 </span>
                 {ready ? (
@@ -151,9 +159,16 @@ export const QuestsPanel = () => {
                 </span>
                 {/* round-5: the segment already says AVAILABLE — the
                     right side earns its keep as the reward. */}
+                {/* v2.3.1704: ...and it was a bare money figure floating at the
+                    right edge with no label, which is the same figure shape an
+                    ACTIVE row carries.  A player looking at an offer could not
+                    tell whether "25g · 40 XP" was what this new quest pays or a
+                    leftover from the one they are already on.  Two words fix
+                    it, and "pays" matches the wording on the active rows above
+                    so the two lists read as one language. */}
                 {rewardText(quest) && (
                   <span style={{ flex: '0 0 auto', fontSize: 11, fontWeight: 700, color: COL.gold, whiteSpace: 'nowrap' }}>
-                    {rewardText(quest)}
+                    pays {rewardText(quest)}
                   </span>
                 )}
                 <span aria-hidden="true" style={{ flex: 'none', fontSize: 14, color: COL.muted }}>›</span>

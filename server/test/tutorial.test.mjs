@@ -129,6 +129,43 @@ const sess = { id: 'bp_t' };
     && QUEST_REWARDS.tut_1.item.some((i) => i.weaponType === 'bow')
     && QUEST_REWARDS.tut_1.item.some((i) => i.weaponType === 'staff'),
     QUEST_REWARDS.tut_1.item);
+
+  /* ═══ v2.3.1704: THE MINING QUEST PAYS THE TORSO, AND ONLY THE TORSO ═══
+     Owner: "Prospectors vest and prospectors greaves are the wrong description
+     of quest awards for iron torso and iron legs for mining quest.  Also the
+     legs were an earlier reward already so it would just be torso."
+     life_2 paid a two-piece kind:'armorSet' (Prospector's Vest + Greaves) while
+     tut_4 had already paid "Iron Greaves" since v2.3.1692 — so the arc handed
+     out a SECOND pair of legs, and named both pieces into a "Prospector's"
+     family that matched nothing else the player owned.  Nothing failed: since
+     v2.3.1695 armour overflows to the bag rather than dressing you, so the
+     duplicate simply sat in the stash.  That is exactly why it needs pinning
+     here — the only symptom was a reward description the owner had to notice
+     by reading it.
+     Asserted per-property rather than by deep-equal, so the day someone adds a
+     field to the grant shape this still says what it means. */
+  {
+    const it = QUEST_REWARDS.life_2.item;
+    check('life_2 pays exactly ONE piece, not a set',
+      !!it && !Array.isArray(it) && it.kind !== 'armorSet', it);
+    check('life_2 pays the TORSO (kind:armor -> ps.armor), never the legs',
+      !!it && it.kind === 'armor', it);
+    check('life_2 names the piece "Iron Torso", in the same family as the greaves',
+      !!it && it.name === 'Iron Torso', it && it.name);
+    /* The leg slot belongs to tut_4 alone.  A grep over the whole reward table
+       is the assertion that survives someone re-adding legs somewhere new. */
+    const legsPayers = Object.entries(QUEST_REWARDS).filter(([, r]) => {
+      const items = Array.isArray(r.item) ? r.item
+        : (r.item && r.item.kind === 'armorSet' && Array.isArray(r.item.pieces)) ? r.item.pieces
+        : r.item ? [r.item] : [];
+      return items.some((i) => i && i.kind === 'legs');
+    }).map(([id]) => id);
+    check('exactly one quest in the whole table pays leg armour, and it is tut_4',
+      legsPayers.length === 1 && legsPayers[0] === 'tut_4', legsPayers);
+    /* Same equip gate as tut_4's: tierIndex 0 => needs 0 defense points. */
+    check('the life_2 torso is equippable at any defense level (tierMult 1.0)',
+      !!it && Math.round((it.tierMult - 1) * 6) === 0, it && it.tierMult);
+  }
 }
 
 // ── 2. Zone scoping: the whole point of the tour ──

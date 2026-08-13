@@ -48,12 +48,22 @@
  *                      is skipped (item H, v2.3.1214).
  *   7. server-tests  — if server/ changed, runs `cd server && npm test`
  *                      (zero-dep, sandbox-safe).
+ *   8. shim-allowlist — WARN: repo-wide. Every `.send({ type: 'x' })` in
+ *                      src/ must have a passthrough line in
+ *                      `channelShim.send` (src/networking/wsClient.js),
+ *                      which is an ALLOWLIST, not a transport. A type
+ *                      with no line there never leaves the browser and
+ *                      the failure is silent in both directions —
+ *                      TRAPS #18. Ate `firemaking_request` (v2.3.1702)
+ *                      and `extraction_start` (v2.3.1704, dead since
+ *                      v2.3.229, which is why "monsters ignore you while
+ *                      harvesting" never worked once).
  *
  * Output is terse and actionable on purpose — the reader is usually an
  * AI session deciding whether it may push.
  */
 import { execFileSync, spawnSync } from 'node:child_process';
-import { mkdtempSync, readFileSync, rmSync, writeFileSync, existsSync } from 'node:fs';
+import { mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -394,6 +404,65 @@ function sanitize(src, { jsxText = false } = {}) {
     for (const [f, ls] of perFile) add('WARN', 'proto-safety', `${f}:${ls.join(',')} — plain {} literal(s) indexed nearby by an id-shaped key`);
     add('WARN', 'proto-safety', `heuristic, review each: a client-supplied id like '__proto__' silently no-ops on a plain object — use Object.create(null) or Map. This recurred 3× on 2026-07-07 alone (duel.away v2.3.1175, party meta v2.3.1185, amulet tiers v2.3.1192)`);
   } else add('PASS', 'proto-safety', `no plain-{} id-keyed map pattern in ${changedServerSrc.length} changed server file(s)`);
+}
+
+/* ---- 8. shim-allowlist (WARN) -------------------------------------- */
+/* v2.3.1704: TRAPS #18, mechanised.
+ *
+ * `channelShim.send` (src/networking/wsClient.js) is an ALLOWLIST, not a
+ * transport: a `S.channel.send({ type: 'x' })` whose type has no passthrough
+ * line there never leaves the browser, and the failure is SILENT in both
+ * directions — the send returns normally, the worker never hears it, and any
+ * assertion on the client's own local prediction passes happily.
+ *
+ * It has bitten repeatedly and quietly: `firemaking_request` (v2.3.1702,
+ * one log lit unlimited fires) and then `extraction_start` (v2.3.1704), which
+ * had been dead since v2.3.229 — it took out BOTH the swipe-timing anticheat
+ * and the whole "monsters ignore you while harvesting" shield, and the owner
+ * reported the latter twice before anyone looked at the wire.
+ *
+ * WARN, not FAIL, and repo-wide rather than diff-scoped: the point is to make
+ * the standing gap list VISIBLE to every session, not to block a push on a
+ * pre-existing one that this diff never touched.  A type listed here is either
+ * a real dead send or a deliberate no-op — either way it should be a decision,
+ * not an accident. */
+{
+  let shimTypes = null;
+  try {
+    const ws = read('src/networking/wsClient.js');
+    const from = ws.indexOf('var channelShim = {');
+    const to = ws.indexOf('track: function track(', from);
+    if (from !== -1 && to > from) {
+      shimTypes = new Set([...ws.slice(from, to).matchAll(/msg\.type === '([a-z_0-9]+)'/g)].map((m) => m[1]));
+    }
+  } catch { /* unreadable — fall through to the skip below */ }
+  if (!shimTypes || !shimTypes.size) {
+    add('WARN', 'shim-allowlist', 'could not locate channelShim.send in src/networking/wsClient.js — check skipped');
+  } else {
+    /* Every client file that calls .send({ type: '…' }).  wsClient itself is
+       exempt: it talks to the raw socket, it is not a caller of the shim. */
+    const senders = new Map(); // type -> 'file:line'
+    const walk = (dir) => {
+      for (const ent of readdirSync(join(root, dir), { withFileTypes: true })) {
+        const p = `${dir}/${ent.name}`;
+        if (ent.isDirectory()) walk(p);
+        else if (/\.(js|jsx|mjs)$/.test(ent.name) && p !== 'src/networking/wsClient.js') {
+          const srcText = read(p);
+          for (const mm of srcText.matchAll(/\.send\(\s*\{\s*type:\s*'([a-z_0-9]+)'/g)) {
+            if (mm[1] === 'broadcast') continue; // the shim's own event tail
+            if (!senders.has(mm[1])) senders.set(mm[1], `${p}:${lineOf(srcText, mm.index)}`);
+          }
+        }
+      }
+    };
+    try { walk('src'); } catch { /* best effort */ }
+    const missing = [...senders].filter(([t]) => !shimTypes.has(t));
+    if (missing.length) {
+      for (const [t, where] of missing) {
+        add('WARN', 'shim-allowlist', `'${t}' is sent at ${where} but has no passthrough in channelShim.send — it never reaches the worker (TRAPS #18)`);
+      }
+    } else add('PASS', 'shim-allowlist', `all ${senders.size} client->server message type(s) have a channelShim passthrough`);
+  }
 }
 
 /* ---- 7. server tests ----------------------------------------------- */
