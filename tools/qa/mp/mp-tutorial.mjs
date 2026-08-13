@@ -201,5 +201,87 @@ export async function run({ browser, wsPort, webPort, rec }) {
     ((stillActive.rpg && stillActive.rpg._quests) || {}).tut_1 === 'active',
     stillActive.rpg && stillActive.rpg._quests);
 
+  /* ═══ v2.3.1712: TAP THE REMINDER TO FOLD IT ═══
+     Owner: "make it so you can tap on that top left quest indicator and hide
+     the description so just the title shows.  Some users might prefer that
+     view to save screen space."
+     Last in the scenario on purpose — it reloads the page to prove the
+     preference persists, which would strand every assertion above it.
+     Reload first, to get out from under the Quests panel opened above: the
+     card sits at zIndex 17 and a panel covers it, so elementFromPoint would
+     be answering about the panel. */
+  await P.page.reload();
+  await P.page.waitForTimeout(6000);
+
+  /* Everything below talks to the card through the DOM, the way a thumb
+     does — never by poking the React state. */
+  const CARD = `[...document.querySelectorAll('div')].find(
+    (d) => /\u{1F4DC}/u.test(d.textContent || '') && d.getBoundingClientRect().width < 320)`;
+
+  const readCard = () => P.page.evaluate(`(() => {
+    const hit = ${CARD};
+    if (!hit) return null;
+    const r = hit.getBoundingClientRect();
+    const S = window._gameState && window._gameState.current;
+    return {
+      h: Math.round(r.height),
+      text: (hit.textContent || '').replace(/\\s+/g, ' ').trim(),
+      /* Does the pill offer a 44pt hit area even though it LOOKS ~26px?
+         Probed 38px down from its top — past the visible bottom when folded
+         — because UI-BIBLE Part 2 allows a small visual but not a small hit
+         area. */
+      deepTapLands: (() => {
+        const el = document.elementFromPoint(r.x + 20, r.y + 38);
+        return !!(el && hit.contains(el));
+      })(),
+      px: S && S.player ? Math.round(S.player.x) : null,
+      py: S && S.player ? Math.round(S.player.y) : null,
+    };
+  })()`).catch(() => null);
+
+  const tapCard = () => P.page.evaluate(`(() => {
+    const hit = ${CARD};
+    if (!hit) return false;
+    const r = hit.getBoundingClientRect();
+    const o = { bubbles: true, cancelable: true, clientX: r.x + 20, clientY: r.y + 10 };
+    hit.dispatchEvent(new PointerEvent('pointerdown', o));
+    hit.dispatchEvent(new PointerEvent('pointerup', o));
+    hit.dispatchEvent(new MouseEvent('click', o));
+    return true;
+  })()`).catch(() => false);
+
+  const expanded = await readCard();
+  rec.ok('the quest reminder is expanded by default', !!expanded
+    && /Snowman Remnants/i.test(expanded.text), expanded);
+
+  await tapCard();
+  await P.page.waitForTimeout(400);
+  const folded = await readCard();
+  rec.ok('tapping the reminder hides the objective, leaving the title',
+    !!folded && /Cold Reception/.test(folded.text)
+    && !/Snowman Remnants/i.test(folded.text), folded);
+  rec.ok('...and the card actually got shorter (the point was screen space)',
+    !!folded && !!expanded && folded.h < expanded.h - 15, { expanded, folded });
+  /* The card floats over the world, and the world takes taps.  Without
+     stopPropagation this fold would ALSO order the character to walk to the
+     top-left corner — silent, and only visible as drift. */
+  rec.ok('...and the tap did NOT leak through to the world as a move order',
+    !!folded && !!expanded && folded.px === expanded.px && folded.py === expanded.py,
+    { before: expanded && [expanded.px, expanded.py], after: folded && [folded.px, folded.py] });
+  rec.ok('...and the folded pill still offers a 44pt hit area (UI-BIBLE)',
+    !!folded && folded.deepTapLands === true, folded);
+
+  await P.page.reload();
+  await P.page.waitForTimeout(6000);
+  const remembered = await readCard();
+  rec.ok('the folded choice survives a reload — it is a preference, not a toggle',
+    !!remembered && !/Snowman Remnants/i.test(remembered.text), remembered);
+
+  await tapCard();
+  await P.page.waitForTimeout(400);
+  const reopened = await readCard();
+  rec.ok('...and tapping again brings the objective back',
+    !!reopened && /Snowman Remnants/i.test(reopened.text), reopened);
+
   await P.ctx.close().catch(() => {});
 }
