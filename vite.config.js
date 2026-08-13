@@ -30,6 +30,24 @@ export default defineConfig({
           .replaceAll('__BUILD_SHA__', GIT_SHA + GIT_DIRTY);
       },
     },
+    {
+      /* v2.3.1718: emit dist/version.json so a RUNNING client can notice it
+         is stale.  Cloudflare Pages revalidates index.html and Vite hashes
+         every asset, so a reload always gets the new build — but a tab left
+         OPEN across a deploy keeps executing the old bundle indefinitely, and
+         no cache header can fix that.  On judging day four client deploys
+         went out in an hour and a judge ended up on a build old enough to
+         land in a different room, invisible to everyone with no error shown.
+         This file is the thing the client polls to find out. */
+      name: 'emit-version-json',
+      generateBundle() {
+        this.emitFile({
+          type: 'asset',
+          fileName: 'version.json',
+          source: JSON.stringify({ sha: GIT_SHA + GIT_DIRTY, version: pkg.version, time: BUILD_TIME }),
+        });
+      },
+    },
   ],
   define: {
     __BUILD_VERSION__: JSON.stringify(pkg.version),
