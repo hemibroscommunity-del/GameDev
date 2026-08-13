@@ -1451,24 +1451,46 @@ export function setupWebSocket(ctx) {
                  Guarded against re-delivery by value the same way the shield
                  adopt is, because any repeat of this event (a resend, a
                  reconnect that replays it) must not mint a second copy. */
+              /* ═══ v2.3.1701: THE SLOT TRAVELS WITH THE PIECE ═══
+                 Owner: "Iron Greaves" equipped to the CHEST.  The worker has
+                 sent `slot` since v2.3.1695 ('armor' | 'legsArmor', quests.js
+                 _grantQuestItem) and this handler dropped it on the floor:
+                 every piece went into `armorStash`, which ItemDetailPopup
+                 swaps against R.armor.  So the tut_4 greaves — granted as
+                 kind:'legs' precisely because the owner wanted legs first
+                 ("animations look better with legs only than they do chest
+                 only") — landed on the torso, which defeats the change that
+                 created them.
+                 A legs piece now rides its own `legsStash` and equips into
+                 R.legsArmor: the field the LEGS card reads (equipModel.js
+                 getArmorPieceDr(R.legsArmor,'legs')), the field the worker
+                 stores (persistence.js) and the field the SERVER's damage
+                 reduction reads (combat.js _armorDrMult).  Anything else
+                 would have been a piece that looks equipped and mitigates
+                 nothing. */
               if (!msg.payload || !msg.payload.item || !S.rpg) break;
               var _qrs = msg.payload.item;
+              var _qrsLegs = _qrs.slot === 'legsArmor';
               var _qrsName = String(_qrs.name || 'Quest Armor');
               var _qrsTm = Number(_qrs.tierMult) || 1;
-              if (!Array.isArray(S.rpg.armorStash)) S.rpg.armorStash = [];
-              var _qrsHeld = (S.rpg.armor && S.rpg.armor.name === _qrsName)
-                || S.rpg.armorStash.some(function (a) {
+              var _qrsKey = _qrsLegs ? 'legsStash' : 'armorStash';
+              if (!Array.isArray(S.rpg[_qrsKey])) S.rpg[_qrsKey] = [];
+              var _qrsWorn = _qrsLegs ? S.rpg.legsArmor : S.rpg.armor;
+              var _qrsHeld = (_qrsWorn && _qrsWorn.name === _qrsName)
+                || S.rpg[_qrsKey].some(function (a) {
                   return a && a.name === _qrsName && (Number(a.tierMult) || 1) === _qrsTm;
                 });
               if (!_qrsHeld) {
-                S.rpg.armorStash.push({ name: _qrsName, tierMult: _qrsTm });
+                S.rpg[_qrsKey].push({ name: _qrsName, tierMult: _qrsTm, slot: _qrsLegs ? 'legsArmor' : 'armor' });
                 try { localStorage.setItem('bt_rpg', JSON.stringify(S.rpg)); } catch (e) {}
               }
               if (typeof window !== 'undefined' && typeof window._setLevelUpMsg === 'function') {
                 window._setLevelUpMsg({
                   kind: 'warning',
                   text: _qrsName + ' went to your bag',
-                  sub: 'Your chest slot was already full — equip it from the Character menu',
+                  sub: _qrsLegs
+                    ? 'Equip it from your bag — it goes on your legs'
+                    : 'Your chest slot was already full — equip it from the Character menu',
                   ts: Date.now(),
                 });
               }

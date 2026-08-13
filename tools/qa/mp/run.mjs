@@ -41,6 +41,8 @@ const SCENARIOS = {
   lifeskill: () => import('./mp-lifeskill.mjs'), /* v2.3.1680: tool-gated gathering */
   questui: () => import('./mp-questui.mjs'), /* v2.3.1681: the world dialogue's art + the offer filter */
   hpbar: () => import('./mp-hpbar.mjs'), /* v2.3.1682: the contextual player HP bar */
+  questprox: () => import('./mp-questprox.mjs'), /* v2.3.1701: the giver's dialogue opens on approach */
+  questlegs: () => import('./mp-questlegs.mjs'), /* v2.3.1701: the quest greaves equip to the LEGS */
 };
 
 const want = process.argv.slice(2).filter((a) => !a.startsWith('-'));

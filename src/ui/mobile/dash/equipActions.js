@@ -73,7 +73,14 @@ export function unequipShieldDirect() {
    through setRpgState, so BroTown's React-driven stats_update
    useEffect doesn't fire on its own.  Send the armor change (with
    current raw stats) so the server recomputes maxes correctly. */
-export function syncArmorChange(R) {
+/* v2.3.1701: `opts.legs` adds the LEGS piece to the push.  It is opt-in
+   rather than always-on for the reason spelled out in t1Sync.js: a field
+   this client has not learned yet must be OMITTED, not reported as null —
+   `_handleStatsUpdate` skips absent keys, so a chest swap made before the
+   first player_state echo cannot wipe a legs piece the server is holding.
+   Only the legs flows, which by definition know what they just equipped,
+   send it. */
+export function syncArmorChange(R, opts) {
   const S = getState();
   if (S && S.channel) {
     try {
@@ -88,6 +95,7 @@ export function syncArmorChange(R) {
       S.channel.send({ type: 'stats_update', payload: {
         armor: R.armor || null,
         maxHp: R.maxHp || 100,
+        ...(opts && opts.legs ? { legsArmor: R.legsArmor || null } : null),
         ...t1StatsPayload(S, R),
         /* v2.3.1155: the five retired T2 stats are off the wire. */
       }});

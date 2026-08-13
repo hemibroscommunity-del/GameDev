@@ -646,6 +646,15 @@ export const combatMethods = {
     if (!m.dmgByPlayer) m.dmgByPlayer = Object.create(null); // v2.3.1202: player-id-keyed
     m.dmgByPlayer[session.id] = (m.dmgByPlayer[session.id] || 0) + actualDmg;
 
+    /* v2.3.1701: DAMAGE-DEALT STAMP — the other half of "in combat".
+       `lastDamageAt` only ever meant damage TAKEN, so the spoke-zone
+       out-of-combat regen (_tickPlayerRegen) would have ticked for a player
+       who is standing over a monster hitting it and simply has not been hit
+       back yet — every slow archetype (snowman, brute, mummy) leaves exactly
+       that window.  In-memory only, like the stamp it sits beside: NOT in
+       _saveRpg's fixed field list (handoff rule 1). */
+    attackerPs._lastDealtAt = Date.now();
+
     // v2.3.1659 (prog3): server-authoritative trained XP (§9-A) — the
     // skill that swung earns damage-proportional XP at hit time, from
     // the CREDITED amount (overkill clamped above, so grinding a
@@ -1205,6 +1214,10 @@ export const combatMethods = {
       const rawDmg = dmgBase * (isCrit ? 1.5 : 1) * this.PVP_TUNING.DMG_SCALE * defMit;
       const dmgResult = this._applyDamage(targetPs, rawDmg, blocked);
       const dmgTaken = dmgResult.dmgTaken;
+      /* v2.3.1701: the attacker is in combat too (see the twin stamp in
+         _handleMonsterDamage) — otherwise a PvP aggressor in a lawless zone
+         out-regenerates the fight they are winning. */
+      attackerPs._lastDealtAt = Date.now();
 
       // Build hit event — server-authoritative hp now mirrors via
       // player_state below, but dmgTaken in the payload drives the

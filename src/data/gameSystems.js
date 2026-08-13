@@ -5044,6 +5044,10 @@ export function createDefaultRpg() {
     /* v2.3.228: armor stash mirrors weaponStash/shieldStash so the
        chest slot supports equip/unequip via the item-detail popup. */
     armorStash: [],
+    /* v2.3.1701: the LEGS half of the same pair.  Its own list, so a legs
+       piece can never be swapped into the chest slot by the shared popup —
+       which is exactly how "Iron Greaves" ended up on the torso. */
+    legsStash: [],
     /* Active weapon slot: 'melee' or 'ranged' */
     activeSlot: 'melee'
   };

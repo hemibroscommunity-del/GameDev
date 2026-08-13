@@ -70,3 +70,30 @@ deploys first, safely.
 advertisement, kill increments (and NOT gather/objective-less), harvest
 increments, unmet turn-in refusal, met turn-in pays once + unlocks next,
 replay refusal, objective-less quests unchanged.
+
+## Quest objectives survive death (v2.3.1701)
+
+Owner playtest: dying on an errand dropped the very remnants you were sent
+to fetch, so a death did not merely cost loot — it reset the quest. The
+tutorial arc is four collect-and-return steps in zones that can kill a
+level-1 character, so the step you are on is exactly what the death takes.
+
+Objective items now join the gathering tools (v2.3.1688) in the death
+carve-out: one predicate, `_keptThroughDeath` (`server/src/gathering.js`),
+is read by BOTH death paths — the wipe in `_handlePlayerDeath` /
+`_tickPlayerRespawn` and the drop in `_spawnDeathPile` — so an item can
+never be both kept and dropped (which would mint a duplicate on the
+ground). Everything else in the bag still drops.
+
+The protected keys are DERIVED from the shipped table, never hardcoded:
+`_isQuestObjectiveItem` / `_QUEST_KEEP_SPEC` (`server/src/quests.js`) walk
+every `QUEST_REWARDS` objective's `invKey` (exact) and `invPrefix` (a
+family — `cooked_fish_<species>`, `ore_<name>`), the same two fields
+`_collectHeld` / `_collectConsume` read, so "countable" and "protected" are
+the same set and a new quest is covered without touching either death path.
+Memoised per DO; table-wide rather than per-active-quest, deliberately —
+protecting only accepted steps loses the remnants of a step you farmed
+ahead of, which is the same bad moment one indirection later.
+
+Pinned by `server/test/combat-lifecycle.test.mjs` (both objective shapes,
+both wipes, and the "no duplicate on the ground" property).

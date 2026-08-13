@@ -66,9 +66,15 @@ export function getEquippedSlots(R) {
       ghost: !R.shield, pickerSlot: 'shield' },
     { slot: 'chest', label: 'Chest', item: chestEquipped ? { gearChestId, gearShirtId } : null,
       iconSrc: chestIcon, ghost: !chestEquipped, pickerSlot: 'chest' },
-    { slot: 'legs', label: 'Legs', item: gearLegsId !== 'none' ? { gearLegsId } : null,
-      iconSrc: gearLegsId !== 'none' ? gearIconSrc(gearLegsId) : null,
-      ghost: gearLegsId === 'none', pickerSlot: 'legs' },
+    /* v2.3.1701: the LEGS cell counts the stat-bearing piece too, exactly as
+       the chest cell counts R.armor above.  R.legsArmor is what the server's
+       damage reduction reads, so a worn greave that leaves this cell empty
+       is the UI disagreeing with the fight. */
+    { slot: 'legs', label: 'Legs',
+      item: (gearLegsId !== 'none' || R.legsArmor) ? { gearLegsId, legsArmor: R.legsArmor } : null,
+      iconSrc: gearLegsId !== 'none' ? gearIconSrc(gearLegsId)
+        : R.legsArmor ? `/icons/items/greaves.webp${ITEMS_V}` : null,
+      ghost: gearLegsId === 'none' && !R.legsArmor, pickerSlot: 'legs' },
     /* Cape: Phase-2 — no data field yet; permanently ghosted, no picker. */
     { slot: 'cape', label: 'Cape', item: null, iconSrc: null, ghost: true, pickerSlot: null },
     /* v2.3.1325: an equipped amulet finally shows real art instead of

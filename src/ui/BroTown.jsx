@@ -130,6 +130,7 @@ import { handleZoneTransitions } from '@/game/zoneTransitions.js';
 /* v2.3.789: desktop keyboard handlers extracted behavior-frozen (REBUILD-PLAN Phase 7). */
 import { setupDesktopControls } from '@/game/desktopControls.js';
 import { actionBus } from './mobile/actionBus.js'; /* v2.3.1562: quick-bar weapon swap */
+import { dashboardPanelBus } from './mobile/dashboardPanelBus.js'; /* v2.3.1701: "is the bottom sheet open?" for the proximity dialogue */
 /* v2.3.809: per-zone mechanics extracted behavior-frozen (REBUILD-PLAN Phase 8, slice 1). */
 import { updateZoneMechanics } from '@/game/zoneMechanics.js';
 /* v2.3.810: dungeon wave progression extracted behavior-frozen (REBUILD-PLAN Phase 8, slice 2). */
@@ -1956,6 +1957,22 @@ export var BroTown = function BroTown(_ref0) {
     dungeonCreator: setDungeonCreator,  // paired with showDungeonCreator
     tradeTarget: setTradeTarget,        // paired with showTrade
   };
+  /* v2.3.1701: IS ANY UI IN FRONT OF THE WORLD RIGHT NOW?
+     Mirrored into stateRef because the game loop (a plain rAF closure) cannot
+     read React state, and the proximity quest-dialogue below must never steal
+     focus from something the player deliberately opened.  Written during
+     render like window._uiPanels above it, so it is fresh on the very frame
+     the panel appears — an effect would be one frame late, which is exactly
+     the frame the auto-open would fire on.  Deliberately generous: false
+     negatives here open a dialogue over someone's inventory, which is worse
+     than a dialogue that waits. */
+  stateRef.current._uiBusy = !!(questPanel || buildingPanel || showInventory || showSkills
+    || showStatScreen || showShop || showEncyclopedia || showLeaderboard || showSocialPanel
+    || showClanPanel || showGuildPanel || showFeedback || showPetHouse || showFurniture
+    || showPlayerList || showDungeonCreator || showTrade || incomingTrade || trade2
+    || duelRequest || threatIncoming || inspectPlayer || chatOpen || showEmotes || showInfo
+    || showIntro || showWelcome || showMayorGreeting || showTourPrompt || showNameModal
+    || cookMinigame);
   /* v2.3.1643: showChatLog, showClanWar and showArena USED TO LIVE HERE
      and were declared but never read — three dead useState pairs whose
      setters nothing called either. Removed. If you are looking for those
@@ -4009,6 +4026,63 @@ export var BroTown = function BroTown(_ref0) {
           });
         }
 
+        /* ═══ v2.3.1701: QUEST GIVERS OPEN ON PROXIMITY ═══
+           Owner: "make the quest dialog with mayor bro pop up when you get in
+           close proximity to him instead of needing to tap him it's finicky
+           right now needing to tap him."  Landing a thumb on a 30px NPC while
+           the camera moves is the finicky part; walking up to him is not.
+
+           The tap path is UNCHANGED and still works — this is an addition.
+
+           NOTE THE DELIBERATE CONTRAST WITH RESOURCE NODES: those are
+           tap-only ON PURPOSE (v2.3.1448, owner: "only when a user touches
+           the resource on screen does the resource extraction menu pop up"),
+           which is why S._nearNode is fed from S._tapNode and not from
+           proximity.  This changes quest-giver NPCs only.
+
+           THE LATCH is the whole design.  Opening on "is he near" alone
+           re-opens the dialogue on the very next frame after it is dismissed,
+           so the player can never walk away from him — the panel becomes a
+           trap rather than a convenience.  So: open ONCE on approach, then
+           hold the latch (S._npcProxLatch) until the player has left a LARGER
+           radius.  Hysteresis, not one radius: a single threshold flickers
+           for anyone standing on the boundary.  Both the TAP and the E-key
+           paths arm the same latch, so closing a dialogue you opened yourself
+           does not immediately get one back either.
+
+           Radii from his on-screen footprint: the tap target is 30px and
+           TILE is 32, so OPEN is ~1.75 tiles (you are standing with him) and
+           CLEAR ~3.4 tiles (you have plainly walked off). */
+        {
+          var NPC_PROX_OPEN = 56, NPC_PROX_CLEAR = 110;
+          var _px = S.player ? S.player.x : 0, _py = S.player ? S.player.y : 0;
+          var _latched = S._npcProxLatch || null;
+          if (_latched) {
+            var _ld = Math.sqrt(Math.pow(_latched.x - _px, 2) + Math.pow(_latched.y - _py, 2));
+            /* Released by walking away, or by anything that ends this visit
+               to town (zone change nulls S.npcs). */
+            if (!S.npcs || S.currentZone !== 'town' || _ld > NPC_PROX_CLEAR) S._npcProxLatch = null;
+          }
+          var _pn = S._nearNpc;
+          if (_pn && !S._npcProxLatch && S.currentZone === 'town') {
+            var _pd = Math.sqrt(Math.pow(_pn.x - _px, 2) + Math.pow(_pn.y - _py, 2));
+            /* Every gate that means "not now": something else is on screen,
+               mid-extraction, behind the per-zone loading overlay, or dead. */
+            var _pOk = _pd <= NPC_PROX_OPEN && !S._uiBusy && !S._extraction && !S._zoneLoading
+              && !S._dying && !(S.rpg && typeof S.rpg.hp === 'number' && S.rpg.hp <= 0)
+              /* the bottom sheet counts as an open panel — the nav rail's
+                 destinations render over the world just like the modals do. */
+              && dashboardPanelBus.state.mode === 'bar';
+            if (_pOk) {
+              var _pq = getNpcQuest(S.rpg, _pn.name);
+              if (_pq) {
+                S._npcProxLatch = _pn;
+                setQuestPanel({ npc: _pn.name, quest: _pq.quest, status: _pq.status, npcRef: _pn });
+              }
+            }
+          }
+        }
+
         /* Trail — record position every few frames */
         if (!S._trailTimer) S._trailTimer = 0;
         S._trailTimer++;
@@ -5575,6 +5649,9 @@ export var BroTown = function BroTown(_ref0) {
     BT_AUDIO.enterBuilding();
   }, [dungeonCreator]);
   var _desktopNpcQuest = useCallback(function (npc, npcQ) {
+    /* v2.3.1701: the E-key door arms the proximity latch too (see the tap
+       handler) — the desktop player is standing next to him by definition. */
+    stateRef.current._npcProxLatch = npc;
     setQuestPanel({
       npc: npc.name,
       quest: npcQ.quest,
@@ -7102,6 +7179,11 @@ export var BroTown = function BroTown(_ref0) {
               /* Check if NPC has a quest */
               var npcQ = getNpcQuest(S.rpg, npc.name);
               if (npcQ) {
+                /* v2.3.1701: a TAP arms the same latch the proximity opener
+                   uses, so closing a dialogue you opened by hand while
+                   standing on him does not get one straight back from the
+                   loop.  Both doors, one latch. */
+                S._npcProxLatch = npc;
                 setQuestPanel({
                   npc: npc.name,
                   quest: npcQ.quest,

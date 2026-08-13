@@ -584,5 +584,90 @@ check('forged monster_transform dropped by deny-list',
     && ({}).m1 === undefined);
 }
 
+/* ── v2.3.1701: OUT-OF-COMBAT REGEN IN THE SPOKE (COMBAT) ZONES ──
+ *
+ * Owner playtest: "a fresh level-1 character in Frost Ridge gets roughly ONE
+ * snowman kill per full health bar" — and HP only regenerated in the hubs, so
+ * every kill cost a round trip to the World View (7 deaths, 7 heal trips in
+ * the measured run).  _tickPlayerRegen now trickles HP in combat zones once
+ * the player has been out of combat for SPOKE_REGEN_OOC_MS.
+ *
+ * The interesting half is what must NOT regenerate: the trickle is gated on
+ * both halves of "in combat" — damage TAKEN (lastDamageAt) and damage DEALT
+ * (_lastDealtAt).  Without the second stamp a player standing over a slow
+ * monster, hitting it and not yet being hit back, heals mid-fight.
+ *
+ * Uses its own room so the sections above (which leave `ps` in the meadow at
+ * odd HP) cannot influence it. */
+{
+  const stateR = makeState();
+  const roomR = new GameRoom(stateR, mockEnv);
+  const wsR = fakeWs('regen');
+  roomR.sessions.set(wsR, baseSession());
+  await roomR.webSocketMessage(wsR, JSON.stringify({ type: 'join', id: 'bp_rg', name: 'R', phrase: 'p-rg', data: { x: -100000, y: -100000, z: 'town' } }));
+  const psR = roomR.playerState['bp_rg'];
+  psR.maxHp = 100; psR.maxStamina = 100; psR.maxMana = 100;
+  psR.stamina = 100; psR.mana = 100;
+  const OOC = roomR.SPOKE_REGEN_OOC_MS;
+  const outOfCombat = () => {
+    psR.lastDamageAt = Date.now() - OOC - 1000;
+    psR._lastDealtAt = Date.now() - OOC - 1000;
+  };
+
+  // In a combat zone, freshly hit: nothing.
+  psR.z = 'frost'; psR.hp = 40;
+  psR.lastDamageAt = Date.now(); psR._lastDealtAt = Date.now() - OOC - 1000;
+  roomR._tickPlayerRegen();
+  check('spoke regen: a player who was just HIT does not regenerate', psR.hp === 40, psR.hp);
+
+  // Just dealt damage (the slow-monster window): still nothing.
+  psR.hp = 40;
+  psR.lastDamageAt = Date.now() - OOC - 1000; psR._lastDealtAt = Date.now();
+  roomR._tickPlayerRegen();
+  check('spoke regen: a player still SWINGING does not regenerate (damage-dealt stamp)',
+    psR.hp === 40, psR.hp);
+
+  // Out of combat on both counts: the trickle runs.
+  psR.hp = 40; outOfCombat();
+  roomR._tickPlayerRegen();
+  const trickle = psR.hp - 40;
+  check('spoke regen: out of combat in a combat zone, HP trickles back',
+    psR.hp > 40, { hp: psR.hp, trickle });
+  check('spoke regen: the trickle is a fraction of the hub pace, not a heal button',
+    trickle === Math.max(1, Math.round(100 * roomR.SPOKE_REGEN_PCT)) && trickle <= 100 * 0.10 / 5,
+    { trickle, hubTick: Math.ceil(100 * 0.10) });
+
+  // It stops at max and never overshoots.
+  psR.hp = psR.maxHp - 1; outOfCombat();
+  roomR._tickPlayerRegen();
+  check('spoke regen: never overshoots maxHp', psR.hp === psR.maxHp, psR.hp);
+
+  // The hub is still the fast way home.
+  psR.z = 'town'; psR.hp = 40; outOfCombat();
+  roomR._tickPlayerRegen();
+  check('hub regen unchanged: a hub still heals 10% of maxHp per tick',
+    psR.hp === 50, psR.hp);
+
+  // A dead / dying player is untouched (the loop's own guard, pinned here
+  // because the new branch runs for every non-hub zone).
+  psR.z = 'frost'; psR.hp = 10; psR.dying = true; outOfCombat();
+  roomR._tickPlayerRegen();
+  check('spoke regen: a dying player does not trickle back to life', psR.hp === 10, psR.hp);
+  psR.dying = false;
+
+  /* The stamp itself: dealing damage to a monster must mark the attacker as
+     in combat, or the gate above is unreachable in a real fight. */
+  psR.z = 'meadow'; psR.x = 0; psR.y = 0;
+  const mons = roomR._ensureZoneMonsters('meadow');
+  const target = mons[0];
+  target.x = 10; target.y = 0; target.alive = true; target.hp = target.maxHp;
+  psR._lastDealtAt = 0;
+  await roomR.webSocketMessage(wsR, JSON.stringify({
+    type: 'monster_damage', payload: { monsterId: target.id, zone: 'meadow', dmg: 1, slot: 'melee' },
+  }));
+  check('the damage-DEALT stamp is set by hitting a monster',
+    typeof psR._lastDealtAt === 'number' && Date.now() - psR._lastDealtAt < 2000, psR._lastDealtAt);
+}
+
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);
 process.exit(failures === 0 ? 0 : 1);
