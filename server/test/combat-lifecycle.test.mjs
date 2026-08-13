@@ -843,6 +843,41 @@ for (const m of meadowMonsters) m._wanderPausedUntil = Date.now() + 600000;
   room._spawnDeathPile = pileOrig;
   delete room.playerState['stuck1'];
   delete room.playerState['stuck2'];
+
+  /* ── v2.3.1688: dying must not destroy the GATHERING TOOLS ──
+   * Owner: "Logs are not getting collected after woodcutting a tree. Maybe
+   * it's the new requirement of having a woodcutting axe interfering with it."
+   * Right cause, one step back: the gate works and the axe was gone. v2.3.1680
+   * holds the tools as ordinary inventory items, and death wipes the
+   * inventory — so one death silently ended woodcutting/fishing/mining
+   * forever, because the quest that grants them cannot be turned in twice.
+   * Both wipes are covered: the death one and the unconditional respawn one. */
+  {
+    const pid = 'toolman';
+    room.playerState[pid] = {
+      hp: 0, maxHp: 100, z: 'frost', x: 10, y: 10,
+      inventory: { woodcutting_axe: 1, fishing_pole: 1, mining_pickaxe: 1, ore: 5, wood_kindling: 3 },
+    };
+    const psT = room.playerState[pid];
+    room._handlePlayerDeath(psT, pid, 'monster:x');
+    check('death keeps the gathering tools',
+      psT.inventory.woodcutting_axe === 1 && psT.inventory.fishing_pole === 1
+      && psT.inventory.mining_pickaxe === 1, psT.inventory);
+    check('...and still drops everything else',
+      !psT.inventory.ore && !psT.inventory.wood_kindling, psT.inventory);
+    /* The death PILE must not carry a copy, or every death mints a spare. */
+    const piles = Object.values(room.loot || {}).flat()
+      .filter((l) => l && Array.isArray(l.items));
+    const toolInPile = piles.some((l) => l.items.some((i) => i && /axe|pole|pickaxe/.test(i.key)));
+    check('...and no duplicate tool is left on the ground', !toolInPile,
+      piles.map((l) => l.items && l.items.map((i) => i.key)));
+    /* Second wipe, five seconds later. */
+    psT.hp = 0; psT.dying = true; psT.respawnAt = Date.now() - 1;
+    room._tickPlayerRespawn();
+    check('the respawn wipe keeps them too',
+      psT.inventory.woodcutting_axe === 1 && psT.inventory.mining_pickaxe === 1, psT.inventory);
+    delete room.playerState[pid];
+  }
   delete room.playerState['well'];
 }
 

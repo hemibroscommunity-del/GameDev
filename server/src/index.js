@@ -2096,7 +2096,10 @@ export class GameRoom {
       // Anyone in the zone can pick the pile up; despawns after 60 s.
       // Spawn BEFORE the inventory wipe so we capture the items.
       _hook('deathPile', () => this._spawnDeathPile(ps, playerId));
-      ps.inventory = {};
+      /* v2.3.1688: the gathering TOOLS survive (see _keepGatherTools).  They
+         are equipment held in the bag for storage reasons, not loot — losing
+         them to a death silently ends woodcutting/fishing/mining for good. */
+      ps.inventory = this._keepGatherTools(ps.inventory);
     }
     /* v2.3.1616: carry the duel exemption forward to the RESPAWN wipe, which
        is a second, unconditional `ps.inventory = {}` five seconds from now
@@ -2165,7 +2168,10 @@ export class GameRoom {
          precisely the window where it was still intact, so the suite was
          green throughout. */
       if (ps._duelDeathKeepsBag) delete ps._duelDeathKeepsBag;
-      else ps.inventory = {};
+      /* v2.3.1688: the respawn wipe keeps the tools too — it is the second,
+         unconditional wipe, so sparing them at death alone would not have
+         saved them. */
+      else ps.inventory = this._keepGatherTools(ps.inventory);
       ps.dmgFromMonster = {};
       this._saveRpg(id, ps);
       const ws = this._wsBySessionId(id);
@@ -2521,7 +2527,12 @@ export class GameRoom {
   _spawnDeathPile(ps, playerId) {
     if (!ps || !ps.inventory) return null;
     const items = [];
+    /* v2.3.1688: the gathering tools are NOT loot.  They stay in the bag
+       through death (see _keepGatherTools), so dropping copies here would
+       mint a second axe on the ground every time the player died. */
+    const _toolKeys = this._GATHER_TOOL_KEYS();
     for (const [k, v] of Object.entries(ps.inventory)) {
+      if (_toolKeys.has(k)) continue;
       const qty = Math.floor(Number(v) || 0);
       if (qty > 0) items.push({ key: k, qty });
     }

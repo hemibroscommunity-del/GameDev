@@ -301,6 +301,34 @@ export const gatheringMethods = {
     mining: 'mining_pickaxe',
   },
 
+  /** v2.3.1688: the tool keys as a Set, for the death paths.
+   *
+   * Owner: "Logs are not getting collected after woodcutting a tree.  Maybe
+   * it's the new requirement of having a woodcutting axe interfering with it."
+   * Right cause, one step further back: the gate works, and the axe was GONE.
+   * v2.3.1680 chose to hold these tools as ordinary inventory items ("needs no
+   * new storage field") — and DEATH WIPES ps.inventory.  So dying deleted your
+   * axe, pole and pickaxe, permanently, since the quest that granted them
+   * cannot be turned in twice.  After that every extraction is refused in
+   * silence (both the start and the paying strike gate on the tool), which
+   * from the player's side looks exactly like "chopping stopped giving logs".
+   * They are equipment, not loot: they neither drop into the death pile nor
+   * get wiped. */
+  _GATHER_TOOL_KEYS() {
+    return new Set(Object.values(this._GATHER_TOOL_FOR_SKILL));
+  },
+
+  /** Strip everything EXCEPT the gathering tools — the death-wipe helper. */
+  _keepGatherTools(inventory) {
+    const keep = Object.create(null); // rule 4: inventory keys are client-supplied
+    if (!inventory) return keep;
+    for (const k of this._GATHER_TOOL_KEYS()) {
+      const qty = Math.floor(Number(inventory[k]) || 0);
+      if (qty > 0) keep[k] = qty;
+    }
+    return keep;
+  },
+
   /** Does this player hold the tool for a gathering skill?  True for any skill
    *  that is not tool-gated at all. */
   _hasGatherTool(ps, skill) {
