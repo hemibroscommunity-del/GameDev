@@ -426,5 +426,30 @@ const session = [...room.sessions.values()].find((s) => s.id === 'bp_gr_a');
   ps.weaponSpecs = {}; ps.hpSpec = {}; ps.t2Flat = undefined;
 }
 
+/* ── v2.3.1701: the LEGS slot finally has a client→server route ──
+ *
+ * `ps.legsArmor` is half of _armorDrMult (v2.3.1679) and the worker could
+ * only ever GRANT one — there was no ingest, so a player equipping the quest
+ * greaves changed nothing the server used to compute damage.  It rides
+ * stats_update beside `armor` now, with the same clamp and the same
+ * absent-means-no-opinion rule (a chest-only push must not strip the legs). */
+{
+  const psL = room.playerState['bp_gr_a'];
+  psL.legsArmor = null;
+  room._handleStatsUpdate(session, { legsArmor: { name: 'Iron Greaves', tierMult: 1 } });
+  check('legs: an equipped greave is stored on the server',
+    !!psL.legsArmor && psL.legsArmor.name === 'Iron Greaves', psL.legsArmor);
+  check('legs: it reduces damage through _armorDrMult (the point of the slot)',
+    room._armorDrMult(psL) < 1, room._armorDrMult(psL));
+  room._handleStatsUpdate(session, { legsArmor: { name: 'Forged Greaves', tierMult: 999 } });
+  check('legs: tierMult is clamped like the chest piece (x8 ceiling)',
+    psL.legsArmor.tierMult === 8, psL.legsArmor);
+  room._handleStatsUpdate(session, { armor: null });
+  check('legs: a push that does not mention legs leaves them alone',
+    !!psL.legsArmor && psL.legsArmor.name === 'Forged Greaves', psL.legsArmor);
+  room._handleStatsUpdate(session, { legsArmor: null });
+  check('legs: an explicit null unequips', psL.legsArmor === null, psL.legsArmor);
+}
+
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);
 process.exit(failures === 0 ? 0 : 1);

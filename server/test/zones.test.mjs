@@ -189,5 +189,69 @@ const room = new GameRoom(mockState, {});
     && !DUNGEON_ZONE_RE.test('dungeon:' + 'x'.repeat(33)));
 }
 
+// ── 8. THE WORLD MAP IS WALKABLE (v2.3.1700) ────────────────────────────
+/* The tutorial arc died here, headlessly, before it reached a single
+ * snowman: arriving on the World View from town used to drop the player
+ * at tile (24,31), three tiles SOUTH of the town trail-head at (24,28) —
+ * i.e. on the far side of the town portal from the spokes.  Hub exits fire
+ * within TOWN_EXIT_R = 2 manhattan TILES, so walking a straight line at
+ * Frost Ridge / Flame Fields / Wind Dunes clipped the town marker and
+ * warped the player back to town, forever.  zoneTransitions.js now lands
+ * the player on the INSIDE of the trail-head they arrived through (marker
+ * + 4 tiles toward the hub centre — the same rule the spoke->hub return
+ * already used), which puts the town portal BEHIND them.
+ *
+ * This is a GEOMETRY test, not a rendering one: it re-derives that spawn
+ * from the shipped exit tables and walks the straight line to every live
+ * spoke, so a future retune of either table (or of the offset) fails here
+ * instead of stranding a new player on quest one. */
+{
+  const { TOWN_EXITS, WORLDVIEW_EXITS } = await import('../../src/data/effects.js');
+  const TOWN_EXIT_R = 2;      /* zoneTransitions.js */
+  const HUB_SPAWN_INSET = 4;  /* zoneTransitions.js v2.3.1700 */
+
+  /* Where zoneTransitions puts you when you enter `hub` from `fromZone`. */
+  const arrival = (hubId, exits, fromZone) => {
+    const z = CLIENT_ZONES[hubId];
+    const back = exits.find((e) => e.zoneId === fromZone);
+    if (!back) return null;
+    const dx = z.w / 2 - back.tx, dy = z.h / 2 - back.ty;
+    const len = Math.max(0.001, Math.hypot(dx, dy));
+    return { tx: back.tx + dx / len * HUB_SPAWN_INSET, ty: back.ty + dy / len * HUB_SPAWN_INSET };
+  };
+
+  /* Manhattan distance in TILES, matching the proximity test's own
+     Math.floor(px / TILE) quantisation. */
+  const tileDist = (p, ex) => Math.abs(Math.floor(p.tx) - ex.tx) + Math.abs(Math.floor(p.ty) - ex.ty);
+
+  const wvArrival = arrival('worldview', WORLDVIEW_EXITS, 'town');
+  check('worldview arrival: the reciprocal town trail-head is found', !!wvArrival, wvArrival);
+  check('worldview arrival: you do not land inside the town portal',
+    wvArrival && tileDist(wvArrival, WORLDVIEW_EXITS.find((e) => e.zoneId === 'town')) > TOWN_EXIT_R,
+    wvArrival);
+
+  const townArrival = arrival('town', TOWN_EXITS, 'worldview');
+  check('town arrival: you do not land inside the World View portal',
+    townArrival && tileDist(townArrival, TOWN_EXITS.find((e) => e.zoneId === 'worldview')) > TOWN_EXIT_R,
+    townArrival);
+
+  /* The walk itself.  Sampled finely enough that no 32px tile is skipped. */
+  const clips = (from, to, marker) => {
+    const steps = Math.ceil(Math.hypot(to.tx - from.tx, to.ty - from.ty) * 4) || 1;
+    for (let i = 0; i <= steps; i++) {
+      const p = { tx: from.tx + (to.tx - from.tx) * i / steps, ty: from.ty + (to.ty - from.ty) * i / steps };
+      if (tileDist(p, marker) <= TOWN_EXIT_R) return p;
+    }
+    return null;
+  };
+  const townMark = WORLDVIEW_EXITS.find((e) => e.zoneId === 'town');
+  for (const ex of WORLDVIEW_EXITS) {
+    if (ex.zoneId === 'town') continue;
+    const hit = wvArrival && clips(wvArrival, ex, townMark);
+    check(`world map: walking from the arrival point to ${ex.zoneId} does not fall back into town`,
+      !hit, { arrival: wvArrival, spoke: ex.zoneId, clippedAt: hit });
+  }
+}
+
 console.log(failures === 0 ? '\nALL TESTS PASSED' : `\n${failures} TEST(S) FAILED`);
 process.exit(failures === 0 ? 0 : 1);

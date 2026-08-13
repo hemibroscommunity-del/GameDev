@@ -155,7 +155,7 @@ Server cases in `GameRoom.webSocketMessage`, `server/src/index.js`
 | `loot_pickup` | Claim ground loot (server answers `loot_credit` or `loot_pickup_rejected`) | ~3863 |
 | `stat_allocate` | Spend a stat point (answers `stat_allocated`) | ~3872 |
 | `cook_request` / `cook_recipe` | Cooking minigame start / result | ~3881 / ~3926 |
-| `stats_update` | Push derived stats (maxHp/def/regen) so worker damage math stays in sync | ~3891 |
+| `stats_update` | Push derived stats (maxHp/def/regen) so worker damage math stays in sync, plus the two ARMOUR slots — `armor` and (v2.3.1701) `legsArmor`, each `{name, tierMult}` or `null`. Absent means "no opinion", never "unequip": only the flow that changed a slot sends that slot's key (`equipActions.js syncArmorChange`), so a client that has not learned a piece cannot wipe it | ~3891 |
 | `ability_use` | Special moves — `payload.type` ∈ `dodge`, `lunge`, `retreat`, `swipe` (+ tier); server may answer `ability_rejected` | ~3900 |
 | `eat_request` | Consume food (server-authoritative heal) | ~3909 |
 | `shop_purchase` | Buy from vendor | ~3918 |

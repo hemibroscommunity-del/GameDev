@@ -878,6 +878,66 @@ for (const m of meadowMonsters) m._wanderPausedUntil = Date.now() + 600000;
       psT.inventory.woodcutting_axe === 1 && psT.inventory.mining_pickaxe === 1, psT.inventory);
     delete room.playerState[pid];
   }
+
+  /* ── v2.3.1701: dying must not destroy the QUEST OBJECTIVE items ──
+   * Owner: dying on an errand dropped the very remnants you were sent to
+   * fetch, so a death did not merely cost loot — it reset the quest.  The
+   * tutorial arc is four collect-and-return steps in zones that kill a
+   * level-1 character, so the step you are on is exactly what the death
+   * takes.  Same carve-out shape as the tools above, with the protected
+   * keys DERIVED from the shipped quest table (QUEST_REWARDS objectives'
+   * invKey / invPrefix) so a new quest is covered without touching this.
+   *
+   * Both objective shapes are exercised: an exact `invKey` (snowman) and an
+   * `invPrefix` FAMILY (`cooked_fish_<species>` / `ore_<name>`), because
+   * only the second one can be got wrong by a Set-of-keys implementation. */
+  {
+    const pid = 'questman';
+    room.playerState[pid] = {
+      hp: 0, maxHp: 100, z: 'frost', x: 12, y: 12,
+      inventory: {
+        snowman: 4,                  // tut_1  invKey
+        'slime-remnants': 2,         // tut_2  invKey
+        cooked_fish_minnow: 3,       // life_1 invPrefix family
+        ore_copper: 5,               // life_2 invPrefix family
+        wood_kindling: 7,            // ordinary loot — must still drop
+        gold_nugget: 2,              // ordinary loot — must still drop
+      },
+    };
+    const psQ = room.playerState[pid];
+    room._handlePlayerDeath(psQ, pid, 'monster:x');
+    check('death keeps the quest objective items (exact invKey)',
+      psQ.inventory.snowman === 4 && psQ.inventory['slime-remnants'] === 2, psQ.inventory);
+    check('death keeps an invPrefix FAMILY too (cooked fish / ore)',
+      psQ.inventory.cooked_fish_minnow === 3 && psQ.inventory.ore_copper === 5, psQ.inventory);
+    check('...and everything else still drops',
+      !psQ.inventory.wood_kindling && !psQ.inventory.gold_nugget, psQ.inventory);
+    /* The pile must not carry a copy, or a death MINTS quest progress on
+       the ground — the mirror of the duplicate-axe hazard (v2.3.1688). */
+    const qPiles = Object.values(room.loot || {}).flat()
+      .filter((l) => l && Array.isArray(l.deathItems));
+    const keys = qPiles.flatMap((l) => l.deathItems.map((i) => i && i.key));
+    check('the death pile drops the ordinary loot',
+      keys.includes('wood_kindling') && keys.includes('gold_nugget'), keys);
+    check('...and NOT a duplicate of the protected quest items',
+      !keys.includes('snowman') && !keys.includes('slime-remnants')
+      && !keys.includes('cooked_fish_minnow') && !keys.includes('ore_copper'), keys);
+    /* Second wipe, five seconds later — sparing them at death alone would
+       have been cosmetic (the v2.3.1616 lesson). */
+    psQ.hp = 0; psQ.dying = true; psQ.respawnAt = Date.now() - 1;
+    room._tickPlayerRespawn();
+    check('the respawn wipe keeps the quest items too',
+      psQ.inventory.snowman === 4 && psQ.inventory.ore_copper === 5, psQ.inventory);
+    /* The derivation itself: a key that is nobody's objective is not
+       protected, and the table drives the list. */
+    check('a non-objective key is NOT protected', !room._isQuestObjectiveItem('wood_kindling'));
+    check('every shipped collect objective is protected',
+      Object.values(room._QUEST_REWARDS_DATA())
+        .map((r) => r && r.objective)
+        .filter((o) => o && (o.invKey || o.invPrefix))
+        .every((o) => room._isQuestObjectiveItem(o.invKey || (o.invPrefix + 'x'))));
+    delete room.playerState[pid];
+  }
   delete room.playerState['well'];
 }
 

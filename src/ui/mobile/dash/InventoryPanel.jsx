@@ -931,6 +931,9 @@ const StashTile = ({ kind, obj, index, style: styleOverride }) => {
     } else if (kind === 'stashArmor') {
       /* v2.3.228: armor stash tile -> popup with Equip action. */
       itemDetailBus.open({ kind: 'stashArmor', armor: obj, index, anchor });
+    } else if (kind === 'stashLegs') {
+      /* v2.3.1701: the LEGS piece equips into R.legsArmor, not R.armor. */
+      itemDetailBus.open({ kind: 'stashLegs', armor: obj, index, anchor });
     } else if (kind === 'stashGear') {
       /* v2.3.685: unequipped worn gear (steel chest/legs). */
       itemDetailBus.open({ kind: 'stashGear', gear: obj, index, anchor });
@@ -948,6 +951,8 @@ const StashTile = ({ kind, obj, index, style: styleOverride }) => {
       : obj && obj.gearId === 'tshirt'       ? `/icons/items/cloth-shirt.webp${ITEMS_V}` : null)
     : kind === 'stashArmor'
     ? null /* no armor sprites yet -- glyph fallback below */
+    : kind === 'stashLegs'
+    ? `/icons/items/greaves.webp${ITEMS_V}` /* v2.3.1701: legs have real art */
     : kind === 'stashShield'
     ? `/icons/items/shield.webp${ITEMS_V}`
     : obj && obj.type === 'bow'        ? `/icons/items/bow.webp${ITEMS_V}`
@@ -968,6 +973,7 @@ const StashTile = ({ kind, obj, index, style: styleOverride }) => {
     : q === 'godly' ? 'ls-slot--godly' : '';
   const fallbackGlyph = kind === 'stashShield' ? '\u{1F6E1}'
                       : kind === 'stashArmor'  ? '\u{1F9BA}'
+                      : kind === 'stashLegs'   ? '\u{1F456}'
                       : kind === 'stashGear'   ? (obj && obj.slot === 'legs' ? '\u{1F456}' : '\u{1F9BA}')
                       :                          '⚔';
   return (
@@ -982,7 +988,7 @@ const StashTile = ({ kind, obj, index, style: styleOverride }) => {
       touchAction: 'manipulation',
       /* v2.3.1350: row-fit override from the measured items grid. */
       ...(styleOverride || {}),
-    }} title={(obj && obj.name) || (kind === 'stashShield' ? 'Shield' : kind === 'stashArmor' ? 'Armor' : 'Weapon')}>
+    }} title={(obj && obj.name) || (kind === 'stashShield' ? 'Shield' : kind === 'stashArmor' ? 'Armor' : kind === 'stashLegs' ? 'Greaves' : 'Weapon')}>
       {thumb
         ? <img src={thumb} alt="" draggable={false}
             style={{ width: '85%', height: '85%', objectFit: 'contain', imageRendering: 'auto' }} />

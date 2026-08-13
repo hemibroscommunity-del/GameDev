@@ -1,5 +1,20 @@
 # Disable HP Regen — Server-Side
 
+> **SUPERSEDED IN PART — read this before acting on anything below (v2.3.1701).**
+> HP regen came back twice, both times by owner directive, and the code is the
+> truth (CLAUDE.md doc-trust):
+> - **v2.3.1414** — the HUBS (town / worldview / farm_home) restore all three
+>   pools fast, ~10% of max per regen tick.
+> - **v2.3.1701** — the combat zones get an OUT-OF-COMBAT TRICKLE, ~1% of max
+>   HP per tick after `SPOKE_REGEN_OOC_MS` with no damage taken *or dealt*.
+>   This is exactly knob 1 of the Rollback section at the bottom of this file
+>   ("re-enable OOC regen but slow it way down… a safety net not the primary
+>   heal"), taken because a fresh character got about one snowman kill per
+>   health bar and had to walk back to the World View between kills.
+> Lifesteal is still the only heal available DURING a fight, which is the part
+> of the design below that stands. `_tickPlayerRegen` (server/src/index.js) is
+> the single implementation of all of it.
+
 **For:** the Cloudflare Worker at `wss://brotown-server.hemibroscommunity.workers.dev`
 **Companion client commit:** GameDev `session-1` v2.3.149 — `BroTown.jsx` HP regen blocks gutted
 

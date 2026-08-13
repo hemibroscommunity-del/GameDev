@@ -67,6 +67,55 @@ export const questMethods = {
     }
   },
 
+  /* ═══ v2.3.1701: THE QUEST-OBJECTIVE DEATH CARVE-OUT ═══
+   *
+   * Owner: dying mid-errand dropped the very remnants you were sent to
+   * collect, so a death did not just cost you your loot — it RESET the
+   * quest.  The tutorial arc is four collect-and-return steps
+   * (snowman / slime-remnants / skeleton-remnants / fire-goblin-remnants),
+   * every one of them in a zone that can kill a level-1 character, so the
+   * step you are on is exactly the thing the death takes.
+   *
+   * DERIVED FROM THE SHIPPED TABLE, never a hardcoded list: every
+   * objective's `invKey` (an exact key) and `invPrefix` (a FAMILY —
+   * `cooked_fish_<species>`, `ore_<name>`) is protected, so adding a quest
+   * to QUEST_REWARDS covers its objective automatically and nobody has to
+   * remember this file.  Matches _collectHeld/_collectConsume's own reading
+   * of those two fields, which is what makes "protected" and "countable"
+   * the same set.
+   *
+   * TABLE-WIDE, not per-player-quest, deliberately: the alternative —
+   * protect only the items for quests this player has ACTIVE — loses the
+   * remnants of a step you have not accepted yet (the arc's steps unlock
+   * one at a time, and players farm ahead), which is the same bad moment
+   * one indirection later.  Everything else in the bag still drops.
+   *
+   * Memoised on the room: QUEST_REWARDS is a module constant, so the walk
+   * happens once per DO lifetime rather than once per death. */
+  _QUEST_KEEP_SPEC() {
+    if (this.__questKeepSpec) return this.__questKeepSpec;
+    const keys = new Set();
+    const prefixes = [];
+    const table = this._QUEST_REWARDS_DATA();
+    for (const qid of Object.keys(table)) {
+      const obj = table[qid] && table[qid].objective;
+      if (!obj) continue;
+      if (typeof obj.invKey === 'string' && obj.invKey) keys.add(obj.invKey);
+      if (typeof obj.invPrefix === 'string' && obj.invPrefix) prefixes.push(obj.invPrefix);
+    }
+    this.__questKeepSpec = { keys, prefixes };
+    return this.__questKeepSpec;
+  },
+
+  /** Is this inventory key an objective of some shipped quest? */
+  _isQuestObjectiveItem(key) {
+    if (typeof key !== 'string' || !key) return false;
+    const spec = this._QUEST_KEEP_SPEC();
+    if (spec.keys.has(key)) return true;
+    for (const p of spec.prefixes) { if (key.startsWith(p)) return true; }
+    return false;
+  },
+
   _handleQuestAccept(session, payload) {
     if (!session || !session.id) return;
     const ps = this.playerState[session.id];

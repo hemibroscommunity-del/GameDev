@@ -318,11 +318,29 @@ export const gatheringMethods = {
     return new Set(Object.values(this._GATHER_TOOL_FOR_SKILL));
   },
 
-  /** Strip everything EXCEPT the gathering tools — the death-wipe helper. */
+  /** v2.3.1701: does this inventory key survive a death?
+   *
+   * TWO carve-outs now, one predicate, read by BOTH death paths (the wipe in
+   * _handlePlayerDeath / _tickPlayerRespawn and the drop in _spawnDeathPile)
+   * so an item can never be kept AND dropped — that would mint a duplicate on
+   * the ground, which is the bug the v2.3.1688 tool pass had to avoid too:
+   *   1. the gathering TOOLS (v2.3.1688) — equipment held in the bag;
+   *   2. QUEST OBJECTIVE items (v2.3.1701) — derived from the shipped quest
+   *      table, see quests.js `_isQuestObjectiveItem` for the rationale.
+   * Everything else still drops. */
+  _keptThroughDeath(key) {
+    if (this._GATHER_TOOL_KEYS().has(key)) return true;
+    return this._isQuestObjectiveItem ? this._isQuestObjectiveItem(key) : false;
+  },
+
+  /** Strip everything EXCEPT the death-protected items — the death-wipe
+   *  helper.  (Named for the tools it originally spared, v2.3.1688; it now
+   *  spares quest objectives too — see _keptThroughDeath.) */
   _keepGatherTools(inventory) {
     const keep = Object.create(null); // rule 4: inventory keys are client-supplied
     if (!inventory) return keep;
-    for (const k of this._GATHER_TOOL_KEYS()) {
+    for (const k of Object.keys(inventory)) {
+      if (!this._keptThroughDeath(k)) continue;
       const qty = Math.floor(Number(inventory[k]) || 0);
       if (qty > 0) keep[k] = qty;
     }

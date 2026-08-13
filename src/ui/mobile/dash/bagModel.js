@@ -9,6 +9,7 @@
  *   { kind:'stashWeapon', obj, index, cat, lockKey, stamp }
  *   { kind:'stashShield', obj, index, cat, lockKey, stamp }
  *   { kind:'stashArmor',  obj, index, cat, lockKey, stamp }
+ *   { kind:'stashLegs',   obj, index, cat, lockKey, stamp }
  *   { kind:'stashGear',   obj, index, cat, lockKey, stamp }
  *
  * Stash entries are items the player took OFF in the Loadout -- they belong in
@@ -86,6 +87,10 @@ export function getBagEntries(rpg) {
   pushStash(rpg.weaponStash, 'stashWeapon', 'weapon', 'stashWeapon');
   pushStash(rpg.shieldStash, 'stashShield', 'armor',  'stashShield');
   pushStash(rpg.armorStash,  'stashArmor',  'armor',  'stashArmor');
+  /* v2.3.1701: the LEGS half of the stat-bearing armour, in its own stash so
+     a quest greave can never be swapped into the chest slot (see the
+     quest_reward_stashed handler in wsClient.js). */
+  pushStash(rpg.legsStash,   'stashLegs',   'armor',  'stashLegs');
   pushStash(rpg.gearStash,   'stashGear',   'armor',  'stashGear');
 
   /* Anchored entries first (anchor-order: oldest anchor top-left), then the

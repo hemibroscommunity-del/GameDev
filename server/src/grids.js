@@ -611,7 +611,8 @@ export const gridMethods = {
       ps.weaponSpecs, ps.weaponSkills, ps.weaponUnspent,
       ps.defenseSkill, ps.defenseUnspent, ps.defenseSpec,
       ps.hpSpec, ps.hpUnspent, ps.enduranceSpec, ps.enduranceUnspent,
-      ps.armor, ps.def, ps.amuletHpRegen, ps.amuletStaminaRegen,
+      ps.armor, ps.legsArmor, /* v2.3.1701: a legs-only swap must persist + echo */
+      ps.def, ps.amuletHpRegen, ps.amuletStaminaRegen,
       ps.t2Flat, // v2.3.1451: accumulator mutations must persist + echo
     ]);
     const preSig = relevantSig();
@@ -839,6 +840,41 @@ export const gridMethods = {
           // are gated).
         } else {
           ps.armor = newArmor;
+          statsChanged = true;
+        }
+      }
+    }
+    /* ═══ v2.3.1701: THE LEGS SLOT RIDES THE SAME LANE ═══
+       `ps.legsArmor` has existed since v2.3.1679 (it is half of
+       _armorDrMult) and had NO client→server route at all: the worker could
+       only ever grant it, never learn that the player equipped one.  So a
+       quest greave sitting in the bag could never become a worn greave that
+       actually reduced damage.  Same shape as the armor block above,
+       deliberately — same ×8 tierMult clamp (the DR cap is still the last
+       word), same defense-point gate (_prog3EquipOk's 'armor' slot covers
+       both body pieces, gear.js), same threat gear-lock, and the same
+       "reject = keep the old piece, the echo snaps the client back".
+       ABSENT means "no opinion", never "take it off": the field is only sent
+       by the legs flows (equipActions.js syncArmorChange opts.legs), so a
+       client that has not learned its legs piece cannot wipe it. */
+    if ('legsArmor' in payload) {
+      const incomingL = payload.legsArmor;
+      let newLegs = null;
+      if (incomingL && typeof incomingL === 'object') {
+        newLegs = { ...incomingL };
+        if (typeof newLegs.tierMult === 'number') {
+          newLegs.tierMult = Math.max(0, Math.min(8, newLegs.tierMult));
+        }
+      }
+      const oldSigL = ps.legsArmor ? JSON.stringify(ps.legsArmor) : 'null';
+      const newSigL = newLegs ? JSON.stringify(newLegs) : 'null';
+      if (oldSigL !== newSigL) {
+        if (this._threatGearLocked(session.id, ps)) {
+          // locked: keep the old piece
+        } else if (newLegs && !this._prog3EquipOk(ps, 'armor', newLegs)) {
+          // defense-point gate, same as the chest piece
+        } else {
+          ps.legsArmor = newLegs;
           statsChanged = true;
         }
       }

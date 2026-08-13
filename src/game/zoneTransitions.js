@@ -395,7 +395,45 @@ export function handleZoneTransitions(S, ptx, pty, _zone, W, H) {
                  dir='north' spawn landed the player at ty 43 -- one tile from that
                  trigger -- so worldview->town instantly bounced back, spamming the
                  enter/exit-town messages. Landing near centre breaks the bounce. */
-              if (bestExit.zoneId === 'worldview' || bestExit.zoneId === 'town') { P.x = midX; P.y = midY + TILE * 7; }
+              /* ═══ v2.3.1700: LAND *INSIDE* THE HUB, NOT OUTSIDE ITS OWN PORTAL ═══
+                 v2.3.948 put the hub arrival "just south of centre".  On the
+                 World View that is tile (24,31) — three tiles SOUTH of the
+                 town trail-head at (24,28), i.e. on the far side of the town
+                 portal from every spoke that matters.  TOWN_EXIT_R is 2
+                 manhattan TILES, so walking in a straight line from that
+                 arrival point to Frost Ridge (13,13), Flame Fields (25,10) or
+                 Wind Dunes (39,12) clips the town marker and warps the player
+                 straight back to town.  Measured headlessly on the tutorial
+                 arc: town -> World View -> walk at Frost Ridge -> town, every
+                 time, which reads as "the world map is broken" and strands a
+                 new player on the first quest.  (Verdant Wilds, at (7,20),
+                 was the one spoke whose line missed it — which is why the arc
+                 looked half-working rather than dead.)
+                 Fix: emerge on the INSIDE of the trail-head you arrived
+                 through — the marker for the zone you just left, offset 4
+                 tiles toward the hub centre.  That is not a new rule: it is
+                 exactly what the spoke->hub return below already does with
+                 S._enteredFromExit, so both directions now agree.  With the
+                 town portal BEHIND you, every spoke is a straight walk, and
+                 walking back onto it still goes to town.
+                 Falls back to the old centre-south spawn when no reciprocal
+                 marker exists, so an unexpected hub pairing can never strand
+                 anyone at (0,0). */
+              if (bestExit.zoneId === 'worldview' || bestExit.zoneId === 'town') {
+                P.x = midX; P.y = midY + TILE * 7;
+                var _dstExits = bestExit.zoneId === 'town' ? TOWN_EXITS : WORLDVIEW_EXITS;
+                var _backMark = null;
+                for (var _bi = 0; _bi < _dstExits.length; _bi++) {
+                  if (_dstExits[_bi].zoneId === S._enteredFromHub) { _backMark = _dstExits[_bi]; break; }
+                }
+                if (_backMark) {
+                  var _hcx = newZone.w / 2, _hcy = newZone.h / 2;
+                  var _hdx = _hcx - _backMark.tx, _hdy = _hcy - _backMark.ty;
+                  var _hlen = Math.max(0.001, Math.sqrt(_hdx * _hdx + _hdy * _hdy));
+                  P.x = (_backMark.tx + _hdx / _hlen * 4) * TILE;
+                  P.y = (_backMark.ty + _hdy / _hlen * 4) * TILE;
+                }
+              }
               /* v2.3.1347: snap the chosen spawn onto walkable ground
                  (Desert Winds stuck-spawn fix). Runs BEFORE the monster
                  push-back so monsters clear the FINAL position. */

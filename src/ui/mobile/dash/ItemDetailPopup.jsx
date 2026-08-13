@@ -248,6 +248,34 @@ function resolveTarget(target) {
       actions: { equip: true },
     };
   }
+  /* v2.3.1701: the LEGS twin of stashArmor.  Same card, but every number is
+     read for the legs slot — base 20% instead of the torso's 30% — and the
+     Equip action lands in R.legsArmor.  A shared card keyed on target.kind
+     was rejected: the two slots have different bases and different worn
+     pieces to compare against, and one branchy card is how the piece ended
+     up in the wrong slot in the first place. */
+  if (target.kind === 'stashLegs') {
+    const ar = target.armor;
+    if (!ar) return null;
+    const S = getState();
+    const dr = getArmorPieceDr(ar, 'legs');
+    const eqLegs = S && S.rpg && S.rpg.legsArmor;
+    const delta = eqLegs
+      ? statDelta((dr - getArmorPieceDr(eqLegs, 'legs')) * 100, '% Damage Reduced', 1)
+      : null;
+    return {
+      lockKey: 'stashLegs_' + (target.index || 0),
+      thumb: `/icons/items/greaves.webp${ITEMS_V}`,
+      glyph: '\u{1F456}',
+      name: ar.name || 'Greaves',
+      info: Math.round(dr * 100) + '% damage reduced',
+      delta,
+      /* Quest armour carries no gearBase, so tierLabel is empty for it —
+         don't render a leading separator for a tier it does not have. */
+      desc: (tierLabel(ar) ? tierLabel(ar) + ' · ' : '') + 'Armor · Legs',
+      actions: { equip: true },
+    };
+  }
   /* v2.3.685: worn gear (the rendered steel chest/legs, gearCatalog slots) in
      the Loadout -- unequip drops it into the bag (rpg.gearStash), mirroring
      the weapon/shield flow. */
@@ -949,6 +977,28 @@ export const ItemDetailPopup = () => {
     syncArmorChange(R);
     itemDetailBus.close();
   };
+  /* v2.3.1701: the LEGS equip.  R.legsArmor is the field the LEGS card
+     reads (equipModel.js), the field the worker persists (persistence.js)
+     and the field the SERVER's per-hit reduction reads (combat.js
+     _armorDrMult) — so this is the only route that makes an equipped greave
+     mean anything.  syncArmorChange carries it to the worker with
+     `legs: true`; without that push ps.legsArmor stays null and the next
+     full player_state echo takes the piece straight back off. */
+  const onEquipStashLegs = () => {
+    const S = getState();
+    if (!S || !S.rpg || !target.armor) return;
+    const R = S.rpg;
+    if (!R.legsStash) R.legsStash = [];
+    const idx = R.legsStash.indexOf(target.armor);
+    if (idx >= 0) R.legsStash.splice(idx, 1);
+    if (R.legsArmor) R.legsStash.push(R.legsArmor);
+    R.legsArmor = target.armor;
+    recalcDerived(R);
+    R.hp = Math.min(R.maxHp, R.hp);  // cap only, no delta-heal (v2.3.236)
+    persist(R);
+    syncArmorChange(R, { legs: true });
+    itemDetailBus.close();
+  };
   /* v2.3.685: worn gear (rendered steel chest/legs) unequips into
      rpg.gearStash -- the bag shows it as a stash tile, and Equip from there
      puts it back on (swapping any currently-worn piece into the stash).
@@ -990,6 +1040,7 @@ export const ItemDetailPopup = () => {
   const onEquip = () => {
     if (target.kind === 'stashShield')      onEquipStashShield();
     else if (target.kind === 'stashArmor')  onEquipStashArmor();
+    else if (target.kind === 'stashLegs')   onEquipStashLegs();
     else if (target.kind === 'stashGear')   onEquipStashGear();
     else                                     onEquipStashWeapon();
   };

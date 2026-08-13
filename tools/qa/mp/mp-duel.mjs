@@ -132,6 +132,41 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
   const zone = await H.readState(A, (S) => S.currentZone);
   rec.ok('the pair start in town (the safe zone the bug report was about)', zone === 'town', { zone });
+
+  /* ═══ v2.3.1699: ARM THE DUELLISTS ═══
+     This suite used to swing with EMPTY HANDS and still land damage, because
+     the manual tap handler never checked for a weapon — the "free initial
+     swing" the owner reported, closed in v2.3.1682.  With that hole shut, an
+     unarmed duel produces no attack messages at all and every assertion below
+     fails; the six failures were this test resting on the bug, not the duel
+     system breaking.  Arm both sides the way a real player is armed (grant to
+     the stash, then equip through the worker's own equip_request) so the
+     duel assertions test duelling rather than the swing gate. */
+  /* The admin grant refuses weapons ("weapons unsupported v1",
+     server/src/admin.js), so arm them the way the game does: accept tut_1,
+     which pays the sword into the stash, then equip through the worker's own
+     equip_request. */
+  for (const P of [A, B]) {
+    await P.page.evaluate(() => {
+      const S = window._gameState && window._gameState.current;
+      if (S && S.channel) S.channel.send({ type: 'quest_accept', payload: { questId: 'tut_1' } });
+    });
+  }
+  await A.page.waitForTimeout(1500);
+  for (const P of [A, B]) {
+    await P.page.evaluate(() => {
+      const S = window._gameState && window._gameState.current;
+      const R = S && S.rpg; if (!R || !S.channel) return;
+      const i = (R.weaponStash || []).findIndex((w) => w && w.type === 'greatsword');
+      if (i < 0) return;
+      R.weapon = R.weaponStash[i]; R.weaponStash.splice(i, 1); R.activeSlot = 'melee';
+      S.channel.send({ type: 'equip_request', payload: { stashIdx: i, slot: 'weapon' } });
+    });
+  }
+  await A.page.waitForTimeout(1500);
+  const armedOk = await Promise.all([H.adminPlayer(wsPort, aId), H.adminPlayer(wsPort, bId)])
+    .then((r) => r.every((x) => x && x.rpg && x.rpg.weapon)).catch(() => false);
+  rec.ok('both duellists are armed server-side before any swing', armedOk);
   await H.instrumentWire(A);
 
   /* ── decline path first, so the accept path starts from a clean slate ── */

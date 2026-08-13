@@ -462,6 +462,27 @@ export class GameRoom {
        restart (deterministic, recomputes from maxima, invisible) and cut
        measured storage writes by ~93%.  See _tickPlayerRegen. */
     this.REGEN_SAVE_MS = 10000;
+    /* ═══ v2.3.1701: OUT-OF-COMBAT REGEN IN THE SPOKE (COMBAT) ZONES ═══
+       Owner playtest: a fresh level-1 character in Frost Ridge gets about
+       ONE snowman kill per full health bar, and HP only regenerated in the
+       hubs (town / worldview / farm_home).  So every kill was followed by a
+       round trip to the World View to heal: the measured run died 7 times
+       and made 7 heal trips, which turns the first quest into a walking
+       simulator rather than a fight.
+       The rule chosen, deliberately narrow:
+         - Only when the player has neither TAKEN nor DEALT damage for
+           SPOKE_REGEN_OOC_MS.  It therefore cannot fire during a fight at
+           all (melee cadence is 600 ms), and a kited retreat has to be a
+           real disengagement to earn it.
+         - SPOKE_REGEN_PCT is one TENTH of the hub's 10%/tick pace: a full
+           bar takes ~67 s of standing still versus ~7 s in a hub, so the
+           hubs stay the fast way to heal and the trickle is what lets you
+           keep playing instead of commuting.
+       Both stamps are in-memory scratch (rule 11 / rule 1: NOT in _saveRpg's
+       fixed field list) — a deploy that loses them only lets regen start a
+       few seconds early, which is the cheapest possible thing to lose. */
+    this.SPOKE_REGEN_OOC_MS = 6000;
+    this.SPOKE_REGEN_PCT = 0.01;
     /* v2.3.1623: below this fraction of max HP, a damage write bypasses
        the coalescing and persists immediately.  25% is roughly "one or
        two more hits from death" across the damage curve -- the band
@@ -2214,8 +2235,11 @@ export class GameRoom {
   // (~670 ms at TICK_RATE=22) for all three pools:
   //
   //   HP:
-  //     OOC:        ceil(maxHp * 0.001 * restMult * amuletMult) * 10
-  //     In-combat:  ceil(maxHp * 0.0005) * 6
+  //     Hub:        ceil(maxHp * 0.10)   (town / worldview / farm_home)
+  //     Spoke OOC:  round(maxHp * SPOKE_REGEN_PCT), only after
+  //                 SPOKE_REGEN_OOC_MS with no damage taken OR dealt
+  //                 (v2.3.1701)
+  //     In-combat:  nothing — lifesteal and food are the only heals
   //   Stamina:
   //     Always:     ~7/tick (matches client's 10/sec at 60 fps),
   //                 * (1 + amuletStaminaRegen/100)
@@ -2274,6 +2298,27 @@ export class GameRoom {
         const beforeHp = ps.hp;
         ps.hp = Math.min(ps.maxHp, ps.hp + heal);
         if (ps.hp !== beforeHp) changed = true;
+      } else if (!ps._arenaMatch && !inDuel && !inHub && ps.hp < ps.maxHp) {
+        /* v2.3.1701: OUT-OF-COMBAT TRICKLE in the combat zones (see the
+           SPOKE_REGEN_* constants in the constructor for the why).  Gated on
+           BOTH halves of "in combat": lastDamageAt (damage taken, stamped in
+           _applyDamage) and _lastDealtAt (damage dealt, stamped in
+           _handleMonsterDamage and the PvP lane) — a player standing over a
+           monster they are beating on is fighting even though nothing has
+           landed on them yet.  Same arena/duel exclusions as the hub branch
+           above, for the v2.3.1126 reason: a heal that outruns the damage
+           makes the fight unendable. */
+        const _oocSpoke = (now - (ps.lastDamageAt || 0)) > this.SPOKE_REGEN_OOC_MS
+          && (now - (ps._lastDealtAt || 0)) > this.SPOKE_REGEN_OOC_MS;
+        if (_oocSpoke) {
+          /* ROUND, not ceil: at 1% a ceil turns every maxHp above 100 into
+             2 hp/tick (a level-3 prog3 character has 106), which is nearly
+             double the intended pace for no reason anyone could see. */
+          const heal = Math.max(1, Math.round(ps.maxHp * this.SPOKE_REGEN_PCT));
+          const beforeHp = ps.hp;
+          ps.hp = Math.min(ps.maxHp, ps.hp + heal);
+          if (ps.hp !== beforeHp) changed = true;
+        }
       }
 
       // Stamina: shield drain takes priority over regen.  When blocking,
@@ -2552,10 +2597,12 @@ export class GameRoom {
     const items = [];
     /* v2.3.1688: the gathering tools are NOT loot.  They stay in the bag
        through death (see _keepGatherTools), so dropping copies here would
-       mint a second axe on the ground every time the player died. */
-    const _toolKeys = this._GATHER_TOOL_KEYS();
+       mint a second axe on the ground every time the player died.
+       v2.3.1701: quest objective items keep the bag for the same reason and
+       must be excluded here for the same reason — ONE predicate decides
+       both, so "kept" and "dropped" can never disagree and duplicate. */
     for (const [k, v] of Object.entries(ps.inventory)) {
-      if (_toolKeys.has(k)) continue;
+      if (this._keptThroughDeath(k)) continue;
       const qty = Math.floor(Number(v) || 0);
       if (qty > 0) items.push({ key: k, qty });
     }
