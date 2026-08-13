@@ -34,11 +34,27 @@ import { Application, Container } from 'pixi.js';
  * separate layer rather than moving gatherNodes down — that container also
  * holds the chop/cook/sword harvest stand-ins, which must keep drawing above
  * entities.
+ * v2.3.1713 (owner): "move the life skill extraction gestures to be in front
+ * of the other stuff.  The woodcutting gesture was largely hidden behind a
+ * tree."  MEASURED on a real client at a real frost tree: the chopper stand-in
+ * sat in gatherNodes (index 7) while v2.3.1500 had put trees in
+ * gatherNodesFront (index 10) — so the very tree you are chopping ALWAYS
+ * painted over the lumberjack swinging at it, leaving his legs and nothing
+ * else.  gestureFront is a new layer directly above gatherNodesFront that
+ * holds ONLY the gathering figures while a gather gesture is playing (the
+ * chop/cook/fire stand-ins for you and for peers, and the player's own body
+ * during the mine/fish poses, which have no stand-in).  Deliberately NOT a
+ * move of gatherNodes or of player: gatherNodes also holds node badges/tips
+ * and the sword/bow COMBAT stand-ins, and a player who is merely standing
+ * (or fighting) behind a tree must stay hidden by it — that occlusion is the
+ * whole point of v2.3.1500.  Still BELOW projectiles/particles/damageNumbers,
+ * so wood chips, splashes, the tool cue and damage popups keep reading over
+ * the figure.
  */
 const WORLD_LAYER_NAMES = [
   'tiles', 'groundDetails', 'groundSplatter', 'groundLoot',
   'telegraphs', 'gatherNodesBack', 'entities', 'gatherNodes', 'monsterUi', 'player',
-  'gatherNodesFront',
+  'gatherNodesFront', 'gestureFront',
   'projectiles', 'particles', 'damageNumbers', 'overlayWorld',
 ];
 const SCREEN_LAYER_NAMES = ['atmosphere', 'screenFX', 'hud'];
