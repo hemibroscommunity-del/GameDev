@@ -1294,6 +1294,43 @@ for (const m of meadowMonsters) m._wanderPausedUntil = Date.now() + 600000;
       thrown[0] && thrown[0].payload);
   }
 
+  /* ── v2.3.1690: a harvester is left alone ──
+   * Owner: "make it so monsters don't attack you while you're extracting
+   * resources (fishing, mining, etc) it's really annoying and glitchy."
+   * Bounded by EXTRACT_SHIELD_MS rather than by the extraction record, which
+   * lives ten minutes — the second half of this proves the shield expires,
+   * because "tap a tree, become invulnerable for ten minutes" would be a
+   * worse bug than the one being fixed. */
+  {
+    const psE = room.playerState['pa'];
+    psE.z = 'frost'; psE.blocking = false; psE.hp = psE.maxHp = 200;
+    psE.dying = false; psE.dead = false; psE.disconnected = false;
+    psE.x = 2000; psE.y = 2000;
+    const smE = (room.monsters.frost || []).find((m) => m.arch === 'snowman');
+    if (smE) {
+      for (const other of room.monsters.frost) { if (other !== smE) { other.x = 9000; other.y = 9000; } }
+      smE.alive = true; smE.hp = smE.maxHp || 50;
+      smE.x = psE.x + 200; smE.y = psE.y; smE.atkCd = 0; smE._projImpactAt = 0;
+      room.extractions['pa'] = { nodeId: 'n1', zone: 'frost', skill: 'woodcutting', startedAt: Date.now() };
+      room.eventBuffer.length = 0;
+      room._tickMonsters();
+      check('a mid-extraction player is not thrown at',
+        room.eventBuffer.filter((e) => e.type === 'monster_projectile').length === 0,
+        room.eventBuffer.map((e) => e.type));
+
+      /* Same monster, same position, shield expired -> it throws again. */
+      room.extractions['pa'].startedAt = Date.now() - (room.EXTRACT_SHIELD_MS + 1000);
+      smE.atkCd = 0; smE._projImpactAt = 0;
+      room.eventBuffer.length = 0;
+      room._tickMonsters();
+      check('...but the shield expires — it is not a ten-minute safe zone',
+        room.eventBuffer.filter((e) => e.type === 'monster_projectile').length >= 1,
+        room.eventBuffer.map((e) => e.type));
+    }
+    delete room.extractions['pa'];
+    psE.blocking = true;
+  }
+
   /* Impact while blocking: zero damage, a Blocked! event, stamina spent. */
   const hpBefore = psB.hp, stamBefore = psB.stamina;
   const ball = { id: 'sb-frost-1', arch: 'snowman', dmg: 40, x: psB.x, y: psB.y, statuses: {} };

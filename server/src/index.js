@@ -641,6 +641,11 @@ export class GameRoom {
     this.EXTRACT_OPEN_MAX  = 10000;
     this.EXTRACT_OPEN_BASE = 4000;
     this.EXTRACT_JITTER    = 0.15;
+    /* v2.3.1690 (owner: "monsters don't attack you while you're extracting
+       resources ... it's really annoying and glitchy").  How long a started
+       extraction keeps monsters off you.  Short on purpose — see
+       _extractionShielded for why this is not EXTRACTION_TIMEOUT_MS. */
+    this.EXTRACT_SHIELD_MS = 12000;
     this.EXTRACTION_TIMEOUT_MS = 600000;    // walk-away cancel is silent; sweep stale state after this.  v2.3.1416: 15s -> 10min — the harvest phase no longer times out client-side, so a strike minutes after extraction_start is legitimate; the record must outlive the player's patience (one small record per session, bounded by session count).
     this.EXTRACTION_GRACE_MS = 250;         // forgiveness on both ends to absorb network jitter
     this.SWIPE_FP_CAP_PER_SESSION = 100;    // ring-buffer the fp samples for offline analysis
@@ -1120,7 +1125,10 @@ export class GameRoom {
       if (ps.dead || ps.disconnected || !ps.z) continue;
       let arr = playersByZone.get(ps.z);
       if (!arr) playersByZone.set(ps.z, arr = []);
-      arr.push({ id, x: ps.x, y: ps.y, blocking: ps.blocking });
+      /* v2.3.1690: `extracting` rides along so the AI can leave a harvester
+         alone without a second pass over playerState. */
+      arr.push({ id, x: ps.x, y: ps.y, blocking: ps.blocking,
+        extracting: this._extractionShielded(id, now) });
     }
 
     for (const zoneId of activeZones) {
@@ -1402,7 +1410,10 @@ export class GameRoom {
                  blocking deleted the attack instead of stopping it and the
                  monster looked frozen.  The block is now resolved when the
                  ball LANDS — see _monsterStrikePlayer. */
-              ) {
+              /* v2.3.1690: ...but a harvester IS left alone — the whole point
+                 is not interrupting the swipe, and a ball in the air lands on
+                 it just as rudely as a swing. */
+              && !nearest.extracting) {
             m.atkCd = now + _rangedCfg.cd;
             m._attackingUntil = now + 400;
             m._projImpactAt = now + _rangedCfg.travelMs;
@@ -1454,6 +1465,18 @@ export class GameRoom {
             // entirely when the player has shield up gives reliable
             // blocking. We still set atkCd so the monster doesn't keep
             // queuing while the player blocks.
+            /* v2.3.1690 (owner: "monsters don't attack you while you're
+               extracting resources"): the swing is skipped outright, cooldown
+               still stamped so the monster does not queue one up for the
+               instant the swipe lands.  Placed ABOVE the blocking branch so a
+               harvester is left alone whether or not a shield happens to be
+               up.  Bounded by EXTRACT_SHIELD_MS, not by the extraction record
+               (_extractionShielded explains why). */
+            if (nearest.extracting) {
+              m.atkCd = now + this.MONSTER_ATTACK_CD;
+              m._attackingUntil = 0;
+              continue;
+            }
             if (nearest.blocking) {
               m.atkCd = now + this.MONSTER_ATTACK_CD;
               m._attackingUntil = now + 400;

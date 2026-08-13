@@ -329,6 +329,24 @@ export const gatheringMethods = {
     return keep;
   },
 
+  /** v2.3.1690: is this player mid-extraction, for the purpose of NOT being
+   *  attacked?  Owner: "make it so monsters don't attack you while you're
+   *  extracting resources (fishing, mining, etc) it's really annoying and
+   *  glitchy."
+   *
+   *  Deliberately NOT "an extraction record exists".  That record lives for
+   *  EXTRACTION_TIMEOUT_MS — ten minutes, since v2.3.1416 let the ready phase
+   *  hold indefinitely — so tying immunity to it would hand out a ten-minute
+   *  shield for one tap on a tree, which is a better exploit than it is a
+   *  fix.  Bounded to the part the owner is actually describing: the wind-up
+   *  plus a normal swipe.  Stand in a monster zone past that and you are back
+   *  on the menu. */
+  _extractionShielded(playerId, now) {
+    const e = this.extractions[playerId];
+    if (!e) return false;
+    return (now || Date.now()) - e.startedAt < this.EXTRACT_SHIELD_MS;
+  },
+
   /** Does this player hold the tool for a gathering skill?  True for any skill
    *  that is not tool-gated at all. */
   _hasGatherTool(ps, skill) {
