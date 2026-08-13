@@ -5376,9 +5376,9 @@ export const QUEST_CHAINS = {
     id: 'tut_4', npc: 'Mayor Bro', title: 'Bro Ascendant',
     desc: 'Bring 6 Fire Goblin Remnants from the Flame Fields.',
     check: function (rpg) { return ((rpg.inventory || {})['fire-goblin-remnants'] || 0) >= 6; },
-    reward: { gold: 400, xp: 300, item: "Scout's Vest" },
+    reward: { gold: 400, xp: 300, item: "Iron Torso" }, /* v2.3.1687 (owner) */
     next: null,
-    gives: [{ when: 'complete', icon: '/icons/items/chest-plate.webp', label: "Scout's Vest" }],
+    gives: [{ when: 'complete', icon: '/icons/items/chest-plate.webp', label: "Iron Torso" }],
     dialogue: {
       start: 'Last one from me. Flame Fields. Goblins, and they are quick about it. Six.',
       progress: 'Six, out of the fire.',

@@ -225,7 +225,32 @@ export const questMethods = {
        Failure to grant is deliberately NON-FATAL: a full weapon stash must
        not swallow the whole turn-in (the player would lose the gold and xp
        too and have no way to retry a quest already marked turnedIn). */
-    if (reward.item) this._grantQuestItem(ps, reward.item);
+    /* v2.3.1687: a reward the worker cannot fit must still reach the player.
+       Armour is the one grant with nowhere server-side to overflow into (no
+       armour stash, and handoff rule 1 forbids a new rpg-blob field), so when
+       the slot is worn it is handed to the CLIENT's armourStash instead —
+       exactly the split the shield already uses since v2.3.1683: the worker
+       owns "you own this", the client owns where it sits.  Before this it
+       returned false and said nothing, so the quest completed, the gold
+       landed, and the armour was never mentioned again.
+       `_questGrantOverflow` is in-memory scratch — not in _saveRpg's field
+       list, so it never persists — read once here and cleared. */
+    if (reward.item) {
+      ps._questGrantOverflow = null;
+      const _gave = this._grantQuestItem(ps, reward.item);
+      const _over = ps._questGrantOverflow;
+      if (!_gave && _over) {
+        const ws0 = this._wsBySessionId(session.id);
+        if (ws0) {
+          try {
+            ws0.send(JSON.stringify({ type: 'quest_reward_stashed', payload: {
+              questId, item: _over,
+            } }));
+          } catch (e) { /* best effort — the turn-in itself still stands */ }
+        }
+      }
+      ps._questGrantOverflow = null;
+    }
     // Unlock next quest in chain.
     if (reward.next && !ps._quests[reward.next]) {
       ps._quests[reward.next] = 'available';
@@ -262,7 +287,28 @@ export const questMethods = {
            empty-slot-only rule for both: silently replacing armor the player
            chose would be a reward that takes something away. */
         const slot = item.kind === 'legs' ? 'legsArmor' : 'armor';
-        if (ps[slot]) return false;
+        /* v2.3.1687 (owner: "I turned in the fire goblin remnants and never
+           received the quest reward").  THIS is where it went: an occupied
+           slot refuses the grant and returns false, and nothing anywhere
+           tells the player — the quest completes, the gold arrives, and the
+           armour simply never exists.  Weapons stopped having this problem in
+           v2.3.1683 when they started going to the bag, but armour has no
+           server-side stash to go to and handoff rule 1 forbids adding one to
+           the rpg blob, so the refusal itself has to stay for now.
+           What changes is that it stops being SILENT: the caller now knows,
+           and _handleQuestTurnIn tells the player their reward could not be
+           handed over instead of leaving them to notice its absence.
+           The real fix is a server-owned armour stash (its own storage key +
+           migration) — a schema slice, not something to smuggle into a
+           bug-fix change. Flagged with the owner. */
+        if (ps[slot]) {
+          ps._questGrantOverflow = {
+            name: String(item.name || 'Quest Armor'),
+            tierMult: Math.max(0, Math.min(8, Number(item.tierMult) || 1)),
+            slot,
+          };
+          return false;
+        }
         const tm = Math.max(0, Math.min(8, Number(item.tierMult) || 1));
         ps[slot] = { name: String(item.name || 'Quest Armor'), tierMult: tm };
         this._recomputeMaxes(ps);

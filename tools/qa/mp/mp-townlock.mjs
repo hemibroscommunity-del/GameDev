@@ -156,6 +156,24 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('once EQUIPPED from the bag, the same tap DOES swing',
     await H.readState(P, (S) => !!S.isSwinging));
 
+  /* ═══ v2.3.1687: THE EQUIP HAS TO REACH THE WORKER ═══
+     Owner: "Every time you turn in a quest it unequips all your weapons."
+     Nothing unequipped anything — the equip had never left the browser. The
+     character menu's sync was gated on `_serverMonsters`, false in town, so
+     the client wore the sword and the worker still had it in the stash. The
+     next time anything made the worker restate the loadout — a quest turn-in
+     does — the client adopted the worker's empty slots and the sword "came
+     off".
+     Reading the client here would have said "equipped" the whole time, which
+     is exactly why the v2.3.1683 version of this test passed while the bug
+     shipped. Ask the WORKER. */
+  const svrLoadout = await H.adminPlayer(wsPort, await H.readState(P, (S) => S.myId))
+    .then((a) => (a && a.rpg) || null).catch(() => null);
+  rec.ok('the worker agrees the sword is equipped (not still in its stash)',
+    !!svrLoadout && !!svrLoadout.weapon && svrLoadout.weapon.type === 'greatsword'
+    && !(svrLoadout.weaponStash || []).some((w) => w && w.type === 'greatsword'),
+    svrLoadout && { weapon: svrLoadout.weapon, stash: svrLoadout.weaponStash });
+
   /* v2.3.1683 — THE RECONNECT.  The server re-reports the shield it knows you
      own in the FULL player_state every join (deltas only carry it when it
      changes), so the client's "put a granted shield in the bag" rule has to

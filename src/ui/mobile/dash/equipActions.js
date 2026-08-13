@@ -21,9 +21,13 @@ function persist(R) {
 /* v2.3.1159: mirror weapon equip/unequip/slot changes to the worker —
    local mutation is prediction; the worker echo is authoritative.
    Gate on _serverMonsters (offline/legacy solo has no worker). */
+/* v2.3.1687: `_serverMonsters` removed — see the long note on the twin of
+   this helper in ItemDetailPopup.jsx.  Short version: it is false in town,
+   these are town screens, so every loadout change made here was applied
+   locally and told the worker nothing. */
 function syncWeaponSlot(msg) {
   const S = getState();
-  if (S && S._serverMonsters && S.channel) {
+  if (S && S.channel) {
     try { S.channel.send(msg); } catch (e) {}
   }
 }

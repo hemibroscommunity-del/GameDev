@@ -265,6 +265,11 @@ export const PRIVILEGED_EVENTS = new Set([
   // level-up celebration and the allocation ack are both server-truth;
   // forging either would paint fake levels/points on the client.
   'prog3_level', 'prog3_allocated',
+  // v2.3.1687: a quest reward handed to the client's own stash because the
+  // worn slot was full (quests.js).  Server truth about a real grant — a
+  // forged one would mint free armour on the client, so it is denied like
+  // every other server-EMITTED type.
+  'quest_reward_stashed',
   // v2.3.1664: the on-chain checkpoint receipt (chainscore.js).  Server-sent
   // only -- a forged one would paint a fake block-explorer link.
   'chain_score_recorded',

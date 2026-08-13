@@ -473,7 +473,9 @@ export const QUEST_REWARDS = {
               objective:{type:'collect', invKey:'skeleton-remnants', count:5, consume:true, zone:'sky'}},
       tut_4: {gold:400, xp:300, next:null,
               objective:{type:'collect', invKey:'fire-goblin-remnants', count:6, consume:true, zone:'ember'},
-              item:{kind:'armor', name:"Scout's Vest", tierMult:1.0}},
+              /* v2.3.1687 (owner: "Change the reward for fire goblin quest from
+                 'scouts vest' to Iron Torso"). */
+              item:{kind:'armor', name:"Iron Torso", tierMult:1.0}},
 
       /* ═══ v2.3.1680: THE LIFESKILL CHAIN ═══
          Owner: "gate and hide resource extraction for woodcutting, fishing,

@@ -412,7 +412,18 @@ export const ItemDetailPopup = () => {
       const active = R2.activeSlot || 'melee';
       title = 'WEAPON'; /* melee/ranged/staff all share this slot */
       const prop = active === 'ranged' ? 'rangedWeapon' : active === 'staff' ? 'staffWeapon' : 'weapon';
-      const types = active === 'ranged' ? ['bow'] : active === 'staff' ? ['staff'] : ['sword', 'greatsword'];
+      /* ═══ v2.3.1687: ALL THREE WEAPONS, NOT JUST THE ACTIVE SLOT'S ═══
+         Owner: "the old behavior of choosing among the 3 primary weapons
+         from the weapon slot in the character equip menu no longer works."
+         This list was filtered to the types the ACTIVE slot accepts — from
+         melee you saw swords only, so the bow and staff you own were
+         invisible and the one card labelled WEAPON could not switch weapon.
+         Switching was possible only through the separate cycle gesture,
+         which is not what the card promises.
+         The filter is gone: every weapon you own is listed, each row equips
+         into ITS OWN slot and makes that slot active (slotFor + set_active_
+         slot), so picking the bow here arms the bow.  `prop`/`active` still
+         decide which row renders as the currently-equipped one. */
       if (!R2.weaponStash) R2.weaponStash = [];
       const mkRow = (w, on) => {
         const dr = weaponDmgRange(R2, w); /* v2.3.1206: R2 = live S.rpg */
@@ -423,6 +434,23 @@ export const ItemDetailPopup = () => {
           sub: [base, dr ? 'DMG ' + dr.dmgText + ' · DPS ' + dr.dps : null].filter(Boolean).join(' · '),
           iconSrc: weaponThumb(w), glyph: '⚔️', on,
           toggle: () => {
+            /* v2.3.1687: three cases now that every weapon is listed, not
+               just the active slot's.  Tapping the weapon you are HOLDING
+               unequips it (unchanged); tapping one you own but are not
+               holding just makes its slot active — that is the "switch
+               between your three weapons" the card is for, and re-equipping
+               an already-equipped weapon would have pushed it into the bag
+               and handed back a duplicate. */
+            const ownProp = slotFor(w.type);
+            const ownActive = ownProp === 'rangedWeapon' ? 'ranged'
+              : ownProp === 'staffWeapon' ? 'staff' : 'melee';
+            const isEquipped = R2[ownProp] === w;
+            if (isEquipped && ownActive !== active) {
+              R2.activeSlot = ownActive;
+              syncWeaponSlot({ type: 'set_active_slot', payload: { slot: ownActive } });
+              persist(R2); refresh();
+              return;
+            }
             if (on) {
               R2.weaponStash.push(w); R2[prop] = null;
               /* v2.3.1159: server-sync + active-slot repair (see
@@ -436,21 +464,35 @@ export const ItemDetailPopup = () => {
               }
             }
             else {
+              /* v2.3.1687: the weapon decides its own slot, not the slot
+                 that happens to be active — that is what lets this one card
+                 arm a bow while melee is up. */
+              const destProp = slotFor(w.type);
+              const destActive = destProp === 'rangedWeapon' ? 'ranged'
+                : destProp === 'staffWeapon' ? 'staff' : 'melee';
               const i = R2.weaponStash.indexOf(w); if (i >= 0) R2.weaponStash.splice(i, 1);
-              if (R2[prop]) R2.weaponStash.push(R2[prop]);
-              R2[prop] = w; R2.activeSlot = active;
+              if (R2[destProp]) R2.weaponStash.push(R2[destProp]);
+              R2[destProp] = w; R2.activeSlot = destActive;
               /* v2.3.1159: pre-splice stash index, InventoryPanel's
                  equip_request convention — the worker swaps its own
                  stash entry and the player_state echo reconciles any
                  order drift. */
-              if (i >= 0) syncWeaponSlot({ type: 'equip_request', payload: { stashIdx: i, slot: prop } });
+              if (i >= 0) syncWeaponSlot({ type: 'equip_request', payload: { stashIdx: i, slot: destProp } });
+              /* The worker resolves damage from ITS activeSlot, so a swap
+                 that only moved the slot locally would keep swinging the
+                 old weapon server-side. */
+              syncWeaponSlot({ type: 'set_active_slot', payload: { slot: destActive } });
             }
             persist(R2); refresh();
           },
         };
       };
-      if (R2[prop]) rows.push(mkRow(R2[prop], true));
-      for (const w of R2.weaponStash.filter((x) => x && types.indexOf(x.type) >= 0)) rows.push(mkRow(w, false));
+      /* Every weapon you own: the three equipped slots (each marked as
+         equipped) then everything in the bag, unfiltered. */
+      for (const p of ['weapon', 'rangedWeapon', 'staffWeapon']) {
+        if (R2[p]) rows.push(mkRow(R2[p], p === prop));
+      }
+      for (const w of R2.weaponStash) { if (w) rows.push(mkRow(w, false)); }
     } else if (slot === 'shield') {
       title = 'SHIELD';
       if (!R2.shieldStash) R2.shieldStash = [];
@@ -1079,9 +1121,22 @@ function persist(R) {
    InventoryPanel equip convention); the worker echo is authoritative.
    Gate on _serverMonsters like InventoryPanel — offline/legacy solo
    rendering has no worker to sync. */
+/* ═══ v2.3.1687: THE GATE WAS `_serverMonsters`, WHICH IS FALSE IN TOWN ═══
+   Owner: "Every time you turn in a quest it unequips all your weapons."
+   It never unequipped anything — the equip had never reached the worker in
+   the first place.  `_serverMonsters` means "this zone's monsters are
+   server-driven" and is false in town (no monsters), and the character menu
+   is a TOWN screen, so every equip / unequip / slot change made there was
+   applied locally and sent nowhere.  Client and worker then disagreed
+   silently until something made the worker restate the loadout — a quest
+   turn-in does exactly that — and the client adopted the worker's empty
+   slots.  The unequip was the two views finally being reconciled, with the
+   client's side of the story never having been told.
+   Same dead gate as the quest messages in v2.3.1684 (src/game/quests.js);
+   gate on the CHANNEL, which is the only thing that was ever being asked. */
 function syncWeaponSlot(msg) {
   const S = getState();
-  if (S && S._serverMonsters && S.channel) {
+  if (S && S.channel) {
     try { S.channel.send(msg); } catch (e) {}
   }
 }

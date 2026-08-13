@@ -200,10 +200,28 @@ export const DashColumns = ({ R }) => {
     const cat = STAT_TO_WEAPON_CAT[s.key];
     const p3cat = cat ? prog3CatFor(cat) : null;
     const lvl = (p3 && p3cat) ? prog3SkillLevel(rpg, p3cat) : skillLevel(rpg, s.key);
-    /* One shared pool under prog3, so every pill shows the same number —
-       which is honest: the points ARE interchangeable until you spend
-       them, and that is the choice the Build grid asks you to make. */
-    const unspent = p3 ? prog3Pool(rpg) : buildSkillUnspent(rpg, s.key);
+    /* ═══ v2.3.1687: THE +1 BELONGS TO THE SKILL THAT EARNED IT ═══
+       Owner: "When I level up it shows melee, bow, and magic as +1
+       simultaneously. This is not correct. Only the combat skill that
+       leveled up should show."
+       This used to read the shared pool on all three pills, and the note
+       that stood here defended it — "every pill shows the same number,
+       which is honest" — but honest about the wrong thing. Three chips
+       lighting up for one level-up says three skills levelled; the player
+       reads a call-to-action per skill, not a shared balance. `_p3PoolFrom`
+       is stamped from the worker's prog3_level event (wsClient), so the
+       badge sits on the skill that actually levelled.
+       The pool itself is still SHARED — that is the prog3 design, and
+       restricting where the points may be spent would be a progression
+       redesign, not a display fix. Raised with the owner separately.
+       Fallback: with no stamp (an older save, or points from some other
+       source) show it on all three rather than hide unspent points
+       entirely — a missed badge costs the player their level-up. */
+    const p3Pool = p3 ? prog3Pool(rpg) : 0;
+    const p3From = rpg && rpg._p3PoolFrom;
+    const unspent = p3
+      ? ((!p3From || p3From === p3cat) ? p3Pool : 0)
+      : buildSkillUnspent(rpg, s.key);
     return (
       <div key={s.key}
         role="button"

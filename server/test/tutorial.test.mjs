@@ -180,16 +180,42 @@ const sess = { id: 'bp_t' };
   room._handleQuestTurnIn(sess, { questId: 'tut_4', xpCat: 'sword' });
   check('a met objective turns the quest in', ps._quests.tut_4 === 'turnedIn', ps._quests.tut_4);
   check('gold is paid', ps.coins === QUEST_REWARDS.tut_4.gold, ps.coins);
+  /* v2.3.1687 (owner): "Scout's Vest" -> "Iron Torso". */
   check('the armor reward is granted and named',
-    ps.armor && ps.armor.name === "Scout's Vest", ps.armor);
+    ps.armor && ps.armor.name === 'Iron Torso', ps.armor);
   check('granted armor raises maxHp (it went through _recomputeMaxes)',
     ps.maxHp > 100, ps.maxHp);
+
   check('the remnants were handed over, exactly the count required',
     ps.inventory['fire-goblin-remnants'] === 1, ps.inventory);
 
   const coinsAfter = ps.coins;
   room._handleQuestTurnIn(sess, { questId: 'tut_4', xpCat: 'sword' });
   check('a turned-in quest cannot be claimed twice', ps.coins === coinsAfter, ps.coins);
+
+  /* v2.3.1687 — the reward that used to VANISH.  Owner: "I turned in the
+     fire goblin remnants and never received the quest reward."  An occupied
+     chest slot refused the grant and returned false in silence: quest done,
+     gold paid, armour never mentioned again.  It now overflows to the client
+     (quest_reward_stashed) instead of evaporating.  Re-run the same turn-in
+     with the slot ALREADY worn and prove the piece is announced. */
+  {
+    const ps2 = ps;
+    ps2._quests.tut_4 = 'active';
+    ps2.armor = { name: 'Something The Player Chose', tierMult: 2 };
+    ps2.inventory['fire-goblin-remnants'] = 6;
+    const wsQ = room._wsBySessionId(sess.id);
+    const before = wsQ ? wsQ.sent.length : 0;
+    room._handleQuestTurnIn(sess, { questId: 'tut_4', xpCat: 'sword' });
+    const stashed = wsQ ? wsQ.sent.slice(before).filter((m) => m.type === 'quest_reward_stashed') : [];
+    check('an occupied chest slot no longer swallows the reward',
+      stashed.length === 1 && stashed[0].payload.item.name === 'Iron Torso',
+      stashed.map((m) => m.payload));
+    check('...and the armour the player chose is left alone',
+      ps2.armor && ps2.armor.name === 'Something The Player Chose', ps2.armor);
+    check('...while the scratch flag never reaches the saved blob',
+      ps2._questGrantOverflow == null, ps2._questGrantOverflow);
+  }
 
   // Armor already worn: the grant must not silently replace the player's.
   ps._quests.tut_4 = 'active';
