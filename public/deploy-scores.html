@@ -81,10 +81,11 @@
   <div class="card" id="c1">
     <div class="step">Step 1</div>
     <h2>Connect your wallet</h2>
-    <p>Your connected account becomes the <b>guardian</b> — the one address that can
-    ever replace the game's signing key. It also pays the two transactions
-    (well under a dollar total). The page will switch your wallet to the Hemi
-    network, adding it first if it's new.</p>
+    <p>Your connected account pays the two transactions (well under a dollar
+    total) and, unless you change it in Step 3, also becomes the
+    <b>guardian</b> — the one address that can ever replace the game's signing
+    key. The page will switch your wallet to the Hemi network, adding it first
+    if it's new.</p>
     <button class="go" id="btnConnect">Connect</button>
     <div class="status" id="s1"></div>
   </div>
@@ -115,8 +116,12 @@
   <div class="card locked" id="c3">
     <div class="step">Step 3</div>
     <h2>Deploy the contract</h2>
-    <p>One wallet approval. The signing key's address and your guardian address are
-    already filled in — there is nothing to type.</p>
+    <p>One wallet approval. The signing key's address is already filled in.</p>
+    <p><b>Guardian address</b> — prefilled with your connected account. If you're
+    deploying from a different account than the one you want holding the
+    emergency key-switch (e.g. you deploy from a software account but want your
+    hardware wallet as guardian), paste the guardian's address here:</p>
+    <div class="row"><input class="amt" id="guardianAddr" style="width:100%;font-family:ui-monospace,Menlo,monospace;font-size:12.5px"></div>
     <button class="go" id="btnDeploy">Deploy to Hemi</button>
     <div class="status" id="s3"></div>
     <div id="deployOut" style="display:none">
@@ -1058,7 +1063,7 @@ const CHAIN = {
 
 const $ = (id) => document.getElementById(id);
 const eth = () => window.ethereum;
-let guardian = null, relayerPriv = null, relayerAddr = null, contractAddr = null;
+let guardian = null, guardianChosen = null, relayerPriv = null, relayerAddr = null, contractAddr = null;
 
 function unlock(id) { $(id).classList.remove('locked'); }
 function done(id) { $(id).classList.add('done'); }
@@ -1090,6 +1095,7 @@ $('btnConnect').addEventListener('click', async () => {
     say('s1', 'Asking your wallet\u2026');
     const accts = await eth().request({ method: 'eth_requestAccounts' });
     guardian = accts[0];
+    $('guardianAddr').value = guardian;
     try {
       await eth().request({ method: 'wallet_switchEthereumChain', params: [{ chainId: CHAIN.chainId }] });
     } catch (e) {
@@ -1140,10 +1146,25 @@ async function readAddr(at, sig) {
 $('btnDeploy').addEventListener('click', async () => {
   if (!guardian || !relayerAddr) return;
   try {
+    /* v2.3.1696: the guardian can differ from the deployer.  Hardware
+       wallets are the guardian's natural home, but some hardware signing
+       stacks refuse contract-creation transactions outright ("Invalid
+       parameter 'to'") — so the account that PAYS for the deploy and the
+       address that HOLDS the switch are now decoupled: deploy from any
+       account, name any guardian. */
+    const gAddr = ($('guardianAddr').value || '').trim();
+    if (!/^0x[0-9a-fA-F]{40}$/.test(gAddr) || /^0x0{40}$/.test(gAddr)) {
+      say('s3', 'The guardian address doesn\u2019t look like an address (0x + 40 characters). Paste it again.', 'bad'); return;
+    }
+    guardianChosen = gAddr;
     $('btnDeploy').disabled = true;
     say('s3', 'Confirm in your wallet\u2026');
-    const data = '0x' + BYTECODE + pad32(relayerAddr) + pad32(guardian);
-    const txHash = await eth().request({ method: 'eth_sendTransaction', params: [{ from: guardian, data }] });
+    const data = '0x' + BYTECODE + pad32(relayerAddr) + pad32(gAddr);
+    /* `to: null` EXPLICITLY, not merely absent: null is the ONE spelling of
+       "this transaction creates a contract" that every wallet validator
+       accepts.  A missing property fails schema checks that mark `to`
+       required (the owner hit exactly this, on a hardware path). */
+    const txHash = await eth().request({ method: 'eth_sendTransaction', params: [{ from: guardian, to: null, data }] });
     say('s3', 'Deploying\u2026 (waiting for Hemi to confirm, ~15s)');
     const rec = await waitReceipt(txHash);
     if (!rec) { say('s3', 'Still pending \u2014 check the transaction in your wallet, then reload and re-check.', 'bad'); $('btnDeploy').disabled = false; return; }
@@ -1157,7 +1178,7 @@ $('btnDeploy').addEventListener('click', async () => {
     try {
       const s = await readAddr(contractAddr, 'signer()');
       const g = await readAddr(contractAddr, 'guardian()');
-      const okS = s === relayerAddr.toLowerCase(), okG = g === guardian.toLowerCase();
+      const okS = s === relayerAddr.toLowerCase(), okG = g === guardianChosen.toLowerCase();
       $('verify').innerHTML = (okS ? '<span class="ok">\u2713 signing key registered</span>' : '<span class="bad">\u2717 signer readback mismatch</span>')
         + ' &nbsp; ' + (okG ? '<span class="ok">\u2713 you are the guardian</span>' : '<span class="bad">\u2717 guardian readback mismatch</span>');
     } catch (e) { $('verify').textContent = '(readback skipped: ' + (e && e.message || e) + ')'; }
