@@ -40,7 +40,7 @@ getting disqualified after judging costs the entry and looks worse.
 | Requirement | State |
 |---|---|
 | Free to play | ✅ No payment code anywhere; on-chain writes are server-paid |
-| Onchain, **Hemi mainnet** | ⚠️ Code ready and hardened (v2.3.1682: guardian key-rotation, receipt-confirmed writes), **contract not deployed yet** — follow the beginner runbook in `docs/specs/progression-onchain.md`: two wallet accounts → fund with ETH → Remix (solc 0.8.26, optimizer 200, TWO constructor addresses) → **verify the source on explorer.hemi.xyz** (the submission links judges there — unverified bytecode looks abandoned) → SCORES_CONTRACT into wrangler.toml + RELAYER_KEY secret |
+| Onchain, **Hemi mainnet** | ⚠️ Code ready and hardened (v2.3.1682: guardian key-rotation, receipt-confirmed writes), **contract not deployed yet** — use the one-page deployer at `https://gamedev-aix.pages.dev/deploy-scores.html` (5 min; full manual runbook in `docs/specs/progression-onchain.md` as fallback): two wallet accounts → fund with ETH → Remix (solc 0.8.26, optimizer 200, TWO constructor addresses) → **verify the source on explorer.hemi.xyz** (the submission links judges there — unverified bytecode looks abandoned) → SCORES_CONTRACT into wrangler.toml + RELAYER_KEY secret |
 | Open source on GitHub | ✅ Public |
 | MIT or ISC | ✅ MIT (`LICENSE`) |
 | Hosted on Cloudflare | ✅ Pages (client) + Workers (server) |
