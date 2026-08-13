@@ -545,7 +545,30 @@ export const BottomDashboard = () => {
   /* v2.3.1235: batch-4 state-correction §2 — an anchored stat tooltip
      must not linger over a freshly opened panel: clear it on every
      panel-bus event (it did NOT clear before; only the 3s timer did). */
-  useEffect(() => dashboardPanelBus.subscribe(() => { setTooltip(''); force(v => v + 1); }), []);
+  /* ═══ v2.3.1698: THE ITEM CARD GOES WITH THE PANEL THAT OPENED IT ═══
+     Found in a headless playtest of the early game: equip the starter
+     sword from Character > Weapon > CHANGE, then walk out of town.  The
+     equip card was still floating mid-screen over the World View, over
+     Verdant Wilds, and back in town again — it outlived the Character
+     panel, the destination switch, the collapse to the toolbar AND two
+     zone changes.  It then sat on top of Mayor Bro's turn-in dialogue and
+     covered the Turn In Quest button, which is how a UI nit became a
+     quest you cannot hand in.  (Its scrim swallows the tap that dismisses
+     it, so the player's first tap anywhere is spent on the ghost card.)
+     Same shape, same reason, as the v2.3.1235 tooltip line above — a
+     floating layer anchored to a panel must not survive that panel.
+     Gated on an ACTUAL destination/mode change, not on every bus emit:
+     every itemDetailBus.open() call site lives INSIDE a panel view and
+     none of them navigates, so a change-gated close can never race a
+     card that is only just opening. */
+  useEffect(() => {
+    let last = dashboardPanelBus.root() + '|' + dashboardPanelBus.state.mode;
+    return dashboardPanelBus.subscribe(() => {
+      const now = dashboardPanelBus.root() + '|' + dashboardPanelBus.state.mode;
+      if (now !== last) { last = now; itemDetailBus.close(); }
+      setTooltip(''); force(v => v + 1);
+    });
+  }, []);
   /* v2.3.1312 (round-8 §Badges): the pickup watcher lives HERE — the
      dashboard is mounted in every snap mode.  It used to live in
      BagCompact, which unmounts at bar (the resting default!) and
