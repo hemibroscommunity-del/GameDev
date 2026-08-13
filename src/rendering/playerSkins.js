@@ -555,9 +555,38 @@ export function recolorBodyToCanvas(img, skinT, pantsT, shoesT, shirtT, targetH)
  * 9462-10773 px per frame; the next largest island is the fish at 224-523, so
  * STANDIN_MIN_BLOB sits an order of magnitude clear of both.
  *
- * Returns a canvas; the caller slices it into frames and rebakes on skin change. */
+ * Returns a canvas; the caller slices it into frames and rebakes on skin change.
+ *
+ * ═══ v2.3.1713: THE SAME FIX FOR THE FIRE-LIGHTER NEEDED A NARROWER TEST ═══
+ *
+ * Owner: "when lighting a fire the skin color ... goes back to defaults."  Same
+ * root cause as the cook (firemaking-strip.webp went through a plain
+ * Assets.load), but this recipe as written CANNOT be reused on it, which was
+ * measured rather than assumed by running exactly this function over that strip
+ * and rendering the 29 frames:
+ *   - `_isSkin` accepts the campfire.  Its glow halo (b/r 0.57-0.84) and the
+ *     orange band of the flame both pass, so 14 of 29 frames retinted the FIRE:
+ *     an ebony player lit a dark-brown bonfire.
+ *   - the halo touches the body, so the blob floor cannot separate them — they
+ *     label as ONE component of up to 6963 px.
+ *   - and the floor is wrong in the other direction too: this figure's skin is
+ *     broken up by the outlines of its folded arms, so its largest component is
+ *     1169-2296 px, which means STANDIN_MIN_BLOB = 1500 DROPPED the body
+ *     outright on frames 9-15 — the body would have flickered between the
+ *     player's skin and the artist's at 18 fps.
+ * Hence `opts`: a channel-ratio window that separates painted skin from painted
+ * fire, and a floor the caller can lower to match its own art.  Measured on the
+ * fire strip, body skin sits at g/r 0.49-0.74 / b/r 0.13-0.46 while the flame's
+ * red edge is g/r 0.21-0.45 and the halo is b/r 0.57+, so the window below
+ * cleanly splits them.  DEFAULTS ARE THE COOK'S EXACT BEHAVIOUR — no window, no
+ * alpha floor, blob floor 1500 — so v2.3.1710 is bit-for-bit unchanged. */
 const STANDIN_MIN_BLOB = 1500;   /* px; body >= 9462, fish <= 523 (measured) */
-export function recolorStandInSkin(img, skinT, targetH) {
+export function recolorStandInSkin(img, skinT, targetH, opts) {
+  const o = opts || {};
+  const minBlob = o.minBlob != null ? o.minBlob : STANDIN_MIN_BLOB;
+  const maxBR = o.maxBR != null ? o.maxBR : Infinity;      /* blue/red ceiling — rejects the fire's pale glow */
+  const minGR = o.minGR != null ? o.minGR : 0;             /* green/red floor — rejects the flame's red edge */
+  const maxGR = o.maxGR != null ? o.maxGR : Infinity;
   if (targetH) img = upscaleToFrameHeight(img, targetH);
   const cv = document.createElement('canvas');
   cv.width = img.naturalWidth || img.width;
@@ -568,10 +597,14 @@ export function recolorStandInSkin(img, skinT, targetH) {
   const w = cv.width, h = cv.height;
   const imgData = ctx.getImageData(0, 0, w, h);
   const d = imgData.data;
-  /* pass 1: classify, with the SAME test the body pipeline uses */
+  /* pass 1: classify, with the SAME test the body pipeline uses (plus the
+     caller's optional ratio window) */
   const skin = new Uint8Array(w * h);
   for (let p = 0, i = 0; p < w * h; p++, i += 4) {
-    if (_isSkin(d[i], d[i + 1], d[i + 2], d[i + 3])) skin[p] = 1;
+    const r = d[i], g = d[i + 1], b = d[i + 2];
+    if (!_isSkin(r, g, b, d[i + 3])) continue;
+    if (b / r > maxBR || g / r < minGR || g / r > maxGR) continue;
+    skin[p] = 1;
   }
   /* pass 2: label 4-connected skin blobs and record each one's size.  An
      EXPLICIT stack, not recursion -- a body blob spans ~10k px per frame,
@@ -597,7 +630,7 @@ export function recolorStandInSkin(img, skinT, targetH) {
   }
   /* pass 3: retint the CHARACTER's skin; leave the small islands (props) */
   for (let p = 0, i = 0; p < w * h; p++, i += 4) {
-    if (label[p] && size[label[p]] >= STANDIN_MIN_BLOB) _retint(d, i, skinT, SKIN_REF);
+    if (label[p] && size[label[p]] >= minBlob) _retint(d, i, skinT, SKIN_REF);
   }
   ctx.putImageData(imgData, 0, 0);
   return cv;
