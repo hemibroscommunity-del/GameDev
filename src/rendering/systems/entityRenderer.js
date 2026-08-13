@@ -3518,9 +3518,14 @@ function createOtherPlayerDisplay() {
  * Manages all entity rendering.
  */
 export class EntityRenderer {
-  constructor(entityLayer, playerLayer, monsterUiLayer) {
+  constructor(entityLayer, playerLayer, monsterUiLayer, gestureLayer) {
     this.entityLayer = entityLayer;
     this.playerLayer = playerLayer;
+    /* v2.3.1713: the layer above gatherNodesFront that the gathering figures
+       draw in.  The local body borrows it for the mine/fish poses only (see
+       _updatePlayer); null on an older scene graph, which just leaves the
+       body in playerLayer and restores the old behaviour. */
+    this.gestureLayer = gestureLayer || null;
     /* v2.3.1472: HP bar / level / number live in their own layer above
        gatherNodes (see pixiApp) so a tree can hide the monster without
        hiding its health.  Falls back to the entity layer if a caller
@@ -5130,16 +5135,33 @@ export class EntityRenderer {
   }
 
   _updatePlayer(S, now) {
+    /* v2.3.1713 (owner: "move the life skill extraction gestures to be in
+       front of the other stuff.  The woodcutting gesture was largely hidden
+       behind a tree").  Mining and fishing are the two gathering gestures
+       with NO stand-in figure — the pose plays on the player's own body — so
+       the promotion that lifted the chop/cook/fire stand-ins to gestureFront
+       has to lift the BODY for those two, or a tree beside the rock still
+       swallows the miner whole (measured: a tree over the vein hid every
+       pixel of him, leaving only the ore, which v2.3.854 already draws on
+       top).  Gated on an ACTIVE extraction and on those two skills only:
+       with no extraction the body is back in playerLayer, so merely standing
+       — or fighting — behind a tree stays occluded, which is the whole point
+       of v2.3.1500.  The defensive every-frame re-attach below is preserved,
+       just aimed at whichever layer this frame wants. */
+    const _exSkill = (S._extraction && (S._extraction.status === 'waiting' || S._extraction.status === 'ready'))
+      ? S._extraction.skill : null;
+    const _bodyLayer = ((_exSkill === 'mining' || _exSkill === 'fishing') && this.gestureLayer)
+      ? this.gestureLayer : this.playerLayer;
     if (!this.playerDisplay || this.playerDisplay.destroyed) {
       this.playerDisplay = createPlayerDisplay();
-      this.playerLayer.addChild(this.playerDisplay);
-    } else if (this.playerDisplay.parent !== this.playerLayer) {
+      _bodyLayer.addChild(this.playerDisplay);
+    } else if (this.playerDisplay.parent !== _bodyLayer) {
       /* Defensive re-attach.  Something on zone change was detaching
          the playerDisplay from the player layer (or removing it from
          the scene graph altogether) and the user reported the avatar
          going invisible in other zones.  This re-parents it every
          frame if it's missing.  Cheap when already attached (no-op). */
-      this.playerLayer.addChild(this.playerDisplay);
+      _bodyLayer.addChild(this.playerDisplay);
     }
 
     const P = S.player;
@@ -5152,9 +5174,9 @@ export class EntityRenderer {
        so hide the real one to avoid a double character.
        v2.3.853: same for cooking (the cook+pan sprite stands in beside the
        campfire) and firemaking (the crouching-to-light sprite stands in at
-       the player). */
-    const _exSkill = (S._extraction && (S._extraction.status === 'waiting' || S._extraction.status === 'ready'))
-      ? S._extraction.skill : null;
+       the player).
+       v2.3.1713: _exSkill is now computed at the top of this method (the
+       body's LAYER depends on it too) — one read, same value. */
     const _chopHide = _exSkill === 'woodcutting' || _exSkill === 'cooking' || !!S._firemaking;
     display.visible = !_chopHide;
     display.x = P.x;

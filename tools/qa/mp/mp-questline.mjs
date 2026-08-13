@@ -195,6 +195,29 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok(`${step.id}: the WORKER marked it turned in`,
       !!done && (done._quests || {})[step.id] === 'turnedIn',
       done && done._quests);
+
+    /* ═══ v2.3.1713: THE DIALOGUE SURVIVES THE HAND-IN ═══
+       Owner: "make it so that turning in the quest after completion launches
+       the quest dialog window (same behavior as when you first begin a
+       quest)."  turnInQuest used to end on setQuestPanel(null) while
+       acceptQuest kept its card up and merely flipped the status — so a
+       hand-in dropped the player back to a blank screen standing right in
+       front of the giver, and his next quest stayed unoffered until they had
+       walked 110px away and back, because the proximity opener's latch is
+       still armed from this same visit.
+       Every quest in ARC is Mayor Bro's and he has more beyond life_2, so
+       there is always a next one to show — no last-step special case.
+       Asserted BEFORE the close() below, which would hide the thing under
+       test.  "Offers Accept" is the honest witness rather than the title: a
+       card that merely failed to close would still carry the OLD quest's
+       Turn In, and would pass a bare "is it open" check. */
+    const afterTurnIn = await cardText();
+    rec.ok(`${step.id}: the dialogue stays open through the hand-in`,
+      await open(), afterTurnIn.slice(0, 200));
+    rec.ok(`${step.id}: ...already offering his next quest, with no walk-away`,
+      /Accept/i.test(afterTurnIn) && !/Turn In/i.test(afterTurnIn),
+      afterTurnIn.slice(0, 200));
+
     await close();
   }
 

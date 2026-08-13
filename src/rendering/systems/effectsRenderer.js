@@ -580,6 +580,20 @@ export class EffectsRenderer {
     /* v2.3.1593: below entities — ore only, so monsters walk in front of it.
        Falls back to nodeLayer so an older scene graph still renders ore. */
     this.nodeBackLayer = layers.gatherNodesBack || layers.gatherNodes;
+    /* v2.3.1713 (owner: "move the life skill extraction gestures to be in
+       front of the other stuff.  The woodcutting gesture was largely hidden
+       behind a tree").  The gathering FIGURES — chopper, cook, fire-lighter,
+       local and remote — live here instead of in nodeLayer.  nodeLayer is
+       index 7 and trees have been at gatherNodesFront (index 10) since
+       v2.3.1500, so the tree being chopped drew over the chopper every time;
+       gestureFront is the one layer above it.  Only the figures move: the node
+       art, tier badges and proximity tips stay in nodeLayer, and so do the
+       sword/bow combat stand-ins, which must keep being occluded by a tree
+       exactly as the player's own body is.  Fallback chain matches the
+       neighbours above so an older scene graph still draws the figure (and
+       gatherNodesFront, added after the trees' addChildAt(0), still puts it in
+       front of them). */
+    this.gestureLayer = layers.gestureFront || layers.gatherNodesFront || layers.gatherNodes;
     this.projectileLayer = layers.projectiles;
     this.telegraphLayer = layers.telegraphs;
     this.overlayLayer = layers.overlayWorld;
@@ -657,7 +671,7 @@ export class EffectsRenderer {
     this.chopSprite = new Sprite();
     this.chopSprite.anchor.set(0.5, 1);  // bottom-centre stands on the ground
     this.chopSprite.visible = false;
-    this.nodeLayer.addChild(this.chopSprite);
+    this.gestureLayer.addChild(this.chopSprite);   /* v2.3.1713: above trees */
     /* v2.3.1417: the gesture-driven tool cue (painted pickaxe/reel/axe/
        pan) — one reusable centre-anchored sprite, positioned + frame-
        picked per tick in _updateExtractionCue.  On the OVERLAY layer
@@ -719,15 +733,15 @@ export class EffectsRenderer {
     this.chopLegsSprite = new Sprite();
     this.chopLegsSprite.anchor.set(0.5, 1);
     this.chopLegsSprite.visible = false;
-    this.nodeLayer.addChild(this.chopLegsSprite);
+    this.gestureLayer.addChild(this.chopLegsSprite);   /* v2.3.1713: above trees */
     this.chopShirtSprite = new Sprite();
     this.chopShirtSprite.anchor.set(0.5, 1);
     this.chopShirtSprite.visible = false;
-    this.nodeLayer.addChild(this.chopShirtSprite);
+    this.gestureLayer.addChild(this.chopShirtSprite);   /* v2.3.1713: above trees */
     this.chopChestSprite = new Sprite();
     this.chopChestSprite.anchor.set(0.5, 1);
     this.chopChestSprite.visible = false;
-    this.nodeLayer.addChild(this.chopChestSprite);
+    this.gestureLayer.addChild(this.chopChestSprite);   /* v2.3.1713: above trees */
 
     /* v2.3.853: cook character (shown at the campfire during a cooking
        extraction) + firemaking character (shown at the player while lighting
@@ -735,7 +749,7 @@ export class EffectsRenderer {
     this.cookSprite = new Sprite();
     this.cookSprite.anchor.set(0.5, 1);
     this.cookSprite.visible = false;
-    this.nodeLayer.addChild(this.cookSprite);
+    this.gestureLayer.addChild(this.cookSprite);   /* v2.3.1713: above trees */
     /* v2.3.1114: leg-armour layer for the cook stand-in -- the equipped greaves
        drawn over the cook's legs, untinted (armour keeps its own metal colour),
        shown only when leg armour is equipped. Same 24-frame 213x220 cook strip
@@ -747,7 +761,7 @@ export class EffectsRenderer {
     this.cookLegsSprite = new Sprite();
     this.cookLegsSprite.anchor.set(0.5, 1);
     this.cookLegsSprite.visible = false;
-    this.nodeLayer.addChild(this.cookLegsSprite);
+    this.gestureLayer.addChild(this.cookLegsSprite);   /* v2.3.1713: above trees */
     /* v2.3.1113: shirt layer for the cook stand-in -- the player's selected
        shirt, drawn over the bald cook torso and tinted to their shirt colour
        (same white-base + Pixi-tint path the sword/bow stand-ins use). Added
@@ -758,7 +772,7 @@ export class EffectsRenderer {
     this.cookShirtSprite = new Sprite();
     this.cookShirtSprite.anchor.set(0.5, 1);
     this.cookShirtSprite.visible = false;
-    this.nodeLayer.addChild(this.cookShirtSprite);
+    this.gestureLayer.addChild(this.cookShirtSprite);   /* v2.3.1713: above trees */
     /* v2.3.1115: chest-armour layer for the cook stand-in -- the equipped plate
        (+ armoured arms) drawn over the torso, untinted, shown only when chest
        armour is equipped. Same 24-frame 213x220 cook strip at
@@ -767,7 +781,7 @@ export class EffectsRenderer {
     this.cookChestSprite = new Sprite();
     this.cookChestSprite.anchor.set(0.5, 1);
     this.cookChestSprite.visible = false;
-    this.nodeLayer.addChild(this.cookChestSprite);
+    this.gestureLayer.addChild(this.cookChestSprite);   /* v2.3.1713: above trees */
     /* v2.3.1710: both cook bodies now load through _loadCookStrips, which bakes
        the PLAYER'S skin into them (owner: the cooking character "has the wrong
        skin color").  v2.3.1114's legs-erased body rides the same bake so the two
@@ -779,7 +793,7 @@ export class EffectsRenderer {
     this.fireSprite = new Sprite();
     this.fireSprite.anchor.set(0.5, 1);
     this.fireSprite.visible = false;
-    this.nodeLayer.addChild(this.fireSprite);
+    this.gestureLayer.addChild(this.fireSprite);   /* v2.3.1713: above trees */
     this._fireFrames = [];
     _fxLoad('/sprites/skills/firemaking-strip.webp').then((tex) => {
       const FW = 161, FH = 220;
@@ -1050,7 +1064,14 @@ export class EffectsRenderer {
        otherwise replaces the trait-composed body.  One shared set — only one
        stand-in renders at a time.  Added after the stand-ins so they layer on
        top (hair behind hat via child order).  Per-frame head crowns come from
-       crowns.json (skin-detected at build time). */
+       crowns.json (skin-detected at build time).
+       v2.3.1713: this ONE set is shared by the gathering stand-ins and the
+       sword/bow COMBAT stand-ins, which now live in different layers — so the
+       set can't be parented once.  It is created in nodeLayer (the combat
+       home, unchanged) and _placeSkillTraitsOn moves it to gestureLayer for
+       the frames a gathering figure owns it.  Parenting it permanently to
+       gestureLayer instead would float a swinging player's HAT over the tree
+       that is correctly hiding the rest of him. */
     this.skillTraits = { hair: new Sprite(), beard: new Sprite(), hat: new Sprite() };
     for (const k of ['hair', 'beard', 'hat']) {
       this.skillTraits[k].visible = false;
@@ -1147,6 +1168,20 @@ export class EffectsRenderer {
      transform + the per-frame crown, and the trait scale from the stand-in's
      render scale × head proportion so the hat matches the head size. */
   _placeSkillTraitsOn(skillKey, sp, fi, dir, mirror) {
+    /* v2.3.1713: follow the figure that owns the traits this frame into ITS
+       layer.  The gathering figures moved up to gestureFront (above trees);
+       the sword/bow stand-ins stayed in nodeLayer, and a head that drew in a
+       different layer from its body is a worse artefact than the one being
+       fixed.  Keyed off skillKey because that is what selects the figure —
+       'chop' / 'cook' / 'fire' are the gathering set, everything else
+       ('sword*', 'bow*') is combat.  addChild is a no-op when already
+       parented there, so this costs nothing on the steady state. */
+    const _want = (skillKey === 'chop' || skillKey === 'cook' || skillKey === 'fire')
+      ? this.gestureLayer : this.nodeLayer;
+    for (const k of ['hair', 'beard', 'hat']) {
+      const t = this.skillTraits && this.skillTraits[k];
+      if (t && !t.destroyed && t.parent !== _want) _want.addChild(t);
+    }
     const data = this._skillCrowns && this._skillCrowns[skillKey];
     if (!data || !data.crowns.length) { hideSkillTraits(this.skillTraits); return; }
     const cr = data.crowns[Math.min(fi, data.crowns.length - 1)];
@@ -3821,7 +3856,12 @@ export class EffectsRenderer {
       if (!sp) {
         sp = new Sprite();
         sp.anchor.set(0.5, 1);          // bottom-centre stands on the ground
-        this.nodeLayer.addChild(sp);
+        /* v2.3.1713: peers' gathering figures ride the same gestureFront
+           promotion as your own.  Leaving them behind would mean two players
+           chopping the SAME tree render on opposite sides of it — the second
+           one reading as broken — and a peer hidden behind a tree is the very
+           complaint being fixed, just seen from the other chair. */
+        this.gestureLayer.addChild(sp);
         ent[code] = sp;
       }
       const fi = Math.floor(now / spec.ms) % spec.frames.length;
@@ -3849,7 +3889,11 @@ export class EffectsRenderer {
          arbitrary-player form of that, used by the remote swing/bow
          stand-ins — reused here rather than grown a second time. */
       if (!ent.traits) {
-        const mk = () => { const t = new Sprite(); t.visible = false; this.nodeLayer.addChild(t); return t; };
+        /* v2.3.1713: gestureLayer with the body above — this trait set is
+           private to the remote GATHERING figure (the remote swing/bow
+           stand-ins own their own), so unlike the local shared set it needs
+           no per-frame reparenting. */
+        const mk = () => { const t = new Sprite(); t.visible = false; this.gestureLayer.addChild(t); return t; };
         ent.traits = { hair: mk(), beard: mk(), hat: mk() };
       }
       const looks = {

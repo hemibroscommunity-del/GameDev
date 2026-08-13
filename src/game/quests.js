@@ -10,7 +10,7 @@
    original code read stateRef.current at click time; callers pass it at
    click time — identical semantics). Imports are explicit per the
    extracted-module rule. */
-import { QUEST_STATUS, QUEST_AP_REWARD, createDefaultCompStats, BT_AUDIO } from '@/data/index.js';
+import { QUEST_STATUS, QUEST_AP_REWARD, createDefaultCompStats, BT_AUDIO, getNpcQuest } from '@/data/index.js';
 import { _objectSpread } from '@/lib/babelHelpers.js';
 
 import { pushDmgPopup } from '@/game/combatHelpers.js';
@@ -114,5 +114,31 @@ export function turnInQuest(S, questPanel, deps, xpCat) {
   } catch (e) {}
   pushDmgPopup(S, S.player.x, S.player.y - 40, 'Quest Complete! +' + questPanel.quest.reward.gold + 'G +' + questPanel.quest.reward.xp + 'XP', '#f5c542');
   BT_AUDIO.levelUp();
-  setQuestPanel(null);
+  /* ═══ v2.3.1713: THE DIALOGUE SURVIVES THE HAND-IN ═══
+     Owner: "make it so that turning in the quest after completion launches
+     the quest dialog window (same behavior as when you first begin a quest)."
+     acceptQuest above keeps the card up and just flips its status to active;
+     this path closed it outright with setQuestPanel(null).  That left the
+     giver's NEXT quest unoffered until the player walked 110px away and came
+     back, because the proximity opener's latch (S._npcProxLatch in
+     BroTown.jsx) is still armed from this same visit — standing right in
+     front of him with a blank screen, which reads as "he has nothing for
+     me".  So re-open on whatever he has next.
+     getNpcQuest is the SAME lookup the proximity opener uses, deliberately:
+     the card you get by standing still now matches the one you would have
+     got by walking away and back, instead of being a second opinion about
+     what he offers.  It reads the local R, which lines 99-110 above have
+     already advanced (this quest turnedIn, the chain's next one made
+     available), so it sees the post-hand-in world.
+     Only close when the lookup comes back empty — his chain is genuinely
+     finished, and an empty screen is then the truth rather than a dead end. */
+  var _nextFromGiver = getNpcQuest(R, questPanel.npc);
+  if (_nextFromGiver) {
+    setQuestPanel(_objectSpread(_objectSpread({}, questPanel), {}, {
+      quest: _nextFromGiver.quest,
+      status: _nextFromGiver.status
+    }));
+  } else {
+    setQuestPanel(null);
+  }
 }
