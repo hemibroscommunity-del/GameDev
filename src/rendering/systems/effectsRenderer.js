@@ -36,6 +36,21 @@ import { bowTorsoCutRow } from '../bowTorsoCut.js';
 import { swordTorsoCutRow } from '../swordTorsoCut.js';
 import { GEARLAYER_VER } from '../gearVersion.js';   // shared cache-bust string (see gearVersion.js)
 
+/* v2.3.1713: the firemaking strip's frame box, shared by the body bake, the
+   shirt layer, the trait crowns and the remote stand-in — they all slice the
+   SAME 161x220 grid, and crowns.json is generated against it, so a re-cut strip
+   has to move all four together (the comment at _skillTraitMul says the same
+   thing about the chop/cook widths). */
+const FIRE_FW = 161, FIRE_FH = 220;
+/* The channel-ratio window that separates this figure's painted skin from the
+   campfire it is lighting.  MEASURED on firemaking-strip.webp: body skin runs
+   g/r 0.49-0.74 and b/r 0.13-0.46; the glow halo sits at b/r 0.57-0.84 and the
+   flame's red edge at g/r 0.21-0.45, both of which the shared _isSkin accepts.
+   minBlob is 200 rather than the cook's 1500 because this body's folded arms
+   split it into 1169-2296px components — see recolorStandInSkin for the whole
+   measurement, including what each wrong value looked like on screen. */
+const FIRE_SKIN_OPTS = { maxBR: 0.50, minGR: 0.45, maxGR: 0.80, minBlob: 200 };
+
 /* Popup icons (XP badge, gold coin, sword/arrow/spell for damage by weapon
    type). Loaded async — entries appear in the registry once each PNG is
    ready. Until then, popups render text-only and the icon is skipped. */
@@ -580,6 +595,20 @@ export class EffectsRenderer {
     /* v2.3.1593: below entities — ore only, so monsters walk in front of it.
        Falls back to nodeLayer so an older scene graph still renders ore. */
     this.nodeBackLayer = layers.gatherNodesBack || layers.gatherNodes;
+    /* v2.3.1713 (owner: "move the life skill extraction gestures to be in
+       front of the other stuff.  The woodcutting gesture was largely hidden
+       behind a tree").  The gathering FIGURES — chopper, cook, fire-lighter,
+       local and remote — live here instead of in nodeLayer.  nodeLayer is
+       index 7 and trees have been at gatherNodesFront (index 10) since
+       v2.3.1500, so the tree being chopped drew over the chopper every time;
+       gestureFront is the one layer above it.  Only the figures move: the node
+       art, tier badges and proximity tips stay in nodeLayer, and so do the
+       sword/bow combat stand-ins, which must keep being occluded by a tree
+       exactly as the player's own body is.  Fallback chain matches the
+       neighbours above so an older scene graph still draws the figure (and
+       gatherNodesFront, added after the trees' addChildAt(0), still puts it in
+       front of them). */
+    this.gestureLayer = layers.gestureFront || layers.gatherNodesFront || layers.gatherNodes;
     this.projectileLayer = layers.projectiles;
     this.telegraphLayer = layers.telegraphs;
     this.overlayLayer = layers.overlayWorld;
@@ -657,7 +686,7 @@ export class EffectsRenderer {
     this.chopSprite = new Sprite();
     this.chopSprite.anchor.set(0.5, 1);  // bottom-centre stands on the ground
     this.chopSprite.visible = false;
-    this.nodeLayer.addChild(this.chopSprite);
+    this.gestureLayer.addChild(this.chopSprite);   /* v2.3.1713: above trees */
     /* v2.3.1417: the gesture-driven tool cue (painted pickaxe/reel/axe/
        pan) — one reusable centre-anchored sprite, positioned + frame-
        picked per tick in _updateExtractionCue.  On the OVERLAY layer
@@ -719,15 +748,15 @@ export class EffectsRenderer {
     this.chopLegsSprite = new Sprite();
     this.chopLegsSprite.anchor.set(0.5, 1);
     this.chopLegsSprite.visible = false;
-    this.nodeLayer.addChild(this.chopLegsSprite);
+    this.gestureLayer.addChild(this.chopLegsSprite);   /* v2.3.1713: above trees */
     this.chopShirtSprite = new Sprite();
     this.chopShirtSprite.anchor.set(0.5, 1);
     this.chopShirtSprite.visible = false;
-    this.nodeLayer.addChild(this.chopShirtSprite);
+    this.gestureLayer.addChild(this.chopShirtSprite);   /* v2.3.1713: above trees */
     this.chopChestSprite = new Sprite();
     this.chopChestSprite.anchor.set(0.5, 1);
     this.chopChestSprite.visible = false;
-    this.nodeLayer.addChild(this.chopChestSprite);
+    this.gestureLayer.addChild(this.chopChestSprite);   /* v2.3.1713: above trees */
 
     /* v2.3.853: cook character (shown at the campfire during a cooking
        extraction) + firemaking character (shown at the player while lighting
@@ -735,7 +764,7 @@ export class EffectsRenderer {
     this.cookSprite = new Sprite();
     this.cookSprite.anchor.set(0.5, 1);
     this.cookSprite.visible = false;
-    this.nodeLayer.addChild(this.cookSprite);
+    this.gestureLayer.addChild(this.cookSprite);   /* v2.3.1713: above trees */
     /* v2.3.1114: leg-armour layer for the cook stand-in -- the equipped greaves
        drawn over the cook's legs, untinted (armour keeps its own metal colour),
        shown only when leg armour is equipped. Same 24-frame 213x220 cook strip
@@ -747,7 +776,7 @@ export class EffectsRenderer {
     this.cookLegsSprite = new Sprite();
     this.cookLegsSprite.anchor.set(0.5, 1);
     this.cookLegsSprite.visible = false;
-    this.nodeLayer.addChild(this.cookLegsSprite);
+    this.gestureLayer.addChild(this.cookLegsSprite);   /* v2.3.1713: above trees */
     /* v2.3.1113: shirt layer for the cook stand-in -- the player's selected
        shirt, drawn over the bald cook torso and tinted to their shirt colour
        (same white-base + Pixi-tint path the sword/bow stand-ins use). Added
@@ -758,7 +787,7 @@ export class EffectsRenderer {
     this.cookShirtSprite = new Sprite();
     this.cookShirtSprite.anchor.set(0.5, 1);
     this.cookShirtSprite.visible = false;
-    this.nodeLayer.addChild(this.cookShirtSprite);
+    this.gestureLayer.addChild(this.cookShirtSprite);   /* v2.3.1713: above trees */
     /* v2.3.1115: chest-armour layer for the cook stand-in -- the equipped plate
        (+ armoured arms) drawn over the torso, untinted, shown only when chest
        armour is equipped. Same 24-frame 213x220 cook strip at
@@ -767,7 +796,7 @@ export class EffectsRenderer {
     this.cookChestSprite = new Sprite();
     this.cookChestSprite.anchor.set(0.5, 1);
     this.cookChestSprite.visible = false;
-    this.nodeLayer.addChild(this.cookChestSprite);
+    this.gestureLayer.addChild(this.cookChestSprite);   /* v2.3.1713: above trees */
     /* v2.3.1710: both cook bodies now load through _loadCookStrips, which bakes
        the PLAYER'S skin into them (owner: the cooking character "has the wrong
        skin color").  v2.3.1114's legs-erased body rides the same bake so the two
@@ -779,13 +808,24 @@ export class EffectsRenderer {
     this.fireSprite = new Sprite();
     this.fireSprite.anchor.set(0.5, 1);
     this.fireSprite.visible = false;
-    this.nodeLayer.addChild(this.fireSprite);
+    this.gestureLayer.addChild(this.fireSprite);   /* v2.3.1713: above trees */
+    /* v2.3.1713: the fire-lighter's SHIRT, added AFTER the body so it composites
+       on top — the same layer the cook (v2.3.1113) and the chopper (v2.3.1131)
+       have had, and the one pose that never got one.  See _updateFiremaking.
+       gestureLayer, NOT nodeLayer: the two v2.3.1713 fixes met here, and a
+       shirt left behind on nodeLayer would sit BEHIND the tree its own body is
+       now drawn in front of — a floating headless torso at every campfire
+       under a canopy. */
+    this.fireShirtSprite = new Sprite();
+    this.fireShirtSprite.anchor.set(0.5, 1);
+    this.fireShirtSprite.visible = false;
+    this.gestureLayer.addChild(this.fireShirtSprite);
+    /* v2.3.1713: the body strip now loads through _loadFireStrips, which bakes
+       the PLAYER'S skin into it (owner: "when lighting a fire the skin color and
+       shirt go back to defaults").  It used to be a plain _fxLoad, so it always
+       showed the artist's orange. */
     this._fireFrames = [];
-    _fxLoad('/sprites/skills/firemaking-strip.webp').then((tex) => {
-      const FW = 161, FH = 220;
-      const n = Math.max(1, Math.round(tex.width / FW));
-      for (let i = 0; i < n; i++) this._fireFrames.push(new Texture({ source: tex.source, frame: new Rectangle(i * FW, 0, FW, FH) }));
-    }).catch((err) => console.warn('[firemaking-strip] load failed', err));
+    this._loadFireStrips();
 
     /* v2.3.910: sword-swing stand-in — the owner-supplied swing animation plays
        at the player during a melee swing (same self-contained stand-in pattern
@@ -1050,7 +1090,14 @@ export class EffectsRenderer {
        otherwise replaces the trait-composed body.  One shared set — only one
        stand-in renders at a time.  Added after the stand-ins so they layer on
        top (hair behind hat via child order).  Per-frame head crowns come from
-       crowns.json (skin-detected at build time). */
+       crowns.json (skin-detected at build time).
+       v2.3.1713: this ONE set is shared by the gathering stand-ins and the
+       sword/bow COMBAT stand-ins, which now live in different layers — so the
+       set can't be parented once.  It is created in nodeLayer (the combat
+       home, unchanged) and _placeSkillTraitsOn moves it to gestureLayer for
+       the frames a gathering figure owns it.  Parenting it permanently to
+       gestureLayer instead would float a swinging player's HAT over the tree
+       that is correctly hiding the rest of him. */
     this.skillTraits = { hair: new Sprite(), beard: new Sprite(), hat: new Sprite() };
     for (const k of ['hair', 'beard', 'hat']) {
       this.skillTraits[k].visible = false;
@@ -1065,7 +1112,29 @@ export class EffectsRenderer {
     /* crowns.json frame widths MUST match the strip-loading FWs above
        (chop 240, cook 213, fire 161).  If those strips are re-cut, rerun the
        crown generator with the matching widths or the traits drift off-head. */
+    /* v2.3.1713: `fire` frames 22 and 23 were hand-corrected in the JSON, which
+       cannot carry a comment of its own.  Both read [79,145] — down on the
+       burning log, not on the head: the generator locked onto the flame once it
+       got bright, so the player's HAT teleported onto the campfire for two
+       frames (~110ms) of every fire lit.  Re-derived from the art as [111,80]
+       and [107,80], between their neighbours' [117,79] and [108,67], by
+       tools/build_fire_shirt.mjs, which prints the corrected pair on every run
+       (it needs a trustworthy head anchor for the shirt mask).  Found while
+       fixing the owner's skin/shirt report; not part of it. */
     fetch('/sprites/skills/crowns.json').then((r) => r.json()).then((j) => { this._skillCrowns = j; }).catch(() => {});
+
+    /* v2.3.1713: warm the fire-lighter's SHIRT sheet onto the intro gate.
+       _gearStripFrame loads through _fxLoad, so touching it once here registers
+       the fetch with effectsAnimationsReady() instead of letting the first fire
+       of the session pay for it mid-animation — a first-use texture load is
+       exactly the regression the preloading law names (CLAUDE.md, TRAPS #12).
+       It has to sit HERE, at the end of the constructor, and not beside
+       _loadFireStrips: this._gearStrips is not initialised until partway down,
+       so an earlier call would throw, and a call that "helpfully" created the
+       map early would be wiped by that initialiser and silently re-load lazily.
+       'tshirt' is the only shirt item that ships, so nothing is guessed; a
+       player wearing none simply never draws the sprite. */
+    this._gearStripFrame('shirt', 'tshirt', 'fire', 'south', FIRE_FW, 0);
   }
 
   /* ═══ v2.3.1710: THE COOK WEARS THE PLAYER'S SKIN ═══
@@ -1141,12 +1210,87 @@ export class EffectsRenderer {
     }
   }
 
+  /* ═══ v2.3.1713: THE FIRE-LIGHTER WEARS THE PLAYER'S SKIN ═══
+   *
+   * Owner playtest: "when lighting a fire the skin color and shirt go back to
+   * defaults (not your character)."  TWO symptoms, TWO unrelated causes — the
+   * same shape as the cook's three in v2.3.1710, and measured the same way.
+   *
+   * SKIN.  firemaking-strip.webp went through a plain _fxLoad and was never
+   * recoloured, so the figure that REPLACES the avatar for the whole 1.5s light
+   * (entityRenderer hides the real body on S._firemaking) always wore the
+   * artist's paint — measured #f28638 against the player sheets' #cd864b, i.e.
+   * a full skin tone lighter and more saturated than anything in SKIN_CATALOG.
+   * Its head traits already follow the player (v2.3.867), which is what makes
+   * the mismatch read as a bug rather than a style.
+   *
+   * WHY NOT THE COOK'S RECIPE VERBATIM.  Because it was tried on this strip and
+   * rendered, and it is wrong twice over — the fire is the problem both times.
+   * The default classifier accepts the flame and its glow halo as skin (so an
+   * ebony player lit a dark-brown bonfire on 14 of the 29 frames), and the
+   * cook's 1500px blob floor DROPS this body on frames 9-15, where its folded
+   * arms break the skin into components of 1169-2296px, which would have
+   * flickered between the two skins at 18fps.  recolorStandInSkin therefore
+   * takes a ratio window + a lower floor; the numbers behind both, and the
+   * proof the cook's own behaviour is untouched, are at that function.
+   *
+   * PRELOADING IS LAW (CLAUDE.md).  The bake is pushed onto _fxPreload — the
+   * same list _fxLoad feeds — so the intro gate waits for the RECOLOURED
+   * textures, not for a raw download it would then have to re-bake mid-play. */
+  _loadFireStrips() {
+    _fxPreload.push(this._fetchAndBakeFire());
+    /* The character menu can change the skin mid-session; rebake exactly as the
+       cook does (_loadCookStrips, v2.3.1710). */
+    onSkinChange(() => { this._fetchAndBakeFire(); });
+  }
+
+  /* Fetch the fire body strip, bake the player's skin in, and let the decoded
+     source go — same memory reasoning as _fetchAndBakeCook (this strip decodes
+     to ~4.1MB of RGBA, and iPhone Safari's OOM history is written up in
+     spriteScale.js).  A rebake re-fetches from the HTTP cache and only ever
+     happens behind the character menu, never mid-play. */
+  _fetchAndBakeFire() {
+    return new Promise((res, rej) => {
+      const im = new Image();
+      im.onload = () => res(im);
+      im.onerror = rej;
+      im.src = '/sprites/skills/firemaking-strip.webp';
+    }).then((img) => {
+      /* skinTarget() returns null for the 'default' pick, which means "the art
+         is already this colour" — true of the PLAYER sheets, not of this
+         painting, so default falls back to the explicit tan.  That is the whole
+         point of the fix for anyone who never opened the skin picker. */
+      const skinT = skinTarget(getSkin()) || DEFAULT_SKIN_TARGET;
+      const cv = recolorStandInSkin(img, skinT, FIRE_FH, FIRE_SKIN_OPTS);
+      const source = Texture.from(cv).source;
+      source.scaleMode = 'linear';
+      const n = Math.max(1, Math.round(cv.width / FIRE_FW));
+      const arr = [];
+      for (let i = 0; i < n; i++) arr.push(new Texture({ source, frame: new Rectangle(i * FIRE_FW, 0, FIRE_FW, FIRE_FH) }));
+      this._fireFrames = arr;
+    }).catch((err) => console.warn('[firemaking-strip] load failed', err));
+  }
+
   /* Composite the player's traits onto a stand-in skill sprite for this frame.
      sp = the stand-in Sprite (anchor 0.5,1); fi = its current frame index;
      dir/mirror = trait facing; the crown world pos is derived from sp's own
      transform + the per-frame crown, and the trait scale from the stand-in's
      render scale × head proportion so the hat matches the head size. */
   _placeSkillTraitsOn(skillKey, sp, fi, dir, mirror) {
+    /* v2.3.1713: follow the figure that owns the traits this frame into ITS
+       layer.  The gathering figures moved up to gestureFront (above trees);
+       the sword/bow stand-ins stayed in nodeLayer, and a head that drew in a
+       different layer from its body is a worse artefact than the one being
+       fixed.  Keyed off skillKey because that is what selects the figure —
+       'chop' / 'cook' / 'fire' are the gathering set, everything else
+       ('sword*', 'bow*') is combat.  addChild is a no-op when already
+       parented there, so this costs nothing on the steady state. */
+    const _want = (skillKey === 'chop' || skillKey === 'cook' || skillKey === 'fire')
+      ? this.gestureLayer : this.nodeLayer;
+    for (const k of ['hair', 'beard', 'hat']) {
+      const t = this.skillTraits && this.skillTraits[k];
+      if (t && !t.destroyed && t.parent !== _want) _want.addChild(t);
+    }
     const data = this._skillCrowns && this._skillCrowns[skillKey];
     if (!data || !data.crowns.length) { hideSkillTraits(this.skillTraits); return; }
     const cr = data.crowns[Math.min(fi, data.crowns.length - 1)];
@@ -3742,6 +3886,10 @@ export class EffectsRenderer {
    * (set when a log is lit from the Bag); hidden otherwise. */
   _updateFiremaking(S, now) {
     if (this.fireSprite) this.fireSprite.visible = false;
+    /* v2.3.1713: the shirt hides with the body — it is a separate sprite on the
+       same layer, so an early return below would otherwise leave a floating
+       shirt behind when the light finishes or the player dies mid-light. */
+    if (this.fireShirtSprite) this.fireShirtSprite.visible = false;
     const fm = S && S._firemaking;
     if (!fm || !S.player || !this.fireSprite || !this._fireFrames.length) return;
     if (fm.doneAt && now > fm.doneAt) return;
@@ -3750,11 +3898,30 @@ export class EffectsRenderer {
     const fi = Math.min(this._fireFrames.length - 1, Math.floor(elapsed / FRAME_MS));
     const sp = this.fireSprite;
     sp.texture = this._fireFrames[fi];
-    const FW = 161, FHH = 220, s = FH / FHH;
+    const s = FH / FIRE_FH;
     sp.scale.set(s, s);
     sp.x = S.player.x;
     sp.y = S.player.y + 6;
     sp.visible = true;
+    /* ═══ v2.3.1713: THE SHIRT ═══
+       Owner: "when lighting a fire the skin color and SHIRT go back to defaults."
+       The shirt half was never a tint bug — this pose simply had no shirt.
+       firemaking-strip.webp paints a BARE CHEST on all 29 frames, and unlike the
+       cook (v2.3.1113) and the chopper (v2.3.1131) it never shipped a
+       gear/shirt/<item>/<pose>-<dir> sheet, so there was nothing to draw: the
+       fire-lighter has always been topless whatever the player wears.
+       The sheet is now derived from the body strip itself by
+       tools/build_fire_shirt.mjs (which documents why the three obvious
+       mask recipes fail on this art) and drawn through the SAME _placeSwingShirt
+       the other four stand-ins use — so it follows the shirt colour picker, and
+       it hides itself when a chest plate is worn, with no new rules. */
+    const placeFireLayer = (spr, t) => {
+      if (!spr) return;
+      if (!t) { spr.visible = false; return; }
+      spr.anchor.set(0.5, 1); spr.texture = t;
+      spr.scale.set(sp.scale.x, sp.scale.y); spr.x = sp.x; spr.y = sp.y; spr.visible = true;
+    };
+    this._placeSwingShirt(this.fireShirtSprite, placeFireLayer, this._shirtId(), getEquip('chest'), 'fire', 'south', FIRE_FW, fi, getShirtColor(), getShirt());
     this._placeSkillTraitsOn('fire', sp, fi, 'south', false);
   }
 
@@ -3806,6 +3973,15 @@ export class EffectsRenderer {
       chop: { frames: this._chopFrames, h: 95, ms: 45, traitDir: 'east' },
       cook: { frames: this._cookFrames, h: 62, ms: 60, traitDir: 'south' },
       fire: { frames: this._fireFrames, h: 154, ms: 55, traitDir: 'south' }, /* v2.3.1435: 1.75x with the local figure */
+      /* v2.3.1713: NOTE — cook and fire now hand a peer's stand-in the LOCAL
+         player's baked skin, because these arrays are the local bake (cook
+         since v2.3.1710, fire since this change).  A peer's cook has quietly
+         worn your skin since v2.3.1710 and nobody has reported it; the fire
+         figure joins it rather than diverging.  Doing it properly means one
+         ~4MB bake PER PEER SKIN, which is exactly the resident-memory trade the
+         cook's bake notes refuse — so it stays deliberate and written down.
+         Their head traits DO follow them (_placeSkillTraitsOnFor, v2.3.1574),
+         and neither remote figure draws gear at all, so no shirt either. */
     };
     for (const id in others) {
       const o = others[id];
@@ -3821,7 +3997,12 @@ export class EffectsRenderer {
       if (!sp) {
         sp = new Sprite();
         sp.anchor.set(0.5, 1);          // bottom-centre stands on the ground
-        this.nodeLayer.addChild(sp);
+        /* v2.3.1713: peers' gathering figures ride the same gestureFront
+           promotion as your own.  Leaving them behind would mean two players
+           chopping the SAME tree render on opposite sides of it — the second
+           one reading as broken — and a peer hidden behind a tree is the very
+           complaint being fixed, just seen from the other chair. */
+        this.gestureLayer.addChild(sp);
         ent[code] = sp;
       }
       const fi = Math.floor(now / spec.ms) % spec.frames.length;
@@ -3849,7 +4030,11 @@ export class EffectsRenderer {
          arbitrary-player form of that, used by the remote swing/bow
          stand-ins — reused here rather than grown a second time. */
       if (!ent.traits) {
-        const mk = () => { const t = new Sprite(); t.visible = false; this.nodeLayer.addChild(t); return t; };
+        /* v2.3.1713: gestureLayer with the body above — this trait set is
+           private to the remote GATHERING figure (the remote swing/bow
+           stand-ins own their own), so unlike the local shared set it needs
+           no per-frame reparenting. */
+        const mk = () => { const t = new Sprite(); t.visible = false; this.gestureLayer.addChild(t); return t; };
         ent.traits = { hair: mk(), beard: mk(), hat: mk() };
       }
       const looks = {
