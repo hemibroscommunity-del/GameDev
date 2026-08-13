@@ -28,7 +28,7 @@ compatibility_date = "2024-12-01"
 #
 # Operator runbook: docs/specs/progression-onchain.md
 [vars]
-SCORES_CONTRACT = ""
+SCORES_CONTRACT = "0x98581239b4e35dc4c4f354ecbffa45f120e44a6d"   # v2.3.1702: BroTownScores on Hemi mainnet (43111), deployed 2026-08-13 by the owner via /deploy-scores.html
 CHAIN_ID = "43111"
 CHAIN_RPC = ""
 
