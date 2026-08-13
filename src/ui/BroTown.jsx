@@ -179,7 +179,9 @@ const {
   getWeaponCritStat, awardWeaponXp, migrateWeaponT2,
   migrateDefenseT2, awardDefenseXp, getDefenseBlockBonus, getIronSkinReduction, getBlockStaminaMult,
   migrateGrids, getConditioningFlat, migrateUniformT2,
-  calcMoveSpeed, calcMaxHp, calcMaxStam, calcMaxMana, calcBlockReduction, getArmorHp,
+  /* v2.3.1697: getArmorHp dropped from the import — armor stopped folding
+     into maxHp this version, and nothing in this file called it anyway. */
+  calcMoveSpeed, calcMaxHp, calcMaxStam, calcMaxMana, calcBlockReduction,
   calcSpecialDmg, rollPassiveDodge,
   xpRequired, monsterStat, createDefaultCompStats,
   applyStatus, tickStatuses, getOldestStatusElement,
@@ -2004,10 +2006,13 @@ export var BroTown = function BroTown(_ref0) {
     var S = stateRef.current;
     if (!S || !S.channel) return;
     /* v2.3.227 (Phase 1): the old `def` damage-reduction formula is
-       retired.  Armor now contributes flat HP via getArmorHp() inside
+       retired.  Armor contributed flat HP via getArmorHp() inside
        recalcDerived(), so the stats payload no longer carries def.
        Send 0 on the wire to keep any older worker that still reads
-       def from crashing on a missing field. */
+       def from crashing on a missing field.
+       v2.3.1697: the flat-HP contribution is gone too (owner directive).
+       Armor's payout is the server's per-hit `_armorDrMult` reduction —
+       still nothing this payload carries, and still 0 on the wire. */
     var def = 0;
     var amuBon = rpgState._amuletBonus || null;
     var amuletHpRegen = (amuBon && amuBon.stat === 'hpRegen') ? (amuBon.value || 0) : 0;
@@ -2069,9 +2074,14 @@ export var BroTown = function BroTown(_ref0) {
           amuletHpRegen: amuletHpRegen,
           amuletStaminaRegen: amuletStaminaRegen,
           /* v2.3.236: armor object (or null on unequip) -- worker
-             clamps tierMult + recomputes maxHp via _armorHp.  Without
-             this the armorStash flow is purely local and the worker's
-             ps.armor stays stale. */
+             clamps tierMult and re-derives the pools.  Without this the
+             armorStash flow is purely local and the worker's ps.armor
+             stays stale.
+             v2.3.1697: it matters MORE now, not less.  ps.armor used to
+             feed maxHp (_armorHp, retired this version); it now feeds
+             _armorDrMult, which decides how hard every incoming hit
+             lands — a stale ps.armor is the difference between taking
+             56 and taking 100. */
           armor: rpgState.armor || null,
           /* Raw stats — worker clamps each to level * 10 + 20.  Cheater
              pushing R.vitality = 99999 gets clamped on the server,
