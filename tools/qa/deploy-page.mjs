@@ -123,6 +123,14 @@ const relayer = await page.textContent('#relayerAddr');
 ok('a 32-byte private key is shown', /^0x[0-9a-f]{64}$/.test(priv), priv);
 ok('a derived address is shown', /^0x[0-9a-f]{40}$/.test(relayer), relayer);
 
+/* v2.3.1696: the guardian can differ from the deployer (hardware wallets
+   can't always sign contract creation, so the operator deploys from a
+   software account and names the hardware address here).  Override the
+   prefilled field and assert the OVERRIDE lands in the contract. */
+const HW_GUARDIAN = '0x' + '2e'.repeat(20);
+const prefilled = await page.inputValue('#guardianAddr');
+ok('the guardian field prefills with the connected account', prefilled === GUARDIAN, prefilled);
+await page.fill('#guardianAddr', HW_GUARDIAN);
 await page.click('#btnDeploy');
 await page.waitForSelector('#deployOut', { state: 'visible' });
 const shownContract = await page.textContent('#contractAddr');
@@ -148,7 +156,11 @@ await browser.close();
 
 /* ── 3. the captured bytes, executed for real ── */
 {
-  ok('the deploy tx has no `to` (contract creation)', !deployTx.to);
+  /* v2.3.1696: `to` must be PRESENT and null — a missing property fails
+     wallet validators that mark `to` required (the owner's hardware path
+     did exactly that: Invalid parameter "to" (= undefined)). */
+  ok('the deploy tx carries an explicit `to: null` (contract creation)',
+    'to' in deployTx && deployTx.to === null, JSON.stringify(deployTx.to));
   ok('the deploy tx is sent from the guardian', deployTx.from === GUARDIAN, deployTx.from);
   const evm = await EVM.create();
   const dep = await evm.runCall({ data: hexToBytes(deployTx.data), gasLimit: 10000000n });
@@ -163,8 +175,8 @@ await browser.close();
   };
   ok('the deployed contract accepts the page-generated key as signer',
     (await read('signer()')) === relayer.toLowerCase(), await read('signer()'));
-  ok('the deployed contract holds the wallet account as guardian',
-    (await read('guardian()')) === GUARDIAN.toLowerCase(), await read('guardian()'));
+  ok('the deployed contract holds the OVERRIDDEN guardian (the hardware address)',
+    (await read('guardian()')) === HW_GUARDIAN.toLowerCase(), await read('guardian()'));
 }
 
 console.log('\n' + pass + ' passed, ' + fail + ' failed');
