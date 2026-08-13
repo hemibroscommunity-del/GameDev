@@ -27,7 +27,7 @@ import { tickElementStatuses, elementMoveMult } from './elemental.js';
 // lookup methods stay (call sites unchanged); only the literals moved.
 import {
   ARCHETYPES, ZONES,
-  MONSTER_HP_CURVE, monsterHpFlat, RARITY_TIERS } from './data.js'; // v2.3.1451: t2Accel/T2_UNITS reads replaced by the ps.t2Flat accumulator
+  MONSTER_HP_CURVE, monsterHpFlat, RARITY_TIERS, BLOCK_COSTS_STAMINA, BLOCK_ARC_HALF } from './data.js'; // v2.3.1451: t2Accel/T2_UNITS reads replaced by the ps.t2Flat accumulator
 // v2.3.1118 (heavy-systems PR3): order book folded into the GameRoom --
 // escrow-at-placement settlement under one DO's input gates.  Methods
 // are mixed into the class below (see market.js header for why).
@@ -499,6 +499,11 @@ export class GameRoom {
        without revisiting the sweep window in wsClient.js. */
     this.PRESENCE_REFRESH_TICKS = 45;
     this.WEAPON_STASH_CAP = 8; // mirrors WEAPON_STASH_MAX in src/data/gameSystems.js
+    /* v2.3.1704: the free-block flag, mirrored onto the room so dungeon.js
+       can read it through `this`.  Importing the module constant there would
+       close an index.js <-> dungeon.js cycle (index mixes dungeonMethods in),
+       and one boolean is not worth a new shared module. */
+    this.BLOCK_COSTS_STAMINA = BLOCK_COSTS_STAMINA;
     this.QUEST_AP_REWARD = 5;  // mirrors QUEST_AP_REWARD in src/data/items.js
     // §16.8 aggregated TickDelta.  Tick-path mutations (regen,
     // monster attacks, respawn, combat XP) used to fire individual
@@ -664,9 +669,29 @@ export class GameRoom {
     this.EXTRACT_JITTER    = 0.15;
     /* v2.3.1690 (owner: "monsters don't attack you while you're extracting
        resources ... it's really annoying and glitchy").  How long a started
-       extraction keeps monsters off you.  Short on purpose — see
-       _extractionShielded for why this is not EXTRACTION_TIMEOUT_MS. */
-    this.EXTRACT_SHIELD_MS = 12000;
+       extraction keeps monsters off you.
+       v2.3.1704 (owner, again: "the monsters keep attacking you while
+       harvesting resources.  I wanted monsters to ignore you during resource
+       extraction"): 12s -> 120s.  12s was picked as "the wind-up plus a normal
+       swipe", but v2.3.1416 had ALREADY made the ready phase hold indefinitely
+       (owner: "all resources NOT have a time out window") — so the shield
+       routinely lapsed while the player was still standing there mid-harvest,
+       which is precisely the report.  This is now a CEILING, not the mechanism:
+       _extractionShielded ends the shield on the player's live harvest signal,
+       on walking off the node, on zone change, on death and on attacking, and
+       the ceiling is only the backstop for a client that stops telling the
+       truth.  Not unbounded, because "tap a tree, become invulnerable forever"
+       is a worse bug than the one being fixed. */
+    this.EXTRACT_SHIELD_MS = 120000;
+    /* v2.3.1704: how far you may drift from the node and still count as
+       harvesting it.  The CLIENT cancels an extraction much sooner (walk-away
+       at nodeReachDist + EXTRACT_CANCEL_R = 90, and since v2.3.1500 on the
+       joystick itself), so for an honest client this never fires — it exists so
+       a modified client cannot carry the shield around the zone.  Generously
+       above NODE_STRIKE_RANGE (110) because the gather STANCE already sits ~86
+       px off the node (startExtraction's mining/fishing snap) and the server's
+       view of a position lags the client's by up to a move throttle. */
+    this.EXTRACT_SHIELD_RANGE = 200;
     this.EXTRACTION_TIMEOUT_MS = 600000;    // walk-away cancel is silent; sweep stale state after this.  v2.3.1416: 15s -> 10min — the harvest phase no longer times out client-side, so a strike minutes after extraction_start is legitimate; the record must outlive the player's patience (one small record per session, bounded by session count).
     this.EXTRACTION_GRACE_MS = 250;         // forgiveness on both ends to absorb network jitter
     this.SWIPE_FP_CAP_PER_SESSION = 100;    // ring-buffer the fp samples for offline analysis
@@ -1028,6 +1053,19 @@ export class GameRoom {
     // dmgTaken rides on the wire and the client renders the
     // exact number the server applied.
     const targetPs = this.playerState[targetId];
+    /* ═══ v2.3.1704: A HARVESTER TAKES NO MONSTER DAMAGE, FULL STOP ═══
+       Owner: "the monsters keep attacking you while harvesting resources."
+       The aggro filter in _tickMonsters is the primary fix (the monster never
+       comes over), but this method is the ONE choke point every monster→player
+       hit funnels through, and one caller sits deliberately outside the aggro
+       branch: the in-flight snowball resolved at the top of the monster loop,
+       which lands even on a target the monster has since lost interest in
+       (v2.3.1640, and rightly so — a ball in the air is committed).  Without
+       this line, tapping a tree while a snowball was airborne still knocked
+       the swipe out from under you, which is the exact interruption being
+       fixed.  Silent, like a dodge: no monster_attack event, so the client
+       draws nothing rather than a "0" it would have to explain. */
+    if (this._extractionShielded(targetId, now)) return;
     /* ═══ v2.3.1686: THE BLOCK IS RESOLVED HERE, AT IMPACT ═══
        Owner: "it seems like snowman don't launch projectiles while the
        character is blocking, which isn't the correct behavior. It should
@@ -1045,13 +1083,20 @@ export class GameRoom {
        monsterCombat.js).
        The melee path still short-circuits on its own blocking branch before
        reaching this method, so nothing is handled twice. */
-    const _blocking = !!(targetPs && targetPs.blocking);
+    /* v2.3.1705: …and facing the right way.  atkX/atkY is where the attack came
+       FROM (the thrower for a snowball, the monster for a swing), which is
+       exactly what the arc has to be measured against. */
+    const _blocking = this._blockArcCovers(targetPs, atkX, atkY);
     const dmgResult = this._applyDamage(targetPs, m.dmg, _blocking);
     const dmgTaken = dmgResult.dmgTaken;
     /* Same block cost the melee branch charges (15 × Bulwark efficiency),
        so blocking a snowball and blocking a swing cost the same stamina. */
     let _blockStamina = 0;
-    if (_blocking && targetPs && typeof targetPs.stamina === 'number') {
+    /* v2.3.1704: … unless blocking is free for the demo (see
+       BLOCK_COSTS_STAMINA in data.js).  Left as a guard on the
+       whole branch rather than a zeroed cost so no pool write, no coalesced
+       save and no wire field happens at all. */
+    if (BLOCK_COSTS_STAMINA && _blocking && targetPs && typeof targetPs.stamina === 'number') {
       _blockStamina = Math.max(1, Math.round(15 * this._blockStaminaMult(targetPs)));
       targetPs.stamina = Math.max(0, targetPs.stamina - _blockStamina);
       this._saveRpgPools(targetId, targetPs);
@@ -1100,7 +1145,10 @@ export class GameRoom {
            JSON.stringify drops both and the wire is unchanged for every
            existing hit — an old client simply sees dmgTaken 0. */
         blocked: _blocking || undefined,
-        staminaDrain: _blocking ? _blockStamina : undefined,
+        /* v2.3.1704: `> 0`, not just `_blocking` — with the free-block flag
+           on this would otherwise send 0 and the client's v2.3.1686 popup
+           would float a "-0⚡" next to every Blocked!. */
+        staminaDrain: (_blocking && _blockStamina > 0) ? _blockStamina : undefined,
         // v2.3.1137: Second Wind heal rides the attack event so the
         // client pops the green number without a round-trip (the
         // authoritative hp echo arrives via player_state anyway).
@@ -1251,7 +1299,12 @@ export class GameRoom {
             Math.hypot((_tps.x || 0) - _ptx, (_tps.y || 0) - _pty) <= this.SNOWBALL_HIT_RADIUS);
           /* Still in the same zone, alive, and not mid-respawn. */
           if (_hit && _tps.z === zoneId && !_tps.dying && (_tps.hp || 0) > 0) {
-            if (_tps.blocking) {
+            /* v2.3.1705: …and facing it.  The direction is taken from the
+               THROWER (m), not from the ball's landing point: the ball lands on
+               the player, so its own position carries no direction, and a
+               snowball you never turned to face should get through exactly like
+               a swing from behind does. */
+            if (this._blockArcCovers(_tps, m.x, m.y)) {
               /* Blocked. Evaluated at IMPACT, not at throw — raising the
                  shield while the ball is in the air has to work, or the
                  telegraph is decoration.  Emits a blocked monster_attack
@@ -1284,25 +1337,45 @@ export class GameRoom {
         // This is what makes ranged attacks actually pull a monster
         // off its wander -- previously aggro was proximity-only so a
         // sniped mummy just took the hit and kept patrolling.
+        /* ═══ v2.3.1704: A HARVESTER IS NOT A TARGET ═══
+           Owner: "I wanted monsters to IGNORE you during resource extraction."
+           v2.3.1690 only suppressed the swing and the throw, which left the
+           monster free to acquire the harvester, walk over and stand on top of
+           them for the whole extraction — silent, but it reads as being
+           attacked, and it is not what was asked for.  Extracting players are
+           now invisible to target acquisition outright: the monster keeps its
+           distance and falls through to idle wander (which clears m.targetId),
+           and it re-acquires the instant the shield ends.
+           This also drops a sticky aggro override that points at a harvester —
+           a bow-snipe followed by a tap on a tree would otherwise have dragged
+           the monster across the zone to hover.  Dropping rather than parking
+           the override is deliberate: re-provoking is one arrow, whereas a
+           held override would make the monster pounce the instant the swipe
+           lands, which is the interruption the owner is complaining about. */
         let nearest = null;
         let nearestDist = Infinity;
         const stickyAggroActive = m._aggroOverrideUntil && now < m._aggroOverrideUntil;
         if (stickyAggroActive) {
-          const stickyP = playersInZone.find(p => p.id === m._aggroOverrideTarget);
+          const _sticky = playersInZone.find(p => p.id === m._aggroOverrideTarget);
+          const stickyP = (_sticky && _sticky.extracting) ? null : _sticky;
           if (stickyP) {
             const dxS = stickyP.x - m.x;
             const dyS = stickyP.y - m.y;
             nearest = stickyP;
             nearestDist = Math.sqrt(dxS * dxS + dyS * dyS);
           } else {
-            // Sticky target left the zone -- drop the override and
-            // fall through to proximity.
+            // Sticky target left the zone (or started harvesting, v2.3.1704)
+            // -- drop the override and fall through to proximity.
             m._aggroOverrideTarget = null;
             m._aggroOverrideUntil = 0;
           }
         }
         if (!nearest) {
           for (const p of playersInZone) {
+            /* v2.3.1704: harvesters are skipped, not merely spared.  If every
+               player in the zone is extracting, `nearest` stays null and the
+               monster wanders — which is the whole point. */
+            if (p.extracting) continue;
             const dx = p.x - m.x;
             const dy = p.y - m.y;
             const dist = Math.sqrt(dx * dx + dy * dy);
@@ -1433,7 +1506,13 @@ export class GameRoom {
                  ball LANDS — see _monsterStrikePlayer. */
               /* v2.3.1690: ...but a harvester IS left alone — the whole point
                  is not interrupting the swipe, and a ball in the air lands on
-                 it just as rudely as a swing. */
+                 it just as rudely as a swing.
+                 v2.3.1704: unreachable by construction now (an extracting
+                 player is filtered out of target acquisition above, so
+                 `nearest` can never be one).  Kept as the second line of
+                 defence — if a future change ever lets monsters target a
+                 harvester again for movement or telegraph reasons, the throw
+                 must still not fire. */
               && !nearest.extracting) {
             m.atkCd = now + _rangedCfg.cd;
             m._attackingUntil = now + 400;
@@ -1491,14 +1570,17 @@ export class GameRoom {
                still stamped so the monster does not queue one up for the
                instant the swipe lands.  Placed ABOVE the blocking branch so a
                harvester is left alone whether or not a shield happens to be
-               up.  Bounded by EXTRACT_SHIELD_MS, not by the extraction record
-               (_extractionShielded explains why). */
+               up.
+               v2.3.1704: like the throw gate above, this is now unreachable by
+               construction (harvesters are filtered out of aggro entirely) and
+               is kept as the second line of defence.  The line that actually
+               guarantees no damage is in _monsterStrikePlayer. */
             if (nearest.extracting) {
               m.atkCd = now + this.MONSTER_ATTACK_CD;
               m._attackingUntil = 0;
               continue;
             }
-            if (nearest.blocking) {
+            if (this._blockArcCovers(nearest, m.x, m.y)) { // v2.3.1705: directional
               m.atkCd = now + this.MONSTER_ATTACK_CD;
               m._attackingUntil = now + 400;
               // Block cost: 15 stamina (mirrors client at BroTown.jsx:2663).
@@ -1509,8 +1591,11 @@ export class GameRoom {
               // staminaDrain below, so pre-fix clients render the
               // discounted number correctly with zero client changes.
               const blockerPs = this.playerState[nearest.id];
-              const staminaCost = Math.max(1, Math.round(15 * this._blockStaminaMult(blockerPs)));
-              if (blockerPs && typeof blockerPs.stamina === 'number') {
+              // v2.3.1704: free for the demo — see BLOCK_COSTS_STAMINA in data.js.
+              const staminaCost = BLOCK_COSTS_STAMINA
+                ? Math.max(1, Math.round(15 * this._blockStaminaMult(blockerPs)))
+                : 0;
+              if (staminaCost > 0 && blockerPs && typeof blockerPs.stamina === 'number') {
                 blockerPs.stamina = Math.max(0, blockerPs.stamina - staminaCost);
                 /* v2.3.1619b: stamina only -> coalesced (see
                    _saveRpgPools).  This fires on the monster-attack
@@ -1566,7 +1651,7 @@ export class GameRoom {
                   dmg: m.dmg,
                   dmgTaken: 0,
                   blocked: true,
-                  staminaDrain: staminaCost,
+                  staminaDrain: staminaCost > 0 ? staminaCost : undefined, /* v2.3.1704: no 0 on the wire (the client pops it as "-0⚡") */
                   zone: zoneId,
                   attackerX: m.x,
                   attackerY: m.y,
@@ -1811,6 +1896,39 @@ export class GameRoom {
   // 100%), leaving Bulwark inert since v2.3.1021.  New identity: "hold
   // your shield twice as long, block twice as many hits."  defenseSpec
   // is client-trained but server-clamped, so the discount is bounded.
+  /* ═══ v2.3.1705: THE BLOCK IS DIRECTIONAL ═══
+   * Owner, asked directly: "yes blocking should be directional."
+   *
+   * v2.3.1110 unified client and server on an OMNI block, and every arc test
+   * in the game was commented out rather than deleted.  This is the server's
+   * half of putting it back: does the attack, coming from (ax, ay), land
+   * inside the wedge the player's shield is facing?
+   *
+   * `ps.ba` is the shield's facing angle, ridden in on the move message
+   * (movement.js) so it is measured against the SAME position update the
+   * geometry below uses.  It is deliberately FAIL-OPEN: undefined/null means
+   * "this client has not told us where it is pointing", which is exactly the
+   * state of every pre-v2.3.1705 client, and those keep the omni block they
+   * have today rather than losing their shield to a deploy-order gap.
+   *
+   * BLOCK_ARC_HALF is mirrored from src/data/gameSystems.js and is the same
+   * number the shield cone is DRAWN at (effectsRenderer) — the picture on the
+   * player's screen is the hitbox, which is the whole reason the owner asked
+   * for the cone in the first place.  Retune one, retune all three.
+   *
+   * Degenerate geometry (the attacker standing exactly on the player) has no
+   * meaningful direction, so it counts as covered — a monster inside your own
+   * hitbox is not a flanking manoeuvre. */
+  _blockArcCovers(ps, ax, ay) {
+    if (!ps || !ps.blocking) return false;
+    if (typeof ps.ba !== 'number' || !Number.isFinite(ps.ba)) return true; // old client: omni
+    const dx = (ax || 0) - (ps.x || 0), dy = (ay || 0) - (ps.y || 0);
+    if (dx * dx + dy * dy < 1) return true;
+    const from = Math.atan2(dy, dx);
+    const d = ((from - ps.ba + Math.PI * 3) % (Math.PI * 2)) - Math.PI;
+    return Math.abs(d) <= BLOCK_ARC_HALF;
+  }
+
   _blockStaminaMult(ps) {
     // v2.3.1343 (kid-simple reprice): -1%/pt, cap -100% — free blocking
     // at max.  Safe ONLY because both cost sites keep their
@@ -2327,7 +2445,14 @@ export class GameRoom {
       // v2.3.1153: × Bulwark block-stamina efficiency (−1%/pt, cap −50%),
       // floored at 1 so holding a shield is never free.
       if (typeof ps.maxStamina === 'number' && typeof ps.stamina === 'number') {
-        if (ps.blocking && ps.stamina > 0) {
+        /* v2.3.1704: the held-shield drain, and with it the auto-release at
+           zero, are what "block as much as you want" actually means — a
+           shield that drops itself after ten seconds is not unlimited
+           blocking however cheap each hit is.  With the flag off this branch
+           is skipped entirely, so a blocking player falls through to the
+           regen arm below and their stamina refills while they hold: exactly
+           the demo behaviour the owner asked for. */
+        if (BLOCK_COSTS_STAMINA && ps.blocking && ps.stamina > 0) {
           const beforeSt = ps.stamina;
           ps.stamina = Math.max(0, ps.stamina - Math.max(1, Math.round(5 * this._blockStaminaMult(ps))));
           if (ps.stamina !== beforeSt) changed = true;
@@ -3200,6 +3325,17 @@ export class GameRoom {
         // player_state.
         if (session.id) {
           this._handleEatRequest(session, msg.payload || msg);
+        }
+        break;
+
+      case 'firemaking_request':
+        // v2.3.1702: player tapped a wood_* log in the Bag to light a
+        // campfire.  Server validates ownership, consumes 1, emits
+        // player_state.  Without this the client's local delete was
+        // refunded by the next inventory echo -- one log, unlimited
+        // fires.  See _handleFiremakingRequest in cooking.js.
+        if (session.id) {
+          this._handleFiremakingRequest(session, msg.payload || msg);
         }
         break;
 

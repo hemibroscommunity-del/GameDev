@@ -31,7 +31,7 @@ import { getHatColor } from '@/rendering/traits/hatColorCatalog.js';
 import { getFacialHairColor } from '@/rendering/traits/facialHairColorCatalog.js';
 import { getShirt } from '@/rendering/traits/shirtCatalog.js';
 import { getShirtColor } from '@/rendering/traits/shirtColorCatalog.js';
-import { getEquip } from '@/rendering/gearCatalog.js';
+import { getEquip, syncArmorLayers } from '@/rendering/gearCatalog.js';
 import { pushHudPopup } from '@/ui/XpFlyOverlay.jsx';
 
 import { pushDmgPopup } from '@/game/combatHelpers.js';
@@ -1092,7 +1092,16 @@ export function setupWebSocket(ctx) {
                  formula and quietly disagreed with the damage the server
                  actually deals.  Read-only (there is no client legs-armour
                  equip path yet); the worker owns the slot. */
-              if ('legsArmor' in msg.payload) S.rpg.legsArmor = msg.payload.legsArmor;
+              if ('legsArmor' in msg.payload) { S.rpg.legsArmor = msg.payload.legsArmor; _armorChanged = true; }
+              /* v2.3.1703: the WORN LAYER is derived from these two fields
+                 (gearCatalog.syncArmorLayers), so the worker's echo has to
+                 drive it as well as the local equip screens — otherwise a
+                 reload, a device switch, or a quest reward applied
+                 server-side leaves the character bare while the stats say
+                 armoured.  Runs on every payload that mentions either
+                 field, which is every full snapshot and any delta that
+                 changed one. */
+              if (_armorChanged) { try { syncArmorLayers(S.rpg); } catch (e) {} }
               /* v2.3.227 (Phase 1): armor swaps changed maxHp via
                  getArmorHp() in recalcDerived.
                  v2.3.1697: armor no longer touches maxHp, so this recompute
@@ -2230,6 +2239,29 @@ export function setupWebSocket(ctx) {
           ws.send(JSON.stringify(msg));
           return;
         }
+        /* v2.3.1704: THE HARVEST HANDSHAKE'S MISSING HALF.  TRAPS #18 again,
+           and this one had been silently dead since v2.3.229: the client has
+           always sent `extraction_start` (lifeSkillRewards.js startExtraction)
+           and the worker has always had a `case` for it, but there was never a
+           line HERE — so the message fell off the bottom of this allowlist and
+           never left the browser.  Two systems were quietly running on nothing
+           as a result:
+             1. the swipe-timing anticheat (gathering.js) — with no
+                extraction_start record, EVERY node_strike in production took
+                the permissive "legacy client" branch and just incremented
+                session._extractionMissing;
+             2. the v2.3.1690 harvest shield, whose whole job is to stop
+                monsters interrupting a harvest — `this.extractions` was empty
+                for every player, so it never once engaged.  That is the owner's
+                report ("the monsters keep attacking you while harvesting
+                resources") in one missing line.
+           Invisible to server/test/*, which send this straight down a socket
+           and so never exercise the shim; caught by mp-harvest.mjs, which asks
+           the worker. */
+        if (msg.type === 'extraction_start') {
+          ws.send(JSON.stringify(msg));
+          return;
+        }
         if (msg.type === 'node_strike') {
           ws.send(JSON.stringify(msg));
           return;
@@ -2259,6 +2291,55 @@ export function setupWebSocket(ctx) {
           return;
         }
         if (msg.type === 'eat_request') {
+          ws.send(JSON.stringify(msg));
+          return;
+        }
+        /* ═══ v2.3.1706: THREE MORE THE ALLOWLIST WAS EATING ═══
+           Found by the precheck rule added in v2.3.1704 to mechanise TRAPS
+           #18 — every one of these has a server `case`, a written handler and
+           a spec, and not one of them has ever reached the worker.
+
+           gem_cut_request is the worst of the three and is a live economy
+           bug, not a dormant one: caps.gems is advertised (join.js), so
+           GemcutPanel takes the server-settled branch — it consumes the RAW
+           gem locally as prediction, returns early, and waits for the
+           private gem_cut_result event to tell it polished-or-shattered.
+           That event can never arrive, so cutting a gem destroys it and pays
+           nothing, every time.
+
+           amulet_forge_request (op:'gem') is the same shape one step milder:
+           the local slot happens anyway, so the amulet LOOKS gemmed until the
+           worker's next player_state echo — which has never heard of the gem
+           — puts it back.  The gem is gone either way.
+
+           build_point_earned is the harmless one: its handler only recomputes
+           maxes early.  Included because leaving one known-dead send in place
+           re-teaches the next reader that the warning is noise.
+
+           No double-spend from switching them on: all three clients already
+           treat their local mutation as PREDICTION against a server that
+           settles from its own copy (rule 20), which is exactly why they were
+           written this way and exactly what has been going unused. */
+        if (msg.type === 'gem_cut_request') {
+          ws.send(JSON.stringify(msg));
+          return;
+        }
+        if (msg.type === 'amulet_forge_request') {
+          ws.send(JSON.stringify(msg));
+          return;
+        }
+        if (msg.type === 'build_point_earned') {
+          ws.send(JSON.stringify(msg));
+          return;
+        }
+        /* v2.3.1702: firemaking (light a campfire from a wood_* log).  THIS
+           SHIM IS AN ALLOWLIST -- a message type with no case here does not
+           reach the worker, it falls through to the broadcast/drop tail
+           below.  A new client->server type therefore needs BOTH a server
+           `case` and a line here, and the failure mode is silent: the send
+           looks fine from the client, the worker simply never hears it.
+           Caught in the headless run for this exact message. */
+        if (msg.type === 'firemaking_request') {
           ws.send(JSON.stringify(msg));
           return;
         }
@@ -2336,6 +2417,20 @@ export function setupWebSocket(ctx) {
               vy: p.vy || 0,
               dodging: !!_S4._dodgeRoll,
               blocking: !!_S4._shieldUp,
+              /* v2.3.1705: the shield's FACING, so the worker can run the same
+                 arc test the client does (owner: "yes blocking should be
+                 directional").  It rides the move message rather than getting
+                 its own event because it changes with the thumbstick, exactly
+                 like x/y — a separate message would arrive at a different
+                 cadence from the position the arc is measured against.
+                 Sent as null when not blocking so the field costs nothing on
+                 the wire the rest of the time, and an old worker simply
+                 ignores it and keeps blocking omnidirectionally (deploy-order
+                 safe: strictly more forgiving, never less). */
+              ba: _S4._shieldUp
+                ? (typeof _S4._shieldAngle === 'number' ? _S4._shieldAngle
+                  : (typeof _S4._facingAngle === 'number' ? _S4._facingAngle : 0))
+                : null,
               dead: _S4.rpg ? _S4.rpg.hp <= 0 : false
             };
             startBatchTimer();

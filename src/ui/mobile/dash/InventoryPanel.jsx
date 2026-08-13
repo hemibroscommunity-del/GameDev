@@ -44,7 +44,7 @@ export const classify = (key) => {
    one consistent style — everything now lives under /icons/items/.
    The old per-type dirs (icons/wood, icons/cook, ...) keep their files
    for any legacy surface still pointing at them. */
-const ITEMS_V = '?v=2.3.1452';
+const ITEMS_V = '?v=2.3.1703'; /* v2.3.1703: bumped for the blue slime-remnants thumbnail */
 const WOOD_THUMB = `/icons/items/wood-log.webp${ITEMS_V}`;
 const BURNT_DUST_THUMB = `/icons/items/burnt-dust.webp${ITEMS_V}`;
 const SLIME_REMNANTS_THUMB = `/icons/items/remnants-slime.webp${ITEMS_V}`;
@@ -384,7 +384,30 @@ export const InventoryPanel = () => {
      FADING — without it a bag holding eight items showed a fade over blank
      tray, which reads as a rendering artifact rather than as "keep
      scrolling".  A partial third row of empty slots is the affordance. */
-  const totalCells = Math.max(COLS * (DASH_ROWS + 1), Math.ceil(usedTiles / COLS) * COLS);
+  /* v2.3.1704 (owner: "you can add two more rows of inventory space (it's
+     just scrollable so it shouldn't change the look)"): +1 -> +3.
+
+     TWO MORE ROWS, AND THE PANEL DOES NOT MOVE.  This number is the FLOOR on
+     grid rows, not a height: the tray it lives in is `flex: 1; minHeight: 0;
+     overflowY: auto` inside a band whose height the sheet geometry owns, so
+     extra rows lengthen the SCROLL CONTENT and nothing else.  That is the
+     owner's own reasoning quoted back — the look is unchanged because the
+     rows arrive below the fold, behind the same 9px bottom fade that already
+     says "keep scrolling".
+
+     NOT A CAPACITY CHANGE, because there is no capacity to change: the bag
+     has been uncapped since v2.3.1285 (the old "N / 32" was display-only
+     fiction) and the server enforces no inventory slot limit either — it
+     stores a plain key->count map.  What these cells are is ROOM TO PUT
+     THINGS DOWN: the grid grows past the floor with real entries anyway
+     (the Math.ceil term), so the floor only decides how many EMPTY wells a
+     player sees waiting.  Two more rows of them is what was asked for.
+
+     KEEP IN STEP WITH DashColumns' bagRows.  Since v2.3.1653/1654 the
+     resting dashboard IS the bag and this expanded panel has no rail button
+     left to open it; both floors were `DASH_ROWS + 1` and both move
+     together, so the two surfaces cannot disagree if that button returns. */
+  const totalCells = Math.max(COLS * (DASH_ROWS + 3), Math.ceil(usedTiles / COLS) * COLS);
 
   const R = (S && S.rpg) || {};
   const equipped = getEquippedSlots(R);

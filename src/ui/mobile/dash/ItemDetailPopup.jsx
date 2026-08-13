@@ -10,8 +10,8 @@ import {
 import { thumbFor, iconFor, classify } from './InventoryPanel.jsx';
 import { firemakingBus } from '../firemakingBus.js';
 import { eatBus } from '../eatBus.js';
-import { GEAR_CATALOG, getEquip, setEquip } from '../../../rendering/gearCatalog.js';
-import { unequipWeaponSlot, unequipShieldDirect, unequipArmorDirect, unequipGearDirect, syncArmorChange } from './equipActions.js'; /* v2.3.1330: shared unequip cores */
+import { GEAR_CATALOG, getEquip, setEquip, syncArmorLayers } from '../../../rendering/gearCatalog.js';
+import { unequipWeaponSlot, unequipShieldDirect, unequipArmorDirect, unequipLegsDirect, unequipGearDirect, syncArmorChange } from './equipActions.js'; /* v2.3.1330: shared unequip cores; v2.3.1703 adds the legs twin */
 import { setShirt } from '../../../rendering/traits/shirtCatalog.js';
 import {
   WEAPON_TYPES,
@@ -70,7 +70,7 @@ function tierLabel(wpn) {
 /* Pick a thumb URL for a weapon based on type.
    v2.3.1325 (owner icon sheets): painted item set — greatsword and
    sword split after sharing one icon since v2.3.210. */
-const ITEMS_V = '?v=2.3.1452';
+const ITEMS_V = '?v=2.3.1703'; /* v2.3.1703: bumped for the blue slime-remnants thumbnail */
 function weaponThumb(wpn) {
   if (!wpn || !wpn.type) return null;
   if (wpn.type === 'bow')        return `/icons/items/bow.webp${ITEMS_V}`;
@@ -718,23 +718,29 @@ export const ItemDetailPopup = () => {
      the shirt simply on/off), and the popup stays open so both can be set in
      one visit.  Armour always renders above the shirt in-game. */
   if (target && target.kind === 'chestLayers') {
-    const chestId = getEquip('chest');
     const shirtId = getEquip('shirt');
     const S2 = getState();
     const R2 = S2 && S2.rpg;
-    const stashedChest = R2 && R2.gearStash && R2.gearStash.find((g) => g && g.slot === 'chest');
+    /* v2.3.1703: this row used to add/remove a COSMETIC steel plate from
+       gearStash while R.armor — the piece that actually reduces damage —
+       sat untouched, so the loadout screen could say "armour on" for a
+       character taking full hits.  The layer is derived from R.armor now
+       (gearCatalog.syncArmorLayers), so the row moves the real piece:
+       off into R.armorStash, or the first piece from the bag back on. */
+    const stashedChest = R2 && R2.armorStash && R2.armorStash[0];
     const toggleArmor = () => {
       if (!R2) return;
-      if (chestId !== 'none') {
-        if (!R2.gearStash) R2.gearStash = [];
-        R2.gearStash.push({ slot: 'chest', gearId: chestId, name: gearName('chest', chestId) });
-        setEquip('chest', 'none');
+      if (R2.armor) {
+        unequipArmorDirect();
       } else if (stashedChest) {
-        const idx = R2.gearStash.indexOf(stashedChest);
-        if (idx >= 0) R2.gearStash.splice(idx, 1);
-        setEquip('chest', stashedChest.gearId);
+        R2.armorStash.splice(0, 1);
+        R2.armor = stashedChest;
+        recalcDerived(R2);
+        R2.hp = Math.min(R2.maxHp, R2.hp);
+        syncArmorLayers(R2);
+        persist(R2);
+        syncArmorChange(R2);
       }
-      persist(R2);
       force((v) => v + 1);
     };
     const toggleShirt = () => {
@@ -745,7 +751,7 @@ export const ItemDetailPopup = () => {
       setEquip('shirt', nv);
       force((v) => v + 1);
     };
-    const armorOn = chestId !== 'none';
+    const armorOn = !!(R2 && R2.armor); /* v2.3.1703: the stat piece, not the layer */
     const shirtOn = shirtId !== 'none';
     /* v2.3.1232: Lantern Slate layer row — 44pt action row; equipped =
        occupied-slot surface + 1px brass edge; Equip = brass primary,
@@ -800,7 +806,7 @@ export const ItemDetailPopup = () => {
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
             {layerRow('armor', `/icons/items/chest-plate.webp${ITEMS_V}`, /* v2.3.1325 */
-              armorOn ? gearName('chest', chestId) : (stashedChest ? stashedChest.name : 'Steel Plate'),
+              armorOn ? ((R2.armor && R2.armor.name) || 'Armor') : (stashedChest ? (stashedChest.name || 'Armor') : 'No chest armor'),
               'Armor · top layer', armorOn, !!stashedChest, toggleArmor)}
             {layerRow('shirt', `/icons/items/cloth-shirt.webp${ITEMS_V}`,
               'T-Shirt', 'Clothing · under armor', shirtOn, true, toggleShirt)}
@@ -815,25 +821,30 @@ export const ItemDetailPopup = () => {
      when empty.  Equip pulls the unequipped greaves back from the bag if it's
      there, else equips the catalog default so the button always works. */
   if (target && target.kind === 'legsArmor') {
-    const legsId = getEquip('legs');
     const S2 = getState();
     const R2 = S2 && S2.rpg;
-    const stashedLegs = R2 && R2.gearStash && R2.gearStash.find((g) => g && g.slot === 'legs');
-    const on = legsId !== 'none';
+    /* v2.3.1703: the legs twin of the chest row above — and the one the
+       owner actually hit ("when you equip iron greaves it doesn't show on
+       your character").  This button used to toggle the cosmetic greaves
+       layer and had a final `else setEquip('legs','steelgreaves')` branch
+       that painted steel plate onto a character wearing nothing at all, so
+       the cell and the stats disagreed in BOTH directions.  It moves
+       R.legsArmor now, and the art follows the piece. */
+    const stashedLegs = R2 && R2.legsStash && R2.legsStash[0];
+    const on = !!(R2 && R2.legsArmor);
     const toggleLegs = () => {
       if (!R2) return;
       if (on) {
-        if (!R2.gearStash) R2.gearStash = [];
-        R2.gearStash.push({ slot: 'legs', gearId: legsId, name: gearName('legs', legsId) });
-        setEquip('legs', 'none');
+        unequipLegsDirect();
       } else if (stashedLegs) {
-        const idx = R2.gearStash.indexOf(stashedLegs);
-        if (idx >= 0) R2.gearStash.splice(idx, 1);
-        setEquip('legs', stashedLegs.gearId);
-      } else {
-        setEquip('legs', 'steelgreaves');
+        R2.legsStash.splice(0, 1);
+        R2.legsArmor = stashedLegs;
+        recalcDerived(R2);
+        R2.hp = Math.min(R2.maxHp, R2.hp);
+        syncArmorLayers(R2);
+        persist(R2);
+        syncArmorChange(R2, { legs: true });
       }
-      persist(R2);
       force((v) => v + 1);
     };
     return (
@@ -864,11 +875,11 @@ export const ItemDetailPopup = () => {
             background: on ? '#243137' : '#19252A',
             border: `1px solid ${on ? '#D8A85F' : 'rgba(238, 242, 235, .14)'}`,
           }}>
-            <img src={`/icons/items/greaves.webp${ITEMS_V}`} alt="Steel Greaves" draggable={false} /* v2.3.1325 */
+            <img src={`/icons/items/greaves.webp${ITEMS_V}`} alt="Greaves" draggable={false} /* v2.3.1325 */
               style={{ width: 24, height: 24, imageRendering: 'pixelated',
                 filter: on ? 'none' : 'grayscale(1) brightness(.6)', userSelect: 'none' }} />
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: on ? '#F7F2E7' : '#B9C1BF', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{on ? gearName('legs', legsId) : 'Steel Greaves'}</div>
+              <div style={{ fontSize: 11, fontWeight: 700, color: on ? '#F7F2E7' : '#B9C1BF', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{on ? ((R2 && R2.legsArmor && R2.legsArmor.name) || 'Greaves') : (stashedLegs ? (stashedLegs.name || 'Greaves') : 'No greaves')}</div>
               <div style={{ fontSize: 10, color: '#96A2A0' }}>Armor · legs</div>{/* v2.3.1239: 10px font floor (was 9) */}
             </div>
             <button type="button"
@@ -973,6 +984,7 @@ export const ItemDetailPopup = () => {
     R.armor = target.armor;
     recalcDerived(R);
     R.hp = Math.min(R.maxHp, R.hp);  // cap only, no delta-heal
+    syncArmorLayers(R); /* v2.3.1703: and it shows on the character */
     persist(R);
     syncArmorChange(R);
     itemDetailBus.close();
@@ -995,6 +1007,9 @@ export const ItemDetailPopup = () => {
     R.legsArmor = target.armor;
     recalcDerived(R);
     R.hp = Math.min(R.maxHp, R.hp);  // cap only, no delta-heal (v2.3.236)
+    /* v2.3.1703 (owner: "when you equip iron greaves it doesn't show on your
+       character"): the greaves ARE the layer now — see gearCatalog. */
+    syncArmorLayers(R);
     persist(R);
     syncArmorChange(R, { legs: true });
     itemDetailBus.close();

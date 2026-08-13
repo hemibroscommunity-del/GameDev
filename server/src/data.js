@@ -518,14 +518,29 @@ export const QUEST_REWARDS = {
                ],
                item:{kind:'inv', key:'mining_pickaxe', n:1}},
       life_2: {gold:200, xp:200, next:null,
+               /* v2.3.1704 (owner: "Prospectors vest and prospectors greaves are
+                  the wrong description of quest awards for iron torso and iron
+                  legs for mining quest.  Also the legs were an earlier reward
+                  already so it would just be torso").
+                  Two separate faults in one line, and only one of them was the
+                  name.  The LEGS had already been paid out by tut_4 since
+                  v2.3.1692 ("Iron Greaves"), so this quest was handing a second
+                  pair to a player who owned one — and since v2.3.1695 every
+                  armour grant overflows to the bag rather than dressing you,
+                  the duplicate did not even collide with anything: it just sat
+                  there as a second, identical pair of legs.  So life_2 is the
+                  TORSO only now, and it is named in the same Iron family as the
+                  greaves, because "Prospector's" was a family invented for one
+                  quest and matched nothing else the player owns.
+                  Deliberately NOT a kind:'armorSet' with one piece — a set of
+                  one is a lie about the reward's shape, and the client's
+                  `gives` row mirrors this exactly (src/data/gameSystems.js).
+                  The armorSet path in quests.js STAYS: this was its only
+                  consumer, but it is tested, cheap, and the next multi-piece
+                  reward will want it.  Still the first armour in the game that
+                  does anything per hit (v2.3.1679: torso 30%). */
                objective:{type:'collect', invPrefix:'ore_', count:5, consume:true},
-               /* Both body pieces, and they are the first armor in the game
-                  that actually does anything per hit (v2.3.1679: torso 30%,
-                  legs 20%). */
-               item:{kind:'armorSet', pieces:[
-                 {kind:'armor', name:"Prospector's Vest", tierMult:1.0},
-                 {kind:'legs',  name:"Prospector's Greaves", tierMult:1.0},
-               ]}},
+               item:{kind:'armor', name:"Iron Torso", tierMult:1.0}},
 
       mayor_1:    {gold:50,  xp:30,  next:'mayor_2'},
       mayor_2:    {gold:100, xp:80,  next:'mayor_3', objective:{type:'kill', arch:null, count:5}},
@@ -745,3 +760,40 @@ export const RARITY_TIERS = {
   fusion:    { mult: 2.25 },
   shift:     { mult: 3.00 },
 };
+
+/* ═══ v2.3.1704: THE DEMO'S FREE BLOCK ═══
+ * Owner: "make it so holding shield doesn't drain energy.  I need to figure
+ * out what to do with that.  For the demo I want you to be able to block as
+ * much as you want."
+ *
+ * A DELIBERATE, TEMPORARY suspension of a balance rule — so it is one named
+ * flag rather than deleted code.  Every cost site keeps its full pricing
+ * maths (15 per blocked hit, 5 per held tick, both x Bulwark efficiency with
+ * the anti-turtle Math.max(1, …) floor); the flag only decides whether the
+ * number is charged.  Flip it back to true and the old economy returns
+ * exactly as it was, floor and all.
+ *
+ * Its twin is BLOCK_COSTS_STAMINA in src/ui/BroTown.jsx.  Flip BOTH together:
+ * the worker is the authoritative owner of stamina, so with only the client
+ * half off the bar still drains (measured 100 -> 78 over 2.4s).
+ *
+ * IT LIVES HERE, NOT IN index.js, AND THAT IS LOAD-BEARING.  index.js is the
+ * Worker ENTRY (wrangler.toml `main`), and workerd type-checks every named
+ * export of the entry module: a Durable Object class or an ExportedHandler is
+ * fine, a bare boolean is not.  Exporting it there made the runtime refuse to
+ * boot outright — "Incorrect type for map entry 'BLOCK_COSTS_STAMINA': the
+ * provided value is not of type 'function or ExportedHandler'" — which would
+ * have taken the worker down on merge.  Every server unit suite stayed green
+ * through it, because they import the module in plain Node, which does not
+ * care; only starting a REAL worker catches it, which is what the headless
+ * harness does.  (The existing Set exports next to it survive because workerd
+ * only rejects the primitives.)  Keep new server constants in this file. */
+export const BLOCK_COSTS_STAMINA = false;
+
+/* v2.3.1705: mirrors BLOCK_ARC_HALF in src/data/gameSystems.js — the half-angle
+   of the shield's protected wedge, and the same number effectsRenderer draws
+   the shield cone at.  Owner: "yes blocking should be directional."  ±60° is
+   deliberately forgiving: it ships the same day as blocking becoming free, and
+   a narrow arc would turn "hold shield" into a precision minigame on a phone
+   thumbstick.  Tighten later with playtest evidence, in all three places. */
+export const BLOCK_ARC_HALF = Math.PI / 3;

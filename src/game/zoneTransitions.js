@@ -162,9 +162,35 @@ export function handleZoneTransitions(S, ptx, pty, _zone, W, H) {
           : (S.currentZone === 'worldview' ? WORLDVIEW_EXITS : null);
         if (_hubExits) {
           var TOWN_EXIT_R = 2;
+          /* ═══ v2.3.1703: THE MARKER YOU JUST CAME OUT OF IS DISARMED ═══
+             You arrive on a hub standing near the trail-head you came
+             through, and on the World View that trail-head (town, at 24,28)
+             sits between the arrival point and EVERY open spoke — frost
+             (13,13), ember (25,10), sky (39,12) are all north of it.  So
+             "walk from where I landed to a zone" crossed the way home and
+             warped you straight back, which is the whole reason v2.3.1700
+             moved the spawn to the far side of it.  Moving the spawn only
+             ever trades one bad geometry for another (the owner's report:
+             landing north of it and running south back in), so the rule is
+             the fix instead: that ONE marker cannot fire until the player
+             has got clear of it.
+             DISARM_CLEAR_R is comfortably wider than TOWN_EXIT_R so the
+             re-arm happens well past the marker, not on its rim where a
+             single step could flip it back and forth.  It clears itself as
+             soon as the player is clear, so a deliberate walk back in works
+             normally — and it is scoped to one marker in one zone, so every
+             other exit on the hub stays live the whole time. */
+          var DISARM_CLEAR_R = 8;
+          var _dis = S._hubExitDisarm;
+          if (_dis && (_dis.zone !== S.currentZone
+              || Math.abs(ptx - _dis.tx) + Math.abs(pty - _dis.ty) > DISARM_CLEAR_R)) {
+            S._hubExitDisarm = null;
+            _dis = null;
+          }
           var bestExit = null,
             bestDist = Infinity;
           _hubExits.forEach(function (ex) {
+            if (_dis && ex.tx === _dis.tx && ex.ty === _dis.ty) return;
             var d = Math.abs(ptx - ex.tx) + Math.abs(pty - ex.ty);
             if (d <= TOWN_EXIT_R && d < bestDist) {
               bestDist = d;
@@ -419,6 +445,32 @@ export function handleZoneTransitions(S, ptx, pty, _zone, W, H) {
                  Falls back to the old centre-south spawn when no reciprocal
                  marker exists, so an unexpected hub pairing can never strand
                  anyone at (0,0). */
+              /* ═══ v2.3.1703: COME OUT THE FAR SIDE, AND DON'T BOUNCE ═══
+                 Owner: "the character spawns above the town after exiting the
+                 town into the worldview so continuing the downward run makes
+                 the character run into the portal into town again.  Make the
+                 character spawn below the town portal instead of above it."
+                 v2.3.1700 emerged 4 tiles toward the hub CENTRE, which on the
+                 World View is 4 tiles NORTH of the town trail-head (24,28) —
+                 you leave town walking south, arrive still walking south, and
+                 the portal home is now directly in your path.
+                 So the offset flips: emerge on the far side of the marker,
+                 continuing the direction you were already travelling.
+                 That alone would reinstate the bug v2.3.1700 fixed — every
+                 spoke on the World View (frost 13,13 / ember 25,10 / sky
+                 39,12) is NORTH of the town marker, so walking to one from
+                 below it crosses the marker and warps you back to town.  The
+                 latch below is the actual fix for that, and it is a better
+                 one than spawn geometry could ever be: the marker you just
+                 came THROUGH cannot fire again until you have got clear of
+                 it, so walking out over it is free and walking back to it
+                 later still works.  See _hubExitDisarm in the proximity scan.
+                 EDGE GUARD: town's own World View marker sits at ty 41 of 48
+                 rows, and its far side (ty 45) is under the dashboard
+                 (v2.3.1693).  When the far side lands that close to an edge,
+                 fall back to the inside offset — the bounce it was protecting
+                 against is the World View's, and town's approach is from the
+                 north anyway. */
               if (bestExit.zoneId === 'worldview' || bestExit.zoneId === 'town') {
                 P.x = midX; P.y = midY + TILE * 7;
                 var _dstExits = bestExit.zoneId === 'town' ? TOWN_EXITS : WORLDVIEW_EXITS;
@@ -430,8 +482,17 @@ export function handleZoneTransitions(S, ptx, pty, _zone, W, H) {
                   var _hcx = newZone.w / 2, _hcy = newZone.h / 2;
                   var _hdx = _hcx - _backMark.tx, _hdy = _hcy - _backMark.ty;
                   var _hlen = Math.max(0.001, Math.sqrt(_hdx * _hdx + _hdy * _hdy));
-                  P.x = (_backMark.tx + _hdx / _hlen * 4) * TILE;
-                  P.y = (_backMark.ty + _hdy / _hlen * 4) * TILE;
+                  /* Far side first (continue travelling), inside as the
+                     edge-safe fallback. */
+                  var _outTx = _backMark.tx - _hdx / _hlen * 4;
+                  var _outTy = _backMark.ty - _hdy / _hlen * 4;
+                  var _edge = 4 + PORTAL_EDGE_INSET;
+                  var _outOk = _outTx >= _edge && _outTy >= _edge
+                    && _outTx <= newZone.w - _edge && _outTy <= newZone.h - _edge;
+                  P.x = (_outOk ? _outTx : _backMark.tx + _hdx / _hlen * 4) * TILE;
+                  P.y = (_outOk ? _outTy : _backMark.ty + _hdy / _hlen * 4) * TILE;
+                  /* Arm the latch on the marker we came through. */
+                  S._hubExitDisarm = { zone: bestExit.zoneId, tx: _backMark.tx, ty: _backMark.ty };
                 }
               }
               /* v2.3.1347: snap the chosen spawn onto walkable ground

@@ -11,7 +11,7 @@
 
 import { getState } from './common.js';
 import { t1StatsPayload } from '@/game/t1Sync.js'; /* v2.3.1633: one gate, every sender */
-import { GEAR_CATALOG, getEquip, setEquip } from '../../../rendering/gearCatalog.js';
+import { GEAR_CATALOG, getEquip, setEquip, syncArmorLayers } from '../../../rendering/gearCatalog.js';
 import { recalcDerived } from '../../../data/gameSystems.js';
 
 function persist(R) {
@@ -113,8 +113,31 @@ export function unequipArmorDirect() {
   R.armor = null;
   recalcDerived(R);
   R.hp = Math.min(R.maxHp, R.hp);  // cap only, no delta-subtract (v2.3.236)
+  syncArmorLayers(R); /* v2.3.1703: the plate comes OFF the character too */
   persist(R);
   syncArmorChange(R);
+}
+
+/* v2.3.1703: the LEGS twin.  There was no unequip for a stat legs piece at
+   all — v2.3.1701 shipped the equip side only, because the loadout cell's
+   legs button was toggling the COSMETIC layer and looked like it already
+   worked.  With the layer derived from this field, that button has to move
+   the field, so the flow has to exist.  Mirrors unequipArmorDirect exactly,
+   including the `legs: true` push without which the worker keeps the piece
+   and the next full player_state puts it back on. */
+export function unequipLegsDirect() {
+  const S = getState();
+  if (!S || !S.rpg) return;
+  const R = S.rpg;
+  if (!R.legsArmor) return;
+  if (!R.legsStash) R.legsStash = [];
+  R.legsStash.push(R.legsArmor);
+  R.legsArmor = null;
+  recalcDerived(R);
+  R.hp = Math.min(R.maxHp, R.hp);
+  syncArmorLayers(R);
+  persist(R);
+  syncArmorChange(R, { legs: true });
 }
 
 export function unequipGearDirect(slot) {

@@ -163,7 +163,7 @@ import { shardByKey } from '@/data/shards.js';
 
 /* Destructure everything from DATA — the component body references 100+ symbols */
 const {
-  TILE, PLAYER_COLORS, ZONES, ELEMENTS, TOWN_BUILDINGS, TOWN_EXITS,
+  TILE, PLAYER_COLORS, ZONES, ELEMENTS, TOWN_BUILDINGS, TOWN_EXITS, WORLDVIEW_EXITS, BLOCK_ARC_HALF,
   BLACKSMITH_TIERS, WOODWORKING_TIERS, WEAPON_TYPES, RARITY_TIERS, BT_AUDIO, BT_ACHIEVEMENTS,
   BUILDINGS, NPC_DATA, TILE_SOLID, TILE_COLORS,
   updateZoneDimensions,
@@ -282,6 +282,17 @@ Object.assign(globalThis, { _regenerator, _regeneratorDefine2, _asyncToGenerator
    just beside the resource counts.  The old anchor-radius tests are kept
    as a floor underneath so nothing that used to be reachable stopped
    being reachable — this change only ever ADDS reach. */
+/* ═══ v2.3.1704: THE DEMO'S FREE BLOCK ═══
+   Owner: "make it so holding shield doesn't drain energy.  I need to figure
+   out what to do with that.  For the demo I want you to be able to block as
+   much as you want."
+   One named flag rather than deleted code, because the owner said they still
+   have to decide what stamina is FOR — this is a suspension, not a verdict.
+   Its twin is BLOCK_COSTS_STAMINA in server/src/index.js, and the worker is
+   the side that actually owns stamina, so flip both together or the bar will
+   drain on the server while the client thinks it is full. */
+var BLOCK_COSTS_STAMINA = false;
+
 var NODE_REACH_PAD = 56;   /* px of slack outside the sprite box */
 
 /* The node's art box in WORLD px.  Prefers the renderer's live Pixi
@@ -728,7 +739,33 @@ export var BroTown = function BroTown(_ref0) {
        This is the same call the doSwing useCallback makes below -- written
        as a thunk because doSwing is not assigned yet at this point in the
        component body (this object literal runs first). */
-    swingAttack: function () { swingAttack(stateRef.current); }
+    swingAttack: function () { swingAttack(stateRef.current); },
+    /* v2.3.1703: the hub trail-heads, so the spawn/latch scenario reads the
+       game's own coordinates instead of hardcoding a marker that gets
+       retuned (mp-townlock already had to say "keep them in step"). */
+    TOWN_EXITS: TOWN_EXITS,
+    WORLDVIEW_EXITS: WORLDVIEW_EXITS,
+    /* v2.3.1703: the WORN LAYER, straight from the store the renderer reads.
+       The greaves-don't-show bug was invisible to every assertion that read
+       S.rpg, because the stat piece was set correctly the whole time and the
+       thing that was wrong lived here. */
+    getEquip: getEquip,
+    /* v2.3.1705: the shared block half-angle, so the headless check can assert
+       that the cone on screen and the arc the worker tests are ONE number
+       rather than two that happen to match today. */
+    BLOCK_ARC_HALF: BLOCK_ARC_HALF,
+    /* v2.3.1706: which quest the walk-up dialogue would show, and in what
+       state.  The proximity dialogue is the ONLY route to a turn-in since
+       v2.3.1704, so "what does the giver think you are here for" is worth
+       being able to ask directly rather than inferring from rendered text. */
+    getNpcQuest: getNpcQuest,
+    /* v2.3.1702: the same hook for the two other pool-spending actions.
+       Their `ability_use` send was gated on _serverMonsters (false in town),
+       so the worker never saw a special or a dodge used in the hub and its
+       next player_state refunded the spend.  Driven from the harness here so
+       the fix is checked on the wire, on the path the finger takes. */
+    specialAttack: function () { specialAttack(stateRef.current); },
+    contextualDodge: function (ang) { triggerContextualDodge(stateRef.current, stateRef.current.rpg, ang || 0); }
   };
   /* Restore persisted player on mount and after login */
   useEffect(function () {
@@ -4846,14 +4883,21 @@ export var BroTown = function BroTown(_ref0) {
            "losing its hold" while finger was still down — auto-release
            on stamina-out happening sooner than expected). */
         if (S._shieldUp && S.rpg) {
-          /* 10 stamina/sec at 60fps = 0.167/frame.  In MP the worker
-             runs the drain on its tick (5/tick at ~1.5 Hz ≈ 7.5/sec),
-             so skip the local mutation -- player_state will sync the
-             bar.  Local predict still helps the auto-release feel
-             responsive at 0, so we keep the <=0 release branch.
-             v2.3.1153: × Bulwark block-stamina efficiency, mirroring
-             the worker's _blockStaminaMult on this legacy path. */
-          if (!S._serverMonsters) {
+          /* ═══ v2.3.1704: HOLDING A SHIELD IS FREE ═══
+             Owner: "make it so holding shield doesn't drain energy.  I need
+             to figure out what to do with that.  For the demo I want you to
+             be able to block as much as you want."
+             So this is a DELIBERATE, TEMPORARY suspension of a balance rule,
+             not a bug fix — the drain and the auto-release-at-zero it feeds
+             are switched off behind one named flag rather than deleted, and
+             the same flag exists on the worker (BLOCK_COSTS_STAMINA in
+             server/src/index.js), which is the side that actually owns
+             stamina.  Flip BOTH back to true to restore the old economy; the
+             maths either side of the flag is untouched and still correct.
+             (Old rule, for whoever flips it: 10 stamina/sec at 60fps =
+             0.167/frame on this legacy client-authoritative path, × Bulwark
+             block-stamina efficiency; the worker ran 5/tick at ~1.5 Hz.) */
+          if (BLOCK_COSTS_STAMINA && !S._serverMonsters) {
             S.rpg.stamina = Math.max(0, (S.rpg.stamina || 0) - 0.167 * getBlockStaminaMult(S.rpg));
           }
           /* v2.3.1110: 100 -> 250 ms rolling window.  Every client-side
@@ -4863,7 +4907,7 @@ export var BroTown = function BroTown(_ref0) {
              shield was still up.  250 ms rides out hitches; release paths
              still zero it immediately. */
           S.shieldEnd = Date.now() + 250;
-          if (S.rpg.stamina <= 0) {
+          if (BLOCK_COSTS_STAMINA && S.rpg.stamina <= 0) {
             S.rpg.stamina = 0;
             S._shieldUp = false;
             S._shieldCdUntil = Date.now() + 2000;
@@ -5578,6 +5622,15 @@ export var BroTown = function BroTown(_ref0) {
       var R = S && S.rpg;
       if (!R || !R.inventory || (R.inventory[key] || 0) <= 0) return;
       if (S._firemaking) return;  // already lighting one
+      /* v2.3.1702: the local delete below is a PREDICTION (rule 20) — the
+         worker owns the bag, and until this message existed it never heard
+         that the log was spent, so the next player_state echo handed it
+         back and one log lit unlimited campfires.  Sent BEFORE the local
+         mutation so a throw on send can't leave the client short a log the
+         worker still holds. */
+      if (S.channel) {
+        try { S.channel.send({ type: 'firemaking_request', payload: { invKey: key } }); } catch (e) {}
+      }
       R.inventory[key] -= 1;
       if (R.inventory[key] <= 0) delete R.inventory[key];
       var now = Date.now();

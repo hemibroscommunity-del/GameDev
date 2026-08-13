@@ -233,6 +233,17 @@ export const movementMethods = {
       if (msg.ex !== undefined) ps.ex = msg.ex || null;
       if (msg.dodging !== undefined) ps.dodging = !!msg.dodging;
       if (msg.blocking !== undefined) ps.blocking = !!msg.blocking;
+      /* v2.3.1705: the shield's facing angle, for the directional block
+         (owner: "yes blocking should be directional").  Sanitised to a finite
+         number or null — it is client-supplied and feeds a trig test, and an
+         Infinity/NaN would make every comparison false, i.e. silently turn the
+         shield off rather than throwing anywhere visible.  Absent field on an
+         older client leaves ps.ba undefined, which _blockArcCovers reads as
+         "no facing known" and answers omnidirectionally: an old client keeps
+         exactly the block it has today. */
+      if (msg.ba !== undefined) {
+        ps.ba = (typeof msg.ba === 'number' && Number.isFinite(msg.ba)) ? msg.ba : null;
+      }
       if (msg.dead !== undefined) ps.dead = !!msg.dead;
       this.dirtyPlayers.add(session.id);
     }

@@ -67,6 +67,7 @@
  *       pulls nobody.
  */
 import { GameRoom } from '../src/index.js';
+import { BLOCK_COSTS_STAMINA } from '../src/data.js'; /* v2.3.1704: NOT from index.js — see the note on the flag */
 import { DUNGEONS, BOSS_ABILITIES } from '../src/dungeon.js';
 import { MONSTER_HP_CURVE } from '../src/data.js';
 
@@ -354,7 +355,17 @@ room._tickDungeons(t1); // telegraph slam
 room.eventBuffer.length = 0;
 room._tickDungeons(t1 + BOSS_ABILITIES.TELEGRAPH_MS + 10); // execute
 const blk = room.eventBuffer.filter((e) => e.type === 'monster_attack' && e.payload.monsterId === bossB.id);
-check('blocked slam: zero damage + standard stamina drain', blk.length === 1 && blk[0].payload.blocked === true && blk[0].payload.dmgTaken === 0 && psA.hp === 500 && psA.stamina === 85, { stamina: psA.stamina, blk: blk.map((b) => b.payload) });
+/* v2.3.1704: reads BLOCK_COSTS_STAMINA rather than hardcoding the charge, for
+   the same reason the combat-lifecycle twins do — the owner suspended the
+   block cost for the demo, so the suite pins whichever mode is shipping and
+   flipping the flag back needs no test edit.  The NEGATION is the part that
+   must hold either way, and it is asserted either way. */
+check(BLOCK_COSTS_STAMINA
+  ? 'blocked slam: zero damage + standard stamina drain'
+  : 'blocked slam: zero damage, and free to block (v2.3.1704 demo flag)',
+  blk.length === 1 && blk[0].payload.blocked === true && blk[0].payload.dmgTaken === 0 && psA.hp === 500
+  && (BLOCK_COSTS_STAMINA ? psA.stamina === 85 : psA.stamina === 100),
+  { stamina: psA.stamina, blk: blk.map((b) => b.payload) });
 psA.blocking = false;
 
 // ── 17. charge: lunge + contact damage ──

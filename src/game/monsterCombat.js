@@ -38,7 +38,7 @@ import {
 import { MONSTER_VARIANTS, baseArchetypeOf, hitShapeOf, isFodderLike, isRemnantSkull, maybeTransformMonster, usesClientSideMovement, xpMultFor } from '@/data/monsterVariants.js';
 import { isWearingArmor } from '@/rendering/gearCatalog.js'; /* v2.3.1104: armoured-hit SFX check */
 import { rollMonsterShard } from '@/data/shards.js';
-import { addBuildUse, applyMeleeLifesteal, clearSwingHitFlags, distributeKillXpToBuild, trackMonsterDamage, pushDmgPopup, monsterPopupY, isPlayerDead } from '@/game/combatHelpers.js';
+import { addBuildUse, applyMeleeLifesteal, clearSwingHitFlags, distributeKillXpToBuild, trackMonsterDamage, pushDmgPopup, monsterPopupY, isPlayerDead, hurtPlayerLocal, isAttackInShieldArc } from '@/game/combatHelpers.js';
 import { earnCertification as masteryEarnCert } from '@/game/mastery.js';
 import { celebrateLevelUps } from '@/game/levelCelebration.js';
 import { btRpc, getBtPlayerId, syncRpgToServer } from '@/networking/index.js';
@@ -513,11 +513,15 @@ export function updateMonsterCombat(S, deps) {
                     }
                     /* Dodging or shielding avoids damage */
                     var dodged = S._dodgeRoll;
-                    var blocked = Date.now() < S.shieldEnd; /* v2.3.1110: omnidirectional (owner: unify on the server rule) */
+                    /* v2.3.1705: the arc is BACK (owner: "yes blocking should be directional").
+                       isAttackInShieldArc has sat unused since v2.3.1110 unified on
+                       the omni rule; it is the same +-BLOCK_ARC_HALF wedge the shield
+                       cone is drawn at, so what you see is what you block. */
+                    var blocked = Date.now() < S.shieldEnd && isAttackInShieldArc(S, m.x, m.y);
                     if (distToP < slamRange && !invuln && !dodged) {
                       var slamDmg = Math.ceil(m.dmg * 1.5);
                       var finalDmg = blocked ? 0 : slamDmg;
-                      _R6.hp -= finalDmg;
+                      hurtPlayerLocal(S, _R6, finalDmg);
                       trackMonsterDamage(S, m.id, finalDmg);
                       if (window.__dmgLog) try { console.log('[dmg] boss-slam', { amt: finalDmg, archetype: m.archetype || m.type, blocked: blocked }); } catch (e) {}
                       pushDmgPopup(S, P.x, P.y - 20, blocked ? 'BLOCK' : '-' + finalDmg, '#f5c542');
@@ -558,11 +562,11 @@ export function updateMonsterCombat(S, deps) {
                       duration: 300
                     });
                     var _dodged = S._dodgeRoll;
-                    var _blocked = Date.now() < S.shieldEnd;
+                    var _blocked = Date.now() < S.shieldEnd && isAttackInShieldArc(S, m.x, m.y); /* v2.3.1705: directional */
                     if (distToP < sweepRange && !invuln && !_dodged) {
                       var sweepDmg = Math.ceil(m.dmg * 1.2);
                       var _finalDmg = _blocked ? 0 : sweepDmg;
-                      _R6.hp -= _finalDmg;
+                      hurtPlayerLocal(S, _R6, _finalDmg);
                       trackMonsterDamage(S, m.id, _finalDmg);
                       if (window.__dmgLog) try { console.log('[dmg] boss-sweep', { amt: _finalDmg, archetype: m.archetype || m.type, blocked: _blocked }); } catch (e) {}
                       pushDmgPopup(S, P.x, P.y - 20, _blocked ? 'BLOCK' : '-' + _finalDmg, '#a855f7');
@@ -629,12 +633,12 @@ export function updateMonsterCombat(S, deps) {
                 /* Charge hit detection */
                 if (distToP < 20 && !invuln) {
                   var chargeDmg = Math.ceil(m.dmg * 1.5);
-                  var _blocked2 = Date.now() < S.shieldEnd; /* v2.3.1110: omnidirectional */
+                  var _blocked2 = Date.now() < S.shieldEnd && isAttackInShieldArc(S, m.x, m.y); /* v2.3.1705: directional */
                   /* v2.3.232 (Phase 2): block is full negation now; the
                      old partial-block reduction via calcBlockReduction
                      was the last site reading the Fortification scale. */
                   var _finalDmg2 = _blocked2 ? 0 : chargeDmg;
-                  _R6.hp -= _finalDmg2;
+                  hurtPlayerLocal(S, _R6, _finalDmg2);
                   trackMonsterDamage(S, m.id, _finalDmg2);
                   if (window.__dmgLog) try { console.log('[dmg] boss-charge', { amt: _finalDmg2, archetype: m.archetype || m.type, blocked: _blocked2 }); } catch (e) {}
                   pushDmgPopup(S, P.x, P.y - 20, _blocked2 ? 'BLOCK' : '-' + _finalDmg2, '#ea580c');
@@ -678,7 +682,7 @@ export function updateMonsterCombat(S, deps) {
                   /* Telegraph done — execute attack */
                   m._telegraphUntil = null;
                   m._atkCd = Date.now();
-                  var shielded = Date.now() < S.shieldEnd; /* v2.3.1110: omnidirectional */
+                  var shielded = Date.now() < S.shieldEnd && isAttackInShieldArc(S, m.x, m.y); /* v2.3.1705: directional */
                   var rawDmg = Math.max(1, m.dmg);
                   /* §18.1 Food buff — resist reduces incoming damage */
                   if (S._resistBuff && Date.now() < S._resistBuff) rawDmg = Math.max(1, Math.floor(rawDmg * 0.85));
@@ -804,7 +808,7 @@ export function updateMonsterCombat(S, deps) {
                     m.respawnAt = Date.now() + 30000;
                     BT_AUDIO.monsterDeath(m && m.archetype);
                     var explodeDmg = Math.round(m.dmg * 2);
-                    _R6.hp -= shielded ? 0 : explodeDmg;
+                    hurtPlayerLocal(S, _R6, shielded ? 0 : explodeDmg);
                     trackMonsterDamage(S, m.id, shielded ? 0 : explodeDmg);
                     if (window.__dmgLog) try { console.log('[dmg] volatile-explode', { amt: explodeDmg, archetype: m.archetype || m.type, shielded: shielded, mPos: { x: m.x, y: m.y }, pPos: { x: P.x, y: P.y } }); } catch (e) {}
                     if (!shielded) {
@@ -838,7 +842,7 @@ export function updateMonsterCombat(S, deps) {
                       shard: _shardE,
                     });
                   } else {
-                    _R6.hp -= dmgTaken;
+                    hurtPlayerLocal(S, _R6, dmgTaken);
                     trackMonsterDamage(S, m.id, dmgTaken);
                     if (window.__dmgLog) try { console.log('[dmg] monster-melee', { amt: dmgTaken, archetype: m.archetype || m.type, shielded: shielded, mPos: { x: m.x, y: m.y }, pPos: { x: P.x, y: P.y }, dist: Math.round(Math.sqrt((m.x - P.x) ** 2 + (m.y - P.y) ** 2)) }); } catch (e) {}
                     if (shielded) {
@@ -890,7 +894,7 @@ export function updateMonsterCombat(S, deps) {
                       /* Sentinel: armor-piercing — ignores 50% of block reduction */
                       var pierceDmg = Math.max(0, Math.floor(rawDmg * blockReduc * 0.5));
                       if (pierceDmg > 0) {
-                        _R6.hp -= pierceDmg;
+                        hurtPlayerLocal(S, _R6, pierceDmg);
                         trackMonsterDamage(S, m.id, pierceDmg);
                         if (window.__dmgLog) try { console.log('[dmg] sentinel-pierce', pierceDmg); } catch (e) {}
                         pushDmgPopup(S, P.x + 10, P.y - 22, 'Pierce -' + pierceDmg, '#e8e8e8');
@@ -900,7 +904,7 @@ export function updateMonsterCombat(S, deps) {
                       /* Stalker: crit chance on dash attacks */
                       if (m._stalkPhase === 'dash' && Math.random() < 0.4) {
                         var critDmg = Math.ceil(dmgTaken * 0.5);
-                        _R6.hp -= critDmg;
+                        hurtPlayerLocal(S, _R6, critDmg);
                         trackMonsterDamage(S, m.id, critDmg);
                         if (window.__dmgLog) try { console.log('[dmg] stalker-crit', critDmg); } catch (e) {}
                         pushDmgPopup(S, P.x, P.y - 40, 'CRIT -' + critDmg, '#ff5e6c');

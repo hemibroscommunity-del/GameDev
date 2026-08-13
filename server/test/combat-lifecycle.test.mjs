@@ -15,6 +15,7 @@
  *      assertion if overflow deferral ships).
  */
 import { GameRoom } from '../src/index.js';
+import { BLOCK_COSTS_STAMINA } from '../src/data.js'; /* v2.3.1704: NOT from index.js — see the note on the flag */
 /* v2.3.1451 (bench-locked T2): fixtures build their accumulator with
    the REAL replay helper and assertions derive from it — never
    hand-rolled numbers, so tuning T2_BENCH can't silently break the
@@ -292,18 +293,38 @@ for (const m of meadowMonsters) m._wanderPausedUntil = Date.now() + 600000;
   room._tickPlayerRegen();
   check('regen: combat zones have no passive HP regen', psA.hp === 50, psA.hp);
 
+  /* v2.3.1704: these two read BLOCK_COSTS_STAMINA rather than hardcoding one
+     behaviour, so the suite pins whichever mode is actually shipping and
+     flipping the flag back needs no test edit.  The owner asked for unlimited
+     blocking FOR THE DEMO ("I need to figure out what to do with that"), so
+     the drain is suspended, not deleted — and the free-block arm asserts the
+     part that matters about a suspension: the shield does NOT drop itself and
+     the pool is not silently mutated. */
   psA.blocking = true; psA.stamina = 3;
   room._tickPlayerRegen();
-  check('regen: shield drain hits 0 and auto-releases the block',
-    psA.stamina === 0 && psA.blocking === false, { stamina: psA.stamina, blocking: psA.blocking });
+  check(BLOCK_COSTS_STAMINA
+    ? 'regen: shield drain hits 0 and auto-releases the block'
+    : 'regen: a held shield costs nothing and is never auto-released (v2.3.1704 demo flag)',
+    BLOCK_COSTS_STAMINA
+      ? (psA.stamina === 0 && psA.blocking === false)
+      : (psA.stamina >= 3 && psA.blocking === true),
+    { stamina: psA.stamina, blocking: psA.blocking });
 
   // v2.3.1343 (kid-simple reprice): Bulwark -1%/pt, cap -100% — but the
   // Math.max(1, …) floor keeps the shield-hold drain at >= 1/tick, so
   // holding a shield is never TRULY free (the anti-turtle backstop).
+  // v2.3.1704: with the demo flag off nothing is charged, so the floor is
+  // asserted against the PRICING HELPER instead — the maths is untouched and
+  // the backstop is still pinned for whoever flips the flag back.
   psA.blocking = true; psA.stamina = 100; psA.defenseSpec = { bulwark: 100 };
   room._tickPlayerRegen();
-  check('bulwark: 100 pts (cap) floor the shield-hold drain at 1/tick',
-    psA.stamina === 99, psA.stamina);
+  check(BLOCK_COSTS_STAMINA
+    ? 'bulwark: 100 pts (cap) floor the shield-hold drain at 1/tick'
+    : 'bulwark: the 1/tick anti-turtle floor survives the demo flag (pricing intact)',
+    BLOCK_COSTS_STAMINA
+      ? psA.stamina === 99
+      : Math.max(1, Math.round(5 * room._blockStaminaMult(psA))) === 1,
+    psA.stamina);
   check('bulwark: helper mult floors at -100% (mult 0)', Math.abs(room._blockStaminaMult(psA) - 0) < 1e-9
     && Math.abs(room._blockStaminaMult({ defenseSpec: { bulwark: 999 } }) - 0) < 1e-9,
     room._blockStaminaMult(psA));
@@ -1354,41 +1375,143 @@ for (const m of meadowMonsters) m._wanderPausedUntil = Date.now() + 600000;
       thrown[0] && thrown[0].payload);
   }
 
-  /* ── v2.3.1690: a harvester is left alone ──
+  /* ── v2.3.1690 / v2.3.1704: a harvester is left alone ──
    * Owner: "make it so monsters don't attack you while you're extracting
    * resources (fishing, mining, etc) it's really annoying and glitchy."
-   * Bounded by EXTRACT_SHIELD_MS rather than by the extraction record, which
-   * lives ten minutes — the second half of this proves the shield expires,
-   * because "tap a tree, become invulnerable for ten minutes" would be a
-   * worse bug than the one being fixed. */
+   * Owner again, v2.3.1704: "the monsters keep attacking you while harvesting
+   * resources.  I wanted monsters to ignore you during resource extraction."
+   *
+   * v2.3.1690 made this a stopwatch (EXTRACT_SHIELD_MS from extraction_start)
+   * and suppressed only the swing and the throw.  Both halves were wrong:
+   * v2.3.1416 had already made the harvest phase open-ended, so a 12 s clock
+   * lapsed under a player who was still standing there; and a monster that
+   * still ACQUIRED the harvester walked over and hovered on them, which reads
+   * as being attacked whether or not damage lands.
+   *
+   * So this section pins the shape of the replacement, in both directions:
+   *   A. it engages — no throw, no aggro, no damage;
+   *   B. it ENDS, on every real way an extraction stops.  A shield that could
+   *      stick is a worse bug than the one being fixed, so each end condition
+   *      gets its own assertion rather than being taken on trust. */
   {
     const psE = room.playerState['pa'];
     psE.z = 'frost'; psE.blocking = false; psE.hp = psE.maxHp = 200;
     psE.dying = false; psE.dead = false; psE.disconnected = false;
     psE.x = 2000; psE.y = 2000;
+    /* The live harvest signal the client broadcasts on `move` since v2.3.1092
+       (mine|chop|fish|cook|fire).  The shield reads it, so the fixture has to
+       set it — a player who is not telling the server they are harvesting is
+       not shielded, which is end-condition (B4) below. */
+    psE.ex = 'chop';
+    /* A REAL node to anchor on: the shield resolves e.nodeId out of
+       room.nodes[zone] every tick, so a made-up id is no longer enough. */
+    room.nodes.frost = [{ id: 'ex-tree-1', nodeType: 'tree', tierLvl: 1, alive: true,
+      respawnAt: 0, x: psE.x, y: psE.y }];
+    const startRec = () => {
+      room.extractions['pa'] = { nodeId: 'ex-tree-1', zone: 'frost', skill: 'woodcutting',
+        startedAt: Date.now(), skillLevel: 1, nodeTier: 1, openDelayBase: 4000 };
+    };
     const smE = (room.monsters.frost || []).find((m) => m.arch === 'snowman');
     if (smE) {
       for (const other of room.monsters.frost) { if (other !== smE) { other.x = 9000; other.y = 9000; } }
       smE.alive = true; smE.hp = smE.maxHp || 50;
-      smE.x = psE.x + 200; smE.y = psE.y; smE.atkCd = 0; smE._projImpactAt = 0;
-      room.extractions['pa'] = { nodeId: 'n1', zone: 'frost', skill: 'woodcutting', startedAt: Date.now() };
+      const throwsAt = () => {
+        smE.x = psE.x + 200; smE.y = psE.y; smE.atkCd = 0; smE._projImpactAt = 0;
+        smE.targetId = null; smE._aggroOverrideTarget = null; smE._aggroOverrideUntil = 0;
+        room.eventBuffer.length = 0;
+        room._tickMonsters();
+        return room.eventBuffer.filter((e) => e.type === 'monster_projectile').length;
+      };
+
+      /* ── A. the shield engages ── */
+      startRec();
+      check('a mid-extraction player is not thrown at', throwsAt() === 0,
+        room.eventBuffer.map((e) => e.type));
+      /* THE v2.3.1704 HALF: not merely spared, IGNORED.  A monster that still
+         picks the harvester as its target walks over and stands on them for
+         the whole harvest, which is what the owner was describing. */
+      check('...and the monster does not even TARGET them (owner: "ignore you")',
+        smE.targetId == null, smE.targetId);
+      /* The one caller that sits outside the aggro branch on purpose: a ball
+         already in the air (v2.3.1640) lands on a target the monster has lost
+         interest in.  _monsterStrikePlayer is the choke point that stops it. */
+      const hpPreBall = psE.hp;
+      room.eventBuffer.length = 0;
+      room._monsterStrikePlayer('frost', { id: 'sb-ex', arch: 'snowman', dmg: 40, x: psE.x, y: psE.y, statuses: {} }, 'pa', psE.x, psE.y);
+      check('...and an already-airborne snowball cannot interrupt the swipe either',
+        psE.hp === hpPreBall && room.eventBuffer.filter((e) => e.type === 'monster_attack').length === 0,
+        { hp: psE.hp, hpPreBall, events: room.eventBuffer.map((e) => e.type) });
+      /* Sticky aggro (a bow-snipe) must not drag the monster over either. */
+      startRec();
+      smE._aggroOverrideTarget = 'pa'; smE._aggroOverrideUntil = Date.now() + 10000;
+      smE.x = psE.x + 200; smE.y = psE.y; smE.atkCd = 0; smE._projImpactAt = 0; smE.targetId = null;
       room.eventBuffer.length = 0;
       room._tickMonsters();
-      check('a mid-extraction player is not thrown at',
-        room.eventBuffer.filter((e) => e.type === 'monster_projectile').length === 0,
+      check('...and a sticky bow-snipe aggro is DROPPED, not parked, on a harvester',
+        smE.targetId == null && !smE._aggroOverrideTarget,
+        { targetId: smE.targetId, sticky: smE._aggroOverrideTarget });
+
+      /* ── B. every way it ends ── */
+      /* B1. the ceiling.  Bounded on purpose: "tap a tree, become invulnerable
+         forever" would be a worse bug than the one being fixed. */
+      startRec();
+      room.extractions['pa'].startedAt = Date.now() - (room.EXTRACT_SHIELD_MS + 1000);
+      check('the shield has a ceiling — it is not a permanent safe zone', throwsAt() >= 1,
         room.eventBuffer.map((e) => e.type));
 
-      /* Same monster, same position, shield expired -> it throws again. */
-      room.extractions['pa'].startedAt = Date.now() - (room.EXTRACT_SHIELD_MS + 1000);
-      smE.atkCd = 0; smE._projImpactAt = 0;
-      room.eventBuffer.length = 0;
-      room._tickMonsters();
-      check('...but the shield expires — it is not a ten-minute safe zone',
-        room.eventBuffer.filter((e) => e.type === 'monster_projectile').length >= 1,
+      /* B2. walking off the node (the radius backstop for a modified client —
+         an honest one cancels far sooner and clears `ex`). */
+      startRec();
+      psE.x = 2000 + room.EXTRACT_SHIELD_RANGE + 50;
+      check('walking off the node ends it', throwsAt() >= 1, { x: psE.x });
+      psE.x = 2000;
+
+      /* B3. changing zone. */
+      startRec();
+      psE.z = 'meadow';
+      check('changing zone ends it', room._extractionShielded('pa') === false);
+      psE.z = 'frost';
+
+      /* B4. the client stops broadcasting a harvest activity — THE FAST ONE.
+         This is what catches every cancel that displaces the player by
+         nothing: the joystick nudge (v2.3.1500), a missed swipe, tapping a
+         different node, opening a menu.  `ex` rides on every move packet and
+         goes null within one throttle of the cancel. */
+      startRec();
+      psE.ex = null;
+      check('dropping the harvest activity code ends it immediately', throwsAt() >= 1);
+      psE.ex = 'chop';
+
+      /* B5. the node dies (depleted by you, or by anyone else). */
+      startRec();
+      room.nodes.frost[0].alive = false;
+      check('a depleted node ends it', throwsAt() >= 1);
+      room.nodes.frost[0].alive = true;
+
+      /* B6. death. */
+      startRec();
+      psE.dying = true;
+      check('dying ends it', room._extractionShielded('pa') === false);
+      psE.dying = false;
+
+      /* B7. swinging.  A real client refuses to attack mid-extraction
+         (playerActions.js), so this only ever fires for a modified one — and
+         it is what stops "park on a node and tank the pack for free". */
+      startRec();
+      room._handleMonsterDamage({ id: 'pa' }, { monsterId: smE.id, zone: 'frost', slot: 'melee' });
+      check('attacking ends it — no free tanking from a gather node',
+        !room.extractions['pa'] && room._extractionShielded('pa') === false,
+        { rec: room.extractions['pa'] });
+
+      /* And once it has ended, the monster comes straight back. */
+      check('...after which the monster re-acquires normally', throwsAt() >= 1,
         room.eventBuffer.map((e) => e.type));
     }
     delete room.extractions['pa'];
+    delete room.nodes.frost;
+    psE.ex = null;
     psE.blocking = true;
+    psE.hp = psE.maxHp = 200;
   }
 
   /* Impact while blocking: zero damage, a Blocked! event, stamina spent. */
@@ -1403,8 +1526,15 @@ for (const m of meadowMonsters) m._wanderPausedUntil = Date.now() + 600000;
     blockedAtk.length === 1 && blockedAtk[0].payload.blocked === true
     && blockedAtk[0].payload.dmgTaken === 0,
     blockedAtk[0] && blockedAtk[0].payload);
-  check('...and costs stamina, like blocking a swing does',
-    psB.stamina < stamBefore && blockedAtk[0].payload.staminaDrain > 0,
+  /* v2.3.1704: and with the demo's free block, it costs nothing — including
+     NOT putting a 0 on the wire, which the client's v2.3.1686 popup would
+     render as a "-0⚡" beside every Blocked!. */
+  check(BLOCK_COSTS_STAMINA
+    ? '...and costs stamina, like blocking a swing does'
+    : '...and costs no stamina, and sends no drain field at all (v2.3.1704 demo flag)',
+    BLOCK_COSTS_STAMINA
+      ? (psB.stamina < stamBefore && blockedAtk[0].payload.staminaDrain > 0)
+      : (psB.stamina === stamBefore && blockedAtk[0].payload.staminaDrain === undefined),
     { before: stamBefore, after: psB.stamina, drain: blockedAtk[0] && blockedAtk[0].payload.staminaDrain });
 
   /* And with the shield DOWN the same ball hurts -- the block has to be a
@@ -1418,6 +1548,82 @@ for (const m of meadowMonsters) m._wanderPausedUntil = Date.now() + 600000;
   check('with the shield down the same snowball lands',
     _dodged || (psB.hp < hpBefore2 && !openAtk[0].payload.blocked),
     { before: hpBefore2, after: psB.hp, payload: openAtk[0] && openAtk[0].payload });
+
+  /* ═══ v2.3.1705: THE BLOCK IS DIRECTIONAL ═══
+     Owner, asked directly: "yes blocking should be directional."  The rule is
+     _blockArcCovers: blocking AND the attack inside ±BLOCK_ARC_HALF of the
+     shield's facing (ps.ba, ridden in on the move message).
+
+     The three cases below are the whole contract, and the THIRD is the one
+     that keeps a deploy safe: every assertion above this point sets
+     ps.blocking without ps.ba — i.e. they are all pre-v2.3.1705 clients — and
+     they still pass, because an unknown facing FAILS OPEN to the omni block.
+     A client that has not been reloaded through the deploy therefore keeps
+     exactly the shield it had, instead of losing it to a field it never sends. */
+  const _arcAt = (dx, dy) => Math.atan2(dy, dx);
+  psB.hp = psB.maxHp = 400;
+  psB.blocking = true;
+  /* Attacker due EAST of the player, and the shield facing east. */
+  const _east = { id: 'sb-arc-1', arch: 'snowman', dmg: 40, x: psB.x + 100, y: psB.y, statuses: {} };
+  psB.ba = _arcAt(1, 0);
+  let hp0 = psB.hp;
+  room.eventBuffer.length = 0;
+  room._monsterStrikePlayer('frost', _east, 'pa', _east.x, _east.y);
+  let atk = room.eventBuffer.filter((e) => e.type === 'monster_attack')[0];
+  check('directional: an attack the shield FACES is blocked',
+    !!atk && atk.payload.blocked === true && psB.hp === hp0,
+    { ba: psB.ba, hp: psB.hp, payload: atk && atk.payload });
+
+  /* Same attacker, shield turned to face WEST — 180° away, well outside the
+     ±60° wedge.  This is the assertion that would have failed all through
+     v2.3.1110's omni era. */
+  psB.ba = _arcAt(-1, 0);
+  hp0 = psB.hp;
+  room.eventBuffer.length = 0;
+  room._monsterStrikePlayer('frost', _east, 'pa', _east.x, _east.y);
+  atk = room.eventBuffer.filter((e) => e.type === 'monster_attack')[0];
+  check('directional: the same attack from BEHIND the shield gets through',
+    !!atk && atk.payload.blocked !== true && (psB.hp < hp0 || atk.payload.dodged),
+    { ba: psB.ba, before: hp0, after: psB.hp, payload: atk && atk.payload });
+
+  /* Just inside and just outside the edge of the wedge, so the boundary is
+     pinned and not merely the two extremes. */
+  psB.hp = psB.maxHp;
+  psB.ba = _arcAt(1, 0) + (Math.PI / 3) * 0.95;   /* 57° off — inside ±60° */
+  hp0 = psB.hp;
+  room.eventBuffer.length = 0;
+  room._monsterStrikePlayer('frost', _east, 'pa', _east.x, _east.y);
+  atk = room.eventBuffer.filter((e) => e.type === 'monster_attack')[0];
+  check('directional: 57° off-axis is still inside the wedge',
+    !!atk && atk.payload.blocked === true && psB.hp === hp0, { ba: psB.ba, payload: atk && atk.payload });
+
+  psB.ba = _arcAt(1, 0) + (Math.PI / 3) * 1.10;   /* 66° off — outside */
+  hp0 = psB.hp;
+  room.eventBuffer.length = 0;
+  room._monsterStrikePlayer('frost', _east, 'pa', _east.x, _east.y);
+  atk = room.eventBuffer.filter((e) => e.type === 'monster_attack')[0];
+  check('directional: 66° off-axis is outside it',
+    !!atk && atk.payload.blocked !== true, { ba: psB.ba, payload: atk && atk.payload });
+
+  /* THE DEPLOY-ORDER CASE: no facing reported at all. */
+  psB.hp = psB.maxHp;
+  delete psB.ba;
+  hp0 = psB.hp;
+  room.eventBuffer.length = 0;
+  room._monsterStrikePlayer('frost', _east, 'pa', _east.x, _east.y);
+  atk = room.eventBuffer.filter((e) => e.type === 'monster_attack')[0];
+  check('directional: a client that reports no facing keeps the OMNI block',
+    !!atk && atk.payload.blocked === true && psB.hp === hp0, { payload: atk && atk.payload });
+
+  /* A junk facing is sanitised to null by movement.js, and null must read the
+     same as absent rather than turning the shield off. */
+  psB.ba = null;
+  hp0 = psB.hp;
+  room.eventBuffer.length = 0;
+  room._monsterStrikePlayer('frost', _east, 'pa', _east.x, _east.y);
+  atk = room.eventBuffer.filter((e) => e.type === 'monster_attack')[0];
+  check('directional: a null facing reads as "unknown", not as "off"',
+    !!atk && atk.payload.blocked === true && psB.hp === hp0, { payload: atk && atk.payload });
 }
 
 console.log(failures === 0 ? '\nALL TESTS PASSED' : `\n${failures} TEST(S) FAILED`);

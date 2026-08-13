@@ -107,5 +107,55 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await P.page.waitForTimeout(1200);
   rec.ok('standing next to him with a menu open does not steal focus', !(await open()));
 
+  /* ═══ v2.3.1704: PROXIMITY IS NOW THE ONLY DOOR TO A TURN-IN ═══
+     Owner: "Disable turning in quest rewards (completion) through the quest
+     pane.  It's getting messed up."
+     Until this version there were two ways to hand a quest in, and the quest
+     pane's button was the one that did not require finding anybody.  With it
+     removed, the walk-up dialogue this scenario exists to test stops being a
+     convenience and becomes the sole route to every quest reward in the game
+     — so "it opens on approach while a quest is READY, carrying the turn-in"
+     is a property this file now owns.  Without it, a regression in the latch
+     would strand every reward with nothing else to catch it. */
+  await P.page.evaluate(() => {
+    const b = document.querySelector('.bt-inspect-close'); if (b) b.click();
+  });
+  await H.openDest(P, 'Dashboard').catch(() => {});
+  await P.page.waitForTimeout(700);
+  const myId = await H.readState(P, (S) => S.myId);
+  await P.page.evaluate(() => {
+    const S = window._gameState && window._gameState.current;
+    if (S && S.channel) S.channel.send({ type: 'quest_accept', payload: { questId: 'tut_1' } });
+  });
+  await P.page.waitForTimeout(1200);
+  await H.grant(wsPort, myId, 'item', { invKey: 'snowman', count: 4 });
+  await P.page.waitForTimeout(2200);
+
+  /* v2.3.1706: CLOSE anything already open before walking back in.  Standing
+     next to the giver while the Quests sheet was dismissed opens his dialogue
+     immediately — i.e. BEFORE the accept echo lands — and the proximity scan
+     deliberately will not re-fire while a dialogue is already up (`!S._uiBusy`
+     in the gate), so that first, stale card just stays there reading "New
+     Quest!".  The game is right in both halves: getNpcQuest returns 'active'
+     the whole time.  Walk away, close the card, and let it open fresh. */
+  await place(420, 0);                  // clear the latch first
+  await P.page.waitForTimeout(600);
+  await P.page.evaluate(() => {
+    const b = document.querySelector('.bt-inspect-close');
+    if (b) b.click();
+  });
+  await P.page.waitForTimeout(600);
+  rec.ok('the giver dialogue is closed before the approach that must re-open it',
+    !(await open()));
+  await place(0, 34);                   // …then walk back in
+  await P.page.waitForTimeout(1200);
+  rec.ok('with a READY quest, walking up opens his dialogue', await open());
+  const readyDlg = await P.page.evaluate(() => {
+    const c = document.querySelector('.bt-inspect-card');
+    return c ? (c.innerText || '') : '';
+  });
+  rec.ok('...and that dialogue carries the turn-in — the only one left',
+    /Turn In Quest|Choose a skill to train/.test(readyDlg), readyDlg.slice(0, 400));
+
   await P.ctx.close().catch(() => {});
 }

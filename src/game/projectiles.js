@@ -22,7 +22,7 @@ import {
 import { baseArchetypeOf, hitShapeOf, isRemnantSkull, maybeTransformMonster, xpMultFor } from '@/data/monsterVariants.js';
 import { isWearingArmor } from '@/rendering/gearCatalog.js'; /* v2.3.1108: armoured-hit clang on projectile hits */
 import { rollMonsterShard } from '@/data/shards.js';
-import { addBuildUse, applyMeleeLifesteal, distributeKillXpToBuild, trackMonsterDamage, pushDmgPopup, monsterPopupY } from '@/game/combatHelpers.js';
+import { addBuildUse, applyMeleeLifesteal, distributeKillXpToBuild, trackMonsterDamage, pushDmgPopup, monsterPopupY, hurtPlayerLocal, isAttackInShieldArc } from '@/game/combatHelpers.js';
 import { earnCertification as masteryEarnCert } from '@/game/mastery.js';
 import { celebrateLevelUps } from '@/game/levelCelebration.js';
 import { saveRpgSoon } from '@/game/rpgSave.js'; /* v2.3.1356 */
@@ -898,7 +898,12 @@ export function updateSlimeProjectiles(S) {
                actual attacker direction. */
             var _atkFromX = P.x - Math.cos(proj.ang) * 50;
             var _atkFromY = P.y - Math.sin(proj.ang) * 50;
-            var pShielded = Date.now() < S.shieldEnd; /* v2.3.1110: omnidirectional */
+            /* v2.3.1705: directional again.  The virtual point below (_atkFromX/Y,
+               50px back along the projectile's own travel line) already exists
+               precisely because a projectile can OVERSHOOT the player by a few px
+               and make a naive test read the attack as coming from in front — so
+               the arc test gets that point, not proj.x/y. */
+            var pShielded = Date.now() < S.shieldEnd && isAttackInShieldArc(S, _atkFromX, _atkFromY);
             if (pShielded) {
               try { BT_AUDIO.play('shield-block', { vol: 1.0 }); } catch (e) {}
               pushDmgPopup(S, P.x, P.y - 20, 'BLOCK', '#60a5fa');
@@ -939,7 +944,9 @@ export function updateSlimeProjectiles(S) {
             var _projDmg = applyResilience(_R6P, applyIronSkin(_R6P, proj.rawDmg)); /* v2.3.1314 */
             var _defUpPj = trainDefense(_R6P, 0, _projDmg, proj.srcLevel || null, false);
             if (_defUpPj) pushDmgPopup(S, P.x, P.y - 34, '🛡️ Defense Lv ' + _defUpPj.level, '#60a5fa', { ts: Date.now() + 2 });
-            _R6P.hp -= _projDmg;
+            /* v2.3.1702: the local slime orb is spawned by the local AI, so in a
+               server zone the worker fired its own and will bill us for it. */
+            hurtPlayerLocal(S, _R6P, _projDmg);
             trackMonsterDamage(S, proj.ownerId, _projDmg);
             if (window.__dmgLog) try { console.log('[dmg] slime-projectile', { amt: _projDmg, lifeAtHit: proj.life, ageMs: Date.now() - proj.ts, projPos: { x: Math.round(proj.x), y: Math.round(proj.y) }, pPos: { x: Math.round(P.x), y: Math.round(P.y) } }); } catch (e) {}
             try { BT_AUDIO.monsterHitHero(isWearingArmor(), { vol: 0.7 }, 'slime-projectile-hit'); } catch (e) {}

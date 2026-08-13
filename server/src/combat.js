@@ -545,6 +545,13 @@ export const combatMethods = {
        including inside another player's live dungeon instance, draining
        its waves out from under them. */
     if (attackerPs.z !== zone) return;
+    /* v2.3.1704: swinging ENDS your extraction, and with it the harvest
+       shield.  A real client cannot get here mid-extraction (playerActions.js
+       refuses both attack() and specialAttack() while S._extraction is set),
+       so this changes nothing for an honest player — it closes the only thing
+       the v2.3.1704 state-based shield would otherwise allow, which is parking
+       on a gather node and tanking a pack for free while still attacking. */
+    this._endExtraction(session.id);
     /* Slot resolution mirrors _computeAttackDamage's (and the volatile
        block further down): an unrecognised slot falls back to the
        server's own activeSlot rather than being trusted. */
@@ -1093,6 +1100,11 @@ export const combatMethods = {
     // PvP hits.  Other handlers (ability_use, eat_request, etc.) all
     // gate on these flags; PvP was missing the check.
     if (attackerPs.dying || attackerPs.dead || attackerPs.disconnected) return;
+    /* v2.3.1704: swinging ends your extraction — same rule and same reason as
+       the PvE path in _handleMonsterDamage.  A harvest shield that survived a
+       PvP swing would be a duel/arena exploit rather than a quality-of-life
+       fix. */
+    this._endExtraction(attackerId);
     // Bound the client-supplied attack geometry so a cheater can't
     // claim a 99999-pixel range or full-circle arc to hit every player
     // in the room.  Realistic max: greatsword arc = PI*0.85 ≈ 2.67 rad;

@@ -22,6 +22,8 @@
  *   3b. eat_request (v2.3.1166): consumes exactly one cooked fish and
  *       heals by the tier amount; raw fish inedible; consume-at-full-HP
  *       anti-race posture; zero-held is a clean no-op.
+ *   3c. firemaking_request (v2.3.1702): burns exactly one wood_* log;
+ *       zero-held / non-wood / __proto__ keys are clean no-ops.
  *   4.  cook_recipe: dry-run-then-consume (a failed recipe consumes
  *       nothing), buff timer set on ps._buffs, tier*25 cooking XP.
  *   5.  shop_purchase: exact debit, trap lands in inventory,
@@ -256,6 +258,31 @@ check('eat: at full HP the fish is still consumed (anti-race posture)',
 await send(ws, 'eat_request', { invKey: 'cooked_fish_minnow' });
 check('eat: eating with zero held is a clean no-op',
   ps.inventory.cooked_fish_minnow === undefined && ps.hp === ps.maxHp, ps.inventory);
+
+// ── 3c. firemaking_request (v2.3.1702) ──
+// The client used to delete the log locally and tell the worker
+// nothing, so the next player_state echo refunded it: one log lit
+// unlimited campfires.  These assertions are the reason the message
+// exists -- if the handler is ever dropped, the FIRST one fails.
+ps.inventory = { wood_oak: 2, cooked_fish_minnow: 1 };
+await send(ws, 'firemaking_request', { invKey: 'wood_oak' });
+check('firemaking: lighting a fire burns exactly one log',
+  ps.inventory.wood_oak === 1, ps.inventory);
+await send(ws, 'firemaking_request', { invKey: 'wood_oak' });
+check('firemaking: the last log is removed from the bag entirely',
+  ps.inventory.wood_oak === undefined, ps.inventory);
+await send(ws, 'firemaking_request', { invKey: 'wood_oak' });
+check('firemaking: lighting with zero held is a clean no-op',
+  ps.inventory.wood_oak === undefined, ps.inventory);
+await send(ws, 'firemaking_request', { invKey: 'cooked_fish_minnow' });
+check('firemaking: a non-wood key burns nothing',
+  ps.inventory.cooked_fish_minnow === 1, ps.inventory);
+// Rule 4: invKey is client-supplied and ps.inventory is a plain object,
+// so the wood_ prefix test is what keeps a crafted key off the
+// prototype.  A no-op AND an untouched Object.prototype.
+await send(ws, 'firemaking_request', { invKey: '__proto__' });
+check('firemaking: a __proto__ key is refused and leaves the prototype alone',
+  Object.prototype.wood_oak === undefined && ({}).__proto__ === Object.prototype);
 
 // ── 4. cook_recipe (dry-run-then-consume) ──
 const R0 = COOKING_RECIPES[0]; // { herb_firebloom: 1 } -> regen buff

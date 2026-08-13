@@ -2771,13 +2771,6 @@ function createMonsterDisplay(monster) {
     body.stroke({ color: 0xff5e6c, width: 2 });
   }
   container.addChild(body);
-  /* v2.3.1300: ground shadow at child 0 — feet are at y=size (the
-     circle's bottom edge / the sprite's bottom-center anchor line).
-     Inherits the container-level MONSTER_SIZE_MULT. */
-  const shadow = _mintShadow(size * 2.2);
-  shadow.y = size;
-  container.addChildAt(shadow, 0);
-  container._shadow = shadow;
 
   /* Sprite-sheet body for fodder slimes.  Only created here for the
      fodder archetype so non-slime monsters skip the extra display
@@ -2793,6 +2786,51 @@ function createMonsterDisplay(monster) {
     || !!(MONSTER_VARIANTS[archKey] && MONSTER_VARIANTS[archKey].useSlimeSheets);
   const variantKey = MONSTER_VARIANTS[archKey] ? archKey : null;
   const isSnowman = archKey === 'snowman';
+
+  /* v2.3.1300: ground shadow at child 0 — feet are at y=size (the
+     circle's bottom edge / the sprite's bottom-center anchor line).
+     Inherits the container-level MONSTER_SIZE_MULT.
+
+     ═══ v2.3.1704: NO SHADOW UNDER A SLIME ═══
+     Owner (playtest): "Remove the shadow beneath the slimes (blue slimes)
+     it's way beneath the monster."
+
+     WHY IT LANDED THERE, measured rather than guessed.  The slime sheet is
+     128px cells and the blob's opaque pixels stop at row ~85 — every frame
+     of slime-idle-v5 has ~42px of empty cell BELOW the body.  The sprite is
+     anchored bottom-centre at the feet line, so the shadow, which is pinned
+     to that same line, sits 42 * (96/128) * MONSTER_SIZE_MULT ≈ 48 world px
+     under the blob.  Screenshotted at 390x844: blob bottom at y=255, an 8px-
+     tall ellipse centred at y=294 — a detached smudge in the middle of the
+     road, which is exactly what the owner is describing.
+
+     WHY REMOVE RATHER THAN RE-ANCHOR.  Two reasons, and the first is the
+     stronger: v2.3.1365 already deleted the PLAYER's ground shadow at this
+     owner's request ("do not re-add one here"), so a shadowless slime is the
+     game's existing visual language, not a new look invented here.  Second,
+     the art carries no baked shadow of its own to match against — decoded
+     the sheet to check, there is no soft low-alpha ellipse under the body —
+     so re-anchoring would mean AUTHORING a shadow the owner just asked to be
+     rid of.  The offset fix is one line (`shadow.y = size - 32`) if they
+     ever want the grounding back; this is the deliberate cheaper answer to
+     what they actually said.
+
+     GATED PER-VARIANT, deliberately: `isFodder` is the useSlimeSheets test,
+     so it covers ALL FOUR slimes — plain fodder, blueSlime (the Verdant
+     Wilds one the owner was looking at), mossSlime and mireWisp — because
+     they share the sheet and therefore share the empty-cell geometry.
+     Everything else (mummy/skeleton/fireGoblin/snowman/the procedural
+     circles) keeps its shadow untouched; their art fills its cell and their
+     shadows are not what was reported. */
+  if (!isFodder) {
+    const shadow = _mintShadow(size * 2.2);
+    shadow.y = size;
+    container.addChildAt(shadow, 0);
+    container._shadow = shadow;
+  } else {
+    container._shadow = null;
+  }
+
   const spriteBody = (isFodder || variantKey || isSnowman) ? new Sprite() : null;
   if (spriteBody) {
     spriteBody.anchor.set(0.5, 1.0);
@@ -7048,10 +7086,30 @@ export class EntityRenderer {
          partial HP doesn't flash the bar for no reason. */
       if (ring._lastHpCur == null) ring._lastHpCur = hpCur;
       if (Math.abs(hpCur - ring._lastHpCur) > 0.01) {
+        /* v2.3.1703: remember the DIRECTION of the event too — see below. */
+        ring._hpRising = hpCur > ring._lastHpCur;
         ring._lastHpCur = hpCur;
         ring._hpEventAt = now;
       }
-      const hpTargetAlpha = (now - (ring._hpEventAt || 0) < HOLD_MS) ? 1 : 0;
+      /* v2.3.1703 (owner: "while out of combat the healing in the zones is a
+         nice touch, keep the hp bar visible while healing").  The v2.3.1682
+         rule above reveals on an event and fades HOLD_MS (2.5s) later — but
+         out-of-combat regen arrives as a SERVER TICK every SPOKE_REGEN_OOC_MS
+         (6s, server/src/index.js), which is longer than the hold.  So a heal
+         that runs for half a minute showed as the bar blinking on for two and
+         a half seconds out of every six, which reads as a glitch rather than
+         as healing.
+         A climbing heal therefore holds the bar up continuously: while the
+         last event was an INCREASE and HP is still short of max, the bar
+         stays.  HEAL_STALL_MS is what stops that becoming the old "parked
+         forever" bug — it only has to outlast the gap between regen ticks, so
+         once regen actually stops (combat re-engaged, zone left) the bar fades
+         one stall-window later like anything else.  Damage sets _hpRising
+         false and goes straight back to the 2.5s hold. */
+      const HEAL_STALL_MS = 9000;         /* > SPOKE_REGEN_OOC_MS, so ticks bridge */
+      const sinceHpEvent = now - (ring._hpEventAt || 0);
+      const stillHealing = ring._hpRising && hpCur < hpMax && sinceHpEvent < HEAL_STALL_MS;
+      const hpTargetAlpha = (stillHealing || sinceHpEvent < HOLD_MS) ? 1 : 0;
       const hpA = (ring.alpha != null) ? ring.alpha : 0;
       const hpDelta = hpTargetAlpha - hpA;
       const hpNewAlpha = hpA + Math.max(-FADE_STEP, Math.min(FADE_STEP, hpDelta));
