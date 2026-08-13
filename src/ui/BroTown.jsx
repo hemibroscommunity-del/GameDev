@@ -951,7 +951,7 @@ export var BroTown = function BroTown(_ref0) {
     _useState4 = _slicedToArray(_useState3, 2),
     chatOpen = _useState4[0],
     setChatOpen = _useState4[1];
-  /* v2.3.1712: the top-left quest reminder collapses to its title on tap.
+  /* v2.3.1714: the top-left quest reminder collapses to its title on tap.
      Owner: "some users might prefer that view to save screen space."
      Read from storage in the INITIALISER, not in an effect — an effect would
      paint the expanded card for one frame on every load and then snap it
@@ -7898,7 +7898,7 @@ export var BroTown = function BroTown(_ref0) {
     var q = activeQuests[0];
     var done = q.check(rpgState, stateRef.current);
     return /*#__PURE__*/React.createElement("div", {
-      /* v2.3.1712: tap to fold the objective away, leaving just the title.
+      /* v2.3.1714: tap to fold the objective away, leaving just the title.
          onPointerDown stops the tap BEFORE it reaches the canvas — a bare
          onClick would fold the card and ALSO order the character to walk to
          the top-left corner, because the world listens for taps underneath
@@ -7950,13 +7950,13 @@ export var BroTown = function BroTown(_ref0) {
     }, /*#__PURE__*/React.createElement("span", {
       style: { flex: 1, minWidth: 0 }
     }, "\uD83D\uDCDC ", q.title, " ", done ? '✓' : ''),
-    /* v2.3.1712: the fold affordance.  Without it a collapsed card is just a
+    /* v2.3.1714: the fold affordance.  Without it a collapsed card is just a
        card that quietly lost its second line, with nothing on screen saying
        the title can be tapped to get it back. */
     /*#__PURE__*/React.createElement("span", {
       style: { fontSize: 9, opacity: 0.55, flex: '0 0 auto' }
     }, questHudFolded ? '▸' : '▾')),
-    /* v2.3.1712: FOLDED, the card is only ~26px tall, and UI-BIBLE Part 2 is
+    /* v2.3.1714: FOLDED, the card is only ~26px tall, and UI-BIBLE Part 2 is
        explicit — "44x44pt minimum for anything tappable.  Visuals may be
        smaller; the hit area may not."  So the pill keeps its small look and
        this invisible child carries the hit area down to 44.  Anchored at

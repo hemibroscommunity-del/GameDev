@@ -201,7 +201,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     ((stillActive.rpg && stillActive.rpg._quests) || {}).tut_1 === 'active',
     stillActive.rpg && stillActive.rpg._quests);
 
-  /* ═══ v2.3.1712: TAP THE REMINDER TO FOLD IT ═══
+  /* ═══ v2.3.1714: TAP THE REMINDER TO FOLD IT ═══
      Owner: "make it so you can tap on that top left quest indicator and hide
      the description so just the title shows.  Some users might prefer that
      view to save screen space."
