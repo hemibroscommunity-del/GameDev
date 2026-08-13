@@ -1851,6 +1851,26 @@ export class EffectsRenderer {
           projScale = (variant && variant.projectileScalePx ? variant.projectileScalePx : 16) / 256;
           break;
         }
+        /* ═══ v2.3.1691: A RECOLOURED SLIME THROWS A RECOLOURED BALL ═══
+           Owner: "The blue slime projectile and slime remnants should be the
+           same blue color (they are green)."
+           v2.3.1534 recoloured the slimes AND taught the REMNANTS branch to
+           follow (see it below — "a blue slime dies into a green puddle"),
+           but the projectile was never given the same branch: a variant with
+           no dedicated projectile SHEET fell straight through to the base
+           green orb.  So the blue slime threw green.  Same resolution the
+           splat uses, so the two can't disagree again — and the recoloured
+           sheet is already warm from preloadZoneAssets, so this costs no
+           load. */
+        if (variant && variant.recolor && hasRecoloredState(variant, 'projectile')) {
+          const rtex = getRecoloredFrame(variant, 'projectile', 0);
+          if (rtex) {
+            projTex = rtex;
+            projBaseAng = 0;
+            projScale = (variant.projectileScalePx ? variant.projectileScalePx : 16) / 256;
+            break;
+          }
+        }
       }
     }
     if (!projTex && hasSlimeState('projectile')) {
@@ -2788,7 +2808,18 @@ export class EffectsRenderer {
            remnants haven't loaded yet -- unless the variant opts out
            via noFodderRemnants (e.g. mummy / skeleton, where a green
            slime splat would look out of place in Desert Winds). */
-        const variant = MONSTER_VARIANTS[l.skull] || null;
+        /* v2.3.1691 (owner: "the slime remnants should be the same blue
+           colour ... they are green"): `l.skull` carries whatever the kill
+           reported, which for a zone-skinned monster is usually the BASE
+           archetype ('fodder'), not the variant key ('blueSlime') — and
+           MONSTER_VARIANTS has no 'fodder' entry, so `variant` came back null
+           and the recolour branch below could never fire.  The splat stayed
+           green under a blue slime for exactly the same reason the ball did:
+           nobody resolved the zone's variant.  Resolve it the way the
+           projectile path does, then fall back to the raw key. */
+        const _zoneVarMap = ZONE_VARIANT_MAP[S.currentZone] || null;
+        const _variantKey = (_zoneVarMap && _zoneVarMap[l.skull]) || l.skull;
+        const variant = MONSTER_VARIANTS[_variantKey] || null;
         if (variant && variant.noFodderRemnants) continue;
         const variantSprites = variant ? variantSpritesFor(l.skull) : null;
         const variantRemnTex = variantSprites && variantSprites.remnants ? variantSprites.remnants.get() : null;
