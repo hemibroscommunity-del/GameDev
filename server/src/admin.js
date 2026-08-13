@@ -194,7 +194,13 @@ export const adminMethods = {
                harvestShield  — the record is currently granting immunity
                                 (all of _extractionShielded's clauses hold) */
           live: ps ? { coins: ps.coins, level: ps.level, hp: ps.hp, zone: ps.z, x: ps.x, y: ps.y, dead: !!ps.dead, disconnected: !!ps.disconnected,
-            ex: ps.ex || null, extracting: !!this.extractions[id], harvestShield: !!this._extractionShielded(id) } : null,
+            ex: ps.ex || null, extracting: !!this.extractions[id], harvestShield: !!this._extractionShielded(id),
+            /* v2.3.1705: the directional block is decided from these two and
+               nothing else, so an operator (and a headless check) has to be
+               able to see them.  `ba` null means "this client never told us
+               which way it is facing", which _blockArcCovers reads as the
+               old omnidirectional block — a real state, not a missing value. */
+            blocking: !!ps.blocking, ba: (typeof ps.ba === 'number' ? ps.ba : null) } : null,
           online: !!this._wsBySessionId(id),
           auth: auth2 ? { createdAt: auth2.createdAt } : null,
           frozen: frozen || null,

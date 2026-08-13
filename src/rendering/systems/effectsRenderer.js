@@ -16,7 +16,7 @@ export function effectsAnimationsReady() { return Promise.allSettled(_fxPreload)
 import { ELEMENTS } from '@/data/elements.js';
 import { ZONES, zonePlayerScale } from '@/data/zones.js';
 import { TILE, MINE_SPOT_R, FISH_CUE_DY } from '@/data/constants.js';
-import { GS_INNER_RADIUS, GS_OUTER_RADIUS, GS_FORWARD_ARC, cleaveArcBonus, hasGatherTool} from '@/data/index.js';
+import { GS_INNER_RADIUS, GS_OUTER_RADIUS, GS_FORWARD_ARC, BLOCK_ARC_HALF, cleaveArcBonus, hasGatherTool} from '@/data/index.js';
 import { getFrame as getSlimeFrame, hasState as hasSlimeState } from '../slimeSprites.js';
 import { getRecoloredFrame, hasRecoloredState } from '../monsterRecolor.js'; /* v2.3.1534; v2.3.1535 generalised */
 import { getRemnantsTexture as getSnowmanRemnantsTex } from '../snowmanSprites.js';
@@ -2330,21 +2330,23 @@ export class EffectsRenderer {
        breathes on a slow sine so a held shield looks live rather than
        painted on.
 
-       DIRECTION, NOT PROTECTION.  Blocking has been OMNIDIRECTIONAL since
-       v2.3.1110 (owner decision, unified with the server rule) — a hit from
-       behind is blocked exactly as well as one from the front.  So this cone
-       honestly shows where the shield is POINTED and cannot honestly show
-       "where it protects you", and it is deliberately drawn as a soft light
-       spill rather than as a hard protected sector that would imply a limit
-       that is not there.  If the arc should start mattering again, the place
-       to change it is the block resolution (server `_monsterStrikePlayer` +
-       the client's block checks), and then this cone becomes the truthful
-       picture of it for free. */
+       IT IS THE HITBOX.  The first cut of this shipped as a direction-only
+       indicator, because blocking had been omnidirectional since v2.3.1110 and
+       a hard sector would have promised a limit that did not exist.  Asked
+       directly, the owner said "yes blocking should be directional", so
+       v2.3.1705 put the arc back on every block path (client and worker) and
+       this cone is drawn at the SAME shared BLOCK_ARC_HALF those paths test.
+       What the player sees is now literally what they block. */
     if (S._shieldUp && S.player) {
       const P = S.player;
       const ang = (S._shieldAngle != null) ? S._shieldAngle
         : (S._facingAngle != null ? S._facingAngle : 0);
-      const half = 0.62;                      /* ~71° of spill, the old arc's width */
+      /* v2.3.1705: the cone is drawn at EXACTLY the block half-angle now — the
+         owner asked for "where it protect you from damage", and since blocking
+         went directional again that is a promise the game can finally keep.
+         Sharing the constant is what keeps it true: retune BLOCK_ARC_HALF and
+         the picture follows the rule automatically. */
+      const half = BLOCK_ARC_HALF;
       const breathe = 0.86 + Math.sin(now / 420) * 0.14;
       /* Anchored just in front of the body so the wedge does not paint over
          the character's own sprite. */

@@ -22,7 +22,7 @@ import {
 import { baseArchetypeOf, hitShapeOf, isRemnantSkull, maybeTransformMonster, xpMultFor } from '@/data/monsterVariants.js';
 import { isWearingArmor } from '@/rendering/gearCatalog.js'; /* v2.3.1108: armoured-hit clang on projectile hits */
 import { rollMonsterShard } from '@/data/shards.js';
-import { addBuildUse, applyMeleeLifesteal, distributeKillXpToBuild, trackMonsterDamage, pushDmgPopup, monsterPopupY, hurtPlayerLocal } from '@/game/combatHelpers.js';
+import { addBuildUse, applyMeleeLifesteal, distributeKillXpToBuild, trackMonsterDamage, pushDmgPopup, monsterPopupY, hurtPlayerLocal, isAttackInShieldArc } from '@/game/combatHelpers.js';
 import { earnCertification as masteryEarnCert } from '@/game/mastery.js';
 import { celebrateLevelUps } from '@/game/levelCelebration.js';
 import { saveRpgSoon } from '@/game/rpgSave.js'; /* v2.3.1356 */
@@ -898,7 +898,12 @@ export function updateSlimeProjectiles(S) {
                actual attacker direction. */
             var _atkFromX = P.x - Math.cos(proj.ang) * 50;
             var _atkFromY = P.y - Math.sin(proj.ang) * 50;
-            var pShielded = Date.now() < S.shieldEnd; /* v2.3.1110: omnidirectional */
+            /* v2.3.1705: directional again.  The virtual point below (_atkFromX/Y,
+               50px back along the projectile's own travel line) already exists
+               precisely because a projectile can OVERSHOOT the player by a few px
+               and make a naive test read the attack as coming from in front — so
+               the arc test gets that point, not proj.x/y. */
+            var pShielded = Date.now() < S.shieldEnd && isAttackInShieldArc(S, _atkFromX, _atkFromY);
             if (pShielded) {
               try { BT_AUDIO.play('shield-block', { vol: 1.0 }); } catch (e) {}
               pushDmgPopup(S, P.x, P.y - 20, 'BLOCK', '#60a5fa');

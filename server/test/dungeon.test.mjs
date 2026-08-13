@@ -66,7 +66,8 @@
  *       members in another zone are left behind, and a non-leader start
  *       pulls nobody.
  */
-import { GameRoom, BLOCK_COSTS_STAMINA } from '../src/index.js';
+import { GameRoom } from '../src/index.js';
+import { BLOCK_COSTS_STAMINA } from '../src/data.js'; /* v2.3.1704: NOT from index.js — see the note on the flag */
 import { DUNGEONS, BOSS_ABILITIES } from '../src/dungeon.js';
 import { MONSTER_HP_CURVE } from '../src/data.js';
 

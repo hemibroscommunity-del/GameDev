@@ -14,7 +14,8 @@
  *      docs/OPTIMIZATION-ROADMAP.md as a candidate fix; update this
  *      assertion if overflow deferral ships).
  */
-import { GameRoom, BLOCK_COSTS_STAMINA } from '../src/index.js';
+import { GameRoom } from '../src/index.js';
+import { BLOCK_COSTS_STAMINA } from '../src/data.js'; /* v2.3.1704: NOT from index.js — see the note on the flag */
 /* v2.3.1451 (bench-locked T2): fixtures build their accumulator with
    the REAL replay helper and assertions derive from it — never
    hand-rolled numbers, so tuning T2_BENCH can't silently break the
@@ -1547,6 +1548,82 @@ for (const m of meadowMonsters) m._wanderPausedUntil = Date.now() + 600000;
   check('with the shield down the same snowball lands',
     _dodged || (psB.hp < hpBefore2 && !openAtk[0].payload.blocked),
     { before: hpBefore2, after: psB.hp, payload: openAtk[0] && openAtk[0].payload });
+
+  /* ═══ v2.3.1705: THE BLOCK IS DIRECTIONAL ═══
+     Owner, asked directly: "yes blocking should be directional."  The rule is
+     _blockArcCovers: blocking AND the attack inside ±BLOCK_ARC_HALF of the
+     shield's facing (ps.ba, ridden in on the move message).
+
+     The three cases below are the whole contract, and the THIRD is the one
+     that keeps a deploy safe: every assertion above this point sets
+     ps.blocking without ps.ba — i.e. they are all pre-v2.3.1705 clients — and
+     they still pass, because an unknown facing FAILS OPEN to the omni block.
+     A client that has not been reloaded through the deploy therefore keeps
+     exactly the shield it had, instead of losing it to a field it never sends. */
+  const _arcAt = (dx, dy) => Math.atan2(dy, dx);
+  psB.hp = psB.maxHp = 400;
+  psB.blocking = true;
+  /* Attacker due EAST of the player, and the shield facing east. */
+  const _east = { id: 'sb-arc-1', arch: 'snowman', dmg: 40, x: psB.x + 100, y: psB.y, statuses: {} };
+  psB.ba = _arcAt(1, 0);
+  let hp0 = psB.hp;
+  room.eventBuffer.length = 0;
+  room._monsterStrikePlayer('frost', _east, 'pa', _east.x, _east.y);
+  let atk = room.eventBuffer.filter((e) => e.type === 'monster_attack')[0];
+  check('directional: an attack the shield FACES is blocked',
+    !!atk && atk.payload.blocked === true && psB.hp === hp0,
+    { ba: psB.ba, hp: psB.hp, payload: atk && atk.payload });
+
+  /* Same attacker, shield turned to face WEST — 180° away, well outside the
+     ±60° wedge.  This is the assertion that would have failed all through
+     v2.3.1110's omni era. */
+  psB.ba = _arcAt(-1, 0);
+  hp0 = psB.hp;
+  room.eventBuffer.length = 0;
+  room._monsterStrikePlayer('frost', _east, 'pa', _east.x, _east.y);
+  atk = room.eventBuffer.filter((e) => e.type === 'monster_attack')[0];
+  check('directional: the same attack from BEHIND the shield gets through',
+    !!atk && atk.payload.blocked !== true && (psB.hp < hp0 || atk.payload.dodged),
+    { ba: psB.ba, before: hp0, after: psB.hp, payload: atk && atk.payload });
+
+  /* Just inside and just outside the edge of the wedge, so the boundary is
+     pinned and not merely the two extremes. */
+  psB.hp = psB.maxHp;
+  psB.ba = _arcAt(1, 0) + (Math.PI / 3) * 0.95;   /* 57° off — inside ±60° */
+  hp0 = psB.hp;
+  room.eventBuffer.length = 0;
+  room._monsterStrikePlayer('frost', _east, 'pa', _east.x, _east.y);
+  atk = room.eventBuffer.filter((e) => e.type === 'monster_attack')[0];
+  check('directional: 57° off-axis is still inside the wedge',
+    !!atk && atk.payload.blocked === true && psB.hp === hp0, { ba: psB.ba, payload: atk && atk.payload });
+
+  psB.ba = _arcAt(1, 0) + (Math.PI / 3) * 1.10;   /* 66° off — outside */
+  hp0 = psB.hp;
+  room.eventBuffer.length = 0;
+  room._monsterStrikePlayer('frost', _east, 'pa', _east.x, _east.y);
+  atk = room.eventBuffer.filter((e) => e.type === 'monster_attack')[0];
+  check('directional: 66° off-axis is outside it',
+    !!atk && atk.payload.blocked !== true, { ba: psB.ba, payload: atk && atk.payload });
+
+  /* THE DEPLOY-ORDER CASE: no facing reported at all. */
+  psB.hp = psB.maxHp;
+  delete psB.ba;
+  hp0 = psB.hp;
+  room.eventBuffer.length = 0;
+  room._monsterStrikePlayer('frost', _east, 'pa', _east.x, _east.y);
+  atk = room.eventBuffer.filter((e) => e.type === 'monster_attack')[0];
+  check('directional: a client that reports no facing keeps the OMNI block',
+    !!atk && atk.payload.blocked === true && psB.hp === hp0, { payload: atk && atk.payload });
+
+  /* A junk facing is sanitised to null by movement.js, and null must read the
+     same as absent rather than turning the shield off. */
+  psB.ba = null;
+  hp0 = psB.hp;
+  room.eventBuffer.length = 0;
+  room._monsterStrikePlayer('frost', _east, 'pa', _east.x, _east.y);
+  atk = room.eventBuffer.filter((e) => e.type === 'monster_attack')[0];
+  check('directional: a null facing reads as "unknown", not as "off"',
+    !!atk && atk.payload.blocked === true && psB.hp === hp0, { payload: atk && atk.payload });
 }
 
 console.log(failures === 0 ? '\nALL TESTS PASSED' : `\n${failures} TEST(S) FAILED`);

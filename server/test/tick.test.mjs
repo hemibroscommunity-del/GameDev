@@ -28,7 +28,8 @@
  * Wander is frozen via m._wanderPausedUntil (the combat-lifecycle
  * convention) and the test player + target monster are teleported to
  * an isolated corner so the other spawns can't interfere. */
-import { GameRoom, BLOCK_COSTS_STAMINA } from '../src/index.js';
+import { GameRoom } from '../src/index.js';
+import { BLOCK_COSTS_STAMINA } from '../src/data.js'; /* v2.3.1704: NOT from index.js — see the note on the flag */
 import { ZONES as SERVER_ZONES } from '../src/data.js';
 // v2.3.1147: the client zone table imports cleanly in node (pure data
 // ESM) -- the lockstep section at the bottom pins it against the

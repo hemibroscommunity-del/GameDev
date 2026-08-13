@@ -27,7 +27,7 @@ import { tickElementStatuses, elementMoveMult } from './elemental.js';
 // lookup methods stay (call sites unchanged); only the literals moved.
 import {
   ARCHETYPES, ZONES,
-  MONSTER_HP_CURVE, monsterHpFlat, RARITY_TIERS } from './data.js'; // v2.3.1451: t2Accel/T2_UNITS reads replaced by the ps.t2Flat accumulator
+  MONSTER_HP_CURVE, monsterHpFlat, RARITY_TIERS, BLOCK_COSTS_STAMINA, BLOCK_ARC_HALF } from './data.js'; // v2.3.1451: t2Accel/T2_UNITS reads replaced by the ps.t2Flat accumulator
 // v2.3.1118 (heavy-systems PR3): order book folded into the GameRoom --
 // escrow-at-placement settlement under one DO's input gates.  Methods
 // are mixed into the class below (see market.js header for why).
@@ -248,30 +248,6 @@ export default {
 // (e.g. forge player_state { hp: 0 } to one-shot everyone).
 // v2.3.1151: exported so test/wire-audit.test.mjs can verify every
 // server-emitted type is registered here (rule 13's mechanical check).
-/* ═══ v2.3.1704: THE DEMO'S FREE BLOCK ═══
- * Owner: "make it so holding shield doesn't drain energy.  I need to figure
- * out what to do with that.  For the demo I want you to be able to block as
- * much as you want."
- *
- * A DELIBERATE, TEMPORARY suspension of a balance rule — so it is one named
- * flag rather than deleted code.  Every cost site below keeps its full
- * pricing maths (15 per blocked hit, 5 per held tick, both x Bulwark
- * efficiency with the anti-turtle Math.max(1,…) floor); the flag only decides
- * whether the number is charged.  Flip it back to true and the old economy
- * returns exactly as it was, floor and all.
- *
- * Its twin is BLOCK_COSTS_STAMINA in src/ui/BroTown.jsx.  Flip BOTH together:
- * the worker is the authoritative owner of stamina, so with only the client
- * half off the bar still drains (measured 100 -> 78 over 2.4s), and with only
- * the server half off the legacy client-authoritative path still drains in a
- * zone the worker does not drive.
- *
- * combat-lifecycle.test.mjs reads this flag rather than hardcoding either
- * behaviour, so the suite pins whichever mode is actually shipping — the
- * anti-turtle floor is still asserted, it is just asserted against the
- * pricing helper instead of against a charge that no longer happens. */
-export const BLOCK_COSTS_STAMINA = false;
-
 export const PRIVILEGED_EVENTS = new Set([
   // Pool / progression mirrors
   'player_state', 'player_died',
@@ -1107,14 +1083,17 @@ export class GameRoom {
        monsterCombat.js).
        The melee path still short-circuits on its own blocking branch before
        reaching this method, so nothing is handled twice. */
-    const _blocking = !!(targetPs && targetPs.blocking);
+    /* v2.3.1705: …and facing the right way.  atkX/atkY is where the attack came
+       FROM (the thrower for a snowball, the monster for a swing), which is
+       exactly what the arc has to be measured against. */
+    const _blocking = this._blockArcCovers(targetPs, atkX, atkY);
     const dmgResult = this._applyDamage(targetPs, m.dmg, _blocking);
     const dmgTaken = dmgResult.dmgTaken;
     /* Same block cost the melee branch charges (15 × Bulwark efficiency),
        so blocking a snowball and blocking a swing cost the same stamina. */
     let _blockStamina = 0;
     /* v2.3.1704: … unless blocking is free for the demo (see
-       BLOCK_COSTS_STAMINA at the top of this file).  Left as a guard on the
+       BLOCK_COSTS_STAMINA in data.js).  Left as a guard on the
        whole branch rather than a zeroed cost so no pool write, no coalesced
        save and no wire field happens at all. */
     if (BLOCK_COSTS_STAMINA && _blocking && targetPs && typeof targetPs.stamina === 'number') {
@@ -1320,7 +1299,12 @@ export class GameRoom {
             Math.hypot((_tps.x || 0) - _ptx, (_tps.y || 0) - _pty) <= this.SNOWBALL_HIT_RADIUS);
           /* Still in the same zone, alive, and not mid-respawn. */
           if (_hit && _tps.z === zoneId && !_tps.dying && (_tps.hp || 0) > 0) {
-            if (_tps.blocking) {
+            /* v2.3.1705: …and facing it.  The direction is taken from the
+               THROWER (m), not from the ball's landing point: the ball lands on
+               the player, so its own position carries no direction, and a
+               snowball you never turned to face should get through exactly like
+               a swing from behind does. */
+            if (this._blockArcCovers(_tps, m.x, m.y)) {
               /* Blocked. Evaluated at IMPACT, not at throw — raising the
                  shield while the ball is in the air has to work, or the
                  telegraph is decoration.  Emits a blocked monster_attack
@@ -1596,7 +1580,7 @@ export class GameRoom {
               m._attackingUntil = 0;
               continue;
             }
-            if (nearest.blocking) {
+            if (this._blockArcCovers(nearest, m.x, m.y)) { // v2.3.1705: directional
               m.atkCd = now + this.MONSTER_ATTACK_CD;
               m._attackingUntil = now + 400;
               // Block cost: 15 stamina (mirrors client at BroTown.jsx:2663).
@@ -1607,7 +1591,7 @@ export class GameRoom {
               // staminaDrain below, so pre-fix clients render the
               // discounted number correctly with zero client changes.
               const blockerPs = this.playerState[nearest.id];
-              // v2.3.1704: free for the demo — see BLOCK_COSTS_STAMINA above.
+              // v2.3.1704: free for the demo — see BLOCK_COSTS_STAMINA in data.js.
               const staminaCost = BLOCK_COSTS_STAMINA
                 ? Math.max(1, Math.round(15 * this._blockStaminaMult(blockerPs)))
                 : 0;
@@ -1912,6 +1896,39 @@ export class GameRoom {
   // 100%), leaving Bulwark inert since v2.3.1021.  New identity: "hold
   // your shield twice as long, block twice as many hits."  defenseSpec
   // is client-trained but server-clamped, so the discount is bounded.
+  /* ═══ v2.3.1705: THE BLOCK IS DIRECTIONAL ═══
+   * Owner, asked directly: "yes blocking should be directional."
+   *
+   * v2.3.1110 unified client and server on an OMNI block, and every arc test
+   * in the game was commented out rather than deleted.  This is the server's
+   * half of putting it back: does the attack, coming from (ax, ay), land
+   * inside the wedge the player's shield is facing?
+   *
+   * `ps.ba` is the shield's facing angle, ridden in on the move message
+   * (movement.js) so it is measured against the SAME position update the
+   * geometry below uses.  It is deliberately FAIL-OPEN: undefined/null means
+   * "this client has not told us where it is pointing", which is exactly the
+   * state of every pre-v2.3.1705 client, and those keep the omni block they
+   * have today rather than losing their shield to a deploy-order gap.
+   *
+   * BLOCK_ARC_HALF is mirrored from src/data/gameSystems.js and is the same
+   * number the shield cone is DRAWN at (effectsRenderer) — the picture on the
+   * player's screen is the hitbox, which is the whole reason the owner asked
+   * for the cone in the first place.  Retune one, retune all three.
+   *
+   * Degenerate geometry (the attacker standing exactly on the player) has no
+   * meaningful direction, so it counts as covered — a monster inside your own
+   * hitbox is not a flanking manoeuvre. */
+  _blockArcCovers(ps, ax, ay) {
+    if (!ps || !ps.blocking) return false;
+    if (typeof ps.ba !== 'number' || !Number.isFinite(ps.ba)) return true; // old client: omni
+    const dx = (ax || 0) - (ps.x || 0), dy = (ay || 0) - (ps.y || 0);
+    if (dx * dx + dy * dy < 1) return true;
+    const from = Math.atan2(dy, dx);
+    const d = ((from - ps.ba + Math.PI * 3) % (Math.PI * 2)) - Math.PI;
+    return Math.abs(d) <= BLOCK_ARC_HALF;
+  }
+
   _blockStaminaMult(ps) {
     // v2.3.1343 (kid-simple reprice): -1%/pt, cap -100% — free blocking
     // at max.  Safe ONLY because both cost sites keep their

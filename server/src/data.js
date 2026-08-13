@@ -760,3 +760,40 @@ export const RARITY_TIERS = {
   fusion:    { mult: 2.25 },
   shift:     { mult: 3.00 },
 };
+
+/* ═══ v2.3.1704: THE DEMO'S FREE BLOCK ═══
+ * Owner: "make it so holding shield doesn't drain energy.  I need to figure
+ * out what to do with that.  For the demo I want you to be able to block as
+ * much as you want."
+ *
+ * A DELIBERATE, TEMPORARY suspension of a balance rule — so it is one named
+ * flag rather than deleted code.  Every cost site keeps its full pricing
+ * maths (15 per blocked hit, 5 per held tick, both x Bulwark efficiency with
+ * the anti-turtle Math.max(1, …) floor); the flag only decides whether the
+ * number is charged.  Flip it back to true and the old economy returns
+ * exactly as it was, floor and all.
+ *
+ * Its twin is BLOCK_COSTS_STAMINA in src/ui/BroTown.jsx.  Flip BOTH together:
+ * the worker is the authoritative owner of stamina, so with only the client
+ * half off the bar still drains (measured 100 -> 78 over 2.4s).
+ *
+ * IT LIVES HERE, NOT IN index.js, AND THAT IS LOAD-BEARING.  index.js is the
+ * Worker ENTRY (wrangler.toml `main`), and workerd type-checks every named
+ * export of the entry module: a Durable Object class or an ExportedHandler is
+ * fine, a bare boolean is not.  Exporting it there made the runtime refuse to
+ * boot outright — "Incorrect type for map entry 'BLOCK_COSTS_STAMINA': the
+ * provided value is not of type 'function or ExportedHandler'" — which would
+ * have taken the worker down on merge.  Every server unit suite stayed green
+ * through it, because they import the module in plain Node, which does not
+ * care; only starting a REAL worker catches it, which is what the headless
+ * harness does.  (The existing Set exports next to it survive because workerd
+ * only rejects the primitives.)  Keep new server constants in this file. */
+export const BLOCK_COSTS_STAMINA = false;
+
+/* v2.3.1705: mirrors BLOCK_ARC_HALF in src/data/gameSystems.js — the half-angle
+   of the shield's protected wedge, and the same number effectsRenderer draws
+   the shield cone at.  Owner: "yes blocking should be directional."  ±60° is
+   deliberately forgiving: it ships the same day as blocking becoming free, and
+   a narrow arc would turn "hold shield" into a precision minigame on a phone
+   thumbstick.  Tighten later with playtest evidence, in all three places. */
+export const BLOCK_ARC_HALF = Math.PI / 3;

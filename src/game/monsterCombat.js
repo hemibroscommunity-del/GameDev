@@ -38,7 +38,7 @@ import {
 import { MONSTER_VARIANTS, baseArchetypeOf, hitShapeOf, isFodderLike, isRemnantSkull, maybeTransformMonster, usesClientSideMovement, xpMultFor } from '@/data/monsterVariants.js';
 import { isWearingArmor } from '@/rendering/gearCatalog.js'; /* v2.3.1104: armoured-hit SFX check */
 import { rollMonsterShard } from '@/data/shards.js';
-import { addBuildUse, applyMeleeLifesteal, clearSwingHitFlags, distributeKillXpToBuild, trackMonsterDamage, pushDmgPopup, monsterPopupY, isPlayerDead, hurtPlayerLocal } from '@/game/combatHelpers.js';
+import { addBuildUse, applyMeleeLifesteal, clearSwingHitFlags, distributeKillXpToBuild, trackMonsterDamage, pushDmgPopup, monsterPopupY, isPlayerDead, hurtPlayerLocal, isAttackInShieldArc } from '@/game/combatHelpers.js';
 import { earnCertification as masteryEarnCert } from '@/game/mastery.js';
 import { celebrateLevelUps } from '@/game/levelCelebration.js';
 import { btRpc, getBtPlayerId, syncRpgToServer } from '@/networking/index.js';
@@ -513,7 +513,11 @@ export function updateMonsterCombat(S, deps) {
                     }
                     /* Dodging or shielding avoids damage */
                     var dodged = S._dodgeRoll;
-                    var blocked = Date.now() < S.shieldEnd; /* v2.3.1110: omnidirectional (owner: unify on the server rule) */
+                    /* v2.3.1705: the arc is BACK (owner: "yes blocking should be directional").
+                       isAttackInShieldArc has sat unused since v2.3.1110 unified on
+                       the omni rule; it is the same +-BLOCK_ARC_HALF wedge the shield
+                       cone is drawn at, so what you see is what you block. */
+                    var blocked = Date.now() < S.shieldEnd && isAttackInShieldArc(S, m.x, m.y);
                     if (distToP < slamRange && !invuln && !dodged) {
                       var slamDmg = Math.ceil(m.dmg * 1.5);
                       var finalDmg = blocked ? 0 : slamDmg;
@@ -558,7 +562,7 @@ export function updateMonsterCombat(S, deps) {
                       duration: 300
                     });
                     var _dodged = S._dodgeRoll;
-                    var _blocked = Date.now() < S.shieldEnd;
+                    var _blocked = Date.now() < S.shieldEnd && isAttackInShieldArc(S, m.x, m.y); /* v2.3.1705: directional */
                     if (distToP < sweepRange && !invuln && !_dodged) {
                       var sweepDmg = Math.ceil(m.dmg * 1.2);
                       var _finalDmg = _blocked ? 0 : sweepDmg;
@@ -629,7 +633,7 @@ export function updateMonsterCombat(S, deps) {
                 /* Charge hit detection */
                 if (distToP < 20 && !invuln) {
                   var chargeDmg = Math.ceil(m.dmg * 1.5);
-                  var _blocked2 = Date.now() < S.shieldEnd; /* v2.3.1110: omnidirectional */
+                  var _blocked2 = Date.now() < S.shieldEnd && isAttackInShieldArc(S, m.x, m.y); /* v2.3.1705: directional */
                   /* v2.3.232 (Phase 2): block is full negation now; the
                      old partial-block reduction via calcBlockReduction
                      was the last site reading the Fortification scale. */
@@ -678,7 +682,7 @@ export function updateMonsterCombat(S, deps) {
                   /* Telegraph done — execute attack */
                   m._telegraphUntil = null;
                   m._atkCd = Date.now();
-                  var shielded = Date.now() < S.shieldEnd; /* v2.3.1110: omnidirectional */
+                  var shielded = Date.now() < S.shieldEnd && isAttackInShieldArc(S, m.x, m.y); /* v2.3.1705: directional */
                   var rawDmg = Math.max(1, m.dmg);
                   /* §18.1 Food buff — resist reduces incoming damage */
                   if (S._resistBuff && Date.now() < S._resistBuff) rawDmg = Math.max(1, Math.floor(rawDmg * 0.85));

@@ -421,11 +421,11 @@ export const dungeonMethods = {
     const ps = this.playerState[pid];
     if (!ps || ps.dead || ps.dying) return 0;
     const zone = inst.zone;
-    if (ps.blocking) {
+    if (this._blockArcCovers(ps, m.x, m.y)) { // v2.3.1705: directional (see index.js)
       // Block = full negation (v2.3.1110 omni rule), same stamina cost
       // as a blocked basic attack; staminaDrain rides the wire so the
       // client's floating number matches the server-side cost.
-      // v2.3.1704: free for the demo — see BLOCK_COSTS_STAMINA in index.js.
+      // v2.3.1704: free for the demo — see BLOCK_COSTS_STAMINA in data.js.
       const staminaCost = this.BLOCK_COSTS_STAMINA
         ? Math.max(1, Math.round(15 * this._blockStaminaMult(ps)))
         : 0;

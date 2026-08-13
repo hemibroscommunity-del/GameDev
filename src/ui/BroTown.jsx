@@ -163,7 +163,7 @@ import { shardByKey } from '@/data/shards.js';
 
 /* Destructure everything from DATA — the component body references 100+ symbols */
 const {
-  TILE, PLAYER_COLORS, ZONES, ELEMENTS, TOWN_BUILDINGS, TOWN_EXITS, WORLDVIEW_EXITS,
+  TILE, PLAYER_COLORS, ZONES, ELEMENTS, TOWN_BUILDINGS, TOWN_EXITS, WORLDVIEW_EXITS, BLOCK_ARC_HALF,
   BLACKSMITH_TIERS, WOODWORKING_TIERS, WEAPON_TYPES, RARITY_TIERS, BT_AUDIO, BT_ACHIEVEMENTS,
   BUILDINGS, NPC_DATA, TILE_SOLID, TILE_COLORS,
   updateZoneDimensions,
@@ -750,6 +750,10 @@ export var BroTown = function BroTown(_ref0) {
        S.rpg, because the stat piece was set correctly the whole time and the
        thing that was wrong lived here. */
     getEquip: getEquip,
+    /* v2.3.1705: the shared block half-angle, so the headless check can assert
+       that the cone on screen and the arc the worker tests are ONE number
+       rather than two that happen to match today. */
+    BLOCK_ARC_HALF: BLOCK_ARC_HALF,
     /* v2.3.1702: the same hook for the two other pool-spending actions.
        Their `ability_use` send was gated on _serverMonsters (false in town),
        so the worker never saw a special or a dodge used in the hub and its

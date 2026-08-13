@@ -19,7 +19,7 @@ import { isWearingArmor } from '@/rendering/gearCatalog.js'; /* v2.3.1598: armou
    its own module scope — the barrel export is the canonical copy. */
 import { BT_API_BASE } from '@/networking/index.js';
 import { pushHudPopup } from '@/ui/XpFlyOverlay.jsx';
-import { enqueuePeerDamage, peerDmgKey, distributeKillXpToBuild, applyMeleeLifesteal, addBuildUse, pushDmgPopup, monsterPopupY } from '@/game/combatHelpers.js';
+import { enqueuePeerDamage, peerDmgKey, distributeKillXpToBuild, applyMeleeLifesteal, addBuildUse, pushDmgPopup, monsterPopupY, isAttackInShieldArc } from '@/game/combatHelpers.js';
 import { handleChatEvent, handleEmoteEvent, handlePartyChatEvent } from '@/game/chat.js';
 import { friendsSrv } from '@/ui/mobile/sheet/friendsSync.js'; /* v2.3.1324 */
 import { _objectSpread, _slicedToArray, _toConsumableArray } from '@/lib/babelHelpers.js';
@@ -1150,9 +1150,14 @@ export function processGameEvent(type, payload, S, deps) {
               var dmgTaken2 = (typeof payload.dmgTaken === 'number' && S._serverMonsters)
                 ? payload.dmgTaken
                 : Math.max(1, mDmg - pDef2 * 0.3);
-              /* v2.3.1110: omnidirectional block (owner decision) -- the arc
-                 test made this fallback disagree with the server's omni rule. */
-              if (S._shieldUp) {
+              /* v2.3.1705: …and now the arc test is what KEEPS it agreeing —
+                 the server went directional in the same version. */
+              /* v2.3.1705: directional again (owner: "yes blocking should be
+                 directional").  This is the FALLBACK path — the worker's own
+                 `blocked` flag above is the authority in a server zone — but it
+                 has to agree with the new rule or a client-side block would
+                 keep a hit the server just landed. */
+              if (S._shieldUp && isAttackInShieldArc(S, _atkX, _atkY)) {
                 /* Full block: no damage through.  (Was partial via
                    calcBlockReduction; user request is "the damage gets
                    blocked.")  In MP the server already skipped the
@@ -1203,8 +1208,8 @@ export function processGameEvent(type, payload, S, deps) {
                   player: { x: Math.round(S.player.x), y: Math.round(S.player.y) },
                   dist: Math.round(_atkDist),
                   shieldUp: !!S._shieldUp,
-                  /* v2.3.1110: arc retired -- block is omnidirectional */
-                  inArc: !!S._shieldUp,
+                  /* v2.3.1705: arc restored -- block is directional again */
+                  inArc: !!S._shieldUp && isAttackInShieldArc(S, _atkX, _atkY),
                 });
               } catch (e) {}
               /* v2.3.248: player sprite hit-flash on MP server-monster

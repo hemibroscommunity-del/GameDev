@@ -5176,6 +5176,26 @@ export function meleeSwingSfx(rpg) {
 export const SWING_COOLDOWN = 600;
 export const SWING_RANGE = 50;
 export const SWING_ARC = Math.PI * 0.85;
+/* ═══ v2.3.1705: BLOCKING IS DIRECTIONAL AGAIN ═══
+   Owner: "add a subtle cone of light effect while shield is held to show
+   direction of where shield is pointed and where it protect you from damage",
+   then, asked directly: "yes blocking should be directional."
+
+   v2.3.1110 made the block OMNIDIRECTIONAL to unify the client with the
+   server's rule of the day, and every arc test in the game was commented out
+   rather than deleted (`isAttackInShieldArc` has sat unused in
+   combatHelpers.js ever since).  This is the half-angle those tests use, and
+   it is the SAME number the shield cone is drawn at (effectsRenderer) — the
+   picture on screen IS the hitbox, which is the whole point of the owner
+   asking for the cone.  Mirrored server-side in server/src/data.js; if you
+   retune one, retune both or the prediction and the truth disagree.
+
+   ±60° (a 120° facing wedge) rather than something tighter: this lands in a
+   demo build the same day, alongside blocking becoming free, and a narrow arc
+   would turn "hold shield" from a safety net into a precision minigame on a
+   phone thumbstick.  Wide and forgiving first; tighten later with real
+   playtest evidence. */
+export const BLOCK_ARC_HALF = Math.PI / 3;
 /* v2.3.939: greatsword "wild swing" hit shape -- a small 360° core around the
    player (catches anything beside/behind every swing) UNION a wide forward
    half-circle at a larger reach in the aim direction.  Shared by the hit

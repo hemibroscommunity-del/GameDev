@@ -2379,6 +2379,20 @@ export function setupWebSocket(ctx) {
               vy: p.vy || 0,
               dodging: !!_S4._dodgeRoll,
               blocking: !!_S4._shieldUp,
+              /* v2.3.1705: the shield's FACING, so the worker can run the same
+                 arc test the client does (owner: "yes blocking should be
+                 directional").  It rides the move message rather than getting
+                 its own event because it changes with the thumbstick, exactly
+                 like x/y — a separate message would arrive at a different
+                 cadence from the position the arc is measured against.
+                 Sent as null when not blocking so the field costs nothing on
+                 the wire the rest of the time, and an old worker simply
+                 ignores it and keeps blocking omnidirectionally (deploy-order
+                 safe: strictly more forgiving, never less). */
+              ba: _S4._shieldUp
+                ? (typeof _S4._shieldAngle === 'number' ? _S4._shieldAngle
+                  : (typeof _S4._facingAngle === 'number' ? _S4._facingAngle : 0))
+                : null,
               dead: _S4.rpg ? _S4.rpg.hp <= 0 : false
             };
             startBatchTimer();

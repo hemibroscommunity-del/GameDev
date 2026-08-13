@@ -92,33 +92,56 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
   /* ── v2.3.1703: A HEAL THAT IS STILL CLIMBING KEEPS THE BAR UP ──────────
      Owner: "while out of combat the healing in the zones is a nice touch,
-     keep the hp bar visible while healing."  Out-of-combat regen arrives as
-     a server tick every SPOKE_REGEN_OOC_MS (6s), which is longer than the
-     2.5s hold — so under the v2.3.1682 rule alone the bar blinked on for
-     2.5s out of every 6, which reads as a fault rather than as healing.
-     Simulated at the same cadence here (a real spoke zone would make this
-     depend on the worker's regen timer landing inside the sample window,
-     which is exactly the noise the assertion has to be free of), and the
-     check is taken in the GAP between ticks — the moment the old rule went
-     dark. */
-  await setHp(P, 0.4);
-  await until(P, HIDDEN, FADE_BUDGET);            /* start from a quiet, faded bar */
-  let heldThroughGap = true, sawFull = null;
-  for (let tick = 0; tick < 3; tick++) {
-    await P.page.evaluate(() => {
-      const S = window._gameState && window._gameState.current;
-      if (S && S.rpg) S.rpg.hp = Math.min(S.rpg.maxHp, S.rpg.hp + S.rpg.maxHp * 0.05);
+     keep the hp bar visible while healing."  Out-of-combat regen arrives as a
+     server tick every SPOKE_REGEN_OOC_MS (6s), which is longer than the 2.5s
+     hold — so under the v2.3.1682 rule alone the bar blinked on for 2.5s out
+     of every 6, which reads as a fault rather than as healing.
+
+     HP IS TAKEN AWAY FROM THE SERVER FOR THIS SECTION, deliberately.  The
+     first cut just wrote S.rpg.hp every few seconds like the assertions above
+     do, and it failed — in TOWN, hubs top HP off at 10% per regen tick
+     (v2.3.1414), so the worker's echo parked the character at 106/106 partway
+     through the sample and the bar correctly faded on a full, quiet
+     character.  That is the product being right and the test being wrong.
+     The rule under test belongs to the RENDERER (how the bar reacts to a
+     rising number), so the number is pinned behind an accessor the echo
+     cannot move, and the renderer is then asked what it drew.  Restored
+     afterwards so nothing downstream inherits a frozen pool. */
+  await P.page.evaluate(() => {
+    const S = window._gameState.current;
+    window.__hp = Math.round(S.rpg.maxHp * 0.4);
+    Object.defineProperty(S.rpg, 'hp', {
+      configurable: true,
+      get() { return window.__hp; },
+      set() { /* the worker's echo is not the authority on a renderer test */ },
     });
+  });
+  await until(P, HIDDEN, FADE_BUDGET);            /* start from a quiet, faded bar */
+  let heldThroughGap = true, wentDark = null;
+  for (let tick = 0; tick < 3; tick++) {
+    await P.page.evaluate(() => { window.__hp += 3; });   /* one regen tick's worth */
     await P.page.waitForTimeout(4200);            /* well past HOLD_MS, inside HEAL_STALL_MS */
     const mid = await probe(P);
-    if (!SHOWN(mid)) { heldThroughGap = false; sawFull = mid; break; }
+    if (!SHOWN(mid)) { heldThroughGap = false; wentDark = { tick, mid }; break; }
   }
+  const stillBelow = await P.page.evaluate(() => {
+    const S = window._gameState.current;
+    return { hp: S.rpg.hp, max: S.rpg.maxHp };
+  });
+  rec.ok('the climbing heal really did stay below max (the premise holds)',
+    stillBelow.hp < stillBelow.max, stillBelow);
   rec.ok('a climbing heal keeps the bar up between regen ticks',
-    heldThroughGap, sawFull);
+    heldThroughGap, wentDark);
   /* And it still lets go — the stall window is what stops "keep it visible
      while healing" turning back into the v2.3.1682 parked-forever bar. */
   rec.ok('...and it fades once the healing actually stops',
     HIDDEN(await until(P, HIDDEN, 14000)));
+  await P.page.evaluate(() => {
+    const S = window._gameState.current;
+    const v = window.__hp;
+    delete S.rpg.hp;
+    S.rpg.hp = v;
+  });
 
   await P.ctx.close().catch(() => {});
 }

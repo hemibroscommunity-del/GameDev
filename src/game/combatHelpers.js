@@ -8,7 +8,7 @@
    globalThis assignments run. The defensive typeof guards in the code are kept
    verbatim. window._gameState / window._setLevelUpMsg stay as runtime lookups
    by design (they are wired up inside the BroTown component each render). */
-import { xpRequired, recalcDerived, BT_AUDIO } from '@/data/index.js';
+import { xpRequired, recalcDerived, BT_AUDIO, BLOCK_ARC_HALF } from '@/data/index.js';
 
 /* Use-trained Tier-1 stat progression (GDD §1.1, §1.2, §1.4).
    Per-level budget = 5 T1 points; threshold per +1 stat = xpRequired/5.
@@ -213,7 +213,7 @@ function isAttackInShieldArc(S, ax, ay) {
   if (typeof S._shieldAngle !== 'number') return true;
   var atkFromAng = Math.atan2(ay - S.player.y, ax - S.player.x);
   var d = ((atkFromAng - S._shieldAngle + Math.PI * 3) % (Math.PI * 2)) - Math.PI;
-  return Math.abs(d) <= Math.PI / 3;
+  return Math.abs(d) <= BLOCK_ARC_HALF; /* v2.3.1705: the shared half-angle */
 }
 
 /* Melee-kill lifesteal — tracks per-monster damage dealt to the player.
