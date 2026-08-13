@@ -248,6 +248,30 @@ export default {
 // (e.g. forge player_state { hp: 0 } to one-shot everyone).
 // v2.3.1151: exported so test/wire-audit.test.mjs can verify every
 // server-emitted type is registered here (rule 13's mechanical check).
+/* ═══ v2.3.1704: THE DEMO'S FREE BLOCK ═══
+ * Owner: "make it so holding shield doesn't drain energy.  I need to figure
+ * out what to do with that.  For the demo I want you to be able to block as
+ * much as you want."
+ *
+ * A DELIBERATE, TEMPORARY suspension of a balance rule — so it is one named
+ * flag rather than deleted code.  Every cost site below keeps its full
+ * pricing maths (15 per blocked hit, 5 per held tick, both x Bulwark
+ * efficiency with the anti-turtle Math.max(1,…) floor); the flag only decides
+ * whether the number is charged.  Flip it back to true and the old economy
+ * returns exactly as it was, floor and all.
+ *
+ * Its twin is BLOCK_COSTS_STAMINA in src/ui/BroTown.jsx.  Flip BOTH together:
+ * the worker is the authoritative owner of stamina, so with only the client
+ * half off the bar still drains (measured 100 -> 78 over 2.4s), and with only
+ * the server half off the legacy client-authoritative path still drains in a
+ * zone the worker does not drive.
+ *
+ * combat-lifecycle.test.mjs reads this flag rather than hardcoding either
+ * behaviour, so the suite pins whichever mode is actually shipping — the
+ * anti-turtle floor is still asserted, it is just asserted against the
+ * pricing helper instead of against a charge that no longer happens. */
+export const BLOCK_COSTS_STAMINA = false;
+
 export const PRIVILEGED_EVENTS = new Set([
   // Pool / progression mirrors
   'player_state', 'player_died',
@@ -499,6 +523,11 @@ export class GameRoom {
        without revisiting the sweep window in wsClient.js. */
     this.PRESENCE_REFRESH_TICKS = 45;
     this.WEAPON_STASH_CAP = 8; // mirrors WEAPON_STASH_MAX in src/data/gameSystems.js
+    /* v2.3.1704: the free-block flag, mirrored onto the room so dungeon.js
+       can read it through `this`.  Importing the module constant there would
+       close an index.js <-> dungeon.js cycle (index mixes dungeonMethods in),
+       and one boolean is not worth a new shared module. */
+    this.BLOCK_COSTS_STAMINA = BLOCK_COSTS_STAMINA;
     this.QUEST_AP_REWARD = 5;  // mirrors QUEST_AP_REWARD in src/data/items.js
     // §16.8 aggregated TickDelta.  Tick-path mutations (regen,
     // monster attacks, respawn, combat XP) used to fire individual
@@ -1084,7 +1113,11 @@ export class GameRoom {
     /* Same block cost the melee branch charges (15 × Bulwark efficiency),
        so blocking a snowball and blocking a swing cost the same stamina. */
     let _blockStamina = 0;
-    if (_blocking && targetPs && typeof targetPs.stamina === 'number') {
+    /* v2.3.1704: … unless blocking is free for the demo (see
+       BLOCK_COSTS_STAMINA at the top of this file).  Left as a guard on the
+       whole branch rather than a zeroed cost so no pool write, no coalesced
+       save and no wire field happens at all. */
+    if (BLOCK_COSTS_STAMINA && _blocking && targetPs && typeof targetPs.stamina === 'number') {
       _blockStamina = Math.max(1, Math.round(15 * this._blockStaminaMult(targetPs)));
       targetPs.stamina = Math.max(0, targetPs.stamina - _blockStamina);
       this._saveRpgPools(targetId, targetPs);
@@ -1133,7 +1166,10 @@ export class GameRoom {
            JSON.stringify drops both and the wire is unchanged for every
            existing hit — an old client simply sees dmgTaken 0. */
         blocked: _blocking || undefined,
-        staminaDrain: _blocking ? _blockStamina : undefined,
+        /* v2.3.1704: `> 0`, not just `_blocking` — with the free-block flag
+           on this would otherwise send 0 and the client's v2.3.1686 popup
+           would float a "-0⚡" next to every Blocked!. */
+        staminaDrain: (_blocking && _blockStamina > 0) ? _blockStamina : undefined,
         // v2.3.1137: Second Wind heal rides the attack event so the
         // client pops the green number without a round-trip (the
         // authoritative hp echo arrives via player_state anyway).
@@ -1571,8 +1607,11 @@ export class GameRoom {
               // staminaDrain below, so pre-fix clients render the
               // discounted number correctly with zero client changes.
               const blockerPs = this.playerState[nearest.id];
-              const staminaCost = Math.max(1, Math.round(15 * this._blockStaminaMult(blockerPs)));
-              if (blockerPs && typeof blockerPs.stamina === 'number') {
+              // v2.3.1704: free for the demo — see BLOCK_COSTS_STAMINA above.
+              const staminaCost = BLOCK_COSTS_STAMINA
+                ? Math.max(1, Math.round(15 * this._blockStaminaMult(blockerPs)))
+                : 0;
+              if (staminaCost > 0 && blockerPs && typeof blockerPs.stamina === 'number') {
                 blockerPs.stamina = Math.max(0, blockerPs.stamina - staminaCost);
                 /* v2.3.1619b: stamina only -> coalesced (see
                    _saveRpgPools).  This fires on the monster-attack
@@ -1628,7 +1667,7 @@ export class GameRoom {
                   dmg: m.dmg,
                   dmgTaken: 0,
                   blocked: true,
-                  staminaDrain: staminaCost,
+                  staminaDrain: staminaCost > 0 ? staminaCost : undefined, /* v2.3.1704: no 0 on the wire (the client pops it as "-0⚡") */
                   zone: zoneId,
                   attackerX: m.x,
                   attackerY: m.y,
@@ -2389,7 +2428,14 @@ export class GameRoom {
       // v2.3.1153: × Bulwark block-stamina efficiency (−1%/pt, cap −50%),
       // floored at 1 so holding a shield is never free.
       if (typeof ps.maxStamina === 'number' && typeof ps.stamina === 'number') {
-        if (ps.blocking && ps.stamina > 0) {
+        /* v2.3.1704: the held-shield drain, and with it the auto-release at
+           zero, are what "block as much as you want" actually means — a
+           shield that drops itself after ten seconds is not unlimited
+           blocking however cheap each hit is.  With the flag off this branch
+           is skipped entirely, so a blocking player falls through to the
+           regen arm below and their stamina refills while they hold: exactly
+           the demo behaviour the owner asked for. */
+        if (BLOCK_COSTS_STAMINA && ps.blocking && ps.stamina > 0) {
           const beforeSt = ps.stamina;
           ps.stamina = Math.max(0, ps.stamina - Math.max(1, Math.round(5 * this._blockStaminaMult(ps))));
           if (ps.stamina !== beforeSt) changed = true;

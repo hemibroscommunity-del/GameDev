@@ -87,13 +87,26 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await P.ctx.close().catch(() => {});
     return;
   }
-  await stand(P, marks.townExit.tx, marks.townExit.ty);
-  await H.waitFor(P, (S) => S.currentZone, (z) => z === 'worldview',
-    { timeout: 30000, label: 'reach the World View' }).catch(() => {});
-  const spoke = marks.spokes[0];
-  await stand(P, spoke.tx, spoke.ty);
-  await H.waitFor(P, (S) => S.currentZone, (z) => z === spoke.zoneId,
-    { timeout: 30000, label: 'reach a spoke zone' }).catch(() => {});
+  /* Frost by preference: its snowmen are the slowest chase in the game (spd
+     0.4) with a 900 ms telegraphed throw, so an unarmed fresh character can
+     reach a node there and still be alive to harvest it.  The scenario is
+     about the harvest wire, not about surviving ember. */
+  const spoke = marks.spokes.find((s) => s.zoneId === 'frost') || marks.spokes[0];
+  /* Re-STAND rather than wait once.  A trail-head fires from the game loop's
+     proximity scan, and a single position write can land on a frame the loop
+     skips (a zone-loading overlay, a dropped rAF) — which reads as "the town
+     gate is shut" and takes the whole scenario down with it. */
+  const travel = async (tx, ty, zoneId) => {
+    for (let i = 0; i < 6; i++) {
+      await stand(P, tx, ty);
+      const got = await H.waitFor(P, (S) => S.currentZone, (z) => z === zoneId,
+        { timeout: 6000, label: 'reach ' + zoneId }).catch(() => null);
+      if (got === zoneId) return true;
+    }
+    return (await H.readState(P, (S) => S.currentZone)) === zoneId;
+  };
+  await travel(marks.townExit.tx, marks.townExit.ty, 'worldview');
+  await travel(spoke.tx, spoke.ty, spoke.zoneId);
   /* The node list arrives on the zone_state that follows the transition, not
      with it, so wait for it rather than reading the frame we landed on. */
   await H.waitFor(P, (S) => (S.gatherNodes || []).filter((n) => n.alive).length, (n) => n > 0,
@@ -115,6 +128,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const n = (S.gatherNodes || []).find((g) => g.alive);
     if (!n) return null;
     S.player.x = n.x; S.player.y = n.y - 24; S.player.vx = 0; S.player.vy = 0;
+    /* Since v2.3.1448 proximity alone does not open the shell — "only when a
+       user touches the resource on screen does the resource extraction menu
+       pop up" — so the tap is what publishes S._nearNode.  Set the same way
+       mp-lifeskill does: the canvas hit-test is not what is under test here,
+       the wire is, and the BUTTON below is still clicked for real. */
+    S._tapNode = n;
     return { id: n.id, x: n.x, y: n.y, nodeType: n.nodeType };
   });
   /* nodeType -> the skill startExtraction records and the `ex` code the client

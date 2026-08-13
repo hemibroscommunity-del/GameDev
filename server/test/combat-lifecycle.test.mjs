@@ -14,7 +14,7 @@
  *      docs/OPTIMIZATION-ROADMAP.md as a candidate fix; update this
  *      assertion if overflow deferral ships).
  */
-import { GameRoom } from '../src/index.js';
+import { GameRoom, BLOCK_COSTS_STAMINA } from '../src/index.js';
 /* v2.3.1451 (bench-locked T2): fixtures build their accumulator with
    the REAL replay helper and assertions derive from it — never
    hand-rolled numbers, so tuning T2_BENCH can't silently break the
@@ -292,18 +292,38 @@ for (const m of meadowMonsters) m._wanderPausedUntil = Date.now() + 600000;
   room._tickPlayerRegen();
   check('regen: combat zones have no passive HP regen', psA.hp === 50, psA.hp);
 
+  /* v2.3.1704: these two read BLOCK_COSTS_STAMINA rather than hardcoding one
+     behaviour, so the suite pins whichever mode is actually shipping and
+     flipping the flag back needs no test edit.  The owner asked for unlimited
+     blocking FOR THE DEMO ("I need to figure out what to do with that"), so
+     the drain is suspended, not deleted — and the free-block arm asserts the
+     part that matters about a suspension: the shield does NOT drop itself and
+     the pool is not silently mutated. */
   psA.blocking = true; psA.stamina = 3;
   room._tickPlayerRegen();
-  check('regen: shield drain hits 0 and auto-releases the block',
-    psA.stamina === 0 && psA.blocking === false, { stamina: psA.stamina, blocking: psA.blocking });
+  check(BLOCK_COSTS_STAMINA
+    ? 'regen: shield drain hits 0 and auto-releases the block'
+    : 'regen: a held shield costs nothing and is never auto-released (v2.3.1704 demo flag)',
+    BLOCK_COSTS_STAMINA
+      ? (psA.stamina === 0 && psA.blocking === false)
+      : (psA.stamina >= 3 && psA.blocking === true),
+    { stamina: psA.stamina, blocking: psA.blocking });
 
   // v2.3.1343 (kid-simple reprice): Bulwark -1%/pt, cap -100% — but the
   // Math.max(1, …) floor keeps the shield-hold drain at >= 1/tick, so
   // holding a shield is never TRULY free (the anti-turtle backstop).
+  // v2.3.1704: with the demo flag off nothing is charged, so the floor is
+  // asserted against the PRICING HELPER instead — the maths is untouched and
+  // the backstop is still pinned for whoever flips the flag back.
   psA.blocking = true; psA.stamina = 100; psA.defenseSpec = { bulwark: 100 };
   room._tickPlayerRegen();
-  check('bulwark: 100 pts (cap) floor the shield-hold drain at 1/tick',
-    psA.stamina === 99, psA.stamina);
+  check(BLOCK_COSTS_STAMINA
+    ? 'bulwark: 100 pts (cap) floor the shield-hold drain at 1/tick'
+    : 'bulwark: the 1/tick anti-turtle floor survives the demo flag (pricing intact)',
+    BLOCK_COSTS_STAMINA
+      ? psA.stamina === 99
+      : Math.max(1, Math.round(5 * room._blockStaminaMult(psA))) === 1,
+    psA.stamina);
   check('bulwark: helper mult floors at -100% (mult 0)', Math.abs(room._blockStaminaMult(psA) - 0) < 1e-9
     && Math.abs(room._blockStaminaMult({ defenseSpec: { bulwark: 999 } }) - 0) < 1e-9,
     room._blockStaminaMult(psA));
@@ -1505,8 +1525,15 @@ for (const m of meadowMonsters) m._wanderPausedUntil = Date.now() + 600000;
     blockedAtk.length === 1 && blockedAtk[0].payload.blocked === true
     && blockedAtk[0].payload.dmgTaken === 0,
     blockedAtk[0] && blockedAtk[0].payload);
-  check('...and costs stamina, like blocking a swing does',
-    psB.stamina < stamBefore && blockedAtk[0].payload.staminaDrain > 0,
+  /* v2.3.1704: and with the demo's free block, it costs nothing — including
+     NOT putting a 0 on the wire, which the client's v2.3.1686 popup would
+     render as a "-0⚡" beside every Blocked!. */
+  check(BLOCK_COSTS_STAMINA
+    ? '...and costs stamina, like blocking a swing does'
+    : '...and costs no stamina, and sends no drain field at all (v2.3.1704 demo flag)',
+    BLOCK_COSTS_STAMINA
+      ? (psB.stamina < stamBefore && blockedAtk[0].payload.staminaDrain > 0)
+      : (psB.stamina === stamBefore && blockedAtk[0].payload.staminaDrain === undefined),
     { before: stamBefore, after: psB.stamina, drain: blockedAtk[0] && blockedAtk[0].payload.staminaDrain });
 
   /* And with the shield DOWN the same ball hurts -- the block has to be a

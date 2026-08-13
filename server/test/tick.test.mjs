@@ -28,7 +28,7 @@
  * Wander is frozen via m._wanderPausedUntil (the combat-lifecycle
  * convention) and the test player + target monster are teleported to
  * an isolated corner so the other spawns can't interfere. */
-import { GameRoom } from '../src/index.js';
+import { GameRoom, BLOCK_COSTS_STAMINA } from '../src/index.js';
 import { ZONES as SERVER_ZONES } from '../src/data.js';
 // v2.3.1147: the client zone table imports cleanly in node (pure data
 // ESM) -- the lockstep section at the bottom pins it against the
@@ -139,8 +139,20 @@ m0.atkCd = 0;
 clearDirty();
 room._tickMonsters();
 const blk = room.eventBuffer.find((e) => e.type === 'monster_attack' && e.payload.monsterId === m0.id);
-check('block: event flagged blocked with the stamina drain on the wire', !!blk && blk.payload.blocked === true && blk.payload.staminaDrain === 15 && blk.payload.dmgTaken === 0, blk && blk.payload);
-check('block: 15 stamina deducted server-side, hp untouched', ps.stamina === 85 && ps.hp === 100, { stamina: ps.stamina, hp: ps.hp });
+/* v2.3.1704: the melee twins of the combat-lifecycle / dungeon block
+   assertions — they read BLOCK_COSTS_STAMINA so the suite pins whichever mode
+   is shipping (the owner suspended the cost for the demo).  What must hold in
+   BOTH modes is the block itself: flagged blocked, zero damage, hp untouched.
+   Only the price moves. */
+check('block: event flagged blocked, damage fully negated',
+  !!blk && blk.payload.blocked === true && blk.payload.dmgTaken === 0, blk && blk.payload);
+check(BLOCK_COSTS_STAMINA
+  ? 'block: 15 stamina deducted server-side and put on the wire, hp untouched'
+  : 'block: free, no drain field on the wire, hp untouched (v2.3.1704 demo flag)',
+  ps.hp === 100 && (BLOCK_COSTS_STAMINA
+    ? (ps.stamina === 85 && blk.payload.staminaDrain === 15)
+    : (ps.stamina === 100 && blk.payload.staminaDrain === undefined)),
+  { stamina: ps.stamina, hp: ps.hp, drain: blk && blk.payload.staminaDrain });
 
 // ── 3b. Bulwark block-stamina efficiency (v2.3.1343: -1%/pt, cap
 // -100%) discounts the per-blocked-hit cost, and the DISCOUNTED number
@@ -153,9 +165,21 @@ clearDirty();
 room.eventBuffer.length = 0;
 room._tickMonsters();
 const blkBw = room.eventBuffer.find((e) => e.type === 'monster_attack' && e.payload.monsterId === m0.id);
-check('bulwark: 100 pts (cap) floor the block cost at 1 on the wire',
-  !!blkBw && blkBw.payload.blocked === true && blkBw.payload.staminaDrain === 1, blkBw && blkBw.payload);
-check('bulwark: floored cost deducted server-side', ps.stamina === 99, ps.stamina);
+/* v2.3.1704: with the demo flag off nothing is charged, so the anti-turtle
+   floor is asserted against the PRICING HELPER — the maths is untouched and
+   still pinned for whoever flips the flag back. */
+check(BLOCK_COSTS_STAMINA
+  ? 'bulwark: 100 pts (cap) floor the block cost at 1 on the wire'
+  : 'bulwark: the 1-stamina floor survives the demo flag (pricing intact)',
+  BLOCK_COSTS_STAMINA
+    ? (!!blkBw && blkBw.payload.blocked === true && blkBw.payload.staminaDrain === 1)
+    : (!!blkBw && blkBw.payload.blocked === true
+       && Math.max(1, Math.round(15 * room._blockStaminaMult(ps))) === 1),
+  blkBw && blkBw.payload);
+check(BLOCK_COSTS_STAMINA
+  ? 'bulwark: floored cost deducted server-side'
+  : 'bulwark: nothing deducted server-side (v2.3.1704 demo flag)',
+  BLOCK_COSTS_STAMINA ? ps.stamina === 99 : ps.stamina === 100, ps.stamina);
 ps.defenseSpec = {};
 ps.blocking = false;
 

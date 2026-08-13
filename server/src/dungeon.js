@@ -425,8 +425,11 @@ export const dungeonMethods = {
       // Block = full negation (v2.3.1110 omni rule), same stamina cost
       // as a blocked basic attack; staminaDrain rides the wire so the
       // client's floating number matches the server-side cost.
-      const staminaCost = Math.max(1, Math.round(15 * this._blockStaminaMult(ps)));
-      if (typeof ps.stamina === 'number') {
+      // v2.3.1704: free for the demo — see BLOCK_COSTS_STAMINA in index.js.
+      const staminaCost = this.BLOCK_COSTS_STAMINA
+        ? Math.max(1, Math.round(15 * this._blockStaminaMult(ps)))
+        : 0;
+      if (staminaCost > 0 && typeof ps.stamina === 'number') {
         ps.stamina = Math.max(0, ps.stamina - staminaCost);
         this._saveRpg(pid, ps);
         this._queuePlayerStateFlush(pid);
@@ -435,7 +438,7 @@ export const dungeonMethods = {
         type: 'monster_attack',
         payload: {
           monsterId: m.id, targetId: pid, dmg: m.dmg, dmgTaken: 0,
-          blocked: true, staminaDrain: staminaCost,
+          blocked: true, staminaDrain: staminaCost > 0 ? staminaCost : undefined,
           zone, attackerX: m.x, attackerY: m.y,
         },
       });

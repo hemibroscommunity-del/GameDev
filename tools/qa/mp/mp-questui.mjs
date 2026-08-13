@@ -120,8 +120,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
      Pinned as text rather than as a screenshot because the fix IS the wording. */
   rec.ok('the offer card says the kit is handed over NOW',
     !!art && /He hands you now/i.test(art.text), art && art.text.slice(0, 300));
+  /* Case-INSENSITIVE deliberately: `art.text` is innerText, which applies the
+     CSS `text-transform: uppercase` these captions carry — so the string on
+     the wire here is "FOR FINISHING “COLD RECEPTION”".  (mp-tutorial asserts
+     the same idea against H.bodyText, which reads textContent and is NOT
+     transformed — hence the different casing there.  Same fact, two readers.) */
   rec.ok('...and the gold/XP line names the quest it is the reward for',
-    !!art && /For finishing “Cold Reception”/.test(art.text), art && art.text.slice(0, 600));
+    !!art && /for finishing “cold reception”/i.test(art.text), art && art.text.slice(0, 600));
 
   /* ── the control instructions ── */
   rec.ok('the special-attack instruction says a quick swipe, not a flick-and-let-go',
