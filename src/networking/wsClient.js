@@ -31,7 +31,7 @@ import { getHatColor } from '@/rendering/traits/hatColorCatalog.js';
 import { getFacialHairColor } from '@/rendering/traits/facialHairColorCatalog.js';
 import { getShirt } from '@/rendering/traits/shirtCatalog.js';
 import { getShirtColor } from '@/rendering/traits/shirtColorCatalog.js';
-import { getEquip } from '@/rendering/gearCatalog.js';
+import { getEquip, syncArmorLayers } from '@/rendering/gearCatalog.js';
 import { pushHudPopup } from '@/ui/XpFlyOverlay.jsx';
 
 import { pushDmgPopup } from '@/game/combatHelpers.js';
@@ -1092,7 +1092,16 @@ export function setupWebSocket(ctx) {
                  formula and quietly disagreed with the damage the server
                  actually deals.  Read-only (there is no client legs-armour
                  equip path yet); the worker owns the slot. */
-              if ('legsArmor' in msg.payload) S.rpg.legsArmor = msg.payload.legsArmor;
+              if ('legsArmor' in msg.payload) { S.rpg.legsArmor = msg.payload.legsArmor; _armorChanged = true; }
+              /* v2.3.1703: the WORN LAYER is derived from these two fields
+                 (gearCatalog.syncArmorLayers), so the worker's echo has to
+                 drive it as well as the local equip screens — otherwise a
+                 reload, a device switch, or a quest reward applied
+                 server-side leaves the character bare while the stats say
+                 armoured.  Runs on every payload that mentions either
+                 field, which is every full snapshot and any delta that
+                 changed one. */
+              if (_armorChanged) { try { syncArmorLayers(S.rpg); } catch (e) {} }
               /* v2.3.227 (Phase 1): armor swaps changed maxHp via
                  getArmorHp() in recalcDerived.
                  v2.3.1697: armor no longer touches maxHp, so this recompute

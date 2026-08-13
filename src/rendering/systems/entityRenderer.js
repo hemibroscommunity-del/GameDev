@@ -7048,10 +7048,30 @@ export class EntityRenderer {
          partial HP doesn't flash the bar for no reason. */
       if (ring._lastHpCur == null) ring._lastHpCur = hpCur;
       if (Math.abs(hpCur - ring._lastHpCur) > 0.01) {
+        /* v2.3.1703: remember the DIRECTION of the event too — see below. */
+        ring._hpRising = hpCur > ring._lastHpCur;
         ring._lastHpCur = hpCur;
         ring._hpEventAt = now;
       }
-      const hpTargetAlpha = (now - (ring._hpEventAt || 0) < HOLD_MS) ? 1 : 0;
+      /* v2.3.1703 (owner: "while out of combat the healing in the zones is a
+         nice touch, keep the hp bar visible while healing").  The v2.3.1682
+         rule above reveals on an event and fades HOLD_MS (2.5s) later — but
+         out-of-combat regen arrives as a SERVER TICK every SPOKE_REGEN_OOC_MS
+         (6s, server/src/index.js), which is longer than the hold.  So a heal
+         that runs for half a minute showed as the bar blinking on for two and
+         a half seconds out of every six, which reads as a glitch rather than
+         as healing.
+         A climbing heal therefore holds the bar up continuously: while the
+         last event was an INCREASE and HP is still short of max, the bar
+         stays.  HEAL_STALL_MS is what stops that becoming the old "parked
+         forever" bug — it only has to outlast the gap between regen ticks, so
+         once regen actually stops (combat re-engaged, zone left) the bar fades
+         one stall-window later like anything else.  Damage sets _hpRising
+         false and goes straight back to the 2.5s hold. */
+      const HEAL_STALL_MS = 9000;         /* > SPOKE_REGEN_OOC_MS, so ticks bridge */
+      const sinceHpEvent = now - (ring._hpEventAt || 0);
+      const stillHealing = ring._hpRising && hpCur < hpMax && sinceHpEvent < HEAL_STALL_MS;
+      const hpTargetAlpha = (stillHealing || sinceHpEvent < HOLD_MS) ? 1 : 0;
       const hpA = (ring.alpha != null) ? ring.alpha : 0;
       const hpDelta = hpTargetAlpha - hpA;
       const hpNewAlpha = hpA + Math.max(-FADE_STEP, Math.min(FADE_STEP, hpDelta));

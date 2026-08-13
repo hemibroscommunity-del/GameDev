@@ -467,11 +467,31 @@ export const HeroExpanded = () => {
             }} aria-label={`${totalUnspent} points available`}>+{totalUnspent}</div>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 4 }}>
-            {[
-              ...PROG3_ATK_META.map(m => ({ ...m, atk: true })),
-              ...PROG3_BODY_META.map(m => ({ ...m, atk: false })),
-            ].map(st => {
+          {/* ═══ v2.3.1703: PILLS, AND TWO GRIDS INSTEAD OF ONE ═══
+              Owner: "the character star point allocation menu is hard to
+              see (tiny font small thumbnails) maybe you can make it a pill
+              shape or something easier on the eyes."
+
+              The v2.3.1668 grid was seven cells in one 3-wide run, which
+              gave every stat a 123px cell on an iPhone and forced an 8px
+              label to fit "ATK SPEED" into it — below this project's own
+              10px font floor (v2.3.1239), with a 16px icon beside it.  It
+              also left the seventh stat alone on a ragged third row.
+
+              Splitting the run by what the stats ARE fixes both at no cost
+              in height: the three OFFENSE stats keep a 3-wide row (they
+              are a triplet, and they are the ones that change with the
+              selected combat type), and the four BODY stats sit in a
+              2-wide grid underneath, which nearly doubles their width.
+              Row count is unchanged at three — the v2.3.1660
+              five-below-the-fold incident is what mp-prog3's no-scroll
+              assertion guards, and this must not spend that budget — so
+              the extra width pays for a 20px icon, a 10px label and a
+              15px value instead of buying rows.
+              Fully-rounded (the owner's "pill"), which also reads as
+              "tap me" next to the square read-only cells on Overview. */}
+          {(() => {
+            const pill = (st) => {
               const pts = st.atk ? prog3AtkPts(R, buildCat, st.key) : prog3Pts(R, st.key);
               const cap = prog3StatCap(R, st.key);
               const canSpend = totalUnspent > 0 && pts < cap;
@@ -493,56 +513,55 @@ export const HeroExpanded = () => {
                     });
                   }}
                   style={{
-                    minWidth: 0, padding: '3px 5px 4px',
+                    minWidth: 0, minHeight: 34, padding: '2px 8px',
+                    display: 'flex', alignItems: 'center', gap: 6,
                     background: canSpend ? COL.accentFill : COL.wellSoft,
                     border: `1px solid ${canSpend ? COL.accent : COL.tileBor}`,
-                    borderRadius: 7,
-                    textAlign: 'center',
+                    borderRadius: 999,
                     cursor: canSpend ? 'pointer' : 'default',
                     opacity: canSpend ? 1 : 0.75,
                     touchAction: 'manipulation',
                   }}>
-                  {/* v2.3.1694 (owner: "add little thumbnails that
-                      represent each thing … they were stripped out at
-                      some point"): the stat art rides BESIDE the two
-                      text lines, not above them — the same icon-left /
-                      label-above-number tile the legacy Build launchers
-                      use (v2.3.1311f).  A 16px icon is shorter than the
-                      25px label+value stack it sits next to, so the cell
-                      is exactly as tall as it was text-only and
-                      mp-prog3's "fits without scrolling" assertion (the
-                      v2.3.1660 five-below-the-fold incident) is not
-                      spent on decoration.  A stat with no art on disk
-                      simply renders without one. */}
-                  <div style={{
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    gap: 4, minWidth: 0,
-                  }}>
-                    {st.iconSrc && (
-                      <img src={st.iconSrc} alt="" draggable={false}
-                        style={{
-                          width: 16, height: 16, objectFit: 'contain', flex: 'none',
-                          opacity: canSpend ? 1 : 0.8, pointerEvents: 'none',
-                        }} />
-                    )}
-                    <div style={{ minWidth: 0 }}>
-                      <div style={{
-                        fontSize: 8, fontWeight: 700, letterSpacing: '.03em',
-                        textTransform: 'uppercase',
-                        color: st.atk ? (canSpend ? COL.accent : COL.text2) : COL.muted,
-                        whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-                      }}>{st.label}</div>
-                      <div style={{
-                        fontSize: 13, fontWeight: 800, color: COL.text,
-                        fontVariantNumeric: 'tabular-nums', lineHeight: 1.15,
-                        whiteSpace: 'nowrap',
-                      }}>{pts}<span style={{ color: COL.muted, fontWeight: 700, fontSize: 9 }}>/{cap}</span></div>
-                    </div>
+                  {/* v2.3.1694 (owner: "add little thumbnails that represent
+                      each thing … they were stripped out at some point").
+                      v2.3.1703: 16 -> 20px, and left-aligned with the text
+                      rather than the pair centred, so the icons line up
+                      down the column instead of drifting with label
+                      length. */}
+                  {st.iconSrc && (
+                    <img src={st.iconSrc} alt="" draggable={false}
+                      style={{
+                        width: 20, height: 20, objectFit: 'contain', flex: 'none',
+                        opacity: canSpend ? 1 : 0.8, pointerEvents: 'none',
+                      }} />
+                  )}
+                  <div style={{ minWidth: 0, flex: '1 1 auto' }}>
+                    <div style={{
+                      fontSize: 10, fontWeight: 700, letterSpacing: '.03em',
+                      textTransform: 'uppercase', lineHeight: 1.1,
+                      color: st.atk ? (canSpend ? COL.accent : COL.text2) : COL.text2,
+                      whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                    }}>{st.label}</div>
+                    <div style={{
+                      fontSize: 15, fontWeight: 800, color: COL.text,
+                      fontVariantNumeric: 'tabular-nums', lineHeight: 1.1,
+                      whiteSpace: 'nowrap',
+                    }}>{pts}<span style={{ color: COL.muted, fontWeight: 700, fontSize: 10 }}>/{cap}</span></div>
                   </div>
                 </div>
               );
-            })}
-          </div>
+            };
+            return (
+              <>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 4 }}>
+                  {PROG3_ATK_META.map(m => pill({ ...m, atk: true }))}
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 4, marginTop: 4 }}>
+                  {PROG3_BODY_META.map(m => pill({ ...m, atk: false }))}
+                </div>
+              </>
+            );
+          })()}
         </>
       )}
 

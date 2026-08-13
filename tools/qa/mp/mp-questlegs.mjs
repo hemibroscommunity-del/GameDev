@@ -96,5 +96,47 @@ export async function run({ browser, wsPort, webPort, rec }) {
     !!(after && after.rpg && after.rpg.legsArmor && after.rpg.legsArmor.name === 'Iron Greaves'),
     after && after.rpg && after.rpg.legsArmor);
 
+  /* ═══ v2.3.1703: AND IT SHOWS ON THE CHARACTER ═══
+     Owner: "when you equip iron greaves it doesn't show on your character."
+     v2.3.1701 wired the piece all the way to the server's damage maths and
+     stopped there — the RENDERED layer is a separate store (gearCatalog's
+     chest/legs slots) that nothing connected to it, so the numbers moved and
+     the character stayed bare.  The layer is derived from the worn stat
+     piece now, and this asks the store the RENDERER reads (via the
+     _gameFns.getEquip bridge) rather than any state of the test's own. */
+  const shown = await P.page.evaluate(() => {
+    const g = window._gameFns && window._gameFns.getEquip;
+    return g ? { legs: g('legs'), chest: g('chest') } : { err: 'no getEquip bridge' };
+  });
+  rec.ok('the worn greaves put armour on the LEGS layer the renderer draws',
+    shown.legs === 'steelgreaves', shown);
+  rec.ok('...and did not also paint a chest plate on (there is no chest piece)',
+    shown.chest === 'none', shown);
+
+  /* Taking them off takes the art off too.  This direction is the half that
+     used to be a cosmetic-only toggle, so it could disagree with the stats
+     both ways: the old Loadout button even had a branch that equipped steel
+     greaves onto a character who owned none. */
+  await P.page.evaluate(() => {
+    const S = window._gameState && window._gameState.current;
+    if (window._itemDetailBus && S && S.rpg && S.rpg.legsArmor) {
+      window._itemDetailBus.open({ kind: 'legsArmor' });
+    }
+  });
+  await P.page.waitForTimeout(500);
+  await H.clickText(P, 'Unequip').catch(() => {});
+  await P.page.waitForTimeout(1500);
+  const bare = await P.page.evaluate(() => {
+    const S = window._gameState && window._gameState.current;
+    const g = window._gameFns && window._gameFns.getEquip;
+    return {
+      legsArmor: S && S.rpg && S.rpg.legsArmor && S.rpg.legsArmor.name,
+      legsStash: ((S && S.rpg && S.rpg.legsStash) || []).map((a) => a && a.name),
+      legs: g ? g('legs') : 'no bridge',
+    };
+  });
+  rec.ok('unequipping puts the greaves back in the bag', !bare.legsArmor && bare.legsStash.includes('Iron Greaves'), bare);
+  rec.ok('...and takes the art back off the character', bare.legs === 'none', bare);
+
   await P.ctx.close().catch(() => {});
 }

@@ -60,9 +60,10 @@ function makeSlotStore(slot, defId) {
 /* v2.3.1665: NEW PLAYERS START BARE.  chest/legs defaulted to the steel
    set, which was a TESTING shortcut that made every character begin the
    game already armoured — there was nothing to earn and no visible reward
-   for the tutorial arc to pay.  The set is now granted by the "Suit Up"
-   quest (tut_2) and appears in the bag on completion; see
-   `gearSetEarned` / `reconcileGearStash` below.
+   for the tutorial arc to pay.
+   v2.3.1703: 'none' is now the ONLY authored value for these two — the
+   layer is derived from the worn stat piece by syncArmorLayers below, so
+   the default is simply "no stat armour yet".
    SHIRT STAYS 'tshirt' on purpose: isWearingArmor() deliberately excludes
    the shirt slot (see its comment), and the character-creator sync depends
    on it — defaulting it to 'none' would leave the body bare-chested and
@@ -119,53 +120,53 @@ export function isWearingArmor() {
 export function setEquip(slot, id) { if (_stores[slot]) _stores[slot].set(id); }
 export function onEquipChange(slot, fn) { return _stores[slot] ? _stores[slot].on(fn) : () => {}; }
 
-/* v2.3.687: the steel set is INDESTRUCTIBLE -- each piece exists exactly once,
-   either worn (gearCatalog slot) or in the bag (rpg.gearStash).  Unequip paths
-   that predate the stash (e.g. the Equipment menu's WORN ARMOUR toggle) just
-   set the slot to 'none', orphaning the piece: gone from the Loadout AND the
-   bag, with the unequipped state persisted.  Reconcile on load / bag render:
-   an orphaned piece is restored to the stash, a worn piece is deduped out of
-   it.  Returns true when R.gearStash was changed (caller persists). */
+/* ═══ v2.3.1703: THE STAT PIECE DRIVES THE RENDERED LAYER ═══
+   Owner: "when you equip iron greaves it doesn't show on your character."
+
+   There have been two armour systems side by side.  This module's
+   chest/legs slots are the COSMETIC layer the renderer stacks over the
+   body (steelplate / steelgreaves art).  `R.armor` and `R.legsArmor` are
+   the STAT pieces the worker owns and the server's per-hit reduction
+   reads (`_armorDrMult`).  Nothing connected them, so equipping the Iron
+   Greaves the fire-goblin quest pays out moved the numbers and left the
+   character bare — while the cosmetic set arrived, unrelated, on the
+   tut_2 turn-in (a quest that since v2.3.1692 grants no armour at all).
+   Armour you can see and armour that does something were two different
+   things, which is exactly the confusion the owner hit.
+
+   So the layer is DERIVED now: worn stat piece -> its art, no piece ->
+   bare.  One writer, and "equipped" means one thing.  The cosmetic-only
+   set is retired with it — reconcileGearStash purges any copy rather
+   than issuing one, because a steel plate that reduces no damage is a
+   costume the loadout screen would still call armour. */
+export function syncArmorLayers(R) {
+  if (!R) return;
+  setEquip('chest', R.armor ? 'steelplate' : 'none');
+  setEquip('legs', R.legsArmor ? 'steelgreaves' : 'none');
+}
+
+/* v2.3.1665 issued the steel set on the tut_2 turn-in and kept it
+   indestructible (worn XOR in the bag).  v2.3.1703 retires it: the layer
+   is derived from the stat piece above, so a second, parallel copy of
+   "am I wearing armour" can only disagree with it.  This now purges the
+   cosmetic duplicates from an existing save and re-derives the layers.
+   Returns true when R.gearStash was changed (caller persists). */
 const DEFAULT_GEAR_SET = [
   { slot: 'chest', gearId: 'steelplate', name: 'Steel Plate' },
   { slot: 'legs', gearId: 'steelgreaves', name: 'Steel Greaves' },
 ];
-/* v2.3.1665: the steel set is EARNED, not issued.  It arrives when the
-   tutorial's "Suit Up" quest (tut_2) is turned in — the same quest whose
-   server-side reward is the stat-bearing Scout's Vest.  Before that, the
-   set must exist NOWHERE: not worn, not in the bag.
-   The two armor systems are still separate (the cosmetic gearCatalog layer
-   here vs. the stat-bearing R.armor the server owns) — this only ties the
-   COSMETIC grant to the same moment, so the reward is visible on the
-   character as well as in the numbers. */
-export function gearSetEarned(R) {
-  return !!(R && R._quests && R._quests.tut_2 === 'turnedIn');
-}
 export function reconcileGearStash(R) {
   if (!R) return false;
   if (!R.gearStash) R.gearStash = [];
   let changed = false;
-  const earned = gearSetEarned(R);
   for (const piece of DEFAULT_GEAR_SET) {
-    const wornId = getEquip(piece.slot);
-    const idx = R.gearStash.findIndex(g => g && g.slot === piece.slot && g.gearId === piece.gearId);
-    if (!earned) {
-      /* Not earned yet: strip any copy.  This also cleans up a tester who
-         is carrying the old always-issued set after the -v3 key bump. */
-      if (idx >= 0) { R.gearStash.splice(idx, 1); changed = true; }
-      if (wornId === piece.gearId) { setEquip(piece.slot, 'none'); changed = true; }
-      continue;
-    }
-    if (wornId === piece.gearId && idx >= 0) {
-      R.gearStash.splice(idx, 1);                 // worn AND bagged -> dedupe
-      changed = true;
-    } else if (wornId !== piece.gearId && idx < 0) {
-      /* Either just earned, or deliberately unequipped — both resolve to
-         "it lives in the bag", which keeps the piece indestructible without
-         second-guessing which case this is. */
-      R.gearStash.push({ ...piece });
+    for (;;) {
+      const idx = R.gearStash.findIndex((g) => g && g.slot === piece.slot && g.gearId === piece.gearId);
+      if (idx < 0) break;
+      R.gearStash.splice(idx, 1);
       changed = true;
     }
   }
+  syncArmorLayers(R);
   return changed;
 }

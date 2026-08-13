@@ -90,5 +90,35 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('...and a full, quiet character ends up with no bar again',
     HIDDEN(await until(P, HIDDEN, FADE_BUDGET)));
 
+  /* ── v2.3.1703: A HEAL THAT IS STILL CLIMBING KEEPS THE BAR UP ──────────
+     Owner: "while out of combat the healing in the zones is a nice touch,
+     keep the hp bar visible while healing."  Out-of-combat regen arrives as
+     a server tick every SPOKE_REGEN_OOC_MS (6s), which is longer than the
+     2.5s hold — so under the v2.3.1682 rule alone the bar blinked on for
+     2.5s out of every 6, which reads as a fault rather than as healing.
+     Simulated at the same cadence here (a real spoke zone would make this
+     depend on the worker's regen timer landing inside the sample window,
+     which is exactly the noise the assertion has to be free of), and the
+     check is taken in the GAP between ticks — the moment the old rule went
+     dark. */
+  await setHp(P, 0.4);
+  await until(P, HIDDEN, FADE_BUDGET);            /* start from a quiet, faded bar */
+  let heldThroughGap = true, sawFull = null;
+  for (let tick = 0; tick < 3; tick++) {
+    await P.page.evaluate(() => {
+      const S = window._gameState && window._gameState.current;
+      if (S && S.rpg) S.rpg.hp = Math.min(S.rpg.maxHp, S.rpg.hp + S.rpg.maxHp * 0.05);
+    });
+    await P.page.waitForTimeout(4200);            /* well past HOLD_MS, inside HEAL_STALL_MS */
+    const mid = await probe(P);
+    if (!SHOWN(mid)) { heldThroughGap = false; sawFull = mid; break; }
+  }
+  rec.ok('a climbing heal keeps the bar up between regen ticks',
+    heldThroughGap, sawFull);
+  /* And it still lets go — the stall window is what stops "keep it visible
+     while healing" turning back into the v2.3.1682 parked-forever bar. */
+  rec.ok('...and it fades once the healing actually stops',
+    HIDDEN(await until(P, HIDDEN, 14000)));
+
   await P.ctx.close().catch(() => {});
 }

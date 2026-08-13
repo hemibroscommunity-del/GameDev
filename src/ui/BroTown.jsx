@@ -163,7 +163,7 @@ import { shardByKey } from '@/data/shards.js';
 
 /* Destructure everything from DATA — the component body references 100+ symbols */
 const {
-  TILE, PLAYER_COLORS, ZONES, ELEMENTS, TOWN_BUILDINGS, TOWN_EXITS,
+  TILE, PLAYER_COLORS, ZONES, ELEMENTS, TOWN_BUILDINGS, TOWN_EXITS, WORLDVIEW_EXITS,
   BLACKSMITH_TIERS, WOODWORKING_TIERS, WEAPON_TYPES, RARITY_TIERS, BT_AUDIO, BT_ACHIEVEMENTS,
   BUILDINGS, NPC_DATA, TILE_SOLID, TILE_COLORS,
   updateZoneDimensions,
@@ -729,6 +729,16 @@ export var BroTown = function BroTown(_ref0) {
        as a thunk because doSwing is not assigned yet at this point in the
        component body (this object literal runs first). */
     swingAttack: function () { swingAttack(stateRef.current); },
+    /* v2.3.1703: the hub trail-heads, so the spawn/latch scenario reads the
+       game's own coordinates instead of hardcoding a marker that gets
+       retuned (mp-townlock already had to say "keep them in step"). */
+    TOWN_EXITS: TOWN_EXITS,
+    WORLDVIEW_EXITS: WORLDVIEW_EXITS,
+    /* v2.3.1703: the WORN LAYER, straight from the store the renderer reads.
+       The greaves-don't-show bug was invisible to every assertion that read
+       S.rpg, because the stat piece was set correctly the whole time and the
+       thing that was wrong lived here. */
+    getEquip: getEquip,
     /* v2.3.1702: the same hook for the two other pool-spending actions.
        Their `ability_use` send was gated on _serverMonsters (false in town),
        so the worker never saw a special or a dodge used in the hub and its

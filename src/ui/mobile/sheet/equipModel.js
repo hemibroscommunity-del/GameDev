@@ -35,7 +35,7 @@ export const GHOST_SRC = {
    set — one consistent style with the stash and inventory tiles.
    Weapon art keys off wpn.type (greatsword vs sword are distinct drop
    types that shared one icon since v2.3.173). */
-const ITEMS_V = '?v=2.3.1452';
+const ITEMS_V = '?v=2.3.1703'; /* v2.3.1703: bumped for the blue slime-remnants thumbnail */
 const wpnIconSrc = (R, wpn) => {
   if (!wpn) return null;
   const slot = R.activeSlot || 'melee';
