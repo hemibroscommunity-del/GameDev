@@ -323,11 +323,25 @@ export const combatMethods = {
       // rejected as cheats.
       let bonus = statBonus;
       if (_p3 && _p3.sk) {
+      /* ═══ v2.3.1710: A SPECIAL BELONGS TO THE WEAPON THAT FIRED IT ═══
+         Owner, after a full playthrough: "I thought at one point I was
+         shooting a bow at a fire goblin and it levelled up my magic combat
+         skill instead."  It did — deliberately, until now: §3 of
+         progression-v3 made every special credit AND scale on Magic,
+         whatever was in your hands.  Asked directly, the owner chose: "I
+         want magic to keep its cross weapon purpose but also have specials
+         belong to their weapon.  Within the magic stat allocation is the
+         only way to grow your mana that's required for special attacks."
+         So Magic's cross-weapon job is the MANA POOL — maxMana = 100 +
+         magicLevel x 1.2 (§pools), and every special spends mana — and the
+         special's damage and XP now follow the weapon, like a normal hit.
+         All three coupled sites move together (this one, the damage in
+         _computeAttackDamage, and the XP category at the hit site): if the
+         ceiling kept the Magic term while damage used the weapon's, a
+         bow-trained player's special would trip the anticheat. */
         const _cat = w.type === 'bow' ? 'bow' : w.type === 'staff' ? 'staff' : 'sword';
-        const _skLvl = isSpecial
-          ? ((_p3.sk.staff && _p3.sk.staff.level) || 1)
-          : ((_p3.sk[_cat] && _p3.sk[_cat].level) || 1);
-        bonus = _skLvl * (isSpecial ? PROG3.DMG_PER_LEVEL.staff : PROG3.DMG_PER_LEVEL[_cat]);
+        const _skLvl = (_p3.sk[_cat] && _p3.sk[_cat].level) || 1;
+        bonus = _skLvl * PROG3.DMG_PER_LEVEL[_cat];
       }
       const channelFlat = isSpecial ? 0 : this._wpnDmgFlat(ps, w.type); // reads 0 under prog3 (_t2Flat gate)
       const base = (this._weaponEffBase(w.type, w) + bonus) * (w.tierMult || 1) + channelFlat;
@@ -432,11 +446,12 @@ export const combatMethods = {
     const _p3 = ps.prog3;
     let statTerm = stat * 0.1667; // 0.8 ÷ 4.8
     if (_p3 && _p3.sk) {
+      /* v2.3.1710: the special scales on the weapon that fired it — see the
+         long note in _maxWeaponDmg.  Magic's cross-weapon value is the mana
+         pool every special spends, not the special's damage. */
       const _cat = type === 'bow' ? 'bow' : type === 'staff' ? 'staff' : 'sword';
-      const _skLvl = isSpecial
-        ? ((_p3.sk.staff && _p3.sk.staff.level) || 1)
-        : ((_p3.sk[_cat] && _p3.sk[_cat].level) || 1);
-      statTerm = _skLvl * (isSpecial ? PROG3.DMG_PER_LEVEL.staff : PROG3.DMG_PER_LEVEL[_cat]);
+      const _skLvl = (_p3.sk[_cat] && _p3.sk[_cat].level) || 1;
+      statTerm = _skLvl * PROG3.DMG_PER_LEVEL[_cat];
     }
     let base = (this._weaponEffBase(type, w) + statTerm) * tierMult;
     // Per-type variance -- same rolls as the client.
@@ -666,12 +681,14 @@ export const combatMethods = {
     // skill that swung earns damage-proportional XP at hit time, from
     // the CREDITED amount (overkill clamped above, so grinding a
     // low-hp monster's corpse can't inflate the rate).  Slot mapping
-    // uses the server-resolved _effSlot, never the raw wire string;
-    // specials credit Magic (§3).  Level-ups persist + notify inside
+    // uses the server-resolved _effSlot, never the raw wire string.
+    // v2.3.1710: specials credit their own weapon too.  Level-ups persist + notify inside
     // _prog3AwardXp; ordinary xp ticks ride the kill-path _saveRpg.
     if (attackerPs.prog3) {
-      const _xpCat = isSpecial ? 'staff'
-        : _effSlot === 'ranged' ? 'bow'
+      /* v2.3.1710: a special trains the weapon that fired it (owner
+         decision — see _maxWeaponDmg).  `isSpecial` no longer forces
+         'staff'; the slot decides, exactly as it does for a normal hit. */
+      const _xpCat = _effSlot === 'ranged' ? 'bow'
         : _effSlot === 'staff' ? 'staff' : 'sword';
       this._prog3AwardXp(session.id, attackerPs, _xpCat, actualDmg);
     }

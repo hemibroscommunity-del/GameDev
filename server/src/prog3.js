@@ -315,7 +315,10 @@ export const prog3Methods = {
   // (actualDmg — clamped to the monster's remaining hp, so overkill
   // farming can't inflate the rate) after every landed hit.  cat is
   // resolved server-side from the effective slot (never the raw wire
-  // string); specials always credit 'staff' (§3: specials are Magic).
+  // string).  v2.3.1710: specials credit their OWN weapon too (owner
+  // decision) — Magic's cross-weapon value is the mana pool every
+  // special spends, not the special's skill credit.  See combat.js
+  // _maxWeaponDmg for the full note.
   // XP mutations ride in memory between saves — persistence lands on
   // level-up here and on the kill-path _saveRpg like every other
   // combat mutation (the v2.3.1619b write-amplification lesson: no

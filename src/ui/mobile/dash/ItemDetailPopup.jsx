@@ -70,7 +70,11 @@ function tierLabel(wpn) {
 /* Pick a thumb URL for a weapon based on type.
    v2.3.1325 (owner icon sheets): painted item set — greatsword and
    sword split after sharing one icon since v2.3.210. */
-const ITEMS_V = '?v=2.3.1703'; /* v2.3.1703: bumped for the blue slime-remnants thumbnail */
+/* v2.3.1710: bumped so a browser holding the cached bag drops the emoji-vest
+   render and fetches the real chest-plate torso art (owner: "it's an emoji
+   vest").  Lives in THREE files — keep them in lockstep or one surface serves
+   stale thumbnails while its neighbour serves fresh ones. */
+const ITEMS_V = '?v=2.3.1710';
 function weaponThumb(wpn) {
   if (!wpn || !wpn.type) return null;
   if (wpn.type === 'bow')        return `/icons/items/bow.webp${ITEMS_V}`;
@@ -216,7 +220,12 @@ function resolveTarget(target) {
     const dr = getArmorPieceDr(ar, 'chest');
     return {
       lockKey: 'armor',
-      thumb: null,
+      /* v2.3.1710: the EQUIPPED half of the owner's "iron torso icon is an
+         emoji vest" report — the card you get by tapping the worn piece read
+         🦺 while the worn greaves card below it read real painted art.  Same
+         chest-plate.webp as the stash card; the glyph stays only as the
+         img-fails fallback the popup already renders. */
+      thumb: `/icons/items/chest-plate.webp${ITEMS_V}`,
       glyph: '\u{1F9BA}',
       name: ar.name || 'Armor',
       info: Math.round(dr * 100) + '% damage reduced',
@@ -239,7 +248,11 @@ function resolveTarget(target) {
       : null;
     return {
       lockKey: 'stashArmor_' + (target.index || 0),
-      thumb: null,
+      /* v2.3.1710: the item card the owner sees when they tap the Iron Torso
+         in the bag.  Matched to the stashLegs card 25 lines down, which has
+         carried `thumb: greaves.webp` since v2.3.1701 — the pair are one
+         armour set and must read as one. */
+      thumb: `/icons/items/chest-plate.webp${ITEMS_V}`,
       glyph: '\u{1F9BA}',
       name: ar.name || 'Armor',
       info: Math.round(dr * 100) + '% damage reduced',

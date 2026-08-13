@@ -27,7 +27,7 @@ import { placeSkillTraits, placeSkillTraitsFor, hideSkillTraits, SWORD_SWING_MS,
 import { getEquip } from '../gearCatalog.js';
 import { getShirt } from '../traits/shirtCatalog.js';
 import { getShirtColor, shirtFill } from '../traits/shirtColorCatalog.js';
-import { recolorBodyToCanvas, skinTarget, pantsTarget, shoesTarget, getSkin, getPants, getShoes, onSkinChange, onPantsChange, onShoesChange } from '../playerSkins.js';
+import { recolorBodyToCanvas, recolorStandInSkin, DEFAULT_SKIN_TARGET, skinTarget, pantsTarget, shoesTarget, getSkin, getPants, getShoes, onSkinChange, onPantsChange, onShoesChange } from '../playerSkins.js'; /* v2.3.1710: + the skin-only stand-in recolour (the cook) */
 import { getGearFrame } from '../gearSheets.js';
 import { upscaleToFrameHeight } from '../spriteScale.js'; /* v2.3.1112: restore downscaled-on-disk sword stand-in strips to their authored frame height */
 import { cycleMs as jogCycleMs, frameCount as jogFrameCount, resolveDirection } from '../playerSprites.js';
@@ -710,16 +710,20 @@ export class EffectsRenderer {
        stand-in).  Shirt / leg-armour / chest-plate drawn over the lumberjack when
        equipped.  Layers are 12-frame 480x440 (2x) strips at
        /sprites/gear/<slot>/<item>/chop-west.png, pixel-aligned to the chop body's
-       frames 12-23.  Added AFTER chopSprite so they composite on top; body first,
-       then shirt, legs, chest (chest last / on top). */
-    this.chopShirtSprite = new Sprite();
-    this.chopShirtSprite.anchor.set(0.5, 1);
-    this.chopShirtSprite.visible = false;
-    this.nodeLayer.addChild(this.chopShirtSprite);
+       frames 12-23.  Added AFTER chopSprite so they composite on top.
+       v2.3.1710: body, then LEGS, then shirt, then chest — this is the exact
+       pose the owner named ("while woodcutting ... the shirt should be layered
+       in front of the leg armor"): the greaves' waistband was cutting across
+       the chopper's hem.  Same reasoning as the player container; the chest
+       plate hides the shirt entirely (_placeSwingShirt) so it can stay on top. */
     this.chopLegsSprite = new Sprite();
     this.chopLegsSprite.anchor.set(0.5, 1);
     this.chopLegsSprite.visible = false;
     this.nodeLayer.addChild(this.chopLegsSprite);
+    this.chopShirtSprite = new Sprite();
+    this.chopShirtSprite.anchor.set(0.5, 1);
+    this.chopShirtSprite.visible = false;
+    this.nodeLayer.addChild(this.chopShirtSprite);
     this.chopChestSprite = new Sprite();
     this.chopChestSprite.anchor.set(0.5, 1);
     this.chopChestSprite.visible = false;
@@ -732,6 +736,18 @@ export class EffectsRenderer {
     this.cookSprite.anchor.set(0.5, 1);
     this.cookSprite.visible = false;
     this.nodeLayer.addChild(this.cookSprite);
+    /* v2.3.1114: leg-armour layer for the cook stand-in -- the equipped greaves
+       drawn over the cook's legs, untinted (armour keeps its own metal colour),
+       shown only when leg armour is equipped. Same 24-frame 213x220 cook strip
+       at /sprites/gear/legs/<item>/cook-south.png.
+       v2.3.1710: moved ABOVE the shirt in creation order (i.e. drawn first) so
+       the shirt sits in front of it — the owner's "and doing other things"
+       covers this pose too, and the cook is front-facing, so the tucked-in hem
+       reads worse here than anywhere. */
+    this.cookLegsSprite = new Sprite();
+    this.cookLegsSprite.anchor.set(0.5, 1);
+    this.cookLegsSprite.visible = false;
+    this.nodeLayer.addChild(this.cookLegsSprite);
     /* v2.3.1113: shirt layer for the cook stand-in -- the player's selected
        shirt, drawn over the bald cook torso and tinted to their shirt colour
        (same white-base + Pixi-tint path the sword/bow stand-ins use). Added
@@ -743,14 +759,6 @@ export class EffectsRenderer {
     this.cookShirtSprite.anchor.set(0.5, 1);
     this.cookShirtSprite.visible = false;
     this.nodeLayer.addChild(this.cookShirtSprite);
-    /* v2.3.1114: leg-armour layer for the cook stand-in -- the equipped greaves
-       drawn over the cook's legs, untinted (armour keeps its own metal colour),
-       shown only when leg armour is equipped. Same 24-frame 213x220 cook strip
-       at /sprites/gear/legs/<item>/cook-south.png. */
-    this.cookLegsSprite = new Sprite();
-    this.cookLegsSprite.anchor.set(0.5, 1);
-    this.cookLegsSprite.visible = false;
-    this.nodeLayer.addChild(this.cookLegsSprite);
     /* v2.3.1115: chest-armour layer for the cook stand-in -- the equipped plate
        (+ armoured arms) drawn over the torso, untinted, shown only when chest
        armour is equipped. Same 24-frame 213x220 cook strip at
@@ -760,21 +768,13 @@ export class EffectsRenderer {
     this.cookChestSprite.anchor.set(0.5, 1);
     this.cookChestSprite.visible = false;
     this.nodeLayer.addChild(this.cookChestSprite);
+    /* v2.3.1710: both cook bodies now load through _loadCookStrips, which bakes
+       the PLAYER'S skin into them (owner: the cooking character "has the wrong
+       skin color").  v2.3.1114's legs-erased body rides the same bake so the two
+       stay pixel-identical apart from the erased legs. */
     this._cookFrames = [];
-    _fxLoad('/sprites/skills/cook-strip.webp').then((tex) => {
-      const FW = 213, FH = 220;
-      const n = Math.max(1, Math.round(tex.width / FW));
-      for (let i = 0; i < n; i++) this._cookFrames.push(new Texture({ source: tex.source, frame: new Rectangle(i * FW, 0, FW, FH) }));
-    }).catch((err) => console.warn('[cook-strip] load failed', err));
-    /* v2.3.1114: legs-erased cook body, swapped in when leg armour is equipped so
-       the bare mannequin legs don't show behind/through the greaves (the pan is
-       preserved). Same 213x220 frame layout as cook-strip. */
     this._cookLeglessFrames = [];
-    _fxLoad('/sprites/skills/cook-strip-legless.webp').then((tex) => {
-      const FW = 213, FH = 220;
-      const n = Math.max(1, Math.round(tex.width / FW));
-      for (let i = 0; i < n; i++) this._cookLeglessFrames.push(new Texture({ source: tex.source, frame: new Rectangle(i * FW, 0, FW, FH) }));
-    }).catch((err) => console.warn('[cook-strip-legless] load failed', err));
+    this._loadCookStrips();
 
     this.fireSprite = new Sprite();
     this.fireSprite.anchor.set(0.5, 1);
@@ -855,13 +855,6 @@ export class EffectsRenderer {
     this.swordSprite.anchor.set(0.5, 1);
     this.swordSprite.visible = false;
     this.nodeLayer.addChild(this.swordSprite);
-    /* v2.3.1050: tinted shirt under-layer for the swing (mirrors the idle paper-doll
-       shirt in entityRenderer._placeGear).  Added BEFORE the chest so it renders
-       beneath any torso plate; it's hidden whenever a chest piece is worn. */
-    this.swordShirtSprite = new Sprite();
-    this.swordShirtSprite.anchor.set(0.5, 1);
-    this.swordShirtSprite.visible = false;
-    this.nodeLayer.addChild(this.swordShirtSprite);
     /* v2.3.948: weapon layer drawn over the armored swing body (kept separate so
        the sword stays recolorable; the armored sheet has the weapon removed). */
     this.swordChestSprite = new Sprite();
@@ -872,6 +865,20 @@ export class EffectsRenderer {
     this.swordLegsSprite.anchor.set(0.5, 1);
     this.swordLegsSprite.visible = false;
     this.nodeLayer.addChild(this.swordLegsSprite);
+    /* v2.3.1050: tinted shirt under-layer for the swing (mirrors the idle
+       paper-doll shirt in entityRenderer._placeGear); hidden whenever a chest
+       piece is worn.
+       v2.3.1710: moved from BEFORE the chest to AFTER the legs (owner: "while
+       woodcutting and doing OTHER THINGS the shirt should be layered in front
+       of the leg armor" — the swing is one of the other things).  The old
+       comment's reason for the old position ("beneath any torso plate") is
+       already guaranteed by _placeSwingShirt hiding the shirt outright when a
+       chest piece is on, so ordering it above the plate changes nothing that
+       can ever be seen. */
+    this.swordShirtSprite = new Sprite();
+    this.swordShirtSprite.anchor.set(0.5, 1);
+    this.swordShirtSprite.visible = false;
+    this.nodeLayer.addChild(this.swordShirtSprite);
     this.swordWeaponSprite = new Sprite();
     this.swordWeaponSprite.anchor.set(0.5, 1);
     this.swordWeaponSprite.visible = false;
@@ -991,11 +998,6 @@ export class EffectsRenderer {
     this.bowSprite.anchor.set(0.5, 1);
     this.bowSprite.visible = false;
     this.nodeLayer.addChild(this.bowSprite);
-    /* v2.3.1050: tinted shirt under-layer for the bow shot (under the chest). */
-    this.bowShirtSprite = new Sprite();
-    this.bowShirtSprite.anchor.set(0.5, 1);
-    this.bowShirtSprite.visible = false;
-    this.nodeLayer.addChild(this.bowShirtSprite);
     this.bowChestSprite = new Sprite();
     this.bowChestSprite.anchor.set(0.5, 1);
     this.bowChestSprite.visible = false;
@@ -1004,6 +1006,15 @@ export class EffectsRenderer {
     this.bowLegsSprite.anchor.set(0.5, 1);
     this.bowLegsSprite.visible = false;
     this.nodeLayer.addChild(this.bowLegsSprite);
+    /* v2.3.1050: tinted shirt under-layer for the bow shot.
+       v2.3.1710: added LAST of the three so it draws in front of the leg armour
+       (owner, on the shirt/greaves seam) — same reasoning and same safety as the
+       sword swing above: a worn chest plate hides the shirt entirely, so only
+       shirt-vs-legs was ever visible at once. */
+    this.bowShirtSprite = new Sprite();
+    this.bowShirtSprite.anchor.set(0.5, 1);
+    this.bowShirtSprite.visible = false;
+    this.nodeLayer.addChild(this.bowShirtSprite);
     this.bowWeaponSprite = new Sprite();
     this.bowWeaponSprite.anchor.set(0.5, 1);
     this.bowWeaponSprite.visible = false;
@@ -1055,6 +1066,79 @@ export class EffectsRenderer {
        (chop 240, cook 213, fire 161).  If those strips are re-cut, rerun the
        crown generator with the matching widths or the traits drift off-head. */
     fetch('/sprites/skills/crowns.json').then((r) => r.json()).then((j) => { this._skillCrowns = j; }).catch(() => {});
+  }
+
+  /* ═══ v2.3.1710: THE COOK WEARS THE PLAYER'S SKIN ═══
+   *
+   * Owner playtest: "While Cooking character is too large (about 25%) has the
+   * wrong skin color and flashing shirt."
+   *
+   * The wrong skin was the raw load.  cook-strip.webp is a whole pre-drawn
+   * figure that REPLACES the avatar at the campfire (entityRenderer hides the
+   * real body for `cooking`), and it went through plain Assets.load, so it kept
+   * the artist's saturated orange (#e88838) while the avatar standing next to
+   * the fire a second earlier wore #cd864b or whatever the player picked.  The
+   * head TRAITS on this figure already follow the player (_placeSkillTraitsOn,
+   * v2.3.867), which is what made the mismatch read as a bug rather than a
+   * style: their own hat, somebody else's face.
+   *
+   * The recolour is skin-only + blob-guarded — see recolorStandInSkin in
+   * playerSkins.js for why the shipped whole-body pipeline would have retinted
+   * the frying pan and the fish in it.
+   *
+   * PRELOADING IS LAW (CLAUDE.md): the bake is pushed onto _fxPreload, the same
+   * list _fxLoad feeds, so effectsAnimationsReady() — and therefore the intro
+   * gate — waits for the RECOLOURED textures, not just for the raw download.
+   * Nothing here is lazy: a first-cook hitch would be the regression TRAPS #12
+   * describes. */
+  _loadCookStrips() {
+    _fxPreload.push(this._fetchAndBakeCook());
+    /* The character menu can change the skin mid-session, so rebake on it the
+       way the sword/bow stand-ins do (_rebakeBodies, v2.3.975). */
+    onSkinChange(() => { this._fetchAndBakeCook(); });
+  }
+
+  /* Fetch both cook sheets, bake the player's skin in, and let the decoded
+     source images go.
+     THE SOURCES ARE DELIBERATELY NOT CACHED, unlike _bodyImgCache in the
+     sword/bow path.  These two strips are 5112x220, i.e. ~4.5MB of decoded
+     RGBA each — holding both just to make a rebake cheaper would add ~9MB of
+     resident CPU memory for a menu action, on the platform whose OOM history
+     is written up in spriteScale.js (v2.3.1408: iPhone Safari killing the page
+     under GPU+canvas pressure).  A rebake instead re-fetches, which the HTTP
+     cache serves from disk, and it happens behind the character menu — never
+     mid-play, so the preloading LAW is not in tension with it. */
+  _fetchAndBakeCook() {
+    const load = (url) => new Promise((res, rej) => {
+      const im = new Image();
+      im.onload = () => res(im);
+      im.onerror = rej;
+      im.src = url;
+    });
+    return Promise.all([
+      load('/sprites/skills/cook-strip.webp'),
+      load('/sprites/skills/cook-strip-legless.webp'),
+    ]).then(([body, legless]) => {
+      this._bakeCookStrips(body, legless);
+    }).catch((err) => console.warn('[cook-strip] load failed', err));
+  }
+
+  _bakeCookStrips(bodyImg, leglessImg) {
+    /* skinTarget() returns null for the 'default' pick, which for the PLAYER
+       sheets means "the art is already this colour".  It is not true of this
+       painting, so default falls back to the explicit tan — that is the whole
+       point of the fix for anyone who never opened the skin picker. */
+    const skinT = skinTarget(getSkin()) || DEFAULT_SKIN_TARGET;
+    const FW = 213, FH = 220;
+    for (const [key, img] of [['_cookFrames', bodyImg], ['_cookLeglessFrames', leglessImg]]) {
+      const cv = recolorStandInSkin(img, skinT, FH);
+      const source = Texture.from(cv).source;
+      source.scaleMode = 'linear';
+      const n = Math.max(1, Math.round(cv.width / FW));
+      const arr = [];
+      for (let i = 0; i < n; i++) arr.push(new Texture({ source, frame: new Rectangle(i * FW, 0, FW, FH) }));
+      this[key] = arr;
+    }
   }
 
   /* Composite the player's traits onto a stand-in skill sprite for this frame.
@@ -3702,16 +3786,25 @@ export class EffectsRenderer {
     }
     /* drawn-height / frame cadence -- copied from the LOCAL figures so a remote
        gatherer reads at the same size: chopper (_updateExtractionCue, 112px @
-       45ms; v2.3.1348 +33% with the local figure), cook (41px @ 60ms), fire
-       (_updateFiremaking, 88px @ 55ms). */
+       45ms), cook (60ms), fire (_updateFiremaking, 55ms).  v2.3.1710: the drawn
+       heights that used to be quoted here are gone — they were three
+       generations stale and reading them was worse than looking, which is how
+       chop stayed at 112 after the local figure went to 95.  The live numbers
+       are in SPEC below, beside their local counterparts' version tags. */
     /* v2.3.1574: traitDir mirrors the direction each LOCAL figure composites
        its head traits at -- the chopper's source art faces EAST (see the
        _placeSkillTraitsOn('chop', …, 'east') call in _updateExtractionCue),
        cook and fire face south.  Getting this wrong puts a peer's hat on
        sideways rather than not at all, which is harder to spot. */
     const SPEC = {
-      chop: { frames: this._chopFrames, h: 112, ms: 45, traitDir: 'east' },
-      cook: { frames: this._cookFrames, h: 82, ms: 60, traitDir: 'south' }, /* v2.3.1431: match the local 2x cook (v2.3.1429) */
+      /* v2.3.1710: re-synced with the LOCAL figures, which is what this table
+         has always claimed to be.  chop drifted when v2.3.1476 took the local
+         chopper 112 -> 95 (owner: -15%) and never updated the copy here, so a
+         peer's lumberjack has been rendering 18% larger than your own since
+         then; cook follows the same pass's 82 -> 62.  If a local height moves
+         again, move it here in the same edit — nothing enforces the link. */
+      chop: { frames: this._chopFrames, h: 95, ms: 45, traitDir: 'east' },
+      cook: { frames: this._cookFrames, h: 62, ms: 60, traitDir: 'south' },
       fire: { frames: this._fireFrames, h: 154, ms: 55, traitDir: 'south' }, /* v2.3.1435: 1.75x with the local figure */
     };
     for (const id in others) {
@@ -3984,8 +4077,12 @@ export class EffectsRenderer {
     if (!set) {
       const mk = () => { const s = new Sprite(); s.visible = false; this.nodeLayer.addChild(s); return s; };
       /* v2.3.1088: jogLegs/jogLegsGear first so they sit UNDER the body (torso in
-         front).  `shirt` after the body so it sits under legs/chest. */
-      set = { jogLegs: mk(), jogLegsGear: mk(), body: mk(), shirt: mk(), legs: mk(), chest: mk(), weapon: mk(), traits: { hair: mk(), beard: mk(), hat: mk() } };
+         front).
+         v2.3.1710: `legs` now comes BEFORE `shirt` — the literal's key order is
+         the mk() call order, which is the addChild order, which is the z-order,
+         so this line alone puts a peer's shirt in front of their greaves the way
+         the owner asked for the local character. */
+      set = { jogLegs: mk(), jogLegsGear: mk(), body: mk(), legs: mk(), shirt: mk(), chest: mk(), weapon: mk(), traits: { hair: mk(), beard: mk(), hat: mk() } };
       this._remoteSwordSprites.set(id, set);
     }
     return set;
@@ -4168,9 +4265,11 @@ export class EffectsRenderer {
     if (!set) {
       const mk = () => { const s = new Sprite(); s.visible = false; this.nodeLayer.addChild(s); return s; };
       /* v2.3.1087: jogLegs/jogLegsGear created FIRST so they sit UNDER the body
-         (torso in front), matching the local player.  `shirt` after the body so it
-         sits under legs/chest. */
-      set = { jogLegs: mk(), jogLegsGear: mk(), body: mk(), shirt: mk(), legs: mk(), chest: mk(), weapon: mk(), traits: { hair: mk(), beard: mk(), hat: mk() } };
+         (torso in front), matching the local player.
+         v2.3.1710: `legs` before `shirt`, in step with the local bow stand-in
+         and _ensureRemoteSwordSet — see the note there on why key order is
+         z-order. */
+      set = { jogLegs: mk(), jogLegsGear: mk(), body: mk(), legs: mk(), shirt: mk(), chest: mk(), weapon: mk(), traits: { hair: mk(), beard: mk(), hat: mk() } };
       this._remoteBowSprites.set(id, set);
     }
     return set;
@@ -4416,7 +4515,13 @@ export class EffectsRenderer {
          on the FAR side of the body, so the body must occlude the blade -- drop
          the weapon BEHIND the body.  Every other facing keeps it in front (on
          top of body + gear). */
-      this._orderSwingWeapon(this.swordWeaponSprite, sp, this.swordLegsSprite, fmap[0] === 'north');
+      /* v2.3.1710: the `topGear` argument must name whichever gear sprite is
+         TOPMOST in child order, because the restore branch re-seats the weapon
+         at exactly that index.  The v2.3.1710 shirt/legs swap moved the top of
+         this stack from legs to shirt, so this argument moves with it — leaving
+         it on legs would drop the blade behind the shirt on the first non-north
+         swing after any north one. */
+      this._orderSwingWeapon(this.swordWeaponSprite, sp, this.swordShirtSprite, fmap[0] === 'north');
       if (_jog) {
         /* v2.3.1093: legs face the SAME direction as the torso (the swing
            facing), not the movement direction -- upper and lower body stay
@@ -4824,7 +4929,20 @@ export class EffectsRenderer {
        + ready), the chopper's sibling.  Stands just left of the fire so the
        pan (extends right) sits over the flames. */
     if (cookingCue && this.cookSprite && this._cookFrames.length) {
-      const COOK_H = 82, COOK_FRAME_MS = 60;   // v2.3.1429 (owner): 2x — undoes the v2.3.896 halving
+      /* v2.3.1710 (owner: "While Cooking character is too large (about 25%)"):
+         82 -> 62.  v2.3.1429 doubled 41 -> 82 on an owner request and overshot.
+         The number is measurable, not taste: the drawn height of the AVATAR is
+         `(221 - 33) * bodyDirScale('stand', dir) * LOCAL_SCALE` =
+         188 * 1.051 * 0.421875 = 83.8px (entityRenderer, the same figure the
+         sword/bow stand-ins size themselves against via S._swordBodyH), and the
+         cook filled its whole 220px frame at 82 — so the SILHOUETTES matched
+         while the FIGURES did not, because the cook is a crouch.  Comparing the
+         part the eye actually reads, the head: the cook's is 85 art px against
+         the standing body's 51, so at COOK_H 82 it drew 31.7px beside a 22.6px
+         avatar — 40% too big.  62 lands it at 24.0px, inside the owner's "about
+         25%" and within 6% of a head-for-head match, which is as close as a
+         chunkier crouched painting is going to get without looking shrunken. */
+      const COOK_H = 62, COOK_FRAME_MS = 60;
       const sp = this.cookSprite;
       const cookFi = Math.floor(now / COOK_FRAME_MS) % this._cookFrames.length;
       /* v2.3.1114: when leg armour is equipped, use the legs-erased body so the
@@ -4833,7 +4951,11 @@ export class EffectsRenderer {
       sp.texture = (_legsOn ? this._cookLeglessFrames : this._cookFrames)[cookFi];
       const s = COOK_H / 220;
       sp.scale.set(s, s);
-      sp.x = node.x - 14;                       // doubled with the size so the pan still sits over the fire (v2.3.1429)
+      /* The pan hangs to the figure's RIGHT, so this offset is what keeps it
+         over the flames — it has to track COOK_H or the pan slides off the
+         fire.  v2.3.1429 doubled it with the 2x; v2.3.1710 scales it back by
+         the same ratio (14 * 62/82 = 10.6). */
+      sp.x = node.x - 11;
       sp.y = node.y + 8;
       sp.visible = true;
       /* v2.3.1113: draw the player's shirt over the cook torso, copying the
@@ -4846,7 +4968,32 @@ export class EffectsRenderer {
         s.anchor.set(0.5, 1); s.texture = t;
         s.scale.set(sp.scale.x, sp.scale.y); s.x = sp.x; s.y = sp.y; s.visible = true;
       };
-      this._placeSwingShirt(this.cookShirtSprite, placeCookShirt, this._shirtId(), getEquip('chest'), 'cook', 'south', 213, cookFi, getShirtColor(), getShirt());
+      /* ═══ v2.3.1710: THE FLASHING SHIRT ═══
+         Owner: the cooking character has a "flashing shirt".  This one is in the
+         ASSET, not in the loop.  gear/shirt/tshirt/cook-south.png was assembled
+         by tools/build_cook_shirt.mjs, which walks the 6x4 grid of the owner's
+         shirt contact sheet and writes `shirts[f]` — a DIFFERENT painting — into
+         frame f, each one luminance-normalised to its OWN peak (`L/peak*245`).
+         So the 24 frames are 24 different garments, not 24 poses of one.
+         Measured on the shipped sheet: mean shirt luminance swings 185.1 -> 207.9
+         (12.3% peak-to-peak) and the mask width 104 -> 126 px, frame to frame, at
+         16.7 fps.  That is the flash.  The proof it is this sheet and not the
+         cook pipeline: the chest and legs sheets for the SAME pose were baked
+         properly and are steady — legs/steelgreaves/cook-south.png is literally
+         byte-identical frame to frame, chest/steelplate/cook-south.png varies
+         smoothly with the arms.
+         Fix without touching art: PIN the shirt to one frame.  Nothing is lost —
+         the cook's torso and head do not move across the loop (only the arms and
+         the pan do), which is exactly why a single garment reads correctly on
+         all 24 bodies.  Frame 22 was chosen by measurement, not by eye: of the
+         24 it leaves the fewest uncovered torso pixels (158/frame vs a 541
+         median) with the least overhang of that low-gap group, and its luminance
+         (201.9) sits within 2% of the sheet median so the shirt does not get
+         brighter or darker than what has been shipping.
+         The DURABLE fix is re-cutting the sheet from ONE shirt tracked across
+         the 24 poses; until then this is stable and costs nothing. */
+      const COOK_SHIRT_FRAME = 22;
+      this._placeSwingShirt(this.cookShirtSprite, placeCookShirt, this._shirtId(), getEquip('chest'), 'cook', 'south', 213, COOK_SHIRT_FRAME, getShirtColor(), getShirt());
       /* v2.3.1114: equipped leg armour over the cook's legs (untinted; the
          greaves keep their own metal colour). _gearStripFrame returns null when
          no legs are equipped, so placeCookShirt hides the sprite. */

@@ -91,7 +91,17 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const card = document.querySelector('.bt-inspect-card');
     if (!card) return null;
     const imgs = [...card.querySelectorAll('img')].map((i) => i.getAttribute('src') || '');
-    return { imgs, text: card.innerText || '' };
+    /* v2.3.1710: the card now draws BOTH payout moments on an offer, so
+       "is the bow on screen" is no longer the question — "which caption is
+       the bow under" is.  Read the groups, not the flat image list. */
+    const groups = {};
+    for (const g of card.querySelectorAll('[data-gives]')) {
+      groups[g.getAttribute('data-gives')] = {
+        caption: (g.firstElementChild && g.firstElementChild.textContent || '').trim(),
+        imgs: [...g.querySelectorAll('img')].map((i) => i.getAttribute('src') || ''),
+      };
+    }
+    return { imgs, groups, text: card.innerText || '' };
   });
   rec.ok('the dialogue shows Mayor Bro\'s portrait, not an initial in a circle',
     !!art && art.imgs.some((s) => /mayor-bro-head/.test(s)), art && art.imgs);
@@ -103,10 +113,37 @@ export async function run({ browser, wsPort, webPort, rec }) {
          && !art.imgs.some((s) => /items\/sword\.webp/.test(s)), art && art.imgs);
   rec.ok('...and the SHIELD',
     !!art && art.imgs.some((s) => /items\/shield\.webp/.test(s)), art && art.imgs);
-  /* The bow is paid on TURN-IN, so it must not be pictured on the offer —
-     showing every payout at once would promise a reward you have not earned. */
-  rec.ok('...but NOT the bow, which is the turn-in reward',
-    !!art && !art.imgs.some((s) => /items\/bow\.webp/.test(s)), art && art.imgs);
+
+  /* ═══ v2.3.1710: THE OFFER SHOWS WHAT YOU ARE WORKING TOWARD ═══
+     Owner: "Quest item thumbnail rewards are not shown in the quest panel
+     until after you accept the quest (only xp and gold are shown)."
+     This REPLACES the v2.3.1681 assertion that the bow must be ABSENT from
+     the offer.  That rule was written to stop the card promising a reward you
+     have not earned, and it did — by hiding the reward entirely, so tut_4 and
+     life_2 (whose every payout is on turn-in) offered pictures of nothing at
+     all.  The owner has ruled on it: you get to see the prize before you take
+     the job.
+     The promise-vs-hand-over distinction the old rule protected is NOT
+     dropped, it moves into the captions — so these assertions are about
+     GROUPING, which is strictly more than the old one checked.  Reading
+     `data-gives` rather than the flat image list is what makes that provable:
+     with both groups on one card, "the bow is on screen" would also pass if
+     the bow were drawn under "HE HANDS YOU NOW", which is the exact lie
+     v2.3.1704 exists to prevent. */
+  const gAcc = (art && art.groups && art.groups.accept) || null;
+  const gFin = (art && art.groups && art.groups.complete) || null;
+  rec.ok('the offer draws BOTH payout moments as separate captioned groups',
+    !!gAcc && !!gFin, art && art.groups);
+  rec.ok('the hand-over group holds the sword and shield, and nothing else',
+    !!gAcc && gAcc.imgs.length === 2
+      && gAcc.imgs.some((s) => /items\/great-sword\.webp/.test(s))
+      && gAcc.imgs.some((s) => /items\/shield\.webp/.test(s)), gAcc);
+  rec.ok('the turn-in group shows the bow and the staff you have NOT earned yet',
+    !!gFin && gFin.imgs.some((s) => /items\/bow\.webp/.test(s))
+      && gFin.imgs.some((s) => /items\/staff\.webp/.test(s)), gFin);
+  rec.ok('...and the bow is under the FINISHING caption, never the hand-over one',
+    !!gAcc && !gAcc.imgs.some((s) => /items\/bow\.webp/.test(s))
+      && !!gFin && /finishing/i.test(gFin.caption), { gAcc, gFin });
 
   /* ═══ v2.3.1704: THE TWO PAYOUT MOMENTS SAY WHEN, NOT WHO ═══
      Owner: "The quest UI is a little confusing what's rewards for the next

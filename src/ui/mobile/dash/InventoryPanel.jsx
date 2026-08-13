@@ -44,7 +44,11 @@ export const classify = (key) => {
    one consistent style — everything now lives under /icons/items/.
    The old per-type dirs (icons/wood, icons/cook, ...) keep their files
    for any legacy surface still pointing at them. */
-const ITEMS_V = '?v=2.3.1703'; /* v2.3.1703: bumped for the blue slime-remnants thumbnail */
+/* v2.3.1710: bumped so a browser holding the cached bag drops the emoji-vest
+   render and fetches the real chest-plate torso art (owner: "it's an emoji
+   vest").  Lives in THREE files — keep them in lockstep or one surface serves
+   stale thumbnails while its neighbour serves fresh ones. */
+const ITEMS_V = '?v=2.3.1710';
 const WOOD_THUMB = `/icons/items/wood-log.webp${ITEMS_V}`;
 const BURNT_DUST_THUMB = `/icons/items/burnt-dust.webp${ITEMS_V}`;
 const SLIME_REMNANTS_THUMB = `/icons/items/remnants-slime.webp${ITEMS_V}`;
@@ -972,8 +976,20 @@ const StashTile = ({ kind, obj, index, style: styleOverride }) => {
     ? (obj && obj.gearId === 'steelplate'   ? `/icons/items/chest-plate.webp${ITEMS_V}`
       : obj && obj.gearId === 'steelgreaves' ? `/icons/items/greaves.webp${ITEMS_V}`
       : obj && obj.gearId === 'tshirt'       ? `/icons/items/cloth-shirt.webp${ITEMS_V}` : null)
+    /* v2.3.1710: owner playtest — "The iron torso inventory icon is wrong.
+       It's an emoji vest. It needs to be the real torso armour (looks
+       similar armor style to the leg inventory icon)."  The comment this
+       replaces ("no armor sprites yet") went stale in v2.3.1325: the owner's
+       painted item set shipped chest-plate.webp — the exact torso twin of the
+       greaves the stashLegs branch below already uses (same 256x256 canvas,
+       same steel/blue-cloth/brass palette, same light).  Nothing had to be
+       drawn; the glyph fallback simply outlived its reason, and the two
+       halves of one armour set were rendering in two different visual
+       languages one row apart.  gameSystems.js has ALSO been pointing the
+       life_2 quest-reward preview at this same file since v2.3.1325, so the
+       bag was the odd one out even against the quest that pays it. */
     : kind === 'stashArmor'
-    ? null /* no armor sprites yet -- glyph fallback below */
+    ? `/icons/items/chest-plate.webp${ITEMS_V}`
     : kind === 'stashLegs'
     ? `/icons/items/greaves.webp${ITEMS_V}` /* v2.3.1701: legs have real art */
     : kind === 'stashShield'

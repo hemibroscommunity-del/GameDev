@@ -74,6 +74,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     return;
   }
 
+
   /* ── 1. walk out of town on its real World View trail-head ── */
   await stand(P, marks.townExit.tx, marks.townExit.ty);
   await H.waitFor(P, (S) => S.currentZone, (z) => z === 'worldview',
@@ -93,7 +94,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     { landed, townMark: marks.townMark });
 
   /* ── 2. the momentum that brought you here must not carry you back ──
-     This is the owner's v2.3.1703 report: they walked south out of town, kept
+     The owner's v2.3.1703 report: they walked south out of town, kept
      walking, and went straight back in. */
   await stand(P, marks.townMark.tx, marks.townMark.ty);
   await P.page.waitForTimeout(700);              // well inside the deaf window
@@ -104,8 +105,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
      Owner: "the portal from worldview back into town doesn't work."  The
      v2.3.1703 latch released on DISTANCE (8 tiles) and the arrival sat 4
      tiles away, so the way home stayed dead until you had wandered off and
-     come back — which is indistinguishable, from the seat, from a broken
-     portal.  This is the assertion that would have caught it. */
+     come back — indistinguishable, from the seat, from a broken portal. */
   await P.page.waitForTimeout(2600);             // past HUB_EXIT_DEAF_MS
   await stand(P, marks.townMark.tx, marks.townMark.ty);
   const home = await H.waitFor(P, (S) => S.currentZone, (z) => z === 'town',
@@ -113,13 +113,37 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('a moment later, walking into the town portal DOES take you home',
     home === 'town', await where(P));
 
-  /* ── 4. and the spokes are reachable from the arrival point ──
+  /* ── 4. THE LOCK-ON DOES NOT FOLLOW YOU OUT OF THE ZONE (v2.3.1710) ──
+     Owner: "locking on a monster (tap to target) continues to follow the
+     monster even when you exit the zone."  S.lockedTarget holds a direct REF
+     to a monster object, and the only thing that ever cleared it was the
+     target DYING — a monster you walked away from is still alive, so the
+     reticle, the aim assist and the auto-attack all kept pointing into the
+     zone you left.  Set BEFORE the hop, deliberately: the point is that it
+     survives the transition, so it has to be held when the transition runs. */
+  const locked = await P.page.evaluate(() => {
+    const S = window._gameState && window._gameState.current;
+    if (!S) return false;
+    /* Shaped the way the canvas tap path builds it (BroTown.jsx). */
+    S.lockedTarget = { type: 'monster', id: 'qa-lock-1',
+      ref: { id: 'qa-lock-1', x: 100, y: 100, alive: true, curHp: 10 } };
+    return !!S.lockedTarget;
+  });
+  rec.ok('a lock-on could be set before changing zone', locked === true);
+
+  /* ── 5. …and the spokes are still reachable from the arrival point ──
      The reason the spawn cannot sit south of the marker: Flame Fields is
      almost due north of it, so a southern arrival puts the marker on the
      straight line there.  Walk it and prove the line is clear. */
   await stand(P, marks.townExit.tx, marks.townExit.ty);
   await H.waitFor(P, (S) => S.currentZone, (z) => z === 'worldview',
     { timeout: 30000, label: 'back out to the World View' }).catch(() => {});
+  rec.ok('...the zone change carried the player out of town',
+    (await where(P)).zone === 'worldview', await where(P));
+  rec.ok('...and the lock did NOT come with them',
+    (await H.readState(P, (S) => (S.lockedTarget ? (S.lockedTarget.id || 'held') : null))) === null,
+    await H.readState(P, (S) => S.lockedTarget && S.lockedTarget.id));
+
   const spoke = marks.spokes.find((s2) => s2.zoneId === 'ember') || marks.spokes[0];
   await stand(P, spoke.tx, spoke.ty);
   const atSpoke = await H.waitFor(P, (S) => S.currentZone, (z) => z === spoke.zoneId,

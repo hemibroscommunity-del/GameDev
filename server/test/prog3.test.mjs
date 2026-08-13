@@ -5,7 +5,8 @@
  *   1. Migration v10 respec: levels from carried XP (legacy+1), pool =
  *      Σ legacy weapon levels + defense level, alloc zeroed, absent-only.
  *   2. Fresh-join bootstrap: levels 1/1/1, char level 3, §5-B pools.
- *   3. Trained XP accrual at hit time (melee→sword, special→staff) and
+ *   3. Trained XP accrual at hit time (melee→sword; v2.3.1710: a special
+ *      trains the weapon that fired it, not Magic) and
  *      the level-up: +1 pool, +1 char level, full restore, prog3_level.
  *   4. Allocation endpoint: pool gate, stat whitelist ('__proto__'
  *      rejected), the §6-C double cap (stat cap AND min(100, level)).
@@ -125,7 +126,7 @@ const psA = room.playerState.pa;
     lvlMsgs.map((m) => m.payload));
 
   // Hit-time accrual through the real monster_damage handler:
-  // melee → sword, special → staff (§3: specials credit Magic).
+  // melee → sword; v2.3.1710: a special trains its OWN weapon.
   const m = (room.monsters.meadow || []).find((x) => x.alive);
   check('harness found a live meadow monster', !!m);
   if (m) {
@@ -136,9 +137,24 @@ const psA = room.playerState.pa;
     room._handleMonsterDamage(sess, { monsterId: m.id, zone: 'meadow', slot: 'melee' });
     check('melee hit trains sword (xp = credited damage)', psA.prog3.sk.sword.xp > xpBefore,
       { before: xpBefore, after: psA.prog3.sk.sword.xp });
+    /* ═══ v2.3.1710: A SPECIAL TRAINS THE WEAPON THAT FIRED IT ═══
+       This assertion used to read "special hit trains staff/Magic", pinning
+       §3's rule that every special credited Magic whatever you were holding.
+       The owner hit it in a playthrough — "I was shooting a bow ... and it
+       levelled up my magic combat skill instead" — and, asked directly, chose
+       to move specials onto their own weapon while keeping Magic's
+       cross-weapon value as the MANA POOL every special spends.  So a MELEE
+       special must now train sword and leave Magic alone; the old assertion
+       is inverted rather than deleted, because "Magic did not move" is the
+       half that would silently rot if the coupling ever came back. */
     const staffBefore = psA.prog3.sk.staff.xp + psA.prog3.sk.staff.level;
+    const swordBefore2 = psA.prog3.sk.sword.xp + psA.prog3.sk.sword.level;
     room._handleMonsterDamage(sess, { monsterId: m.id, zone: 'meadow', slot: 'melee', special: true });
-    check('special hit trains staff/Magic', psA.prog3.sk.staff.xp + psA.prog3.sk.staff.level > staffBefore,
+    check('special hit trains the WEAPON that fired it, not Magic',
+      psA.prog3.sk.sword.xp + psA.prog3.sk.sword.level > swordBefore2,
+      { before: swordBefore2, after: psA.prog3.sk.sword.xp + psA.prog3.sk.sword.level });
+    check('...and Magic is untouched by a melee special',
+      psA.prog3.sk.staff.xp + psA.prog3.sk.staff.level === staffBefore,
       psA.prog3.sk.staff);
   }
 }
