@@ -2294,6 +2294,44 @@ export function setupWebSocket(ctx) {
           ws.send(JSON.stringify(msg));
           return;
         }
+        /* ═══ v2.3.1706: THREE MORE THE ALLOWLIST WAS EATING ═══
+           Found by the precheck rule added in v2.3.1704 to mechanise TRAPS
+           #18 — every one of these has a server `case`, a written handler and
+           a spec, and not one of them has ever reached the worker.
+
+           gem_cut_request is the worst of the three and is a live economy
+           bug, not a dormant one: caps.gems is advertised (join.js), so
+           GemcutPanel takes the server-settled branch — it consumes the RAW
+           gem locally as prediction, returns early, and waits for the
+           private gem_cut_result event to tell it polished-or-shattered.
+           That event can never arrive, so cutting a gem destroys it and pays
+           nothing, every time.
+
+           amulet_forge_request (op:'gem') is the same shape one step milder:
+           the local slot happens anyway, so the amulet LOOKS gemmed until the
+           worker's next player_state echo — which has never heard of the gem
+           — puts it back.  The gem is gone either way.
+
+           build_point_earned is the harmless one: its handler only recomputes
+           maxes early.  Included because leaving one known-dead send in place
+           re-teaches the next reader that the warning is noise.
+
+           No double-spend from switching them on: all three clients already
+           treat their local mutation as PREDICTION against a server that
+           settles from its own copy (rule 20), which is exactly why they were
+           written this way and exactly what has been going unused. */
+        if (msg.type === 'gem_cut_request') {
+          ws.send(JSON.stringify(msg));
+          return;
+        }
+        if (msg.type === 'amulet_forge_request') {
+          ws.send(JSON.stringify(msg));
+          return;
+        }
+        if (msg.type === 'build_point_earned') {
+          ws.send(JSON.stringify(msg));
+          return;
+        }
         /* v2.3.1702: firemaking (light a campfire from a wood_* log).  THIS
            SHIM IS AN ALLOWLIST -- a message type with no case here does not
            reach the worker, it falls through to the broadcast/drop tail
