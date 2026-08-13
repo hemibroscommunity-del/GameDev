@@ -1620,9 +1620,34 @@ input{font-family:inherit}
   .bt-joystick-zone { display:none !important; }
   .bt-desktop-hide { display:none !important; }
 }
-.bt-kb-hints{position:fixed;bottom:140px;left:12px;z-index:20;display:flex;gap:4px;flex-wrap:wrap;max-width:280px;
-  pointer-events:none;opacity:.4;transition:opacity .3s}
-.bt-kb-hints:hover{opacity:1;pointer-events:auto}
+/* v2.3.1715: bottom was a HARDCODED 140px, and --dash-h's own boot fallback
+   is 145px — so this strip has been sitting INSIDE the dashboard band, under
+   an opaque panel, at every viewport size.  Owner (desktop playtest) never
+   saw it: probing its own bounding box at 1920x1080 returned the inventory
+   tab strip painted over it.  It predates the variable-height band; the fix
+   is the same calc() the zone-action buttons learned in v2.3.1205 after the
+   identical bug made them unreachable.
+   The +89 rather than +12 stacks this ABOVE .bt-desktop-stats, which was
+   buried by the same bug and takes the slot directly on the band: that block
+   carries HP / mana / stamina and wins the closer spot.  89 = its measured
+   69px height (four fixed 14px rows + three 4px gaps) + 12 + 8 of air. */
+.bt-kb-hints{position:fixed;bottom:calc(var(--dash-h) + 89px);left:12px;z-index:20;display:flex;gap:4px;flex-wrap:wrap;max-width:280px;
+  /* v2.3.1715: pointer-events auto so the strip can be TAPPED to dismiss
+     (owner: "do a toggle on and off option for it too").  It sits over the
+     world, so the handler stops the tap reaching the canvas. */
+  /* v2.3.1715: .4 -> .8 resting.  With the desktop shell the strip now sits
+     over the WORLD rather than over dark chrome, and at .4 it washed out
+     completely on the town's bright sand. */
+  pointer-events:auto;cursor:pointer;opacity:.8;transition:opacity .3s}
+.bt-kb-hints:hover{opacity:1}
+/* The dismissed state: one small chip in the same corner, so the controls are
+   recoverable.  A toggle you cannot find your way back from is a delete. */
+.bt-kb-chip{position:fixed;bottom:calc(var(--dash-h) + 89px);left:12px;z-index:20;
+  display:flex;align-items:center;justify-content:center;min-width:44px;min-height:28px;
+  padding:4px 10px;background:rgba(0,0,0,.6);border:1px solid rgba(255,255,255,.15);
+  border-radius:4px;font-size:13px;color:rgba(255,255,255,.7);cursor:pointer;
+  pointer-events:auto;opacity:.8;transition:opacity .3s}
+.bt-kb-chip:hover{opacity:1}
 .bt-kb-key{display:inline-flex;align-items:center;gap:3px;padding:2px 6px;background:rgba(0,0,0,.6);
   /* v2.3.1239: owner feedback — 10px font floor (was 9px); desktop-only kb hint */
   border:1px solid rgba(255,255,255,.15);border-radius:4px;font-size:10px;font-weight:700;color:rgba(255,255,255,.7);
@@ -1635,7 +1660,13 @@ input{font-family:inherit}
 /* ═══ DESKTOP STAT HUD — replaces joystick donuts on pointer:fine ═══ */
 .bt-desktop-stats{display:none}
 @media (pointer:fine) {
-  .bt-desktop-stats{display:flex !important;flex-direction:column;gap:4px;position:fixed;bottom:42px;left:12px;z-index:21;
+  /* v2.3.1715: bottom was a hardcoded 42px — measured at 1920x1080, --dash-h
+     is 269px, so the desktop player's HP / mana / stamina readout was sitting
+     UNDER the dashboard band and elementFromPoint over it returned the band.
+     A desktop player could not see their own health.  Same hardcoded-offset
+     bug as .bt-kb-hints above; same calc() fix.  This block is the one that
+     sits directly on the band — the hints stack above it. */
+  .bt-desktop-stats{display:flex !important;flex-direction:column;gap:4px;position:fixed;bottom:calc(var(--dash-h) + 12px);left:12px;z-index:21;
     pointer-events:none;min-width:140px}
   .bt-ds-row{display:flex;align-items:center;gap:5px;height:14px}
   .bt-ds-icon{width:14px;text-align:center;font-size:10px;flex-shrink:0}
@@ -1686,4 +1717,48 @@ input{font-family:inherit}
 }
 @media (prefers-reduced-motion: reduce) {
   .ls-slot--godly::after { animation: none; }
+}
+
+/* ═══ v2.3.1715: DESKTOP PLAYS IN A CENTRED WINDOW ═══════════════════
+   Owner, watching judges on desktop: "the layout is super stretched.
+   Maybe force the main game area 50% of the size if they're a desktop
+   player and make the dashboard sized the same width."
+
+   Everything here is inside `pointer:fine`, which is the point: the
+   PRIMARY platform is iPhone Safari (pointer:coarse) and it must not see
+   one byte of this.  Phones keep the full-bleed layout they were designed
+   for; only mouse-driven browsers get the window.
+
+   HOW IT RE-ANCHORS 59 FIXED ELEMENTS WITHOUT EDITING THEM.  The HUD is
+   built from ~59 `position:fixed` overlays (15 rules here, 44 inline in
+   JSX) anchored to the viewport, so simply narrowing a wrapper would leave
+   every one of them pinned to the far edges of a 1920px screen while the
+   world shrank to the middle.  `contain:paint` makes #root a CONTAINING
+   BLOCK for fixed descendants, so all of them re-anchor to the window
+   instead — and it clips painting to that box, which is what gives the
+   shell a hard edge.  Doing it this way rather than converting fixed ->
+   absolute is deliberate: 59 conversions an hour before a demo is how you
+   ship a HUD with one control stranded off-screen.
+
+   THE min-width:1000px GATE IS LOAD-BEARING, not tidiness.  With the rule on
+   bare `pointer:fine`, a 390px-wide window that reports a fine pointer (a
+   desktop browser dragged narrow, a touch laptop) got width:50% floored by
+   min-width:600px — a 600px shell inside a 390px window, i.e. the page
+   scrolled sideways.  Measured: hSCROLL true at 390. The gate means the floor
+   can never exceed the window, because the window is at least 1000 whenever
+   the rule applies at all. */
+@media (pointer:fine) and (min-width:1000px) {
+  html, body { background:#070D11; }
+  #root {
+    width:50%;
+    min-width:600px;
+    max-width:100%;
+    height:100%;
+    margin:0 auto;
+    position:relative;
+    contain:paint;
+    /* The seam between the window and the surround, so it reads as a
+       deliberate frame rather than the page failing to fill. */
+    box-shadow:0 0 0 1px rgba(255,255,255,.06), 0 0 48px rgba(0,0,0,.55);
+  }
 }
