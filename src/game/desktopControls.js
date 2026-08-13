@@ -103,6 +103,25 @@ export function setupDesktopControls(S, deps) {
             _desktopNpcQuest(npc, npcQ);
             return;
           }
+          /* v2.3.1717: he is right there and has nothing left.  Say so — a
+             giver whose chain is finished used to go completely inert, which
+             is indistinguishable from a broken NPC. */
+          if (deps.pushNpcMsg) deps.pushNpcMsg(npc.name + ' has nothing for you right now');
+          return;
+        }
+        /* v2.3.1717: NOT in range, but close enough that the player plainly
+           MEANT this NPC.  E used to return in silence here, and a judge on a
+           fresh character read that as "the mayor is broken" rather than
+           "walk closer" — the interact radius is under three tiles and there
+           is no on-screen cue for where it ends. */
+        if (S.npcs && S.currentZone === 'town' && S.player) {
+          var _bestD = 220, _bestN = null;
+          S.npcs.forEach(function (n2) {
+            if (!n2 || !n2.alive) return;
+            var d2 = Math.sqrt(Math.pow(n2.x - S.player.x, 2) + Math.pow(n2.y - S.player.y, 2));
+            if (d2 < _bestD) { _bestD = d2; _bestN = n2; }
+          });
+          if (_bestN && deps.pushNpcMsg) deps.pushNpcMsg('Too far from ' + _bestN.name);
         }
         return;
       }

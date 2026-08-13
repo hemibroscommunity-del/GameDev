@@ -4098,7 +4098,14 @@ export var BroTown = function BroTown(_ref0) {
         /* §KB — Detect nearest interactable NPC (for E-key on desktop) */
         S._nearNpc = null;
         if (S.npcs && S.currentZone === 'town') {
-          var closestNpcDist = 60;
+          /* v2.3.1717: 60 -> 90.  A judge on a fresh character could not talk
+             to Mayor Bro at all.  Measured: E works at 55px and dies by 65,
+             which is under two tiles -- standing what LOOKS like next to him
+             was out of range, and the refusal is silent, so it reads as a
+             broken NPC rather than "step closer".  90 is ~2.8 tiles, still
+             well inside the 110px latch-release radius so the open/close
+             hysteresis is unchanged. */
+          var closestNpcDist = 90;
           S.npcs.forEach(function (npc) {
             if (!npc.alive) return;
             var nd = Math.sqrt(Math.pow(npc.x - P.x, 2) + Math.pow(npc.y - P.y, 2));
@@ -5043,7 +5050,13 @@ export var BroTown = function BroTown(_ref0) {
       setChatOpen: setChatOpen,
       chatInputRef: chatInputRef,
       chatOpen: chatOpen,
-      toggleKbHints: toggleKbHints   /* v2.3.1715: H hides the hints strip */
+      toggleKbHints: toggleKbHints,   /* v2.3.1715: H hides the hints strip */
+      /* v2.3.1717: so E can SAY why it refused instead of going silent. */
+      pushNpcMsg: function pushNpcMsg(text) {
+        var S2 = stateRef.current;
+        if (!S2 || !S2.player) return;
+        pushDmgPopup(S2, S2.player.x, S2.player.y - 74, text, '#D8A94D', { ttl: 1.4, crit: true });
+      }
     });
     return function () {
       cancelAnimationFrame(frameRef.current);
@@ -7275,7 +7288,19 @@ export var BroTown = function BroTown(_ref0) {
             if (!npc.alive) continue;
             var nsx = (npc.x - cx) * SCALE_X,
               nsy = (npc.y - cy) * SCALE_Y;
-            if (Math.sqrt(Math.pow(cssX - nsx, 2) + Math.pow(cssY - nsy, 2)) < 30) {
+            /* ═══ v2.3.1717: CLICK THE NPC, NOT HIS ANKLES ═══
+               A judge could not click Mayor Bro.  Measured by sweeping real
+               clicks on a 10px grid around him: the only points that opened
+               his dialogue were x -20..+20, y -20..+30 RELATIVE TO HIS FEET
+               -- a ~40x50 patch on the ground under him.  npc.x/y is the
+               sprite's bottom-centre anchor, so a 30px circle on it sits on
+               his ankles while his body and head, the parts you actually aim
+               at, are 25-70px ABOVE and missed entirely.  Silently.
+               So: raise the test point onto his torso and widen it.  Radius
+               44 about his mid-body covers head to feet and keeps the 44px
+               tap-target guidance the rest of the UI follows. */
+            var NPC_TAP_RISE = 26, NPC_TAP_R = 44;
+            if (Math.sqrt(Math.pow(cssX - nsx, 2) + Math.pow(cssY - (nsy - NPC_TAP_RISE), 2)) < NPC_TAP_R) {
               /* Check if NPC has a quest */
               var npcQ = getNpcQuest(S.rpg, npc.name);
               if (npcQ) {
