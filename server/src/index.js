@@ -265,6 +265,11 @@ export const PRIVILEGED_EVENTS = new Set([
   // level-up celebration and the allocation ack are both server-truth;
   // forging either would paint fake levels/points on the client.
   'prog3_level', 'prog3_allocated',
+  // v2.3.1687: a quest reward handed to the client's own stash because the
+  // worn slot was full (quests.js).  Server truth about a real grant — a
+  // forged one would mint free armour on the client, so it is denied like
+  // every other server-EMITTED type.
+  'quest_reward_stashed',
   // v2.3.1664: the on-chain checkpoint receipt (chainscore.js).  Server-sent
   // only -- a forged one would paint a fake block-explorer link.
   'chain_score_recorded',
@@ -636,6 +641,11 @@ export class GameRoom {
     this.EXTRACT_OPEN_MAX  = 10000;
     this.EXTRACT_OPEN_BASE = 4000;
     this.EXTRACT_JITTER    = 0.15;
+    /* v2.3.1690 (owner: "monsters don't attack you while you're extracting
+       resources ... it's really annoying and glitchy").  How long a started
+       extraction keeps monsters off you.  Short on purpose — see
+       _extractionShielded for why this is not EXTRACTION_TIMEOUT_MS. */
+    this.EXTRACT_SHIELD_MS = 12000;
     this.EXTRACTION_TIMEOUT_MS = 600000;    // walk-away cancel is silent; sweep stale state after this.  v2.3.1416: 15s -> 10min — the harvest phase no longer times out client-side, so a strike minutes after extraction_start is legitimate; the record must outlive the player's patience (one small record per session, bounded by session count).
     this.EXTRACTION_GRACE_MS = 250;         // forgiveness on both ends to absorb network jitter
     this.SWIPE_FP_CAP_PER_SESSION = 100;    // ring-buffer the fp samples for offline analysis
@@ -995,12 +1005,36 @@ export class GameRoom {
     const now = Date.now();
     // Apply HP damage server-side BEFORE emitting the event so
     // dmgTaken rides on the wire and the client renders the
-    // exact number the server applied.  Block is handled by the
-    // caller (the server skips the attack entirely while shielded),
-    // but pass !blocking to be defensive in case the path changes.
+    // exact number the server applied.
     const targetPs = this.playerState[targetId];
-    const dmgResult = this._applyDamage(targetPs, m.dmg, false);
+    /* ═══ v2.3.1686: THE BLOCK IS RESOLVED HERE, AT IMPACT ═══
+       Owner: "it seems like snowman don't launch projectiles while the
+       character is blocking, which isn't the correct behavior. It should
+       still launch projectiles."
+       The throw used to be gated on `!nearest.blocking`, so raising a shield
+       stopped snowballs being created at all — a block that deleted the
+       attack rather than stopping it, and it read as the monster freezing.
+       That gate is gone; the ball now flies whatever the player is doing.
+       Which moves the question to WHEN the block counts, and impact is the
+       only correct answer: the ball is ~900ms in the air, so a shield raised
+       (or dropped) mid-flight has to matter.  Reading `targetPs.blocking`
+       here rather than trusting the caller is what makes that true, and it
+       matches what the client has always done for slime orbs ("Block/shield
+       is recomputed at impact since the player can raise shield mid-flight",
+       monsterCombat.js).
+       The melee path still short-circuits on its own blocking branch before
+       reaching this method, so nothing is handled twice. */
+    const _blocking = !!(targetPs && targetPs.blocking);
+    const dmgResult = this._applyDamage(targetPs, m.dmg, _blocking);
     const dmgTaken = dmgResult.dmgTaken;
+    /* Same block cost the melee branch charges (15 × Bulwark efficiency),
+       so blocking a snowball and blocking a swing cost the same stamina. */
+    let _blockStamina = 0;
+    if (_blocking && targetPs && typeof targetPs.stamina === 'number') {
+      _blockStamina = Math.max(1, Math.round(15 * this._blockStaminaMult(targetPs)));
+      targetPs.stamina = Math.max(0, targetPs.stamina - _blockStamina);
+      this._saveRpgPools(targetId, targetPs);
+    }
     /* v2.3.1569: THORN retaliation (Flora's status).  Every other
        status is something that happens TO the monster over time;
        thorn is the one that answers the monster's own aggression,
@@ -1040,6 +1074,12 @@ export class GameRoom {
         dmg: m.dmg,
         dmgTaken,
         dodged: dmgResult.dodged,
+        /* v2.3.1686: tells the client to show "Blocked!" + the stamina cost
+           instead of an HP number.  undefined when not blocking, so
+           JSON.stringify drops both and the wire is unchanged for every
+           existing hit — an old client simply sees dmgTaken 0. */
+        blocked: _blocking || undefined,
+        staminaDrain: _blocking ? _blockStamina : undefined,
         // v2.3.1137: Second Wind heal rides the attack event so the
         // client pops the green number without a round-trip (the
         // authoritative hp echo arrives via player_state anyway).
@@ -1085,7 +1125,10 @@ export class GameRoom {
       if (ps.dead || ps.disconnected || !ps.z) continue;
       let arr = playersByZone.get(ps.z);
       if (!arr) playersByZone.set(ps.z, arr = []);
-      arr.push({ id, x: ps.x, y: ps.y, blocking: ps.blocking });
+      /* v2.3.1690: `extracting` rides along so the AI can leave a harvester
+         alone without a second pass over playerState. */
+      arr.push({ id, x: ps.x, y: ps.y, blocking: ps.blocking,
+        extracting: this._extractionShielded(id, now) });
     }
 
     for (const zoneId of activeZones) {
@@ -1361,7 +1404,16 @@ export class GameRoom {
               && attackDist <= _rangedCfg.range
               && now > m.atkCd
               && ccMoveMult > 0                        /* frozen/rooted can't throw either */
-              && !nearest.blocking) {
+              /* v2.3.1686: the `!nearest.blocking` term that used to sit here
+                 is GONE (owner: "it should still launch projectiles").  A
+                 raised shield stopped the ball being created at all, so
+                 blocking deleted the attack instead of stopping it and the
+                 monster looked frozen.  The block is now resolved when the
+                 ball LANDS — see _monsterStrikePlayer. */
+              /* v2.3.1690: ...but a harvester IS left alone — the whole point
+                 is not interrupting the swipe, and a ball in the air lands on
+                 it just as rudely as a swing. */
+              && !nearest.extracting) {
             m.atkCd = now + _rangedCfg.cd;
             m._attackingUntil = now + 400;
             m._projImpactAt = now + _rangedCfg.travelMs;
@@ -1413,6 +1465,18 @@ export class GameRoom {
             // entirely when the player has shield up gives reliable
             // blocking. We still set atkCd so the monster doesn't keep
             // queuing while the player blocks.
+            /* v2.3.1690 (owner: "monsters don't attack you while you're
+               extracting resources"): the swing is skipped outright, cooldown
+               still stamped so the monster does not queue one up for the
+               instant the swipe lands.  Placed ABOVE the blocking branch so a
+               harvester is left alone whether or not a shield happens to be
+               up.  Bounded by EXTRACT_SHIELD_MS, not by the extraction record
+               (_extractionShielded explains why). */
+            if (nearest.extracting) {
+              m.atkCd = now + this.MONSTER_ATTACK_CD;
+              m._attackingUntil = 0;
+              continue;
+            }
             if (nearest.blocking) {
               m.atkCd = now + this.MONSTER_ATTACK_CD;
               m._attackingUntil = now + 400;
@@ -2055,7 +2119,10 @@ export class GameRoom {
       // Anyone in the zone can pick the pile up; despawns after 60 s.
       // Spawn BEFORE the inventory wipe so we capture the items.
       _hook('deathPile', () => this._spawnDeathPile(ps, playerId));
-      ps.inventory = {};
+      /* v2.3.1688: the gathering TOOLS survive (see _keepGatherTools).  They
+         are equipment held in the bag for storage reasons, not loot — losing
+         them to a death silently ends woodcutting/fishing/mining for good. */
+      ps.inventory = this._keepGatherTools(ps.inventory);
     }
     /* v2.3.1616: carry the duel exemption forward to the RESPAWN wipe, which
        is a second, unconditional `ps.inventory = {}` five seconds from now
@@ -2124,7 +2191,10 @@ export class GameRoom {
          precisely the window where it was still intact, so the suite was
          green throughout. */
       if (ps._duelDeathKeepsBag) delete ps._duelDeathKeepsBag;
-      else ps.inventory = {};
+      /* v2.3.1688: the respawn wipe keeps the tools too — it is the second,
+         unconditional wipe, so sparing them at death alone would not have
+         saved them. */
+      else ps.inventory = this._keepGatherTools(ps.inventory);
       ps.dmgFromMonster = {};
       this._saveRpg(id, ps);
       const ws = this._wsBySessionId(id);
@@ -2480,7 +2550,12 @@ export class GameRoom {
   _spawnDeathPile(ps, playerId) {
     if (!ps || !ps.inventory) return null;
     const items = [];
+    /* v2.3.1688: the gathering tools are NOT loot.  They stay in the bag
+       through death (see _keepGatherTools), so dropping copies here would
+       mint a second axe on the ground every time the player died. */
+    const _toolKeys = this._GATHER_TOOL_KEYS();
     for (const [k, v] of Object.entries(ps.inventory)) {
+      if (_toolKeys.has(k)) continue;
       const qty = Math.floor(Number(v) || 0);
       if (qty > 0) items.push({ key: k, qty });
     }

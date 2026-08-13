@@ -465,15 +465,31 @@ export const QUEST_REWARDS = {
                 {kind:'weapon', weaponType:'greatsword', tierKey:'wood', name:"Bro's Sword"},
                 {kind:'shield', gearBase:'wood', tierMult:1.0, name:"Bro's Shield"},
               ],
-              item:{kind:'weapon', weaponType:'bow', tierKey:'wood', name:"Bro's Bow"}},
+              /* v2.3.1692 (owner: "the three primary weapon types as awards
+                 should come first.  Doesn't make much sense to gate the magic
+                 staff until later when it's one of the three primary ways of
+                 combat").  The staff moves UP from tut_2's turn-in to this
+                 one, so finishing the first quest leaves you holding all
+                 three combat styles and free to pick.  An ARRAY is granted
+                 item-by-item (see _handleQuestTurnIn). */
+              item:[
+                {kind:'weapon', weaponType:'bow',   tierKey:'wood', name:"Bro's Bow"},
+                {kind:'weapon', weaponType:'staff', tierKey:'wood', name:"Bro's Staff"},
+              ]},
+      /* v2.3.1692: tut_2 pays gold + xp only — its staff moved to tut_1. */
       tut_2: {gold:60,  xp:100, next:'tut_3',
-              objective:{type:'collect', invKey:'slime-remnants', count:6, consume:true, zone:'verdant'},
-              item:{kind:'weapon', weaponType:'staff', tierKey:'wood', name:"Bro's Staff"}},
+              objective:{type:'collect', invKey:'slime-remnants', count:6, consume:true, zone:'verdant'}},
       tut_3: {gold:150, xp:150, next:'tut_4',
               objective:{type:'collect', invKey:'skeleton-remnants', count:5, consume:true, zone:'sky'}},
       tut_4: {gold:400, xp:300, next:null,
               objective:{type:'collect', invKey:'fire-goblin-remnants', count:6, consume:true, zone:'ember'},
-              item:{kind:'armor', name:"Scout's Vest", tierMult:1.0}},
+              /* v2.3.1687 (owner: "Change the reward for fire goblin quest from
+                 'scouts vest' to Iron Torso"). */
+              /* v2.3.1692 (owner: "if it's granting one piece of armor I'd
+                 rather it be the leg armor first since animations look better
+                 with legs only than they do chest only").  kind:'legs' routes
+                 to ps.legsArmor. */
+              item:{kind:'legs', name:"Iron Greaves", tierMult:1.0}},
 
       /* ═══ v2.3.1680: THE LIFESKILL CHAIN ═══
          Owner: "gate and hide resource extraction for woodcutting, fishing,

@@ -92,5 +92,37 @@ export async function run({ browser, wsPort, webPort, rec }) {
     blob && typeof blob._v === 'number' && blob._v >= 10 && blob.prog3.sk.staff.level === 1,
     blob && { _v: blob._v });
 
+  /* ── v2.3.1686: the transient XP bar reads the TRAINED skill ──
+     Owner: "I see an XP bar appear after killing monsters which would be
+     fine if it represented one of the three active combat skills you're
+     actually earning xp in."
+     It was reading the LEGACY `weaponSkills` map, which prog3 retired — so
+     it showed a level and a fill that no kill was feeding.
+     The two tracks are seeded with deliberately different levels here, so
+     the assertion can only pass by reading the right one: if the bar says
+     Lv 40 it is still on the dead map, Lv 5 means prog3. */
+  await P.page.evaluate(() => {
+    const S = window._gameState && window._gameState.current;
+    const R = S && S.rpg; if (!R) return;
+    R.weaponSkills = R.weaponSkills || {};
+    R.weaponSkills.sword = { level: 40, xp: 999 };      /* the retired track */
+    if (R.prog3 && R.prog3.sk) R.prog3.sk.sword = { level: 5, xp: 7 };
+    S._hudPopups = S._hudPopups || [];
+    S._hudPopups.push({ id: 'qa-xp', target: 'xpBar', text: '+12 XP',
+      color: '#60a5fa', ts: Date.now() });
+  });
+  await P.page.waitForTimeout(700);
+  const barText = await P.page.evaluate(() => {
+    const hit = Array.from(document.querySelectorAll('div, span'))
+      .map((e) => (e.innerText || '').trim())
+      .filter((t) => /\bLv \d+/.test(t) && /MELEE|BOW|MAGIC|SWORD|STAFF/i.test(t));
+    return hit.length ? hit[hit.length - 1].replace(/\s+/g, ' ').slice(0, 80) : null;
+  });
+  rec.ok('the kill XP bar appears', !!barText, barText);
+  rec.ok('...showing the prog3 trained level, not the retired weapon-skill one',
+    !!barText && /Lv 5\b/.test(barText) && !/Lv 40\b/.test(barText), barText);
+  rec.ok('...named the way every other screen names it (MELEE, not SWORD)',
+    !!barText && /MELEE/i.test(barText), barText);
+
   await P.ctx.close().catch(() => {});
 }

@@ -874,7 +874,10 @@ export function InventoryPanel(props) {
            shortly with the worker's authoritative weapon + stash. */
         {
           var _Seq = stateRef.current;
-          if (_Seq._serverMonsters && _Seq.channel) {
+          /* v2.3.1687: `_serverMonsters` dropped — false in town, and this is
+             a town screen, so the equip never reached the worker (see
+             ItemDetailPopup's syncWeaponSlot note). */
+          if (_Seq.channel) {
             try { _Seq.channel.send({ type: 'equip_request', payload: { stashIdx: si, slot: swIsRanged ? 'rangedWeapon' : 'weapon' } }); } catch (e) {}
           }
         }
@@ -915,7 +918,9 @@ export function InventoryPanel(props) {
            authoritative stash + coins. */
         {
           var _Ssw = stateRef.current;
-          if (_Ssw._serverMonsters && _Ssw.channel) {
+          /* v2.3.1687: same dead gate — a sale that the worker never heard
+             about credits coins locally and loses them on the next echo. */
+          if (_Ssw.channel) {
             try { _Ssw.channel.send({ type: 'sell_weapon', payload: { stashIdx: si } }); } catch (e) {}
           }
         }

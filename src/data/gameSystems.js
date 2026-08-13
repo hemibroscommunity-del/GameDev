@@ -5317,7 +5317,9 @@ export const QUEST_CHAINS = {
          server/src/data.js tut_1) so bag, hand and dialogue agree. */
       { when: 'accept',   icon: '/icons/items/great-sword.webp', label: "Bro's Sword" },
       { when: 'accept',   icon: '/icons/items/shield.webp', label: "Bro's Shield" },
+      /* v2.3.1692 (owner): all three combat styles land on quest one. */
       { when: 'complete', icon: '/icons/items/bow.webp',    label: "Bro's Bow" },
+      { when: 'complete', icon: '/icons/items/staff.webp',  label: "Bro's Staff" },
     ],
     dialogue: {
       /* v2.3.1676 (owner: "He'll give you the sword and shield (with
@@ -5352,7 +5354,7 @@ export const QUEST_CHAINS = {
     check: function (rpg) { return ((rpg.inventory || {})['slime-remnants'] || 0) >= 6; },
     reward: { gold: 60, xp: 100 },
     next: 'tut_3',
-    gives: [{ when: 'complete', icon: '/icons/items/staff.webp', label: "Bro's Staff" }],
+    /* v2.3.1692: the staff moved to tut_1 — this step pays gold + xp. */
     dialogue: {
       start: 'The Verdant Wilds went blue. Fast little things, and they spit. Six remnants.\n\n'
         + '🏹 That bow works at range — double-tap the LEFT joystick to swap to it.',
@@ -5376,9 +5378,9 @@ export const QUEST_CHAINS = {
     id: 'tut_4', npc: 'Mayor Bro', title: 'Bro Ascendant',
     desc: 'Bring 6 Fire Goblin Remnants from the Flame Fields.',
     check: function (rpg) { return ((rpg.inventory || {})['fire-goblin-remnants'] || 0) >= 6; },
-    reward: { gold: 400, xp: 300, item: "Scout's Vest" },
+    reward: { gold: 400, xp: 300, item: "Iron Greaves" }, /* v2.3.1692 (owner): legs, not chest */
     next: null,
-    gives: [{ when: 'complete', icon: '/icons/items/chest-plate.webp', label: "Scout's Vest" }],
+    gives: [{ when: 'complete', icon: '/icons/items/greaves.webp', label: "Iron Greaves" }],
     dialogue: {
       start: 'Last one from me. Flame Fields. Goblins, and they are quick about it. Six.',
       progress: 'Six, out of the fire.',

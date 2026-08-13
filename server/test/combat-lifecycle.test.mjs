@@ -843,6 +843,41 @@ for (const m of meadowMonsters) m._wanderPausedUntil = Date.now() + 600000;
   room._spawnDeathPile = pileOrig;
   delete room.playerState['stuck1'];
   delete room.playerState['stuck2'];
+
+  /* ── v2.3.1688: dying must not destroy the GATHERING TOOLS ──
+   * Owner: "Logs are not getting collected after woodcutting a tree. Maybe
+   * it's the new requirement of having a woodcutting axe interfering with it."
+   * Right cause, one step back: the gate works and the axe was gone. v2.3.1680
+   * holds the tools as ordinary inventory items, and death wipes the
+   * inventory — so one death silently ended woodcutting/fishing/mining
+   * forever, because the quest that grants them cannot be turned in twice.
+   * Both wipes are covered: the death one and the unconditional respawn one. */
+  {
+    const pid = 'toolman';
+    room.playerState[pid] = {
+      hp: 0, maxHp: 100, z: 'frost', x: 10, y: 10,
+      inventory: { woodcutting_axe: 1, fishing_pole: 1, mining_pickaxe: 1, ore: 5, wood_kindling: 3 },
+    };
+    const psT = room.playerState[pid];
+    room._handlePlayerDeath(psT, pid, 'monster:x');
+    check('death keeps the gathering tools',
+      psT.inventory.woodcutting_axe === 1 && psT.inventory.fishing_pole === 1
+      && psT.inventory.mining_pickaxe === 1, psT.inventory);
+    check('...and still drops everything else',
+      !psT.inventory.ore && !psT.inventory.wood_kindling, psT.inventory);
+    /* The death PILE must not carry a copy, or every death mints a spare. */
+    const piles = Object.values(room.loot || {}).flat()
+      .filter((l) => l && Array.isArray(l.items));
+    const toolInPile = piles.some((l) => l.items.some((i) => i && /axe|pole|pickaxe/.test(i.key)));
+    check('...and no duplicate tool is left on the ground', !toolInPile,
+      piles.map((l) => l.items && l.items.map((i) => i.key)));
+    /* Second wipe, five seconds later. */
+    psT.hp = 0; psT.dying = true; psT.respawnAt = Date.now() - 1;
+    room._tickPlayerRespawn();
+    check('the respawn wipe keeps them too',
+      psT.inventory.woodcutting_axe === 1 && psT.inventory.mining_pickaxe === 1, psT.inventory);
+    delete room.playerState[pid];
+  }
   delete room.playerState['well'];
 }
 
@@ -1211,6 +1246,118 @@ for (const m of meadowMonsters) m._wanderPausedUntil = Date.now() + 600000;
       atk.length === 1 && atk[0].payload.attackerX === near.x && atk[0].payload.attackerY === near.y,
       atk[0] && atk[0].payload);
   }
+}
+
+/* ── v2.3.1686: a raised shield STOPS a snowball, it does not cancel it ──
+ *
+ * Owner: "it seems like snowman don't launch projectiles while the character
+ * is blocking, which isn't the correct behavior. It should still launch
+ * projectiles."
+ *
+ * The ranged-throw gate carried `!nearest.blocking`, so raising a shield
+ * stopped the ball being CREATED — blocking deleted the attack instead of
+ * stopping it, and the snowman read as frozen. The throw is now unconditional
+ * and the block is resolved when the ball lands, which is also the only point
+ * at which it can be honest: the ball is 900ms in the air, so a shield raised
+ * or dropped mid-flight has to count.
+ */
+{
+  const psB = room.playerState['pa'];
+  psB.z = 'frost'; psB.hp = psB.maxHp = 200; psB.dying = false; psB.dead = false;
+  psB.disconnected = false; psB.stamina = 100; psB.maxStamina = 100;
+  psB.x = 1000; psB.y = 1000;
+  psB.blocking = true;
+
+  /* _spawnZoneMonsters RETURNS the list; it does not install it (the live
+     server assigns on zone activation), so the fixture has to. */
+  if (!room.monsters.frost || !room.monsters.frost.length) {
+    room.monsters.frost = room._spawnZoneMonsters('frost');
+  }
+  const frost = room.monsters.frost || [];
+  const sm = frost.find((m) => m.arch === 'snowman') || frost[0];
+  check('frost fields a snowman to throw with', !!sm && sm.arch === 'snowman', sm && sm.arch);
+  if (sm) {
+    /* Park every other frost monster far away so only this one is in range. */
+    for (const other of frost) { if (other !== sm) { other.x = 9000; other.y = 9000; } }
+    /* 200px: past the 100px minRange, inside the 300px range. */
+    sm.alive = true; sm.hp = sm.maxHp || 50; sm.x = psB.x + 200; sm.y = psB.y;
+    sm.atkCd = 0; sm._projImpactAt = 0; sm.statuses = undefined;
+
+    room.eventBuffer.length = 0;
+    room._tickMonsters();
+    const thrown = room.eventBuffer.filter((e) => e.type === 'monster_projectile');
+    check('a blocking player still gets thrown at', thrown.length >= 1,
+      { thrown: thrown.length, types: room.eventBuffer.map((e) => e.type) });
+    check('...and it is a SNOWBALL, aimed at the blocker',
+      thrown.length >= 1 && thrown[0].payload.kind === 'snowball'
+      && thrown[0].payload.travelMs > 0,
+      thrown[0] && thrown[0].payload);
+  }
+
+  /* ── v2.3.1690: a harvester is left alone ──
+   * Owner: "make it so monsters don't attack you while you're extracting
+   * resources (fishing, mining, etc) it's really annoying and glitchy."
+   * Bounded by EXTRACT_SHIELD_MS rather than by the extraction record, which
+   * lives ten minutes — the second half of this proves the shield expires,
+   * because "tap a tree, become invulnerable for ten minutes" would be a
+   * worse bug than the one being fixed. */
+  {
+    const psE = room.playerState['pa'];
+    psE.z = 'frost'; psE.blocking = false; psE.hp = psE.maxHp = 200;
+    psE.dying = false; psE.dead = false; psE.disconnected = false;
+    psE.x = 2000; psE.y = 2000;
+    const smE = (room.monsters.frost || []).find((m) => m.arch === 'snowman');
+    if (smE) {
+      for (const other of room.monsters.frost) { if (other !== smE) { other.x = 9000; other.y = 9000; } }
+      smE.alive = true; smE.hp = smE.maxHp || 50;
+      smE.x = psE.x + 200; smE.y = psE.y; smE.atkCd = 0; smE._projImpactAt = 0;
+      room.extractions['pa'] = { nodeId: 'n1', zone: 'frost', skill: 'woodcutting', startedAt: Date.now() };
+      room.eventBuffer.length = 0;
+      room._tickMonsters();
+      check('a mid-extraction player is not thrown at',
+        room.eventBuffer.filter((e) => e.type === 'monster_projectile').length === 0,
+        room.eventBuffer.map((e) => e.type));
+
+      /* Same monster, same position, shield expired -> it throws again. */
+      room.extractions['pa'].startedAt = Date.now() - (room.EXTRACT_SHIELD_MS + 1000);
+      smE.atkCd = 0; smE._projImpactAt = 0;
+      room.eventBuffer.length = 0;
+      room._tickMonsters();
+      check('...but the shield expires — it is not a ten-minute safe zone',
+        room.eventBuffer.filter((e) => e.type === 'monster_projectile').length >= 1,
+        room.eventBuffer.map((e) => e.type));
+    }
+    delete room.extractions['pa'];
+    psE.blocking = true;
+  }
+
+  /* Impact while blocking: zero damage, a Blocked! event, stamina spent. */
+  const hpBefore = psB.hp, stamBefore = psB.stamina;
+  const ball = { id: 'sb-frost-1', arch: 'snowman', dmg: 40, x: psB.x, y: psB.y, statuses: {} };
+  room.eventBuffer.length = 0;
+  room._monsterStrikePlayer('frost', ball, 'pa', psB.x, psB.y);
+  const blockedAtk = room.eventBuffer.filter((e) => e.type === 'monster_attack');
+  check('a snowball that lands on a raised shield deals no damage',
+    psB.hp === hpBefore, { before: hpBefore, after: psB.hp });
+  check('...and reports itself as BLOCKED, not as a zero hit',
+    blockedAtk.length === 1 && blockedAtk[0].payload.blocked === true
+    && blockedAtk[0].payload.dmgTaken === 0,
+    blockedAtk[0] && blockedAtk[0].payload);
+  check('...and costs stamina, like blocking a swing does',
+    psB.stamina < stamBefore && blockedAtk[0].payload.staminaDrain > 0,
+    { before: stamBefore, after: psB.stamina, drain: blockedAtk[0] && blockedAtk[0].payload.staminaDrain });
+
+  /* And with the shield DOWN the same ball hurts -- the block has to be a
+     block, not a blanket immunity to the ranged path. */
+  psB.blocking = false;
+  const hpBefore2 = psB.hp;
+  room.eventBuffer.length = 0;
+  room._monsterStrikePlayer('frost', ball, 'pa', psB.x, psB.y);
+  const openAtk = room.eventBuffer.filter((e) => e.type === 'monster_attack');
+  const _dodged = openAtk[0] && openAtk[0].payload.dodged;
+  check('with the shield down the same snowball lands',
+    _dodged || (psB.hp < hpBefore2 && !openAtk[0].payload.blocked),
+    { before: hpBefore2, after: psB.hp, payload: openAtk[0] && openAtk[0].payload });
 }
 
 console.log(failures === 0 ? '\nALL TESTS PASSED' : `\n${failures} TEST(S) FAILED`);

@@ -821,7 +821,18 @@ export const BottomDashboard = () => {
               flex: '0 0 44px',
               display: 'flex',
               alignItems: 'center',
-              padding: '0 8px',
+              /* v2.3.1689 (owner: "The exit button when you're inside one of
+                 the 'more' menu items ... appears behind the character icon
+                 in the top row of the dashboard. It needs to be moved").
+                 Measured: the back chip sat at x8 y516 (34×34) and the Hero
+                 portrait at x4 y517 (40×40) — the same row, near-exactly
+                 overlapping, so the one control that gets you OUT of Guild /
+                 Friends / Codex was underneath the portrait.
+                 The portrait's right edge is 44, so the header starts past
+                 it. Left padding rather than a z-index bump on purpose:
+                 stacking the chip ON the portrait would fix the tap and keep
+                 the mess. */
+              padding: '0 8px 0 52px',
               borderBottom: `1px solid ${COL.divider}`,
               gap: 8,
             }}>

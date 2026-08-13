@@ -1386,6 +1386,13 @@ export function setupWebSocket(ctx) {
               if (!msg.payload || !S.rpg) break;
               var p3l = msg.payload;
               var p3meta = PROG3_SKILL_META.find(function (m) { return m.key === p3l.skill; });
+              /* v2.3.1687 (owner: "it shows melee, bow, and magic as +1
+                 simultaneously"): remember WHICH skill just levelled, so the
+                 dashboard badges the unspent point on that chip alone
+                 instead of on all three (DashColumns).  Client-only field —
+                 it rides along in bt_rpg so a reload keeps the attribution,
+                 and _saveRpg's fixed field list ignores it server-side. */
+              if (typeof p3l.skill === 'string') S.rpg._p3PoolFrom = p3l.skill;
               setLevelUpMsg({
                 kind: 'combat',
                 level: p3l.charLevel || ((S.rpg && S.rpg.level) || 3),
@@ -1394,6 +1401,42 @@ export function setupWebSocket(ctx) {
                 ts: Date.now(),
               });
               try { BT_AUDIO.levelUp && BT_AUDIO.levelUp(); } catch (e) {}
+              break;
+            }
+          case 'quest_reward_stashed':
+            {
+              /* v2.3.1687 (owner: "I turned in the fire goblin remnants and
+                 never received the quest reward").  The worker could not put
+                 the armour on — that slot is already worn, and it will not
+                 replace something the player chose — and it has no armour
+                 stash of its own to overflow into.  So it hands the piece
+                 here, to the bag the client already owns, rather than
+                 dropping it: the quest used to complete, pay the gold, and
+                 never mention the item again.
+                 Guarded against re-delivery by value the same way the shield
+                 adopt is, because any repeat of this event (a resend, a
+                 reconnect that replays it) must not mint a second copy. */
+              if (!msg.payload || !msg.payload.item || !S.rpg) break;
+              var _qrs = msg.payload.item;
+              var _qrsName = String(_qrs.name || 'Quest Armor');
+              var _qrsTm = Number(_qrs.tierMult) || 1;
+              if (!Array.isArray(S.rpg.armorStash)) S.rpg.armorStash = [];
+              var _qrsHeld = (S.rpg.armor && S.rpg.armor.name === _qrsName)
+                || S.rpg.armorStash.some(function (a) {
+                  return a && a.name === _qrsName && (Number(a.tierMult) || 1) === _qrsTm;
+                });
+              if (!_qrsHeld) {
+                S.rpg.armorStash.push({ name: _qrsName, tierMult: _qrsTm });
+                try { localStorage.setItem('bt_rpg', JSON.stringify(S.rpg)); } catch (e) {}
+              }
+              if (typeof window !== 'undefined' && typeof window._setLevelUpMsg === 'function') {
+                window._setLevelUpMsg({
+                  kind: 'warning',
+                  text: _qrsName + ' went to your bag',
+                  sub: 'Your chest slot was already full — equip it from the Character menu',
+                  ts: Date.now(),
+                });
+              }
               break;
             }
           case 'chain_score_recorded':

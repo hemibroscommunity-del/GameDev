@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { COL } from '@/ui/mobile/dash/common.js';
 import { activeWeaponCategory, weaponXpRequired, WEAPON_LEVEL_CAP } from '@/data/gameSystems.js';
+import { prog3Live, prog3XpRequired, PROG3, PROG3_SKILL_META } from '@/data/prog3.js';
 
 /* HudPopupOverlay — HUD-anchored "+N XP" / "+N G" feedback, plus the
    transient XP bar the XP popup flies into.  Reads entries pushed to
@@ -61,6 +62,10 @@ import { activeWeaponCategory, weaponXpRequired, WEAPON_LEVEL_CAP } from '@/data
      WEAPON_PTS_PER_LEVEL into weaponUnspent — the points that, once
      spent, raise combat level.  It is the only candidate that both
      moves per kill and never lies.
+     v2.3.1686 CORRECTION: the reasoning above still holds, but the TRACK
+     named in it (weaponSkills / awardWeaponXp / weaponXpRequired) was
+     retired by the prog3 rebuild.  Read the bullet as "the equipped
+     weapon's TRAINED skill" — prog3.sk — and see weaponSkillProgress.
 
    NOTE the two currencies are deliberately not conflated: the flying
    "+N XP" is COMBAT xp (killXp, split across T1 build stats), while the
@@ -82,11 +87,39 @@ const BAR_FADE_MS = 420;
 const XP_FLY_MS = 620;            /* message travel time into the bar */
 const XP_FLY_RISE_PX = 34;        /* how far above the bar the message starts */
 
-/* The equipped weapon's skill progress — see the decision note above. */
+/* The equipped weapon's skill progress — see the decision note above.
+   ═══ v2.3.1686: UNDER PROG3, READ THE TRAINED SKILL ═══
+   Owner: "I see an XP bar appear after killing monsters which would be fine
+   if it represented one of the three active combat skills you're actually
+   earning xp in."
+   It didn't.  The decision note above picked the equipped weapon's skill XP
+   as the one honest candidate — correct at the time, but it named the LEGACY
+   `weaponSkills` track, and v2.3.1659 moved progression to `prog3.sk`.  On a
+   prog3 character the old map is whatever it happened to hold when the
+   rebuild landed, so the bar showed a level and a fill that no kill was
+   feeding: the one candidate chosen for never lying had quietly become the
+   liar.  Same reasoning, current track — prog3 keys are the same three
+   ('sword' | 'bow' | 'staff'), so activeWeaponCategory still picks the right
+   one, and the label uses prog3's own names (Melee / Bow / Magic) so the bar
+   agrees with the hero screen and the quest turn-in picker. */
 export function weaponSkillProgress(R) {
   if (!R) return null;
   let cat;
   try { cat = activeWeaponCategory(R); } catch (e) { cat = 'sword'; }
+  if (prog3Live(R)) {
+    const p3 = (R.prog3.sk && R.prog3.sk[cat]) || { level: 1, xp: 0 };
+    const meta = PROG3_SKILL_META.find((s) => s.key === cat);
+    const p3Level = Math.max(1, Math.min(PROG3.LEVEL_CAP, Math.floor(p3.level || 1)));
+    const label = (meta && meta.label) || cat;
+    if (p3Level >= PROG3.LEVEL_CAP) {
+      return { cat, label, level: p3Level, prog: 1, thresh: 1, pct: 100, maxed: true };
+    }
+    const p3Thresh = Math.max(1, Math.floor(prog3XpRequired(p3Level)));
+    const p3Raw = Math.floor(p3.xp || 0);
+    const p3Prog = Math.max(0, Math.min(p3Thresh, Number.isFinite(p3Raw) ? p3Raw : 0));
+    return { cat, label, level: p3Level, prog: p3Prog, thresh: p3Thresh,
+      pct: (p3Prog / p3Thresh) * 100, maxed: false };
+  }
   const sk = (R.weaponSkills && R.weaponSkills[cat]) || { level: 0, xp: 0 };
   const level = Math.max(0, Math.floor(sk.level || 0));
   if (level >= WEAPON_LEVEL_CAP) {
@@ -157,7 +190,10 @@ const XpBar = ({ S, pops, age }) => {
 
   const leveled = Date.now() - leveledAtRef.current < 900;
   const fading = age > BAR_HOLD_MS;
-  const label = String(wp.cat || 'sword').toUpperCase();
+  /* v2.3.1686: prefer prog3's display name ("MELEE"), falling back to the
+     raw category for the legacy track. 'staff' reading as MAGIC matters —
+     that is what every other screen calls it. */
+  const label = String(wp.label || wp.cat || 'sword').toUpperCase();
 
   return (
     <div style={{
