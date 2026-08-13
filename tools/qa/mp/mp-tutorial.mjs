@@ -93,6 +93,53 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('the server marked the quest active (the reachability bug is gone)',
     quests.tut_1 === 'active', quests);
 
+  /* ═══ v2.3.1711: THE TOP-LEFT REMINDER IS READABLE ═══
+     Owner: "the quest reminder in the top left corner is a nice touch but the
+     text is a bit too small to be legible."  It shipped at 8px title / 7px
+     objective — below EVERY step of the documented type scale (11 caption /
+     13 body / 15 emphasized / 17 title, UI-BIBLE Part 2), which is the sign
+     it was never measured against it rather than deliberately tuned small.
+     Pinned by COMPUTED style, not by the literal in the source, so a refactor
+     that moves the number somewhere else still has to keep the result. */
+  await P.page.waitForTimeout(600);
+  const hud = await P.page.evaluate(() => {
+    const hit = [...document.querySelectorAll('div')].find(
+      (d) => /\u{1F4DC}/u.test(d.textContent || '') && d.getBoundingClientRect().width < 320,
+    );
+    if (!hit) return null;
+    const r = hit.getBoundingClientRect();
+    const kid = (i) => {
+      const c = hit.children[i];
+      if (!c) return null;
+      const cs = getComputedStyle(c);
+      /* Alpha out of rgba(...) — the objective line is deliberately dimmer
+         than the title, but it still has to clear a contrast floor.  Parse
+         the COMPONENTS rather than "last number before the paren": that
+         shortcut reads the blue channel off an opaque rgb(216, 169, 77) and
+         reports alpha 77, which is nonsense that happens to pass. */
+      const parts = (/\(([^)]*)\)/.exec(cs.color) || [, ''])[1]
+        .split(',').map((v) => parseFloat(v));
+      return {
+        px: parseFloat(cs.fontSize),
+        alpha: parts.length >= 4 && Number.isFinite(parts[3]) ? parts[3] : 1,
+      };
+    };
+    return { w: Math.round(r.width), right: Math.round(r.right), title: kid(0), desc: kid(1) };
+  });
+  rec.ok('the quest reminder HUD is on screen with an active quest', !!hud, hud);
+  if (hud) {
+    rec.ok('the reminder title is at least the 13px body step',
+      hud.title && hud.title.px >= 13, hud.title);
+    rec.ok('...and the objective line at least the 11px caption step',
+      hud.desc && hud.desc.px >= 11, hud.desc);
+    /* .4 white on the .85 slate was ~2.6:1 — size was only half the problem. */
+    rec.ok('...and the objective is not dimmed below readability',
+      hud.desc && hud.desc.alpha >= 0.6, hud.desc);
+    /* Bigger type must not have bought legibility by eating the screen. */
+    rec.ok('...and the wider box still clears the right half of a 390px phone',
+      hud.right <= 300, hud);
+  }
+
   /* ── the reward gate belongs to the server ── */
   const coinsBefore = (admin && admin.rpg && admin.rpg.coins) || 0;
   await P.page.evaluate(() => {

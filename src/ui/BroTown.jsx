@@ -7895,18 +7895,33 @@ export var BroTown = function BroTown(_ref0) {
         background: 'rgba(17,25,29,.85)' /* v2.3.1233: was rgba(0,0,0,.6)+blur */,        padding: '4px 10px',
         borderRadius: 6,
         border: "1px solid ".concat(done ? 'rgba(61,220,151,.3)' : 'rgba(255,255,255,.1)'),
-        maxWidth: 200
+        /* v2.3.1711: 200 -> 248.  The type below roughly doubled, so the old
+           width turned the objective into a four-line column pinned to the
+           left edge; this keeps it to one or two lines on a 390px iPhone. */
+        maxWidth: 248
       }
     }, /*#__PURE__*/React.createElement("div", {
       style: {
-        fontSize: 8,
+        /* v2.3.1711: was 8px.  Owner: "the text is a bit too small to be
+           legible."  8/7 sat below every step of the documented type scale
+           (11 caption / 13 body / 15 emphasized / 17 title, UI-BIBLE Part 2)
+           -- this HUD had simply never been measured against it.  Title takes
+           the BODY step and the objective the CAPTION step, so the two stay
+           distinguishable at a glance without inventing a new size. */
+        fontSize: 13,
         fontWeight: 700,
+        lineHeight: 1.25,
         color: done ? '#59BF91' : '#D8A94D'
       }
     }, "\uD83D\uDCDC ", q.title, " ", done ? '✓' : ''), /*#__PURE__*/React.createElement("div", {
       style: {
-        fontSize: 7,
-        color: 'rgba(255,255,255,.4)'
+        fontSize: 11,
+        lineHeight: 1.3,
+        marginTop: 1,
+        /* v2.3.1711: was 7px / .4 alpha.  Legibility is size AND contrast --
+           .4 white on the .85 slate is ~2.6:1.  .72 clears 4.5:1 while
+           staying visibly secondary to the title above it. */
+        color: 'rgba(255,255,255,.72)'
       }
     }, q.desc));
   }(), null /* v2.3.1333: floating zone label retired — the zone name lives in the ZoneHeader rail (GameApp) */, function (_stateRef$current37, _ZONES$nearest$zone) {
