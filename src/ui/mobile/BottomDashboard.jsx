@@ -55,6 +55,7 @@ import { QuestsPanel }        from './dash/QuestsPanel.jsx';
 import { QuestDetailPanel }   from './dash/QuestDetailPanel.jsx'; /* v2.3.1298 */
 import { T2Panel, requestT2Category } from './dash/T2Panel.jsx';
 import { SpendPointConfirm }   from './dash/SpendPointConfirm.jsx';
+import { playVw, playVh } from './playViewport.js';
 
 // Bottom-of-screen dashboard.  Replaces the radial UtilityWheel.
 // Opening a destination grows the band into a sheet while the ribbon
@@ -223,7 +224,7 @@ const Tooltip = ({ tip, onClose }) => {
     );
   }
   const { title, benefit, body, anchor } = tip;
-  const vw = window.innerWidth;
+  const vw = playVw();   /* v2.3.1715: the shell, not the window */
   const vh = window.innerHeight;
   const w = Math.min(280, vw - 24);
   const cx = anchor ? anchor.left + anchor.width / 2 : vw / 2;
@@ -613,7 +614,7 @@ export const BottomDashboard = () => {
       document.documentElement.dataset.btSheet = mode;
       /* v2.3.1311e: drill panels (stack depth > 1) use the taller sheet. */
       const px = mode === 'expanded' ? (dashboardPanelBus.state.stack.length > 1 ? snapPxRef.current.drill : snapPxRef.current.expanded)
-        : barHeight(window.innerWidth, window.innerHeight);
+        : barHeight(playVw(), playVh());
       document.documentElement.style.setProperty('--sheet-h', px + 'px');
     };
     stamp();
@@ -630,13 +631,13 @@ export const BottomDashboard = () => {
      jump under the chat composer.  v2.3.1350: the compact snap left
      with the compact state. */
   const [snapPx, setSnapPx] = useState(() => ({
-    expanded: expandedSheetHeight(window.innerWidth, window.innerHeight),
-    drill: drillSheetHeight(window.innerWidth, window.innerHeight),
+    expanded: expandedSheetHeight(playVw(), playVh()),
+    drill: drillSheetHeight(playVw(), playVh()),
   }));
   useEffect(() => {
     const vv = window.visualViewport;
     const recompute = () => {
-      const vw = vv ? vv.width : window.innerWidth;
+      const vw = playVw();   /* v2.3.1715 */
       const vh = vv ? vv.height : window.innerHeight;
       if (vv && window.innerHeight - vh > 100) return; /* keyboard up */
       setSnapPx({ expanded: expandedSheetHeight(vw, vh), drill: drillSheetHeight(vw, vh) });
@@ -764,7 +765,7 @@ export const BottomDashboard = () => {
   /* v2.3.1649: the top row shares the columns row's tracks — see the grid
      below.  One call, so the two rows can never disagree about where a
      column starts. */
-  const dashCols = dashPanelWidths(typeof window !== 'undefined' ? window.innerWidth : 390);
+  const dashCols = dashPanelWidths(playVw());   /* v2.3.1715 */
 
   /* v2.3.1236: owner dashboard feedback §6 — the build-points XP strip
      (v2.3.114 bottom trim -> v2.3.152 BP progress -> v2.3.821/v2.3.1227
@@ -1006,7 +1007,7 @@ export const BottomDashboard = () => {
             items={RAIL_ITEMS}
             litId={litId}
             atRest={mode === 'bar'}
-            vw={typeof window !== 'undefined' ? window.innerWidth : 390}
+            vw={playVw()}   /* v2.3.1715 */
             vh={typeof window !== 'undefined' ? window.innerHeight : 844}
             dots={dots}
             profilePortrait={profilePortrait} />

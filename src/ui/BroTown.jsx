@@ -951,6 +951,23 @@ export var BroTown = function BroTown(_ref0) {
     _useState4 = _slicedToArray(_useState3, 2),
     chatOpen = _useState4[0],
     setChatOpen = _useState4[1];
+  /* v2.3.1715: the desktop keyboard-hints strip can be dismissed (owner:
+     "do a toggle on and off option for it too").  Read from storage in the
+     INITIALISER for the same reason the quest fold below is — an effect
+     would flash the strip for one frame on every load before hiding it. */
+  var _useKbHints = useState(function () {
+    try { return localStorage.getItem('bt_kb_hints_off') === '1'; } catch (e) { return false; }
+  }),
+    _useKbHints2 = _slicedToArray(_useKbHints, 2),
+    kbHintsOff = _useKbHints2[0],
+    setKbHintsOff = _useKbHints2[1];
+  var toggleKbHints = React.useCallback(function () {
+    setKbHintsOff(function (v) {
+      var next = !v;
+      try { localStorage.setItem('bt_kb_hints_off', next ? '1' : '0'); } catch (e2) { /* private mode */ }
+      return next;
+    });
+  }, []);
   /* v2.3.1714: the top-left quest reminder collapses to its title on tap.
      Owner: "some users might prefer that view to save screen space."
      Read from storage in the INITIALISER, not in an effect — an effect would
@@ -2227,6 +2244,24 @@ export var BroTown = function BroTown(_ref0) {
          then floats over the canvas like an overlay instead of
          shifting the scene up and exposing a black bar at the bottom. */
       if (vv && window.innerHeight - vhFull > 100) return;
+      /* v2.3.1715: on desktop the whole app lives inside a centred, capped
+         shell (#root, see the pointer:fine block in game.css), so the
+         viewport is no longer what the game gets to use.  Measure the SHELL
+         and let every consumer downstream — the canvas, --dash-h, --cols-h,
+         the joystick zones, every world-HUD anchor — derive from that one
+         number, exactly as they already derive from the viewport on a phone.
+         AFTER the iOS-keyboard guard above, deliberately: that guard aborts
+         on a big innerHeight-vs-viewport gap, and a shell SHORTER than the
+         window is exactly such a gap — measuring first made it read a 540px
+         shell as an open keyboard and skip the resize entirely.
+         Guarded by `smaller than`: on mobile the shell IS the viewport, so
+         this is a no-op there and the primary platform is untouched. */
+      var shellEl = document.getElementById('root');
+      if (shellEl) {
+        var _sw = shellEl.clientWidth, _sh = shellEl.clientHeight;
+        if (_sw > 0 && _sw < vw) vw = _sw;
+        if (_sh > 0 && _sh < vhFull) vhFull = _sh;
+      }
       /* v2.3.1325: the bar height is slot-derived (owner: slot-sized
          toolbar icons), so it varies with the viewport.  Stamp the two
          CSS vars here — the ONE place that already owns viewport
@@ -5007,7 +5042,8 @@ export var BroTown = function BroTown(_ref0) {
       setShowPetHouse: setShowPetHouse,
       setChatOpen: setChatOpen,
       chatInputRef: chatInputRef,
-      chatOpen: chatOpen
+      chatOpen: chatOpen,
+      toggleKbHints: toggleKbHints   /* v2.3.1715: H hides the hints strip */
     });
     return function () {
       cancelAnimationFrame(frameRef.current);
@@ -9447,5 +9483,5 @@ export var BroTown = function BroTown(_ref0) {
      and z-index 6 so they sit over the world canvas but under all HUD
      (z>=20).  bt-desktop-hide drops them on desktop so the mouse reaches the
      canvas. */
-  /*#__PURE__*/React.createElement(TouchControls, { stateRef: stateRef, lZoneRef: lZoneRef, rZoneRef: rZoneRef, joystickRef: joystickRef, lStickRef: lStickRef, knobRef: knobRef, lJoyPreviewRef: lJoyPreviewRef, rJoyRef: rJoyRef, rStickRef: rStickRef, rKnobRef: rKnobRef, rJoyPreviewRef: rJoyPreviewRef, shieldJoyRef: shieldJoyRef, autoAttack: autoAttack, isLandscape: isLandscape, shieldUp: shieldUp })), ((_window$matchMedia = (_window = window).matchMedia) === null || _window$matchMedia === void 0 || (_window$matchMedia = _window$matchMedia.call(_window, '(pointer:fine)')) === null || _window$matchMedia === void 0 ? void 0 : _window$matchMedia.matches) && /*#__PURE__*/React.createElement(KeyboardHintsPanel, null), chatOpen && /*#__PURE__*/React.createElement(ChatPanel, { chatInput: chatInput, chatInputRef: chatInputRef, chatInputValRef: chatInputValRef, sendChat: sendChat, setChatInput: setChatInput, setChatOpen: setChatOpen }));
+  /*#__PURE__*/React.createElement(TouchControls, { stateRef: stateRef, lZoneRef: lZoneRef, rZoneRef: rZoneRef, joystickRef: joystickRef, lStickRef: lStickRef, knobRef: knobRef, lJoyPreviewRef: lJoyPreviewRef, rJoyRef: rJoyRef, rStickRef: rStickRef, rKnobRef: rKnobRef, rJoyPreviewRef: rJoyPreviewRef, shieldJoyRef: shieldJoyRef, autoAttack: autoAttack, isLandscape: isLandscape, shieldUp: shieldUp })), ((_window$matchMedia = (_window = window).matchMedia) === null || _window$matchMedia === void 0 || (_window$matchMedia = _window$matchMedia.call(_window, '(pointer:fine)')) === null || _window$matchMedia === void 0 ? void 0 : _window$matchMedia.matches) && /*#__PURE__*/React.createElement(KeyboardHintsPanel, { hidden: kbHintsOff, onToggle: toggleKbHints }), chatOpen && /*#__PURE__*/React.createElement(ChatPanel, { chatInput: chatInput, chatInputRef: chatInputRef, chatInputValRef: chatInputValRef, sendChat: sendChat, setChatInput: setChatInput, setChatOpen: setChatOpen }));
 };

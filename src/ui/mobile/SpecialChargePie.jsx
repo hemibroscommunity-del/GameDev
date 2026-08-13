@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { playIsLandscape } from './playViewport.js';
 
 /* SpecialChargePie — big-number + thin progress ring above the right
    joystick.  Replaces the in-world MP segment bar that used to float
@@ -26,7 +27,7 @@ export const SpecialChargePie = () => {
   const [, force] = useState(0);
   const [gaugeReady, setGaugeReady] = useState(false);
   const [isLandscape, setIsLandscape] = useState(
-    typeof window !== 'undefined' ? window.innerWidth > window.innerHeight : false
+    playIsLandscape()   /* v2.3.1715: the shell's orientation, not the window's */
   );
   const fullSinceRef = useRef(null);
 
@@ -41,7 +42,7 @@ export const SpecialChargePie = () => {
   }, []);
 
   useEffect(() => {
-    const onResize = () => setIsLandscape(window.innerWidth > window.innerHeight);
+    const onResize = () => setIsLandscape(playIsLandscape());
     window.addEventListener('resize', onResize);
     window.addEventListener('orientationchange', onResize);
     return () => {

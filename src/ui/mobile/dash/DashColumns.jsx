@@ -11,6 +11,7 @@ import { heroSectionBus } from '../sheet/heroSectionBus.js';
 import { prog3Live, prog3Pool, prog3SkillLevel, prog3CatFor } from '../../../data/prog3.js';
 import { buildSkillUnspent, STAT_TO_WEAPON_CAT } from '../../../data/gameSystems.js';
 import { dashTileSize, dashPanelWidths, combatPillWidth, combatPillHeight, BAG_VIEW_COLS, DASH_GAP, DASH_ROWS, BAG_HEADER_H } from '../sheet/sheetGeometry.js';
+import { playVw } from '../playViewport.js';
 
 /* v2.3.1636 (owner, with a reference screenshot of the pre-v2.3.1287
    dashboard): the THREE-COLUMN ROW — BAG / LOADOUT / BUILD restored as
@@ -106,7 +107,7 @@ const Column = ({ children, onTap, label, stretch }) => (
 const tileRow = { display: 'flex', gap: DASH_GAP, justifyContent: 'center' };
 
 export const DashColumns = ({ R }) => {
-  const vw = typeof window !== 'undefined' ? window.innerWidth : 390;
+  const vw = playVw();   /* v2.3.1715: the shell, not the window */
   const t = dashTileSize(vw);
   const panelW = dashPanelWidths(vw);
   const rpg = R || {};

@@ -30,7 +30,8 @@ export function setupDesktopControls(S, deps) {
     setShowPetHouse = deps.setShowPetHouse,
     setChatOpen = deps.setChatOpen,
     chatInputRef = deps.chatInputRef,
-    chatOpen = deps.chatOpen;
+    chatOpen = deps.chatOpen,
+    toggleKbHints = deps.toggleKbHints;   /* v2.3.1715 */
     /* ═══ DESKTOP KEYBOARD CONTROLS ═══ */
     S._isDesktop = window.matchMedia('(pointer:fine)').matches;
     var onKeyDown = function onKeyDown(e) {
@@ -154,6 +155,18 @@ export function setupDesktopControls(S, deps) {
         setTimeout(function() {
           if (chatInputRef.current) chatInputRef.current.focus();
         }, 50);
+        return;
+      }
+
+      /* v2.3.1715: H — hide/show the keyboard-hints strip (owner: "do a
+         toggle on and off option for it too").  Placed after the KeyC
+         handler above so it inherits the same INPUT/TEXTAREA guard at the
+         top of this function: typing "h" in chat must not toggle the HUD.
+         The strip itself is also tappable — this is the second door, not
+         the only one, which is why H is listed ON the strip. */
+      if (e.code === 'KeyH' && !e.repeat) {
+        e.preventDefault();
+        if (toggleKbHints) toggleKbHints();
         return;
       }
 

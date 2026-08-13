@@ -5,29 +5,54 @@ import React from 'react';
    BroTown.jsx (the desktop-only WASD / hotkey help strip). Behavior-
    frozen UI decomposition; the desktop-detection gate (the
    window.matchMedia check) stays in BroTown. Zero props — the subtree
-   is fully static markup. */
-export function KeyboardHintsPanel() {
-  return React.createElement("div", {
-    className: "bt-kb-hints"
-  }, /*#__PURE__*/React.createElement("span", {
-    className: "bt-kb-key"
-  }, /*#__PURE__*/React.createElement("kbd", null, "WASD"), " Move"), /*#__PURE__*/React.createElement("span", {
-    className: "bt-kb-key"
-  }, /*#__PURE__*/React.createElement("kbd", null, "Click"), " Attack"), /*#__PURE__*/React.createElement("span", {
-    className: "bt-kb-key"
-  }, /*#__PURE__*/React.createElement("kbd", null, "R-Click"), " Special"), /*#__PURE__*/React.createElement("span", {
-    className: "bt-kb-key"
-  }, /*#__PURE__*/React.createElement("kbd", null, "Space"), " Dodge"), /*#__PURE__*/React.createElement("span", {
-    className: "bt-kb-key"
-  }, /*#__PURE__*/React.createElement("kbd", null, "E"), " Interact"), /*#__PURE__*/React.createElement("span", {
-    className: "bt-kb-key"
-  }, /*#__PURE__*/React.createElement("kbd", null, "Q"), " Shield"), /*#__PURE__*/React.createElement("span", {
-    className: "bt-kb-key"
-  }, /*#__PURE__*/React.createElement("kbd", null, "Tab"), " Swap"), /*#__PURE__*/React.createElement("span", {
-    className: "bt-kb-key"
-  }, /*#__PURE__*/React.createElement("kbd", null, "F"), " Special"), /*#__PURE__*/React.createElement("span", {
-    className: "bt-kb-key"
-  }, /*#__PURE__*/React.createElement("kbd", null, "C"), " Chat"), /*#__PURE__*/React.createElement("span", {
-    className: "bt-kb-key"
-  }, /*#__PURE__*/React.createElement("kbd", null, "Esc"), " Close"));
+   is fully static markup.
+
+   v2.3.1715: no longer static, and no longer always on.
+   Owner, playing on desktop: the strip was invisible — .bt-kb-hints was
+   pinned at a hardcoded bottom:140px while --dash-h's smallest value is
+   145px, so it rendered UNDER the dashboard band at every viewport size.
+   Probing its own bounding box at 1920x1080 returned the inventory tab
+   strip painted over it. CSS now anchors it off var(--dash-h).
+
+   With it finally visible, the owner asked for a way to turn it off. Both
+   doors do the same thing: tap the strip, or press H. Dismissed, it leaves
+   a small keyboard chip in the same corner rather than vanishing outright
+   — a toggle you cannot find your way back from is a delete, and these are
+   the only on-screen record of the controls a desktop player has.
+   The choice persists (bt_kb_hints_off), read in the initialiser in
+   BroTown so there is no one-frame flash of the wrong state. */
+
+const KEYS = [
+  ['WASD', 'Move'], ['Click', 'Attack'], ['R-Click', 'Special'], ['Space', 'Dodge'],
+  ['E', 'Interact'], ['Q', 'Shield'], ['Tab', 'Swap'], ['F', 'Special'],
+  ['C', 'Chat'], ['H', 'Hide'], ['Esc', 'Close'],
+];
+
+export function KeyboardHintsPanel({ hidden, onToggle }) {
+  /* The tap must not reach the world underneath — the canvas takes clicks as
+     attack/aim, so a bare onClick here would also swing the sword. */
+  const swallow = (e) => { e.stopPropagation(); };
+  const toggle = (e) => { e.stopPropagation(); if (onToggle) onToggle(); };
+
+  if (hidden) {
+    return React.createElement('div', {
+      className: 'bt-kb-chip',
+      onPointerDown: swallow,
+      onClick: toggle,
+      title: 'Show the keyboard controls (H)',
+      role: 'button',
+      'aria-label': 'Show keyboard controls',
+    }, '⌨');
+  }
+
+  return React.createElement('div', {
+    className: 'bt-kb-hints',
+    onPointerDown: swallow,
+    onClick: toggle,
+    title: 'Hide these (H)',
+    role: 'button',
+    'aria-label': 'Hide keyboard controls',
+  }, KEYS.map(([k, label]) => React.createElement('span', {
+    className: 'bt-kb-key', key: k,
+  }, React.createElement('kbd', null, k), ' ' + label)));
 }

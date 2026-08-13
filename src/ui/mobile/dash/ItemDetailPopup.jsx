@@ -13,6 +13,7 @@ import { eatBus } from '../eatBus.js';
 import { GEAR_CATALOG, getEquip, setEquip, syncArmorLayers } from '../../../rendering/gearCatalog.js';
 import { unequipWeaponSlot, unequipShieldDirect, unequipArmorDirect, unequipLegsDirect, unequipGearDirect, syncArmorChange } from './equipActions.js'; /* v2.3.1330: shared unequip cores; v2.3.1703 adds the legs twin */
 import { setShirt } from '../../../rendering/traits/shirtCatalog.js';
+import { playVw } from '../playViewport.js';
 import {
   WEAPON_TYPES,
   calcDisplayDmgRange,
@@ -371,7 +372,7 @@ const buttonStyle = (_variant) => ({
 function positionFor(anchor, popupW, popupH) {
   const GAP = 8;
   const MARGIN = 4;
-  const vw = (typeof window !== 'undefined') ? window.innerWidth : 1024;
+  const vw = playVw();   /* v2.3.1715: the shell, not the window */
   const vh = (typeof window !== 'undefined') ? window.innerHeight : 768;
   /* Try to locate the bottom dashboard root for clamping. */
   let dashRect = null;

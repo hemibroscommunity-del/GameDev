@@ -5,6 +5,7 @@ import { getActiveWeapon, calcDisplayDmgRange, calcDisplayDps } from '../../../d
 import { portraitStore } from './portraitStore.js';
 import { dashboardPanelBus } from '../dashboardPanelBus.js';
 import { DASH_GAP } from './sheetGeometry.js'; /* v2.3.1649 */
+import { playVw } from '../playViewport.js';
 
 /* v2.3.1294 (ChatGPT round-4): the identity strip — one compact row
    that replaces the retired top-right world card.  Portrait (with the
@@ -76,7 +77,7 @@ export const IdentityStrip = ({ band = false, gutter = 0, trackW = null }) => {
      retired chip below.  Kept for the non-band caller. */
   const dmgRange = wpn ? calcDisplayDmgRange(R, wpn) : null;
   const dps = dmgRange ? Math.round(calcDisplayDps(R, wpn) * 10) / 10 : 0;
-  const vwNow = typeof window !== 'undefined' ? window.innerWidth : 390;
+  const vwNow = playVw();   /* v2.3.1715: the shell, not the window */
 
   /* v2.3.1649 (owner: "shift the player HUD data to the left and have the
      coin amount above the inventory preview slots ... shift the DPS number
