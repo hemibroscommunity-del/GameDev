@@ -70,6 +70,14 @@ const ORE_THUMBS = {
 };
 const ORE_THUMB_DEFAULT = `/icons/items/ore-copper.webp${ITEMS_V}`;
 const FISHING_POLE_THUMB = `/icons/items/fishing-pole.webp${ITEMS_V}`;
+/* v2.3.1689 (owner: "use these sprites for the woodcutting axe and the
+   pickaxe ... You currently just have a log thumbnail for the woodcutting
+   axe").  The owner's two-tool sheet, split into one square icon each,
+   background keyed out and box-downscaled to 192px.  PNG rather than webp:
+   the rest of this set is webp because it was authored that way, and there
+   is no webp encoder in the build — the format is per-file, not a rule. */
+const WOODCUTTING_AXE_THUMB = `/icons/items/woodcutting-axe.png${ITEMS_V}`;
+const MINING_PICKAXE_THUMB  = `/icons/items/mining-pickaxe.png${ITEMS_V}`;
 /* Elemental shards: one webp per zone, /icons/items/<key>.webp
    following the keys defined in src/data/shards.js (shard_meadow,
    shard_ember, ...).  thumbFor() takes the shard_ prefix branch
@@ -87,6 +95,11 @@ export const thumbFor = (key) => {
   if (k.startsWith('ore_'))         return ORE_THUMB_DEFAULT;
   if (k.startsWith('shard_'))       return `/icons/items/${k}.webp${ITEMS_V}`;
   if (k === 'fishing_pole')         return FISHING_POLE_THUMB;
+  /* v2.3.1689: the three gathering tools all have real art now.  These sit
+     ABOVE no prefix rule on purpose — 'woodcutting_axe' does not match
+     'wood_', but the next tool key might, and an exact match can't drift. */
+  if (k === 'woodcutting_axe')      return WOODCUTTING_AXE_THUMB;
+  if (k === 'mining_pickaxe')       return MINING_PICKAXE_THUMB;
   if (k === 'slime-remnants')       return SLIME_REMNANTS_THUMB;
   if (k === 'fire-goblin-remnants') return FIRE_GOBLIN_REMNANTS_THUMB;
   if (k === 'skeleton-remnants')    return SKELETON_REMNANTS_THUMB;
