@@ -257,7 +257,10 @@ export const questMethods = {
            kill uses, so a quest that pushes you over a threshold levels
            you, grants the point, restores your pools and fires
            prog3_level exactly like fighting for it would. */
-        this._prog3AwardXp(session.id, ps, xpCat, reward.xp);
+        /* v2.3.1727: `flat` — a quest reward is XP already, not damage, so
+           it must not be scaled by XP_PER_DMG (which fell to 0.4 in the
+           pacing retune).  QUEST_REWARDS numbers are what the player gets. */
+        this._prog3AwardXp(session.id, ps, xpCat, reward.xp, { flat: true });
       } else {
         const { leveled } = this._addCombatXp(ps, reward.xp);
         if (leveled) {

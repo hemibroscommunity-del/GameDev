@@ -100,7 +100,11 @@ const psA = room.playerState.pa;
 {
   check('fresh join seeds prog3', !!psA.prog3 && psA.prog3.sk.sword.level === 1 && psA.prog3.pool === 0, psA.prog3);
   check('char level = Σ trained = 3', psA.level === 3, psA.level);
-  check('maxHp = 100 + level×2 (no armor, no hp pts)', psA.maxHp === 106, psA.maxHp);
+  /* v2.3.1727: derived from PROG3, not the literal 106 that was here — the
+     retune moved HP_PER_LEVEL and a hand-typed expectation just re-asserts
+     whatever the constant happened to be on the day. */
+  check('maxHp = 100 + level×HP_PER_LEVEL (no armor, no hp pts)',
+    psA.maxHp === 100 + 3 * PROG3.HP_PER_LEVEL, { maxHp: psA.maxHp, per: PROG3.HP_PER_LEVEL });
   check('maxStamina = 100 flat', psA.maxStamina === 100, psA.maxStamina);
   check('maxMana = floor(100 + magic×1.2)', psA.maxMana === 101, psA.maxMana);
   const sync = msgsOfType(wsA, 'state_sync')[0];
@@ -112,9 +116,17 @@ const psA = room.playerState.pa;
 // ── 3. Trained XP accrual + level-up ──
 {
   psA.hp = 5; psA.stamina = 5; psA.mana = 5;
-  room._prog3AwardXp('pa', psA, 'sword', prog3XpRequired(1) - 1);
+  /* ═══ v2.3.1727: DAMAGE AND XP ARE DIFFERENT UNITS ═══
+     This block used to hand _prog3AwardXp a raw XP figure and rely on
+     XP_PER_DMG being exactly 1.0 to make the two interchangeable.  The
+     retune dropped the rate to 0.4, so `flat` now says which unit is being
+     passed, and the assertion below pins the conversion rather than
+     assuming it away.  quests.js passes flat for the same reason: a quest
+     reward is XP already, and was being silently scaled by the damage
+     rate. */
+  room._prog3AwardXp('pa', psA, 'sword', prog3XpRequired(1) - 1, { flat: true });
   check('xp below threshold: no level', psA.prog3.sk.sword.level === 1 && psA.prog3.pool === 0, psA.prog3.sk.sword);
-  room._prog3AwardXp('pa', psA, 'sword', 1);
+  room._prog3AwardXp('pa', psA, 'sword', 1, { flat: true });
   check('level-up: sword 2, pool 1, char level 4',
     psA.prog3.sk.sword.level === 2 && psA.prog3.pool === 1 && psA.level === 4,
     { sk: psA.prog3.sk.sword, pool: psA.prog3.pool, level: psA.level });
@@ -124,6 +136,22 @@ const psA = room.playerState.pa;
   check('prog3_level notification sent', lvlMsgs.length === 1
     && lvlMsgs[0].payload.skill === 'sword' && lvlMsgs[0].payload.level === 2 && lvlMsgs[0].payload.charLevel === 4,
     lvlMsgs.map((m) => m.payload));
+
+  /* The conversion itself, both directions — the thing that made the
+     v2.3.1727 pacing change safe to reason about.  DAMAGE is scaled by
+     XP_PER_DMG; FLAT xp is not.  If these ever agree again, someone has
+     collapsed the two units back together and the quest table silently
+     pays XP_PER_DMG× what it advertises. */
+  {
+    const before = psA.prog3.sk.bow.xp;
+    room._prog3AwardXp('pa', psA, 'bow', 100);                   /* 100 damage */
+    const dmgGain = psA.prog3.sk.bow.xp - before;
+    room._prog3AwardXp('pa', psA, 'bow', 100, { flat: true });   /* 100 xp */
+    const flatGain = psA.prog3.sk.bow.xp - before - dmgGain;
+    check('damage is converted at XP_PER_DMG', Math.abs(dmgGain - 100 * PROG3.XP_PER_DMG) < 1e-9,
+      { dmgGain, rate: PROG3.XP_PER_DMG });
+    check('flat xp is NOT scaled by the damage rate', Math.abs(flatGain - 100) < 1e-9, { flatGain });
+  }
 
   // Hit-time accrual through the real monster_damage handler:
   // melee → sword; v2.3.1710: a special trains its OWN weapon.
@@ -176,7 +204,8 @@ const psA = room.playerState.pa;
   for (let i = 0; i < 5; i++) room._handleProg3Allocate(sess, { stat: 'hp' });
   check('per-stat cap = min(100, char level)', p3.alloc.hp === 4 && p3.pool === 6,
     { hp: p3.alloc.hp, pool: p3.pool, level: psA.level });
-  check('hp points land in maxHp (+8/pt)', psA.maxHp === 100 + psA.level * 2 + 4 * 8, psA.maxHp);
+  check('hp points land in maxHp (+8/pt)',
+    psA.maxHp === 100 + psA.level * PROG3.HP_PER_LEVEL + 4 * PROG3.BODY.hp.per, psA.maxHp);
   const acks = msgsOfType(wsA, 'prog3_allocated');
   check('prog3_allocated acks each landed point', acks.length === 4
     && acks[3].payload.stat === 'hp' && acks[3].payload.pts === 4 && acks[3].payload.pool === 6,
