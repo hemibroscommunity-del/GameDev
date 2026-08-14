@@ -1,6 +1,18 @@
 /* build_fire_shirt — derive the firemaking figure's SHIRT sheet from the body
  * strip itself (v2.3.1713).
  *
+ * ⚠ SUPERSEDED, AND IT WILL WRITE A BROKEN SHEET IF YOU RUN IT (v2.3.1715).
+ * Everything below describes the RETIRED 29-frame 161x220 firemaking strip.
+ * That strip and its shirt were both replaced wholesale by the owner's 8-frame
+ * 384x512 art; the live builder is tools/build_fire_8f.mjs.  Running this tool
+ * with APPLY=1 today would overwrite gear/shirt/tshirt/fire-south.png with a
+ * 29-frame sheet the renderer slices at 384px, i.e. twelve frames of nonsense.
+ * It is kept, unrun, for its method: the crown-anchored mask recipe in the
+ * header is still the best answer to "make a garment that is registered to this
+ * body by construction", which is exactly the thing the supplied painted sheets
+ * are NOT.  If the owner ever asks why the shirt or plate sits off the torso,
+ * this file is the fix — re-point it at the new strip's geometry.
+ *
  * WHY THIS EXISTS.  Owner playtest: "when lighting a fire the skin color and
  * shirt go back to defaults (not your character)."  The shirt half of that is
  * not a tint bug — measured, firemaking-strip.webp paints a BARE CHEST in all

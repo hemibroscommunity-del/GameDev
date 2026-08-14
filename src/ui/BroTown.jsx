@@ -752,6 +752,13 @@ export var BroTown = function BroTown(_ref0) {
        S.rpg, because the stat piece was set correctly the whole time and the
        thing that was wrong lived here. */
     getEquip: getEquip,
+    /* v2.3.1720: getEquip's twin.  The bridge exposes the reader because a
+       gear-LAYER bug was invisible from S.rpg (v2.3.1703); the same blind
+       spot makes a headless check unable to SET a layer, so verifying that a
+       new pose's armour sheets actually draw meant reaching through the whole
+       server-authoritative grant -> stash -> Equip-button chain just to put a
+       plate on a figure.  Reader and writer both, for the same reason. */
+    setEquip: setEquip,
     /* v2.3.1705: the shared block half-angle, so the headless check can assert
        that the cone on screen and the arc the worker tests are ONE number
        rather than two that happen to match today. */
