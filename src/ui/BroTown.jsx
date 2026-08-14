@@ -5129,6 +5129,33 @@ export var BroTown = function BroTown(_ref0) {
         return Math.round(100 * lit / (32 * 18));
       } catch (e) { return -1; }
     }
+    /* ═══ v2.3.1722: THE RECOVERY RELOAD, EXTRACTED ═══
+       Measured on a forced-black join: the in-place rebuild does NOT cure
+       this failure (a second rebuild fired 8.8s later, still dark) — the
+       RELOAD is what fixes it, and it was landing 23.7s after the loading
+       screen lifted.  The owner watched ~15s of black on a livestream and
+       their friend hit it on an iPhone.  So this had to become reachable in
+       seconds rather than after three more five-second strikes, and both
+       callers must share ONE implementation, because the 2-per-5-minutes cap
+       is the only thing standing between a black screen and a reload loop. */
+    function _recoveryReload(why) {
+      var S2 = stateRef.current;
+      if (!S2 || S2.__wdReloading) return false;
+      try {
+        var _rls = JSON.parse(sessionStorage.getItem('bt-reloads') || '[]')
+          .filter(function (t) { return Date.now() - t < 300000; });
+        if (_rls.length >= 2) return false;   /* capped — never loop the page */
+        _rls.push(Date.now());
+        sessionStorage.setItem('bt-reloads', JSON.stringify(_rls));
+        sessionStorage.setItem('bt_resume_now', '1');
+        S2.__wdReloading = true;
+        import('../debug/crashTrap.js').then(function (ct) {
+          ct.recordCrash('auto-reload', why);
+        }).catch(function () {});
+        setTimeout(function () { window.location.reload(); }, 350);
+        return true;
+      } catch (e) { return false; }
+    }
     var interval = setInterval(function () {
       var S = stateRef.current;
       /* v2.3.777: black-screen watchdog + resume-snapshot heartbeat.
@@ -5153,7 +5180,7 @@ export var BroTown = function BroTown(_ref0) {
          lit frame since the overlay lifted, so a dark sample is not a blip, it
          IS the failure.  So until the first lit frame is seen, sample ~2s
          after the lift and act on strike one. */
-      var _firstLook = !S.__wdEverLit && !S.__wdFastDone && S.__introLiftedAt
+      var _firstLook = !S.__wdEverLit && S.__introLiftedAt
         && (_nowWd - S.__introLiftedAt) > 2000
         && (!S.__wdFirstNext || _nowWd >= S.__wdFirstNext);
       if (_firstLook) S.__wdFirstNext = _nowWd + 1500;
@@ -5206,29 +5233,26 @@ export var BroTown = function BroTown(_ref0) {
             /* v2.3.1721: one strike before the first lit frame, two after. */
             var _strikesNeeded = S.__wdEverLit ? 2 : 1;
             if (S.__wdDark === _strikesNeeded && window._rebuildRenderer) {
-              /* Hand the cadence back to the 5s clock once the fast path has
-                 asked for its rebuild.  Otherwise the strike-4 reload lands
-                 ~4.5s later and cuts that rebuild off before it can finish;
-                 the original spacing gives it ~10s. */
-              S.__wdFastDone = true;
+              if (!S.__wdEverLit) S.__wdFastRebuiltAt = Date.now();
               window._rebuildRenderer(S.__wdEverLit
                 ? 'watchdog: screen dark 10s'
                 : 'watchdog: black on first join');
             }
+            /* v2.3.1722: a first join still black a beat after its rebuild
+               reloads NOW instead of waiting out three more strikes.  The
+               rebuild is given 3.5s to take effect — measured, a rebuild that
+               is going to work has repainted well inside that — and the code
+               has always held that "fresh boots have never failed", which is
+               why the reload is the reliable cure and the rebuild is not. */
+            if (!S.__wdEverLit && S.__wdFastRebuiltAt
+                && (Date.now() - S.__wdFastRebuiltAt) > 3500) {
+              S.__wdFastRebuiltAt = 0;
+              S.__wdDark = 0;
+              _recoveryReload('black on first join, still dark after rebuild -- reloading into game');
+            }
             if (S.__wdDark >= 4) {
               S.__wdDark = 0;
-              try {
-                var _rls = JSON.parse(sessionStorage.getItem('bt-reloads') || '[]').filter(function (t) { return Date.now() - t < 300000; });
-                if (_rls.length < 2) {
-                  _rls.push(Date.now());
-                  sessionStorage.setItem('bt-reloads', JSON.stringify(_rls));
-                  sessionStorage.setItem('bt_resume_now', '1');
-                  import('../debug/crashTrap.js').then(function (ct) {
-                    ct.recordCrash('auto-reload', 'world dark 20s despite rebuild -- reloading into game');
-                  }).catch(function () {});
-                  setTimeout(function () { window.location.reload(); }, 350);
-                }
-              } catch (e) {}
+              _recoveryReload('world dark 20s despite rebuild -- reloading into game');
             }
           });
         }
