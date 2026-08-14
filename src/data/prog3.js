@@ -33,8 +33,15 @@ export const PROG3 = {
     critDmg: { cap: 100, per: 2 },      // +2 flat on crits/pt, PER TYPE
     aspd:    { cap: 100, per: 0.0035 }, // −0.35% swing period/pt, PER TYPE
   },
-  DMG_PER_LEVEL: { sword: 0.18, bow: 0.18, staff: 0.22 },
-  HP_PER_LEVEL: 2,
+  /* v2.3.1727: the retune PROGRESSION-REDESIGN #13 deferred — the §7-A
+     placeholders bought +17.7% damage over ten character levels, which the
+     owner correctly read as "level 13 doesn't feel stronger than level 3".
+     The reasoning, the measured hits-to-kill table and the XP_PER_DMG
+     coupling all live on the SERVER copy (server/src/prog3.js), which is
+     the source of truth; these three lines are its mirror and must move
+     with it or every predicted number drifts from the wire. */
+  DMG_PER_LEVEL: { sword: 1.5, bow: 1.5, staff: 1.8 },
+  HP_PER_LEVEL: 6,
   MANA_PER_MAGIC_LEVEL: 1.2,
 };
 

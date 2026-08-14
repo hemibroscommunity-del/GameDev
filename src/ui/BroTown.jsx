@@ -7925,8 +7925,13 @@ export var BroTown = function BroTown(_ref0) {
   }, levelUpMsg.kind === 'warning' ? (levelUpMsg.sub || '')
     /* v2.3.1342: was "+5 Capacity · +5 Technique" — legacy copy from the
        retired flat per-level T2 grant.  Kid-true line: every level-up
-       (kill-path or point spend) refills all three pools. */
-    : "You got stronger! HP \xB7 Stamina \xB7 Mana refilled"))), rpgState && /*#__PURE__*/React.createElement("div", {
+       (kill-path or point spend) refills all three pools.
+       v2.3.1727: state the GAINS when the worker sent them (prog3 levels
+       carry `gains`, built in wsClient where the constants live).  "You got
+       stronger" is a claim; "+1.5 damage · +6 max HP" is the reason the
+       owner asked for the retune in the first place.  The old line stays as
+       the fallback for legacy level-ups, which really do only refill. */
+    : (levelUpMsg.gains || "You got stronger! HP \xB7 Stamina \xB7 Mana refilled")))), rpgState && /*#__PURE__*/React.createElement("div", {
     style: {
       position: 'absolute',
       top: 44,

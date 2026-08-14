@@ -5415,7 +5415,7 @@ export const QUEST_CHAINS = {
     id: 'tut_1', npc: 'Mayor Bro', title: 'Cold Reception',
     desc: 'Bring 4 Snowman Remnants from Frost Ridge.',
     check: function (rpg) { return ((rpg.inventory || {}).snowman || 0) >= 4; },
-    reward: { gold: 25, xp: 40 },
+    reward: { gold: 25, xp: 30 },
     next: 'tut_2',
     gives: [
       /* great-sword, not sword: weaponType 'sword' at wood tier is the
@@ -5458,7 +5458,7 @@ export const QUEST_CHAINS = {
     id: 'tut_2', npc: 'Mayor Bro', title: 'Into the Blue',
     desc: 'Bring 6 Slime Remnants from the Verdant Wilds.',
     check: function (rpg) { return ((rpg.inventory || {})['slime-remnants'] || 0) >= 6; },
-    reward: { gold: 60, xp: 100 },
+    reward: { gold: 60, xp: 70 },
     next: 'tut_3',
     /* v2.3.1692: the staff moved to tut_1 — this step pays gold + xp. */
     dialogue: {
@@ -5472,7 +5472,7 @@ export const QUEST_CHAINS = {
     id: 'tut_3', npc: 'Mayor Bro', title: 'Bad Wind',
     desc: 'Bring 5 Skeleton Remnants from the Wind Dunes.',
     check: function (rpg) { return ((rpg.inventory || {})['skeleton-remnants'] || 0) >= 5; },
-    reward: { gold: 150, xp: 150 },
+    reward: { gold: 150, xp: 105 },
     next: 'tut_4',
     dialogue: {
       start: 'Mummies out in the Wind Dunes. Hit them hard enough and the wrappings come off — what is underneath is faster. Five sets of bones.',
@@ -5484,7 +5484,7 @@ export const QUEST_CHAINS = {
     id: 'tut_4', npc: 'Mayor Bro', title: 'Bro Ascendant',
     desc: 'Bring 6 Fire Goblin Remnants from the Flame Fields.',
     check: function (rpg) { return ((rpg.inventory || {})['fire-goblin-remnants'] || 0) >= 6; },
-    reward: { gold: 400, xp: 300, item: "Iron Greaves" }, /* v2.3.1692 (owner): legs, not chest */
+    reward: { gold: 400, xp: 210, item: "Iron Greaves" }, /* v2.3.1692 (owner): legs, not chest */
     next: null,
     gives: [{ when: 'complete', icon: '/icons/items/greaves.webp', label: "Iron Greaves" }],
     dialogue: {
@@ -5514,7 +5514,7 @@ export const QUEST_CHAINS = {
       for (var k in inv) if (k.indexOf('cooked_fish_') === 0) n += inv[k] || 0;
       return n >= 2;
     },
-    reward: { gold: 60, xp: 80, item: 'Pickaxe' },
+    reward: { gold: 60, xp: 55, item: 'Pickaxe' },
     next: 'life_2',
     /* No axe or pickaxe art exists in /icons/items, so those two go
        unillustrated rather than borrowing a picture of something else. */
@@ -5548,7 +5548,7 @@ export const QUEST_CHAINS = {
        when:'complete' chip really has a server-side reward.item behind it, so
        a one-sided edit here fails loudly instead of promising armour nobody
        will hand over. */
-    reward: { gold: 200, xp: 200, item: 'Iron Torso' },
+    reward: { gold: 200, xp: 140, item: 'Iron Torso' },
     next: null,
     gives: [
       { when: 'complete', icon: '/icons/items/chest-plate.webp', label: 'Iron Torso' },
@@ -5572,7 +5572,7 @@ export const QUEST_CHAINS = {
     },
     reward: {
       gold: 50,
-      xp: 30
+      xp: 20
     },
     next: 'mayor_2',
     unlocks: 'zone_exits',
@@ -5593,7 +5593,7 @@ export const QUEST_CHAINS = {
     },
     reward: {
       gold: 100,
-      xp: 80
+      xp: 55
     },
     next: 'mayor_3',
     unlocks: 'skill_cap_10',
@@ -5614,7 +5614,7 @@ export const QUEST_CHAINS = {
     },
     reward: {
       gold: 300,
-      xp: 200
+      xp: 140
     },
     next: null,
     unlocks: 'skill_cap_50',
@@ -5636,7 +5636,7 @@ export const QUEST_CHAINS = {
     },
     reward: {
       gold: 25,
-      xp: 20
+      xp: 15
     },
     next: 'trader_2',
     unlocks: 'marketplace',
@@ -5657,7 +5657,7 @@ export const QUEST_CHAINS = {
     },
     reward: {
       gold: 75,
-      xp: 50
+      xp: 35
     },
     next: 'trader_3',
     unlocks: 'farming',
@@ -5678,7 +5678,7 @@ export const QUEST_CHAINS = {
     },
     reward: {
       gold: 150,
-      xp: 100
+      xp: 70
     },
     next: null,
     unlocks: 'cooking_buffs',
@@ -5699,7 +5699,7 @@ export const QUEST_CHAINS = {
     },
     reward: {
       gold: 50,
-      xp: 40
+      xp: 30
     },
     next: 'enchant_2',
     unlocks: 'enchanting',
@@ -5719,7 +5719,7 @@ export const QUEST_CHAINS = {
     },
     reward: {
       gold: 200,
-      xp: 150
+      xp: 105
     },
     next: 'enchant_3',
     unlocks: 'gem_cutting',
@@ -5740,7 +5740,7 @@ export const QUEST_CHAINS = {
     },
     reward: {
       gold: 500,
-      xp: 300
+      xp: 210
     },
     next: null,
     unlocks: 'amulet_shield_gems',
@@ -5762,7 +5762,7 @@ export const QUEST_CHAINS = {
     },
     reward: {
       gold: 100,
-      xp: 80
+      xp: 55
     },
     next: 'scout_2',
     unlocks: 'zone_mechanics',
@@ -5783,7 +5783,7 @@ export const QUEST_CHAINS = {
     },
     reward: {
       gold: 200,
-      xp: 150
+      xp: 105
     },
     next: null,
     unlocks: 'deep_access',
@@ -5809,7 +5809,7 @@ export const QUEST_CHAINS = {
     },
     reward: {
       gold: 60,
-      xp: 40
+      xp: 30
     },
     next: 'bron_2',
     unlocks: 'blacksmith',
@@ -5830,7 +5830,7 @@ export const QUEST_CHAINS = {
     },
     reward: {
       gold: 120,
-      xp: 80
+      xp: 55
     },
     next: 'bron_3',
     unlocks: 'woodworker_reforge',
@@ -5851,7 +5851,7 @@ export const QUEST_CHAINS = {
     },
     reward: {
       gold: 200,
-      xp: 150
+      xp: 105
     },
     next: 'bron_4',
     unlocks: 'hardening',
@@ -5872,7 +5872,7 @@ export const QUEST_CHAINS = {
     },
     reward: {
       gold: 400,
-      xp: 250
+      xp: 175
     },
     next: null,
     unlocks: 'shield_craft_salvage',
@@ -5894,7 +5894,7 @@ export const QUEST_CHAINS = {
     },
     reward: {
       gold: 40,
-      xp: 30
+      xp: 20
     },
     next: 'luna_2',
     unlocks: 'field_cooking',
@@ -5915,7 +5915,7 @@ export const QUEST_CHAINS = {
     },
     reward: {
       gold: 100,
-      xp: 70
+      xp: 50
     },
     next: 'luna_3',
     unlocks: 'shield_equip',
@@ -5936,7 +5936,7 @@ export const QUEST_CHAINS = {
     },
     reward: {
       gold: 250,
-      xp: 180
+      xp: 125
     },
     next: null,
     unlocks: 'amulet_craft',
@@ -5958,7 +5958,7 @@ export const QUEST_CHAINS = {
     },
     reward: {
       gold: 80,
-      xp: 60
+      xp: 40
     },
     next: 'kai_2',
     unlocks: 'pet_combat',
@@ -5979,7 +5979,7 @@ export const QUEST_CHAINS = {
     },
     reward: {
       gold: 200,
-      xp: 120
+      xp: 85
     },
     next: 'kai_3',
     unlocks: 'pet_loot_upgrade',
@@ -6000,7 +6000,7 @@ export const QUEST_CHAINS = {
     },
     reward: {
       gold: 350,
-      xp: 200
+      xp: 140
     },
     next: null,
     unlocks: 'trapping_cap_50',
@@ -6022,7 +6022,7 @@ export const QUEST_CHAINS = {
     },
     reward: {
       gold: 100,
-      xp: 80
+      xp: 55
     },
     next: 'ash_2',
     unlocks: 'reforge_expanded',
@@ -6043,7 +6043,7 @@ export const QUEST_CHAINS = {
     },
     reward: {
       gold: 250,
-      xp: 180
+      xp: 125
     },
     next: 'ash_3',
     unlocks: 'skill_cap_100',
@@ -6063,7 +6063,7 @@ export const QUEST_CHAINS = {
     },
     reward: {
       gold: 500,
-      xp: 350
+      xp: 245
     },
     next: 'ash_4',
     unlocks: null,
@@ -6084,7 +6084,7 @@ export const QUEST_CHAINS = {
     },
     reward: {
       gold: 800,
-      xp: 500
+      xp: 350
     },
     next: null,
     unlocks: null,

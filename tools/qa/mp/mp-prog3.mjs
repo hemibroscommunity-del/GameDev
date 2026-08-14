@@ -15,6 +15,9 @@
  *  - the persisted blob is stamped _v ≥ 10 with the respecced shape
  */
 import * as H from './harness.mjs';
+/* v2.3.1727: the retune moved HP_PER_LEVEL — read the constant rather than
+   re-typing its value into an assertion (see the maxHp check below). */
+import { PROG3 } from '../../../src/data/prog3.js';
 
 export async function run({ browser, wsPort, webPort, rec }) {
   const P = await H.newPlayer(browser, { name: 'Respec', wsPort, webPort });
@@ -35,7 +38,14 @@ export async function run({ browser, wsPort, webPort, rec }) {
   }, (v) => v.caps && v.p3, { timeout: 20000, label: 'prog3 adoption' }).catch(() => null);
   rec.ok('worker advertises caps.prog3 and the client adopts rpg.prog3', !!adopted, adopted);
   rec.ok('fresh character is level 3 (Σ of three level-1 trained skills)', adopted && adopted.level === 3, adopted);
-  rec.ok('maxHp re-derives to the prog3 formula (100 + level×2)', adopted && adopted.maxHp === 106, adopted);
+  /* v2.3.1727: derived from the CLIENT mirror rather than the literal 106
+     that was here.  The point of this assertion is that the client's
+     recalcDerived agrees with the worker's _prog3Recompute — a hand-typed
+     total silently stops testing that the moment either side is retuned,
+     and re-typing the new number would just re-arm the same trap. */
+  const expectHp = 100 + 3 * PROG3.HP_PER_LEVEL;
+  rec.ok(`maxHp re-derives to the prog3 formula (100 + level×${PROG3.HP_PER_LEVEL})`,
+    adopted && adopted.maxHp === expectHp, { ...adopted, expectHp });
   rec.ok('the allocation pool starts empty', adopted && adopted.pool === 0 && adopted.sword === 1, adopted);
 
   /* ── v2.3.1697: the Overview aggregate grid (Character opens here) ──

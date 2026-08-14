@@ -444,7 +444,7 @@ export const QUEST_REWARDS = {
          then refused at the equip check — a reward the player can see and not
          use is worse than no reward.  The sword+shield that come BEFORE these,
          on first contact, are the next slice. */
-      tut_1: {gold:25,  xp:40,  next:'tut_2',
+      tut_1: {gold:25,  xp:30,  next:'tut_2',
               objective:{type:'collect', invKey:'snowman', count:4, consume:true, zone:'frost'},
               /* v2.3.1676 (owner: "He'll give you the sword and shield").  Paid
                  on ACCEPT, not turn-in — you cannot do the quest without them,
@@ -477,11 +477,11 @@ export const QUEST_REWARDS = {
                 {kind:'weapon', weaponType:'staff', tierKey:'wood', name:"Bro's Staff"},
               ]},
       /* v2.3.1692: tut_2 pays gold + xp only — its staff moved to tut_1. */
-      tut_2: {gold:60,  xp:100, next:'tut_3',
+      tut_2: {gold:60,  xp:70, next:'tut_3',
               objective:{type:'collect', invKey:'slime-remnants', count:6, consume:true, zone:'verdant'}},
-      tut_3: {gold:150, xp:150, next:'tut_4',
+      tut_3: {gold:150, xp:105, next:'tut_4',
               objective:{type:'collect', invKey:'skeleton-remnants', count:5, consume:true, zone:'sky'}},
-      tut_4: {gold:400, xp:300, next:null,
+      tut_4: {gold:400, xp:210, next:null,
               objective:{type:'collect', invKey:'fire-goblin-remnants', count:6, consume:true, zone:'ember'},
               /* v2.3.1687 (owner: "Change the reward for fire goblin quest from
                  'scouts vest' to Iron Torso"). */
@@ -510,14 +510,14 @@ export const QUEST_REWARDS = {
          to fish AND cook — two skills out of one quest, and the reason the
          axe rides along with the pole: firewood.  Counts are small on purpose;
          this is a tutorial, not a grind. */
-      life_1: {gold:60,  xp:80,  next:'life_2',
+      life_1: {gold:60,  xp:55,  next:'life_2',
                objective:{type:'collect', invPrefix:'cooked_fish_', count:2, consume:true},
                grantOnAccept:[
                  {kind:'inv', key:'woodcutting_axe', n:1},
                  {kind:'inv', key:'fishing_pole', n:1},
                ],
                item:{kind:'inv', key:'mining_pickaxe', n:1}},
-      life_2: {gold:200, xp:200, next:null,
+      life_2: {gold:200, xp:140, next:null,
                /* v2.3.1704 (owner: "Prospectors vest and prospectors greaves are
                   the wrong description of quest awards for iron torso and iron
                   legs for mining quest.  Also the legs were an earlier reward
@@ -542,31 +542,31 @@ export const QUEST_REWARDS = {
                objective:{type:'collect', invPrefix:'ore_', count:5, consume:true},
                item:{kind:'armor', name:"Iron Torso", tierMult:1.0}},
 
-      mayor_1:    {gold:50,  xp:30,  next:'mayor_2'},
-      mayor_2:    {gold:100, xp:80,  next:'mayor_3', objective:{type:'kill', arch:null, count:5}},
-      mayor_3:    {gold:300, xp:200, next:null},
-      trader_1:   {gold:25,  xp:20,  next:'trader_2'},
-      trader_2:   {gold:75,  xp:50,  next:'trader_3', objective:{type:'gather', count:3}},
-      trader_3:   {gold:150, xp:100, next:null},
-      enchant_1:  {gold:50,  xp:40,  next:'enchant_2'},
-      enchant_2:  {gold:200, xp:150, next:'enchant_3'},
-      enchant_3:  {gold:500, xp:300, next:null},
-      scout_1:    {gold:100, xp:80,  next:'scout_2'},
-      scout_2:    {gold:200, xp:150, next:null},
-      bron_1:     {gold:60,  xp:40,  next:'bron_2'},
-      bron_2:     {gold:120, xp:80,  next:'bron_3'},
-      bron_3:     {gold:200, xp:150, next:'bron_4'},
-      bron_4:     {gold:400, xp:250, next:null},
-      luna_1:     {gold:40,  xp:30,  next:'luna_2'},
-      luna_2:     {gold:100, xp:70,  next:'luna_3'},
-      luna_3:     {gold:250, xp:180, next:null},
-      kai_1:      {gold:80,  xp:60,  next:'kai_2'},
-      kai_2:      {gold:200, xp:120, next:'kai_3'},
-      kai_3:      {gold:350, xp:200, next:null},
-      ash_1:      {gold:100, xp:80,  next:'ash_2'},
-      ash_2:      {gold:250, xp:180, next:'ash_3'},
-      ash_3:      {gold:500, xp:350, next:'ash_4'},
-      ash_4:      {gold:800, xp:500, next:null},
+      mayor_1:    {gold:50,  xp:20,  next:'mayor_2'},
+      mayor_2:    {gold:100, xp:55,  next:'mayor_3', objective:{type:'kill', arch:null, count:5}},
+      mayor_3:    {gold:300, xp:140, next:null},
+      trader_1:   {gold:25,  xp:15,  next:'trader_2'},
+      trader_2:   {gold:75,  xp:35,  next:'trader_3', objective:{type:'gather', count:3}},
+      trader_3:   {gold:150, xp:70, next:null},
+      enchant_1:  {gold:50,  xp:30,  next:'enchant_2'},
+      enchant_2:  {gold:200, xp:105, next:'enchant_3'},
+      enchant_3:  {gold:500, xp:210, next:null},
+      scout_1:    {gold:100, xp:55,  next:'scout_2'},
+      scout_2:    {gold:200, xp:105, next:null},
+      bron_1:     {gold:60,  xp:30,  next:'bron_2'},
+      bron_2:     {gold:120, xp:55,  next:'bron_3'},
+      bron_3:     {gold:200, xp:105, next:'bron_4'},
+      bron_4:     {gold:400, xp:175, next:null},
+      luna_1:     {gold:40,  xp:20,  next:'luna_2'},
+      luna_2:     {gold:100, xp:50,  next:'luna_3'},
+      luna_3:     {gold:250, xp:125, next:null},
+      kai_1:      {gold:80,  xp:40,  next:'kai_2'},
+      kai_2:      {gold:200, xp:85, next:'kai_3'},
+      kai_3:      {gold:350, xp:140, next:null},
+      ash_1:      {gold:100, xp:55,  next:'ash_2'},
+      ash_2:      {gold:250, xp:125, next:'ash_3'},
+      ash_3:      {gold:500, xp:245, next:'ash_4'},
+      ash_4:      {gold:800, xp:350, next:null},
     };
 
 export const BLACKSMITH_TIERS = {

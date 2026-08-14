@@ -13,6 +13,7 @@
 import { _onBroNonce, _onBroResult } from './broWallet.js'; /* v2.3.1576 */
 import { BT_AUDIO, ZONES, TILE, ARENA_CHAMPION_REWARD, ARENA_WIN_REWARD, CLAN_WAR_REWARDS, createDefaultCompStats, recalcDerived, DEATH_GOLD_PENALTY, PVP_THREAT_CONSENT_MS, updateZoneDimensions, generateZoneMap, trainDefense, getGuildRank, SKILL_GUILDS } from '@/data/index.js';
 import { MONSTER_VARIANTS, maybeTransformMonster, isRemnantSkull, xpMultFor } from '@/data/monsterVariants.js';
+import { prog3Live } from '@/data/prog3.js'; /* v2.3.1727: the kill-XP popup is a legacy number under prog3 */
 import { rollMonsterShard } from '@/data/shards.js';
 import { isWearingArmor } from '@/rendering/gearCatalog.js'; /* v2.3.1598: armoured-hit SFX check */
 /* BT_API_BASE: same window.BROTOWN_WS_URL-derived value BroTown computes at
@@ -994,7 +995,20 @@ export function processGameEvent(type, payload, S, deps) {
                      UX.  The actual R.xp update arrives via
                      player_state shortly after; combat_credit handles
                      the level-up popup + SFX. */
-                  pushHudPopup(S, { target: 'xpBar', text: '+' + killXp + ' XP', color: '#60a5fa' });
+                  /* ═══ v2.3.1727: DON'T POP A NUMBER THAT MEANS NOTHING ═══
+                     payload.xp is the monster's KILL xp, and under prog3 it
+                     lands in _addCombatXp — a no-op that returns
+                     {leveled:false} and moves no level anywhere.  Real
+                     progression is 1 xp per point of DAMAGE dealt, into the
+                     trained skill, and it is typically 5-6x this number.
+                     So a prog3 player was watching "+10 XP" float past while
+                     something entirely different drove their levels, which is
+                     its own small contribution to "levelling doesn't feel
+                     like anything".  Legacy (non-prog3) players still get it:
+                     for them the number is real. */
+                  if (!prog3Live(R)) {
+                    pushHudPopup(S, { target: 'xpBar', text: '+' + killXp + ' XP', color: '#60a5fa' });
+                  }
                   /* Local R.xp += / level-up loop runs only when the
                      worker doesn't own combat XP for this kill (i.e.
                      when _serverMonsters is false -- dungeons / SP).

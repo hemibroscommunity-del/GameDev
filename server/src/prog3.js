@@ -45,7 +45,12 @@ export const PROG3 = {
   SKILLS: ['sword', 'bow', 'staff'], // storage keys; displayed Melee / Bow / Magic
   LEVEL_CAP: 100,                    // per trained skill
   CHAR_LEVEL_CAP: 300,               // Σ trained levels
-  XP_PER_DMG: 1.0,                   // mirrors the legacy WEAPON_XP_PER_DMG
+  /* v2.3.1727: 1.0 -> 0.4.  XP is paid per point of damage DEALT, so
+     raising DMG_PER_LEVEL below would have sped levelling up by the same
+     factor it sped killing up — the two dials are one system and moving
+     either alone regresses the other.  See the pacing note on
+     DMG_PER_LEVEL for the measured checkpoints. */
+  XP_PER_DMG: 0.4,                   // was the legacy WEAPON_XP_PER_DMG's 1.0
   /* ═══ v2.3.1668: BODY vs ATK (owner, 2026-08-11) ═══
    *
    * "The attack power (crit chance, attack speed, etc) are specific to the
@@ -78,11 +83,48 @@ export const PROG3 = {
     // floor already covers a maxed prog3 build.  If the per-point
     // value ever grows past −50%, the floor must move in lockstep.
   },
-  // §7-A: +K damage per trained level, replacing stat×0.1667.  First
-  // guess pending the balance-sim retune (±10% of today's maxed DPS);
-  // staff pays a premium for its 0.5–1.5 variance.
-  DMG_PER_LEVEL: { sword: 0.18, bow: 0.18, staff: 0.22 },
-  HP_PER_LEVEL: 2,          // §5-B: 100 + level×2 + hp×8 (≈1500 base at cap)
+  /* ═══ v2.3.1727: THE RETUNE PROGRESSION-REDESIGN #13 DEFERRED ═══
+   * Owner, after judging: "The players who are level 13 do not feel
+   * significantly more powerful than the level 3 players... I DO want
+   * leveling to feel more powerful than current is."
+   *
+   * They were right, and the numbers below were never meant to survive:
+   * §7-A shipped +K/level as a FIRST GUESS "pending the balance-sim
+   * retune", and that retune never happened.  What the placeholders bought
+   * over ten character levels (3 -> 13, one skill trained, wood greatsword)
+   * was +17.7% damage and +18.9% max HP — a 58 HP fodder went from six hits
+   * to five.  That is not a power fantasy, it is rounding.
+   *
+   * Measured with tools/verify-prog3-retune.mjs, which imports the SHIPPED
+   * spawn/damage formulas rather than restating them (balance-sim's rule):
+   *
+   *            damage      fodder    brute     max HP
+   *   char 3   10.2->11.5   6->6      7->7     106->118
+   *   char 6   10.7->16.0   6->4      7->5     112->136
+   *   char 13  12.0->26.5   5->3      6->3     126->178
+   *   char 20  13.2->37.0   5->2      6->2     140->220
+   *
+   * 3 -> 13 is now +130% damage and +51% HP.  Staff keeps its ~20% premium
+   * for carrying the widest damage variance (0.5–1.5 vs melee's 0.75–1.25).
+   *
+   * THE COUPLING THAT MAKES THIS SAFE: XP_PER_DMG dropped to 0.4 in the
+   * same commit.  Kill XP is invariant to your damage per hit (killing a
+   * monster with H hp always pays H × XP_PER_DMG), so the pacing dial is
+   * XP_PER_DMG and the quest table, not this constant — but ship one
+   * without the other and the owner's second complaint ("the pace is also
+   * too quick") gets worse instead of better.  Both moved; the quest table
+   * went to 0.7× alongside (server/src/data.js QUEST_REWARDS, mirrored).
+   * Measured pacing: the mayor's visit-buildings quest now lands a player
+   * at character level 6 (was 8, and 11 for anyone who fought on the way),
+   * against the owner's stated target of 5-6.
+   *
+   * ANTICHEAT LOCKSTEP: _maxWeaponDmg reads this same constant, so the
+   * ceiling tracks the roll by construction — but the CLIENT mirror
+   * (src/data/prog3.js) must move in the same commit or every predicted
+   * number drifts from the wire (the v2.3.1451 rule).
+   */
+  DMG_PER_LEVEL: { sword: 1.5, bow: 1.5, staff: 1.8 },
+  HP_PER_LEVEL: 6,          // §5-B: 100 + level×6 + hp×8 (v2.3.1727: was 2)
   MANA_PER_MAGIC_LEVEL: 1.2, // §4 audit table: mana follows Magic (mind dies)
 };
 
@@ -323,12 +365,22 @@ export const prog3Methods = {
   // level-up here and on the kill-path _saveRpg like every other
   // combat mutation (the v2.3.1619b write-amplification lesson: no
   // per-hit storage puts).
-  _prog3AwardXp(playerId, ps, cat, dmg) {
+  /* v2.3.1727: `amount` is DAMAGE by default and XP when opts.flat is set.
+     The two were conflated from the start — quests.js hands this method a
+     quest's xp reward and it was multiplied by XP_PER_DMG like everything
+     else — and the bug was invisible for as long as XP_PER_DMG was exactly
+     1.0.  Dropping the rate to 0.4 made it visible and load-bearing: a
+     quest advertising 105 xp would quietly have paid 42.  A constant named
+     "xp per point of damage" has no business scaling a quest reward, so
+     the flat callers now say so and the table's numbers mean what they
+     say — which is what makes the quest XP dial safe for the owner to
+     tune later without reasoning about the damage rate. */
+  _prog3AwardXp(playerId, ps, cat, amount, opts) {
     const p3 = ps && ps.prog3;
-    if (!p3 || !p3.sk || !p3.sk[cat] || !(dmg > 0)) return;
+    if (!p3 || !p3.sk || !p3.sk[cat] || !(amount > 0)) return;
     const sk = p3.sk[cat];
     if (sk.level >= PROG3.LEVEL_CAP) return;
-    sk.xp += dmg * PROG3.XP_PER_DMG;
+    sk.xp += (opts && opts.flat) ? amount : amount * PROG3.XP_PER_DMG;
     let gained = 0;
     while (sk.level < PROG3.LEVEL_CAP && sk.xp >= prog3XpRequired(sk.level)) {
       sk.xp -= prog3XpRequired(sk.level);

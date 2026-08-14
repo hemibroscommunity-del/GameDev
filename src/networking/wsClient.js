@@ -18,7 +18,7 @@
 import { processGameEvent } from '@/networking/gameEvents.js';
 import { stashPendingZoneNodes } from '@/networking/nodeSync.js'; /* v2.3.1301: node self-heal */
 import { getDeviceNonce, generatePassphrase, passphraseToId } from '@/networking/index.js';
-import { createGatherNode, spawnMonstersForZone, BT_AUDIO, ZONES, TILE, DEATH_GOLD_PENALTY, RARITY_TIERS, ZONE_RESOURCES, createDefaultCompStats, generateZoneMap, recalcDerived, updateZoneDimensions, setGridCapsEnabled, setT2SimpleEnabled, setT2BenchEnabled, setProg3Enabled, PROG3_SKILL_META } from '@/data/index.js';
+import { createGatherNode, spawnMonstersForZone, BT_AUDIO, ZONES, TILE, DEATH_GOLD_PENALTY, RARITY_TIERS, ZONE_RESOURCES, createDefaultCompStats, generateZoneMap, recalcDerived, updateZoneDimensions, setGridCapsEnabled, setT2SimpleEnabled, setT2BenchEnabled, setProg3Enabled, PROG3_SKILL_META, PROG3 } from '@/data/index.js';
 import { _objectSpread, _slicedToArray, _toConsumableArray } from '@/lib/babelHelpers.js';
 import { usesClientSideMovement, MONSTER_VARIANTS, isRemnantSkull, applyZoneVariant } from '@/data/monsterVariants.js';
 import { rollMonsterShard, shardByKey } from '@/data/shards.js';
@@ -1437,11 +1437,26 @@ export function setupWebSocket(ctx) {
                  it rides along in bt_rpg so a reload keeps the attribution,
                  and _saveRpg's fixed field list ignores it server-side. */
               if (typeof p3l.skill === 'string') S.rpg._p3PoolFrom = p3l.skill;
+              /* ═══ v2.3.1727: SAY WHAT THE LEVEL BOUGHT ═══
+                 Owner, after judging: "I DO want leveling to feel more
+                 powerful."  Half of that is the retune (server prog3.js);
+                 the other half is telling the player what they just got.
+                 The banner said "You got stronger!" and left them to infer
+                 it from a health bar, which is exactly how ten levels can
+                 pass without feeling like anything.  Built here rather than
+                 in the banner because the constants already live on this
+                 side of the import graph. */
+              var _dmgPer = (PROG3.DMG_PER_LEVEL && PROG3.DMG_PER_LEVEL[p3l.skill]) || 0;
+              var _gains = [];
+              if (_dmgPer > 0) _gains.push('+' + _dmgPer + ' damage');
+              if (PROG3.HP_PER_LEVEL > 0) _gains.push('+' + PROG3.HP_PER_LEVEL + ' max HP');
+              _gains.push('+1 point to spend');
               setLevelUpMsg({
                 kind: 'combat',
                 level: p3l.charLevel || ((S.rpg && S.rpg.level) || 3),
                 skillLabel: p3meta ? p3meta.label : null,
                 skillLevel: p3l.level,
+                gains: _gains.join(' \xB7 '),
                 ts: Date.now(),
               });
               try { BT_AUDIO.levelUp && BT_AUDIO.levelUp(); } catch (e) {}
