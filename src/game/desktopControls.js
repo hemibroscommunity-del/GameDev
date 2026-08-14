@@ -131,8 +131,19 @@ export function setupDesktopControls(S, deps) {
         e.preventDefault();
         if (S._shieldUp) {
           S._shieldUp = false;
+          S._shieldKb = false;
           _desktopShieldOff();
         } else {
+          /* v2.3.1726: aim the shield at the mouse.  Blocking is directional
+             (±BLOCK_ARC_HALF) and on mobile the block ring steers
+             S._shieldAngle every frame — but this path never set it, so a
+             desktop shield pointed wherever the player last WALKED
+             (wsClient falls back to _facingAngle) and directional blocking
+             felt random on a keyboard.  Seed from the mouse-aim angle here;
+             the rAF loop in BroTown keeps it tracking the cursor while
+             _shieldKb holds (mirroring the ring's every-frame writes). */
+          if (typeof S._mouseAimAngle === 'number') S._shieldAngle = S._mouseAimAngle;
+          S._shieldKb = true;
           _desktopShieldOn();
         }
         return;
@@ -205,6 +216,7 @@ export function setupDesktopControls(S, deps) {
       /* Release Q → drop shield */
       if (e.code === 'KeyQ' && S._shieldUp) {
         S._shieldUp = false;
+        S._shieldKb = false; /* v2.3.1726: stop the rAF mouse-steer too */
         _desktopShieldOff();
       }
     };

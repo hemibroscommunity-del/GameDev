@@ -1221,8 +1221,16 @@ export const combatMethods = {
       // §16.12 — Resolve dodge/block against historical state
       if (checkState.dodging) continue; // was in i-frames from attacker's perspective
 
-      let blocked = false;
-      if (checkState.blocking) blocked = true;
+      /* v2.3.1726: PvP block goes through the SAME directional arc as
+         monster attacks (_blockArcCovers, ±BLOCK_ARC_HALF).  Until now this
+         was a bare `if (checkState.blocking)` — omnidirectional — because
+         the lag-comp history carried no shield facing; tick.js now snapshots
+         `ba` per tick, so the arc is tested against the rewound facing at
+         the moment the attacker saw the target.  checkState already has the
+         {blocking, ba, x, y} shape _blockArcCovers reads.  Entries written
+         before this deploy have no `ba` and keep the omni fail-open, same
+         as an old client — the pinned compatibility behavior. */
+      const blocked = this._blockArcCovers(checkState, attackerPs.x, attackerPs.y);
 
       // Crit roll
       const isCrit = Math.random() * 100 < critChance;

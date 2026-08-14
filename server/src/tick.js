@@ -28,6 +28,12 @@ export const tickMethods = {
           x: ps.x, y: ps.y, d: ps.d, z: ps.z,
           dodging: ps.dodging || false,
           blocking: ps.blocking || false,
+          /* v2.3.1726: shield facing rides the history so the PvP block
+             check can be directional against the REWOUND shield, not the
+             current one.  Null (not false) when absent — _blockArcCovers
+             reads a non-number as "old client, keep omni block", and that
+             fail-open must survive the rewind for pre-fix entries too. */
+          ba: (typeof ps.ba === 'number' && Number.isFinite(ps.ba)) ? ps.ba : null,
           dead: ps.dead || false,
           tick: this.tickSeq,
         });

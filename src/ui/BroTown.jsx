@@ -4818,12 +4818,23 @@ export var BroTown = function BroTown(_ref0) {
            it also starved the PvP lag-comp history of the blocking flag. */
         var _blockNow = !!S._shieldUp;
         var _blockChanged = _blockNow !== !!S._lastBroadcastBlocking;
+        /* v2.3.1726: shield ROTATION must broadcast too, not just up/down.
+           The authoritative facing (ba) rides only on move packets, and a
+           stationary player steering the shield fired none of the gate
+           conditions — the server kept testing the arc against a facing up
+           to 1 s stale (the idle keepalive), which is a lifetime against a
+           1.5 s monster swing cadence.  Same medicine as v2.3.1110 gave
+           up/down.  0.05 rad (~3°) of hysteresis so analog ring jitter
+           doesn't defeat the 22 ms throttle's purpose. */
+        var _baNow = _blockNow && typeof S._shieldAngle === 'number' ? S._shieldAngle : null;
+        var _baChanged = _baNow !== null &&
+          (typeof S._lastBroadcastBa !== 'number' || Math.abs(_baNow - S._lastBroadcastBa) > 0.05);
         /* v2.3.1107: 33ms -> 22ms send throttle, matching the server's 22ms
            tick.  At 33ms roughly every third server tick relayed a stale
            position; matching cadences means every tick can carry fresh data.
            Delta ticks keep the cost small; revisit if iPhone battery/network
            profiling ever flags it. */
-        if ((now - S.lastBroadcast > 22 && (isMoving || _facingChanged || _exChanged || _exHeartbeat || _justStopped || _blockChanged)) || _idleKeepalive) {
+        if ((now - S.lastBroadcast > 22 && (isMoving || _facingChanged || _exChanged || _exHeartbeat || _justStopped || _blockChanged || _baChanged)) || _idleKeepalive) {
           S.lastBroadcast = now;
           S._lastBroadcastFacing = S._renderFacing;
           if (S.channel) {
@@ -4864,6 +4875,7 @@ export var BroTown = function BroTown(_ref0) {
               if (_exCode) S._lastExBroadcast = now;
               S._restPending = false; /* v2.3.1107: rest packet delivered */
               S._lastBroadcastBlocking = _blockNow; /* v2.3.1110 */
+              S._lastBroadcastBa = _baNow; /* v2.3.1726 */
             }
             if (S.channel && (!S._lastTrack || Date.now() - S._lastTrack > 2000)) {
               var _rpg$lifeSkills7, _rpg$lifeSkills$pets, _rpg$_anniversaryItem, _rpg$armor, _rpg$shield, _rpg$amulet, _rpg$_compStats, _rpg$_compStats2, _rpg$_compStats3, _rpg$_compStats4, _rpg$_compStats5, _rpg$_compStats6, _rpg$_compStats7, _rpg$_compStats8, _S$_clanData2, _S$_clanData3, _S$_clanData4;
@@ -4955,6 +4967,14 @@ export var BroTown = function BroTown(_ref0) {
            at 100 max stamina (was 20/sec → 5 s; user reported shield
            "losing its hold" while finger was still down — auto-release
            on stamina-out happening sooner than expected). */
+        /* v2.3.1726: keyboard shield tracks the mouse.  The block ring
+           writes S._shieldAngle every RAF frame on touch; this is the
+           desktop twin, gated on _shieldKb (set only by the Q handler) so
+           it can never fight the ring on a touch device that also has a
+           mouse plugged in. */
+        if (S._shieldUp && S._shieldKb && typeof S._mouseAimAngle === 'number') {
+          S._shieldAngle = S._mouseAimAngle;
+        }
         if (S._shieldUp && S.rpg) {
           /* ═══ v2.3.1704: HOLDING A SHIELD IS FREE ═══
              Owner: "make it so holding shield doesn't drain energy.  I need

@@ -135,6 +135,45 @@ room._recomputeMaxes(psA); room._recomputeMaxes(psB);
   const blockedHit = room.eventBuffer.find((e) => e.type === 'pvp_hit');
   check('pvp: blocked hit deals 0', !!blockedHit && blockedHit.payload.blocked === true && blockedHit.payload.dmgTaken === 0,
     blockedHit && blockedHit.payload);
+
+  /* ═══ v2.3.1726: THE PVP BLOCK IS DIRECTIONAL ═══
+     Until now PvP block was a bare `if (checkState.blocking)` — the arc that
+     v2.3.1705 put on every monster path never reached PvP, so a duelist could
+     block a sword through the back of their head.  The resolve now goes
+     through the same _blockArcCovers as monsters.  Geometry here: attacker
+     pa at (0,0), victim pb at (200,0), so the attack comes FROM the west of
+     pb (angle π).  These run through the current-state fallback
+     (stateHistory.pb was emptied above), which is the same record shape the
+     rewound history entries now carry (tick.js snapshots ba per tick).
+     The blocked test just above ran with ba UNSET and must keep passing —
+     that is the old-client fail-open, same pin as the monster suite. */
+  psB.ba = Math.PI;             // shield faces west — toward the attacker
+  room.eventBuffer.length = 0;
+  room._pvpHitLanes = new Map();
+  room._resolvePvPAttack(room.sessions.get(wsA), { range: 250, arc: 3, angle: 0, dmgBase: 50, critChance: 0 });
+  const arcFront = room.eventBuffer.find((e) => e.type === 'pvp_hit');
+  check('pvp arc: a hit the shield FACES is blocked',
+    !!arcFront && arcFront.payload.blocked === true && arcFront.payload.dmgTaken === 0,
+    arcFront && arcFront.payload);
+
+  psB.ba = 0;                   // shield faces east — attacker is behind it
+  room.eventBuffer.length = 0;
+  room._pvpHitLanes = new Map();
+  room._resolvePvPAttack(room.sessions.get(wsA), { range: 250, arc: 3, angle: 0, dmgBase: 50, critChance: 0 });
+  const arcBack = room.eventBuffer.find((e) => e.type === 'pvp_hit');
+  check('pvp arc: the same hit from BEHIND the shield lands',
+    !!arcBack && arcBack.payload.blocked !== true && arcBack.payload.dmgTaken > 0,
+    arcBack && arcBack.payload);
+
+  psB.ba = null;                // sanitised junk facing = unknown, not off
+  room.eventBuffer.length = 0;
+  room._pvpHitLanes = new Map();
+  room._resolvePvPAttack(room.sessions.get(wsA), { range: 250, arc: 3, angle: 0, dmgBase: 50, critChance: 0 });
+  const arcNull = room.eventBuffer.find((e) => e.type === 'pvp_hit');
+  check('pvp arc: a null facing keeps the OMNI block (old client)',
+    !!arcNull && arcNull.payload.blocked === true && arcNull.payload.dmgTaken === 0,
+    arcNull && arcNull.payload);
+  delete psB.ba;
   psB.blocking = false;
 
   // Dead attackers can't fire.
