@@ -5140,7 +5140,24 @@ export var BroTown = function BroTown(_ref0) {
          5 min so a server-side black screen can't loop the page. */
       var _nowWd = Date.now();
       if (!S.__wdArmedAt) S.__wdArmedAt = _nowWd; /* grace for first bake */
-      if ((!S.__wdNext || _nowWd >= S.__wdNext) && _nowWd - S.__wdArmedAt > 15000) {
+      /* ═══ v2.3.1721: A FIRST JOIN DOES NOT WAIT OUT THE MID-SESSION CADENCE ═══
+         Owner: "sometimes upon first joining the game after the loading screen
+         it's black."  The watchdog above already recovers this -- but on its
+         own clock, which is tuned for a context loss during play: 15s grace,
+         then a sample every 5s, then a rebuild only on the SECOND dark strike.
+         Measured from the loading screen lifting, that is ~5-10s of black
+         before anything happens and ~20s to the reload, which is far longer
+         than anyone waits before reloading by hand.
+         Two strikes is the right rule DURING PLAY, where one dark sample can
+         be a transient.  It is the wrong rule here: we have never rendered a
+         lit frame since the overlay lifted, so a dark sample is not a blip, it
+         IS the failure.  So until the first lit frame is seen, sample ~2s
+         after the lift and act on strike one. */
+      var _firstLook = !S.__wdEverLit && !S.__wdFastDone && S.__introLiftedAt
+        && (_nowWd - S.__introLiftedAt) > 2000
+        && (!S.__wdFirstNext || _nowWd >= S.__wdFirstNext);
+      if (_firstLook) S.__wdFirstNext = _nowWd + 1500;
+      if (_firstLook || ((!S.__wdNext || _nowWd >= S.__wdNext) && _nowWd - S.__wdArmedAt > 15000)) {
         S.__wdNext = _nowWd + 5000;
         if (!S.__wdHb || _nowWd - S.__wdHb > 30000) {
           S.__wdHb = _nowWd;
@@ -5177,15 +5194,26 @@ export var BroTown = function BroTown(_ref0) {
           requestAnimationFrame(function () {
             var _pctWd = _sampleLit();
             if (_pctWd < 0) return;
-            if (_pctWd >= 1) { S.__wdDark = 0; return; }
+            /* v2.3.1721: the world has rendered at least once — from here the
+               conservative two-strike rule applies. */
+            if (_pctWd >= 1) { S.__wdDark = 0; S.__wdEverLit = true; return; }
             S.__wdDark = (S.__wdDark || 0) + 1;
             try {
               import('../debug/crashTrap.js').then(function (ct) {
                 ct.recordCrash('watchdog-dark', 'screen ' + _pctWd + '% lit, strike ' + S.__wdDark);
               }).catch(function () {});
             } catch (e) {}
-            if (S.__wdDark === 2 && window._rebuildRenderer) {
-              window._rebuildRenderer('watchdog: screen dark 10s');
+            /* v2.3.1721: one strike before the first lit frame, two after. */
+            var _strikesNeeded = S.__wdEverLit ? 2 : 1;
+            if (S.__wdDark === _strikesNeeded && window._rebuildRenderer) {
+              /* Hand the cadence back to the 5s clock once the fast path has
+                 asked for its rebuild.  Otherwise the strike-4 reload lands
+                 ~4.5s later and cuts that rebuild off before it can finish;
+                 the original spacing gives it ~10s. */
+              S.__wdFastDone = true;
+              window._rebuildRenderer(S.__wdEverLit
+                ? 'watchdog: screen dark 10s'
+                : 'watchdog: black on first join');
             }
             if (S.__wdDark >= 4) {
               S.__wdDark = 0;
@@ -6925,6 +6953,11 @@ export var BroTown = function BroTown(_ref0) {
        component is simply unreachable, and restoring the greeting is this
        one line.  Same treatment wireThemeMusic got in v2.3.1103. */
     onComplete: function onComplete() {
+      /* v2.3.1721: stamp the moment the world becomes VISIBLE.  The
+         black-screen watchdog needs it: before this instant a dark canvas is
+         correct (the overlay is covering it), and after it a dark canvas is
+         the bug the owner reported. */
+      try { if (stateRef.current) stateRef.current.__introLiftedAt = Date.now(); } catch (e) {}
       setShowIntro(false);
     }
   }), showMayorGreeting && /*#__PURE__*/React.createElement(MayorGreeting, {
