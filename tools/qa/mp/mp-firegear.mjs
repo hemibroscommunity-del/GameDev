@@ -29,11 +29,13 @@ import * as H from './harness.mjs';
 
 /* The table under test, mirrored here on purpose: a copy that has to be updated
    in two places is the point.  If someone edits FIRE_GEAR_REG without a reason
-   they can state, this fails and asks them to say it twice. */
+   they can state, this fails and asks them to say it twice.
+   Frame 7 is hand-tuned rather than fitted (v2.3.1725) — its reasoning is in
+   the FIRE_GEAR_REG header, and the coverage floors below already absorb it. */
 const REG = {
-  shirt: { scale: 0.85, off: [[48, -89], [8, -50], [20, -47], [55, -64], [67, -50], [56, -52], [57, -56], [56, -103]] },
-  chest: { scale: 0.90, off: [[39, -79], [18, 27], [42, 13], [35, 23], [84, 11], [75, 10], [59, 9], [52, -69]] },
-  legs: { scale: 0.90, off: [[28, -7], [23, 8], [89, 48], [57, 7], [73, 15], [72, 15], [64, 17], [71, 15]] },
+  shirt: { scale: 0.85, off: [[48, -89], [8, -50], [20, -47], [55, -64], [67, -50], [56, -52], [57, -56], [46, -103]] },
+  chest: { scale: 0.90, off: [[39, -79], [18, 27], [42, 13], [35, 23], [84, 11], [75, 10], [59, 9], [42, -69]] },
+  legs: { scale: 0.90, off: [[28, -7], [23, 8], [89, 48], [57, 7], [73, 15], [72, 15], [64, 17], [41, 15]] },
 };
 const FRAME_MS = 200;
 
