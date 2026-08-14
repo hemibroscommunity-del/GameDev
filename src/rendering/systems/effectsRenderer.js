@@ -37,19 +37,34 @@ import { swordTorsoCutRow } from '../swordTorsoCut.js';
 import { GEARLAYER_VER } from '../gearVersion.js';   // shared cache-bust string (see gearVersion.js)
 
 /* v2.3.1713: the firemaking strip's frame box, shared by the body bake, the
-   shirt layer, the trait crowns and the remote stand-in — they all slice the
-   SAME 161x220 grid, and crowns.json is generated against it, so a re-cut strip
-   has to move all four together (the comment at _skillTraitMul says the same
-   thing about the chop/cook widths). */
-const FIRE_FW = 161, FIRE_FH = 220;
+   gear layers, the trait crowns and the remote stand-in — they all slice the
+   SAME grid, and crowns.json is generated against it, so a re-cut strip has to
+   move all of them together (the comment at _skillTraitMul says the same thing
+   about the chop/cook widths).
+   v2.3.1715: 161x220 x29 -> 384x512 x8.  The owner replaced this animation
+   outright with an 8-frame set (body + shirt + chest + legs, generated
+   together); the 29-frame strip is RETIRED, there is no fallback to it and
+   nothing may assume 29 again.  384x512 is the supplied art's own cell size, so
+   the sheets ship unresampled — see tools/build_fire_8f.mjs for the measurement
+   that says one new cell IS one old frame at 512/220 = 2.327x, which is why the
+   drawn height FH below stays 154 and the figure's on-screen size is unchanged.
+   THE TWO KNOCK-ONS, both easy to miss: _skillTraitMul.fire had to be scaled by
+   the same 2.327 (it multiplies sp.scale.y, which fell 0.7 -> 0.3008, to size
+   the player's hat), and _updateRemoteExtraction divided by a hardcoded 220. */
+const FIRE_FW = 384, FIRE_FH = 512;
 /* The channel-ratio window that separates this figure's painted skin from the
    campfire it is lighting.  MEASURED on firemaking-strip.webp: body skin runs
    g/r 0.49-0.74 and b/r 0.13-0.46; the glow halo sits at b/r 0.57-0.84 and the
    flame's red edge at g/r 0.21-0.45, both of which the shared _isSkin accepts.
-   minBlob is 200 rather than the cook's 1500 because this body's folded arms
-   split it into 1169-2296px components — see recolorStandInSkin for the whole
-   measurement, including what each wrong value looked like on screen. */
-const FIRE_SKIN_OPTS = { maxBR: 0.50, minGR: 0.45, maxGR: 0.80, minBlob: 200 };
+   v2.3.1715: minBlob 200 -> 1800 for the new art, and it is NOT just the 5.55x
+   area rescale it looks like.  Re-measured per frame by build_fire_8f
+   (connected components with bounding boxes, so a size can be attributed to a
+   body part or to the fire): the body's smallest surviving component is 2113px
+   and the largest NON-body component is the flame's orange rim at 1129px —
+   x 97..129 on frame 6, nowhere near the figure.  So there is a clean gap and
+   1800 sits in it.  Keeping 200 would have retinted that rim, i.e. drawn the
+   flame's outline in the player's skin colour on the last three frames. */
+const FIRE_SKIN_OPTS = { maxBR: 0.50, minGR: 0.45, maxGR: 0.80, minBlob: 1800 };
 
 /* Popup icons (XP badge, gold coin, sword/arrow/spell for damage by weapon
    type). Loaded async — entries appear in the registry once each PNG is
@@ -809,6 +824,16 @@ export class EffectsRenderer {
     this.fireSprite.anchor.set(0.5, 1);
     this.fireSprite.visible = false;
     this.gestureLayer.addChild(this.fireSprite);   /* v2.3.1713: above trees */
+    /* v2.3.1715: the fire-lighter's LEG ARMOUR, the cook's cookLegsSprite for
+       this pose (v2.3.1114).  Added BEFORE the shirt so the shirt draws in
+       front of it — the owner's woodcutting note ("the shirt should be layered
+       in front of the leg armor", v2.3.1710) is about hems, and this figure
+       kneels front-on, which is where a greave waistband cutting across a hem
+       reads worst.  Untinted: armour keeps its own metal colour. */
+    this.fireLegsSprite = new Sprite();
+    this.fireLegsSprite.anchor.set(0.5, 1);
+    this.fireLegsSprite.visible = false;
+    this.gestureLayer.addChild(this.fireLegsSprite);
     /* v2.3.1713: the fire-lighter's SHIRT, added AFTER the body so it composites
        on top — the same layer the cook (v2.3.1113) and the chopper (v2.3.1131)
        have had, and the one pose that never got one.  See _updateFiremaking.
@@ -820,6 +845,16 @@ export class EffectsRenderer {
     this.fireShirtSprite.anchor.set(0.5, 1);
     this.fireShirtSprite.visible = false;
     this.gestureLayer.addChild(this.fireShirtSprite);
+    /* v2.3.1715: the fire-lighter's CHEST PLATE (+ pauldrons), the cook's
+       cookChestSprite for this pose (v2.3.1115).  Added LAST so it composites
+       over body, greaves and shirt — safe because _placeSwingShirt hides the
+       shirt outright whenever a chest piece is worn, so the two never fight.
+       The shoulders live in this same sheet, so the z-order the brief asks for
+       (legs < shirt < chest < shoulders) is satisfied by these three sprites. */
+    this.fireChestSprite = new Sprite();
+    this.fireChestSprite.anchor.set(0.5, 1);
+    this.fireChestSprite.visible = false;
+    this.gestureLayer.addChild(this.fireChestSprite);
     /* v2.3.1713: the body strip now loads through _loadFireStrips, which bakes
        the PLAYER'S skin into it (owner: "when lighting a fire the skin color and
        shirt go back to defaults").  It used to be a plain _fxLoad, so it always
@@ -1107,21 +1142,26 @@ export class EffectsRenderer {
     /* v2.3.875: trait scale per stand-in = its render scale × (character height
        / the stand 182px reference), so the hat matches how it sits idle rather
        than being sized to the lumberjack's small head.  chop 166px, cook 212px,
-       fire ~155px in-frame -> these multipliers. */
-    this._skillTraitMul = { chop: 0.91, cook: 1.16, fire: 0.85, sword: 1.03, sword_se: 1.03, sword_e: 1.03, sword_n: 1.03, bow_e: 1.0, bow_sw: 1.0, bow_s: 1.0, bow_nw: 1.0, bow_n: 1.0 };
+       fire ~155px in-frame -> these multipliers.
+       v2.3.1715: fire 0.85 -> 1.98.  NOT a taste change and not a re-tune: this
+       multiplier scales sp.scale.y, and the 8-frame art's frame is 512 tall
+       where the old one was 220, so the SAME drawn figure now reports a scale
+       2.327x smaller (154/512 = 0.3008 vs 154/220 = 0.7).  0.85 x 2.327 = 1.98
+       reproduces exactly the hat size that shipped.  Left alone, every hat,
+       hair and beard on this pose would have rendered at 43%. */
+    this._skillTraitMul = { chop: 0.91, cook: 1.16, fire: 1.98, sword: 1.03, sword_se: 1.03, sword_e: 1.03, sword_n: 1.03, bow_e: 1.0, bow_sw: 1.0, bow_s: 1.0, bow_nw: 1.0, bow_n: 1.0 };
     /* crowns.json frame widths MUST match the strip-loading FWs above
-       (chop 240, cook 213, fire 161).  If those strips are re-cut, rerun the
-       crown generator with the matching widths or the traits drift off-head. */
-    /* v2.3.1713: `fire` frames 22 and 23 were hand-corrected in the JSON, which
-       cannot carry a comment of its own.  Both read [79,145] — down on the
-       burning log, not on the head: the generator locked onto the flame once it
-       got bright, so the player's HAT teleported onto the campfire for two
-       frames (~110ms) of every fire lit.  Re-derived from the art as [111,80]
-       and [107,80], between their neighbours' [117,79] and [108,67], by
-       tools/build_fire_shirt.mjs, which prints the corrected pair on every run
-       (it needs a trustworthy head anchor for the shirt mask).  Found while
-       fixing the owner's skin/shirt report; not part of it. */
-    fetch('/sprites/skills/crowns.json').then((r) => r.json()).then((j) => { this._skillCrowns = j; }).catch(() => {});
+       (chop 240, cook 213, fire 384 — v2.3.1715, was 161).  If those strips are
+       re-cut, rerun the crown generator with the matching widths or the traits
+       drift off-head. */
+    /* v2.3.1715: the `fire` entry is rebuilt for the 8-frame art — fw 384,
+       fh 512, 8 crowns, re-derived from the new body by tools/build_fire_8f.mjs
+       and cross-checked frame by frame against the old table scaled by 512/220
+       (they agree to within 8px in x on all eight).  The v2.3.1713 hand-repair
+       of frames 22/23 is gone with the frames themselves.  Cache-busted because
+       a browser holding the 29-entry table against an 8-frame strip would clamp
+       every hat onto crown[7]. */
+    fetch('/sprites/skills/crowns.json?v=2.3.1715').then((r) => r.json()).then((j) => { this._skillCrowns = j; }).catch(() => {});
 
     /* v2.3.1713: warm the fire-lighter's SHIRT sheet onto the intro gate.
        _gearStripFrame loads through _fxLoad, so touching it once here registers
@@ -1133,8 +1173,14 @@ export class EffectsRenderer {
        so an earlier call would throw, and a call that "helpfully" created the
        map early would be wiped by that initialiser and silently re-load lazily.
        'tshirt' is the only shirt item that ships, so nothing is guessed; a
-       player wearing none simply never draws the sprite. */
+       player wearing none simply never draws the sprite.
+       v2.3.1715: the two new armour sheets join it, for exactly the same reason
+       and under the same law — 'steelplate' / 'steelgreaves' are the only chest
+       and legs items with a fire-south sheet, so nothing is guessed here
+       either. */
     this._gearStripFrame('shirt', 'tshirt', 'fire', 'south', FIRE_FW, 0);
+    this._gearStripFrame('chest', 'steelplate', 'fire', 'south', FIRE_FW, 0);
+    this._gearStripFrame('legs', 'steelgreaves', 'fire', 'south', FIRE_FW, 0);
   }
 
   /* ═══ v2.3.1710: THE COOK WEARS THE PLAYER'S SKIN ═══
@@ -1234,6 +1280,14 @@ export class EffectsRenderer {
    * takes a ratio window + a lower floor; the numbers behind both, and the
    * proof the cook's own behaviour is untouched, are at that function.
    *
+   * v2.3.1715: the two paragraphs above describe the RETIRED 29-frame strip and
+   * are kept because they are why the ratio window exists at all — that part
+   * still holds.  Re-measured on the replacement art: base skin is #fe8b2a (not
+   * #f28638, so the recolour's reference tone genuinely moved), the window still
+   * separates body from flame cleanly, and the blob floor went the OTHER way,
+   * 200 -> 1800, because the new body no longer fragments the way the old one
+   * did.  See FIRE_SKIN_OPTS at the top of this file and build_fire_8f.mjs.
+   *
    * PRELOADING IS LAW (CLAUDE.md).  The bake is pushed onto _fxPreload — the
    * same list _fxLoad feeds — so the intro gate waits for the RECOLOURED
    * textures, not for a raw download it would then have to re-bake mid-play. */
@@ -1254,7 +1308,12 @@ export class EffectsRenderer {
       const im = new Image();
       im.onload = () => res(im);
       im.onerror = rej;
-      im.src = '/sprites/skills/firemaking-strip.webp';
+      /* v2.3.1715: cache-bust.  The file KEPT its name through the 29-frame ->
+         8-frame replacement (so every reference and the preload registration
+         stay put), which means a browser holding the old 4669x220 image would
+         slice it at the new 384 width into 12 nonsense frames.  The query is
+         what makes the swap safe. */
+      im.src = '/sprites/skills/firemaking-strip.webp?v=2.3.1715';
     }).then((img) => {
       /* skinTarget() returns null for the 'default' pick, which means "the art
          is already this colour" — true of the PLAYER sheets, not of this
@@ -3920,10 +3979,21 @@ export class EffectsRenderer {
        same layer, so an early return below would otherwise leave a floating
        shirt behind when the light finishes or the player dies mid-light. */
     if (this.fireShirtSprite) this.fireShirtSprite.visible = false;
+    /* v2.3.1715: the two new armour layers drop with the body for the same
+       reason the shirt does — they are siblings on gestureLayer, so an early
+       return that left them shown would strand a floating breastplate at the
+       campfire when the light finishes or the player dies mid-light. */
+    if (this.fireLegsSprite) this.fireLegsSprite.visible = false;
+    if (this.fireChestSprite) this.fireChestSprite.visible = false;
     const fm = S && S._firemaking;
     if (!fm || !S.player || !this.fireSprite || !this._fireFrames.length) return;
     if (fm.doneAt && now > fm.doneAt) return;
-    const FH = 154, FRAME_MS = 55;   /* v2.3.1435 (owner): 1.75x (88 -> 154) */
+    /* v2.3.1435 (owner): 1.75x (88 -> 154).  v2.3.1715: FRAME_MS 55 -> 200 with
+       the 29-frame strip's retirement.  The number is the light's DURATION, not
+       taste: 29 x 55 = 1595ms, 8 x 200 = 1600ms, so the animation still fills
+       the same light.  Leaving it at 55 would have played all eight frames in
+       440ms and then frozen on the last one for a second — a twitch. */
+    const FH = 154, FRAME_MS = 200;
     const elapsed = now - (fm.startedAt || now);
     const fi = Math.min(this._fireFrames.length - 1, Math.floor(elapsed / FRAME_MS));
     const sp = this.fireSprite;
@@ -3936,22 +4006,41 @@ export class EffectsRenderer {
     /* ═══ v2.3.1713: THE SHIRT ═══
        Owner: "when lighting a fire the skin color and SHIRT go back to defaults."
        The shirt half was never a tint bug — this pose simply had no shirt.
-       firemaking-strip.webp paints a BARE CHEST on all 29 frames, and unlike the
+       firemaking-strip.webp painted a BARE CHEST on all 29 of its frames, and unlike the
        cook (v2.3.1113) and the chopper (v2.3.1131) it never shipped a
        gear/shirt/<item>/<pose>-<dir> sheet, so there was nothing to draw: the
        fire-lighter has always been topless whatever the player wears.
-       The sheet is now derived from the body strip itself by
-       tools/build_fire_shirt.mjs (which documents why the three obvious
-       mask recipes fail on this art) and drawn through the SAME _placeSwingShirt
+       v2.3.1713 derived a sheet from the body strip itself
+       (tools/build_fire_shirt.mjs, which documents why the three obvious mask
+       recipes fail on that art) and drew it through the SAME _placeSwingShirt
        the other four stand-ins use — so it follows the shirt colour picker, and
-       it hides itself when a chest plate is worn, with no new rules. */
+       it hides itself when a chest plate is worn, with no new rules.
+       v2.3.1715 REPLACED that derived sheet with the owner's painted one, cut by
+       tools/build_fire_8f.mjs alongside the new body/chest/legs.  The wiring
+       below is unchanged; only the pixels are.  Worth knowing if the garment
+       ever looks misplaced: the derived sheet was registered to the body by
+       construction and the painted one is not — that tool's header carries the
+       measurement and the fact that the owner chose the painted art anyway. */
     const placeFireLayer = (spr, t) => {
       if (!spr) return;
       if (!t) { spr.visible = false; return; }
       spr.anchor.set(0.5, 1); spr.texture = t;
       spr.scale.set(sp.scale.x, sp.scale.y); spr.x = sp.x; spr.y = sp.y; spr.visible = true;
     };
+    /* ═══ v2.3.1715: CHEST AND LEG ARMOUR ═══
+       The fire-lighter can now wear the same two layers the cook has had since
+       v2.3.1114/1115, from sheets cut by tools/build_fire_8f.mjs out of the
+       owner's 8-frame art.  Deliberately identical to the cook's wiring: LEGS
+       first (so the shirt hangs in front of the greaves), then the shirt, then
+       the PLATE last — _placeSwingShirt already hides the shirt whenever a
+       chest piece is worn, so the plate replaces rather than covers it and no
+       new rule is introduced.  Both are untinted; armour keeps its own metal.
+       _gearStripFrame returns null when the slot is empty, and placeFireLayer
+       hides the sprite on a null texture, so an unarmoured player costs
+       nothing here. */
+    placeFireLayer(this.fireLegsSprite, this._gearStripFrame('legs', getEquip('legs'), 'fire', 'south', FIRE_FW, fi));
     this._placeSwingShirt(this.fireShirtSprite, placeFireLayer, this._shirtId(), getEquip('chest'), 'fire', 'south', FIRE_FW, fi, getShirtColor(), getShirt());
+    placeFireLayer(this.fireChestSprite, this._gearStripFrame('chest', getEquip('chest'), 'fire', 'south', FIRE_FW, fi));
     this._placeSkillTraitsOn('fire', sp, fi, 'south', false);
   }
 
@@ -4000,9 +4089,15 @@ export class EffectsRenderer {
          peer's lumberjack has been rendering 18% larger than your own since
          then; cook follows the same pass's 82 -> 62.  If a local height moves
          again, move it here in the same edit — nothing enforces the link. */
-      chop: { frames: this._chopFrames, h: 95, ms: 45, traitDir: 'east' },
-      cook: { frames: this._cookFrames, h: 62, ms: 60, traitDir: 'south' },
-      fire: { frames: this._fireFrames, h: 154, ms: 55, traitDir: 'south' }, /* v2.3.1435: 1.75x with the local figure */
+      /* v2.3.1715: `fh` is new and load-bearing.  The scale below used to divide
+         by a hardcoded 220 — true of every stand-in strip until the firemaking
+         art was replaced with 512-tall frames, at which point a peer lighting a
+         fire would have rendered 2.3x oversized while their own client drew it
+         correctly.  The frame height belongs beside the drawn height, not baked
+         into the arithmetic. */
+      chop: { frames: this._chopFrames, h: 95, fh: 220, ms: 45, traitDir: 'east' },
+      cook: { frames: this._cookFrames, h: 62, fh: 220, ms: 60, traitDir: 'south' },
+      fire: { frames: this._fireFrames, h: 154, fh: FIRE_FH, ms: 200, traitDir: 'south' }, /* v2.3.1435: 1.75x with the local figure; v2.3.1715: 8 frames at 200ms, matching _updateFiremaking */
       /* v2.3.1713: NOTE — cook and fire now hand a peer's stand-in the LOCAL
          player's baked skin, because these arrays are the local bake (cook
          since v2.3.1710, fire since this change).  A peer's cook has quietly
@@ -4047,7 +4142,7 @@ export class EffectsRenderer {
          and this figure stayed full size — a giant cook standing over a dot.
          Same curve, same position, so the two now shrink together. */
       const pscale = zonePlayerScale(zone, ox, oy, TILE);
-      const s = (spec.h / 220) * pscale;
+      const s = (spec.h / spec.fh) * pscale;   /* v2.3.1715: per-strip frame height, was a hardcoded 220 */
       sp.scale.set(s, s);
       sp.x = ox;
       sp.y = oy + 6 * pscale;                 /* foot offset shrinks with the figure */

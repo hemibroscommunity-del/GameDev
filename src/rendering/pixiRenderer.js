@@ -407,6 +407,30 @@ export async function initPixiRenderer(canvas) {
         lastHp: ring._lastHpCur,
       };
     },
+    /* v2.3.1715: read-only probe of the firemaking stand-in's four layers, for
+       the QA harness — the same shape and the same reason as hudHpProbe above
+       (v2.3.1682).  This pose replaced its art wholesale and gained two armour
+       layers, and "did the plate draw" is a fact about Pixi display objects:
+       window._gameState cannot see a sprite's texture frame, and a screenshot
+       cannot tell a MISSING sheet from one that landed off the body — which is
+       exactly the distinction this change needs to be able to make.  Returns
+       nothing the game consumes. */
+    fireGearProbe: () => {
+      const e = effectsRenderer;
+      const one = (sp) => (sp ? {
+        visible: sp.visible,
+        tex: sp.texture && sp.texture.frame
+          ? { x: sp.texture.frame.x, y: sp.texture.frame.y, w: sp.texture.frame.width, h: sp.texture.frame.height } : null,
+        x: +sp.x.toFixed(1), y: +sp.y.toFixed(1), scale: +sp.scale.y.toFixed(4), tint: sp.tint,
+      } : null);
+      return {
+        frames: e._fireFrames ? e._fireFrames.length : 0,
+        body: one(e.fireSprite), legs: one(e.fireLegsSprite),
+        shirt: one(e.fireShirtSprite), chest: one(e.fireChestSprite),
+        order: ['fireSprite', 'fireLegsSprite', 'fireShirtSprite', 'fireChestSprite']
+          .map((k) => (e[k] && e[k].parent ? e[k].parent.getChildIndex(e[k]) : -1)),
+      };
+    },
     /* v2.3.138: dispose a single loot pile by direct object reference.
        Local SP pickups don't always set lootId (legacy melee/bow/DoT
        push paths) so disposeLootById can't reach them. The pickup
