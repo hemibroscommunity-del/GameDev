@@ -77,9 +77,17 @@
  * The four sheets are NOT registered to each other.  Composited as supplied the
  * chest plate lands low and left of the torso, the greaves land over the log,
  * and on the mid frames both overlap the flame.  The "gear vs torso" table
- * printed on every run is the number behind that sentence.  The owner has seen
- * it and chosen to ship the art as-is; nothing here nudges it, because a silent
- * nudge would hide the very thing that needs deciding.
+ * printed on every run is the number behind that sentence.  Nothing HERE nudges
+ * it, because a silent nudge would hide the very thing that needs deciding.
+ *
+ * ⚠ AND IT WAS DECIDED (v2.3.1723).  Shown the composited figure, the owner's
+ * answer was that it does not look right — the garment sits low and left of the
+ * torso and, on the tending frames, inside the flames.  The correction is a
+ * per-frame offset table, FIRE_GEAR_REG in effectsRenderer.js, measured by
+ * tools/measure_fire_gear_reg.mjs.  It lives in the RENDERER so these sheets
+ * stay byte-for-byte the art that was supplied and one deleted constant reverts
+ * it.  If corrected art ever arrives, re-run this tool AND delete that table —
+ * leaving it in place would nudge already-correct sheets back off the body.
  *
  *   node tools/build_fire_8f.mjs           # measure + previews -> scratch
  *   APPLY=1 node tools/build_fire_8f.mjs   # also write the four sheets + crowns
