@@ -94,15 +94,37 @@ const FIRE_SKIN_OPTS = { maxBR: 0.50, minGR: 0.45, maxGR: 0.80, minBlob: 1800 };
  * instead drags them up onto the chest, which is exactly what the second run
  * did before the target was split.
  *
+ * SCALE, v2.3.1724.  Moving the sheets was not enough — they are sized to a
+ * different figure too, and the owner picked the sizes off a sweep: shirt
+ * x0.85, chest and legs x0.90.  It is applied about the sprite anchor (0.5, 1),
+ * i.e. the cell's BOTTOM CENTRE, so the garment shrinks toward the feet and not
+ * toward the middle of the frame.  Note the two interact — `off` below is
+ * re-fitted AT these scales and is not the table that shipped at x1.0, so a
+ * scale cannot be changed without re-running the measure tool.
+ *
+ * The scale is NOT a measured number and cannot be.  The fit scores how much of
+ * the garment lands on the body, which rewards shrinking without limit — a
+ * smaller garment is trivially easier to fit inside a body, so the metric runs
+ * away to a dot.  It picks position; a person picks size.
+ *
  * Units are SOURCE ART PIXELS in the 384x512 cell; _updateFiremaking scales
  * them by the sprite's own scale, so they follow FH if the drawn height ever
  * moves.  Only _updateFiremaking draws gear on this pose — a peer's remote
  * stand-in has never drawn gear at all (_updateRemoteExtraction) — so this is
  * the single place it has to be applied. */
 const FIRE_GEAR_REG = {
-  shirt: [[30, -58], [10, -26], [20, -38], [44, -53], [58, -32], [42, -32], [38, -17], [36, -74]],
-  chest: [[39, -57], [16, 56], [40, 28], [22, 32], [83, 37], [71, 28], [47, 43], [36, -53]],
-  legs: [[24, 13], [-3, 4], [31, 20], [34, 14], [50, 25], [52, 25], [43, 29], [45, 29]],
+  shirt: {
+    scale: 0.85,
+    off: [[48, -89], [8, -50], [20, -47], [55, -64], [67, -50], [56, -52], [57, -56], [56, -103]],
+  },
+  chest: {
+    scale: 0.90,
+    off: [[39, -79], [18, 27], [42, 13], [35, 23], [84, 11], [75, 10], [59, 9], [52, -69]],
+  },
+  legs: {
+    scale: 0.90,
+    off: [[28, -7], [23, 8], [89, 48], [57, 7], [73, 15], [72, 15], [64, 17], [71, 15]],
+  },
 };
 
 /* Popup icons (XP badge, gold coin, sword/arrow/spell for damage by weapon
@@ -4070,11 +4092,16 @@ export class EffectsRenderer {
     const fireLayerPlacer = (slot) => (spr, t) => {
       if (!spr) return;
       if (!t) { spr.visible = false; return; }
-      const reg = (FIRE_GEAR_REG[slot] && FIRE_GEAR_REG[slot][fi]) || [0, 0];
+      const reg = FIRE_GEAR_REG[slot];
+      const off = (reg && reg.off && reg.off[fi]) || [0, 0];
+      /* v2.3.1724: the per-sheet size.  anchor (0.5, 1) is the cell's bottom
+         centre, so this shrinks the garment toward the feet — which is why the
+         offsets had to be re-fitted at these scales rather than carried over. */
+      const k = (reg && reg.scale) || 1;
       spr.anchor.set(0.5, 1); spr.texture = t;
-      spr.scale.set(sp.scale.x, sp.scale.y);
-      spr.x = sp.x + reg[0] * sp.scale.x;
-      spr.y = sp.y + reg[1] * sp.scale.y;
+      spr.scale.set(sp.scale.x * k, sp.scale.y * k);
+      spr.x = sp.x + off[0] * sp.scale.x;
+      spr.y = sp.y + off[1] * sp.scale.y;
       spr.visible = true;
     };
     /* ═══ v2.3.1715: CHEST AND LEG ARMOUR ═══

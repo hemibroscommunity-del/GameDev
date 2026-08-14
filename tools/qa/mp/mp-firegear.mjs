@@ -31,9 +31,9 @@ import * as H from './harness.mjs';
    in two places is the point.  If someone edits FIRE_GEAR_REG without a reason
    they can state, this fails and asks them to say it twice. */
 const REG = {
-  shirt: [[30, -58], [10, -26], [20, -38], [44, -53], [58, -32], [42, -32], [38, -17], [36, -74]],
-  chest: [[39, -57], [16, 56], [40, 28], [22, 32], [83, 37], [71, 28], [47, 43], [36, -53]],
-  legs: [[24, 13], [-3, 4], [31, 20], [34, 14], [50, 25], [52, 25], [43, 29], [45, 29]],
+  shirt: { scale: 0.85, off: [[48, -89], [8, -50], [20, -47], [55, -64], [67, -50], [56, -52], [57, -56], [56, -103]] },
+  chest: { scale: 0.90, off: [[39, -79], [18, 27], [42, 13], [35, 23], [84, 11], [75, 10], [59, 9], [52, -69]] },
+  legs: { scale: 0.90, off: [[28, -7], [23, 8], [89, 48], [57, 7], [73, 15], [72, 15], [64, 17], [71, 15]] },
 };
 const FRAME_MS = 200;
 
@@ -79,12 +79,18 @@ export async function run({ browser, wsPort, webPort, rec }) {
     for (const slot of ['chest', 'legs']) {
       const sp = pr[slot];
       if (!sp || !sp.visible) { bad.push(`f${f} ${slot}: not drawn`); continue; }
-      const want = REG[slot][f];
+      const want = REG[slot].off[f];
       const dx = sp.x - pr.body.x, dy = sp.y - pr.body.y;
       /* 0.6px of slack: the probe rounds to one decimal and the scale is
          irrational (154/512), so an exact compare would be flaky. */
       if (Math.abs(dx - want[0] * pr.body.scale) > 0.6 || Math.abs(dy - want[1] * pr.body.scale) > 0.6) {
         bad.push(`f${f} ${slot}: off by (${dx.toFixed(1)},${dy.toFixed(1)}), want (${(want[0] * pr.body.scale).toFixed(1)},${(want[1] * pr.body.scale).toFixed(1)})`);
+      }
+      /* v2.3.1724: and its own SIZE.  The offsets were re-fitted at these
+         scales, so a layer drawn at the wrong one is misplaced as well as
+         mis-sized — and a stray scale is invisible in a single still. */
+      if (Math.abs(sp.scale - pr.body.scale * REG[slot].scale) > 0.002) {
+        bad.push(`f${f} ${slot}: scale ${sp.scale}, want ${(pr.body.scale * REG[slot].scale).toFixed(4)}`);
       }
     }
   }
@@ -98,10 +104,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await holdFrame(f);
     const pr = await probe();
     if (!pr.body || !pr.shirt || !pr.shirt.visible) { badShirt.push(`f${f}: shirt not drawn`); continue; }
-    const want = REG.shirt[f];
+    const want = REG.shirt.off[f];
     const dx = pr.shirt.x - pr.body.x, dy = pr.shirt.y - pr.body.y;
     if (Math.abs(dx - want[0] * pr.body.scale) > 0.6 || Math.abs(dy - want[1] * pr.body.scale) > 0.6) {
       badShirt.push(`f${f}: off by (${dx.toFixed(1)},${dy.toFixed(1)})`);
+    }
+    if (Math.abs(pr.shirt.scale - pr.body.scale * REG.shirt.scale) > 0.002) {
+      badShirt.push(`f${f}: scale ${pr.shirt.scale}, want ${(pr.body.scale * REG.shirt.scale).toFixed(4)}`);
     }
   }
   rec.ok('the shirt is nudged by the SHIRT row, not another slot\'s',
@@ -139,10 +148,17 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const isSkin = (r, g, b, a) => a > 200 && r > 60 && b / r <= 0.50 && g / r >= 0.45 && g / r <= 0.80;
     const isLeg = (r, g, b, a) => a > 200 && ((r > 20 && g / r > 1.0 && b / r < 0.72) || (r < 130 && Math.abs(r - g) < 26 && Math.abs(g - b) < 26));
     const solid = (r, g, b, a) => a > 200;
-    const on = (g, b, dx, dy) => {
+    /* The renderer's placement, exactly: anchor (0.5, 1) means scale happens
+       about the cell's BOTTOM CENTRE, then the offset is added. */
+    const on = (g, b, k, dx, dy) => {
       let hit = 0, tot = 0;
-      for (let y = 0; y < FH; y++) { const ty = y + dy, ok = ty >= 0 && ty < FH;
-        for (let x = 0; x < FW; x++) { if (!g[y * FW + x]) continue; tot++; if (!ok) continue; const tx = x + dx; if (tx >= 0 && tx < FW && b[ty * FW + tx]) hit++; } }
+      for (let y = 0; y < FH; y++) for (let x = 0; x < FW; x++) {
+        if (!g[y * FW + x]) continue;
+        tot++;
+        const tx = (FW / 2 + (x - FW / 2) * k + dx) | 0;
+        const ty = (FH + (y - FH) * k + dy) | 0;
+        if (tx >= 0 && tx < FW && ty >= 0 && ty < FH && b[ty * FW + tx]) hit++;
+      }
       return tot ? hit / tot : 0;
     };
     const body = await cells('/sprites/skills/firemaking-strip.webp');
@@ -156,17 +172,22 @@ export async function run({ browser, wsPort, webPort, rec }) {
     ]) {
       const g = (await cells(src)).map((d) => mask(d, solid));
       let raw = 0, reg = 0;
-      for (let f = 0; f < N; f++) { raw += on(g[f], tgt[f], 0, 0); reg += on(g[f], tgt[f], REG[slot][f][0], REG[slot][f][1]); }
+      for (let f = 0; f < N; f++) {
+        raw += on(g[f], tgt[f], 1, 0, 0);            /* the sheet as supplied */
+        reg += on(g[f], tgt[f], REG[slot].scale, REG[slot].off[f][0], REG[slot].off[f][1]);
+      }
       out[slot] = { raw: raw / N, reg: reg / N };
     }
     return out;
   }, REG);
 
-  /* Measured on the shipped art: shirt 0.42 -> 0.65, chest 0.43 -> 0.69,
-     legs 0.20 -> 0.37.  The floors sit just under each corrected figure and
-     well above each raw one; 1.35x is comfortably inside the smallest real
-     gain (1.56x) while still failing loudly on a no-op table. */
-  const FLOOR = { shirt: 0.60, chest: 0.63, legs: 0.33 };
+  /* Measured on the shipped art at the chosen scales: shirt 0.42 -> 0.79,
+     chest 0.43 -> 0.79, legs 0.20 -> 0.44.  The floors sit just under each
+     corrected figure and well above each raw one; 1.35x is comfortably inside
+     the smallest real gain while still failing loudly on a no-op table.
+     NOTE the ratio cannot be used to CHOOSE the scale — it rewards shrinking
+     without limit (see FIRE_GEAR_REG).  It is a floor, not an optimiser. */
+  const FLOOR = { shirt: 0.70, chest: 0.72, legs: 0.38 };
   for (const slot of ['shirt', 'chest', 'legs']) {
     const c = cover[slot];
     rec.ok(`the registered ${slot} covers the body far better than the raw sheet does`,
