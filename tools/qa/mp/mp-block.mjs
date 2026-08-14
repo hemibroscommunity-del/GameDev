@@ -114,5 +114,58 @@ export async function run({ browser, wsPort, webPort, rec }) {
     !!down && down.blocking === false, down);
   rec.ok('...and clears the facing with it', !!down && down.ba === null, down);
 
+  /* ═══ v2.3.1726: A HIT ACTUALLY RESOLVES THROUGH THE ARC ═══
+     Everything above proves the facing travels; nothing above ever took a
+     hit.  The worker's melee branch is pinned by unit tests now
+     (combat-lifecycle drives _tickMonsters directly — that is where the
+     v2.3.1705 slim-projection hole lived), so what QA adds is the CLIENT
+     half: the local AI's block resolution (monsterCombat.js, via
+     isAttackInShieldArc) in a real game loop.  If this drifts from the
+     server rule the player sees "Blocked!" while the worker applies damage,
+     which is worse than either bug alone.  A monster is INJECTED, not
+     travelled to — mp-authority's precedent: a spoke zone makes the sample
+     window depend on worker hits, exactly the noise this must be free of. */
+  const arcHit = await P.page.evaluate(async () => {
+    const S = window._gameState && window._gameState.current;
+    if (!S || !S.rpg || !S.player) return { __no: true };
+    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+    if (!S.rpg.shield && (S.rpg.shieldStash || []).length) S.rpg.shield = S.rpg.shieldStash.shift();
+    if (!S.rpg.shield) return { __noShield: true };
+    const sample = async (ba) => {
+      S._serverMonsters = false;
+      S.rpg.hp = S.rpg.maxHp || 100;
+      S._dodgeRoll = null; S.respawnTimer = 0;
+      /* east of the player, inside melee reach — same fixture as mp-authority */
+      S.monsters = [{
+        id: 'qa_arc_1', arch: 'fodder', archetype: 'fodder', type: 'fodder',
+        x: S.player.x + 30, y: S.player.y, renderX: S.player.x + 30, renderY: S.player.y,
+        spawnX: S.player.x + 30, spawnY: S.player.y, targetX: S.player.x + 30, targetY: S.player.y,
+        hp: 500, curHp: 500, maxHp: 500, dmg: 12, level: 1, gold: 0,
+        alive: true, statuses: {}, _hitThisSwing: false, _atkCd: 0, _stunUntil: 0,
+        respawnAt: 0, moveTimer: 0, _stuckArrows: [],
+      }];
+      clearInterval(window.__blockPin);
+      window.__blockPin = setInterval(() => {
+        S._shieldUp = true; S.shieldEnd = Date.now() + 500; S._shieldAngle = ba;
+      }, 16);
+      const before = S.rpg.hp;
+      await sleep(4000);           /* clears the 400ms telegraph + several swings */
+      const after = S.rpg.hp;
+      clearInterval(window.__blockPin);
+      S._shieldUp = false; S.shieldEnd = 0; S.monsters = [];
+      return { before, after, dropped: before - after };
+    };
+    const facing = await sample(0);          /* shield east — at the monster */
+    const turned = await sample(Math.PI);    /* shield west — monster behind it */
+    S.rpg.hp = S.rpg.maxHp || 100;
+    return { facing, turned };
+  });
+  if (arcHit.__no || arcHit.__noShield) {
+    rec.skip('client arc resolution', arcHit.__noShield ? 'no shield arrived' : 'no player state');
+  } else {
+    rec.ok('a swing the shield FACES deals no local damage', arcHit.facing.dropped === 0, arcHit.facing);
+    rec.ok('the same swing from BEHIND the shield lands locally', arcHit.turned.dropped > 0, arcHit.turned);
+  }
+
   await P.ctx.close().catch(() => {});
 }

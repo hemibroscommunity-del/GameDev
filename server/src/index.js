@@ -1186,9 +1186,16 @@ export class GameRoom {
     // v2.3.1183: one pass over playerState per tick, not one per active
     // zone -- and slim {id,x,y,blocking} records instead of spreading
     // the full ~50-field state (inventory, quest maps, ...) per player
-    // per zone at 45 Hz.  The AI below reads exactly these four fields
-    // (all its mutations go through this.playerState[nearest.id]), so
-    // behavior is unchanged; the copies were read-only.
+    // per zone at 45 Hz.  The AI below reads these five fields from the
+    // slim copy (all its mutations go through this.playerState[nearest.id]),
+    // so behavior is unchanged; the copies were read-only.
+    // v2.3.1726: the slim copy is deliberately NOT given `ba` — the melee
+    // block-arc check reads the FULL record via this.playerState[nearest.id]
+    // instead.  v2.3.1705 added the arc check against the slim copy, and
+    // _blockArcCovers fail-opens on a missing facing (an old-client
+    // affordance), so monster melee silently stayed omnidirectional for
+    // seven versions while snowballs and boss abilities were directional.
+    // If you add a reader here, take the full record or widen this comment.
     const playersByZone = new Map();
     for (const [id, ps] of Object.entries(this.playerState)) {
       if (ps.dead || ps.disconnected || !ps.z) continue;
@@ -1609,7 +1616,16 @@ export class GameRoom {
               m._attackingUntil = 0;
               continue;
             }
-            if (this._blockArcCovers(nearest, m.x, m.y)) { // v2.3.1705: directional
+            /* v2.3.1726: arc-test the FULL record, not the slim projection.
+               `nearest` (built at the top of the tick, v2.3.1183) has no
+               `ba`, and _blockArcCovers deliberately fail-opens on a missing
+               facing — so this check, added as "directional" in v2.3.1705,
+               actually made every monster melee swing blockable from behind.
+               The owner's report was the symptom: "the shield blocks all
+               attacks from everywhere."  The full record is one map hit and
+               was already being fetched a few lines down for stamina. */
+            const blockerPs = this.playerState[nearest.id];
+            if (this._blockArcCovers(blockerPs, m.x, m.y)) { // v2.3.1705: directional; v2.3.1726: actually so
               m.atkCd = now + this.MONSTER_ATTACK_CD;
               m._attackingUntil = now + 400;
               // Block cost: 15 stamina (mirrors client at BroTown.jsx:2663).
@@ -1619,7 +1635,6 @@ export class GameRoom {
               // cap −50%).  The exact cost rides the wire as
               // staminaDrain below, so pre-fix clients render the
               // discounted number correctly with zero client changes.
-              const blockerPs = this.playerState[nearest.id];
               // v2.3.1704: free for the demo — see BLOCK_COSTS_STAMINA in data.js.
               const staminaCost = BLOCK_COSTS_STAMINA
                 ? Math.max(1, Math.round(15 * this._blockStaminaMult(blockerPs)))

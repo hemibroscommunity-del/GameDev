@@ -1,13 +1,18 @@
 # Brotown UI Spec Reference — Directional Block Ring + Shield Mechanics
 
-> **v2.3.1110 (owner decision): block DIRECTIONALITY is retired.** All block
-> resolution — server monsters, client-AI variants, projectiles, bosses — is
-> now omnidirectional (shield up = blocked, no ±60° facing test), unifying on
-> the rule the server already adopted for reliability (client/server position
-> drift made the arc test miss). The block RING UI, parry timing, stamina
-> drain, and shield-equipment mechanics below remain valid; only the
-> facing-arc requirement is dropped. `isAttackInShieldArc` stays in
-> combatHelpers for a possible future skill-mode revival.
+> **STATUS (v2.3.1726): directionality is LIVE.** The v2.3.1110 retirement
+> banner that used to sit here was superseded by v2.3.1705, which put the
+> ±60° arc (`BLOCK_ARC_HALF`, Part 3) back on every block path — client
+> prediction, worker monsters, projectiles, dungeon bosses — with a shared
+> constant so the drawn cone IS the hitbox. Two paths silently stayed
+> omnidirectional after 1705 and were fixed in v2.3.1726: monster MELEE
+> (the tick loop's slim player projection carried no facing, and the arc
+> check fail-opens on a missing facing) and PvP (the lag-comp history
+> carried no facing at all). Old clients that never send `ba` keep the
+> omnidirectional block by design — that fail-open is pinned in
+> server/test/combat-lifecycle.test.mjs. Parry timing and stamina drain
+> below remain design-spec only (`BLOCK_COSTS_STAMINA` is off, the parry
+> window is dormant in blockRingBus).
 
 Complete implementation spec for the directional block ring around the right joystick, the parry-on-timing mechanic integrated with it, and the shield equipment role. All dimensions assume portrait mobile per §15 (~380×760 viewport). This spec slots alongside §1.7d (utility wheel) and §1.7e (inventory surface) and extends §15 (combat HUD) with the new defensive layer.
 

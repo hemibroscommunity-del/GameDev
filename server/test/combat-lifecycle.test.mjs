@@ -1667,5 +1667,68 @@ for (const m of meadowMonsters) m._wanderPausedUntil = Date.now() + 600000;
     !!atk && atk.payload.blocked === true && psB.hp === hp0, { payload: atk && atk.payload });
 }
 
+/* ═══ v2.3.1726: THE MELEE BRANCH IS DIRECTIONAL TOO ═══
+   Everything above drives _monsterStrikePlayer — the generic choke point,
+   which v2.3.1705 made directional and these tests pinned.  The MELEE swing
+   in _tickMonsters never reaches that choke while blocking: it has its own
+   arc check, and that check was handed the tick loop's slim player
+   projection ({id,x,y,blocking,extracting} — no ba), so _blockArcCovers
+   fail-opened and every melee swing in the game was blockable from behind.
+   Seven versions of "directional" blocking in which the most common attack
+   was omni, and no test noticed because no test drove _tickMonsters with a
+   blocking player.  These three do exactly that. */
+{
+  const meadow = room._ensureZoneMonsters('meadow');
+  const mm = meadow[0];
+  /* Silence the rest of the zone so exactly one swing can happen per tick. */
+  const saved = meadow.map((m) => ({ m, alive: m.alive, respawnAt: m.respawnAt }));
+  meadow.forEach((m) => { if (m !== mm) { m.alive = false; m.respawnAt = Date.now() + 1e9; } });
+  mm.alive = true; mm.maxHp = 500; mm.hp = 500; mm.statuses = {}; mm.dmg = 20;
+  mm.respawnAt = 0;
+
+  psB.z = 'frost';                       /* out of the arena */
+  psA.z = 'meadow'; psA.dead = false; psA.dying = false; psA.disconnected = false;
+  psA._zoneEntryGraceUntil = 0;
+  psA.agility = 0;                       /* no passive dodge — deterministic */
+  psA.maxHp = 5000; psA.hp = 5000;
+  psA.x = 200; psA.y = 200;
+  mm.x = psA.x + 20; mm.y = psA.y;       /* due EAST, well inside melee reach */
+
+  const swing = () => {
+    mm.atkCd = 0; mm._attackingUntil = 0;
+    mm.x = psA.x + 20; mm.y = psA.y;     /* re-park: the chase step moves it */
+    room.eventBuffer.length = 0;
+    room._tickMonsters();
+    return room.eventBuffer.filter((e) => e.type === 'monster_attack' && e.payload.targetId === 'pa')[0];
+  };
+
+  psA.blocking = true;
+  psA.ba = 0;                            /* shield faces east — at the monster */
+  let hpM = psA.hp;
+  let atkM = swing();
+  check('melee arc: a swing the shield FACES is blocked',
+    !!atkM && atkM.payload.blocked === true && psA.hp === hpM,
+    { hp: psA.hp, payload: atkM && atkM.payload });
+
+  psA.ba = Math.PI;                      /* shield faces west — monster behind it */
+  hpM = psA.hp;
+  atkM = swing();
+  check('melee arc: the same swing from BEHIND the shield lands (the v2.3.1705 hole)',
+    !!atkM && atkM.payload.blocked !== true && psA.hp < hpM,
+    { before: hpM, after: psA.hp, payload: atkM && atkM.payload });
+
+  psA.ba = null;                         /* old client: no facing -> omni stays */
+  psA.hp = 5000;
+  hpM = psA.hp;
+  atkM = swing();
+  check('melee arc: a client with no facing keeps the OMNI block',
+    !!atkM && atkM.payload.blocked === true && psA.hp === hpM,
+    { hp: psA.hp, payload: atkM && atkM.payload });
+
+  psA.blocking = false; psA.ba = null;
+  saved.forEach(({ m, alive, respawnAt }) => { m.alive = alive; m.respawnAt = respawnAt; });
+  psB.z = 'meadow';
+}
+
 console.log(failures === 0 ? '\nALL TESTS PASSED' : `\n${failures} TEST(S) FAILED`);
 process.exit(failures === 0 ? 0 : 1);
