@@ -66,6 +66,79 @@ const FIRE_FW = 384, FIRE_FH = 512;
    flame's outline in the player's skin colour on the last three frames. */
 const FIRE_SKIN_OPTS = { maxBR: 0.50, minGR: 0.45, maxGR: 0.80, minBlob: 1800 };
 
+/* ═══ v2.3.1723: PER-FRAME GEAR REGISTRATION for the firemaking pose ═══
+   Owner playtest, on being shown the composited figure: the shirt and the
+   armour do not sit on the body.  They sit low and to the LEFT of the torso,
+   and on the three tending frames they sit IN THE FLAMES.
+ *
+ * THIS IS AN ART PROBLEM, FIXED HERE ON PURPOSE.  The four sheets the owner
+ * supplied (body, shirt, chest, legs) were generated independently and each
+ * figure is centred in its own 384x512 cell, so they are not registered to
+ * each other.  build_fire_8f.mjs measured that when it cut them and shipped
+ * them as supplied, deliberately, so the misregistration would stay visible
+ * rather than be papered over by a silent nudge.  It has now been seen and
+ * the decision is to correct it — but in the RENDERER, not in the pixels, so
+ * the owner's art stays byte-for-byte what they supplied and one deleted
+ * constant reverts the whole thing if corrected sheets ever arrive.
+ *
+ * THE NUMBERS are measured, not eyeballed: tools/measure_fire_gear_reg.mjs
+ * fits each gear frame onto the body by mask containment, and its target
+ * choice is the whole trick.  Fitting into the body's ALPHA silhouette gives
+ * nonsense — at any sane alpha threshold that mask includes the fire's wide
+ * soft glow halo, so a shirt sitting in the flames scores a PERFECT 1.0, and
+ * the first run of that fit duly reported frames 5 and 6 as already correct
+ * when the eye flatly says otherwise.  The targets that work are the ones the
+ * garment actually covers: SKIN for the shirt and the breastplate (via the
+ * same FIRE_SKIN_OPTS ratio window above, which rejects flame and halo by
+ * construction), TROUSERS AND BOOTS for the greaves — fitting those to skin
+ * instead drags them up onto the chest, which is exactly what the second run
+ * did before the target was split.
+ *
+ * SCALE, v2.3.1724.  Moving the sheets was not enough — they are sized to a
+ * different figure too, and the owner picked the sizes off a sweep: shirt
+ * x0.85, chest and legs x0.90.  It is applied about the sprite anchor (0.5, 1),
+ * i.e. the cell's BOTTOM CENTRE, so the garment shrinks toward the feet and not
+ * toward the middle of the frame.  Note the two interact — `off` below is
+ * re-fitted AT these scales and is not the table that shipped at x1.0, so a
+ * scale cannot be changed without re-running the measure tool.
+ *
+ * The scale is NOT a measured number and cannot be.  The fit scores how much of
+ * the garment lands on the body, which rewards shrinking without limit — a
+ * smaller garment is trivially easier to fit inside a body, so the metric runs
+ * away to a dot.  It picks position; a person picks size.
+ *
+ * FRAME 7 IS HAND-TUNED, v2.3.1725, and it is the one row here not produced by
+ * the fit: shirt and chest dx -10, legs dx -30 against their fitted values.
+ * The owner picked those off a rendered sweep, and the legs number is the
+ * interesting one — it is a bad fit being corrected, not taste.  Frames 0 and 7
+ * are the same STANDING pose, so their offsets should be close, and the fit
+ * returned dx 28 for frame 0 against 71 for frame 7.  The objective is flat
+ * enough around the optimum on this frame that it settled 40px out; -30 brings
+ * it back toward its twin.  Two renders were compared before applying it: the
+ * same -30 on EVERY frame slides the greaves off the left on frames 0-6 and
+ * exposes trouser on the right, so this correction is frame-7-only by
+ * measurement, not by preference.
+ *
+ * Units are SOURCE ART PIXELS in the 384x512 cell; _updateFiremaking scales
+ * them by the sprite's own scale, so they follow FH if the drawn height ever
+ * moves.  Only _updateFiremaking draws gear on this pose — a peer's remote
+ * stand-in has never drawn gear at all (_updateRemoteExtraction) — so this is
+ * the single place it has to be applied. */
+const FIRE_GEAR_REG = {
+  shirt: {
+    scale: 0.85,
+    off: [[48, -89], [8, -50], [20, -47], [55, -64], [67, -50], [56, -52], [57, -56], [46, -103]],
+  },
+  chest: {
+    scale: 0.90,
+    off: [[39, -79], [18, 27], [42, 13], [35, 23], [84, 11], [75, 10], [59, 9], [42, -69]],
+  },
+  legs: {
+    scale: 0.90,
+    off: [[28, -7], [23, 8], [89, 48], [57, 7], [73, 15], [72, 15], [64, 17], [41, 15]],
+  },
+};
+
 /* Popup icons (XP badge, gold coin, sword/arrow/spell for damage by weapon
    type). Loaded async — entries appear in the registry once each PNG is
    ready. Until then, popups render text-only and the icon is skipped. */
@@ -4017,15 +4090,31 @@ export class EffectsRenderer {
        it hides itself when a chest plate is worn, with no new rules.
        v2.3.1715 REPLACED that derived sheet with the owner's painted one, cut by
        tools/build_fire_8f.mjs alongside the new body/chest/legs.  The wiring
-       below is unchanged; only the pixels are.  Worth knowing if the garment
-       ever looks misplaced: the derived sheet was registered to the body by
-       construction and the painted one is not — that tool's header carries the
-       measurement and the fact that the owner chose the painted art anyway. */
-    const placeFireLayer = (spr, t) => {
+       below is unchanged; only the pixels are.  The derived sheet was
+       registered to the body BY CONSTRUCTION and the painted one is not, which
+       v2.3.1715 knowingly shipped and v2.3.1723 corrects — the garment did in
+       fact look misplaced, badly, and FIRE_GEAR_REG at the top of this file is
+       the per-frame nudge that puts it back on the torso. */
+    /* v2.3.1723: one placer per SLOT, because each gear sheet needs its own
+       per-frame nudge to land on the body — see FIRE_GEAR_REG at the top of
+       this file for why the supplied art needs one at all.  The offset is in
+       source-art px and is scaled by the sprite's own scale, so it stays
+       correct if FH ever moves.  A null table (or a frame past its end) means
+       no nudge, so this degrades to the old behaviour rather than throwing. */
+    const fireLayerPlacer = (slot) => (spr, t) => {
       if (!spr) return;
       if (!t) { spr.visible = false; return; }
+      const reg = FIRE_GEAR_REG[slot];
+      const off = (reg && reg.off && reg.off[fi]) || [0, 0];
+      /* v2.3.1724: the per-sheet size.  anchor (0.5, 1) is the cell's bottom
+         centre, so this shrinks the garment toward the feet — which is why the
+         offsets had to be re-fitted at these scales rather than carried over. */
+      const k = (reg && reg.scale) || 1;
       spr.anchor.set(0.5, 1); spr.texture = t;
-      spr.scale.set(sp.scale.x, sp.scale.y); spr.x = sp.x; spr.y = sp.y; spr.visible = true;
+      spr.scale.set(sp.scale.x * k, sp.scale.y * k);
+      spr.x = sp.x + off[0] * sp.scale.x;
+      spr.y = sp.y + off[1] * sp.scale.y;
+      spr.visible = true;
     };
     /* ═══ v2.3.1715: CHEST AND LEG ARMOUR ═══
        The fire-lighter can now wear the same two layers the cook has had since
@@ -4035,12 +4124,12 @@ export class EffectsRenderer {
        the PLATE last — _placeSwingShirt already hides the shirt whenever a
        chest piece is worn, so the plate replaces rather than covers it and no
        new rule is introduced.  Both are untinted; armour keeps its own metal.
-       _gearStripFrame returns null when the slot is empty, and placeFireLayer
+       _gearStripFrame returns null when the slot is empty, and the placer
        hides the sprite on a null texture, so an unarmoured player costs
        nothing here. */
-    placeFireLayer(this.fireLegsSprite, this._gearStripFrame('legs', getEquip('legs'), 'fire', 'south', FIRE_FW, fi));
-    this._placeSwingShirt(this.fireShirtSprite, placeFireLayer, this._shirtId(), getEquip('chest'), 'fire', 'south', FIRE_FW, fi, getShirtColor(), getShirt());
-    placeFireLayer(this.fireChestSprite, this._gearStripFrame('chest', getEquip('chest'), 'fire', 'south', FIRE_FW, fi));
+    fireLayerPlacer('legs')(this.fireLegsSprite, this._gearStripFrame('legs', getEquip('legs'), 'fire', 'south', FIRE_FW, fi));
+    this._placeSwingShirt(this.fireShirtSprite, fireLayerPlacer('shirt'), this._shirtId(), getEquip('chest'), 'fire', 'south', FIRE_FW, fi, getShirtColor(), getShirt());
+    fireLayerPlacer('chest')(this.fireChestSprite, this._gearStripFrame('chest', getEquip('chest'), 'fire', 'south', FIRE_FW, fi));
     this._placeSkillTraitsOn('fire', sp, fi, 'south', false);
   }
 
