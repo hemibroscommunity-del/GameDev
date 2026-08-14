@@ -16,6 +16,11 @@
  *     the SERVER's, not the button's
  */
 import * as H from './harness.mjs';
+/* v2.3.1728: live table, not a literal — see the note in mp-questui.mjs.
+   This one is a NEGATIVE assertion, so a stale figure kept it passing for
+   the wrong reason after the v2.3.1727 retune: it would have gone on
+   "passing" even if the chooser had appeared. */
+import { QUEST_REWARDS } from '../../../server/src/data.js';
 
 export async function run({ browser, wsPort, webPort, rec }) {
   const P = await H.newPlayer(browser, { name: 'Tourist', wsPort, webPort });
@@ -124,8 +129,45 @@ export async function run({ browser, wsPort, webPort, rec }) {
         alpha: parts.length >= 4 && Number.isFinite(parts[3]) ? parts[3] : 1,
       };
     };
-    return { w: Math.round(r.width), right: Math.round(r.right), title: kid(0), desc: kid(1) };
+    /* v2.3.1728: measured against the PLAY WINDOW, not the viewport.  Since
+       v2.3.1715 the desktop shell centres #root (380px at x=310 in this
+       harness), so a correctly-sized 248px reminder reported right=566 and
+       failed a threshold that assumed the play area starts at x=0.  The
+       assertion means "the box stays out of the right half of the play
+       area"; subtracting the shell's origin is what makes it mean that on
+       both a phone (origin 0) and the desktop shell. */
+    const rootR = document.getElementById('root').getBoundingClientRect();
+    return {
+      w: Math.round(r.width),
+      right: Math.round(r.right - rootR.left),
+      playW: Math.round(rootR.width),
+      title: kid(0), desc: kid(1),
+    };
   });
+  /* ═══ v2.3.1728: THE PLAY SURFACE FILLS THE PLAY WINDOW ═══
+     v2.3.1715 shrank the desktop play window to #root and leaned on
+     `contain: paint` to re-anchor the fixed overlays inside it.  That
+     re-anchors an ORIGIN but cannot touch a viewport unit, and
+     .brotown-wrap was sized `width: 100vw` — so it stayed window-wide
+     inside a 380px shell and every centred modal centred ~600px off to the
+     right, clipped and unclickable.  The whole Mayor Bro line was
+     unfinishable on desktop for six versions.
+     mp-questline caught it (it goes from 64/64 to dead), but only as a
+     cascade of forty confusing failures; this names the invariant directly
+     so the next person sees the cause and not the symptom. */
+  const surface = await P.page.evaluate(() => {
+    const root = document.getElementById('root');
+    const wrap = document.querySelector('.brotown-wrap');
+    if (!root || !wrap) return null;
+    const r = root.getBoundingClientRect(), w = wrap.getBoundingClientRect();
+    return {
+      rootW: Math.round(r.width), wrapW: Math.round(w.width),
+      dx: Math.round(w.left - r.left), dw: Math.round(w.width - r.width),
+    };
+  });
+  rec.ok('the play surface fills the play window exactly (no viewport-unit escape)',
+    !!surface && Math.abs(surface.dx) <= 1 && Math.abs(surface.dw) <= 1, surface);
+
   rec.ok('the quest reminder HUD is on screen with an active quest', !!hud, hud);
   if (hud) {
     rec.ok('the reminder title is at least the 13px body step',
@@ -191,7 +233,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('the pane offers NO turn-in button any more',
     !paneButtons.some((t) => /turn in/i.test(t)), paneButtons);
   rec.ok('...and no XP-skill picker either (it belongs to the dialogue now)',
-    !/Train 40 XP into/.test(readyPane)
+    !readyPane.includes(`Train ${QUEST_REWARDS.tut_1.xp} XP into`)
     && !paneButtons.some((t) => /Choose a skill to train/i.test(t)),
     { paneButtons, pane: readyPane.slice(0, 500) });
   /* The quest must be untouched by all of that — a pane that quietly turned

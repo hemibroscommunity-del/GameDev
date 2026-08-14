@@ -24,6 +24,15 @@
  * written from the bug report's wording would skip.
  */
 import * as H from './harness.mjs';
+/* v2.3.1728: the payout figures come from the LIVE table, not from literals.
+   v2.3.1727 retuned every quest's XP and left three hardcoded "40 XP" checks
+   behind in QA — two failed loudly, and the third (mp-tutorial) was a
+   NEGATIVE assertion that kept passing for the wrong reason.  Importing the
+   server table means a future retune moves these with it; mirror-audit
+   already pins server QUEST_REWARDS == client QUEST_CHAINS, so this is the
+   same number the panel renders. */
+import { QUEST_REWARDS } from '../../../server/src/data.js';
+const TUT1 = QUEST_REWARDS.tut_1;
 
 export async function run({ browser, wsPort, webPort, rec }) {
   const P = await H.newPlayer(browser, { name: 'Talker', wsPort, webPort });
@@ -42,10 +51,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
   /* v2.3.1704 (owner: "The quest UI is a little confusing what's rewards for
      the next quests vs what's rewarded for the current quest").  An offer row's
      payout used to be a bare money figure floating at the right edge — the same
-     shape an ACTIVE row carries — so nothing said whether "25g · 40 XP" was
+     shape an ACTIVE row carries — so nothing said whether the payout was
      what this new quest pays or a leftover from the one you are already on. */
   rec.ok('an offered quest\'s reward is labelled as a payout, not a bare figure',
-    /pays 25g · 40 XP/.test(pane), pane.slice(0, 400));
+    pane.includes(`pays ${TUT1.gold}g · ${TUT1.xp} XP`),
+    { want: `pays ${TUT1.gold}g · ${TUT1.xp} XP`, pane: pane.slice(0, 400) });
 
   /* ── tap him in the world ── */
   /* Screen position computed from the same camera + world scale the tap
@@ -262,7 +272,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
      bow and staff, so the caption has to say which moment these belong to. */
   rec.ok('the ready card says these items are what FINISHING pays',
     /For finishing this quest/i.test(dlg), dlg.slice(0, 400));
-  rec.ok('the dialogue asks where the XP should go', /Train 40 XP into/.test(dlg), dlg.slice(0, 300));
+  rec.ok('the dialogue asks where the XP should go',
+    dlg.includes(`Train ${TUT1.xp} XP into`),
+    { want: `Train ${TUT1.xp} XP into`, dlg: dlg.slice(0, 300) });
   rec.ok('...naming the three trained skills',
     /Melee/.test(dlg) && /Bow/.test(dlg) && /Magic/.test(dlg), dlg.slice(0, 300));
   rec.ok('...and the turn-in button is held until one is chosen',
