@@ -4665,6 +4665,39 @@ export var BroTown = function BroTown(_ref0) {
             if (_dnNow - _dn[_dnR].ts < 1200) {
               if (_dnW !== _dnR) _dn[_dnW] = _dn[_dnR];
               _dnW++;
+            } else {
+              /* ═══ v2.3.1741: RELEASE THE PIXI OBJECTS THIS DROPS ═══
+                 Owner: "the game slowed down significantly towards the end
+                 (as if framerate drop was slowly accumulating)... lots of
+                 monster killing... it fixed after reloading."
+
+                 THIS LOOP WAS THE LEAK.  A damage popup owns three display
+                 objects (_pixiText, _pixiIcon, _pixiSub) minted by
+                 effectsRenderer._updateDamageNumbers and parented to the
+                 damageNumbers layer.  The ONLY code that destroys them is
+                 that renderer's own expiry, at a 1.5s TTL — and this prune
+                 drops the entry at 1.2s.  The shorter window always wins, so
+                 the renderer never saw an expired entry again and every
+                 popup's Text and icon stayed in the layer for the whole
+                 session.  One orphan per damage number, which is why it
+                 tracked how much you killed, why it grew for twenty minutes,
+                 and why a reload cleared it.
+
+                 Measured with tools/qa/mp/mp-soak.mjs: the damageNumbers
+                 layer went 32 -> 312 children in five minutes and the mean
+                 frame time climbed 31.4ms -> 38.9ms.
+
+                 Fixed HERE rather than by widening the window to 1.5s+: two
+                 TTLs that must stay ordered is the same bug waiting to come
+                 back the next time either number is tuned.  Whoever drops the
+                 entry releases what it owns. */
+              var _dnDead = _dn[_dnR];
+              if (_dnDead._pixiText && !_dnDead._pixiText.destroyed) _dnDead._pixiText.destroy();
+              if (_dnDead._pixiIcon && !_dnDead._pixiIcon.destroyed) _dnDead._pixiIcon.destroy();
+              if (_dnDead._pixiSub && !_dnDead._pixiSub.destroyed) _dnDead._pixiSub.destroy();
+              _dnDead._pixiText = null;
+              _dnDead._pixiIcon = null;
+              _dnDead._pixiSub = null;
             }
           }
           if (_dnW !== _dn.length) _dn.length = _dnW;

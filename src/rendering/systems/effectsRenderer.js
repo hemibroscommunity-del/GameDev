@@ -1661,6 +1661,24 @@ export class EffectsRenderer {
   /* ── Damage Numbers ── */
   _updateDamageNumbers(S, now) {
     const numbers = S.dmgNumbers || [];
+    /* v2.3.1741: drop DESTROYED entries from dmgTexts.  Every Text minted
+       below is pushed onto this list and nothing ever took one off, so it
+       held a reference to every damage number of the whole session — the
+       memory half of the leak fixed in BroTown's prune (see the note there).
+       The v2.3.1665 comment below rightly refuses to PRUNE BY AGE here,
+       because destroying the oldest Text left dmg._pixiText dangling and the
+       next frame crashed on it.  This is the safe half of that: it destroys
+       nothing and only forgets entries something else already destroyed, so
+       no live back-reference can be invalidated.  Compacted in place, and
+       only when it is worth the walk. */
+    if (this.dmgTexts.length > 64) {
+      let w = 0;
+      for (let i = 0; i < this.dmgTexts.length; i++) {
+        const t = this.dmgTexts[i];
+        if (t && !t.destroyed) { if (w !== i) this.dmgTexts[w] = t; w++; }
+      }
+      if (w !== this.dmgTexts.length) this.dmgTexts.length = w;
+    }
     /* No pre-pruning of this.dmgTexts.  The previous shift+destroy loop
        killed the oldest Text but left the matching dmg._pixiText back-
        reference pointing at a destroyed object — next frame's
