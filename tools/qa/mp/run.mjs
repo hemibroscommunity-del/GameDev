@@ -51,6 +51,8 @@ const SCENARIOS = {
   ability: () => import('./mp-ability.mjs'), /* v2.3.1733: the stamina abilities reach the worker, and stay locked until their milestone */
   firegear: () => import('./mp-firegear.mjs'), /* v2.3.1723: the fire-lighter's clothes sit on their body */
   burst: () => import('./mp-burst.mjs'),
+  soak: () => import('./mp-soak.mjs'), /* v2.3.1741: does anything grow while you play */
+  zonechurn: () => import('./mp-zonechurn.mjs'), /* v2.3.1741: does touring zones leak */
   viewport: () => import('./mp-viewport.mjs'), /* v2.3.1740: the game fills the phone */ /* v2.3.1734: element_burst survives the shim; the special costs the flat 25 */
 };
 
