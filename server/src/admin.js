@@ -207,8 +207,14 @@ export const adminMethods = {
                overwrites — so "did that cast actually cost anything" can only
                be answered here.  A headless check that reads the browser
                instead would pass on a message the worker never received, which
-               is exactly the TRAPS #18 blind spot. */
-            stamina: ps.stamina, maxStamina: ps.maxStamina } : null,
+               is exactly the TRAPS #18 blind spot.
+               v2.3.1734: the MANA pair joins it, verbatim the same argument —
+               the special's cost moved to a flat number that the WORKER
+               charges while the client predicts it, so a drift between the two
+               is invisible on screen (the next echo silently corrects the bar)
+               and readable only from here.  Both read-only. */
+            stamina: ps.stamina, maxStamina: ps.maxStamina,
+            mana: ps.mana, maxMana: ps.maxMana } : null,
           online: !!this._wsBySessionId(id),
           auth: auth2 ? { createdAt: auth2.createdAt } : null,
           frozen: frozen || null,

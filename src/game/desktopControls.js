@@ -26,6 +26,7 @@ export function setupDesktopControls(S, deps) {
     _desktopCycleWeapon = deps._desktopCycleWeapon,
     _desktopSelectSlot = deps._desktopSelectSlot,
     _desktopSpecialAttack = deps._desktopSpecialAttack,
+    _desktopElementBurst = deps._desktopElementBurst,   /* v2.3.1734 */
     _desktopCloseAll = deps._desktopCloseAll,
     setShowPetHouse = deps.setShowPetHouse,
     setChatOpen = deps.setChatOpen,
@@ -198,6 +199,18 @@ export function setupDesktopControls(S, deps) {
         e.preventDefault();
         if (S._mouseAimAngle != null) S._aimAngle = S._mouseAimAngle;
         _desktopSpecialAttack();
+        return;
+      }
+
+      /* v2.3.1734: G — Element Burst (COMBAT-OVERHAUL-PLAN PR 6).  G
+         rather than a modifier on F: the burst is a different ability
+         with a different resource curve, not a stronger special, and
+         every other combat verb here is its own single key.  Unlike the
+         touch button (which hides when ineligible) the key is always
+         live, so elementBurst floats the reason it refused. */
+      if (e.code === 'KeyG' && !e.repeat) {
+        e.preventDefault();
+        _desktopElementBurst();
         return;
       }
 

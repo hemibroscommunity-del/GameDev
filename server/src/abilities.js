@@ -84,12 +84,30 @@ export const STAM_ABILITIES = {
 /* ═══ THE MILESTONE LADDER — char level -> what it unlocks ═══
    `kind` names an ability in STAM_ABILITIES; `points` is a one-off bonus
    allocation point; `stamMult` multiplies max stamina from here on.
-   Level 6 (Element Burst) is DELIBERATELY ABSENT: it is PR 6, built by a
-   different session, and inventing a placeholder entry here would either
-   collide with theirs or silently gate an ability that does not exist. */
+
+   v2.3.1734: rung 6 is FILLED.  It was left empty by v2.3.1733 as a
+   hand-off marker for PR 6, with an assertion in abilities.test.mjs
+   pinning the GAP so the two sessions could not silently disagree about
+   who owned the level — that assertion is now flipped to pin the entry.
+
+   Element Burst carries `burst: true` and NOT a `kind`, deliberately: it
+   spends MANA, not stamina, so it is not in STAM_ABILITIES and it has its
+   own handler (server/src/burst.js).  `kind` means "look me up in
+   STAM_ABILITIES", and milestoneAbilityLevels() enforces exactly that —
+   naming a kind here that the stamina table does not have would fail the
+   ladder-consistency check, correctly.  The rung still earns its keep: the
+   `label` is what the level-up celebration announces, which is the whole
+   reason a player finds out the ability exists.
+
+   THE LEVEL ITSELF lives in PROG3.BURST_MIN_CHAR_LEVEL, which is what
+   burst.js actually gates on, because that constant is mirrored to the
+   client and drives the button.  This file cannot import prog3.js (the
+   module cycle noted at the top), so abilities.test.mjs imports both and
+   asserts the two agree — one gate, one ladder entry, pinned together. */
 export const MILESTONES = {
   4:  { kind: 'bash',  label: 'Shield Bash' },
   5:  { points: 1,     label: 'Bonus stat point' },
+  6:  { burst: true,   label: 'Element Burst' },
   8:  { kind: 'whirl', label: 'Whirlwind' },
   10: { stamMult: 1.25, label: 'Second Wind' },
 };

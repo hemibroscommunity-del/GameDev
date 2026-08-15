@@ -40,11 +40,16 @@ export const STAM_ABILITIES = {
   },
 };
 
-/* MIRROR OF server/src/abilities.js MILESTONES.  Level 6 is deliberately
-   absent — Element Burst is PR 6 and lands with its own entry. */
+/* MIRROR OF server/src/abilities.js MILESTONES — pinned by strict
+   JSON.stringify equality in abilities.test.mjs, so entries must match
+   exactly, field for field.
+   v2.3.1734: rung 6 is Element Burst, which spends MANA and so carries
+   `burst: true` rather than a `kind` (there is no stamina-table entry to
+   look up).  See the server copy for the full reasoning. */
 export const MILESTONES = {
   4:  { kind: 'bash',  label: 'Shield Bash' },
   5:  { points: 1,     label: 'Bonus stat point' },
+  6:  { burst: true,   label: 'Element Burst' },
   8:  { kind: 'whirl', label: 'Whirlwind' },
   10: { stamMult: 1.25, label: 'Second Wind' },
 };

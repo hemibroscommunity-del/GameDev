@@ -31,6 +31,12 @@ const KEYS = [
   ['WASD', 'Move'], ['Click', 'Attack'], ['R-Click', 'Special'], ['Space', 'Dodge'],
   ['E', 'Interact'], ['Q', 'Shield'], ['Q+E', 'Bash'], ['R', 'Whirl'],
   ['Tab', 'Swap'], ['F', 'Special'],
+  /* v2.3.1734: G — Element Burst.  Listed on the same terms v2.3.1733 set
+     for Bash and Whirl one line above: unconditionally, unlocked or not.
+     The label teaches the key, and pressing it before level 6 (or without
+     an enchanted weapon) floats the reason — a key that only appears once
+     you already own the ability is a key nobody discovers. */
+  ['G', 'Burst'],
   ['C', 'Chat'], ['H', 'Hide'], ['Esc', 'Close'],
 ];
 

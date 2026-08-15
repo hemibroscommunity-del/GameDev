@@ -8,7 +8,7 @@
    `stateRef.current._tutorialStep` read became `S._tutorialStep` (same
    object). raiseShield takes setShieldUp via deps (its only React
    setter). All other references are module imports below. */
-import { SWING_COOLDOWN, SPECIAL_ATK_MULT, specialAtkMultFor, BT_AUDIO, meleeSwingSfx, getActiveWeapon, calcSpecialDmg, calcWeaponDmg, monsterBodyY, swingCooldownMult } from '@/data/index.js';
+import { SWING_COOLDOWN, SPECIAL_ATK_MULT, specialAtkMultFor, BT_AUDIO, meleeSwingSfx, getActiveWeapon, calcSpecialDmg, calcWeaponDmg, monsterBodyY, swingCooldownMult, specialManaCost, burstRefusal, burstWeapon, PROG3, ELEMENTS } from '@/data/index.js';
 import { addBuildUse, clearSwingHitFlags, pushDmgPopup, isPlayerDead } from '@/game/combatHelpers.js';
 
 export function swingAttack(S) {
@@ -68,9 +68,15 @@ export function specialAttack(S) {
 
     /* §4.5 Mana cost.
        v2.3.172: cost = floor(maxMana / 5) so the 5-segment MP bar
-       drains exactly one segment per special.  Tier still affects
+       drained exactly one segment per special.  Tier still affects
        damage via SPECIAL_ATK_MULT downstream; it no longer affects
-       cost.  Old formula was `15 + tierIdx * 3` (15-24). */
+       cost.  Old formula was `15 + tierIdx * 3` (15-24).
+       v2.3.1734: FLAT (PROG3.SPECIAL_MANA_COST) against a worker that
+       advertises caps.elemBurst.  A cost that was a fraction of max
+       meant five casts per bar at Magic 1 and five at Magic 100 —
+       training Magic bought nothing.  specialManaCost() keeps the old
+       formula against an old worker so the prediction still matches
+       what THAT worker charges (rule 19); see src/data/prog3.js. */
     var activeWpn = getActiveWeapon(R);
     /* v2.3.212: no weapon equipped in active slot -> special disabled.
        v2.3.1716: ...but SAY SO.  This returned in total silence, and since
@@ -91,7 +97,7 @@ export function specialAttack(S) {
       fusion: 2,
       shift: 3
     }[activeWpn.tier] || 0;
-    var manaCost = Math.floor((R.maxMana || 100) / 5);
+    var manaCost = specialManaCost(R);
     /* During tutorial step 4, make swipe free so player can learn */
     var isTutorialSwipe = (S._tutorialStep || 0) === 4;
     if (!isTutorialSwipe && (R.mana || 0) < manaCost) {
@@ -249,4 +255,64 @@ export function raiseShield(S, deps) {
     setTimeout(function () {
       return BT_AUDIO.beep(1000, 0.12, 0.08, 'sine');
     }, 120);
+}
+
+/* ═══ v2.3.1734: ELEMENT BURST (COMBAT-OVERHAUL-PLAN PR 6) ═══
+ *
+ * Cast your weapon's element as a short-range nova.  100% SERVER-RESOLVED:
+ * this function spends no mana locally, rolls no damage, and picks no
+ * targets — it sends an EMPTY `element_burst` and the worker does all of
+ * it (server/src/burst.js).  That is a deliberate departure from the
+ * special attack's predict-then-send shape.  The special predicts because
+ * it has an animation to start on the same frame as the tap; the burst's
+ * whole visual is the nova ring, which arrives with the server's
+ * `element_nova` a round-trip later, so predicting anything here would
+ * only create a second source of truth to disagree with.
+ *
+ * The refusal popups mirror v2.3.1716's lesson: a control that does
+ * nothing and says nothing is indistinguishable from a broken game, and
+ * this one is doubly at risk because it is gated on THREE things a new
+ * player has no reason to connect (character level, an enchanted weapon,
+ * mana).  The button is normally hidden when ineligible — these fire for
+ * the desktop key, which is always live.
+ */
+export function elementBurst(S) {
+  if (!S || !S.rpg) return;
+  if (isPlayerDead(S)) return;
+  if (S._extraction) return;   /* parity with swing/special */
+  var R = S.rpg;
+  var now = Date.now();
+  var wpn = burstWeapon(R);   /* NOT getActiveWeapon — see burstWeapon's note */
+  var refusal = burstRefusal(R, wpn, S._lastBurstAt);
+  if (refusal) {
+    var msg = {
+      caps: null,   /* old worker: the ability doesn't exist there — stay silent */
+      level: 'Element Burst unlocks at level ' + PROG3.BURST_MIN_CHAR_LEVEL,
+      no_weapon: 'No weapon equipped!',
+      no_element: 'Element Burst needs an enchanted weapon',
+      mana: 'Not enough mana!',
+      cooldown: null,   /* a timer the player can see; nagging about it is noise */
+    }[refusal];
+    if (msg && now - (S._burstMsgAt || 0) > 700) {
+      S._burstMsgAt = now;
+      pushDmgPopup(S, S.player.x, S.player.y - 30, msg, '#8E44AD', { ts: now });
+    }
+    return;
+  }
+  /* Local cooldown stamp so the button greys out on the tap rather than
+     on the echo.  The SERVER's stamp is the one that decides; this only
+     stops the HUD lying for a round-trip. */
+  S._lastBurstAt = now;
+  var elemColor = (ELEMENTS[wpn.element1] && ELEMENTS[wpn.element1].color) || '#8E44AD';
+  BT_AUDIO.beep(220, 0.10, 0.16, 'sawtooth');
+  setTimeout(function () { BT_AUDIO.beep(520, 0.08, 0.10, 'triangle'); }, 70);
+  /* A tiny local tell at the caster's feet so the tap feels instant even
+     on a slow connection; the real nova is drawn by the element_nova
+     handler (src/networking/gameEvents.js) at the server's position. */
+  if (S._impactRings) {
+    S._impactRings.push({ x: S.player.x, y: S.player.y, ts: now, duration: 220, maxR: 18, color: elemColor });
+  }
+  if (S.channel) {
+    try { S.channel.send({ type: 'element_burst', payload: {} }); } catch (e) {}
+  }
 }

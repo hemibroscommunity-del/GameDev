@@ -27,6 +27,11 @@ import { STAM_ABILITIES, MILESTONES, staminaMilestoneMult, milestonePointsThroug
   milestoneAbilityLevels } from '../src/abilities.js';
 import { STAM_ABILITIES as CLIENT_ABILITIES, MILESTONES as CLIENT_MILESTONES,
   staminaMilestoneMult as clientStamMult } from '../../src/data/abilities.js';
+/* v2.3.1734: the ladder's rung 6 and the burst's actual level gate live in
+   two files that CANNOT import each other (abilities.js ⇄ prog3.js would be
+   a module cycle — see abilities.js's header).  This suite is the only
+   place they can be pinned together. */
+import { PROG3 } from '../src/prog3.js';
 
 const mockState = {
   storage: {
@@ -69,12 +74,30 @@ function check(name, cond, detail) {
     staminaMilestoneMult(3) === clientStamMult(3) && staminaMilestoneMult(10) === clientStamMult(10)
       && staminaMilestoneMult(3) === 1 && staminaMilestoneMult(10) === 1.25,
     { s3: staminaMilestoneMult(3), s10: staminaMilestoneMult(10) });
-  /* Level 6 is Element Burst's rung (PR 6, a different session).  Asserting
-     the GAP keeps this suite honest about the hand-off: when PR 6 lands and
-     fills it, this line fails and gets updated deliberately rather than the
-     two PRs silently disagreeing about who owns level 6. */
-  check('level 6 is deliberately left free for Element Burst (PR 6)',
-    !MILESTONES[6], MILESTONES[6]);
+  /* ═══ v2.3.1734: THE HAND-OFF TRIPWIRE, FIRED AND RE-ARMED ═══
+     v2.3.1733 left rung 6 empty and asserted the GAP, so that PR 6 filling
+     it would fail this line and force a deliberate update rather than the
+     two sessions silently disagreeing about who owned level 6.  PR 6 has
+     landed; the assertion is flipped rather than deleted, because the thing
+     worth pinning was never "the rung is empty" — it is "exactly one thing
+     owns level 6, and everyone agrees what". */
+  check('level 6 is Element Burst (PR 6 landed — was asserted EMPTY at v2.3.1733)',
+    !!MILESTONES[6] && MILESTONES[6].burst === true && MILESTONES[6].label === 'Element Burst',
+    MILESTONES[6]);
+  /* Element Burst is a MANA ability with its own handler (server/src/burst.js),
+     so it must NOT name a `kind`: `kind` means "look me up in
+     STAM_ABILITIES", and the ladder-consistency check above would (rightly)
+     reject a kind that table does not have. */
+  check('...and does not claim to be a stamina ability', !MILESTONES[6].kind, MILESTONES[6]);
+  /* THE TWO SOURCES OF "6" AGREE.  burst.js gates on
+     PROG3.BURST_MIN_CHAR_LEVEL (mirrored to the client, drives the button);
+     the ladder carries the rung the level-up celebration announces.
+     abilities.js cannot import prog3.js — the module cycle its header
+     documents — so this suite is the only place the two can be pinned
+     together, and without it they can drift into a level whose unlock
+     message and unlock gate disagree. */
+  check('the ladder rung and PROG3.BURST_MIN_CHAR_LEVEL name the SAME level',
+    PROG3.BURST_MIN_CHAR_LEVEL === 6, PROG3.BURST_MIN_CHAR_LEVEL);
 }
 
 const room = new GameRoom(mockState, mockEnv);

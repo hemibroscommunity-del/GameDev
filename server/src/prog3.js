@@ -125,7 +125,66 @@ export const PROG3 = {
    */
   DMG_PER_LEVEL: { sword: 1.5, bow: 1.5, staff: 1.8 },
   HP_PER_LEVEL: 6,          // §5-B: 100 + level×6 + hp×8 (v2.3.1727: was 2)
-  MANA_PER_MAGIC_LEVEL: 1.2, // §4 audit table: mana follows Magic (mind dies)
+  /* ═══ v2.3.1734: MANA COULD NOT PROGRESS, BY CONSTRUCTION ═══
+   *
+   * The special attack cost `floor(maxMana / 5)` (index.js _abilityCost,
+   * client playerActions.js).  A cost that is a FRACTION OF MAX is the
+   * same cost in every unit that matters, so the bar was EXACTLY five
+   * casts at Magic 1 and EXACTLY five casts at Magic 100.  Worse, the
+   * regen tick also pays a PERCENTAGE of maxMana (index.js
+   * _tickPlayerRegen: maxMana × 0.018 per ~670 ms out of combat), so the
+   * SUSTAINED rate was invariant too — a flat 7.4 s per cast at every
+   * Magic level in the game.  Training Magic bought literally nothing.
+   * That is owner complaint #4 ("spam swipe until your mana runs out,
+   * then swipe again as soon as it slowly rises") with no way out.
+   *
+   * The fix is one flat number and a steeper pool.  Both dials are
+   * needed: a flat cost against the old 1.2/level pool would have taken
+   * a full Magic career (level 1 → 100) to buy four extra casts.
+   *
+   *   Magic lvl   maxMana   casts   sustained s/cast (OOC regen)
+   *   1           102       4       9.1
+   *   10          125       5       7.4
+   *   30          175       7       5.3
+   *   50          225       9       4.1
+   *   100         350       14      2.7
+   *
+   * (was: 5 casts / 7.4 s per cast at EVERY row.)
+   *
+   * THE FLOOR IS A DELIBERATE, SMALL NERF: a brand-new character goes
+   * from 5 casts to 4, and from 7.4 s to 9.1 s per sustained cast.  That
+   * is the price of the resource meaning anything at all, and it is the
+   * whole reason the base pool is worth investing past.  It is also why
+   * the ELEMENT BURST below spends from the same pool — a level-6 player
+   * now chooses between a special and a burst instead of holding one
+   * button.
+   *
+   * THE COUPLING THAT MAKES THIS COHERENT: since v2.3.1710 a special
+   * trains the WEAPON that fired it, not Magic — so a pure melee player
+   * does not level Magic by using specials, and their mana genuinely
+   * stays at the 4-cast floor until they train Magic on its own.  That
+   * is the owner's stated design, verbatim: "I want magic to keep its
+   * cross weapon purpose but also have specials belong to their weapon.
+   * Within the magic stat allocation is the only way to grow your mana
+   * that's required for special attacks."  Magic's cross-weapon job IS
+   * the mana pool; this is the commit where that job starts paying.
+   *
+   * MIRROR: src/data/prog3.js carries all four constants and the client
+   * predicts its cost/charge-pie from them — move them together or the
+   * HUD promises casts the worker refuses (mirror-audit pins it). */
+  MANA_PER_MAGIC_LEVEL: 2.5, // §4 audit table: mana follows Magic (mind dies)
+  SPECIAL_MANA_COST: 25,     // flat, was floor(maxMana/5)
+  /* ═══ v2.3.1734: ELEMENT BURST (COMBAT-OVERHAUL-PLAN PR 6) ═══
+   * Short-range elemental nova off your weapon's own element.  Gated on
+   * character level AND on the weapon carrying element1, which makes it
+   * Enchant-gated by construction (only enchanted weapons have one).
+   * Server validates all four gates — level, element, mana, cooldown —
+   * from ITS copy of the weapon; the client's button is a display gate. */
+  BURST_MIN_CHAR_LEVEL: 6,
+  BURST_MANA_COST: 25,
+  BURST_CD_MS: 3000,
+  BURST_RADIUS: 70,
+  BURST_DMG_MULT: 1.5,
 };
 
 /* v2.3.1733: the milestone ladder's stamina rung.  The TABLE lives in

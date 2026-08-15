@@ -15,6 +15,7 @@ import { setEquip, getEquip, GEAR_CATALOG, GEAR_SLOTS, gearInventoryItems } from
 import { BlockRing } from './mobile/BlockRing.jsx';
 import { ZoneHeader } from './mobile/ZoneHeader.jsx'; /* v2.3.1333 */
 import { SpecialChargePie } from './mobile/SpecialChargePie.jsx';
+import { ElementBurstButton } from './mobile/ElementBurstButton.jsx'; /* v2.3.1734 */
 import { blockRingBus } from './mobile/blockRingBus.js';
 /* v2.3.1287: MoreOverlay deleted (unmounted since the BottomDashboard
    landed); the legacy wheel's "more" activation routes to the nav
@@ -611,6 +612,11 @@ export const GameApp = () => {
       {/* Their buses still exist and are exercised by debug commands.      */}
       <BlockRing />
       <SpecialChargePie />
+      {/* v2.3.1734: Element Burst's touch input (COMBAT-OVERHAUL-PLAN
+          PR 6).  Self-hiding — it mounts always and renders nothing
+          until the character is level 6 with an enchanted weapon in
+          hand, so there is no gate to maintain here. */}
+      <ElementBurstButton />
       <XpFlyOverlay />
       {/* v2.3.820: MasteryNotification unmounted at the owner's request --
           the mastery/certification toasts ("First Resonance-Timed Hit",

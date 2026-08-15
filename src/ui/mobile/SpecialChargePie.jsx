@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { playIsLandscape } from './playViewport.js';
+import { specialManaCost } from '@/data/prog3.js';
 
 /* SpecialChargePie — big-number + thin progress ring above the right
    joystick.  Replaces the in-world MP segment bar that used to float
@@ -11,10 +12,23 @@ import { playIsLandscape } from './playViewport.js';
    - Fades out once charges hit max (R.mana >= R.maxMana) so the HUD
      stays clean during full-charge play; reappears the moment a
      special is fired and mana drops below full.
-   See BroTown.jsx:doSpecialAttack for the per-cast mana cost
-   (floor(maxMana / 5)) the visualization mirrors. */
+   The per-cast cost lives in ONE place (specialManaCost, src/data/prog3.js)
+   and both the spend (playerActions.specialAttack) and this readout call
+   it — see v2.3.1734 below for why that stopped being a comment. */
 
-const SEGMENTS = 5;
+/* ═══ v2.3.1734: THE PIE IS NO LONGER FIVE SEGMENTS ═══
+   It was hardcoded to 5 because the cost was hardcoded to maxMana/5 —
+   which is exactly the construction that made mana un-progressable
+   (5 casts per bar at Magic 1, 5 at Magic 100).  With a FLAT cost the
+   segment count is the interesting number: it IS how many casts you are
+   carrying, and it grows as you train Magic (4 at Magic 1, 14 at Magic
+   100).  So the pie now derives it, and the ring fills toward the NEXT
+   cast rather than toward an abstract fifth of the bar.
+   NOT capped: an earlier draft clamped the segment count to 9 so the
+   centre number stayed one glyph, and that was wrong in a way worth
+   recording — at Magic 100 the bar funds 14 casts, so a 9-cap made the
+   pie fade out at 64% mana and the number jump when it came back.  The
+   readout tells the truth and the FONT shrinks for two digits instead. */
 const FADE_MS = 300;
 /* v2.3.1401: painted gauge frame (owner sheet) — riveted steel ring with
    a golden bolt at 12 o'clock and a recessed channel the live blue arc
@@ -57,10 +71,15 @@ export const SpecialChargePie = () => {
 
   const cur = Math.max(0, Math.min(R.maxMana, R.mana || 0));
   const max = R.maxMana;
-  const fillFront = (cur / max) * SEGMENTS;
-  const fullCharges = Math.min(SEGMENTS, Math.floor(fillFront + 1e-6));
-  const partialFrac = fullCharges < SEGMENTS ? (fillFront - fullCharges) : 0;
-  const isFull = fullCharges >= SEGMENTS;
+  /* Segments = casts the FULL bar funds; charges = casts you have now.
+     Both derive from the one cost constant, so the HUD can never promise
+     a cast the worker will refuse. */
+  const cost = Math.max(1, specialManaCost(R));
+  const segments = Math.max(1, Math.floor(max / cost));
+  const fillFront = cur / cost;
+  const fullCharges = Math.min(segments, Math.floor(fillFront + 1e-6));
+  const partialFrac = fullCharges < segments ? (fillFront - fullCharges) : 0;
+  const isFull = fullCharges >= segments;
 
   if (isFull) {
     if (fullSinceRef.current == null) fullSinceRef.current = Date.now();
@@ -153,7 +172,10 @@ export const SpecialChargePie = () => {
           dominantBaseline="central"
           fontFamily="Source Sans 3, sans-serif"
           fontWeight={800}
-          fontSize={15}
+          /* v2.3.1734: two digits are now reachable (14 casts at Magic
+             100) and 15px of an 800-weight face overflows the 30px
+             inner disc. */
+          fontSize={fullCharges >= 10 ? 12 : 15}
           fill="#ffffff"
           stroke="rgba(0,0,0,0.85)"
           strokeWidth={2}

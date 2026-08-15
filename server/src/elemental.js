@@ -101,6 +101,42 @@ export function elementMoveMult(m) {
   return 1;
 }
 
+/* ═══ v2.3.1734: FRACTURE STOPS BEING A DECORATION ═══
+ *
+ * Stone's status has existed in both status tables since the elemental
+ * system was written, with `maxStacks: 5` reserved for it and nothing
+ * anywhere that read either field.  applyElementStatus has always
+ * counted the stacks; no code has ever spent them.  So a stone weapon
+ * applied an invisible nothing, and a player who read the codex entry
+ * and built for it got a strictly worse weapon than one that rolled
+ * flame.  COMBAT-OVERHAUL-PLAN PR 6 names it as one of three dormant
+ * statuses to activate; this is the one that shipped (see the PR body
+ * for why shock and the rest did not — a mechanic without a visual is
+ * the same bug in a different hat).
+ *
+ * "Armor shred" against a monster that has no armor stat means one
+ * thing only: it takes more damage.  +6% per stack, five stacks, so a
+ * fully-fractured target takes +30% — worth building around, not worth
+ * dropping everything else for.  Multiplicative on the FINAL number
+ * because the alternative (folding it into the attacker's roll) would
+ * have put a target-side property inside the attacker's anticheat
+ * ceiling, where it does not belong.
+ *
+ * VISIBILITY (the reason this is safe to ship): the client's status pip
+ * row above the monster grows with the stack count and the ambient
+ * stone particles are already wired, so five stacks LOOK like five
+ * stacks — and the damage numbers going up is the confirmation.  A
+ * debuff you cannot see is not a mechanic. */
+export const FRACTURE_DMG_PER_STACK = 0.06;
+
+export function fractureDmgMult(m) {
+  const st = m && m.statuses && m.statuses.fracture;
+  if (!st) return 1;
+  const def = STATUS_DEFS.fracture;
+  const stacks = Math.max(0, Math.min(def.maxStacks, Math.floor(st.stacks || 0)));
+  return 1 + stacks * FRACTURE_DMG_PER_STACK;
+}
+
 /* Tick a monster's statuses.  dtSec since the last call; returns DoT
  * damage events [{dmg, sourceId, statusId}] for the caller to apply
  * through the normal damage/credit path.  Mirrors tickStatuses burn/root

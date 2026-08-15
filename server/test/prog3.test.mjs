@@ -106,7 +106,13 @@ const psA = room.playerState.pa;
   check('maxHp = 100 + level×HP_PER_LEVEL (no armor, no hp pts)',
     psA.maxHp === 100 + 3 * PROG3.HP_PER_LEVEL, { maxHp: psA.maxHp, per: PROG3.HP_PER_LEVEL });
   check('maxStamina = 100 flat', psA.maxStamina === 100, psA.maxStamina);
-  check('maxMana = floor(100 + magic×1.2)', psA.maxMana === 101, psA.maxMana);
+  /* v2.3.1734: derived from PROG3, same reasoning as the maxHp line above
+     — the mana rework moved MANA_PER_MAGIC_LEVEL and a hand-typed 101 just
+     re-asserted whatever the constant happened to be that day.  burst.test
+     owns the pacing assertions (casts per bar at each Magic level). */
+  check('maxMana = floor(100 + magic×MANA_PER_MAGIC_LEVEL)',
+    psA.maxMana === Math.floor(100 + 1 * PROG3.MANA_PER_MAGIC_LEVEL),
+    { maxMana: psA.maxMana, per: PROG3.MANA_PER_MAGIC_LEVEL });
   const sync = msgsOfType(wsA, 'state_sync')[0];
   check('caps.prog3 advertised', sync && sync.caps && sync.caps.prog3 === true, sync && sync.caps && sync.caps.prog3);
   const st = msgsOfType(wsA, 'player_state')[0];

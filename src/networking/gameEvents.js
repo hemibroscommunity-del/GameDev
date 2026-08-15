@@ -14,6 +14,11 @@ import { _onBroNonce, _onBroResult } from './broWallet.js'; /* v2.3.1576 */
 import { BT_AUDIO, ZONES, TILE, ARENA_CHAMPION_REWARD, ARENA_WIN_REWARD, CLAN_WAR_REWARDS, createDefaultCompStats, recalcDerived, DEATH_GOLD_PENALTY, PVP_THREAT_CONSENT_MS, updateZoneDimensions, generateZoneMap, trainDefense, getGuildRank, SKILL_GUILDS } from '@/data/index.js';
 import { MONSTER_VARIANTS, maybeTransformMonster, isRemnantSkull, xpMultFor } from '@/data/monsterVariants.js';
 import { prog3Live } from '@/data/prog3.js'; /* v2.3.1727: the kill-XP popup is a legacy number under prog3 */
+/* v2.3.1734: Element Burst paints the element's status onto the local
+   monster objects (the server owns statuses and never syncs them) — see
+   the element_nova case. */
+import { ELEMENTS } from '@/data/elements.js';
+import { STATUS_DEFS, applyStatus } from '@/data/gameSystems.js';
 import { rollMonsterShard } from '@/data/shards.js';
 import { isWearingArmor } from '@/rendering/gearCatalog.js'; /* v2.3.1598: armoured-hit SFX check */
 /* BT_API_BASE: same window.BROTOWN_WS_URL-derived value BroTown computes at
@@ -450,6 +455,78 @@ export function processGameEvent(type, payload, S, deps) {
                 x: _pX, y: _pY, ts: Date.now(), color: '#8FD6A0', maxR: 46, duration: 320,
               });
               BT_AUDIO.beep(880, 0.07, 0.16, 'triangle');
+            }
+            break;
+
+          case 'element_nova':
+            {
+              /* ═══ v2.3.1734: ELEMENT BURST — the visual half ═══
+                 Server-emitted (server/src/burst.js) and DISPLAY-ONLY for
+                 damage: every point of it already arrived on monster_hit.
+                 This paints two things, and the second one is why the
+                 event exists at all:
+
+                 1. The nova ring at the server's position and radius, in
+                    the element's colour, plus a puff of that element's
+                    ambient particles.  Drawn for everyone in the zone, so
+                    a party sees each other's bursts.
+
+                 2. THE STATUS, applied to each target's LOCAL monster
+                    object.  The server owns statuses and does not sync
+                    them — the client's own m.statuses map is what feeds
+                    the ambient element particles (monsterCombat.js) and
+                    the coloured pip row above the monster
+                    (entityRenderer.js).  Without this the burst's whole
+                    point (it applies your element to a pack) would be a
+                    completely invisible mechanic.  Purely cosmetic: the
+                    local tick runs with applyHp:false against a server
+                    zone (v2.3.1114), so this never touches HP, and a
+                    duration that drifts from the server's is a particle
+                    fading early.  A status id the closed table doesn't
+                    know renders nothing. */
+              if (!payload || !S.monsters) break;
+              if (payload.zone && S.currentZone && payload.zone !== S.currentZone) break;
+              var _nvElem = ELEMENTS[payload.element] ? payload.element : null;
+              if (!_nvElem) break; /* never render an arbitrary wire string */
+              var _nvColor = ELEMENTS[_nvElem].color;
+              var _nvNow = Date.now();
+              var _nvX = payload.x || 0, _nvY = payload.y || 0;
+              var _nvR = payload.r || 70;
+              if (!S._impactRings) S._impactRings = [];
+              /* Two rings at different rates read as an expanding shell
+                 rather than a flat circle.  maxR is scaled by 1/1.5
+                 because the renderer sweeps (0.5 + age) x maxR, so the
+                 outer ring lands on the radius the server actually
+                 tested — the same "never draw a lie about the radius"
+                 rule the telegraph markers follow. */
+              S._impactRings.push({ x: _nvX, y: _nvY, ts: _nvNow, color: _nvColor, maxR: _nvR / 1.5, duration: 420 });
+              S._impactRings.push({ x: _nvX, y: _nvY, ts: _nvNow, color: '#ffffff', maxR: _nvR / 2.2, duration: 260 });
+              if (S.hitParticles && S.hitParticles.length < 300) {
+                for (var _nvI = 0; _nvI < 16; _nvI++) {
+                  var _nvA = (_nvI / 16) * Math.PI * 2;
+                  S.hitParticles.push({
+                    x: _nvX, y: _nvY,
+                    vx: Math.cos(_nvA) * (2 + Math.random() * 2.5),
+                    vy: Math.sin(_nvA) * (1.4 + Math.random() * 1.8) - 0.6,
+                    life: 0.55 + Math.random() * 0.3, color: _nvColor,
+                    size: 1.5 + Math.random() * 1.5,
+                  });
+                }
+              }
+              if (payload.id === S.myId) S.screenShake = Math.max(S.screenShake || 0, 3);
+              var _nvIds = Array.isArray(payload.targets) ? payload.targets : [];
+              if (_nvIds.length && STATUS_DEFS[payload.status]) {
+                /* One pass over the zone's monsters against a Set, rather
+                   than a .find per target: a nova can name a dozen ids and
+                   the zone list is walked every frame already. */
+                var _nvSet = new Set(_nvIds);
+                for (var _nvJ = 0; _nvJ < S.monsters.length; _nvJ++) {
+                  var _nvM = S.monsters[_nvJ];
+                  if (_nvM && _nvM.alive && _nvSet.has(_nvM.id)) {
+                    applyStatus(_nvM, payload.status, null, _nvNow);
+                  }
+                }
+              }
             }
             break;
 
@@ -948,6 +1025,14 @@ export function processGameEvent(type, payload, S, deps) {
                        hits DO need the popup or the block just silently
                        chips the monster's bar. */
                     pushDmgPopup(S, hitM.x || hitM.renderX, monsterPopupY(hitM, -20), '-' + payload.dmg + ' 🌵', '#a3e635');
+                  } else if (payload.burst) {
+                    /* v2.3.1734: same gap, same fix.  An Element Burst is
+                       resolved entirely server-side (no local prediction —
+                       see playerActions.elementBurst for why), so without
+                       this branch the caster's own biggest button would
+                       land in silence on their own screen while every
+                       OTHER player in the zone saw the numbers. */
+                    pushDmgPopup(S, hitM.x || hitM.renderX, monsterPopupY(hitM, -20), '-' + payload.dmg, '#c084fc');
                   }
                   /* Hit particles for everyone */
                   for (var hp2 = 0; hp2 < 3; hp2++) {

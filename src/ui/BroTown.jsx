@@ -153,7 +153,7 @@ import { renderFrame } from '@/game/renderFrame.js';
 /* v2.3.817: §5.8 contextual dodge/lunge/retreat cluster extracted behavior-frozen. */
 import { triggerContextualDodge } from '@/game/dodge.js';
 /* v2.3.819: swing/special/shield action bodies extracted; component keeps thin useCallback wrappers. */
-import { swingAttack, specialAttack, raiseShield } from '@/game/playerActions.js';
+import { swingAttack, specialAttack, raiseShield, elementBurst } from '@/game/playerActions.js';
 /* v2.3.1733: stamina abilities (Shield Bash / Whirlwind) — PR 5 of the
    combat overhaul.  The cast bodies live in @/game/abilities.js for the
    same reason the swing bodies do; this component keeps thin wrappers. */
@@ -798,7 +798,9 @@ export var BroTown = function BroTown(_ref0) {
        abilityStatus rides along so a scenario can read what the BUTTON would
        show (locked / on cooldown / unaffordable) instead of re-deriving it. */
     castAbility: function (kind) { return castAbility(stateRef.current, kind); },
-    abilityStatus: function (kind) { return abilityStatus(stateRef.current, kind); }
+    abilityStatus: function (kind) { return abilityStatus(stateRef.current, kind); },
+    /* v2.3.1734: Element Burst, on the same bridge for the same reason. */
+    elementBurst: function () { elementBurst(stateRef.current); }
   };
   /* Restore persisted player on mount and after login */
   useEffect(function () {
@@ -5109,6 +5111,7 @@ export var BroTown = function BroTown(_ref0) {
       _desktopCycleWeapon: _desktopCycleWeapon,
       _desktopSelectSlot: _desktopSelectSlot,
       _desktopSpecialAttack: _desktopSpecialAttack,
+      _desktopElementBurst: _desktopElementBurst,   /* v2.3.1734: G */
       _desktopCloseAll: _desktopCloseAll,
       setShowPetHouse: setShowPetHouse,
       setChatOpen: setChatOpen,
@@ -5954,6 +5957,12 @@ export var BroTown = function BroTown(_ref0) {
   var _desktopSpecialAttack = useCallback(function () {
     doSpecialAttack();
   }, [doSpecialAttack]);
+  /* v2.3.1734: G — Element Burst.  The touch button (ElementBurstButton,
+     mounted in GameApp) calls the same action bus entry, so both inputs
+     go through ONE implementation (src/game/playerActions.elementBurst). */
+  var _desktopElementBurst = useCallback(function () {
+    elementBurst(stateRef.current);
+  }, []);
   var _desktopCloseAll = useCallback(function () {
     closeAllMenus();
     setBuildingPanel(null);
