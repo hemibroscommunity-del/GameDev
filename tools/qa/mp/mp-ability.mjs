@@ -262,5 +262,49 @@ export async function run({ browser, wsPort, webPort, rec }) {
       Math.abs(interp.during - interp.after) < 1, interp);
   }
 
+  /* ═══ v2.3.1737: THE SHIELD BASH SOUND ACTUALLY EXISTS AND PLAYS ═══
+     Owner supplied a shield-impact sample for the ability.  Two things can
+     go wrong and neither is visible in play: the manifest entry can 404
+     (BT_AUDIO logs nothing a player would see), or the container can refuse
+     to decode — which is exactly how 19 sfx shipped SILENT on every
+     Chromium browser for months (v2.3.1610, the m4a trap).  audio-formats.mjs
+     pins decodability for the whole manifest; this pins that THIS key is in
+     it, resolves, and returns a real playback handle. */
+  const sfx = await P.page.evaluate(async () => {
+    const S = window._gameState && window._gameState.current;
+    const A = S && S.BT_AUDIO ? S.BT_AUDIO : (window.BT_AUDIO || null);
+    if (!A) return { __no: true };
+    const url = A.SFX_MANIFEST && A.SFX_MANIFEST['shield-bash'];
+    if (!url) return { inManifest: false };
+    try { A.unlock && A.unlock(); } catch (e) {}
+    try { A.loadSfxManifest && A.loadSfxManifest(); } catch (e) {}
+    /* the fetch+decode is async; give it a moment */
+    for (let i = 0; i < 40; i++) {
+      if (A._samples && A._samples['shield-bash']) break;
+      await new Promise((r) => setTimeout(r, 100));
+    }
+    const buf = A._samples && A._samples['shield-bash'];
+    const handle = buf ? A.play('shield-bash', { vol: 0.001 }) : null;
+    return {
+      inManifest: true, url,
+      decoded: !!buf,
+      seconds: buf ? +buf.duration.toFixed(2) : null,
+      played: !!handle,
+    };
+  });
+  if (sfx.__no) {
+    rec.skip('shield bash sfx', 'BT_AUDIO not reachable from the page');
+  } else {
+    rec.ok('the shield-bash sound is in the SFX manifest', sfx.inManifest === true, sfx);
+    rec.ok('...and decodes in a Chromium-class browser (the v2.3.1610 m4a trap)',
+      sfx.decoded === true, sfx);
+    /* The upload was 8.04s of which 7.6s was silence; it is trimmed to the
+       impact.  A regression that re-imported the raw file would pass the two
+       checks above and quietly ship 257KB of dead air. */
+    rec.ok('...and is trimmed to the impact, not the 8s upload',
+      typeof sfx.seconds === 'number' && sfx.seconds > 0.2 && sfx.seconds < 1.5, sfx);
+    rec.ok('...and play() returns a real handle', sfx.played === true, sfx);
+  }
+
   await P.ctx.close().catch(() => {});
 }

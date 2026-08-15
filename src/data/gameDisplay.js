@@ -2487,6 +2487,14 @@ BT_AUDIO.SFX_MANIFEST = {
   'armor-hit-1':   '/sfx/monster/armor-hit-1.mp3',
   'armor-hit-2':   '/sfx/monster/armor-hit-2.mp3',
   'shield-block':  '/sfx/shield/shield-block.mp3?v=2',
+  /* v2.3.1737: owner-supplied shield IMPACT for Shield Bash (the ability),
+     distinct from shield-block above (taking a hit on the shield).  The
+     upload was 8.04s / 257KB but the impact itself is 0.38s — attack at
+     0.02-0.10, body to 0.32, tail to ~0.55, then dead air.  Cut losslessly to
+     0.72s with tools/trim_mp3.py (frame-boundary copy, no re-encode) for
+     23KB.  mp3, per the v2.3.1610 rule above — proven by
+     tools/qa/mp/audio-formats.mjs. */
+  'shield-bash':   '/sfx/shield/shield-bash.mp3',
   'fishing-lure-drop':   '/sfx/fishing/lure-drop.mp3',
   'fishing-fish-on-hook': '/sfx/fishing/fish-on-hook.mp3',
   'fishing-reeling':     '/sfx/fishing/reeling.mp3',
