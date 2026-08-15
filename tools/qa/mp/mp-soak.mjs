@@ -89,43 +89,55 @@ export async function run({ browser, wsPort, webPort, rec }) {
      effects, popups, particles and death/respawn paths all run continuously.
      Local AI (not a server zone) so the load is deterministic and does not
      depend on where the worker happens to spawn things. */
+  /* ═══ v2.3.1741b: MAXIMISE KILLS, which is what the owner was doing ═══
+     Owner: "about 15-20 minutes of gameplay but LOTS of monster killing."
+
+     The first cut of this soak was wrong twice over.  It joined in TOWN,
+     which has no monsters, and on the server path it never injected any — so
+     "90s of sustained combat" was 90s of swinging at nothing.  And where it
+     did inject, it kept reviving the same three monsters, so there were
+     almost no DEATHS.  Both flaws hid exactly the thing being hunted: a leak
+     that accrues per KILL.
+
+     This drives the client's own kill path — local AI with 1 HP monsters that
+     die on contact and are immediately replaced.  Local rather than server
+     monsters ON PURPOSE: the accumulation is client-side (the owner's reload
+     cleared it), and this is the client's death/loot/effect path at a kill
+     rate no real session could reach, which is how 20 minutes of play gets
+     compressed into a few. */
   await P.page.evaluate(() => {
     const S = window._gameState && window._gameState.current;
     if (!S || !S.player) return;
-    /* v2.3.1741: the SERVER path, deliberately.  The first cut of this used
-       the local AI (_serverMonsters=false) and found nothing — but the game
-       is 100% server-based, so that exercised a path real play never takes.
-       Everything real goes through the wsClient delta merge, the per-entity
-       monster containers and the event handlers, which is where a
-       session-long leak would live. */
+    S._serverMonsters = false;
     S.autoAttack = true;
-    const mk = (i) => ({
-      id: 'soak_' + i, arch: 'fodder', archetype: 'fodder', type: 'fodder',
-      x: S.player.x + 34 + (i % 3) * 10, y: S.player.y + (i % 2 ? 12 : -12),
-      renderX: S.player.x + 34, renderY: S.player.y,
-      spawnX: S.player.x + 34, spawnY: S.player.y,
-      hp: 400, curHp: 400, maxHp: 400, dmg: 1, level: 1, gold: 0,
-      alive: true, statuses: {}, _stuckArrows: [], respawnAt: 0, moveTimer: 0,
-      _atkCd: 0, _stunUntil: 0,
-    });
-    if (!S._serverMonsters) S.monsters = [mk(0), mk(1), mk(2)];
-    /* Keep the fight going: top the pack up and keep the player alive, so the
-       sample window is uniform rather than tailing off into an empty zone. */
+    window.__kills = 0;
+    let seq = 0;
+    const mk = () => {
+      seq++;
+      return {
+        id: 'soak_' + seq, arch: 'fodder', archetype: 'fodder', type: 'fodder',
+        x: S.player.x + 26 + (seq % 3) * 6, y: S.player.y + ((seq % 2) ? 10 : -10),
+        renderX: S.player.x + 26, renderY: S.player.y,
+        spawnX: S.player.x + 26, spawnY: S.player.y,
+        hp: 1, curHp: 1, maxHp: 1, dmg: 0, level: 1, gold: 1,
+        alive: true, statuses: {}, _stuckArrows: [], respawnAt: 0, moveTimer: 0,
+        _atkCd: 0, _stunUntil: 0,
+      };
+    };
+    S.monsters = [mk(), mk(), mk()];
     clearInterval(window.__soakPin);
     window.__soakPin = setInterval(() => {
       if (!S.rpg) return;
-      S.rpg.hp = S.rpg.maxHp;
-      S.rpg.mana = S.rpg.maxMana;
-      S.rpg.stamina = S.rpg.maxStamina;
+      S.rpg.hp = S.rpg.maxHp; S.rpg.mana = S.rpg.maxMana; S.rpg.stamina = S.rpg.maxStamina;
       S.autoAttack = true;
-      if (!S._serverMonsters) {
-        for (let i = 0; i < S.monsters.length; i++) {
-          const m = S.monsters[i];
-          if (!m.alive || m.curHp <= 0) { m.alive = true; m.curHp = m.maxHp; m.hp = m.maxHp; m.respawnAt = 0; }
-        }
-        if (S.monsters.length < 3) S.monsters.push(mk(S.monsters.length));
+      /* Retire the dead and replace them with NEW ids, so each one is a
+         genuine death + spawn rather than the same object revived. */
+      for (let i = S.monsters.length - 1; i >= 0; i--) {
+        const m = S.monsters[i];
+        if (!m.alive || m.curHp <= 0) { S.monsters.splice(i, 1); window.__kills++; }
       }
-    }, 500);
+      while (S.monsters.length < 3) S.monsters.push(mk());
+    }, 250);
   });
 
   /* FRAME TIME is the symptom the owner reported, so measure it directly
@@ -160,13 +172,20 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const ft = await P.page.evaluate(() => window.__ftDrain && window.__ftDrain());
     samples.push({ t: Math.round((Date.now() - t0) / 1000), s, ft });
     const cur = samples[samples.length - 1];
-    console.log(`      soak t=${cur.t}s  keys=${Object.keys(s).length}`
+    const kills = await P.page.evaluate(() => window.__kills || 0);
+    cur.kills = kills;
+    console.log(`      soak t=${cur.t}s  kills=${kills}  keys=${Object.keys(s).length}`
       + (ft ? `  frame mean=${ft.mean}ms p95=${ft.p95}ms` : ''));
   }
   await P.page.evaluate(() => clearInterval(window.__soakPin));
 
   console.log('      watched: ' + Object.keys(samples[0].s).sort().join(' '));
   rec.ok('the soak collected enough samples to compare', samples.length >= 3, samples.length);
+  /* A soak that killed nothing proves nothing — the first version of this
+     file passed clean while fighting empty air. */
+  const totalKills = samples.length ? (samples[samples.length - 1].kills || 0) : 0;
+  rec.ok('the soak actually killed things (a zero-kill run proves nothing)',
+    totalKills > 100, totalKills);
   if (samples.length < 3) { await P.ctx.close().catch(() => {}); return; }
 
   /* Compare the SECOND sample to the last: the first is start-up (assets
