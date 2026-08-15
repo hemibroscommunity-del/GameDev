@@ -2296,7 +2296,29 @@ export var BroTown = function BroTown(_ref0) {
          canvas resize so the canvas stays full-size — the keyboard
          then floats over the canvas like an overlay instead of
          shifting the scene up and exposing a black bar at the bottom. */
-      if (vv && window.innerHeight - vhFull > 100) return;
+      /* ═══ v2.3.1740: ...ONLY WHEN THERE IS ACTUALLY A KEYBOARD ═══
+         Owner joined on an iPhone to a world squashed into a ~150px strip
+         with the joysticks floating in black below it.  THIS LINE, which
+         had no `_typing` test:
+
+             if (vv && window.innerHeight - vhFull > 100) return;
+
+         The gap it looks for is not unique to a keyboard — Safari's own
+         chrome produces it.  On a tall phone with the bottom URL bar the
+         difference between innerHeight and visualViewport.height clears 100
+         on its own, so the guard fired on EVERY call: the first, pre-layout
+         resize sized the canvas at ~150px and every later one returned early,
+         freezing it there for the whole session.  Reproduced headlessly by
+         stubbing a 140px gap (tools/qa/mp/mp-viewport.mjs) — canvas 150px,
+         exactly the owner's screenshot.
+
+         A keyboard cannot be open without a focused text field, so that is
+         what the guard now asks.  It keeps doing its v2.3.130 job (the chat
+         keyboard must float over the canvas, not resize the scene) and stops
+         firing on browser chrome, which was never a keyboard. */
+      var _ae = document.activeElement;
+      var _typing = !!(_ae && (_ae.tagName === 'INPUT' || _ae.tagName === 'TEXTAREA' || _ae.isContentEditable));
+      if (vv && _typing && window.innerHeight - vhFull > 100) return;
       /* v2.3.1715: on desktop the whole app lives inside a centred, capped
          shell (#root, see the pointer:fine block in game.css), so the
          viewport is no longer what the game gets to use.  Measure the SHELL
@@ -2309,7 +2331,20 @@ export var BroTown = function BroTown(_ref0) {
          shell as an open keyboard and skip the resize entirely.
          Guarded by `smaller than`: on mobile the shell IS the viewport, so
          this is a no-op there and the primary platform is untouched. */
-      var shellEl = document.getElementById('root');
+      /* v2.3.1740: gated on the SAME media query that creates the shell.
+         The comment above asserts "on mobile the shell IS the viewport, so
+         this is a no-op there" — that is an assumption, not a guarantee:
+         #root is only given `height:100%` inside the desktop rule, and on a
+         phone its one real child is position:fixed and therefore out of
+         flow, so its clientHeight is whatever incidental in-flow content
+         exists when resize() runs.  Any small positive value silently became
+         the height of the game.  It was not the cause of the owner's strip
+         (the keyboard guard above was), but it is the same failure waiting
+         on a different trigger, and asking the media query directly costs
+         nothing and makes "phones are untouched" true by construction
+         rather than by hope. */
+      var _shellMq = window.matchMedia && window.matchMedia('(pointer:fine) and (min-width:1000px)');
+      var shellEl = (_shellMq && _shellMq.matches) ? document.getElementById('root') : null;
       if (shellEl) {
         var _sw = shellEl.clientWidth, _sh = shellEl.clientHeight;
         if (_sw > 0 && _sw < vw) vw = _sw;
