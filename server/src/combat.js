@@ -36,13 +36,19 @@
  * suites (plus tick/persistence for the callers). */
 
 import {
-  ELEMENT_STATUS, applyElementStatus, resolveElementCollision,
+  ELEMENT_STATUS, applyElementStatus, resolveElementCollision, fractureDmgMult,
 } from './elemental.js';
 import { AMULET_TIER_POWER, t2CounterRate } from './data.js'; // v2.3.1451: t2Accel/T2_UNITS reads replaced by the ps.t2Flat accumulator
 import { LIVEOPS } from './liveops.js';
 import { PROG3 } from './prog3.js'; // v2.3.1659: the trained-skill combat rebuild config
 
 export const combatMethods = {
+  /* v2.3.1734: Stone's Fracture, activated.  Thin prototype wrapper so
+     every damage site reaches it the same way (`this._fractureDmgMult`)
+     whether it lives in combat.js, index.js or burst.js — the module
+     function itself is in elemental.js beside the table it reads. */
+  _fractureDmgMult(m) { return fractureDmgMult(m); },
+
   // ═══ HP store + damage application (server-authoritative) ═══
   //
   // Server owns current hp; clamps to [0, maxHp].  Damage flows through
@@ -655,7 +661,16 @@ export const combatMethods = {
     // 16 / T1-T2): special hits get the 2x cap headroom.
     const rolled = this._computeAttackDamage(attackerPs, slot, isSpecial);
     const dmgCap = this._maxDmgForAttacker(attackerPs, isSpecial);
-    const rawDmg = Math.max(1, Math.min(dmgCap, rolled.dmg));
+    /* v2.3.1734: FRACTURE applies here, AFTER the attacker ceiling and
+       before the overkill clamp.  The order is the point: dmgCap bounds
+       what the ATTACKER's build may produce, and fracture is a property
+       the server itself stamped on the TARGET — folding it inside the cap
+       would make a stone build's own debuff eat its own damage.  Same
+       posture as collision damage, which has bypassed dmgCap since
+       v2.3.1114 and carries COLLISION_BURST_CAP instead.  ×1.00 on every
+       monster that is not fractured, which is every monster today. */
+    const rawDmg = Math.max(1, Math.round(
+      Math.max(1, Math.min(dmgCap, rolled.dmg)) * this._fractureDmgMult(m)));
     const actualDmg = Math.min(rawDmg, Math.max(0, m.hp));
     // Subtract actualDmg (capped at remaining hp) so m.hp doesn't go
     // negative on overkill -- otherwise the broadcast hpPct goes < 0

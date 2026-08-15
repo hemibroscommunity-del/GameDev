@@ -200,7 +200,14 @@ export const adminMethods = {
                able to see them.  `ba` null means "this client never told us
                which way it is facing", which _blockArcCovers reads as the
                old omnidirectional block — a real state, not a missing value. */
-            blocking: !!ps.blocking, ba: (typeof ps.ba === 'number' ? ps.ba : null) } : null,
+            blocking: !!ps.blocking, ba: (typeof ps.ba === 'number' ? ps.ba : null),
+            /* v2.3.1734: the mana pair, for the same reason `ba` is here.
+               Ability costs are settled by the WORKER while the client
+               predicts them, so a drift between the two is invisible on
+               screen — the next player_state echo silently corrects the bar.
+               A headless check that reads the pool HERE is the only way to
+               assert what a cast actually cost.  Read-only. */
+            mana: ps.mana, maxMana: ps.maxMana } : null,
           online: !!this._wsBySessionId(id),
           auth: auth2 ? { createdAt: auth2.createdAt } : null,
           frozen: frozen || null,

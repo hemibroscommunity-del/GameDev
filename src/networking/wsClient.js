@@ -18,7 +18,7 @@
 import { processGameEvent } from '@/networking/gameEvents.js';
 import { stashPendingZoneNodes } from '@/networking/nodeSync.js'; /* v2.3.1301: node self-heal */
 import { getDeviceNonce, generatePassphrase, passphraseToId } from '@/networking/index.js';
-import { createGatherNode, spawnMonstersForZone, BT_AUDIO, ZONES, TILE, DEATH_GOLD_PENALTY, RARITY_TIERS, ZONE_RESOURCES, createDefaultCompStats, generateZoneMap, recalcDerived, updateZoneDimensions, setGridCapsEnabled, setT2SimpleEnabled, setT2BenchEnabled, setProg3Enabled, PROG3_SKILL_META, PROG3 } from '@/data/index.js';
+import { createGatherNode, spawnMonstersForZone, BT_AUDIO, ZONES, TILE, DEATH_GOLD_PENALTY, RARITY_TIERS, ZONE_RESOURCES, createDefaultCompStats, generateZoneMap, recalcDerived, updateZoneDimensions, setGridCapsEnabled, setT2SimpleEnabled, setT2BenchEnabled, setProg3Enabled, setElemBurstEnabled, PROG3_SKILL_META, PROG3 } from '@/data/index.js';
 import { _objectSpread, _slicedToArray, _toConsumableArray } from '@/lib/babelHelpers.js';
 import { usesClientSideMovement, MONSTER_VARIANTS, isRemnantSkull, applyZoneVariant } from '@/data/monsterVariants.js';
 import { rollMonsterShard, shardByKey } from '@/data/shards.js';
@@ -669,6 +669,14 @@ export function setupWebSocket(ctx) {
                    an old worker everything keeps the legacy T2 math
                    that matches that worker's rolls and echoes. */
                 setProg3Enabled(!!(S._serverCaps && S._serverCaps.prog3));
+                /* v2.3.1734: Element Burst + the flat special cost.  BOTH
+                   gate on this flag, and the second one is the subtle
+                   half: _abilityCost is charged by the WORKER, so a new
+                   client against an OLD worker must keep predicting
+                   floor(maxMana/5) or its local mana drifts from the wire
+                   on every cast and the charge pie draws segments the
+                   worker will not fund (rule 19). */
+                setElemBurstEnabled(!!(S._serverCaps && S._serverCaps.elemBurst));
                 if (S.rpg) recalcDerived(S.rpg);
               } catch (e) {}
               var others = {};
@@ -2306,6 +2314,15 @@ export function setupWebSocket(ctx) {
           return;
         }
         if (msg.type === 'eat_request') {
+          ws.send(JSON.stringify(msg));
+          return;
+        }
+        /* v2.3.1734: Element Burst (COMBAT-OVERHAUL-PLAN PR 6).  This
+           line is the whole difference between the ability working and
+           the ability silently not existing — TRAPS #18, and precheck
+           rule 8 exists because the same omission ate extraction_start
+           for 1400 versions. */
+        if (msg.type === 'element_burst') {
           ws.send(JSON.stringify(msg));
           return;
         }

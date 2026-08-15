@@ -4424,7 +4424,19 @@ export class EntityRenderer {
             }
             const pulseHz = depth > 0 ? (1.5 + depth * 3.5) : 0;
             const pulse = depth > 0 ? (1 + Math.sin(now / 1000 * pulseHz * 2 * Math.PI) * 0.2) : 1;
-            const r = 3 * pulse;
+            /* v2.3.1734: STACKS ARE VISIBLE NOW.  Fracture is the only
+               stacking status (maxStacks 5) and until this version nothing
+               anywhere read `stacks` — the pip was the same dot whether the
+               monster was taking +6% or +30% extra damage.  With Fracture
+               activated server-side (elemental.js fractureDmgMult) an
+               unreadable stack count would be an invisible mechanic, which
+               is precisely what COMBAT-OVERHAUL-PLAN PR 6 forbids shipping.
+               The pip GROWS with the count and gains a ring past one stack,
+               so "how broken is this thing" is legible at a glance and the
+               rising damage numbers confirm it.  Every other status has
+               stacks === 1 forever, so they are pixel-identical to before. */
+            const stacks = Math.max(1, Math.min(5, Math.floor(statusData.stacks || 1)));
+            const r = 3 * pulse * (1 + (stacks - 1) * 0.16);
             let color = sColor;
             if (depth > 0) {
               const lerp = (a, b, t) => Math.round(a + (b - a) * t);
@@ -4435,7 +4447,17 @@ export class EntityRenderer {
             }
             dynGfx.circle(sx, -size - 16, r);
             dynGfx.fill({ color: color, alpha: 0.85 });
-            sx += 8;
+            /* v2.3.1734: the stack ring — one more visual channel than
+               size alone, because a pip that is only 64% bigger at five
+               stacks than at one is not something anyone reads mid-fight.
+               White so it stays legible over every element colour. */
+            if (stacks > 1) {
+              dynGfx.circle(sx, -size - 16, r + 1.6);
+              dynGfx.stroke({ color: 0xffffff, width: 0.8, alpha: 0.25 + stacks * 0.12 });
+            }
+            /* Spacing follows the pip so a five-stack Fracture doesn't
+               overlap the status beside it. */
+            sx += 8 + (r - 3);
           }
         }
 

@@ -49,6 +49,7 @@ const SCENARIOS = {
   questline: () => import('./mp-questline.mjs'), /* v2.3.1707: the WHOLE line, start to finish, through the dialogue */
   harvest: () => import('./mp-harvest.mjs'), /* v2.3.1704: extraction_start reaches the worker + the shield ends */
   firegear: () => import('./mp-firegear.mjs'), /* v2.3.1723: the fire-lighter's clothes sit on their body */
+  burst: () => import('./mp-burst.mjs'), /* v2.3.1734: element_burst survives the shim; the special costs the flat 25 */
 };
 
 const want = process.argv.slice(2).filter((a) => !a.startsWith('-'));

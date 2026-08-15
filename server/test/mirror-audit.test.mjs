@@ -22,6 +22,10 @@
  * the exemption fails loudly and gets deleted instead of rotting.   */
 import * as SRV from '../src/data.js';
 import { GameRoom } from '../src/index.js';
+/* v2.3.1734: the prog3 constant mirror the plan already claimed was
+   enforced here.  See check 12 at the bottom. */
+import { PROG3 as SRV_PROG3 } from '../src/prog3.js';
+import { PROG3 as CLIENT_PROG3 } from '../../src/data/prog3.js';
 import {
   ARCHETYPES, MONSTER_HP_CURVE, COOKING_RECIPES, QUEST_CHAINS,
   BLACKSMITH_TIERS, WOODWORKING_TIERS, SKILL_GUILDS, GUILD_QUESTS,
@@ -380,6 +384,37 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
   }
   for (const id of Object.keys(found)) if (!SRV.SHOP_ITEMS[id]) bad.push({ id, missing: 'server (client sells something the server won\'t settle)' });
   check('SHOP_ITEMS <-> VendorPanel cost/effect mirror, both directions', bad.length === 0, bad);
+}
+
+// ── 12. PROG3 scalar constants (v2.3.1734).  COMBAT-OVERHAUL-PLAN's
+// standing constraints assert these are "CI-enforced by
+// mirror-audit.test.mjs" — they were NOT.  The client half
+// (src/data/prog3.js) is a hand-copied mirror whose only job is to
+// predict the numbers the wire will confirm, so drift here is silent
+// until a player notices the HUD promising casts the worker refuses.
+// Comparing the SCALARS the client mirror actually declares: it is a
+// subset by design (the server owns curve functions the client never
+// evaluates), so this checks every key present on BOTH sides. ──
+{
+  const flat = (obj, prefix, out) => {
+    for (const [k, v] of Object.entries(obj)) {
+      if (v && typeof v === 'object') flat(v, prefix + k + '.', out);
+      else out[prefix + k] = v;
+    }
+    return out;
+  };
+  const srv = flat(SRV_PROG3, '', {});
+  const cli = flat(CLIENT_PROG3, '', {});
+  const shared = Object.keys(cli).filter((k) => k in srv);
+  check('PROG3 mirror extraction found the scalar set (zero = the mirror moved)', shared.length >= 15, shared.length);
+  const bad = shared.filter((k) => String(srv[k]) !== String(cli[k])).map((k) => ({ key: k, server: srv[k], client: cli[k] }));
+  check('PROG3 constants mirror server<->client (a drifted one desyncs every predicted number — the v2.3.1451 rule)',
+    bad.length === 0, bad);
+  /* The four v2.3.1734 additions by name, so a mirror that silently
+     LOSES one fails here rather than quietly passing the subset check. */
+  const required = ['SPECIAL_MANA_COST', 'MANA_PER_MAGIC_LEVEL', 'BURST_MANA_COST', 'BURST_MIN_CHAR_LEVEL', 'BURST_CD_MS', 'BURST_RADIUS', 'BURST_DMG_MULT'];
+  const missing = required.filter((k) => !(k in cli) || !(k in srv));
+  check('the mana-rework / Element Burst constants exist on BOTH sides', missing.length === 0, missing);
 }
 
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);

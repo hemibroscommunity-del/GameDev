@@ -25,6 +25,12 @@ import React from 'react';
 const KEYS = [
   ['WASD', 'Move'], ['Click', 'Attack'], ['R-Click', 'Special'], ['Space', 'Dodge'],
   ['E', 'Interact'], ['Q', 'Shield'], ['Tab', 'Swap'], ['F', 'Special'],
+  /* v2.3.1734: G — Element Burst.  Listed unconditionally even though the
+     ability is level- and enchant-gated: this strip is the only on-screen
+     record a desktop player has of the controls, and a key that appears
+     only after you already own the ability is a key nobody discovers.
+     Pressing it early floats the reason (playerActions.elementBurst). */
+  ['G', 'Burst'],
   ['C', 'Chat'], ['H', 'Hide'], ['Esc', 'Close'],
 ];
 

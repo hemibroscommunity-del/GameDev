@@ -1,6 +1,6 @@
 # Combat Overhaul — staged plan (owner-approved 2026-08-14)
 
-> **Status:** PR 1 shipped (v2.3.1726). PR 2 shipped (v2.3.1727). PRs 3-6 open.
+> **Status:** PRs 1, 2, 3, 6 shipped (v2.3.1726, 1727, 1730, 1734); PR 4 landed as v2.3.1731 (its section below still reads "NEXT" — the parry session owns updating it). PR 5 open.
 > Live charter — this is a TRUSTWORTHY doc in CLAUDE.md's sense: it describes
 > work being done now, not early design thinking. Update the status line as
 > each stage lands.
@@ -162,18 +162,74 @@ current players would be a regression). New `ability {kind}` client→server
 event needs all three legs. Caps flag `caps.abil`. `ability_rejected` still has
 no client handler — write it here.
 
-## PR 6 — Element Burst + mana rework
+## PR 6 — Element Burst + mana rework ✅ v2.3.1734
 
-Cast your weapon's element: 25 mana, 3 s CD, 1.5× auto nova (r 70), status via
-the existing pipeline. flame→burn and frost→freeze already work;
-**storm→shock**, **stone→fracture** (armor shred, the reserved `maxStacks: 5`),
-**water→soak** activate dormant statuses — ship their client visuals in the
-same PR or they are invisible debuffs.
+Shipped as specified, with **one deliberate scope cut** (below).
 
-Mana rework belongs here because mana currently **cannot progress by
-construction**: the special costs `floor(maxMana/5)`, so it is exactly 5 casts
-per bar at Magic 1 and at Magic 100. Flat 25 cost + `MANA_PER_MAGIC_LEVEL`
-1.2 → 2.5 makes Magic buy real casts.
+**The mana bug.** The special cost `floor(maxMana/5)` — a fraction of max, so
+exactly 5 casts per bar at Magic 1 and at Magic 100. The plan named that. What
+it did not name is the second half: **regen is also a percentage of maxMana**
+(`maxMana × 0.018` per tick out of combat), so the SUSTAINED rate was frozen
+too — a flat 7.4 s per cast at every Magic level in the game. Training Magic
+bought nothing in either dimension. Flat `SPECIAL_MANA_COST` 25 +
+`MANA_PER_MAGIC_LEVEL` 1.2 → 2.5 fixes both:
+
+| Magic lvl | maxMana | casts/bar | sustained s/cast |
+|---|---|---|---|
+| 1 | 102 | 4 | 9.1 |
+| 10 | 125 | 5 | 7.4 |
+| 30 | 175 | 7 | 5.3 |
+| 50 | 225 | 9 | 4.1 |
+| 100 | 350 | 14 | 2.7 |
+
+(was 5 casts / 7.4 s at every row.) The floor is a small deliberate nerf:
+5 casts → 4. That is the price of the resource meaning anything, and the burst
+spends from the same pool so a level-6 player now chooses between them.
+
+Note the coupling this rests on: since v2.3.1710 a special trains the WEAPON
+that fired it, not Magic, so a melee main does NOT level Magic by spamming
+specials — their mana genuinely sits at the 4-cast floor until they train
+Magic deliberately. That is the owner's stated design ("within the magic stat
+allocation is the only way to grow your mana"), and this is the PR where
+Magic's cross-weapon job starts paying.
+
+**Element Burst.** Character level 6 + `element1` on the equipped weapon
+(Enchant-gated by construction), 25 mana, 3 s CD, 1.5× auto, radius-70 nova,
+element status applied to everything caught. Touch button (hidden until
+eligible, tinted with the weapon's element), desktop **G**. Server-resolved
+end to end: `element_burst` carries an EMPTY payload and the worker reads the
+weapon, position, pools, cooldown and targets from its own state.
+`server/src/burst.js`; caps flag `elemBurst`; server→client `element_nova`
+for the ring + the status the client paints locally.
+
+It is a **setup, not a detonator** — it applies the status and leaves your
+ordinary swings to detonate collisions. A nova that detonated on every monster
+in the radius would be the biggest damage button in the game on a 3 s timer,
+and the interesting loop is burst-then-swing. This is also what finally gives
+water→soak a purpose: Soak has only ever been a collision setup.
+
+**SCOPE CUT — two of the three dormant statuses were NOT activated.**
+Shipped: **stone→fracture** (armor shred, +6%/stack to 5 stacks = +30% damage
+taken, applied on the burst AND the ordinary hit path) with its client visual
+(the monster's status pip grows and gains a ring with the stack count —
+nothing had ever read `stacks` before). **water→soak** needed no new mechanic:
+it already functions as a collision setup and the burst is the ability that
+makes applying it worth doing.
+
+**storm→shock is deferred**, and so are curse/reveal. A "brief stun" needs a
+new monster-side timer (`elementMoveMult` is all-or-nothing and shock's 4 s
+duration would make it strictly better than Freeze), a client stun visual, and
+an interaction review against the telegraph (PR 3) and parry (PR 4) systems
+that shipped days ago. That is its own PR, not a rider on this one. Storm
+bursts are damage-only until then — which is honest, where an invisible stun
+would not be.
+
+Verified: `server/test/burst.test.mjs` (34 assertions; every behavior checked
+to FAIL with the change reverted), the PROG3 mirror finally enforced in
+`mirror-audit.test.mjs` (the standing constraints claimed it already was),
+and `tools/qa/mp/mp-burst.mjs` — a real browser against a real worker, which
+is the only thing that can see the `channelShim` allowlist (TRAPS #18) and
+what a cast actually cost the WORKER.
 
 ## Verification (every PR)
 

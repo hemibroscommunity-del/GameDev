@@ -127,10 +127,16 @@ import { combatMethods } from './combat.js';
 import { amuletMethods } from './amulet.js';
 // v2.3.1659: the trained-skill combat rebuild (PROGRESSION-REDESIGN) --
 // XP accrual, seven-stat allocation, prog3 pool recompute -- see prog3.js.
-import { prog3Methods } from './prog3.js';
+// v2.3.1734: PROG3 itself is read here now too -- _abilityCost's flat
+// special-attack mana cost lives with the rest of the progression
+// constants (and its client mirror), not as a literal in the handler.
+import { prog3Methods, PROG3 } from './prog3.js';
 // v2.3.1664: on-chain score checkpoints to Hemi (contracts/BroTownScores.sol);
 // signing/encoding lives in chainwriter.js -- see chainscore.js.
 import { chainScoreMethods } from './chainscore.js';
+// v2.3.1734: Element Burst (COMBAT-OVERHAUL-PLAN PR 6) -- the elemental
+// nova + its four server-side gates -- see burst.js.
+import { burstMethods } from './burst.js';
 
 export default {
   async fetch(request, env) {
@@ -354,6 +360,13 @@ export const PRIVILEGED_EVENTS = new Set([
   'monster_ability',
   /* v2.3.1731: parry notice — display-only, but server-emitted. */
   'parry',
+  /* v2.3.1734: Element Burst's nova (burst.js).  Display-only — every
+     point of its damage rides monster_hit — but a forged one would let a
+     client paint fake elemental statuses onto every monster on every
+     screen in the zone, which is exactly the class of thing this list
+     exists for.  NOTE the client->server half is named `element_burst`
+     and has its own switch case, so it never reaches this deny-list. */
+  'element_nova',
   // v2.3.1147: server-emitted since the mummy->skeleton transform moved
   // server-side (v2.3.856 era) but never deny-listed -- a client could
   // forge cosmetic transforms on everyone's screen.  Closed.
@@ -2256,13 +2269,20 @@ export class GameRoom {
     if (type === 'dodge')   return Math.ceil((ps.maxStamina || 100) * 0.20);
     if (type === 'lunge')   return Math.ceil((ps.maxStamina || 100) * 0.25);
     if (type === 'retreat') return Math.ceil((ps.maxStamina || 100) * 0.20);
-    // Swipe (special attack): v2.3.172+ the client HUD shows MP as a
-    // 5-segment charge meter where each segment funds exactly one
-    // special, so cost MUST be maxMana / 5 to keep the contract.
-    // payload.tier still rides the wire for back-compat but no longer
-    // affects cost (it still scales DAMAGE client-side via
-    // SPECIAL_ATK_MULT).
-    if (type === 'swipe')   return Math.floor((ps.maxMana || 100) / 5);
+    /* Swipe (special attack).
+       v2.3.172 made the cost floor(maxMana / 5) so the HUD's 5-segment
+       charge meter drained exactly one segment per cast.  That contract
+       is what made mana un-progressable: a cost expressed as a FRACTION
+       OF MAX is five casts per bar at Magic 1 and five casts per bar at
+       Magic 100, and the regen tick is also a percentage of max, so even
+       the sustained rate never moved.  v2.3.1734 makes it FLAT — see the
+       long note on PROG3.SPECIAL_MANA_COST for the pacing table and the
+       deliberate floor nerf.  The charge pie now derives its segment
+       count from the same constant (SpecialChargePie.jsx), so the HUD
+       contract survives; it just stopped being five.
+       payload.tier still rides the wire for back-compat but has not
+       affected cost since v2.3.172 (it scales DAMAGE, not cost). */
+    if (type === 'swipe')   return PROG3.SPECIAL_MANA_COST;
     return 0;
   }
 
@@ -2316,8 +2336,14 @@ export class GameRoom {
      same damage from a DIFFERENT moment (the monster's own attack), and
      a second copy of this pipeline is exactly how kill credit silently
      diverges.  Kills resolve with slot 'dot' so melee lifesteal
-     correctly denies. */
-  _applyMonsterDot(zoneId, m, rawDmg, sourceId, statusId) {
+     correctly denies.
+     v2.3.1734: `opts.burst` rides through to the monster_hit payload.
+     The caster's OWN client suppresses popups for its own monster_hit
+     (they are normally echoes of a locally-predicted swing), and an
+     Element Burst has no local prediction — the same gap the Thorns
+     reflect needed a flag for at v2.3.1137.  It is a display tag only;
+     nothing server-side reads it. */
+  _applyMonsterDot(zoneId, m, rawDmg, sourceId, statusId, opts) {
     if (!m || !m.alive || m.hp <= 0) return 0;
     const dmg = Math.min(Math.max(0, Math.round(rawDmg || 0)), Math.max(0, m.hp));
     if (dmg <= 0) return 0;
@@ -2330,6 +2356,7 @@ export class GameRoom {
       payload: {
         monsterId: m.id, zone: zoneId, dmg, isCrit: false,
         attackerId: sourceId, status: statusId,
+        burst: !!(opts && opts.burst),
         hpPct: Math.max(0, m.hp / m.maxHp),
       },
     });
@@ -3447,6 +3474,16 @@ export class GameRoom {
         }
         break;
 
+      case 'element_burst':
+        /* v2.3.1734: Element Burst (COMBAT-OVERHAUL-PLAN PR 6).  Payload
+           carries NOTHING — the server reads the weapon, the element, the
+           position, the pools and the cooldown from its own state and
+           picks the targets itself.  See burst.js. */
+        if (session.id) {
+          this._handleElementBurst(session);
+        }
+        break;
+
       case 'eat_request':
         // Player clicked Eat on a cooked_fish_* inventory item.
         // Server validates ownership, consumes 1, heals hp, emits
@@ -4055,3 +4092,4 @@ Object.assign(GameRoom.prototype, amuletMethods);
 Object.assign(GameRoom.prototype, friendsMethods);
 Object.assign(GameRoom.prototype, prog3Methods); /* v2.3.1659 */
 Object.assign(GameRoom.prototype, chainScoreMethods); /* v2.3.1664 */
+Object.assign(GameRoom.prototype, burstMethods); /* v2.3.1734 */

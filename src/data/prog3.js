@@ -42,7 +42,25 @@ export const PROG3 = {
      with it or every predicted number drifts from the wire. */
   DMG_PER_LEVEL: { sword: 1.5, bow: 1.5, staff: 1.8 },
   HP_PER_LEVEL: 6,
-  MANA_PER_MAGIC_LEVEL: 1.2,
+  /* v2.3.1734: mana finally progresses.  The special's cost was
+     floor(maxMana/5) — a fraction of max, so exactly 5 casts at Magic 1
+     and exactly 5 at Magic 100, and (because regen is also a % of max)
+     a flat 7.4s per sustained cast at every level.  Flat cost + a
+     steeper pool makes Magic buy real casts: 4 at Magic 1, 14 at Magic
+     100.  The full reasoning, the pacing table and the deliberate
+     floor nerf live on the SERVER copy (server/src/prog3.js), which is
+     the source of truth; these lines are its mirror and must move with
+     it or the charge pie promises casts the worker refuses. */
+  MANA_PER_MAGIC_LEVEL: 2.5,
+  SPECIAL_MANA_COST: 25,
+  /* v2.3.1734: Element Burst (COMBAT-OVERHAUL-PLAN PR 6).  Display
+     gates only — the server validates every one of these from its own
+     copy of the weapon and pools. */
+  BURST_MIN_CHAR_LEVEL: 6,
+  BURST_MANA_COST: 25,
+  BURST_CD_MS: 3000,
+  BURST_RADIUS: 70,
+  BURST_DMG_MULT: 1.5,
 };
 
 /* The Build screen's row order + copy.  `perText` states the per-point
@@ -93,6 +111,60 @@ export function prog3XpRequired(level) {
 var _enabled = false;
 export function setProg3Enabled(on) { _enabled = !!on; }
 export function isProg3Enabled() { return _enabled; }
+
+/* ═══ v2.3.1734: caps.elemBurst — the deploy-order gate for BOTH halves
+   of the mana rework (server/src/join.js advertises it) ═══
+
+   It gates the obvious thing (the Element Burst button and its send) and
+   one non-obvious thing: the FLAT special-attack mana cost.  The cost is
+   charged by the WORKER (_abilityCost), so a new client against an OLD
+   worker that still charges floor(maxMana/5) must keep predicting the
+   old formula — otherwise the charge pie draws 4 segments while the
+   worker funds 5, and the local mana prediction drifts from the wire on
+   every cast.  Rule 19, exactly. */
+var _burstCaps = false;
+export function setElemBurstEnabled(on) { _burstCaps = !!on; }
+export function isElemBurstEnabled() { return _burstCaps; }
+
+/* The special's mana cost, client-side.  ONE definition — playerActions
+   (the spend) and SpecialChargePie (the readout) must never disagree
+   about it, which is precisely how the 5-segment contract rotted into a
+   comment nobody could act on. */
+export function specialManaCost(rpg) {
+  if (_burstCaps) return PROG3.SPECIAL_MANA_COST;
+  return Math.floor(((rpg && rpg.maxMana) || 100) / 5); /* legacy worker */
+}
+
+/* The weapon the burst will actually fire, client-side.  Deliberately NOT
+   getActiveWeapon(): that helper falls back to the MELEE weapon when the
+   active ranged/staff slot is empty, and neither the server's burst
+   (burst.js _burstActiveWeapon) nor the damage roll (_computeAttackDamage)
+   does — so using it here would show the button, tinted with the sword's
+   element, for a player holding an empty bow slot, and the cast would be
+   refused.  Mirrors the server's resolution exactly. */
+export function burstWeapon(rpg) {
+  var slot = (rpg && rpg.activeSlot) || 'melee';
+  if (slot === 'ranged') return rpg && rpg.rangedWeapon;
+  if (slot === 'staff') return rpg && rpg.staffWeapon;
+  return rpg && rpg.weapon;
+}
+
+/* Element Burst eligibility, client-side — a DISPLAY gate.  The server
+   re-checks all four conditions from its own state (burst.js
+   _burstRefusal) and this function is allowed to be wrong without
+   anything being exploitable; it exists so the button only appears when
+   pressing it would work.  Returns null when eligible, else the reason. */
+export function burstRefusal(rpg, weapon, lastCastAt) {
+  if (!_burstCaps) return 'caps';
+  if (!rpg) return 'no_player';
+  var lvl = prog3Live(rpg) ? prog3CharLevel(rpg) : (rpg.level || 0);
+  if (lvl < PROG3.BURST_MIN_CHAR_LEVEL) return 'level';
+  if (!weapon) return 'no_weapon';
+  if (!weapon.element1) return 'no_element';
+  if ((rpg.mana || 0) < PROG3.BURST_MANA_COST) return 'mana';
+  if (lastCastAt && Date.now() - lastCastAt < PROG3.BURST_CD_MS) return 'cooldown';
+  return null;
+}
 
 /* The one gate every branch reads: worker capability AND an adopted
    server-owned prog3 blob.  Either alone is a half-migrated state that
