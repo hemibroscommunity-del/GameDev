@@ -127,7 +127,8 @@ sends). All of these are in `PRIVILEGED_EVENTS` unless noted.
 | `loot_credit` / `harvest_credit` / `combat_credit` / `lifesteal_credit` | Server-authoritative reward credits (loot pickup, gathering, kill XP/level, melee lifesteal heal) | ~2362 / ~2643 / ~2677 / ~2372 |
 | `loot_pickup_rejected` | Denied loot claim (anti-cheat / race) | ~2402 |
 | `stat_allocated` | Confirms a `stat_allocate` request | ~2700 |
-| `ability_rejected` | Server denied an `ability_use` | no dedicated client case in the main switch (privileged, reserved) |
+| `ability_rejected` | Server denied an `ability_use` / `ability` / `element_burst`. v2.3.1733 gave it a client handler at last; v2.3.1734 adds `reason` (`level` / `no_weapon` / `no_element` / `mana` / `cooldown`) so a refusal can say WHY — an old client ignores the extra field | abilities.js / burst.js |
+| `element_nova` | v2.3.1734 Element Burst's ring — `{id, zone, x, y, element, status, r, targets[]}`. Display-only (every point of damage rides `monster_hit`), but privileged: a forged one would paint fake elemental statuses on every monster on every screen in the zone. The client applies the status to its LOCAL monster objects, which is where the ambient particles and the status pips come from — the server owns statuses and does not otherwise sync them | burst.js |
 | `player_join` / `player_leave` / `player_count` / `player_update` | Room presence + remote appearance changes | ~2737 / ~2781 / ~2789 / ~2794 |
 | `ping` | Heartbeat; client replies `pong` | ~2813 |
 | `loot_drop` / `loot_claimed` / `loot_despawn` | Ground-loot lifecycle fan-outs | [dispatcher] ~3035 / ~3047 / ~3070 |
@@ -157,6 +158,8 @@ Server cases in `GameRoom.webSocketMessage`, `server/src/index.js`
 | `cook_request` / `cook_recipe` | Cooking minigame start / result | ~3881 / ~3926 |
 | `stats_update` | Push derived stats (maxHp/def/regen) so worker damage math stays in sync, plus the two ARMOUR slots — `armor` and (v2.3.1701) `legsArmor`, each `{name, tierMult}` or `null`. Absent means "no opinion", never "unequip": only the flow that changed a slot sends that slot's key (`equipActions.js syncArmorChange`), so a client that has not learned a piece cannot wipe it | ~3891 |
 | `ability_use` | Special moves — `payload.type` ∈ `dodge`, `lunge`, `retreat`, `swipe` (+ tier); server may answer `ability_rejected` | ~3900 |
+| `ability` | v2.3.1733 stamina abilities — `{kind}` ∈ `bash`, `whirl`, under `caps.abil`. Server-resolved end to end (targets, damage, stun, knockback, kill credit); may answer `ability_rejected`. See abilities.js | abilities.js |
+| `element_burst` | v2.3.1734 Element Burst, under `caps.elemBurst`. **Payload is EMPTY** — the server reads the weapon, its `element1`, the position, the pools and the cooldown from its own state and picks the targets itself. Answers a broadcast `element_nova` + `monster_hit` per target (tagged `burst:true`), or `ability_rejected` with `{type:'burst', reason}`. Its own type rather than an `ability` kind: that table prices costs as a % of STAMINA, and this spends flat MANA behind an element gate | burst.js |
 | `eat_request` | Consume food (server-authoritative heal) | ~3909 |
 | `shop_purchase` | Buy from vendor | ~3918 |
 | `equip_request` / `unequip_request` | Equip/unequip gear | ~3935 / ~3953 |
