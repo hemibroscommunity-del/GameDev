@@ -1365,6 +1365,25 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
        both sides move together. */
     sky: '/audio/music/desert.mp3?v=2.3.1589',
   },
+  /* ═══ v2.3.1738: PER-ZONE AMBIENCE (owner art) ═══
+     Owner: "use this to play as the 'wind' ambient sound effect to play in a
+     loop while in the zone" — Wind Dunes, which is zone id `sky` (zones.js
+     names it Wind Dunes; the note above records that the repo also calls it
+     "the desert zone").
+
+     A LAYER on top of ZONE_MUSIC, not an entry in it: `sky` already has the
+     desert score, and one slot per zone means putting wind here would have
+     silenced that.  Read by startZoneAmbient, which starts the loop on entry
+     and stops it on exit.
+
+     NOT in SFX_MANIFEST, deliberately — loadSfxManifest fetches that whole
+     map eagerly at unlock, so a 900KB ambience would land on every player
+     in every zone.  These load on entry to the zone that uses them.
+     The full 28.8s is kept rather than trimmed: it loops, and a short loop
+     of wind is far more noticeable as a loop than a long one. */
+  ZONE_AMBIENT: {
+    sky: '/audio/ambient/wind-dunes.mp3',
+  },
   /* NOTE for whoever adds the remaining zones: every ZONES entry also carries a
      `music: '<id>'` field.  It is read NOWHERE — dead early-design remnant, all
      14 of them.  Do NOT "restore" it by wiring this map through it (the doc-trust
@@ -1480,6 +1499,10 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
      made the one number the owner actually tunes invisible next to its
      sibling above.  Promoted to a real constant; startZoneAmbient reads it. */
   ZONE_MUSIC_VOL: 0.06875,
+  /* v2.3.1738: the per-zone AMBIENCE layer (ZONE_AMBIENT below).  Sits just
+     under the zone score, because it plays UNDERNEATH it rather than instead
+     of it — wind you notice but do not listen to. */
+  ZONE_AMBIENT_VOL: 0.05,
   /* v2.3.1582: the decoded-buffer cache is BUDGETED, not unbounded.
      An AudioBuffer is raw float32 PCM, so a 2 MB mp3 is ~50 MB of RAM.
      Measured in Chromium at 44.1 kHz stereo: login-theme 34.4 MB, village
@@ -2201,6 +2224,42 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
      ramp.  Procedural drones (osc + LFO) still hard-stop -- they're
      low-volume and a fade adds little. */
   this.stopAmbient(true);
+  /* ═══ v2.3.1738: PER-ZONE AMBIENT LOOP (owner: wind in Wind Dunes) ═══
+     A LAYER, not a replacement: `sky` already has a ZONE_MUSIC score
+     (desert.mp3) and the owner asked for wind "to play in a loop while in the
+     zone", not for the music to go.  So this rides on top, at a low volume
+     under both the score and the SFX.
+
+     Deliberately NOT in SFX_MANIFEST.  loadSfxManifest() eagerly fetches
+     EVERY entry in that map at unlock, so a 900KB ambience would be
+     downloaded by every player of every zone — the exact cost the owner cut
+     ~40MB of music to avoid.  Kept in its own table and loaded on ENTRY to
+     the zone that uses it, the way ZONE_MUSIC already works.  startSfxLoop's
+     own self-heal reads SFX_MANIFEST and finds nothing here, which is fine:
+     it no-ops until our explicit loadSample resolves, and the next zone
+     entry (or the ensure below) starts it.
+
+     Hooked HERE rather than at the six startZoneAmbient call sites because
+     this function is the choke point they all funnel through, and it already
+     early-returns when the zone has not actually changed. */
+  var _prevAmb = this._zoneAmbientKey;
+  if (_prevAmb) { try { this.stopSfxLoop(_prevAmb); } catch (e) {} this._zoneAmbientKey = null; }
+  var _ambUrl = this.ZONE_AMBIENT && this.ZONE_AMBIENT[zoneId];
+  if (_ambUrl) {
+    var _ambKey = 'zoneamb-' + zoneId;
+    this._zoneAmbientKey = _ambKey;
+    var _self0 = this;
+    if (this._samples[_ambKey]) {
+      this.startSfxLoop(_ambKey, this.ZONE_AMBIENT_VOL);
+    } else {
+      /* Fetch once, then start — but only if the player is STILL in this
+         zone when it lands.  A long download plus a fast walk-through would
+         otherwise strand a wind loop playing in the next zone. */
+      Promise.resolve(this.loadSample(_ambKey, _ambUrl)).then(function () {
+        if (_self0._zoneAmbientKey === _ambKey) _self0.startSfxLoop(_ambKey, _self0.ZONE_AMBIENT_VOL);
+      }).catch(function () {});
+    }
+  }
   /* Zone music — Web Audio path (NOT HTMLAudio). Fetch + decode the
      MP3 once, cache the AudioBuffer, then play through the same
      AudioContext as the oscillators. This sidesteps the HTMLAudio
@@ -2495,6 +2554,12 @@ BT_AUDIO.SFX_MANIFEST = {
      23KB.  mp3, per the v2.3.1610 rule above — proven by
      tools/qa/mp/audio-formats.mjs. */
   'shield-bash':   '/sfx/shield/shield-bash.mp3',
+  /* v2.3.1738: owner-supplied wind-impact for Whirlwind.  Upload was 4.70s
+     with the swell ending at 2.40s; cut losslessly to 2.62s (trim_mp3.py),
+     150KB -> 82KB.  Long by SFX standards on purpose — the ability now pulls
+     a whole screen of monsters in and holds them for a second, so the sound
+     covers the gather rather than punctuating it. */
+  'whirlwind':     '/sfx/magic/whirlwind.mp3',
   'fishing-lure-drop':   '/sfx/fishing/lure-drop.mp3',
   'fishing-fish-on-hook': '/sfx/fishing/fish-on-hook.mp3',
   'fishing-reeling':     '/sfx/fishing/reeling.mp3',
@@ -2572,10 +2637,17 @@ BT_AUDIO.monsterDeath = function (arch, opts) {
   }
   this.play('monster-death', opts || { vol: 0.5 });
 };
+/* v2.3.1738: RETURNS THE PROMISE.  Every existing caller ignores the return
+   value, so this is additive — but a caller that needs to act WHEN the sample
+   is ready (the per-zone ambient loop in startZoneAmbient) cannot poll for it,
+   and wrapping the old undefined in Promise.resolve() resolves immediately,
+   i.e. before the fetch has even started.  Resolves after decode; resolves
+   (not rejects) on failure and on the already-loaded/in-flight early return,
+   so `.then(start)` is always safe and a missing file degrades to silence. */
 BT_AUDIO.loadSample = function (key, url) {
-  if (!this.ctx || this._samples[key] || this._sampleLoading[key]) return;
+  if (!this.ctx || this._samples[key] || this._sampleLoading[key]) return Promise.resolve();
   this._sampleLoading[key] = true;
-  fetch(url)
+  return fetch(url)
     .then(function (r) { return r.arrayBuffer(); })
     .then(function (buf) {
       return new Promise(function (resolve, reject) {

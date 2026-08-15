@@ -256,9 +256,16 @@ export function castAbility(S, kind) {
       setTimeout(function () { return BT_AUDIO.beep(120, 0.12, 0.18, 'sawtooth'); }, 70);
     }
   } else {
-    BT_AUDIO.beep(320, 0.12, 0.18, 'sawtooth');
-    setTimeout(function () { return BT_AUDIO.beep(420, 0.12, 0.16, 'sawtooth'); }, 80);
-    setTimeout(function () { return BT_AUDIO.beep(520, 0.14, 0.14, 'sawtooth'); }, 160);
+    /* v2.3.1738: the owner's wind-impact sample, same shape as bash above —
+       fired on the cast, with the synth stand-in kept as the fallback for the
+       window before the sample decodes. */
+    var _whirlSfx = null;
+    try { _whirlSfx = BT_AUDIO.play('whirlwind', { vol: 0.9 }); } catch (e) { _whirlSfx = null; }
+    if (!_whirlSfx) {
+      BT_AUDIO.beep(320, 0.12, 0.18, 'sawtooth');
+      setTimeout(function () { return BT_AUDIO.beep(420, 0.12, 0.16, 'sawtooth'); }, 80);
+      setTimeout(function () { return BT_AUDIO.beep(520, 0.14, 0.14, 'sawtooth'); }, 160);
+    }
   }
   return true;
 }

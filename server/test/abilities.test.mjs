@@ -350,8 +350,21 @@ const setCharLevel = (lvl) => {
   check('...crediting each hit to the caster',
     inside.every((m) => m.dmgByPlayer && m.dmgByPlayer.pa > 0),
     inside.map((m) => m.dmgByPlayer));
-  check('whirlwind does not stun (that is bash\'s job)',
-    inside.every((m) => !m._stunUntil || m._stunUntil <= Date.now()), inside.map((m) => m._stunUntil));
+  /* ═══ v2.3.1738: WHIRLWIND STUNS NOW, AND THAT IS THE POINT ═══
+     v2.3.1733 asserted the opposite ("that is bash's job") and it was right
+     at the time.  The owner then played it: "it has virtually no effect...
+     disable enemy attacks for the first second while it pulls them in so
+     it's not just a big damage sponge."  A gather with no lockout hands the
+     whole pack a free swing the instant it lands on top of you.
+     The assertion is FLIPPED, not deleted — what is worth pinning is that
+     the lockout exists and is SHORT, because a whirl that dazed as long as
+     bash (1600ms) would make bash pointless. */
+  const whirlStun = STAM_ABILITIES.whirl.stunMs;
+  check('whirlwind locks attacks out while it gathers (owner: not a damage sponge)',
+    whirlStun > 0 && inside.every((m) => m._stunUntil > Date.now()),
+    { whirlStun, until: inside.map((m) => m._stunUntil - Date.now()) });
+  check('...but for less time than a bash, which is the dedicated stun',
+    whirlStun < STAM_ABILITIES.bash.stunMs, { whirl: whirlStun, bash: STAM_ABILITIES.bash.stunMs });
 
   /* ═══ v2.3.1735: THE GATHER ═══
      Owner: "make it so that all the enemies are brought in directly around
@@ -387,7 +400,11 @@ const setCharLevel = (lvl) => {
     psA.x = 500; psA.y = 500;
     /* One further out than the ring, one nearer than it, one almost on top —
        the three cases an impulse-based pull gets wrong in different ways. */
-    const far = arm(meadow[0], psA.x + (r - 6), psA.y);
+    /* v2.3.1738: 200px out — more than TRIPLE the old 60px radius, so this
+       monster was not merely un-gathered before, it was not even a target.
+       It is the assertion that would have to change if the reach ever
+       regressed toward "virtually no effect". */
+    const far = arm(meadow[0], psA.x + 200, psA.y);
     const near = arm(meadow[1], psA.x - 18, psA.y);
     const onTop = arm(meadow[2], psA.x, psA.y - 6);
     const bearingsBefore = [far, near, onTop].map(bearing);
@@ -409,6 +426,11 @@ const setCharLevel = (lvl) => {
        outside your own swing would be a downgrade dressed as a feature. */
     check('...onto a ring your own swing can reach', pullTo < r,
       { pullTo, whirlRadius: r });
+    /* The reach itself, stated as a number so a silent shrink fails here. */
+    check('the vacuum reaches far enough to be worth casting (owner: "a huge radius")',
+      r >= 200, { radius: r, wasBefore: 60 });
+    check('...and can hold a whole swarm, not half of one',
+      (STAM_ABILITIES.whirl.maxTargets || 0) >= 16, STAM_ABILITIES.whirl.maxTargets);
     for (const s of snapshot) { s.m.x = s.x; s.m.y = s.y; }
     psA.x = psSnap.x; psA.y = psSnap.y;
   }

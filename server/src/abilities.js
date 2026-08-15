@@ -76,8 +76,24 @@ export const STAM_ABILITIES = {
     staminaPct: 0.40,
     cooldownMs: 6000,
     dmgMult: 1.00,
-    radius: 60,           /* the plan's AoE radius */
-    stunMs: 0,
+    /* ═══ v2.3.1738: THE VACUUM (owner) ═══
+       "Whirlwind needs the biggest change. It has virtually no effect when
+       you play it in the game. I need it to pull in every enemy in a huge
+       radius (disable enemy attacks for the first second while it pulls them
+       in so it's not just a big damage sponge)."
+
+       60 -> 240px, i.e. 7.5 tiles: on a 390px-wide phone that is most of the
+       screen, which is what "huge" has to mean for the ability to read as a
+       vacuum rather than a nudge.  maxTargets 8 -> 16 with it, or the radius
+       would be a lie the moment a swarm actually filled it. */
+    radius: 240,
+    /* The one-second attack lockout the owner asked for, spent through the
+       EXISTING stun (ccMoveMult 0 in _tickMonsters), which already blocks the
+       swing, the projectile, the chase and the telegraph in one gate — and,
+       since v2.3.1735, shows the star ring so the player can see why nothing
+       is hitting them.  Short on purpose: this buys the gather, it is not
+       bash's 1600ms hold. */
+    stunMs: 1000,
     knockback: 0,         /* v2.3.1735: whirl GATHERS now, it does not shove */
     /* v2.3.1735 (owner): every target is placed on a ring this many px from
        the caster.  34 sits just outside the body and INSIDE melee reach —
@@ -86,7 +102,11 @@ export const STAM_ABILITIES = {
        impulses. */
     pullTo: 34,
     needs: 'weapon',
-    maxTargets: 8,        /* bound the per-cast work; a swarm is ~6 */
+    /* v2.3.1738: 8 -> 16 with the radius.  Still bounded — the cap exists so
+       one cast cannot walk an unbounded list — but 8 would have quietly
+       dropped half a swarm inside the new reach, which is exactly the "it has
+       virtually no effect" complaint in a new form. */
+    maxTargets: 16,
   },
 };
 
