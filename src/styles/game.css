@@ -1638,8 +1638,38 @@ input{font-family:inherit}
   /* v2.3.1715: .4 -> .8 resting.  With the desktop shell the strip now sits
      over the WORLD rather than over dark chrome, and at .4 it washed out
      completely on the town's bright sand. */
-  pointer-events:auto;cursor:pointer;opacity:.8;transition:opacity .3s}
+  /* v2.3.1728: the CONTAINER no longer intercepts — only the chips do.
+     The strip is a 280px-wide flex box pinned over the bottom-left of the
+     play area, and pointer-events:auto on the box meant every click in the
+     GAPS between chips was swallowed too, in a corner where the canvas
+     takes clicks as attack/aim. */
+  pointer-events:none;cursor:pointer;opacity:.8;transition:opacity .3s}
+.bt-kb-hints .bt-kb-key{pointer-events:auto}
 .bt-kb-hints:hover{opacity:1}
+/* ═══ v2.3.1728: THE HINTS NEVER SIT ON A MODAL ═══
+   The second half of a v2.3.1715 regression (see the wrap's width note in
+   BroTown.jsx for the first).  That change unburied this strip from under
+   the dashboard band and moved it UP to sit exactly where a modal's sticky
+   footer lives — so the moment it became visible it also became a lid over
+   every panel's primary button.  The strip is position:fixed OUTSIDE
+   .brotown-wrap, and the wrap is its own stacking context, so z-index
+   cannot help — the strip paints over ANY in-wrap modal however high that
+   modal's z-index is.  This is the same trap the HUD player chip hit at
+   v2.3.1235, documented in .bt-inspect above; there the answer was
+   geometric clearance, which cannot work here because the strip sits
+   exactly where a modal's sticky footer does.
+   Measured on the quest dialogue: a .bt-kb-key chip was the topmost
+   element at the centre of the "Accept Quest" button, so elementFromPoint
+   returned the chip and the first action in the game was unclickable on
+   every desktop viewport.
+   Keying off .bt-inspect (the shared scrim class, 21 panels) rather than a
+   hand-kept list of React modal flags is deliberate: the next panel added
+   is covered for free, whereas a flag list silently misses it.  The hints
+   describe WORLD controls — move, attack, dodge, interact — none of which
+   apply while a dialogue is open, so hiding them is also correct on its
+   own terms rather than merely convenient. */
+body:has(.bt-inspect) .bt-kb-hints,
+body:has(.bt-inspect) .bt-kb-chip{display:none}
 /* The dismissed state: one small chip in the same corner, so the controls are
    recoverable.  A toggle you cannot find your way back from is a delete. */
 .bt-kb-chip{position:fixed;bottom:calc(var(--dash-h) + 12px);left:12px;z-index:20;

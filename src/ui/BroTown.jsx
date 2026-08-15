@@ -7125,7 +7125,38 @@ export var BroTown = function BroTown(_ref0) {
       position: 'fixed',
       top: 0,
       left: 0,
-      width: '100vw',
+      /* ═══ v2.3.1728: 100vw -> 100%, THE DESKTOP MODAL BLOCKER ═══
+         A REGRESSION FROM v2.3.1715, live in production since it merged:
+         every modal in the game was unreachable on desktop.  Bisected —
+         tools/qa/mp/mp-questline.mjs passes 64/64 at a384c8f4 (v2.3.1714,
+         the commit before the shell) and dies on its FIRST action after it.
+         Not the judges' bug: that one was the interact radius, fixed in
+         v2.3.1717.  This one shipped after they played, and would have
+         blocked them far harder.
+
+         v2.3.1715 shrank the play window to #root (25% wide) and relied on
+         `contain: paint` to re-anchor the 59 position:fixed overlays without
+         editing any of them.  Containment does re-anchor a fixed child's
+         ORIGIN — measured, this wrap starts exactly at #root's left edge —
+         but a VIEWPORT UNIT is immune to it by definition, so the wrap kept
+         its full-window 1440px width while living inside a 380px shell.
+
+         Everything centred inside it therefore centred on the middle of the
+         WINDOW, ~600px right of the middle of the play area, and
+         `contain: paint` clipped it out of sight.  `.bt-inspect` is
+         `inset: 0; justify-content: center`, so that is every modal in the
+         game: the quest dialogue's Accept/Turn In buttons, Inspect, trades,
+         duels, every building interior.  Present in the DOM, visible to
+         getComputedStyle, and unreachable by mouse — elementFromPoint at the
+         Accept button's own centre returned <body>.
+
+         `100%` resolves against the containing block, which IS #root when
+         contained and the viewport otherwise — so the shell wins on desktop
+         and phones are byte-identical.  HEIGHT deliberately stays 100dvh:
+         the dynamic unit is what keeps the layout correct under the iOS
+         Safari URL bar, and the vertical axis was never broken (#root is
+         height:100% of the same viewport). */
+      width: '100%',
       height: '100dvh',
       overflow: 'hidden',
       display: 'flex',
