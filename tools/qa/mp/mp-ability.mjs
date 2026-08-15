@@ -213,5 +213,54 @@ export async function run({ browser, wsPort, webPort, rec }) {
       Math.abs(dirs.empty - Math.PI / 2) < 1e-6 && dirs.empty !== EAST, dirs);
   }
 
+  /* ═══ v2.3.1736: A STUNNED MONSTER STILL TRACKS THE SERVER ═══
+     Owner: "right now it stuns them and then bounces them back which looks
+     awkward."  Shield Bash's knockback and its stun land in the SAME instant
+     server-side, but the client's stun early-return sat above the position
+     interpolator, so a stunned monster's renderX/renderY froze at the
+     pre-shove spot for the whole stun and only caught up when it expired.
+     The player saw the daze, then the shove.
+
+     Pinned in a real browser because this is a render-loop ordering bug: no
+     server test can see it (the server is already correct), and the symptom
+     is purely that renderX stops following x.  Driven directly rather than by
+     casting — a cast needs character level 4 (see this file's header). */
+  const interp = await P.page.evaluate(async () => {
+    const S = window._gameState && window._gameState.current;
+    if (!S || !S.player) return { __no: true };
+    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+    S._serverMonsters = true;   /* the MP path, where the server owns position */
+    const m = {
+      id: 'qa_interp_1', arch: 'fodder', archetype: 'fodder', type: 'fodder',
+      x: S.player.x + 60, y: S.player.y, renderX: S.player.x + 60, renderY: S.player.y,
+      hp: 500, curHp: 500, maxHp: 500, dmg: 0, level: 1, alive: true,
+      statuses: {}, _stuckArrows: [], respawnAt: 0, _atkCd: 0, _stunUntil: 0,
+    };
+    S.monsters = [m];
+    await sleep(250);
+    /* Stun it and shove it 90px in the same breath — exactly what the worker
+       does for a bash. */
+    m._stunUntil = Date.now() + 1600;
+    m.x = m.x + 90;
+    const target = m.x;
+    await sleep(400);            /* well inside the stun */
+    const during = m.renderX;
+    m._stunUntil = 0;
+    await sleep(400);
+    const after = m.renderX;
+    S.monsters = [];
+    return { target, during, after, movedDuringStun: Math.abs(during - target) < 1 };
+  });
+  if (interp.__no) {
+    rec.skip('stunned-monster interpolation', 'no player state');
+  } else {
+    /* THE REGRESSION.  With the old ordering `during` stays at the pre-shove
+       position for the whole stun and only reaches `target` afterwards. */
+    rec.ok('a stunned monster still moves to where the server shoved it',
+      interp.movedDuringStun, interp);
+    rec.ok('...and does not wait for the stun to expire to get there',
+      Math.abs(interp.during - interp.after) < 1, interp);
+  }
+
   await P.ctx.close().catch(() => {});
 }

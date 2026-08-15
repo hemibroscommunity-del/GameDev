@@ -64,7 +64,10 @@ export const STAM_ABILITIES = {
     cooldownMs: 4000,
     dmgMult: 0.75,        /* of a normal melee roll */
     radius: 70,           /* px; a shove has to reach about as far as a swing */
-    stunMs: 800,
+    /* v2.3.1736 (owner: "double the time it stuns the enemy").  800 -> 1600.
+       The cooldown is 4000, so a bashed monster is now dazed for 40% of the
+       time between your bashes rather than 20%. */
+    stunMs: 1600,
     knockback: 90,        /* px, vs 30 for a normal hit (combat.js) */
     needs: 'shield',
   },
@@ -283,20 +286,6 @@ export const abilityMethods = {
        abilities are melee, so both train sword/Melee. */
     if (ps.prog3) this._prog3AwardXp(pid, ps, 'sword', dmg);
 
-    /* THE STUN.  ccMoveMult in _tickMonsters reads _stunUntil (index.js), so
-       a stunned monster neither walks nor swings — and clearing _tgPhase
-       CANCELS a wind-up, which is the whole point of bash existing next to
-       v2.3.1730's telegraphs.  atkCd moves too so the stun does not simply
-       bank a swing that lands the instant it ends. */
-    if (cfg.stunMs > 0) {
-      m._stunUntil = Math.max(m._stunUntil || 0, now + cfg.stunMs);
-      m.atkCd = Math.max(m.atkCd || 0, now + cfg.stunMs);
-      m._attackingUntil = 0;
-      if (m._tgPhase) {
-        m._tgPhase = null; m._tgUntil = 0; m._tgAim = null; m._tgTarget = null;
-        m._tgNextAt = now + cfg.stunMs;
-      }
-    }
 
     /* ═══ DISPLACEMENT: a shove (bash) or a VORTEX (whirl) ═══
        v2.3.1735, owner: "make it so that all the enemies are brought in
@@ -341,6 +330,32 @@ export const abilityMethods = {
         const pad = this.TILE;
         m.x = Math.max(pad, Math.min(W - pad, m.x));
         m.y = Math.max(pad, Math.min(H - pad, m.y));
+      }
+    }
+
+    /* ═══ THE STUN — AFTER the shove, deliberately (v2.3.1736) ═══
+       Owner: "make the enemy bounce back happen immediately before the stun
+       (right now it stuns them and then bounces them back which looks
+       awkward)."  Both land in the same tick, so this ordering is not what
+       the player was seeing — the awkwardness is on the CLIENT, where the
+       shove was interpolated while the stun read instantly (fixed in
+       monsterCombat's snap threshold).  The order is still worth flipping:
+       it makes the code say what the ability does — shove, then daze — so
+       nothing later reads a stun flag while the position is still the
+       pre-shove one.
+
+       ccMoveMult in _tickMonsters reads _stunUntil (index.js), so a stunned
+       monster neither walks nor swings — and clearing _tgPhase CANCELS a
+       wind-up, which is the whole point of bash existing next to v2.3.1730's
+       telegraphs.  atkCd moves too so the stun does not simply bank a swing
+       that lands the instant it ends. */
+    if (cfg.stunMs > 0) {
+      m._stunUntil = Math.max(m._stunUntil || 0, now + cfg.stunMs);
+      m.atkCd = Math.max(m.atkCd || 0, now + cfg.stunMs);
+      m._attackingUntil = 0;
+      if (m._tgPhase) {
+        m._tgPhase = null; m._tgUntil = 0; m._tgAim = null; m._tgTarget = null;
+        m._tgNextAt = now + cfg.stunMs;
       }
     }
 

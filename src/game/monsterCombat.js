@@ -245,18 +245,30 @@ export function updateMonsterCombat(S, deps) {
               setRpgState(_objectSpread({}, _R6));
             }
 
-            /* Skip if stunned */
-            if (m._stunUntil && Date.now() < m._stunUntil) return;
+            /* ═══ v2.3.1736: POSITION TRACKS THE SERVER EVEN WHILE STUNNED ═══
+               Owner: "make the enemy bounce back happen immediately before
+               the stun (right now it stuns them and then bounces them back
+               which looks awkward)."
 
-            /* Skip during knockback recovery so the player sees the
-               bump on client-side-AI variants (fireGoblin etc).
-               Without this the AI snaps the monster back toward the
-               player on the next frame and the m.x/y += hit at the
-               damage site is invisible.  200 ms window matches the
-               stamp set by the melee + arrow hit paths. */
-            if (m._kbUntil && Date.now() < m._kbUntil) return;
+               This block used to sit BELOW the two early returns beneath it —
+               so a stunned monster returned before ever reaching the
+               interpolator, and its renderX/renderY froze at the pre-shove
+               position for the entire stun.  Shield Bash applies its 90px
+               knockback and its stun in the same instant server-side, but on
+               screen the monster stayed put, wore the star ring, and only
+               slid backwards once the stun EXPIRED.  Two simultaneous events
+               played as a sequence, in the wrong order.
 
-            /* Status-based movement modifiers */
+               Moving it above those returns is the whole fix: the shove now
+               lands the moment it happens (90px clears the snap threshold
+               below, so it is instant), and the stun is just a stun.  The
+               v2.3.1736 doubling of stunMs to 1600 would have made the old
+               behaviour twice as bad — the delay was the stun's full length.
+
+               The returns below still guard the LOCAL AI, which is what they
+               were for: a stunned or knocked-back monster must not chase or
+               swing.  For a server monster there is no local AI to skip, only
+               a position to mirror. */
             /* When server monsters are active, skip ALL local AI — server handles movement, aggro, attacks, respawns.
                EXCEPTION: client-authoritative variants (e.g. fireGoblin
                with the clientSideMovement flag) fall through and run
@@ -290,6 +302,19 @@ export function updateMonsterCombat(S, deps) {
               }
               return; /* skip all local AI below */
             }
+
+            /* Skip if stunned */
+            if (m._stunUntil && Date.now() < m._stunUntil) return;
+
+            /* Skip during knockback recovery so the player sees the
+               bump on client-side-AI variants (fireGoblin etc).
+               Without this the AI snaps the monster back toward the
+               player on the next frame and the m.x/y += hit at the
+               damage site is invisible.  200 ms window matches the
+               stamp set by the melee + arrow hit paths. */
+            if (m._kbUntil && Date.now() < m._kbUntil) return;
+
+            /* Status-based movement modifiers */
             var moveMult = 1.0;
             if (m.statuses.freeze) moveMult = 0; /* frozen = can't move */
             if (m.statuses.root) moveMult = 0; /* rooted = can't move */
