@@ -52,6 +52,7 @@ import { arenaMethods } from './gladiator.js';
 // instances riding zone ids the ZONES table doesn't know (see
 // dungeon.js header for why that makes the whole combat stack free).
 import { dungeonMethods } from './dungeon.js';
+import { telegraphMethods } from './telegraph.js'; /* v2.3.1730 */
 // v2.3.1128 (PR11): guild-quest verification -- server-checked
 // life-skill quest ladder, claims under guild_claims:<pid>.
 import { guildMethods } from './guilds.js';
@@ -347,6 +348,10 @@ export const PRIVILEGED_EVENTS = new Set([
      let a client paint fake incoming projectiles on every screen in the
      zone, so it is server-emitted only like the rest of this family. */
   'monster_projectile',
+  /* v2.3.1730: telegraph/execute notice for standard-zone monster abilities.
+     Display-only (damage rides monster_attack), but server-emitted, so it
+     belongs here or a client could forge a fake wind-up. */
+  'monster_ability',
   // v2.3.1147: server-emitted since the mummy->skeleton transform moved
   // server-side (v2.3.856 era) but never deny-listed -- a client could
   // forge cosmetic transforms on everyone's screen.  Closed.
@@ -1307,6 +1312,11 @@ export class GameRoom {
         // (monsterCombat.js), which until now only slowed the visual
         // while the authoritative monster kept chasing at full speed.
         const ccMoveMult = elementMoveMult(m);
+        /* v2.3.1730: resolve a wind-up already in flight, BEFORE target
+           acquisition and regardless of aggro.  A player who runs away
+           mid-cast used to strand the monster in a pending telegraph
+           forever — see the note on _resolveMonsterTelegraph. */
+        if (this._resolveMonsterTelegraph(zoneId, m, now)) continue;
 
         /* v2.3.1640: resolve an in-flight snowball.  Deliberately OUTSIDE
            the aggro branch and ahead of it — a thrown ball is already in
@@ -1587,6 +1597,18 @@ export class GameRoom {
               }
             });
             this._markMonsterDirty(zoneId, m.id);
+          }
+
+          /* v2.3.1730: START a telegraphed ability (brute slam, stalker
+             pounce).  ABOVE the basic swing so a wind-up suppresses it —
+             the two must never resolve on the same tick, or the tell is a
+             free extra hit instead of a choice.  The RESOLVE half runs
+             earlier and unconditionally (see the call before the aggro
+             branch); only starting one needs a live target.
+             Gated on ccMoveMult like the swing below: a frozen or rooted
+             monster cannot begin a cast either (v2.3.1139's rule). */
+          if (ccMoveMult > 0 && this._maybeStartTelegraph(zoneId, m, nearest, attackDist, now)) {
+            continue;
           }
 
           // Attack player if in range.  v2.3.1139: frozen/rooted
@@ -3915,6 +3937,8 @@ Object.assign(GameRoom.prototype, clanMethods);
 Object.assign(GameRoom.prototype, arenaMethods);
 // v2.3.1127 (PR12): instanced dungeons -- see dungeon.js.
 Object.assign(GameRoom.prototype, dungeonMethods);
+// v2.3.1730: telegraphed standard-zone attacks -- see telegraph.js.
+Object.assign(GameRoom.prototype, telegraphMethods);
 // v2.3.1128 (PR11): guild-quest verification -- see guilds.js.
 Object.assign(GameRoom.prototype, guildMethods);
 // v2.3.1129 (PR13): threat machine -- see threat.js.

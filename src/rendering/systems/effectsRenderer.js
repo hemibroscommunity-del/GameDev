@@ -1523,6 +1523,27 @@ export class EffectsRenderer {
       }
     }
 
+    /* ═══ v2.3.1730: TELEGRAPH GROUND MARKERS ═══
+       The readable half of a monster's wind-up (server/src/telegraph.js).
+       Drawn at the EXACT radius the server will test at execute, so
+       stepping out is an informed choice and not a guess — a warning that
+       lied about its size would be worse than none.
+       Fills toward full opacity as the wind-up runs, so the ring doubles as
+       the timer: when it is solid, the hit lands.  Purely cosmetic; the
+       damage rides monster_attack. */
+    if (S._telegraphZones) {
+      for (let i = S._telegraphZones.length - 1; i >= 0; i--) {
+        const tz = S._telegraphZones[i];
+        const age = (now - tz.ts) / (tz.duration || 800);
+        if (age >= 1) { S._telegraphZones.splice(i, 1); continue; }
+        const col = cssToHex(tz.color || '#fbbf24');
+        gfx.circle(tz.x, tz.y, tz.r || 55);
+        gfx.fill({ color: col, alpha: 0.10 + age * 0.22 });
+        gfx.circle(tz.x, tz.y, tz.r || 55);
+        gfx.stroke({ color: col, width: 2, alpha: 0.45 + age * 0.45 });
+      }
+    }
+
     // Impact rings
     if (S._impactRings) {
       for (let i = S._impactRings.length - 1; i >= 0; i--) {

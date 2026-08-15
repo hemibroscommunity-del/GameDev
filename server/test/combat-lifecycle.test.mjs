@@ -1730,5 +1730,97 @@ for (const m of meadowMonsters) m._wanderPausedUntil = Date.now() + 600000;
   psB.z = 'meadow';
 }
 
+/* ═══ v2.3.1730: TELEGRAPHED ATTACKS ═══
+   Owner: "Monsters are also 'dumb' in that they just walk over to you and
+   attack... There's no strategy.  No timed blocking, no dodging."
+   Brutes and stalkers now wind up (server/src/telegraph.js).  The contract
+   worth pinning is not "an ability exists" but the four properties that
+   make it FAIR: the wind-up does not damage, moving out whiffs, blocking
+   negates, and nothing can ever one-shot. */
+{
+  const meadow = room._ensureZoneMonsters('meadow');
+  const saved = meadow.map((m) => ({ m, alive: m.alive, respawnAt: m.respawnAt, arch: m.arch }));
+  const tm = meadow[0];
+  meadow.forEach((m) => { if (m !== tm) { m.alive = false; m.respawnAt = Date.now() + 1e9; } });
+
+  psB.z = 'frost';
+  psA.z = 'meadow'; psA.dead = false; psA.dying = false; psA.disconnected = false;
+  psA.blocking = false; psA.ba = null; psA.agility = 0; psA._zoneEntryGraceUntil = 0;
+  psA.maxHp = 400; psA.hp = 400;
+  psA.x = 500; psA.y = 500;
+
+  const armBrute = () => {
+    tm.alive = true; tm.arch = 'brute'; tm.maxHp = 5000; tm.hp = 5000;
+    tm.statuses = {}; tm.dmg = 20; tm.respawnAt = 0;
+    tm.atkCd = 0; tm._attackingUntil = 0;
+    tm._tgPhase = null; tm._tgUntil = 0; tm._tgAim = null; tm._tgNextAt = 0;
+    tm.x = psA.x + 20; tm.y = psA.y;
+  };
+  const tick = () => { room.eventBuffer.length = 0; room._tickMonsters(); };
+  const abilities = () => room.eventBuffer.filter((e) => e.type === 'monster_ability');
+  const attacks = () => room.eventBuffer.filter((e) => e.type === 'monster_attack' && e.payload.targetId === 'pa');
+
+  /* ── the wind-up announces itself and deals nothing ── */
+  armBrute();
+  let hp0 = psA.hp;
+  tick();
+  const tele = abilities()[0];
+  check('telegraph: a brute in reach winds up instead of swinging',
+    !!tele && tele.payload.phase === 'telegraph' && tele.payload.ability === 'slam',
+    tele && tele.payload);
+  check('telegraph: the wind-up itself deals no damage',
+    psA.hp === hp0 && attacks().length === 0, { hp: psA.hp, atks: attacks().length });
+  check('telegraph: the warning carries where and how big',
+    !!tele && typeof tele.payload.ax === 'number' && tele.payload.radius > 0, tele && tele.payload);
+
+  /* ── standing in it: the hit lands, clamped ── */
+  tm._tgUntil = Date.now() - 1;          /* wind-up elapsed */
+  hp0 = psA.hp;
+  tick();
+  const exec = abilities().find((e) => e.payload.phase === 'execute');
+  const hit = attacks()[0];
+  check('telegraph: it resolves after the wind-up', !!exec && exec.payload.hit === true, exec && exec.payload);
+  check('telegraph: standing in it costs HP', psA.hp < hp0, { before: hp0, after: psA.hp });
+  check('telegraph: and never more than half of max HP (no one-shots)',
+    !!hit && hit.payload.dmg <= Math.floor(psA.maxHp * 0.5),
+    hit && { dmg: hit.payload.dmg, cap: Math.floor(psA.maxHp * 0.5) });
+
+  /* ── walking out of it: the whole point ── */
+  armBrute();
+  tick();                                 /* starts a fresh wind-up */
+  psA.x = 900; psA.y = 900;               /* dodge/walk clear before it lands */
+  tm._tgUntil = Date.now() - 1;
+  hp0 = psA.hp;
+  tick();
+  const missed = abilities().find((e) => e.payload.phase === 'execute');
+  check('telegraph: moving out of the marked circle makes it WHIFF',
+    !!missed && missed.payload.hit === false && psA.hp === hp0,
+    { payload: missed && missed.payload, before: hp0, after: psA.hp });
+
+  /* ── facing it with a shield ── */
+  psA.x = 500; psA.y = 500;
+  armBrute();
+  tick();
+  psA.blocking = true; psA.ba = 0;        /* shield east, monster is east */
+  tm._tgUntil = Date.now() - 1;
+  hp0 = psA.hp;
+  tick();
+  const blockedAtk = attacks()[0];
+  check('telegraph: a shield FACING it negates the hit',
+    !!blockedAtk && blockedAtk.payload.blocked === true && psA.hp === hp0,
+    blockedAtk && blockedAtk.payload);
+  psA.blocking = false; psA.ba = null;
+
+  /* ── fodder is deliberately left alone ── */
+  armBrute();
+  tm.arch = 'fodder';
+  tick();
+  check('telegraph: fodder does NOT gain a wind-up (beginners keep free hits)',
+    abilities().length === 0, abilities().map((e) => e.payload));
+
+  saved.forEach(({ m, alive, respawnAt, arch }) => { m.alive = alive; m.respawnAt = respawnAt; m.arch = arch; });
+  psB.z = 'meadow';
+}
+
 console.log(failures === 0 ? '\nALL TESTS PASSED' : `\n${failures} TEST(S) FAILED`);
 process.exit(failures === 0 ? 0 : 1);
