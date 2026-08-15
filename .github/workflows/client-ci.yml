@@ -67,7 +67,8 @@ jobs:
   # ── v2.3.1729: the playable-path gate (see the header note) ──
   # Runs the full Mayor Bro questline through a REAL browser against a REAL
   # worker: accept, travel, kill, return, hand in, equip the payouts, walk
-  # home.  64 assertions, ~2 min of scenario on top of install+build.
+  # home.  65 assertions, ~2 min of scenario on top of install+build.
+  # (v2.3.1732 added the "left the spoke by its own return marker" assertion.)
   #
   # BLOCKING, with the repo's established retry-once shape.  Report-only was
   # considered and rejected: this regression already spent six versions
