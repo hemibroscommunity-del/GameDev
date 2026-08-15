@@ -50,7 +50,8 @@ const SCENARIOS = {
   harvest: () => import('./mp-harvest.mjs'), /* v2.3.1704: extraction_start reaches the worker + the shield ends */
   ability: () => import('./mp-ability.mjs'), /* v2.3.1733: the stamina abilities reach the worker, and stay locked until their milestone */
   firegear: () => import('./mp-firegear.mjs'), /* v2.3.1723: the fire-lighter's clothes sit on their body */
-  burst: () => import('./mp-burst.mjs'), /* v2.3.1734: element_burst survives the shim; the special costs the flat 25 */
+  burst: () => import('./mp-burst.mjs'),
+  viewport: () => import('./mp-viewport.mjs'), /* v2.3.1740: the game fills the phone */ /* v2.3.1734: element_burst survives the shim; the special costs the flat 25 */
 };
 
 const want = process.argv.slice(2).filter((a) => !a.startsWith('-'));
