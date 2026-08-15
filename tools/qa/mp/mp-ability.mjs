@@ -148,5 +148,70 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('a junk ability kind changes nothing and does not break the session',
     stam2 === stam0 && alive === true, { stam2, alive });
 
+  /* ═══ v2.3.1735: WHICH WAY THE CAST POINTS ═══
+     Owner: "right now the effect is east.  Make it apply in whatever
+     direction the effect is actually triggered."
+
+     v2.3.1733 resolved the angle as `_aimAngle ?? (_lastAimAngle || 0)`.
+     `_lastAimAngle` is written ONLY by the right-stick aim handler, so a
+     player who taps the ability BUTTON without aiming since load has it
+     undefined — and `|| 0` is zero radians, due east.  Every bash fired
+     from the button pointed east regardless of which way the player faced.
+
+     Pinned HERE rather than in the server suite because the rule is client
+     input resolution the worker never sees, and pinned through the autotest
+     surface rather than a real cast because a cast needs character level 4
+     and a fresh character is 3 (see this file's header).  Each case sets
+     exactly one source and clears the rest, so a regression names the
+     branch that broke instead of just "the angle moved". */
+  const EAST = 0;
+  const dirs = await P.page.evaluate(() => {
+    const S = window._gameState && window._gameState.current;
+    const fns = window._gameFns;
+    if (!S || !fns || !fns.resolveCastAngle) return null;
+    const set = (o) => {
+      S._aimAngle = null; S._shieldUp = false; S._shieldAngle = null;
+      S._lastAimAngle = null; S._facingAngle = null; S._facing = null;
+      Object.assign(S, o);
+      return fns.resolveCastAngle();
+    };
+    return {
+      /* the reported bug: nothing but the body's 4-way facing */
+      faceUp: set({ _facing: 'up' }),
+      faceLeft: set({ _facing: 'left' }),
+      faceDown: set({ _facing: 'down' }),
+      faceRight: set({ _facing: 'right' }),
+      /* the ladder, most deliberate first */
+      aiming: set({ _aimAngle: -Math.PI / 2, _facing: 'right' }),
+      shield: set({ _shieldUp: true, _shieldAngle: Math.PI, _facing: 'right' }),
+      lastAim: set({ _lastAimAngle: -Math.PI / 2, _facing: 'right' }),
+      smoothed: set({ _facingAngle: Math.PI, _facing: 'right' }),
+      /* nothing at all — must NOT be east */
+      empty: set({}),
+    };
+  });
+  if (!dirs) {
+    rec.skip('cast direction', 'the autotest surface is missing resolveCastAngle');
+  } else {
+    /* THE REGRESSION. Facing up/left/down must not resolve to east. */
+    rec.ok('facing UP casts north, not east', Math.abs(dirs.faceUp - (-Math.PI / 2)) < 1e-6, dirs);
+    rec.ok('facing LEFT casts west, not east', Math.abs(dirs.faceLeft - Math.PI) < 1e-6, dirs);
+    rec.ok('facing DOWN casts south, not east', Math.abs(dirs.faceDown - Math.PI / 2) < 1e-6, dirs);
+    /* Facing right SHOULD be east — proof the assertions above are reading a
+       real value and not just anything-but-zero. */
+    rec.ok('...and facing RIGHT still casts east', Math.abs(dirs.faceRight - EAST) < 1e-6, dirs);
+    /* The ladder: each source wins over the ones below it. Every case sets
+       _facing:'right' (east) as the loser, so a branch that silently stopped
+       being consulted would fall through to east and fail here. */
+    rec.ok('an active aim beats the body facing', Math.abs(dirs.aiming - (-Math.PI / 2)) < 1e-6, dirs);
+    rec.ok('a raised shield beats the body facing', Math.abs(dirs.shield - Math.PI) < 1e-6, dirs);
+    rec.ok('the last aim beats the body facing', Math.abs(dirs.lastAim - (-Math.PI / 2)) < 1e-6, dirs);
+    rec.ok('the smoothed movement facing beats the 4-way', Math.abs(dirs.smoothed - Math.PI) < 1e-6, dirs);
+    /* With NOTHING set the floor is south (the renderer's own default,
+       visualSystems.js), never east — an east default is the bug itself. */
+    rec.ok('with no direction at all the cast falls to south, never east',
+      Math.abs(dirs.empty - Math.PI / 2) < 1e-6 && dirs.empty !== EAST, dirs);
+  }
+
   await P.ctx.close().catch(() => {});
 }

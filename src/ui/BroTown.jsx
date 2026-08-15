@@ -157,7 +157,7 @@ import { swingAttack, specialAttack, raiseShield, elementBurst } from '@/game/pl
 /* v2.3.1733: stamina abilities (Shield Bash / Whirlwind) — PR 5 of the
    combat overhaul.  The cast bodies live in @/game/abilities.js for the
    same reason the swing bodies do; this component keeps thin wrappers. */
-import { castAbility, abilityStatus } from '@/game/abilities.js';
+import { castAbility, abilityStatus, resolveCastAngle, BASH_POSE_MS } from '@/game/abilities.js';
 /* v2.3.841: extraction + fishing/cooking/wood/mining reward bodies extracted; component keeps thin useCallback wrappers. */
 import { startExtraction, succeedExtraction, applyCookingResult } from '@/game/lifeSkillRewards.js';
 /* v2.3.842: emote + building-entry interaction bodies extracted; component keeps thin useCallback wrappers. */
@@ -798,6 +798,13 @@ export var BroTown = function BroTown(_ref0) {
        abilityStatus rides along so a scenario can read what the BUTTON would
        show (locked / on cooldown / unaffordable) instead of re-deriving it. */
     castAbility: function (kind) { return castAbility(stateRef.current, kind); },
+    /* v2.3.1735: the cast's DIRECTION rule, on the autotest surface for the
+       same reason BLOCK_ARC_HALF is (mp-block) — the bug the owner reported
+       ("the effect is east") was a pure angle-resolution fault, and a real
+       cast needs character level 4, which QA cannot reach.  Exposing the
+       rule lets mp-ability pin it at the level a fresh character has. */
+    resolveCastAngle: function () { return resolveCastAngle(stateRef.current); },
+    BASH_POSE_MS: BASH_POSE_MS,
     abilityStatus: function (kind) { return abilityStatus(stateRef.current, kind); },
     /* v2.3.1734: Element Burst, on the same bridge for the same reason. */
     elementBurst: function () { elementBurst(stateRef.current); }

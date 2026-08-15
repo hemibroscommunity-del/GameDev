@@ -38,6 +38,7 @@ import { loadSnowmanSprites } from './snowmanSprites.js';
 import { loadPlayerDeathSprites } from './playerDeathSprites.js';
 import { preloadStartZoneMap, loadWalkabilityMaps } from './tiledMaps.js';
 import { effectsAnimationsReady, ensureImpactTex } from './systems/effectsRenderer.js';
+import { fxStripsReady } from './fxStrips.js'; /* v2.3.1735: stun ring + whirl vortex (preloading is law) */
 import { preloadTraits } from './systems/entityRenderer.js';
 import { preloadFullsetFigures } from './gearSheets.js'; /* v2.3.1376: fullset knight figures */
 import { preloadJogHeadOverlays } from './playerSkins.js'; /* v2.3.1376: their head overlays */
@@ -104,6 +105,10 @@ export async function preloadWorldAnimations() {
     playerDeath: loadPlayerDeathSprites(),
     walkability: loadWalkabilityMaps(),
     fx: effectsAnimationsReady(),
+    /* v2.3.1735: the shared owner FX strips.  Registered HERE, in the same PR
+       that adds them, per CLAUDE.md's animation-preloading law — a first-use
+       texture load is a regression, and these two are global (not per-zone). */
+    fxStrips: fxStripsReady(),
     traits: preloadTraits(),
     /* v2.3.1672: NPC art.  GLOBAL, not per-zone: the only NPC art today is
        Mayor Bro, who stands in town — and town is a resident hub that is

@@ -353,6 +353,66 @@ const setCharLevel = (lvl) => {
   check('whirlwind does not stun (that is bash\'s job)',
     inside.every((m) => !m._stunUntil || m._stunUntil <= Date.now()), inside.map((m) => m._stunUntil));
 
+  /* ═══ v2.3.1735: THE GATHER ═══
+     Owner: "make it so that all the enemies are brought in directly around
+     the character."  Whirlwind used to SHOVE (knockback 40), which scattered
+     the pack out of the swing you were standing in the middle of.  It now
+     places every target on a ring of pullTo px around the caster.
+
+     Asserted on the RING, not on "closer than before": a pull implemented as
+     an impulse would overshoot a monster that started nearer than the target
+     radius and fling it out the far side, and "it moved inward" would pass
+     for that.  Distance-to-ring is the property that actually distinguishes
+     the two implementations. */
+  const pullTo = STAM_ABILITIES.whirl.pullTo;
+  const distA = (m) => Math.hypot(m.x - psA.x, m.y - psA.y);
+  const bearing = (m) => Math.atan2(m.y - psA.y, m.x - psA.x);
+  {
+    /* This block MOVES the caster and three monsters, and the section below
+       re-arms those same monsters at wherever they currently stand
+       (`arm(m, m.x, m.y)`) — so it has to hand the world back exactly as it
+       found it or it silently breaks its neighbour.  Snapshot first,
+       restore last. */
+    const snapshot = [meadow[0], meadow[1], meadow[2]].map((m) => ({ m, x: m.x, y: m.y }));
+    const psSnap = { x: psA.x, y: psA.y };
+    readyPlayer();
+    /* MOVE OFF (1000,1000).  readyPlayer parks the caster there, but meadow
+       is 32x32 tiles and the displacement clamp keeps entities inside
+       [TILE, W-TILE] = [32, 992] — so a ring drawn around (1000,1000) is
+       partly OUTSIDE the walkable box and every point past 992 gets clamped
+       flat onto it.  That is a fixture artifact, not a gather bug (it cost
+       an hour to see: the clamped values, 992/966, look exactly like a
+       plausible wrong formula).  Every other section only asserts damage, so
+       nothing noticed until a position was checked. */
+    psA.x = 500; psA.y = 500;
+    /* One further out than the ring, one nearer than it, one almost on top —
+       the three cases an impulse-based pull gets wrong in different ways. */
+    const far = arm(meadow[0], psA.x + (r - 6), psA.y);
+    const near = arm(meadow[1], psA.x - 18, psA.y);
+    const onTop = arm(meadow[2], psA.x, psA.y - 6);
+    const bearingsBefore = [far, near, onTop].map(bearing);
+    await cast('whirl');
+    const gathered = [far, near, onTop];
+    check('whirlwind GATHERS every target onto the ring around the caster',
+      gathered.every((m) => Math.abs(distA(m) - pullTo) < 0.001),
+      gathered.map((m) => +distA(m).toFixed(2)).concat(['ring=' + pullTo]));
+    /* The one that started INSIDE the ring must be pushed out to it, not
+       left where it was — otherwise "gather" only means "pull". */
+    check('...including one that started nearer than the ring', Math.abs(distA(near) - pullTo) < 0.001,
+      { before: 18, after: +distA(near).toFixed(2), ring: pullTo });
+    /* Bearings preserved = the pack keeps its shape and closes in, rather
+       than being stacked on one point. */
+    check('...each keeping its own bearing, so the pack closes in and does not stack',
+      gathered.every((m, i) => Math.abs(bearing(m) - bearingsBefore[i]) < 1e-9),
+      gathered.map(bearing));
+    /* And the ring is inside melee reach — a gather that parked the pack
+       outside your own swing would be a downgrade dressed as a feature. */
+    check('...onto a ring your own swing can reach', pullTo < r,
+      { pullTo, whirlRadius: r });
+    for (const s of snapshot) { s.m.x = s.x; s.m.y = s.y; }
+    psA.x = psSnap.x; psA.y = psSnap.y;
+  }
+
   /* Bash is single-target by contract — same crowd, one victim. */
   readyPlayer();
   for (const m of inside) arm(m, m.x, m.y);

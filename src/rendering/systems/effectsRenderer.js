@@ -24,6 +24,7 @@ import { variantSpritesFor } from '../monsterVariantSprites.js';
 import { MONSTER_VARIANTS, ZONE_VARIANT_MAP } from '../../data/monsterVariants.js';
 import { ZONE_SHARDS } from '../../data/shards.js';
 import { placeSkillTraits, placeSkillTraitsFor, hideSkillTraits, SWORD_SWING_MS, BOW_SHOT_MS, BOW_RELEASE_MS } from './entityRenderer.js';
+import { WHIRL_VORTEX, WHIRL_FX_MS } from '../fxStrips.js'; /* v2.3.1735 */
 import { getEquip } from '../gearCatalog.js';
 import { getShirt } from '../traits/shirtCatalog.js';
 import { getShirtColor, shirtFill } from '../traits/shirtColorCatalog.js';
@@ -265,6 +266,10 @@ for (const cfg of Object.values(EFFECT_BURSTS)) {
   }).catch((err) => console.warn('[effect-burst] load failed', cfg.url, err));
 }
 const FX_BURST_MS = 600;
+
+/* v2.3.1735: the stun ring + whirl vortex strips live in
+   src/rendering/fxStrips.js — a leaf module, because entityRenderer draws
+   the stun ring and cannot import THIS file (it is the other way round). */
 
 /* v2.3.1417: GESTURE TOOL sheets (owner art, part 2 of the gather-feel
    redesign) — the harvest cue's floating tool is a painted sprite whose
@@ -1444,6 +1449,8 @@ export class EffectsRenderer {
     this._updateDamageNumbers(S, now);
     this._updateCatchFlights(S, viewW, viewH, now);
     this._updateFxBursts(S, now);   /* v2.3.1443 */
+    /* v2.3.1735: guards internally on the strip being loaded. */
+    try { this._updateWhirlVortex(S, now); } catch (e) { /* ditto */ }
     this._updateScreenFlash(S, viewW, viewH, now);
     this._updateAtmosphere(S, viewW, viewH, now);
     this._updateGroundLoot(S, now);
@@ -1549,9 +1556,29 @@ export class EffectsRenderer {
       for (let i = S._impactRings.length - 1; i >= 0; i--) {
         const ring = S._impactRings[i];
         const age = (now - ring.ts) / (ring.duration || 400);
-        if (age >= 1) continue;
+        /* v2.3.1735: REAP, don't skip.  This loop already walks backwards —
+           the shape of a splicing loop — but every caller since impact rings
+           were added has only ever `continue`d past a finished ring, so the
+           array grew for the whole session and every frame re-walked every
+           ring ever spawned.  Invisible (dead rings draw nothing) and slow
+           to bite, which is why it survived; noticed because Shield Bash
+           pushes two more every cast.  Every other transient list in this
+           file (dust, ambient, dodge trail) splices — this one now matches. */
+        if (age >= 1) { S._impactRings.splice(i, 1); continue; }
         const radius = (ring.maxR || 15) * (0.5 + age);
-        gfx.circle(ring.x, ring.y, radius);
+        /* v2.3.1735: an optional ARC, for rings that belong to a DIRECTIONAL
+           ability (Shield Bash).  A full circle around a shove the worker
+           only rolls against the nearest target in front of you draws a lie
+           about the hitbox — the same "never draw a lie about the radius"
+           rule the element nova follows for its size.  Absent ang/span this
+           is byte-for-byte the old full ring, so every existing caller
+           (impact pops, the nova) is untouched. */
+        if (typeof ring.ang === 'number' && typeof ring.span === 'number') {
+          const half = ring.span / 2;
+          gfx.arc(ring.x, ring.y, radius, ring.ang - half, ring.ang + half);
+        } else {
+          gfx.circle(ring.x, ring.y, radius);
+        }
         gfx.stroke({ color: cssToHex(ring.color || '#ffffff'), width: (1 - age) * 3, alpha: (1 - age) * 0.6 });
       }
     }
@@ -2718,7 +2745,21 @@ export class EffectsRenderer {
        v2.3.1705 put the arc back on every block path (client and worker) and
        this cone is drawn at the SAME shared BLOCK_ARC_HALF those paths test.
        What the player sees is now literally what they block. */
-    if (S._shieldUp && S.player) {
+    /* ═══ v2.3.1735: THE CONE IS OFF (owner) ═══
+       "You can remove the blue wedge also it's visually too distracting."
+
+       Flag rather than deletion, the SHEATHED_DEFAULT_ENABLED pattern
+       (entityRenderer) — the owner asked FOR this cone at v2.3.1705 and may
+       want it back thinner, and the reasoning above is worth more in place
+       than in a git log.  Flip to true to restore it exactly.
+
+       KNOWN COST, stated because it is not obvious: this cone is the only
+       thing on screen that shows WHICH WAY you are protected, and blocking
+       has been directional since v2.3.1705 — with it off, the 120° arc is
+       still enforced by both the client and the worker, but the player has
+       to infer it from the shield sprite's facing alone. */
+    const SHIELD_CONE_ENABLED = false;
+    if (SHIELD_CONE_ENABLED && S._shieldUp && S.player) {
       const P = S.player;
       const ang = (S._shieldAngle != null) ? S._shieldAngle
         : (S._facingAngle != null ? S._facingAngle : 0);
@@ -3929,6 +3970,41 @@ export class EffectsRenderer {
     }
   }
 
+  /* The whirlwind's vortex, played once under the caster while the gather
+     lands.  Queued by S._whirlFx (game/abilities.js). */
+  _updateWhirlVortex(S, now) {
+    const fx = S && S._whirlFx;
+    if (!fx || !WHIRL_VORTEX.frames.length) {
+      if (this._whirlSprite && !this._whirlSprite.destroyed) this._whirlSprite.visible = false;
+      return;
+    }
+    const age = now - (fx.t0 || now);
+    if (age < 0 || age >= WHIRL_FX_MS) {
+      if (this._whirlSprite && !this._whirlSprite.destroyed) this._whirlSprite.visible = false;
+      if (age >= WHIRL_FX_MS) S._whirlFx = null;
+      return;
+    }
+    let spr = this._whirlSprite;
+    if (!spr || spr.destroyed) {
+      spr = new Sprite(WHIRL_VORTEX.frames[0]);
+      spr.anchor.set(0.5, 0.5);
+      this.overlayLayer.addChild(spr);
+      this._whirlSprite = spr;
+    }
+    const fi = Math.min(7, Math.floor((age / WHIRL_FX_MS) * 8));
+    spr.texture = WHIRL_VORTEX.frames[fi];
+    /* Sized to the ability's OWN radius so the art never promises a reach
+       the worker does not roll — the element nova's rule. */
+    spr.scale.set(((fx.radius || 60) * 2) / 256);
+    spr.x = fx.x; spr.y = fx.y;
+    /* 0.72, not the 0.95 the first cut used: this draws on the overlay, i.e.
+       OVER the caster, and at near-full opacity it hid the character
+       completely for the whole half-second — you could not see what you were
+       doing in the middle of your own ability. */
+    spr.alpha = age > WHIRL_FX_MS - 140 ? 0.72 * ((WHIRL_FX_MS - age) / 140) : 0.72;
+    spr.visible = true;
+  }
+
   /* ── Catch flight (v2.3.845) ──
    * v2.3.1429: DORMANT — applyFishingReward now uses the DOM icon flyer
    * (_flyResourceToInventory, real fish bag-icon + breach stage) instead of
@@ -4541,7 +4617,12 @@ export class EffectsRenderer {
       /* v2.3.1396: painted crescent for a remote SPECIAL swing — placed
          before the facing gates below so it shows on every aim angle
          (same rule as the local slash in _updateSwordSwing). */
-      if (o._swingSpecial && SWORD_SLASH.frames.length) {
+      /* v2.3.1735: ...but NOT for a Shield Bash.  It arrives on this same
+         event (one boolean beats a new privileged type) and must not draw
+         the sword crescent — the caster is seeing a shield shove, and a
+         watcher seeing a greatsword flourish for it is the exact mismatch
+         the owner reported locally. */
+      if (o._swingSpecial && !o._swingBash && SWORD_SLASH.frames.length) {
         let spx = this._remoteSlashSprites.get(id);
         if (!spx || spx.destroyed) {
           spx = new Sprite(SWORD_SLASH.frames[0]);

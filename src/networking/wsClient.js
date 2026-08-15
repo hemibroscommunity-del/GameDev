@@ -467,6 +467,23 @@ export function setupWebSocket(ctx) {
                         localM.y = md.y;
                       }
                       localM.curHp = md.hp;
+                      /* v2.3.1735: adopt the worker's STUN clock (tick.js
+                         sends `st` only while it is live).  Absolute epoch
+                         ms, the same shape the local AI already writes for
+                         its own stuns, so the renderer's stunActive test and
+                         the star ring read one field either way.
+                         MAX, never assignment: a local block-stun
+                         (monsterCombat blockStunMs) may be running on this
+                         monster too, and letting a shorter server clock
+                         overwrite a longer local one would cut a stun the
+                         player can see short.  When `st` is absent the
+                         worker's stun has expired — but we do NOT clear,
+                         because that same absence is what a purely local
+                         stun looks like, and clearing here would delete it
+                         every tick. */
+                      if (typeof md.st === 'number' && md.st > Date.now()) {
+                        localM._stunUntil = Math.max(localM._stunUntil || 0, md.st);
+                      }
                       /* Don't overwrite maxHp — it stays at the spawn value */
                       if (md.alive && !localM.alive) {
                         /* Monster respawned -- clear all per-life

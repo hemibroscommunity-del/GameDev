@@ -75,7 +75,13 @@ export const STAM_ABILITIES = {
     dmgMult: 1.00,
     radius: 60,           /* the plan's AoE radius */
     stunMs: 0,
-    knockback: 40,
+    knockback: 0,         /* v2.3.1735: whirl GATHERS now, it does not shove */
+    /* v2.3.1735 (owner): every target is placed on a ring this many px from
+       the caster.  34 sits just outside the body and INSIDE melee reach —
+       the whole point is that the pack ends up somewhere your next swing
+       covers.  See _abilityStrikeMonster for why this places rather than
+       impulses. */
+    pullTo: 34,
     needs: 'weapon',
     maxTargets: 8,        /* bound the per-cast work; a swarm is ~6 */
   },
@@ -292,9 +298,38 @@ export const abilityMethods = {
       }
     }
 
-    /* Knockback, with the v2.3.1639 debt so the shove doesn't permanently
-       exile the monster from its own attack ring. */
-    if (cfg.knockback > 0 && m.hp > 0) {
+    /* ═══ DISPLACEMENT: a shove (bash) or a VORTEX (whirl) ═══
+       v2.3.1735, owner: "make it so that all the enemies are brought in
+       directly around the character."
+
+       Whirlwind used to push outward like the bash, which fought its own
+       fantasy — you spin, and the pack scatters out of the swing you are
+       still in the middle of.  It now GATHERS: every target is placed on a
+       ring of cfg.pullTo px around the caster, keeping its own bearing so
+       the pack keeps its shape and simply closes in.
+
+       Set by ANGLE-AND-RADIUS, not by a velocity impulse, because the ring
+       is the point — a pull strong enough to reach a monster at the rim
+       (r=60) would overshoot one already at r=20 and fling it out the far
+       side.  Placing it removes the overshoot entirely.
+
+       No _kbDebt on a pull.  That debt exists to let a monster walk BACK
+       from a shove that exiled it from its attack ring (v2.3.1639); a
+       vortex leaves it closer than it started, so charging debt would make
+       it drift outward afterwards and undo the gather. */
+    if (cfg.pullTo > 0 && m.hp > 0) {
+      const ang = Math.atan2((m.y || 0) - (ps.y || 0), (m.x || 0) - (ps.x || 0));
+      m.x = (ps.x || 0) + Math.cos(ang) * cfg.pullTo;
+      m.y = (ps.y || 0) + Math.sin(ang) * cfg.pullTo;
+      const zoneCfg = this._getZoneConfig(zoneId);
+      if (zoneCfg) {
+        const W = zoneCfg.w * this.TILE;
+        const H = zoneCfg.h * this.TILE;
+        const pad = this.TILE;
+        m.x = Math.max(pad, Math.min(W - pad, m.x));
+        m.y = Math.max(pad, Math.min(H - pad, m.y));
+      }
+    } else if (cfg.knockback > 0 && m.hp > 0) {
       const ang = Math.atan2((m.y || 0) - (ps.y || 0), (m.x || 0) - (ps.x || 0));
       m.x += Math.cos(ang) * cfg.knockback;
       m.y += Math.sin(ang) * cfg.knockback;
