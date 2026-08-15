@@ -579,7 +579,27 @@ export class GameRoom {
        hourly kill cap to breach — botfp caps harvesting and cooking only —
        so unlike the node timer below this one is bounded by feel, not by an
        anticheat ceiling. */
-    this.RESPAWN_TIME = 5000; // 5s respawn
+    /* v2.3.1739 (owner, playtesting the combat overhaul): "make monster
+       respawn about 3x slower globally ... one timer beginning after they
+       die."  5s -> 15s, which lands back on the pre-v2.3.1592 number.
+
+       REVERSING v2.3.1592 ON PURPOSE, and the note above is kept rather
+       than rewritten because its reasoning was sound for the game it was
+       written in.  What changed is the kill rate, not the population: since
+       then the player got +130% damage over ten levels (v2.3.1727), two
+       stamina abilities (v2.3.1733), Element Burst (v2.3.1734) and a
+       Whirlwind that gathers sixteen monsters into one swing (v2.3.1738).
+       "Quick respawn" was tuned against a player who killed slowly; at the
+       current pace 5s meant a zone refilled faster than it could be cleared.
+
+       THE TRADE, stated because it is the thing that will be felt: zone
+       populations are still 3 (data.js ZONES.spawns), so at 15s a cleared
+       zone now stands empty for roughly the time it took to clear it.  That
+       is the same effect v2.3.1592 was fixing — the difference is that it is
+       now the intended pacing rather than an accident.  If it reads as dead
+       air rather than breathing room, raise the per-zone spawn counts rather
+       than winding this back, or the two will keep undoing each other. */
+    this.RESPAWN_TIME = 15000; // 15s respawn (3x the v2.3.1592 timer)
     this.MONSTER_AGGRO_RANGE = 120; // pixels
     /* v2.3.1639: per-archetype aggro overrides.  Absent = the 120 default,
        so nothing but the listed archetype changes behaviour.  Scoped the

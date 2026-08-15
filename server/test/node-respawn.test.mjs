@@ -110,7 +110,14 @@ const wilderness = Object.keys(SERVER_ZONES);
 
 // ── 4. Respawn timers ───────────────────────────────────────────────────
 {
-  check('respawn: monsters are on the quick clock', room.RESPAWN_TIME === 5000, room.RESPAWN_TIME);
+  /* v2.3.1739 (owner: "about 3x slower globally"): 5000 -> 15000, back on the
+     pre-v2.3.1592 number.  Pinned as an exact value because it is a FEEL
+     dial the owner sets by playing, not a derived one — if a later session
+     nudges it, that should be a deliberate edit here and a conversation,
+     not a quiet drift.  The relationship the next two checks pin (positive,
+     and slower for nodes) is what must never break regardless. */
+  check('respawn: monsters are on the slow clock (3x the v2.3.1592 timer)',
+    room.RESPAWN_TIME === 15000, room.RESPAWN_TIME);
   check('respawn: nodes are on the quick clock', room.NODE_RESPAWN_TIME === 20000, room.NODE_RESPAWN_TIME);
   /* Floors, not exact values, for the invariants that actually matter: a
      0ms respawn would make monsters unkillable-feeling and spam the wire. */
