@@ -723,9 +723,16 @@ export function InspectPlayerPanel(props) {
       transition: 'opacity 160ms ease',
       pointerEvents: 'none'
     }
-  })), /* v2.3.1235: Checkpoint B — row 3 (auto, PINNED): the TP/Trade/
-    Duel/Threat action row sits outside the scroll body so it is always
-    visible.  All four handlers byte-identical (moved, not edited). */
+  })), /* v2.3.1235: Checkpoint B — row 3 (auto, PINNED): the Trade/Duel/
+    Threat action row sits outside the scroll body so it is always
+    visible.
+    v2.3.1744: TP is GONE (owner: "remove it", after asking what it did).
+    It wrote your own x/y to the inspected player's + 40 and closed the
+    card — no cost, no cooldown, no gate, and no server call at all.  The
+    worker's anti-teleport speed cap (movement.js, 500 px/s + 80 px burst)
+    then refused any jump long enough to be worth taking, so it worked over
+    a few tiles and rubber-banded over a screen.  A convenience button whose
+    behaviour depends on distance is worse than no button. */
   /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
@@ -733,30 +740,10 @@ export function InspectPlayerPanel(props) {
       marginTop: 10
     }
   }, /* v2.3.1235: action row correction — Trade is the surface's single
-    gold primary (flex 1.4); TP/Duel are secondaries; Threat is a danger
+    gold primary (flex 1.4); Duel is a secondary; Threat is a danger
     OUTLINE, not a filled red block. Labels drop emoji per the design
-    correction; all four handlers are byte-identical. */
+    correction; the handlers are byte-identical. */
   /*#__PURE__*/React.createElement("button", {
-    className: "bt-inspect-tp",
-    style: {
-      flex: 1,
-      marginTop: 0,
-      minHeight: 44,
-      padding: '0 4px',
-      borderRadius: 10,
-      fontSize: 12,
-      fontWeight: 700,
-      border: '1px solid rgba(229,237,233,0.20)',
-      background: '#293B41',
-      color: '#F4F0E7'
-    },
-    onClick: function onClick() {
-      var S = stateRef.current;
-      S.player.x = inspectPlayer.x + 40;
-      S.player.y = inspectPlayer.y + 40;
-      setInspectPlayer(null);
-    }
-  }, "TP"), /*#__PURE__*/React.createElement("button", {
     className: "bt-inspect-tp",
     style: {
       flex: 1.4,
