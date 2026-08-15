@@ -785,7 +785,11 @@ export var BroTown = function BroTown(_ref0) {
        next player_state refunded the spend.  Driven from the harness here so
        the fix is checked on the wire, on the path the finger takes. */
     specialAttack: function () { specialAttack(stateRef.current); },
-    contextualDodge: function (ang) { triggerContextualDodge(stateRef.current, stateRef.current.rpg, ang || 0); }
+    contextualDodge: function (ang) { triggerContextualDodge(stateRef.current, stateRef.current.rpg, ang || 0); },
+    /* v2.3.1734: Element Burst, on the same hook and for the same reason —
+       the harness has to press the button the finger presses, not poke the
+       wire, or it stops testing the client half at all. */
+    elementBurst: function () { elementBurst(stateRef.current); }
   };
   /* Restore persisted player on mount and after login */
   useEffect(function () {

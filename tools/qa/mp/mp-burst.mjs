@@ -114,34 +114,28 @@ export async function run({ browser, wsPort, webPort, rec }) {
      the same cost constant.  With a full 102-mana bar and a flat 25 that is
      4; the old 5-segment pie said 5 at every Magic level in the game, which
      is the readout half of the same bug. */
-  /* PINNED at a partial bar, not topped up: the pie deliberately fades out
-     at full charge (v2.3.172) and unmounts, and the worker's regen echo
-     refills the bar within a tick, so an unpinned read finds no element at
-     all.  80 mana is 3 casts at the flat 25 and would be 4 at the old
-     floor(maxMana/5) = 20 — the two formulas disagree on the DISPLAYED
-     number here, which is the point. */
-  await P.page.evaluate(() => {
+  /* THE CLIENT'S PREDICTION, measured SYNCHRONOUSLY.  The special deducts
+     its cost locally for a snappy bar and the worker settles the real one;
+     if the two disagree the bar visibly snaps back on every cast, and the
+     charge pie counts casts the worker will not fund.
+     Both reads happen inside ONE page.evaluate, so nothing — not the regen
+     tick, not the player_state echo, not a React frame — can run between
+     them.  (An earlier version of this check pinned S.rpg.mana on a 16 ms
+     interval and read the pie's DOM text instead; the echo raced the pin
+     and the assertion flaked, which is exactly the class of test this repo
+     does not need more of.) */
+  const predicted = await P.page.evaluate(() => {
     const S = window._gameState && window._gameState.current;
-    clearInterval(window.__manaPin);
-    window.__manaPin = setInterval(() => { if (S && S.rpg) S.rpg.mana = 80; }, 16);
+    if (!S || !S.rpg || !window._gameFns || !window._gameFns.specialAttack) return null;
+    S.rpg.mana = S.rpg.maxMana || 100;
+    S._lastSwipe = 0;
+    S._tutorialStep = 0;
+    const was = S.rpg.mana;
+    window._gameFns.specialAttack();
+    return { was, now: S.rpg.mana, maxMana: S.rpg.maxMana };
   });
-  await P.page.waitForTimeout(400);
-  const pie = await P.page.evaluate(() => {
-    const el = document.querySelector('.bt-charge-pie text');
-    const S = window._gameState && window._gameState.current;
-    return {
-      shown: el ? el.textContent.trim() : null,
-      mana: S && S.rpg && S.rpg.mana,
-      maxMana: S && S.rpg && S.rpg.maxMana,
-    };
-  });
-  await P.page.evaluate(() => clearInterval(window.__manaPin));
-  const expectCasts = pie.maxMana
-    ? String(Math.min(Math.floor(pie.maxMana / PROG3.SPECIAL_MANA_COST),
-      Math.floor(pie.mana / PROG3.SPECIAL_MANA_COST)))
-    : null;
-  rec.ok('the charge pie counts casts at the FLAT cost (it was hardcoded to 5 segments)',
-    pie.shown != null && pie.shown === expectCasts, { ...pie, expectCasts });
+  rec.ok(`the CLIENT predicts the same flat ${PROG3.SPECIAL_MANA_COST} (it predicted floor(maxMana/5) before)`,
+    !!predicted && predicted.was - predicted.now === PROG3.SPECIAL_MANA_COST, predicted);
 
   /* ═══ 2. element_burst REACHES THE WORKER ═══ */
   /* Sent RAW rather than through elementBurst(), deliberately: at character
@@ -149,6 +143,20 @@ export async function run({ browser, wsPort, webPort, rec }) {
      would go on the wire, so testing the transport would be impossible from
      the honest path.  This asks exactly one question — does a message of
      this type survive channelShim.send and land in the worker's switch. */
+  /* First: the honest path REFUSES, out loud.  A level-3 character pressing
+     G must get a reason, not silence (the v2.3.1716 lesson) — and must not
+     put anything on the wire. */
+  const wireBefore = await H.wireCounts(P);
+  await H.callFn(P, 'elementBurst').catch(() => {});
+  await P.page.waitForTimeout(400);
+  const wireAfterHonest = await H.wireCounts(P);
+  rec.ok('an ineligible cast is refused by the CLIENT and sends nothing',
+    (wireAfterHonest.element_burst || 0) === (wireBefore.element_burst || 0),
+    { before: wireBefore.element_burst || 0, after: wireAfterHonest.element_burst || 0 });
+  rec.ok('...and says why, on screen',
+    await H.readState(P, (S) => (S.dmgNumbers || []).some((d) => /Element Burst/i.test(String(d.text || d.txt || '')))),
+    await H.readState(P, (S) => (S.dmgNumbers || []).map((d) => d.text || d.txt)));
+
   const manaPreBurst = await srvMana(wsPort, myId);
   await P.page.evaluate(() => {
     const S = window._gameState && window._gameState.current;
