@@ -26,6 +26,52 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await H.openInspect(A, bId);
   const btns = await H.buttonTexts(A);
   rec.ok('the inspect card offers a party invite', btns.some((t) => /Invite to Party/.test(t)), btns);
+
+  /* ── v2.3.1743: the party action is at the TOP, and the body still scrolls ──
+     Owner: "party should be moved to the top part of the modal".  It used to
+     sit inside the scroll body under Equipment / Stats / Record — below the
+     fold on a phone.
+     Measured on the PHONE viewport because that is the platform where being
+     below the fold actually costs you the button.  The second assertion is
+     the one that earns its keep: the card is a CSS grid whose rows are
+     assigned by child ORDER, so inserting a row mis-assigns `minmax(0, 1fr)`
+     and the body silently stops being the scrolling part — which is exactly
+     what the first cut of this change did (the button drew itself on top of
+     the Equipment section).  A "is it near the top" check alone passes
+     happily through that bug. */
+  await A.page.setViewportSize({ width: 390, height: 844 });
+  await A.page.waitForTimeout(900);
+  const geom = await A.page.evaluate(() => {
+    const card = document.querySelector('.bt-inspect-card');
+    const body = document.querySelector('.ls-scrollbody');
+    const btn = [...document.querySelectorAll('.bt-inspect-card button')]
+      .find((b) => /Invite to Party/.test(b.textContent || ''));
+    const row = [...document.querySelectorAll('.bt-inspect-card .bt-inspect-tp')]
+      .map((b) => b.getBoundingClientRect()).pop();
+    if (!card || !body || !btn) return null;
+    const c = card.getBoundingClientRect(), bo = body.getBoundingClientRect(), bt = btn.getBoundingClientRect();
+    return {
+      aboveBody: bt.bottom <= bo.top + 2,
+      insideCard: bt.top >= c.top - 1 && bt.bottom <= c.bottom + 1,
+      bodyScrolls: body.scrollHeight > body.clientHeight + 4,
+      /* the pinned TP/Trade/Duel row must still be fully inside the card */
+      rowPinned: !!row && row.bottom <= c.bottom + 1,
+      /* and nothing may overlap the button (the grid bug drew it over the
+         Equipment block, where Playwright could see it but not click it) */
+      topmostAtCentre: (() => {
+        const el = document.elementFromPoint((bt.left + bt.right) / 2, (bt.top + bt.bottom) / 2);
+        return !!el && (el === btn || btn.contains(el));
+      })(),
+    };
+  });
+  rec.ok('the party action sits above the scrolling stats (no hunting for it)',
+    !!geom && geom.aboveBody && geom.insideCard, geom);
+  rec.ok('...and the body is still the part that scrolls (the new row did not steal 1fr)',
+    !!geom && geom.bodyScrolls && geom.rowPinned, geom);
+  rec.ok('...and nothing is drawn on top of it', !!geom && geom.topmostAtCentre, geom);
+  await A.page.setViewportSize({ width: 1000, height: 780 });
+  await A.page.waitForTimeout(600);
+
   await H.clickText(A, 'Invite to Party');
 
   /* ── B sees the invite card and joins ── */
@@ -44,6 +90,19 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('both rosters name the same two players',
     !!pa && !!pb && [...pa.ids].sort().join() === [aId, bId].sort().join()
       && [...pb.ids].sort().join() === [aId, bId].sort().join(), { pa, pb });
+
+  /* ── v2.3.1743: someone already on your roster is not invitable ──
+     Tapping a teammate opens this card (v2.3.1742), and offering "Invite to
+     Party" to someone already in it just earns an 'already partied' error
+     from the worker. */
+  await H.openInspect(A, bId);
+  await A.page.waitForTimeout(500);
+  const mateCard = await H.bodyText(A);
+  const mateBtns = await H.buttonTexts(A);
+  rec.ok('an existing party member reads "In your party", with no invite offered',
+    /In your party/.test(mateCard) && !mateBtns.some((t) => /Invite to Party/.test(t)), mateBtns);
+  await A.page.keyboard.press('Escape').catch(() => {});
+  await A.page.waitForTimeout(400);
 
   /* ── party chat: "/p <msg>" is party-only, and the server validates it ──
      Its own narrow cap (partyChat), separate from caps.party, so a worker
