@@ -23,7 +23,7 @@ export const STAM_ABILITIES = {
     cooldownMs: 4000,
     dmgMult: 0.75,
     radius: 70,
-    stunMs: 800,
+    stunMs: 1600,   /* v2.3.1736 (owner): was 800 */
     knockback: 90,
     needs: 'shield',
   },
