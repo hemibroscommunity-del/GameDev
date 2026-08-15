@@ -31,10 +31,17 @@ import zlib from 'node:zlib';
 import { createServer } from 'node:http';
 import { spawn } from 'node:child_process';
 import { readFile, mkdtemp, rm } from 'node:fs/promises';
-import { extname, join } from 'node:path';
+import { existsSync } from 'node:fs';
+import { extname, join, dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { tmpdir } from 'node:os';
 
-export const REPO = '/home/user/GameDev';
+/* v2.3.1729: derived from this file's own location, not hardcoded to the
+   dev sandbox's /home/user/GameDev.  The absolute path made the whole mp
+   harness unrunnable anywhere else — including CI, which is why the one
+   scenario that catches "a new player cannot play the game" had never run
+   there.  harness.mjs lives at tools/qa/mp/, so the repo root is three up. */
+export const REPO = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
 const MIME = {
   '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.png': 'image/png',
   '.webp': 'image/webp', '.mp3': 'audio/mpeg', '.json': 'application/json',
@@ -619,8 +626,15 @@ export function recorder(suite) {
 }
 
 export async function launch() {
-  return chromium.launch({
-    executablePath: '/opt/pw-browsers/chromium',
+  /* v2.3.1729: the sandbox's pinned Chromium is used WHEN IT EXISTS, and
+     Playwright resolves its own managed browser otherwise.  The hardcoded
+     executablePath threw ENOENT on any other machine, so this harness could
+     only ever run here — see the REPO note above for why that mattered.
+     BT_CHROMIUM overrides for a non-standard install. */
+  const pinned = process.env.BT_CHROMIUM || '/opt/pw-browsers/chromium';
+  const opts = {
     args: ['--autoplay-policy=no-user-gesture-required', '--disable-gpu', '--no-sandbox'],
-  });
+  };
+  if (existsSync(pinned)) opts.executablePath = pinned;
+  return chromium.launch(opts);
 }
