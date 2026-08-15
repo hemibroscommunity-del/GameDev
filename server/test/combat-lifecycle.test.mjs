@@ -1822,5 +1822,79 @@ for (const m of meadowMonsters) m._wanderPausedUntil = Date.now() + 600000;
   psB.z = 'meadow';
 }
 
+/* ═══ v2.3.1731: PARRY + BLOCK STAMINA ═══
+   Owner: "No timed blocking, no dodging, etc."  A block RAISED IN TIME now
+   negates, staggers and refunds; a late one absorbs and costs.  The window
+   is server-OBSERVED (movement.js stamps ps.blockStartT on the raise), so
+   the assertions here drive that stamp rather than any client claim. */
+{
+  const meadow = room._ensureZoneMonsters('meadow');
+  const saved = meadow.map((m) => ({ m, alive: m.alive, respawnAt: m.respawnAt, arch: m.arch }));
+  const pm = meadow[0];
+  meadow.forEach((m) => { if (m !== pm) { m.alive = false; m.respawnAt = Date.now() + 1e9; } });
+
+  psB.z = 'frost';
+  psA.z = 'meadow'; psA.dead = false; psA.dying = false; psA.disconnected = false;
+  psA.agility = 0; psA._zoneEntryGraceUntil = 0;
+  psA.maxHp = 400; psA.hp = 400; psA.maxStamina = 100;
+  psA.x = 500; psA.y = 500;
+  psA.blocking = true; psA.ba = 0;          /* shield east, monster east */
+
+  const armFodder = () => {
+    pm.alive = true; pm.arch = 'fodder'; pm.maxHp = 5000; pm.hp = 5000;
+    pm.statuses = {}; pm.dmg = 20; pm.respawnAt = 0;
+    pm.atkCd = 0; pm._attackingUntil = 0;
+    pm._tgPhase = null; pm._tgNextAt = 0;
+    pm.x = psA.x + 20; pm.y = psA.y;
+  };
+  const tick = () => { room.eventBuffer.length = 0; room._tickMonsters(); };
+  const atk = () => room.eventBuffer.filter((e) => e.type === 'monster_attack' && e.payload.targetId === 'pa')[0];
+  const parries = () => room.eventBuffer.filter((e) => e.type === 'parry');
+
+  /* ── raised just now: a parry ── */
+  armFodder();
+  psA.blockStartT = Date.now();             /* the raise, as movement.js stamps it */
+  psA.stamina = 50;
+  let stam0 = psA.stamina, hp0 = psA.hp;
+  tick();
+  let a = atk();
+  check('parry: a shield raised IN TIME negates the hit',
+    !!a && a.payload.blocked === true && a.payload.parried === true && psA.hp === hp0,
+    a && a.payload);
+  check('parry: it pays stamina back rather than costing it', psA.stamina > stam0,
+    { before: stam0, after: psA.stamina });
+  check('parry: and announces itself', parries().length === 1, parries().map((e) => e.payload));
+  check('parry: the attacker is staggered off its next swing',
+    pm.atkCd >= Date.now() + 1000, { atkCd: pm.atkCd - Date.now() });
+
+  /* ── shield held since long ago: an ordinary block, and it costs ── */
+  armFodder();
+  psA.blockStartT = Date.now() - 5000;      /* turtling, not timing */
+  psA.stamina = 50;
+  stam0 = psA.stamina; hp0 = psA.hp;
+  tick();
+  a = atk();
+  check('block: a shield held since long ago still blocks',
+    !!a && a.payload.blocked === true && psA.hp === hp0, a && a.payload);
+  check('block: ...but is NOT a parry', !!a && !a.payload.parried && parries().length === 0,
+    { parried: a && a.payload.parried, events: parries().length });
+  check('block: and turtling costs stamina', psA.stamina < stam0,
+    { before: stam0, after: psA.stamina });
+
+  /* ── an old client that never stamps a raise ── */
+  armFodder();
+  delete psA.blockStartT;
+  psA.stamina = 50;
+  hp0 = psA.hp;
+  tick();
+  a = atk();
+  check('parry: a client that reports no raise time still BLOCKS, just never parries',
+    !!a && a.payload.blocked === true && !a.payload.parried && psA.hp === hp0, a && a.payload);
+
+  psA.blocking = false; psA.ba = null; psA.blockStartT = 0;
+  saved.forEach(({ m, alive, respawnAt, arch }) => { m.alive = alive; m.respawnAt = respawnAt; m.arch = arch; });
+  psB.z = 'meadow';
+}
+
 console.log(failures === 0 ? '\nALL TESTS PASSED' : `\n${failures} TEST(S) FAILED`);
 process.exit(failures === 0 ? 0 : 1);

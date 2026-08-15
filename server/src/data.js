@@ -788,7 +788,20 @@ export const RARITY_TIERS = {
  * care; only starting a REAL worker catches it, which is what the headless
  * harness does.  (The existing Set exports next to it survive because workerd
  * only rejects the primitives.)  Keep new server constants in this file. */
-export const BLOCK_COSTS_STAMINA = false;
+/* v2.3.1731: BACK ON.  It was suspended at v2.3.1704 for the demo, with the
+   note that the owner "still has to decide what stamina is FOR — this is a
+   suspension, not a verdict."  It is decided: stamina is the defensive
+   resource, spent by absorbing hits and refunded by parrying them, and a
+   free infinite block would have made v2.3.1730's wind-ups pointless.
+   The cost is per BLOCKED HIT (10, at the melee site), never a hold tax —
+   see the note there for why. */
+export const BLOCK_COSTS_STAMINA = true;
+
+/* v2.3.1731: stamina spent per BLOCKED HIT absorbed (was an inline 15 at the
+   melee site).  Named so the cost has ONE home: a test that re-types the
+   number stops testing anything the moment the number moves, which is how
+   the maxHp assertions rotted at v2.3.1727. */
+export const BLOCK_STAMINA_COST = 10;
 
 /* v2.3.1705: mirrors BLOCK_ARC_HALF in src/data/gameSystems.js — the half-angle
    of the shield's protected wedge, and the same number effectsRenderer draws

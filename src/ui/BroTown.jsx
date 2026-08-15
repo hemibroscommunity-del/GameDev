@@ -293,6 +293,17 @@ Object.assign(globalThis, { _regenerator, _regeneratorDefine2, _asyncToGenerator
    Its twin is BLOCK_COSTS_STAMINA in server/src/index.js, and the worker is
    the side that actually owns stamina, so flip both together or the bar will
    drain on the server while the client thinks it is full. */
+/* ═══ v2.3.1731: DELIBERATELY STILL false, and no longer a straight twin ═══
+   The server's flag went back to TRUE this version.  These two are not the
+   same switch any more, so do NOT "fix" this to match it.
+   The SERVER charges per BLOCKED HIT (10 stamina, at the melee site).  THIS
+   flag drives something different: a drain-while-HELD on the legacy
+   client-authoritative path, which runs only in client-driven zones (town
+   and the hubs — where nothing attacks you).  A hold tax punishes the player
+   who raises early and reads the fight, which is the exact behaviour the
+   v2.3.1730 wind-ups exist to teach, so it stays off on purpose.
+   The auto-release-at-zero it also gates is not lost: the server owns the
+   guard break now, and its flag is on. */
 var BLOCK_COSTS_STAMINA = false;
 
 var NODE_REACH_PAD = 56;   /* px of slack outside the sprite box */
