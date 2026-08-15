@@ -31,7 +31,9 @@ export function setupDesktopControls(S, deps) {
     setChatOpen = deps.setChatOpen,
     chatInputRef = deps.chatInputRef,
     chatOpen = deps.chatOpen,
-    toggleKbHints = deps.toggleKbHints;   /* v2.3.1715 */
+    toggleKbHints = deps.toggleKbHints,   /* v2.3.1715 */
+    _desktopShieldBash = deps._desktopShieldBash, /* v2.3.1733 */
+    _desktopWhirlwind = deps._desktopWhirlwind;   /* v2.3.1733 */
     /* ═══ DESKTOP KEYBOARD CONTROLS ═══ */
     S._isDesktop = window.matchMedia('(pointer:fine)').matches;
     var onKeyDown = function onKeyDown(e) {
@@ -63,9 +65,30 @@ export function setupDesktopControls(S, deps) {
         return;
       }
 
+      /* v2.3.1733: R — Whirlwind (stamina ability, char 8).  A free key: R
+         was unbound, and the ability needs one that is reachable while the
+         left hand is on WASD. */
+      if (e.code === 'KeyR' && !e.repeat) {
+        e.preventDefault();
+        if (_desktopWhirlwind) _desktopWhirlwind();
+        return;
+      }
+
       /* E — interact priority: building > sleep > gather > NPC quest */
       if (e.code === 'KeyE') {
         e.preventDefault();
+        /* ═══ v2.3.1733: E WHILE BLOCKING IS SHIELD BASH ═══
+           The plan asks for E, and E is the interact key — so the block
+           state disambiguates: you cannot be talking to the mayor and
+           holding a shield up at the same time, and everything below this
+           line requires standing next to something.  Taking the FIRST
+           branch (rather than appending to the bottom of the chain) means
+           blocking next to an NPC bashes rather than opening dialogue,
+           which is the reading that matches the finger already on Q. */
+        if (S._shieldUp && _desktopShieldBash) {
+          _desktopShieldBash();
+          return;
+        }
         /* 1. Building */
         if (S.nearBuilding !== null) {
           _desktopEnterBuilding();

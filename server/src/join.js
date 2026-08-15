@@ -677,6 +677,17 @@ export const joinMethods = {
         // Persisted hp / stamina / mana already loaded above; clamp
         // them to the recomputed maxes here.
         this._recomputeMaxes(_ps);
+        /* v2.3.1733: pay any MILESTONE rung this character already earned
+           but was never granted (abilities.js).  It belongs here as well as
+           on the level-up path because the ladder ships AFTER thousands of
+           levels were earned — without a join-time settle, a level-40
+           veteran would never receive the level-5 bonus point, and the
+           level-10 stamina bonus would not appear until their next level-up.
+           Idempotent: prog3.ms records the highest level already paid, and
+           it survives _sanitizeProg3 (a sanitizer that dropped it would turn
+           a one-off grant into one per join).  Runs BEFORE the fresh-respec
+           top-off below so the restore hands over the bigger bar. */
+        if (_ps.prog3) this._prog3GrantMilestones(msg.id, _ps);
         // v2.3.1659: see _p3FreshRespec above — first prog3 adoption
         // restores the pools to the new maxes (in-memory flag only,
         // consumed here; never persisted — _saveRpg's field list
@@ -834,7 +845,7 @@ export const joinMethods = {
       // an old worker the client keeps the full legacy t2Accel math so
       // its numbers keep matching that worker's authoritative rolls
       // and echoes (deploy-order safety, rule 19).
-      caps: { trade: true, questTrack: true, gamble: true, clans: true, arena: true, dungeon: true, sponsor: true, guilds: true, pets: true, harden: true, trade2: true, weaponDrops: true, botfp: true, jackpot: true, hpEndGrids: true, t2uniform: true, httpAuth: true, party: true, amuletForge: true, gems: true, petLoot: true, gemExtract: true, partyChat: true, trade2Weapons: true, laststand: true, friends: true /* v2.3.1323 */, t2simple: true /* v2.3.1342: level = T2 points placed (cap 1000); client gates its level derivation + spend celebration on this so an old worker's player_state echo can't stomp the new formula */, t2bench: true, broVerify: true /* v2.3.1576: Hemi Bro ownership. Gates the client's wallet control (broWallet.broVerifySupported) so it only appears against a worker that can settle it; an old client never sends the types. Safe in either deploy order (rule 19). */, prog3: true /* v2.3.1659: the trained-skill combat rebuild (prog3.js). The client gates its new Build UI, prog3_allocate sends, trained-level readouts, and the retirement of its local _buildProg/weapon-XP accrual on this flag — an old worker would relay prog3_allocate as an unknown type and its player_state echoes would stomp prog3-derived pools (deploy-order safety, rule 19). */, ..._liveFlags },
+      caps: { trade: true, questTrack: true, gamble: true, clans: true, arena: true, dungeon: true, sponsor: true, guilds: true, pets: true, harden: true, trade2: true, weaponDrops: true, botfp: true, jackpot: true, hpEndGrids: true, t2uniform: true, httpAuth: true, party: true, amuletForge: true, gems: true, petLoot: true, gemExtract: true, partyChat: true, trade2Weapons: true, laststand: true, friends: true /* v2.3.1323 */, t2simple: true /* v2.3.1342: level = T2 points placed (cap 1000); client gates its level derivation + spend celebration on this so an old worker's player_state echo can't stomp the new formula */, t2bench: true, broVerify: true /* v2.3.1576: Hemi Bro ownership. Gates the client's wallet control (broWallet.broVerifySupported) so it only appears against a worker that can settle it; an old client never sends the types. Safe in either deploy order (rule 19). */, prog3: true /* v2.3.1659: the trained-skill combat rebuild (prog3.js). The client gates its new Build UI, prog3_allocate sends, trained-level readouts, and the retirement of its local _buildProg/weapon-XP accrual on this flag — an old worker would relay prog3_allocate as an unknown type and its player_state echoes would stomp prog3-derived pools (deploy-order safety, rule 19). */, abil: true /* v2.3.1733: stamina abilities + the milestone unlock ladder (abilities.js). The client gates its ability BUTTONS and its `ability` sends on this, so against an old worker (which would relay the unknown type as a broadcast and never settle it) no button appears and nothing is sent — deploy-order safe in either order (rule 19). */, ..._liveFlags },
       // v2.3.1178: this session's private economy-endpoint token.
       // state_sync goes to the joining socket ONLY -- never broadcast.
       httpToken: session.httpToken,

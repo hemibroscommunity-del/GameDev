@@ -1275,7 +1275,17 @@ export function updateMonsterCombat(S, deps) {
               }
             }
           }
-          if (S.isSwinging && Date.now() - S.swingTimer < 400) {
+          /* v2.3.1733: a STAMINA ABILITY borrows the swing animation and
+             must NOT borrow the swing's damage.  Shield Bash and Whirlwind
+             are resolved entirely server-side (src/game/abilities.js sets
+             _abilitySwingUntil; the worker rolls the targets, damage, stun
+             and knockback).  Letting this sweep run during that window
+             would send an ORDINARY monster_damage for the same button
+             press — the ability would quietly deal its damage twice, once
+             authoritatively and once as a normal hit, and the anticheat
+             would never blink because both hits are individually legal. */
+          var _abilFx = S._abilitySwingUntil && Date.now() < S._abilitySwingUntil;
+          if (S.isSwinging && !_abilFx && Date.now() - S.swingTimer < 400) {
             var baseAngle;
             if (S.lockedTarget && S.lockedTarget.ref) {
               var _lt2 = S.lockedTarget.ref;

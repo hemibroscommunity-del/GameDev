@@ -128,6 +128,13 @@ export const PROG3 = {
   MANA_PER_MAGIC_LEVEL: 1.2, // §4 audit table: mana follows Magic (mind dies)
 };
 
+/* v2.3.1733: the milestone ladder's stamina rung.  The TABLE lives in
+   abilities.js (with the ability kits it unlocks); this import is here
+   because _prog3Recompute below is the one place max stamina is computed
+   for a prog3 player, and the client mirror (recalcDerived) carries the
+   same multiplier.  Move one, move both. */
+import { staminaMilestoneMult, MILESTONES } from './abilities.js';
+
 /* XP to go from trained level L to L+1.  The legacy weaponXpRequired
  * curve (280 × 1.16^L, gameSystems.js) reused verbatim (§3-A), shifted
  * one because prog3 skills are 1-based where the legacy track was
@@ -181,7 +188,10 @@ export function prog3FromLegacy(src) {
     pool += oldLevel;
   }
   pool += clampLvl(src && src.defenseSkill && src.defenseSkill.level);
-  return { sk, alloc: prog3FreshAlloc(), atk: prog3FreshAtk(), pool };
+  /* v2.3.1733: `ms` starts at 0 so a respecced veteran is paid every
+     milestone bonus point they have already earned, once, on their next
+     level-up or join (see _prog3GrantMilestones). */
+  return { sk, alloc: prog3FreshAlloc(), atk: prog3FreshAtk(), pool, ms: 0 };
 }
 
 /* v2.3.1668: fold a v10-shaped prog3 (one global alloc holding all seven
@@ -252,6 +262,13 @@ export const prog3Methods = {
     }
     const p = Number(src.pool);
     if (Number.isFinite(p) && p > 0) out.pool = Math.min(999, Math.floor(p));
+    /* v2.3.1733: `ms` = the highest character level whose MILESTONE rewards
+       have already been paid (abilities.js _prog3GrantMilestones).  It has
+       to survive this sanitizer or every join would re-pay the bonus point
+       — a sanitizer that drops a field is how a one-off grant becomes an
+       infinite one.  Bounded by the char-level cap. */
+    const ms = Number(src.ms);
+    if (Number.isFinite(ms) && ms > 0) out.ms = Math.min(PROG3.CHAR_LEVEL_CAP, Math.floor(ms));
     return out;
   },
 
@@ -308,7 +325,14 @@ export const prog3Methods = {
     ps.level = this._prog3CharLevel(ps);
     ps.maxHp = Math.floor(100 + ps.level * PROG3.HP_PER_LEVEL
       + this._prog3Pts(ps, 'hp') * PROG3.BODY.hp.per);
-    ps.maxStamina = Math.floor(100 + this._prog3Pts(ps, 'stam') * PROG3.BODY.stam.per);
+    /* v2.3.1733: the char-10 "Second Wind" milestone multiplies the whole
+       pool (+25%), AFTER the allocated stam points — a milestone that only
+       scaled the flat 100 would shrink in value the more you invested,
+       which is the opposite of what a level-10 reward should feel like.
+       Mirrored by recalcDerived's prog3 branch (src/data/gameSystems.js);
+       both read staminaMilestoneMult so the number has one home. */
+    ps.maxStamina = Math.floor((100 + this._prog3Pts(ps, 'stam') * PROG3.BODY.stam.per)
+      * staminaMilestoneMult(ps.level));
     const magicLvl = (ps.prog3.sk && ps.prog3.sk.staff && ps.prog3.sk.staff.level) || 1;
     ps.maxMana = Math.floor(100 + magicLvl * PROG3.MANA_PER_MAGIC_LEVEL);
     if (typeof ps.hp !== 'number') ps.hp = ps.maxHp;
@@ -394,6 +418,12 @@ export const prog3Methods = {
       // the celebration moves server-side (§8): recompute + full
       // resource restore (the v2.3.1414 rule), persist, notify.
       this._prog3Recompute(ps);
+      /* v2.3.1733: ...and a character level-up is the ONLY moment a
+         milestone rung can be crossed, so this is where the ladder pays
+         out (bonus points at 5, the +25% stamina at 10).  It runs BEFORE
+         the full-restore below on purpose: crossing 10 raises maxStamina,
+         and the restore should hand over the NEW, bigger bar. */
+      const _msPts = this._prog3GrantMilestones(playerId, ps);
       if (typeof ps.maxHp === 'number') ps.hp = ps.maxHp;
       if (typeof ps.maxStamina === 'number') ps.stamina = ps.maxStamina;
       if (typeof ps.maxMana === 'number') ps.mana = ps.maxMana;
@@ -403,7 +433,17 @@ export const prog3Methods = {
         try {
           ws.send(JSON.stringify({
             type: 'prog3_level',
-            payload: { skill: cat, level: sk.level, pool: p3.pool, charLevel: ps.level },
+            payload: {
+              skill: cat, level: sk.level, pool: p3.pool, charLevel: ps.level,
+              /* v2.3.1733: what THIS level unlocked, if anything, so the
+                 level-up celebration can name it ("Shield Bash unlocked!")
+                 instead of the player discovering a new button by accident.
+                 Extra fields on an existing PRIVILEGED event — an old
+                 client ignores them, so no caps flag is needed. */
+              milestone: (MILESTONES[ps.level] && MILESTONES[ps.level].label) || undefined,
+              bonusPoints: _msPts || undefined,
+              abilities: this._abilityUnlockList(ps),
+            },
           }));
         } catch (e) {}
       }

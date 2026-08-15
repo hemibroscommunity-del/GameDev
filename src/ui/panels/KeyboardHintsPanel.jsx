@@ -22,9 +22,15 @@ import React from 'react';
    The choice persists (bt_kb_hints_off), read in the initialiser in
    BroTown so there is no one-frame flash of the wrong state. */
 
+/* v2.3.1733: E and R gained ability duties (Shield Bash while blocking,
+   Whirlwind).  Listed here because this strip is the ONLY on-screen record
+   of the controls a desktop player has — an unlisted key is an unfindable
+   ability.  They are listed unconditionally, unlocked or not: the label
+   teaches the key, and pressing it before level 4/8 floats the reason. */
 const KEYS = [
   ['WASD', 'Move'], ['Click', 'Attack'], ['R-Click', 'Special'], ['Space', 'Dodge'],
-  ['E', 'Interact'], ['Q', 'Shield'], ['Tab', 'Swap'], ['F', 'Special'],
+  ['E', 'Interact'], ['Q', 'Shield'], ['Q+E', 'Bash'], ['R', 'Whirl'],
+  ['Tab', 'Swap'], ['F', 'Special'],
   ['C', 'Chat'], ['H', 'Hide'], ['Esc', 'Close'],
 ];
 
