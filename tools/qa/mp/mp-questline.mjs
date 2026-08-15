@@ -164,13 +164,101 @@ export async function run({ browser, wsPort, webPort, rec }) {
         const toFrost = await travel(marks.frost.tx, marks.frost.ty, 'frost');
         rec.ok('...and walk on to the quest zone', toFrost,
           await H.readState(P, (S) => S.currentZone));
-        /* Back the way you came: the spoke's return marker, then town. */
-        await H.waitFor(P, (S) => S.currentZone, (z) => z === 'worldview',
-          { timeout: 8000, label: 'return to the World View' }).catch(() => {});
+        /* ═══ v2.3.1732: COME HOME THE WAY THE GAME LETS YOU COME HOME ═══
+           This leg used to be a wait with its failure thrown away:
+
+             await H.waitFor(..., z => z === 'worldview', ...).catch(() => {});
+             const backHome = await travel(marks.home.tx, marks.home.ty, 'town');
+
+           Nothing in there moved the player out of Frost Ridge.  The wait just
+           waited, and when it timed out the `.catch(() => {})` ate the reason,
+           so `travel` then spent 8 attempts × 6s standing on a WORLDVIEW tile
+           coordinate while the character was still in the spoke — 48 seconds
+           of nothing, ending in `backHome: false`.  That is the flake that
+           failed PR #399 on a tree that passed locally and went green on an
+           identical re-run, and a blocking gate that red-greens at random
+           teaches everyone to ignore red.
+
+           WHY IT EVER PASSED IS THE PART WORTH WRITING DOWN, because it is
+           not what it looks like.  The obvious guess — that frost happens to
+           have a return marker near the borrowed coordinate — is wrong, and I
+           checked instead of assuming.  Frost Ridge is 32×32 and, entered by
+           the World View's 'nw' trail-head, its map holds exactly TWO tile-9
+           markers, at (29,28) and (30,28).  Tile (24,28) is a 6.  Standing
+           there triggers nothing, ever, on any machine.
+
+           What actually got the character home was DYING.  Instrumenting the
+           old loop shows it plainly: parked motionless at (24,28) with three
+           snowmen in the zone, hp goes 118 → 90 → 49 → 7 → 0 across the
+           attempts, and the death handler respawns you in TOWN
+           (monsterCombat.js / gameEvents.js / BroTown.jsx all do it).  So
+           `backHome` was true because a monster killed the tester.  That is a
+           race against a spawn roll and a runner's speed, which is exactly
+           why it is green here and red on PR #399's CI box — and it meant the
+           assertion "...and get back to town to hand it in" was quietly
+           certifying a corpse teleport, not a walk.
+
+           The mechanic it should have used: a SPOKE HAS NO EXIT TABLE.
+           zoneTransitions builds exits only for the two hubs (TOWN_EXITS,
+           WORLDVIEW_EXITS); you leave a spoke by standing within RETURN_R
+           (2 tiles, manhattan) of a tile whose value is 9 in that zone's OWN
+           walkability map — and that map is rebuilt per entry, so it can only
+           be read, never hard-coded.
+
+           So: read the marker out of S.map, in the zone we are actually
+           standing in, and walk to it.  The test cannot drift from the
+           mechanic because it is reading the mechanic's own data. */
+        const spokeReturn = () => P.page.evaluate(() => {
+          const S = window._gameState && window._gameState.current;
+          if (!S || !S.map || !S.player) return null;
+          const px = Math.floor(S.player.x / 32), py = Math.floor(S.player.y / 32);
+          let best = null;
+          for (let y = 0; y < S.map.length; y++) {
+            const row = S.map[y];
+            if (!row) continue;
+            for (let x = 0; x < row.length; x++) {
+              if (row[x] !== 9) continue;
+              const d = Math.abs(x - px) + Math.abs(y - py);
+              if (!best || d < best.d) best = { tx: x, ty: y, d };
+            }
+          }
+          return { zone: S.currentZone, px, py, marker: best };
+        });
+        /* Stand on the nearest return marker until the zone flips.  Re-read
+           it every attempt rather than caching: the client can reposition the
+           player on arrival/respawn, and a stale target would retry a tile
+           that is no longer near a 9. */
+        const leaveSpoke = async (hubId) => {
+          let seen = null;
+          for (let i = 0; i < 6; i++) {
+            seen = await spokeReturn();
+            if (!seen || seen.zone === hubId) break;
+            if (!seen.marker) break; /* no 9 in this map at all — report it, do not spin */
+            await stand(seen.marker.tx, seen.marker.ty);
+            /* Swallowed on purpose, and this one is safe where the old one was
+               not: the loop's own return value is the verdict, and `seen`
+               carries the marker + position into the assertion detail, so a
+               failure says WHERE it was standing instead of going quiet. */
+            const got = await H.waitFor(P, (S) => S.currentZone, (z) => z === hubId,
+              { timeout: 5000, label: 'ride the return marker back to ' + hubId }).catch(() => null);
+            if (got === hubId) return { ok: true, seen };
+          }
+          return { ok: (await H.readState(P, (S) => S.currentZone)) === hubId, seen };
+        };
+        /* Asserted as its own step so this leg fails loudly and specifically.
+           Before, a stuck character in frost cascaded into a wrong-zone
+           `travel` and a confusing `backHome: false` forty seconds later.
+           And it stays honest about the old accident: if a snowman kills the
+           tester mid-leg, the respawn lands in TOWN, the loop finds no 9 in
+           the town map, and this fails with `zone: "town"` in the detail
+           rather than being rewarded for the corpse teleport. */
+        const left = await leaveSpoke('worldview');
+        rec.ok("...and the spoke's own return marker walks you back to the World View",
+          left.ok, left.seen);
         const backHome = await travel(marks.home.tx, marks.home.ty, 'town');
         rec.ok('...and get back to town to hand it in', backHome,
           await H.readState(P, (S) => S.currentZone));
-        walked = { toWorld, toFrost, backHome };
+        walked = { toWorld, toFrost, backFromSpoke: left.ok, backHome };
       }
       await P.page.waitForTimeout(1200);
     }
@@ -293,7 +381,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
       (end.weaponStash || []).some((w) => w && w.type === t) || (end.weapon && end.weapon.type === t)),
     { stash: (end && end.weaponStash || []).map((w) => w && w.type), worn: end && end.weapon && end.weapon.type });
   rec.ok('and the line paid real gold', !!end && (end.coins || 0) > 0, end && end.coins);
-  if (walked) rec.ok('the round trip walked cleanly in both directions', walked.toWorld && walked.toFrost && walked.backHome, walked);
+  if (walked) rec.ok('the round trip walked cleanly in both directions',
+    walked.toWorld && walked.toFrost && walked.backFromSpoke && walked.backHome, walked);
 
   await P.ctx.close().catch(() => {});
 }
