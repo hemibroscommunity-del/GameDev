@@ -2224,12 +2224,42 @@ export class GameRoom {
   // the client's ThreatIncomingPanel never sent (it sends
   // action:'ignored'|'guards'), so threat consent was never granted.
 
+  /* ═══ v2.3.1742: YOUR PARTY IS NOT A FREE-FIRE TARGET ═══
+     Owner: "party mode looks like it needs fixed.  It auto targeted my
+     teammate and looked like my attacks were damaging them."
+
+     They were.  EVERY wilderness zone carries lawless:true (data.js), and
+     this returned true for any two players in one — with no party test
+     anywhere in the PvP path.  So a co-op pair grinding the meadow could
+     damage and kill each other the moment one locked onto the other, which
+     is the exact opposite of what a party is for.
+
+     ORDER MATTERS HERE.  The consent pair is checked FIRST, so a deliberate
+     DUEL between two party members still works: consent is an explicit,
+     two-sided act and must override the shield.  What the party blocks is
+     the free-fire branch below it — the accidental case, where being in a
+     lawless zone alone was enough.
+
+     Server-side because it is the only place that counts: the client's own
+     gate (monsterCombat's pvpLocked test) decides what is worth SENDING,
+     and a client is never the authority on whether damage lands. */
   _pvpAllowed(attackerId, targetId, zone) {
     const zc = ZONES[zone];
-    if (zc && zc.lawless) return true; // open-PvP wilderness (data.js flag)
-    if (!this._pvpConsent) return false;
-    const until = this._pvpConsent.get(this._pvpPairKey(attackerId, targetId));
-    return !!(until && until > Date.now());
+    /* Explicit consent (duel / answered threat) wins over everything. */
+    if (this._pvpConsent) {
+      const until = this._pvpConsent.get(this._pvpPairKey(attackerId, targetId));
+      if (until && until > Date.now()) return true;
+    }
+    if (zc && zc.lawless) {
+      /* Compared by party ID, not object identity: _partyByPlayer stores the
+         same object for every member today, but an id comparison stays true
+         if that ever changes (a rebuild, a rejoin) and costs nothing. */
+      const pa = this._partyOf && this._partyOf(attackerId);
+      const pb = this._partyOf && this._partyOf(targetId);
+      if (pa && pb && pa.id && pa.id === pb.id) return false;
+      return true; // open-PvP wilderness (data.js flag)
+    }
+    return false;
   }
 
   _clearPvpConsent(id) {

@@ -74,6 +74,55 @@ export async function run({ browser, wsPort, webPort, rec }) {
       await H.readState(B, (S) => (S.chatLog || []).slice(-3)));
   }
 
+  /* ── v2.3.1742: a teammate is not a target ──
+     Owner: "party mode looks like it needs fixed.  It auto targeted my
+     teammate and looked like my attacks were damaging them."  A tap within
+     25px of another player combat-locks them, and a player lock is exactly
+     what makes the client start sending PvP swings — which the server then
+     resolves as a CONE, hitting every player in the arc.  So the tap must
+     still INSPECT a teammate (useful, harmless) and must no longer AIM at
+     one.
+     The same tap AFTER the party breaks up is the control, and it is the
+     point of doing this through the real click rather than a state poke: it
+     proves the coordinates actually land on the player, so "no lock while
+     partied" reads as the rule working instead of the click missing. */
+  const tapPeer = async () => {
+    const pt = await A.page.evaluate((bid) => {
+      const S = window._gameState && window._gameState.current;
+      const o = S && S.others && S.others[bid];
+      const el = document.querySelector('canvas.brotown-canvas');
+      if (!o || !el || !S.camera) return null;
+      const r = el.getBoundingClientRect();
+      /* Same forward transform the tap handler uses (world -> CSS via the
+         renderer's published scale), then back into viewport coords. */
+      const sx = ((o.renderX != null ? o.renderX : o.x) - S.camera.x) * (S._worldScaleX || 1);
+      const sy = ((o.renderY != null ? o.renderY : o.y) - S.camera.y) * (S._worldScaleY || 1);
+      return { x: r.left + sx, y: r.top + sy, on: sx > 2 && sy > 2 && sx < r.width - 2 && sy < r.height - 2 };
+    }, bId);
+    if (!pt || !pt.on) return { hit: false, pt };
+    await A.page.mouse.click(pt.x, pt.y);
+    await A.page.waitForTimeout(700);
+    const lock = await H.readState(A, (S) => (S.lockedTarget
+      ? { type: S.lockedTarget.type, id: S.lockedTarget.id } : null));
+    const card = await A.page.locator('.bt-inspect-card').first()
+      .isVisible({ timeout: 2000 }).catch(() => false);
+    await A.page.keyboard.press('Escape').catch(() => {});
+    await A.page.waitForTimeout(300);
+    return { hit: true, lock, card };
+  };
+
+  await A.page.evaluate(() => {
+    const S = window._gameState && window._gameState.current;
+    if (S) S.lockedTarget = null;
+  });
+  const mate = await tapPeer();
+  rec.ok('the teammate is on screen and tappable (guard: a missed tap proves nothing)',
+    mate.hit && mate.card, mate);
+  if (mate.hit) {
+    rec.ok('tapping a party member does NOT combat-lock them',
+      !(mate.lock && mate.lock.type === 'player'), mate.lock);
+  }
+
   /* ── the HUD shows it ── */
   /* textContent, not innerText: innerText depends on layout and has come back
      empty here under load, which reads as "the HUD never rendered". */
@@ -94,6 +143,22 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const [pa2, pb2] = await Promise.all([party(A), party(B)]);
     rec.ok('leaving clears the party for the leaver', !pb2 || pb2.members < 2, pb2);
     rec.ok('leaving clears the party for the other member too', !pa2 || pa2.members < 2, pa2);
+
+    /* The control for the check above: the identical tap, on the identical
+       player, once they are no longer a teammate.  If this one does not
+       lock either, the earlier pass was a missed click and means nothing. */
+    await A.page.evaluate(() => {
+      const S = window._gameState && window._gameState.current;
+      if (S) S.lockedTarget = null;
+    });
+    const ex = await tapPeer();
+    if (ex.hit) {
+      rec.ok('...and the same tap DOES lock them once they leave the party',
+        !!(ex.lock && ex.lock.type === 'player' && ex.lock.id === bId), ex.lock);
+    } else {
+      rec.skip('...and the same tap DOES lock them once they leave the party',
+        'the ex-member was no longer on screen');
+    }
   }
 
   await A.ctx.close(); await B.ctx.close();

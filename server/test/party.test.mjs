@@ -277,5 +277,43 @@ check('forged decline (no live invite) sends nothing', msgsOfType(wss.c, 'party_
     room.eventBuffer.filter((e) => e.type === 'party_chat').length === 0, room.eventBuffer.map((e) => e.type));
 }
 
+// ── 11. v2.3.1742: your party is not a free-fire target ──
+// Owner: "party mode looks like it needs fixed.  It auto targeted my
+// teammate and looked like my attacks were damaging them."  They were:
+// every wilderness zone carries lawless:true (data.js) and _pvpAllowed
+// had no party test anywhere in it.  These pin the gate's ORDER as much
+// as its answer -- consent must still beat the party shield, or two
+// teammates could never duel each other on purpose.
+{
+  for (const n of ['i', 'j', 'k'] ) { wss[n] = fakeWs(n); await join(wss[n], P(n), n.toUpperCase()); }
+  const I = P('i'), J = P('j'), K = P('k');
+  await cmd(wss.i, 'party_invite', { target: J });
+  await cmd(wss.j, 'party_accept', { target: I }); // I + J are a party; K is not
+  check('a party formed for the PvP-gate checks', !!room._partyOf(I) && room._partyOf(I) === room._partyOf(J));
+
+  check('party members cannot damage each other in a lawless zone',
+    room._pvpAllowed(I, J, 'meadow') === false && room._pvpAllowed(J, I, 'meadow') === false);
+  check('...and the shield is not zone-specific (every wilderness zone is lawless)',
+    room._pvpAllowed(I, J, 'frost') === false && room._pvpAllowed(I, J, 'hollows') === false);
+  check('a non-party pair in a lawless zone is unaffected (open PvP still open)',
+    room._pvpAllowed(I, K, 'meadow') === true && room._pvpAllowed(K, J, 'meadow') === true);
+  check('a safe zone still refuses everyone', room._pvpAllowed(I, K, 'town') === false);
+
+  // Explicit consent is registered exactly as duel.js:124 does it.
+  if (!room._pvpConsent) room._pvpConsent = new Map();
+  room._pvpConsent.set(room._pvpPairKey(I, J), Date.now() + 60000);
+  check('a consented duel between party members is STILL allowed (consent is checked first)',
+    room._pvpAllowed(I, J, 'meadow') === true && room._pvpAllowed(J, I, 'meadow') === true);
+  room._pvpConsent.delete(room._pvpPairKey(I, J));
+  check('and the shield returns the moment that consent lapses',
+    room._pvpAllowed(I, J, 'meadow') === false);
+
+  // Leaving the party restores ordinary lawless rules -- the shield
+  // tracks the roster, it is not a sticky per-pair flag.
+  await cmd(wss.j, 'party_leave', {});
+  check('leaving the party makes the pair damageable again in the wild',
+    room._pvpAllowed(I, J, 'meadow') === true, { pi: !!room._partyOf(I), pj: !!room._partyOf(J) });
+}
+
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);
 process.exit(failures === 0 ? 0 : 1);
