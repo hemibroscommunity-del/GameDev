@@ -173,10 +173,17 @@ export const telegraphMethods = {
     const ps = this.playerState[pid];
     if (!ps || ps.dead || ps.dying) return 0;
     if (this._blockArcCovers(ps, m.x, m.y)) {
+      /* v2.3.1731: parrying a TELEGRAPHED hit is the marquee case — the
+         wind-up is exactly the readable cue a timed block wants, so a
+         player who waits for the swing instead of turtling through it gets
+         the stagger and the stamina back. */
+      const parried = this._parryOpen(ps, Date.now());
+      if (parried) this._applyParry(zoneId, m, pid, ps, Date.now());
       this.eventBuffer.push({
         type: 'monster_attack',
         payload: {
           monsterId: m.id, targetId: pid, dmg: m.dmg, dmgTaken: 0, blocked: true,
+          parried: parried || undefined,
           zone: zoneId, attackerX: m.x, attackerY: m.y,
         },
       });

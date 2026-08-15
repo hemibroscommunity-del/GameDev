@@ -29,7 +29,7 @@
  * convention) and the test player + target monster are teleported to
  * an isolated corner so the other spawns can't interfere. */
 import { GameRoom } from '../src/index.js';
-import { BLOCK_COSTS_STAMINA } from '../src/data.js'; /* v2.3.1704: NOT from index.js — see the note on the flag */
+import { BLOCK_COSTS_STAMINA, BLOCK_STAMINA_COST } from '../src/data.js'; /* v2.3.1704: NOT from index.js — see the note on the flag */
 import { ZONES as SERVER_ZONES } from '../src/data.js';
 // v2.3.1147: the client zone table imports cleanly in node (pure data
 // ESM) -- the lockstep section at the bottom pins it against the
@@ -147,11 +147,16 @@ const blk = room.eventBuffer.find((e) => e.type === 'monster_attack' && e.payloa
    Only the price moves. */
 check('block: event flagged blocked, damage fully negated',
   !!blk && blk.payload.blocked === true && blk.payload.dmgTaken === 0, blk && blk.payload);
+/* v2.3.1731: the price is read from BLOCK_STAMINA_COST rather than re-typed.
+   This assertion said 15 and broke the moment the cost was retuned to 10 —
+   and re-typing 10 would just re-arm it for the next retune.  What is being
+   pinned is that the deduction and the wire number AGREE with the shipped
+   constant, which is the property that actually matters. */
 check(BLOCK_COSTS_STAMINA
-  ? 'block: 15 stamina deducted server-side and put on the wire, hp untouched'
+  ? `block: ${BLOCK_STAMINA_COST} stamina deducted server-side and put on the wire, hp untouched`
   : 'block: free, no drain field on the wire, hp untouched (v2.3.1704 demo flag)',
   ps.hp === 100 && (BLOCK_COSTS_STAMINA
-    ? (ps.stamina === 85 && blk.payload.staminaDrain === 15)
+    ? (ps.stamina === 100 - BLOCK_STAMINA_COST && blk.payload.staminaDrain === BLOCK_STAMINA_COST)
     : (ps.stamina === 100 && blk.payload.staminaDrain === undefined)),
   { stamina: ps.stamina, hp: ps.hp, drain: blk && blk.payload.staminaDrain });
 

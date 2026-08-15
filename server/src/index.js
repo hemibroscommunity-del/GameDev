@@ -27,7 +27,7 @@ import { tickElementStatuses, elementMoveMult } from './elemental.js';
 // lookup methods stay (call sites unchanged); only the literals moved.
 import {
   ARCHETYPES, ZONES,
-  MONSTER_HP_CURVE, monsterHpFlat, RARITY_TIERS, BLOCK_COSTS_STAMINA, BLOCK_ARC_HALF } from './data.js'; // v2.3.1451: t2Accel/T2_UNITS reads replaced by the ps.t2Flat accumulator
+  MONSTER_HP_CURVE, monsterHpFlat, RARITY_TIERS, BLOCK_COSTS_STAMINA, BLOCK_STAMINA_COST, BLOCK_ARC_HALF } from './data.js'; // v2.3.1451: t2Accel/T2_UNITS reads replaced by the ps.t2Flat accumulator
 // v2.3.1118 (heavy-systems PR3): order book folded into the GameRoom --
 // escrow-at-placement settlement under one DO's input gates.  Methods
 // are mixed into the class below (see market.js header for why).
@@ -352,6 +352,8 @@ export const PRIVILEGED_EVENTS = new Set([
      Display-only (damage rides monster_attack), but server-emitted, so it
      belongs here or a client could forge a fake wind-up. */
   'monster_ability',
+  /* v2.3.1731: parry notice — display-only, but server-emitted. */
+  'parry',
   // v2.3.1147: server-emitted since the mummy->skeleton transform moved
   // server-side (v2.3.856 era) but never deny-listed -- a client could
   // forge cosmetic transforms on everyone's screen.  Closed.
@@ -628,6 +630,10 @@ export class GameRoom {
        and attacks at the same ring. */
     this.MONSTER_ATTACK_RANGE = 45;
     this.MONSTER_ATTACK_CD = 1500; // ms
+    /* v2.3.1731: parry (see _parryOpen for why the window is 250, not 150) */
+    this.PARRY_WINDOW_MS = 250;
+    this.PARRY_STAGGER_MS = 1500;
+    this.PARRY_STAMINA_REWARD = 10;
     this.TILE = 32;
 
     // Server-authoritative gather nodes (trees / fish spots / ore veins).
@@ -1658,8 +1664,18 @@ export class GameRoom {
               // staminaDrain below, so pre-fix clients render the
               // discounted number correctly with zero client changes.
               // v2.3.1704: free for the demo — see BLOCK_COSTS_STAMINA in data.js.
-              const staminaCost = BLOCK_COSTS_STAMINA
-                ? Math.max(1, Math.round(15 * this._blockStaminaMult(blockerPs)))
+              /* v2.3.1731: a shield RAISED IN TIME is a parry — costs
+                 nothing, pays stamina back, and staggers the swing. */
+              const _parried = this._parryOpen(blockerPs, now);
+              if (_parried) this._applyParry(zoneId, m, nearest.id, blockerPs, now);
+              /* v2.3.1731: 15 -> 10, and BLOCK_COSTS_STAMINA is ON again.
+                 Deliberately a per-BLOCKED-HIT cost and NOT a hold tax: a
+                 drain-while-held punishes the player who raises early and
+                 reads the fight, which is the exact behaviour v2.3.1730's
+                 wind-ups exist to teach.  Paying per hit absorbed still ends
+                 infinite turtling, because the hits are what drain you. */
+              const staminaCost = (BLOCK_COSTS_STAMINA && !_parried)
+                ? Math.max(1, Math.round(BLOCK_STAMINA_COST * this._blockStaminaMult(blockerPs)))
                 : 0;
               if (staminaCost > 0 && blockerPs && typeof blockerPs.stamina === 'number') {
                 blockerPs.stamina = Math.max(0, blockerPs.stamina - staminaCost);
@@ -1717,6 +1733,7 @@ export class GameRoom {
                   dmg: m.dmg,
                   dmgTaken: 0,
                   blocked: true,
+                  parried: _parried || undefined, /* v2.3.1731 */
                   staminaDrain: staminaCost > 0 ? staminaCost : undefined, /* v2.3.1704: no 0 on the wire (the client pops it as "-0⚡") */
                   zone: zoneId,
                   attackerX: m.x,
@@ -1993,6 +2010,51 @@ export class GameRoom {
     const from = Math.atan2(dy, dx);
     const d = ((from - ps.ba + Math.PI * 3) % (Math.PI * 2)) - Math.PI;
     return Math.abs(d) <= BLOCK_ARC_HALF;
+  }
+
+  /* ═══ v2.3.1731: PARRY — the reward for blocking ON TIME ═══
+     Owner: "No timed blocking, no dodging, etc."  v2.3.1730 gave monsters a
+     wind-up; this gives the wind-up an answer better than standing there
+     with the shield already up.
+
+     A hit landing within PARRY_WINDOW_MS of the shield going UP is negated,
+     staggers the attacker, and pays stamina back instead of costing it.
+     Server-OBSERVED, never client-claimed (see movement.js): an "I parried!"
+     flag on the wire would be the purest possible self-report, and TRAPS #13
+     is the rule that a handler is audited by what it WRITES.
+
+     250ms, not the 150ms the UI spec drew.  The window is measured from a
+     `move` packet sent on a 22ms cadence that then crosses the internet, so
+     the tolerance has to swallow a packet's jitter or a correctly-timed
+     parry on a phone simply would not register.  The dormant client ring
+     (blockRingBus.resolveIncoming) could use 150ms because it compared local
+     input against local state with no network in the middle. */
+  _parryOpen(ps, now) {
+    if (!ps || !ps.blocking) return false;
+    const t = ps.blockStartT;
+    if (typeof t !== 'number' || t <= 0) return false;   /* old client: no stamp, no parry */
+    return now >= t && (now - t) <= this.PARRY_WINDOW_MS;
+  }
+
+  /* Staggering is what makes a parry worth the risk: the attacker loses its
+     next swing AND any wind-up it was in, so the reward is TEMPO rather than
+     a damage number.  A parried cast takes its full cooldown — interrupting
+     it into an instant retry would punish the parry. */
+  _applyParry(zoneId, m, pid, ps, now) {
+    m.atkCd = Math.max(m.atkCd || 0, now + this.PARRY_STAGGER_MS);
+    m._attackingUntil = 0;
+    if (m._tgPhase) {
+      m._tgPhase = null; m._tgUntil = 0; m._tgAim = null; m._tgTarget = null;
+      m._tgNextAt = now + this.PARRY_STAGGER_MS;
+    }
+    if (typeof ps.stamina === 'number') {
+      ps.stamina = Math.min(ps.maxStamina || 100, ps.stamina + this.PARRY_STAMINA_REWARD);
+    }
+    this.eventBuffer.push({
+      type: 'parry',
+      payload: { zone: zoneId, monsterId: m.id, targetId: pid, x: Math.round(m.x), y: Math.round(m.y) },
+    });
+    this._markMonsterDirty(zoneId, m.id);
   }
 
   _blockStaminaMult(ps) {

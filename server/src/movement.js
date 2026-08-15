@@ -232,7 +232,20 @@ export const movementMethods = {
          this player gathering; not authoritative over loot/XP. */
       if (msg.ex !== undefined) ps.ex = msg.ex || null;
       if (msg.dodging !== undefined) ps.dodging = !!msg.dodging;
-      if (msg.blocking !== undefined) ps.blocking = !!msg.blocking;
+      if (msg.blocking !== undefined) {
+        /* v2.3.1731: stamp the RAISE, server-side, for the parry window.
+           The timing is observed here rather than claimed by the client —
+           a "I parried!" flag on the wire would be the purest possible
+           self-report, and TRAPS #13's rule is that a handler is audited by
+           what it WRITES.  The client never sends a parry; the server
+           notices that a hit arrived within PARRY_WINDOW_MS of the shield
+           going up.  Only a false->true transition re-arms it, so holding
+           the shield does not keep the window open. */
+        const _wasBlocking = !!ps.blocking;
+        ps.blocking = !!msg.blocking;
+        if (ps.blocking && !_wasBlocking) ps.blockStartT = Date.now();
+        else if (!ps.blocking) ps.blockStartT = 0;
+      }
       /* v2.3.1705: the shield's facing angle, for the directional block
          (owner: "yes blocking should be directional").  Sanitised to a finite
          number or null — it is client-supplied and feeds a trig test, and an

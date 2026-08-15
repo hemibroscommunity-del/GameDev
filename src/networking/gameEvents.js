@@ -425,6 +425,34 @@ export function processGameEvent(type, payload, S, deps) {
               BT_AUDIO.beep(150, 0.1, 0.15, 'sawtooth');
               break;
             }
+          case 'parry':
+            {
+              /* ═══ v2.3.1731: PARRY ═══
+                 Display-only.  The server decided this (it timestamps the
+                 shield's raise and measures the hit against it) and the
+                 damage negation already rode in on monster_attack — nothing
+                 here may re-decide or re-apply anything.
+
+                 NOT routed through blockRingBus.resolveIncoming, despite
+                 that being the dormant parry code this feature was supposed
+                 to wake: it runs its OWN 150ms timing test, so calling it
+                 would mean two authorities disagreeing about whether a parry
+                 happened, and the client would lose that argument on every
+                 laggy phone.  The ring's decision function stays dormant;
+                 only the celebration is wanted here. */
+              if (!payload || !S.player) break;
+              if (payload.targetId && S.myId && payload.targetId !== S.myId) break;
+              var _pX = typeof payload.x === 'number' ? payload.x : S.player.x;
+              var _pY = typeof payload.y === 'number' ? payload.y : S.player.y;
+              pushDmgPopup(S, S.player.x, S.player.y - 46, 'PARRY!', '#8FD6A0');
+              if (!S._impactRings) S._impactRings = [];
+              S._impactRings.push({
+                x: _pX, y: _pY, ts: Date.now(), color: '#8FD6A0', maxR: 46, duration: 320,
+              });
+              BT_AUDIO.beep(880, 0.07, 0.16, 'triangle');
+            }
+            break;
+
           case 'monster_ability':
             {
               /* ═══ v2.3.1730: STANDARD-ZONE TELEGRAPHS ═══
