@@ -111,6 +111,18 @@ export async function run({ browser, wsPort, webPort, rec }) {
     S._serverMonsters = false;
     S.autoAttack = true;
     window.__kills = 0;
+    /* COUNT THE POPUPS, not just the kills.  The leak this harness found is
+       driven by damage NUMBERS, i.e. by HITS — and in a server zone the local
+       tick runs with applyHp:false, so injected monsters take predicted
+       damage (and mint popups) without ever dying.  Asserting on kills alone
+       therefore failed a run that was exercising the bug perfectly.  Hook the
+       push so the guard measures what actually drives the accumulation. */
+    window.__popupCount = 0;
+    if (S.dmgNumbers && !S.dmgNumbers.__hooked) {
+      const _push = S.dmgNumbers.push.bind(S.dmgNumbers);
+      S.dmgNumbers.push = function (...a) { window.__popupCount += a.length; return _push(...a); };
+      S.dmgNumbers.__hooked = true;
+    }
     let seq = 0;
     const mk = () => {
       seq++;
@@ -172,20 +184,31 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const ft = await P.page.evaluate(() => window.__ftDrain && window.__ftDrain());
     samples.push({ t: Math.round((Date.now() - t0) / 1000), s, ft });
     const cur = samples[samples.length - 1];
-    const kills = await P.page.evaluate(() => window.__kills || 0);
-    cur.kills = kills;
-    console.log(`      soak t=${cur.t}s  kills=${kills}  keys=${Object.keys(s).length}`
+    const act = await P.page.evaluate(() => ({ kills: window.__kills || 0, popups: window.__popupCount || 0 }));
+    cur.kills = act.kills; cur.popups = act.popups;
+    console.log(`      soak t=${cur.t}s  hits=${act.popups} kills=${act.kills}  keys=${Object.keys(s).length}`
       + (ft ? `  frame mean=${ft.mean}ms p95=${ft.p95}ms` : ''));
   }
   await P.page.evaluate(() => clearInterval(window.__soakPin));
 
   console.log('      watched: ' + Object.keys(samples[0].s).sort().join(' '));
   rec.ok('the soak collected enough samples to compare', samples.length >= 3, samples.length);
-  /* A soak that killed nothing proves nothing — the first version of this
-     file passed clean while fighting empty air. */
-  const totalKills = samples.length ? (samples[samples.length - 1].kills || 0) : 0;
-  rec.ok('the soak actually killed things (a zero-kill run proves nothing)',
-    totalKills > 100, totalKills);
+  /* A soak that produced no combat proves nothing — the first version of
+     this file passed clean while swinging at empty air.  The bar is DAMAGE
+     POPUPS, because that is what drives the accumulation this harness exists
+     to catch; kills are reported alongside but are not the gate (a server
+     zone runs the local tick with applyHp:false, so a perfectly valid soak
+     can hit constantly and kill nothing). */
+  const totalPopups = samples.length ? (samples[samples.length - 1].popups || 0) : 0;
+  /* Scaled to the run length rather than a flat number: the harness is run at
+     90s locally and longer on demand (BT_SOAK_MS), and a fixed bar sized for
+     one duration fails the other for no reason.  Observed rate is ~1
+     popup/sec; half that is a floor that a real fight clears easily and an
+     empty room cannot. */
+  const popupFloor = Math.round((SOAK_MS / 1000) * 0.5);
+  rec.ok('the soak actually fought something (a zero-hit run proves nothing)',
+    totalPopups > popupFloor,
+    { popups: totalPopups, floor: popupFloor, kills: samples.length ? samples[samples.length - 1].kills : 0 });
   if (samples.length < 3) { await P.ctx.close().catch(() => {}); return; }
 
   /* Compare the SECOND sample to the last: the first is start-up (assets
