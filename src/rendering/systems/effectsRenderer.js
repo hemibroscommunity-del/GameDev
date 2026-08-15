@@ -24,6 +24,7 @@ import { variantSpritesFor } from '../monsterVariantSprites.js';
 import { MONSTER_VARIANTS, ZONE_VARIANT_MAP } from '../../data/monsterVariants.js';
 import { ZONE_SHARDS } from '../../data/shards.js';
 import { placeSkillTraits, placeSkillTraitsFor, hideSkillTraits, SWORD_SWING_MS, BOW_SHOT_MS, BOW_RELEASE_MS } from './entityRenderer.js';
+import { WHIRL_VORTEX, WHIRL_FX_MS } from '../fxStrips.js'; /* v2.3.1735 */
 import { getEquip } from '../gearCatalog.js';
 import { getShirt } from '../traits/shirtCatalog.js';
 import { getShirtColor, shirtFill } from '../traits/shirtColorCatalog.js';
@@ -266,37 +267,9 @@ for (const cfg of Object.values(EFFECT_BURSTS)) {
 }
 const FX_BURST_MS = 600;
 
-/* ═══ v2.3.1735: STUN STARS + WHIRLWIND VORTEX (owner art) ═══
- *
- * Two 8-frame strips, the same contract EFFECT_BURSTS uses, and loaded the
- * same forgiving way: if the file is not on disk yet `frames` stays empty
- * and every draw site below is gated on `.frames.length`, so the game runs
- * exactly as it does today and simply shows no art.  That is deliberate —
- * the mechanics (the stun on the wire, the whirlwind gather) ship and are
- * testable whether or not the sheets have landed.
- *
- *   stunStars   — ringed stars, LOOPED over each stunned monster's head for
- *                 as long as the stun lasts.  Not one-shot: the stun is a
- *                 duration and the art has to say "still stunned", so it
- *                 cycles rather than playing once and vanishing.
- *   whirlVortex — the blue spiral, played ONCE under the caster across the
- *                 whirlwind's gather window.
- */
-const STUN_STARS = { frames: [], url: '/sprites/fx/stun-stars-v1.png?v=2.3.1735' };
-const WHIRL_VORTEX = { frames: [], url: '/sprites/fx/whirl-vortex-v1.png?v=2.3.1735' };
-for (const cfg of [STUN_STARS, WHIRL_VORTEX]) {
-  _fxLoad(cfg.url).then((tex) => {
-    if (!tex || !tex.source) return;
-    const fw = Math.floor(tex.source.width / 8);
-    for (let i = 0; i < 8; i++) {
-      cfg.frames.push(new Texture({ source: tex.source, frame: new Rectangle(i * fw, 0, fw, tex.source.height) }));
-    }
-  }).catch(() => { /* art not committed yet — every draw site checks length */ });
-}
-/* One full turn of the star ring.  Slow enough to read as a daze rather
-   than a strobe on a 60Hz phone. */
-const STUN_SPIN_MS = 640;
-const WHIRL_FX_MS = 520;
+/* v2.3.1735: the stun ring + whirl vortex strips live in
+   src/rendering/fxStrips.js — a leaf module, because entityRenderer draws
+   the stun ring and cannot import THIS file (it is the other way round). */
 
 /* v2.3.1417: GESTURE TOOL sheets (owner art, part 2 of the gather-feel
    redesign) — the harvest cue's floating tool is a painted sprite whose
@@ -1476,9 +1449,7 @@ export class EffectsRenderer {
     this._updateDamageNumbers(S, now);
     this._updateCatchFlights(S, viewW, viewH, now);
     this._updateFxBursts(S, now);   /* v2.3.1443 */
-    /* v2.3.1735: both guard internally on their strip being loaded, so an
-       uncommitted sheet costs a Map lookup and nothing else. */
-    try { this._updateStunStars(S, now); } catch (e) { /* never break the frame for an effect */ }
+    /* v2.3.1735: guards internally on the strip being loaded. */
     try { this._updateWhirlVortex(S, now); } catch (e) { /* ditto */ }
     this._updateScreenFlash(S, viewW, viewH, now);
     this._updateAtmosphere(S, viewW, viewH, now);
@@ -3999,63 +3970,6 @@ export class EffectsRenderer {
     }
   }
 
-  /* ═══ v2.3.1735: THE STUN READS ON SCREEN ═══
-     Owner: "use this above monsters heads when they're stunned (and don't
-     let them attack during duration of stun)."
-
-     The second half was already true and is NOT re-implemented here: the
-     worker zeroes ccMoveMult for a stunned monster (index.js), which by
-     construction blocks its chase, its swing, its projectile and its
-     telegraph, and the client's local AI has the same gate
-     (monsterCombat.js).  What was missing was any way to SEE it — the tick
-     never sent the stun clock, so a server-stunned monster just stood there
-     unexplained.  tick.js now sends `st` and wsClient adopts it; this is
-     what draws it.
-
-     Pooled per monster id and reaped when the stun ends or the monster
-     leaves, the same shape _remoteSlashSprites uses.  Looped, not one-shot:
-     a stun is a duration, so the ring keeps turning until it lifts. */
-  _updateStunStars(S, now) {
-    if (!this._stunStarSprites) this._stunStarSprites = new Map();
-    const pool = this._stunStarSprites;
-    const live = new Set();
-    const mons = (S && S.monsters) || [];
-    if (STUN_STARS.frames.length) {
-      for (const m of mons) {
-        if (!m || !m.alive || m.hp <= 0 && m.curHp <= 0) continue;
-        if (!m._stunUntil || now >= m._stunUntil) continue;
-        const id = m.id;
-        if (id == null) continue;
-        live.add(id);
-        let spr = pool.get(id);
-        if (!spr || spr.destroyed) {
-          spr = new Sprite(STUN_STARS.frames[0]);
-          spr.anchor.set(0.5, 1);
-          this.overlayLayer.addChild(spr);
-          pool.set(id, spr);
-        }
-        /* Loop on wall-clock rather than stun age so every stunned monster
-           on screen spins in phase — out-of-phase rings on a pack read as
-           several unrelated effects. */
-        const fi = Math.floor((now % STUN_SPIN_MS) / STUN_SPIN_MS * 8) % 8;
-        spr.texture = STUN_STARS.frames[fi];
-        const size = m._size || 24;
-        spr.scale.set(48 / 256);
-        spr.x = (m.renderX != null ? m.renderX : m.x) || 0;
-        spr.y = ((m.renderY != null ? m.renderY : m.y) || 0) - size - 10;
-        /* Fade the last 200ms so the ring lifts rather than snapping off. */
-        const left = m._stunUntil - now;
-        spr.alpha = left < 200 ? left / 200 : 1;
-        spr.visible = true;
-      }
-    }
-    for (const [id, spr] of pool) {
-      if (live.has(id)) continue;
-      if (spr && !spr.destroyed) spr.destroy();
-      pool.delete(id);
-    }
-  }
-
   /* The whirlwind's vortex, played once under the caster while the gather
      lands.  Queued by S._whirlFx (game/abilities.js). */
   _updateWhirlVortex(S, now) {
@@ -4083,7 +3997,11 @@ export class EffectsRenderer {
        the worker does not roll — the element nova's rule. */
     spr.scale.set(((fx.radius || 60) * 2) / 256);
     spr.x = fx.x; spr.y = fx.y;
-    spr.alpha = age > WHIRL_FX_MS - 140 ? (WHIRL_FX_MS - age) / 140 : 0.95;
+    /* 0.72, not the 0.95 the first cut used: this draws on the overlay, i.e.
+       OVER the caster, and at near-full opacity it hid the character
+       completely for the whole half-second — you could not see what you were
+       doing in the middle of your own ability. */
+    spr.alpha = age > WHIRL_FX_MS - 140 ? 0.72 * ((WHIRL_FX_MS - age) / 140) : 0.72;
     spr.visible = true;
   }
 

@@ -18,6 +18,7 @@ for (const el of Object.values(ELEMENTS || {})) {
 import { lookupCollision, PVP_THREAT_CONSENT_MS } from '@/data/gameSystems.js';
 import { getFrame, resolveDirection, cycleMs, hasPose, frameCount as playerFrameCount, dodgeSheetDir } from '../playerSprites.js';
 import { getShieldFrame } from '../shieldSprites.js';
+import { STUN_STARS, STUN_SPIN_MS } from '../fxStrips.js'; /* v2.3.1735: the owner's stun ring */
 import { jogWaistRow } from '../jogWaist.js'; /* v2.3.1341: stable waist band */
 import { getFrame as getSlimeBaseFrame, hasState as hasSlimeState, frameCount as slimeFrameCount } from '../slimeSprites.js';
 import { getRecoloredFrame, hasRecoloredState } from '../monsterRecolor.js'; /* v2.3.1534; v2.3.1573 generalised */
@@ -2726,7 +2727,12 @@ const NAME_STYLE = new TextStyle({
   dropShadow: { color: '#000000', blur: 2, distance: 1 },
 });
 
-function getMonsterSize(archetype) {
+/* v2.3.1735: exported so effectsRenderer can place the stun star ring using
+   the SAME size the monster container is built with.  Reading a `_size` off
+   the monster object instead looks equivalent and is not: nothing sets that
+   field on a real monster (only the QA fixtures do), so a hand-rolled
+   fallback silently mis-places the ring on every live monster in the game. */
+export function getMonsterSize(archetype) {
   /* Slime/fodder stays small (renders as a 50-px sprite, the 8-px
      circle is the procedural fallback / hitbox anchor).  Snowman
      stays at 13 because its sprite anchor (spriteBody.y = size)
@@ -4485,11 +4491,47 @@ export class EntityRenderer {
           }
         }
 
-        if (stunActive) {
-          /* Three 5-point stars orbiting in a squashed ellipse above
-             the head -- standard "stunned" cartoon convention.  The
-             orbit period is 700 ms; stars are slightly different
-             phases so the ring reads as motion. */
+        /* v2.3.1735: the owner's painted star ring REPLACES the procedural
+           orbit below when its sheet is loaded (src/rendering/fxStrips.js).
+           Same anchor (-size - 22) and same period, so only the art changes.
+           Pooled on the container, so it follows the monster for free and
+           needs no world-space maths.
+           Replaces rather than joins: the first cut of this drew the sheet on
+           the world overlay while THIS block kept running, and a monster with
+           two star rings over it reads as a bug — which is exactly how the
+           duplicate was spotted. */
+        const starFrames = STUN_STARS.frames;
+        if (stunActive && starFrames.length) {
+          let ss = display._stunStarSprite;
+          if (!ss || ss.destroyed) {
+            ss = new Sprite(starFrames[0]);
+            ss.anchor.set(0.5, 0.5);
+            display.addChild(ss);
+            display._stunStarSprite = ss;
+          }
+          const fi = Math.floor((now % STUN_SPIN_MS) / STUN_SPIN_MS * 8) % 8;
+          if (ss.texture !== starFrames[fi]) ss.texture = starFrames[fi];
+          /* 34px wide.  The art is a wide ellipse with stars at the top and
+             both bottom corners, so its drawn HEIGHT is the full cell — sized
+             any larger and the bottom pair hangs level with the monster's own
+             level label. */
+          ss.scale.set(34 / 256);
+          /* NOT the procedural -size-22.  That anchor was tuned for a 4px
+             star on an 18px orbit; this sheet draws 34px tall, so at the same
+             centre its lower stars sit on the monster's own level label.
+             Measured against the slime (the tallest common early monster, a
+             96px body) rather than nudged. */
+          ss.y = -size - 56;
+          ss.visible = true;
+        } else if (display._stunStarSprite && !display._stunStarSprite.destroyed) {
+          display._stunStarSprite.visible = false;
+        }
+        if (stunActive && !starFrames.length) {
+          /* Procedural fallback, kept for the window before the sheet
+             resolves (and if it ever 404s).  Three 5-point stars orbiting in
+             a squashed ellipse above the head -- standard "stunned" cartoon
+             convention.  The orbit period is 700 ms; stars are slightly
+             different phases so the ring reads as motion. */
           const centerY = -size - 22;
           const orbitRx = 14;     // horizontal radius
           const orbitRy = 5;      // vertical (squashed for ellipse look)
