@@ -5062,7 +5062,12 @@ export class EntityRenderer {
       /* Shield arc — same 120° wedge as local, oriented to body facing
          (no _shieldAngle broadcast).  Block-flash pulse not animated
          since _blockFlash isn't broadcast. */
-      if (oIsShielding) {
+      /* v2.3.1735: off, with the local cone (effectsRenderer
+         SHIELD_CONE_ENABLED).  A wedge the owner finds distracting on their
+         own character is not less distracting on someone else's, and every
+         other player in town raising a shield would still paint one. */
+      const REMOTE_SHIELD_CONE_ENABLED = false;
+      if (REMOTE_SHIELD_CONE_ENABLED && oIsShielding) {
         const sR = 20;
         const sArc = Math.PI * 2 / 3;
         const startA = aimAngle - sArc / 2;
@@ -5383,7 +5388,20 @@ export class EntityRenderer {
        to the right-joystick aim even after the user thought they had
        released, because S._aiming had stale state in some flows. */
     const swingActive = S.isSwinging && S.swingTimer && (now - S.swingTimer) < SWING_ANIM_MS;
+    /* v2.3.1735: Shield Bash holds the shield up for its animation window
+       (src/game/abilities.js _bashPose).  It is a POSE, not a block — the
+       flag is deliberately separate from S._shieldUp because that one goes
+       on the wire as `blocking` (wsClient) and would buy real mitigation.
+       So it feeds the shield SPRITE and the body's facing below, and
+       nothing else: no guard wedge, no parry window, no stamina drain. */
+    const bashPose = (S._bashPose && now < S._bashPose.until) ? S._bashPose : null;
+    if (S._bashPose && !bashPose) S._bashPose = null;   /* reap on expiry */
     const isShielding = !!S._shieldUp;
+    /* Either reason to have the shield in hand.  Kept distinct from
+       isShielding so every existing block-only branch (the guard arc, the
+       block flash, the aimRefAngle ladder) keeps reading the real flag. */
+    const shieldVisible = isShielding || !!bashPose;
+    const shieldPoseAng = bashPose ? bashPose.ang : null;
     /* v2.3.176 (F4): "in combat" predicate -- when false, weapon and
        shield render on the player's back instead of in the hand /
        front of the body. Triggers: actively aiming (right stick),
@@ -5405,10 +5423,16 @@ export class EntityRenderer {
     /* useAimDirection drives the slowed + reverse jog animation —
        still want it true during a swing window so the legs stay in
        sync with the attack-locked body. */
-    const useAimDirection = isShielding || aimAttackActive || swingActive;
-    const aimRefAngle = isShielding
-      ? (S._shieldAngle != null ? S._shieldAngle : (S._facingAngle || 0))
-      : (S._aimAngle != null ? S._aimAngle : (S._facingAngle || 0));
+    /* v2.3.1735: bashPose joins this so the LEGS stay locked to the shove.
+       Bash no longer raises isSwinging (it is not a sword swing any more),
+       so without this the jog animation would drop out of aim-relative mode
+       mid-pose and the feet would walk off the direction the body faces. */
+    const useAimDirection = isShielding || aimAttackActive || swingActive || !!bashPose;
+    const aimRefAngle = bashPose
+      ? bashPose.ang
+      : isShielding
+        ? (S._shieldAngle != null ? S._shieldAngle : (S._facingAngle || 0))
+        : (S._aimAngle != null ? S._aimAngle : (S._facingAngle || 0));
     let isMovingBackward = false;
     if (useAimDirection && isMoving) {
       const dotProd = (P.vx || 0) * Math.cos(aimRefAngle) + (P.vy || 0) * Math.sin(aimRefAngle);
@@ -5444,6 +5468,15 @@ export class EntityRenderer {
          below would miss it and the tumble would play toward whatever the
          player happened to be facing when they swiped. */
       const sector = Math.round(S._dodgeRoll.angle / (Math.PI / 4));
+      facing = SECTORS[((sector % 8) + 8) % 8];
+    } else if (bashPose) {
+      /* v2.3.1735: the bash owns the body for its window, exactly as the
+         dodge roll above does.  Placed ahead of the shield/aim branches so
+         steering mid-animation cannot swivel a shove that has already been
+         thrown — the worker picked its target from the angle stamped at
+         cast time, so the body must not drift off it and lie about where
+         the hit went. */
+      const sector = Math.round(bashPose.ang / (Math.PI / 4));
       facing = SECTORS[((sector % 8) + 8) % 8];
     } else if (isShielding && S._shieldAngle != null) {
       const sector = Math.round(S._shieldAngle / (Math.PI / 4));
@@ -6443,7 +6476,16 @@ export class EntityRenderer {
            behind body for SE/S/SW/W (1/2/3/4). E joined the in-front
            set per user request -- with shield behind body on E, only
            a sliver was visible past the silhouette. */
-        const shieldOnBack = !isShielding;
+        /* v2.3.1735: shieldVisible, not isShielding.  This flag means "the
+           shield is slung on the BACK", and it must be false whenever the
+           shield is in hand for ANY reason — a real block or a Shield Bash
+           pose.  Reading the block flag here sent the posed shield down the
+           on-back z-rule, which puts it BEHIND the body for every facing
+           except east/N-half; since the shield is drawn at offset (0, +16)
+           on a south pose, that is directly over the torso and the shield
+           vanished entirely.  East looked fine and hid the bug — it is one
+           of the four facings the on-back rule keeps in front. */
+        const shieldOnBack = !shieldVisible;
         const shieldBehind = shieldOnBack
           ? !(facingIdx === 0 || facingIdx === 5 || facingIdx === 6 || facingIdx === 7)
           : (facingIdx === 5 || facingIdx === 6 || facingIdx === 7);
@@ -6578,10 +6620,16 @@ export class EntityRenderer {
       // v2.3.212: now gated on R.shield being equipped (was previously
       // shield-up input only).  Unequipped players can't visually
       // raise a shield they don't have.
-      if (isShielding && S.rpg && S.rpg.shield) {
-        const shieldAng = (S._shieldAngle != null)
-          ? S._shieldAngle
-          : ((S._aimAngle != null) ? S._aimAngle : (S._facingAngle || 0));
+      if (shieldVisible && S.rpg && S.rpg.shield) {
+        /* v2.3.1735: a bash pose names its own angle and WINS over the
+           block-time ladder — the cast stamped the direction the shove was
+           thrown in, and that is the direction the shield must face for the
+           whole window even if the player keeps steering afterwards. */
+        const shieldAng = (shieldPoseAng != null)
+          ? shieldPoseAng
+          : (S._shieldAngle != null)
+            ? S._shieldAngle
+            : ((S._aimAngle != null) ? S._aimAngle : (S._facingAngle || 0));
         const sR = 16;                        // hand-out distance from body
         // Player sprite is bottom-anchored (feet at y=0). With the 2x size
         // bump the shield center sits at feet, top reaches chest naturally.

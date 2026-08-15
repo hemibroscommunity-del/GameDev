@@ -319,10 +319,28 @@ export const tickMethods = {
         events = this.eventBuffer.splice(0, take);
       }
 
-      const monsterWire = (m) => ({
-        id: m.id, x: Math.round(m.x), y: Math.round(m.y),
-        hp: m.hp, alive: m.alive,
-      });
+      /* v2.3.1735: `st` = _stunUntil, and it has to be here or the stun is
+         an INVISIBLE mechanic in every server zone.  Shield Bash stamps
+         m._stunUntil (abilities.js) and the tick already honours it fully —
+         ccMoveMult goes to 0, so a stunned monster cannot chase, swing,
+         throw or start a telegraph.  But this projection has only ever
+         carried id/x/y/hp/alive, so the CLIENT was never told: the monster
+         simply stood still for 800ms with no stars, no countdown, nothing to
+         explain why.  The owner asked for the stun to read on screen, and
+         the readout it feeds (entityRenderer's stun timer + the star ring)
+         cannot exist without the field.
+         Sent as an ABSOLUTE epoch ms, matching how the client already stores
+         _stunUntil for its own local-AI stuns (monsterCombat.js), and
+         omitted entirely once expired so a dead stun costs zero bytes on
+         every subsequent tick. */
+      const monsterWire = (m) => {
+        const w = {
+          id: m.id, x: Math.round(m.x), y: Math.round(m.y),
+          hp: m.hp, alive: m.alive,
+        };
+        if (m._stunUntil && m._stunUntil > ts) w.st = m._stunUntil;
+        return w;
+      };
       // Gather-node deltas carry only state-change fields (alive /
       // respawnAt).  The full node payload (type / x / y / tierLvl) is
       // sent once at state_sync or zone change; the client already has

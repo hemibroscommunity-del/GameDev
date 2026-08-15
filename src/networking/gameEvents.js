@@ -27,6 +27,7 @@ import { BT_API_BASE } from '@/networking/index.js';
 import { pushHudPopup } from '@/ui/XpFlyOverlay.jsx';
 import { enqueuePeerDamage, peerDmgKey, distributeKillXpToBuild, applyMeleeLifesteal, addBuildUse, pushDmgPopup, monsterPopupY, isAttackInShieldArc } from '@/game/combatHelpers.js';
 import { handleChatEvent, handleEmoteEvent, handlePartyChatEvent } from '@/game/chat.js';
+import { pushAbilityRings } from '@/game/abilities.js'; /* v2.3.1735: a peer's bash draws the caster's own shockwave */
 import { friendsSrv } from '@/ui/mobile/sheet/friendsSync.js'; /* v2.3.1324 */
 import { _objectSpread, _slicedToArray, _toConsumableArray } from '@/lib/babelHelpers.js';
 import { saveRpgSoon } from '@/game/rpgSave.js'; /* v2.3.1356 */
@@ -836,6 +837,21 @@ export function processGameEvent(type, payload, S, deps) {
               if (payload.id && _peerInZone(S, payload.id)) {
                 S.others[payload.id]._swingTs = Date.now();
                 S.others[payload.id]._swingSpecial = !!payload.special;
+                /* v2.3.1735: Shield Bash rides this event with bash:true so a
+                   watching player sees the same shove the caster does rather
+                   than a sword slash (src/game/abilities.js).  Coerced to a
+                   boolean — this payload is peer-supplied and only ever gates
+                   which effect draws. */
+                S.others[payload.id]._swingBash = !!payload.bash;
+                /* ...and give the watcher the same shockwave the caster
+                   sees, through the caster's own helper so the two can
+                   never drift.  Drawn at the PEER's position, which is why
+                   this lives here and not in abilities.js. */
+                if (payload.bash) {
+                  var _bo = S.others[payload.id];
+                  pushAbilityRings(S, _bo.x || 0, (_bo.y || 0) - 10, 'bash',
+                    typeof payload.ang === 'number' ? payload.ang : 0, 70);
+                }
                 /* v2.3.1011: weapon + angle let the remote render the full
                    sword/greatsword stand-in facing the right way. */
                 S.others[payload.id]._swingWpn = payload.wpn || null;

@@ -34,7 +34,8 @@ export const STAM_ABILITIES = {
     dmgMult: 1.00,
     radius: 60,
     stunMs: 0,
-    knockback: 40,
+    knockback: 0,   /* v2.3.1735: whirl gathers instead of shoving */
+    pullTo: 34,     /* ...onto a ring this far from the caster */
     needs: 'weapon',
     maxTargets: 8,
   },
