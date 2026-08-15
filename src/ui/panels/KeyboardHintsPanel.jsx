@@ -22,14 +22,20 @@ import React from 'react';
    The choice persists (bt_kb_hints_off), read in the initialiser in
    BroTown so there is no one-frame flash of the wrong state. */
 
+/* v2.3.1733: E and R gained ability duties (Shield Bash while blocking,
+   Whirlwind).  Listed here because this strip is the ONLY on-screen record
+   of the controls a desktop player has — an unlisted key is an unfindable
+   ability.  They are listed unconditionally, unlocked or not: the label
+   teaches the key, and pressing it before level 4/8 floats the reason. */
 const KEYS = [
   ['WASD', 'Move'], ['Click', 'Attack'], ['R-Click', 'Special'], ['Space', 'Dodge'],
-  ['E', 'Interact'], ['Q', 'Shield'], ['Tab', 'Swap'], ['F', 'Special'],
-  /* v2.3.1734: G — Element Burst.  Listed unconditionally even though the
-     ability is level- and enchant-gated: this strip is the only on-screen
-     record a desktop player has of the controls, and a key that appears
-     only after you already own the ability is a key nobody discovers.
-     Pressing it early floats the reason (playerActions.elementBurst). */
+  ['E', 'Interact'], ['Q', 'Shield'], ['Q+E', 'Bash'], ['R', 'Whirl'],
+  ['Tab', 'Swap'], ['F', 'Special'],
+  /* v2.3.1734: G — Element Burst.  Listed on the same terms v2.3.1733 set
+     for Bash and Whirl one line above: unconditionally, unlocked or not.
+     The label teaches the key, and pressing it before level 6 (or without
+     an enchanted weapon) floats the reason — a key that only appears once
+     you already own the ability is a key nobody discovers. */
   ['G', 'Burst'],
   ['C', 'Chat'], ['H', 'Hide'], ['Esc', 'Close'],
 ];

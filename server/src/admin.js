@@ -201,12 +201,19 @@ export const adminMethods = {
                which way it is facing", which _blockArcCovers reads as the
                old omnidirectional block — a real state, not a missing value. */
             blocking: !!ps.blocking, ba: (typeof ps.ba === 'number' ? ps.ba : null),
-            /* v2.3.1734: the mana pair, for the same reason `ba` is here.
-               Ability costs are settled by the WORKER while the client
-               predicts them, so a drift between the two is invisible on
-               screen — the next player_state echo silently corrects the bar.
-               A headless check that reads the pool HERE is the only way to
-               assert what a cast actually cost.  Read-only. */
+            /* v2.3.1733: the STAMINA pool, for the same reason blocking/ba are
+               here.  Stamina is now spent by blocking (v2.3.1731) and by the
+               two abilities, and the client's copy is a prediction the worker
+               overwrites — so "did that cast actually cost anything" can only
+               be answered here.  A headless check that reads the browser
+               instead would pass on a message the worker never received, which
+               is exactly the TRAPS #18 blind spot.
+               v2.3.1734: the MANA pair joins it, verbatim the same argument —
+               the special's cost moved to a flat number that the WORKER
+               charges while the client predicts it, so a drift between the two
+               is invisible on screen (the next echo silently corrects the bar)
+               and readable only from here.  Both read-only. */
+            stamina: ps.stamina, maxStamina: ps.maxStamina,
             mana: ps.mana, maxMana: ps.maxMana } : null,
           online: !!this._wsBySessionId(id),
           auth: auth2 ? { createdAt: auth2.createdAt } : null,

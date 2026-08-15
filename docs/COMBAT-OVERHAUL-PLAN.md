@@ -1,6 +1,6 @@
 # Combat Overhaul — staged plan (owner-approved 2026-08-14)
 
-> **Status:** PRs 1, 2, 3, 6 shipped (v2.3.1726, 1727, 1730, 1734); PR 4 landed as v2.3.1731 (its section below still reads "NEXT" — the parry session owns updating it). PR 5 open.
+> **Status:** ALL SIX SHIPPED — PRs 1-6 (v2.3.1726, 1727, 1730, 1731, 1733, 1734).
 > Live charter — this is a TRUSTWORTHY doc in CLAUDE.md's sense: it describes
 > work being done now, not early design thinking. Update the status line as
 > each stage lands.
@@ -129,7 +129,7 @@ PRIVILEGED_EVENTS; old clients just see the (clamped) hit, no caps flag.
   `playable` job (questline, ~3.5 min) is now a blocking PR gate, verified
   green on a real runner.
 
-## PR 4 — Parry + block stamina (NEXT)
+## PR 4 — Parry + block stamina ✅ v2.3.1731
 
 - **Parry**: server timestamps `ps.blockStartT` when blocking flips true; a hit
   landing ≤250 ms after the raise is negated, staggers the attacker 1.5 s, and
@@ -141,12 +141,33 @@ PRIVILEGED_EVENTS; old clients just see the (clamped) hit, no caps flag.
   flag. Free infinite blocking would neuter PR 3; parry is the escape valve
   (perfect timing costs nothing).
 
-## PR 5 — Stamina abilities + milestone unlocks
+## PR 5 — Stamina abilities + milestone unlocks ✅ v2.3.1733
+
+SHIPPED as `server/src/abilities.js` (+ the `src/data/abilities.js` mirror);
+full write-up in `docs/specs/stamina-abilities.md`.  Both abilities are
+resolved entirely server-side — level, stamina, cooldown, targets, damage,
+stun and knockback — and the milestone ladder drives both server availability
+and client button visibility.  37 server assertions + a `mp-ability` QA
+scenario.
+
+TWO DEVIATIONS from the table below, both deliberate:
+
+1. **Whirlwind's touch input is a BUTTON, not a long press.**  Holding the
+   combat joystick IS the auto-attack input (rS sets `S.autoAttack` on
+   touchstart), so a long-press trigger would fire Whirlwind every few
+   seconds during ordinary attacking and spend 40% of the bar the player
+   needs for blocking.  Two round buttons sit above the joystick instead,
+   each appearing at its milestone level — which is also the most legible
+   form "a level unlocked something" can take.  Bash keeps its planned
+   gesture (tap attack while the shield is up).
+2. **Desktop E is Shield Bash only WHILE BLOCKING.**  E is the interact key;
+   the block state disambiguates, and the interact chain is untouched
+   otherwise.  R is Whirlwind.
 
 | Ability | Touch | Desktop | Cost | CD | Damage | Extra |
 |---|---|---|---|---|---|---|
-| Shield Bash | tap attack while shield up | E | 30% stamina | 4 s | 0.75× auto | 0.8 s stun + knockback |
-| Whirlwind | long-press attack | R | 40% stamina | 6 s | 1.0× auto, AoE r 60 | swarm-breaker |
+| Shield Bash | tap attack while shield up (or its button) | E while blocking | 30% stamina | 4 s | 0.75× auto | 0.8 s stun + knockback, cancels a wind-up |
+| Whirlwind | its button | R | 40% stamina | 6 s | 1.0× auto, AoE r 60 | swarm-breaker |
 
 | Char lvl | Unlock |
 |---|---|
@@ -161,6 +182,20 @@ Existing dodge/lunge/retreat stay ungated (owner call — removing them from
 current players would be a regression). New `ability {kind}` client→server
 event needs all three legs. Caps flag `caps.abil`. `ability_rejected` still has
 no client handler — write it here.
+
+v2.3.1733 shipped all of the above except the level-6 rung, which was left
+EMPTY for PR 6 to fill (`MILESTONES` in `server/src/abilities.js` +
+`src/data/abilities.js`, both sides in the same commit; the abilities suite
+asserts the gap so filling it is a deliberate edit).  `ability_rejected` now
+has its client handler, which also gives the older dodge/lunge/retreat/swipe
+refusals a visible reason for the first time.
+
+**v2.3.1734 filled rung 6** with `{ burst: true, label: 'Element Burst' }` —
+no `kind`, because Element Burst spends MANA and so has no entry in
+`STAM_ABILITIES` (the ladder-consistency check would rightly reject a kind
+that table does not have).  The gap assertion was flipped, not deleted: what
+was worth pinning was never "the rung is empty" but "exactly one thing owns
+level 6, and everyone agrees what".
 
 ## PR 6 — Element Burst + mana rework ✅ v2.3.1734
 

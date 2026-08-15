@@ -53,6 +53,7 @@ import { arenaMethods } from './gladiator.js';
 // dungeon.js header for why that makes the whole combat stack free).
 import { dungeonMethods } from './dungeon.js';
 import { telegraphMethods } from './telegraph.js'; /* v2.3.1730 */
+import { abilityMethods } from './abilities.js'; /* v2.3.1733 */
 // v2.3.1128 (PR11): guild-quest verification -- server-checked
 // life-skill quest ladder, claims under guild_claims:<pid>.
 import { guildMethods } from './guilds.js';
@@ -1330,7 +1331,14 @@ export class GameRoom {
         // (attacks normal) -- the client's exact moveMult semantics
         // (monsterCombat.js), which until now only slowed the visual
         // while the authoritative monster kept chasing at full speed.
-        const ccMoveMult = elementMoveMult(m);
+        /* v2.3.1733: a STUN is a freeze with a different source.  Shield
+           Bash stamps _stunUntil (abilities.js); folding it into
+           ccMoveMult rather than adding a second gate means it inherits
+           every check the CC semantics already own — no chasing, no basic
+           swing, no snowball, no telegraph start — from one line, instead
+           of four places that could each be forgotten. */
+        const _stunned = m._stunUntil && now < m._stunUntil;
+        const ccMoveMult = _stunned ? 0 : elementMoveMult(m);
         /* v2.3.1730: resolve a wind-up already in flight, BEFORE target
            acquisition and regardless of aggro.  A player who runs away
            mid-cast used to strand the monster in a pending telegraph
@@ -3474,11 +3482,29 @@ export class GameRoom {
         }
         break;
 
+      /* v2.3.1733: a stamina ABILITY cast (Shield Bash / Whirlwind).
+         Separate from ability_use above on purpose: that handler only
+         spends a pool for an action the CLIENT resolves (dodge, lunge,
+         the swipe's damage), whereas this one resolves the whole thing
+         server-side — targets, damage, stun, knockback, kill credit —
+         because it is new surface and new surface starts authoritative
+         (rule zero).  See abilities.js. */
+      case 'ability':
+        if (session.id) {
+          this._handleAbility(session, msg.payload || msg);
+        }
+        break;
+
+      /* v2.3.1734: Element Burst (COMBAT-OVERHAUL-PLAN PR 6).  Its own type
+         rather than a third `ability` kind: `ability` dispatches through
+         STAM_ABILITIES (abilities.js) and prices its cost as a percentage of
+         STAMINA, and the burst spends a flat MANA cost with an entirely
+         different gate (an element on the equipped weapon).  Squeezing it
+         into that table would mean a stamina ability that charges no
+         stamina.  Payload carries NOTHING — the server reads the weapon,
+         the element, the position, the pools and the cooldown from its own
+         state and picks the targets itself.  See burst.js. */
       case 'element_burst':
-        /* v2.3.1734: Element Burst (COMBAT-OVERHAUL-PLAN PR 6).  Payload
-           carries NOTHING — the server reads the weapon, the element, the
-           position, the pools and the cooldown from its own state and
-           picks the targets itself.  See burst.js. */
         if (session.id) {
           this._handleElementBurst(session);
         }
@@ -4038,6 +4064,8 @@ Object.assign(GameRoom.prototype, arenaMethods);
 Object.assign(GameRoom.prototype, dungeonMethods);
 // v2.3.1730: telegraphed standard-zone attacks -- see telegraph.js.
 Object.assign(GameRoom.prototype, telegraphMethods);
+// v2.3.1733: stamina abilities + the milestone ladder -- see abilities.js.
+Object.assign(GameRoom.prototype, abilityMethods);
 // v2.3.1128 (PR11): guild-quest verification -- see guilds.js.
 Object.assign(GameRoom.prototype, guildMethods);
 // v2.3.1129 (PR13): threat machine -- see threat.js.

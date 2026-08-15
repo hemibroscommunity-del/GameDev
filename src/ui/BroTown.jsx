@@ -42,6 +42,7 @@ import { KeyboardHintsPanel } from './panels/KeyboardHintsPanel.jsx';
 import { UpdateBanner } from './panels/UpdateBanner.jsx';
 import { startBuildWatch } from '@/game/buildWatch.js';
 import { TouchControls } from './panels/TouchControls.jsx';
+import { AbilityButtons } from './panels/AbilityButtons.jsx'; /* v2.3.1733 */
 import { DuelRequestPanel } from './panels/DuelRequestPanel.jsx';
 import { ThreatIncomingPanel } from './panels/ThreatIncomingPanel.jsx';
 import { ChatPanel } from './panels/ChatPanel.jsx';
@@ -153,6 +154,10 @@ import { renderFrame } from '@/game/renderFrame.js';
 import { triggerContextualDodge } from '@/game/dodge.js';
 /* v2.3.819: swing/special/shield action bodies extracted; component keeps thin useCallback wrappers. */
 import { swingAttack, specialAttack, raiseShield, elementBurst } from '@/game/playerActions.js';
+/* v2.3.1733: stamina abilities (Shield Bash / Whirlwind) — PR 5 of the
+   combat overhaul.  The cast bodies live in @/game/abilities.js for the
+   same reason the swing bodies do; this component keeps thin wrappers. */
+import { castAbility, abilityStatus } from '@/game/abilities.js';
 /* v2.3.841: extraction + fishing/cooking/wood/mining reward bodies extracted; component keeps thin useCallback wrappers. */
 import { startExtraction, succeedExtraction, applyCookingResult } from '@/game/lifeSkillRewards.js';
 /* v2.3.842: emote + building-entry interaction bodies extracted; component keeps thin useCallback wrappers. */
@@ -786,9 +791,15 @@ export var BroTown = function BroTown(_ref0) {
        the fix is checked on the wire, on the path the finger takes. */
     specialAttack: function () { specialAttack(stateRef.current); },
     contextualDodge: function (ang) { triggerContextualDodge(stateRef.current, stateRef.current.rpg, ang || 0); },
-    /* v2.3.1734: Element Burst, on the same hook and for the same reason —
-       the harness has to press the button the finger presses, not poke the
-       wire, or it stops testing the client half at all. */
+    /* v2.3.1733: the two stamina abilities, on the same bridge and for the
+       same reason as specialAttack above — a new client->server type is only
+       real if the WORKER hears it (TRAPS #18), and the only way to check
+       that is to press the button from the harness and then ask the worker.
+       abilityStatus rides along so a scenario can read what the BUTTON would
+       show (locked / on cooldown / unaffordable) instead of re-deriving it. */
+    castAbility: function (kind) { return castAbility(stateRef.current, kind); },
+    abilityStatus: function (kind) { return abilityStatus(stateRef.current, kind); },
+    /* v2.3.1734: Element Burst, on the same bridge for the same reason. */
     elementBurst: function () { elementBurst(stateRef.current); }
   };
   /* Restore persisted player on mount and after login */
@@ -5107,6 +5118,11 @@ export var BroTown = function BroTown(_ref0) {
       chatInputRef: chatInputRef,
       chatOpen: chatOpen,
       toggleKbHints: toggleKbHints,   /* v2.3.1715: H hides the hints strip */
+      /* v2.3.1733: the stamina abilities' desktop keys — E (while blocking)
+         and R.  Passed in like every other action so desktopControls stays
+         a pure key router. */
+      _desktopShieldBash: doShieldBash,
+      _desktopWhirlwind: doWhirlwind,
       /* v2.3.1717: so E can SAY why it refused instead of going silent. */
       pushNpcMsg: function pushNpcMsg(text) {
         var S2 = stateRef.current;
@@ -5618,6 +5634,18 @@ export var BroTown = function BroTown(_ref0) {
     setShieldStamina = _useState228[1]; /* max 3000ms */
   var doSpecialAttack = useCallback(function () {
     specialAttack(stateRef.current);
+  }, []);
+
+  /* v2.3.1733: the two stamina abilities (PR 5).  Thin wrappers over
+     castAbility, matching how every other action in this component is
+     shaped — the body lives in @/game/abilities.js.  Consumed by the
+     desktop E/R keys, the shield-up tap gesture on the combat joystick,
+     and the AbilityButtons overlay. */
+  var doShieldBash = useCallback(function () {
+    castAbility(stateRef.current, 'bash');
+  }, []);
+  var doWhirlwind = useCallback(function () {
+    castAbility(stateRef.current, 'whirl');
   }, []);
 
   /* Legacy fishing/campfire/woodcutting systems removed — replaced by §18 Life Skills */
@@ -6457,6 +6485,21 @@ export var BroTown = function BroTown(_ref0) {
       e.stopPropagation();
       var t = e.changedTouches[0];
       if (isGestureTouch(t.clientX, t.clientY)) return;
+      /* ═══ v2.3.1733: TAP ATTACK WHILE THE SHIELD IS UP = SHIELD BASH ═══
+         The plan's touch input for the ability, and it fits the existing
+         gesture vocabulary without taking anything away: while blocking,
+         this joystick's normal job (start auto-attacking) is already
+         suppressed — v2.3.97 decided you do not fight and block at once —
+         so the tap was doing nothing to override.  Placed BEFORE the
+         rTouchId claim so a second finger cannot steal the shield finger's
+         ownership of the joystick mid-block.
+         Refusals are silent-safe: castAbility floats its own popup for an
+         unaffordable or locked cast, and returns false so the touch simply
+         ends here either way. */
+      if (stateRef.current && stateRef.current._shieldUp) {
+        try { doShieldBash(); } catch (err) {}
+        return;
+      }
       /* v2.3.1307: aim/attack no longer collapses the sheet — same
          owner directive as the movement zone (see lS). */
       var nowMs = Date.now();
@@ -9578,5 +9621,5 @@ export var BroTown = function BroTown(_ref0) {
      and z-index 6 so they sit over the world canvas but under all HUD
      (z>=20).  bt-desktop-hide drops them on desktop so the mouse reaches the
      canvas. */
-  /*#__PURE__*/React.createElement(TouchControls, { stateRef: stateRef, lZoneRef: lZoneRef, rZoneRef: rZoneRef, joystickRef: joystickRef, lStickRef: lStickRef, knobRef: knobRef, lJoyPreviewRef: lJoyPreviewRef, rJoyRef: rJoyRef, rStickRef: rStickRef, rKnobRef: rKnobRef, rJoyPreviewRef: rJoyPreviewRef, shieldJoyRef: shieldJoyRef, autoAttack: autoAttack, isLandscape: isLandscape, shieldUp: shieldUp })), ((_window$matchMedia = (_window = window).matchMedia) === null || _window$matchMedia === void 0 || (_window$matchMedia = _window$matchMedia.call(_window, '(pointer:fine)')) === null || _window$matchMedia === void 0 ? void 0 : _window$matchMedia.matches) && /*#__PURE__*/React.createElement(KeyboardHintsPanel, { hidden: kbHintsOff, onToggle: toggleKbHints }), staleBuild && /*#__PURE__*/React.createElement(UpdateBanner, { info: staleBuild, onReload: function () { try { window.location.reload(); } catch (e) {} }, onDismiss: function () { setStaleBuild(null); } }), chatOpen && /*#__PURE__*/React.createElement(ChatPanel, { chatInput: chatInput, chatInputRef: chatInputRef, chatInputValRef: chatInputValRef, sendChat: sendChat, setChatInput: setChatInput, setChatOpen: setChatOpen }));
+  /*#__PURE__*/React.createElement(TouchControls, { stateRef: stateRef, lZoneRef: lZoneRef, rZoneRef: rZoneRef, joystickRef: joystickRef, lStickRef: lStickRef, knobRef: knobRef, lJoyPreviewRef: lJoyPreviewRef, rJoyRef: rJoyRef, rStickRef: rStickRef, rKnobRef: rKnobRef, rJoyPreviewRef: rJoyPreviewRef, shieldJoyRef: shieldJoyRef, autoAttack: autoAttack, isLandscape: isLandscape, shieldUp: shieldUp }), /* v2.3.1733: the two stamina-ability buttons ride with the touch controls — they self-hide until their milestone level unlocks them (AbilityButtons.jsx). */ /*#__PURE__*/React.createElement(AbilityButtons, { stateRef: stateRef, isLandscape: isLandscape })), ((_window$matchMedia = (_window = window).matchMedia) === null || _window$matchMedia === void 0 || (_window$matchMedia = _window$matchMedia.call(_window, '(pointer:fine)')) === null || _window$matchMedia === void 0 ? void 0 : _window$matchMedia.matches) && /*#__PURE__*/React.createElement(KeyboardHintsPanel, { hidden: kbHintsOff, onToggle: toggleKbHints }), staleBuild && /*#__PURE__*/React.createElement(UpdateBanner, { info: staleBuild, onReload: function () { try { window.location.reload(); } catch (e) {} }, onDismiss: function () { setStaleBuild(null); } }), chatOpen && /*#__PURE__*/React.createElement(ChatPanel, { chatInput: chatInput, chatInputRef: chatInputRef, chatInputValRef: chatInputValRef, sendChat: sendChat, setChatInput: setChatInput, setChatOpen: setChatOpen }));
 };
