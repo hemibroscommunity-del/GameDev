@@ -26,6 +26,52 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await H.openInspect(A, bId);
   const btns = await H.buttonTexts(A);
   rec.ok('the inspect card offers a party invite', btns.some((t) => /Invite to Party/.test(t)), btns);
+
+  /* ── v2.3.1743: the party action is at the TOP, and the body still scrolls ──
+     Owner: "party should be moved to the top part of the modal".  It used to
+     sit inside the scroll body under Equipment / Stats / Record — below the
+     fold on a phone.
+     Measured on the PHONE viewport because that is the platform where being
+     below the fold actually costs you the button.  The second assertion is
+     the one that earns its keep: the card is a CSS grid whose rows are
+     assigned by child ORDER, so inserting a row mis-assigns `minmax(0, 1fr)`
+     and the body silently stops being the scrolling part — which is exactly
+     what the first cut of this change did (the button drew itself on top of
+     the Equipment section).  A "is it near the top" check alone passes
+     happily through that bug. */
+  await A.page.setViewportSize({ width: 390, height: 844 });
+  await A.page.waitForTimeout(900);
+  const geom = await A.page.evaluate(() => {
+    const card = document.querySelector('.bt-inspect-card');
+    const body = document.querySelector('.ls-scrollbody');
+    const btn = [...document.querySelectorAll('.bt-inspect-card button')]
+      .find((b) => /Invite to Party/.test(b.textContent || ''));
+    const row = [...document.querySelectorAll('.bt-inspect-card .bt-inspect-tp')]
+      .map((b) => b.getBoundingClientRect()).pop();
+    if (!card || !body || !btn) return null;
+    const c = card.getBoundingClientRect(), bo = body.getBoundingClientRect(), bt = btn.getBoundingClientRect();
+    return {
+      aboveBody: bt.bottom <= bo.top + 2,
+      insideCard: bt.top >= c.top - 1 && bt.bottom <= c.bottom + 1,
+      bodyScrolls: body.scrollHeight > body.clientHeight + 4,
+      /* the pinned TP/Trade/Duel row must still be fully inside the card */
+      rowPinned: !!row && row.bottom <= c.bottom + 1,
+      /* and nothing may overlap the button (the grid bug drew it over the
+         Equipment block, where Playwright could see it but not click it) */
+      topmostAtCentre: (() => {
+        const el = document.elementFromPoint((bt.left + bt.right) / 2, (bt.top + bt.bottom) / 2);
+        return !!el && (el === btn || btn.contains(el));
+      })(),
+    };
+  });
+  rec.ok('the party action sits above the scrolling stats (no hunting for it)',
+    !!geom && geom.aboveBody && geom.insideCard, geom);
+  rec.ok('...and the body is still the part that scrolls (the new row did not steal 1fr)',
+    !!geom && geom.bodyScrolls && geom.rowPinned, geom);
+  rec.ok('...and nothing is drawn on top of it', !!geom && geom.topmostAtCentre, geom);
+  await A.page.setViewportSize({ width: 1000, height: 780 });
+  await A.page.waitForTimeout(600);
+
   await H.clickText(A, 'Invite to Party');
 
   /* ── B sees the invite card and joins ── */
@@ -44,6 +90,19 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('both rosters name the same two players',
     !!pa && !!pb && [...pa.ids].sort().join() === [aId, bId].sort().join()
       && [...pb.ids].sort().join() === [aId, bId].sort().join(), { pa, pb });
+
+  /* ── v2.3.1743: someone already on your roster is not invitable ──
+     Tapping a teammate opens this card (v2.3.1742), and offering "Invite to
+     Party" to someone already in it just earns an 'already partied' error
+     from the worker. */
+  await H.openInspect(A, bId);
+  await A.page.waitForTimeout(500);
+  const mateCard = await H.bodyText(A);
+  const mateBtns = await H.buttonTexts(A);
+  rec.ok('an existing party member reads "In your party", with no invite offered',
+    /In your party/.test(mateCard) && !mateBtns.some((t) => /Invite to Party/.test(t)), mateBtns);
+  await A.page.keyboard.press('Escape').catch(() => {});
+  await A.page.waitForTimeout(400);
 
   /* ── party chat: "/p <msg>" is party-only, and the server validates it ──
      Its own narrow cap (partyChat), separate from caps.party, so a worker
@@ -74,6 +133,55 @@ export async function run({ browser, wsPort, webPort, rec }) {
       await H.readState(B, (S) => (S.chatLog || []).slice(-3)));
   }
 
+  /* ── v2.3.1742: a teammate is not a target ──
+     Owner: "party mode looks like it needs fixed.  It auto targeted my
+     teammate and looked like my attacks were damaging them."  A tap within
+     25px of another player combat-locks them, and a player lock is exactly
+     what makes the client start sending PvP swings — which the server then
+     resolves as a CONE, hitting every player in the arc.  So the tap must
+     still INSPECT a teammate (useful, harmless) and must no longer AIM at
+     one.
+     The same tap AFTER the party breaks up is the control, and it is the
+     point of doing this through the real click rather than a state poke: it
+     proves the coordinates actually land on the player, so "no lock while
+     partied" reads as the rule working instead of the click missing. */
+  const tapPeer = async () => {
+    const pt = await A.page.evaluate((bid) => {
+      const S = window._gameState && window._gameState.current;
+      const o = S && S.others && S.others[bid];
+      const el = document.querySelector('canvas.brotown-canvas');
+      if (!o || !el || !S.camera) return null;
+      const r = el.getBoundingClientRect();
+      /* Same forward transform the tap handler uses (world -> CSS via the
+         renderer's published scale), then back into viewport coords. */
+      const sx = ((o.renderX != null ? o.renderX : o.x) - S.camera.x) * (S._worldScaleX || 1);
+      const sy = ((o.renderY != null ? o.renderY : o.y) - S.camera.y) * (S._worldScaleY || 1);
+      return { x: r.left + sx, y: r.top + sy, on: sx > 2 && sy > 2 && sx < r.width - 2 && sy < r.height - 2 };
+    }, bId);
+    if (!pt || !pt.on) return { hit: false, pt };
+    await A.page.mouse.click(pt.x, pt.y);
+    await A.page.waitForTimeout(700);
+    const lock = await H.readState(A, (S) => (S.lockedTarget
+      ? { type: S.lockedTarget.type, id: S.lockedTarget.id } : null));
+    const card = await A.page.locator('.bt-inspect-card').first()
+      .isVisible({ timeout: 2000 }).catch(() => false);
+    await A.page.keyboard.press('Escape').catch(() => {});
+    await A.page.waitForTimeout(300);
+    return { hit: true, lock, card };
+  };
+
+  await A.page.evaluate(() => {
+    const S = window._gameState && window._gameState.current;
+    if (S) S.lockedTarget = null;
+  });
+  const mate = await tapPeer();
+  rec.ok('the teammate is on screen and tappable (guard: a missed tap proves nothing)',
+    mate.hit && mate.card, mate);
+  if (mate.hit) {
+    rec.ok('tapping a party member does NOT combat-lock them',
+      !(mate.lock && mate.lock.type === 'player'), mate.lock);
+  }
+
   /* ── the HUD shows it ── */
   /* textContent, not innerText: innerText depends on layout and has come back
      empty here under load, which reads as "the HUD never rendered". */
@@ -94,6 +202,22 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const [pa2, pb2] = await Promise.all([party(A), party(B)]);
     rec.ok('leaving clears the party for the leaver', !pb2 || pb2.members < 2, pb2);
     rec.ok('leaving clears the party for the other member too', !pa2 || pa2.members < 2, pa2);
+
+    /* The control for the check above: the identical tap, on the identical
+       player, once they are no longer a teammate.  If this one does not
+       lock either, the earlier pass was a missed click and means nothing. */
+    await A.page.evaluate(() => {
+      const S = window._gameState && window._gameState.current;
+      if (S) S.lockedTarget = null;
+    });
+    const ex = await tapPeer();
+    if (ex.hit) {
+      rec.ok('...and the same tap DOES lock them once they leave the party',
+        !!(ex.lock && ex.lock.type === 'player' && ex.lock.id === bId), ex.lock);
+    } else {
+      rec.skip('...and the same tap DOES lock them once they leave the party',
+        'the ex-member was no longer on screen');
+    }
   }
 
   await A.ctx.close(); await B.ctx.close();

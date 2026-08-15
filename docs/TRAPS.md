@@ -281,3 +281,44 @@ and consumed nothing: the worker's blob still read `{ wood_oak: 2 }`
 after the fire was lit. The unit suite could not see it, because the
 missing piece was between the two things it mocks. Caught by
 `tools/qa/mp/mp-authority.mjs`, which asks the worker.
+
+## 19. Reading "PvP is opt-in" as "PvP hits who you aimed at"
+
+**Tempting:** the PvP path looks target-shaped from the client. You lock
+one player, the swing carries an angle to that player, and the whole gate
+reads as a per-target decision — so a friendly-fire report sounds like a
+targeting bug, and the fix sounds like "stop targeting the friend".
+**Wrong on both halves:**
+
+1. **Melee PvP is a CONE, not a target.** `_resolvePvPAttack`
+   (`server/src/combat.js`) walks EVERY player in the zone and hits each
+   one inside the arc. The `payload.target` single-target hint (v2.3.1306)
+   is sent by the PROJECTILE path only — melee has never carried it. So
+   one deliberate lock on an enemy turns every subsequent swing into an
+   area attack against everybody standing in front of you, teammates
+   included.
+2. **`lawless` is not a rare, marked-off mode.** Every wilderness zone in
+   `server/src/data.js` carries `lawless: true` — meadow included. The
+   "open PvP zone" is the whole game outside town, so any two players
+   grinding together were free-fire on each other by default.
+
+The consequence is that anything you want to be safe from PvP must be
+refused in `_pvpAllowed` itself, and its ORDER is load-bearing: consent
+(duel / arena / answered threat) is checked FIRST, so a deliberate duel
+between two teammates still works, and only the lawless free-fire branch
+below it is shielded.
+
+Client-side gates are a picture, never a rule. `monsterCombat.js` decides
+what is worth SENDING and what to paint; the worker decides what lands.
+Fix both or you fix neither — gate only the client and an old build still
+kills your teammate; gate only the server and the game still shows blood,
+plays the hit sound and shakes the screen over a friend taking no damage.
+
+**Receipt:** v2.3.1742 — owner: "party mode looks like it needs fixed. It
+auto targeted my teammate and looked like my attacks were damaging them."
+They were. `_pvpAllowed` had no party test anywhere in it, and the
+optimistic hit visual had no gate at all — it painted a HIT popup, blood
+and screen shake over every nearby player on every swing, in every zone,
+duel or not. Pinned by `server/test/party.test.mjs` §11 and
+`tools/qa/mp/mp-party.mjs` (whose control taps the SAME player after the
+party breaks up, so a lock-free pass cannot be a missed click).

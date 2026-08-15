@@ -7608,6 +7608,35 @@ export var BroTown = function BroTown(_ref0) {
         var osx = (o.renderX - cx) * SCALE_X,
           osy = (o.renderY - cy) * SCALE_Y;
         if (Math.sqrt(Math.pow(cssX - osx, 2) + Math.pow(cssY - osy, 2)) < 25) {
+          /* ═══ v2.3.1742: NEVER COMBAT-LOCK A PARTY MEMBER ═══
+             Owner: "it auto targeted my teammate".  A tap within 25px of
+             another player combat-locks them, and in a lawless zone (which
+             is every wilderness zone) that lock is what turns your swings
+             into real PvP damage.  Fighting shoulder to shoulder with a
+             teammate puts them under your thumb constantly, so this reads as
+             the game targeting them by itself.
+             The tap still INSPECTS them — that is useful and harmless — it
+             just no longer aims a weapon.  Belt and braces with the server,
+             which since v2.3.1742 refuses party-member damage outright:
+             this stops it being aimed, that stops it landing. */
+          var _isPartyMate = false;
+          try {
+            var _pm = S._party && S._party.members;
+            if (_pm && _pm.length) {
+              for (var _pmI = 0; _pmI < _pm.length; _pmI++) {
+                if (_pm[_pmI] && String(_pm[_pmI].id) === String(id)) { _isPartyMate = true; break; }
+              }
+            }
+          } catch (e) { _isPartyMate = false; }
+          if (_isPartyMate) {
+            if (S.lockedTarget && S.lockedTarget.id === id) S.lockedTarget = null;
+            setInspectPlayer({
+              id: id, name: o.name, color: o.color, avatar: o.avatar, bro: o.bro,
+              x: o.x, y: o.y, rpgLv: o.rpgLv, rpgData: o.rpgData, pet: o.pet,
+              rep: o.rep, clanTag: o.clanTag, clanColor1: o.clanColor1
+            });
+            return;
+          }
           if (S.lockedTarget && S.lockedTarget.id === id) {
             S.lockedTarget = null;
           } else {

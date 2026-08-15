@@ -2427,11 +2427,43 @@ export function updateMonsterCombat(S, deps) {
                 });
               }
             }
-            /* Optimistic local visual — show slash effect on nearby players */
+            /* ═══ v2.3.1742: ONLY PAINT A HIT WE ACTUALLY THREW ═══
+               Owner: "it looked like my attacks were damaging them."
+
+               This block had NO gate of any kind.  Every swing, in every
+               zone, sprayed blood particles, played the sword-hit sound,
+               shook the screen and pushed a "HIT" popup over EVERY other
+               player inside the arc — teammates included, in town, with no
+               duel and no lock.  The damage broadcast a few lines above is
+               correctly gated (a duel, or a deliberate tap-lock on that
+               player); the picture of the damage was not.  So a co-op pair
+               standing shoulder to shoulder saw each other getting hit on
+               every swing while nothing was being sent.
+
+               Gated on the SAME condition as the broadcast, and additionally
+               on the target actually being the one attacked: free-fire aims
+               at a locked player, so painting a hit on a bystander who
+               merely stood in the arc was never right either.
+
+               The server is the authority on whether the damage lands
+               (_pvpAllowed, which since v2.3.1742 refuses party members);
+               this only decides what the attacker is shown. */
+            /* Recomputed from S rather than reusing the broadcast block's
+               `pvpLocked` / `inSafeZone`: those are `var`s declared inside an
+               `if (S.channel)` above, so they are merely HOISTED here and
+               read undefined whenever that block did not run.  Mirroring the
+               same expression locally keeps the picture and the packet on one
+               rule without depending on which branch executed. */
+            var _pvpLockRef = S.lockedTarget && S.lockedTarget.type === 'player' && S.lockedTarget.ref;
+            var _pvpSafe = (ZONES[S.currentZone] || {}).safe;
+            var _pvpPaintOk = !!(S._inDuel || (!_pvpSafe && _pvpLockRef));
+            var _pvpPaintId = _pvpLockRef ? String(S.lockedTarget.id) : null;
             Object.entries(S.others).forEach(function (_ref17) {
               var _ref18 = _slicedToArray(_ref17, 2),
                 pid = _ref18[0],
                 o = _ref18[1];
+              if (!_pvpPaintOk) return;
+              if (_pvpPaintId && String(pid) !== _pvpPaintId) return;
               if (o._hitThisSwing) return;
               var oDist = Math.sqrt(Math.pow(o.x - P.x, 2) + Math.pow(o.y - P.y, 2));
               if (oDist > SWING_RANGE) return;

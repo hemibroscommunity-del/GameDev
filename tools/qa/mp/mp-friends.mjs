@@ -72,6 +72,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const aHasB = await H.waitUi(A, () => /\bBro\b/.test(document.body.textContent || ''),
     { label: 'A lists B', timeout: 20000 }).then(() => true).catch(() => false);
   rec.ok('the requester now lists the accepter as a friend', aHasB, await H.buttonTexts(A));
+  /* v2.3.1744: the friend row's TP button is removed with the inspect
+     card's (owner: "remove it").  Checked here because this list is the
+     other place it lived, and it was the worse copy: the row prints the
+     friend's ZONE while the button wrote their coordinates into yours. */
+  rec.ok('a friend row no longer offers "TP"',
+    !(await H.buttonTexts(A)).some((t) => /^TP$/.test(t)), await H.buttonTexts(A));
 
   /* ── DM ──
      Message lives behind the row's "•••" overflow menu, not on the row

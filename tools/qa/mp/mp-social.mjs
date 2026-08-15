@@ -22,9 +22,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await H.openInspect(A, bId);
   const btns = await H.buttonTexts(A);
   for (const [label, pat] of [['Add Friend', /Add Friend/], ['Mute', /Mute/], ['Block', /Block/],
-    ['TP', /^TP$/], ['Trade', /^Trade$/], ['Duel', /^Duel$/], ['Threat', /^Threat$/]]) {
+    ['Trade', /^Trade$/], ['Duel', /^Duel$/], ['Threat', /^Threat$/]]) {
     rec.ok(`the inspect card offers "${label}"`, btns.some((t) => pat.test(t)), btns);
   }
+  /* v2.3.1744: TP is removed (owner: "remove it").  Asserted absent rather
+     than just dropped from the list above — a silently-restored free
+     teleport is exactly the kind of thing that comes back in a refactor. */
+  rec.ok('the inspect card no longer offers "TP"', !btns.some((t) => /^TP$/.test(t)), btns);
   const shownName = await H.seesText(A, 'Peer');
   rec.ok("the card names the player being inspected", shownName);
 

@@ -138,6 +138,20 @@ export function InspectPlayerPanel(props) {
     measureFade();
   }, [inspectPlayer, genPortrait, measureFade]);
   var _REPUTATION$inspectPl, _REPUTATION$inspectPl2, _S$rpg26, _ZONES$stateRef$curre, _inspectPlayer$bro$di, _inspectPlayer$rpgDat, _stateRef$current39;
+  /* v2.3.1743: is this person already on my roster?  The party action at
+     the top of the card reads as an invite otherwise, and inviting someone
+     you are already partied with just earns an 'already partied' error from
+     the worker — which is a confusing thing to hand the owner now that
+     tapping a teammate opens this card (v2.3.1742). */
+  var _partyMate = false;
+  try {
+    var _pmL = stateRef.current && stateRef.current._party && stateRef.current._party.members;
+    if (_pmL && _pmL.length) {
+      for (var _pmJ = 0; _pmJ < _pmL.length; _pmJ++) {
+        if (_pmL[_pmJ] && String(_pmL[_pmJ].id) === String(inspectPlayer.id)) { _partyMate = true; break; }
+      }
+    }
+  } catch (e) { _partyMate = false; }
   return React.createElement("div", {
     className: "bt-inspect",
     style: {
@@ -169,7 +183,15 @@ export function InspectPlayerPanel(props) {
       maxHeight: 'min(calc(72dvh - 24px), 100%)',
       overflowY: 'hidden',
       display: 'grid',
-      gridTemplateRows: 'auto minmax(0, 1fr) auto',
+      /* v2.3.1743: FOUR rows now — header / party action / scrollable body /
+         pinned action row.  The party row is a wrapper that ALWAYS renders
+         (it collapses to 0 height when there is nothing to show), because
+         this template assigns rows by child ORDER: a conditionally-absent
+         child would hand `minmax(0, 1fr)` to the wrong element and the body
+         would stop being the part that scrolls.  That is exactly what the
+         first cut of this change did — the invite button took the flexible
+         row and drew itself on top of the Equipment section. */
+      gridTemplateRows: 'auto auto minmax(0, 1fr) auto',
       background: '#1E2E34', /* v2.3.1235: sheet surface */
       border: '1px solid rgba(229,237,233,0.20)',
       borderRadius: 14,
@@ -283,7 +305,55 @@ export function InspectPlayerPanel(props) {
     style: {
       fontSize: 14
     }
-  }, inspectPlayer.pet)))), /* v2.3.1235: Checkpoint B — row 2: the ONE
+  }, inspectPlayer.pet)))),
+  /* ═══ v2.3.1743: THE PARTY ACTION LIVES AT THE TOP ═══
+     Owner: "party should be moved to the top part of the modal".  It used
+     to sit INSIDE the scroll body, below Equipment, Tier 1 Stats and the
+     whole Record block — on a phone that is below the fold, so the single
+     most useful thing you can do with another player was the one thing you
+     had to go looking for, while TP (which the owner does not even use)
+     was pinned in plain sight.
+     Pinned OUTSIDE the scroll body for the same reason the TP/Trade/Duel
+     row is: a top-of-card action that scrolls away is not a top-of-card
+     action.  Caps-gated exactly as before (v2.3.1185: an old worker would
+     rebroadcast party_invite as an unknown type instead of validating it),
+     so a worker without parties still shows nothing here. */
+  /*#__PURE__*/React.createElement("div", {
+    style: { minWidth: 0 }
+  }, stateRef.current && stateRef.current._serverCaps && stateRef.current._serverCaps.party && (_partyMate
+    ? /*#__PURE__*/React.createElement("div", {
+      style: Object.assign({}, LS_SECONDARY, {
+        width: '100%',
+        marginTop: 8,
+        marginBottom: 2,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        color: '#8D9B98',
+        opacity: 0.85
+      })
+    }, "🎟️ In your party")
+    : /*#__PURE__*/React.createElement("button", {
+      style: Object.assign({}, LS_SECONDARY, {
+        width: '100%',
+        marginTop: 8,
+        marginBottom: 2,
+        color: '#D8A94D'
+      }),
+      onClick: function onClick() {
+        var S = stateRef.current;
+        if (S.channel) S.channel.send({
+          type: 'broadcast',
+          event: 'party_invite',
+          payload: {
+            target: inspectPlayer.id
+          }
+        });
+        pushDmgPopup(S, S.player.x, S.player.y - 30, 'Party invite sent', '#fbbf24');
+        setInspectPlayer(null);
+      }
+    }, "🎟️ Invite to Party"))),
+  /* v2.3.1235: Checkpoint B — row 2: the ONE
     scrollable body (sections + social rows).  Row 3 (the TP/Trade/Duel/
     Threat action row) is pinned OUTSIDE this wrapper so it can never be
     scrolled away. */
@@ -475,29 +545,11 @@ export function InspectPlayerPanel(props) {
      TP/Trade/Duel/Threat action row moved OUT of the scroll body to the
      pinned grid row 3 (end of the card).  Everything below stays in the
      scrollable body. */
-  /* v2.3.1185: party invite -- caps-gated (an old worker would
-     rebroadcast party_invite as an unknown type instead of validating
-     it).  Server answers with party_invited to the target and
-     party_state echoes once they accept (see PartyHUD.jsx). */
-  stateRef.current && stateRef.current._serverCaps && stateRef.current._serverCaps.party && /*#__PURE__*/React.createElement("button", {
-    style: Object.assign({}, LS_SECONDARY, {
-      width: '100%',
-      marginTop: 6,
-      color: '#D8A94D'
-    }),
-    onClick: function onClick() {
-      var S = stateRef.current;
-      if (S.channel) S.channel.send({
-        type: 'broadcast',
-        event: 'party_invite',
-        payload: {
-          target: inspectPlayer.id
-        }
-      });
-      pushDmgPopup(S, S.player.x, S.player.y - 30, 'Party invite sent', '#fbbf24');
-      setInspectPlayer(null);
-    }
-  }, "🎟️ Invite to Party"), clanData && !((_inspectPlayer$rpgDat = inspectPlayer.rpgData) !== null && _inspectPlayer$rpgDat !== void 0 && _inspectPlayer$rpgDat.clanTag) && /*#__PURE__*/React.createElement("button", {
+  /* v2.3.1743: the party invite that used to sit here moved to the pinned
+     top of the card (owner: "party should be moved to the top part of the
+     modal").  The CLAN invite stays in the scroll body — it is the rarer
+     action and only appears when you lead a clan the target isn't in. */
+  clanData && !((_inspectPlayer$rpgDat = inspectPlayer.rpgData) !== null && _inspectPlayer$rpgDat !== void 0 && _inspectPlayer$rpgDat.clanTag) && /*#__PURE__*/React.createElement("button", {
     style: Object.assign({}, LS_SECONDARY, {
       width: '100%',
       marginTop: 6,
@@ -671,9 +723,16 @@ export function InspectPlayerPanel(props) {
       transition: 'opacity 160ms ease',
       pointerEvents: 'none'
     }
-  })), /* v2.3.1235: Checkpoint B — row 3 (auto, PINNED): the TP/Trade/
-    Duel/Threat action row sits outside the scroll body so it is always
-    visible.  All four handlers byte-identical (moved, not edited). */
+  })), /* v2.3.1235: Checkpoint B — row 3 (auto, PINNED): the Trade/Duel/
+    Threat action row sits outside the scroll body so it is always
+    visible.
+    v2.3.1744: TP is GONE (owner: "remove it", after asking what it did).
+    It wrote your own x/y to the inspected player's + 40 and closed the
+    card — no cost, no cooldown, no gate, and no server call at all.  The
+    worker's anti-teleport speed cap (movement.js, 500 px/s + 80 px burst)
+    then refused any jump long enough to be worth taking, so it worked over
+    a few tiles and rubber-banded over a screen.  A convenience button whose
+    behaviour depends on distance is worse than no button. */
   /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
@@ -681,30 +740,10 @@ export function InspectPlayerPanel(props) {
       marginTop: 10
     }
   }, /* v2.3.1235: action row correction — Trade is the surface's single
-    gold primary (flex 1.4); TP/Duel are secondaries; Threat is a danger
+    gold primary (flex 1.4); Duel is a secondary; Threat is a danger
     OUTLINE, not a filled red block. Labels drop emoji per the design
-    correction; all four handlers are byte-identical. */
+    correction; the handlers are byte-identical. */
   /*#__PURE__*/React.createElement("button", {
-    className: "bt-inspect-tp",
-    style: {
-      flex: 1,
-      marginTop: 0,
-      minHeight: 44,
-      padding: '0 4px',
-      borderRadius: 10,
-      fontSize: 12,
-      fontWeight: 700,
-      border: '1px solid rgba(229,237,233,0.20)',
-      background: '#293B41',
-      color: '#F4F0E7'
-    },
-    onClick: function onClick() {
-      var S = stateRef.current;
-      S.player.x = inspectPlayer.x + 40;
-      S.player.y = inspectPlayer.y + 40;
-      setInspectPlayer(null);
-    }
-  }, "TP"), /*#__PURE__*/React.createElement("button", {
     className: "bt-inspect-tp",
     style: {
       flex: 1.4,

@@ -182,28 +182,15 @@ export function SocialPanel(props) {
         fontSize: 11,
         color: '#8D9B98'
       }
-    }, online ? 'Online · ' + online.zone : 'Offline')), online && /*#__PURE__*/React.createElement("button", {
-      style: {
-        /* v2.3.1235: batch-2 rollout — 44px secondary button (raised fill
-           + strong hairline, 10px button radius); 32px pills failed the
-           ≥44×44 hitbox rule */
-        minHeight: 44,
-        padding: '4px 12px',
-        borderRadius: 10,
-        fontSize: 11,
-        fontWeight: 700,
-        cursor: 'pointer',
-        border: '1px solid rgba(229,237,233,.20)',
-        background: '#293B41',
-        color: '#F4F0E7',
-        flexShrink: 0
-      },
-      onClick: function onClick() {
-        stateRef.current.player.x = online.x + 40;
-        stateRef.current.player.y = online.y + 40;
-        setShowSocialPanel(false);
-      }
-    }, "TP"), /*#__PURE__*/React.createElement("button", {
+    }, online ? 'Online · ' + online.zone : 'Offline')),
+    /* v2.3.1744: the friends-list TP is gone with the inspect card's one
+       (owner: "remove it").  This copy was the worse of the two: the row
+       right above it prints the friend's ZONE, and the button wrote their
+       coordinates into whatever zone YOU were standing in — so the one
+       case it looked most useful for (a friend somewhere else) was the one
+       case it could not do.  The rest of the time the worker's
+       anti-teleport speed cap refused the jump anyway. */
+    /*#__PURE__*/React.createElement("button", {
       style: {
         /* v2.3.1235: batch-2 rollout — remove-friend is a routine
            destructive action: danger OUTLINE (border+text #D8635D on
