@@ -25,12 +25,30 @@
 # are kept behind workflow_dispatch (Actions tab -> Client CI -> Run
 # workflow) for on-demand integration checks; re-adding it to the PR
 # path is an owner call, not a "fix".
+#
+# v2.3.1729 (owner call, 2026-08-15): ONE scenario comes back to the PR
+# path — `playable`, below.  The condition in the 2026-07-16 directive has
+# changed: there ARE live players now, and the cost of that gate being
+# absent was measured rather than theorised.  v2.3.1715 shipped a desktop
+# regression that made every modal in the game unreachable — the Mayor Bro
+# line could not be started, advanced or turned in — and it survived SIX
+# versions in production.  tools/qa/mp/mp-questline.mjs catches it on the
+# first action, and had been failing since the day it broke with nobody
+# listening, because it ran nowhere but a developer's sandbox.
+#
+# Deliberately ONE scenario, not the suite: this is the "can a new player
+# play the game" test, it is the cheapest possible answer to the question
+# that actually bit us, and a five-minute PR gate that people respect beats
+# a twenty-minute one they learn to skip.  The rest stay on
+# workflow_dispatch.
 name: Client CI
 on:
   workflow_dispatch:
   pull_request:
     paths:
       - 'src/**'
+      - 'server/**'
+      - 'tools/qa/mp/**'
       - 'package.json'
       - 'eslint.config.js'
       - 'vite.config.js'
@@ -45,6 +63,45 @@ jobs:
       - run: npm ci
       - run: npm run lint
       - run: npm run build
+
+  # ── v2.3.1729: the playable-path gate (see the header note) ──
+  # Runs the full Mayor Bro questline through a REAL browser against a REAL
+  # worker: accept, travel, kill, return, hand in, equip the payouts, walk
+  # home.  64 assertions, ~2 min of scenario on top of install+build.
+  #
+  # BLOCKING, with the repo's established retry-once shape.  Report-only was
+  # considered and rejected: this regression already spent six versions
+  # going unread, and a check nobody has to act on is the state we are
+  # leaving, not a milder version of the fix.  If it proves flaky, loosen
+  # the specific assertion — do not quietly add continue-on-error.
+  #
+  # run.mjs boots its own worker (wrangler --local) and static dist server,
+  # so there is no service plumbing here; it only needs both installs, a
+  # build, and a browser.  The harness picks up Playwright's managed
+  # Chromium when the sandbox's pinned one is absent (v2.3.1729).
+  playable:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      WRANGLER_SEND_METRICS: "false"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            server/package-lock.json
+      - run: npm ci
+      - run: npm ci
+        working-directory: server
+      - run: npm run build
+      - run: npx playwright install --with-deps chromium
+      - name: The questline is completable (one retry; second gets a warmed DO)
+        run: |
+          node tools/qa/mp/run.mjs questline \
+            || { echo "first attempt failed, retrying"; node tools/qa/mp/run.mjs questline; }
 
   smoke:
     if: github.event_name == 'workflow_dispatch'
