@@ -425,6 +425,71 @@ export function processGameEvent(type, payload, S, deps) {
               BT_AUDIO.beep(150, 0.1, 0.15, 'sawtooth');
               break;
             }
+          case 'monster_ability':
+            {
+              /* ═══ v2.3.1730: STANDARD-ZONE TELEGRAPHS ═══
+                 Owner: "Monsters are also 'dumb' ... There's no strategy.
+                 No timed blocking, no dodging."  Brutes and stalkers now
+                 wind up a heavy attack (server/src/telegraph.js) and the
+                 wind-up is the whole point — this renders the tell.
+
+                 DISPLAY-ONLY, exactly like dungeon_boss_ability below: the
+                 damage arrives on the authoritative monster_attack, so
+                 nothing here may touch hp/alive/dmg.  An old client that
+                 ignores this type still takes the correct damage and simply
+                 does not see the warning, which is what makes the event
+                 deploy-order safe with no caps flag (monster_projectile set
+                 that precedent).
+
+                 Separate case rather than a relaxed gate on the boss one:
+                 that handler drops anything outside S._serverDungeon, and
+                 widening it would let a dungeon event render in the
+                 overworld.  The whitelist discipline is the same — an
+                 unknown ability string renders nothing at all. */
+              if (!payload || !S.player) break;
+              if (payload.zone && S.currentZone && payload.zone !== S.currentZone) break;
+              var _maLabels = { slam: 'SLAM!', pounce: 'POUNCE!' };
+              var _maColors = { slam: '#f5c542', pounce: '#2C3E50' };
+              var _maLabel = _maLabels[payload.ability];
+              if (!_maLabel) break; /* never render an arbitrary wire string */
+              var _maX = typeof payload.x === 'number' ? payload.x : S.player.x;
+              var _maY = typeof payload.y === 'number' ? payload.y : S.player.y;
+              if (payload.phase === 'telegraph') {
+                pushDmgPopup(S, _maX, _maY - 40, _maLabel, '#fbbf24');
+                /* The ground marker is the readable half of the tell: it
+                   shows WHERE, at the radius the server will actually test,
+                   so stepping out is an informed choice rather than a
+                   guess.  Drawn for the full wind-up. */
+                if (typeof payload.ax === 'number' && typeof payload.ay === 'number') {
+                  if (!S._telegraphZones) S._telegraphZones = [];
+                  S._telegraphZones.push({
+                    x: payload.ax, y: payload.ay, r: payload.radius || 55,
+                    ts: Date.now(), duration: payload.ms || 800,
+                    color: _maColors[payload.ability] || '#fbbf24',
+                  });
+                }
+                BT_AUDIO.beep(400, 0.08, 0.1, 'sine');
+                break;
+              }
+              /* execute — a landed hit shakes, a whiff deliberately does
+                 not, so "I got out of the way" reads as a win on screen. */
+              if (payload.hit) {
+                if (!S._impactRings) S._impactRings = [];
+                S._impactRings.push({
+                  x: _maX, y: _maY, ts: Date.now(),
+                  color: _maColors[payload.ability] || '#f5c542',
+                  maxR: payload.radius || 55, duration: 400,
+                });
+                S.screenShake = payload.ability === 'slam' ? 8 : 5;
+                BT_AUDIO.beep(payload.ability === 'slam' ? 80 : 150, 0.18, 0.22,
+                  payload.ability === 'slam' ? 'sawtooth' : 'square');
+              } else {
+                pushDmgPopup(S, _maX, _maY - 30, 'MISS', '#8FD6A0');
+                BT_AUDIO.beep(220, 0.06, 0.08, 'sine');
+              }
+            }
+            break;
+
           case 'dungeon_boss_ability':
             {
               /* v2.3.1194: server-scripted boss ability notice
