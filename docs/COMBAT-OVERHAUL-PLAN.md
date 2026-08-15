@@ -83,7 +83,17 @@ fought along the way). Priced by `tools/verify-prog3-retune.mjs`.
 Also split damage from flat XP in `_prog3AwardXp` — quest rewards were being
 multiplied by `XP_PER_DMG`, invisible while that was 1.0.
 
-## PR 3 — Monster telegraphs (next)
+## PR 3 — Monster telegraphs ✅ v2.3.1730
+
+SHIPPED as `server/src/telegraph.js` — brute Overhead Slam (900ms) and
+stalker Pounce (700ms), with a ground marker at the exact radius the server
+tests, whiff-on-move, directional block, and the MAX_HIT_PCT no-oneshot
+clamp.  Nine server assertions cover the four fairness properties.
+DEFERRED from this slice: snowman's Snow Volley (wants the existing
+ranged/snowball path, not the melee-shaped resolve) and a QA scenario for
+the client visuals.
+
+Original spec, kept for the deferred half:
 
 Standard-zone monsters wind up big attacks you dodge or block on reaction.
 Zero new input surface, which is why it comes before the new abilities.
@@ -104,7 +114,22 @@ Execute-phase re-checks position so dodging works with no new i-frame
 plumbing. Wire: display-only `monster_ability {mid, kind, phase, x, y}` →
 PRIVILEGED_EVENTS; old clients just see the (clamped) hit, no caps flag.
 
-## PR 4 — Parry + block stamina
+## Unplanned, shipped mid-sequence
+
+- **v2.3.1728 — every modal was unreachable on desktop.**  A regression from
+  v2.3.1715 (this session's own desktop-shell work), live in production for
+  six versions: `.brotown-wrap` was `width:100vw` inside a 380px
+  `contain:paint` shell, so every modal centred outside the visible window
+  and was clipped; the keyboard-hints strip separately intercepted clicks on
+  modal footers.  Found while starting PR 3, because `mp-questline` had been
+  failing the whole time and ran nowhere.
+- **v2.3.1729 — the playable-path test runs in CI.**  Owner call.  The mp
+  harness could not have run in CI at all: `REPO` was hardcoded to
+  `/home/user/GameDev` and Chromium to `/opt/pw-browsers`.  Both fixed; the
+  `playable` job (questline, ~3.5 min) is now a blocking PR gate, verified
+  green on a real runner.
+
+## PR 4 — Parry + block stamina (NEXT)
 
 - **Parry**: server timestamps `ps.blockStartT` when blocking flips true; a hit
   landing ≤250 ms after the raise is negated, staggers the attacker 1.5 s, and
