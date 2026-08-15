@@ -236,12 +236,36 @@ export function castAbility(S, kind) {
   }
 
   if (kind === 'bash') {
-    BT_AUDIO.beep(180, 0.16, 0.22, 'square');
-    setTimeout(function () { return BT_AUDIO.beep(120, 0.12, 0.18, 'sawtooth'); }, 70);
+    /* v2.3.1737: the owner's shield-impact sample replaces the two-tone
+       synth stand-in v2.3.1733 shipped.  Fired here, on the CAST, not on the
+       hit: the cast is the button press, so the sound is immediate feedback
+       that the ability went off — and a bash that whiffs (the worker rolls
+       the targets) should still sound like you swung the shield, exactly as
+       the swing SFX plays on a missed swing.
+       Falls back to the old beeps if the sample has not decoded yet — the
+       manifest loads on demand, so the very first bash of a session can land
+       before it is ready, and silence would read as a broken button. */
+    /* play() returns the {src,gain} handle on success and NULL when the
+       sample is not decoded yet (it kicks the load and gives up on this
+       call), so the test is truthiness — an early `!== false` here would
+       have counted that null as a success and left the first bash silent. */
+    var _bashSfx = null;
+    try { _bashSfx = BT_AUDIO.play('shield-bash', { vol: 0.9 }); } catch (e) { _bashSfx = null; }
+    if (!_bashSfx) {
+      BT_AUDIO.beep(180, 0.16, 0.22, 'square');
+      setTimeout(function () { return BT_AUDIO.beep(120, 0.12, 0.18, 'sawtooth'); }, 70);
+    }
   } else {
-    BT_AUDIO.beep(320, 0.12, 0.18, 'sawtooth');
-    setTimeout(function () { return BT_AUDIO.beep(420, 0.12, 0.16, 'sawtooth'); }, 80);
-    setTimeout(function () { return BT_AUDIO.beep(520, 0.14, 0.14, 'sawtooth'); }, 160);
+    /* v2.3.1738: the owner's wind-impact sample, same shape as bash above —
+       fired on the cast, with the synth stand-in kept as the fallback for the
+       window before the sample decodes. */
+    var _whirlSfx = null;
+    try { _whirlSfx = BT_AUDIO.play('whirlwind', { vol: 0.9 }); } catch (e) { _whirlSfx = null; }
+    if (!_whirlSfx) {
+      BT_AUDIO.beep(320, 0.12, 0.18, 'sawtooth');
+      setTimeout(function () { return BT_AUDIO.beep(420, 0.12, 0.16, 'sawtooth'); }, 80);
+      setTimeout(function () { return BT_AUDIO.beep(520, 0.14, 0.14, 'sawtooth'); }, 160);
+    }
   }
   return true;
 }

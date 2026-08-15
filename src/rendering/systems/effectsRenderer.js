@@ -3993,9 +3993,18 @@ export class EffectsRenderer {
     }
     const fi = Math.min(7, Math.floor((age / WHIRL_FX_MS) * 8));
     spr.texture = WHIRL_VORTEX.frames[fi];
-    /* Sized to the ability's OWN radius so the art never promises a reach
-       the worker does not roll — the element nova's rule. */
-    spr.scale.set(((fx.radius || 60) * 2) / 256);
+    /* v2.3.1738: CAPPED at 130px radius.  Everywhere else in this file the
+       art is drawn at exactly the radius the worker tested (the element
+       nova's "never draw a lie about the reach" rule), and that held while
+       whirl was 60px.  At the new 240 it would draw a 480px sprite — wider
+       than a 390px phone screen — so the funnel would stop reading as a
+       funnel and just wash the view out.
+       The reach is not lost: the two impact rings pushed by pushAbilityRings
+       still sweep out to the true radius, so the honest indicator is the one
+       shaped like a radius, and the vortex is the eye of the storm at the
+       caster.  Below 130 nothing changes at all. */
+    const _vortexR = Math.min(fx.radius || 60, 130);
+    spr.scale.set((_vortexR * 2) / 256);
     spr.x = fx.x; spr.y = fx.y;
     /* 0.72, not the 0.95 the first cut used: this draws on the overlay, i.e.
        OVER the caster, and at near-full opacity it hid the character

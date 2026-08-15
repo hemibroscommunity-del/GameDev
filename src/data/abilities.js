@@ -32,12 +32,12 @@ export const STAM_ABILITIES = {
     staminaPct: 0.40,
     cooldownMs: 6000,
     dmgMult: 1.00,
-    radius: 60,
-    stunMs: 0,
+    radius: 240,    /* v2.3.1738 (owner): the vacuum — was 60 */
+    stunMs: 1000,  /* v2.3.1738: the 1s attack lockout while it gathers */
     knockback: 0,   /* v2.3.1735: whirl gathers instead of shoving */
     pullTo: 34,     /* ...onto a ring this far from the caster */
     needs: 'weapon',
-    maxTargets: 8,
+    maxTargets: 16,
   },
 };
 

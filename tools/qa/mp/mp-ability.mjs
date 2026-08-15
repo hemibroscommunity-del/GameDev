@@ -262,5 +262,119 @@ export async function run({ browser, wsPort, webPort, rec }) {
       Math.abs(interp.during - interp.after) < 1, interp);
   }
 
+  /* ═══ v2.3.1737: THE SHIELD BASH SOUND ACTUALLY EXISTS AND PLAYS ═══
+     Owner supplied a shield-impact sample for the ability.  Two things can
+     go wrong and neither is visible in play: the manifest entry can 404
+     (BT_AUDIO logs nothing a player would see), or the container can refuse
+     to decode — which is exactly how 19 sfx shipped SILENT on every
+     Chromium browser for months (v2.3.1610, the m4a trap).  audio-formats.mjs
+     pins decodability for the whole manifest; this pins that THIS key is in
+     it, resolves, and returns a real playback handle. */
+  const sfx = await P.page.evaluate(async () => {
+    const S = window._gameState && window._gameState.current;
+    const A = S && S.BT_AUDIO ? S.BT_AUDIO : (window.BT_AUDIO || null);
+    if (!A) return { __no: true };
+    const url = A.SFX_MANIFEST && A.SFX_MANIFEST['shield-bash'];
+    const whirlUrl = A.SFX_MANIFEST && A.SFX_MANIFEST['whirlwind'];
+    const ambUrl = A.ZONE_AMBIENT && A.ZONE_AMBIENT.sky;
+    if (!url) return { inManifest: false };
+    try { A.unlock && A.unlock(); } catch (e) {}
+    try { A.loadSfxManifest && A.loadSfxManifest(); } catch (e) {}
+    /* the fetch+decode is async; give it a moment */
+    for (let i = 0; i < 40; i++) {
+      if (A._samples && A._samples['shield-bash']) break;
+      await new Promise((r) => setTimeout(r, 100));
+    }
+    for (let i = 0; i < 40; i++) {
+      if (A._samples && A._samples['whirlwind']) break;
+      await new Promise((r) => setTimeout(r, 100));
+    }
+    const buf = A._samples && A._samples['shield-bash'];
+    const wbuf = A._samples && A._samples['whirlwind'];
+    const handle = buf ? A.play('shield-bash', { vol: 0.001 }) : null;
+    const whandle = wbuf ? A.play('whirlwind', { vol: 0.001 }) : null;
+    /* The zone ambience is loaded ON ENTRY to its zone, not by the manifest —
+       so it must NOT be in SFX_MANIFEST (which is fetched in full at unlock
+       for every player), and it must resolve when asked for directly. */
+    let ambDecoded = false, ambSeconds = null;
+    if (ambUrl) {
+      await A.loadSample('zoneamb-sky', ambUrl).catch(() => {});
+      const ab = A._samples && A._samples['zoneamb-sky'];
+      ambDecoded = !!ab;
+      ambSeconds = ab ? +ab.duration.toFixed(1) : null;
+    }
+    return {
+      inManifest: true, url,
+      decoded: !!buf,
+      seconds: buf ? +buf.duration.toFixed(2) : null,
+      played: !!handle,
+      whirlInManifest: !!whirlUrl,
+      whirlDecoded: !!wbuf,
+      whirlSeconds: wbuf ? +wbuf.duration.toFixed(2) : null,
+      whirlPlayed: !!whandle,
+      ambUrl: ambUrl || null,
+      ambInSfxManifest: !!(A.SFX_MANIFEST && A.SFX_MANIFEST['zoneamb-sky']),
+      ambDecoded, ambSeconds,
+    };
+  });
+  if (sfx.__no) {
+    rec.skip('shield bash sfx', 'BT_AUDIO not reachable from the page');
+  } else {
+    rec.ok('the shield-bash sound is in the SFX manifest', sfx.inManifest === true, sfx);
+    rec.ok('...and decodes in a Chromium-class browser (the v2.3.1610 m4a trap)',
+      sfx.decoded === true, sfx);
+    /* The upload was 8.04s of which 7.6s was silence; it is trimmed to the
+       impact.  A regression that re-imported the raw file would pass the two
+       checks above and quietly ship 257KB of dead air. */
+    rec.ok('...and is trimmed to the impact, not the 8s upload',
+      typeof sfx.seconds === 'number' && sfx.seconds > 0.2 && sfx.seconds < 1.5, sfx);
+    rec.ok('...and play() returns a real handle', sfx.played === true, sfx);
+    /* v2.3.1738: the whirlwind cast sound. */
+    rec.ok('the whirlwind sound is in the manifest and decodes',
+      sfx.whirlInManifest === true && sfx.whirlDecoded === true, sfx);
+    rec.ok('...is trimmed to the swell, not the 4.7s upload',
+      typeof sfx.whirlSeconds === 'number' && sfx.whirlSeconds > 1 && sfx.whirlSeconds < 3.2, sfx);
+    rec.ok('...and play() returns a real handle', sfx.whirlPlayed === true, sfx);
+    /* v2.3.1738: the Wind Dunes ambience.  The important half is the SECOND
+       assertion — a 900KB loop in SFX_MANIFEST would be fetched by every
+       player at unlock, in every zone, which is the cost the owner cut ~40MB
+       of music to avoid. */
+    rec.ok('Wind Dunes has a zone ambience registered', !!sfx.ambUrl, sfx);
+    rec.ok('...loaded per-zone, NOT eagerly with every other sfx',
+      sfx.ambInSfxManifest === false, sfx);
+    rec.ok('...and it decodes as a long loop', sfx.ambDecoded === true
+      && typeof sfx.ambSeconds === 'number' && sfx.ambSeconds > 10, sfx);
+  }
+
+  /* The WIRING, which is the half that can rot silently: startZoneAmbient is
+     the one choke point every zone change funnels through, and the ambience
+     has to start there and stop again on the way out.  Loading the sample
+     (above) proves the file; this proves the hook. */
+  const amb = await P.page.evaluate(async () => {
+    const A = window.BT_AUDIO;
+    if (!A || !A.ZONE_AMBIENT) return { __no: true };
+    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+    try { A.unlock && A.unlock(); } catch (e) {}
+    A._currentZoneAmbient = null;          /* force the change to be seen */
+    A.startZoneAmbient('sky');
+    for (let i = 0; i < 40; i++) {
+      if (A._sfxLoops && A._sfxLoops['zoneamb-sky']) break;
+      await sleep(100);
+    }
+    const inSky = !!(A._sfxLoops && A._sfxLoops['zoneamb-sky']);
+    A.startZoneAmbient('town');            /* walk out */
+    await sleep(300);
+    const inTown = !!(A._sfxLoops && A._sfxLoops['zoneamb-sky']);
+    return { inSky, inTown, key: A._zoneAmbientKey || null };
+  });
+  if (amb.__no) {
+    rec.skip('zone ambience wiring', 'BT_AUDIO.ZONE_AMBIENT not reachable');
+  } else {
+    rec.ok('entering Wind Dunes starts the wind loop', amb.inSky === true, amb);
+    /* Without this the loop would follow you into every other zone for the
+       rest of the session — the failure mode of a start with no stop. */
+    rec.ok('...and leaving it stops the loop', amb.inTown === false, amb);
+  }
+
   await P.ctx.close().catch(() => {});
 }
