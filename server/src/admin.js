@@ -200,7 +200,15 @@ export const adminMethods = {
                able to see them.  `ba` null means "this client never told us
                which way it is facing", which _blockArcCovers reads as the
                old omnidirectional block — a real state, not a missing value. */
-            blocking: !!ps.blocking, ba: (typeof ps.ba === 'number' ? ps.ba : null) } : null,
+            blocking: !!ps.blocking, ba: (typeof ps.ba === 'number' ? ps.ba : null),
+            /* v2.3.1733: the STAMINA pool, for the same reason blocking/ba are
+               here.  Stamina is now spent by blocking (v2.3.1731) and by the
+               two abilities, and the client's copy is a prediction the worker
+               overwrites — so "did that cast actually cost anything" can only
+               be answered here.  A headless check that reads the browser
+               instead would pass on a message the worker never received, which
+               is exactly the TRAPS #18 blind spot. */
+            stamina: ps.stamina, maxStamina: ps.maxStamina } : null,
           online: !!this._wsBySessionId(id),
           auth: auth2 ? { createdAt: auth2.createdAt } : null,
           frozen: frozen || null,

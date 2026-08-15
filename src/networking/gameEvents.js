@@ -931,6 +931,17 @@ export function processGameEvent(type, payload, S, deps) {
                       x: hitM.x || hitM.renderX, y: monsterPopupY(hitM, -20),
                       text: '-' + payload.dmg, color: payload.isCrit ? '#fbbf24' : '#ff8888'
                     });
+                  } else if (payload.ability) {
+                    /* v2.3.1733: OUR OWN stamina-ability hit.  The rule
+                       above ("skip our own — we already show it locally")
+                       assumes a local prediction produced a popup, which is
+                       true for swings and arrows and false for Shield Bash
+                       and Whirlwind: those are rolled entirely server-side
+                       (see src/game/abilities.js), so with no branch here
+                       the ability chips the HP bar and prints NOTHING.
+                       Same shape, same reason, as the thorns case below. */
+                    pushDmgPopup(S, hitM.x || hitM.renderX, monsterPopupY(hitM, -20),
+                      '-' + payload.dmg, payload.isCrit ? '#fbbf24' : '#ffd08a');
                   } else if (payload.thorns) {
                     /* v2.3.1137: Thorns reflect is SERVER-rolled with no
                        local prediction (unlike swings), so our own thorns

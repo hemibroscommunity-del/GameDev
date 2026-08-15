@@ -18,7 +18,7 @@
 import { processGameEvent } from '@/networking/gameEvents.js';
 import { stashPendingZoneNodes } from '@/networking/nodeSync.js'; /* v2.3.1301: node self-heal */
 import { getDeviceNonce, generatePassphrase, passphraseToId } from '@/networking/index.js';
-import { createGatherNode, spawnMonstersForZone, BT_AUDIO, ZONES, TILE, DEATH_GOLD_PENALTY, RARITY_TIERS, ZONE_RESOURCES, createDefaultCompStats, generateZoneMap, recalcDerived, updateZoneDimensions, setGridCapsEnabled, setT2SimpleEnabled, setT2BenchEnabled, setProg3Enabled, PROG3_SKILL_META, PROG3 } from '@/data/index.js';
+import { createGatherNode, spawnMonstersForZone, BT_AUDIO, ZONES, TILE, DEATH_GOLD_PENALTY, RARITY_TIERS, ZONE_RESOURCES, createDefaultCompStats, generateZoneMap, recalcDerived, updateZoneDimensions, setGridCapsEnabled, setT2SimpleEnabled, setT2BenchEnabled, setProg3Enabled, setAbilitiesEnabled, abilityRejectText, PROG3_SKILL_META, PROG3 } from '@/data/index.js';
 import { _objectSpread, _slicedToArray, _toConsumableArray } from '@/lib/babelHelpers.js';
 import { usesClientSideMovement, MONSTER_VARIANTS, isRemnantSkull, applyZoneVariant } from '@/data/monsterVariants.js';
 import { rollMonsterShard, shardByKey } from '@/data/shards.js';
@@ -669,6 +669,13 @@ export function setupWebSocket(ctx) {
                    an old worker everything keeps the legacy T2 math
                    that matches that worker's rolls and echoes. */
                 setProg3Enabled(!!(S._serverCaps && S._serverCaps.prog3));
+                /* v2.3.1733: stamina-abilities deploy-order gate.  The two
+                   ability BUTTONS render and the `ability` message is sent
+                   only while THIS worker claims caps.abil — an old worker
+                   has no `case 'ability'`, so it would relay the message as
+                   an unknown broadcast, never settle it, and the player
+                   would watch a predicted stamina bar drain for nothing. */
+                setAbilitiesEnabled(!!(S._serverCaps && S._serverCaps.abil));
                 if (S.rpg) recalcDerived(S.rpg);
               } catch (e) {}
               var others = {};
@@ -1451,6 +1458,14 @@ export function setupWebSocket(ctx) {
               if (_dmgPer > 0) _gains.push('+' + _dmgPer + ' damage');
               if (PROG3.HP_PER_LEVEL > 0) _gains.push('+' + PROG3.HP_PER_LEVEL + ' max HP');
               _gains.push('+1 point to spend');
+              /* v2.3.1733: ...and name the MILESTONE, when this level crossed
+                 one.  A new button appearing on the HUD with no explanation
+                 is the same "level 13 doesn't feel different" problem in a
+                 new costume — the unlock is the loudest thing a level can
+                 buy, so it goes first in the line.  The fields are optional:
+                 an old worker sends neither and the banner reads as before. */
+              if (p3l.bonusPoints > 0) _gains.push('+' + p3l.bonusPoints + ' bonus point');
+              if (p3l.milestone) _gains.unshift(p3l.milestone + ' unlocked!');
               setLevelUpMsg({
                 kind: 'combat',
                 level: p3l.charLevel || ((S.rpg && S.rpg.level) || 3),
@@ -1543,6 +1558,25 @@ export function setupWebSocket(ctx) {
               }
               setRpgState(_objectSpread({}, S.rpg));
               try { localStorage.setItem('bt_rpg', JSON.stringify(S.rpg)); } catch (e) {}
+              break;
+            }
+          case 'ability_rejected':
+            {
+              /* ═══ v2.3.1733: THE HANDLER THAT NEVER EXISTED ═══
+                 The worker has emitted ability_rejected since the ability
+                 pool gate was written, and no client has ever listened: a
+                 dodge refused for empty stamina simply did nothing, which
+                 is the same silent-refusal bug v2.3.1716 fixed for the
+                 special attack ("No weapon equipped!").  PR 5 needs the
+                 answer for its own casts, and wiring it here fixes the
+                 older cases (dodge / lunge / retreat / swipe) for free.
+                 Display only — the authoritative pools ride player_state,
+                 so this never writes game state. */
+              if (!msg.payload || !S.player) break;
+              try {
+                pushDmgPopup(S, S.player.x, S.player.y - 30,
+                  abilityRejectText(msg.payload), '#F2C14E', { ts: Date.now() });
+              } catch (e) {}
               break;
             }
           case 'prog3_allocated':
@@ -2302,6 +2336,15 @@ export function setupWebSocket(ctx) {
           return;
         }
         if (msg.type === 'ability_use') {
+          ws.send(JSON.stringify(msg));
+          return;
+        }
+        /* v2.3.1733: the stamina-ability cast (Shield Bash / Whirlwind).
+           THIS LINE IS ONE OF THE THREE LEGS — server case + handler +
+           this passthrough (TRAPS #18).  Without it the send returns
+           normally, the worker never hears it, and the ability is a button
+           that drains a predicted bar and does nothing. */
+        if (msg.type === 'ability') {
           ws.send(JSON.stringify(msg));
           return;
         }
