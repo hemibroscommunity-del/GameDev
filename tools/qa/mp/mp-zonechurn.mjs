@@ -30,6 +30,41 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await H.enterWorld(P);
   await P.page.waitForTimeout(1500);
 
+  /* ═══ v2.3.1751: ARM THE TOURIST, OR THERE IS NO TOUR ═══
+     This file has never actually measured anything.  The town gate refuses an
+     unarmed character (v2.3.1676), so every lap failed at the first exit and
+     the run reported `travelled: 0` while still printing heap numbers — a
+     harness that looked like a result.  Accept the first quest, which is how
+     the game hands out a sword, and equip it. */
+  const place = (dx, dy) => P.page.evaluate(({ ox, oy }) => {
+    const S = window._gameState && window._gameState.current;
+    const npc = (S && S.npcs || []).find((n) => n && n.id === 'mayor_bro');
+    if (!S || !npc || !S.player) return null;
+    S.player.x = npc.x + ox; S.player.y = npc.y + oy;
+    return true;
+  }, { ox: dx, oy: dy });
+  const closeCard = () => P.page.evaluate(() => {
+    const b = document.querySelector('.bt-inspect-close'); if (b) b.click();
+  });
+  await place(420, 0);
+  await P.page.waitForTimeout(500);
+  await closeCard();
+  await place(0, 34);
+  await P.page.waitForTimeout(1200);
+  await H.clickText(P, 'Accept').catch(() => {});
+  await P.page.waitForTimeout(1600);
+  await closeCard();
+  await P.page.evaluate(() => {
+    const S = window._gameState && window._gameState.current;
+    const R = S && S.rpg;
+    if (!R || !S.channel) return;
+    const idx = (R.weaponStash || []).findIndex((w) => w && w.type === 'greatsword');
+    if (idx >= 0) S.channel.send({ type: 'equip_request', payload: { stashIdx: idx, slot: 'weapon' } });
+  });
+  await P.page.waitForTimeout(1500);
+  rec.ok('the tourist is armed, so the town gate will let them out',
+    await H.readState(P, (S) => !!(S.rpg && S.rpg.weapon)));
+
   const marks = await P.page.evaluate(() => {
     const f = window._gameFns;
     if (!f || !f.TOWN_EXITS || !f.WORLDVIEW_EXITS) return null;

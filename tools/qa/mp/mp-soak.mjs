@@ -75,6 +75,16 @@ const PROBE = () => {
       }
     };
     try { if (R.app && R.app.stage) walk(R.app.stage, 'stage', 0); } catch (e) {}
+    /* v2.3.1751: the closure-held per-entity pools, through the probe the note
+       above asks for.  These are the maps this harness could not see, and
+       monsterDisplays is churned by exactly the "lots of monster killing" the
+       owner described. */
+    try {
+      if (R.poolSizesProbe) {
+        const pools = R.poolSizesProbe();
+        for (const k of Object.keys(pools)) out['pool.' + k] = pools[k];
+      }
+    } catch (e) { /* absent on an older bundle */ }
   }
   if (window.performance && performance.memory) out['heapMB'] = Math.round(performance.memory.usedJSHeapSize / 1048576);
   return out;
