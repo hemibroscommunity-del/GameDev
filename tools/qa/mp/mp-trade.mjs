@@ -92,6 +92,56 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await A.page.waitForTimeout(1200);
   rec.ok('bag tray exposes a stageable item', !!staged, { staged });
 
+  /* ── v2.3.1752: MORE THAN ONE ──
+     Owner: "allow additional quantities of stuff to be traded (it only
+     allowed me to put up one of the fire goblin remains)."  Staging used to be
+     one control doing three jobs — a bag tap added floor(have/4) and wrapped
+     to zero past the top — so a small stack stepped by 1 and there was no way
+     to go down or to name a number.  A's grant is 6 wood, so this drives the
+     new + stepper up to 3 and back down to 2 through the real buttons and
+     reads the staged quantity off A's own lane. */
+  /* The trade window is a pure renderer of server truth held in REACT state,
+     not on window._gameState — so the staged number is read where the player
+     reads it: off the stepper itself, which renders "qty/have". */
+  const stagedQty = async () => A.page.evaluate(() => {
+    const inc = [...document.querySelectorAll('button')]
+      .find((x) => x.offsetParent && (x.getAttribute('aria-label') || '').startsWith('One more'));
+    if (!inc) return null;
+    const box = inc.previousElementSibling;
+    const t = box ? (box.textContent || '').trim() : '';
+    const m = t.match(/^(\d+)\s*\/\s*(\d+)$/);
+    return m ? { qty: Number(m[1]), have: Number(m[2]) } : { raw: t };
+  });
+  const tapStep = (label) => A.page.evaluate((aria) => {
+    const b = [...document.querySelectorAll('button')]
+      .find((x) => x.offsetParent && (x.getAttribute('aria-label') || '').startsWith(aria));
+    if (!b || b.disabled) return false;
+    b.click();
+    return true;
+  }, label);
+  await tapStep('One more');
+  await A.page.waitForTimeout(700);
+  await tapStep('One more');
+  await A.page.waitForTimeout(900);
+  const upTo3 = await stagedQty();
+  rec.ok('the + stepper stages more than one of the same item',
+    !!upTo3 && upTo3.qty >= 3, upTo3);
+  await tapStep('One fewer');
+  await A.page.waitForTimeout(900);
+  const downTo2 = await stagedQty();
+  rec.ok('...and the − stepper takes one back off',
+    !!downTo2 && !!upTo3 && downTo2.qty === upTo3.qty - 1, { upTo3, downTo2 });
+  /* Back to a single unit so the settlement assertions below are unchanged. */
+  for (let i = 0; i < 4; i++) {
+    const q = await stagedQty();
+    if (!q || q.qty <= 1) break;
+    await tapStep('One fewer');
+    await A.page.waitForTimeout(500);
+  }
+  const backTo1 = await stagedQty();
+  rec.ok('the stepper can walk a stack all the way back down to one',
+    !!backTo1 && backTo1.qty === 1, backTo1);
+
   /* ── the staged offer must be visible ON B's SCREEN ── */
   /* An expression, not a function literal: page.evaluate given a STRING
      evaluates it as an expression, so `() => {...}` would just produce a
