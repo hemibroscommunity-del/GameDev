@@ -4098,6 +4098,19 @@ export var BroTown = function BroTown(_ref0) {
           S._firemaking = null;
           S._campfire = {
             x: _fm.x, y: _fm.y, nodeType: 'campfire', alive: true,
+            /* ═══ v2.3.1748: THE FIRE REMEMBERS WHERE IT WAS LIT ═══
+               Owner: "we made a fire in the frost zone level and it appeared
+               in worldview too even when we didn't make one there."
+               A campfire is a client-local prop with no server state, so it
+               cannot have come from the other player — it was THIS player's
+               own fire following them through the exit.  Nothing recorded a
+               zone on it, the renderer never asked, and no zone-change path
+               cleared it, so for the rest of its 45s it redrew at the same
+               absolute world coordinates on whatever map you walked onto.
+               Not merely cosmetic: it stays in the tap-hit list and the
+               proximity prompt, so you could cook in the World View on a fire
+               lit in Frost Ridge. */
+            zone: S.currentZone,
             litAt: Date.now(), expiresAt: Date.now() + 45000,
             name: 'Campfire', spotName: 'Campfire', gatherLvl: 1, skill: 'cooking', emoji: '🔥',
           };
