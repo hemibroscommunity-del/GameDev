@@ -53,6 +53,7 @@ const SCENARIOS = {
   burst: () => import('./mp-burst.mjs'),
   soak: () => import('./mp-soak.mjs'), /* v2.3.1741: does anything grow while you play */
   zonechurn: () => import('./mp-zonechurn.mjs'), /* v2.3.1741: does touring zones leak */
+  remoteanim: () => import('./mp-remoteanim.mjs'), /* v2.3.1749: what the other player sees you doing */
   viewport: () => import('./mp-viewport.mjs'), /* v2.3.1740: the game fills the phone */ /* v2.3.1734: element_burst survives the shim; the special costs the flat 25 */
 };
 

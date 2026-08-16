@@ -5905,7 +5905,13 @@ export var BroTown = function BroTown(_ref0) {
       R.inventory[key] -= 1;
       if (R.inventory[key] <= 0) delete R.inventory[key];
       var now = Date.now();
-      S._firemaking = { startedAt: now, doneAt: now + 1500, x: S.player.x, y: S.player.y + 6 };
+      /* v2.3.1749: 1500 -> 700ms, following the 3x animation speed-up (owner:
+         "for firemaking speed up the animation by about 3x").  The 8-frame
+         strip now runs 536ms; leaving the window at 1500 would hold the final
+         frame for a second before the real campfire appeared, which reads as a
+         freeze rather than a faster animation.  The ~160ms tail is a beat on
+         the finished pose, not a stall. */
+      S._firemaking = { startedAt: now, doneAt: now + 700, x: S.player.x, y: S.player.y + 6 };
       pushDmgPopup(S, S.player.x, S.player.y - 30, 'Lighting fire…', '#ff8a3c', { ts: now });
       try { BT_AUDIO.beep(180, 0.05, 0.12, 'sawtooth'); } catch (e) {}
       setRpgState(_objectSpread({}, R));
