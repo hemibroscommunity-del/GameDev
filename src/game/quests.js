@@ -133,7 +133,18 @@ export function turnInQuest(S, questPanel, deps, xpCat) {
     localStorage.setItem('bt_rpg', JSON.stringify(R));
   } catch (e) {}
   pushDmgPopup(S, S.player.x, S.player.y - 40, 'Quest Complete! +' + questPanel.quest.reward.gold + 'G +' + questPanel.quest.reward.xp + 'XP', '#f5c542');
-  BT_AUDIO.levelUp();
+  /* ═══ v2.3.1746: the owner's quest fanfare ═══
+     Owner: "play this sound upon quest completion."  It REPLACES the synth
+     levelUp() arpeggio here rather than stacking with it — two fanfares at
+     once is mush — but levelUp() stays as the fallback for the one frame
+     before the sample is decoded, and for any browser that refuses it.
+     BT_AUDIO.play returns null (not false) when the sample is not loaded;
+     testing `!== false` would count "not loaded" as success and ship the
+     turn-in silent, which is exactly how 19 SFX shipped mute before
+     v2.3.1610. */
+  var _qcSfx = null;
+  try { _qcSfx = BT_AUDIO.play('quest-complete', { vol: 0.9 }); } catch (e) { _qcSfx = null; }
+  if (!_qcSfx) BT_AUDIO.levelUp();
   /* v2.3.1745: the banner carries the REWARD on the completed side — it is
      the one moment the numbers are worth reading, and the world popup that
      used to carry them is behind the dialogue, which stays open through the

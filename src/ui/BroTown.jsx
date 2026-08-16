@@ -1506,8 +1506,29 @@ export var BroTown = function BroTown(_ref0) {
     setQuestMsg = _useStateQb2[1];
   /* quests.js is a plain module, not a component — same window bridge the
      level-up banner uses (see above). */
+  /* v2.3.1746: a one-deep queue, and the rule for who waits.
+     A turn-in fires COMPLETED, and the worker's quest_reward_stashed notice
+     lands a few hundred ms later — with a bare setter the notice would wipe
+     the celebration almost immediately.  But queuing EVERYTHING is wrong the
+     other way: turning in re-opens the dialogue on the next quest, so a
+     player who taps Accept straight away would watch their banner arrive two
+     seconds after the tap, which is the opposite of what was asked for.
+     So: banners the PLAYER caused preempt; system notices (`queue: true`)
+     wait their turn. */
+  var questMsgRef = useRef(null);
+  questMsgRef.current = questMsg;
+  var questQueueRef = useRef([]);
   if (typeof window !== 'undefined') {
-    window._setQuestMsg = setQuestMsg;
+    window._setQuestMsg = function (m) {
+      if (!m) { setQuestMsg(null); return; }
+      var cur = questMsgRef.current;
+      if (m.queue && cur && Date.now() - cur.ts < QUEST_MSG_MS) {
+        questQueueRef.current.push(m);
+        if (questQueueRef.current.length > 3) questQueueRef.current.shift();
+        return;
+      }
+      setQuestMsg(m);
+    };
     /* published so the headless check reads the REAL hold time instead of
        keeping its own copy to drift out of sync */
     window.__QUEST_MSG_MS = QUEST_MSG_MS;
@@ -5515,9 +5536,20 @@ export var BroTown = function BroTown(_ref0) {
          giver's NEXT quest (v2.3.1713), so COMPLETED and ACCEPTED can fire
          seconds apart — a 3.5s banner would still be sitting there when the
          second one arrives. */
-      setQuestMsg(function (prev) {
-        return prev && Date.now() - prev.ts > QUEST_MSG_MS ? null : prev;
-      });
+      /* v2.3.1746: expire, then promote whatever was waiting.  Done here in
+         the interval body rather than inside the state updater on purpose —
+         an updater must stay pure, and shifting a ref inside one would drop
+         a queued banner the moment React chose to call it twice. */
+      var _qCur = questMsgRef.current;
+      if ((!_qCur || Date.now() - _qCur.ts > QUEST_MSG_MS) && questQueueRef.current.length) {
+        var _qNext = questQueueRef.current.shift();
+        _qNext.ts = Date.now();
+        setQuestMsg(_qNext);
+      } else {
+        setQuestMsg(function (prev) {
+          return prev && Date.now() - prev.ts > QUEST_MSG_MS ? null : prev;
+        });
+      }
 
       /* §ARENA — Background polling for arena match status */
       var S3 = stateRef.current;
@@ -8236,7 +8268,9 @@ export var BroTown = function BroTown(_ref0) {
         ? '0 0 26px rgba(97,176,107,.85), 0 0 54px rgba(97,176,107,.4), 0 2px 4px rgba(0,0,0,.65)'
         : '0 0 26px rgba(216,169,77,.85), 0 0 54px rgba(216,169,77,.4), 0 2px 4px rgba(0,0,0,.65)'
     }
-  }, questMsg.kind === 'completed' ? "QUEST COMPLETED!" : "QUEST ACCEPTED!"),
+  }, questMsg.kind === 'completed' ? "QUEST COMPLETED!"
+    : questMsg.kind === 'reward' ? "QUEST REWARD"
+    : "QUEST ACCEPTED!"),
   questMsg.title && /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 15,

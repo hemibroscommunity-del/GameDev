@@ -56,6 +56,58 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await P.page.waitForTimeout(1500);
   const myId = await H.readState(P, (S) => S.myId);
 
+  /* ═══ v2.3.1746: WATCH EVERY BANNER THE WHOLE LINE RAISES ═══
+     Owner: "right now it says 'danger iron graves were added to your bag'
+     for reward completion which is not the message I want.  It's not a
+     danger for iron greaves or the torso."
+     The quest_reward_stashed notice was firing the LEVEL-UP banner with
+     kind:'warning' — the red zone-gate treatment, headline "⚠️ DANGER" —
+     over the good news that a quest had paid out.  Recorded across the
+     whole run rather than sampled at the end, because the banner lives a
+     couple of seconds and the armour lands mid-arc (tut_4 and life_2). */
+  await P.page.evaluate(() => {
+    window.__lineBanners = [];
+    const seen = new WeakSet();
+    const scan = () => {
+      document.querySelectorAll('.bt-quest-banner').forEach((el) => {
+        if (seen.has(el)) return;
+        seen.add(el);
+        window.__lineBanners.push({
+          src: 'quest',
+          kind: el.getAttribute('data-quest-banner'),
+          text: (el.innerText || el.textContent || '').replace(/\s+/g, ' ').trim(),
+        });
+      });
+    };
+    new MutationObserver(scan).observe(document.body, { childList: true, subtree: true });
+    scan();
+
+    /* The level-up banner is caught at the SETTER, not in the DOM.  The
+       first cut of this check scanned for a div whose text was "⚠️ DANGER"
+       and passed cleanly against the very code it was written to catch —
+       a green assertion that proves nothing is worse than no assertion, so
+       it is replaced rather than supplemented.  The setter is the exact
+       thing the bug misused (`_setLevelUpMsg({kind:'warning'})` for a quest
+       payout), it cannot be missed by a render race, and wrapping it leaves
+       the real banner working. */
+    const _origLvl = window._setLevelUpMsg;
+    window.__lvlCalls = [];
+    Object.defineProperty(window, '_setLevelUpMsg', {
+      configurable: true,
+      get() { return this.__lvlWrapped || _origLvl; },
+      set(fn) {
+        this.__lvlWrapped = function (m) {
+          try {
+            window.__lvlCalls.push({ kind: m && m.kind, text: (m && m.text) || '' });
+          } catch (e) { /* never break the game's own banner */ }
+          return fn ? fn(m) : undefined;
+        };
+      },
+    });
+    /* re-arm through the setter so the component's next assignment wraps */
+    window._setLevelUpMsg = _origLvl;
+  });
+
   const srv = () => H.adminPlayer(wsPort, myId).then((a) => (a && a.rpg) || null).catch(() => null);
   const open = () => P.page.evaluate(() => !!document.querySelector('.bt-inspect-card'));
   const cardText = () => P.page.evaluate(() => {
@@ -338,6 +390,34 @@ export async function run({ browser, wsPort, webPort, rec }) {
     bags.chest.includes('Iron Torso'), bags);
   rec.ok('...and did NOT pay a second pair of legs',
     bags.legs.filter(Boolean).length === 1, bags);
+
+  /* ── v2.3.1746: and neither piece was announced as a hazard ── */
+  const lineBanners = await P.page.evaluate(() => (window.__lineBanners || []).slice());
+  const lvlCalls = await P.page.evaluate(() => (window.__lvlCalls || []).slice());
+  /* Guard: "no warnings were raised" is vacuously true if the hook was never
+     wired, so prove the hook first.  Proved with a PROBE rather than by
+     assuming the run produces traffic — the first version of this guard
+     asserted `lvlCalls.length > 0` on the theory that the line levels you up
+     repeatedly, and it went red on correct code because nothing in this
+     particular run routes a level through that banner. */
+  const probed = await P.page.evaluate(() => {
+    const before = (window.__lvlCalls || []).length;
+    if (typeof window._setLevelUpMsg === 'function') window._setLevelUpMsg({ kind: '__probe' });
+    return (window.__lvlCalls || []).length > before;
+  });
+  rec.ok('the level-up banner hook is live (guard: a silent hook proves nothing)',
+    probed, lvlCalls);
+  rec.ok('no quest reward was ever announced as a DANGER',
+    !lvlCalls.some((c) => c.kind === 'warning'), lvlCalls);
+  rec.ok('the stashed armour was announced as a QUEST REWARD instead',
+    lineBanners.some((b) => b.src === 'quest' && b.kind === 'reward'
+      && /Iron (Greaves|Torso)/.test(b.text)),
+    lineBanners.filter((b) => b.src === 'quest').map((b) => b.kind + ':' + b.text));
+  /* the celebration itself still fires on every hand-in — a queue bug that
+     let the reward notice swallow it would be invisible otherwise */
+  rec.ok('every hand-in still raised its own QUEST COMPLETED! banner',
+    lineBanners.filter((b) => b.src === 'quest' && b.kind === 'completed').length >= ARC.length,
+    lineBanners.filter((b) => b.src === 'quest').map((b) => b.kind));
 
   /* Equip both, the way the bag does, and confirm the WORKER holds them —
      armour that only exists on the client mitigates nothing (v2.3.1701). */

@@ -67,6 +67,19 @@ export async function run({ browser, wsPort, webPort, rec }) {
     new MutationObserver(scan).observe(document.body, { childList: true, subtree: true });
     scan();
   });
+  /* v2.3.1746: and record which SFX keys get asked for.  Hooked at
+     BT_AUDIO.play rather than listened for, because a sample that fails to
+     decode is SILENCE with no error anywhere (the v2.3.1610 incident);
+     audio-formats.mjs proves the file decodes, this proves the turn-in
+     actually asks for it. */
+  await P.page.evaluate(() => {
+    window.__sfx = [];
+    const A = window.BT_AUDIO;
+    if (!A || typeof A.play !== 'function' || A.__hooked) return;
+    const orig = A.play.bind(A);
+    A.play = function (key, opts) { window.__sfx.push(String(key)); return orig(key, opts); };
+    A.__hooked = true;
+  });
   const banners = () => P.page.evaluate(() => window.__qb.slice());
   const onScreen = () => P.page.evaluate(() => !!document.querySelector('.bt-quest-banner'));
 
@@ -162,6 +175,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('...over the dialogue, which re-opens on the next quest',
     !!done && done.modalOpen === true && done.z > done.modalZ,
     done && { z: done.z, modalZ: done.modalZ, modalOpen: done.modalOpen });
+
+  /* v2.3.1746 — owner: "play this sound upon quest completion." */
+  const sfx = await P.page.evaluate(() => (window.__sfx || []).slice());
+  rec.ok("the owner's quest fanfare is played on the hand-in",
+    sfx.includes('quest-complete'), sfx);
 
   const srvDone = await srv();
   rec.ok('the WORKER marked it turned in (the banner is not lying)',
