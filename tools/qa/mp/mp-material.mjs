@@ -17,7 +17,7 @@
  */
 import * as H from './harness.mjs';
 
-const COPPER = 0xFF7C33; /* materialTints copper at full brightness (v2.3.1759) */
+const COPPER = 0xFF9E58; /* materialTints copper at full brightness (v2.3.1761) */
 const NATIVE = 0xFFFFFF;
 
 const gearTints = (P) => P.page.evaluate(() => (window.__btGearTints ? window.__btGearTints() : null));
@@ -224,6 +224,161 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('a bow and a staff never take a metal', !!staffNative
     && staffNative.staff === null && staffNative.bow === null
     && staffNative.sword === 'copper', staffNative);
+
+  /* ═══ v2.3.1761: A MIXED PAIR, IN EVERY DIRECTION ═══
+     Owner: "it didn't display consistently when I was wearing a combo of
+     different armor pieces jogging in each direction.  Some directions it
+     changed the armor to match the full copper set and other directions it
+     correctly showed the iron greaves I was wearing."
+
+     The painted fullset figure is ONE sheet carrying both pieces, so it can
+     only be one colour, and it was taking the chest's — repainting mismatched
+     legs, but only on the jog dirs that ship a figure.  Hence "some
+     directions".  Walked through EVERY direction here: a per-direction bug
+     that is only checked facing south passes while the player watches their
+     armour change colour as they turn. */
+  await setGear(A, 'chest', 'copperplate');
+  await setGear(A, 'legs', 'steelgreaves');
+  await A.page.waitForTimeout(1500);
+  const DIRS = ['down', 'up', 'left', 'right', 'downleft', 'downright', 'upleft', 'upright'];
+  const perDir = [];
+  for (const d of DIRS) {
+    /* jog, because the figure only ever replaces the JOG frames */
+    await A.page.evaluate((dir) => {
+      const S = window._gameState.current;
+      const k = { down: 's', up: 'w', left: 'a', right: 'd' };
+      S.keys = {};
+      if (dir.includes('down')) S.keys[k.down] = true;
+      if (dir.includes('up')) S.keys[k.up] = true;
+      if (dir.includes('left')) S.keys[k.left] = true;
+      if (dir.includes('right')) S.keys[k.right] = true;
+    }, d);
+    await A.page.waitForTimeout(900);
+    const t = await gearTints(A);
+    const ch = (t && t.slots || []).find((x) => x.slot === 'chest');
+    const lg = (t && t.slots || []).find((x) => x.slot === 'legs');
+    perDir.push({ dir: d, chest: ch && ch.visible ? ch.tint : null,
+      legs: lg && lg.visible ? lg.tint : null, body: t && t.bodyTint });
+  }
+  await A.page.evaluate(() => { window._gameState.current.keys = {}; });
+  await A.page.waitForTimeout(600);
+  /* The legs must never come out copper, and the BODY must never be tinted —
+     a body carrying the metal means the figure took over and repainted both. */
+  const legsRepainted = perDir.filter((r) => r.legs === COPPER);
+  const bodyPainted = perDir.filter((r) => r.body != null && r.body !== NATIVE);
+  rec.ok('a mixed pair keeps each piece its own metal in every direction',
+    legsRepainted.length === 0 && bodyPainted.length === 0, perDir);
+  rec.ok('...and the copper torso is still copper throughout (guard: not simply unrendered)',
+    perDir.some((r) => r.chest === COPPER), perDir);
+
+  /* ═══ v2.3.1761: THE CHARACTER EQUIP MENU ═══
+     Owner: "Also test the character equip menu works correctly.  It was
+     showing iron greaves thumbnail in legs when I had nothing equipped."
+
+     Two claims, and they need separate checks: an EMPTY legs slot must draw no
+     armour art at all, and the picker must offer only tiers that exist in the
+     game — the steel set is out until the owner adds it back, and it was
+     reaching players through the ownership fallback (own any piece for a slot
+     -> be offered every catalogued id for it). */
+  await setGear(A, 'chest', 'none');
+  await setGear(A, 'legs', 'none');
+  await A.page.evaluate(() => {
+    const S = window._gameState && window._gameState.current;
+    if (!S || !S.rpg) return;
+    /* nothing WORN, but a piece owned — the state the owner was in */
+    S.rpg.armor = null; S.rpg.legsArmor = null;
+    S.rpg.legsStash = [{ name: 'Copper Greaves', tierMult: 1, slot: 'legsArmor', mat: 'copper' }];
+    if (window.__btSyncArmorLayers) window.__btSyncArmorLayers(S.rpg);
+  });
+  await A.page.waitForTimeout(1200);
+  await H.openDest(A, 'Character').catch(() => {});
+  await A.page.waitForTimeout(1200);
+
+  /* The cell ALWAYS draws an image — either the piece's art or the slot
+     silhouette — so "no art" means the GHOST, not a missing img. */
+  const legsCell = async () => A.page.evaluate(() => {
+    const cell = document.querySelector('[aria-label="Legs"][role="button"]')
+      || document.querySelector('[aria-label="Legs"]');
+    if (!cell) return { err: 'no Legs cell' };
+    const img = cell.querySelector('img');
+    const src = img ? img.getAttribute('src') || '' : '';
+    return { src, ghost: /slot-legs/.test(src), armour: /greaves/i.test(src) };
+  });
+  const emptyCell = await legsCell();
+  rec.ok('an empty legs slot shows the silhouette, not armour art',
+    !emptyCell.err && emptyCell.ghost && !emptyCell.armour, emptyCell);
+
+  /* The owner's exact symptom is a cell drawing greaves with nothing worn, and
+     the way to get there is a STALE cosmetic layer: the equip store persists to
+     localStorage, so an id left over from a piece since removed outlives the
+     stat piece it was derived from.  Forced here rather than hoped for. */
+  await setGear(A, 'legs', 'coppergreaves');
+  await A.page.waitForTimeout(1200);
+  const staleCell = await legsCell();
+  const staleWorn = await H.readState(A, (S) => !!(S.rpg && S.rpg.legsArmor));
+  rec.ok('a legs layer left set with no piece owned is a real hazard (guard)',
+    !staleCell.err && staleCell.armour && !staleWorn, { staleCell, staleWorn });
+
+  const offered = await A.page.evaluate(() => {
+    const ids = window.__btGearCatalog ? window.__btGearCatalog() : null;
+    return ids;
+  });
+  rec.ok('the steel set is no longer offered anywhere in the game',
+    !!offered && !offered.legs.includes('steelgreaves') && !offered.chest.includes('steelplate'),
+    offered);
+  rec.ok('...and copper is', !!offered && offered.legs.includes('coppergreaves')
+    && offered.chest.includes('copperplate'), offered);
+
+  /* ═══ v2.3.1761: A RETURNING PLAYER'S SAVE, THROUGH THE REAL LOAD ═══
+     Owner: "[the steel/iron armor is] appearing in player inventories who now
+     also have the copper."
+
+     Their save was written before copper existed, so it holds "Iron Greaves"
+     with no material.  The migration renames it — but the WORN LAYER is derived
+     during load by reconcileGearStash, and the migration used to run after
+     that, so the character came up in steel art while the bag said copper.
+
+     Driven by writing the old save shape into localStorage and RELOADING, so
+     the load ordering itself is what is under test.  Poking the migration
+     directly would pass with the bug still in place, since the bug is WHEN it
+     runs, not what it does. */
+  /* The legacy record has to live on the WORKER, not just in localStorage:
+     the worker owns these two slots and re-sends them on every snapshot, so a
+     client-only seed is overwritten within a second and would test nothing.
+     stats_update is the shipped path a client uses to tell the worker what it
+     is wearing, so this writes the pre-copper shape the way a v2.3.1757 client
+     would have. */
+  await A.page.evaluate(() => {
+    const S = window._gameState && window._gameState.current;
+    if (S && S.channel) S.channel.send({ type: 'stats_update', payload: {
+      legsArmor: { name: 'Iron Greaves', tierMult: 1 },
+      armor: { name: 'Iron Torso', tierMult: 1 },
+    } });
+  });
+  await A.page.waitForTimeout(2500);
+  await A.page.evaluate(() => {
+    /* a cosmetic layer left on steel — what the old load order wrote */
+    localStorage.setItem('bt-gear-v3-legs', 'steelgreaves');
+    localStorage.setItem('bt-gear-v3-chest', 'steelplate');
+  });
+  await A.page.reload({ waitUntil: 'domcontentloaded' });
+  await H.enterWorld(A).catch(() => {});
+  await A.page.waitForTimeout(4000);
+
+  const migrated = await H.readState(A, (S) => ({
+    legs: S.rpg && S.rpg.legsArmor ? { name: S.rpg.legsArmor.name, mat: S.rpg.legsArmor.mat } : null,
+    chest: S.rpg && S.rpg.armor ? { name: S.rpg.armor.name, mat: S.rpg.armor.mat } : null,
+  }));
+  rec.ok('an old save is renamed to the copper tier on load',
+    !!migrated.legs && migrated.legs.name === 'Copper Greaves' && migrated.legs.mat === 'copper'
+    && !!migrated.chest && migrated.chest.name === 'Copper Torso', migrated);
+
+  const layers = await A.page.evaluate(() => {
+    const g = window._gameFns && window._gameFns.getEquip;
+    return g ? { legs: g('legs'), chest: g('chest') } : null;
+  });
+  rec.ok('...and the character comes up in COPPER, not the steel the old order left',
+    !!layers && layers.legs === 'coppergreaves' && layers.chest === 'copperplate', layers);
 
   /* ── the body sprite is not left wearing the metal ──
      The fullset knight figure is armour art assigned onto the BODY sprite, so

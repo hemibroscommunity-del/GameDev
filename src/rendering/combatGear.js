@@ -16,6 +16,7 @@
  * design (.catch keeps them from stalling the gate). */
 
 import { Assets } from 'pixi.js';
+import { gearArt } from './gearVariants.js'; /* v2.3.1761 */
 import { GEAR_CATALOG, getEquip } from './gearCatalog.js';
 import { GEARLAYER_VER } from './gearVersion.js';
 
@@ -31,9 +32,14 @@ export function combatGearUrls() {
   const urls = [];
   for (const slot of COMBAT_SLOTS) {
     const items = new Set();
-    const eq = getEquip(slot);
+    /* v2.3.1761: a recoloured set has no sheets of its own — warm the art it
+       borrows, or every copper id here requests a 404 per pose per dir. */
+    const eq = gearArt(getEquip(slot));
     if (eq && eq !== 'none') items.add(eq);
-    for (const c of (GEAR_CATALOG[slot] || [])) if (c.id && c.id !== 'none') items.add(c.id);
+    for (const c of (GEAR_CATALOG[slot] || [])) {
+      const art = gearArt(c.id);
+      if (art && art !== 'none') items.add(art);
+    }
     for (const item of items) {
       for (const pose of Object.keys(COMBAT_POSE_DIRS)) {
         for (const dir of COMBAT_POSE_DIRS[pose]) {

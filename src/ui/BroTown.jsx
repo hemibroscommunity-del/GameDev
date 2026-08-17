@@ -2667,6 +2667,27 @@ export var BroTown = function BroTown(_ref0) {
       /* v2.3.687: restore any orphaned steel piece (worn nowhere, bagged
          nowhere -- e.g. unequipped via the old Equipment-menu toggle) into
          the bag so it's never lost. */
+      /* ═══ v2.3.1758: copper replaces iron as tier one ═══
+         A save holding the old "Iron Torso" / "Iron Greaves" is rewritten in
+         place — see migrateTier1Armor.
+         ═══ v2.3.1761: AND IT MUST RUN BEFORE reconcileGearStash ═══
+         Owner: "[the steel/iron armor is] appearing in player inventories who
+         now also have the copper" / "showing iron greaves thumbnail in legs
+         when I had nothing equipped."
+         This was ordered after the reconcile, and reconcile is what DERIVES the
+         worn cosmetic layer from the stat piece.  So a returning player's
+         pieces were still un-migrated at that moment — no material — the layer
+         resolved to the STEEL art, and only then did the rename to copper run,
+         with nothing re-deriving the layer afterwards.  The result is exactly
+         what was reported: copper in the bag, steel on the character and in the
+         loadout cell, in the same save.
+         The migration is the older fact, so it goes first and everything
+         downstream sees one story. */
+      try {
+        if (migrateTier1Armor(S.rpg)) {
+          try { localStorage.setItem('bt_rpg', JSON.stringify(S.rpg)); } catch (e) { /* quota */ }
+        }
+      } catch (e) { /* a migration must never block the load */ }
       try { reconcileGearStash(S.rpg); } catch (e) { /* best-effort */ }
       if (!S.rpg._quests) S.rpg._quests = {};
       if (!S.rpg._questFlags) S.rpg._questFlags = {};
@@ -2696,16 +2717,6 @@ export var BroTown = function BroTown(_ref0) {
       if (S.rpg.armor === undefined || _isLeather(S.rpg.armor)) S.rpg.armor = null;
       if (!S.rpg.armorStash) S.rpg.armorStash = [];
       S.rpg.armorStash = S.rpg.armorStash.filter(function (a) { return !_isLeather(a); });
-      /* v2.3.1758: copper replaces iron as tier one (owner), so a save holding
-         the old "Iron Torso" / "Iron Greaves" is rewritten in place — see
-         migrateTier1Armor.  Runs beside the Leather purge above because this
-         is the same kind of thing: a piece whose identity the game changed
-         under a player who already owned it. */
-      try {
-        if (migrateTier1Armor(S.rpg)) {
-          try { localStorage.setItem('bt_rpg', JSON.stringify(S.rpg)); } catch (e) { /* quota */ }
-        }
-      } catch (e) { /* a migration must never block the load */ }
       if (S.rpg.shield === undefined) S.rpg.shield = null;
       if (!S.rpg.amulet) S.rpg.amulet = null; /* {tier, gem, name} */
       /* v2.3.188: existing saves with no shield get the starter wood

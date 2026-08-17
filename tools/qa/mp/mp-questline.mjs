@@ -395,7 +395,22 @@ export async function run({ browser, wsPort, webPort, rec }) {
     bags.legs.filter(Boolean).length === 1, bags);
 
   /* ── v2.3.1746: and neither piece was announced as a hazard ── */
-  const lineBanners = await P.page.evaluate(() => (window.__lineBanners || []).slice());
+  /* v2.3.1761: WAIT for the reward banner rather than sampling once.
+     The armour notice is raised from the worker's quest_reward_stashed, which
+     lands a beat after the turn-in the loop above already moved past — so a
+     single read is a race, and it lost one run in three here (the assertion
+     below went red with an otherwise identical, correct banner list).  Polls
+     until both reward notices are in or the budget runs out; a genuine
+     regression still fails, it just takes 8s to say so. */
+  const lineBanners = await (async () => {
+    const read = () => P.page.evaluate(() => (window.__lineBanners || []).slice());
+    let seen = await read();
+    for (let i = 0; i < 16 && seen.filter((b) => b.kind === 'reward').length < 2; i++) {
+      await P.page.waitForTimeout(500);
+      seen = await read();
+    }
+    return seen;
+  })();
   const lvlCalls = await P.page.evaluate(() => (window.__lvlCalls || []).slice());
   /* Guard: "no warnings were raised" is vacuously true if the hook was never
      wired, so prove the hook first.  Proved with a PROBE rather than by

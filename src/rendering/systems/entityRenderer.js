@@ -58,7 +58,7 @@ import { getFacialHairColor, getColoredFacialHairTextures } from '../traits/faci
 import { getShirt } from '../traits/shirtCatalog.js';
 import { getShirtColor, shirtFill } from '../traits/shirtColorCatalog.js';
 import { getGearFrame, getGearFramePhased, getLoadedGearSources } from '../gearSheets.js';
-import { gearTint, gearArt } from '../gearVariants.js'; /* v2.3.1757: material recolor */
+import { gearTint, gearArt, gearMaterial } from '../gearVariants.js'; /* v2.3.1757: material recolor */
 import { materialTint, weaponTint } from '../traits/materialTints.js'; /* v2.3.1757: weapons share the metals table */
 import { combatGearUrls } from '../combatGear.js';
 import { getEquip, onEquipChange, isWearingArmor } from '../gearCatalog.js'; /* v2.3.1407: GEAR_CATALOG import dropped with the speculative all-states prewarm */
@@ -877,8 +877,21 @@ function _fullsetFrame(chestItem, legsItem, pose, dir, frameIdx, phase) {
   /* v2.3.1757: compare the ART, not the id, so a recoloured pair still gets the
      painted knight figure instead of silently dropping to the overlay path.
      The figure REPLACES the body sprite, so its colour is applied to that
-     sprite by the callers (see _fullsetTint). */
+     sprite by the callers (see _fullsetTint).
+     ═══ v2.3.1761: ...AND ONLY WHEN BOTH PIECES ARE THE SAME METAL ═══
+     Owner: "it didn't display consistently when I was wearing a combo of
+     different armor pieces jogging in each direction.  Some directions it
+     changed the armor to match the full copper set and other directions it
+     correctly showed the iron greaves I was wearing."
+     Exactly right, and this line was the cause.  The figure is ONE sheet
+     carrying both pieces, so it can only be painted ONE colour — and it was
+     taking the chest's.  A mixed pair therefore had its legs repainted to
+     match the torso, but only on the jog directions that ship a figure (every
+     one but northeast), which is why turning changed the answer.
+     Two metals cannot be expressed by one figure, so a mixed pair falls back
+     to the layered path, where each piece is tinted on its own sprite. */
   if (gearArt(chestItem) !== 'steelplate' || gearArt(legsItem) !== 'steelgreaves') return null;
+  if (gearMaterial(chestItem) !== gearMaterial(legsItem)) return null;
   /* v2.3.1367: when the caller knows the jog cycle PHASE, the sheet plays
      its NATIVE frame count evenly on the same clock (east ships 25 frames
      vs the 28-frame body cycle — no held frames, no wrap jump).  Callers
@@ -915,7 +928,15 @@ function _fullsetCoversBake(worn, pose, dir) {
     const w = worn.find((x) => x.k && x.k.indexOf(pfx) === 0);
     return w ? gearArt(w.k.slice(pfx.length)) : null;
   };
-  return artOf('chest:') === 'steelplate' && artOf('legs:') === 'steelgreaves';
+  if (artOf('chest:') !== 'steelplate' || artOf('legs:') !== 'steelgreaves') return false;
+  /* v2.3.1761: a mixed-metal pair does NOT get the figure (see _fullsetFrame),
+     so its masked bake is not dead weight — skipping it here would drop the
+     player back to a bare body on those frames. */
+  const matOf = (pfx) => {
+    const w = worn.find((x) => x.k && x.k.indexOf(pfx) === 0);
+    return w ? gearMaterial(w.k.slice(pfx.length)) : null;
+  };
+  return matOf('chest:') === matOf('legs:');
 }
 /* v2.3.1757: QA probe — the tints the renderer is ACTUALLY drawing gear with.
    It reads the live sprites rather than echoing back what we asked for, so a

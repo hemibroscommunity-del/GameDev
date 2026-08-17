@@ -25,12 +25,22 @@ export const GEAR_SLOTS = ['shirt', 'legs', 'chest', 'shoulders'];
    store, the preload sweep, the `gear` dev command) reaches it with no special
    casing, and it costs the loading screen nothing because preloadGear resolves
    it back to the steel sheets. */
+/* ═══ v2.3.1761: ONE TIER IN THE GAME AT A TIME ═══
+   Owner: "remove the steel or iron armor from the game until I add it in
+   later.  It's appearing in player inventories who now also have the copper."
+
+   They were right, and the mechanism is the loadout picker: once you own ANY
+   stat piece for a slot it offers every CATALOGUED id for that slot
+   (ItemDetailPopup, the v2.3.1750 ownership gate).  Adding copper beside steel
+   therefore handed everyone who earned the copper a steel set as well.
+
+   So the steel entries come out.  The ART stays exactly where it is — copper
+   is drawn with it (gearVariants) — this list is only what the game OFFERS.
+   Put a row back when the steel/iron tier is real and earnable. */
 export const GEAR_CATALOG = {
   shirt: [{ id: 'none', name: 'None' }, { id: 'tshirt', name: 'T-Shirt' }],
-  legs: [{ id: 'none', name: 'None' }, { id: 'steelgreaves', name: 'Steel Greaves' },
-    { id: 'coppergreaves', name: 'Copper Greaves' }],
-  chest: [{ id: 'none', name: 'None' }, { id: 'steelplate', name: 'Steel Plate' },
-    { id: 'copperplate', name: 'Copper Plate' }],
+  legs: [{ id: 'none', name: 'None' }, { id: 'coppergreaves', name: 'Copper Greaves' }],
+  chest: [{ id: 'none', name: 'None' }, { id: 'copperplate', name: 'Copper Plate' }],
   shoulders: [{ id: 'none', name: 'None' }],
 };
 
@@ -132,6 +142,14 @@ if (typeof window !== 'undefined') window.__btSetGear = setEquip;
 /* v2.3.1758: QA hook — re-derive the worn layers after a test wears a piece,
    which is what every real equip path does (equipActions, ItemDetailPopup). */
 if (typeof window !== 'undefined') window.__btSyncArmorLayers = (R) => syncArmorLayers(R);
+/* v2.3.1761: what the game OFFERS per slot — the list the loadout picker
+   builds from, so a test can pin that a retired tier is really gone. */
+if (typeof window !== 'undefined') {
+  window.__btGearCatalog = () => ({
+    chest: (GEAR_CATALOG.chest || []).map((c) => c.id),
+    legs: (GEAR_CATALOG.legs || []).map((c) => c.id),
+  });
+}
 export function onEquipChange(slot, fn) { return _stores[slot] ? _stores[slot].on(fn) : () => {}; }
 
 /* ═══ v2.3.1703: THE STAT PIECE DRIVES THE RENDERED LAYER ═══

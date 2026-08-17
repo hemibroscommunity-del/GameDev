@@ -95,7 +95,15 @@ export const MATERIALS = {
      lesson for every metal added here: judge it on the LEGS, in the world, on
      bright ground — a swatch on a dark background over the torso is the
      easiest possible test and it passed one that play did not. */
-  copper: { id: 'copper', name: 'Copper', rgb: [166, 81, 33], swatch: '#a65121' },
+  /* v2.3.1761 (owner: "The copper needs to be lightened some more.  It's hard
+     to tell what it is when it's dark").  Lightened by DESATURATING toward the
+     art's own value rather than by raising brightness, because brightness is
+     not available: a tint MULTIPLIES, so the ceiling is the art itself and no
+     colour here can make a midtone lighter than the pixel it multiplies.
+     Going lighter still means either art authored brighter or a per-sprite
+     filter with a real memory cost — noted so the next person does not go
+     hunting for a number that would do it. */
+  copper: { id: 'copper', name: 'Copper', rgb: [166, 103, 57], swatch: '#a66739' },
   /* v2.3.1760 (owner: "The second tier of armor will be iron" / "I do want
      copper and iron weapons also").  Iron reads as a duller, cooler metal than
      the bright steel the art is drawn as — hence `level`.  The art IS steel, so
