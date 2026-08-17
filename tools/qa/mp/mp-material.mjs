@@ -17,7 +17,7 @@
  */
 import * as H from './harness.mjs';
 
-const COPPER = 0xFFB253; /* the owner's swatch at full brightness (materialTints) */
+const COPPER = 0xFF7C33; /* materialTints copper at full brightness (v2.3.1759) */
 const NATIVE = 0xFFFFFF;
 
 const gearTints = (P) => P.page.evaluate(() => (window.__btGearTints ? window.__btGearTints() : null));
@@ -79,6 +79,21 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('...off the very same texture the steel set draws from',
     copperWorn.length > 0 && copperWorn.map((s) => s.src).join(',') === steelSrc,
     { steelSrc, copperSrc: copperWorn.map((s) => s.src).join(',') });
+
+  /* ── v2.3.1759: MIXED SETS ──
+     Owner: "it's possible to wear different combination of armor like copper
+     legs with iron torso right?"  Yes, and it falls out of the design rather
+     than needing support: chest and legs are separate slots, each carrying its
+     own material, and the tint is per SPRITE.  Proven here with copper legs
+     under a steel torso — two metals on one character at the same time. */
+  await setGear(A, 'chest', 'steelplate');
+  await setGear(A, 'legs', 'coppergreaves');
+  await A.page.waitForTimeout(2000);
+  const mixed = armour(await gearTints(A)).filter((x) => x.visible);
+  const mChest = mixed.find((x) => x.slot === 'chest');
+  const mLegs = mixed.find((x) => x.slot === 'legs');
+  rec.ok('two different metals can be worn at once',
+    !!mChest && !!mLegs && mChest.tint === NATIVE && mLegs.tint === COPPER, mixed);
 
   /* ── and it comes back off ── */
   await setGear(A, 'chest', 'steelplate');

@@ -73,9 +73,20 @@ export function tintFromRgb(rgb) {
  * unrecoloured piece costs nothing and cannot regress. */
 export const MATERIALS = {
   steel: { id: 'steel', name: 'Steel', rgb: [255, 255, 255], swatch: '#c9ced6' },
-  /* Owner, choosing from the four-swatch preview: "I like the preview of the
-     'bronze' color the most but to relabel it to copper in the game." */
-  copper: { id: 'copper', name: 'Copper', rgb: [166, 116, 54], swatch: '#a67436' },
+  /* Owner picked the 'bronze' swatch [166,116,54] from the recolor preview and
+     asked for it as Copper.  It shipped that way and then read wrong in play —
+     owner: "I think I'm seeing the player pants layered on top of copper
+     legging".  Nothing was layered: the copper legs are pixel-identical in
+     SHAPE to the steel ones (diffed — every differing pixel is a colour
+     change, none is a different figure).  The fault was the colour.  On the
+     GREAVES, whose art carries less specular than the cuirass, that brown
+     lands in the same register as the character's cloth trousers, so armour
+     read as pants.
+     Pushed toward orange until it cannot be mistaken for fabric.  This is the
+     lesson for every metal added here: judge it on the LEGS, in the world, on
+     bright ground — a swatch on a dark background over the torso is the
+     easiest possible test and it passed one that play did not. */
+  copper: { id: 'copper', name: 'Copper', rgb: [166, 81, 33], swatch: '#a65121' },
 };
 
 for (const m of Object.values(MATERIALS)) m.tint = tintFromRgb(m.rgb);
