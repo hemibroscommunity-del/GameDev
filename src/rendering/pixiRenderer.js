@@ -434,6 +434,34 @@ export async function initPixiRenderer(canvas) {
           .map((k) => (e[k] && e[k].parent ? e[k].parent.getChildIndex(e[k]) : -1)),
       };
     },
+    /* ═══ v2.3.1751: THE POOLS THE SOAK COULD NOT SEE ═══
+       mp-soak.mjs states its own coverage limit in as many words: the per-
+       entity display pools live on the entity/effects sub-renderers, which
+       initPixiRenderer keeps in CLOSURE, "so this probe cannot count them, and
+       a leak confined to those maps would pass here."  The owner has now
+       reported the slowdown twice, the second time after "lots of monster
+       killing" — which is exactly what churns monsterDisplays — so the blind
+       spot is where the search has to go.  That note says to expose them
+       behind the autotest surface rather than widening the scene walk; this is
+       that.  Counts only, read-only, consumed by nothing in the game. */
+    poolSizesProbe: () => {
+      const e = effectsRenderer, n = entityRenderer;
+      const size = (m) => (m && typeof m.size === 'number' ? m.size : null);
+      const out = {
+        monsterDisplays: size(n && n.monsterDisplays),
+        otherPlayerDisplays: size(n && n.otherPlayerDisplays),
+        npcDisplays: size(n && n.npcDisplays),
+        chatTexts: size(e && e.chatTexts),
+        remoteSlashSprites: size(e && e._remoteSlashSprites),
+        remoteSkillSprites: size(e && e._remoteSkillSprites),
+        remoteSwordSprites: size(e && e._remoteSwordSprites),
+        remoteBowSprites: size(e && e._remoteBowSprites),
+        remoteBodyCache: size(e && e._remoteBodyCache),
+        remoteSheetCache: size(e && e._remoteSheetCache),
+      };
+      for (const k of Object.keys(out)) if (out[k] === null) delete out[k];
+      return out;
+    },
     /* v2.3.1749: read-only probe of a PEER's gathering stand-in, for the QA
        harness — sibling of fireGearProbe above and added for the same reason.
        The question "does another player's firemaking play once, in order, or
