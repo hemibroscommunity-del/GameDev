@@ -17,6 +17,7 @@ import { Rectangle, Texture } from 'pixi.js';
 import { GEAR_SLOTS, GEAR_CATALOG } from './gearCatalog.js';
 import { upscaleToFrameHeight, antialiasUpscaledCanvas, downscaleByFactor, DISPLAY_DS } from './spriteScale.js'; /* v2.3.1110 upscale; v2.3.1341 AA; v2.3.1408 fullset display-downscale */
 import { loadWebpOrPng } from './webpImage.js'; /* v2.3.1122: prefer lossless WebP, fall back to PNG */
+import { gearArt } from './gearVariants.js'; /* v2.3.1757: recoloured sets share their donor's sheets */
 
 const FRAME_W = 256;
 const FRAME_H = 256;
@@ -169,8 +170,19 @@ function buildSheet(key, slot, item, pose, dir, attempt = 0) {
  *  if nothing is equipped in the slot.  Lazy-baked + cached per (slot,item,
  *  pose,dir).  The caller (entityRenderer) passes the BASE dir + body frameIdx
  *  and copies the body sprite's transform, which carries mirror + bodyScale. */
+/* v2.3.1757: QA probe — how many distinct sheets have been built.  The
+   material pipeline's whole claim is that a recoloured set adds none. */
+if (typeof window !== 'undefined') {
+  window.__btGearSheets = () => Object.keys(_sheets);
+}
 export function getGearFrame(slot, item, pose, dir, frameIdx) {
   if (!item || item === 'none') return null;
+  /* v2.3.1757: a recoloured set resolves to its DONOR art here, so the cache
+     key — and therefore the TextureSource — is shared with the piece it was
+     recoloured from.  Keying on the variant id instead would load a second
+     identical copy of every sheet and hand back the memory the tint pipeline
+     exists to save.  The colour is applied by the draw site (gearTint). */
+  item = gearArt(item);
   const key = slot + '/' + item + '/' + pose + '/' + dir;
   const entry = _sheets[key];
   if (entry === undefined) { buildSheet(key, slot, item, pose, dir); return null; }
@@ -187,6 +199,7 @@ export function getGearFrame(slot, item, pose, dir, frameIdx) {
  *  jump. */
 export function getGearFramePhased(slot, item, pose, dir, phase) {
   if (!item || item === 'none') return null;
+  item = gearArt(item); /* v2.3.1757: see getGearFrame */
   const key = slot + '/' + item + '/' + pose + '/' + dir;
   const entry = _sheets[key];
   if (entry === undefined) { buildSheet(key, slot, item, pose, dir); return null; }
@@ -265,8 +278,13 @@ export function preloadGear() {
        sheet on the main thread (the equip stutter / armour flicker). The gear
        catalog is tiny (one armour set), so this adds little to the loading
        screen and matches what preloadCombatGear() already does for swings. */
+    /* v2.3.1757: a recoloured variant preloads its DONOR art, so a new metal
+       adds nothing to the loading screen — the sheets are already in flight for
+       the piece it borrows from, and the seen-check below drops the duplicate.
+       This is what makes the material pipeline free against the preload law
+       (CLAUDE.md): there is no new asset to register. */
     for (const c of (GEAR_CATALOG[slot] || [])) {
-      const item = c && c.id;
+      const item = c && gearArt(c.id);
       if (!item || item === 'none') continue;
       for (const [pose, dirs] of SETS) {
         for (const dir of dirs) {

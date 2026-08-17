@@ -58,6 +58,8 @@ import { getFacialHairColor, getColoredFacialHairTextures } from '../traits/faci
 import { getShirt } from '../traits/shirtCatalog.js';
 import { getShirtColor, shirtFill } from '../traits/shirtColorCatalog.js';
 import { getGearFrame, getGearFramePhased, getLoadedGearSources } from '../gearSheets.js';
+import { gearTint, gearArt } from '../gearVariants.js'; /* v2.3.1757: material recolor */
+import { materialTint } from '../traits/materialTints.js'; /* v2.3.1757: weapons share the metals table */
 import { combatGearUrls } from '../combatGear.js';
 import { getEquip, onEquipChange, isWearingArmor } from '../gearCatalog.js'; /* v2.3.1407: GEAR_CATALOG import dropped with the speculative all-states prewarm */
 import { recordCrash } from '../../debug/crashTrap.js'; /* v2.3.1305: trait-sheet load-failure telemetry */
@@ -872,7 +874,11 @@ const _GEAR_SLOTS = [['shirt', '_gearShirt'], ['legs', '_gearLegs'], ['chest', '
    painted-figure path under the half-res memory mode. */
 function _fullsetFrame(chestItem, legsItem, pose, dir, frameIdx, phase) {
   if (pose !== 'jog') return null;
-  if (chestItem !== 'steelplate' || legsItem !== 'steelgreaves') return null;
+  /* v2.3.1757: compare the ART, not the id, so a recoloured pair still gets the
+     painted knight figure instead of silently dropping to the overlay path.
+     The figure REPLACES the body sprite, so its colour is applied to that
+     sprite by the callers (see _fullsetTint). */
+  if (gearArt(chestItem) !== 'steelplate' || gearArt(legsItem) !== 'steelgreaves') return null;
   /* v2.3.1367: when the caller knows the jog cycle PHASE, the sheet plays
      its NATIVE frame count evenly on the same clock (east ships 25 frames
      vs the 28-frame body cycle — no held frames, no wrap jump).  Callers
@@ -892,14 +898,47 @@ function _fullsetFrame(chestItem, legsItem, pose, dir, frameIdx, phase) {
    pays for the gated warm with ~25MB to spare.  If a figure ever fails all
    gate retries, the runtime falls back to a lazy on-demand masked bake —
    rare hitch, correct image. */
+/* v2.3.1757: the material a fullset figure is worn in.  The figure is armour
+   art assigned onto the BODY sprite, so unlike every other gear layer its
+   colour has to travel with the body — and be cleared the instant the body
+   goes back to being a body, or an unarmoured player jogs around copper. */
+function _fullsetTint(chestItem) {
+  return gearTint(chestItem);
+}
 function _fullsetCoversBake(worn, pose, dir) {
   /* v2.3.1408: DISPLAY_DS guard lifted with _fullsetFrame's (the figure
      path now runs at any DS), so the dead-bake skip keeps paying. */
   if (pose !== 'jog' || dir === 'northeast') return false;
-  const has = (k) => worn.some((w) => w.k === k);
-  return has('chest:steelplate') && has('legs:steelgreaves');
+  /* v2.3.1757: the worn keys carry the ITEM id, so a recoloured pair has to be
+     matched through gearArt or its dead bakes stop being skipped. */
+  const artOf = (pfx) => {
+    const w = worn.find((x) => x.k && x.k.indexOf(pfx) === 0);
+    return w ? gearArt(w.k.slice(pfx.length)) : null;
+  };
+  return artOf('chest:') === 'steelplate' && artOf('legs:') === 'steelgreaves';
+}
+/* v2.3.1757: QA probe — the tints the renderer is ACTUALLY drawing gear with.
+   It reads the live sprites rather than echoing back what we asked for, so a
+   tint clobbered further down the frame still shows up as wrong.  Same posture
+   as __btBakeStats / __btPreloadReport. */
+let _lastGearDisplay = null;
+if (typeof window !== 'undefined') {
+  window.__btGearTints = () => {
+    const d = _lastGearDisplay;
+    if (!d) return null;
+    const slots = _GEAR_SLOTS.map(([slot, key]) => {
+      const spr = d[key];
+      return spr
+        ? { slot, visible: !!spr.visible, tint: spr.tint,
+          src: (spr.texture && spr.texture.source && spr.texture.source.uid) || null }
+        : { slot, missing: true };
+    });
+    const body = d._spriteBody;
+    return { slots, bodyTint: body ? body.tint : null };
+  };
 }
 function _placeGear(display, equip, pose, dir, frameIdx) {
+  _lastGearDisplay = display;
   const sb = display._spriteBody;
   /* v2.3.1361: the fullset figure carries ALL its armor — hide every gear
      layer so nothing double-draws over the finished art. */
@@ -957,6 +996,14 @@ function _placeGear(display, equip, pose, dir, frameIdx) {
       if (_GEAR_SLOTS[s][0] === 'shirt') {
         const t = equip && equip.shirtTint;
         spr.tint = t ? ((t[0] << 16) | (t[1] << 8) | t[2]) : 0xffffff;
+      } else {
+        /* v2.3.1757: the material recolor rides the SAME per-sprite tint the
+           shirt colour has always used — a multiply inside the batcher, so a
+           copper set costs nothing a steel one doesn't.  Native pieces resolve
+           to 0xffffff (a no-op), which is why this is unconditional: a sprite
+           reused from a recoloured piece must be reset or the next player to
+           borrow it wears the wrong metal. */
+        spr.tint = gearTint(item);
       }
       if (!spr.visible) spr.visible = true;
     } else if (spr.visible) spr.visible = false;
@@ -4901,6 +4948,12 @@ export class EntityRenderer {
                figure showing through at its edges. */
             const _mt = _fsR || ((pose === 'pickup') ? tex : _maskedBodyFrame(tex, _rworn, 6, { pose, dir, frameIdx }));
             if (spriteBody.texture !== _mt) spriteBody.texture = _mt;
+            /* v2.3.1757: the fullset figure IS the armour, drawn on the body
+               sprite — so the material colour goes here.  Cleared whenever the
+               figure is not in play, because the same sprite is the naked body
+               on the very next frame. */
+            const _fsTintR = _fsR ? _fullsetTint(other.equip && other.equip.chest) : 0xffffff;
+            if (spriteBody.tint !== _fsTintR) spriteBody.tint = _fsTintR;
           }
           /* v2.3.1055: pickup head overlay (drawn above gear in _orderTraitsAndWeapon).
              v2.3.1116: guarded (see local path) -- a throw here must not freeze the loop. */
@@ -5068,6 +5121,12 @@ export class EntityRenderer {
             oWeaponSprite.scale.x = (weaponMirror ? -1 : 1) * fitScale;
           }
           oWeaponSprite.scale.y = fitScale;
+          /* v2.3.1757: a REMOTE weapon stays native for now, and deliberately:
+             the peer snapshot carries `wpnType` and no material, so there is
+             nothing here to colour by.  Putting a metal on a remote weapon is a
+             wire field (server + protocol + caps gate), not a renderer change —
+             the local path below shows the tint working, and this is the one
+             place the pipeline is knowingly incomplete. */
           oWeaponSprite.tint = 0xffffff;
           oWeaponSprite.visible = true;
 
@@ -5795,6 +5854,10 @@ export class EntityRenderer {
              this (pose,dir); null -> classic masked path. */
           _fsT = _fullsetFrame(getEquip('chest'), getEquip('legs'), pose, dir, frameIdx, _jogPhase);
           _bodyTex = _fsT || ((!_worn.length || pose === 'pickup') ? tex : _maskedBodyFrame(tex, _worn, 6, { pose, dir, frameIdx }));
+          /* v2.3.1757: material colour for the figure-on-body case (see the
+             remote path above for why it is cleared rather than left set). */
+          const _fsTint = _fsT ? _fullsetTint(getEquip('chest')) : 0xffffff;
+          if (spriteBody.tint !== _fsTint) spriteBody.tint = _fsTint;
         } catch (e) { _bodyTex = tex; }
         if (spriteBody.texture !== _bodyTex) spriteBody.texture = _bodyTex;
         /* v2.3.1055: pickup head overlay (drawn above gear in _orderTraitsAndWeapon).
@@ -6244,7 +6307,7 @@ export class EntityRenderer {
             weaponSprite.scale.x = (weaponMirror ? -1 : 1) * fitScale;
           }
           weaponSprite.scale.y = fitScale;
-          weaponSprite.tint = 0xffffff;
+          weaponSprite.tint = materialTint(wpn && wpn.material); /* v2.3.1757 */
           weaponSprite.visible = true;
           /* v2.3.185 hand-over-grip: stamp the body's hand pixels on
              top of the weapon. handCap is a Sprite that shares the

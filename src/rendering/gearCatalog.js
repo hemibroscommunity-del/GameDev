@@ -19,10 +19,17 @@ export const GEAR_SLOTS = ['shirt', 'legs', 'chest', 'shoulders'];
    the owner).  The sheet is stored as a WHITE-BASE garment and tinted at
    render time to the picked shirt colour, like hats/hair.  South-only sheets
    so far (stand + jog); other dirs render no layer until their sheets exist. */
+/* v2.3.1757: the copper set is the steel art in a different metal — see
+   gearVariants.js.  It sits in the catalog so every existing path (the equip
+   store, the preload sweep, the `gear` dev command) reaches it with no special
+   casing, and it costs the loading screen nothing because preloadGear resolves
+   it back to the steel sheets. */
 export const GEAR_CATALOG = {
   shirt: [{ id: 'none', name: 'None' }, { id: 'tshirt', name: 'T-Shirt' }],
-  legs: [{ id: 'none', name: 'None' }, { id: 'steelgreaves', name: 'Steel Greaves' }],
-  chest: [{ id: 'none', name: 'None' }, { id: 'steelplate', name: 'Steel Plate' }],
+  legs: [{ id: 'none', name: 'None' }, { id: 'steelgreaves', name: 'Steel Greaves' },
+    { id: 'coppergreaves', name: 'Copper Greaves' }],
+  chest: [{ id: 'none', name: 'None' }, { id: 'steelplate', name: 'Steel Plate' },
+    { id: 'copperplate', name: 'Copper Plate' }],
   shoulders: [{ id: 'none', name: 'None' }],
 };
 
@@ -118,6 +125,9 @@ export function isWearingArmor() {
     || getEquip('shoulders') !== 'none';
 }
 export function setEquip(slot, id) { if (_stores[slot]) _stores[slot].set(id); }
+/* v2.3.1757: QA hook, same shape as traits/headwearCatalog's __btSetHeadwear —
+   the material pipeline has to be drivable from a test without a quest chain. */
+if (typeof window !== 'undefined') window.__btSetGear = setEquip;
 export function onEquipChange(slot, fn) { return _stores[slot] ? _stores[slot].on(fn) : () => {}; }
 
 /* ═══ v2.3.1703: THE STAT PIECE DRIVES THE RENDERED LAYER ═══
