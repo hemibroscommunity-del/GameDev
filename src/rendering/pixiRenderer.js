@@ -5,7 +5,7 @@
 import { createPixiApp } from './pixiApp.js';
 import { TileRenderer } from './systems/tileRenderer.js';
 import { EntityRenderer, prewarmMaskedBodyFrames, prewarmAltWornSets, planPrewarmProgress, uploadBakedTextures, uploadGearTextures, registerPrewarmRenderer } from './systems/entityRenderer.js';
-import { EffectsRenderer, prewarmDmgFontPipe } from './systems/effectsRenderer.js';
+import { EffectsRenderer, prewarmDmgFontPipe, FIRE_FRAME_MS } from './systems/effectsRenderer.js';
 import { FpsOverlay } from './systems/fpsOverlay.js';
 import { loadPlayerSprites } from './playerSprites.js';
 import { loadPlayerAnchors } from './playerAnchors.js';
@@ -424,11 +424,34 @@ export async function initPixiRenderer(canvas) {
         x: +sp.x.toFixed(1), y: +sp.y.toFixed(1), scale: +sp.scale.y.toFixed(4), tint: sp.tint,
       } : null);
       return {
+        /* v2.3.1749: published so the harness stops keeping its own copy of
+           the cadence — it had a hard-coded 200 that the 3x speed-up broke. */
+        frameMs: FIRE_FRAME_MS,
         frames: e._fireFrames ? e._fireFrames.length : 0,
         body: one(e.fireSprite), legs: one(e.fireLegsSprite),
         shirt: one(e.fireShirtSprite), chest: one(e.fireChestSprite),
         order: ['fireSprite', 'fireLegsSprite', 'fireShirtSprite', 'fireChestSprite']
           .map((k) => (e[k] && e[k].parent ? e[k].parent.getChildIndex(e[k]) : -1)),
+      };
+    },
+    /* v2.3.1749: read-only probe of a PEER's gathering stand-in, for the QA
+       harness — sibling of fireGearProbe above and added for the same reason.
+       The question "does another player's firemaking play once, in order, or
+       does it wrap" is a fact about a frame index living in a renderer
+       closure; a screenshot cannot separate it from the terrain, and the game
+       consumes nothing here. */
+    remoteSkillProbe: (id) => {
+      const e = effectsRenderer;
+      const pool = e._remoteSkillSprites;
+      const ent = pool && pool.get(id);
+      if (!ent) return null;
+      return {
+        code: ent._exCode || null,
+        frame: typeof ent._fi === 'number' ? ent._fi : null,
+        base: typeof ent._base === 'number' ? ent._base : null,
+        count: typeof ent._specLen === 'number' ? ent._specLen : null,
+        startedAt: ent._exStart || 0,
+        visible: !!(ent[ent._exCode] && ent[ent._exCode].visible),
       };
     },
     /* v2.3.138: dispose a single loot pile by direct object reference.
