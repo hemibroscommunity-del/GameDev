@@ -202,6 +202,21 @@ export function TradeWindowPanel(props) {
      (display of the server's confirm-reset, see wire map above). */
   const [leaveAsk, setLeaveAsk] = useState(false);
   const [offerChanged, setOfferChanged] = useState(false);
+  /* ═══ v2.3.1754: THESE HOOKS LIVE UP HERE FOR A REASON ═══
+     This component early-returns for the invite stub and the cancelled/receipt
+     states well before the live-window body.  Declaring the review-stage hooks
+     down beside the code that uses them made React see a different hook count
+     between renders — the window rendered nothing at all and the harness saw
+     an empty button list.  Rules of Hooks: unconditional, above every return. */
+  const T2_ACCEPT_COOLDOWN_MS = 2500;
+  const [nowTick, setNowTick] = useState(Date.now());
+  const [goldAck, setGoldAck] = useState(false);
+  const _t2ChangedAt = (trade2 && trade2.changedAt) || 0;
+  useEffect(() => { setGoldAck(false); }, [_t2ChangedAt]);
+  useEffect(() => {
+    const h = setInterval(() => setNowTick(Date.now()), 200);
+    return () => clearInterval(h);
+  }, []);
   const prevConfirmRef = useRef(null);
   const send = (event, payload) => {
     try { S.channel.send({ type: 'broadcast', event, payload: payload || {} }); } catch (e) {}
@@ -405,6 +420,28 @@ export function TradeWindowPanel(props) {
      picker is gated on caps.trade2Weapons (an old worker never sees the
      stage command). Both-confirm resets on any stage/unstage. */
   const weaponLane = !!(S && S._serverCaps && S._serverCaps.trade2Weapons);
+  /* ═══ v2.3.1754: THE TWO-STAGE TRADE ═══
+     Owner: "once both ready up, show a second, stripped-down screen — just a
+     plain text summary of 'you give / you receive' with totals.  Both must
+     accept again.  This second screen is arguably the single best anti-scam
+     feature ever added to a trade system."
+     caps-gated (rule 19): against an OLD worker the flag is absent, the
+     window keeps the single-stage Confirm it has always had, and no
+     trade2_ready is sent — the worker would relay it as an unknown broadcast
+     and the pair would wait on a stage that never arrives. */
+  const reviewFlow = !!(S && S._serverCaps && S._serverCaps.trade2Review);
+  const iReady = !!(trade2.ready && trade2.ready[myId]);
+  const theyReady = !!(trade2.ready && trade2.ready[otherId]);
+  const onReview = reviewFlow && iReady && theyReady;
+  /* The server refuses an accept within ACCEPT_COOLDOWN_MS of the last edit
+     (trade2.js).  Mirrored here only so the button can SAY so and count down
+     — the rule itself lives on the worker, because a cooldown a modified
+     client can skip is decoration. */
+  const coolLeft = Math.max(0, T2_ACCEPT_COOLDOWN_MS - (nowTick - (trade2.changedAt || 0)));
+  /* Owner: "large currency amounts trigger an explicit confirmation to catch
+     typos."  A second tap on the same button, not a separate dialog: on a
+     phone an extra modal over a modal is where taps go to die. */
+  const BIG_GOLD = 5000;
   const myWpn = (trade2.weapons && trade2.weapons[myId]) || [];
   const otherWpn = (trade2.weapons && trade2.weapons[otherId]) || [];
   const stash = (rpgState && rpgState.weaponStash) || [];
@@ -470,6 +507,105 @@ export function TradeWindowPanel(props) {
      direct reads of server state (`confirmed` flags from the last
      trade2_state echo). */
   const laneHeaderRow = { ...laneHeader, display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 6 };
+
+  /* ═══ v2.3.1754: STAGE TWO — THE REVIEW SCREEN ═══
+     Owner: "show a second, stripped-down screen — just a plain text summary
+     of 'you give / you receive' with totals.  Both must accept again.  This
+     second screen is arguably the single best anti-scam feature ever added to
+     a trade system."
+     STRIPPED-DOWN IS THE POINT.  No bag tray, no gold field, no staging
+     controls — nothing on this screen can change the trade, so what you read
+     is necessarily what you accept.  The offer is frozen server-side too:
+     any edit resets both readies and drops the pair back here-minus-one.
+     A COUNT, not a "value".  The owner's spec asks for a running total value
+     per side, and the game has no item price table anywhere — a total would
+     be a number I invented, and an invented number on an anti-scam screen is
+     worse than none, because it is exactly the figure someone would trust
+     instead of reading the list.  Gold is real and is totalled; items are
+     counted.  See the PR for what a real valuation would need. */
+  if (onReview) {
+    const mine = trade2.offers[myId] || {};
+    const theirs = trade2.offers[otherId] || {};
+    const lines = (offer, wpns) => {
+      const out = Object.entries(offer)
+        .filter(([k, v]) => k !== '_gold' && v > 0)
+        .map(([k, v]) => `${labelFor(k)} x${v}`);
+      (wpns || []).forEach((w) => out.push(wpnName(w)));
+      return out;
+    };
+    const myLines = lines(mine, myWpn), theirLines = lines(theirs, otherWpn);
+    const myGold = mine._gold || 0, theirGold = theirs._gold || 0;
+    const bigGold = Math.max(myGold, theirGold) >= BIG_GOLD;
+    const side = (title, ls, gold, tone) => (
+      <div style={{ ...wellStyle, marginBottom: 8 }}>
+        <div style={{ ...laneHeader, color: tone, marginBottom: 4 }}>{title}</div>
+        {ls.length === 0 && gold === 0 && (
+          <div style={{ fontSize: 12, color: '#8D9B98' }}>Nothing</div>
+        )}
+        {ls.map((t) => (
+          <div key={t} style={{ fontSize: 13, color: '#F4F0E7', lineHeight: 1.5 }}>{t}</div>
+        ))}
+        {gold > 0 && (
+          <div style={{ fontSize: 13, color: '#D8A94D', fontWeight: 700, lineHeight: 1.5 }}>{gold} gold</div>
+        )}
+        <div style={{ fontSize: 11, color: '#8D9B98', marginTop: 4, borderTop: '1px solid rgba(229,237,233,.11)', paddingTop: 4 }}>
+          {ls.length} item{ls.length === 1 ? '' : 's'}{gold > 0 ? ` · ${gold} gold` : ''}
+        </div>
+      </div>
+    );
+    return (
+      <div className="bt-inspect" style={{ background: 'rgba(4,9,12,0.62)' }} onClick={requestLeave}>
+        <div className="bt-inspect-card" onClick={(e) => e.stopPropagation()} style={{ ...cardStyle, width: 320 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, fontWeight: 700, color: '#F4F0E7', marginBottom: 8 }}>
+            <TradeIcon /> Confirm with {otherName}
+          </div>
+          {side('YOU GIVE', myLines, myGold, '#D8635D')}
+          {side('YOU RECEIVE', theirLines, theirGold, '#55B98A')}
+          {bigGold && !goldAck && (
+            /* Owner: "large currency amounts trigger an explicit confirmation
+               to catch typos." */
+            <div style={{ fontSize: 12, color: '#D8A94D', marginBottom: 8, lineHeight: 1.45 }}>
+              That is a large amount of gold. Check the numbers, then tap Accept twice.
+            </div>
+          )}
+          {theyConfirmed && (
+            <div style={{ fontSize: 12, color: '#55B98A', marginBottom: 6 }}>{otherName} has accepted — waiting on you.</div>
+          )}
+          <div style={{ display: 'flex', gap: 6 }}>
+            <button
+              disabled={iConfirmed || coolLeft > 0}
+              style={{
+                flex: 2, padding: '8px 0', minHeight: 44, borderRadius: 10, fontSize: 13, fontWeight: 700,
+                cursor: (iConfirmed || coolLeft > 0) ? 'default' : 'pointer',
+                border: (iConfirmed || coolLeft > 0) ? '1px solid rgba(229,237,233,.11)' : '1px solid #EAC675',
+                background: (iConfirmed || coolLeft > 0) ? '#1A292F' : 'linear-gradient(180deg,#E2B765,#D2A14D)',
+                color: iConfirmed ? '#55B98A' : coolLeft > 0 ? '#8D9B98' : '#172126',
+              }}
+              onClick={() => {
+                if (iConfirmed || coolLeft > 0) return;
+                if (bigGold && !goldAck) { setGoldAck(true); return; }
+                send('trade2_confirm');
+              }}
+            >{iConfirmed ? 'Accepted ✓ — waiting'
+              : coolLeft > 0 ? `Wait ${Math.ceil(coolLeft / 1000)}s…`
+              : (bigGold && !goldAck) ? 'Accept (large trade)'
+              : 'Accept'}</button>
+            <button
+              style={{ flex: 1, padding: '8px 0', minHeight: 44, borderRadius: 10, fontSize: 13, fontWeight: 700, border: '1px solid rgba(229,237,233,.20)', background: '#293B41', color: '#F4F0E7', cursor: 'pointer' }}
+              onClick={() => send('trade2_ready', { ready: false })}
+            >Back</button>
+          </div>
+          {/* The cooldown is the owner's "2-3 second delay ... kills
+              last-second swap scams".  Saying WHY it is disabled matters: an
+              unexplained dead button reads as a broken one. */}
+          <div style={{ fontSize: 11, color: '#8D9B98', marginTop: 8, lineHeight: 1.45 }}>
+            Nothing on this screen can change the trade. If either of you edits the offer,
+            you both come back here and accept again.
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="bt-inspect" style={{ background: 'rgba(4,9,12,0.52)' /* v2.3.1235: batch-4 rollout — trade-confirm strong scrim */ }} onClick={requestLeave /* v2.3.1235: batch-4 state-correction §7 — scrim taps route through the leave guard (same trade2_cancel send when nothing is staged) */}>
@@ -627,6 +763,23 @@ export function TradeWindowPanel(props) {
         )}
 
         <div style={{ display: 'flex', gap: 6 }}>
+          {reviewFlow ? (
+            /* ═══ v2.3.1754: STAGE ONE — Ready, not Confirm ═══
+               Ready commits nothing.  It says "my offer is final", and when
+               both sides have said it the server flips the pair to the review
+               stage, which is the screen that actually asks for consent. */
+            <button
+              disabled={confirmDisabled}
+              style={{
+                flex: 2, padding: '8px 0', minHeight: 44, borderRadius: 10, fontSize: 13, fontWeight: 700,
+                cursor: confirmDisabled ? 'default' : 'pointer',
+                border: confirmDisabled ? '1px solid rgba(229,237,233,.11)' : iReady ? '1px solid rgba(229,237,233,.20)' : '1px solid #EAC675',
+                background: confirmDisabled ? '#1A292F' : iReady ? '#293B41' : 'linear-gradient(180deg,#E2B765,#D2A14D)',
+                color: confirmDisabled ? '#8D9B98' : iReady ? '#55B98A' : '#172126',
+              }}
+              onClick={() => { if (!confirmDisabled) send('trade2_ready', { ready: !iReady }); }}
+            >{confirmDisabled ? 'Add an item or gold' : iReady ? 'Ready ✓ — waiting' : 'Ready to trade'}</button>
+          ) : (
           <button
             disabled={confirmDisabled /* v2.3.1235: batch-4 state-correction §3 — real disabled while BOTH sides are fully empty */}
             style={{
@@ -648,6 +801,7 @@ export function TradeWindowPanel(props) {
             }}
             onClick={() => { if (!iConfirmed) send('trade2_confirm'); }}
           >{confirmDisabled ? 'Add an item or gold' : iConfirmed ? 'Confirmed ✓' : 'Confirm trade'}</button>
+          )}
           <button
             style={{ flex: 1, padding: '8px 0', minHeight: 44, borderRadius: 10, fontSize: 13, fontWeight: 700, border: '1px solid rgba(229,237,233,.20)', background: '#293B41', color: '#F4F0E7', cursor: 'pointer' }}
             onClick={requestLeave /* v2.3.1235: batch-4 state-correction §7 — routes through the leave guard; [Leave Trade] fires the same trade2_cancel send */}

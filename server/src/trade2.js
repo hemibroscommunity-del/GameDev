@@ -47,6 +47,12 @@ export const TRADE2 = {
   SESSION_TTL: 300000,  // idle session lifetime (any action refreshes)
   MAX_GOLD: 999999,
   WEAPON_MAX: 4,        // v2.3.1213: max weapons staged per side
+  /* v2.3.1754 (owner, quoting the RuneScape/WoW lineage): "any modification
+     resets all acceptances, plus a 2-3 second delay before accepting is
+     re-enabled — kills last-second swap scams."  Enforced on the SERVER, not
+     just drawn on the client: a cooldown a client can skip is decoration, and
+     the scam it exists to stop is run by a modified client. */
+  ACCEPT_COOLDOWN_MS: 2500,
 };
 
 export const trade2Methods = {
@@ -73,6 +79,9 @@ export const trade2Methods = {
       id: s.id, a: s.a, b: s.b,
       aName: s.aName, bName: s.bName,
       offers: s.offers, confirmed: s.confirmed,
+      /* v2.3.1754 */
+      ready: s.ready || {}, changedAt: s.changedAt || 0, changedBy: s.changedBy || null,
+      stage: (s.ready && s.ready[s.a] && s.ready[s.b]) ? 'review' : 'offer',
       weapons: { [s.a]: wpn(s.a), [s.b]: wpn(s.b) },
       state: s.state,
     };
@@ -124,6 +133,15 @@ export const trade2Methods = {
         aName: (targetPs.name || 'Trader'), bName: (ps.name || 'Trader'),
         offers: { [target]: {}, [session.id]: {} }, // proto-ok: player-keyed (target validated live); join gate v2.3.1202
         confirmed: { [target]: false, [session.id]: false },
+        /* v2.3.1754: the two-stage handshake.  `ready` is the OFFER stage
+           ("I am done editing"); `confirmed` is the REVIEW stage ("I accept
+           what I was just shown").  They are separate flags because the whole
+           anti-scam value of the second screen is that you accept a summary
+           you have already seen — one flag cannot express that.
+           `changedAt` stamps the last edit so the accept cooldown is enforced
+           HERE and not merely drawn on the client. */
+        ready: { [target]: false, [session.id]: false },
+        changedAt: now, changedBy: null,
         state: 'open', ts: now,
       };
       this._trades2.set(s.id, s);
@@ -146,8 +164,32 @@ export const trade2Methods = {
     const offer = this._sanitizeTradeOffer(payload && payload.offer) || {};
     s.offers[session.id] = offer;
     // The anti-switch rule: any change unconfirms BOTH sides.
+    // v2.3.1754: ...and un-READIES both, dropping the pair back to the offer
+    // stage.  Resetting only `confirmed` would leave two players sitting on a
+    // review screen describing a trade that no longer exists — which is the
+    // exact misread the second screen exists to prevent.
     s.confirmed[s.a] = false;
     s.confirmed[s.b] = false;
+    if (s.ready) { s.ready[s.a] = false; s.ready[s.b] = false; }
+    s.changedAt = Date.now();
+    s.changedBy = session.id;
+    s.ts = Date.now();
+    this._t2Broadcast(s);
+  },
+
+  /* ═══ v2.3.1754: STAGE ONE — "I am done editing" ═══
+     Owner: "once both ready up, show a second, stripped-down screen ... Both
+     must accept again.  This second screen is arguably the single best
+     anti-scam feature ever added to a trade system."
+     Ready is deliberately NOT confirm: it commits nothing, it only says the
+     offer is final so the pair can be shown a summary of it. */
+  _handleTrade2Ready(session, payload) {
+    const s = this._t2SessionFor(session.id);
+    if (!s) return;
+    if (!s.ready) s.ready = { [s.a]: false, [s.b]: false };
+    /* payload.ready === false backs you out of the review screen without
+       editing anything — the "Back" button on the summary. */
+    s.ready[session.id] = !(payload && payload.ready === false);
     s.ts = Date.now();
     this._t2Broadcast(s);
   },
@@ -155,6 +197,18 @@ export const trade2Methods = {
   async _handleTrade2Confirm(session) {
     const s = this._t2SessionFor(session.id);
     if (!s) return;
+    /* ═══ v2.3.1754: A CONFIRM IS ONLY VALID ON THE REVIEW SCREEN ═══
+       Gated here rather than in the UI because the UI is not the thing an
+       attacker runs.  Both halves matter:
+       - both sides must be READY, so a confirm can only ever apply to an
+         offer that has been frozen and shown as a summary;
+       - and it must be at least ACCEPT_COOLDOWN_MS since the last edit, which
+         is the "2-3 second delay" that kills the last-second swap — a
+         modified client that skips its own timer still gets refused. */
+    if (!s.ready || !(s.ready[s.a] && s.ready[s.b])) return this._t2Broadcast(s, { reason: 'not-ready' });
+    if (Date.now() - (s.changedAt || 0) < TRADE2.ACCEPT_COOLDOWN_MS) {
+      return this._t2Broadcast(s, { reason: 'cooling' });
+    }
     s.confirmed[session.id] = true;
     s.ts = Date.now();
     if (!(s.confirmed[s.a] && s.confirmed[s.b])) {
@@ -304,8 +358,12 @@ export const trade2Methods = {
     this._saveRpg(session.id, ps);
     this._queuePlayerStateFlush(session.id);
     // Anti-switch: staging is a change -> reset BOTH confirms.
+    // v2.3.1754: and both readies, plus the change stamp (see _handleTrade2Set).
     s.confirmed[s.a] = false;
     s.confirmed[s.b] = false;
+    if (s.ready) { s.ready[s.a] = false; s.ready[s.b] = false; }
+    s.changedAt = Date.now();
+    s.changedBy = session.id;
     s.ts = Date.now();
     this._t2Broadcast(s);
   },
@@ -326,6 +384,10 @@ export const trade2Methods = {
     await this.state.storage.delete('trade2wpn:' + session.id + ':' + entry.seq);
     s.confirmed[s.a] = false;
     s.confirmed[s.b] = false;
+    /* v2.3.1754: unstaging is a change like any other (see _handleTrade2Set). */
+    if (s.ready) { s.ready[s.a] = false; s.ready[s.b] = false; }
+    s.changedAt = Date.now();
+    s.changedBy = session.id;
     s.ts = Date.now();
     this._t2Broadcast(s);
   },

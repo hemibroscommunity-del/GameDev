@@ -142,6 +142,88 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('the stepper can walk a stack all the way back down to one',
     !!backTo1 && backTo1.qty === 1, backTo1);
 
+  /* ═══ v2.3.1754: THE TWO-STAGE HANDSHAKE, THROUGH THE REAL BUTTONS ═══
+     Owner: "once both ready up, show a second, stripped-down screen ... Both
+     must accept again."  Driven end to end here because every safety property
+     in it is a claim about what a player can DO: that an accept cannot be
+     reached without readying, that the review screen has no way to change the
+     offer, that an edit drags both players back, and that the accept is
+     refused for a beat afterwards. */
+  const capReview = await H.readState(A, (S) => !!(S._serverCaps && S._serverCaps.trade2Review));
+  rec.ok('the worker advertises the two-stage trade', capReview);
+  const btn = (P, re) => P.page.evaluate((rx) => {
+    const b = [...document.querySelectorAll('button')].find((x) => x.offsetParent && new RegExp(rx).test(x.textContent || ''));
+    return b ? { text: b.textContent.trim(), disabled: !!b.disabled } : null;
+  }, re);
+  const tap = (P, re) => P.page.evaluate((rx) => {
+    const b = [...document.querySelectorAll('button')].find((x) => x.offsetParent && new RegExp(rx).test(x.textContent || ''));
+    if (!b || b.disabled) return false; b.click(); return true;
+  }, re);
+  const cardText = (P) => P.page.evaluate(() => {
+    const c = document.querySelector('.bt-inspect-card');
+    return c ? (c.innerText || '').replace(/\s+/g, ' ').trim() : '';
+  });
+
+  rec.ok('stage one offers Ready, not Confirm', !!(await btn(A, 'Ready to trade')), await btn(A, 'Ready'));
+  await tap(A, 'Ready to trade');
+  await A.page.waitForTimeout(800);
+  rec.ok('one side ready does NOT open the review screen',
+    !/YOU GIVE/.test(await cardText(A)), (await cardText(A)).slice(0, 80));
+  await tap(B, 'Ready to trade');
+  await A.page.waitForTimeout(1200);
+
+  const reviewA = await cardText(A);
+  rec.ok('both ready opens the stripped-down review screen',
+    /YOU GIVE/.test(reviewA) && /YOU RECEIVE/.test(reviewA), reviewA.slice(0, 140));
+  /* Stripped-down is the safety property: if the bag tray or the gold field
+     survived onto this screen, "what you read is what you accept" would be
+     false. */
+  rec.ok('...with nothing on it that can change the trade',
+    !/tap to add/i.test(reviewA) && !(await btn(A, '^Send$')), reviewA.slice(0, 140));
+  /* An edit drags BOTH players out of review — the property that stops a
+     last-second swap being accepted by someone reading a stale summary. */
+  await tap(B, 'Back');
+  await B.page.waitForTimeout(600);
+  await B.page.evaluate(() => {
+    const S = window._gameState && window._gameState.current;
+    if (S && S.channel) S.channel.send({ type: 'trade2_set', payload: { offer: { _gold: 3 } } });
+  });
+  await A.page.waitForTimeout(1200);
+  rec.ok('an edit drags BOTH players back off the review screen',
+    !/YOU GIVE/.test(await cardText(A)), (await cardText(A)).slice(0, 80));
+
+  /* ── the 2-3s delay, measured where it actually applies ──
+     The cooldown runs from the last EDIT, so it has to be checked right after
+     one.  The first cut asserted it immediately after both sides readied — by
+     which point the last edit was many seconds back and the button was
+     correctly already live, so the assertion was testing the clock rather than
+     the rule.  Ready both again straight after the edit above and it is the
+     real thing: this is the window a last-second swap would land in. */
+  await tap(A, 'Ready to trade');
+  await tap(B, 'Ready to trade');
+  await A.page.waitForTimeout(900);
+  /* THE COOLDOWN IS ASSERTED ON THE SERVER, NOT HERE.  Two attempts to catch
+     the disabled button from the browser both raced it: the delay runs from
+     the last EDIT, and simply getting both clients to ready costs a round
+     trip each, so by the time the review screen renders the window has
+     usually passed.  A test that sometimes observes the thing it is named
+     after is worse than one that does not claim to — and the rule is
+     enforced on the worker anyway, where trade2.test.mjs pins it directly
+     ("an accept inside the cooldown is refused (last-second swap)").
+     What IS stable and worth pinning here is that the screen TELLS the
+     player the rule, because an unexplained dead button reads as a broken
+     one. */
+  rec.ok('the review screen explains that an edit sends you both back',
+    /edits the offer/i.test(await cardText(A)), (await cardText(A)).slice(-120));
+  const acceptBtn = await btn(A, '^(Accept|Wait)');
+  rec.ok('...and the accept is either counting down or live, never missing',
+    !!acceptBtn, acceptBtn);
+  /* BOTH sides back to the offer stage, or the review screen (which has no
+     gold field) is still up when the anti-switch step tries to edit. */
+  await tap(A, 'Back');
+  await tap(B, 'Back');
+  await A.page.waitForTimeout(800);
+
   /* ── the staged offer must be visible ON B's SCREEN ── */
   /* An expression, not a function literal: page.evaluate given a STRING
      evaluates it as an expression, so `() => {...}` would just produce a
@@ -152,24 +234,28 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const lane = await otherLane(B);
   rec.ok("B's screen shows what A staged", crossed && /Gold/.test(lane?.body || ''), lane);
 
-  /* ── A confirms ── */
-  await H.clickText(A, 'Confirm trade');
+  /* ── A readies ── (v2.3.1754: Ready replaced Confirm as stage one) */
+  await tap(A, 'Ready to trade');
   const locked = await H.waitUi(A, () => [...document.querySelectorAll('button')]
-    .some((b) => /Confirmed/.test(b.textContent)), { label: 'A confirm locks', timeout: 12000 })
+    .some((b) => /Ready ✓/.test(b.textContent)), { label: 'A ready locks', timeout: 12000 })
     .then(() => true).catch(() => false);
-  rec.ok('confirming locks the button to "Confirmed ✓"', locked);
+  rec.ok('readying locks the button to "Ready ✓"', locked);
 
-  /* ── ANTI-SWITCH: change the offer after confirming; both confirms reset ── */
+  /* ── ANTI-SWITCH: change the offer after readying; both readies reset ── */
   await goldInput.fill('120');
   await A.page.waitForTimeout(2000);
-  const stillConfirmed = await A.page.evaluate(() =>
-    [...document.querySelectorAll('button')].some((b) => /Confirmed/.test(b.textContent)));
-  rec.ok('changing an offer resets the confirm (anti-switch)', !stillConfirmed, { stillConfirmed });
+  const stillReady = await A.page.evaluate(() =>
+    [...document.querySelectorAll('button')].some((b) => /Ready ✓/.test(b.textContent)));
+  rec.ok('changing an offer resets the ready (anti-switch)', !stillReady, { stillReady });
 
-  /* ── both confirm for real ── */
-  await H.clickText(A, 'Confirm trade');
+  /* ── both ready, wait out the cooldown, then both accept on the review
+        screen — the full two-stage path a player walks ── */
+  await tap(A, 'Ready to trade');
+  await tap(B, 'Ready to trade');
+  await A.page.waitForTimeout(3200);
+  await tap(A, '^Accept');
   await A.page.waitForTimeout(800);
-  await H.clickText(B, 'Confirm trade');
+  await tap(B, '^Accept');
 
   /* ── settlement ── */
   const done = await H.waitUi(A, () => /Trade complete/.test(document.body.innerText),

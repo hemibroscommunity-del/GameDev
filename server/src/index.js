@@ -3616,6 +3616,14 @@ export class GameRoom {
       case 'trade2_set':
         if (session.id) this._handleTrade2Set(session, msg.payload || msg);
         break;
+      case 'trade2_ready':
+        /* v2.3.1754: stage one of the two-stage trade (see trade2.js).  TRAPS
+           #18: a new client->server type needs THREE things — this case, the
+           handler, and a channelShim passthrough in wsClient.js.  Without the
+           third it leaves the browser as a broadcast and the worker never
+           hears it, silently. */
+        if (session.id) this._handleTrade2Ready(session, msg.payload || msg);
+        break;
       case 'trade2_confirm':
         if (session.id) await this._handleTrade2Confirm(session);
         break;
