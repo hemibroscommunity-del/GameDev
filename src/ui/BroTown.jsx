@@ -7521,8 +7521,25 @@ export var BroTown = function BroTown(_ref0) {
       var screenX = e.clientX - rect.left;
       var screenY = e.clientY - rect.top;
       /* Convert screen coords to world coords using camera */
-      var worldX = screenX + S.camera.x;
-      var worldY = screenY + S.camera.y;
+      /* ═══ v2.3.1756: THE MOUSE AIMS WHERE THE MOUSE IS ═══
+         The forward transform the renderer actually uses is
+         screen = (world - camera) * S._worldScaleX/Y, and the scale is
+         1/WORLD_ZOOM = 0.8 on every screen (constants.js, fixed value).
+         Inverting it as a bare translation is not a 25% error that cancels
+         out of an angle — it leaves an ADDITIVE term:
+             worldX_wrong - player.x = dxScreen - (player.x - camera.x)*(1 - k)
+         so the aim vector is displaced by however far the player sits from
+         the camera's top-left, and the further into the map you walk the
+         worse it points.  Measured 42 degrees off in the duel harness, which
+         is a swing aimed at nothing.
+         v2.3.1090 fixed exactly this for tap-to-lock (see SCALE_X below) and
+         for the touch tap path; this handler was missed, so mouse aim, mouse
+         FACING and every attack seeded from _mouseAimAngle have been
+         pointing wrong on desktop ever since. */
+      var _msX = S._worldScaleX || 1.0;
+      var _msY = S._worldScaleY || 1.0;
+      var worldX = screenX / _msX + S.camera.x;
+      var worldY = screenY / _msY + S.camera.y;
       /* Aim angle from player to mouse world position. Only push the
          aim into S._aimAngle while the player is actively attacking or
          aiming — otherwise mouse hover would override the body's

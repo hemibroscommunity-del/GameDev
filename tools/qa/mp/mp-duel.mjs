@@ -60,8 +60,30 @@ async function swingAt(A, times = 6, seen = null, onEach = null) {
       const th = Math.atan2(oy - S.player.y, ox - S.player.x);
       /* Put the cursor along the A->B ray, as far out as still fits on screen
          (bigger radius = less rounding error in the readback angle). */
-      const px = S.player.x - S.camera.x, py = S.player.y - S.camera.y;
-      const c = Math.cos(th), s = Math.sin(th);
+      /* ═══ v2.3.1756: AIM AT THE CANVAS, NOT AT THE WINDOW ═══
+         This was two errors compounding, and together they are the entire
+         "duels do no damage" result this suite has been reporting.
+
+         1. The canvas is LETTERBOXED: on the 1000x780 harness viewport it
+            measures 380x553 at left=310.  The game's own handlers convert
+            with `e.clientX - rect.left`, so a viewport coordinate that
+            ignores the offset is not the point the game reads — and here it
+            was not even ON the canvas.  elementFromPoint at the old aim
+            point returned ["BODY","HTML"]: the press hit the page beside the
+            game, so no mousedown ever reached it.  S.swinging stayed false,
+            the wire log showed no attack of any kind, and every downstream
+            assertion failed for want of a click.
+         2. World->CSS is (world - camera) * S._worldScaleX/Y, not a bare
+            translation; the world renders at 0.8.
+
+         Clamped inside the CANVAS rect for the same reason, and still kept
+         clear of the dashboard band in case a shorter viewport puts it over
+         the canvas. */
+      const cv = document.querySelector('canvas.brotown-canvas');
+      const r = cv ? cv.getBoundingClientRect() : { left: 0, top: 0, width: innerWidth, height: innerHeight };
+      const scX = S._worldScaleX || 1, scY = S._worldScaleY || 1;
+      const px = (S.player.x - S.camera.x) * scX, py = (S.player.y - S.camera.y) * scY;
+      const c = Math.cos(th) * scX, s = Math.sin(th) * scY;
       /* largest R that keeps the point inside the canvas along this ray.
          The bottom margin must clear the DASHBOARD, which would swallow
          the press — and the band's height is not a constant: it is
@@ -70,12 +92,13 @@ async function swingAt(A, times = 6, seen = null, onEach = null) {
          margin that silently stops clearing it. */
       const dashH = parseFloat(
         getComputedStyle(document.documentElement).getPropertyValue('--dash-h')) || 135;
+      const bottom = Math.min(r.height, innerHeight - dashH - r.top);
       const lim = (comp, toLow, toHigh) => Math.abs(comp) < 1e-3 ? Infinity
         : (comp > 0 ? toHigh : toLow) / Math.abs(comp);
       const R = Math.max(40, Math.min(180,
-        lim(c, px - 24, innerWidth - 24 - px),
-        lim(s, py - 24, innerHeight - dashH - 16 - py)));
-      return { sx: px + Math.cos(th) * R, sy: py + Math.sin(th) * R, th };
+        lim(c, px - 24, r.width - 24 - px),
+        lim(s, py - 24, bottom - 16 - py)));
+      return { sx: r.left + px + c * R, sy: r.top + py + s * R, th };
     });
     if (!pt) return { ok: false, worstErr };
     await A.page.mouse.move(pt.sx, pt.sy);
