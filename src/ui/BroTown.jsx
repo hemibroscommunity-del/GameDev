@@ -4161,6 +4161,25 @@ export var BroTown = function BroTown(_ref0) {
             name: 'Campfire', spotName: 'Campfire', gatherLvl: 1, skill: 'cooking', emoji: '🔥',
           };
           try { BT_AUDIO.beep(360, 0.05, 0.12, 'sawtooth'); } catch (e) {}
+          /* ═══ v2.3.1753: AND TELL THE OTHER PLAYERS ═══
+             Owner: "yes make both peers see a campfire."
+             Until now a campfire existed only on the client that lit it, so a
+             watcher saw someone crouch, stand up, and then cook over bare
+             ground — which is most of what "cooking looked wrong" was.
+             This needs NO server change: `type:'broadcast'` already has a
+             channelShim passthrough (wsClient.js) and the worker relays
+             unknown events room-wide by design, which is the same path
+             player_swing / player_dodge / emote already take.  It is
+             therefore NOT a privileged event — clients legitimately emit it,
+             exactly like a swing.
+             Zone rides along in the payload because the relay is room-wide;
+             the receiver drops anything from another zone (gameEvents), the
+             same rule v2.3.1748 had to add for four other effects. */
+          try {
+            if (S.channel) S.channel.send({ type: 'broadcast', event: 'campfire_lit', payload: {
+              id: S.myId, x: _fm.x, y: _fm.y, zone: S.currentZone, expiresAt: S._campfire.expiresAt,
+            } });
+          } catch (e) {}
         }
         /* v2.3.1431 (owner: "the minnow isn't getting cooked"): the fire
            must NOT burn out mid-cook.  Since v2.3.1416 the cook window

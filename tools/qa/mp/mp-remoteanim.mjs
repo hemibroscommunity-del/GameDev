@@ -85,6 +85,44 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('the sped-up strip reaches the fire-burning frames within the action',
     Math.max(...seen) >= 6, seen);
 
+  /* ═══ v2.3.1753: AND THE FIRE ITSELF CROSSES ═══
+     Owner: "yes make both peers see a campfire."  Until now the campfire
+     existed only on the client that lit it, so the watcher saw the whole
+     lighting animation and then bare ground — which is most of what "cooking
+     looked wrong" was.  B has just lit one above, so A must now hold it.
+     Read from A's state rather than the screen: the fire is drawn
+     procedurally into a shared graphics layer with no display object of its
+     own to find, and "is there a fire in A's world" is the fact under test. */
+  await A.page.waitForTimeout(900);
+  const peerFire = await A.page.evaluate((id) => {
+    const S = window._gameState && window._gameState.current;
+    const m = S && S._peerCampfires;
+    if (!m || !m.size) return { n: 0 };
+    const cf = m.get(String(id));
+    return { n: m.size, has: !!cf, zone: cf && cf.zone, ttl: cf ? cf.expiresAt - Date.now() : null };
+  }, bId);
+  rec.ok("the watcher receives the other player's campfire",
+    !!peerFire.has, peerFire);
+  rec.ok('...in their own zone, with a sane fuse',
+    !!peerFire.has && peerFire.zone === 'town'
+    && peerFire.ttl > 0 && peerFire.ttl <= 50000, peerFire);
+  /* One entry per player: re-lighting replaces rather than stacking, so a
+     long session cannot accumulate fires from one busy cook. */
+  await B.page.evaluate(() => {
+    const S = window._gameState && window._gameState.current;
+    if (!S || !S.player) return;
+    S._campfire = null;
+    S._firemaking = { x: S.player.x, y: S.player.y + 6, startedAt: Date.now(), doneAt: Date.now() + 700 };
+  });
+  await A.page.waitForTimeout(1800);
+  const again = await A.page.evaluate(() => {
+    const S = window._gameState && window._gameState.current;
+    const m = S && S._peerCampfires;
+    return m ? m.size : 0;
+  });
+  rec.ok('re-lighting replaces that player\'s fire rather than stacking a second',
+    again === 1, { first: peerFire.n, after: again });
+
   await A.ctx.close().catch(() => {});
   await B.ctx.close().catch(() => {});
 }

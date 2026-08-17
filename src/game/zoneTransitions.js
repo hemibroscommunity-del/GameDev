@@ -167,6 +167,11 @@ function hideZoneLoadingOverlay() {
 export function clearZoneLocalFx(S) {
   if (!S) return;
   S._campfire = null;
+  /* v2.3.1753: other players' fires are zone-local for the same reason yours
+     is — the relay is room-wide and the payload carries absolute coordinates,
+     so a peer's fire would otherwise redraw on the next map exactly as your
+     own used to. */
+  if (S._peerCampfires && S._peerCampfires.clear) S._peerCampfires.clear();
   S._firemaking = null;
   S._extraction = null;
   S._remoteProjectiles = [];

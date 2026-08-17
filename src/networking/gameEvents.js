@@ -170,6 +170,38 @@ export function processGameEvent(type, payload, S, deps) {
               handleEmoteEvent(payload, S);
               break;
             }
+          case 'campfire_lit':
+            {
+              /* ═══ v2.3.1753: THE OTHER PLAYER'S FIRE ═══
+                 Owner: "yes make both peers see a campfire."  A campfire used
+                 to exist only on the client that lit it, so a watcher saw a
+                 peer crouch, stand, and then cook over bare ground.
+                 Kept in a MAP keyed by the lighter's id — rule 4, not a plain
+                 object, because the key is client-supplied and a plain {}
+                 no-ops on '__proto__' (three incidents on 2026-07-07).  One
+                 entry per player, so the collection is bounded by the room
+                 rather than by how many fires anyone lights, and re-lighting
+                 replaces your own rather than stacking.
+                 Everything here is defensive because the relay is room-wide
+                 and a client emits this: own echo dropped, other zones
+                 dropped (the v2.3.1748 rule), coordinates and lifetime
+                 sanitised, and the fuse capped at the 45s the game itself
+                 uses +5s of slack so a forged payload cannot plant a fire
+                 that burns forever. */
+              if (!payload || payload.id === S.myId) break;
+              if ((payload.zone || 'town') !== S.currentZone) break;
+              var _cfX = Number(payload.x), _cfY = Number(payload.y);
+              if (!isFinite(_cfX) || !isFinite(_cfY)) break;
+              if (!S._peerCampfires) S._peerCampfires = new Map();
+              var _cfExp = Number(payload.expiresAt) || 0;
+              var _cfCap = Date.now() + 50000;
+              S._peerCampfires.set(String(payload.id), {
+                x: _cfX, y: _cfY, zone: payload.zone || 'town',
+                litAt: Date.now(),
+                expiresAt: Math.min(_cfExp > Date.now() ? _cfExp : Date.now() + 45000, _cfCap),
+              });
+              break;
+            }
           case 'party_chat':
             {
               /* v2.3.1212: server-validated party-only chat (item D
