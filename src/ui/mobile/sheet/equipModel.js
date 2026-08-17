@@ -1,4 +1,5 @@
 import { getActiveWeapon, calcDisplayDmgRange, calcDisplayDps, getArmorPieceDr, getArmorDrPct } from '../../../data/gameSystems.js';
+import { gearIdIcon, armorIconFor } from '@/rendering/gearVariants.js'; /* v2.3.1758: one armour art table */
 import { getShieldStats, getAmuletBonus } from '../../../data/items.js';
 import { getEquip } from '../../../rendering/gearCatalog.js';
 
@@ -49,10 +50,12 @@ const wpnIconSrc = (R, wpn) => {
     : `/icons/items/sword.webp${ITEMS_V}`;
 };
 
+/* v2.3.1758: armour art comes from ONE table (gearVariants) so a tier's icon
+   cannot drift from the metal it renders in.  The shirt keeps its own line —
+   it is not a metal and has no material variants. */
 const gearIconSrc = (id) =>
-  id === 'steelplate' ? `/icons/items/chest-plate.webp${ITEMS_V}`
-    : id === 'steelgreaves' ? `/icons/items/greaves.webp${ITEMS_V}`
-    : id === 'tshirt' ? `/icons/items/cloth-shirt.webp${ITEMS_V}` : null;
+  id === 'tshirt' ? `/icons/items/cloth-shirt.webp${ITEMS_V}`
+    : gearIdIcon(id) ? `${gearIdIcon(id)}${ITEMS_V}` : null;
 
 export function getEquippedSlots(R) {
   const wpn = R ? getActiveWeapon(R) : null;
@@ -74,7 +77,7 @@ export function getEquippedSlots(R) {
      This branch is the bare-cosmetics case that path does not cover. */
   const chestIcon = gearChestId !== 'none' ? gearIconSrc(gearChestId)
     : gearShirtId !== 'none' ? gearIconSrc(gearShirtId)
-    : R && R.armor ? `/icons/items/chest-plate.webp${ITEMS_V}` : null;
+    : R && R.armor ? `${armorIconFor('chest', R.armor.mat)}${ITEMS_V}` : null; /* v2.3.1758 */
   return [
     { slot: 'weapon', label: 'Weapon', item: wpn, iconSrc: wpnIconSrc(R, wpn),
       ghost: !wpn, quality: wpn && wpn.quality, pickerSlot: 'weapon' },
@@ -90,7 +93,7 @@ export function getEquippedSlots(R) {
     { slot: 'legs', label: 'Legs',
       item: (gearLegsId !== 'none' || R.legsArmor) ? { gearLegsId, legsArmor: R.legsArmor } : null,
       iconSrc: gearLegsId !== 'none' ? gearIconSrc(gearLegsId)
-        : R.legsArmor ? `/icons/items/greaves.webp${ITEMS_V}` : null,
+        : R.legsArmor ? `${armorIconFor('legs', R.legsArmor.mat)}${ITEMS_V}` : null, /* v2.3.1758 */
       ghost: gearLegsId === 'none' && !R.legsArmor, pickerSlot: 'legs' },
     /* Cape: Phase-2 — no data field yet; permanently ghosted, no picker. */
     { slot: 'cape', label: 'Cape', item: null, iconSrc: null, ghost: true, pickerSlot: null },

@@ -1545,7 +1545,14 @@ export function setupWebSocket(ctx) {
                   return a && a.name === _qrsName && (Number(a.tierMult) || 1) === _qrsTm;
                 });
               if (!_qrsHeld) {
-                S.rpg[_qrsKey].push({ name: _qrsName, tierMult: _qrsTm, slot: _qrsLegs ? 'legsArmor' : 'armor' });
+                /* v2.3.1758: the METAL rides with the piece into the bag.  It
+                   is what gearVariants resolves the art and the icon from, so
+                   dropping it here would put a copper-named piece on the
+                   character in steel — the same class of bug as v2.3.1701
+                   dropping `slot`. */
+                S.rpg[_qrsKey].push({ name: _qrsName, tierMult: _qrsTm,
+                  slot: _qrsLegs ? 'legsArmor' : 'armor',
+                  mat: _qrs.mat ? String(_qrs.mat).slice(0, 16) : undefined });
                 try { localStorage.setItem('bt_rpg', JSON.stringify(S.rpg)); } catch (e) {}
               }
               /* ═══ v2.3.1746: A REWARD IS NOT A DANGER ═══

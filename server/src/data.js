@@ -489,7 +489,14 @@ export const QUEST_REWARDS = {
                  rather it be the leg armor first since animations look better
                  with legs only than they do chest only").  kind:'legs' routes
                  to ps.legsArmor. */
-              item:{kind:'legs', name:"Iron Greaves", tierMult:1.0}},
+              /* v2.3.1758 (owner: "I'd like for copper to be the first armor in
+                 the game (you mine copper ore) so this should replace the iron
+                 armor.  The second tier of armor will be iron").  Same piece,
+                 same tierMult, same slot — only the metal changed, so the
+                 balance this quest was tuned against is untouched.  `mat` is
+                 what the client renders and icons by; "Iron" is now reserved
+                 for the tier above. */
+              item:{kind:'legs', name:"Copper Greaves", mat:'copper', tierMult:1.0}},
 
       /* ═══ v2.3.1680: THE LIFESKILL CHAIN ═══
          Owner: "gate and hide resource extraction for woodcutting, fishing,
@@ -540,7 +547,7 @@ export const QUEST_REWARDS = {
                   reward will want it.  Still the first armour in the game that
                   does anything per hit (v2.3.1679: torso 30%). */
                objective:{type:'collect', invPrefix:'ore_', count:5, consume:true},
-               item:{kind:'armor', name:"Iron Torso", tierMult:1.0}},
+               item:{kind:'armor', name:"Copper Torso", mat:'copper', tierMult:1.0}},
 
       mayor_1:    {gold:50,  xp:20,  next:'mayor_2'},
       mayor_2:    {gold:100, xp:55,  next:'mayor_3', objective:{type:'kill', arch:null, count:5}},

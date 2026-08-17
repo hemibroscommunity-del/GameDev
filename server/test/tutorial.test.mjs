@@ -150,8 +150,15 @@ const sess = { id: 'bp_t' };
       !!it && !Array.isArray(it) && it.kind !== 'armorSet', it);
     check('life_2 pays the TORSO (kind:armor -> ps.armor), never the legs',
       !!it && it.kind === 'armor', it);
-    check('life_2 names the piece "Iron Torso", in the same family as the greaves',
-      !!it && it.name === 'Iron Torso', it && it.name);
+    /* v2.3.1758: copper is tier one now (owner: "copper to be the first armor
+       in the game ... this should replace the iron armor"), so the family name
+       moved with it — and the MATERIAL is asserted alongside, because that is
+       the field the client renders and icons from.  A rename that dropped
+       `mat` would leave the piece drawing as steel with a copper name. */
+    check('life_2 names the piece "Copper Torso", in the same family as the greaves',
+      !!it && it.name === 'Copper Torso', it && it.name);
+    check('...and carries its material, which is what the client draws it in',
+      !!it && it.mat === 'copper', it && it.mat);
     /* The leg slot belongs to tut_4 alone.  A grep over the whole reward table
        is the assertion that survives someone re-adding legs somewhere new. */
     const legsPayers = Object.entries(QUEST_REWARDS).filter(([, r]) => {
@@ -234,7 +241,7 @@ const sess = { id: 'bp_t' };
     const wsA = room._wsBySessionId(sess.id);
     const stA = wsA ? wsA.sent.filter((m) => m.type === 'quest_reward_stashed') : [];
     check('the armor reward is handed to the bag and named',
-      stA.length >= 1 && stA[stA.length - 1].payload.item.name === 'Iron Greaves'
+      stA.length >= 1 && stA[stA.length - 1].payload.item.name === 'Copper Greaves'
       && stA[stA.length - 1].payload.item.slot === 'legsArmor',
       stA.map((m) => m.payload.item));
   }
@@ -263,7 +270,7 @@ const sess = { id: 'bp_t' };
     room._handleQuestTurnIn(sess, { questId: 'tut_4', xpCat: 'sword' });
     const stashed = wsQ ? wsQ.sent.slice(before).filter((m) => m.type === 'quest_reward_stashed') : [];
     check('an occupied chest slot no longer swallows the reward',
-      stashed.length === 1 && stashed[0].payload.item.name === 'Iron Greaves',
+      stashed.length === 1 && stashed[0].payload.item.name === 'Copper Greaves',
       stashed.map((m) => m.payload));
     check('...and the armour the player chose is left alone',
       ps2.legsArmor && ps2.legsArmor.name === 'Something The Player Chose', ps2.legsArmor);

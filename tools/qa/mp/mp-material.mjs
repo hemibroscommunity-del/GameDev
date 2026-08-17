@@ -88,6 +88,77 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('unequipping the copper returns the sprite to native steel',
     back.length > 0 && back.every((s) => s.tint === NATIVE), back);
 
+  /* ═══ v2.3.1758: COPPER AS A REAL TIER, NOT A DEV COMMAND ═══
+     Everything above drives the equip store directly, which proves the
+     RENDERER.  It says nothing about whether a player can ever obtain the
+     stuff.  This half walks the actual reward: the worker grants the tier-one
+     piece, it lands in the bag carrying its material, wearing it puts copper
+     art on the character, and — the part no single-client test can see — the
+     OTHER player's screen shows copper too. */
+  await setGear(A, 'chest', 'none');
+  await setGear(A, 'legs', 'none');
+  await A.page.waitForTimeout(600);
+
+  const aId = await H.readState(A, (S) => S.myId);
+  const send = (P, msg) => P.page.evaluate((m) => {
+    const S = window._gameState && window._gameState.current;
+    if (S && S.channel) S.channel.send(m);
+  }, msg);
+  /* life_2 pays the tier-one TORSO for five ore — the copper-ore quest the
+     owner named ("you mine copper ore"). */
+  await send(A, { type: 'quest_accept', payload: { questId: 'life_1' } });
+  await A.page.waitForTimeout(900);
+  await H.grant(wsPort, aId, 'item', { invKey: 'cooked_fish_trout', count: 2 });
+  await A.page.waitForTimeout(1000);
+  await send(A, { type: 'quest_turn_in', payload: { questId: 'life_1', xpCat: 'sword' } });
+  await A.page.waitForTimeout(1400);
+  await send(A, { type: 'quest_accept', payload: { questId: 'life_2' } });
+  await A.page.waitForTimeout(900);
+  await H.grant(wsPort, aId, 'item', { invKey: 'ore_copper_ore', count: 5 });
+  await A.page.waitForTimeout(1000);
+  await send(A, { type: 'quest_turn_in', payload: { questId: 'life_2', xpCat: 'sword' } });
+  await A.page.waitForTimeout(2000);
+
+  const stash = await H.readState(A, (S) => (S.rpg.armorStash || [])
+    .map((a) => ({ name: a && a.name, mat: a && a.mat })));
+  rec.ok('the mining quest pays a COPPER torso',
+    stash.some((a) => a.name === 'Copper Torso'), stash);
+  rec.ok('...and the piece carries its material into the bag (the art depends on it)',
+    stash.some((a) => a.name === 'Copper Torso' && a.mat === 'copper'), stash);
+
+  /* Wear it the way the player does — through the equip action, not by poking
+     the cosmetic store. */
+  const wore = await A.page.evaluate(() => {
+    const S = window._gameState && window._gameState.current;
+    const R = S && S.rpg;
+    if (!R || !Array.isArray(R.armorStash) || !R.armorStash.length) return 'no piece';
+    const i = R.armorStash.findIndex((a) => a && a.name === 'Copper Torso');
+    if (i < 0) return 'not found';
+    R.armor = R.armorStash.splice(i, 1)[0];
+    if (window.__btSyncArmorLayers) window.__btSyncArmorLayers(R);
+    return 'worn';
+  });
+  rec.ok('the quest piece can be worn', wore === 'worn', wore);
+  await A.page.waitForTimeout(1800);
+  const wornTint = armour(await gearTints(A)).find((x) => x.slot === 'chest');
+  rec.ok('a worn quest torso renders in COPPER, from its material alone',
+    !!wornTint && wornTint.visible && wornTint.tint === COPPER, wornTint);
+
+  /* ── and the other player sees it ──
+     The equip id is what crosses the wire, so this is the whole remote story:
+     if B's copy of A's equipment says copperplate, B's renderer resolves the
+     same art and the same tint A's does. */
+  const seen = await H.waitFor(B, (S) => {
+    const o = S.others && S.others[Object.keys(S.others || {})[0]];
+    return o && o.equip ? o.equip.chest : null;
+  }, (v) => v === 'copperplate', { timeout: 15000, label: 'B sees copper on A' })
+    .then(() => true).catch(() => false);
+  rec.ok('the other player sees the copper piece, not the steel one', seen,
+    await H.readState(B, (S) => {
+      const o = S.others && S.others[Object.keys(S.others || {})[0]];
+      return o ? o.equip : null;
+    }));
+
   /* ── the body sprite is not left wearing the metal ──
      The fullset knight figure is armour art assigned onto the BODY sprite, so
      its colour has to be cleared the moment the figure is not in play or an

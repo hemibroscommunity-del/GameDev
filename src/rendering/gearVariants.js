@@ -39,6 +39,56 @@ export function gearTint(item) {
   return materialTint(gearMaterial(item));
 }
 
+/* ═══ v2.3.1758: THE MATERIAL TRAVELS WITH THE PIECE ═══
+   Owner: "I'd like for copper to be the first armor in the game (you mine
+   copper ore) so this should replace the iron armor.  The second tier of
+   armor will be iron."
+
+   A quest piece is a stat record (`{name, tierMult, slot, mat}`), and `mat` is
+   the only thing that decides which art and which icon it wears.  Both lookups
+   live here so a new tier is a row in these two tables and nothing else — the
+   alternative is a `mat === 'copper' ? ... : ...` ladder in each of the five
+   places that draw armour, which is how the same piece ends up copper on the
+   character and steel in the bag.
+
+   A piece with NO material is deliberately steel: that is every pre-v2.3.1758
+   save, and it renders exactly as it always did. */
+const ART_BY_MATERIAL = {
+  chest: { copper: 'copperplate' },
+  legs: { copper: 'coppergreaves' },
+};
+const ART_DEFAULT = { chest: 'steelplate', legs: 'steelgreaves' };
+const ICON_BY_MATERIAL = {
+  chest: { copper: '/icons/items/chest-plate-copper.png' },
+  legs: { copper: '/icons/items/greaves-copper.png' },
+};
+const ICON_DEFAULT = { chest: '/icons/items/chest-plate.webp', legs: '/icons/items/greaves.webp' };
+
+/** The gear id a worn stat piece should render as. */
+export function gearIdFor(slot, material) {
+  const byMat = ART_BY_MATERIAL[slot];
+  return (byMat && material && byMat[material]) || ART_DEFAULT[slot] || 'none';
+}
+
+/** The inventory/loadout icon for a slot in a material.  Returns the path
+ *  WITHOUT a cache-buster; callers append their own ITEMS_V. */
+export function armorIconFor(slot, material) {
+  const byMat = ICON_BY_MATERIAL[slot];
+  return (byMat && material && byMat[material]) || ICON_DEFAULT[slot] || null;
+}
+
+/** The icon for a gear id (the cosmetic layer's own id, not a stat piece). */
+export function gearIdIcon(id) {
+  for (const slot of ['chest', 'legs']) {
+    if (id === ART_DEFAULT[slot]) return ICON_DEFAULT[slot];
+    const byMat = ART_BY_MATERIAL[slot];
+    for (const mat of Object.keys(byMat || {})) {
+      if (byMat[mat] === id) return ICON_BY_MATERIAL[slot][mat];
+    }
+  }
+  return null;
+}
+
 /** Display name for a variant, or null if the id is not one. */
 export function gearVariantName(item) {
   const v = item && GEAR_VARIANTS[item];

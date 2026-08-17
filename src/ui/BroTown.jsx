@@ -120,7 +120,7 @@ import { HAT_COLOR_CATALOG, getHatColor, setHatColor } from '@/rendering/traits/
 import { FACIALHAIR_COLOR_CATALOG, getFacialHairColor, setFacialHairColor } from '@/rendering/traits/facialHairColorCatalog.js';
 import { SHIRT_CATALOG, getShirt, setShirt } from '@/rendering/traits/shirtCatalog.js';
 import { SHIRT_COLOR_CATALOG, getShirtColor, setShirtColor } from '@/rendering/traits/shirtColorCatalog.js';
-import { getEquip, setEquip, reconcileGearStash } from '@/rendering/gearCatalog.js';
+import { getEquip, setEquip, reconcileGearStash, migrateTier1Armor } from '@/rendering/gearCatalog.js';
 import { wireGearWornSync } from '@/game/gearWornSync.js';
 import { wireTorchCrackle, wireThemeMusic } from '@/game/splashAudio.js';
 import { wireCharacterPortrait, wireSplashPrewarm, clampLongHairColor } from '@/game/characterCreatorEffects.js';
@@ -2696,6 +2696,16 @@ export var BroTown = function BroTown(_ref0) {
       if (S.rpg.armor === undefined || _isLeather(S.rpg.armor)) S.rpg.armor = null;
       if (!S.rpg.armorStash) S.rpg.armorStash = [];
       S.rpg.armorStash = S.rpg.armorStash.filter(function (a) { return !_isLeather(a); });
+      /* v2.3.1758: copper replaces iron as tier one (owner), so a save holding
+         the old "Iron Torso" / "Iron Greaves" is rewritten in place — see
+         migrateTier1Armor.  Runs beside the Leather purge above because this
+         is the same kind of thing: a piece whose identity the game changed
+         under a player who already owned it. */
+      try {
+        if (migrateTier1Armor(S.rpg)) {
+          try { localStorage.setItem('bt_rpg', JSON.stringify(S.rpg)); } catch (e) { /* quota */ }
+        }
+      } catch (e) { /* a migration must never block the load */ }
       if (S.rpg.shield === undefined) S.rpg.shield = null;
       if (!S.rpg.amulet) S.rpg.amulet = null; /* {tier, gem, name} */
       /* v2.3.188: existing saves with no shield get the starter wood

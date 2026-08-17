@@ -1,6 +1,6 @@
 /* The quest greaves go on the LEGS (v2.3.1701).
  *
- * Owner: "Iron Greaves" — the tut_4 reward, granted as kind:'legs' precisely
+ * Owner: 'Copper Greaves' — the tut_4 reward, granted as kind:'legs' precisely
  * because the owner asked for legs first ("animations look better with legs
  * only than they do chest only") — equipped to the CHEST.
  *
@@ -67,9 +67,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
     legs: (S.rpg.legsStash || []).map((a) => a && a.name),
     chest: (S.rpg.armorStash || []).map((a) => a && a.name),
   }));
-  rec.ok('the greaves land in the LEGS stash', bags.legs.includes('Iron Greaves'), bags);
+  rec.ok('the greaves land in the LEGS stash', bags.legs.includes('Copper Greaves'), bags);
   rec.ok('...and NOT in the chest stash (the bug: the slot was dropped)',
-    !bags.chest.includes('Iron Greaves'), bags);
+    !bags.chest.includes('Copper Greaves'), bags);
 
   /* ── equip it through the real bag UI ──
      There is no Bag DESTINATION any more: since v2.3.1653 the resting
@@ -77,13 +77,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
      the band and 'Dashboard' is how you get back to it. */
   await H.openDest(P, 'Dashboard').catch(() => {});
   await P.page.waitForTimeout(900);
-  const tapped = await P.page.locator('[title="Iron Greaves"]').first()
+  const tapped = await P.page.locator('[title="Copper Greaves"]').first()
     .click({ timeout: 5000 }).then(() => true).catch(() => false);
   rec.ok('the greaves show up as a bag tile you can tap', tapped);
   await P.page.waitForTimeout(500);
   const card = await H.bodyText(P);
   rec.ok('its card names the LEGS slot, not the chest',
-    /Legs/.test(card) && !/Iron Greaves[\s\S]{0,120}Chest/.test(card), card.slice(0, 400));
+    /Legs/.test(card) && !/Copper Greaves[\s\S]{0,120}Chest/.test(card), card.slice(0, 400));
   const equipped = await H.clickText(P, 'Equip').then(() => true).catch(() => false);
   rec.ok('the card offers Equip', equipped);
   await P.page.waitForTimeout(1800);
@@ -92,14 +92,14 @@ export async function run({ browser, wsPort, webPort, rec }) {
     legsArmor: S.rpg.legsArmor && S.rpg.legsArmor.name,
     armor: S.rpg.armor && S.rpg.armor.name,
   }));
-  rec.ok('equipping puts it on the LEGS', worn.legsArmor === 'Iron Greaves', worn);
-  rec.ok('...and leaves the chest slot alone', worn.armor !== 'Iron Greaves', worn);
+  rec.ok('equipping puts it on the LEGS', worn.legsArmor === 'Copper Greaves', worn);
+  rec.ok('...and leaves the chest slot alone', worn.armor !== 'Copper Greaves', worn);
 
   /* The worker has to learn it, or the next full player_state takes the
      piece back off and the server keeps computing damage without it. */
   const after = await H.adminPlayer(wsPort, myId);
   rec.ok('the WORKER stored the legs piece (so it actually reduces damage)',
-    !!(after && after.rpg && after.rpg.legsArmor && after.rpg.legsArmor.name === 'Iron Greaves'),
+    !!(after && after.rpg && after.rpg.legsArmor && after.rpg.legsArmor.name === 'Copper Greaves'),
     after && after.rpg && after.rpg.legsArmor);
 
   /* ═══ v2.3.1703: AND IT SHOWS ON THE CHARACTER ═══
@@ -114,8 +114,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const g = window._gameFns && window._gameFns.getEquip;
     return g ? { legs: g('legs'), chest: g('chest') } : { err: 'no getEquip bridge' };
   });
+  /* v2.3.1758: the tier-one greaves are COPPER now (owner: "copper to be the
+     first armor in the game ... this should replace the iron armor"), and the
+     layer id is what carries the metal — 'coppergreaves' is the steel art with
+     the copper tint, so asserting the id here is asserting the colour too. */
   rec.ok('the worn greaves put armour on the LEGS layer the renderer draws',
-    shown.legs === 'steelgreaves', shown);
+    shown.legs === 'coppergreaves', shown);
   rec.ok('...and did not also paint a chest plate on (there is no chest piece)',
     shown.chest === 'none', shown);
 
@@ -141,7 +145,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       legs: g ? g('legs') : 'no bridge',
     };
   });
-  rec.ok('unequipping puts the greaves back in the bag', !bare.legsArmor && bare.legsStash.includes('Iron Greaves'), bare);
+  rec.ok('unequipping puts the greaves back in the bag', !bare.legsArmor && bare.legsStash.includes('Copper Greaves'), bare);
   rec.ok('...and takes the art back off the character', bare.legs === 'none', bare);
 
   /* ═══ v2.3.1704: AND THE MINING QUEST PAYS THE OTHER HALF, ONCE ═══
@@ -184,14 +188,14 @@ export async function run({ browser, wsPort, webPort, rec }) {
     wornLegs: S.rpg.legsArmor && S.rpg.legsArmor.name,
   }));
   rec.ok('the mining quest pays an IRON TORSO into the chest bag',
-    after2.chest.includes('Iron Torso'), after2);
+    after2.chest.includes('Copper Torso'), after2);
   /* The name is half the report — "Prospector's" was the family that did not
      exist, so its absence is worth asserting rather than assuming. */
   rec.ok('...and nothing is called "Prospector\'s" anything any more',
     !after2.chest.concat(after2.legs).some((n) => /Prospector/i.test(String(n))), after2);
   /* The headline: ONE pair of legs in the whole arc, and it is tut_4's. */
   rec.ok('the mining quest pays NO second pair of legs',
-    after2.legs.filter((n) => n === 'Iron Greaves').length === 1
+    after2.legs.filter((n) => n === 'Copper Greaves').length === 1
     && after2.legs.length === 1, after2);
 
   await P.ctx.close().catch(() => {});

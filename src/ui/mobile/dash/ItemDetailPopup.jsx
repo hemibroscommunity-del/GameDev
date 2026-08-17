@@ -1,4 +1,5 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { gearIdIcon, armorIconFor } from '@/rendering/gearVariants.js'; /* v2.3.1758: one armour art table */
 import { COL, getState } from './common.js';
 import { itemDetailBus } from './itemDetailBus.js';
 import {
@@ -225,8 +226,10 @@ function resolveTarget(target) {
          emoji vest" report — the card you get by tapping the worn piece read
          🦺 while the worn greaves card below it read real painted art.  Same
          chest-plate.webp as the stash card; the glyph stays only as the
-         img-fails fallback the popup already renders. */
-      thumb: `/icons/items/chest-plate.webp${ITEMS_V}`,
+         img-fails fallback the popup already renders.
+         v2.3.1758: through the material table, so a copper torso's card shows
+         the copper torso. */
+      thumb: `${armorIconFor('chest', ar && ar.mat)}${ITEMS_V}`,
       glyph: '\u{1F9BA}',
       name: ar.name || 'Armor',
       info: Math.round(dr * 100) + '% damage reduced',
@@ -252,8 +255,9 @@ function resolveTarget(target) {
       /* v2.3.1710: the item card the owner sees when they tap the Iron Torso
          in the bag.  Matched to the stashLegs card 25 lines down, which has
          carried `thumb: greaves.webp` since v2.3.1701 — the pair are one
-         armour set and must read as one. */
-      thumb: `/icons/items/chest-plate.webp${ITEMS_V}`,
+         armour set and must read as one.
+         v2.3.1758: ...and both read the piece's own metal. */
+      thumb: `${armorIconFor('chest', ar && ar.mat)}${ITEMS_V}`,
       glyph: '\u{1F9BA}',
       name: ar.name || 'Armor',
       info: Math.round(dr * 100) + '% damage reduced',
@@ -279,7 +283,7 @@ function resolveTarget(target) {
       : null;
     return {
       lockKey: 'stashLegs_' + (target.index || 0),
-      thumb: `/icons/items/greaves.webp${ITEMS_V}`,
+      thumb: `${armorIconFor('legs', ar && ar.mat)}${ITEMS_V}`, /* v2.3.1758 */
       glyph: '\u{1F456}',
       name: ar.name || 'Greaves',
       info: Math.round(dr * 100) + '% damage reduced',
@@ -327,9 +331,9 @@ function gearName(slot, gearId) {
 }
 /* v2.3.1325: painted item set for the worn-gear pieces. */
 function gearThumb(gearId) {
-  return gearId === 'steelplate' ? `/icons/items/chest-plate.webp${ITEMS_V}`
-    : gearId === 'steelgreaves' ? `/icons/items/greaves.webp${ITEMS_V}`
-    : gearId === 'tshirt' ? `/icons/items/cloth-shirt.webp${ITEMS_V}`
+  /* v2.3.1758: armour resolves through the one table; the shirt is not a metal. */
+  return gearId === 'tshirt' ? `/icons/items/cloth-shirt.webp${ITEMS_V}`
+    : gearIdIcon(gearId) ? `${gearIdIcon(gearId)}${ITEMS_V}`
     : null;
 }
 
@@ -847,7 +851,9 @@ export const ItemDetailPopup = () => {
             Chest — Layers
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-            {layerRow('armor', `/icons/items/chest-plate.webp${ITEMS_V}`, /* v2.3.1325 */
+            {/* v2.3.1758: the metal of whichever piece this row is about —
+                the worn one, or the one waiting in the bag. */}
+            {layerRow('armor', `${armorIconFor('chest', (armorOn ? R2.armor : stashedChest) && (armorOn ? R2.armor : stashedChest).mat)}${ITEMS_V}`,
               armorOn ? ((R2.armor && R2.armor.name) || 'Armor') : (stashedChest ? (stashedChest.name || 'Armor') : 'No chest armor'),
               'Armor · top layer', armorOn, !!stashedChest, toggleArmor)}
             {layerRow('shirt', `/icons/items/cloth-shirt.webp${ITEMS_V}`,
@@ -917,7 +923,7 @@ export const ItemDetailPopup = () => {
             background: on ? '#243137' : '#19252A',
             border: `1px solid ${on ? '#D8A85F' : 'rgba(238, 242, 235, .14)'}`,
           }}>
-            <img src={`/icons/items/greaves.webp${ITEMS_V}`} alt="Greaves" draggable={false} /* v2.3.1325 */
+            <img src={`${armorIconFor('legs', (on ? (R2 && R2.legsArmor) : stashedLegs) && (on ? (R2 && R2.legsArmor) : stashedLegs).mat)}${ITEMS_V}`} alt="Greaves" draggable={false} /* v2.3.1758 */
               style={{ width: 24, height: 24, imageRendering: 'pixelated',
                 filter: on ? 'none' : 'grayscale(1) brightness(.6)', userSelect: 'none' }} />
             <div style={{ flex: 1, minWidth: 0 }}>
