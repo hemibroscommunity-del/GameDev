@@ -96,7 +96,28 @@ const GoldIcon = () => (
    the EXISTING removal pathway (trade2_set without the key / the
    existing trade2_unstage_weapon send).  The other player's rows render
    the same component with no onRemove. */
-function StagedRow({ glyph, name, qty, rarityLabel, rarityColor, onRemove }) {
+/* 44px hit targets per UI-BIBLE; disabled reads as muted, never invisible —
+   a + that vanishes at your stack limit looks like a broken button. */
+const stepBtn = (enabled) => ({
+  width: 34, height: 44, flex: 'none', borderRadius: 8, padding: 0,
+  border: '1px solid rgba(229,237,233,.20)', background: enabled ? '#293B41' : '#1A272C',
+  color: enabled ? '#F4F0E7' : '#667875', fontSize: 16, fontWeight: 700,
+  cursor: enabled ? 'pointer' : 'not-allowed', lineHeight: 1,
+});
+
+/* ═══ v2.3.1752: A STEPPER, NOT A GUESSING GAME ═══
+   Owner: "allow additional quantities of stuff to be traded (it only allowed
+   me to put up one of the fire goblin remains).  It's just not a great trading
+   interface neither of us understood it well."
+   Staging a quantity used to be ONE control doing three jobs: tapping a bag
+   tile added `floor(have / 4)` — so a stack of 3 stepped by 1, a stack of 40
+   by 10 — and tapping again past your stack silently reset it to zero.  There
+   was no way to ask for a specific number, no way to go down by one, and the
+   only feedback was a "staged/have" figure inside the tile you were tapping.
+   Now: the bag tile stages ONE (and taps up by one), and every staged row
+   carries − / + with your stack size beside it, so the quantity is a thing you
+   set rather than a cycle you land on. */
+function StagedRow({ glyph, name, qty, have, rarityLabel, rarityColor, onRemove, onInc, onDec }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 8, minHeight: onRemove ? 44 : 36, padding: '2px 0' }}>
       <div style={{ width: 32, height: 32, flex: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, background: '#16262C', border: '1px solid rgba(229,237,233,.08)', borderRadius: 8 }}>{glyph}</div>
@@ -106,8 +127,19 @@ function StagedRow({ glyph, name, qty, rarityLabel, rarityColor, onRemove }) {
           <div style={{ fontSize: 10, color: rarityColor || '#8B9695' }}>{rarityLabel}</div>
         ) : null}
       </div>
-      {qty != null && (
+      {qty != null && !onInc && (
         <div style={{ fontSize: 12, fontWeight: 700, color: '#B6C1BE', fontVariantNumeric: 'tabular-nums' }}>×{qty}</div>
+      )}
+      {qty != null && onInc && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 2, flex: 'none' }}>
+          <button aria-label={'One fewer ' + name} onClick={onDec} disabled={qty <= 0}
+            style={stepBtn(qty > 0)}>−</button>
+          <div style={{ minWidth: 40, textAlign: 'center', fontSize: 12, fontWeight: 700, color: '#F4F0E7', fontVariantNumeric: 'tabular-nums' }}>
+            {qty}<span style={{ color: '#8D9B98', fontWeight: 400 }}>/{have}</span>
+          </div>
+          <button aria-label={'One more ' + name} onClick={onInc} disabled={have != null && qty >= have}
+            style={stepBtn(have == null || qty < have)}>+</button>
+        </div>
       )}
       {onRemove && (
         <button aria-label={'Remove ' + name} onClick={onRemove}
@@ -125,7 +157,7 @@ function StagedRow({ glyph, name, qty, rarityLabel, rarityColor, onRemove }) {
 /* v2.3.1235: trade-completion receipt — optional goldSuffix ("G") lets
    the receipt render its gold rows as "25G"; live-trade wells pass
    nothing and are byte-identical. */
-function OfferRows({ offer, weapons, empty, onRemoveItem, onRemoveWeapon, goldSuffix }) {
+function OfferRows({ offer, weapons, empty, onRemoveItem, onRemoveWeapon, goldSuffix, inv, onSetQty }) {
   const entries = Object.entries(offer || {}).filter(([k, v]) => k !== '_gold' && v > 0);
   const gold = (offer && offer._gold) || 0;
   const wpns = weapons || [];
@@ -136,7 +168,10 @@ function OfferRows({ offer, weapons, empty, onRemoveItem, onRemoveWeapon, goldSu
     <div className="ls-scrollbody" style={{ maxHeight: 148, overflowY: 'auto' }}>
       {entries.map(([k, v]) => (
         <StagedRow key={k} glyph={emojiFor(k)} name={labelFor(k)} qty={v}
-          onRemove={onRemoveItem ? () => onRemoveItem(k) : null} />
+          have={inv ? (inv[k] || 0) : null}
+          onRemove={onRemoveItem ? () => onRemoveItem(k) : null}
+          onInc={onSetQty ? () => onSetQty(k, v + 1) : null}
+          onDec={onSetQty ? () => onSetQty(k, v - 1) : null} />
       ))}
       {wpns.map((w) => {
         const rt = (w.weapon && RARITY_TIERS[w.weapon.tier]) || null;
@@ -379,13 +414,18 @@ export function TradeWindowPanel(props) {
     setStage(next);
     send('trade2_set', { offer: next });
   };
-  const cycleItem = (k, have) => {
-    const cur = stage[k] || 0;
+  /* v2.3.1752: set an exact quantity, clamped to what you actually hold.
+     0 (or less) unstages, which is what the − button does at 1. */
+  const setQty = (k, qty) => {
+    const have = inv[k] || 0;
     const next = { ...stage };
-    const nv = cur >= have ? 0 : cur + Math.max(1, Math.floor(have / 4));
-    if (nv > 0) next[k] = Math.min(nv, have); else delete next[k];
+    const nv = Math.max(0, Math.min(Math.floor(qty) || 0, have));
+    if (nv > 0) next[k] = nv; else delete next[k];
     pushStage(next);
   };
+  /* Tapping a bag tile adds ONE.  It used to add a quarter of the stack and
+     wrap to zero past the top — see the note on StagedRow. */
+  const addOne = (k) => setQty(k, (stage[k] || 0) + 1);
   /* v2.3.1235: batch-4 state-correction §4 — the staged-row Remove
      control.  Same pathway an item already left the stage by (delete
      the key, push the whole offer via the existing trade2_set send) —
@@ -466,6 +506,7 @@ export function TradeWindowPanel(props) {
               empty BAG ("Your bag is empty" / "You can still offer gold")
               from an unstaged one. */}
           <OfferRows offer={stage} weapons={myWpn}
+            inv={inv} onSetQty={setQty}
             onRemoveItem={removeItem}
             onRemoveWeapon={(seq) => send('trade2_unstage_weapon', { seq })}
             empty={bagEmpty ? (
@@ -487,7 +528,7 @@ export function TradeWindowPanel(props) {
           {bagItems.map(([k, v]) => (
             <button
               key={k}
-              onClick={() => cycleItem(k, v)}
+              onClick={() => addOne(k)}
               style={{
                 padding: '4px 2px', borderRadius: 8, fontSize: 10, cursor: 'pointer',
                 fontVariantNumeric: 'tabular-nums',
