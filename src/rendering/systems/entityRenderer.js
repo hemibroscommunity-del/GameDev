@@ -6086,34 +6086,10 @@ export class EntityRenderer {
         const elem = wpn.element1;
         const wpnColor = elem && ELEMENTS[elem] ? cssColorToHex(ELEMENTS[elem].color) : 0xaaaaaa;
 
-        // §5.9.5 Combo glow tier — None/Faint/Medium/Bright by combo count.
-        // Bright tier adds a subtle pulse. Glow only renders when an element
-        // is present on the weapon (no element = no element-color halo).
-        const comboTier = (S.combo && S.combo.count) || 0;
-        if (comboTier > 0 && elem) {
-          const pulse = comboTier >= 3 ? 0.85 + Math.sin(now / 220) * 0.15 : 1;
-          const glowAlpha = (comboTier === 1 ? 0.22 : comboTier === 2 ? 0.45 : 0.65) * pulse;
-          const glowExtra = 2 + comboTier * 1.5;
-
-          if (wpn.type === 'bow') {
-            weaponGlowGfx.arc(wpnX, wpnY, 8, -0.8, 0.8);
-            weaponGlowGfx.stroke({ color: wpnColor, width: 2 + glowExtra, alpha: glowAlpha });
-          } else if (wpn.type === 'staff') {
-            // Glow orb expands slightly with tier; halo around the staff tip.
-            weaponGlowGfx.circle(wpnX, wpnY - 12, 3 + comboTier * 1.2);
-            weaponGlowGfx.fill({ color: wpnColor, alpha: glowAlpha });
-            weaponGlowGfx.moveTo(wpnX, wpnY + 10);
-            weaponGlowGfx.lineTo(wpnX, wpnY - 10);
-            weaponGlowGfx.stroke({ color: wpnColor, width: 2 + glowExtra, alpha: glowAlpha * 0.6 });
-          } else {
-            const len = wpn.type === 'greatsword' ? 14 : 10;
-            weaponGlowGfx.moveTo(wpnX, wpnY + 2);
-            weaponGlowGfx.lineTo(wpnX + facingX * len || len * 0.7, wpnY - len * 0.3);
-            const baseW = wpn.type === 'greatsword' ? 3 : 2;
-            weaponGlowGfx.stroke({ color: wpnColor, width: baseW + glowExtra, alpha: glowAlpha });
-          }
-        }
-
+        /* v2.3.1747: the combo-tier weapon glow (brightness by combo count,
+           pulsing at 3) went with the chain.  The collision-opportunity glow
+           below is a DIFFERENT signal — it reads the elemental status on
+           nearby monsters — and is deliberately kept. */
         // §9.2.1 Collision-opportunity weapon edge glow.
         // Scan monsters within COLLISION_GLOW_RANGE_PX; pick the most-urgent
         // (lowest remaining duration) status the player's swipe element would
@@ -6789,17 +6765,17 @@ export class EntityRenderer {
     // tag now always sits at its default head offset.
     display._nameText.y = -28 + bobY;
 
-    // §5.9.5 Combo Chain count + §5.7.7 Resonance streak — combined badge.
+    /* v2.3.1747: the x1/x2/x3 half of this badge is gone (owner: "I think I
+       want you to remove the combo (the x1, x2, x3) from the game").  The
+       badge itself stays because it also carried the §5.7.7 RESONANCE streak
+       (↯N), a different mechanic that is still live — deleting the whole
+       element would have taken that with it. */
     const comboText = display._comboText;
-    const combo = S.combo;
     const rs = S.player && S.player._resonanceStreak;
     const rsActive = rs && rs.count > 0 && (now - (rs.lastTs || 0) < 10000);
-    if ((combo && combo.count > 0) || rsActive) {
-      const c = (combo && combo.count) || 0;
-      const cStr = c > 0 ? 'x' + c : '';
-      const rStr = rsActive ? '↯' + rs.count : '';
-      comboText.text = cStr + (cStr && rStr ? ' ' : '') + rStr;
-      comboText.style.fill = c >= 3 ? '#f5c542' : c === 2 ? '#f2b441' : (rsActive ? '#a0c8ff' : '#ffffff');
+    if (rsActive) {
+      comboText.text = '↯' + rs.count;
+      comboText.style.fill = '#a0c8ff';
       comboText.alpha = 1;
       comboText.y = display._nameText.y - 12;
     } else {

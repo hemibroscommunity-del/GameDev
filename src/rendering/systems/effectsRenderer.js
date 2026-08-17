@@ -2956,6 +2956,11 @@ export class EffectsRenderer {
       if (age > 5000) continue;
       const source = allSources[pid];
       if (!source) continue;
+      /* v2.3.1748: only bubbles from THIS zone.  Chat relay is room-wide, and
+         a peer's `others` entry survives their zone change, so a bubble from
+         another zone floated over your ground at their world coordinates.
+         The local player is exempt — they are by definition here. */
+      if (pid !== S.myId && (source.zone || source.z || 'town') !== S.currentZone) continue;
       const sx = source.renderX || source.x || 0;
       const sy = source.renderY || source.y || 0;
       this._renderChatBubble(pid, sx, sy, bubble.text, age);
@@ -4146,6 +4151,11 @@ export class EffectsRenderer {
   _updateCampfire(S, now) {
     const cf = S && S._campfire;
     if (!cf || (cf.expiresAt && now > cf.expiresAt)) return;
+    /* v2.3.1748: a fire belongs to the zone it was lit in.  Belt and braces
+       with the zone-change clear in zoneTransitions.js — that removes it, this
+       refuses to draw one that somehow survives (an older save, a path that
+       gains a zone change later). */
+    if (cf.zone && S.currentZone && cf.zone !== S.currentZone) return;
     const gfx = this.nodeGfx;
     const x = cf.x, y = cf.y;
     const remain = cf.expiresAt ? cf.expiresAt - now : 99999;
