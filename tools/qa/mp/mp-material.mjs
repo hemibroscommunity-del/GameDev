@@ -174,6 +174,57 @@ export async function run({ browser, wsPort, webPort, rec }) {
       return o ? o.equip : null;
     }));
 
+  /* ═══ v2.3.1760: WEAPONS TAKE THE SAME METALS ═══
+     Owner: "I do want copper and iron weapons also.  First weapon should be
+     copper.  Make sure weapons get the full treatment armor is getting.  Only
+     for metals though not staff or bow."
+
+     The starter sword is minted at the copper tier, so this needs no dev hook:
+     accept tut_1 the way a player does and read what the renderer draws. */
+  await send(A, { type: 'quest_accept', payload: { questId: 'tut_1' } });
+  await A.page.waitForTimeout(2000);
+  const starter = await H.readState(A, (S) => {
+    const w = (S.rpg.weaponStash || []).find((x) => x && /Bro's Sword/.test(x.name || ''));
+    return w ? { type: w.type, gearBase: w.gearBase, mult: w.tierMult } : null;
+  });
+  rec.ok('the first weapon in the game is copper', !!starter && starter.gearBase === 'copper', starter);
+
+  /* Hold it, and read the tint off the weapon sprite the renderer is drawing. */
+  await A.page.evaluate(() => {
+    const S = window._gameState && window._gameState.current;
+    const R = S && S.rpg; if (!R) return;
+    const i = (R.weaponStash || []).findIndex((w) => w && /Bro's Sword/.test(w.name || ''));
+    if (i < 0) return;
+    R.weapon = R.weaponStash.splice(i, 1)[0];
+    R.activeSlot = 'melee';
+  });
+  await A.page.waitForTimeout(2000);
+  const wpn = await A.page.evaluate(() => (window.__btWeaponTint ? window.__btWeaponTint() : null));
+  rec.ok('a copper sword is drawn in copper', !!wpn && wpn.local === COPPER, wpn);
+
+  /* ...and the peer sees the same metal — the gap v2.3.1757 left open. */
+  const peerSaw = await H.waitFor(B, (S) => {
+    const o = S.others && S.others[Object.keys(S.others || {})[0]];
+    return o ? o.wpnMat : null;
+  }, (v) => v === 'copper', { timeout: 15000, label: 'B sees the copper sword' })
+    .then(() => true).catch(() => false);
+  rec.ok('the other player sees the weapon metal too', peerSaw,
+    await H.readState(B, (S) => {
+      const o = S.others && S.others[Object.keys(S.others || {})[0]];
+      return o ? { wpnType: o.wpnType, wpnMat: o.wpnMat } : null;
+    }));
+
+  /* Owner: metals only.  A staff is minted 'ww_wood', so it must stay native
+     however the tint pipeline grows. */
+  const staffNative = await A.page.evaluate(() => {
+    const M = window.__btWeaponMaterial;
+    return M ? { staff: M('staff', 'ww_wood'), bow: M('bow', 'ww_hardwood'),
+      sword: M('sword', 'copper'), woodSword: M('sword', 'wood') } : null;
+  });
+  rec.ok('a bow and a staff never take a metal', !!staffNative
+    && staffNative.staff === null && staffNative.bow === null
+    && staffNative.sword === 'copper', staffNative);
+
   /* ── the body sprite is not left wearing the metal ──
      The fullset knight figure is armour art assigned onto the BODY sprite, so
      its colour has to be cleared the moment the figure is not in play or an

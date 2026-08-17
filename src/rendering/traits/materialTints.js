@@ -56,12 +56,21 @@
  * quietly add such a piece to a material set and assume it works; look at it.
  */
 
-/** Multiply tint for a design colour: the same hue at full brightness. */
-export function tintFromRgb(rgb) {
+/** Multiply tint for a design colour: the same hue at full brightness, then
+ *  scaled by `level`.
+ *
+ *  v2.3.1760: `level` exists because normalising to full brightness makes every
+ *  metal exactly as bright as the art, and IRON is supposed to be duller than
+ *  steel.  Without it a darker metal is unexpressible — the normalisation would
+ *  hand back the same near-white tint and iron would be steel with extra steps.
+ *  Hue still comes from the normalise, so the two knobs stay independent: rgb
+ *  says which metal, level says how bright. */
+export function tintFromRgb(rgb, level = 1) {
   const m = Math.max(1, rgb[0], rgb[1], rgb[2]);
-  const r = Math.min(255, Math.round(rgb[0] * 255 / m));
-  const g = Math.min(255, Math.round(rgb[1] * 255 / m));
-  const b = Math.min(255, Math.round(rgb[2] * 255 / m));
+  const k = 255 / m * Math.max(0, Math.min(1, level));
+  const r = Math.min(255, Math.round(rgb[0] * k));
+  const g = Math.min(255, Math.round(rgb[1] * k));
+  const b = Math.min(255, Math.round(rgb[2] * k));
   return (r << 16) | (g << 8) | b;
 }
 
@@ -87,9 +96,55 @@ export const MATERIALS = {
      bright ground — a swatch on a dark background over the torso is the
      easiest possible test and it passed one that play did not. */
   copper: { id: 'copper', name: 'Copper', rgb: [166, 81, 33], swatch: '#a65121' },
+  /* v2.3.1760 (owner: "The second tier of armor will be iron" / "I do want
+     copper and iron weapons also").  Iron reads as a duller, cooler metal than
+     the bright steel the art is drawn as — hence `level`.  The art IS steel, so
+     'steel' stays the native no-op and iron sits between it and copper. */
+  iron: { id: 'iron', name: 'Iron', rgb: [198, 206, 218], level: 0.80, swatch: '#8f97a3' },
 };
 
-for (const m of Object.values(MATERIALS)) m.tint = tintFromRgb(m.rgb);
+for (const m of Object.values(MATERIALS)) m.tint = tintFromRgb(m.rgb, m.level == null ? 1 : m.level);
+
+/* ═══ v2.3.1760: WHICH WEAPONS TAKE A METAL ═══
+   Owner: "I do want copper and iron weapons also.  First weapon should be
+   copper.  Make sure weapons get the full treatment armor is getting.  Only
+   for metals though not staff or bow."
+
+   The blacksmith tier keys ARE metal names (server/src/data.js
+   BLACKSMITH_TIERS: wood, copper, iron, steel, ...), and a weapon minted from
+   them carries its tier as `gearBase` — so the metal is already on the weapon
+   and needs no new field.  Woodworking weapons (bow, staff) are minted with a
+   'ww_' prefix, which is the discriminator the owner's rule needs; the TYPE
+   check backs it up so a bow can never take a metal even if its base is
+   renamed.
+   A tier with no entry in MATERIALS renders native, so the twenty tiers above
+   iron keep the art they have until someone gives them a colour. */
+const MELEE_TYPES = { sword: 1, greatsword: 1 };
+
+export function weaponMaterial(type, gearBase) {
+  if (!type || !MELEE_TYPES[type]) return null;      /* no staff, no bow */
+  const base = gearBase ? String(gearBase) : '';
+  if (!base || base.indexOf('ww_') === 0) return null;
+  return MATERIALS[base] ? base : null;
+}
+
+/** The icon file for a base icon in a given metal.
+ *
+ *  One RULE rather than a table, and it is the same rule
+ *  tools/gear/make-metal-icons.mjs writes by — so a metal added to MATERIALS
+ *  and generated with that script is wired up by construction.  A table here
+ *  would be a second place to forget. */
+export function metalIconPath(basePath, material) {
+  if (!basePath) return basePath;
+  const m = material && MATERIALS[material];
+  if (!m || m.tint === NATIVE_TINT) return basePath;
+  return basePath.replace(/\.(webp|png)$/i, '') + '-' + m.id + '.png';
+}
+
+/** Pixi tint for a weapon, or the native white for anything unmapped. */
+export function weaponTint(type, gearBase) {
+  return materialTint(weaponMaterial(type, gearBase));
+}
 
 export const NATIVE_TINT = 0xFFFFFF;
 
@@ -114,3 +169,5 @@ export function materialName(id) {
 
 /* v2.3.1757: QA probe (mirrors traits/headwearCatalog's __btSetHeadwear). */
 if (typeof window !== 'undefined') window.__btMaterials = () => MATERIALS;
+/* v2.3.1760: the metals-only rule, so a test can pin it directly. */
+if (typeof window !== 'undefined') window.__btWeaponMaterial = (t, g) => weaponMaterial(t, g);

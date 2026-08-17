@@ -5104,6 +5104,12 @@ export var BroTown = function BroTown(_ref0) {
                 bs: S.bodySize || 'slim',
                 zone: S.currentZone || 'town',
                 wpnType: (_aw === null || _aw === void 0 ? void 0 : _aw.type) || 'greatsword',
+                /* v2.3.1760: the metal, so peers draw the weapon you are
+                   actually holding.  Sent as the raw blacksmith tier — the
+                   receiving renderer decides what is a metal (weaponMaterial),
+                   which keeps the rule in ONE place rather than on both sides
+                   of the wire. */
+                wpnMat: (_aw === null || _aw === void 0 ? void 0 : _aw.gearBase) || undefined,
                 wpnE1: (_aw === null || _aw === void 0 ? void 0 : _aw.element1) || null,
                 wpnE2: (_aw === null || _aw === void 0 ? void 0 : _aw.element2) || null,
                 rep: S._pvpReputation || 'neutral',

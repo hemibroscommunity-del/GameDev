@@ -1,5 +1,6 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { gearIdIcon, armorIconFor } from '@/rendering/gearVariants.js'; /* v2.3.1758: one armour art table */
+import { weaponMaterial, metalIconPath } from '@/rendering/traits/materialTints.js'; /* v2.3.1760 */
 import { COL, getState } from './common.js';
 import { itemDetailBus } from './itemDetailBus.js';
 import {
@@ -81,8 +82,9 @@ function weaponThumb(wpn) {
   if (!wpn || !wpn.type) return null;
   if (wpn.type === 'bow')        return `/icons/items/bow.webp${ITEMS_V}`;
   if (wpn.type === 'staff')      return `/icons/items/staff.webp${ITEMS_V}`;
-  if (wpn.type === 'greatsword') return `/icons/items/great-sword.webp${ITEMS_V}`;
-  return `/icons/items/sword.webp${ITEMS_V}`;
+  const metal = weaponMaterial(wpn.type, wpn.gearBase); /* v2.3.1760 */
+  if (wpn.type === 'greatsword') return `${metalIconPath('/icons/items/great-sword.webp', metal)}${ITEMS_V}`;
+  return `${metalIconPath('/icons/items/sword.webp', metal)}${ITEMS_V}`;
 }
 
 function shieldThumb(shield) {

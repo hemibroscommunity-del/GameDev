@@ -424,7 +424,12 @@ export const TRACK_COSMETIC_KEYS = new Set([
   // from the real fields on purpose -- see the note above).
   'rpgLv', 'rpgHp', 'rpgMaxHp',
   // Weapon look + element tints, PvP reputation badge.
-  'wpnType', 'wpnE1', 'wpnE2', 'rep',
+  // v2.3.1760: 'wpnMat' is the weapon's blacksmith tier, relayed so peers draw
+  // the metal you are holding.  Display-only, like wpnType beside it — the
+  // receiving client maps it through its own materials table and answers
+  // native white for anything it does not recognise, so a forged value can
+  // only ever paint a sword a colour that table already contains.
+  'wpnType', 'wpnMat', 'wpnE1', 'wpnE2', 'rep',
   // Inspect-card blob (nested; display-only).
   'rpgData',
   // Clan cosmetics -- the server OVERWRITES these via _clanStampTag

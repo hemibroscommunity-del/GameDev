@@ -59,7 +59,7 @@ const JOIN_PRESENCE_KEYS = ['x', 'y', 'd', 'z'];
 const JOIN_COSMETIC_KEYS = [
   'name', 'color', 'avatar',
   'bt', 'bl', 'hw', 'fh', 'hr', 'sk', 'hc', 'htc', 'fhc', 'st', 'stc',
-  'eqc', 'eql', 'eqs', 'eqst', 'pt', 'sh', 'bs',
+  'eqc', 'eql', 'eqs', 'eqst', 'pt', 'sh', 'bs', 'wpnMat', /* v2.3.1760 */
 ];
 /* rpg* bootstrap seeds: admitted by prefix, then re-read and clamped by
  * the explicit ingest in _handleJoin (stored-wins on every reconnect).

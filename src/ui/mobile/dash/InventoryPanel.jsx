@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { gearIdIcon, armorIconFor } from '@/rendering/gearVariants.js'; /* v2.3.1758: one armour art table */
+import { weaponMaterial, metalIconPath } from '@/rendering/traits/materialTints.js'; /* v2.3.1760 */
 import { COL, panelStyle, getState } from './common.js';
 import { eatBus } from '../eatBus.js';
 import { itemDetailBus } from './itemDetailBus.js';
@@ -1001,8 +1002,9 @@ const StashTile = ({ kind, obj, index, style: styleOverride }) => {
     ? `/icons/items/shield.webp${ITEMS_V}`
     : obj && obj.type === 'bow'        ? `/icons/items/bow.webp${ITEMS_V}`
     : obj && obj.type === 'staff'      ? `/icons/items/staff.webp${ITEMS_V}`
-    : obj && obj.type === 'greatsword' ? `/icons/items/great-sword.webp${ITEMS_V}`
-    : `/icons/items/sword.webp${ITEMS_V}`;
+    : obj && obj.type === 'greatsword'
+      ? `${metalIconPath('/icons/items/great-sword.webp', weaponMaterial(obj.type, obj.gearBase))}${ITEMS_V}` /* v2.3.1760 */
+    : `${metalIconPath('/icons/items/sword.webp', obj && weaponMaterial(obj.type, obj.gearBase))}${ITEMS_V}`;
   /* v2.3.1228: edge from the item's REAL quality (weapons carry
      server-rolled quality; shields/armor have none -> common grey).
      Godly gets the conic ring class instead of a border color. */

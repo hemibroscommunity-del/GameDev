@@ -59,7 +59,7 @@ import { getShirt } from '../traits/shirtCatalog.js';
 import { getShirtColor, shirtFill } from '../traits/shirtColorCatalog.js';
 import { getGearFrame, getGearFramePhased, getLoadedGearSources } from '../gearSheets.js';
 import { gearTint, gearArt } from '../gearVariants.js'; /* v2.3.1757: material recolor */
-import { materialTint } from '../traits/materialTints.js'; /* v2.3.1757: weapons share the metals table */
+import { materialTint, weaponTint } from '../traits/materialTints.js'; /* v2.3.1757: weapons share the metals table */
 import { combatGearUrls } from '../combatGear.js';
 import { getEquip, onEquipChange, isWearingArmor } from '../gearCatalog.js'; /* v2.3.1407: GEAR_CATALOG import dropped with the speculative all-states prewarm */
 import { recordCrash } from '../../debug/crashTrap.js'; /* v2.3.1305: trait-sheet load-failure telemetry */
@@ -922,6 +922,15 @@ function _fullsetCoversBake(worn, pose, dir) {
    tint clobbered further down the frame still shows up as wrong.  Same posture
    as __btBakeStats / __btPreloadReport. */
 let _lastGearDisplay = null;
+/* v2.3.1760: the weapon sprites the renderer is holding, for the same reason
+   __btGearTints exists — read what is drawn, not what we asked for. */
+let _lastWeaponSprite = null, _lastPeerWeaponSprite = null;
+if (typeof window !== 'undefined') {
+  window.__btWeaponTint = () => ({
+    local: _lastWeaponSprite ? _lastWeaponSprite.tint : null,
+    peer: _lastPeerWeaponSprite ? _lastPeerWeaponSprite.tint : null,
+  });
+}
 if (typeof window !== 'undefined') {
   window.__btGearTints = () => {
     const d = _lastGearDisplay;
@@ -5121,13 +5130,14 @@ export class EntityRenderer {
             oWeaponSprite.scale.x = (weaponMirror ? -1 : 1) * fitScale;
           }
           oWeaponSprite.scale.y = fitScale;
-          /* v2.3.1757: a REMOTE weapon stays native for now, and deliberately:
-             the peer snapshot carries `wpnType` and no material, so there is
-             nothing here to colour by.  Putting a metal on a remote weapon is a
-             wire field (server + protocol + caps gate), not a renderer change —
-             the local path below shows the tint working, and this is the one
-             place the pipeline is knowingly incomplete. */
-          oWeaponSprite.tint = 0xffffff;
+          /* v2.3.1760: the gap v2.3.1757 recorded here is closed — the peer
+             snapshot carries `wpnMat` beside `wpnType` now, so the other
+             player's sword is the metal they are actually holding.  The value
+             is a foreign string: materialTint answers native white for anything
+             it does not know, so a forged or stale id cannot paint a peer an
+             arbitrary colour. */
+          oWeaponSprite.tint = materialTint(other && other.wpnMat);
+          _lastPeerWeaponSprite = oWeaponSprite; /* v2.3.1760: QA probe */
           oWeaponSprite.visible = true;
 
           /* Swing arc trail.  Mirrors local at entityRenderer.js:2633 —
@@ -6307,7 +6317,11 @@ export class EntityRenderer {
             weaponSprite.scale.x = (weaponMirror ? -1 : 1) * fitScale;
           }
           weaponSprite.scale.y = fitScale;
-          weaponSprite.tint = materialTint(wpn && wpn.material); /* v2.3.1757 */
+          /* v2.3.1760: the weapon's METAL is its blacksmith tier (gearBase), so
+             a copper sword is copper everywhere without a new field.  Melee
+             only — owner: "only for metals though not staff or bow". */
+          weaponSprite.tint = weaponTint(wpn && wpn.type, wpn && wpn.gearBase);
+          _lastWeaponSprite = weaponSprite; /* v2.3.1760: QA probe */
           weaponSprite.visible = true;
           /* v2.3.185 hand-over-grip: stamp the body's hand pixels on
              top of the weapon. handCap is a Sprite that shares the

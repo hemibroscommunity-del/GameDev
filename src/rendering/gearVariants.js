@@ -14,7 +14,7 @@
  * Adding a set is one line.  Adding a metal is one line in MATERIALS.  The
  * cross-product costs nothing.
  */
-import { materialTint } from './traits/materialTints.js';
+import { materialTint, metalIconPath } from './traits/materialTints.js';
 
 export const GEAR_VARIANTS = {
   copperplate: { slot: 'chest', art: 'steelplate', material: 'copper', name: 'Copper Plate' },
@@ -58,10 +58,6 @@ const ART_BY_MATERIAL = {
   legs: { copper: 'coppergreaves' },
 };
 const ART_DEFAULT = { chest: 'steelplate', legs: 'steelgreaves' };
-const ICON_BY_MATERIAL = {
-  chest: { copper: '/icons/items/chest-plate-copper.png' },
-  legs: { copper: '/icons/items/greaves-copper.png' },
-};
 const ICON_DEFAULT = { chest: '/icons/items/chest-plate.webp', legs: '/icons/items/greaves.webp' };
 
 /** The gear id a worn stat piece should render as. */
@@ -73,8 +69,10 @@ export function gearIdFor(slot, material) {
 /** The inventory/loadout icon for a slot in a material.  Returns the path
  *  WITHOUT a cache-buster; callers append their own ITEMS_V. */
 export function armorIconFor(slot, material) {
-  const byMat = ICON_BY_MATERIAL[slot];
-  return (byMat && material && byMat[material]) || ICON_DEFAULT[slot] || null;
+  /* v2.3.1760: the per-metal filename is a RULE (metalIconPath), shared with
+     the generator that writes those files, so a new metal needs no entry
+     here. */
+  return metalIconPath(ICON_DEFAULT[slot] || null, material);
 }
 
 /** The icon for a gear id (the cosmetic layer's own id, not a stat piece). */
@@ -83,7 +81,7 @@ export function gearIdIcon(id) {
     if (id === ART_DEFAULT[slot]) return ICON_DEFAULT[slot];
     const byMat = ART_BY_MATERIAL[slot];
     for (const mat of Object.keys(byMat || {})) {
-      if (byMat[mat] === id) return ICON_BY_MATERIAL[slot][mat];
+      if (byMat[mat] === id) return metalIconPath(ICON_DEFAULT[slot], mat);
     }
   }
   return null;

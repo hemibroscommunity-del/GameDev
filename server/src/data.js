@@ -461,8 +461,16 @@ export const QUEST_REWARDS = {
                  point in the arc: _prog3EquipOk maps both types to the same
                  'sword' trained skill and wood is tier index 0, so the
                  requirement is 0 either way. */
+              /* v2.3.1760 (owner: "I do want copper and iron weapons also.
+                 First weapon should be copper").  Copper is tier one for
+                 armour now, and the starter weapon matches it rather than
+                 opening on a metal that appears nowhere else in the arc.
+                 NOTE this is a real stat change, not a rename: copper's
+                 tierMult is 1.12 against wood's 1.00, so the starting sword is
+                 12% stronger than it was.  The wood tier is untouched and the
+                 forge still sells it. */
               grantOnAccept:[
-                {kind:'weapon', weaponType:'greatsword', tierKey:'wood', name:"Bro's Sword"},
+                {kind:'weapon', weaponType:'greatsword', tierKey:'copper', name:"Bro's Sword"},
                 {kind:'shield', gearBase:'wood', tierMult:1.0, name:"Bro's Shield"},
               ],
               /* v2.3.1692 (owner: "the three primary weapon types as awards
