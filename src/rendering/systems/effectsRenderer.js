@@ -4148,8 +4148,11 @@ export class EffectsRenderer {
    * expiresAt}); a cooking station that burns out after ~45s.  Procedural:
    * a charred-log base, a flickering flame, and a warm ground glow, drawn on
    * nodeGfx (camera-transformed).  Fades out over the last 4s. */
-  _updateCampfire(S, now) {
-    const cf = S && S._campfire;
+  /* v2.3.1753: one fire, drawn.  Split out of _updateCampfire so the OTHER
+     players' fires (S._peerCampfires) render through exactly the same code as
+     your own — a second copy of the drawing is how two fires end up looking
+     like different objects. */
+  _drawOneCampfire(S, now, cf) {
     if (!cf || (cf.expiresAt && now > cf.expiresAt)) return;
     /* v2.3.1748: a fire belongs to the zone it was lit in.  Belt and braces
        with the zone-change clear in zoneTransitions.js — that removes it, this
@@ -4187,6 +4190,21 @@ export class EffectsRenderer {
   /* ── Firemaking animation (v2.3.853) ──
    * One-shot character animation at the player while S._firemaking is active
    * (set when a log is lit from the Bag); hidden otherwise. */
+  _updateCampfire(S, now) {
+    /* your own fire */
+    this._drawOneCampfire(S, now, S && S._campfire);
+    /* ...and every peer's (v2.3.1753).  Expired entries are dropped here
+       rather than left to grow: this Map is keyed by player id so it is
+       bounded by the room, but a player who lights, leaves and never comes
+       back would otherwise sit in it for the life of the tab. */
+    const peers = S && S._peerCampfires;
+    if (!peers || !peers.size) return;
+    for (const [id, cf] of peers) {
+      if (!cf || (cf.expiresAt && now > cf.expiresAt)) { peers.delete(id); continue; }
+      this._drawOneCampfire(S, now, cf);
+    }
+  }
+
   _updateFiremaking(S, now) {
     if (this.fireSprite) this.fireSprite.visible = false;
     /* v2.3.1713: the shirt hides with the body — it is a separate sprite on the
