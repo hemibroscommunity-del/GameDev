@@ -141,6 +141,40 @@ function hideZoneLoadingOverlay() {
   try { if (_zoneLoadEl) { _zoneLoadEl.remove(); _zoneLoadEl = null; } } catch (e) {}
 }
 
+/* ═══ v2.3.1748: EVERYTHING ZONE-LOCAL THAT OUTLIVED THE ZONE ═══
+ * Owner: "we made a fire in the frost zone level and it appeared in worldview
+ * too even when we didn't make one there."
+ *
+ * The five clear blocks below each wiped npcs / loot / particles / explosions
+ * / arrows / slime orbs, and every one of them missed the same class of
+ * state: props and in-progress actions that hold ABSOLUTE world coordinates
+ * and no zone.  They therefore redrew, and stayed interactive, at the same
+ * (x, y) on whatever map you walked onto:
+ *
+ *   _campfire   — the reported bug.  45s of ghost fire you could still cook on.
+ *   _firemaking — an in-flight light; its completion then lit a fire in the
+ *                 NEW zone at the old zone's coordinates.
+ *   _extraction — an in-progress gather/cook holding a nodeRef to a node that
+ *                 no longer exists here (lifeSkillRewards reads nodeRef).
+ *   _remoteProjectiles — arrows fired by other players.  S.arrows (yours) was
+ *                 already cleared; theirs never was, and visualSystems re-anchors
+ *                 each one to the owner's CURRENT position every frame, so a
+ *                 shooter who zoned out teleported their arrow across the map.
+ *   _whirlFx / _bashPose / _fxBursts — short-lived, but free.
+ *
+ * Called from every clear block instead of adding six lines to each, so the
+ * next zone-change path cannot half-adopt the list. */
+export function clearZoneLocalFx(S) {
+  if (!S) return;
+  S._campfire = null;
+  S._firemaking = null;
+  S._extraction = null;
+  S._remoteProjectiles = [];
+  S._whirlFx = null;
+  S._bashPose = null;
+  S._fxBursts = [];
+}
+
 export function handleZoneTransitions(S, ptx, pty, _zone, W, H) {
   var P = S.player;
         /* v2.3.1406: STUCK-GATE FAILSAFE.  S._zoneLoading is normally
@@ -606,6 +640,7 @@ export function handleZoneTransitions(S, ptx, pty, _zone, W, H) {
               S.deathExplosions = [];
               S.arrows = [];
               S.slimeProjectiles = []; /* v2.3.1181: slime orbs kept flying across zone loads (absolute coords, no zone check) and could hit the player in the new zone */
+              clearZoneLocalFx(S); /* v2.3.1748: campfire / in-flight action / peer arrows */
               /* v2.3.1710 (owner: "locking on a monster (tap to target) continues
                  to follow the monster even when you exit the zone").  Same class
                  of leak as the slime orbs above and fixed in the same place: the
@@ -711,6 +746,7 @@ export function handleZoneTransitions(S, ptx, pty, _zone, W, H) {
             S.deathExplosions = [];
             S.arrows = [];
             S.slimeProjectiles = []; /* v2.3.1181: slime orbs kept flying across zone loads (absolute coords, no zone check) and could hit the player in the new zone */
+            clearZoneLocalFx(S); /* v2.3.1748: campfire / in-flight action / peer arrows */
             /* v2.3.1710 (owner: "locking on a monster (tap to target) continues
                to follow the monster even when you exit the zone").  Same class
                of leak as the slime orbs above and fixed in the same place: the
@@ -780,6 +816,7 @@ export function handleZoneTransitions(S, ptx, pty, _zone, W, H) {
               S.deathExplosions = [];
               S.arrows = [];
               S.slimeProjectiles = []; /* v2.3.1181: slime orbs kept flying across zone loads (absolute coords, no zone check) and could hit the player in the new zone */
+              clearZoneLocalFx(S); /* v2.3.1748: campfire / in-flight action / peer arrows */
               /* v2.3.1710 (owner: "locking on a monster (tap to target) continues
                  to follow the monster even when you exit the zone").  Same class
                  of leak as the slime orbs above and fixed in the same place: the
@@ -862,6 +899,7 @@ export function handleZoneTransitions(S, ptx, pty, _zone, W, H) {
               S.deathExplosions = [];
               S.arrows = [];
               S.slimeProjectiles = []; /* v2.3.1181: slime orbs kept flying across zone loads (absolute coords, no zone check) and could hit the player in the new zone */
+              clearZoneLocalFx(S); /* v2.3.1748: campfire / in-flight action / peer arrows */
               /* v2.3.1710 (owner: "locking on a monster (tap to target) continues
                  to follow the monster even when you exit the zone").  Same class
                  of leak as the slime orbs above and fixed in the same place: the
@@ -943,6 +981,7 @@ export function handleZoneTransitions(S, ptx, pty, _zone, W, H) {
             S.deathExplosions = [];
             S.arrows = [];
             S.slimeProjectiles = []; /* v2.3.1181: slime orbs kept flying across zone loads (absolute coords, no zone check) and could hit the player in the new zone */
+            clearZoneLocalFx(S); /* v2.3.1748: campfire / in-flight action / peer arrows */
             /* v2.3.1710 (owner: "locking on a monster (tap to target) continues
                to follow the monster even when you exit the zone").  Same class
                of leak as the slime orbs above and fixed in the same place: the

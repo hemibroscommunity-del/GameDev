@@ -53,6 +53,9 @@ const SCENARIOS = {
   burst: () => import('./mp-burst.mjs'),
   soak: () => import('./mp-soak.mjs'), /* v2.3.1741: does anything grow while you play */
   zonechurn: () => import('./mp-zonechurn.mjs'), /* v2.3.1741: does touring zones leak */
+  questbanner: () => import('./mp-questbanner.mjs'), /* v2.3.1745: QUEST ACCEPTED! / QUEST COMPLETED! over the dialogue */
+  zonefx: () => import('./mp-zonefx.mjs'), /* v2.3.1748: what follows you through an exit, and what leaks in */
+  remoteanim: () => import('./mp-remoteanim.mjs'), /* v2.3.1749: what the other player sees you doing */
   gearown: () => import('./mp-gearown.mjs'), /* v2.3.1750: armour you have not earned is not offered */
   viewport: () => import('./mp-viewport.mjs'), /* v2.3.1740: the game fills the phone */ /* v2.3.1734: element_burst survives the shim; the special costs the flat 25 */
 };

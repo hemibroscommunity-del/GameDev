@@ -37,12 +37,22 @@ const REG = {
   chest: { scale: 0.90, off: [[39, -79], [18, 27], [42, 13], [35, 23], [84, 11], [75, 10], [59, 9], [42, -69]] },
   legs: { scale: 0.90, off: [[28, -7], [23, 8], [89, 48], [57, 7], [73, 15], [72, 15], [64, 17], [41, 15]] },
 };
-const FRAME_MS = 200;
+/* v2.3.1749: read from the page, never copied.  This was a hard-coded 200 and
+   the 3x firemaking speed-up (owner request) silently moved every sampled
+   frame by two — the assertions then compared frame N's gear offsets against
+   frame N+2's table row and failed in a way that looked like a registration
+   bug.  fireGearProbe now publishes the real cadence. */
+let FRAME_MS = 200;
 
 export async function run({ browser, wsPort, webPort, rec }) {
   const P = await H.newPlayer(browser, { name: 'Sparky', wsPort, webPort });
   await H.enterWorld(P);
   await P.page.waitForTimeout(1200);
+  FRAME_MS = await P.page.evaluate(() => {
+    const R = window._pixiRenderer;
+    const p = R && R.fireGearProbe && R.fireGearProbe();
+    return (p && p.frameMs) || 200;
+  });
 
   /* Full kit, so all three layers draw at once — the plate hides the shirt by
      design (_placeSwingShirt), so the shirt is measured in a second pass. */
@@ -54,19 +64,49 @@ export async function run({ browser, wsPort, webPort, rec }) {
      (now - startedAt), so backdating startedAt by a whole number of frames and
      then reading on the next tick pins it; doneAt is pushed far out so the
      figure does not pack up mid-measurement. */
+  /* v2.3.1749: CONFIRM the frame instead of assuming it.  This used to
+     backdate startedAt by `f * ms + 40` and wait 90ms, which lands on frame f
+     only while a frame is 200ms — the 90ms settle is more than a whole frame
+     at the new 67ms cadence, so every measurement silently slid one frame and
+     the assertions compared frame N's gear against frame N+1's table row.
+     The drawn frame is readable (the probe reports the texture's x offset in
+     the strip), so aim, verify, and correct rather than trusting arithmetic
+     that depends on how fast the machine renders. */
+  /* Returns the probe AND which frame it caught, so the verification and the
+     measurement are the SAME read.  Two reads meant a render could advance the
+     animation between "yes, frame f" and "here are frame f's offsets" — which
+     at 67ms per frame is most of the budget, and is why this file went red on
+     the speed-up in a way that looked like a registration bug. */
+  const readFrame = async () => {
+    const p = await P.page.evaluate(() => window._pixiRenderer.fireGearProbe());
+    const f = (p && p.body && p.body.tex) ? Math.round(p.body.tex.x / p.body.tex.w) : -1;
+    return { p, f };
+  };
   const holdFrame = async (f) => {
-    await P.page.evaluate(({ f, ms }) => {
-      const S = window._gameState.current;
-      S._firemaking = { startedAt: Date.now() - (f * ms + 40), doneAt: Date.now() + 120000 };
-    }, { f, ms: FRAME_MS });
-    await P.page.waitForTimeout(90);
+    /* Aim at the MIDDLE of frame f as it will be at read time.  The old
+       arithmetic (`startedAt = now - (f*ms + 40)`, then wait 90ms) put the read
+       at elapsed = f*ms + 130, which is inside frame f only while a frame is
+       200ms — at 67ms it is a whole frame late, every time.  So: settle for one
+       render, and choose the backdate so the elapsed AT THAT MOMENT lands
+       mid-frame. */
+    const WAIT = 25;
+    for (let attempt = 0; attempt < 8; attempt++) {
+      const lead = Math.max(0, f * FRAME_MS + Math.round(FRAME_MS / 2) - WAIT) + attempt * 2;
+      await P.page.evaluate(({ f, lead }) => {
+        const S = window._gameState.current;
+        S._firemaking = { startedAt: Date.now() - lead, doneAt: Date.now() + 120000 };
+      }, { f, lead });
+      await P.page.waitForTimeout(WAIT);
+      const r = await readFrame();
+      if (r.f === f) return r.p;
+    }
+    return null;
   };
   const probe = () => P.page.evaluate(() => window._pixiRenderer.fireGearProbe());
 
   /* ── the animation is alive at all ── */
   await gear('steelplate', 'steelgreaves');
-  await holdFrame(0);
-  const p0 = await probe();
+  const p0 = await holdFrame(0) || await probe();
   rec.ok('the firemaking strip loaded its 8 frames', p0.frames === 8, p0.frames);
   rec.ok('the body, plate and greaves all draw',
     !!(p0.body && p0.body.visible && p0.chest && p0.chest.visible && p0.legs && p0.legs.visible),
@@ -75,8 +115,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
   /* ── WIRING: every layer, every frame, its own row, scaled ── */
   const bad = [];
   for (let f = 0; f < 8; f++) {
-    await holdFrame(f);
-    const pr = await probe();
+    const pr = await holdFrame(f);
+    if (!pr) { bad.push(`f${f}: could not hold the frame`); continue; }
     if (!pr.body) { bad.push(`f${f}: no body sprite`); continue; }
     for (const slot of ['chest', 'legs']) {
       const sp = pr[slot];
@@ -103,8 +143,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await gear('none', 'none');
   const badShirt = [];
   for (let f = 0; f < 8; f++) {
-    await holdFrame(f);
-    const pr = await probe();
+    const pr = await holdFrame(f);
+    if (!pr) { badShirt.push(`f${f}: could not hold the frame`); continue; }
     if (!pr.body || !pr.shirt || !pr.shirt.visible) { badShirt.push(`f${f}: shirt not drawn`); continue; }
     const want = REG.shirt.off[f];
     const dx = pr.shirt.x - pr.body.x, dy = pr.shirt.y - pr.body.y;

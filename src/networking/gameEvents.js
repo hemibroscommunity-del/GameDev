@@ -1563,6 +1563,12 @@ export function processGameEvent(type, payload, S, deps) {
                  zones use monster_hit instead, which the handler above
                  already covers.  Drops own echoes. */
               if (payload.id === S.myId) break;
+              /* v2.3.1748: same missing zone gate as the death burst above —
+                 and conspicuous here, because the sibling case immediately
+                 above this one (player_hurt_by_monster) has always had it.
+                 Cross-zone damage floaters drifted over your map at the
+                 hitter's coordinates. */
+              if (!_peerInZone(S, payload.id)) break;
               /* Client-local peer floater -> smoothing queue (keyed by a
                  coarse position bucket since this carries only x,y). */
               enqueuePeerDamage(S, peerDmgKey(null, payload.x || 0, payload.y || 0), {
@@ -1585,6 +1591,14 @@ export function processGameEvent(type, payload, S, deps) {
                  deaths are handled by pvp_confirmed and aren't
                  double-rendered. */
               if (payload.id === S.myId) break;
+              /* v2.3.1748: and not from another zone.  The event relay is
+                 room-wide by design (server/src/index.js: the one tick section
+                 v2.3.1575's interest management deliberately did NOT
+                 zone-scope), so EVERY zone-scoping decision for these effects
+                 is the client's.  This one was missing: a death in Frost Ridge
+                 painted a 20-particle burst and a 'KO' popup at those raw
+                 world coordinates onto whatever map you were standing on. */
+              if (!_peerInZone(S, payload.id)) break;
               var deadOther = S.others && S.others[payload.id];
               if (deadOther) {
                 deadOther._isDead = true;

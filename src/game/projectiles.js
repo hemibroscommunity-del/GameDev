@@ -12,7 +12,7 @@
    the player; `setRpgState`/`setLevelUpMsg` arrive via deps (arrows only);
    everything else is a module import below. S is stateRef.current. */
 import {
-  BT_AUDIO, COMBO_NEXT_DURATION_BONUS, ELEMENTS, QUEST_CHAINS, QUEST_STATUS, RARITY_TIERS,
+  BT_AUDIO, ELEMENTS, QUEST_CHAINS, QUEST_STATUS, RARITY_TIERS,
   PVP_THREAT_DURATION,
   WEAPON_TYPES, WELL_RESTED_XP_MULT, ZONES, applyStatus, awardWeaponXp, calcWeaponDmg,
   discoverCollision, getActiveWeapon, getCollisionDeathFX, getElementDeathFX, recalcDerived,
@@ -280,14 +280,7 @@ export function updateArrows(S, deps) {
                     applyStatus(m, statusId, S.player, Date.now());
                     /* §12.2 cert — first elemental status applied (ranged). */
                     masteryEarnCert('first-status');
-                    /* §5.9.6 Combo "Next" — extend on ranged status apply too. */
-                    if (S.combo && S.combo.nextExtended && m.statuses && m.statuses[statusId]) {
-                      var _extMulR = 1 + (COMBO_NEXT_DURATION_BONUS || 0.2);
-                      m.statuses[statusId].remaining *= _extMulR;
-                      m.statuses[statusId].maxDur = Math.max(m.statuses[statusId].maxDur || 0, m.statuses[statusId].remaining);
-                      S.combo.nextExtended = false;
-                      pushDmgPopup(S, m.x, m.y - 28, 'ext', '#f5c542');
-                    }
+                    /* v2.3.1747: combo "Next" status extension removed with the chain. */
                   }
                 }
                 var arrowCollision = null;

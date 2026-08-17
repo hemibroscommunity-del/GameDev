@@ -1548,13 +1548,30 @@ export function setupWebSocket(ctx) {
                 S.rpg[_qrsKey].push({ name: _qrsName, tierMult: _qrsTm, slot: _qrsLegs ? 'legsArmor' : 'armor' });
                 try { localStorage.setItem('bt_rpg', JSON.stringify(S.rpg)); } catch (e) {}
               }
-              if (typeof window !== 'undefined' && typeof window._setLevelUpMsg === 'function') {
-                window._setLevelUpMsg({
-                  kind: 'warning',
-                  text: _qrsName + ' went to your bag',
+              /* ═══ v2.3.1746: A REWARD IS NOT A DANGER ═══
+                 Owner: "right now it says 'danger iron graves were added to
+                 your bag' for reward completion which is not the message I
+                 want.  It's not a danger for iron greaves or the torso."
+                 They were right, and it was not a copy mistake — this fired
+                 the LEVEL-UP banner with kind:'warning', whose whole job is
+                 the red zone-gate warning, so it rendered a literal
+                 "⚠️ DANGER" headline over the good news that a quest had
+                 just paid out.  It borrowed that banner because it was the
+                 only screen-space one that could carry arbitrary text.
+                 There is a right one now (v2.3.1745), so use it: brass
+                 "QUEST REWARD", the piece's name, and the one instruction
+                 that actually matters.
+                 `queue: true` because this arrives a few hundred ms after
+                 the player's own QUEST COMPLETED! banner and must not wipe
+                 it — see the queue rule in BroTown.jsx. */
+              if (typeof window !== 'undefined' && typeof window._setQuestMsg === 'function') {
+                window._setQuestMsg({
+                  kind: 'reward',
+                  title: _qrsName,
                   sub: _qrsLegs
-                    ? 'Equip it from your bag — it goes on your legs'
-                    : 'Your chest slot was already full — equip it from the Character menu',
+                    ? 'In your bag — equip it on your legs'
+                    : 'In your bag — your chest slot was already full',
+                  queue: true,
                   ts: Date.now(),
                 });
               }

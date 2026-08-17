@@ -56,6 +56,26 @@ export function acceptQuest(S, questPanel, deps) {
   }));
   pushDmgPopup(S, S.player.x, S.player.y - 40, 'Quest Accepted: ' + questPanel.quest.title, '#5b52ff');
   BT_AUDIO.collect();
+  /* v2.3.1745: ...and the screen-space banner over the dialogue.  The world
+     popup above is drawn in the Pixi world, UNDER the modal's scrim — at the
+     moment you accept, the dialogue is still open and covering it, so the
+     one piece of feedback the player could actually see was the sound. */
+  showQuestBanner('accepted', questPanel.quest.title);
+}
+
+/* v2.3.1745: the QUEST ACCEPTED! / QUEST COMPLETED! banner.
+   Same window bridge the level-up banner uses (BroTown sets
+   window._setQuestMsg next to window._setLevelUpMsg) — this module is
+   plain, non-React, and both accept and turn-in run from a button handler
+   rather than from render.  Wrapped because a missing bridge must never
+   cost the player their quest: the state transitions above have already
+   run and been sent by the time we get here. */
+export function showQuestBanner(kind, title, sub) {
+  try {
+    if (typeof window !== 'undefined' && window._setQuestMsg) {
+      window._setQuestMsg({ kind: kind, title: title || '', sub: sub || '', ts: Date.now() });
+    }
+  } catch (e) {}
 }
 
 /* v2.3.1685: `xpCat` — which trained skill this turn-in's XP goes into
@@ -113,7 +133,25 @@ export function turnInQuest(S, questPanel, deps, xpCat) {
     localStorage.setItem('bt_rpg', JSON.stringify(R));
   } catch (e) {}
   pushDmgPopup(S, S.player.x, S.player.y - 40, 'Quest Complete! +' + questPanel.quest.reward.gold + 'G +' + questPanel.quest.reward.xp + 'XP', '#f5c542');
-  BT_AUDIO.levelUp();
+  /* ═══ v2.3.1746: the owner's quest fanfare ═══
+     Owner: "play this sound upon quest completion."  It REPLACES the synth
+     levelUp() arpeggio here rather than stacking with it — two fanfares at
+     once is mush — but levelUp() stays as the fallback for the one frame
+     before the sample is decoded, and for any browser that refuses it.
+     BT_AUDIO.play returns null (not false) when the sample is not loaded;
+     testing `!== false` would count "not loaded" as success and ship the
+     turn-in silent, which is exactly how 19 SFX shipped mute before
+     v2.3.1610. */
+  var _qcSfx = null;
+  try { _qcSfx = BT_AUDIO.play('quest-complete', { vol: 0.9 }); } catch (e) { _qcSfx = null; }
+  if (!_qcSfx) BT_AUDIO.levelUp();
+  /* v2.3.1745: the banner carries the REWARD on the completed side — it is
+     the one moment the numbers are worth reading, and the world popup that
+     used to carry them is behind the dialogue, which stays open through the
+     hand-in (v2.3.1713 below). */
+  showQuestBanner('completed', questPanel.quest.title,
+    '+' + questPanel.quest.reward.gold + 'g'
+    + (questPanel.quest.reward.xp ? '  ·  +' + questPanel.quest.reward.xp + ' XP' : ''));
   /* ═══ v2.3.1713: THE DIALOGUE SURVIVES THE HAND-IN ═══
      Owner: "make it so that turning in the quest after completion launches
      the quest dialog window (same behavior as when you first begin a quest)."
