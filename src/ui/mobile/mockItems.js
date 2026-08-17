@@ -87,7 +87,7 @@ export const generateMockInventory = (n = 30) => {
 export const generateMockEquipped = () => ({
   weapon: makeItem('weapon', { name: 'Iron Greatsword', tier: 4, quality: 'rare' }),
   chest:  makeItem('armor',  { name: 'Iron Vest',  tier: 4, quality: 'normal', slot: 'chest' }),
-  legs:   makeItem('armor',  { name: 'Iron Greaves', tier: 4, quality: 'normal', slot: 'legs' }),
+  legs:   makeItem('armor',  { name: 'Copper Greaves', tier: 4, quality: 'normal', slot: 'legs' }), /* v2.3.1758: tier one is copper */
   pet:    makeItem('pet',    { name: 'Bramble',    tier: 3, quality: 'normal' }),
   tool:   null,
 });
