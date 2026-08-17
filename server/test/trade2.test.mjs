@@ -100,16 +100,51 @@ wss.c.sent.length = 0;
 await cmd(wss.c, 'trade2_open', { target: P('a') });
 check("third party gets 'busy'", lastState(wss.c).reason === 'busy');
 
+/* ═══ v2.3.1754: THE TWO-STAGE HANDSHAKE ═══
+   Owner (quoting the RuneScape/WoW lineage): "once both ready up, show a
+   second, stripped-down screen ... Both must accept again."
+   A confirm is now only valid once BOTH sides are ready and the accept
+   cooldown since the last edit has elapsed, so every settlement below goes
+   through the same door a player does.  The cooldown is rolled back rather
+   than slept through — the rule under test is "the server refuses an early
+   accept", and the tests for that assert it directly. */
+const bothReady = async () => {
+  await cmd(wss.a, 'trade2_ready', { ready: true });
+  await cmd(wss.b, 'trade2_ready', { ready: true });
+  for (const s2 of room._trades2.values()) s2.changedAt = Date.now() - 999999;
+};
+
 // ── 3. staging + anti-switch ──
 wss.a.sent.length = 0; wss.b.sent.length = 0;
 await cmd(wss.a, 'trade2_set', { offer: { fish_minnow: 5, _gold: -50, junk: 'x' } });
 let st = lastState(wss.b);
 check('set sanitizes and echoes to both', st.offers[P('a')].fish_minnow === 5 && st.offers[P('a')]._gold === undefined, st.offers[P('a')]);
+/* v2.3.1754: a confirm before both sides are ready is refused outright — the
+   review screen is the only place an accept can come from. */
+await cmd(wss.a, 'trade2_confirm');
+check('a confirm outside the review stage is refused', lastState(wss.a).confirmed[P('a')] === false && lastState(wss.a).reason === 'not-ready', lastState(wss.a).reason);
+await bothReady();
+check('both ready puts the pair on the review stage', lastState(wss.a).stage === 'review', lastState(wss.a).stage);
 await cmd(wss.a, 'trade2_confirm');
 check('single confirm marks but does not swap', lastState(wss.a).confirmed[P('a')] === true && psA.inventory.fish_minnow === 10);
 await cmd(wss.b, 'trade2_set', { offer: { _gold: 200 } });
 st = lastState(wss.a);
 check("B's change resets BOTH confirms (anti-switch)", st.confirmed[P('a')] === false && st.confirmed[P('b')] === false);
+/* v2.3.1754: ...and both READIES, dropping the pair back to the offer stage.
+   Resetting only `confirmed` would leave two players on a review screen
+   describing a trade that no longer exists — the exact misread the second
+   screen exists to prevent. */
+check("...and both READIES, back to the offer stage", st.ready[P('a')] === false && st.ready[P('b')] === false && st.stage === 'offer', { ready: st.ready, stage: st.stage });
+/* the accept cooldown starts from that edit */
+await cmd(wss.a, 'trade2_ready', { ready: true });
+await cmd(wss.b, 'trade2_ready', { ready: true });
+await cmd(wss.a, 'trade2_confirm');
+check('an accept inside the cooldown is refused (last-second swap)', lastState(wss.a).confirmed[P('a')] === false && lastState(wss.a).reason === 'cooling', lastState(wss.a).reason);
+/* and backing out of the review screen is not an edit — it just un-readies */
+for (const s2 of room._trades2.values()) s2.changedAt = Date.now() - 999999;
+await cmd(wss.a, 'trade2_ready', { ready: false });
+check('Back on the review screen un-readies without touching the offer',
+  lastState(wss.a).ready[P('a')] === false && lastState(wss.a).offers[P('a')].fish_minnow === 5, lastState(wss.a).ready);
 
 // ── 6. non-member noise ignored ──
 await cmd(wss.c, 'trade2_confirm');
@@ -119,6 +154,7 @@ check('non-member confirm/set ignored', st.confirmed[P('a')] === false && !st.of
 
 // ── 4. atomic swap ──
 wss.a.sent.length = 0; wss.b.sent.length = 0;
+await bothReady();
 await cmd(wss.a, 'trade2_confirm');
 await cmd(wss.b, 'trade2_confirm');
 st = lastState(wss.a);
@@ -131,6 +167,7 @@ await cmd(wss.a, 'trade2_open', { target: P('b') });
 await cmd(wss.b, 'trade2_open', { target: P('a') });
 await cmd(wss.a, 'trade2_set', { offer: { fish_minnow: 5 } });
 await cmd(wss.b, 'trade2_set', { offer: { _gold: 500 } });
+await bothReady();
 await cmd(wss.a, 'trade2_confirm');
 psB.coins = 100; // B spent their gold mid-trade (the classic scam window)
 const aInvPre = JSON.stringify(psA.inventory), aCoinsPre = psA.coins;
@@ -179,7 +216,12 @@ check('forged trade2_state / trade2_invite dropped by deny-list', room.eventBuff
   await cmd(wss.a, 'trade2_open', { target: P('b') });
   await cmd(wss.b, 'trade2_open', { target: P('a') });
 
-  await cmd(wss.a, 'trade2_confirm'); // confirm first to prove the anti-switch reset
+  /* v2.3.1754: ready+confirm first, so the reset below has something real to
+     clear — a bare confirm is refused outside the review stage now. */
+  await cmd(wss.a, 'trade2_ready', { ready: true });
+  await cmd(wss.b, 'trade2_ready', { ready: true });
+  for (const s2 of room._trades2.values()) s2.changedAt = Date.now() - 999999;
+  await cmd(wss.a, 'trade2_confirm');
   await cmd(wss.a, 'trade2_stage_weapon', { stashIdx: 0 });
   let st9 = lastState(wss.b);
   const aSeq = st9.weapons[P('a')][0] && st9.weapons[P('a')][0].seq;
@@ -200,6 +242,7 @@ check('forged trade2_state / trade2_invite dropped by deny-list', room.eventBuff
   await cmd(wss.b, 'trade2_stage_weapon', { stashIdx: 0 }); // B-bow
   const aSeq2 = lastState(wss.a).weapons[P('a')][0].seq;
   const bSeq2 = lastState(wss.b).weapons[P('b')][0].seq;
+  await bothReady(); /* v2.3.1754 */
   await cmd(wss.a, 'trade2_confirm');
   await cmd(wss.b, 'trade2_confirm');
   check('commit swaps the escrowed weapons to the other side',
