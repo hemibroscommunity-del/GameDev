@@ -2998,8 +2998,14 @@ export class EffectsRenderer {
       const mx = S._mouseWorldX;
       const my = S._mouseWorldY;
       // Convert to screen-space for HUD layer
-      const sx = mx - (S.camera?.x || 0);
-      const sy = my - (S.camera?.y || 0);
+      /* v2.3.1756: the HUD layer is unscaled screen space, so the world->screen
+         conversion needs the world scale — the same one BroTown's onMouseMove
+         now inverts.  Both were bare translations before, which cancelled out
+         and kept the reticle under the cursor while the aim it represented was
+         wrong; correcting one without the other would detach the reticle. */
+      const rk = S._worldScaleX || 1, rky = S._worldScaleY || 1;
+      const sx = (mx - (S.camera?.x || 0)) * rk;
+      const sy = (my - (S.camera?.y || 0)) * rky;
       gfx.circle(sx, sy, 8);
       gfx.stroke({ color: 0xffffff, width: 1, alpha: 0.4 });
       // Crosshair lines
