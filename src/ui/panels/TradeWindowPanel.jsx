@@ -2,6 +2,16 @@ import React, { useState, useEffect, useRef } from 'react';
 /* v2.3.1235: batch-4 state-correction — RARITY_TIERS for staged-weapon
    row rarity (existing data; plain inventory items carry no rarity). */
 import { RARITY_TIERS } from '@/data/index.js';
+/* ═══ v2.3.1755: THE BAG'S OWN THUMBNAILS ═══
+   Owner: "I'd also like it if you included the item thumbnails next to the
+   quantities and gold icon next to the gold amount for trading."
+   Imported from the inventory panel rather than given a second mapping here:
+   a private copy is how the same wood log ends up as a log in your bag and a
+   crate emoji in the trade window.  thumbFor returns null for a key with no
+   art, and every site below falls back to the emoji glyph that was there
+   before — so an unmapped item degrades to what it already looked like
+   rather than to a broken image. */
+import { thumbFor } from '../mobile/dash/InventoryPanel.jsx';
 
 /* === TradeWindowPanel — the two-sided trade window (v2.3.1132) === */
 /* Handoff item H: both players stage items + gold, both confirm, the
@@ -82,6 +92,18 @@ const TradeIcon = () => (
     style={{ width: 24, height: 24, objectFit: 'contain' }}
     onError={(e) => { e.currentTarget.replaceWith(document.createTextNode('🤝')); }} />
 );
+/* 24px because these sit in 32px wells and rows sized for a glyph; the art is
+   square, so objectFit keeps the odd non-square source honest. */
+const ItemThumb = ({ itemKey, size = 24, fallback }) => {
+  const src = thumbFor(itemKey);
+  if (!src) return <span style={{ fontSize: size * 0.75 }}>{fallback}</span>;
+  return (
+    <img src={src} alt="" draggable={false}
+      style={{ width: size, height: size, objectFit: 'contain' }}
+      onError={(e) => { e.currentTarget.replaceWith(document.createTextNode(fallback || '')); }} />
+  );
+};
+
 const GoldIcon = () => (
   <img src="/icons/popups/gold.webp" alt="" draggable={false}
     style={{ width: 16, height: 16, objectFit: 'contain', verticalAlign: '-3px' }}
@@ -167,7 +189,7 @@ function OfferRows({ offer, weapons, empty, onRemoveItem, onRemoveWeapon, goldSu
   return (
     <div className="ls-scrollbody" style={{ maxHeight: 148, overflowY: 'auto' }}>
       {entries.map(([k, v]) => (
-        <StagedRow key={k} glyph={emojiFor(k)} name={labelFor(k)} qty={v}
+        <StagedRow key={k} glyph={<ItemThumb itemKey={k} fallback={emojiFor(k)} />} name={labelFor(k)} qty={v}
           have={inv ? (inv[k] || 0) : null}
           onRemove={onRemoveItem ? () => onRemoveItem(k) : null}
           onInc={onSetQty ? () => onSetQty(k, v + 1) : null}
@@ -526,11 +548,15 @@ export function TradeWindowPanel(props) {
   if (onReview) {
     const mine = trade2.offers[myId] || {};
     const theirs = trade2.offers[otherId] || {};
+    /* v2.3.1755: rows carry their own art now, so the summary keeps the key
+       (for the thumbnail) alongside the text rather than pre-flattening to a
+       string.  Staged weapons have no inventory key — they fall back to the
+       crossed-swords glyph the staged rows already use for them. */
     const lines = (offer, wpns) => {
       const out = Object.entries(offer)
         .filter(([k, v]) => k !== '_gold' && v > 0)
-        .map(([k, v]) => `${labelFor(k)} x${v}`);
-      (wpns || []).forEach((w) => out.push(wpnName(w)));
+        .map(([k, v]) => ({ key: k, text: `${labelFor(k)} x${v}` }));
+      (wpns || []).forEach((w) => out.push({ key: null, text: wpnName(w), glyph: '⚔️' }));
       return out;
     };
     const myLines = lines(mine, myWpn), theirLines = lines(theirs, otherWpn);
@@ -542,14 +568,20 @@ export function TradeWindowPanel(props) {
         {ls.length === 0 && gold === 0 && (
           <div style={{ fontSize: 12, color: '#8D9B98' }}>Nothing</div>
         )}
-        {ls.map((t) => (
-          <div key={t} style={{ fontSize: 13, color: '#F4F0E7', lineHeight: 1.5 }}>{t}</div>
+        {ls.map((it) => (
+          <div key={it.text} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#F4F0E7', lineHeight: 1.5, padding: '1px 0' }}>
+            <ItemThumb itemKey={it.key} size={20} fallback={it.glyph || '📦'} />
+            <span>{it.text}</span>
+          </div>
         ))}
         {gold > 0 && (
-          <div style={{ fontSize: 13, color: '#D8A94D', fontWeight: 700, lineHeight: 1.5 }}>{gold} gold</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#D8A94D', fontWeight: 700, lineHeight: 1.5, padding: '1px 0' }}>
+            <GoldIcon /><span>{gold} gold</span>
+          </div>
         )}
-        <div style={{ fontSize: 11, color: '#8D9B98', marginTop: 4, borderTop: '1px solid rgba(229,237,233,.11)', paddingTop: 4 }}>
-          {ls.length} item{ls.length === 1 ? '' : 's'}{gold > 0 ? ` · ${gold} gold` : ''}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, color: '#8D9B98', marginTop: 4, borderTop: '1px solid rgba(229,237,233,.11)', paddingTop: 4 }}>
+          <span>{ls.length} item{ls.length === 1 ? '' : 's'}</span>
+          {gold > 0 && (<><span>·</span><GoldIcon /><span>{gold}</span></>)}
         </div>
       </div>
     );
@@ -665,6 +697,12 @@ export function TradeWindowPanel(props) {
             <button
               key={k}
               onClick={() => addOne(k)}
+              /* v2.3.1755: the tile's only text used to be the count, and its
+                 glyph was an emoji CHARACTER — so "📦 6" was its whole label.
+                 With a real thumbnail the image carries the identity and the
+                 accessible name would collapse to "6", which is nothing to a
+                 screen reader and nothing to select on.  Name it explicitly. */
+              aria-label={`Add one ${labelFor(k)}`}
               style={{
                 padding: '4px 2px', borderRadius: 8, fontSize: 10, cursor: 'pointer',
                 fontVariantNumeric: 'tabular-nums',
@@ -678,7 +716,9 @@ export function TradeWindowPanel(props) {
                 color: stage[k] ? '#F4F0E7' : '#8D9B98',
               }}
             >
-              <div style={{ fontSize: 13 }}>{emojiFor(k)}</div>
+              <div style={{ display: 'flex', justifyContent: 'center' }}>
+                <ItemThumb itemKey={k} size={22} fallback={emojiFor(k)} />
+              </div>
               <div>{stage[k] ? (stage[k] + '/' + v) : v}</div>
             </button>
           ))}

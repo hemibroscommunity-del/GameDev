@@ -31,7 +31,17 @@ function otherLane(P) {
 }
 
 const coins = (P) => H.readState(P, (S) => (S.rpg || {}).coins || 0);
-const wood = (P) => H.readState(P, (S) => ((S.rpg || {}).inventory || {}).wood || 0);
+/* v2.3.1755: 'wood_oak', not 'wood'.  The grant key here was invented by this
+   test and matches nothing the game produces (the worker's gathering path
+   writes wood_oak), so every run traded an item that does not exist — which
+   is also why the trade window had never once rendered a real item
+   thumbnail: thumbFor keys off the prefix and 'wood' matched nothing, so the
+   fallback glyph was all this scenario ever exercised. */
+const WOOD_KEY = 'wood_oak';
+/* The literal is repeated rather than closed over on purpose: readState
+   stringifies this arrow and runs it in the PAGE, where a Node-scope
+   binding is a ReferenceError. */
+const wood = (P) => H.readState(P, (S) => ((S.rpg || {}).inventory || {})['wood_oak'] || 0);
 
 export async function run({ browser, wsPort, webPort, rec }) {
   const { A, B } = await H.joinPair(browser, { wsPort, webPort, nameA: 'Trader', nameB: 'Buyer' });
@@ -40,7 +50,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
   /* ── seed both sides ── */
   await H.grant(wsPort, aId, 'gold', { amount: 500 });
-  await H.grant(wsPort, aId, 'item', { invKey: 'wood', count: 6 });
+  await H.grant(wsPort, aId, 'item', { invKey: WOOD_KEY, count: 6 });
   await H.grant(wsPort, bId, 'gold', { amount: 300 });
   await A.page.waitForTimeout(1500);
   const aCoins0 = await coins(A), bCoins0 = await coins(B), aWood0 = await wood(A);
@@ -81,11 +91,14 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
   /* ── A taps a bag tile to stage an item (the in-modal Bag tray) ── */
   const staged = await A.page.evaluate(() => {
-    /* Bag tiles are the tray buttons whose label is glyph + bare count. */
-    const tile = [...document.querySelectorAll('button')]
-      .find((b) => b.offsetParent && /^\S{1,3}\s*\d+(\/\d+)?$/.test(b.innerText.replace(/\n/g, ' ').trim()));
+    /* v2.3.1755: selected by aria-label, not by text shape.  The old matcher
+       was /^\S{1,3}\s*\d+$/ — "glyph + count" — which only ever worked because
+       the glyph was an emoji CHARACTER.  Now that a tile draws a real
+       thumbnail its text is the bare count, and that regex finds nothing. */
+    const tile = [...document.querySelectorAll('button[aria-label^="Add one"]')]
+      .find((b) => b.offsetParent);
     if (!tile) return null;
-    const before = tile.innerText.replace(/\n/g, ' ').trim();
+    const before = (tile.getAttribute('aria-label') || '').trim();
     tile.click();
     return before;
   });
@@ -141,6 +154,28 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const backTo1 = await stagedQty();
   rec.ok('the stepper can walk a stack all the way back down to one',
     !!backTo1 && backTo1.qty === 1, backTo1);
+
+  /* ── v2.3.1755: the offer is ART, not emoji ──
+     Owner: "include the item thumbnails next to the quantities and gold icon
+     next to the gold amount for trading."  naturalWidth is the load-bearing
+     part: an <img> whose file 404s still exists in the DOM with the right src,
+     and a trade window full of broken-image boxes would pass a src-only
+     check.  Only a decoded bitmap proves the player is actually looking at
+     the item. */
+  const art = await A.page.evaluate(() => {
+    const card = document.querySelector('.bt-inspect-card');
+    if (!card) return null;
+    const imgs = [...card.querySelectorAll('img')]
+      .map((i) => ({ src: i.getAttribute('src') || '', w: i.naturalWidth }));
+    return {
+      item: imgs.filter((i) => /\/icons\/items\//.test(i.src)),
+      gold: imgs.filter((i) => /gold\.webp/.test(i.src)),
+    };
+  });
+  rec.ok('a staged item shows its real thumbnail, loaded',
+    !!art && art.item.length > 0 && art.item.every((i) => i.w > 0), art);
+  rec.ok('the gold amount shows the gold icon, loaded',
+    !!art && art.gold.length > 0 && art.gold.every((i) => i.w > 0), art);
 
   /* ═══ v2.3.1754: THE TWO-STAGE HANDSHAKE, THROUGH THE REAL BUTTONS ═══
      Owner: "once both ready up, show a second, stripped-down screen ... Both
