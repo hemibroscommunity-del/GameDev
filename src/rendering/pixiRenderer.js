@@ -5,7 +5,7 @@
 import { createPixiApp } from './pixiApp.js';
 import { TileRenderer } from './systems/tileRenderer.js';
 import { EntityRenderer, prewarmMaskedBodyFrames, prewarmAltWornSets, planPrewarmProgress, uploadBakedTextures, uploadGearTextures, registerPrewarmRenderer } from './systems/entityRenderer.js';
-import { EffectsRenderer, prewarmDmgFontPipe } from './systems/effectsRenderer.js';
+import { EffectsRenderer, prewarmDmgFontPipe, FIRE_FRAME_MS } from './systems/effectsRenderer.js';
 import { FpsOverlay } from './systems/fpsOverlay.js';
 import { loadPlayerSprites } from './playerSprites.js';
 import { loadPlayerAnchors } from './playerAnchors.js';
@@ -424,11 +424,62 @@ export async function initPixiRenderer(canvas) {
         x: +sp.x.toFixed(1), y: +sp.y.toFixed(1), scale: +sp.scale.y.toFixed(4), tint: sp.tint,
       } : null);
       return {
+        /* v2.3.1749: published so the harness stops keeping its own copy of
+           the cadence — it had a hard-coded 200 that the 3x speed-up broke. */
+        frameMs: FIRE_FRAME_MS,
         frames: e._fireFrames ? e._fireFrames.length : 0,
         body: one(e.fireSprite), legs: one(e.fireLegsSprite),
         shirt: one(e.fireShirtSprite), chest: one(e.fireChestSprite),
         order: ['fireSprite', 'fireLegsSprite', 'fireShirtSprite', 'fireChestSprite']
           .map((k) => (e[k] && e[k].parent ? e[k].parent.getChildIndex(e[k]) : -1)),
+      };
+    },
+    /* ═══ v2.3.1751: THE POOLS THE SOAK COULD NOT SEE ═══
+       mp-soak.mjs states its own coverage limit in as many words: the per-
+       entity display pools live on the entity/effects sub-renderers, which
+       initPixiRenderer keeps in CLOSURE, "so this probe cannot count them, and
+       a leak confined to those maps would pass here."  The owner has now
+       reported the slowdown twice, the second time after "lots of monster
+       killing" — which is exactly what churns monsterDisplays — so the blind
+       spot is where the search has to go.  That note says to expose them
+       behind the autotest surface rather than widening the scene walk; this is
+       that.  Counts only, read-only, consumed by nothing in the game. */
+    poolSizesProbe: () => {
+      const e = effectsRenderer, n = entityRenderer;
+      const size = (m) => (m && typeof m.size === 'number' ? m.size : null);
+      const out = {
+        monsterDisplays: size(n && n.monsterDisplays),
+        otherPlayerDisplays: size(n && n.otherPlayerDisplays),
+        npcDisplays: size(n && n.npcDisplays),
+        chatTexts: size(e && e.chatTexts),
+        remoteSlashSprites: size(e && e._remoteSlashSprites),
+        remoteSkillSprites: size(e && e._remoteSkillSprites),
+        remoteSwordSprites: size(e && e._remoteSwordSprites),
+        remoteBowSprites: size(e && e._remoteBowSprites),
+        remoteBodyCache: size(e && e._remoteBodyCache),
+        remoteSheetCache: size(e && e._remoteSheetCache),
+      };
+      for (const k of Object.keys(out)) if (out[k] === null) delete out[k];
+      return out;
+    },
+    /* v2.3.1749: read-only probe of a PEER's gathering stand-in, for the QA
+       harness — sibling of fireGearProbe above and added for the same reason.
+       The question "does another player's firemaking play once, in order, or
+       does it wrap" is a fact about a frame index living in a renderer
+       closure; a screenshot cannot separate it from the terrain, and the game
+       consumes nothing here. */
+    remoteSkillProbe: (id) => {
+      const e = effectsRenderer;
+      const pool = e._remoteSkillSprites;
+      const ent = pool && pool.get(id);
+      if (!ent) return null;
+      return {
+        code: ent._exCode || null,
+        frame: typeof ent._fi === 'number' ? ent._fi : null,
+        base: typeof ent._base === 'number' ? ent._base : null,
+        count: typeof ent._specLen === 'number' ? ent._specLen : null,
+        startedAt: ent._exStart || 0,
+        visible: !!(ent[ent._exCode] && ent[ent._exCode].visible),
       };
     },
     /* v2.3.138: dispose a single loot pile by direct object reference.

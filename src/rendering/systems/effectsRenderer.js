@@ -53,6 +53,13 @@ import { GEARLAYER_VER } from '../gearVersion.js';   // shared cache-bust string
    the same 2.327 (it multiplies sp.scale.y, which fell 0.7 -> 0.3008, to size
    the player's hat), and _updateRemoteExtraction divided by a hardcoded 220. */
 const FIRE_FW = 384, FIRE_FH = 512;
+/* v2.3.1749: ONE firemaking cadence.  Owner: "for firemaking speed up the
+   animation by about 3x so it doesn't look as choppy" — 200ms/frame is a 5fps
+   slideshow; 67 is ~15fps.  Module-level because the local figure
+   (_updateFiremaking), the remote stand-in (_updateRemoteExtraction) and the
+   QA harness all need the same number, and the previous arrangement had three
+   copies of 200 that could drift apart silently. */
+export const FIRE_FRAME_MS = 67;
 /* The channel-ratio window that separates this figure's painted skin from the
    campfire it is lighting.  MEASURED on firemaking-strip.webp: body skin runs
    g/r 0.49-0.74 and b/r 0.13-0.46; the glow halo sits at b/r 0.57-0.84 and the
@@ -2949,6 +2956,11 @@ export class EffectsRenderer {
       if (age > 5000) continue;
       const source = allSources[pid];
       if (!source) continue;
+      /* v2.3.1748: only bubbles from THIS zone.  Chat relay is room-wide, and
+         a peer's `others` entry survives their zone change, so a bubble from
+         another zone floated over your ground at their world coordinates.
+         The local player is exempt — they are by definition here. */
+      if (pid !== S.myId && (source.zone || source.z || 'town') !== S.currentZone) continue;
       const sx = source.renderX || source.x || 0;
       const sy = source.renderY || source.y || 0;
       this._renderChatBubble(pid, sx, sy, bubble.text, age);
@@ -4139,6 +4151,11 @@ export class EffectsRenderer {
   _updateCampfire(S, now) {
     const cf = S && S._campfire;
     if (!cf || (cf.expiresAt && now > cf.expiresAt)) return;
+    /* v2.3.1748: a fire belongs to the zone it was lit in.  Belt and braces
+       with the zone-change clear in zoneTransitions.js — that removes it, this
+       refuses to draw one that somehow survives (an older save, a path that
+       gains a zone change later). */
+    if (cf.zone && S.currentZone && cf.zone !== S.currentZone) return;
     const gfx = this.nodeGfx;
     const x = cf.x, y = cf.y;
     const remain = cf.expiresAt ? cf.expiresAt - now : 99999;
@@ -4190,7 +4207,13 @@ export class EffectsRenderer {
        taste: 29 x 55 = 1595ms, 8 x 200 = 1600ms, so the animation still fills
        the same light.  Leaving it at 55 would have played all eight frames in
        440ms and then frozen on the last one for a second — a twitch. */
-    const FH = 154, FRAME_MS = 200;
+    /* v2.3.1749: 200ms -> 67ms per frame (owner: "for firemaking speed up the
+       animation by about 3x so it doesn't look as choppy").  8 frames at 5fps
+       is a slideshow; at ~15fps the strike reads as motion.  The ACTION window
+       shortens with it in BroTown.jsx — an animation that finishes in 0.54s
+       inside a 1.5s window would hold its last frame for a second, which
+       reads as a freeze rather than a faster animation. */
+    const FH = 154, FRAME_MS = FIRE_FRAME_MS;
     const elapsed = now - (fm.startedAt || now);
     const fi = Math.min(this._fireFrames.length - 1, Math.floor(elapsed / FRAME_MS));
     const sp = this.fireSprite;
@@ -4308,9 +4331,16 @@ export class EffectsRenderer {
          fire would have rendered 2.3x oversized while their own client drew it
          correctly.  The frame height belongs beside the drawn height, not baked
          into the arithmetic. */
-      chop: { frames: this._chopFrames, h: 95, fh: 220, ms: 45, traitDir: 'east' },
+      chop: { frames: this._chopFrames, h: 95, fh: 220, ms: 45, traitDir: 'east', from: 12, count: 12 },
       cook: { frames: this._cookFrames, h: 62, fh: 220, ms: 60, traitDir: 'south' },
-      fire: { frames: this._fireFrames, h: 154, fh: FIRE_FH, ms: 200, traitDir: 'south' }, /* v2.3.1435: 1.75x with the local figure; v2.3.1715: 8 frames at 200ms, matching _updateFiremaking */
+      /* v2.3.1749: `once` marks a strip that tells a STORY rather than
+         cycling.  The firemaking frames run stand -> crouch -> spark -> flame
+         -> stand-with-fire-lit, so the free-running `% frames.length` this
+         used to share with chop/cook literally showed a peer's fire putting
+         itself out and relighting, on a loop, starting from whatever frame the
+         wall clock happened to land on.  `from`/`count` restrict chop to the
+         12 downswing frames the LOCAL chopper plays. */
+      fire: { frames: this._fireFrames, h: 154, fh: FIRE_FH, ms: FIRE_FRAME_MS, traitDir: 'south', once: true },
       /* v2.3.1713: NOTE — cook and fire now hand a peer's stand-in the LOCAL
          player's baked skin, because these arrays are the local bake (cook
          since v2.3.1710, fire since this change).  A peer's cook has quietly
@@ -4343,8 +4373,29 @@ export class EffectsRenderer {
         this.gestureLayer.addChild(sp);
         ent[code] = sp;
       }
-      const fi = Math.floor(now / spec.ms) % spec.frames.length;
-      sp.texture = spec.frames[fi];
+      /* v2.3.1749: anchor the animation to WHEN THIS PEER STARTED, not to the
+         wall clock.  Every stand-in used to index `floor(now/ms) % len`, which
+         is the same number for everybody and never begins at frame 0 — so a
+         watcher joined the animation part-way through and, for the one-shot
+         fire, saw it wrap. */
+      if (ent._exCode !== code) { ent._exCode = code; ent._exStart = now; }
+      const _base = spec.from || 0;
+      const _count = spec.count || (spec.frames.length - _base);
+      let fi;
+      if (spec.once) {
+        fi = _base + Math.min(_count - 1, Math.floor((now - (ent._exStart || now)) / spec.ms));
+      } else {
+        fi = _base + (Math.floor(now / spec.ms) % _count);
+      }
+      const _fiClamped = Math.min(spec.frames.length - 1, fi);
+      sp.texture = spec.frames[_fiClamped];
+      /* v2.3.1749: recorded for remoteSkillProbe (pixiRenderer facade).  A
+         frame INDEX is the fact under test — whether the peer's fire plays
+         once in order or wraps — and neither window._gameState nor a
+         screenshot can see it.  Same posture as fireGearProbe (v2.3.1715). */
+      ent._fi = _fiClamped;
+      ent._specLen = _count;
+      ent._base = _base;
       const ox = (o.renderX != null ? o.renderX : o.x) || 0;
       const oy = (o.renderY != null ? o.renderY : o.y) || 0;
       /* v2.3.1574 (owner: "the scale looks off for other players cooking and
@@ -4696,7 +4747,18 @@ export class EffectsRenderer {
       const set = this._ensureRemoteSwordSet(id);
       const sp = set.body;
       const anchorY = cfg.feetY / cfg.fh;
-      const sY = REMOTE_SWING_SCALE;
+      /* ═══ v2.3.1749: SCALE WITH THE BODY YOU ARE STANDING IN FOR ═══
+         v2.3.1574 fixed exactly this for the harvest stand-ins ("the scale
+         looks off for other players cooking and starting fires - way too
+         big") and the swing/bow ones never got it.  A peer's BODY is scaled by
+         the zone's perspective curve (entityRenderer's _zonePscale); these two
+         were a flat 0.45, so on a vista zone — where the curve runs to ~0.03 —
+         a peer attacking drew a full-size figure over a speck.  Same curve,
+         same inputs, so the stand-in and the body shrink together. */
+      const sY = REMOTE_SWING_SCALE * zonePlayerScale(
+        S.currentZone || 'town',
+        (o.renderX != null) ? o.renderX : o.x,
+        (o.renderY != null) ? o.renderY : o.y, TILE);
       /* v2.3.1088: jogging legs while this remote is MOVING -- swap the body to the
          leg-erased torso strip and composite jog legs under it (same as the bow).
          v2.3.1093: legs face the SAME direction as the torso (the swing facing
@@ -4834,7 +4896,18 @@ export class EffectsRenderer {
       const set = this._ensureRemoteBowSet(id);
       const sp = set.body;
       const anchorY = cfg.feetY / cfg.fh;
-      const sY = REMOTE_BOW_SCALE;
+      /* ═══ v2.3.1749: SCALE WITH THE BODY YOU ARE STANDING IN FOR ═══
+         v2.3.1574 fixed exactly this for the harvest stand-ins ("the scale
+         looks off for other players cooking and starting fires - way too
+         big") and the swing/bow ones never got it.  A peer's BODY is scaled by
+         the zone's perspective curve (entityRenderer's _zonePscale); these two
+         were a flat 0.45, so on a vista zone — where the curve runs to ~0.03 —
+         a peer attacking drew a full-size figure over a speck.  Same curve,
+         same inputs, so the stand-in and the body shrink together. */
+      const sY = REMOTE_BOW_SCALE * zonePlayerScale(
+        S.currentZone || 'town',
+        (o.renderX != null) ? o.renderX : o.x,
+        (o.renderY != null) ? o.renderY : o.y, TILE);
       const sgnX = mirror ? -sY : sY;
       /* v2.3.1087: jogging legs while this remote is MOVING -- swap the body to the
          leg-erased torso strip and composite recolored jog legs under it (same

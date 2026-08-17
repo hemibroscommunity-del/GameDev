@@ -5228,14 +5228,12 @@ export const GS_INNER_RADIUS = 38;       // 360° core radius (any angle)
 export const GS_OUTER_RADIUS = 72;       // forward reach inside the half-circle
 export const GS_FORWARD_ARC = Math.PI;   // 180° forward half-circle
 
-/* §5.9 Combo Chain — auto-attacks build per-target combo (0–3); the next
-   swipe (special attack) consumes the count for cumulative bonuses. */
-export const COMBO_BURST_BONUS          = 0.15; /* dmg ×(1+x) at count 1+ */
-export const COMBO_SPREAD_RADIUS        = 80;   /* px — 20u × ~4px/u */
-export const COMBO_SPREAD_DURATION_MULT = 0.60; /* spread dur as fraction of consumed */
-export const COMBO_NEXT_DURATION_BONUS  = 0.20; /* status ×(1+x) at count 3 */
-export const COMBO_NEXT_WINDOW_MS       = 4000;
-export const COMBO_GRACE_MULT           = 1.5;  /* grace = swing_cooldown × x */
+/* v2.3.1747: the §5.9 Combo Chain constants (COMBO_BURST_BONUS,
+   COMBO_SPREAD_RADIUS, COMBO_SPREAD_DURATION_MULT, COMBO_NEXT_DURATION_BONUS,
+   COMBO_NEXT_WINDOW_MS, COMBO_GRACE_MULT) were removed with the mechanic —
+   owner: "I think I want you to remove the combo (the x1, x2, x3) from the
+   game".  Deleted rather than left dangling so nothing can quietly re-import
+   a tuning number for a system that no longer exists. */
 
 /* §5.7 Resonance Window — final 25% of a status duration is a "resonance
    window"; consuming the status during that window grants bonus collision

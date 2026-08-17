@@ -75,6 +75,16 @@ const PROBE = () => {
       }
     };
     try { if (R.app && R.app.stage) walk(R.app.stage, 'stage', 0); } catch (e) {}
+    /* v2.3.1751: the closure-held per-entity pools, through the probe the note
+       above asks for.  These are the maps this harness could not see, and
+       monsterDisplays is churned by exactly the "lots of monster killing" the
+       owner described. */
+    try {
+      if (R.poolSizesProbe) {
+        const pools = R.poolSizesProbe();
+        for (const k of Object.keys(pools)) out['pool.' + k] = pools[k];
+      }
+    } catch (e) { /* absent on an older bundle */ }
   }
   if (window.performance && performance.memory) out['heapMB'] = Math.round(performance.memory.usedJSHeapSize / 1048576);
   return out;
@@ -209,6 +219,50 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('the soak actually fought something (a zero-hit run proves nothing)',
     totalPopups > popupFloor,
     { popups: totalPopups, floor: popupFloor, kills: samples.length ? samples[samples.length - 1].kills : 0 });
+
+  /* ── v2.3.1747: the combo chain is gone ──
+     Owner: "I think I want you to remove the combo (the x1, x2, x3) from the
+     game."  Checked HERE rather than in a scenario of its own because the
+     mechanic was driven by landed auto-attacks, and this harness is the one
+     that throws hundreds of them: the fight guard directly above is what
+     makes "no combo state was ever built" mean something instead of
+     describing an idle character.
+     Reads the STATE, not the badge — the x1/x2/x3 readout is a Pixi text
+     object with no DOM to query, and the state is what drove both the badge
+     and the 15% damage bonus. */
+  const comboState = await H.readState(P, (S) => ({
+    combo: S.combo === undefined ? 'absent' : JSON.stringify(S.combo),
+    /* Walk the live scene graph for any Text reading x1/x2/x3.  The first
+       cut read `window._gfx.playerDisplay`, which does not exist — the
+       renderer is a facade of functions (see the coverage note at the top of
+       this file) — so it returned null and the assertion passed on nothing.
+       `texts` counts what was actually inspected, so a walk that finds no
+       text at all fails loudly instead of quietly certifying the absence. */
+    ...(() => {
+      const out = { badges: [], texts: 0 };
+      try {
+        const R = window._pixiRenderer;
+        const root = R && R.app && R.app.stage;
+        const walk = (c, depth) => {
+          if (!c || depth > 6) return;
+          if (typeof c.text === 'string') {
+            out.texts++;
+            if (/x[123]/.test(c.text)) out.badges.push(c.text);
+          }
+          if (c.children) c.children.forEach((ch) => walk(ch, depth + 1));
+        };
+        walk(root, 0);
+      } catch (e) { /* reported as texts: 0 below */ }
+      return out;
+    })(),
+  }));
+  rec.ok('hundreds of landed swings never build a combo chain',
+    comboState.combo === 'absent', comboState);
+  rec.ok('the scene graph is walkable (guard: an empty walk proves nothing)',
+    comboState.texts > 0, comboState);
+  rec.ok('...and nothing in it renders an x1/x2/x3 badge',
+    comboState.badges.length === 0, comboState);
+
   if (samples.length < 3) { await P.ctx.close().catch(() => {}); return; }
 
   /* Compare the SECOND sample to the last: the first is start-up (assets

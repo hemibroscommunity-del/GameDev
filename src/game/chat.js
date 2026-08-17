@@ -155,10 +155,16 @@ export function handlePartyChatEvent(payload, S, deps) {
 /* Incoming peer emote ('emote' broadcast event): overhead emoji + two-tone
    chirp. */
 export function handleEmoteEvent(payload, S) {
-  if (payload.id && S.others[payload.id]) S.others[payload.id].emote = {
-    emoji: payload.emoji,
-    ts: Date.now()
-  };
+  /* ═══ v2.3.1748: AN EMOTE IS A THING THAT HAPPENS IN A PLACE ═══
+     The event relay is room-wide (see server/src/index.js), so this fired for
+     every emote anywhere in the world.  The overhead emoji at least needed the
+     peer to be on screen, but the CHIRP ran unconditionally and before any id
+     test — so a stranger in another zone beeped in your ears.  Both now
+     require the emoter to be standing in your zone. */
+  var _o = payload && payload.id ? S.others[payload.id] : null;
+  if (!_o) return;
+  if ((_o.zone || _o.z || 'town') !== S.currentZone) return;
+  _o.emote = { emoji: payload.emoji, ts: Date.now() };
   BT_AUDIO.beep(800, 0.06, 0.06, 'sine');
   setTimeout(function () {
     return BT_AUDIO.beep(1000, 0.04, 0.06, 'sine');

@@ -4,6 +4,7 @@ import { QUEST_CHAINS } from '../../../data/gameSystems.js';
 import { deriveQuestLog, trackedQuestId, setTrackedQuest } from '../sheet/questModel.js';
 import { questDetailBus } from '../sheet/questDetailBus.js';
 import { NPC_DATA } from '../../../data/gameDisplay.js';
+import { showQuestBanner } from '../../../game/quests.js'; /* v2.3.1745 */
 
 /* v2.3.1673: the quest giver's portrait, looked up by the NAME the quest
    chain stores — the same key getNpcQuest already matches on, so there is no
@@ -315,6 +316,12 @@ export const QuestDetailPanel = () => {
             const St = getState();
             if (!St || !St.channel) return;
             St.channel.send({ type: 'quest_accept', payload: { questId: quest.id } });
+            /* v2.3.1745: the same QUEST ACCEPTED! banner the dialogue shows.
+               This is the OTHER accept door, and the two having different
+               feedback is how "the same button, two code paths" bugs read to
+               a player (see the v2.3.1684 note above — that one was mute in
+               the other direction). */
+            showQuestBanner('accepted', quest.title);
             force(v => v + 1);
           }}
           style={{
