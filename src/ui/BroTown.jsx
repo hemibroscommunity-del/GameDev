@@ -82,6 +82,11 @@ import { MayorGreeting } from './MayorGreeting.jsx';
 import { BUILD_INFO } from './BuildBadge.jsx';
 import { pushHudPopup } from './XpFlyOverlay.jsx';
 
+/* v2.3.1745: how long the QUEST ACCEPTED! / QUEST COMPLETED! banner stays
+   up.  Exported so the headless check reads the real number instead of
+   hard-coding a copy that can drift (tools/qa/mp/mp-questbanner.mjs). */
+export var QUEST_MSG_MS = 2200;
+
 /* v2.3.868: COOK_PAN_BY_FISH removed — it fed panSheetSrc to the
    canvas CookingMinigame (pan + doneness slider), retired in v2.3.853
    when cooking became the swipe-to-flip campfire extraction. The map had
@@ -1483,6 +1488,49 @@ export var BroTown = function BroTown(_ref0) {
      LEVEL UP banner with kind=stat for build-stat ticks. Setter ref
      is stable across renders for useState so this is idempotent. */
   if (typeof window !== 'undefined') window._setLevelUpMsg = setLevelUpMsg;
+  /* ═══ v2.3.1745: THE QUEST BANNER ═══
+     Owner: "it would be cool if there was a 'QUEST ACCEPTED!' and 'QUEST
+     COMPLETED!' when you start or turn in quests that appear over the quest
+     modal menu the moment you accept or turn in the quest."
+     Its OWN slot rather than a new kind on levelUpMsg, and the reason is
+     functional, not tidiness: a turn-in pays XP, and XP can level you up in
+     the same instant.  Sharing one useState would make the two celebrations
+     race and the loser would simply never be drawn — most likely the level
+     up, which is the bigger news.  Two slots, two vertical positions, both
+     land. */
+  var _useStateQb = useState(null),
+    _useStateQb2 = _slicedToArray(_useStateQb, 2),
+    questMsg = _useStateQb2[0],
+    setQuestMsg = _useStateQb2[1];
+  /* quests.js is a plain module, not a component — same window bridge the
+     level-up banner uses (see above). */
+  /* v2.3.1746: a one-deep queue, and the rule for who waits.
+     A turn-in fires COMPLETED, and the worker's quest_reward_stashed notice
+     lands a few hundred ms later — with a bare setter the notice would wipe
+     the celebration almost immediately.  But queuing EVERYTHING is wrong the
+     other way: turning in re-opens the dialogue on the next quest, so a
+     player who taps Accept straight away would watch their banner arrive two
+     seconds after the tap, which is the opposite of what was asked for.
+     So: banners the PLAYER caused preempt; system notices (`queue: true`)
+     wait their turn. */
+  var questMsgRef = useRef(null);
+  questMsgRef.current = questMsg;
+  var questQueueRef = useRef([]);
+  if (typeof window !== 'undefined') {
+    window._setQuestMsg = function (m) {
+      if (!m) { setQuestMsg(null); return; }
+      var cur = questMsgRef.current;
+      if (m.queue && cur && Date.now() - cur.ts < QUEST_MSG_MS) {
+        questQueueRef.current.push(m);
+        if (questQueueRef.current.length > 3) questQueueRef.current.shift();
+        return;
+      }
+      setQuestMsg(m);
+    };
+    /* published so the headless check reads the REAL hold time instead of
+       keeping its own copy to drift out of sync */
+    window.__QUEST_MSG_MS = QUEST_MSG_MS;
+  }
   var _useState185 = useState(1),
     _useState186 = _slicedToArray(_useState185, 2),
     playerCount = _useState186[0],
@@ -5481,6 +5529,25 @@ export var BroTown = function BroTown(_ref0) {
       setLevelUpMsg(function (prev) {
         return prev && Date.now() - prev.ts > 3500 ? null : prev;
       });
+      /* v2.3.1745: the quest banner is deliberately shorter-lived than the
+         level-up one.  Turning in a quest re-opens the dialogue on the
+         giver's NEXT quest (v2.3.1713), so COMPLETED and ACCEPTED can fire
+         seconds apart — a 3.5s banner would still be sitting there when the
+         second one arrives. */
+      /* v2.3.1746: expire, then promote whatever was waiting.  Done here in
+         the interval body rather than inside the state updater on purpose —
+         an updater must stay pure, and shifting a ref inside one would drop
+         a queued banner the moment React chose to call it twice. */
+      var _qCur = questMsgRef.current;
+      if ((!_qCur || Date.now() - _qCur.ts > QUEST_MSG_MS) && questQueueRef.current.length) {
+        var _qNext = questQueueRef.current.shift();
+        _qNext.ts = Date.now();
+        setQuestMsg(_qNext);
+      } else {
+        setQuestMsg(function (prev) {
+          return prev && Date.now() - prev.ts > QUEST_MSG_MS ? null : prev;
+        });
+      }
 
       /* §ARENA — Background polling for arena match status */
       var S3 = stateRef.current;
@@ -8129,7 +8196,102 @@ export var BroTown = function BroTown(_ref0) {
        stronger" is a claim; "+1.5 damage · +6 max HP" is the reason the
        owner asked for the retune in the first place.  The old line stays as
        the fallback for legacy level-ups, which really do only refill. */
-    : (levelUpMsg.gains || "You got stronger! HP \xB7 Stamina \xB7 Mana refilled")))), rpgState && /*#__PURE__*/React.createElement("div", {
+    : (levelUpMsg.gains || "You got stronger! HP \xB7 Stamina \xB7 Mana refilled")))),
+  /* ═══ v2.3.1745: QUEST ACCEPTED! / QUEST COMPLETED! ═══
+     Owner: "...that appear over the quest modal menu the moment you accept
+     or turn in the quest."
+     OVER THE MODAL is the whole point, and it is a z-index fact, not a
+     guess: the quest dialogue is .bt-inspect at z-index 32 (game.css), so
+     this sits at 71 — one above the level-up banner's 70, which keeps the
+     two in a fixed order when a turn-in's XP levels you up in the same
+     instant.
+     pointerEvents:'none' is load-bearing rather than decorative.  The
+     dialogue REMAINS OPEN through both actions (accept flips it to active,
+     turn-in re-opens it on the giver's next quest), so the player's very
+     next tap is usually a real button underneath this overlay.  A banner
+     that ate that tap would make the dialogue feel broken for two seconds.
+     Sits at 26% height — above the centred card's middle, and clear of the
+     level-up banner at 55%, so both are legible together. */
+  questMsg && Date.now() - questMsg.ts < QUEST_MSG_MS && /*#__PURE__*/React.createElement("div", {
+    className: "bt-quest-banner",
+    "data-quest-banner": questMsg.kind,
+    style: {
+      position: 'absolute',
+      inset: 0,
+      zIndex: 71,
+      pointerEvents: 'none',
+      display: 'flex',
+      alignItems: 'flex-start',
+      justifyContent: 'center'
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      position: 'absolute',
+      left: '50%',
+      top: '26%',
+      transform: "translate(-50%,-50%) translateY(".concat(Math.max(0, 18 - (Date.now() - questMsg.ts) / 1000 * 60), "px) scale(").concat(Math.min(1.06, 0.86 + (Date.now() - questMsg.ts) / 1200), ")"),
+      textAlign: 'center',
+      /* v2.3.1745b: a PLATE, not bare text.  The first cut floated the words
+         straight onto the dialogue and they landed across the giver's
+         portrait and name — two pieces of text over each other, which reads
+         as a rendering fault rather than a celebration.  Lantern Slate's
+         toast recipe (§ "Toasts": ink 12px radius) gives it a surface, so
+         overlapping the card is deliberate instead of accidental. */
+      maxWidth: 'calc(100% - 24px)',
+      padding: '10px 18px 12px',
+      borderRadius: 14,
+      background: 'rgba(13,21,26,.90)',
+      border: '1px solid ' + (questMsg.kind === 'completed'
+        ? 'rgba(97,176,107,.55)' : 'rgba(216,169,77,.55)'),
+      boxShadow: '0 12px 30px rgba(3,8,10,.45)',
+      /* in over 260ms, hold, then out over the last 500ms */
+      opacity: Math.min(1, (Date.now() - questMsg.ts) / 260)
+        * Math.max(0, Math.min(1, (QUEST_MSG_MS - (Date.now() - questMsg.ts)) / 500))
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      /* v2.3.1745b: sized off the VIEWPORT, and never wrapped.  A flat 30px
+         put "QUEST COMPLETED!" onto two lines at 390px — the iPhone width
+         that is the primary platform — and the second line ran into the
+         quest title below it. */
+      fontSize: 'min(30px, 6.4vw)',
+      whiteSpace: 'nowrap',
+      fontWeight: 900,
+      fontFamily: 'Source Sans 3,sans-serif',
+      /* completed = the semantic success green; accepted = brass.  Same
+         two colors the rest of Lantern Slate uses for "done" and "reward". */
+      color: questMsg.kind === 'completed' ? '#61B06B' : '#D8A94D',
+      letterSpacing: '.12em',
+      textShadow: questMsg.kind === 'completed'
+        ? '0 0 26px rgba(97,176,107,.85), 0 0 54px rgba(97,176,107,.4), 0 2px 4px rgba(0,0,0,.65)'
+        : '0 0 26px rgba(216,169,77,.85), 0 0 54px rgba(216,169,77,.4), 0 2px 4px rgba(0,0,0,.65)'
+    }
+  }, questMsg.kind === 'completed' ? "QUEST COMPLETED!"
+    : questMsg.kind === 'reward' ? "QUEST REWARD"
+    : "QUEST ACCEPTED!"),
+  questMsg.title && /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 15,
+      fontWeight: 700,
+      color: '#F4F0E7',
+      textShadow: '0 2px 8px rgba(0,0,0,.75)',
+      marginTop: 4,
+      /* the giver's card carries the same title right underneath; keep this
+         to one line so the two never stack into a wall of text */
+      whiteSpace: 'nowrap',
+      overflow: 'hidden',
+      textOverflow: 'ellipsis'
+    }
+  }, questMsg.title),
+  questMsg.sub && /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 13,
+      fontWeight: 700,
+      color: questMsg.kind === 'completed' ? '#D8A94D' : 'rgba(244,240,231,.66)',
+      textShadow: '0 2px 8px rgba(0,0,0,.75)',
+      marginTop: 3
+    }
+  }, questMsg.sub))), rpgState && /*#__PURE__*/React.createElement("div", {
     style: {
       position: 'absolute',
       top: 44,

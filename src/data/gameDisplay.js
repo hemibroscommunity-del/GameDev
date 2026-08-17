@@ -2560,6 +2560,13 @@ BT_AUDIO.SFX_MANIFEST = {
      a whole screen of monsters in and holds them for a second, so the sound
      covers the gather rather than punctuating it. */
   'whirlwind':     '/sfx/magic/whirlwind.mp3',
+  /* v2.3.1746: owner-supplied quest-completion fanfare (owner: "play this
+     sound upon quest completion").  3.58s / 114KB, left uncut on purpose —
+     it is a fanfare that resolves, not an impact to punctuate, so trimming
+     it the way shield-bash was trimmed would cut off the resolution.  It
+     outlasts the 2.2s banner, which is fine: the sound is the celebration,
+     the banner is the label.  mp3, per the v2.3.1610 rule above. */
+  'quest-complete': '/sfx/quest/quest-complete.mp3',
   'fishing-lure-drop':   '/sfx/fishing/lure-drop.mp3',
   'fishing-fish-on-hook': '/sfx/fishing/fish-on-hook.mp3',
   'fishing-reeling':     '/sfx/fishing/reeling.mp3',
