@@ -609,8 +609,36 @@ export const ItemDetailPopup = () => {
         _seen.add(g.gearId);
         rows.push(mkGearRow(g.gearId, false, g));
       }
-      for (const id of _valid) {
-        if (!_seen.has(id)) { _seen.add(id); rows.push(mkGearRow(id, false, null)); }
+      /* ═══ v2.3.1750: YOU HAVE TO EARN IT ═══
+         Owner: "you can access iron torso and iron greaves through the
+         character equip menu even before completing the quest that gives you
+         these.  They still gave a 0% armor bonus but remove them from the game
+         until they get the quest reward for it."
+         This loop used to offer EVERY catalog id unconditionally.  It was
+         added in v2.3.1413 as hardening — after a save-shape bug left a player
+         unable to re-equip a plate they owned, "always offer everything" made
+         that unreachable state impossible.  It also handed a brand-new
+         character the full armour set, wearing art for gear they had never
+         been given, which is why it read as 0%: the CELL is cosmetic and the
+         damage reduction comes from the stat-bearing piece the worker knows
+         about (R.armor / R.legsArmor), which they did not have.
+         So the fallback is kept and narrowed to OWNERSHIP.  A catalog piece is
+         offered when the player has actually got one:
+           - it is in gearStash (they own the cosmetic layer), or
+           - they are wearing it right now (handled above), or
+           - they hold the stat-bearing piece for this slot — the quest payout
+             itself (R.armor / R.legsArmor, or its bag: armorStash/legsStash).
+         The last clause is what preserves v2.3.1413's intent: a player who
+         earned the torso can always get its art back, whatever shape their
+         save is in.  A player who never did the quest sees an empty picker,
+         which is the truth. */
+      const _ownsStat = slot === 'chest'
+        ? !!(R2.armor || (R2.armorStash && R2.armorStash.length))
+        : !!(R2.legsArmor || (R2.legsStash && R2.legsStash.length));
+      if (_ownsStat) {
+        for (const id of _valid) {
+          if (!_seen.has(id)) { _seen.add(id); rows.push(mkGearRow(id, false, null)); }
+        }
       }
       /* Chest also carries the optional t-shirt under-layer. */
       if (slot === 'chest') {

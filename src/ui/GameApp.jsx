@@ -7,7 +7,9 @@ import { ChatBubble } from './mobile/ChatBubble.jsx';
 import { XpFlyOverlay } from './XpFlyOverlay.jsx';
 import { InventorySurface } from './mobile/InventorySurface.jsx';
 import { inventoryBus } from './mobile/inventoryBus.js';
-import { generateMockInventory, generateMockEquipped, generateShowcaseItems, makeItem } from './mobile/mockItems.js';
+/* v2.3.1750: only the `inv mock` DEBUG command still seeds these — the
+   automatic first-load seed is gone (see the note at its old site below). */
+import { generateMockInventory, generateMockEquipped } from './mobile/mockItems.js';
 import { InspectCard } from './mobile/InspectCard.jsx';
 import { inspectCardBus } from './mobile/inspectCardBus.js';
 import { generateMockProfile } from './mobile/mockProfile.js';
@@ -270,16 +272,25 @@ export const GameApp = () => {
     // (weapons/potions + extra armor in each slot that maps to real gear art).
     // v2.3.1228: prepend the rarity showcase set (one guaranteed item per
     // quality) so the Lantern Slate slot system is always demonstrable.
-    if (!inventoryBus.state.items.length) {
-      const equippedIds = new Set(Object.values(inventoryBus.state.equipped).filter(Boolean).map(i => i.id));
-      const mock = [...generateShowcaseItems(), ...generateMockInventory(20)];
-      const extraArmor = [
-        makeItem('armor', { name: 'Steel Plate',    slot: 'chest', gearId: 'steelplate' }),
-        makeItem('armor', { name: 'Steel Greaves',  slot: 'legs',  gearId: 'steelgreaves' }),
-      ];
-      const avail = [...mock, ...extraArmor, ...gearItems].filter(g => !equippedIds.has(g.id));
-      inventoryBus.setItems(avail);
-    }
+    /* ═══ v2.3.1750: NO MORE MOCK INVENTORY ON A REAL CHARACTER ═══
+       Owner: "you can access iron torso and iron graves through the character
+       equip menu even before completing the quest that gives you these" and
+       "only show items that are from the player inventory (not placeholder
+       art)".
+       This block seeded EVERY new session with a rarity showcase, twenty
+       randomly-generated items and a Steel Plate + Greaves.  mockItems.js says
+       what it is in its first line — "Throwaway item generator for
+       development ... until the live state binding lands" — and the live
+       binding landed long ago.  The seed is why a fresh character opened the
+       equip menu holding armour nobody gave them, and why the trade window
+       offered placeholder art: those are the mock items, and they carry no
+       server-side existence at all, which is the "0% armor bonus" the owner
+       noticed.
+       The `inv mock` debug command still seeds them on demand, so the surface
+       is still developable — it is just no longer forced on players.
+       gearItems (the catalog art for pieces the player actually wears) is
+       still reflected into the equip slots above; what is gone is handing out
+       the items themselves. */
     // keep the renderer's gear slots in sync with the inventory equips
     const sync = () => {
       ['chest', 'legs'].forEach((slot) => {
