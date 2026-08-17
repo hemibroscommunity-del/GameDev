@@ -120,7 +120,7 @@ import { HAT_COLOR_CATALOG, getHatColor, setHatColor } from '@/rendering/traits/
 import { FACIALHAIR_COLOR_CATALOG, getFacialHairColor, setFacialHairColor } from '@/rendering/traits/facialHairColorCatalog.js';
 import { SHIRT_CATALOG, getShirt, setShirt } from '@/rendering/traits/shirtCatalog.js';
 import { SHIRT_COLOR_CATALOG, getShirtColor, setShirtColor } from '@/rendering/traits/shirtColorCatalog.js';
-import { getEquip, setEquip, reconcileGearStash } from '@/rendering/gearCatalog.js';
+import { getEquip, setEquip, reconcileGearStash, migrateTier1Armor } from '@/rendering/gearCatalog.js';
 import { wireGearWornSync } from '@/game/gearWornSync.js';
 import { wireTorchCrackle, wireThemeMusic } from '@/game/splashAudio.js';
 import { wireCharacterPortrait, wireSplashPrewarm, clampLongHairColor } from '@/game/characterCreatorEffects.js';
@@ -2667,6 +2667,27 @@ export var BroTown = function BroTown(_ref0) {
       /* v2.3.687: restore any orphaned steel piece (worn nowhere, bagged
          nowhere -- e.g. unequipped via the old Equipment-menu toggle) into
          the bag so it's never lost. */
+      /* ═══ v2.3.1758: copper replaces iron as tier one ═══
+         A save holding the old "Iron Torso" / "Iron Greaves" is rewritten in
+         place — see migrateTier1Armor.
+         ═══ v2.3.1761: AND IT MUST RUN BEFORE reconcileGearStash ═══
+         Owner: "[the steel/iron armor is] appearing in player inventories who
+         now also have the copper" / "showing iron greaves thumbnail in legs
+         when I had nothing equipped."
+         This was ordered after the reconcile, and reconcile is what DERIVES the
+         worn cosmetic layer from the stat piece.  So a returning player's
+         pieces were still un-migrated at that moment — no material — the layer
+         resolved to the STEEL art, and only then did the rename to copper run,
+         with nothing re-deriving the layer afterwards.  The result is exactly
+         what was reported: copper in the bag, steel on the character and in the
+         loadout cell, in the same save.
+         The migration is the older fact, so it goes first and everything
+         downstream sees one story. */
+      try {
+        if (migrateTier1Armor(S.rpg)) {
+          try { localStorage.setItem('bt_rpg', JSON.stringify(S.rpg)); } catch (e) { /* quota */ }
+        }
+      } catch (e) { /* a migration must never block the load */ }
       try { reconcileGearStash(S.rpg); } catch (e) { /* best-effort */ }
       if (!S.rpg._quests) S.rpg._quests = {};
       if (!S.rpg._questFlags) S.rpg._questFlags = {};
@@ -5094,6 +5115,12 @@ export var BroTown = function BroTown(_ref0) {
                 bs: S.bodySize || 'slim',
                 zone: S.currentZone || 'town',
                 wpnType: (_aw === null || _aw === void 0 ? void 0 : _aw.type) || 'greatsword',
+                /* v2.3.1760: the metal, so peers draw the weapon you are
+                   actually holding.  Sent as the raw blacksmith tier — the
+                   receiving renderer decides what is a metal (weaponMaterial),
+                   which keeps the rule in ONE place rather than on both sides
+                   of the wire. */
+                wpnMat: (_aw === null || _aw === void 0 ? void 0 : _aw.gearBase) || undefined,
                 wpnE1: (_aw === null || _aw === void 0 ? void 0 : _aw.element1) || null,
                 wpnE2: (_aw === null || _aw === void 0 ? void 0 : _aw.element2) || null,
                 rep: S._pvpReputation || 'neutral',

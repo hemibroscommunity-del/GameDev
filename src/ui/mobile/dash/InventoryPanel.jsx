@@ -1,4 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { gearIdIcon, armorIconFor } from '@/rendering/gearVariants.js'; /* v2.3.1758: one armour art table */
+import { weaponMaterial, metalIconPath } from '@/rendering/traits/materialTints.js'; /* v2.3.1760 */
 import { COL, panelStyle, getState } from './common.js';
 import { eatBus } from '../eatBus.js';
 import { itemDetailBus } from './itemDetailBus.js';
@@ -973,10 +975,13 @@ const StashTile = ({ kind, obj, index, style: styleOverride }) => {
      set.  Greatsword and sword FINALLY split — they are distinct drop
      types but shared one icon since the stash existed; shields of every
      tier get art (was wood-only + 🛡 glyph). */
+  /* v2.3.1758: armour thumbs resolve through gearVariants so a copper piece in
+     the bag matches the copper piece on the character.  Before this the bag
+     hard-coded the steel art per gearId/kind, which is exactly how a recoloured
+     tier ends up looking like the tier it borrowed art from. */
   const thumb = kind === 'stashGear'
-    ? (obj && obj.gearId === 'steelplate'   ? `/icons/items/chest-plate.webp${ITEMS_V}`
-      : obj && obj.gearId === 'steelgreaves' ? `/icons/items/greaves.webp${ITEMS_V}`
-      : obj && obj.gearId === 'tshirt'       ? `/icons/items/cloth-shirt.webp${ITEMS_V}` : null)
+    ? (obj && gearIdIcon(obj.gearId) ? `${gearIdIcon(obj.gearId)}${ITEMS_V}`
+      : obj && obj.gearId === 'tshirt' ? `/icons/items/cloth-shirt.webp${ITEMS_V}` : null)
     /* v2.3.1710: owner playtest — "The iron torso inventory icon is wrong.
        It's an emoji vest. It needs to be the real torso armour (looks
        similar armor style to the leg inventory icon)."  The comment this
@@ -990,15 +995,16 @@ const StashTile = ({ kind, obj, index, style: styleOverride }) => {
        life_2 quest-reward preview at this same file since v2.3.1325, so the
        bag was the odd one out even against the quest that pays it. */
     : kind === 'stashArmor'
-    ? `/icons/items/chest-plate.webp${ITEMS_V}`
+    ? `${armorIconFor('chest', obj && obj.mat)}${ITEMS_V}`
     : kind === 'stashLegs'
-    ? `/icons/items/greaves.webp${ITEMS_V}` /* v2.3.1701: legs have real art */
+    ? `${armorIconFor('legs', obj && obj.mat)}${ITEMS_V}` /* v2.3.1701: legs have real art */
     : kind === 'stashShield'
     ? `/icons/items/shield.webp${ITEMS_V}`
     : obj && obj.type === 'bow'        ? `/icons/items/bow.webp${ITEMS_V}`
     : obj && obj.type === 'staff'      ? `/icons/items/staff.webp${ITEMS_V}`
-    : obj && obj.type === 'greatsword' ? `/icons/items/great-sword.webp${ITEMS_V}`
-    : `/icons/items/sword.webp${ITEMS_V}`;
+    : obj && obj.type === 'greatsword'
+      ? `${metalIconPath('/icons/items/great-sword.webp', weaponMaterial(obj.type, obj.gearBase))}${ITEMS_V}` /* v2.3.1760 */
+    : `${metalIconPath('/icons/items/sword.webp', obj && weaponMaterial(obj.type, obj.gearBase))}${ITEMS_V}`;
   /* v2.3.1228: edge from the item's REAL quality (weapons carry
      server-rolled quality; shields/armor have none -> common grey).
      Godly gets the conic ring class instead of a border color. */

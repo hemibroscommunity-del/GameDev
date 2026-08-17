@@ -31,7 +31,7 @@ import { getHatColor } from '@/rendering/traits/hatColorCatalog.js';
 import { getFacialHairColor } from '@/rendering/traits/facialHairColorCatalog.js';
 import { getShirt } from '@/rendering/traits/shirtCatalog.js';
 import { getShirtColor } from '@/rendering/traits/shirtColorCatalog.js';
-import { getEquip, syncArmorLayers } from '@/rendering/gearCatalog.js';
+import { getEquip, syncArmorLayers, migrateTier1Armor } from '@/rendering/gearCatalog.js'; /* v2.3.1761 */
 import { pushHudPopup } from '@/ui/XpFlyOverlay.jsx';
 
 import { pushDmgPopup } from '@/game/combatHelpers.js';
@@ -1133,6 +1133,23 @@ export function setupWebSocket(ctx) {
                  armoured.  Runs on every payload that mentions either
                  field, which is every full snapshot and any delta that
                  changed one. */
+              /* ═══ v2.3.1761: MIGRATE WHERE THE DATA ENTERS ═══
+                 Owner: "[the steel/iron armor is] appearing in player
+                 inventories who now also have the copper."
+                 v2.3.1758 renamed the tier-one pieces to copper and migrated
+                 the CLIENT's copy at load — which the worker then overwrote a
+                 second later, because it owns these two slots and re-sends them
+                 on every snapshot.  So the very players the migration was
+                 written for got their legacy "Iron Greaves" back on every sync,
+                 and the layer derived from it fell back to steel art while the
+                 rest of their gear said copper.  Migrating HERE, at the
+                 adoption point, is the only place that covers load, reconnect,
+                 a quest echo and a device switch at once — and it must run
+                 BEFORE syncArmorLayers, which reads the material to pick the
+                 art.  Idempotent, and it only touches a record with NO material
+                 (see migrateTier1Armor), so the real iron tier — which will
+                 carry mat:'iron' — is never caught by it. */
+              if (_armorChanged) { try { migrateTier1Armor(S.rpg); } catch (e) {} }
               if (_armorChanged) { try { syncArmorLayers(S.rpg); } catch (e) {} }
               /* v2.3.227 (Phase 1): armor swaps changed maxHp via
                  getArmorHp() in recalcDerived.
@@ -1545,7 +1562,14 @@ export function setupWebSocket(ctx) {
                   return a && a.name === _qrsName && (Number(a.tierMult) || 1) === _qrsTm;
                 });
               if (!_qrsHeld) {
-                S.rpg[_qrsKey].push({ name: _qrsName, tierMult: _qrsTm, slot: _qrsLegs ? 'legsArmor' : 'armor' });
+                /* v2.3.1758: the METAL rides with the piece into the bag.  It
+                   is what gearVariants resolves the art and the icon from, so
+                   dropping it here would put a copper-named piece on the
+                   character in steel — the same class of bug as v2.3.1701
+                   dropping `slot`. */
+                S.rpg[_qrsKey].push({ name: _qrsName, tierMult: _qrsTm,
+                  slot: _qrsLegs ? 'legsArmor' : 'armor',
+                  mat: _qrs.mat ? String(_qrs.mat).slice(0, 16) : undefined });
                 try { localStorage.setItem('bt_rpg', JSON.stringify(S.rpg)); } catch (e) {}
               }
               /* ═══ v2.3.1746: A REWARD IS NOT A DANGER ═══

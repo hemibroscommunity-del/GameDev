@@ -381,18 +381,36 @@ export async function run({ browser, wsPort, webPort, rec }) {
     chest: (S.rpg.armorStash || []).map((a) => a && a.name),
   }));
   /* v2.3.1692: tut_4 pays the LEGS. */
-  rec.ok('the fire-goblin quest paid the Iron Greaves into the bag',
-    bags.legs.includes('Iron Greaves'), bags);
+  /* v2.3.1758: copper is tier one (owner: "copper to be the first armor in the
+     game ... this should replace the iron armor"); "Iron" is reserved for the
+     tier above. */
+  rec.ok('the fire-goblin quest paid the Copper Greaves into the bag',
+    bags.legs.includes('Copper Greaves'), bags);
   /* v2.3.1704 (owner: "Prospectors vest and prospectors greaves are the wrong
      description ... the legs were an earlier reward already so it would just
      be torso"): one chest piece, and NOT a second pair of legs. */
-  rec.ok('the mining quest paid the Iron Torso into the bag',
-    bags.chest.includes('Iron Torso'), bags);
+  rec.ok('the mining quest paid the Copper Torso into the bag',
+    bags.chest.includes('Copper Torso'), bags);
   rec.ok('...and did NOT pay a second pair of legs',
     bags.legs.filter(Boolean).length === 1, bags);
 
   /* ── v2.3.1746: and neither piece was announced as a hazard ── */
-  const lineBanners = await P.page.evaluate(() => (window.__lineBanners || []).slice());
+  /* v2.3.1761: WAIT for the reward banner rather than sampling once.
+     The armour notice is raised from the worker's quest_reward_stashed, which
+     lands a beat after the turn-in the loop above already moved past — so a
+     single read is a race, and it lost one run in three here (the assertion
+     below went red with an otherwise identical, correct banner list).  Polls
+     until both reward notices are in or the budget runs out; a genuine
+     regression still fails, it just takes 8s to say so. */
+  const lineBanners = await (async () => {
+    const read = () => P.page.evaluate(() => (window.__lineBanners || []).slice());
+    let seen = await read();
+    for (let i = 0; i < 16 && seen.filter((b) => b.kind === 'reward').length < 2; i++) {
+      await P.page.waitForTimeout(500);
+      seen = await read();
+    }
+    return seen;
+  })();
   const lvlCalls = await P.page.evaluate(() => (window.__lvlCalls || []).slice());
   /* Guard: "no warnings were raised" is vacuously true if the hook was never
      wired, so prove the hook first.  Proved with a PROBE rather than by
@@ -411,7 +429,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     !lvlCalls.some((c) => c.kind === 'warning'), lvlCalls);
   rec.ok('the stashed armour was announced as a QUEST REWARD instead',
     lineBanners.some((b) => b.src === 'quest' && b.kind === 'reward'
-      && /Iron (Greaves|Torso)/.test(b.text)),
+      && /Copper (Greaves|Torso)/.test(b.text)), /* v2.3.1758: tier one is copper */
     lineBanners.filter((b) => b.src === 'quest').map((b) => b.kind + ':' + b.text));
   /* the celebration itself still fires on every hand-in — a queue bug that
      let the reward notice swallow it would be invisible otherwise */
@@ -443,18 +461,21 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await P.page.waitForTimeout(1800);
   const wornSrv = await srv();
   rec.ok('equipping the greaves reaches the WORKER (so they reduce damage)',
-    !!wornSrv && wornSrv.legsArmor && wornSrv.legsArmor.name === 'Iron Greaves',
+    !!wornSrv && wornSrv.legsArmor && wornSrv.legsArmor.name === 'Copper Greaves',
     wornSrv && wornSrv.legsArmor);
   rec.ok('equipping the torso reaches the WORKER too',
-    !!wornSrv && wornSrv.armor && wornSrv.armor.name === 'Iron Torso',
+    !!wornSrv && wornSrv.armor && wornSrv.armor.name === 'Copper Torso',
     wornSrv && wornSrv.armor);
   /* And the character actually wears them — the v2.3.1703 derived layer. */
   const layer = await P.page.evaluate(() => {
     const g = window._gameFns && window._gameFns.getEquip;
     return g ? { legs: g('legs'), chest: g('chest') } : null;
   });
-  rec.ok('...and both show on the character',
-    !!layer && layer.legs === 'steelgreaves' && layer.chest === 'steelplate', layer);
+  /* v2.3.1758: the layer id carries the METAL, so this pins the colour too —
+     a tier-one piece rendering as 'steelgreaves' would mean the material never
+     reached the renderer. */
+  rec.ok('...and both show on the character, in copper',
+    !!layer && layer.legs === 'coppergreaves' && layer.chest === 'copperplate', layer);
 
   rec.ok('all three primary weapons were handed over across the line',
     !!end && ['greatsword', 'bow', 'staff'].every((t) =>

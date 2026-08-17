@@ -361,6 +361,12 @@ export const questMethods = {
           name: String(item.name || 'Quest Armor'),
           tierMult: Math.max(0, Math.min(8, Number(item.tierMult) || 1)),
           slot,
+          /* v2.3.1758: the METAL travels with the piece so the client can pick
+             its art and its icon from one field instead of matching on the
+             display name — a name is a label and gets edited; a material is
+             data.  Clamped to a short identifier because it is echoed to every
+             client that can see the wearer. */
+          mat: item.mat ? String(item.mat).slice(0, 16) : undefined,
         });
         return false;
       }

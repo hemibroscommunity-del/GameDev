@@ -102,6 +102,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await P.page.evaluate(() => {
     const S = window._gameState && window._gameState.current;
     if (!S || !S.rpg) return;
+    /* v2.3.1758: deliberately the PRE-copper record shape — old name, no
+       material.  That is what a save written before the tier rename holds, and
+       the picker must still offer its art (steel, which is what a piece with
+       no material renders as). */
     S.rpg.legsStash = [{ name: 'Iron Greaves', tierMult: 1, slot: 'legsArmor' }];
   });
   await P.page.waitForTimeout(400);

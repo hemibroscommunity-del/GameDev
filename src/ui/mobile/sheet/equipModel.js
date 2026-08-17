@@ -1,4 +1,6 @@
 import { getActiveWeapon, calcDisplayDmgRange, calcDisplayDps, getArmorPieceDr, getArmorDrPct } from '../../../data/gameSystems.js';
+import { gearIdIcon, armorIconFor } from '@/rendering/gearVariants.js'; /* v2.3.1758: one armour art table */
+import { weaponMaterial, metalIconPath } from '@/rendering/traits/materialTints.js'; /* v2.3.1760 */
 import { getShieldStats, getAmuletBonus } from '../../../data/items.js';
 import { getEquip } from '../../../rendering/gearCatalog.js';
 
@@ -43,16 +45,21 @@ const ITEMS_V = '?v=2.3.1710';
 const wpnIconSrc = (R, wpn) => {
   if (!wpn) return null;
   const slot = R.activeSlot || 'melee';
+  /* v2.3.1760: a melee weapon's icon takes its METAL (metalIconPath); a bow or
+     a staff never does — owner: "only for metals though not staff or bow". */
+  const metal = weaponMaterial(wpn.type, wpn.gearBase);
   return wpn.type === 'bow' || slot === 'ranged' ? `/icons/items/bow.webp${ITEMS_V}`
     : wpn.type === 'staff' || slot === 'staff' ? `/icons/items/staff.webp${ITEMS_V}`
-    : wpn.type === 'greatsword' ? `/icons/items/great-sword.webp${ITEMS_V}`
-    : `/icons/items/sword.webp${ITEMS_V}`;
+    : wpn.type === 'greatsword' ? `${metalIconPath('/icons/items/great-sword.webp', metal)}${ITEMS_V}`
+      : `${metalIconPath('/icons/items/sword.webp', metal)}${ITEMS_V}`;
 };
 
+/* v2.3.1758: armour art comes from ONE table (gearVariants) so a tier's icon
+   cannot drift from the metal it renders in.  The shirt keeps its own line —
+   it is not a metal and has no material variants. */
 const gearIconSrc = (id) =>
-  id === 'steelplate' ? `/icons/items/chest-plate.webp${ITEMS_V}`
-    : id === 'steelgreaves' ? `/icons/items/greaves.webp${ITEMS_V}`
-    : id === 'tshirt' ? `/icons/items/cloth-shirt.webp${ITEMS_V}` : null;
+  id === 'tshirt' ? `/icons/items/cloth-shirt.webp${ITEMS_V}`
+    : gearIdIcon(id) ? `${gearIdIcon(id)}${ITEMS_V}` : null;
 
 export function getEquippedSlots(R) {
   const wpn = R ? getActiveWeapon(R) : null;
@@ -74,7 +81,7 @@ export function getEquippedSlots(R) {
      This branch is the bare-cosmetics case that path does not cover. */
   const chestIcon = gearChestId !== 'none' ? gearIconSrc(gearChestId)
     : gearShirtId !== 'none' ? gearIconSrc(gearShirtId)
-    : R && R.armor ? `/icons/items/chest-plate.webp${ITEMS_V}` : null;
+    : R && R.armor ? `${armorIconFor('chest', R.armor.mat)}${ITEMS_V}` : null; /* v2.3.1758 */
   return [
     { slot: 'weapon', label: 'Weapon', item: wpn, iconSrc: wpnIconSrc(R, wpn),
       ghost: !wpn, quality: wpn && wpn.quality, pickerSlot: 'weapon' },
@@ -90,7 +97,7 @@ export function getEquippedSlots(R) {
     { slot: 'legs', label: 'Legs',
       item: (gearLegsId !== 'none' || R.legsArmor) ? { gearLegsId, legsArmor: R.legsArmor } : null,
       iconSrc: gearLegsId !== 'none' ? gearIconSrc(gearLegsId)
-        : R.legsArmor ? `/icons/items/greaves.webp${ITEMS_V}` : null,
+        : R.legsArmor ? `${armorIconFor('legs', R.legsArmor.mat)}${ITEMS_V}` : null, /* v2.3.1758 */
       ghost: gearLegsId === 'none' && !R.legsArmor, pickerSlot: 'legs' },
     /* Cape: Phase-2 — no data field yet; permanently ghosted, no picker. */
     { slot: 'cape', label: 'Cape', item: null, iconSrc: null, ghost: true, pickerSlot: null },

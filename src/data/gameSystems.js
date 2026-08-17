@@ -5491,9 +5491,14 @@ export const QUEST_CHAINS = {
     id: 'tut_4', npc: 'Mayor Bro', title: 'Bro Ascendant',
     desc: 'Bring 6 Fire Goblin Remnants from the Flame Fields.',
     check: function (rpg) { return ((rpg.inventory || {})['fire-goblin-remnants'] || 0) >= 6; },
-    reward: { gold: 400, xp: 210, item: "Iron Greaves" }, /* v2.3.1692 (owner): legs, not chest */
+    /* v2.3.1758 (owner: "copper to be the first armor in the game (you mine
+       copper ore) so this should replace the iron armor.  The second tier of
+       armor will be iron").  Mirrors server/src/data.js exactly — this row is
+       only the client's PREVIEW of the server's reward, and a one-sided edit
+       here promises armour the worker will not hand over. */
+    reward: { gold: 400, xp: 210, item: "Copper Greaves" }, /* v2.3.1692 (owner): legs, not chest */
     next: null,
-    gives: [{ when: 'complete', icon: '/icons/items/greaves.webp', label: "Iron Greaves" }],
+    gives: [{ when: 'complete', icon: '/icons/items/greaves-copper.png', label: "Copper Greaves" }],
     dialogue: {
       start: 'Last one from me. Flame Fields. Goblins, and they are quick about it. Six.',
       progress: 'Six, out of the fire.',
@@ -5555,15 +5560,15 @@ export const QUEST_CHAINS = {
        when:'complete' chip really has a server-side reward.item behind it, so
        a one-sided edit here fails loudly instead of promising armour nobody
        will hand over. */
-    reward: { gold: 200, xp: 140, item: 'Iron Torso' },
+    reward: { gold: 200, xp: 140, item: 'Copper Torso' }, /* v2.3.1758: copper is tier one */
     next: null,
     gives: [
-      { when: 'complete', icon: '/icons/items/chest-plate.webp', label: 'Iron Torso' },
+      { when: 'complete', icon: '/icons/items/chest-plate-copper.png', label: 'Copper Torso' },
     ],
     dialogue: {
       start: 'Ore next. Five lumps, any kind — the rocks in every zone will do.',
       progress: 'Five ore. Swing the pickaxe.',
-      complete: "Iron for the chest, to go with the greaves you already earned. That's real armor — it'll take the edge off a hit, not just pad your health.",
+      complete: "Copper for the chest, to go with the greaves you already earned. That's real armor — it'll take the edge off a hit, not just pad your health. Iron comes later.",
     },
   },
 

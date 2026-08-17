@@ -6,6 +6,7 @@
  */
 
 import { onShirtChange } from './traits/shirtCatalog.js';
+import { gearIdFor } from './gearVariants.js'; /* v2.3.1758: material -> art */
 
 export const GEAR_SLOTS = ['shirt', 'legs', 'chest', 'shoulders'];
 
@@ -19,10 +20,27 @@ export const GEAR_SLOTS = ['shirt', 'legs', 'chest', 'shoulders'];
    the owner).  The sheet is stored as a WHITE-BASE garment and tinted at
    render time to the picked shirt colour, like hats/hair.  South-only sheets
    so far (stand + jog); other dirs render no layer until their sheets exist. */
+/* v2.3.1757: the copper set is the steel art in a different metal — see
+   gearVariants.js.  It sits in the catalog so every existing path (the equip
+   store, the preload sweep, the `gear` dev command) reaches it with no special
+   casing, and it costs the loading screen nothing because preloadGear resolves
+   it back to the steel sheets. */
+/* ═══ v2.3.1761: ONE TIER IN THE GAME AT A TIME ═══
+   Owner: "remove the steel or iron armor from the game until I add it in
+   later.  It's appearing in player inventories who now also have the copper."
+
+   They were right, and the mechanism is the loadout picker: once you own ANY
+   stat piece for a slot it offers every CATALOGUED id for that slot
+   (ItemDetailPopup, the v2.3.1750 ownership gate).  Adding copper beside steel
+   therefore handed everyone who earned the copper a steel set as well.
+
+   So the steel entries come out.  The ART stays exactly where it is — copper
+   is drawn with it (gearVariants) — this list is only what the game OFFERS.
+   Put a row back when the steel/iron tier is real and earnable. */
 export const GEAR_CATALOG = {
   shirt: [{ id: 'none', name: 'None' }, { id: 'tshirt', name: 'T-Shirt' }],
-  legs: [{ id: 'none', name: 'None' }, { id: 'steelgreaves', name: 'Steel Greaves' }],
-  chest: [{ id: 'none', name: 'None' }, { id: 'steelplate', name: 'Steel Plate' }],
+  legs: [{ id: 'none', name: 'None' }, { id: 'coppergreaves', name: 'Copper Greaves' }],
+  chest: [{ id: 'none', name: 'None' }, { id: 'copperplate', name: 'Copper Plate' }],
   shoulders: [{ id: 'none', name: 'None' }],
 };
 
@@ -118,6 +136,20 @@ export function isWearingArmor() {
     || getEquip('shoulders') !== 'none';
 }
 export function setEquip(slot, id) { if (_stores[slot]) _stores[slot].set(id); }
+/* v2.3.1757: QA hook, same shape as traits/headwearCatalog's __btSetHeadwear —
+   the material pipeline has to be drivable from a test without a quest chain. */
+if (typeof window !== 'undefined') window.__btSetGear = setEquip;
+/* v2.3.1758: QA hook — re-derive the worn layers after a test wears a piece,
+   which is what every real equip path does (equipActions, ItemDetailPopup). */
+if (typeof window !== 'undefined') window.__btSyncArmorLayers = (R) => syncArmorLayers(R);
+/* v2.3.1761: what the game OFFERS per slot — the list the loadout picker
+   builds from, so a test can pin that a retired tier is really gone. */
+if (typeof window !== 'undefined') {
+  window.__btGearCatalog = () => ({
+    chest: (GEAR_CATALOG.chest || []).map((c) => c.id),
+    legs: (GEAR_CATALOG.legs || []).map((c) => c.id),
+  });
+}
 export function onEquipChange(slot, fn) { return _stores[slot] ? _stores[slot].on(fn) : () => {}; }
 
 /* ═══ v2.3.1703: THE STAT PIECE DRIVES THE RENDERED LAYER ═══
@@ -141,8 +173,51 @@ export function onEquipChange(slot, fn) { return _stores[slot] ? _stores[slot].o
    costume the loadout screen would still call armour. */
 export function syncArmorLayers(R) {
   if (!R) return;
-  setEquip('chest', R.armor ? 'steelplate' : 'none');
-  setEquip('legs', R.legsArmor ? 'steelgreaves' : 'none');
+  /* v2.3.1758: ...and the piece's MATERIAL decides which art, so the copper
+     tier the mining quest now pays out renders as copper without a second
+     equip system.  A piece with no material is steel, which is every save
+     written before this. */
+  setEquip('chest', R.armor ? gearIdFor('chest', R.armor.mat) : 'none');
+  setEquip('legs', R.legsArmor ? gearIdFor('legs', R.legsArmor.mat) : 'none');
+}
+
+/* ═══ v2.3.1758: COPPER REPLACES IRON AS TIER ONE ═══
+   Owner: "I'd like for copper to be the first armor in the game (you mine
+   copper ore) so this should replace the iron armor.  The second tier of
+   armor will be iron."
+
+   The two tier-one pieces shipped as "Iron Torso" / "Iron Greaves", so a
+   player who already earned them holds a record with the old name and no
+   material.  Renaming only the quest table would leave those players wearing
+   iron-named steel forever while new players got copper — the same piece under
+   two identities.
+
+   So the saved record is REWRITTEN once, by exact name.  Rewriting (rather
+   than mapping the old name to copper at read time) is what keeps the coming
+   IRON tier honest: once this migration has run, "Iron Torso" is a free name
+   again for the real tier two, and nothing downstream has to know which era a
+   piece came from.  Returns true when something changed (caller persists). */
+const _TIER1_RENAME = {
+  'Iron Torso': { name: 'Copper Torso', mat: 'copper' },
+  'Iron Greaves': { name: 'Copper Greaves', mat: 'copper' },
+};
+export function migrateTier1Armor(R) {
+  if (!R) return false;
+  let changed = false;
+  const fix = (piece) => {
+    if (!piece || piece.mat) return piece;
+    const to = _TIER1_RENAME[piece.name];
+    if (!to) return piece;
+    piece.name = to.name;
+    piece.mat = to.mat;
+    changed = true;
+    return piece;
+  };
+  fix(R.armor); fix(R.legsArmor);
+  for (const key of ['armorStash', 'legsStash']) {
+    if (Array.isArray(R[key])) R[key].forEach(fix);
+  }
+  return changed;
 }
 
 /* v2.3.1665 issued the steel set on the tut_2 turn-in and kept it
