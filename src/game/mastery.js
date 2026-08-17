@@ -23,13 +23,19 @@ export const TIER_HINTS = {
   0.5: 'You applied your first elemental status. Try a different element next to set up a collision.',
   1:   'You triggered your first collision. The Codex will start tracking pairs as you discover them.',
   1.5: 'Same input, different combat verbs. Locked enemies open lunge/retreat options.',
-  2:   'Combo count 2 spreads the consumed status. Volatile collisions land a +30% bonus.',
+  2:   'Volatile collisions land a +30% bonus.',
   2.5: 'Trigger a collision in a status\'s final 25% — the resonance window — for bonus damage.',
   3:   'Matching armor attunement just shaved damage off an incoming hit.',
   4:   'Endgame capstone reached.',
 };
 
-/* §12.2 — 14 certifications (subset shipped here matches the mechanics
+/* v2.3.1747: three certifications went with the combo chain
+   (first-combo-burst / first-combo-spread / first-combo-chain-3).  They are
+   deleted rather than left in place because an entry no player can ever earn
+   is worse in the mastery list than no entry: it reads as a bug.  Already-
+   earned ids sitting in a save are harmless — the panel iterates this table
+   and a stale id in the Set is simply never looked up. */
+/* §12.2 — certifications (subset shipped here matches the mechanics
    already in code; the rest stay in the spec until their systems land).
    `first-attuned-defense` is defined here but no trigger site is wired —
    `armor.attunement` exists in the data shape (gameSystems.js ~L4560) but
@@ -42,12 +48,9 @@ export const CERTIFICATIONS = {
   'first-collision':        { name: 'First Collision',          tier: 1   },
   'first-lunge':            { name: 'First Lunge',              tier: 1.5 },
   'first-retreat-shot':     { name: 'First Retreat Shot',       tier: 1.5 },
-  'first-combo-burst':      { name: 'First Combo Burst',        tier: 1.5 },
   'first-perfect-block':    { name: 'First Perfect Block',      tier: 1.5 },
-  'first-combo-spread':     { name: 'First Combo Spread',       tier: 2   },
   'first-volatile':         { name: 'First Volatile Collision', tier: 2   },
   'first-resonance-hit':    { name: 'First Resonance-Timed Hit',tier: 2.5 },
-  'first-combo-chain-3':    { name: 'First Combo Chain to 3',   tier: 2.5 },
   'first-attuned-defense':  { name: 'First Attuned Defense',    tier: 3   },
   'first-apex-defeat':      { name: 'First Apex Defeat',        tier: 4   },
   'first-capstone':         { name: 'First Endgame Capstone',   tier: 4   },

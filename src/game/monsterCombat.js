@@ -19,8 +19,7 @@
    `window._pixiRenderer` stays a runtime global (same as the other
    extracted loop modules). S is stateRef.current. */
 import {
-  BT_AUDIO, COMBO_BURST_BONUS, COMBO_NEXT_DURATION_BONUS, COMBO_NEXT_WINDOW_MS,
-  COMBO_SPREAD_DURATION_MULT, COMBO_SPREAD_RADIUS, DEATH_GOLD_PENALTY, DEATH_SCATTER_RECOVERY,
+  BT_AUDIO, DEATH_GOLD_PENALTY, DEATH_SCATTER_RECOVERY,
   ECHO_AGGRO_MULT, ELEMENTS, GEM_DROP_RATES, GOLD_NUGGET_DROP, GS_FORWARD_ARC,
   GS_INNER_RADIUS, GS_OUTER_RADIUS, PVP_THREAT_DURATION,
   QUEST_CHAINS, QUEST_STATUS, RARE_DROP_CHANCE, RARE_DROP_ITEMS, RARITY_TIERS,
@@ -1340,13 +1339,17 @@ export function updateMonsterCombat(S, deps) {
                 } }); } catch (e) {}
               }
             }
-            /* §5.9 Combo Chain — capture pre-swing state. Burst bonus is
-               applied to all hits in this swipe (uniform across the cone);
-               spread (count 2+) and extended-status flag (count 3) read the
-               pre-swing count too; post-loop logic increments/resets. */
-            if (!S.combo) S.combo = { count: 0, targetId: null, lastHitTs: 0, nextExtended: false, nextExtendedTs: 0 };
-            var _comboPreCount = S.combo.count;
-            var _comboBurst = (S._specialAttack && _comboPreCount > 0) ? (1 + (COMBO_BURST_BONUS || 0.15)) : 1;
+            /* ═══ v2.3.1747: THE COMBO CHAIN IS GONE (owner: "I think I want
+               you to remove the combo (the x1, x2, x3) from the game") ═══
+               §5.9 built a per-target 0-3 counter off auto-attacks and hung
+               four things on it: a +15% burst on specials, a status SPREAD at
+               count 2, an extended status at count 3, and the x1/x2/x3 badge
+               over your head.  All four are removed together — leaving the
+               mechanic while hiding its readout would be worse than either
+               keeping or dropping it, because the damage would still swing by
+               15% for a reason the player can no longer see.
+               `_swingHitTarget` stays: it is also what the collision code uses
+               to mean "the monster this swipe actually landed on". */
             var _swingHitTarget = null;
             /* v2.3.222: sword special covers a full half-circle at 2x
                reach. Regular swing keeps the v2.3 SWING_RANGE / SWING_ARC. */
@@ -1439,15 +1442,6 @@ export function updateMonsterCombat(S, deps) {
                     applyStatus(m, statusId, S.player, Date.now());
                     /* §12.2 cert — first elemental status applied. */
                     masteryEarnCert('first-status');
-                    /* §5.9.6 Combo "Next" — extend the just-applied status
-                       and clear the flag (one-shot). */
-                    if (S.combo && S.combo.nextExtended && m.statuses && m.statuses[statusId]) {
-                      var _extMul = 1 + (COMBO_NEXT_DURATION_BONUS || 0.2);
-                      m.statuses[statusId].remaining *= _extMul;
-                      m.statuses[statusId].maxDur = Math.max(m.statuses[statusId].maxDur || 0, m.statuses[statusId].remaining);
-                      S.combo.nextExtended = false;
-                      pushDmgPopup(S, m.x, m.y - 28, 'ext', '#f5c542');
-                    }
                     var elemDef = ELEMENTS[hitElement];
                     /* §Stage 2: "Brief bright pop on first application. Then ambient." */
                     if (wasNew) {
@@ -1502,9 +1496,13 @@ export function updateMonsterCombat(S, deps) {
                    per-hit so different monsters in a sweep can take
                    slightly different damage. */
                 var _specBase = S._specialAttack ? calcSpecialDmg(_activeWpn.type, _R6, _activeWpn.tierMult, _activeWpn) : pDmg;
-                var dmg = Math.round(((isCrit ? _specBase * critMult + critFlat : _specBase)) * specialMult * _comboBurst);
-                /* §12.2 cert — first time the combo-burst multiplier (>1) actually lands. */
-                if (_comboBurst > 1) masteryEarnCert('first-combo-burst');
+                /* v2.3.1747: the `* _comboBurst` term (1.15 at combo 1+) is gone
+                   with the chain.  The SERVER's cap is deliberately untouched:
+                   its `comboBoost = 5` (combat.js _maxDmgForAttacker) is a
+                   single headroom term covering "combo + status amplifier +
+                   amulet elemDmg + lunge", so shrinking it for this would
+                   clamp legitimate hits from the other three. */
+                var dmg = Math.round(((isCrit ? _specBase * critMult + critFlat : _specBase)) * specialMult);
                 /* Boss invulnerability — can only be damaged during recovery phase */
                 if (m._invulnerable) {
                   pushDmgPopup(S, m.x, m.y - 20, 'IMMUNE', '#888');
@@ -1633,45 +1631,14 @@ export function updateMonsterCombat(S, deps) {
                   if (_activeWpn && _activeWpn.isVolatile) masteryEarnCert('first-volatile');
                   if (collisionResult.resonating) masteryEarnCert('first-resonance-hit');
                   if (collisionResult.collision && collisionResult.collision.type === 'capstone') masteryEarnCert('first-capstone');
-                  /* §5.9.6 — combo burst applies to collision damage too. */
-                  collisionResult.damage = Math.round(collisionResult.damage * _comboBurst);
+                  /* v2.3.1747: the combo burst on collision damage, the
+                     count-2 status SPREAD and the count-3 "Next" extended-
+                     status flag all went with the chain (owner: remove the
+                     combo).  Collisions themselves are untouched — they are
+                     the elemental system, which the combo only amplified. */
                   if (!S._serverMonsters) m.curHp -= collisionResult.damage;
                   /* Client-local zones only -- server zones use monster_hit (Fix B). */
                   if (!S._serverMonsters && S.channel) S.channel.send({ type: 'broadcast', event: 'monster_dmg_at', payload: { id: S.myId, x: m.x, y: m.y, dmg: collisionResult.damage, isCrit: true } });
-                  /* §5.9.4 Combo spread (count 2+) — propagate the consumed
-                     status to the nearest enemy that doesn't already have it.
-                     Sword swipe with multiple hits only spreads from the
-                     primary collision target's hit (one spread per swipe). */
-                  if (S._specialAttack && _comboPreCount >= 2 && collisionResult.consumed && m === _swingHitTarget) {
-                    var _spStatusId = collisionResult.consumed;
-                    var _spRad = COMBO_SPREAD_RADIUS || 80;
-                    var _spTarget = null;
-                    var _spBest = Infinity;
-                    S.monsters.forEach(function (om) {
-                      if (!om.alive || om === m) return;
-                      if (om.statuses && om.statuses[_spStatusId]) return;
-                      var _spDx = om.x - m.x, _spDy = om.y - m.y;
-                      var _spD = Math.sqrt(_spDx * _spDx + _spDy * _spDy);
-                      if (_spD <= _spRad && _spD < _spBest) { _spBest = _spD; _spTarget = om; }
-                    });
-                    if (_spTarget) {
-                      /* §12.2 cert — first combo spread. */
-                      masteryEarnCert('first-combo-spread');
-                      var _spRem = (collisionResult.consumedRemaining || 3) * (COMBO_SPREAD_DURATION_MULT || 0.6);
-                      applyStatus(_spTarget, _spStatusId, S.player, Date.now());
-                      if (_spTarget.statuses && _spTarget.statuses[_spStatusId]) {
-                        _spTarget.statuses[_spStatusId].remaining = _spRem;
-                      }
-                      var _spElCol = (ELEMENTS[collisionResult.setupElement] || {}).color || '#fff';
-                      pushDmgPopup(S, _spTarget.x, _spTarget.y - 18, 'spread', _spElCol);
-                    }
-                  }
-                  /* §5.9.6 Combo "Next" (count 3) — flag the player so the
-                     next status application gets +20% duration. */
-                  if (S._specialAttack && _comboPreCount >= 3 && m === _swingHitTarget) {
-                    S.combo.nextExtended = true;
-                    S.combo.nextExtendedTs = Date.now() + (COMBO_NEXT_WINDOW_MS || 4000);
-                  }
                   var coll = collisionResult.collision;
                   var elemColor = ((_ELEMENTS$collisionRe = ELEMENTS[collisionResult.triggerElement]) === null || _ELEMENTS$collisionRe === void 0 ? void 0 : _ELEMENTS$collisionRe.color) || '#fff';
                   /* §5.7 Resonance — brighten color and prefix the burst
@@ -2271,24 +2238,7 @@ export function updateMonsterCombat(S, deps) {
                 }
               }
             });
-            /* §5.9 Combo Chain — post-swing update.
-               Special-attack swipe consumes the count; auto-attack
-               increments / resets to 1 on a new target. */
-            if (S._specialAttack) {
-              S.combo.count = 0;
-              S.combo.targetId = null;
-            } else if (_swingHitTarget) {
-              if (S.combo.targetId !== _swingHitTarget.id) {
-                S.combo.targetId = _swingHitTarget.id;
-                S.combo.count = 1;
-              } else {
-                S.combo.count = Math.min(S.combo.count + 1, 3);
-              }
-              S.combo.lastHitTs = Date.now();
-              /* §12.2 cert — combo chain reached 3. (First Combo Burst fires
-                 inside the swing block when the burst multiplier > 1.) */
-              if (S.combo.count >= 3) masteryEarnCert('first-combo-chain-3');
-            }
+            /* v2.3.1747: the post-swing combo bookkeeping lived here. */
             /* §18 Gathering nodes — now use action button, not swing */
             /* Hit NPCs */
             if (S.npcs) {

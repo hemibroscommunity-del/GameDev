@@ -113,11 +113,7 @@ export var doLunge = function (S, R, ang) {
       }
       pushDmgPopup(S, lt.x, lt.y - 18, String(lDmg), '#fffbb0');
       BT_AUDIO.swordHit({ vol: 0.5 });
-      /* Combo treats a lunge hit as an auto-attack hit on the lock-on target. */
-      if (!S.combo) S.combo = { count: 0, targetId: null, lastHitTs: 0, nextExtended: false, nextExtendedTs: 0 };
-      if (S.combo.targetId !== lt.id) { S.combo.targetId = lt.id; S.combo.count = 1; }
-      else S.combo.count = Math.min(S.combo.count + 1, 3);
-      S.combo.lastHitTs = Date.now();
+      /* v2.3.1747: a lunge hit used to advance the combo chain; chain removed. */
     }, 160);
   };
 export var doRetreatShot = function (S, R, ang) {
