@@ -2,7 +2,7 @@
  * Entity Renderer — renders player, monsters, other players, NPCs, and pets.
  * Uses PixiJS Graphics for procedural shapes (matching the original Canvas 2D look).
  */
-import { Assets, Container, Graphics, Rectangle, Sprite, Text, TextStyle, Texture } from 'pixi.js';
+import { Assets, ColorMatrixFilter, Container, Graphics, Rectangle, Sprite, Text, TextStyle, Texture } from 'pixi.js';
 import { getNpcTexture } from '../npcSprites.js'; /* v2.3.1672: NPC figure art */
 import { TILE } from '@/data/constants.js';
 import { ZONES, zonePlayerScale } from '@/data/zones.js';
@@ -140,6 +140,20 @@ const POPUP_BAR_CLEAR = 34;
 /* v2.3.1277: owner — "character 25% smaller."  4/3 x 0.75 = 1.0, i.e.
    exactly the pre-experiment size; keep the knob for further tuning. */
 const PLAYER_SIZE_MULT = 1.0;
+/* v2.3.1765: how long a monster spends arriving (see the spawn-in note in the
+   monster loop).  Short on purpose — this is a flourish on a respawn, and a
+   monster you cannot fight yet is a monster in your way. */
+const SPAWN_FX_MS = 620;
+/* Every channel to 1, alpha untouched: the sprite's own silhouette, painted
+   white.  One shared instance — filters are stateless here and Pixi is happy
+   to apply the same one to several objects in a frame. */
+const SPAWN_WHITE_FILTER = new ColorMatrixFilter();
+SPAWN_WHITE_FILTER.matrix = [
+  0, 0, 0, 0, 1,
+  0, 0, 0, 0, 1,
+  0, 0, 0, 0, 1,
+  0, 0, 0, 1, 0,
+];
 const MONSTER_SIZE_MULT = 1.5;
 /* NPC art draw scale.  96 world px per frame is what this renderer treats as
    player scale (see the 96/128 baseScale at the harvest stand-in, commented
@@ -3653,6 +3667,20 @@ export class EntityRenderer {
        see monsterVariants.js for the per-variant config. */
 
     for (const m of monsters) {
+      /* v2.3.1765: the spawn-in trigger is stamped HERE, at the top of the
+         loop, because the dead branch below `continue`s — so anything that
+         watches for dead->alive further down never sees the dead half and
+         reads a respawn as "alive all along".  That is what the first cut of
+         this did, and the flourish simply never fired.
+         Kept on the MONSTER rather than on its display for the same reason:
+         a display is created lazily and would miss the transition too. */
+      if (m._fxWasAlive === undefined) {
+        m._fxWasAlive = !!m.alive;
+        if (m.alive) m._spawnFxAt = now;   /* first sighting is an arrival too */
+      } else if (m.alive && m._fxWasAlive === false) {
+        m._spawnFxAt = now;
+      }
+      m._fxWasAlive = !!m.alive;
       /* Mid-fight variant transform check (currently just mummy ->
          skeleton at HP <= transformAt).  Server is authoritative for
          this when S._serverMonsters is true -- the worker detects the
@@ -3880,6 +3908,54 @@ export class EntityRenderer {
         if (_ui.visible !== m.alive) _ui.visible = m.alive;
         if (_ui.scale.x !== MONSTER_SIZE_MULT) _ui.scale.set(MONSTER_SIZE_MULT);
       }
+
+      /* ═══ v2.3.1765: A MONSTER ARRIVES AS A GROWING WHITE SILHOUETTE ═══
+       *
+       * Owner: "It would be cool to see a 'pre spawned monster' coming back
+       * into the game by showing a tiny white silhouette grow and then match
+       * the outline of the monster then become the monster."
+       *
+       * Done as a FILTER over the monster's own display rather than as a shape
+       * drawn beside it, because "match the outline of the monster" is the
+       * whole request — a hand-drawn blob would be a different animation that
+       * happens to be white.  The matrix maps every channel to 1 and leaves
+       * alpha alone, so what renders is exactly the sprite's silhouette,
+       * whatever pose, variant or recolour it happens to be in.
+       *
+       * The three beats the owner described map to one 0..1 ramp: scale grows
+       * from a dot to full size, the white fades out over the last third, and
+       * at t=1 the filter comes off and the monster is simply there.
+       *
+       * Filters are not free (each filtered object renders to its own target),
+       * so this holds for SPAWN_FX_MS and then detaches — and `filters = null`
+       * is set once on the finishing frame, not every frame after it. */
+      const _spawnFx = () => {
+        const at = m._spawnFxAt || 0;
+        display._spawnAt = at;   /* published for spawnFxProbe */
+        if (!at) return;
+        const t = (now - at) / SPAWN_FX_MS;
+        if (t >= 1) {
+          m._spawnFxAt = 0;
+          display._spawnAt = 0;
+          if (display.filters) display.filters = null;
+          if (display.alpha !== 1) display.alpha = 1;
+          if (display._hpUi && !display._hpUi.visible && m.alive) display._hpUi.visible = true;
+          return;
+        }
+        if (!display.filters) display.filters = [SPAWN_WHITE_FILTER];
+        /* Ease-out growth: quick off the mark, settling into full size, so it
+           reads as arriving rather than as inflating at a constant rate. */
+        const e = 1 - Math.pow(1 - t, 2);
+        const k = MONSTER_SIZE_MULT * (0.12 + 0.88 * e);
+        display.scale.set(k);
+        /* The white leaves over the last third — before that it is a
+           silhouette, after it the real monster. */
+        display.alpha = t < 0.66 ? 0.55 + 0.45 * (t / 0.66) : 1;
+        if (t > 0.66 && display.filters) display.filters = null;
+        /* No HP bar over something that has not finished arriving. */
+        if (display._hpUi && display._hpUi.visible) display._hpUi.visible = false;
+      };
+      try { _spawnFx(); } catch (e) { /* an FX must never take the frame down */ }
 
       const size = display._size;
 

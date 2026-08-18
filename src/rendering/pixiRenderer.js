@@ -415,6 +415,26 @@ export async function initPixiRenderer(canvas) {
        cannot tell a MISSING sheet from one that landed off the body — which is
        exactly the distinction this change needs to be able to make.  Returns
        nothing the game consumes. */
+    /* v2.3.1765: read-only probe of the monster spawn-in flourish.  Owner:
+       "showing a tiny white silhouette grow and then match the outline of the
+       monster then become the monster."  Whether a sprite is currently a
+       white silhouette is a fact about a filter and a scale on a display
+       object — a screenshot can see a pale blob but cannot tell it from a
+       monster that simply has not loaded its art. */
+    spawnFxProbe: () => {
+      const out = [];
+      for (const [id, d] of entityRenderer.monsterDisplays) {
+        if (!d) continue;
+        out.push({
+          id, spawning: !!d._spawnAt, visible: !!d.visible,
+          scale: +d.scale.x.toFixed(3),
+          filtered: !!(d.filters && d.filters.length),
+          alpha: +d.alpha.toFixed(2),
+          hpUi: !!(d._hpUi && d._hpUi.visible),
+        });
+      }
+      return out;
+    },
     /* v2.3.1765: read-only probe of the arrows drawn on the last frame.
        Owner: "arrows should not show the tips when they've reached their
        destination (like the arrowhead should be stuck in the material)."
