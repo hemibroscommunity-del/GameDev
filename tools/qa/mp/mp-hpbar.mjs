@@ -143,5 +143,52 @@ export async function run({ browser, wsPort, webPort, rec }) {
     S.rpg.hp = v;
   });
 
+  /* ═══════════════════════════════════════════════════════════════════════
+     v2.3.1765: THE NAME PLATE DOES NOT SIT ON THE BOOTS
+     Owner: "Move the standing nameplate down about 3-10 pixels it overlaps the
+     character feet right now."
+
+     Here rather than in a scenario of its own because this file already owns
+     "what the renderer actually put on the player", and the plate is the other
+     thing attached to that display.
+
+     WHAT THIS DOES NOT ASSERT, and why.  The obvious check is "the plate's
+     top is below the character's bottom" — and it is wrong here.  A player
+     sheet is a fixed-size cell with transparent margin under the boots, so
+     Pixi's bounds report the bottom of the CELL, ~24px below the lowest
+     painted pixel.  Demanding clear air against that box would push the plate
+     three times further than the owner asked for and detach it from the
+     character.  The person who can see the boots asked for 3-10px; the box
+     cannot settle it, so it is kept only as diagnostics.
+
+     What IS pinned is the shipped drop below the character's anchor, in
+     screen pixels — which catches an accidental revert, and catches the plate
+     silently changing distance if the container's scaling is ever reworked. */
+  const pill = await P.page.evaluate(() => (window._pixiRenderer && window._pixiRenderer.namePillProbe
+    ? window._pixiRenderer.namePillProbe() : null));
+  rec.ok('the name plate probe answered', !!pill, pill);
+  if (pill) {
+    /* GUARD: a hidden plate has empty bounds, and empty bounds satisfy
+       anything.  The measurement is meaningless unless it is on screen. */
+    rec.ok('...and the plate is actually on screen to be measured (guard)',
+      pill.pillVisible === true && pill.pillBottom > pill.pillTop, pill);
+    rec.ok('...and the character has real bounds behind it (guard)',
+      pill.bodyBottom > pill.bodyTop, pill);
+    /* 30 was the overlapping value the owner reported; 38 is that plus the
+       middle of the 3-10px they asked for.  The band accepts the whole range
+       they named and refuses a revert to 30. */
+    rec.ok('the name plate sits 3-10px lower than the value that overlapped the feet',
+      pill.pillLocalY >= 33 && pill.pillLocalY <= 40, pill);
+    /* ...and that offset actually REACHES THE SCREEN.  Without this the check
+       above is just reading back a constant: the plate lives inside a display
+       the zone scales, so the authored units and the painted pixels are
+       different numbers (30px on screen for 38 units, in a zone that shrinks
+       the player).  Multiplying through is what proves nothing between the
+       assignment and the canvas is dropping it. */
+    rec.ok('...and that offset survives the transform to the screen',
+      pill.unitPx > 0
+      && Math.abs(pill.dropBelowAnchor - pill.pillLocalY * pill.unitPx) <= 1.5, pill);
+  }
+
   await P.ctx.close().catch(() => {});
 }

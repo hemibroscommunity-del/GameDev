@@ -415,6 +415,58 @@ export async function initPixiRenderer(canvas) {
        cannot tell a MISSING sheet from one that landed off the body — which is
        exactly the distinction this change needs to be able to make.  Returns
        nothing the game consumes. */
+    /* v2.3.1765: read-only probe of the name plate's position relative to the
+       character, for the QA harness.  Owner: "Move the standing nameplate down
+       about 3-10 pixels it overlaps the character feet right now."
+       The reported defect is an OVERLAP, so that is what this measures — the
+       gap between the bottom of the body and the top of the plate, in screen
+       pixels.  Asserting the literal y offset instead would pin a number
+       without pinning the property: the plate sits inside a container the zone
+       can scale, and the boots reach further on some frames than the nominal
+       foot offset the code comments quote, which is how six pixels of designed
+       clearance became an overlap in the first place.
+       The plate is hidden for one synchronous measurement so the body's bounds
+       exclude it, then restored before returning — no frame renders in
+       between, so nothing is visible to the player. */
+    namePillProbe: () => {
+      const pd = entityRenderer.playerDisplay;
+      const pill = pd && pd._namePill;
+      if (!pd || !pill) return null;
+      const pb = pill.getBounds();
+      const wasVisible = pill.visible;
+      pill.visible = false;
+      const bb = pd.getBounds();
+      pill.visible = wasVisible;
+      /* The character's anchor in screen space.  `dropBelowAnchor` is the
+         number the fix actually moves, in the units the owner's "3-10 pixels"
+         is written in — container units times whatever the zone scales the
+         player by. */
+      const origin = pd.toGlobal({ x: 0, y: 0 });
+      return {
+        pillVisible: wasVisible,
+        /* The authored offset, in container units — the number the fix moves. */
+        pillLocalY: pill.y,
+        /* What ONE container unit is worth in screen pixels, measured through
+           the whole chain rather than read off pd.scale — the player display's
+           own scale is only half of it, the world container carries the camera
+           zoom as well (0.8 here), which is why 38 units land 30.4px down. */
+        unitPx: +(pd.toGlobal({ x: 0, y: 1 }).y - pd.toGlobal({ x: 0, y: 0 }).y).toFixed(4),
+        displayScale: +pd.scale.y.toFixed(4),
+        /* Measured from the pill's OWN origin, not from its bounds: bounds
+           include content extents (the level line, the badge slot) and sat 8px
+           above the origin, which read as the transform losing 8 pixels when
+           nothing was losing anything. */
+        dropBelowAnchor: +(pill.toGlobal({ x: 0, y: 0 }).y - origin.y).toFixed(1),
+        paintedTopDrop: +(pb.y - origin.y).toFixed(1),
+        pillTop: +pb.y.toFixed(1), pillBottom: +(pb.y + pb.height).toFixed(1),
+        /* Diagnostics only — see the note in mp-hpbar on why the plate is NOT
+           asserted against these.  A player sheet is a fixed-size cell with
+           transparent margin under the boots, so bodyBottom is the bottom of
+           the CELL, several pixels below the lowest painted pixel. */
+        bodyTop: +bb.y.toFixed(1), bodyBottom: +(bb.y + bb.height).toFixed(1),
+        boxGap: +(pb.y - (bb.y + bb.height)).toFixed(1),
+      };
+    },
     /* v2.3.1765: read-only probe of WHICH LAYER the extraction cue draws on,
        for the QA harness — same shape and same reason as the two probes above.
        "Is the white gesture in front of the tree" is a depth fact about the

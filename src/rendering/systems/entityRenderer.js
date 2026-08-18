@@ -3004,8 +3004,19 @@ function createMonsterDisplay(monster) {
    50x that waste. */
 function _attachNamePill(container, nameSize) {
   const pill = new Container();
-  /* Feet sit ~24 below centre (sheetGeometry FEET_OFFSET). */
-  pill.y = 30;
+  /* Feet sit ~24 below centre (sheetGeometry FEET_OFFSET).
+     v2.3.1765 (owner: "Move the standing nameplate down about 3-10 pixels it
+     overlaps the character feet right now"): 30 -> 38.  Six pixels of
+     clearance was the whole budget, and the boots on a standing frame eat it —
+     the jog cycle's lowest foot reaches further than the nominal offset the
+     comment above is quoting.  +8 is the middle of the range the owner gave.
+     In CONTAINER units, which for a player is screen pixels: the display is
+     scaled by PLAYER_SIZE_MULT (1.0) times the zone's playerScale, and that is
+     1 everywhere except the two vista maps that deliberately shrink everything
+     — so on a normal map the owner's pixels and these units are the same
+     thing, and on those maps the plate shrinks with the character it belongs
+     to, which is what you want. */
+  pill.y = 38;
   const bg = new Graphics();
   pill.addChild(bg);
   const nameT = new Text({ text: '', style: {
