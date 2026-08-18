@@ -395,10 +395,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
        - "read the worker's position after the cast" is VACUOUS.  The batch
          timer keeps running, so the position catches up within a frame or two
          and the read agrees whether or not the cast was aimed correctly.
-       - "watch the frame order on the socket" cannot be instrumented here:
-         WebSocket instances in this page carry their own `send`, so a
-         prototype wrap records nothing (verified — zero frames captured,
-         including the 1Hz keepalive).
+       - "watch the frame order on the socket" cannot be instrumented from
+         HERE.  A prototype wrap installed mid-scenario records nothing at all
+         (verified — zero frames, keepalive included), because the socket code
+         has already captured its own reference to send by then.  It CAN be
+         done, but only from a script that runs before the page does:
+         tools/qa/qa-move-rate.mjs hooks WebSocket.prototype.send at document
+         start and reads every outgoing move successfully.
      What settles it is the position the SERVER measured the cast from, which
      it now records (ps._abilFrom, surfaced as live.abilFrom).  That is a
      single instant and no later move can rewrite it.

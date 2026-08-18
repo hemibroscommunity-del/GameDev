@@ -154,25 +154,39 @@ console.log('\n── verdict ──');
    regression, when the pre-change build measured 11.4 Hz on the same
    machine.) */
 /* The frame-rate-INDEPENDENT signal is the median gap between sends.
-   MOVE_GAP_SOLO_MS is 198: if the solo gate were engaged, no gap could sit
-   below it.  So gap < 150 proves the gate is open, and gap >= 165 proves it
-   is engaged -- true on any machine, fast or slow.
    (Raw Hz is reported for context but NOT asserted on: it is capped by the
    game loop, which on this headless box runs ~12-24 fps and swings with
    load.  Measured A/B on the same machine, WITH a peer: pre-change 11.4 and
    12.7 Hz, post-change 11.1 and 11.6 Hz -- indistinguishable, which is the
-   real evidence that smoothness is untouched.) */
+   real evidence that smoothness is untouched.)
+
+   ═══ v2.3.1767: WHAT THIS FILE CAN AND CANNOT STILL PROVE ═══
+   MOVE_GAP_SOLO_MS was 198 when these checks were written, and that made
+   them easy: no frame gap on any machine comes near 198ms, so "median gap
+   >= 165" proved the gate was engaged and "< 150" proved it was open.
+   The owner raised the floor to 66ms (monster AI chases the worker's copy
+   of the player, so a 5Hz solo rate made monsters lurch -- see the note in
+   wsClient.js).  66ms is 2 frames on a 30fps box and LESS THAN ONE on this
+   12-24fps one, which means the solo gate and the frame rate are now the
+   same magnitude here and this file can no longer tell them apart.
+
+   Rather than keep an assertion that would pass for the wrong reason, the
+   gate-engaged check is stated as what remains true and checkable: solo
+   never sends FASTER than the floor allows, and it is never silent.  The
+   load-bearing evidence moved to tools/qa/mp/mp-solorate.mjs, which
+   measures the WORKER's copy of the player instead of the client's send
+   log -- the thing the owner's bug was actually about, and immune to how
+   many frames this box manages. */
 check('a peer was actually present for the first measurement', seenPeers > 0, seenPeers);
-check('WITH a peer: gap stays far below the 198ms gate — the gate is OPEN',
-  out.withPeer.medianGap < 150,
+check('WITH a peer: the seen rate is not throttled below the solo floor',
+  out.withPeer.medianGap <= Math.max(out.alone.medianGap, 66) + 33,
   { medianGap: out.withPeer.medianGap, hz: out.withPeer.hz, fps: out.withPeer.fps });
-check('ALONE: throttled to the ~5 Hz gate, well under what the frames allowed',
-  out.alone.hz <= 6.5 && out.alone.hz < out.alone.fps * 0.75,
-  { measured: out.alone.hz, fps: out.alone.fps });
+check('ALONE: never sends faster than the 66ms floor allows (~15 Hz ceiling)',
+  out.alone.hz <= 17, { measured: out.alone.hz, fps: out.alone.fps });
 check('ALONE: still sending (>2 Hz — never silent; the server keeps tracking)',
   out.alone.hz > 2, out.alone);
-check('ALONE gap matches MOVE_GAP_SOLO_MS (198ms) rather than the frame gap',
-  out.alone.medianGap >= 165, { medianGap: out.alone.medianGap });
+check('ALONE: the gap is at least the floor, allowing one window of jitter',
+  out.alone.medianGap >= 50, { medianGap: out.alone.medianGap });
 
 console.log(fail === 0 ? '\nALL CHECKS PASSED' : `\n${fail} CHECK(S) FAILED`);
 process.exit(fail ? 1 : 0);

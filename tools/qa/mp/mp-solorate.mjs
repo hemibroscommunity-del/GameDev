@@ -18,12 +18,19 @@
  * during one three-second walk, which is the update RATE with the sampling
  * noise divided out.
  *
- * FIRST RUN, BEFORE ANY FIX (local, wrangler + Chromium):
+ * MEASURED, local wrangler + Chromium, same box:
+ *   BEFORE (MOVE_GAP_SOLO_MS = 198)
  *     SOLO         max gap 38.5px, avg 19.4px, 15 distinct positions / 57 samples
  *     WITH A PEER  max gap 12.5px, avg  4.4px, 46 distinct positions / 53 samples
+ *   AFTER (v2.3.1767, floor raised to 66 — owner: "raise solo floor everywhere")
+ *     SOLO         max gap 19.3px, avg 10.3px, 36 distinct positions / 57 samples
+ *     WITH A PEER  max gap 10.0px, avg  4.0px, 45 distinct positions / 50 samples
  *
- * The last assertion is therefore RED on purpose until the rate is fixed — it
- * is the bug written down, not a broken test.
+ * The last assertion was RED on purpose when this landed as a diagnosis; the
+ * floor change is what turns it green.  Solo is still a little behind watched
+ * (66ms against 33ms, by design — the packet saving was real, only its size
+ * was wrong), which is why the assertion asks for most of the watched rate
+ * rather than all of it.
  */
 import * as H from './harness.mjs';
 
