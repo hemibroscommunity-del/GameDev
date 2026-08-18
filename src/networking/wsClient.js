@@ -2281,10 +2281,35 @@ export function setupWebSocket(ctx) {
        check below only runs on a batch boundary, so any gap is silently
        rounded UP to the next multiple of 33 -- a naive 200 would really
        be 231 (4.33 Hz), which is a surprise waiting to be rediscovered.
-       198 = 6 windows = 5.05 Hz, and it is also the worst-case delay
-       before the rate ramps back up when a peer walks into your zone. */
+       The gap is also the worst-case delay before the rate ramps back up
+       when a peer walks into your zone. */
+    /* ═══ v2.3.1767: THE SOLO FLOOR, 198 -> 66 ═══
+       Owner: "when I was playing by myself last night the monsters were moving
+       really slowly and rubber banding.  Idk if that's a one off or if it had
+       something to do with slowing down the tick rate when you're alone."
+       It was.  The paragraph above argues the solo rate is free because your
+       own movement is client-predicted and the fast rate would be "smoothness
+       delivered to an empty room" — and the room is never empty, because
+       MONSTER AI CHASES ps.x/ps.y, the worker's copy of you.  At 5 Hz you were
+       a target that moved five times a second in ~40px steps, so a chasing
+       monster ran to where you had been, arrived, waited, and jumped again.
+       That is the report, and it is the same root cause as the shield bash
+       aiming from a stale position (v2.3.1765 flushed the held move before an
+       ability, which treated one symptom).
+       MEASURED before and after, one client against one worker, counting how
+       many distinct positions the worker believed you occupied during a
+       three-second walk (tools/qa/mp/mp-solorate.mjs):
+         198ms  15 positions, avg 19.4px behind, peak 38.5px
+          66ms  see the scenario's header for the post-change numbers
+         33ms (a peer watching)  46 positions, avg 4.4px, peak 12.5px
+       66 = 2 windows (~15 Hz).  Owner's call was to raise the floor
+       everywhere rather than make the rate depend on what is in the zone —
+       simpler, and it cannot pick the wrong answer for a zone whose contents
+       change under it.  Still half the packets of the watched rate, because
+       the original saving was real; it was only the SIZE of it that was
+       wrong. */
     var MOVE_GAP_SEEN_MS = 33;   // 1 window — unchanged when a peer shares your zone
-    var MOVE_GAP_SOLO_MS = 198;  // 6 windows (~5 Hz) when nobody can see you
+    var MOVE_GAP_SOLO_MS = 66;   // 2 windows (~15 Hz) when nobody can see you
     var _lastMoveSentAt = 0;
     function moveGapMs() {
       try {
@@ -2339,7 +2364,8 @@ export function setupWebSocket(ctx) {
      * Owner: "Shield bash always seems to miss if I activate it while I'm
      * moving while I hit the monster with it."
      *
-     * The adaptive rate above drops to 198 ms when nobody shares your zone,
+     * The adaptive rate above drops to 66 ms when nobody shares your zone
+     * (198 ms before v2.3.1767),
      * and its comment argues that is free because "your own movement is
      * client-predicted and the server never echoes your position back, so
      * this changes nothing you can feel."  That was true of MOVEMENT and
