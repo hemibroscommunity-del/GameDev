@@ -4620,6 +4620,14 @@ export var BroTown = function BroTown(_ref0) {
               return;
             }
 
+            /* v2.3.1771: THE TOWN RUNS AT A FRAME RATE.  Every NPC step below
+               was per frame and every NPC timer counted down by a hard-coded
+               16.7ms per frame — one 60Hz frame, assumed.  On a 144Hz monitor
+               the town's NPCs walked 2.4x faster, re-picked wander targets
+               2.4x sooner and chattered 2.4x more often than the same town on
+               a phone.  This is part of what the owner meant by desktop being
+               "COMPLETELY different"; the whole NPC body is scaled by dt. */
+            var _npcDt = S._dtScale || 1;
             /* §19.1 Companion follow — NPC follows player if they have an active quest */
             var npcQuest = getNpcQuest(S.rpg, npc.name);
             var isActiveCompanion = npcQuest && npcQuest.status === 'active' && npc.canFollow && ((_npc$followZones = npc.followZones) === null || _npc$followZones === void 0 ? void 0 : _npc$followZones.includes(S.currentZone));
@@ -4630,19 +4638,19 @@ export var BroTown = function BroTown(_ref0) {
                 var fDx = P.x - npc.x,
                   fDy = P.y - npc.y;
                 var fDist = Math.sqrt(fDx * fDx + fDy * fDy);
-                npc.x += fDx / fDist * 1.5;
-                npc.y += fDy / fDist * 1.5;
+                npc.x += fDx / fDist * 1.5 * _npcDt;
+                npc.y += fDy / fDist * 1.5 * _npcDt;
                 if (Math.abs(fDx) > Math.abs(fDy)) npc._facing = fDx > 0 ? 'right' : 'left';else npc._facing = fDy > 0 ? 'down' : 'up';
               } else if (distToPlayer < 30) {
                 /* Too close — back off slightly */
                 var bDx = npc.x - P.x,
                   bDy = npc.y - P.y;
                 var bDist = Math.sqrt(bDx * bDx + bDy * bDy) || 1;
-                npc.x += bDx / bDist * 0.5;
-                npc.y += bDy / bDist * 0.5;
+                npc.x += bDx / bDist * 0.5 * _npcDt;
+                npc.y += bDy / bDist * 0.5 * _npcDt;
               }
               /* Quest-relevant chat — comment on progress */
-              npc.chatTimer -= 16.7;
+              npc.chatTimer -= 16.7 * _npcDt;
               if (npc.chatTimer <= 0) {
                 var quest = npcQuest.quest;
                 var isComplete = quest.check(S.rpg, S);
@@ -4657,7 +4665,7 @@ export var BroTown = function BroTown(_ref0) {
               }
             } else {
               /* Normal wander behavior */
-              npc.moveTimer -= 16.7;
+              npc.moveTimer -= 16.7 * _npcDt;
               var distToTarget = Math.sqrt(Math.pow(npc.x - npc.targetX, 2) + Math.pow(npc.y - npc.targetY, 2));
               if (distToTarget < 4 || npc.moveTimer <= 0) {
                 var angle = Math.random() * Math.PI * 2;
@@ -4672,12 +4680,12 @@ export var BroTown = function BroTown(_ref0) {
                 nDy = npc.targetY - npc.y;
               var nDist = Math.sqrt(nDx * nDx + nDy * nDy);
               if (nDist > 2) {
-                npc.x += nDx / nDist * 0.8;
-                npc.y += nDy / nDist * 0.8;
+                npc.x += nDx / nDist * 0.8 * _npcDt;
+                npc.y += nDy / nDist * 0.8 * _npcDt;
                 if (Math.abs(nDx) > Math.abs(nDy)) npc._facing = nDx > 0 ? 'right' : 'left';else npc._facing = nDy > 0 ? 'down' : 'up';
               }
               /* Random chat */
-              npc.chatTimer -= 16.7;
+              npc.chatTimer -= 16.7 * _npcDt;
               if (npc.chatTimer <= 0) {
                 /* If NPC has available quest, hint at it */
                 if (npcQuest && npcQuest.status === 'available' && distToPlayer < 100) {
@@ -4696,8 +4704,11 @@ export var BroTown = function BroTown(_ref0) {
                 npc.chatTimer = 8000 + Math.random() * 15000;
               }
             }
-            npc.renderX += (npc.x - npc.renderX) * 0.12;
-            npc.renderY += (npc.y - npc.renderY) * 0.12;
+            /* v2.3.1771: same exponential-approach shape as the camera and
+               the monster interpolator — 12% of the gap per 60Hz frame. */
+            var _npcLerp = 1 - Math.pow(0.88, _npcDt);
+            npc.renderX += (npc.x - npc.renderX) * _npcLerp;
+            npc.renderY += (npc.y - npc.renderY) * _npcLerp;
             if (npc.chatBubble && Date.now() - npc.chatBubble.ts > 5000) npc.chatBubble = null;
 
             /* Quest marker above the NPC's head.

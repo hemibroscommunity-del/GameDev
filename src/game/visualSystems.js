@@ -35,29 +35,53 @@ export function updateVisualSystems(S) {
           var _fDiff = S._targetFacingAngle - S._facingAngle;
           while (_fDiff > Math.PI) _fDiff -= Math.PI * 2;
           while (_fDiff < -Math.PI) _fDiff += Math.PI * 2;
-          S._facingAngle += _fDiff * (_fIsMoving ? 0.18 : 0.08);
+          /* v2.3.1771: the player's facing angle is what melee and aim swing
+             FROM, so a turn rate of "18% of the remaining angle per frame"
+             literally meant a desktop turned toward a target 2.4x faster than
+             a phone.  pow() gives both the same turn per second. */
+          S._facingAngle += _fDiff * (1 - Math.pow(_fIsMoving ? 0.82 : 0.92, S._dtScale || 1));
           while (S._facingAngle > Math.PI) S._facingAngle -= Math.PI * 2;
           while (S._facingAngle < -Math.PI) S._facingAngle += Math.PI * 2;
         }
 
-        /* ── Footstep timer + stats (frame-rate coupled, matches original) ── */
+        /* ── Footstep timer + stats ──
+           v2.3.1771: was one tick per FRAME with a `% 6 === 0` test, so the
+           lifetime step counter — a stat, and what achievements read — ran
+           2.4x faster on a 144Hz monitor than on a phone walking the same
+           distance.  Counting in 60Hz-frame units and draining the
+           accumulator keeps one step per 100ms on every screen; the `%`
+           test could not survive a fractional increment. */
         if (_fIsMoving) {
           if (!S._footstepTimer) S._footstepTimer = 0;
-          S._footstepTimer++;
+          S._footstepTimer += (S._dtScale || 1);
           /* v2.3.839: footstep AUDIO moved into the renderer (entityRenderer
              _updatePlayer jog branch) so it's locked to the animation cycle
              and matches the visible stride exactly.  This timer now only
              drives the step COUNTER for stats/achievements. */
-          if (S.stats && S._footstepTimer % 6 === 0) S.stats.steps++;
+          while (S._footstepTimer >= 6) {
+            S._footstepTimer -= 6;
+            if (S.stats) S.stats.steps++;
+          }
         }
 
         /* ── Other player interpolation ── */
+        /* v2.3.1771: EVERY TERM IN THIS BLOCK WAS PER FRAME.  A remote's _vx
+           arrives as px per 60Hz frame, so dead-reckoning it once per frame
+           made another player sprint across a 144Hz monitor and then snap
+           back when the next real position landed — rubber-banding produced
+           by the viewer's refresh rate, not by their connection.  The three
+           gap lerps are exponential approaches and get the same pow() shape
+           as the camera and the monster interpolator. */
+        var _oDt = S._dtScale || 1;
+        var _oVK = 1 - Math.pow(0.85, _oDt);   /* was 0.15 per frame */
+        var _oNearK = 1 - Math.pow(0.97, _oDt); /* was 0.03 per frame */
+        var _oIdleK = 1 - Math.pow(0.85, _oDt); /* was 0.15 per frame */
         Object.values(S.others).forEach(function (o) {
           if (o.renderX === undefined) { o.renderX = o.x; o.renderY = o.y; }
           var rawVx = o._vx || 0, rawVy = o._vy || 0;
           if (o._smoothVx === undefined) { o._smoothVx = rawVx; o._smoothVy = rawVy; }
-          o._smoothVx += (rawVx - o._smoothVx) * 0.15;
-          o._smoothVy += (rawVy - o._smoothVy) * 0.15;
+          o._smoothVx += (rawVx - o._smoothVx) * _oVK;
+          o._smoothVy += (rawVy - o._smoothVy) * _oVK;
           /* v2.3.840: snap a stopped remote's decaying velocity to 0 so it
              doesn't hover near the move/idle threshold and flicker the pose. */
           if (rawVx === 0 && Math.abs(o._smoothVx) < 0.01) o._smoothVx = 0;
@@ -69,10 +93,10 @@ export function updateVisualSystems(S) {
           } else {
             var oMoving = Math.abs(o._smoothVx) > 0.005 || Math.abs(o._smoothVy) > 0.005;
             if (oMoving) {
-              o.renderX += o._smoothVx; o.renderY += o._smoothVy;
-              if (oDist > 30) { o.renderX += oDx * 0.03; o.renderY += oDy * 0.03; }
+              o.renderX += o._smoothVx * _oDt; o.renderY += o._smoothVy * _oDt;
+              if (oDist > 30) { o.renderX += oDx * _oNearK; o.renderY += oDy * _oNearK; }
             } else {
-              if (oDist > 0.5) { o.renderX += oDx * 0.15; o.renderY += oDy * 0.15; }
+              if (oDist > 0.5) { o.renderX += oDx * _oIdleK; o.renderY += oDy * _oIdleK; }
               else { o.renderX = o.x; o.renderY = o.y; }
             }
           }
@@ -85,7 +109,7 @@ export function updateVisualSystems(S) {
             while (aDiff > Math.PI) aDiff -= Math.PI * 2;
             while (aDiff < -Math.PI) aDiff += Math.PI * 2;
             var oIsMoving = Math.abs(o._smoothVx) > 0.005 || Math.abs(o._smoothVy) > 0.005;
-            o._fAngle += aDiff * (oIsMoving ? 0.18 : 0.08);
+            o._fAngle += aDiff * (1 - Math.pow(oIsMoving ? 0.82 : 0.92, _oDt)); /* v2.3.1771: turn rate per second */
             while (o._fAngle > Math.PI) o._fAngle -= Math.PI * 2;
             while (o._fAngle < -Math.PI) o._fAngle += Math.PI * 2;
           }
