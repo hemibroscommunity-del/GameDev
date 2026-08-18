@@ -3833,11 +3833,19 @@ export var BroTown = function BroTown(_ref0) {
         if (terrainSlide > 0 && (Math.abs(dx) > 0.01 || Math.abs(dy) > 0.01)) {
           if (!S._slideVx) S._slideVx = 0;
           if (!S._slideVy) S._slideVy = 0;
-          S._slideVx = S._slideVx * terrainSlide + dx * finalSpd * (1 - terrainSlide);
-          S._slideVy = S._slideVy * terrainSlide + dy * finalSpd * (1 - terrainSlide);
+          /* v2.3.1769: ice is an EXPONENTIAL blend, so its frame-rate term is a
+             POWER, not a multiply.  Retaining `terrainSlide` of the velocity
+             once per frame means retaining terrainSlide^dt over dt frames —
+             with a plain multiply, a 144Hz screen ran the decay 2.4x as often
+             and the ice came out noticeably less slippery than the same zone
+             on a phone. */
+          var _slideR = Math.pow(terrainSlide, S._dtScale || 1);
+          S._slideVx = S._slideVx * _slideR + dx * finalSpd * (1 - _slideR);
+          S._slideVy = S._slideVy * _slideR + dy * finalSpd * (1 - _slideR);
         } else if (terrainSlide > 0) {
-          S._slideVx = (S._slideVx || 0) * terrainSlide;
-          S._slideVy = (S._slideVy || 0) * terrainSlide;
+          var _slideR2 = Math.pow(terrainSlide, S._dtScale || 1);
+          S._slideVx = (S._slideVx || 0) * _slideR2;
+          S._slideVy = (S._slideVy || 0) * _slideR2;
           if (Math.abs(S._slideVx) < 0.01) S._slideVx = 0;
           if (Math.abs(S._slideVy) < 0.01) S._slideVy = 0;
         } else {
@@ -3955,8 +3963,12 @@ export var BroTown = function BroTown(_ref0) {
         if (!isSolid(P.x - hs, ny - hs) && !isSolid(P.x + hs, ny - hs) && !isSolid(P.x - hs, ny + hs) && !isSolid(P.x + hs, ny + hs) && !_monBlock(P.x, P.y, P.x, ny) && !_nodeBlock(P.x, P.y, P.x, ny)) P.y = ny;
         /* Apply ice slide */
         if (S._slideVx || S._slideVy) {
-          var sx = P.x + (S._slideVx || 0),
-            sy = P.y + (S._slideVy || 0);
+          /* v2.3.1769: _slideVx is a velocity in px per 60fps-frame (it is
+             blended from finalSpd, which is), so applying it once per frame
+             slid you further on a faster screen exactly as walking did. */
+          var _slideDt = S._dtScale || 1;
+          var sx = P.x + (S._slideVx || 0) * _slideDt,
+            sy = P.y + (S._slideVy || 0) * _slideDt;
           if (!isSolid(sx - hs, P.y - hs) && !isSolid(sx + hs, P.y + hs) && !_monBlock(P.x, P.y, sx, P.y) && !_nodeBlock(P.x, P.y, sx, P.y)) P.x = sx;
           if (!isSolid(P.x - hs, sy - hs) && !isSolid(P.x + hs, sy + hs) && !_monBlock(P.x, P.y, P.x, sy) && !_nodeBlock(P.x, P.y, P.x, sy)) P.y = sy;
         }
