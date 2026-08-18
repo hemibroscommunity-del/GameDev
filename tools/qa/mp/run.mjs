@@ -21,6 +21,7 @@ import * as H from './harness.mjs';
 const WS = await H.freePort(), WEB = await H.freePort();
 
 const SCENARIOS = {
+  desktopbox: () => import('./mp-desktopbox.mjs'), /* v2.3.1768: desktop is a scaled phone */
   solorate: () => import('./mp-solorate.mjs'),
   statpeek: () => import('./mp-statpeek.mjs'), /* v2.3.1766: the allocation tooltip tells the truth */
   spawnfx: () => import('./mp-spawnfx.mjs'), /* v2.3.1765: the respawn silhouette */

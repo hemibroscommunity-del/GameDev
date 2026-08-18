@@ -1767,6 +1767,21 @@ body:has(.bt-inspect) .bt-kb-chip{display:none}
    the rule applies at all. */
 @media (pointer:fine) and (min-width:1000px) {
   html, body { background:#070D11; }
+  /* v2.3.1768: the two FULL-SCREEN overlays have to follow the shell now that
+     it is shorter than the window.  Both are position:fixed inside #root's
+     containing block, so `inset:0` would already size them correctly — it is
+     their explicit window-height that overrides it (`height:100dvh` on the
+     welcome modal, an inline `100vw/100dvh` on the game wrap).
+     Left alone, the welcome modal renders full-window-tall inside a shorter
+     shell with overflow:hidden, and the PLAY button is clipped outside the
+     paint box: visible to the DOM, unreachable to a finger.  Not hypothetical
+     — it is how this change failed its first headless run, twice.
+     Scoped to this media query rather than fixed at the source so the phone
+     keeps 100dvh exactly as it is: dvh tracks the iOS URL bar and `100%` does
+     not, and the primary platform must not pay for a desktop fix.
+     !important because the wrap's size is an inline style (BroTown.jsx). */
+  .bt-name-modal { height:100%; }
+  .brotown-wrap { width:100%!important; height:100%!important; }
   #root {
     /* v2.3.1715: 50% -> 25% (owner: "force shrink the game area another 50%
        ... including the dashboard").  480px at 1920, which lands close to the
@@ -1777,7 +1792,27 @@ body:has(.bt-inspect) .bt-kb-chip{display:none}
     width:25%;
     min-width:380px;
     max-width:100%;
-    height:100%;
+    /* ═══ v2.3.1768: CAP THE HEIGHT, NOT JUST THE WIDTH ═══
+       Owner: "the desktop version was COMPLETELY different ... the aspect ratio
+       was messed up, the view showed way more of the world all at once."
+       v2.3.1715 capped the WIDTH and left height:100%.  MEASURED on a 1680x1050
+       window against a 390x715 phone, before this rule:
+         phone    487 x 612 world px   shell 390x715   aspect 0.80
+         desktop  525 x 1014 world px  shell 420x1050  aspect 0.52
+       The width was already close (525 against 487).  The height was not: 65%
+       more world down the screen, in a box a different SHAPE from the one every
+       layout in this file was designed against.  Locking the shell to the
+       phone's own aspect is what makes desktop a SCALED phone rather than a
+       taller one — the dashboard follows for free (it sizes from playVh(),
+       which reads this element) and so does the canvas (resize() measures the
+       shell).
+       390/715 is the design target: the pair playViewport.js falls back to and
+       the viewport this file's sheet budgets are written against.  max-height
+       keeps it inside short windows — a 1200x700 window gets a shorter shell,
+       not a clipped one. */
+    aspect-ratio:390 / 715;
+    height:auto;
+    max-height:100%;
     margin:0 auto;
     position:relative;
     contain:paint;

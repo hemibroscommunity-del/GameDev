@@ -152,8 +152,15 @@ export async function stopWorker(w) {
 }
 
 /* ── a player ──────────────────────────────────────────────────────────── */
-export async function newPlayer(browser, { name, wsPort, webPort, guest = false }) {
-  const ctx = await browser.newContext({ viewport: { width: 1000, height: 780 } });
+/* v2.3.1768: `viewport` is optional and defaults to what every scenario got
+   before it existed, so nothing that omits it changes.  Added for the
+   desktop-vs-phone comparison, where the WINDOW SIZE is the variable under
+   test — the alternative was hand-rolling a context in the scenario, which
+   duplicates the init script, the console capture and the name plumbing
+   enterWorld needs (and that duplicate is how mp-desktopbox first failed:
+   page.fill got an undefined name). */
+export async function newPlayer(browser, { name, wsPort, webPort, guest = false, viewport }) {
+  const ctx = await browser.newContext({ viewport: viewport || { width: 1000, height: 780 } });
   const page = await ctx.newPage();
   const logs = [];
   page.on('console', (m) => { if (m.type() === 'error') logs.push(`console ${m.text().slice(0, 200)}`); });
