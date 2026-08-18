@@ -140,6 +140,57 @@ export function unequipLegsDirect() {
   syncArmorChange(R, { legs: true });
 }
 
+/* ═══ v2.3.1762: PUTTING A STAT PIECE ON, FROM ONE PLACE ═══
+   Owner: "Unequipping the copper torso plate armor doesn't remove it from the
+   equipped status on character chest piece and also still keeps the mitigation
+   percentage of wearing the plate active."
+
+   The loadout picker's row was toggling the COSMETIC layer only — it pushed a
+   {slot, gearId} entry into gearStash and called setEquip(slot,'none').  Since
+   v2.3.1703 that layer is DERIVED from the stat piece, so the row took the art
+   off while the piece stayed worn: the worker kept mitigating, the cell kept
+   reading equipped (it counts R.armor), and the next armour echo put the art
+   straight back.
+
+   The equip half lived as a closure inside ItemDetailPopup, bound to the card's
+   own target, so the picker could not reuse it.  Both halves live here now and
+   both callers share them — the alternative is a second copy of "wear a piece"
+   that drifts from this one the first time either is touched. */
+export function equipArmorFromStash(piece) {
+  const S = getState();
+  if (!S || !S.rpg || !piece) return false;
+  const R = S.rpg;
+  if (!R.armorStash) R.armorStash = [];
+  const idx = R.armorStash.indexOf(piece);
+  if (idx >= 0) R.armorStash.splice(idx, 1);
+  if (R.armor) R.armorStash.push(R.armor);
+  R.armor = piece;
+  recalcDerived(R);
+  R.hp = Math.min(R.maxHp, R.hp);  /* cap only, no delta-heal */
+  syncArmorLayers(R);
+  persist(R);
+  syncArmorChange(R);
+  return true;
+}
+
+export function equipLegsFromStash(piece) {
+  const S = getState();
+  if (!S || !S.rpg || !piece) return false;
+  const R = S.rpg;
+  if (!R.legsStash) R.legsStash = [];
+  const idx = R.legsStash.indexOf(piece);
+  if (idx >= 0) R.legsStash.splice(idx, 1);
+  if (R.legsArmor) R.legsStash.push(R.legsArmor);
+  R.legsArmor = piece;
+  recalcDerived(R);
+  R.hp = Math.min(R.maxHp, R.hp);
+  syncArmorLayers(R);
+  persist(R);
+  /* `legs: true` or the worker never learns and the next echo takes it off. */
+  syncArmorChange(R, { legs: true });
+  return true;
+}
+
 export function unequipGearDirect(slot) {
   const S = getState();
   if (!S || !S.rpg) return;

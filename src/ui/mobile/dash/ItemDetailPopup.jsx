@@ -13,7 +13,7 @@ import { thumbFor, iconFor, classify } from './InventoryPanel.jsx';
 import { firemakingBus } from '../firemakingBus.js';
 import { eatBus } from '../eatBus.js';
 import { GEAR_CATALOG, getEquip, setEquip, syncArmorLayers } from '../../../rendering/gearCatalog.js';
-import { unequipWeaponSlot, unequipShieldDirect, unequipArmorDirect, unequipLegsDirect, unequipGearDirect, syncArmorChange } from './equipActions.js'; /* v2.3.1330: shared unequip cores; v2.3.1703 adds the legs twin */
+import { unequipWeaponSlot, unequipShieldDirect, unequipArmorDirect, unequipLegsDirect, unequipGearDirect, syncArmorChange, equipArmorFromStash, equipLegsFromStash } from './equipActions.js'; /* v2.3.1330: shared unequip cores; v2.3.1703 adds the legs twin */
 import { setShirt } from '../../../rendering/traits/shirtCatalog.js';
 import { playVw } from '../playViewport.js';
 import {
@@ -572,6 +572,35 @@ export const ItemDetailPopup = () => {
         key: slot + gearId + (on ? 'E' : 's' + (stashObj ? R2.gearStash.indexOf(stashObj) : 'c')),
         name: gearName(slot, gearId), sub, iconSrc: gearThumb(gearId), on,
         toggle: () => {
+          /* ═══ v2.3.1762: THIS ROW MOVES THE REAL PIECE ═══
+             Owner: "Unequipping the copper torso plate armor doesn't remove it
+             from the equipped status on character chest piece and also still
+             keeps the mitigation percentage of wearing the plate active."
+
+             It used to move only the COSMETIC mirror below — push a gearStash
+             entry, setEquip(slot,'none') — which was correct when the layer was
+             its own wardrobe.  Since v2.3.1703 the layer is DERIVED from the
+             stat piece, so for chest and legs that made the row a lie: the art
+             came off, R.armor stayed worn (so the cell still read equipped and
+             the worker still mitigated), and the next armour echo re-derived
+             the layer and put the art back.
+             Chest and legs therefore route to the stat flows, which move the
+             field, tell the worker, and let syncArmorLayers re-derive the art.
+             Everything else — the shirt, shoulders, and a legacy cosmetic-only
+             save with no stat piece — keeps the mirror path underneath. */
+          const statSlot = slot === 'chest' || slot === 'legs';
+          const wornStat = slot === 'chest' ? R2.armor : R2.legsArmor;
+          const bag = slot === 'chest' ? (R2.armorStash || []) : (R2.legsStash || []);
+          if (statSlot && on && wornStat) {
+            if (slot === 'chest') unequipArmorDirect(); else unequipLegsDirect();
+            refresh();
+            return;
+          }
+          if (statSlot && !on && !wornStat && bag.length) {
+            if (slot === 'chest') equipArmorFromStash(bag[0]); else equipLegsFromStash(bag[0]);
+            refresh();
+            return;
+          }
           if (on) {
             R2.gearStash.push({ slot, gearId, name: gearName(slot, gearId) });
             setEquip(slot, 'none');
@@ -1023,20 +1052,11 @@ export const ItemDetailPopup = () => {
     unequipArmorDirect();
     itemDetailBus.close();
   };
+  /* v2.3.1762: the body of this moved to equipActions (equipArmorFromStash) so
+     the loadout picker's row can run the SAME code — see the note there. */
   const onEquipStashArmor = () => {
-    const S = getState();
-    if (!S || !S.rpg || !target.armor) return;
-    const R = S.rpg;
-    if (!R.armorStash) R.armorStash = [];
-    const idx = R.armorStash.indexOf(target.armor);
-    if (idx >= 0) R.armorStash.splice(idx, 1);
-    if (R.armor) R.armorStash.push(R.armor);
-    R.armor = target.armor;
-    recalcDerived(R);
-    R.hp = Math.min(R.maxHp, R.hp);  // cap only, no delta-heal
-    syncArmorLayers(R); /* v2.3.1703: and it shows on the character */
-    persist(R);
-    syncArmorChange(R);
+    if (!target.armor) return;
+    equipArmorFromStash(target.armor);
     itemDetailBus.close();
   };
   /* v2.3.1701: the LEGS equip.  R.legsArmor is the field the LEGS card
@@ -1046,22 +1066,11 @@ export const ItemDetailPopup = () => {
      mean anything.  syncArmorChange carries it to the worker with
      `legs: true`; without that push ps.legsArmor stays null and the next
      full player_state echo takes the piece straight back off. */
+  /* v2.3.1762: body moved to equipActions (equipLegsFromStash), shared with the
+     loadout picker's row. */
   const onEquipStashLegs = () => {
-    const S = getState();
-    if (!S || !S.rpg || !target.armor) return;
-    const R = S.rpg;
-    if (!R.legsStash) R.legsStash = [];
-    const idx = R.legsStash.indexOf(target.armor);
-    if (idx >= 0) R.legsStash.splice(idx, 1);
-    if (R.legsArmor) R.legsStash.push(R.legsArmor);
-    R.legsArmor = target.armor;
-    recalcDerived(R);
-    R.hp = Math.min(R.maxHp, R.hp);  // cap only, no delta-heal (v2.3.236)
-    /* v2.3.1703 (owner: "when you equip iron greaves it doesn't show on your
-       character"): the greaves ARE the layer now — see gearCatalog. */
-    syncArmorLayers(R);
-    persist(R);
-    syncArmorChange(R, { legs: true });
+    if (!target.armor) return;
+    equipLegsFromStash(target.armor);
     itemDetailBus.close();
   };
   /* v2.3.685: worn gear (rendered steel chest/legs) unequips into

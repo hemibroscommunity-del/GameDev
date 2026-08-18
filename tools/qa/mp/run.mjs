@@ -58,6 +58,7 @@ const SCENARIOS = {
   remoteanim: () => import('./mp-remoteanim.mjs'), /* v2.3.1749: what the other player sees you doing */
   gearown: () => import('./mp-gearown.mjs'), /* v2.3.1750: armour you have not earned is not offered */
   pine: () => import('./mp-pine.mjs'), /* v2.3.1763: the first wood tier */
+  unequip: () => import('./mp-unequip.mjs'), /* v2.3.1762: taking armour off */
   material: () => import('./mp-material.mjs'), /* v2.3.1757: one art set, many metals */
   viewport: () => import('./mp-viewport.mjs'), /* v2.3.1740: the game fills the phone */ /* v2.3.1734: element_burst survives the shim; the special costs the flat 25 */
 };
