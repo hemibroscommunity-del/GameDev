@@ -465,6 +465,15 @@ export function QuestPanel(props) {
       xp: _xpAmt, xpCat: xpCat, setXpCat: setXpCat,
     }),
     /*#__PURE__*/React.createElement("button", {
+    /* v2.3.1765: A STABLE HOOK, BECAUSE THE LABEL IS NOT ONE.
+       Renaming this button from "Turn In Quest" to "Redeem Reward" in
+       v2.3.1764 broke three QA scenarios at once — each clicked it by the word
+       "Turn In", each swallowed the miss with .catch(), and the questline run
+       then failed eight quests downstream with "the WORKER marked it turned
+       in {tut_1: active}", which points at the server and not at a button
+       caption.  The label is owner-facing copy and will be reworded again;
+       this class is the contract the harnesses hold. */
+    className: 'bt-quest-turnin',
     'aria-disabled': _needsXpChoice && !xpCat,
     style: {
       /* v2.3.1232: brass primary (only one button renders per status) */
