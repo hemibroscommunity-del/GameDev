@@ -296,8 +296,20 @@ export function updateMonsterCombat(S, deps) {
                 m.renderX = m.x;
                 m.renderY = m.y;
               } else if (mInterpDist > 0.05) {
-                m.renderX += mInterpDx * 0.25;
-                m.renderY += mInterpDy * 0.25;
+                /* v2.3.1771: 25% OF THE GAP PER FRAME IS A RATE, NOT A SPEED.
+                   The comment above reasons entirely in frames at 60fps, and
+                   that is the only screen it is true on.  On a 144Hz monitor
+                   the same line closes the gap 2.4x faster and lands the
+                   monster ON the server position every frame — which is
+                   exactly the 1-frame-of-motion / 3-frames-of-standstill
+                   stutter this smoothing was added to remove, since the
+                   server only bumps the rounded integer x every ~44ms.  On a
+                   phone mid-dip it converges too slowly and monsters trail.
+                   pow() makes "25% per 60Hz frame" mean the same amount of
+                   catch-up per SECOND on every screen. */
+                var _mLerp = 1 - Math.pow(0.75, S._dtScale || 1);
+                m.renderX += mInterpDx * _mLerp;
+                m.renderY += mInterpDy * _mLerp;
               }
               return; /* skip all local AI below */
             }
@@ -313,8 +325,14 @@ export function updateMonsterCombat(S, deps) {
                stamp set by the melee + arrow hit paths. */
             if (m._kbUntil && Date.now() < m._kbUntil) return;
 
-            /* Status-based movement modifiers */
-            var moveMult = 1.0;
+            /* Status-based movement modifiers.
+               v2.3.1771: the base is the frame's dt, not 1 — every m.x/m.y
+               step below multiplies by moveMult, so this one line makes
+               client-local monster AI (the zones the worker does not
+               populate, where _serverMonsters is false) chase at a speed
+               instead of at a frame rate.  freeze/root still assign 0
+               outright, so the `moveMult > 0` gate below is unchanged. */
+            var moveMult = S._dtScale || 1;
             if (m.statuses.freeze) moveMult = 0; /* frozen = can't move */
             if (m.statuses.root) moveMult = 0; /* rooted = can't move */
             if (m.statuses.slow) moveMult *= 0.4; /* slowed */
@@ -420,7 +438,7 @@ export function updateMonsterCombat(S, deps) {
                   m.y += chDy / chDist * m.spd * moveMult * 0.7;
                 }
                 /* Slight side-to-side wobble */
-                m.x += Math.sin(Date.now() / 500 + m.spawnX) * 0.3;
+                m.x += Math.sin(Date.now() / 500 + m.spawnX) * 0.3 * (S._dtScale || 1); /* v2.3.1771: sway drifts per second, not per frame */
               } else if (arch === 'swarm') {
                 /* Swarm: rush directly at player, fast, erratic zigzag */
                 if (chDist > 12) {
