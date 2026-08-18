@@ -14,7 +14,7 @@
    the same src/debug/ target from this module as it did from src/ui/.
    S is stateRef.current. */
 import { perfTracker } from '@/debug/perfTracker.js';
-import { WORLD_ZOOM } from '@/data/constants.js';
+import { worldViewport } from '@/game/worldViewport.js'; /* v2.3.1768b */
 import { checkQuestComplete } from './questComplete.js'; /* v2.3.1675 */
 
 export function renderFrame(S, deps) {
@@ -34,8 +34,11 @@ export function renderFrame(S, deps) {
           /* v2.3.1090: enlarge the logical viewport by WORLD_ZOOM so the
              world renders zoomed OUT (scale = cssW/viewW = 1/WORLD_ZOOM).
              Must match the camera-centering W/H in BroTown.jsx. */
-          var W = (canvas.width / (window.devicePixelRatio || 1)) * WORLD_ZOOM;
-          var H = (canvas.height / (window.devicePixelRatio || 1)) * WORLD_ZOOM;
+          /* v2.3.1768b: same worldViewport() the camera reads, so "must match
+             the camera-centering W/H" is guaranteed instead of hoped for. */
+          var _wv = worldViewport(canvas);
+          var W = _wv.W;
+          var H = _wv.H;
           try {
             pixiRef.current.update(S, W, H, nfts);
             S.__pixiErrStreak = 0;

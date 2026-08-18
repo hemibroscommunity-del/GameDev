@@ -1789,9 +1789,7 @@ body:has(.bt-inspect) .bt-kb-chip{display:none}
        follows for free because it sizes from playVw(), not from the window.
        The floor drops with it: 600 would have overridden 25% at every width
        under 2400 and quietly cancelled the change. */
-    width:25%;
     min-width:380px;
-    max-width:100%;
     /* ═══ v2.3.1768: CAP THE HEIGHT, NOT JUST THE WIDTH ═══
        Owner: "the desktop version was COMPLETELY different ... the aspect ratio
        was messed up, the view showed way more of the world all at once."
@@ -1810,8 +1808,22 @@ body:has(.bt-inspect) .bt-kb-chip{display:none}
        the viewport this file's sheet budgets are written against.  max-height
        keeps it inside short windows — a 1200x700 window gets a shorter shell,
        not a clipped one. */
+    /* v2.3.1768b: HEIGHT-DRIVEN, so the game fills the monitor instead of
+       sitting in a 420px column.  Owner: "can the Mobile view just be blown up
+       proportionally to fit the desktop view ... it would need black bars on
+       the sides."  Height leads, width follows from the aspect, and the bars
+       are what is left over — which is the black-bars shape asked for.
+       This only works because worldViewport() caps the world at the same time:
+       a bigger box at the old fixed zoom would simply show more world again
+       and undo the fix above it.  Together they are "blown up" rather than
+       "zoomed out".
+       max-width:100% keeps a short, narrow window honest — the shell shrinks
+       to fit rather than overflowing sideways, which is the failure v2.3.1715's
+       min-width note warns about. */
     aspect-ratio:390 / 715;
-    height:auto;
+    height:100%;
+    width:auto;
+    max-width:100%;
     max-height:100%;
     margin:0 auto;
     position:relative;
