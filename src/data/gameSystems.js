@@ -342,8 +342,25 @@ export function canEquipItem(rpg, item, slotType) {
   /* v2.3.1661 (prog3): tables carry statReq = tierIndex × 10, and the
      rebuild's requirement is tierIndex × 5 — statReq / 2 against the
      trained level (weapons/amulet) or defense points (armor/shield). */
+  /* ═══ v2.3.1765: THE LADDER STARTS AT THE TIER THE GAME HANDS YOU ═══
+     Owner, on the auto-unequip report: "Copper counts as rung zero."
+     BLACKSMITH_TIERS still opens with the vestigial `wood` rung, so copper —
+     the first metal weapon since v2.3.1760, and the sword tut_1 hands you in
+     the first five minutes — carried statReq 10 and demanded trained sword
+     level 5 from a level-1 character.  Measuring from the first tier the game
+     actually starts you on restores the ladder's original shape: copper is
+     rung 0 as iron used to be, and every rung above keeps its five-level step.
+     WOODWORKING needs no shift of its own — v2.3.1763 already put pine first,
+     so its base is 0 and this subtraction is a no-op there — but it is written
+     per-table anyway so the two cannot drift if either gains a rung below.
+     NOT applied to amulets: `tier` is replaced by an AMULET_TIERS entry below
+     this point, a different table with its own scale.
+     Server mirror: _prog3EquipOk in server/src/gear.js reaches the same
+     numbers by tier INDEX rather than statReq — pinned by a test. */
+  var _baseTier = isWood ? WOODWORKING_TIERS.pine : BLACKSMITH_TIERS.copper;
+  var _baseReq = (slotType === 'amulet' || !_baseTier) ? 0 : (_baseTier.statReq || 0);
   if (prog3Live(rpg)) {
-    var p3req = Math.ceil((tier.statReq || 0) / 2);
+    var p3req = Math.max(0, Math.ceil(((tier.statReq || 0) - _baseReq) / 2));
     if (slotType === 'armor' || slotType === 'shield') return prog3Pts(rpg, 'def') >= p3req;
     if (slotType === 'amulet') return prog3SkillLevel(rpg, 'staff') >= p3req;
     var p3cat = item.type === 'bow' ? 'bow' : item.type === 'staff' ? 'staff' : 'sword';
