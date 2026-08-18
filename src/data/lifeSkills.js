@@ -147,8 +147,9 @@ export function createGatherNode(zoneId, depth, x, y, nodeType, forcedTierLvl) {
   const flavoredSpot = flavorSpotName(baseSpot, elem, nodeType);
 
   /* v2.3.1435 (owner): life-skill XP rate x5. Server mirror:
-     gathering.js _harvestXpForTier — keep in lockstep. */
-  const xp = Math.ceil((tier.lvl * 1.5 + 5) * 5);
+     gathering.js _harvestXpForTier — keep in lockstep.
+     v2.3.1765 (owner: "Lifeskills xp is far too slow"): x5 again -> 25x. */
+  const xp = Math.ceil((tier.lvl * 1.5 + 5) * 25);
   const respawnTime = 120000; /* 2 minutes after harvest the node revives in place */
   return {
     x, y, zoneId, depth,

@@ -222,8 +222,12 @@ export const gatheringMethods = {
   // formula in createGatherNode (lifeSkills.js).
   _harvestXpForTier(tierLvl, accuracy) {
     /* v2.3.1435 (owner): life-skill XP rate x5.  Client mirror:
-       createGatherNode in src/data/lifeSkills.js — keep in lockstep. */
-    const baseXp = Math.ceil((((tierLvl || 1) * 1.5) + 5) * 5);
+       createGatherNode in src/data/lifeSkills.js — keep in lockstep.
+       v2.3.1765 (owner: "Lifeskills xp is far too slow.  I think you should
+       increase it by about 5x"): x5 again, so the rate is 25x the original.
+       The LEVEL CURVE is untouched — this multiplies what a swing pays, not
+       what a level costs, which is the knob the owner asked for. */
+    const baseXp = Math.ceil((((tierLvl || 1) * 1.5) + 5) * 25);
     return Math.ceil(baseXp * this._harvestXpMult(accuracy));
   },
 
@@ -420,21 +424,44 @@ export const gatheringMethods = {
    *  That is worth strictly less than walking away, so it is not worth more
    *  machinery.
    *
-   *  DELIBERATELY NOT COVERED: cooking and firemaking.  Both set `ps.ex`
-   *  ('cook'/'fire') but neither has a server-known node, so there is no anchor
-   *  to bind a shield to and the record would have to be minted from an
-   *  unverifiable client claim.  The owner's report is about resource
-   *  extraction; if campfire cooking needs the same treatment later, the honest
-   *  way is to make the campfire a server object first. */
+   *  v2.3.1765: COOKING AND FIREMAKING ARE NOW COVERED TOO.
+   *  Owner: "snowmen were still attacking me (attacks from enemies should stop
+   *  during cooking and firemaking too)."  This comment used to rule both out
+   *  because neither has a server-known node to anchor on, and said the honest
+   *  fix was to make the campfire a server object first.  That set the bar in
+   *  the wrong place.  The node buys ONE thing — proof you are standing
+   *  somewhere specific — and the worst case it is guarding against is a liar
+   *  who stands perfectly still and cannot attack, which is worth less than
+   *  walking away whether or not there is a tree next to him.  Making the
+   *  campfire durable server state to unlock a shield that already tolerates
+   *  that outcome would be a lot of storage for no security.
+   *  So the cook/fire branch below keeps the bounds that do the real work — a
+   *  ceiling (COOK_SHIELD_MS), an anchor on WHERE THE ACTIVITY STARTED
+   *  (ps._exX/_exY, stamped server-side in movement.js from the validated
+   *  position, not from anything the message claims), the live `ex` signal,
+   *  the zone, death, and _endExtraction on any swing — and drops only the
+   *  node lookup, which cook and fire have nothing to look up. */
   _extractionShielded(playerId, now) {
-    const e = this.extractions[playerId];
-    if (!e) return false;
     const t = now || Date.now();
-    if (t - e.startedAt >= this.EXTRACT_SHIELD_MS) return false;
     const ps = this.playerState[playerId];
     if (!ps || ps.dead || ps.dying || ps.disconnected) return false;
-    if (ps.z !== e.zone) return false;
     if (!ps.ex) return false;
+    /* v2.3.1765: cooking and firemaking take the node-free branch.  Checked
+       BEFORE the extraction record, because a player who taps a tree and then
+       walks off to cook still has a stale record sitting in this.extractions
+       (it is swept lazily, on the 10-minute timeout) and must be judged on
+       what they are doing NOW. */
+    if (ps.ex === 'cook' || ps.ex === 'fire') {
+      if (!ps._exAt) return false;
+      if (t - ps._exAt >= this.COOK_SHIELD_MS) return false;
+      const cdx = (ps.x || 0) - (ps._exX || 0);
+      const cdy = (ps.y || 0) - (ps._exY || 0);
+      return cdx * cdx + cdy * cdy <= this.COOK_SHIELD_RANGE * this.COOK_SHIELD_RANGE;
+    }
+    const e = this.extractions[playerId];
+    if (!e) return false;
+    if (t - e.startedAt >= this.EXTRACT_SHIELD_MS) return false;
+    if (ps.z !== e.zone) return false;
     /* The node has to still be there.  Cheap linear scan: node lists are a
        handful of entries per zone and this runs once per player per tick. */
     const list = this.nodes[e.zone];
@@ -460,7 +487,15 @@ export const gatheringMethods = {
    *  Deleting the record also correctly restores the timing anticheat, since
    *  the next strike then has no window to be validated against. */
   _endExtraction(playerId) {
-    if (playerId && this.extractions[playerId]) delete this.extractions[playerId];
+    if (!playerId) return;
+    if (this.extractions[playerId]) delete this.extractions[playerId];
+    /* v2.3.1765: the cook/fire branch of _extractionShielded reads ps._exAt,
+       not this.extractions, so clearing the record alone would leave a swinging
+       cook still shielded — the exact hole this method exists to close, just on
+       the new path.  Zeroing the stamp is enough: only a fresh null->active
+       edge in movement.js re-arms it. */
+    const ps = this.playerState[playerId];
+    if (ps) ps._exAt = 0;
   },
 
   /** Does this player hold the tool for a gathering skill?  True for any skill

@@ -1547,6 +1547,101 @@ for (const m of meadowMonsters) m._wanderPausedUntil = Date.now() + 600000;
       /* And once it has ended, the monster comes straight back. */
       check('...after which the monster re-acquires normally', throwsAt() >= 1,
         room.eventBuffer.map((e) => e.type));
+
+      /* ── C. v2.3.1765: COOKING AND FIREMAKING GET THE SAME PEACE ──
+       * Owner: "snowmen were still attacking me (attacks from enemies should
+       * stop during cooking and firemaking too)."
+       * Neither activity has a server node, so the branch that serves them is
+       * a genuinely different code path — it anchors on a server-stamped
+       * start time and start position instead of on room.nodes.  Which means
+       * section B above proves nothing about it, and every end condition has
+       * to be re-established here rather than inherited. */
+      delete room.extractions['pa'];
+      smE.alive = true; smE.hp = smE.maxHp || 50;
+      psE.x = 2000; psE.y = 2000; psE.z = 'frost';
+      psE.dying = false; psE.dead = false;
+      psE.ex = null; psE._exAt = 0;
+
+      /* C1. THE WIRING.  The stamp the whole branch rests on is written by
+         _handleMove, not by the shield — so drive a real `move` packet rather
+         than hand-setting the field a test could then pass against a server
+         that never writes it. */
+      await room.webSocketMessage(wsA, JSON.stringify({
+        type: 'move', x: 2000, y: 2000, z: 'frost', ex: 'cook' }));
+      check('a cook broadcast stamps when and where it started',
+        psE.ex === 'cook' && psE._exAt > 0 && psE._exX === 2000 && psE._exY === 2000,
+        { ex: psE.ex, at: psE._exAt, x: psE._exX, y: psE._exY });
+
+      /* C2. it engages — and with NO extraction record in play, which is the
+         whole point: cooking never sends extraction_start. */
+      check('a cooking player is not thrown at, with no gather node anywhere',
+        !room.extractions['pa'] && throwsAt() === 0, room.eventBuffer.map((e) => e.type));
+      check('...and the monster does not target them either', smE.targetId == null, smE.targetId);
+
+      /* C3. the 500 ms heartbeat must NOT slide the ceiling forward.  `ex` is
+         re-sent while the activity holds; if each repeat re-stamped, the
+         window would never close for anybody and C4 would be unreachable in
+         production while still passing here. */
+      psE._exAt = Date.now() - (room.COOK_SHIELD_MS - 800);
+      const _heldAt = psE._exAt;
+      await room.webSocketMessage(wsA, JSON.stringify({
+        type: 'move', x: 2000, y: 2000, z: 'frost', ex: 'cook' }));
+      check('the heartbeat does not re-stamp — only the null->active edge does',
+        psE._exAt === _heldAt, { was: _heldAt, now: psE._exAt });
+
+      /* C4. the ceiling. */
+      psE._exAt = Date.now() - (room.COOK_SHIELD_MS + 1000);
+      check('the cook shield has a ceiling too', throwsAt() >= 1,
+        room.eventBuffer.map((e) => e.type));
+
+      /* C5. leaving the campfire.  Anchored on where the activity STARTED,
+         since there is no node to measure from. */
+      psE._exAt = Date.now();
+      psE._exX = 2000; psE._exY = 2000;
+      psE.x = 2000 + room.COOK_SHIELD_RANGE + 50;
+      check('carrying a cook shield away from the fire ends it', throwsAt() >= 1, { x: psE.x });
+      psE.x = 2000;
+
+      /* C6. the live signal — the fast one, same as B4. */
+      psE._exAt = Date.now(); psE.ex = null;
+      check('dropping the cook code ends it immediately', throwsAt() >= 1);
+
+      /* C7. FIREMAKING, not just cooking — the owner named both, and 'fire'
+         is a separate code the branch has to accept. */
+      psE.ex = null; psE._exAt = 0;
+      await room.webSocketMessage(wsA, JSON.stringify({
+        type: 'move', x: 2000, y: 2000, z: 'frost', ex: 'fire' }));
+      check('lighting a fire is shielded as well', psE.ex === 'fire' && throwsAt() === 0,
+        { ex: psE.ex, events: room.eventBuffer.map((e) => e.type) });
+
+      /* C8. a stale gather record must not rescue a LAPSED cook.  The branch
+         is deliberately taken before the record is consulted: tap a tree,
+         wander off, cook — the record survives in memory for ten minutes, and
+         reading it first would silently hand the cook the 120 s node ceiling
+         it is not entitled to. */
+      startRec();
+      psE.ex = 'cook';
+      psE._exAt = Date.now() - (room.COOK_SHIELD_MS + 1000);
+      psE._exX = 2000; psE._exY = 2000;
+      check('a stale gather record does not extend a lapsed cook shield',
+        room._extractionShielded('pa') === false);
+      delete room.extractions['pa'];
+
+      /* C9. death. */
+      psE._exAt = Date.now(); psE.dying = true;
+      check('dying ends the cook shield', room._extractionShielded('pa') === false);
+      psE.dying = false;
+
+      /* C10. swinging.  The client refuses to attack mid-extraction but does
+         NOT refuse during the 700 ms fire, and a modified one refuses nothing
+         — so _endExtraction has to clear the stamp, not just the record it
+         used to own. */
+      psE.ex = 'cook'; psE._exAt = Date.now(); psE._exX = 2000; psE._exY = 2000;
+      check('the cook shield is up before the swing', room._extractionShielded('pa') === true);
+      room._handleMonsterDamage({ id: 'pa' }, { monsterId: smE.id, zone: 'frost', slot: 'melee' });
+      check('attacking ends the cook shield — no free tanking at a campfire',
+        room._extractionShielded('pa') === false, { exAt: psE._exAt });
+      psE.ex = null; psE._exAt = 0;
     }
     delete room.extractions['pa'];
     delete room.nodes.frost;

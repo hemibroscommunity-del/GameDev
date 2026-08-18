@@ -866,8 +866,18 @@ export function getFishHealAmount(fishKey) {
   var tier = FISHING_TIERS.find(function (t) {
     return name.includes(t.name.toLowerCase().replace(/\s+/g, '_'));
   });
-  if (!tier) return 20;
-  return Math.ceil(15 + tier.lvl * 8);
+  /* v2.3.1765 (owner: "Fish heal needs to be closer to 100").  The base was
+     15, so the first cooked fish healed 23 against a ~106 HP character — a
+     bite, not a meal, which is why nobody ate.  The base is lifted so tier one
+     lands on exactly 100; the PER-TIER slope (+8) is untouched, so the ladder
+     above it keeps its shape.
+     The unmapped default moves with it (it was 20, and it is the branch every
+     fish key the table misses falls into — silently, which is how a heal
+     nobody wanted outlived several passes).  Server mirror: cooking.js
+     _fishHealAmount, which is authoritative; this copy only drives the
+     client's own prediction. */
+  if (!tier) return 100;
+  return Math.ceil(92 + tier.lvl * 8);
 }
 export function getFishTierLevel(fishKey) {
   var name = fishKey.replace(/^fish_/, '').toLowerCase();
