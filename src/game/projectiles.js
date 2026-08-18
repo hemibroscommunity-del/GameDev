@@ -161,8 +161,13 @@ export function updateArrows(S, deps) {
                `planted` early-return above then holds it for ~2 s.  No hits while
                falling. */
             if (a.planting) {
-              a._fallVy = (a._fallVy || 0) + 0.9;
-              a._plantY = (a._plantY != null ? a._plantY : a._plantStartY) + a._fallVy;
+              /* v2.3.1770: gravity is an ACCELERATION — the velocity gains
+                 0.9 per 60fps-frame and the position gains that velocity, so
+                 both terms take the scale or a spent arrow falls at the
+                 refresh rate too. */
+              var _fdt = S._dtScale || 1;
+              a._fallVy = (a._fallVy || 0) + 0.9 * _fdt;
+              a._plantY = (a._plantY != null ? a._plantY : a._plantStartY) + a._fallVy * _fdt;
               a._renderX = a._plantX;
               a._renderY = a._plantY;
               a.ang = a.ang + (Math.PI / 2 - a.ang) * 0.35;   // rotate to straight-down
@@ -174,8 +179,23 @@ export function updateArrows(S, deps) {
             /* v2.3.1135: Longshot — bow arrows fly faster (same multiplier
                scales the plant threshold below, so speed AND reach grow
                together and flight TIME stays constant). */
-            if (_released) a.dist += a.isStaff ? 5 : 8 * (a._rangeMult || 1);
-            a.life--;
+            /* ═══ v2.3.1770: AN ARROW FLIES AT A SPEED, NOT AT A FRAME RATE ═══
+               The same defect v2.3.1769 fixed for the player, in the system it
+               deliberately left alone.  Both terms below were per FRAME, and
+               because BOTH were, total range came out fps-independent by
+               accident — 8px x N frames of life is the same distance on any
+               screen.  What was NOT independent is how long that takes: on a
+               144Hz monitor the arrow covered its range in 40% of the time and
+               vanished 2.4x sooner, so a shot that led a moving target on a
+               phone missed in front of it on a desktop.
+               Scaling both keeps the accidental range invariance (the two
+               scale together) and makes the flight TIME the same everywhere,
+               which is the half that was broken.
+               `life` becomes fractional — every reader compares or divides
+               (`life <= 0`, `life / 20` for the fade), none index by it. */
+            var _pdt = S._dtScale || 1;
+            if (_released) a.dist += (a.isStaff ? 5 : 8 * (a._rangeMult || 1)) * _pdt;
+            a.life -= _pdt;
             if (S._aiming || S.lockedTarget && S.lockedTarget.ref) a.ang = curAim;
             a._renderX = P.x + _ox + Math.cos(a.ang) * a.dist;
             a._renderY = P.y + _oy + Math.sin(a.ang) * a.dist;
@@ -855,11 +875,20 @@ export function updateSlimeProjectiles(S) {
         if (S.slimeProjectiles && S.slimeProjectiles.length > 0) {
           var _R6P = S.rpg || {};
           var _pInvuln = Date.now() < (S.respawnTimer || 0);
+          var _sdt = S._dtScale || 1;
           S.slimeProjectiles = S.slimeProjectiles.filter(function (proj) {
-            proj.life--;
+            /* v2.3.1770: same frame-rate term as the arrow above.  A monster's
+               shot that flies faster on a faster screen gives the player less
+               time to dodge it, which is the incoming half of the same unfair
+               difference — worth fixing even though I could not confirm this
+               path still runs (monsters are server-driven since the world
+               moved to the worker; this is the local fodder-slime sim, and
+               CLAUDE.md's note about client-local logic being a legacy remnant
+               applies).  Two lines, correct either way. */
+            proj.life -= _sdt;
             if (proj.life <= 0) return false;
-            proj.x += Math.cos(proj.ang) * proj.speed;
-            proj.y += Math.sin(proj.ang) * proj.speed;
+            proj.x += Math.cos(proj.ang) * proj.speed * _sdt;
+            proj.y += Math.sin(proj.ang) * proj.speed * _sdt;
             var pdx = P.x - proj.x, pdy = P.y - proj.y;
             if (pdx * pdx + pdy * pdy > 16 * 16) return true;
             /* v2.3.1640: a server-thrown projectile (the snowman's
