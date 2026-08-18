@@ -21,7 +21,6 @@ import * as H from './harness.mjs';
 const WS = await H.freePort(), WEB = await H.freePort();
 
 const SCENARIOS = {
-  desktopbox: () => import('./mp-desktopbox.mjs'), /* v2.3.1768: desktop is a scaled phone */
   solorate: () => import('./mp-solorate.mjs'),
   statpeek: () => import('./mp-statpeek.mjs'), /* v2.3.1766: the allocation tooltip tells the truth */
   spawnfx: () => import('./mp-spawnfx.mjs'), /* v2.3.1765: the respawn silhouette */
@@ -65,6 +64,7 @@ const SCENARIOS = {
   unequip: () => import('./mp-unequip.mjs'), /* v2.3.1762: taking armour off */
   layer: () => import('./mp-layer.mjs'), /* v2.3.1764: hair order, swing metal, redeem button */
   material: () => import('./mp-material.mjs'), /* v2.3.1757: one art set, many metals */
+  desktopbox: () => import('./mp-desktopbox.mjs'), /* v2.3.1768: desktop is the same view, blown up — sits by `viewport` (its phone-side counterpart) rather than at the top of the list, so it does not collide with the frame-rate PRs' registry lines */
   viewport: () => import('./mp-viewport.mjs'), /* v2.3.1740: the game fills the phone */ /* v2.3.1734: element_burst survives the shim; the special costs the flat 25 */
 };
 
