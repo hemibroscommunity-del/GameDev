@@ -1,4 +1,5 @@
-import { getActiveWeapon, calcDisplayDmgRange, calcDisplayDps, getArmorPieceDr, getArmorDrPct } from '../../../data/gameSystems.js';
+import { calcDisplayDmgRange, calcDisplayDps, getArmorPieceDr, getArmorDrPct } from '../../../data/gameSystems.js';
+import { displayWeapon } from './statPreview.js'; /* v2.3.1766: one weapon-for-display rule */
 import { gearIdIcon, armorIconFor } from '@/rendering/gearVariants.js'; /* v2.3.1758: one armour art table */
 import { weaponMaterial, metalIconPath } from '@/rendering/traits/materialTints.js'; /* v2.3.1760 */
 import { getShieldStats, getAmuletBonus } from '../../../data/items.js';
@@ -62,7 +63,11 @@ const gearIconSrc = (id) =>
     : gearIdIcon(id) ? `${gearIdIcon(id)}${ITEMS_V}` : null;
 
 export function getEquippedSlots(R) {
-  const wpn = R ? getActiveWeapon(R) : null;
+  /* v2.3.1766: displayWeapon here too, so the weapon CELL and the DPS cell
+     agree.  Using the active-slot weapon for the icon and a fallback weapon
+     for the number would put a DPS figure next to an empty weapon slot, which
+     is a worse answer than either one alone. */
+  const wpn = R ? displayWeapon(R) : null;
   const gearChestId = getEquip('chest');
   const gearShirtId = getEquip('shirt');
   const gearLegsId = getEquip('legs');
@@ -146,7 +151,18 @@ const fmt1 = (n) => {
 };
 
 export function getEquipContribs(R) {
-  const wpn = R ? getActiveWeapon(R) : null;
+  /* v2.3.1766 (owner: "if there's an overall DPS when nothing is active
+     (tapped) on the character equip menu it should show DPS — they'll have a
+     primary active weapon equipped if nothing else").
+     getActiveWeapon returns null when the ACTIVE SLOT is empty, which is the
+     right answer for combat and the wrong one for a readout: a player holding
+     a bow with an empty melee slot saw the DMG and DPS cells fall back to
+     their '—' placeholder, which reads as "you have no damage".  displayWeapon
+     keeps the active slot's weapon when there is one and otherwise speaks for
+     whatever IS worn.  The fallback lives in the display layer on purpose —
+     getActiveWeapon also drives swing sfx and combat, and widening it there
+     would change what the game DOES, not just what it says. */
+  const wpn = R ? displayWeapon(R) : null;
   const range = wpn ? calcDisplayDmgRange(R, wpn) : null;
   const dps = range ? calcDisplayDps(R, wpn) : 0;
   const ss = R && R.shield ? getShieldStats(R.shield) : null;
