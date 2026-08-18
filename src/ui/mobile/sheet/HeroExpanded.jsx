@@ -12,6 +12,7 @@ import {
 } from '../../../data/prog3.js';
 import { VitalBar, VITAL_ICONS } from './VitalBar.jsx'; /* v2.3.1311 */
 import { getEquippedSlots, getEquipContribs, GHOST_SRC } from './equipModel.js'; /* v2.3.1653 */
+import { previewStatPoint, overallDps } from './statPreview.js';                 /* v2.3.1766 */
 import { itemDetailBus } from '../dash/itemDetailBus.js';                        /* v2.3.1653 */
 import { heroSectionBus } from './heroSectionBus.js';                            /* v2.3.1668 */
 import { DASH_GAP, HERO_TAB_H } from './sheetGeometry.js';                      /* v2.3.1653; v2.3.1657 tabs */
@@ -77,7 +78,11 @@ export const HeroExpanded = () => {
      Defaults to whatever you are actually holding, so opening Build
      mid-fight lands on the weapon you were just swinging. */
   const [buildCatState, setBuildCat] = useState(null);
-  const setSection = (s) => { _lastSection = s; setSectionState(s); };
+  /* v2.3.1766: which stat the allocation tooltip is describing, or null for
+     its resting state (the character's overall DPS).  Cleared when the sheet
+     changes section so the strip never describes a stat that is off screen. */
+  const [statPeek, setStatPeek] = useState(null);
+  const setSection = (s) => { _lastSection = s; setStatPeek(null); setSectionState(s); };
   useEffect(() => {
     const id = setInterval(() => force(v => v + 1), 400);
     return () => clearInterval(id);
@@ -512,6 +517,13 @@ export const HeroExpanded = () => {
               The order still groups: offense triplet fills row 1, the four
               body stats follow. */}
           {(() => {
+            /* v2.3.1766: what the tooltip strip below is currently describing.
+               Held on the component (not a ref) so the strip re-renders when
+               it changes; null = resting, which shows overall DPS instead. */
+            const showPreview = (st) => {
+              try { setStatPeek({ key: st.key, atk: !!st.atk, label: st.label, cat: buildCat }); }
+              catch (e) { /* a tooltip must never block a spend */ }
+            };
             const pill = (st) => {
               const pts = st.atk ? prog3AtkPts(R, buildCat, st.key) : prog3Pts(R, st.key);
               const cap = prog3StatCap(R, st.key);
@@ -522,6 +534,11 @@ export const HeroExpanded = () => {
                   aria-label={`${st.label}${st.atk ? ' for ' + buildCat : ''}, ${pts} of ${cap}. ${st.perText} per point.`}
                   aria-disabled={!canSpend}
                   title={`${st.label} — ${st.perText} per point`}
+                  /* v2.3.1766: the tooltip fills on PRESS, before the spend
+                     that rides pointer-up.  A stat you cannot afford is still
+                     previewable — pills go non-spendable at 0 points or at the
+                     cap, and pressing one then is pure inspection. */
+                  onPointerDown={(e) => { e.stopPropagation(); showPreview(st); }}
                   onPointerUp={(e) => {
                     e.stopPropagation();
                     if (!canSpend || !S || !S.channel) return;
@@ -576,11 +593,63 @@ export const HeroExpanded = () => {
                cell of the same `1fr` track, which is the only way "all the
                same size" can be true by construction rather than by two
                layouts happening to agree. */
+            /* ═══ v2.3.1766: WHAT A POINT HERE BUYS ═══
+               Owner: "a tooltip on the stat allocation screen ... include the
+               overall change to crit from baseline and the '+#DPS' changes it
+               effects."
+               A strip rather than a hover tooltip, because the primary
+               platform is iPhone Safari and `title=` never appears on a touch
+               device — the pills have carried one since v2.3.1694 and nobody
+               on a phone has ever seen it.
+               ALWAYS RENDERED, never conditionally, so the grid above cannot
+               jump when the text appears; at rest it carries the overall DPS,
+               which is the other half of what was asked for. */
+            const peekMeta = statPeek
+              ? (statPeek.atk ? PROG3_ATK_META : PROG3_BODY_META).find(m => m.key === statPeek.key)
+              : null;
+            const peek = (statPeek && R)
+              ? previewStatPoint(R, statPeek.key, statPeek.cat || buildCat) : null;
+            const restDps = (!peek && R) ? overallDps(R) : null;
+            const n1 = (v) => (Math.round(v * 10) / 10).toFixed(1);
+            const statTxt = (v) => (peekMeta && peekMeta.pct ? n1(v * 100) : n1(v)) + ((peekMeta && peekMeta.unit) || '');
             return (
+              <>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 4 }}>
                 {PROG3_ATK_META.map(m => pill({ ...m, atk: true }))}
                 {PROG3_BODY_META.map(m => pill({ ...m, atk: false }))}
               </div>
+              <div aria-live="polite" className="bt-stat-peek" style={{
+                marginTop: 5, minHeight: 30, padding: '4px 9px', borderRadius: 8,
+                background: COL.wellSoft, border: `1px solid ${COL.tileBor}`,
+                fontSize: 10.5, lineHeight: 1.3, color: COL.text2,
+                fontVariantNumeric: 'tabular-nums',
+                display: 'flex', flexDirection: 'column', justifyContent: 'center',
+              }}>
+                {peek ? (
+                  <>
+                    <div style={{ color: COL.text, fontWeight: 700 }}>
+                      {(statPeek.label || '').toUpperCase()}
+                      {statPeek.atk ? ' · ' + String(buildCat).toUpperCase() : ''}
+                      {'  '}{statTxt(peek.statNow)} → <span style={{ color: '#59BF91' }}>{statTxt(peek.statAfter)}</span>
+                      {peek.capped ? ' (at cap)' : ''}
+                    </div>
+                    <div>
+                      {typeof peek.dpsDelta !== 'number'
+                        ? 'Equip a weapon to see what this is worth in damage.'
+                        : peek.dpsDelta > 0.049
+                          ? <>DPS {n1(peek.dpsNow)} → <span style={{ color: '#59BF91', fontWeight: 700 }}>{n1(peek.dpsAfter)}</span> {'(+' + n1(peek.dpsDelta) + ')'}</>
+                          : <>DPS {n1(peek.dpsNow)} — this stat does not change damage</>}
+                    </div>
+                  </>
+                ) : (
+                  <div>
+                    {restDps
+                      ? <>Overall <span style={{ color: COL.text, fontWeight: 700 }}>DPS {n1(restDps.dps)}</span> with your {restDps.weaponName}. Press a stat to see what a point buys.</>
+                      : 'Equip a weapon to see your DPS.'}
+                  </div>
+                )}
+              </div>
+              </>
             );
           })()}
         </>

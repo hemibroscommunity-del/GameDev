@@ -83,16 +83,24 @@ export const PROG3 = {
    than no icon at all.  `aspd` borrows the t2 Tempo art (the repo's
    only attack-speed drawing, role 'atkspd'); it is sword-flavoured, so
    swap it the day a type-neutral swing-speed icon exists. */
+/* v2.3.1766: `unit` and `pct` describe how the stat's RUNNING TOTAL reads, for
+   the allocation tooltip (statPreview.js) — `perText` above is a rate, and a
+   rate cannot answer "what will my crit BE".  Declared here, beside the stat's
+   own name, so a new stat states how it displays instead of the tooltip
+   carrying a table of special cases.
+   `pct: true` means the stored value is a fraction to be shown x100. */
 export const PROG3_ATK_META = [
-  { key: 'crit',    label: 'Crit',      perText: '+0.4% crit chance',  iconSrc: '/icons/ui/hero/crit.webp?v=2.3.1694' },
-  { key: 'critDmg', label: 'Crit Dmg',  perText: '+2 damage on crits', iconSrc: '/icons/ui/hero/damage.webp?v=2.3.1694' },
-  { key: 'aspd',    label: 'Atk Speed', perText: '−0.35% swing time',  iconSrc: '/icons/ui/t2/sword-tempo.webp?v=2.3.1694' },
+  { key: 'crit',    label: 'Crit',      perText: '+0.4% crit chance',  pct: true, unit: '%', iconSrc: '/icons/ui/hero/crit.webp?v=2.3.1694' },
+  { key: 'critDmg', label: 'Crit Dmg',  perText: '+2 damage on crits', unit: ' dmg', iconSrc: '/icons/ui/hero/damage.webp?v=2.3.1694' },
+  /* Atk Speed's points SHORTEN the swing, so its total is a reduction — the
+     label below says "faster" rather than printing a negative. */
+  { key: 'aspd',    label: 'Atk Speed', perText: '−0.35% swing time',  pct: true, unit: '% faster', iconSrc: '/icons/ui/t2/sword-tempo.webp?v=2.3.1694' },
 ];
 export const PROG3_BODY_META = [
-  { key: 'def',   label: 'Defense', perText: '−0.4% damage taken', iconSrc: '/icons/ui/hero/defense.webp?v=2.3.1694' },
-  { key: 'hp',    label: 'Max HP',  perText: '+8 max HP',          iconSrc: '/icons/ui/hero/hp.webp?v=2.3.1694' },
-  { key: 'dodge', label: 'Dodge',   perText: '+0.4% dodge',        iconSrc: '/icons/ui/hero/dodge.webp?v=2.3.1694' },
-  { key: 'stam',  label: 'Stamina', perText: '+3 max stamina',     iconSrc: '/icons/ui/hero/stamina.webp?v=2.3.1694' },
+  { key: 'def',   label: 'Defense', perText: '−0.4% damage taken', pct: true, unit: '% less damage', iconSrc: '/icons/ui/hero/defense.webp?v=2.3.1694' },
+  { key: 'hp',    label: 'Max HP',  perText: '+8 max HP',          unit: ' HP', iconSrc: '/icons/ui/hero/hp.webp?v=2.3.1694' },
+  { key: 'dodge', label: 'Dodge',   perText: '+0.4% dodge',        pct: true, unit: '%', iconSrc: '/icons/ui/hero/dodge.webp?v=2.3.1694' },
+  { key: 'stam',  label: 'Stamina', perText: '+3 max stamina',     unit: ' stamina', iconSrc: '/icons/ui/hero/stamina.webp?v=2.3.1694' },
 ];
 
 export const PROG3_SKILL_META = [
