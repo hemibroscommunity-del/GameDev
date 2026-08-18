@@ -30,6 +30,8 @@ import { getShirt } from '../traits/shirtCatalog.js';
 import { getShirtColor, shirtFill } from '../traits/shirtColorCatalog.js';
 import { recolorBodyToCanvas, recolorStandInSkin, DEFAULT_SKIN_TARGET, skinTarget, pantsTarget, shoesTarget, getSkin, getPants, getShoes, onSkinChange, onPantsChange, onShoesChange } from '../playerSkins.js'; /* v2.3.1710: + the skin-only stand-in recolour (the cook) */
 import { getGearFrame } from '../gearSheets.js';
+import { gearTint } from '../gearVariants.js'; /* v2.3.1764: the swing wears the same metal */
+import { materialTint, weaponTint } from '../traits/materialTints.js';
 import { upscaleToFrameHeight } from '../spriteScale.js'; /* v2.3.1112: restore downscaled-on-disk sword stand-in strips to their authored frame height */
 import { cycleMs as jogCycleMs, frameCount as jogFrameCount, resolveDirection } from '../playerSprites.js';
 import { jogWaistRow } from '../jogWaist.js';
@@ -132,6 +134,12 @@ const FIRE_SKIN_OPTS = { maxBR: 0.50, minGR: 0.45, maxGR: 0.80, minBlob: 1800 };
  * moves.  Only _updateFiremaking draws gear on this pose — a peer's remote
  * stand-in has never drawn gear at all (_updateRemoteExtraction) — so this is
  * the single place it has to be applied. */
+/* v2.3.1764: what each stand-in pose's gear sprites were last tinted with —
+   see _tintGearSprite.  Module-level so the probe exists before any pose has
+   played; an empty record is itself the answer to "did anything tint?". */
+const _standInTints = Object.create(null);
+if (typeof window !== 'undefined') window.__btStandInTints = () => Object.assign({}, _standInTints);
+
 const FIRE_GEAR_REG = {
   shirt: {
     scale: 0.85,
@@ -4301,6 +4309,8 @@ export class EffectsRenderer {
     fireLayerPlacer('legs')(this.fireLegsSprite, this._gearStripFrame('legs', getEquip('legs'), 'fire', 'south', FIRE_FW, fi));
     this._placeSwingShirt(this.fireShirtSprite, fireLayerPlacer('shirt'), this._shirtId(), getEquip('chest'), 'fire', 'south', FIRE_FW, fi, getShirtColor(), getShirt());
     fireLayerPlacer('chest')(this.fireChestSprite, this._gearStripFrame('chest', getEquip('chest'), 'fire', 'south', FIRE_FW, fi));
+    this._tintGearSprite(this.fireLegsSprite, getEquip('legs'), 'fireLegs');   /* v2.3.1764 */
+    this._tintGearSprite(this.fireChestSprite, getEquip('chest'), 'fireChest');
     this._placeSkillTraitsOn('fire', sp, fi, 'south', false);
   }
 
@@ -4482,6 +4492,26 @@ export class EffectsRenderer {
      Reads the same gear/<slot>/<item>/<pose>-<dir>.png files as the body gear
      pipeline, but slices by the per-facing frame width (the attack frames aren't
      256).  Driven by getEquip(slot).  Returns null while loading / if missing. */
+  /* ═══ v2.3.1764: EVERY STAND-IN WEARS THE PLAYER'S METAL ═══
+     Owner: "Woodcutting character doesn't show copper legs" / "Cooking doesn't
+     show copper legs" — and the swung sword before them.
+
+     Each stand-in (swing, bowshot, chop, cook, fire) replaces the composed body
+     with its own pre-drawn strips, including its OWN chest/legs gear sprites.
+     The material tint lives on the walking layers in entityRenderer, so none of
+     these ever saw it: the moment you started chopping, your copper turned back
+     into steel.  One helper, called at every place() of a gear strip, so the
+     next pose that gets added has an obvious thing to copy. */
+  _tintGearSprite(spr, item, name) {
+    if (!spr) return;
+    spr.tint = gearTint(item);
+    /* v2.3.1764: QA probe — record what each stand-in was tinted with, keyed by
+       the pose that drew it.  A pose whose strips were never routed through
+       here simply never appears in the record, which is the failure the test is
+       looking for (rather than a green run that proves only what it drew). */
+    if (name) _standInTints[name] = { tint: spr.tint, visible: !!spr.visible };
+  }
+
   _gearStripFrame(slot, item, pose, dir, fw, fi) {
     if (!item || item === 'none') return null;
     const key = slot + '/' + item + '/' + pose + '/' + dir;
@@ -4822,6 +4852,12 @@ export class EffectsRenderer {
       place(set.chest, this._gearStripFrame('chest', eq.chest, gp, cfgKey, cfg.fw, fi));
       const weaponFrames = this._swordWeaponFrames[cfgKey];
       place(set.weapon, weaponFrames && weaponFrames[fi]);
+      /* v2.3.1764: the peer's metals, on the same strips (see the local path).
+         The equip ids and `wpnMat` are already relayed, so this needs no new
+         wire field — it was simply never applied to the swing stand-in. */
+      if (set.legs) set.legs.tint = gearTint(eq.legs);
+      if (set.chest) set.chest.tint = gearTint(eq.chest);
+      if (set.weapon) set.weapon.tint = materialTint(o && o.wpnMat);
       /* v2.3.1047: north swings hold the blade on the far side -> behind body. */
       this._orderSwingWeapon(set.weapon, set.body, set.chest, cfgKey === 'north');
       /* their hair / beard / hat at the swing-frame crown anchor. */
@@ -4966,6 +5002,9 @@ export class EffectsRenderer {
       this._placeSwingShirt(set.shirt, place, oShirt, eq.chest, gp, cfgKey, cfg.fw, fi, o.shirtColor, o.shirt || 'tshirt');
       place(set.legs, _jog ? null : this._gearStripFrame('legs', eq.legs, gp, cfgKey, cfg.fw, fi));
       place(set.chest, this._gearStripFrame('chest', eq.chest, gp, cfgKey, cfg.fw, fi));
+      /* v2.3.1764: the peer's metal on the remote BOWSHOT strips too. */
+      this._tintGearSprite(set.legs, eq.legs, 'remoteBowLegs');
+      this._tintGearSprite(set.chest, eq.chest, 'remoteBowChest');
       const weaponFrames = this._bowWeaponFrames && this._bowWeaponFrames[cfgKey];
       place(set.weapon, weaponFrames && weaponFrames[fi]);
       const looks = {
@@ -5133,6 +5172,27 @@ export class EffectsRenderer {
       place(this.swordChestSprite, chestTex);
       place(this.swordLegsSprite, legsTex);
       place(this.swordWeaponSprite, weaponFrames && weaponFrames[fi]);
+      /* ═══ v2.3.1764: THE SWING WEARS THE SAME METAL ═══
+         Owner: "a swung sword still has the iron showing it needs to be copper
+         color."  The swing is a stand-in animation with its OWN strips — the
+         blade, the chest plate and the greaves are each a separate sprite here
+         — so the tint applied to the held-weapon sprite and the walking gear
+         layers (entityRenderer) never reached any of them.  For the whole
+         quarter-second of a swing the player reverted to steel.
+         Same two tables, so a metal added there covers this too. */
+      /* v2.3.1764: QA probe — the tints the SWING is drawing with. */
+      if (typeof window !== 'undefined' && !window.__btSwingTints) {
+        window.__btSwingTints = () => ({
+          weapon: this.swordWeaponSprite ? this.swordWeaponSprite.tint : null,
+          weaponVisible: !!(this.swordWeaponSprite && this.swordWeaponSprite.visible),
+          chest: this.swordChestSprite ? this.swordChestSprite.tint : null,
+          legs: this.swordLegsSprite ? this.swordLegsSprite.tint : null,
+        });
+      }
+      const _swWpn = S.rpg && S.rpg.weapon;
+      if (this.swordWeaponSprite) this.swordWeaponSprite.tint = weaponTint(_swWpn && _swWpn.type, _swWpn && _swWpn.gearBase);
+      this._tintGearSprite(this.swordChestSprite, getEquip('chest'), 'swingChest');
+      this._tintGearSprite(this.swordLegsSprite, getEquip('legs'), 'swingLegs');
       /* v2.3.955: no helmets -- the head is always bald, so always composite
          the player's hat/beard/hair (the chest piece has the head cut out). */
       this._placeSkillTraitsOn(cfg.crownKey, sp, fi, cfg.traitDir || 'south', mirror);
@@ -5278,6 +5338,8 @@ export class EffectsRenderer {
       this._placeSwingShirt(this.bowShirtSprite, place, this._shirtId(), getEquip('chest'), gp, fmap[0], cfg.fw, fi, getShirtColor(), getShirt());
       place(this.bowChestSprite, this._gearStripFrame('chest', getEquip('chest'), gp, fmap[0], cfg.fw, fi));
       place(this.bowLegsSprite,  _jogLegs ? null : this._gearStripFrame('legs', getEquip('legs'), gp, fmap[0], cfg.fw, fi));
+      this._tintGearSprite(this.bowChestSprite, getEquip('chest'), 'bowChest');  /* v2.3.1764 */
+      this._tintGearSprite(this.bowLegsSprite, getEquip('legs'), 'bowLegs');
       place(this.bowWeaponSprite, weaponFrames && weaponFrames[fi]);
     } else {
       _armored = !!(armorFrames && armorFrames[fi]);
@@ -5488,6 +5550,8 @@ export class EffectsRenderer {
       this._placeSwingShirt(this.chopShirtSprite, placeChopLayer, this._shirtId(), getEquip('chest'), 'chop', 'west', 480, k, getShirtColor(), getShirt());
       placeChopLayer(this.chopLegsSprite,  _chopLegsTex);
       placeChopLayer(this.chopChestSprite, this._gearStripFrame('chest', getEquip('chest'), 'chop', 'west', 480, k));
+      this._tintGearSprite(this.chopLegsSprite, getEquip('legs'), 'chopLegs');   /* v2.3.1764 */
+      this._tintGearSprite(this.chopChestSprite, getEquip('chest'), 'chopChest');
       /* v2.3.847: chop hit sfx on the swing's strike frame (woodcutting had
          none).  Fires once per loop — only on the transition INTO the strike
          frame.  v2.3.848: reuse the melee 'sword-hit3' sample, delayed ~0.2s so
@@ -5627,6 +5691,8 @@ export class EffectsRenderer {
          after the shirt (which _placeSwingShirt already hides when a chest plate
          is worn) so the plate replaces it. */
       placeCookShirt(this.cookChestSprite, this._gearStripFrame('chest', getEquip('chest'), 'cook', 'south', 213, cookFi));
+      this._tintGearSprite(this.cookLegsSprite, getEquip('legs'), 'cookLegs');   /* v2.3.1764 */
+      this._tintGearSprite(this.cookChestSprite, getEquip('chest'), 'cookChest');
       this._placeSkillTraitsOn('cook', sp, cookFi, 'south', false);
     }
     /* The floating tool + swipe cue + pips only appear once the swipe

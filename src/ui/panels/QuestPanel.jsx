@@ -114,6 +114,21 @@ export function QuestPanel(props) {
     xpCat = _xpCatState[0],
     setXpCat = _xpCatState[1];
   var _xpAmt = (questPanel.quest.reward && questPanel.quest.reward.xp) || 0;
+  /* ═══ v2.3.1764: SAY WHAT THE BUTTON DOES ═══
+     Owner: "When you turn in a quest it needs to be more obvious that you're
+     redeeming a reward."  "Turn In Quest" describes handing something OVER —
+     the half of the trade the player already did.  The button is the moment
+     they COLLECT, so it says so, and it names the payout: the reward chips
+     above are what you will get, and this is the same fact on the control that
+     grants it, where nobody has to scroll to find it. */
+  var _rwd = questPanel.quest.reward || {};
+  var _redeemBits = [];
+  if (_rwd.gold) _redeemBits.push(_rwd.gold + 'g');
+  if (_rwd.xp) _redeemBits.push(_rwd.xp + ' XP');
+  if (_rwd.item) _redeemBits.push(String(_rwd.item));
+  var _redeemLabel = _redeemBits.length
+    ? 'Redeem Reward · ' + _redeemBits.join(' · ')
+    : 'Redeem Reward';
   /* Read the LIVE rpg (stateRef), not the React copy: prog3 arrives on a
      player_state and the copy can lag a tick, which would render the wrong
      branch for exactly the character the picker exists for. */
@@ -448,8 +463,9 @@ export function QuestPanel(props) {
       padding: '10px',
       borderRadius: 11,
       border: 'none',
-      background: '#D8A85F',
-      color: '#20170D',
+      background: (_needsXpChoice && !xpCat) ? '#293B41' : '#D8A85F',
+      color: (_needsXpChoice && !xpCat) ? '#F4F0E7' : '#20170D',
+      boxShadow: (_needsXpChoice && !xpCat) ? 'inset 0 0 0 1px #D8A85F' : 'none',
       fontWeight: 700,
       fontSize: 13,
       cursor: 'pointer'
@@ -473,14 +489,22 @@ export function QuestPanel(props) {
       padding: '10px',
       borderRadius: 11,
       border: 'none',
-      background: '#D8A85F',
-      color: '#20170D',
+      background: (_needsXpChoice && !xpCat) ? '#293B41' : '#D8A85F',
+      color: (_needsXpChoice && !xpCat) ? '#F4F0E7' : '#20170D',
+      boxShadow: (_needsXpChoice && !xpCat) ? 'inset 0 0 0 1px #D8A85F' : 'none',
       fontWeight: 700,
       fontSize: 13,
       cursor: 'pointer',
-      /* v2.3.1685: dimmed until a skill is picked — a turn-in the worker
-         would refuse must not look ready to press. */
-      opacity: (_needsXpChoice && !xpCat) ? 0.5 : 1,
+      /* ═══ v2.3.1764: NOT-READY IS NOT THE SAME AS NOT-VISIBLE ═══
+         Owner: "the choose a skill to train button is all faded like you can
+         barely see it."  v2.3.1685 dimmed the whole control to opacity .5 to
+         say "not ready" — but this is dark text on brass over a dark card, so
+         halving the opacity took the LABEL with it and the instruction telling
+         you what to do became the hardest thing on the card to read.
+         The not-ready state is now a secondary SURFACE instead: full opacity,
+         bright text on the card's own secondary fill with a brass edge.  It
+         still reads as "this is not the gold button yet" — which was the real
+         intent — while the words stay legible. */
       /* v2.3.1685: PINNED.  This dialogue's content already overflowed its
          box before the picker existed (441px of content in 423px on main —
          the rewards row was the casualty), and the picker adds ~74px more.
@@ -500,5 +524,5 @@ export function QuestPanel(props) {
       /* v2.3.782: body moved to src/game/quests.js (Phase 3). */
       turnInQuest(stateRef.current, questPanel, { setRpgState: setRpgState, setQuestPanel: setQuestPanel }, xpCat);
     }
-  }, _needsXpChoice && !xpCat ? "Choose a skill to train" : "Turn In Quest")))));
+  }, _needsXpChoice && !xpCat ? "Choose a skill to train" : _redeemLabel)))));
 }
