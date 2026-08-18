@@ -2070,6 +2070,12 @@ export class EffectsRenderer {
   _updateProjectiles(S, now) {
     const gfx = this.projectileGfx;
     gfx.clear();
+    /* v2.3.1765: per-frame tallies behind arrowProbe (pixiRenderer).  "Does a
+       landed arrow still show its head" is a fact about what the draw call
+       chose, and a screenshot cannot separate a buried head from an arrow that
+       was never drawn — which is the exact distinction the owner's fix makes. */
+    this._arrowsDrawn = 0;
+    this._arrowHeadsDrawn = 0;
 
     /* Track aim rotation rate for the mid-flight arrow bend.  Arrows
        lean slightly in the direction the player is currently rotating
@@ -2195,7 +2201,11 @@ export class EffectsRenderer {
            local-coords-friendly.  ang_eff = a.ang + bend so arrows
            in flight visibly tilt in the direction the player is
            rotating their aim. */
-        this._drawArrow(gfx, a._renderX, a._renderY, _angB, elemColor, fadeA);
+        /* v2.3.1765: `_stuckPose` is already the "it has arrived" flag this
+           loop computes for the motion trail and the aim-bend; the buried head
+           is the same fact, so it rides the same variable rather than a second
+           one that could disagree with it. */
+        this._drawArrow(gfx, a._renderX, a._renderY, _angB, elemColor, fadeA, 1, _stuckPose);
       }
     }
 
@@ -2529,7 +2539,7 @@ export class EffectsRenderer {
    *  strip + brown arrowhead + brown fletching.  Matches the stuck-
    *  arrow rendering so a live arrow and a stuck one read as the
    *  same wooden missile. */
-  _drawArrow(gfx, cx, cy, ang, headColor /* unused — kept for signature compat */, alpha, scale) {
+  _drawArrow(gfx, cx, cy, ang, headColor /* unused — kept for signature compat */, alpha, scale, buried) {
     const c = Math.cos(ang), s = Math.sin(ang);
     /* v2.3.222: optional scale param for the special-bow path so the
        arrow grows along with its halo + damage radius. Default 1. */
@@ -2541,8 +2551,18 @@ export class EffectsRenderer {
        same recipe as the stuck arrow. */
     this._fillPoly(gfx, [pt(-8, -1.5), pt(8, -1.5), pt(8, -0.7), pt(-8, -0.7)], 0x5a3820, alpha * 0.85);
     /* Arrowhead triangle — lighter brown to read as a metal-ish tip
-       on the wooden shaft. */
-    this._fillPoly(gfx, [pt(9, 0), pt(5, -3.5), pt(5, 3.5)], 0x6a4830, alpha);
+       on the wooden shaft.
+       v2.3.1765 (owner: "arrows should not show the tips when they've reached
+       their destination (like the arrowhead should be stuck in the material)").
+       A planted arrow keeps its shaft and fletching and loses the head, so the
+       shaft simply runs into whatever it hit — which is what being embedded
+       looks like.  The head is the ONLY part dropped: shortening the shaft too
+       would pull the arrow out of the surface it is supposed to be buried in. */
+    this._arrowsDrawn = (this._arrowsDrawn || 0) + 1;
+    if (!buried) {
+      this._arrowHeadsDrawn = (this._arrowHeadsDrawn || 0) + 1;
+      this._fillPoly(gfx, [pt(9, 0), pt(5, -3.5), pt(5, 3.5)], 0x6a4830, alpha);
+    }
     /* Fletching at the tail end — slightly warmer brown. */
     this._fillPoly(gfx, [pt(-8, -2.5), pt(-5, -2.5), pt(-5, -1), pt(-8, -1)], 0x5a3820, alpha * 0.85);
     this._fillPoly(gfx, [pt(-8, 1), pt(-5, 1), pt(-5, 2.5), pt(-8, 2.5)], 0x5a3820, alpha * 0.85);
@@ -2553,15 +2573,20 @@ export class EffectsRenderer {
   _drawStuckArrow(gfx, cx, cy, ang, color) {
     const c = Math.cos(ang), s = Math.sin(ang);
     const pt = (lx, ly) => ({ x: cx + lx * c - ly * s, y: cy + lx * s + ly * c });
-    /* Shaft 13 px out, 2.4 px wide. */
-    this._fillPoly(gfx, [pt(-11, -1.2), pt(2, -1.2), pt(2, 1.2), pt(-11, 1.2)], 0x3a2210, 0.9);
+    /* Shaft 11 px out, 2.4 px wide — ending AT the impact point (v2.3.1765;
+       it used to run to +2, i.e. 2px of shaft painted over the body). */
+    this._fillPoly(gfx, [pt(-11, -1.2), pt(0, -1.2), pt(0, 1.2), pt(-11, 1.2)], 0x3a2210, 0.9);
     /* Highlight strip along the top half of the shaft for relief. */
-    this._fillPoly(gfx, [pt(-11, -1.2), pt(2, -1.2), pt(2, -0.4), pt(-11, -0.4)], 0x5a3820, 0.85);
+    this._fillPoly(gfx, [pt(-11, -1.2), pt(0, -1.2), pt(0, -0.4), pt(-11, -0.4)], 0x5a3820, 0.85);
     /* Fletching at the tail end. */
     this._fillPoly(gfx, [pt(-11, -3), pt(-8, -3), pt(-8, -1.5), pt(-11, -1.5)], color, 0.8);
     this._fillPoly(gfx, [pt(-11, 1.5), pt(-8, 1.5), pt(-8, 3), pt(-11, 3)], color, 0.8);
-    /* Tip just protruding from the body. */
-    this._fillPoly(gfx, [pt(3, 0), pt(1.5, -2), pt(1.5, 2)], color, 0.95);
+    /* v2.3.1765 (owner: "the arrowhead should be stuck in the material").  A
+       tip drawn here is drawn OVER the monster it is embedded in — the one
+       place it could never legitimately be seen — so it goes, and the shaft
+       stops at the impact point instead of running 2px past it.  Same change
+       as the planted arrow above, for the same reason. */
+    this._arrowsDrawn = (this._arrowsDrawn || 0) + 1;
   }
 
   /** Embedded magic shard from a staff bolt. */

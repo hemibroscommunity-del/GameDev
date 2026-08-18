@@ -415,6 +415,17 @@ export async function initPixiRenderer(canvas) {
        cannot tell a MISSING sheet from one that landed off the body — which is
        exactly the distinction this change needs to be able to make.  Returns
        nothing the game consumes. */
+    /* v2.3.1765: read-only probe of the arrows drawn on the last frame.
+       Owner: "arrows should not show the tips when they've reached their
+       destination (like the arrowhead should be stuck in the material)."
+       Reports how many arrows were painted and how many of them kept a head,
+       so a test can assert the RATIO rather than hunt for brown pixels — a
+       pixel search cannot tell a buried head from an arrow that was never
+       drawn at all, and that is precisely what this change turns on. */
+    arrowProbe: () => ({
+      arrows: effectsRenderer._arrowsDrawn || 0,
+      heads: effectsRenderer._arrowHeadsDrawn || 0,
+    }),
     /* v2.3.1765: read-only probe of the name plate's position relative to the
        character, for the QA harness.  Owner: "Move the standing nameplate down
        about 3-10 pixels it overlaps the character feet right now."
