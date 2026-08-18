@@ -778,6 +778,24 @@ export class EffectsRenderer {
     // Node graphics
     this.nodeGfx = new Graphics();
     this.nodeLayer.addChild(this.nodeGfx);
+    /* ═══ v2.3.1765: THE WHITE GESTURE CUE GOES IN FRONT OF THE TREE TOO ═══
+       Owner: "The woodcutting cue of the white gesture is still showing in the
+       layer behind the tree.  It needs to show in front of it."
+       STILL, because v2.3.1713 answered the same complaint by moving the
+       CHOPPER — the figure — up to gestureFront, and the animated finger that
+       demonstrates the swipe was left drawing on nodeGfx in gatherNodes
+       (index 7), under the trees v2.3.1500 had put in gatherNodesFront
+       (index 10).  So the lumberjack came out from behind the tree and the
+       instruction telling you what to do with him did not.
+       Its own Graphics rather than a move of nodeGfx, because nodeGfx also
+       carries the node bodies, tier badges and proximity tips — art that
+       belongs in the node layer and is deliberately occluded by what is in
+       front of it.  Same world container, so the camera transform is
+       identical; only the depth changes.  Cleared at the top of
+       _updateExtractionCue (nodeGfx is cleared by _updateGatherNodes, which
+       this no longer rides on). */
+    this.cueGfx = new Graphics();
+    this.gestureLayer.addChild(this.cueGfx);
 
     // Catch-flight graphics (fish flying into the bag) — overlayWorld, above
     // the player.  Drawn as a shape (not an emoji) so it renders identically
@@ -2060,6 +2078,12 @@ export class EffectsRenderer {
   _updateProjectiles(S, now) {
     const gfx = this.projectileGfx;
     gfx.clear();
+    /* v2.3.1765: per-frame tallies behind arrowProbe (pixiRenderer).  "Does a
+       landed arrow still show its head" is a fact about what the draw call
+       chose, and a screenshot cannot separate a buried head from an arrow that
+       was never drawn — which is the exact distinction the owner's fix makes. */
+    this._arrowsDrawn = 0;
+    this._arrowHeadsDrawn = 0;
 
     /* Track aim rotation rate for the mid-flight arrow bend.  Arrows
        lean slightly in the direction the player is currently rotating
@@ -2185,7 +2209,11 @@ export class EffectsRenderer {
            local-coords-friendly.  ang_eff = a.ang + bend so arrows
            in flight visibly tilt in the direction the player is
            rotating their aim. */
-        this._drawArrow(gfx, a._renderX, a._renderY, _angB, elemColor, fadeA);
+        /* v2.3.1765: `_stuckPose` is already the "it has arrived" flag this
+           loop computes for the motion trail and the aim-bend; the buried head
+           is the same fact, so it rides the same variable rather than a second
+           one that could disagree with it. */
+        this._drawArrow(gfx, a._renderX, a._renderY, _angB, elemColor, fadeA, 1, _stuckPose);
       }
     }
 
@@ -2519,7 +2547,7 @@ export class EffectsRenderer {
    *  strip + brown arrowhead + brown fletching.  Matches the stuck-
    *  arrow rendering so a live arrow and a stuck one read as the
    *  same wooden missile. */
-  _drawArrow(gfx, cx, cy, ang, headColor /* unused — kept for signature compat */, alpha, scale) {
+  _drawArrow(gfx, cx, cy, ang, headColor /* unused — kept for signature compat */, alpha, scale, buried) {
     const c = Math.cos(ang), s = Math.sin(ang);
     /* v2.3.222: optional scale param for the special-bow path so the
        arrow grows along with its halo + damage radius. Default 1. */
@@ -2531,8 +2559,18 @@ export class EffectsRenderer {
        same recipe as the stuck arrow. */
     this._fillPoly(gfx, [pt(-8, -1.5), pt(8, -1.5), pt(8, -0.7), pt(-8, -0.7)], 0x5a3820, alpha * 0.85);
     /* Arrowhead triangle — lighter brown to read as a metal-ish tip
-       on the wooden shaft. */
-    this._fillPoly(gfx, [pt(9, 0), pt(5, -3.5), pt(5, 3.5)], 0x6a4830, alpha);
+       on the wooden shaft.
+       v2.3.1765 (owner: "arrows should not show the tips when they've reached
+       their destination (like the arrowhead should be stuck in the material)").
+       A planted arrow keeps its shaft and fletching and loses the head, so the
+       shaft simply runs into whatever it hit — which is what being embedded
+       looks like.  The head is the ONLY part dropped: shortening the shaft too
+       would pull the arrow out of the surface it is supposed to be buried in. */
+    this._arrowsDrawn = (this._arrowsDrawn || 0) + 1;
+    if (!buried) {
+      this._arrowHeadsDrawn = (this._arrowHeadsDrawn || 0) + 1;
+      this._fillPoly(gfx, [pt(9, 0), pt(5, -3.5), pt(5, 3.5)], 0x6a4830, alpha);
+    }
     /* Fletching at the tail end — slightly warmer brown. */
     this._fillPoly(gfx, [pt(-8, -2.5), pt(-5, -2.5), pt(-5, -1), pt(-8, -1)], 0x5a3820, alpha * 0.85);
     this._fillPoly(gfx, [pt(-8, 1), pt(-5, 1), pt(-5, 2.5), pt(-8, 2.5)], 0x5a3820, alpha * 0.85);
@@ -2543,15 +2581,20 @@ export class EffectsRenderer {
   _drawStuckArrow(gfx, cx, cy, ang, color) {
     const c = Math.cos(ang), s = Math.sin(ang);
     const pt = (lx, ly) => ({ x: cx + lx * c - ly * s, y: cy + lx * s + ly * c });
-    /* Shaft 13 px out, 2.4 px wide. */
-    this._fillPoly(gfx, [pt(-11, -1.2), pt(2, -1.2), pt(2, 1.2), pt(-11, 1.2)], 0x3a2210, 0.9);
+    /* Shaft 11 px out, 2.4 px wide — ending AT the impact point (v2.3.1765;
+       it used to run to +2, i.e. 2px of shaft painted over the body). */
+    this._fillPoly(gfx, [pt(-11, -1.2), pt(0, -1.2), pt(0, 1.2), pt(-11, 1.2)], 0x3a2210, 0.9);
     /* Highlight strip along the top half of the shaft for relief. */
-    this._fillPoly(gfx, [pt(-11, -1.2), pt(2, -1.2), pt(2, -0.4), pt(-11, -0.4)], 0x5a3820, 0.85);
+    this._fillPoly(gfx, [pt(-11, -1.2), pt(0, -1.2), pt(0, -0.4), pt(-11, -0.4)], 0x5a3820, 0.85);
     /* Fletching at the tail end. */
     this._fillPoly(gfx, [pt(-11, -3), pt(-8, -3), pt(-8, -1.5), pt(-11, -1.5)], color, 0.8);
     this._fillPoly(gfx, [pt(-11, 1.5), pt(-8, 1.5), pt(-8, 3), pt(-11, 3)], color, 0.8);
-    /* Tip just protruding from the body. */
-    this._fillPoly(gfx, [pt(3, 0), pt(1.5, -2), pt(1.5, 2)], color, 0.95);
+    /* v2.3.1765 (owner: "the arrowhead should be stuck in the material").  A
+       tip drawn here is drawn OVER the monster it is embedded in — the one
+       place it could never legitimately be seen — so it goes, and the shaft
+       stops at the impact point instead of running 2px past it.  Same change
+       as the planted arrow above, for the same reason. */
+    this._arrowsDrawn = (this._arrowsDrawn || 0) + 1;
   }
 
   /** Embedded magic shard from a staff bolt. */
@@ -5373,6 +5416,11 @@ export class EffectsRenderer {
    * small countdown ring around it shows how much of the swipe window
    * remains. Nothing is drawn during the 'waiting' phase. */
   _updateExtractionCue(S, now) {
+    /* v2.3.1765: cleared HERE, and before any early return.  The cue used to
+       ride nodeGfx and inherit _updateGatherNodes' clear for free; on its own
+       Graphics it owns its own frame, and every `return` below is a path where
+       the cue must vanish (no extraction, a dead node, a cancelled swipe). */
+    if (this.cueGfx) this.cueGfx.clear();
     const ex = S && S._extraction;
     /* v2.3.843: chopper sprite is hidden every frame and only re-shown
        below while a woodcutting extraction is active.
@@ -5448,7 +5496,13 @@ export class EffectsRenderer {
                   ? S.gatherNodes.find(n => n.id === ex.nodeId)
                   : null);
     if (!node) return;
-    const gfx = this.nodeGfx;
+    const gfx = this.cueGfx;   /* v2.3.1765: in FRONT of the tree — see the ctor */
+    /* v2.3.1765: the Graphics the cue ACTUALLY drew into this frame, recorded
+       for cueLayerProbe.  Reporting cueGfx.parent instead would answer a
+       different question — the first version of that probe did, and it stayed
+       green with the line above reverted to nodeGfx, because cueGfx still hung
+       off gestureFront while nothing was being painted on it. */
+    this._cueDrawnOn = gfx;
     /* Fishing reels over the CHARACTER (the rod's reel is at the hands) so
        the cue + the circular gesture center match the player, not the
        distant fish spot.  ExtractionSwipeLayer.cueScreenPos mirrors this. */
@@ -6008,6 +6062,7 @@ export class EffectsRenderer {
 
   clear() {
     this.particleGfx.clear();
+    this.cueGfx.clear();   /* v2.3.1765 */
     this.projectileGfx.clear();
     this.telegraphGfx.clear();
     this.overlayGfx.clear();

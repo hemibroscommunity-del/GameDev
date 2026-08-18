@@ -216,6 +216,45 @@ export async function run({ browser, wsPort, webPort, rec }) {
     srv.ex === EXCODE[wantSkill], { srv, want: EXCODE[wantSkill] });
   rec.ok('...so the shield monsters read is UP', srv.shield === true, srv);
 
+  /* ═══ v2.3.1765: THE WHITE GESTURE DRAWS IN FRONT OF THE TREE ═══
+     Owner: "The woodcutting cue of the white gesture is still showing in the
+     layer behind the tree.  It needs to show in front of it."
+     STILL, because v2.3.1713 answered this by moving the CHOPPER to
+     gestureFront and left the animated finger on nodeGfx in gatherNodes,
+     under the trees.  Asserted as an ORDER between two layers read off the
+     live scene graph — the cue's own parent, and the parent of a real tree
+     sprite this frame — rather than against a hard-coded layer name, so the
+     check still means something if either side is moved again.
+     Checked here because this is the one scenario that already has a real
+     client mid-chop at a real worker-owned tree. */
+  const cueLayers = await P.page.evaluate(() => {
+    const probe = window._pixiRenderer && window._pixiRenderer.cueLayerProbe;
+    const S = window._gameState && window._gameState.current;
+    if (!probe || !S) return null;
+    const p = probe();
+    /* The tree's layer lives on the node object itself (node._pixiSprite),
+       which is where _updateGatherNodes parents it. */
+    const tree = (S.gatherNodes || []).find((n) => n && n.nodeType === 'tree' && n._pixiSprite && n._pixiSprite.parent);
+    return { ...p, treeLayer: tree ? tree._pixiSprite.parent.label : null };
+  });
+  rec.ok('the cue-layer probe answered', !!cueLayers && !!cueLayers.cueLayer, cueLayers);
+  if (cueLayers && cueLayers.treeLayer) {
+    const depth = (l) => cueLayers.order.indexOf(l);
+    /* GUARD: if the cue and the trees ever land on the SAME layer the
+       comparison below is trivially satisfied by ">=" and proves nothing, so
+       require a strict ordering between two distinct layers. */
+    rec.ok('the cue and the trees are on different layers (guard)',
+      cueLayers.cueLayer !== cueLayers.treeLayer, cueLayers);
+    rec.ok('the white gesture cue draws IN FRONT of the tree it is chopping',
+      depth(cueLayers.cueLayer) > depth(cueLayers.treeLayer), cueLayers);
+    /* And the thing it was left behind on is genuinely below the trees —
+       naming the regression so a revert fails with the reason attached. */
+    rec.ok('...whereas nodeGfx, where it used to draw, is behind them',
+      depth(cueLayers.nodeGfxLayer) < depth(cueLayers.treeLayer), cueLayers);
+  } else {
+    rec.ok('a live tree sprite was on screen to compare against', false, cueLayers);
+  }
+
   /* ═══ AND IT ENDS ═══
      A shield that can stick is a worse bug than the one being fixed, so prove
      the real client releases it.  Walking away is the cancel a player hits
@@ -229,6 +268,130 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const srvAfter = await serverHarvest(wsPort, myId);
   rec.ok('...and the WORKER drops the shield with it — no lingering immunity',
     srvAfter.shield === false, srvAfter);
+
+  /* ═══════════════════════════════════════════════════════════════════════
+     v2.3.1765: COOKING AND FIREMAKING GET THE SAME PEACE
+     Owner: "snowmen were still attacking me (attacks from enemies should stop
+     during cooking and firemaking too)."
+
+     This needs the same headless treatment as the harvest above and for the
+     same reason, not by analogy: the worker's branch for these two keys off
+     `ex` arriving as 'cook' / 'fire' on the move packet, and whether the
+     SHIPPED CLIENT ever sends those codes is a fact no server suite can
+     establish.  server/test/combat-lifecycle.test.mjs sets ps.ex by hand — it
+     would stay green against a client that broadcasts nothing, which is
+     precisely how the harvest shield spent fourteen versions not working.
+
+     Both are driven through real UI: the log is lit from its bag item's
+     "Light fire" button, and the cook is started by tapping the campfire that
+     appears — the same two taps a player makes. ══════════════════════════ */
+  /* ═══ WALK OFF THE NODE FIRST, AND PROVE THE OLD SHIELD IS DEAD ═══
+     Not tidiness — the first version of this section lit its fire standing on
+     the tree it had just been chopping, and PASSED with the entire cook/fire
+     branch commented out of the worker.  The gathering record survives a
+     walk-away (it is swept lazily, ten minutes later) and its own branch only
+     needs a live node within EXTRACT_SHIELD_RANGE and a truthy `ex` — so
+     `ex: 'fire'` re-lit the OLD shield and the assertions below read a green
+     that had nothing to do with the code under test.
+     So: move clear of the node, then assert the worker still holds the stale
+     record while the shield is DOWN.  After that guard, any shield that comes
+     up can only have come from the node-free branch. */
+  if (nodeTarget) await hopTo(nodeTarget.x + 420, nodeTarget.y);
+  await P.page.waitForTimeout(900);
+  const offNode = await serverHarvest(wsPort, myId);
+  rec.ok('...and the stale gather record is still on the worker (guard: it must not be the source)',
+    offNode.extracting === true, offNode);
+  rec.ok('...yet the shield is DOWN this far from the node (guard)',
+    offNode.shield === false, offNode);
+
+  await H.grant(wsPort, myId, 'item', { invKey: 'wood_pine', count: 2 }).catch(() => {});
+  await H.grant(wsPort, myId, 'item', { invKey: 'fish_minnow', count: 2 }).catch(() => {});
+  await H.waitFor(P, (S) => (S.rpg?.inventory || {}).wood_pine || 0, (n) => n >= 1,
+    { timeout: 20000, label: 'the log and the fish reach the bag' }).catch(() => {});
+  await P.page.waitForTimeout(600);
+
+  /* ── FIREMAKING.  The window is SHORT on purpose — v2.3.1749 cut the light
+        to 700ms — so the worker is polled rather than sampled once.  Polling
+        is not papering over a race here: the question is "was the shield ever
+        up while the fire was being lit", and a single read 900ms later
+        answers a different question. ── */
+  const lit = await P.page.evaluate(() => {
+    const bus = window._itemDetailBus;
+    const S = window._gameState && window._gameState.current;
+    if (!bus || !S || !S.rpg) return false;
+    bus.open({ kind: 'inventory', key: 'wood_pine', count: (S.rpg.inventory || {}).wood_pine || 0 });
+    return true;
+  });
+  rec.ok('the log\'s item card could be opened', lit);
+  await P.page.waitForTimeout(500);
+  const struck = await H.clickText(P, 'Light fire').then(() => true).catch(() => false);
+  rec.ok('...and it offers Light fire', struck);
+  const fireSeen = await (async () => {
+    const out = { ex: null, shield: false, clientFire: false };
+    for (let i = 0; i < 24; i++) {
+      const [srvF, cliF] = await Promise.all([
+        serverHarvest(wsPort, myId),
+        H.readState(P, (S) => !!S._firemaking),
+      ]);
+      if (cliF) out.clientFire = true;
+      if (srvF.ex === 'fire') out.ex = 'fire';
+      if (srvF.shield) out.shield = true;
+      if (out.ex === 'fire' && out.shield) break;
+      await P.page.waitForTimeout(120);
+    }
+    return out;
+  })();
+  rec.ok('the client really is lighting a fire', fireSeen.clientFire, fireSeen);
+  rec.ok('...the WORKER hears the fire activity code on `move`', fireSeen.ex === 'fire', fireSeen);
+  rec.ok('...so monsters are told to leave a firemaker alone', fireSeen.shield === true, fireSeen);
+
+  /* ── COOKING.  A campfire is a client-local node (there is no server
+        campfire — see the note on _extractionShielded), so this is exactly
+        the case that has no anchor to bind to and needed the node-free
+        branch.  Its window is comfortable: an open delay plus the swipe
+        window, seconds not milliseconds. ── */
+  await P.page.waitForTimeout(1400);          /* let the 700ms light finish */
+  const fireNode = await P.page.evaluate(() => {
+    const S = window._gameState && window._gameState.current;
+    /* S._campfire, NOT S.gatherNodes: a campfire is a client-local prop with
+       no server node (BroTown.jsx ~4166), which is the very reason the cook
+       shield needed a node-free branch.  Looking for it in the gather list
+       finds nothing and reports "no campfire" for a fire that is burning. */
+    const n = S && S._campfire && S._campfire.alive ? S._campfire : null;
+    if (!n) return null;
+    S.player.vx = 0; S.player.vy = 0;
+    S._tapNode = n;                            /* same door the harvest half uses above */
+    return { x: n.x, y: n.y, zone: n.zone };
+  });
+  rec.ok('lighting the log actually produced a campfire to cook at', !!fireNode, fireNode);
+  if (fireNode) {
+    /* The campfire carries no id (it is not a server node), so wait on the
+       node TYPE the prompt has latched instead. */
+    await H.waitFor(P, (S) => (S._nearNode ? S._nearNode.nodeType : null), (v) => v === 'campfire',
+      { timeout: 15000, label: 'the campfire becomes interactable' }).catch(() => {});
+    const cookClicked = await P.page.evaluate(() => {
+      const el = document.getElementById('bt-node-prompt');
+      if (!el) return false;
+      el.click();
+      return true;
+    });
+    rec.ok('the campfire offers a prompt that can be pressed', cookClicked);
+    await P.page.waitForTimeout(1400);
+    const cookCli = await H.readState(P, (S) => (S._extraction ? S._extraction.skill : null));
+    rec.ok('the client believes it is cooking', cookCli === 'cooking', cookCli);
+    const srvCook = await serverHarvest(wsPort, myId);
+    rec.ok('...the WORKER hears the cook activity code on `move`', srvCook.ex === 'cook', srvCook);
+    /* THE ASSERTION THE OWNER'S REPORT IS ABOUT. */
+    rec.ok('...so the snowmen are told to leave a cook alone', srvCook.shield === true, srvCook);
+    /* And it releases, for the same reason the harvest half proves it: a
+       shield that can stick is worse than the bug it fixes, and this one has
+       no node whose death would end it. */
+    await H.nudge(P, 'w', 700);
+    await P.page.waitForTimeout(1400);
+    const srvCookAfter = await serverHarvest(wsPort, myId);
+    rec.ok('...and walking away from the fire drops it — no lingering immunity',
+      srvCookAfter.shield === false, srvCookAfter);
+  }
 
   await P.ctx.close().catch(() => {});
 }

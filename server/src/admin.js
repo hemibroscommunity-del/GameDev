@@ -195,6 +195,12 @@ export const adminMethods = {
                                 (all of _extractionShielded's clauses hold) */
           live: ps ? { coins: ps.coins, level: ps.level, hp: ps.hp, zone: ps.z, x: ps.x, y: ps.y, dead: !!ps.dead, disconnected: !!ps.disconnected,
             ex: ps.ex || null, extracting: !!this.extractions[id], harvestShield: !!this._extractionShielded(id),
+            /* v2.3.1765: where the worker believed this player stood when it
+               last processed an `ability` cast (abilities.js).  Shield Bash
+               reaches 70px from that point with no slack for lag, so "it
+               missed" and "it was measured from 40px behind me" are the same
+               report — and only this field can tell them apart. */
+            abilFrom: ps._abilFrom || null,
             /* v2.3.1705: the directional block is decided from these two and
                nothing else, so an operator (and a headless check) has to be
                able to see them.  `ba` null means "this client never told us

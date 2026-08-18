@@ -213,14 +213,49 @@ export const gearMethods = {
   // allocated defense points, amulets on Magic — requirement =
   // tierIndex × 5.  Applies to prog3 players only (_prog3GearOk
   // passes legacy blobs; their client-side gates stay as they were).
+  /* ═══ v2.3.1765: THE LADDER STARTS AT THE TIER THE GAME HANDS YOU ═══
+   *
+   * Owner, on the auto-unequip report: "Copper counts as rung zero."
+   *
+   * The requirement is the tier's POSITION times five, and both tier tables
+   * open with rungs the game no longer starts anyone on.  BLACKSMITH_TIERS
+   * begins `wood, copper, iron, …` and WOODWORKING_TIERS begins
+   * `wood, softwood, hardwood, pine, …` — while v2.3.1760 made copper the
+   * first metal weapon and v2.3.1763 made pine the first wooden one, and
+   * tut_1 hands out exactly those three.  So the tutorial's own reward
+   * demanded trained sword level 5, and its bow demanded bow level 15, from
+   * a character who is level 1 in everything: the sword you are given in the
+   * first five minutes cannot be equipped, and the quest text telling you to
+   * switch to the bow describes something you cannot do.
+   *
+   * Measuring from the first tier the game actually starts you on restores
+   * the ladder's original SHAPE — copper is rung 0 as iron used to be, iron
+   * is rung 1, and each rung above keeps its five-level step.  Everything
+   * above the starter slides down by exactly the number of rungs that were
+   * inserted below it, which is the owner's call, made explicitly.
+   *
+   * Mirror: canEquipItem in src/data/gameSystems.js reaches the same numbers
+   * by a different road (statReq / 2, where statReq is tierIndex × 10), so
+   * the same subtraction has to happen there — pinned by a test. */
+  _prog3BaseTier(isWw) {
+    return isWw ? 'pine' : 'copper';
+  },
+  _prog3BaseIdx(table, isWw) {
+    const i = Object.keys(table).indexOf(this._prog3BaseTier(isWw));
+    return i > 0 ? i : 0;
+  },
   _prog3EquipOk(ps, slot, item) {
     if (!ps || !ps.prog3 || !item || typeof item !== 'object') return true;
     let tierIdx = -1;
+    let baseIdx = 0;
     if (typeof item.gearBase === 'string') {
       const isWw = item.gearBase.startsWith('ww_');
       const key = isWw ? item.gearBase.slice(3) : item.gearBase;
       const table = isWw ? this._WOODWORKING_TIERS_DATA() : this._BLACKSMITH_TIERS_DATA();
-      if (Object.prototype.hasOwnProperty.call(table, key)) tierIdx = Object.keys(table).indexOf(key);
+      if (Object.prototype.hasOwnProperty.call(table, key)) {
+        tierIdx = Object.keys(table).indexOf(key);
+        baseIdx = this._prog3BaseIdx(table, isWw);
+      }
     }
     if (tierIdx < 0) {
       const tm = (typeof item.tierMult === 'number' && item.tierMult > 0) ? item.tierMult : 1;
@@ -229,7 +264,12 @@ export const gearMethods = {
       // 100-cap skill — the top tier must stay reachable (req 95).
       tierIdx = Math.max(0, Math.min(19, Math.round((tm - 1) * 6)));
     }
-    const req = tierIdx * 5;
+    /* v2.3.1765: rungs above the starting tier, never below zero.  The
+       tierMult fallback above keeps baseIdx 0 on purpose — it only fires for
+       an item whose gearBase names no tier at all, where there is no table to
+       measure a starting rung in, and guessing one would be harsher or looser
+       than the table path at random. */
+    const req = Math.max(0, tierIdx - baseIdx) * 5;
     if (slot === 'armor' || slot === 'shield') return this._prog3GearOk(ps, 'defense', req);
     if (slot === 'amulet') return this._prog3GearOk(ps, 'magic', req);
     const cat = item.type === 'bow' ? 'bow' : item.type === 'staff' ? 'staff' : 'sword';

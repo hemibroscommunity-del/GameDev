@@ -742,6 +742,34 @@ export class GameRoom {
        px off the node (startExtraction's mining/fishing snap) and the server's
        view of a position lags the client's by up to a move throttle. */
     this.EXTRACT_SHIELD_RANGE = 200;
+    /* ═══ v2.3.1765: THE SAME PEACE FOR COOKING AND FIREMAKING ═══
+       Owner: "snowmen were still attacking me (attacks from enemies should
+       stop during cooking and firemaking too)."
+       The gathering shield above anchors on a live server node, and the note
+       on _extractionShielded used to declare cooking/firemaking out of scope
+       for exactly that reason: neither has a node, so there is nothing
+       verifiable to bind to.  That reasoning decided the wrong thing.  Look at
+       what the anchor is actually WORTH: the worst a liar buys from the
+       gathering shield is "stand perfectly still, unable to attack, taking no
+       monster damage" — and the node requirement does not make that cheaper or
+       dearer, it only makes it happen next to a tree.  An immobile player who
+       cannot swing has gained nothing they could not have had by walking away,
+       which is the same argument that already licensed the 120s ceiling.
+       So cook/fire get the shield with the two bounds that carry real weight —
+       a CEILING and an ANCHOR ON WHERE THEY STOOD — and, like the node path,
+       it breaks on attacking, on death, on a zone change and the instant the
+       client stops reporting the activity.
+       Shorter ceiling than the node path (30s vs 120s) because these are short:
+       lighting a fire is 700ms client-side, and one cook is an open delay
+       (<=10s) plus a 3.5s window, after which S._extraction clears, `ex` goes
+       null, and the next cook re-arms a fresh window.  A player who is still
+       "cooking" 30s later is not cooking. */
+    this.COOK_SHIELD_MS = 30000;
+    /* Cooking and firemaking are STATIONARY — the client pins the player to
+       the campfire for both — so the drift allowance is tighter than the node
+       path's 200 (which has to absorb startExtraction's 86px gather-stance
+       snap).  Still generous enough for a move-throttle of lag. */
+    this.COOK_SHIELD_RANGE = 120;
     this.EXTRACTION_TIMEOUT_MS = 600000;    // walk-away cancel is silent; sweep stale state after this.  v2.3.1416: 15s -> 10min — the harvest phase no longer times out client-side, so a strike minutes after extraction_start is legitimate; the record must outlive the player's patience (one small record per session, bounded by session count).
     this.EXTRACTION_GRACE_MS = 250;         // forgiveness on both ends to absorb network jitter
     this.SWIPE_FP_CAP_PER_SESSION = 100;    // ring-buffer the fp samples for offline analysis

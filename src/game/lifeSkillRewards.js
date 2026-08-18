@@ -470,7 +470,11 @@ export function applyCookingResult(S, fishKey, kind, taps, deps) {
       var cookedKey = 'cooked_' + fishKey;
       R.inventory[cookedKey] = (R.inventory[cookedKey] || 0) + 1;
       if (R.lifeSkills) migrateLifeSkills(R.lifeSkills);
-      addLifeSkillXp(R.lifeSkills, 'cooking', 40);   /* v2.3.1435: x5 */
+      /* v2.3.1435: x5.  v2.3.1765 (owner: "Lifeskills xp is far too slow"):
+         x5 again -> 25x.  Server mirror: cooking.js _handleCookRequest —
+         keep in lockstep, the worker is authoritative and a drift here just
+         means the client's number is taken back by the next player_state. */
+      addLifeSkillXp(R.lifeSkills, 'cooking', 200);
     } else {
       R.inventory.burnt_dust = (R.inventory.burnt_dust || 0) + 1;
     }

@@ -37,7 +37,23 @@ import {
   t2BenchStats as clientT2BenchStats, t2PointValue as clientT2PointValue,
   t2BenchLevel as clientT2BenchLevel, t2SpendLevel as clientT2SpendLevel,
   t2ReplayFlat as clientT2ReplayFlat,
+  /* v2.3.1765: the two life-skill numbers the owner just retuned.  Both are
+     hand-copied mirrors whose comments tell the next reader to "keep in
+     lockstep" — which is exactly the obligation this suite exists to stop
+     enforcing by memory. */
+  getFishHealAmount as clientFishHeal,
+  /* v2.3.1765: the equip gate.  The two sides reach the same number by
+     DIFFERENT roads — the worker by tier index, the client by statReq/2 — so
+     they can drift without either looking wrong on its own. */
+  canEquipItem as clientCanEquip,
 } from '../../src/data/gameSystems.js';
+/* The client's prog3 gate is DORMANT until the worker advertises caps.prog3
+   (deploy-order safety, prog3.js `_enabled`) — without this the comparison
+   below silently exercises the legacy raw-stat path on the client and the
+   prog3 path on the server, which are not mirrors of each other and never
+   were. */
+import { setProg3Enabled } from '../../src/data/prog3.js';
+import { createGatherNode as clientGatherNode, WOODCUTTING_TIERS as CLIENT_WOOD_TIERS } from '../../src/data/lifeSkills.js';
 import { FISHING_TIERS } from '../../src/data/lifeSkills.js';
 import { AMULET_TIERS, NUGGETS_PER_BAR, GOLD_NUGGET_DROP, GEM_DROP_RATES, GEM_EXTRACT_BASE_COST } from '../../src/data/items.js';
 import { MONSTER_VARIANTS, ZONE_VARIANT_MAP } from '../../src/data/monsterVariants.js';
@@ -415,6 +431,106 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
   const required = ['SPECIAL_MANA_COST', 'MANA_PER_MAGIC_LEVEL', 'BURST_MANA_COST', 'BURST_MIN_CHAR_LEVEL', 'BURST_CD_MS', 'BURST_RADIUS', 'BURST_DMG_MULT'];
   const missing = required.filter((k) => !(k in cli) || !(k in srv));
   check('the mana-rework / Element Burst constants exist on BOTH sides', missing.length === 0, missing);
+}
+
+// ── 13. Life-skill retune mirrors (v2.3.1765).  Two numbers the owner
+// asked for by hand — "Fish heal needs to be closer to 100" and
+// "Lifeskills xp is far too slow ... increase it by about 5x" — each
+// written twice, once in the worker (authoritative) and once on the
+// client (prediction).  A drift is invisible in play: the client shows
+// its own number and the next player_state quietly takes it back, which
+// reads as the game stuttering rather than as a mismatch. ──
+{
+  const room = new GameRoom(
+    { storage: { get: async () => null, put: async () => {}, list: async () => new Map(), delete: async () => {} },
+      blockConcurrencyWhile: async (f) => f() },
+    { ROOM_NAME: 'mirror-audit' });
+  const fishBad = [];
+  for (const key of ['cooked_fish_minnow', 'cooked_fish_trout', 'cooked_fish_nonesuch']) {
+    const srvHeal = room._fishHealAmount(key);
+    const cliHeal = clientFishHeal(key);
+    if (srvHeal !== cliHeal) fishBad.push({ key, server: srvHeal, client: cliHeal });
+  }
+  check('fish heal mirrors server<->client, unmapped default included', fishBad.length === 0, fishBad);
+  check('...and tier one lands on the owner\'s number', room._fishHealAmount('cooked_fish_minnow') === 100,
+    room._fishHealAmount('cooked_fish_minnow'));
+
+  /* createGatherNode is the client half of _harvestXpForTier's base.  Driven
+     through the real function rather than by re-typing its formula here: a
+     test that recomputes the expression it is checking mirrors the typo too. */
+  /* The REAL tier levels off WOODCUTTING_TIERS, not invented ones: forcedTierLvl
+     falls back to a depth roll when no tier matches, so [1,2,5] silently
+     compared tier one three times — the first cut of this check did exactly
+     that and reported a drift that was its own doing. */
+  const xpBad = [];
+  const seenXp = [];
+  for (const lvl of CLIENT_WOOD_TIERS.map((t) => t.lvl)) {
+    const node = clientGatherNode('meadow', 'shallow', 0, 0, 'tree', lvl);
+    const srvBase = room._harvestXpForTier(lvl, 'ok');   /* 'ok' = 1.0x, the base */
+    seenXp.push(node && node.xp);
+    if (!node || node.xp !== srvBase) xpBad.push({ lvl, server: srvBase, client: node && node.xp });
+  }
+  /* GUARD, and not a theoretical one — the first cut of this check swept
+     [1, 2, 5] and got tier one back three times: forcedTierLvl silently falls
+     back to a depth roll when no tier carries that lvl, so a sweep that looks
+     broad can compare the same tier over and over and pass on a mirror that
+     has drifted everywhere above the floor.  If the tiers really were swept,
+     the client's XP must VARY. */
+  check('the tier sweep actually swept distinct tiers (guard)',
+    new Set(seenXp).size === CLIENT_WOOD_TIERS.length, seenXp);
+  check('harvest XP base mirrors server<->client across tiers', xpBad.length === 0, xpBad);
+  check('...and a tier-one harvest pays the retuned 25x base (owner: x5 again)',
+    room._harvestXpForTier(1, 'ok') === 163, room._harvestXpForTier(1, 'ok'));
+}
+
+// ── 14. Equip-gate mirror (v2.3.1765).  Owner: "Copper counts as rung
+// zero."  The worker scores a weapon by its POSITION in the forge table;
+// the client scores the same weapon by statReq/2.  Both had to learn that
+// the ladder starts at copper, and a one-sided edit is invisible in play
+// until a player watches a weapon refuse to stay equipped. ──
+{
+  const room = new GameRoom(
+    { storage: { get: async () => null, put: async () => {}, list: async () => new Map(), delete: async () => {} },
+      blockConcurrencyWhile: async (f) => f() },
+    { ROOM_NAME: 'mirror-audit-equip' });
+  /* Swept across REAL tier keys off both tables rather than a hand-picked
+     few — the drift this catches is per-tier. */
+  setProg3Enabled(true);
+  const metals = Object.keys(SRV.BLACKSMITH_TIERS);
+  const woods = Object.keys(SRV.WOODWORKING_TIERS);
+  const cases = [];
+  for (const k of metals) cases.push({ type: 'greatsword', gearBase: k, slot: 'weapon', tierMult: 1 });
+  for (const k of woods) cases.push({ type: 'bow', gearBase: 'ww_' + k, slot: 'rangedWeapon', tierMult: 1 });
+  const bad = [];
+  /* Every trained level from 0 to 30: agreeing at one level proves nothing,
+     since the two formulas could differ by a constant and still match where
+     both say yes. */
+  for (let lvl = 0; lvl <= 30; lvl += 1) {
+    const ps = { prog3: { sk: { sword: { level: lvl }, bow: { level: lvl }, staff: { level: lvl } },
+      alloc: {}, atk: {}, pool: {}, ms: {} } };
+    const rpg = { prog3: ps.prog3 };
+    for (const c of cases) {
+      const item = { type: c.type, gearBase: c.gearBase, tierMult: c.tierMult, name: 'x' };
+      const srvOk = room._prog3EquipOk(ps, c.slot, item);
+      const cliOk = clientCanEquip(rpg, item, c.type);
+      if (srvOk !== cliOk) bad.push({ lvl, gearBase: c.gearBase, server: srvOk, client: cliOk });
+    }
+  }
+  check('equip gate agrees server<->client across every tier and level 0-30',
+    bad.length === 0, bad.slice(0, 8));
+  /* GUARD: the sweep is only meaningful if the gate ever says NO.  If
+     prog3Live() or the prog3 branch stopped firing on this fixture, every
+     comparison would be true===true and the check above would pass on a
+     mirror that had drifted everywhere. */
+  const anyRefusal = cases.some((c) => room._prog3EquipOk(
+    { prog3: { sk: { sword: { level: 0 }, bow: { level: 0 }, staff: { level: 0 } }, alloc: {}, atk: {}, pool: {}, ms: {} } },
+    c.slot, { type: c.type, gearBase: c.gearBase, tierMult: 1, name: 'x' }) === false);
+  check('...and the gate does refuse SOMETHING at level 0 (guard: an always-yes gate agrees trivially)',
+    anyRefusal === true);
+  /* The owner's rule itself, on both sides. */
+  const lvl1 = { prog3: { sk: { sword: { level: 1 }, bow: { level: 1 }, staff: { level: 1 } }, alloc: {}, atk: {}, pool: {}, ms: {} } };
+  check('copper is rung zero on the CLIENT too (owner\'s call, both sides)',
+    clientCanEquip({ prog3: lvl1.prog3 }, { type: 'greatsword', gearBase: 'copper', tierMult: 1 }, 'greatsword') === true);
 }
 
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);

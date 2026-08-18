@@ -203,6 +203,20 @@ export const abilityMethods = {
     const cfg = STAM_ABILITIES[kind];
     const ps = this.playerState[session.id];
     if (!ps) return;
+    /* ═══ v2.3.1765: RECORD WHERE THE CAST WAS MEASURED FROM ═══
+       Owner: "Shield bash always seems to miss if I activate it while I'm
+       moving while I hit the monster with it."
+       Bash picks its target within 70px of ps.x/ps.y below, and ps.x/ps.y is
+       the worker's copy of the player's position — which lags a moving client
+       by however long the move batcher has been holding one (up to 198ms when
+       nobody shares the zone).  This stamp is the answer to "the bash missed —
+       missed from WHERE", the one question the miss itself does not answer,
+       and it is what mp-ability asserts against the client's live position.
+       Stamped BEFORE the gates so a refused cast records it too: a rejection
+       is exactly when you most want to know what the worker believed.
+       In-memory scratch, underscore-prefixed and absent from _saveRpg's field
+       list, so nothing persists and no storage key is involved. */
+    ps._abilFrom = { x: ps.x || 0, y: ps.y || 0, at: Date.now(), kind };
     const ws = this._wsBySessionId(session.id);
     const reject = (reason, extra) => {
       if (!ws) return;

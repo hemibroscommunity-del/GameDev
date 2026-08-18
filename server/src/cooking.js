@@ -37,8 +37,12 @@ export const cookingMethods = {
     const species = invKey.replace(/^(cooked_)?fish_/, '').toLowerCase();
 
     const tier = FISH_TIERS.find((t) => species.includes(t.name));
-    if (!tier) return 20; // default for unmapped cooked fish
-    return Math.ceil(15 + tier.lvl * 8);
+    if (!tier) return 100; // default for unmapped cooked fish (v2.3.1765)
+/* v2.3.1765 (owner: "Fish heal needs to be closer to 100").  The base was 15,
+   so the first cooked fish healed 23 against a ~106 HP character — a bite, not
+   a meal, which is why nobody ate.  Base lifted so tier one lands on 100; the
+   PER-TIER slope (+8) is untouched, so the ladder above it keeps its shape. */
+    return Math.ceil(92 + tier.lvl * 8);
   },
 
   // v2.3.1167: fish tier level for the cook physics floor -- same
@@ -430,7 +434,20 @@ export const cookingMethods = {
     if (kind === 'cooked') {
       const cookedKey = 'cooked_' + fishKey;
       ps.inventory[cookedKey] = (ps.inventory[cookedKey] || 0) + 1;
-      this._addLifeSkillXp(ps, 'cooking', 40);   /* v2.3.1435: life-skill XP x5 (was 8) */
+      /* v2.3.1435: life-skill XP x5 (was 8).
+         v2.3.1765 (owner: "Lifeskills xp is far too slow.  I think you should
+         increase it by about 5x"): x5 again, 25x the original — the same
+         multiplier the gathering harvest just took (gathering.js
+         _harvestXpForTier), and the same pair of skills v2.3.1435 moved
+         together, because cooking fish and swinging at nodes are the two
+         loops a player repeats.  Client mirror: lifeSkillRewards.js ~473.
+         NOT scaled here, deliberately, and named so the omission is a choice
+         rather than an oversight: the multi-ingredient recipe payout
+         (tier*25, _handleCookRecipe), the forge/woodwork craft (gear.js),
+         enchanting, gem cutting and trapping.  Those are separate skills with
+         their own economies, they were outside v2.3.1435's scope too, and the
+         owner's report is about the grind — say the word and they follow. */
+      this._addLifeSkillXp(ps, 'cooking', 200);
     } else {
       ps.inventory.burnt_dust = (ps.inventory.burnt_dust || 0) + 1;
     }

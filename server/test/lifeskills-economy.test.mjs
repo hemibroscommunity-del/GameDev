@@ -171,13 +171,13 @@ ps.inventory = { fish_minnow: 2 };
 ps.lifeSkills = { cooking: { level: 1, xp: 0 } };
 ps._cookHistory = [];
 await send(ws, 'cook_request', { fishKey: 'fish_minnow', kind: 'cooked' });
-check('cook: consumes ONE raw fish, mints cooked_<fish>, +40 cooking XP (v2.3.1435 x5)',
-  ps.inventory.fish_minnow === 1 && ps.inventory.cooked_fish_minnow === 1 && ps.lifeSkills.cooking.xp === 40,
+check('cook: consumes ONE raw fish, mints cooked_<fish>, +200 cooking XP (v2.3.1765 x25)',
+  ps.inventory.fish_minnow === 1 && ps.inventory.cooked_fish_minnow === 1 && ps.lifeSkills.cooking.xp === 200,
   ps.inventory);
 ps._lastCookAt = Date.now() - 60000; // v2.3.1167: clear the physics floor
 await send(ws, 'cook_request', { fishKey: 'fish_minnow', kind: 'burnt' });
 check('cook: burnt outcome mints burnt_dust, no XP',
-  ps.inventory.fish_minnow === undefined && ps.inventory.burnt_dust === 1 && ps.lifeSkills.cooking.xp === 40,
+  ps.inventory.fish_minnow === undefined && ps.inventory.burnt_dust === 1 && ps.lifeSkills.cooking.xp === 200,
   ps.inventory);
 // Rate limit: 20 in the rolling minute -> the 21st is dropped WITHOUT
 // consuming (the fish stockpile conversion throttle, v2.3.1104).
@@ -203,7 +203,7 @@ check('floor: first cook lands normally', ps.inventory.fish_minnow === 2, ps.inv
 await send(ws, 'cook_request', { fishKey: 'fish_minnow', kind: 'cooked' });
 check('floor: instant second cook is dropped without consuming',
   ps.inventory.fish_minnow === 2 && ps.inventory.cooked_fish_minnow === 1
-  && ps.lifeSkills.cooking.xp === 40,
+  && ps.lifeSkills.cooking.xp === 200,
   { inv: ps.inventory, xp: ps.lifeSkills.cooking.xp });
 // A sub-floor gap (1s < the 1200ms flat floor) still fails even with
 // an empty rate-limit history.
@@ -248,6 +248,43 @@ const minnowHeal = room._fishHealAmount('cooked_fish_minnow');
 check('eat: consumes one cooked fish and heals by the tier amount',
   ps.inventory.cooked_fish_minnow === 1 && ps.hp === Math.min(100, 50 + minnowHeal),
   { hp: ps.hp, heal: minnowHeal, inv: ps.inventory });
+/* ═══ v2.3.1765: THE HEAL IS A NUMBER THE OWNER ASKED FOR ═══
+   Owner: "Fish heal needs to be closer to 100."
+   The assertion above compares the applied heal against _fishHealAmount, so it
+   holds for ANY value that function returns — including the 20 it returned
+   before this version.  Pin the value itself, or the owner's number has no
+   test at all and the next tuning pass silently undoes it. */
+check('a tier-one cooked fish heals about 100 (owner: "closer to 100")',
+  minnowHeal === 100, minnowHeal);
+/* And the slope survives: better fish still heal more, which is what makes
+   the tier ladder worth climbing.  Asserted as an ORDERING rather than as
+   more magic numbers so a future retune of the curve does not have to come
+   back here. */
+{
+  const t2 = room._fishHealAmount('cooked_fish_trout');
+  check('...and a higher-tier fish still heals strictly more',
+    t2 > minnowHeal, { minnowHeal, trout: t2 });
+  /* An unmapped key is the DEFAULT branch — it used to return 20, which is
+     what made "fish heal for 20" survive so long: anything the map missed fell
+     into it silently. */
+  check('...and an unrecognised cooked fish falls back to the same ~100',
+    room._fishHealAmount('cooked_fish_nonesuch') === 100,
+    room._fishHealAmount('cooked_fish_nonesuch'));
+}
+/* ═══ v2.3.1765: AND SO IS THE HARVEST XP ═══
+   Owner: "Lifeskills xp is far too slow.  I think you should increase it by
+   about 5x."  Nothing pinned this number either — the harvest suite asserts
+   that SOME xp landed, which passed at every rate this formula has ever had. */
+check("a tier-one harvest pays 25x the original base XP (owner: x5 again)",
+  room._harvestXpForTier(1, 'ok') === 163, room._harvestXpForTier(1, 'ok'));
+check('...and the client mirror computes the same base',
+  room._harvestXpForTier(1, 'ok') === Math.ceil((1 * 1.5 + 5) * 25),
+  Math.ceil((1 * 1.5 + 5) * 25));
+/* The accuracy grades multiply the new base rather than replacing it — the
+   x5 must not have flattened the reward for playing the minigame well. */
+check('...with good and perfect still worth 1.5x and 2x on top',
+  room._harvestXpForTier(1, 'good') === 245 && room._harvestXpForTier(1, 'perfect') === 326,
+  { good: room._harvestXpForTier(1, 'good'), perfect: room._harvestXpForTier(1, 'perfect') });
 await send(ws, 'eat_request', { invKey: 'fish_minnow' });
 check('eat: RAW fish is not edible (inventory untouched)',
   ps.inventory.fish_minnow === 1, ps.inventory);

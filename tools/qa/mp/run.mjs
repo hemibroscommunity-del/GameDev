@@ -21,6 +21,7 @@ import * as H from './harness.mjs';
 const WS = await H.freePort(), WEB = await H.freePort();
 
 const SCENARIOS = {
+  spawnfx: () => import('./mp-spawnfx.mjs'), /* v2.3.1765: the respawn silhouette */
   presence: () => import('./mp-presence.mjs'),
   trade: () => import('./mp-trade.mjs'),
   duel: () => import('./mp-duel.mjs'),

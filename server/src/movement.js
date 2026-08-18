@@ -230,7 +230,26 @@ export const movementMethods = {
       /* v2.3.1092: harvest activity code (mine|chop|fish|cook|fire, or
          null). Pure presentation state relayed to peers so they can see
          this player gathering; not authoritative over loot/XP. */
-      if (msg.ex !== undefined) ps.ex = msg.ex || null;
+      if (msg.ex !== undefined) {
+        /* v2.3.1765: stamp WHEN the activity started and WHERE the player
+           stood when it did, on the null->active edge only.  Both are read by
+           _extractionShielded's cook/fire branch, which has no server node to
+           anchor on and so anchors on this instead.  Edge-only for the same
+           reason the parry stamp below is edge-only: the client re-sends `ex`
+           on a 500ms heartbeat while it holds, and re-stamping on every one of
+           those would slide the ceiling forward forever — the shield would
+           never expire for anybody, honest or not.
+           Stamped from ps.x/ps.y, which this handler has just written from the
+           validated move, rather than from anything the ex message carries. */
+        const _exWas = ps.ex || null;
+        ps.ex = msg.ex || null;
+        if (ps.ex && !_exWas) {
+          ps._exAt = Date.now();
+          ps._exX = ps.x || 0; ps._exY = ps.y || 0;
+        } else if (!ps.ex) {
+          ps._exAt = 0;
+        }
+      }
       if (msg.dodging !== undefined) ps.dodging = !!msg.dodging;
       if (msg.blocking !== undefined) {
         /* v2.3.1731: stamp the RAISE, server-side, for the parry window.

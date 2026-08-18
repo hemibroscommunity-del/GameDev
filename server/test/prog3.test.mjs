@@ -456,5 +456,57 @@ const psA = room.playerState.pa;
   check('per-type crit damage stays under the anticheat ceiling', over === 0, { over, cap });
 }
 
+/* ═══ v2.3.1765: THE TUTORIAL'S OWN WEAPONS ARE EQUIPPABLE ═══
+ *
+ * Owner: "there seems to be some weird auto Unequipping of weapons after
+ * completing quests but I could be wrong."  They were right that something was
+ * wrong, and this is it: the equip gate scores a weapon by its POSITION in the
+ * forge table, BLACKSMITH_TIERS still opens with the vestigial `wood` rung, and
+ * v2.3.1760 made copper the first metal weapon.  So "Bro's Sword" — handed over
+ * in the first five minutes — sat at rung 1 and demanded trained sword level 5
+ * from a character who is level 1 in everything.  The server refuses that
+ * silently by design ("the client's own gate shows the requirement"), so the
+ * weapon simply would not stay on.
+ *
+ * The owner's call was "copper counts as rung zero", which slides every metal
+ * above it down one step and restores the ladder's original shape.  Pinned in
+ * BOTH directions here: the starter must be equippable at level 1, and the
+ * rungs above it must still be gated, or "fix the starter" becomes "delete the
+ * gate". */
+{
+  const lvl1 = () => ({ prog3: { sk: { sword: { level: 1 }, bow: { level: 1 }, staff: { level: 1 } },
+    alloc: {}, atk: {}, pool: {}, ms: {} } });
+  const wpn = (type, gearBase) => ({ type, gearBase, tierMult: 1, name: type + ':' + gearBase });
+
+  check('the tutorial copper sword is equippable at trained level 1 (owner: copper is rung zero)',
+    room._prog3EquipOk(lvl1(), 'weapon', wpn('greatsword', 'copper')) === true);
+  check('...and so is the pine bow it hands you alongside it',
+    room._prog3EquipOk(lvl1(), 'rangedWeapon', wpn('bow', 'ww_pine')) === true);
+  check('...and the pine staff',
+    room._prog3EquipOk(lvl1(), 'staffWeapon', wpn('staff', 'ww_pine')) === true);
+
+  /* The other half.  A gate that lets the starter through by letting
+     EVERYTHING through is not a fix, and that is the failure mode a "make it
+     work" change lands on. */
+  check('iron still asks for something — one rung up, not zero',
+    room._prog3EquipOk(lvl1(), 'weapon', wpn('greatsword', 'iron')) === false);
+  check('...and steel asks for more than iron',
+    room._prog3EquipOk({ prog3: { sk: { sword: { level: 5 } }, alloc: {}, atk: {}, pool: {}, ms: {} } },
+      'weapon', wpn('greatsword', 'iron')) === true
+    && room._prog3EquipOk({ prog3: { sk: { sword: { level: 5 } }, alloc: {}, atk: {}, pool: {}, ms: {} } },
+      'weapon', wpn('greatsword', 'steel')) === false);
+
+  /* The whole point, end to end: the handler must actually seat it, not just
+     the predicate.  A gate that says yes while _handleEquipRequest returns for
+     some other reason leaves the owner's bug exactly where it was. */
+  room.playerState['t1'] = { ...lvl1(), z: 'town', x: 0, y: 0,
+    weaponStash: [wpn('greatsword', 'copper')] };
+  room._handleEquipRequest({ id: 't1' }, { stashIdx: 0, slot: 'weapon' });
+  check('a level-1 character can actually SEAT the starter sword',
+    !!room.playerState['t1'].weapon && room.playerState['t1'].weapon.gearBase === 'copper',
+    room.playerState['t1'].weapon);
+  delete room.playerState['t1'];
+}
+
 console.log(failures === 0 ? '\nprog3: ALL PASS' : `\nprog3: ${failures} FAILURE(S)`);
 if (failures > 0) process.exit(1);
