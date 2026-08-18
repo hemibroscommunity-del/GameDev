@@ -3480,6 +3480,23 @@ export var BroTown = function BroTown(_ref0) {
         if (!S._perf) S._perf = { prevT: _perfNow, slowLastT: 0, worstMs: 0, worstFps: 60, slowFrameCount: 0, totalSlow: 0 };
         var _perfDelta = _perfNow - S._perf.prevT;
         S._perf.prevT = _perfNow;
+        /* ═══ v2.3.1769: MOVEMENT IS PER SECOND, NOT PER FRAME ═══
+           Owner, on desktop: "the player movement speed was way higher."
+           It was — and not because it was desktop, but because it was a faster
+           SCREEN.  Every step below was `P.x += dx * finalSpd` with no time
+           term, so speed was literally proportional to refresh rate: a 144Hz
+           monitor moved you 2.4x faster than the 60Hz these numbers were tuned
+           on.  The same bug runs the other way on the primary platform — an
+           iPhone dipping to 30fps moved you at HALF speed, which is part of
+           what a frame dip has always felt like here.
+           dtScale is the missing term, normalised so 60fps === 1 and every
+           existing tuning number keeps exactly the meaning it has today.
+           CLAMPED AT BOTH ENDS.  The ceiling (3 frames, 50ms) is what stops a
+           tab-return or a GC stall from teleporting the player through a wall —
+           collision is tested per step, so an unbounded step tunnels — and it
+           keeps the step inside the worker's move cap.  The floor stops a zero
+           or negative delta (first frame, clock skew) from freezing movement. */
+        S._dtScale = Math.max(0.2, Math.min(3, (_perfDelta || 16.667) / 16.667));
         if (_perfDelta > 20) {
           S._perf.totalSlow++;
           if (_perfDelta > S._perf.worstMs) {
@@ -3672,8 +3689,13 @@ export var BroTown = function BroTown(_ref0) {
              in game/dodge.js so the elastic formula stays in one place. */
           S._dodgeRoll.durMs = _dodgeMs;
           if (rollAge < _dodgeMs) {
-            S.player.x += Math.cos(S._dodgeRoll.angle) * 6;
-            S.player.y += Math.sin(S._dodgeRoll.angle) * 6;
+            /* v2.3.1769: same frame-rate term as the walk step — a dodge is
+               the player moving.  On a 144Hz screen it covered 2.4x the ground
+               while its invulnerability window, which is timed in ms, did not
+               stretch with it: the roll out-ran its own i-frames. */
+            var _dodgeStep = 6 * (S._dtScale || 1);
+            S.player.x += Math.cos(S._dodgeRoll.angle) * _dodgeStep;
+            S.player.y += Math.sin(S._dodgeRoll.angle) * _dodgeStep;
           } else S._dodgeRoll = null;
         } else if (S._dodgeRoll && _playerDead) {
           S._dodgeRoll = null;
@@ -3795,8 +3817,13 @@ export var BroTown = function BroTown(_ref0) {
           }
         }
 
-        var nx = P.x + dx * finalSpd;
-        var ny = P.y + dy * finalSpd;
+        /* v2.3.1769: the frame-rate term.  Applied HERE, to the step, rather
+           than folded into finalSpd above — finalSpd is also read by the ice
+           slide's blend below, which is a RATIO between the drive and the
+           carried velocity and would be wrong if scaled twice. */
+        var _step = finalSpd * (S._dtScale || 1);
+        var nx = P.x + dx * _step;
+        var ny = P.y + dy * _step;
 
         /* Store velocity for facing/mirroring code */
         P.vx = dx * finalSpd;
