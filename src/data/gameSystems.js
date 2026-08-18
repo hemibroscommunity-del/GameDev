@@ -399,17 +399,21 @@ export function getEquipReqLabel(item, slotType, rpg) {
 
 /* §18 Woodworking — bows and staves. Equip stat: Bow=Agility, Staff=Mind. statReq = tierIndex * 10 */
 export const WOODWORKING_TIERS = {
-  wood: {
+  /* v2.3.1763 (owner: "I also want the first wood tier for staffs and bows to
+     be pine").  Mirrors server/src/data.js WOODWORKING_TIERS.pine exactly —
+     including `wood: 'pine_log'`, which is the log the first tree drops.  A
+     one-sided edit here would offer a craft the worker refuses. */
+  pine: {
     minLvl: 1,
-    label: 'Wood',
+    label: 'Pine',
     slots: 1,
-    wood: 'wood',
+    wood: 'pine_log',
     woodCost: 3,
     goldCost: 8,
     tierMult: 1.00,
     statReq: 0,
-    color: '#6b4226',
-    desc: 'Common timber, rough but workable'
+    color: '#c8ab7a',
+    desc: 'Pale, light and easy to work'
   },
   softwood: {
     minLvl: 6,
@@ -435,11 +439,13 @@ export const WOODWORKING_TIERS = {
     color: '#7a5a30',
     desc: 'Dense and sturdy'
   },
-  pine: {
+  /* v2.3.1763: was 'pine' — the name moved DOWN to tier one (see above), so
+     this tier is cedar.  Mirrors the server rename. */
+  cedar: {
     minLvl: 16,
-    label: 'Pine',
+    label: 'Cedar',
     slots: 1,
-    wood: 'pine_lumber',
+    wood: 'cedar_wood',
     woodCost: 5,
     goldCost: 55,
     tierMult: 1.40,
@@ -640,6 +646,12 @@ export const WOODWORKING_TIERS = {
     desc: 'Pulsing unstable dark violet'
   }
 };
+
+/* v2.3.1763: QA probe — the woodworking tier table as the CLIENT holds it, so a
+   test can pin that the first tier is pine and that only one tier carries the
+   name.  Same posture as the renderer's __bt* probes. */
+if (typeof window !== 'undefined') window.__btWoodTiers = () => WOODWORKING_TIERS;
+
 
 /* ═══ REFORGE + HARDEN SYSTEM — RNG crafting depth ═══ */
 /* Reforge: re-roll a random bonus on crafted gear (replaces previous bonus). Costs materials. */
@@ -5431,8 +5443,8 @@ export const QUEST_CHAINS = {
       { when: 'accept',   icon: '/icons/items/great-sword.webp', label: "Bro's Sword" },
       { when: 'accept',   icon: '/icons/items/shield.webp', label: "Bro's Shield" },
       /* v2.3.1692 (owner): all three combat styles land on quest one. */
-      { when: 'complete', icon: '/icons/items/bow.webp',    label: "Bro's Bow" },
-      { when: 'complete', icon: '/icons/items/staff.webp',  label: "Bro's Staff" },
+      { when: 'complete', icon: '/icons/items/bow.png',    label: "Bro's Bow" },
+      { when: 'complete', icon: '/icons/items/staff.png',  label: "Bro's Staff" },
     ],
     dialogue: {
       /* v2.3.1676 (owner: "He'll give you the sword and shield (with

@@ -48,8 +48,8 @@ const wpnIconSrc = (R, wpn) => {
   /* v2.3.1760: a melee weapon's icon takes its METAL (metalIconPath); a bow or
      a staff never does — owner: "only for metals though not staff or bow". */
   const metal = weaponMaterial(wpn.type, wpn.gearBase);
-  return wpn.type === 'bow' || slot === 'ranged' ? `/icons/items/bow.webp${ITEMS_V}`
-    : wpn.type === 'staff' || slot === 'staff' ? `/icons/items/staff.webp${ITEMS_V}`
+  return wpn.type === 'bow' || slot === 'ranged' ? `/icons/items/bow.png${ITEMS_V}`
+    : wpn.type === 'staff' || slot === 'staff' ? `/icons/items/staff.png${ITEMS_V}`
     : wpn.type === 'greatsword' ? `${metalIconPath('/icons/items/great-sword.webp', metal)}${ITEMS_V}`
       : `${metalIconPath('/icons/items/sword.webp', metal)}${ITEMS_V}`;
 };

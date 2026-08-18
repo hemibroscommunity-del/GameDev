@@ -31,17 +31,21 @@ function otherLane(P) {
 }
 
 const coins = (P) => H.readState(P, (S) => (S.rpg || {}).coins || 0);
-/* v2.3.1755: 'wood_oak', not 'wood'.  The grant key here was invented by this
-   test and matches nothing the game produces (the worker's gathering path
-   writes wood_oak), so every run traded an item that does not exist — which
-   is also why the trade window had never once rendered a real item
-   thumbnail: thumbFor keys off the prefix and 'wood' matched nothing, so the
-   fallback glyph was all this scenario ever exercised. */
-const WOOD_KEY = 'wood_oak';
+/* v2.3.1755 changed this from 'wood' to 'wood_oak' on the claim that the
+   worker's gathering path writes wood_oak.  That was WRONG — the gathering
+   path builds its key from the tier's harvest NAME (gathering.js
+   _harvestNameForTier), which was 'Kindling', so the real key was
+   wood_kindling and wood_oak was every bit as invented as 'wood'.  The
+   thumbnail assertions still held because thumbFor matches the wood_ PREFIX,
+   not the species.
+   v2.3.1763: the first tree drops a PINE LOG, so the honest key is
+   wood_pine_log — a key the game actually produces, which is the whole point
+   of granting it here. */
+const WOOD_KEY = 'wood_pine_log';
 /* The literal is repeated rather than closed over on purpose: readState
    stringifies this arrow and runs it in the PAGE, where a Node-scope
    binding is a ReferenceError. */
-const wood = (P) => H.readState(P, (S) => ((S.rpg || {}).inventory || {})['wood_oak'] || 0);
+const wood = (P) => H.readState(P, (S) => ((S.rpg || {}).inventory || {})['wood_pine_log'] || 0);
 
 export async function run({ browser, wsPort, webPort, rec }) {
   const { A, B } = await H.joinPair(browser, { wsPort, webPort, nameA: 'Trader', nameB: 'Buyer' });

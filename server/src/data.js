@@ -481,8 +481,13 @@ export const QUEST_REWARDS = {
                  three combat styles and free to pick.  An ARRAY is granted
                  item-by-item (see _handleQuestTurnIn). */
               item:[
-                {kind:'weapon', weaponType:'bow',   tierKey:'wood', name:"Bro's Bow"},
-                {kind:'weapon', weaponType:'staff', tierKey:'wood', name:"Bro's Staff"},
+                /* v2.3.1763: the first woodworking tier is 'pine' now — these
+                   named 'wood', which no longer exists, and _grantQuestItem
+                   silently grants NOTHING for an unknown tier key.  Caught by
+                   the tutorial suite ("a granted BOW also lands in the bag"),
+                   which is exactly the sort of thing a rename takes with it. */
+                {kind:'weapon', weaponType:'bow',   tierKey:'pine', name:"Bro's Bow"},
+                {kind:'weapon', weaponType:'staff', tierKey:'pine', name:"Bro's Staff"},
               ]},
       /* v2.3.1692: tut_2 pays gold + xp only — its staff moved to tut_1. */
       tut_2: {gold:60,  xp:70, next:'tut_3',
@@ -608,10 +613,17 @@ export const BLACKSMITH_TIERS = {
     };
 
 export const WOODWORKING_TIERS = {
-      wood:         {minLvl:1, slots:1, wood:'wood',         woodCost:3,  goldCost:8,    tierMult:1.00, statReq:0  },
+      /* v2.3.1763 (owner: "the first wood tier for staffs and bows to be
+         pine").  `wood: 'pine_log'` makes the tier consume `wood_pine_log` —
+         the log the first tree actually drops (gathering.js).  The old first
+         tier asked for `wood_wood`, which nothing produces. */
+      pine:         {minLvl:1, slots:1, wood:'pine_log',     woodCost:3,  goldCost:8,    tierMult:1.00, statReq:0  },
       softwood:     {minLvl:6, slots:1, wood:'softwood',     woodCost:3,  goldCost:20,   tierMult:1.12, statReq:10 },
       hardwood:     {minLvl:11,slots:1, wood:'hardwood',     woodCost:4,  goldCost:35,   tierMult:1.25, statReq:20 },
-      pine:         {minLvl:16,slots:1, wood:'pine_lumber',  woodCost:5,  goldCost:55,   tierMult:1.40, statReq:30 },
+      /* v2.3.1763: was 'pine' — the name moved DOWN to tier one, so this tier
+         is cedar.  Renamed rather than left as a second Pine: two tiers with
+         one name is how a player buys the wrong bow. */
+      cedar:        {minLvl:16,slots:1, wood:'cedar_wood',   woodCost:5,  goldCost:55,   tierMult:1.40, statReq:30 },
       maple:        {minLvl:21,slots:1, wood:'maple_wood',   woodCost:5,  goldCost:85,   tierMult:1.56, statReq:40 },
       ironbark:     {minLvl:26,slots:1, wood:'ironbark',     woodCost:6,  goldCost:120,  tierMult:1.74, statReq:50 },
       crystalwood:  {minLvl:31,slots:2, wood:'crystal_wood', woodCost:7,  goldCost:170,  tierMult:1.94, statReq:60 },
@@ -752,7 +764,10 @@ export const BLACKSMITH_TIER_LABELS = {
   worldbreaker: 'Worldbreaker',
 };
 export const WOODWORKING_TIER_LABELS = {
-  wood: 'Wood', softwood: 'Softwood', hardwood: 'Hardwood', pine: 'Pine',
+  /* v2.3.1763: 'wood' -> 'pine' at tier one, and the old lvl-16 'pine' is
+     'cedar'.  Key ORDER is checked against the client table by
+     mirror-audit.test.mjs, so these two move together with the tiers. */
+  pine: 'Pine', softwood: 'Softwood', hardwood: 'Hardwood', cedar: 'Cedar',
   maple: 'Maple', ironbark: 'Ironbark', crystalwood: 'Crystal Wood',
   elder: 'Elder Wood', spiritwood: 'Spirit Wood', dragonwood: 'Dragonwood',
   shadowthorn: 'Shadowthorn', bloodoak: 'Bloodoak', runewood: 'Runewood',

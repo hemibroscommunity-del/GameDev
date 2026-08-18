@@ -45,10 +45,15 @@ export const FISHING_TIERS = [
 ];
 
 export const WOODCUTTING_TIERS = [
-  { lvl: 1, name: 'Kindling', tree: 'Sapling', trunkW: 3, canopyR: 5, trunkH: 6, canopyColor: '#3a8a2a', trunkColor: '#5a3a1e', hp: 2 },
+  /* v2.3.1763 (owner: "changing 'log' or 'oak log' to 'pine log'").  The first
+     tree is a Pine and drops a Pine Log — the same name the server builds the
+     inventory key from (gathering.js _harvestNameForTier), and the same wood
+     the first woodworking tier consumes.  Keep all three in step. */
+  { lvl: 1, name: 'Pine Log', tree: 'Pine', trunkW: 3, canopyR: 5, trunkH: 6, canopyColor: '#3a8a2a', trunkColor: '#7a5a34', hp: 2 },
   { lvl: 6, name: 'Softwood', tree: 'Young Tree', trunkW: 4, canopyR: 7, trunkH: 8, canopyColor: '#2a7a1a', trunkColor: '#4a3018', hp: 3 },
   { lvl: 11, name: 'Hardwood', tree: 'Oak', trunkW: 5, canopyR: 10, trunkH: 10, canopyColor: '#1a6a10', trunkColor: '#3a2810', hp: 5 },
-  { lvl: 16, name: 'Pine Lumber', tree: 'Pine', trunkW: 4, canopyR: 8, trunkH: 14, canopyColor: '#1a5a10', trunkColor: '#4a3018', hp: 6 },
+  /* v2.3.1763: renamed off 'Pine' — that name is tier one's now. */
+  { lvl: 16, name: 'Cedar Wood', tree: 'Cedar', trunkW: 4, canopyR: 8, trunkH: 14, canopyColor: '#1a5a10', trunkColor: '#4a3018', hp: 6 },
   { lvl: 21, name: 'Maple Wood', tree: 'Maple', trunkW: 5, canopyR: 12, trunkH: 10, canopyColor: '#c06020', trunkColor: '#3a2810', hp: 8 },
   { lvl: 26, name: 'Dense Wood', tree: 'Ancient Oak', trunkW: 7, canopyR: 14, trunkH: 12, canopyColor: '#0d4a08', trunkColor: '#2a1a08', hp: 10 },
   { lvl: 31, name: 'Crystal Wood', tree: 'Crystal Tree', trunkW: 5, canopyR: 11, trunkH: 12, canopyColor: '#6080c0', trunkColor: '#4a5a6a', hp: 12 },
