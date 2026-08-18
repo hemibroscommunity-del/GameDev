@@ -2334,6 +2334,44 @@ export function setupWebSocket(ctx) {
       }
       _inputBuffer.length = 0;
     }
+    /* ═══ v2.3.1765: SEND THE HELD POSITION BEFORE AN ACT OF COMBAT ═══
+     *
+     * Owner: "Shield bash always seems to miss if I activate it while I'm
+     * moving while I hit the monster with it."
+     *
+     * The adaptive rate above drops to 198 ms when nobody shares your zone,
+     * and its comment argues that is free because "your own movement is
+     * client-predicted and the server never echoes your position back, so
+     * this changes nothing you can feel."  That was true of MOVEMENT and
+     * false of COMBAT, and Shield Bash is where it shows: abilities.js picks
+     * its target within cfg.radius (70 px) of ps.x/ps.y — the worker's copy
+     * — while the client draws the arc around where you actually are.  Alone
+     * in a zone, running, those are up to 198 ms plus a network hop apart:
+     * ~40 px at run speed, against a 70 px reach with no slack in it.  So the
+     * monster you are pressed against is out of range on the only screen that
+     * counts, every time, and only while moving — the report exactly.
+     *
+     * Flushing the held move is the honest fix.  It is the same packet the
+     * batcher was about to send, through the same validator and the same
+     * speed cap; nothing new is trusted, no field is added to the wire, and
+     * WebSocket ordering guarantees the worker applies the position before
+     * the cast.  Widening the radius was the alternative and it is worse: it
+     * would also let a player standing still bash something visibly out of
+     * reach.
+     *
+     * NOT applied to monster_damage, deliberately.  Melee's server gate is
+     * PVE_MELEE_RANGE = 400 px, sized in v2.3.1302 for precisely this lag
+     * ("client/server position lag on iPhone Safari over cellular"), so it
+     * has ~330 px of slack where bash has none.  Adding a flush there would
+     * be an extra packet per swing for a problem melee does not have. */
+    function flushPendingMoveNow() {
+      if (!_pendingMove) return false;
+      if (!ws || ws.readyState !== WebSocket.OPEN) return false;
+      ws.send(JSON.stringify(_pendingMove));
+      _pendingMove = null;
+      _lastMoveSentAt = Date.now();
+      return true;
+    }
     function startBatchTimer() {
       if (_batchTimer) return;
       _batchTimer = setInterval(function () {
@@ -2411,6 +2449,10 @@ export function setupWebSocket(ctx) {
            normally, the worker never hears it, and the ability is a button
            that drains a predicted bar and does nothing. */
         if (msg.type === 'ability') {
+          /* v2.3.1765: the held position goes FIRST — see flushPendingMoveNow.
+             Bash measures 70px from the worker's copy of where you are, and
+             solo play holds that copy up to 198ms stale. */
+          flushPendingMoveNow();
           ws.send(JSON.stringify(msg));
           return;
         }

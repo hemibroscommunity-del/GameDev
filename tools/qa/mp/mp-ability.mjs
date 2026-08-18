@@ -376,5 +376,80 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok('...and leaving it stops the loop', amb.inTown === false, amb);
   }
 
+  /* ═══════════════════════════════════════════════════════════════════════
+     v2.3.1765: A CAST DOES NOT OVERTAKE THE POSITION IT IS AIMED FROM
+     Owner: "Shield bash always seems to miss if I activate it while I'm
+     moving while I hit the monster with it."
+
+     abilities.js picks its target within cfg.radius (70px) of ps.x/ps.y — the
+     WORKER's copy of where you are.  The move rate drops to 198ms when nobody
+     shares your zone (wsClient's adaptive gap, justified on the grounds that
+     your own movement is client-predicted so the rate "changes nothing you can
+     feel"), and the `ability` frame is sent immediately while the freshest
+     move sits held in the batcher.  Running, alone, that copy is ~40px behind
+     a 70px reach with no slack in it — so the bash whiffs, and only while
+     moving.  The fix flushes the held move first.
+
+     ASKED OF THE WORKER, not of the browser.  Two other framings were tried
+     and are worth recording as dead ends:
+       - "read the worker's position after the cast" is VACUOUS.  The batch
+         timer keeps running, so the position catches up within a frame or two
+         and the read agrees whether or not the cast was aimed correctly.
+       - "watch the frame order on the socket" cannot be instrumented here:
+         WebSocket instances in this page carry their own `send`, so a
+         prototype wrap records nothing (verified — zero frames captured,
+         including the 1Hz keepalive).
+     What settles it is the position the SERVER measured the cast from, which
+     it now records (ps._abilFrom, surfaced as live.abilFrom).  That is a
+     single instant and no later move can rewrite it.
+
+     The cast is sent directly rather than through castAbility because the
+     ability is level-gated (see the header) and the worker will refuse it —
+     which does not matter to this check twice over: the flush lives in the
+     channel shim keyed on message type, and the stamp is taken before the
+     gates. ═════════════════════════════════════════════════════════════════ */
+  await P.page.keyboard.down('w');
+  await P.page.waitForTimeout(800);
+  const cast = await P.page.evaluate(() => {
+    const S = window._gameState && window._gameState.current;
+    if (!S || !S.channel || !S.player) return null;
+    const x0 = S.player.x, y0 = S.player.y;
+    S.channel.send({ type: 'ability', payload: { kind: 'bash' } });
+    return { x: Math.round(x0 * 10) / 10, y: Math.round(y0 * 10) / 10 };
+  });
+  await P.page.waitForTimeout(500);
+  await P.page.keyboard.up('w');
+  await P.page.waitForTimeout(400);
+  rec.ok('the cast could be dispatched while running', !!cast, cast);
+
+  const live = (await H.adminPlayer(wsPort, myId).catch(() => ({}))).live || {};
+  const from = live.abilFrom || null;
+  rec.ok('the WORKER recorded where it measured the cast from', !!from, live);
+  if (from && cast) {
+    /* GUARD: the whole check turns on the player having been genuinely in
+       motion.  Standing still there is nothing to be stale about, and a fixed
+       and an unfixed client would agree to the pixel. */
+    const moved = await P.page.evaluate((c) => {
+      const S = window._gameState.current;
+      return Math.hypot(S.player.x - c.x, S.player.y - c.y);
+    }, cast);
+    rec.ok('...and the player really was running (guard: staleness needs motion)',
+      moved > 30, { movedAfterCast: moved, cast, from });
+    /* THE ASSERTION.  1.5px, not a generous band: the flushed move carries the
+       position rounded to 0.1, so a correct client lands at ~0 and the only
+       tolerance needed is that rounding.
+       BE HONEST ABOUT THE MAGNITUDE HERE.  Measured on this machine the
+       unfixed client aimed 2.8px behind — real, and reliably red against the
+       threshold below, but nowhere near enough on its own to explain "always
+       misses".  The gap is (held-move age + network hop) x speed, and all
+       three are at their smallest in a headless run on loopback: no cellular
+       RTT, and a peer-free room does not necessarily sit on the 198ms solo
+       gate for the whole window.  What this pins is the ORDERING defect, which
+       is real at any scale; what it cannot pin is the owner's phone. */
+    rec.ok('the cast was measured from where the player ACTUALLY was',
+      Math.hypot(from.x - cast.x, from.y - cast.y) <= 1.5,
+      { from, cast, drift: +Math.hypot(from.x - cast.x, from.y - cast.y).toFixed(2) });
+  }
+
   await P.ctx.close().catch(() => {});
 }
