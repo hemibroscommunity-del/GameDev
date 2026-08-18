@@ -30,7 +30,7 @@ import { getShirt } from '../traits/shirtCatalog.js';
 import { getShirtColor, shirtFill } from '../traits/shirtColorCatalog.js';
 import { recolorBodyToCanvas, recolorStandInSkin, DEFAULT_SKIN_TARGET, skinTarget, pantsTarget, shoesTarget, getSkin, getPants, getShoes, onSkinChange, onPantsChange, onShoesChange } from '../playerSkins.js'; /* v2.3.1710: + the skin-only stand-in recolour (the cook) */
 import { getGearFrame } from '../gearSheets.js';
-import { gearTint } from '../gearVariants.js'; /* v2.3.1764: the swing wears the same metal */
+import { gearTint, gearArt } from '../gearVariants.js'; /* v2.3.1764: the swing wears the same metal; v2.3.1772: ...and finds its sheets */
 import { materialTint, weaponTint } from '../traits/materialTints.js';
 import { upscaleToFrameHeight } from '../spriteScale.js'; /* v2.3.1112: restore downscaled-on-disk sword stand-in strips to their authored frame height */
 import { cycleMs as jogCycleMs, frameCount as jogFrameCount, resolveDirection } from '../playerSprites.js';
@@ -139,6 +139,12 @@ const FIRE_SKIN_OPTS = { maxBR: 0.50, minGR: 0.45, maxGR: 0.80, minBlob: 1800 };
    played; an empty record is itself the answer to "did anything tint?". */
 const _standInTints = Object.create(null);
 if (typeof window !== 'undefined') window.__btStandInTints = () => Object.assign({}, _standInTints);
+/* v2.3.1772: QA hook — clear the record between two different loadouts, so a
+   sweep over several worn combinations reads what THIS combination drew rather
+   than a leftover from the previous one. */
+if (typeof window !== 'undefined') {
+  window.__btStandInTintsReset = () => { for (const k of Object.keys(_standInTints)) delete _standInTints[k]; };
+}
 
 const FIRE_GEAR_REG = {
   shirt: {
@@ -4552,11 +4558,33 @@ export class EffectsRenderer {
        the pose that drew it.  A pose whose strips were never routed through
        here simply never appears in the record, which is the failure the test is
        looking for (rather than a green run that proves only what it drew). */
-    if (name) _standInTints[name] = { tint: spr.tint, visible: !!spr.visible };
+    if (name) _standInTints[name] = { tint: spr.tint, visible: !!spr.visible,
+      /* v2.3.1772: the TEXTURE, not just the colour.  The tint alone made this
+         probe unfalsifiable: a strip whose sheet 404s is still tinted copper
+         while nothing is on screen, so the v2.3.1764 assertions passed over a
+         pose that drew no armour at all. */
+      hasTex: !!(spr.texture && spr.texture.source),
+      texW: (spr.texture && spr.texture.width) || 0 };
   }
 
   _gearStripFrame(slot, item, pose, dir, fw, fi) {
     if (!item || item === 'none') return null;
+    /* ═══ v2.3.1772: A RECOLOURED SET HAS NO SHEETS OF ITS OWN ═══
+       Owner: "the animations while using the sword and bow revert to the iron
+       armor while wearing the copper armor."
+
+       `copperplate` is steelplate art plus a tint (gearVariants) — there is no
+       /sprites/gear/chest/copperplate/ directory and there is not meant to be.
+       The walking layers resolve that in getGearFrame (gearSheets), but this
+       loader built its URL from the raw equip id, so every combat and
+       life-skill stand-in requested a sheet that 404s and drew NOTHING at all
+       from the moment copper became tier one.
+       v2.3.1764 tinted these same sprites copper and its test passed, because
+       a tint applies to a sprite whether or not it has a texture — the colour
+       was right on an invisible strip.  Resolving here covers all nine call
+       sites (swing, bow, chop, cook, fire, shirt, and the two remote poses)
+       and keeps the shared-cache property: copper and steel are one entry. */
+    item = gearArt(item);
     const key = slot + '/' + item + '/' + pose + '/' + dir;
     let e = this._gearStrips[key];
     if (e === undefined) {
@@ -4675,7 +4703,7 @@ export class EffectsRenderer {
      docs/specs/jog-legs-attack-composite.md.  All the owner-tuned per-facing knobs
      live HERE (one source of truth). */
   _placeJogLegs(jl, jg, opts) {
-    const { legTex, gearFrame, cutRow, jdir, jfr, mir, s, x, footY, feetY, hasLegArmour, weapon = 'bow', seamLift = 0, torsoScale = 1, legSizeAdj = 1, legShiftX = 0, legShiftY = 0 } = opts;
+    const { legTex, gearFrame, cutRow, jdir, jfr, mir, s, x, footY, feetY, hasLegArmour, legsItem = null, weapon = 'bow', seamLift = 0, torsoScale = 1, legSizeAdj = 1, legShiftX = 0, legShiftY = 0 } = opts;
     const _LEG_LIFT = 12;   // frame px the legs ride above the torso cut (closes seam)
     const _ov = 10;         // frame px of leg drawn UP under the torso
     /* per-facing DOWNWARD nudge (frame px, sword only for now; southwest covers SE
@@ -4729,7 +4757,15 @@ export class EffectsRenderer {
          legTex needs no term: the jog-<dir>-legs.png bare-leg sheets
          load at an explicit {fw:256, fh:256} and never shrank. */
       const _gn = 256 / ((gearFrame.frame && gearFrame.frame.width) || 256);
-      jg.texture = gearFrame; jg.anchor.set(0.5, _waist / 256); jg.scale.set(mir * _legScale * _gn, _legScale * _gn); jg.x = x + _legDX + legShiftX; jg.y = _yMeet + legShiftY; jg.tint = 0xffffff; jg.visible = true;
+      /* v2.3.1772: ...and it keeps its METAL.  This layer draws real art (the
+         jog sheets resolve their own variant inside getGearFrame), so unlike
+         the strips above it was never invisible — it was hard-coded to white
+         and therefore drew copper greaves as steel for the whole of every
+         swing or bow shot taken while MOVING.  That is the "reverts to the
+         iron armor" the owner is looking at.  All four callers (sword + bow,
+         local + remote) pass their worn id through this one helper. */
+      jg.texture = gearFrame; jg.anchor.set(0.5, _waist / 256); jg.scale.set(mir * _legScale * _gn, _legScale * _gn); jg.x = x + _legDX + legShiftX; jg.y = _yMeet + legShiftY; jg.tint = gearTint(legsItem); jg.visible = true;
+      if (typeof window !== 'undefined') _standInTints[weapon + 'JogLegs'] = { tint: jg.tint, visible: true, hasTex: true, texW: (gearFrame.width || 0) };
     }
     else if (jg) { jg.visible = false; }
   }
@@ -4922,7 +4958,7 @@ export class EffectsRenderer {
         this._placeJogLegs(set.jogLegs, set.jogLegsGear, {
           legTex, gearFrame: getGearFrame('legs', eq.legs, 'jog', _jdir, _jfr),
           cutRow: swordTorsoCutRow(cfgKey, fi), jdir: _jdir, jfr: _jfr, mir: _rmir, s: sY, x: sp.x, footY: _baseFootY,
-          feetY: cfg.feetY, hasLegArmour: !!(eq.legs && eq.legs !== 'none'), weapon: 'sword',
+          feetY: cfg.feetY, hasLegArmour: !!(eq.legs && eq.legs !== 'none'), legsItem: eq.legs, weapon: 'sword',
           seamLift: _seamLift, torsoScale: _torsoOnlyAdj, legSizeAdj: _legSizeAdj, legShiftX: _legShiftX, legShiftY: _legShiftY,
         });
       } else { set.jogLegs.visible = false; set.jogLegsGear.visible = false; }
@@ -5068,7 +5104,7 @@ export class EffectsRenderer {
         this._placeJogLegs(set.jogLegs, set.jogLegsGear, {
           legTex, gearFrame: getGearFrame('legs', eq.legs, 'jog', _jdir, _jfr),
           cutRow: bowTorsoCutRow(cfgKey, fi), jdir: _jdir, jfr: _jfr, mir: _rmir, s: sY, x: sp.x, footY: sp.y,
-          feetY: cfg.feetY, hasLegArmour: !!(eq.legs && eq.legs !== 'none'),
+          feetY: cfg.feetY, hasLegArmour: !!(eq.legs && eq.legs !== 'none'), legsItem: eq.legs,
         });
       } else { set.jogLegs.visible = false; set.jogLegsGear.visible = false; }
       active.add(id);
@@ -5271,7 +5307,7 @@ export class EffectsRenderer {
         this._placeJogLegs(this.swordJogLegsSprite, this.swordJogLegsGearSprite, {
           legTex, gearFrame: getGearFrame('legs', getEquip('legs'), 'jog', _jdir, _jfr),
           cutRow: swordTorsoCutRow(fmap[0], fi), jdir: _jdir, jfr: _jfr, mir: _mir, s, x: sp.x, footY: _baseFootY,
-          feetY: cfg.feetY, hasLegArmour: getEquip('legs') !== 'none', weapon: 'sword', seamLift: _seamLift, torsoScale: _torsoOnlyAdj, legSizeAdj: _legSizeAdj, legShiftX: _legShiftX, legShiftY: _legShiftY,
+          feetY: cfg.feetY, hasLegArmour: getEquip('legs') !== 'none', legsItem: getEquip('legs'), weapon: 'sword', seamLift: _seamLift, torsoScale: _torsoOnlyAdj, legSizeAdj: _legSizeAdj, legShiftX: _legShiftX, legShiftY: _legShiftY,
         });
       }
     } else if (armorFrames && armorFrames[fi]) {
@@ -5373,7 +5409,7 @@ export class EffectsRenderer {
         this._placeJogLegs(this.bowJogLegsSprite, this.bowJogLegsGearSprite, {
           legTex, gearFrame: getGearFrame('legs', getEquip('legs'), 'jog', _jdir, _jfr),
           cutRow: bowTorsoCutRow(fmap[0], fi), jdir: _jdir, jfr: _jfr, mir: _mir, s, x: sp.x, footY: sp.y,
-          feetY: cfg.feetY, hasLegArmour: getEquip('legs') !== 'none',
+          feetY: cfg.feetY, hasLegArmour: getEquip('legs') !== 'none', legsItem: getEquip('legs'),
         });
       }
       sp.texture = _jogLegs ? _torsoFrames[fi] : bodyFrames[fi];

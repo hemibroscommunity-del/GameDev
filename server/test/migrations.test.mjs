@@ -352,5 +352,38 @@ const legacyBlob = () => ({
     empty9.t2Flat && empty9.t2Flat.sword.edge === 0 && empty9.t2Flat.endurance.stamina === 0, empty9.t2Flat);
 }
 
+/* ── v12: the starter weapons are named for their metal (v2.3.1772) ── */
+{
+  const b = {
+    _v: 11,
+    weapon: { name: "Bro's Sword", type: 'greatsword', gearBase: 'copper' },
+    rangedWeapon: { name: "Bro's Bow", type: 'bow', gearBase: 'ww_pine' },
+    weaponStash: [
+      { name: "Bro's Staff", type: 'staff', gearBase: 'ww_pine' },
+      { name: 'Iron Longsword', type: 'sword', gearBase: 'iron' },
+    ],
+  };
+  const r = runRpgMigrations(b);
+  check('v12 renames the equipped sword and bow',
+    r.failed === null && b.weapon.name === 'Copper Great Sword' && b.rangedWeapon.name === 'Pine Bow',
+    { w: b.weapon.name, r: b.rangedWeapon.name });
+  check('v12 renames a STASHED starter weapon too (one bag, one story)',
+    b.weaponStash[0].name === 'Pine Staff', b.weaponStash[0].name);
+  check('v12 leaves every other weapon alone',
+    b.weaponStash[1].name === 'Iron Longsword', b.weaponStash[1].name);
+  check('v12 stamps the schema version', b._v === RPG_SCHEMA_VERSION, b._v);
+  check('v12 is idempotent', runRpgMigrations(b).changed === false, b);
+  /* The type guard: a record carrying the old name on the WRONG type is not
+     one of the three starter weapons and must not be relabelled. */
+  const impostor = { _v: 11, weapon: { name: "Bro's Sword", type: 'dagger' } };
+  runRpgMigrations(impostor);
+  check('v12 checks the TYPE, not just the name',
+    impostor.weapon.name === "Bro's Sword", impostor.weapon.name);
+  /* Partial-tolerance: every field may be missing. */
+  const bare = { _v: 11 };
+  check('v12 survives a blob with no weapons at all',
+    runRpgMigrations(bare).failed === null && bare._v === RPG_SCHEMA_VERSION, bare);
+}
+
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);
 process.exit(failures === 0 ? 0 : 1);

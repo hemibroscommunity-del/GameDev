@@ -184,7 +184,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await send(A, { type: 'quest_accept', payload: { questId: 'tut_1' } });
   await A.page.waitForTimeout(2000);
   const starter = await H.readState(A, (S) => {
-    const w = (S.rpg.weaponStash || []).find((x) => x && /Bro's Sword/.test(x.name || ''));
+    const w = (S.rpg.weaponStash || []).find((x) => x && /Copper Great Sword/.test(x.name || ''));
     return w ? { type: w.type, gearBase: w.gearBase, mult: w.tierMult } : null;
   });
   rec.ok('the first weapon in the game is copper', !!starter && starter.gearBase === 'copper', starter);
@@ -193,7 +193,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await A.page.evaluate(() => {
     const S = window._gameState && window._gameState.current;
     const R = S && S.rpg; if (!R) return;
-    const i = (R.weaponStash || []).findIndex((w) => w && /Bro's Sword/.test(w.name || ''));
+    const i = (R.weaponStash || []).findIndex((w) => w && /Copper Great Sword/.test(w.name || ''));
     if (i < 0) return;
     R.weapon = R.weaponStash.splice(i, 1)[0];
     R.activeSlot = 'melee';

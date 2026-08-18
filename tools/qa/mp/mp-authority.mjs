@@ -53,7 +53,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   /* ═══ 1. ABILITY SPENDS REACH THE WORKER IN TOWN ═══ */
   /* A special needs a weapon in the active slot (v2.3.212), and since
      v2.3.1676 every fresh character starts with all three slots empty — so
-     take the mayor's first quest, which grants Bro's Sword (a 'greatsword';
+     take the mayor's first quest, which grants Copper Great Sword (a 'greatsword';
      weaponType 'sword' at wood tier is the bamboo stick — see mp-townlock),
      and equip it out of the bag. */
   await P.page.evaluate(() => {

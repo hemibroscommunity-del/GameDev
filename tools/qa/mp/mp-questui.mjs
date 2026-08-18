@@ -218,7 +218,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     sstash: (S.rpg.shieldStash || []).map((sh) => sh && sh.name),
   }));
   rec.ok('accepting from the world dialogue really reaches the worker (the sword is minted)',
-    granted.wstash.includes("Bro's Sword"), granted);
+    granted.wstash.includes("Copper Great Sword"), granted);
   rec.ok('...and the shield with it', granted.sstash.includes("Bro's Shield"), granted);
 
   await H.openDest(P, 'Quests');
@@ -327,7 +327,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   /* weaponStash and prog3 are server-owned — the client only ever receives
      them — so these are the assertions that prove the WORKER paid, rather
      than the client congratulating itself as it used to. */
-  rec.ok('the worker pays the bow into the bag', paid.wstash.includes("Bro's Bow"), paid);
+  rec.ok('the worker pays the bow into the bag', paid.wstash.includes("Pine Bow"), paid);
   rec.ok('the XP lands in the skill that was chosen', paid.bowXp > bowXpBefore,
     { before: bowXpBefore, after: paid.bowXp });
   const svrCoinsAfter = await H.adminPlayer(wsPort, pid)

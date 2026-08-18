@@ -59,7 +59,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
   /* ═══ 1. THE FLAT SPECIAL COST, SETTLED BY THE WORKER ═══ */
   /* Arm the character: fresh characters start with every slot empty
-     (v2.3.1676), and the mayor's first quest hands out Bro's Sword. */
+     (v2.3.1676), and the mayor's first quest hands out Copper Great Sword. */
   await P.page.evaluate(() => {
     const S = window._gameState && window._gameState.current;
     if (S && S.channel) S.channel.send({ type: 'quest_accept', payload: { questId: 'tut_1' } });

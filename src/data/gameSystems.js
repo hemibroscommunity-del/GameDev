@@ -5467,11 +5467,14 @@ export const QUEST_CHAINS = {
       /* great-sword, not sword: weaponType 'sword' at wood tier is the
          bamboo stick, and the server now grants a greatsword (see
          server/src/data.js tut_1) so bag, hand and dialogue agree. */
-      { when: 'accept',   icon: '/icons/items/great-sword.webp', label: "Bro's Sword" },
+      /* v2.3.1772: these labels must match the names the SERVER grants
+         (server/src/data.js tut_1), or the quest card promises one item and
+         the bag shows another. */
+      { when: 'accept',   icon: '/icons/items/great-sword.webp', label: "Copper Great Sword" },
       { when: 'accept',   icon: '/icons/items/shield.webp', label: "Bro's Shield" },
       /* v2.3.1692 (owner): all three combat styles land on quest one. */
-      { when: 'complete', icon: '/icons/items/bow.png',    label: "Bro's Bow" },
-      { when: 'complete', icon: '/icons/items/staff.png',  label: "Bro's Staff" },
+      { when: 'complete', icon: '/icons/items/bow.png',    label: "Pine Bow" },
+      { when: 'complete', icon: '/icons/items/staff.png',  label: "Pine Staff" },
     ],
     dialogue: {
       /* v2.3.1676 (owner: "He'll give you the sword and shield (with

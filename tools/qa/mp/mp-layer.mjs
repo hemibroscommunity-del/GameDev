@@ -45,7 +45,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await P.page.waitForTimeout(2500);
   await P.page.evaluate(() => {
     const S = window._gameState.current, R = S.rpg;
-    const i = (R.weaponStash || []).findIndex((w) => w && /Bro's Sword/.test(w.name || ''));
+    const i = (R.weaponStash || []).findIndex((w) => w && /Copper Great Sword/.test(w.name || ''));
     if (i >= 0) { R.weapon = R.weaponStash.splice(i, 1)[0]; R.activeSlot = 'melee'; }
   });
   await P.page.waitForTimeout(1200);

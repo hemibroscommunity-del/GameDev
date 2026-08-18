@@ -120,7 +120,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
      "equipped" were the same fact until this version and this is what
      separates them. */
   rec.ok('accepting his first quest grants a real SWORD, not the bamboo stick',
-    armed.stash.includes("greatsword:Bro's Sword"), armed);
+    armed.stash.includes("greatsword:Copper Great Sword"), armed);
   rec.ok('...into the BAG, with the hand still empty', !armed.weapon, armed);
   rec.ok('...and a shield, also in the bag rather than on the arm',
     armed.shieldBag.includes("Bro's Shield") && !armed.shield, armed);
@@ -161,7 +161,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
   await openSlotPicker('Weapon');
   rec.ok('the empty Weapon slot in the character menu offers the granted sword',
-    await H.seesText(P, "Bro's Sword"));
+    await H.seesText(P, "Copper Great Sword"));
   /* The popup names the item and offers a single Equip action — the item
      name itself is label text, not the control. */
   await H.clickText(P, 'Equip');

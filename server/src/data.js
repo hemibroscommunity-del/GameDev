@@ -470,7 +470,12 @@ export const QUEST_REWARDS = {
                  12% stronger than it was.  The wood tier is untouched and the
                  forge still sells it. */
               grantOnAccept:[
-                {kind:'weapon', weaponType:'greatsword', tierKey:'copper', name:"Bro's Sword"},
+                /* v2.3.1772 (owner: "rename bros sword, staff, and bow to the
+                   correct metals").  The tier was already copper/pine/pine —
+                   only the NAME said otherwise, so a player read "Bro's Sword"
+                   and had no way to know what it was made of.  Existing saves
+                   are renamed by migration v12, not left on the old name. */
+                {kind:'weapon', weaponType:'greatsword', tierKey:'copper', name:"Copper Great Sword"},
                 {kind:'shield', gearBase:'wood', tierMult:1.0, name:"Bro's Shield"},
               ],
               /* v2.3.1692 (owner: "the three primary weapon types as awards
@@ -486,8 +491,8 @@ export const QUEST_REWARDS = {
                    silently grants NOTHING for an unknown tier key.  Caught by
                    the tutorial suite ("a granted BOW also lands in the bag"),
                    which is exactly the sort of thing a rename takes with it. */
-                {kind:'weapon', weaponType:'bow',   tierKey:'pine', name:"Bro's Bow"},
-                {kind:'weapon', weaponType:'staff', tierKey:'pine', name:"Bro's Staff"},
+                {kind:'weapon', weaponType:'bow',   tierKey:'pine', name:"Pine Bow"},      /* v2.3.1772 */
+                {kind:'weapon', weaponType:'staff', tierKey:'pine', name:"Pine Staff"},    /* v2.3.1772 */
               ]},
       /* v2.3.1692: tut_2 pays gold + xp only — its staff moved to tut_1. */
       tut_2: {gold:60,  xp:70, next:'tut_3',
