@@ -142,7 +142,14 @@ export const gatheringMethods = {
   // tier was struck.  Limited to the "shallow" depth tier set today
   // (tierLvl 1 + 6); extend if/when deeper depths reach the server.
   _harvestNameForTier(nodeType, tierLvl) {
-    const TREE = { 1: 'Kindling', 6: 'Softwood' };
+    /* v2.3.1763 (owner: "I also want the first wood tier for staffs and bows to
+       be pine ... Also changing 'log' or 'oak log' to 'pine log'").  The first
+       tree drops a PINE LOG (inv key wood_pine_log), which is also what the
+       first woodworking tier consumes — see WOODWORKING_TIERS.pine in data.js.
+       Those two were never connected before this: tier one asked for
+       `wood_wood`, a key nothing in the game has ever produced, so the first
+       bow could not be crafted from anything a player could gather. */
+    const TREE = { 1: 'Pine Log', 6: 'Softwood' };
     const FISH = { 1: 'Minnow',   6: 'Clownfish' };
     const ORE  = { 1: 'Copper Ore', 6: 'Iron Ore' };
     const t = tierLvl || 1;

@@ -25,7 +25,7 @@
  *   - the chain unlocks step by step and pays each step exactly once
  */
 import { GameRoom } from '../src/index.js';
-import { QUEST_REWARDS, BLACKSMITH_TIERS, ZONES } from '../src/data.js';
+import { QUEST_REWARDS, BLACKSMITH_TIERS, WOODWORKING_TIERS, ZONES } from '../src/data.js';
 
 /* Can each named zone actually yield the remnant its step asks for?  Resolved
    from the LIVE spawn table + the same variant map the drop path uses, so a
@@ -116,8 +116,18 @@ const sess = { id: 'bp_t' };
     ZONE_DROPS_OK(), ids.map((id) => [QUEST_REWARDS[id].objective.zone, QUEST_REWARDS[id].objective.invKey]));
   /* The gate hazard: granted-then-unequippable is the worst new-player
      moment.  tierIndex 0 => requirement 0 under _prog3EquipOk. */
+  /* v2.3.1763: check each weapon against ITS OWN tier table.  This looked up
+     every tierKey in BLACKSMITH_TIERS, which happened to agree while both
+     tables opened on a key called 'wood'; the bow and the staff are WOODWORKING
+     weapons and always were.  The rename of the first wood tier to 'pine' is
+     what exposed it — the requirement being asserted (tierIndex 0, so
+     _prog3EquipOk asks for 0 points) is still exactly the same claim. */
   check('the granted weapon is tierIndex 0 (equippable at any trained level)',
-    QUEST_REWARDS.tut_1.item.every((i) => Object.keys(BLACKSMITH_TIERS).indexOf(i.tierKey) === 0),
+    QUEST_REWARDS.tut_1.item.every((i) => {
+      const ww = i.weaponType === 'bow' || i.weaponType === 'staff';
+      const table = ww ? WOODWORKING_TIERS : BLACKSMITH_TIERS;
+      return Object.keys(table).indexOf(i.tierKey) === 0;
+    }),
     QUEST_REWARDS.tut_1.item);
   check('the granted armor estimates to tierIndex 0 (needs 0 defense points)',
     Math.round((QUEST_REWARDS.tut_4.item.tierMult - 1) * 6) === 0,
@@ -321,7 +331,7 @@ const sess = { id: 'bp_t' };
     _stashed("Bro's Bow") && _stashed("Bro's Bow").type === 'bow' && !ps.rangedWeapon,
     { stash: ps.weaponStash, equipped: ps.rangedWeapon });
   check('the granted weapon has a forge-shaped blob',
-    _stashed("Bro's Bow").gearBase === 'ww_wood' && _stashed("Bro's Bow").hardness === 0
+    _stashed("Bro's Bow").gearBase === 'ww_pine' && _stashed("Bro's Bow").hardness === 0 /* v2.3.1763: first wood tier is pine */
     && _stashed("Bro's Bow").tier === 'common', _stashed("Bro's Bow"));
   check('the granted weapon quality is FIXED, not rolled',
     _stashed("Bro's Bow").quality === 'normal', _stashed("Bro's Bow").quality);

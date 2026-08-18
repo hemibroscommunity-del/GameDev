@@ -1000,8 +1000,8 @@ const StashTile = ({ kind, obj, index, style: styleOverride }) => {
     ? `${armorIconFor('legs', obj && obj.mat)}${ITEMS_V}` /* v2.3.1701: legs have real art */
     : kind === 'stashShield'
     ? `/icons/items/shield.webp${ITEMS_V}`
-    : obj && obj.type === 'bow'        ? `/icons/items/bow.webp${ITEMS_V}`
-    : obj && obj.type === 'staff'      ? `/icons/items/staff.webp${ITEMS_V}`
+    : obj && obj.type === 'bow'        ? `/icons/items/bow.png${ITEMS_V}`
+    : obj && obj.type === 'staff'      ? `/icons/items/staff.png${ITEMS_V}`
     : obj && obj.type === 'greatsword'
       ? `${metalIconPath('/icons/items/great-sword.webp', weaponMaterial(obj.type, obj.gearBase))}${ITEMS_V}` /* v2.3.1760 */
     : `${metalIconPath('/icons/items/sword.webp', obj && weaponMaterial(obj.type, obj.gearBase))}${ITEMS_V}`;
