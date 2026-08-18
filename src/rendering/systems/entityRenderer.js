@@ -47,7 +47,7 @@ import { getDeathFrame as getPlayerDeathFrame, hasDeathSprites as hasPlayerDeath
 import { getWeaponTexture, hasWeapon } from '../weaponSprites.js';
 import { getAnchor, getJogForwardHand, getWeaponHandle, getHeadAnchor } from '../playerAnchors.js';
 import { getNftTextures } from '../nftAvatars.js';
-import { getHeadwear, HEADWEAR_CATALOG } from '../traits/headwearCatalog.js';
+import { getHeadwear, HEADWEAR_CATALOG, headwearUnderHair } from '../traits/headwearCatalog.js'; /* v2.3.1764: hair over headphones */
 import { getFacialHair, FACIALHAIR_CATALOG } from '../traits/facialHairCatalog.js';
 import { getHair, HAIR_CATALOG } from '../traits/hairCatalog.js';
 import { getSkin, getPants, getShoes, getBodyFrame, getPickupHeadFrame, preloadBodyVariant } from '../playerSkins.js';
@@ -2305,6 +2305,46 @@ function _placeHair(display, hairId, hairColorId, hatId, pose, dir, mirror, fram
   _placeTrait(display._hairSprite, entry, display, pose, dir, mirror, frameIdx, bodyScale,
     hairPoseTune(pose, dir)); /* v2.3.1454: jog-east size correction (hats keep their own tune) */
   _clipHairToHat(display, hatId, pose, dir, mirror, frameIdx, bodyScale);
+  _orderHairOverHat(display, hatId);
+}
+
+/* ═══ v2.3.1764: HAIR OVER HEADPHONES ═══
+   Owner: "Layer the hair on top of headphones."
+
+   The hair sprite is added to the container BEFORE the headwear sprite
+   (v2.3.357), so headwear draws over hair — correct for a hat or a helmet,
+   wrong for headphones, which sit on the EARS with hair falling over the band.
+
+   The order is swapped per piece rather than per frame-cost: setChildIndex is
+   only called when the current order disagrees with what the piece declares,
+   so a hat costs nothing and headphones cost one call on the frame you put
+   them on.  The flag lives in the headwear catalog beside the piece's name
+   (headwearUnderHair), because "does my hair cover this" is a property of the
+   thing you are wearing, not of the renderer. */
+/* v2.3.1764: QA probe — who is drawn on top, read off the live container. */
+let _lastHairDisplay = null;
+if (typeof window !== 'undefined') {
+  window.__btHairOrder = () => {
+    const d = _lastHairDisplay;
+    const hair = d && d._hairSprite, hat = d && d._headwearSprite;
+    if (!hair || !hat || !hair.parent) return null;
+    const p = hair.parent;
+    return { hairOverHat: p.getChildIndex(hair) > p.getChildIndex(hat),
+      hatVisible: !!hat.visible, hairVisible: !!hair.visible };
+  };
+}
+function _orderHairOverHat(display, hatId) {
+  _lastHairDisplay = display;
+  const hair = display && display._hairSprite;
+  const hat = display && display._headwearSprite;
+  if (!hair || !hat || !hair.parent || hair.parent !== hat.parent) return;
+  const parent = hair.parent;
+  const want = headwearUnderHair(hatId);
+  const hairIdx = parent.getChildIndex(hair);
+  const hatIdx = parent.getChildIndex(hat);
+  const hairIsOver = hairIdx > hatIdx;
+  if (want === hairIsOver) return;
+  try { parent.setChildIndex(hair, want ? hatIdx : Math.max(0, hatIdx - 1)); } catch (e) { /* order is cosmetic */ }
 }
 
 /* v2.3.867: composite the player's CURRENT traits (hat / beard / hair) onto a

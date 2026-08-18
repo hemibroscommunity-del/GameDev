@@ -58,7 +58,12 @@ const _ALL = [
   { id: 'axe-head', name: 'Axe On Head' },
   { id: 'golden-bucket', name: 'Golden Bucket' },
   { id: 'arabian-robe', name: 'Arabian Robe' },
-  { id: 'headphones', name: 'Headphones' },
+  /* v2.3.1764 (owner: "Layer the hair on top of headphones").  Headphones are
+     worn ON THE EARS, so hair falls over the band — unlike a hat or a helmet,
+     which cover it.  `underHair` flips the draw order for this piece only; the
+     default stays hat-over-hair, which is right for everything else in this
+     catalog. */
+  { id: 'headphones', name: 'Headphones', underHair: true },
   { id: 'devil-horns', name: 'Devil Horns' },
   { id: 'cat-ears', name: 'Cat Ears' },
   { id: 'new-idea', name: 'New Idea' },
@@ -129,6 +134,15 @@ export function setHeadwear(id) {
   _active = id;
   try { localStorage.setItem(STORAGE_KEY, id); } catch (e) { /* ignore */ }
   _listeners.forEach(fn => { try { fn(id); } catch (e) { /* ignore */ } });
+}
+
+/** v2.3.1764: TRUE when this headwear is worn UNDER the hair (headphones sit
+ *  on the ears; a hat or a helmet covers the hair).  The renderer swaps the two
+ *  sprites' draw order on this — declared here rather than as a list of ids in
+ *  the renderer so a new piece states its own layering next to its name. */
+export function headwearUnderHair(id) {
+  const e = _ALL.find((h) => h && h.id === id);
+  return !!(e && e.underHair);
 }
 
 /** Subscribe to selection changes.  Returns an unsubscribe fn. */

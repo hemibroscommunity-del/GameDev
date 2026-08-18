@@ -106,6 +106,39 @@ export async function run({ browser, wsPort, webPort, rec }) {
     });
     /* re-arm through the setter so the component's next assignment wraps */
     window._setLevelUpMsg = _origLvl;
+
+    /* ═══ v2.3.1765: THE QUEST BANNER IS CAUGHT AT ITS SETTER TOO ═══
+       The DOM scan above cannot see every banner, and the way it misses one
+       is not a race — it is structural.  All three banners render from the
+       SAME conditional div, so when the one-deep queue promotes a waiting
+       notice in the very tick the previous one expires (BroTown.jsx ~5601,
+       which is exactly what `queue: true` schedules), React reconciles the
+       node in place: same element, new data-quest-banner, new text.  The
+       WeakSet has already seen that element, so the promoted banner — the
+       stashed-armour reward, every time — is silently dropped from the
+       record while being perfectly visible on screen.
+       That is what "lost one run in three" in the v2.3.1761 note really was;
+       the poll added there treated a blind spot as slowness, so it turned a
+       flake into a hang and then a failure.  Recording at the setter is the
+       same argument this file already makes for _setLevelUpMsg directly
+       above: catch the call, not the pixels. */
+    const _origQm = window._setQuestMsg;
+    window.__questCalls = [];
+    Object.defineProperty(window, '_setQuestMsg', {
+      configurable: true,
+      get() { return this.__qmWrapped || _origQm; },
+      set(fn) {
+        this.__qmWrapped = function (m) {
+          try {
+            if (m) window.__questCalls.push({ src: 'quest', kind: m.kind,
+              text: [m.title, m.sub, m.text].filter(Boolean).join(' '),
+              queued: !!m.queue });
+          } catch (e) { /* never break the game's own banner */ }
+          return fn ? fn(m) : undefined;
+        };
+      },
+    });
+    window._setQuestMsg = _origQm;
   });
 
   const srv = () => H.adminPlayer(wsPort, myId).then((a) => (a && a.rpg) || null).catch(() => null);
@@ -328,7 +361,14 @@ export async function run({ browser, wsPort, webPort, rec }) {
        (v2.3.1669), so pick one when the chooser is on the card. */
     await H.clickText(P, 'Melee').catch(() => {});
     await P.page.waitForTimeout(400);
-    await H.clickText(P, 'Turn In').catch(() => {});
+    /* v2.3.1765: by CLASS, not by caption.  This click used to look for the
+       words "Turn In" and swallow a miss — so when v2.3.1764 reworded the
+       button to "Redeem Reward" the hand-in silently stopped happening and
+       this scenario reported it eight assertions later as the WORKER failing
+       to mark the quest turned in.  The miss is no longer swallowed either:
+       a turn-in that cannot be clicked must fail HERE, where it happened. */
+    const _turned = await H.clickSel(P, 'button.bt-quest-turnin').then(() => true).catch(() => false);
+    rec.ok(`${step.id}: the turn-in button could be clicked`, _turned);
     await P.page.waitForTimeout(2200);
 
     const done = await srv();
@@ -403,7 +443,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
      until both reward notices are in or the budget runs out; a genuine
      regression still fails, it just takes 8s to say so. */
   const lineBanners = await (async () => {
-    const read = () => P.page.evaluate(() => (window.__lineBanners || []).slice());
+    const read = () => P.page.evaluate(() => (window.__questCalls || []).slice());
     let seen = await read();
     for (let i = 0; i < 16 && seen.filter((b) => b.kind === 'reward').length < 2; i++) {
       await P.page.waitForTimeout(500);
@@ -411,6 +451,14 @@ export async function run({ browser, wsPort, webPort, rec }) {
     }
     return seen;
   })();
+  /* v2.3.1765: the setter record is the one the assertions read (see the note
+     on __questCalls).  The DOM record stays, as the guard that the banners it
+     counts are really being PAINTED — a setter-only check would pass against a
+     component that never renders the div at all. */
+  const domBanners = await P.page.evaluate(() => (window.__lineBanners || []).slice());
+  rec.ok('banners reach the SCREEN, not just the setter (guard)',
+    domBanners.some((b) => b.kind === 'completed' && /QUEST COMPLETED!/.test(b.text)),
+    domBanners.map((b) => b.kind));
   const lvlCalls = await P.page.evaluate(() => (window.__lvlCalls || []).slice());
   /* Guard: "no warnings were raised" is vacuously true if the hook was never
      wired, so prove the hook first.  Proved with a PROBE rather than by

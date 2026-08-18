@@ -148,11 +148,16 @@ export async function run({ browser, wsPort, webPort, rec }) {
     !!gAcc && gAcc.imgs.length === 2
       && gAcc.imgs.some((s) => /items\/great-sword\.webp/.test(s))
       && gAcc.imgs.some((s) => /items\/shield\.webp/.test(s)), gAcc);
+  /* v2.3.1764: matched without the extension.  These pinned `.webp`, and
+     v2.3.1763 repainted the bow and staff as pine — which can only be written
+     as PNG in this sandbox (no WebP encoder), so a correct change turned these
+     red.  The claim is WHICH ITEM is drawn under which caption; the file format
+     was never part of it. */
   rec.ok('the turn-in group shows the bow and the staff you have NOT earned yet',
-    !!gFin && gFin.imgs.some((s) => /items\/bow\.webp/.test(s))
-      && gFin.imgs.some((s) => /items\/staff\.webp/.test(s)), gFin);
+    !!gFin && gFin.imgs.some((s) => /items\/bow\.(webp|png)/.test(s))
+      && gFin.imgs.some((s) => /items\/staff\.(webp|png)/.test(s)), gFin);
   rec.ok('...and the bow is under the FINISHING caption, never the hand-over one',
-    !!gAcc && !gAcc.imgs.some((s) => /items\/bow\.webp/.test(s))
+    !!gAcc && !gAcc.imgs.some((s) => /items\/bow\.(webp|png)/.test(s))
       && !!gFin && /finishing/i.test(gFin.caption), { gAcc, gFin });
 
   /* ═══ v2.3.1704: THE TWO PAYOUT MOMENTS SAY WHEN, NOT WHO ═══
@@ -267,7 +272,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
   let dlg = await H.bodyText(P);
   rec.ok('with the remnants in hand the giver offers the turn-in',
-    /Turn In Quest|Choose a skill to train/.test(dlg), dlg.slice(0, 300));
+    /Redeem Reward|Choose a skill to train/.test(dlg), dlg.slice(0, 300));
   /* v2.3.1704: the SAME slot that showed the sword and shield now shows the
      bow and staff, so the caption has to say which moment these belong to. */
   rec.ok('the ready card says these items are what FINISHING pays',
@@ -297,7 +302,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await P.page.waitForTimeout(600);
   dlg = await H.bodyText(P);
   rec.ok('choosing a skill arms the turn-in button',
-    /Turn In Quest/.test(dlg) && !/Choose a skill to train/.test(dlg), dlg.slice(0, 300));
+    /Redeem Reward/.test(dlg) && !/Choose a skill to train/.test(dlg), dlg.slice(0, 300));
 
   const bowXpBefore = await H.readState(P, (S) =>
     (S.rpg.prog3 && S.rpg.prog3.sk && S.rpg.prog3.sk.bow && S.rpg.prog3.sk.bow.xp) || 0);
@@ -308,7 +313,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
      the persisted blob and compare against that instead. */
   const svrCoinsBefore = await H.adminPlayer(wsPort, pid)
     .then((a) => (a && a.rpg && a.rpg.coins) || 0).catch(() => null);
-  await H.clickText(P, 'Turn In Quest').catch(() => {});
+  await H.clickText(P, 'Redeem Reward').catch(() => {});
   await P.page.waitForTimeout(3000);
 
   const paid = await H.readState(P, (S) => ({

@@ -155,7 +155,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     return c ? (c.innerText || '') : '';
   });
   rec.ok('...and that dialogue carries the turn-in — the only one left',
-    /Turn In Quest|Choose a skill to train/.test(readyDlg), readyDlg.slice(0, 400));
+    /Redeem Reward|Choose a skill to train/.test(readyDlg), readyDlg.slice(0, 400));
 
   await P.ctx.close().catch(() => {});
 }
