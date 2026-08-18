@@ -770,6 +770,24 @@ export class EffectsRenderer {
     // Node graphics
     this.nodeGfx = new Graphics();
     this.nodeLayer.addChild(this.nodeGfx);
+    /* ═══ v2.3.1765: THE WHITE GESTURE CUE GOES IN FRONT OF THE TREE TOO ═══
+       Owner: "The woodcutting cue of the white gesture is still showing in the
+       layer behind the tree.  It needs to show in front of it."
+       STILL, because v2.3.1713 answered the same complaint by moving the
+       CHOPPER — the figure — up to gestureFront, and the animated finger that
+       demonstrates the swipe was left drawing on nodeGfx in gatherNodes
+       (index 7), under the trees v2.3.1500 had put in gatherNodesFront
+       (index 10).  So the lumberjack came out from behind the tree and the
+       instruction telling you what to do with him did not.
+       Its own Graphics rather than a move of nodeGfx, because nodeGfx also
+       carries the node bodies, tier badges and proximity tips — art that
+       belongs in the node layer and is deliberately occluded by what is in
+       front of it.  Same world container, so the camera transform is
+       identical; only the depth changes.  Cleared at the top of
+       _updateExtractionCue (nodeGfx is cleared by _updateGatherNodes, which
+       this no longer rides on). */
+    this.cueGfx = new Graphics();
+    this.gestureLayer.addChild(this.cueGfx);
 
     // Catch-flight graphics (fish flying into the bag) — overlayWorld, above
     // the player.  Drawn as a shape (not an emoji) so it renders identically
@@ -5311,6 +5329,11 @@ export class EffectsRenderer {
    * small countdown ring around it shows how much of the swipe window
    * remains. Nothing is drawn during the 'waiting' phase. */
   _updateExtractionCue(S, now) {
+    /* v2.3.1765: cleared HERE, and before any early return.  The cue used to
+       ride nodeGfx and inherit _updateGatherNodes' clear for free; on its own
+       Graphics it owns its own frame, and every `return` below is a path where
+       the cue must vanish (no extraction, a dead node, a cancelled swipe). */
+    if (this.cueGfx) this.cueGfx.clear();
     const ex = S && S._extraction;
     /* v2.3.843: chopper sprite is hidden every frame and only re-shown
        below while a woodcutting extraction is active.
@@ -5386,7 +5409,13 @@ export class EffectsRenderer {
                   ? S.gatherNodes.find(n => n.id === ex.nodeId)
                   : null);
     if (!node) return;
-    const gfx = this.nodeGfx;
+    const gfx = this.cueGfx;   /* v2.3.1765: in FRONT of the tree — see the ctor */
+    /* v2.3.1765: the Graphics the cue ACTUALLY drew into this frame, recorded
+       for cueLayerProbe.  Reporting cueGfx.parent instead would answer a
+       different question — the first version of that probe did, and it stayed
+       green with the line above reverted to nodeGfx, because cueGfx still hung
+       off gestureFront while nothing was being painted on it. */
+    this._cueDrawnOn = gfx;
     /* Fishing reels over the CHARACTER (the rod's reel is at the hands) so
        the cue + the circular gesture center match the player, not the
        distant fish spot.  ExtractionSwipeLayer.cueScreenPos mirrors this. */
@@ -5942,6 +5971,7 @@ export class EffectsRenderer {
 
   clear() {
     this.particleGfx.clear();
+    this.cueGfx.clear();   /* v2.3.1765 */
     this.projectileGfx.clear();
     this.telegraphGfx.clear();
     this.overlayGfx.clear();

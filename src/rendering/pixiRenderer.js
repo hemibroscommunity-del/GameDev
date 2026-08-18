@@ -415,6 +415,32 @@ export async function initPixiRenderer(canvas) {
        cannot tell a MISSING sheet from one that landed off the body — which is
        exactly the distinction this change needs to be able to make.  Returns
        nothing the game consumes. */
+    /* v2.3.1765: read-only probe of WHICH LAYER the extraction cue draws on,
+       for the QA harness — same shape and same reason as the two probes above.
+       "Is the white gesture in front of the tree" is a depth fact about the
+       scene graph, and neither window._gameState nor a screenshot can settle
+       it: a pixel test cannot tell a cue drawn behind a canopy from a cue that
+       was never drawn at all, which is the exact distinction this change
+       makes.
+       Reports the cue's layer plus the world's layer ORDER, so the harness
+       compares the cue against where the trees actually are that frame (read
+       off a live node's own sprite, which is where the tree's parent lives)
+       instead of trusting a hard-coded name on either side. */
+    cueLayerProbe: () => {
+      const e = effectsRenderer;
+      /* _cueDrawnOn, not cueGfx: the question is where the cue was PAINTED on
+         the last frame that painted one, and those are different facts —
+         see the note at its assignment in effectsRenderer. */
+      const drawn = e._cueDrawnOn || null;
+      const cueParent = drawn ? drawn.parent : null;
+      const world = cueParent ? cueParent.parent : null;
+      return {
+        cueLayer: cueParent ? cueParent.label : null,
+        nodeGfxLayer: e.nodeGfx && e.nodeGfx.parent ? e.nodeGfx.parent.label : null,
+        /* every world layer, bottom-first: index in this array IS the depth */
+        order: world ? world.children.map((c) => c.label) : [],
+      };
+    },
     fireGearProbe: () => {
       const e = effectsRenderer;
       const one = (sp) => (sp ? {

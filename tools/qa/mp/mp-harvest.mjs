@@ -216,6 +216,45 @@ export async function run({ browser, wsPort, webPort, rec }) {
     srv.ex === EXCODE[wantSkill], { srv, want: EXCODE[wantSkill] });
   rec.ok('...so the shield monsters read is UP', srv.shield === true, srv);
 
+  /* ═══ v2.3.1765: THE WHITE GESTURE DRAWS IN FRONT OF THE TREE ═══
+     Owner: "The woodcutting cue of the white gesture is still showing in the
+     layer behind the tree.  It needs to show in front of it."
+     STILL, because v2.3.1713 answered this by moving the CHOPPER to
+     gestureFront and left the animated finger on nodeGfx in gatherNodes,
+     under the trees.  Asserted as an ORDER between two layers read off the
+     live scene graph — the cue's own parent, and the parent of a real tree
+     sprite this frame — rather than against a hard-coded layer name, so the
+     check still means something if either side is moved again.
+     Checked here because this is the one scenario that already has a real
+     client mid-chop at a real worker-owned tree. */
+  const cueLayers = await P.page.evaluate(() => {
+    const probe = window._pixiRenderer && window._pixiRenderer.cueLayerProbe;
+    const S = window._gameState && window._gameState.current;
+    if (!probe || !S) return null;
+    const p = probe();
+    /* The tree's layer lives on the node object itself (node._pixiSprite),
+       which is where _updateGatherNodes parents it. */
+    const tree = (S.gatherNodes || []).find((n) => n && n.nodeType === 'tree' && n._pixiSprite && n._pixiSprite.parent);
+    return { ...p, treeLayer: tree ? tree._pixiSprite.parent.label : null };
+  });
+  rec.ok('the cue-layer probe answered', !!cueLayers && !!cueLayers.cueLayer, cueLayers);
+  if (cueLayers && cueLayers.treeLayer) {
+    const depth = (l) => cueLayers.order.indexOf(l);
+    /* GUARD: if the cue and the trees ever land on the SAME layer the
+       comparison below is trivially satisfied by ">=" and proves nothing, so
+       require a strict ordering between two distinct layers. */
+    rec.ok('the cue and the trees are on different layers (guard)',
+      cueLayers.cueLayer !== cueLayers.treeLayer, cueLayers);
+    rec.ok('the white gesture cue draws IN FRONT of the tree it is chopping',
+      depth(cueLayers.cueLayer) > depth(cueLayers.treeLayer), cueLayers);
+    /* And the thing it was left behind on is genuinely below the trees —
+       naming the regression so a revert fails with the reason attached. */
+    rec.ok('...whereas nodeGfx, where it used to draw, is behind them',
+      depth(cueLayers.nodeGfxLayer) < depth(cueLayers.treeLayer), cueLayers);
+  } else {
+    rec.ok('a live tree sprite was on screen to compare against', false, cueLayers);
+  }
+
   /* ═══ AND IT ENDS ═══
      A shield that can stick is a worse bug than the one being fixed, so prove
      the real client releases it.  Walking away is the cancel a player hits
