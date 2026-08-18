@@ -155,6 +155,7 @@ import { updateVisualSystems } from '@/game/visualSystems.js';
 import { updateStateCleanup } from '@/game/stateCleanup.js';
 /* v2.3.816: render dispatch + sim/render perf split extracted behavior-frozen (REBUILD-PLAN Phase 8, slice 8). */
 import { renderFrame } from '@/game/renderFrame.js';
+import { worldViewport } from '@/game/worldViewport.js'; /* v2.3.1768b */
 /* v2.3.817: §5.8 contextual dodge/lunge/retreat cluster extracted behavior-frozen. */
 import { triggerContextualDodge } from '@/game/dodge.js';
 /* v2.3.819: swing/special/shield action bodies extracted; component keeps thin useCallback wrappers. */
@@ -3543,8 +3544,12 @@ export var BroTown = function BroTown(_ref0) {
            centring/clamping matches the zoomed-out render (renderFrame.js
            scales the world by 1/WORLD_ZOOM). Both must use the same W/H or
            the player drifts off-centre. */
-        var W = (canvas.width / (window.devicePixelRatio || 1)) * WORLD_ZOOM;
-        var H = (canvas.height / (window.devicePixelRatio || 1)) * WORLD_ZOOM;
+        /* v2.3.1768b: capped by worldViewport(), so a bigger desktop box shows
+           the SAME world scaled up rather than more of it.  Below the cap this
+           returns exactly what these two lines used to compute. */
+        var _wv = worldViewport(canvas);
+        var W = _wv.W;
+        var H = _wv.H;
         /* v2.3.1095: publish the logical world-viewport size so the projectile
            sim can tell when an arrow nears the visible screen edge (camera.x/y
            is the viewport's top-left in world coords). */
