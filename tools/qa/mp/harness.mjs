@@ -386,6 +386,25 @@ export function bodyText(P) {
   return P.page.evaluate(() => (document.body.textContent || '').replace(/\s+/g, ' '));
 }
 
+/** v2.3.1765: Click the first visible element matching a CSS selector.
+ *
+ *  Use this over clickText for any control whose CAPTION is owner-facing copy.
+ *  The quest turn-in button was clicked by the words "Turn In" in three
+ *  scenarios; v2.3.1764 reworded it to "Redeem Reward" (owner: "it needs to be
+ *  more obvious that you're redeeming a reward") and all three started missing
+ *  it silently — every one of them wrapped the click in .catch(), so the run
+ *  failed later, elsewhere, blaming the worker.  A class is a contract; a label
+ *  is a sentence the owner is entitled to change.
+ *
+ *  Deliberately NOT swallowing a miss: waitFor throws if the selector never
+ *  shows, which is the whole point of moving off the caption. */
+export async function clickSel(P, sel, { timeout = 6000 } = {}) {
+  const el = P.page.locator(`${sel}:visible`).first();
+  await el.waitFor({ state: 'visible', timeout });
+  await el.click();
+  return true;
+}
+
 /** Click the first visible button whose text contains `text`. */
 export async function clickText(P, text, { timeout = 6000 } = {}) {
   const btn = P.page.locator(`button:visible`, { hasText: text }).first();

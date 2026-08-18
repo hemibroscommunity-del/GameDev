@@ -162,8 +162,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('walking back up re-opens the dialogue for the hand-in', await approach());
   await H.clickText(P, 'Melee').catch(() => {});
   await P.page.waitForTimeout(400);
-  const turned = await H.clickText(P, 'Turn In').then(() => true).catch(() => false);
-  rec.ok('the dialogue offers Turn In', turned);
+  /* v2.3.1765: by CLASS — see the note on H.clickSel.  The caption moved to
+     "Redeem Reward" in v2.3.1764 and this assertion went red for a wording
+     change rather than a broken button. */
+  const turned = await H.clickSel(P, 'button.bt-quest-turnin').then(() => true).catch(() => false);
+  rec.ok('the dialogue offers a turn-in button', turned);
   await P.page.waitForTimeout(900);
 
   const afterTurnIn = await banners();
