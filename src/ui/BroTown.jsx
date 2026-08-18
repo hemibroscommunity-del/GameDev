@@ -4990,8 +4990,16 @@ export var BroTown = function BroTown(_ref0) {
         var camTargetY = P.y - H / 2 + _camLeadY + _camPunchY;
         /* Adaptive lerp — snappier during fast movement / combat */
         var _camSpeed = S.isSwinging || S._dodgeRoll ? 0.18 : Math.abs(dx) > 0.5 || Math.abs(dy) > 0.5 ? 0.14 : 0.08;
-        S.camera.x += (camTargetX - S.camera.x) * _camSpeed;
-        S.camera.y += (camTargetY - S.camera.y) * _camSpeed;
+        /* v2.3.1769: the camera chases with an exponential approach, so like
+           the ice decay its frame-rate term is a POWER — closing 8% of the gap
+           once per frame closes 1-(1-0.08)^dt over dt frames.  Left raw, the
+           camera converged 2.4x faster on a 144Hz screen (glued to the player)
+           and visibly lagged behind on a phone mid-dip.  Camera feel is a
+           large part of why the owner said desktop "was COMPLETELY different",
+           and it is the same one-line shape as every other fix in this PR. */
+        var _camK = 1 - Math.pow(1 - _camSpeed, S._dtScale || 1);
+        S.camera.x += (camTargetX - S.camera.x) * _camK;
+        S.camera.y += (camTargetY - S.camera.y) * _camK;
         /* v2.3.819: clamp the camera to the map so the viewport never shows
            the out-of-bounds void.  Player movement is already bounded to the
            same ZONE_W/ZONE_H (the P.x/P.y clamp above), so the player keeps
