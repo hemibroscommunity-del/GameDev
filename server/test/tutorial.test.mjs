@@ -323,20 +323,20 @@ const sess = { id: 'bp_t' };
      rather than just by name so the art can't quietly revert. */
   const _stashed = (n) => ps.weaponStash.find((w) => w && w.name === n);
   check('accepting the first quest puts the sword in the BAG, not in your hand',
-    _stashed("Bro's Sword") && _stashed("Bro's Sword").type === 'greatsword'
+    _stashed("Copper Great Sword") && _stashed("Copper Great Sword").type === 'greatsword'
     && !ps.weapon,
     { stash: ps.weaponStash, equipped: ps.weapon });
   check('...and the shield is granted too', ps.shield && ps.shield.name === "Bro's Shield", ps.shield);
   check('a granted BOW also lands in the bag, with its own slot left empty',
-    _stashed("Bro's Bow") && _stashed("Bro's Bow").type === 'bow' && !ps.rangedWeapon,
+    _stashed("Pine Bow") && _stashed("Pine Bow").type === 'bow' && !ps.rangedWeapon,
     { stash: ps.weaponStash, equipped: ps.rangedWeapon });
   check('the granted weapon has a forge-shaped blob',
-    _stashed("Bro's Bow").gearBase === 'ww_pine' && _stashed("Bro's Bow").hardness === 0 /* v2.3.1763: first wood tier is pine */
-    && _stashed("Bro's Bow").tier === 'common', _stashed("Bro's Bow"));
+    _stashed("Pine Bow").gearBase === 'ww_pine' && _stashed("Pine Bow").hardness === 0 /* v2.3.1763: first wood tier is pine */
+    && _stashed("Pine Bow").tier === 'common', _stashed("Pine Bow"));
   check('the granted weapon quality is FIXED, not rolled',
-    _stashed("Bro's Bow").quality === 'normal', _stashed("Bro's Bow").quality);
+    _stashed("Pine Bow").quality === 'normal', _stashed("Pine Bow").quality);
   check('the granted weapon is equippable under the prog3 tier gate',
-    room._prog3EquipOk(ps, 'weapon', _stashed("Bro's Bow")) === true);
+    room._prog3EquipOk(ps, 'weapon', _stashed("Pine Bow")) === true);
 
   /* And the STAFF from the next step goes somewhere else again. */
   ps.inventory = { 'slime-remnants': 6 };

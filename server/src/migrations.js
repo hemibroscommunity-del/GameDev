@@ -43,7 +43,7 @@
 import { t2ReplayFlat } from './data.js';
 import { prog3FromLegacy, prog3SplitAtk } from './prog3.js';
 
-export const RPG_SCHEMA_VERSION = 11;
+export const RPG_SCHEMA_VERSION = 12;
 
 /* Pure version of the v2.3.769 heal (was GameRoom._healLifeSkills):
  * records bootstrapped from pre-fix clients carry lifeSkills with
@@ -424,6 +424,51 @@ export const MIGRATIONS = [
       if (blob.prog3.atk && typeof blob.prog3.atk === 'object') return false;
       prog3SplitAtk(blob.prog3);
       return true;
+    },
+  },
+  {
+    v: 12,
+    name: 'starter-weapons-named-for-their-metal',
+    /* v2.3.1772 (owner: "rename bros sword, staff, and bow to the correct
+       metals (copper great sword, pine bow, pine staff)").
+
+       Only the NAMES were wrong — the grants have been copper/pine/pine since
+       v2.3.1760/1763 — so this is a pure relabel and touches no stat.  Renaming
+       the grant table alone would leave every existing player holding the old
+       name forever while new players got the new one: the same item under two
+       identities, which is the exact failure v2.3.1758 called out when copper
+       replaced iron in the armour tiers.  So saved records are rewritten too,
+       by the same by-exact-name rule.
+
+       The TYPE is checked alongside the name so this can only ever hit the
+       three starter weapons, and the rename is idempotent by construction: once
+       renamed, the old name no longer matches.  Every weapon-bearing field on
+       the blob is covered — the three equipped slots and the stash — because a
+       player who stashed their bow and carried the sword must not end up with
+       one renamed and one not. */
+    run(blob) {
+      if (!blob || typeof blob !== 'object') return false;
+      /* `wtype`, not `type`: the hardening suite extracts server-emitted event
+         types by scanning for `type:` literals, and a weapon kind sitting in
+         one reads to it as an unregistered emittable event. */
+      const RENAME = {
+        "Bro's Sword": { to: 'Copper Great Sword', wtype: 'greatsword' },
+        "Bro's Bow":   { to: 'Pine Bow',           wtype: 'bow' },
+        "Bro's Staff": { to: 'Pine Staff',         wtype: 'staff' },
+      };
+      let changed = false;
+      const fix = (w) => {
+        if (!w || typeof w !== 'object') return;
+        const r = RENAME[w.name];
+        if (!r || w.type !== r.wtype) return;
+        w.name = r.to;
+        changed = true;
+      };
+      fix(blob.weapon);
+      fix(blob.rangedWeapon);
+      fix(blob.staffWeapon);
+      if (Array.isArray(blob.weaponStash)) for (const w of blob.weaponStash) fix(w);
+      return changed;
     },
   },
 ];

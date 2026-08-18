@@ -48,7 +48,13 @@ function check(name, cond, detail) {
 
 // ── 1. Migration v10: the respec ──
 {
-  check('schema version is 11', RPG_SCHEMA_VERSION === 11, RPG_SCHEMA_VERSION);
+  /* v2.3.1772: these three read the CONSTANT rather than a literal 11.  This
+     suite is about the prog3 migrations (v10/v11), not about which migration
+     happens to be last — pinned to a literal, every future migration fails it
+     for no reason, which is how a suite starts getting edited without being
+     read.  What matters here is that v11 has shipped and the registry runs to
+     completion. */
+  check('the prog3 migrations have shipped', RPG_SCHEMA_VERSION >= 11, RPG_SCHEMA_VERSION);
   const blob = {
     _v: 9,
     weaponSkills: {
@@ -60,7 +66,7 @@ function check(name, cond, detail) {
     t2Flat: { defense: { ironskin: 300 } },
   };
   const res = runRpgMigrations(blob);
-  check('v10+v11 run clean', res.failed === null && res.version === 11, res);
+  check('v10+v11 run clean', res.failed === null && res.version === RPG_SCHEMA_VERSION, res);
   check('sword level = legacy+1, xp carried',
     blob.prog3.sk.sword.level === 8 && blob.prog3.sk.sword.xp === 500, blob.prog3.sk.sword);
   check('bow floors at level 1', blob.prog3.sk.bow.level === 1 && blob.prog3.sk.bow.xp === 10, blob.prog3.sk.bow);
@@ -385,7 +391,7 @@ const psA = room.playerState.pa;
   let lastPut = null;
   room.state.storage.put = async (k, v) => { if (String(k).startsWith('rpg:')) lastPut = v; };
   await room._saveRpg('pa', psA);
-  check('_saveRpg persists prog3', lastPut && !!lastPut.prog3 && lastPut._v === 11,
+  check('_saveRpg persists prog3', lastPut && !!lastPut.prog3 && lastPut._v === RPG_SCHEMA_VERSION,
     lastPut && { hasProg3: !!lastPut.prog3, _v: lastPut._v });
 }
 
@@ -462,7 +468,7 @@ const psA = room.playerState.pa;
  * completing quests but I could be wrong."  They were right that something was
  * wrong, and this is it: the equip gate scores a weapon by its POSITION in the
  * forge table, BLACKSMITH_TIERS still opens with the vestigial `wood` rung, and
- * v2.3.1760 made copper the first metal weapon.  So "Bro's Sword" — handed over
+ * v2.3.1760 made copper the first metal weapon.  So "Copper Great Sword" — handed over
  * in the first five minutes — sat at rung 1 and demanded trained sword level 5
  * from a character who is level 1 in everything.  The server refuses that
  * silently by design ("the client's own gate shows the requirement"), so the
