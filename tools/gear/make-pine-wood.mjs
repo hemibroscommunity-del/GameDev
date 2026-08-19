@@ -1,4 +1,4 @@
-/* Repaint the bow and staff art as PINE (v2.3.1763).
+/* Repaint the bow, staff and shield art as PINE (v2.3.1763; shield v2.3.1774).
  *
  *   node tools/gear/make-pine-wood.mjs
  *
@@ -45,6 +45,15 @@ const FILES = [
   ['staffs/Wizard Staff2.webp', 'sprites/weapons/staffs/Wizard Staff2.png'],
   ['icons/bow.webp', 'icons/items/bow.png'],
   ['icons/staff.webp', 'icons/items/staff.png'],
+  /* v2.3.1774 (owner: "change bro's shield to pine shield and see if you can
+     recolor it like you did for the staff and bow").  Same curve, same
+     reasoning — the shield's face is wood and the ask is for LIGHTER wood,
+     which a multiply tint cannot do.  Its steel rim and boss are near-neutral
+     and light, so the saturation gate leaves them as metal. */
+  ['icons/shield.webp', 'icons/items/shield.png'],
+  ['shields/wood-shield-front.webp', 'sprites/shields/wood-shield-front.png'],
+  ['shields/wood-shield-3q.webp', 'sprites/shields/wood-shield-3q.png'],
+  ['shields/wood-shield-side.webp', 'sprites/shields/wood-shield-side.png'],
 ];
 
 const PAGE = `<!doctype html><meta charset="utf-8"><body><script>

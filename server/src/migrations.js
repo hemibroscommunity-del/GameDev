@@ -43,7 +43,7 @@
 import { t2ReplayFlat } from './data.js';
 import { prog3FromLegacy, prog3SplitAtk } from './prog3.js';
 
-export const RPG_SCHEMA_VERSION = 12;
+export const RPG_SCHEMA_VERSION = 13;
 
 /* Pure version of the v2.3.769 heal (was GameRoom._healLifeSkills):
  * records bootstrapped from pre-fix clients carry lifeSkills with
@@ -469,6 +469,26 @@ export const MIGRATIONS = [
       fix(blob.staffWeapon);
       if (Array.isArray(blob.weaponStash)) for (const w of blob.weaponStash) fix(w);
       return changed;
+    },
+  },
+  {
+    v: 13,
+    name: 'starter-shield-is-a-pine-shield',
+    /* v2.3.1774 (owner: "change bro's shield to pine shield").  Same relabel,
+       same reasoning as v12: renaming the grant alone would leave existing
+       players holding "Bro's Shield" while new ones get the new name.
+
+       Nothing but the name changes — `gearBase` stays 'wood', which is the
+       BLACKSMITH_TIERS key the client reads for the shield's tier label and
+       multiplier.  Guarded on that base so it can only ever hit the starter
+       shield, and idempotent by construction. */
+    run(blob) {
+      if (!blob || typeof blob !== 'object') return false;
+      const sh = blob.shield;
+      if (!sh || typeof sh !== 'object') return false;
+      if (sh.name !== "Bro's Shield" || sh.gearBase !== 'wood') return false;
+      sh.name = 'Pine Shield';
+      return true;
     },
   },
 ];

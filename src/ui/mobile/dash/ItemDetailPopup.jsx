@@ -77,7 +77,7 @@ function tierLabel(wpn) {
    render and fetches the real chest-plate torso art (owner: "it's an emoji
    vest").  Lives in THREE files — keep them in lockstep or one surface serves
    stale thumbnails while its neighbour serves fresh ones. */
-const ITEMS_V = '?v=2.3.1710';
+const ITEMS_V = '?v=2.3.1774'; /* v2.3.1774: pine shield icon */
 function weaponThumb(wpn) {
   if (!wpn || !wpn.type) return null;
   if (wpn.type === 'bow')        return `/icons/items/bow.png${ITEMS_V}`;
@@ -90,7 +90,7 @@ function weaponThumb(wpn) {
 function shieldThumb(shield) {
   /* v2.3.1325: every shield tier shows the painted shield (was
      wood-only + glyph fallback). */
-  return shield ? `/icons/items/shield.webp${ITEMS_V}` : null;
+  return shield ? `/icons/items/shield.png${ITEMS_V}` : null;
 }
 
 /* Which weapon slot does a `type` belong in. */
