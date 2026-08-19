@@ -1250,8 +1250,12 @@ export class EffectsRenderer {
        the frames a gathering figure owns it.  Parenting it permanently to
        gestureLayer instead would float a swinging player's HAT over the tree
        that is correctly hiding the rest of him. */
-    this.skillTraits = { hair: new Sprite(), beard: new Sprite(), hat: new Sprite() };
-    for (const k of ['hair', 'beard', 'hat']) {
+    /* v2.3.1776: `hairMask` is the clipping-hat silhouette the stand-in hair is
+       masked to (entityRenderer._clipStandInHair).  Pixi needs a mask sprite in
+       the scene graph, so it is created and parented exactly like the traits —
+       it is never drawn itself. */
+    this.skillTraits = { hair: new Sprite(), beard: new Sprite(), hat: new Sprite(), hairMask: new Sprite() };
+    for (const k of ['hair', 'beard', 'hat', 'hairMask']) {
       this.skillTraits[k].visible = false;
       this.nodeLayer.addChild(this.skillTraits[k]);
     }
@@ -1463,7 +1467,7 @@ export class EffectsRenderer {
        parented there, so this costs nothing on the steady state. */
     const _want = (skillKey === 'chop' || skillKey === 'cook' || skillKey === 'fire')
       ? this.gestureLayer : this.nodeLayer;
-    for (const k of ['hair', 'beard', 'hat']) {
+    for (const k of ['hair', 'beard', 'hat', 'hairMask']) { /* v2.3.1776: the mask travels with them */
       const t = this.skillTraits && this.skillTraits[k];
       if (t && !t.destroyed && t.parent !== _want) _want.addChild(t);
     }
@@ -4789,7 +4793,7 @@ export class EffectsRenderer {
          the mk() call order, which is the addChild order, which is the z-order,
          so this line alone puts a peer's shirt in front of their greaves the way
          the owner asked for the local character. */
-      set = { jogLegs: mk(), jogLegsGear: mk(), body: mk(), legs: mk(), shirt: mk(), chest: mk(), weapon: mk(), traits: { hair: mk(), beard: mk(), hat: mk() } };
+      set = { jogLegs: mk(), jogLegsGear: mk(), body: mk(), legs: mk(), shirt: mk(), chest: mk(), weapon: mk(), traits: { hair: mk(), beard: mk(), hat: mk(), hairMask: mk() } }; /* v2.3.1776: + the clip mask */
       this._remoteSwordSprites.set(id, set);
     }
     return set;
@@ -4998,7 +5002,7 @@ export class EffectsRenderer {
          v2.3.1710: `legs` before `shirt`, in step with the local bow stand-in
          and _ensureRemoteSwordSet — see the note there on why key order is
          z-order. */
-      set = { jogLegs: mk(), jogLegsGear: mk(), body: mk(), legs: mk(), shirt: mk(), chest: mk(), weapon: mk(), traits: { hair: mk(), beard: mk(), hat: mk() } };
+      set = { jogLegs: mk(), jogLegsGear: mk(), body: mk(), legs: mk(), shirt: mk(), chest: mk(), weapon: mk(), traits: { hair: mk(), beard: mk(), hat: mk(), hairMask: mk() } }; /* v2.3.1776: + the clip mask */
       this._remoteBowSprites.set(id, set);
     }
     return set;
