@@ -208,7 +208,7 @@ const {
   getShieldBonus, getShieldStats, getAmuletBonus,
   getSalvageReturns, getAmuletSalvageReturns, gemExtractCost,
   getDungeonCreatorUnlocks, validateCustomDungeon, createDefaultDungeonConfig,
-  hasUnlock, getNpcQuest,
+  hasUnlock, getNpcQuest, npcHasQuestChain, /* v2.3.1773 */
   discoverMonster, discoverMaterial, discoverZone, discoverCollision,
   SHOP_PRICES, SHOP_ITEMS_FOR_SALE,
   getGuildRank, getGuildQuest, GUILD_RANKS, GUILD_QUESTS, SKILL_GUILDS,
@@ -492,7 +492,10 @@ function nodeAtScreen(S, cssX, cssY) {
    mutates x/y/hp/chatTimer in place, so handing out the shared module
    literal would let one town visit's state leak into the next. */
 function _spawnTownNpcs() {
-  var ACTIVE_NPCS = ['Mayor Bro'];
+  /* v2.3.1773: the blacksmith joins the mayor.  This allowlist is the gate —
+     NPC_DATA carries the record, but a name missing from here never spawns,
+     which is how the table can hold entries that are not live yet. */
+  var ACTIVE_NPCS = ['Mayor Bro', 'Blacksmith Bro'];
   return NPC_DATA.filter(function (n) { return ACTIVE_NPCS.indexOf(n.name) >= 0; })
     .map(function (npc) { return _objectSpread({}, npc); });
 }
@@ -4727,7 +4730,15 @@ export var BroTown = function BroTown(_ref0) {
                mid-frame. */
             npc._questMarker = null;
             if (!npcQuest) {
-              npc._questMarker = '✅';
+              /* v2.3.1773: ...only if they HAD any.  getNpcQuest returns null
+                 both when every quest of theirs is turned in and when they
+                 have no chain at all, and this branch read the second as the
+                 first — so the blacksmith, who is townsfolk and gives no
+                 quests, stood by the fountain wearing the green all-done tick.
+                 A tick you were never owed is worse than no tick: it says
+                 "nothing more here" about a character you have never spoken
+                 to. */
+              if (npcHasQuestChain(npc.name)) npc._questMarker = '✅';
             } else if (npcQuest.status === 'available') {
               npc._questMarker = '❗';
             } else if (npcQuest.status === 'active') {

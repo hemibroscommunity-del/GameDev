@@ -25,6 +25,7 @@ const SCENARIOS = {
   movespeed: () => import('./mp-movespeed.mjs'), /* v2.3.1769: speed is per second, not per frame */
   entitydt: () => import('./mp-entitydt.mjs'), /* v2.3.1771: monsters, NPCs + remotes move per second too */
   coppergear: () => import('./mp-coppergear.mjs'), /* v2.3.1772: every worn copper combo, in every pose */
+  blacksmith: () => import('./mp-blacksmith.mjs'), /* v2.3.1773: the smith at the fountain */
   solorate: () => import('./mp-solorate.mjs'),
   statpeek: () => import('./mp-statpeek.mjs'), /* v2.3.1766: the allocation tooltip tells the truth */
   spawnfx: () => import('./mp-spawnfx.mjs'), /* v2.3.1765: the respawn silhouette */

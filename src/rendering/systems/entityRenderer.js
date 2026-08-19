@@ -168,6 +168,11 @@ const MONSTER_SIZE_MULT = 1.5;
    follow the figure automatically rather than needing their own pass. */
 const NPC_SPRITE_SCALE = 120 / 256;
 
+/* v2.3.1773: QA probe store — id-keyed from data, so Object.create(null)
+   (CLAUDE.md: a plain {} silently no-ops on '__proto__'). */
+const _npcDrawn = Object.create(null);
+if (typeof window !== 'undefined') window.__btNpcSprites = () => Object.values(_npcDrawn);
+
 /* The sprite frame's own geometry, in frame pixels: the figure's feet sit on
    y=223 and its top (hat) on y=23 — see the asset note in gameDisplay.js
    NPC_DATA.  Kept as named constants because three different offsets are
@@ -7251,6 +7256,21 @@ export class EntityRenderer {
         const drawn = fig.texture !== Texture.EMPTY;
         if (display._avatar.visible !== !drawn) display._avatar.visible = !drawn;
         display._suppressBody = drawn;
+        /* v2.3.1773: QA probe — what each NPC figure is ACTUALLY drawn as.
+           "Size him about the same as mayor bro" is a claim about pixels on
+           screen, and the only honest way to check it is to read the live
+           sprite: the asset could be any size and the renderer's own
+           normalisation is exactly what the test needs to exercise. */
+        if (typeof window !== 'undefined' && drawn) {
+          _npcDrawn[npc.id] = {
+            id: npc.id, name: npc.name, x: npc.x, y: npc.y,
+            height: fig.texture.height * fig.scale.y,
+            width: fig.texture.width * fig.scale.x,
+            /* world y of the figure's feet — anchor is the frame's foot row */
+            footY: display.y,
+            src: display._figSrc,
+          };
+        }
       }
 
       /* Body — only redraw when color changes (NPCs are static). */
