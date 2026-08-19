@@ -107,19 +107,33 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await P.page.keyboard.press('Escape');
   await P.page.waitForTimeout(400);
 
-  /* ── 5. the two gated doors, pinned as a KNOWN state ──
-     forge and enchant sit behind quest unlocks ('blacksmith', 'enchanting')
-     whose chains are not live — the Bron chain is dormant (see the naming note
-     in NPC_DATA).  So these doors currently refuse with a locked message.
-     Asserted rather than left to be discovered: it is the one thing about this
-     change that will look like a bug and is not one, and the day the chain is
-     wired up this assertion is what says so. */
+  /* ── 5. EVERY door opens on sight ──
+     v2.3.1778 shipped with the forge and enchanter still behind quest unlocks
+     ('blacksmith', 'enchanting') whose chains are not live, so those two
+     refused with a message naming an NPC who is not in the game.  Owner:
+     "Buildings open on site."  The gate is retired, and this is the assertion
+     that says so — it was the exact inverse a version ago, which is why it is
+     worth stating plainly rather than deleting. */
   await doorOf('forge');
   await P.page.keyboard.press('e');
   await P.page.waitForTimeout(900);
-  const forgeOpened = await H.seesText(P, 'Forge a weapon').catch(() => false);
-  rec.ok('the forge door is still quest-gated (known: its unlock chain is dormant)',
-    forgeOpened === false, { forgeOpened });
+  rec.ok('the forge opens on sight — no quest gate', await H.seesText(P, 'Forge'));
+  await P.page.keyboard.press('Escape');
+  await P.page.waitForTimeout(400);
+
+  await doorOf('enchanter');
+  await P.page.keyboard.press('e');
+  await P.page.waitForTimeout(900);
+  rec.ok('...and so does the enchanter', await H.seesText(P, 'Enchant'));
+  await P.page.keyboard.press('Escape');
+  await P.page.waitForTimeout(400);
+
+  await doorOf('general-store');
+  await P.page.keyboard.press('e');
+  await P.page.waitForTimeout(900);
+  /* Its panel is the VENDOR shop — matched on its own subtitle rather than on
+     the word 'Shop', which appears nowhere in it. */
+  rec.ok('...and the general store', await H.seesText(P, 'Basic supplies'));
 
   await P.ctx.close().catch(() => {});
 }
