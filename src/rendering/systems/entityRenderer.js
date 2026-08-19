@@ -5462,6 +5462,9 @@ export class EntityRenderer {
                          : oWpnType === 'bow'        ? 28
                          :                              26;
           const fitScale = targetH / Math.max(8, th);
+          /* v2.3.1786: carried blade points UP, same as the local player below —
+             other bros have to hold their sword the way you hold yours. */
+          let _oBladeUp = false;
           if (oSwingActive) {
             oWeaponSprite.rotation = oSwingAng;
             oWeaponSprite.scale.x = fitScale;
@@ -5469,8 +5472,9 @@ export class EntityRenderer {
             oWeaponSprite.rotation = 0;
             const weaponMirror = facingIdx >= 3 && facingIdx <= 6;
             oWeaponSprite.scale.x = (weaponMirror ? -1 : 1) * fitScale;
+            _oBladeUp = true;
           }
-          oWeaponSprite.scale.y = fitScale;
+          oWeaponSprite.scale.y = _oBladeUp ? -fitScale : fitScale;   /* v2.3.1786 — see the local path */
           /* v2.3.1760: the gap v2.3.1757 recorded here is closed — the peer
              snapshot carries `wpnMat` beside `wpnType` now, so the other
              player's sword is the metal they are actually holding.  The value
@@ -6632,6 +6636,14 @@ export class EntityRenderer {
                          : isWoodSword                ? 45
                          :                              26;
           const fitScale = targetH / Math.max(8, th);
+          /* v2.3.1786: set by the carried branch below.  Declared HERE, beside
+             fitScale in the same block as the scale.y assignment — the first
+             cut of this put it beside the OTHER fitScale, forty lines up in
+             _updateOtherPlayers, and the resulting ReferenceError was swallowed
+             by pixiRenderer's per-system catch: the weapon simply stopped
+             drawing and the probe read null, which looks nothing like a scope
+             error.  Two parallel weapon implementations, one name. */
+          let _weaponBladeUp = false;
           /* During an idle pose, mirror the blade horizontally for
              facings idx 3..6 (SW/W/NW/N) so it angles outward.  During
              a swing, rotation alone positions the blade — disable
@@ -6656,13 +6668,71 @@ export class EntityRenderer {
                weapons keep the single-icon rule (flip for SW/W/NW/N). */
             const weaponMirror = _gsDir ? mirror : (facingIdx >= 3 && facingIdx <= 6);
             weaponSprite.scale.x = (weaponMirror ? -1 : 1) * fitScale;
+            /* v2.3.1786 (owner: "invert the sword held angle so instead of
+               running around with it facing downward it points upward").
+
+               A VERTICAL FLIP about the grip, not a 180-degree rotation.  Both
+               put the blade up, but the anchor here is the weapon's HANDLE
+               (getWeaponHandle), so a flip reflects the art across the grip and
+               leaves the horizontal orientation alone — the crossguard lands
+               just above the hand, where a raised blade's crossguard belongs,
+               and the per-facing mirror rule on the line above keeps working
+               untouched.  A rotation would mirror left-right as well, undoing
+               that rule for every facing and pointing the tip back over the
+               shoulder it came from.
+
+               Carried poses only.  The swing branch drives rotation from
+               swingAng and the sheathed branch angles the blade across the
+               back; neither wants this, and both are separate branches above
+               so neither can pick it up by accident. */
+            _weaponBladeUp = true;
           }
-          weaponSprite.scale.y = fitScale;
+          /* v2.3.1786 (owner: "invert the sword held angle so instead of
+             running around with it facing downward it points upward" — then,
+             on the first cut: "The sword needs to always aim forward though.
+             And I'm just talking about JOGGING and IDLE sword position, not
+             attacking").
+
+             A VERTICAL FLIP about the grip, not a 180-degree rotation.  The
+             per-facing greatsword art is drawn at a baked diagonal — east is
+             hilt upper-left, blade down-FORWARD — so the two differ in exactly
+             the way the owner's correction is about:
+               rotation 180 inverts BOTH axes -> the blade points up and BACK,
+                 over the shoulder, away from the way he is running;
+               a flip inverts only the vertical -> up and FORWARD, keeping the
+                 lean toward the facing, which is what was asked for.
+             The flip also composes with the per-facing horizontal mirror above
+             instead of fighting it: scale.x carries the facing, scale.y carries
+             the blade direction, and neither touches the other.
+
+             JOG AND IDLE ONLY, by construction rather than by a check: this is
+             the carried branch.  A swing drives rotation from swingAng in its
+             own branch above and the sheathed pose angles the blade across the
+             back in another, so neither can pick this up. */
+          weaponSprite.scale.y = _weaponBladeUp ? -fitScale : fitScale;
           /* v2.3.1760: the weapon's METAL is its blacksmith tier (gearBase), so
              a copper sword is copper everywhere without a new field.  Melee
              only — owner: "only for metals though not staff or bow". */
           weaponSprite.tint = weaponTint(wpn && wpn.type, wpn && wpn.gearBase);
           _lastWeaponSprite = weaponSprite; /* v2.3.1760: QA probe */
+          /* v2.3.1786: carried-blade probe — a headless run cannot read the
+             canvas, so the blade-up work is measured from here. */
+          try {
+            /* No getBounds() here: in pixi v8 it throws on a sprite whose
+               texture has not resolved, and the catch below then swallowed the
+               whole probe — which read as "the weapon branch never ran" and
+               sent me looking for a bug one layer too far up. */
+            window.__btWeapon = {
+              visible: weaponSprite.visible, bladeUp: _weaponBladeUp,
+              x: +weaponSprite.x.toFixed(2), y: +weaponSprite.y.toFixed(2),
+              anchorX: weaponSprite.anchor.x, anchorY: weaponSprite.anchor.y,
+              rotation: weaponSprite.rotation,
+              scaleX: +weaponSprite.scale.x.toFixed(3), scaleY: +weaponSprite.scale.y.toFixed(3),
+              texW: weaponSprite.texture ? weaponSprite.texture.width : 0,
+              texH: weaponSprite.texture ? weaponSprite.texture.height : 0,
+              facing: S._renderFacing,
+            };
+          } catch (e) {}
           weaponSprite.visible = true;
           /* v2.3.185 hand-over-grip: stamp the body's hand pixels on
              top of the weapon. handCap is a Sprite that shares the
