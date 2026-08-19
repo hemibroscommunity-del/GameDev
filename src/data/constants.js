@@ -11,19 +11,31 @@ export const TILE = 32;
    conversions (tap-to-lock) read the published S._worldScaleX/Y instead of
    assuming 1.0, so they track this automatically. Tune on the preview.
 
-   v2.3.1780: 1.25 -> 1.875, i.e. 1.5x more world visible in each direction
-   (scale 0.8 -> 0.5333). Owner: "I wanna see what it looks like having just
-   the game area zoomed out 50% more as the standard view." At 1.25 a phone
-   viewport (390 CSS px) shows ~488 world px across, which on the town
-   plateau is one building and some cobble -- you learn the town a step at a
-   time. At 1.875 it shows ~731, enough for the fountain, the mayor's house,
-   the forge and the stairs in one frame. The cost is character size: the bro
-   renders ~64 screen px tall instead of ~96, and the HUD/keybind overlay does
-   NOT scale with the world, so it covers proportionally more of the view.
-   This is a taste call on a preview build -- if it reads too small, 1.5
-   (scale 0.667, ~25% more world) is the middle setting; nothing else needs
-   to change either way, this constant is the only knob. */
-export const WORLD_ZOOM = 1.875;
+   v2.3.1780: 1.25 -> 1.5, settled on a preview build in two steps.
+
+   Owner first asked to see "the game area zoomed out 50% more as the standard
+   view", which is 1.875 (scale 0.8 -> 0.5333, 1.5x more world each way).  Two
+   things came out of looking at that on a phone:
+
+   1. It reads too far out.  Owner: "it needs to be about 25-33% more zoomed
+      in from here."  25% in from 1.875 is exactly 1.5.
+   2. At 1.875 the viewport is TALLER THAN THE TOWN.  Measured on a 390x844
+      phone the canvas is 615 CSS px tall, so viewH = 615 * WORLD_ZOOM: 1153
+      world px at 1.875, against a town plateau only 30 tiles = 960 px deep.
+      The camera's v2.3.819 clamp then centres a map smaller than the view and
+      leaves ~96px of void above and below.  Not a clamp bug -- that branch is
+      deliberate -- but it IS the hard ceiling on this constant while the town
+      is 30 tiles deep.  1.5 puts viewH at 922, inside 960 with margin.
+
+   So 1.5 is both the requested feel and the largest value the current maps
+   can carry.  If the town ever gets deeper, that ceiling moves with it, and
+   this comment is where to check the arithmetic before raising this number.
+
+   Net from where this started: scale 0.8 -> 0.6667, i.e. 20% more world
+   visible in each direction (44% more area), and the bro renders ~17%
+   smaller.  The HUD and keybind hints do NOT scale with the world, so they
+   cover proportionally more of the screen than they used to. */
+export const WORLD_ZOOM = 1.5;
 
 /* Ore is mined from one tile NORTH of the vein (so the south-facing swing
    lines up over the rock). The player must stand within MINE_SPOT_R of that
