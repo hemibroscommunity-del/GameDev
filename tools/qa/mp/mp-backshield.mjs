@@ -126,6 +126,100 @@ export async function run({ browser, wsPort, webPort, rec }) {
       { east: e.rotation, west: w.rotation, eastMirrored: e.mirror, westMirrored: w.mirror });
   }
 
+  /* ── v2.3.1784: THE ATTACK STAND-INS ───────────────────────────────
+     Owner: "make sure the shield layering works when using all attack
+     animations and armor combos."
+
+     It did not.  During a swing or a bow shot the real body is HIDDEN and the
+     whole figure is redrawn by effectsRenderer in a different layer, but
+     `pose` stays 'stand'/'jog' the whole time — so the v2.3.1782 shield kept
+     drawing in the player container against a body that was not there.
+     Measured before the fix: mid-swing the walking probe read on:true,
+     front:true with the body sprite hidden.  A shield hanging in the air
+     beside the swing.
+
+     Two properties now, and both are needed: the walking pair must LEAVE when
+     a stand-in takes over, and the stand-in's own pair must ARRIVE.  Testing
+     only one of them passes against "the shield vanished when you attack",
+     which is the other way to get this wrong. */
+  const attack = async (idx, kind) => {
+    await P.page.evaluate(({ i, k }) => {
+      const S = window._gameState.current;
+      S._facingAngle = i * Math.PI / 4; S._aimAngle = i * Math.PI / 4;
+      S.lockedMonster = null;
+      if (k === 'sword') { S.isSwinging = true; S.swingTimer = Date.now(); S._swingAng = i * Math.PI / 4; }
+      else { S._bowShotAt = Date.now(); S._bowShotAng = i * Math.PI / 4; }
+    }, { i: idx, k: kind });
+    await P.page.waitForTimeout(150);
+    return P.page.evaluate(() => ({
+      standIn: window.__btStandInShield || null,
+      walk: window.__btBackShield || null,
+    }));
+  };
+
+  /* Armour combos.  chest and legs are the only equippable plate (gearCatalog),
+     and each draws its OWN sprite inside the stand-in stack — which is exactly
+     what the two clones have to stay outside of. */
+  const COMBOS = [
+    ['bare', 'none', 'none'],
+    ['chest only', 'copperplate', 'none'],
+    ['legs only', 'none', 'coppergreaves'],
+    ['full copper', 'copperplate', 'coppergreaves'],
+  ];
+  for (const [label, chest, legs] of COMBOS) {
+    await P.page.evaluate(({ c, l }) => {
+      window.__btSetGear && window.__btSetGear('chest', c);
+      window.__btSetGear && window.__btSetGear('legs', l);
+    }, { c: chest, l: legs });
+    await P.page.waitForTimeout(400);
+
+    for (const kind of ['sword', 'bow']) {
+      for (const [fname, fidx] of [['N', 6], ['S', 2], ['E', 0]]) {
+        const r = await attack(fidx, kind);
+        const tag = `${kind} ${fname}, ${label}`;
+        const si = r.standIn;
+
+        rec.ok(`${tag}: the walking pair steps aside for the stand-in`,
+          !!(r.walk && r.walk.on === false && r.walk.standIn === true),
+          { walkOn: r.walk && r.walk.on, standInFlag: r.walk && r.walk.standIn });
+
+        rec.ok(`${tag}: the stand-in draws the shield instead`,
+          !!(si && si.on && (si.behind || si.front)), { standIn: si });
+        if (!si) continue;
+
+        /* The invariants, inside the stand-in's own stack this time. */
+        rec.ok(`${tag}: behind-clone stays under the body`,
+          si.loIdx < si.bodyIdx, { loIdx: si.loIdx, bodyIdx: si.bodyIdx });
+        rec.ok(`${tag}: front-clone stays over the weapon`,
+          si.hiIdx > si.weaponIdx, { hiIdx: si.hiIdx, weaponIdx: si.weaponIdx });
+        /* THE ARMOUR CLAIM: every worn plate sprite sits BETWEEN the two
+           clones, so no combination of them can land on the wrong side. */
+        rec.ok(`${tag}: the armour layers sit between the two clones`,
+          si.loIdx < si.chestIdx && si.chestIdx < si.hiIdx
+          && si.loIdx < si.legsIdx && si.legsIdx < si.hiIdx,
+          { lo: si.loIdx, chest: si.chestIdx, legs: si.legsIdx, hi: si.hiIdx });
+        rec.ok(`${tag}: exactly one clone is drawn`,
+          (si.behind ? 1 : 0) + (si.front ? 1 : 0) === 1, { behind: si.behind, front: si.front });
+        rec.ok(`${tag}: on the side the camera says`,
+          si.behind === (fidx !== 6), { behind: si.behind, facing: si.facing });
+        /* Same object, same size: a shield that resized on attack reads as a
+           different shield.  BACK_SHIELD_PX is 72, scaled by the stand-in's
+           per-facing body height, so allow a modest band rather than equality. */
+        rec.ok(`${tag}: it is still the same size shield`,
+          si.sizePx > 55 && si.sizePx < 90, { sizePx: si.sizePx });
+      }
+      await P.page.evaluate(() => {
+        const S = window._gameState.current;
+        S.isSwinging = false; S.swingTimer = 0; S._bowShotAt = 0;
+      });
+      await P.page.waitForTimeout(500);
+    }
+  }
+  await P.page.evaluate(() => {
+    window.__btSetGear && window.__btSetGear('chest', 'none');
+    window.__btSetGear && window.__btSetGear('legs', 'none');
+  });
+
   await P.page.screenshot({ path: 'tools/qa/mp/out/backshield.png' }).catch(() => {});
   await P.ctx.close().catch(() => {});
 }

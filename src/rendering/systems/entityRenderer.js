@@ -19,6 +19,7 @@ for (const el of Object.values(ELEMENTS || {})) {
 import { lookupCollision, PVP_THREAT_CONSENT_MS } from '@/data/gameSystems.js';
 import { getFrame, resolveDirection, cycleMs, hasPose, frameCount as playerFrameCount, dodgeSheetDir } from '../playerSprites.js';
 import { getShieldFrame } from '../shieldSprites.js';
+import { backShieldPlacement, applyBackShield, BACK_SHIELD_PX } from '../backShield.js'; /* v2.3.1784 */
 import { STUN_STARS, STUN_SPIN_MS } from '../fxStrips.js'; /* v2.3.1735: the owner's stun ring */
 import { jogWaistRow } from '../jogWaist.js'; /* v2.3.1341: stable waist band */
 import { getFrame as getSlimeBaseFrame, hasState as hasSlimeState, frameCount as slimeFrameCount } from '../slimeSprites.js';
@@ -7070,80 +7071,40 @@ export class EntityRenderer {
       const _shHi = display._shieldBackHi;
       if (_shLo && _shHi) {
         /* Standing and jogging only (owner: "while jogging and standing").
-           A swing, a roll, a hit-react and the gathering poses all move the
-           torso in ways the static back placement cannot follow, and that
-           mismatch is what reads as the shield coming unstuck. */
+
+           v2.3.1784: `pose` alone is NOT enough of a gate.  During a sword
+           swing or a bow shot the body above is hidden and the whole figure is
+           redrawn by a stand-in in effectsRenderer's nodeLayer — but pose
+           stays 'stand'/'jog' the entire time, so this kept drawing a shield
+           against a body that was no longer on screen.  _swordSwing/_bowShot
+           are the same flags that hid the body, so the shield now leaves with
+           it, and effectsRenderer draws the stand-in's own pair instead. */
         const backOk = !shieldVisible && S.rpg && S.rpg.shield
-          && (pose === 'stand' || pose === 'jog') && !S._dying;
-        const backFrame = backOk ? getShieldFrame(facingIdx * Math.PI / 4 + Math.PI) : null;
-        if (!backFrame) {
+          && (pose === 'stand' || pose === 'jog')
+          && !_swordSwing && !_bowShot && !S._dying;
+        const backFacing = SECTORS.indexOf(facing);
+        const place = backOk
+          ? backShieldPlacement(backFacing, pose === 'jog', bobY)
+          : null;
+        if (!place) {
           _shLo.visible = false;
           _shHi.visible = false;
         } else {
-          /* Behind for the three south-facing directions, in front for the
-             other five.  facingIdx: 0=E 1=SE 2=S 3=SW 4=W 5=NW 6=N 7=NE. */
-          const behind = !(facingIdx === 5 || facingIdx === 6 || facingIdx === 7);
-          const shown = behind ? _shLo : _shHi;
-          const hidden = behind ? _shHi : _shLo;
+          const shown = place.behind ? _shLo : _shHi;
+          const hidden = place.behind ? _shHi : _shLo;
           hidden.visible = false;
-
-          const facingAng = facingIdx * Math.PI / 4;
-          if (shown.texture !== backFrame.tex) shown.texture = backFrame.tex;
-          /* Displaced opposite the facing so it reads as resting on the back,
-             and lifted to upper-back height.
-
-             X and Y get DIFFERENT radii, which the v2.3.377 version did not
-             do (it used one `backR = 4` for both).  They are not the same
-             quantity on a near-top-down view: horizontal displacement is what
-             carries the shield out past the body's silhouette at E/W, and it
-             has to clear it — 4px does not, which is the whole reason that
-             version looked wrong at E and needed a west-only nudge to look
-             any better at W.  Vertical displacement reads as HEIGHT rather
-             than depth, so the same 11px up the screen at S would lift the
-             shield onto the back of the head. */
-          const BACK_RX = 11, BACK_RY = 5, BACK_LIFT = 14;
-          shown.x = -Math.cos(facingAng) * BACK_RX;
-          shown.y = -Math.sin(facingAng) * BACK_RY - BACK_LIFT + bobY;
-          /* v2.3.193's running lean, kept verbatim: the body art leans
-             forward during the jog and a bolt-upright shield reads as
-             detached.  Strongest on E/W, zero on N/S where the lean is in and
-             out of the screen plane and does not show in 2D.
-
-             NOT mirror-corrected, and that is deliberate — I tried it and it
-             is wrong.  Pixi builds a local transform as T * R * S, so scale
-             is applied first and `rotation` is a rotation in the PARENT's
-             frame: a negative scale.x flips the artwork but cannot flip the
-             direction the sprite then leans on screen.  Multiplying the lean
-             by the mirror flag makes E and W tilt the same way on screen,
-             i.e. one of them leans backwards out of its own run.
-             cos(facingAng) already carries the E/W sign on its own.
-
-             The mirror is likewise harmless to POSITION here, because the
-             anchor is (0.5, 0.5): flipping about the sprite's own centre
-             moves nothing.  It would need correcting for an off-centre
-             anchor — which is the trap this looks like from the outside. */
-          const RUN_LEAN = 0.15;   /* rad, ~8.6 deg */
-          shown.rotation = pose === 'jog' ? RUN_LEAN * Math.cos(facingAng) : 0;
-          /* 36/64, NOT the in-hand block's 56/64.  v2.3.189 deliberately
-             matched the two ("this aligns the apparent size") and that is the
-             wrong target: a shield held out to block is presented face-on and
-             fills the guard, while a shield slung on a back is seen edge-on
-             and further away.  At 56 the front view covers the bro from
-             shoulders to hips and reads as him hiding behind it rather than
-             carrying it. */
-          const sheathedScale = 36 / 64;
-          shown.scale.x = sheathedScale * (backFrame.mirror ? -1 : 1);
-          shown.scale.y = sheathedScale;
-          shown.tint = 0xffffff;
-          shown.alpha = 0.95;
-          shown.visible = true;
+          applyBackShield(shown, place, BACK_SHIELD_PX);
+          shown.x = place.dx;
+          shown.y = place.dy;
         }
+        const backFrame = place && place.frame;
         /* QA probe — a headless run cannot read the WebGL canvas, so the
            z-order assertions in mp-backshield read this. */
         try {
           window.__btBackShield = {
             on: !!(_shLo.visible || _shHi.visible),
-            facingIdx, pose,
+            facingIdx: SECTORS.indexOf(facing), pose,
+            standIn: !!(_swordSwing || _bowShot),
             behind: _shLo.visible, front: _shHi.visible,
             loIdx: display.getChildIndex(_shLo),
             hiIdx: display.getChildIndex(_shHi),
@@ -7151,6 +7112,9 @@ export class EntityRenderer {
             armIdx: display._handArmSprite ? display.getChildIndex(display._handArmSprite) : -1,
             heldVisible: !!(display._shieldSprite && display._shieldSprite.visible),
             mirror: !!(backFrame && backFrame.mirror),
+            sizePx: _shLo.visible ? _shLo.height : _shHi.height,
+            texH: (_shLo.visible ? _shLo : _shHi).texture ? (_shLo.visible ? _shLo : _shHi).texture.height : 0,
+            dispScale: display.scale ? display.scale.y : 1,
             rotation: _shLo.visible ? _shLo.rotation : _shHi.rotation,
           };
         } catch (e) { /* never breaks the frame */ }
