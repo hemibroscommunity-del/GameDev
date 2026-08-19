@@ -60,6 +60,7 @@ import { getFacialHairColor, getColoredFacialHairTextures } from '../traits/faci
 import { getShirt } from '../traits/shirtCatalog.js';
 import { getShirtColor, shirtFill } from '../traits/shirtColorCatalog.js';
 import { getGearFrame, getGearFramePhased, getLoadedGearSources } from '../gearSheets.js';
+import { BLOCK_ARM_FACING, BLOCK_ARM_CUT, blockArmTexture } from '../blockArm.js'; /* v2.3.1785 */
 import { gearTint, gearArt, gearMaterial } from '../gearVariants.js'; /* v2.3.1757: material recolor */
 import { materialTint, weaponTint } from '../traits/materialTints.js'; /* v2.3.1757: weapons share the metals table */
 import { combatGearUrls } from '../combatGear.js';
@@ -3243,6 +3244,60 @@ function _updateNamePill(display, name, level, visible, broId) {
   display._namePill.visible = !!visible;
 }
 
+
+/* ═══ v2.3.1785: the raised shield gets an arm ═══
+ * See blockArm.js for why this is cut from the bow art rather than masked out
+ * of the standing body (owner: "There is no outstretched arm the shield orbits
+ * the body").  Returns the world-space point the shield should be held at, or
+ * null when there is no arm for this facing — in which case the caller keeps
+ * the old free-floating placement, which is what every north facing uses.
+ *
+ * The bow art is authored at a different size from the walking body, so the
+ * arm is scaled by the same ratio the bow stand-in uses (drawn body height
+ * over the bow sheet's 188px figure) and then pinned by its SHOULDER to the
+ * body's shoulder.  Pinning by the shoulder rather than by the frame corner is
+ * what keeps it attached when the figure's per-facing scale changes.
+ */
+const BLOCK_ARM_SHOULDER = {
+  /* Where the body's shoulder sits, in display-local px, per rendered facing.
+     Only the facings with an arm appear — south has none (see blockArm.js). */
+  east:      [7, -12],
+  west:      [-7, -12],
+  southeast: [6, -12],
+  southwest: [-6, -12],
+};
+
+function _placeBlockArm(display, facing, bodyH, bobY) {
+  const spr = display._blockArmSprite;
+  if (!spr) return null;
+  const map = BLOCK_ARM_FACING[facing];
+  const anchor = BLOCK_ARM_SHOULDER[facing];
+  const tex = map && blockArmTexture(map[0]);
+  const cut = map && BLOCK_ARM_CUT[map[0]];
+  if (!map || !anchor || !tex || !cut) { spr.visible = false; return null; }
+
+  const mirror = map[1];
+  /* 188 is the bow sheet's crown-to-foot figure height, the same constant the
+     bow stand-in divides by. */
+  const sc = (bodyH || 84) / 188;
+  spr.texture = tex;
+  spr.scale.set(mirror ? -sc : sc, sc);
+  /* anchor is (0,0), so position the frame corner such that the cut's shoulder
+     point lands on the body's shoulder.  Mirroring flips which edge the
+     shoulder is measured from. */
+  const sx = mirror ? -sc : sc;
+  spr.x = anchor[0] - cut.shoulder[0] * sx;
+  spr.y = anchor[1] + (bobY || 0) - cut.shoulder[1] * sc;
+  spr.tint = 0xffffff;
+  spr.alpha = 1;
+  spr.visible = true;
+
+  /* Where the hand ended up, for the shield to sit in. */
+  const handDX = (cut.hand[0] - cut.shoulder[0]) * sx;
+  const handDY = (cut.hand[1] - cut.shoulder[1]) * sc;
+  return { x: anchor[0] + handDX, y: anchor[1] + (bobY || 0) + handDY };
+}
+
 function createPlayerDisplay() {
   const container = new Container();
   container.label = 'localPlayer';
@@ -3450,6 +3505,16 @@ function createPlayerDisplay() {
   container.addChild(handArmMask);
   container.addChild(handArmSprite);
 
+  /* v2.3.1785: the outstretched arm that holds the raised shield, cut from the
+     bow-shot art (see blockArm.js).  Sits here — after the body and the worn
+     gear, immediately before the shield — so it reaches out OVER the torso and
+     the shield's boss still covers the hand.  Structural, like the back
+     shield's pair: nothing recomputes an index for it. */
+  const blockArmSprite = new Sprite();
+  blockArmSprite.anchor.set(0, 0);
+  blockArmSprite.visible = false;
+  container.addChild(blockArmSprite);
+
   /* v2.3.1782: the in-FRONT half of the on-back shield.  Sits here — after
      the arms, before the in-hand shield — so a shield slung across a back
      that faces the camera draws over the body and the arms, permanently, by
@@ -3611,6 +3676,7 @@ function createPlayerDisplay() {
   container._handArmSprite = handArmSprite;
   container._handArmMask = handArmMask;
   container._shieldSprite = shieldSprite;
+  container._blockArmSprite = blockArmSprite;   /* v2.3.1785 */
   container._shieldBackLo = shieldBackLo;   /* v2.3.1782 */
   container._shieldBackHi = shieldBackHi;   /* v2.3.1782 */
   container._comboText = comboText;
@@ -6996,7 +7062,7 @@ export class EntityRenderer {
           : (S._shieldAngle != null)
             ? S._shieldAngle
             : ((S._aimAngle != null) ? S._aimAngle : (S._facingAngle || 0));
-        const sR = 16;                        // hand-out distance from body
+        const sR = 16;                        // hand-out distance from body (no-arm fallback)
         // Player sprite is bottom-anchored (feet at y=0). With the 2x size
         // bump the shield center sits at feet, top reaches chest naturally.
         const shieldHoldY = 0;
@@ -7006,8 +7072,25 @@ export class EntityRenderer {
         const shieldSprite = display._shieldSprite;
         if (shieldFrame && shieldSprite) {
           if (shieldSprite.texture !== shieldFrame.tex) shieldSprite.texture = shieldFrame.tex;
-          shieldSprite.x = Math.cos(shieldAng) * sR;
-          shieldSprite.y = Math.sin(shieldAng) * sR + bobY + shieldHoldY;
+          /* v2.3.1785: hold it in the hand of the arm cut from the bow art.
+             Falls back to the old angle-and-radius placement when there is no
+             arm for this facing (every north one) or the bow sheets have not
+             loaded yet — the shield still appears, it just floats as before
+             rather than waiting on art. */
+          /* The drawn figure height for THIS facing and pose — the same
+             expression that publishes S._swordBodyH for the attack stand-ins
+             (crown-to-foot 221-33 in the source frame, through the per-facing
+             body scale and the per-zone display scale).  The arm is cut from
+             art authored at a different size, so it needs this to match. */
+          const _blockBodyH = (221 - 33) * bodyDirScale(pose, dir) * LOCAL_SCALE * (display.scale.y || 1);
+          const _armHand = _placeBlockArm(display, facing, _blockBodyH, bobY);
+          if (_armHand) {
+            shieldSprite.x = _armHand.x;
+            shieldSprite.y = _armHand.y;
+          } else {
+            shieldSprite.x = Math.cos(shieldAng) * sR;
+            shieldSprite.y = Math.sin(shieldAng) * sR + bobY + shieldHoldY;
+          }
           /* Render at 56 px (sprite is 64 px source). */
           const baseScale = 56 / 64;
           shieldSprite.scale.x = baseScale * (shieldFrame.mirror ? -1 : 1);
@@ -7041,6 +7124,7 @@ export class EntityRenderer {
       } else if (display._shieldSprite) {
         display._shieldSprite.visible = false;
       }
+      if (!shieldVisible && display._blockArmSprite) display._blockArmSprite.visible = false;
 
       /* ═══ v2.3.1782: the shield slung on the back ═══
          Cosmetic only.  Restored from the v2.3.377 removal ("a persistent

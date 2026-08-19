@@ -34,6 +34,7 @@ import { gearTint, gearArt } from '../gearVariants.js'; /* v2.3.1764: the swing 
 import { materialTint, weaponTint } from '../traits/materialTints.js';
 import { upscaleToFrameHeight } from '../spriteScale.js'; /* v2.3.1112: restore downscaled-on-disk sword stand-in strips to their authored frame height */
 import { backShieldPlacement, applyBackShield, BACK_SHIELD_PX } from '../backShield.js'; /* v2.3.1784 */
+import { registerBowBodyFrames } from '../blockArm.js'; /* v2.3.1785 */
 
 /* v2.3.1784: the 8-way compass, module scope.  An identical list already
    existed as a local inside _updateRemoteBowShots; the slung shield needs it
@@ -1151,6 +1152,12 @@ export class EffectsRenderer {
       const arr = [];
       for (let i = 0; i < n; i++) arr.push(new Texture({ source, frame: new Rectangle(i * rec.cfg.fw, 0, rec.cfg.fw, rec.cfg.fh) }));
       rec.target[rec.dir] = arr;
+      /* v2.3.1785: hand the BOW body frames to blockArm.js, which cuts the
+         outstretched arm out of them for the raised-shield pose.  Done here
+         rather than in its own loader so the arm rides the same recolour bake
+         as the figure it is composited onto — one skin change, one rebake,
+         both stay in step. */
+      if (rec.target === this._bowBodyFrames) registerBowBodyFrames(rec.dir, arr);
     };
     const _loadRecoloredBody = (target, dir, url, cfg, ver) => {
       target[dir] = [];
