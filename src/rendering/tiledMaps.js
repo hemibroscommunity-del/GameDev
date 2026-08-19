@@ -37,7 +37,7 @@ export const IMAGE_ZONE_MAPS = {
      shrink the download. WebP decodes fine in Pixi Assets.load + <img> on
      iOS Safari 14+. Dimensions unchanged (1024x1024), so world bounds and the
      walkability grids still align. */
-  town:    '/maps/town_v15.webp',   /* new walled town with buildings (normal avatar size) */
+  town:    '/maps/town_v16.webp',   /* v2.3.1777: the stitched clifftop plateau */
   worldview: '/maps/worldview_v2.webp',   /* v2.3.1420: REVERTED to v2 (owner: "revert back to the previous world map art").  The v2.3.1403 worldview_v3 trial stays on disk if it's ever wanted again.  Upside of the revert: the WORLDVIEW_EXITS trail-heads were coordinate-verified against THIS art (v2.3.1359), so the markers sit exactly on the painted trails again. */
   frost:   '/maps/frost_v5.webp',   /* redesign: meadow-coast -> deep-ice transition */
   meadow:  '/maps/meadow_v6.webp',   /* redesign: new painterly meadow (scaled to 1024 world) */
@@ -86,6 +86,22 @@ export const VIDEO_ZONE_MAPS = {
  *  block.) */
 export const WALK_MASKS_ENABLED = false;
 
+/** ═══ v2.3.1777: ...EXCEPT FOR THE ZONES LISTED HERE ═══
+ *  Owner, on the new clifftop town: "Not walkable" — the plateau ends in a
+ *  cliff with a painted valley beyond, so without collision you walk off the
+ *  edge and stand in the sky.  That zone needs its mask back.
+ *
+ *  The 2026 directive above stays exactly as it was for every other zone: the
+ *  HAND-PAINTED masks had drifted out of alignment with the art they were
+ *  traced from, and none of them has been repainted.  Town's mask is a
+ *  different kind of object — tools/maps/build-town-v16.mjs DERIVES it from
+ *  the finished map's own pixels, so it cannot drift from the art by
+ *  construction, and re-running the build re-derives both together.
+ *
+ *  An allowlist rather than flipping the flag: one zone getting collision back
+ *  must not silently hand it to seven zones whose masks are still wrong. */
+const WALK_MASK_ZONES = new Set(['town']);
+
 /** Per-zone walkability JSON.  Each url returns
  *  `{ width, height, grid: bool[h][w] }` where grid[ty][tx]=false marks
  *  a blocked tile.  Used as `S._tiledWalkable[zoneId]` so isSolid()
@@ -97,7 +113,7 @@ export const WALKABILITY_MAPS = {
      tools/mask-to-walkable.mjs (64x64 grid). Authoritative collision for
      the new cove town -- blocks cliffs + ocean, replaces the stale
      procedural building tiles. */
-  // town: '/maps/town_v14.walk.json',   /* TEMP: disabled so the Overlook preview is fully walkable (no mask yet) */
+  town: '/maps/town_v16.walk.json',   /* v2.3.1777: DERIVED from the map art, not painted — see WALK_MASK_ZONES */
   meadow: '/maps/meadow_v6.walk.json',
   frost: '/maps/frost_v5.walk.json',   /* note: north ice flat over-blocked by the mask; repaint to open it */
   tidal: '/maps/tidal_v6.walk.json',   /* note: mask covered rocks only -- open sea + deep pools still walkable, needs a water pass */
@@ -197,8 +213,10 @@ export async function loadWalkabilityMaps() {
      Returning the empty map here — rather than editing the table or the
      callers — keeps this the ONE place the feature is switched, and keeps
      the fetch off the wire entirely while it's off. */
-  if (!WALK_MASKS_ENABLED) return out;
-  await Promise.all(Object.entries(WALKABILITY_MAPS).map(async ([zoneId, url]) => {
+  const entries = Object.entries(WALKABILITY_MAPS)
+    .filter(([zoneId]) => WALK_MASKS_ENABLED || WALK_MASK_ZONES.has(zoneId));
+  if (!entries.length) return out;
+  await Promise.all(entries.map(async ([zoneId, url]) => {
     try {
       const res = await fetch(url);
       if (!res.ok) throw new Error('HTTP ' + res.status);

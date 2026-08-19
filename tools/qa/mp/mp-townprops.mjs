@@ -17,7 +17,7 @@
 import * as H from './harness.mjs';
 
 const PERSON_H = 120;      /* NPC_SPRITE_SCALE * (223 - 23) — a person, in world px */
-const BLACKSMITH = { x: 648, y: 812 };
+const BLACKSMITH = { x: 1400, y: 640 };  /* v2.3.1778: outside his forge */
 
 export async function run({ browser, wsPort, webPort, rec }) {
   const P = await H.newPlayer(browser, { name: 'Tourist', wsPort, webPort });

@@ -176,7 +176,7 @@ import { shardByKey } from '@/data/shards.js';
 
 /* Destructure everything from DATA — the component body references 100+ symbols */
 const {
-  TILE, PLAYER_COLORS, ZONES, ELEMENTS, TOWN_BUILDINGS, TOWN_EXITS, WORLDVIEW_EXITS, BLOCK_ARC_HALF,
+  TILE, TOWN_SPAWN, PLAYER_COLORS, ZONES, ELEMENTS, TOWN_BUILDINGS, TOWN_EXITS, WORLDVIEW_EXITS, BLOCK_ARC_HALF,
   BLACKSMITH_TIERS, WOODWORKING_TIERS, WEAPON_TYPES, RARITY_TIERS, BT_AUDIO, BT_ACHIEVEMENTS,
   BUILDINGS, NPC_DATA, TILE_SOLID, TILE_COLORS,
   updateZoneDimensions,
@@ -255,6 +255,7 @@ import { _regenerator, _regeneratorDefine2, _asyncToGenerator, _typeof, _slicedT
 import { SpriteHpBar } from './SpriteHpBar.jsx'; /* v2.3.1273: owner's HP-bar art (desktop HUD row) */
 import { barHeight, navSlotSize, columnsRowHeight, DASH_OVERLAP } from './mobile/sheet/sheetGeometry.js'; /* v2.3.1283; v2.3.1290 bar-height canvas; v2.3.1325 slot-derived bar; v2.3.1560 two-row band; v2.3.1635 three-row band; v2.3.1636 columns row */
 import { recolorEnabled } from '@/rendering/traits/recolorOptions.js';
+import { buildingPropNear } from '@/data/worldProps.js'; /* v2.3.1778: building doors */
 
 /* Expose all exports as globals for the pre-transpiled code.
    The original index.html had everything in one scope; this bridges the gap. */
@@ -578,8 +579,9 @@ export var BroTown = function BroTown(_ref0) {
       /* v2.3.1347: first spawn at the fountain plaza (24,24) — same spot
          death-respawn uses; the old (16,16) dropped new players in a
          nothing-corner of town (owner playtest). */
-      x: 24 * TILE,
-      y: 24 * TILE,
+      /* v2.3.1777: the clifftop town moved the plaza — see TOWN_SPAWN. */
+      x: TOWN_SPAWN.x,
+      y: TOWN_SPAWN.y,
       vx: 0,
       vy: 0,
       dir: 'down'
@@ -3620,8 +3622,8 @@ export var BroTown = function BroTown(_ref0) {
             try { S.map = generateZoneMap('town'); } catch (e) {}
             S.monsters = [];
             S.gatherNodes = []; /* Town is safe -- no harvestable resources; clear stale entries from the previous zone */
-            P.x = 24 * TILE;
-            P.y = 24 * TILE;
+            P.x = TOWN_SPAWN.x;   /* v2.3.1777 */
+            P.y = TOWN_SPAWN.y;
             P.vx = 0; P.vy = 0;
             S.respawnTimer = Date.now() + 3000;
             S._dying = false;
@@ -4050,15 +4052,35 @@ export var BroTown = function BroTown(_ref0) {
            §DNG dungeons are live; the standard tile-10 path is dormant. */
         updateDungeonWaves(S, { stateRef: stateRef, setRpgState: setRpgState });
 
-        /* v2.3.823: town building entrances removed (owner request).  The
-           town buildings have no in-game art yet, so their "Enter X"
-           proximity prompts were floating over empty painted ground.
-           Force nearBuilding null so no entrance prompt ever renders.
-           (Restore the BUILDINGS proximity scan here when building art
-           ships.) */
+        /* ═══ v2.3.1778: THE ENTRANCES ARE BACK, BECAUSE THE ART SHIPPED ═══
+           v2.3.823 removed them: "the town buildings have no in-game art yet,
+           so their Enter X proximity prompts were floating over empty painted
+           ground", and left the instruction "Restore the BUILDINGS proximity
+           scan here when building art ships."  It has — the owner supplied a
+           forge, a bank, an enchanter and a general store, and they are placed
+           in worldProps.js.
+
+           The scan is driven off the PROPS, not off TOWN_BUILDINGS: the props
+           are where the buildings actually stand and are drawn, while the
+           TOWN_BUILDINGS rectangles are rescaled leftovers from the old tile
+           village and are what put the prompts on bare ground in the first
+           place.  BUILDINGS still supplies the action, the label, the icon and
+           the quest-unlock gate — matched by action, so the two tables cannot
+           drift into pointing at different doors.
+
+           NOTE this restores access to panels that have been UNREACHABLE for
+           the whole time the prompt was off: forge, bank, enchanter and the
+           vendor shop. */
         var pTileX = Math.floor(P.x / TILE);
         var pTileY = Math.floor(P.y / TILE);
         S.nearBuilding = null;
+        var _doorProp = buildingPropNear(S.currentZone, P.x, P.y, 95);
+        if (_doorProp) {
+          var _bIdx = BUILDINGS.findIndex(function (b) {
+            return (b.action || b.id) === _doorProp.action;
+          });
+          if (_bIdx >= 0) S.nearBuilding = _bIdx;
+        }
 
         /* ═══ PERSONAL FARM — house proximity sleep prompt ═══ */
         if (S.currentZone === 'farm_home' && ZONES.farm_home._house) {

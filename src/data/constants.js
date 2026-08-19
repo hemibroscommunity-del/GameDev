@@ -47,3 +47,13 @@ export const CLAN_MAX_MEMBERS = 20;
 export const CLAN_TAG_MAX = 4;
 export const CLAN_NAME_MAX = 16;
 export const CLAN_LOGO_SIZE = 8;
+
+/* ═══ v2.3.1777: WHERE YOU ARRIVE IN TOWN ═══
+   The clifftop map moved the plaza, and this point was written out longhand in
+   THREE places — the initial player state and both death-respawn paths — as
+   `24 * TILE`.  Three copies of a coordinate is how two of them end up stale;
+   the new map is also not square, so the old one is not even on the plaza any
+   more.  One definition, imported by all three.
+   Open cobble just south-east of the fountain at world (977, 625), clear of
+   the basin and both lamp posts (checked against town_v16.walk.json). */
+export const TOWN_SPAWN = { x: 1050, y: 780 };

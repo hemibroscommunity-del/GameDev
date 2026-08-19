@@ -19,9 +19,13 @@
  */
 import * as H from './harness.mjs';
 
-/* The fountain basin's centre in world px, measured off /maps/town_v15.webp
-   (art 1254px stretched to the zone's 1536, so world = art x 1.2249). */
-const FOUNTAIN = { x: 765, y: 866 };
+/* v2.3.1778: HE STANDS AT HIS FORGE, NOT AT THE FOUNTAIN.
+   The original ask put him by the water because there was nothing else to put
+   him by; the owner has since supplied a forge and it is placed in
+   worldProps.js, so the relationship worth pinning is the one that now means
+   something.  Loosening the old fountain check to make it pass would have kept
+   a test that asserts nothing — he is 423px from the water and correct. */
+const FORGE = { x: 1480, y: 545 };
 /* Close enough to read as "at the fountain" on a phone screen: the basin is
    ~76px in radius and the viewport is ~488 world px wide. */
 const NEAR = 200;
@@ -39,11 +43,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
     !!smith, npcs);
   if (!smith) { await P.ctx.close().catch(() => {}); return; }
 
-  const d = Math.hypot(smith.x - FOUNTAIN.x, smith.y - FOUNTAIN.y);
-  rec.ok('...standing near the water fountain', d < NEAR,
-    { dist: Math.round(d), at: { x: smith.x, y: smith.y }, fountain: FOUNTAIN });
-  /* ...and NOT in the basin: a fountain-shaped hole is where "near" ends. */
-  rec.ok('...beside it, not in it', d > 90, { dist: Math.round(d) });
+  const d = Math.hypot(smith.x - FORGE.x, smith.y - FORGE.y);
+  rec.ok('...standing at his forge', d < NEAR,
+    { dist: Math.round(d), at: { x: smith.x, y: smith.y }, forge: FORGE });
+  /* ...and OUTSIDE it: the forge is solid, so a smith inside its footprint
+     would be a smith you can never reach. */
+  rec.ok('...outside it, not inside the building', smith.y > FORGE.y, { smith, forge: FORGE });
 
   rec.ok('he carries his own art, so he is not the emoji fallback',
     !!smith.sprite && /blacksmith/.test(smith.sprite), smith.sprite);

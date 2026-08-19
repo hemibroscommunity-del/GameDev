@@ -6,10 +6,9 @@
    synchronous and read `stateRef.current` directly; here that became the
    passed-in `S` (same object at call time — identical). React setters via
    deps: sendEmote -> setShowEmotes, enterBuilding -> setBuildingPanel. */
-import { BT_AUDIO, BUILDINGS, hasUnlock, QUEST_CHAINS } from '@/data/index.js';
+import { BT_AUDIO, BUILDINGS } from '@/data/index.js'; /* v2.3.1779: hasUnlock + QUEST_CHAINS went with the retired building gate */
 import { _typeof } from '@/lib/babelHelpers.js';
 
-import { pushDmgPopup } from '@/game/combatHelpers.js';
 export function sendEmote(S, emoji, deps) {
   var setShowEmotes = deps.setShowEmotes;
     BT_AUDIO.emote();
@@ -43,27 +42,29 @@ export function enterBuilding(S, deps) {
       S2.stats.visitedBuildings.add(nb);
       S2.stats.buildingsVisited = S2.stats.visitedBuildings.size;
     }
-    /* Open in-game building panel — check quest unlock gates */
+    /* ═══ v2.3.1779: BUILDINGS OPEN ON SIGHT (owner directive) ═══
+       Owner: "Buildings open on site."
+
+       Every entry in the retired table below pointed at an unlock granted by a
+       quest chain that is NOT live — the forge wanted 'blacksmith' from the
+       dormant Blacksmith Bron line, the enchanter wanted 'enchanting', and so
+       on.  With the entrances restored in v2.3.1778 that turned two of the
+       four placed buildings into doors that named a quest from an NPC who does
+       not exist in the game.  A gate whose key cannot be obtained is not a
+       gate, it is a wall.
+
+       KEPT AS A COMMENT rather than deleted, because the gating is a design
+       someone may want back the day those chains ship: restore the map and the
+       `hasUnlock` check below it and the behaviour returns exactly.
+
+         var BUILDING_UNLOCK_MAP = {
+           forge: 'blacksmith',      woodwork: 'woodworker_reforge',
+           enchant: 'enchanting',    gemcut: 'gem_cutting',
+           exchange: 'marketplace',  farm: 'farming',
+         };
+         var requiredUnlock = BUILDING_UNLOCK_MAP[actionKey];
+         if (requiredUnlock && R2 && !hasUnlock(R2, requiredUnlock)) { ...refuse... }
+    */
     var actionKey = b.action || b.id;
-    var R2 = S.rpg;
-    var BUILDING_UNLOCK_MAP = {
-      forge: 'blacksmith',
-      woodwork: 'woodworker_reforge',
-      enchant: 'enchanting',
-      gemcut: 'gem_cutting',
-      exchange: 'marketplace',
-      farm: 'farming'
-    };
-    var requiredUnlock = BUILDING_UNLOCK_MAP[actionKey];
-    if (requiredUnlock && R2 && !hasUnlock(R2, requiredUnlock)) {
-      /* Find which quest unlocks this */
-      var gateQuest = Object.values(QUEST_CHAINS).find(function (q) {
-        return q.unlocks === requiredUnlock;
-      });
-      var msg = gateQuest ? 'Complete "' + gateQuest.title + '" (' + gateQuest.npc + ') to unlock this!' : 'Locked! Complete quests to unlock.';
-      pushDmgPopup(S, S.player.x, S.player.y - 30, msg, '#f5c542');
-      BT_AUDIO.beep(200, 0.08, 0.1, 'triangle');
-      return;
-    }
     setBuildingPanel(actionKey);
 }
