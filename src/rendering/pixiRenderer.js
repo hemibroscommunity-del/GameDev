@@ -7,6 +7,7 @@ import { TileRenderer } from './systems/tileRenderer.js';
 import { EntityRenderer, prewarmMaskedBodyFrames, prewarmAltWornSets, planPrewarmProgress, uploadBakedTextures, uploadGearTextures, registerPrewarmRenderer } from './systems/entityRenderer.js';
 import { EffectsRenderer, prewarmDmgFontPipe, FIRE_FRAME_MS } from './systems/effectsRenderer.js';
 import { FpsOverlay } from './systems/fpsOverlay.js';
+import { MinimapRenderer } from './systems/minimapRenderer.js'; /* v2.3.1781 */
 import { loadPlayerSprites } from './playerSprites.js';
 import { loadPlayerAnchors } from './playerAnchors.js';
 import { loadSlimeSprites } from './slimeSprites.js';
@@ -139,6 +140,9 @@ export async function initPixiRenderer(canvas) {
   const effectsRenderer = new EffectsRenderer(layers);
   /* v2.3.221: FPS counter only mounts with ?dev=1. */
   const _devUI = typeof window !== 'undefined' && /[?&]dev=1\b/.test(window.location.search);
+  /* v2.3.1781: minimap lives in the screen-space `hud` layer so it never
+     inherits the world's camera transform or WORLD_ZOOM scale. */
+  const minimap = new MinimapRenderer(layers.hud, app);
   const fpsOverlay = _devUI ? new FpsOverlay() : null;
 
   /* v2.3.1670: the village-tileset load that used to sit here is GONE.
@@ -322,6 +326,8 @@ export async function initPixiRenderer(canvas) {
     catch (e) { if (!update._effectsErr) { update._effectsErr = true; console.error('[pixi-render] effectsRenderer threw', e && e.message, e && e.stack); } }
     const _t3 = performance.now();
     update._lastStages.effectsMs = _t3 - _t2;
+    try { minimap.update(S, cssW, cssH); }
+    catch (e) { if (!update._miniErr) { update._miniErr = true; console.error('[pixi-render] minimap threw', e && e.message, e && e.stack); } }
 
     if (fpsOverlay) fpsOverlay.update(now);
     const _t4 = performance.now();
@@ -366,6 +372,7 @@ export async function initPixiRenderer(canvas) {
     tileRenderer.destroy();
     entityRenderer.clear();
     effectsRenderer.clear();
+    try { minimap.destroy(); } catch (e) {}
     if (fpsOverlay) fpsOverlay.destroy();
     app.destroy(false, { children: true });
   }
