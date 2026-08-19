@@ -19,9 +19,13 @@
  */
 import * as H from './harness.mjs';
 
-/* The fountain basin's centre in world px, measured off /maps/town_v15.webp
-   (art 1254px stretched to the zone's 1536, so world = art x 1.2249). */
-const FOUNTAIN = { x: 765, y: 866 };
+/* The fountain basin's centre in world px, measured off the map art.
+   v2.3.1777: re-measured on /maps/town_v16.webp (the stitched clifftop map,
+   3303px art stretched to the zone's 3072, so world = art x 0.9301) — the
+   whole town moved, and a constant left at the old map's numbers would have
+   quietly turned this into a test that the blacksmith is nowhere near
+   anything. */
+const FOUNTAIN = { x: 977, y: 625 };
 /* Close enough to read as "at the fountain" on a phone screen: the basin is
    ~76px in radius and the viewport is ~488 world px wide. */
 const NEAR = 200;

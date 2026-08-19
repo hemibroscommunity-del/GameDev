@@ -22,8 +22,14 @@ import * as H from './harness.mjs';
    convenience.  If the marker ever moves, this test fails loudly with the
    player still standing in town — which is the correct way to find out. */
 /* v2.3.1693: ty 44 -> 41, tracking the marker's move 3 tiles up off the
-   bottom edge (it was rendering under the dashboard). */
-const TOWN_EXIT = { tx: 24, ty: 41, zoneId: 'worldview' };
+   bottom edge (it was rendering under the dashboard).
+   v2.3.1777: (24,41) -> (56,28) for the clifftop town, which is 96x30 tiles —
+   ty 41 was off the bottom of the zone entirely.  Note how it failed: the
+   player stood on a non-existent tile, no transition ran, and "the gate blocks
+   an unarmed player" PASSED because they were still in town.  Only "and says
+   why" caught it.  That is the shape the comment above promised, and it is
+   worth knowing the first assertion alone would have hidden this. */
+const TOWN_EXIT = { tx: 56, ty: 28, zoneId: 'worldview' };
 
 export async function run({ browser, wsPort, webPort, rec }) {
   const P = await H.newPlayer(browser, { name: 'Rookie', wsPort, webPort });

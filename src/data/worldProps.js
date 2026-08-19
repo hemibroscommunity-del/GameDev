@@ -27,7 +27,7 @@ export const WORLD_PROPS = [
        roughly a third of a person, and a person here is 120. */
     id: 'anvil', zone: 'town',
     sprite: '/sprites/props/anvil.png',
-    x: 556, y: 838, worldH: 46,
+    x: 775, y: 748, worldH: 46,
   },
   {
     /* The storekeeper's stall, on the fountain's east shoulder — the mirror of
@@ -37,7 +37,7 @@ export const WORLD_PROPS = [
        the counter meets the cobbles at y and the canopy rises from there. */
     id: 'market-stall', zone: 'town',
     sprite: '/sprites/props/market-stall.png',
-    x: 946, y: 806, worldH: 170,
+    x: 2050, y: 590, worldH: 170,
   },
 ];
 

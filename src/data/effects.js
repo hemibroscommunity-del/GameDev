@@ -270,8 +270,13 @@ export function getCollisionDeathFX(deathX, deathY, collisionId, killAngle, body
    Still on the painted southern trail, just further up it.
    NOTE: tools/qa/mp/mp-townlock.mjs hardcodes this marker — keep them in
    step (it says so itself, and fails loudly if they drift). */
+/* v2.3.1777: the clifftop town is 96x30 tiles, not 48x48 — ty 41 is off the
+   bottom of the new zone entirely, so the only way out of town was a tile that
+   no longer exists.  Moved to the plateau's southern lip, mid-map, which is
+   open cobble in town_v16.walk.json and roughly where the old exit sat
+   relative to the plaza. */
 export const TOWN_EXITS = [
-  { zoneId: 'worldview', tx: 24, ty: 41, dir: 'south', label: 'World View ↓', color: '#cdb27a' },
+  { zoneId: 'worldview', tx: 56, ty: 28, dir: 'south', label: 'World View ↓', color: '#cdb27a' },
 ];
 
 /* The World View is the second hub (see zoneTransitions hub logic). Trails
@@ -348,12 +353,14 @@ export const COMING_SOON_MARKS = [
  * doesn't name would be inventing content, and the one building whose sign a
  * player can read is the Mayor's House — which must NOT read as "the mayor is
  * coming soon" when he is standing right below it handing out the tutorial. */
-export const TOWN_SOON_MARKS = [
-  { tx: 23.5, ty: 7.8 },    /* Mayor's House — top centre, blue roof */
-  { tx: 12.7, ty: 17.5 },   /* General Store — upper left, awning */
-  { tx: 34.2, ty: 16.9 },   /* red-roof house — upper right */
-  { tx: 8.0,  ty: 25.2 },   /* blue-roof house — mid left */
-  { tx: 39.0, ty: 25.7 },   /* blacksmith — mid right, anvil + forge chimney */
-  { tx: 15.4, ty: 34.1 },   /* purple-roof house — lower left */
-  { tx: 32.8, ty: 34.5 },   /* green-roof house — lower right */
-];
+/* ═══ v2.3.1777: EMPTY, BECAUSE THE NEW TOWN HAS NO BUILDINGS ═══
+   Every coordinate below was measured off the OLD square map's painted roofs.
+   The clifftop map is an empty plateau — the owner is placing building art on
+   it — so each of those seven labels would now float on bare cobblestone,
+   which is the exact bug the note above says v2.3.1681 fixed.  A label with no
+   building under it is worse than no label: it tells the player there is
+   something there to find.
+
+   This list comes back one entry at a time as buildings are placed, or does
+   not come back at all if they ship with real entrances instead. */
+export const TOWN_SOON_MARKS = [];

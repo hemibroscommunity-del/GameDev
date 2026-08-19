@@ -32,7 +32,7 @@ import {
   getShieldStats, getWeaponCritDmgStat, getWeaponCritStat, meleeSwingSfx, recalcDerived, resolveCollision,
   getEvasionPts, poiseStunFlatMs, rollPassiveDodge, getWeaponCritFlat, spawnElementStatusFX, spawnWeaponHitFX, swingCooldownMult, tickStatuses, updateZoneDimensions,
   trainDefense, applyIronSkin, applyResilience, /* v2.3.1314 */
-  monsterBodyY, monsterProceduralRadius,
+  monsterBodyY, monsterProceduralRadius, TOWN_SPAWN /* v2.3.1777 */
 } from '@/data/index.js';
 import { MONSTER_VARIANTS, baseArchetypeOf, hitShapeOf, isFodderLike, isRemnantSkull, maybeTransformMonster, usesClientSideMovement, xpMultFor } from '@/data/monsterVariants.js';
 import { isWearingArmor } from '@/rendering/gearCatalog.js'; /* v2.3.1104: armoured-hit SFX check */
@@ -1140,8 +1140,8 @@ export function updateMonsterCombat(S, deps) {
                       S.map = generateZoneMap('town');
                       S.monsters = []; /* Town has no monsters */
                       S.gatherNodes = []; /* and no harvestable resources -- clear stale entries from the previous zone */
-                      P.x = 24 * TILE;
-                      P.y = 24 * TILE;
+                      P.x = TOWN_SPAWN.x;   /* v2.3.1777 */
+                      P.y = TOWN_SPAWN.y;
                       P.vx = 0; P.vy = 0;
                       S.respawnTimer = Date.now() + respawnMs;
                       S._dying = false;

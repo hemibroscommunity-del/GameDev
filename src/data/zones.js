@@ -1,13 +1,20 @@
 /* ═══ HUB-AND-SPOKE WORLD — §14 ═══ */
 export const ZONES = {
   town: {
-    /* v2.3.386: town is 48x48 tiles = 1536x1536 px world bounds (was
-       32x32) -- 1.5x playable area per user (tried 2x/64x64 first).
-       Background art (town_v13.jpg) is 1536x1536 native to match (square
-       painterly source, gentle upscale).  All cells walkable (no
-       walkability JSON).  TOWN_EXITS / TOWN_BUILDINGS / spawn scaled x1.5
-       to suit the grid. */
-    id: 'town', name: 'Town', w: 48, h: 48,
+    /* ═══ v2.3.1777: THE CLIFFTOP TOWN ═══
+       Owner supplied two painted halves and asked for them as ONE town map,
+       with the cliffs not walkable.  The art (tools/maps/build-town-v16.mjs)
+       stitches to 3303x1024 — a wide semicircular plateau — so the zone is
+       96x30 tiles = 3072x960 world px, an aspect of 3.20 against the art's
+       3.226.  That 0.8% is a smaller stretch than the square town lived with
+       (1254 art into 1536 world, 1.22x) and means the map is drawn very near
+       1:1 instead of being blown up.
+
+       This zone now HAS a walkability grid, which is new for town: the old
+       square map was walk-anywhere because every edge was painted ground.
+       Here the plateau ends in a cliff with a painted valley beyond it, so
+       without collision you walk off the edge and stand in the sky. */
+    id: 'town', name: 'Town', w: 96, h: 30,
     element: null, level: [0, 0], music: 'town', safe: true,
     palette: { ground: '#4a6741', path: '#8b7355', accent: '#5a7a50' }
   },

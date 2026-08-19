@@ -176,7 +176,7 @@ import { shardByKey } from '@/data/shards.js';
 
 /* Destructure everything from DATA — the component body references 100+ symbols */
 const {
-  TILE, PLAYER_COLORS, ZONES, ELEMENTS, TOWN_BUILDINGS, TOWN_EXITS, WORLDVIEW_EXITS, BLOCK_ARC_HALF,
+  TILE, TOWN_SPAWN, PLAYER_COLORS, ZONES, ELEMENTS, TOWN_BUILDINGS, TOWN_EXITS, WORLDVIEW_EXITS, BLOCK_ARC_HALF,
   BLACKSMITH_TIERS, WOODWORKING_TIERS, WEAPON_TYPES, RARITY_TIERS, BT_AUDIO, BT_ACHIEVEMENTS,
   BUILDINGS, NPC_DATA, TILE_SOLID, TILE_COLORS,
   updateZoneDimensions,
@@ -578,8 +578,9 @@ export var BroTown = function BroTown(_ref0) {
       /* v2.3.1347: first spawn at the fountain plaza (24,24) — same spot
          death-respawn uses; the old (16,16) dropped new players in a
          nothing-corner of town (owner playtest). */
-      x: 24 * TILE,
-      y: 24 * TILE,
+      /* v2.3.1777: the clifftop town moved the plaza — see TOWN_SPAWN. */
+      x: TOWN_SPAWN.x,
+      y: TOWN_SPAWN.y,
       vx: 0,
       vy: 0,
       dir: 'down'
@@ -3620,8 +3621,8 @@ export var BroTown = function BroTown(_ref0) {
             try { S.map = generateZoneMap('town'); } catch (e) {}
             S.monsters = [];
             S.gatherNodes = []; /* Town is safe -- no harvestable resources; clear stale entries from the previous zone */
-            P.x = 24 * TILE;
-            P.y = 24 * TILE;
+            P.x = TOWN_SPAWN.x;   /* v2.3.1777 */
+            P.y = TOWN_SPAWN.y;
             P.vx = 0; P.vy = 0;
             S.respawnTimer = Date.now() + 3000;
             S._dying = false;
