@@ -1,6 +1,7 @@
-/* ═══ v2.3.1672: NPC ART ═══
+/* ═══ v2.3.1672: NPC ART (and, since v2.3.1775, world props) ═══
  *
- * One loader + one lookup for NPC figure sprites (today: Mayor Bro).
+ * One loader + one lookup for the flat world sprites: NPC figures, their
+ * dialogue portraits, and the scenery in data/worldProps.js.
  *
  * WHY A REGISTRY RATHER THAN Assets.cache.get().  The first version of this
  * read the texture straight out of Pixi's cache by URL and got
@@ -20,6 +21,7 @@
  */
 import { Assets } from 'pixi.js';
 import { NPC_DATA } from '../data/gameDisplay.js';
+import { propSpriteSources } from '../data/worldProps.js'; /* v2.3.1775: scenery shares this registry */
 
 /* Keys are asset paths that come from data, so Object.create(null): a plain {}
    silently no-ops on '__proto__' (CLAUDE.md — three incidents in one day). */
@@ -40,6 +42,11 @@ export function npcSpriteSources() {
     if (n.sprite) out.push(n.sprite);
     if (n.portrait) out.push(n.portrait);
   }
+  /* v2.3.1775: world props load through the same registry and therefore the
+     same intro gate.  They are static scenery, so a lazy first-sighting load
+     would be exactly the hitch CLAUDE.md's preloading law forbids — and the
+     alternative (a second loader) is how one of the two gets forgotten. */
+  out.push(...propSpriteSources());
   return [...new Set(out)];
 }
 

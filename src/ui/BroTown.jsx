@@ -495,7 +495,7 @@ function _spawnTownNpcs() {
   /* v2.3.1773: the blacksmith joins the mayor.  This allowlist is the gate —
      NPC_DATA carries the record, but a name missing from here never spawns,
      which is how the table can hold entries that are not live yet. */
-  var ACTIVE_NPCS = ['Mayor Bro', 'Blacksmith Bro'];
+  var ACTIVE_NPCS = ['Mayor Bro', 'Blacksmith Bro', 'Storekeeper Bro']; /* v2.3.1775 */
   return NPC_DATA.filter(function (n) { return ACTIVE_NPCS.indexOf(n.name) >= 0; })
     .map(function (npc) { return _objectSpread({}, npc); });
 }
