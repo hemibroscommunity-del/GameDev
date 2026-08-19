@@ -326,7 +326,7 @@ export async function initPixiRenderer(canvas) {
     catch (e) { if (!update._effectsErr) { update._effectsErr = true; console.error('[pixi-render] effectsRenderer threw', e && e.message, e && e.stack); } }
     const _t3 = performance.now();
     update._lastStages.effectsMs = _t3 - _t2;
-    try { minimap.update(S, cssW, cssH); }
+    try { minimap.update(S, cssW, cssH, canvas); }
     catch (e) { if (!update._miniErr) { update._miniErr = true; console.error('[pixi-render] minimap threw', e && e.message, e && e.stack); } }
 
     if (fpsOverlay) fpsOverlay.update(now);

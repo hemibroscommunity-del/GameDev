@@ -108,5 +108,104 @@ export async function run({ browser, wsPort, webPort, rec }) {
     mid.texNaturalW > 0 && /Image/.test(String(mid.texKind)),
     { texKind: mid.texKind, texNaturalW: mid.texNaturalW });
 
+  /* ── v2.3.1783: it clears the zone-header rail ──────────────────────
+     Owner: "The minimap is sitting a bit too high (it gets cut off by the
+     bar at the top with the map name on it)."  Measured against the rail's
+     real bottom edge rather than a number, because the rail is
+     50px + env(safe-area-inset-top) and the constant would be wrong on
+     exactly the notched phone that is the primary platform. */
+  const hdr = await P.page.evaluate(() => {
+    const h = document.querySelector('.bt-zone-header');
+    const c = document.querySelector('canvas');
+    if (!h || !c) return null;
+    const hr = h.getBoundingClientRect(), cr = c.getBoundingClientRect();
+    return { headerBottom: Math.round(hr.bottom - cr.top), height: Math.round(hr.height) };
+  });
+  console.log('    header', JSON.stringify(hdr), 'topInset', mid.topInset);
+  rec.ok('the zone-header rail is actually there to be cleared (guard)',
+    !!(hdr && hdr.height > 20), { hdr });
+  if (hdr) {
+    rec.ok('the minimap starts below the zone-header rail',
+      mid.topInset >= hdr.headerBottom, { topInset: mid.topInset, headerBottom: hdr.headerBottom });
+  }
+
+  /* ── v2.3.1783: symbols, not a legend of coloured dots ─────────────
+     Owner: "there needs to be better symbols on the minimap.  Stuff for
+     portal, quest marker, icon representing what the building or NPC does
+     (blacksmith, general store, etc).  Monsters should also have an icon
+     that makes sense."
+
+     The census counts markers by WHICH MINTED TEXTURE each one is using, so
+     these assertions fail if two different things quietly share a glyph —
+     the exact regression that makes an icon set worthless.  A screenshot
+     cannot tell an anvil from a satchel at 11px; this can. */
+  const ic = mid.icons || {};
+  console.log('    icons', JSON.stringify(ic));
+  for (const [key, what] of [
+    ['forge', 'the forge and the blacksmith'],
+    ['bank', 'the bank'],
+    ['enchant', 'the enchanter'],
+    ['shop', 'the general store and the storekeeper'],
+    ['house', "the mayor's house"],
+    ['star', 'the mayor himself'],
+    ['portal', 'the way out'],
+  ]) {
+    rec.ok(`${what} has its own symbol on the map`, (ic[key] || 0) > 0, { key, census: ic });
+  }
+  /* A trade shared by a building AND the person who runs it draws the same
+     mark twice — that is the point, so you can find either one. */
+  rec.ok('the blacksmith and his forge share the anvil', (ic.forge || 0) >= 2, { forge: ic.forge });
+  rec.ok('the storekeeper and his store share the satchel', (ic.shop || 0) >= 2, { shop: ic.shop });
+  /* GUARD: they are genuinely DIFFERENT textures, not one glyph counted
+     under several names.  Six distinct keys is only possible if six
+     distinct textures are in use. */
+  rec.ok('at least six distinct symbols are actually in use (guard)',
+    Object.keys(ic).length >= 6, { keys: Object.keys(ic) });
+
+  /* The quest pin, read off the same npc._questMarker the in-world badge
+     uses — so the map cannot claim work the NPC is not offering. */
+  const quest = await P.page.evaluate(() => {
+    const S = window._gameState.current;
+    const n = (S.npcs || []).find((x) => x && x._questMarker);
+    return n ? { name: n.name, marker: n._questMarker } : null;
+  });
+  console.log('    quest npc', JSON.stringify(quest));
+  if (quest) {
+    rec.ok('an NPC offering work is pinned on the map',
+      (ic.quest || 0) + (ic.questDone || 0) > 0, { census: ic, npc: quest });
+  }
+
+  /* Monsters get the hostile glyph.  Town is safe, so inject one — the
+     renderer reads x/y/hp off the array and nothing else, which is exactly
+     the surface under test. */
+  await P.page.evaluate(() => {
+    const S = window._gameState.current;
+    S.monsters = (S.monsters || []).concat([{ id: 'qa-mob', x: 1500, y: 700, hp: 10, maxHp: 10 }]);
+  });
+  await P.page.waitForTimeout(600);
+  const withMob = await P.page.evaluate(() => window.__btMinimap || null);
+  rec.ok('a monster draws as the hostile spike, not another dot',
+    !!(withMob && withMob.icons && withMob.icons.monster > 0), { icons: withMob && withMob.icons });
+
+  /* The player chevron points where the player faces.  SECTORS order is
+     E,SE,S,SW,W,NW,N,NE and the glyph is authored pointing north. */
+  const rots = {};
+  for (const [name, idx] of [['east', 0], ['south', 2], ['north', 6]]) {
+    await P.page.evaluate((i) => {
+      const S = window._gameState.current;
+      S._facingAngle = i * Math.PI / 4; S._aimAngle = undefined; S.lockedMonster = null;
+    }, idx);
+    await P.page.waitForTimeout(350);
+    const m = await P.page.evaluate(() => window.__btMinimap || null);
+    rots[name] = m ? +m.facingRot.toFixed(3) : null;
+  }
+  console.log('    chevron rotations', JSON.stringify(rots));
+  rec.ok('the you-arrow turns with your facing',
+    rots.east !== rots.south && rots.south !== rots.north && rots.east !== rots.north, rots);
+  rec.ok('...and points north when you face north',
+    Math.abs(((rots.north % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2) - 2 * Math.PI) < 0.01
+      || Math.abs(rots.north % (Math.PI * 2)) < 0.01,
+    { north: rots.north });
+
   await P.ctx.close().catch(() => {});
 }
