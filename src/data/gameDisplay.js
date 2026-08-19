@@ -3340,4 +3340,63 @@ export const NPC_DATA = [{
   _facing: 'down',
   _questMarker: null,
   _hitThisSwing: false,
+}, {
+  /* ═══ v2.3.1773: THE BLACKSMITH, AT THE FOUNTAIN ═══
+     Owner: "Add this npc to the game near the water fountain he'll be the
+     blacksmith.  Size him about the same as mayor bro."
+
+     POSITION.  Measured off the painted town art rather than guessed: the map
+     (/maps/town_v15.webp) is 1254px stretched to the zone's 1536 world px, so
+     world = art x 1.2249.  The fountain basin centres at art (624, 707) =
+     world (765, 866) — 98px SOUTH of the player's spawn at (768, 768), which
+     is why you stand just above it when you arrive.  (648, 812) puts him on
+     open cobblestone off the fountain's west shoulder: clear of the basin rim
+     (~76px radius), clear of the lamp post at world (633, 890), and in frame
+     at spawn on a phone without standing between the player and the steps up
+     to Mayor Bro.
+
+     SIZE.  Normalised to the same frame Mayor Bro uses — 256x256, figure
+     200px tall, feet on the y=223 baseline — so the two of them stand at one
+     scale on one ground line.  He reads wider because he is a broad man
+     holding a hammer, not because he is drawn bigger.
+
+     NAME.  Deliberately "Blacksmith Bro", NOT "Blacksmith Bron": there is a
+     dormant three-quest Bron chain in gameSystems.js (bron_1..3, gated on
+     `unlocks: 'blacksmith'`), and getNpcQuest keys on the NPC's NAME — naming
+     him Bron would silently switch that whole chain on.  CLAUDE.md's rule for
+     a dormant content system is to confirm with the owner before building on
+     it, so he ships as a townsfolk with flavour lines and the chain stays
+     off until they ask for it.
+
+     pathRadius 0 for the same reason as the mayor: a fixture you might one
+     day talk to should be where you left him.  `phrases` is REQUIRED — the
+     ambient-chat loop indexes it unguarded and an empty array throws. */
+  id: 'blacksmith_bro',
+  name: 'Blacksmith Bro',
+  sprite: '/sprites/npc/blacksmith-bro.webp',
+  portrait: '/sprites/npc/blacksmith-bro-head.webp',
+  avatar: '🔨',
+  color: '#d98b45',
+  x: 648, y: 812,
+  spawnX: 648, spawnY: 812,
+  renderX: 648, renderY: 812,
+  hp: 100, maxHp: 100,
+  noHp: true,
+  alive: true,
+  respawnAt: 0,
+  pathRadius: 0,
+  moveTimer: 0,
+  targetX: 648, targetY: 812,
+  chatTimer: 11000,
+  chatBubble: null,
+  phrases: [
+    'Bring me ore and we will talk.',
+    'Copper first. Iron when you have earned it.',
+    'That blade needs an edge.',
+  ],
+  canFollow: false,
+  followZones: [],
+  _facing: 'down',
+  _questMarker: null,
+  _hitThisSwing: false,
 }];

@@ -6161,6 +6161,27 @@ export function hasUnlock(rpg, unlockId) {
   }
   return false;
 }
+/* ═══ v2.3.1773: DOES THIS NPC HAVE A QUEST CHAIN AT ALL? ═══
+   getNpcQuest returns null for TWO different situations — "every quest of
+   theirs is turned in" and "they have never had one" — and the marker code
+   read both as the first, so the blacksmith (townsfolk, no chain) stood in
+   the plaza wearing the green all-done tick as though you had cleared him
+   out.  Distinguishing them needs the question this answers.
+   Memoised because QUEST_CHAINS is a module constant: the answer cannot
+   change at runtime, and this is called from the per-frame NPC loop. */
+var _npcHasQuestCache = null;
+export function npcHasQuestChain(npcName) {
+  if (!npcName) return false;
+  if (!_npcHasQuestCache) {
+    _npcHasQuestCache = Object.create(null); /* id-keyed from data (CLAUDE.md) */
+    for (var _qk in QUEST_CHAINS) {
+      var _q = QUEST_CHAINS[_qk];
+      if (_q && _q.npc) _npcHasQuestCache[_q.npc] = true;
+    }
+  }
+  return !!_npcHasQuestCache[npcName];
+}
+
 export function getNpcQuest(rpg, npcName) {
   var questState = rpg._quests || {};
   /* Find first incomplete quest for this NPC */
