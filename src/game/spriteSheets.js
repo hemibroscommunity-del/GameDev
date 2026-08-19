@@ -1,4 +1,6 @@
 import { TILED_ZONE_MAPS, getWalkability, loadWalkabilityMaps, preloadAllTiledMaps, WALK_MASKS_ENABLED } from '@/rendering/tiledMaps.js';
+import { propsForZone, propFootprint } from '@/data/worldProps.js'; /* v2.3.1778: buildings block */
+import { ZONES, TILE } from '@/data/index.js';
 
 /* === spriteSheets — mount-time player/slime/weapon sheet + walkability loader ===
    v2.3.900: extracted verbatim from a BroTown.jsx mount useEffect (empty
@@ -154,7 +156,40 @@ export function wireSpriteSheets(stateRef, refs) {
       if (!S) return;
       S._tiledWalkable = S._tiledWalkable || {};
       Object.keys(grids).forEach(function (zid) {
-        S._tiledWalkable[zid] = grids[zid];
+        S._tiledWalkable[zid] = stampPropFootprints(zid, grids[zid]);
       });
     });
+}
+
+/* ═══ v2.3.1778: BUILDINGS BLOCK ═══
+   Owner, on the buildings going into town: "Not walkable."
+
+   Stamped onto the loaded grid rather than baked into the .walk.json, so the
+   props table stays the ONE place a building's position lives: move a building
+   and its collision moves with it, with no map rebuild and no chance of the
+   two disagreeing.  The map's own grid is the terrain; this is what is
+   standing on it.
+
+   The grid is COPIED before stamping — loadWalkabilityMaps caches its fetch,
+   and stamping in place would compound every footprint again on a re-entry
+   until the town was solid. */
+function stampPropFootprints(zoneId, grid) {
+  if (!grid || !grid.length) return grid;
+  var zone = ZONES[zoneId];
+  var props = propsForZone(zoneId).filter(function (p) { return propFootprint(p); });
+  if (!zone || !props.length) return grid;
+  var gh = grid.length, gw = grid[0].length;
+  var mw = zone.w * TILE, mh = zone.h * TILE;
+  var out = grid.map(function (row) { return row.slice(); });
+  props.forEach(function (p) {
+    var f = propFootprint(p);
+    var gx0 = Math.max(0, Math.floor(f.x0 * gw / mw));
+    var gx1 = Math.min(gw - 1, Math.floor(f.x1 * gw / mw));
+    var gy0 = Math.max(0, Math.floor(f.y0 * gh / mh));
+    var gy1 = Math.min(gh - 1, Math.floor(f.y1 * gh / mh));
+    for (var gy = gy0; gy <= gy1; gy++) {
+      for (var gx = gx0; gx <= gx1; gx++) out[gy][gx] = false;
+    }
+  });
+  return out;
 }
