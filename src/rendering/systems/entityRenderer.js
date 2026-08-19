@@ -291,12 +291,12 @@ const TRAIT_NFT_ID = 'test-1';
    meta and the halo goes on placing itself flat on the hair. */
 const TRAIT_VER = '2.3.1561';
 
-/* v2.3.377: the on-back (sheathed) shield render is purely cosmetic and was
-   a persistent source of per-facing z-order issues vs the body/arms/weapon/
-   hair.  Hidden by user request.  The held/raised (blocking) shield is a
-   separate path and is unaffected.  Flip to true to bring the back shield
-   back. */
-const SHOW_BACK_SHIELD = false;
+/* v2.3.377 hid the on-back (sheathed) shield behind SHOW_BACK_SHIELD=false:
+   "purely cosmetic and a persistent source of per-facing z-order issues vs
+   the body/arms/weapon/hair".  v2.3.1782 brings it back and deletes the flag
+   — the z-order is structural now (two sprites, fixed positions in the child
+   list) instead of recomputed per frame, so there is no longer a class of
+   failure for a kill-switch to switch off.  See createPlayerDisplay. */
 
 /* v2.3.266: standalone-item sticker pipeline.  Each item (e.g.
    headwear/old-school-helmet) is a small transparent PNG with a
@@ -3250,6 +3250,37 @@ function createPlayerDisplay() {
      ellipse read as a dark blob between the knight's legs mid-stride.
      Monsters keep theirs (createMonsterDisplay). */
 
+  /* ═══ v2.3.1782: the on-back shield is TWO sprites, not one ═══
+     Owner: "there was a build that let the player wear the shield on his
+     back ... I think it was removed because it kept bumping into layering
+     issues with how mirroring works ... Maybe it involves cloning the shield
+     on one side only."  That is exactly the fix.
+
+     The v2.3.377 version (disabled, see the removed SHOW_BACK_SHIELD) drew
+     the back shield with the SAME sprite as the in-hand shield, so every
+     frame it had to recompute where that one sprite belonged in the child
+     list — getChildIndex/setChildIndex against the body, then exceptions for
+     the hand-cap, then a per-facing nudge table, then a west-run-only nudge.
+     Z-order that is recomputed per frame against four other layers is not a
+     bug you fix once; it is a bug you fix per facing, forever, which is what
+     the incident comments on that block record.
+
+     So the back shield now owns two sprites whose order is STRUCTURAL:
+     `shieldBackLo` is added before the body and can never draw over it,
+     `shieldBackHi` is added after the arms and can never draw under them.
+     Choosing a facing means toggling `visible` — there is no index maths at
+     any point, so there is no per-facing exception to get wrong.  Mirroring
+     stops mattering too: each clone carries its own mirror flag and neither
+     one's scale.x can reorder anything.
+
+     (setChildIndex elsewhere is safe against this: moving one child preserves
+     the relative order of all the others, so Lo stays under the body and Hi
+     stays over the arms no matter what the in-hand path does.) */
+  const shieldBackLo = new Sprite();
+  shieldBackLo.anchor.set(0.5, 0.5);
+  shieldBackLo.visible = false;
+  container.addChild(shieldBackLo);
+
   /* Procedural fallback body — drawn until the sprite sheets resolve
      (and as a permanent fallback if they fail to load). */
   const body = new Graphics();
@@ -3418,6 +3449,15 @@ function createPlayerDisplay() {
   container.addChild(handArmMask);
   container.addChild(handArmSprite);
 
+  /* v2.3.1782: the in-FRONT half of the on-back shield.  Sits here — after
+     the arms, before the in-hand shield — so a shield slung across a back
+     that faces the camera draws over the body and the arms, permanently, by
+     construction rather than by per-frame reindexing. */
+  const shieldBackHi = new Sprite();
+  shieldBackHi.anchor.set(0.5, 0.5);
+  shieldBackHi.visible = false;
+  container.addChild(shieldBackHi);
+
   /* Wood-shield sprite — replaces the procedural cyan arc when the
      PNGs have loaded.  Anchored at center-bottom so it pivots
      around the grip and rotates into position naturally; we hide
@@ -3570,6 +3610,8 @@ function createPlayerDisplay() {
   container._handArmSprite = handArmSprite;
   container._handArmMask = handArmMask;
   container._shieldSprite = shieldSprite;
+  container._shieldBackLo = shieldBackLo;   /* v2.3.1782 */
+  container._shieldBackHi = shieldBackHi;   /* v2.3.1782 */
   container._comboText = comboText;
   container._stunTimerText = stunTimerText;
   container._nameText = nameText;
@@ -6803,19 +6845,15 @@ export class EntityRenderer {
            behind body for SE/S/SW/W (1/2/3/4). E joined the in-front
            set per user request -- with shield behind body on E, only
            a sliver was visible past the silhouette. */
-        /* v2.3.1735: shieldVisible, not isShielding.  This flag means "the
-           shield is slung on the BACK", and it must be false whenever the
-           shield is in hand for ANY reason — a real block or a Shield Bash
-           pose.  Reading the block flag here sent the posed shield down the
-           on-back z-rule, which puts it BEHIND the body for every facing
-           except east/N-half; since the shield is drawn at offset (0, +16)
-           on a south pose, that is directly over the torso and the shield
-           vanished entirely.  East looked fine and hid the bug — it is one
-           of the four facings the on-back rule keeps in front. */
-        const shieldOnBack = !shieldVisible;
-        const shieldBehind = shieldOnBack
-          ? !(facingIdx === 0 || facingIdx === 5 || facingIdx === 6 || facingIdx === 7)
-          : (facingIdx === 5 || facingIdx === 6 || facingIdx === 7);
+        /* v2.3.1782: this block now only ever runs for a shield IN HAND —
+           the on-back render moved to its own two sprites below and never
+           touches this one.  So the old `shieldOnBack = !shieldVisible`
+           branch is gone along with its rule; what remains is the in-hand
+           rule alone, unchanged: behind the body for NW/N/NE, in front for
+           everything else.  (v2.3.1735's bug — a Shield Bash pose falling
+           down the on-back rule and vanishing into the torso — cannot recur,
+           because there is no on-back rule here to fall down.) */
+        const shieldBehind = (facingIdx === 5 || facingIdx === 6 || facingIdx === 7);
         const bodyIdx = display.getChildIndex(display._spriteBody);
         const shIdx   = display.getChildIndex(display._shieldSprite);
         /* For in-front mode, shield needs to render ABOVE the hand-cap
@@ -6999,73 +7037,123 @@ export class EntityRenderer {
             weaponGfx.stroke({ color: 0xffffff, width: 2, alpha: blockPulse * 0.9 });
           }
         }
-      } else if (SHOW_BACK_SHIELD && S.rpg && S.rpg.shield && display._shieldSprite) {
-        /* v2.3.187: shield equipped but not raised -> always on back,
-           regardless of combat state. (v2.3.176 limited this to
-           !isInCombat; user now wants it as the persistent default.)
-           The outward face of a shield on the player's back points
-           opposite the player's facing, so feed shieldAng = facing+PI
-           into getShieldFrame for view selection -- e.g. facing N
-           (player back to camera) -> shieldAng = S -> front view,
-           facing E -> shieldAng = W -> side view (mirrored). */
-        const facingAng = facingIdx * Math.PI / 4;
-        const shieldAng = facingAng + Math.PI;
-        const shieldFrame = getShieldFrame(shieldAng);
-        const shieldSprite = display._shieldSprite;
-        if (shieldFrame) {
-          if (shieldSprite.texture !== shieldFrame.tex) shieldSprite.texture = shieldFrame.tex;
-          /* Position on upper torso, displaced opposite the facing
-             direction so the shield reads as resting on the back. Y
-             offset (-10) lifts it from feet-anchored player center to
-             roughly upper-back height. */
-          const backR = 4;
-          /* v2.3.191: per-facing nudge tables for fine-tuning shield
-             position. Same pattern as the bamboo WOOD_NUDGE_X table
-             in the weapon block above -- screen-space offsets applied
-             on top of the geometric backR position. Tell the user
-             which facing is off and we add a slot. */
-          /* facingIdx: 0=E 1=SE 2=S 3=SW 4=W 5=NW 6=N 7=NE */
-          const SHIELD_NUDGE_X = [-5, 0, 0, 0, 0, 0, 0, 0];
-          const SHIELD_NUDGE_Y = [ 0, 0, 0, 0, 0, 0, 0, 0];
-          const _shNudgeX = SHIELD_NUDGE_X[facingIdx] || 0;
-          const _shNudgeY = SHIELD_NUDGE_Y[facingIdx] || 0;
-          /* v2.3.368: west run only -- shift the on-back shield right 6px
-             so it peeks past the body silhouette during the jog (it sits
-             behind the body at W and was otherwise nearly fully occluded).
-             East stays as-is (already reads well). */
-          const _shWestRunX = (facingIdx === 4 && pose === 'jog') ? 6 : 0;
-          shieldSprite.x = -Math.cos(facingAng) * backR + _shNudgeX + _shWestRunX;
-          /* v2.3.366: add the jog bob (same bobY the weapon + held shield
-             use) so the on-back shield rises/falls with the body instead
-             of sitting bolt-still during the run. */
-          shieldSprite.y = -Math.sin(facingAng) * backR - 10 + _shNudgeY + bobY;
-          /* v2.3.193: running-lean. The player sprite art shows a
-             slight forward lean during jog, but the shield on back
-             stayed bolt-upright -- read as the shield disconnected
-             from the body. Apply a small rotation when pose === 'jog'
-             proportional to cos(facingAng) so the lean is strongest
-             on E/W (visible side-to-side tilt) and zero on N/S where
-             the lean is in/out of the screen plane and doesn't show
-             in 2D anyway. */
-          const RUN_LEAN = 0.15; // rad ~= 8.6°
-          shieldSprite.rotation = pose === 'jog'
-            ? RUN_LEAN * Math.cos(facingAng)
-            : 0;
-          /* v2.3.189: bumped scale 40/64 -> 56/64 so the on-back
-             shield matches the in-hand block size. Both paths use
-             the same wood-shield PNG triplet -- this aligns the
-             apparent size too. */
-          const sheathedScale = 56 / 64;
-          shieldSprite.scale.x = sheathedScale * (shieldFrame.mirror ? -1 : 1);
-          shieldSprite.scale.y = sheathedScale;
-          shieldSprite.tint = 0xffffff;
-          shieldSprite.alpha = 0.95;
-          shieldSprite.visible = true;
-        } else {
-          shieldSprite.visible = false;
-        }
       } else if (display._shieldSprite) {
         display._shieldSprite.visible = false;
+      }
+
+      /* ═══ v2.3.1782: the shield slung on the back ═══
+         Cosmetic only.  Restored from the v2.3.377 removal ("a persistent
+         source of per-facing z-order issues vs the body/arms/weapon/hair"),
+         on two sprites instead of one — see createPlayerDisplay for why that
+         is the whole fix.
+
+         THE RULE, and it is one rule rather than a table:
+         the shield draws in FRONT of the body only when you are looking at
+         the player's back — NW/N/NE.  Every other facing it is behind him,
+         because his body is between it and the camera.
+
+         E and W are the pair the old code got asymmetric: it put E in front
+         "per user request" because a shield behind the body showed only a
+         sliver, then needed a west-run-only +6px nudge to make W peek out at
+         all.  Both are the same pure side view, so both belong on the same
+         side of the body — and the reason E looked wrong behind was not the
+         layer, it was the 4px offset: at 4px the shield is inside the torso
+         silhouette whichever layer it is on.  Pushing it to the back EDGE
+         (BACK_RX below) makes it read at E and W alike, from behind, with no
+         nudge table and no per-facing exception.
+
+         Held beats slung: whenever the shield is in hand for any reason — a
+         block or a Shield Bash — both clones hide.  That was the v2.3.1735
+         bug in the old single-sprite version, where a posed shield fell down
+         the on-back z-rule and disappeared into the torso. */
+      const _shLo = display._shieldBackLo;
+      const _shHi = display._shieldBackHi;
+      if (_shLo && _shHi) {
+        /* Standing and jogging only (owner: "while jogging and standing").
+           A swing, a roll, a hit-react and the gathering poses all move the
+           torso in ways the static back placement cannot follow, and that
+           mismatch is what reads as the shield coming unstuck. */
+        const backOk = !shieldVisible && S.rpg && S.rpg.shield
+          && (pose === 'stand' || pose === 'jog') && !S._dying;
+        const backFrame = backOk ? getShieldFrame(facingIdx * Math.PI / 4 + Math.PI) : null;
+        if (!backFrame) {
+          _shLo.visible = false;
+          _shHi.visible = false;
+        } else {
+          /* Behind for the three south-facing directions, in front for the
+             other five.  facingIdx: 0=E 1=SE 2=S 3=SW 4=W 5=NW 6=N 7=NE. */
+          const behind = !(facingIdx === 5 || facingIdx === 6 || facingIdx === 7);
+          const shown = behind ? _shLo : _shHi;
+          const hidden = behind ? _shHi : _shLo;
+          hidden.visible = false;
+
+          const facingAng = facingIdx * Math.PI / 4;
+          if (shown.texture !== backFrame.tex) shown.texture = backFrame.tex;
+          /* Displaced opposite the facing so it reads as resting on the back,
+             and lifted to upper-back height.
+
+             X and Y get DIFFERENT radii, which the v2.3.377 version did not
+             do (it used one `backR = 4` for both).  They are not the same
+             quantity on a near-top-down view: horizontal displacement is what
+             carries the shield out past the body's silhouette at E/W, and it
+             has to clear it — 4px does not, which is the whole reason that
+             version looked wrong at E and needed a west-only nudge to look
+             any better at W.  Vertical displacement reads as HEIGHT rather
+             than depth, so the same 11px up the screen at S would lift the
+             shield onto the back of the head. */
+          const BACK_RX = 11, BACK_RY = 5, BACK_LIFT = 14;
+          shown.x = -Math.cos(facingAng) * BACK_RX;
+          shown.y = -Math.sin(facingAng) * BACK_RY - BACK_LIFT + bobY;
+          /* v2.3.193's running lean, kept verbatim: the body art leans
+             forward during the jog and a bolt-upright shield reads as
+             detached.  Strongest on E/W, zero on N/S where the lean is in and
+             out of the screen plane and does not show in 2D.
+
+             NOT mirror-corrected, and that is deliberate — I tried it and it
+             is wrong.  Pixi builds a local transform as T * R * S, so scale
+             is applied first and `rotation` is a rotation in the PARENT's
+             frame: a negative scale.x flips the artwork but cannot flip the
+             direction the sprite then leans on screen.  Multiplying the lean
+             by the mirror flag makes E and W tilt the same way on screen,
+             i.e. one of them leans backwards out of its own run.
+             cos(facingAng) already carries the E/W sign on its own.
+
+             The mirror is likewise harmless to POSITION here, because the
+             anchor is (0.5, 0.5): flipping about the sprite's own centre
+             moves nothing.  It would need correcting for an off-centre
+             anchor — which is the trap this looks like from the outside. */
+          const RUN_LEAN = 0.15;   /* rad, ~8.6 deg */
+          shown.rotation = pose === 'jog' ? RUN_LEAN * Math.cos(facingAng) : 0;
+          /* 36/64, NOT the in-hand block's 56/64.  v2.3.189 deliberately
+             matched the two ("this aligns the apparent size") and that is the
+             wrong target: a shield held out to block is presented face-on and
+             fills the guard, while a shield slung on a back is seen edge-on
+             and further away.  At 56 the front view covers the bro from
+             shoulders to hips and reads as him hiding behind it rather than
+             carrying it. */
+          const sheathedScale = 36 / 64;
+          shown.scale.x = sheathedScale * (backFrame.mirror ? -1 : 1);
+          shown.scale.y = sheathedScale;
+          shown.tint = 0xffffff;
+          shown.alpha = 0.95;
+          shown.visible = true;
+        }
+        /* QA probe — a headless run cannot read the WebGL canvas, so the
+           z-order assertions in mp-backshield read this. */
+        try {
+          window.__btBackShield = {
+            on: !!(_shLo.visible || _shHi.visible),
+            facingIdx, pose,
+            behind: _shLo.visible, front: _shHi.visible,
+            loIdx: display.getChildIndex(_shLo),
+            hiIdx: display.getChildIndex(_shHi),
+            bodyIdx: display._spriteBody ? display.getChildIndex(display._spriteBody) : -1,
+            armIdx: display._handArmSprite ? display.getChildIndex(display._handArmSprite) : -1,
+            heldVisible: !!(display._shieldSprite && display._shieldSprite.visible),
+            mirror: !!(backFrame && backFrame.mirror),
+            rotation: _shLo.visible ? _shLo.rotation : _shHi.rotation,
+          };
+        } catch (e) { /* never breaks the frame */ }
       }
     }
 
