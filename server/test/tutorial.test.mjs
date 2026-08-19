@@ -326,7 +326,7 @@ const sess = { id: 'bp_t' };
     _stashed("Copper Great Sword") && _stashed("Copper Great Sword").type === 'greatsword'
     && !ps.weapon,
     { stash: ps.weaponStash, equipped: ps.weapon });
-  check('...and the shield is granted too', ps.shield && ps.shield.name === "Bro's Shield", ps.shield);
+  check('...and the shield is granted too', ps.shield && ps.shield.name === "Pine Shield", ps.shield);
   check('a granted BOW also lands in the bag, with its own slot left empty',
     _stashed("Pine Bow") && _stashed("Pine Bow").type === 'bow' && !ps.rangedWeapon,
     { stash: ps.weaponStash, equipped: ps.rangedWeapon });

@@ -123,7 +123,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     armed.stash.includes("greatsword:Copper Great Sword"), armed);
   rec.ok('...into the BAG, with the hand still empty', !armed.weapon, armed);
   rec.ok('...and a shield, also in the bag rather than on the arm',
-    armed.shieldBag.includes("Bro's Shield") && !armed.shield, armed);
+    armed.shieldBag.includes("Pine Shield") && !armed.shield, armed);
   /* v2.3.1684: this used to be labelled "active server-side" while reading
      S.rpg._quests — a map the CLIENT writes on accept, so it said 'active'
      whether or not the worker ever heard about it. That mislabel is how the
@@ -171,11 +171,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
   await openSlotPicker('Shield');
   rec.ok('the empty Shield slot offers the granted shield',
-    await H.seesText(P, "Bro's Shield"));
+    await H.seesText(P, "Pine Shield"));
   await H.clickText(P, 'Equip');
   await P.page.waitForTimeout(1000);
   rec.ok('...and Equip straps that on too',
-    await H.readState(P, (S) => !!(S.rpg.shield && S.rpg.shield.name === "Bro's Shield")));
+    await H.readState(P, (S) => !!(S.rpg.shield && S.rpg.shield.name === "Pine Shield")));
   await H.callFn(P, 'swingAttack');
   rec.ok('once EQUIPPED from the bag, the same tap DOES swing',
     await H.readState(P, (S) => !!S.isSwinging));
@@ -242,11 +242,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
   /* Count EVERYWHERE it could be, not just the bag: by this point the test
      has equipped it, so the copy lives on the arm and a re-grant would show
      up as a spare in the bag. */
-  const _shieldsHeld = after2.shieldBag.filter((n) => n === "Bro's Shield").length
-    + (after2.shield === "Bro's Shield" ? 1 : 0);
+  const _shieldsHeld = after2.shieldBag.filter((n) => n === "Pine Shield").length
+    + (after2.shield === "Pine Shield" ? 1 : 0);
   rec.ok('reconnecting does not hand out a SECOND shield', _shieldsHeld === 1, after2);
   rec.ok('...and the one you equipped is still equipped',
-    after2.shield === "Bro's Shield", after2);
+    after2.shield === "Pine Shield", after2);
 
   await P.ctx.close().catch(() => {});
 }

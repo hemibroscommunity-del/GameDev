@@ -385,5 +385,21 @@ const legacyBlob = () => ({
     runRpgMigrations(bare).failed === null && bare._v === RPG_SCHEMA_VERSION, bare);
 }
 
+/* ── v13: the starter shield is a Pine Shield (v2.3.1774) ── */
+{
+  const b = { _v: 12, shield: { name: "Bro's Shield", gearBase: 'wood', tierMult: 1 } };
+  const r = runRpgMigrations(b);
+  check('v13 renames the starter shield', r.failed === null && b.shield.name === 'Pine Shield', b.shield);
+  check('v13 leaves the tier base alone (the client reads it for the stats)',
+    b.shield.gearBase === 'wood', b.shield);
+  check('v13 is idempotent', runRpgMigrations(b).changed === false, b);
+  const other = { _v: 12, shield: { name: 'Iron Kite Shield', gearBase: 'iron' } };
+  runRpgMigrations(other);
+  check('v13 leaves every other shield alone', other.shield.name === 'Iron Kite Shield', other.shield);
+  const bare = { _v: 12 };
+  check('v13 survives a blob with no shield',
+    runRpgMigrations(bare).failed === null && bare._v === RPG_SCHEMA_VERSION, bare);
+}
+
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);
 process.exit(failures === 0 ? 0 : 1);

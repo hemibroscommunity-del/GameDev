@@ -51,7 +51,7 @@ export const classify = (key) => {
    render and fetches the real chest-plate torso art (owner: "it's an emoji
    vest").  Lives in THREE files — keep them in lockstep or one surface serves
    stale thumbnails while its neighbour serves fresh ones. */
-const ITEMS_V = '?v=2.3.1710';
+const ITEMS_V = '?v=2.3.1774'; /* v2.3.1774: pine shield icon */
 const WOOD_THUMB = `/icons/items/wood-log.webp${ITEMS_V}`;
 const BURNT_DUST_THUMB = `/icons/items/burnt-dust.webp${ITEMS_V}`;
 const SLIME_REMNANTS_THUMB = `/icons/items/remnants-slime.webp${ITEMS_V}`;
@@ -999,7 +999,7 @@ const StashTile = ({ kind, obj, index, style: styleOverride }) => {
     : kind === 'stashLegs'
     ? `${armorIconFor('legs', obj && obj.mat)}${ITEMS_V}` /* v2.3.1701: legs have real art */
     : kind === 'stashShield'
-    ? `/icons/items/shield.webp${ITEMS_V}`
+    ? `/icons/items/shield.png${ITEMS_V}`
     : obj && obj.type === 'bow'        ? `/icons/items/bow.png${ITEMS_V}`
     : obj && obj.type === 'staff'      ? `/icons/items/staff.png${ITEMS_V}`
     : obj && obj.type === 'greatsword'

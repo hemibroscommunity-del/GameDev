@@ -118,11 +118,18 @@ export async function run({ browser, wsPort, webPort, rec }) {
   /* great-sword.webp specifically: /icons/items/sword.webp is the BAMBOO
      STICK (the art for weaponType 'sword' at wood tier), which is what the
      owner saw here.  Asserting the exact file is what stops it drifting back. */
-  rec.ok('the dialogue shows a real SWORD, not the bamboo stick',
-    !!art && art.imgs.some((s) => /items\/great-sword\.webp/.test(s))
-         && !art.imgs.some((s) => /items\/sword\.webp/.test(s)), art && art.imgs);
+  /* v2.3.1774: the sword must be the COPPER one (owner: "the thumbnail icon
+     for the sword needs to be changed to the copper version"), which is a
+     stronger claim than the original — the card promises a "Copper Great
+     Sword" and used to draw the steel art next to that label.  The
+     bamboo-stick exclusion the original was written for is kept. */
+  rec.ok('the dialogue shows a real SWORD, in the COPPER the label promises',
+    !!art && art.imgs.some((s) => /items\/great-sword-copper\./.test(s))
+         && !art.imgs.some((s) => /items\/sword\./.test(s)), art && art.imgs);
+  /* Extension-agnostic for the same reason the bow and staff are below: the
+     v2.3.1774 pine repaint can only be written as PNG in this sandbox. */
   rec.ok('...and the SHIELD',
-    !!art && art.imgs.some((s) => /items\/shield\.webp/.test(s)), art && art.imgs);
+    !!art && art.imgs.some((s) => /items\/shield\./.test(s)), art && art.imgs);
 
   /* ═══ v2.3.1710: THE OFFER SHOWS WHAT YOU ARE WORKING TOWARD ═══
      Owner: "Quest item thumbnail rewards are not shown in the quest panel
@@ -146,8 +153,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
     !!gAcc && !!gFin, art && art.groups);
   rec.ok('the hand-over group holds the sword and shield, and nothing else',
     !!gAcc && gAcc.imgs.length === 2
-      && gAcc.imgs.some((s) => /items\/great-sword\.webp/.test(s))
-      && gAcc.imgs.some((s) => /items\/shield\.webp/.test(s)), gAcc);
+      && gAcc.imgs.some((s) => /items\/great-sword-copper\./.test(s))
+      && gAcc.imgs.some((s) => /items\/shield\./.test(s)), gAcc);
   /* v2.3.1764: matched without the extension.  These pinned `.webp`, and
      v2.3.1763 repainted the bow and staff as pine — which can only be written
      as PNG in this sandbox (no WebP encoder), so a correct change turned these
@@ -219,7 +226,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   }));
   rec.ok('accepting from the world dialogue really reaches the worker (the sword is minted)',
     granted.wstash.includes("Copper Great Sword"), granted);
-  rec.ok('...and the shield with it', granted.sstash.includes("Bro's Shield"), granted);
+  rec.ok('...and the shield with it', granted.sstash.includes("Pine Shield"), granted);
 
   await H.openDest(P, 'Quests');
   await P.page.waitForTimeout(700);

@@ -476,7 +476,14 @@ export const QUEST_REWARDS = {
                    and had no way to know what it was made of.  Existing saves
                    are renamed by migration v12, not left on the old name. */
                 {kind:'weapon', weaponType:'greatsword', tierKey:'copper', name:"Copper Great Sword"},
-                {kind:'shield', gearBase:'wood', tierMult:1.0, name:"Bro's Shield"},
+                /* v2.3.1774 (owner: "change bro's shield to pine shield").  Only
+                   the NAME moves.  `gearBase` stays 'wood' because it is a
+                   BLACKSMITH_TIERS key that four client sites look up for the
+                   shield's tier label and multiplier (items.js, ForgePanel,
+                   EnchantPanel, InventoryPanel) — 'pine' is a WOODWORKING tier
+                   and is not in that table, so renaming the base would blank
+                   the shield's stats rather than recolour it. */
+                {kind:'shield', gearBase:'wood', tierMult:1.0, name:"Pine Shield"},
               ],
               /* v2.3.1692 (owner: "the three primary weapon types as awards
                  should come first.  Doesn't make much sense to gate the magic

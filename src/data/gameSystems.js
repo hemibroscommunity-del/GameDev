@@ -5470,8 +5470,14 @@ export const QUEST_CHAINS = {
       /* v2.3.1772: these labels must match the names the SERVER grants
          (server/src/data.js tut_1), or the quest card promises one item and
          the bag shows another. */
-      { when: 'accept',   icon: '/icons/items/great-sword.webp', label: "Copper Great Sword" },
-      { when: 'accept',   icon: '/icons/items/shield.webp', label: "Bro's Shield" },
+      /* v2.3.1774 (owner: "The mayor bro thumbnail icon for the sword needs to
+         be changed to the copper version ... on the first quest modal").  The
+         card was still showing the STEEL great-sword next to a label that says
+         Copper — the per-metal icon has existed since v2.3.1760
+         (tools/gear/make-metal-icons.mjs writes it by the same rule the
+         renderer tints by), it was simply never pointed at here. */
+      { when: 'accept',   icon: '/icons/items/great-sword-copper.png', label: "Copper Great Sword" },
+      { when: 'accept',   icon: '/icons/items/shield.png', label: "Pine Shield" },
       /* v2.3.1692 (owner): all three combat styles land on quest one. */
       { when: 'complete', icon: '/icons/items/bow.png',    label: "Pine Bow" },
       { when: 'complete', icon: '/icons/items/staff.png',  label: "Pine Staff" },
