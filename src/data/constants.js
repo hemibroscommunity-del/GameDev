@@ -9,8 +9,21 @@ export const TILE = 32;
    Consumed by BOTH the render call (src/game/renderFrame.js) and the camera
    centering (src/ui/BroTown.jsx) so the two stay consistent; world<->screen
    conversions (tap-to-lock) read the published S._worldScaleX/Y instead of
-   assuming 1.0, so they track this automatically. Tune on the preview. */
-export const WORLD_ZOOM = 1.25;
+   assuming 1.0, so they track this automatically. Tune on the preview.
+
+   v2.3.1780: 1.25 -> 1.875, i.e. 1.5x more world visible in each direction
+   (scale 0.8 -> 0.5333). Owner: "I wanna see what it looks like having just
+   the game area zoomed out 50% more as the standard view." At 1.25 a phone
+   viewport (390 CSS px) shows ~488 world px across, which on the town
+   plateau is one building and some cobble -- you learn the town a step at a
+   time. At 1.875 it shows ~731, enough for the fountain, the mayor's house,
+   the forge and the stairs in one frame. The cost is character size: the bro
+   renders ~64 screen px tall instead of ~96, and the HUD/keybind overlay does
+   NOT scale with the world, so it covers proportionally more of the view.
+   This is a taste call on a preview build -- if it reads too small, 1.5
+   (scale 0.667, ~25% more world) is the middle setting; nothing else needs
+   to change either way, this constant is the only knob. */
+export const WORLD_ZOOM = 1.875;
 
 /* Ore is mined from one tile NORTH of the vein (so the south-facing swing
    lines up over the rock). The player must stand within MINE_SPOT_R of that
