@@ -23,6 +23,7 @@ const WS = await H.freePort(), WEB = await H.freePort();
 const SCENARIOS = {
   arrowdt: () => import('./mp-arrowdt.mjs'), /* v2.3.1770: arrows fly at a speed */
   movespeed: () => import('./mp-movespeed.mjs'), /* v2.3.1769: speed is per second, not per frame */
+  hairclip: () => import('./mp-hairclip.mjs'), /* v2.3.1776: the swing clips the hair too */
   entitydt: () => import('./mp-entitydt.mjs'), /* v2.3.1771: monsters, NPCs + remotes move per second too */
   coppergear: () => import('./mp-coppergear.mjs'), /* v2.3.1772: every worn copper combo, in every pose */
   solorate: () => import('./mp-solorate.mjs'),

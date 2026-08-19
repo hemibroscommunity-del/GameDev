@@ -2421,6 +2421,64 @@ export const BOW_SHOT_MS = 360;
    this value).  Owner: "speed up draw, release early". */
 export const BOW_RELEASE_MS = 110;
 
+/* v2.3.1776: QA probe — is the stand-in hair actually clipped?  "The mask
+   sprite got placed" and "the hair is masked to it" are different facts, and
+   only the second is what the owner asked for, so the probe reads the live
+   hair sprite's own `mask` reference. */
+const _standInHairClip = { hat: null, clipsHair: false, masked: false, maskVisible: false };
+if (typeof window !== 'undefined') window.__btStandInHairClip = () => Object.assign({}, _standInHairClip);
+
+/* ═══ v2.3.1776: THE HAIR IS CLIPPED ON THE STAND-INS TOO ═══
+   Owner: "can you also make the hair mask apply when swinging".
+
+   _clipHairToHat (above) masks the hair to a clipping hat's silhouette on the
+   WALKING figure, and every stand-in pose — swing, bow shot, chop, cook,
+   firemaking, and the remote-player versions of the first two — composites its
+   head traits through placeSkillTraits instead, which never had the mask.  So
+   a helmet that correctly contained your hair while you stood there let it
+   burst back out for the quarter-second of every swing.
+
+   Same textures, same meta, same per-hat pose tune as the walking path; the
+   difference is only that these sprites are placed standalone (no `display`
+   container) so the mask goes through _placeStandaloneTrait.  The caller owns
+   the mask sprite — it has to be in the scene graph for Pixi to use it, and
+   the trait sets are parented by effectsRenderer. */
+function _clipStandInHair(sprites, hatId, hairId, dir, mirror, cwx, cwy, scaleVal) {
+  const hair = sprites && sprites.hair;
+  const maskSprite = sprites && sprites.hairMask;
+  if (!hair || !maskSprite) return;
+  const helmet = _ensureHeadwearLoaded(hatId);
+  const meta = helmet && helmet.meta;
+  const maskEntry = (meta && meta.clipsHair) ? _ensureHairMaskLoaded(hatId) : null;
+  /* The probe records at BOTH exits.  Recording only where the clip is applied
+     left it reporting the last hat that DID clip — so taking a helmet off read
+     as still-clipped, which is the failure the test caught in the instrument
+     rather than in the game. */
+  const _rec = () => {
+    if (typeof window === 'undefined') return;
+    _standInHairClip.hat = hatId || null;
+    _standInHairClip.clipsHair = !!(meta && meta.clipsHair);
+    _standInHairClip.masked = hair.mask === maskSprite;
+    _standInHairClip.maskVisible = !!maskSprite.visible;
+  };
+  if (!(meta && meta.clipsHair && hair.visible && maskEntry && maskEntry.tex[dir])) {
+    if (hair.mask) hair.mask = null;
+    maskSprite.visible = false;
+    _rec();
+    return;
+  }
+  /* The mask must land exactly where the HAT lands, so it is placed with the
+     hat's meta and the hat's own float-above-hair lift — not the hair's. */
+  _placeStandaloneTrait(maskSprite, { tex: maskEntry.tex, meta }, dir, mirror, cwx, cwy, scaleVal,
+    _floatAboveHairLift(meta, hairId, 'stand', dir, mirror));
+  if (maskSprite.visible) {
+    if (hair.mask !== maskSprite) hair.mask = maskSprite;
+  } else if (hair.mask) {
+    hair.mask = null;   /* placed nowhere -> do not clip the hair to nothing */
+  }
+  _rec();
+}
+
 /** Place hat + beard + hair (the player's current selection) on a stand-in
  *  skill sprite.  sprites = { hat, beard, hair } owned by the caller. */
 export function placeSkillTraits(sprites, cwx, cwy, dir, mirror, scaleVal) {
@@ -2442,6 +2500,7 @@ export function placeSkillTraits(sprites, cwx, cwy, dir, mirror, scaleVal) {
   if (hwCol && hwEntry) hwEntry = { tex: hwCol, meta: hwEntry.meta, fallbackTex: hwEntry.tex }; /* v2.3.1305 */
   _placeStandaloneTrait(sprites.hat, hwEntry, dir, mirror, cwx, cwy, scaleVal,
     _floatAboveHairLift(hwEntry && hwEntry.meta, getHair(), 'stand', dir, mirror)); /* v2.3.1561 */
+  _clipStandInHair(sprites, getHeadwear(), getHair(), dir, mirror, cwx, cwy, scaleVal); /* v2.3.1776 */
 }
 
 /* v2.3.1011: like placeSkillTraits, but for an ARBITRARY player's appearance
@@ -2466,6 +2525,7 @@ export function placeSkillTraitsFor(sprites, looks, cwx, cwy, dir, mirror, scale
   if (hwCol2 && hwEntry2) hwEntry2 = { tex: hwCol2, meta: hwEntry2.meta, fallbackTex: hwEntry2.tex }; /* v2.3.1305 */
   _placeStandaloneTrait(sprites.hat, hwEntry2, dir, mirror, cwx, cwy, scaleVal,
     _floatAboveHairLift(hwEntry2 && hwEntry2.meta, looks.hair, 'stand', dir, mirror)); /* v2.3.1561 */
+  _clipStandInHair(sprites, looks.headwear, looks.hair, dir, mirror, cwx, cwy, scaleVal); /* v2.3.1776 */
 }
 
 /** Hide all three skill-trait sprites (no stand-in active this frame). */
@@ -2474,6 +2534,12 @@ export function hideSkillTraits(sprites) {
   if (sprites.hat) sprites.hat.visible = false;
   if (sprites.beard) sprites.beard.visible = false;
   if (sprites.hair) sprites.hair.visible = false;
+  /* v2.3.1776: drop the clip with them.  A hair sprite that is hidden while
+     still holding a mask keeps Pixi doing the stencil work for something
+     nobody can see, and the next pose to reuse this set would inherit the
+     previous hat's silhouette. */
+  if (sprites.hair && sprites.hair.mask) sprites.hair.mask = null;
+  if (sprites.hairMask) sprites.hairMask.visible = false;
 }
 
 

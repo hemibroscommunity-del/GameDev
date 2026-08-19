@@ -66,3 +66,7 @@ export function onHairChange(fn) {
   _listeners.add(fn);
   return () => _listeners.delete(fn);
 }
+
+/* v2.3.1776: QA hook, same shape as headwearCatalog's __btSetHeadwear — the
+   hair-clip test has to drive a real selection, not a state field. */
+if (typeof window !== 'undefined') window.__btSetHair = setHair;
