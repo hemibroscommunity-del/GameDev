@@ -4,6 +4,7 @@
  */
 import { Assets, ColorMatrixFilter, Container, Graphics, Rectangle, Sprite, Text, TextStyle, Texture } from 'pixi.js';
 import { getNpcTexture } from '../npcSprites.js'; /* v2.3.1672: NPC figure art */
+import { propsForZone } from '../../data/worldProps.js'; /* v2.3.1775: scenery */
 import { TILE } from '@/data/constants.js';
 import { ZONES, zonePlayerScale } from '@/data/zones.js';
 import { ELEMENTS } from '@/data/elements.js';
@@ -171,6 +172,17 @@ const NPC_SPRITE_SCALE = 120 / 256;
 /* v2.3.1773: QA probe store — id-keyed from data, so Object.create(null)
    (CLAUDE.md: a plain {} silently no-ops on '__proto__'). */
 const _npcDrawn = Object.create(null);
+/* v2.3.1775: what scenery is on screen and how big it is drawn. */
+const _propsDrawn = [];
+if (typeof window !== 'undefined') window.__btWorldProps = () => _propsDrawn.slice();
+/* v2.3.1775: the entity layer's child order — Pixi paints in this order, so it
+   is what decides whether the stall covers the storekeeper or the other way
+   round.  Labelled children only; the rest are unnamed graphics. */
+let _entityLayerRef = null;
+if (typeof window !== 'undefined') {
+  window.__btEntityOrder = () => (_entityLayerRef
+    ? _entityLayerRef.children.map((c) => c.label).filter(Boolean) : null);
+}
 if (typeof window !== 'undefined') window.__btNpcSprites = () => Object.values(_npcDrawn);
 
 /* The sprite frame's own geometry, in frame pixels: the figure's feet sit on
@@ -3761,6 +3773,7 @@ export class EntityRenderer {
     this._updateMonsters(S, now);
     this._updateOtherPlayers(S, now);
     this._updatePlayer(S, now);
+    this._updateProps(S);
     this._updateNPCs(S, now);
     this._updatePet(S, now);
     this._updatePlayerHud(S, now);
@@ -7157,6 +7170,62 @@ export class EntityRenderer {
 
     this.petDisplay._nameText.text = pet.name || '🐾';
     this.petDisplay._nameText.y = -10 + bounce;
+  }
+
+  /* ═══ v2.3.1775: WORLD PROPS ═══
+     Scenery from data/worldProps.js: a sprite on the ground and nothing else.
+
+     Drawn into the same `entities` layer the NPCs use, and synced just BEFORE
+     them so a character standing at a stall is in front of it rather than
+     buried in the awning.  That layer sits under `player`, so the player is
+     always in front of scenery — which is the behaviour NPCs already have, and
+     matching it is better than inventing a second depth rule for props.
+
+     The sprite is scaled to the prop's declared WORLD HEIGHT rather than by a
+     factor, so re-exporting a source at a different resolution cannot silently
+     resize the object in the world. */
+  _updateProps(S) {
+    if (typeof window !== 'undefined') _entityLayerRef = this.entityLayer;
+    const props = propsForZone(S.currentZone);
+    if (!this.propDisplays) this.propDisplays = new Map();
+    const live = new Set();
+    for (const p of props) {
+      live.add(p.id);
+      let spr = this.propDisplays.get(p.id);
+      if (!spr) {
+        spr = new Sprite(Texture.EMPTY);
+        /* bottom-centre: `y` is where the prop meets the ground, the same
+           convention the NPC figures' feet use. */
+        spr.anchor.set(0.5, 1);
+        spr.label = `prop_${p.id}`;
+        this.entityLayer.addChild(spr);
+        this.propDisplays.set(p.id, spr);
+      }
+      if (spr.texture === Texture.EMPTY) {
+        const t = getNpcTexture(p.sprite);
+        if (t) {
+          spr.texture = t;
+          const h = t.height || 1;
+          spr.scale.set((p.worldH || h) / h);
+        }
+      }
+      spr.x = p.x;
+      spr.y = p.y;
+      spr.visible = spr.texture !== Texture.EMPTY;
+    }
+    /* A zone change leaves the previous zone's props behind otherwise. */
+    for (const [id, spr] of this.propDisplays) {
+      if (!live.has(id)) spr.visible = false;
+    }
+    if (typeof window !== 'undefined') {
+      _propsDrawn.length = 0;
+      for (const [id, spr] of this.propDisplays) {
+        if (!spr.visible) continue;
+        _propsDrawn.push({ id, x: spr.x, y: spr.y,
+          width: spr.texture.width * spr.scale.x,
+          height: spr.texture.height * spr.scale.y });
+      }
+    }
   }
 
   _updateNPCs(S, now) {
