@@ -3316,8 +3316,18 @@ export const NPC_DATA = [{
   portrait: '/sprites/npc/mayor-bro-head.webp',
   avatar: '🧔',
   color: '#f5c542',
-  x: 985, y: 565,
-  spawnX: 985, spawnY: 565,
+  /* v2.3.1794 (owner: "mayor bro right outside the house"): he followed his
+     house up the stairs.  Beside the door rather than in front of it — the
+     stair head is at x=960 and standing on it would make the one route onto
+     the terrace a squeeze past him, now that NPCs block. */
+  x: 1055, y: 300,
+  /* v2.3.1794: MOVED WITH HIM.  The wander step steers an NPC toward
+     spawnX/spawnY (pathRadius 0 means exactly that point, with no roaming), so
+     leaving this at the old plaza spot spawned him outside his new house and
+     then walked him back down the stairs over the next few seconds.  Caught by
+     mp-townmap reading him at (985.3, 563.7) — the old coordinates, with the
+     fractional drift of something mid-walk. */
+  spawnX: 1055, spawnY: 300,
   renderX: 985, renderY: 565,
   hp: 100, maxHp: 100,
   /* v2.3.1675 (owner: "remove his health bar he doesn't need one").  He is a

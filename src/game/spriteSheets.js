@@ -158,7 +158,45 @@ export function wireSpriteSheets(stateRef, refs) {
       Object.keys(grids).forEach(function (zid) {
         S._tiledWalkable[zid] = stampPropFootprints(zid, grids[zid]);
       });
+      /* v2.3.1794: zones with no mask still need their OBJECTS to block.
+         Owner: "only make the objects (like each house and NPC) unwalkable
+         areas.  Everything else walkable again in the brotown area."  So the
+         terrain contributes nothing and the props table is the whole of
+         collision — an open field with solid buildings standing on it. */
+      installPropOnlyGrids(S);
     });
+}
+
+/* ═══ v2.3.1794: COLLISION FROM OBJECTS ALONE ═══
+   For a zone with blocking props but no walkability mask, build a grid that is
+   entirely walkable and stamp only the footprints into it.  isSolid treats any
+   present grid as AUTHORITATIVE, so handing it an all-open grid is what makes
+   "everything walkable except the objects" true — there is no separate
+   no-mask code path to add.
+
+   CELL SIZE 16px, half a tile.  The footprint stamp rounds outward to whole
+   cells, so a coarser grid grows every building by up to a tile of invisible
+   wall on each side; 16px keeps that under 8px, which is smaller than the
+   player's own half-width and so cannot be felt.  Finer would cost memory for
+   accuracy the art does not have — these footprints are hand-declared boxes,
+   not pixel outlines. */
+function installPropOnlyGrids(S) {
+  Object.keys(ZONES).forEach(function (zid) {
+    if (S._tiledWalkable[zid]) return;                 /* a real mask wins */
+    var props = propsForZone(zid).filter(function (p) { return propFootprint(p); });
+    if (!props.length) return;
+    var zone = ZONES[zid];
+    var CELL = 16;
+    var gw = Math.max(1, Math.round(zone.w * TILE / CELL));
+    var gh = Math.max(1, Math.round(zone.h * TILE / CELL));
+    var open = [];
+    for (var gy = 0; gy < gh; gy++) {
+      var row = new Array(gw);
+      for (var gx = 0; gx < gw; gx++) row[gx] = true;
+      open.push(row);
+    }
+    S._tiledWalkable[zid] = stampPropFootprints(zid, open);
+  });
 }
 
 /* ═══ v2.3.1778: BUILDINGS BLOCK ═══

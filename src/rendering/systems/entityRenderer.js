@@ -4,7 +4,7 @@
  */
 import { Assets, ColorMatrixFilter, Container, Graphics, Rectangle, Sprite, Text, TextStyle, Texture } from 'pixi.js';
 import { getNpcTexture } from '../npcSprites.js'; /* v2.3.1672: NPC figure art */
-import { propsForZone } from '../../data/worldProps.js'; /* v2.3.1775: scenery */
+import { propsForZone, propFootprint } from '../../data/worldProps.js'; /* v2.3.1775: scenery; v2.3.1794: + footprint for the props probe */
 import { TILE } from '@/data/constants.js';
 import { ZONES, zonePlayerScale } from '@/data/zones.js';
 import { ELEMENTS } from '@/data/elements.js';
@@ -7640,6 +7640,10 @@ export class EntityRenderer {
   _updateProps(S) {
     if (typeof window !== 'undefined') _entityLayerRef = this.entityLayer;
     const props = propsForZone(S.currentZone);
+    /* id -> prop, so the probe below can ask for a footprint by the same id
+       the display map is keyed on. */
+    const _propById = Object.create(null);
+    for (const _p of props) _propById[_p.id] = _p;
     if (!this.propDisplays) this.propDisplays = new Map();
     const live = new Set();
     for (const p of props) {
@@ -7674,9 +7678,17 @@ export class EntityRenderer {
       _propsDrawn.length = 0;
       for (const [id, spr] of this.propDisplays) {
         if (!spr.visible) continue;
+        /* v2.3.1794: report the FOOTPRINT too.  Since collision comes from
+           the props table rather than a map mask, a test that wants to walk
+           into something solid has to be able to tell which props are solid —
+           the anvil and the market stall are scenery and do not block, and
+           mp-townmap picked the anvil and failed for the right reason. */
+        let _fp = null;
+        try { _fp = propFootprint(_propById[id]) || null; } catch (e) { /* probe only */ }
         _propsDrawn.push({ id, x: spr.x, y: spr.y,
           width: spr.texture.width * spr.scale.x,
-          height: spr.texture.height * spr.scale.y });
+          height: spr.texture.height * spr.scale.y,
+          blocks: !!_fp, footprint: _fp });
       }
     }
   }

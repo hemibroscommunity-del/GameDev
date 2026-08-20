@@ -1,24 +1,25 @@
-/* THE CLIFFTOP TOWN, AND ITS EDGES (v2.3.1777).
+/* TOWN IS OPEN GROUND WITH SOLID OBJECTS ON IT (v2.3.1794).
  *
- * Owner: "I want the first 2 images to be the town map ... Not walkable."
+ * This file used to assert the opposite, and the reversal is the point.
  *
- * The town was a square map you could walk anywhere on.  It is now a plateau
- * ringed by cliffs with a painted valley beyond, which makes collision a
- * requirement rather than a nicety: without it you walk off the edge and stand
- * in the sky.
+ * v2.3.1777 gave town a walk mask DERIVED from the map art by hue, because the
+ * owner said the new clifftop was "Not walkable" past its edges.  After playing
+ * it: "only make the objects (like each house and NPC) unwalkable areas.
+ * Everything else walkable again in the brotown area.  The areas you detected
+ * for the map are too unreliable."
  *
- * The walk grid is DERIVED from the map art (tools/maps/build-town-v16.mjs),
- * so what is worth testing is not the grid's contents — that is generated —
- * but the two things a generated grid can still get wrong in play:
+ * That is the right call and the reason is worth keeping.  Hue classification
+ * decides by what a pixel LOOKS like, so a shadowed cobble reads as not-ground
+ * and a sunlit roof reads as ground.  v2.3.1777 re-tuned it twice — the stairs
+ * came out blocked, then a 32px slot trapped the player — and each fix moved
+ * the errors rather than removing them.  Collision now comes from the props
+ * table, whose positions are DECLARED rather than guessed and are the same
+ * data that draws them.
  *
- *   1. it must actually be LOADED for town, and only for town.  Every other
- *      zone's mask has been off since v2.3.1693 because the hand-painted ones
- *      drifted, and one zone getting collision back must not hand it to seven.
- *   2. it must be REACHABLE as a place.  The first build classified the
- *      shadowed stairs as blocked, which left the upper courtyard walkable and
- *      unreachable — correct cell by cell, broken as a town.
- *
- * So this walks the edges and walks the stairs, rather than reading the JSON.
+ * So what is tested here is the new contract, and the first assertion is the
+ * INVERSE of the one this file used to make: walking west from the plaza used
+ * to have to stop at the cliff, and now has to get past it.  A test written
+ * that way cannot quietly keep passing if a mask comes back.
  */
 import * as H from './harness.mjs';
 
@@ -48,46 +49,93 @@ export async function run({ browser, wsPort, webPort, rec }) {
   }).catch(() => null);
 
   const grids = await H.readState(P, (S) => Object.keys(S._tiledWalkable || {}));
-  rec.ok('town loads a walkability grid', grids.includes('town'), grids);
-  /* The allowlist, stated as a test: the other zones' masks are still wrong
-     and must stay off.  Without this, someone "fixing" the flag re-enables
-     seven broken masks and this file would not notice. */
-  rec.ok('...and it is the ONLY zone that does', grids.length === 1, grids);
+  /* v2.3.1794: town still has a grid, but it is the PROPS-ONLY one — open
+     everywhere, stamped solid where the buildings stand.  isSolid treats any
+     grid as authoritative, so an all-open grid is how "walkable except the
+     objects" is expressed; there is no separate no-mask path. */
+  rec.ok('town has a collision grid', grids.includes('town'), grids);
+  /* The other zones' hand-painted masks have been wrong since v2.3.1693 and
+     must stay off.  Without this, someone "fixing" the flag re-enables seven
+     broken masks and this file would not notice. */
+  rec.ok('...and no other zone has one', grids.length === 1, grids);
 
   const spawn = await pos(P);
   rec.ok('you spawn on the plateau, inside the new bounds',
     spawn.x > 0 && spawn.x < ZONE_W * TILE && spawn.y > 0 && spawn.y < ZONE_H * TILE, spawn);
 
-  /* ── 1. the cliff stops you ──
-     Walked into, not read: the grid could be perfect and never consulted.
-
-     THE THRESHOLDS DISCRIMINATE, which the first version of this did not.
-     It walked for 3s and asserted x > 60 — true whether or not collision
-     exists, because 3s does not even cross the plateau, so it passed with the
-     mask switched off.  The hold is now long enough to reach the zone bound,
-     and the bar sits at the CLIFF, measured off the grid: at y=700 the
-     walkable plateau runs x 672..2664, so stopping anywhere above ~400 means
-     the cliff stopped you and anywhere near 10 means you walked to the edge
-     of the map through thin air. */
+  /* ── 1. the plateau is OPEN ──
+     The inverse of this file's old assertion.  At y=700 the derived mask made
+     the walkable band x 672..2664, so it stopped a westward walk at ~672;
+     crossing well past that is only possible with no mask at all.  The hold is
+     long enough to reach the zone bound, and the guard proves the walk
+     happened rather than the player never having moved. */
   await put(P, 1400, 700);
   await P.page.waitForTimeout(300);
   const beforeW = await pos(P);
-  await hold(P, 'a', 9000);           /* far enough west to reach the map edge */
+  await hold(P, 'a', 9000);
   const afterW = await pos(P);
   rec.ok('walking west actually moved the player (guard)', afterW.x < beforeW.x - 200, { beforeW, afterW });
-  rec.ok('the west cliff stops you — you do not walk off the plateau',
-    afterW.x > 400, { afterW, plateauStartsAt: 672 });
+  rec.ok('the old west cliff no longer stops you — the plateau is open ground',
+    afterW.x < 400, { afterW, oldMaskStoppedAtX: 672 });
 
-  /* North, into the cliff above the open eastern plateau: walkable y starts
-     at 208 for x=2000, so a stop above ~120 is the cliff and not the bound. */
+  /* North likewise: the mask put the walkable edge at y=208 for x=2000. */
   await put(P, 2000, 800);
   await P.page.waitForTimeout(300);
   await hold(P, 'w', 9000);
   const afterN = await pos(P);
-  rec.ok('the north cliff stops you too', afterN.y > 120, { afterN, plateauStartsAt: 208 });
+  rec.ok('...and neither does the old north cliff',
+    afterN.y < 120, { afterN, oldMaskStoppedAtY: 208 });
+
+  /* ── 1b. BUT THE OBJECTS DO STOP YOU ──
+     Discovered from live state rather than hard-coded, so moving a building in
+     worldProps.js moves the test with it.  Approached from below, walking up
+     into the footprint: stopping short of the centre is the whole claim. */
+  const building = await P.page.evaluate(() => {
+    /* Pick something that actually BLOCKS.  The props probe reports it now
+       (v2.3.1794) because the first cut of this test picked the anvil — which
+       is scenery with no footprint — walked straight through it, and failed
+       for entirely the right reason. */
+    const ps = (window.__btWorldProps ? window.__btWorldProps() : []).filter((p) => p.blocks);
+    const b = ps[0];
+    return b ? { id: b.id, x: b.x, y: b.y, footprint: b.footprint } : null;
+  });
+  rec.ok('there is a building in town to walk into (guard)', !!building, { building });
+  if (building) {
+    await put(P, building.x, building.y + 150);
+    await P.page.waitForTimeout(300);
+    await hold(P, 'w', 3000);
+    const atB = await pos(P);
+    rec.ok(`the ${building.id} blocks you — you cannot walk through it`,
+      atB.y > building.y + 8, { building, stoppedAt: atB });
+  }
+
+  /* NPCs are objects too, and they block as a live radius rather than a grid. */
+  /* Read the mayor AFTER letting him settle.  NPCs walk toward spawnX/spawnY
+     every frame, so reading a position in the first seconds of a session
+     catches them mid-walk from wherever they were placed — which is exactly
+     how the v2.3.1794 move was caught leaving his wander anchor behind in the
+     old plaza. */
+  await P.page.waitForTimeout(4000);
+  const npc = await P.page.evaluate(() => {
+    const S = window._gameState.current;
+    const n = (S.npcs || []).find((q) => q && q.alive !== false && q.x != null);
+    return n ? { id: n.id, x: n.x, y: n.y, spawnX: n.spawnX, spawnY: n.spawnY } : null;
+  });
+  rec.ok('the townsfolk settle where they are placed, not where they used to be',
+    !!(npc && Math.hypot(npc.x - npc.spawnX, npc.y - npc.spawnY) < 24),
+    { npc });
+  rec.ok('there is a townsperson to walk into (guard)', !!npc, { npc });
+  if (npc) {
+    await put(P, npc.x, npc.y + 70);
+    await P.page.waitForTimeout(300);
+    await hold(P, 'w', 2500);
+    const atN = await pos(P);
+    rec.ok(`${npc.id} blocks you — you cannot stand inside him`,
+      atN.y > npc.y + 8, { npc, stoppedAt: atN });
+  }
 
   /* ── 2. the stairs are a way up, not a picture of one ── */
-  await put(P, 985, 560);             /* plaza, at the foot of the steps */
+  await put(P, 960, 470);             /* plaza, at the foot of the steps */
   await P.page.waitForTimeout(300);
   const footOfSteps = await pos(P);
   await hold(P, 'w', 4000);

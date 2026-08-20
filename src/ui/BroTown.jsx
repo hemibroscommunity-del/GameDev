@@ -3426,6 +3426,9 @@ export var BroTown = function BroTown(_ref0) {
        outer try/catch swallowed it silently, no rendering ever
        happened.  The earlier resize() at line ~2810 (guarded) plus
        its listeners cover the same job. */
+    /* v2.3.1794: how close you can get to a townsperson before they block.
+       14px against a ~24px-wide drawn figure — see the note in isSolid. */
+    var NPC_BLOCK_R2 = 14 * 14;
     var isSolid = function isSolid(px, py) {
       var _S$map;
       var zone = ZONES[S.currentZone];
@@ -3437,6 +3440,44 @@ export var BroTown = function BroTown(_ref0) {
          everything else is walkable. The legacy TILE_SOLID check is
          skipped because the procedural S.map still has old building
          tiles (3, etc.) underneath the new Tiled render. */
+      /* ═══ v2.3.1794: NPCs ARE OBJECTS TOO ═══
+         Owner: "only make the objects (like each house and NPC) unwalkable
+         areas."  Buildings block through the props grid; townsfolk block here
+         instead, as a live radius test, because a grid would be a lie the
+         moment one of them moved and because the NPC list is already the
+         authority on where they are.  Five of them in town, so this is five
+         distance checks on a movement step that already does more work than
+         that.
+
+         The radius is deliberately smaller than the sprite: you should be able
+         to stand shoulder to shoulder with the blacksmith to use his anvil,
+         and a blocker as wide as the drawn figure makes talking to anyone feel
+         like bumping into furniture.  Dead NPCs and any without a position do
+         not block at all. */
+      var _npcs = S.npcs;
+      if (_npcs && _npcs.length) {
+        var _pp = S.player;
+        for (var _ni = 0; _ni < _npcs.length; _ni++) {
+          var _n = _npcs[_ni];
+          if (!_n || _n.alive === false || _n.x == null || _n.y == null) continue;
+          var _ndx = px - _n.x, _ndy = py - _n.y;
+          if (_ndx * _ndx + _ndy * _ndy >= NPC_BLOCK_R2) continue;
+          /* NEVER TRAP SOMEONE ALREADY INSIDE.  A pure position test would seal
+             a player who ends up within the radius by any route that skips
+             collision — a teleport, a spawn, a quest hand-in that repositions
+             them, or an NPC that walks onto them — because then EVERY
+             candidate step is solid and there is no direction out.  Found the
+             hard way: mp-townmap put the player at the foot of the steps, 5px
+             from Mayor Bro, and he could not move at all.
+             So the block only applies from OUTSIDE: if you are already inside,
+             every step is allowed and you simply walk free. */
+          if (_pp) {
+            var _cdx = _pp.x - _n.x, _cdy = _pp.y - _n.y;
+            if (_cdx * _cdx + _cdy * _cdy < NPC_BLOCK_R2) continue;
+          }
+          return true;
+        }
+      }
       var _wgrid = (S._tiledWalkable && S._tiledWalkable[S.currentZone]) || null;
       if (_wgrid && _wgrid.length) {
         /* The walkability grid uses its OWN resolution (set by the

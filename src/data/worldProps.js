@@ -61,8 +61,24 @@ export const WORLD_PROPS = [
      before placement, and the grid re-checked for connectivity afterwards:
      five solid blocks in a bowl is an easy way to wall the town in half. */
   {
+    /* ═══ v2.3.1794: UP ON THE HILL ═══
+       Owner: "put mayor bros house up on the hill (above the stairs) and mayor
+       bro right outside the house."  It stood on the lower plaza at (1180,585),
+       in the row with the forge and the bank, which made the town's one
+       landmark just another shopfront.
+
+       Placed by reading the art rather than by eye: the walled courtyard at the
+       top of the stairs is sand from about x 750..1150 and y 120..300, with the
+       stair head at (960,300).  A prop's (x,y) is its BOTTOM-CENTRE
+       (anchor 0.5,1), so the base sits on the courtyard floor at y=300 and the
+       house draws upward from there.
+
+       worldH 300 -> 235 for the same reason: at 300 the roof reached y=0 and
+       stood over the cliffs and pines that ring the terrace.  235 fits between
+       the cliff line (~60) and the stair head, and a slightly smaller building
+       on a raised terrace reads as further away, which is what it is. */
     id: 'mayor-house', zone: 'town', sprite: '/sprites/props/mayor-house.png',
-    x: 1180, y: 585, worldH: 300, blockW: 210, blockD: 95,
+    x: 930, y: 300, worldH: 235, blockW: 165, blockD: 75,
     /* No action: it is Mayor Bro's house, and he is standing outside it
        handing out the tutorial.  A door that opens a panel he already covers
        would be a second, worse way to talk to him. */

@@ -86,21 +86,25 @@ export const VIDEO_ZONE_MAPS = {
  *  block.) */
 export const WALK_MASKS_ENABLED = false;
 
-/** ═══ v2.3.1777: ...EXCEPT FOR THE ZONES LISTED HERE ═══
- *  Owner, on the new clifftop town: "Not walkable" — the plateau ends in a
- *  cliff with a painted valley beyond, so without collision you walk off the
- *  edge and stand in the sky.  That zone needs its mask back.
+/** ═══ v2.3.1794: NOTHING IS MASKED ANY MORE — OBJECTS BLOCK INSTEAD ═══
+ *  v2.3.1777 put town in here because the owner said "Not walkable" about the
+ *  clifftop, and the mask was DERIVED from the map art by hue.  Owner, after
+ *  playing it: "only make the objects (like each house and NPC) unwalkable
+ *  areas.  Everything else walkable again in the brotown area.  The areas you
+ *  detected for the map are too unreliable."
  *
- *  The 2026 directive above stays exactly as it was for every other zone: the
- *  HAND-PAINTED masks had drifted out of alignment with the art they were
- *  traced from, and none of them has been repainted.  Town's mask is a
- *  different kind of object — tools/maps/build-town-v16.mjs DERIVES it from
- *  the finished map's own pixels, so it cannot drift from the art by
- *  construction, and re-running the build re-derives both together.
+ *  That is the honest verdict on hue-derived collision.  It classifies by what
+ *  a pixel LOOKS like, so a shadowed cobble reads as not-ground and a sunlit
+ *  roof reads as ground; v2.3.1777 already had to re-tune it twice (stairs
+ *  classified as blocked, then a 32px slot that trapped the player) and each
+ *  fix moved the errors somewhere else rather than removing them.  Collision
+ *  now comes from the props table instead — the objects whose positions are
+ *  DECLARED rather than guessed — which is the same data that draws them, so
+ *  it cannot disagree with what you can see.
  *
- *  An allowlist rather than flipping the flag: one zone getting collision back
- *  must not silently hand it to seven zones whose masks are still wrong. */
-const WALK_MASK_ZONES = new Set(['town']);
+ *  Kept as an empty Set rather than deleted: the mechanism is sound for a zone
+ *  whose mask is authored rather than inferred, and this is the one switch. */
+const WALK_MASK_ZONES = new Set();
 
 /** Per-zone walkability JSON.  Each url returns
  *  `{ width, height, grid: bool[h][w] }` where grid[ty][tx]=false marks
@@ -113,7 +117,7 @@ export const WALKABILITY_MAPS = {
      tools/mask-to-walkable.mjs (64x64 grid). Authoritative collision for
      the new cove town -- blocks cliffs + ocean, replaces the stale
      procedural building tiles. */
-  town: '/maps/town_v16.walk.json',   /* v2.3.1777: DERIVED from the map art, not painted — see WALK_MASK_ZONES */
+  town: '/maps/town_v16.walk.json',   /* v2.3.1794: no longer loaded — town blocks on props, not on a mask */
   meadow: '/maps/meadow_v6.walk.json',
   frost: '/maps/frost_v5.walk.json',   /* note: north ice flat over-blocked by the mask; repaint to open it */
   tidal: '/maps/tidal_v6.walk.json',   /* note: mask covered rocks only -- open sea + deep pools still walkable, needs a water pass */
