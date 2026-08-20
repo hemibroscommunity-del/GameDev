@@ -1144,7 +1144,36 @@ export class EffectsRenderer {
     this._bakeBodyStrip = (rec) => {
       const img = this._bodyImgCache[rec.url];
       if (!img) return;
-      const skinT = skinTarget(getSkin()), pantsT = pantsTarget(getPants()), shoesT = shoesTarget(getShoes());
+      /* ═══ v2.3.1788: the attack stand-ins wear the WALKING skin ═══
+         Owner's block-arm work exposed this, but it is a bug on its own and
+         has been shipped for a long time: the bro changes complexion every
+         time he swings.
+
+         The recolour catalogs give 'default' a target of null, meaning "leave
+         the art as painted".  That is only coherent while every sheet is
+         painted in the SAME palette, and they are not.  Measured mean skin
+         RGB, default skin, no recolour applied:
+             stand-east / stand-south   [188,121,69] / [189,122,68]
+             sword-east / sword-south   [207,126,64] / [210,117,59]
+             bow-east                   [223,121,57]
+         Same luminance band (143-151, so brightness was never the issue), a
+         clear hue slide toward orange.  A custom skin hid it, because then a
+         target IS applied and every sheet normalises to it — which is why this
+         only ever showed for players who left the default.
+
+         So a target is now ALWAYS applied.  This is not a new idea: v2.3.1710
+         did exactly this for the cook and the fire-lighter (`skinTarget(...)
+         || DEFAULT_SKIN_TARGET`, two call sites below) after the owner
+         reported "has the wrong skin color" — the sword and bow stand-ins
+         simply never got the same treatment.
+
+         SKIN ONLY, deliberately.  Pants and shoes were measured across the
+         same sheets and differ only in brightness ([100,104,63] vs [102,103,61]
+         vs [119,115,65]; shoes [67,67,66] vs [81,80,78]) — same hue, nothing a
+         player can see, and forcing them would change shipped appearance for
+         no reported problem. */
+      const skinT = skinTarget(getSkin()) || DEFAULT_SKIN_TARGET;
+      const pantsT = pantsTarget(getPants()), shoesT = shoesTarget(getShoes());
       const cv = recolorBodyToCanvas(img, skinT, pantsT, shoesT, null, rec.cfg.fh);
       const source = Texture.from(cv).source;
       source.scaleMode = 'linear';
@@ -1152,6 +1181,26 @@ export class EffectsRenderer {
       const arr = [];
       for (let i = 0; i < n; i++) arr.push(new Texture({ source, frame: new Rectangle(i * rec.cfg.fw, 0, rec.cfg.fw, rec.cfg.fh) }));
       rec.target[rec.dir] = arr;
+      /* v2.3.1788 QA probe: the mean skin RGB of the BAKED sheet, so
+         mp-standinskin can assert the stand-ins land on the same palette as
+         the walking body.  Measuring the baked canvas is the only honest
+         place — a screenshot of the world is swamped by cobblestone, which
+         passes the same warm-tone test the classifier uses (measured: 51k
+         "skin" pixels in an 80x90 crop containing one bro). */
+      try {
+        const _c = cv.getContext('2d');
+        const _d = _c.getImageData(0, 0, cv.width, cv.height).data;
+        let _n = 0, _r = 0, _g = 0, _b = 0;
+        for (let _i = 0; _i < _d.length; _i += 4) {
+          const r = _d[_i], g = _d[_i + 1], b = _d[_i + 2], a = _d[_i + 3];
+          if (!(a > 40 && r > g && g >= b && (r - b) > 30 && r > 90 && (r - g) > 25)) continue;
+          _n++; _r += r; _g += g; _b += b;
+        }
+        if (!window.__btStandInSkin) window.__btStandInSkin = {};
+        window.__btStandInSkin[rec.url] = _n
+          ? { n: _n, rgb: [Math.round(_r / _n), Math.round(_g / _n), Math.round(_b / _n)] }
+          : { n: 0 };
+      } catch (e) { /* never breaks a bake */ }
       /* v2.3.1785: hand the BOW body frames to blockArm.js, which cuts the
          outstretched arm out of them for the raised-shield pose.  Done here
          rather than in its own loader so the arm rides the same recolour bake
