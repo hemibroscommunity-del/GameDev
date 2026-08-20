@@ -22,6 +22,7 @@
  * The width was already close; the height was 65% over and the shape was wrong.
  */
 import * as H from './harness.mjs';
+import { WORLD_ZOOM } from '../../../src/data/constants.js';
 
 const PHONE = { width: 390, height: 715 };
 const DESKTOP = { width: 1680, height: 1050 };
@@ -75,9 +76,15 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
   /* THE PRIMARY PLATFORM DID NOT MOVE.  A phone has no shell (the media query
      cannot match it), so its viewport must still be exactly window x 1.25. */
-  rec.ok('the phone is untouched — still window x 1.25',
-    Math.abs(phone.viewW - phone.winW * 1.25) < 1.5,
-    { viewW: phone.viewW, expected: phone.winW * 1.25 });
+  /* v2.3.1780: read WORLD_ZOOM instead of the literal 1.25 this was written
+     against.  The zoom is a tuning knob the owner moves on preview builds (it
+     went to 1.5 in v2.3.1780), and a hard-coded copy turns every such tune
+     into a spurious failure in the one scenario whose job is to prove the
+     PHONE did not move.  The property is "phone viewport == window x the
+     configured zoom", not "== 1.25". */
+  rec.ok(`the phone is untouched — still window x ${WORLD_ZOOM}`,
+    Math.abs(phone.viewW - phone.winW * WORLD_ZOOM) < 1.5,
+    { viewW: phone.viewW, expected: phone.winW * WORLD_ZOOM, worldZoom: WORLD_ZOOM });
   rec.ok('...and its shell is still the whole window',
     phone.canvasW === phone.winW, { canvasW: phone.canvasW, winW: phone.winW });
 }

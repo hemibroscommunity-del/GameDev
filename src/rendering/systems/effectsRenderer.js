@@ -33,6 +33,21 @@ import { getGearFrame } from '../gearSheets.js';
 import { gearTint, gearArt } from '../gearVariants.js'; /* v2.3.1764: the swing wears the same metal; v2.3.1772: ...and finds its sheets */
 import { materialTint, weaponTint } from '../traits/materialTints.js';
 import { upscaleToFrameHeight } from '../spriteScale.js'; /* v2.3.1112: restore downscaled-on-disk sword stand-in strips to their authored frame height */
+import { backShieldPlacement, applyBackShield, BACK_SHIELD_PX } from '../backShield.js'; /* v2.3.1784 */
+import { registerBowBodyFrames } from '../blockArm.js'; /* v2.3.1785 */
+
+/* v2.3.1784: the 8-way compass, module scope.  An identical list already
+   existed as a local inside _updateRemoteBowShots; the slung shield needs it
+   too, and two copies of a fixed ordering is how a facing table drifts.  Must
+   stay in the same order as entityRenderer's SECTORS — S._renderFacing is
+   published from there. */
+const SECTORS8 = ['east', 'southeast', 'south', 'southwest', 'west', 'northwest', 'north', 'northeast'];
+
+/* The drawn body height the slung shield's 72px was measured against — the
+   fallback entityRenderer publishes for S._swordBodyH.  The stand-in scales
+   itself to the avatar's real per-facing height, so the shield divides by this
+   to ride along instead of staying one fixed size while the figure changes. */
+const STANDIN_REF_BODY_H = 84;
 import { cycleMs as jogCycleMs, frameCount as jogFrameCount, resolveDirection } from '../playerSprites.js';
 import { jogWaistRow } from '../jogWaist.js';
 import { bowTorsoCutRow } from '../bowTorsoCut.js';
@@ -1036,6 +1051,16 @@ export class EffectsRenderer {
        made a fixed sword outline still look white on-device.  Bump this whenever
        a sword sheet is re-cut, exactly like the player-sprite VERSION. */
     const SWORD_ART_VERSION = 1099;   // 1099: sword-south/-east stand-in strips stored half-res on disk (upscaled in-loader) to shrink the download; 1098: waist re-cut at the true torso->pants boundary (pants-confirmed) so the shirtless east torso isn't chopped at a body line; 1088: leg-erased torso strips (sword jog-legs composite); 1054: fill mid-swing pants holes by copying ONLY body-colored (skin/olive) pixels from the pixel-aligned full sheets into the #132 body holes -- placement untouched (layers stay anchored, no bounce/contamination, no sword imported); residual sword-occluded strip gets a tiny olive neighbor fill; 1053: revert to clean #132 originals; 1041: metal sword north weapon strip; 951: removed baked white blade artifact
+    /* v2.3.1784: the slung shield's LOW clone for this stand-in — added before
+       every other layer of the figure, so it can never draw over the body,
+       the armour or the weapon.  Its HIGH twin goes in after them.  Same
+       structural trick as the walking render (see backShield.js): the facing
+       picks which clone is visible and neither renderer ever computes a child
+       index, which is what keeps every armour combination correct. */
+    this.swordShieldLo = new Sprite();
+    this.swordShieldLo.anchor.set(0.5, 0.5);
+    this.swordShieldLo.visible = false;
+    this.nodeLayer.addChild(this.swordShieldLo);
     /* v2.3.1088: jog legs drawn UNDER the sword torso (added BEFORE swordSprite). */
     this.swordJogLegsSprite = new Sprite();
     this.swordJogLegsSprite.visible = false;
@@ -1075,6 +1100,13 @@ export class EffectsRenderer {
     this.swordWeaponSprite.anchor.set(0.5, 1);
     this.swordWeaponSprite.visible = false;
     this.nodeLayer.addChild(this.swordWeaponSprite);
+    /* v2.3.1784: HIGH clone — after the body, armour, shirt and weapon, so a
+       back that faces the camera shows the shield over all of them.  Before
+       the crescent, which stays the topmost thing in the swing. */
+    this.swordShieldHi = new Sprite();
+    this.swordShieldHi.anchor.set(0.5, 0.5);
+    this.swordShieldHi.visible = false;
+    this.nodeLayer.addChild(this.swordShieldHi);
     /* v2.3.1396: painted special-swing crescent, drawn OVER the stand-in. */
     this.slashSprite = new Sprite();
     this.slashSprite.anchor.set(0.5, 0.5);
@@ -1120,6 +1152,12 @@ export class EffectsRenderer {
       const arr = [];
       for (let i = 0; i < n; i++) arr.push(new Texture({ source, frame: new Rectangle(i * rec.cfg.fw, 0, rec.cfg.fw, rec.cfg.fh) }));
       rec.target[rec.dir] = arr;
+      /* v2.3.1785: hand the BOW body frames to blockArm.js, which cuts the
+         outstretched arm out of them for the raised-shield pose.  Done here
+         rather than in its own loader so the arm rides the same recolour bake
+         as the figure it is composited onto — one skin change, one rebake,
+         both stay in step. */
+      if (rec.target === this._bowBodyFrames) registerBowBodyFrames(rec.dir, arr);
     };
     const _loadRecoloredBody = (target, dir, url, cfg, ver) => {
       target[dir] = [];
@@ -1180,6 +1218,16 @@ export class EffectsRenderer {
     /* v2.3.1086: jog legs drawn UNDER the bow torso again (added BEFORE bowSprite)
        -- owner prefers the torso portion in front.  Gear after the bare legs so
        the plate sits over the bare legs. */
+    /* v2.3.1784: the slung shield's LOW clone for this stand-in — added before
+       every other layer of the figure, so it can never draw over the body,
+       the armour or the weapon.  Its HIGH twin goes in after them.  Same
+       structural trick as the walking render (see backShield.js): the facing
+       picks which clone is visible and neither renderer ever computes a child
+       index, which is what keeps every armour combination correct. */
+    this.bowShieldLo = new Sprite();
+    this.bowShieldLo.anchor.set(0.5, 0.5);
+    this.bowShieldLo.visible = false;
+    this.nodeLayer.addChild(this.bowShieldLo);
     this.bowJogLegsSprite = new Sprite();
     this.bowJogLegsSprite.visible = false;
     this.nodeLayer.addChild(this.bowJogLegsSprite);
@@ -1211,6 +1259,11 @@ export class EffectsRenderer {
     this.bowWeaponSprite.anchor.set(0.5, 1);
     this.bowWeaponSprite.visible = false;
     this.nodeLayer.addChild(this.bowWeaponSprite);
+    /* v2.3.1784: HIGH clone for the bow stand-in — see the sword pair above. */
+    this.bowShieldHi = new Sprite();
+    this.bowShieldHi.anchor.set(0.5, 0.5);
+    this.bowShieldHi.visible = false;
+    this.nodeLayer.addChild(this.bowShieldHi);
     const _loadBowStrip = (target, dir, url, cfg) => {
       target[dir] = [];
       _fxLoad(url + '?v=' + BOW_ART_VERSION).then((tex) => {
@@ -5014,7 +5067,6 @@ export class EffectsRenderer {
   _updateRemoteBowShots(S, now) {
     const REMOTE_BOW_SCALE = 0.45;
     const REMOTE_BOW_FOOT_DY = 0;
-    const SECTORS8 = ['east', 'southeast', 'south', 'southwest', 'west', 'northwest', 'north', 'northeast'];
     if (!this._remoteBowSprites) this._remoteBowSprites = new Map();
     const others = (S && S.others) || {};
     const active = new Set();
@@ -5142,7 +5194,63 @@ export class EffectsRenderer {
     }
   }
 
+
+  /* ── v2.3.1784: the slung shield, on an attack stand-in ──
+     The walking render hides its own pair the moment a stand-in takes over
+     (entityRenderer gates on the same _swordSwing/_bowShot flags that hide the
+     body), so this is the only thing drawing it during a swing or a shot.  All
+     the geometry comes from backShield.js, shared with that walking render, so
+     the shield cannot sit in one place while you stand and jump elsewhere the
+     instant you attack.
+
+     Facing comes from S._renderFacing — the 8-way compass entityRenderer
+     publishes each frame — NOT from the stand-in's own 4-way sheet direction,
+     which collapses NE/E/SE into one 'east' and would snap the shield through
+     45 degrees mid-swing. */
+  _placeStandInShield(S, lo, hi, footY, bodyH) {
+    if (!lo || !hi) return false;
+    lo.visible = false;
+    hi.visible = false;
+    if (!S || !S.player || !S.rpg || !S.rpg.shield) return false;
+    if (S._shieldUp || S._bashPose) return false;   /* held beats slung */
+    const idx = SECTORS8.indexOf(S._renderFacing || 'south');
+    const place = backShieldPlacement(idx, false, 0);
+    if (!place) return false;
+    const shown = place.behind ? lo : hi;
+    /* Size with the stand-in.  The stand-in is planted and scaled to match the
+       walking body (S._swordBodyH is published from it), so carrying that same
+       ratio across keeps the shield the same size whether you are standing
+       still or mid-swing — a shield that changed size on attack would read as
+       a different object. */
+    const scale = bodyH ? (bodyH / STANDIN_REF_BODY_H) : 1;
+    applyBackShield(shown, place, BACK_SHIELD_PX * scale);
+    /* The stand-in sprites are feet-anchored in world space; the walking
+       shield's offsets are measured from the body's CENTRE, so come back up
+       from the feet by half the figure. */
+    shown.x = S.player.x + place.dx * scale;
+    shown.y = (footY != null ? footY : S.player.y) - (bodyH || 0) * 0.5 + place.dy * scale;
+    /* QA probe (mp-backshield) — a headless run cannot read the WebGL canvas,
+       so the stand-in's z-order is asserted from here. */
+    try {
+      const layer = this.nodeLayer;
+      window.__btStandInShield = {
+        on: true, which: lo === this.swordShieldLo ? 'sword' : 'bow',
+        behind: lo.visible, front: hi.visible,
+        loIdx: layer.getChildIndex(lo),
+        hiIdx: layer.getChildIndex(hi),
+        bodyIdx: layer.getChildIndex(lo === this.swordShieldLo ? this.swordSprite : this.bowSprite),
+        weaponIdx: layer.getChildIndex(lo === this.swordShieldLo ? this.swordWeaponSprite : this.bowWeaponSprite),
+        chestIdx: layer.getChildIndex(lo === this.swordShieldLo ? this.swordChestSprite : this.bowChestSprite),
+        legsIdx: layer.getChildIndex(lo === this.swordShieldLo ? this.swordLegsSprite : this.bowLegsSprite),
+        sizePx: shown.height, facing: S._renderFacing,
+      };
+    } catch (e) { /* never breaks the frame */ }
+    return true;
+  }
+
   _updateSwordSwing(S, now) {
+    if (this.swordShieldLo) this.swordShieldLo.visible = false;
+    if (this.swordShieldHi) this.swordShieldHi.visible = false;
     if (this.swordSprite) this.swordSprite.visible = false;
     if (this.swordWeaponSprite) this.swordWeaponSprite.visible = false;
     if (this.swordChestSprite) this.swordChestSprite.visible = false;
@@ -5232,6 +5340,11 @@ export class EffectsRenderer {
     sp.x = S.player.x;
     sp.y = _baseFootY + _torsoDY;   // south drops the torso onto the legs (legs use _baseFootY)
     sp.visible = true;
+    /* v2.3.1784: the slung shield rides the swing.  Placed off _baseFootY (the
+       real body's published foot line) rather than sp.y, which carries the
+       per-facing torso nudge that closes the bare waist seam — that nudge
+       belongs to the torso, not to something strapped on the back. */
+    this._placeStandInShield(S, this.swordShieldLo, this.swordShieldHi, _baseFootY, bodyH);
     /* place an overlay sprite with the SAME transform as the body sprite. */
     const place = (spr, tex) => { if (!spr) return; if (!tex) { spr.visible = false; return; } spr.anchor.set(0.5, anchorY); spr.texture = tex; spr.scale.set(sgnT, sT); spr.x = sp.x; spr.y = sp.y; spr.visible = true; };
     const armorFrames = this._swordArmorFrames[fmap[0]];
@@ -5330,6 +5443,8 @@ export class EffectsRenderer {
    * real body + weapon) when a bow shot is active and the aim resolves to an
    * authored facing.  Same self-contained pattern as the sword swings. */
   _updateBowShot(S, now) {
+    if (this.bowShieldLo) this.bowShieldLo.visible = false;
+    if (this.bowShieldHi) this.bowShieldHi.visible = false;
     if (this.bowSprite) this.bowSprite.visible = false;
     if (this.bowWeaponSprite) this.bowWeaponSprite.visible = false;
     if (this.bowChestSprite) this.bowChestSprite.visible = false;
@@ -5364,6 +5479,9 @@ export class EffectsRenderer {
     sp.scale.set(sgn, s);
     sp.x = S.player.x;
     sp.y = (S._swordFootY != null) ? S._swordFootY : S.player.y;
+    /* v2.3.1784: same slung shield on the bow shot — both hands are on the
+       bow, so the shield is on the back exactly as when walking. */
+    this._placeStandInShield(S, this.bowShieldLo, this.bowShieldHi, sp.y, bodyH);
     sp.visible = true;
     const place = (spr, tex) => { if (!spr) return; if (!tex) { spr.visible = false; return; } spr.anchor.set(0.5, anchorY); spr.texture = tex; spr.scale.set(sgn, s); spr.x = sp.x; spr.y = sp.y; spr.visible = true; };
     /* v2.3.957: layered gear path -- bald body + equipped chest/legs armour +

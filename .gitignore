@@ -32,6 +32,8 @@ tools/_*.png
 
 # Gear-art contact sheets (tools/qa/qa-gear-sheet.mjs output — v2.3.1195)
 tools/qa/out/
+# mp-scenario screenshots (tools/qa/mp/run.mjs output — v2.3.1781)
+tools/qa/mp/out/
 
 # v2.3.1710: throwaway QA probe scripts at the REPO ROOT.
 #
