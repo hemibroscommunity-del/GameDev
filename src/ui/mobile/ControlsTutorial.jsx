@@ -37,15 +37,29 @@ const STEPS = [
     label: 'Attack', body: 'Drag the right joystick to attack. A quick swipe triggers a special attack.' },
   /* v2.3.1285: the 3-panel row is retired — the home view is the Bag
      compact grid (equipped row over recent items). */
+  /* ═══ v2.3.1803: THIS STEP HAD BEEN DROPPING ITSELF ═══
+     It listed [data-tut="dash-bag"] and .bt-dashboard-nav-button, and NEITHER
+     is in the DOM: nothing passes BottomDashboard's `tut` prop (so no element
+     ever carries data-tut), and the destinations moved to .bt-navrail.  A step
+     whose anchors all miss is dropped by design (v2.3.1205, so a HUD change
+     degrades to fewer callouts rather than wrong ones) — which is the right
+     default and the reason nobody noticed the five-step tour running as three.
+     The PREMISE was stale too, not just the selector: v2.3.1350 said this
+     "rings the toolbar Bag button", and there is no Bag destination any more.
+     The rail is Dashboard / Character / Quests / Skills / More, and the bag
+     grid IS the Dashboard home view — so the step rings Dashboard and says
+     what is actually behind it.  Anchored on the grid first, because that is
+     the thing being described; the rail button is the fallback for when the
+     player is on some other panel and the grid is not up. */
   { key: 'dashboard', shape: 'rect',
-    /* v2.3.1350 (two-state nav): the compact home grid is retired — the
-       step rings the toolbar Bag button and teaches the tap toggle. */
-    sels: ['[data-tut="dash-bag"]', '.bt-dashboard-nav-button[aria-label="Bag"]'],
-    label: 'Bag', body: 'Tap to open your items and gear — tap again to close.' },
+    sels: ['[data-tut="coach-gear"]', '.bt-navrail [aria-label="Dashboard"]'],
+    label: 'Bag', body: 'Your items and gear live here. Tap one to equip it.' },
   /* v2.3.1287: Chat left the toolbar — the composer opens by tapping
      your own character; the step teaches that instead. */
+  /* v2.3.1803: same fault, worse — [data-tut="dash-more"] was its ONLY
+     anchor, so this step has never had a fallback to fall back to. */
   { key: 'toolbar', shape: 'rect',
-    sels: ['[data-tut="dash-more"]'],
+    sels: ['.bt-navrail [aria-label="More"]', '[data-tut="dash-more"]'],
     label: 'Toolbar', body: 'Menus live down here. Tap your character to chat.' },
   { key: 'dodge', shape: null, sels: null,
     label: 'Swipe / Dodge', body: 'Swipe anywhere in the world to dodge-roll.' },
@@ -100,6 +114,21 @@ function measureSteps() {
     if (!u) continue;
     out.push({ ...s, rect: u });
   }
+  /* v2.3.1803: publish what survived.  A dropped step is invisible by
+     construction — that is the whole point of the degrade — so without this
+     there is no way for a test to tell a four-step tour from a five-step one,
+     and two steps went missing for long enough to prove it. */
+  try {
+    const live = out.map((o) => o.key);
+    const rects = Object.create(null);
+    for (const o of out) if (o.rect) rects[o.key] = o.rect;
+    window.__btCtlTutSteps = () => ({
+      all: STEPS.map((x) => x.key),
+      live,
+      dropped: STEPS.map((x) => x.key).filter((k) => !live.includes(k)),
+      rects,
+    });
+  } catch (_e) {}
   return out;
 }
 

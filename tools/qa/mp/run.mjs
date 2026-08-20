@@ -59,6 +59,7 @@ const SCENARIOS = {
   townlock: () => import('./mp-townlock.mjs'), /* v2.3.1676: unarmed start + town gate */
   proj: () => import('./mp-proj.mjs'), /* v2.3.1678: the snowball is visible */
   lifeskill: () => import('./mp-lifeskill.mjs'), /* v2.3.1680: tool-gated gathering */
+  ctltut: () => import('./mp-ctltut.mjs'), /* v2.3.1803: no tour step goes missing */
   questcoach: () => import('./mp-questcoach.mjs'), /* v2.3.1796: the questline's coach marks */
   questui: () => import('./mp-questui.mjs'), /* v2.3.1681: the world dialogue's art + the offer filter */
   hpbar: () => import('./mp-hpbar.mjs'), /* v2.3.1682: the contextual player HP bar */

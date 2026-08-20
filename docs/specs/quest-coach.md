@@ -119,8 +119,10 @@ player-writable).
 The block lesson has no `south` case for the arm art (`blockArm.js`), but
 that is unrelated: the coach points at the joystick, not the character.
 
-`ControlsTutorial`'s own bag step still lists `[data-tut="dash-bag"]` and
-`.bt-dashboard-nav-button`, and NEITHER is in the DOM any more — nothing
-passes the `tut` prop and the nav moved to `.bt-navrail`. That step has
-been silently dropping itself. Out of scope here; noted so the selectors
-are not copied.
+`ControlsTutorial`'s own bag step pointed at those same two dead
+selectors, and its Toolbar step at a third — so its five-step tour had
+been running as three. **Fixed in v2.3.1803**, and pinned by
+`tools/qa/mp/mp-ctltut.mjs`, which asserts the step COUNT and names any
+step that stops resolving. A dropped step is invisible by construction
+(the v2.3.1205 degrade), which is why it went unnoticed and why the test
+had to exist.

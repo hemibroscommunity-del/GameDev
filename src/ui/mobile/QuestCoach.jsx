@@ -161,11 +161,12 @@ const LESSONS = [
        phone the bag grid is already sitting on the dashboard, so the usual
        answer is the ITEM, and telling a player to "open your bag" while the
        item is visible in front of them is worse than saying nothing.
-       (Note for anyone here next: ControlsTutorial's own bag step still
-       lists [data-tut="dash-bag"] and .bt-dashboard-nav-button, and NEITHER
-       is in the DOM any more — nothing passes the `tut` prop, and the nav
-       moved to .bt-navrail.  That step has been silently dropping itself;
-       it is not this PR's to fix, but do not copy those selectors.) */
+       (Those two selectors were also what ControlsTutorial's own bag step
+       pointed at, and neither is in the DOM — nothing passes BottomDashboard's
+       `tut` prop, and the nav moved to .bt-navrail.  Its five-step tour had
+       been running as three.  Fixed in v2.3.1803 and pinned by
+       tools/qa/mp/mp-ctltut.mjs; noted here because this is where it was
+       found, and because the dead names are still tempting.) */
     anchors: [
       { sel: '[data-tut="coach-gear"]', body: 'Tap it, then Equip.' },
       { sel: '.bt-navrail [aria-label="Bag"]', body: 'Open your bag and equip your gear.' },
