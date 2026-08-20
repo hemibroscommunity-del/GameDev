@@ -11,6 +11,11 @@ import { Assets, BitmapFont, BitmapText, CanvasTextMetrics, Container, Graphics,
    _fxLoad is a drop-in for Assets.load; effectsAnimationsReady() is
    consumed by preloadWorldAnimations (preloadAnimations.js). */
 const _fxPreload = [];
+
+/* v2.3.1800: which of the three bow frames a HELD block sits on.  0 is still
+   raising and 2 is the release recoil; 1 is drawn and steady, which is the one
+   that reads as bracing behind a shield. */
+const BLOCK_POSE_FRAME = 1;
 const _fxLoad = (url) => { const p = Assets.load(url); _fxPreload.push(p); return p; };
 export function effectsAnimationsReady() { return Promise.allSettled(_fxPreload); }
 import { ELEMENTS } from '@/data/elements.js';
@@ -5505,6 +5510,16 @@ export class EffectsRenderer {
     if (this.bowJogLegsSprite) this.bowJogLegsSprite.visible = false;
     if (this.bowJogLegsGearSprite) this.bowJogLegsGearSprite.visible = false;
     if (this.bowShirtSprite) this.bowShirtSprite.visible = false;
+    /* v2.3.1800: tell entityRenderer the bow art is up before it hides the
+       real body to show this.  A bow shot is 400ms and would flicker at worst;
+       a BLOCK is held, so an unguarded swap would leave the player invisible
+       for as long as they held it.  Published every frame rather than once, so
+       it also goes false if a zone change ever evicts the sheets. */
+    if (S) {
+      const _rf = this._bowFacing[S._bowDir || 'east'];
+      S._bowArtReady = !!(this.bowSprite && _rf && this._bowCfg[_rf[0]]
+        && (this._bowFrames[_rf[0]] || []).length);
+    }
     if (!S || !S._bowShowing || !S.player || !this.bowSprite) return;
     const fmap = this._bowFacing[S._bowDir];
     if (!fmap) return;
@@ -5517,9 +5532,15 @@ export class EffectsRenderer {
     /* v2.3.937: quick draw -> the load/pull frames play across BOW_RELEASE_MS,
        then the final (release) frame holds for the rest of BOW_SHOT_MS.  The
        arrow launches from the grip at BOW_RELEASE_MS (projectiles.js). */
-    const fi = elapsed < BOW_RELEASE_MS
-      ? Math.max(0, Math.min(n - 2, Math.floor((elapsed / BOW_RELEASE_MS) * (n - 1))))
-      : n - 1;
+    /* v2.3.1800: a block HOLDS one frame — there is no shot clock to animate
+       against, and _bowShotAt is whatever the last real shot left behind.
+       Frame 1 of the three is the drawn-and-steady one; frame 0 is still
+       raising and frame 2 is the release recoil. */
+    const fi = S._blockPose
+      ? Math.min(n - 1, BLOCK_POSE_FRAME)
+      : (elapsed < BOW_RELEASE_MS
+          ? Math.max(0, Math.min(n - 2, Math.floor((elapsed / BOW_RELEASE_MS) * (n - 1))))
+          : n - 1);
     const sp = this.bowSprite;
     const anchorY = cfg.feetY / cfg.fh;
     sp.anchor.set(0.5, anchorY);
@@ -5533,8 +5554,12 @@ export class EffectsRenderer {
     sp.x = S.player.x;
     sp.y = (S._swordFootY != null) ? S._swordFootY : S.player.y;
     /* v2.3.1784: same slung shield on the bow shot — both hands are on the
-       bow, so the shield is on the back exactly as when walking. */
-    this._placeStandInShield(S, this.bowShieldLo, this.bowShieldHi, sp.y, bodyH);
+       bow, so the shield is on the back exactly as when walking.
+       v2.3.1800: ...but NOT while blocking, where this same pose is holding
+       the shield out in front.  It cannot be in both places at once. */
+    if (!S._blockPose) {
+      this._placeStandInShield(S, this.bowShieldLo, this.bowShieldHi, sp.y, bodyH);
+    }
     sp.visible = true;
     const place = (spr, tex) => { if (!spr) return; if (!tex) { spr.visible = false; return; } spr.anchor.set(0.5, anchorY); spr.texture = tex; spr.scale.set(sgn, s); spr.x = sp.x; spr.y = sp.y; spr.visible = true; };
     /* v2.3.957: layered gear path -- bald body + equipped chest/legs armour +
@@ -5594,11 +5619,12 @@ export class EffectsRenderer {
       place(this.bowLegsSprite,  _jogLegs ? null : this._gearStripFrame('legs', getEquip('legs'), gp, fmap[0], cfg.fw, fi));
       this._tintGearSprite(this.bowChestSprite, getEquip('chest'), 'bowChest');  /* v2.3.1764 */
       this._tintGearSprite(this.bowLegsSprite, getEquip('legs'), 'bowLegs');
-      place(this.bowWeaponSprite, weaponFrames && weaponFrames[fi]);
+      /* v2.3.1800: no bow while blocking — same pose, different thing held. */
+      place(this.bowWeaponSprite, S._blockPose ? null : (weaponFrames && weaponFrames[fi]));
     } else {
       _armored = !!(armorFrames && armorFrames[fi]);
       sp.texture = _armored ? armorFrames[fi] : frames[fi];
-      if (_armored) place(this.bowWeaponSprite, weaponFrames && weaponFrames[fi]);
+      if (_armored && !S._blockPose) place(this.bowWeaponSprite, weaponFrames && weaponFrames[fi]);
     }
     /* v2.3.937: publish the teal grip's WORLD position (same anchor math as
        _placeSkillTraitsOn) so the procedural arrow can launch from the bow

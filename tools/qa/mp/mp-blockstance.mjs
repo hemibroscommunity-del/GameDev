@@ -74,31 +74,48 @@ export async function run({ browser, wsPort, webPort, rec }) {
      `scale = 56/64`, which also silently assumed 64px source art. */
   rec.ok('...and is no longer the old 56px', !!(held && held.shieldW > 56), held);
 
-  /* ── 2. a raised shield plants the stance ──
-     Only the count of arms matters and only the pose can be measured: jog draws
-     two, the composited block arm is a third. */
+  /* ── 2. blocking while moving: legs jog, top half holds ──
+     Owner: "are you allowing the legs to move (jog motion while blocking) and
+     just freezing the top half?  Thats what I'd prefer.  Otherwise the
+     character will look like they're sliding."
+     v2.3.1800 answers it by handing the block to the BOW stand-in, whose
+     jog-legs composite (v2.3.1072/1080/1088) is exactly that shape: animated
+     legs under a leg-erased torso strip.  So what has to be true is that the
+     stand-in is what is on screen, and that its legs are cycling. */
   await P.page.keyboard.down('a');
   await P.page.waitForTimeout(800);
   const moving = await probe(P);
   await P.page.keyboard.up('a');
   rec.ok('the player really is moving (guard)', !!(moving && moving.moving), moving);
-  rec.ok('blocking while moving holds the STAND pose, so no third arm swings',
-    !!(moving && moving.pose === 'stand'), moving);
-  rec.ok('...and the block arm is still drawn while moving',
-    !!(moving && moving.armVisible), moving);
+  rec.ok('a raised shield draws the bow-pose stand-in, not the walking body',
+    !!(moving && moving.standIn), moving);
+  rec.ok('...and its legs are jogging, so the feet stride instead of sliding',
+    !!(moving && moving.jogLegs), moving);
 
-  /* Facing SOUTH there is no arm to composite (the bow art's south frames are
-     foreshortened), so freezing the legs would cost the jog and buy nothing —
-     south must keep jogging. */
-  await pin(P, IDX.S);
+  /* THE THIRD ARM IS GONE BECAUSE THERE IS NO LONGER A BODY UNDER IT.
+     v2.3.1785 pasted an arm cut from the bow art onto the walking body, which
+     already had two of its own — swinging while jogging, and poking out below
+     at southwest ("I can see a slight arm straight down on the southwest
+     angle").  The stand-in draws the bow body whole, so there is nothing to
+     poke out.  Pinned as the STAND-IN being what renders, at the facing the
+     owner reported, because arms cannot be counted from a screenshot. */
+  await pin(P, IDX.SW);
   await P.page.keyboard.down('a');
-  await P.page.waitForTimeout(800);
-  const southMoving = await probe(P);
+  await P.page.waitForTimeout(700);
+  const sw = await probe(P);
   await P.page.keyboard.up('a');
-  rec.ok('facing south there is no block arm (guard)',
-    !!(southMoving && !southMoving.armVisible), southMoving);
-  rec.ok('...so south keeps jogging — the freeze is only where an arm is drawn',
-    !!(southMoving && southMoving.moving && southMoving.pose === 'jog'), southMoving);
+  rec.ok('southwest blocks with the stand-in too — no pasted arm over a walking body',
+    !!(sw && sw.standIn), sw);
+
+  /* SOUTH.  There was never a south block arm: the bow's south frames are
+     foreshortened with both hands on the chest, so there was nothing to CUT
+     (v2.3.1789 recorded it as needing new art).  As a whole POSE it works, and
+     that gap closes without anyone painting anything. */
+  await pin(P, IDX.S);
+  await P.page.waitForTimeout(500);
+  const south = await probe(P);
+  rec.ok('facing south now has a block pose at last — it needed a body, not a cut arm',
+    !!(south && south.standIn), south);
 
   /* ── 3. the caret points where you are GUARDING ──
      Not where you are facing, and not where you are aiming.  Those are three
@@ -141,6 +158,32 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('the block caret and the sword direction chip share one colour',
     !!(col && col.block === col.melee), col);
 
+  /* THE RENDER MUST NOT HAVE THROWN.  pixiRenderer catches per system, so a
+     ReferenceError in _updatePlayer does not white-screen — it silently drops
+     the whole player and leaves an empty patch of ground.  That is exactly how
+     the first cut of v2.3.1800 failed (a `const` read 40 lines before its own
+     declaration), and a screenshot of grass looks like a camera problem. */
+  const threw = P.logs.filter((l) => /entityRenderer threw|effectsRenderer threw|pageerror/.test(l));
+  rec.ok('no renderer system threw while blocking', threw.length === 0, threw);
+
+  /* look-at-it shots */
+  for (const n of ['E', 'SW', 'W', 'S']) {
+    await pin(P, IDX[n] != null ? IDX[n] : 1);
+    for (const mv of [false, true]) {
+      if (mv) await P.page.keyboard.down('a');
+      await P.page.waitForTimeout(700);
+      const c = await probe(P);
+      const cv = await P.page.evaluate(() => {
+        const S = window._gameState.current; const r = document.querySelector('canvas').getBoundingClientRect();
+        return { x: r.left + (S.player.x - S.camera.x) * (S._worldScaleX || 1),
+                 y: r.top + (S.player.y - S.camera.y) * (S._worldScaleY || 1) };
+      });
+      await P.page.screenshot({ path: `tools/qa/mp/out/bs-${n}-${mv ? 'jog' : 'stand'}.png`,
+        clip: { x: Math.max(0, Math.round(cv.x - 75)), y: Math.max(0, Math.round(cv.y - 105)), width: 150, height: 150 } });
+      if (mv) await P.page.keyboard.up('a');
+      await P.page.waitForTimeout(250);
+    }
+  }
   await P.page.screenshot({ path: 'tools/qa/mp/out/blockstance.png' });
   await P.ctx.close().catch(() => {});
 }

@@ -3276,7 +3276,16 @@ function _hideBlockArm(display, why) {
   if (display._blockArmGroup) display._blockArmGroup.visible = false;
   if (display._blockArmSprite) display._blockArmSprite.visible = false;
   if (display._blockArmSleeve) display._blockArmSleeve.visible = false;
-  try { window.__btBlockArm = Object.assign({ on: false }, why || {}); } catch (e) {}
+  /* v2.3.1800: keep the last CUT facts alongside the hidden flag.  Since the
+     stand-in took over, the arm is deliberately never drawn — but the cut is
+     still what positions the shield, so a probe that reported only "off" would
+     make the surviving contract untestable. */
+  try {
+    const _prev = window.__btBlockArm || {};
+    window.__btBlockArm = Object.assign(
+      { sheet: _prev.sheet, armW: _prev.armW, armH: _prev.armH, hand: _prev.hand },
+      { on: false }, why || {});
+  } catch (e) {}
 }
 
 /* ═══ v2.3.1798: THE BLOCK CARET ═══
@@ -6075,6 +6084,54 @@ export class EntityRenderer {
       const _bf = SECTORS[((_bsec % 8) + 8) % 8];
       if (_BOW_FACINGS.includes(_bf)) _bowDir = _bf;
     }
+    /* ═══ v2.3.1800: A RAISED SHIELD BORROWS THE BOW POSE ═══
+       Owner: "are you allowing the legs to move (jog motion while blocking)
+       and just freezing the top half?  Thats what I'd prefer.  Otherwise the
+       character will look like they're sliding."  And: "I can see a slight arm
+       straight down on the southwest angle above where he's holding the shield
+       straight out arm."
+
+       Both of those are the same fault, and it is the COMPOSITE: v2.3.1785 cut
+       an arm out of the bow art and pasted it onto the walking body, so the
+       body's OWN arms are still under it — swinging while jogging, and poking
+       out below at southwest.  v2.3.1798 froze the body to hide that, which
+       traded three arms for sliding feet.  Neither is a fix; both are ways of
+       arranging one.
+
+       So stop pasting an arm onto a body that has two, and draw the body that
+       already holds one out: the bow stand-in.  It is the same art the arm was
+       cut FROM, it is already wired for exactly this shape of problem — the
+       jog-legs composite (v2.3.1072/1080/1088) draws animated legs under a
+       leg-erased torso strip, which IS "legs move, top half frozen" — and it
+       carries the gear, shirt, traits and skin recolour that a hand-cut arm
+       had to be taught one at a time.  Hiding its bow is one line.
+
+       Three things fall out of this for free:
+         - SOUTH WORKS.  There was no south block arm because the bow's south
+           frames are foreshortened with both hands on the chest, so there was
+           nothing to CUT.  As a whole pose it reads as a shield raised toward
+           the camera, which is what it should look like.
+         - The composited arm still draws, exactly on top of the torso's own —
+           it was cut from this art at this scale, so it aligns by construction
+           — and it is what carries the shield's hand position.
+         - Peers are unaffected: a peer's block is not broadcast (see PR #438),
+           so nothing here can desync.
+
+       GATED ON THE ART BEING LOADED.  A bow shot lasts 400ms, so if its
+       stand-in were ever missing you would barely see it; a block is held, so
+       an unguarded version of this would leave the player INVISIBLE for as
+       long as they held the button — the real body is hidden the moment
+       _bowShowing goes true.  Everything preloads before the intro lifts (the
+       animation-preloading law), so this should never fire; it costs one flag
+       to make sure. */
+    let _blockPose = false;
+    if (!_bowDir && S._shieldUp && S.rpg && S.rpg.shield && S._bowArtReady) {
+      const _sa = (S._shieldAngle != null) ? S._shieldAngle
+                : (S._aimAngle != null) ? S._aimAngle : (S._facingAngle || 0);
+      const _bf2 = SECTORS[((Math.round(_sa / (Math.PI / 4)) % 8) + 8) % 8];
+      if (_BOW_FACINGS.includes(_bf2)) { _bowDir = _bf2; _blockPose = true; }
+    }
+    S._blockPose = _blockPose;
     const _bowShot = !!_bowDir;
     S._bowShowing = _bowShot;
     S._bowDir = _bowDir;
@@ -6241,7 +6298,13 @@ export class EntityRenderer {
        already committed to the tumble — in both cases the roll is what the
        body is actually doing, and cutting to the 250ms hit pose mid-roll
        would strand the player upright and sliding. */
-    /* ═══ v2.3.1798: A RAISED SHIELD PLANTS THE STANCE ═══
+    /* ═══ v2.3.1798: A RAISED SHIELD PLANTS THE STANCE — NOW A FALLBACK ═══
+       v2.3.1800 moved the block onto the bow stand-in, which hides this body
+       entirely and animates its own jog legs, so on the normal path this no
+       longer decides anything.  It still runs for the one case the stand-in
+       cannot cover: _bowArtReady false, i.e. the bow sheets are not loaded.
+       There it keeps doing its original job (below), and it is cheap.
+       ORIGINAL REASONING, kept because it is why the composite was a dead end:
        Owner: "One downside to the shield arm is that jogging backwards still
        shows both arms moving AND the outstretched arm."
        Exactly right, and the count is the bug: the jog frames draw two arms,
@@ -7483,6 +7546,18 @@ export class EntityRenderer {
              art authored at a different size, so it needs this to match. */
           const _blockBodyH = (221 - 33) * bodyDirScale(pose, dir) * LOCAL_SCALE * (display.scale.y || 1);
           const _armHand = _placeBlockArm(display, facing, _blockBodyH, bobY);
+          /* ═══ v2.3.1800: DON'T PASTE AN ARM ONTO A BODY THAT HAS ONE ═══
+             Owner, looking at the stand-in: "East (the mirror of west) is
+             showing two arms.  The outstretched arm that came with the bow
+             attack pose looks more natural.  I think if you just removed the
+             extra arm you put on there it'd look natural."
+             Exactly so.  The cut arm existed to give the WALKING body an
+             outstretched one; the bow pose already has that arm, authored,
+             and the paste-on is now a duplicate sitting a pixel or two off it.
+             It still gets CALLED, because the hand it computes is what the
+             shield is positioned by and that placement is already tuned — but
+             nothing it draws is shown. */
+          if (_blockPose) _hideBlockArm(display, { reason: 'stand-in has its own arm' });
           if (_armHand) {
             shieldSprite.x = _armHand.x;
             shieldSprite.y = _armHand.y;
@@ -7523,6 +7598,13 @@ export class EntityRenderer {
             const _g = display._blockCaretGfx;
             window.__btBlockPose = {
               pose: pose,
+              /* v2.3.1800: which body is actually on screen.  With the bow
+                 stand-in driving a block, `pose` describes a body that is
+                 HIDDEN, so a test that only read it would be reasoning about
+                 something the player cannot see. */
+              standIn: !!S._blockPose,
+              standInDir: S._blockPose ? S._bowDir : null,
+              jogLegs: !!(S._blockPose && S._bowJogLegs),
               shieldAng: shieldAng,
               stateShieldAng: S._shieldAngle,
               stateAimAng: S._aimAngle,
