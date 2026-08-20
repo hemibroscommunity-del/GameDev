@@ -362,9 +362,16 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
   /* IT IS NOT FINISHED BY EQUIPPING ONE OF THEM.  "equip them all" is the
      ask, so a player who puts the bow on and stops is still mid-lesson. */
+  /* EQUIP THE WAY THE GAME EQUIPS.  ItemDetailPopup's onEquipStashWeapon sets
+     R.activeSlot to the slot it just filled, so the bro swings what you put
+     on.  The first cut of this test set only the weapon field and therefore
+     never reproduced the bug the owner hit: equipping all three marks all
+     three slots active, which satisfied the cycle lesson's finish rule before
+     its mark had ever been on screen. */
   await P.page.evaluate(() => {
     const R = window._gameState.current.rpg;
     R.rangedWeapon = R.weaponStash.shift();
+    R.activeSlot = 'ranged';
   });
   await P.page.waitForTimeout(700);
   const halfWay = await coach(P);
@@ -374,6 +381,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await P.page.evaluate(() => {
     const R = window._gameState.current.rpg;
     R.staffWeapon = R.weaponStash.shift();
+    R.activeSlot = 'staff';
   });
   await P.page.waitForTimeout(700);
   const cC = await waitCoach(P, 'cycle');
@@ -393,17 +401,33 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok('the mark rings the LEFT joystick', dx < 6 && dy < 6, { ring: cC.ring, lJoy, dx, dy });
   }
 
+  /* ...AND IT IS NOT ALREADY FINISHED.  This is the assertion that was
+     missing: equipping the three weapons had already touched melee, ranged
+     and staff, so the lesson completed itself before it could appear.  The
+     owner saw exactly that — "it needs to guide you to double tap the left
+     joystick" — because the mark was gone before they could act on it. */
+  const armed = await P.page.evaluate(() => window.__btCoach && window.__btCoach());
+  rec.ok('the cycle counter starts when the mark goes up, not when you equip',
+    !!(armed && armed.cycleArmed && !armed.done.cycle), armed);
+  rec.ok('...and it only counts the slot the player is standing on',
+    !!(armed && Object.keys(armed.slots).length === 1), armed && armed.slots);
+
   /* ONE SWAP IS NOT A CYCLE.  This is the difference between v2.3.1796's
      lesson and the owner's ask: going melee -> ranged proves the gesture
      exists, but they asked the player to go round all three and pick. */
+  /* The player arrives on STAFF, because that is what they equipped last, so
+     melee is the slot still missing.  Ordering the test this way rather than
+     melee-first is not cosmetic: it is the state the previous lesson really
+     leaves behind, and assuming melee is where you start is how the counting
+     bug got written in the first place. */
   await P.page.evaluate(() => { window._gameState.current.rpg.activeSlot = 'ranged'; });
   await P.page.waitForTimeout(700);
   const oneSwap = await coach(P);
   const trk1 = await P.page.evaluate(() => window.__btCoach && window.__btCoach());
-  rec.ok('a single swap does NOT finish it — the staff has not been held yet',
+  rec.ok('a single swap does NOT finish it — melee has not been held yet',
     !!(oneSwap && oneSwap.id === 'cycle'), { oneSwap, slots: trk1 && trk1.slots });
 
-  await P.page.evaluate(() => { window._gameState.current.rpg.activeSlot = 'staff'; });
+  await P.page.evaluate(() => { window._gameState.current.rpg.activeSlot = 'melee'; });
   await P.page.waitForTimeout(700);
   const trk2 = await P.page.evaluate(() => window.__btCoach && window.__btCoach());
   rec.ok('...every slot has now been active (guard)',

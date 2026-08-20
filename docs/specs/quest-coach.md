@@ -50,10 +50,19 @@ joystick lessons stay silent on a desktop pointer, where the controls are
 | `special`  | `getActiveWeapon(rpg)` is non-null | right joystick | `S._hasUsedSwipe` |
 | `block`    | a shield is equipped | right joystick | shield held ≥2000 ms AND `_shieldAngle` has visited all 8 sectors |
 | `equipAll` | `tut_1` is turned in AND `weaponStash` is non-empty | the gear tile, else the Bag rail button | melee, ranged AND staff are all equipped |
-| `cycle`    | you own a second weapon | left joystick | every slot you OWN has been active |
+| `cycle`    | you own a second weapon | left joystick | every slot you OWN has been active **since the mark went up** |
 
 All five are gated on Mayor Bro's chain being underway, and the whole
 overlay retires when `tut_4` is turned in.
+
+**The cycle counter starts when the mark goes up, not at session start**
+(v2.3.1809). Equipping sets the slot — `ItemDetailPopup`'s
+`onEquipStashWeapon` does `R.activeSlot = slot` so the bro swings what you
+just put on — so putting on the sword, the bow and the staff marked all
+three slots active and the lesson finished itself *before its mark could
+appear*. The finish rule was never wrong; the counting started too early.
+It is now armed when the lesson is first selected, seeded with the slot the
+player is standing on, so what counts is cycling **after being asked**.
 
 **`cycle` replaced v2.3.1796's `swap`, and the difference is the point.**
 `swap` finished on a single change of slot, which proves the gesture

@@ -290,6 +290,10 @@ export function QuestCoach(props) {
   /* Object.create(null): keyed by slot name, which is player-influenced data
      (CLAUDE.md rule 4). */
   const seenSlots = React.useRef(Object.create(null));
+  /* v2.3.1809: false until the cycle mark is actually on screen.  See the
+     tracker — equipping a weapon changes activeSlot, so counting from session
+     start credited the player for the previous lesson's equips. */
+  const cycleArmed = React.useRef(false);
   const blockRef = React.useRef({ ms: 0, sectors: 0, last: 0 });
 
   React.useEffect(function () {
@@ -315,9 +319,24 @@ export function QuestCoach(props) {
            Counted against what they OWN rather than a flat three: a player
            who somehow reaches this with two weapons can still finish it, and
            nobody is asked to select a slot that is empty. */
+        /* ═══ v2.3.1809: ONLY COUNT SLOTS ONCE THE LESSON HAS ASKED ═══
+           Owner: "The tutorial after completing the quest guides you through
+           equipping the sword and staff but it needs to guide you to double
+           tap the left joystick to show you how to swap weapons."
+           The lesson existed (v2.3.1801) and was completing itself before it
+           could ever appear.  EQUIPPING sets the slot: ItemDetailPopup's
+           onEquipStashWeapon does `R.activeSlot = slot` so the bro swings what
+           you just put on.  So putting on the sword, the bow and the staff
+           marks melee, ranged and staff all "seen" — and the cycle lesson,
+           which finishes when every owned slot has been active, was already
+           satisfied the instant the previous lesson finished.
+           Nothing was wrong with the finish RULE; the counting started too
+           early.  It now starts when the mark goes up (cycleArmed, set in the
+           selection loop below), seeded with wherever the player is standing,
+           so what counts is cycling AFTER being asked to. */
         const slot = rpg.activeSlot || 'melee';
-        seenSlots.current[slot] = true;
-        if (!done.cycle) {
+        if (cycleArmed.current) seenSlots.current[slot] = true;
+        if (!done.cycle && cycleArmed.current) {
           const need = ['melee'];
           if (rpg.rangedWeapon) need.push('ranged');
           if (rpg.staffWeapon) need.push('staff');
@@ -370,6 +389,13 @@ export function QuestCoach(props) {
         const rect = measure(L.anchors);
         if (!rect) continue;          /* off screen / covered / desktop — skip, don't block */
         next = { id: L.id, label: L.label, body: rect.body, shape: L.shape, rect: rect };
+        /* Arm the cycle counter the first time its mark is chosen, seeded with
+           the slot the player is on so that one does not count as a swap. */
+        if (L.id === 'cycle' && !cycleArmed.current) {
+          seenSlots.current = Object.create(null);
+          if (rpg) seenSlots.current[rpg.activeSlot || 'melee'] = true;
+          cycleArmed.current = true;
+        }
         break;
       }
       const cur = viewRef.current;
@@ -423,7 +449,8 @@ export function QuestCoach(props) {
         for (let i = 0; i < BLOCK_SECTORS; i++) if (b.sectors & (1 << i)) bits++;
         return { done: Object.assign({}, doneRef.current), heldMs: Math.round(b.ms),
                  sectors: bits, needMs: BLOCK_HOLD_MS, needSectors: BLOCK_SECTORS,
-                 slots: Object.assign({}, seenSlots.current) };
+                 slots: Object.assign({}, seenSlots.current),
+                 cycleArmed: cycleArmed.current };
       };
     } catch (_e) {}
     raf = requestAnimationFrame(step);
