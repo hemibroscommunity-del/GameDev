@@ -5559,6 +5559,29 @@ export class EffectsRenderer {
        the shield out in front.  It cannot be in both places at once. */
     if (!S._blockPose) {
       this._placeStandInShield(S, this.bowShieldLo, this.bowShieldHi, sp.y, bodyH);
+    } else if (S._blockShieldBehind) {
+      /* v2.3.1805: facing away, the shield is held on the FAR side of the
+         body, so it has to be drawn by the clone that sits below this pose in
+         the node layer.  entityRenderer cannot do it — its shield lives in a
+         different container (see the note there) — so it publishes the
+         geometry and this draws it.  Positioned off the same feet/height the
+         stand-in was planted with, so it tracks the body by construction. */
+      const b = S._blockShieldBehind;
+      const scale = bodyH ? (bodyH / STANDIN_REF_BODY_H) : 1;
+      const shown = this.bowShieldLo;
+      if (shown && b.tex) {
+        if (shown.texture !== b.tex) shown.texture = b.tex;
+        const R = 16 * scale;                       /* same reach as the held placement */
+        shown.width = b.px * scale;
+        shown.height = b.px * scale;
+        shown.scale.x = Math.abs(shown.scale.x) * (b.mirror ? -1 : 1);
+        shown.rotation = 0;
+        shown.alpha = 0.95;
+        shown.tint = 0xffffff;
+        shown.x = S.player.x + Math.cos(b.ang) * R;
+        shown.y = sp.y - bodyH * 0.5 + Math.sin(b.ang) * R;
+        shown.visible = true;
+      }
     }
     sp.visible = true;
     const place = (spr, tex) => { if (!spr) return; if (!tex) { spr.visible = false; return; } spr.anchor.set(0.5, anchorY); spr.texture = tex; spr.scale.set(sgn, s); spr.x = sp.x; spr.y = sp.y; spr.visible = true; };

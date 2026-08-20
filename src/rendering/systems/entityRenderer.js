@@ -6107,10 +6107,12 @@ export class EntityRenderer {
        had to be taught one at a time.  Hiding its bow is one line.
 
        Three things fall out of this for free:
-         - SOUTH WORKS.  There was no south block arm because the bow's south
-           frames are foreshortened with both hands on the chest, so there was
-           nothing to CUT.  As a whole pose it reads as a shield raised toward
-           the camera, which is what it should look like.
+         - SOUTH DOES NOT WORK, and this comment claimed it did.  v2.3.1805
+           corrected it: the south body sheet has the bow erased out of it and
+           the bow crosses the FACE there, so hiding the bow exposes a slot cut
+           through the head.  See the exclusion above.  (The original claim was
+           made off a 140px screenshot in which the shield covered the torso;
+           the owner found the face.)
          - The composited arm still draws, exactly on top of the torso's own —
            it was cut from this art at this scale, so it aligns by construction
            — and it is what carries the shield's hand position.
@@ -6125,11 +6127,30 @@ export class EntityRenderer {
        animation-preloading law), so this should never fire; it costs one flag
        to make sure. */
     let _blockPose = false;
+    /* ═══ v2.3.1805: NOT SOUTH ═══
+       Owner: "For shield hold, part of the characters face is missing or keyed
+       out facing south."  Correct, and v2.3.1800's claim that the stand-in had
+       finally given south a block pose was WRONG — I checked it in a 140px
+       screenshot where the shield covered the torso and never looked at the
+       head.
+
+       The cause is in the art and is not tunable.  bow-<dir>-body.png is the
+       sheet with the WEAPON erased, and in the south pose the bow is held
+       vertically in front of the face: erasing it cuts a slot straight down
+       through the head, which the bow itself then covers.  Hide the bow — which
+       is exactly what a block does — and the slot is exposed.  Measured on the
+       sheet rather than guessed: rendering bow-south-body frame 1 over magenta
+       shows a clean vertical gap through the face in ALL THREE frames, so no
+       choice of BLOCK_POSE_FRAME escapes it.  east, northwest and north are
+       clean; only south is holed.
+       So south keeps the pre-v2.3.1800 behaviour (real body, planted stance,
+       shield in front), and the honest position is the one v2.3.1789 already
+       reached: a south block needs painted south art. */
     if (!_bowDir && S._shieldUp && S.rpg && S.rpg.shield && S._bowArtReady) {
       const _sa = (S._shieldAngle != null) ? S._shieldAngle
                 : (S._aimAngle != null) ? S._aimAngle : (S._facingAngle || 0);
       const _bf2 = SECTORS[((Math.round(_sa / (Math.PI / 4)) % 8) + 8) % 8];
-      if (_BOW_FACINGS.includes(_bf2)) { _bowDir = _bf2; _blockPose = true; }
+      if (_bf2 !== 'south' && _BOW_FACINGS.includes(_bf2)) { _bowDir = _bf2; _blockPose = true; }
     }
     S._blockPose = _blockPose;
     const _bowShot = !!_bowDir;
@@ -7584,6 +7605,36 @@ export class EntityRenderer {
           shieldSprite.tint = pulseTint;
           shieldSprite.alpha = 0.95 + blockPulse * 0.05;
           shieldSprite.visible = true;
+          /* ═══ v2.3.1805: A SHIELD HELD AWAY FROM THE CAMERA ═══
+             Owner: "The northeast/northwest and north facings put the shield
+             facing the camera but should show the character's back with the
+             shield in front of them facing those directions."
+             There has been a rule for this since v2.3.190 — shieldBehind for
+             sectors 5/6/7 — and under the stand-in it CANNOT WORK, because it
+             is a child-index rule and the two things it is ordering are no
+             longer siblings: the body is drawn by effectsRenderer into its
+             nodeLayer while this shield is a child of the player display.  No
+             index in one container can put a sprite behind a sprite in
+             another, so the shield sat on top and, facing north, covered the
+             character completely.
+             The stand-ins already solved exactly this for the SLUNG shield:
+             a lo/hi clone pair straddling the body sprite (v2.3.1784), picked
+             by facing.  So hand the held shield to the same pair — publish
+             what to draw and let effectsRenderer draw it on the correct side —
+             and hide this one, which is in the wrong container to help. */
+          if (_blockPose && (facingIdx === 5 || facingIdx === 6 || facingIdx === 7)) {
+            shieldSprite.visible = false;
+            /* The TEXTURE travels too, not just the angle: shieldFrame was
+               already chosen here by the same getShieldFrame the display path
+               uses, and re-deriving it on the other side is how the two
+               placements drift apart. */
+            S._blockShieldBehind = {
+              tex: shieldFrame.tex, mirror: !!shieldFrame.mirror, ang: shieldAng,
+              px: HELD_SHIELD_PX,
+            };
+          } else {
+            S._blockShieldBehind = null;
+          }
           /* v2.3.1798: the caret, pointing out along the guarded direction.
              Measured from the SHIELD's final position rather than from the
              body, so it stays correct on both placements — the arm's hand
@@ -7605,6 +7656,12 @@ export class EntityRenderer {
               standIn: !!S._blockPose,
               standInDir: S._blockPose ? S._bowDir : null,
               jogLegs: !!(S._blockPose && S._bowJogLegs),
+              /* v2.3.1805: which side of the body the shield is drawn on, and
+                 by WHICH renderer.  Facing away it has to be the stand-in's
+                 lower clone; the display's own sprite is in a container that
+                 cannot be ordered against the stand-in at all. */
+              shieldBehind: !!S._blockShieldBehind,
+              shieldSpriteVisible: !!(display._shieldSprite && display._shieldSprite.visible),
               shieldAng: shieldAng,
               stateShieldAng: S._shieldAngle,
               stateAimAng: S._aimAngle,
@@ -7715,6 +7772,10 @@ export class EntityRenderer {
             bodyIdx: display._spriteBody ? display.getChildIndex(display._spriteBody) : -1,
             armIdx: display._handArmSprite ? display.getChildIndex(display._handArmSprite) : -1,
             heldVisible: !!(display._shieldSprite && display._shieldSprite.visible),
+            /* v2.3.1805: facing away, the held shield is drawn by the stand-in's
+               lower clone instead of by this display's sprite — so "is it in
+               hand" is the OR of the two, not heldVisible alone. */
+            heldByStandIn: !!S._blockShieldBehind,
             mirror: !!(backFrame && backFrame.mirror),
             sizePx: _shLo.visible ? _shLo.height : _shHi.height,
             texH: (_shLo.visible ? _shLo : _shHi).texture ? (_shLo.visible ? _shLo : _shHi).texture.height : 0,

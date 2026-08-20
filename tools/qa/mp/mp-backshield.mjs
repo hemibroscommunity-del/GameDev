@@ -97,8 +97,15 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const held = await P.page.evaluate(() => window.__btBackShield || null);
   rec.ok('raising the shield hides both back clones',
     held && !held.on && !held.behind && !held.front, { probe: held });
+  /* v2.3.1805: "in hand" is now either renderer.  Facing NW/N/NE the shield is
+     held on the FAR side of the body, and under the block stand-in the only
+     sprite that can sit behind that body is the stand-in's own lower clone —
+     the display's shield lives in a different container and cannot be ordered
+     against it.  So the invariant is that it is drawn in hand by ONE of the
+     two, not that this particular sprite is the one doing it. */
   rec.ok('...and the in-hand shield is the one drawing instead',
-    !!(held && held.heldVisible), { heldVisible: held && held.heldVisible });
+    !!(held && (held.heldVisible || held.heldByStandIn)),
+    { heldVisible: held && held.heldVisible, heldByStandIn: held && held.heldByStandIn });
   await P.page.evaluate(() => { window._gameState.current._shieldUp = false; });
   await P.page.waitForTimeout(400);
 
