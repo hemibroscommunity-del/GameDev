@@ -2028,6 +2028,12 @@ export function setupWebSocket(ctx) {
          (REBUILD-PLAN Phase 4). Its former closure captures are passed
          explicitly; built once per effect run (the setters and
          _buildServerPile are stable for the effect's lifetime). */
+      /* QA hook (tools/qa/mp), house pattern.  A scenario cannot make the
+         worker telegraph on demand — brutes live in mist/hollows/sky/tidal and
+         only wind up when they have aggro at range — so mp-windup delivers the
+         real event through the real handler instead of poking the state a
+         handler would have written.  Assigned where the deps object is built
+         so it can never go stale against it. */
       var _gameEventDeps = {
         setRpgState: setRpgState,
         setChatLog: setChatLog,
@@ -2044,6 +2050,7 @@ export function setupWebSocket(ctx) {
         pixiRef: pixiRef,
         _buildServerPile: _buildServerPile
       };
+      try { window.__btDispatch = function (e) { processGameEvent(e.type, e.payload, S, _gameEventDeps); }; } catch (e) {}
 
 
       ws.onclose = function (event) {

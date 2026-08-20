@@ -4371,6 +4371,53 @@ export class EntityRenderer {
       };
       try { _spawnFx(); } catch (e) { /* an FX must never take the frame down */ }
 
+      /* ═══ v2.3.1811: A MONSTER WINDING UP LOADS UP ═══
+         Owner: "add monster attack animations or just having you add
+         something to them so that way attacks are predictable enough to
+         block."
+         The server already telegraphs (server/src/telegraph.js) and the
+         client already draws the ground marker — but on the FLOOR, at the aim
+         point, while the thing a player is watching in a fight is the enemy.
+         This puts the same information on the body: a throb that tightens as
+         the wind-up runs out, so "it is about to go" is legible without
+         looking away from the monster.
+         Scale only — no filter.  SPAWN_WHITE_FILTER above shows a filter is
+         allowed here, but it is one monster arriving versus potentially every
+         monster on screen winding up, and a per-monster filter is a
+         per-monster render target.
+         Written AFTER _spawnFx and restoring MONSTER_SIZE_MULT on the way
+         out, so the two can never fight over display.scale: spawn wins while
+         it is arriving, this wins after, and neither leaves it stranded. */
+      const _windupFx = () => {
+        const until = m._tgUntil || 0;
+        if (!until) return;
+        if (now >= until) {
+          m._tgUntil = 0; m._tgFrom = 0;
+          if (display.scale.x !== MONSTER_SIZE_MULT) display.scale.set(MONSTER_SIZE_MULT);
+          return;
+        }
+        const from = m._tgFrom || (until - 800);
+        const t = Math.max(0, Math.min(1, (now - from) / Math.max(1, until - from)));
+        /* Throb faster and wider as it winds up — the last beat before the
+           hit is the loudest, which is the one worth reading. */
+        const beat = 0.5 + 0.5 * Math.sin(now / (52 - 26 * t));
+        display.scale.set(MONSTER_SIZE_MULT * (1 + (0.05 + 0.09 * t) * beat));
+      };
+      try { _windupFx(); } catch (e) { /* an FX must never take the frame down */ }
+      /* QA probe (mp-windup): a throb cannot be read off one screenshot, so
+         the scenario reads the scale the FX actually wrote — and the resting
+         multiplier beside it, so "it grew" has a control. */
+      try {
+        if (!window.__btMonsterScale) {
+          window.__btMonsterScale = (mid) => {
+            const st = window.__btMonScales && window.__btMonScales[mid];
+            return st ? { scale: st, baseMult: MONSTER_SIZE_MULT } : null;
+          };
+        }
+        if (!window.__btMonScales) window.__btMonScales = Object.create(null);
+        window.__btMonScales[m.id] = display.scale.x;
+      } catch (e) {}
+
       const size = display._size;
 
       /* Variant render path -- any monster whose archetype maps to a

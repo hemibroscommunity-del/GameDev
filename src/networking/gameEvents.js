@@ -606,6 +606,26 @@ export function processGameEvent(type, payload, S, deps) {
                     color: _maColors[payload.ability] || '#fbbf24',
                   });
                 }
+                /* ═══ v2.3.1811: AND MARK THE MONSTER ITSELF ═══
+                   Owner: "add monster attack animations or just having you
+                   add something to them so that way attacks are predictable
+                   enough to block."
+                   The ground marker above says WHERE and is genuinely the
+                   readable half — but it is on the FLOOR, and the thing a
+                   player watches in a fight is the enemy.  Stamping the
+                   wind-up on the monster lets entityRenderer make the body
+                   itself load up, so the tell is where the eye already is.
+                   monsterId is already in this payload; no wire change. */
+                if (payload.monsterId && S.monsters) {
+                  for (var _tgi = 0; _tgi < S.monsters.length; _tgi++) {
+                    var _tgm = S.monsters[_tgi];
+                    if (_tgm && _tgm.id === payload.monsterId) {
+                      _tgm._tgFrom = Date.now();
+                      _tgm._tgUntil = Date.now() + (payload.ms || 800);
+                      break;
+                    }
+                  }
+                }
                 BT_AUDIO.beep(400, 0.08, 0.1, 'sine');
                 break;
               }
