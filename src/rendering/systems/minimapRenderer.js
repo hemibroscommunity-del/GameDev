@@ -306,6 +306,24 @@ export class MinimapRenderer {
     return tex;
   }
 
+  /** QA: dump every minted glyph as a PNG data URL, blown up so a person can
+   *  actually judge the SHAPE.  This file already notes that "a screenshot
+   *  cannot tell an anvil from a coin at 13px" — which is true of the map and
+   *  was equally true of the glyphs themselves, so there was no way to review
+   *  the drawings short of shipping them and asking the owner.  Costs nothing
+   *  until called; the icons are already minted textures. */
+  _dumpIcons() {
+    const out = {};
+    const keys = Object.keys(this._icons);
+    return Promise.all(keys.map((k) => {
+      const sp = new Sprite(this._icons[k]);
+      sp.width = 96; sp.height = 96;
+      return this.app.renderer.extract.base64({ target: sp })
+        .then((b64) => { out[k] = b64; sp.destroy(); })
+        .catch(() => { out[k] = null; });
+    })).then(() => out);
+  }
+
   _buildIcons() {
     this._icons = Object.create(null);
     const C = 16;   /* centre of the 32x32 authoring box */
@@ -313,33 +331,74 @@ export class MinimapRenderer {
     /* Every glyph below fills white and strokes near-black; see _mintIcon. */
     const KL = { width: 3, color: 0x0b161b, alpha: 1, join: 'round' };
 
-    /* Hostile: an upward spike.  A triangle is the one silhouette nobody
-       reads as scenery, and it points, which a circle cannot. */
+    /* ═══ v2.3.1810: A SKULL ═══
+       Owner: "Monsters should be skulls or something indicating danger."
+       The triangle was picked for silhouette alone and it says nothing — it
+       reads as a marker, not as a threat.  A skull is the one shape that
+       means danger without a legend.
+       The sockets and nose are filled near-black rather than left as holes,
+       and that is the tint rule doing work: markers are tinted, tinting
+       multiplies, so white takes the colour and near-black stays near-black
+       whatever the tint is.  Cut as transparent holes they would show the map
+       through the face and dissolve at 11px. */
     this._mintIcon('monster', (g) => {
-      g.poly([C, 4, 28, 28, 4, 28]).fill(0xffffff).stroke(KL);
+      g.circle(C, 13, 10).fill(0xffffff).stroke(KL);          /* cranium */
+      g.roundRect(11, 20, 10, 8, 2.5).fill(0xffffff).stroke(KL); /* jaw */
+      g.circle(12, 13, 3.4).fill(0x0b161b);                   /* sockets */
+      g.circle(20, 13, 3.4).fill(0x0b161b);
+      g.poly([C, 16, 18.4, 20, 13.6, 20]).fill(0x0b161b);     /* nose */
+      g.rect(13.5, 22.5, 1.6, 5).fill(0x0b161b);              /* teeth */
+      g.rect(17, 22.5, 1.6, 5).fill(0x0b161b);
     });
-    /* Another bro: head and shoulders. */
+    /* ═══ v2.3.1810: ANOTHER BRO IS AN ARROW IN A RING ═══
+       It was head-and-shoulders, which is the SAME silhouette as the plain
+       townsfolk glyph a few lines down — 20px wide against 18, identical at
+       the size this actually renders.  Two different things must not share a
+       shape (the rule this file already states for the coin and the portal).
+       An arrow inside a ring says "a player" by relating to your own chevron,
+       which is the true fact about them: the ring distinguishes, the arrow
+       classifies. */
     this._mintIcon('player', (g) => {
-      g.circle(C, 10, 5.5).fill(0xffffff).stroke(KL);
-      g.roundRect(6, 18, 20, 11, 5).fill(0xffffff).stroke(KL);
+      /* A rounded SQUARE, not a disc.  The disc version collided with the two
+         quest pins — all three were "filled round thing with a dark mark in
+         it", and mp-minishot measured them 0.16 apart against a 0.18 bar.
+         That is the test earning its keep: the collision was introduced by
+         the very change that fixed the previous one. */
+      g.roundRect(3.5, 3.5, 25, 25, 7).fill(0xffffff).stroke(KL);
+      g.poly([C, 7.5, 23, 23.5, C, 19.5, 9, 23.5]).fill(0x0b161b);
     });
     /* You: a chevron, rotated to the way you are facing. */
     this._mintIcon('self', (g) => {
       g.poly([C, 3, 28, 29, C, 22, 4, 29]).fill(0xffffff).stroke(KL);
     });
-    /* Portal: a standing arch — a doorway, not a dot. */
+    /* ═══ v2.3.1810: A DOOR YOU CAN SEE THROUGH ═══
+       Owner: "Entrances and exits should be a door or portal or something."
+       It WAS an arch, drawn as a single outline whose opening was cut out of
+       the polygon — so the map showed through the doorway and at 11px the
+       thin frame broke up into three unrelated strokes.
+       Drawn as two shapes instead: a solid white frame with a near-black
+       opening on top of it.  The opening now reads as a dark doorway at any
+       size (near-black survives the tint), and the frame stays one continuous
+       silhouette.  The step at the foot is what stops it reading as a
+       keyhole. */
     this._mintIcon('portal', (g) => {
-      g.poly([4, 30, 4, 16, C, 4, 28, 16, 28, 30, 21, 30, 21, 18, C, 12, 11, 18, 11, 30])
+      /* ROUND-TOPPED, and that is the whole point: the first cut peaked the
+         top and became the house glyph three rows down, which is the same
+         two-things-one-silhouette mistake this file keeps having to correct.
+         An arch is the shape a doorway has and a roof does not. */
+      g.moveTo(5, 29).lineTo(5, 14).arc(C, 14, 11, Math.PI, 0).lineTo(27, 29).closePath()
         .fill(0xffffff).stroke(KL);
+      g.moveTo(11, 29).lineTo(11, 15).arc(C, 15, 5, Math.PI, 0).lineTo(21, 29).closePath()
+        .fill(0x0b161b);
+      g.rect(2, 27, 28, 3.5).fill(0xffffff).stroke(KL);
     });
-    /* Anvil: the blacksmith, on the building AND on the man.  Horn left, flat
-       face, waist, splayed foot — the shape only reads if all four are there;
-       the first cut skipped the waist and came out a goblet. */
+    /* v2.3.1810: a HAMMER, not an anvil.  The anvil needed four separate
+       pieces to read (this comment used to admit the first cut "came out a
+       goblet"), and four pieces at 11px is mush.  A hammer is two rectangles
+       and everyone knows what it means. */
     this._mintIcon('forge', (g) => {
-      g.poly([6, 9, 27, 9, 27, 15, 6, 15]).fill(0xffffff).stroke(KL);
-      g.poly([7, 9, 1, 13, 7, 16]).fill(0xffffff).stroke(KL);
-      g.rect(13, 15, 7, 7).fill(0xffffff).stroke(KL);
-      g.poly([6, 28, 9, 22, 24, 22, 27, 28]).fill(0xffffff).stroke(KL);
+      g.roundRect(5, 6, 22, 9, 2).fill(0xffffff).stroke(KL);   /* head */
+      g.roundRect(13.5, 14, 5, 15, 2).fill(0xffffff).stroke(KL); /* haft */
     });
     /* Satchel: the general store, and the man who runs it.  A coin was the
        obvious choice and it is wrong — at this size a disc with a hole is the
@@ -376,9 +435,14 @@ export class MinimapRenderer {
     this._mintIcon('star', (g) => {
       g.star(C, C, 5, 13, 6).fill(0xffffff).stroke(KL);
     });
-    /* Resource node: a small rough lump, deliberately the quietest mark. */
+    /* Resource node: a CLUSTER, deliberately the quietest mark.  It was a
+       pentagon, which at this size is the house glyph again — see the portal
+       note above.  Three lumps piled together is unlike anything else on the
+       map and still reads as "stuff on the ground" rather than a landmark. */
     this._mintIcon('node', (g) => {
-      g.poly([C, 8, 24, 15, 21, 26, 11, 26, 8, 15]).fill(0xffffff).stroke(KL);
+      g.circle(11, 22, 6.5).fill(0xffffff).stroke(KL);
+      g.circle(21, 22, 6.5).fill(0xffffff).stroke(KL);
+      g.circle(C, 12, 6.5).fill(0xffffff).stroke(KL);
     });
     /* The two quest states, matching the in-world badge exactly: '❗' means
        he has work, '❓' means you can hand it in (entityRenderer sets
@@ -580,7 +644,19 @@ export class MinimapRenderer {
     const mons = S.monsters || [];
     for (let i = 0; i < mons.length; i++) {
       const m = mons[i];
-      if (!m || m.dead || (m.hp != null && m.hp <= 0)) continue;
+      /* ═══ v2.3.1810: alive === false IS HOW A MONSTER DIES ═══
+         Owner: "remove monster icons from minimap when they die."
+         This checked m.dead and m.hp and never checked m.alive — and
+         m.alive = false is what the kill paths actually set (monsterCombat
+         lines 202 / 849 / 1833, and wsClient on a server-side kill).  Neither
+         of the other two is guaranteed: `dead` is not set on those paths at
+         all, and hp is left wherever the killing blow put it.  So a corpse
+         kept its pin until the respawn recycled the slot.
+         The NPC loops twenty lines above got this right (`n.alive === false`,
+         `!n.alive`); this one was the odd one out.  All three conditions stay,
+         because they are cheap and the field that means "gone" has moved
+         before. */
+      if (!m || m.alive === false || m.dead || (m.hp != null && m.hp <= 0)) continue;
       this._mark(m.x, m.y, 'monster', C_MONSTER, ICON_PX, 0);
     }
 
@@ -619,6 +695,7 @@ export class MinimapRenderer {
     /* QA probe (tools/qa/mp) — the harness cannot read a WebGL canvas, so
        the numbers a scenario asserts on come from here. */
     try {
+      window.__btIconDump = () => this._dumpIcons();
       window.__btMinimap = {
         visible: true, zone: zoneId,
         panX: this.pan.x, panY: this.pan.y,

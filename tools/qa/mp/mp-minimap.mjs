@@ -184,8 +184,38 @@ export async function run({ browser, wsPort, webPort, rec }) {
   });
   await P.page.waitForTimeout(600);
   const withMob = await P.page.evaluate(() => window.__btMinimap || null);
-  rec.ok('a monster draws as the hostile spike, not another dot',
+  rec.ok('a monster draws as its own mark, not another dot',
     !!(withMob && withMob.icons && withMob.icons.monster > 0), { icons: withMob && withMob.icons });
+
+  /* ═══ v2.3.1810: AND IT GOES WHEN IT DIES ═══
+     Owner: "remove monster icons from minimap when they die."
+     The filter checked m.dead and m.hp and never checked m.alive — which is
+     the field the kill paths actually set (monsterCombat 202 / 849 / 1833,
+     wsClient on a server-side kill).  `dead` is not set on those paths at all
+     and hp is left wherever the killing blow put it, so a corpse kept its pin
+     until the respawn recycled the slot.
+     Killed the way the game kills, and asserted as the COUNT dropping rather
+     than the key vanishing: with two mobs up, one dying must take exactly one
+     pin with it — a test that only checked "no monster icons" would pass
+     against a map that had lost both. */
+  await P.page.evaluate(() => {
+    const S = window._gameState.current;
+    S.monsters = (S.monsters || []).concat([{ id: 'qa-mob2', x: 1560, y: 720, hp: 10, maxHp: 10 }]);
+  });
+  await P.page.waitForTimeout(500);
+  const twoMobs = await P.page.evaluate(() => window.__btMinimap || null);
+  rec.ok('two monsters draw two marks (guard)',
+    !!(twoMobs && twoMobs.icons && twoMobs.icons.monster === 2), { icons: twoMobs && twoMobs.icons });
+
+  await P.page.evaluate(() => {
+    const S = window._gameState.current;
+    const m = (S.monsters || []).find((x) => x && x.id === 'qa-mob');
+    if (m) m.alive = false;          /* exactly what monsterCombat does */
+  });
+  await P.page.waitForTimeout(500);
+  const oneDead = await P.page.evaluate(() => window.__btMinimap || null);
+  rec.ok('a dead monster loses its mark, and only its own',
+    !!(oneDead && oneDead.icons && oneDead.icons.monster === 1), { icons: oneDead && oneDead.icons });
 
   /* The player chevron points where the player faces.  SECTORS order is
      E,SE,S,SW,W,NW,N,NE and the glyph is authored pointing north. */
