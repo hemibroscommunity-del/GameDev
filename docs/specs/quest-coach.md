@@ -13,6 +13,13 @@ Owner, 2026-08-20:
 > I think mayor bro ought to require you to perform your special attack
 > too during the tutorial
 
+...and (v2.3.1801):
+
+> When player turns in quest and receives bow and staff there should be a
+> tutorial requiring you equip them all and double tap the left joystick
+> to swap through the weapons and just a little message to use what you
+> like best
+
 `src/ui/mobile/QuestCoach.jsx`, mounted in `BroTown.jsx` as a sibling of
 `.brotown-wrap`. Tested by `tools/qa/mp/mp-questcoach.mjs` (31
 assertions).
@@ -30,7 +37,7 @@ one lesson at a time, appearing when the questline has just handed you
 the thing the lesson is about. It never blocks (`pointerEvents:'none'`
 throughout) and never covers the control it points at.
 
-## The four lessons
+## The five lessons
 
 Ordered; one shown at a time; a lesson whose target is not on screen is
 SKIPPED rather than blocking the ones behind it (which is how the
@@ -39,13 +46,22 @@ joystick lessons stay silent on a desktop pointer, where the controls are
 
 | id | shown when | anchor | finished when |
 |----|-----------|--------|---------------|
-| `equip`   | anything sits in `weaponStash` / `shieldStash` | the gear tile (`[data-tut="coach-gear"]`), else the Bag rail button | a weapon AND a shield are equipped |
-| `special` | `getActiveWeapon(rpg)` is non-null | right joystick | `S._hasUsedSwipe` |
-| `block`   | a shield is equipped | right joystick | shield held ≥2000 ms AND `_shieldAngle` has visited all 8 sectors |
-| `swap`    | you own a second weapon (tut_1's turn-in bow) | left joystick | `rpg.activeSlot` changes |
+| `equip`    | anything sits in `weaponStash` / `shieldStash` | the gear tile (`[data-tut="coach-gear"]`), else the Bag rail button | a weapon AND a shield are equipped |
+| `special`  | `getActiveWeapon(rpg)` is non-null | right joystick | `S._hasUsedSwipe` |
+| `block`    | a shield is equipped | right joystick | shield held ≥2000 ms AND `_shieldAngle` has visited all 8 sectors |
+| `equipAll` | `tut_1` is turned in AND `weaponStash` is non-empty | the gear tile, else the Bag rail button | melee, ranged AND staff are all equipped |
+| `cycle`    | you own a second weapon | left joystick | every slot you OWN has been active |
 
-All four are gated on Mayor Bro's chain being underway, and the whole
+All five are gated on Mayor Bro's chain being underway, and the whole
 overlay retires when `tut_4` is turned in.
+
+**`cycle` replaced v2.3.1796's `swap`, and the difference is the point.**
+`swap` finished on a single change of slot, which proves the gesture
+exists. The owner asked for something else — that the player go round all
+three and pick one — so it is not finished until every slot they own has
+been active, and the copy says why they would bother ("Use whichever you
+like best"). Counted against what they OWN rather than a flat three, so
+nobody is asked to select an empty slot.
 
 **The order is chronology, and it matches the dialogue.** `equip`,
 `special` and `block` are all usable the moment tut_1 is accepted, and

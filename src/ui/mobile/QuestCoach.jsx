@@ -19,8 +19,9 @@ import { getActiveWeapon } from '@/data/gameSystems.js';
    ...and then (v2.3.1797): "I think mayor bro ought to require you to
    perform your special attack too during the tutorial."
 
-   FOUR lessons, in the order they become usable: gear up, special
-   attack, raise the shield, swap weapon.
+   FIVE lessons, in the order they become usable: gear up, special attack,
+   raise the shield, then — once the turn-in pays the bow and the staff —
+   three weapons, and cycling between them.
 
    WHY THIS IS NOT ControlsTutorial.jsx.  That one already exists and is
    a good thing: a five-step guided tour, opened on demand, that dims the
@@ -40,8 +41,8 @@ import { getActiveWeapon } from '@/data/gameSystems.js';
    already read from; threading a "and also tell the coach" callback
    through it would put the tutorial inside the load-bearing path of the
    control itself.  Every lesson here has a state fact that is true only
-   after the gesture worked — activeSlot changed, S._shieldUp went true,
-   S._hasUsedSwipe went true — so the coach polls, and a player who finds
+   after the gesture worked — every weapon slot has been active, S._shieldUp
+   went true, S._hasUsedSwipe went true — so the coach polls, and a player who finds
    the gesture some other way (the desktop keys, say) gets credit for it
    just the same.
 
@@ -182,16 +183,50 @@ const LESSONS = [
     },
   },
   {
-    id: 'swap',
+    /* ═══ v2.3.1801: THE TURN-IN HANDS YOU TWO MORE WEAPONS ═══
+       Owner: "When player turns in quest and receives bow and staff there
+       should be a tutorial requiring you equip them all and double tap the
+       left joystick to swap through the weapons and just a little message to
+       use what you like best."
+       Two lessons, because it is two things: put them ON, then learn the
+       gesture that moves between them.  This is the first half. */
+    id: 'equipAll',
+    shape: 'rect',
+    anchors: [
+      { sel: '[data-tut="coach-gear"]', body: 'Equip the bow and the staff too.' },
+      { sel: '.bt-navrail [aria-label="Bag"]', body: 'Open your bag — equip the bow and the staff.' },
+    ],
+    label: 'Three weapons',
+    /* Only after the turn-in that pays them.  Before that a leftover in the
+       stash is just a spare, and "equip them all" would be nonsense. */
+    live: function (rpg) {
+      const q = rpg._quests || {};
+      if (q.tut_1 !== 'turnedIn') return false;
+      return (rpg.weaponStash || []).length > 0;
+    },
+    done: function (rpg) {
+      return !!rpg.weapon && !!rpg.rangedWeapon && !!rpg.staffWeapon;
+    },
+  },
+  {
+    /* The second half: the gesture, and the point of it.
+       This REPLACES v2.3.1796's `swap`, which finished on a single change of
+       slot.  One swap teaches that the gesture exists; the owner is asking for
+       something else — that the player go round all three and pick.  So it is
+       not done until every slot has been active, and the copy says why you
+       would bother. */
+    id: 'cycle',
     shape: 'circle',
     anchors: [{ sel: '.bt-joystick-zone', reach: '[data-joyzone="L"]',
-                body: 'Double-tap the left joystick.' }],
-    label: 'Swap weapon',
-    /* Nothing to swap BETWEEN until the second weapon arrives, which is
-       tut_1's turn-in (the bow) — and that is exactly where Mayor Bro's
-       completion line already says "Double-tap the LEFT joystick to
-       switch weapons".  The mark lands on the same beat as the sentence. */
-    live: function (rpg) { return !!(rpg.rangedWeapon || rpg.staffWeapon) && !!rpg.weapon; },
+                body: 'Double-tap to cycle. Use whichever you like best.' }],
+    label: 'Swap weapons',
+    /* Nothing to cycle BETWEEN until the second weapon is in hand — and this
+       is exactly where Mayor Bro's completion line already says "Double-tap
+       the LEFT joystick to switch weapons".  The mark lands on the same beat
+       as the sentence. */
+    live: function (rpg) {
+      return !!rpg.weapon && !!(rpg.rangedWeapon || rpg.staffWeapon);
+    },
     done: null,     /* watched live — see the activeSlot tracker below */
   },
   {
@@ -251,7 +286,9 @@ export function QuestCoach(props) {
   const arcRef = React.useRef(null);
   /* Gesture trackers.  Refs, not state: they tick every frame and only
      their CROSSING of the finish line is worth a render. */
-  const slotRef = React.useRef(null);
+  /* Object.create(null): keyed by slot name, which is player-influenced data
+     (CLAUDE.md rule 4). */
+  const seenSlots = React.useRef(Object.create(null));
   const blockRef = React.useRef({ ms: 0, sectors: 0, last: 0 });
 
   React.useEffect(function () {
@@ -271,11 +308,21 @@ export function QuestCoach(props) {
          screen: credit is for DOING it, not for doing it while being
          asked to. ── */
       if (rpg) {
+        /* v2.3.1801: every slot the player has been in, not "has it changed".
+           The owner asked for a cycle THROUGH the weapons, so the lesson is
+           not finished until all of the ones they own have been active.
+           Counted against what they OWN rather than a flat three: a player
+           who somehow reaches this with two weapons can still finish it, and
+           nobody is asked to select a slot that is empty. */
         const slot = rpg.activeSlot || 'melee';
-        if (slotRef.current === null) slotRef.current = slot;
-        else if (slot !== slotRef.current) {
-          slotRef.current = slot;
-          if (!done.swap) { done.swap = true; saveDone(done); }
+        seenSlots.current[slot] = true;
+        if (!done.cycle) {
+          const need = ['melee'];
+          if (rpg.rangedWeapon) need.push('ranged');
+          if (rpg.staffWeapon) need.push('staff');
+          if (need.length > 1 && need.every((k) => seenSlots.current[k])) {
+            done.cycle = true; saveDone(done);
+          }
         }
       }
       /* The special sets a permanent flag the moment one actually FIRES —
@@ -365,7 +412,8 @@ export function QuestCoach(props) {
         let bits = 0;
         for (let i = 0; i < BLOCK_SECTORS; i++) if (b.sectors & (1 << i)) bits++;
         return { done: Object.assign({}, doneRef.current), heldMs: Math.round(b.ms),
-                 sectors: bits, needMs: BLOCK_HOLD_MS, needSectors: BLOCK_SECTORS };
+                 sectors: bits, needMs: BLOCK_HOLD_MS, needSectors: BLOCK_SECTORS,
+                 slots: Object.assign({}, seenSlots.current) };
       };
     } catch (_e) {}
     raf = requestAnimationFrame(step);

@@ -336,43 +336,89 @@ export async function run({ browser, wsPort, webPort, rec }) {
     !afterBlock || afterBlock.id !== 'block', { afterBlock, sweptTrk });
   await P.page.evaluate(() => { window._gameState.current._shieldUp = false; });
 
-  /* ── 5b. the swap lesson waits for a SECOND weapon ──
-     LAST of the four, and that is chronology rather than preference: tut_1's
-     TURN-IN is what hands you the bow, so until then there is nothing to swap
-     between and a "double-tap to swap" hint would teach a no-op.  The other
-     three are all usable the moment the quest is accepted. */
+  /* ── 5b. the turn-in pays two more weapons, and that is two more lessons ──
+     Owner: "When player turns in quest and receives bow and staff there should
+     be a tutorial requiring you equip them all and double tap the left joystick
+     to swap through the weapons and just a little message to use what you like
+     best."
+     LAST of the five, and that is chronology rather than preference: tut_1's
+     TURN-IN is what hands you the bow and the staff, so until then there is
+     nothing to equip and nothing to cycle between.  The other three are all
+     usable the moment the quest is accepted. */
   await P.page.evaluate(() => {
     const R = window._gameState.current.rpg;
-    R.rangedWeapon = { type: 'bow', name: 'Pine Bow', dmg: 4 };
+    R._quests = Object.assign({}, R._quests, { tut_1: 'turnedIn' });
+    R.weaponStash = [{ type: 'bow', name: 'Pine Bow', dmg: 4 },
+                     { type: 'staff', name: 'Pine Staff', dmg: 4 }];
+    R.rangedWeapon = null; R.staffWeapon = null;
     R.activeSlot = 'melee';
   });
-  const c3 = await waitCoach(P, 'swap');
-  rec.ok('once you own a bow as well, the weapon-swap lesson appears',
-    !!(c3 && c3.id === 'swap'), c3);
-  rec.ok('...and it names the gesture the left joystick actually uses',
-    !!(c3 && /double-tap/i.test(c3.text) && /left/i.test(c3.text)), c3 && c3.text);
-  await P.page.screenshot({ path: 'tools/qa/mp/out/coach-4-swap.png' });
+  const cE = await waitCoach(P, 'equipAll');
+  rec.ok('after the turn-in, the equip-them-all lesson appears',
+    !!(cE && cE.id === 'equipAll'), cE);
+  rec.ok('...and it names the bow and the staff',
+    !!(cE && /bow/i.test(cE.text) && /staff/i.test(cE.text)), cE && cE.text);
+  await P.page.screenshot({ path: 'tools/qa/mp/out/coach-4-equipall.png' });
+
+  /* IT IS NOT FINISHED BY EQUIPPING ONE OF THEM.  "equip them all" is the
+     ask, so a player who puts the bow on and stops is still mid-lesson. */
+  await P.page.evaluate(() => {
+    const R = window._gameState.current.rpg;
+    R.rangedWeapon = R.weaponStash.shift();
+  });
+  await P.page.waitForTimeout(700);
+  const halfWay = await coach(P);
+  rec.ok('equipping only the bow does NOT finish it — the staff is still in the bag',
+    !!(halfWay && halfWay.id === 'equipAll'), halfWay);
+
+  await P.page.evaluate(() => {
+    const R = window._gameState.current.rpg;
+    R.staffWeapon = R.weaponStash.shift();
+  });
+  await P.page.waitForTimeout(700);
+  const cC = await waitCoach(P, 'cycle');
+  rec.ok('with all three on, the lesson moves to cycling between them',
+    !!(cC && cC.id === 'cycle'), cC);
+  rec.ok('...it names the gesture the left joystick actually uses',
+    !!(cC && /double-tap/i.test(cC.text)), cC && cC.text);
+  /* "just a little message to use what you like best" — literally that. */
+  rec.ok('...and it says to use whichever you like best',
+    !!(cC && /like best/i.test(cC.text)), cC && cC.text);
+  await P.page.screenshot({ path: 'tools/qa/mp/out/coach-5-cycle.png' });
   const lJoy = await rectOf(P, '.bt-joystick-zone');
   rec.ok('the left joystick is on screen at this viewport (guard)', !!lJoy, lJoy);
-  if (lJoy && c3 && c3.ring) {
-    const dx = Math.abs((c3.ring.left + c3.ring.width / 2) - (lJoy.left + lJoy.width / 2));
-    const dy = Math.abs((c3.ring.top + c3.ring.height / 2) - (lJoy.top + lJoy.height / 2));
-    rec.ok('the mark rings the LEFT joystick', dx < 6 && dy < 6, { ring: c3.ring, lJoy, dx, dy });
+  if (lJoy && cC && cC.ring) {
+    const dx = Math.abs((cC.ring.left + cC.ring.width / 2) - (lJoy.left + lJoy.width / 2));
+    const dy = Math.abs((cC.ring.top + cC.ring.height / 2) - (lJoy.top + lJoy.height / 2));
+    rec.ok('the mark rings the LEFT joystick', dx < 6 && dy < 6, { ring: cC.ring, lJoy, dx, dy });
   }
 
-  /* Credit is for the SWAP HAPPENING, not for the gesture being performed the
-     one way the hint describes — a player who swaps with the desktop key or
-     the quick bar has learned the same fact and should not keep being told. */
+  /* ONE SWAP IS NOT A CYCLE.  This is the difference between v2.3.1796's
+     lesson and the owner's ask: going melee -> ranged proves the gesture
+     exists, but they asked the player to go round all three and pick. */
   await P.page.evaluate(() => { window._gameState.current.rpg.activeSlot = 'ranged'; });
   await P.page.waitForTimeout(700);
-  const afterSwap = await coach(P);
-  rec.ok('changing weapon retires the swap lesson',
-    !afterSwap || afterSwap.id !== 'swap', afterSwap);
+  const oneSwap = await coach(P);
+  const trk1 = await P.page.evaluate(() => window.__btCoach && window.__btCoach());
+  rec.ok('a single swap does NOT finish it — the staff has not been held yet',
+    !!(oneSwap && oneSwap.id === 'cycle'), { oneSwap, slots: trk1 && trk1.slots });
+
+  await P.page.evaluate(() => { window._gameState.current.rpg.activeSlot = 'staff'; });
+  await P.page.waitForTimeout(700);
+  const trk2 = await P.page.evaluate(() => window.__btCoach && window.__btCoach());
+  rec.ok('...every slot has now been active (guard)',
+    !!(trk2 && trk2.slots && trk2.slots.melee && trk2.slots.ranged && trk2.slots.staff), trk2);
+  const afterCycle = await coach(P);
+  /* Credit is for the CYCLE HAPPENING, not for the gesture being performed the
+     one way the hint describes — a player who swaps with the desktop key or
+     the quick bar has learned the same fact and should not keep being told. */
+  rec.ok('going round all three retires the lesson',
+    !afterCycle || afterCycle.id !== 'cycle', afterCycle);
 
   /* ── 6. it is over when the lessons are learned ── */
   await P.page.waitForTimeout(800);
   const end = await coach(P);
-  rec.ok('with all four learned, the coach is silent', !end, end);
+  rec.ok('with every lesson learned, the coach is silent', !end, end);
 
   /* ── 7. and it stays learned across a reload ──
      A tutorial that re-teaches itself every session is a nag.  The record is
@@ -384,7 +430,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
      completing — the coach going quiet proves nothing on its own, because a
      lesson that never becomes LIVE is also quiet. */
   rec.ok('every lesson is written down by name',
-    !!remembered && ['equip', 'special', 'block', 'swap']
+    !!remembered && ['equip', 'special', 'block', 'equipAll', 'cycle']
       .every((k) => new RegExp('"' + k + '":true').test(remembered)),
     remembered);
 
