@@ -2625,25 +2625,39 @@ BT_AUDIO.SFX_MANIFEST = {
    (Measured with tools/audio_analyze.mjs, which decodes through a real
    Chromium; there is no ffmpeg in this sandbox to normalise the files
    themselves, so the correction lives at the gain node.) */
-/* ═══ v2.3.1807: TWO, NOT THREE ═══
-   Owner: "there's a swing sound I don't like for the swinging noise (I think
-   it's the 3rd in the order I uploaded) because it sounds more like a hit.
-   You can remove that one from the swing alternating sounds."
-   Their guess was right, and it checks out by file size through the trim:
-   swing-c.mp3 came from the third upload (musicholderswordsound, 16800 bytes
-   in, 8160 out at 0.16s trimmed).  It is also the one that needed a 2.12x
-   boost to sit with the other two — a quiet, short, percussive sample is
-   exactly what "sounds like a hit rather than a swing" describes, so the
-   level table was pointing at the same thing the owner's ear did.
-   The KEY and the FILE both stay (see SFX above): the sound is not bad, it is
-   in the wrong job, and 'sword-swing-3' remains available if it ever wants to
-   be a hit.  Nothing fetches an unlisted key, so an idle entry costs nothing
-   until something plays it.  Re-adding it here is the whole restore. */
-BT_AUDIO.SWING_ROTATION = ['sword-swing-1', 'sword-swing-2'];
+/* ═══ WHICH UPLOAD IS WHICH ═══ (v2.3.1810b — settled, so nobody redoes it)
+     sword-swing-1  swing-a.mp3  freesound_gamestudioattackrelease*384909*
+                                 20898 bytes, shipped untrimmed
+     sword-swing-2  swing-b.mp3  u_xg7ssi08yrswordairswing24*37695*
+                                 60186 -> 11703 (1.08s of leading silence cut)
+     sword-swing-3  swing-c.mp3  musicholderswordsound*260274*
+                                 16800 -> 8160 (0.16s cut)
+     special-swipe               freesound_communityhitswingswordsmall*295566*
+   Recovered from the upload byte sizes through the trim, because the source
+   filenames do not survive into the repo and the owner refers to them by the
+   digits at the end.
+
+   ═══ v2.3.1807 -> v2.3.1810b: WHICH TWO ═══
+   v2.3.1807 dropped sword-swing-3 on "I think it's the 3rd in the order I
+   uploaded ... it sounds more like a hit".  The identification was right —
+   the 3rd upload IS swing-c — but the guess about which sound they disliked
+   was not, and the owner has now named the files outright: "Remove sound
+   ending in 4909 for sword swing and only use alternating between sounds
+   ending in 60274 and 37695."  So swing-1 comes out and swing-3 goes back in.
+   A filename beats an ordinal; that is the whole lesson, and it is why the
+   table above now exists.
+
+   The KEYS and the FILES all stay (see SFX above).  Nothing fetches an
+   unlisted key, so an idle entry costs nothing until something plays it, and
+   the rotation is the whole switch.  Note the gain table still normalises to
+   swing-1's loudness even though swing-1 no longer plays: that is deliberate,
+   because the vol:0.55 call sites were tuned against it, so the pair keep both
+   their match to each other AND their absolute level. */
+BT_AUDIO.SWING_ROTATION = ['sword-swing-3', 'sword-swing-2'];
 BT_AUDIO.SWING_GAIN = {
-  'sword-swing-1': 1.00,
+  'sword-swing-1': 1.00,   /* out of rotation since v2.3.1810b; kept as the reference the other two are normalised to */
   'sword-swing-2': 0.70,
-  'sword-swing-3': 2.12,   /* out of rotation; kept so a re-add needs no re-measure */
+  'sword-swing-3': 2.12,
 };
 BT_AUDIO._swingIdx = 0;
 /* `key` is whatever meleeSwingSfx() decided.  Only the generic sword key is
