@@ -217,37 +217,52 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('once the sword and shield are on, the gear lesson stops',
     !afterEquip || afterEquip.id !== 'equip', afterEquip);
 
-  /* ── 4. the swap lesson waits for a SECOND weapon ──
-     Which is the point of its ordering: tut_1's turn-in is what hands you the
-     bow, and until then there is nothing to swap between.  A "double-tap to
-     swap" hint shown to a player with one weapon teaches a no-op. */
-  await P.page.evaluate(() => {
-    const R = window._gameState.current.rpg;
-    R.rangedWeapon = { type: 'bow', name: 'Pine Bow', dmg: 4 };
-    R.activeSlot = 'melee';
-  });
-  const c3 = await waitCoach(P, 'swap');
-  rec.ok('once you own a bow as well, the weapon-swap lesson appears',
-    !!(c3 && c3.id === 'swap'), c3);
-  rec.ok('...and it names the gesture the left joystick actually uses',
-    !!(c3 && /double-tap/i.test(c3.text) && /left/i.test(c3.text)), c3 && c3.text);
-  await P.page.screenshot({ path: 'tools/qa/mp/out/coach-2-swap.png' });
-  const lJoy = await rectOf(P, '.bt-joystick-zone');
-  rec.ok('the left joystick is on screen at this viewport (guard)', !!lJoy, lJoy);
-  if (lJoy && c3 && c3.ring) {
-    const dx = Math.abs((c3.ring.left + c3.ring.width / 2) - (lJoy.left + lJoy.width / 2));
-    const dy = Math.abs((c3.ring.top + c3.ring.height / 2) - (lJoy.top + lJoy.height / 2));
-    rec.ok('the mark rings the LEFT joystick', dx < 6 && dy < 6, { ring: c3.ring, lJoy, dx, dy });
+  /* ── 4. the special attack ──
+     Owner: "I think mayor bro ought to require you to perform your special
+     attack too during the tutorial."
+     It comes straight after the gear lesson because the swipe needs nothing
+     but a weapon in hand — which is exactly what the player has just put
+     there — and because that is the order Mayor Bro says them in. */
+  const cS = await waitCoach(P, 'special');
+  rec.ok('with a weapon in hand, the special-attack lesson appears',
+    !!(cS && cS.id === 'special'), cS);
+  /* THE WORDING IS THE ASSERTION.  v2.3.1681 corrected the quest dialogue
+     from "flick it and let go" to "a quick swipe" after the owner reported it
+     as wrong — the handler measures release SPEED. This line has to say the
+     same thing in the same words, or the game teaches one gesture in the
+     dialogue and a different one on the joystick. */
+  rec.ok('...calling it a quick SWIPE, the same word the dialogue uses',
+    !!(cS && /quick swipe/i.test(cS.text)), cS && cS.text);
+  rec.ok('...and NOT the "flick and let go" wording v2.3.1681 removed',
+    !!(cS && !/flick/i.test(cS.text)), cS && cS.text);
+  await P.page.screenshot({ path: 'tools/qa/mp/out/coach-2-special.png' });
+  const rJoyS = await rectOf(P, '.bt-rjoy-base');
+  rec.ok('the right joystick is on screen to point at (guard)', !!rJoyS, rJoyS);
+  if (rJoyS && cS && cS.ring) {
+    const dx = Math.abs((cS.ring.left + cS.ring.width / 2) - (rJoyS.left + rJoyS.width / 2));
+    const dy = Math.abs((cS.ring.top + cS.ring.height / 2) - (rJoyS.top + rJoyS.height / 2));
+    rec.ok('the mark rings the RIGHT joystick', dx < 6 && dy < 6, { ring: cS.ring, rJoyS, dx, dy });
   }
 
-  /* Credit is for the SWAP HAPPENING, not for the gesture being performed the
-     one way the hint describes — a player who swaps with the desktop key or
-     the quick bar has learned the same fact and should not keep being told. */
-  await P.page.evaluate(() => { window._gameState.current.rpg.activeSlot = 'ranged'; });
-  await P.page.waitForTimeout(700);
-  const afterSwap = await coach(P);
-  rec.ok('changing weapon retires the swap lesson',
-    !afterSwap || afterSwap.id !== 'swap', afterSwap);
+  /* FIRE A REAL ONE.  Not by setting the flag — through the desktop special
+     key, which runs the same specialAttack() the swipe does, gates and all
+     (dead / mid-harvest / cooldown / no weapon / no mana).  So this asserts
+     two things at once: that the coach credits the gesture, and that it
+     credits it however the player got there. */
+  await P.page.keyboard.press('f');
+  await P.page.waitForTimeout(900);
+  const firedTrk = await P.page.evaluate(() => ({
+    hasUsedSwipe: !!window._gameState.current._hasUsedSwipe,
+    coach: window.__btCoach && window.__btCoach(),
+  }));
+  /* GUARD: if the special was REFUSED (no mana, empty active slot) the flag
+     never sets, the lesson correctly stays up, and the assertion below would
+     be testing nothing.  Say which it was. */
+  rec.ok('the special actually fired (guard — a refused swipe sets no flag)',
+    firedTrk.hasUsedSwipe, firedTrk);
+  const afterSpecial = await coach(P);
+  rec.ok('performing the special retires its lesson',
+    !afterSpecial || afterSpecial.id !== 'special', { afterSpecial, firedTrk });
 
   /* ── 5. the block lesson: the owner's whole gesture, not half of it ── */
   const c4 = await waitCoach(P, 'block');
@@ -321,17 +336,57 @@ export async function run({ browser, wsPort, webPort, rec }) {
     !afterBlock || afterBlock.id !== 'block', { afterBlock, sweptTrk });
   await P.page.evaluate(() => { window._gameState.current._shieldUp = false; });
 
+  /* ── 5b. the swap lesson waits for a SECOND weapon ──
+     LAST of the four, and that is chronology rather than preference: tut_1's
+     TURN-IN is what hands you the bow, so until then there is nothing to swap
+     between and a "double-tap to swap" hint would teach a no-op.  The other
+     three are all usable the moment the quest is accepted. */
+  await P.page.evaluate(() => {
+    const R = window._gameState.current.rpg;
+    R.rangedWeapon = { type: 'bow', name: 'Pine Bow', dmg: 4 };
+    R.activeSlot = 'melee';
+  });
+  const c3 = await waitCoach(P, 'swap');
+  rec.ok('once you own a bow as well, the weapon-swap lesson appears',
+    !!(c3 && c3.id === 'swap'), c3);
+  rec.ok('...and it names the gesture the left joystick actually uses',
+    !!(c3 && /double-tap/i.test(c3.text) && /left/i.test(c3.text)), c3 && c3.text);
+  await P.page.screenshot({ path: 'tools/qa/mp/out/coach-4-swap.png' });
+  const lJoy = await rectOf(P, '.bt-joystick-zone');
+  rec.ok('the left joystick is on screen at this viewport (guard)', !!lJoy, lJoy);
+  if (lJoy && c3 && c3.ring) {
+    const dx = Math.abs((c3.ring.left + c3.ring.width / 2) - (lJoy.left + lJoy.width / 2));
+    const dy = Math.abs((c3.ring.top + c3.ring.height / 2) - (lJoy.top + lJoy.height / 2));
+    rec.ok('the mark rings the LEFT joystick', dx < 6 && dy < 6, { ring: c3.ring, lJoy, dx, dy });
+  }
+
+  /* Credit is for the SWAP HAPPENING, not for the gesture being performed the
+     one way the hint describes — a player who swaps with the desktop key or
+     the quick bar has learned the same fact and should not keep being told. */
+  await P.page.evaluate(() => { window._gameState.current.rpg.activeSlot = 'ranged'; });
+  await P.page.waitForTimeout(700);
+  const afterSwap = await coach(P);
+  rec.ok('changing weapon retires the swap lesson',
+    !afterSwap || afterSwap.id !== 'swap', afterSwap);
+
   /* ── 6. it is over when the lessons are learned ── */
   await P.page.waitForTimeout(800);
   const end = await coach(P);
-  rec.ok('with all three learned, the coach is silent', !end, end);
+  rec.ok('with all four learned, the coach is silent', !end, end);
 
   /* ── 7. and it stays learned across a reload ──
      A tutorial that re-teaches itself every session is a nag.  The record is
      in localStorage, so this reloads the page and requires the marks to stay
      down even though the state that made them relevant is still true. */
   const remembered = await P.page.evaluate(() => localStorage.getItem('bt_coach_v1'));
-  rec.ok('the lessons are written down', !!remembered && /block/.test(remembered), remembered);
+  /* ALL FOUR by name.  Checking only one of them let the file stay green
+     through the v2.3.1797 reorder even if a lesson had silently stopped
+     completing — the coach going quiet proves nothing on its own, because a
+     lesson that never becomes LIVE is also quiet. */
+  rec.ok('every lesson is written down by name',
+    !!remembered && ['equip', 'special', 'block', 'swap']
+      .every((k) => new RegExp('"' + k + '":true').test(remembered)),
+    remembered);
 
   await P.page.screenshot({ path: 'tools/qa/mp/out/questcoach.png' }).catch(() => {});
   await P.ctx.close().catch(() => {});

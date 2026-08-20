@@ -1,4 +1,11 @@
 import React from 'react';
+/* v2.3.1797: the special lesson has to know whether the ACTIVE slot holds a
+   weapon, which is not "does the player own one" — specialAttack() refuses
+   with "No weapon equipped!" when the active slot is empty, and a coach mark
+   asking for a gesture the game will refuse is worse than no mark.  Imported
+   rather than reimplemented: it is four lines, but they encode the
+   ranged/staff fallback to `weapon` and a copy here would drift. */
+import { getActiveWeapon } from '@/data/gameSystems.js';
 
 /* ═══════════════════════════════════════════════════════════════════
    QUEST COACH — the controls are taught by the questline (v2.3.1796)
@@ -9,6 +16,11 @@ import React from 'react';
    double tap and hold (maybe text above the right joystick and hold
    for a certain number of seconds while you rotate in a 360 degree
    circle)."
+   ...and then (v2.3.1797): "I think mayor bro ought to require you to
+   perform your special attack too during the tutorial."
+
+   FOUR lessons, in the order they become usable: gear up, special
+   attack, raise the shield, swap weapon.
 
    WHY THIS IS NOT ControlsTutorial.jsx.  That one already exists and is
    a good thing: a five-step guided tour, opened on demand, that dims the
@@ -28,9 +40,10 @@ import React from 'react';
    already read from; threading a "and also tell the coach" callback
    through it would put the tutorial inside the load-bearing path of the
    control itself.  Every lesson here has a state fact that is true only
-   after the gesture worked — activeSlot changed, S._shieldUp went true —
-   so the coach polls, and a player who finds the gesture some other way
-   (the desktop keys, say) gets credit for it just the same.
+   after the gesture worked — activeSlot changed, S._shieldUp went true,
+   S._hasUsedSwipe went true — so the coach polls, and a player who finds
+   the gesture some other way (the desktop keys, say) gets credit for it
+   just the same.
 
    Lessons are ordered and shown ONE at a time; a lesson whose target is
    not on screen (the joysticks are display:none on desktop) is SKIPPED
@@ -182,6 +195,31 @@ const LESSONS = [
     done: null,     /* watched live — see the activeSlot tracker below */
   },
   {
+    id: 'special',
+    shape: 'circle',
+    anchors: [{ sel: '.bt-rjoy-base', reach: '[data-joyzone="R"]',
+                body: 'A quick swipe on the right joystick.' },
+              { sel: '.bt-rjoy-zone', reach: '[data-joyzone="R"]',
+                body: 'A quick swipe on the right joystick.' }],
+    label: 'Special attack',
+    /* ═══ v2.3.1797: THE SPECIAL IS PART OF THE TUTORIAL ═══
+       Owner: "I think mayor bro ought to require you to perform your special
+       attack too during the tutorial."
+       It belongs here for the same reason the block does: Mayor Bro's tut_1
+       dialogue already teaches it in words ("A quick swipe on the right
+       joystick triggers a special attack"), and the words were not enough.
+       Ordered BEFORE the block to match the order he says them in, which is
+       also the order they become usable — the swipe needs only a weapon in
+       hand, so it is available the moment the gear lesson is finished.
+       WORDING IS FIXED BY INCIDENT.  v2.3.1681 corrected the dialogue from
+       "flick it and let go" after the owner reported it as wrong: the handler
+       measures release SPEED, so "a quick swipe" is the gesture.  This line
+       says the same thing in the same words on purpose — one string, one
+       meaning, in the two places a player meets it. */
+    live: function (rpg) { return !!getActiveWeapon(rpg); },
+    done: null,     /* watched live — see the _hasUsedSwipe tracker below */
+  },
+  {
     id: 'block',
     shape: 'circle',
     anchors: [{ sel: '.bt-rjoy-base', reach: '[data-joyzone="R"]',
@@ -240,6 +278,11 @@ export function QuestCoach(props) {
           if (!done.swap) { done.swap = true; saveDone(done); }
         }
       }
+      /* The special sets a permanent flag the moment one actually FIRES —
+         specialAttack() writes it only after every refusal gate (dead,
+         mid-harvest, cooldown, no weapon, no mana) has passed, so it cannot
+         credit a swipe the game turned down. */
+      if (S && S._hasUsedSwipe && !done.special) { done.special = true; saveDone(done); }
       if (S) {
         const b = blockRef.current;
         if (S._shieldUp) {

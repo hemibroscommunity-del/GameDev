@@ -8,6 +8,11 @@ Owner, 2026-08-20:
 > (maybe text above the right joystick and hold for a certain number of
 > seconds while you rotate in a 360 degree circle)
 
+...and, the same day (v2.3.1797):
+
+> I think mayor bro ought to require you to perform your special attack
+> too during the tutorial
+
 `src/ui/mobile/QuestCoach.jsx`, mounted in `BroTown.jsx` as a sibling of
 `.brotown-wrap`. Tested by `tools/qa/mp/mp-questcoach.mjs` (31
 assertions).
@@ -25,7 +30,7 @@ one lesson at a time, appearing when the questline has just handed you
 the thing the lesson is about. It never blocks (`pointerEvents:'none'`
 throughout) and never covers the control it points at.
 
-## The three lessons
+## The four lessons
 
 Ordered; one shown at a time; a lesson whose target is not on screen is
 SKIPPED rather than blocking the ones behind it (which is how the
@@ -34,12 +39,34 @@ joystick lessons stay silent on a desktop pointer, where the controls are
 
 | id | shown when | anchor | finished when |
 |----|-----------|--------|---------------|
-| `equip` | anything sits in `weaponStash` / `shieldStash` | the gear tile (`[data-tut="coach-gear"]`), else the Bag rail button | a weapon AND a shield are equipped |
-| `swap`  | you own a second weapon (tut_1's turn-in bow) | left joystick | `rpg.activeSlot` changes |
-| `block` | a shield is equipped | right joystick | shield held ≥2000 ms AND `_shieldAngle` has visited all 8 sectors |
+| `equip`   | anything sits in `weaponStash` / `shieldStash` | the gear tile (`[data-tut="coach-gear"]`), else the Bag rail button | a weapon AND a shield are equipped |
+| `special` | `getActiveWeapon(rpg)` is non-null | right joystick | `S._hasUsedSwipe` |
+| `block`   | a shield is equipped | right joystick | shield held ≥2000 ms AND `_shieldAngle` has visited all 8 sectors |
+| `swap`    | you own a second weapon (tut_1's turn-in bow) | left joystick | `rpg.activeSlot` changes |
 
-All three are gated on Mayor Bro's chain being underway, and the whole
+All four are gated on Mayor Bro's chain being underway, and the whole
 overlay retires when `tut_4` is turned in.
+
+**The order is chronology, and it matches the dialogue.** `equip`,
+`special` and `block` are all usable the moment tut_1 is accepted, and
+tut_1's start line names them in that order ("hold to aim and swing", "a
+quick swipe … triggers a special attack", "double-tap and HOLD to raise
+the shield"). `swap` is last because the bow it swaps to only arrives at
+tut_1's **turn-in** — a "double-tap to swap" hint shown to a player with
+one weapon teaches a no-op.
+
+**`special` gates on the ACTIVE SLOT, not on ownership.**
+`specialAttack()` refuses with "No weapon equipped!" when the active slot
+is empty, so `live` calls `getActiveWeapon` — a mark asking for a gesture
+the game will refuse is worse than no mark. Its completion flag is set by
+`specialAttack()` itself, after every refusal gate (dead, mid-harvest,
+cooldown, no weapon, no mana), so a refused swipe earns no credit.
+
+**The special's wording is fixed by incident.** v2.3.1681 corrected the
+quest dialogue from "flick it and let go" to "a quick swipe" after the
+owner reported it as wrong — the handler measures release *speed*. The
+coach card says the same thing in the same words, and `mp-questcoach`
+asserts both that "quick swipe" is present and that "flick" is not.
 
 ## Two decisions worth keeping
 
