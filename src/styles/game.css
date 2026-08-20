@@ -1860,3 +1860,51 @@ body:has(.bt-inspect) .bt-kb-chip{display:none}
 @media (prefers-reduced-motion: reduce) {
   .bt-xp-payout { animation: none; }
 }
+
+/* ═══ v2.3.1808: THE QUEST BANNER ANIMATES ITSELF ═══
+   Owner: "quest accepted and quest completed messages are too choppy.  Like
+   you can see each frame move."
+
+   They were describing the mechanism exactly.  v2.3.1745 computed the
+   banner's transform and opacity from `Date.now() - questMsg.ts` INSIDE the
+   React render, which only advances the animation when something else happens
+   to re-render the tree — so the motion stepped at whatever rate the game's
+   state changes produced, not at the display's refresh rate.  Every visible
+   step was one React render.
+
+   Handing both properties to CSS puts them on the compositor, which runs them
+   at the display rate whatever React is doing, and drops a per-frame style
+   write on an element sitting over the WebGL canvas.  transform and opacity
+   only — no width/top/filter — so nothing here can trigger layout or paint.
+
+   Two animations rather than one: the rise-and-settle is a 300ms motion with
+   its own easing, and the fade-out has to start QUEST_MSG_MS-500 later.  The
+   delay is stamped as --qm-out from BroTown.jsx so the timing has ONE source
+   (QUEST_MSG_MS) instead of a constant duplicated into a stylesheet that
+   would silently drift from it. */
+@keyframes bt-quest-rise {
+  from { transform: translate(-50%,-50%) translateY(18px) scale(.86); }
+  to   { transform: translate(-50%,-50%) translateY(0)    scale(1.04); }
+}
+@keyframes bt-quest-in  { from { opacity: 0 } to { opacity: 1 } }
+@keyframes bt-quest-out { from { opacity: 1 } to { opacity: 0 } }
+.bt-quest-plate{
+  animation:
+    bt-quest-rise 300ms cubic-bezier(.16,1,.3,1) both,
+    bt-quest-in   260ms linear both,
+    bt-quest-out  500ms linear var(--qm-out, 1700ms) both;
+}
+@media (prefers-reduced-motion: reduce){
+  .bt-quest-plate{ animation: bt-quest-in 260ms linear both,
+                              bt-quest-out 500ms linear var(--qm-out, 1700ms) both; }
+}
+
+/* v2.3.1808: the coach mark's pulse, moved off the main thread.  QuestCoach
+   used to write this opacity from its own rAF on every frame — on a fixed
+   overlay above the WebGL canvas, which is the composite path CLAUDE.md
+   records as the iPhone sore spot.  As a keyframe the compositor owns it and
+   the JS loop writes no style at all.  opacity only: nothing here can trigger
+   layout or paint, and there is no filter (iOS static). */
+@keyframes bt-coach-pulse { 0%,100% { opacity: 1 } 50% { opacity: .45 } }
+.bt-coach-ring{ animation: bt-coach-pulse 600ms ease-in-out infinite }
+@media (prefers-reduced-motion: reduce){ .bt-coach-ring{ animation: none; opacity: 1 } }

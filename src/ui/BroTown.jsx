@@ -8448,11 +8448,18 @@ export var BroTown = function BroTown(_ref0) {
       justifyContent: 'center'
     }
   }, /*#__PURE__*/React.createElement("div", {
+    /* v2.3.1808: the rise and the fade are CSS now (.bt-quest-plate in
+       game.css).  They used to be computed from Date.now() right here, which
+       meant the animation only advanced when React re-rendered — the owner saw
+       it step.  The key is questMsg.ts so a queued second banner restarts the
+       animation instead of inheriting the first one's finished state. */
+    className: "bt-quest-plate",
+    key: questMsg.ts,
     style: {
       position: 'absolute',
       left: '50%',
       top: '26%',
-      transform: "translate(-50%,-50%) translateY(".concat(Math.max(0, 18 - (Date.now() - questMsg.ts) / 1000 * 60), "px) scale(").concat(Math.min(1.06, 0.86 + (Date.now() - questMsg.ts) / 1200), ")"),
+      '--qm-out': (QUEST_MSG_MS - 500) + 'ms',
       textAlign: 'center',
       /* v2.3.1745b: a PLATE, not bare text.  The first cut floated the words
          straight onto the dialogue and they landed across the giver's
@@ -8466,10 +8473,8 @@ export var BroTown = function BroTown(_ref0) {
       background: 'rgba(13,21,26,.90)',
       border: '1px solid ' + (questMsg.kind === 'completed'
         ? 'rgba(97,176,107,.55)' : 'rgba(216,169,77,.55)'),
-      boxShadow: '0 12px 30px rgba(3,8,10,.45)',
-      /* in over 260ms, hold, then out over the last 500ms */
-      opacity: Math.min(1, (Date.now() - questMsg.ts) / 260)
-        * Math.max(0, Math.min(1, (QUEST_MSG_MS - (Date.now() - questMsg.ts)) / 500))
+      boxShadow: '0 12px 30px rgba(3,8,10,.45)'
+      /* opacity + transform: see .bt-quest-plate */
     }
   }, /*#__PURE__*/React.createElement("div", {
     style: {

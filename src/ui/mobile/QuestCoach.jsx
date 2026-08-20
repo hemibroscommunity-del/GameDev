@@ -357,7 +357,7 @@ export function QuestCoach(props) {
       }
 
       /* ── pick and place the mark, ~12x a second ── */
-      if ((tick++ % 5) !== 0) { paint(now); return; }
+      if ((tick++ % 5) !== 0) return;
       if (!rpg || !inTutorial(rpg)) {
         if (viewRef.current) { viewRef.current = null; setView(null); }
         return;
@@ -380,15 +380,24 @@ export function QuestCoach(props) {
         && Math.abs(next.rect.width - cur.rect.width) < 2
         && Math.abs(next.rect.height - cur.rect.height) < 2);
       if (!same) { viewRef.current = next; setView(next); }
-      paint(now);
+      paint();
     };
-    /* The flash, written straight to the node.  Re-rendering React 60
-       times a second to animate an opacity is the kind of thing that
-       shows up as jank on the primary platform, and this overlay is on
-       screen while the player is fighting. */
-    const paint = function (now) {
-      const el = ringRef.current;
-      if (el) el.style.opacity = String(0.45 + 0.55 * (0.5 + 0.5 * Math.sin(now / 300)));
+    /* ═══ v2.3.1808: THE FLASH IS CSS, AND THIS RUNS 12x A SECOND ═══
+       It was right that re-rendering React 60 times a second to animate an
+       opacity would jank — and then this did the same damage a different way:
+       it wrote el.style.opacity EVERY frame, on a fixed overlay sitting above
+       the WebGL canvas, which is precisely the composite path CLAUDE.md
+       already records as the sore spot on iPhone (the charge-pie drop-shadow
+       incident).  A style write per frame on that layer forces a composite per
+       frame whether or not the mark changed.
+       The pulse is a CSS keyframe now (.bt-coach-ring in game.css), so the
+       compositor owns it and this loop touches no style at all in the common
+       case.  What is left runs on the same 1-in-5 tick as the measurement:
+       only the block lesson's progress bar, and only while it is on screen.
+       (The gesture watchers above still run every frame — they read plain
+       object fields, which is free, and the shield sweep needs the
+       resolution.) */
+    const paint = function () {
       const arc = arcRef.current;
       if (arc) {
         const b = blockRef.current;
@@ -440,6 +449,7 @@ export function QuestCoach(props) {
     React.createElement('div', {
       ref: ringRef,
       'data-coach-ring': view.id,
+      className: 'bt-coach-ring',
       style: {
         position: 'absolute',
         left: r.left - pad, top: r.top - pad,
