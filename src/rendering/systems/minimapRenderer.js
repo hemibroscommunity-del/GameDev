@@ -84,7 +84,11 @@ const SCALE = MINIMAP_PX / WINDOW_WORLD;
 /* Marker radius in CSS px, and colours.  Lantern Slate (docs/LANTERN-SLATE-SPEC.md):
    brass is the one accent, hp-red for hostiles, xp-green for other bros. */
 const DOT_R = 3;
-const C_FRAME_BG   = 0x111e23;   /* COL.well  — recessed tray */
+const C_FRAME_BG   = 0x111e23;   /* COL.well  — recessed tray, and the void outside the zone */
+/* v2.3.1792: the flat ground.  A step up from the tray so the zone's EDGE
+   still reads, and dark/desaturated so every marker colour — brass, red,
+   green, blue, white — sits clear of it. */
+const C_LAND       = 0x22333a;
 const C_BORDER     = 0xd8aa58;   /* COL.accent — lantern brass */
 const C_PLAYER     = 0xf4f0e7;   /* COL.text */
 const C_MONSTER    = 0xe35d5b;   /* COL.hp */
@@ -159,8 +163,28 @@ export class MinimapRenderer {
     this.pan = new Container();
     this.clip.addChild(this.pan);
 
-    this.mapSprite = new Sprite(Texture.EMPTY);
-    this.pan.addChild(this.mapSprite);
+    /* ═══ v2.3.1792: the ground is a FLAT COLOUR, not the painted map ═══
+       Owner: "Can the minimap of the map be stripped to only use a plain color
+       so it's simpler as an easier contrast against the map".
+
+       v2.3.1781 drew the zone's own painted image here, and the argument for
+       it was that it cannot drift from the art because it IS the art.  That
+       argument was about accuracy, and accuracy turned out to be the wrong
+       thing to optimise at this size: town's cobble is bright warm sand, and
+       against it a 3px brass portal or a gold quest pin is nearly invisible.
+       A marker layer is only worth the pixels if you can read it at a glance.
+
+       So the ground is one flat slab now, sized and panned exactly as the
+       image was — the zone's extent, its edges, and the camera-style clamp all
+       behave identically, so what you lose is texture and nothing else.  It
+       also means the box no longer waits on art: a flat rect is always ready.
+
+       (The dashboard's Map panel still draws the real image.  It is a much
+       bigger box, opened deliberately, where terrain reads fine and is the
+       whole point of looking.) */
+    this.land = new Graphics();
+    this.pan.addChild(this.land);
+    this._landW = -1; this._landH = -1;
     this.markers = new Container();
     this.pan.addChild(this.markers);
 
@@ -466,16 +490,28 @@ export class MinimapRenderer {
        half-swapped zone would draw the new player position on the old map. */
     if (!P || !zone || S._zoneLoading) { this.root.visible = false; return; }
 
-    const url = IMAGE_ZONE_MAPS[zoneId];
-    const tex = url ? Assets.cache.get(url) : null;
-    if (!tex) { this.root.visible = false; return; }   /* lookup only — never a load */
-
-    if (this.mapSprite.texture !== tex) this.mapSprite.texture = tex;
-
     const zoneW = zone.w * TILE;
     const zoneH = zone.h * TILE;
-    this.mapSprite.width = zoneW * SCALE;
-    this.mapSprite.height = zoneH * SCALE;
+
+    /* Redraw the slab only when the zone's extent actually changes — a
+       Graphics rebuild every frame would be geometry churn for a rectangle
+       that is constant for as long as you are standing in the zone. */
+    const landW = zoneW * SCALE, landH = zoneH * SCALE;
+    if (landW !== this._landW || landH !== this._landH) {
+      this.land.clear();
+      this.land.rect(0, 0, landW, landH).fill(C_LAND);
+      this._landW = landW; this._landH = landH;
+    }
+
+    /* v2.3.1792: NOT used to draw — reported to mp-minimap so it can keep
+       asserting that the zone texture is <img>-backed.  That property belongs
+       to the dashboard's Map panel, which draws the renderer's own
+       HTMLImageElement straight to a 2D canvas and would silently blank if a
+       pixi upgrade ever went back to ImageBitmap (v2.3.778).  The minimap is
+       the only place with a probe the harness can reach, so the check lives
+       on its probe rather than nowhere. */
+    const url = IMAGE_ZONE_MAPS[zoneId];
+    const tex = url ? Assets.cache.get(url) : null;
 
     /* Pan so the player sits at the centre of the box, then clamp to the
        zone the way the world camera does — the map stops at its edge and

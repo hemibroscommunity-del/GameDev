@@ -64,16 +64,57 @@ function ItemChip(props) {
    action agree. This is the mechanism, not a courtesy — with no choice
    there is no reward — so the Turn In button below stays inert until one of
    these is pressed, rather than firing a turn-in that cannot pay. */
+/* ═══ v2.3.1793: THE SKILL CHOICE IS PART OF THE PRIZE, NOT A FORM ═══
+ * Owner: "For the choose a skill to train turning in a quest should feel more
+ * obviously like a reward turning it in in the UI quest menu."
+ *
+ * The chooser read as an administrative gate standing between the player and
+ * their reward: an 11px muted uppercase form label ("Train 250 XP into") over
+ * three outline buttons.  Everything about that says SETTING.  But this is the
+ * payout — the XP is already earned, and all that is left is deciding where it
+ * lands.  Same reasoning v2.3.1764 applied to the button when the owner said
+ * turning in "needs to be more obvious that you're redeeming a reward".
+ *
+ * So the amount is stated as a prize: large, and in the XP semantic green the
+ * spec reserves for it (#61B06B), with the instruction demoted beside it.  The
+ * whole group sits on a `raised` card, which is the spec's actionable surface —
+ * it lifts out of the footer instead of lying flat in it.
+ *
+ * NO BRASS HERE, deliberately.  The spec locks brass to focus/selection/premium
+ * and there is already exactly one brass thing in this footer: the Redeem
+ * button, and the selected skill tile.  A brass edge on the card as well would
+ * put three competing gold elements in a 120px strip and cost the button its
+ * primacy.  Green carries "reward"; brass stays "the thing to press".
+ *
+ * SAME HEIGHT, near enough.  v2.3.1685 recorded that this card already
+ * overflowed its box before the picker existed and that the picker added ~74px
+ * more, so a taller reward banner is not free here.  The payout and the
+ * instruction share ONE row rather than stacking, and the group's bottom
+ * margin comes down to pay for the card padding — net ~+8px. */
 function XpChooser(props) {
   var xp = props.xp, xpCat = props.xpCat, setXpCat = props.setXpCat;
   return React.createElement("div", {
-    style: { marginTop: 2, marginBottom: 10 },
+    style: {
+      marginTop: 2, marginBottom: 8,
+      background: '#2B3940',            /* raised — actionable surface */
+      borderRadius: 10,
+      padding: '8px 9px 9px',
+      boxShadow: 'inset 0 1px 0 rgba(255,255,255,.08), 0 6px 14px rgba(5,8,10,.18)',
+    },
   }, /*#__PURE__*/React.createElement("div", {
     style: {
-      fontSize: 11, fontWeight: 600, letterSpacing: '.06em',
-      textTransform: 'uppercase', color: 'rgba(238,242,235,.55)', marginBottom: 5,
+      display: 'flex', alignItems: 'baseline', gap: 7,
+      marginBottom: 6, minWidth: 0,
     },
-  }, 'Train ' + xp + ' XP into'), /*#__PURE__*/React.createElement("div", {
+  }, /*#__PURE__*/React.createElement("span", {
+    style: { fontSize: 17, fontWeight: 700, color: '#61B06B', flex: 'none', lineHeight: 1 },
+  }, '+' + xp + ' XP'), /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 11, fontWeight: 600, letterSpacing: '.06em',
+      textTransform: 'uppercase', color: 'rgba(238,242,235,.55)',
+      minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+    },
+  }, 'choose where to train it')), /*#__PURE__*/React.createElement("div", {
     style: { display: 'flex', gap: 5 },
   }, PROG3_SKILL_META.map(function (sk) {
     var on = xpCat === sk.key;
