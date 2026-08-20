@@ -60,7 +60,7 @@ import { getFacialHairColor, getColoredFacialHairTextures } from '../traits/faci
 import { getShirt } from '../traits/shirtCatalog.js';
 import { getShirtColor, shirtFill } from '../traits/shirtColorCatalog.js';
 import { getGearFrame, getGearFramePhased, getLoadedGearSources } from '../gearSheets.js';
-import { BLOCK_ARM_FACING, BLOCK_ARM_CUT, blockArmTexture } from '../blockArm.js'; /* v2.3.1785 */
+import { BLOCK_ARM_FACING, BLOCK_ARM_CUT, blockArmTexture, blockArmSleeveTexture } from '../blockArm.js'; /* v2.3.1785, sleeve v2.3.1789 */
 import { gearTint, gearArt, gearMaterial } from '../gearVariants.js'; /* v2.3.1757: material recolor */
 import { materialTint, weaponTint } from '../traits/materialTints.js'; /* v2.3.1757: weapons share the metals table */
 import { combatGearUrls } from '../combatGear.js';
@@ -3267,14 +3267,31 @@ const BLOCK_ARM_SHOULDER = {
   southwest: [-6, -12],
 };
 
+/* Hide the arm AND record it.  Both must happen together: the probe was
+   written only inside the placement at first, so lowering the shield left the
+   previous frame's reading in place and mp-blockarm read a shield-down bro as
+   still holding one. */
+function _hideBlockArm(display, why) {
+  if (display._blockArmGroup) display._blockArmGroup.visible = false;
+  if (display._blockArmSprite) display._blockArmSprite.visible = false;
+  if (display._blockArmSleeve) display._blockArmSleeve.visible = false;
+  try { window.__btBlockArm = Object.assign({ on: false }, why || {}); } catch (e) {}
+}
+
 function _placeBlockArm(display, facing, bodyH, bobY) {
   const spr = display._blockArmSprite;
+  const sleeve = display._blockArmSleeve;
+  const group = display._blockArmGroup;
+  if (sleeve) sleeve.visible = false;
   if (!spr) return null;
   const map = BLOCK_ARM_FACING[facing];
   const anchor = BLOCK_ARM_SHOULDER[facing];
   const tex = map && blockArmTexture(map[0]);
   const cut = map && BLOCK_ARM_CUT[map[0]];
-  if (!map || !anchor || !tex || !cut) { spr.visible = false; return null; }
+  if (!map || !anchor || !tex || !cut) {
+    _hideBlockArm(display, { facing, hasSheet: !!map, hasArt: !!tex });
+    return null;
+  }
 
   const mirror = map[1];
   /* 188 is the bow sheet's crown-to-foot figure height, the same constant the
@@ -3291,11 +3308,68 @@ function _placeBlockArm(display, facing, bodyH, bobY) {
   spr.tint = 0xffffff;
   spr.alpha = 1;
   spr.visible = true;
+  if (group) group.visible = true;
+
+  /* v2.3.1789: the sleeve rides the arm — same rect, same transform, drawn
+     straight over it, so a copper plate reaches out with the arm instead of
+     stopping at the shoulder.  Tinted by the piece's material for the same
+     reason every other gear draw site is (v2.3.1757): a recoloured set shares
+     its donor's texture and the colour is applied here. */
+  if (sleeve) {
+    const worn = getEquip('chest');
+    const sleeveTex = blockArmSleeveTexture(map[0], worn, getGearFrame);
+    if (sleeveTex) {
+      sleeve.texture = sleeveTex;
+      sleeve.scale.set(spr.scale.x, spr.scale.y);
+      sleeve.x = spr.x;
+      sleeve.y = spr.y;
+      sleeve.tint = gearTint(worn);
+      sleeve.alpha = 1;
+      sleeve.visible = true;
+    }
+  }
+
+  /* Z-ORDER: the arm group goes DIRECTLY BENEATH the shield, so the boss covers
+     the hand rather than the hand being painted across the shield face.  It has
+     to happen per frame, because the in-hand shield's own z-rule slides
+     _shieldSprite up and down the child list by facing — a fixed build-order
+     position for the arm is right on some facings and wrong on the rest.
+     (Caught by mp-blockarm: the arm sat at index 25 with the shield at 8.)
+
+     setChildIndex removes then re-inserts, so the target depends on which side
+     the group starts from: from above, the shield does not move and the group
+     goes to shIdx; from below, the shield slides down one during the removal
+     and the group goes to shIdx-1.  The "already there" check keeps it stable
+     rather than ratcheting a slot per frame. */
+  const shieldSpr = display._shieldSprite;
+  if (group && shieldSpr) {
+    const shIdx = display.getChildIndex(shieldSpr);
+    const gi = display.getChildIndex(group);
+    if (gi !== shIdx - 1) display.setChildIndex(group, gi < shIdx ? shIdx - 1 : shIdx);
+  }
 
   /* Where the hand ended up, for the shield to sit in. */
   const handDX = (cut.hand[0] - cut.shoulder[0]) * sx;
   const handDY = (cut.hand[1] - cut.shoulder[1]) * sc;
-  return { x: anchor[0] + handDX, y: anchor[1] + (bobY || 0) + handDY };
+  const hand = { x: anchor[0] + handDX, y: anchor[1] + (bobY || 0) + handDY };
+
+  /* QA probe (mp-blockarm) — a headless run cannot read the WebGL canvas. */
+  try {
+    window.__btBlockArm = {
+      on: true, facing, sheet: map[0], mirror,
+      armVisible: spr.visible,
+      armW: spr.texture ? spr.texture.width : 0,
+      armH: spr.texture ? spr.texture.height : 0,
+      sleeveVisible: !!(sleeve && sleeve.visible),
+      sleeveW: (sleeve && sleeve.visible && sleeve.texture) ? sleeve.texture.width : 0,
+      sleeveTint: (sleeve && sleeve.visible) ? sleeve.tint : null,
+      worn: getEquip('chest'),
+      hand,
+      armIdx: group ? display.getChildIndex(group) : display.getChildIndex(spr),
+      shieldIdx: display._shieldSprite ? display.getChildIndex(display._shieldSprite) : -1,
+    };
+  } catch (e) { /* never breaks the frame */ }
+  return hand;
 }
 
 function createPlayerDisplay() {
@@ -3510,10 +3584,22 @@ function createPlayerDisplay() {
      gear, immediately before the shield — so it reaches out OVER the torso and
      the shield's boss still covers the hand.  Structural, like the back
      shield's pair: nothing recomputes an index for it. */
+  /* v2.3.1789: arm + sleeve share ONE container, so the per-frame z-order step
+     moves them together and the shield can never slide between them.  Two
+     sprites reindexed independently is how you get a sleeve floating over a
+     shield with its own arm behind it. */
+  const blockArmGroup = new Container();
+  blockArmGroup.visible = false;
   const blockArmSprite = new Sprite();
   blockArmSprite.anchor.set(0, 0);
-  blockArmSprite.visible = false;
-  container.addChild(blockArmSprite);
+  blockArmGroup.addChild(blockArmSprite);
+  /* the sleeve: the worn chest piece's bowshot strip, cut to the same rect and
+     drawn directly over the bare arm with the same transform. */
+  const blockArmSleeve = new Sprite();
+  blockArmSleeve.anchor.set(0, 0);
+  blockArmSleeve.visible = false;
+  blockArmGroup.addChild(blockArmSleeve);
+  container.addChild(blockArmGroup);
 
   /* v2.3.1782: the in-FRONT half of the on-back shield.  Sits here — after
      the arms, before the in-hand shield — so a shield slung across a back
@@ -3677,6 +3763,8 @@ function createPlayerDisplay() {
   container._handArmMask = handArmMask;
   container._shieldSprite = shieldSprite;
   container._blockArmSprite = blockArmSprite;   /* v2.3.1785 */
+  container._blockArmSleeve = blockArmSleeve;   /* v2.3.1789 */
+  container._blockArmGroup = blockArmGroup;     /* v2.3.1789 */
   container._shieldBackLo = shieldBackLo;   /* v2.3.1782 */
   container._shieldBackHi = shieldBackHi;   /* v2.3.1782 */
   container._comboText = comboText;
@@ -7240,7 +7328,7 @@ export class EntityRenderer {
       } else if (display._shieldSprite) {
         display._shieldSprite.visible = false;
       }
-      if (!shieldVisible && display._blockArmSprite) display._blockArmSprite.visible = false;
+      if (!shieldVisible) _hideBlockArm(display, { reason: 'shield down' });
 
       /* ═══ v2.3.1782: the shield slung on the back ═══
          Cosmetic only.  Restored from the v2.3.377 removal ("a persistent

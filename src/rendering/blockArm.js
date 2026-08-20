@@ -48,18 +48,24 @@ import { Rectangle, Texture } from 'pixi.js';
  *      orange arm on a brown body.  It has never shown before because the bow
  *      stand-in replaces the WHOLE body, so nothing sits next to it to compare
  *      against; compositing an arm onto the walking body is the first time the
- *      two sets touch.  The fix is to bake the arm through the recolour with
- *      the bow sheet's orange as the SOURCE palette rather than identity.
- *   2. NO SLEEVE.  The arm is bare skin, so a chest plate or a shirt stops at
- *      the shoulder.  The same cut taken from the `bowshot` gear strips fixes
- *      it, and those strips already exist.
+ *      two sets touch.
+ *   2. NO SLEEVE.  The arm is bare skin, so a chest plate or a shirt stopped at
+ *      the shoulder.
  *
- * Shipping it enabled would put a mismatched bare arm on the preview mid-review,
- * which is worse than the floating shield it replaces.  With this false,
- * blockArmTexture returns null and every caller falls back to exactly the
- * v2.3.1784 behaviour — this file is then dead weight and nothing else changes.
- * Flip to true once (1) and (2) land. */
-export const BLOCK_ARM_ENABLED = false;
+ * BOTH LANDED, so the flag is on.
+ *   (1) v2.3.1788 fixed it one layer up and for more than this arm: the attack
+ *       stand-ins now always apply a skin target instead of leaving 'default'
+ *       as identity, so the sword and bow sheets bake onto the walking palette
+ *       (bow-east went [223,121,57] -> [199,130,73] against a walking
+ *       reference of [188,121,70]).  The bro no longer changes complexion when
+ *       he swings either — see mp-standinskin.
+ *   (2) v2.3.1789 cuts the SAME rect out of the worn chest piece's `bowshot`
+ *       strip and draws it over the arm, tinted by the piece's material.
+ *
+ * The flag stays as a named constant rather than being deleted: south still has
+ * no arm in this art (see BLOCK_ARM_FACING), so this feature is knowingly
+ * partial, and one edit turns it off if it reads badly in play. */
+export const BLOCK_ARM_ENABLED = true;
 
 /** Rendered facing -> [authored sheet, mirror].  Deliberately has no entry for
  *  northwest / north / northeast: no arm is drawn there. */
@@ -101,6 +107,7 @@ export const BLOCK_ARM_CUT = {
    authored sheet name. */
 const _sheets = Object.create(null);
 const _cache = new Map();
+const _sleeveCache = new Map();   /* `${sheet}|${item}` -> sliced sleeve */
 
 /** effectsRenderer calls this whenever it (re)bakes a bow body strip. */
 export function registerBowBodyFrames(dir, frames) {
@@ -125,6 +132,42 @@ export function blockArmTexture(sheet) {
     frame: new Rectangle(f.x + cut.rect[0], f.y + cut.rect[1], cut.rect[2], cut.rect[3]),
   });
   _cache.set(sheet, { src: base.source, tex });
+  return tex;
+}
+
+/** The SLEEVE for the same cut: the identical rectangle taken from the worn
+ *  chest piece's `bowshot` strip, which is authored to overlay the bow body
+ *  frame-for-frame — so the same rect lands on the same arm with no second
+ *  set of numbers to keep in step.
+ *
+ *  This closes the gap v2.3.1785 shipped disabled with: the arm is cut from
+ *  the BALD body sheet, so without this a bro in a copper plate reached out
+ *  with a bare arm.  Returns null when nothing is worn (bare arm is then
+ *  correct) or while the strip is still building.
+ *
+ *  getGearFrame resolves a recoloured set to its donor art internally, so
+ *  `copperplate` shares steel's texture and the caller tints — same contract
+ *  the walking gear and every stand-in already use.
+ */
+export function blockArmSleeveTexture(sheet, item, gearFrameFor) {
+  const cut = BLOCK_ARM_CUT[sheet];
+  if (!cut || !item || item === 'none' || !gearFrameFor) return null;
+  const base = gearFrameFor('chest', item, 'bowshot', sheet, cut.frame);
+  if (!base) return null;
+  const key = sheet + '|' + item;
+  const hit = _sleeveCache.get(key);
+  if (hit && hit.src === base.source && hit.fx === base.frame.x) return hit.tex;
+  const f = base.frame;
+  /* The gear strip is sliced to the same per-facing frame box as the body, so
+     the body cut's rect applies unchanged.  Clamp to the frame anyway: a
+     re-cut sheet with a different box would otherwise throw on a frame that
+     runs past its source. */
+  const x = f.x + cut.rect[0], y = f.y + cut.rect[1];
+  const w = Math.min(cut.rect[2], Math.max(0, f.x + f.width - x));
+  const h = Math.min(cut.rect[3], Math.max(0, f.y + f.height - y));
+  if (w <= 0 || h <= 0) return null;
+  const tex = new Texture({ source: base.source, frame: new Rectangle(x, y, w, h) });
+  _sleeveCache.set(key, { src: base.source, fx: f.x, tex });
   return tex;
 }
 
