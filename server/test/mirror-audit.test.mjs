@@ -25,6 +25,9 @@ import { GameRoom } from '../src/index.js';
 /* v2.3.1734: the prog3 constant mirror the plan already claimed was
    enforced here.  See check 12 at the bottom. */
 import { PROG3 as SRV_PROG3 } from '../src/prog3.js';
+/* v2.3.1812: check 13 compares telegraph kit kinds against the client's
+   render whitelist — see the block at the bottom for why it reads text. */
+import { TELEGRAPH as SRV_TELEGRAPH } from '../src/telegraph.js';
 import { PROG3 as CLIENT_PROG3 } from '../../src/data/prog3.js';
 import {
   ARCHETYPES, MONSTER_HP_CURVE, COOKING_RECIPES, QUEST_CHAINS,
@@ -531,6 +534,44 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
   const lvl1 = { prog3: { sk: { sword: { level: 1 }, bow: { level: 1 }, staff: { level: 1 } }, alloc: {}, atk: {}, pool: {}, ms: {} } };
   check('copper is rung zero on the CLIENT too (owner\'s call, both sides)',
     clientCanEquip({ prog3: lvl1.prog3 }, { type: 'greatsword', gearBase: 'copper', tierMult: 1 }, 'greatsword') === true);
+}
+
+/* ═══ 13. v2.3.1812: TELEGRAPH KINDS vs THE CLIENT'S RENDER WHITELIST ═══
+   The monster_ability handler in src/networking/gameEvents.js renders only
+   abilities it has a label for and `break`s on anything else — deliberately,
+   so a forged or unknown wire string draws nothing.  The cost of that
+   discipline is that a NEW server kit ships, telegraphs correctly, is
+   authoritative, and is completely invisible in play.  No error, no warning:
+   the signature failure of this codebase.  Fodder's `lunge` (v2.3.1812) is
+   the second kit to need the client entry, which is two too many to keep
+   trusting memory for.
+
+   Read as TEXT rather than imported: gameEvents.js is a wire handler, not a
+   data module, and pulling it in would drag the renderer with it.  The regex
+   is pinned to the exact literal, so if someone restructures the whitelist
+   this fails loudly and gets updated rather than silently matching nothing —
+   which is why the parse itself is asserted first. */
+{
+  const src = readFileSync(new URL('../../src/networking/gameEvents.js', import.meta.url), 'utf8');
+  const m = src.match(/var _maLabels = \{([^}]*)\}/);
+  check('telegraph mirror: the client\'s ability whitelist is still parseable',
+    !!m, { found: !!m });
+  const clientKinds = m ? (m[1].match(/(\w+)\s*:/g) || []).map((k) => k.replace(/\s*:$/, '')) : [];
+  check('telegraph mirror: ...and the parse found something (guard: an empty list matches nothing)',
+    clientKinds.length >= 2, clientKinds);
+  const serverKinds = Object.values(SRV_TELEGRAPH.KITS).map((k) => k.kind);
+  const missing = serverKinds.filter((k) => !clientKinds.includes(k));
+  check('telegraph mirror: every server kit has a client label (or it renders NOTHING)',
+    missing.length === 0, { missing, serverKinds, clientKinds });
+  /* Colours and shakes are keyed by the same strings; a label without them
+     falls back to a generic amber, which is a silent downgrade rather than a
+     silent absence — still worth catching. */
+  for (const table of ['_maColors', '_maShake']) {
+    const mm = src.match(new RegExp('var ' + table + ' = \\{([^}]*)\\}'));
+    const keys = mm ? (mm[1].match(/(\w+)\s*:/g) || []).map((k) => k.replace(/\s*:$/, '')) : [];
+    check(`telegraph mirror: ${table} covers every kit too`,
+      serverKinds.every((k) => keys.includes(k)), { table, keys, serverKinds });
+  }
 }
 
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);

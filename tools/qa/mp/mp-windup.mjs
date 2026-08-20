@@ -82,5 +82,74 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('when the wind-up ends the monster returns to exactly its normal size',
     !!(after && Math.abs(after.scale - after.baseMult) < 0.001), after);
 
+  /* ═══ v2.3.1812: FODDER'S TELL HAS TO SURVIVE THE WHITELIST ═══
+     Owner: "Yes give fodder a tell."  The server kit is only half of it —
+     the monster_ability handler renders ONLY abilities it has a label for
+     and silently drops anything else, so a kit can ship, telegraph, be
+     fully authoritative, and be invisible in play.  server/test/mirror-audit
+     pins the tables against each other; this proves the accepted string
+     actually reaches the screen, and the REFUSED one still does not. */
+  await P.page.evaluate(() => {
+    const S = window._gameState.current;
+    S._telegraphZones = [];
+    S.monsters = (S.monsters || []).concat([{
+      id: 'qa-fod', x: S.player.x - 90, y: S.player.y, hp: 20, maxHp: 20,
+      alive: true, arch: 'fodder', type: 'fodder', level: 1,
+      statuses: {}, vx: 0, vy: 0, atkCd: 0, spawnX: S.player.x - 90, spawnY: S.player.y,
+    }]);
+  });
+  await P.page.waitForTimeout(700);
+
+  const fodIdle = await scaleOf(P, 'qa-fod');
+  rec.ok('fodder: on screen at its normal size (guard + control)',
+    !!(fodIdle && Math.abs(fodIdle.scale - fodIdle.baseMult) < 0.001), fodIdle);
+
+  await P.page.evaluate(() => {
+    const S = window._gameState.current;
+    window.__btDispatch({
+      type: 'monster_ability',
+      payload: {
+        monsterId: 'qa-fod', ability: 'lunge', phase: 'telegraph',
+        radius: 50, ms: 1200, ax: S.player.x, ay: S.player.y,
+        x: S.player.x - 90, y: S.player.y,
+      },
+    });
+  });
+  await P.page.waitForTimeout(260);
+
+  const fodSeen = [];
+  for (let i = 0; i < 6; i++) {
+    const s = await scaleOf(P, 'qa-fod');
+    if (s) fodSeen.push(+s.scale.toFixed(4));
+    await P.page.waitForTimeout(90);
+  }
+  const fodBase = fodIdle ? fodIdle.baseMult : 1;
+  rec.ok('fodder: a LUNGE loads the body up, same as a brute\'s slam',
+    Math.max(...fodSeen) > fodBase * 1.02, { base: fodBase, seen: fodSeen });
+
+  const zones = await P.page.evaluate(() => (window._gameState.current._telegraphZones || []).length);
+  rec.ok('fodder: ...and it draws the ground marker that says WHERE',
+    zones >= 1, { zones });
+
+  /* THE CONTROL.  Without this, "lunge renders" would also pass on a client
+     that rendered every string it was handed — which is exactly the forgery
+     surface the whitelist exists to close. */
+  await P.page.evaluate(() => {
+    const S = window._gameState.current;
+    S._telegraphZones = [];
+    window.__btDispatch({
+      type: 'monster_ability',
+      payload: {
+        monsterId: 'qa-fod', ability: 'qa-not-an-ability', phase: 'telegraph',
+        radius: 50, ms: 1200, ax: S.player.x, ay: S.player.y,
+        x: S.player.x - 90, y: S.player.y,
+      },
+    });
+  });
+  await P.page.waitForTimeout(200);
+  const bogusZones = await P.page.evaluate(() => (window._gameState.current._telegraphZones || []).length);
+  rec.ok('an ability the client does not know still renders NOTHING (whitelist intact)',
+    bogusZones === 0, { bogusZones });
+
   await P.ctx.close().catch(() => {});
 }

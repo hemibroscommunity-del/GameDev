@@ -137,6 +137,16 @@ check('slowed monster moves at exactly 0.4x', Math.abs(slowStep - mControl.spd *
 // attacks: park frozen + control INSIDE attack range with atkCd 0
 mFrozen.x = ps.x + 10; mFrozen.y = ps.y; mFrozen.atkCd = 0;
 mControl.x = ps.x - 10; mControl.y = ps.y; mControl.atkCd = 0;
+/* v2.3.1812: these are meadow FODDER, and fodder gained a wind-up in this
+   version (server/src/telegraph.js).  Without pinning the cast off, the
+   control monster starts a `lunge` instead of swinging and the check below
+   reads as "freeze broke the control", which is not what it is measuring.
+   The FROZEN assertion needs no such pin and is stronger for it: casts are
+   gated on ccMoveMult in _tickMonsters, so freeze stops the wind-up too. */
+for (const _m of [mFrozen, mControl]) {
+  _m._tgPhase = null; _m._tgUntil = 0; _m._tgAim = null; _m._tgTarget = null;
+  _m._tgNextAt = Date.now() + 1e9;
+}
 room.eventBuffer.length = 0;
 ps.hp = 1000; ps.maxHp = 1000; ps._zoneEntryGraceUntil = 0;
 room._tickMonsters();

@@ -21,6 +21,10 @@ import { BLOCK_COSTS_STAMINA } from '../src/data.js'; /* v2.3.1704: NOT from ind
    hand-rolled numbers, so tuning T2_BENCH can't silently break the
    suite (the v2.3.1415 lesson, now structural). */
 import { t2ReplayFlat as _replay } from '../src/data.js';
+/* v2.3.1812: the fodder-tell assertions read the kit numbers directly —
+   pinning "slowest wind-up / no damage spike / rare" against the other
+   kits is what keeps the owner's trade honest if anyone retunes one. */
+import { TELEGRAPH } from '../src/telegraph.js';
 
 const mockState = {
   storage: {
@@ -42,6 +46,18 @@ function fakeWs(label) {
 function msgsOfType(ws, type) { return ws.sent.filter((m) => m.type === type); }
 
 let failures = 0;
+/* v2.3.1812: a monster armed for a BASIC SWING, explicitly.
+   Fodder gained a wind-up in this version (server/src/telegraph.js), so a
+   fixture that parks a fodder monster next to a player and ticks now gets
+   a `lunge` cast where it used to get a swing — and the failure reads as
+   "blocking is broken", not as "the fixture armed the wrong path".  That
+   misread cost a whole revert once.  Any test that is about the swing
+   itself says so by calling this; the telegraph path has its own blocks. */
+function basicSwingOnly(m) {
+  m._tgPhase = null; m._tgUntil = 0; m._tgAim = null; m._tgTarget = null;
+  m._tgNextAt = Date.now() + 1e9;
+  return m;
+}
 function check(name, cond, detail) {
   if (cond) { console.log('PASS', name); }
   else { failures++; console.log('FAIL', name, detail !== undefined ? JSON.stringify(detail) : ''); }
@@ -521,6 +537,7 @@ for (const m of meadowMonsters) m._wanderPausedUntil = Date.now() + 600000;
   const tm = meadowMonsters[3];
   tm.alive = true; tm.hp = _thornsFlat; tm.maxHp = _thornsFlat; tm.dmg = 40; tm.dmgByPlayer = {};
   tm.statuses = undefined; tm.atkCd = 0; tm._attackingUntil = 0; tm._wanderPausedUntil = 0;
+  basicSwingOnly(tm);                   /* v2.3.1812: thorns rides the SWING's block branch */
   tm.x = 3000; tm.y = 3000; tm.spawnX = 3000; tm.spawnY = 3000;
   psA.x = 3000; psA.y = 3000;
   room.eventBuffer.length = 0;
@@ -1791,6 +1808,7 @@ for (const m of meadowMonsters) m._wanderPausedUntil = Date.now() + 600000;
 
   const swing = () => {
     mm.atkCd = 0; mm._attackingUntil = 0;
+    basicSwingOnly(mm);                  /* v2.3.1812: these three are about the SWING's arc */
     mm.x = psA.x + 20; mm.y = psA.y;     /* re-park: the chase step moves it */
     room.eventBuffer.length = 0;
     room._tickMonsters();
@@ -1906,11 +1924,49 @@ for (const m of meadowMonsters) m._wanderPausedUntil = Date.now() + 600000;
     blockedAtk && blockedAtk.payload);
   psA.blocking = false; psA.ba = null;
 
-  /* ── fodder is deliberately left alone ── */
+  /* ── v2.3.1812: fodder gets a LIGHT tell (owner: "Yes give fodder a
+     tell").  This block previously asserted the opposite — that fodder
+     stayed silent so beginners kept free hits.  The owner overturned it
+     once it was clear that three of the four zones Mayor Bro's chain
+     sends you to (meadow/ember fodder, frost snowmen) had nothing that
+     telegraphed, i.e. blocking was taught where nothing tells you when.
+     What replaces it is not "fodder has an ability" but the properties
+     that keep the old promise: the tell is READABLE, it is RARE, and it
+     carries no damage spike.  Those three are the trade the owner
+     accepted, so they are what gets pinned. */
   armBrute();
   tm.arch = 'fodder';
   tick();
-  check('telegraph: fodder does NOT gain a wind-up (beginners keep free hits)',
+  const fodderTele = abilities()[0];
+  check('telegraph: fodder DOES wind up now (blocking is taught in fodder zones)',
+    !!fodderTele && fodderTele.payload.phase === 'telegraph'
+    && fodderTele.payload.ability === 'lunge',
+    fodderTele && fodderTele.payload);
+  check('telegraph: fodder\'s tell is the SLOWEST — a beginner\'s reaction time',
+    TELEGRAPH.KITS.fodder.windupMs > TELEGRAPH.KITS.brute.windupMs
+    && TELEGRAPH.KITS.fodder.windupMs > TELEGRAPH.KITS.stalker.windupMs,
+    { fodder: TELEGRAPH.KITS.fodder.windupMs, brute: TELEGRAPH.KITS.brute.windupMs,
+      stalker: TELEGRAPH.KITS.stalker.windupMs });
+  check('telegraph: fodder carries NO damage spike (a cue, not a threat)',
+    TELEGRAPH.KITS.fodder.dmgMult === 1.0
+    && TELEGRAPH.KITS.fodder.dmgMult < TELEGRAPH.KITS.brute.dmgMult,
+    { fodder: TELEGRAPH.KITS.fodder.dmgMult, brute: TELEGRAPH.KITS.brute.dmgMult });
+  /* THE FREE HITS ARE STILL THERE, and this is the assertion that says so:
+     with a 9s cooldown against a 1500ms swing cadence, most fodder attacks
+     remain the unannounced basic swing they always were.  If someone ever
+     shortens that cooldown toward the swing cadence, the early game turns
+     into wall-to-wall wind-ups and this fails. */
+  check('telegraph: ...and stays RARE — most fodder swings are still free hits',
+    TELEGRAPH.KITS.fodder.cooldownMs >= 5 * room.MONSTER_ATTACK_CD,
+    { cooldown: TELEGRAPH.KITS.fodder.cooldownMs, swingCd: room.MONSTER_ATTACK_CD,
+      swingsPerCast: TELEGRAPH.KITS.fodder.cooldownMs / room.MONSTER_ATTACK_CD });
+  /* SWARM is the archetype that still gets nothing — several arrive at once
+     and N simultaneous wind-ups is noise.  Kept as a live assertion rather
+     than a comment so "give everything a tell" fails loudly. */
+  armBrute();
+  tm.arch = 'swarm';
+  tick();
+  check('telegraph: swarm still does NOT wind up (N at once would be noise)',
     abilities().length === 0, abilities().map((e) => e.payload));
 
   saved.forEach(({ m, alive, respawnAt, arch }) => { m.alive = alive; m.respawnAt = respawnAt; m.arch = arch; });
@@ -1935,11 +1991,19 @@ for (const m of meadowMonsters) m._wanderPausedUntil = Date.now() + 600000;
   psA.x = 500; psA.y = 500;
   psA.blocking = true; psA.ba = 0;          /* shield east, monster east */
 
+  /* v2.3.1812: `_tgNextAt` far in the future is LOAD-BEARING, not tidy-up.
+     Fodder gained a wind-up in this version, so without it the first tick
+     starts a `lunge` instead of swinging and every assertion below — all
+     twelve — fails on an empty monster_attack.  That is exactly how the
+     first attempt at the fodder tell presented, and it read like the kit
+     had deleted parry rather than like a fixture arming the wrong path.
+     These cases are about the BASIC SWING; the telegraph path gets its own
+     parry/block coverage in the block that follows. */
   const armFodder = () => {
     pm.alive = true; pm.arch = 'fodder'; pm.maxHp = 5000; pm.hp = 5000;
     pm.statuses = {}; pm.dmg = 20; pm.respawnAt = 0;
     pm.atkCd = 0; pm._attackingUntil = 0;
-    pm._tgPhase = null; pm._tgNextAt = 0;
+    basicSwingOnly(pm);                /* see above — load-bearing */
     pm.x = psA.x + 20; pm.y = psA.y;
   };
   const tick = () => { room.eventBuffer.length = 0; room._tickMonsters(); };
@@ -1985,6 +2049,67 @@ for (const m of meadowMonsters) m._wanderPausedUntil = Date.now() + 600000;
   a = atk();
   check('parry: a client that reports no raise time still BLOCKS, just never parries',
     !!a && a.payload.blocked === true && !a.payload.parried && psA.hp === hp0, a && a.payload);
+
+  /* ═══ v2.3.1812: THE SAME THREE CASES, THROUGH THE TELEGRAPH PATH ═══
+     A telegraphed hit resolves in _telegraphHitPlayer and a basic swing
+     resolves in _tickMonsters — two implementations of "the shield ate
+     it".  Everything above proves the basic-swing one.  Giving fodder a
+     kit routes a share of early-game hits through the OTHER one, so it
+     has to answer the same three questions or the owner's "nothing is
+     lost" quietly stops being true.  The stamina case is the one that was
+     actually broken: blocking a telegraphed attack used to cost nothing,
+     which is a free infinite turtle against the first archetype a new
+     player meets. */
+  const armCast = () => {
+    pm.alive = true; pm.arch = 'fodder'; pm.maxHp = 5000; pm.hp = 5000;
+    pm.statuses = {}; pm.dmg = 20; pm.respawnAt = 0;
+    pm.atkCd = 0; pm._attackingUntil = 0;
+    pm.x = psA.x + 20; pm.y = psA.y;
+    pm._tgPhase = 'telegraph';
+    pm._tgUntil = Date.now() - 1;              /* wind-up already elapsed */
+    pm._tgAim = { x: psA.x, y: psA.y };
+    pm._tgTarget = 'pa';
+    pm._tgNextAt = 0;
+  };
+  psA.blocking = true; psA.ba = 0;             /* shield east, monster east */
+  psA.hp = 400;
+
+  armCast();
+  psA.blockStartT = Date.now();                /* raised just now */
+  psA.stamina = 50;
+  stam0 = psA.stamina; hp0 = psA.hp;
+  tick();
+  a = atk();
+  check('telegraph parry: a shield raised IN TIME parries a CAST too',
+    !!a && a.payload.blocked === true && a.payload.parried === true && psA.hp === hp0,
+    a && a.payload);
+  check('telegraph parry: it pays stamina back, same as a parried swing',
+    psA.stamina > stam0, { before: stam0, after: psA.stamina });
+  check('telegraph parry: and announces itself', parries().length === 1,
+    parries().map((e) => e.payload));
+
+  armCast();
+  psA.blockStartT = Date.now() - 5000;         /* turtling, not timing */
+  psA.stamina = 50;
+  stam0 = psA.stamina; hp0 = psA.hp;
+  tick();
+  a = atk();
+  check('telegraph block: turtling through a cast still blocks',
+    !!a && a.payload.blocked === true && psA.hp === hp0, a && a.payload);
+  check('telegraph block: ...but is NOT a parry',
+    !!a && !a.payload.parried && parries().length === 0,
+    { parried: a && a.payload.parried, events: parries().length });
+  /* THE GAP THAT WAS THERE.  Before v2.3.1812 this was 0 — the telegraph
+     path never charged for a block — so a fodder kit would have handed
+     beginners a cost-free turtle. */
+  check('telegraph block: and turtling through a cast COSTS, like any block',
+    BLOCK_COSTS_STAMINA ? psA.stamina < stam0 : psA.stamina === stam0,
+    { flag: BLOCK_COSTS_STAMINA, before: stam0, after: psA.stamina });
+  check('telegraph block: the exact cost rides the wire as staminaDrain',
+    BLOCK_COSTS_STAMINA
+      ? (a && a.payload.staminaDrain === stam0 - psA.stamina)
+      : (a && a.payload.staminaDrain === undefined),
+    { drain: a && a.payload.staminaDrain, spent: stam0 - psA.stamina });
 
   psA.blocking = false; psA.ba = null; psA.blockStartT = 0;
   saved.forEach(({ m, alive, respawnAt, arch }) => { m.alive = alive; m.respawnAt = respawnAt; m.arch = arch; });

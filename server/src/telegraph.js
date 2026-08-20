@@ -40,11 +40,46 @@
  * somewhere or the early game becomes homework.  Brutes and stalkers are
  * already the "careful now" archetypes, so they are where a tell pays off.
  *
+ *   ── v2.3.1812: FODDER GETS A LIGHT TELL AFTER ALL (owner: "Yes give
+ *   fodder a tell").  The paragraph above was right about the risk and
+ *   wrong about the cost, and the thing that changed the answer is WHERE
+ *   the tell was missing.  Mayor Bro's chain sends a new player through
+ *   four zones to learn blocking, and three of them have nothing that
+ *   telegraphs: frost is snowmen (deferred, below), meadow and ember are
+ *   fodder.  Only sky has a stalker.  So blocking was being TAUGHT in the
+ *   exact zones where nothing tells you when to block — the lesson had no
+ *   worked example.
+ *
+ *   What keeps the "free hits" promise intact is the cooldown, not the
+ *   absence of a kit.  `lunge` fires once every 9s against a basic swing
+ *   every 1.5s, so roughly five of every six fodder attacks are still the
+ *   unannounced swing they always were, and the tell is the occasional
+ *   punctuation a beginner can practise against.  It also carries NO
+ *   damage spike (dmgMult 1.0, where brute is 2.0) — it is a teaching
+ *   cue, not a threat.  The long windup (1200ms, the longest kit) is the
+ *   other half: a beginner's tell has to be readable at a beginner's
+ *   reaction time, so fodder winds up SLOWER than the brute, not faster.
+ *
+ *   THE TRAP THIS WALKED INTO ONCE.  A first attempt at this failed the
+ *   server suite twelve times over on parry/block, because a telegraphed
+ *   hit resolves through _telegraphHitPlayer and the basic swing resolves
+ *   through _tickMonsters — two paths, and only one of them charged block
+ *   stamina.  Giving fodder a kit without closing that gap would have
+ *   quietly handed players a free turtle against the very archetype the
+ *   stamina cost exists to police.  _telegraphHitPlayer now pays the same
+ *   BLOCK_STAMINA_COST and puts the same staminaDrain on the wire; parry
+ *   was already wired (v2.3.1731).  The suite pins the parity both ways.
+ *
+ * SWARM still gets nothing: they arrive several at once, and N simultaneous
+ * wind-ups is noise, not a tell.
+ *
  * SNOWMAN'S VOLLEY IS DEFERRED, not forgotten: it wants the existing
  * ranged/snowball path (travelMs, aim point, per-projectile block at
  * impact) rather than this melee-shaped resolve, which is a different
  * enough shape to deserve its own change.
  */
+
+import { BLOCK_COSTS_STAMINA, BLOCK_STAMINA_COST } from './data.js';
 
 /* Per-archetype kits.  `radius` is the execute-time hit radius, and it is
    deliberately WIDER than MONSTER_ATTACK_RANGE (45): a telegraphed attack
@@ -59,6 +94,13 @@ export const TELEGRAPH = {
     stalker: {
       kind: 'pounce', windupMs: 700, cooldownMs: 6000, dmgMult: 1.5, radius: 46,
       leap: 140,          /* px of dash toward the aim point at execute */
+    },
+    /* v2.3.1812: the beginner's tell.  Slowest wind-up, longest cooldown,
+       no damage multiplier — every number here is tuned to teach rather
+       than to threaten.  See the header for why the cooldown is the part
+       that keeps early-game free hits. */
+    fodder: {
+      kind: 'lunge', windupMs: 1200, cooldownMs: 9000, dmgMult: 1.0, radius: 50,
     },
   },
 };
@@ -177,13 +219,33 @@ export const telegraphMethods = {
          wind-up is exactly the readable cue a timed block wants, so a
          player who waits for the swing instead of turtling through it gets
          the stagger and the stamina back. */
-      const parried = this._parryOpen(ps, Date.now());
-      if (parried) this._applyParry(zoneId, m, pid, ps, Date.now());
+      const nowB = Date.now();
+      const parried = this._parryOpen(ps, nowB);
+      if (parried) this._applyParry(zoneId, m, pid, ps, nowB);
+      /* v2.3.1812: ...and turtling through one COSTS, on the same terms as
+         turtling through a basic swing (index.js's block branch).  This was
+         missing, and it only stopped mattering because the two archetypes
+         that could telegraph were ones a beginner meets late.  Handing
+         fodder a kit would have made every early block free — the exact
+         infinite turtle BLOCK_COSTS_STAMINA exists to end — so the cost
+         moves here rather than the kit being held back.  Same constant,
+         same Bulwark discount, same Math.max(1) floor that hardening.test
+         pins, same staminaDrain on the wire so the client's "-N⚡" pop
+         matches what the server actually charged. */
+      const staminaCost = (BLOCK_COSTS_STAMINA && !parried)
+        ? Math.max(1, Math.round(BLOCK_STAMINA_COST * this._blockStaminaMult(ps)))
+        : 0;
+      if (staminaCost > 0 && typeof ps.stamina === 'number') {
+        ps.stamina = Math.max(0, ps.stamina - staminaCost);
+        this._saveRpgPools(pid, ps);          /* coalesced — see v2.3.1619b */
+        this._queuePlayerStateFlush(pid);
+      }
       this.eventBuffer.push({
         type: 'monster_attack',
         payload: {
           monsterId: m.id, targetId: pid, dmg: m.dmg, dmgTaken: 0, blocked: true,
           parried: parried || undefined,
+          staminaDrain: staminaCost > 0 ? staminaCost : undefined,
           zone: zoneId, attackerX: m.x, attackerY: m.y,
         },
       });
