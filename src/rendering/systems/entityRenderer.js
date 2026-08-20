@@ -5694,19 +5694,64 @@ export class EntityRenderer {
 
       /* Z-order: same per-direction split as local.  Shield uses the
          forward-half (E/SE/S/SW) in front rule; weapon uses the
-         E/SE/S + NE rule. */
+         E/SE/S + NE rule.
+
+         v2.3.1791: BOTH HALVES OF v2.3.1787 APPLIED HERE TOO.  That fix — the
+         owner's "SW SE and E need the sword layered in front of ... Looks like
+         it is probably the shirt" — went into _updatePlayer only, so other
+         bros kept carrying their sword buried under their own shirt.  This is
+         the third time a defect has had to be fixed twice in this file because
+         the local and remote renders are parallel implementations sharing
+         variable names (v2.3.1786's ReferenceError and v2.3.1790's slung
+         shield were the other two).  Worth saying plainly: when something is
+         wrong with how YOUR bro is drawn, check whether it is also wrong for
+         everyone else's. */
       if (display._weaponContainer && oSpriteBody) {
+        /* Held weapons get SW in front, exactly as local: the greatsword is
+           carried point-up (v2.3.1786) so its blade rises clear of the torso
+           rather than lying across it, which is what v2.3.199 dropped SW for.
+           Scoped to held types so a peer's bamboo/staff keeps that behaviour. */
+        const _oHeldInHand = oWpnType === 'greatsword' || oWpnType === 'bow';
+        const _oInFrontBase = facingIdx === 0 || facingIdx === 1 || facingIdx === 2 || facingIdx === 7;
         const inFront = oIsShielding
           ? (facingIdx >= 0 && facingIdx <= 3)
-          : (facingIdx === 0 || facingIdx === 1 || facingIdx === 2 || facingIdx === 7);
+          : (_oHeldInHand ? (_oInFrontBase || facingIdx === 3) : _oInFrontBase);
         const bodyIdx = display.getChildIndex(oSpriteBody);
         const wcIdx   = display.getChildIndex(display._weaponContainer);
+        /* "In front" is measured against the topmost VISIBLE worn layer, not
+           against oSpriteBody — which is not drawn (it is the invisible
+           texture/transform reference the body regions and gear copy from), so
+           anchoring there buried the blade under the torso, the armour and the
+           shirt.  Asked of the layers rather than hard-coded, so a gear slot
+           added later joins the list instead of ending up over the blade. */
+        let frontRefIdx = bodyIdx;
+        for (const _r of [display._bodyHead, display._bodyTorso, display._bodyLegs,
+                          display._gearLegs, display._gearShirt, display._gearChest,
+                          display._gearShoulders, display._gearHead, display._shirtSprite]) {
+          if (_r && _r.visible) {
+            const _i = display.getChildIndex(_r);
+            if (_i > frontRefIdx) frontRefIdx = _i;
+          }
+        }
         const targetIdx = inFront
-          ? (wcIdx > bodyIdx ? bodyIdx + 1 : bodyIdx)
+          ? (wcIdx > frontRefIdx ? frontRefIdx : frontRefIdx - 1) + 1
           : (wcIdx > bodyIdx ? bodyIdx : Math.max(0, bodyIdx - 1));
         if (wcIdx !== targetIdx) {
           display.setChildIndex(display._weaponContainer, targetIdx);
         }
+        /* QA probe (mp-peersword) — one entry per peer id. */
+        try {
+          if (!window.__btPeerSword) window.__btPeerSword = {};
+          window.__btPeerSword[id] = {
+            facing, wpnType: oWpnType, inFront,
+            wcIdx: display.getChildIndex(display._weaponContainer),
+            bodyIdx, frontRefIdx,
+            shirtVis: !!(display._shirtSprite && display._shirtSprite.visible),
+            gearChestVis: !!(display._gearChest && display._gearChest.visible),
+            gearChestIdx: display._gearChest ? display.getChildIndex(display._gearChest) : -1,
+            bladeUp: display._weaponSprite ? display._weaponSprite.scale.y < 0 : null,
+          };
+        } catch (e) { /* never breaks the frame */ }
       }
       /* v2.3.354: beard z-order for remote players (same rule as local). */
       _orderTraitsAndWeapon(display, facingIdx);

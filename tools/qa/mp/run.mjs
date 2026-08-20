@@ -30,6 +30,7 @@ const SCENARIOS = {
   standinskin: () => import('./mp-standinskin.mjs'), /* v2.3.1788: attack stand-ins wear the walking skin */
   blockarm: () => import('./mp-blockarm.mjs'), /* v2.3.1789: the raised shield is held by an arm */
   peershield: () => import('./mp-peershield.mjs'), /* v2.3.1790: other bros wear their shield on their back */
+  peersword: () => import('./mp-peersword.mjs'), /* v2.3.1791: peers carry the sword the way you do */
   entitydt: () => import('./mp-entitydt.mjs'), /* v2.3.1771: monsters, NPCs + remotes move per second too */
   coppergear: () => import('./mp-coppergear.mjs'), /* v2.3.1772: every worn copper combo, in every pose */
   blacksmith: () => import('./mp-blacksmith.mjs'), /* v2.3.1773: the smith at the fountain */
