@@ -2525,6 +2525,25 @@ BT_AUDIO.SFX_MANIFEST = {
   'catch-splash':     '/sfx/fishing/catch-splash.mp3',
   'cook-success':     '/sfx/cooking/cook-success.mp3',
   'sword-swing':   '/sfx/sword/sword-swing.mp3',
+  /* ═══ v2.3.1798: OWNER SWING PACK — three, rotated ═══
+     Owner: "these are sound effects I want to swap out for the sword swing
+     instead (you can rotate between the 3).  The last one is special attack
+     sound."
+     'sword-swing' above is kept as the FALLBACK key rather than deleted:
+     meleeSwingSfx() still returns it, swordSwing() maps it onto the rotation,
+     and anything that plays the key directly keeps working.
+     Each upload was frame-trimmed by tools/trim_mp3.py to the part that is
+     actually the sound — swing-b had 1.08s of leading silence before its
+     transient and a dead tail after it (60KB -> 11KB), swing-c 0.16s (16KB ->
+     8KB).  110KB of upload became 50KB of game asset with no re-encode.
+     mp3, per the v2.3.1610 rule above; proven by tools/qa/mp/audio-formats.mjs. */
+  'sword-swing-1': '/sfx/sword/swing-a.mp3',
+  'sword-swing-2': '/sfx/sword/swing-b.mp3',
+  'sword-swing-3': '/sfx/sword/swing-c.mp3',
+  /* The fourth upload, and the owner named its job: the special attack.  It
+     replaces a three-beep synth arpeggio (see specialAttack in
+     playerActions.js). */
+  'special-swipe': '/sfx/sword/special-swipe.mp3',
   /* v2.3.254: wood-tier sword (the bamboo stick) gets its own swing
      SFX -- airier whoosh sourced from the user-uploaded mov. */
   'bamboo-swing':  '/sfx/sword/bamboo-swing.mp3',
@@ -2590,6 +2609,48 @@ BT_AUDIO.SFX_MANIFEST = {
 /* Regular sword-hit alternation. The two samples cycle so a flurry of hits
    doesn't hammer the same waveform. The original `sword-hit` sample is
    reserved for grand-slam hits per BT_AUDIO.grandSlam(). */
+/* ═══ v2.3.1798: THE SWING ROTATION, LEVEL-MATCHED ═══
+   Same shape as swordHit/magicHit below — a counter on BT_AUDIO and one
+   helper — because that is how this file already alternates a sample set.
+   THE GAIN TABLE IS NOT DECORATION.  The three uploads are recorded at very
+   different levels: peak RMS 0.274 / 0.391 / 0.129, a 3x spread.  Rotated raw
+   at one volume, every third swing would sound like it came from another room
+   — a rotation exists to stop the ear noticing repetition, and an audible
+   level step is MORE noticeable than the repetition it was meant to hide.
+   The multipliers bring all three to the loudness of swing-1, which is the one
+   the existing vol:0.55 call sites were tuned against.  Resulting peaks at
+   that volume are 0.44 / 0.36 / 0.40 — no clipping headroom problem.
+   (Measured with tools/audio_analyze.mjs, which decodes through a real
+   Chromium; there is no ffmpeg in this sandbox to normalise the files
+   themselves, so the correction lives at the gain node.) */
+BT_AUDIO.SWING_ROTATION = ['sword-swing-1', 'sword-swing-2', 'sword-swing-3'];
+BT_AUDIO.SWING_GAIN = {
+  'sword-swing-1': 1.00,
+  'sword-swing-2': 0.70,
+  'sword-swing-3': 2.12,
+};
+BT_AUDIO._swingIdx = 0;
+/* `key` is whatever meleeSwingSfx() decided.  Only the generic sword key is
+   rotated: 'bamboo-swing' is the wood-tier stick's own airier whoosh
+   (v2.3.254) and is a different weapon's sound, not a variant of this one. */
+BT_AUDIO.swordSwing = function (key, opts) {
+  var k = key;
+  if (!k || k === 'sword-swing') {
+    k = this.SWING_ROTATION[this._swingIdx++ % this.SWING_ROTATION.length];
+  }
+  var base = (opts && opts.vol != null) ? opts.vol : 0.6;
+  var o = {};
+  for (var q in opts) o[q] = opts[q];
+  o.vol = base * (this.SWING_GAIN[k] || 1);
+  return this.play(k, o);
+};
+/* v2.3.1798: the special's own sound.  Quietest of the four uploads by a wide
+   margin (peak RMS 0.043 against the swings' 0.27), so it carries a large
+   fixed boost rather than a table entry — it has one caller and one level. */
+BT_AUDIO.specialSwipe = function (opts) {
+  var base = (opts && opts.vol != null) ? opts.vol : 0.6;
+  return this.play('special-swipe', { vol: base * 4.6, pitchVar: 0.04 });
+};
 BT_AUDIO._swordHitToggle = 0;
 BT_AUDIO.swordHit = function (opts) {
   var key = (this._swordHitToggle++ & 1) ? 'sword-hit3' : 'sword-hit2';

@@ -19,7 +19,7 @@ for (const el of Object.values(ELEMENTS || {})) {
 import { lookupCollision, PVP_THREAT_CONSENT_MS } from '@/data/gameSystems.js';
 import { getFrame, resolveDirection, cycleMs, hasPose, frameCount as playerFrameCount, dodgeSheetDir } from '../playerSprites.js';
 import { getShieldFrame } from '../shieldSprites.js';
-import { backShieldPlacement, applyBackShield, BACK_SHIELD_PX } from '../backShield.js'; /* v2.3.1784 */
+import { backShieldPlacement, applyBackShield, BACK_SHIELD_PX, HELD_SHIELD_PX } from '../backShield.js'; /* v2.3.1784; HELD_ v2.3.1798 */
 import { STUN_STARS, STUN_SPIN_MS } from '../fxStrips.js'; /* v2.3.1735: the owner's stun ring */
 import { jogWaistRow } from '../jogWaist.js'; /* v2.3.1341: stable waist band */
 import { getFrame as getSlimeBaseFrame, hasState as hasSlimeState, frameCount as slimeFrameCount } from '../slimeSprites.js';
@@ -60,7 +60,8 @@ import { getFacialHairColor, getColoredFacialHairTextures } from '../traits/faci
 import { getShirt } from '../traits/shirtCatalog.js';
 import { getShirtColor, shirtFill } from '../traits/shirtColorCatalog.js';
 import { getGearFrame, getGearFramePhased, getLoadedGearSources } from '../gearSheets.js';
-import { BLOCK_ARM_FACING, BLOCK_ARM_CUT, blockArmTexture, blockArmSleeveTexture } from '../blockArm.js'; /* v2.3.1785, sleeve v2.3.1789 */
+import { AIM_CARET, AIM_CARET_EDGE, AIM_CARET_HOT } from '../aimCaret.js'; /* v2.3.1799 */
+import { BLOCK_ARM_ENABLED, BLOCK_ARM_FACING, BLOCK_ARM_CUT, blockArmTexture, blockArmSleeveTexture } from '../blockArm.js'; /* v2.3.1785, sleeve v2.3.1789, ENABLED v2.3.1798 */
 import { gearTint, gearArt, gearMaterial } from '../gearVariants.js'; /* v2.3.1757: material recolor */
 import { materialTint, weaponTint } from '../traits/materialTints.js'; /* v2.3.1757: weapons share the metals table */
 import { combatGearUrls } from '../combatGear.js';
@@ -3278,6 +3279,52 @@ function _hideBlockArm(display, why) {
   try { window.__btBlockArm = Object.assign({ on: false }, why || {}); } catch (e) {}
 }
 
+/* ═══ v2.3.1798: THE BLOCK CARET ═══
+   A chevron pointing out along the centre of the guard arc (owner: "Add a
+   carat while blocking to indicate the direction you're blocking").
+   Drawn twice — a near-black pass wider underneath, then the blue on top
+   (v2.3.1799: was brass; see aimCaret.js for why one colour, and why blue).  That is not decoration either: this mark lands on town cobble,
+   desert sand and snow, and a single brass stroke disappears against two of
+   the three.  Same reasoning as the coach ring's dark edge (QuestCoach.jsx),
+   and the same reason the joystick sprites carry their own rim.
+   No CSS/pixi filter — a filter compositing over the WebGL canvas is the
+   documented cause of the iOS "static" (CLAUDE.md). */
+/* Measured from the shield's CENTRE, so it has to clear the shield's own
+   radius: HELD_SHIELD_PX is 72, i.e. 36 half-width, and the first cut at 21
+   put the chevron INSIDE the disc — it only showed at all because the art
+   does not fill its box.  42 leaves a clear gap at every facing. */
+const CARET_OUT = 42;     /* how far past the shield's centre the tip sits */
+const CARET_BACK = 13;    /* tip-to-shoulder along the aim axis */
+const CARET_HALF = 10;    /* half the chevron's opening */
+function _drawBlockCaret(display, sx, sy, ang, pulse) {
+  const g = display._blockCaretGfx;
+  if (!g) return;
+  const cx = Math.cos(ang), cy = Math.sin(ang);
+  const nx = -cy, ny = cx;
+  const tipX = sx + cx * CARET_OUT;
+  const tipY = sy + cy * CARET_OUT;
+  const baseX = sx + cx * (CARET_OUT - CARET_BACK);
+  const baseY = sy + cy * (CARET_OUT - CARET_BACK);
+  const aX = baseX + nx * CARET_HALF, aY = baseY + ny * CARET_HALF;
+  const bX = baseX - nx * CARET_HALF, bY = baseY - ny * CARET_HALF;
+  g.clear();
+  g.moveTo(aX, aY); g.lineTo(tipX, tipY); g.lineTo(bX, bY);
+  g.stroke({ color: AIM_CARET_EDGE, width: 7, alpha: 0.6, cap: 'round', join: 'round' });
+  g.moveTo(aX, aY); g.lineTo(tipX, tipY); g.lineTo(bX, bY);
+  /* Whitens for the 250ms after a hit is blocked — the same blockPulse the
+     shield's own brightness pop reads, so the two say "that one landed on the
+     shield" together instead of one of them saying it alone. */
+  g.stroke({
+    color: pulse > 0 ? AIM_CARET_HOT : AIM_CARET,
+    width: 4 + pulse * 1.5, alpha: 1, cap: 'round', join: 'round',
+  });
+  g.visible = true;
+}
+function _hideBlockCaret(display) {
+  const g = display && display._blockCaretGfx;
+  if (g && g.visible) { g.visible = false; g.clear(); }
+}
+
 function _placeBlockArm(display, facing, bodyH, bobY) {
   const spr = display._blockArmSprite;
   const sleeve = display._blockArmSleeve;
@@ -3619,6 +3666,21 @@ function createPlayerDisplay() {
   shieldSprite.visible = false;
   container.addChild(shieldSprite);
 
+  /* ═══ v2.3.1798: THE BLOCK CARET ═══
+     Owner: "Add a carat while blocking to indicate the direction you're
+     blocking."
+     The shield sprite already sits on the guarded side, but a shield seen
+     near-top-down is a disc — it says WHERE it is, not which way it faces, and
+     the guard is an ARC whose centre the player has to aim.  A chevron pointing
+     straight out along that centre states it unambiguously.
+     Its own Graphics rather than a share of weaponGfx: weaponGfx lives inside
+     weaponContainer, which is re-parented up and down the child list every
+     frame by the in-front/behind weapon rule, and the caret must not inherit
+     that.  Added after shieldSprite so it draws over the shield. */
+  const blockCaretGfx = new Graphics();
+  blockCaretGfx.visible = false;
+  container.addChild(blockCaretGfx);
+
   // §5.9.5 Combo Chain count badge — sits above the bars.
   const comboText = new Text({ text: '', style: { ...NAME_STYLE, fontSize: 10 } });
   comboText.anchor.set(0.5, 1);
@@ -3762,6 +3824,7 @@ function createPlayerDisplay() {
   container._handArmSprite = handArmSprite;
   container._handArmMask = handArmMask;
   container._shieldSprite = shieldSprite;
+  container._blockCaretGfx = blockCaretGfx;     /* v2.3.1798 */
   container._blockArmSprite = blockArmSprite;   /* v2.3.1785 */
   container._blockArmSleeve = blockArmSleeve;   /* v2.3.1789 */
   container._blockArmGroup = blockArmGroup;     /* v2.3.1789 */
@@ -6178,6 +6241,25 @@ export class EntityRenderer {
        already committed to the tumble — in both cases the roll is what the
        body is actually doing, and cutting to the 250ms hit pose mid-roll
        would strand the player upright and sliding. */
+    /* ═══ v2.3.1798: A RAISED SHIELD PLANTS THE STANCE ═══
+       Owner: "One downside to the shield arm is that jogging backwards still
+       shows both arms moving AND the outstretched arm."
+       Exactly right, and the count is the bug: the jog frames draw two arms,
+       the block arm composites a third on top, and while jogging the body's
+       own arm swings out from behind it and becomes visible.  Standing, it
+       does not — the stand frames hold the arms in close enough that the
+       composited arm covers the one it stands in for.
+       So while the shield is up the body holds STAND.  This is not a
+       compromise dressed up as a feature: blocking is already HALF SPEED
+       (BroTown.jsx shieldMult), so a raised shield is already a planted,
+       trade-mobility-for-guard stance, and holding the pose is what that
+       reads as.  Legs stop cycling during a blocking shuffle; three arms
+       stop existing.
+       ONLY WHERE AN ARM IS ACTUALLY DRAWN.  Facing south there is no cut to
+       composite (the bow art's south frames are foreshortened — see
+       blockArm.js), so the shield floats there as before and freezing the
+       legs would cost the jog and buy nothing. */
+    const _blockPlanted = isShielding && BLOCK_ARM_ENABLED && !!BLOCK_ARM_FACING[facing];
     const pose = lootFrozen
       ? 'pickup'
       : (mining
@@ -6188,7 +6270,7 @@ export class EntityRenderer {
                   ? 'dodge'
                   : (isHit
                       ? 'hit'
-                      : (isMoving ? 'jog' : 'stand')))));
+                      : ((isMoving && !_blockPlanted) ? 'jog' : 'stand')))));
     /* Resolve to the unmirrored sheet direction + mirror flag.  Lifted
        to outer scope so the weapon-positioning code below can pin to
        the per-frame hand anchor regardless of whether the spritesheet
@@ -7408,10 +7490,16 @@ export class EntityRenderer {
             shieldSprite.x = Math.cos(shieldAng) * sR;
             shieldSprite.y = Math.sin(shieldAng) * sR + bobY + shieldHoldY;
           }
-          /* Render at 56 px (sprite is 64 px source). */
-          const baseScale = 56 / 64;
-          shieldSprite.scale.x = baseScale * (shieldFrame.mirror ? -1 : 1);
-          shieldSprite.scale.y = baseScale;
+          /* v2.3.1798: the SAME world size as the shield on his back — see
+             HELD_SHIELD_PX.  Sized through width/height rather than a scale
+             factor, exactly as applyBackShield does, so the result is that
+             many world px whatever the source texture measures; the old
+             `56/64` silently depended on the art being 64px.  The mirror is
+             then re-applied as the sign of scale.x.  Anchor is (0.5,0.5), so
+             growing it keeps its centre in the hand. */
+          shieldSprite.width = HELD_SHIELD_PX;
+          shieldSprite.height = HELD_SHIELD_PX;
+          shieldSprite.scale.x = Math.abs(shieldSprite.scale.x) * (shieldFrame.mirror ? -1 : 1);
           /* v2.3.193: reset rotation in the in-hand path -- otherwise
              a running-lean rotation from the on-back path could stick
              when the player flips into a block mid-stride. */
@@ -7421,8 +7509,40 @@ export class EntityRenderer {
           shieldSprite.tint = pulseTint;
           shieldSprite.alpha = 0.95 + blockPulse * 0.05;
           shieldSprite.visible = true;
+          /* v2.3.1798: the caret, pointing out along the guarded direction.
+             Measured from the SHIELD's final position rather than from the
+             body, so it stays correct on both placements — the arm's hand
+             (which moves per facing) and the free-floating fallback. */
+          _drawBlockCaret(display, shieldSprite.x, shieldSprite.y, shieldAng, blockPulse);
+          /* v2.3.1798 dev probe, house style (__btBlockArm, __btWorldProps):
+             the shield's size, the pose the body settled on, and where the
+             caret's tip landed.  None of the three can be read off a
+             screenshot — you cannot count arms in a 110px crop — so the test
+             reads the facts instead.  See tools/qa/mp/mp-blockstance.mjs. */
+          if (typeof window !== 'undefined') {
+            const _g = display._blockCaretGfx;
+            window.__btBlockPose = {
+              pose: pose,
+              shieldAng: shieldAng,
+              stateShieldAng: S._shieldAngle,
+              stateAimAng: S._aimAngle,
+              facing: facing,
+              moving: isMoving,
+              planted: _blockPlanted,
+              shieldW: Math.round(Math.abs(shieldSprite.width)),
+              backShieldPx: BACK_SHIELD_PX,
+              shieldX: shieldSprite.x, shieldY: shieldSprite.y,
+              armVisible: !!(display._blockArmSprite && display._blockArmSprite.visible),
+              caretVisible: !!(_g && _g.visible),
+              caretTip: _g && _g.visible ? {
+                x: shieldSprite.x + Math.cos(shieldAng) * CARET_OUT,
+                y: shieldSprite.y + Math.sin(shieldAng) * CARET_OUT,
+              } : null,
+            };
+          }
         } else {
           if (shieldSprite) shieldSprite.visible = false;
+          _hideBlockCaret(display);
           /* Fallback procedural arc — sprite hasn't loaded yet. */
           const sArc = Math.PI * 2 / 3;
           const startA = shieldAng - sArc / 2;
@@ -7441,6 +7561,7 @@ export class EntityRenderer {
       } else if (display._shieldSprite) {
         display._shieldSprite.visible = false;
       }
+      if (!shieldVisible || !(S.rpg && S.rpg.shield)) _hideBlockCaret(display);
       if (!shieldVisible) _hideBlockArm(display, { reason: 'shield down' });
 
       /* ═══ v2.3.1782: the shield slung on the back ═══

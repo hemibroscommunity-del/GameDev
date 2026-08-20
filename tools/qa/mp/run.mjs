@@ -28,6 +28,7 @@ const SCENARIOS = {
   backshield: () => import('./mp-backshield.mjs'), /* v2.3.1782: the slung shield, and the z-order that killed it */
   swordcarry: () => import('./mp-swordcarry.mjs'), /* v2.3.1786: the carried blade points up and forward */
   standinskin: () => import('./mp-standinskin.mjs'), /* v2.3.1788: attack stand-ins wear the walking skin */
+  blockstance: () => import('./mp-blockstance.mjs'), /* v2.3.1798: shield size, planted stance, caret */
   blockarm: () => import('./mp-blockarm.mjs'), /* v2.3.1789: the raised shield is held by an arm */
   peershield: () => import('./mp-peershield.mjs'), /* v2.3.1790: other bros wear their shield on their back */
   peersword: () => import('./mp-peersword.mjs'), /* v2.3.1791: peers carry the sword the way you do */

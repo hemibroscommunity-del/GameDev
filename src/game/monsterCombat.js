@@ -1313,7 +1313,9 @@ export function updateMonsterCombat(S, deps) {
                    is computed just below, so peers get the weapon + facing and
                    can render the full stand-in (not just a bare arc). */
                 S._swingBcastPending = true;
-                BT_AUDIO.play(meleeSwingSfx(S.rpg), { vol: 0.55 });
+                /* v2.3.1798: same rotation as the manual swing — one helper, so
+                   the auto-attack and the tapped swing cannot drift apart. */
+                BT_AUDIO.swordSwing(meleeSwingSfx(S.rpg), { vol: 0.55 });
               }
             }
           }

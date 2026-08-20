@@ -33,6 +33,7 @@ import { getGearFrame } from '../gearSheets.js';
 import { gearTint, gearArt } from '../gearVariants.js'; /* v2.3.1764: the swing wears the same metal; v2.3.1772: ...and finds its sheets */
 import { materialTint, weaponTint } from '../traits/materialTints.js';
 import { upscaleToFrameHeight } from '../spriteScale.js'; /* v2.3.1112: restore downscaled-on-disk sword stand-in strips to their authored frame height */
+import { AIM_CARET, AIM_CARET_EDGE } from '../aimCaret.js'; /* v2.3.1799 */
 import { backShieldPlacement, applyBackShield, BACK_SHIELD_PX } from '../backShield.js'; /* v2.3.1784 */
 import { registerBowBodyFrames } from '../blockArm.js'; /* v2.3.1785 */
 
@@ -2856,12 +2857,15 @@ export class EffectsRenderer {
           gfx.lineTo(_bx + _px * _hw, _by + _py * _hw);
           gfx.lineTo(_bx - _px * _hw, _by - _py * _hw);
           gfx.closePath();
-          gfx.fill({ color: 0xffffff, alpha: 0.7 });
+          /* v2.3.1799: the same blue as the block caret — see aimCaret.js.
+             Was white at 0.7, which on sand read as a pale smudge; the owner
+             asked for both direction marks to be one, more noticeable colour. */
+          gfx.fill({ color: AIM_CARET, alpha: 0.92 });
           gfx.moveTo(_tipx, _tipy);
           gfx.lineTo(_bx + _px * _hw, _by + _py * _hw);
           gfx.lineTo(_bx - _px * _hw, _by - _py * _hw);
           gfx.closePath();
-          gfx.stroke({ color: 0x000000, width: 1, alpha: 0.35 });
+          gfx.stroke({ color: AIM_CARET_EDGE, width: 1.5, alpha: 0.6 });
         } else {
         /* Ranged / staff: the reach beam (melee now uses the AoE shape above).
            The `: 95` fallback is retained for any non-ranged that reaches here. */

@@ -47,7 +47,9 @@ export function swingAttack(S) {
     S.isSwinging = true;
     S._specialAttack = false;
     clearSwingHitFlags(S); /* v2.3.1421: fresh dedup per swing (quick re-tap fix) */
-    BT_AUDIO.play(meleeSwingSfx(S.rpg), { vol: 0.55 });
+    /* v2.3.1798: rotate the owner's three swing samples (level-matched in
+       BT_AUDIO.swordSwing); bamboo keeps its own. */
+    BT_AUDIO.swordSwing(meleeSwingSfx(S.rpg), { vol: 0.55 });
 }
 
 export function specialAttack(S) {
@@ -226,14 +228,14 @@ export function specialAttack(S) {
       if (S.channel) S.channel.send({ type: 'broadcast', event: 'player_swing', payload: { id: S.myId, ts: now, special: true, wpn: (activeWpn && activeWpn.type) || 'sword', ang: aimAng } });
     }
 
-    /* Power-up sound */
-    BT_AUDIO.beep(300, 0.15, 0.2, 'sawtooth');
-    setTimeout(function () {
-      return BT_AUDIO.beep(600, 0.12, 0.15, 'square');
-    }, 80);
-    setTimeout(function () {
-      return BT_AUDIO.beep(900, 0.1, 0.12, 'square');
-    }, 160);
+    /* ═══ v2.3.1798: THE SPECIAL HAS A REAL SOUND ═══
+       Owner supplied it: "The last one is special attack sound."
+       This replaces a three-beep sawtooth/square arpeggio — a synth stand-in
+       from before there were samples for any of this.  It fires for EVERY
+       weapon, which is what the old arpeggio did: the per-weapon layers a few
+       lines up (the bow's two sine beeps, the staff's) are flavour on top and
+       are left alone, so a bow special still reads as a bow. */
+    BT_AUDIO.specialSwipe({ vol: 0.55 });
 }
 
 export function raiseShield(S, deps) {

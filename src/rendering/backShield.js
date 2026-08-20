@@ -33,6 +33,17 @@ import { getShieldFrame } from './shieldSprites.js';
  *  hands the sprite a different-sized source texture. */
 export const BACK_SHIELD_PX = 72;
 
+/** The RAISED shield, in the same world px as the slung one.
+ *  v2.3.1798 (owner: "the shield looks much smaller while it's active and
+ *  straight out.  The shield on the characters bag looks much larger.  I
+ *  prefer the larger look").  They were two different sizes for no reason
+ *  anyone chose: the held shield was `scale = 56/64`, a scale factor written
+ *  when the source art happened to be 64px, while the slung one has been an
+ *  explicit 72 world px since v2.3.1784.  One shield, one size — and stated
+ *  the same way in both places, so a future change to the source art cannot
+ *  silently move one and not the other. */
+export const HELD_SHIELD_PX = BACK_SHIELD_PX;
+
 /* Displacement from the body's centre.  X and Y get DIFFERENT radii: on this
    near-top-down view horizontal displacement is what carries the shield past
    the body's silhouette at E/W, while vertical displacement reads as HEIGHT,
