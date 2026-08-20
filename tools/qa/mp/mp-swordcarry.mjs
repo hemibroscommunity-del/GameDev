@@ -81,6 +81,41 @@ export async function run({ browser, wsPort, webPort, rec }) {
   }
   console.log('    facings', JSON.stringify(seen));
 
+  /* ── v2.3.1787: WHICH SIDE OF THE BODY THE BLADE IS ON ──
+     Owner: "SW SE and E need the sword layered in front of" ... "Looks like it
+     is probably the shirt."  In front for E/SE/S/SW/NE, behind for W/NW/N —
+     the facings where you are looking at his back. */
+  const FRONT = new Set(['E', 'SE', 'S', 'SW', 'NE']);
+  for (let i = 0; i < 8; i++) {
+    const m = await face(P, i);
+    const want = FRONT.has(NAMES[i]);
+    rec.ok(`${NAMES[i]}: the blade is ${want ? 'in front of' : 'behind'} the body`,
+      !!m && (m.wcIdx > m.spriteBodyIdx) === want,
+      { wcIdx: m && m.wcIdx, spriteBodyIdx: m && m.spriteBodyIdx, expectedInFront: want });
+  }
+
+  /* THE SHIRT, WHICH IS WHAT THIS WAS ACTUALLY ABOUT.  "In front" used to be
+     measured against _spriteBody — which is NOT DRAWN (v2.3.608 made it the
+     invisible transform reference the gear copies), so the blade landed under
+     every worn layer.  Bare, the shirt is baked into the body sheet and the
+     bug is invisible; put a chest plate on and it is the whole defect.  This
+     is the case that would silently regress if someone re-anchored to
+     _spriteBody again. */
+  await P.page.evaluate(() => { try { window.__btSetGear('chest', 'copperplate'); } catch (e) {} });
+  await P.page.waitForTimeout(900);
+  const armoured = await face(P, 0);
+  console.log('    armoured E', JSON.stringify(armoured));
+  if (armoured && armoured.gearChestVis) {
+    rec.ok('with a chest plate on, the blade still clears it',
+      armoured.wcIdx > armoured.gearChestIdx,
+      { wcIdx: armoured.wcIdx, gearChestIdx: armoured.gearChestIdx });
+  } else {
+    rec.ok('the chest plate actually went on (guard for the check above)',
+      false, { gearChestVis: armoured && armoured.gearChestVis });
+  }
+  await P.page.evaluate(() => { try { window.__btSetGear('chest', 'none'); } catch (e) {} });
+  await P.page.waitForTimeout(600);
+
   /* ATTACKING IS NOT THIS.  The owner drew the line explicitly, and the swing
      lives in its own branch — so a swing must still drive rotation and leave
      the blade unflipped. */

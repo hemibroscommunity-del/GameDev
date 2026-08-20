@@ -6728,6 +6728,15 @@ export class EntityRenderer {
               anchorX: weaponSprite.anchor.x, anchorY: weaponSprite.anchor.y,
               rotation: weaponSprite.rotation,
               scaleX: +weaponSprite.scale.x.toFixed(3), scaleY: +weaponSprite.scale.y.toFixed(3),
+              wcIdx: display.getChildIndex(display._weaponContainer),
+              spriteBodyIdx: display.getChildIndex(display._spriteBody),
+              bodyTorsoIdx: display._bodyTorso ? display.getChildIndex(display._bodyTorso) : -1,
+              bodyTorsoVis: !!(display._bodyTorso && display._bodyTorso.visible),
+              gearChestIdx: display._gearChest ? display.getChildIndex(display._gearChest) : -1,
+              gearChestVis: !!(display._gearChest && display._gearChest.visible),
+              shirtIdx: display._shirtSprite ? display.getChildIndex(display._shirtSprite) : -1,
+              shirtVis: !!(display._shirtSprite && display._shirtSprite.visible),
+              spriteBodyVis: !!(display._spriteBody && display._spriteBody.visible),
               texW: weaponSprite.texture ? weaponSprite.texture.width : 0,
               texH: weaponSprite.texture ? weaponSprite.texture.height : 0,
               facing: S._renderFacing,
@@ -6952,19 +6961,56 @@ export class EntityRenderer {
            Held weapons always use the in-hand order (SE/NE in front); sword/staff
            keep the sheathed inversion. */
         const _heldInHand = wpn && (wpn.type === 'greatsword' || wpn.type === 'bow');
-        const inFront = _heldInHand ? inFrontInHand : (sheathed ? !inFrontInHand : inFrontInHand);
+        /* v2.3.1787 (owner: "SW SE and E need the sword layered in front of").
+           E and SE were already in the set above; SW was not.  v2.3.199 had
+           dropped SW deliberately — but for the BAMBOO sword, where "the whole
+           blade above the body silhouette read as the bamboo floating over the
+           torso".  The greatsword is carried point-up in the hand since
+           v2.3.1786, so its blade rises clear of the torso instead of lying
+           across it, and that reasoning no longer applies to it.  Scoped to
+           held weapons so the bamboo/staff keep the v2.3.199 behaviour their
+           incident is about. */
+        const inFrontHeld = inFrontInHand || facingIdx === 3;
+        const inFront = _heldInHand ? inFrontHeld : (sheathed ? !inFrontInHand : inFrontInHand);
         const bodyIdx = display.getChildIndex(display._spriteBody);
         const wcIdx   = display.getChildIndex(display._weaponContainer);
+        /* v2.3.1787 (owner: "SW SE and E need the sword layered in front of"
+           ... "Looks like it is probably the shirt").  It was the shirt.
+
+           "In front" was measured against _spriteBody, and _spriteBody IS NOT
+           DRAWN — since v2.3.608 it is the invisible texture+transform
+           reference the per-region body sprites and the gear copy from.  Every
+           layer you can actually see (bodyHead/Torso/Legs, the five gear
+           slots, the layered shirt) is added AFTER it, so landing the weapon
+           one slot above the reference still buried it under all of them.  The
+           facings the owner named are simply the ones where the blade crosses
+           the torso, which is where the shirt is.
+
+           So the in-front anchor is now the TOPMOST VISIBLE worn layer, found
+           by asking them rather than by hard-coding a position — a new gear
+           slot inserted later joins the list and cannot silently end up over
+           the blade.  Face, hair and headwear are deliberately NOT in it: they
+           sit above the weapon by build order and should stay there (v2.3.378
+           records a swinging arm clipping the hair; a blade over the scalp is
+           the same defect). */
+        let frontRefIdx = bodyIdx;
+        for (const _r of [display._bodyHead, display._bodyTorso, display._bodyLegs,
+                          display._gearLegs, display._gearShirt, display._gearChest,
+                          display._gearShoulders, display._gearHead, display._shirtSprite]) {
+          if (_r && _r.visible) {
+            const _i = display.getChildIndex(_r);
+            if (_i > frontRefIdx) frontRefIdx = _i;
+          }
+        }
         /* Pixi setChildIndex removes the child, then inserts at the
            given index in the post-removal array.  When weaponContainer
-           is currently AFTER spriteBody, removing it leaves spriteBody
-           at its original bodyIdx; when BEFORE, removing shifts
-           spriteBody down by 1.  Compute target accordingly so we land
-           exactly one slot after (in front) or one slot before (behind)
-           spriteBody in the new array. */
+           is currently AFTER the reference, removing it leaves the
+           reference at its original index; when BEFORE, removing shifts
+           the reference down by 1.  Compute target accordingly so we land
+           exactly one slot after (in front) or one slot before (behind). */
         const targetIdx = inFront
-          ? (wcIdx > bodyIdx ? bodyIdx + 1 : bodyIdx)        // after spriteBody
-          : (wcIdx > bodyIdx ? bodyIdx : Math.max(0, bodyIdx - 1));  // before spriteBody
+          ? (wcIdx > frontRefIdx ? frontRefIdx : frontRefIdx - 1) + 1   // above the topmost worn layer
+          : (wcIdx > bodyIdx ? bodyIdx : Math.max(0, bodyIdx - 1));     // before spriteBody
         if (wcIdx !== targetIdx) {
           display.setChildIndex(display._weaponContainer, targetIdx);
         }
