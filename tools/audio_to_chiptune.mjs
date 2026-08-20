@@ -269,34 +269,99 @@ const data = {
 writeFileSync(prefix + '.json', JSON.stringify(data));
 
 /* ── preview render ────────────────────────────────────────────────────── */
+/* ═══ v2.3.1806: HOLD THE NOTE ═══
+   Owner, on the first render: "The chiptune is too much like isolated notes
+   instead of a melody.  Is there a way to hold each note as it transitions to
+   the next one?"
+
+   Yes, and the fault was entirely in the VOICING — the transcription was
+   fine.  Every step was struck with a decay envelope that reached silence
+   inside its own 1/8, so each note died before its neighbour began and the
+   ear got 69 events instead of a line.  Two things fix it:
+
+     1. NOTES ARE SEGMENTS, NOT STEPS.  Consecutive steps on the same pitch
+        are ONE note held across them, struck once.  (The piano roll has drawn
+        them that way from the start — the picture was right and the sound was
+        not.)
+     2. SUSTAIN, then a release only at the very END of the note.  A short
+        attack, a small dip to a sustain level, then hold, then ~20ms of
+        release into the next note — long enough to avoid a click, far too
+        short to be heard as a gap.
+
+   The hat that marked every step is gone too: a click on each 1/8 was
+   reinforcing exactly the pulse the owner is describing.  The noise channel
+   now speaks only where an onset was actually detected. */
 const OSR = 22050;
 const total = Math.ceil(melSteps.length * step * OSR);
 const out = new Float32Array(total);
 const hz = (m) => 440 * Math.pow(2, (m - 69) / 12);
 let lfsr = 1;
 const noise = () => { const b = ((lfsr ^ (lfsr >> 1)) & 1); lfsr = (lfsr >> 1) | (b << 14); return (lfsr & 1) ? 1 : -1; };
-const envAt = (t, dur) => { const a = 0.004; if (t < a) return t / a; const d = Math.max(0, 1 - (t - a) / (dur * 0.92)); return d * d; };
-for (let i = 0; i < total; i++) {
-  const t = i / OSR;
-  const s = Math.min(melSteps.length - 1, Math.floor(t / step));
-  const ts = t - s * step;
-  let v = 0;
-  if (melSteps[s]) {
-    const p = (t * hz(melSteps[s])) % 1;
-    v += (p < 0.5 ? 0.25 : -0.25) * envAt(ts, step);
-    /* PULSE 2: the same note an octave down at a narrow duty.  The NES's
-       second voice, and deliberately the SAME note rather than an invented
-       harmony — a third guessed against a transcription that is already
-       approximate is how you get a chord that fights the original. */
-    const p2 = (t * hz(melSteps[s] - 12)) % 1;
-    v += (p2 < 0.25 ? 0.13 : -0.13) * envAt(ts, step);
+
+/* Merge runs of equal pitch into held notes — the same merge the roll draws. */
+function segments(track) {
+  const segs = [];
+  let i = 0;
+  while (i < track.length) {
+    if (!track[i]) { i++; continue; }
+    let j = i;
+    while (j + 1 < track.length && track[j + 1] === track[i]) j++;
+    segs.push({ n: track[i], t0: i * step, t1: (j + 1) * step });
+    i = j + 1;
   }
-  if (basSteps[s]) { const p = (t * hz(basSteps[s])) % 1; const tr = p < 0.5 ? p * 4 - 1 : 3 - p * 4; v += Math.round(tr * 7.5) / 7.5 * 0.32 * envAt(ts, step); }
-  /* NOISE: a hat on every step, a longer burst where an onset was detected. */
-  if (ts < 0.022) v += noise() * 0.045 * envAt(ts, 0.022);
-  if (perc[s] && ts < 0.07) v += noise() * 0.11 * envAt(ts, 0.07);
-  out[i] = Math.max(-1, Math.min(1, v * 0.8));
+  return segs;
 }
+const ATT = 0.008, DIP = 0.045, SUS = 0.84, REL = 0.020;
+function envelope(t, dur) {
+  if (t < 0 || t > dur) return 0;
+  const rel = Math.min(REL, dur * 0.25);
+  if (t < ATT) return t / ATT;                             /* strike */
+  if (t > dur - rel) return SUS * (dur - t) / rel;         /* let go, at the END */
+  if (t < ATT + DIP) return 1 - (1 - SUS) * (t - ATT) / DIP;
+  return SUS;                                              /* HOLD */
+}
+/* Adds one voice's segments into the buffer.  `wave` takes a phase in [0,1). */
+function render(segs, wave, gain, semitoneShift, vib) {
+  for (const g of segs) {
+    const dur = g.t1 - g.t0;
+    const f = hz(g.n + (semitoneShift || 0));
+    const i0 = Math.floor(g.t0 * OSR), i1 = Math.min(total, Math.ceil(g.t1 * OSR));
+    let ph = 0;
+    for (let i = i0; i < i1; i++) {
+      const t = i / OSR - g.t0;
+      /* Vibrato only once a note has been held a while — it is what makes a
+         sustained square read as sung rather than as a test tone, and on a
+         short note it would just sound out of tune. */
+      const fv = (vib && t > 0.22) ? f * (1 + 0.005 * Math.sin(2 * Math.PI * 5.5 * (t - 0.22))) : f;
+      ph += fv / OSR;
+      if (ph >= 1) ph -= 1;
+      out[i] += wave(ph) * gain * envelope(t, dur);
+    }
+  }
+}
+const pulse50 = (p) => (p < 0.5 ? 1 : -1);
+const pulse25 = (p) => (p < 0.25 ? 1 : -1);
+const tri16 = (p) => { const v = p < 0.5 ? p * 4 - 1 : 3 - p * 4; return Math.round(v * 7.5) / 7.5; };
+
+const leadSegs = segments(melSteps), bassSegs = segments(basSteps);
+render(leadSegs, pulse50, 0.25, 0, true);
+/* PULSE 2: the same note an octave down at a narrow duty.  The NES's second
+   voice, and deliberately the SAME note rather than an invented harmony — a
+   third guessed against a transcription that is already approximate is how
+   you get a chord that fights the original. */
+render(leadSegs, pulse25, 0.12, -12, false);
+render(bassSegs, tri16, 0.30, 0, false);
+/* NOISE: only where an onset was detected.  A hat on every step was marking
+   the grid, which is the very thing that made this read as steps. */
+for (let s = 0; s < perc.length; s++) {
+  if (!perc[s]) continue;
+  const i0 = Math.floor(s * step * OSR), i1 = Math.min(total, i0 + Math.ceil(0.06 * OSR));
+  for (let i = i0; i < i1; i++) {
+    const t = (i - i0) / OSR;
+    out[i] += noise() * 0.10 * Math.pow(Math.max(0, 1 - t / 0.06), 2);
+  }
+}
+for (let i = 0; i < total; i++) out[i] = Math.max(-1, Math.min(1, out[i] * 0.8));
 const pcm = Int16Array.from(out, (v) => v * 32767);
 const b = Buffer.alloc(44 + pcm.length * 2);
 b.write('RIFF', 0); b.writeUInt32LE(36 + pcm.length * 2, 4); b.write('WAVE', 8);
