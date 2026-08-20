@@ -159,8 +159,19 @@ export async function stopWorker(w) {
    duplicates the init script, the console capture and the name plumbing
    enterWorld needs (and that duplicate is how mp-desktopbox first failed:
    page.fill got an undefined name). */
-export async function newPlayer(browser, { name, wsPort, webPort, guest = false, viewport }) {
-  const ctx = await browser.newContext({ viewport: viewport || { width: 1000, height: 780 } });
+/* v2.3.1796: `touch` emulates a PHONE, and it is not cosmetic.  game.css
+   hides every touch control behind `@media (pointer:fine) { display:none }`,
+   and a Playwright context is pointer:fine by default — so a scenario that
+   measures a joystick on the default context measures a 0x0 box and quietly
+   proves nothing.  (That is exactly how the first run of mp-questcoach
+   "passed" three assertions about marks that were never drawn.)  isMobile
+   flips the emulated pointer to coarse and turns on the meta viewport, which
+   together are the closest this harness gets to the primary platform. */
+export async function newPlayer(browser, { name, wsPort, webPort, guest = false, viewport, touch = false }) {
+  const ctx = await browser.newContext(Object.assign(
+    { viewport: viewport || { width: 1000, height: 780 } },
+    touch ? { hasTouch: true, isMobile: true, deviceScaleFactor: 2 } : null,
+  ));
   const page = await ctx.newPage();
   const logs = [];
   page.on('console', (m) => { if (m.type() === 'error') logs.push(`console ${m.text().slice(0, 200)}`); });

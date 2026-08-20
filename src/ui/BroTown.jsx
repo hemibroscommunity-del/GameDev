@@ -104,6 +104,10 @@ import { eatBus } from './mobile/eatBus.js';
 import { blockRingBus } from './mobile/blockRingBus.js';
 import { chatBubbleBus } from './mobile/chatBubbleBus.js'; /* v2.3.1287: self-tap opens chat */
 import { controlsTutorialBus } from './mobile/controlsTutorialBus.js';
+/* v2.3.1796: the questline teaches the controls by flashing the real one
+   (owner).  Sibling of, not replacement for, ControlsTutorial above — see
+   the header of QuestCoach.jsx for why both exist. */
+import { QuestCoach } from './mobile/QuestCoach.jsx';
 /* Renderer: PixiJS (WebGL) with Canvas 2D fallback */
 import { initPixiRenderer, preloadPlayerAssets } from '@/rendering/pixiRenderer.js';
 import { IMAGE_ZONE_MAPS } from '@/rendering/tiledMaps.js';
@@ -10104,5 +10108,20 @@ export var BroTown = function BroTown(_ref0) {
      and z-index 6 so they sit over the world canvas but under all HUD
      (z>=20).  bt-desktop-hide drops them on desktop so the mouse reaches the
      canvas. */
-  /*#__PURE__*/React.createElement(TouchControls, { stateRef: stateRef, lZoneRef: lZoneRef, rZoneRef: rZoneRef, joystickRef: joystickRef, lStickRef: lStickRef, knobRef: knobRef, lJoyPreviewRef: lJoyPreviewRef, rJoyRef: rJoyRef, rStickRef: rStickRef, rKnobRef: rKnobRef, rJoyPreviewRef: rJoyPreviewRef, shieldJoyRef: shieldJoyRef, autoAttack: autoAttack, isLandscape: isLandscape, shieldUp: shieldUp }), /* v2.3.1733: the two stamina-ability buttons ride with the touch controls — they self-hide until their milestone level unlocks them (AbilityButtons.jsx). */ /*#__PURE__*/React.createElement(AbilityButtons, { stateRef: stateRef, isLandscape: isLandscape })), ((_window$matchMedia = (_window = window).matchMedia) === null || _window$matchMedia === void 0 || (_window$matchMedia = _window$matchMedia.call(_window, '(pointer:fine)')) === null || _window$matchMedia === void 0 ? void 0 : _window$matchMedia.matches) && /*#__PURE__*/React.createElement(KeyboardHintsPanel, { hidden: kbHintsOff, onToggle: toggleKbHints }), staleBuild && /*#__PURE__*/React.createElement(UpdateBanner, { info: staleBuild, onReload: function () { try { window.location.reload(); } catch (e) {} }, onDismiss: function () { setStaleBuild(null); } }), chatOpen && /*#__PURE__*/React.createElement(ChatPanel, { chatInput: chatInput, chatInputRef: chatInputRef, chatInputValRef: chatInputValRef, sendChat: sendChat, setChatInput: setChatInput, setChatOpen: setChatOpen }));
+  /*#__PURE__*/React.createElement(TouchControls, { stateRef: stateRef, lZoneRef: lZoneRef, rZoneRef: rZoneRef, joystickRef: joystickRef, lStickRef: lStickRef, knobRef: knobRef, lJoyPreviewRef: lJoyPreviewRef, rJoyRef: rJoyRef, rStickRef: rStickRef, rKnobRef: rKnobRef, rJoyPreviewRef: rJoyPreviewRef, shieldJoyRef: shieldJoyRef, autoAttack: autoAttack, isLandscape: isLandscape, shieldUp: shieldUp }), /* v2.3.1733: the two stamina-ability buttons ride with the touch controls — they self-hide until their milestone level unlocks them (AbilityButtons.jsx). */ /*#__PURE__*/React.createElement(AbilityButtons, { stateRef: stateRef, isLandscape: isLandscape })), /* ═══ v2.3.1796: THE COACH MARKS LIVE OUTSIDE THE WRAP ═══
+     Not a style choice — a hard requirement this cost a round of QA to
+     find.  .brotown-wrap is position:fixed, and Chrome treats that as its
+     own stacking context, so EVERY element inside it is confined to one
+     rung of the root stack no matter what z-index it carries.  The coach
+     mark rendered inside the wrap measured onto the right control, at the
+     right size, at opacity 1 — and was invisible in a screenshot even at
+     z-index 99999, because the dashboard band paints from outside.  This
+     is the third sighting of the same trap (the HUD player chip at
+     v2.3.1235 and the keyboard hints at v2.3.1728, both documented in
+     game.css) and the answer is the same one they reached: sit outside
+     the wrap, with the other fixed overlays.
+     The cost of being outside is that the mark now also outranks the
+     in-wrap modals, which it must NOT cover — QuestCoach handles that
+     itself, by only drawing on a control a finger can actually reach. */
+  /*#__PURE__*/React.createElement(QuestCoach, { stateRef: stateRef }), ((_window$matchMedia = (_window = window).matchMedia) === null || _window$matchMedia === void 0 || (_window$matchMedia = _window$matchMedia.call(_window, '(pointer:fine)')) === null || _window$matchMedia === void 0 ? void 0 : _window$matchMedia.matches) && /*#__PURE__*/React.createElement(KeyboardHintsPanel, { hidden: kbHintsOff, onToggle: toggleKbHints }), staleBuild && /*#__PURE__*/React.createElement(UpdateBanner, { info: staleBuild, onReload: function () { try { window.location.reload(); } catch (e) {} }, onDismiss: function () { setStaleBuild(null); } }), chatOpen && /*#__PURE__*/React.createElement(ChatPanel, { chatInput: chatInput, chatInputRef: chatInputRef, chatInputValRef: chatInputValRef, sendChat: sendChat, setChatInput: setChatInput, setChatOpen: setChatOpen }));
 };

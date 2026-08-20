@@ -322,3 +322,50 @@ and screen shake over every nearby player on every swing, in every zone,
 duel or not. Pinned by `server/test/party.test.mjs` §11 and
 `tools/qa/mp/mp-party.mjs` (whose control taps the SAME player after the
 party breaks up, so a lock-free pass cannot be a missed click).
+
+## 20. Fixing an invisible overlay by raising its z-index
+
+**Tempting:** your new overlay measured onto the right control, at the
+right size, at opacity 1 — and it is not on screen. Something with a
+higher z-index must be on top of it, so raise yours. **Wrong:**
+`.brotown-wrap` is `position:fixed`, which Chrome treats as its own
+stacking context, so EVERY element inside the wrap is flattened onto one
+rung of the root stack. Nothing inside can outrank anything outside it —
+the dashboard band, the HUD player chip, the keyboard-hints strip — no
+matter what number you write. A v2.3.1796 coach mark was still invisible
+at `z-index: 99999`; the same box appended to `<body>` painted
+immediately, which is the two-minute experiment that settles it.
+
+**The fix is where the element lives, not what number it carries:**
+render it as a SIBLING of the wrap (BroTown.jsx renders
+`KeyboardHintsPanel`, `UpdateBanner`, `ChatPanel` and `QuestCoach`
+there). Being outside then puts you ABOVE the in-wrap modals, which is
+its own hazard — solve that by hit-testing what you point at
+(`elementFromPoint` on the control's centre; if a scrim answers, stand
+down) rather than by enumerating modal classes, which goes stale.
+
+**Receipt:** the third sighting of the same trap — the HUD player chip
+(v2.3.1235) and the keyboard hints (v2.3.1728), both documented in
+game.css, each needed a NON-z-index fix (geometric clearance and a
+`.bt-inspect`-keyed hide). `src/ui/mobile/QuestCoach.jsx` header;
+`tools/qa/mp/mp-questcoach.mjs`.
+
+## 21. Trusting a loose pixel-classifier over a look at the crop
+
+**Tempting:** you cannot see your change in a screenshot, so you count
+pixels instead — `r>150 && g>110 && b<130` is "brass", and 688 of them
+inside the card's box says the card is painting. **Wrong:** that filter
+also passes the coin counter, the brass chip borders, the level-up ring
+and a good deal of town cobble. The count "confirmed" a card that a
+cropped screenshot then showed was not there at all, and nearly ended
+the investigation on the wrong answer. The same error is on record for
+skin measurement (v2.3.1788: town cobble reads as skin, ~51,000 "skin"
+pixels in an 80x90 crop, before and after identical).
+
+**The rule:** a colour count is evidence only against a CONTROL — the
+same crop with the feature off — or when the classifier is tight enough
+that nothing else in frame can pass it. Otherwise crop the region and
+look at it. `H.screenshotPixels` supports both; only one of them is an
+argument.
+
+**Receipt:** v2.3.1796 session log; v2.3.1788's stand-in skin work.
