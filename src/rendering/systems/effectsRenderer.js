@@ -5287,6 +5287,36 @@ export class EffectsRenderer {
        from the feet by half the figure. */
     shown.x = S.player.x + place.dx * scale;
     shown.y = (footY != null ? footY : S.player.y) - (bodyH || 0) * 0.5 + place.dy * scale;
+    /* ═══ v2.3.1807: IN FRONT MEANS IN FRONT OF HIS HEAD TOO ═══
+       Owner: "the character swinging north northeast and northwest has his
+       beard, hat, and maybe other items that are still layering in front of
+       the shield (should be behind it)."
+       Facing away, the shield on his back is between the camera and ALL of
+       him — the hat and beard included.  The hi clone was already above the
+       body and the gear, which is why this only showed on the head: the
+       trait sprites (hair / beard / hat) are added to the node layer AFTER
+       both stand-ins' shield clones (v2.3.867, "so they layer on top"), and
+       that build-order default is right for every case except this one.
+       Lifting the clone above them is done HERE, on the frame that chose
+       front mode, rather than by reordering the constructor — the traits must
+       stay above the BODY, and there is one shared trait set serving two
+       stand-ins, so no single fixed order satisfies both.
+       Only ever moves UP, and only when it is not already there, so this
+       cannot ratchet a slot per frame (the setChildIndex remove-then-insert
+       trap this file has hit before). */
+    if (!place.behind) {
+      const layer = this.nodeLayer;
+      const cur = layer.getChildIndex(shown);
+      let top = cur;
+      for (const k of ['hair', 'beard', 'hat']) {   /* hairMask is a mask, never drawn */
+        const t = this.skillTraits && this.skillTraits[k];
+        if (t && t.parent === layer) {
+          const i = layer.getChildIndex(t);
+          if (i > top) top = i;
+        }
+      }
+      if (cur < top) layer.setChildIndex(shown, top);
+    }
     /* QA probe (mp-backshield) — a headless run cannot read the WebGL canvas,
        so the stand-in's z-order is asserted from here. */
     try {
@@ -5300,6 +5330,12 @@ export class EffectsRenderer {
         weaponIdx: layer.getChildIndex(lo === this.swordShieldLo ? this.swordWeaponSprite : this.bowWeaponSprite),
         chestIdx: layer.getChildIndex(lo === this.swordShieldLo ? this.swordChestSprite : this.bowChestSprite),
         legsIdx: layer.getChildIndex(lo === this.swordShieldLo ? this.swordLegsSprite : this.bowLegsSprite),
+        /* v2.3.1807: the topmost DRAWN trait (hat / beard / hair).  A shield in
+           front of him has to beat this, not just the body. */
+        traitIdx: ['hair', 'beard', 'hat'].reduce((m, k) => {
+          const t = this.skillTraits && this.skillTraits[k];
+          return (t && t.parent === layer) ? Math.max(m, layer.getChildIndex(t)) : m;
+        }, -1),
         sizePx: shown.height, facing: S._renderFacing,
       };
     } catch (e) { /* never breaks the frame */ }

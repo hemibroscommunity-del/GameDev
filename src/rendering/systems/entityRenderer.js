@@ -6278,28 +6278,35 @@ export class EntityRenderer {
       facing = SECTORS[((sector % 8) + 8) % 8];
     } else if (isShielding && S._shieldAngle != null) {
       const sector = Math.round(S._shieldAngle / (Math.PI / 4));
-      facing = SECTORS[((sector % 8) + 8) % 8];
+      facing = SECTORS[((sector % 8) + 8) % 8]; S._facingSrc = 'shield';
     } else if (aimAttackActive) {
       const sector = Math.round(S._aimAngle / (Math.PI / 4));
-      facing = SECTORS[((sector % 8) + 8) % 8];
+      facing = SECTORS[((sector % 8) + 8) % 8]; S._facingSrc = 'aim';
     } else if (stickActive) {
       const ang = Math.atan2(stickY, stickX);
       const sector = Math.round(ang / (Math.PI / 4));
-      facing = SECTORS[((sector % 8) + 8) % 8];
+      facing = SECTORS[((sector % 8) + 8) % 8]; S._facingSrc = 'stick';
     } else if (isMoving) {
       const ang = Math.atan2(P.vy || 0, P.vx || 0);
       const sector = Math.round(ang / (Math.PI / 4));
-      facing = SECTORS[((sector % 8) + 8) % 8];
+      facing = SECTORS[((sector % 8) + 8) % 8]; S._facingSrc = 'moving';
     } else if (S._facingAngle !== undefined) {
       const sector = Math.round(S._facingAngle / (Math.PI / 4));
-      facing = SECTORS[((sector % 8) + 8) % 8];
+      facing = SECTORS[((sector % 8) + 8) % 8]; S._facingSrc = 'facingAngle';
     } else {
-      facing = S._facing || 'south';
+      facing = S._facing || 'south'; S._facingSrc = 'fallback';
     }
     /* v2.3.396: publish the ACTUAL rendered facing (8-way compass) so the
        network broadcast can send it and remote clients render the same
        facing -- they previously reconstructed it from movement, which is
-       wrong whenever a standing player's facing came from aim, not motion. */
+       wrong whenever a standing player's facing came from aim, not motion.
+       v2.3.1807: ...and _facingSrc names WHICH of the branches above decided
+       it.  One string per frame, and it is worth it: the branch order is
+       bash > shield > aim > stick > moving > facingAngle, so a facing that
+       looks wrong is usually a facing that came from somewhere else, and
+       nothing said where.  A QA pin that set _aimAngle correctly still
+       rendered west for an afternoon because the resolver had fallen through
+       to _facingAngle mid-slew; the probe below now says so in one word. */
     S._renderFacing = facing;
     const isHit = S._hitFlash && (now - S._hitFlash) < 250;
     /* v2.3.188: pickup pose during the loot-pickup freeze.  Takes

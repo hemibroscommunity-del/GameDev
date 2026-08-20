@@ -2613,7 +2613,9 @@ BT_AUDIO.SFX_MANIFEST = {
    Same shape as swordHit/magicHit below — a counter on BT_AUDIO and one
    helper — because that is how this file already alternates a sample set.
    THE GAIN TABLE IS NOT DECORATION.  The three uploads are recorded at very
-   different levels: peak RMS 0.274 / 0.391 / 0.129, a 3x spread.  Rotated raw
+   different levels: peak RMS 0.274 / 0.391 / 0.129, a 3x spread.  (v2.3.1807
+   dropped the third from the rotation on the owner's ear; the table keeps its
+   measurement anyway.)  Rotated raw
    at one volume, every third swing would sound like it came from another room
    — a rotation exists to stop the ear noticing repetition, and an audible
    level step is MORE noticeable than the repetition it was meant to hide.
@@ -2623,11 +2625,25 @@ BT_AUDIO.SFX_MANIFEST = {
    (Measured with tools/audio_analyze.mjs, which decodes through a real
    Chromium; there is no ffmpeg in this sandbox to normalise the files
    themselves, so the correction lives at the gain node.) */
-BT_AUDIO.SWING_ROTATION = ['sword-swing-1', 'sword-swing-2', 'sword-swing-3'];
+/* ═══ v2.3.1807: TWO, NOT THREE ═══
+   Owner: "there's a swing sound I don't like for the swinging noise (I think
+   it's the 3rd in the order I uploaded) because it sounds more like a hit.
+   You can remove that one from the swing alternating sounds."
+   Their guess was right, and it checks out by file size through the trim:
+   swing-c.mp3 came from the third upload (musicholderswordsound, 16800 bytes
+   in, 8160 out at 0.16s trimmed).  It is also the one that needed a 2.12x
+   boost to sit with the other two — a quiet, short, percussive sample is
+   exactly what "sounds like a hit rather than a swing" describes, so the
+   level table was pointing at the same thing the owner's ear did.
+   The KEY and the FILE both stay (see SFX above): the sound is not bad, it is
+   in the wrong job, and 'sword-swing-3' remains available if it ever wants to
+   be a hit.  Nothing fetches an unlisted key, so an idle entry costs nothing
+   until something plays it.  Re-adding it here is the whole restore. */
+BT_AUDIO.SWING_ROTATION = ['sword-swing-1', 'sword-swing-2'];
 BT_AUDIO.SWING_GAIN = {
   'sword-swing-1': 1.00,
   'sword-swing-2': 0.70,
-  'sword-swing-3': 2.12,
+  'sword-swing-3': 2.12,   /* out of rotation; kept so a re-add needs no re-measure */
 };
 BT_AUDIO._swingIdx = 0;
 /* `key` is whatever meleeSwingSfx() decided.  Only the generic sword key is

@@ -369,3 +369,34 @@ look at it. `H.screenshotPixels` supports both; only one of them is an
 argument.
 
 **Receipt:** v2.3.1796 session log; v2.3.1788's stand-in skin work.
+
+## 22. Transcribing an orchestral track into chiptune
+
+**Tempting:** the owner wants NES-style music and already has seven
+orchestral tracks. A bit-crush obviously won't do it (that is a damaged
+recording, not chiptune), but *transcription* looks like the real answer:
+pull the melody and bass out with an STFT, quantise to a grid, replay on
+pulse/triangle/noise. The pipeline works, the numbers look right, and
+each track compresses to under a kilobyte of note data — which also
+happens to solve the 40–56 MiB resident-PCM problem in one move.
+**Wrong:** it does not sound like the song. Orchestral texture is dense
+polyphony; monophonic pitch tracking has to pick ONE line out of it, and
+what it picks wanders between instruments even after a Viterbi path
+constraint and a key snap. Owner's verdict on the result: *"It doesn't
+sound anything like the original song and not very good. I'd rather find
+chiptune music someone already made."*
+
+**What was actually true along the way, and is worth keeping:** the first
+render sounded like isolated notes and the fix was the ENVELOPE, not the
+transcription (v2.3.1806 — held segments instead of per-step strikes;
+near-silent windows 36.9% → 0%). So "it sounds wrong" and "the notes are
+wrong" are separate diagnoses, and the voicing is the cheaper one to check
+first. The note-data-instead-of-audio argument also still stands on its
+own merits for any chiptune source, however the music is obtained.
+
+**Receipt:** `tools/audio_to_chiptune.mjs` (kept, with this verdict in its
+header); v2.3.1804 and v2.3.1806; the comparison artifact built for the
+owner to judge by ear rather than by my description. If music like this is
+wanted, SOURCE it — the sourcing constraint is short, looping, MONO,
+because resident memory is duration × rate × channels regardless of what
+is on the track.

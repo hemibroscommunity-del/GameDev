@@ -29,6 +29,20 @@
  * line instead of at whatever sample the file happens to end on, and can be
  * re-voiced later without re-exporting anything.
  *
+ * ═══ THE OWNER'S VERDICT (2026-08-20): THIS DID NOT WORK ═══
+ * "It doesn't sound anything like the original song and not very good.  I'd
+ * rather find chiptune music someone already made."
+ *
+ * Kept, not deleted, so the next session does not rediscover the idea and
+ * spend the same day on it — see TRAPS §22.  The pipeline below does what it
+ * says and the note data really is under a kilobyte a track; what it cannot do
+ * is pick ONE melody out of dense orchestral polyphony reliably enough to be
+ * recognisable, and no amount of Viterbi or key-snapping got it there.
+ * If chiptune music is wanted, source it.  The one part of this worth reusing
+ * is the argument for the FORMAT: note data beats an audio file for any
+ * chiptune source, because resident memory is duration x rate x channels
+ * regardless of what is on the track.
+ *
  * Usage: node tools/audio_to_chiptune.mjs <in.mp3> <out-prefix> [seconds]
  *        writes <out-prefix>.json (the notes) and <out-prefix>.wav (a preview)
  */
