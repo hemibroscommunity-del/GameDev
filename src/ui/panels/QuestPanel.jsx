@@ -96,7 +96,21 @@ function XpChooser(props) {
   return React.createElement("div", {
     style: {
       marginTop: 2, marginBottom: 8,
-      background: '#2B3940',            /* raised — actionable surface */
+      /* ═══ v2.3.1795: THE PAYOUT CARD IS GREEN ═══
+         Owner: "Maybe breathing effect text for the plus xp and a green
+         coloured modal or something."
+         The surface underneath was the plain raised slate every actionable
+         group in this panel uses, so the one card that HANDS YOU SOMETHING
+         looked like the ones that merely describe the job.  Green is already
+         this UI's word for a gain — the XP number here, the QUEST COMPLETED!
+         banner, the Positive token — so tinting the surface with it says
+         "reward" in a colour the player has been taught, rather than
+         introducing an accent (Lantern Slate's do-not-drift list forbids new
+         ones).  A WASH, not a fill: the slate still shows through, so the
+         brass selection on the buttons below stays the brightest thing in
+         the card and keeps reading as the choice you are making. */
+      background: 'linear-gradient(180deg, rgba(97,176,107,.16), rgba(97,176,107,.05)), #2B3940',
+      border: '1px solid rgba(97,176,107,.34)',
       borderRadius: 10,
       padding: '8px 9px 9px',
       boxShadow: 'inset 0 1px 0 rgba(255,255,255,.08), 0 6px 14px rgba(5,8,10,.18)',
@@ -107,6 +121,9 @@ function XpChooser(props) {
       marginBottom: 6, minWidth: 0,
     },
   }, /*#__PURE__*/React.createElement("span", {
+    /* v2.3.1795: breathes three times as the payout appears, then rests —
+       see .bt-xp-payout in game.css for why it is finite rather than ambient. */
+    className: 'bt-xp-payout',
     style: { fontSize: 17, fontWeight: 700, color: '#61B06B', flex: 'none', lineHeight: 1 },
   }, '+' + xp + ' XP'), /*#__PURE__*/React.createElement("span", {
     style: {

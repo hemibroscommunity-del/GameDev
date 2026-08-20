@@ -1833,3 +1833,30 @@ body:has(.bt-inspect) .bt-kb-chip{display:none}
     box-shadow:0 0 0 1px rgba(255,255,255,.06), 0 0 48px rgba(0,0,0,.55);
   }
 }
+
+/* ═══ v2.3.1795: THE XP PAYOUT BREATHES, BRIEFLY ═══
+   Owner: "Maybe breathing effect text for the plus xp and a green colored
+   modal or something."
+
+   FINITE, not ambient, and that is the spec rather than caution.
+   LANTERN-SLATE's motion rule is "No ambient pulsing except finite alerts and
+   the Godly sheen", and its do-not-drift list says "no always-on animation".
+   A payout appearing IS a finite alert, so it breathes three times and then
+   sits still — which also reads better than a perpetual pulse: something that
+   never stops moving stops being noticed, and this needs to catch the eye once
+   at the moment the reward becomes claimable.
+
+   Scale only, from the text's own centre.  No colour cycling: the XP green is
+   a semantic token and pulsing it would drift a fixed meaning. */
+@keyframes bt-xp-breathe {
+  0%, 100% { transform: scale(1); }
+  50%      { transform: scale(1.085); }
+}
+.bt-xp-payout {
+  display: inline-block;      /* transforms need a block box */
+  transform-origin: left center;
+  animation: bt-xp-breathe 900ms cubic-bezier(.16, 1, .3, 1) 3;
+}
+@media (prefers-reduced-motion: reduce) {
+  .bt-xp-payout { animation: none; }
+}
