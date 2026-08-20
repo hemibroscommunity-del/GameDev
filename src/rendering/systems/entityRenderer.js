@@ -3801,6 +3801,19 @@ function createOtherPlayerDisplay() {
 
   /* Procedural fallback body — drawn until /sprites/player sheets
      resolve (and as a permanent fallback if they fail to load). */
+  /* ═══ v2.3.1790: other bros wear their shield on their back too ═══
+     v2.3.1782 built the slung shield for the local player only and said so;
+     this closes that gap.  Same structural trick, because the reason for it is
+     the same: a LOW clone before every drawn layer and a HIGH clone after them,
+     with the facing choosing which is visible.  No index arithmetic, so no
+     per-facing exception to get wrong — and the geometry comes from
+     backShield.js, shared with the local player and both attack stand-ins, so
+     a peer's shield cannot sit somewhere yours does not. */
+  const shieldBackLo = new Sprite();
+  shieldBackLo.anchor.set(0.5, 0.5);
+  shieldBackLo.visible = false;
+  container.addChild(shieldBackLo);
+
   const body = new Graphics();
   container.addChild(body);
 
@@ -3882,6 +3895,12 @@ function createOtherPlayerDisplay() {
      z-order all three relative to spriteBody. */
   const weaponContainer = new Container();
   container.addChild(weaponContainer);
+  /* v2.3.1790: the in-FRONT half — after the body, the gear and the shirt, so a
+     back turned to the camera shows the shield over all of them. */
+  const shieldBackHi = new Sprite();
+  shieldBackHi.anchor.set(0.5, 0.5);
+  shieldBackHi.visible = false;
+  container.addChild(shieldBackHi);
 
   const weaponGlowGfx = new Graphics();
   weaponContainer.addChild(weaponGlowGfx);
@@ -3939,6 +3958,8 @@ function createOtherPlayerDisplay() {
   container._animDir = null;
   container._animFrame = -1;
 
+  container._shieldBackLo = shieldBackLo;   /* v2.3.1790 */
+  container._shieldBackHi = shieldBackHi;   /* v2.3.1790 */
   return container;
 }
 
@@ -5243,6 +5264,53 @@ export class EntityRenderer {
          Dropping it makes remote facing match local. */
       const facingIdx = SECTORS.indexOf(facing);
       const isHit = other._hitFlash && (now - other._hitFlash) < 250;
+
+      /* ═══ v2.3.1790: the peer's slung shield ═══
+         Whether they own one comes from rpgData.shield, which the presence
+         payload already carries for the inspect card — so this needs NO wire
+         change and cannot break deploy order in either direction: an old
+         client shows a new client's shield and a new client shows an old
+         one's.  It is the shield's NAME rather than a render flag, and that is
+         enough, because the art is one pine PNG triplet whatever shield it is
+         — exactly as for the local player.
+
+         Drawn while they stand or jog, hidden during a hit, a death or any
+         stand-in pose, for the reason the local one is: those replace or move
+         the torso in ways a fixed back placement cannot follow.  A peer's
+         BLOCK is not broadcast at all, so a blocking peer keeps the shield
+         slung — wrong for the half-second it is up, and better than guessing
+         from data that is not on the wire. */
+      {
+        const _shLo = display._shieldBackLo, _shHi = display._shieldBackHi;
+        if (_shLo && _shHi) {
+          const _hasShield = !!(other.rpgData && other.rpgData.shield);
+          const _place = (_hasShield && !isHit && !other._dying && !other._extraction && !other._firemaking)
+            ? backShieldPlacement(facingIdx, isMoving, bobY)
+            : null;
+          if (!_place) {
+            _shLo.visible = false;
+            _shHi.visible = false;
+          } else {
+            const _shown = _place.behind ? _shLo : _shHi;
+            (_place.behind ? _shHi : _shLo).visible = false;
+            applyBackShield(_shown, _place, BACK_SHIELD_PX);
+            _shown.x = _place.dx;
+            _shown.y = _place.dy;
+          }
+          /* QA probe (mp-peershield) — one entry per peer id. */
+          try {
+            if (!window.__btPeerShield) window.__btPeerShield = {};
+            window.__btPeerShield[id] = {
+              on: !!(_shLo.visible || _shHi.visible),
+              hasShield: _hasShield,
+              facing, behind: _shLo.visible, front: _shHi.visible,
+              loIdx: display.getChildIndex(_shLo),
+              hiIdx: display.getChildIndex(_shHi),
+              bodyIdx: display._spriteBody ? display.getChildIndex(display._spriteBody) : -1,
+            };
+          } catch (e) { /* never breaks the frame */ }
+        }
+      }
       /* v2.3.1092: remote harvest activity broadcast by the gatherer.
          mine/fish render as the SAME south-only body poses the local player
          uses; chop/cook/fire are full-character STAND-INS drawn in
