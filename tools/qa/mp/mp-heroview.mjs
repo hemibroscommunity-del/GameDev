@@ -66,6 +66,36 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('...and it is on screen, not scrolled out of the panel',
     !!(box && box.top > 0 && box.top < 844), { box });
 
+  /* ═══ v2.3.1841: BIGGER, AND ON THE LEFT ═══
+     Owner: "I want the character on the character menu to display larger and
+     be in the left side.  I just scroll down to see the whole character."
+     The size came from re-flowing the six gear slots from 3 columns to 2, so
+     the figure's box grew from 2 slots tall to 3 without the row growing —
+     which is why "larger" did not have to cost more scrolling. */
+  const layout = await P.page.evaluate(() => {
+    const cv = document.querySelector('canvas[aria-label="Your character"]');
+    if (!cv) return null;
+    const r = cv.getBoundingClientRect();
+    /* The gear slots are the tiles with an aria-label that are NOT the
+       figure; take the leftmost one as the block's edge. */
+    const tiles = [...document.querySelectorAll('[role="button"][aria-label]')]
+      .map((el) => ({ label: el.getAttribute('aria-label'), r: el.getBoundingClientRect() }))
+      .filter((t) => t.r.width > 30 && t.r.width < 70 && t.r.height > 30 && t.r.height < 70
+        && t.r.top > r.top - 40 && t.r.top < r.bottom + 40);
+    if (!tiles.length) return { fig: r, tiles: 0 };
+    const leftMost = Math.min(...tiles.map((t) => t.r.left));
+    return { figLeft: Math.round(r.left), figRight: Math.round(r.right),
+      figH: Math.round(r.height), slotsLeft: Math.round(leftMost), tiles: tiles.length,
+      labels: tiles.map((t) => t.label) };
+  });
+  rec.ok('the gear slots were found, so "which side" can be answered (guard)',
+    !!(layout && layout.tiles >= 4), layout);
+  rec.ok('the character sits to the LEFT of the gear slots',
+    !!(layout && layout.figRight <= layout.slotsLeft + 2), layout);
+  /* 3 slots tall (46*3 + 4*2 = 146), less a little slack for borders. */
+  rec.ok('...and is three slots tall now, not two',
+    !!(layout && layout.figH >= 140), { figH: layout && layout.figH, was: 96 });
+
   const bare = await sig(P);
   rec.ok('it actually painted a figure (guard)', !!(bare && bare.n > 500), { bare });
 
@@ -112,6 +142,36 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('...and visibly, not by a pixel or two',
     !!(armoured && bare && Math.abs(armoured.n - bare.n) > 200), 
     { barePx: bare && bare.n, armPx: armoured && armoured.n, meanRed: [dBare.toFixed(1), dArm.toFixed(1)] });
+
+  /* ═══ v2.3.1841: THE SWORD AND THE SHIELD SHOW ═══
+     Owner: "It should also reflect the currently equipped items (like sword
+     and shield) but right now it doesn't."  Armour was already drawn because
+     it ships as body-ALIGNED sheets; a weapon and a shield are placed, one
+     from a grip anchor and one from an offset off the body's centre, so they
+     had to be converted into this canvas's frame rather than dropped in.
+     Asserted as "the picture changed", which is the only thing that proves a
+     layer actually composited — a state check would pass with the canvas
+     untouched. */
+  const beforeKit = await sig(P);
+  await P.page.evaluate(() => {
+    const S = window._gameState.current;
+    S.rpg.weapon = { name: 'Copper Great Sword', type: 'greatsword', gearBase: 'copper' };
+    S.rpg.shield = { id: 'wood-shield', name: 'Pine Shield', type: 'shield' };
+  });
+  await P.page.waitForTimeout(1800);
+  const afterKit = await sig(P);
+  /* sig() returns {n,r,g,b} — there is no `hash` on it.  The first cut of this
+     compared afterKit.hash to beforeKit.hash, i.e. undefined to undefined, and
+     reported a FAILURE on working code.  Wrong in the safe direction, but
+     wrong: compare the fields the probe actually has. */
+  rec.ok('equipping a sword and shield changes the figure',
+    !!(beforeKit && afterKit
+      && (afterKit.n !== beforeKit.n || afterKit.r !== beforeKit.r
+        || afterKit.g !== beforeKit.g || afterKit.b !== beforeKit.b)),
+    { beforeKit, afterKit });
+  rec.ok('...and by a real amount, not a pixel or two',
+    !!(beforeKit && afterKit && Math.abs(afterKit.n - beforeKit.n) > 150),
+    { beforePainted: beforeKit && beforeKit.n, afterPainted: afterKit && afterKit.n });
 
   await P.page.screenshot({ path: '/home/user/GameDev/tools/maps/.hero.png' });
   await P.ctx.close().catch(() => {});

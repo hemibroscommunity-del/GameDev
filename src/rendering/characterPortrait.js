@@ -28,7 +28,48 @@ import { upscaleToFrameHeight } from './spriteScale.js'; /* v2.3.1110: restore d
 import { gearArt, gearMaterial } from './gearVariants.js';
 import { materialRgb } from './traits/materialTints.js';
 
+import { weaponArtUrl } from './weaponSprites.js';        /* v2.3.1841 */
+import { getShieldArt } from './shieldSprites.js';        /* v2.3.1841 */
+import { getWeaponHandle, getAnchor } from './playerAnchors.js'; /* v2.3.1841 */
+
 const FRAME = 256;
+
+/* ═══ v2.3.1841: THE KIT YOU ARE ACTUALLY HOLDING ═══
+ *
+ * Owner: "It should also reflect the currently equipped items (like sword and
+ * shield) but right now it doesn't."
+ *
+ * The armour slots were already here (v2.3.1815) because armour ships as
+ * body-ALIGNED sheets — draw them at (0,0,FRAME,FRAME) and they land on the
+ * body by construction.  A weapon and a shield are not aligned sheets: the
+ * world places them, one from a grip anchor and one from an offset off the
+ * body's centre, and both are stated in WORLD pixels.
+ *
+ * So the numbers are converted rather than re-invented.  Everything below is
+ * derived from constants that live in the modules that own them:
+ *   - the ART comes from weaponArtUrl / getShieldArt, so the per-facing keys,
+ *     gearBase variants, mirror rules and cache-busting versions stay in one
+ *     place;
+ *   - the HAND comes from getAnchor, the same per-frame anchor the world pins
+ *     weapons to, and it is already in this 256 frame's coordinates;
+ *   - the SHIELD's offset comes from backShield.js's own numbers.
+ *
+ * THE ONE CONVERSION, and where it comes from: the world renders the body at
+ * paintedHeight * dirScale * LOCAL_SCALE, and v2.3.1836 measured
+ * paintedHeight * dirScale to be 200.5 for every facing (that is what the
+ * dir-scale is FOR).  With LOCAL_SCALE 0.421875 the body is 84.58 world px
+ * tall, so any world size converts to a fraction of the body:
+ *      fractionOfBody = worldPx / 84.58
+ * and this canvas multiplies that by the figure's own painted height.  One
+ * ratio, stated once, instead of a second placement table to keep in step. */
+const WORLD_BODY_PX = 200.5 * 0.421875;   /* 84.58 — see above */
+/* Held greatsword target height in world px (entityRenderer: 48 for the
+   per-facing art).  Sheathed/other types differ; the equip screen shows the
+   held pose, which is the one the player is looking at. */
+const WORLD_WEAPON_PX = { greatsword: 48, sword: 26, 'sword:wood': 45, bow: 52, staff: 34 };
+/* Lowest opaque row of each stand sheet — the same measured feet the ground
+   shadow below uses, and the same rows entityRenderer's BODY_ROWS carries. */
+const FOOT_ROW = { south: 221, north: 219, east: 223, northeast: 227, southwest: 234 };
 const DEFAULT_LIT_LUM = 149;            // default lit-skin luminance (see playerSkins)
 const TRAIT_VER = '2.3.1561';            // cache-bust for body-tops.json (matches entityRenderer)
 /* v2.3.1815: matches gearSheets.js GEAR_VERSION so the portrait and the world
@@ -216,7 +257,7 @@ function renderTraitCanvas(traitImg, meta, crown, dir) {
  *  draw completes (after async asset loads).  Safe to call repeatedly. */
 export async function drawCharacterPortrait(canvas, opts) {
   if (!canvas) return;
-  const { skin, pants, shoes, hair, hairColor, facialHair, facialHairColor, headwear, hatColor, shirt, shirtColor, dir, gear } = opts || {};
+  const { skin, pants, shoes, hair, hairColor, facialHair, facialHairColor, headwear, hatColor, shirt, shirtColor, dir, gear, weapon, shield } = opts || {};
   /* v2.3.1580 (owner: traits still soft after the v2.3.1579 re-bake).
      OPT-IN supersampling.  This canvas has always composited at a fixed
      256 with no devicePixelRatio scaling -- the WORLD canvas is DPR-aware
@@ -319,6 +360,26 @@ export async function drawCharacterPortrait(canvas, opts) {
     (wantHw && hatColor && (!SOLID_ONLY_HAT_COLOR || headwearIsSolid(headwear))) ? getHatRef(headwear).catch(() => 0) : 0,
   ]);
   const crown = (bodyTops && bodyTops[`stand-${DIR}-0`]) || [FRAME / 2, 33];
+
+  /* ═══ v2.3.1841: the weapon + shield art, and the geometry to place them ═══
+     Loaded here rather than in the Promise.all above only because both depend
+     on DIR, which that block resolves.  Both degrade to null — an equip screen
+     that loses its sword is better than one that throws. */
+  const _wpnType = weapon && weapon.type;
+  const _wpnUrl = _wpnType ? weaponArtUrl(_wpnType, weapon.gearBase, DIR) : null;
+  /* The shield on the back faces OPPOSITE the way the player does, which is
+     why backShieldPlacement asks for facing + PI; the same rule here. */
+  const _dirIdx = ['east', 'southeast', 'south', 'southwest', 'west', 'northwest', 'north', 'northeast'].indexOf(dir || DIR);
+  const _shieldArt = shield && _dirIdx >= 0 ? getShieldArt(_dirIdx * Math.PI / 4 + Math.PI) : null;
+  const [wpnImg, shieldImg] = await Promise.all([
+    _wpnUrl ? loadImage(_wpnUrl).catch(() => null) : null,
+    _shieldArt ? loadImage(_shieldArt.url).catch(() => null) : null,
+  ]);
+  /* Painted height of THIS facing's figure, so world px convert to frame px.
+     crown[1] is measured (body-tops.json); the foot row is the measured
+     lowest opaque row. */
+  const _bodyH = Math.max(1, (FOOT_ROW[DIR] || 221) - (crown[1] || 33));
+  const _w2f = _bodyH / WORLD_BODY_PX;      /* world px -> this frame's px */
   /* v2.3.1815 dev probe: which facing this canvas actually composited.  The
      equip screen pins itself to southwest, and southwest vs south is not
      reliably tellable by eye at 96px — a `dir` that silently fell back would
@@ -379,6 +440,26 @@ export async function drawCharacterPortrait(canvas, opts) {
      shirt is the layered white-base sheet tinted to the picked color and
      composited on top -- exactly what the game renders.  Null color = white
      tee (matches the in-game default tint). */
+  /* ═══ v2.3.1841: THE SLUNG SHIELD, BEHIND THE BODY ═══
+     Before the body, because the equip screen shows a toward-camera facing
+     (southwest) where the shield is on his back and the body is between it
+     and the viewer.  backShield.js's own displacement, converted through
+     _w2f — its BACK_RX/BACK_RY/BACK_LIFT place the shield's CENTRE and are
+     deliberately not scaled with the shield, so they convert as plain world
+     px.  Facing away, the world draws it in FRONT; that case cannot arise
+     here while the equip screen pins southwest, and if it ever does the
+     shield simply sits behind him, which is the safer wrong. */
+  if (shieldImg) {
+    const ang = _dirIdx * Math.PI / 4;
+    const sPx = 72 * _w2f;                                  /* BACK_SHIELD_PX */
+    const sx = FRAME / 2 + (-Math.cos(ang) * 11) * _w2f;
+    const sy = (crown[1] + _bodyH * 0.5) + ((-Math.sin(ang) * 5) - 14) * _w2f;
+    ctx.save();
+    ctx.translate(sx, sy);
+    if (_shieldArt && _shieldArt.mirror) ctx.scale(-1, 1);
+    ctx.drawImage(shieldImg, -sPx / 2, -sPx / 2, sPx, sPx);
+    ctx.restore();
+  }
   ctx.drawImage(recolorBodyToCanvas(bodyImg, skinTarget(skin), pantsTarget(pants), shoesTarget(shoes), null, FRAME), 0, 0);
   if (shirtImg) {
     /* v2.3.1110: restore a downscaled-on-disk shirt sheet to the 256px frame
@@ -433,6 +514,40 @@ export async function drawCharacterPortrait(canvas, opts) {
   _drawGearLayer(legsImg, _wornLegs);
   _drawGearLayer(chestImg, _wornChest);
   _drawGearLayer(shouldersImg, _wornShoulders);
+  /* ═══ v2.3.1841: THE WEAPON, IN THE HAND ═══
+     After the armour so the blade reads in FRONT of the plate, which is what
+     the world does on the toward-camera facings this screen uses.
+
+     PINNED BY THE GRIP, not by a guessed offset: getWeaponHandle gives the
+     handle point in the ICON's own pixels and getAnchor gives the hand in
+     THIS 256 frame — the same two tables entityRenderer pins the world
+     weapon with.  The icon is scaled to its world target height converted
+     through _w2f, so the sword is the same size relative to the body as the
+     one on screen.
+
+     The mirrored views are already inside the ctx mirror transform (applied
+     above with the zoom), so nothing extra is needed here — the hand anchor
+     is asked for with the mirror flag and the whole layer flips with the
+     body. */
+  if (wpnImg && _wpnType) {
+    const th = wpnImg.naturalHeight || wpnImg.height || 0;
+    const tw = wpnImg.naturalWidth || wpnImg.width || 0;
+    if (th > 0 && tw > 0) {
+      const key = weapon.gearBase ? `${_wpnType}:${weapon.gearBase}` : _wpnType;
+      const worldH = WORLD_WEAPON_PX[key] || WORLD_WEAPON_PX[_wpnType] || 36;
+      const k = (worldH * _w2f) / th;
+      const hand = getAnchor('stand', DIR, 0, false) || [FRAME / 2 + 14, crown[1] + _bodyH * 0.55];
+      const grip = getWeaponHandle(_wpnType, weapon.gearBase, DIR) || [tw * 0.17, th * 0.12];
+      ctx.save();
+      ctx.translate(hand[0], hand[1]);
+      /* v2.3.1786's blade-up flip, in the same terms: reflect about the grip
+         so the crossguard lands just above the hand.  A rotation would mirror
+         left-right too and point the tip back over the shoulder. */
+      ctx.scale(1, -1);
+      ctx.drawImage(wpnImg, -grip[0] * k, -grip[1] * k, tw * k, th * k);
+      ctx.restore();
+    }
+  }
   /* Beard BELOW hair so hair strands lay over the beard (per user -- the NW
      view had the beard covering the hair). */
   if (fhImg && fhMeta) placeTrait(ctx, facialHairColor ? recolorHairToCanvas(fhImg, facialHairColor) : fhImg, fhMeta, crown, DIR);

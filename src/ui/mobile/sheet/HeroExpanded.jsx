@@ -335,25 +335,50 @@ export const HeroExpanded = () => {
               subtabs were designed no-scroll, so the fade is turned back on
               for Overview only — a panel that scrolls with no cue that it
               scrolls is how the last row goes unnoticed. */}
+          {/* ═══ v2.3.1841: THE CHARACTER FIRST, AND BIGGER ═══
+              Owner: "I want the character on the character menu to display
+              larger and be in the left side.  I just scroll down to see the
+              whole character."
+
+              Two changes, and the second is what buys the size.  The figure
+              moves to the LEFT, and the six gear slots re-flow from three
+              columns to TWO — so the slot block becomes 2 wide x 3 tall
+              instead of 3 wide x 2 tall.  That hands the figure a taller box:
+              3*EQ_W + 2*GAP instead of 2*EQ_W + GAP, 146px against 96px, a
+              52% bigger character, with the same six slots at the same tile
+              size beside it.
+
+              THE COST, stated rather than glossed: the row is 50px TALLER
+              (96 -> 146), because the slot block grew along with the figure.
+              A square canvas is sized by its height, so no arrangement makes
+              the figure half again as tall without spending half again as
+              much height — an earlier draft of this comment claimed the row
+              height was unchanged, and that was simply wrong.  The re-flow is
+              still what makes it cheap: leaving the slots 3 wide would have
+              cost the same height AND stranded them in a 2-row strip half the
+              figure's height. */}
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
             <div style={{
-              flex: 'none', width: 3 * EQ_W + 2 * DASH_GAP,
-              display: 'flex', flexWrap: 'wrap', gap: DASH_GAP,
-            }}>
-              {['weapon', 'shield', 'chest', 'legs', 'amulet', 'cape'].map(eqCell)}
-            </div>
-
-            {/* Square, sized to the slot block's own height so the figure and
-                the gear it is wearing line up as one group.  The canvas is
-                square because the portrait composites square; the well around
-                it takes the leftover width. */}
-            <div style={{
-              flex: 1, minWidth: 0, height: 2 * EQ_W + DASH_GAP,
+              flex: 1, minWidth: 0, height: 3 * EQ_W + 2 * DASH_GAP,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               background: COL.wellSoft, border: `1px solid ${COL.tileBor}`,
               borderRadius: 8, overflow: 'hidden',
             }}>
-              <CharacterView size={2 * EQ_W + DASH_GAP} />
+              {/* Square because the portrait composites square; the well takes
+                  the leftover width.  Sized to the slot block's height so the
+                  figure and the gear it is wearing still read as one group. */}
+              <CharacterView
+                size={3 * EQ_W + 2 * DASH_GAP}
+                weapon={R.weapon}
+                shield={R.shield}
+              />
+            </div>
+
+            <div style={{
+              flex: 'none', width: 2 * EQ_W + DASH_GAP,
+              display: 'flex', flexWrap: 'wrap', gap: DASH_GAP,
+            }}>
+              {['weapon', 'shield', 'chest', 'legs', 'amulet', 'cape'].map(eqCell)}
             </div>
           </div>
 

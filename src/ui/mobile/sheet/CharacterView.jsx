@@ -39,7 +39,7 @@ import { getEquip, onEquipChange } from '@/rendering/gearCatalog.js';
 
 /* The portrait composites at 256 and the figure occupies most of it, so the
    canvas is square and the caller gives it whatever box it can spare. */
-export const CharacterView = ({ size }) => {
+export const CharacterView = ({ size, weapon, shield }) => {
   const ref = React.useRef(null);
   /* Bumped by every catalog subscription below; the draw effect keys on it.
      A counter rather than the values themselves because there are twelve
@@ -69,6 +69,8 @@ export const CharacterView = ({ size }) => {
     const cv = ref.current;
     if (!cv) return undefined;
     const hair = getHair();
+    const weaponNow = weapon || null;
+    const shieldNow = !!shield;
     drawCharacterPortrait(cv, {
       dir: 'southwest',
       skin: getSkin(), pants: getPants(), shoes: getShoes(),
@@ -88,13 +90,23 @@ export const CharacterView = ({ size }) => {
          and what join sends as `stc`. */
       shirt: getEquip('shirt'), shirtColor: shirtColorTarget(getShirtColor()),
       gear: { chest: getEquip('chest'), legs: getEquip('legs'), shoulders: getEquip('shoulders') },
+      /* v2.3.1841 (owner: "It should also reflect the currently equipped items
+         (like sword and shield) but right now it doesn't").  These come from
+         the RPG state rather than the wardrobe catalogs — a weapon is not a
+         cosmetic, and getEquip has no slot for it.  Passed as the live objects
+         so the portrait can resolve the per-facing art and the grip. */
+      weapon: weaponNow, shield: shieldNow,
       /* No groundShadow: the creator floats its figure on painted art where a
          contact shadow grounds it. Here it sits in a slate well, and a shadow
          with no floor under it reads as a smudge. */
       scale: Math.round((typeof window !== 'undefined' && window.devicePixelRatio) || 1),
     }).catch(() => { /* a missing sheet degrades to a bare figure, never a throw */ });
     return () => { alive = false; };
-  }, [rev, size]);
+    /* Keyed on the weapon's identity and whether a shield is worn, not on the
+       object: the RPG state is replaced wholesale on every server delta, so
+       keying on the reference alone would repaint the canvas several times a
+       second. */
+  }, [rev, size, weapon && (weapon.id || weapon.type), weapon && weapon.gearBase, !!shield]);
 
   return (
     <canvas
