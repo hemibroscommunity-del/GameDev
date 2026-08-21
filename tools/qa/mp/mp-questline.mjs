@@ -142,18 +142,23 @@ export async function run({ browser, wsPort, webPort, rec }) {
   });
 
   const srv = () => H.adminPlayer(wsPort, myId).then((a) => (a && a.rpg) || null).catch(() => null);
-  const open = () => P.page.evaluate(() => !!document.querySelector('.bt-inspect-card'));
+  /* ═══ v2.3.1827: TWO SURFACES, NOT ONE CARD ═══
+     v2.3.1820 split the quest card at the owner's ask — Mayor Bro talks in
+     his own window (.bt-npcdlg, sequential chunks behind Next) and the offer
+     is a second panel (.bt-qoffer) showing the items he hands over.  This
+     file used to find one `.bt-inspect-card`; that class is still all over
+     the UI on OTHER panels, so the selector did not error, it just never
+     matched — and this scenario went red on every step while the flow
+     underneath it was working perfectly.  Verified before changing a line:
+     walking up opens his window with his line and a Next button.
+     The dialogue-walking itself lives in the harness, because four
+     scenarios drive it and four private copies is how they drift. */
+  const open = () => H.npcDialogueOpen(P);
   const cardText = () => P.page.evaluate(() => {
-    const c = document.querySelector('.bt-inspect-card');
+    const c = document.querySelector('.bt-qoffer') || document.querySelector('.bt-npcdlg');
     return c ? (c.innerText || '') : '';
   });
-  const close = async () => {
-    await P.page.evaluate(() => {
-      const b = document.querySelector('.bt-inspect-close');
-      if (b) b.click();
-    });
-    await P.page.waitForTimeout(400);
-  };
+  const close = () => H.closeNpcDialogue(P);
   const place = (dx, dy) => P.page.evaluate(({ ox, oy }) => {
     const S = window._gameState && window._gameState.current;
     const npc = (S && S.npcs || []).find((n) => n && n.id === 'mayor_bro');
@@ -186,12 +191,16 @@ export async function run({ browser, wsPort, webPort, rec }) {
   for (const step of ARC) {
     /* ── ACCEPT, by walking up and tapping ── */
     rec.ok(`${step.id}: walking up to Mayor Bro opens his dialogue`, await approach());
+    /* Talk him out first: his lines come in chunks now, and the offer panel
+       (which is what carries the title and the Accept) is behind them. */
+    const landed = await H.advanceNpcDialogue(P);
+    rec.ok(`${step.id}: his lines lead to the offer panel`, landed === 'offer', { landed });
     if (step.title) {
       rec.ok(`${step.id}: ...offering the right quest`,
         (await cardText()).includes(step.title), (await cardText()).slice(0, 120));
     }
-    const accepted = await H.clickText(P, 'Accept').then(() => true).catch(() => false);
-    rec.ok(`${step.id}: the dialogue offers Accept`, accepted);
+    const accepted = await H.confirmQuestOffer(P);
+    rec.ok(`${step.id}: the offer panel offers Accept`, accepted);
     await P.page.waitForTimeout(1800);
     const afterAccept = await srv();
     rec.ok(`${step.id}: the WORKER records it active (not just the client)`,
@@ -354,13 +363,25 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
     /* ── TURN IN, through the dialogue — the only door left ── */
     rec.ok(`${step.id}: walking back up opens the dialogue again`, await approach());
+    const landedBack = await H.advanceNpcDialogue(P);
+    rec.ok(`${step.id}: ...and his lines lead to the claim panel`,
+      landedBack === 'offer', { landedBack });
     const ready = await cardText();
-    rec.ok(`${step.id}: ...and it carries the turn-in`,
-      /Turn In|Choose a skill/i.test(ready), ready.slice(0, 200));
+    rec.ok(`${step.id}: ...which carries the turn-in`,
+      /Claim Reward|Choose a skill/i.test(ready), ready.slice(0, 200));
     /* The worker refuses an XP-paying turn-in with no named skill
-       (v2.3.1669), so pick one when the chooser is on the card. */
-    await H.clickText(P, 'Melee').catch(() => {});
-    await P.page.waitForTimeout(400);
+       (v2.3.1669), so pick one when the chooser is on the card.
+       v2.3.1827: scoped to the panel and ASSERTED.  The old call was a
+       page-wide text search swallowed by `.catch(() => {})` — "Melee" also
+       matches the dashboard behind the scrim, so on a miss the confirm
+       stayed aria-disabled and the failure surfaced one assertion later as
+       "the turn-in button could be clicked: false", which reads like a
+       broken button rather than an unchosen skill. */
+    if (/Choose/i.test(ready)) {
+      const picked = await H.chooseQuestSkill(P, 'Melee');
+      rec.ok(`${step.id}: the XP skill could be chosen`, picked);
+      rec.ok(`${step.id}: ...which un-blocks the claim`, !(await H.questOfferBlocked(P)));
+    }
     /* v2.3.1765: by CLASS, not by caption.  This click used to look for the
        words "Turn In" and swallow a miss — so when v2.3.1764 reworded the
        button to "Redeem Reward" the hand-in silently stopped happening and
@@ -391,12 +412,18 @@ export async function run({ browser, wsPort, webPort, rec }) {
        test.  "Offers Accept" is the honest witness rather than the title: a
        card that merely failed to close would still carry the OLD quest's
        Turn In, and would pass a bare "is it open" check. */
-    const afterTurnIn = await cardText();
     rec.ok(`${step.id}: the dialogue stays open through the hand-in`,
-      await open(), afterTurnIn.slice(0, 200));
+      await open(), await cardText().then((t) => t.slice(0, 200)));
+    /* The honest witness is still "is he offering rather than collecting":
+       a panel that merely failed to close would keep the OLD quest's Claim
+       and would pass a bare is-it-open check.  Talk through whatever he says
+       about the next one first — he speaks before he offers now. */
+    const nextLanded = await H.advanceNpcDialogue(P);
+    const afterTurnIn = await cardText();
     rec.ok(`${step.id}: ...already offering his next quest, with no walk-away`,
-      /Accept/i.test(afterTurnIn) && !/Turn In/i.test(afterTurnIn),
-      afterTurnIn.slice(0, 200));
+      nextLanded === 'offer' && /Accept Quest/i.test(afterTurnIn)
+      && !/Claim Reward/i.test(afterTurnIn),
+      { nextLanded, text: afterTurnIn.slice(0, 200) });
 
     await close();
   }

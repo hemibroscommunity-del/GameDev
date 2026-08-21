@@ -93,12 +93,39 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('a tap could be dispatched at his feet', tapped);
   await P.page.waitForTimeout(700);
 
-  const dlgOpen = await P.page.evaluate(() => !!document.querySelector('.bt-inspect-card'));
+  const dlgOpen = await H.npcDialogueOpen(P);
   rec.ok('tapping him opens the in-world quest dialogue', dlgOpen);
+  /* v2.3.1827: the offer moved to its own panel behind his lines (v2.3.1820)
+     — the item art this scenario reads lives there, so talk him through
+     first.  See harness.advanceNpcDialogue. */
+  /* v2.3.1827: the PORTRAIT and his LINES live on the dialogue window now —
+     that is the split the owner asked for ("a larger picture of him on the
+     left side of the window and just the text of what he's saying").  Read
+     them here, BEFORE talking through to the offer, because advancing past
+     the last chunk closes the window that holds them. */
+  const spoken = await P.page.evaluate(() => {
+    const dlg = document.querySelector('.bt-npcdlg');
+    if (!dlg) return null;
+    return {
+      imgs: [...dlg.querySelectorAll('img')].map((i) => i.getAttribute('src') || ''),
+      text: dlg.innerText || '',
+    };
+  });
+  rec.ok("the dialogue shows Mayor Bro's portrait, not an initial in a circle",
+    !!spoken && spoken.imgs.some((u) => /mayor-bro/.test(u)), spoken && spoken.imgs);
+
+  /* His whole script, gathered across the chunks — the control instructions
+     are chunk 2 of three, so a single read of the open window sees only the
+     line it is currently on. */
+  let script = (spoken && spoken.text) || '';
+  const _landed = await H.advanceNpcDialogue(P, {
+    onChunk: (t) => { script += '\n' + t; },
+  });
+  rec.ok('...and his lines lead to the offer panel', _landed === 'offer', { _landed });
 
   /* ── the dialogue's art ── */
   const art = await P.page.evaluate(() => {
-    const card = document.querySelector('.bt-inspect-card');
+    const card = document.querySelector('.bt-qoffer');
     if (!card) return null;
     const imgs = [...card.querySelectorAll('img')].map((i) => i.getAttribute('src') || '');
     /* v2.3.1710: the card now draws BOTH payout moments on an offer, so
@@ -113,8 +140,6 @@ export async function run({ browser, wsPort, webPort, rec }) {
     }
     return { imgs, groups, text: card.innerText || '' };
   });
-  rec.ok('the dialogue shows Mayor Bro\'s portrait, not an initial in a circle',
-    !!art && art.imgs.some((s) => /mayor-bro-head/.test(s)), art && art.imgs);
   /* great-sword.webp specifically: /icons/items/sword.webp is the BAMBOO
      STICK (the art for weaponType 'sword' at wood tier), which is what the
      owner saw here.  Asserting the exact file is what stops it drifting back. */
@@ -189,18 +214,20 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
   /* ── the control instructions ── */
   rec.ok('the special-attack instruction says a quick swipe, not a flick-and-let-go',
-    !!art && /quick swipe/i.test(art.text) && !/let go for a special/i.test(art.text),
-    art && art.text.slice(0, 400));
+    /* v2.3.1827: read HIS SCRIPT, not the offer panel — the controls live in
+       dialogue.start, which is now his window's chunks (v2.3.1820). */
+    /quick swipe/i.test(script) && !/let go for a special/i.test(script),
+    script.slice(0, 500));
   rec.ok('the instructions call them joysticks, matching the on-screen control',
-    !!art && /right joystick/i.test(art.text), art && art.text.slice(0, 400));
+    /right joystick/i.test(script), script.slice(0, 500));
   /* The shield is a double-tap-and-HOLD: the handler raises it on the second
      tap and keeps it up only while that touch lasts, and dragging during the
      hold is what aims the arc.  Copy that says "double-tap to raise the
      shield" describes a toggle that does not exist, and a player who lets go
      mid-fight is unshielded with no idea why. */
   rec.ok('the shield instruction says to double-tap AND HOLD, then aim',
-    !!art && /double-tap the right joystick and hold/i.test(art.text) && /aim it at the enemy/i.test(art.text),
-    art && art.text.slice(0, 500));
+    /double-tap the right joystick and hold/i.test(script) && /aim it at the enemy/i.test(script),
+    script.slice(0, 700));
 
   /* ── accept, then re-check the leak ── */
   const accepted = await H.clickText(P, 'Accept Quest').then(() => true).catch(() => false);
@@ -228,6 +255,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
     granted.wstash.includes("Copper Great Sword"), granted);
   rec.ok('...and the shield with it', granted.sstash.includes("Pine Shield"), granted);
 
+  /* v2.3.1827: close him first.  The dialogue deliberately STAYS OPEN through
+     an accept (v2.3.1713 — he goes straight on to his next quest), and the
+     offer panel is portaled above the dashboard now, so it sits over the nav
+     rail this line is about to tap. */
+  await H.closeNpcDialogue(P);
   await H.openDest(P, 'Quests');
   await P.page.waitForTimeout(700);
   await H.clickText(P, 'Available').catch(() => {});
@@ -277,17 +309,23 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await P.page.waitForTimeout(800);
   await tapMayor();
 
+  /* v2.3.1827: talk him through to the claim panel — the chooser and the
+     reward list live there now, behind his lines (v2.3.1820). */
+  const _landedTurn = await H.advanceNpcDialogue(P);
+  rec.ok('his lines lead to the claim panel', _landedTurn === 'offer', { _landedTurn });
   let dlg = await H.bodyText(P);
   /* v2.3.1793: the reward card is a look-at-it change, so leave a picture of
      the moment it exists — the chooser is only on screen between "quest ready"
      and "skill picked", which is a hard state to reach by hand. */
   await P.page.screenshot({ path: 'tools/qa/mp/out/questui-chooser.png' }).catch(() => {});
   rec.ok('with the remnants in hand the giver offers the turn-in',
-    /Redeem Reward|Choose a skill to train/.test(dlg), dlg.slice(0, 300));
+    /Claim Reward|Choose a skill to train/.test(dlg), dlg.slice(0, 300));
   /* v2.3.1704: the SAME slot that showed the sword and shield now shows the
      bow and staff, so the caption has to say which moment these belong to. */
+  /* v2.3.1827: the caption NAMES the quest again — see QuestOfferPanel.
+     Case-insensitive because the caption is uppercased in CSS. */
   rec.ok('the ready card says these items are what FINISHING pays',
-    /For finishing this quest/i.test(dlg), dlg.slice(0, 400));
+    /for finishing/i.test(dlg) && /cold reception/i.test(dlg), dlg.slice(0, 400));
   /* v2.3.1793: asserts the PROPERTY, not the sentence.  This used to require
      the literal string "Train 30 XP into", so restyling the chooser into a
      reward card broke a passing test that had found no bug — the same trap
@@ -303,14 +341,24 @@ export async function run({ browser, wsPort, webPort, rec }) {
     { dlg: dlg.slice(0, 300) });
   rec.ok('...naming the three trained skills',
     /Melee/.test(dlg) && /Bow/.test(dlg) && /Magic/.test(dlg), dlg.slice(0, 300));
+  /* v2.3.1827: assert the STATE, not the caption.  This used to look for the
+     literal words "Choose a skill to train" — the copy the held button used
+     to carry — so rewording it to "Choose where to train it" broke a passing
+     test that had found no bug.  That is the same trap the v2.3.1793 note
+     directly above records, arriving one assertion later; being held is a
+     fact about aria-disabled, and aria-disabled is what a screen reader and
+     the click handler both read. */
   rec.ok('...and the turn-in button is held until one is chosen',
-    /Choose a skill to train/.test(dlg), dlg.slice(0, 300));
+    await H.questOfferBlocked(P), dlg.slice(0, 300));
 
   /* Pressing the held button must do NOTHING — not even locally.  A local
      'turnedIn' here would strand the quest: the worker never saw it, and the
      client will not offer a turn-in twice. */
   const beforePress = await H.readState(P, (S) => ({ q: S.rpg._quests.tut_1, coins: S.rpg.coins }));
-  await H.clickText(P, 'Choose a skill to train').catch(() => {});
+  await P.page.evaluate(() => {
+    const b = document.querySelector('[data-tut="qoffer-confirm"]');
+    if (b) b.click();       // in-page ON PURPOSE: press the held button anyway
+  });
   await P.page.waitForTimeout(900);
   const afterPress = await H.readState(P, (S) => ({ q: S.rpg._quests.tut_1, coins: S.rpg.coins }));
   rec.ok('pressing it with no choice made changes nothing at all',
@@ -319,11 +367,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
   /* Choose BOW deliberately — the melee skill would also be raised by the
      starter sword, so bow is the one whose XP can only have come from here. */
-  await H.clickText(P, 'Bow').catch(() => {});
-  await P.page.waitForTimeout(600);
+  rec.ok('the bow skill could be chosen', await H.chooseQuestSkill(P, 'Bow'));
+  await P.page.waitForTimeout(400);
   dlg = await H.bodyText(P);
   rec.ok('choosing a skill arms the turn-in button',
-    /Redeem Reward/.test(dlg) && !/Choose a skill to train/.test(dlg), dlg.slice(0, 300));
+    !(await H.questOfferBlocked(P)) && /Claim Reward/i.test(dlg), dlg.slice(0, 300));
 
   const bowXpBefore = await H.readState(P, (S) =>
     (S.rpg.prog3 && S.rpg.prog3.sk && S.rpg.prog3.sk.bow && S.rpg.prog3.sk.bow.xp) || 0);
@@ -334,7 +382,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
      the persisted blob and compare against that instead. */
   const svrCoinsBefore = await H.adminPlayer(wsPort, pid)
     .then((a) => (a && a.rpg && a.rpg.coins) || 0).catch(() => null);
-  await H.clickText(P, 'Redeem Reward').catch(() => {});
+  /* A REAL click — see harness.confirmQuestOffer for why an in-page one is
+     not good enough here. */
+  rec.ok('the claim could actually be pressed', await H.confirmQuestOffer(P));
   await P.page.waitForTimeout(3000);
 
   const paid = await H.readState(P, (S) => ({

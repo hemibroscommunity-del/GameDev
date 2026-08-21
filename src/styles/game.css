@@ -2109,8 +2109,18 @@ body:has(.bt-inspect) .bt-kb-chip{display:none}
    position:fixed and therefore its own stacking context, so nothing inside it
    can outrank the dashboard however high its z-index goes (TRAPS §20, three
    sightings). */
+.bt-qoffer-group{display:flex;flex-direction:column;gap:6px}
 .bt-npcdlg-scrim{
-  position:fixed;inset:0;z-index:10050;
+  /* v2.3.1827: 10050 -> 44.  The quest BANNER sits at z 71 and the owner's
+     ask for it was "over the quest modal menu" (v2.3.1746) — at 10050 this
+     scrim swallowed it, so accepting a quest raised a banner nobody could
+     see.  44 restores the relationship the retired quest card had: above the
+     ordinary modal scrim (.bt-inspect, 32) and the dashboard band (30), well
+     under the banner (71) and the intro (100).
+     Being ABOVE the dashboard at all depends on the portal, not on this
+     number — .brotown-wrap is its own stacking context, so a child of it
+     loses to the band at any z (TRAPS §20).  See NpcDialogue.jsx. */
+  position:fixed;inset:0;z-index:44;
   display:flex;align-items:center;justify-content:center;
   padding:16px;background:rgba(4,7,9,.62);
   -webkit-backdrop-filter:blur(2px);backdrop-filter:blur(2px);

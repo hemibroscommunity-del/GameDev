@@ -1,4 +1,5 @@
 import React from 'react';
+import { createPortal } from 'react-dom';
 
 /* ═══ v2.3.1820: THE DECISION, ON ITS OWN SCREEN ═══
  *
@@ -61,11 +62,42 @@ export const QuestOfferPanel = (props) => {
     extra, confirmClass, confirmDisabled,
   } = props;
   const offering = mode !== 'reward';
-  const items = (quest && quest.gives || []).filter(
-    (g) => g && g.icon && g.when === (offering ? 'accept' : 'complete'),
-  );
+  const all = (quest && quest.gives || []).filter((g) => g && g.icon);
+  const nowItems = all.filter((g) => g.when === 'accept');
+  const endItems = all.filter((g) => g.when === 'complete');
+  /* v2.3.1827: the ACCEPT screen shows BOTH moments again, captioned.
+     v2.3.1820 cut it to the hands-you-now group because the owner named that
+     group when asking for this panel — but they were asking for a clearer
+     screen, not for less information, and the old card had shown both since
+     v2.3.1710.  "What do I get for finishing this" is the other half of
+     deciding whether to accept, and dropping it silently is the kind of
+     quiet loss a rework is not entitled to make.
+     The REWARD screen still shows only the completion group: the hands-you-
+     now items have been in your bag since you accepted, and listing them
+     under "for finishing this quest" would be claiming to pay them twice. */
+  /* v2.3.1827: the completion caption NAMES the quest, as the old card did.
+     With both groups on screen at once, "for finishing this quest" is
+     ambiguous the moment he has a second one queued behind it — and the
+     name is the thing that makes the promise concrete. */
+  const finishing = `For finishing \u201C${(quest && quest.title) || 'this quest'}\u201D`;
+  const groups = offering
+    ? [['accept', 'He hands you now', nowItems], ['complete', finishing, endItems]]
+      .filter(([, , list]) => list.length > 0)
+    : [['complete', finishing, endItems]].filter(([, , list]) => list.length > 0);
 
-  return (
+  /* ═══ v2.3.1827: PORTALED, OR THE DASHBOARD EATS THE BUTTON ═══
+     `.brotown-wrap` is position:fixed and therefore its own stacking
+     context, so anything rendered inside it paints BELOW the dashboard band
+     (fixed, z 30, outside the wrap) however high its own z-index goes —
+     TRAPS §20, and the same reason DuelRequestPanel portals.
+
+     The CSS for this window already said these must be SIBLINGS of the wrap.
+     They were not, and the cost was not cosmetic: the dashboard covered the
+     lower two thirds of the panel, so the CENTRE of Claude Reward sat under
+     it and a real tap never reached the button.  The reward was unclaimable
+     — caught by a Playwright click timing out where an in-page .click()
+     (which skips hit-testing) had been passing. */
+  return createPortal((
     <div className="bt-npcdlg-scrim" onClick={onClose}>
       <div className="bt-qoffer" onClick={(e) => e.stopPropagation()}>
         <div className="bt-qoffer-kicker">{offering ? 'New Quest' : 'Quest Complete'}</div>
@@ -78,16 +110,17 @@ export const QuestOfferPanel = (props) => {
           <div className="bt-qoffer-desc">{quest.desc}</div>
         )}
 
-        {items.length > 0 && (
-          <>
-            <div className="bt-qoffer-caption">
-              {offering ? 'He hands you now' : 'For finishing this quest'}
-            </div>
+        {groups.map(([when, caption, list]) => (
+          /* data-gives is the QA hook the old card carried — a caption is
+             prose and gets reworded; which group a bow is under is the fact
+             worth pinning. */
+          <div className="bt-qoffer-group" data-gives={when} key={when}>
+            <div className="bt-qoffer-caption">{caption}</div>
             <div className="bt-qoffer-items">
-              {items.map((it, n) => <ItemChip key={n} item={it} />)}
+              {list.map((it, n) => <ItemChip key={n} item={it} />)}
             </div>
-          </>
-        )}
+          </div>
+        ))}
 
         {/* Gold and XP are numbers rather than art, so they sit apart from the
             chips instead of being faked into the same row. */}
@@ -130,5 +163,5 @@ export const QuestOfferPanel = (props) => {
         </div>
       </div>
     </div>
-  );
+  ), document.body);
 };

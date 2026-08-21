@@ -1,4 +1,5 @@
 import React from 'react';
+import { createPortal } from 'react-dom';
 import { NPC_DATA } from '@/data/gameDisplay.js';
 
 /* ═══ v2.3.1820: HE TALKS TO YOU, ONE THING AT A TIME ═══
@@ -64,7 +65,19 @@ export const NpcDialogue = (props) => {
      words and no way past it. */
   if (!chunks.length) { onDone && onDone(); return null; }
 
-  return (
+  /* ═══ v2.3.1827: PORTALED, OR THE DASHBOARD EATS THE BUTTON ═══
+     `.brotown-wrap` is position:fixed and therefore its own stacking
+     context, so anything rendered inside it paints BELOW the dashboard band
+     (fixed, z 30, outside the wrap) however high its own z-index goes —
+     TRAPS §20, and the same reason DuelRequestPanel portals.
+
+     The CSS for this window already said these must be SIBLINGS of the wrap.
+     They were not, and the cost was not cosmetic: the dashboard covered the
+     lower two thirds of the panel, so the CENTRE of Claude Reward sat under
+     it and a real tap never reached the button.  The reward was unclaimable
+     — caught by a Playwright click timing out where an in-page .click()
+     (which skips hit-testing) had been passing. */
+  return createPortal((
     <div className="bt-npcdlg-scrim" onClick={onClose}>
       <div className="bt-npcdlg" onClick={(e) => { e.stopPropagation(); advance(); }}>
         <div className="bt-npcdlg-art">
@@ -114,5 +127,5 @@ export const NpcDialogue = (props) => {
         </div>
       </div>
     </div>
-  );
+  ), document.body);
 };

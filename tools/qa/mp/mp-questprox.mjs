@@ -41,14 +41,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
     S.player.x = npc.x + ox; S.player.y = npc.y + oy;
     return { dist: Math.hypot(ox, oy), npcX: npc.x, npcY: npc.y };
   }, { ox: dx, oy: dy });
-  const open = () => P.page.evaluate(() => !!document.querySelector('.bt-inspect-card'));
-  const close = async () => {
-    await P.page.evaluate(() => {
-      const b = document.querySelector('.bt-inspect-close');
-      if (b) b.click();
-    });
-    await P.page.waitForTimeout(400);
-  };
+  /* v2.3.1827: the quest card became two surfaces (his window, then the
+     offer) at v2.3.1820 — see the note in harness.advanceNpcDialogue.  What
+     this file tests is the LATCH, so "is either half up" is the right
+     question here and the walking is only needed where the turn-in is read. */
+  const open = () => H.npcDialogueOpen(P);
+  const close = () => H.closeNpcDialogue(P);
 
   /* ── start out of range, with nothing on screen ── */
   const far = await place(420, 0);
@@ -117,9 +115,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
      — so "it opens on approach while a quest is READY, carrying the turn-in"
      is a property this file now owns.  Without it, a regression in the latch
      would strand every reward with nothing else to catch it. */
-  await P.page.evaluate(() => {
-    const b = document.querySelector('.bt-inspect-close'); if (b) b.click();
-  });
+  await close();
   await H.openDest(P, 'Dashboard').catch(() => {});
   await P.page.waitForTimeout(700);
   const myId = await H.readState(P, (S) => S.myId);
@@ -140,22 +136,23 @@ export async function run({ browser, wsPort, webPort, rec }) {
      the whole time.  Walk away, close the card, and let it open fresh. */
   await place(420, 0);                  // clear the latch first
   await P.page.waitForTimeout(600);
-  await P.page.evaluate(() => {
-    const b = document.querySelector('.bt-inspect-close');
-    if (b) b.click();
-  });
-  await P.page.waitForTimeout(600);
+  await close();
+  await P.page.waitForTimeout(200);
   rec.ok('the giver dialogue is closed before the approach that must re-open it',
     !(await open()));
   await place(0, 34);                   // …then walk back in
   await P.page.waitForTimeout(1200);
   rec.ok('with a READY quest, walking up opens his dialogue', await open());
+  /* He speaks before he pays now, so walk the chunks through to the claim
+     panel — that panel is where the turn-in lives. */
+  const landed = await H.advanceNpcDialogue(P);
   const readyDlg = await P.page.evaluate(() => {
-    const c = document.querySelector('.bt-inspect-card');
+    const c = document.querySelector('.bt-qoffer') || document.querySelector('.bt-npcdlg');
     return c ? (c.innerText || '') : '';
   });
   rec.ok('...and that dialogue carries the turn-in — the only one left',
-    /Redeem Reward|Choose a skill to train/.test(readyDlg), readyDlg.slice(0, 400));
+    landed === 'offer' && /Claim Reward|Choose a skill to train/.test(readyDlg),
+    { landed, text: readyDlg.slice(0, 400) });
 
   await P.ctx.close().catch(() => {});
 }
