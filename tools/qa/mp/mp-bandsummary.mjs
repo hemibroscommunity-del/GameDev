@@ -38,11 +38,19 @@ const readBand = (P) => P.page.evaluate(() => {
   const texts = [...hero.querySelectorAll('span')]
     .filter((el) => el.children.length === 0 && (el.textContent || '').trim())
     .map((el) => (el.textContent || '').trim());
-  /* The XP bar: the only element here with a percentage width fill. */
+  /* Any percentage-width fill: the painted XP bar, if one is still drawn.
+     v2.3.1852 replaced it with a pair of numbers, so this is now read as
+     something that must be ABSENT. */
   const fills = [...hero.querySelectorAll('div > div')]
     .map((el) => el.style.width).filter((w) => w && w.endsWith('%'));
+  /* The XP readout as ONE string.  Its numerator and denominator are two
+     spans (the denominator is dimmed), so the leaf-span list above sees
+     "250" and "/280" separately — checking those individually would pass on
+     a row that printed them in the wrong order or dropped the slash. */
+  const xpEl = hero.querySelector('[title*="XP to level"]');
+  const xpText = xpEl ? (xpEl.textContent || '').replace(/\s+/g, '') : null;
   return {
-    found: true, texts, imgs, fills,
+    found: true, texts, imgs, fills, xpText,
     box: { w: Math.round(r.width), h: Math.round(r.height),
       right: Math.round(r.right), top: Math.round(r.top) },
     vw: window.innerWidth,
@@ -117,9 +125,20 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
   /* ── the three lines ── */
   const all = (band.texts || []).join(' ');
-  rec.ok('it names the character and the level', /BANDIT/i.test(all) && /LV\s*\d/i.test(all), band.texts);
-  rec.ok('...and the coins', /\b75\b/.test(all), band.texts);
-  rec.ok('...and an XP percentage', /%/.test(all), band.texts);
+  rec.ok('it shows the coins', /\b75\b/.test(all), band.texts);
+  /* v2.3.1852 (owner: "instead of an xp bar just show the number over the
+     number like 324/500"): a PAIR, and no bar left to paint. */
+  rec.ok('...and XP as a pair of numbers', /^\d+\/\d+$/.test(band.xpText || ''), { xpText: band.xpText });
+  rec.ok('...with no bar left to paint', (band.fills || []).length === 0, { fills: band.fills });
+  /* ═══ v2.3.1851: NAME AND LEVEL ARE GONE TOO ═══
+     Owner: "actually just put the gold and xp there.  You already see the
+     name and level below the actual character."  Two readouts left.
+
+     Asserted as absent, and by the character's OWN name rather than by a
+     pattern: 'BANDIT' is on screen elsewhere in this app, so the check is
+     scoped to the summary block's own text. */
+  rec.ok('the name is not repeated on the band', !/BANDIT/i.test(all), band.texts);
+  rec.ok('...nor the level', !/\bLV\b/i.test(all), band.texts);
   /* ═══ v2.3.1849: WHAT IS DELIBERATELY ABSENT ═══
      Owner, on the first build (which followed the mockup exactly): "that
      summary looks way too busy.  What's the best way to give as much useful
@@ -140,9 +159,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
      — the badge never carried one. */
   rec.ok('...nor the unspent-points badge',
     !(band.texts || []).some((t) => /^\+\d+$/.test(t)), band.texts);
-  /* Two lines, not three — the busyness was structural. */
-  rec.ok('the summary is two lines',
-    (band.lines || []).length === 2, { lines: (band.lines || []).map((l) => l.kids.map((k) => k.t)) });
+  /* ONE line now.  The busyness was structural, and each cut took a line
+     with it: three (mockup) -> two (DPS/DEF/HP out) -> one (name/level out). */
+  rec.ok('the summary is a single line',
+    (band.lines || []).length === 1, { lines: (band.lines || []).map((l) => l.kids.map((k) => k.t)) });
   /* It still opens Hero — the portrait was the button, and the button is the
      only reason the character screen is reachable from the resting band. */
   await P.page.evaluate(() => {
@@ -175,9 +195,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
     { bottom: fit.bottom, belowTop: fit.belowTop, overflowY: fit.overflowY });
   /* A RICH player.  75 coins is four glyphs; a real purse is nine with the
      separators, and the difference is most of a stat chip.  This is the
-     assertion that decided where the coins live: on the stat line they fit
-     at 75 and overflowed the strip, so they moved to the name line, where
-     the only other flexible element ellipsises instead of pushing. */
+     assertion that decided where the coins live.  On the original stat line
+     they fit at 75 and overflowed the strip; on the single line they sit
+     beside the XP bar, which is the flexible element that gives way. */
   await P.page.evaluate(() => {
     window._gameState.current.rpg.coins = 1234567;
     try { window.__broDashPanelBus.open(null); } catch (e) {}
@@ -195,27 +215,24 @@ export async function run({ browser, wsPort, webPort, rec }) {
   });
   await P.page.waitForTimeout(400);
 
-  /* ── the XP bar follows the CLOSEST weapon ──
+  /* ── the XP row follows the CLOSEST weapon ──
      Three passes, each with a different winner.  prog3XpRequired(1) is 280,
-     so 250/40/10 puts melee at 89% and the others far behind. */
+     so the denominator is fixed and the numerator names which skill won —
+     which is what makes a wrong WINNER visible rather than just a wrong
+     number. */
   const cases = [
-    { name: 'melee', xp: { sword: 250, bow: 40, staff: 10 }, icon: 'melee', pct: 89 },
-    { name: 'bow', xp: { sword: 20, bow: 210, staff: 10 }, icon: 'bow', pct: 75 },
-    { name: 'magic', xp: { sword: 20, bow: 40, staff: 140 }, icon: 'magic', pct: 50 },
+    { name: 'melee', xp: { sword: 250, bow: 40, staff: 10 }, icon: 'melee', pair: '250/280' },
+    { name: 'bow', xp: { sword: 20, bow: 210, staff: 10 }, icon: 'bow', pair: '210/280' },
+    { name: 'magic', xp: { sword: 20, bow: 40, staff: 140 }, icon: 'magic', pair: '140/280' },
   ];
   for (const c of cases) {
     await setXp(P, c.xp);
     await P.page.waitForTimeout(700);
     const b = await readBand(P);
     const icons = (b.imgs || []).join(' ');
-    rec.ok(`the XP bar takes the ${c.name} icon when ${c.name} is closest`,
+    rec.ok(`the XP row takes the ${c.name} icon when ${c.name} is closest`,
       new RegExp('hero/' + c.icon + '\\.webp').test(icons), { icons });
-    rec.ok(`...and its percentage (${c.pct}%)`,
-      (b.texts || []).some((t) => t === `${c.pct}%`), { texts: b.texts });
-    /* The FILL, not just the caption — a bar whose caption moved while its
-       painted width did not is the bug a text-only check would miss. */
-    rec.ok('...and the painted fill matches the caption',
-      (b.fills || []).some((w) => w === `${c.pct}%`), { fills: b.fills });
+    rec.ok(`...and reads ${c.pair}`, b.xpText === c.pair, { xpText: b.xpText });
   }
 
   await P.page.screenshot({ path: '/home/user/GameDev/tools/qa/mp/out/bandsummary.png' });
