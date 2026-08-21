@@ -495,6 +495,88 @@ export async function initPixiRenderer(canvas) {
        The plate is hidden for one synchronous measurement so the body's bounds
        exclude it, then restored before returning — no frame renders in
        between, so nothing is visible to the player. */
+    /* v2.3.1826: read-only probe of HOW BIG the player is actually drawn, per
+       facing.  Owner: "Character's size is inconsistent across different
+       directions (east, southwest, etc).  I don't know the best way to fix
+       that."
+
+       This cannot be answered from the sheets alone: between the PNG and the
+       screen sit an on-disk downscale (DISPLAY_DS), an upscale back to the
+       authored frame height, a per-(pose,dir) normalisation table, LOCAL_SCALE,
+       PLAYER_SIZE_MULT and the zone's player scale.  And it cannot be answered
+       from getBounds() either — a player cell is fixed-size with transparent
+       margin under the boots, so bounds measure the CELL, not the figure.
+
+       So: read the texture's own pixels for the frame currently on screen,
+       find the painted crown and feet rows, and convert to screen px through
+       the live transform.  That is the figure height a person actually sees. */
+    bodyFigureProbe: () => {
+      const pd = entityRenderer.playerDisplay;
+      const sb = pd && pd._spriteBody;
+      if (!pd || !sb || !sb.visible || !sb.texture) return null;
+      const tex = sb.texture;
+      const src = tex.source && tex.source.resource;
+      if (!src) return { err: 'texture source is not readable' };
+      const fr = tex.frame || { x: 0, y: 0, width: tex.width, height: tex.height };
+      let painted;
+      try {
+        const cv = document.createElement('canvas');
+        cv.width = Math.max(1, Math.round(fr.width));
+        cv.height = Math.max(1, Math.round(fr.height));
+        const c = cv.getContext('2d', { willReadFrequently: true });
+        c.drawImage(src, fr.x, fr.y, fr.width, fr.height, 0, 0, cv.width, cv.height);
+        const p = c.getImageData(0, 0, cv.width, cv.height).data;
+        let top = -1, bot = -1, l = cv.width, r = -1;
+        for (let y = 0; y < cv.height; y++) {
+          for (let x = 0; x < cv.width; x++) {
+            if (p[(y * cv.width + x) * 4 + 3] < 24) continue;
+            if (top < 0) top = y;
+            bot = y;
+            if (x < l) l = x;
+            if (x > r) r = x;
+          }
+        }
+        painted = { top, bot, l, r, h: bot - top + 1, w: r - l + 1, cellH: cv.height, cellW: cv.width };
+      } catch (e) {
+        return { err: 'texture is tainted or unreadable: ' + (e && e.message) };
+      }
+      /* What ONE texture pixel is worth on screen, measured through the whole
+         chain rather than multiplied out of the factors by hand — that is the
+         arithmetic this probe exists to avoid trusting. */
+      const unitY = sb.toGlobal({ x: 0, y: 1 }).y - sb.toGlobal({ x: 0, y: 0 }).y;
+      return {
+        facing: pd._lastFacingKey || null,
+        pose: pd._lastPoseKey || null,
+        painted,
+        unitPxY: +unitY.toFixed(5),
+        figurePx: +(painted.h * unitY).toFixed(2),
+        widthPx: +(painted.w * unitY).toFixed(2),
+        /* Where the boots land on screen, relative to the display's origin —
+           a figure that changes height about a fixed centre also moves its
+           feet, which reads as the character bobbing as it turns. */
+        feetOffsetPx: +((painted.bot - (painted.cellH - 1) / 2) * unitY).toFixed(2),
+        spriteScaleY: +sb.scale.y.toFixed(5),
+        /* v2.3.1826: the worn traits, in the SAME screen units, so a test can
+           check that a hat keeps its proportion to the body across facings —
+           the owner's actual constraint on the size fix ("without breaking
+           anything else (relative item scale like hats, beards, etc)"). */
+        hatPx: pd._headwearSprite && pd._headwearSprite.visible
+          ? +(pd._headwearSprite.getBounds().height).toFixed(2) : 0,
+        beardPx: pd._facialHairSprite && pd._facialHairSprite.visible
+          ? +(pd._facialHairSprite.getBounds().height).toFixed(2) : 0,
+        /* The trait's scale AGAINST the body's, which is the invariant that
+           actually matters: hat-height / body-height varies between facings
+           because each facing's hat ART has its own frame size, and that is
+           authored, not a bug.  What must never change is that the trait is
+           scaled BY the body — so this ratio is what a body-scale edit is
+           tested against.  Absolute values: scale.x carries the mirror sign,
+           and west is east flipped. */
+        hatScaleRatio: pd._headwearSprite && pd._headwearSprite.visible && sb.scale.y
+          ? +(Math.abs(pd._headwearSprite.scale.y) / Math.abs(sb.scale.y)).toFixed(5) : 0,
+        beardScaleRatio: pd._facialHairSprite && pd._facialHairSprite.visible && sb.scale.y
+          ? +(Math.abs(pd._facialHairSprite.scale.y) / Math.abs(sb.scale.y)).toFixed(5) : 0,
+      };
+    },
     namePillProbe: () => {
       const pd = entityRenderer.playerDisplay;
       const pill = pd && pd._namePill;

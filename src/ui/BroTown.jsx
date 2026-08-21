@@ -742,6 +742,17 @@ export var BroTown = function BroTown(_ref0) {
   /* Expose state for autotest */
   window._gameState = stateRef;
   window._gameFns = {
+    /* v2.3.1826: trait setters on the autotest surface.  The owner's
+       constraint on the body-size fix was "without breaking anything else
+       (relative item scale like hats, beards, etc)", and the only honest way
+       to check that is to put a hat on the character and measure it — a
+       bare-headed run makes the assertion pass by measuring nothing.  Same
+       posture as createMonster above: a hook that mutates the world, so a
+       test can set up the case it is actually about. */
+    setHeadwear: setHeadwear,
+    setFacialHair: setFacialHair,
+    HEADWEAR_CATALOG: HEADWEAR_CATALOG,
+    FACIALHAIR_CATALOG: FACIALHAIR_CATALOG,
     addLifeSkillXp: addLifeSkillXp,
     awardSkillXp: awardSkillXp,
     createMonster: createMonster,

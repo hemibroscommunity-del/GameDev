@@ -537,7 +537,52 @@ const BODY_DIR_SCALE = {
      JOG_HEIGHT (1.052) without re-deriving this map; for south those two
      factors were what held idle == jog.  Re-measured on the armored figure:
      stand 188px, jog mean 197.6px -> 197.6/188 = 1.051 makes them equal. */
-  stand: { south: 1.051, east: 0.983, north: 1.039, northeast: 1.003, southwest: 0.983 },
+  /* ═══ v2.3.1826: RE-DERIVED FROM THE FIGURE ON SCREEN ═══
+     Owner: "Character's size is inconsistent across different directions
+     (east, southwest, etc).  I don't know the best way to fix that.  Also
+     without breaking anything else (relative item scale like hats, beards,
+     etc)."
+
+     They are right, and the old numbers are why.  Measured through
+     bodyFigureProbe — the painted crown-to-boots of the frame actually on
+     screen, converted through the live transform — the eight facings came
+     out spanning 9.4%:
+         north 74.0  east/west 74.6  south 76.5  NE/NW 77.6  SE/SW 81.4
+     Southwest is 9.9% taller than north, which is exactly the pair the
+     owner named.
+
+     WHY THE OLD MAP DID NOT HOLD IT.  It was derived at v2.3.569 against the
+     ARMOURED figure, because at the time gear was drawn at its own size and
+     the bare body could not see it.  v2.3.645 ended that — the aligned gear
+     is drawn to FIT the body now, and only this uniform scale applies — so
+     normalising the armoured silhouette stopped being the right target and
+     nobody re-derived it.  South was then hand-patched at v2.3.684 for a
+     different reason again (idle/jog parity).
+
+     THE NEW TARGET is 77.2px, the facing-weighted mean of what the eight
+     were already doing (east art covers E+W, SW art covers SW+SE, NE art
+     covers NE+NW, so those three carry double weight).  Keeping the mean
+     fixed means this removes the VARIANCE without making the character
+     bigger or smaller overall — a size change is not what was asked for.
+
+     THE BOOTS COME ALONG FOR FREE, and that is the check that the model is
+     right rather than a coincidence: the body sprite is anchored at the
+     CELL's centre, and the painted figure's centre sits at row ~126 of 256
+     in every sheet, so a facing that is drawn taller also puts its feet
+     lower — the character sinks and rises as it turns.  Equalising the
+     heights predicted a foot-line spread of 1.2px, down from 4.5px, and
+     that is what mp-bodysize measures.
+
+     AND THE HATS ARE SAFE, which was the owner's actual worry: every trait
+     is placed through _placeTrait with THIS bodyScale, and its anchors are
+     frame-relative, so a hat's size and its seat on the head scale in
+     lockstep with the body.  mp-bodysize asserts hat-height / body-height
+     stays constant across facings rather than trusting that.
+
+     NOT TOUCHING `jog` — see the note below.  Its numbers encode a
+     deliberate perceptual correction for east's under-drawn source art, and
+     re-deriving it on height alone would undo that. */
+  stand: { south: 1.061, east: 1.018, north: 1.083, northeast: 0.998, southwest: 0.933 },
   /* v2.3.539: jog re-derived to match each facing's OWN idle size (the player
      was bigger running than standing).  Crown-to-hip over-scaled the jog
      because a running figure leans + spreads its legs, compressing vertical
@@ -6513,6 +6558,13 @@ export class EntityRenderer {
        BODY_DIR_SCALE map (silhouette-height normalization), replacing the
        old hand-tuned bump stack. */
     const bodyScale = bodyDirScale(pose, dir) * LOCAL_SCALE;
+    /* v2.3.1826: publish the (pose, dir) the body is ACTUALLY drawn as, for
+       bodyFigureProbe.  Not the same as S._facing: this is post-
+       resolveDirection, so it carries the mirror collapse (west renders as
+       east) — and "east and west are the same art" is exactly the kind of
+       thing a size comparison has to know rather than assume. */
+    display._lastPoseKey = pose;
+    display._lastFacingKey = dir;
     /* v2.3.551: set true once the full covering set hides the body, so the
        NFT/procedural fallbacks below don't draw a body in its place.  Declared
        at function scope (the NFT fallback is outside the spritesAvailable block). */
