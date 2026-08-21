@@ -38,6 +38,11 @@ import { PlayerListPanel } from './panels/PlayerListPanel.jsx';
 import { EmotePanel } from './panels/EmotePanel.jsx';
 import { InspectPlayerPanel } from './panels/InspectPlayerPanel.jsx';
 import { NameModal } from './panels/NameModal.jsx';
+/* v2.3.1814: the login door that now sits in front of the creator.
+   getBtPassphrase is already imported further down with the other
+   networking helpers — only checkAccountLogin is new here. */
+import { LoginScreen } from './panels/LoginScreen.jsx';
+import { checkAccountLogin } from '@/networking/index.js';
 import { KeyboardHintsPanel } from './panels/KeyboardHintsPanel.jsx';
 import { UpdateBanner } from './panels/UpdateBanner.jsx';
 import { startBuildWatch } from '@/game/buildWatch.js';
@@ -1549,11 +1554,33 @@ export var BroTown = function BroTown(_ref0) {
     _useState188 = _slicedToArray(_useState187, 2),
     joinFlash = _useState188[0],
     setJoinFlash = _useState188[1];
-  /* Simple welcome screen — always show (fresh session each time) */
-  var _useState189 = useState(true),
+  /* ═══ v2.3.1814: WHICH PRE-GAME SCREEN, IF ANY ═══
+     Owner: "character selections in terms of names and traits picked during
+     login should be permanent.  When you load a character using the key it
+     should just bring you into the game not the login menu anymore.  Which
+     means a new login screen needs to be made."
+
+     This used to be `useState(true)` under the comment "always show (fresh
+     session each time)", which is the whole behaviour the owner is ending:
+     the creator was the front door because a character was something you
+     re-made every session.  Now there are three outcomes and the boot check
+     picks between them:
+       'checking' — asking the worker whether THIS device's key already has
+                    a character (read-only; see _bootCharCheck below).
+       'login'    — it does not, so: log in with a key, or create one.
+       'create'   — the creator, now reached deliberately rather than by
+                    default.
+       null       — it does, so there is no pre-game screen at all and we
+                    walk straight into town.
+     Starting at 'checking' rather than 'login' matters: flashing the login
+     screen for a moment before skipping it would undo the point of skipping
+     it. */
+  var _useState189 = useState('checking'),
     _useState190 = _slicedToArray(_useState189, 2),
-    showWelcome = _useState190[0],
-    setShowWelcome = _useState190[1];
+    bootPhase = _useState190[0],
+    setBootPhase = _useState190[1];
+  var showWelcome = bootPhase === 'create';
+  var setShowWelcome = function setShowWelcome(v) { setBootPhase(v ? 'create' : null); };
   /* Bro Town intro video — overlays the game for ~4 s after character
      creation (fades out at 3 s).  Town music starts during the video. */
   var _useState229 = useState(false),
@@ -2159,6 +2186,7 @@ export var BroTown = function BroTown(_ref0) {
       stateRef: stateRef,
       showNameModal: showNameModal,
       showLogin: showLogin,
+      preGame: bootPhase !== null,   /* v2.3.1814: also the boot check + login door */
       setPlayerCount: setPlayerCount,
       setChatLog: setChatLog,
       setUnreadChats: setUnreadChats,
@@ -2177,7 +2205,7 @@ export var BroTown = function BroTown(_ref0) {
       setClanData: setClanData,
       pixiRef: pixiRef
     });
-  }, [showNameModal, showLogin]);
+  }, [showNameModal, showLogin, bootPhase]);   /* v2.3.1814: reconnect decision changes with the pre-game phase */
 
   /* ═══ Server stats_update sync ═══
      The worker tracks HP authoritatively but doesn't know our derived
@@ -7169,6 +7197,62 @@ export var BroTown = function BroTown(_ref0) {
       clearTimeout(t2);
     };
   }, [showNameModal, showLogin]);
+  /* ═══ v2.3.1814: DOES THIS DEVICE'S KEY ALREADY HAVE A CHARACTER? ═══
+     Asked over the READ-ONLY account endpoint, before connecting, and that
+     choice is load-bearing rather than incidental: the alternative — join
+     first and decide from state_sync — would have the client send its
+     current (default) trait catalogs on that join, and the worker locks in
+     the first look it is sent.  Deciding before we connect is what stops
+     the boot check itself from minting a blank permanent character.
+
+     Three outcomes, and the failure branch is the interesting one: if the
+     worker is old, unreachable, or simply says no, we fall through to the
+     login screen.  That is the safe direction — the worst case is a player
+     who has to tap "Log in with your Key" once, rather than one who gets
+     dropped into the creator and makes a second character by accident. */
+  var _bootRan = useRef(false);
+  useEffect(function () {
+    if (_bootRan.current) return;
+    _bootRan.current = true;
+    var alive = true;
+    (function () {
+      var phrase = null;
+      try { phrase = getBtPassphrase(); } catch (e) { phrase = null; }
+      if (!phrase) { if (alive) setBootPhase('login'); return; }
+      checkAccountLogin(phrase).then(function (res) {
+        if (!alive) return;
+        if (res && res.ok && res.exists && res.preview && res.preview.hasChar) {
+          /* Straight in.  The NAME comes from the record via state_sync a
+             moment later (wsClient applies it); nameInput is seeded here so
+             joinTown's `nameInput.trim() || 'Anon'` cannot stamp 'Anon'
+             over a real character in the window before that arrives. */
+          if (res.preview.name) setNameInput(res.preview.name);
+          setBootPhase(null);
+          try { window.__btBootRoute = 'resume'; } catch (e) {}
+        } else {
+          setBootPhase('login');
+          try { window.__btBootRoute = 'login'; } catch (e) {}
+        }
+      }).catch(function () {
+        if (!alive) return;
+        setBootPhase('login');
+        try { window.__btBootRoute = 'login'; } catch (e) {}
+      });
+    })();
+    return function () { alive = false; };
+  }, []);
+
+  /* Walking in with a stored character: joinTown is the same entry the
+     creator's ENTER button uses, so there is ONE way into the world and no
+     second path to keep in step.  Held until the phase settles to null AND
+     the name has been seeded, so the join carries the right name. */
+  var _autoJoined = useRef(false);
+  useEffect(function () {
+    if (bootPhase !== null || _autoJoined.current) return;
+    _autoJoined.current = true;
+    try { joinTown(); } catch (e) { /* fall back to the login door */ setBootPhase('login'); }
+  }, [bootPhase]);
+
   var joinTown = function joinTown() {
     /* Refuse to start while the page is pinch-zoomed.  iOS Safari ignores
        maximum-scale/user-scalable=no, so users can still pinch.  If they
@@ -7392,6 +7476,15 @@ export var BroTown = function BroTown(_ref0) {
      PLAY on the left (~57%), scrollable category rail + RANDOMIZE on the
      right.  Layout-only change — every input/button keeps its previous
      handlers and state. */
+  /* v2.3.1814: the login door, and the blank hold while we ask whether this
+     key already has a character.  Both return BEFORE the creator: the
+     creator is now something you choose, not the default landing. */
+  if (bootPhase === 'checking' || bootPhase === 'login') {
+    return /*#__PURE__*/React.createElement(LoginScreen, {
+      checking: bootPhase === 'checking',
+      onCreateNew: function onCreateNew() { setBootPhase('create'); },
+    });
+  }
   if (showNameModal) {
     return /*#__PURE__*/React.createElement(NameModal, { _dragRotX: _dragRotX, _swatchTile: _swatchTile, _thumbTile: _thumbTile, activeCat: activeCat, beardColorSel: beardColorSel, facialHairSel: facialHairSel, hairColorSel: hairColorSel, hairSel: hairSel, hatColorSel: hatColorSel, headwearSel: headwearSel, joinTown: joinTown, nameInput: nameInput, pantsSel: pantsSel, previewCanvasRef: previewCanvasRef, previewDir: previewDir, randomizeWithFlair: randomizeWithFlair, rollRandomName: rollRandomName, rotatePreview: rotatePreview, setActiveCat: setActiveCat, setBeardColorSel: setBeardColorSel, setFacialHairSel: setFacialHairSel, setHairColorSel: setHairColorSel, setHairSel: setHairSel, setHatColorSel: setHatColorSel, setHeadwearSel: setHeadwearSel, setNameInput: setNameInput, setPantsSel: setPantsSel, setShirtColorSel: setShirtColorSel, setShirtSel: setShirtSel, setShoesSel: setShoesSel, setSkinSel: setSkinSel, shirtColorSel: shirtColorSel, shirtSel: shirtSel, shoesSel: shoesSel, skinSel: skinSel });
   }

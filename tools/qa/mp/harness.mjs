@@ -167,7 +167,7 @@ export async function stopWorker(w) {
    "passed" three assertions about marks that were never drawn.)  isMobile
    flips the emulated pointer to coarse and turns on the meta viewport, which
    together are the closest this harness gets to the primary platform. */
-export async function newPlayer(browser, { name, wsPort, webPort, guest = false, viewport, touch = false }) {
+export async function newPlayer(browser, { name, wsPort, webPort, guest = false, viewport, touch = false, phrase = null }) {
   const ctx = await browser.newContext(Object.assign(
     { viewport: viewport || { width: 1000, height: 780 } },
     touch ? { hasTouch: true, isMobile: true, deviceScaleFactor: 2 } : null,
@@ -177,6 +177,16 @@ export async function newPlayer(browser, { name, wsPort, webPort, guest = false,
   page.on('console', (m) => { if (m.type() === 'error') logs.push(`console ${m.text().slice(0, 200)}`); });
   page.on('pageerror', (e) => logs.push(`pageerror ${String(e).slice(0, 200)}`));
   await page.addInitScript((p) => { window.BROTOWN_WS_URL = `ws://127.0.0.1:${p}`; }, wsPort);
+  /* v2.3.1814: `phrase` seeds this context's Login Key BEFORE first paint, so
+     a scenario can arrive as an EXISTING character.  It has to be an init
+     script rather than a post-load write: the boot check that decides which
+     pre-game screen to show runs on mount, and a key written after that has
+     already missed its own question. */
+  if (phrase) {
+    await page.addInitScript((ph) => {
+      try { localStorage.setItem('bt_passphrase', ph); } catch (e) {}
+    }, phrase);
+  }
   await page.goto(`http://localhost:${webPort}/${guest ? '?guest=1' : ''}`, { waitUntil: 'domcontentloaded' });
   return { ctx, page, logs, name };
 }
@@ -184,9 +194,32 @@ export async function newPlayer(browser, { name, wsPort, webPort, guest = false,
 /** Drive character creation and wait until the world is live. */
 export async function enterWorld(P, timeout = 90000) {
   const { page, name } = P;
-  await page.waitForSelector('input.bt-cc-name', { timeout: 30000 });
-  await page.fill('input.bt-cc-name', name);
-  await page.click('button.bt-cc-play');
+  /* ═══ v2.3.1814: THE LOGIN DOOR COMES FIRST NOW ═══
+     The creator used to be the landing screen; it now sits behind a login
+     screen with two buttons (owner: "Login (put in key) or create new
+     character").  Every scenario that calls enterWorld is playing a NEW
+     character, so it takes the same door a new player takes.
+
+     Written as "wait for whichever screen appears" rather than "click
+     create, then fill the name": a device whose key already HAS a character
+     skips both screens and walks straight into the world, and a scenario
+     seeded with `phrase` does exactly that.  Waiting for a specific screen
+     would hang forever in that case, and the failure would read as a broken
+     login rather than as a working one. */
+  await page.waitForFunction(() => {
+    if (window.__btBootRoute === 'resume') return true;
+    return !!(document.querySelector('input.bt-cc-name')
+      || document.querySelector('[data-tut="login-create"]'));
+  }, null, { timeout: 30000, polling: 250 });
+  const resumed = await page.evaluate(() => window.__btBootRoute === 'resume');
+  if (!resumed) {
+    if (await page.$('[data-tut="login-create"]')) {
+      await page.click('[data-tut="login-create"]');
+      await page.waitForSelector('input.bt-cc-name', { timeout: 30000 });
+    }
+    await page.fill('input.bt-cc-name', name);
+    await page.click('button.bt-cc-play');
+  }
   /* The loading screen preloads every global animation before the intro lifts
      (the animation-preloading law), so this legitimately takes a while. */
   await page.waitForFunction(() => {

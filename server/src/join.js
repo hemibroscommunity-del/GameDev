@@ -198,6 +198,43 @@ export const joinMethods = {
     return false;
   },
 
+  /* v2.3.1814: read the character record, or write it on first join.
+     Split out as the test seam (the join handler is not callable in
+     isolation), and deliberately tiny: this is the only place that decides
+     whether a look is yours already or is being claimed now.
+
+     Returns the record, or null when there is nothing to store — a join
+     carrying no cosmetics at all (a v1/legacy client, or a reconnect that
+     dropped them) must NOT lock an empty look in, because that would make a
+     blank character permanent and there is no way back from permanent. */
+  async _loadOrCreateCharacter(id, cleanJoinData) {
+    const stored = await this.state.storage.get('char:' + id);
+    if (stored && stored.look) return stored;
+    const look = Object.create(null);   /* proto-safe: keys are OURS (the allowlist), but the map is id-adjacent */
+    let any = false;
+    for (const k of JOIN_COSMETIC_KEYS) {
+      if (k === 'name') continue;       /* name is a top-level field, not part of the look */
+      if (cleanJoinData[k] === undefined) continue;
+      look[k] = cleanJoinData[k]; any = true;
+    }
+    if (!any) return null;
+    /* v2.3.1814: A NAMELESS JOIN NEVER CREATES A CHARACTER.
+       The `any` check above is not enough on its own and the reason is
+       worth keeping: body colours are sent on every join, including one
+       made before the player has chosen anything, so `any` is true for a
+       connection that opened behind a pre-game screen.  The client no
+       longer opens one (wsClient gates on `preGame`), and this is the
+       second lock on the same door — because the failure it prevents is
+       a blank character made permanent, and permanent means there is no
+       way back from it.  Every real creation passes a name: joinTown
+       falls back to 'Anon' rather than to empty. */
+    const name = typeof cleanJoinData.name === 'string' ? cleanJoinData.name.trim() : '';
+    if (!name) return null;
+    const rec = { name, look, createdAt: Date.now() };
+    await this.state.storage.put('char:' + id, rec);
+    return rec;
+  },
+
   async _handleJoin(session, ws, msg) {
     // v2.3.1202: prototype-pollution join-id gate.  session.id below is
     // CLIENT-CHOSEN, and it keys plain-object maps all over the room
@@ -282,6 +319,43 @@ export const joinMethods = {
        state_sync every joiner receives -- the same three-consumer shape
        the v2.3.1465 `track` comment documents. */
     const cleanJoinData = this._sanitizeJoinData(msg.data);
+    /* ═══ v2.3.1814: THE CHARACTER RECORD — NAME AND LOOK ARE PERMANENT ═══
+       Owner: "character selections in terms of names and traits picked
+       during login should be permanent.  When you load a character using the
+       key it should just bring you into the game."
+
+       Until now a character's appearance lived only in the CLIENT's trait
+       catalogs and was re-sent on every join.  Two things followed from
+       that, both of which the owner is asking to end: the look was reset by
+       a reload (which is why the creator ran every single time), and it was
+       never yours in any durable sense — the key restored your progress and
+       left your face behind on the old device.
+
+       So the look is stored server-side against the identity, exactly like
+       `auth:`, and with the same first-write-wins posture:
+         - a stored record WINS over whatever the client sends, which is
+           what "permanent" has to mean on an authoritative server.  A hand-
+           edited join payload cannot restyle a character.
+         - no record yet means this join is the character's creation, and
+           what it carries is locked in.
+       Both branches go through the SAME allowlisted copy the wire already
+       produces, so nothing new is trusted.
+
+       Guests (no phrase, no bp_ id) are skipped: they are throwaways by
+       definition and have nothing to make permanent. */
+    const _charId = (typeof msg.id === 'string' && msg.id.indexOf('bp_') === 0) ? msg.id : null;
+    if (_charId) {
+      session.char = await this._loadOrCreateCharacter(_charId, cleanJoinData);
+      if (session.char) {
+        /* Stored look wins.  Applied onto the sanitized copy so every
+           downstream reader — playerState, peer broadcast, state_sync —
+           sees one consistent character with no second code path. */
+        for (const k of JOIN_COSMETIC_KEYS) {
+          if (session.char.look[k] !== undefined) cleanJoinData[k] = session.char.look[k];
+        }
+        if (session.char.name) cleanJoinData.name = session.char.name;
+      }
+    }
     session.data = cleanJoinData;
     // Protocol v2 opt-in.  v2 sessions get delta player_state emits,
     // per-entity monster/node tick deltas, and the merged zone_state
@@ -845,7 +919,17 @@ export const joinMethods = {
       // an old worker the client keeps the full legacy t2Accel math so
       // its numbers keep matching that worker's authoritative rolls
       // and echoes (deploy-order safety, rule 19).
-      caps: { trade: true, questTrack: true, gamble: true, clans: true, arena: true, dungeon: true, sponsor: true, guilds: true, pets: true, harden: true, trade2: true, weaponDrops: true, botfp: true, jackpot: true, hpEndGrids: true, t2uniform: true, httpAuth: true, party: true, amuletForge: true, gems: true, petLoot: true, gemExtract: true, partyChat: true, trade2Weapons: true, trade2Review: true /* v2.3.1754: the two-stage trade (ready -> review -> accept), its server-enforced accept cooldown, and the trade2_ready type.  The client gates its Ready button and its trade2_ready send on this: against an OLD worker the flag is absent, the window keeps the single-stage Confirm it has always had, and nothing is sent that the worker would relay as an unknown broadcast.  Against a NEW worker an old client simply never readies — and _handleTrade2Confirm would refuse it, so the pairing must be advertised (deploy-order safety, rule 19). */, laststand: true, friends: true /* v2.3.1323 */, t2simple: true /* v2.3.1342: level = T2 points placed (cap 1000); client gates its level derivation + spend celebration on this so an old worker's player_state echo can't stomp the new formula */, t2bench: true, broVerify: true /* v2.3.1576: Hemi Bro ownership. Gates the client's wallet control (broWallet.broVerifySupported) so it only appears against a worker that can settle it; an old client never sends the types. Safe in either deploy order (rule 19). */, prog3: true /* v2.3.1659: the trained-skill combat rebuild (prog3.js). The client gates its new Build UI, prog3_allocate sends, trained-level readouts, and the retirement of its local _buildProg/weapon-XP accrual on this flag — an old worker would relay prog3_allocate as an unknown type and its player_state echoes would stomp prog3-derived pools (deploy-order safety, rule 19). */, abil: true /* v2.3.1733: stamina abilities + the milestone unlock ladder (abilities.js). The client gates its ability BUTTONS and its `ability` sends on this, so against an old worker (which would relay the unknown type as a broadcast and never settle it) no button appears and nothing is sent — deploy-order safe in either order (rule 19). */, elemBurst: true /* v2.3.1734: Element Burst (burst.js). Gates the client's burst button, its desktop key and its element_burst send — against an old worker the button never appears and nothing is sent, and against a new worker an old client simply never casts it. ALSO gates the client's FLAT special-attack mana cost: the cost is charged by the worker (_abilityCost), so a new client against an old worker must keep predicting floor(maxMana/5) or its charge pie promises casts that worker will refuse (deploy-order safety, rule 19). */, ..._liveFlags },
+      /* v2.3.1814: the character record, echoed so a client that just logged
+         in with a key on a NEW DEVICE can wear its own face.  The look lives
+         nowhere on that device — that is the whole point of the key — so
+         without this the character would arrive correct on every OTHER
+         screen in the room and wrong on its own.
+         Also the signal the pre-game screen needs: `char` present means this
+         identity already has a character, so the creator must not run. */
+      char: (session.char
+        ? { name: session.char.name, look: session.char.look, createdAt: session.char.createdAt }
+        : null),
+      caps: { charLock: true /* v2.3.1814: name+look are stored server-side and a stored record WINS over the join payload.  The client gates BOTH halves of the permanent-character flow on this — skipping the creator, and trusting state_sync.char over its local trait catalogs.  Against an OLD worker the flag is absent, no record is ever stored, and the client keeps its old behaviour of picking a look every session; against a NEW worker an old client simply sends a look and has it locked in on first join, which is the intended migration either way (deploy-order safety, rule 19). */, trade: true, questTrack: true, gamble: true, clans: true, arena: true, dungeon: true, sponsor: true, guilds: true, pets: true, harden: true, trade2: true, weaponDrops: true, botfp: true, jackpot: true, hpEndGrids: true, t2uniform: true, httpAuth: true, party: true, amuletForge: true, gems: true, petLoot: true, gemExtract: true, partyChat: true, trade2Weapons: true, trade2Review: true /* v2.3.1754: the two-stage trade (ready -> review -> accept), its server-enforced accept cooldown, and the trade2_ready type.  The client gates its Ready button and its trade2_ready send on this: against an OLD worker the flag is absent, the window keeps the single-stage Confirm it has always had, and nothing is sent that the worker would relay as an unknown broadcast.  Against a NEW worker an old client simply never readies — and _handleTrade2Confirm would refuse it, so the pairing must be advertised (deploy-order safety, rule 19). */, laststand: true, friends: true /* v2.3.1323 */, t2simple: true /* v2.3.1342: level = T2 points placed (cap 1000); client gates its level derivation + spend celebration on this so an old worker's player_state echo can't stomp the new formula */, t2bench: true, broVerify: true /* v2.3.1576: Hemi Bro ownership. Gates the client's wallet control (broWallet.broVerifySupported) so it only appears against a worker that can settle it; an old client never sends the types. Safe in either deploy order (rule 19). */, prog3: true /* v2.3.1659: the trained-skill combat rebuild (prog3.js). The client gates its new Build UI, prog3_allocate sends, trained-level readouts, and the retirement of its local _buildProg/weapon-XP accrual on this flag — an old worker would relay prog3_allocate as an unknown type and its player_state echoes would stomp prog3-derived pools (deploy-order safety, rule 19). */, abil: true /* v2.3.1733: stamina abilities + the milestone unlock ladder (abilities.js). The client gates its ability BUTTONS and its `ability` sends on this, so against an old worker (which would relay the unknown type as a broadcast and never settle it) no button appears and nothing is sent — deploy-order safe in either order (rule 19). */, elemBurst: true /* v2.3.1734: Element Burst (burst.js). Gates the client's burst button, its desktop key and its element_burst send — against an old worker the button never appears and nothing is sent, and against a new worker an old client simply never casts it. ALSO gates the client's FLAT special-attack mana cost: the cost is charged by the worker (_abilityCost), so a new client against an old worker must keep predicting floor(maxMana/5) or its charge pie promises casts that worker will refuse (deploy-order safety, rule 19). */, ..._liveFlags },
       // v2.3.1178: this session's private economy-endpoint token.
       // state_sync goes to the joining socket ONLY -- never broadcast.
       httpToken: session.httpToken,

@@ -1908,3 +1908,38 @@ body:has(.bt-inspect) .bt-kb-chip{display:none}
 @keyframes bt-coach-pulse { 0%,100% { opacity: 1 } 50% { opacity: .45 } }
 .bt-coach-ring{ animation: bt-coach-pulse 600ms ease-in-out infinite }
 @media (prefers-reduced-motion: reduce){ .bt-coach-ring{ animation: none; opacity: 1 } }
+
+/* ═══ v2.3.1814: THE LOGIN SCREEN ═══
+   Owner: "a new login screen needs to be made (re use the same splash
+   screen).  It should have button for Login (put in key) or create new
+   character."
+   It shares .bt-name-modal with the creator — same painted backdrop, same
+   vignette, same safe-area padding — so only the CONTENTS are described
+   here.  Centred column rather than the creator's two-column shell: this
+   screen has one decision on it, and the creator's layout exists to give
+   the character picker room it does not need. */
+.bt-login-shell{
+  position:relative;z-index:1;flex:1 1 auto;min-height:0;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:clamp(14px,3.2vh,26px);padding:16px;text-align:center;
+}
+.bt-login-logo{width:min(72vw,340px);max-height:26vh;object-fit:contain}
+.bt-login-actions{display:flex;flex-direction:column;gap:12px;width:100%;max-width:320px}
+/* 52px, not 44: these are the only two targets on the screen and the first
+   thing a new player ever taps, so they get more than the minimum. */
+.bt-login-btn{min-height:52px;font-size:16px;border-radius:10px;
+  display:flex;align-items:center;justify-content:center;gap:8px}
+.bt-login-keyicon{width:20px;height:20px;object-fit:contain}
+/* The note sits over a PAINTED backdrop whose brightness varies with the
+   loop — a text-shadow alone left it fighting the lit sky in some frames.
+   A soft scrim pins the contrast regardless of what the art is doing
+   behind it, which a shadow cannot do. */
+.bt-login-note{max-width:320px;font-size:12px;line-height:1.5;
+  color:var(--ui-text);opacity:.92;padding:8px 12px;border-radius:10px;
+  background:rgba(8,14,20,.52);backdrop-filter:blur(2px);
+  text-shadow:0 1px 2px rgba(4,7,9,.7)}
+/* Short/landscape viewports: the logo is the part that can afford to go. */
+@media (max-height:520px){
+  .bt-login-logo{max-height:18vh}
+  .bt-login-shell{gap:12px}
+}

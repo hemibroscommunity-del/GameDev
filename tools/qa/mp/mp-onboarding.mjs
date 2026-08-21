@@ -22,6 +22,17 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await page.addInitScript((p) => { window.BROTOWN_WS_URL = `ws://127.0.0.1:${p}`; }, wsPort);
   await page.goto(`http://localhost:${webPort}/`, { waitUntil: 'domcontentloaded' });
 
+  /* ═══ v2.3.1814: A BRAND-NEW PLAYER MEETS THE LOGIN DOOR FIRST ═══
+     Owner: "a new login screen needs to be made ... It should have button
+     for Login (put in key) or create new character."
+     This file drives its own context precisely BECAUSE it is the
+     never-loaded-before case, which makes it the right place to assert what
+     a first-time player actually lands on — not just to click through it. */
+  await page.waitForSelector('[data-tut="login-create"]', { timeout: 30000 });
+  rec.ok('a first-time player lands on the login screen, not straight in the creator',
+    !(await page.$('input.bt-cc-name')), {});
+  await page.click('[data-tut="login-create"]');
+
   await page.waitForSelector('input.bt-cc-name', { timeout: 30000 });
   await page.fill('input.bt-cc-name', 'Newcomer');
   await page.click('button.bt-cc-play');
