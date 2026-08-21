@@ -74,14 +74,6 @@ dashboardPanelBus.subscribe(() => {
 export const HeroExpanded = () => {
   const [, force] = useState(0);
   const [eqSel, setEqSel] = useState(null);
-  const cardRef = React.useRef(null);
-  /* v2.3.1842: see the note by the card below. */
-  React.useEffect(() => {
-    if (!eqSel || !cardRef.current) return;
-    try {
-      cardRef.current.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
-    } catch (e) { /* an old engine simply does not scroll */ }
-  }, [eqSel]);
   const [section, setSectionState] = useState(_lastSection);
   /* v2.3.1668: which combat type the Build grid is allocating into.
      Defaults to whatever you are actually holding, so opening Build
@@ -214,13 +206,24 @@ export const HeroExpanded = () => {
       </div>
     );
   };
-  const kv = (k, v, big) => (
+  /* v2.3.1844: one stat line INSIDE the selected item's card.  Replaces the
+     old `kv` tile, which was built to sit on the panel floor and used
+     `wellSoft` — invisible against the card's darker interior.  `raised` on
+     `well` is the depth pair that reads there.
+
+     `flex: 1` rather than a fixed height: the card fills the equip row, and
+     a weapon with two stats should divide that space between them instead of
+     stacking two short tiles under a pile of empty card. */
+  const cardStat = (k, v) => (
     <div key={k} style={{
-      background: COL.wellSoft, border: `1px solid ${COL.tileBor}`, borderRadius: 8,
-      padding: '4px 2px 5px', minWidth: 0, textAlign: 'center',
+      flex: 1, minHeight: 0, minWidth: 0,
+      background: COL.raised, border: `1px solid ${COL.tileBor}`, borderRadius: 7,
+      display: 'flex', flexDirection: 'column',
+      alignItems: 'center', justifyContent: 'center',
+      padding: '2px 4px', textAlign: 'center',
     }}>
-      <div style={{ fontSize: 8.5, fontWeight: 700, letterSpacing: '.04em', textTransform: 'uppercase', color: COL.muted, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{k}</div>
-      <div style={{ fontSize: big ? 15 : 13, fontWeight: 800, color: COL.text, fontVariantNumeric: 'tabular-nums', marginTop: 1, whiteSpace: 'nowrap' }}>{v}</div>
+      <div style={{ fontSize: 8.5, fontWeight: 700, letterSpacing: '.04em', textTransform: 'uppercase', color: COL.muted, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%' }}>{k}</div>
+      <div style={{ fontSize: 15, fontWeight: 800, color: COL.text, fontVariantNumeric: 'tabular-nums', marginTop: 1, whiteSpace: 'nowrap' }}>{v}</div>
     </div>
   );
 
@@ -395,38 +398,122 @@ export const HeroExpanded = () => {
               {['weapon', 'shield', 'chest', 'legs', 'amulet', 'cape'].map(eqCell)}
             </div>
 
-            {/* The vitals, stacked: each still a horizontal BAR (that is what
-                a bar is for), the LIST running vertically.  Takes whatever the
-                first two columns leave, which is what the crop freed. */}
+            {/* ═══ v2.3.1843: THE CARD OPENS OVER THE VITALS ═══
+                Owner: "It's fine if the card opens over where the vitals are."
+
+                v2.3.1842 tried to solve the same problem by SCROLLING the card
+                into view, and the screenshot showed why that was wrong: the
+                scroll pushed the top of this row up behind the subtab bar and
+                cut off the character's head and the HP bar to reveal a card at
+                the bottom.  Taking the owner's suggestion instead — the
+                selected item's card simply takes this column — means nothing
+                moves, nothing is cut off, and the card is on screen the
+                instant you tap a slot.
+
+                The vitals come back the moment you tap the slot closed.  The
+                whole-character stats below are unchanged. */}
             <div style={{
               flex: 1, minWidth: 0, height: 3 * EQ_W + 2 * DASH_GAP,
               display: 'flex', flexDirection: 'column',
-              justifyContent: 'center', gap: 10,
+              justifyContent: 'center', gap: selSlot ? 0 : 10,
             }}>
-              {compactVital('hp', R.hp || 0, R.maxHp || 100)}
-              {compactVital('stamina', R.stamina || 0, R.maxStamina || 100)}
-              {compactVital('mana', R.mana || 0, R.maxMana || 100)}
+              {selSlot ? (
+                /* ═══ v2.3.1844: THE ITEM CARD IS A CARD ═══
+                   Owner: "put it on its own card.  Like the GREATSWORD and
+                   CHANGE are the thick border of the card.  The inside of it
+                   is where it lists the stats."
+
+                   So the name and the CHANGE button are not floating text
+                   above some tiles any more — they sit ON the frame, in the
+                   brass-tinted band that IS the card's border, and the stats
+                   live in a sunken well inside it.  That is the whole shape:
+                   a lit rim around a dark interior.
+
+                   The tiles inside switch from `wellSoft` to `raised`,
+                   because the interior they now sit in is darker than the row
+                   behind them was — wellSoft on well is the same colour twice
+                   and the tiles vanished into the floor.  Depth order, from
+                   docs/LANTERN-SLATE-SPEC.md: frame (accentFill) > well
+                   (COL.well) > tile (COL.raised). */
+                <div style={{
+                  flex: 1, minWidth: 0,
+                  display: 'flex', flexDirection: 'column', gap: 4,
+                  borderRadius: 11,
+                  border: `1px solid ${COL.accent}`,
+                  background: COL.accentFill,
+                  padding: 5,
+                  overflow: 'hidden',
+                }}>
+                  <div style={{
+                    flex: 'none', display: 'flex', alignItems: 'center',
+                    gap: 6, minHeight: 18, padding: '0 2px',
+                  }}>
+                    <span style={{
+                      flex: 1, minWidth: 0,
+                      fontSize: 9.5, fontWeight: 800, letterSpacing: '.06em',
+                      textTransform: 'uppercase', color: COL.accent,
+                      whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                    }}>{selCard ? selCard.title : selSlot.label}</span>
+                    {selSlot.pickerSlot && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          let anchor = null;
+                          try {
+                            const r = e.currentTarget.getBoundingClientRect();
+                            anchor = { left: r.left, top: r.top, right: r.right, bottom: r.bottom, width: r.width, height: r.height };
+                          } catch (_e) {}
+                          itemDetailBus.open({ kind: 'loadout', slot: selSlot.pickerSlot, anchor, panel: null });
+                        }}
+                        style={{
+                          /* On the frame the button no longer needs a fill to
+                             separate it from the row — the frame IS the fill,
+                             so it reads as a control cut into the rim. */
+                          flex: 'none', padding: '2px 8px', borderRadius: 999,
+                          background: 'transparent', border: `1px solid ${COL.accent}`,
+                          color: COL.accent, fontFamily: 'inherit',
+                          fontSize: 10, fontWeight: 800, letterSpacing: '.04em',
+                          cursor: 'pointer',
+                        }}>CHANGE</button>
+                    )}
+                  </div>
+                  {/* The inside of the card. */}
+                  <div style={{
+                    flex: 1, minHeight: 0, borderRadius: 8,
+                    background: COL.well,
+                    padding: 5,
+                    display: 'flex', flexDirection: 'column', gap: 5,
+                  }}>
+                    {selCard ? (
+                      <>
+                        {cardStat(selCard.primary.k, selCard.primary.v)}
+                        {selCard.secondary ? cardStat(selCard.secondary.k, selCard.secondary.v) : null}
+                      </>
+                    ) : (
+                      <div style={{
+                        flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        fontSize: 11, fontWeight: 600, color: COL.muted, textAlign: 'center',
+                      }}>{selSlot.ghost ? 'Nothing equipped here.' : 'No stat bonuses.'}</div>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <>
+                  {compactVital('hp', R.hp || 0, R.maxHp || 100)}
+                  {compactVital('stamina', R.stamina || 0, R.maxStamina || 100)}
+                  {compactVital('mana', R.mana || 0, R.maxMana || 100)}
+                </>
+              )}
             </div>
           </div>
 
-          {/* ═══ v2.3.1842: TAPPING A SLOT BRINGS ITS CARD INTO VIEW ═══
-              Owner: "make sure there's enough room so that when you click on
-              an item to equip the menu still shows up."
-
-              It did not.  Measured after the row grew to fit the bigger
-              figure: the card's title landed at y845 and its CHANGE button at
-              842-859, in an 844px viewport — about 15px below the fold.
-
-              The fix is NOT to shrink the character back, because keeping his
-              size is the other half of the same request.  Overview already
-              scrolls (that is what the v2.3.1311d edge fade is for), so the
-              card was reachable all along and simply did not announce itself.
-              Selecting a slot now scrolls it into view, which is what "shows
-              up" means from the player's side of the screen.
-
-              Only on SELECT, never on deselect: scrolling when you tap a slot
-              closed would yank the panel around for no reason. */}
-          <div ref={cardRef} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginTop: 6 }}>
+          {/* v2.3.1843: the scrollIntoView v2.3.1842 added here is GONE.  It
+              worked — the card came into view — but the screenshot showed the
+              cost: the scroll pushed the row up behind the subtab bar and cut
+              off the character's head and the HP bar.  The card moved into the
+              row instead (over the vitals, the owner's suggestion), so there
+              is nothing left to scroll to. */}
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginTop: 6 }}>
             <div style={{ flex: 1, minWidth: 0 }}>
               {/* The header names what the numbers below are ABOUT, which is
                   the whole point of a contextual panel: without it, a card
@@ -439,50 +526,16 @@ export const HeroExpanded = () => {
                 <span style={{
                   fontSize: 9.5, fontWeight: 800, letterSpacing: '.06em',
                   textTransform: 'uppercase',
-                  color: selCard ? COL.accent : COL.muted,
+                  color: COL.muted,
                   whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-                }}>{selSlot ? (selCard ? selCard.title : selSlot.label) : 'Your stats'}</span>
-                {selSlot && selSlot.pickerSlot && (
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      let anchor = null;
-                      try {
-                        const r = e.currentTarget.getBoundingClientRect();
-                        anchor = { left: r.left, top: r.top, right: r.right, bottom: r.bottom, width: r.width, height: r.height };
-                      } catch (_e) {}
-                      itemDetailBus.open({ kind: 'loadout', slot: selSlot.pickerSlot, anchor, panel: null });
-                    }}
-                    style={{
-                      flex: 'none', padding: '2px 8px', borderRadius: 999,
-                      background: COL.accentFill, border: `1px solid ${COL.accent}`,
-                      color: COL.accent, fontFamily: 'inherit',
-                      fontSize: 10, fontWeight: 800, letterSpacing: '.04em',
-                      cursor: 'pointer',
-                    }}>CHANGE</button>
-                )}
+                }}>Your stats</span>
               </div>
 
-              {selSlot ? (
-                /* CONTEXTUAL — this one item's contribution.  An equipped
-                   slot with no stat data (legs and cape carry none, by
-                   v2.3.1328's own note) says so rather than showing an
-                   empty frame that looks broken. */
-                selCard ? (
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 5 }}>
-                    {kv(selCard.primary.k, selCard.primary.v, true)}
-                    {selCard.secondary ? kv(selCard.secondary.k, selCard.secondary.v, true) : <div />}
-                  </div>
-                ) : (
-                  <div style={{
-                    padding: '10px 8px', borderRadius: 8,
-                    background: COL.wellSoft, border: `1px solid ${COL.tileBor}`,
-                    fontSize: 11, fontWeight: 600, color: COL.muted, textAlign: 'center',
-                  }}>{selSlot.ghost ? 'Nothing equipped here.' : 'No stat bonuses.'}</div>
-                )
-              ) : (
-                /* AGGREGATE — the whole character, which is what you see
-                   when nothing is selected. */
+              {/* v2.3.1843: ALWAYS the whole character now.  The per-item card
+                  moved up into the row (over the vitals) so that tapping a slot
+                  shows it without scrolling — see the note there.  This block
+                  keeps the one job it is good at: the aggregate. */}
+              {(
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 5 }}>
                   {/* v2.3.1668: every cell here now moves when you spend
                       a point.  Block and Speed were removed — Speed was

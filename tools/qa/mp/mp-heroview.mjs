@@ -215,14 +215,24 @@ export async function run({ browser, wsPort, webPort, rec }) {
      figure, so the card BELOW it is the thing that could get pushed off the
      bottom.  Asserted as "visible inside the viewport", not merely "in the
      DOM" — an element scrolled out of the panel is present and useless, which
-     is exactly the failure being guarded against. */
+     is exactly the failure being guarded against.
+
+     v2.3.1842 measured this and it FAILED: title at y845, CHANGE at 842-859,
+     in an 844px viewport.  Fixed at v2.3.1843 by opening the card in the row
+     over the vitals rather than below the fold. */
+  /* The UNSELECTED state, photographed before the tap below: vitals in the
+     third column.  Two shots because the two states are the whole point of
+     that column now. */
+  try { await P.page.screenshot({ path: '/home/user/GameDev/tools/qa/mp/out/hero-vitals.png' }); } catch (e) {}
+
   const slotBtn = await P.page.$('[role="button"][aria-label="Weapon"]');
   rec.ok('the weapon slot is there to tap (guard)', !!slotBtn, {});
   if (slotBtn) {
     await slotBtn.click();
-    /* The card scrolls itself into view on select (v2.3.1842) and the scroll
-       is smooth, so measure after it settles, not while it is moving. */
-    await P.page.waitForTimeout(1400);
+    /* v2.3.1843: no scroll to wait for any more — the card opens in the row,
+       over the vitals.  If this ever needs a long settle again, something has
+       started moving the panel. */
+    await P.page.waitForTimeout(700);
     const card = await P.page.evaluate(() => {
       /* The panel header names the SELECTED slot once one is picked; before
          that it reads "Your stats".  Find it and measure where it sits. */
@@ -258,6 +268,76 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok('tapping a slot opens its card', !!(card && card.found), card);
     rec.ok('...and the card is ON SCREEN, not pushed off the bottom',
       !!(card && card.onScreen), card);
+
+    /* ── v2.3.1844: it is a CARD, not loose text over tiles ──
+       Owner: "the GREATSWORD and CHANGE are the thick border of the card.
+       The inside of it is where it lists the stats."
+
+       Three separate claims, and each can fail on its own:
+         a) there IS a frame — an ancestor of the title with a real border;
+         b) the STATS ARE INSIDE IT — the same frame contains the stat value,
+            which is what stops a frame drawn around the header alone from
+            passing;
+         c) the interior is SUNKEN — the stats sit on a different ground than
+            the frame does, which is the difference between a card and a
+            rectangle with a line around it.  Compared as colours rather than
+            asserted against a constant, so a palette change cannot make this
+            fail and a copy-paste of the frame's background cannot pass. */
+    const frame = await P.page.evaluate(() => {
+      const leaf = (re) => [...document.querySelectorAll('span, div, button')]
+        .filter((el) => {
+          const t = (el.textContent || '').trim();
+          return t && t.length < 40 && re.test(t) && el.children.length === 0;
+        })[0] || null;
+      const title = leaf(/greatsword|copper/i);
+      const change = leaf(/^change$/i);
+      const statK = leaf(/^(dmg|damage|armou?r|block)$/i);
+      const fig = document.querySelector('canvas[aria-label="Your character"]');
+      const slot = document.querySelector('[role="button"][aria-label="Legs"]');
+      if (!title || !statK) return { found: false };
+      const bw = (el) => parseFloat(getComputedStyle(el).borderTopWidth) || 0;
+      let f = title.parentElement;
+      for (let i = 0; i < 6 && f; i++, f = f.parentElement) if (bw(f) >= 1) break;
+      if (!f || bw(f) < 1) return { found: false, noBorderAncestor: true };
+      const fr = f.getBoundingClientRect();
+      const inside = (el) => {
+        const r = el.getBoundingClientRect();
+        return r.top >= fr.top - 1 && r.bottom <= fr.bottom + 1
+          && r.left >= fr.left - 1 && r.right <= fr.right + 1;
+      };
+      const cs = getComputedStyle(f);
+      return {
+        found: true,
+        border: cs.borderTopWidth + ' ' + cs.borderTopColor,
+        frameBg: cs.backgroundColor,
+        statBg: getComputedStyle(statK.parentElement).backgroundColor,
+        wellBg: getComputedStyle(statK.parentElement.parentElement).backgroundColor,
+        holdsTitle: inside(title),
+        holdsChange: !!change && inside(change),
+        holdsStat: inside(statK),
+        statLabel: statK.textContent.trim(),
+        /* TEETH.  Without this the walk up could stop on the PANEL's own
+           border and every check below would pass on a card that was never
+           drawn: the panel contains the title, the button and the stats too.
+           The card is one column of three, so the thing that separates it
+           from any outer container is that the character and the gear slots
+           are OUTSIDE it. */
+        holdsFigure: !!fig && inside(fig),
+        holdsSlots: !!slot && inside(slot),
+        frameW: Math.round(fr.width),
+      };
+    });
+    rec.ok('the item card has a real frame around the title', !!(frame && frame.found), frame);
+    rec.ok('...and the CHANGE button sits on that frame',
+      !!(frame && frame.holdsChange), frame);
+    rec.ok('...and the STATS are inside the same frame, not beside it',
+      !!(frame && frame.holdsStat), frame);
+    rec.ok('...and the interior is a different ground than the frame (sunken, not flat)',
+      !!(frame && frame.wellBg && frame.wellBg !== frame.frameBg), frame);
+    rec.ok('...and the stat tile is a different ground again (tile on well)',
+      !!(frame && frame.statBg && frame.statBg !== frame.wellBg), frame);
+    rec.ok('...and the frame is the CARD, not the panel (character is outside it)',
+      !!(frame && frame.holdsFigure === false && frame.holdsSlots === false), frame);
   }
 
   await P.page.screenshot({ path: '/home/user/GameDev/tools/maps/.hero.png' });
