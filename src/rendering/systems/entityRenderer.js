@@ -142,8 +142,23 @@ const POPUP_BAR_CLEAR = 34;
    stays one knob per entity type.  Render-only: world positions, server
    hitboxes, and combat ranges are untouched. */
 /* v2.3.1277: owner — "character 25% smaller."  4/3 x 0.75 = 1.0, i.e.
-   exactly the pre-experiment size; keep the knob for further tuning. */
-const PLAYER_SIZE_MULT = 1.0;
+   exactly the pre-experiment size; keep the knob for further tuning.
+   ── v2.3.1821: back UP 25% (owner: "Make the character and name plate 25%
+   larger.  Needs to be more legible for discerning details about the
+   character and the font size").  This is the knob that note kept for
+   exactly this, and it is the right one because it is applied at the
+   CONTAINER level: the body, the above-head bar and the name plate all grow
+   together, so the plate cannot drift off the character it belongs to.
+   Render-only — world positions, server hitboxes and combat ranges are
+   untouched, so nothing about reach or collision changes with it.
+   The plate's TEXT needs one thing more than this scale; see the resolution
+   note in _attachNamePill. */
+const PLAYER_SIZE_MULT = 1.25;
+/* v2.3.1821b: how far the idle SOUTH greatsword tilts off the face, in
+   radians about the grip.  Negative because the south sheet is mirrored (see
+   the note at the assignment); ~10 degrees, which is the "smidge" the owner
+   asked for rather than a re-pose. */
+const SOUTH_IDLE_TILT = -0.18;
 /* v2.3.1765: how long a monster spends arriving (see the spawn-in note in the
    monster loop).  Short on purpose — this is a flourish on a respawn, and a
    monster you cannot fight yet is a monster in your way. */
@@ -172,6 +187,19 @@ const MONSTER_SIZE_MULT = 1.5;
    follow the figure automatically rather than needing their own pass. */
 const NPC_SPRITE_SCALE = 120 / 256;
 
+/* v2.3.1822: per-figure size, because "the mayor" is no longer the only NPC.
+   Every earlier size request (1673/1675/1681 above) was about Mayor Bro and
+   was applied to the shared constant, which was harmless while he was the
+   only one drawn.  He is not: the blacksmith (v2.3.1773) and the storekeeper
+   (v2.3.1775) render off the same constant, and the owner did NOT ask for
+   those to change.  Owner: "Make mayor bro 10% larger" — so the 10% lives
+   here, keyed by sprite path, and everyone else keeps 1.0.
+   Keyed by client-visible strings, so Object.create(null) (CLAUDE.md rule 4). */
+const NPC_SCALE_MULT = Object.assign(Object.create(null), {
+  '/sprites/npc/mayor-bro.webp': 1.10,
+});
+const npcSpriteScale = (src) => NPC_SPRITE_SCALE * (NPC_SCALE_MULT[src] || 1);
+
 /* v2.3.1773: QA probe store — id-keyed from data, so Object.create(null)
    (CLAUDE.md: a plain {} silently no-ops on '__proto__'). */
 const _npcDrawn = Object.create(null);
@@ -195,7 +223,7 @@ if (typeof window !== 'undefined') window.__btNpcSprites = () => Object.values(_
 const NPC_FRAME_FEET_Y = 223;
 const NPC_FRAME_TOP_Y = 23;
 /** Height of the drawn figure above the NPC's feet, in world px. */
-const npcFigureHeight = () => NPC_SPRITE_SCALE * (NPC_FRAME_FEET_Y - NPC_FRAME_TOP_Y);
+const npcFigureHeight = (src) => npcSpriteScale(src) * (NPC_FRAME_FEET_Y - NPC_FRAME_TOP_Y);
 
 /* v2.3.1681: the quest badge behind the '!' (owner: "thick white outline or
    something to be more attention grabbing").  Radius in world px — the label
@@ -3159,14 +3187,28 @@ function _attachNamePill(container, nameSize) {
   pill.y = 38;
   const bg = new Graphics();
   pill.addChild(bg);
-  const nameT = new Text({ text: '', style: {
+  /* ═══ v2.3.1821: RASTERISE AT THE SIZE IT IS SHOWN ═══
+     The owner asked for the plate to be "more legible ... and the font size",
+     and those are two different problems.  PLAYER_SIZE_MULT makes the plate
+     BIGGER, but a Pixi Text is a texture: enlarging its container resamples
+     glyphs that were rasterised at nameSize, so scaling alone buys size at
+     the cost of sharpness — bigger AND blurrier, which is not more legible.
+
+     Rasterising at devicePixelRatio x the container scale means the glyphs
+     are generated at the pixel count they actually occupy, so the growth is
+     the only thing that changes.  Capped at 4: beyond that the texture cost
+     climbs for detail no screen resolves, and every player in the room
+     carries one of these. */
+  const _pillRes = Math.min(4, Math.max(1,
+    ((typeof window !== 'undefined' && window.devicePixelRatio) || 1) * PLAYER_SIZE_MULT));
+  const nameT = new Text({ text: '', resolution: _pillRes, style: {
     fontFamily: 'Source Sans 3, sans-serif', fontSize: nameSize, fontWeight: '700',
     fill: '#F4F0E7', align: 'center',
   } });
   nameT.anchor.set(0.5, 0);
   nameT.y = 3;
   pill.addChild(nameT);
-  const lvlT = new Text({ text: '', style: {
+  const lvlT = new Text({ text: '', resolution: _pillRes, style: {
     fontFamily: 'Source Sans 3, sans-serif', fontSize: nameSize - 1, fontWeight: '800',
     fill: '#D8AA58', align: 'center', letterSpacing: 0.5,
   } });
@@ -7082,12 +7124,47 @@ export class EntityRenderer {
             weaponSprite.rotation = mirror ? -Math.PI * 0.3 : Math.PI * 0.3;
             weaponSprite.scale.x = (mirror ? -1 : 1) * fitScale;
           } else {
-            weaponSprite.rotation = 0;
+            /* ═══ v2.3.1821b: TILT THE SOUTH BLADE OFF HIS FACE ═══
+               Owner: "The south sword is right on the characters face tilt it
+               just a smidge more to the right at least just on idle south
+               view."
+
+               A consequence of the mirror added minutes earlier in this same
+               version: flipping the south sheet about the grip swung the
+               blade across the head instead of away from it.  The fix is a
+               small rotation about that same grip anchor, not a reposition —
+               moving the sprite would take the hilt out of the hand.
+
+               SIGN NOTE, and it is the easy thing to get wrong: the sprite is
+               mirrored (scale.x < 0), so a POSITIVE Pixi rotation reads as
+               counter-clockwise on screen.  Tilting the tip further right
+               therefore needs a negative angle.  Verified against the
+               rendered frame rather than reasoned about — see mp-swordcarry.
+
+               Idle only: `swingActive` is handled above and owns the blade's
+               angle during a swing, so this cannot fight the swing arc. */
+            weaponSprite.rotation = (_gsDir === 'south') ? SOUTH_IDLE_TILT : 0;
             /* v2.3.942: per-facing greatsword art is already drawn for its
                canonical facing, so flip it only for the truly-mirrored facings
                (resolveDirection's `mirror`: west/northwest/southeast).  Other
                weapons keep the single-icon rule (flip for SW/W/NW/N). */
-            const weaponMirror = _gsDir ? mirror : (facingIdx >= 3 && facingIdx <= 6);
+            /* ═══ v2.3.1821: THE SOUTH BLADE POINTS RIGHT ═══
+               Owner: "The south facing held sword should point to the right
+               (from the camera person's perspective) instead of left."
+
+               South is not one of resolveDirection's mirrored facings, so its
+               per-facing art was drawn as authored — hilt in the hand, blade
+               out to the viewer's LEFT.  Adding south to the flip set mirrors
+               that one sheet.
+
+               Safe because the flip is about the GRIP: scale.x negates around
+               the sprite's anchor, and the anchor is the handle point from
+               handles.json, so the hilt stays exactly where the hand is and
+               only the blade swings to the other side.  Nothing else moves,
+               which is why this is one condition rather than a new anchor. */
+            const weaponMirror = _gsDir
+              ? (mirror || _gsDir === 'south')
+              : (facingIdx >= 3 && facingIdx <= 6);
             weaponSprite.scale.x = (weaponMirror ? -1 : 1) * fitScale;
             /* v2.3.1786 (owner: "invert the sword held angle so instead of
                running around with it facing downward it points upward").
@@ -8111,7 +8188,7 @@ export class EntityRenderer {
         if (npc.sprite) {
           const fig = new Sprite(getNpcTexture(npc.sprite) || Texture.EMPTY);
           fig.anchor.set(0.5, NPC_FRAME_FEET_Y / 256);
-          fig.scale.set(NPC_SPRITE_SCALE);
+          fig.scale.set(npcSpriteScale(npc.sprite));
           display.addChildAt(fig, 0);      // behind the bars and labels
           display._fig = fig;
           display._figSrc = npc.sprite;
@@ -8134,7 +8211,7 @@ export class EntityRenderer {
          and only once the texture is bound so we know he is actually drawn. */
       if (display._fig && !display._lifted && display._fig.texture !== Texture.EMPTY) {
         display._lifted = true;
-        const top = npcFigureHeight();          // world px above the feet
+        const top = npcFigureHeight(npc.sprite); // world px above the feet
         /* The marker is anchored at its CENTRE, so clearing the hat needs half
            its own glyph height on top of the gap — the first attempt used the
            gap alone and the ❗ sat down inside the hat brim. */

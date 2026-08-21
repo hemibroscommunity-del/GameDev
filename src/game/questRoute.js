@@ -98,3 +98,22 @@ const ZONE_UNLOCK = (() => {
 export function zoneUnlockQuest(zoneId) {
   return ZONE_UNLOCK.get(zoneId) || null;
 }
+
+/** Is `zoneId` open to this player?
+ *
+ *  v2.3.1822.  Owner, after the gate shipped: "I started a new character on
+ *  the first quest and it was still showing the blue circle portals on every
+ *  zone entrance."  The gate refuses ENTRY, but the portal was still painted
+ *  the same inviting blue as an open one, so the only way to learn a zone was
+ *  shut was to walk into it and be pushed back.  This is the predicate the
+ *  renderer needs to say so before you walk.
+ *
+ *  Deliberately the SAME rule as zoneTransitions' refusal and the worker's
+ *  _zoneUnlocked — any quest status counts: accepting opens the zone, and
+ *  completing leaves it open.  A zone no quest names is never gated.
+ */
+export function isZoneUnlocked(rpg, zoneId) {
+  const q = zoneUnlockQuest(zoneId);
+  if (!q) return true;
+  return !!(rpg && rpg._quests && rpg._quests[q]);
+}

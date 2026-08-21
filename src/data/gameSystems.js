@@ -6322,6 +6322,38 @@ export function monsterBodyOffsetY(archOrType) {
  * MIRROR: entityRenderer.getMonsterSize (the 32) and MONSTER_SIZE_MULT (the
  * 1.5).  Both live in the renderer because they are drawing constants; this is
  * the hit-side copy, and the two have to move together. */
+/* v2.3.1822: the MELEE body radius, as one table instead of an inline chain.
+ *
+ * Owner: "The hit boxes on snowman for sword are inconsistent.  Make it so
+ * that if the aim carat is touching the monster during midswing it counts as
+ * a hit."  It was not inconsistent — it was ZERO.  monsterCombat's swing test
+ * carried its own hand-written radius chain (fodder 20 / fireGoblin 14 /
+ * mummy|skeleton 40 / else monsterProceduralRadius), and the snowman matched
+ * no case; monsterProceduralRadius returns 0 for it precisely BECAUSE it is
+ * sprite-backed and "hand-tuned per archetype at the hit sites" — except the
+ * melee hit site never grew the case.  So a snowman had a point-sized hitbox
+ * while its 64px body filled the caret.  This is the third time the same class
+ * of bug has been fixed (v2.3.1535 slime-at-its-shadow, v2.3.1536 procedural
+ * circles), and every one of them was a hand-maintained duplicate drifting, so
+ * the melee copy becomes a shared function like monsterBodyOffsetY did.
+ *
+ * The melee numbers are deliberately NOT the projectile numbers: a swing
+ * already brings GS_OUTER_RADIUS of reach with it, so its per-body bonus is
+ * smaller.  The snowman is the exception and gets the drawn half-width (32,
+ * its sprite is 64px) rather than a smaller nudge — the whole complaint is
+ * that visibly-connecting swings miss it, and matching the art is the fix.
+ *
+ * MIRROR: projectiles.js has its own (wider) table for the same archetypes.
+ * They are allowed to differ in VALUE; they must not differ in COVERAGE. */
+export function monsterMeleeHitRadius(archOrType) {
+  const shape = hitShapeOf(archOrType);
+  if (shape === 'fodder') return 20;
+  if (shape === 'fireGoblin') return 14;
+  if (shape === 'snowman') return 32;
+  if (shape === 'mummy' || shape === 'skeleton') return 40;
+  return monsterProceduralRadius(shape);
+}
+
 const PROCEDURAL_BODY_RADIUS = 32 * 1.5;
 export function monsterProceduralRadius(archOrType) {
   const shape = hitShapeOf(archOrType);

@@ -314,7 +314,9 @@ export async function initPixiRenderer(canvas) {
     update._lastStages.tileMs = update._lastStages.entityMs = update._lastStages.effectsMs = update._lastStages.fpsMs = update._lastStages.appMs = 0;
 
     const _t0 = performance.now();
-    try { tileRenderer.update(cx, cy, viewW, viewH); }
+    /* v2.3.1822: S passed in so the tile pass can read the LIVE quest table
+       and paint a locked zone's portal as locked (see tileRenderer). */
+    try { tileRenderer.update(cx, cy, viewW, viewH, S); }
     catch (e) { if (!update._tileErr) { update._tileErr = true; console.error('[pixi-render] tileRenderer threw', e && e.message, e && e.stack); } }
     const _t1 = performance.now();
     update._lastStages.tileMs = _t1 - _t0;

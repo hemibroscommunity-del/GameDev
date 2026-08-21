@@ -1943,3 +1943,102 @@ body:has(.bt-inspect) .bt-kb-chip{display:none}
   .bt-login-logo{max-height:18vh}
   .bt-login-shell{gap:12px}
 }
+
+/* ═══ v2.3.1820: THE NPC MESSAGE WINDOW AND THE OFFER THAT FOLLOWS ═══
+   Owner: "an NPC message window that has a larger picture of him on the left
+   side of the window and just the text of what he's saying in sequential
+   order chunks.  Then a new 'Accept quest' window pops up with the items
+   shown that will be handed over on accepting it."
+
+   Both windows are SIBLINGS of .brotown-wrap, not children — the wrap is
+   position:fixed and therefore its own stacking context, so nothing inside it
+   can outrank the dashboard however high its z-index goes (TRAPS §20, three
+   sightings). */
+.bt-npcdlg-scrim{
+  position:fixed;inset:0;z-index:10050;
+  display:flex;align-items:center;justify-content:center;
+  padding:16px;background:rgba(4,7,9,.62);
+  -webkit-backdrop-filter:blur(2px);backdrop-filter:blur(2px);
+}
+.bt-npcdlg{
+  display:flex;align-items:stretch;gap:12px;
+  width:100%;max-width:560px;
+  background:var(--ui-sheet);border:1px solid var(--ui-line-strong);
+  border-radius:14px;box-shadow:0 14px 30px rgba(4,7,9,.38);
+  padding:12px;cursor:pointer;
+}
+/* The picture gets a fixed share rather than hugging its content, so the text
+   column never reflows as he changes pose or a different NPC speaks. */
+.bt-npcdlg-art{
+  flex:0 0 38%;max-width:190px;min-width:104px;
+  display:flex;align-items:flex-end;justify-content:center;
+  background:var(--ui-well,#16232a);border:1px solid var(--ui-line);
+  border-radius:10px;overflow:hidden;
+}
+.bt-npcdlg-img{
+  width:100%;height:100%;object-fit:contain;object-position:bottom;
+  image-rendering:pixelated;  /* he is pixel art — a smooth upscale mushes him */
+  pointer-events:none;
+}
+.bt-npcdlg-body{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:6px}
+.bt-npcdlg-name{
+  font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;
+  color:var(--ui-accent,#D8AA58);
+}
+/* min-height holds the frame steady across chunks of different lengths, so
+   the button does not jump up the screen mid-conversation and get tapped by
+   a finger that was aiming at the last line. */
+.bt-npcdlg-text{
+  flex:1 1 auto;min-height:92px;
+  font-size:14px;line-height:1.5;color:var(--ui-text);
+  white-space:pre-line;   /* single \n inside a chunk is a real line break */
+  animation:bt-npcdlg-in 180ms ease-out both;
+}
+@keyframes bt-npcdlg-in{from{opacity:0;transform:translateY(3px)}to{opacity:1;transform:none}}
+.bt-npcdlg-foot{display:flex;align-items:center;gap:10px}
+.bt-npcdlg-dots{display:flex;gap:5px;flex:1 1 auto}
+.bt-npcdlg-dot{
+  width:6px;height:6px;border-radius:999px;
+  background:var(--ui-line-strong);transition:background 140ms ease;
+}
+.bt-npcdlg-dot.on{background:var(--ui-accent,#D8AA58)}
+.bt-npcdlg-next{min-height:40px;padding:0 18px;font-size:14px;border-radius:9px;flex:0 0 auto}
+
+/* ── the offer / claim window ── */
+.bt-qoffer{
+  width:100%;max-width:420px;text-align:center;
+  background:var(--ui-sheet);border:1px solid var(--ui-line-strong);
+  border-radius:14px;box-shadow:0 14px 30px rgba(4,7,9,.38);
+  padding:16px;display:flex;flex-direction:column;gap:8px;
+}
+.bt-qoffer-kicker{
+  font-size:10px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--ui-accent,#D8AA58);
+}
+.bt-qoffer-title{font-size:19px;font-weight:800;color:var(--ui-text);text-wrap:balance}
+.bt-qoffer-desc{font-size:13px;line-height:1.45;color:var(--ui-text-secondary)}
+.bt-qoffer-caption{
+  margin-top:2px;font-size:10px;font-weight:700;letter-spacing:.08em;
+  text-transform:uppercase;color:var(--ui-text-secondary);
+}
+.bt-qoffer-items{display:flex;flex-wrap:wrap;gap:10px;justify-content:center}
+.bt-qoffer-chip{display:flex;flex-direction:column;align-items:center;gap:4px;width:76px}
+/* 64px against the old card's 40: this screen exists to show the items. */
+.bt-qoffer-chipimg{
+  width:64px;height:64px;object-fit:contain;padding:5px;border-radius:11px;
+  background:#121B20;
+  box-shadow:inset 0 2px 4px rgba(0,0,0,.44), inset 0 1px 0 rgba(255,255,255,.035);
+}
+.bt-qoffer-chiplabel{font-size:10px;line-height:1.2;color:var(--ui-text-secondary);text-align:center}
+.bt-qoffer-pay{display:flex;gap:12px;justify-content:center;font-size:14px;font-weight:800}
+.bt-qoffer-gold{color:#D8AA58}
+.bt-qoffer-xp{color:#58B97B}
+.bt-qoffer-actions{display:flex;flex-direction:column;gap:8px;margin-top:4px}
+.bt-qoffer-go{min-height:48px;font-size:16px;border-radius:10px}
+.bt-qoffer-later{min-height:40px;font-size:13px;border-radius:9px}
+
+/* Short/landscape: the picture is what can afford to give up room. */
+@media (max-height:520px){
+  .bt-npcdlg-art{flex-basis:30%;max-width:140px}
+  .bt-npcdlg-text{min-height:64px;font-size:13px}
+}

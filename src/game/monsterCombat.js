@@ -32,7 +32,7 @@ import {
   getShieldStats, getWeaponCritDmgStat, getWeaponCritStat, meleeSwingSfx, recalcDerived, resolveCollision,
   getEvasionPts, poiseStunFlatMs, rollPassiveDodge, getWeaponCritFlat, spawnElementStatusFX, spawnWeaponHitFX, swingCooldownMult, tickStatuses, updateZoneDimensions,
   trainDefense, applyIronSkin, applyResilience, /* v2.3.1314 */
-  monsterBodyY, monsterProceduralRadius, TOWN_SPAWN /* v2.3.1777 */
+  monsterBodyY, monsterBodyOffsetY, monsterMeleeHitRadius, monsterProceduralRadius, TOWN_SPAWN /* v2.3.1777 */
 } from '@/data/index.js';
 import { MONSTER_VARIANTS, baseArchetypeOf, hitShapeOf, isFodderLike, isRemnantSkull, maybeTransformMonster, usesClientSideMovement, xpMultFor } from '@/data/monsterVariants.js';
 import { isWearingArmor } from '@/rendering/gearCatalog.js'; /* v2.3.1104: armoured-hit SFX check */
@@ -1407,43 +1407,59 @@ export function updateMonsterCombat(S, deps) {
                  slime's generous radius (owner: "the hitbox is at their
                  shadow").  See hitShapeOf. */
               var _archHit = hitShapeOf(m.archetype || m.type);
-              /* Reference Y for hit math -- the monster's *body
-                 center* on screen, not the feet anchor at m.y.
-                 fodder (96 px slime sprite) is offset 40 px above
-                 m.y; fireGoblin (64 px sprite anchored at feet) is
-                 offset ~28 px above. */
-              var _mHitY = _archHit === 'fodder' ? m.y - 40 :
-                           _archHit === 'fireGoblin' ? m.y - 28 :
-                           _archHit === 'mummy' || _archHit === 'skeleton' ? m.y - 48 :
-                           m.y;
-              /* Per-archetype hit radius bonus -- swings that
-                 visually connect should register even if the m.x
-                 point is just outside SWING_RANGE.  Slime: wide
-                 blob (20).  fireGoblin: upright torso (14).  Mummy
-                 + skeleton: tall 96-px figures, the user reported
-                 their hitbox was "way too small" so bump 40 -- the
-                 effective vertical extent now covers the full body
-                 from feet (m.y - 8) to crown (m.y - 88). */
-              /* v2.3.1536: the last branch was 0 for every sprite-less
-                 archetype -- the whole dungeon roster -- even though they
-                 draw as a 48px-radius circle.  Same miss the projectile
-                 path had; see monsterProceduralRadius. */
-              var _hitR = _archHit === 'fodder' ? 20 :
-                          _archHit === 'fireGoblin' ? 14 :
-                          _archHit === 'mummy' || _archHit === 'skeleton' ? 40 :
-                          monsterProceduralRadius(_archHit);
-              var mDist = Math.sqrt(Math.pow(m.x - P.x, 2) + Math.pow(_mHitY - P.y, 2)) - _hitR;
+              /* v2.3.1822: hit-test the monster where it is DRAWN, not where
+                 the logic says it is.  Three separate things were making the
+                 owner's swings miss a snowman that the caret was plainly
+                 touching, and all three are here:
+
+                 (a) POSITION.  A server-driven monster is painted at
+                     renderX/renderY, which trails m.x/m.y by ~4 frames of
+                     motion, so the hitbox LED the sprite in the direction of
+                     travel.  This is exactly the v2.3.1111 fix the projectile
+                     path already got; the melee path never did, which is why
+                     the misses were "inconsistent" — they depended on whether
+                     the thing was walking.
+                 (b) BODY CENTRE.  The offsets were a hand-written chain with
+                     no snowman case, so it fell through to m.y = the FEET.
+                     monsterBodyOffsetY is the shared table (snowman = 19) that
+                     was created for precisely this drift.
+                 (c) RADIUS.  Likewise no snowman case, falling through to
+                     monsterProceduralRadius, which returns 0 for anything
+                     sprite-backed — a point-sized hitbox on a 64px body.
+                     See monsterMeleeHitRadius.
+
+                 Together these make the swing land whenever the caret's arc
+                 covers the drawn body, which is the owner's actual ask:
+                 "if the aim carat is touching the monster during midswing it
+                 counts as a hit". */
+              var _hitX = (typeof m.renderX === 'number') ? m.renderX : m.x;
+              var _hitBaseY = (typeof m.renderY === 'number') ? m.renderY : m.y;
+              var _mHitY = _hitBaseY - monsterBodyOffsetY(_archHit);
+              var _hitR = monsterMeleeHitRadius(_archHit);
+              var mDist = Math.sqrt(Math.pow(_hitX - P.x, 2) + Math.pow(_mHitY - P.y, 2)) - _hitR;
               if (mDist > _maxRange) return;
-              var mAngle = Math.atan2(_mHitY - P.y, m.x - P.x);
+              var mAngle = Math.atan2(_mHitY - P.y, _hitX - P.x);
               var angleDiff = mAngle - baseAngle;
               while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
               while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
+              /* v2.3.1822: the arc test measured the angle to the monster's
+                 CENTRE, so a wide body straddling the edge of the arc was a
+                 miss even though half of it sat inside — the same
+                 hitbox-narrower-than-the-art problem as the radius above, in
+                 the other axis.  Widen the arc by the angle the body actually
+                 subtends from where the player stands (asin(r/d), the exact
+                 half-angle of a circle of radius r at distance d).  Clamped
+                 to a quarter-turn so a monster standing ON you cannot open the
+                 arc to a full circle and turn every swing into a spin. */
+              var _centreDist = mDist + _hitR;   // undo the radius subtraction
+              var _bodyHalfAng = (_centreDist > _hitR)
+                ? Math.min(Math.PI / 4, Math.asin(_hitR / _centreDist)) : Math.PI / 4;
               /* v2.3.940: melee = 360° core OR forward half-circle.  (Heavy:
                  _gsArc = 2π, so the forward test is always true within _gsOuter
                  -> full spin.)  Non-melee fallback keeps the single cone. */
               var _inShape = _wildSwing
-                ? (mDist <= _gsInner || (mDist <= _gsOuter && Math.abs(angleDiff) <= _gsArc / 2))
-                : (Math.abs(angleDiff) < _swingArc / 2);
+                ? (mDist <= _gsInner || (mDist <= _gsOuter && Math.abs(angleDiff) <= _gsArc / 2 + _bodyHalfAng))
+                : (Math.abs(angleDiff) < _swingArc / 2 + _bodyHalfAng);
               if (_inShape) {
                 var _ELEMENTS$collisionRe2;
                 m._hitThisSwing = true;

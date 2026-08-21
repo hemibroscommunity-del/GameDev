@@ -162,6 +162,7 @@ import { wireSlimeAudio } from '@/game/slimeAudio.js';
 import { wireOrientationSync } from '@/game/orientationSync.js';
 /* v2.3.765: combat helpers extracted behavior-frozen (docs/REBUILD-PLAN.md Phase 0). */
 import { releasePeerDamage, addBuildProg, pushDmgPopup, monsterPopupY } from '@/game/combatHelpers.js';
+import { applyLocalRespawn } from '@/game/respawn.js'; /* v2.3.1822: stuck-dead watchdog */
 /* v2.3.767: chat send + chat/emote handlers extracted behavior-frozen (REBUILD-PLAN Phase 2). */
 import { sendChatMessage } from '@/game/chat.js';
 /* v2.3.787: zone transitions (town exits, tile-9 return, dungeon entrance/exit)
@@ -3791,6 +3792,29 @@ export var BroTown = function BroTown(_ref0) {
              hit-reaction sprite without triggering the stun visual. */
         var _hitLockActive = S.lastDamageTaken && (Date.now() - S.lastDamageTaken) < 250;
         var _realStunned = S._playerStunUntil && Date.now() < S._playerStunUntil;
+        /* ═══ v2.3.1822: STUCK-DEAD WATCHDOG ═══
+           Owner: "I died while I was on another tab and my character just got
+           stuck there.  I had to wait for a monster to attack me again and
+           die again while it was my active screen to respawn in town."
+
+           `S._dying` is cleared by exactly one thing — a `player_respawned`
+           from the worker — so any reason that message does not arrive is a
+           permanent freeze rather than a hiccup.  The real cause is fixed at
+           source (the worker now records an undelivered respawn and replays
+           it on rejoin, v2.3.1822 index.js/join.js), but that fix only helps
+           against a NEW worker and only when a rejoin actually happens.  This
+           is the client's own floor: the worker's respawn timer is 5s, so
+           being dead for 20s with the worker reporting us alive means the
+           message was lost, not late.  Stand up in town, which is where the
+           worker put us.
+
+           Deliberately requires hp > 0 from the wire: while we are really
+           dead the worker holds hp at 0 and echoes it, so this cannot fire
+           during an honest death, however long the respawn takes. */
+        if (S._dying && S._deathStart && (Date.now() - S._deathStart) > 20000
+            && S.rpg && S.rpg.hp > 0) {
+          try { applyLocalRespawn(S, 'town'); } catch (e) { S._dying = false; S._deathStart = 0; }
+        }
         /* Dead during the death-animation hold (HP=0 or _dying set by
            a death handler).  Suppresses joystick + keyboard + dodge so
            the corpse stays put until the respawn setTimeout fires. */

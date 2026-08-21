@@ -2583,15 +2583,40 @@ export class GameRoom {
       ps.dmgFromMonster = {};
       this._saveRpg(id, ps);
       const ws = this._wsBySessionId(id);
-      if (ws) {
-        try {
-          ws.send(JSON.stringify({
-            type: 'player_respawned',
-            payload: { zone: 'town' },
-          }));
-        } catch (e) {}
-        this._queuePlayerStateFlush(id);
+      /* ═══ v2.3.1822: A RESPAWN NOBODY HEARD STILL HAPPENED ═══
+         Owner: "I died while I was on another tab and my character just got
+         stuck there.  I had to wait for a monster to attack me again and die
+         again while it was my active screen to respawn in town."
+
+         That is this branch.  A backgrounded tab's socket gets suspended or
+         closed by the browser, so five seconds later the respawn runs here
+         with no `ws` to send to, and `player_respawned` is dropped on the
+         floor.  On the client, `S._dying` is cleared by exactly ONE thing —
+         receiving that message (wsClient) — so it stays true forever, and
+         isPlayerDead() keeps the player frozen at the death spot.  Dying
+         again is not a workaround, it is the only path back: the SECOND
+         respawn arrives on a live socket and clears the flag.
+
+         Rejoin does not fix it by itself: join.js resets ps.dying/respawnAt
+         server-side but sends nothing that clears the client's copy, and
+         player_state carries no zone, so it could not teleport them home
+         even if it did.  So mark the respawn as owed and let the join path
+         replay the real message, zone and all.
+         In-memory only (rule 11) — a worker restart drops the debt, which is
+         correct: a restart re-joins everyone from stored state anyway. */
+      if (!ws) { ps._respawnOwed = true; continue; }
+      try {
+        ws.send(JSON.stringify({
+          type: 'player_respawned',
+          payload: { zone: 'town' },
+        }));
+      } catch (e) {
+        /* Same reasoning as the missing-ws case: a send that threw did not
+           arrive, so the debt stands.  This was a bare swallow before, which
+           is how the failure could be invisible. */
+        ps._respawnOwed = true;
       }
+      this._queuePlayerStateFlush(id);
     }
   }
 
