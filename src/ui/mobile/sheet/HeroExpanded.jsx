@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { COL, panelStyle, getState } from '../dash/common.js';
+import { COL, QUALITY_COLOR, QUALITY_LABEL, panelStyle, getState } from '../dash/common.js';
 import { buildSkillUnspent, STAT_TO_WEAPON_CAT } from '../../../data/gameSystems.js';
 import { requestT2Category } from '../dash/T2Panel.jsx';
 import { dashboardPanelBus } from '../dashboardPanelBus.js';
@@ -173,6 +173,26 @@ export const HeroExpanded = () => {
   const contribs = getEquipContribs(R);
   const selSlot = eqSel ? equipped.find(sl => sl.slot === eqSel) : null;
   const selCard = selSlot ? contribs.cards[selSlot.slot] : null;
+  /* v2.3.1845: the selected item's QUALITY roll (normal / rare / elite /
+     godly — see QUALITY_COLOR in dash/common.js for why this is a different
+     ladder from the material tier the card is NAMED by).  Read from the item
+     itself with the slot's own field as a fallback, because getEquippedSlots
+     lifts `quality` to the top level for the weapon only.  Everything minted
+     today is 'normal', so today this changes nothing on screen — which is
+     the point: the card is ready for the ladder the owner is adding, and a
+     rare drop will not look identical to a plain one. */
+  const quality = (selSlot && ((selSlot.item && selSlot.item.quality) || selSlot.quality)) || 'normal';
+  /* The frame's hue.  Brass (the panel's own accent) for a normal item —
+     QUALITY_COLOR maps 'normal' to null precisely so that the approved
+     look survives the feature — and the rarity hue for anything above it. */
+  const rimCol = QUALITY_COLOR[quality] || COL.accent;
+  const rimFill = QUALITY_COLOR[quality] ? `${QUALITY_COLOR[quality]}26` : COL.accentFill;
+  /* The item picture inside that card.  62 measured against the row: the
+     card column is ~183px wide at 390, and once the frame and the interior
+     well have taken their padding there are ~160 left — so 62 gives the art
+     a real presence and still leaves the DMG/DPS tiles ~90px, which is more
+     than "9–14" needs. */
+  const ART_W = 62;
   /* THREE across, TWO down.  Two-by-three was the shape the band's EQUIPPED
      panel settled on at v2.3.1648 and the obvious reading of "grouped on
      the left", but measured it did not fit: three rows of 46 is 146px, and
@@ -439,8 +459,8 @@ export const HeroExpanded = () => {
                   flex: 1, minWidth: 0,
                   display: 'flex', flexDirection: 'column', gap: 4,
                   borderRadius: 11,
-                  border: `1px solid ${COL.accent}`,
-                  background: COL.accentFill,
+                  border: `1px solid ${rimCol}`,
+                  background: rimFill,
                   padding: 5,
                   overflow: 'hidden',
                 }}>
@@ -448,11 +468,21 @@ export const HeroExpanded = () => {
                     flex: 'none', display: 'flex', alignItems: 'center',
                     gap: 6, minHeight: 18, padding: '0 2px',
                   }}>
+                    {/* v2.3.1845: the title WRAPS rather than ellipsising.
+                        Naming the metal made it longer — "COPPER GREATSWORD"
+                        instead of "GREATSWORD" — and at the old size it came
+                        out "COPPER GREAT…", which loses the half that says
+                        what the thing is.  Smaller and tighter fits the
+                        starter kit on one line; anything longer (SOFTWOOD
+                        GREATSWORD) takes a second line, which the frame has
+                        room for.  Truncation is the one outcome to avoid:
+                        mp-itemcard asserts the text is not clipped. */}
                     <span style={{
                       flex: 1, minWidth: 0,
-                      fontSize: 9.5, fontWeight: 800, letterSpacing: '.06em',
-                      textTransform: 'uppercase', color: COL.accent,
-                      whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                      fontSize: 8.5, fontWeight: 800, letterSpacing: '.03em',
+                      lineHeight: 1.1,
+                      textTransform: 'uppercase', color: rimCol,
+                      overflowWrap: 'anywhere',
                     }}>{selCard ? selCard.title : selSlot.label}</span>
                     {selSlot.pickerSlot && (
                       <button
@@ -470,31 +500,78 @@ export const HeroExpanded = () => {
                              separate it from the row — the frame IS the fill,
                              so it reads as a control cut into the rim. */
                           flex: 'none', padding: '2px 8px', borderRadius: 999,
-                          background: 'transparent', border: `1px solid ${COL.accent}`,
-                          color: COL.accent, fontFamily: 'inherit',
+                          background: 'transparent', border: `1px solid ${rimCol}`,
+                          color: rimCol, fontFamily: 'inherit',
                           fontSize: 10, fontWeight: 800, letterSpacing: '.04em',
                           cursor: 'pointer',
                         }}>CHANGE</button>
                     )}
                   </div>
-                  {/* The inside of the card. */}
+                  {/* ═══ v2.3.1845: THE ITEM, THEN ITS STATS ═══
+                      Owner: "put a larger view of the item selected before
+                      you list its stats to the right of it inside the card."
+
+                      Same idea as the character on the left of this row, one
+                      level down: the thing itself gets a well of its own, and
+                      the numbers about it sit beside it rather than filling
+                      the card on their own.  The art tile takes a fixed width
+                      and the stats take what is left, so a two-stat weapon
+                      and a one-stat greave give the picture the same size —
+                      the item is the constant here, not the stat count.
+
+                      `sl.iconSrc` rather than a second art lookup: that is
+                      the exact URL the gear cell to the left is showing, so
+                      the big view and the little one cannot disagree.  It is
+                      also where v2.3.1845's bow bug lived — this card would
+                      have shown the same wrong art at four times the size. */}
                   <div style={{
                     flex: 1, minHeight: 0, borderRadius: 8,
                     background: COL.well,
                     padding: 5,
-                    display: 'flex', flexDirection: 'column', gap: 5,
+                    display: 'flex', alignItems: 'stretch', gap: 6,
                   }}>
-                    {selCard ? (
-                      <>
-                        {cardStat(selCard.primary.k, selCard.primary.v)}
-                        {selCard.secondary ? cardStat(selCard.secondary.k, selCard.secondary.v) : null}
-                      </>
-                    ) : (
+                    {!selSlot.ghost && selSlot.iconSrc && (
                       <div style={{
-                        flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        fontSize: 11, fontWeight: 600, color: COL.muted, textAlign: 'center',
-                      }}>{selSlot.ghost ? 'Nothing equipped here.' : 'No stat bonuses.'}</div>
+                        flex: 'none', width: ART_W,
+                        display: 'flex', flexDirection: 'column', gap: 3,
+                      }}>
+                        <div style={{
+                          flex: 1, minHeight: 0, borderRadius: 7,
+                          background: COL.raised, border: `1px solid ${COL.tileBor}`,
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          overflow: 'hidden',
+                        }}>
+                          <img src={selSlot.iconSrc} alt="" draggable={false}
+                            style={{ width: '88%', height: '88%', objectFit: 'contain',
+                              pointerEvents: 'none' }} />
+                        </div>
+                        {/* The rarity word.  Under the picture because that is
+                            what it describes, and because the frame's own hue
+                            says the same thing without any text at all. */}
+                        <div style={{
+                          flex: 'none', textAlign: 'center',
+                          fontSize: 7.5, fontWeight: 800, letterSpacing: '.08em',
+                          textTransform: 'uppercase',
+                          color: QUALITY_COLOR[quality] || COL.muted,
+                        }}>{QUALITY_LABEL[quality] || quality}</div>
+                      </div>
                     )}
+                    <div style={{
+                      flex: 1, minWidth: 0, minHeight: 0,
+                      display: 'flex', flexDirection: 'column', gap: 5,
+                    }}>
+                      {selCard ? (
+                        <>
+                          {cardStat(selCard.primary.k, selCard.primary.v)}
+                          {selCard.secondary ? cardStat(selCard.secondary.k, selCard.secondary.v) : null}
+                        </>
+                      ) : (
+                        <div style={{
+                          flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          fontSize: 11, fontWeight: 600, color: COL.muted, textAlign: 'center',
+                        }}>{selSlot.ghost ? 'Nothing equipped here.' : 'No stat bonuses.'}</div>
+                      )}
+                    </div>
                   </div>
                 </div>
               ) : (

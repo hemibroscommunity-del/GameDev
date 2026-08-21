@@ -48,6 +48,31 @@ export const TIER_COLOR = {
   godly:     '#F0C45F',
 };
 
+/* ═══ v2.3.1845: QUALITY (rarity) — the OTHER tier ladder ═══
+ * Owner: "I'll also have different rarity tiers (everything is 'normal' so
+ * far)."  It is worth being precise about which ladder that is, because the
+ * game has two and they are easy to confuse:
+ *   - gearBase / TIER_COLOR above: the MATERIAL — wood, copper, pine.  What
+ *     the thing is made of, and what the equip card now names it by.
+ *   - quality: the ROLL — normal / rare / elite / godly (QUALITY_MULTS in
+ *     data/gameSystems.js, mirrored by the server's QUALITY_GRADES).  How
+ *     good this particular one came out.
+ * This is the second one.  Every item minted today is 'normal', so nothing
+ * on screen changes yet — the card is simply ready to say so when a rare
+ * one drops, instead of a rare weapon looking identical to a plain one.
+ *
+ * Hues match the edges InventoryPanel already draws for the same words, so
+ * the bag and the equip card cannot disagree about what blue means. */
+export const QUALITY_COLOR = {
+  normal: null,                 /* null = "no rarity hue": the caller keeps its own accent */
+  rare:   '#5B99DE',
+  elite:  '#A477DF',
+  godly:  '#F0C45F',
+};
+export const QUALITY_LABEL = {
+  normal: 'Normal', rare: 'Rare', elite: 'Elite', godly: 'Godly',
+};
+
 export const getState = () => (typeof window !== 'undefined') && window._gameState && window._gameState.current;
 
 // Common panel container — fills the dashboard's content area below the header.

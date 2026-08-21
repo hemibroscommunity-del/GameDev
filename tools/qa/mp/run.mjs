@@ -21,6 +21,7 @@ import * as H from './harness.mjs';
 const WS = await H.freePort(), WEB = await H.freePort();
 
 const SCENARIOS = {
+  itemcard: () => import('./mp-itemcard.mjs'), /* v2.3.1845: the item card's art, name and rarity */
   arrowdt: () => import('./mp-arrowdt.mjs'), /* v2.3.1770: arrows fly at a speed */
   movespeed: () => import('./mp-movespeed.mjs'), /* v2.3.1769: speed is per second, not per frame */
   hairclip: () => import('./mp-hairclip.mjs'), /* v2.3.1776: the swing clips the hair too */

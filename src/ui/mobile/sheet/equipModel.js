@@ -1,4 +1,5 @@
 import { calcDisplayDmgRange, calcDisplayDps, getArmorPieceDr, getArmorDrPct } from '../../../data/gameSystems.js';
+import { BLACKSMITH_TIERS, WOODWORKING_TIERS, WEAPON_TYPES } from '../../../data/gameSystems.js'; /* v2.3.1845: item naming */
 import { displayWeapon } from './statPreview.js'; /* v2.3.1766: one weapon-for-display rule */
 import { gearIdIcon, armorIconFor } from '@/rendering/gearVariants.js'; /* v2.3.1758: one armour art table */
 import { weaponMaterial, metalIconPath } from '@/rendering/traits/materialTints.js'; /* v2.3.1760 */
@@ -43,17 +44,85 @@ export const GHOST_SRC = {
    vest").  Lives in THREE files — keep them in lockstep or one surface serves
    stale thumbnails while its neighbour serves fresh ones. */
 const ITEMS_V = '?v=2.3.1774'; /* v2.3.1774: pine shield icon */
+/* v2.3.1845: THE ICON IS THE WEAPON'S, NOT THE SLOT'S.
+   Owner: "when you only have sword (no bow or staff) it still shows bow icon
+   when you double tap to switch weapons on the character's weapon slot."
+
+   This used to read `slot === 'ranged'` as a second way to reach the bow art,
+   and that is a different question from "what is in your hand".  activeSlot
+   can be 'ranged' with an EMPTY ranged slot — the weapon cycle would rotate
+   into it whether or not you owned a bow (fixed the same version in
+   BroTown's _desktopCycleWeapon) and the server persists the slot across
+   sessions.  displayWeapon then falls back to the sword you do own, so the
+   cell drew a bow over a sword's stats: art and numbers describing different
+   weapons.
+
+   The weapon's own `type` is the whole answer, and it is always set — every
+   mint path writes it (server quests.js `_grantQuestItem`, the forge, drops).
+   No fallback is needed, and one that guesses from the slot is exactly the
+   bug. */
 const wpnIconSrc = (R, wpn) => {
   if (!wpn) return null;
-  const slot = R.activeSlot || 'melee';
   /* v2.3.1760: a melee weapon's icon takes its METAL (metalIconPath); a bow or
      a staff never does — owner: "only for metals though not staff or bow". */
   const metal = weaponMaterial(wpn.type, wpn.gearBase);
-  return wpn.type === 'bow' || slot === 'ranged' ? `/icons/items/bow.png${ITEMS_V}`
-    : wpn.type === 'staff' || slot === 'staff' ? `/icons/items/staff.png${ITEMS_V}`
+  return wpn.type === 'bow' ? `/icons/items/bow.png${ITEMS_V}`
+    : wpn.type === 'staff' ? `/icons/items/staff.png${ITEMS_V}`
     : wpn.type === 'greatsword' ? `${metalIconPath('/icons/items/great-sword.webp', metal)}${ITEMS_V}`
       : `${metalIconPath('/icons/items/sword.webp', metal)}${ITEMS_V}`;
 };
+
+/* ═══ v2.3.1845: ONE NAME FOR A WEAPON ═══
+ * Owner: "refer to it as copper greatsword, pine bow, and pine staff in the
+ * character equip menu.  Right now it's not that way."
+ *
+ * It was not, because the card title was `wpn.type.toUpperCase()` — the
+ * TYPE, which knows nothing about what the thing is made of.  So the starter
+ * kit read GREATSWORD / BOW / STAFF and the copper and the pine, which are
+ * the parts that change as you play, were nowhere on the screen.
+ *
+ * Composed from the tier and the type rather than taken from `wpn.name`,
+ * for two reasons.  The stored name is what the SERVER minted ("Copper Great
+ * Sword") and is not what the owner asked to read; and it is a free-text
+ * label that a forge or a future rename can put anything into, while
+ * gearBase is the field the stats already come from — so a composed name
+ * cannot drift from the item's real tier.  `wpn.name` is still the fallback
+ * when the tier is unknown, because a name we cannot verify beats no name.
+ *
+ * NOT used for shields.  The starter shield is `gearBase:'wood'` and named
+ * "Pine Shield" on purpose (server data.js: the wood tier is what carries its
+ * stats, so renaming the base would blank them).  Composing there would print
+ * WOOD SHIELD over an item the rest of the game calls a Pine Shield — so the
+ * shield card uses its own `name`, which is right for the same reason
+ * composing is right for weapons: use the field that is true. */
+const TYPE_WORD = {
+  /* One word, per the owner's own spelling — WEAPON_TYPES.greatsword.label is
+     'Great Sword' and stays that way for the surfaces that already use it. */
+  greatsword: 'Greatsword', sword: 'Sword', bow: 'Bow', staff: 'Staff',
+};
+
+export function weaponTierLabel(w) {
+  if (!w || !w.gearBase) return '';
+  const base = String(w.gearBase);
+  /* Woodworking gearBases carry a 'ww_' prefix that the tier table's own keys
+     do not — the same strip `gemExtractCost` does.  Without it a Pine Bow
+     resolves to no tier at all and falls through to printing the raw
+     'ww_pine' at the player, which is what the old tierLabel in
+     ItemDetailPopup did. */
+  const ww = base.indexOf('ww_') === 0 ? base.slice(3) : null;
+  const tier = ww ? WOODWORKING_TIERS[ww]
+    : (BLACKSMITH_TIERS[base] || WOODWORKING_TIERS[base]);
+  return tier && tier.label ? tier.label : '';
+}
+
+export function weaponDisplayName(w) {
+  if (!w) return '';
+  const word = TYPE_WORD[w.type]
+    || (WEAPON_TYPES[w.type] && WEAPON_TYPES[w.type].label)
+    || w.type || 'Weapon';
+  const tier = weaponTierLabel(w);
+  return tier ? `${tier} ${word}` : (w.name || word);
+}
 
 /* v2.3.1758: armour art comes from ONE table (gearVariants) so a tier's icon
    cannot drift from the metal it renders in.  The shirt keeps its own line —
@@ -179,12 +248,16 @@ export function getEquipContribs(R) {
 
   const cards = {
     weapon: range ? {
-      title: (wpn.type || 'weapon').toUpperCase(),
+      /* v2.3.1845: COPPER GREATSWORD, not GREATSWORD — see weaponDisplayName. */
+      title: weaponDisplayName(wpn).toUpperCase(),
       primary: { k: 'DMG', v: dmgText },
       secondary: { k: 'DPS', v: fmt1(dps) },
     } : null,
     shield: ss ? {
-      title: 'SHIELD',
+      /* v2.3.1845: the shield's own name (PINE SHIELD), not the bare slot
+         word.  Its `gearBase` is 'wood' by design, so composing from the tier
+         the way weapons do would print WOOD SHIELD — see weaponDisplayName. */
+      title: String((R.shield && R.shield.name) || 'Shield').toUpperCase(),
       primary: { k: 'BLOCK', v: '+' + fmt1(ss.blockBonus) + '%' },
       secondary: ss.gemBonus ? gemOf(ss.gemBonus) : { k: 'STAM', v: '+' + ss.staminaBonus },
     } : null,

@@ -157,6 +157,7 @@ import { wireGearWornSync } from '@/game/gearWornSync.js';
 import { wireTorchCrackle, wireThemeMusic } from '@/game/splashAudio.js';
 import { wireCharacterPortrait, wireSplashPrewarm, clampLongHairColor } from '@/game/characterCreatorEffects.js';
 import { wireTownMusic } from '@/game/townMusic.js';
+import { nextWeaponSlot } from '@/game/weaponSlots.js'; /* v2.3.1845: one weapon-cycle rotation */
 import { wireSpriteSheets } from '@/game/spriteSheets.js';
 import { wireSlimeAudio } from '@/game/slimeAudio.js';
 import { wireOrientationSync } from '@/game/orientationSync.js';
@@ -6377,10 +6378,17 @@ export var BroTown = function BroTown(_ref0) {
     var _S2$rpg$weapon, _S2$rpg$rangedWeapon;
     var S2 = stateRef.current;
     if (!S2.rpg) return;
-    var slots = ['melee', 'ranged'];
-    if (S2.rpg.staffWeapon) slots.push('staff');
-    var curIdx = slots.indexOf(S2.rpg.activeSlot || 'melee');
-    var nextSlot = slots[(curIdx + 1) % slots.length];
+    /* v2.3.1845: the rotation moved to game/weaponSlots.js, shared with the
+       joystick's next-weapon PREVIEW below — the two used to carry separate
+       copies and both had 'ranged' ungated, so a sword-only character was
+       shown a bow and then moved into an empty ranged slot.  Owner: "when you
+       only have sword (no bow or staff) it still shows bow icon when you
+       double tap to switch weapons."  A slot you cannot fill is not a weapon
+       to switch to. */
+    var nextSlot = nextWeaponSlot(S2.rpg);
+    /* Nowhere to go — one weapon, one slot.  Returning early keeps the beep
+       and the name popup for a swap that did not happen off the screen. */
+    if (nextSlot === (S2.rpg.activeSlot || 'melee')) return;
     S2.rpg.activeSlot = nextSlot;
     /* Mark the session as having an explicit cycle so the player_state
        handler stops accepting the server's persisted activeSlot
@@ -6791,13 +6799,14 @@ export var BroTown = function BroTown(_ref0) {
     var DOUBLE_TAP_MAX_DIST_SQ_PX = 2500; /* 50 px squared */
     var PREVIEW_HOLD_MS = 350;
     var SLOT_ICON = { melee: 'sword', ranged: 'bow', staff: 'staff' };
+    /* v2.3.1845: the SAME rotation the double tap performs (weaponSlots.js).
+       This is the preview that drew the bow the owner reported — it was a
+       second copy of the loop with 'ranged' ungated, so it promised a weapon
+       the character did not own, and the tap then delivered it. */
     var getNextWeaponSlot = function () {
       var S2 = stateRef.current;
       if (!S2 || !S2.rpg) return 'melee';
-      var slots = ['melee', 'ranged'];
-      if (S2.rpg.staffWeapon) slots.push('staff');
-      var curIdx = slots.indexOf(S2.rpg.activeSlot || 'melee');
-      return slots[(curIdx + 1) % slots.length];
+      return nextWeaponSlot(S2.rpg);
     };
     var lS = function lS(e) {
       /* v2.3.848: while the chop swipe window is open, the joystick zones
@@ -6906,12 +6915,24 @@ export var BroTown = function BroTown(_ref0) {
                after PREVIEW_HOLD_MS. */
             if (lJoyPreviewRef.current) {
               var nextSlot = getNextWeaponSlot();
-              lJoyPreviewRef.current.textContent = SLOT_ICON[nextSlot] || 'sword';
-              lJoyPreviewRef.current.style.display = 'flex';
-              if (lPreviewTimer.current) clearTimeout(lPreviewTimer.current);
-              lPreviewTimer.current = setTimeout(function () {
-                if (lJoyPreviewRef.current) lJoyPreviewRef.current.style.display = 'none';
-              }, PREVIEW_HOLD_MS);
+              /* v2.3.1845: with one weapon there is no swap target, and a
+                 preview of the weapon you are already holding is a promise
+                 the second tap cannot keep — nextWeaponSlot returns the
+                 CURRENT slot to say so.  Hide the disc instead of drawing it.
+                 (Written as an else rather than an early return: this sits
+                 inside the touch-end handler, and bailing out of it here
+                 would skip the tap bookkeeping below.) */
+              var curSlot = (stateRef.current.rpg && stateRef.current.rpg.activeSlot) || 'melee';
+              if (nextSlot === curSlot) {
+                lJoyPreviewRef.current.style.display = 'none';
+              } else {
+                lJoyPreviewRef.current.textContent = SLOT_ICON[nextSlot] || 'sword';
+                lJoyPreviewRef.current.style.display = 'flex';
+                if (lPreviewTimer.current) clearTimeout(lPreviewTimer.current);
+                lPreviewTimer.current = setTimeout(function () {
+                  if (lJoyPreviewRef.current) lJoyPreviewRef.current.style.display = 'none';
+                }, PREVIEW_HOLD_MS);
+              }
             }
           }
         } else {
