@@ -605,7 +605,46 @@ const BODY_DIR_SCALE = {
      of the mass gap at the cost of a small jog>stand height pop when
      stopping.  The DURABLE fix is regenerating jog-east art at proper figure
      scale via the same video pipeline that rebuilt NE (v2.3.708/716). */
-  jog:   { south: 1.000, east: 1.25, north: 1.050, northeast: 1.126, southwest: 1.000 },
+  /* ═══ v2.3.1830: THE JOG MAP, RE-DERIVED ON EAST'S ANCHOR ═══
+     Owner: "the larger issue is still the inconsistent player scale per
+     direction.  I need you to provide a visual preview of the character per
+     direction and come up with the best solution to equalize the scale
+     between directions."
+
+     v2.3.1826 equalised STAND to 0.1%.  Jogging still spanned 8.1%:
+         south 77.39  SE/SW 77.39  E/W 78.54  NE/NW 80.24  north 83.67
+     measured as painted crown-to-feet through the live transform, taken as
+     the MEDIAN OF THE WHOLE RUN CYCLE rather than one frame — a running
+     figure bobs, and a single frame compares eight arbitrary moments.  (The
+     first pass sampled 14 moments and had SE and SW, which are the same
+     sheet mirrored, disagreeing by 1%.  They are identical here, which is
+     the check that the sampling is converged.)
+
+     WHY EAST IS THE ANCHOR AND NOT THE MEAN.  East's 1.25 is not a height
+     number — v2.3.740 set it to close an ~18% BODY MASS deficit in the
+     jog-east source art, knowingly buying a small jog>stand pop to do it.
+     Re-deriving it on height would quietly undo that.  So the target is
+     east's own current rendered height, 78.54px, which happens to also be
+     the median of the eight: east's entry is therefore UNCHANGED BY
+     CONSTRUCTION and everything else moves to meet it.
+
+     WHY NORTH MOVES MOST (1.050 -> 0.986, -6.1%).  v2.3.540 derived north
+     on full height as 0.967, judged it "a bit small" against the leg-spread
+     of its run, and settled on 1.050 — matched to the idle map OF THAT ERA,
+     when north stood at 74.0px.  v2.3.1826 moved north's stand to 77.2px,
+     so the target that 1.050 was tuned against no longer exists; this is
+     the same principle re-applied to corrected inputs, not a perceptual
+     call being overridden.  0.986 also sits 2% ABOVE the 0.967 that was
+     called small, so it does not walk back into that.
+
+     RESULT: jog spread 8.1% -> 0.05%, and because the anchor is east's
+     height rather than the stand height, every facing now has the SAME
+     +1.7% stand->jog pop that v2.3.740 already accepted for east — the pop
+     is uniform instead of ranging from -0.8% to +8.4%.
+     Traits ride this scale through _placeTrait, so hats and beards follow
+     in lockstep; mp-scalesheet asserts that ratio while JOGGING rather than trusting it
+     (mp-bodysize only ever covered standing). */
+  jog:   { south: 1.015, east: 1.25, north: 0.986, northeast: 1.102, southwest: 1.015 },
 };
 function bodyDirScale(pose, dir) {
   if (pose === 'hit') return dir === 'east' ? 0.88 : 1.0;
