@@ -36,6 +36,7 @@ const SCENARIOS = {
   coppergear: () => import('./mp-coppergear.mjs'), /* v2.3.1772: every worn copper combo, in every pose */
   blacksmith: () => import('./mp-blacksmith.mjs'), /* v2.3.1773: the smith at the fountain */
   townprops: () => import('./mp-townprops.mjs'), /* v2.3.1775: anvil, stall, storekeeper */
+  specshield: () => import('./mp-specshield.mjs'), /* v2.3.1834: shield layering during a special */
   scalesheet: () => import('./mp-scalesheet.mjs'), /* v2.3.1830: size per direction, both poses */
   bodysize: () => import('./mp-bodysize.mjs'), /* v2.3.1826: the same character in every direction */
   slimebase: () => import('./mp-slimebase.mjs'), /* v2.3.1824: the blob's base is the monster's position */
