@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { COL, getState } from '../dash/common.js';
 import { combatLevelProgress, unspentPointsTotal, bestWeaponProgress } from './heroModel.js';
-import { displayWeapon } from './statPreview.js';   /* v2.3.1848: one weapon-for-display rule */
 import { getActiveWeapon, calcDisplayDmgRange, calcDisplayDps } from '../../../data/gameSystems.js';
 import { portraitStore } from './portraitStore.js';
 import { dashboardPanelBus } from '../dashboardPanelBus.js';
@@ -56,17 +55,6 @@ import { playVw } from '../playViewport.js';
    better than the character — so the rail drops from seven buttons to
    six and each of the survivors gets more height.  Band mode only: in
    Hero's own sheet the portrait would open the screen you are on. */
-/* v2.3.1848: the DPS chip's icon follows the weapon in hand — the same three
-   category icons the Build tabs use, so one picture means one thing across
-   the app.  Keyed by item type, and greatsword shares the melee icon exactly
-   as it shares the melee category (prog3CatFor). */
-const WPN_ICON = {
-  greatsword: '/icons/ui/hero/melee.webp?v=2.3.1311',
-  sword: '/icons/ui/hero/melee.webp?v=2.3.1311',
-  bow: '/icons/ui/hero/bow.webp?v=2.3.1311',
-  staff: '/icons/ui/hero/magic.webp?v=2.3.1311',
-};
-
 export const IdentityStrip = ({ band = false, gutter = 0, trackW = null }) => {
   const [, force] = useState(0);
   useEffect(() => portraitStore.subscribe(() => force(v => v + 1)), []);
@@ -134,37 +122,36 @@ export const IdentityStrip = ({ band = false, gutter = 0, trackW = null }) => {
      *     the only place on the resting screen that says you are connected.
      * Drop any of the three and the band looks fine and is worse.
      *
-     * ═══ v2.3.1849: WHAT WAS CUT, AND WHY THOSE THREE ═══
-     * The first build of this followed the mockup exactly — three lines, with
-     * DPS / DEF / HP / coins across the bottom — and the owner's read was
-     * "way too busy", asking what gives the most useful information without
-     * overload.  Four labelled units at 8-11px inside 174px is the busyness;
-     * the fix is fewer things, not smaller type.  So:
+     * ═══ v2.3.1849/1850: WHAT WAS CUT ═══
+     * The first build followed the mockup exactly — three lines, with DPS /
+     * DEF / HP / coins across the bottom — and the owner's read was "way too
+     * busy", asking what gives the most useful information without overload.
+     * Four labelled units at 8-11px inside 174px is the busyness; the fix is
+     * fewer things, not smaller type.  DEF and HP came off first, then the
+     * owner took the rest: "best might just be to remove the bottom row (all
+     * the DPS, def, and hp data)".
      *
-     *   HP is GONE.  Live HP is on the world HUD, an inch away, during the
-     *   only moments it matters.  What the band could show is MAX hp — a
-     *   number that changes a few times per level and never during play.
-     *   A near-static number spends permanent width on rare news.
+     * All three are gone, and the reasons run the same way:
      *
-     *   DEF is GONE.  It is 0% for every character until their first armour,
-     *   which is a long stretch of reading a zero, and it only moves when you
-     *   change armour — which happens on the Equipment screen, where the
-     *   aggregate grid shows it next to everything else it should be compared
-     *   with.
+     *   HP could only ever be MAX hp here — live HP is on the world HUD an
+     *   inch away, during the only moments it matters — and max hp changes a
+     *   few times a level and never during play.  Permanent width for rare
+     *   news.
      *
-     *   DPS STAYS, and moves up beside the XP bar.  It is the one combat
-     *   number that is nowhere else at a glance, and it answers the question
-     *   the bag is usually open for: did that swap make me stronger.
+     *   DEF reads 0% for every character until their first armour, and it
+     *   only moves on the Equipment screen, where the aggregate grid shows
+     *   it beside everything it should be compared with.
      *
-     *   COINS STAY, on the name line.  They change constantly, and the bag —
-     *   the screen right underneath this band — is where you spend them.
+     *   DPS survived one round on the argument that it is the one combat
+     *   number nowhere else at a glance.  True, and still not enough: it is
+     *   a number you consult when CHANGING something, and changing something
+     *   happens on the screen this whole block opens.  A stat you read on
+     *   purpose does not need to be on screen always.
      *
-     * What is left is two lines: who you are and what you can spend; how
-     * close you are and how hard you hit.  Everything cut is one tap away on
-     * the Equipment tab, which is what this whole block opens.
+     * What is left is two lines that are each about a thing that MOVES while
+     * you play: who you are and what you can spend, and how close the
+     * nearest weapon is to its next level.  Everything cut is one tap away.
      */
-    const wpnNow = displayWeapon(R);
-    const dpsNow = wpnNow ? calcDisplayDps(R, wpnNow) : 0;
     const wp = bestWeaponProgress(R);
     const wpPct = wp ? Math.round((wp.prog / wp.thresh) * 100) : 0;
 
@@ -196,15 +183,14 @@ export const IdentityStrip = ({ band = false, gutter = 0, trackW = null }) => {
             flex: 'none', fontSize: 11.5, fontWeight: 700, color: COL.text2,
             whiteSpace: 'nowrap',
           }}>· LV {level}</span>
-          {unspent > 0 && (
-            <span aria-label={unspent + ' unspent build points'} style={{
-              flex: 'none', alignSelf: 'center',
-              minWidth: 15, height: 15, padding: '0 4px',
-              borderRadius: 8, background: COL.accent, color: COL.onAccent,
-              fontSize: 10, fontWeight: 900, lineHeight: '15px', textAlign: 'center',
-              fontVariantNumeric: 'tabular-nums',
-            }}>+{unspent}</span>
-          )}
+          {/* v2.3.1850: the unspent-points badge is GONE from the band.
+              Owner: "have the summary tab just be name, level, xp, and gold"
+              — four things, and this was a fifth.  It is not lost, which is
+              why it was the safe one to drop: the Points tab inside Hero
+              carries the same count on the control that spends it, one tap
+              away through this very block.  What the band gives up is the
+              nag arriving unasked; what it gets back is a row with four
+              things on it. */}
           {/* COINS, right-aligned on the name line.  The owner left the
               position to fit ("the coins amount can find a different area
               within that space — whatever fits best"), and MEASURED, the
@@ -229,49 +215,30 @@ export const IdentityStrip = ({ band = false, gutter = 0, trackW = null }) => {
             }}>{Number(gold).toLocaleString()}</span>
           </span>
         </div>
-        {/* LINE 2 — progress, and the one combat number worth carrying. */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 5, minWidth: 0 }}>
-          {wp && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 4, flex: '1 1 auto', minWidth: 24 }}
-              title={`${wp.label} — ${wp.prog} / ${wp.thresh} XP to level ${wp.level + 1}`}>
-              <img src={wp.iconSrc} alt="" draggable={false} style={{
-                width: 12, height: 12, objectFit: 'contain', flex: 'none',
-                pointerEvents: 'none',
-              }} />
+        {/* LINE 2 — how close the nearest weapon is to its next level. */}
+        {wp && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 5, minWidth: 0 }}
+            title={`${wp.label} — ${wp.prog} / ${wp.thresh} XP to level ${wp.level + 1}`}>
+            <img src={wp.iconSrc} alt="" draggable={false} style={{
+              width: 13, height: 13, objectFit: 'contain', flex: 'none',
+              pointerEvents: 'none',
+            }} />
+            <div style={{
+              flex: '1 1 auto', minWidth: 16, height: 6, borderRadius: 3,
+              background: 'rgba(0,0,0,.5)', border: '1px solid rgba(255,255,255,.08)',
+              overflow: 'hidden',
+            }}>
               <div style={{
-                flex: '1 1 auto', minWidth: 16, height: 6, borderRadius: 3,
-                background: 'rgba(0,0,0,.5)', border: '1px solid rgba(255,255,255,.08)',
-                overflow: 'hidden',
-              }}>
-                <div style={{
-                  width: `${Math.min(100, wpPct)}%`, height: '100%',
-                  background: '#8AA9F9',
-                }} />
-              </div>
-              <span style={{
-                flex: 'none', fontSize: 10, fontWeight: 700, color: COL.text2,
-                fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap',
-              }}>{wpPct}%</span>
-            </div>
-          )}
-          <span title="Damage per second with the weapon in hand" style={{
-            flex: 'none', display: 'inline-flex', alignItems: 'center', gap: 3,
-          }}>
-            <img src={WPN_ICON[wpnNow && wpnNow.type] || WPN_ICON.greatsword}
-              alt="" draggable={false} style={{
-                width: 11, height: 11, objectFit: 'contain', flex: 'none',
-                imageRendering: 'pixelated', pointerEvents: 'none',
+                width: `${Math.min(100, wpPct)}%`, height: '100%',
+                background: '#8AA9F9',
               }} />
+            </div>
             <span style={{
-              fontSize: 11, fontWeight: 800, color: COL.text,
+              flex: 'none', fontSize: 10.5, fontWeight: 700, color: COL.text2,
               fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap',
-            }}>{Math.round(dpsNow * 10) / 10}</span>
-            <span style={{
-              fontSize: 8, fontWeight: 700, letterSpacing: '.03em',
-              color: COL.muted, whiteSpace: 'nowrap',
-            }}>DPS</span>
-          </span>
-        </div>
+            }}>{wpPct}%</span>
+          </div>
+        )}
       </div>
     );
   }

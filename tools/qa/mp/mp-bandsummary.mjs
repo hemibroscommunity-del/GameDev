@@ -83,11 +83,29 @@ export async function run({ browser, wsPort, webPort, rec }) {
     S.rpg.weapon = { name: 'Copper Great Sword', type: 'greatsword', gearBase: 'copper', quality: 'normal' };
     S.rpg.activeSlot = 'melee';
     S.rpg.coins = 75;
+    /* UNSPENT POINTS ON PURPOSE.  The badge assertion below is vacuous
+       against a character with none — it would pass on a band that still
+       drew the badge.  Two in the pool is the state that makes the check
+       mean something. */
+    if (!S.rpg.prog3) S.rpg.prog3 = {};
+    if (!S.rpg.prog3.sk) S.rpg.prog3.sk = {};
+    for (const k of ['sword', 'bow', 'staff']) {
+      if (!S.rpg.prog3.sk[k]) S.rpg.prog3.sk[k] = { level: 1, xp: 0 };
+    }
+    S.rpg.prog3.pool = 2;
   });
   await P.page.waitForTimeout(600);
 
   const band = await readBand(P);
   rec.ok('the band summary is there (guard)', !!(band && band.found), band);
+  /* The pool really is stocked — without this the badge assertion below is
+     vacuous, since a character with nothing to spend draws no badge either
+     way and the check would pass on the code it is meant to catch. */
+  const pool = await P.page.evaluate(() => {
+    const p = window._gameState.current.rpg.prog3;
+    return (p && p.pool) || 0;
+  });
+  rec.ok('the character has unspent points to nag about (guard)', pool > 0, { pool });
 
   /* ── the head is GONE ──
      Asserted as "no portrait image", not "the summary exists": both could be
@@ -100,22 +118,28 @@ export async function run({ browser, wsPort, webPort, rec }) {
   /* ── the three lines ── */
   const all = (band.texts || []).join(' ');
   rec.ok('it names the character and the level', /BANDIT/i.test(all) && /LV\s*\d/i.test(all), band.texts);
-  rec.ok('...and the one combat number, DPS', /DPS/.test(all), band.texts);
   rec.ok('...and the coins', /\b75\b/.test(all), band.texts);
   rec.ok('...and an XP percentage', /%/.test(all), band.texts);
   /* ═══ v2.3.1849: WHAT IS DELIBERATELY ABSENT ═══
      Owner, on the first build (which followed the mockup exactly): "that
      summary looks way too busy.  What's the best way to give as much useful
-     info without overload."  DEF and HP came off — DEF reads 0% until a
-     player's first armour and only moves on the Equipment screen, and the
-     band could only ever show MAX hp, a number that changes a few times a
-     level and never during play; live HP is on the world HUD.
+     info without overload."  DEF and HP came off, then the rest: "best might
+     just be to remove the bottom row (all the DPS, def, and hp data)".  Each
+     is a number you consult when changing something, and changing something
+     happens on the screen this block opens.
 
      Asserted as ABSENT rather than just untested.  A deletion nothing checks
      is a deletion the next person restores by accident, and "less on the
      band" is the whole point of this pass. */
   rec.ok('DEF is not on the band', !/DEF/.test(all), band.texts);
-  rec.ok('...and neither is max HP', !/\bHP\b/.test(all), band.texts);
+  rec.ok('...nor max HP', !/\bHP\b/.test(all), band.texts);
+  rec.ok('...nor DPS — the whole stat row is gone', !/DPS/.test(all), band.texts);
+  /* v2.3.1850 (owner: "have the summary tab just be name, level, xp, and
+     gold"): FOUR things, and the unspent-points badge was a fifth.  It reads
+     as "+2", so this checks for a lone plus-number rather than for the word
+     — the badge never carried one. */
+  rec.ok('...nor the unspent-points badge',
+    !(band.texts || []).some((t) => /^\+\d+$/.test(t)), band.texts);
   /* Two lines, not three — the busyness was structural. */
   rec.ok('the summary is two lines',
     (band.lines || []).length === 2, { lines: (band.lines || []).map((l) => l.kids.map((k) => k.t)) });
