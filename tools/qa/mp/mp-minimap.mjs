@@ -167,8 +167,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
      icon set still fails while the props are off. */
   const propsOn = await P.page.evaluate(
     () => (window.__btTownPropsEnabled ? window.__btTownPropsEnabled() : true));
+  /* v2.3.1819: the mayor draws the plain NPC mark now, not a star.  The star
+     was minted once and drawn twice — blue under him, gold on the quest's
+     portal — one glyph carrying two meanings, separated only by a colour the
+     player was never told about.  He keeps the '!' / '?' pin above his head,
+     which says more than a star did. */
   for (const [key, what] of [
-    ['star', 'the mayor himself'],
+    ['npc', 'the mayor, as an NPC'],
     ['portal', 'the way out'],
   ]) {
     rec.ok(`${what} has its own symbol on the map`, (ic[key] || 0) > 0, { key, census: ic });
@@ -285,6 +290,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
      quest state and checks the route the renderer resolved, including the two
      negative cases that a naive "star the destination" implementation gets
      wrong. */
+  /* THE STAR IS EXCLUSIVE.  Asserted directly, because "the mayor uses npc"
+     and "the star means quest" are two halves of one fix and the second is
+     the one a future NPC_ICON entry would quietly break. */
+  const censusNow = await P.page.evaluate(() => ((window.__btMinimap || {}).icons) || {});
+  rec.ok('the star is not spent on anything but a quest destination',
+    !censusNow.star || censusNow.star === 0, { census: censusNow });
+
   const route = () => P.page.evaluate(() => (window.__btMinimap || {}).questRoute || null);
   const setQuests = (obj) => P.page.evaluate((q) => {
     const S = window._gameState.current;

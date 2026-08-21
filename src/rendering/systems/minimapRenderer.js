@@ -78,8 +78,17 @@ const MARGIN = 10;   /* clears the 2px outer ring above */
 /* Icon footprint in CSS px.  11 is the smallest a distinct SHAPE survives at
    on a phone — below that everything becomes the same grey lozenge and only
    colour carries meaning, which is what the first cut of this shipped. */
-const ICON_PX = 9;
-const BIG_ICON_PX = 11;   /* buildings and quest markers: the things you steer by */
+/* ═══ v2.3.1819: BIGGER ═══
+   Owner: "Icons on the minimap need the be a bit larger."
+   9 -> 12 and 11 -> 14, a third up on each.  The glyphs were redrawn in
+   v2.3.1810 to carry real detail — a skull has sockets, the portal an arch
+   and a step — and at 9px that detail was below the point where any of it
+   reads, so the redraw was largely invisible on a phone.  The ratio between
+   the two sizes is kept (the things you steer by stay the larger pair), and
+   mp-minishot's pairwise distinctness check is what proves the bigger
+   glyphs still tell each other apart rather than merging into blobs. */
+const ICON_PX = 12;
+const BIG_ICON_PX = 14;   /* buildings and quest markers: the things you steer by */
 const SCALE = MINIMAP_PX / WINDOW_WORLD;
 
 /* Marker radius in CSS px, and colours.  Lantern Slate (docs/LANTERN-SLATE-SPEC.md):
@@ -115,10 +124,25 @@ const BUILDING_ICON = {
 /* Townsfolk who do a job get that job's glyph — the same one their building
    carries, so "the anvil on the map" is the blacksmith whether you find the
    forge or the man.  Anyone else is a plain townsfolk. */
+/* ═══ v2.3.1819: THE STAR MEANS QUEST, AND NOTHING ELSE ═══
+   Owner: "the start icon should be yellow for quests (if that's what it's
+   for)" — and the parenthesis is the real finding.  It was for two things.
+
+   The star was minted once and drawn TWICE in different colours: blue
+   (C_NPC) under Mayor Bro because he is an NPC, and gold (C_QUEST) on the
+   portal your active quest wants (v2.3.1817).  One glyph, two meanings,
+   and the only thing separating them was a colour the player was never told
+   about — which is exactly the collision the v2.3.1810 icon pass and
+   mp-minishot exist to prevent, reintroduced by hand.
+
+   Mayor Bro takes the plain `npc` mark instead.  He loses nothing: he
+   already carries the '!' / '?' quest pin above his head (drawn after the
+   NPC loop precisely so nothing can cover it), which says far more than a
+   star did — it says whether he has work for you or is waiting to be paid.
+   The star is now unambiguous and always gold. */
 const NPC_ICON = {
   blacksmith_bro: 'forge',
   storekeeper_bro: 'shop',
-  mayor_bro: 'star',
 };
 
 /* Same order as entityRenderer's SECTORS — S._renderFacing is published from
