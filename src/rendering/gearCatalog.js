@@ -245,3 +245,18 @@ export function reconcileGearStash(R) {
   syncArmorLayers(R);
   return changed;
 }
+
+/* v2.3.1815 dev probe, house style (__btWorldProps): what the figure on the
+   equip screen is reading.  The panel draws from the trait catalogs AND the
+   gear slots, and the two both have a "shirt" — telling them apart from
+   outside is otherwise guesswork. */
+if (typeof window !== 'undefined') {
+  /* v2.3.1815: and a SETTER, so a scenario can put armour on and watch the
+     figure change.  Equipping through the real store is the point — poking
+     the canvas would prove the canvas draws, not that it follows your gear. */
+  window.__btGearSet = (slot, id) => setEquip(slot, id);
+  window.__btWardrobe = () => ({
+    gearShirt: getEquip('shirt'), gearChest: getEquip('chest'),
+    gearLegs: getEquip('legs'), gearShoulders: getEquip('shoulders'),
+  });
+}

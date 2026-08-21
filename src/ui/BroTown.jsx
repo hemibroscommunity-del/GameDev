@@ -91,6 +91,29 @@ import { pushHudPopup } from './XpFlyOverlay.jsx';
    up.  Exported so the headless check reads the real number instead of
    hard-coding a copy that can drift (tools/qa/mp/mp-questbanner.mjs). */
 export var QUEST_MSG_MS = 2200;
+/* ═══ v2.3.1816: THE ONES THAT SAY WHAT YOU GOT STAY UP LONGER ═══
+   Owner: "Make the reward completion message moments after collecting
+   required items stay on screen longer."
+
+   Split by KIND rather than raising the one number, because the three
+   banners do different jobs.  QUEST ACCEPTED! is a go-cue — you already know
+   what you accepted, you were just reading the card — and 2.2s suits it.
+   QUEST COMPLETED! and QUEST REWARD carry the thing you actually want to
+   read: which quest closed, and what it paid.  Those fire the moment the last
+   required item lands, which is usually mid-fight or mid-harvest with your
+   eyes somewhere else, so 2.2s routinely expired before the player looked up.
+
+   4200 is a little under twice as long: enough to look up, find the banner
+   and read a title plus a reward line, without holding the screen so long
+   that the next banner stacks up behind it (the queue gate waits out the
+   current one, so an over-long hold delays whatever follows). */
+export var QUEST_MSG_LONG_MS = 4200;
+/* ONE place decides, so the queue gate, the expiry sweep, the render gate and
+   the CSS fade cannot drift apart — a banner that is drawn while considered
+   expired (or held with no fade) is the failure that split constants cause. */
+export function questMsgMs(kind) {
+  return (kind === 'completed' || kind === 'reward') ? QUEST_MSG_LONG_MS : QUEST_MSG_MS;
+}
 
 /* v2.3.868: COOK_PAN_BY_FISH removed — it fed panSheetSrc to the
    canvas CookingMinigame (pan + doneness slider), retired in v2.3.853
@@ -1535,7 +1558,7 @@ export var BroTown = function BroTown(_ref0) {
     window._setQuestMsg = function (m) {
       if (!m) { setQuestMsg(null); return; }
       var cur = questMsgRef.current;
-      if (m.queue && cur && Date.now() - cur.ts < QUEST_MSG_MS) {
+      if (m.queue && cur && Date.now() - cur.ts < questMsgMs(cur.kind)) {
         questQueueRef.current.push(m);
         if (questQueueRef.current.length > 3) questQueueRef.current.shift();
         return;
@@ -1545,6 +1568,10 @@ export var BroTown = function BroTown(_ref0) {
     /* published so the headless check reads the REAL hold time instead of
        keeping its own copy to drift out of sync */
     window.__QUEST_MSG_MS = QUEST_MSG_MS;
+    /* v2.3.1816: the per-kind hold too, so mp-questbanner asserts the real
+       numbers rather than a copy of them that drifts. */
+    window.__QUEST_MSG_LONG_MS = QUEST_MSG_LONG_MS;
+    window.__questMsgMs = questMsgMs;
   }
   var _useState185 = useState(1),
     _useState186 = _slicedToArray(_useState185, 2),
@@ -5767,13 +5794,13 @@ export var BroTown = function BroTown(_ref0) {
          an updater must stay pure, and shifting a ref inside one would drop
          a queued banner the moment React chose to call it twice. */
       var _qCur = questMsgRef.current;
-      if ((!_qCur || Date.now() - _qCur.ts > QUEST_MSG_MS) && questQueueRef.current.length) {
+      if ((!_qCur || Date.now() - _qCur.ts > questMsgMs(_qCur.kind)) && questQueueRef.current.length) {
         var _qNext = questQueueRef.current.shift();
         _qNext.ts = Date.now();
         setQuestMsg(_qNext);
       } else {
         setQuestMsg(function (prev) {
-          return prev && Date.now() - prev.ts > QUEST_MSG_MS ? null : prev;
+          return prev && Date.now() - prev.ts > questMsgMs(prev.kind) ? null : prev;
         });
       }
 
@@ -8528,7 +8555,7 @@ export var BroTown = function BroTown(_ref0) {
      that ate that tap would make the dialogue feel broken for two seconds.
      Sits at 26% height — above the centred card's middle, and clear of the
      level-up banner at 55%, so both are legible together. */
-  questMsg && Date.now() - questMsg.ts < QUEST_MSG_MS && /*#__PURE__*/React.createElement("div", {
+  questMsg && Date.now() - questMsg.ts < questMsgMs(questMsg.kind) && /*#__PURE__*/React.createElement("div", {
     className: "bt-quest-banner",
     "data-quest-banner": questMsg.kind,
     style: {
@@ -8552,7 +8579,10 @@ export var BroTown = function BroTown(_ref0) {
       position: 'absolute',
       left: '50%',
       top: '26%',
-      '--qm-out': (QUEST_MSG_MS - 500) + 'ms',
+      /* v2.3.1816: the fade starts 500ms before THIS banner's own hold
+         ends — a fixed 1700ms here would have the long banners fade out and
+         then sit invisible for two more seconds. */
+      '--qm-out': (questMsgMs(questMsg.kind) - 500) + 'ms',
       textAlign: 'center',
       /* v2.3.1745b: a PLATE, not bare text.  The first cut floated the words
          straight onto the dialogue and they landed across the giver's

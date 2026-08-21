@@ -5458,6 +5458,20 @@ export const QUEST_CHAINS = {
      'accept' icon really has a grantOnAccept server-side and likewise for
      'complete', so this can go stale loudly rather than quietly. */
   tut_1: {
+    /* ═══ v2.3.1817: WHICH ZONE THIS STEP SENDS YOU TO ═══
+       Owner, two requests that turned out to need the same missing fact:
+       "make each zone open up only after a mayor bro quest requires that
+       area", and "make star active quest mark marking portals that you're
+       supposed to go to on minimap for next steps".
+
+       Until now the destination existed only in `desc` PROSE — "from Frost
+       Ridge" — which no gate and no map marker can read.  Naming it as data
+       is what lets the lock and the star agree with the quest text instead of
+       being a second, hand-maintained copy of it.
+
+       Mirrored by QUEST_ZONE in server/src/data.js, which is what actually
+       enforces the lock; this side drives the marker and the UI. */
+    zone: 'frost',   /* Frost Ridge */
     id: 'tut_1', npc: 'Mayor Bro', title: 'Cold Reception',
     desc: 'Bring 4 Snowman Remnants from Frost Ridge.',
     check: function (rpg) { return ((rpg.inventory || {}).snowman || 0) >= 4; },
@@ -5510,6 +5524,8 @@ export const QUEST_CHAINS = {
     },
   },
   tut_2: {
+    /* v2.3.1817: the zone this step opens and points at — see tut_1. */
+    zone: 'verdant',   /* Verdant Wilds */
     id: 'tut_2', npc: 'Mayor Bro', title: 'Into the Blue',
     desc: 'Bring 6 Slime Remnants from the Verdant Wilds.',
     check: function (rpg) { return ((rpg.inventory || {})['slime-remnants'] || 0) >= 6; },
@@ -5524,6 +5540,8 @@ export const QUEST_CHAINS = {
     },
   },
   tut_3: {
+    /* v2.3.1817: the zone this step opens and points at — see tut_1. */
+    zone: 'sky',   /* Wind Dunes */
     id: 'tut_3', npc: 'Mayor Bro', title: 'Bad Wind',
     desc: 'Bring 5 Skeleton Remnants from the Wind Dunes.',
     check: function (rpg) { return ((rpg.inventory || {})['skeleton-remnants'] || 0) >= 5; },
@@ -5536,6 +5554,8 @@ export const QUEST_CHAINS = {
     },
   },
   tut_4: {
+    /* v2.3.1817: the zone this step opens and points at — see tut_1. */
+    zone: 'ember',   /* Flame Fields */
     id: 'tut_4', npc: 'Mayor Bro', title: 'Bro Ascendant',
     desc: 'Bring 6 Fire Goblin Remnants from the Flame Fields.',
     check: function (rpg) { return ((rpg.inventory || {})['fire-goblin-remnants'] || 0) >= 6; },

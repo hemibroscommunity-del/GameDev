@@ -197,5 +197,44 @@ export async function run({ browser, wsPort, webPort, rec }) {
     && afterTurnIn.filter((b) => b.kind === 'completed').length >= 1,
     afterTurnIn.map((b) => b.kind));
 
+  /* ═══ v2.3.1816: THE COMPLETION BANNER OUTLASTS THE ACCEPT ONE ═══
+     Owner: "Make the reward completion message moments after collecting
+     required items stay on screen longer."
+
+     Asserted as a RELATIONSHIP between the two holds rather than against a
+     literal 4200, so retuning either number keeps this honest — and asserted
+     against the live clock too, because the constants agreeing proves only
+     that two variables differ, not that a banner is still on screen.  The
+     accept banner's own hold is the yardstick: it is what the completion one
+     used to get. */
+  const holds = await P.page.evaluate(() => ({
+    short: window.__QUEST_MSG_MS || 0,
+    long: window.__QUEST_MSG_LONG_MS || 0,
+    completed: window.__questMsgMs ? window.__questMsgMs('completed') : 0,
+    accepted: window.__questMsgMs ? window.__questMsgMs('accepted') : 0,
+    reward: window.__questMsgMs ? window.__questMsgMs('reward') : 0,
+  }));
+  rec.ok('a completion banner is held longer than an accept banner',
+    holds.completed > holds.accepted, holds);
+  rec.ok('...and a reward banner gets the same long hold',
+    holds.reward === holds.completed && holds.reward > holds.short, holds);
+
+  /* THE LIVE PROOF.  Raise a completion banner and check it is STILL up at
+     the moment the old hold would have taken it away.  Without this, the
+     numbers could be right while the render gate still read the short one —
+     which is exactly the drift the shared helper exists to prevent. */
+  await P.page.evaluate(() => {
+    window._setQuestMsg({ kind: 'completed', title: 'Hold check', ts: Date.now() });
+  });
+  await P.page.waitForTimeout(holds.accepted + 500);
+  const stillUp = await onScreen();
+  rec.ok('a completion banner is still on screen past the OLD hold',
+    !!stillUp, { waited: holds.accepted + 500, longHold: holds.completed });
+  /* ...and still clears itself.  A banner that never leaves is worse than one
+     that leaves too early. */
+  await P.page.waitForTimeout((holds.completed - holds.accepted) + 1200);
+  rec.ok('...and it does eventually clear, rather than sticking forever',
+    !(await onScreen()), { longHold: holds.completed });
+
   await P.ctx.close().catch(() => {});
 }

@@ -3,6 +3,7 @@ import { COL, panelStyle, getState } from '../dash/common.js';
 import { buildSkillUnspent, STAT_TO_WEAPON_CAT } from '../../../data/gameSystems.js';
 import { requestT2Category } from '../dash/T2Panel.jsx';
 import { dashboardPanelBus } from '../dashboardPanelBus.js';
+import { CharacterView } from './CharacterView.jsx'; /* v2.3.1815: the equip screen's own figure */
 import { COMBAT_SKILLS, skillLevel, skillProgressPct, skillProgress, deriveHeroStats, unspentPointsTotal } from './heroModel.js';
 /* v2.3.1660: trained-skill rebuild — the Build section becomes the
    seven-stat allocation menu when the worker owns prog3. */
@@ -222,7 +223,10 @@ export const HeroExpanded = () => {
          panelStyle bottom scroll-edge fade exists to signal MORE
          content below the fold — Hero's subtabs are designed no-scroll,
          so the mask only dimmed the flush last row.  Off here. */
-      WebkitMaskImage: 'none', maskImage: 'none',
+      /* v2.3.1815: Overview scrolls now (the character view took the row the
+         stats used to share), so it keeps the fade that tells you so; the
+         other sections are still no-scroll and still turn it off. */
+      ...(section === 'Overview' ? null : { WebkitMaskImage: 'none', maskImage: 'none' }),
     }}>
       {/* v2.3.1653: Hero's OWN identity strip is gone.  Since v2.3.1652 the
           band's top row carries name, level, XP, gold and DPS on every
@@ -306,6 +310,31 @@ export const HeroExpanded = () => {
               literally.  The left column is fixed at what two cells need so
               the right column gets every remaining pixel; the numbers are
               the thing that was missing, so the numbers get the space. */}
+          {/* ═══ v2.3.1815: YOUR CHARACTER, BESIDE YOUR GEAR ═══
+              Owner: "On the character equip menu find space to put as large
+              view of the character as possible to fit inside the space.
+              Should show armor worn etc if player is wearing it."  Pose, on
+              a follow-up: "Southwest idle view."
+
+              THERE WAS NO SPARE SPACE — that is measured, not assumed.  At
+              390px the row ran equipped 146 + gap 8 + stats 224 = 378 of 378
+              available, exactly full, so a figure could only come out of the
+              slots (46px, and v2.3.1653 shrank them from 32 specifically to
+              stop them being small) or out of the stat cells (56px, where
+              CRIT DMG already ellipsises).  Both are worse than the thing
+              being added.
+
+              So the stats move DOWN to their own full-width row instead of
+              sharing this one.  They get MORE width there (378 vs 224), the
+              slots keep their size, and the figure gets the whole 224px the
+              stats vacated at the row's full 101px height — the largest it
+              can be without taking anything away from what was already here.
+
+              THE COST, stated: Overview now scrolls by roughly a stat row.
+              v2.3.1311d turned this panel's scroll-edge fade off because the
+              subtabs were designed no-scroll, so the fade is turned back on
+              for Overview only — a panel that scrolls with no cue that it
+              scrolls is how the last row goes unnoticed. */}
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
             <div style={{
               flex: 'none', width: 3 * EQ_W + 2 * DASH_GAP,
@@ -314,6 +343,21 @@ export const HeroExpanded = () => {
               {['weapon', 'shield', 'chest', 'legs', 'amulet', 'cape'].map(eqCell)}
             </div>
 
+            {/* Square, sized to the slot block's own height so the figure and
+                the gear it is wearing line up as one group.  The canvas is
+                square because the portrait composites square; the well around
+                it takes the leftover width. */}
+            <div style={{
+              flex: 1, minWidth: 0, height: 2 * EQ_W + DASH_GAP,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              background: COL.wellSoft, border: `1px solid ${COL.tileBor}`,
+              borderRadius: 8, overflow: 'hidden',
+            }}>
+              <CharacterView size={2 * EQ_W + DASH_GAP} />
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginTop: 6 }}>
             <div style={{ flex: 1, minWidth: 0 }}>
               {/* The header names what the numbers below are ABOUT, which is
                   the whole point of a contextual panel: without it, a card

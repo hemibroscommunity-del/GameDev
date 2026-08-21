@@ -21,10 +21,20 @@ import { getHatRef } from './traits/hatColorCatalog.js';
 import { headwearIsSolid } from './traits/headwearCatalog.js';
 import { SOLID_ONLY_HAT_COLOR } from './traits/recolorOptions.js'; /* v2.3.1109: shared per-hat recolour reference (call-time use; cyclic import is safe) */
 import { upscaleToFrameHeight } from './spriteScale.js'; /* v2.3.1110: restore downscaled shirt sheet to 256 frame */
+/* v2.3.1815: worn armour in the portrait.  gearArt resolves a recoloured set
+   to its DONOR sheet (copperplate -> steelplate) and materialRgb gives the
+   metal to multiply it by — the same two-step the world renderer uses, so a
+   copper plate cannot come out steel here while it is copper in play. */
+import { gearArt, gearMaterial } from './gearVariants.js';
+import { materialRgb } from './traits/materialTints.js';
 
 const FRAME = 256;
 const DEFAULT_LIT_LUM = 149;            // default lit-skin luminance (see playerSkins)
 const TRAIT_VER = '2.3.1561';            // cache-bust for body-tops.json (matches entityRenderer)
+/* v2.3.1815: matches gearSheets.js GEAR_VERSION so the portrait and the world
+   pull the SAME cached bytes rather than a second copy under a different
+   query string. */
+const GEAR_ART_VER = '2.3.1656';
 
 /* v2.3.1579: the portrait prefers the 256px `hi/` art.
  *
@@ -206,7 +216,7 @@ function renderTraitCanvas(traitImg, meta, crown, dir) {
  *  draw completes (after async asset loads).  Safe to call repeatedly. */
 export async function drawCharacterPortrait(canvas, opts) {
   if (!canvas) return;
-  const { skin, pants, shoes, hair, hairColor, facialHair, facialHairColor, headwear, hatColor, shirt, shirtColor, dir } = opts || {};
+  const { skin, pants, shoes, hair, hairColor, facialHair, facialHairColor, headwear, hatColor, shirt, shirtColor, dir, gear } = opts || {};
   /* v2.3.1580 (owner: traits still soft after the v2.3.1579 re-bake).
      OPT-IN supersampling.  This canvas has always composited at a fixed
      256 with no devicePixelRatio scaling -- the WORLD canvas is DPR-aware
@@ -259,19 +269,42 @@ export async function drawCharacterPortrait(canvas, opts) {
   const wantHair = hair && hair !== 'none';
   const wantFh = facialHair && facialHair !== 'none';
   const wantHw = headwear && headwear !== 'none';
-  const wantShirt = shirt && shirt !== 'none';
+  /* ═══ v2.3.1815: WORN ARMOUR ═══
+     Owner: "Should show armor worn etc if player is wearing it."
+
+     Three things make this safe to composite here rather than needing the
+     world renderer.  (1) The layer ORDER is the renderer's own _GEAR_SLOTS
+     order — shirt, legs, chest, shoulders — read off entityRenderer rather
+     than guessed.  (2) The renderer's pre-composed FULLSET figure, which
+     replaces the body wholesale when a matched set is worn, is gated on
+     `pose !== 'jog'` and returns null for anything else — so a STANDING
+     figure is always the plain layered path and there is no substitution to
+     mirror here.  (3) The shirt is hidden under a chest piece, which is the
+     renderer's own rule (v2.3.809, owner's call) and matters because the
+     plate silhouette is not a strict superset of the tee's. */
+  const _g = gear || {};
+  const _wornChest = (_g.chest && _g.chest !== 'none') ? _g.chest : null;
+  const _wornLegs = (_g.legs && _g.legs !== 'none') ? _g.legs : null;
+  const _wornShoulders = (_g.shoulders && _g.shoulders !== 'none') ? _g.shoulders : null;
+  const wantShirt = shirt && shirt !== 'none' && !_wornChest;
 
   /* Fire EVERY fetch concurrently.  This used to be three sequential await
      stages (body-tops -> body sprite -> traits), so on a cold load the preview
      sat blank-white for ~3 network round-trips; now it's one.  All loads are
      cached after the first draw, so later redraws/rotations are instant. */
-  const [bodyTops, bodyImg, shirtImg, hairImg, hairMeta, fhImg, fhMeta, hwImg, hwMeta, maskImg, hatRef] = await Promise.all([
+  const [bodyTops, bodyImg, shirtImg, legsImg, chestImg, shouldersImg, hairImg, hairMeta, fhImg, fhMeta, hwImg, hwMeta, maskImg, hatRef] = await Promise.all([
     loadBodyTops(),
     loadImage(`/sprites/player/stand-${DIR}.png?v=${SPRITE_VERSION}`),
     /* v2.3.757: the LAYERED shirt sheet (white-base, tinted below) -- the
        baked torso-retint shirt is retired, so the preview composites the
        same layer the game renders. */
     wantShirt ? loadImage(`/sprites/gear/shirt/tshirt/stand-${DIR}.png?v=2.3.760`).catch(() => null) : null,
+    /* v2.3.1815: in the SAME concurrent batch as everything else — a
+       sequential await here would put the armour a round-trip behind the
+       body, and the figure would visibly dress itself. */
+    _wornLegs ? loadImage(`/sprites/gear/legs/${gearArt(_wornLegs)}/stand-${DIR}.png?v=${GEAR_ART_VER}`).catch(() => null) : null,
+    _wornChest ? loadImage(`/sprites/gear/chest/${gearArt(_wornChest)}/stand-${DIR}.png?v=${GEAR_ART_VER}`).catch(() => null) : null,
+    _wornShoulders ? loadImage(`/sprites/gear/shoulders/${gearArt(_wornShoulders)}/stand-${DIR}.png?v=${GEAR_ART_VER}`).catch(() => null) : null,
     wantHair ? loadTraitBest('hair', hair, DIR) : null,
     wantHair ? loadMeta('hair', hair) : null,
     wantFh ? loadTraitBest('facialhair', facialHair, DIR) : null,
@@ -286,6 +319,12 @@ export async function drawCharacterPortrait(canvas, opts) {
     (wantHw && hatColor && (!SOLID_ONLY_HAT_COLOR || headwearIsSolid(headwear))) ? getHatRef(headwear).catch(() => 0) : 0,
   ]);
   const crown = (bodyTops && bodyTops[`stand-${DIR}-0`]) || [FRAME / 2, 33];
+  /* v2.3.1815 dev probe: which facing this canvas actually composited.  The
+     equip screen pins itself to southwest, and southwest vs south is not
+     reliably tellable by eye at 96px — a `dir` that silently fell back would
+     look plausible in every screenshot.  Stamped on the canvas so a scenario
+     reads the element it is asserting about rather than a global. */
+  try { canvas.__btDir = DIR; canvas.__btMirror = !!_mirror; } catch (e) { /* ignore */ }
 
   ctx.clearRect(0, 0, FRAME, FRAME);
   /* Zoom the figure to fill the preview window, then shift it DOWN a touch.
@@ -360,6 +399,40 @@ export async function drawCharacterPortrait(canvas, opts) {
     }
     ctx.drawImage(layer, 0, 0, FRAME, FRAME, 0, 0, FRAME, FRAME);
   }
+  /* ═══ v2.3.1815: THE ARMOUR, in the renderer's own slot order ═══
+     legs -> chest -> shoulders (entityRenderer's _GEAR_SLOTS, minus the
+     shirt which is drawn above).  Each sheet is a STRIP and frame 0 is the
+     standing pose, which is why the source rect is the same (0,0,FRAME,FRAME)
+     window the shirt uses rather than the whole image.
+
+     The metal is a MULTIPLY over the sheet's own alpha — identical in effect
+     to the Pixi tint the world applies, and it has to happen here or copper
+     armour renders as the steel art it borrows. */
+  const _drawGearLayer = (img, item) => {
+    if (!img) return;
+    const up = upscaleToFrameHeight(img, FRAME);
+    const rgb = materialRgb(gearMaterial(item));
+    let layer = up;
+    if (rgb) {
+      const gc = document.createElement('canvas');
+      gc.width = FRAME; gc.height = FRAME;
+      const gx = gc.getContext('2d');
+      gx.drawImage(up, 0, 0, FRAME, FRAME, 0, 0, FRAME, FRAME);
+      gx.globalCompositeOperation = 'multiply';
+      gx.fillStyle = `rgb(${rgb[0]},${rgb[1]},${rgb[2]})`;
+      gx.fillRect(0, 0, FRAME, FRAME);
+      /* destination-in re-applies the sheet's alpha, so the fill above is
+         confined to the armour instead of flooding the frame — the same
+         two-step the shirt tint uses directly above. */
+      gx.globalCompositeOperation = 'destination-in';
+      gx.drawImage(up, 0, 0, FRAME, FRAME, 0, 0, FRAME, FRAME);
+      layer = gc;
+    }
+    ctx.drawImage(layer, 0, 0, FRAME, FRAME, 0, 0, FRAME, FRAME);
+  };
+  _drawGearLayer(legsImg, _wornLegs);
+  _drawGearLayer(chestImg, _wornChest);
+  _drawGearLayer(shouldersImg, _wornShoulders);
   /* Beard BELOW hair so hair strands lay over the beard (per user -- the NW
      view had the beard covering the hair). */
   if (fhImg && fhMeta) placeTrait(ctx, facialHairColor ? recolorHairToCanvas(fhImg, facialHairColor) : fhImg, fhMeta, crown, DIR);
