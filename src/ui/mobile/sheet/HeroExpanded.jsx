@@ -75,7 +75,11 @@ const SECTIONS = ['Overview', 'Build', 'Records'];
  */
 const SECTION_LABEL = {
   Overview: 'Equipment',   /* what the section actually shows: the worn six */
-  Build: 'Build',
+  /* v2.3.1849 (owner: "instead of build name it points").  The tab already
+     carries a count badge of unspent POINTS, and "Build" named the activity
+     while "Points" names the thing you have waiting — which is what makes
+     the badge and the word say one thing instead of two. */
+  Build: 'Points',
   Records: 'Journey',
 };
 /* Round-3 §6 state preservation: the selected section survives leaving

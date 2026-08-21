@@ -227,13 +227,14 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
   /* ═══ v2.3.1847: THE SECTION TABS SAY THEIR NAMES ═══
      Owner: "for the 3 tabs on the character menu I think I'd prefer text.
-     So just equipment, build, and journey."  This reverses v2.3.1657's
+     So just equipment, build, and journey", then "instead of build name it
+     points".  This reverses v2.3.1657's
      icon-only row, so the thing to assert is that the words are VISIBLE —
      an aria-label carrying "Equipment" was already true of the icon version
      and would satisfy a test that only queried the label. */
   const tabs = await P.page.evaluate(() => {
     const chips = [...document.querySelectorAll('[role="button"][aria-pressed]')]
-      .filter((el) => /^(equipment|build|journey|build — )/i.test(el.getAttribute('aria-label') || ''));
+      .filter((el) => /^(equipment|points|journey|build — )/i.test(el.getAttribute('aria-label') || ''));
     return chips.map((el) => {
       const span = [...el.querySelectorAll('span')].filter((x) => x.children.length === 0)[0];
       const r = span ? span.getBoundingClientRect() : null;
@@ -244,8 +245,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
     });
   });
   rec.ok('all three section tabs were found (guard)', tabs.length === 3, { tabs });
-  rec.ok('the tabs read Equipment / Build / Journey',
-    tabs.map((t) => (t.text || '').toLowerCase()).join(',') === 'equipment,build,journey', { tabs });
+  rec.ok('the tabs read Equipment / Points / Journey',
+    tabs.map((t) => (t.text || '').toLowerCase()).join(',') === 'equipment,points,journey', { tabs });
   /* Painted, not merely present: a word in a zero-width box is invisible. */
   rec.ok('...and each word is actually laid out, not collapsed',
     tabs.every((t) => t.w > 20 && t.h > 6), { tabs });
