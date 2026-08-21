@@ -6519,6 +6519,33 @@ export class EntityRenderer {
     /* v2.3.1534: the §5.8 dodge roll owns the body for its whole window. */
     const dodging = !!S._dodgeRoll;
     let facing;
+    /* ═══ v2.3.1837: A TURN IS A FACING, NOT JUST A POSE ═══
+       Owner: "the character when idle faces whatever direction he last moved
+       instead of the direction he last rotated.  It needs to be the direction
+       last faced."
+
+       The idle branch at the bottom of this ladder reads S._facingAngle, and
+       that angle only ever learned about WALKING: visualSystems slews it
+       toward S._targetFacingAngle, and the only thing that ever set the target
+       was velocity —
+           if (absDx > 0.02 || absDy > 0.02) S._targetFacingAngle = atan2(dy, dx)
+       So every branch ABOVE isMoving could turn the body — the guard angle,
+       the aim, the movement stick pushed against a wall — and the moment it
+       let go the body snapped back to the last direction the player had
+       actually WALKED, discarding the turn.
+
+       Stamping the resting target with whatever angle just decided the facing
+       makes "last faced" literally true, and it is done HERE, once, rather
+       than at the dozen sites that write an aim angle: this is the ladder that
+       decides which way the body points, so it is the only place that knows
+       which of them won this frame.  Velocity still owns the target while
+       walking (visualSystems rewrites it every frame you move), so this only
+       takes effect for a turn that was NOT a walk — which is the ask.
+
+       The forced-south poses are deliberately excluded: loot pickup, mining
+       and fishing point the body at the camera so their animation reads, and
+       none of them is the player choosing a direction. */
+    let facedAng = null;
     if (lootFrozen) {
       facing = 'south';
     } else if (mining || fishing) {
@@ -6529,7 +6556,7 @@ export class EntityRenderer {
          below would miss it and the tumble would play toward whatever the
          player happened to be facing when they swiped. */
       const sector = Math.round(S._dodgeRoll.angle / (Math.PI / 4));
-      facing = SECTORS[((sector % 8) + 8) % 8];
+      facing = SECTORS[((sector % 8) + 8) % 8]; facedAng = S._dodgeRoll.angle;
     } else if (bashPose) {
       /* v2.3.1735: the bash owns the body for its window, exactly as the
          dodge roll above does.  Placed ahead of the shield/aim branches so
@@ -6538,17 +6565,17 @@ export class EntityRenderer {
          cast time, so the body must not drift off it and lie about where
          the hit went. */
       const sector = Math.round(bashPose.ang / (Math.PI / 4));
-      facing = SECTORS[((sector % 8) + 8) % 8];
+      facing = SECTORS[((sector % 8) + 8) % 8]; facedAng = bashPose.ang;
     } else if (isShielding && S._shieldAngle != null) {
       const sector = Math.round(S._shieldAngle / (Math.PI / 4));
-      facing = SECTORS[((sector % 8) + 8) % 8]; S._facingSrc = 'shield';
+      facing = SECTORS[((sector % 8) + 8) % 8]; S._facingSrc = 'shield'; facedAng = S._shieldAngle;
     } else if (aimAttackActive) {
       const sector = Math.round(S._aimAngle / (Math.PI / 4));
-      facing = SECTORS[((sector % 8) + 8) % 8]; S._facingSrc = 'aim';
+      facing = SECTORS[((sector % 8) + 8) % 8]; S._facingSrc = 'aim'; facedAng = S._aimAngle;
     } else if (stickActive) {
       const ang = Math.atan2(stickY, stickX);
       const sector = Math.round(ang / (Math.PI / 4));
-      facing = SECTORS[((sector % 8) + 8) % 8]; S._facingSrc = 'stick';
+      facing = SECTORS[((sector % 8) + 8) % 8]; S._facingSrc = 'stick'; facedAng = ang;
     } else if (isMoving) {
       const ang = Math.atan2(P.vy || 0, P.vx || 0);
       const sector = Math.round(ang / (Math.PI / 4));
@@ -6559,6 +6586,8 @@ export class EntityRenderer {
     } else {
       facing = S._facing || 'south'; S._facingSrc = 'fallback';
     }
+    /* v2.3.1837: the turn becomes the resting facing — see the note above. */
+    if (facedAng != null && isFinite(facedAng)) S._targetFacingAngle = facedAng;
     /* v2.3.396: publish the ACTUAL rendered facing (8-way compass) so the
        network broadcast can send it and remote clients render the same
        facing -- they previously reconstructed it from movement, which is

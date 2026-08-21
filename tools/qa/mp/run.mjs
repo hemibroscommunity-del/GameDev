@@ -36,6 +36,7 @@ const SCENARIOS = {
   coppergear: () => import('./mp-coppergear.mjs'), /* v2.3.1772: every worn copper combo, in every pose */
   blacksmith: () => import('./mp-blacksmith.mjs'), /* v2.3.1773: the smith at the fountain */
   townprops: () => import('./mp-townprops.mjs'), /* v2.3.1775: anvil, stall, storekeeper */
+  idleface: () => import('./mp-idleface.mjs'), /* v2.3.1837: idle keeps the last TURN, not the last walk */
   turnshield: () => import('./mp-turnshield.mjs'), /* v2.3.1836: shield side while turning */
   hudface: () => import('./mp-hudface.mjs'), /* v2.3.1835: the HUD portrait tracks the worn cosmetics */
   specshield: () => import('./mp-specshield.mjs'), /* v2.3.1834: shield layering during a special */
